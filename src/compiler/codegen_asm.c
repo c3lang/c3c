@@ -158,7 +158,7 @@ static inline void codegen_create_riscv_arg(AsmInlineBlock *block, unsigned inpu
 			}
 			return;
 		case ASM_ARG_ADDR:
-			if (arg->idx || arg->offset_type) TODO;
+			if (arg->idx || arg->offset_type) TODO
 			if (arg->neg_offset) scratch_buffer_append_char('-');
 			scratch_buffer_append_unsigned_int(arg->offset);
 			scratch_buffer_append_char('(');

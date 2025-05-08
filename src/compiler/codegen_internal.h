@@ -120,7 +120,7 @@ static inline bool expr_is_vector_index_or_swizzle(Expr *expr)
 
 const char *codegen_create_asm(Ast *ast);
 
-extern const char *benchmark_fns_var_name;
-extern const char *benchmark_names_var_name;
-extern const char *test_fns_var_name;
-extern const char *test_names_var_name;
+extern const char * const benchmark_fns_var_name;
+extern const char * const benchmark_names_var_name;
+extern const char * const test_fns_var_name;
+extern const char * const test_names_var_name;

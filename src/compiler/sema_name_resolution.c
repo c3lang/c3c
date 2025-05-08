@@ -351,7 +351,7 @@ INLINE bool sema_resolve_ambiguity(SemaContext *context, Decl **current, Decl *c
 		case BOOL_ERR:
 			return false;
 	}
-	UNREACHABLE;
+	UNREACHABLE
 }
 
 static bool sema_find_decl_in_global(SemaContext *context, DeclTable *table, Module **module_list,
@@ -540,7 +540,7 @@ int damerau_levenshtein_distance(const char *a, int a_len, const char *b, int b_
 	if (!b_len) return a_len;
 	if (a_len >= MAX_TEST || b_len >= MAX_TEST) return MAX_TEST;
 	int score[MAX_TEST][MAX_TEST];
-	memset(score, 0, MAX_TEST * MAX_TEST);
+	memset(score, 0, (size_t)MAX_TEST *  (size_t)MAX_TEST);
 	for (int i = 0; i <= a_len; i++) score[i][0] = i;
 	for (int i = 0; i <= b_len; i++) score[0][i] = i;
 	for (int i = 0; i < a_len; i++)
@@ -579,7 +579,7 @@ static void find_closest(const char *name, int name_len, Decl **decls, int *coun
 			at_match = decl;
 			continue;
 		}
-		int dist = damerau_levenshtein_distance(name, name_len, decl_name, strlen(decl_name));
+		int dist = damerau_levenshtein_distance(name, name_len, decl_name, (int)strlen(decl_name));
 		if (dist < best_distance)
 		{
 			matches[0] = decl;
@@ -611,7 +611,7 @@ static int module_closest_ident_names(Module *module, const char *name, Decl* ma
 	matches[0] = matches[1] = matches[2] = NULL;
 
 	int count = 0;
-	int len = strlen(name);
+	int len = (int)strlen(name);
 	int distance = MAX(1, (int)(len * 0.8));
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
@@ -891,7 +891,7 @@ bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_info)
 			case TYPE_STRUCT:
 				break;
 			default:
-				UNREACHABLE;
+				UNREACHABLE
 		}
 		break;
 	}

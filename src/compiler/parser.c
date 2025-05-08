@@ -199,10 +199,11 @@ bool parse_stdin(void)
 			}
 			else
 			{
-				data = realloc(data, capacity);
+				data = realloc(data, capacity); // NOLINT
+				if (!data) error_exit("Out of memory parsing stdin.");
 			}
 		}
-		data[len++] = c;
+		data[len++] = (char)c;
 	}
 	buffer[len] = 0;
 	char *stdin_data = MALLOC(len + 1);

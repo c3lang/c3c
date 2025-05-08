@@ -16,7 +16,7 @@ static void sema_create_const_initializer_from_designated_init(ConstInitializer 
 static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, DesignatorElement ***elements_ref, unsigned *index, bool is_substruct);
 static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr);
 INLINE bool sema_initializer_list_is_empty(Expr *value);
-static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement ***elements_ref, unsigned *curr_index, bool *is_constant, bool *did_report_error, ArrayIndex *max_index, Decl **member_ptr);
+static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement ***elements_ref, unsigned *curr_index, bool *did_report_error, ArrayIndex *max_index, Decl **member_ptr);
 static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *index);
 static void sema_update_const_initializer_with_designator(ConstInitializer *const_init,
 														  DesignatorElement **curr,
@@ -34,11 +34,7 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 																	   DesignatorElement **curr,
 																	   DesignatorElement **end,
 																	   Expr *value);
-static inline void sema_update_const_initializer_with_designator(
-		ConstInitializer *const_init,
-		DesignatorElement **curr,
-		DesignatorElement **end,
-		Expr *value);
+
 
 bool const_init_local_init_may_be_global_inner(ConstInitializer *init, bool top)
 {
@@ -218,7 +214,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	}
 
 	// 3. Loop through all elements.
-	ArrayIndex max_loop = size > elements_needed ? size : elements_needed;
+	ArrayIndex max_loop = size > elements_needed ? size : (ArrayIndex)elements_needed;
 	for (ArrayIndex i = 0; i < max_loop; i++)
 	{
 		// 4. Check if we exceeded the list of elements in the struct/union.
@@ -261,7 +257,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 			int reduce_by = max_index_to_copy - i - 1;
 			size -= reduce_by;
 			elements_needed -= reduce_by;
-			max_loop = size > elements_needed ? size : elements_needed;
+			max_loop = size > elements_needed ? size : (ArrayIndex)elements_needed;
 			ASSERT(size <= vec_size(initializer->initializer_list));
 			vec_resize(initializer->initializer_list, (unsigned)size);
 			elements = initializer->initializer_list;
@@ -771,7 +767,7 @@ ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs,
 				lhs_expr->const_expr.ixx = int_or(lhs_expr->const_expr.ixx, rhs_expr->const_expr.ixx);
 				break;
 			default:
-				UNREACHABLE;
+				UNREACHABLE
 		}
 	}
 	return lhs;
@@ -1049,7 +1045,7 @@ static inline ConstInitializer *sema_update_const_initializer_at_index(ConstInit
 {
 	ConstInitializer **array_elements = const_init->init_array.elements;
 	ArrayIndex insert_index = *insert_index_ref;
-	ArrayIndex array_count = vec_size(array_elements);
+	ArrayIndex array_count = (ArrayIndex)vec_size(array_elements);
 	// Walk to the insert point or until we reached the end of the array.
 	while (insert_index < array_count && array_elements[insert_index]->init_array_value.index < index)
 	{
@@ -1189,13 +1185,12 @@ static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, E
 	DesignatorElement **path = expr->designator_expr.path;
 
 	// Walk down into this path
-	bool is_constant = true;
 	bool did_report_error = false;
 	*member_ptr = NULL;
 	for (unsigned i = 0; i < vec_size(path); i++)
 	{
 		Decl *member_found;
-		Type *new_current = sema_find_type_of_element(context, current, &path, &i, &is_constant, &did_report_error, i == 0 ? max_index : NULL, &member_found);
+		Type *new_current = sema_find_type_of_element(context, current, &path, &i, &did_report_error, i == 0 ? max_index : NULL, &member_found);
 		if (!new_current)
 		{
 			if (!did_report_error) SEMA_ERROR(expr, "This is not a valid member of '%s'.", type_to_error_string(current));
@@ -1212,7 +1207,7 @@ INLINE bool sema_initializer_list_is_empty(Expr *value)
 	return expr_is_const_initializer(value) && value->const_expr.initializer->kind == CONST_INIT_ZERO;
 }
 
-static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement ***elements_ref, unsigned *curr_index, bool *is_constant, bool *did_report_error, ArrayIndex *max_index, Decl **member_ptr)
+static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement ***elements_ref, unsigned *curr_index, bool *did_report_error, ArrayIndex *max_index, Decl **member_ptr)
 {
 	Type *type_flattened = type_flatten(type);
 	DesignatorElement *element = (*elements_ref)[*curr_index];

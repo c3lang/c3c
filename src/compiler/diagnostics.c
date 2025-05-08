@@ -7,37 +7,38 @@
 
 #define LINES_SHOWN 4
 #define MAX_WIDTH 120
+#define MAX_ERROR_LEN 4096
 
 static void eprint_escaped_string(const char *message)
 {
-	fputc('"', stderr);
+	(void)fputc('"', stderr);
 	char c;
 	while ((c = *(message++)) != 0)
 	{
 		switch (c)
 		{
 			case '\t':
-				fputs("\\t", stderr);
+				(void)fputs("\\t", stderr);
 				break;
 			case '\r':
 				break;
 			case '|':
-				fputs("\\x7c", stderr);
+				(void)fputs("\\x7c", stderr);
 				break;
 			case '\"':
-				fputs("\\\"", stderr);
+				(void)fputs("\\\"", stderr);
 				break;
 			case '\\':
-				fputs("\\\\", stderr);
+				(void)fputs("\\\\", stderr);
 				break;
 			case '\n':
-				fputs("\\n", stderr);
+				(void)fputs("\\n", stderr);
 				break;
 			default:
-				fputc(c, stderr);
+				(void)fputc(c, stderr);
 		}
 	}
-	fputc('"', stderr);
+	(void)fputc('"', stderr);
 }
 
 static void print_error_type_at(SourceSpan location, const char *message, PrintType print_type)
@@ -247,7 +248,6 @@ void sema_note_prev_at(SourceSpan loc, const char *message, ...)
 {
 	va_list args;
 	va_start(args, message);
-#define MAX_ERROR_LEN 4096
 	char buffer[MAX_ERROR_LEN];
 	size_t written = vsnprintf(buffer, MAX_ERROR_LEN - 1, message, args);
 	// Ignore errors
@@ -256,7 +256,6 @@ void sema_note_prev_at(SourceSpan loc, const char *message, ...)
 		print_error_type_at(loc, buffer, PRINT_TYPE_NOTE);
 	}
 	va_end(args);
-	return;
 }
 
 
@@ -264,7 +263,6 @@ void sema_warn_prev_at(SourceSpan loc, const char *message, ...)
 {
 	va_list args;
 	va_start(args, message);
-#define MAX_ERROR_LEN 4096
 	char buffer[MAX_ERROR_LEN];
 	size_t written = vsnprintf(buffer, MAX_ERROR_LEN - 1, message, args);
 	// Ignore errors
@@ -273,7 +271,6 @@ void sema_warn_prev_at(SourceSpan loc, const char *message, ...)
 		print_error_type_at(loc, buffer, PRINT_TYPE_WARN);
 	}
 	va_end(args);
-	return;
 }
 
 void print_error(ParseContext *context, const char *message, ...)

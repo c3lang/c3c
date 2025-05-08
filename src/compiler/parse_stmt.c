@@ -402,11 +402,8 @@ static inline Ast *parse_asm_stmt(ParseContext *c)
 	{
 		ASSIGN_EXPR_OR_RET(Expr *expr, parse_asm_expr(c), poisoned_ast);
 		vec_add(list, expr);
-		if (!try_consume(c, TOKEN_COMMA))
-		{
-			if (!expect(c, TOKEN_EOS)) return poisoned_ast;
-			continue;
-		}
+		if (try_consume(c, TOKEN_COMMA)) continue;
+		if (!expect(c, TOKEN_EOS)) return poisoned_ast;
 	}
 	asm_stmt->asm_stmt.args = list;
 	return asm_stmt;
@@ -862,7 +859,7 @@ static inline Ast* parse_foreach_stmt(ParseContext *c)
 {
 	Ast *ast = new_ast(AST_FOREACH_STMT, c->span);
 
-	if (!(ast->foreach_stmt.is_reverse = try_consume(c, TOKEN_FOREACH_R)))
+	if (!((ast->foreach_stmt.is_reverse = try_consume(c, TOKEN_FOREACH_R))))
 	{
 		advance_and_verify(c, TOKEN_FOREACH);
 	}

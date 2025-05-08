@@ -25,10 +25,10 @@ typedef enum
 
 typedef struct CValue
 {
-	CValueType kind;
+	Type *type;
 	VariableId optional;
 	VariableId var;
-	Type *type;
+	CValueType kind;
 } CValue;
 
 typedef struct
@@ -36,10 +36,10 @@ typedef struct
 	HTable gen_decl;
 	HTable gen_def;
 	FILE *file;
+	OptionalCatch catch;
 	int x;
 	int typename;
 	int id_gen;
-	OptionalCatch catch;
 } GenContext;
 
 #define PRINTF(x, ...) fprintf(c->file, x, ## __VA_ARGS__) /* NOLINT */
@@ -360,7 +360,7 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			for (ArraySize i = 0; i < expr->const_expr.bytes.len; i++)
 			{
 				char b = expr->const_expr.bytes.ptr[i];
-				if (b >= ' ' || b < 127)
+				if (b >= ' ' && b < 127)
 				{
 					PRINTF("%c", b);
 					continue;

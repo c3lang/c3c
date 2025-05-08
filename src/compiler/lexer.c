@@ -36,7 +36,7 @@ static inline void begin_new_token(Lexer *lexer)
 #define peek_next(lexer_) ((lexer_)->current[1])
 
 // Is the current character '\0' if so we assume we reached the end.
-#define reached_end(lexer_) (lexer_->current[0] == '\0')
+#define reached_end(lexer_) ((lexer_)->current[0] == '\0')
 
 // Step one character forward and return that character
 INLINE char next(Lexer *lexer)
@@ -420,7 +420,7 @@ static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 #define NEXT_AND_CHECK_NO_MULTIPLE_(lexer__) \
 	do { if (next(lexer__) == '_' && prev(lexer__) == '_') { \
 		return add_error_token_at_current(lexer__, "Multiple consecutive '_' are not allowed."); \
-	} } while(0);
+	} } while(0)
 /**
  * Parsing octals. Here we depart from the (error prone) C style octals with initial zero e.g. 0231
  * Instead we only support 0o prefix like 0o231. Note that lexing here doesn't actually parse the
@@ -806,7 +806,7 @@ static inline bool scan_char(Lexer *lexer)
 				// No escape, a regular character.
 				break;
 			default:
-				c = (signed char)escape;
+				c = (char)escape;
 				break;
 		}
 		// Default handling here:
@@ -1060,7 +1060,7 @@ static inline bool scan_hex_array(Lexer *lexer)
 	}
 	new_token(lexer, TOKEN_BYTES, lexer->lexing_start);
 	lexer->data.is_base64 = false;
-	lexer->data.bytes_len = (uint64_t)len / 2;
+	lexer->data.bytes_len = len / 2;
 	return true;
 }
 

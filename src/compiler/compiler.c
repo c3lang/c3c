@@ -620,7 +620,7 @@ void compiler_compile(void)
 		task_count--;
 		if (task_count)
 		{
-			taskqueue_run(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads, tasks);
+			taskqueue_run((int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads), tasks);
 		}
 	}
 	if (compiler.build.print_output)
@@ -939,7 +939,7 @@ static bool use_ansi(void)
 
 void update_progress_bar(const char* lib, int current_step, int total_steps)
 {
-    float progress = (float)current_step / total_steps;
+    float progress = (float)current_step / (float)total_steps;
     int filled_length = (int)(progress * PROGRESS_BAR_LENGTH);
 	printf("\033[2K%-10s ", lib);
     printf("[");
@@ -948,7 +948,7 @@ void update_progress_bar(const char* lib, int current_step, int total_steps)
 	    printf(i < filled_length ? "=" : " ");
     }
 	printf("] %d%%\r", (int)(progress * 100));
-	fflush(stdout);
+	(void)fflush(stdout);
 }
 
 void vendor_fetch(BuildOptions *options)
@@ -961,14 +961,14 @@ void vendor_fetch(BuildOptions *options)
 		if (file_exists(PROJECT_JSON5) || file_exists(PROJECT_JSON))
 		{
 			const char** deps_dirs =  get_project_dependency_directories();
-			int num_lib = vec_size(deps_dirs); 
+			int num_lib = (int)vec_size(deps_dirs);
 			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
 		}
 	}
 
 	unsigned count = 0;
 	const char** fetched_libraries = NULL;
-	int total_libraries = vec_size(options->libraries_to_fetch);
+	int total_libraries = (int)vec_size(options->libraries_to_fetch);
 	
 	for(int i = 0; i < total_libraries; i++)
 	{
@@ -976,7 +976,7 @@ void vendor_fetch(BuildOptions *options)
 		if (!ansi || total_libraries == 1)
 		{
 			printf("Fetching library '%s'...", lib);
-			fflush(stdout);
+			(void)fflush(stdout);
 		}
 		else
 		{
@@ -1007,7 +1007,7 @@ void vendor_fetch(BuildOptions *options)
 			{
 				printf("Failed: '%s'\n", error);
 			}
-			fflush(stdout);
+			(void)fflush(stdout);
 		}
 	}
 
@@ -1390,9 +1390,9 @@ const char *compiler_date_to_iso(void)
 		default:
 			UNREACHABLE
 	}
-	iso[5] = month / 10 + '0';
-	iso[6] = month % 10 + '0';
-	iso[8] = comp_date[4] == ' ' ? '0' : comp_date[4];
+	iso[5] = (char)(month / 10 + '0');
+	iso[6] = (char)(month % 10 + '0');
+	iso[8] = (char)(comp_date[4] == ' ' ? '0' : comp_date[4]);
 	iso[9] = comp_date[5];
 	return iso;
 }
@@ -1493,8 +1493,6 @@ void compile()
 		compiler_parsing_time = bench_mark();
 		emit_json();
 		exit_compiler(COMPILER_SUCCESS_EXIT);
-
-		return;
 	}
 	compiler_compile();
 }
@@ -1628,8 +1626,10 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 	const char *compiler_path = file_append_path(find_executable_path(), name);
 
 	scratch_buffer_clear();
-	if (PLATFORM_WINDOWS) scratch_buffer_append_char('"');
-	scratch_buffer_append_native_safe_path(compiler_path, strlen(compiler_path));
+#if PLATFORM_WINDOWS
+	scratch_buffer_append_char('"');
+#endif
+	scratch_buffer_append_native_safe_path(compiler_path, (int)strlen(compiler_path));
 	const char *output = "__c3exec__";
 	scratch_buffer_append(" compile -g0 --single-module=yes");
 	StringSlice slice = slice_from_string(file);
@@ -1638,11 +1638,13 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 		StringSlice file_name = slice_next_token(&slice, ';');
 		if (!file_name.len) continue;
 		scratch_buffer_append(" ");
-		scratch_buffer_append_native_safe_path(file_name.ptr, file_name.len);
+		scratch_buffer_append_native_safe_path(file_name.ptr, (int)file_name.len);
 	}
 	scratch_buffer_printf(" -o %s", output);
 	char *out;
-	if (PLATFORM_WINDOWS) scratch_buffer_append_char('"');
+#if PLATFORM_WINDOWS
+	scratch_buffer_append_char('"');
+#endif
 	if (!execute_cmd_failable(scratch_buffer_to_string(), &out, NULL, limit))
 	{
 		if (strlen(out))

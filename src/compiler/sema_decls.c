@@ -7,7 +7,7 @@
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl);
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated, Decl *decl);
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, Decl *decl);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
 static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
                                                         unsigned current_index, unsigned count);
@@ -322,7 +322,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		bool erase_decl = false;
 
 		// Check the member
-		if (!sema_analyse_struct_member(context, decl, member, &erase_decl))
+		if (!sema_analyse_struct_member(context, decl, member, &erase_decl)) // NOLINT
 		{
 			// Failed
 			return decl_poison(member);
@@ -493,7 +493,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		if (!decl_ok(member)) return decl_poison(decl);
 		bool erase_decl = false;
 		// Check the member
-		if (!sema_analyse_struct_member(context, decl, member, &erase_decl))
+		if (!sema_analyse_struct_member(context, decl, member, &erase_decl)) // NOLINT
 		{
 			return decl_poison(decl);
 		}
@@ -630,7 +630,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	AlignSize natural_size = aligned_offset(offset, natural_alignment);
 	if (size > natural_size)
 	{
-		decl->strukt.padding = (AlignSize)(size - offset);
+		decl->strukt.padding = size - offset;
 	}
 
 	// If the size is smaller the naturally aligned struct, then it is also unaligned
@@ -641,7 +641,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	if (is_unaligned && size > offset)
 	{
 		ASSERT(!decl->strukt.padding);
-		decl->strukt.padding = (AlignSize)(size - offset);
+		decl->strukt.padding = size - offset;
 	}
 
 	if (decl->attr_nopadding && type_is_substruct(decl->type))
@@ -1090,7 +1090,7 @@ ERROR:
 	return decl_poison(decl);
 }
 
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated, Decl *decl)
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, Decl *decl)
 {
 	Variadic variadic_type = sig->variadic;
 	Decl **params = sig->params;
@@ -1384,9 +1384,7 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Type
 	// Get param count and variadic type
 	Decl **params = signature->params;
 
-	bool deprecated = func_decl->resolved_attributes && func_decl->attrs_resolved && func_decl->attrs_resolved->deprecated;
-
-	if (!sema_analyse_signature(context, signature, parent, func_decl->is_export, deprecated, func_decl)) return false;
+	if (!sema_analyse_signature(context, signature, parent, func_decl)) return false;
 
 	Variadic variadic_type = signature->variadic;
 
@@ -2200,7 +2198,7 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 	Decl *other = NULL;
 	if (operator >= OVERLOAD_TYPED_START)
 	{
-		other =  sema_find_exact_typed_operator(context, parent_type, operator, method->func_decl.overload_type, second_param, method);
+		other =  sema_find_exact_typed_operator(context, parent_type, operator, method->func_decl.overload_type, second_param, method); // NOLINT
 	}
 	else
 	{
@@ -2534,12 +2532,9 @@ static inline bool sema_compare_method_with_interface(SemaContext *context, Decl
 			SEMA_NOTE(any_params[this_param_count], "Compare with the interface definition.");
 			return false;
 		}
-		else
-		{
-			SEMA_ERROR(this_params[any_param_count], "This function has too many parameters (%d).", this_param_count);
-			SEMA_NOTE(decl, "Compare with the interface, which has only %d parameter%s.",
-			          any_param_count, any_param_count == 1 ? "" : "s");
-		}
+		SEMA_ERROR(this_params[any_param_count], "This function has too many parameters (%d).", this_param_count);
+		SEMA_NOTE(decl, "Compare with the interface, which has only %d parameter%s.",
+		          any_param_count, any_param_count == 1 ? "" : "s");
 		return false;
 	}
 
@@ -2917,7 +2912,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_BUILTIN:
 		case ATTRIBUTE_NORECURSE:
 			// These are pseudo-attributes and are processed separately.
-			UNREACHABLE;
+			UNREACHABLE
 		case ATTRIBUTE_DEPRECATED:
 			if (attr_data->deprecated)
 			{
@@ -3144,7 +3139,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			{
 				RETURN_SEMA_ERROR(expr, "Expected an integer compile time constant value.");
 			}
-			else
 			{
 				Int i = expr->const_expr.ixx;
 				if (int_is_neg(i) || int_icomp(i, 127, BINARYOP_GT))
@@ -3164,7 +3158,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 						decl->fntype_decl.attrs.format = val + 1;
 						return true;
 					default:
-						UNREACHABLE;
+						UNREACHABLE
 				}
 				RETURN_SEMA_ERROR(attr, "'@format' may not appear twice.");
 			}
@@ -3231,7 +3225,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 					decl->extname = expr->const_expr.bytes.ptr;
 					break;
 				default:
-					UNREACHABLE;
+					UNREACHABLE
 			}
 			return true;
 		case ATTRIBUTE_NOINLINE:
@@ -3819,7 +3813,7 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 				default: UNREACHABLE
 			}
 		default:
-			UNREACHABLE;
+			UNREACHABLE
 	}
 	NEXT:;
 	const char *kw_main_invoker = symtab_preset(main_invoker, TOKEN_AT_IDENT);
@@ -3900,9 +3894,9 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		function = decl;
 		goto REGISTER_MAIN;
 	}
-	bool use_wmain = is_win32 && !is_winmain && type != MAIN_TYPE_NO_ARGS;
+	bool is_wmain = is_win32 && !is_winmain && type != MAIN_TYPE_NO_ARGS;
 	compiler.build.win.use_win_subsystem = is_winmain && is_win32;
-	function = sema_create_synthetic_main(context, decl, type, is_int_return, is_err_return, is_winmain, use_wmain);
+	function = sema_create_synthetic_main(context, decl, type, is_int_return, is_err_return, is_winmain, is_wmain);
 	if (!decl_ok(function)) return false;
 REGISTER_MAIN:
 	context->unit->main_function = function;
@@ -4198,11 +4192,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 	if (!sema_analyse_func_macro(context, decl, ATTR_MACRO, erase_decl)) return false;
 	if (*erase_decl) return true;
 
-	bool deprecated = decl->resolved_attributes && decl->attrs_resolved && decl->attrs_resolved->deprecated;
-
-	if (!sema_analyse_signature(context, &decl->func_decl.signature,
-	                            type_infoptrzero(decl->func_decl.type_parent),
-	                            false, deprecated, decl)) return false;
+	if (!sema_analyse_signature(context, &decl->func_decl.signature, type_infoptrzero(decl->func_decl.type_parent), decl)) return false;
 
 	DeclId body_param = decl->func_decl.body_param;
 	if (!decl->func_decl.signature.is_at_macro && body_param && !decl->func_decl.signature.is_safemacro)
@@ -4804,7 +4794,7 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 				{
 					if (type_is_signed(type))
 					{
-						scratch_buffer_append_signed_int(param->const_expr.ixx.i.low);
+						scratch_buffer_append_signed_int((int64_t)param->const_expr.ixx.i.low);
 					}
 					else
 					{

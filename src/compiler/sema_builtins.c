@@ -345,14 +345,14 @@ bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunctio
 			for (ArraySize i = 0; i < len; i++)
 			{
 				char c = string[i];
-				new_string[i] = char_is_upper(c) ? (c | 0x20) : c;
+				new_string[i] = (char)(char_is_upper(c) ? (c | 0x20) : c);
 			}
 			break;
 		case BUILTIN_STR_UPPER:
 			for (ArraySize i = 0; i < len; i++)
 			{
 				char c = string[i];
-				new_string[i] = char_is_lower(c) ? (c & ~0x20) : c;
+				new_string[i] = (char)(char_is_lower(c) ? (c & ~0x20) : c);
 			}
 			break;
 		default:
@@ -371,6 +371,7 @@ bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunctio
 /**
  * Interpret a UTF-8 codepoint and return an integer corresponding to the raw codepoint's value.
  * @param data_ptr pointer to the pointer which scrolls along the input data string
+ * @param inc pointer to the integer which will be incremented by the number of bytes consumed
  */
 static uint32_t utf8_to_codepoint(const char *data_ptr, int *inc)
 {
@@ -401,8 +402,6 @@ static uint32_t utf8_to_codepoint(const char *data_ptr, int *inc)
 	*inc = bytes;
 	return result;
 }
-
-
 
 bool sema_expr_analyse_str_wide(SemaContext *context, Expr *expr, BuiltinFunction func)
 {
@@ -437,7 +436,7 @@ bool sema_expr_analyse_str_wide(SemaContext *context, Expr *expr, BuiltinFunctio
 
 	Type *type = func == BUILTIN_WIDESTRING_16 ? type_ushort : type_uint;
 	ArraySize len = (original_len + 1) * bytes_per_unit;   // inflate to unit size +null-term
-	ConstInitializer **elements = VECNEW(ConstInitializer*, len);;
+	ConstInitializer **elements = VECNEW(ConstInitializer*, len);
 
 	const char *data = string;
 	const char *end = data + original_len;
@@ -717,11 +716,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			{
 				RETURN_SEMA_ERROR(args[2], "This value must be a constant.");
 			}
-			else
-			{
-				Real r = args[2]->const_expr.fxx.f;
-				if (r < 0 || r > 1) RETURN_SEMA_ERROR(args[2], "The probability must be between 0 and 1.");
-			}
+			Real r = args[2]->const_expr.fxx.f;
+			if (r < 0 || r > 1) RETURN_SEMA_ERROR(args[2], "The probability must be between 0 and 1.");
 			if (!sema_check_builtin_args_match(context, args, 2)) return false;
 			rtype = args[0]->type;
 			break;
@@ -1031,11 +1027,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
-			switch (args[3]->const_expr.ixx.i.low)
-			{
-				case ATOMIC_UNORDERED:
-					RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
-			}
+			if (args[3]->const_expr.ixx.i.low == ATOMIC_UNORDERED) RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
 			if (!sema_check_alignment_expression(context, args[4])) return false;
 			rtype = args[1]->type;
 			break;
@@ -1055,11 +1047,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
-			switch (args[3]->const_expr.ixx.i.low)
-			{
-				case ATOMIC_UNORDERED:
-					RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
-			}
+			if (args[3]->const_expr.ixx.i.low == ATOMIC_UNORDERED) RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
 			if (!sema_check_alignment_expression(context, args[4])) return false;
 			rtype = args[1]->type;
 			break;
@@ -1078,11 +1066,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
-			switch (args[3]->const_expr.ixx.i.low)
-			{
-				case ATOMIC_UNORDERED:
-					RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
-			}
+			if (args[3]->const_expr.ixx.i.low == ATOMIC_UNORDERED) RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
 			if (!sema_check_alignment_expression(context, args[4])) return false;
 			rtype = args[1]->type;
 			break;
@@ -1102,11 +1086,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
-			switch (args[3]->const_expr.ixx.i.low)
-			{
-				case ATOMIC_UNORDERED:
-					RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
-			}
+			if (args[3]->const_expr.ixx.i.low == ATOMIC_UNORDERED) RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
 			if (!sema_check_alignment_expression(context, args[4])) return false;
 			rtype = args[1]->type;
 			break;
@@ -1129,6 +1109,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 				case ATOMIC_ACQUIRE_RELEASE:
 				case ATOMIC_ACQUIRE:
 					RETURN_SEMA_ERROR(args[3], "'acquire' and 'acquire release' are not valid for atomic stores.");
+				default:
+					break;
 			}
 			rtype = args[1]->type;
 			break;

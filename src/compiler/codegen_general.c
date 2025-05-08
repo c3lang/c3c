@@ -1,10 +1,10 @@
 #include "codegen_internal.h"
 
 
-const char *benchmark_fns_var_name = "__$C3_BENCHMARK_FN_LIST";
-const char *benchmark_names_var_name = "__$C3_BENCHMARK_NAMES_LIST";
-const char *test_fns_var_name = "__$C3_TEST_FN_LIST";
-const char *test_names_var_name = "__$C3_TEST_NAMES_LIST";
+const char * const benchmark_fns_var_name = "__$C3_BENCHMARK_FN_LIST";
+const char * const benchmark_names_var_name = "__$C3_BENCHMARK_NAMES_LIST";
+const char * const test_fns_var_name = "__$C3_TEST_FN_LIST";
+const char * const test_names_var_name = "__$C3_TEST_NAMES_LIST";
 /**
  * Based on isSingleElementStruct in Clang
  */
@@ -18,10 +18,10 @@ Type *type_abi_find_single_struct_element(Type *type)
 	Type *found = NULL;
 	FOREACH(Decl *, member, type->decl->strukt.members)
 	{
-		Type *field_type = type_lowering(member->type);
-
 		// Already one field found, not single field.
 		if (found) return NULL;
+
+		Type *field_type = type_lowering(member->type);
 
 		// Flatten single element arrays.
 		while (field_type->type_kind == TYPE_ARRAY)
@@ -174,7 +174,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 	switch (type->type_kind)
 	{
 		case LOWERED_TYPES:
-			UNREACHABLE;
+			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_FUNC_RAW:
 		case TYPE_SLICE:

@@ -18,7 +18,7 @@ ArrayIndex sema_len_from_const(Expr *expr)
 			return range_const_len(&expr->slice_expr.range);
 		}
 		if (expr->expr_kind != EXPR_MAKE_SLICE) return -1;
-		return expr->make_slice_expr.len;
+		return (ArrayIndex)expr->make_slice_expr.len;
 	}
 	ConstInitializer *init;
 	switch (expr->const_expr.const_kind)
@@ -36,7 +36,7 @@ ArrayIndex sema_len_from_const(Expr *expr)
 			return -1;
 		case CONST_BYTES:
 		case CONST_STRING:
-			return expr->const_expr.bytes.len;
+			return (ArrayIndex)expr->const_expr.bytes.len;
 		case CONST_SLICE:
 			if (!expr->const_expr.slice_init) return 0;
 			init = expr->const_expr.slice_init;
@@ -45,11 +45,11 @@ ArrayIndex sema_len_from_const(Expr *expr)
 			init = expr->const_expr.initializer;
 			goto ARRAY_LEN;
 		case CONST_UNTYPED_LIST:
-			return vec_size(expr->const_expr.untyped_list);
+			return (ArrayIndex)vec_size(expr->const_expr.untyped_list);
 	}
 	UNREACHABLE
 ARRAY_LEN:
-	if (type_is_arraylike(init->type)) return init->type->array.len;
+	if (type_is_arraylike(init->type)) return (ArrayIndex)init->type->array.len;
 	return -1;
 }
 
@@ -203,7 +203,7 @@ static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Exp
 	char *current = data;
 	if (str_len) memcpy(current, list->const_expr.bytes.ptr, str_len);
 	current += str_len;
-	current[0] = (unsigned char)element->const_expr.ixx.i.low;
+	current[0] = (char)element->const_expr.ixx.i.low;
 	current[1] = '\0';
 	expr->expr_kind = EXPR_CONST;
 	expr->const_expr = (ExprConst) {
@@ -540,7 +540,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 					FOREACH(ConstInitializer *, element, rhs_init->init_array.elements)
 					{
 						ASSERT_SPAN(right, element->kind == CONST_INIT_ARRAY_VALUE);
-						element->init_array_value.index += len_lhs;
+						element->init_array_value.index += (ArrayIndex)len_lhs;
 					}
 					rhs_init->type = type;
 					expr_rewrite_const_initializer(concat_expr, type, rhs_init);
@@ -663,7 +663,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 					FOREACH(ConstInitializer *, element, rhs_init->init_array.elements)
 					{
 						ASSERT_SPAN(right, element->kind == CONST_INIT_ARRAY_VALUE);
-						element->init_array_value.index += len_lhs;
+						element->init_array_value.index += (ArrayIndex)len_lhs;
 						vec_add(inits, element);
 					}
 					expr_rewrite_const_initializer(concat_expr, type, const_init_new_array(type, inits));

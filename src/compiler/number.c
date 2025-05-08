@@ -286,9 +286,9 @@ bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 		case CONST_UNTYPED_LIST:
 		case CONST_MEMBER:
 		case CONST_REF:
-			UNREACHABLE;
+			UNREACHABLE
 	}
-	UNREACHABLE;
+	UNREACHABLE
 }
 
 
@@ -299,7 +299,7 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 	{
 		case CONST_POINTER:
 			if (!expr->ptr) return "null";
-			return str_printf("%p", (void*)(intptr_t)expr->ptr);
+			return str_printf("%p", (void *)(intptr_t)expr->ptr);
 		case CONST_BOOL:
 			return expr->b ? "true" : "false";
 		case CONST_INTEGER:

@@ -1031,7 +1031,7 @@ static Expr *parse_overload_from_token(ParseContext *c, TokenType token)
 			overload = OVERLOAD_NOT_EQUAL;
 			break;
 		default:
-			UNREACHABLE;
+			UNREACHABLE
 	}
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_OPERATOR_CHARS);
 	expr->resolve_status = RESOLVE_DONE;
@@ -1456,7 +1456,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 			}
 			// Set the variadic type and insert a dummy argument.
 			*variadic = VARIADIC_RAW;
-			*vararg_index_ref = vec_size(params);
+			*vararg_index_ref = (int)vec_size(params);
 			var_arg_found = true;
 			vec_add(params, NULL);
 			if (!try_consume(c, TOKEN_COMMA)) break;
@@ -1630,7 +1630,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 		{
 			var_arg_found = true;
 			param->var.vararg = ellipsis;
-			*vararg_index_ref = vec_size(params);
+			*vararg_index_ref = (int)vec_size(params);
 		}
 		vec_add(params, param);
 		if (!try_consume(c, TOKEN_COMMA)) break;
@@ -2056,9 +2056,7 @@ static inline void decl_add_type(Decl *decl, TypeKind kind)
  */
 static inline Decl *parse_alias_type(ParseContext *c)
 {
-	// TODO remove
-	advance(c);
-	// advance_and_verify(c, TOKEN_ALIAS);
+	advance_and_verify(c, TOKEN_ALIAS);
 
 	Decl *decl = decl_new(DECL_POISONED, symstr(c), c->span);
 	DEBUG_LOG("Parse def %s", decl->name);
@@ -2715,7 +2713,7 @@ static inline bool parse_doc_contract(ParseContext *c, AstId *docs, AstId **docs
 			scratch_buffer_append("@require \"");
 			break;
 	}
-	scratch_buffer_append_remove_space(start, end - start);
+	scratch_buffer_append_remove_space(start, (int)(end - start));
 	scratch_buffer_append("\" violated");
 	if (try_consume(c, TOKEN_COLON))
 	{

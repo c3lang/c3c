@@ -37,7 +37,7 @@ fn void ArenaAllocator.clear(&self)
 <*
  Given some memory, create an arena allocator on the stack for it.
 
- @param [inout] bytes : `The bytes to use`
+ @param [inout] bytes : `The bytes to use, may be empty.`
 
  @return `An arena allocator using the bytes`
 *>

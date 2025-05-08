@@ -67,7 +67,6 @@ static void sema_trace_stmt_chain_liveness(AstId astid)
 		}
 	}
 	REMINDER("Optimize to ignore after return");
-	return;
 }
 static void sema_trace_asm_arg_list(ExprAsmArg **list)
 {
@@ -628,10 +627,10 @@ RETRY:
 		case DECL_BODYPARAM:
 		case DECL_GROUP:
 			UNREACHABLE
-		case DECL_FNTYPE:;
+		case DECL_FNTYPE:
 			sema_trace_func_liveness(&decl->fntype_decl);
 			return;
-		case DECL_FUNC:;
+		case DECL_FUNC:
 			sema_trace_func_liveness(&decl->func_decl.signature);
 			sema_trace_stmt_liveness(astptrzero(decl->func_decl.body));
 			return;

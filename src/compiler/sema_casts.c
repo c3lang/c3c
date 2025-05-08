@@ -8,9 +8,8 @@
 
 #include "sema_internal.h"
 
-typedef struct
+typedef struct // NOLINT
 {
-	bool is_binary_conversion;
 	SemaContext *context;
 	Expr *expr;
 	Type *from;
@@ -18,6 +17,7 @@ typedef struct
 	Type *to;
 	ConvGroup from_group;
 	ConvGroup to_group;
+	bool is_binary_conversion;
 } CastContext;
 
 #define RETURN_CAST_ERROR(_node, ...) do { print_error_at((_node)->span, __VA_ARGS__); sema_print_inline(cc->context); return false; } while (0)
@@ -434,7 +434,7 @@ RETRY:
 					// For the rest, just check size.
 					goto CHECK_SIZE;
 			}
-			UNREACHABLE;
+			UNREACHABLE
 		case EXPR_EXPRESSION_LIST:
 			// Only the last expression counts for narrowing.
 			// It's unclear if this can happen.
@@ -766,7 +766,7 @@ INLINE bool sema_cast_error(CastContext *cc, bool may_cast_explicit, bool is_sil
 
 // RULES ----
 
-static TypeCmpResult match_pointers(CastContext *cc, Type *to_ptr, Type *from_ptr, bool flatten, bool is_silent)
+static TypeCmpResult match_pointers(CastContext *cc, Type *to_ptr, Type *from_ptr, bool flatten)
 {
 	return type_is_pointer_equivalent(cc->context, to_ptr, from_ptr, flatten);
 }
@@ -783,7 +783,7 @@ static bool rule_voidptr_to_any(CastContext *cc, UNUSED bool is_explicit, bool i
 static bool rule_ptr_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_explicit) return true;
-	switch (match_pointers(cc, cc->to, cc->from, is_silent, false))
+	switch (match_pointers(cc, cc->to, cc->from, is_silent))
 	{
 		case TYPE_SAME:
 			return true;
@@ -879,7 +879,7 @@ static bool rule_arrptr_to_slice(CastContext *cc, bool is_explicit, bool is_sile
 
 	if (slice_base->type_kind == TYPE_POINTER && from_base->type_kind == TYPE_POINTER)
 	{
-		switch (match_pointers(cc, slice_base, from_base, is_explicit, is_silent))
+		switch (match_pointers(cc, slice_base, from_base, is_explicit))
 		{
 			case TYPE_SAME:
 				return true;
@@ -977,7 +977,7 @@ static bool rule_slice_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *slice_base = cc->from->array.base->canonical;
 	Type *natural_ptr = type_get_ptr(slice_base);
-	switch (match_pointers(cc, natural_ptr, cc->to, is_explicit, is_silent))
+	switch (match_pointers(cc, natural_ptr, cc->to, is_explicit))
 	{
 		case TYPE_SAME:
 			return true;

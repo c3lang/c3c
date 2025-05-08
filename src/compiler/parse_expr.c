@@ -1367,7 +1367,7 @@ static int read_num_type(const char *string, size_t loc, size_t len)
 	return i;
 }
 
-int read_int_suffix(const char *string, int loc, int len, char c)
+static int read_int_suffix(const char *string, size_t loc, size_t len, char c)
 {
 	switch (c | 32)
 	{
@@ -1570,7 +1570,7 @@ EXIT:
 	}
 	else
 	{
-		int min_bits = type_size(type_cint) * 8;
+		BitSize min_bits = (BitSize)type_size(type_cint) * 8;
 		Int test = { .i = i };
 		for (int type_kind = 0; type_kind < 5; type_kind++)
 		{
@@ -1632,7 +1632,7 @@ static void parse_hex(char *result_pointer, const char *data, const char *end)
 /**
  * Slow base64 -> sextet
  */
-static char base64_to_sextet(char c)
+static int base64_to_sextet(char c)
 {
 	if (c >= 'A' && c <= 'Z') return c - 'A';
 	if (c >= 'a' && c <= 'z') return c - 'a' + 26;
