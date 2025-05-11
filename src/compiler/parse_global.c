@@ -2209,7 +2209,7 @@ static inline Decl *parse_attrdef(ParseContext *c)
 
 	Decl *decl = decl_new(DECL_ATTRIBUTE, symstr(c), c->span);
 
-	advance_and_verify(c, TOKEN_AT_TYPE_IDENT);
+	TRY_CONSUME_OR_RET(TOKEN_AT_TYPE_IDENT, "Expected an attribute type name, like '@MyAttr'.", poisoned_decl);
 
 	if (try_consume(c, TOKEN_LPAREN))
 	{

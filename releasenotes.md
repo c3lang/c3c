@@ -10,8 +10,9 @@
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115
 - Assert when a macro with compile time value is discarded, e.g. `foo();` where `foo()` returns an untyped list. #2117
 - Fix stringify for compound initializers #2120.
-- Fix No index OOB check for `[:^n]` #2123
-- Fix regression in Time diff due to operator overloading #2124
+- Fix No index OOB check for `[:^n]` #2123.
+- Fix regression in Time diff due to operator overloading #2124.
+- attrdef with any invalid name causes compiler assert #2128.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`
