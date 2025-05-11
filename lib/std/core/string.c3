@@ -155,6 +155,31 @@ fn String join(Allocator allocator, String[] s, String joiner)
 }
 
 <*
+Replace all instances of one substring with a different string.
+
+@param [inout] self
+@param [in] needle : `The string to be replaced`
+@param [in] new_str : `The replacement string`
+@param [&inout] allocator : `The allocator to use for the String`
+*>
+fn String String.replace(&self, Allocator allocator, String needle, String new_str)
+{
+	String[] split = self.tsplit(needle);
+	*self = string::join(allocator, split, new_str);
+	return *self;
+}
+
+<*
+This function is identical to String.replace, but implicitly uses the
+temporary allocator.
+
+@param [inout] self
+@param [in] needle : `The string to be replaced`
+@param [in] new_str : `The replacement string`
+*>
+fn String String.treplace(&self, String needle, String new_str) => self.replace(tmem, needle, new_str) @inline;
+
+<*
  Remove characters from the front and end of a string.
 
  @param [in] self : `The string to trim`

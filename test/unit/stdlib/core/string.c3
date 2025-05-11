@@ -195,6 +195,14 @@ fn void test_split_to_buffer()
 	free(strings);
 }
 
+fn void test_replace()
+{
+	String test = "Befriend some dragons?";
+	assert(test.treplace("some", "all") == "Befriend all dragons?");
+	assert(test.treplace("?", "!") == "Befriend all dragons!");
+	assert(test.treplace("Never", "Always") == "Befriend all dragons!");
+}
+
 fn void test_index_of()
 {
 	String test = "hello world hello";
