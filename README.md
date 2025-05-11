@@ -8,10 +8,10 @@ for programmers who like C.
 
 Precompiled binaries for the following operating systems are available:
  
-- Windows x64 [download](https://github.com/c3lang/c3c/releases/latest/download/c3-windows.zip), [install instructions](#installing-on-windows-with-precompiled-binaries).
-- Debian x64 [download](https://github.com/c3lang/c3c/releases/latest/download/c3-linux.tar.gz), [install instructions](#installing-on-debian-with-precompiled-binaries).
-- Ubuntu x86 [download](https://github.com/c3lang/c3c/releases/latest/download/c3-ubuntu-20.tar.gz), [install instructions](#installing-on-ubuntu-with-precompiled-binaries).
-- MacOS Arm64 [download](https://github.com/c3lang/c3c/releases/latest/download/c3-macos.zip), [install instructions](#installing-on-macos-with-precompiled-binaries).
+- Windows x64 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-windows.zip), [install instructions](#installing-on-windows-with-precompiled-binaries).
+- Debian x64 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-linux.tar.gz), [install instructions](#installing-on-debian-with-precompiled-binaries).
+- Ubuntu x86 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-ubuntu-20.tar.gz), [install instructions](#installing-on-ubuntu-with-precompiled-binaries).
+- MacOS Arm64 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-macos.zip), [install instructions](#installing-on-macos-with-precompiled-binaries).
 
 The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
 
@@ -197,29 +197,31 @@ More platforms will be supported in the future.
 
 ### Installing
 
+This installs the latest prerelease build, as opposed to the latest released version.
+
 #### Installing on Windows with precompiled binaries
-1. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip](https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip) 
-(debug version [here](https://github.com/c3lang/c3c/releases/download/latest/c3-windows-debug.zip))
+1. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-windows.zip](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-windows.zip)
+(debug version [here](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-windows-debug.zip))
 2. Unzip exe and standard lib.
 3. If you don't have Visual Studio 17 installed you can either do so, or run the `msvc_build_libraries.py` Python script which will download the necessary files to compile on Windows. 
 4. Run `c3c.exe`.
 
 #### Installing on Debian with precompiled binaries
-1. Download tar file: [https://github.com/c3lang/c3c/releases/download/latest/c3-linux.tar.gz](https://github.com/c3lang/c3c/releases/download/latest/c3-linux.tar.gz)
-   (debug version [here](https://github.com/c3lang/c3c/releases/download/latest/c3-linux-debug.tar.gz))
+1. Download tar file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-linux.tar.gz](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-linux.tar.gz)
+   (debug version [here](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-linux-debug.tar.gz))
 2. Unpack executable and standard lib.
 3. Run `./c3c`.
 
 #### Installing on Ubuntu with precompiled binaries
-1. Download tar file: [https://github.com/c3lang/c3c/releases/download/latest/c3-ubuntu-20.tar.gz](https://github.com/c3lang/c3c/releases/download/latest/c3-ubuntu-20.tar.gz)
-   (debug version [here](https://github.com/c3lang/c3c/releases/download/latest/c3-ubuntu-20-debug.tar.gz))
+1. Download tar file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-ubuntu-20.tar.gz](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-ubuntu-20.tar.gz)
+   (debug version [here](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-ubuntu-20-debug.tar.gz))
 2. Unpack executable and standard lib.
 3. Run `./c3c`.
 
 #### Installing on MacOS with precompiled binaries
 1. Make sure you have XCode with command line tools installed.
-2. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip](https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip)
-   (debug version [here](https://github.com/c3lang/c3c/releases/download/latest/c3-macos-debug.zip))
+2. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-macos.zip](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-macos.zip)
+   (debug version [here](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-macos-debug.zip))
 3. Unzip executable and standard lib.
 4. Run `./c3c`.
 
