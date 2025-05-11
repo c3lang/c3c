@@ -8,10 +8,10 @@ for programmers who like C.
 
 Precompiled binaries for the following operating systems are available:
  
-- Windows x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip), [install instructions](#installing-on-windows-with-precompiled-binaries).
-- Debian x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-linux.tar.gz), [install instructions](#installing-on-debian-with-precompiled-binaries).
-- Ubuntu x86 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-ubuntu-20.tar.gz), [install instructions](#installing-on-ubuntu-with-precompiled-binaries).
-- MacOS Arm64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip), [install instructions](#installing-on-macos-with-precompiled-binaries).
+- Windows x64 [download](https://github.com/c3lang/c3c/releases/latest/download/c3-windows.zip), [install instructions](#installing-on-windows-with-precompiled-binaries).
+- Debian x64 [download](https://github.com/c3lang/c3c/releases/latest/download/c3-linux.tar.gz), [install instructions](#installing-on-debian-with-precompiled-binaries).
+- Ubuntu x86 [download](https://github.com/c3lang/c3c/releases/latest/download/c3-ubuntu-20.tar.gz), [install instructions](#installing-on-ubuntu-with-precompiled-binaries).
+- MacOS Arm64 [download](https://github.com/c3lang/c3c/releases/latest/download/c3-macos.zip), [install instructions](#installing-on-macos-with-precompiled-binaries).
 
 The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
 

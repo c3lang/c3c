@@ -19,7 +19,7 @@ const char *concat_file_arg = "/";
 #define add_concat_quote_arg(arg_, arg2_) do { vec_add(*args_ref, concat_quote_arg); vec_add(*args_ref, (arg_)); vec_add(*args_ref, (arg2_)); } while(0)
 
 static char *assemble_linker_command(const char **args, bool extra_quote);
-static unsigned assemble_link_arguments(const char **arguments, unsigned len);
+static int assemble_link_arguments(const char **arguments, unsigned len);
 
 static inline bool is_no_pie(RelocModel reloc)
 {
@@ -135,7 +135,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 		if (compiler.build.win.vs_dirs)
 		{
 			char *c = strstr(compiler.build.win.vs_dirs, ";");
-			int len = c - compiler.build.win.vs_dirs;
+			int len = (int)(c - compiler.build.win.vs_dirs);
 			if (!c || !len) error_exit("''win-vs-dirs' override was invalid.");
 			char *um = str_printf("%.*s\\um\\x64", len, compiler.build.win.vs_dirs);
 			char *ucrt = str_printf("%.*s\\ucrt\\x64", len, compiler.build.win.vs_dirs);
@@ -793,9 +793,9 @@ Linker linker_find_linker_type(void)
 	UNREACHABLE
 }
 
-static unsigned assemble_link_arguments(const char **arguments, unsigned len)
+static int assemble_link_arguments(const char **arguments, unsigned len)
 {
-	unsigned count = 0;
+	int count = 0;
 	for (unsigned i = 0; i < len ; i++)
 	{
 		const char *arg = arguments[i];
@@ -840,7 +840,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 
 	bool success;
 #if LLVM_AVAILABLE
-	unsigned count = assemble_link_arguments(args, vec_size(args));
+	int count = assemble_link_arguments(args, vec_size(args));
 	switch (compiler.platform.object_format)
 	{
 		case OBJ_FORMAT_COFF:
@@ -1079,7 +1079,7 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 	bool success;
     const char *error = NULL;
 #if LLVM_AVAILABLE
-    unsigned count = assemble_link_arguments(args, vec_size(args));
+    int count = assemble_link_arguments(args, vec_size(args));
 	switch (compiler.platform.object_format)
 	{
 		case OBJ_FORMAT_COFF:
