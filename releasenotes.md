@@ -4,6 +4,7 @@
 
 ### Changes / improvements
 - Better default assert messages when no message is specified #2122
+- Add `--run-dir`, to specify directory for running executable using `compile-run` and `run` #2121.
 
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115

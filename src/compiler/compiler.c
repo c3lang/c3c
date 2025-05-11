@@ -744,17 +744,22 @@ void compiler_compile(void)
 				scratch_buffer_append(name);
 			}
 			name = scratch_buffer_to_string();
+			const char *full_path = realpath(scratch_buffer_to_string(), NULL);
 			OUTF("Launching %s", name);
 			FOREACH(const char *, arg, compiler.build.args)
 			{
 				OUTF(" %s", arg);
 			}
+			if (compiler.build.run_dir)
+			{
+				OUTF(" from directory %s", compiler.build.run_dir);
+				dir_change(compiler.build.run_dir);
+			}
 			OUTN("");
-
-			int ret = run_subprocess(name, compiler.build.args);
+			int ret = run_subprocess(full_path, compiler.build.args);
 			if (compiler.build.delete_after_run)
 			{
-				file_delete_file(name);
+				file_delete_file(full_path);
 			}
 			if (ret < 0) exit_compiler(EXIT_FAILURE);
 			OUTF("Program completed with exit code %d.\n", ret);

@@ -93,6 +93,7 @@ static void usage(bool full)
 	PRINTF("");
 	print_opt("--about", "Prints a short description of C3.");
 	print_opt("--build-env", "Prints build environment information (only valid with in combination with a command such as 'compile').");
+	print_opt("--run-dir <dir>", "Set the directory from where to run the binary (only for run and compile-run).");
 	print_opt("--libdir <dir>", "Add this directory to the c3l library search paths.");
 	print_opt("--lib <name>", "Add this c3l library to the compilation.");
 	if (full)
@@ -1193,6 +1194,12 @@ static void parse_option(BuildOptions *options)
 				if (at_end() || next_is_opt()) error_exit("error: --libdir needs a directory.");
 				if (options->lib_dir_count == MAX_BUILD_LIB_DIRS) error_exit("Max %d library directories may be specified.", MAX_BUILD_LIB_DIRS);
 				options->lib_dir[options->lib_dir_count++] = check_dir(next_arg());
+				return;
+			}
+			if (match_longopt("run-dir"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --run-dir needs a directory.");
+				options->run_dir = check_dir(next_arg());
 				return;
 			}
 			if (match_longopt("benchmark"))
