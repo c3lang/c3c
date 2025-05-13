@@ -165,7 +165,8 @@ Replace all instances of one substring with a different string.
 fn String String.replace(&self, Allocator allocator, String needle, String new_str)
 {
 	String[] split = self.tsplit(needle);
-	*self = string::join(allocator, split, new_str);
+	DString dstr = dstring::join(tmem, split, new_str);
+	*self = dstr.tcopy_str();
 	return *self;
 }
 
@@ -178,6 +179,7 @@ temporary allocator.
 @param [in] new_str : `The replacement string`
 *>
 fn String String.treplace(&self, String needle, String new_str) => self.replace(tmem, needle, new_str) @inline;
+
 
 <*
  Remove characters from the front and end of a string.
