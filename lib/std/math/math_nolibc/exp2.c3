@@ -47,13 +47,13 @@ fn double _exp2_specialcase(double tmp, ulong sbits, ulong ki) @private
 	if (ki & 0x80000000 == 0)
 	{
 		// k > 0, the exponent of scale might have overflowed by 1.
-		sbits -= 1u64 << 52;
+		sbits -= 1UL << 52;
 		double scale = bitcast(sbits, double);
 		double y = 2 * (scale + scale * tmp);
 		return y;
 	}
 	// k < 0, need special care in the subnormal range.
-	sbits += 1022u64 << 52;
+	sbits += 1022UL << 52;
 	double scale = bitcast(sbits, double);
 	double y = scale + scale * tmp;
 	if (y >= 1.0)

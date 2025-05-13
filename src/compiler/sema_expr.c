@@ -347,7 +347,7 @@ Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, uns
 Expr *sema_ct_eval_expr(SemaContext *context, bool is_type_eval, Expr *inner, bool report_missing)
 {
 	Path *path = NULL;
-	if (!sema_analyse_ct_expr(context, inner)) return false;
+	if (!sema_analyse_ct_expr(context, inner)) return NULL;
 	if (!expr_is_const_string(inner))
 	{
 		SEMA_ERROR(inner, "'%s' expects a constant string as the argument.", is_type_eval ? "$evaltype" : "$eval");

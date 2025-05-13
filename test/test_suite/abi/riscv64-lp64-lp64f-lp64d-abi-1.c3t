@@ -145,7 +145,7 @@ extern fn int f_va_callee(int, ...);
 
 fn void f_va_caller() {
 	float128 fq;
-  f_va_callee(1, 2, 3i64, 4.0f, 5.0, (Tiny){6, 7, 8, 9},
+  f_va_callee(1, 2, 3L, 4.0f, 5.0, (Tiny){6, 7, 8, 9},
               (Small){10, null}, (Small_aligned){11},
               (Large){12, 13, 14, 15});
   f_va_callee(1, 2, 3, 4, fq, 6, 7, 8, 9);

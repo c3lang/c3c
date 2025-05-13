@@ -315,15 +315,15 @@ macro float_from_i128($Type, a) @private
 			const MANT_DIG = math::DOUBLE_MANT_DIG;
 			const SIGNIFICANT_BITS = 52;
 			const EXP_BIAS = 1023;
-			const MANTISSA_MASK = 0xFFFFF_FFFF_FFFFu64;
-			const SIGN_BIT = 1u64 << 63;
+			const MANTISSA_MASK = 0xFFFFF_FFFF_FFFFUL;
+			const SIGN_BIT = 1UL << 63;
 		$case float:
 			$Rep = uint;
 			const MANT_DIG = math::FLOAT_MANT_DIG;
 			const EXP_BIAS = 127;
 			const SIGNIFICANT_BITS = 23;
-			const MANTISSA_MASK = 0x7F_FFFFu32;
-			const SIGN_BIT = 1u32 << 31;
+			const MANTISSA_MASK = 0x7F_FFFFU;
+			const SIGN_BIT = 1U << 31;
 		$case float16:
 			$Rep = ushort;
 			const MANT_DIG = math::HALF_MANT_DIG;
@@ -352,7 +352,7 @@ macro float_from_i128($Type, a) @private
 		a |= (uint128)((a & 4) != 0);
 		a++;
 		a >>= 2;
-		if (a & (1i128 << MANT_DIG))
+		if (a & (1LL << MANT_DIG))
 		{
 			a >>= 1;
 			e++;
@@ -374,13 +374,13 @@ macro float_from_u128($Type, a) @private
 			const MANT_DIG = math::DOUBLE_MANT_DIG;
 			const SIGNIFICANT_BITS = 52;
 			const EXP_BIAS = 1023;
-			const MANTISSA_MASK = 0xFFFFF_FFFF_FFFFu64;
+			const MANTISSA_MASK = 0xFFFFF_FFFF_FFFFUL;
 		$case float:
 			$Rep = uint;
 			const MANT_DIG = math::FLOAT_MANT_DIG;
 			const EXP_BIAS = 127;
 			const SIGNIFICANT_BITS = 23;
-			const MANTISSA_MASK = 0x7F_FFFFu32;
+			const MANTISSA_MASK = 0x7F_FFFFU;
 		$case float16:
 			$Rep = ushort;
 			const MANT_DIG = math::HALF_MANT_DIG;
@@ -406,7 +406,7 @@ macro float_from_u128($Type, a) @private
 		a |= (uint128)((a & 4) != 0);
 		a++;
 		a >>= 2;
-		if (a & (1i128 << MANT_DIG))
+		if (a & (1LL << MANT_DIG))
 		{
 			a >>= 1;
 			e++;
@@ -458,8 +458,8 @@ macro fixuint(a) @private
 	int sign = rep & SIGN_BIT ? -1 : 1;
 	int exponent = (int)((abs >> SIGNIFICANT_BITS) - EXPONENT_BIAS);
 	$Rep significand = (abs & SIGNIFICANT_MASK) | IMPLICIT_BIT;
-	if (sign == -1 || exponent < 0) return 0u128;
-	if ((uint)exponent >= uint128.sizeof * 8) return ~0u128;
+	if (sign == -1 || exponent < 0) return 0ULL;
+	if ((uint)exponent >= uint128.sizeof * 8) return ~0ULL;
 	if (exponent < SIGNIFICANT_BITS) return (uint128)significand >> (SIGNIFICANT_BITS - exponent);
 	return (uint128)significand << (exponent - SIGNIFICANT_BITS);
 }

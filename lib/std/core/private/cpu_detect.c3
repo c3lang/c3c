@@ -143,7 +143,7 @@ uint128 x86_features;
 
 fn void add_feature_if_bit(X86Feature feature, uint register, int bit)
 {
-	if (register & 1U << bit) x86_features |= 1u128 << feature.ordinal;
+	if (register & 1U << bit) x86_features |= 1ULL << feature.ordinal;
 }
 
 fn void x86_initialize_cpu_features()

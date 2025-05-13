@@ -507,7 +507,7 @@ macro bool is_finite(x)
 		$case float16:
 			return bitcast((float)x, uint) & 0x7fffffff < 0x7f800000;
 		$default:
-			return bitcast((double)x, ulong) & (~0u64 >> 1) < 0x7ffu64 << 52;
+			return bitcast((double)x, ulong) & (~0UL >> 1) < 0x7ffUL << 52;
 	$endswitch
 }
 
@@ -521,7 +521,7 @@ macro is_nan(x)
 	$case float16:
 		return bitcast((float)x, uint) & 0x7fffffff > 0x7f800000;
 	$default:
-		return bitcast((double)x, ulong) & (~0u64 >> 1) > 0x7ffu64 << 52;
+		return bitcast((double)x, ulong) & (~0UL >> 1) > 0x7ffUL << 52;
 	$endswitch
 }
 
@@ -535,7 +535,7 @@ macro is_inf(x)
 	$case float16:
 		return bitcast((float)x, uint) & 0x7fffffff == 0x7f800000;
 	$default:
-		return bitcast((double)x, ulong) & (~0u64 >> 1) == 0x7ffu64 << 52;
+		return bitcast((double)x, ulong) & (~0UL >> 1) == 0x7ffUL << 52;
 	$endswitch
 }
 
@@ -1053,8 +1053,8 @@ fn double _frexp(double x, int* e)
 			return x;
 		default:
 			*e = ee - 0x3fe;
-			i &= 0x800fffffffffffffu64;
-			i |= 0x3fe0000000000000u64;
+			i &= 0x800fffffffffffffUL;
+			i |= 0x3fe0000000000000UL;
 			return bitcast(i, double);
 	}
 }
@@ -1079,8 +1079,8 @@ fn float _frexpf(float x, int* e)
 			return x;
 		default:
 			*e = ee - 0x7e;
-			i &= 0x807fffffu32;
-			i |= 0x3f000000u32;
+			i &= 0x807fffffU;
+			i |= 0x3f000000U;
 			return bitcast(i, float);
 	}
 }

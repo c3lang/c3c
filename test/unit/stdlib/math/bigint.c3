@@ -34,9 +34,9 @@ fn void test_plus()
 	BigInt b = bigint::from_int(234);
 	assert(a.add(b).equals(bigint::from_int(234 + 123)));
 
-	a = bigint::from_int(12323400012311213314141414i128);
-	b = bigint::from_int(23400012311213314141414i128);
-	assert(a.add(b).equals(bigint::from_int(12323400012311213314141414i128 + 23400012311213314141414i128)));
+	a = bigint::from_int(12323400012311213314141414LL);
+	b = bigint::from_int(23400012311213314141414LL);
+	assert(a.add(b).equals(bigint::from_int(12323400012311213314141414LL + 23400012311213314141414LL)));
 }
 
 fn void test_mult()
@@ -45,9 +45,9 @@ fn void test_mult()
 	BigInt b = bigint::from_int(234);
 	assert(a.mult(b).equals(bigint::from_int(234 * 123)));
 
-	a = bigint::from_int(1232311213314141414i128);
-	b = bigint::from_int(234000123112414i128);
-	assert(a.mult(b).equals(bigint::from_int(1232311213314141414i128 * 234000123112414i128)));
+	a = bigint::from_int(1232311213314141414LL);
+	b = bigint::from_int(234000123112414LL);
+	assert(a.mult(b).equals(bigint::from_int(1232311213314141414LL * 234000123112414LL)));
 }
 
 fn void test_minus()
@@ -56,9 +56,9 @@ fn void test_minus()
 	BigInt b = bigint::from_int(234);
 	assert(a.sub(b).equals(bigint::from_int(123 - 234)));
 
-	a = bigint::from_int(12323400012311213314141414i128);
-	b = bigint::from_int(23400012311213314141414i128);
-	assert(a.sub(b).equals(bigint::from_int(12323400012311213314141414i128 - 23400012311213314141414i128)));
+	a = bigint::from_int(12323400012311213314141414LL);
+	b = bigint::from_int(23400012311213314141414LL);
+	assert(a.sub(b).equals(bigint::from_int(12323400012311213314141414LL - 23400012311213314141414LL)));
 }
 
 fn void test_init_string_radix()

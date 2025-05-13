@@ -9,8 +9,8 @@ fn void check(uint128 a, uint128 b)
 
 fn void test_big() @test
 {
-	uint128 a = 12345678901234567890012u128;
-	uint128 b = 1234567890123456789001u128;
+	uint128 a = 12345678901234567890012ULL;
+	uint128 b = 1234567890123456789001ULL;
 	for (int i = 0; i < 10; i++)
 	{
 		for (int j = 0; j < 10; j++)
