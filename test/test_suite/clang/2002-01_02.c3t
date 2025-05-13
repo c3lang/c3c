@@ -116,7 +116,7 @@ fn STest2 test7(STest2 x) {
 extern fn int printf(char * format, ...);
 
 fn int main2() {
-  long v = 123455678902i64;
+  long v = 123455678902L;
   printf("%lld\n", v);
   return 1;
 }

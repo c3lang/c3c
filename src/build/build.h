@@ -457,7 +457,8 @@ typedef struct BuildOptions_
 	size_t linker_lib_dir_count;
 	const char* linker_libs[MAX_BUILD_LIB_DIRS];
 	size_t linker_lib_count;
-	const char* std_lib_dir;
+	const char *std_lib_dir;
+	const char *run_dir;
 	struct
 	{
 		const char *sdk;
@@ -648,6 +649,7 @@ typedef struct
 	const char *ir_file_dir;
 	const char *asm_file_dir;
 	const char *script_dir;
+	const char *run_dir;
 	bool is_non_project;
 	bool run_after_compile;
 	bool delete_after_run;

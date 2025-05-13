@@ -3,7 +3,7 @@ import std::os::win32;
 import std::math;
 
 const ulong WINDOWS_TICK_US @local = 10;
-const ulong WIN_TO_UNIX_EPOCH_US @local = 116444736000000000u64 / WINDOWS_TICK_US;
+const ulong WIN_TO_UNIX_EPOCH_US @local = 116444736000000000UL / WINDOWS_TICK_US;
 
 fn Clock native_clock()
 {

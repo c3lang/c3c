@@ -552,6 +552,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		target->emit_asm = false;
 		target->emit_object_files = false;
 	}
+	target->run_dir = options->run_dir;
 	if (options->no_obj)
 	{
 		target->emit_object_files = false;

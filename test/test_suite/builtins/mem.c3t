@@ -8,10 +8,10 @@ fn void main()
 
     $$memcpy(&dst, &src, ushort.sizeof, false, $alignof(dst), $alignof(src));
     $$memmove(&dst, &src, ushort.sizeof, false, $alignof(dst), $alignof(src));
-    $$memset(&dst, 0u8, ushort.sizeof, false, $alignof(dst));
+    $$memset(&dst, (char)0, ushort.sizeof, false, $alignof(dst));
 
     $$memcpy_inline(&dst, &src, ushort.sizeof, false, $alignof(dst), $alignof(src));
-    $$memset_inline(&dst, 0u8, ushort.sizeof, false, $alignof(dst));
+    $$memset_inline(&dst, (char)0, ushort.sizeof, false, $alignof(dst));
 }
 
 /* #expect: test.ll

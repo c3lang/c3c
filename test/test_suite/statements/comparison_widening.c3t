@@ -4,7 +4,7 @@ fn void test1()
 {
     char a = 1;
     int b = 2;
-    char c = b > a ? 1u8 : 0u8;
+    char c = b > a ? (char)1u : (char)0u;
     int d = b ?: 1;
 }
 

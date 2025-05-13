@@ -31,4 +31,4 @@ fn char SimpleRandom.next_byte(&self) @dynamic => (char)self.next_int();
 
 const long SIMPLE_RANDOM_MULTIPLIER @local = 0x5DEECE66D;
 const long SIMPLE_RANDOM_ADDEND @local = 0xB;
-const long SIMPLE_RANDOM_MASK @local = (1u64 << 48) - 1;
+const long SIMPLE_RANDOM_MASK @local = (1UL << 48) - 1;

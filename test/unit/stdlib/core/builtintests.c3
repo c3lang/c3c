@@ -49,7 +49,7 @@ fn void test_expect()
 	int a = 2;
 	int b = 43;
 	int c = @expect(a, 2, 0.5);
-	int d = @expect(b, 2u8);
+	int d = @expect(b, 2);
 }
 
 

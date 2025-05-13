@@ -581,10 +581,10 @@ fn DString join(Allocator allocator, String[] s, String joiner)
 	}
 	DString res = new_with_capacity(allocator, total_size);
 	res.append(s[0]);
-	foreach (String* &str : s[1..])
+	foreach (String str : s[1..])
 	{
 		res.append(joiner);
-		res.append(*str);
+		res.append(str);
 	}
 	return res;
 }

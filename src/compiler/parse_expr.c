@@ -1367,18 +1367,28 @@ static int read_num_type(const char *string, size_t loc, size_t len)
 	return i;
 }
 
-static int read_int_suffix(const char *string, size_t loc, size_t len, char c)
+static int read_int_suffix(const char *string, size_t loc, size_t len, char c, bool *bit_suffix)
 {
 	switch (c | 32)
 	{
 		case 'i':
-			return read_num_type(string, loc, len);
+		{
+			int val = read_num_type(string, loc, len);
+			*bit_suffix = val > 0;
+			return val;
+		}
 		case 'l':
+			if (loc == len - 2 && (string[loc + 1] | 32) == 'l') return 128;
 			if (loc != len - 1) return -1;
 			return 64;
 		case 'u':
+		{
+			if (loc == len - 3 && (string[loc + 1] | 32) == 'l' && (string[loc + 2] | 32) == 'l') return 128;
 			if (loc == len - 2 && (string[loc + 1] | 32) == 'l') return 64;
-			return read_num_type(string, loc, len);
+			int val = read_num_type(string, loc, len);
+			*bit_suffix = val > 0;
+			return val;
+		}
 		default:
 			return -1;
 	}
@@ -1399,6 +1409,7 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 	int binary_characters = 0;
 	bool wrapped = false;
 	uint64_t max;
+	bool bit_suffix = false;
 	switch (len > 2 ? (string[1] | 32) : '0')
 	{
 		case 'x':
@@ -1410,12 +1421,12 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 				switch (ch | 32)
 				{
 					case 'u':
-						type_bits = read_int_suffix(string, loc, len, ch);
+						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
 						is_unsigned = true;
 						goto EXIT;
 					case 'l':
 					case 'i':
-						type_bits = read_int_suffix(string, loc, len, ch);
+						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
 						is_unsigned = false;
 						goto EXIT;
 					case '_' | 32:
@@ -1438,12 +1449,12 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 				switch (ch | 32)
 				{
 					case 'u':
-						type_bits = read_int_suffix(string, loc, len, ch);
+						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
 						is_unsigned = true;
 						goto EXIT;
 					case 'l':
 					case 'i':
-						type_bits = read_int_suffix(string, loc, len, ch);
+						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
 						is_unsigned = false;
 						goto EXIT;
 					case '_' | 32:
@@ -1466,12 +1477,12 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 				switch (ch | 32)
 				{
 					case 'u':
-						type_bits = read_int_suffix(string, loc, len, ch);
+						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
 						is_unsigned = true;
 						goto EXIT;
 					case 'l':
 					case 'i':
-						type_bits = read_int_suffix(string, loc, len, ch);
+						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
 						is_unsigned = false;
 						goto EXIT;
 					case '_' | 32:
@@ -1492,12 +1503,12 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 				switch (ch | 32)
 				{
 					case 'u':
-						type_bits = read_int_suffix(string, loc, len, ch);
+						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
 						is_unsigned = true;
 						goto EXIT;
 					case 'l':
 					case 'i':
-						type_bits = read_int_suffix(string, loc, len, ch);
+						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
 						is_unsigned = false;
 						goto EXIT;
 					case '_' | 32:
@@ -1528,6 +1539,44 @@ EXIT:
 		{
 			PRINT_ERROR_HERE("Integer type suffix should be i8, i16, i32, i64 or i128.");
 			return poisoned_expr;
+		}
+		const char *suffix;
+		if (bit_suffix)
+		{
+			switch (type_bits)
+			{
+				case 8:
+				case 16:
+					SEMA_DEPRECATED(expr_int, "Bit suffixes are deprecated, use casts instead, eg '(short)123'");
+					break;
+				case 32:
+					if (is_unsigned)
+					{
+						SEMA_DEPRECATED(expr_int, "Bit suffixes are deprecated, use the 'u' suffix instead eg '%.*su'.",
+							(int)len - 3, string);
+					}
+					else
+					{
+						SEMA_DEPRECATED(expr_int, "Bit suffixes are deprecated, use casts instead, eg '(int)%.*s'",
+							(int)len - 3, string);
+					}
+					break;
+				case 64:
+				case 128:
+					if (type_bits == 64)
+					{
+						suffix = is_unsigned ? "U" : "L";
+					}
+					else
+					{
+						suffix = is_unsigned ? "ULL" : "LL";
+					}
+					SEMA_DEPRECATED(expr_int, "Bit suffixes are deprecated, use the '%s' suffix instead eg '%.*s%s'.",
+						suffix, (int)len - (type_bits == 128 ? 4 : 3), string, suffix);
+					break;
+				default:
+					UNREACHABLE
+			}
 		}
 	}
 	else
