@@ -155,30 +155,36 @@ fn String join(Allocator allocator, String[] s, String joiner)
 }
 
 <*
-Replace all instances of one substring with a different string.
+ Replace all instances of one substring with a different string.
 
-@param [inout] self
-@param [in] needle : `The string to be replaced`
-@param [in] new_str : `The replacement string`
-@param [&inout] allocator : `The allocator to use for the String`
+ @param [in] self
+ @param [in] needle : `The string to be replaced`
+ @param [in] new_str : `The replacement string`
+ @param [&inout] allocator : `The allocator to use for the String`
+ @return "The new string with the elements replaced"
 *>
-fn String String.replace(&self, Allocator allocator, String needle, String new_str)
+fn String String.replace(self, Allocator allocator, String needle, String new_str) @nodiscard
 {
-	String[] split = self.tsplit(needle);
-	DString dstr = dstring::join(tmem, split, new_str);
-	*self = dstr.tcopy_str();
-	return *self;
+	@pool()
+	{
+		String[] split = self.tsplit(needle);
+		return dstring::join(tmem, split, new_str).copy_str(mem);
+	};
 }
 
 <*
-This function is identical to String.replace, but implicitly uses the
-temporary allocator.
+ Replace all instances of one substring with a different string, allocating the new string on the temp allocator.
 
-@param [inout] self
-@param [in] needle : `The string to be replaced`
-@param [in] new_str : `The replacement string`
+ @param [in] self
+ @param [in] needle : `The string to be replaced`
+ @param [in] new_str : `The replacement string`
+ @return "The new string with the elements replaced"
 *>
-fn String String.treplace(&self, String needle, String new_str) => self.replace(tmem, needle, new_str) @inline;
+fn String String.treplace(self, String needle, String new_str)
+{
+	String[] split = self.tsplit(needle);
+	return dstring::join(tmem, split, new_str).str_view();
+}
 
 
 <*
