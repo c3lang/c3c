@@ -195,6 +195,28 @@ fn void test_split_to_buffer()
 	free(strings);
 }
 
+fn void test_treplace()
+{
+	String test = "Befriend some dragons?";
+	assert(test.treplace("some", "all") == "Befriend all dragons?");
+	assert(test.treplace("?", "!") == "Befriend some dragons!");
+	assert(test.treplace("Never", "Always") == "Befriend some dragons?");
+}
+
+fn void test_replace()
+{
+	String test = "Befriend some dragons?";
+	String val = test.replace(mem, "some", "all");
+	test::eq(val, "Befriend all dragons?");
+	free(val);
+	val = test.replace(mem, "?", "!");
+	test::eq(val, "Befriend some dragons!");
+    free(val);
+    val = test.replace(mem, "Never", "Always");
+    test::eq(val, "Befriend some dragons?");
+    free(val);
+}
+
 fn void test_index_of()
 {
 	String test = "hello world hello";

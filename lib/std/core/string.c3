@@ -155,6 +155,39 @@ fn String join(Allocator allocator, String[] s, String joiner)
 }
 
 <*
+ Replace all instances of one substring with a different string.
+
+ @param [in] self
+ @param [in] needle : `The string to be replaced`
+ @param [in] new_str : `The replacement string`
+ @param [&inout] allocator : `The allocator to use for the String`
+ @return "The new string with the elements replaced"
+*>
+fn String String.replace(self, Allocator allocator, String needle, String new_str) @nodiscard
+{
+	@pool()
+	{
+		String[] split = self.tsplit(needle);
+		return dstring::join(tmem, split, new_str).copy_str(mem);
+	};
+}
+
+<*
+ Replace all instances of one substring with a different string, allocating the new string on the temp allocator.
+
+ @param [in] self
+ @param [in] needle : `The string to be replaced`
+ @param [in] new_str : `The replacement string`
+ @return "The new string with the elements replaced"
+*>
+fn String String.treplace(self, String needle, String new_str)
+{
+	String[] split = self.tsplit(needle);
+	return dstring::join(tmem, split, new_str).str_view();
+}
+
+
+<*
  Remove characters from the front and end of a string.
 
  @param [in] self : `The string to trim`

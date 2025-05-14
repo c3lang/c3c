@@ -278,7 +278,6 @@ macro enum_by_name($Type, String enum_name) @builtin
 *>
 macro @enum_from_value($Type, #value, value) @builtin
 {
-	usz elements = $Type.elements;
 	foreach (e : $Type.values)
 	{
 		if (e.#value == value) return e;

@@ -21,6 +21,7 @@
 - std::ascii moved into std::core::ascii. Old _m variants are deprecated, as is uint methods.
 - Add `String.tokenize_all` to replace the now deprecated `String.splitter`
 - Add `String.count` to count the number of instances of a string.
+- Add `String.replace` and `String.treplace` to replace substrings within a string.
 - Add `Duration * Int` and `Clock - Clock` overload. 
 - Add `DateTime + Duration` overloads.
 
