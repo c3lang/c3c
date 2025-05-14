@@ -188,6 +188,7 @@ fn void Object.set_object(&self, String key, Object* new_object) @private
 
 <*
  @require self.allocator != null : "This object is not properly initialized, was it really created using 'new'"
+ @require !@typeis(value, void*) ||| value == null : "void pointers cannot be stored in an object"
 *>
 macro Object* Object.object_from_value(&self, value) @private
 {
@@ -204,7 +205,6 @@ macro Object* Object.object_from_value(&self, value) @private
 		$case $Type.typeid == Object*.typeid:
 			return value;
 		$case $Type.typeid == void*.typeid:
-			if (value != null) TYPE_MISMATCH?!;
 			return &NULL_OBJECT;
 		$case $assignable(value, String):
 			return new_string(value, self.allocator);

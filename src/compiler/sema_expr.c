@@ -8392,15 +8392,20 @@ static inline bool sema_expr_analyse_ct_and_or(SemaContext *context, Expr *expr,
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_RUNNING);
 	bool is_and = expr->binary_expr.operator == BINARYOP_CT_AND;
 	if (!sema_analyse_expr(context, left)) return false;
-	if (!expr_is_const_bool(left)) RETURN_SEMA_ERROR(left, "Expected this to evaluate to a constant boolean.");
+	if (!sema_cast_const(left) || !expr_is_const_bool(left)) RETURN_SEMA_ERROR(left, "Expected this to evaluate to a constant boolean.");
 	if (left->const_expr.b != is_and)
 	{
 		expr_rewrite_const_bool(expr, type_bool, !is_and);
 		return true;
 	}
 	if (!sema_analyse_expr(context, right)) return false;
-	if (!expr_is_const_bool(right)) RETURN_SEMA_ERROR(right, "Expected this to evaluate to a constant boolean.");
-	expr_rewrite_const_bool(expr, type_bool, right->const_expr.b);
+	if (sema_cast_const(right) && expr_is_const_bool(right))
+	{
+		expr_rewrite_const_bool(expr, type_bool, right->const_expr.b);
+		return true;
+	}
+	if (!cast_implicit(context, right, type_bool, false)) return false;
+	expr_replace(expr, right);
 	return true;
 }
 
