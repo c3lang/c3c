@@ -25,6 +25,7 @@ const char *compiler_exe_name;
 
 int main_real(int argc, const char *argv[])
 {
+	srand((unsigned int)time(NULL));
 	compiler_exe_name = argv[0];
 	bench_begin();
 

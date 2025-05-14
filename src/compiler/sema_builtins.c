@@ -289,6 +289,20 @@ static bool sema_expr_analyse_syscall(SemaContext *context, Expr *expr)
 	return true;
 }
 
+uint64_t rand_u64()
+{
+	return ((uint64_t)rand() << 48) ^ ((uint64_t)rand() << 32) ^ ((uint64_t)rand() << 16) ^ rand();
+}
+
+bool sema_expr_analyse_rnd(SemaContext *context UNUSED, Expr *expr)
+{
+	uint64_t r = rand_u64();
+	uint64_t mantissa = r >> 11;
+	double val = (double)mantissa / (double)(1ULL << 53); // Not secure random but...
+	expr_rewrite_const_float(expr, type_double, val);
+	return true;
+}
+
 bool sema_expr_analyse_str_hash(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->call_expr.arguments[0];
@@ -516,6 +530,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 
 	switch (func)
 	{
+		case BUILTIN_RND:
+			return sema_expr_analyse_rnd(context, expr);
 		case BUILTIN_STR_HASH:
 			return sema_expr_analyse_str_hash(context, expr);
 		case BUILTIN_STR_UPPER:
@@ -1124,6 +1140,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_TRAP:
 		case BUILTIN_BREAKPOINT:
 		case BUILTIN_UNREACHABLE:
+		case BUILTIN_RND:
 			UNREACHABLE
 	}
 	expr->type = type_add_optional(rtype, optional);
@@ -1147,6 +1164,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_TRAP:
 		case BUILTIN_BREAKPOINT:
 		case BUILTIN_UNREACHABLE:
+		case BUILTIN_RND:
 			return 0;
 		case BUILTIN_ABS:
 		case BUILTIN_BITREVERSE:

@@ -261,6 +261,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_REVERSE] = KW_DEF("reverse");
 	builtin_list[BUILTIN_RETURNADDRESS] = KW_DEF("returnaddress");
 	builtin_list[BUILTIN_RINT] = KW_DEF("rint");
+	builtin_list[BUILTIN_RND] = KW_DEF("rnd");
 	builtin_list[BUILTIN_ROUND] = KW_DEF("round");
 	builtin_list[BUILTIN_ROUNDEVEN] = KW_DEF("roundeven");
 	builtin_list[BUILTIN_SAT_ADD] = KW_DEF("sat_add");

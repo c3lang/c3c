@@ -8,6 +8,7 @@
 - Deprecate uXX and iXX bit suffixes.
 - Add experimental LL / ULL suffixes for int128 and uint128 literals.
 - Allow the right hand side of `|||` and `&&&` be runtime values.
+- Added `@rnd()` compile time random function (using the `$$rnd()` builtin). #2078
 
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115

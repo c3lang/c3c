@@ -30,6 +30,14 @@ typedef EmptySlot = void*;
 macro @is_empty_macro_slot(#arg) @const @builtin => @typeis(#arg, EmptySlot);
 macro @is_valid_macro_slot(#arg) @const @builtin => !@typeis(#arg, EmptySlot);
 
+<*
+ Returns a random value at compile time.
+
+ @ensure return >= 0.0 && return < 1.0
+ @return "A compile time random"
+*>
+macro @rnd() @const @builtin => $$rnd();
+
 /*
  Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
 */
