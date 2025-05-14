@@ -2229,6 +2229,12 @@ static inline Decl *parse_attrdef(ParseContext *c)
 	if (try_consume(c, TOKEN_EOS)) return decl;
 
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
+	if (tok_is(c, TOKEN_EOS))
+	{
+		PRINT_ERROR_LAST("Expected a list of attributes after '='.");
+		return poisoned_decl;
+	}
+
 	bool is_cond;
 	bool is_builtin = false;
 	if (!parse_attribute_list(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, true)) return poisoned_decl;

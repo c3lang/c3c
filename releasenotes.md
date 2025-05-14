@@ -15,6 +15,7 @@
 - Fix No index OOB check for `[:^n]` #2123.
 - Fix regression in Time diff due to operator overloading #2124.
 - attrdef with any invalid name causes compiler assert #2128.
+- Correctly error on `@attrdef Foo = ;`.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`
