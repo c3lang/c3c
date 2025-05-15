@@ -1,5 +1,5 @@
 
-attrdef @Foo = ; // #error: Expected a list of attributes after
+attrdef @Foo = ; // #error: Expected a list of attributes
 fn void main()
 {
 

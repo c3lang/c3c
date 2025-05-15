@@ -322,6 +322,18 @@ fn void test_ceil() @test
 	assert(math::ceil(vec) == (double[<5>]) { -123, 124, 1, 0, 0 });
 }
 
+fn void test_ct_ceil() @test
+{
+	$assert(math::@ceil(-123.1) == -123.0);
+	$assert(math::@ceil(123.1) == 124.0);
+	$assert(math::@ceil(0.1) == 1.0);
+	$assert(math::@ceil(-0.9) == 0.0);
+	$assert(math::@ceil(-123.1f) == -123.0f);
+	$assert(math::@ceil(123.1f) == 124.0f);
+	$assert(math::@ceil(0.1f) == 1.0f);
+	$assert(math::@ceil(-0.9f) == 0.0f);
+}
+
 fn void test_cos() @test
 {
 	int [<5>] in = { 231, 1, 0, -1, -231 };

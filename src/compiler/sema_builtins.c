@@ -1,6 +1,8 @@
 // Copyright (c) 2022-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
+#include <math.h>
+
 #include "sema_internal.h"
 
 
@@ -761,6 +763,11 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_FLOATLIKE, BA_FLOATLIKE, BA_FLOATLIKE},
 						     arg_count)) return false;
 			rtype = args[0]->type;
+			if (func == BUILTIN_CEIL && expr_is_const_float(args[0]))
+			{
+				expr_rewrite_const_float(expr, rtype, ceil(args[0]->const_expr.fxx.f));
+				return true;
+			}
 			break;
 		case BUILTIN_FRAMEADDRESS:
 		case BUILTIN_RETURNADDRESS:

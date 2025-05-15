@@ -2231,7 +2231,7 @@ static inline Decl *parse_attrdef(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 	if (tok_is(c, TOKEN_EOS))
 	{
-		PRINT_ERROR_LAST("Expected a list of attributes after '='.");
+		PRINT_ERROR_HERE("Expected a list of attributes.");
 		return poisoned_decl;
 	}
 

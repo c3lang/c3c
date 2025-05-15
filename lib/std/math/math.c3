@@ -235,6 +235,13 @@ macro asinh(x)
 macro ceil(x) => $$ceil(x);
 
 <*
+ Ceil for compile time evaluation.
+
+ @require @typeis($input, double) || @typeis($input, float) : "Only float and double may be used"
+*>
+macro @ceil($input) @const => $$ceil($input);
+
+<*
  Constrain the value to lie within the given interval.
 
  @param x : "the value to clamp, may be a number or a numerical vector."

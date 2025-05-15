@@ -2245,6 +2245,7 @@ INLINE bool expr_is_mult(Expr *expr);
 INLINE bool expr_is_deref(Expr *expr);
 INLINE bool expr_is_const(Expr *expr);
 INLINE bool expr_is_const_int(Expr *expr);
+INLINE bool expr_is_const_float(Expr *expr);
 INLINE bool expr_is_const_string(Expr *expr);
 INLINE bool expr_is_const_initializer(Expr *expr);
 INLINE bool expr_is_const_untyped_list(Expr *expr);
@@ -4069,6 +4070,12 @@ INLINE bool expr_is_const_int(Expr *expr)
 {
 	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INTEGER;
+}
+
+INLINE bool expr_is_const_float(Expr *expr)
+{
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_FLOAT;
 }
 
 INLINE bool expr_is_const_member(Expr *expr)
