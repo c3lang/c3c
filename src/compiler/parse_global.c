@@ -1609,6 +1609,10 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 				param_kind = VARDECL_PARAM;
 				break;
 			default:
+				if (token_is_keyword(c->tok))
+				{
+					RETURN_PRINT_ERROR_HERE("'%s' is a keyword and cannot be used as a parameter name.", symstr(c));
+				}
 				RETURN_PRINT_ERROR_HERE("Expected a parameter.");
 		}
 		if (type && type->optional)
@@ -2280,10 +2284,14 @@ static inline bool parse_func_macro_header(ParseContext *c, Decl *decl)
 	}
 
 	// 2. Now we must have a type - either that is the return type or the method type.
+	if (is_macro && token_is_keyword(c->tok) && c->lexer.token_type == TOKEN_LPAREN)
+	{
+		RETURN_PRINT_ERROR_HERE("This is a reserved keyword and can't be used as a macro name.");
+	}
 	ASSIGN_TYPE_OR_RET(rtype, parse_optional_type(c), false);
 
 	// 4. We might have a type here, if so then we read it.
-	if (!tok_is(c, TOKEN_DOT) && !parse_is_macro_name(c))
+	if (!tok_is(c, TOKEN_DOT) && !parse_is_macro_name(c) && !token_is_keyword(c->tok))
 	{
 		ASSIGN_TYPE_OR_RET(method_type, parse_type(c), false);
 	}
@@ -2320,6 +2328,11 @@ static inline bool parse_func_macro_header(ParseContext *c, Decl *decl)
 	RESULT:
 	decl->name = symstr(c);
 	decl->span = c->span;
+	if (token_is_keyword(c->tok) && c->lexer.token_type == TOKEN_LPAREN)
+	{
+		RETURN_PRINT_ERROR_HERE("This is a reserved keyword and can't be used as a %s name.", is_macro ? "macro" : "function");
+	}
+
 	if (is_macro && c->tok != TOKEN_IDENT && c->tok != TOKEN_AT_IDENT)
 	{
 		print_error_at(c->span, "Expected a macro name here, e.g. '@someName' or 'someName'.");

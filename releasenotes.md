@@ -10,6 +10,7 @@
 - Allow the right hand side of `|||` and `&&&` be runtime values.
 - Added `@rnd()` compile time random function (using the `$$rnd()` builtin). #2078
 - Add `math::@ceil()` compile time ceil function. #2134
+- Improve error message when using keywords as functions/macros/variables #2133.
 
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115

@@ -144,6 +144,11 @@ INLINE bool token_is_keyword_ident(TokenType token_type)
 	return token_type >= TOKEN_FIRST_KEYWORD && token_type <= TOKEN_LAST_NON_CT_KEYWORD;
 }
 
+INLINE bool token_is_keyword(TokenType token_type)
+{
+	return token_type >= TOKEN_FIRST_NON_TYPE_KEYWORD && token_type <= TOKEN_LAST_NON_CT_KEYWORD;
+}
+
 static inline bool expect_ident(ParseContext *c, const char* name)
 {
 	switch (c->tok)
