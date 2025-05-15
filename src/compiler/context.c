@@ -175,7 +175,7 @@ void decl_register(Decl *decl)
 		case DECL_STRUCT:
 		case DECL_TYPEDEF:
 		case DECL_UNION:
-		case DECL_DEFINE:
+		case DECL_ALIAS:
 		case DECL_FUNC:
 		case DECL_MACRO:
 		case DECL_VAR:
@@ -248,7 +248,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			vec_add(unit->faults, decl);
 			decl_register(decl);
 			break;
-		case DECL_DEFINE:
+		case DECL_ALIAS:
 			ASSERT(decl->name);
 			vec_add(unit->generic_defines, decl);
 			decl_register(decl);

@@ -1103,7 +1103,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_DECL_LIST(decl->attr_decl.params);
 			decl->attr_decl.attrs = copy_attributes(c, decl->attr_decl.attrs);
 			break;
-		case DECL_DEFINE:
+		case DECL_ALIAS:
 			if (decl->resolve_status == RESOLVE_DONE)
 			{
 				fixup_decl(c, &decl->define_decl.alias);

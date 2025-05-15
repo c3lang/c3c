@@ -3200,7 +3200,7 @@ INLINE bool decl_poison(Decl *decl)
 
 static inline Decl *decl_raw(Decl *decl)
 {
-	while (decl->decl_kind == DECL_DEFINE)
+	while (decl->decl_kind == DECL_ALIAS)
 	{
 		decl = decl->define_decl.alias;
 	}
@@ -3227,7 +3227,7 @@ INLINE bool decl_is_user_defined_type(Decl *decl)
 
 INLINE Decl *decl_flatten(Decl *decl)
 {
-	if (decl->decl_kind == DECL_DEFINE)
+	if (decl->decl_kind == DECL_ALIAS)
 	{
 		return decl->define_decl.alias;
 	}

@@ -53,7 +53,7 @@ static Decl *sema_find_exact_typed_operator_in_list(Decl **methods, OperatorOver
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceSpan span);
-static inline bool sema_analyse_define(SemaContext *context, Decl *decl, bool *erase_decl);
+static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool *erase_decl);
 
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit);
@@ -4965,7 +4965,7 @@ static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext
 	return true;
 }
 
-static inline bool sema_analyse_define(SemaContext *context, Decl *decl, bool *erase_decl)
+static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ALIAS, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
@@ -4981,7 +4981,12 @@ static inline bool sema_analyse_define(SemaContext *context, Decl *decl, bool *e
 		RETURN_SEMA_ERROR(expr, "A global variable or function name was expected here.");
 	}
 	Decl *symbol = expr->ident_expr;
-	if (!sema_analyse_decl(context, symbol)) return false;
+	while (true)
+	{
+		if (!sema_analyse_decl(context, symbol)) return false;
+		if (symbol->decl_kind != DECL_ALIAS) break;
+		symbol = symbol->define_decl.alias;
+	}
 	bool should_be_const = char_is_upper(decl->name[0]);
 	if (should_be_const)
 	{
@@ -5136,8 +5141,8 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_FAULT:
 			if (!sema_analyse_fault(context, decl, &erase_decl)) goto FAILED;
 			break;
-		case DECL_DEFINE:
-			if (!sema_analyse_define(context, decl, &erase_decl)) goto FAILED;
+		case DECL_ALIAS:
+			if (!sema_analyse_alias(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_POISONED:
 		case DECL_IMPORT:

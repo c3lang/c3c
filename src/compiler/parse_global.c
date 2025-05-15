@@ -2174,7 +2174,7 @@ static inline Decl *parse_alias_ident(ParseContext *c)
 	}
 
 	// 3. Set up the "define".
-	Decl *decl = decl_new(DECL_DEFINE, symstr(c), c->span);
+	Decl *decl = decl_new(DECL_ALIAS, symstr(c), c->span);
 
 	if (decl->name == kw_main)
 	{

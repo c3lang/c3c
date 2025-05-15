@@ -1345,7 +1345,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			llvm_append_function_attributes(c, decl);
 			llvm_set_decl_linkage(c, decl);
 			return backend_ref;
-		case DECL_DEFINE:
+		case DECL_ALIAS:
 			return llvm_get_ref(c, decl->define_decl.alias);
 		case DECL_FAULT:
 			return llvm_create_fault(c, decl);

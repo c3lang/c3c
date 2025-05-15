@@ -798,7 +798,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_IMPORT:
 		case DECL_ATTRIBUTE:
 		case DECL_CT_ASSERT:
-		case DECL_DEFINE:
+		case DECL_ALIAS:
 		case DECL_CT_ECHO:
 			UNREACHABLE
 		case DECL_POISONED:
@@ -1065,7 +1065,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 				case DECL_MACRO:
 					message = "Macros from other modules must be prefixed with the module name.";
 					break;
-				case DECL_DEFINE:
+				case DECL_ALIAS:
 					message = "Aliases from other modules must be prefixed with the module name.";
 					break;
 				case DECL_FAULT:
@@ -1085,6 +1085,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	sema_display_deprecated_warning_on_use(decl, expr->span);
 
 	unit_register_external_symbol(context, decl);
+	decl = decl_flatten(decl);
 	if (decl->decl_kind == DECL_VAR)
 	{
 		decl->var.is_read = true;
@@ -9089,7 +9090,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 			case DECL_IMPORT:
 			case DECL_LABEL:
 			case DECL_MACRO:
-			case DECL_DEFINE:
+			case DECL_ALIAS:
 				RETURN_SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
 			case DECL_FAULT:
 				goto RETURN_CT;

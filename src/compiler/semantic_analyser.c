@@ -240,7 +240,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_BODYPARAM:
 			case DECL_GROUP:
 				UNREACHABLE
-			case DECL_DEFINE:
+			case DECL_ALIAS:
 			case DECL_DISTINCT:
 			case DECL_ENUM:
 			case DECL_STRUCT:

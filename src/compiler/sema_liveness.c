@@ -594,7 +594,7 @@ RETRY:
 		case DECL_TYPEDEF:
 			sema_trace_type_liveness(decl->type);
 			return;
-		case DECL_DEFINE:
+		case DECL_ALIAS:
 			decl = decl->define_decl.alias;
 			goto RETRY;
 		case DECL_ENUM:

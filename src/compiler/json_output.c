@@ -87,7 +87,7 @@ static inline const char *decl_type_to_string(Decl *type)
 		case DECL_CT_ECHO: return "$echo";
 		case DECL_CT_EXEC: return "$exec";
 		case DECL_CT_INCLUDE: return "$include";
-		case DECL_DEFINE: return "def";
+		case DECL_ALIAS: return "alias";
 		case DECL_DISTINCT: return "typedef";
 		case DECL_ENUM: return "enum";
 		case DECL_ENUM_CONSTANT: return "enum_const";

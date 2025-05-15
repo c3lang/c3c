@@ -256,7 +256,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 				return true;
 			}
 			FALLTHROUGH;
-		case DECL_DEFINE:
+		case DECL_ALIAS:
 		case DECL_FUNC:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
