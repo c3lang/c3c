@@ -781,7 +781,7 @@ MOD_FOUND:
 			{
 				RETURN_SEMA_ERROR(name_resolve, "'%s' could not be found in %s.", name_resolve->symbol, module_with_path->name->module);
 			}
-			RETURN_SEMA_ERROR(name_resolve->path, "No '%.*s' module was imported, did you type it right?", name_resolve->path->len, name_resolve->path->module);
+			RETURN_SEMA_ERROR(name_resolve, "'%s' could not be found, try importing the '%.*s' module.", name_resolve->symbol, name_resolve->path->len, name_resolve->path->module);
 		}
 	}
 	else
