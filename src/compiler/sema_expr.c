@@ -420,7 +420,7 @@ Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl)
 
 static inline bool expr_both_const(Expr *left, Expr *right)
 {
-	return expr_is_const(left) && expr_is_const(right);
+	return sema_cast_const(left) && sema_cast_const(right) && expr_is_const(left) && expr_is_const(right);
 }
 
 static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr *right)

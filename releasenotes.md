@@ -23,6 +23,7 @@
 - Contract on trying to use Object without initializing it.
 - Variable aliases of aliases would not resolve correctly. #2131
 - Variable aliases could not be assigned to.
+- Some folding was missing in binary op compile time resolution #2135.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`

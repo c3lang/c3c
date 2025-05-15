@@ -1,0 +1,8 @@
+const String FOO = "...";
+
+fn int main()
+{
+	$if FOO == "...":
+	$endif
+	return 0;
+}
