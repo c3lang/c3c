@@ -5155,6 +5155,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_PARAMSOF:
 			return sema_create_const_paramsof(expr, flat);
 		case TYPE_PROPERTY_PARAMS:
+			SEMA_DEPRECATED(expr, "'params' is deprecated, use 'paramsof' instead.");
 			return sema_create_const_params(expr, flat);
 		case TYPE_PROPERTY_RETURNS:
 			expr_rewrite_const_typeid(expr, type_infoptr(flat->pointer->function.signature->rtype)->type);

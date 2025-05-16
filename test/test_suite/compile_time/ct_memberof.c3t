@@ -6,9 +6,9 @@ fn int hell() { return 1; }
 
 macro print_args($Type)
 {
-	var $params = $Type.params;
+	var $params = $Type.paramsof;
 	$foreach $param : $params:
-		io::printn($param.nameof);
+		io::printn($param.type.nameof);
 	$endforeach;
 }
 
