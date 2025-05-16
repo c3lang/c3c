@@ -6,7 +6,7 @@ enum MyEnum : short
     BYE
 }
 
-int myenum_elements = MyEnum.elements;
+int myenum_elements = MyEnum.values.len;
 int myenum_alignof = MyEnum.alignof;
 int myenum_sizeof = MyEnum.sizeof;
 

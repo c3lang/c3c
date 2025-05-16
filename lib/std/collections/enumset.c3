@@ -8,9 +8,10 @@
 module std::collections::enumset{Enum};
 import std::io;
 
-alias EnumSetType @private = $typefrom(type_for_enum_elements(Enum.elements));
+const ENUM_COUNT @private = Enum.values.len;
+alias EnumSetType @private = $typefrom(type_for_enum_elements(ENUM_COUNT));
 
-const IS_CHAR_ARRAY = Enum.elements > 128;
+const IS_CHAR_ARRAY = ENUM_COUNT > 128;
 typedef EnumSet (Printable) = EnumSetType;
 
 fn void EnumSet.add(&self, Enum v)
