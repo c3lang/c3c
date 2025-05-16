@@ -21,6 +21,7 @@
 - Add `String.count` to count the number of instances of a string.
 - Add `Duration * Int` and `Clock - Clock` overload. 
 - Add `DateTime + Duration` overloads.
+- Add `Maybe.equals` and respective `==` operator when the inner type is equatable.
 
 ## 0.7.1 Change list
 
