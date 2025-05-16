@@ -112,7 +112,7 @@ fn void DString.replace(&self, String needle, String replacement)
 	};
 }
 
-fn DString DString.concat(self, Allocator allocator, DString b)
+fn DString DString.concat(self, Allocator allocator, DString b) @nodiscard
 {
 	DString string;
 	string.init(allocator, self.len() + b.len());
@@ -233,7 +233,7 @@ fn usz DString.append_char32(&self, Char32 c)
 
 fn DString DString.tcopy(&self) => self.copy(tmem);
 
-fn DString DString.copy(self, Allocator allocator)
+fn DString DString.copy(self, Allocator allocator) @nodiscard
 {
 	if (!self) return new(allocator);
 	StringData* data = self.data();
@@ -242,7 +242,7 @@ fn DString DString.copy(self, Allocator allocator)
 	return new_string;
 }
 
-fn ZString DString.copy_zstr(self, Allocator allocator)
+fn ZString DString.copy_zstr(self, Allocator allocator) @nodiscard
 {
 	usz str_len = self.len();
 	if (!str_len)
@@ -256,12 +256,12 @@ fn ZString DString.copy_zstr(self, Allocator allocator)
 	return (ZString)zstr;
 }
 
-fn String DString.copy_str(self, Allocator allocator)
+fn String DString.copy_str(self, Allocator allocator) @nodiscard
 {
 	return (String)self.copy_zstr(allocator)[:self.len()];
 }
 
-fn String DString.tcopy_str(self) => self.copy_str(tmem) @inline;
+fn String DString.tcopy_str(self) @nodiscard => self.copy_str(tmem) @inline;
 
 fn bool DString.equals(self, DString other_string)
 {
@@ -571,7 +571,7 @@ fn usz? DString.appendfn(&self, String format, args...) @maydiscard
 	};
 }
 
-fn DString join(Allocator allocator, String[] s, String joiner)
+fn DString join(Allocator allocator, String[] s, String joiner) @nodiscard
 {
 	if (!s.len) return new(allocator);
 	usz total_size = joiner.len * s.len;

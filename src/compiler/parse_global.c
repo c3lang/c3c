@@ -2534,7 +2534,15 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 									   "is not supported for declaring enum associated values.");
 						return poisoned_decl;
 					}
-					if (try_consume(c, TOKEN_COMMA)) continue; // NOLINT
+					if (!try_consume(c, TOKEN_COMMA))
+					{
+						if (!try_consume(c, TOKEN_RBRACE))
+						{
+							PRINT_ERROR_HERE("A comma or a closing brace was expected here.");
+							return poisoned_decl;
+						}
+						break;
+					}
 				}
 			}
 			enum_const->enum_constant.args = args;
