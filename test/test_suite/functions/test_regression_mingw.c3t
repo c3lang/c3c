@@ -131,9 +131,9 @@ fn void main()
     }
     list.free();
 
-    printf("Elements: %d\n", (int)(MyEnum.elements));
+    printf("Elements: %d\n", (int)(MyEnum.values.len));
 
-    int elements = MyEnum.elements;
+    int elements = MyEnum.values.len;
     printf("Hello\n");
     IntArray array;
     array.push(100);

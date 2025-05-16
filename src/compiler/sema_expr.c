@@ -2851,7 +2851,7 @@ INLINE bool sema_expr_analyse_lookup(SemaContext *context, Expr *expr, Expr *tag
 	Decl *decl = tag->type_call_expr.type;
 	if (inline_field)
 	{
-		if (arg_count != 1) RETURN_SEMA_ERROR(expr, "Expected one (1) argument to 'lookup'.");
+		if (arg_count != 1) RETURN_SEMA_ERROR(expr, "Expected one (1) argument to 'lookup', did you want 'lookup_field' perhaps?");
 	}
 	else
 	{
@@ -5126,6 +5126,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_ELEMENTS:
 			ASSERT_SPAN(expr, flat->type_kind == TYPE_ENUM);
 			if (!sema_analyse_decl(context, type->decl)) return false;
+			SEMA_DEPRECATED(expr, ".elements is deprecated. Use .values.len instead.");
 			expr_rewrite_const_int(expr, type_isz, vec_size(flat->decl->enums.values));
 			return true;
 		case TYPE_PROPERTY_VALUES:

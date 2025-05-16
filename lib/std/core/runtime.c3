@@ -24,11 +24,9 @@ struct SliceRaw
 
 macro @enum_lookup($Type, #value, value)
 {
-	var $elements = $Type.elements;
-	$for var $i = 0; $i < $elements; $i++:
-		var $val = $Type.from_ordinal($i);
+	$foreach $val : $Type.values:
 		if ($val.#value == value) return $val;
-	$endfor
+	$endforeach
 	return NOT_FOUND?;
 }
 

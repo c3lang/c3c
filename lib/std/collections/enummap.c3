@@ -6,7 +6,7 @@ import std::io;
 
 struct EnumMap (Printable)
 {
-	ValueType[Enum.len] values;
+	ValueType[Enum.values.len] values;
 }
 
 fn void EnumMap.init(&self, ValueType init_value)
