@@ -45,6 +45,7 @@
 - Add `String.replace` and `String.treplace` to replace substrings within a string.
 - Add `Duration * Int` and `Clock - Clock` overload. 
 - Add `DateTime + Duration` overloads.
+- Add `Maybe.equals` and respective `==` operator when the inner type is equatable.
 
 ## 0.7.1 Change list
 
