@@ -45,6 +45,8 @@ bitstruct SubProcessOptions : int
 	// Note: this will **not** search for paths in any provided custom environment
 	// and instead uses the PATH of the spawning process.
 	bool search_user_path;
+    // Inherit the parent's stdin, stdout, and stderr handles instead of creating pipes
+    bool inherit_stdio;
 }
 
 fn void? create_named_pipe_helper(void** rd, void **wr) @local @if(env::WIN32)
