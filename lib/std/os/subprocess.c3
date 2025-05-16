@@ -117,126 +117,150 @@ fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WI
 *>
 fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, String[] environment = {}) @if(env::WIN32)
 {
-	void* rd, wr;
-	Win32_DWORD flags = win32::CREATE_UNICODE_ENVIRONMENT;
-	Win32_PROCESS_INFORMATION process_info;
-	Win32_SECURITY_ATTRIBUTES sa_attr = { Win32_SECURITY_ATTRIBUTES.sizeof, null, 1 };
-	Win32_STARTUPINFOW start_info = {
-		.cb = Win32_STARTUPINFOW.sizeof,
-		.dwFlags = win32::STARTF_USESTDHANDLES
-	};
-	if (options.no_window) flags |= win32::CREATE_NO_WINDOW;
-	if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return FAILED_TO_CREATE_PIPE?;
-	// TODO defer catch
-	if (!win32::setHandleInformation(wr, win32::HANDLE_FLAG_INHERIT, 0)) return FAILED_TO_CREATE_PIPE?;
-
-	CFile stdin;
-	CFile stdout;
-	CFile stderr;
-	@pool()
-	{
-		WString used_environment = null;
-		if (!options.inherit_environment)
-		{
-			DString env = dstring::temp_with_capacity(64);
-			if (!environment.len)
-			{
-				env.append("\0");
-			}
-			foreach (String s : environment)
-			{
-				env.append(s);
-				env.append("\0");
-			}
-			env.append("\0");
-			used_environment = env.str_view().to_temp_wstring()!;
-		}
-		int fd = win32::_open_osfhandle((iptr)wr, 0);
-		if (fd != -1)
-		{
-			stdin = win32::_fdopen(fd, "wb");
-			if (!stdin) return FAILED_TO_OPEN_STDIN?;
-		}
-		start_info.hStdInput = rd;
-		if (options.read_async)
-		{
-			create_named_pipe_helper(&rd, &wr)!;
-		}
-		else
-		{
-			if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return FAILED_TO_CREATE_PIPE?;
-		}
-		if (!win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0)) return FAILED_TO_CREATE_PIPE?;
-		fd = win32::_open_osfhandle((iptr)rd, 0);
-		if (fd != -1)
-		{
-			stdout = win32::_fdopen(fd, "rb");
-			if (!stdout) return FAILED_TO_OPEN_STDOUT?;
-		}
-
-		start_info.hStdOutput = wr;
-
-		do
-		{
-			if (options.combined_stdout_stderr)
-			{
-				stderr = stdout;
-				start_info.hStdError = start_info.hStdOutput;
-				break;
-			}
-			if (options.read_async)
-			{
-				create_named_pipe_helper(&rd, &wr)!;
-			}
-			else
-			{
-				if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return FAILED_TO_CREATE_PIPE?;
-			}
-			if (!win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0)) return FAILED_TO_CREATE_PIPE?;
-
-			fd = win32::_open_osfhandle((iptr)rd, 0);
-			if (fd != -1)
-			{
-				stderr = win32::_fdopen(fd, "rb");
-				if (!stderr) return FAILED_TO_OPEN_STDERR?;
-			}
-			start_info.hStdError = wr;
-		};
-		void *event_output;
-		void *event_error;
-		if (options.read_async)
-		{
-			event_output = win32::createEventA(&sa_attr, 1, 1, null);
-			event_error = win32::createEventA(&sa_attr, 1, 1, null);
-		}
-		if (!win32::createProcessW(
-			null,
-			convert_command_line_win32(command_line),
-			null,                   // process security attributes
-			null,                   // primary thread security attributes
-			1,                      // handles are inherited
-			flags,                  // creation flags
-			used_environment,  	    // environment
-			null,                   // use parent dir
-			&start_info,            // startup info ptr
-			&process_info)) return FAILED_TO_START_PROCESS?;
-	};
-	// We don't need the handle of the primary thread in the called process.
-	win32::closeHandle(process_info.hThread);
-	if (start_info.hStdOutput)
-	{
-		win32::closeHandle(start_info.hStdOutput);
-		if (start_info.hStdOutput != start_info.hStdError) win32::closeHandle(start_info.hStdError);
-	}
-
-	return {
-		.hProcess = process_info.hProcess,
-		.hStdInput = start_info.hStdInput,
-		.stdin_file = stdin,
-		.stdout_file = stdout,
-		.stderr_file = stderr,
-		.is_alive = true,
-	};
+    Win32_DWORD flags = win32::CREATE_UNICODE_ENVIRONMENT;
+    Win32_PROCESS_INFORMATION process_info;
+    Win32_SECURITY_ATTRIBUTES sa_attr = { Win32_SECURITY_ATTRIBUTES.sizeof, null, 1 };
+    Win32_STARTUPINFOW start_info = {
+        .cb = Win32_STARTUPINFOW.sizeof,
+    };
+    
+    if (options.no_window) flags |= win32::CREATE_NO_WINDOW;
+    
+    // Only set STARTF_USESTDHANDLES if we're not inheriting stdio
+    if (!options.inherit_stdio) start_info.dwFlags = win32::STARTF_USESTDHANDLES;
+    
+    CFile stdin;
+    CFile stdout;
+    CFile stderr;
+    void* rd = null;
+    void* wr = null;
+    
+    // Only create pipes if not inheriting stdio
+    if (!options.inherit_stdio)
+    {
+        if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return FAILED_TO_CREATE_PIPE?;
+        // TODO defer catch
+        if (!win32::setHandleInformation(wr, win32::HANDLE_FLAG_INHERIT, 0)) return FAILED_TO_CREATE_PIPE?;
+    }
+    
+    @pool()
+    {
+        WString used_environment = null;
+        if (!options.inherit_environment)
+        {
+            DString env = dstring::temp_with_capacity(64);
+            if (!environment.len)
+            {
+                env.append("\0");
+            }
+            foreach (String s : environment)
+            {
+                env.append(s);
+                env.append("\0");
+            }
+            env.append("\0");
+            used_environment = env.str_view().to_temp_wstring()!;
+        }
+        
+        // Handle stdin pipe if not inheriting
+        if (!options.inherit_stdio)
+        {
+            int fd = win32::_open_osfhandle((iptr)wr, 0);
+            if (fd != -1)
+            {
+                stdin = win32::_fdopen(fd, "wb");
+                if (!stdin) return FAILED_TO_OPEN_STDIN?;
+            }
+            start_info.hStdInput = rd;
+            
+            // Handle stdout pipe
+            if (options.read_async)
+            {
+                create_named_pipe_helper(&rd, &wr)!;
+            }
+            else
+            {
+                if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return FAILED_TO_CREATE_PIPE?;
+            }
+            if (!win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0)) return FAILED_TO_CREATE_PIPE?;
+            
+            fd = win32::_open_osfhandle((iptr)rd, 0);
+            if (fd != -1)
+            {
+                stdout = win32::_fdopen(fd, "rb");
+                if (!stdout) return FAILED_TO_OPEN_STDOUT?;
+            }
+            
+            start_info.hStdOutput = wr;
+            
+            // Handle stderr pipe or combine with stdout
+            do
+            {
+                if (options.combined_stdout_stderr)
+                {
+                    stderr = stdout;
+                    start_info.hStdError = start_info.hStdOutput;
+                    break;
+                }
+                if (options.read_async)
+                {
+                    create_named_pipe_helper(&rd, &wr)!;
+                }
+                else
+                {
+                    if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return FAILED_TO_CREATE_PIPE?;
+                }
+                if (!win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0)) return FAILED_TO_CREATE_PIPE?;
+                
+                fd = win32::_open_osfhandle((iptr)rd, 0);
+                if (fd != -1)
+                {
+                    stderr = win32::_fdopen(fd, "rb");
+                    if (!stderr) return FAILED_TO_OPEN_STDERR?;
+                }
+                start_info.hStdError = wr;
+            };
+        }
+        
+        void *event_output = null;
+        void *event_error = null;
+        if (!options.inherit_stdio && options.read_async)
+        {
+            event_output = win32::createEventA(&sa_attr, 1, 1, null);
+            event_error = win32::createEventA(&sa_attr, 1, 1, null);
+        }
+        
+        if (!win32::createProcessW(
+            null,
+            convert_command_line_win32(command_line),
+            null,                   // process security attributes
+            null,                   // primary thread security attributes
+            1,                      // handles are inherited
+            flags,                  // creation flags
+            used_environment,       // environment
+            null,                   // use parent dir
+            &start_info,            // startup info ptr
+            &process_info)) return FAILED_TO_START_PROCESS?;
+    };
+    
+    // We don't need the handle of the primary thread in the called process.
+    win32::closeHandle(process_info.hThread);
+    
+    // Close handles if not inheriting stdio
+    if (!options.inherit_stdio && start_info.hStdOutput)
+    {
+        win32::closeHandle(start_info.hStdOutput);
+        if (start_info.hStdOutput != start_info.hStdError) win32::closeHandle(start_info.hStdError);
+    }
+    
+    return {
+        .hProcess = process_info.hProcess,
+        .hStdInput = options.inherit_stdio ? null : start_info.hStdInput,
+        .stdin_file = stdin,
+        .stdout_file = stdout,
+        .stderr_file = stderr,
+        .is_alive = true,
+    };
 }
 
 <*
@@ -279,66 +303,82 @@ fn String? execute_stdout_to_buffer(char[] buffer, String[] command_line, SubPro
 *>
 fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, String[] environment = {}) @if(env::POSIX)
 {
-	CInt[2] stdinfd;
-	CInt[2] stdoutfd;
-	CInt[2] stderrfd;
-
-	if (posix::pipe(&stdinfd)) return FAILED_TO_OPEN_STDIN?;
-	if (posix::pipe(&stdoutfd)) return FAILED_TO_OPEN_STDOUT?;
-	if (!options.combined_stdout_stderr && posix::pipe(&stderrfd)) return FAILED_TO_OPEN_STDERR?;
-
-	Posix_spawn_file_actions_t actions;
-	if (posix::spawn_file_actions_init(&actions)) return FAILED_TO_INITIALIZE_ACTIONS?;
-	defer posix::spawn_file_actions_destroy(&actions);
-	if (posix::spawn_file_actions_addclose(&actions, stdinfd[1])) return FAILED_TO_OPEN_STDIN?;
-	if (posix::spawn_file_actions_adddup2(&actions, stdinfd[0], libc::STDIN_FD)) return FAILED_TO_OPEN_STDIN?;
-	if (posix::spawn_file_actions_addclose(&actions, stdoutfd[0])) return FAILED_TO_OPEN_STDOUT?;
-	if (posix::spawn_file_actions_adddup2(&actions, stdoutfd[1], libc::STDOUT_FD)) return FAILED_TO_OPEN_STDOUT?;
-	if (options.combined_stdout_stderr)
-	{
-		if (posix::spawn_file_actions_adddup2(&actions, libc::STDOUT_FD, libc::STDERR_FD)) return FAILED_TO_OPEN_STDERR?;
-	}
-	else
-	{
-		if (posix::spawn_file_actions_addclose(&actions, stderrfd[0])) return FAILED_TO_OPEN_STDERR?;
-		if (posix::spawn_file_actions_adddup2(&actions, stderrfd[1], libc::STDERR_FD)) return FAILED_TO_OPEN_STDERR?;
-	}
-	Pid_t child;
-	@pool()
-	{
-		ZString* command_line_copy = tcopy_command_line(command_line);
-		ZString* used_environment = options.inherit_environment ? posix::environ : tcopy_env(environment);
-		if (options.search_user_path)
-		{
-			if (posix::spawnp(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS?;
-		}
-		else
-		{
-			if (posix::spawnp(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS?;
-		}
-	};
-	libc::close(stdinfd[0]);
-	CFile stdin = libc::fdopen(stdinfd[1], "wb");
-	libc::close(stdoutfd[1]);
-	CFile stdout = libc::fdopen(stdoutfd[0], "rb");
-	CFile stderr @noinit;
-	do
-	{
-		if (options.combined_stdout_stderr)
-		{
-			stderr = stdout;
-			break;
-		}
-		libc::close(stderrfd[1]);
-		stderr = libc::fdopen(stderrfd[0], "rb");
-	};
-	return {
-		.stdin_file = stdin,
-		.stdout_file = stdout,
-		.stderr_file = stderr,
-		.child = child,
-		.is_alive = true,
-	};
+    CInt[2] stdinfd;
+    CInt[2] stdoutfd;
+    CInt[2] stderrfd;
+    CFile stdin = null;
+    CFile stdout = null;
+    CFile stderr = null;
+    
+    Posix_spawn_file_actions_t actions;
+    if (posix::spawn_file_actions_init(&actions)) return FAILED_TO_INITIALIZE_ACTIONS?;
+    defer posix::spawn_file_actions_destroy(&actions);
+    
+    // Only set up pipes if not inheriting stdio
+    if (!options.inherit_stdio)
+    {
+        if (posix::pipe(&stdinfd)) return FAILED_TO_OPEN_STDIN?;
+        if (posix::pipe(&stdoutfd)) return FAILED_TO_OPEN_STDOUT?;
+        if (!options.combined_stdout_stderr && posix::pipe(&stderrfd)) return FAILED_TO_OPEN_STDERR?;
+        
+        if (posix::spawn_file_actions_addclose(&actions, stdinfd[1])) return FAILED_TO_OPEN_STDIN?;
+        if (posix::spawn_file_actions_adddup2(&actions, stdinfd[0], libc::STDIN_FD)) return FAILED_TO_OPEN_STDIN?;
+        if (posix::spawn_file_actions_addclose(&actions, stdoutfd[0])) return FAILED_TO_OPEN_STDOUT?;
+        if (posix::spawn_file_actions_adddup2(&actions, stdoutfd[1], libc::STDOUT_FD)) return FAILED_TO_OPEN_STDOUT?;
+        
+        if (options.combined_stdout_stderr)
+        {
+            if (posix::spawn_file_actions_adddup2(&actions, libc::STDOUT_FD, libc::STDERR_FD)) return FAILED_TO_OPEN_STDERR?;
+        }
+        else
+        {
+            if (posix::spawn_file_actions_addclose(&actions, stderrfd[0])) return FAILED_TO_OPEN_STDERR?;
+            if (posix::spawn_file_actions_adddup2(&actions, stderrfd[1], libc::STDERR_FD)) return FAILED_TO_OPEN_STDERR?;
+        }
+    }
+    
+    Pid_t child;
+    @pool()
+    {
+        ZString* command_line_copy = tcopy_command_line(command_line);
+        ZString* used_environment = options.inherit_environment ? posix::environ : tcopy_env(environment);
+        if (options.search_user_path)
+        {
+            if (posix::spawnp(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS?;
+        }
+        else
+        {
+            if (posix::spawnp(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS?;
+        }
+    };
+    
+    // Only set up file handles if not inheriting stdio
+    if (!options.inherit_stdio)
+    {
+        libc::close(stdinfd[0]);
+        stdin = libc::fdopen(stdinfd[1], "wb");
+        libc::close(stdoutfd[1]);
+        stdout = libc::fdopen(stdoutfd[0], "rb");
+        
+        do
+        {
+            if (options.combined_stdout_stderr)
+            {
+                stderr = stdout;
+                break;
+            }
+            libc::close(stderrfd[1]);
+            stderr = libc::fdopen(stderrfd[0], "rb");
+        };
+    }
+    
+    return {
+        .stdin_file = stdin,
+        .stdout_file = stdout,
+        .stderr_file = stderr,
+        .child = child,
+        .is_alive = true,
+    };
 }
 
 fn CInt? SubProcess.join(&self) @if(env::POSIX)
@@ -359,12 +399,14 @@ fn CInt? SubProcess.join(&self) @if(env::POSIX)
 
 fn File SubProcess.stdout(&self)
 {
-	return file::from_handle(self.stdout_file);
+    if (!self.stdout_file) return (File){}; // Return an empty File struct
+    return file::from_handle(self.stdout_file);
 }
 
 fn File SubProcess.stderr(&self)
 {
-	return file::from_handle(self.stderr_file);
+    if (!self.stderr_file) return (File){}; // Return an empty File struct
+    return file::from_handle(self.stderr_file);
 }
 
 fn CInt? SubProcess.join(&self) @if(env::WIN32)
@@ -452,20 +494,25 @@ fn usz? read_from_file_posix(CFile file, char* buffer, usz size) @if(env::POSIX)
 
 fn usz? SubProcess.read_stdout(&self, char* buffer, usz size)
 {
-	$if env::WIN32:
-		return read_from_file_win32(self.stdout_file, self.hEventOutput, buffer, size);
-	$else
-		return read_from_file_posix(self.stdout_file, buffer, size);
-	$endif
+    if (!self.stdout_file) return 0; // No output available when inheriting stdio
+    
+    $if env::WIN32:
+        return read_from_file_win32(self.stdout_file, self.hEventOutput, buffer, size);
+    $else
+        return read_from_file_posix(self.stdout_file, buffer, size);
+    $endif
 }
+
 
 fn usz? SubProcess.read_stderr(&self, char* buffer, usz size)
 {
-	$if env::WIN32:
-		return read_from_file_win32(self.stderr_file, self.hEventError, buffer, size);
-	$else
-		return read_from_file_posix(self.stderr_file, buffer, size);
-	$endif
+    if (!self.stderr_file) return 0; // No output available when inheriting stdio
+    
+    $if env::WIN32:
+        return read_from_file_win32(self.stderr_file, self.hEventError, buffer, size);
+    $else
+        return read_from_file_posix(self.stderr_file, buffer, size);
+    $endif
 }
 
 fn bool? SubProcess.is_running(&self)
