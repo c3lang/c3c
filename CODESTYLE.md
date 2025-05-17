@@ -151,8 +151,9 @@ one with related functions when working on temporary strings.
 
 # C3 Standard library style guide.
 
-When contributing to the standard librairy please to your best to follow the following style requirements 
-as to ensure a consistent style in the stdlib and also make accepting PRs more quickly.
+When contributing to the standard library please try your best to adhere to the
+following style requirements to ensure a consistent style in the stdlib and to
+facilitate accepting PRs more quickly.
 
 ### Braces are placed on the next line
 
