@@ -9140,7 +9140,15 @@ RETRY:
 		case TYPE_INFO_POISON:
 			return poisoned_type;
 		case TYPE_INFO_GENERIC:
-			return poisoned_type;
+		{
+			TypeInfo *base = type_info->generic.base;
+			if (base->kind == TYPE_INFO_IDENTIFIER)
+			{
+				if (!sema_parameterized_type_is_found(context, base->unresolved.path, base->unresolved.name, type_info->span)) return NULL;
+			}
+			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return poisoned_type;
+			return type_info->type;
+		}
 		case TYPE_INFO_VECTOR:
 		{
 			ArraySize size;

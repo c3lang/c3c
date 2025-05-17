@@ -28,6 +28,8 @@
 - Some folding was missing in binary op compile time resolution #2135.
 - Defining an enum like `ABC = { 1 2 }` was accidentally allowed.
 - Using a non-const as the end range for a bitstruct would trigger an assert.
+- Incorrect parsing of ad hoc generic types, like `Foo{int}****` #2140.
+- $define did not correctly handle generic types #2140.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`

@@ -4852,6 +4852,18 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 }
 
 
+bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, const char *name, SourceSpan span)
+{
+	NameResolve name_resolve = {
+		.path = decl_path,
+		.span = span,
+		.symbol = name,
+		.suppress_error = true
+	};
+
+	return unit_resolve_parameterized_symbol(context, &name_resolve);
+}
+
 Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span,
                                             Expr **params, bool *was_recursive_ref)
 {

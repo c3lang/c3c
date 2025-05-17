@@ -633,7 +633,7 @@ static inline TypeInfo *parse_type_with_base_maybe_generic(ParseContext *c, Type
 							ptr_type->pointer = type_info;
 							type_info = ptr_type;
 							RANGE_EXTEND_PREV(type_info);
-							return type_info;
+							break;
 						}
 					}
 					if (type_info->resolve_status == RESOLVE_DONE)
