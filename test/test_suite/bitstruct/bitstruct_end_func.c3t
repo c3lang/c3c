@@ -1,0 +1,15 @@
+module test;
+import std::io;
+
+macro foo() => 3;
+macro bar() => 4;
+bitstruct Foo : int
+{
+	int a : 1..2;
+	int b : foo()..(bar()) @tag("foo", "a");
+}
+
+fn void main()
+{
+
+}

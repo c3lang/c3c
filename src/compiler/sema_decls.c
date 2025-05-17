@@ -825,7 +825,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 		if (end)
 		{
 			// Analyse the end
-			if (!sema_analyse_expr(context, start)) return false;
+			if (!sema_analyse_expr(context, end)) return false;
 			if (!sema_cast_const(end) || !type_is_integer(end->type) || int_is_neg(end->const_expr.ixx))
 			{
 				SEMA_ERROR(end, "This must be a constant non-negative integer value.");
