@@ -31,6 +31,7 @@
 - Incorrect parsing of ad hoc generic types, like `Foo{int}****` #2140.
 - $define did not correctly handle generic types #2140.
 - Incorrect parsing of call attributes #2144.
+- Error when using named argument on trailing macro body expansion #2139.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`

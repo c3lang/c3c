@@ -1290,6 +1290,11 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 	{
 		case VARDECL_PARAM:
 			// foo
+			if (arg->expr_kind == EXPR_NAMED_ARGUMENT)
+			{
+				// This only happens in body arguments
+				RETURN_SEMA_ERROR(arg, "Named arguments are not supported for body parameters.");
+			}
 			if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref, false)) return false;
 			if (IS_OPTIONAL(arg)) *optional_ref = true;
 			switch (sema_resolve_storage_type(context, arg->type))
