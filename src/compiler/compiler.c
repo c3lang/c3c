@@ -1690,7 +1690,7 @@ const char *default_c_compiler(void)
 	if (cc_env && strlen(cc_env) > 0)
 	{
 		INFO_LOG("Setting CC to %s from environment variable 'C3C_CC'.", cc_env);
-		cc = strdup(cc);
+		cc = strdup(cc_env);
 		return cc;
 	}
 #if PLATFORM_WINDOWS
