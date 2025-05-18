@@ -1290,6 +1290,11 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 	{
 		case VARDECL_PARAM:
 			// foo
+			if (arg->expr_kind == EXPR_NAMED_ARGUMENT)
+			{
+				// This only happens in body arguments
+				RETURN_SEMA_ERROR(arg, "Named arguments are not supported for body parameters.");
+			}
 			if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref, false)) return false;
 			if (IS_OPTIONAL(arg)) *optional_ref = true;
 			switch (sema_resolve_storage_type(context, arg->type))
@@ -9140,7 +9145,15 @@ RETRY:
 		case TYPE_INFO_POISON:
 			return poisoned_type;
 		case TYPE_INFO_GENERIC:
-			return poisoned_type;
+		{
+			TypeInfo *base = type_info->generic.base;
+			if (base->kind == TYPE_INFO_IDENTIFIER)
+			{
+				if (!sema_parameterized_type_is_found(context, base->unresolved.path, base->unresolved.name, type_info->span)) return NULL;
+			}
+			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return poisoned_type;
+			return type_info->type;
+		}
 		case TYPE_INFO_VECTOR:
 		{
 			ArraySize size;

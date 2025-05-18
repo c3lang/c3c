@@ -982,21 +982,19 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 		PRINT_ERROR_HERE("Expected a macro body here.");
 		return poisoned_expr;
 	}
-	Attr *attr;
 	int force_inline = -1;
-	while (1)
+	while (tok_is(c, TOKEN_AT_IDENT))
 	{
-		if (!parse_attribute(c, &attr, true)) return poisoned_expr;
-		if (!attr) break;
-
-		AttributeType attr_type = attribute_by_name(attr->name);
+		AttributeType attr_type = attribute_by_name(symstr(c));
+		advance(c);
 		int new_inline = attr_type == ATTRIBUTE_INLINE;
 		switch (attr_type)
 		{
 			case ATTRIBUTE_PURE:
 				if (call->call_expr.attr_pure)
 				{
-					RETURN_PRINT_ERROR_AT(poisoned_expr, attr, "Repeat of the same attribute is not allowed.");
+					PRINT_ERROR_LAST("Repeat of the same attribute is not allowed.");
+					return poisoned_expr;
 				}
 				call->call_expr.attr_pure = true;
 				continue;
@@ -1004,17 +1002,25 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 			case ATTRIBUTE_NOINLINE:
 				if (force_inline == new_inline)
 				{
-					RETURN_PRINT_ERROR_AT(poisoned_expr, attr, "Repeat of the same attribute is not allowed.");
+					PRINT_ERROR_LAST("Repeat of the same attribute is not allowed.");
+					return poisoned_expr;
 				}
 				if (force_inline != -1)
 				{
-					RETURN_PRINT_ERROR_AT(poisoned_expr, attr, "@inline and @noinline cannot be combined");
+					PRINT_ERROR_LAST("@inline and @noinline cannot be combined");
+					return poisoned_expr;
 				}
 				force_inline = new_inline;
 				continue;
 			default:
-				RETURN_PRINT_ERROR_AT(poisoned_expr, attr, "Only '@pure', '@inline' and '@noinline' are valid attributes for calls.");
+				PRINT_ERROR_LAST("Only '@pure', '@inline' and '@noinline' are valid attributes for calls.");
+				return poisoned_expr;
 		}
+	}
+	if (tok_is(c, TOKEN_AT_TYPE_IDENT))
+	{
+		PRINT_ERROR_HERE("User defined attributes are not allowed, only @pure, @inline and @noinline.");
+		return poisoned_expr;
 	}
 	if (force_inline != -1)
 	{

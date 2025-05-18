@@ -1,0 +1,33 @@
+// #target: macos-x64
+module test;
+import foo;
+
+fn void test()
+{
+	bool c = $defined(Foo{int});
+}
+
+fn int main()
+{
+	bool a = $defined(Baz{int}**);
+	bool b = $defined(Foo{int}****);
+	return 0;
+}
+
+module foo {Type};
+
+struct Foo
+{
+	Type x;
+}
+
+/* #expect: test.ll
+
+
+  %c = alloca i8, align 1
+  store i8 1, ptr %c, align 1
+
+  %a = alloca i8, align 1
+  %b = alloca i8, align 1
+  store i8 0, ptr %a, align 1
+  store i8 1, ptr %b, align 1
