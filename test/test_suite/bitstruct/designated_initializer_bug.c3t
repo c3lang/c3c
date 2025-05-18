@@ -1,0 +1,31 @@
+// #target: macos-x64
+
+module test;
+typedef Kind = int;
+const Kind KIND_0 = 0;
+const Kind KIND_1 = 1;
+
+struct Foo
+{
+	int a;
+}
+struct Descriptor2
+{
+    Kind kind;
+    Foo flags;
+}
+
+Descriptor2 descriptor1 = {
+    .kind = KIND_1,
+    .flags = {},
+};
+
+fn int main()
+{
+	Descriptor2 d = descriptor1;
+	return 0;
+}
+
+/* #expect: test.ll
+
+@test.descriptor1 = local_unnamed_addr global %Descriptor2 { i32 1, %Foo zeroinitializer }, align 4

@@ -32,6 +32,7 @@
 - $define did not correctly handle generic types #2140.
 - Incorrect parsing of call attributes #2144.
 - Error when using named argument on trailing macro body expansion #2139.
+- Designated const initializers with `{}` would overwrite the parent field.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`
