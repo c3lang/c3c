@@ -33,6 +33,7 @@
 - Incorrect parsing of call attributes #2144.
 - Error when using named argument on trailing macro body expansion #2139.
 - Designated const initializers with `{}` would overwrite the parent field.
+- Empty default case in @jump switch does not fallthrough #2147.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`
