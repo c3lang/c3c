@@ -13,6 +13,7 @@
 - Improve error message when using keywords as functions/macros/variables #2133.
 - Deprecate `MyEnum.elements`.
 - Deprecate `SomeFn.params`.
+- Improve error message when encountering recursively defined structs. #2146
 
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115
@@ -32,6 +33,8 @@
 - $define did not correctly handle generic types #2140.
 - Incorrect parsing of call attributes #2144.
 - Error when using named argument on trailing macro body expansion #2139.
+- Designated const initializers with `{}` would overwrite the parent field.
+- Empty default case in @jump switch does not fallthrough #2147.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`

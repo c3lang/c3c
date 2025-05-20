@@ -546,6 +546,11 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 		// Grab the alignment of the member type
 		AlignSize member_type_alignment;
+		if (type_is_user_defined(member_type) && member_type->decl->resolve_status == RESOLVE_RUNNING)
+		{
+			SEMA_ERROR(member, "Recursive defintion of %s.", type_quoted_error_string(member_type));
+			return decl_poison(decl);
+		}
 		if (!sema_set_abi_alignment(context, member->type, &member_type_alignment)) return decl_poison(decl);
 		// And get the natural alignment
 		AlignSize member_natural_alignment = sema_get_max_natural_alignment(member->type);

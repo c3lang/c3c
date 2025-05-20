@@ -825,16 +825,26 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 	Int max = { .type = TYPE_VOID };
 	int min_index = -1;
 	int default_index = -1;
+	bool last_was_default = false;
 	LLVMBasicBlockRef default_block = exit_block;
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		Ast *case_ast = cases[i];
 		if (case_ast->ast_kind == AST_DEFAULT_STMT)
 		{
-			if (!case_ast->case_stmt.body) continue;
-			default_block = case_ast->case_stmt.backend_block;
 			default_index = i;
+			if (!case_ast->case_stmt.body)
+			{
+				last_was_default = true;
+				continue;
+			}
+			default_block = case_ast->case_stmt.backend_block;
 			continue;
+		}
+		if (last_was_default && case_ast->case_stmt.body)
+		{
+			default_block = case_ast->case_stmt.backend_block;
+			last_was_default = false;
 		}
 		Int value, to_value;
 		llvm_set_jump_table_values(case_ast->case_stmt.expr, case_ast->case_stmt.to_expr, &value, &to_value);

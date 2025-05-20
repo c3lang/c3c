@@ -939,18 +939,16 @@ static inline void sema_update_const_initializer_with_designator_struct(ConstIni
 	DesignatorElement **next_element = curr + 1;
 	bool is_last_path_element = next_element == end;
 
-	// Optimize in case this is a zero, e.g. [12].b = {}
-	if (is_last_path_element && sema_initializer_list_is_empty(value))
-	{
-		const_init->kind = CONST_INIT_ZERO;
-		ASSERT(type_flatten(value->type)->type_kind != TYPE_SLICE);
-		return;
-	}
 	Decl **elements = const_init->type->decl->strukt.members;
 
 	// Convert a zero struct and expand it into all its parts.
 	if (const_init->kind == CONST_INIT_ZERO)
 	{
+		if (is_last_path_element && sema_initializer_list_is_empty(value))
+		{
+			// In this case we can ignore it.
+			return;
+		}
 		const_init->init_struct = NULL;
 		// Allocate array containing all elements { a, b, c ... }
 		FOREACH_IDX(i, Decl *, el, elements)
