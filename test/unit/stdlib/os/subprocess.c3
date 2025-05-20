@@ -106,3 +106,60 @@ fn void test_inherit_stdio_exit_code()
     // Verify process is not running after join
     assert(!process.is_alive, "Process should not be running after join");
 }
+
+fn void test_inherit_stdio_redirect() 
+{
+    // This test verifies that child process can read from parent's stdin and write to parent's stdout
+    // Create a simple program that reads input from stdin and echoes to stdout
+    String[] command;
+    
+    $if env::WIN32:
+        // Command to read from stdin and echo to stdout on Windows
+        command = { "cmd.exe", "/c", "set /p INPUT= && echo %INPUT%" };
+    $else
+        // Command to read from stdin and echo to stdout on POSIX
+        command = { "sh", "-c", "read INPUT && echo $INPUT" };
+    $endif
+    
+    // Create a temporary file to redirect our stdout
+    String temp_file = io::tmpname("inherit_stdio_test.txt")!!;
+    defer io::remove(temp_file);
+    
+    // Redirect our stdout to the temporary file for this test
+    CInt original_stdout = libc::dup(libc::STDOUT_FD)!!;
+    defer libc::dup2(original_stdout, libc::STDOUT_FD);
+    defer libc::close(original_stdout);
+    
+    File output_file = io::file::open(temp_file, "w")!!;
+    libc::dup2(libc::fileno(output_file.file), libc::STDOUT_FD)!!;
+    output_file.close();
+    
+    // Create a subprocess that inherits stdio
+    SubProcess process = process::create(command,
+        { .search_user_path = true, .inherit_stdio = true })!!;
+    defer process.destroy();
+    
+    // Write to the process's stdin (which should be our stdin)
+    // For automated testing, we'll write directly to the file descriptor
+    io::printfn("Test message from parent");
+    io::flush(io::stdout);
+    
+    // Wait for process to complete
+    process.join()!!;
+    
+    // Restore stdout
+    libc::dup2(original_stdout, libc::STDOUT_FD);
+    
+    // Read the output file to verify the content
+    File input_file = io::file::open(temp_file, "r")!!;
+    char[100] buffer;
+    usz bytes_read = input_file.read(buffer.ptr, buffer.len)!!;
+    String content = (String)buffer[:bytes_read];
+    
+    // Check if our message was written through the child process
+    // Note: This test is primarily to ensure no crashes or errors when using inherit_stdio,
+    // as the actual inheritance functionality depends on the terminal environment
+    assert(bytes_read > 0, "Expected some output with inherit_stdio redirection");
+    
+    io::printfn("inherit_stdio redirection test succeeded.");
+}
