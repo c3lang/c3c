@@ -703,7 +703,13 @@ static Expr *parse_unary_expr(ParseContext *c, Expr *left)
 
 	bool is_bangbang = tok_is(c, TOKEN_BANGBANG);
 	Expr *unary = EXPR_NEW_TOKEN(EXPR_UNARY);
+	if (c->tok == TOKEN_CT_AND)
+	{
+		PRINT_ERROR_HERE("'&&&' is the compile time '&&' operator. If you want to take a temp address of an address, use () or space to clarify the intent, e.g. '&&(&a)'.");
+		return poisoned_expr;
+	}
 	unary->unary_expr.operator = unaryop_from_token(c->tok);
+	ASSERT(unary->unary_expr.operator != UNARYOP_ERROR);
 	advance(c);
 	Expr *right_side = parse_precedence(c, PREC_UNARY);
 
