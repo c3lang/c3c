@@ -616,7 +616,7 @@ static inline Ast* parse_if_stmt(ParseContext *c)
 		{
 			case TOKEN_IDENT:
 			case TOKEN_CONST:
-				PRINT_ERROR_HERE("Finding an identifier here was surprising - did you forget '||' / '&&' or the ending ')'?");
+				PRINT_ERROR_HERE("Finding an identifier here was surprising - did you forget '||' or '&&' or the ending ')' character?");
 				return poisoned_ast;
 			default:
 				break;
