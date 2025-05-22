@@ -35,6 +35,7 @@
 - Error when using named argument on trailing macro body expansion #2139.
 - Designated const initializers with `{}` would overwrite the parent field.
 - Empty default case in @jump switch does not fallthrough #2147.
+- `&&&` was accidentally available as a valid prefix operator.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`
@@ -44,6 +45,7 @@
 - Add `String.replace` and `String.treplace` to replace substrings within a string.
 - Add `Duration * Int` and `Clock - Clock` overload. 
 - Add `DateTime + Duration` overloads.
+- Add `Maybe.equals` and respective `==` operator when the inner type is equatable.
 - Add `inherit_stdio` option to `SubProcessOptions` to inherit parent's stdin, stdout, and stderr instead of creating pipes. #2138
 
 ## 0.7.1 Change list
