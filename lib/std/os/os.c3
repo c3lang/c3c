@@ -4,7 +4,7 @@ import libc;
 <*
  Exit the process with a given exit code. This will typically call 'exit' in LibC
 *>
-fn void exit(int result, bool cleanup = true) @weak @noreturn
+fn void exit(int result) @weak @noreturn
 {
 	$if env::LIBC:
 		libc::exit(result);
@@ -17,7 +17,7 @@ fn void exit(int result, bool cleanup = true) @weak @noreturn
  Exit the process with a given exit code. This will typically call '_Exit' in LibC
  usually bypassing '@finalizer' functions.
 *>
-fn void fastexit(int result, bool cleanup = true) @weak @noreturn
+fn void fastexit(int result) @weak @noreturn
 {
 	$if env::LIBC:
 		libc::_exit(result);

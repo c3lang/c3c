@@ -51,6 +51,7 @@
 - Add `DateTime + Duration` overloads.
 - Add `Maybe.equals` and respective `==` operator when the inner type is equatable.
 - Add `inherit_stdio` option to `SubProcessOptions` to inherit parent's stdin, stdout, and stderr instead of creating pipes. #2138
+- Remove superfluous `cleanup` parameter in `os::exit` and `os::fastexit`.
 
 ## 0.7.1 Change list
 
