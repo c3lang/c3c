@@ -7,6 +7,7 @@
 #include "../version.h"
 #include <stdint.h>
 
+#define MAX_SYMTAB_SIZE (1024 * 1024)
 #define MAX_BUILD_LIB_DIRS 1024
 #define MAX_COMMAND_LINE_FILES 4096
 #define MAX_COMMAND_LINE_RUN_ARGS 2048
@@ -578,6 +579,7 @@ typedef struct BuildOptions_
 	RiscvFloatCapability riscv_float_capability;
 	MemoryEnvironment memory_environment;
 	SanitizeMode sanitize_mode;
+	uint32_t max_vector_size;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;
@@ -702,6 +704,7 @@ typedef struct
 	CompilerBackend backend;
 	LinkerType linker_type;
 	uint32_t symtab_size;
+	uint32_t max_vector_size;
 	uint32_t switchrange_max_size;
 	uint32_t switchjump_max_size;
 	const char **args;

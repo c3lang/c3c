@@ -14,6 +14,7 @@
 - Deprecate `MyEnum.elements`.
 - Deprecate `SomeFn.params`.
 - Improve error message when encountering recursively defined structs. #2146
+- Limit vector max size, default is 4096 bits, but may be increased using --max-vector-size.
 
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115

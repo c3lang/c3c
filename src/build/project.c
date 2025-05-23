@@ -143,7 +143,6 @@ const char* project_target_keys[][2] = {
 const int project_target_keys_count = ELEMENTLEN(project_target_keys);
 const int project_deprecated_target_keys_count = ELEMENTLEN(project_deprecated_target_keys);
 
-#define MAX_SYMTAB_SIZE (1024 * 1024)
 #define GET_SETTING(type__, key__, strings__, comment__) \
   (type__)get_valid_string_setting(context, json, key__, strings__, 0, ELEMENTLEN(strings__), comment__)
 
@@ -274,6 +273,21 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 			error_exit("Error reading %s: symtab may not exceed %d.", context.file, MAX_SYMTAB_SIZE);
 		}
 		target->symtab_size = (uint32_t)symtab_size;
+	}
+
+	// Vector size
+	long vector_size = get_valid_integer(context, json, "max-vector-size", false);
+	if (vector_size > 0)
+	{
+		if (vector_size < 128)
+		{
+			error_exit("Error reading %s: max vector size was less than 128.", context.file);
+		}
+		if (vector_size > MAX_VECTOR_WIDTH)
+		{
+			error_exit("Error reading %s: max vector width may not exceed %d.", context.file, MAX_VECTOR_WIDTH);
+		}
+		target->max_vector_size = (uint32_t)vector_size;
 	}
 
 	// Target

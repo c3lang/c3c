@@ -81,11 +81,11 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 	}
 
 	// Check max values.
-	if (int_icomp(len, is_vector ? MAX_VECTOR_WIDTH : MAX_ARRAY_SIZE, BINARYOP_GT))
+	if (int_icomp(len, is_vector ? compiler.build.max_vector_size / 8 : MAX_ARRAY_SIZE, BINARYOP_GT))
 	{
 		if (is_vector)
 		{
-			SEMA_ERROR(len_expr, "A vector may not exceed %d in width.", MAX_VECTOR_WIDTH);
+			SEMA_ERROR(len_expr, "A vector may not exceed %d in bit width.", compiler.build.max_vector_size);
 		}
 		else
 		{
@@ -190,6 +190,15 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 	if (!sema_check_array_type(context, type, type->array.base->type, kind, len, &type->type)) return type_info_poison(type);
 	ASSERT(!type->array.len || sema_cast_const(type->array.len));
 	type->resolve_status = RESOLVE_DONE;
+	if (kind == TYPE_INFO_VECTOR)
+	{
+		if (kind == TYPE_INFO_VECTOR && type_size(type->type) > compiler.build.max_vector_size / 8)
+		{
+			RETURN_SEMA_ERROR(type, "Vectors with bitsize over %u are not supported (this vector is %llu bits), "
+						   "but you can increase the maximum allowed using '--max-vector-size'.",
+						   compiler.build.max_vector_size, (unsigned long long)type_size(type->type) * 8);
+		}
+	}
 	return true;
 
 }

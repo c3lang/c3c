@@ -168,6 +168,7 @@ static void usage(bool full)
 		print_opt("--fp-math=<option>", "FP math behaviour: strict, relaxed, fast.");
 		print_opt("--win64-simd=<option>", "Win64 SIMD ABI: array, full.");
 		print_opt("--win-debug=<option>", "Select debug output on Windows: codeview or dwarf (default: codeview).");
+		print_opt("--max-vector-size <number>", "Set the maximum vector bit size to allow (default: 4096).");
 		PRINTF("");
 		print_opt("--print-linking", "Print linker arguments.");
 		PRINTF("");
@@ -771,7 +772,11 @@ static void parse_option(BuildOptions *options)
 				if (at_end() || next_is_opt()) error_exit("error: --symtab needs a valid integer.");
 				const char *symtab_string = next_arg();
 				int symtab = atoi(symtab_string);
-				if (symtab < 1024) PRINTF("Expected a valid positive integer >= 1024.");
+				if (symtab < 1024) error_exit("Expected the --symtab size to be valid positive integer >= 1024.");
+				if (symtab > MAX_SYMTAB_SIZE)
+				{
+					error_exit("The symtab size is too large. The maximum size is %d.", (int)MAX_SYMTAB_SIZE);
+				}
 				options->symtab_size = next_highest_power_of_2(symtab);
 				return;
 			}
@@ -885,6 +890,17 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("riscvfloat")))
 			{
 				options->riscv_float_capability = parse_opt_select(RiscvFloatCapability, argopt, riscv_capability);
+				return;
+			}
+			if ((argopt = match_argopt("max-vector-size")))
+			{
+				int size = atoi(next_arg());
+				if (size < 128) error_exit("Expected a valid positive integer >= 128 or --max-vector-size.");
+				if (size > MAX_VECTOR_WIDTH) error_exit("Expected a valid positive integer <= %u for --max-vector-size.", (unsigned)MAX_VECTOR_WIDTH);
+				if (size != next_highest_power_of_2(size))
+				{
+					error_exit("The --max-vector-size value must be a power of 2, try using %u instead.", next_highest_power_of_2(size));
+				}
 				return;
 			}
 			if ((argopt = match_argopt("memory-env")))

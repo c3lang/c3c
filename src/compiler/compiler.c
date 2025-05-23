@@ -1456,6 +1456,7 @@ void compile()
 	setup_int_define("C_LONG_SIZE", compiler.platform.width_c_long, type_int);
 	setup_int_define("C_LONG_LONG_SIZE", compiler.platform.width_c_long_long, type_int);
 	setup_int_define("REGISTER_SIZE", compiler.platform.width_register, type_int);
+	setup_int_define("MAX_VECTOR_SIZE", compiler.build.max_vector_size, type_int);
 	setup_bool_define("C_CHAR_IS_SIGNED", compiler.platform.signed_c_char);
 	setup_bool_define("PLATFORM_BIG_ENDIAN", compiler.platform.big_endian);
 	setup_bool_define("PLATFORM_I128_SUPPORTED", compiler.platform.int128);

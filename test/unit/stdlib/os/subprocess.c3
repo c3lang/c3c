@@ -1,4 +1,5 @@
-module std::os::process @test;
+// Currently disabled as they somewhat mess up the test output.
+module std::os::process @test @if(false);
 import std::os, std::io;
 
 fn void test_inherit_stdio_stdout()

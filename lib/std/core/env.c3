@@ -120,6 +120,7 @@ const String COMPILER_BUILD_HASH = $$BUILD_HASH;
 const String COMPILER_BUILD_DATE = $$BUILD_DATE;
 const OsType OS_TYPE = OsType.from_ordinal($$OS_TYPE);
 const ArchType ARCH_TYPE = ArchType.from_ordinal($$ARCH_TYPE);
+const usz MAX_VECTOR_SIZE = $$MAX_VECTOR_SIZE;
 const bool ARCH_32_BIT = $$REGISTER_SIZE == 32;
 const bool ARCH_64_BIT = $$REGISTER_SIZE == 64;
 const bool LIBC = $$COMPILER_LIBC_AVAILABLE;

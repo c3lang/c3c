@@ -403,6 +403,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(testfn);
 	OVERRIDE_IF_SET(benchfn);
 	OVERRIDE_IF_SET(symtab_size);
+	OVERRIDE_IF_SET(max_vector_size);
 	OVERRIDE_IF_SET(win.def);
 	OVERRIDE_IF_SET(no_entry);
 
@@ -415,6 +416,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(linuxpaths.crtbegin);
 	OVERRIDE_IF_SET(android.ndk_path);
 	OVERRIDE_IF_SET(android.api_version);
+
+	if (!target->max_vector_size) target->max_vector_size = DEFAULT_VECTOR_WIDTH;
 
 	if (options->silence_deprecation || options->verbosity_level < 0) target->silence_deprecation = options->silence_deprecation || options->verbosity_level < 0;
 	target->print_linking = options->print_linking || options->verbosity_level > 1;
