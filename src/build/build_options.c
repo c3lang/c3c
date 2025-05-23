@@ -17,7 +17,7 @@ static const char *current_arg;
 extern const char *llvm_version;
 extern const char *llvm_target;
 
-static const char *check_dir(const char *path);
+static const char *unchecked_dir(BuildOptions *options, const char *path);
 static inline bool at_end();
 static inline const char *next_arg();
 static inline bool next_is_opt();
@@ -674,7 +674,7 @@ static void parse_option(BuildOptions *options)
 			if (match_shortopt("L"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: -L needs a directory.");
-				options->linker_lib_dir[options->linker_lib_dir_count++] = check_dir(next_arg());
+				options->linker_lib_dir[options->linker_lib_dir_count++] = unchecked_dir(options, next_arg());
 				return;
 			}
 			break;
@@ -1039,7 +1039,7 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("stdlib"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --stdlib needs a directory.");
-				options->std_lib_dir = check_dir(next_arg());
+				options->std_lib_dir = unchecked_dir(options, next_arg());
 				options->emit_stdlib = EMIT_STDLIB_ON;
 				return;
 			}
@@ -1064,7 +1064,7 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("macossdk"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --macossdk needs a directory.");
-				options->macos.sysroot = check_dir(next_arg());
+				options->macos.sysroot = unchecked_dir(options, next_arg());
 				return;
 			}
 			if (match_longopt("winsdk"))
@@ -1074,7 +1074,7 @@ static void parse_option(BuildOptions *options)
 					error_exit("error: --winsdk cannot be combined with --win-vs-dirs.");
 				}
 				if (at_end() || next_is_opt()) error_exit("error: --winsdk needs a directory.");
-				options->win.sdk = check_dir(next_arg());
+				options->win.sdk = unchecked_dir(options, next_arg());
 				return;
 			}
 			if ((argopt = match_argopt("trust")))
@@ -1193,13 +1193,13 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --libdir needs a directory.");
 				if (options->lib_dir_count == MAX_BUILD_LIB_DIRS) error_exit("Max %d library directories may be specified.", MAX_BUILD_LIB_DIRS);
-				options->lib_dir[options->lib_dir_count++] = check_dir(next_arg());
+				options->lib_dir[options->lib_dir_count++] = unchecked_dir(options, next_arg());
 				return;
 			}
 			if (match_longopt("run-dir"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --run-dir needs a directory.");
-				options->run_dir = check_dir(next_arg());
+				options->run_dir = unchecked_dir(options, next_arg());
 				return;
 			}
 			if (match_longopt("benchmark"))
@@ -1238,19 +1238,19 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("linux-crt"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --linux-crt needs a directory.");
-				options->linuxpaths.crt = check_dir(next_arg());
+				options->linuxpaths.crt = unchecked_dir(options, next_arg());
 				return;
 			}
 			if (match_longopt("linux-crtbegin"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --linux-crtbegin needs a directory.");
-				options->linuxpaths.crtbegin = check_dir(next_arg());
+				options->linuxpaths.crtbegin = unchecked_dir(options, next_arg());
 				return;
 			}
 			if (match_longopt("android-ndk"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: android-ndk needs a directory.");
-				options->android.ndk_path = check_dir(next_arg());
+				options->android.ndk_path = unchecked_dir(options, next_arg());
 				return;
 			}
 			if (match_longopt("android-api"))
@@ -1422,7 +1422,13 @@ ArchOsTarget arch_os_target_from_string(const char *target)
 
 // -- helpers
 
-static const char *check_dir(const char *path)
+static const char *unchecked_dir(BuildOptions *options, const char *path)
+{
+	vec_add(options->unchecked_directories, path);
+	return path;
+}
+
+const char *check_dir(const char *path)
 {
 	char original_path[PATH_MAX + 1];
 	if (!getcwd(original_path, PATH_MAX)) error_exit("Failed to store path.");

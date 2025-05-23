@@ -37,6 +37,7 @@
 - Empty default case in @jump switch does not fallthrough #2147.
 - `&&&` was accidentally available as a valid prefix operator.
 - Missing error on default values for body with default arguments #2148.
+- `--path` does not interact correctly with relative path arguments #2149.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`

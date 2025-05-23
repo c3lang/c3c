@@ -495,6 +495,7 @@ typedef struct BuildOptions_
 	const char *path;
 	const char *vendor_download_path;
 	const char *template;
+	const char **unchecked_directories;
 	LinkerType linker_type;
 	ValidationLevel validation_level;
 	Ansi ansi;
@@ -829,6 +830,7 @@ bool command_accepts_files(CompilerCommand command);
 bool command_passes_args(CompilerCommand command);
 void update_build_target_with_opt_level(BuildTarget *target,
 	OptimizationSetting level);
+const char *check_dir(const char *path);
 void create_project(BuildOptions *build_options);
 void create_library(BuildOptions *build_options);
 void resolve_libraries(BuildTarget *build_target);
