@@ -4094,6 +4094,10 @@ INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters
 		ASSERT(param->decl_kind == DECL_VAR);
 		TypeInfo *type_info = type_infoptrzero(param->var.type_info);
 		VarDeclKind kind = param->var.kind;
+		if (param->var.init_expr)
+		{
+			RETURN_SEMA_ERROR(param->var.init_expr, "Body parameters cannot use default values.");
+		}
 		switch (kind)
 		{
 			case VARDECL_PARAM:
