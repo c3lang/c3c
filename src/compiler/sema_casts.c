@@ -1143,14 +1143,23 @@ static bool rule_vecarr_to_infer(CastContext *cc, bool is_explicit, bool is_sile
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
 
+static inline BoolErr type_implements_interface_ignore_substruct(CastContext *cc, Decl *decl, Type *interface)
+{
+	FOREACH(TypeInfo *, interface_type, decl->interfaces)
+	{
+		if (!sema_resolve_type_info(cc->context, interface_type, RESOLVE_TYPE_DEFAULT)) return BOOL_ERR;
+		if (interface_type->type == interface) return BOOL_TRUE;
+		BoolErr res = type_implements_interface_ignore_substruct(cc, interface_type->type->decl, interface);
+		if (res != BOOL_FALSE) return res;
+	}
+
+	return BOOL_FALSE;
+}
 static inline bool type_implements_interface(CastContext *cc, Decl *decl, Type *interface)
 {
 RETRY:;
-	FOREACH(TypeInfo *, interface_type, decl->interfaces)
-	{
-		if (!sema_resolve_type_info(cc->context, interface_type, RESOLVE_TYPE_DEFAULT)) return false;
-		if (interface_type->type == interface) return true;
-	}
+	BoolErr result = type_implements_interface_ignore_substruct(cc, decl, interface);
+	if (result != BOOL_FALSE) return result == BOOL_TRUE;
 	if (!decl->is_substruct) return false;
 	Type *inner;
 	if (decl->decl_kind == DECL_DISTINCT)

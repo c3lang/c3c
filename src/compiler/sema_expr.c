@@ -2381,6 +2381,10 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			default:
 				UNREACHABLE
 		}
+		if (body_arg->var.init_expr)
+		{
+			RETURN_SEMA_ERROR(body_arg->var.init_expr, "Macro body parameters should never have default values.");
+		}
 		TypeInfo *expected_type_info = vartype(body_param);
 		TypeInfo *type_info = vartype(body_arg);
 		if (type_info && !sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;

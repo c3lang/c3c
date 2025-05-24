@@ -680,40 +680,55 @@ void sema_analysis_pass_lambda(Module *module)
 	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 
+static bool sema_check_interface(SemaContext *context, Decl *decl, TypeInfo *interface_type, TypeInfo *original_type)
+{
+	Decl *interface = interface_type->type->decl;
+	FOREACH(Decl *, method, interface->interface_methods)
+	{
+		Decl *matching_method = sema_decl_stack_resolve_symbol(method->name);
+		if (!matching_method)
+		{
+			if (method->func_decl.attr_optional) continue;
+			if (interface_type != original_type)
+			{
+				RETURN_SEMA_ERROR(original_type,
+				                  "'%s' was not fully implemented, the required method '%s' of interface '%s' needs to be implemented, did you forget it?",
+				                  original_type->type->decl->name, method->name, interface->name);
+			}
+			RETURN_SEMA_ERROR(original_type,
+			                  "'%s' was not fully implemented, the required method '%s' needs to be implemented, did you forget it?",
+			                  interface->name, method->name);
+		}
+		if (matching_method->decl_kind != DECL_FUNC)
+		{
+			if (method->func_decl.attr_optional) continue;
+			RETURN_SEMA_ERROR(matching_method, "'%s' was not fully implemented, it requires '%s' to be a function marked '@dynamic'.",
+					   interface->name, method->name);
+		}
+		if (!matching_method->func_decl.attr_dynamic)
+		{
+			SEMA_ERROR(matching_method, "'%s(...)' must be marked '@dynamic' as it matches the method '%s' in interface '%s'.",
+					   method->name, method->name, interface->name);
+			SEMA_NOTE(method, "Here is the interface method to implement.");
+			return false;
+		}
+	}
+	FOREACH(TypeInfo *, parent_interface, interface->interfaces)
+	{
+		if (!sema_check_interface(context, decl, parent_interface, original_type)) return false;
+	}
+	return true;
+}
 static inline bool sema_check_interfaces(SemaContext *context, Decl *decl)
 {
 	Decl **store = sema_decl_stack_store();
 	FOREACH(Decl *, method, decl->methods) sema_decl_stack_push(method);
 	FOREACH(TypeInfo *, interface_type, decl->interfaces)
 	{
-		Decl *interface = interface_type->type->decl;
-		FOREACH(Decl *, method, interface->interface_methods)
+		if (!sema_check_interface(context, decl, interface_type, interface_type))
 		{
-			Decl *matching_method = sema_decl_stack_resolve_symbol(method->name);
-			if (!matching_method)
-			{
-				if (method->func_decl.attr_optional) continue;
-				SEMA_ERROR(interface_type, "'%s' was not fully implemented, required method '%s' needs to be implemented, did you forget it?",
-				           interface->name, method->name);
-				sema_decl_stack_restore(store);
-				return false;
-			}
-			if (matching_method->decl_kind != DECL_FUNC)
-			{
-				if (method->func_decl.attr_optional) continue;
-				SEMA_ERROR(matching_method, "'%s' was not fully implemented, it requires '%s' to be a function marked '@dynamic'.",
-				           interface->name, method->name);
-				sema_decl_stack_restore(store);
-				return false;
-			}
-			if (!matching_method->func_decl.attr_dynamic)
-			{
-				SEMA_ERROR(matching_method, "'%s(...)' must be marked '@dynamic' as it matches the method '%s' in interface '%s'.",
-				           method->name, method->name, interface->name);
-				SEMA_NOTE(method, "Here is the interface method to implement.");
-				sema_decl_stack_restore(store);
-				return false;
-			}
+			sema_decl_stack_restore(store);
+			return false;
 		}
 	}
 	sema_decl_stack_restore(store);
