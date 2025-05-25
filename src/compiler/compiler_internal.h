@@ -2521,7 +2521,7 @@ INLINE BitSize type_bit_size(Type *type);
 INLINE Type *type_vector_type(Type *type);
 
 static inline CanonicalType *type_pointer_type(Type *type);
-static inline Type *type_flatten(Type *type);
+static inline CanonicalType *type_flatten(Type *type);
 static inline bool type_flat_is_char_array(Type *type);
 static inline Type *type_base(Type *type);
 
@@ -3030,7 +3030,7 @@ static inline Type *type_flatten_to_int(Type *type)
 	}
 }
 
-static inline Type *type_flatten(Type *type)
+static inline CanonicalType *type_flatten(Type *type)
 {
 	while (1)
 	{

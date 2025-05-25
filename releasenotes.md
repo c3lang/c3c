@@ -15,6 +15,7 @@
 - Deprecate `SomeFn.params`.
 - Improve error message when encountering recursively defined structs. #2146
 - Limit vector max size, default is 4096 bits, but may be increased using --max-vector-size.
+- Allow the use of `has_tagof` on builtin types.
 
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115
@@ -41,6 +42,7 @@
 - `--path` does not interact correctly with relative path arguments #2149.
 - Add missing `@noreturn` to `os::exit`.
 - Implicit casting from struct to interface failure for inheriting interfaces #2151.
+- Distinct types could not be used with tagof #2152.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`

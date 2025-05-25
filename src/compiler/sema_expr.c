@@ -2937,7 +2937,6 @@ static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 	}
 	Expr **args = expr->call_expr.arguments;
 	unsigned arg_count = vec_size(args);
-	Decl *decl = tag->type_call_expr.type;
 	bool is_has = tag->type_call_expr.property == TYPE_PROPERTY_HAS_TAGOF;
 	const char *name = is_has ? "has_tagof" : "tagof";
 	if (arg_count != 1) RETURN_SEMA_ERROR(expr, "Expected a single string argument to '%s'.", name);
@@ -2947,9 +2946,11 @@ static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 	{
 		RETURN_SEMA_ERROR(key, "The tag name should be a string constant.");
 	}
+	Decl *decl = tag->type_call_expr.type;
+	const char *tagname = key->const_expr.bytes.ptr;
+	if (!decl) goto NOT_FOUND;
 	ASSERT_SPAN(expr, decl->resolved_attributes);
 	ResolvedAttrData *attrs = decl->attrs_resolved;
-	const char *tagname = key->const_expr.bytes.ptr;
 	if (!attrs || !attrs->tags) goto NOT_FOUND;
 	Expr *value = NULL;
 	FOREACH(Attr *, attr, attrs->tags)
@@ -4990,7 +4991,7 @@ EVAL:
 
 static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProperty property)
 {
-	Type *type = type_flatten(original_type);
+	CanonicalType *type = type_flatten(original_type);
 	switch (property)
 	{
 		case TYPE_PROPERTY_NONE:
@@ -5042,7 +5043,7 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 		case TYPE_PROPERTY_FROM_ORDINAL:
 		case TYPE_PROPERTY_LOOKUP:
 		case TYPE_PROPERTY_LOOKUP_FIELD:
-			return type->canonical->type_kind == TYPE_ENUM;
+			return type->type_kind == TYPE_ENUM;
 		case TYPE_PROPERTY_MIN:
 		case TYPE_PROPERTY_MAX:
 			return type_is_float(type) || type_is_integer(type);
@@ -5084,8 +5085,9 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 			return type_is_func_ptr(type);
 		case TYPE_PROPERTY_TAGOF:
 		case TYPE_PROPERTY_HAS_TAGOF:
+			return true;
 		case TYPE_PROPERTY_EXTNAMEOF:
-			return !type_is_builtin(type->type_kind);
+			return !type_is_builtin(original_type->canonical->type_kind);
 	}
 	UNREACHABLE
 }
@@ -5194,7 +5196,22 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_EXTNAMEOF);
 			return true;
 		case TYPE_PROPERTY_TAGOF:
+			if (!type_is_user_defined(type))
+			{
+				RETURN_SEMA_ERROR(expr, "'tagof' is not defined for builtin types like %s.", type_quoted_error_string(type));
+			}
+			FALLTHROUGH;
 		case TYPE_PROPERTY_HAS_TAGOF:
+			if (!type_is_user_defined(type))
+			{
+
+				expr->expr_kind = EXPR_TYPECALL;
+				expr->type_call_expr = (ExprTypeCall) {
+					.type = NULL,
+					.property = property };
+				return true;
+			}
+			FALLTHROUGH;
 		case TYPE_PROPERTY_FROM_ORDINAL:
 		case TYPE_PROPERTY_LOOKUP:
 		case TYPE_PROPERTY_LOOKUP_FIELD:
