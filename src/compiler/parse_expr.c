@@ -336,13 +336,7 @@ Expr *parse_cond(ParseContext *c)
 			break;
 		}
 
-		Decl *decl;
-		ASSIGN_EXPR_OR_RET(Expr * expr, parse_decl_or_expr(c, &decl), poisoned_expr);
-		if (!expr)
-		{
-			expr = expr_new(EXPR_DECL, decl->span);
-			expr->decl_expr = decl;
-		}
+		ASSIGN_EXPR_OR_RET(Expr * expr, parse_decl_or_expr(c), poisoned_expr);
 		vec_add(decl_expr->cond_expr, expr);
 		if (!try_consume(c, TOKEN_COMMA)) break;
 	}
@@ -573,17 +567,11 @@ Expr *parse_expression_list(ParseContext *c, bool allow_decls)
 	Expr *expr_list = EXPR_NEW_TOKEN(EXPR_EXPRESSION_LIST);
 	while (1)
 	{
-		Decl *decl;
-		ASSIGN_EXPR_OR_RET(Expr *expr, parse_decl_or_expr(c, &decl), poisoned_expr);
-		if (!expr)
+		ASSIGN_EXPR_OR_RET(Expr *expr, parse_decl_or_expr(c), poisoned_expr);
+		if (expr->expr_kind == EXPR_DECL && !allow_decls)
 		{
-			if (!allow_decls)
-			{
-				PRINT_ERROR_HERE("This looks like a declaration, which isn't allowed here.");
-				return poisoned_expr;
-			}
-			expr = expr_new(EXPR_DECL, decl->span);
-			expr->decl_expr = decl;
+			PRINT_ERROR_HERE("This looks like a declaration, which isn't allowed here.");
+			return poisoned_expr;
 		}
 		vec_add(expr_list->expression_list, expr);
 		if (!try_consume(c, TOKEN_COMMA)) break;

@@ -843,13 +843,14 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 /**
  * decl_or_expr ::= var_decl | type local_decl_after_type | expression
  */
-Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref)
+Expr *parse_decl_or_expr(ParseContext *c)
 {
 	// var-initialization is done separately.
+	Decl *decl;
 	if (tok_is(c, TOKEN_VAR))
 	{
-		ASSIGN_DECL_OR_RET(*decl_ref, parse_var_decl(c), poisoned_expr);
-		return NULL;
+		ASSIGN_DECL_OR_RET(decl, parse_var_decl(c), poisoned_expr);
+		goto DECL;
 	}
 	Expr *expr = parse_expr(c);
 
@@ -857,8 +858,12 @@ Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref)
 	if (expr->expr_kind != EXPR_TYPEINFO) return expr;
 
 	// Otherwise we expect a declaration.
-	ASSIGN_DECL_OR_RET(*decl_ref, parse_local_decl_after_type(c, expr->type_expr), poisoned_expr);
-	return NULL;
+	ASSIGN_DECL_OR_RET(decl, parse_local_decl_after_type(c, expr->type_expr), poisoned_expr);
+DECL:
+	assert(decl);
+	expr = expr_new(EXPR_DECL, decl->span);
+	expr->decl_expr = decl;
+	return expr;
 }
 
 
@@ -924,7 +929,7 @@ Decl *parse_var_decl(ParseContext *c)
 			if (!tok_is(c, TOKEN_EQ))
 			{
 				PRINT_ERROR_HERE("'var' must always have an initial value, or the type cannot be inferred.");
-				return false;
+				return poisoned_decl;
 			}
 			advance_and_verify(c, TOKEN_EQ);
 			ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), poisoned_decl);

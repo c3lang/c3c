@@ -38,7 +38,7 @@ Expr* parse_constant_expr(ParseContext *c);
 
 Decl *parse_const_declaration(ParseContext *c, bool is_global, bool is_extern);
 Expr *parse_integer(ParseContext *c, Expr *left);
-Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref);
+Expr *parse_decl_or_expr(ParseContext *c);
 void recover_top_level(ParseContext *c);
 Expr *parse_cond(ParseContext *c);
 Ast* parse_compound_stmt(ParseContext *c);
