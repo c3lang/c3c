@@ -15,6 +15,7 @@
 #include "llvm-c/Target.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/Module.h"
+#include "llvm/Transforms/Scalar/LowerMatrixIntrinsics.h"
 #include "llvm/IR/Function.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/StandardInstrumentations.h"
@@ -155,6 +156,8 @@ bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm,
 	llvm::FunctionAnalysisManager FAM;
 	llvm::CGSCCAnalysisManager CGAM;
 	llvm::ModuleAnalysisManager MAM;
+
+
 	PB.registerLoopAnalyses(LAM);
 	PB.registerFunctionAnalyses(FAM);
 	PB.registerCGSCCAnalyses(CGAM);
@@ -196,6 +199,7 @@ bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm,
 #else
 	llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(level, false);
 #endif
+	MPM.addPass(llvm::createModuleToFunctionPassAdaptor(llvm::LowerMatrixIntrinsicsPass(false)));
 	if (passes->should_verify)
 	{
 		MPM.addPass(llvm::VerifierPass());

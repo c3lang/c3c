@@ -704,6 +704,46 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTLIKE}, 1)) return false;
 			rtype = args[0]->type;
 			break;
+		case BUILTIN_MATRIX_TRANSPOSE:
+		{
+			ASSERT(arg_count == 3);
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_VEC, BA_INTEGER, BA_INTEGER}, 3)) return false;
+			if (!sema_check_builtin_args_const(context, &args[1], 2)) return false;
+			ArraySize vec_len = type_flatten(args[0]->type)->array.len;
+			Int sum = int_mul(args[1]->const_expr.ixx, args[2]->const_expr.ixx);
+			if (!int_icomp(sum, vec_len, BINARYOP_EQ))
+			{
+				RETURN_SEMA_ERROR(args[1], "Expected row * col to equal %d.", vec_len);
+			}
+			rtype = args[0]->type;
+			break;
+		}
+		case BUILTIN_MATRIX_MUL:
+			ASSERT(arg_count == 5);
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_VEC, BA_VEC, BA_INTEGER, BA_INTEGER, BA_INTEGER }, 5)) return false;
+			if (!sema_check_builtin_args_const(context, &args[2], 3)) return false;
+			Type *flat1 = type_flatten(args[0]->type);
+			Type *flat2 = type_flatten(args[1]->type);
+			if (flat1->array.base != flat2->array.base)
+			{
+				RETURN_SEMA_ERROR(args[1], "Expected both matrices to be of the same type.");
+			}
+			ArraySize vec_len1 = flat1->array.len;
+			ArraySize vec_len2 = flat2->array.len;
+			Int128 sum = i128_mult(args[2]->const_expr.ixx.i, args[3]->const_expr.ixx.i);
+			args[2]->type = type_int;
+			args[3]->type = type_int;
+			if (sum.high != 0 || sum.low != vec_len1)
+			{
+				RETURN_SEMA_ERROR(args[3], "Expected outer row * inner to equal %d.", vec_len1);
+			}
+			sum = i128_mult(args[3]->const_expr.ixx.i, args[4]->const_expr.ixx.i);
+			if (sum.high != 0 || sum.low != vec_len2)
+			{
+				RETURN_SEMA_ERROR(args[4], "Expected inner * outer col to equal %d.", vec_len2);
+			}
+			rtype = type_get_vector(flat1->array.base, i128_mult(args[2]->const_expr.ixx.i, args[4]->const_expr.ixx.i).low);
+			break;
 		case BUILTIN_SAT_SHL:
 		case BUILTIN_SAT_SUB:
 		case BUILTIN_SAT_ADD:
@@ -1258,6 +1298,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_ATOMIC_LOAD:
 		case BUILTIN_UNALIGNED_STORE:
 		case BUILTIN_SELECT:
+		case BUILTIN_MATRIX_TRANSPOSE:
 			return 3;
 		case BUILTIN_ATOMIC_STORE:
 		case BUILTIN_MASKED_STORE:
@@ -1276,6 +1317,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_ATOMIC_FETCH_MIN:
 		case BUILTIN_ATOMIC_FETCH_SUB:
 		case BUILTIN_ATOMIC_FETCH_DEC_WRAP:
+		case BUILTIN_MATRIX_MUL:
 			return 5;
 		case BUILTIN_MEMCOPY:
 		case BUILTIN_MEMCOPY_INLINE:

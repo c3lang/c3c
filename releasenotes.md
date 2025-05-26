@@ -17,6 +17,7 @@
 - Limit vector max size, default is 4096 bits, but may be increased using --max-vector-size.
 - Allow the use of `has_tagof` on builtin types.
 - `@jump` now included in `--list-attributes` #2155.
+- Add `$$matrix_mul` and `$$matrix_transpose` builtins.
 
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115

@@ -199,6 +199,8 @@ typedef struct
 	unsigned masked_store;
 	unsigned maximum;
 	unsigned maxnum;
+	unsigned matrix_multiply;
+	unsigned matrix_transpose;
 	unsigned memcpy;
 	unsigned memcpy_inline;
 	unsigned memmove;

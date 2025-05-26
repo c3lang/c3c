@@ -526,6 +526,34 @@ void llvm_emit_simple_builtin(GenContext *c, BEValue *be_value, Expr *expr, unsi
 	llvm_value_set(be_value, result, expr->type);
 }
 
+void llvm_emit_matrix_multiply(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	Expr **args = expr->call_expr.arguments;
+	unsigned count = vec_size(args);
+	ASSERT(count == 5);
+	LLVMValueRef arg_slots[5];
+	llvm_emit_intrinsic_args(c, args, arg_slots, count);
+	LLVMTypeRef type = LLVMTypeOf(arg_slots[0]);
+	LLVMTypeRef result_type = llvm_get_type(c, expr->type);
+	LLVMTypeRef call_type[3] = { result_type, type,  LLVMTypeOf(arg_slots[1]) };
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic_id.matrix_multiply, call_type, 3, arg_slots, count);
+	llvm_value_set(be_value, result, expr->type);
+}
+
+void llvm_emit_matrix_transpose(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	Expr **args = expr->call_expr.arguments;
+	unsigned count = vec_size(args);
+	ASSERT(count == 3);
+	LLVMValueRef arg_slots[3];
+	llvm_emit_intrinsic_args(c, args, arg_slots, count);
+	LLVMTypeRef type = LLVMTypeOf(arg_slots[0]);
+	LLVMTypeRef result_type = llvm_get_type(c, expr->type);
+	LLVMTypeRef call_type[3] = { result_type, type };
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic_id.matrix_transpose, call_type, 2, arg_slots, count);
+	llvm_value_set(be_value, result, expr->type);
+}
+
 static void llvm_emit_masked_load(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr **args = expr->call_expr.arguments;
@@ -787,6 +815,12 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			return;
 		case BUILTIN_MEMSET_INLINE:
 			llvm_emit_memset_builtin(c, intrinsic_id.memset_inline, result_value, expr);
+			return;
+		case BUILTIN_MATRIX_MUL:
+			llvm_emit_matrix_multiply(c, result_value, expr);
+			return;
+		case BUILTIN_MATRIX_TRANSPOSE:
+			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.matrix_transpose);
 			return;
 		case BUILTIN_SYSCLOCK:
 			llvm_value_set(result_value, llvm_emit_call_intrinsic(c, intrinsic_id.readcyclecounter, NULL, 0, NULL, 0), expr->type);
