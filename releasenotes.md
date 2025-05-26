@@ -16,6 +16,7 @@
 - Improve error message when encountering recursively defined structs. #2146
 - Limit vector max size, default is 4096 bits, but may be increased using --max-vector-size.
 - Allow the use of `has_tagof` on builtin types.
+- `@jump` now included in `--list-attributes` #2155.
 
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115
