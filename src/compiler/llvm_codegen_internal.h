@@ -222,6 +222,7 @@ typedef struct
 	unsigned sin;
 	unsigned smax;
 	unsigned smin;
+	unsigned smul_fixed_sat;
 	unsigned smul_overflow;
 	unsigned sqrt;
 	unsigned sshl_sat;
@@ -234,6 +235,7 @@ typedef struct
 	unsigned uadd_sat;
 	unsigned umax;
 	unsigned umin;
+	unsigned umul_fixed_sat;
 	unsigned umul_overflow;
 	unsigned ushl_sat;
 	unsigned usub_overflow;

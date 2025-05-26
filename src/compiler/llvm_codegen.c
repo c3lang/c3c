@@ -853,6 +853,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.sqrt = lookup_intrinsic("llvm.sqrt");
 	intrinsic_id.ssub_overflow = lookup_intrinsic("llvm.ssub.with.overflow");
 	intrinsic_id.ssub_sat = lookup_intrinsic("llvm.ssub.sat");
+	intrinsic_id.smul_fixed_sat = lookup_intrinsic("llvm.smul.fix.sat");
 	intrinsic_id.trap = lookup_intrinsic("llvm.trap");
 	intrinsic_id.trunc = lookup_intrinsic("llvm.trunc");
 	intrinsic_id.uadd_overflow = lookup_intrinsic("llvm.uadd.with.overflow");
@@ -863,6 +864,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.usub_overflow = lookup_intrinsic("llvm.usub.with.overflow");
 	intrinsic_id.ushl_sat = lookup_intrinsic("llvm.ushl.sat");
 	intrinsic_id.usub_sat = lookup_intrinsic("llvm.usub.sat");
+	intrinsic_id.umul_fixed_sat = lookup_intrinsic("llvm.umul.fix.sat");
 	intrinsic_id.vector_reduce_fmax = lookup_intrinsic("llvm.vector.reduce.fmax");
 	intrinsic_id.vector_reduce_fmin = lookup_intrinsic("llvm.vector.reduce.fmin");
 	intrinsic_id.vector_reduce_smax = lookup_intrinsic("llvm.vector.reduce.smax");

@@ -707,6 +707,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_SAT_SHL:
 		case BUILTIN_SAT_SUB:
 		case BUILTIN_SAT_ADD:
+		case BUILTIN_SAT_MUL:
 			ASSERT(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTLIKE, BA_INTLIKE}, 2)) return false;
 			if (!sema_check_builtin_args_match(context, args, 2)) return false;
@@ -1233,6 +1234,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SAT_ADD:
 		case BUILTIN_SAT_SHL:
 		case BUILTIN_SAT_SUB:
+		case BUILTIN_SAT_MUL:
 		case BUILTIN_VOLATILE_STORE:
 		case BUILTIN_VECCOMPNE:
 		case BUILTIN_VECCOMPLT:

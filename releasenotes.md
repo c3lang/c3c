@@ -43,6 +43,7 @@
 - Add missing `@noreturn` to `os::exit`.
 - Implicit casting from struct to interface failure for inheriting interfaces #2151.
 - Distinct types could not be used with tagof #2152.
+- `$$sat_mul` was missing.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`

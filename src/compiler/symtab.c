@@ -265,6 +265,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_ROUND] = KW_DEF("round");
 	builtin_list[BUILTIN_ROUNDEVEN] = KW_DEF("roundeven");
 	builtin_list[BUILTIN_SAT_ADD] = KW_DEF("sat_add");
+	builtin_list[BUILTIN_SAT_MUL] = KW_DEF("sat_mul");
 	builtin_list[BUILTIN_SAT_SHL] = KW_DEF("sat_shl");
 	builtin_list[BUILTIN_SAT_SUB] = KW_DEF("sat_sub");
 	builtin_list[BUILTIN_SCATTER] = KW_DEF("scatter");

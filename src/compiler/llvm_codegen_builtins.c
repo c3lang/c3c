@@ -483,6 +483,11 @@ void llvm_emit_3_variant_builtin(GenContext *c, BEValue *be_value, Expr *expr, u
 	LLVMValueRef arg_slots[3];
 	unsigned intrinsic = llvm_intrinsic_by_type(args[0]->type, sid, uid, fid);
 	llvm_emit_intrinsic_args(c, args, arg_slots, count);
+	if (count == 2 && (intrinsic == intrinsic_id.smul_fixed_sat || intrinsic == intrinsic_id.umul_fixed_sat))
+	{
+		arg_slots[2] = llvm_const_int(c, type_int, 0);
+		count++;
+	}
 	LLVMTypeRef call_type[1] = { LLVMTypeOf(arg_slots[0]) }; // NOLINT
 	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, call_type, 1, arg_slots, count);
 	llvm_value_set(be_value, result, expr->type);
@@ -885,6 +890,9 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			return;
 		case BUILTIN_SAT_SUB:
 			llvm_emit_3_variant_builtin(c, result_value, expr, intrinsic_id.ssub_sat, intrinsic_id.usub_sat, 0);
+			return;
+		case BUILTIN_SAT_MUL:
+			llvm_emit_3_variant_builtin(c, result_value, expr, intrinsic_id.smul_fixed_sat, intrinsic_id.umul_fixed_sat, 0);
 			return;
 		case BUILTIN_ABS:
 			llvm_emit_abs_builtin(c, result_value, expr);
