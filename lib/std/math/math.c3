@@ -1114,6 +1114,33 @@ macro overflow_mul_helper(x, y) @local
 }
 
 <*
+ @param [&out] out : "Where the result of the addition is stored"
+ @return "Whether the addition resulted in an integer overflow"
+ @require values::@is_same_type(a, b) : "a and b must be the same type"
+ @require values::@is_int(a) &&& values::@is_int(b) : "a and b must both be integers"
+ @require $defined(*out) &&& values::@is_same_type(*out, a) : "out must be a pointer of the same type as a and b"
+*>
+macro bool overflow_add(a, b, out) => $$overflow_add(a, b, out);
+
+<*
+ @param [&out] out : "Where the result of the subtraction is stored"
+ @return "Whether the subtraction resulted in an integer overflow"
+ @require values::@is_same_type(a, b) : "a and b must be the same type"
+ @require values::@is_int(a) &&& values::@is_int(b) : "a and b must both be integers"
+ @require $defined(*out) &&& values::@is_same_type(*out, a) : "out must be a pointer of the same type as a and b"
+*>
+macro bool overflow_sub(a, b, out) => $$overflow_sub(a, b, out);
+
+<*
+ @param [&out] out : "Where the result of the multiplication is stored"
+ @return "Whether the multiplication resulted in an integer overflow"
+ @require values::@is_same_type(a, b) : "a and b must be the same type"
+ @require values::@is_int(a) &&& values::@is_int(b) : "a and b must both be integers"
+ @require $defined(*out) &&& values::@is_same_type(*out, a) : "out must be a pointer of the same type as a and b"
+*>
+macro bool overflow_mul(a, b, out) => $$overflow_mul(a, b, out);
+
+<*
  @require types::is_vector($Type) || ($Type.kindof == ARRAY &&& types::is_numerical($typefrom($Type.inner)))
 *>
 macro iota($Type)
