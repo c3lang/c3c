@@ -492,6 +492,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 	target->ir_file_dir = options->llvm_out;
 	target->asm_file_dir = options->asm_out;
+	target->header_file_dir = options->header_out;
 	target->object_file_dir = options->obj_out;
 	if (!target->ir_file_dir)
 	{
@@ -508,6 +509,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (!target->object_file_dir)
 	{
 		target->object_file_dir = file_append_path(file_append_path(target->build_dir, "obj"), target_name);
+	}
+	if (!target->header_file_dir)
+	{
+		target->header_file_dir = target->output_dir ? target->output_dir : target->build_dir;
 	}
 
 	switch (options->compile_option)

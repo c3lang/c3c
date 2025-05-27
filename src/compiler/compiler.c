@@ -472,6 +472,10 @@ void compiler_compile(void)
 	{
 		create_output_dir(compiler.build.object_file_dir);
 	}
+	if (compiler.build.header_file_dir && compiler.build.output_headers)
+	{
+		create_output_dir(compiler.build.header_file_dir);
+	}
 	if (compiler.build.type == TARGET_TYPE_EXECUTABLE && !compiler.context.main && !compiler.build.no_entry)
 	{
 		error_exit("The 'main' function for the executable could not found, did you forget to add it?\n\n"

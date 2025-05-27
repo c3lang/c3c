@@ -562,6 +562,7 @@ typedef struct BuildOptions_
 	const char *output_dir;
 	const char *llvm_out;
 	const char *asm_out;
+	const char *header_out;
 	const char *obj_out;
 	const char *script_dir;
 	RelocModel reloc_model;
@@ -651,6 +652,7 @@ typedef struct
 	const char *output_dir;
 	const char *ir_file_dir;
 	const char *asm_file_dir;
+	const char *header_file_dir;
 	const char *script_dir;
 	const char *run_dir;
 	bool is_non_project;
