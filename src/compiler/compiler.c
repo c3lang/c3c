@@ -440,9 +440,12 @@ void compiler_compile(void)
 	{
 		error_exit("No module to compile.");
 	}
-
 	if (compiler.build.output_headers)
 	{
+		if (compiler.build.header_file_dir)
+		{
+			create_output_dir(compiler.build.header_file_dir);
+		}
 		header_gen(modules, module_count);
 	}
 
@@ -467,14 +470,9 @@ void compiler_compile(void)
 	if (compiler.build.asm_file_dir && compiler.build.emit_asm)
 	{
 		create_output_dir(compiler.build.asm_file_dir);
-	}
-	if (compiler.build.object_file_dir && compiler.build.emit_object_files)
+	}	if (compiler.build.object_file_dir && compiler.build.emit_object_files)
 	{
 		create_output_dir(compiler.build.object_file_dir);
-	}
-	if (compiler.build.header_file_dir && compiler.build.output_headers)
-	{
-		create_output_dir(compiler.build.header_file_dir);
 	}
 	if (compiler.build.type == TARGET_TYPE_EXECUTABLE && !compiler.context.main && !compiler.build.no_entry)
 	{
