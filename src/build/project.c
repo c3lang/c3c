@@ -40,6 +40,7 @@ const char *project_default_keys[][2] = {
 		{"panicfn", "Override the panic function."},
 		{"panic-msg", "Turn panic message output on or off."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
+		{"run-dir", "Override run directory for 'run'."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
 		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
 		{"show-backtrace", "Print backtrace on signals."},
@@ -112,6 +113,7 @@ const char* project_target_keys[][2] = {
 		{"panicfn", "Override the panic function."},
 		{"panic-msg", "Turn panic message output on or off."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
+		{"run-dir", "Override run directory for 'run'."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
 		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
 		{"script-dir", "The directory where 'exec' is run."},
@@ -163,6 +165,9 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// Where to find and execute the scripts
 	target->script_dir = get_string(context, json, "script-dir", target->script_dir);
+
+	// Where to `run` from
+	target->run_dir = get_string(context, json, "run-dir", target->run_dir);
 
 	// The output directory
 	target->output_dir = get_string(context, json, "output", target->output_dir);
