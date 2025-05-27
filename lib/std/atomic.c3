@@ -183,7 +183,7 @@ macro bool is_native_atomic_type($Type)
 }
 
 <*
- @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [&inout] ptr : "the variable or dereferenced pointer to the data."
  @param [in] y : "the value to be added to ptr."
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
@@ -203,7 +203,7 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
 }
 
 <*
- @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [&inout] ptr : "the variable or dereferenced pointer to the data."
  @param [in] y : "the value to be subtracted from ptr."
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
@@ -223,7 +223,7 @@ macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
 }
 
 <*
- @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [&inout] ptr : "the variable or dereferenced pointer to the data."
  @param [in] y : "the value to be multiplied with ptr."
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
@@ -263,7 +263,7 @@ macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 }
 
 <*
- @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [&inout] ptr : "the variable or dereferenced pointer to the data."
  @param [in] y : "the value to divide ptr by."
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
@@ -303,7 +303,7 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 }
 
 <*
- @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [&inout] ptr : "the variable or dereferenced pointer to the data."
  @param [in] y : "the value to perform a bitwise or with."
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
@@ -320,7 +320,7 @@ macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile
 }
 
 <*
- @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [&inout] ptr : "the variable or dereferenced pointer to the data."
  @param [in] y : "the value to perform a bitwise xor with."
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
@@ -337,7 +337,7 @@ macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
 }
 
 <*
- @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [&inout] ptr : "the variable or dereferenced pointer to the data."
  @param [in] y : "the value to perform a bitwise and with."
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
@@ -354,7 +354,7 @@ macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
 }
 
 <*
- @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [&inout] ptr : "the variable or dereferenced pointer to the data."
  @param [in] y : "the value to shift ptr by."
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
@@ -396,7 +396,7 @@ macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 }
 
 <*
- @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [&inout] ptr : "the variable or dereferenced pointer to the data."
  @param [in] y : "the value to shift ptr by."
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
@@ -438,7 +438,7 @@ macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 }
 
 <*
- @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [&inout] ptr : "the variable or dereferenced pointer to the data."
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
@@ -466,7 +466,7 @@ macro flag_set(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 }
 
 <*
- @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [&inout] ptr : "the variable or dereferenced pointer to the data."
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
