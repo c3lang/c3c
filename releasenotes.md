@@ -20,6 +20,7 @@
 - `@jump` now included in `--list-attributes` #2155.
 - Add `$$matrix_mul` and `$$matrix_transpose` builtins.
 - Add `d` as floating point suffix for `double` types.
+- Deprecate `f32`, `f64` and `f128` suffixes.
 
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115
