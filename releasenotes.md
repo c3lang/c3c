@@ -52,6 +52,7 @@
 - `$$sat_mul` was missing.
 - `for` with incorrect `var` declaration caused crash #2154.
 - Check pointer/slice/etc on `[out]` and `&` params. #2156.
+- Compiler didn't check foreach over flexible array member, and folding a flexible array member was allowed #2164.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`

@@ -4981,6 +4981,7 @@ EVAL:
 	switch (result->kind)
 	{
 		case CONST_INIT_ZERO:
+			if (member->type->type_kind == TYPE_FLEXIBLE_ARRAY) return false;
 			expr_rewrite_to_const_zero(expr, member->type);
 			break;
 		case CONST_INIT_STRUCT:
@@ -5688,6 +5689,10 @@ CHECK_DEEPER:
 		{
 			if (!sema_expr_fold_to_member(expr, current_parent, member))
 			{
+				if (member->type->type_kind == TYPE_FLEXIBLE_ARRAY)
+				{
+					RETURN_SEMA_ERROR(expr, "Could not fold to member '%s', it's a flexible array member which is always empty.", member->name);
+				}
 				RETURN_SEMA_ERROR(expr, "Could not fold to member '%s' – it wasn't the last assigned member.", member->name);
 			}
 			return true;
