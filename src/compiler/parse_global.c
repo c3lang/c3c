@@ -2851,6 +2851,11 @@ static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **do
 				return false;
 			}
 		}
+		else
+		{
+			RANGE_EXTEND_PREV(ast);
+			SEMA_DEPRECATED(ast, "Not using ':' before the string is deprecated.");
+		}
 	}
 	append_docs(docs_next, docs, ast);
 	return true;
