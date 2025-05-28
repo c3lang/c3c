@@ -5,6 +5,7 @@
 ### Changes / improvements
 - Better default assert messages when no message is specified #2122
 - Add `--run-dir`, to specify directory for running executable using `compile-run` and `run` #2121.
+- Add `run-dir` to project.json.
 - Deprecate uXX and iXX bit suffixes.
 - Add experimental LL / ULL suffixes for int128 and uint128 literals.
 - Allow the right hand side of `|||` and `&&&` be runtime values.
@@ -47,6 +48,7 @@
 - Distinct types could not be used with tagof #2152.
 - `$$sat_mul` was missing.
 - `for` with incorrect `var` declaration caused crash #2154.
+- Check pointer/slice/etc on `[out]` and `&` params. #2156.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`

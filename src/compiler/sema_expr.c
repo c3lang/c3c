@@ -2446,27 +2446,40 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		// Skip raw vararg
 		if (!param) continue;
 		if (!sema_add_local(&macro_context, param)) goto EXIT_FAIL;
-		if (param->var.init_expr && param->var.not_null)
+		if (param->var.init_expr)
 		{
-			Expr *expr = expr_variable(param);
-			Expr *binary = expr_new_expr(EXPR_BINARY, expr);
-			binary->binary_expr.left = exprid(expr);
-			binary->binary_expr.right = exprid(expr_new_const_null(expr->span, type_voidptr));
-			binary->binary_expr.operator = BINARYOP_NE;
-			if (!sema_analyse_expr_rhs(context, type_bool, binary, false, NULL, false)) goto EXIT_FAIL;
-			const char *string = struct_var && idx == 0 ? "Called a method on a null value." : "Passed null to a ref ('&') parameter.";
-			if (expr_is_const_bool(binary) && !binary->const_expr.b)
+			Type *param_type = param->type;
+			if (param_type && (param->var.out_param || param->var.not_null))
 			{
-				sema_error_at(context, param->var.init_expr->span, string);
-				goto EXIT_FAIL;
+				param_type = type_flatten(param_type);
+				if (param_type->type_kind != TYPE_POINTER && param_type->type_kind != TYPE_SLICE && param_type->type_kind != TYPE_INTERFACE && param_type->type_kind != TYPE_ANY)
+				{
+					SEMA_ERROR(param->var.init_expr, "Expected a pointer, slice or interface value for '%s'.", param->name);
+					goto EXIT_FAIL;
+				}
 			}
+			if (param->var.not_null)
+			{
+				Expr *expr = expr_variable(param);
+				Expr *binary = expr_new_expr(EXPR_BINARY, expr);
+				binary->binary_expr.left = exprid(expr);
+				binary->binary_expr.right = exprid(expr_new_const_null(expr->span, type_voidptr));
+				binary->binary_expr.operator = BINARYOP_NE;
+				if (!sema_analyse_expr_rhs(context, type_bool, binary, false, NULL, false)) goto EXIT_FAIL;
+				const char *string = struct_var && idx == 0 ? "Called a method on a null value." : "Passed null to a ref ('&') parameter.";
+				if (expr_is_const_bool(binary) && !binary->const_expr.b)
+				{
+					sema_error_at(context, param->var.init_expr->span, string);
+					goto EXIT_FAIL;
+				}
 
-			Ast *assert = new_ast(AST_ASSERT_STMT, param->var.init_expr->span);
-			assert->assert_stmt.is_ensure = true;
-			assert->assert_stmt.expr = exprid(binary);
-			Expr *comment_expr = expr_new_const_string(expr->span, string);
-			assert->assert_stmt.message = exprid(comment_expr);
-			ast_append(&next, assert);
+				Ast *assert = new_ast(AST_ASSERT_STMT, param->var.init_expr->span);
+				assert->assert_stmt.is_ensure = true;
+				assert->assert_stmt.expr = exprid(binary);
+				Expr *comment_expr = expr_new_const_string(expr->span, string);
+				assert->assert_stmt.message = exprid(comment_expr);
+				ast_append(&next, assert);
+			}
 		}
 	}
 
