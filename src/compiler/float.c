@@ -100,6 +100,7 @@ Float float_neg(Float op)
 static char *err_invalid_float_width = "The float width is not valid, it must be one of 16, 32, 64 and 128.";
 static char *err_float_out_of_range = "The float value is out of range.";
 static char *err_float_format_invalid = "The float format is invalid.";
+static char *err_hex_float_format_invalid = "Hex floating points must end with 'p' or 'P' and a valid exponent, e.g. 0x1.0p10 or 0x1.0P10.";
 
 TypeKind float_suffix(char c, const char **index_ref, char** error_ref)
 {
@@ -108,6 +109,7 @@ TypeKind float_suffix(char c, const char **index_ref, char** error_ref)
 		(*index_ref) += 4;
 		return TYPE_BF16;
 	}
+	if (c == 'd') return TYPE_F64;
 	if (c == 'f')
 	{
 		int i = 0;
@@ -226,19 +228,21 @@ Float float_from_hex(const char *string, char **error)
 			scratch_buffer_append_char(c);
 		}
 	}
-	if (c == 'p' || c == 'P')
+	if (c != 'p' && c != 'P')
+	{
+		*error = err_hex_float_format_invalid;
+		return (Float){ .type = TYPE_POISONED };
+	}
+	scratch_buffer_append_char(c);
+	if (*index == '-')
+	{
+		scratch_buffer_append_char('-');
+		index++;
+	}
+	else if (*index == '+') index++;
+	while ((c = *(index++)) && (c >= '0' && c <= '9'))
 	{
 		scratch_buffer_append_char(c);
-		if (*index == '-')
-		{
-			scratch_buffer_append_char('-');
-			index++;
-		}
-		else if (*index == '+') index++;
-		while ((c = *(index++)) && (c >= '0' && c <= '9'))
-		{
-			scratch_buffer_append_char(c);
-		}
 	}
 	TypeKind kind = float_suffix(c, &index, error);
 	if (kind == TYPE_POISONED) return (Float){ .type = TYPE_POISONED };

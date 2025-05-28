@@ -1,8 +1,8 @@
 // #target: macos-x64
 module test;
 uint f0 = $typeof(1.0f).sizeof;
-uint f32 = $typeof(1.0f32).sizeof;
-uint f64 = $typeof(1.0f64).sizeof;
+uint f32 = $typeof(1.0f).sizeof;
+uint f64 = $typeof(1.0d).sizeof;
 
 /* #expect: test.ll
 

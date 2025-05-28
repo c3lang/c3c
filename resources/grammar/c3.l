@@ -23,7 +23,7 @@ P           [Pp][+-]?{D}+
 B64         [ \t\v\n\f]?[A-Za-z0-9+/][ \t\v\n\fA-Za-z0-9+/=]+
 HEX         [ \t\v\n\f]?[A-Fa-f0-9][ \t\v\n\fA-Fa-f0-9]+
 INTTYPE     ([ui](8|16|32|64|128)|[Uu][Ll]?|[Ll])
-REALTYPE    ([f](8|16|32|64|128)?)
+REALTYPE    ([fd])
 INT         {D}(_?{D})*
 HINT        {H}(_?{H})*
 OINT        {O}(_?{O})*

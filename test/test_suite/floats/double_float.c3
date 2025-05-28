@@ -1,0 +1,1 @@
+int x = 5d; // #error: 'double' cannot implicitly be converted to 'int'
