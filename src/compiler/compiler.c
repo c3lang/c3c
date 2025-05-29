@@ -325,7 +325,6 @@ static void compiler_print_bench(void)
 			printf("Ir gen took:         %10.3f ms  %8.1f %%\n", ir_time * 1000, ir_time * 100 / last);
 			if (compiler_codegen_time >= 0)
 			{
-				last = compiler_codegen_time;
 				if (compiler.build.build_threads > 1)
 				{
 					printf("Codegen took:        %10.3f ms  %8.1f %%  (%d threads)\n", codegen_time * 1000, codegen_time * 100 / last, compiler.build.build_threads);
@@ -337,7 +336,6 @@ static void compiler_print_bench(void)
 			}
 			if (compiler_link_time >= 0)
 			{
-				last = compiler_link_time;
 				printf("Linking took:        %10.3f ms  %8.1f %%\n", link_time * 1000, link_time * 100 / last);
 			}
 			printf("TOTAL:               %10.3f ms  %8.1f %%\n", (last - compiler_sema_time) * 1000, 100 - compiler_sema_time * 100 / last);
