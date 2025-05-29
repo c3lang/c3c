@@ -62,11 +62,12 @@
 - Add `String.tokenize_all` to replace the now deprecated `String.splitter`
 - Add `String.count` to count the number of instances of a string.
 - Add `String.replace` and `String.treplace` to replace substrings within a string.
-- Add `Duration * Int` and `Clock - Clock` overload. 
+- Add `Duration * Int` and `Clock - Clock` overload.
 - Add `DateTime + Duration` overloads.
 - Add `Maybe.equals` and respective `==` operator when the inner type is equatable.
 - Add `inherit_stdio` option to `SubProcessOptions` to inherit parent's stdin, stdout, and stderr instead of creating pipes. #2012
 - Remove superfluous `cleanup` parameter in `os::exit` and `os::fastexit`.
+- Add `extern fn ioctl(CInt fd, ulong request, ...)` binding to libc;
 
 ## 0.7.1 Change list
 
@@ -94,7 +95,7 @@
 - Incorrect rounding at compile time going from double to int.
 - Regression with invalid setup of the WASM temp allocator.
 - Correctly detect multiple overloads of the same type.
-- ABI bug on x64 Linux / MacOS when passing a union containing a struct of 3 floats. #2087 
+- ABI bug on x64 Linux / MacOS when passing a union containing a struct of 3 floats. #2087
 - Bug with slice acces as inline struct member #2088.
 - `@if` now does implicit conversion to bool like `$if`. #2086
 - Fix broken enum inline -> bool conversions #2094.
@@ -132,7 +133,7 @@
 - Removal of "any-switch".
 - Allow swizzling assign, eg. `abc.xz += { 5, 10 };`
 - Added `$$wstr16` and `$$wstr32` builtins.
-- `$foreach` "()" replaced by trailing ":" `$foreach ($x, $y : $foo)` -> `$foreach $x, $y : $foo:` 
+- `$foreach` "()" replaced by trailing ":" `$foreach ($x, $y : $foo)` -> `$foreach $x, $y : $foo:`
 - `$for` "()" replaced by trailing ":" `$for (var $x = 0; $x < FOO; $x++)` -> `$for var $x = 0; $x < FOO; $x++:`
 - `$switch` "()" replaced by trailing ":" `$switch ($Type)` -> `$switch $Type:`
 - Empty `$switch` requires trailing ":" `$switch` -> `$switch:`
@@ -185,7 +186,7 @@
 - `mem::temp_new` changed to `mem::tnew`.
 - `mem::temp_alloc` and related changed to `mem::talloc`.
 - `mem::temp_new_array` changed to `mem::temp_array`.
-- Add `ONHEAP` variants for List/HashMap for initializing global maps on the heap. 
+- Add `ONHEAP` variants for List/HashMap for initializing global maps on the heap.
 - Remove Vec2 and other aliases from std::math. Replace `.length_sq()` with `sq_magnitude()`
 - Change all hash functions to have a common `hash` function.
 - `@wstring`, `@wstring32`, `@char32` and `@char16` compile time macros added.
