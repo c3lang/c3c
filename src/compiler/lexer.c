@@ -408,6 +408,10 @@ static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 			next(lexer);
 			while (char_is_digit(c = peek(lexer))) next(lexer);
 			break;
+		case 'd':
+			c = next(lexer);
+			*is_float = true;
+			break;
 		case 'f':
 			next(lexer);
 			*is_float = true;

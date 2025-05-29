@@ -434,43 +434,43 @@ static void view_filtered_project_properties(BuildOptions *build_options, const 
 	if (bitvector & (1 << 0))
 	{
 		prop_header = verbose ? "Authors" : "";
-		VIEW_MANDATORY_STRING_ARRAY(prop_header, "authors", delim);
+		VIEW_STRING_ARRAY(prop_header, "authors", delim);
 		PRINTFN("");
 	}
 	if (bitvector & (1 << 1))
 	{
 		prop_header = verbose ? "Version" : "";
-		VIEW_MANDATORY_STRING(prop_header, "version");
+		VIEW_STRING(prop_header, "version");
 		PRINTFN("");
 	}
 	if (bitvector & (1 << 2))
 	{
 		prop_header = verbose ? "Project language target" : "";
-		VIEW_MANDATORY_STRING(prop_header, "langrev");
+		VIEW_STRING(prop_header, "langrev");
 		PRINTFN("");
 	}
 	if (bitvector & (1 << 3))
 	{
 		prop_header = verbose ? "Warnings used" : "";
-		VIEW_MANDATORY_STRING_ARRAY(prop_header, "warnings", delim);
+		VIEW_STRING_ARRAY(prop_header, "warnings", delim);
 		PRINTFN("");
 	}
 	if (bitvector & (1 << 4))
 	{
 		prop_header = verbose ? "c3l library search paths" : "";
-		VIEW_MANDATORY_STRING_ARRAY(prop_header, "dependency-search-paths", delim);
+		VIEW_STRING_ARRAY(prop_header, "dependency-search-paths", delim);
 		PRINTFN("");
 	}
 	if (bitvector & (1 << 5))
 	{
 		prop_header = verbose ? "c3l library dependencies" : "";
-		VIEW_MANDATORY_STRING_ARRAY(prop_header, "dependencies", delim);
+		VIEW_STRING_ARRAY(prop_header, "dependencies", delim);
 		PRINTFN("");
 	}
 	if (bitvector & (1 << 6))
 	{
 		prop_header = verbose ? "Source paths" : "";
-		VIEW_MANDATORY_STRING_ARRAY(prop_header, "sources", delim);
+		VIEW_STRING_ARRAY(prop_header, "sources", delim);
 		PRINTFN("");
 	}
 	if (bitvector & (1 << 7))
@@ -527,13 +527,13 @@ void view_project(BuildOptions *build_options)
 
 	BuildParseContext context = { filename, NULL };
 	/* General information */
-	VIEW_MANDATORY_STRING_ARRAY("Authors", "authors", ", ");
-	VIEW_MANDATORY_STRING("Version", "version");
-	VIEW_MANDATORY_STRING("Project language target", "langrev");
-	VIEW_MANDATORY_STRING_ARRAY("Warnings used", "warnings", ", ");
-	VIEW_MANDATORY_STRING_ARRAY("c3l library search paths", "dependency-search-paths", ", ");
-	VIEW_MANDATORY_STRING_ARRAY("c3l library dependencies", "dependencies", ", ");
-	VIEW_MANDATORY_STRING_ARRAY("Source paths", "sources", ", ");
+	VIEW_STRING_ARRAY("Authors", "authors", ", ");
+	VIEW_STRING("Version", "version");
+	VIEW_STRING("Project language target", "langrev");
+	VIEW_STRING_ARRAY("Warnings used", "warnings", ", ");
+	VIEW_STRING_ARRAY("c3l library search paths", "dependency-search-paths", ", ");
+	VIEW_STRING_ARRAY("c3l library dependencies", "dependencies", ", ");
+	VIEW_STRING_ARRAY("Source paths", "sources", ", ");
 	VIEW_STRING_ARRAY("C source paths", "c-sources", ", ");
 	VIEW_STRING("Output location", "output");
 	VIEW_SETTING("Default optimization level", "opt", optimization_levels);

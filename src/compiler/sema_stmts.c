@@ -1497,6 +1497,10 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	// At this point we should have dereferenced any pointer or bailed.
 	ASSERT_SPAN(enumerator, !type_is_pointer(enumerator->type));
 
+	if (enumerator->type->type_kind == TYPE_FLEXIBLE_ARRAY)
+	{
+		RETURN_SEMA_ERROR(enumerator, "It is not possible to enumerate over a flexible array member.", type_quoted_error_string(enumerator->type));
+	}
 	// Check that we can even index this expression, this will dig into the flattened type.
 	Type *value_type = type_get_indexed_type(enumerator->type);
 

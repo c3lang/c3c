@@ -1822,6 +1822,14 @@ static Expr *parse_double(ParseContext *c, Expr *left)
 	bool is_hex = original[0] == '0' && original[1] == 'x';
 	// This is set to try to print in a similar manner as the input.
 	number->const_expr.is_hex = is_hex;
+	if (c->data.lex_len > 3)
+	{
+		const char *last = c->data.lex_start + c->data.lex_len - 3;
+		if (last[0] == 'f' && ((last[1] == '3' && last[2] == '2') || (last[1] == '6' && last[2] == '4')))
+		{
+			SEMA_DEPRECATED(number, "Float number suffixes are deprecated, use 'f' and 'd' instead.'");
+		}
+	}
 	Float f = is_hex ? float_from_hex(original, &err) : float_from_string(original, &err);
 	if (f.type == TYPE_POISONED)
 	{

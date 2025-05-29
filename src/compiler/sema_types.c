@@ -246,6 +246,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_TYPEDEF:
 			if (!sema_analyse_decl(context, decl)) return type_info_poison(type_info);
 			type_info->type = decl->type;
+			assert (type_info->type->canonical->type_kind != TYPE_TYPEDEF);
 			type_info->resolve_status = RESOLVE_DONE;
 			return true;
 		case DECL_POISONED:
@@ -415,12 +416,13 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name,
 	                                                   inner->span, type_info->generic.params, &was_recursive);
 	if (!decl_ok(type)) return false;
+	if (!sema_analyse_decl(context, type)) return false;
 	type_info->type = type->type;
 	if (!was_recursive) return true;
 	if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
 	    && !context->call_env.current_function->func_decl.in_macro)
 	{
-		RETURN_SEMA_ERROR(type_info, "Recursively generic type declarations are only allowed inside of macros. Use `def` to define an alias for the type instead.");
+		RETURN_SEMA_ERROR(type_info, "Recursively generic type declarations are only allowed inside of macros. Use `alias` to define an alias for the type instead.");
 	}
 	return true;
 }

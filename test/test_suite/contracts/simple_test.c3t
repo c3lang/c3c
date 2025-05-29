@@ -1,8 +1,8 @@
 // #target: macos-x64
 
 <*
- @param [inout] foo `test`
- @require baz > 100 `whatever`
+ @param [inout] foo : `test`
+ @require baz > 100 : `whatever`
  @ensure *foo > 231
 *>
 fn void test(int *foo, int baz)
@@ -11,8 +11,8 @@ fn void test(int *foo, int baz)
 }
 
 <*
- @param [inout] foo `test`
- @require baz > 100 `whatever`
+ @param [inout] foo : `test`
+ @require baz > 100 : `whatever`
  @ensure return < 200
 *>
 fn int test2(int *foo, int baz)
