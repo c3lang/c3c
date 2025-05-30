@@ -672,6 +672,7 @@ typedef struct
 	bool benchmarking;
 	bool testing;
 	bool silent;
+	bool quiet;
 	bool read_stdin;
 	bool print_output;
 	bool print_input;
@@ -815,6 +816,7 @@ static BuildTarget default_build_target = {
 		.win.def = NULL,
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
 		.switchjump_max_size = DEFAULT_SWITCH_JUMP_MAX_SIZE,
+		.quiet = false,
 };
 
 extern const char *project_default_keys[][2];

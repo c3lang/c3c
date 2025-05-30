@@ -6,6 +6,7 @@
 - Better default assert messages when no message is specified #2122
 - Add `--run-dir`, to specify directory for running executable using `compile-run` and `run` #2121.
 - Add `run-dir` to project.json.
+- Add `quiet` to project.json.
 - Deprecate uXX and iXX bit suffixes.
 - Add experimental LL / ULL suffixes for int128 and uint128 literals.
 - Allow the right hand side of `|||` and `&&&` be runtime values.
