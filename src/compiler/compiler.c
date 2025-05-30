@@ -203,7 +203,8 @@ static const char *exe_name(void)
 			{
 				first = i;
 				break;
-			}		}
+			}
+		}			
 		name = &path->module[first];
 	}
 	

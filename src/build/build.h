@@ -629,7 +629,8 @@ typedef struct Library__
 } Library;
 
 typedef struct
-{	TargetType type;
+{	
+	TargetType type;
 	Library **library_list;
 	LibraryTarget **ccompiling_libraries;
 	const char *name;
@@ -798,7 +799,8 @@ static BuildTarget default_build_target = {
 		.loop_vectorization = VECTORIZATION_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.symtab_size = DEFAULT_SYMTAB_SIZE,
-		.reloc_model = RELOC_DEFAULT,		.cc = NULL,
+		.reloc_model = RELOC_DEFAULT,
+		.cc = NULL,
 		.extension = NULL,
 		.version = "1.0.0",
 		.langrev = "1",
