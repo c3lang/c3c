@@ -1,8 +1,10 @@
+module std::container::faults;
+
+faultdef KEY_NOT_FOUND;
+
 module std::container::map{Key, Type};
 import std::core::builtin;
 import std::io;
-
-faultdef KEY_NOT_FOUND;
 
 struct Entry
 {
@@ -33,17 +35,17 @@ fn void Map.init(Map *map, uint capacity = 128)
 
 fn Type? Map.valueForKey(Map *map, Key key)
 {
-    if (!map.map) return KEY_NOT_FOUND?;
+    if (!map.map) return faults::KEY_NOT_FOUND?;
     uint hash = key.hash();
     usz pos = hash & map.mod;
     Entry* entry = &map.map[pos];
-    if (!entry) return KEY_NOT_FOUND?;
+    if (!entry) return faults::KEY_NOT_FOUND?;
     while (entry)
     {
         if (entry.hash == hash && entry.key == key) return entry.value;
         entry = entry.next;
     }
-    return KEY_NOT_FOUND?;
+    return faults::KEY_NOT_FOUND?;
 }
 
 fn Type? Map.set(Map *map, Key key, Type value) @maydiscard
@@ -65,7 +67,7 @@ fn Type? Map.set(Map *map, Key key, Type value) @maydiscard
             entry.value = value;
             entry.hash = hash;
             entry.key = key;
-            return KEY_NOT_FOUND?;
+            return faults::KEY_NOT_FOUND?;
         }
         if (entry.hash == hash && entry.key == key)
         {
@@ -85,7 +87,7 @@ fn Type? Map.set(Map *map, Key key, Type value) @maydiscard
         new.next = null;
         new.used = true;
         entry.next = new;
-        return KEY_NOT_FOUND?;
+        return faults::KEY_NOT_FOUND?;
     }
 }
 

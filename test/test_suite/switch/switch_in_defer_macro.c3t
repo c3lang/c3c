@@ -1,5 +1,10 @@
 // #target: macos-x64
 
+module lexer::faults;
+
+faultdef UNTERMINATED_STRING, UNTERMINATED_RUNE, UNTERMINATED_COMMENT;
+faultdef TRIE_FULL;
+
 <*
  @require Token.kindof == ENUM && $typefrom(Token.inner).kindof == UNSIGNED_INT
  @require $defined((Token){}.token)
@@ -19,7 +24,6 @@ enum Kind : char
 	IDENTIFIER,
 }
 
-faultdef UNTERMINATED_STRING, UNTERMINATED_RUNE, UNTERMINATED_COMMENT;
 
 alias TokenTrie = Trie{Token, ushort};
 
@@ -316,7 +320,7 @@ fn char? Lexer.parse_rune(&self) @private
 {
 	char x = self.reader.read_byte()!;
 	char c = self.reader.read_byte()!;
-	if (c != '\'') return UNTERMINATED_RUNE?;
+	if (c != '\'') return faults::UNTERMINATED_RUNE?;
 	return x;
 }
 
@@ -325,7 +329,7 @@ macro char? Lexer.read_char_for_string(&self) @private
 	char? c = self.reader.read_byte();
 	if (catch err = c)
 	{
-		if (err == io::EOF) return UNTERMINATED_STRING?;
+		if (err == io::EOF) return faults::UNTERMINATED_STRING?;
 		return err?;
 	}
 	return c;
@@ -350,7 +354,7 @@ fn void? Lexer.parse_comment(&self, String end) @private
 	{
 		if (catch err = io::read_all(self.reader, buf))
 		{
-			if (err == io::UNEXPECTED_EOF || err == io::EOF) return UNTERMINATED_COMMENT?;
+			if (err == io::UNEXPECTED_EOF || err == io::EOF) return faults::UNTERMINATED_COMMENT?;
 			return err?;
 		}
 		if (end == (String)buf)
@@ -455,11 +459,11 @@ fn int main(String[] args)
 module trie{Value, Index};
 import std::collections::list;
 import trie::bitmap;
+import lexer::faults;
 
 alias TrieNodeList = List{TrieNode};
 alias TriePath @private = List{Index};
 
-faultdef TRIE_FULL;
 
 struct Trie
 {
@@ -566,7 +570,7 @@ fn void? TrieNode.set(&self, Trie *t, char[] key, Value value) @private
 	{
 		usz new_idx = t.nodes.len();
 		assert(new_idx != 0);
-		if (new_idx > Index.max) return TRIE_FULL?;
+		if (new_idx > Index.max) return faults::TRIE_FULL?;
 		idx = (Index)new_idx;
 		self.children[c] = idx;
 		t.nodes.push((TrieNode){});

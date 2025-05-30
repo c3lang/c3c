@@ -237,6 +237,10 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 				continue;
 			case DECL_ATTRIBUTE:
 				break;
+			case DECL_FAULT:
+				PRINT_ERROR_AT(decl, "Generic modules cannot use 'faultdef', place the declaration in a separate sub module or parent module instead.");
+				decl_poison(decl);
+				break;
 			case DECL_BODYPARAM:
 			case DECL_GROUP:
 				UNREACHABLE
@@ -247,7 +251,6 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_TYPEDEF:
 			case DECL_UNION:
 			case DECL_VAR:
-			case DECL_FAULT:
 			case DECL_BITSTRUCT:
 			case DECL_INTERFACE:
 				break;
