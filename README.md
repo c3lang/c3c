@@ -1,5 +1,8 @@
 # C3 Language
 
+### Disclaimer
+This is the port for Android aarch64
+
 C3 is a programming language that builds on the syntax and semantics of the C language,
 with the goal of evolving it while still retaining familiarity for C programmers. 
 
