@@ -1,9 +1,10 @@
 module libc::os @if(env::LIBC);
 
-// Linux
-extern fn int* __errno_location() @if(env::LINUX);
-macro int errno() @if(env::LINUX) => *__errno_location();
-macro void errno_set(int err) @if(env::LINUX) => *(__errno_location()) = err;
+// Is there any env::ANDROID?
+// Linux (Android) 
+extern fn int* __errno() @if(env::LINUX);
+macro int errno() @if(env::LINUX) => *__errno();
+macro void errno_set(int err) @if(env::LINUX) => *(__errno()) = err;
 
 // Darwin
 extern fn int* __error() @if(env::DARWIN);
