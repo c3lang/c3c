@@ -421,7 +421,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 
 	if (target->quiet && !options->verbosity_level) options->verbosity_level = -1;
 
-	if (options->silence_deprecation || options->verbosity_level < 0) target->silence_deprecation = options->silence_deprecation || options->verbosity_level < 0;
+	if (options->silence_deprecation || options->verbosity_level < 0) target->silence_deprecation = true;
 	target->print_linking = options->print_linking || options->verbosity_level > 1;
 
 	for (size_t i = 0; i < options->linker_arg_count; i++)
