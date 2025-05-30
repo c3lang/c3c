@@ -629,7 +629,7 @@ typedef struct Library__
 } Library;
 
 typedef struct
-{	
+{
 	TargetType type;
 	Library **library_list;
 	LibraryTarget **ccompiling_libraries;

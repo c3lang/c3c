@@ -86,7 +86,7 @@ const char* project_target_keys[][2] = {
 		{"dependencies-override", "C3 library dependencies for this target, overriding global settings."},
 		{"dependency-search-paths", "Additional C3 library search paths for the target."},
 		{"dependency-search-paths-override", "C3 library search paths for this target, overriding global settings."},
-		{"exec", "Additional scripts to run for the target."},		
+		{"exec", "Additional scripts to run for the target."},
 		{"exec-override", "Scripts to run for this target, overriding global settings."},
 		{"extension", "Override the default file extension for the build output."},
 		{"features", "Features enabled for all targets."},
