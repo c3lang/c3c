@@ -131,7 +131,7 @@ static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent)
 		}
 		if (cc->to_type->type_kind == TYPE_ENUM && type_is_integer(cc->expr->type))
 		{
-			RETURN_CAST_ERROR(cc->expr, "It is not possible to cast %s to the enum %s, but you can use .from_ordinal() to convert it. E.g. '%s.fromOrdinal(foo)'.",
+			RETURN_CAST_ERROR(cc->expr, "It is not possible to cast %s to the enum %s, but you can use .from_ordinal() to convert it. E.g. '%s.from_ordinal(foo)'.",
 				type_quoted_error_string(cc->expr->type),
 				type_quoted_error_string(cc->to_type),
 				type_to_error_string(cc->to_type));
