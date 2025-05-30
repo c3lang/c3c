@@ -1,13 +1,15 @@
 // #target: macos-x64
 
+module abc_faults;
+
+faultdef UNTERMINATED_TAG, EMPTY_TAG, MISSING_TAG, UNSUPPORTED_TAG;
+
 <* @require Type.kindof == STRUCT *>
 module abc{Type};
-import std::io;
-import std::collections::list;
+import std::io, abc_faults, std::collections::list;
 
 alias TextTagList = List{TextTag};
 
-faultdef UNTERMINATED_TAG, EMPTY_TAG, MISSING_TAG, UNSUPPORTED_TAG;
 
 enum TextTagKind: char
 {
@@ -50,9 +52,9 @@ fn void? TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 		tmpl = tmpl[start + tag_start.len..];
 
 		usz? end = tmpl.index_of(tag_end);
-		if (catch end) return UNTERMINATED_TAG?;
+		if (catch end) return abc_faults::UNTERMINATED_TAG?;
 		String name = tmpl[:end].trim();
-		if (name == "") return EMPTY_TAG?;
+		if (name == "") return abc_faults::EMPTY_TAG?;
 		// Check that the tag exists in the data struct.
 
 		TextTag tag @noinit;
@@ -80,7 +82,7 @@ fn void? TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 					//return UNSUPPORTED_TAG?;
 				}
 			$endforeach
-			return MISSING_TAG?;
+			return abc_faults::MISSING_TAG?;
 		};
 		tmpl = tmpl[end + tag_end.len..];
 
@@ -201,7 +203,7 @@ panic_block:                                      ; preds = %assign_optional
   %4 = insertvalue %"any[]" undef, ptr %varargslots, 0
   %"$$temp" = insertvalue %"any[]" %4, i64 1, 1
   store %"any[]" %"$$temp", ptr %indirectarg1, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 25, ptr @.func, i64 4, i32 159, ptr byval(%"any[]") align 8 %indirectarg1) #3
+  call void @std.core.builtin.panicf(ptr @.panic_msg,
   unreachable
 
 noerr_block:                                      ; preds = %after_check
@@ -224,7 +226,7 @@ panic_block6:                                     ; preds = %assign_optional4
   %9 = insertvalue %"any[]" undef, ptr %varargslots7, 0
   %"$$temp8" = insertvalue %"any[]" %9, i64 1, 1
   store %"any[]" %"$$temp8", ptr %indirectarg9, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 25, ptr @.func, i64 4, i32 160, ptr byval(%"any[]") align 8 %indirectarg9) #3
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36,
   unreachable
 
 noerr_block10:                                    ; preds = %after_check5
