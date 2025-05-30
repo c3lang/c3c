@@ -113,6 +113,7 @@ static void usage(bool full)
 		print_opt("--script-dir <dir>", "Override the base directory for $exec.");
 		print_opt("--llvm-out <dir>", "Override llvm output directory for '--emit-llvm'.");
 		print_opt("--asm-out <dir> ", "Override asm output directory for '--emit-asm'.");
+		print_opt("--header-output <dir>", "Override header file output directory when building libraries.");
 		print_opt("--emit-llvm", "Emit LLVM IR as a .ll file per module.");
 		print_opt("--emit-asm", "Emit asm as a .s file per module.");
 		print_opt("--obj", "Emit object files. (Enabled by default)");
@@ -1170,6 +1171,12 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --asm-out needs a directory.");
 				options->asm_out = next_arg();
+				return;
+			}
+			if (match_longopt("header-output"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --header-output needs a directory.");
+				options->header_out = next_arg();
 				return;
 			}
 			if (match_longopt("lib"))

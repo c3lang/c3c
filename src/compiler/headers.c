@@ -765,7 +765,15 @@ void header_gen(Module **modules, unsigned module_count)
 	htable_init(&table1, 1024);
 	htable_init(&table2, 1024);
 	const char *name = build_base_name();
-	const char *filename = str_printf("%s.h", name);
+	const char *filename;
+	if (compiler.build.header_file_dir)
+	{
+		filename = file_append_path(compiler.build.header_file_dir, str_printf("%s.h", name));
+	}
+	else
+	{
+		filename = str_printf("%s.h", name);
+	}
 	FILE *file = fopen(filename, "w");
 	HeaderContext context = { .file = file, .gen_def = &table1, .gen_decl = &table2 };
 	HeaderContext *c = &context;

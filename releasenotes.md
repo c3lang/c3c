@@ -24,6 +24,7 @@
 - Deprecate `f32`, `f64` and `f128` suffixes.
 - Allow recursive generic modules.
 - Add deprecation for `@param foo "abc"`.
+- Add `--header-output` and `header-output` options for controlling header output folder.
 
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115

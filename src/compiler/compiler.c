@@ -438,9 +438,12 @@ void compiler_compile(void)
 	{
 		error_exit("No module to compile.");
 	}
-
 	if (compiler.build.output_headers)
 	{
+		if (compiler.build.header_file_dir)
+		{
+			create_output_dir(compiler.build.header_file_dir);
+		}
 		header_gen(modules, module_count);
 	}
 
