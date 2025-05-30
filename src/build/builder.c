@@ -419,7 +419,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 
 	if (!target->max_vector_size) target->max_vector_size = DEFAULT_VECTOR_WIDTH;
 
-	if (target->quiet) {
+	if (target->quiet && !options->verbosity_level)
+	{
 		options->verbosity_level = -1;
 	}
 
