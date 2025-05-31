@@ -207,6 +207,13 @@ static const char *exe_name(void)
 		}
 		name = &path->module[first];
 	}
+	
+	// Use custom extension if specified
+	if (compiler.build.extension)
+	{
+		return str_cat(name, compiler.build.extension);
+	}
+	
 	switch (compiler.build.arch_os_target)
 	{
 		case WINDOWS_AARCH64:
@@ -222,6 +229,13 @@ static const char *exe_name(void)
 static const char *dynamic_lib_name(void)
 {
 	const char *name = build_base_name();
+	
+	// Use custom extension if specified
+	if (compiler.build.extension)
+	{
+		return str_cat(name, compiler.build.extension);
+	}
+	
 	switch (compiler.build.arch_os_target)
 	{
 		case WINDOWS_AARCH64:
@@ -239,6 +253,13 @@ static const char *dynamic_lib_name(void)
 static const char *static_lib_name(void)
 {
 	const char *name = build_base_name();
+	
+	// Use custom extension if specified
+	if (compiler.build.extension)
+	{
+		return str_cat(name, compiler.build.extension);
+	}
+	
 	switch (compiler.build.arch_os_target)
 	{
 		case WINDOWS_AARCH64:

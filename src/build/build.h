@@ -635,6 +635,7 @@ typedef struct
 	LibraryTarget **ccompiling_libraries;
 	const char *name;
 	const char *output_name;
+	const char *extension;
 	const char *version;
 	const char *langrev;
 	const char **source_dirs;
@@ -800,6 +801,7 @@ static BuildTarget default_build_target = {
 		.symtab_size = DEFAULT_SYMTAB_SIZE,
 		.reloc_model = RELOC_DEFAULT,
 		.cc = NULL,
+		.extension = NULL,
 		.version = "1.0.0",
 		.langrev = "1",
 		.cpu = "generic",

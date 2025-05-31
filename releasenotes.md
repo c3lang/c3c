@@ -26,6 +26,8 @@
 - Add deprecation for `@param foo "abc"`.
 - Add `--header-output` and `header-output` options for controlling header output folder.
 - Generic faults is disallowed.
+- Added support for custom file extensions in project.json targets.
+
 
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115
