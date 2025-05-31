@@ -58,6 +58,7 @@
 - Check pointer/slice/etc on `[out]` and `&` params. #2156.
 - Compiler didn't check foreach over flexible array member, and folding a flexible array member was allowed #2164.
 - Too strict project view #2163.
+- Bug using `#foo` arguments with `$defined` #2173
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`
