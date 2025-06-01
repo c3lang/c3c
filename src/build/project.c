@@ -17,7 +17,7 @@ const char *project_default_keys[][2] = {
 		{"debug-info", "Debug level: none, line-tables, full."},
 		{"dependencies", "C3 library dependencies for all targets."},
 		{"dependency-search-paths", "The C3 library search paths."},
-		{"exec", "Scripts run for all targets.."},
+		{"exec", "Scripts run for all targets."},
 		{"features", "Features enabled for all targets."},
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
 		{"langrev", "Version of the C3 language used."},
