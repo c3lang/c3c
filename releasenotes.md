@@ -60,6 +60,7 @@
 - Too strict project view #2163.
 - Bug using `#foo` arguments with `$defined` #2173
 - Incorrect ensure on String.split.
+- Removed the naive check for compile time modification, which fixes #1997 but regresses in detection.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`
