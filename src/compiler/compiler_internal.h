@@ -1667,7 +1667,6 @@ typedef struct
 	bool ensures : 1;
 	bool pure : 1;
 	bool in_no_eval : 1;
-	bool in_other : 1;
 	SourceSpan in_if_resolution;
 	Decl **opt_returns;
 	union

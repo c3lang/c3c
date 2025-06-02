@@ -301,7 +301,7 @@ fn String String.strip_end(self, String suffix)
  @param [&inout] allocator : "The allocator to use for the String[]"
 
  @require delimiter.len > 0 : "The delimiter must be at least 1 character long"
- @ensure return.len > 0
+ @ensure return.len > 0 || skip_empty
 *>
 fn String[] String.split(self, Allocator allocator, String delimiter, usz max = 0, bool skip_empty = false)
 {
@@ -360,7 +360,7 @@ faultdef BUFFER_EXCEEDED;
  @param [inout] buffer
  @param max : "Max number of elements, 0 means no limit, defaults to 0"
  @require delimiter.len > 0 : "The delimiter must be at least 1 character long"
- @ensure return.len > 0
+ @ensure return.len > 0 || skip_empty
  @return? BUFFER_EXCEEDED : `If there are more elements than would fit the buffer`
 *>
 fn String[]? String.split_to_buffer(s, String delimiter, String[] buffer, usz max = 0, bool skip_empty = false)
