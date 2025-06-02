@@ -492,6 +492,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		}
 		if (!target->script_dir) target->script_dir = "scripts";
 	}
+	if (!options->run_dir) options->run_dir = target->run_dir;
+
 	target->ir_file_dir = options->llvm_out;
 	target->asm_file_dir = options->asm_out;
 	target->header_file_dir = options->header_out;
