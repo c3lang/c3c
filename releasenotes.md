@@ -3,6 +3,7 @@
 ## 0.7.3 Change list
 
 ### Changes / improvements
+- Added support for custom file extensions in project.json targets.
 
 ### Fixes
 
