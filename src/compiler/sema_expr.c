@@ -9661,10 +9661,10 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 		{
 			case EXPR_OTHER_CONTEXT:
 				active_context->call_env.in_no_eval = in_no_eval;
-				active_context = expr->expr_other_context.context;
+				active_context = main_expr->expr_other_context.context;
 				in_no_eval = active_context->call_env.in_no_eval;
 				active_context->call_env.in_no_eval = true;
-				main_expr = expr->expr_other_context.inner;
+				main_expr = main_expr->expr_other_context.inner;
 				goto RETRY;
 			case EXPR_ACCESS_UNRESOLVED:
 				if (!sema_expr_analyse_access(active_context, main_expr, &failed, CHECK_VALUE, false))
