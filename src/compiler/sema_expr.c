@@ -238,23 +238,19 @@ static inline bool sema_constant_fold_ops(Expr *expr)
 typedef struct
 {
 	bool in_no_eval;
-	bool in_other;
 } ContextSwitchState;
 
 static inline ContextSwitchState context_switch_state_push(SemaContext *context, SemaContext *new_context)
 {
 
-	ContextSwitchState state = { .in_no_eval = new_context->call_env.in_no_eval,
-								 .in_other = new_context->call_env.in_other };
+	ContextSwitchState state = { .in_no_eval = new_context->call_env.in_no_eval, };
 	new_context->call_env.in_no_eval = context->call_env.in_no_eval;
-	new_context->call_env.in_other = true;
 	return state;
 }
 
 static inline void context_switch_stat_pop(SemaContext *swapped, ContextSwitchState state)
 {
 	swapped->call_env.in_no_eval = state.in_no_eval;
-	swapped->call_env.in_other = state.in_other;
 }
 
 Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
@@ -6073,10 +6069,6 @@ static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *e
 
 	Decl *ident = left->ct_ident_expr.decl;
 
-	if (context->call_env.in_other)
-	{
-		RETURN_SEMA_ERROR(left, "Compile time variables may only be modified in the scope they are defined in.");
-	}
 
 	ident->var.init_expr = right;
 	expr_replace(expr, right);
@@ -6103,10 +6095,6 @@ static bool sema_expr_analyse_ct_subscript_rhs(SemaContext *context, Decl *ct_va
 
 static bool sema_expr_analyse_ct_subscript_set_value(SemaContext *context, Expr *left, Decl *ct_var, Expr *right)
 {
-	if (context->call_env.in_other)
-	{
-		RETURN_SEMA_ERROR(left, "Compile time variables may only be modified in the scope they are defined in.");
-	}
 	ArrayIndex index = left->ct_subscript_expr.index;
 	Expr *original_value = ct_var->var.init_expr;
 	ASSERT_SPAN(original_value, original_value->expr_kind == EXPR_CONST);
@@ -6169,11 +6157,6 @@ static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Ex
 
 	Decl *decl = sema_find_symbol(context, info->unresolved.name);
 	if (!decl) RETURN_SEMA_ERROR(info, "'%s' is not defined in this scope yet.", info->unresolved.name);
-
-	if (context->call_env.in_other)
-	{
-		RETURN_SEMA_ERROR(left, "Compile time variables may only be modified in the scope they are defined in.");
-	}
 
 	decl->var.init_expr = right;
 	expr->expr_kind = EXPR_NOP;
@@ -6267,10 +6250,6 @@ static bool sema_binary_analyse_ct_op_assign(SemaContext *context, Expr *expr, E
 	Decl *left_var = left->ct_ident_expr.decl;
 	if (!sema_cast_ct_ident_rvalue(context, left)) return false;
 
-	if (context->call_env.in_other)
-	{
-		RETURN_SEMA_ERROR(left, "Compile time variables may only be modified in the scope they are defined in.");
-	}
 	expr->binary_expr.operator = binaryop_assign_base_op(expr->binary_expr.operator);
 
 	if (!sema_expr_analyse_binary(context, NULL, expr, NULL)) return false;
@@ -6294,10 +6273,6 @@ static bool sema_binary_analyse_ct_op_assign(SemaContext *context, Expr *expr, E
 static bool sema_binary_analyse_ct_subscript_op_assign(SemaContext *context, Expr *expr, Expr *left)
 {
 	ASSERT_SPAN(left, left->expr_kind == EXPR_CT_SUBSCRIPT);
-	if (context->call_env.in_other)
-	{
-		RETURN_SEMA_ERROR(left, "Compile time variables may only be modified in the scope they are defined in.");
-	}
 
 	Decl *left_var = left->ct_subscript_expr.var;
 	ArrayIndex idx = left->ct_subscript_expr.index;
@@ -9661,10 +9636,10 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 		{
 			case EXPR_OTHER_CONTEXT:
 				active_context->call_env.in_no_eval = in_no_eval;
-				active_context = expr->expr_other_context.context;
+				active_context = main_expr->expr_other_context.context;
 				in_no_eval = active_context->call_env.in_no_eval;
 				active_context->call_env.in_no_eval = true;
-				main_expr = expr->expr_other_context.inner;
+				main_expr = main_expr->expr_other_context.inner;
 				goto RETRY;
 			case EXPR_ACCESS_UNRESOLVED:
 				if (!sema_expr_analyse_access(active_context, main_expr, &failed, CHECK_VALUE, false))
