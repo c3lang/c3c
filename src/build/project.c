@@ -177,6 +177,11 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	// The output extension
 	target->extension = get_string(context, json, "extension", target->extension);
 
+	if (target->extension && target->extension[0] != '.')
+	{
+		error_exit("Error reading %s: output extension '%s' must start with a '.'", context.file, target->extension);
+	}
+
 	// "Before compilation" execution
 	APPEND_STRING_LIST(&target->exec, "exec");
 
