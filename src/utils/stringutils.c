@@ -103,6 +103,28 @@ bool str_is_type(const char *string)
     return found_lower;
 }
 
+bool slice_is_type(const char *string, size_t len)
+{
+	const char *begin = scan_past_underscore(string);
+	if (!begin) return false;
+	const char *end = string  + len;
+	if (begin == end) return false;
+	char c = begin++[0];
+	if (!char_is_upper(c)) return false;
+	bool found_lower = false;
+	while (begin != end)
+	{
+		c = begin++[0];
+		if (char_is_lower(c))
+		{
+			found_lower = true;
+			continue;
+		}
+		if (!char_is_alphanum_(c)) return false;
+	}
+	return found_lower;
+}
+
 bool str_is_identifier(const char *string)
 {
     string = scan_past_underscore(string);

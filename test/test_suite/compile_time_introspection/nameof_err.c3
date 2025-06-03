@@ -11,10 +11,10 @@ fn void main2()
 
 fn void main3()
 {
-    $evaltype("int").extnameof; // #error: 'int' does not have a property or method 'extnameof'
+    $typefrom("int").extnameof; // #error: 'int' does not have a property or method 'extnameof'
 }
 
 fn void main4()
 {
-    $evaltype("foo::int").extnameof; // #error: Only valid types may be resolved with $evaltype.
+    $typefrom("foo::int").extnameof; // #error: Only valid types can be resolved with $typefrom
 }

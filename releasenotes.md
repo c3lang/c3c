@@ -3,6 +3,9 @@
 ## 0.7.3 Change list
 
 ### Changes / improvements
+
+- `$typefrom` now also accepts a constant string, and so works like `$evaltype`.
+- `$evaltype` is deprecated in favour of `$typefrom`.
 - Added support for custom file extensions in project.json targets.
 
 ### Fixes

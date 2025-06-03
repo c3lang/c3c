@@ -11,7 +11,7 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_type_kind);
 INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info);
 INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
-INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info);
+INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
 INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info);
 static int compare_function(Signature *sig, FunctionPrototype *proto);
 
@@ -293,6 +293,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 // $evaltype("Foo")
 INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
+	SEMA_DEPRECATED(type_info, "$evaltype is deprecated, use $typefrom instead.");
 	Expr *expr = type_info->unresolved_type_expr;
 	Expr *inner = sema_ct_eval_expr(context, true, expr, true);
 	if (!inner) return type_info_poison(type_info);
@@ -353,16 +354,69 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 	UNREACHABLE
 }
 
-INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info)
+INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
 	Expr *expr = type_info->unresolved_type_expr;
 	if (!sema_analyse_expr(context, expr)) return false;
-	if (!sema_cast_const(expr) || expr->const_expr.const_kind != CONST_TYPEID)
+	if (!sema_cast_const(expr))
 	{
-		RETURN_SEMA_ERROR(expr, "Expected a constant typeid value.");
+		RETURN_SEMA_ERROR(expr, "Expected a constant value.");
 	}
-	type_info->type = expr->const_expr.typeid;
-	return true;
+	switch (expr->const_expr.const_kind)
+	{
+		case CONST_TYPEID:
+			type_info->type = expr->const_expr.typeid;
+			return true;
+		case CONST_STRING:
+			break;
+		default:
+			RETURN_SEMA_ERROR(expr, "Expected a constant string or typeid value.");
+	}
+
+	Path *path = NULL;
+	const char *interned_version = NULL;
+	const char *bytes = expr->const_expr.bytes.ptr;
+	ArraySize bytes_len = expr->const_expr.bytes.len;
+	TokenType token = sema_splitpathref(bytes, bytes_len, &path, &interned_version);
+	TypeInfo *info;
+	switch (token)
+	{
+		case TOKEN_IDENT:
+			if (slice_is_type(bytes, bytes_len))
+			{
+				RETURN_SEMA_ERROR(expr, "'%.*s' could not be found, did you spell it right?", (int)bytes_len, bytes);
+			}
+			FALLTHROUGH;
+		case TOKEN_CONST_IDENT:
+			RETURN_SEMA_ERROR(expr, "Expected a type name, but the argument was \"%.*s\".", (int)bytes_len, bytes);
+		case TYPE_TOKENS:
+			type_info->type = type_from_token(token);
+			return true;
+		case TOKEN_TYPE_IDENT:
+			info = type_info_new(TYPE_INFO_IDENTIFIER, expr->span);
+			info->unresolved.name = interned_version;
+			info->unresolved.path = path;
+			info->resolve_status = RESOLVE_NOT_DONE;
+			break;
+		default:
+			RETURN_SEMA_ERROR(expr, "Only valid types can be resolved with $typefrom. You passed the string \"%.*s\", which cannot be resolved as a type.", (int)bytes_len, bytes);
+	}
+	if (!sema_resolve_type(context, info, resolve_kind)) return false;
+	switch (sema_resolve_storage_type(context, info->type))
+	{
+		case STORAGE_ERROR:
+			return false;
+		case STORAGE_VOID:
+		case STORAGE_UNKNOWN:
+		case STORAGE_NORMAL:
+			type_info->type = info->type;
+			return true;
+		case STORAGE_WILDCARD:
+			RETURN_SEMA_ERROR(expr, "$typefrom failed to resolve \"%.*s\" to a definite type.", (int)bytes_len, bytes);
+		case STORAGE_COMPILE_TIME:
+			RETURN_SEMA_ERROR(expr, "$typefrom does not support compile-time types.");
+	}
+	UNREACHABLE
 }
 
 // $vatype(...)
@@ -476,7 +530,7 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 			if (!sema_resolve_typeof(context, type_info)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_TYPEFROM:
-			if (!sema_resolve_typefrom(context, type_info)) return type_info_poison(type_info);
+			if (!sema_resolve_typefrom(context, type_info, resolve_kind)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_INFERRED_VECTOR:
 		case TYPE_INFO_INFERRED_ARRAY:
