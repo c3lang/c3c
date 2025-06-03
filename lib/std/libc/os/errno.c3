@@ -5,6 +5,11 @@ extern fn int* __errno_location() @if(env::LINUX);
 macro int errno() @if(env::LINUX) => *__errno_location();
 macro void errno_set(int err) @if(env::LINUX) => *(__errno_location()) = err;
 
+// Android 9
+extern fn int* __errno() @if(env::ANDROID);
+macro int errno() @if(env::ANDROID) => *__errno();
+macro void errno_set(int err) @if(env::ANDROID) => *(__errno()) = err;
+
 // Darwin
 extern fn int* __error() @if(env::DARWIN);
 macro int errno() @if(env::DARWIN) => *__error();
