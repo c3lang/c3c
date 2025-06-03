@@ -148,15 +148,13 @@ macro bool is_array_or_slice_of_char(bytes)
 {
 	$switch @typekind(bytes):
 	$case POINTER:
-		var $Inner = $typefrom($typeof(bytes).inner);
-		$if $Inner.kindof == ARRAY:
-			var $Inner2 = $typefrom($Inner.inner);
-			return $Inner2.typeid == char.typeid;
+		typeid $inner = $typeof(bytes).inner;
+		$if $inner.kindof == ARRAY:
+			return $inner.inner == char.typeid;
 		$endif
 	$case ARRAY:
 	$case SLICE:
-		var $Inner = $typefrom($typeof(bytes).inner);
-		return $Inner.typeid == char.typeid;
+		return $typeof(bytes).inner == char.typeid;
 	$default:
 		return false;
 	$endswitch
@@ -166,14 +164,12 @@ macro bool is_arrayptr_or_slice_of_char(bytes)
 {
 	$switch @typekind(bytes):
 	$case POINTER:
-		var $Inner = $typefrom($typeof(bytes).inner);
-		$if $Inner.kindof == ARRAY:
-			var $Inner2 = $typefrom($Inner.inner);
-			return $Inner2.typeid == char.typeid;
+		var $inner = $typeof(bytes).inner;
+		$if $inner.kindof == ARRAY:
+			return $inner.inner == char.typeid;
 		$endif
 	$case SLICE:
-		var $Inner = $typefrom($typeof(bytes).inner);
-		return $Inner.typeid == char.typeid;
+		return $typeof(bytes).inner == char.typeid;
 	$default:
 		return false;
 	$endswitch
