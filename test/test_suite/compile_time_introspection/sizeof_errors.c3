@@ -8,7 +8,7 @@ fn void a()
 
 fn void b()
 {
-    int x = $evaltype("Bazz").sizeof; // #error: 'Bazz' could not be found, did you spell it rig
+    int x = $typefrom("Bazz").sizeof; // #error: 'Bazz' could not be found, did you spell it rig
 }
 
 
@@ -19,17 +19,17 @@ fn void e()
 
 fn void f()
 {
-    int x = $evaltype("bar::Bazy").sizeof; // #error: 'bar::Bazy' could not be found
+    int x = $typefrom("bar::Bazy").sizeof; // #error: 'bar::Bazy' could not be found
 }
 
 fn void g()
 {
-    int x = $evaltype("bar::").sizeof; // #error: Only valid types may be resolved with $evaltype
+    int x = $typefrom("bar::").sizeof; // #error: Only valid types can be resolved with $typefrom
 }
 
 fn void k()
 {
-    int v = $evaltype("int").x.sizeof; // #error: 'x'.
+    int v = $typefrom("int").x.sizeof; // #error: 'x'.
 }
 
 fn void l()
