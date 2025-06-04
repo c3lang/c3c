@@ -6,9 +6,12 @@
 
 - `$typefrom` now also accepts a constant string, and so works like `$evaltype`.
 - `$evaltype` is deprecated in favour of `$typefrom`.
+- `-0xFF` will now be a signed integer.
 - Added support for custom file extensions in project.json targets.
 
 ### Fixes
+- `-2147483648`, MIN literals work correctly.
+- Splatting const slices would not be const. #2185
 
 ### Stdlib changes
 

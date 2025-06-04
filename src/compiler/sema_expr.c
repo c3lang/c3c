@@ -3221,6 +3221,11 @@ static Type *sema_subscript_find_indexable_type_recursively(Type **type, Expr **
 
 static bool sema_subscript_rewrite_index_const_list(Expr *const_list, ArraySize index, bool from_back, Expr *result)
 {
+	if (const_list->const_expr.const_kind == CONST_SLICE)
+	{
+		ASSERT_SPAN(const_list, const_list->const_expr.slice_init);
+		return expr_rewrite_to_const_initializer_index(const_list->type, const_list->const_expr.slice_init, result, index, from_back);
+	}
 	ASSERT_SPAN(const_list, const_list->const_expr.const_kind == CONST_INITIALIZER);
 	return expr_rewrite_to_const_initializer_index(const_list->type, const_list->const_expr.initializer, result, index, from_back);
 }
@@ -3609,7 +3614,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		{
 			ASSERT_SPAN(index, expr_is_const_int(index));
 			sema_cast_const(current_expr);
-			bool is_const_initializer = expr_is_const_initializer(current_expr);
+			bool is_const_initializer = expr_is_const_initializer(current_expr) || (expr_is_const_slice(current_expr) && current_expr->const_expr.slice_init);
 			if (is_const_initializer || expr_is_const_string(current_expr) || expr_is_const_bytes(current_expr))
 			{
 				if (!int_fits(index->const_expr.ixx, TYPE_U32))
