@@ -191,7 +191,7 @@ const char[*] MAX_VARS @private = { [2] = 3, [4] = 5, [8] = 10 };
 *>
 macro usz? read_varint(stream, x_ptr)
 {
-	var $Type = $typefrom($typeof(x_ptr).inner);
+	var $Type = $typeof(x_ptr).inner;
 	const MAX = MAX_VARS[$Type.sizeof];
 	$Type x;
 	uint shift;

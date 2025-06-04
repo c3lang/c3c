@@ -1364,7 +1364,13 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 		case VARDECL_PARAM_CT_TYPE:
 			// $Foo
 			if (!sema_analyse_expr_value(context, arg)) return false;
-			if (arg->expr_kind != EXPR_TYPEINFO)
+
+			if (arg->expr_kind == EXPR_TYPEINFO)
+			{
+				assert(arg->type_expr->resolve_status == RESOLVE_DONE);
+				expr_rewrite_const_typeid(arg, arg->type_expr->type);
+			}
+			if (!sema_cast_const(arg) || !expr_is_const_typeid(arg))
 			{
 				RETURN_SEMA_FUNC_ERROR(definition, arg, "A type, like 'int' or 'double' was expected for the parameter '%s'.", param->name);
 			}
@@ -6158,7 +6164,11 @@ static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Ex
 	}
 
 	if (!sema_analyse_expr_value(context, right)) return false;
-	if (right->expr_kind != EXPR_TYPEINFO) RETURN_SEMA_ERROR(right, "Expected a type here.");
+	if (right->expr_kind == EXPR_TYPEINFO)
+	{
+		expr_rewrite_const_typeid(right, right->type_expr->type);
+	}
+	if (!expr_is_const_typeid(right)) RETURN_SEMA_ERROR(right, "Expected a type or constant typeid here.");
 
 	Decl *decl = sema_find_symbol(context, info->unresolved.name);
 	if (!decl) RETURN_SEMA_ERROR(info, "'%s' is not defined in this scope yet.", info->unresolved.name);
@@ -9313,8 +9323,8 @@ INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 		{
 			case VARDECL_LOCAL_CT_TYPE:
 			case VARDECL_PARAM_CT_TYPE:
-				if (ct_param->var.init_expr->type_expr->type->canonical !=
-					param->var.init_expr->type_expr->type->canonical)
+				if (ct_param->var.init_expr->const_expr.typeid->canonical !=
+					param->var.init_expr->const_expr.typeid->canonical)
 					return false;
 				break;
 			case VARDECL_LOCAL_CT:
@@ -9931,11 +9941,39 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 static inline bool sema_expr_analyse_castable(SemaContext *context, Expr *expr)
 {
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_RUNNING);
-	TypeInfo *type_info = type_infoptr(expr->castable_expr.type);
+	Expr *type_expr = exprptr(expr->castable_expr.type);
 	bool in_no_eval = context->call_env.in_no_eval;
 	context->call_env.in_no_eval = true;
-	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_INFER)) goto FAILED;
-	Type *type = type_info->type;
+	Type *type;
+	if (type_expr->expr_kind == EXPR_TYPEINFO)
+	{
+		TypeInfo *type_info = type_expr->type_expr;
+		if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_INFER)) goto FAILED;
+		type = type_info->type;
+	}
+	else
+	{
+		if (!sema_analyse_expr_value(context, type_expr)) goto FAILED;
+		switch (type_expr->expr_kind)
+		{
+			case EXPR_TYPEINFO:
+				ASSERT_SPAN(expr, type_expr->type_expr->resolve_status == RESOLVE_DONE);
+				type = type_expr->type_expr->type;
+				break;
+			case EXPR_CONST:
+				if (type_expr->const_expr.const_kind == CONST_TYPEID)
+				{
+					type = type_expr->const_expr.typeid;
+					break;
+				}
+				type = NULL;
+				break;
+			default:
+				type = NULL;
+				break;
+		}
+	}
+	if (!type) RETURN_SEMA_ERROR(type_expr, "Expected a type or constant typeid here.");
 	Expr *inner = exprptr(expr->castable_expr.expr);
 	if (!sema_analyse_inferred_expr(context, type, inner)) goto FAILED;
 	bool ok = may_cast(context, inner, type, !expr->castable_expr.is_assign, true);

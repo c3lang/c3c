@@ -98,7 +98,7 @@ macro bool is_numerical($Type)
 {
 	var $kind = $Type.kindof;
 	$if $kind == TypeKind.DISTINCT:
-		return is_numerical($typefrom($Type.inner));
+		return is_numerical($Type.inner);
 	$else
 		return $kind == TypeKind.SIGNED_INT || $kind == TypeKind.UNSIGNED_INT || $kind == TypeKind.FLOAT
 			|| $kind == TypeKind.VECTOR;
@@ -135,7 +135,7 @@ macro bool is_signed($Type) @const
 		$case FLOAT:
 			return true;
 		$case VECTOR:
-			return is_signed($typefrom($Type.inner));
+			return is_signed($Type.inner);
 		$default:
 			return false;
 	$endswitch
@@ -150,7 +150,7 @@ macro bool is_unsigned($Type) @const
 		$case UNSIGNED_INT:
 			return true;
 		$case VECTOR:
-			return is_unsigned($typefrom($Type.inner));
+			return is_unsigned($Type.inner);
 		$default:
 			return false;
 	$endswitch
@@ -159,7 +159,7 @@ macro bool is_unsigned($Type) @const
 macro typeid flat_type($Type) @const
 {
 	$if $Type.kindof == DISTINCT:
-		return flat_type($typefrom($Type.inner));
+		return flat_type($Type.inner);
 	$else
 		return $Type.typeid;
 	$endif
@@ -168,7 +168,7 @@ macro typeid flat_type($Type) @const
 macro TypeKind flat_kind($Type) @const
 {
 	$if $Type.kindof == DISTINCT:
-		return flat_type($typefrom($Type.inner));
+		return flat_type($Type.inner);
 	$else
 		return $Type.kindof;
 	$endif
@@ -204,7 +204,7 @@ macro bool is_underlying_int($Type) @const
 		$case UNSIGNED_INT:
 			return true;
 		$case DISTINCT:
-			return is_underlying_int($typefrom($Type.inner));
+			return is_underlying_int($Type.inner);
 		$default:
 			return false;
 	$endswitch
@@ -232,7 +232,7 @@ macro bool is_vector($Type) @const
 macro typeid inner_type($Type) @const
 {
 	$if $Type.kindof == TypeKind.DISTINCT:
-		return inner_type($typefrom($Type.inner));
+		return inner_type($Type.inner);
 	$else
 		return $Type.typeid;
 	$endif

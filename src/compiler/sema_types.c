@@ -255,14 +255,14 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			if (decl->var.kind == VARDECL_PARAM_CT_TYPE || decl->var.kind == VARDECL_LOCAL_CT_TYPE)
 			{
 				decl->var.is_read = true;
-				if (!decl->var.init_expr)
+				Expr *init_expr = decl->var.init_expr;
+				if (!init_expr)
 				{
-					SEMA_ERROR(type_info, "You need to assign a type to '%s' before using it.", decl->name);
-					return false;
+					RETURN_SEMA_ERROR(type_info, "You need to assign a type to '%s' before using it.", decl->name);
 				}
-				ASSERT(decl->var.init_expr->expr_kind == EXPR_TYPEINFO);
-				ASSERT(decl->var.init_expr->resolve_status == RESOLVE_DONE);
-				*type_info = *decl->var.init_expr->type_expr;
+				ASSERT_SPAN(init_expr, expr_is_const_typeid(init_expr));
+				ASSERT_SPAN(init_expr, init_expr->resolve_status == RESOLVE_DONE);
+				type_info->type = init_expr->const_expr.typeid;
 				return true;
 			}
 			FALLTHROUGH;

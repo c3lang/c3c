@@ -6,6 +6,8 @@
 - `$typefrom` now also accepts a constant string, and so works like `$evaltype`.
 - `$evaltype` is deprecated in favour of `$typefrom`.
 - `-0xFF` will now be a signed integer.
+- Implicitly convert from constant typeid to Type in `$Type` assignment, and `$assignable`.
+- Make $Type parameters accept constant typeid values.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.
