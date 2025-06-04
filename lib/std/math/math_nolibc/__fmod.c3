@@ -115,7 +115,7 @@ fn float fmodf(float x, float y) @extern("fmodf") @weak @nostrip
 	}
 	else
 	{
-		uy.i &= (ulong)-1 >> 9;
+		uy.i &= (uint)-1 >> 9;
 		uy.i |= 1U << 23;
 	}
 
