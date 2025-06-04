@@ -8,6 +8,8 @@
 - `-0xFF` will now be a signed integer.
 
 ### Fixes
+- `-2147483648`, MIN literals work correctly.
+- Splatting const slices would not be const. #2185
 
 ### Stdlib changes
 
@@ -72,7 +74,6 @@
 - Bug using `#foo` arguments with `$defined` #2173
 - Incorrect ensure on String.split.
 - Removed the naive check for compile time modification, which fixes #1997 but regresses in detection.
-- `-2147483648`, MIN literals work correctly.
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`
