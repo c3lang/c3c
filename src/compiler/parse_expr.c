@@ -8,6 +8,7 @@
 typedef Expr *(*ParseFn)(ParseContext *context, Expr *);
 static Expr *parse_subscript_expr(ParseContext *c, Expr *left);
 static Expr *parse_initializer_list(ParseContext *c, Expr *left);
+static Expr *parse_integer_expr(ParseContext *c, bool negated);
 
 typedef struct
 {
@@ -689,6 +690,14 @@ static Expr *parse_unary_expr(ParseContext *c, Expr *left)
 {
 	ASSERT(!left && "Did not expect a left hand side!");
 
+	if (tok_is(c, TOKEN_MINUS))
+	{
+		if (peek(c) == TOKEN_INTEGER)
+		{
+			advance(c);
+			return parse_integer_expr(c, true);
+		}
+	}
 	bool is_bangbang = tok_is(c, TOKEN_BANGBANG);
 	Expr *unary = EXPR_NEW_TOKEN(EXPR_UNARY);
 	if (c->tok == TOKEN_CT_AND)
@@ -1394,10 +1403,10 @@ static int read_int_suffix(const char *string, size_t loc, size_t len, char c, b
 	}
 }
 
-Expr *parse_integer(ParseContext *c, Expr *left)
+static Expr *parse_integer_expr(ParseContext *c, bool negated)
 {
-	ASSERT(!left && "Had left hand side");
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST);
+	if (negated) expr_int->span = extend_span_with_token(c->prev_span, c->span);
 	expr_int->resolve_status = RESOLVE_DONE;
 	size_t len = c->data.lex_len;
 	const char *string = symstr(c);
@@ -1408,12 +1417,15 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 	int oct_characters = 0;
 	int binary_characters = 0;
 	bool wrapped = false;
+	bool set_unsigned = false;
 	uint64_t max;
 	bool bit_suffix = false;
+	unsigned radix = 10;
 	switch (len > 2 ? (string[1] | 32) : '0')
 	{
 		case 'x':
 			is_unsigned = true;
+			radix = 16;
 			max = UINT64_MAX >> 4;
 			for (size_t loc = 2; loc < len; loc++)
 			{
@@ -1423,6 +1435,7 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 					case 'u':
 						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
 						is_unsigned = true;
+						set_unsigned = true;
 						goto EXIT;
 					case 'l':
 					case 'i':
@@ -1442,6 +1455,7 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 			break;
 		case 'o':
 			is_unsigned = true;
+			radix = 8;
 			max = UINT64_MAX >> 3;
 			for (size_t loc = 2; loc < len; loc++)
 			{
@@ -1451,6 +1465,7 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 					case 'u':
 						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
 						is_unsigned = true;
+						set_unsigned = true;
 						goto EXIT;
 					case 'l':
 					case 'i':
@@ -1469,6 +1484,7 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 			}
 			break;
 		case 'b':
+			radix = 2;
 			is_unsigned = true;
 			max = UINT64_MAX >> 1;
 			for (size_t loc = 2; loc < len; loc++)
@@ -1479,6 +1495,7 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 					case 'u':
 						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
 						is_unsigned = true;
+						set_unsigned = true;
 						goto EXIT;
 					case 'l':
 					case 'i':
@@ -1505,6 +1522,7 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 					case 'u':
 						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
 						is_unsigned = true;
+						set_unsigned = true;
 						goto EXIT;
 					case 'l':
 					case 'i':
@@ -1526,8 +1544,24 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 EXIT:
 	if (wrapped)
 	{
-		PRINT_ERROR_HERE("Integer size exceeded 128 bits, max 128 bits are supported.");
+		PRINT_ERROR_AT(expr_int, "Integer size exceeded 128 bits, max 128 bits are supported.");
 		return poisoned_expr;
+	}
+	if (negated)
+	{
+		if (set_unsigned)
+		{
+			PRINT_ERROR_AT(expr_int, "Negating an explicitly unsigned value is not allowed, but you can place the value inside of (), "
+								"like -(%s).", i128_to_string(i, radix, false, true));
+			return poisoned_expr;
+		}
+		is_unsigned = false;
+		if (i128_comp(i, INT128_MIN, type_u128) == CMP_GT)
+		{
+			PRINT_ERROR_AT(expr_int, "The negated integer size would exeed an int128.");
+			return poisoned_expr;
+		}
+		if (negated) i = i128_neg(i);
 	}
 	expr_int->const_expr.const_kind = CONST_INTEGER;
 	expr_int->const_expr.is_character = false;
@@ -1537,7 +1571,7 @@ EXIT:
 	{
 		if (type_bits < 0 || !is_power_of_two((uint64_t)type_bits) || type_bits > 128)
 		{
-			PRINT_ERROR_HERE("Integer type suffix should be i8, i16, i32, i64 or i128.");
+			PRINT_ERROR_AT(expr_int, "Integer type suffix should be i8, i16, i32, i64 or i128.");
 			return poisoned_expr;
 		}
 		const char *suffix;
@@ -1586,7 +1620,7 @@ EXIT:
 			type_bits = 4 * hex_characters;
 			if (type_bits > 128)
 			{
-				PRINT_ERROR_HERE("%d hex digits indicates a bit width over 128, which is not supported.", hex_characters);
+				PRINT_ERROR_AT(expr_int, "%d hex digits indicates a bit width over 128, which is not supported.", hex_characters);
 				return poisoned_expr;
 			}
 		}
@@ -1595,7 +1629,7 @@ EXIT:
 			type_bits = 3 * oct_characters;
 			if (type_bits > 128)
 			{
-				PRINT_ERROR_HERE("%d octal digits indicates a bit width over 128, which is not supported.", oct_characters);
+				PRINT_ERROR_AT(expr_int, "%d octal digits indicates a bit width over 128, which is not supported.", oct_characters);
 				return poisoned_expr;
 			}
 		}
@@ -1604,11 +1638,11 @@ EXIT:
 			type_bits = binary_characters;
 			if (type_bits > 128)
 			{
-				PRINT_ERROR_HERE("%d binary digits indicates a bit width over 128, which is not supported.", binary_characters);
+				PRINT_ERROR_AT(expr_int, "%d binary digits indicates a bit width over 128, which is not supported.", binary_characters);
 				return poisoned_expr;
 			}
 		}
-		if (type_bits && type_bits < 8) type_bits = 8;
+		if (type_bits && type_bits < compiler.platform.width_c_int) type_bits = compiler.platform.width_c_int;
 		if (type_bits && !is_power_of_two((uint64_t)type_bits)) type_bits = (int)next_highest_power_of_2((uint32_t)type_bits);
 	}
 	if (type_bits) expr_int->const_expr.is_hex = false;
@@ -1619,14 +1653,13 @@ EXIT:
 	}
 	else
 	{
-		BitSize min_bits = (BitSize)type_size(type_cint) * 8;
-		Int test = { .i = i };
+		BitSize min_bits = compiler.platform.width_c_int;
+		Int test = { .i = i, .type = negated ? TYPE_I128 : TYPE_U128 };
 		for (int type_kind = 0; type_kind < 5; type_kind++)
 		{
 			TypeKind kind = (is_unsigned ? TYPE_U8 : TYPE_I8) + type_kind;
 			int bitsize = type_kind_bitsize(kind);
 			if (bitsize < min_bits) continue;
-			test.type = kind;
 			if (int_fits(test, kind))
 			{
 				type_base = is_unsigned ? type_int_unsigned_by_bitsize(bitsize) : type_int_signed_by_bitsize(bitsize);
@@ -1635,30 +1668,45 @@ EXIT:
 		}
 		if (!type_base) type_base = is_unsigned ? type_cuint : type_cint;
 	}
-	expr_int->const_expr.ixx = (Int) { i, type_base->type_kind };
-	if (!int_fits(expr_int->const_expr.ixx, type_base->type_kind))
+	Int result = { i, type_base->type_kind };
+	if (!int_fits(result, type_base->type_kind))
 	{
-		unsigned radix = 10;
-		if (hex_characters) radix = 16;
-		if (oct_characters) radix = 8;
-		if (binary_characters) radix = 2;
 		if (type_bits)
 		{
-			PRINT_ERROR_HERE("'%s' does not fit in a '%c%d' literal.",
-			                 i128_to_string(i, radix, true, false), is_unsigned ? 'u' : 'i', type_bits);
+			PRINT_ERROR_AT(expr_int, "'%s' does not fit in a '%c%d' literal.",
+			               i128_to_string(i, radix, true, false), is_unsigned ? 'u' : 'i', type_bits);
 		}
 		else
 		{
-			PRINT_ERROR_HERE("'%s' does not fit in an %s literal.",
-			                 i128_to_string(i, radix, true, false), is_unsigned ? "unsigned int" : "int");
+			if (is_unsigned)
+			{
+				PRINT_ERROR_AT(expr_int, "'%s' does not fit in an unsigned integer literal.",
+				               i128_to_string(i, radix, false, false));
+			}
+			else
+			{
+				if (negated)
+				{
+					PRINT_ERROR_AT(expr_int, "'%s' does not fit in a signed integer literal.", i128_to_string(i, radix, true, false));
+				}
+				else
+				{
+					PRINT_ERROR_AT(expr_int, "'%s' does not fit in a signed integer literal, but you can try making it unsigned by appending the 'U' suffix.", i128_to_string(i, radix, false, false));
+				}
+			}
 		}
 		return poisoned_expr;
 	}
+	expr_int->const_expr.ixx = result;
 	expr_int->type = type_base;
 	advance(c);
 	return expr_int;
 }
 
+Expr *parse_integer(ParseContext *c, Expr *left)
+{
+	return parse_integer_expr(c, false);
+}
 /**
  * Parse hex, skipping over invalid characters.
  * @param result_pointer ref to place to put the data
