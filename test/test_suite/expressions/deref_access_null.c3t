@@ -8,15 +8,15 @@ struct Foo
     float b;
 }
 
-macro @offset_buggy($Type, #member)
+macro @offset_buggy($Type, $member)
 {
     $Type *t = null;
-    return (usz)(uptr)&t.#member;
+    return (usz)(uptr)&t.$eval($member);
 }
 
 fn int main()
 {
-	usz a = @offset_buggy(Foo, b);
+	usz a = @offset_buggy(Foo, "b");
 	return (int)a;
 }
 

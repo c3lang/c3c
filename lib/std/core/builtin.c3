@@ -284,7 +284,7 @@ macro enum_by_name($Type, String enum_name) @builtin
  @ensure @typeis(return, $Type)
  @return? NOT_FOUND
 *>
-macro @enum_from_value($Type, #value, value) @builtin
+macro @enum_from_value($Type, #value, value) @builtin @deprecated("Use Enum.lookup_field and Enum.lookup")
 {
 	foreach (e : $Type.values)
 	{

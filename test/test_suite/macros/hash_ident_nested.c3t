@@ -2,20 +2,20 @@
 module test;
 fn void main()
 {
-    @foo(x);
+    @foo("x");
 }
 
 struct Point { float x; float y; }
 
-macro @foo(#x)
+macro @foo(String $x)
 {
-    @bar(#x);
+    @bar($x);
 }
 
-macro @bar(#x)
+macro @bar($x)
 {
     Point pt;
-    var z = pt.#x;
+    var z = pt.$eval($x);
 }
 
 /* #expect: test.ll

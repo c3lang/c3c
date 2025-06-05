@@ -8,6 +8,7 @@
 - `-0xFF` will now be a signed integer.
 - Implicitly convert from constant typeid to Type in `$Type` assignment, and `$assignable`.
 - Make $Type parameters accept constant typeid values.
+- Deprecate `foo.#bar`.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.

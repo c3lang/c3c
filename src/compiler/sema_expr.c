@@ -2920,9 +2920,8 @@ FOUND:;
 	expr->expr_kind = EXPR_CALL;
 	while (vec_size(args) < 3) vec_add(args, NULL);
 	args[0] = type;
-	Expr *unresolved_ident = expr_new_expr(EXPR_UNRESOLVED_IDENTIFIER, expr);
-	unresolved_ident->unresolved_ident_expr.ident = match->name;
-	args[1] = unresolved_ident;
+
+	args[1] = expr_new_const_string(expr->span, match->name);
 	args[2] = key;
 	Expr *call = expr_new_expr(EXPR_UNRESOLVED_IDENTIFIER, expr);
 	Path *new_path = CALLOCS(Path);
@@ -4070,10 +4069,9 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
  * 2. .foo -> It is a function.
  * 3. .@foo -> It is a macro.
  * 4. .#bar -> It is an identifier to resolve as a member or a function
- * 5. .@#bar -> It is an identifier to resolve as a macro
- * 6. .$eval(...) -> resolve the eval and retry.
- * 7. .$ident -> It is a child to resolve as CT param
- * 8. .$Type -> It is a child to resolve as CT type param
+ * 5. .$eval(...) -> resolve the eval and retry.
+ * 6. .$ident -> It is a child to resolve as CT param
+ * 7. .$Type -> It is a child to resolve as CT type param
  */
  Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing)
 {
@@ -4083,6 +4081,7 @@ RETRY:
 	switch (child->expr_kind)
 	{
 		case EXPR_HASH_IDENT:
+			SEMA_DEPRECATED(child, "Using 'abc.#foo' access style is deprecated. Use 'abc.eval($foo)' instead.");
 			if (!sema_expr_fold_hash(context, child)) return false;
 			in_hash = true;
 			goto RETRY;
