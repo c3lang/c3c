@@ -61,7 +61,7 @@ fn void? FixedThreadPool.init(&self, usz threads, usz queue_size = 0)
 *>
 fn void? FixedThreadPool.destroy(&self)
 {
-	return self.@shutdown(stop_now);
+	return self.@shutdown(self.stop_now);
 }
 
 <*
@@ -70,7 +70,7 @@ fn void? FixedThreadPool.destroy(&self)
 *>
 fn void? FixedThreadPool.stop_and_destroy(&self)
 {
-	return self.@shutdown(stop);
+	return self.@shutdown(self.stop);
 }
 
 macro void? FixedThreadPool.@shutdown(&self, #stop) @private
@@ -78,7 +78,7 @@ macro void? FixedThreadPool.@shutdown(&self, #stop) @private
 	if (self.initialized)
 	{
 		self.mu.lock()!;
-		self.#stop = true;
+		#stop = true;
 		self.notify.broadcast()!;
 		self.mu.unlock()!;
 		// Wait for all threads to shutdown.

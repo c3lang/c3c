@@ -9,6 +9,8 @@
 - `-0xFF` will now be a signed integer.
 - Implicitly convert from constant typeid to Type in `$Type` assignment, and `$assignable`.
 - Make $Type parameters accept constant typeid values.
+- Deprecate `foo.#bar`.
+- Allow inference across `&&` #2172.
 - Added support for custom file extensions in project.json targets.
 
 ### Fixes

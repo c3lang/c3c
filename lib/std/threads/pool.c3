@@ -7,7 +7,8 @@ struct ThreadPool
 	QueueItem[SIZE] queue;
 	usz qindex;
 	usz num_threads;
-	bitstruct : char {
+	bitstruct : char
+	{
 		bool initialized;
 		bool stop;
 		bool stop_now;
@@ -46,7 +47,7 @@ fn void? ThreadPool.init(&self)
 *>
 fn void? ThreadPool.destroy(&self)
 {
-	return self.@shutdown(stop_now);
+	return self.@shutdown(self.stop_now);
 }
 
 <*
@@ -55,7 +56,7 @@ fn void? ThreadPool.destroy(&self)
 *>
 fn void? ThreadPool.stop_and_destroy(&self)
 {
-	return self.@shutdown(stop);
+	return self.@shutdown(self.stop);
 }
 
 macro void? ThreadPool.@shutdown(&self, #stop) @private
@@ -63,7 +64,7 @@ macro void? ThreadPool.@shutdown(&self, #stop) @private
 	if (self.initialized)
 	{
 		self.mu.lock()!;
-		self.#stop = true;
+		#stop = true;
 		self.notify.broadcast()!;
 		self.mu.unlock()!;
 		// Wait for all threads to shutdown.

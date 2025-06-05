@@ -320,7 +320,7 @@ void symtab_init(uint32_t capacity)
 
 	kw_at_deprecated = KW_DEF("@deprecated");
 	kw_at_ensure = KW_DEF("@ensure");
-	kw_at_enum_lookup = KW_DEF("@enum_lookup");
+	kw_at_enum_lookup = KW_DEF("@enum_lookup_new");
 	kw_at_jump = KW_DEF("@jump");
 	kw_at_param = KW_DEF("@param");
 	kw_at_pure = KW_DEF("@pure");

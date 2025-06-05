@@ -30,6 +30,14 @@ macro @enum_lookup($Type, #value, value)
 	return NOT_FOUND?;
 }
 
+macro @enum_lookup_new($Type, $name, value)
+{
+	$foreach $val : $Type.values:
+		if ($val.$eval($name) == value) return $val;
+	$endforeach
+	return NOT_FOUND?;
+}
+
 
 module std::core::runtime @if(WASM_NOLIBC);
 
