@@ -174,12 +174,15 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	// The output directory
 	target->output_dir = get_string(context, json, "output", target->output_dir);
 
-	// The output extension
-	target->extension = get_string(context, json, "extension", target->extension);
-
-	if (target->extension && target->extension[0] != '.')
+	if (context.target)
 	{
-		error_exit("Error reading %s: output extension '%s' must start with a '.'", context.file, target->extension);
+		// The output extension
+		target->extension = get_string(context, json, "extension", target->extension);
+
+		if (target->extension && target->extension[0] != '.')
+		{
+			error_exit("Error reading %s: output extension '%s' must start with a '.'", context.file, target->extension);
+		}
 	}
 
 	// "Before compilation" execution
