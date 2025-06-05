@@ -340,15 +340,10 @@ Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, uns
 	return context->macro_varargs[(size_t)index_val.i.low];
 }
 
-Expr *sema_ct_eval_expr(SemaContext *context, bool is_type_eval, Expr *inner, bool report_missing)
+Expr *sema_resolve_string_ident(SemaContext *context, Expr *inner, bool report_missing)
 {
+	ASSERT_SPAN(inner, expr_is_const_string(inner));
 	Path *path = NULL;
-	if (!sema_analyse_ct_expr(context, inner)) return NULL;
-	if (!expr_is_const_string(inner))
-	{
-		SEMA_ERROR(inner, "'%s' expects a constant string as the argument.", is_type_eval ? "$evaltype" : "$eval");
-		return NULL;
-	}
 	const char *interned_version = NULL;
 	TokenType token = sema_splitpathref(inner->const_expr.bytes.ptr, inner->const_expr.bytes.len, &path, &interned_version);
 	switch (token)
@@ -356,6 +351,19 @@ Expr *sema_ct_eval_expr(SemaContext *context, bool is_type_eval, Expr *inner, bo
 		case TOKEN_CONST_IDENT:
 			inner->unresolved_ident_expr.is_const = true;
 			break;
+		case TOKEN_HASH_IDENT:
+			if (path) goto NO_PATH;
+			inner->expr_kind = EXPR_HASH_IDENT;
+			inner->ct_ident_expr.identifier = interned_version;
+			inner->resolve_status = RESOLVE_NOT_DONE;
+			return inner;
+		case TOKEN_CT_IDENT:
+			if (path) goto NO_PATH;
+			inner->expr_kind = EXPR_CT_IDENT;
+			inner->ct_ident_expr.identifier = interned_version;
+			inner->resolve_status = RESOLVE_NOT_DONE;
+			return inner;
+		case TOKEN_AT_IDENT:
 		case TOKEN_IDENT:
 			if (!interned_version)
 			{
@@ -369,12 +377,16 @@ Expr *sema_ct_eval_expr(SemaContext *context, bool is_type_eval, Expr *inner, bo
 			break;
 		case TYPE_TOKENS:
 		{
+			if (path) goto NO_PATH;
 			TypeInfo *info = type_info_new_base(type_from_token(token), inner->span);
 			inner->expr_kind = EXPR_TYPEINFO;
 			inner->resolve_status = RESOLVE_NOT_DONE;
 			inner->type_expr = info;
 			return inner;
 		}
+		case TOKEN_CT_TYPE_IDENT:
+			if (path) goto NO_PATH;
+			FALLTHROUGH;
 		case TOKEN_TYPE_IDENT:
 		{
 			TypeInfo *info = type_info_new(TYPE_INFO_IDENTIFIER, inner->span);
@@ -387,21 +399,31 @@ Expr *sema_ct_eval_expr(SemaContext *context, bool is_type_eval, Expr *inner, bo
 			return inner;
 		}
 		default:
-			if (is_type_eval)
-			{
-				SEMA_ERROR(inner, "Only valid types may be resolved with $evaltype.");
-			}
-			else
-			{
-				SEMA_ERROR(inner, "Only plain function, variable and constant names may be resolved with $eval.");
-			}
-			return NULL;
+			SEMA_ERROR(inner, "'%.*s' could not be resolved to a valid symbol.", (int)inner->const_expr.bytes.len, inner->const_expr.bytes.ptr);
+			return poisoned_expr;
 	}
 	inner->expr_kind = EXPR_UNRESOLVED_IDENTIFIER;
 	inner->resolve_status = RESOLVE_NOT_DONE;
 	inner->unresolved_ident_expr.ident = interned_version;
 	inner->unresolved_ident_expr.path = path;
 	return inner;
+NO_PATH:
+	if (report_missing)
+	{
+		SEMA_ERROR(inner, "Unexpected path in '%.*s'.", (int)inner->const_expr.bytes.len, inner->const_expr.bytes.ptr);
+	}
+	return NULL;
+}
+
+Expr *sema_ct_eval_expr(SemaContext *context, bool is_type_eval, Expr *inner, bool report_missing)
+{
+	if (!sema_analyse_ct_expr(context, inner)) return NULL;
+	if (!expr_is_const_string(inner))
+	{
+		SEMA_ERROR(inner, "'%s' expects a constant string as the argument.", is_type_eval ? "$evaltype" : "$eval");
+		return poisoned_expr;
+	}
+	return sema_resolve_string_ident(context, inner, report_missing);
 }
 
 Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl)
@@ -4082,7 +4104,7 @@ RETRY:
 	{
 		case EXPR_HASH_IDENT:
 			SEMA_DEPRECATED(child, "Using 'abc.#foo' access style is deprecated. Use 'abc.eval($foo)' instead.");
-			if (!sema_expr_fold_hash(context, child)) return false;
+			if (!sema_expr_fold_hash(context, child)) return NULL;
 			in_hash = true;
 			goto RETRY;
 		case EXPR_OTHER_CONTEXT:
@@ -4109,6 +4131,7 @@ RETRY:
 			ASSERT_SPAN(child, child->resolve_status != RESOLVE_DONE);
 			// Only report missing if missing var is NULL
 			Expr *result = sema_ct_eval_expr(context, false, child->inner_expr, missing == NULL);
+			if (!expr_ok(result)) return NULL;
 			if (!result)
 			{
 				if (missing) *missing = true;
@@ -9240,6 +9263,7 @@ RETRY:
 		{
 			Expr *expr = type_info->unresolved_type_expr;
 			expr = sema_ct_eval_expr(context, true, expr, false);
+			if (!expr_ok(expr)) return poisoned_type;
 			if (!expr) return NULL;
 			if (expr->expr_kind != EXPR_TYPEINFO)
 			{
@@ -9691,8 +9715,12 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				break;
 			}
 			case EXPR_CT_EVAL:
-				success = sema_ct_eval_expr(active_context, "$eval", main_expr->inner_expr, false);
+			{
+				Expr *eval = sema_ct_eval_expr(active_context, "$eval", main_expr->inner_expr, false);
+				if (!expr_ok(eval)) return false;
+				success = eval != NULL;
 				break;
+			}
 			case EXPR_HASH_IDENT:
 			{
 				Decl *decl = sema_resolve_symbol(active_context, main_expr->hash_ident_expr.identifier, NULL, main_expr->span);
@@ -10997,6 +11025,8 @@ TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, 
 			}
 			else
 			{
+				if (ch == '$' || ch == '@' || ch == '#') break; // $foo / @foo
+
 				return TOKEN_INVALID_TOKEN;
 			}
 		}
@@ -11016,7 +11046,20 @@ TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, 
 	}
 	if (len == 0) return TOKEN_INVALID_TOKEN;
 	uint32_t hash = FNV1_SEED;
-	for (size_t i = 0; i < len; i++)
+	size_t start = 0;
+	switch (string[0])
+	{
+		case '@':
+		case '$':
+		case '#':
+			hash = FNV1a(string[0], hash);
+			start = 1;
+			break;
+		default:
+			break;
+	}
+
+	for (size_t i = start; i < len; i++)
 	{
 		char c = string[i];
 		if (!char_is_alphanum_(c)) return TOKEN_INVALID_TOKEN;
@@ -11030,10 +11073,12 @@ TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, 
 		case TOKEN_TYPE_IDENT:
 		case TOKEN_IDENT:
 		case TOKEN_CONST_IDENT:
-			return type;
+		case TOKEN_AT_IDENT:
+		case TOKEN_CT_TYPE_IDENT:
+		case TOKEN_CT_IDENT:
+		case TOKEN_HASH_IDENT:
 		case TYPE_TOKENS:
-			if (!*path_ref) return type;
-			FALLTHROUGH;
+			return type;
 		default:
 			*ident_ref = NULL;
 			return TOKEN_INVALID_TOKEN;

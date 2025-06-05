@@ -1,0 +1,30 @@
+// #target: macos-x64
+module test;
+macro @abc(#a)
+{
+	$eval("#a") = 1;
+}
+fn void main()
+{
+	int $foo = 1;
+	$eval("$foo") = 2;
+	$typefrom("int") x;
+	var $Type = double;
+	$typefrom("$Type") y;
+	$eval("@abc")(x);
+	x = 0;
+	$eval("test::@abc")(x);
+}
+
+/* #expect: test.ll
+
+entry:
+  %x = alloca i32, align 4
+  %y = alloca double, align 8
+  store i32 0, ptr %x, align 4
+  store double 0.000000e+00, ptr %y, align 8
+  store i32 1, ptr %x, align 4
+  store i32 0, ptr %x, align 4
+  store i32 1, ptr %x, align 4
+  ret void
+}

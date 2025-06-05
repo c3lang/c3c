@@ -2,7 +2,7 @@ import std::io;
 
 fn void main()
 {
-  $eval("foo()");  // #error: with $eval
+  $eval("foo()");  // #error: could not be resolved to a valid
 }
 fn void foo()
 {

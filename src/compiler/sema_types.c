@@ -296,7 +296,7 @@ INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, Res
 	SEMA_DEPRECATED(type_info, "$evaltype is deprecated, use $typefrom instead.");
 	Expr *expr = type_info->unresolved_type_expr;
 	Expr *inner = sema_ct_eval_expr(context, true, expr, true);
-	if (!inner) return type_info_poison(type_info);
+	if (!inner || !expr_ok(inner)) return type_info_poison(type_info);
 	if (inner->expr_kind != EXPR_TYPEINFO)
 	{
 		SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
@@ -373,34 +373,15 @@ INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, Res
 			RETURN_SEMA_ERROR(expr, "Expected a constant string or typeid value.");
 	}
 
-	Path *path = NULL;
-	const char *interned_version = NULL;
 	const char *bytes = expr->const_expr.bytes.ptr;
-	ArraySize bytes_len = expr->const_expr.bytes.len;
-	TokenType token = sema_splitpathref(bytes, bytes_len, &path, &interned_version);
-	TypeInfo *info;
-	switch (token)
+	ArraySize len = expr->const_expr.bytes.len;
+	Expr *typefrom = sema_resolve_string_ident(context, expr, true);
+	if (!typefrom || !expr_ok(typefrom)) return false;
+	if (typefrom->expr_kind != EXPR_TYPEINFO)
 	{
-		case TOKEN_IDENT:
-			if (slice_is_type(bytes, bytes_len))
-			{
-				RETURN_SEMA_ERROR(expr, "'%.*s' could not be found, did you spell it right?", (int)bytes_len, bytes);
-			}
-			FALLTHROUGH;
-		case TOKEN_CONST_IDENT:
-			RETURN_SEMA_ERROR(expr, "Expected a type name, but the argument was \"%.*s\".", (int)bytes_len, bytes);
-		case TYPE_TOKENS:
-			type_info->type = type_from_token(token);
-			return true;
-		case TOKEN_TYPE_IDENT:
-			info = type_info_new(TYPE_INFO_IDENTIFIER, expr->span);
-			info->unresolved.name = interned_version;
-			info->unresolved.path = path;
-			info->resolve_status = RESOLVE_NOT_DONE;
-			break;
-		default:
-			RETURN_SEMA_ERROR(expr, "Only valid types can be resolved with $typefrom. You passed the string \"%.*s\", which cannot be resolved as a type.", (int)bytes_len, bytes);
+		RETURN_SEMA_ERROR(expr, "Expected a type, not a regular identifier '%.*s'.", (int)len, bytes);
 	}
+	TypeInfo *info = typefrom->type_expr;
 	if (!sema_resolve_type(context, info, resolve_kind)) return false;
 	switch (sema_resolve_storage_type(context, info->type))
 	{
@@ -412,7 +393,7 @@ INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, Res
 			type_info->type = info->type;
 			return true;
 		case STORAGE_WILDCARD:
-			RETURN_SEMA_ERROR(expr, "$typefrom failed to resolve \"%.*s\" to a definite type.", (int)bytes_len, bytes);
+			RETURN_SEMA_ERROR(expr, "$typefrom failed to resolve \"%.*s\" to a definite type.", (int)len, bytes);
 		case STORAGE_COMPILE_TIME:
 			RETURN_SEMA_ERROR(expr, "$typefrom does not support compile-time types.");
 	}

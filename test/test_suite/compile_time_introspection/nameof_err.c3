@@ -16,5 +16,5 @@ fn void main3()
 
 fn void main4()
 {
-    $typefrom("foo::int").extnameof; // #error: Only valid types can be resolved with $typefrom
+    $typefrom("foo::int").extnameof; // #error: Unexpected path in
 }

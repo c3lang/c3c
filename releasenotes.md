@@ -6,12 +6,13 @@
 
 - `$typefrom` now also accepts a constant string, and so works like `$evaltype`.
 - `$evaltype` is deprecated in favour of `$typefrom`.
-- `-0xFF` will now be a signed integer.
+- Literal rules have changed, this makes `-0xFF` now a signed integer.
 - Implicitly convert from constant typeid to Type in `$Type` assignment, and `$assignable`.
 - Make $Type parameters accept constant typeid values.
 - Deprecate `foo.#bar`.
 - Allow inference across `&&` #2172.
 - Added support for custom file extensions in project.json targets.
+- `$eval` now also works with `@foo`, `#foo`, `$Foo` and `$foo` parameters #2114.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.

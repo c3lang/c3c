@@ -24,7 +24,7 @@ fn void f()
 
 fn void g()
 {
-    int x = $typefrom("bar::").sizeof; // #error: Only valid types can be resolved with $typefrom
+    int x = $typefrom("bar::").sizeof; // #error: could not be resolved to a valid symbol
 }
 
 fn void k()
