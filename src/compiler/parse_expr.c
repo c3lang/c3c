@@ -1247,7 +1247,7 @@ static Expr *parse_ct_castable(ParseContext *c, Expr *left)
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	ASSIGN_EXPRID_OR_RET(expr->castable_expr.expr, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_COMMA, poisoned_expr);
-	ASSIGN_TYPEID_OR_RET(expr->castable_expr.type, parse_type(c), poisoned_expr);
+	ASSIGN_EXPRID_OR_RET(expr->castable_expr.type, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;

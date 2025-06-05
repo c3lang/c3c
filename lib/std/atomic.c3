@@ -175,7 +175,7 @@ macro bool is_native_atomic_type($Type)
 			$case BOOL:
 				return true;
 			$case DISTINCT:
-				return is_native_atomic_type($typefrom($Type.inner));
+				return is_native_atomic_type($Type.inner);
 			$default:
 				return false;
 		$endswitch
@@ -240,7 +240,7 @@ macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
-	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
+	var $StorageType = types::lower_to_atomic_compatible_type($typeof(*ptr));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
 
@@ -280,7 +280,7 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
-	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
+	var $StorageType = types::lower_to_atomic_compatible_type($typeof(*ptr));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
 
@@ -372,7 +372,7 @@ macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
-	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
+	var $StorageType = types::lower_to_atomic_compatible_type($typeof(*ptr));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
 
@@ -414,7 +414,7 @@ macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
 	$endif
 	
-	var $StorageType = $typefrom(types::lower_to_atomic_compatible_type($typeof(*ptr)));
+	var $StorageType = types::lower_to_atomic_compatible_type($typeof(*ptr));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
 

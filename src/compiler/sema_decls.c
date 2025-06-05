@@ -4322,8 +4322,13 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				// Try to fold any constant into an lvalue.
 				if (!sema_analyse_expr_value(context, init)) goto FAIL;
 
+				if (init->expr_kind == EXPR_TYPEINFO)
+				{
+					Type *type = init->type_expr->type;
+					expr_rewrite_const_typeid(init, type);
+				}
 				// If this isn't a type, it's an error.
-				if (init->expr_kind != EXPR_TYPEINFO)
+				if (!expr_is_const_typeid(init))
 				{
 					SEMA_ERROR(decl->var.init_expr, "Expected a type assigned to %s.", decl->name);
 					goto FAIL;

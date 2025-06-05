@@ -1089,7 +1089,7 @@ typedef struct
 {
 	bool is_assign;
 	ExprId expr;
-	TypeInfoId type;
+	ExprId type;
 } ExprCastable;
 
 typedef struct
@@ -4075,6 +4075,12 @@ INLINE bool expr_is_const_float(Expr *expr)
 {
 	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_FLOAT;
+}
+
+INLINE bool expr_is_const_typeid(Expr *expr)
+{
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_TYPEID;
 }
 
 INLINE bool expr_is_const_member(Expr *expr)

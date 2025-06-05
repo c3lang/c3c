@@ -41,7 +41,7 @@ macro usz? struct_to_format(value, Formatter* f, bool $force_dump)
             total += f.printf("%s: ", $member.nameof)!;
 		$endif
 		$if ($force_dump &&& $member.typeid.kindof == STRUCT) |||
-			is_struct_with_default_print($typefrom($member.typeid)):
+			is_struct_with_default_print($member.typeid):
 			total += struct_to_format($member.get(value), f, $force_dump)!;
 		$else
 			total += f.printf("%s", $member.get(value))!;

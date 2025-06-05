@@ -4,7 +4,7 @@ fn void Bar.xyz(&self) @tag("footag", 123) {}
 macro void Foo.tags(&self, other)
 {
     // inner to remove pointer
-    var $Type = $typefrom($typeof(other).inner);
+    var $Type = $typeof(other).inner;
     var $methodcount = $Type.methodsof.len;
     $for var $i = 0; $i < $methodcount; $i++:
         var $MethodType1 = $typeof($Type.$eval($Type.methodsof[$i]));
