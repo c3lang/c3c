@@ -3,6 +3,7 @@
 ## 0.7.3 Change list
 
 ### Changes / improvements
+
 - `$typefrom` now also accepts a constant string, and so works like `$evaltype`.
 - `$evaltype` is deprecated in favour of `$typefrom`.
 - `-0xFF` will now be a signed integer.
@@ -10,6 +11,7 @@
 - Make $Type parameters accept constant typeid values.
 - Deprecate `foo.#bar`.
 - Allow inference across `&&` #2172.
+- Added support for custom file extensions in project.json targets.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.

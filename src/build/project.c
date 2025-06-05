@@ -88,6 +88,7 @@ const char* project_target_keys[][2] = {
 		{"dependency-search-paths-override", "C3 library search paths for this target, overriding global settings."},
 		{"exec", "Additional scripts to run for the target."},
 		{"exec-override", "Scripts to run for this target, overriding global settings."},
+		{"extension", "Override the default file extension for the build output."},
 		{"features", "Features enabled for all targets."},
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
 		{"langrev", "Version of the C3 language used."},
@@ -170,9 +171,19 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// Where to `run` from
 	target->run_dir = get_string(context, json, "run-dir", target->run_dir);
-
 	// The output directory
 	target->output_dir = get_string(context, json, "output", target->output_dir);
+
+	if (context.target)
+	{
+		// The output extension
+		target->extension = get_string(context, json, "extension", target->extension);
+
+		if (target->extension && target->extension[0] != '.')
+		{
+			error_exit("Error reading %s: output extension '%s' must start with a '.'", context.file, target->extension);
+		}
+	}
 
 	// "Before compilation" execution
 	APPEND_STRING_LIST(&target->exec, "exec");
