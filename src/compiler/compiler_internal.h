@@ -2339,7 +2339,7 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_statement(SemaContext *context, Ast *statement);
 
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right,
-                                         bool is_unwrapped_var, bool is_declaration);
+                                         bool is_unwrapped_var, bool is_declaration, bool *failed_ref);
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr);
 Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs);
 

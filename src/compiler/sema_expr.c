@@ -91,7 +91,7 @@ static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Exp
 static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Type *left_type, Type *left_type_flat, Expr *right, Type *right_type_flat, bool *failed_ref);
 static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
-static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right);
+static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
@@ -5986,7 +5986,7 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool
 	return true;
 }
 
-static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right)
+static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool *failed_ref)
 {
 	Expr *left = exprptr(expr->binary_expr.left);
 	Type *left_flat = type_flatten(left_type);
@@ -6024,10 +6024,11 @@ static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Typ
 	{
 		if (right_type->array.base->canonical == base->canonical)
 		{
+			CHECK_ON_DEFINED(failed_ref);
 			RETURN_SEMA_ERROR(right, "You cannot assign a slice, vector or array to a slicing without making an explicit [..] operation, e.g. 'foo[..] = my_array[..]', so you can try adding an explicit slicing to this expression.");
 		}
 	}
-	if (!cast_implicit(context, right, base, false)) return false;
+	if (!cast_implicit_checked(context, right, base, false, failed_ref)) return false;
 	if (IS_OPTIONAL(right))
 	{
 		RETURN_SEMA_ERROR(right, "The right hand side may not be optional when using slice assign.");
@@ -6055,6 +6056,7 @@ SLICE_COPY:;
 	}
 	if (left_len >= 0 && right_len >= 0 && left_len != right_len)
 	{
+		CHECK_ON_DEFINED(failed_ref);
 		RETURN_SEMA_ERROR(expr, "Length mismatch between slices.");
 	}
 	expr->expr_kind = EXPR_SLICE_COPY;
@@ -6065,16 +6067,16 @@ SLICE_COPY:;
 }
 
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right,
-										 bool is_unwrapped_var, bool is_declaration)
+                                         bool is_unwrapped_var, bool is_declaration, bool *failed_ref)
 {
 	if (expr && exprptr(expr->binary_expr.left)->expr_kind == EXPR_SLICE)
 	{
-		return sema_expr_analyse_slice_assign(context, expr, left_type, right);
+		return sema_expr_analyse_slice_assign(context, expr, left_type, right, failed_ref);
 	}
 
 	// 1. Evaluate right side to required type.
 	bool to_optional = left_type && type_is_optional(left_type);
-	if (!sema_analyse_expr_rhs(context, left_type, right, is_unwrapped_var || to_optional, NULL, is_declaration)) return false;
+	if (!sema_analyse_expr_rhs(context, left_type, right, is_unwrapped_var || to_optional, failed_ref, is_declaration)) return false;
 	if (IS_OPTIONAL(right) && !to_optional)
 	{
 		if (is_unwrapped_var)
@@ -6082,6 +6084,7 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 			RETURN_SEMA_ERROR(exprptr(expr->binary_expr.left), "The variable is unwrapped in this context, if you don't want to unwrap it, use () around the variable to suppress unwrapping, like 'catch err = (x)' and 'try (x)'.");
 		}
 		if (!left_type) left_type = type_no_optional(right->type);
+		CHECK_ON_DEFINED(failed_ref);
 		return sema_error_failed_cast(context, right, right->type, left_type);
 	}
 
@@ -6251,7 +6254,7 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 	bool is_unwrapped_var = expr_is_unwrapped_ident(left);
 
 	// 3. Evaluate right side to required type.
-	if (!sema_expr_analyse_assign_right_side(context, expr, left->type, right, is_unwrapped_var, false)) return false;
+	if (!sema_expr_analyse_assign_right_side(context, expr, left->type, right, is_unwrapped_var, false, failed_ref)) return false;
 
 	if (is_unwrapped_var && IS_OPTIONAL(right))
 	{
