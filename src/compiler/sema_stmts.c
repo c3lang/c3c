@@ -2919,42 +2919,9 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 		return false;
 	}
 	printf("] ");
-	switch (message->const_expr.const_kind)
-	{
-		case CONST_FLOAT:
-			printf("%f\n", (double)message->const_expr.fxx.f);
-			break;
-		case CONST_INTEGER:
-			puts(int_to_str(message->const_expr.ixx, 10, false));
-			break;
-		case CONST_BOOL:
-			puts(message->const_expr.b ? "true" : "false");
-			break;
-		case CONST_REF:
-			puts(message->const_expr.global_ref->name);
-			break;
-		case CONST_FAULT:
-			puts(message->const_expr.fault->name);
-		break;
-		case CONST_ENUM:
-			puts(message->const_expr.enum_val->name);
-			break;
-		case CONST_STRING:
-			printf("%.*s\n", EXPAND_EXPR_STRING(message));
-			break;
-		case CONST_POINTER:
-			printf("%p\n", (void*)(intptr_t)message->const_expr.ptr);
-			break;
-		case CONST_TYPEID:
-			puts(type_to_error_string(message->const_expr.typeid));
-			break;
-		case CONST_BYTES:
-		case CONST_SLICE:
-		case CONST_INITIALIZER:
-		case CONST_UNTYPED_LIST:
-		case CONST_MEMBER:
-			RETURN_SEMA_ERROR(message, "Unsupported type for '$echo'");
-	}
+	scratch_buffer_clear();
+	expr_const_to_scratch_buffer(&message->const_expr);
+	puts(scratch_buffer_to_string());
 	statement->ast_kind = AST_NOP_STMT;
 	return true;
 }

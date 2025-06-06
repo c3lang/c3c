@@ -78,6 +78,10 @@ macro Char16[] @char16(String $string) @builtin
 	return $$wstr16($string)[..^2];
 }
 
+macro String @sprintf(String $format, ...) @builtin @const
+{
+	return $$sprintf($format, $vasplat);
+}
 <*
  Return a temporary ZString created using the formatting function.
 

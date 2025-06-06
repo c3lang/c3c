@@ -179,7 +179,6 @@ static inline bool parse_next_may_be_type_or_ident(ParseContext *c)
 	{
 		case TOKEN_CONST_IDENT:
 		case TOKEN_IDENT:
-		case TOKEN_HASH_CONST_IDENT:
 		case TOKEN_HASH_IDENT:
 		case TOKEN_CT_IDENT:
 		case TOKEN_CT_CONST_IDENT:

@@ -351,6 +351,7 @@ EXIT:;
 		default:
 			break;
 	}
+	assert(type != TOKEN_INVALID_TOKEN);
 	return new_token(lexer, type, interned_string);
 }
 
@@ -1219,6 +1220,13 @@ EXIT:;
 	return true;
 }
 
+static bool next_is_ident(Lexer *lexer)
+{
+	size_t i = 0;
+	while (lexer->current[i] == '_') i++;
+	return char_is_lower(lexer->current[i]);
+}
+
 static bool lexer_scan_token_inner(Lexer *lexer)
 {
 	// Now skip the whitespace.
@@ -1249,7 +1257,8 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 		case '"':
 			return scan_string(lexer);
 		case '#':
-			return scan_ident(lexer, TOKEN_HASH_IDENT, TOKEN_HASH_CONST_IDENT, TOKEN_HASH_TYPE_IDENT, '#');
+			if (!next_is_ident(lexer)) return new_token(lexer, TOKEN_HASH, "#");
+			return scan_ident(lexer, TOKEN_HASH_IDENT, TOKEN_INVALID_TOKEN, TOKEN_INVALID_TOKEN, '#');
 		case '$':
 			if (match(lexer, '$'))
 			{

@@ -38,6 +38,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, b
 static inline int builtin_expected_args(BuiltinFunction func);
 static inline bool is_valid_atomicity(SemaContext *context, Expr *expr);
 static bool sema_check_alignment_expression(SemaContext *context, Expr *align);
+static bool sema_expr_analyse_sprintf(SemaContext *context, Expr *expr);
 
 static bool sema_expr_is_valid_mask_for_value(SemaContext *context, Expr *expr, Expr *value)
 {
@@ -305,6 +306,56 @@ bool sema_expr_analyse_rnd(SemaContext *context UNUSED, Expr *expr)
 	return true;
 }
 
+static bool sema_expr_analyse_sprintf(SemaContext *context, Expr *expr)
+{
+	Expr **args = expr->call_expr.arguments;
+	FOREACH(Expr *, e, args)
+	{
+		if (!sema_analyse_expr(context, e)) return false;
+		if (!sema_cast_const(e))
+		{
+			RETURN_SEMA_ERROR(e, "Expected a constant expression.");
+		}
+	}
+	Expr *format = args[0];
+	if (!expr_is_const_string(format))
+	{
+		RETURN_SEMA_ERROR(format, "Expected a constant format string.");
+	}
+	const char *inner_str = format->const_expr.bytes.ptr;
+	ArraySize len = format->const_expr.bytes.len;
+	scratch_buffer_clear();
+	ArrayIndex current_index = 1;
+	ArraySize param_count = vec_size(args);
+	for (ArraySize i = 0; i < len; i++)
+	{
+		char c = inner_str[i];
+		if (c == '%')
+		{
+			i++;
+			switch (inner_str[i])
+			{
+				case 's':
+					if (current_index == param_count) RETURN_SEMA_ERROR(format, "Too many arguments in format string.");
+					expr_const_to_scratch_buffer(&(args[current_index++]->const_expr));
+					continue;
+				case '%':
+					scratch_buffer_append_char('%');
+					continue;
+				default:
+					RETURN_SEMA_ERROR(format, "Only '%%s' is supported for compile time sprintf.");
+			}
+		}
+		scratch_buffer_append_char(c);
+	}
+	if (current_index != param_count)
+	{
+		RETURN_SEMA_ERROR(format, "Too many arguments to sprintf.");
+	}
+	expr_rewrite_const_string(expr, scratch_buffer_copy());
+	return true;
+}
+
 bool sema_expr_analyse_str_hash(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->call_expr.arguments[0];
@@ -532,6 +583,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 
 	switch (func)
 	{
+		case BUILTIN_SPRINTF:
+			return sema_expr_analyse_sprintf(context, expr);
 		case BUILTIN_RND:
 			return sema_expr_analyse_rnd(context, expr);
 		case BUILTIN_STR_HASH:
@@ -593,6 +646,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_STR_FIND:
 		case BUILTIN_WIDESTRING_16:
 		case BUILTIN_WIDESTRING_32:
+		case BUILTIN_SPRINTF:
 			UNREACHABLE
 		case BUILTIN_VECCOMPGE:
 		case BUILTIN_VECCOMPEQ:
@@ -1199,10 +1253,11 @@ static inline int builtin_expected_args(BuiltinFunction func)
 {
 	switch (func)
 	{
+		case BUILTIN_SPRINTF:
 		case BUILTIN_SYSCALL:
 		case BUILTIN_WIDESTRING_16:
 		case BUILTIN_WIDESTRING_32:
-				return -1;
+			return -1;
 		case BUILTIN_SWIZZLE:
 			return -2;
 		case BUILTIN_SWIZZLE2:

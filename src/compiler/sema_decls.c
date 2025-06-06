@@ -1205,7 +1205,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		{
 			RETURN_SEMA_ERROR(decl, "The format '@format()' index was out of range.");
 		}
-		if (sig->variadic != VARIADIC_ANY)
+		if (sig->variadic != VARIADIC_ANY && !is_macro)
 		{
 			RETURN_SEMA_ERROR(decl, "'@format()' is only valid for a function or macro with 'args...' style vaargs.");
 		}

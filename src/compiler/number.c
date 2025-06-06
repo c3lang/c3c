@@ -292,7 +292,68 @@ bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 }
 
 
-
+void expr_const_to_scratch_buffer(const ExprConst *expr)
+{
+	switch (expr->const_kind)
+	{
+		case CONST_POINTER:
+			if (!expr->ptr)
+			{
+				scratch_buffer_append("null");
+			}
+			else
+			{
+				scratch_buffer_printf("%p", (void *)(intptr_t)expr->ptr);
+			}
+			return;
+		case CONST_BOOL:
+			scratch_buffer_append(expr->b ? "true" : "false");
+			return;
+		case CONST_INTEGER:
+			scratch_buffer_append(int_to_str(expr->ixx, 10, false));
+			return;
+		case CONST_FLOAT:
+			scratch_buffer_printf("%g", expr->fxx.f);
+			return;
+		case CONST_STRING:
+			scratch_buffer_append_len(expr->bytes.ptr, expr->bytes.len);
+			return;
+		case CONST_BYTES:
+			scratch_buffer_append("<binary data>");
+			return;
+		case CONST_REF:
+			scratch_buffer_append(expr->global_ref->name);
+			return;
+		case CONST_FAULT:
+			scratch_buffer_append(expr->fault->name);
+			return;
+		case CONST_ENUM:
+			scratch_buffer_append(expr->enum_val->name);
+			return;
+		case CONST_TYPEID:
+			scratch_buffer_append(expr->typeid->name);
+			return;
+		case CONST_MEMBER:
+			scratch_buffer_append(expr->member.decl->name);
+			return;
+		case CONST_SLICE:
+		case CONST_INITIALIZER:
+			scratch_buffer_append("constant list");
+			return;
+		case CONST_UNTYPED_LIST:
+		{
+			scratch_buffer_append("{");
+			FOREACH_IDX(i, Expr *, e, expr->untyped_list)
+			{
+				if (i != 0) scratch_buffer_append(", ");
+				expr_const_to_scratch_buffer(&e->const_expr);
+			}
+			scratch_buffer_append("}");
+			return;
+		}
+	}
+	UNREACHABLE
+}
 const char *expr_const_to_error_string(const ExprConst *expr)
 {
 	switch (expr->const_kind)

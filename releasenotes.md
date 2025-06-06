@@ -13,6 +13,7 @@
 - Allow inference across `&&` #2172.
 - Added support for custom file extensions in project.json targets.
 - `$eval` now also works with `@foo`, `#foo`, `$Foo` and `$foo` parameters #2114.
+- `@sprintf` macro (based on the `$$sprintf` builtin) allows compile time format strings #1874.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.

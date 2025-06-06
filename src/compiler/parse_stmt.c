@@ -1259,8 +1259,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_LBRACE:
 			return parse_compound_stmt(c);
 		case TYPELIKE_TOKENS:
-		case TOKEN_HASH_TYPE_IDENT:
-		case TOKEN_HASH_CONST_IDENT:
 		case TOKEN_HASH_IDENT:
 		case TOKEN_IDENT:
 		case TOKEN_CONST_IDENT:

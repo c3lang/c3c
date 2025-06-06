@@ -1052,6 +1052,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		case BUILTIN_WIDESTRING_16:
 		case BUILTIN_WIDESTRING_32:
 		case BUILTIN_RND:
+		case BUILTIN_SPRINTF:
 			UNREACHABLE
 		case BUILTIN_NONE:
 			UNREACHABLE

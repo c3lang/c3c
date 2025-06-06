@@ -500,6 +500,7 @@ typedef enum
 	BUILTIN_SCATTER,
 	BUILTIN_SELECT,
 	BUILTIN_SET_ROUNDING_MODE,
+	BUILTIN_SPRINTF,
 	BUILTIN_STR_HASH,
 	BUILTIN_STR_UPPER,
 	BUILTIN_STR_LOWER,
@@ -1133,8 +1134,6 @@ typedef enum
 
 	// We want to parse #foo separately.
 	TOKEN_HASH_IDENT,       // #foobar
-	TOKEN_HASH_CONST_IDENT, // #FOOBAR
-	TOKEN_HASH_TYPE_IDENT,  // #Foobar
 
 	TOKEN_AT_IDENT,         // @macro
 	TOKEN_AT_CONST_IDENT,   // @MACRO
@@ -1259,11 +1258,11 @@ typedef enum
 	TOKEN_CT_VAEXPR,            // $vaexpr,
 	TOKEN_CT_VASPLAT,           // $vasplat,
 	TOKEN_LAST_KEYWORD = TOKEN_CT_VASPLAT,
-	TOKEN_DOCS_START,       // <*
-	TOKEN_DOCS_END,         // *>
+	TOKEN_DOCS_START,           // <*
+	TOKEN_DOCS_END,             // *>
 	TOKEN_DOCS_EOL,
 
-	TOKEN_EOF,              // \n - SHOULD ALWAYS BE THE LAST TOKEN.
+	TOKEN_EOF,                  // \n - SHOULD ALWAYS BE THE LAST TOKEN.
 
 	TOKEN_LAST = TOKEN_EOF,
 } TokenType;

@@ -152,10 +152,6 @@ const char *token_type_to_string(TokenType type)
 			return "CT_TYPE_IDENT";
 		case TOKEN_HASH_IDENT:
 			return "HASH_IDENT";
-		case TOKEN_HASH_CONST_IDENT:
-			return "HASH_CONST_IDENT";
-		case TOKEN_HASH_TYPE_IDENT:
-			return "HASH_TYPE_IDENT";
 		case TOKEN_CONST_IDENT:
 			return "CONST_IDENT";
 		case TOKEN_TYPE_IDENT:

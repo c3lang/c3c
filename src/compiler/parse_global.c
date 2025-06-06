@@ -1574,10 +1574,6 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 				ref = true;
 				param_kind = VARDECL_PARAM;
 				break;
-			case TOKEN_HASH_TYPE_IDENT:
-				// #Foo (not allowed)
-				PRINT_ERROR_HERE("An unevaluated expression can never be a type, did you mean to use $Type?");
-				return false;
 			case TOKEN_HASH_IDENT:
 				// expression #foo
 				name = symstr(c);
@@ -2815,8 +2811,6 @@ static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **do
 		case TOKEN_CT_IDENT:
 		case TOKEN_TYPE_IDENT:
 		case TOKEN_CT_CONST_IDENT:
-		case TOKEN_HASH_CONST_IDENT:
-		case TOKEN_HASH_TYPE_IDENT:
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_CONST_IDENT:
 		case TOKEN_HASH_IDENT:

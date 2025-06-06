@@ -2273,6 +2273,7 @@ void expr_contract_array(ExprConst *expr_const, ConstKind contract_type);
 bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind);
 const char *expr_const_to_error_string(const ExprConst *expr);
 bool expr_const_float_fits_type(const ExprConst *expr_const, TypeKind kind);
+void expr_const_to_scratch_buffer(const ExprConst *expr);
 
 // --- Lexer functions
 
