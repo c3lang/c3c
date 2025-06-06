@@ -3,7 +3,7 @@ module foo;
 fn void foo()
 {
 	int? x;
-	if (catch err)
+	if (catch x)
 	{
 		z = 1233; // #error: could not be found, did you spell it right
 		return;

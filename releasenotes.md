@@ -15,6 +15,7 @@
 - `$eval` now also works with `@foo`, `#foo`, `$Foo` and `$foo` parameters #2114.
 - `@sprintf` macro (based on the `$$sprintf` builtin) allows compile time format strings #1874.
 - Improve error reports when encountering a broken "if-catch".
+- Add printf format to `$assert` and `$error` #2183.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.

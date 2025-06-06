@@ -469,6 +469,58 @@ CondResult sema_check_comp_time_bool(SemaContext *context, Expr *expr)
 	return result;
 }
 
+bool sema_expr_analyse_sprintf(SemaContext *context, Expr *expr, Expr *format_string, Expr **args, unsigned num_args)
+{
+	if (!sema_analyse_expr(context, format_string)) return false;
+	if (!sema_cast_const(format_string))
+	{
+		RETURN_SEMA_ERROR(format_string, "Expected a constant format string expression.");
+	}
+	for (unsigned i = 0; i < num_args; i++)
+	{
+		Expr *e = args[i];
+		if (!sema_analyse_expr(context, e)) return false;
+		if (!sema_cast_const(e))
+		{
+			RETURN_SEMA_ERROR(e, "Expected a constant expression.");
+		}
+	}
+	if (!expr_is_const_string(format_string))
+	{
+		RETURN_SEMA_ERROR(format_string, "Expected a constant format string.");
+	}
+	const char *inner_str = format_string->const_expr.bytes.ptr;
+	ArraySize len = format_string->const_expr.bytes.len;
+	scratch_buffer_clear();
+	ArrayIndex current_index = 0;
+	for (ArraySize i = 0; i < len; i++)
+	{
+		char c = inner_str[i];
+		if (c == '%')
+		{
+			i++;
+			switch (inner_str[i])
+			{
+				case 's':
+					if (current_index == num_args) RETURN_SEMA_ERROR(format_string, "Too many arguments in format string.");
+					expr_const_to_scratch_buffer(&(args[current_index++]->const_expr));
+					continue;
+				case '%':
+					scratch_buffer_append_char('%');
+					continue;
+				default:
+					RETURN_SEMA_ERROR(format_string, "Only '%%s' is supported for compile time sprintf.");
+			}
+		}
+		scratch_buffer_append_char(c);
+	}
+	if (current_index != num_args)
+	{
+		RETURN_SEMA_ERROR(expr, "Too many arguments to sprintf.");
+	}
+	expr_rewrite_const_string(expr, scratch_buffer_copy());
+	return true;
+}
 
 static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Expr *expr, bool *failed_ref)
 {

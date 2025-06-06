@@ -1214,7 +1214,7 @@ static inline Ast *parse_assert_stmt(ParseContext *c)
 // --- External functions
 
 /**
- * ct_assert_stmt ::= CT_ASSERT constant_expression (':' constant_expression) ';'
+ * ct_assert_stmt ::= CT_ASSERT constant_expression (':' constant_expression (',' constant_expression)*)? ';'
  * @param c
  * @return
  */
@@ -1227,11 +1227,16 @@ Ast *parse_ct_assert_stmt(ParseContext *c)
 	{
 		ASSIGN_EXPRID_OR_RET(ast->assert_stmt.message, parse_constant_expr(c), poisoned_ast);
 	}
+	while (try_consume(c, TOKEN_COMMA))
+	{
+		ASSIGN_EXPR_OR_RET(Expr *expr, parse_constant_expr(c), poisoned_ast);
+		vec_add(ast->assert_stmt.args, expr);
+	}
 	return consume_eos(c, ast);
 }
 
 /**
- * ct_error_stmt ::= CT_ERROR constant_expression) ';'
+ * ct_error_stmt ::= CT_ERROR constant_expression (',' constant_expression)* ';'
  * @param c
  * @return
  */
@@ -1241,6 +1246,11 @@ Ast *parse_ct_error_stmt(ParseContext *c)
 	advance_and_verify(c, TOKEN_CT_ERROR);
 	ast->assert_stmt.expr = 0;
 	ASSIGN_EXPRID_OR_RET(ast->assert_stmt.message, parse_constant_expr(c), poisoned_ast);
+	while (try_consume(c, TOKEN_COMMA))
+	{
+		ASSIGN_EXPR_OR_RET(Expr *expr, parse_constant_expr(c), poisoned_ast);
+		vec_add(ast->assert_stmt.args, expr);
+	}
 	return consume_eos(c, ast);
 }
 

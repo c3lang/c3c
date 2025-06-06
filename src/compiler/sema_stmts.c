@@ -352,6 +352,19 @@ static inline Expr *sema_dive_into_expression(Expr *expr)
 	}
 
 }
+
+static bool sema_catch_in_cond(Expr *cond)
+{
+	ASSERT(cond->expr_kind == EXPR_COND && "Assumed cond");
+
+	Expr *last = VECLAST(cond->cond_expr);
+	ASSERT(last);
+	last = sema_dive_into_expression(last);
+
+	// Skip any non-unwraps
+	return last->expr_kind == EXPR_CATCH;
+}
+
 /**
  * If we have "if (catch x)", then we want to unwrap x in the else clause.
  **/
@@ -1940,7 +1953,11 @@ END:
 		is_invalid = context->active_scope.is_invalid;
 	SCOPE_OUTER_END;
 	if (is_invalid) context->active_scope.is_invalid = is_invalid;
-	if (!success) return false;
+	if (!success)
+	{
+		if (then_jump && sema_catch_in_cond(cond)) context->active_scope.is_invalid = true;
+		return false;
+	}
 	if (then_jump)
 	{
 		sema_unwrappable_from_catch_in_else(context, cond);
@@ -2903,6 +2920,8 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 	{
 		if (message_expr)
 		{
+			unsigned len = vec_size(statement->assert_stmt.args);
+			if (len && !sema_expr_analyse_sprintf(context, message_expr, message_expr, statement->assert_stmt.args, len)) return false;
 			sema_error_at(context, span, "%.*s", EXPAND_EXPR_STRING(message_expr));
 		}
 		else
