@@ -17,6 +17,7 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 	}
 
 	bool scope_is_dead = context->active_scope.is_dead;
+	bool scope_is_invalid = context->active_scope.is_invalid;
 	Ast *previous_defer = context->active_scope.in_defer;
 	AstId parent_defer = context->active_scope.defer_last;
 	unsigned last_local = context->active_scope.current_local;
@@ -38,6 +39,7 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 			.allow_dead_code = false,
 			.jump_end = false,
 			.is_dead = scope_is_dead,
+			.is_invalid = scope_is_invalid,
 			.depth = depth,
 			.current_local = last_local,
 			.label_start = label_start,

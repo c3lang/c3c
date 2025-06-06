@@ -1542,6 +1542,7 @@ typedef struct DynamicScope_
 	bool allow_dead_code : 1;
 	bool jump_end : 1;
 	bool is_dead : 1;
+	bool is_invalid : 1;
 	ScopeFlags flags;
 	unsigned label_start;
 	unsigned current_local;

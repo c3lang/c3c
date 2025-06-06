@@ -1029,8 +1029,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		case EXPR_TRY_UNWRAP_CHAIN:
 			if (cond_type != COND_TYPE_UNWRAP_BOOL)
 			{
-				SEMA_ERROR(expr, "Try unwrapping is only allowed inside of a 'while' or 'if' conditional.");
-				return false;
+				RETURN_SEMA_ERROR(expr, "Try unwrapping is only allowed inside of a 'while' or 'if' conditional.");
 			}
 			return sema_analyse_try_unwrap_chain(context, expr, cond_type, result);
 		case EXPR_CATCH_UNRESOLVED:
@@ -1038,7 +1037,11 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 			{
 				RETURN_SEMA_ERROR(expr, "Catch unwrapping is only allowed inside of a 'while' or 'if' conditional, maybe '@catch(<expr>)' will do what you need?");
 			}
-			return sema_analyse_catch_unwrap(context, expr);
+			if (!sema_analyse_catch_unwrap(context, expr))
+			{
+				context->active_scope.is_invalid = true;
+				return false;
+			}
 		default:
 			break;
 	}
@@ -1876,6 +1879,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	AstId else_id = statement->if_stmt.else_body;
 	Ast *else_body = else_id ? astptr(else_id) : NULL;
 	CondResult result = COND_MISSING;
+	bool is_invalid = false;
 	SCOPE_OUTER_START
 
 		success = sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL, &result);
@@ -1933,7 +1937,9 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 END:
 		context_pop_defers_and_replace_ast(context, statement);
 
+		is_invalid = context->active_scope.is_invalid;
 	SCOPE_OUTER_END;
+	if (is_invalid) context->active_scope.is_invalid = is_invalid;
 	if (!success) return false;
 	if (then_jump)
 	{
@@ -3081,6 +3087,7 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 
 bool sema_analyse_statement(SemaContext *context, Ast *statement)
 {
+	if (context->active_scope.is_invalid) return false;
 	if (statement->ast_kind == AST_POISONED) return false;
 	bool dead_code = context->active_scope.jump_end;
 	unsigned returns = vec_size(context->returns);
