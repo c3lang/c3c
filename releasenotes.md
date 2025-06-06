@@ -21,6 +21,7 @@
 - Fixes to `$define` handling of binary ops.
 
 ### Stdlib changes
+- Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
 
 ## 0.7.2 Change list
 

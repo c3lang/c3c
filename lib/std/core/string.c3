@@ -807,7 +807,7 @@ fn usz String.utf8_codepoints(s)
  This function can safely be used with data pointing to null. However, it will not
  work correctly if the pointer is invalid, for example it is already freed.
 *>
-fn bool String.is_zstr(self)
+fn bool String.is_zstr(self) @deprecated("Unsafe, use copy instead")
 {
 	return self.ptr && *(self.ptr + self.len) == 0;
 }
@@ -828,9 +828,8 @@ fn bool String.is_zstr(self)
 
  @ensure return[self.len] == 0
 *>
-fn ZString String.quick_zstr(self)
+fn ZString String.quick_zstr(self) @deprecated("Unsafe, use zstr_tcopy instead")
 {
-	if (self.is_zstr() @inline) return (ZString)self.ptr;
 	return self.zstr_tcopy();
 }
 

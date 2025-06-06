@@ -30,19 +30,6 @@ fn void test_count()
 	assert(s2.count(" ") == 0);
 }
 
-fn void quick_zstr()
-{
-	String str = "1234";
-	ZString a = str.quick_zstr();
-	ZString b = str[0..2].quick_zstr();
-	ZString c = str[1..].quick_zstr();
-	String empty = {};
-	ZString d = empty.quick_zstr();
-	assert((void*)a == str.ptr);
-	assert((void*)b != str.ptr);
-	assert((void*)c == &str[1]);
-	assert(d[0] == 0);
-}
 
 fn void test_print_null()
 {
