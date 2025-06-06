@@ -742,7 +742,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_POISONED:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
-		case EXPR_CT_CASTABLE:
+		case EXPR_CT_ASSIGNABLE:
 		case EXPR_CT_IS_CONST:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:

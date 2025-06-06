@@ -40,6 +40,7 @@ extern CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1];
 extern CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1];
 
 
+
 /**
  * Try to make an implicit cast. Optional types are allowed.
  */
@@ -48,15 +49,43 @@ bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type, bool is_bina
 	return cast_if_valid(context, expr, to_type, false, false, is_binary);
 }
 
-bool cast_implicit_binary(SemaContext *context, Expr *expr, Type *to_type, bool is_silent)
+/**
+ * Try to make an implicit cast. Optional types are allowed.
+ */
+bool cast_implicit_checked(SemaContext *context, Expr *expr, Type *to_type, bool is_binary, bool *failed_ref)
 {
-	return cast_if_valid(context, expr, to_type, false, is_silent, true);
+	if (failed_ref)
+	{
+		if (cast_if_valid(context, expr, to_type, false, true, is_binary)) return true;
+		*failed_ref = true;
+		return false;
+	}
+	return cast_if_valid(context, expr, to_type, false, false, is_binary);
+}
+
+bool cast_implicit_binary(SemaContext *context, Expr *expr, Type *to_type, bool *failed_ref)
+{
+	return cast_implicit_checked(context, expr, to_type, true, failed_ref);
 }
 /**
  * Try to make an explicit cast, Optional types are allowed.
  */
 bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type)
 {
+	return cast_if_valid(context, expr, to_type, true, false, false);
+}
+
+/**
+ * Try to make an explicit cast, Optional types are allowed.
+ */
+bool cast_explicit_checkable(SemaContext *context, Expr *expr, Type *to_type, bool *failed_ref)
+{
+	if (failed_ref)
+	{
+		if (cast_if_valid(context, expr, to_type, true, true, false)) return true;
+		*failed_ref = true;
+		return false;
+	}
 	return cast_if_valid(context, expr, to_type, true, false, false);
 }
 

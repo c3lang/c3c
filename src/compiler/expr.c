@@ -32,7 +32,7 @@ const char *expr_kind_to_string(ExprKind kind)
 		case EXPR_TYPECALL: return "typecall";
 		case EXPR_CT_ARG: return "ct_arg";
 		case EXPR_CT_CALL: return "ct_call";
-		case EXPR_CT_CASTABLE: return "ct_castable";
+		case EXPR_CT_ASSIGNABLE: return "ct_castable";
 		case EXPR_CT_DEFINED: return "ct_defined";
 		case EXPR_CT_EVAL: return "ct_eval";
 		case EXPR_CT_IDENT: return "ct_ident";
@@ -311,7 +311,7 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_BINARY:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_STRINGIFY:
-		case EXPR_CT_CASTABLE:
+		case EXPR_CT_ASSIGNABLE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_IS_CONST:
 		case EXPR_LAMBDA:
@@ -810,7 +810,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_TYPECALL:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
-		case EXPR_CT_CASTABLE:
+		case EXPR_CT_ASSIGNABLE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_IS_CONST:
 		case EXPR_CT_EVAL:

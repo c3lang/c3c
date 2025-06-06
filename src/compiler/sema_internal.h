@@ -40,6 +40,7 @@
 #define POP_NEXT() POP_X(next); context->next_switch = _old_next_switch
 #define PUSH_BREAKCONT(ast) PUSH_CONTINUE(ast); PUSH_BREAK(ast)
 #define POP_BREAKCONT() POP_CONTINUE(); POP_BREAK()
+#define CHECK_ON_DEFINED(ref__) do { if (!ref__) break; *ref__ = true; return false; } while(0)
 
 Decl **global_context_acquire_locals_list(void);
 void generic_context_release_locals_list(Decl **);
@@ -125,7 +126,7 @@ Type *sema_resolve_type_get_func(Signature *signature, CallABI abi);
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE void sema_display_deprecated_warning_on_use(Decl *decl, SourceSpan span);
-bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right);
+bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right, bool *failed_ref);
 
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result)

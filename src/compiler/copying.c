@@ -469,9 +469,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 					return expr;
 			}
 			UNREACHABLE
-		case EXPR_CT_CASTABLE:
-			MACRO_COPY_EXPRID(expr->castable_expr.expr);
-			MACRO_COPY_EXPRID(expr->castable_expr.type);
+		case EXPR_CT_ASSIGNABLE:
+			MACRO_COPY_EXPRID(expr->assignable_expr.expr);
+			MACRO_COPY_EXPRID(expr->assignable_expr.type);
 			return expr;
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IS_CONST:

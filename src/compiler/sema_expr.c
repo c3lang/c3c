@@ -6,7 +6,7 @@
 #include <math.h>
 
 #define RETURN_SEMA_FUNC_ERROR(_decl, _node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); SEMA_NOTE(_decl, "The definition was here."); return false; } while (0)
-#define RETURN_NOTE_FUNC_DEFINITION do { SEMA_NOTE(callee->definition, "The definition was here."); return false; } while (0);
+#define RETURN_NOTE_FUNC_DEFINITION do { SEMA_NOTE(callee->definition, "The definition was here."); return false; } while (0)
 #define RESOLVE(expr__, check__) \
   do { \
   Expr *expr_temp__ = expr__; \
@@ -61,7 +61,7 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 
 static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_type, Expr *expr);
 static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool *invalid_cast_ref);
-static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *infer_type);
+static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *infer_type, bool *failed_ref);
 static inline bool sema_expr_analyse_unary(SemaContext *context, Expr *expr, bool *failed_ref, CheckType check);
 static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, bool allow_fail);
 
@@ -81,27 +81,27 @@ static inline bool sema_expr_analyse_retval(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_expr_list(SemaContext *context, Expr *expr);
 
 // -- binary
-static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right);
-static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, Expr *right);
-static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left, Expr *right);
-static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, Expr *right);
-static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, Expr *right);
-static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, Expr *right, OperatorOverload overload);
-static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right);
-static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left, Expr *right);
-static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Type *left_type, Type *left_type_flat, Expr *right, Type *right_type_flat);
-static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *left, Expr *right);
+static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
+static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
+static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
+static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
+static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
+static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, Expr *right, OperatorOverload overload, bool *failed_ref);
+static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
+static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
+static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Type *left_type, Type *left_type_flat, Expr *right, Type *right_type_flat, bool *failed_ref);
+static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right);
 static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
-static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left, Expr *right);
+static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, BinaryOp operator);
 
 // -- unary
 static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr, bool *failed_ref, CheckType check);
 static inline bool sema_expr_analyse_neg_plus(SemaContext *context, Expr *expr);
-static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr);
+static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr, bool *failed_ref);
 static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_deref(SemaContext *context, Expr *expr, bool *failed_ref);
 static inline bool sema_expr_analyse_ct_incdec(SemaContext *context, Expr *expr, Expr *inner);
@@ -132,11 +132,12 @@ static void expr_binary_unify_failability(Expr *expr, Expr *left, Expr *right);
 
 static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *left, Expr *right);
 static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, Expr *expr, const char *error,
-	bool bool_and_bitstruct_is_allowed, OperatorOverload *operator_overload_ref);
+                                                          bool bool_and_bitstruct_is_allowed, OperatorOverload *operator_overload_ref, bool *failed_ref);
 static bool sema_binary_check_unclear_op_precedence(Expr *left_side, Expr * main_expr, Expr *right_side);
 static bool sema_binary_analyse_ct_op_assign(SemaContext *context, Expr *expr, Expr *left);
 static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type,
-								 Expr *parent, const char *error_message, bool allow_bool_vec, OperatorOverload *operator_overload_ref);
+								 Expr *parent, const char *error_message, bool allow_bool_vec,
+								 OperatorOverload *operator_overload_ref, bool *failed_ref);
 static bool sema_binary_is_unsigned_always_same_comparison(SemaContext *context, Expr *expr, Expr *left, Expr *right,
 														   Type *lhs_type, Type *rhs_type);
 static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Expr *expr, bool *failed_ref);
@@ -563,7 +564,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_COMPILER_CONST:
 		case EXPR_COND:
 		case EXPR_CT_CALL:
-		case EXPR_CT_CASTABLE:
+		case EXPR_CT_ASSIGNABLE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IS_CONST:
@@ -722,7 +723,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_CONST:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
-		case EXPR_CT_CASTABLE:
+		case EXPR_CT_ASSIGNABLE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IS_CONST:
@@ -959,8 +960,8 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 			return false;
 		}
 		Type *no_fail_max = type_no_optional(max);
-		if (!cast_implicit_binary(context, left, no_fail_max, false) || !cast_implicit_binary(context, right, no_fail_max,
-																							  false)) return false;
+		if (!cast_implicit_binary(context, left, no_fail_max, NULL)
+			|| !cast_implicit_binary(context, right, no_fail_max, NULL)) return false;
 	}
 
 	switch (sema_resolve_storage_type(context, left->type))
@@ -1214,7 +1215,8 @@ static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *left,
 }
 
 static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, Expr *expr, const char *error,
-	bool bool_and_bitstruct_is_allowed, OperatorOverload *operator_overload_ref)
+                                                          bool bool_and_bitstruct_is_allowed,
+                                                          OperatorOverload *operator_overload_ref, bool *failed_ref)
 {
 	Expr *left = exprptr(expr->binary_expr.left);
 	Expr *right = exprptr(expr->binary_expr.right);
@@ -1231,7 +1233,8 @@ static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, 
 		if (left_type == type_bool && right_type == type_bool) return true;
 	}
 	// 2. Perform promotion to a common type.
-	return sema_binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, error, bool_and_bitstruct_is_allowed, operator_overload_ref);
+	return sema_binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, error,
+		bool_and_bitstruct_is_allowed, operator_overload_ref, failed_ref);
 }
 
 static inline int sema_call_find_index_of_named_parameter(SemaContext *context, Decl **func_params, Expr *expr)
@@ -1437,11 +1440,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 		SCOPE_END;
 		sema_context_destroy(&default_context);
 		if (no_match_ref && *no_match_ref) return true;
-		if (!success)
-		{
-			RETURN_NOTE_FUNC_DEFINITION
-		}
-		if (!success) return false;
+		if (!success) RETURN_NOTE_FUNC_DEFINITION;
 		parameter_checked = true;
 	}
 	switch (param->var.kind)
@@ -1815,7 +1814,7 @@ SPLAT_NORMAL:;
 			if (variadic != VARIADIC_NONE && i > vaarg_index)
 			{
 				print_error_after(last->span, "Expected '%s: ...' after this argument.", param->name);
-				RETURN_NOTE_FUNC_DEFINITION
+				RETURN_NOTE_FUNC_DEFINITION;
 			}
 			if (!num_args)
 			{
@@ -3701,7 +3700,7 @@ static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *
 	Type *flat = type_flatten(pointer->type);
 	unsigned vec_len = flat->type_kind == TYPE_VECTOR ? flat->array.len : 0;
 
-	if (!cast_implicit_binary(context, offset, vec_len ? type_get_vector(type_isz, vec_len) : type_isz, false)) return false;
+	if (!cast_implicit_binary(context, offset, vec_len ? type_get_vector(type_isz, vec_len) : type_isz, NULL)) return false;
 
 	// 3. Store optionality
 	bool is_optional = IS_OPTIONAL(pointer) || IS_OPTIONAL(offset);
@@ -6462,6 +6461,7 @@ AFTER_ADDR:;
  */
 static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, BinaryOp operator)
 {
+	bool *failed_ref = NULL;
 	bool is_bit_op = false;
 	bool is_shift = false;
 	bool is_add_sub = false;
@@ -6633,7 +6633,7 @@ BITSTRUCT_OK:
 
 	if (is_shift)
 	{
-		if (!sema_expr_check_shift_rhs(context, expr, left->type, type_flatten(left->type), right, type_flatten(right->type)))
+		if (!sema_expr_check_shift_rhs(context, expr, left->type, type_flatten(left->type), right, type_flatten(right->type), failed_ref))
 		{
 			return false;
 		}
@@ -6641,7 +6641,7 @@ BITSTRUCT_OK:
 	else
 	{
 		// Otherwise cast left to right.
-		if (!cast_implicit_binary(context, right, no_fail, false)) return false;
+		if (!cast_implicit_binary(context, right, no_fail, failed_ref)) return false;
 	}
 
 	// 6. Check for zero in case of div or mod.
@@ -6723,7 +6723,9 @@ static bool sema_replace_with_overload(SemaContext *context, Expr *expr, Expr *l
 }
 
 static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type,
-											 Expr *parent, const char *error_message, bool allow_bool_vec, OperatorOverload *operator_overload_ref)
+											 Expr *parent, const char *error_message, bool allow_bool_vec,
+											 OperatorOverload *operator_overload_ref,
+											 bool *failed_ref)
 {
 	if (type_is_user_defined(left_type) || type_is_user_defined(right_type))
 	{
@@ -6734,15 +6736,15 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 	Type *max = cast_numeric_arithmetic_promotion(type_find_max_type(left_type, right_type));
 	if (!max || (!type_underlying_is_numeric(max) && !(allow_bool_vec && type_flat_is_bool_vector(max))))
 	{
+		CHECK_ON_DEFINED(failed_ref);
 		if (!error_message)
 		{
 			return sema_type_error_on_binop(context, parent);
 		}
-		SEMA_ERROR(parent, error_message, type_quoted_error_string(left->type), type_quoted_error_string(right->type));
-		return false;
+		RETURN_SEMA_ERROR(parent, error_message, type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 	}
-	return cast_implicit_binary(context, left, max, false) &&
-		   cast_implicit_binary(context, right, max, false);
+	return cast_implicit_binary(context, left, max, failed_ref) &&
+		   cast_implicit_binary(context, right, max, failed_ref);
 }
 
 static void sema_binary_unify_voidptr(Expr *left, Expr *right, Type **left_type_ref, Type **right_type_ref)
@@ -6775,7 +6777,7 @@ static Type *defer_iptr_cast(Expr *maybe_pointer)
 	return NULL;
 }
 
-static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
 	Type *left_type = type_no_optional(left->type)->canonical;
 	bool is_sub = expr->binary_expr.operator == BINARYOP_SUB;
@@ -6825,7 +6827,7 @@ static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Exp
  * Analyse a - b
  * @return true if analysis succeeded
  */
-static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
 	// 1. Analyse a and b.
 	if (!sema_binary_analyse_subexpr(context, left, right)) return false;
@@ -6862,6 +6864,7 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 			sema_binary_unify_voidptr(left, right, &left_type, &right_type);
 			if (left_type != right_type)
 			{
+				if (failed_ref) {}
 				RETURN_SEMA_ERROR(expr, "'%s' - '%s' is not allowed. Subtracting pointers of different types is not allowed.", type_to_error_string(left_type), type_to_error_string(right_type));
 			}
 
@@ -6883,14 +6886,15 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 		// 4. Check that the right hand side is an integer.
 		if (!type_flat_is_intlike(right_type))
 		{
-			SEMA_ERROR(expr, "Cannot subtract '%s' from '%s'", type_to_error_string(right_type), type_to_error_string(left_type));
-			return false;
+			CHECK_ON_DEFINED(failed_ref);
+			RETURN_SEMA_ERROR(expr, "Cannot subtract '%s' from '%s'", type_to_error_string(right_type), type_to_error_string(left_type));
 		}
 
 		// 5. Make sure that the integer does not exceed isz in size.
 		ArraySize max_size = right_is_vector ? type_size(offset_type) : type_size(type_isz);
 		if (type_size(right_type) > max_size)
 		{
+			CHECK_ON_DEFINED(failed_ref);
 			RETURN_SEMA_ERROR(expr, "Cannot subtract %s from a %s, you need to add an explicit a narrowing cast to %s.",
 							  type_quoted_error_string(right->type),
 							  left_is_pointer_vector ? "pointer vector" : "pointer",
@@ -6898,7 +6902,7 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 		}
 
 		// 6. Convert to isz
-		if (!cast_implicit_binary(context, right, offset_type, false)) return true;
+		if (!cast_implicit_binary(context, right, offset_type, failed_ref)) return true;
 
 		if (left->expr_kind == EXPR_POINTER_OFFSET)
 		{
@@ -6938,7 +6942,7 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 	// Enum - Enum and Enum - int
 	if (left_type->type_kind == TYPE_ENUM)
 	{
-		return sema_expr_analyse_enum_add_sub(context, expr, left, right);
+		return sema_expr_analyse_enum_add_sub(context, expr, left, right, failed_ref);
 	}
 
 	left_type = type_no_optional(left->type)->canonical;
@@ -6947,7 +6951,7 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 	// 7. Attempt arithmetic promotion, to promote both to a common type.
 	OperatorOverload overload = OVERLOAD_MINUS;
 	if (!sema_binary_arithmetic_promotion(context, left, right, left_type, right_type, expr,
-										  "The subtraction %s - %s is not possible.", false, &overload))
+										  "The subtraction %s - %s is not possible.", false, &overload, failed_ref))
 	{
 		return false;
 	}
@@ -6984,7 +6988,7 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
  * Analyse a + b
  * @return true if it succeeds.
  */
-static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
 	// 1. Promote everything to the recipient type – if possible
 	//    this is safe in the pointer case actually.
@@ -7025,6 +7029,7 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 		{
 			if (!left_is_vec || !right_is_vec || !type_is_integer(right_type->array.base))
 			{
+				CHECK_ON_DEFINED(failed_ref);
 				RETURN_SEMA_ERROR(right, "A value of type '%s' cannot be added to '%s', an integer was expected here.",
 								  type_to_error_string(right->type),
 								  type_to_error_string(left->type));
@@ -7078,7 +7083,7 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 
 	if (left_type->type_kind == TYPE_ENUM || right_type->type_kind == TYPE_ENUM)
 	{
-		return sema_expr_analyse_enum_add_sub(context, expr, left, right);
+		return sema_expr_analyse_enum_add_sub(context, expr, left, right, failed_ref);
 	}
 
 	left_type = type_no_optional(left->type)->canonical;
@@ -7089,7 +7094,7 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 	// 4. Do a binary arithmetic promotion
 	OperatorOverload overload = OVERLOAD_PLUS;
 	if (!sema_binary_arithmetic_promotion(context, left, right, left_type, right_type, expr,
-		"Cannot do the addition %s + %s.", false, &overload))
+		"Cannot do the addition %s + %s.", false, &overload, failed_ref))
 	{
 		return false;
 	}
@@ -7127,12 +7132,12 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
  *
  * @return true if analysis worked.
  */
-static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
 
 	// 1. Analyse the sub expressions and promote to a common type
 	OperatorOverload overload = OVERLOAD_MULTIPLY;
-	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "It is not possible to multiply %s by %s.", false, &overload)) return false;
+	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "It is not possible to multiply %s by %s.", false, &overload, failed_ref)) return false;
 
 	if (!overload) return true;
 
@@ -7163,11 +7168,11 @@ static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left,
  * Analyse a / b
  * @return true if analysis completed ok.
  */
-static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
 	// 1. Analyse sub expressions and promote to a common type
 	OperatorOverload overload = OVERLOAD_DIVIDE;
-	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "Cannot divide %s by %s.", false, &overload)) return false;
+	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "Cannot divide %s by %s.", false, &overload, failed_ref)) return false;
 	if (!overload) return true;
 
 	// 2. Check for a constant 0 on the rhs.
@@ -7178,8 +7183,7 @@ static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, 
 			case CONST_INTEGER:
 				if (int_is_zero(right->const_expr.ixx))
 				{
-					SEMA_ERROR(right, "This expression evaluates to zero and division by zero is not allowed.");
-					return false;
+					RETURN_SEMA_ERROR(right, "This expression evaluates to zero and division by zero is not allowed.");
 				}
 				break;
 			case CONST_FLOAT:
@@ -7220,11 +7224,12 @@ static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, 
  * Analyse a % b
  * @return true if analysis succeeds.
  */
-static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
 	// 1. Analyse both sides and promote to a common type
 	OperatorOverload overload = OVERLOAD_REMINDER;
-	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "Cannot calculate the reminder %s %% %s", false, &overload)) return false;
+	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "Cannot calculate the reminder %s %% %s",
+		false, &overload, failed_ref)) return false;
 	if (!overload) return true;
 
 	Type *flat = type_flatten(left->type);
@@ -7266,10 +7271,10 @@ static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, 
  * Analyse a ^ b, a | b, a & b
  * @return true if the analysis succeeded.
  */
-static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, Expr *right, OperatorOverload overload)
+static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, Expr *right, OperatorOverload overload, bool *failed_ref)
 {
 	// 1. Convert to common type if possible.
-	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, NULL, true, &overload)) return false;
+	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, NULL, true, &overload, failed_ref)) return false;
 	if (!overload) return true;
 
 	// 2. Check that both are integers or bools.
@@ -7278,6 +7283,7 @@ static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, 
 
 	if (!is_bool && !is_bitstruct && !expr_both_any_integer_or_integer_bool_vector(left, right))
 	{
+		CHECK_ON_DEFINED(failed_ref);
 		return sema_type_error_on_binop(context, expr);
 	}
 
@@ -7333,13 +7339,14 @@ static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, 
 	return true;
 }
 
-static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Type *left_type, Type *left_type_flat, Expr *right, Type *right_type_flat)
+static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Type *left_type, Type *left_type_flat,
+	Expr *right, Type *right_type_flat, bool *failed_ref)
 {
 	if (left_type_flat->type_kind == TYPE_VECTOR && right_type_flat->type_kind != TYPE_VECTOR)
 	{
 		// Create a vector from the right hand side.
 		Type *right_vec = type_get_vector(right->type, left_type_flat->array.len);
-		if (!cast_explicit(context, right, right_vec)) return false;
+		if (!cast_explicit_checkable(context, right, right_vec, failed_ref)) return false;
 	}
 
 	// 4. For a constant rhs side we will make a series of checks.
@@ -7366,7 +7373,7 @@ static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Type *le
  * Analyse >> and << operations.
  * @return true if the analysis succeeded.
  */
-static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
 	// 1. Analyze both sides.
 	if (!sema_binary_analyse_subexpr(context, left, right)) return false;
@@ -7382,7 +7389,7 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 	}
 
 	// 3. Promote lhs using the usual numeric promotion.
-	if (!cast_implicit_binary(context, left, cast_numeric_arithmetic_promotion(lhs_type), false)) return false;
+	if (!cast_implicit_binary(context, left, cast_numeric_arithmetic_promotion(lhs_type), failed_ref)) return false;
 
 	Type *flat_left = type_flatten(left->type);
 	Type *flat_right = type_flatten(right->type);
@@ -7391,10 +7398,11 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 	if (!type_flat_is_intlike(flat_left) || !type_flat_is_intlike(flat_right)
 		|| (flat_right->type_kind == TYPE_VECTOR && flat_left->type_kind != TYPE_VECTOR))
 	{
+		CHECK_ON_DEFINED(failed_ref);
 		return sema_type_error_on_binop(context, expr);
 	}
 
-	if (!sema_expr_check_shift_rhs(context, expr, left->type, flat_left, right, flat_right)) return false;
+	if (!sema_expr_check_shift_rhs(context, expr, left->type, flat_left, right, flat_right, failed_ref)) return false;
 
 	// Fold constant expressions.
 	if (expr_is_const_int(right) && sema_cast_const(left))
@@ -7417,10 +7425,10 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 }
 
 
-static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
 	if (!sema_binary_analyse_subexpr(context, left, right)) return false;
-	if (!cast_explicit(context, left, type_bool) || !cast_explicit(context, right, type_bool)) return false;
+	if (!cast_explicit_checkable(context, left, type_bool, failed_ref) || !cast_explicit_checkable(context, right, type_bool, failed_ref)) return false;
 
 	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
 	{
@@ -7505,7 +7513,7 @@ static bool sema_binary_is_unsigned_always_same_comparison(SemaContext *context,
  * Analyze a == b, a != b, a > b, a < b, a >= b, a <= b
  * @return
  */
-static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
 	// 1. Analyse left and right side without any conversions.
 	if (!sema_binary_analyse_subexpr(context, left, right)) return false;
@@ -7583,6 +7591,7 @@ NEXT:
 	// 4. If no common type, then that's an error:
 	if (!max)
 	{
+		CHECK_ON_DEFINED(failed_ref);
 		RETURN_SEMA_ERROR(expr, "%s and %s are different types and cannot be compared.",
 						  type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 	}
@@ -7596,6 +7605,7 @@ NEXT:
 
 	if (!type_is_comparable(max))
 	{
+		CHECK_ON_DEFINED(failed_ref);
 		RETURN_SEMA_ERROR(expr, "%s does not support comparisons.",
 						  type_quoted_error_string(left->type));
 	}
@@ -7604,6 +7614,7 @@ NEXT:
 	{
 		if (!type_is_ordered(max))
 		{
+			CHECK_ON_DEFINED(failed_ref);
 			RETURN_SEMA_ERROR(expr, "%s can only be compared using '!=' and '==' it "
 									"cannot be ordered, did you make a mistake?",
 							  type_quoted_error_string(left->type));
@@ -7621,8 +7632,8 @@ NEXT:
 	}
 
 	// 6. Do the explicit cast.
-	if (!cast_implicit(context, left, max, false) || !cast_implicit(context, right, max, false)) return false;
-	bool success = cast_explicit(context, left, max) && cast_explicit(context, right, max);
+	if (!cast_implicit_checked(context, left, max, false, failed_ref) || !cast_implicit_checked(context, right, max, false, failed_ref)) return false;
+	bool success = cast_explicit_checkable(context, left, max, failed_ref) && cast_explicit_checkable(context, right, max, failed_ref);
 	ASSERT_SPAN(expr, success);
 
 
@@ -7991,7 +8002,7 @@ static inline bool sema_expr_analyse_neg_plus(SemaContext *context, Expr *expr)
  *
  * @return
  */
-static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr, bool *failed_ref)
 {
 	// 1. Analyse the inner expression.
 	Expr *inner = expr->unary_expr.expr;
@@ -8012,6 +8023,7 @@ static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr)
 	{
 		Type *vector_type = type_vector_type(canonical);
 		if (vector_type && (type_is_integer(vector_type) || vector_type == type_bool)) goto VALID_VEC;
+		CHECK_ON_DEFINED(failed_ref);
 		RETURN_SEMA_ERROR(expr, "Cannot bit negate '%s'.", type_to_error_string(inner->type));
 	}
 
@@ -8025,7 +8037,7 @@ VALID_VEC:
 
 	// Arithmetic promotion
 	Type *result_type = cast_numeric_arithmetic_promotion(type_no_optional(inner->type));
-	if (!cast_implicit(context, inner, result_type, false)) return false;
+	if (!cast_implicit_checked(context, inner, result_type, false, failed_ref)) return false;
 
 	// 3. The simple case, non-const.
 	if (!sema_constant_fold_ops(inner))
@@ -8382,7 +8394,7 @@ INLINE bool expr_is_ungrouped_ternary(Expr *expr)
 	return expr->expr_kind == EXPR_TERNARY && !expr->ternary_expr.grouped;
 }
 
-static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *infer_type)
+static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *infer_type, bool *failed_ref)
 {
 	bool lhs_is_embed = left->expr_kind == EXPR_EMBED;
 	if (expr_is_ungrouped_ternary(left) || expr_is_ungrouped_ternary(right))
@@ -8406,6 +8418,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 			expr_replace(expr, left);
 			return true;
 		}
+		CHECK_ON_DEFINED(failed_ref);
 		RETURN_SEMA_ERROR(left, "No optional to use '\?\?' with, please remove the '\?\?'.");
 	}
 
@@ -8434,14 +8447,14 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 	Type *common = type_find_max_type(type, else_type);
 	if (!common)
 	{
+		CHECK_ON_DEFINED(failed_ref);
 		if (else_type == type_fault)
 		{
 			RETURN_SEMA_ERROR(right, "There is no common type for %s and %s, did you perhaps forget a '?' after the last expression?", type_quoted_error_string(type), type_quoted_error_string(else_type));
 		}
 		RETURN_SEMA_ERROR(right, "Cannot find a common type for %s and %s.", type_quoted_error_string(type), type_quoted_error_string(else_type));
 	}
-	if (!cast_implicit(context, left, common, false)) return false;
-	if (!cast_implicit(context, right, common, false)) return false;
+	if (!cast_both_implicit(context, left, right, common, false, failed_ref)) return false;
 	expr->type = type_add_optional(common, add_optional);
 	return true;
 }
@@ -8476,40 +8489,39 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Type *infer_ty
 	// check if both sides have a binary operation where the precedence is unclear. Example: a ^ b | c
 	if (sema_binary_check_unclear_op_precedence(left, expr, right))
 	{
-		SEMA_ERROR(expr, "You need to add explicit parentheses to clarify precedence.");
-		return expr_poison(expr);
+		RETURN_SEMA_ERROR(expr, "You need to add explicit parentheses to clarify precedence.");
 	}
 	BinaryOp operator = expr->binary_expr.operator;
 	switch (operator)
 	{
 		case BINARYOP_ELSE:
-			return sema_expr_analyse_or_error(context, expr, left, right, infer_type);
+			return sema_expr_analyse_or_error(context, expr, left, right, infer_type, failed_ref);
 		case BINARYOP_CT_CONCAT:
-			return sema_expr_analyse_ct_concat(context, expr, left, right);
+			return sema_expr_analyse_ct_concat(context, expr, left, right, failed_ref);
 		case BINARYOP_CT_OR:
 		case BINARYOP_CT_AND:
 			return sema_expr_analyse_ct_and_or(context, expr, left, right);
 		case BINARYOP_ASSIGN:
 			return sema_expr_analyse_assign(context, expr, left, right, failed_ref);
 		case BINARYOP_MULT:
-			return sema_expr_analyse_mult(context, expr, left, right);
+			return sema_expr_analyse_mult(context, expr, left, right, failed_ref);
 		case BINARYOP_ADD:
-			return sema_expr_analyse_add(context, expr, left, right);
+			return sema_expr_analyse_add(context, expr, left, right, failed_ref);
 		case BINARYOP_SUB:
-			return sema_expr_analyse_sub(context, expr, left, right);
+			return sema_expr_analyse_sub(context, expr, left, right, failed_ref);
 		case BINARYOP_DIV:
-			return sema_expr_analyse_div(context, expr, left, right);
+			return sema_expr_analyse_div(context, expr, left, right, failed_ref);
 		case BINARYOP_MOD:
-			return sema_expr_analyse_mod(context, expr, left, right);
+			return sema_expr_analyse_mod(context, expr, left, right, failed_ref);
 		case BINARYOP_AND:
 		case BINARYOP_OR:
-			return sema_expr_analyse_and_or(context, expr, left, right);
+			return sema_expr_analyse_and_or(context, expr, left, right, failed_ref);
 		case BINARYOP_BIT_OR:
-			return sema_expr_analyse_bit(context, expr, left, right, OVERLOAD_OR);
+			return sema_expr_analyse_bit(context, expr, left, right, OVERLOAD_OR, failed_ref);
 		case BINARYOP_BIT_XOR:
-			return sema_expr_analyse_bit(context, expr, left, right, OVERLOAD_XOR);
+			return sema_expr_analyse_bit(context, expr, left, right, OVERLOAD_XOR, failed_ref);
 		case BINARYOP_BIT_AND:
-			return sema_expr_analyse_bit(context, expr, left, right, OVERLOAD_AND);
+			return sema_expr_analyse_bit(context, expr, left, right, OVERLOAD_AND, failed_ref);
 		case BINARYOP_VEC_NE:
 		case BINARYOP_VEC_EQ:
 		case BINARYOP_VEC_GT:
@@ -8523,10 +8535,10 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Type *infer_ty
 		case BINARYOP_GE:
 		case BINARYOP_LT:
 		case BINARYOP_LE:
-			return sema_expr_analyse_comp(context, expr, left, right);
+			return sema_expr_analyse_comp(context, expr, left, right, failed_ref);
 		case BINARYOP_SHR:
 		case BINARYOP_SHL:
-			return sema_expr_analyse_shift(context, expr, left, right);
+			return sema_expr_analyse_shift(context, expr, left, right, failed_ref);
 		case BINARYOP_ADD_ASSIGN:
 		case BINARYOP_SUB_ASSIGN:
 		case BINARYOP_BIT_AND_ASSIGN:
@@ -8568,7 +8580,7 @@ static inline bool sema_expr_analyse_unary(SemaContext *context, Expr *expr, boo
 		case UNARYOP_PLUS:
 			return sema_expr_analyse_neg_plus(context, expr);
 		case UNARYOP_BITNEG:
-			return sema_expr_analyse_bit_not(context, expr);
+			return sema_expr_analyse_bit_not(context, expr, failed_ref);
 		case UNARYOP_NOT:
 			return sema_expr_analyse_not(context, expr);
 		case UNARYOP_DEC:
@@ -9839,7 +9851,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_CT_DEFINED:
 			case EXPR_STRINGIFY:
 			case EXPR_TERNARY:
-			case EXPR_CT_CASTABLE:
+			case EXPR_CT_ASSIGNABLE:
 			case EXPR_CT_CALL:
 			case EXPR_EXPRESSION_LIST:
 			case EXPR_POST_UNARY:
@@ -9965,10 +9977,10 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 	}
 }
 
-static inline bool sema_expr_analyse_castable(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_assignable(SemaContext *context, Expr *expr)
 {
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_RUNNING);
-	Expr *type_expr = exprptr(expr->castable_expr.type);
+	Expr *type_expr = exprptr(expr->assignable_expr.type);
 	bool in_no_eval = context->call_env.in_no_eval;
 	context->call_env.in_no_eval = true;
 	Type *type;
@@ -10001,9 +10013,9 @@ static inline bool sema_expr_analyse_castable(SemaContext *context, Expr *expr)
 		}
 	}
 	if (!type) RETURN_SEMA_ERROR(type_expr, "Expected a type or constant typeid here.");
-	Expr *inner = exprptr(expr->castable_expr.expr);
+	Expr *inner = exprptr(expr->assignable_expr.expr);
 	if (!sema_analyse_inferred_expr(context, type, inner)) goto FAILED;
-	bool ok = may_cast(context, inner, type, !expr->castable_expr.is_assign, true);
+	bool ok = may_cast(context, inner, type, false, true);
 	expr_rewrite_const_bool(expr, type_bool, ok);
 	context->call_env.in_no_eval = in_no_eval;
 	return true;
@@ -10255,8 +10267,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			context_switch_stat_pop(new_context, state);
 			return success;
 		}
-		case EXPR_CT_CASTABLE:
-			return sema_expr_analyse_castable(context, expr);
+		case EXPR_CT_ASSIGNABLE:
+			return sema_expr_analyse_assignable(context, expr);
 		case EXPR_EMBED:
 			return sema_expr_analyse_embed(context, expr, false);
 		case EXPR_VASPLAT:
@@ -10460,12 +10472,11 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 	{
 		if (as_binary)
 		{
-			if (!cast_implicit_binary(context, expr, to, no_match_ref != NULL)) return false;
+			if (!cast_implicit_binary(context, expr, to, no_match_ref)) return false;
 		}
 		else
 		{
-			bool cast_works = no_match_ref ? cast_implicit_silent(context, expr, to, false) : cast_implicit(context, expr, to, false);
-			if (!cast_works) return false;
+			if (!cast_implicit_checked(context, expr, to, false, no_match_ref)) return false;
 		}
 	}
 	if (!allow_optional && IS_OPTIONAL(expr))
@@ -10733,7 +10744,7 @@ IDENT_CHECK:;
 		case EXPR_COMPILER_CONST:
 		case EXPR_COND:
 		case EXPR_CT_CALL:
-		case EXPR_CT_CASTABLE:
+		case EXPR_CT_ASSIGNABLE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_IS_CONST:
 		case EXPR_DECL:

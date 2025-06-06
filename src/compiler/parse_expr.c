@@ -1238,16 +1238,16 @@ static Expr *parse_ct_call(ParseContext *c, Expr *left)
 	return expr;
 }
 
-static Expr *parse_ct_castable(ParseContext *c, Expr *left)
+static Expr *parse_ct_assignable(ParseContext *c, Expr *left)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_CASTABLE);
-	expr->castable_expr.is_assign = c->tok == TOKEN_CT_ASSIGNABLE;
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_ASSIGNABLE);
+	assert(c->tok == TOKEN_CT_ASSIGNABLE);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	ASSIGN_EXPRID_OR_RET(expr->castable_expr.expr, parse_expr(c), poisoned_expr);
+	ASSIGN_EXPRID_OR_RET(expr->assignable_expr.expr, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_COMMA, poisoned_expr);
-	ASSIGN_EXPRID_OR_RET(expr->castable_expr.type, parse_expr(c), poisoned_expr);
+	ASSIGN_EXPRID_OR_RET(expr->assignable_expr.type, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -2128,7 +2128,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_ELLIPSIS] = { parse_splat, NULL, PREC_NONE },
 		[TOKEN_FN] = { parse_lambda, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_ASSIGNABLE] = { parse_ct_castable, NULL, PREC_NONE },
+		[TOKEN_CT_ASSIGNABLE] = { parse_ct_assignable, NULL, PREC_NONE },
 		[TOKEN_CT_DEFINED] = { parse_ct_defined, NULL, PREC_NONE },
 		[TOKEN_CT_EMBED] = { parse_ct_embed, NULL, PREC_NONE },
 		[TOKEN_CT_EVALTYPE] = { parse_type_expr, NULL, PREC_NONE },

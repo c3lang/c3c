@@ -18,6 +18,7 @@
 ### Fixes
 - `-2147483648`, MIN literals work correctly.
 - Splatting const slices would not be const. #2185
+- Fixes to `$define` handling of binary ops.
 
 ### Stdlib changes
 

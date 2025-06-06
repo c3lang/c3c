@@ -1087,7 +1087,6 @@ typedef struct
 
 typedef struct
 {
-	bool is_assign;
 	ExprId expr;
 	ExprId type;
 } ExprCastable;
@@ -1146,7 +1145,7 @@ struct Expr_
 		ExprCtArg ct_arg_expr;
 		Expr** ct_concat;
 		ExprOtherContext expr_other_context;
-		ExprCastable castable_expr;
+		ExprCastable assignable_expr;
 		ExprCtCall ct_call_expr;                    // 24
 		ExprIdentifierRaw ct_ident_expr;            // 24
 		Decl *decl_expr;                            // 8
@@ -2130,10 +2129,17 @@ bool asm_is_supported(ArchType arch);
 
 bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type, bool is_binary_conversion);
 
-bool cast_implicit_binary(SemaContext *context, Expr *expr, Type *to_type, bool is_silent);
+bool cast_implicit_binary(SemaContext *context, Expr *expr, Type *to_type, bool *failed_ref);
 bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type, bool is_binary);
+bool cast_implicit_checked(SemaContext *context, Expr *expr, Type *to_type, bool is_binary, bool *failed_ref);
 bool cast_explicit_silent(SemaContext *context, Expr *expr, Type *to_type);
 bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type);
+bool cast_explicit_checkable(SemaContext *context, Expr *expr, Type *to_type, bool *failed_ref);
+INLINE bool cast_both_implicit(SemaContext *context, Expr *expr1, Expr *expr2, Type *to_type, bool is_binary, bool *failed_ref)
+{
+	return cast_implicit_checked(context, expr1, to_type, is_binary, failed_ref) && cast_implicit_checked(context, expr2, to_type, is_binary, failed_ref);
+}
+
 
 bool may_cast(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool is_silent);
 
@@ -3431,7 +3437,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_COND:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
-		case EXPR_CT_CASTABLE:
+		case EXPR_CT_ASSIGNABLE:
 		case EXPR_CT_IS_CONST:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:

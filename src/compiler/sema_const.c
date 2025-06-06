@@ -301,7 +301,7 @@ static inline ConstInitializer *expr_const_initializer_from_expr(Expr *expr)
  * 5. Vector/array/slice + element => Vector/array/slice + 1 len iff canonical match, Untyped list otherwise
  * 6. Untyped list + element => Untyped list
  */
-bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right)
+bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right, bool *failed_ref)
 {
 	ASSERT(concat_expr->resolve_status == RESOLVE_RUNNING);
 	ArraySize len = 0;
@@ -324,6 +324,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		case CONST_TYPEID:
 		case CONST_REF:
 		case CONST_MEMBER:
+			CHECK_ON_DEFINED(failed_ref);
 			RETURN_SEMA_ERROR(left, "Only bytes, strings and list-like constants can be concatenated.");
 		case CONST_BYTES:
 		case CONST_STRING:
@@ -343,6 +344,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 					break;
 				case TYPE_STRUCT:
 				case TYPE_UNION:
+					CHECK_ON_DEFINED(failed_ref);
 					RETURN_SEMA_ERROR(left, "Only bytes, strings and array-like constants can be concatenated.");
 				default:
 					UNREACHABLE
@@ -372,6 +374,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 			if (left->type == type_untypedlist || indexed_type == right_type) return sema_expr_const_append(context, concat_expr, left, right);
 			if (!type_is_integer(indexed_type) || type_size(indexed_type) != 1)
 			{
+				CHECK_ON_DEFINED(failed_ref);
 				RETURN_SEMA_ERROR(right, "You can't concatenate %s and %s.", type_quoted_error_string(left->type),
 				                  type_to_error_string(right_type));
 			}
