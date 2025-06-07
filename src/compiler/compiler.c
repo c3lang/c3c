@@ -415,7 +415,15 @@ void compiler_parse(void)
 		if (!parse_stdin()) has_error = true;
 	}
 
-	if (has_error) exit_compiler(EXIT_FAILURE);
+	if (has_error)
+	{
+		if (compiler.build.lsp_output)
+		{
+			eprintf("> ENDLSP-ERROR\n");
+			exit_compiler(COMPILER_SUCCESS_EXIT);
+		}
+		exit_compiler(EXIT_FAILURE);
+	}
 	compiler_parsing_time = bench_mark();
 }
 

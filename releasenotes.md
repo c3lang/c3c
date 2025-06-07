@@ -24,6 +24,7 @@
 - Splatting const slices would not be const. #2185
 - Fixes to `$define` handling of binary ops.
 - Fixes methodsof to pick up all sorts of extension methods. #2192
+- `--lsp` sometimes does not emit end tag #2194.
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
