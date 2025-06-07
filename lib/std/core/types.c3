@@ -272,6 +272,7 @@ macro bool may_load_atomic($Type) @const
 	$case FLOAT:
 		return true;
 	$case DISTINCT:
+	$case ENUM:
 		return may_load_atomic($Type.inner);
 	$default:
 		return false;
