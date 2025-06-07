@@ -1226,11 +1226,11 @@ Ast *parse_ct_assert_stmt(ParseContext *c)
 	if (try_consume(c, TOKEN_COLON))
 	{
 		ASSIGN_EXPRID_OR_RET(ast->assert_stmt.message, parse_constant_expr(c), poisoned_ast);
-	}
-	while (try_consume(c, TOKEN_COMMA))
-	{
-		ASSIGN_EXPR_OR_RET(Expr *expr, parse_constant_expr(c), poisoned_ast);
-		vec_add(ast->assert_stmt.args, expr);
+		while (try_consume(c, TOKEN_COMMA))
+		{
+			ASSIGN_EXPR_OR_RET(Expr *expr, parse_constant_expr(c), poisoned_ast);
+			vec_add(ast->assert_stmt.args, expr);
+		}
 	}
 	return consume_eos(c, ast);
 }

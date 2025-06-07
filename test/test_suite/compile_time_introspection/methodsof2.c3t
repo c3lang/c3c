@@ -1,0 +1,38 @@
+// #target: macos-x64
+module test;
+struct Foo {int x;}
+fn void Foo.test(&self) {}
+
+fn void double.test_double(self) {}
+
+typedef Bar = void*;
+fn void Bar.test(&self) {}
+
+typedef Baz = Foo;
+fn void Baz.test1(&self) {}
+
+typedef Qux = inline Foo;
+fn void Qux.test2(&self) {}
+
+fn int main(int argv, ZString* c)
+{
+    String[] s0 = Foo*.methodsof;
+    String[] s1 = int.methodsof;
+    String[] s2 = double.methodsof;
+    String[] s3 = Bar.methodsof;
+    String[] s4 = Baz.methodsof;
+    String[] s5 = Qux.methodsof;
+    return 0;
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [12 x i8] c"test_double\00", align 1
+@.__const = private unnamed_addr constant [1 x %"char[]"] [%"char[]" { ptr @.str, i64 11 }], align 16
+@.str.1 = private unnamed_addr constant [5 x i8] c"test\00", align 1
+@.__const.2 = private unnamed_addr constant [1 x %"char[]"] [%"char[]" { ptr @.str.1, i64 4 }], align 16
+@.str.3 = private unnamed_addr constant [6 x i8] c"test1\00", align 1
+@.__const.4 = private unnamed_addr constant [1 x %"char[]"] [%"char[]" { ptr @.str.3, i64 5 }], align 16
+@.str.5 = private unnamed_addr constant [6 x i8] c"test2\00", align 1
+@.str.6 = private unnamed_addr constant [5 x i8] c"test\00", align 1
+@.__const.7 = private unnamed_addr constant [2 x %"char[]"] [%"char[]" { ptr @.str.5, i64 5 }, %"char[]" { ptr @.str.6, i64 4 }], align 16

@@ -16,11 +16,14 @@
 - `@sprintf` macro (based on the `$$sprintf` builtin) allows compile time format strings #1874.
 - Improve error reports when encountering a broken "if-catch".
 - Add printf format to `$assert` and `$error` #2183.
+- Make accepting arguments for `main` a bit more liberal, accepting `main(int argc, ZString* argv)`
+- Make `$echo` and `@sprintf` correctly stringify compile time initializers and slices.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.
 - Splatting const slices would not be const. #2185
 - Fixes to `$define` handling of binary ops.
+- Fixes methodsof to pick up all sorts of extension methods. #2192
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.

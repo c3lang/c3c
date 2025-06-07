@@ -291,7 +291,64 @@ bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 	UNREACHABLE
 }
 
-
+void const_init_to_scratch_buffer(ConstInitializer *init)
+{
+	assert(init != NULL);
+	switch (init->kind)
+	{
+		case CONST_INIT_ZERO:
+			scratch_buffer_append("{}");
+			return;
+		case CONST_INIT_STRUCT:
+		{
+			scratch_buffer_append("{ ");
+			FOREACH_IDX(i, ConstInitializer *, init, init->init_struct)
+			{
+				if (i != 0) scratch_buffer_append(", ");
+				const_init_to_scratch_buffer(init);
+			}
+			scratch_buffer_append(" }");
+			return;
+		}
+		case CONST_INIT_UNION:
+		{
+			scratch_buffer_printf("{ .%s = ", init->type->decl->strukt.members[init->init_union.index]->name);
+			const_init_to_scratch_buffer(init->init_union.element);
+			scratch_buffer_append(" }");
+			return;
+		}
+		case CONST_INIT_VALUE:
+			expr_const_to_scratch_buffer(&init->init_value->const_expr);
+			return;
+		case CONST_INIT_ARRAY:
+		{
+			scratch_buffer_append("{ ");
+			FOREACH_IDX(i, ConstInitializer *, init, init->init_array.elements)
+			{
+				if (i != 0) scratch_buffer_append(", ");
+				const_init_to_scratch_buffer(init);
+			}
+			scratch_buffer_append(" }");
+			return;
+		}
+		case CONST_INIT_ARRAY_FULL:
+		{
+			scratch_buffer_append("{ ");
+			FOREACH_IDX(i, ConstInitializer *, init, init->init_array_full)
+			{
+				if (i != 0) scratch_buffer_append(", ");
+				const_init_to_scratch_buffer(init);
+			}
+			scratch_buffer_append(" }");
+			return;
+		}
+		case CONST_INIT_ARRAY_VALUE:
+			scratch_buffer_printf("[%lld] = ", (long long)init->init_array_value.index);
+			const_init_to_scratch_buffer(init->init_array_value.element);
+			return;
+	}
+	UNREACHABLE
+}
 void expr_const_to_scratch_buffer(const ExprConst *expr)
 {
 	switch (expr->const_kind)
@@ -337,18 +394,30 @@ void expr_const_to_scratch_buffer(const ExprConst *expr)
 			scratch_buffer_append(expr->member.decl->name);
 			return;
 		case CONST_SLICE:
+			if (!expr->slice_init)
+			{
+				scratch_buffer_append("{}");
+				return;
+			}
+			const_init_to_scratch_buffer(expr->slice_init);
+			return;
 		case CONST_INITIALIZER:
-			scratch_buffer_append("constant list");
+			const_init_to_scratch_buffer(expr->initializer);
 			return;
 		case CONST_UNTYPED_LIST:
 		{
-			scratch_buffer_append("{");
+			if (!vec_size(expr->untyped_list))
+			{
+				scratch_buffer_append("{}");
+				return;
+			}
+			scratch_buffer_append("{ ");
 			FOREACH_IDX(i, Expr *, e, expr->untyped_list)
 			{
 				if (i != 0) scratch_buffer_append(", ");
 				expr_const_to_scratch_buffer(&e->const_expr);
 			}
-			scratch_buffer_append("}");
+			scratch_buffer_append(" }");
 			return;
 		}
 	}

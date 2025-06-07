@@ -10,5 +10,5 @@ fn void main()
 
 /* #expect: test.ll
 
-@.str = private unnamed_addr constant [13 x i8] c"hello {1, 3}\00", align 1
-@.str.1 = private unnamed_addr constant [13 x i8] c"{1, 3} hello\00", align 1
+@.str = private unnamed_addr constant [15 x i8] c"hello { 1, 3 }\00", align 1
+@.str.1 = private unnamed_addr constant [15 x i8] c"{ 1, 3 } hello\00", align 1

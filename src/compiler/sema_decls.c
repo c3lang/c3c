@@ -3610,7 +3610,8 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 						   type_quoted_error_string(type_cint));
 				return MAIN_TYPE_ERROR;
 			}
-			if (arg_type2 != type_get_ptr(type_get_ptr(type_char)))
+			if (arg_type2->type_kind != TYPE_POINTER
+				|| type_flatten(arg_type2->pointer) != type_get_ptr(type_char))
 			{
 				SEMA_ERROR(params[1], "Expected a parameter of type 'char**' for a C-style main.");
 				return MAIN_TYPE_ERROR;

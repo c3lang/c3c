@@ -184,7 +184,7 @@ static inline bool sema_create_const_min(Expr *expr, Type *type, Type *flat);
 static inline bool sema_create_const_max(Expr *expr, Type *type, Type *flat);
 static inline bool sema_create_const_params(Expr *expr, Type *type);
 static inline void sema_create_const_membersof(Expr *expr, Type *type, AlignSize alignment, AlignSize offset);
-static inline void sema_create_const_methodsof(Expr *expr, Type *type);
+static inline void sema_create_const_methodsof(SemaContext *context, Expr *expr, Type *type);
 
 static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr *right);
 static inline bool expr_both_const(Expr *left, Expr *right);
@@ -4780,38 +4780,72 @@ static inline void sema_create_const_membersof(Expr *expr, Type *type, AlignSize
 	expr_rewrite_const_untyped_list(expr, member_exprs);
 }
 
-
-static inline void sema_create_const_methodsof(Expr *expr, Type *type)
+static inline Expr *create_method_copy(Decl *method, SourceSpan span)
 {
-	Decl **methods = type->decl->methods;
-	unsigned method_count = vec_size(methods);
-	
-	if (!method_count)
-	{
-		expr_rewrite_const_untyped_list(expr, NULL);
-		return;
-	}
+	size_t namestr_len = strlen(method->name);
+	const char *namestr = str_copy(method->name, namestr_len);
+	Expr *expr_element = expr_new(EXPR_CONST, span);
+	expr_element->resolve_status = RESOLVE_DONE;
+	expr_element->type = type_string;
+	expr_element->const_expr = (ExprConst) {
+		.const_kind = CONST_STRING,
+		.bytes.ptr = namestr,
+		.bytes.len = namestr_len,
+	};
+	return expr_element;
+}
 
-	Expr **method_exprs = method_count ? VECNEW(Expr*, method_count) : NULL;
-	for (unsigned i = 0; i < method_count; i++)
+static inline void append_to_method_list(Decl **methods, Expr ***method_exprs_ref, SourceSpan span)
+{
+	FOREACH(Decl *, method, methods)
 	{
-		Decl *method = methods[i];
 		if (method->decl_kind == DECL_FUNC)
 		{
-			Decl *decl = methods[i];
-			size_t namestr_len = strlen(decl->name);
-			const char *namestr = str_copy(decl->name, namestr_len);
-			Expr *expr_element = expr_new(EXPR_CONST, expr->span);
-			expr_element->resolve_status = RESOLVE_DONE;
-			expr_element->type = type_string;
-			expr_element->const_expr = (ExprConst) {
-				.const_kind = CONST_STRING,
-				.bytes.ptr = namestr,
-				.bytes.len = namestr_len,
-			};
-			vec_add(method_exprs, expr_element);
+			vec_add(*method_exprs_ref, create_method_copy(method, span));
 		}
 	}
+}
+
+static inline void sema_append_interface_methods(Decl *interface, Expr ***method_exprs_ref, SourceSpan span)
+{
+	append_to_method_list(interface->interface_methods, method_exprs_ref, span);
+	FOREACH(TypeInfo *, type_info, interface->interfaces)
+	{
+		sema_append_interface_methods(type_info->type->decl, method_exprs_ref, span);
+	}
+}
+static inline void append_extension_methods(Type *type, Decl **extensions, Expr ***method_exprs_ref, SourceSpan span)
+{
+	FOREACH(Decl *, method, extensions)
+	{
+		if (method->decl_kind == DECL_FUNC && typeget(method->func_decl.type_parent) == type)
+		{
+			vec_add(*method_exprs_ref, create_method_copy(method, span));
+		}
+	}
+}
+
+static inline void sema_create_const_methodsof(SemaContext *context, Expr *expr, Type *type)
+{
+	Expr **method_exprs = NULL;
+CONTINUE:
+	if (type_is_user_defined(type))
+	{
+		Decl *decl = type->decl;
+		// Interface, prefer interface methods.
+		if (decl->decl_kind == DECL_INTERFACE)
+		{
+			sema_append_interface_methods(decl, &method_exprs, expr->span);
+		}
+		// Look through natively defined methods.
+		append_to_method_list(decl->methods, &method_exprs, expr->span);
+	}
+	append_extension_methods(type, context->unit->local_method_extensions, &method_exprs, expr->span);
+	append_extension_methods(type, context->unit->module->private_method_extensions, &method_exprs, expr->span);
+	append_extension_methods(type, compiler.context.method_extensions, &method_exprs, expr->span);
+
+	type = type_find_parent_type(type);
+	if (type) goto CONTINUE;
 	expr_rewrite_const_untyped_list(expr, method_exprs);
 }
 
@@ -5255,7 +5289,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return true;
 		}
 		case TYPE_PROPERTY_METHODSOF:
-			sema_create_const_methodsof(expr, flat);
+			sema_create_const_methodsof(context, expr, type);
 			return true;
 		case TYPE_PROPERTY_PARAMSOF:
 			return sema_create_const_paramsof(expr, flat);
