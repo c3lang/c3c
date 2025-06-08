@@ -1949,6 +1949,7 @@ void target_setup(BuildTarget *target)
 	compiler.platform.vendor = vendor_from_llvm_string(slice_next_token(&target_triple_string, '-'));
 	compiler.platform.os = os_from_llvm_string(slice_next_token(&target_triple_string, '-'));
 	compiler.platform.environment_type = environment_type_from_llvm_string(target_triple_string);
+	if (compiler.platform.environment_type == ENV_TYPE_ANDROID) compiler.platform.os = OS_TYPE_ANDROID;
 
 	if (target->debug_info == DEBUG_INFO_NOT_SET)
 	{
