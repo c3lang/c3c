@@ -10,6 +10,8 @@ ArchOsTarget default_target = WINDOWS_X64;
 #elif defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64)
 	#if defined(__MACH__)
 ArchOsTarget default_target = MACOS_X64;
+	#elif defined(__ANDROID__)
+ArchOsTarget default_target = ANDROID_X86_64;
 	#elif defined(__linux__) && __linux__
 ArchOsTarget default_target = LINUX_X64;
 	#elif defined(__NetBSD__)
@@ -24,6 +26,8 @@ ArchOsTarget default_target = ELF_X64;
 #elif defined(__aarch64__) || defined(_M_ARM64)
 	#if defined(__MACH__)
 ArchOsTarget default_target = MACOS_AARCH64;
+	#elif defined(__ANDROID__)
+ArchOsTarget default_target = ANDROID_AARCH64;
 	#elif defined(__linux__) && __linux__
 ArchOsTarget default_target = LINUX_AARCH64;
 	#else
