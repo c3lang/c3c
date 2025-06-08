@@ -61,7 +61,7 @@ ABIArgInfo *aarch64_coerce_illegal_vector(Type *type)
 	TypeSize size = type_size(type);
 
 	// CLANG: Android promotes char[<2>] to ushort, not uint
-	if (compiler.platform.environment_type == ENV_TYPE_ANDROID && size <= 2)
+	if ((compiler.platform.environment_type == ENV_TYPE_ANDROID || compiler.platform.os == OS_TYPE_ANDROID) && size <= 2)
 	{
 		return abi_arg_new_direct_coerce_type(type_ushort);
 	}

@@ -26,6 +26,7 @@
 - Fixes methodsof to pick up all sorts of extension methods. #2192
 - `--lsp` sometimes does not emit end tag #2194.
 - Improve Android termux detection.
+- Update Android ABI.
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
