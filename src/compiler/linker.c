@@ -463,6 +463,11 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 
 static void linker_setup_android(const char ***args_ref, Linker linker_type, bool is_dylib)
 {
+	if (!compiler.build.android.ndk_path)
+	{
+		linker_setup_linux(args_ref, linker_type, is_dylib);
+		return;
+	}
 #ifdef __linux__
 	#define ANDROID_HOST_TAG "linux-x86_64"
 #elif __APPLE__

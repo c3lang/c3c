@@ -1,7 +1,6 @@
 module libc::os @if(env::LIBC);
 import std::core::env;
 
-const HAS_NATIVE_ERRNO = env::LINUX || env::ANDROID || env::DARWIN || env::WIN32;
 // Linux
 extern fn int* __errno_location() @if(env::LINUX);
 macro int errno() @if(env::LINUX) => *__errno_location();
@@ -29,7 +28,7 @@ extern fn void _get_errno(int* result) @if(env::WIN32);
 extern fn void _set_errno(int err) @if(env::WIN32);
 
 // Default
-module libc::os @if(!env::LIBC || !HAS_NATIVE_ERRNO);
+module libc::os @if(!env::LIBC || !env::HAS_NATIVE_ERRNO);
 tlocal int _errno_c3 = 0;
 fn void errno_set(int err) => _errno_c3 = err;
 fn int errno() => _errno_c3;
