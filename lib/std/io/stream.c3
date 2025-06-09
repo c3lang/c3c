@@ -49,7 +49,7 @@ macro bool @is_outstream(#expr)
 
 <*
  @param [&out] ref
- @require @is_instream(stream)
+ @require @is_instream(stream) : "Expected a stream"
 *>
 macro usz? read_any(stream, any ref)
 {

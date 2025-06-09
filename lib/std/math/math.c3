@@ -1197,31 +1197,31 @@ macro ushort[<*>] ushort[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul
 
 <*
  @require @is_same_vector_or_scalar(self, mul) : `mul must be a vector of the same type as self, or be an integer scalar`
- @require @is_same_vector_or_scalar(self, div) `div must be a vector of the same type as self, or be an integer scalar`
+ @require @is_same_vector_or_scalar(self, div) : `div must be a vector of the same type as self, or be an integer scalar`
 *>
 macro int[<*>] int[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
 
 <*
- @require @is_same_vector_or_scalar(self, mul) `mul must be a vector of the same type as self, or be an integer scalar`
- @require @is_same_vector_or_scalar(self, div) `div must be a vector of the same type as self, or be an integer scalar`
+ @require @is_same_vector_or_scalar(self, mul) : `mul must be a vector of the same type as self, or be an integer scalar`
+ @require @is_same_vector_or_scalar(self, div) : `div must be a vector of the same type as self, or be an integer scalar`
 *>
 macro uint[<*>] uint[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
 
 <*
- @require @is_same_vector_or_scalar(self, mul) `mul must be a vector of the same type as self, or be an integer scalar`
- @require @is_same_vector_or_scalar(self, div) `div must be a vector of the same type as self, or be an integer scalar`
+ @require @is_same_vector_or_scalar(self, mul) : `mul must be a vector of the same type as self, or be an integer scalar`
+ @require @is_same_vector_or_scalar(self, div) : `div must be a vector of the same type as self, or be an integer scalar`
 *>
 macro long[<*>] long[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
 
 <*
- @require @is_same_vector_or_scalar(self, mul) `mul must be a vector of the same type as self, or be an integer scalar`
- @require @is_same_vector_or_scalar(self, div) `div must be a vector of the same type as self, or be an integer scalar`
+ @require @is_same_vector_or_scalar(self, mul) : `mul must be a vector of the same type as self, or be an integer scalar`
+ @require @is_same_vector_or_scalar(self, div) : `div must be a vector of the same type as self, or be an integer scalar`
 *>
 macro ulong[<*>] ulong[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
 
 <*
-@require types::is_int($typeof(a)) `The input must be an integer`
-@require types::is_int($typeof(b)) `The input must be an integer`
+ @require types::is_int($typeof(a)) : `The input must be an integer`
+ @require types::is_int($typeof(b)) : `The input must be an integer`
 *>
 macro _gcd(a, b) @private
 {
@@ -1242,9 +1242,9 @@ macro _gcd(a, b) @private
 }
 
 <*
-Calculate the least common multiple for the provided arguments.
+ Calculate the least common multiple for the provided arguments.
 
-@require $vacount >= 2 `At least two arguments are required.`
+ @require $vacount >= 2 : "At least two arguments are required."
 *>
 macro lcm(...)
 {
@@ -1260,9 +1260,9 @@ macro lcm(...)
 }
 
 <*
-Calculate the greatest common divisor for the provided arguments.
+ Calculate the greatest common divisor for the provided arguments.
 
-@require $vacount >= 2 `At least two arguments are required.`
+ @require $vacount >= 2 : "At least two arguments are required."
 *>
 macro gcd(...)
 {
