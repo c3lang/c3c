@@ -11094,7 +11094,7 @@ RETRY:
 			if (!sema_expr_analyse_ct_arg(context, to, expr)) return expr_poison(expr);
 			break;
 		case EXPR_UNARY:
-			if (expr->unary_expr.operator == UNARYOP_TADDR && to->canonical->type_kind == TYPE_POINTER && to->canonical != type_voidptr)
+			if (to && expr->unary_expr.operator == UNARYOP_TADDR && to->canonical->type_kind == TYPE_POINTER && to->canonical != type_voidptr)
 			{
 				if (!sema_analyse_inferred_expr(context, type_get_indexed_type(to), expr->unary_expr.expr)) return expr_poison(expr);
 			}

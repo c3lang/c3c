@@ -1,0 +1,18 @@
+// #target: macos-x64
+module test;
+macro foo(x) { return x; }
+fn void main()
+{
+	int* x = foo(&&1);
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %x = alloca ptr, align 8
+  %taddr = alloca i32, align 4
+  store i32 1, ptr %taddr, align 4
+  store ptr %taddr, ptr %x, align 8
+  ret void
+}
