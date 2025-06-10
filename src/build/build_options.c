@@ -43,6 +43,7 @@ const char *arch_os_target[ARCH_OS_TARGET_LAST + 1];
 #define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__) // NOLINT
 #define PRINTF(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
 #define FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(false); exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
+#define FAIL_WITH_ERR_LONG(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(true); exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
 #define PROJECT_FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); project_usage(); exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
 
 static void usage(bool full)
@@ -96,6 +97,7 @@ static void usage(bool full)
 	print_opt("--run-dir <dir>", "Set the directory from where to run the binary (only for run and compile-run).");
 	print_opt("--libdir <dir>", "Add this directory to the c3l library search paths.");
 	print_opt("--lib <name>", "Add this c3l library to the compilation.");
+	print_opt("--sources <file1> [<file2> ...]", "Add these additional sources to the compilation.");
 	if (full)
 	{
 		print_opt("--validation=<option>", "Strictness of code validation: lenient (default), strict, obnoxious (very strict)");
@@ -721,6 +723,20 @@ static void parse_option(BuildOptions *options)
 				options->ansi = parse_opt_select(Ansi, argopt, on_off);
 				return;
 			}
+			if (match_longopt("sources"))
+			{
+				if (at_end() || next_is_opt())
+				{
+					FAIL_WITH_ERR_LONG("'--sources' expected at least one source file.");
+				}
+				do
+				{
+					next_arg();
+					append_file(options);
+
+				} while(!(at_end() || next_is_opt()));
+				return;
+			}
 			if (match_longopt("use-old-slice-copy"))
 			{
 				options->old_slice_copy = true;
@@ -728,7 +744,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("test-filter"))
 			{
-				if (at_end() || next_is_opt()) error_exit("error: --test-filter needs an argument.");
+				if (at_end() || next_is_opt()) FAIL_WITH_ERR_LONG("error: --test-filter needs an argument.");
 				options->test_filter = next_arg();
 				return;
 			}
@@ -770,13 +786,13 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("symtab"))
 			{
-				if (at_end() || next_is_opt()) error_exit("error: --symtab needs a valid integer.");
+				if (at_end() || next_is_opt()) FAIL_WITH_ERR_LONG("error: --symtab needs a valid integer.");
 				const char *symtab_string = next_arg();
 				int symtab = atoi(symtab_string);
-				if (symtab < 1024) error_exit("Expected the --symtab size to be valid positive integer >= 1024.");
+				if (symtab < 1024) FAIL_WITH_ERR_LONG("Expected the --symtab size to be valid positive integer >= 1024.");
 				if (symtab > MAX_SYMTAB_SIZE)
 				{
-					error_exit("The symtab size is too large. The maximum size is %d.", (int)MAX_SYMTAB_SIZE);
+					FAIL_WITH_ERR_LONG("The symtab size is too large. The maximum size is %d.", (int)MAX_SYMTAB_SIZE);
 				}
 				options->symtab_size = next_highest_power_of_2(symtab);
 				return;

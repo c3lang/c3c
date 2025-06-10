@@ -151,5 +151,10 @@ int get_valid_enum_from_string(const char *str, const char *target, const char *
 void check_json_keys(const char *valid_keys[][2], size_t key_count, const char *deprecated_keys[], size_t deprecated_key_count, JSONObject *json, const char *target_name, const char *option);
 long get_valid_integer(BuildParseContext context, JSONObject *table, const char *key, bool mandatory);
 
+INLINE void append_strings_to_strings(const char*** list_of_strings_ptr, const char **strings_to_append)
+{
+	FOREACH(const char *, string, strings_to_append) vec_add(*list_of_strings_ptr, string);
+}
+
 #define APPEND_STRING_LIST(list__, string__) \
 get_list_append_strings(context, json, list__, string__, string__ "-override")

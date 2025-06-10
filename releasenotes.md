@@ -18,6 +18,7 @@
 - Add printf format to `$assert` and `$error` #2183.
 - Make accepting arguments for `main` a bit more liberal, accepting `main(int argc, ZString* argv)`
 - Make `$echo` and `@sprintf` correctly stringify compile time initializers and slices.
+- Add `--sources` build option to add additional files to compile. #2097
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.

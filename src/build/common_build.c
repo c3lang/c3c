@@ -113,12 +113,6 @@ const char *get_cflags(BuildParseContext context, JSONObject *json, const char *
 	return cflags ? cflags : original_flags;
 }
 
-INLINE void append_strings_to_strings(const char*** list_of_strings_ptr, const char **strings_to_append)
-{
-	FOREACH(const char *, string, strings_to_append) vec_add(*list_of_strings_ptr, string);
-}
-
-
 void get_list_append_strings(BuildParseContext context, JSONObject *json, const char ***list_ptr, const char *base, const char *override)
 {
 	const char **value = get_optional_string_array(context, json, context.target ? override : base);

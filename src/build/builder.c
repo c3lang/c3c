@@ -523,6 +523,11 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		target->header_file_dir = target->output_dir ? target->output_dir : target->build_dir;
 	}
 
+	if (options->files)
+	{
+		append_strings_to_strings(&target->source_dirs, options->files);
+	}
+
 	switch (options->compile_option)
 	{
 		case COMPILE_NORMAL:
