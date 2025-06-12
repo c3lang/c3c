@@ -28,6 +28,7 @@
 - `--lsp` sometimes does not emit end tag #2194.
 - Improve Android termux detection.
 - Update Android ABI.
+- Fixes to `@format` checking #2199.
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.

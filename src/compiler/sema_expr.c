@@ -1910,80 +1910,138 @@ CHECK_FORMAT:;
 		if (data[i] != '%') continue;
 		i++;
 		char c = data[i];
-		if (c == '%') continue;
-		if (idx == vacount)
+NEXT_FLAG:
+		switch (c)
 		{
-			RETURN_SEMA_FUNC_ERROR(callee->definition, call, "Too few arguments provided for the formatting string.");
+			case '-':
+			case '+':
+			case '0':
+			case '#':
+			case ' ':
+				if (++i == len) goto UNEXPECTED_END;
+				c = data[i];
+				goto NEXT_FLAG;
+			case '%':
+				continue;
+			default:
+				break;
 		}
-		if (c == '.' && data[++i] == '*')
-		{
-			idx++;
-		}
+		if (idx == vacount) goto TOO_FEW_ARGUMENTS;
 		expr = vaargs[idx];
 		assert(expr->expr_kind == EXPR_MAKE_ANY);
 		Type *type = expr->make_any_expr.typeid->const_expr.typeid;
 		type = type_flatten(type);
-		while (true)
+
+		// Possible variable width
+		if (c == '*')
 		{
-			switch (c)
+			if (!type_is_integer(type))
 			{
-				case 's':
-					goto NEXT;
-				case 'c':
-					if (!type_is_integer(type))
-					{
-						RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer here.");
-					}
-					goto NEXT;
-				case 'd':
-				case 'X':
-				case 'x':
-				case 'B':
-				case 'b':
-				case 'o':
-				case 'a':
-				case 'A':
-				case 'F':
-				case 'f':
-				case 'e':
-				case 'E':
-				case 'g':
-				case 'G':
-					if (!type_is_number_or_bool(type) && !type_is_pointer_type(type))
-					{
-						if (type->type_kind == TYPE_ENUM)
-						{
-							RETURN_SEMA_ERROR(vaargs[idx], "An enum cannot directly be turned into a number. Use '.ordinal' to convert it to its value.", type_quoted_error_string(type));
-						}
-						RETURN_SEMA_ERROR(vaargs[idx], "Expected a number here, but was %s", type_quoted_error_string(type));
-					}
-					goto NEXT;
-				case 'p':
-					if (!type_is_pointer_type(type) && !type_is_integer(type))
-					{
-						RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer here.");
-					}
-					goto NEXT;
-				case 'H':
-				case 'h':
-					if (!type_flat_is_char_array(type))
-					{
-						RETURN_SEMA_ERROR(vaargs[idx], "Expected a char array here.");
-					}
-					goto NEXT;
-				case '\0':
-					goto DONE;
-				case '+':
-				case '-':
-				default:
-					break;
+				RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer for the format width.");
 			}
-			c = data[++i];
+			if (++i == len) goto UNEXPECTED_END;
+			c = data[i];
+			if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
+			expr = vaargs[idx];
+			assert(expr->expr_kind == EXPR_MAKE_ANY);
+			type = expr->make_any_expr.typeid->const_expr.typeid;
+			type = type_flatten(type);
+		}
+		else
+		{
+			while (char_is_digit(c))
+			{
+				if (++i == len) goto UNEXPECTED_END;
+				c = data[i];
+			}
+		}
+		if (c == '.')
+		{
+			if (++i == len) goto UNEXPECTED_END;
+			c = data[i];
+			if (c == '*')
+			{
+				if (!type_is_integer(type))
+				{
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer for the format width.");
+				}
+				if (++i == len) goto UNEXPECTED_END;
+				c = data[i];
+				if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
+				expr = vaargs[idx];
+				assert(expr->expr_kind == EXPR_MAKE_ANY);
+				type = expr->make_any_expr.typeid->const_expr.typeid;
+				type = type_flatten(type);
+			}
+			else
+			{
+				if (!char_is_digit(c))
+				{
+					RETURN_SEMA_ERROR(actual_args[format_index], "Expected a format width or '*' in the format string but got another character");
+				}
+				while (char_is_digit(c))
+				{
+					if (++i == len) goto UNEXPECTED_END;
+					c = data[i];
+				}
+			}
+		}
+		switch (c)
+		{
+			case 's':
+				goto NEXT;
+			case 'c':
+				if (!type_is_integer(type))
+				{
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer here.");
+				}
+				goto NEXT;
+			case 'd':
+			case 'X':
+			case 'x':
+			case 'B':
+			case 'b':
+			case 'o':
+			case 'a':
+			case 'A':
+			case 'F':
+			case 'f':
+			case 'e':
+			case 'E':
+			case 'g':
+			case 'G':
+				if (!type_is_number_or_bool(type) && !type_is_pointer_type(type))
+				{
+					if (type->type_kind == TYPE_ENUM)
+					{
+						RETURN_SEMA_ERROR(vaargs[idx], "An enum cannot directly be turned into a number. Use '.ordinal' to convert it to its value.", type_quoted_error_string(type));
+					}
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected a number here, but was %s", type_quoted_error_string(type));
+				}
+				goto NEXT;
+			case 'p':
+				if (!type_is_pointer_type(type) && !type_is_integer(type))
+				{
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer here.");
+				}
+				goto NEXT;
+			case 'H':
+			case 'h':
+				if (!type_flat_is_char_array(type))
+				{
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected a char array here.");
+				}
+				goto NEXT;
+			default:
+				if (c > 31 && c < 127)
+				{
+					RETURN_SEMA_ERROR(actual_args[format_index], "Unexpected character '%c' in format declaration.", c);
+				}
+				RETURN_SEMA_ERROR(actual_args[format_index], "Unexpected character in format declaration.", c);
 		}
 NEXT:
 		idx++;
 	}
-DONE:
 	if (idx < vacount)
 	{
 		RETURN_SEMA_FUNC_ERROR(callee->definition, call, "Too many arguments were provided for the formatting string.");
@@ -1992,6 +2050,10 @@ DONE:
 NO_MATCH_REF:
 	*no_match_ref = true;
 	return false;
+UNEXPECTED_END:
+	RETURN_SEMA_FUNC_ERROR(callee->definition, call, "Unexpected end of formatting string mid format declaration.");
+TOO_FEW_ARGUMENTS:
+	RETURN_SEMA_FUNC_ERROR(callee->definition, call, "Too few arguments provided for the formatting string.");
 }
 
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr)
