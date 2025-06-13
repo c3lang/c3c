@@ -2938,21 +2938,20 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 {
     Expr *message = statement->echo_stmt.message;
     Expr *prefix = statement->echo_stmt.prefix;
-    bool has_prefix = statement->echo_stmt.has_prefix;
 	if (!sema_analyse_expr(context, message)) return false;
-    if (has_prefix && !sema_analyse_expr(context, prefix)) return false;
 	if (message->expr_kind != EXPR_CONST)
 	{
 		SEMA_ERROR(message, "Expected a constant 'message' value.");
 		return false;
 	}
-    else if (has_prefix && prefix->expr_kind != EXPR_CONST)
+    if (statement->echo_stmt.has_prefix)
     {
-        SEMA_ERROR(prefix, "Expected a constant 'prefix' value.");
-        return false;
-    }
-    if (has_prefix)
-    {
+        if (!sema_analyse_expr(context, prefix)) return false;
+        if (prefix->expr_kind != EXPR_CONST)
+        {
+            SEMA_ERROR(prefix, "Expected a constant 'prefix' value.");
+            return false;
+        }
         scratch_buffer_clear();
         expr_const_to_scratch_buffer(&prefix->const_expr);
         printf("%s", scratch_buffer_to_string());   // do not use 'puts' here
