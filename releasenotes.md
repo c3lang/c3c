@@ -20,6 +20,7 @@
 - Make `$echo` and `@sprintf` correctly stringify compile time initializers and slices.
 - Add `--sources` build option to add additional files to compile. #2097
 - Support untyped second argument for operator overloading.
+- The form-feed character '\f' is no longer valid white space.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.

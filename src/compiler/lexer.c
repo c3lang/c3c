@@ -273,7 +273,6 @@ static void skip_whitespace(Lexer *lexer)
 				FALLTHROUGH;
 			case ' ':
 			case '\t':
-			case '\f':
 				next(lexer);
 				break;
 			case '\r':
