@@ -1711,7 +1711,7 @@ INLINE bool decl_matches_overload(Decl *method, Type *type, OperatorOverload ove
 
 static inline bool operator_in_module_typed(SemaContext *c, Module *module, OperatorOverload operator_overload, OverloadType overload_type, Type *method_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref)
 {
-	if (module->is_generic) return NULL;
+	if (module->is_generic) return false;
 	if (!sema_find_typed_operator_in_list(c, module->private_method_extensions, operator_overload, OVERLOAD_TYPE_SYMMETRIC, method_type, binary_arg, binary_type, candidate_ref, ambiguous_ref)) return false;
 	FOREACH(Module *, sub_module, module->sub_modules)
 	{
