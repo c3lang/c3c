@@ -7674,7 +7674,7 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 	Type *left_type = type_no_optional(left->type)->canonical;
 	Type *right_type = type_no_optional(right->type)->canonical;
 
-	if (is_equality_type_op && (!type_is_comparable(left_type) || !type_is_comparable(right_type)))
+	if (is_equality_type_op && (type_is_user_defined(left_type) || type_is_user_defined(right_type)))
 	{
 		Decl *overload = NULL;
 		bool negated_overload = false;

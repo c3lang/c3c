@@ -577,6 +577,19 @@ fn usz? String.rindex_of(self, String substr)
 	return NOT_FOUND?;
 }
 
+fn bool ZString.eq(self, ZString other) @operator(==)
+{
+	char* a = self;
+	char* b = other;
+	if (a == b) return true;
+	for (;; a++, b++)
+	{
+		char c = *a;
+		if (c != *b) return false;
+		if (!c) return true;
+	}
+}
+
 fn String ZString.str_view(self)
 {
 	return (String)(self[:self.len()]);

@@ -500,6 +500,7 @@ typedef struct
 	TypeInfoId type_parent;
 	OperatorOverload operator : 6;
 	unsigned overload_type : 2;
+	bool is_wildcard_overload : 1;
 	Signature signature;
 	AstId body;
 	AstId docs;

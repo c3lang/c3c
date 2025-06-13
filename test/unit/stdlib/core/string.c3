@@ -190,6 +190,14 @@ fn void test_treplace()
 	assert(test.treplace("Never", "Always") == "Befriend some dragons?");
 }
 
+fn void test_zstring()
+{
+	String test = "hello";
+	ZString test2 = "hello";
+	ZString test3 = "bye";
+	assert(test.zstr_tcopy() == test2);
+	assert(test.zstr_tcopy() != test3);
+}
 fn void test_replace()
 {
 	String test = "Befriend some dragons?";

@@ -19,6 +19,7 @@
 - Make accepting arguments for `main` a bit more liberal, accepting `main(int argc, ZString* argv)`
 - Make `$echo` and `@sprintf` correctly stringify compile time initializers and slices.
 - Add `--sources` build option to add additional files to compile. #2097
+- Support untyped second argument for operator overloading.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.
@@ -29,9 +30,12 @@
 - Improve Android termux detection.
 - Update Android ABI.
 - Fixes to `@format` checking #2199.
+- Distinct versions of builtin types ignore @operator overloads #2204.
+- @operator macro using untyped parameter causes compiler segfault #2200.
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
+- Add comparison with `==` for ZString types.
 
 ## 0.7.2 Change list
 

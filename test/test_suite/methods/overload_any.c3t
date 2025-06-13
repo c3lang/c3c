@@ -1,0 +1,55 @@
+// #target: macos-x64
+module test;
+import std::io;
+fn int main(String[] args)
+{
+	((*io::stdout() << "Hello, World") << 3) << "\n";
+	return 0;
+}
+
+macro File File.print(self, other) @operator(<<)
+{
+	(void)io::fprint(&self, other);
+	return self;
+}
+
+/* #expect: test.ll
+
+define i32 @test.main(ptr %0, i64 %1) #0 {
+entry:
+  %args = alloca %"char[][]", align 8
+  %self = alloca %File, align 8
+  %retparam = alloca i64, align 8
+  %self2 = alloca %File, align 8
+  %varargslots = alloca [1 x %any], align 16
+  %taddr = alloca i32, align 4
+  %retparam4 = alloca i64, align 8
+  %taddr5 = alloca %any, align 8
+  %indirectarg = alloca %"any[]", align 8
+  %self7 = alloca %File, align 8
+  %retparam9 = alloca i64, align 8
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  %2 = call ptr @std.io.stdout()
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %self, ptr align 8 %2, i32 8, i1 false)
+  %3 = call i64 @std.io.File.write(ptr %retparam, ptr %self, ptr @.str, i64 12)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %self2, ptr align 8 %self, i32 8, i1 false)
+  %4 = insertvalue %any undef, ptr %self2, 0
+  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
+  store i32 3, ptr %taddr, align 4
+  %6 = insertvalue %any undef, ptr %taddr, 0
+  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %7, ptr %varargslots, align 16
+  %8 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %8, i64 1, 1
+  store %any %5, ptr %taddr5, align 8
+  %lo = load i64, ptr %taddr5, align 8
+  %ptradd6 = getelementptr inbounds i8, ptr %taddr5, i64 8
+  %hi = load ptr, ptr %ptradd6, align 8
+  store %"any[]" %"$$temp", ptr %indirectarg, align 8
+  %9 = call i64 @std.io.fprintf(ptr %retparam4, i64 %lo, ptr %hi, ptr @.str.1, i64 2, ptr byval(%"any[]") align 8 %indirectarg)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %self7, ptr align 8 %self2, i32 8, i1 false)
+  %10 = call i64 @std.io.File.write(ptr %retparam9, ptr %self7, ptr @.str.2, i64 1)
+  ret i32 0
+}

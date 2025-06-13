@@ -1,0 +1,37 @@
+// #target: macos-x64
+module test;
+import std;
+typedef ZString2 = inline char*;
+
+fn bool ZString2.equals(self, ZString2 other) @operator(==)
+{
+	io::printn("aa");
+	return true;
+}
+
+fn int main(String[] args)
+{
+	ZString2 a = "123";
+	ZString2 b = "456";
+	bool c = a == b;
+	return 0;
+}
+
+/* #expect: test.ll
+
+entry:
+  %args = alloca %"char[][]", align 8
+  %a = alloca ptr, align 8
+  %b = alloca ptr, align 8
+  %c = alloca i8, align 1
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  store ptr @.str, ptr %a, align 8
+  store ptr @.str.1, ptr %b, align 8
+  %2 = load ptr, ptr %a, align 8
+  %3 = load ptr, ptr %b, align 8
+  %4 = call i8 @test.ZString2.equals(ptr %2, ptr %3)
+  store i8 %4, ptr %c, align 1
+  ret i32 0
+}
