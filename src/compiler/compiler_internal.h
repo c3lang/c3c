@@ -498,9 +498,9 @@ struct Signature_
 typedef struct
 {
 	TypeInfoId type_parent;
-	OperatorOverload operator : 6;
 	unsigned overload_type : 2;
-	bool is_wildcard_overload : 1;
+	unsigned is_wildcard_overload : 1;
+	OperatorOverload operator : 6;
 	Signature signature;
 	AstId body;
 	AstId docs;
