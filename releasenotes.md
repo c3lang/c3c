@@ -34,6 +34,7 @@
 - Distinct versions of builtin types ignore @operator overloads #2204.
 - @operator macro using untyped parameter causes compiler segfault #2200.
 - Make `unreachable()` only panic in safe mode.
+- `cflags` additions for targets was not handed properly. #2209
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.

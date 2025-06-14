@@ -109,8 +109,15 @@ const char **get_optional_string_array(BuildParseContext context, JSONObject *ta
 const char *get_cflags(BuildParseContext context, JSONObject *json, const char *original_flags)
 {
 	// CFlags
-	const char *cflags = get_optional_string(context, json, context.target ? "cflags-override" : "cflags");
-	return cflags ? cflags : original_flags;
+	if (context.target)
+	{
+		const char *cflags = get_optional_string(context, json, "cflags-override");
+		if (cflags) return cflags;
+	}
+	const char *cflags = get_optional_string(context, json, "cflags");
+	if (!cflags) return original_flags;
+	if (!original_flags) return cflags;
+	return str_printf("%s %s", original_flags, cflags);
 }
 
 void get_list_append_strings(BuildParseContext context, JSONObject *json, const char ***list_ptr, const char *base, const char *override)
