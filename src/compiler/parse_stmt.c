@@ -1258,7 +1258,13 @@ Ast *parse_ct_echo_stmt(ParseContext *c)
 {
 	Ast *ast = ast_new_curr(c, AST_CT_ECHO_STMT);
 	advance_and_verify(c, TOKEN_CT_ECHO);
-	ASSIGN_EXPR_OR_RET(ast->expr_stmt, parse_constant_expr(c), poisoned_ast);
+    ASSIGN_EXPR_OR_RET(ast->echo_stmt.message, parse_constant_expr(c), poisoned_ast);
+    ast->echo_stmt.has_prefix = false;
+    if (try_consume(c, TOKEN_COMMA))
+    {
+	    ASSIGN_EXPR_OR_RET(ast->echo_stmt.prefix, parse_constant_expr(c), poisoned_ast);
+        ast->echo_stmt.has_prefix = true;
+    }
 	return consume_eos(c, ast);
 }
 
