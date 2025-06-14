@@ -37,7 +37,6 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 	context->active_scope = (DynamicScope) {
 			.scope_id = ++context->scope_id,
 			.allow_dead_code = false,
-			.jump_end = false,
 			.is_dead = scope_is_dead,
 			.is_invalid = scope_is_invalid,
 			.depth = depth,
@@ -99,7 +98,7 @@ AstId context_get_defers(SemaContext *context, AstId defer_top, AstId defer_bott
 void context_pop_defers(SemaContext *context, AstId *next)
 {
 	AstId defer_start = context->active_scope.defer_start;
-	if (next && !context->active_scope.jump_end)
+	if (next && !context->active_scope.end_jump.active)
 	{
 		AstId defer_current = context->active_scope.defer_last;
 		while (defer_current != defer_start)

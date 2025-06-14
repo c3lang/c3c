@@ -21,6 +21,7 @@
 - Add `--sources` build option to add additional files to compile. #2097
 - Support untyped second argument for operator overloading.
 - The form-feed character '\f' is no longer valid white space.
+- Show code that caused unreachable code #2207
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.
@@ -35,6 +36,7 @@
 - @operator macro using untyped parameter causes compiler segfault #2200.
 - Make `unreachable()` only panic in safe mode.
 - `cflags` additions for targets was not handed properly. #2209
+- `$echo` would suppress warning about unreachable code. #2205
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.

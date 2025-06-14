@@ -41,6 +41,7 @@
 #define PUSH_BREAKCONT(ast) PUSH_CONTINUE(ast); PUSH_BREAK(ast)
 #define POP_BREAKCONT() POP_CONTINUE(); POP_BREAK()
 #define CHECK_ON_DEFINED(ref__) do { if (!ref__) break; *ref__ = true; return false; } while(0)
+#define SET_JUMP_END(context__, node__) do { (context__)->active_scope.end_jump = (EndJump) { true, (node__)->span }; } while(0)
 
 Decl **global_context_acquire_locals_list(void);
 void generic_context_release_locals_list(Decl **);

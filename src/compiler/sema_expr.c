@@ -2627,13 +2627,13 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	sema_append_contract_asserts(assert_first, body);
 	if (!sema_analyse_statement(&macro_context, body)) goto EXIT_FAIL;
 	ASSERT_SPAN(call_expr, macro_context.active_scope.depth == 1);
-	bool implicit_void_return = !macro_context.active_scope.jump_end;
+	bool implicit_void_return = !macro_context.active_scope.end_jump.active;
 	params = macro_context.macro_params;
 	bool is_no_return = sig->attrs.noreturn;
 
 	if (!vec_size(macro_context.returns))
 	{
-		if (rtype && rtype != type_void && !macro_context.active_scope.jump_end)
+		if (rtype && rtype != type_void && !macro_context.active_scope.end_jump.active)
 		{
 			SEMA_ERROR(decl,
 					   "Missing return in macro that should evaluate to %s.",
@@ -2730,7 +2730,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	unsigned returns_found = vec_size(macro_context.returns);
 	// We may have zero normal macro returns but the active scope still has a "jump end".
 	// In this case it is triggered by the @body()
-	if (!returns_found && macro_context.active_scope.jump_end)
+	if (!returns_found && macro_context.active_scope.end_jump.active)
 	{
 		is_no_return = true;
 	}
@@ -2779,7 +2779,10 @@ EXIT:
 	}
 	ASSERT_SPAN(call_expr, context->active_scope.defer_last == context->active_scope.defer_start);
 	context->active_scope = old_scope;
-	if (is_no_return) context->active_scope.jump_end = true;
+	if (is_no_return)
+	{
+		SET_JUMP_END(context, call_expr);
+	}
 	sema_context_destroy(&macro_context);
 	call_expr->resolve_status = RESOLVE_DONE;
 	if (is_always_const && !expr_is_runtime_const(call_expr))
@@ -2893,9 +2896,9 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 			return SCOPE_POP_ERROR();
 		}
 		ASSERT_SPAN(call, ast->ast_kind == AST_COMPOUND_STMT);
-		if (context->active_scope.jump_end)
+		if (context->active_scope.end_jump.active)
 		{
-			macro_context->active_scope.jump_end = true;
+			macro_context->active_scope.end_jump = context->active_scope.end_jump;
 		}
 		if (first_defer)
 		{
@@ -8573,7 +8576,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 		RETURN_SEMA_ERROR(left, "No optional to use '\?\?' with, please remove the '\?\?'.");
 	}
 
-	bool active_scope_jump = context->active_scope.jump_end;
+	EndJump active_scope_jump = context->active_scope.end_jump;
 
 	// First we analyse the "else" and try to implictly cast.
 	if (!sema_analyse_inferred_expr(context, infer_type, right)) return false;
@@ -8585,7 +8588,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 	}
 
 	// Ignore the jump here.
-	context->active_scope.jump_end = active_scope_jump;
+	context->active_scope.end_jump = active_scope_jump;
 
 	// Here we might need to insert casts.
 	Type *else_type = right->type;

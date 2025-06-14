@@ -161,14 +161,14 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 				// If this is a test, then assert(false) is permitted.
 				if (context->call_env.current_function && context->call_env.current_function->func_decl.attr_test)
 				{
-					context->active_scope.jump_end = true;
+					SET_JUMP_END(context, statement);
 					return true;
 				}
 				// Otherwise, require unreachable.
 				RETURN_SEMA_ERROR(expr, "Use 'unreachable' instead of 'assert(false)'.");
 			}
 			// Otherwise we print an error.
-			if (!context->active_scope.jump_end && !context->active_scope.is_dead)
+			if (!context->active_scope.end_jump.active && !context->active_scope.is_dead)
 			{
 				if (message_expr && sema_cast_const(message_expr) && vec_size(statement->assert_stmt.args))
 				{
@@ -212,7 +212,7 @@ static inline bool sema_analyse_break_stmt(SemaContext *context, Ast *statement)
 	}
 
 	// Is jump, and set it as resolved.
-	context->active_scope.jump_end = true;
+	SET_JUMP_END(context, statement);
 	statement->contbreak_stmt.is_resolved = true;
 
 	AstId defer_begin;
@@ -248,13 +248,13 @@ static inline bool sema_analyse_break_stmt(SemaContext *context, Ast *statement)
 static inline bool sema_analyse_compound_stmt(SemaContext *context, Ast *statement)
 {
 	bool success;
-	bool ends_with_jump;
+	EndJump ends_with_jump;
 	SCOPE_START
 		success = sema_analyse_compound_statement_no_scope(context, statement);
-		ends_with_jump = context->active_scope.jump_end;
+		ends_with_jump = context->active_scope.end_jump;
 	SCOPE_END;
 	// If this ends with a jump, then we know we don't need to certain analysis.
-	context->active_scope.jump_end = ends_with_jump;
+	context->active_scope.end_jump = ends_with_jump;
 	return success;
 }
 
@@ -313,7 +313,7 @@ static inline bool sema_analyse_continue_stmt(SemaContext *context, Ast *stateme
 	}
 
 	// This makes the active scope jump.
-	context->active_scope.jump_end = true;
+	SET_JUMP_END(context, statement);
 
 	// Link the parent and add the defers.
 	statement->contbreak_stmt.ast = astid(parent);
@@ -567,7 +567,7 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 	bool is_macro = (context->active_scope.flags & SCOPE_MACRO) != 0;
 	ASSERT(context->active_scope.flags & SCOPE_MACRO);
 	statement->ast_kind = AST_BLOCK_EXIT_STMT;
-	context->active_scope.jump_end = true;
+	SET_JUMP_END(context, statement);
 	Type *block_type = context->expected_block_type;
 	Expr *ret_expr = statement->return_stmt.expr;
 	if (ret_expr)
@@ -680,7 +680,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	}
 
 	// 1. We mark that the current scope ends with a jump.
-	context->active_scope.jump_end = true;
+	SET_JUMP_END(context, statement);
 
 	Type *expected_rtype = context->rtype;
 	ASSERT(expected_rtype && "We should always have known type from a function return.");
@@ -1229,26 +1229,26 @@ static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 		case EXPR_RETHROW:
 			if (expr->rethrow_expr.inner->expr_kind == EXPR_OPTIONAL)
 			{
-				context->active_scope.jump_end = true;
+				SET_JUMP_END(context, expr);
 			}
 			break;
 		case EXPR_FORCE_UNWRAP:
 			if (expr->inner_expr->expr_kind == EXPR_OPTIONAL)
 			{
-				context->active_scope.jump_end = true;
+				SET_JUMP_END(context, expr);
 			}
 			break;
 		case EXPR_POST_UNARY:
 			if (expr->rethrow_expr.inner->expr_kind == EXPR_OPTIONAL)
 			{
-				context->active_scope.jump_end = true;
+				SET_JUMP_END(context, expr);
 			}
 			break;
 		case EXPR_CALL:
-			if (expr->call_expr.no_return) context->active_scope.jump_end = true;
+			if (expr->call_expr.no_return) SET_JUMP_END(context, expr);
 			break;
 		case EXPR_MACRO_BLOCK:
-			if (expr->macro_block.is_noreturn) context->active_scope.jump_end = true;
+			if (expr->macro_block.is_noreturn) SET_JUMP_END(context, expr);
 			break;
 		case EXPR_CONST:
 			// Remove all const statements.
@@ -1385,7 +1385,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 
 			PUSH_BREAKCONT(statement);
 				success = sema_analyse_statement(context, body);
-				statement->for_stmt.flow.no_exit = context->active_scope.jump_end;
+				statement->for_stmt.flow.no_exit = context->active_scope.end_jump.active;
 			POP_BREAKCONT();
 
 			// End for body scope
@@ -1427,7 +1427,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 
 	if (is_infinite && !statement->for_stmt.flow.has_break)
 	{
-		context->active_scope.jump_end = true;
+		SET_JUMP_END(context, statement);
 	}
 	return success;
 }
@@ -1920,18 +1920,18 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 				success = false;
 			}
 		}
-		if (context->active_scope.jump_end && !context->active_scope.allow_dead_code)
+		if (context->active_scope.end_jump.active && !context->active_scope.allow_dead_code)
 		{
-			if (!SEMA_WARN(then, "This code will never execute."))
-			{
-				success = false;
-			}
+			context->active_scope.allow_dead_code = true;
+			bool warn = SEMA_WARN(statement, "This code will never execute.");
+			sema_note_prev_at(context->active_scope.end_jump.span, "This code is preventing it from exectuting");
+			if (!warn) return success = false;
 		}
 
 		SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
 			if (result == COND_FALSE) context->active_scope.is_dead = true;
 			success = success && sema_analyse_statement(context, then);
-			then_jump = context->active_scope.jump_end;
+			then_jump = context->active_scope.end_jump.active;
 		SCOPE_END;
 
 		if (!success) goto END;
@@ -1943,7 +1943,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 				sema_remove_unwraps_from_try(context, cond);
 				sema_unwrappable_from_catch_in_else(context, cond);
 				success = success && sema_analyse_statement(context, else_body);
-				else_jump = context->active_scope.jump_end;
+				else_jump = context->active_scope.end_jump.active;
 			SCOPE_END;
 		}
 
@@ -1964,15 +1964,15 @@ END:
 	}
 	if (then_jump && else_jump && !statement->flow.has_break)
 	{
-		context->active_scope.jump_end = true;
+		SET_JUMP_END(context, statement);
 	}
 	else if (then_jump && result == COND_TRUE)
 	{
-		context->active_scope.jump_end = true;
+		SET_JUMP_END(context, statement);
 	}
 	else if (else_jump && result == COND_FALSE)
 	{
-		context->active_scope.jump_end = true;
+		SET_JUMP_END(context, statement);
 	}
 	return true;
 }
@@ -2070,7 +2070,7 @@ static bool context_labels_exist_in_scope(SemaContext *context)
 
 static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 {
-	context->active_scope.jump_end = true;
+		SET_JUMP_END(context, statement);
 	if (!context->next_target && !statement->nextcase_stmt.label.name && !statement->nextcase_stmt.expr && !statement->nextcase_stmt.is_default)
 	{
 		if (context->next_switch)
@@ -2527,7 +2527,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 			POP_BREAK();
 			POP_NEXT();
 			if (!body && i < case_count - 1) continue;
-			all_jump_end &= context->active_scope.jump_end;
+			all_jump_end &= context->active_scope.end_jump.active;
 		SCOPE_END;
 	}
 	if (is_enum_switch && !exhaustive && success)
@@ -2894,7 +2894,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 
 	if (statement->flow.no_exit && !statement->flow.has_break)
 	{
-		context->active_scope.jump_end = true;
+		SET_JUMP_END(context, statement);
 	}
 	return true;
 }
@@ -3108,21 +3108,20 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 {
 	if (context->active_scope.is_invalid) return false;
 	if (statement->ast_kind == AST_POISONED) return false;
-	bool dead_code = context->active_scope.jump_end;
+	EndJump end_jump = context->active_scope.end_jump;
 	unsigned returns = vec_size(context->returns);
 	if (!sema_analyse_statement_inner(context, statement)) return ast_poison(statement);
-	if (dead_code)
+	if (end_jump.active)
 	{
 		if (!context->active_scope.allow_dead_code)
 		{
-			context->active_scope.allow_dead_code = true;
 			// If we start with an don't start with an assert AND the scope is a macro, then it's bad.
 			if (statement->ast_kind != AST_ASSERT_STMT && statement->ast_kind != AST_NOP_STMT && !(context->active_scope.flags & SCOPE_MACRO))
 			{
-				if (!SEMA_WARN(statement, "This code will never execute."))
-				{
-					return ast_poison(statement);
-				}
+				context->active_scope.allow_dead_code = true;
+				bool warn = SEMA_WARN(statement, "This code will never execute.");
+				sema_note_prev_at(end_jump.span, "No code will execute after this statement.");
+				if (!warn) return ast_poison(statement);
 			}
 			// Remove it
 		}
@@ -3296,7 +3295,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 NEXT:
 		if (!sema_analyse_compound_statement_no_scope(context, body)) return false;
 		ASSERT_SPAN(func,context->active_scope.depth == 1);
-		if (!context->active_scope.jump_end)
+		if (!context->active_scope.end_jump.active)
 		{
 			if (canonical_rtype != type_void)
 			{

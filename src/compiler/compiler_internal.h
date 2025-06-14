@@ -1536,14 +1536,19 @@ typedef struct Module_
 } Module;
 
 
+typedef struct EndJump_
+{
+	bool active;
+	SourceSpan span;
+} EndJump;
 
 typedef struct DynamicScope_
 {
 	ScopeId scope_id;
 	bool allow_dead_code : 1;
-	bool jump_end : 1;
 	bool is_dead : 1;
 	bool is_invalid : 1;
+	EndJump end_jump;
 	ScopeFlags flags;
 	unsigned label_start;
 	unsigned current_local;
