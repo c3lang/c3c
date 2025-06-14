@@ -204,8 +204,9 @@ macro void unreachable(String string = "Unreachable statement reached.", ...) @b
 {
 	$if env::COMPILER_SAFE_MODE:
 	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat);
-	$endif;
+	$else
 	$$unreachable();
+	$endif
 }
 
 <*
