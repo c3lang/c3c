@@ -40,6 +40,7 @@
 - Fix to `is_array_or_slice_of_char` #2214.
 - Method on array slice caused segfault #2211.
 - In some cases, the compiler would dereference a compile time null. #2215
+- Incorrect codegen if a macro ends with unreachable and is assigned to something. #2210
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
