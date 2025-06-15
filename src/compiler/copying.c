@@ -730,6 +730,15 @@ RETRY:
 			fixup_astid(c, &ast->defer_stmt.prev_defer);
 			break;
 		case AST_CT_ECHO_STMT:
+            copy_reg_ref(c, source, ast);
+            SCOPE_FIXUP_START
+                MACRO_COPY_EXPR(ast->echo_stmt.message);
+                if (ast->echo_stmt.has_prefix)
+                {
+                    MACRO_COPY_EXPR(ast->echo_stmt.prefix);
+                }
+            SCOPE_FIXUP_END;
+            break;
 		case AST_EXPR_STMT:
 			MACRO_COPY_EXPR(ast->expr_stmt);
 			break;
