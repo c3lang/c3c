@@ -1507,7 +1507,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		{
 			RETURN_SEMA_ERROR(enumerator, "It is not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
 		}
-		expr_rewrite_insert_deref(enumerator);
+		if (!sema_expr_rewrite_insert_deref(context, enumerator)) return false;
 	}
 
 	// At this point we should have dereferenced any pointer or bailed.
@@ -1665,7 +1665,7 @@ SKIP_OVERLOAD:;
 	// Create @__enum$.len() or @(*__enum$).len()
 	Expr *enum_val = expr_variable(temp);
 	enum_val->span = enumerator->span;
-	if (is_addr) expr_rewrite_insert_deref(enum_val);
+	if (is_addr && !sema_expr_rewrite_insert_deref(context, enum_val)) return false;
 	Type *enumerator_type = type_flatten(enum_val->type);
 	Expr *len_call;
 	ArraySize array_len = 0;
@@ -1837,7 +1837,7 @@ SKIP_OVERLOAD:;
 	Expr *subscript = expr_new(EXPR_SUBSCRIPT, var->span);
 	enum_val = expr_variable(temp);
 	enum_val->span = enumerator->span;
-	if (is_addr) expr_rewrite_insert_deref(enum_val);
+	if (is_addr && !sema_expr_rewrite_insert_deref(context, enum_val)) return false;
 	subscript->subscript_expr.expr = exprid(enum_val);
 	Expr *index_expr = array_len == 1 ? expr_new_const_int(var->span, idx_decl->type, 0) : expr_variable(idx_decl);
 	if (is_enum_iterator)

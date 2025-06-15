@@ -5422,6 +5422,39 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 }
 
 
+bool sema_expr_rewrite_insert_deref(SemaContext *context, Expr *original)
+{
+	if (expr_is_const_pointer(original) && !original->const_expr.ptr)
+	{
+		RETURN_SEMA_ERROR(original, "This value is known to be null so you cannot dereference it.");
+	}
+	// Assume *(&x) => x
+	if (original->expr_kind == EXPR_UNARY && original->unary_expr.operator == UNARYOP_ADDR)
+	{
+		*original = *original->unary_expr.expr;
+		return true;
+	}
+
+	// Allocate our new and create our new inner, and overwrite the original.
+	Expr *inner = expr_copy(original);
+	original->expr_kind = EXPR_UNARY;
+	original->type = NULL;
+	original->unary_expr.operator = UNARYOP_DEREF;
+	original->unary_expr.expr = inner;
+
+	// In the case the original is already resolved, we want to resolve the deref as well.
+	if (original->resolve_status == RESOLVE_DONE)
+	{
+		Type *no_fail  = type_no_optional(inner->type);
+		ASSERT(no_fail->canonical->type_kind == TYPE_POINTER);
+
+		// Only fold to the canonical type if it wasn't a pointer.
+		Type *pointee = no_fail->type_kind == TYPE_POINTER ? no_fail->pointer : no_fail->canonical->pointer;
+		original->type = type_add_optional(pointee, IS_OPTIONAL(inner));
+	}
+	return true;
+}
+
 static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, Expr *parent, Type *flat_type,
                                              const char *kw, unsigned len, CheckType check, bool is_lvalue)
 {
@@ -5487,7 +5520,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 		expr->resolve_status = RESOLVE_DONE;
 		if (check == CHECK_ADDRESS)
 		{
-			expr_rewrite_insert_deref(expr);
+			if (!sema_expr_rewrite_insert_deref(context, expr)) return false;
 		}
 		return true;
 	}
@@ -5638,7 +5671,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	if (underlying_type->type_kind == TYPE_POINTER && underlying_type != type_voidptr)
 	{
 		if (!sema_cast_rvalue(context, parent, true)) return false;
-		expr_rewrite_insert_deref(expr->access_unresolved_expr.parent);
+		if (!sema_expr_rewrite_insert_deref(context, expr->access_unresolved_expr.parent)) return false;
 		parent = expr->access_unresolved_expr.parent;
 	}
 
@@ -6561,7 +6594,7 @@ INLINE bool sema_rewrite_op_assign(SemaContext *context, Expr *expr, Expr *left,
 		// Now, create a lhs of the binary add:
 		Expr *lhs = expr_new_expr(EXPR_SUBSCRIPT, left);
 		Expr *parent_by_variable = expr_variable(parent_val);
-		expr_rewrite_insert_deref(parent_by_variable);
+		if (!sema_expr_rewrite_insert_deref(context, parent_by_variable)) return false;
 		lhs->subscript_expr = (ExprSubscript) { .expr = exprid(parent_by_variable), .index.expr = exprid(expr_variable(index_val)) };
 		// Now create the binary expression
 		Expr *binary = expr_new_expr(EXPR_BINARY, expr);
@@ -6571,7 +6604,7 @@ INLINE bool sema_rewrite_op_assign(SemaContext *context, Expr *expr, Expr *left,
 		assign->binary_expr = (ExprBinary) { .left = exprid(left), .right = exprid(binary), .operator = BINARYOP_ASSIGN };
 		// Now we need to patch the values in `left`:
 		parent_by_variable = expr_variable(parent_val);
-		expr_rewrite_insert_deref(parent_by_variable);
+		if (!sema_expr_rewrite_insert_deref(context, parent_by_variable)) return false;
 		left->subscript_assign_expr.expr = exprid(parent_by_variable);
 		left->subscript_assign_expr.index = exprid(expr_variable(index_val));
 		// We add the assign
@@ -6594,8 +6627,8 @@ AFTER_ADDR:;
 	Expr *left_lvalue = expr_variable(variable);
 
 	// lvalue = *temp, rvalue = *temp
-	expr_rewrite_insert_deref(left_lvalue);
-	expr_rewrite_insert_deref(left_rvalue);
+	if (!sema_expr_rewrite_insert_deref(context, left_lvalue)) return false;
+	if (!sema_expr_rewrite_insert_deref(context, left_rvalue)) return false;
 
 	// init, expr -> lvalue = rvalue + a
 	expr->expr_kind = EXPR_BINARY;
@@ -8350,7 +8383,7 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 	{
 		vec_add(args, exprptr(subscript_expr->subscript_assign_expr.index));
 		if (!sema_insert_method_call(context, subscript_expr, operator, exprptr(subscript_expr->subscript_assign_expr.expr), args, false)) return false;
-		expr_rewrite_insert_deref(subscript_expr);
+		if (!sema_expr_rewrite_insert_deref(context, subscript_expr)) return false;
 		main->type = subscript_expr->type;
 		return true;
 	}
@@ -8399,7 +8432,7 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 	Expr *get_expr = expr_new(EXPR_ACCESS_RESOLVED, increased->span);
 	vec_add(args, expr_variable(index_val));
 	Expr *temp_val_1 = expr_variable(temp_val);
-	expr_rewrite_insert_deref(temp_val_1);
+	if (!sema_expr_rewrite_insert_deref(context, temp_val_1)) return false;
 	if (!sema_insert_method_call(context, get_expr, operator, temp_val_1, args, false)) return false;
 	Expr *value_val_expr = expr_generate_decl(value_val, get_expr);
 	// temp_value = func(temp, temp_index)
@@ -8411,7 +8444,7 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 	vec_add(args, expr_variable(index_val));
 	vec_add(args, expr_variable(value_val));
 	Expr *temp_val_2 = expr_variable(temp_val);
-	expr_rewrite_insert_deref(temp_val_2);
+	if (!sema_expr_rewrite_insert_deref(context, temp_val_2)) return false;
 	if (!sema_insert_method_call(context, subscript_expr, declptr(subscript_expr->subscript_assign_expr.method), temp_val_2, args, false)) return false;
 	ASSERT(subscript_expr->expr_kind == EXPR_CALL);
 	subscript_expr->call_expr.has_optional_arg = false;
@@ -10617,7 +10650,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 		// Given x[3..7] -> (int[5]*)x[3..7]
 		cast_no_check(expr, type_get_ptr(type_get_array(element, len)), IS_OPTIONAL(expr));
 		// Deref
-		expr_rewrite_insert_deref(expr);
+		if (!sema_expr_rewrite_insert_deref(context, expr)) return false;
 		cast_no_check(expr, to, IS_OPTIONAL(expr));
 		return true;
 	}
@@ -11293,7 +11326,7 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 		}
 		else if (type->type_kind == TYPE_POINTER && type->pointer == first)
 		{
-			expr_rewrite_insert_deref(parent);
+			if (!sema_expr_rewrite_insert_deref(context, parent)) return false;
 		}
 	}
 	ASSERT_SPAN(method_call, parent && parent->type && first == parent->type->canonical);

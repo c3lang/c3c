@@ -38,7 +38,8 @@
 - `$echo` would suppress warning about unreachable code. #2205
 - Correctly format '%c' when given a width. #2199
 - Fix to `is_array_or_slice_of_char` #2214.
-- Method on array slice caused segfault #2211. 
+- Method on array slice caused segfault #2211.
+- In some cases, the compiler would dereference a compile time null. #2215
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
