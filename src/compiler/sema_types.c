@@ -489,6 +489,19 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 
 	type_info->resolve_status = RESOLVE_RUNNING;
 	TypeInfoCompressedKind kind = type_info->subtype;
+	switch (kind)
+	{
+		case TYPE_COMPRESSED_NONE:
+		case TYPE_COMPRESSED_PTR:
+		case TYPE_COMPRESSED_SUBPTR:
+		case TYPE_COMPRESSED_PTRPTR:
+		case TYPE_COMPRESSED_PTRSUB:
+			break;
+		case TYPE_COMPRESSED_SUB:
+		case TYPE_COMPRESSED_SUBSUB:
+			resolve_kind = resolve_kind & ~RESOLVE_TYPE_NO_CHECK_DISTINCT;
+			break;
+	}
 	switch (type_info->kind)
 	{
 		case TYPE_INFO_POISON:
