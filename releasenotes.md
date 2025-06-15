@@ -37,6 +37,7 @@
 - Make `unreachable()` only panic in safe mode.
 - `cflags` additions for targets was not handed properly. #2209
 - `$echo` would suppress warning about unreachable code. #2205
+- Correctly format '%c' when given a width. #2199
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.

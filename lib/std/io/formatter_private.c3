@@ -623,9 +623,12 @@ fn usz? Formatter.out_char(&self, any arg) @private
 		return self.out_substr("<NOT CHAR>");
 	}
 	usz len = 1;
-	uint l = 1;
 	// pre padding
-	len += self.adjust(l)!;
+	if (!self.flags.left)
+    {
+    	len += self.pad(' ', self.width, len)!;
+    }
+
 	// char output
 	Char32 c = types::any_to_int(arg, uint) ?? 0xFFFD;
 	switch (true)
@@ -645,7 +648,10 @@ fn usz? Formatter.out_char(&self, any arg) @private
 			self.out((char)(0x80 | (c >> 6 & 0x3F)))!;
 			self.out((char)(0x80 | (c & 0x3F)))!;
 	}
-	len += self.adjust(l)!;
+	if (self.flags.left)
+    {
+        len += self.pad(' ', self.width, len)!;
+	}
 	return len;
 }
 

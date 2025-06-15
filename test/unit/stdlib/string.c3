@@ -1,5 +1,10 @@
 module string_test;
 
+fn void test_format() @test
+{
+	test::eq(string::tformat("_%*c_", 5, 'x'),  "_    x_");
+	test::eq(string::tformat("_%-*c_", 5, 'x'), "_x    _");
+}
 fn void test_clear() @test
 {
 	DString s = dstring::new_with_capacity(mem, 32);
