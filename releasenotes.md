@@ -21,6 +21,7 @@
 - Support untyped second argument for operator overloading.
 - The form-feed character '\f' is no longer valid white space.
 - Show code that caused unreachable code #2207
+- Allow generics over distinct types #2216.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.

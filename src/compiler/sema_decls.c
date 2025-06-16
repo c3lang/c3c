@@ -4724,6 +4724,23 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 	return new_module;
 }
 
+static inline void mangle_type_param(Type *type, bool mangled)
+{
+	type = type->canonical;
+	if (mangled)
+	{
+		type_mangle_introspect_name_to_buffer(type);
+	}
+	else
+	{
+		scratch_buffer_append(type->name);
+		if (type_is_user_defined(type) && type->decl->unit->module->generic_suffix)
+		{
+			scratch_buffer_append(type->decl->unit->module->generic_suffix);
+		}
+	}
+}
+
 static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Module *module, Expr **params,
                                                         bool mangled, bool *was_recursive_ref)
 {
@@ -4762,11 +4779,12 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 		{
 			if (!sema_analyse_ct_expr(context, param)) return false;
 			Type *type = param->type->canonical;
+			if (type->type_kind == TYPE_DISTINCT) type = type_flatten(type);
+
 			bool is_enum_or_fault = type_kind_is_enum_or_fault(type->type_kind);
 			if (!type_is_integer_or_bool_kind(type) && !is_enum_or_fault)
 			{
-				SEMA_ERROR(param, "Only integer, bool, fault and enum values may be generic arguments.");
-				return poisoned_decl;
+				RETURN_SEMA_ERROR(param, "Only integer, bool, fault and enum values may be generic arguments.");
 			}
 			ASSERT(expr_is_const(param));
 		}
@@ -4790,23 +4808,17 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 		}
 		if (param->expr_kind == EXPR_TYPEINFO)
 		{
-			Type *type = param->type_expr->type->canonical;
-			if (mangled)
-			{
-				type_mangle_introspect_name_to_buffer(type);
-			}
-			else
-			{
-				scratch_buffer_append(type->name);
-				if (type_is_user_defined(type) && type->decl->unit->module->generic_suffix)
-				{
-					scratch_buffer_append(type->decl->unit->module->generic_suffix);
-				}
-			}
+			mangle_type_param(param->type_expr->type, mangled);
 		}
 		else
 		{
 			Type *type = param->type->canonical;
+			if (type->type_kind == TYPE_DISTINCT)
+			{
+				mangle_type_param(type, mangled);
+				scratch_buffer_append(mangled ? "$" : ", ");
+				type = type_flatten(type);
+			}
 			if (type == type_bool)
 			{
 				if (mangled)
