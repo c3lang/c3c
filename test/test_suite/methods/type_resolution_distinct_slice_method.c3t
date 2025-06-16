@@ -1,0 +1,66 @@
+// #target: macos-x64
+module test;
+
+struct Foo {int x;}
+
+typedef Bar = Foo;
+typedef Byte = char;
+typedef Bar2 = Foo;
+typedef Byte2 = char;
+fn int Bar2*[].get(self) => 0;
+fn int Bar[].get(self) => 0;
+fn int Byte2*[].get(self) => 0;
+fn int Byte[].get(self) => 0;
+
+
+fn int main(String[] args)
+{
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @"test.Bar2*[].get"(ptr %0, i64 %1) #0 {
+entry:
+  %self = alloca %"Foo*[]", align 8
+  store ptr %0, ptr %self, align 8
+  %ptradd = getelementptr inbounds i8, ptr %self, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  ret i32 0
+}
+
+define i32 @"test.Bar[].get"(ptr %0, i64 %1) #0 {
+entry:
+  %self = alloca %"Foo[]", align 8
+  store ptr %0, ptr %self, align 8
+  %ptradd = getelementptr inbounds i8, ptr %self, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  ret i32 0
+}
+
+define i32 @"test.Byte2*[].get"(ptr %0, i64 %1) #0 {
+entry:
+  %self = alloca %"char*[]", align 8
+  store ptr %0, ptr %self, align 8
+  %ptradd = getelementptr inbounds i8, ptr %self, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  ret i32 0
+}
+
+define i32 @"test.Byte[].get"(ptr %0, i64 %1) #0 {
+entry:
+  %self = alloca %"char[]", align 8
+  store ptr %0, ptr %self, align 8
+  %ptradd = getelementptr inbounds i8, ptr %self, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  ret i32 0
+}
+
+define i32 @test.main(ptr %0, i64 %1) #0 {
+entry:
+  %args = alloca %"char[][]", align 8
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  ret i32 0
+}

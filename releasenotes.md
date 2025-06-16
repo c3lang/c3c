@@ -3,7 +3,6 @@
 ## 0.7.3 Change list
 
 ### Changes / improvements
-
 - `$typefrom` now also accepts a constant string, and so works like `$evaltype`.
 - `$evaltype` is deprecated in favour of `$typefrom`.
 - Literal rules have changed, this makes `-0xFF` now a signed integer.
@@ -38,10 +37,15 @@
 - `cflags` additions for targets was not handed properly. #2209
 - `$echo` would suppress warning about unreachable code. #2205
 - Correctly format '%c' when given a width. #2199
+- Fix to `is_array_or_slice_of_char` #2214.
+- Method on array slice caused segfault #2211.
+- In some cases, the compiler would dereference a compile time null. #2215
+- Incorrect codegen if a macro ends with unreachable and is assigned to something. #2210
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
 - Add comparison with `==` for ZString types.
+- `is_array_or_slice_of_char` and `is_arrayptr_or_slice_of_char` are replaced by constant `@` variants.
 
 ## 0.7.2 Change list
 

@@ -122,6 +122,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		BEValue result;
 		// Emit the fault type.
 		llvm_emit_expr(c, &result, expr->inner_expr);
+
 		llvm_value_rvalue(c, &result);
 
 		LLVMValueRef err_val = result.value;
@@ -201,7 +202,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		{
 			llvm_emit_expr(c, &value, expr);
 		}
-
+		if (!c->current_block) goto AFTER_STORE;
 		if (value.type != type_void) llvm_store(c, ref, &value);
 	}
 
@@ -209,6 +210,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	{
 		llvm_store_to_ptr_raw(c, optional, llvm_get_zero(c, type_fault), type_fault);
 	}
+AFTER_STORE:;
 	POP_CATCH();
 
 	if (assign_block)

@@ -2234,7 +2234,7 @@ Expr *expr_generate_decl(Decl *decl, Expr *assign);
 Expr *expr_new_two(Expr *first, Expr *second);
 void expr_rewrite_two(Expr *original, Expr *first, Expr *second);
 void expr_insert_addr(Expr *original);
-void expr_rewrite_insert_deref(Expr *original);
+bool sema_expr_rewrite_insert_deref(SemaContext *context, Expr *original);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
 Expr *expr_variable(Decl *decl);
 Expr *expr_negate_expr(Expr *expr);

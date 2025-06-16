@@ -1115,34 +1115,6 @@ Expr *expr_variable(Decl *decl)
 	return expr;
 }
 
-void expr_rewrite_insert_deref(Expr *original)
-{
-	// Assume *(&x) => x
-	if (original->expr_kind == EXPR_UNARY && original->unary_expr.operator == UNARYOP_ADDR)
-	{
-		*original = *original->unary_expr.expr;
-		return;
-	}
-
-	// Allocate our new and create our new inner, and overwrite the original.
-	Expr *inner = expr_copy(original);
-	original->expr_kind = EXPR_UNARY;
-	original->type = NULL;
-	original->unary_expr.operator = UNARYOP_DEREF;
-	original->unary_expr.expr = inner;
-
-	// In the case the original is already resolved, we want to resolve the deref as well.
-	if (original->resolve_status == RESOLVE_DONE)
-	{
-		Type *no_fail  = type_no_optional(inner->type);
-		ASSERT(no_fail->canonical->type_kind == TYPE_POINTER);
-
-		// Only fold to the canonical type if it wasn't a pointer.
-		Type *pointee = no_fail->type_kind == TYPE_POINTER ? no_fail->pointer : no_fail->canonical->pointer;
-		original->type = type_add_optional(pointee, IS_OPTIONAL(inner));
-	}
-}
-
 void expr_rewrite_const_ref(Expr *expr_to_rewrite, Decl *decl)
 {
 	expr_to_rewrite->const_expr = (ExprConst) {

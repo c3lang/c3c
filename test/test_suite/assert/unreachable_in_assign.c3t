@@ -1,0 +1,37 @@
+// #target: windows-x64
+module test;
+
+macro int create_int2() {
+	$$unreachable();
+}
+
+fn void test()
+{
+	int x = create_int2();
+}
+macro int? create_int()
+{
+	$$unreachable();
+}
+
+fn int main()
+{
+	int? x = create_int();
+}
+
+/* #expect: test.ll
+
+define void @test.test() #0 {
+entry:
+  %x = alloca i32, align 4
+  %blockret = alloca i32, align 4
+  unreachable
+}
+
+define i32 @main() #0 {
+entry:
+  %x = alloca i32, align 4
+  %x.f = alloca i64, align 8
+  %blockret = alloca i32, align 4
+  unreachable
+}
