@@ -425,6 +425,7 @@ typedef struct VarDecl_
 	bool is_self : 1;
 	bool is_temp : 1;
 	bool copy_const : 1;
+	bool defaulted : 1;
 	union
 	{
 		Expr *init_expr;

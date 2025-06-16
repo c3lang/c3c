@@ -1501,6 +1501,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 		case VARDECL_PARAM_CT_TYPE:
 		case VARDECL_PARAM_EXPR:
 			*expr_ref = arg;
+			param->var.defaulted = true;
 			if (parameter_checked) return true;
 			return sema_analyse_parameter(context, arg, param, callee->definition, optional, no_match_ref,
 			                              callee->macro, false);
@@ -1718,7 +1719,7 @@ SPLAT_NORMAL:;
 			}
 
 			// 8e. We might have already set this parameter, that is not allowed.
-			if (actual_args[index] && actual_args[index]->expr_kind != EXPR_DEFAULT_ARG)
+			if (actual_args[index] && actual_args[index]->expr_kind != EXPR_DEFAULT_ARG && !param->var.defaulted)
 			{
 				RETURN_SEMA_ERROR(arg, "The parameter '%s' was already set.", param->name);
 			}
