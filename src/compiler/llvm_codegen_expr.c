@@ -6129,14 +6129,15 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 
 	c->debug.block_stack = &updated;
 	llvm_emit_return_block(c, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
-	if (!c->current_block && !expr->macro_block.is_noreturn)
-	{
-		llvm_emit_block(c, llvm_basic_block_new(c, "after_macro"));
-	}
 	bool is_unreachable = expr->macro_block.is_noreturn && c->current_block;
 	if (is_unreachable)
 	{
 		llvm_emit_unreachable(c);
+	}
+	if (!c->current_block)
+	{
+		llvm_emit_block(c, llvm_basic_block_new(c, "after_macro"));
+		llvm_value_set(be_value, LLVMGetPoison(llvm_get_type(c, expr->type)), expr->type);
 	}
 	c->debug.block_stack = old_inline_location;
 }

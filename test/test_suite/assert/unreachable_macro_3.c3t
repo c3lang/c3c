@@ -1,0 +1,45 @@
+// #target: windows-x64
+module test;
+
+struct Window
+{
+	char* content;
+}
+
+macro Window @content($content = {},)
+{
+	$switch:
+		$case $defined((char*) $content):
+			return { .content = $content, };
+		$default:
+			unreachable();
+	$endswitch
+}
+
+fn void main()
+{
+	Window[] windows = {
+		@content($content: { "foo" },
+		),
+	};
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %windows = alloca %"Window[]", align 8
+  %literal = alloca [1 x %Window], align 8
+  %blockret = alloca %Window, align 8
+  unreachable
+
+after_macro:                                      ; No predecessors!
+  unreachable
+
+after_macro1:                                     ; No predecessors!
+  store %Window poison, ptr %literal, align 8
+  %0 = insertvalue %"Window[]" undef, ptr %literal, 0
+  %1 = insertvalue %"Window[]" %0, i64 1, 1
+  store %"Window[]" %1, ptr %windows, align 8
+  ret void
+}

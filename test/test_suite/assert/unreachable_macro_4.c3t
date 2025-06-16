@@ -1,0 +1,24 @@
+// #target: windows-x64
+module test;
+
+fn void main()
+{
+	int[] kaput = { unreachable() };
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %kaput = alloca %"int[]", align 8
+  %literal = alloca [1 x i32], align 4
+  %blockret = alloca i32, align 4
+  unreachable
+
+after_macro:                                      ; No predecessors!
+  store i32 poison, ptr %literal, align 4
+  %0 = insertvalue %"int[]" undef, ptr %literal, 0
+  %1 = insertvalue %"int[]" %0, i64 1, 1
+  store %"int[]" %1, ptr %kaput, align 8
+  ret void
+}
