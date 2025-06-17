@@ -43,6 +43,7 @@
 - In some cases, the compiler would dereference a compile time null. #2215
 - Incorrect codegen if a macro ends with unreachable and is assigned to something. #2210
 - Fix error for named arguments-order with compile-time arguments #2212
+- Bug in AST copying would make operator overloading like `+=` compile incorrectly #2217.
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.

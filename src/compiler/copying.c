@@ -297,8 +297,8 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 	switch (source_expr->expr_kind)
 	{
 		case EXPR_TWO:
-			MACRO_COPY_EXPR(source_expr->two_expr.first);
-			MACRO_COPY_EXPR(source_expr->two_expr.last);
+			MACRO_COPY_EXPR(expr->two_expr.first);
+			MACRO_COPY_EXPR(expr->two_expr.last);
 			return expr;
 		case EXPR_TYPECALL:
 		case EXPR_CT_SUBSCRIPT:
@@ -333,7 +333,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			}
 			return expr;
 		case EXPR_MEMBER_GET:
-			fixup_decl(c, &source_expr->member_get_expr);
+			fixup_decl(c, &expr->member_get_expr);
 			break;
 		case EXPR_SWIZZLE:
 			MACRO_COPY_EXPRID(expr->swizzle_expr.parent);
@@ -525,7 +525,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_TYPE(expr->expr_compound_literal.type_info);
 			return expr;
 		case EXPR_POISONED:
-			return source_expr;
+			return expr;
 		case EXPR_RETHROW:
 			MACRO_COPY_EXPR(expr->rethrow_expr.inner);
 			return expr;

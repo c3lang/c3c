@@ -1,0 +1,32 @@
+// #target: macos-aarch64
+module test;
+typedef Foo = int;
+macro Foo Foo.add(self1, Foo other) @operator(+)  => self1;
+macro Foo Foo.add_self(&self, Foo other) @operator(+=)  => *self = *self + other;
+
+macro Foo Foo.test(&self2) => *self2 += (Foo)0;
+
+fn int main()
+{
+    Foo b;
+    defer b.test();
+    return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %b = alloca i32, align 4
+  %self1 = alloca i32, align 4
+  store i32 0, ptr %b, align 4
+  %neq = icmp ne ptr %b, null
+  call void @llvm.assume(i1 %neq)
+  %neq1 = icmp ne ptr %b, null
+  call void @llvm.assume(i1 %neq1)
+  %0 = load i32, ptr %b, align 4
+  store i32 %0, ptr %self1, align 4
+  %1 = load i32, ptr %self1, align 4
+  store i32 %1, ptr %b, align 4
+  ret i32 0
+}

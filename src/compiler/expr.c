@@ -221,9 +221,9 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_ACCESS_RESOLVED:
 			return expr_may_addr(expr->access_resolved_expr.parent);
 		case EXPR_SUBSCRIPT:
-		case EXPR_SLICE:
 		case EXPR_MEMBER_GET:
 			return true;
+		case EXPR_SLICE:
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 		case EXPR_VECTOR_FROM_ARRAY:
