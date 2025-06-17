@@ -10003,7 +10003,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				UNREACHABLE
 			case EXPR_BINARY:
 				main_expr->resolve_status = RESOLVE_RUNNING;
-				if (!sema_expr_analyse_binary(context, NULL, main_expr, &failed))
+				if (!sema_expr_analyse_binary(active_context, NULL, main_expr, &failed))
 				{
 					if (!failed) goto FAIL;
 					success = false;
