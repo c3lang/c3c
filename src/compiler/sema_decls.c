@@ -1061,8 +1061,8 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 	if (*erase_decl) return true;
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	if (!sema_resolve_type_info(context, decl->strukt.container_type, RESOLVE_TYPE_DEFAULT)) return false;
-	Type *type = decl->strukt.container_type->type->canonical;
-	Type *base_type = type->type_kind == TYPE_ARRAY ? type->array.base : type;
+	Type *type = type_flatten(decl->strukt.container_type->type->canonical);
+	Type *base_type = type->type_kind == TYPE_ARRAY ? type_flatten(type->array.base) : type;
 	if (!type_is_integer(base_type))
 	{
 		SEMA_ERROR(decl->strukt.container_type, "The type of the bitstruct cannot be %s but must be an integer or an array of integers.",
