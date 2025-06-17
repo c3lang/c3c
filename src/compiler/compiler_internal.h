@@ -210,12 +210,20 @@ typedef struct
 	SEntry *entries;
 } STable;
 
-typedef struct SEntry2_
+typedef struct HEntry_
 {
 	void *key;
 	void *value;
-	struct SEntry2_ *next;
+	struct HEntry_ *next;
 } HTEntry;
+
+typedef struct PathTableEntry_
+{
+	const char *short_path;
+	const char *name;
+	Decl *value;
+	struct PathTableEntry_ *next;
+} PathTableEntry;
 
 typedef struct
 {
@@ -223,6 +231,11 @@ typedef struct
 	HTEntry **entries;
 } HTable;
 
+typedef struct
+{
+	uint32_t mask;
+	PathTableEntry **entries;
+} PathTable;
 
 typedef struct Path_
 {
@@ -1511,6 +1524,7 @@ static_assert(sizeof(void*) != 8 || sizeof(Ast) == 56, "Not expected Ast size");
 typedef struct Module_
 {
 	Path *name;
+	const char *short_path;
 	// Extname in case a module is renamed externally
 	const char *extname;
 
@@ -1858,6 +1872,7 @@ typedef struct
 	HTable features;
 	Module std_module;
 	DeclTable symbols;
+	PathTable path_symbols;
 	DeclTable generic_symbols;
 	Path std_module_path;
 	Type *string_type;
@@ -2403,6 +2418,10 @@ void *stable_get(STable *table, const char *key);
 void htable_init(HTable *table, uint32_t initial_size);
 void *htable_set(HTable *table, void *key, void *value);
 void *htable_get(HTable *table, void *key);
+
+void pathtable_init(PathTable *table, uint32_t initial_size);
+void pathtable_set(PathTable *table, Decl *value);
+Decl *pathtable_get(PathTable *table, const char *short_path, const char *name);
 
 UNUSED void stable_clear(STable *table);
 

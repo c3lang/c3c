@@ -449,7 +449,7 @@ void sema_analysis_run(void)
 
 	// All global defines are added to the std module
 	compiler.context.std_module_path = (Path) { .module = kw_std, .span = INVALID_SPAN, .len = (uint32_t) strlen(kw_std) };
-	compiler.context.std_module = (Module){ .name = &compiler.context.std_module_path };
+	compiler.context.std_module = (Module){ .name = &compiler.context.std_module_path, .short_path = compiler.context.std_module_path.module };
 	compiler.context.std_module.stage = ANALYSIS_LAST;
 	compiler.context.locals_list = NULL;
 

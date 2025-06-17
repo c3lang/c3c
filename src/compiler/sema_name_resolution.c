@@ -354,6 +354,11 @@ INLINE bool sema_resolve_ambiguity(SemaContext *context, Decl **current, Decl *c
 	UNREACHABLE
 }
 
+static Decl *sema_find_decl_by_short_path(Path *path, const char *name)
+{
+	return pathtable_get(&compiler.context.path_symbols, (void*)path->module, (void*)name);
+}
+
 static bool sema_find_decl_in_global(SemaContext *context, DeclTable *table, Module **module_list,
                                       NameResolve *name_resolve, bool want_generic)
 {
@@ -450,6 +455,12 @@ static bool sema_resolve_path_symbol(SemaContext *context, NameResolve *name_res
 		name_resolve->path_found = unit->module;
 	}
 
+	Decl *decl = sema_find_decl_by_short_path(name_resolve->path, symbol);
+	if (decl && decl_ok(decl) && decl_is_visible(context->unit, decl))
+	{
+		name_resolve->found = decl;
+		return true;
+	}
 	// 3. Loop over imports.
 	if (!sema_find_decl_in_imports(context, name_resolve, false)) return false;
 
@@ -976,7 +987,7 @@ Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *me
 														import->import.import_private_as_public
 														? METHOD_SEARCH_PRIVATE_IMPORTED
 														: METHOD_SEARCH_IMPORTED);
-		if (!new_found) continue;
+		if (!new_found || found == new_found) continue;
 		if (found)
 		{
 			*ambiguous_ref = new_found;

@@ -67,6 +67,7 @@ void compiler_init(BuildOptions *build_options)
 	//compiler.lib_dir = find_lib_dir();
 	//DEBUG_LOG("Found std library: %s", compiler.lib_dir);
 	htable_init(&compiler.context.modules, 16 * 1024);
+	pathtable_init(&compiler.context.path_symbols, INITIAL_SYMBOL_MAP);
 	decltable_init(&compiler.context.symbols, INITIAL_SYMBOL_MAP);
 	decltable_init(&compiler.context.generic_symbols, INITIAL_GENERIC_SYMBOL_MAP);
 
@@ -166,23 +167,10 @@ void **tilde_gen(Module** modules, unsigned module_count)
 const char *build_base_name(void)
 {
 	const char *name = out_name();
-	if (!name)
-	{
-		Module **modules = compiler.context.module_list;
-		Module *main_module = (modules[0] == compiler.context.core_module && vec_size(modules) > 1) ? modules[1] : modules[0];
-		Path *path = main_module->name;
-		size_t first = 0;
-		for (size_t i = path->len; i > 0; i--)
-		{
-			if (path->module[i - 1] == ':')
-			{
-				first = i;
-				break;
-			}
-		}
-		name = &path->module[first];
-	}
-	return name;
+	if (name) return name;
+	Module **modules = compiler.context.module_list;
+	Module *main_module = (modules[0] == compiler.context.core_module && vec_size(modules) > 1) ? modules[1] : modules[0];
+	return main_module->short_path;
 }
 
 static const char *exe_name(void)
@@ -195,17 +183,7 @@ static const char *exe_name(void)
 	}
 	if (!name)
 	{
-		Path *path = compiler.context.main->unit->module->name;
-		size_t first = 0;
-		for (size_t i = path->len; i > 0; i--)
-		{
-			if (path->module[i - 1] == ':')
-			{
-				first = i;
-				break;
-			}
-		}
-		name = &path->module[first];
+		name = compiler.context.main->unit->module->short_path;
 	}
 	
 	// Use custom extension if specified
@@ -1544,6 +1522,7 @@ void compile()
 void global_context_add_decl(Decl *decl)
 {
 	decltable_set(&compiler.context.symbols, decl);
+	pathtable_set(&compiler.context.path_symbols, decl);
 }
 
 void global_context_add_generic_decl(Decl *decl)
@@ -1603,6 +1582,26 @@ Module *compiler_find_or_create_module(Path *module_name, const char **parameter
 	// Set up the module.
 	module = CALLOCS(Module);
 	module->name = module_name;
+	size_t first = 0;
+	for (size_t i = module_name->len; i > 0; i--)
+	{
+		if (module_name->module[i - 1] == ':')
+		{
+			first = i;
+			break;
+		}
+	}
+	if (!first)
+	{
+		module->short_path = module_name->module;
+	}
+	else
+	{
+		const char *name = &module_name->module[first];
+		size_t len = module_name->len - first;
+		TokenType type = TOKEN_IDENT;
+		module->short_path = symtab_add(name, len, fnv1a(name, len), &type);
+	}
 	module->stage = ANALYSIS_NOT_BEGUN;
 	module->parameters = parameters;
 	module->is_generic = vec_size(parameters) > 0;

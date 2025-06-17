@@ -584,3 +584,65 @@ void *htable_get(HTable *table, void *key)
 	return NULL;
 }
 
+void pathtable_init(PathTable *table, uint32_t initial_size)
+{
+	ASSERT(initial_size && "Size must be larger than 0");
+	size_t size = next_highest_power_of_2(initial_size);
+
+	size_t mem_size = initial_size * sizeof(PathTableEntry);
+	table->entries = calloc_arena(mem_size);
+
+	table->mask = size - 1;
+}
+
+void pathtable_set(PathTable *table, Decl *value)
+{
+	ASSERT(value && "Cannot insert NULL");
+	ASSERT_SPAN(value, value->name);
+	const char *short_path = value->unit->module->short_path;
+	const char *name = value->name;
+	uint32_t idx = ((((uintptr_t)short_path) ^ ((uintptr_t)short_path) >> 8) ^(((uintptr_t)name) ^ ((uintptr_t)name) >> 8)) & table->mask;
+	PathTableEntry **entry_ref = &table->entries[idx];
+	PathTableEntry *entry = *entry_ref;
+	if (!entry)
+	{
+		entry = CALLOCS(HTEntry);
+		entry->short_path = short_path;
+		entry->name = name;
+		entry->value = value;
+		*entry_ref = entry;
+		return;
+	}
+	PathTableEntry *first_entry = entry;
+	do
+	{
+		if (entry->short_path == short_path && entry->name == name)
+		{
+			entry->value = poisoned_decl;
+			return;
+		}
+		entry = entry->next;
+	} while (entry);
+
+	entry = CALLOCS(HTEntry);
+	entry->short_path = short_path;
+	entry->name = name;
+	entry->value = value;
+	entry->next = first_entry;
+	*entry_ref = entry;
+}
+
+
+Decl *pathtable_get(PathTable *table, const char *short_path, const char *name)
+{
+	uint32_t idx = ((((uintptr_t)short_path) ^ ((uintptr_t)short_path) >> 8) ^(((uintptr_t)name) ^ ((uintptr_t)name) >> 8)) & table->mask;
+	PathTableEntry *entry = table->entries[idx];
+	if (!entry) return NULL;
+	do
+	{
+		if (entry->short_path == short_path && entry->name == name) return entry->value;
+		entry = entry->next;
+	} while (entry);
+	return NULL;
+}
+
