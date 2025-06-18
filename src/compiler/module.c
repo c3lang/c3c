@@ -6,7 +6,8 @@
 
 Decl *module_find_symbol(Module *module, const char *symbol)
 {
-	return htable_get(&module->symbols, (void*)symbol);
+	Decl *decl = htable_get(&module->symbols, (void*)symbol);
+	return decl && decl->visibility != VISIBLE_LOCAL ? decl : NULL;
 }
 
 void scratch_buffer_append_module(Module *module, bool is_export)

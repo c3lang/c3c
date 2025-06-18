@@ -219,7 +219,6 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 {
 	FOREACH(Decl *, decl, decls)
 	{
-		if (decl->visibility == VISIBLE_LOCAL) continue;
 		decl->unit = unit;
 		switch (decl->decl_kind)
 		{

@@ -47,6 +47,7 @@
 - Bug in AST copying would make operator overloading like `+=` compile incorrectly #2217.
 - `$defined(#expr)` broken with binary. #2219 
 - Method ambiguity when importing parent module publicly in private submodule. #2208
+- Linker errors when shadowing @local with public function #2198
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.

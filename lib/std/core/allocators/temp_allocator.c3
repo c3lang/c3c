@@ -47,7 +47,7 @@ struct TempAllocatorChunk @local
 	char[*] data;
 }
 
-const usz PAGE_IS_ALIGNED @private = (usz)isz.max + 1u;
+const usz PAGE_IS_ALIGNED @local = (usz)isz.max + 1u;
 
 struct TempAllocatorPage
 {

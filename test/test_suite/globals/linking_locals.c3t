@@ -1,0 +1,50 @@
+// #target: macos-x64
+module mod;
+
+fn void call_foo() => foo();
+
+fn void foo() @local {}
+
+module mod;
+
+fn void foo() @local {}
+macro test() => foo();
+
+module test;
+import mod;
+
+fn void main() {
+  mod::call_foo();
+  mod::test();
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  call void @mod.call_foo()
+  call void @mod.foo.
+  ret void
+}
+
+declare void @mod.call_foo() #0
+
+declare void @mod.foo
+
+
+/* #expect: mod.ll
+
+define void @mod.call_foo()
+entry:
+  call void @mod.foo.
+  ret void
+
+define internal void @mod.foo.
+entry:
+  ret void
+}
+
+define void @mod.foo.
+entry:
+  ret void
+}
