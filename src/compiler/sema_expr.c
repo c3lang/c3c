@@ -11339,6 +11339,7 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 		}
 	}
 	ASSERT_SPAN(method_call, parent && parent->type && first == parent->type->canonical);
+	unit_register_external_symbol(context, method_decl);
 	if (!sema_expr_analyse_general_call(context, method_call, method_decl, parent, false,
 										NULL)) return expr_poison(method_call);
 	method_call->resolve_status = RESOLVE_DONE;

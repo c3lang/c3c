@@ -1,0 +1,34 @@
+// #target: macos-x64
+module test;
+import foo @public;
+
+fn int main()
+{
+	Pos p1 = (Pos){} + 1;
+	return 0;
+}
+
+module foo @private;
+
+typedef Pos = inline uint;
+fn Pos Pos.add(pos, uint rhs) @operator(+) => (Pos)((uint)pos + rhs);
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %p1 = alloca i32, align 4
+  %0 = call i32 @foo.Pos.add(i32 0, i32 1)
+  store i32 %0, ptr %p1, align 4
+  ret i32 0
+}
+
+declare i32 @foo.Pos.add(i32, i32) #0
+
+/* #expect: foo.ll
+
+define i32 @foo.Pos.add(i32 %0, i32 %1) #0 {
+entry:
+  %add = add i32 %0, %1
+  ret i32 %add
+}
