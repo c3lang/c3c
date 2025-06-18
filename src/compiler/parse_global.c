@@ -2091,9 +2091,9 @@ static inline Decl *parse_alias_type(ParseContext *c)
 	{
 		decl->decl_kind = DECL_TYPEDEF;
 		decl_add_type(decl, TYPE_TYPEDEF);
-		decl->typedef_decl.is_func = true;
+		decl->type_alias_decl.is_func = true;
 		Decl *decl_type = decl_new(DECL_FNTYPE, decl->name, c->prev_span);
-		decl->typedef_decl.decl = decl_type;
+		decl->type_alias_decl.decl = decl_type;
 		ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_optional_type(c), poisoned_decl);
 		decl_type->fntype_decl.rtype = type_infoid(type_info);
 		if (!parse_fn_parameter_list(c, &(decl_type->fntype_decl)))
@@ -2132,14 +2132,14 @@ static inline Decl *parse_alias_type(ParseContext *c)
 	}
 	ASSERT(!tok_is(c, TOKEN_LBRACE));
 
-	decl->typedef_decl.type_info = type_info;
-	decl->typedef_decl.is_func = false;
+	decl->type_alias_decl.type_info = type_info;
+	decl->type_alias_decl.is_func = false;
 	decl->decl_kind = DECL_TYPEDEF;
 	decl_add_type(decl, TYPE_TYPEDEF);
 	if (type_info->kind == TYPE_INFO_IDENTIFIER && type_info->resolve_status == RESOLVE_NOT_DONE
 		&& type_info->unresolved.name == decl->name)
 	{
-		decl->typedef_decl.is_redef = true;
+		decl->type_alias_decl.is_redef = true;
 	}
 
 	RANGE_EXTEND_PREV(decl);

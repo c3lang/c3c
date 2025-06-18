@@ -1278,7 +1278,7 @@ static void type_create_alias(const char *name, Type *location, Type *canonical)
 {
 	Decl *decl = decl_new(DECL_TYPEDEF, name, INVALID_SPAN);
 	decl->resolve_status = RESOLVE_DONE;
-	decl->typedef_decl.type_info = type_info_new_base(canonical, INVALID_SPAN);
+	decl->type_alias_decl.type_info = type_info_new_base(canonical, INVALID_SPAN);
 	decl->unit = compiler.context.core_unit;
 	decl->is_export = true;
 	*location = (Type) {

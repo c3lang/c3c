@@ -1432,16 +1432,16 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 	if (*erase_decl) return true;
 
 	bool is_export = decl->is_export;
-	if (decl->typedef_decl.is_func)
+	if (decl->type_alias_decl.is_func)
 	{
-		Decl *fn_decl = decl->typedef_decl.decl;
+		Decl *fn_decl = decl->type_alias_decl.decl;
 		fn_decl->is_export = is_export;
 		fn_decl->unit = decl->unit;
 		fn_decl->type = type_new_func(fn_decl, &fn_decl->fntype_decl);
 		decl->type->canonical = type_get_func_ptr(fn_decl->type);
 		return true;
 	}
-	TypeInfo *info = decl->typedef_decl.type_info;
+	TypeInfo *info = decl->type_alias_decl.type_info;
 	info->in_def = true;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
 	decl->type->canonical = info->type->canonical;
@@ -3336,7 +3336,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			if (domain == ATTR_ALIAS)
 			{
 				if (decl->decl_kind != DECL_TYPEDEF) RETURN_SEMA_ERROR(attr, "'@weak' can only be used on type aliases.");
-				if (!decl->typedef_decl.is_redef)
+				if (!decl->type_alias_decl.is_redef)
 				{
 					RETURN_SEMA_ERROR(attr, "'@weak' is only allowed on type aliases with the same name, eg 'def Foo = bar::def::Foo @weak'.");
 				}
@@ -4695,7 +4695,7 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 		Decl *decl = decl_new_with_type(param_name, params[i]->span, DECL_TYPEDEF);
 		decl->resolve_status = RESOLVE_DONE;
 		ASSERT(type_info->resolve_status == RESOLVE_DONE);
-		decl->typedef_decl.type_info = type_info;
+		decl->type_alias_decl.type_info = type_info;
 		decl->type->name = decl->name;
 		decl->type->canonical = type_info->type->canonical;
 		params_decls[decls++] = decl;

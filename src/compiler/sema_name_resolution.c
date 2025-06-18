@@ -273,7 +273,7 @@ INLINE Type *sema_fold_weak(SemaContext *context, Decl *decl)
 		{
 			if (!sema_analyse_decl(context, decl)) return NULL;
 		}
-		Type *type = decl->typedef_decl.type_info->type;
+		Type *type = decl->type_alias_decl.type_info->type;
 		if (type->type_kind != TYPE_TYPEDEF) return type;
 		decl = type->decl;
 	}

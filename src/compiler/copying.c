@@ -1071,12 +1071,12 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			break;
 		case DECL_TYPEDEF:
 			copy_decl_type(copy);
-			if (copy->typedef_decl.is_func)
+			if (copy->type_alias_decl.is_func)
 			{
-				MACRO_COPY_DECL(copy->typedef_decl.decl);
+				MACRO_COPY_DECL(copy->type_alias_decl.decl);
 				break;
 			}
-			MACRO_COPY_TYPE(copy->typedef_decl.type_info);
+			MACRO_COPY_TYPE(copy->type_alias_decl.type_info);
 			break;
 		case DECL_DISTINCT:
 			copy_decl_type(copy);

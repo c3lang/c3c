@@ -572,7 +572,7 @@ typedef struct
 		Decl *decl;
 		TypeInfo *type_info;
 	};
-} TypedefDecl;
+} TypeAliasDecl;
 
 typedef struct
 {
@@ -681,7 +681,7 @@ typedef struct Decl_
 		ImportDecl import;
 		IncludeDecl include;
 		LabelDecl label;
-		TypedefDecl typedef_decl;
+		TypeAliasDecl type_alias_decl;
 		VarDecl var;
 	};
 } Decl;
