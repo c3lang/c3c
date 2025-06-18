@@ -58,6 +58,7 @@
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
 - Add comparison with `==` for ZString types.
 - `is_array_or_slice_of_char` and `is_arrayptr_or_slice_of_char` are replaced by constant `@` variants.
+- `@pool` now has an optional `reserve` parameter, some minor changes to the temp_allocator API
 
 ## 0.7.2 Change list
 

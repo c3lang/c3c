@@ -30,7 +30,7 @@ entry:
   %retparam = alloca i64, align 8
   %error_var4 = alloca i64, align 8
   %error_var10 = alloca i64, align 8
-  %1 = call ptr @std.core.mem.allocator.push_pool() #3
+  %1 = call ptr @std.core.mem.allocator.push_pool(i64 0) #3
   store ptr %1, ptr %state, align 8
   store i32 %0, ptr %taddr, align 4
   %2 = insertvalue %any undef, ptr %taddr, 0
