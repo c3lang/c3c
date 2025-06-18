@@ -2048,15 +2048,21 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 		}
 		case TYPE_VECTOR:
 		{
-			Type *element = type->array.base;
+			Type *element = type_lowering(type->array.base);
 			LLVMValueRef diff_value;
-			bool is_integer = type_is_integer(element);
+			bool is_integer = type_kind_is_any_integer(element->type_kind);
+			bool is_ptr;
 			if (is_integer)
 			{
 				diff_value = LLVMConstInt(llvm_get_type(c, element), 1, false);
 			}
+			else if ((is_ptr = element->type_kind == TYPE_POINTER))
+			{
+				diff_value = llvm_const_int(c, type_isz, diff);
+			}
 			else
 			{
+				ASSERT_AT(span, type_is_float(element));
 				diff_value = LLVMConstReal(llvm_get_type(c, element), diff);
 			}
 			ArraySize width = type->array.len;
@@ -2071,10 +2077,11 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 					   ? llvm_emit_add_int(c, original->type, original->value, val, span)
 					   : llvm_emit_sub_int(c, original->type, original->value, val, span);
 			}
-			else
+			if (is_ptr)
 			{
-				return LLVMBuildFAdd(c->builder, original->value, val, "fincdec");
+				return llvm_emit_ptradd_raw(c, original->value, val, type_size(element->pointer));
 			}
+			return LLVMBuildFAdd(c->builder, original->value, val, "fincdec");
 		}
 		default:
 			UNREACHABLE

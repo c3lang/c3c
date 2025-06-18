@@ -8482,9 +8482,9 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 	Type *type = type_flatten(inner->type);
 
 	// 5. We can only inc/dec numbers or pointers.
-	if (!type_underlying_may_add_sub(type))
+	if (!type_underlying_may_add_sub(type) && type->type_kind != TYPE_VECTOR)
 	{
-		RETURN_SEMA_ERROR(inner, "The expression must be a number or a pointer.");
+		RETURN_SEMA_ERROR(inner, "The expression must be a vector, enum, number or a pointer.");
 	}
 
 	if (inner->expr_kind == EXPR_SUBSCRIPT_ASSIGN)
