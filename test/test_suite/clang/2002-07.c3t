@@ -920,10 +920,10 @@ entry:
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %2 = load ptr, ptr %s1, align 8
-  %ptradd_any = getelementptr i8, ptr %2, i8 1
+  %ptradd_any = getelementptr i8, ptr %2, i64 1
   store ptr %ptradd_any, ptr %s1, align 8
   %3 = load ptr, ptr %s2, align 8
-  %ptradd_any1 = getelementptr i8, ptr %3, i8 1
+  %ptradd_any1 = getelementptr i8, ptr %3, i64 1
   store ptr %ptradd_any1, ptr %s2, align 8
   %4 = load i8, ptr %3, align 1
   store i8 %4, ptr %2, align 1
@@ -948,7 +948,7 @@ entry:
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %2 = load ptr, ptr %s1, align 8
-  %ptradd_any = getelementptr i8, ptr %2, i8 1
+  %ptradd_any = getelementptr i8, ptr %2, i64 1
   store ptr %ptradd_any, ptr %s1, align 8
   %3 = load i8, ptr %2, align 1
   %i2b = icmp ne i8 %3, 0
@@ -959,16 +959,16 @@ loop.body:                                        ; preds = %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
   %4 = load ptr, ptr %s1, align 8
-  %ptradd_any1 = getelementptr i8, ptr %4, i8 -1
+  %ptradd_any1 = getelementptr i8, ptr %4, i64 -1
   store ptr %ptradd_any1, ptr %s1, align 8
   br label %loop.cond2
 
 loop.cond2:                                       ; preds = %loop.body6, %loop.exit
   %5 = load ptr, ptr %s1, align 8
-  %ptradd_any3 = getelementptr i8, ptr %5, i8 1
+  %ptradd_any3 = getelementptr i8, ptr %5, i64 1
   store ptr %ptradd_any3, ptr %s1, align 8
   %6 = load ptr, ptr %s2, align 8
-  %ptradd_any4 = getelementptr i8, ptr %6, i8 1
+  %ptradd_any4 = getelementptr i8, ptr %6, i64 1
   store ptr %ptradd_any4, ptr %s2, align 8
   %7 = load i8, ptr %6, align 1
   store i8 %7, ptr %5, align 1
@@ -993,11 +993,11 @@ entry:
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %2 = load ptr, ptr %s1, align 8
-  %ptradd_any = getelementptr i8, ptr %2, i8 1
+  %ptradd_any = getelementptr i8, ptr %2, i64 1
   store ptr %ptradd_any, ptr %s1, align 8
   %3 = load i8, ptr %2, align 1
   %4 = load ptr, ptr %s2, align 8
-  %ptradd_any1 = getelementptr i8, ptr %4, i8 1
+  %ptradd_any1 = getelementptr i8, ptr %4, i64 1
   store ptr %ptradd_any1, ptr %s2, align 8
   %5 = load i8, ptr %4, align 1
   %eq = icmp eq i8 %3, %5
@@ -1038,12 +1038,12 @@ if.then9:                                         ; preds = %if.else6
 
 if.else10:                                        ; preds = %if.else6
   %12 = load ptr, ptr %s1, align 8
-  %ptradd_any11 = getelementptr i8, ptr %12, i8 -1
+  %ptradd_any11 = getelementptr i8, ptr %12, i64 -1
   store ptr %ptradd_any11, ptr %s1, align 8
   %13 = load i8, ptr %ptradd_any11, align 1
   %zext12 = zext i8 %13 to i32
   %14 = load ptr, ptr %s2, align 8
-  %ptradd_any13 = getelementptr i8, ptr %14, i8 -1
+  %ptradd_any13 = getelementptr i8, ptr %14, i64 -1
   store ptr %ptradd_any13, ptr %s2, align 8
   %15 = load i8, ptr %ptradd_any13, align 1
   %zext14 = zext i8 %15 to i32

@@ -2015,7 +2015,7 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 		case TYPE_POINTER:
 		{
 			// Use byte here, we don't need a big offset.
-			LLVMValueRef add = LLVMConstInt(diff < 0 ? llvm_get_type(c, type_ichar) : llvm_get_type(c, type_char), (unsigned long long)diff, diff < 0);
+			LLVMValueRef add = LLVMConstInt(diff < 0 ? llvm_get_type(c, type_isz) : llvm_get_type(c, type_usz), (unsigned long long)diff, diff < 0);
 			return llvm_emit_pointer_gep_raw(c, llvm_get_pointee_type(c, type), original->value, add);
 		}
 		case ALL_FLOATS:

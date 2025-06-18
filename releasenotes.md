@@ -48,6 +48,7 @@
 - `$defined(#expr)` broken with binary. #2219 
 - Method ambiguity when importing parent module publicly in private submodule. #2208
 - Linker errors when shadowing @local with public function #2198
+- Bug when offsetting pointers of large structs using ++ and --.
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
