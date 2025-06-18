@@ -3172,10 +3172,19 @@ INLINE bool type_is_number(Type *type)
 
 static inline Type *type_flat_for_arithmethics(Type *type)
 {
-	do
+	while (true)
 	{
 		type = type->canonical;
-		if (type->type_kind != TYPE_DISTINCT) break;
+		switch (type->type_kind)
+		{
+			case TYPE_OPTIONAL:
+				type = type->optional;
+				continue;
+			case TYPE_DISTINCT:
+				break;
+			default:
+				return type;
+		}
 		Decl *decl = type->decl;
 		Type *inner = decl->distinct->type;
 		if (decl->is_substruct)
@@ -3185,9 +3194,8 @@ static inline Type *type_flat_for_arithmethics(Type *type)
 		}
 		inner = type_flat_for_arithmethics(inner);
 		if (type_is_number_or_bool(inner)) return inner;
-		break;
-	} while (1);
-	return type;
+		return type;
+	}
 }
 
 INLINE bool type_is_numeric(Type *type)
