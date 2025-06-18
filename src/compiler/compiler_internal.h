@@ -2536,7 +2536,7 @@ INLINE bool type_is_integer_or_bool_kind(Type *type);
 INLINE bool type_is_numeric(Type *type);
 INLINE bool type_is_inferred(Type *type);
 INLINE bool type_underlying_is_numeric(Type *type);
-INLINE bool type_underlying_may_add_sub(Type *type);
+INLINE bool type_underlying_may_add_sub(CanonicalType *type);
 INLINE bool type_is_pointer(Type *type);
 INLINE bool type_is_arraylike(Type *type);
 INLINE bool type_is_any_arraylike(Type *type);
@@ -2989,6 +2989,7 @@ static inline Type *type_base(Type *type)
 		}
 	}
 }
+
 static inline Type *type_flat_distinct_inline(Type *type)
 {
 	do
@@ -3169,6 +3170,26 @@ INLINE bool type_is_number(Type *type)
 	return (kind >= TYPE_I8) && (kind <= TYPE_FLOAT_LAST);
 }
 
+static inline Type *type_flat_for_arithmethics(Type *type)
+{
+	do
+	{
+		type = type->canonical;
+		if (type->type_kind != TYPE_DISTINCT) break;
+		Decl *decl = type->decl;
+		Type *inner = decl->distinct->type;
+		if (decl->is_substruct)
+		{
+			type = inner;
+			continue;
+		}
+		inner = type_flat_for_arithmethics(inner);
+		if (type_is_number_or_bool(inner)) return inner;
+		break;
+	} while (1);
+	return type;
+}
+
 INLINE bool type_is_numeric(Type *type)
 {
 	RETRY:;
@@ -3187,10 +3208,9 @@ INLINE bool type_underlying_is_numeric(Type *type)
 	return type_is_numeric(type_flatten(type));
 }
 
-INLINE bool type_underlying_may_add_sub(Type *type)
+INLINE bool type_underlying_may_add_sub(CanonicalType *type)
 {
-	type = type_flatten(type);
-	return type->type_kind == TYPE_ENUM || type->type_kind == TYPE_POINTER || type_is_numeric(type_flatten(type));
+	return type->type_kind == TYPE_ENUM || type->type_kind == TYPE_POINTER || type_is_numeric(type);
 }
 
 INLINE bool type_flat_is_vector(Type *type)

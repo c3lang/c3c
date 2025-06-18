@@ -6703,7 +6703,6 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 	if (!sema_cast_rvalue(context, left, false)) return false;
 
 	Type *no_fail = type_no_optional(left->type);
-	Type *flat = type_flatten(no_fail);
 
 	Type *canonical = no_fail->canonical;
 	if (type_is_user_defined(canonical))
@@ -6741,16 +6740,19 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 			return sema_rewrite_op_assign(context, expr, left, right, underlying_op);
 		}
 	}
-SKIP_OVERLOAD_CHECK:
+SKIP_OVERLOAD_CHECK:;
 	// 3. If this is only defined for ints (^= |= &= %=) verify that this is an int.
-	if (int_only && !type_flat_is_intlike(flat))
+	Type *flat = type_flat_for_arithmethics(no_fail);
+	Type *base = flat->type_kind == TYPE_VECTOR ? type_flat_for_arithmethics(flat->array.base) : flat;
+
+	if (int_only && !type_is_integer(base))
 	{
 		if (is_bit_op && (flat->type_kind == TYPE_BITSTRUCT || flat == type_bool || type_flat_is_bool_vector(flat))) goto BITSTRUCT_OK;
 		RETURN_SEMA_ERROR(left, "Expected an integer here, not a value of type %s.", type_quoted_error_string(left->type));
 	}
 
 	// 4. In any case, these ops are only defined on numbers.
-	if (!type_underlying_is_numeric(flat) && !(is_add_sub && type_underlying_may_add_sub(left->type)))
+	if (!type_is_numeric(base) && !(is_add_sub && type_underlying_may_add_sub(base)))
 	{
 		RETURN_SEMA_ERROR(left, "Expected a numeric type here, not a value of type %s.", type_quoted_error_string(left->type));
 	}
@@ -6777,45 +6779,57 @@ BITSTRUCT_OK:
 	expr->type = left->type;
 	bool optional = IS_OPTIONAL(left) || IS_OPTIONAL(right);
 
+	Type *type_rhs_inline = type_flat_distinct_inline(type_no_optional(right->type->canonical));
+
 	// 5. In the pointer case we have to treat this differently.
-	if (flat->type_kind == TYPE_ENUM)
+	if (base->type_kind == TYPE_ENUM)
 	{
-		if (type_flat_distinct_inline(no_fail)->type_kind != TYPE_ENUM)
-		{
-			RETURN_SEMA_ERROR(expr, "A value of type %s cannot be added to or subtracted from.", type_quoted_error_string(left->type));
-		}
 		// 7. Finally, check that the right side is indeed an integer.
-		if (!type_is_integer(right->type->canonical))
+		if (flat == base)
 		{
-			RETURN_SEMA_ERROR(right,
-			                  "The right side was '%s' but only integers are valid on the right side of %s when the left side is an enum.",
-			                  type_to_error_string(right->type),
-			                  token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
+			if (!type_is_integer(type_rhs_inline))
+			{
+				RETURN_SEMA_ERROR(right,
+								  "The right side was '%s' but only integers are valid on the right side of %s when the left side is an enum.",
+								  type_to_error_string(right->type),
+								  token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
+			}
+		}
+		else
+		{
+			if (!type_is_integer(type_rhs_inline) && (type_rhs_inline->type_kind != TYPE_VECTOR || !type_is_integer(type_rhs_inline->array.base)))
+			{
+				RETURN_SEMA_ERROR(right,
+								  "The right side was '%s' but only integers or integer vectors are valid on the right side of %s when the left side is an enum vector.",
+								  type_to_error_string(right->type),
+								  token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
+			}
 		}
 		if (!cast_implicit(context, right, flat->decl->enums.type_info->type, false)) return false;
 		goto END;
 	}
-	if (type_is_pointer_like(flat))
+	if (base->type_kind == TYPE_POINTER)
 	{
-		// Not inline pointer-like
-		if (!type_is_pointer_like(no_fail))
+		if (flat == base)
 		{
-			RETURN_SEMA_ERROR(expr, "A value of type %s cannot be added to or subtracted from.", type_quoted_error_string(left->type));
+			if (!type_is_integer(type_rhs_inline))
+			{
+				RETURN_SEMA_ERROR(right,
+								  "The right side was '%s' but only integers are valid on the right side of %s when the left side is a pointer.",
+								  type_to_error_string(right->type),
+								  token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
+			}
 		}
-		// 7. Finally, check that the right side is indeed an integer.
-		if (!type_is_integer(right->type->canonical))
+		else
 		{
-			RETURN_SEMA_ERROR(right,
-			                  "The right side was '%s' but only integers are valid on the right side of %s when the left side is a pointer.",
-			                  type_to_error_string(right->type),
-			                  token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
+			if (!type_is_integer(type_rhs_inline) && (type_rhs_inline->type_kind != TYPE_VECTOR || !type_is_integer(type_rhs_inline->array.base)))
+			{
+				RETURN_SEMA_ERROR(right,
+								  "The right side was '%s' but only integer vectors are valid on the right side of %s when the left side is a pointer vector.",
+								  type_to_error_string(right->type),
+								  token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
+			}
 		}
-		goto END;
-	}
-
-	if (flat->type_kind == TYPE_ENUM)
-	{
-		if (!cast_implicit(context, right, type_base(flat), false)) return false;
 		goto END;
 	}
 

@@ -4057,7 +4057,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 				val = llvm_emit_pointer_gep_raw(c, llvm_get_type(c, element_type), lhs_value, rhs_value);
 				break;
 			}
-			else if (lhs_type->type_kind == TYPE_POINTER)
+			if (lhs_type->type_kind == TYPE_POINTER)
 			{
 				if (lhs_type == rhs_type)
 				{
@@ -4079,6 +4079,12 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 			val = llvm_emit_sub_int(c, lhs_type, lhs_value, rhs_value, expr->span);
 			break;
 		case BINARYOP_ADD:
+			if (type_is_pointer_vector(lhs_type))
+			{
+				Type *element_type = lhs_type->array.base->pointer;
+				val = llvm_emit_pointer_gep_raw(c, llvm_get_type(c, element_type), lhs_value, rhs_value);
+				break;
+			}
 			if (lhs_type->type_kind == TYPE_POINTER)
 			{
 				ASSERT(type_is_integer(rhs_type));

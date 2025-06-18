@@ -50,6 +50,7 @@
 - Linker errors when shadowing @local with public function #2198
 - Bug when offsetting pointers of large structs using ++ and --.
 - `x++` and `x--` works on pointer vectors #2222.
+- `x += 1` and `x -= 1` works propertly on pointer vectors #2222.
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
