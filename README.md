@@ -369,6 +369,24 @@ For a sytem-wide installation, run the following as root: `cmake --install .`
 
 The c3c binary should be created in the build directory. You can try it out by running some sample code: `./c3c compile ../resources/examples/hash.c3`
 
+#### Compiling on Arch Linux
+
+1. Install required project dependencies: `sudo pacman -S curl lld llvm-libs clang cmake git libedit llvm`
+2. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
+    - If you only need the latest commit, you may want to make a shallow clone: `git clone https://github.com/c3lang/c3c.git --depth=1`
+3. Enter the C3C directory: `cd c3c`
+4. Create the CMake build cache:
+```bash
+cmake -B build \
+    -D C3_LINK_DYNAMIC=ON \
+    -D CMAKE_BUILD_TYPE=Release \
+    -D CMAKE_C_FLAGS_RELEASE="-Wno-error=maybe-uninitialized"
+```
+5. Build the project: `make -C build`.
+
+After compilation, the `c3c` binary will be located in the `build` directory. You can test it by compiling an example: `./build/c3c compile resources/examples/ls.c3`.
+
+6. To install the compiler globally: `sudo cmake --install build`
 
 #### Compiling on other Linux / Unix variants
 
