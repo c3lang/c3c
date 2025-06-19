@@ -2051,7 +2051,7 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 			Type *element = type_lowering(type->array.base);
 			LLVMValueRef diff_value;
 			bool is_integer = type_kind_is_any_integer(element->type_kind);
-			bool is_ptr;
+			bool is_ptr = false;
 			if (is_integer)
 			{
 				diff_value = LLVMConstInt(llvm_get_type(c, element), 1, false);

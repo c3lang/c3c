@@ -379,8 +379,7 @@ The c3c binary should be created in the build directory. You can try it out by r
 ```bash
 cmake -B build \
     -D C3_LINK_DYNAMIC=ON \
-    -D CMAKE_BUILD_TYPE=Release \
-    -D CMAKE_C_FLAGS_RELEASE="-Wno-error=maybe-uninitialized"
+    -D CMAKE_BUILD_TYPE=Release
 ```
 5. Build the project: `make -C build`.
 
