@@ -136,6 +136,17 @@ static inline Decl *sema_find_decl_in_module(Module *module, Path *path, const c
 	return module_find_symbol(module, symbol);
 }
 
+static inline Decl *sema_find_decl_by_alias(ImportDecl *import, Path *path, const char *symbol, Module **path_found_ref)
+{
+	if (!path) return NULL;
+	if (!import->alias) return NULL;
+	if (!str_eq(import->alias, path->module)) return NULL;
+
+	Module *module = import->module;
+	*path_found_ref = module;
+	return module_find_symbol(module, symbol);
+}
+
 static bool sema_find_decl_in_imports(SemaContext *context, NameResolve *name_resolve, bool want_generic)
 {
 	Decl *decl = NULL;
@@ -150,10 +161,14 @@ static bool sema_find_decl_in_imports(SemaContext *context, NameResolve *name_re
 		// Is the decl in the import.
 		Decl *found = sema_find_decl_in_module(import->import.module, path, symbol, &name_resolve->path_found);
 
-		if (!decl_ok(found)) return false;
+		// Check for decl by alias
+		if (!found) found = sema_find_decl_by_alias(&import->import, path, symbol, &name_resolve->path_found);
 
 		// No match, so continue
 		if (!found) continue;
+
+		if (!decl_ok(found)) return false;
+
 		ASSERT(found->visibility != VISIBLE_LOCAL);
 
 		if (found->visibility != VISIBLE_PUBLIC)

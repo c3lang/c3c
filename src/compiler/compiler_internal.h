@@ -375,6 +375,7 @@ typedef struct
 	bool import_private_as_public;
 	bool is_non_recurse;
 	Module *module;
+	const char *alias;
 } ImportDecl;
 
 typedef struct
@@ -2195,7 +2196,7 @@ CompilationUnit * unit_create(File *file);
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
 void unit_register_external_symbol(SemaContext *context, Decl *decl);
 
-bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
+bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive, const char *alias);
 bool context_set_module_from_filename(ParseContext *context);
 bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters);
 bool context_is_macro(SemaContext *context);
