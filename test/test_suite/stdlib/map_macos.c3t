@@ -231,7 +231,7 @@ after_check18:                                    ; preds = %entry, %after_check
   %48 = insertvalue %any %47, i64 ptrtoint (ptr @"$ct.sa$double" to i64), 1
   store %any %48, ptr %varargslots57, align 16
   %49 = call i64 @std.io.printfn(ptr %retparam61, ptr @.str.12, i64 2, ptr %varargslots57, i64 1)
-  %50 = call ptr @std.core.mem.allocator.push_pool() #4
+  %50 = call ptr @std.core.mem.allocator.push_pool(i64 0) #4
   store ptr %50, ptr %state, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %map3, i8 0, i64 48, i1 false)
   %lo64 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8

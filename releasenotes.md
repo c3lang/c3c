@@ -52,11 +52,13 @@
 - `x++` and `x--` works on pointer vectors #2222.
 - `x += 1` and `x -= 1` works propertly on pointer vectors #2222.
 - Fixes to `x += { 1, 1 }` for enum and pointer vectors #2222.
+- Linking fails on operator method imported as `@public` #2224.
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
 - Add comparison with `==` for ZString types.
 - `is_array_or_slice_of_char` and `is_arrayptr_or_slice_of_char` are replaced by constant `@` variants.
+- `@pool` now has an optional `reserve` parameter, some minor changes to the temp_allocator API
 
 ## 0.7.2 Change list
 
