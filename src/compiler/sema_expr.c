@@ -9735,6 +9735,18 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	if (multiple) decl = expr->lambda_expr = copy_lambda_deep(decl);
 	Signature *sig = &decl->func_decl.signature;
 	Signature *to_sig = flat ? flat->canonical->pointer->function.signature : NULL;
+	if (sig->variadic == VARIADIC_RAW)
+	{
+		if (to_sig)
+		{
+			if (to_sig->variadic == VARIADIC_RAW)
+			{
+				RETURN_SEMA_ERROR(decl, "A lambda may not use C-style vaargs. Consequently it can never implement the %s function type.", type_quoted_error_string(flat));
+			}
+			RETURN_SEMA_ERROR(expr, "The lambda doesn't match the required type %s.", type_quoted_error_string(target_type));
+		}
+		RETURN_SEMA_ERROR(decl, "A lambda may not use C-style vaargs.");
+	}
 	if (!sig->rtype)
 	{
 		if (!to_sig) goto FAIL_NO_INFER;

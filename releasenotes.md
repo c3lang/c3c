@@ -53,6 +53,7 @@
 - `x += 1` and `x -= 1` works propertly on pointer vectors #2222.
 - Fixes to `x += { 1, 1 }` for enum and pointer vectors #2222.
 - Linking fails on operator method imported as `@public` #2224.
+- Lambda C-style vaargs were not properly rejected, leading to crash #2229.
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
