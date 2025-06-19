@@ -23,6 +23,7 @@
 - Show code that caused unreachable code #2207
 - Allow generics over distinct types #2216.
 - Support distrinct types as the base type of bitstructs. #2218
+- Add hash::sha512 module to stdlib. #2226
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.
