@@ -1,0 +1,8 @@
+module test;
+import std::ascii;
+import std::io as ascii;
+
+fn void main()
+{
+	ascii::printn("Hello, World!");
+}

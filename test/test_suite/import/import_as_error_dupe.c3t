@@ -1,0 +1,9 @@
+module test;
+import std::ascii;
+import std::io as ascii;
+
+fn void main()
+{
+	uint a = ascii::to_upper_m('a');
+	ascii::printn("Hello, World!");
+}
