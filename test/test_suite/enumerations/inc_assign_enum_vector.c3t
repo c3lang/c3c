@@ -39,19 +39,19 @@ loop.cond:                                        ; preds = %loop.body, %entry
 
 loop.body:                                        ; preds = %loop.cond
   %1 = load <2 x i32>, ptr %x, align 8
-  %add = add <2 x i32> %1, <i32 1, i32 1>
+  %add = add <2 x i32> %1,
   store <2 x i32> %add, ptr %x, align 8
   %2 = load <2 x i32>, ptr %x, align 8
-  %add1 = add <2 x i32> %2, <i32 1, i32 1>
+  %add1 = add <2 x i32> %2,
   store <2 x i32> %add1, ptr %x, align 8
   %3 = load <2 x i32>, ptr %x, align 8
-  %sub = sub <2 x i32> %3, <i32 1, i32 1>
+  %sub = sub <2 x i32> %3,
   store <2 x i32> %sub, ptr %x, align 8
   %4 = load <2 x i32>, ptr %x, align 8
-  %add2 = add <2 x i32> %4, <i32 1, i32 1>
+  %add2 = add <2 x i32> %4,
   store <2 x i32> %add2, ptr %x, align 8
   %5 = load <2 x i32>, ptr %x, align 8
-  %sub3 = sub <2 x i32> %5, <i32 1, i32 1>
+  %sub3 = sub <2 x i32> %5,
   store <2 x i32> %sub3, ptr %x, align 8
   %6 = load i32, ptr %i, align 4
   %add4 = add i32 %6, 1

@@ -70,34 +70,34 @@ loop.cond:                                        ; preds = %loop.body, %entry
 
 loop.body:                                        ; preds = %loop.cond
   %14 = load <1 x ptr>, ptr %z, align 8
-  %ptroffset_any = getelementptr [500 x i8], <1 x ptr> %14, <1 x i64> <i64 1>
+  %ptroffset_any = getelementptr [500 x i8], <1 x ptr> %14, <1 x i64>
   store <1 x ptr> %ptroffset_any, ptr %z, align 8
   %15 = load <1 x ptr>, ptr %g, align 8
-  %ptroffset_any1 = getelementptr [500 x i8], <1 x ptr> %15, <1 x i64> <i64 -1>
+  %ptroffset_any1 = getelementptr [500 x i8], <1 x ptr> %15, <1 x i64>
   store <1 x ptr> %ptroffset_any1, ptr %g, align 8
   %16 = load <2 x ptr>, ptr %z2, align 16
-  %ptradd_any = getelementptr i8, <2 x ptr> %16, <2 x i64> <i64 500, i64 500>
+  %ptradd_any = getelementptr i8, <2 x ptr> %16, <2 x i64>
   store <2 x ptr> %ptradd_any, ptr %z2, align 16
   %17 = load <2 x ptr>, ptr %g2, align 16
-  %ptradd_any2 = getelementptr i8, <2 x ptr> %17, <2 x i64> <i64 -500, i64 -500>
+  %ptradd_any2 = getelementptr i8, <2 x ptr> %17, <2 x i64>
   store <2 x ptr> %ptradd_any2, ptr %g2, align 16
   %18 = load <2 x ptr>, ptr %z2, align 16
-  %ptradd_any3 = getelementptr i8, <2 x ptr> %18, <2 x i64> <i64 500, i64 500>
+  %ptradd_any3 = getelementptr i8, <2 x ptr> %18, <2 x i64>
   store <2 x ptr> %ptradd_any3, ptr %z2, align 16
   %19 = load <2 x ptr>, ptr %g2, align 16
-  %ptradd_any4 = getelementptr i8, <2 x ptr> %19, <2 x i64> <i64 -500, i64 -500>
+  %ptradd_any4 = getelementptr i8, <2 x ptr> %19, <2 x i64>
   store <2 x ptr> %ptradd_any4, ptr %g2, align 16
   %20 = load <1 x ptr>, ptr %z, align 8
-  %ptroffset_any5 = getelementptr [500 x i8], <1 x ptr> %20, <1 x i64> <i64 1>
+  %ptroffset_any5 = getelementptr [500 x i8], <1 x ptr> %20, <1 x i64>
   store <1 x ptr> %ptroffset_any5, ptr %z, align 8
   %21 = load <1 x ptr>, ptr %g, align 8
-  %ptroffset_any6 = getelementptr [500 x i8], <1 x ptr> %21, <1 x i64> <i64 -1>
+  %ptroffset_any6 = getelementptr [500 x i8], <1 x ptr> %21, <1 x i64>
   store <1 x ptr> %ptroffset_any6, ptr %g, align 8
   %22 = load <2 x ptr>, ptr %g2, align 16
-  %ptradd_any7 = getelementptr i8, <2 x ptr> %22, <2 x i64> <i64 500, i64 500>
+  %ptradd_any7 = getelementptr i8, <2 x ptr> %22, <2 x i64>
   store <2 x ptr> %ptradd_any7, ptr %g2, align 16
   %23 = load <2 x ptr>, ptr %g2, align 16
-  %ptradd_any8 = getelementptr i8, <2 x ptr> %23, <2 x i64> <i64 -500, i64 -500>
+  %ptradd_any8 = getelementptr i8, <2 x ptr> %23, <2 x i64>
   store <2 x ptr> %ptradd_any8, ptr %g2, align 16
   %24 = load <2 x ptr>, ptr %z2, align 16
   %25 = extractelement <2 x ptr> %24, i64 0
