@@ -6642,6 +6642,40 @@ AFTER_ADDR:;
 	expr_rewrite_two(expr, init, binary);
 	return sema_analyse_expr(context, expr);
 }
+
+static bool sema_expr_analyse_op_assign_enum_ptr(SemaContext *context, Expr *rhs, Type *flat, Type *base, Type *flat_rhs, bool is_enum, BinaryOp op)
+{
+	if (flat == base)
+	{
+		if (!type_is_integer(flat_rhs))
+		{
+			RETURN_SEMA_ERROR(rhs,
+							  "The right side was '%s' but only integers are valid on the right side of %s when the left side is %s.",
+							  type_to_error_string(rhs->type),
+							  token_type_to_string(binaryop_to_token(op)), is_enum ? "an enum" : "a pointer");
+		}
+		Type *to = is_enum ? flat->decl->enums.type_info->type : type_isz;
+		if (!cast_implicit(context, rhs, to, true)) return false;
+	}
+	else
+	{
+		Type *real_type = type_get_vector(is_enum ? base->decl->enums.type_info->type : type_isz, flat->array.len);
+		if (flat_rhs == type_untypedlist)
+		{
+			if (!cast_implicit(context, rhs, real_type, true)) return false;
+			flat_rhs = type_flat_for_arithmethics(rhs->type);
+		}
+		if (!type_is_integer(flat_rhs) && (flat_rhs->type_kind != TYPE_VECTOR || !type_is_integer(flat_rhs->array.base)))
+		{
+			RETURN_SEMA_ERROR(rhs,
+							  "The right side was '%s' but only integers or integer vectors are valid on the right side of %s when the left side is %s.",
+							  type_to_error_string(rhs->type),
+							  token_type_to_string(binaryop_to_token(op)), is_enum ? "an enum vector" : "a pointer vector");
+		}
+		if (!cast_implicit(context, rhs, real_type, true)) return false;
+	}
+	return true;
+}
 /**
  * Analyse *= /= %= ^= |= &= += -= <<= >>=
  *
@@ -6761,7 +6795,7 @@ SKIP_OVERLOAD_CHECK:;
 BITSTRUCT_OK:
 
 	// 5. Analyse RHS
-	if (flat->type_kind == TYPE_ENUM || flat->type_kind == TYPE_POINTER)
+	if (base->type_kind == TYPE_ENUM || base->type_kind == TYPE_POINTER )
 	{
 		if (!sema_analyse_expr(context, right)) return false;
 	}
@@ -6779,57 +6813,17 @@ BITSTRUCT_OK:
 	expr->type = left->type;
 	bool optional = IS_OPTIONAL(left) || IS_OPTIONAL(right);
 
-	Type *type_rhs_inline = type_flat_distinct_inline(type_no_optional(right->type->canonical));
+	Type *type_rhs_inline = type_flat_for_arithmethics(right->type);
 
-	// 5. In the pointer case we have to treat this differently.
+	// 5. In the enum case we have to treat this differently.
 	if (base->type_kind == TYPE_ENUM)
 	{
-		// 7. Finally, check that the right side is indeed an integer.
-		if (flat == base)
-		{
-			if (!type_is_integer(type_rhs_inline))
-			{
-				RETURN_SEMA_ERROR(right,
-								  "The right side was '%s' but only integers are valid on the right side of %s when the left side is an enum.",
-								  type_to_error_string(right->type),
-								  token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
-			}
-		}
-		else
-		{
-			if (!type_is_integer(type_rhs_inline) && (type_rhs_inline->type_kind != TYPE_VECTOR || !type_is_integer(type_rhs_inline->array.base)))
-			{
-				RETURN_SEMA_ERROR(right,
-								  "The right side was '%s' but only integers or integer vectors are valid on the right side of %s when the left side is an enum vector.",
-								  type_to_error_string(right->type),
-								  token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
-			}
-		}
-		if (!cast_implicit(context, right, flat->decl->enums.type_info->type, false)) return false;
+		if (!sema_expr_analyse_op_assign_enum_ptr(context, right, flat, base, type_rhs_inline, true, expr->binary_expr.operator)) return false;
 		goto END;
 	}
 	if (base->type_kind == TYPE_POINTER)
 	{
-		if (flat == base)
-		{
-			if (!type_is_integer(type_rhs_inline))
-			{
-				RETURN_SEMA_ERROR(right,
-								  "The right side was '%s' but only integers are valid on the right side of %s when the left side is a pointer.",
-								  type_to_error_string(right->type),
-								  token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
-			}
-		}
-		else
-		{
-			if (!type_is_integer(type_rhs_inline) && (type_rhs_inline->type_kind != TYPE_VECTOR || !type_is_integer(type_rhs_inline->array.base)))
-			{
-				RETURN_SEMA_ERROR(right,
-								  "The right side was '%s' but only integer vectors are valid on the right side of %s when the left side is a pointer vector.",
-								  type_to_error_string(right->type),
-								  token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
-			}
-		}
+		if (!sema_expr_analyse_op_assign_enum_ptr(context, right, flat, base, type_rhs_inline, false, expr->binary_expr.operator)) return false;
 		goto END;
 	}
 
@@ -9741,6 +9735,18 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	if (multiple) decl = expr->lambda_expr = copy_lambda_deep(decl);
 	Signature *sig = &decl->func_decl.signature;
 	Signature *to_sig = flat ? flat->canonical->pointer->function.signature : NULL;
+	if (sig->variadic == VARIADIC_RAW)
+	{
+		if (to_sig)
+		{
+			if (to_sig->variadic == VARIADIC_RAW)
+			{
+				RETURN_SEMA_ERROR(decl, "A lambda may not use C-style vaargs. Consequently it can never implement the %s function type.", type_quoted_error_string(flat));
+			}
+			RETURN_SEMA_ERROR(expr, "The lambda doesn't match the required type %s.", type_quoted_error_string(target_type));
+		}
+		RETURN_SEMA_ERROR(decl, "A lambda may not use C-style vaargs.");
+	}
 	if (!sig->rtype)
 	{
 		if (!to_sig) goto FAIL_NO_INFER;
@@ -11345,6 +11351,7 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 		}
 	}
 	ASSERT_SPAN(method_call, parent && parent->type && first == parent->type->canonical);
+	unit_register_external_symbol(context, method_decl);
 	if (!sema_expr_analyse_general_call(context, method_call, method_decl, parent, false,
 										NULL)) return expr_poison(method_call);
 	method_call->resolve_status = RESOLVE_DONE;

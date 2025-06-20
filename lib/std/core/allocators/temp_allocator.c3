@@ -35,6 +35,9 @@ struct TempAllocator (Allocator)
 	TempAllocatorPage* last_page;
 	TempAllocator* derived;
 	bool allocated;
+	usz reserve_size;
+	usz realloc_size;
+	usz min_size;
 	usz used;
 	usz capacity;
 	usz original_capacity;
@@ -62,15 +65,20 @@ macro usz TempAllocatorPage.pagesize(&self) => self.size & ~PAGE_IS_ALIGNED;
 macro bool TempAllocatorPage.is_aligned(&self) => self.size & PAGE_IS_ALIGNED == PAGE_IS_ALIGNED;
 
 <*
- @require size >= 16
+ @require size >= 64
+ @require realloc_size >= 64
  @require allocator.type != TempAllocator.typeid : "You may not create a temp allocator with a TempAllocator as the backing allocator."
+ @require min_size > TempAllocator.sizeof + 64 : "Min size must meaningfully hold the data + some bytes"
 *>
-fn TempAllocator*? new_temp_allocator(Allocator allocator, usz size)
+fn TempAllocator*? new_temp_allocator(Allocator allocator, usz size, usz reserve = temp_allocator_reserve_size, usz min_size = temp_allocator_min_size, usz realloc_size = temp_allocator_realloc_size)
 {
 	TempAllocator* temp = allocator::alloc_with_padding(allocator, TempAllocator, size)!;
 	temp.last_page = null;
 	temp.backing_allocator = allocator;
 	temp.used = 0;
+	temp.min_size = min_size;
+	temp.realloc_size = realloc_size;
+	temp.reserve_size = reserve;
 	temp.allocated = true;
 	temp.derived = null;
 	temp.original_capacity = temp.capacity = size;
@@ -78,19 +86,18 @@ fn TempAllocator*? new_temp_allocator(Allocator allocator, usz size)
 }
 <*
  @require !self.derived
- @require min_size > TempAllocator.sizeof + 64 : "Min size must meaningfully hold the data + some bytes"
- @require mult > 0 : "The multiple can never be zero"
 *>
-fn TempAllocator*? TempAllocator.derive_allocator(&self, usz min_size, usz buffer, usz mult)
+fn TempAllocator*? TempAllocator.derive_allocator(&self, usz reserve = 0)
 {
+	if (!reserve) reserve = self.reserve_size;
 	usz remaining = self.capacity - self.used;
 	void* mem @noinit;
 	usz size @noinit;
-	if (min_size + buffer > remaining)
+	if (self.min_size + reserve > remaining)
 	{
-		return self.derived = new_temp_allocator(self.backing_allocator, min_size * mult)!;
+		return self.derived = new_temp_allocator(self.backing_allocator, self.realloc_size, self.reserve_size, self.min_size, self.realloc_size)!;
 	}
-	usz start = mem::aligned_offset(self.used + buffer, mem::DEFAULT_MEM_ALIGNMENT);
+	usz start = mem::aligned_offset(self.used + reserve, mem::DEFAULT_MEM_ALIGNMENT);
 	void* ptr = &self.data[start];
 	TempAllocator* temp = (TempAllocator*)ptr;
 	$if env::ADDRESS_SANITIZER:
@@ -99,6 +106,9 @@ fn TempAllocator*? TempAllocator.derive_allocator(&self, usz min_size, usz buffe
 	temp.last_page = null;
     temp.backing_allocator = self.backing_allocator;
     temp.used = 0;
+    temp.min_size = self.min_size;
+    temp.reserve_size = self.reserve_size;
+    temp.realloc_size = self.realloc_size;
     temp.allocated = false;
     temp.derived = null;
     temp.original_capacity = temp.capacity = self.capacity - start - TempAllocator.sizeof;
