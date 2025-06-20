@@ -4172,8 +4172,9 @@ static inline bool sema_check_body_const(SemaContext *context, Ast *body)
 			case AST_CT_FOREACH_STMT:
 			case AST_CT_FOR_STMT:
 			case AST_CT_IF_STMT:
-			case AST_CT_SWITCH_STMT:
 			case AST_CT_ELSE_STMT:
+			case AST_CT_SWITCH_STMT:
+			case AST_CT_TYPE_ASSIGN_STMT:
 			case AST_DECLARE_STMT:
 			case AST_DECLS_STMT:
 			case AST_NOP_STMT:

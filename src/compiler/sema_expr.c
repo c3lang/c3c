@@ -93,7 +93,6 @@ static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Type *le
 static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
-static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, BinaryOp operator);
@@ -6364,30 +6363,6 @@ static bool sema_expr_analyse_ct_subscript_assign(SemaContext *context, Expr *ex
 	return true;
 }
 
-static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right)
-{
-	TypeInfo *info = left->type_expr;
-	if (info->kind != TYPE_INFO_CT_IDENTIFIER)
-	{
-		RETURN_SEMA_ERROR(left, "A type cannot be assigned to.");
-	}
-
-	if (!sema_analyse_expr_value(context, right)) return false;
-	if (right->expr_kind == EXPR_TYPEINFO)
-	{
-		expr_rewrite_const_typeid(right, right->type_expr->type);
-	}
-	if (!expr_is_const_typeid(right)) RETURN_SEMA_ERROR(right, "Expected a type or constant typeid here.");
-
-	Decl *decl = sema_find_symbol(context, info->unresolved.name);
-	if (!decl) RETURN_SEMA_ERROR(info, "'%s' is not defined in this scope yet.", info->unresolved.name);
-
-	decl->var.init_expr = right;
-	expr->expr_kind = EXPR_NOP;
-	expr->type = type_void;
-
-	return true;
-}
 
 static bool sema_expr_fold_hash(SemaContext *context, Expr *expr)
 {
@@ -6414,13 +6389,6 @@ static bool sema_expr_fold_hash(SemaContext *context, Expr *expr)
  */
 static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
-	// 1. Evaluate left side
-	if (left->expr_kind == EXPR_TYPEINFO)
-	{
-		// Later make sure this can be handled in lvalue
-		// $Foo = ...
-		return sema_expr_analyse_ct_type_identifier_assign(context, expr, left, right);
-	}
 	if (!sema_analyse_expr_lvalue(context, left, failed_ref)) return false;
 	switch (left->expr_kind)
 	{

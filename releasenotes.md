@@ -24,6 +24,7 @@
 - Allow generics over distinct types #2216.
 - Support distrinct types as the base type of bitstructs. #2218
 - Add hash::sha512 module to stdlib. #2227
+- Compile time type assignment (eg `$Foo = int`) is no longer an expression.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.

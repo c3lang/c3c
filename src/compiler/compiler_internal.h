@@ -1361,6 +1361,12 @@ typedef struct
 
 typedef struct
 {
+	const char *var_name;
+	Expr *type_expr;
+} AstCtTypeAssignStmt;
+
+typedef struct
+{
 	DeclId index;
 	DeclId value;
 	AstId body;
@@ -1500,6 +1506,7 @@ typedef struct Ast_
 		AstContractStmt contract_stmt;      // 32
 		AstDocFault contract_fault;         // 24
 		AstId ct_else_stmt;                 // 4
+		AstCtTypeAssignStmt ct_type_assign_stmt;
 		AstCtForeachStmt ct_foreach_stmt;   // 40
 		AstCtIfStmt ct_if_stmt;             // 24
 		AstCtSwitchStmt ct_switch_stmt;     // 16

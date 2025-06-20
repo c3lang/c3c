@@ -643,6 +643,9 @@ RETRY:
 	{
 		case AST_POISONED:
 			break;
+		case AST_CT_TYPE_ASSIGN_STMT:
+			MACRO_COPY_EXPR(ast->ct_type_assign_stmt.type_expr);
+			break;
 		case AST_DECLS_STMT:
 			MACRO_COPY_DECL_LIST(ast->decls_stmt);
 			break;
