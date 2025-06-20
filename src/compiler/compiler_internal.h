@@ -1529,6 +1529,9 @@ typedef struct Module_
 	// Extname in case a module is renamed externally
 	const char *extname;
 
+	// The import alias if exists
+	const char *import_alias;
+
 	const char **parameters;
 	bool is_external : 1;
 	bool is_c_library : 1;
