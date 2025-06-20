@@ -5778,7 +5778,7 @@ CHECK_DEEPER:
 		{
 			if (sema_cast_const(current_parent))
 			{
-				expr_rewrite_const_string(expr, current_parent->const_expr.fault->name);
+				expr_rewrite_const_string(expr, current_parent->const_expr.fault ? current_parent->const_expr.fault->name : "null");
 				return true;
 			}
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_FAULTNAME, type_string);

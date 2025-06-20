@@ -3076,6 +3076,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 			}
 		}
 	}
+
 	ASSERT(LLVMTypeOf(lhs_value) == LLVMTypeOf(rhs_value));
 
 	if (lhs_signed && !rhs_signed && !vector_type && llvm_is_const(lhs_value) && type_size(lhs_type) <= 8)
@@ -4765,8 +4766,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case CONST_FAULT:
 		{
 			Decl *decl = expr->const_expr.fault;
-			ASSERT(decl);
-			LLVMValueRef value = LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_fault), "");
+			LLVMValueRef value = decl ? LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_fault), "") : llvm_get_zero(c, type_fault);
 			llvm_value_set(be_value, value, type_fault);
 			return;
 		}

@@ -137,7 +137,8 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			return int_comp(left->ixx, right->ixx, op);
 		case CONST_FAULT:
 			ASSERT(right->const_kind == CONST_FAULT);
-			return decl_flatten(right->fault) == decl_flatten(left->fault);
+			if (right->fault == left->fault) return true;
+			return right->fault && left->fault && decl_flatten(right->fault) == decl_flatten(left->fault);
 		case CONST_REF:
 			ASSERT(right->const_kind == CONST_POINTER || right->const_kind == CONST_REF);
 			if (right->const_kind == CONST_POINTER) return false;
@@ -382,7 +383,7 @@ void expr_const_to_scratch_buffer(const ExprConst *expr)
 			scratch_buffer_append(expr->global_ref->name);
 			return;
 		case CONST_FAULT:
-			scratch_buffer_append(expr->fault->name);
+			scratch_buffer_append(expr->fault ? expr->fault->name : "null");
 			return;
 		case CONST_ENUM:
 			scratch_buffer_append(expr->enum_val->name);
@@ -443,7 +444,7 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case CONST_REF:
 			return expr->global_ref->name;
 		case CONST_FAULT:
-			return expr->fault->name;
+			return expr->fault ? expr->fault->name : "null";
 		case CONST_ENUM:
 			return expr->enum_val->name;
 		case CONST_TYPEID:

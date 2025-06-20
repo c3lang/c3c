@@ -4840,7 +4840,15 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 			else if (type->type_kind == TYPE_ANYFAULT)
 			{
 				Decl *fault = param->const_expr.fault;
-				type_mangle_introspect_name_to_buffer(fault->type->canonical);
+				if (fault)
+				{
+					type_mangle_introspect_name_to_buffer(fault->type->canonical);
+				}
+				else
+				{
+					scratch_buffer_append("null");
+				}
+
 				scratch_buffer_append(mangled ? "_" : ":");
 				scratch_buffer_append(fault->name);
 			}

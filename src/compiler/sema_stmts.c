@@ -3166,6 +3166,7 @@ static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
 		if (!sema_analyse_expr(context, expr)) return false;
 		if (!expr_is_const_fault(expr)) RETURN_SEMA_ERROR(expr, "A fault is required.");
 		Decl *decl = expr->const_expr.fault;
+		if (!decl) RETURN_SEMA_ERROR(expr, "A non-null fault is required.");
 		ret->contract_fault.decl = decl;
 		ret->contract_fault.resolved = true;
 		vec_add(context->call_env.opt_returns, decl);

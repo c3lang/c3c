@@ -46,7 +46,9 @@ static inline void *fixup(CopyStruct *c, void *original)
 
 INLINE void fixup_decl(CopyStruct *c, Decl **decl_ref)
 {
-	Decl *new_decl = fixup(c, *decl_ref);
+	Decl *old = *decl_ref;
+	if (!old) return;
+	Decl *new_decl = fixup(c, old);
 	if (new_decl) *decl_ref = new_decl;
 }
 
