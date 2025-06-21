@@ -2940,6 +2940,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 	// NOLINTBEGIN(*.EnumCastOutOfRange)
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_BITSTRUCT | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER, // NOLINT
+			[ATTRIBUTE_ALLOW_DEPRECATED] = ATTR_FUNC,
 			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
@@ -3030,6 +3031,9 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				}
 				attr_data->deprecated = expr->const_expr.bytes.ptr;
 			}
+			return true;
+		case ATTRIBUTE_ALLOW_DEPRECATED:
+			decl->allow_deprecated = true;
 			return true;
 		case ATTRIBUTE_OPTIONAL:
 			decl->func_decl.attr_optional = true;
@@ -4639,7 +4643,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	if (type_is_user_defined(type) && type->decl)
 	{
 		if (!sema_analyse_decl(context, type->decl)) return false;
-		sema_display_deprecated_warning_on_use(type->decl, type_info->span);
+		sema_display_deprecated_warning_on_use(context, type->decl, type_info->span);
 	}
 
 	if (is_static && context->call_env.pure)

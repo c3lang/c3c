@@ -221,7 +221,7 @@ void sema_warning_at(SourceSpan loc, const char *message, ...)
 {
 	va_list list;
 	va_start(list, message);
-	print_error_type_at(loc, str_vprintf(message, list), PRINT_TYPE_NOTE);
+	print_error_type_at(loc, str_vprintf(message, list), PRINT_TYPE_WARN);
 	va_end(list);
 }
 

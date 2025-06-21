@@ -1152,7 +1152,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	{
 		if (!sema_analyse_decl(context, decl)) return decl_poison(decl);
 	}
-	sema_display_deprecated_warning_on_use(decl, expr->span);
+	sema_display_deprecated_warning_on_use(context, decl, expr->span);
 
 	unit_register_external_symbol(context, decl);
 	decl = decl_flatten(decl);
@@ -1168,8 +1168,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 					if (!sema_analyse_expr(context, copy)) return false;
 					if (!expr_is_runtime_const(copy))
 					{
-						SEMA_ERROR(expr, "Constant value did not evaluate to a constant.");
-						return false;
+						RETURN_SEMA_ERROR(expr, "Constant value did not evaluate to a constant.");
 					}
 					expr_replace(expr, copy);
 					return true;
@@ -2387,7 +2386,7 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 		return false;
 	}
 
-	sema_display_deprecated_warning_on_use(decl, expr->span);
+	sema_display_deprecated_warning_on_use(context, decl, expr->span);
 
 	// Tag dynamic dispatch.
 	if (struct_var && decl->func_decl.attr_interface_method) expr->call_expr.is_dynamic_dispatch = true;
@@ -2461,7 +2460,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 									 "possibly due non-terminating macro recursion.");
 	}
 
-	sema_display_deprecated_warning_on_use(decl, call_expr->span);
+	sema_display_deprecated_warning_on_use(context, decl, call_expr->span);
 
 	copy_begin();
 	Decl **params = copy_decl_list_macro(decl->func_decl.signature.params);

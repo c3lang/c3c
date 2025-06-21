@@ -328,6 +328,7 @@ void symtab_init(uint32_t capacity)
 	kw_at_require = KW_DEF("@require");
 	kw_at_return = KW_DEF("@return");
 	attribute_list[ATTRIBUTE_ALIGN] = KW_DEF("@align");
+	attribute_list[ATTRIBUTE_ALLOW_DEPRECATED] = KW_DEF("@allow_deprecated");
 	attribute_list[ATTRIBUTE_BENCHMARK] = KW_DEF("@benchmark");
 	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("@bigendian");
 	attribute_list[ATTRIBUTE_BUILTIN] = KW_DEF("@builtin");

@@ -3255,6 +3255,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		.current_function = func,
 		.kind = CALL_ENV_FUNCTION,
 		.pure = func->func_decl.signature.attrs.is_pure,
+		.ignore_deprecation = func->allow_deprecated || (func->resolved_attributes && func->attrs_resolved && func->attrs_resolved->deprecated && func->resolved_attributes && func->attrs_resolved->deprecated)
 	};
 	context->rtype = prototype->rtype;
 	context->macro_call_depth = 0;

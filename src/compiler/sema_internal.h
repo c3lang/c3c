@@ -127,7 +127,7 @@ bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, con
 Type *sema_resolve_type_get_func(Signature *signature, CallABI abi);
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
-INLINE void sema_display_deprecated_warning_on_use(Decl *decl, SourceSpan span);
+INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span);
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right, bool *failed_ref);
 
 INLINE bool sema_check_left_right_const(SemaContext *context, Expr *left, Expr *right)
@@ -165,10 +165,11 @@ INLINE Attr* attr_find_kind(Attr **attrs, AttributeType attr_type)
 	return NULL;
 }
 
-INLINE void sema_display_deprecated_warning_on_use(Decl *decl, SourceSpan span)
+INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span)
 {
 	ASSERT(decl->resolve_status == RESOLVE_DONE);
 	if (!decl->resolved_attributes || !decl->attrs_resolved || !decl->attrs_resolved->deprecated) return;
+	if (context->call_env.ignore_deprecation) return;
 	const char *msg = decl->attrs_resolved->deprecated;
 
 	// Prevent multiple reports

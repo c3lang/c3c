@@ -630,6 +630,7 @@ typedef struct Decl_
 	bool attr_nopadding : 1;
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
+	bool allow_deprecated : 1;
 	union
 	{
 		void *backend_ref;
@@ -1695,6 +1696,7 @@ typedef struct
 	bool ensures : 1;
 	bool pure : 1;
 	bool in_no_eval : 1;
+	bool ignore_deprecation : 1;
 	SourceSpan in_if_resolution;
 	Decl **opt_returns;
 	union
