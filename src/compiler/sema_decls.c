@@ -1802,27 +1802,37 @@ static bool sema_find_typed_operator_in_list(SemaContext *context, Decl **method
 {
 
 	Decl *candidate = *candidate_ref;
+	Type *candidate_type = candidate ? candidate->func_decl.signature.params[1]->type : NULL;
+	bool last_first_arg_exact_match = candidate_type ? candidate_type->canonical == binary_type : false;
+
 	FOREACH(Decl *, func, methods)
 	{
 		if (func->func_decl.operator != operator_overload) continue;
 		if (parent_type && parent_type != typeget(func->func_decl.type_parent)) continue;
 		if ((overload_type & func->func_decl.overload_type) == 0) continue;
+		bool is_exact_match = true;
 		if (!func->func_decl.is_wildcard_overload)
 		{
 			Type *first_arg = func->func_decl.signature.params[1]->type->canonical;
 			if (first_arg != binary_type)
 			{
+				is_exact_match = false;
 				if (!binary_arg) continue;
 				if (!may_cast(context, binary_arg, first_arg, false, true)) continue;
 			}
 		}
 		if (candidate && !candidate->func_decl.is_wildcard_overload)
 		{
+			if (last_first_arg_exact_match && !is_exact_match) continue;
+			if (!last_first_arg_exact_match && is_exact_match) goto MATCH;
+			assert(!last_first_arg_exact_match);
 			*ambiguous_ref = func;
 			*candidate_ref = candidate;
 			return false;
 		}
+MATCH:
 		candidate = func;
+		last_first_arg_exact_match = is_exact_match;
 	}
 	*candidate_ref = candidate;
 	return true;

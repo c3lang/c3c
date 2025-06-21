@@ -291,6 +291,7 @@ static inline ConstInitializer *expr_const_initializer_from_expr(Expr *expr)
 	}
 }
 
+
 /**
  * The following valid cases exist:
  *
@@ -303,14 +304,11 @@ static inline ConstInitializer *expr_const_initializer_from_expr(Expr *expr)
  */
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right, bool *failed_ref)
 {
-	ASSERT(concat_expr->resolve_status == RESOLVE_RUNNING);
+	ASSERT_SPAN(concat_expr, concat_expr->resolve_status == RESOLVE_RUNNING);
+	if (!sema_check_left_right_const(context, left, right)) return false;
 	ArraySize len = 0;
 	bool use_array = true;
 	Type *indexed_type = NULL;
-	if (!sema_analyse_expr(context, left)) return false;
-	if (!sema_cast_const(left)) RETURN_SEMA_ERROR(left, "Expected this to evaluate to a constant value.");
-	if (!sema_analyse_expr(context, right)) return false;
-	if (!sema_cast_const(right)) RETURN_SEMA_ERROR(right, "Expected this to evaluate to a constant value.");
 	Type *element_type = left->type->canonical;
 	Type *right_type = right->type->canonical;
 	switch (left->const_expr.const_kind)

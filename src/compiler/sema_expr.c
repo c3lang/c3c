@@ -1224,6 +1224,50 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 }
 
 
+static inline bool sema_binary_analyse_with_inference(SemaContext *context, Expr *left, Expr *right, BinaryOp op)
+{
+	const static int op_table[BINARYOP_LAST + 1] = {
+		[BINARYOP_AND] = 1, [BINARYOP_OR] = 1, [BINARYOP_CT_AND] = 1, [BINARYOP_CT_OR] = 1,
+		[BINARYOP_EQ] = 2, [BINARYOP_NE] = 2 };
+	int op_result = op_table[op];
+	if (op_result == 1) return true;
+	// If lhs or rhs is an initializer list, infer
+	bool is_init_rhs = right->expr_kind == EXPR_INITIALIZER_LIST;
+	bool is_init_lhs = left->expr_kind == EXPR_INITIALIZER_LIST;
+	if (is_init_rhs && is_init_lhs) goto EVAL_BOTH;
+
+	if (is_init_rhs)
+	{
+		if (!sema_analyse_expr(context, left)) return false;
+		if (type_kind_is_any_vector(type_flatten(left->type)->type_kind))
+		{
+			return sema_analyse_inferred_expr(context, left->type, right);
+		}
+		return sema_analyse_expr(context, right);
+	}
+	if (is_init_lhs)
+	{
+		if (!sema_analyse_expr(context, right)) return false;
+		if (type_kind_is_any_vector(type_flatten(right->type)->type_kind))
+		{
+			return sema_analyse_inferred_expr(context, right->type, left);
+		}
+		return sema_analyse_expr(context, left);
+	}
+
+	if (op_result != 2) goto EVAL_BOTH;
+
+	if (!sema_analyse_expr(context, left)) return false;
+	if (left->type->canonical->type_kind == TYPE_ENUM)
+	{
+		return sema_analyse_inferred_expr(context, left->type, right);
+	}
+	return sema_analyse_expr(context, right);
+
+EVAL_BOTH:
+	return sema_analyse_expr(context, left) && sema_analyse_expr(context, right);
+}
+
 static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *left, Expr *right)
 {
 	// Special handling of f = FOO_BAR
@@ -1273,7 +1317,8 @@ static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, 
 	Expr *right = exprptr(expr->binary_expr.right);
 
 	// 1. Analyse both sides.
-	if (!sema_binary_analyse_subexpr(context, left, right)) return false;
+	ASSERT_SPAN(expr, left->resolve_status == RESOLVE_DONE);
+	ASSERT_SPAN(expr, right->resolve_status == RESOLVE_DONE);
 
 	Type *left_type = type_no_optional(left->type)->canonical;
 	Type *right_type = type_no_optional(right->type)->canonical;
@@ -8656,10 +8701,22 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Type *infer_ty
 		RETURN_SEMA_ERROR(expr, "You need to add explicit parentheses to clarify precedence.");
 	}
 	BinaryOp operator = expr->binary_expr.operator;
+	if (operator >= BINARYOP_ASSIGN)
+	{
+		if (left->expr_kind != EXPR_TYPEINFO)
+		{
+			if (!sema_analyse_expr_lvalue(context, left, NULL)) return false;
+		}
+	}
+	else
+	{
+		if (operator == BINARYOP_ELSE) return sema_expr_analyse_or_error(context, expr, left, right, infer_type, failed_ref);
+		if (!sema_binary_analyse_with_inference(context, left, right, operator)) return false;
+	}
 	switch (operator)
 	{
 		case BINARYOP_ELSE:
-			return sema_expr_analyse_or_error(context, expr, left, right, infer_type, failed_ref);
+			UNREACHABLE
 		case BINARYOP_CT_CONCAT:
 			return sema_expr_analyse_ct_concat(context, expr, left, right, failed_ref);
 		case BINARYOP_CT_OR:

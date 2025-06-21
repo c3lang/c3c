@@ -130,6 +130,12 @@ INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSiz
 INLINE void sema_display_deprecated_warning_on_use(Decl *decl, SourceSpan span);
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right, bool *failed_ref);
 
+INLINE bool sema_check_left_right_const(SemaContext *context, Expr *left, Expr *right)
+{
+	if (!sema_cast_const(left)) RETURN_SEMA_ERROR(left, "Expected this to evaluate to a constant value.");
+	if (!sema_cast_const(right)) RETURN_SEMA_ERROR(right, "Expected this to evaluate to a constant value.");
+	return true;
+}
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result)
 {
