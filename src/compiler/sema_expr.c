@@ -6779,9 +6779,9 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 			[BINARYOP_SHR] = OVERLOAD_SHR,
 		};
 		OperatorOverload mapped_overload = MAP[underlying_op];
-		Decl *ambiguous = NULL;
 		bool reverse = false;
-		Decl *candidate = expr_may_ref(left) ? sema_find_typed_operator(context, mapped_overload, left, right, &ambiguous, &reverse) : NULL;
+		Decl *candidate = expr_may_ref(left) ? sema_find_typed_operator(context, mapped_overload, expr->span, left, right, &reverse) : NULL;
+		if (!decl_ok(candidate)) return false;
 		if (candidate && typeget(candidate->func_decl.signature.rtype)->canonical == canonical)
 		{
 			return sema_rewrite_op_assign(context, expr, left, right, underlying_op);
@@ -6915,18 +6915,13 @@ END:
 static bool sema_replace_with_overload(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *left_type, OperatorOverload* operator_overload_ref)
 {
 	assert(!type_is_optional(left_type) && left_type->canonical == left_type);
-	Decl *ambiguous = NULL;
 	bool reverse;
-	Decl *overload = sema_find_typed_operator(context, *operator_overload_ref, left, right, &ambiguous, &reverse);
+	Decl *overload = sema_find_typed_operator(context, *operator_overload_ref, expr->span, left, right, &reverse);
+	if (!decl_ok(overload)) return false;
 	if (overload)
 	{
 		*operator_overload_ref = (OperatorOverload)0; // NOLINT
 		return sema_insert_binary_overload(context, expr, overload, left, right, reverse);
-	}
-	if (ambiguous)
-	{
-		RETURN_SEMA_ERROR(expr, "Overload was ambiguous for types %s and %s.",
-			type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 	}
 	return true;
 }
@@ -7736,26 +7731,27 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 	{
 		Decl *overload = NULL;
 		bool negated_overload = false;
-		Decl *ambiguous = NULL;
 		bool reverse = false;
 		switch (expr->binary_expr.operator)
 		{
 			case BINARYOP_NE:
-				overload = sema_find_typed_operator(context, OVERLOAD_NOT_EQUAL, left, right, &ambiguous, &reverse);
-				if (!overload && !ambiguous)
+				overload = sema_find_typed_operator(context, OVERLOAD_NOT_EQUAL, expr->span, left, right, &reverse);
+				if (!overload)
 				{
 					negated_overload = true;
-					overload = sema_find_typed_operator(context, OVERLOAD_EQUAL, left, right, &ambiguous, &reverse);
+					overload = sema_find_typed_operator(context, OVERLOAD_EQUAL, expr->span, left, right, &reverse);
 				}
+				if (!decl_ok(overload)) return false;
 				if (!overload) goto NEXT;
 				break;
 			case BINARYOP_EQ:
-				overload = sema_find_typed_operator(context, OVERLOAD_EQUAL, left, right, &ambiguous, &reverse);
-				if (!overload && !ambiguous)
+				overload = sema_find_typed_operator(context, OVERLOAD_EQUAL, expr->span, left, right, &reverse);
+				if (!overload)
 				{
 					negated_overload = true;
-					overload = sema_find_typed_operator(context, OVERLOAD_NOT_EQUAL, left, right, &ambiguous, &reverse);
+					overload = sema_find_typed_operator(context, OVERLOAD_NOT_EQUAL, expr->span, left, right, &reverse);
 				}
+				if (!decl_ok(overload)) return false;
 				if (!overload) goto NEXT;
 				break;
 			default:
@@ -7865,6 +7861,7 @@ DONE:
 	expr->type = type_add_optional(type_bool, IS_OPTIONAL(left) || IS_OPTIONAL(right));
 
 	return true;
+
 }
 
 /**

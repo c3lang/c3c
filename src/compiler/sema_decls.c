@@ -19,8 +19,8 @@ static inline bool unit_add_base_extension_method(SemaContext *context, Compilat
 static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl *method);
 static bool sema_analyse_operator_common(SemaContext *context, Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr,
                                          uint32_t parameters);
-static inline bool operator_in_module_typed(SemaContext *c, Module *module, OperatorOverload operator_overload,
-                                             OverloadType overload_type, Type *method_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref);
+static inline OverloadMatch operator_in_module_typed(SemaContext *c, Module *module, OperatorOverload operator_overload,
+                                             OverloadType overload_type, Type *method_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, OverloadMatch last_match, Decl **ambiguous_ref);
 static inline Decl *operator_in_module_exact_typed(Module *module, OperatorOverload operator_overload, OverloadType overload_type, Type *method_type, Type *param_type, Decl *skipped);
 static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method);
 static inline bool sema_analyse_operator_element_set(SemaContext *context, Decl *method);
@@ -48,7 +48,7 @@ static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **att
 static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_check_section(SemaContext *context, Attr *attr);
 static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext *c, Decl *decl, bool *erase_decl);
-static bool sema_find_typed_operator_in_list(SemaContext *context, Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref);
+static OverloadMatch sema_find_typed_operator_in_list(SemaContext *context, Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, OverloadMatch current_match, Decl **ambiguous_ref);
 static Decl *sema_find_exact_typed_operator_in_list(Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Type *binary_type, Decl *skipped);
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
@@ -1709,15 +1709,15 @@ INLINE bool decl_matches_overload(Decl *method, Type *type, OperatorOverload ove
 	return method->func_decl.operator == overload && typeget(method->func_decl.type_parent)->canonical == type;
 }
 
-static inline bool operator_in_module_typed(SemaContext *c, Module *module, OperatorOverload operator_overload, OverloadType overload_type, Type *method_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref)
+static inline OverloadMatch operator_in_module_typed(SemaContext *c, Module *module, OperatorOverload operator_overload, OverloadType overload_type, Type *method_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, OverloadMatch match, Decl **ambiguous_ref)
 {
-	if (module->is_generic) return false;
-	if (!sema_find_typed_operator_in_list(c, module->private_method_extensions, operator_overload, OVERLOAD_TYPE_SYMMETRIC, method_type, binary_arg, binary_type, candidate_ref, ambiguous_ref)) return false;
+	if (module->is_generic) return match;
+	match = sema_find_typed_operator_in_list(c, module->private_method_extensions, operator_overload, OVERLOAD_TYPE_SYMMETRIC, method_type, binary_arg, binary_type, candidate_ref, match, ambiguous_ref);
 	FOREACH(Module *, sub_module, module->sub_modules)
 	{
-		if (!operator_in_module_typed(c, sub_module, operator_overload, overload_type, method_type, binary_arg, binary_type, candidate_ref, ambiguous_ref)) return false;
+		match = operator_in_module_typed(c, sub_module, operator_overload, overload_type, method_type, binary_arg, binary_type, candidate_ref, match, ambiguous_ref);
 	}
-	return true;
+	return match;
 }
 
 static inline Decl *operator_in_module_exact_typed(Module *module, OperatorOverload operator_overload, OverloadType overload_type, Type *method_type, Type *param_type, Decl *skipped)
@@ -1798,44 +1798,69 @@ static Decl *sema_find_exact_typed_operator_in_list(Decl **methods, OperatorOver
 	return wildcard;
 }
 
-static bool sema_find_typed_operator_in_list(SemaContext *context, Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref)
+static OverloadMatch sema_find_typed_operator_in_list(SemaContext *context, Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, OverloadMatch last_match, Decl **ambiguous_ref)
 {
-
+	if (last_match == OVERLOAD_MATCH_AMBIGUOUS_EXACT) return last_match;
 	Decl *candidate = *candidate_ref;
-	Type *candidate_type = candidate ? candidate->func_decl.signature.params[1]->type : NULL;
-	bool last_first_arg_exact_match = candidate_type ? candidate_type->canonical == binary_type : false;
-
 	FOREACH(Decl *, func, methods)
 	{
 		if (func->func_decl.operator != operator_overload) continue;
 		if (parent_type && parent_type != typeget(func->func_decl.type_parent)) continue;
 		if ((overload_type & func->func_decl.overload_type) == 0) continue;
-		bool is_exact_match = true;
+		OverloadMatch match = OVERLOAD_MATCH_WILDCARD;
 		if (!func->func_decl.is_wildcard_overload)
 		{
 			Type *first_arg = func->func_decl.signature.params[1]->type->canonical;
+			match = OVERLOAD_MATCH_EXACT;
 			if (first_arg != binary_type)
 			{
-				is_exact_match = false;
 				if (!binary_arg) continue;
 				if (!may_cast(context, binary_arg, first_arg, false, true)) continue;
+				match = OVERLOAD_MATCH_CONVERSION;
 			}
 		}
-		if (candidate && !candidate->func_decl.is_wildcard_overload)
+		if (last_match >= OVERLOAD_MATCH_AMBIGUOUS_START)
 		{
-			if (last_first_arg_exact_match && !is_exact_match) continue;
-			if (!last_first_arg_exact_match && is_exact_match) goto MATCH;
-			assert(!last_first_arg_exact_match);
+			assert(last_match != OVERLOAD_MATCH_AMBIGUOUS_EXACT);
+			if (match == OVERLOAD_MATCH_EXACT)
+			{
+				*ambiguous_ref = candidate;
+				goto MATCH;
+			}
+			if (match == OVERLOAD_MATCH_CONVERSION && last_match == OVERLOAD_MATCH_AMBIGUOUS_WILDCARD)
+			{
+				*ambiguous_ref = candidate;
+				goto MATCH;
+			}
+			continue;
+		}
+		if (candidate)
+		{
+			if (last_match > match) goto MATCH;
+			if (last_match < match) continue;
 			*ambiguous_ref = func;
 			*candidate_ref = candidate;
-			return false;
+			switch (match)
+			{
+				case OVERLOAD_MATCH_EXACT:
+					return OVERLOAD_MATCH_AMBIGUOUS_EXACT;
+				case OVERLOAD_MATCH_CONVERSION:
+					last_match = OVERLOAD_MATCH_AMBIGUOUS_CONVERSION;
+					continue;
+				case OVERLOAD_MATCH_WILDCARD:
+					last_match = OVERLOAD_MATCH_AMBIGUOUS_WILDCARD;
+					continue;
+				default:
+					UNREACHABLE;
+			}
+			UNREACHABLE;
 		}
 MATCH:
 		candidate = func;
-		last_first_arg_exact_match = is_exact_match;
+		last_match = match;
 	}
 	*candidate_ref = candidate;
-	return true;
+	return last_match;
 }
 
 static Decl *sema_find_exact_typed_operator(SemaContext *context, Type *type, OperatorOverload operator_overload, OverloadType overload_type, Type *param_type, Decl *skipped)
@@ -1865,70 +1890,98 @@ static Decl *sema_find_exact_typed_operator(SemaContext *context, Type *type, Op
 	return NULL;
 }
 
-static bool sema_find_typed_operator_type(SemaContext *context, OperatorOverload operator_overload, OverloadType overloat_type, Type *lhs_type, Type *rhs_type, Expr *rhs, Decl **candidate_ref, Decl **ambiguous_ref)
+static OverloadMatch sema_find_typed_operator_type(SemaContext *context, OperatorOverload operator_overload, OverloadType overloat_type, Type *lhs_type, Type *rhs_type, Expr *rhs, Decl **candidate_ref, OverloadMatch last_match, Decl **ambiguous_ref)
 {
 	// Can we find the overload directly on the method?
-	if (!sema_find_typed_operator_in_list(context, lhs_type->decl->methods,
+	last_match = sema_find_typed_operator_in_list(
+		context, lhs_type->decl->methods,
 		operator_overload, overloat_type, lhs_type,
-		rhs, rhs_type, candidate_ref, ambiguous_ref)) return false;
-	// Can we find it as a local extension?
-	if (!sema_find_typed_operator_in_list(context, context->unit->local_method_extensions,
-		operator_overload, overloat_type, lhs_type, rhs, rhs_type, candidate_ref, ambiguous_ref)) return false;
-
+		rhs, rhs_type, candidate_ref, last_match, ambiguous_ref);
+	last_match = sema_find_typed_operator_in_list(context, context->unit->local_method_extensions,
+		operator_overload, overloat_type, lhs_type, rhs, rhs_type, candidate_ref, last_match, ambiguous_ref);
 	// Can we find it in the current module?
-	if (!operator_in_module_typed(context, context->compilation_unit->module, operator_overload, overloat_type,
-								 lhs_type, rhs, rhs_type, candidate_ref, ambiguous_ref)) return false;
+	last_match = operator_in_module_typed(context, context->compilation_unit->module, operator_overload, overloat_type,
+								 lhs_type, rhs, rhs_type, candidate_ref, last_match, ambiguous_ref);
+
 	FOREACH(Decl *, import, context->unit->public_imports)
 	{
-		if (!operator_in_module_typed(context, import->import.module, operator_overload, overloat_type,
-									 lhs_type, rhs, rhs_type, candidate_ref, ambiguous_ref)) return false;
+		last_match = operator_in_module_typed(context, import->import.module, operator_overload, overloat_type,
+									 lhs_type, rhs, rhs_type, candidate_ref, last_match, ambiguous_ref);
 	}
-	return true;
-
+	return last_match;
 }
 
+const char *operator_overload_to_string(OperatorOverload operator_overload)
+{
+	switch (operator_overload)
+	{
+		case OVERLOAD_ELEMENT_AT:
+		case OVERLOAD_ELEMENT_REF:
+		case OVERLOAD_ELEMENT_SET:
+		case OVERLOAD_LEN:
+		case OVERLOAD_NEGATE:
+		case OVERLOAD_UNARY_MINUS:		UNREACHABLE
+		case OVERLOAD_PLUS:				return "+";
+		case OVERLOAD_MINUS:			return "-";
+		case OVERLOAD_MULTIPLY:			return "*";
+		case OVERLOAD_DIVIDE:			return "/";
+		case OVERLOAD_REMINDER:			return "%";
+		case OVERLOAD_AND:				return "&";
+		case OVERLOAD_OR:				return "|";
+		case OVERLOAD_XOR:				return "^";
+		case OVERLOAD_SHL:				return "<<";
+		case OVERLOAD_SHR:				return ">>";
+		case OVERLOAD_EQUAL:			return "==";
+		case OVERLOAD_NOT_EQUAL:		return "!=";
+		case OVERLOAD_PLUS_ASSIGN:		return "+=";
+		case OVERLOAD_MINUS_ASSIGN:		return "-=";
+		case OVERLOAD_MULTIPLY_ASSIGN:	return "*=";
+		case OVERLOAD_DIVIDE_ASSIGN:	return "/=";
+		case OVERLOAD_REMINDER_ASSIGN:	return "%=";
+		case OVERLOAD_AND_ASSIGN:		return "&=";
+		case OVERLOAD_OR_ASSIGN:		return "|=";
+		case OVERLOAD_XOR_ASSIGN:		return "^=";
+		case OVERLOAD_SHL_ASSIGN:		return "<<=";
+		case OVERLOAD_SHR_ASSIGN:		return ">>=";
+	}
+	UNREACHABLE
+}
 
-Decl *sema_find_typed_operator(SemaContext *context, OperatorOverload operator_overload, Expr *lhs, Expr *rhs, Decl **ambiguous_ref, bool *reverse)
+Decl *sema_find_typed_operator(SemaContext *context, OperatorOverload operator_overload, SourceSpan span, Expr *lhs, Expr *rhs, bool *reverse)
 {
 	assert(operator_overload >= OVERLOAD_TYPED_START);
-	assert(lhs && rhs && ambiguous_ref);
+	assert(lhs && rhs);
 	Type *left_type = type_no_optional(lhs->type)->canonical;
 	Type *right_type = type_no_optional(rhs->type)->canonical;
 	Decl *candidate = NULL;
 	Decl *ambiguous = NULL;
-	Decl *left_candidate = NULL;
+	OverloadMatch current_match = OVERLOAD_MATCH_NONE;
 	*reverse = false;
+	Decl *first = NULL;
 	if (type_is_user_defined(left_type))
 	{
-		if (!sema_find_typed_operator_type(context, operator_overload, OVERLOAD_TYPE_LEFT, left_type, right_type, rhs, &candidate, &ambiguous)) return NULL;
-		left_candidate = candidate;
+		current_match = sema_find_typed_operator_type(context, operator_overload, OVERLOAD_TYPE_LEFT, left_type, right_type, rhs, &candidate, current_match, &ambiguous);
+		first = candidate;
 	}
-	candidate = NULL;
 	if (type_is_user_defined(right_type))
 	{
-		if (!sema_find_typed_operator_type(context, operator_overload, OVERLOAD_TYPE_RIGHT, right_type, left_type, lhs, &candidate, &ambiguous)) return NULL;
+		current_match = sema_find_typed_operator_type(context, operator_overload, OVERLOAD_TYPE_RIGHT, right_type, left_type, lhs, &candidate, current_match, &ambiguous);
 	}
 
-	// If one or the other is missing, pick the right one.
-	if (!left_candidate)
+	if (current_match >= OVERLOAD_MATCH_AMBIGUOUS_START)
 	{
-		*reverse = true;
-		return candidate;
+		sema_error_at(context, span, "%s %s %s has more than one candidate method, and is ambiguous. One solution is to call the desired method directly, instead of using operators, to select the right one.",
+		              type_quoted_error_string(lhs->type),
+		              operator_overload_to_string(operator_overload),
+		              type_quoted_error_string(rhs->type));
+		SEMA_NOTE(candidate, "One candidate was here.");
+		SEMA_NOTE(ambiguous, "Another candidate was found here.");
+		return poisoned_decl;
 	}
-	if (!candidate) return left_candidate;
 
-	// Both exist, prefer non-wildcard
-	if (left_candidate->func_decl.is_wildcard_overload && !candidate->func_decl.is_wildcard_overload)
-	{
-		*reverse = true;
-		return candidate;
-	}
-	if (candidate->func_decl.is_wildcard_overload && !left_candidate->func_decl.is_wildcard_overload)
-	{
-		return left_candidate;
-	}
-	*ambiguous_ref = candidate;
-	return NULL;
+	if (candidate != first) *reverse = true;
+
+	return candidate;
 }
 
 static inline bool sema_analyse_operator_unary(SemaContext *context, Decl *method, OperatorOverload operator_overload)
