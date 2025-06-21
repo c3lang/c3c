@@ -1,0 +1,7 @@
+module test;
+import std::io as foo;
+
+fn void main()
+{
+	bar::printn("Hello, World!"); // #error: bar
+}

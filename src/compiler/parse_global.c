@@ -2157,7 +2157,6 @@ static inline Decl *parse_alias_ident(ParseContext *c)
 	// 1. Store the beginning of the "alias".
 	advance_and_verify(c, TOKEN_ALIAS);
 
-
 	// 2. At this point we expect an ident or a const token.
 	//    since the Type is handled.
 	TokenType alias_type = c->tok;
@@ -2185,6 +2184,7 @@ static inline Decl *parse_alias_ident(ParseContext *c)
 	{
 		RETURN_PRINT_ERROR_AT(poisoned_decl, decl, "'main' is reserved and cannot be used as an alias.");
 	}
+
 	// 4. Advance and consume the '='
 	advance(c);
 
@@ -2198,7 +2198,6 @@ static inline Decl *parse_alias_ident(ParseContext *c)
 	}
 
 	ASSIGN_EXPR_OR_RET(decl->define_decl.alias_expr, parse_expr(c), poisoned_decl);
-
 
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
@@ -2686,7 +2685,34 @@ static inline bool parse_import(ParseContext *c)
 			}
 			advance_and_verify(c, TOKEN_AT_IDENT);
 		}
-		unit_add_import(c->unit, path, private, is_norecurse);
+
+		const char *import_alias = NULL;
+		if (tok_is(c, TOKEN_AS))
+		{
+			advance_and_verify(c, TOKEN_AS);
+			import_alias = symstr(c);
+
+			if (!try_consume(c, TOKEN_IDENT))
+			{
+				if (token_is_keyword_ident(c->tok))
+				{
+					PRINT_ERROR_HERE("The import alias '%s' cannot be a reserved keyword, try another name.", import_alias);
+					return false;
+				}
+				PRINT_ERROR_HERE("The import alias '%s' must be a regular lower case alias name.");
+				return false;
+			}
+
+			bool tok_is_valid = tok_is(c, TOKEN_COMMA) || tok_is(c, TOKEN_EOS);
+			if (!tok_is_valid)
+			{
+				PRINT_ERROR_HERE("Found '%s', but the import alias must be followed by a ',' or an ';'", token_type_to_string(c->tok));
+				return false;
+			}
+		}
+
+		unit_add_import(c->unit, path, private, is_norecurse, import_alias);
+
 		if (tok_is(c, TOKEN_COLON) && peek(c) == TOKEN_IDENT)
 		{
 			PRINT_ERROR_HERE("'::' was expected here, did you make a mistake?");
