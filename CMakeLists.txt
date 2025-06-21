@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
 
+set(C3_LLVM_MIN_VERSION 17)
+set(C3_LLVM_MAX_VERSION 21)
+set(C3_LLVM_DEFAULT_VERSION 19)
+
+if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
+    message(FATAL_ERROR "In-tree build detected, please build in a separate directory")
+endif()
+
 # Grab the version
 file(READ "src/version.h" ver)
 if (NOT ${ver} MATCHES "COMPILER_VERSION \"([0-9]+.[0-9]+.[0-9]+)\"")
@@ -7,8 +15,20 @@ if (NOT ${ver} MATCHES "COMPILER_VERSION \"([0-9]+.[0-9]+.[0-9]+)\"")
 endif()
 
 # Set the project and version
-project(c3c VERSION ${CMAKE_MATCH_1})
-message("C3C version: ${CMAKE_PROJECT_VERSION}")
+project(c3c VERSION ${CMAKE_MATCH_1} LANGUAGES C CXX)
+message("Configuring C3C ${CMAKE_PROJECT_VERSION} for ${CMAKE_SYSTEM_NAME}")
+
+# Helper functions
+function(c3_print_variables)
+    set(msg "")
+    foreach(var ${ARGN})
+        if(msg)
+            string(APPEND msg " ; ")
+        endif()
+        string(APPEND msg "${c3_print_prefix}${var}=\"${${var}}\"")
+    endforeach()
+    message(STATUS "${msg}")
+endfunction()
 
 # Avoid warning for FetchContent
 if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
@@ -16,7 +36,7 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
 endif()
 
 if (NOT DEFINED CMAKE_INSTALL_LIBDIR)
-    if (MSVC)
+    if (WIN32)
         set(CMAKE_INSTALL_LIBDIR "c:\\c3c\\lib")
         set(CMAKE_INSTALL_BINDIR "c:\\c3c")
     else ()
@@ -36,36 +56,41 @@ set(CMAKE_FIND_PACKAGE_SORT_DIRECTION DEC)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
+# Use /MT or /MTd
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 if(MSVC)
     message(STATUS "MSVC version ${MSVC_VERSION}")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /EHsc /utf-8")
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /EHsc /utf-8")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Zi /EHa /utf-8")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Zi /EHa /utf-8")
+    add_compile_options(/utf-8)
 else()
-    if (true)
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O0 -fno-exceptions")
-        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -gdwarf-3 -O0 -fno-exceptions")
-        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -gdwarf-3 -O3 -fno-exceptions")
-        set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -gdwarf-3 -fno-exceptions")
-    else()
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -gdwarf-3 -O3 -fsanitize=undefined,address -fno-exceptions")
-        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -gdwarf-3 -O1 -fsanitize=undefined,address -fno-exceptions")
-        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -gdwarf-3 -O3 -fsanitize=undefined,address -fno-exceptions")
-        set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -gdwarf-3 -O1 -fsanitize=undefined,address -fno-exceptions")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=undefined,address -fno-exceptions")
-    endif()
+    add_compile_options(-gdwarf-3 -fno-exceptions)
+
+    # add_compile_options(-fsanitize=address,undefined)
+    # add_link_options(-fsanitize=address,undefined)
 endif()
 
-option(C3_LINK_DYNAMIC "link dynamically with LLVM/LLD libs")
+# Options
+set(C3_LINK_DYNAMIC         OFF      CACHE BOOL   "Link dynamically with LLVM/LLD libs")
+set(C3_WITH_LLVM            ON       CACHE BOOL   "Build with LLVM")
+set(C3_LLVM_VERSION         "auto"   CACHE STRING "Use LLVM version [default: auto]")
+set(C3_USE_MIMALLOC         OFF      CACHE BOOL   "Use built-in mimalloc")
+set(C3_MIMALLOC_TAG         "v1.7.3" CACHE STRING "Used version of mimalloc")
+set(C3_USE_TB               OFF      CACHE BOOL   "Use TB")
+set(C3_LLD_DIR              ""       CACHE STRING "Use custom LLD directory")
+set(C3_ENABLE_CLANGD_LSP    OFF      CACHE BOOL   "Enable/Disable output of compile commands during generation")
+set(LLVM_CRT_LIBRARY_DIR    ""       CACHE STRING "Use custom llvm's compiler-rt directory")
 
-set(C3_LLVM_VERSION "auto" CACHE STRING "Use LLVM version [default: auto]")
-option(C3_USE_MIMALLOC "Use built-in mimalloc" OFF)
-option(C3_USE_TB "Use TB" OFF)
-set(C3_MIMALLOC_TAG "v1.7.3" CACHE STRING "Used version of mimalloc")
-option(C3_WITH_LLVM "Build with LLVM" ON)
-option(C3_LLD_DIR "Use custom LLD directory" "")
-option(LLVM_CRT_LIBRARY_DIR "Use custom llvm's compiler-rt directory" "")
+set(C3_OPTIONS
+        C3_LINK_DYNAMIC
+        C3_WITH_LLVM
+        C3_LLVM_VERSION
+        C3_USE_MIMALLOC
+        C3_MIMALLOC_TAG
+        C3_USE_TB
+        C3_LLD_DIR
+        C3_ENABLE_CLANGD_LSP
+        LLVM_CRT_LIBRARY_DIR
+)
 
 set(C3_USE_MIMALLOC OFF)
 if(C3_USE_MIMALLOC)
@@ -82,13 +107,6 @@ if(C3_USE_MIMALLOC)
 endif()
 if (NOT WIN32)
     find_package(CURL)
-endif()
-if(C3_WITH_LLVM)
-    if (NOT C3_LLVM_VERSION STREQUAL "auto")
-        if (${C3_LLVM_VERSION} VERSION_LESS 17 OR ${C3_LLVM_VERSION} VERSION_GREATER 21)
-            message(FATAL_ERROR "LLVM ${C3_LLVM_VERSION} is not supported!")
-        endif()
-    endif()
 endif()
 
 find_package(Git QUIET)
@@ -107,7 +125,6 @@ if(C3_USE_TB AND GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
 endif()
 
 # Clangd LSP support
-option(C3_ENABLE_CLANGD_LSP "Enable/Disable output of compile commands during generation." OFF)
 if(C3_ENABLE_CLANGD_LSP)
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
     execute_process(
@@ -120,7 +137,7 @@ endif(C3_ENABLE_CLANGD_LSP)
 if(C3_WITH_LLVM)
     if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
         if (C3_LLVM_VERSION STREQUAL "auto")
-            set(C3_LLVM_VERSION "19")
+            set(C3_LLVM_VERSION ${C3_LLVM_DEFAULT_VERSION})
         endif()
         FetchContent_Declare(
                 LLVM_Windows
@@ -139,6 +156,7 @@ if(C3_WITH_LLVM)
             FetchContent_MakeAvailable(LLVM_Windows)
             set(llvm_dir ${llvm_windows_SOURCE_DIR})
         endif()
+        message("Loaded Windows LLVM libraries into ${llvm_dir}")
         set(CMAKE_SYSTEM_PREFIX_PATH ${llvm_dir} ${CMAKE_SYSTEM_PREFIX_PATH})
 
         find_package(LLVM REQUIRED CONFIG)
@@ -149,7 +167,7 @@ if(C3_WITH_LLVM)
         # 
         # Because of CMAKE_FIND_PACKAGE_SORT_ORDER CMAKE_FIND_PACKAGE_SORT_DIRECTION,
         # the newest version will always be found first.
-        message(STATUS "CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
+        c3_print_variables(CMAKE_PREFIX_PATH)
         if (DEFINED LLVM_DIR) 
             message(STATUS "Looking for LLVM CMake files in user-specified directory ${LLVM_DIR}")
         else()
@@ -176,12 +194,15 @@ if(C3_WITH_LLVM)
         list(APPEND LLVM_LIBRARY_DIRS /usr/lib)
     endif()
 
+    list(REMOVE_DUPLICATES LLVM_LIBRARY_DIRS)
+
     message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
     message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-    message(STATUS "Libraries located in: ${LLVM_LIBRARY_DIRS}")
+    message(STATUS "LLVM libraries located in: ${LLVM_LIBRARY_DIRS}")
 
-    if (NOT LLVM_PACKAGE_VERSION VERSION_GREATER_EQUAL 15.0)
-        message(FATAL_ERROR "LLVM version 15.0 or later is required.")
+    if (${LLVM_PACKAGE_VERSION} VERSION_LESS C3_LLVM_MIN_VERSION OR
+        ${LLVM_PACKAGE_VERSION} VERSION_GREATER C3_LLVM_MAX_VERSION)
+        message(FATAL_ERROR "LLVM ${LLVM_PACKAGE_VERSION} is not supported! LLVM version between ${C3_LLVM_MIN_VERSION} and ${C3_LLVM_MAX_VERSION} is required.")
     endif()
 
     if(LLVM_ENABLE_RTTI)
@@ -231,44 +252,35 @@ if(C3_WITH_LLVM)
         llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
 
         if(NOT ${C3_LLD_DIR} EQUAL "" AND EXISTS ${C3_LLD_DIR})
-            message("C3_LLD_DIR: " ${C3_LLD_DIR})
-            set(LLVM_LIBRARY_DIRS
-                    "${LLVM_LIBRARY_DIRS}"
-                    "${C3_LLD_DIR}"
-            )
+            list(APPEND LLVM_LIBRARY_DIRS ${C3_LLD_DIR})
             list(REMOVE_DUPLICATES LLVM_LIBRARY_DIRS)
         endif()
 
+        message(STATUS "Looking for static lld libraries in ${LLVM_LIBRARY_DIRS}")
+
         # These don't seem to be reliable on windows.
-        message(STATUS "using find_library")
-        find_library(LLD_COFF NAMES liblldCOFF.dylib lldCOFF.lib lldCOFF.a liblldCOFF.dll.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_COMMON NAMES liblldCommon.dylib lldCommon.lib lldCommon.a liblldCommon.dll.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_ELF NAMES liblldELF.dylib lldELF.lib lldELF.a liblldELF.dll.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_MACHO NAMES liblldMachO.dylib lldMachO.lib lldMachO.a liblldMachO.dll.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_MINGW NAMES liblldMinGW.dylib lldMinGW.lib lldMinGW.a liblldMinGW.dll.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_WASM NAMES liblldWasm.dylib lldWasm.lib lldWasm.a liblldWasm.dll.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_COFF NAMES liblldCOFF.dylib lldCOFF.lib lldCOFF.a liblldCOFF.dll.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_COMMON NAMES liblldCommon.dylib lldCommon.lib lldCommon.a liblldCommon.dll.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_ELF NAMES liblldELF.dylib lldELF.lib lldELF.a liblldELF.dll.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_MACHO NAMES liblldMachO.dylib lldMachO.lib lldMachO.a liblldMachO.dll.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_MINGW NAMES liblldMinGW.dylib lldMinGW.lib lldMinGW.a liblldMinGW.dll.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_WASM NAMES liblldWasm.dylib lldWasm.lib lldWasm.a liblldWasm.dll.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
     else()
-        find_library(LLVM NAMES libLLVM.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        message(STATUS "Looking for shared lld libraries in ${LLVM_LIBRARY_DIRS}")
+
+        find_library(LLVM NAMES libLLVM.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
         set(llvm_libs ${LLVM})
 
         # These don't seem to be reliable on windows.
-        message(STATUS "using find_library")
-        find_library(LLD_COFF NAMES liblldCOFF.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_COMMON NAMES liblldCommon.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_ELF NAMES liblldELF.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_MACHO NAMES liblldMachO.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_MINGW NAMES liblldMinGW.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_WASM NAMES liblldWasm.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_COFF NAMES liblldCOFF.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_COMMON NAMES liblldCommon.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_ELF NAMES liblldELF.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_MACHO NAMES liblldMachO.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_MINGW NAMES liblldMinGW.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_WASM NAMES liblldWasm.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
     endif()
-endif()
 
-if (NOT(${CMAKE_BINARY_DIR} EQUAL ${CMAKE_SOURCE_DIR}))
-    file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/lib)
-    file(COPY ${CMAKE_SOURCE_DIR}/lib DESTINATION ${CMAKE_BINARY_DIR})
-endif()
-
-if(C3_WITH_LLVM)
-    find_library(LLD_LOONG NAMES libLLVMLoongArchCodeGen.lib libLLVMLoongArchAsmParser.lib libLLVMLoongArchCodeGen.a libLLVMLoongArchAsmParser.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    # find_library(LLD_LOONG NAMES libLLVMLoongArchCodeGen.lib libLLVMLoongArchAsmParser.lib libLLVMLoongArchCodeGen.a libLLVMLoongArchAsmParser.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
     set(lld_libs
             ${LLD_COFF}
             ${LLD_WASM}
@@ -293,8 +305,8 @@ if(C3_WITH_LLVM)
         )
     endif()
 
-    message(STATUS "linking to llvm libs ${lld_libs}")
-    message(STATUS "Found lld libs ${lld_libs}")
+    message(STATUS "Linking to llvm libs ${llvm_libs}")
+    message(STATUS "Linking to lld libs ${lld_libs}")
 endif()
 
 add_library(miniz STATIC dependencies/miniz/miniz.c)
@@ -412,6 +424,11 @@ if(C3_WITH_LLVM)
 
     target_compile_definitions(c3c PUBLIC LLVM_AVAILABLE=1)
     add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
+    if (MSVC)
+        target_compile_options(c3c PRIVATE
+                "$<$<CONFIG:Debug>:/EHa>"
+                "$<$<CONFIG:Release>:/EHsc>")
+    endif()
 else()
     target_sources(c3c PRIVATE src/utils/hostinfo.c)
     target_compile_definitions(c3c PUBLIC LLVM_AVAILABLE=0)
@@ -503,34 +520,27 @@ endif()
 
 
 if(MSVC)
-    message("Adding MSVC options")
-    target_compile_options(c3c PRIVATE /wd4068 /wd4090 /WX /Wv:18)
+    target_compile_options(c3c PRIVATE
+        /wd4068
+        /wd4090
+        /WX
+        /Wv:18
+    )
+
     if(C3_WITH_LLVM)
-        target_compile_options(c3c_wrappers PUBLIC /wd4624 /wd4267 /wd4244 /WX /Wv:18)
+        target_compile_options(c3c_wrappers PUBLIC
+            /wd4624
+            /wd4267
+            /wd4244
+            /WX
+            /Wv:18
+        )
         if(NOT LLVM_ENABLE_RTTI)
             target_compile_options(c3c_wrappers PUBLIC /GR-)
         endif()
         target_link_options(c3c_wrappers PUBLIC /ignore:4099)
     endif()
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        target_compile_options(c3c PUBLIC /MTd)
-        if (C3_WITH_LLVM)
-            target_compile_options(c3c_wrappers PUBLIC /MTd)
-        endif()
-        target_compile_options(miniz PUBLIC /MTd)
-        if (C3_USE_TB)
-            target_compile_options(tilde-backend PUBLIC /MTd)
-        endif()
-    else()
-        target_compile_options(c3c PUBLIC /MT)
-        if (C3_WITH_LLVM)
-            target_compile_options(c3c_wrappers PUBLIC /MT)
-        endif()
-        target_compile_options(miniz PUBLIC /MT)
-        if (C3_USE_TB)
-            target_compile_options(tilde-backend PUBLIC /MT)
-        endif()
-    endif()
+
     if(C3_WITH_LLVM)
         set(clang_lib_dir ${llvm_dir}/lib/clang/${C3_LLVM_VERSION}/lib/windows)
         set(sanitizer_runtime_libraries
@@ -540,13 +550,20 @@ if(MSVC)
                 ${clang_lib_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
     endif()
 else()
-    message(STATUS "using gcc/clang warning switches")
-    target_link_options(c3c PRIVATE -pthread)
     if (C3_WITH_LLVM AND NOT LLVM_ENABLE_RTTI)
         target_compile_options(c3c_wrappers PRIVATE -fno-rtti)
     endif()
-    target_compile_options(c3c PRIVATE -pthread -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
-            -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
+    target_compile_options(c3c PRIVATE
+        -pthread
+        -Wall
+        -Werror
+        -Wno-unknown-pragmas
+        -Wno-unused-result
+        -Wno-unused-function
+        -Wno-unused-variable
+        -Wno-unused-parameter
+    )
+    target_link_options(c3c PRIVATE -pthread)
 endif()
 
 install(TARGETS c3c DESTINATION bin)
@@ -555,6 +572,12 @@ install(DIRECTORY lib/ DESTINATION lib/c3)
 # Man page install (OSX/Linux only)
 if (NOT WIN32)
     install(FILES c3c.1 DESTINATION "share/man/man1")
+endif()
+
+# Copy stdlib
+if (NOT ${CMAKE_BINARY_DIR} EQUAL ${CMAKE_SOURCE_DIR})
+    file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/lib)
+    file(COPY ${CMAKE_SOURCE_DIR}/lib DESTINATION ${CMAKE_BINARY_DIR})
 endif()
 
 if (C3_WITH_LLVM AND DEFINED sanitizer_runtime_libraries)
@@ -576,3 +599,35 @@ if (C3_WITH_LLVM AND DEFINED sanitizer_runtime_libraries)
 endif()
 
 feature_summary(WHAT ALL)
+
+message(STATUS "Building ${CMAKE_PROJECT_NAME} with the following configuration:")
+
+set(c3_print_prefix "  ")
+
+foreach(option IN LISTS C3_OPTIONS)
+    if (DEFINED ${option})
+        c3_print_variables(${option})
+    endif()
+endforeach()
+
+foreach(flag_var
+        CMAKE_BUILD_TYPE
+        CMAKE_C_COMPILER
+        CMAKE_CXX_COMPILER
+        CMAKE_LINKER
+        CMAKE_OBJCOPY
+        CMAKE_STRIP
+        CMAKE_DLLTOOL)
+    c3_print_variables(${flag_var})
+endforeach()
+
+message(STATUS "Build flags:")
+foreach(flag_var
+        CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+        CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO
+        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+        CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+    c3_print_variables(${flag_var})
+endforeach()
+
+message(STATUS "Output to: \"${CMAKE_BINARY_DIR}\"")
