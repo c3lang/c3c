@@ -2066,7 +2066,7 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 				diff_value = LLVMConstReal(llvm_get_type(c, element), diff);
 			}
 			ArraySize width = type->array.len;
-			LLVMValueRef val = llvm_get_undef(c, type);
+			LLVMValueRef val = LLVMGetUndef(LLVMVectorType(LLVMTypeOf(diff_value), width));
 			for (ArraySize i = 0; i < width; i++)
 			{
 				val = llvm_emit_insert_value(c, val, diff_value, i);
