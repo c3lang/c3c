@@ -1807,6 +1807,7 @@ static OverloadMatch sema_find_typed_operator_in_list(SemaContext *context, Decl
 		if (func->func_decl.operator != operator_overload) continue;
 		if (parent_type && parent_type != typeget(func->func_decl.type_parent)) continue;
 		if ((overload_type & func->func_decl.overload_type) == 0) continue;
+		if (candidate == func) continue;
 		OverloadMatch match = OVERLOAD_MATCH_WILDCARD;
 		if (!func->func_decl.is_wildcard_overload)
 		{
