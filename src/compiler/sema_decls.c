@@ -3529,7 +3529,9 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 		Expr *expr = args[j];
 		if (param->var.type_info)
 		{
+			if (!sema_resolve_type_info(context, type_infoptr(param->var.type_info), RESOLVE_TYPE_DEFAULT)) return false;
 			Type *type = typeget(param->var.type_info);
+			ASSERT_SPAN(decl, type);
 			if (!sema_analyse_inferred_expr(context, type, expr)) goto ERR;
 			if (!cast_implicit(context, expr, type, false)) goto ERR;
 			if (!sema_cast_const(expr))

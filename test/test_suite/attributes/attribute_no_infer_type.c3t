@@ -1,0 +1,23 @@
+module test;
+import other;
+
+struct Foo @Attr(0) {int x;}
+
+fn void main()
+{
+	Foo x;
+}
+module other;
+typedef MyInt = int;
+attrdef @Attr(MyInt x);
+
+/* #expect: test.ll
+
+@"$ct.test.Foo" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+
+define void @test.main() #0 {
+entry:
+  %x = alloca %Foo, align 4
+  store i32 0, ptr %x, align 4
+  ret void
+}
