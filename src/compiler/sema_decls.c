@@ -3594,6 +3594,7 @@ static bool sema_analyse_attributes_inner(SemaContext *context, ResolvedAttrData
 static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
 									bool *erase_decl)
 {
+	if (decl->resolved_attributes) return true;
 	ResolvedAttrData data = { .tags = NULL, .overload = INVALID_SPAN };
 	if (!sema_analyse_attributes_inner(context, &data, decl, attrs, domain, NULL, erase_decl)) return false;
 	if (*erase_decl) return true;
