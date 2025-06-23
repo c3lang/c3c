@@ -16,7 +16,6 @@ fn int main(String[] args)
 /* #expect: test.ll
 
 
-define i32 @test.main([2 x i64] %0) #0 {
 entry:
   %args = alloca %"char[][]", align 8
   %b = alloca i16, align 2
