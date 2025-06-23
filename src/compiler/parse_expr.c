@@ -824,6 +824,7 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 						.span = span,
 						.cast_expr.type_info = type_infoid(info),
 						.cast_expr.expr = inner};
+				RANGE_EXTEND_PREV(expr);
 			}
 			break;
 		}

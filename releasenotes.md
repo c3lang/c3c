@@ -61,6 +61,7 @@
 - Overload resolution fixes to inline typedef #2226.
 - `math::overflow_*` wrappers incorrectly don't allow distinct integers #2221.
 - Compiler segfault when using distinct type in attribute imported from other module #2234.
+- Assert casting bitstruct to short/char #2237
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.

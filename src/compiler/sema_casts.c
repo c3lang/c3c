@@ -495,22 +495,24 @@ RETRY:
 			UNREACHABLE
 		case EXPR_CONST:
 			// For constants, just check that they will fit.
-			if (type_is_integer(type))
+			switch (expr->const_expr.const_kind)
 			{
-				ASSERT(expr->const_expr.const_kind == CONST_INTEGER || expr->const_expr.const_kind == CONST_ENUM);
-				if (expr_const_will_overflow(&expr->const_expr, type_flatten(type)->type_kind))
-				{
-					return expr;
-				}
-				return NULL;
+				case CONST_ENUM:
+				case CONST_INTEGER:
+					if (expr_const_will_overflow(&expr->const_expr, type_flatten(type)->type_kind))
+					{
+						return expr;
+					}
+					return NULL;
+				case CONST_FLOAT:
+					if (!expr_const_float_fits_type(&expr->const_expr, type_flatten(type)->type_kind))
+					{
+						return expr;
+					}
+					return NULL;
+				default:
+					goto CHECK_SIZE;
 			}
-			ASSERT(type_is_float(type));
-			ASSERT(expr->const_expr.const_kind == CONST_FLOAT);
-			if (!expr_const_float_fits_type(&expr->const_expr, type_flatten(type)->type_kind))
-			{
-				return expr;
-			}
-			return NULL;
 		case EXPR_POST_UNARY:
 			expr = expr->unary_expr.expr;
 			goto RETRY;
@@ -1294,7 +1296,7 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 	}
 
 	// If const, check in range.
-	if (sema_cast_const(expr) && expr_const_will_overflow(&expr->const_expr, cc->to->type_kind))
+	if (sema_cast_const(expr) && expr_is_const_number(expr) && expr_const_will_overflow(&expr->const_expr, cc->to->type_kind))
 	{
 		if (!is_silent)
 		{
@@ -1319,7 +1321,7 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 		// If it's an integer that's the problem, zoom in on that one.
 		if (type_is_integer(type_flatten(problem->type))) expr = problem;
 		// Otherwise require a cast.
-		if (expr_is_const(expr))
+		if (expr_is_const_number(expr))
 		{
 			RETURN_CAST_ERROR(expr, "The value of the expression (%s) is out of range and cannot implicitly be converted to %s, but you may use a cast.",
 				expr_const_to_error_string(&expr->const_expr),
@@ -1704,7 +1706,7 @@ static void cast_int_to_int(Expr *expr, Type *type)
 	}
 
 	// Insert runtime casts on non-const.
-	if (!expr_is_const(expr))
+	if (!expr_is_const_int(expr))
 	{
 		expr_rewrite_ext_trunc(expr, type, type_is_signed(type_flatten_to_int(expr->type)));
 		return;

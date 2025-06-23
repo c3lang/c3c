@@ -4094,6 +4094,12 @@ INLINE bool expr_is_const_enum(Expr *expr)
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ENUM;
 }
 
+INLINE bool expr_is_const_number(Expr *expr)
+{
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	return expr->expr_kind == EXPR_CONST && (expr->const_expr.const_kind == CONST_INTEGER || expr->const_expr.const_kind == CONST_FLOAT);
+}
+
 INLINE bool expr_is_const_fault(Expr *expr)
 {
 	ASSERT(expr->resolve_status == RESOLVE_DONE);
