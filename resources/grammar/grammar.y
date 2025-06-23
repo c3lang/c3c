@@ -401,13 +401,11 @@ empty
 
 assignment_expr
 	: ternary_expr
-	| CT_TYPE_IDENT '=' type
 	| unary_expr assignment_op assignment_expr
 	;
 
 assignment_stmt_expr
 	: ternary_stmt_expr
-	| CT_TYPE_IDENT '=' type
 	| unary_stmt_expr assignment_op assignment_expr
 	;
 
@@ -873,6 +871,7 @@ asm_block_stmt
 statement
 	: compound_statement
 	| var_stmt
+	| CT_TYPE_IDENT '=' type ';'
 	| declaration_stmt
 	| return_stmt
 	| if_stmt

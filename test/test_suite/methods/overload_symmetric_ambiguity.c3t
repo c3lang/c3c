@@ -1,0 +1,42 @@
+// #target: macos-x64
+module test;
+typedef Byte = inline ushort;
+
+macro Byte Byte.add(self, int other) @operator_s(+) => (Byte)((ushort)self + (ushort)other);
+
+
+fn int main(String[] args)
+{
+	Byte b = 2;
+	Byte c = 1;
+	Byte d = c + b;
+	return 0;
+}
+
+/* #expect: test.ll
+
+
+entry:
+  %args = alloca %"char[][]", align 8
+  %b = alloca i16, align 2
+  %c = alloca i16, align 2
+  %d = alloca i16, align 2
+  %self = alloca i16, align 2
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  store i16 2, ptr %b, align 2
+  store i16 1, ptr %c, align 2
+  %2 = load i16, ptr %c, align 2
+  store i16 %2, ptr %self, align 2
+  %3 = load i16, ptr %b, align 2
+  %zext = zext i16 %3 to i32
+  %4 = load i16, ptr %self, align 2
+  %zext1 = zext i16 %4 to i32
+  %trunc = trunc i32 %zext to i16
+  %zext2 = zext i16 %trunc to i32
+  %add = add i32 %zext1, %zext2
+  %trunc3 = trunc i32 %add to i16
+  store i16 %trunc3, ptr %d, align 2
+  ret i32 0
+}

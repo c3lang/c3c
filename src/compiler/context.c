@@ -284,17 +284,28 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 	DEBUG_LOG("Registering symbol '%s' in %s.", decl->name, unit->module->name->module);
 
 	Decl *old;
-	if ((old = htable_set(&unit->local_symbols, (void*)decl->name, decl))) goto ERR;
-	if (decl->visibility < VISIBLE_LOCAL)
+	if ((old = htable_set(&unit->local_symbols, (void*)decl->name, decl)))
 	{
-		if ((old = htable_set(&unit->module->symbols, (void*)decl->name, decl))) goto ERR;
+		sema_shadow_error(NULL, decl, old);
+		decl_poison(decl);
+		decl_poison(old);
+		return;
 	}
-	return;
-ERR:
-	ASSERT(decl != old);
-	sema_shadow_error(NULL, decl, old);
-	decl_poison(decl);
-	decl_poison(old);
+
+	if ((old = htable_set(&unit->module->symbols, (void*)decl->name, decl)))
+	{
+		if (old->visibility == VISIBLE_LOCAL && decl->visibility == VISIBLE_LOCAL) return;
+		if (old->visibility == VISIBLE_LOCAL)
+		{
+			sema_shadow_error(NULL, old, decl);
+		}
+		else
+		{
+			sema_shadow_error(NULL, decl, old);
+		}
+		decl_poison(decl);
+		decl_poison(old);
+	}
 }
 
 

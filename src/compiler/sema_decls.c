@@ -19,8 +19,8 @@ static inline bool unit_add_base_extension_method(SemaContext *context, Compilat
 static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl *method);
 static bool sema_analyse_operator_common(SemaContext *context, Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr,
                                          uint32_t parameters);
-static inline bool operator_in_module_typed(SemaContext *c, Module *module, OperatorOverload operator_overload,
-                                             OverloadType overload_type, Type *method_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref);
+static inline OverloadMatch operator_in_module_typed(SemaContext *c, Module *module, OperatorOverload operator_overload,
+                                             OverloadType overload_type, Type *method_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, OverloadMatch last_match, Decl **ambiguous_ref);
 static inline Decl *operator_in_module_exact_typed(Module *module, OperatorOverload operator_overload, OverloadType overload_type, Type *method_type, Type *param_type, Decl *skipped);
 static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method);
 static inline bool sema_analyse_operator_element_set(SemaContext *context, Decl *method);
@@ -48,7 +48,7 @@ static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **att
 static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_check_section(SemaContext *context, Attr *attr);
 static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext *c, Decl *decl, bool *erase_decl);
-static bool sema_find_typed_operator_in_list(SemaContext *context, Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref);
+static OverloadMatch sema_find_typed_operator_in_list(SemaContext *context, Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, OverloadMatch current_match, Decl **ambiguous_ref);
 static Decl *sema_find_exact_typed_operator_in_list(Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Type *binary_type, Decl *skipped);
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
@@ -1061,8 +1061,8 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 	if (*erase_decl) return true;
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	if (!sema_resolve_type_info(context, decl->strukt.container_type, RESOLVE_TYPE_DEFAULT)) return false;
-	Type *type = decl->strukt.container_type->type->canonical;
-	Type *base_type = type->type_kind == TYPE_ARRAY ? type->array.base : type;
+	Type *type = type_flatten(decl->strukt.container_type->type->canonical);
+	Type *base_type = type->type_kind == TYPE_ARRAY ? type_flatten(type->array.base) : type;
 	if (!type_is_integer(base_type))
 	{
 		SEMA_ERROR(decl->strukt.container_type, "The type of the bitstruct cannot be %s but must be an integer or an array of integers.",
@@ -1432,16 +1432,16 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 	if (*erase_decl) return true;
 
 	bool is_export = decl->is_export;
-	if (decl->typedef_decl.is_func)
+	if (decl->type_alias_decl.is_func)
 	{
-		Decl *fn_decl = decl->typedef_decl.decl;
+		Decl *fn_decl = decl->type_alias_decl.decl;
 		fn_decl->is_export = is_export;
 		fn_decl->unit = decl->unit;
 		fn_decl->type = type_new_func(fn_decl, &fn_decl->fntype_decl);
 		decl->type->canonical = type_get_func_ptr(fn_decl->type);
 		return true;
 	}
-	TypeInfo *info = decl->typedef_decl.type_info;
+	TypeInfo *info = decl->type_alias_decl.type_info;
 	info->in_def = true;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
 	decl->type->canonical = info->type->canonical;
@@ -1709,15 +1709,15 @@ INLINE bool decl_matches_overload(Decl *method, Type *type, OperatorOverload ove
 	return method->func_decl.operator == overload && typeget(method->func_decl.type_parent)->canonical == type;
 }
 
-static inline bool operator_in_module_typed(SemaContext *c, Module *module, OperatorOverload operator_overload, OverloadType overload_type, Type *method_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref)
+static inline OverloadMatch operator_in_module_typed(SemaContext *c, Module *module, OperatorOverload operator_overload, OverloadType overload_type, Type *method_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, OverloadMatch match, Decl **ambiguous_ref)
 {
-	if (module->is_generic) return false;
-	if (!sema_find_typed_operator_in_list(c, module->private_method_extensions, operator_overload, OVERLOAD_TYPE_SYMMETRIC, method_type, binary_arg, binary_type, candidate_ref, ambiguous_ref)) return false;
+	if (module->is_generic) return match;
+	match = sema_find_typed_operator_in_list(c, module->private_method_extensions, operator_overload, OVERLOAD_TYPE_SYMMETRIC, method_type, binary_arg, binary_type, candidate_ref, match, ambiguous_ref);
 	FOREACH(Module *, sub_module, module->sub_modules)
 	{
-		if (!operator_in_module_typed(c, sub_module, operator_overload, overload_type, method_type, binary_arg, binary_type, candidate_ref, ambiguous_ref)) return false;
+		match = operator_in_module_typed(c, sub_module, operator_overload, overload_type, method_type, binary_arg, binary_type, candidate_ref, match, ambiguous_ref);
 	}
-	return true;
+	return match;
 }
 
 static inline Decl *operator_in_module_exact_typed(Module *module, OperatorOverload operator_overload, OverloadType overload_type, Type *method_type, Type *param_type, Decl *skipped)
@@ -1798,34 +1798,70 @@ static Decl *sema_find_exact_typed_operator_in_list(Decl **methods, OperatorOver
 	return wildcard;
 }
 
-static bool sema_find_typed_operator_in_list(SemaContext *context, Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref)
+static OverloadMatch sema_find_typed_operator_in_list(SemaContext *context, Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, OverloadMatch last_match, Decl **ambiguous_ref)
 {
-
+	if (last_match == OVERLOAD_MATCH_AMBIGUOUS_EXACT) return last_match;
 	Decl *candidate = *candidate_ref;
 	FOREACH(Decl *, func, methods)
 	{
 		if (func->func_decl.operator != operator_overload) continue;
 		if (parent_type && parent_type != typeget(func->func_decl.type_parent)) continue;
 		if ((overload_type & func->func_decl.overload_type) == 0) continue;
+		if (candidate == func) continue;
+		OverloadMatch match = OVERLOAD_MATCH_WILDCARD;
 		if (!func->func_decl.is_wildcard_overload)
 		{
 			Type *first_arg = func->func_decl.signature.params[1]->type->canonical;
+			match = OVERLOAD_MATCH_EXACT;
 			if (first_arg != binary_type)
 			{
 				if (!binary_arg) continue;
 				if (!may_cast(context, binary_arg, first_arg, false, true)) continue;
+				match = OVERLOAD_MATCH_CONVERSION;
 			}
 		}
-		if (candidate && !candidate->func_decl.is_wildcard_overload)
+		if (last_match >= OVERLOAD_MATCH_AMBIGUOUS_START)
 		{
+			assert(last_match != OVERLOAD_MATCH_AMBIGUOUS_EXACT);
+			if (match == OVERLOAD_MATCH_EXACT)
+			{
+				*ambiguous_ref = candidate;
+				goto MATCH;
+			}
+			if (match == OVERLOAD_MATCH_CONVERSION && last_match == OVERLOAD_MATCH_AMBIGUOUS_WILDCARD)
+			{
+				*ambiguous_ref = candidate;
+				goto MATCH;
+			}
+			continue;
+		}
+		if (candidate)
+		{
+			if (last_match > match) goto MATCH;
+			if (last_match < match) continue;
 			*ambiguous_ref = func;
 			*candidate_ref = candidate;
-			return false;
+			switch (match)
+			{
+				case OVERLOAD_MATCH_EXACT:
+					return OVERLOAD_MATCH_AMBIGUOUS_EXACT;
+				case OVERLOAD_MATCH_CONVERSION:
+					last_match = OVERLOAD_MATCH_AMBIGUOUS_CONVERSION;
+					continue;
+				case OVERLOAD_MATCH_WILDCARD:
+					last_match = OVERLOAD_MATCH_AMBIGUOUS_WILDCARD;
+					continue;
+				default:
+					UNREACHABLE;
+			}
+			UNREACHABLE;
 		}
+MATCH:
 		candidate = func;
+		last_match = match;
 	}
 	*candidate_ref = candidate;
-	return true;
+	return last_match;
 }
 
 static Decl *sema_find_exact_typed_operator(SemaContext *context, Type *type, OperatorOverload operator_overload, OverloadType overload_type, Type *param_type, Decl *skipped)
@@ -1855,70 +1891,98 @@ static Decl *sema_find_exact_typed_operator(SemaContext *context, Type *type, Op
 	return NULL;
 }
 
-static bool sema_find_typed_operator_type(SemaContext *context, OperatorOverload operator_overload, OverloadType overloat_type, Type *lhs_type, Type *rhs_type, Expr *rhs, Decl **candidate_ref, Decl **ambiguous_ref)
+static OverloadMatch sema_find_typed_operator_type(SemaContext *context, OperatorOverload operator_overload, OverloadType overloat_type, Type *lhs_type, Type *rhs_type, Expr *rhs, Decl **candidate_ref, OverloadMatch last_match, Decl **ambiguous_ref)
 {
 	// Can we find the overload directly on the method?
-	if (!sema_find_typed_operator_in_list(context, lhs_type->decl->methods,
+	last_match = sema_find_typed_operator_in_list(
+		context, lhs_type->decl->methods,
 		operator_overload, overloat_type, lhs_type,
-		rhs, rhs_type, candidate_ref, ambiguous_ref)) return false;
-	// Can we find it as a local extension?
-	if (!sema_find_typed_operator_in_list(context, context->unit->local_method_extensions,
-		operator_overload, overloat_type, lhs_type, rhs, rhs_type, candidate_ref, ambiguous_ref)) return false;
-
+		rhs, rhs_type, candidate_ref, last_match, ambiguous_ref);
+	last_match = sema_find_typed_operator_in_list(context, context->unit->local_method_extensions,
+		operator_overload, overloat_type, lhs_type, rhs, rhs_type, candidate_ref, last_match, ambiguous_ref);
 	// Can we find it in the current module?
-	if (!operator_in_module_typed(context, context->compilation_unit->module, operator_overload, overloat_type,
-								 lhs_type, rhs, rhs_type, candidate_ref, ambiguous_ref)) return false;
+	last_match = operator_in_module_typed(context, context->compilation_unit->module, operator_overload, overloat_type,
+								 lhs_type, rhs, rhs_type, candidate_ref, last_match, ambiguous_ref);
+
 	FOREACH(Decl *, import, context->unit->public_imports)
 	{
-		if (!operator_in_module_typed(context, import->import.module, operator_overload, overloat_type,
-									 lhs_type, rhs, rhs_type, candidate_ref, ambiguous_ref)) return false;
+		last_match = operator_in_module_typed(context, import->import.module, operator_overload, overloat_type,
+									 lhs_type, rhs, rhs_type, candidate_ref, last_match, ambiguous_ref);
 	}
-	return true;
-
+	return last_match;
 }
 
+const char *operator_overload_to_string(OperatorOverload operator_overload)
+{
+	switch (operator_overload)
+	{
+		case OVERLOAD_ELEMENT_AT:
+		case OVERLOAD_ELEMENT_REF:
+		case OVERLOAD_ELEMENT_SET:
+		case OVERLOAD_LEN:
+		case OVERLOAD_NEGATE:
+		case OVERLOAD_UNARY_MINUS:		UNREACHABLE
+		case OVERLOAD_PLUS:				return "+";
+		case OVERLOAD_MINUS:			return "-";
+		case OVERLOAD_MULTIPLY:			return "*";
+		case OVERLOAD_DIVIDE:			return "/";
+		case OVERLOAD_REMINDER:			return "%";
+		case OVERLOAD_AND:				return "&";
+		case OVERLOAD_OR:				return "|";
+		case OVERLOAD_XOR:				return "^";
+		case OVERLOAD_SHL:				return "<<";
+		case OVERLOAD_SHR:				return ">>";
+		case OVERLOAD_EQUAL:			return "==";
+		case OVERLOAD_NOT_EQUAL:		return "!=";
+		case OVERLOAD_PLUS_ASSIGN:		return "+=";
+		case OVERLOAD_MINUS_ASSIGN:		return "-=";
+		case OVERLOAD_MULTIPLY_ASSIGN:	return "*=";
+		case OVERLOAD_DIVIDE_ASSIGN:	return "/=";
+		case OVERLOAD_REMINDER_ASSIGN:	return "%=";
+		case OVERLOAD_AND_ASSIGN:		return "&=";
+		case OVERLOAD_OR_ASSIGN:		return "|=";
+		case OVERLOAD_XOR_ASSIGN:		return "^=";
+		case OVERLOAD_SHL_ASSIGN:		return "<<=";
+		case OVERLOAD_SHR_ASSIGN:		return ">>=";
+	}
+	UNREACHABLE
+}
 
-Decl *sema_find_typed_operator(SemaContext *context, OperatorOverload operator_overload, Expr *lhs, Expr *rhs, Decl **ambiguous_ref, bool *reverse)
+Decl *sema_find_typed_operator(SemaContext *context, OperatorOverload operator_overload, SourceSpan span, Expr *lhs, Expr *rhs, bool *reverse)
 {
 	assert(operator_overload >= OVERLOAD_TYPED_START);
-	assert(lhs && rhs && ambiguous_ref);
+	assert(lhs && rhs);
 	Type *left_type = type_no_optional(lhs->type)->canonical;
 	Type *right_type = type_no_optional(rhs->type)->canonical;
 	Decl *candidate = NULL;
 	Decl *ambiguous = NULL;
-	Decl *left_candidate = NULL;
+	OverloadMatch current_match = OVERLOAD_MATCH_NONE;
 	*reverse = false;
+	Decl *first = NULL;
 	if (type_is_user_defined(left_type))
 	{
-		if (!sema_find_typed_operator_type(context, operator_overload, OVERLOAD_TYPE_LEFT, left_type, right_type, rhs, &candidate, &ambiguous)) return NULL;
-		left_candidate = candidate;
+		current_match = sema_find_typed_operator_type(context, operator_overload, OVERLOAD_TYPE_LEFT, left_type, right_type, rhs, &candidate, current_match, &ambiguous);
+		first = candidate;
 	}
-	candidate = NULL;
 	if (type_is_user_defined(right_type))
 	{
-		if (!sema_find_typed_operator_type(context, operator_overload, OVERLOAD_TYPE_RIGHT, right_type, left_type, lhs, &candidate, &ambiguous)) return NULL;
+		current_match = sema_find_typed_operator_type(context, operator_overload, OVERLOAD_TYPE_RIGHT, right_type, left_type, lhs, &candidate, current_match, &ambiguous);
 	}
 
-	// If one or the other is missing, pick the right one.
-	if (!left_candidate)
+	if (current_match >= OVERLOAD_MATCH_AMBIGUOUS_START)
 	{
-		*reverse = true;
-		return candidate;
+		sema_error_at(context, span, "%s %s %s has more than one candidate method, and is ambiguous. One solution is to call the desired method directly, instead of using operators, to select the right one.",
+		              type_quoted_error_string(lhs->type),
+		              operator_overload_to_string(operator_overload),
+		              type_quoted_error_string(rhs->type));
+		SEMA_NOTE(candidate, "One candidate was here.");
+		SEMA_NOTE(ambiguous, "Another candidate was found here.");
+		return poisoned_decl;
 	}
-	if (!candidate) return left_candidate;
 
-	// Both exist, prefer non-wildcard
-	if (left_candidate->func_decl.is_wildcard_overload && !candidate->func_decl.is_wildcard_overload)
-	{
-		*reverse = true;
-		return candidate;
-	}
-	if (candidate->func_decl.is_wildcard_overload && !left_candidate->func_decl.is_wildcard_overload)
-	{
-		return left_candidate;
-	}
-	*ambiguous_ref = candidate;
-	return NULL;
+	if (candidate != first) *reverse = true;
+
+	return candidate;
 }
 
 static inline bool sema_analyse_operator_unary(SemaContext *context, Decl *method, OperatorOverload operator_overload)
@@ -2877,6 +2941,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 	// NOLINTBEGIN(*.EnumCastOutOfRange)
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_BITSTRUCT | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER, // NOLINT
+			[ATTRIBUTE_ALLOW_DEPRECATED] = ATTR_FUNC,
 			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
@@ -2967,6 +3032,9 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				}
 				attr_data->deprecated = expr->const_expr.bytes.ptr;
 			}
+			return true;
+		case ATTRIBUTE_ALLOW_DEPRECATED:
+			decl->allow_deprecated = true;
 			return true;
 		case ATTRIBUTE_OPTIONAL:
 			decl->func_decl.attr_optional = true;
@@ -3336,7 +3404,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			if (domain == ATTR_ALIAS)
 			{
 				if (decl->decl_kind != DECL_TYPEDEF) RETURN_SEMA_ERROR(attr, "'@weak' can only be used on type aliases.");
-				if (!decl->typedef_decl.is_redef)
+				if (!decl->type_alias_decl.is_redef)
 				{
 					RETURN_SEMA_ERROR(attr, "'@weak' is only allowed on type aliases with the same name, eg 'def Foo = bar::def::Foo @weak'.");
 				}
@@ -3462,7 +3530,9 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 		Expr *expr = args[j];
 		if (param->var.type_info)
 		{
+			if (!sema_resolve_type_info(context, type_infoptr(param->var.type_info), RESOLVE_TYPE_DEFAULT)) return false;
 			Type *type = typeget(param->var.type_info);
+			ASSERT_SPAN(decl, type);
 			if (!sema_analyse_inferred_expr(context, type, expr)) goto ERR;
 			if (!cast_implicit(context, expr, type, false)) goto ERR;
 			if (!sema_cast_const(expr))
@@ -4172,8 +4242,9 @@ static inline bool sema_check_body_const(SemaContext *context, Ast *body)
 			case AST_CT_FOREACH_STMT:
 			case AST_CT_FOR_STMT:
 			case AST_CT_IF_STMT:
-			case AST_CT_SWITCH_STMT:
 			case AST_CT_ELSE_STMT:
+			case AST_CT_SWITCH_STMT:
+			case AST_CT_TYPE_ASSIGN_STMT:
 			case AST_DECLARE_STMT:
 			case AST_DECLS_STMT:
 			case AST_NOP_STMT:
@@ -4575,7 +4646,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	if (type_is_user_defined(type) && type->decl)
 	{
 		if (!sema_analyse_decl(context, type->decl)) return false;
-		sema_display_deprecated_warning_on_use(type->decl, type_info->span);
+		sema_display_deprecated_warning_on_use(context, type->decl, type_info->span);
 	}
 
 	if (is_static && context->call_env.pure)
@@ -4695,7 +4766,7 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 		Decl *decl = decl_new_with_type(param_name, params[i]->span, DECL_TYPEDEF);
 		decl->resolve_status = RESOLVE_DONE;
 		ASSERT(type_info->resolve_status == RESOLVE_DONE);
-		decl->typedef_decl.type_info = type_info;
+		decl->type_alias_decl.type_info = type_info;
 		decl->type->name = decl->name;
 		decl->type->canonical = type_info->type->canonical;
 		params_decls[decls++] = decl;
@@ -4722,6 +4793,23 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 	}
 
 	return new_module;
+}
+
+static inline void mangle_type_param(Type *type, bool mangled)
+{
+	type = type->canonical;
+	if (mangled)
+	{
+		type_mangle_introspect_name_to_buffer(type);
+	}
+	else
+	{
+		scratch_buffer_append(type->name);
+		if (type_is_user_defined(type) && type->decl->unit->module->generic_suffix)
+		{
+			scratch_buffer_append(type->decl->unit->module->generic_suffix);
+		}
+	}
 }
 
 static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Module *module, Expr **params,
@@ -4762,11 +4850,12 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 		{
 			if (!sema_analyse_ct_expr(context, param)) return false;
 			Type *type = param->type->canonical;
+			if (type->type_kind == TYPE_DISTINCT) type = type_flatten(type);
+
 			bool is_enum_or_fault = type_kind_is_enum_or_fault(type->type_kind);
 			if (!type_is_integer_or_bool_kind(type) && !is_enum_or_fault)
 			{
-				SEMA_ERROR(param, "Only integer, bool, fault and enum values may be generic arguments.");
-				return poisoned_decl;
+				RETURN_SEMA_ERROR(param, "Only integer, bool, fault and enum values may be generic arguments.");
 			}
 			ASSERT(expr_is_const(param));
 		}
@@ -4790,23 +4879,17 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 		}
 		if (param->expr_kind == EXPR_TYPEINFO)
 		{
-			Type *type = param->type_expr->type->canonical;
-			if (mangled)
-			{
-				type_mangle_introspect_name_to_buffer(type);
-			}
-			else
-			{
-				scratch_buffer_append(type->name);
-				if (type_is_user_defined(type) && type->decl->unit->module->generic_suffix)
-				{
-					scratch_buffer_append(type->decl->unit->module->generic_suffix);
-				}
-			}
+			mangle_type_param(param->type_expr->type, mangled);
 		}
 		else
 		{
 			Type *type = param->type->canonical;
+			if (type->type_kind == TYPE_DISTINCT)
+			{
+				mangle_type_param(type, mangled);
+				scratch_buffer_append(mangled ? "$" : ", ");
+				type = type_flatten(type);
+			}
 			if (type == type_bool)
 			{
 				if (mangled)
@@ -4828,7 +4911,15 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 			else if (type->type_kind == TYPE_ANYFAULT)
 			{
 				Decl *fault = param->const_expr.fault;
-				type_mangle_introspect_name_to_buffer(fault->type->canonical);
+				if (fault)
+				{
+					type_mangle_introspect_name_to_buffer(fault->type->canonical);
+				}
+				else
+				{
+					scratch_buffer_append("null");
+				}
+
 				scratch_buffer_append(mangled ? "_" : ":");
 				scratch_buffer_append(fault->name);
 			}

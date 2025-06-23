@@ -629,7 +629,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_OVERFLOW_SUB:
 			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args,
-						     (BuiltinArg[]) {BA_INTEGER, BA_INTEGER, BA_POINTER},
+						     (BuiltinArg[]) {BA_INTLIKE, BA_INTLIKE, BA_POINTER},
 						     3)) return false;
 			if (!sema_check_builtin_args_match(context, args, 2)) return false;
 			if (type_no_optional(args[0]->type->canonical) != type_no_optional(args[2]->type->canonical->pointer))

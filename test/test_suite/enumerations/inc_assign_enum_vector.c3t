@@ -1,0 +1,63 @@
+// #target: macos-x64
+module test;
+import std::io;
+enum Foo
+{
+	ABC,
+	DEF,
+	GHK,
+	LDV,
+	HELLO,
+}
+fn int main()
+{
+	Foo[<2>] x = { ABC, DEF };
+    for (int i = 0; i < 10; i++)
+    {
+        x++;
+        x += 1;
+        x -= 1;
+        x += { 1, 1 };
+        x -= { 1, 1 };
+    }
+    return 0;
+}
+
+/* #expect: test.ll
+
+entry:
+  %x = alloca <2 x i32>, align 8
+  %i = alloca i32, align 4
+  store <2 x i32> <i32 0, i32 1>, ptr %x, align 8
+  store i32 0, ptr %i, align 4
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %loop.body, %entry
+  %0 = load i32, ptr %i, align 4
+  %lt = icmp slt i32 %0, 10
+  br i1 %lt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %1 = load <2 x i32>, ptr %x, align 8
+  %add = add <2 x i32> %1,
+  store <2 x i32> %add, ptr %x, align 8
+  %2 = load <2 x i32>, ptr %x, align 8
+  %add1 = add <2 x i32> %2,
+  store <2 x i32> %add1, ptr %x, align 8
+  %3 = load <2 x i32>, ptr %x, align 8
+  %sub = sub <2 x i32> %3,
+  store <2 x i32> %sub, ptr %x, align 8
+  %4 = load <2 x i32>, ptr %x, align 8
+  %add2 = add <2 x i32> %4,
+  store <2 x i32> %add2, ptr %x, align 8
+  %5 = load <2 x i32>, ptr %x, align 8
+  %sub3 = sub <2 x i32> %5,
+  store <2 x i32> %sub3, ptr %x, align 8
+  %6 = load i32, ptr %i, align 4
+  %add4 = add i32 %6, 1
+  store i32 %add4, ptr %i, align 4
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  ret i32 0
+}

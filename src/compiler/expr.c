@@ -221,9 +221,9 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_ACCESS_RESOLVED:
 			return expr_may_addr(expr->access_resolved_expr.parent);
 		case EXPR_SUBSCRIPT:
-		case EXPR_SLICE:
 		case EXPR_MEMBER_GET:
 			return true;
+		case EXPR_SLICE:
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 		case EXPR_VECTOR_FROM_ARRAY:
@@ -659,11 +659,15 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_POINTER:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
-		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_FUNC_PTR:
 			expr_rewrite_const_null(expr, type);
 			return;
+		case TYPE_ANYFAULT:
+			expr->const_expr.const_kind = CONST_FAULT;
+			expr->const_expr.fault = NULL;
+			expr->resolve_status = RESOLVE_DONE;
+			break;
 		case TYPE_ENUM:
 			expr->const_expr.const_kind = CONST_ENUM;
 			ASSERT(canonical->decl->resolve_status == RESOLVE_DONE);

@@ -1,4 +1,6 @@
 module std::core::values;
+import std::core::types;
+
 
 macro typeid @typeid(#value) @const @builtin => $typeof(#value).typeid;
 macro TypeKind @typekind(#value) @const @builtin => $typeof(#value).kindof;
@@ -9,6 +11,7 @@ macro bool @typeis(#value, $Type) @const @builtin => $typeof(#value).typeid == $
 macro bool @is_same_type(#value1, #value2) @const => $typeof(#value1).typeid == $typeof(#value2).typeid;
 macro bool @is_bool(#value) @const => types::is_bool($typeof(#value));
 macro bool @is_int(#value) @const => types::is_int($typeof(#value));
+macro bool @is_flat_intlike(#value) @const => types::is_flat_intlike($typeof(#value));
 macro bool @is_floatlike(#value) @const => types::is_floatlike($typeof(#value));
 macro bool @is_float(#value) @const => types::is_float($typeof(#value));
 macro bool @is_promotable_to_floatlike(#value) @const => types::is_promotable_to_floatlike($typeof(#value));

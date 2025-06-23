@@ -1,0 +1,83 @@
+// #target: macos-x64
+module test;
+import std::math;
+typedef Foo = int;
+
+fn int main()
+{
+
+	Foo a, b, c;
+	math::overflow_mul(a, b, &c);
+	int[<2>] ab, bb, cb;
+	math::overflow_mul(ab, bb, &cb);
+	Foo[<2>] av, bv, cv;
+	math::overflow_mul(av, bv, &cv);
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  %c = alloca i32, align 4
+  %a1 = alloca i32, align 4
+  %b2 = alloca i32, align 4
+  %ab = alloca <2 x i32>, align 8
+  %bb = alloca <2 x i32>, align 8
+  %cb = alloca <2 x i32>, align 8
+  %a3 = alloca <2 x i32>, align 8
+  %b4 = alloca <2 x i32>, align 8
+  %av = alloca <2 x i32>, align 8
+  %bv = alloca <2 x i32>, align 8
+  %cv = alloca <2 x i32>, align 8
+  %a6 = alloca <2 x i32>, align 8
+  %b7 = alloca <2 x i32>, align 8
+  store i32 0, ptr %a, align 4
+  store i32 0, ptr %b, align 4
+  store i32 0, ptr %c, align 4
+  %0 = load i32, ptr %a, align 4
+  store i32 %0, ptr %a1, align 4
+  %1 = load i32, ptr %b, align 4
+  store i32 %1, ptr %b2, align 4
+  %neq = icmp ne ptr %c, null
+  call void @llvm.assume(i1 %neq)
+  %2 = load i32, ptr %a1, align 4
+  %3 = load i32, ptr %b2, align 4
+  %4 = call { i32, i1 } @llvm.smul.with.overflow.i32(i32 %2, i32 %3)
+  %5 = extractvalue { i32, i1 } %4, 1
+  %6 = extractvalue { i32, i1 } %4, 0
+  store i32 %6, ptr %c, align 4
+  store <2 x i32> zeroinitializer, ptr %ab, align 8
+  store <2 x i32> zeroinitializer, ptr %bb, align 8
+  store <2 x i32> zeroinitializer, ptr %cb, align 8
+  %7 = load <2 x i32>, ptr %ab, align 8
+  store <2 x i32> %7, ptr %a3, align 8
+  %8 = load <2 x i32>, ptr %bb, align 8
+  store <2 x i32> %8, ptr %b4, align 8
+  %neq5 = icmp ne ptr %cb, null
+  call void @llvm.assume(i1 %neq5)
+  %9 = load <2 x i32>, ptr %a3, align 8
+  %10 = load <2 x i32>, ptr %b4, align 8
+  %11 = call { <2 x i32>, <2 x i1> } @llvm.smul.with.overflow.v2i32(<2 x i32> %9, <2 x i32> %10)
+  %12 = extractvalue { <2 x i32>, <2 x i1> } %11, 1
+  %13 = extractvalue { <2 x i32>, <2 x i1> } %11, 0
+  store <2 x i32> %13, ptr %cb, align 8
+  store <2 x i32> zeroinitializer, ptr %av, align 8
+  store <2 x i32> zeroinitializer, ptr %bv, align 8
+  store <2 x i32> zeroinitializer, ptr %cv, align 8
+  %14 = load <2 x i32>, ptr %av, align 8
+  store <2 x i32> %14, ptr %a6, align 8
+  %15 = load <2 x i32>, ptr %bv, align 8
+  store <2 x i32> %15, ptr %b7, align 8
+  %neq8 = icmp ne ptr %cv, null
+  call void @llvm.assume(i1 %neq8)
+  %16 = load <2 x i32>, ptr %a6, align 8
+  %17 = load <2 x i32>, ptr %b7, align 8
+  %18 = call { <2 x i32>, <2 x i1> } @llvm.smul.with.overflow.v2i32(<2 x i32> %16, <2 x i32> %17)
+  %19 = extractvalue { <2 x i32>, <2 x i1> } %18, 1
+  %20 = extractvalue { <2 x i32>, <2 x i1> } %18, 0
+  store <2 x i32> %20, ptr %cv, align 8
+  ret i32 0
+}

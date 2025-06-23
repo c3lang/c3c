@@ -2015,7 +2015,7 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 		case TYPE_POINTER:
 		{
 			// Use byte here, we don't need a big offset.
-			LLVMValueRef add = LLVMConstInt(diff < 0 ? llvm_get_type(c, type_ichar) : llvm_get_type(c, type_char), (unsigned long long)diff, diff < 0);
+			LLVMValueRef add = LLVMConstInt(diff < 0 ? llvm_get_type(c, type_isz) : llvm_get_type(c, type_usz), (unsigned long long)diff, diff < 0);
 			return llvm_emit_pointer_gep_raw(c, llvm_get_pointee_type(c, type), original->value, add);
 		}
 		case ALL_FLOATS:
@@ -2048,19 +2048,25 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 		}
 		case TYPE_VECTOR:
 		{
-			Type *element = type->array.base;
+			Type *element = type_lowering(type->array.base);
 			LLVMValueRef diff_value;
-			bool is_integer = type_is_integer(element);
+			bool is_integer = type_kind_is_any_integer(element->type_kind);
+			bool is_ptr = false;
 			if (is_integer)
 			{
 				diff_value = LLVMConstInt(llvm_get_type(c, element), 1, false);
 			}
+			else if ((is_ptr = element->type_kind == TYPE_POINTER))
+			{
+				diff_value = llvm_const_int(c, type_isz, diff);
+			}
 			else
 			{
+				ASSERT_AT(span, type_is_float(element));
 				diff_value = LLVMConstReal(llvm_get_type(c, element), diff);
 			}
 			ArraySize width = type->array.len;
-			LLVMValueRef val = llvm_get_undef(c, type);
+			LLVMValueRef val = LLVMGetUndef(LLVMVectorType(LLVMTypeOf(diff_value), width));
 			for (ArraySize i = 0; i < width; i++)
 			{
 				val = llvm_emit_insert_value(c, val, diff_value, i);
@@ -2071,10 +2077,11 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 					   ? llvm_emit_add_int(c, original->type, original->value, val, span)
 					   : llvm_emit_sub_int(c, original->type, original->value, val, span);
 			}
-			else
+			if (is_ptr)
 			{
-				return LLVMBuildFAdd(c->builder, original->value, val, "fincdec");
+				return llvm_emit_ptradd_raw(c, original->value, val, type_size(element->pointer));
 			}
+			return LLVMBuildFAdd(c->builder, original->value, val, "fincdec");
 		}
 		default:
 			UNREACHABLE
@@ -3069,6 +3076,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 			}
 		}
 	}
+
 	ASSERT(LLVMTypeOf(lhs_value) == LLVMTypeOf(rhs_value));
 
 	if (lhs_signed && !rhs_signed && !vector_type && llvm_is_const(lhs_value) && type_size(lhs_type) <= 8)
@@ -4050,7 +4058,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 				val = llvm_emit_pointer_gep_raw(c, llvm_get_type(c, element_type), lhs_value, rhs_value);
 				break;
 			}
-			else if (lhs_type->type_kind == TYPE_POINTER)
+			if (lhs_type->type_kind == TYPE_POINTER)
 			{
 				if (lhs_type == rhs_type)
 				{
@@ -4072,6 +4080,12 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 			val = llvm_emit_sub_int(c, lhs_type, lhs_value, rhs_value, expr->span);
 			break;
 		case BINARYOP_ADD:
+			if (type_is_pointer_vector(lhs_type))
+			{
+				Type *element_type = lhs_type->array.base->pointer;
+				val = llvm_emit_pointer_gep_raw(c, llvm_get_type(c, element_type), lhs_value, rhs_value);
+				break;
+			}
 			if (lhs_type->type_kind == TYPE_POINTER)
 			{
 				ASSERT(type_is_integer(rhs_type));
@@ -4752,8 +4766,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case CONST_FAULT:
 		{
 			Decl *decl = expr->const_expr.fault;
-			ASSERT(decl);
-			LLVMValueRef value = LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_fault), "");
+			LLVMValueRef value = decl ? LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_fault), "") : llvm_get_zero(c, type_fault);
 			llvm_value_set(be_value, value, type_fault);
 			return;
 		}
@@ -6129,14 +6142,15 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 
 	c->debug.block_stack = &updated;
 	llvm_emit_return_block(c, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
-	if (!c->current_block && !expr->macro_block.is_noreturn)
-	{
-		llvm_emit_block(c, llvm_basic_block_new(c, "after_macro"));
-	}
 	bool is_unreachable = expr->macro_block.is_noreturn && c->current_block;
 	if (is_unreachable)
 	{
 		llvm_emit_unreachable(c);
+	}
+	if (!c->current_block)
+	{
+		llvm_emit_block(c, llvm_basic_block_new(c, "after_macro"));
+		llvm_value_set(be_value, LLVMGetPoison(llvm_get_type(c, expr->type)), expr->type);
 	}
 	c->debug.block_stack = old_inline_location;
 }

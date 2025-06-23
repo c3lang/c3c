@@ -328,6 +328,7 @@ void symtab_init(uint32_t capacity)
 	kw_at_require = KW_DEF("@require");
 	kw_at_return = KW_DEF("@return");
 	attribute_list[ATTRIBUTE_ALIGN] = KW_DEF("@align");
+	attribute_list[ATTRIBUTE_ALLOW_DEPRECATED] = KW_DEF("@allow_deprecated");
 	attribute_list[ATTRIBUTE_BENCHMARK] = KW_DEF("@benchmark");
 	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("@bigendian");
 	attribute_list[ATTRIBUTE_BUILTIN] = KW_DEF("@builtin");
@@ -579,6 +580,68 @@ void *htable_get(HTable *table, void *key)
 	do
 	{
 		if (entry->key == key) return entry->value;
+		entry = entry->next;
+	} while (entry);
+	return NULL;
+}
+
+void pathtable_init(PathTable *table, uint32_t initial_size)
+{
+	ASSERT(initial_size && "Size must be larger than 0");
+	size_t size = next_highest_power_of_2(initial_size);
+
+	size_t mem_size = initial_size * sizeof(PathTableEntry);
+	table->entries = calloc_arena(mem_size);
+
+	table->mask = size - 1;
+}
+
+void pathtable_set(PathTable *table, Decl *value)
+{
+	ASSERT(value && "Cannot insert NULL");
+	ASSERT_SPAN(value, value->name);
+	const char *short_path = value->unit->module->short_path;
+	const char *name = value->name;
+	uint32_t idx = ((((uintptr_t)short_path) ^ ((uintptr_t)short_path) >> 8) ^(((uintptr_t)name) ^ ((uintptr_t)name) >> 8)) & table->mask;
+	PathTableEntry **entry_ref = &table->entries[idx];
+	PathTableEntry *entry = *entry_ref;
+	if (!entry)
+	{
+		entry = CALLOCS(HTEntry);
+		entry->short_path = short_path;
+		entry->name = name;
+		entry->value = value;
+		*entry_ref = entry;
+		return;
+	}
+	PathTableEntry *first_entry = entry;
+	do
+	{
+		if (entry->short_path == short_path && entry->name == name)
+		{
+			entry->value = poisoned_decl;
+			return;
+		}
+		entry = entry->next;
+	} while (entry);
+
+	entry = CALLOCS(HTEntry);
+	entry->short_path = short_path;
+	entry->name = name;
+	entry->value = value;
+	entry->next = first_entry;
+	*entry_ref = entry;
+}
+
+
+Decl *pathtable_get(PathTable *table, const char *short_path, const char *name)
+{
+	uint32_t idx = ((((uintptr_t)short_path) ^ ((uintptr_t)short_path) >> 8) ^(((uintptr_t)name) ^ ((uintptr_t)name) >> 8)) & table->mask;
+	PathTableEntry *entry = table->entries[idx];
+	if (!entry) return NULL;
+	do
+	{
+		if (entry->short_path == short_path && entry->name == name) return entry->value;
 		entry = entry->next;
 	} while (entry);
 	return NULL;

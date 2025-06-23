@@ -25,7 +25,7 @@ fn int main(String[] args)
 }
 /* #expect: test.ll
 
-define internal i64 @test.load_corpus2(ptr %0, i64 %1, ptr %2, i64 %3) #0 {
+define internal i64 @test.load_corpus2
 entry:
   %code = alloca %"char[]", align 8
   %path = alloca %"char[]", align 8

@@ -1,0 +1,12 @@
+fn int main()
+{
+    int x, y;
+    @test(x + y);
+    return 0;
+}
+
+macro @test(#expr)
+{
+    $defined(#expr);
+    return #expr;
+}

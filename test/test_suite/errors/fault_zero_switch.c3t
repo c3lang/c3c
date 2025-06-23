@@ -1,0 +1,170 @@
+// #target: macos-x64
+module test;
+import std;
+fn int main(String[] args)
+{
+	int? tok;
+	switch (fault err = @catch(tok))
+	{
+		case {}:
+			io::printn("got valid token");
+		case io::EOF:
+			return 0;
+		default:
+			io::printfn("error: %s, %d", err, (usz)err);
+	}
+	return 0;
+}
+
+/* #expect: test.ll
+
+; Function Attrs: nounwind uwtable
+define i32 @test.main(ptr %0, i64 %1) #0 {
+entry:
+  %args = alloca %"char[][]", align 8
+  %tok = alloca i32, align 4
+  %tok.f = alloca i64, align 8
+  %err = alloca i64, align 8
+  %blockret = alloca i64, align 8
+  %f = alloca i64, align 8
+  %switch = alloca i64, align 8
+  %len = alloca i64, align 8
+  %error_var = alloca i64, align 8
+  %retparam = alloca i64, align 8
+  %error_var6 = alloca i64, align 8
+  %error_var12 = alloca i64, align 8
+  %varargslots = alloca [2 x %any], align 16
+  %taddr = alloca i64, align 8
+  %retparam22 = alloca i64, align 8
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  store i64 0, ptr %tok.f, align 8
+  store i32 0, ptr %tok, align 4
+  br label %testblock
+
+testblock:                                        ; preds = %entry
+  %optval = load i64, ptr %tok.f, align 8
+  %not_err = icmp eq i64 %optval, 0
+  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %2, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %testblock
+  store i64 %optval, ptr %f, align 8
+  br label %end_block
+
+after_check:                                      ; preds = %testblock
+  store i64 0, ptr %f, align 8
+  br label %end_block
+
+end_block:                                        ; preds = %after_check, %assign_optional
+  %3 = load i64, ptr %f, align 8
+  %i2b = icmp ne i64 %3, 0
+  br i1 %i2b, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %end_block
+  %4 = load i64, ptr %f, align 8
+  store i64 %4, ptr %blockret, align 8
+  br label %expr_block.exit
+
+if.exit:                                          ; preds = %end_block
+  store i64 0, ptr %blockret, align 8
+  br label %expr_block.exit
+
+expr_block.exit:                                  ; preds = %if.exit, %if.then
+  %5 = load i64, ptr %blockret, align 8
+  store i64 %5, ptr %err, align 8
+  %6 = load i64, ptr %err, align 8
+  store i64 %6, ptr %switch, align 8
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %expr_block.exit
+  %7 = load i64, ptr %switch, align 8
+  %eq = icmp eq i64 0, %7
+  br i1 %eq, label %switch.case, label %next_if
+
+switch.case:                                      ; preds = %switch.entry
+  %8 = call ptr @std.io.stdout()
+  %9 = call i64 @std.io.File.write(ptr %retparam, ptr %8, ptr @.str, i64 15)
+  %not_err3 = icmp eq i64 %9, 0
+  %10 = call i1 @llvm.expect.i1(i1 %not_err3, i1 true)
+  br i1 %10, label %after_check5, label %assign_optional4
+
+assign_optional4:                                 ; preds = %switch.case
+  store i64 %9, ptr %error_var, align 8
+  br label %guard_block
+
+after_check5:                                     ; preds = %switch.case
+  br label %noerr_block
+
+guard_block:                                      ; preds = %assign_optional4
+  br label %voiderr
+
+noerr_block:                                      ; preds = %after_check5
+  %11 = load i64, ptr %retparam, align 8
+  store i64 %11, ptr %len, align 8
+  %12 = call i64 @std.io.File.write_byte(ptr %8, i8 zeroext 10)
+  %not_err7 = icmp eq i64 %12, 0
+  %13 = call i1 @llvm.expect.i1(i1 %not_err7, i1 true)
+  br i1 %13, label %after_check9, label %assign_optional8
+
+assign_optional8:                                 ; preds = %noerr_block
+  store i64 %12, ptr %error_var6, align 8
+  br label %guard_block10
+
+after_check9:                                     ; preds = %noerr_block
+  br label %noerr_block11
+
+guard_block10:                                    ; preds = %assign_optional8
+  br label %voiderr
+
+noerr_block11:                                    ; preds = %after_check9
+  %14 = call i64 @std.io.File.flush(ptr %8)
+  %not_err13 = icmp eq i64 %14, 0
+  %15 = call i1 @llvm.expect.i1(i1 %not_err13, i1 true)
+  br i1 %15, label %after_check15, label %assign_optional14
+
+assign_optional14:                                ; preds = %noerr_block11
+  store i64 %14, ptr %error_var12, align 8
+  br label %guard_block16
+
+after_check15:                                    ; preds = %noerr_block11
+  br label %noerr_block17
+
+guard_block16:                                    ; preds = %assign_optional14
+  br label %voiderr
+
+noerr_block17:                                    ; preds = %after_check15
+  %16 = load i64, ptr %len, align 8
+  %add = add i64 %16, 1
+  br label %voiderr
+
+voiderr:                                          ; preds = %noerr_block17, %guard_block16, %guard_block10, %guard_block
+  br label %switch.exit
+
+next_if:                                          ; preds = %switch.entry
+  %eq18 = icmp eq i64 ptrtoint (ptr @std.io.EOF to i64), %7
+  br i1 %eq18, label %switch.case19, label %next_if20
+
+switch.case19:                                    ; preds = %next_if
+  ret i32 0
+
+next_if20:                                        ; preds = %next_if
+  br label %switch.default
+
+switch.default:                                   ; preds = %next_if20
+  %17 = insertvalue %any undef, ptr %err, 0
+  %18 = insertvalue %any %17, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
+  store %any %18, ptr %varargslots, align 16
+  %19 = load i64, ptr %err, align 8
+  store i64 %19, ptr %taddr, align 8
+  %20 = insertvalue %any undef, ptr %taddr, 0
+  %21 = insertvalue %any %20, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  %ptradd21 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %any %21, ptr %ptradd21, align 16
+  %22 = call i64 @std.io.printfn(ptr %retparam22, ptr @.str.1, i64 13, ptr %varargslots, i64 2)
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.default, %voiderr
+  ret i32 0
+}

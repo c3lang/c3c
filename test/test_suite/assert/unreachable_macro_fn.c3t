@@ -1,0 +1,69 @@
+// #target: windows-x64
+module test;
+
+macro int create_int2() {
+	$$unreachable();
+	return 2;
+}
+
+fn void test()
+{
+	int x = create_int2();
+}
+macro int? create_int()
+{
+	$$unreachable();
+	return 2;
+}
+
+fn void tester(int x)
+{
+}
+
+fn void tester_test()
+{
+	(void)tester(create_int());
+}
+
+fn void tester_test2()
+{
+	(void)tester(create_int2());
+}
+
+/* #expect: test.ll
+
+; Function Attrs: nounwind uwtable
+define void @test.test() #0 {
+entry:
+  %x = alloca i32, align 4
+  %blockret = alloca i32, align 4
+  unreachable
+
+after_macro:                                      ; No predecessors!
+  store i32 poison, ptr %x, align 4
+  ret void
+}
+
+; Function Attrs: nounwind uwtable
+define void @test.tester(i32 %0) #0 {
+entry:
+  ret void
+}
+
+; Function Attrs: nounwind uwtable
+define void @test.tester_test() #0 {
+entry:
+  %blockret = alloca i32, align 4
+  unreachable
+}
+
+; Function Attrs: nounwind uwtable
+define void @test.tester_test2() #0 {
+entry:
+  %blockret = alloca i32, align 4
+  unreachable
+
+after_macro:                                      ; No predecessors!
+  call void @test.tester(i32 poison)
+  ret void
+}

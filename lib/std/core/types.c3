@@ -184,6 +184,22 @@ macro bool is_ref_indexable($Type) @const
 	return $defined(&($Type){}[0]);
 }
 
+macro bool is_flat_intlike($Type) @const
+{
+	$echo $Type.nameof;
+	$switch $Type.kindof:
+		$case SIGNED_INT:
+		$case UNSIGNED_INT:
+			return true;
+		$case VECTOR:
+			return is_flat_intlike($Type.inner);
+		$case DISTINCT:
+			return is_flat_intlike($Type.inner);
+		$default:
+			return false;
+	$endswitch
+}
+
 macro bool is_intlike($Type) @const
 {
 	$switch $Type.kindof:

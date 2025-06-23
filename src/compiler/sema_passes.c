@@ -201,7 +201,7 @@ static bool exec_arg_append_to_scratch(Expr *arg)
 			scratch_buffer_append(arg->const_expr.global_ref->name);
 			return true;
 		case CONST_FAULT:
-			scratch_buffer_append(arg->const_expr.fault->name);
+			scratch_buffer_append(arg->const_expr.fault ? arg->const_expr.fault->name : "null");
 		return true;
 		case CONST_ENUM:
 			scratch_buffer_append(arg->const_expr.enum_val->name);

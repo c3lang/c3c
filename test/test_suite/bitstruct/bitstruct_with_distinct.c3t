@@ -1,0 +1,48 @@
+// #target: macos-x64
+module test;
+typedef Foo = int;
+
+bitstruct Bar : Foo
+{
+	bool a : 0;
+	Foo x : 1..4;
+}
+
+typedef Baz = char;
+
+bitstruct Bar2 : Baz[3]
+{
+	bool x;
+}
+
+fn int main()
+{
+	Bar x;
+	Bar2 y;
+	x.a = true;
+	x.x = 100;
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %x = alloca i32, align 4
+  %y = alloca [3 x i8], align 1
+  store i32 0, ptr %x, align 4
+  store i8 0, ptr %y, align 1
+  %ptradd = getelementptr inbounds i8, ptr %y, i64 1
+  store i8 0, ptr %ptradd, align 1
+  %ptradd1 = getelementptr inbounds i8, ptr %y, i64 2
+  store i8 0, ptr %ptradd1, align 1
+  %0 = load i32, ptr %x, align 4
+  %1 = and i32 %0, -2
+  %2 = or i32 %1, 1
+  store i32 %2, ptr %x, align 4
+  %3 = load i32, ptr %x, align 4
+  %4 = and i32 %3, -31
+  %5 = or i32 %4, 8
+  store i32 %5, ptr %x, align 4
+  ret i32 0
+}

@@ -210,12 +210,20 @@ typedef struct
 	SEntry *entries;
 } STable;
 
-typedef struct SEntry2_
+typedef struct HEntry_
 {
 	void *key;
 	void *value;
-	struct SEntry2_ *next;
+	struct HEntry_ *next;
 } HTEntry;
+
+typedef struct PathTableEntry_
+{
+	const char *short_path;
+	const char *name;
+	Decl *value;
+	struct PathTableEntry_ *next;
+} PathTableEntry;
 
 typedef struct
 {
@@ -223,6 +231,11 @@ typedef struct
 	HTEntry **entries;
 } HTable;
 
+typedef struct
+{
+	uint32_t mask;
+	PathTableEntry **entries;
+} PathTable;
 
 typedef struct Path_
 {
@@ -425,6 +438,7 @@ typedef struct VarDecl_
 	bool is_self : 1;
 	bool is_temp : 1;
 	bool copy_const : 1;
+	bool defaulted : 1;
 	union
 	{
 		Expr *init_expr;
@@ -558,7 +572,7 @@ typedef struct
 		Decl *decl;
 		TypeInfo *type_info;
 	};
-} TypedefDecl;
+} TypeAliasDecl;
 
 typedef struct
 {
@@ -616,6 +630,7 @@ typedef struct Decl_
 	bool attr_nopadding : 1;
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
+	bool allow_deprecated : 1;
 	union
 	{
 		void *backend_ref;
@@ -667,7 +682,7 @@ typedef struct Decl_
 		ImportDecl import;
 		IncludeDecl include;
 		LabelDecl label;
-		TypedefDecl typedef_decl;
+		TypeAliasDecl type_alias_decl;
 		VarDecl var;
 	};
 } Decl;
@@ -1347,6 +1362,12 @@ typedef struct
 
 typedef struct
 {
+	const char *var_name;
+	Expr *type_expr;
+} AstCtTypeAssignStmt;
+
+typedef struct
+{
 	DeclId index;
 	DeclId value;
 	AstId body;
@@ -1486,6 +1507,7 @@ typedef struct Ast_
 		AstContractStmt contract_stmt;      // 32
 		AstDocFault contract_fault;         // 24
 		AstId ct_else_stmt;                 // 4
+		AstCtTypeAssignStmt ct_type_assign_stmt;
 		AstCtForeachStmt ct_foreach_stmt;   // 40
 		AstCtIfStmt ct_if_stmt;             // 24
 		AstCtSwitchStmt ct_switch_stmt;     // 16
@@ -1510,6 +1532,7 @@ static_assert(sizeof(void*) != 8 || sizeof(Ast) == 56, "Not expected Ast size");
 typedef struct Module_
 {
 	Path *name;
+	const char *short_path;
 	// Extname in case a module is renamed externally
 	const char *extname;
 
@@ -1673,6 +1696,7 @@ typedef struct
 	bool ensures : 1;
 	bool pure : 1;
 	bool in_no_eval : 1;
+	bool ignore_deprecation : 1;
 	SourceSpan in_if_resolution;
 	Decl **opt_returns;
 	union
@@ -1857,6 +1881,7 @@ typedef struct
 	HTable features;
 	Module std_module;
 	DeclTable symbols;
+	PathTable path_symbols;
 	DeclTable generic_symbols;
 	Path std_module_path;
 	Type *string_type;
@@ -2403,6 +2428,10 @@ void htable_init(HTable *table, uint32_t initial_size);
 void *htable_set(HTable *table, void *key, void *value);
 void *htable_get(HTable *table, void *key);
 
+void pathtable_init(PathTable *table, uint32_t initial_size);
+void pathtable_set(PathTable *table, Decl *value);
+Decl *pathtable_get(PathTable *table, const char *short_path, const char *name);
+
 UNUSED void stable_clear(STable *table);
 
 void decltable_init(DeclTable *table, uint32_t initial_size);
@@ -2516,7 +2545,7 @@ INLINE bool type_is_integer_or_bool_kind(Type *type);
 INLINE bool type_is_numeric(Type *type);
 INLINE bool type_is_inferred(Type *type);
 INLINE bool type_underlying_is_numeric(Type *type);
-INLINE bool type_underlying_may_add_sub(Type *type);
+INLINE bool type_underlying_may_add_sub(CanonicalType *type);
 INLINE bool type_is_pointer(Type *type);
 INLINE bool type_is_arraylike(Type *type);
 INLINE bool type_is_any_arraylike(Type *type);
@@ -2969,6 +2998,7 @@ static inline Type *type_base(Type *type)
 		}
 	}
 }
+
 static inline Type *type_flat_distinct_inline(Type *type)
 {
 	do
@@ -3149,6 +3179,34 @@ INLINE bool type_is_number(Type *type)
 	return (kind >= TYPE_I8) && (kind <= TYPE_FLOAT_LAST);
 }
 
+static inline Type *type_flat_for_arithmethics(Type *type)
+{
+	while (true)
+	{
+		type = type->canonical;
+		switch (type->type_kind)
+		{
+			case TYPE_OPTIONAL:
+				type = type->optional;
+				continue;
+			case TYPE_DISTINCT:
+				break;
+			default:
+				return type;
+		}
+		Decl *decl = type->decl;
+		Type *inner = decl->distinct->type;
+		if (decl->is_substruct)
+		{
+			type = inner;
+			continue;
+		}
+		inner = type_flat_for_arithmethics(inner);
+		if (type_is_number_or_bool(inner)) return inner;
+		return type;
+	}
+}
+
 INLINE bool type_is_numeric(Type *type)
 {
 	RETRY:;
@@ -3167,10 +3225,9 @@ INLINE bool type_underlying_is_numeric(Type *type)
 	return type_is_numeric(type_flatten(type));
 }
 
-INLINE bool type_underlying_may_add_sub(Type *type)
+INLINE bool type_underlying_may_add_sub(CanonicalType *type)
 {
-	type = type_flatten(type);
-	return type->type_kind == TYPE_ENUM || type->type_kind == TYPE_POINTER || type_is_numeric(type_flatten(type));
+	return type->type_kind == TYPE_ENUM || type->type_kind == TYPE_POINTER || type_is_numeric(type);
 }
 
 INLINE bool type_flat_is_vector(Type *type)

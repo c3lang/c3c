@@ -772,6 +772,7 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 		case AST_CT_FOR_STMT:
 		case AST_CT_IF_STMT:
 		case AST_CT_SWITCH_STMT:
+		case AST_CT_TYPE_ASSIGN_STMT:
 			UNREACHABLE
 		case AST_DECLARE_STMT:
 		{

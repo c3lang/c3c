@@ -382,7 +382,7 @@ FunctionPrototype *type_get_resolved_prototype(Type *type)
 bool type_flat_is_numlike(Type *type)
 {
 	type = type_flatten(type);
-	if (type->type_kind == TYPE_VECTOR) type = type->array.base;
+	if (type->type_kind == TYPE_VECTOR) type = type_flatten(type->array.base);
 	TypeKind kind = type->type_kind;
 	return kind >= TYPE_NUM_FIRST && kind <= TYPE_NUM_LAST;
 }
@@ -390,7 +390,7 @@ bool type_flat_is_numlike(Type *type)
 bool type_flat_is_floatlike(Type *type)
 {
 	type = type_flatten(type);
-	if (type->type_kind == TYPE_VECTOR) type = type->array.base;
+	if (type->type_kind == TYPE_VECTOR) type = type_flatten(type->array.base);
 	TypeKind kind = type->type_kind;
 	return kind >= TYPE_FLOAT_FIRST && kind <= TYPE_FLOAT_LAST;
 }
@@ -398,7 +398,7 @@ bool type_flat_is_floatlike(Type *type)
 bool type_flat_is_intlike(Type *type)
 {
 	type = type_flatten(type);
-	if (type->type_kind == TYPE_VECTOR) type = type->array.base;
+	if (type->type_kind == TYPE_VECTOR) type = type_flatten(type->array.base);
 	TypeKind kind = type->type_kind;
 	return kind >= TYPE_INTEGER_FIRST && kind <= TYPE_INTEGER_LAST;
 }
@@ -406,7 +406,7 @@ bool type_flat_is_intlike(Type *type)
 bool type_flat_is_boolintlike(Type *type)
 {
 	type = type_flatten(type);
-	if (type->type_kind == TYPE_VECTOR) type = type->array.base;
+	if (type->type_kind == TYPE_VECTOR) type = type_flatten(type->array.base);
 	TypeKind kind = type->type_kind;
 	return kind == TYPE_BOOL || (kind >= TYPE_INTEGER_FIRST && kind <= TYPE_INTEGER_LAST);
 }
@@ -1278,7 +1278,7 @@ static void type_create_alias(const char *name, Type *location, Type *canonical)
 {
 	Decl *decl = decl_new(DECL_TYPEDEF, name, INVALID_SPAN);
 	decl->resolve_status = RESOLVE_DONE;
-	decl->typedef_decl.type_info = type_info_new_base(canonical, INVALID_SPAN);
+	decl->type_alias_decl.type_info = type_info_new_base(canonical, INVALID_SPAN);
 	decl->unit = compiler.context.core_unit;
 	decl->is_export = true;
 	*location = (Type) {

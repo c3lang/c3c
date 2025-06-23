@@ -96,7 +96,7 @@ bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr, bool *failed_ref
 bool sema_analyse_expr_value(SemaContext *context, Expr *expr);
 Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
 bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);
-Decl *sema_find_typed_operator(SemaContext *context, OperatorOverload operator_overload, Expr *lhs, Expr *rhs, Decl **ambiguous_ref, bool *reverse);
+Decl *sema_find_typed_operator(SemaContext *context, OperatorOverload operator_overload, SourceSpan span, Expr *lhs, Expr *rhs, bool *reverse);
 Decl *sema_find_untyped_operator(SemaContext *context, Type *type, OperatorOverload operator_overload, Decl *skipped);
 bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *method_decl, Expr *parent, Expr **arguments, bool reverse_overload);
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr);
@@ -127,9 +127,15 @@ bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, con
 Type *sema_resolve_type_get_func(Signature *signature, CallABI abi);
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
-INLINE void sema_display_deprecated_warning_on_use(Decl *decl, SourceSpan span);
+INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span);
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right, bool *failed_ref);
 
+INLINE bool sema_check_left_right_const(SemaContext *context, Expr *left, Expr *right)
+{
+	if (!sema_cast_const(left)) RETURN_SEMA_ERROR(left, "Expected this to evaluate to a constant value.");
+	if (!sema_cast_const(right)) RETURN_SEMA_ERROR(right, "Expected this to evaluate to a constant value.");
+	return true;
+}
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result)
 {
@@ -159,10 +165,11 @@ INLINE Attr* attr_find_kind(Attr **attrs, AttributeType attr_type)
 	return NULL;
 }
 
-INLINE void sema_display_deprecated_warning_on_use(Decl *decl, SourceSpan span)
+INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span)
 {
 	ASSERT(decl->resolve_status == RESOLVE_DONE);
 	if (!decl->resolved_attributes || !decl->attrs_resolved || !decl->attrs_resolved->deprecated) return;
+	if (context->call_env.ignore_deprecation) return;
 	const char *msg = decl->attrs_resolved->deprecated;
 
 	// Prevent multiple reports

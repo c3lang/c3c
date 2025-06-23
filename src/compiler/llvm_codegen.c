@@ -989,7 +989,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 		case DECL_FNTYPE:
 			UNREACHABLE;
 		case DECL_TYPEDEF:
-			if (decl->typedef_decl.is_func)
+			if (decl->type_alias_decl.is_func)
 			{
 				REMINDER("Emit func typeid");
 			}

@@ -21,6 +21,11 @@
 - Support untyped second argument for operator overloading.
 - The form-feed character '\f' is no longer valid white space.
 - Show code that caused unreachable code #2207
+- Allow generics over distinct types #2216.
+- Support distrinct types as the base type of bitstructs. #2218
+- Add hash::sha512 module to stdlib. #2227
+- Compile time type assignment (eg `$Foo = int`) is no longer an expression.
+- Add `@allow_deprecated` attribute to functions to selectively allow deprecated declarations #2223
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.
@@ -41,11 +46,27 @@
 - Method on array slice caused segfault #2211.
 - In some cases, the compiler would dereference a compile time null. #2215
 - Incorrect codegen if a macro ends with unreachable and is assigned to something. #2210
+- Fix error for named arguments-order with compile-time arguments #2212
+- Bug in AST copying would make operator overloading like `+=` compile incorrectly #2217.
+- `$defined(#expr)` broken with binary. #2219 
+- Method ambiguity when importing parent module publicly in private submodule. #2208
+- Linker errors when shadowing @local with public function #2198
+- Bug when offsetting pointers of large structs using ++ and --.
+- `x++` and `x--` works on pointer vectors #2222.
+- `x += 1` and `x -= 1` works propertly on pointer vectors #2222.
+- Fixes to `x += { 1, 1 }` for enum and pointer vectors #2222.
+- Linking fails on operator method imported as `@public` #2224.
+- Lambda C-style vaargs were not properly rejected, leading to crash #2229.
+- Incorrect handling of constant null fault causing compiler crash #2232.
+- Overload resolution fixes to inline typedef #2226.
+- `math::overflow_*` wrappers incorrectly don't allow distinct integers #2221.
+- Compiler segfault when using distinct type in attribute imported from other module #2234.
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
 - Add comparison with `==` for ZString types.
 - `is_array_or_slice_of_char` and `is_arrayptr_or_slice_of_char` are replaced by constant `@` variants.
+- `@pool` now has an optional `reserve` parameter, some minor changes to the temp_allocator API
 
 ## 0.7.2 Change list
 

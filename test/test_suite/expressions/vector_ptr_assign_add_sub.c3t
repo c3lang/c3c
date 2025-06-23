@@ -1,0 +1,121 @@
+// #target: macos-x64
+module test;
+import std::io;
+const FOO_SIZE = 500;
+
+alias Foo = char[FOO_SIZE];
+
+fn int main()
+{
+    const NUM = 10;
+
+    Foo* x = calloc(Foo.sizeof * NUM);
+	Foo*[<1>] z = { x };
+	Foo*[<1>] g = { x };
+	Foo*[<2>] z2 = { x, x };
+	Foo*[<2>] g2 = { x, x };
+    for (int i = 0; i < 10; i++)
+    {
+        z++;
+        g--;
+        z2 += 1;
+        g2 -= 1;
+        z2 = z2 + 1;
+        g2 = g2 - 1;
+        z++;
+        g--;
+        g2 += { 1, 1 };
+        g2 -= { 1, 1 };
+        assert(z2.x == z.x);
+        assert(g2.x == g.x);
+    }
+    return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %x = alloca ptr, align 8
+  %z = alloca <1 x ptr>, align 8
+  %g = alloca <1 x ptr>, align 8
+  %z2 = alloca <2 x ptr>, align 16
+  %g2 = alloca <2 x ptr>, align 16
+  %i = alloca i32, align 4
+  %0 = call ptr @std.core.mem.calloc(i64 5000) #2
+  store ptr %0, ptr %x, align 8
+  %1 = load ptr, ptr %x, align 8
+  %2 = insertelement <1 x ptr> undef, ptr %1, i64 0
+  store <1 x ptr> %2, ptr %z, align 8
+  %3 = load ptr, ptr %x, align 8
+  %4 = insertelement <1 x ptr> undef, ptr %3, i64 0
+  store <1 x ptr> %4, ptr %g, align 8
+  %5 = load ptr, ptr %x, align 8
+  %6 = insertelement <2 x ptr> undef, ptr %5, i64 0
+  %7 = load ptr, ptr %x, align 8
+  %8 = insertelement <2 x ptr> %6, ptr %7, i64 1
+  store <2 x ptr> %8, ptr %z2, align 16
+  %9 = load ptr, ptr %x, align 8
+  %10 = insertelement <2 x ptr> undef, ptr %9, i64 0
+  %11 = load ptr, ptr %x, align 8
+  %12 = insertelement <2 x ptr> %10, ptr %11, i64 1
+  store <2 x ptr> %12, ptr %g2, align 16
+  store i32 0, ptr %i, align 4
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %loop.body, %entry
+  %13 = load i32, ptr %i, align 4
+  %lt = icmp slt i32 %13, 10
+  br i1 %lt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %14 = load <1 x ptr>, ptr %z, align 8
+  %ptroffset_any = getelementptr [500 x i8], <1 x ptr> %14, <1 x i64>
+  store <1 x ptr> %ptroffset_any, ptr %z, align 8
+  %15 = load <1 x ptr>, ptr %g, align 8
+  %ptroffset_any1 = getelementptr [500 x i8], <1 x ptr> %15, <1 x i64>
+  store <1 x ptr> %ptroffset_any1, ptr %g, align 8
+  %16 = load <2 x ptr>, ptr %z2, align 16
+  %ptradd_any = getelementptr i8, <2 x ptr> %16, <2 x i64>
+  store <2 x ptr> %ptradd_any, ptr %z2, align 16
+  %17 = load <2 x ptr>, ptr %g2, align 16
+  %ptradd_any2 = getelementptr i8, <2 x ptr> %17, <2 x i64>
+  store <2 x ptr> %ptradd_any2, ptr %g2, align 16
+  %18 = load <2 x ptr>, ptr %z2, align 16
+  %ptradd_any3 = getelementptr i8, <2 x ptr> %18, <2 x i64>
+  store <2 x ptr> %ptradd_any3, ptr %z2, align 16
+  %19 = load <2 x ptr>, ptr %g2, align 16
+  %ptradd_any4 = getelementptr i8, <2 x ptr> %19, <2 x i64>
+  store <2 x ptr> %ptradd_any4, ptr %g2, align 16
+  %20 = load <1 x ptr>, ptr %z, align 8
+  %ptroffset_any5 = getelementptr [500 x i8], <1 x ptr> %20, <1 x i64>
+  store <1 x ptr> %ptroffset_any5, ptr %z, align 8
+  %21 = load <1 x ptr>, ptr %g, align 8
+  %ptroffset_any6 = getelementptr [500 x i8], <1 x ptr> %21, <1 x i64>
+  store <1 x ptr> %ptroffset_any6, ptr %g, align 8
+  %22 = load <2 x ptr>, ptr %g2, align 16
+  %ptradd_any7 = getelementptr i8, <2 x ptr> %22, <2 x i64>
+  store <2 x ptr> %ptradd_any7, ptr %g2, align 16
+  %23 = load <2 x ptr>, ptr %g2, align 16
+  %ptradd_any8 = getelementptr i8, <2 x ptr> %23, <2 x i64>
+  store <2 x ptr> %ptradd_any8, ptr %g2, align 16
+  %24 = load <2 x ptr>, ptr %z2, align 16
+  %25 = extractelement <2 x ptr> %24, i64 0
+  %26 = load <1 x ptr>, ptr %z, align 8
+  %27 = extractelement <1 x ptr> %26, i64 0
+  %eq = icmp eq ptr %25, %27
+  call void @llvm.assume(i1 %eq)
+  %28 = load <2 x ptr>, ptr %g2, align 16
+  %29 = extractelement <2 x ptr> %28, i64 0
+  %30 = load <1 x ptr>, ptr %g, align 8
+  %31 = extractelement <1 x ptr> %30, i64 0
+  %eq9 = icmp eq ptr %29, %31
+  call void @llvm.assume(i1 %eq9)
+  %32 = load i32, ptr %i, align 4
+  %add = add i32 %32, 1
+  store i32 %add, ptr %i, align 4
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  ret i32 0
+}

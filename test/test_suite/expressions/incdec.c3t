@@ -20,10 +20,10 @@ fn void test(int* foo)
   %z = alloca float, align 4
   store ptr %0, ptr %foo, align 8
   %1 = load ptr, ptr %foo, align 8
-  %ptradd_any = getelementptr i8, ptr %1, i8 4
+  %ptradd_any = getelementptr i8, ptr %1, i64 4
   store ptr %ptradd_any, ptr %foo, align 8
   %2 = load ptr, ptr %foo, align 8
-  %ptradd_any1 = getelementptr i8, ptr %2, i8 -4
+  %ptradd_any1 = getelementptr i8, ptr %2, i64 -4
   store ptr %ptradd_any1, ptr %foo, align 8
   store i32 10, ptr %y, align 4
   %3 = load i32, ptr %y, align 4

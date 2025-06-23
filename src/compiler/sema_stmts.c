@@ -1187,6 +1187,24 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 	return true;
 }
 
+static inline bool sema_analyse_ct_type_assign_stmt(SemaContext *context, Ast *statement)
+{
+	Expr *right = statement->ct_type_assign_stmt.type_expr;
+	if (!sema_analyse_expr_value(context, right)) return false;
+	if (right->expr_kind == EXPR_TYPEINFO)
+	{
+		expr_rewrite_const_typeid(right, right->type_expr->type);
+	}
+	if (!expr_is_const_typeid(right)) RETURN_SEMA_ERROR(right, "Expected a type or constant typeid here.");
+
+	Decl *decl = sema_find_symbol(context, statement->ct_type_assign_stmt.var_name);
+	if (!decl) RETURN_SEMA_ERROR(statement, "'%s' is not defined in this scope yet.", statement->ct_type_assign_stmt.var_name);
+
+	decl->var.init_expr = right;
+	statement->ast_kind = AST_NOP_STMT;
+
+	return true;
+}
 
 static inline bool sema_analyse_decls_stmt(SemaContext *context, Ast *statement)
 {
@@ -3044,6 +3062,8 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 		case AST_ASM_LABEL:
 		case AST_CONTRACT_FAULT:
 			UNREACHABLE
+		case AST_CT_TYPE_ASSIGN_STMT:
+			return sema_analyse_ct_type_assign_stmt(context, statement);
 		case AST_DECLS_STMT:
 			return sema_analyse_decls_stmt(context, statement);
 		case AST_ASM_BLOCK_STMT:
@@ -3166,6 +3186,7 @@ static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
 		if (!sema_analyse_expr(context, expr)) return false;
 		if (!expr_is_const_fault(expr)) RETURN_SEMA_ERROR(expr, "A fault is required.");
 		Decl *decl = expr->const_expr.fault;
+		if (!decl) RETURN_SEMA_ERROR(expr, "A non-null fault is required.");
 		ret->contract_fault.decl = decl;
 		ret->contract_fault.resolved = true;
 		vec_add(context->call_env.opt_returns, decl);
@@ -3234,6 +3255,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		.current_function = func,
 		.kind = CALL_ENV_FUNCTION,
 		.pure = func->func_decl.signature.attrs.is_pure,
+		.ignore_deprecation = func->allow_deprecated || (func->resolved_attributes && func->attrs_resolved && func->attrs_resolved->deprecated && func->resolved_attributes && func->attrs_resolved->deprecated)
 	};
 	context->rtype = prototype->rtype;
 	context->macro_call_depth = 0;

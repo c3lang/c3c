@@ -1,0 +1,23 @@
+// #target: macos-x64
+module test;
+import test1;
+typedef Foo = int;
+
+fn void main()
+{
+  Foo $f = 1;
+  test1::foo{$f}();
+}
+module test1 {FOO};
+
+fn void foo() {}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  call void @"test1$test.Foo$1$.foo"()
+  ret void
+}
+
+declare extern_weak void @"test1$test.Foo$1$.foo"() #0

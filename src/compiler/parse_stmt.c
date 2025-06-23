@@ -965,9 +965,23 @@ static inline Ast *parse_expr_stmt(ParseContext *c)
 }
 
 
+static inline Ast *parse_ct_type_assign_stmt(ParseContext *c)
+{
+	Ast *stmt = new_ast(AST_CT_TYPE_ASSIGN_STMT, c->span);
+	stmt->ct_type_assign_stmt.var_name = symstr(c);
+	advance_and_verify(c, TOKEN_CT_TYPE_IDENT);
+	advance_and_verify(c, TOKEN_EQ);
+	ASSIGN_EXPR_OR_RET(stmt->ct_type_assign_stmt.type_expr, parse_expr(c), poisoned_ast);
+	CONSUME_EOS_OR_RET(poisoned_ast);
+	return stmt;
+}
 
 static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 {
+	if (tok_is(c, TOKEN_CT_TYPE_IDENT) && peek(c) == TOKEN_EQ)
+	{
+		return parse_ct_type_assign_stmt(c);
+	}
 	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_ast);
 	// We might be parsing "int!"
 	// If so we need to unwrap this.
@@ -1275,9 +1289,9 @@ Ast *parse_stmt(ParseContext *c)
 			return parse_decl_or_expr_stmt(c);
 		case TOKEN_VAR:
 			return parse_var_stmt(c);
-		case TOKEN_TLOCAL: // Global means declaration!
+		case TOKEN_TLOCAL:   // Global means declaration!
 		case TOKEN_STATIC:   // Static means declaration!
-		case TOKEN_CONST:   // Const means declaration!
+		case TOKEN_CONST:    // Const means declaration!
 			return parse_declaration_stmt(c);
 		case TOKEN_RETURN:
 			return parse_return_stmt(c);

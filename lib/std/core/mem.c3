@@ -576,11 +576,20 @@ fn void temp_pop(PoolState old_state)
 	allocator::pop_pool(old_state) @inline;
 }
 
-macro void @pool_init(Allocator allocator, usz pool_size, usz buffer_size; @body) @builtin
+<*
+ @require pool_size >= 64
+ @require realloc_size >= 64
+ @require allocator.type != TempAllocator.typeid : "You may not create a temp allocator with a TempAllocator as the backing allocator."
+ @require min_size > TempAllocator.sizeof + 64 : "Min size must meaningfully hold the data + some bytes"
+*>
+macro void @pool_init(Allocator allocator, usz pool_size,
+	usz reserve_size = allocator::temp_allocator_reserve_size,
+	usz min_size = allocator::temp_allocator_min_size,
+	usz realloc_size = allocator::temp_allocator_realloc_size; @body) @builtin
 {
 	Allocator current = allocator::current_temp;
 	TempAllocator* top = allocator::top_temp;
-	allocator::create_temp_allocator(allocator, pool_size, buffer_size);
+	allocator::create_temp_allocator(allocator, pool_size, reserve_size, min_size, realloc_size);
 	defer
 	{
 		allocator::destroy_temp_allocators();
@@ -589,9 +598,19 @@ macro void @pool_init(Allocator allocator, usz pool_size, usz buffer_size; @body
 	}
 	@body();
 }
-macro void @pool(;@body) @builtin
+
+<*
+ Create a new temporary allocator.
+
+ The `reserve` parameter allows you to determine how many bytes should be reserved for
+ allocations on the current temporary allocator, if allocations are made inside of the pool scope.
+ It is made available for optimization, and can usually be ignored.
+
+ @param reserve : "The amount of bytes to reserve for out-of-order allocations, 0 gives the default."
+*>
+macro void @pool(usz reserve = 0; @body) @builtin
 {
-	PoolState state = allocator::push_pool() @inline;
+	PoolState state = allocator::push_pool(reserve) @inline;
 	defer
 	{
 		allocator::pop_pool(state) @inline;

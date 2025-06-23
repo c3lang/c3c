@@ -407,13 +407,13 @@ tlocal TempAllocator* top_temp;
 tlocal bool auto_create_temp = false;
 
 usz temp_allocator_min_size = temp_allocator_default_min_size();
-usz temp_allocator_buffer_size = temp_allocator_default_buffer_size();
-usz temp_allocator_new_mult = 4;
+usz temp_allocator_reserve_size = temp_allocator_default_reserve_size();
+usz temp_allocator_realloc_size = temp_allocator_default_min_size() * 4;
 
-fn PoolState push_pool()
+fn PoolState push_pool(usz reserve = 0)
 {
 	Allocator old = top_temp ? current_temp : create_temp_allocator_on_demand();
-	current_temp = ((TempAllocator*)old).derive_allocator(temp_allocator_min_size, temp_allocator_buffer_size, temp_allocator_new_mult)!!;
+	current_temp = ((TempAllocator*)old).derive_allocator(reserve)!!;
 	return (PoolState)old.ptr;
 }
 
@@ -453,7 +453,7 @@ macro usz temp_allocator_default_min_size() @local
 	$endswitch
 }
 
-macro usz temp_allocator_default_buffer_size() @local
+macro usz temp_allocator_default_reserve_size() @local
 {
 	$switch env::MEMORY_ENV:
 		$case NORMAL: return 1024;
@@ -475,14 +475,15 @@ fn Allocator create_temp_allocator_on_demand() @private
 	    auto_create_temp = true;
 	    abort("Use '@pool_init()' to enable the temp allocator on a new thread. A temp allocator is only implicitly created on the main thread.");
 	}
-	return create_temp_allocator(temp_base_allocator, temp_allocator_size());
+	return create_temp_allocator(temp_base_allocator, temp_allocator_size(), temp_allocator_reserve_size, temp_allocator_min_size, temp_allocator_realloc_size);
 }
+
 <*
  @require !top_temp : "This should never be called when temp already exists"
 *>
-fn Allocator create_temp_allocator(Allocator allocator, usz size, usz buffer = temp_allocator_default_buffer_size()) @private
+fn Allocator create_temp_allocator(Allocator allocator, usz size, usz reserve, usz min_size, usz realloc_size) @private
 {
-	return current_temp = top_temp = allocator::new_temp_allocator(allocator, size)!!;
+	return current_temp = top_temp = allocator::new_temp_allocator(allocator, size, reserve, min_size, realloc_size)!!;
 }
 
 macro Allocator temp()

@@ -492,7 +492,13 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 		scratch_buffer_append(decl->name);
 		return;
 	}
-	if (decl->unit && decl->unit->module) scratch_buffer_append_module(decl->unit->module, decl->is_export);
+	Module *module = decl->unit ? decl->unit->module : NULL;
+	if (module) scratch_buffer_append_module(module, decl->is_export);
 	scratch_buffer_append(decl->is_export ? "__" : ".");
 	scratch_buffer_append(decl->name ? decl->name : "$anon");
+	if (decl->visibility == VISIBLE_LOCAL)
+	{
+		assert(module);
+		scratch_buffer_printf(".%u", (unsigned)declid(decl));
+	}
 }
