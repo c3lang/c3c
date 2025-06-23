@@ -25,7 +25,8 @@
 - Support distrinct types as the base type of bitstructs. #2218
 - Add hash::sha512 module to stdlib. #2227
 - Compile time type assignment (eg `$Foo = int`) is no longer an expression.
-- Add `@allow_deprecated` attribute to functions to selectively allow deprecated declarations #2223
+- Add `@allow_deprecated` attribute to functions to selectively allow deprecated declarations #2223.
+- Improve error message on pointer diff #2239.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.

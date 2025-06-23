@@ -1275,6 +1275,14 @@ static bool rule_int_to_float(CastContext *cc, bool is_explicit, bool is_silent)
 	return true;
 }
 
+INLINE bool expr_is_pointer_diff(Expr *expr)
+{
+	if (expr->type != type_isz) return false;
+	if (expr->expr_kind != EXPR_BINARY) return false;
+	if (expr->binary_expr.operator != BINARYOP_SUB) return false;
+	return type_is_pointer(exprptr(expr->binary_expr.left)->type) && type_is_pointer(exprptr(expr->binary_expr.right)->type);
+}
+
 static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_explicit) return true;
@@ -1326,6 +1334,11 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 			RETURN_CAST_ERROR(expr, "The value of the expression (%s) is out of range and cannot implicitly be converted to %s, but you may use a cast.",
 				expr_const_to_error_string(&expr->const_expr),
 				type_quoted_error_string(cc->to_type));
+		}
+		if (expr_is_pointer_diff(expr))
+		{
+			RETURN_CAST_ERROR(expr, "A pointer diff has the type %s which cannot implicitly be converted to %s. You can use an explicit cast if you know the conversion is safe.",
+					   type_quoted_error_string(expr->type), type_quoted_error_string(cc->to_type));
 		}
 		RETURN_CAST_ERROR(expr, "%s cannot implicitly be converted to %s, but you may use a cast.",
 		           type_quoted_error_string(expr->type), type_quoted_error_string(cc->to_type));
