@@ -168,6 +168,7 @@ extern fn CInt strcmp(ZString str1, ZString str2);
 extern fn CInt strcoll(ZString str1, ZString str2);
 extern fn usz strcspn(ZString str1, ZString str2);
 extern fn ZString strcpy(ZString dst, ZString src);
+extern fn ZString strdup(ZString s);
 extern fn ZString strerror(CInt errn);
 extern fn usz strftime(char* dest, usz maxsize, ZString format, Tm* timeptr);
 extern fn usz strlen(ZString str);

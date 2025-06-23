@@ -375,6 +375,7 @@ fn void malloc_free() @test
 // fn void strcoll() @test {}
 // fn void strcspn() @test {}
 // fn void strcpy() @test {}
+// fn void strdup() @test {}
 // fn void strerror() @test {}
 // fn void strftime() @test {}
 // fn void strlen() @test {}
