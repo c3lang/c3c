@@ -1227,7 +1227,8 @@ static inline bool sema_binary_analyse_with_inference(SemaContext *context, Expr
 {
 	const static int op_table[BINARYOP_LAST + 1] = {
 		[BINARYOP_AND] = 1, [BINARYOP_OR] = 1, [BINARYOP_CT_AND] = 1, [BINARYOP_CT_OR] = 1,
-		[BINARYOP_EQ] = 2, [BINARYOP_NE] = 2 };
+		[BINARYOP_EQ] = 2, [BINARYOP_NE] = 2, [BINARYOP_GT] = 2, [BINARYOP_GE] = 2,
+		[BINARYOP_LE] = 2, [BINARYOP_LT] = 2 };
 	int op_result = op_table[op];
 	if (op_result == 1) return true;
 	// If lhs or rhs is an initializer list, infer

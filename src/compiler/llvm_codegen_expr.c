@@ -3328,6 +3328,7 @@ static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMVal
 
 static void llvm_emit_slice_comp(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
 {
+
 	bool want_match = binary_op == BINARYOP_EQ;
 
 	Type *array_base_type = type_lowering(lhs->type->array.base);
