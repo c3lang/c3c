@@ -1,8 +1,6 @@
 # Project ideas
 
 - HTTPS engine, allowing TLS etc on top of HTTP
-- Open GL bindings
-- Vulcan bindings
 - Imgui library
 - Job queue
 - TOML serialization and deserialization
