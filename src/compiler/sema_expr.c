@@ -227,6 +227,7 @@ static inline bool sema_constant_fold_ops(Expr *expr)
 		case CONST_MEMBER:
 			return true;
 		case CONST_INITIALIZER:
+			return expr->type->canonical->type_kind == TYPE_VECTOR;
 		case CONST_SLICE:
 		case CONST_UNTYPED_LIST:
 		case CONST_REF:

@@ -27,6 +27,7 @@
 - Compile time type assignment (eg `$Foo = int`) is no longer an expression.
 - Add `@allow_deprecated` attribute to functions to selectively allow deprecated declarations #2223.
 - Improve error message on pointer diff #2239.
+- Compile-time comparison of constant vectors. #1575.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.

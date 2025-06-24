@@ -101,6 +101,32 @@ INLINE bool const_is_bytes(ConstKind kind)
 	return kind == CONST_BYTES || kind == CONST_STRING;
 }
 
+INLINE ConstInitializer *expr_const_array_init_at(ConstInitializer *init, ArraySize index)
+{
+	switch (init->kind)
+	{
+		case CONST_INIT_ZERO:
+			return NULL;
+		case CONST_INIT_STRUCT:
+		case CONST_INIT_UNION:
+		case CONST_INIT_VALUE:
+		case CONST_INIT_ARRAY_VALUE:
+			UNREACHABLE
+		case CONST_INIT_ARRAY:
+		{
+			FOREACH(ConstInitializer *, e, init->init_array.elements)
+			{
+				ArrayIndex idx = e->init_array_value.index;
+				if (idx != index) continue;
+				return e->init_array_value.element;
+			}
+			return NULL;
+		}
+		case CONST_INIT_ARRAY_FULL:
+			return init->init_array_full[index];
+	}
+	UNREACHABLE;
+}
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op)
 {
 	bool is_eq;
@@ -207,8 +233,37 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			}
 			is_eq = !memcmp(left->bytes.ptr, right->bytes.ptr, left->bytes.len);
 			goto RETURN;
-		case CONST_SLICE:
 		case CONST_INITIALIZER:
+			if (left->initializer->type->type_kind == TYPE_VECTOR)
+			{
+				ConstInitializer *lhs = left->initializer;
+				ConstInitializer *rhs = right->initializer;
+				ArraySize len = lhs->type->canonical->array.len;
+				bool rhs_is_zero = rhs->kind == CONST_INIT_ZERO;
+				if (lhs->kind == CONST_INIT_ZERO && rhs_is_zero) return op == BINARYOP_EQ;
+				for (ArrayIndex i = 0; i < len; i++)
+				{
+					ConstInitializer *a = expr_const_array_init_at(lhs, i);
+					ConstInitializer *b = expr_const_array_init_at(rhs, i);
+					bool a_is_zero = !a || const_init_is_zero(a);
+					bool b_is_zero = !b || const_init_is_zero(b);
+					if (a_is_zero || b_is_zero)
+					{
+						if (a_is_zero != b_is_zero) goto MISMATCH;
+						continue;
+					}
+					assert(b->kind == CONST_INIT_VALUE && a->kind == CONST_INIT_VALUE);
+					Expr *a_value = a->init_value;
+					Expr *b_value = b->init_value;
+					bool is_equal = expr_const_compare(&a_value->const_expr, &b_value->const_expr, BINARYOP_EQ);
+					if (is_equal) continue;
+MISMATCH:
+					return op != BINARYOP_EQ;
+				}
+				return op == BINARYOP_EQ;
+			}
+			FALLTHROUGH;
+		case CONST_SLICE:
 		case CONST_UNTYPED_LIST:
 			UNREACHABLE;
 		case CONST_MEMBER:
