@@ -1540,8 +1540,14 @@ static bool rule_bits_to_int(CastContext *cc, bool is_explicit, bool is_silent)
 	if (is_silent && !is_explicit) return false;
 	Type *base_type = cc->from->decl->strukt.container_type->type->canonical;
 	Type *to = cc->to;
+RETRY:
 	if (base_type != to)
 	{
+		if (base_type->type_kind == TYPE_DISTINCT && (base_type->decl->is_substruct || is_explicit))
+		{
+			base_type = base_type->decl->distinct->type->canonical;
+			goto RETRY;
+		}
 		if (!type_is_integer(base_type) || type_size(to) != type_size(base_type))
 		{
 			return sema_cast_error(cc, false, is_silent);
