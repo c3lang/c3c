@@ -511,6 +511,7 @@ bool type_is_comparable(Type *type)
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_OPTIONAL:
 		case TYPE_MEMBER:
+		case TYPE_UNTYPED_LIST:
 			return false;
 		case TYPE_UNION:
 		case TYPE_STRUCT:
@@ -540,7 +541,6 @@ bool type_is_comparable(Type *type)
 		case TYPE_ENUM:
 		case TYPE_FUNC_PTR:
 		case TYPE_FUNC_RAW:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_TYPEINFO:
 		case TYPE_VECTOR:
 		case TYPE_WILDCARD:

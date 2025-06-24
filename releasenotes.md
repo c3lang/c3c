@@ -64,6 +64,7 @@
 - Compiler segfault when using distinct type in attribute imported from other module #2234.
 - Assert casting bitstruct to short/char #2237.
 - @tag didn't work with members #2236.
+- Assert comparing untyped lists #2240.
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.

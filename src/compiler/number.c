@@ -208,11 +208,9 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			is_eq = !memcmp(left->bytes.ptr, right->bytes.ptr, left->bytes.len);
 			goto RETURN;
 		case CONST_SLICE:
-			return false;
 		case CONST_INITIALIZER:
-			return false;
 		case CONST_UNTYPED_LIST:
-			return false;
+			UNREACHABLE;
 		case CONST_MEMBER:
 			is_eq = left->member.decl == right->member.decl;
 			goto RETURN;

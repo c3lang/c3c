@@ -7650,16 +7650,13 @@ static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *lef
 	return true;
 }
 
-
-
-
 static bool sema_binary_is_unsigned_always_same_comparison(SemaContext *context, Expr *expr, Expr *left, Expr *right,
 														   Type *lhs_type, Type *rhs_type)
 {
 	if (context->active_scope.flags & (SCOPE_MACRO | SCOPE_ENSURE | SCOPE_ENSURE_MACRO)) return true;
 	if (!sema_cast_const(left) && !sema_cast_const(right)) return true;
 	if (!type_is_integer(left->type)) return true;
-	if (expr_is_const(left) && type_is_unsigned(rhs_type))
+	if (expr_is_const_int(left) && type_is_unsigned(rhs_type))
 	{
 		if (int_is_neg(left->const_expr.ixx))
 		{
@@ -7685,7 +7682,7 @@ static bool sema_binary_is_unsigned_always_same_comparison(SemaContext *context,
 				return true;
 		}
 	}
-	if (!expr_is_const(right) || !type_is_unsigned(lhs_type)) return true;
+	if (!expr_is_const_int(right) || !type_is_unsigned(lhs_type)) return true;
 	if (int_is_neg(right->const_expr.ixx))
 	{
 		SEMA_ERROR(right, "Comparing an unsigned value with a negative constant is only allowed inside of macros.");
@@ -7807,6 +7804,10 @@ NEXT:
 		RETURN_SEMA_ERROR(expr, "Vector types can only be tested for equality, for other comparison, use vector comparison functions.");
 	}
 
+	if (max == type_untypedlist)
+	{
+		RETURN_SEMA_ERROR(expr, "Both sides are untyped and cannot be compared. Please cast one or both sides to a type, e.g. (Foo){ 1, 2 } == { 1, 2 }.");
+	}
 	if (!type_is_comparable(max))
 	{
 		CHECK_ON_DEFINED(failed_ref);
