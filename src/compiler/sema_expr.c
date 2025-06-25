@@ -2294,11 +2294,11 @@ static inline Type *context_unify_returns(SemaContext *context)
 
 	// 1. Loop through the returns.
 	bool optional = false;
-	unsigned returns = vec_size(context->returns);
+	unsigned returns = vec_size(context->block_returns);
 	if (!returns) return type_void;
 	for (unsigned i = 0; i < returns; i++)
 	{
-		Ast *return_stmt = context->returns[i];
+		Ast *return_stmt = context->block_returns[i];
 		Type *rtype;
 		if (!return_stmt)
 		{
@@ -2334,7 +2334,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 			ASSERT(return_stmt);
 			SEMA_ERROR(return_stmt, "Cannot find a common parent type of %s and %s",
 					   type_quoted_error_string(rtype), type_quoted_error_string(common_type));
-			Ast *prev = context->returns[i - 1];
+			Ast *prev = context->block_returns[i - 1];
 			ASSERT(prev);
 			SEMA_NOTE(prev, "The previous return was here.");
 			return NULL;
@@ -2351,7 +2351,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 	if (all_returns_need_casts)
 	{
 		ASSERT(common_type != type_wildcard);
-		FOREACH(Ast *, return_stmt, context->returns)
+		FOREACH(Ast *, return_stmt, context->block_returns)
 		{
 			if (!return_stmt) continue;
 			Expr *ret_expr = return_stmt->return_stmt.expr;
@@ -2676,7 +2676,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	params = macro_context.macro_params;
 	bool is_no_return = sig->attrs.noreturn;
 
-	if (!vec_size(macro_context.returns))
+	if (!vec_size(macro_context.block_returns))
 	{
 		if (rtype && rtype != type_void && !macro_context.active_scope.end_jump.active)
 		{
@@ -2688,14 +2688,14 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	}
 	else if (is_no_return)
 	{
-		SEMA_ERROR(context->returns[0], "Return used despite macro being marked '@noreturn'.");
+		SEMA_ERROR(context->block_returns[0], "Return used despite macro being marked '@noreturn'.");
 		goto EXIT_FAIL;
 	}
 
 	if (rtype)
 	{
 		bool inferred_len = type_len_is_inferred(rtype);
-		FOREACH(Ast *, return_stmt, macro_context.returns)
+		FOREACH(Ast *, return_stmt, macro_context.block_returns)
 		{
 			if (!return_stmt)
 			{
@@ -2772,7 +2772,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		must_use = sig->attrs.nodiscard || (optional_return && !sig->attrs.maydiscard);
 	}
-	unsigned returns_found = vec_size(macro_context.returns);
+	unsigned returns_found = vec_size(macro_context.block_returns);
 	// We may have zero normal macro returns but the active scope still has a "jump end".
 	// In this case it is triggered by the @body()
 	if (!returns_found && macro_context.active_scope.end_jump.active)
@@ -2781,7 +2781,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	}
 	if (returns_found == 1 && !implicit_void_return)
 	{
-		Ast *ret = macro_context.returns[0];
+		Ast *ret = macro_context.block_returns[0];
 		Expr *result = ret ? ret->return_stmt.expr : NULL;
 		if (!result) goto NOT_CT;
 		if (!expr_is_runtime_const(result)) goto NOT_CT;
@@ -8845,7 +8845,7 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 			RETURN_SEMA_ERROR(expr, "Rethrow is only allowed in macros with an optional or inferred return type. "
 									"Did you mean to use '!!' instead?");
 		}
-		vec_add(context->returns, NULL);
+		vec_add(context->block_returns, NULL);
 		expr->rethrow_expr.in_block = context->block_exit_ref;
 		expr->rethrow_expr.cleanup = context_get_defers(context, context->active_scope.defer_last, context->block_return_defer, false);
 	}

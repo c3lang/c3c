@@ -368,7 +368,7 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 	LLVMBasicBlockRef then_block = exit_block;
 	LLVMBasicBlockRef else_block = exit_block;
 
-	Ast *then_body = astptr(ast->if_stmt.then_body);
+	Ast *then_body = astptrzero(ast->if_stmt.then_body);
 	// Only generate a target if
 	if (ast_is_not_empty(then_body))
 	{
@@ -376,8 +376,7 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 	}
 
 	// We have an optional else block.
-	AstId else_id = ast->if_stmt.else_body;
-	Ast *else_body = else_id ? astptr(else_id) : NULL;
+	Ast *else_body = astptrzero(ast->if_stmt.else_body);
 	if (ast_is_not_empty(else_body))
 	{
 		else_block = llvm_basic_block_new(c, "if.else");

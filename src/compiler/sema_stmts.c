@@ -564,7 +564,6 @@ END:
  */
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement)
 {
-	bool is_macro = (context->active_scope.flags & SCOPE_MACRO) != 0;
 	ASSERT(context->active_scope.flags & SCOPE_MACRO);
 	statement->ast_kind = AST_BLOCK_EXIT_STMT;
 	SET_JUMP_END(context, statement);
@@ -580,22 +579,20 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 		{
 			if (!sema_analyse_expr(context, ret_expr)) return false;
 		}
-		if (is_macro && !sema_check_return_matches_opt_returns(context, ret_expr)) return false;
-
+		if (!sema_check_return_matches_opt_returns(context, ret_expr)) return false;
 	}
 	else
 	{
-		if (block_type && type_no_optional(block_type) != type_void)
+		// What if we already had an expected type and we do an empty return.
+		if (block_type && !type_is_void(type_no_optional(block_type)))
 		{
-			SEMA_ERROR(statement, "Expected a return value of type %s here.", type_quoted_error_string(block_type));
-			return false;
+			RETURN_SEMA_ERROR(statement, "Expected a return value of type %s here.", type_quoted_error_string(block_type));
 		}
 	}
 	statement->return_stmt.block_exit_ref = context->block_exit_ref;
 	sema_inline_return_defers(context, statement, context->active_scope.defer_last, context->block_return_defer);
-
-	if (is_macro && !sema_analyse_macro_constant_ensures(context, ret_expr)) return false;
-	vec_add(context->returns, statement);
+	if (!sema_analyse_macro_constant_ensures(context, ret_expr)) return false;
+	vec_add(context->block_returns, statement);
 	return true;
 }
 
@@ -1052,7 +1049,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 			}
 			if (!sema_analyse_catch_unwrap(context, expr))
 			{
-				context->active_scope.is_invalid = true;
+				context->active_scope.is_poisoned = true;
 				return false;
 			}
 		default:
@@ -1891,14 +1888,8 @@ SKIP_OVERLOAD:;
 
 static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 {
-	// IMPROVE
-	// convert
-	// if (!x) A(); else B();
-	// into
-	// if (x) B(); else A();
-
 	bool else_jump;
-	bool then_jump;
+	bool then_jump = false;
 	bool success;
 
 	Expr *cond = exprptr(statement->if_stmt.cond);
@@ -1911,10 +1902,15 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	Ast *else_body = else_id ? astptr(else_id) : NULL;
 	CondResult result = COND_MISSING;
 	bool is_invalid = false;
+	bool reverse = false;
 	SCOPE_OUTER_START
 
 		success = sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL, &result);
-
+		if (success && cond->expr_kind == EXPR_COND)
+		{
+			Expr **list = cond->cond_expr;
+			reverse = vec_size(list) == 1 && list[0]->expr_kind == EXPR_UNARY && list[0]->unary_expr.operator == UNARYOP_NOT;
+		}
 		if (success && !ast_ok(then))
 		{
 			SEMA_ERROR(then,
@@ -1943,7 +1939,11 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 			context->active_scope.allow_dead_code = true;
 			bool warn = SEMA_WARN(statement, "This code will never execute.");
 			sema_note_prev_at(context->active_scope.end_jump.span, "This code is preventing it from exectuting");
-			if (!warn) return success = false;
+			if (!warn)
+			{
+				success = false;
+				goto END;
+			}
 		}
 
 		SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
@@ -1968,12 +1968,12 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 END:
 		context_pop_defers_and_replace_ast(context, statement);
 
-		is_invalid = context->active_scope.is_invalid;
+		is_invalid = context->active_scope.is_poisoned;
 	SCOPE_OUTER_END;
-	if (is_invalid) context->active_scope.is_invalid = is_invalid;
+	if (is_invalid) context->active_scope.is_poisoned = is_invalid;
 	if (!success)
 	{
-		if (then_jump && sema_catch_in_cond(cond)) context->active_scope.is_invalid = true;
+		if (then_jump && sema_catch_in_cond(cond)) context->active_scope.is_poisoned = true;
 		return false;
 	}
 	if (then_jump)
@@ -1991,6 +1991,12 @@ END:
 	else if (else_jump && result == COND_FALSE)
 	{
 		SET_JUMP_END(context, statement);
+	}
+	if (reverse)
+	{
+		cond->cond_expr[0] = cond->cond_expr[0]->unary_expr.expr;
+		statement->if_stmt.else_body = statement->if_stmt.then_body;
+		statement->if_stmt.then_body = else_id;
 	}
 	return true;
 }
@@ -3126,10 +3132,10 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 
 bool sema_analyse_statement(SemaContext *context, Ast *statement)
 {
-	if (context->active_scope.is_invalid) return false;
+	if (context->active_scope.is_poisoned) return false;
 	if (statement->ast_kind == AST_POISONED) return false;
 	EndJump end_jump = context->active_scope.end_jump;
-	unsigned returns = vec_size(context->returns);
+	unsigned returns = vec_size(context->block_returns);
 	if (!sema_analyse_statement_inner(context, statement)) return ast_poison(statement);
 	if (end_jump.active)
 	{
@@ -3145,7 +3151,7 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 			}
 			// Remove it
 		}
-		vec_resize(context->returns, returns);
+		vec_resize(context->block_returns, returns);
 		statement->ast_kind = AST_NOP_STMT;
 	}
 	return true;
@@ -3268,7 +3274,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	vec_resize(context->ct_locals, 0);
 
 	// Clear returns
-	vec_resize(context->returns, 0);
+	vec_resize(context->block_returns, 0);
 	context->scope_id = 0;
 	context->continue_target = NULL;
 	context->next_target = 0;

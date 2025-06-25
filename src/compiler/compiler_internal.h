@@ -1570,7 +1570,7 @@ typedef struct DynamicScope_
 	ScopeId scope_id;
 	bool allow_dead_code : 1;
 	bool is_dead : 1;
-	bool is_invalid : 1;
+	bool is_poisoned : 1;
 	EndJump end_jump;
 	ScopeFlags flags;
 	unsigned label_start;
@@ -1739,9 +1739,7 @@ struct SemaContext_
 		Ast *yield_body;
 		BlockExit** block_exit_ref;
 		Type *expected_block_type;
-		Ast **returns;
-		// Reusable returns cache.
-		Ast **returns_cache;
+		Ast **block_returns;
 		Expr **macro_varargs;
 		Decl **macro_params;
 		bool macro_has_ensures;
