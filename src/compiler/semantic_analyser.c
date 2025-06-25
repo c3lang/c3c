@@ -75,8 +75,10 @@ void context_change_scope_for_label(SemaContext *context, DeclId label_id)
 	}
 }
 
-AstId context_get_defers(SemaContext *context, AstId defer_top, AstId defer_bottom, bool is_success)
+
+AstId context_get_defers(SemaContext *context, AstId defer_bottom, bool is_success)
 {
+	AstId defer_top = context->active_scope.defer_last;
 	AstId first = 0;
 	AstId *next = &first;
 	while (defer_bottom != defer_top)

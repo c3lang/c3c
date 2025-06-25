@@ -1706,6 +1706,12 @@ typedef struct
 	};
 } CallEnv;
 
+typedef struct JumpTarget_
+{
+	Ast *target;
+	AstId defer;
+} JumpTarget;
+
 typedef struct InliningSpan_
 {
 	SourceSpan span;
@@ -1723,14 +1729,12 @@ struct SemaContext_
 	InliningSpan *inlined_at;
 	ScopeId scope_id;
 	unsigned macro_call_depth;
-	Ast *break_target;
-	AstId break_defer;
-	Ast *continue_target;
-	AstId continue_defer;
+	// Jump tracking
+	JumpTarget break_jump;
+	JumpTarget continue_jump;
+	JumpTarget next_jump;
 	AstId block_return_defer;
-	Ast *next_target;
 	Ast *next_switch;
-	AstId next_defer;
 	struct
 	{
 		uint32_t original_inline_line;

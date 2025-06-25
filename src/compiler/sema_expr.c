@@ -8847,11 +8847,11 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 		}
 		vec_add(context->block_returns, NULL);
 		expr->rethrow_expr.in_block = context->block_exit_ref;
-		expr->rethrow_expr.cleanup = context_get_defers(context, context->active_scope.defer_last, context->block_return_defer, false);
+		expr->rethrow_expr.cleanup = context_get_defers(context, context->block_return_defer, false);
 	}
 	else
 	{
-		expr->rethrow_expr.cleanup = context_get_defers(context, context->active_scope.defer_last, 0, false);
+		expr->rethrow_expr.cleanup = context_get_defers(context, 0, false);
 		expr->rethrow_expr.in_block = NULL;
 		if (context->rtype && context->rtype->type_kind != TYPE_OPTIONAL)
 		{
