@@ -96,13 +96,18 @@ macro bool is_subtype_of($Type, $OtherType)
 }
 macro bool is_numerical($Type)
 {
-	var $kind = $Type.kindof;
-	$if $kind == TypeKind.DISTINCT:
-		return is_numerical($Type.inner);
-	$else
-		return $kind == TypeKind.SIGNED_INT || $kind == TypeKind.UNSIGNED_INT || $kind == TypeKind.FLOAT
-			|| $kind == TypeKind.VECTOR;
-	$endif
+	$switch $Type.kindof:
+		$case DISTINCT:
+		$case CONST_ENUM:
+			return is_numerical($Type.inner);
+		$case SIGNED_INT:
+		$case UNSIGNED_INT:
+		$case FLOAT:
+		$case VECTOR:
+			return true;
+		$default:
+			return false;
+	$endswitch
 }
 
 fn bool TypeKind.is_int(kind) @inline
@@ -158,7 +163,7 @@ macro bool is_unsigned($Type) @const
 
 macro typeid flat_type($Type) @const
 {
-	$if $Type.kindof == DISTINCT:
+	$if $Type.kindof == DISTINCT || $Type.kindof == CONST_ENUM:
 		return flat_type($Type.inner);
 	$else
 		return $Type.typeid;
@@ -167,7 +172,7 @@ macro typeid flat_type($Type) @const
 
 macro TypeKind flat_kind($Type) @const
 {
-	$if $Type.kindof == DISTINCT:
+	$if $Type.kindof == DISTINCT || $Type.kindof == CONST_ENUM:
 		return flat_type($Type.inner);
 	$else
 		return $Type.kindof;
@@ -191,8 +196,8 @@ macro bool is_flat_intlike($Type) @const
 		$case UNSIGNED_INT:
 			return true;
 		$case VECTOR:
-			return is_flat_intlike($Type.inner);
 		$case DISTINCT:
+		$case CONST_ENUM:
 			return is_flat_intlike($Type.inner);
 		$default:
 			return false;
@@ -246,7 +251,7 @@ macro bool is_vector($Type) @const
 
 macro typeid inner_type($Type) @const
 {
-	$if $Type.kindof == TypeKind.DISTINCT:
+	$if $Type.kindof == DISTINCT || $Type.kindof == CONST_ENUM:
 		return inner_type($Type.inner);
 	$else
 		return $Type.typeid;
@@ -302,6 +307,7 @@ macro lower_to_atomic_compatible_type($Type) @const
 		$case UNSIGNED_INT:
 	        return $Type.typeid;
 		$case DISTINCT:
+		$case CONST_ENUM:
 			return lower_to_atomic_compatible_type($Type.inner);
 		$case FLOAT:
 			$switch $Type:
@@ -375,6 +381,7 @@ enum TypeKind : char
 	FAULT,
 	ANY,
 	ENUM,
+	CONST_ENUM,
 	STRUCT,
 	UNION,
 	BITSTRUCT,

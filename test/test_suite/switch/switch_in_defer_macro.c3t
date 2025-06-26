@@ -58,7 +58,7 @@ fn void? Lexer.init(&self, InStream reader, Ident ident, Allocator using = mem)
 	{
 		String name = tok.token;
 		assert(name.len > 0 && name.len <= ushort.max);
-		trie.set(name, Token.from_ordinal(i))!;
+		trie.set(name, (Token)i)!;
 		max_token = max(max_token, (ushort)name.len);
 	}
 	foreach (tok : Comment.values)
@@ -679,7 +679,7 @@ fn void test()
 %List = type { i64, i64, %any, ptr }
 %.anon = type { %"char[]" }
 
-@"$ct.lexer_test.UintTest" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.lexer_test.UintTest" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.enum.KEYWORD1 = internal constant [9 x i8] c"KEYWORD1\00", align 1
 @.enum.KEYWORD2 = internal constant [9 x i8] c"KEYWORD2\00", align 1
 @.enum.SINGLE = internal constant [7 x i8] c"SINGLE\00", align 1
@@ -697,7 +697,7 @@ fn void test()
 @.str.5 = private unnamed_addr constant [3 x i8] c"*/\00", align 1
 @"lexer_test.Comment$end" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str.4, i64 1 }, %"char[]" { ptr @.str.5, i64 2 }], align 8
 @std.core.ascii.ASCII_LOOKUP = extern_weak constant [256 x i16], align 16
-@"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @std.core.mem.allocator.thread_allocator = extern_weak thread_local global %any, align 8
 
 ; Function Attrs:

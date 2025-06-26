@@ -300,11 +300,11 @@ fn int strcmp(char *s1, char *s2) {
 %SubStruct = type { i16, i16 }
 %PBVTest = type { double, double, i32 }
 
-@"$ct.foo.List" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@"$ct.foo.PBVTest" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 24, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
-@"$ct.foo.FunStructTest" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 64, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
-@"$ct.foo.SubStruct" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 4, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@"$ct.foo.Quad" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 24, i64 0, i64 5, [0 x i64] zeroinitializer }, align 8
+@"$ct.foo.List" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.foo.PBVTest" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
+@"$ct.foo.FunStructTest" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 64, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
+@"$ct.foo.SubStruct" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.foo.Quad" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 5, [0 x i64] zeroinitializer }, align 8
 @foo.data = local_unnamed_addr global ptr null, align 8
 @foo.listNode3 = global %List { i32 4, ptr null }, align 8
 @foo.listNode2 = global %List { i32 3, ptr @foo.listNode3 }, align 8

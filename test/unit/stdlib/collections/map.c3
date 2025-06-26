@@ -63,7 +63,7 @@ enum Foobar : inline char
     BAZ
 }
 
-enum Foobar2 : int (inline char y)
+enum Foobar2 : const inline int
 {
 	ABC = 3,
 	DEF = 5,

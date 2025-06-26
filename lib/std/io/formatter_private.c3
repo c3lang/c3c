@@ -44,6 +44,7 @@ fn uint128? int_from_any(any arg, bool *is_neg) @private
 			*is_neg = false;
 			return (uint128)(uptr)*(void**)arg.ptr;
 		case DISTINCT:
+		case CONST_ENUM:
 			return int_from_any(arg.as_inner(), is_neg);
 		default:
 			break;
@@ -94,7 +95,7 @@ fn FloatType? float_from_any(any arg) @private
 	$if env::F128_SUPPORT:
 		if (arg.type == float128.typeid) return (FloatType)*((float128*)arg.ptr);
 	$endif
-	if (arg.type.kindof == TypeKind.DISTINCT)
+	if (arg.type.kindof == DISTINCT || arg.type.kindof == CONST_ENUM)
 	{
 		return float_from_any(arg.as_inner());
 	}

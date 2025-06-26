@@ -553,6 +553,7 @@ typedef struct BuildOptions_
 	bool run_once;
 	bool suppress_run;
 	bool old_slice_copy;
+	bool old_enums;
 	int verbosity_level;
 	const char *panicfn;
 	const char *benchfn;
@@ -685,6 +686,7 @@ typedef struct
 	bool silence_deprecation;
 	bool print_stats;
 	bool old_slice_copy;
+	bool old_enums;
 	int build_threads;
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;

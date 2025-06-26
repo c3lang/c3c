@@ -2434,6 +2434,10 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 		bool is_inline = try_consume(c, TOKEN_INLINE);
 		if (is_inline)
 		{
+			if (!compiler.build.old_enums)
+			{
+				RETURN_PRINT_ERROR_HERE("Inline parameters are not allowed for enums.");
+			}
 			if (has_inline) RETURN_PRINT_ERROR_HERE("An enum cannot combine an inline value and a inline parameter.");
 			if (*inline_index > -1) RETURN_PRINT_ERROR_HERE("An enum may only have one inline parameter.");
 			*inline_index = index;
@@ -2450,11 +2454,88 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 	return true;
 }
 
+static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility visibility, bool is_single_value, bool is_const_enum)
+{
+	Decl **values = NULL;
+	while (!try_consume(c, TOKEN_RBRACE))
+	{
+		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, symstr(c), c->span);
+		if (is_const_enum) enum_const->enum_constant.is_raw = is_const_enum;
+		enum_const->visibility = visibility;
+		const char *name = enum_const->name;
+		if (!consume_const_name(c, "enum constant")) return false;
+		FOREACH(Decl *, other_constant, values)
+		{
+			if (other_constant->name == name)
+			{
+				PRINT_ERROR_AT(enum_const, "This enum constant is declared twice.");
+				SEMA_NOTE(other_constant, "The previous declaration was here.");
+				return false;
+			}
+		}
+		if (!parse_attributes_for_global(c, enum_const)) return false;
+		if (try_consume(c, TOKEN_EQ))
+		{
+			Expr **args = NULL;
+			if (is_single_value || !tok_is(c, TOKEN_LBRACE))
+			{
+				ASSIGN_EXPR_OR_RET(Expr *single, parse_constant_expr(c), false);
+				if (is_const_enum)
+				{
+					enum_const->enum_constant.value = single;
+					goto NEXT;
+				}
+				vec_add(args, single);
+			}
+			else
+			{
+				CONSUME_OR_RET(TOKEN_LBRACE, false);
+				while (1)
+				{
+					if (try_consume(c, TOKEN_RBRACE)) break;
+					ASSIGN_EXPR_OR_RET(Expr *arg, parse_expr(c), false);
+					vec_add(args, arg);
+					if (tok_is(c, TOKEN_COLON) && arg->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
+					{
+						print_error_at(extend_span_with_token(arg->span, c->span),
+									   "This looks like a designated initializer, but that style of declaration "
+									   "is not supported for declaring enum associated values.");
+						return false;
+					}
+					if (!try_consume(c, TOKEN_COMMA))
+					{
+						if (!try_consume(c, TOKEN_RBRACE))
+						{
+							PRINT_ERROR_HERE("A comma or a closing brace was expected here.");
+							return false;
+						}
+						break;
+					}
+				}
+			}
+			enum_const->enum_constant.associated = args;
+		}
+NEXT:
+		vec_add(values, enum_const);
+		// Allow trailing ','
+		if (!try_consume(c, TOKEN_COMMA))
+		{
+			if (tok_is(c, TOKEN_CONST_IDENT))
+			{
+				PRINT_ERROR_HERE("It looks like you forgot a comma before this identifier.");
+				return false;
+			}
+			EXPECT_OR_RET(TOKEN_RBRACE, false);
+		}
+	}
+	*values_ref = values;
+	return true;
+}
 
 /**
  * Parse an enum declaration (after "enum")
  *
- * enum ::= ENUM TYPE_IDENT opt_interfaces (':' type? enum_param_list?)? opt_attributes '{' enum_body '}'
+ * enum ::= ENUM TYPE_IDENT opt_interfaces (':' 'inline'? type? ('const' | enum_param_list?)?)? opt_attributes '{' enum_body '}'
  * enum_body ::= enum_def (',' enum_def)* ','?
  * enum_def ::= CONST_IDENT ('(' arg_list ')')?
  */
@@ -2462,16 +2543,25 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 {
 	advance_and_verify(c, TOKEN_ENUM);
 
-	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_ENUM);
+	const char *name = symstr(c);
+	SourceSpan span = c->span;
 	if (!consume_type_name(c, "enum")) return poisoned_decl;
-	if (!parse_interface_impls(c, &decl->interfaces)) return poisoned_decl;
-
+	TypeInfo **interfaces = NULL;
+	if (!parse_interface_impls(c, &interfaces)) return poisoned_decl;
 	TypeInfo *type = NULL;
 
 	bool val_is_inline = false;
 	ArrayIndex inline_index = -1;
+	bool is_const_enum = false;
+	Decl **param_list = NULL;
 	if (try_consume(c, TOKEN_COLON))
 	{
+		is_const_enum = try_consume(c, TOKEN_CONST);
+		if (is_const_enum && compiler.build.old_enums)
+		{
+			PRINT_ERROR_LAST("'const' enums are not available with '--use-old-enums'.");
+			return poisoned_decl;
+		}
 		if (!tok_is(c, TOKEN_LPAREN) && !tok_is(c, TOKEN_LBRACE))
 		{
 			val_is_inline = try_consume(c, TOKEN_INLINE);
@@ -2481,9 +2571,23 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 				RETURN_PRINT_ERROR_AT(poisoned_decl, type, "An enum can't have an optional type.");
 			}
 		}
-		if (!parse_enum_param_list(c, &decl->enums.parameters, val_is_inline ? NULL : &inline_index)) return poisoned_decl;
+		if (is_const_enum)
+		{
+			if (tok_is(c, TOKEN_LPAREN))
+			{
+				PRINT_ERROR_HERE("Const enums cannot have associated values.");
+				return poisoned_decl;
+			}
+		}
+		else
+		{
+			if (!parse_enum_param_list(c, &param_list, val_is_inline ? NULL : &inline_index)) return poisoned_decl;
+		}
 	}
 
+	Decl *decl = decl_new_with_type(name, span, is_const_enum ? DECL_CONST_ENUM : DECL_ENUM);
+	decl->interfaces = interfaces;
+	if (param_list) decl->enums.parameters = param_list;
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	unsigned expected_parameters = vec_size(decl->enums.parameters);
 	Visibility visibility = decl->visibility;
@@ -2491,75 +2595,9 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->span);
 	decl->enums.inline_index = (int16_t)inline_index;
-	decl->enums.inline_value = val_is_inline;
-	while (!try_consume(c, TOKEN_RBRACE))
-	{
-		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, symstr(c), c->span);
-		enum_const->visibility = visibility;
-		const char *name = enum_const->name;
-		if (!consume_const_name(c, "enum constant"))
-		{
-			return poisoned_decl;
-		}
-		FOREACH(Decl *, other_constant, decl->enums.values)
-		{
-			if (other_constant->name == name)
-			{
-				PRINT_ERROR_AT(enum_const, "This enum constant is declared twice.");
-				SEMA_NOTE(other_constant, "The previous declaration was here.");
-				decl_poison(enum_const);
-				break;
-			}
-		}
-		if (!parse_attributes_for_global(c, enum_const)) return poisoned_decl;
-		if (try_consume(c, TOKEN_EQ))
-		{
-			Expr **args = NULL;
-			if (expected_parameters == 1 || !tok_is(c, TOKEN_LBRACE))
-			{
-				ASSIGN_EXPR_OR_RET(Expr *single, parse_expr(c), poisoned_decl);
-				vec_add(args, single);
-			}
-			else
-			{
-				CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
-				while (1)
-				{
-					if (try_consume(c, TOKEN_RBRACE)) break;
-					ASSIGN_EXPR_OR_RET(Expr *arg, parse_expr(c), poisoned_decl);
-					vec_add(args, arg);
-					if (tok_is(c, TOKEN_COLON) && arg->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
-					{
-						print_error_at(extend_span_with_token(arg->span, c->span),
-									   "This looks like a designated initializer, but that style of declaration "
-									   "is not supported for declaring enum associated values.");
-						return poisoned_decl;
-					}
-					if (!try_consume(c, TOKEN_COMMA))
-					{
-						if (!try_consume(c, TOKEN_RBRACE))
-						{
-							PRINT_ERROR_HERE("A comma or a closing brace was expected here.");
-							return poisoned_decl;
-						}
-						break;
-					}
-				}
-			}
-			enum_const->enum_constant.args = args;
-		}
-		vec_add(decl->enums.values, enum_const);
-		// Allow trailing ','
-		if (!try_consume(c, TOKEN_COMMA))
-		{
-			if (tok_is(c, TOKEN_CONST_IDENT))
-			{
-				PRINT_ERROR_HERE("It looks like you forgot a comma before this identifier.");
-				return poisoned_decl;
-			}
-			EXPECT_OR_RET(TOKEN_RBRACE, poisoned_decl);
-		}
-	}
+	decl->enums.inline_value = is_const_enum ? false : val_is_inline;
+	if (is_const_enum && val_is_inline) decl->is_substruct = true;
+	if (!parse_enum_values(c, &decl->enums.values, visibility, is_const_enum || expected_parameters == 1, is_const_enum)) return poisoned_decl;
 	return decl;
 }
 

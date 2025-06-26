@@ -21,6 +21,7 @@ static LLVMMetadataRef llvm_debug_errunion_type(GenContext *c, Type *type);
 static LLVMMetadataRef llvm_debug_slice_type(GenContext *c, Type *type);
 static LLVMMetadataRef llvm_debug_any_type(GenContext *c, Type *type);
 static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetadataRef scope);
+static LLVMMetadataRef llvm_debug_raw_enum_type(GenContext *c, Type *type, LLVMMetadataRef scope);
 
 INLINE LLVMMetadataRef llvm_create_debug_location_with_inline(GenContext *c, unsigned row, unsigned col, LLVMMetadataRef scope)
 {
@@ -341,7 +342,7 @@ static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetad
 	bool is_unsigned = type_is_unsigned(enum_real_type);
 	FOREACH(Decl *, enum_constant, enums)
 	{
-		int64_t val = enum_constant->enum_constant.ordinal;
+		int64_t val = enum_constant->enum_constant.inner_ordinal;
 		LLVMMetadataRef debug_info = LLVMDIBuilderCreateEnumerator(
 				c->debug.builder,
 				enum_constant->name, strlen(enum_constant->name),
@@ -349,6 +350,49 @@ static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetad
 				is_unsigned);
 		vec_add(elements, debug_info);
 	}
+
+	unsigned row = decl->span.row;
+	LLVMMetadataRef real = LLVMDIBuilderCreateEnumerationType(c->debug.builder,
+															  scope,
+															  type->decl->name, strlen(type->decl->name),
+															  c->debug.file.debug_file, row ? row : 1, type_size(type) * 8,
+															  type_abi_alignment(type) * 8,
+															  elements, vec_size(elements),
+															  llvm_get_debug_type(c, enum_real_type));
+
+	LLVMMetadataReplaceAllUsesWith(forward, real);
+	return real;
+}
+
+static LLVMMetadataRef llvm_debug_raw_enum_type(GenContext *c, Type *type, LLVMMetadataRef scope)
+{
+	Decl *decl = type->decl;
+	// FIXME TODO
+
+	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, "temp_enum", &decl->span, scope, LLVMDIFlagZero);
+	type->backend_debug_type = forward;
+
+	Type *enum_real_type = decl->enums.type_info->type->canonical;
+
+	LLVMMetadataRef *elements = NULL;
+	Decl **enums = decl->enums.values;
+
+	bool is_unsigned = type_is_unsigned(enum_real_type);
+	/*if ()
+	FOREACH(Decl *, enum_constant, enums)
+	{
+		// TODO, support other 128
+		if (type_size(enum_real_type) > 8)
+		{
+			TODO
+		}
+		LLVMMetadataRef debug_info = LLVMDIBuilderCreateEnumerator(
+				c->debug.builder,
+				enum_constant->name, strlen(enum_constant->name),
+				enum_constant->enum_constant.const_value.low,
+				is_unsigned);
+		vec_add(elements, debug_info);
+	}*/
 
 	unsigned row = decl->span.row;
 	LLVMMetadataRef real = LLVMDIBuilderCreateEnumerationType(c->debug.builder,
@@ -616,6 +660,8 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 			return type->backend_debug_type = llvm_debug_pointer_type(c, type);
 		case TYPE_ENUM:
 			return type->backend_debug_type = llvm_debug_enum_type(c, type, scope);
+		case TYPE_CONST_ENUM:
+			return type->backend_debug_type = llvm_debug_raw_enum_type(c, type, scope);
 		case TYPE_FUNC_RAW:
 			return type->backend_debug_type = llvm_debug_func_type(c, type);
 		case TYPE_STRUCT:

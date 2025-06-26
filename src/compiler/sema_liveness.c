@@ -605,6 +605,7 @@ RETRY:
 		case DECL_DISTINCT:
 			sema_trace_type_liveness(decl->distinct->type);
 			FALLTHROUGH;
+		case DECL_CONST_ENUM:
 		case DECL_BITSTRUCT:
 		case DECL_STRUCT:
 		case DECL_UNION:
@@ -612,7 +613,10 @@ RETRY:
 			sema_trace_decl_dynamic_methods(decl);
 			return;
 		case DECL_ENUM_CONSTANT:
-			sema_trace_expr_list_liveness(decl->enum_constant.args);
+			if (!decl->enum_constant.is_raw)
+			{
+				sema_trace_expr_list_liveness(decl->enum_constant.associated);
+			}
 			return;
 		case DECL_POISONED:
 		case DECL_ATTRIBUTE:

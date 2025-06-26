@@ -22,7 +22,7 @@ fn void main()
 
 /* #expect: qnametest.ll
 
-@"$ct.qnametest.Blob" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.qnametest.Blob" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @qnametest.x = local_unnamed_addr global i32 0, align 4
 @.str = private unnamed_addr constant [12 x i8] c"printf: %s\0A\00", align 1
 @.str.1 = private unnamed_addr constant [7 x i8] c"printf\00", align 1

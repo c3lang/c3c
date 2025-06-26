@@ -139,7 +139,7 @@ bool expr_is_zero(Expr *expr)
 		case CONST_BOOL:
 			return !expr->const_expr.b;
 		case CONST_ENUM:
-			return !expr->const_expr.enum_val->enum_constant.ordinal;
+			return !expr->const_expr.enum_val->enum_constant.inner_ordinal;
 		case CONST_BYTES:
 		case CONST_STRING:
 		{
@@ -671,6 +671,9 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			expr->const_expr.fault = NULL;
 			expr->resolve_status = RESOLVE_DONE;
 			break;
+		case TYPE_CONST_ENUM:
+			expr_rewrite_const_int(expr, type, 0);
+			return;
 		case TYPE_ENUM:
 			expr->const_expr.const_kind = CONST_ENUM;
 			ASSERT(canonical->decl->resolve_status == RESOLVE_DONE);

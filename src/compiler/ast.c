@@ -67,6 +67,9 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 		case DECL_ENUM:
 			kind = TYPE_ENUM;
 			break;
+		case DECL_CONST_ENUM:
+			kind = TYPE_CONST_ENUM;
+			break;
 		case DECL_DISTINCT:
 			kind = TYPE_DISTINCT;
 			break;
@@ -115,6 +118,7 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_ALIAS: case DECL_TYPEDEF: return "an alias";
 		case DECL_DISTINCT: return "a distinct type";
 		case DECL_ENUM: return "an enum";
+		case DECL_CONST_ENUM: return "a raw enum";
 		case DECL_ENUM_CONSTANT: return "an enum value";
 		case DECL_ERASED: return "an erased declaration";
 		case DECL_FAULT: return "a fault";
@@ -365,6 +369,7 @@ bool decl_is_externally_visible(Decl *decl)
 {
 	return decl->is_external_visible || decl->visibility == VISIBLE_PUBLIC || decl->is_export;
 }
+
 
 bool decl_is_global(Decl *ident)
 {

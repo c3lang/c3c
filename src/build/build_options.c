@@ -131,6 +131,7 @@ static void usage(bool full)
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
 		print_opt("--use-old-slice-copy", "Use the old slice copy semantics.");
+		print_opt("--use-old-enums", "Use the old enum syntax and semantics.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -740,6 +741,11 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("use-old-slice-copy"))
 			{
 				options->old_slice_copy = true;
+				return;
+			}
+			if (match_longopt("use-new-enums"))
+			{
+				options->old_enums = true;
 				return;
 			}
 			if (match_longopt("test-filter"))

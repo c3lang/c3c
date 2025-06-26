@@ -478,9 +478,16 @@ typedef struct VarDecl_
 
 typedef struct
 {
-	Expr **args;
-	uint32_t ordinal;
-	DeclId parent;
+	bool is_raw;
+	union
+	{
+		struct
+		{
+			Expr **associated;
+			uint32_t inner_ordinal;
+		};
+		Expr *value;
+	};
 } EnumConstantDecl;
 
 
@@ -1162,6 +1169,7 @@ struct Expr_
 		ExprCtCall ct_call_expr;                    // 24
 		ExprIdentifierRaw ct_ident_expr;            // 24
 		Decl *decl_expr;                            // 8
+		Decl *iota_decl_expr;                       // 8
 		Expr **designated_init_list;                // 8
 		ExprDesignator designator_expr;             // 16
 		ExprNamedArgument named_argument_expr;
@@ -2710,6 +2718,7 @@ INLINE bool type_may_implement_interface(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_DISTINCT:
 		case TYPE_BITSTRUCT:
 			return true;
@@ -2808,6 +2817,7 @@ INLINE bool type_is_atomic(Type *type_flat)
 		case ALL_SIGNED_INTS:
 		case ALL_FLOATS:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_BOOL:
@@ -2904,6 +2914,11 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 	}
 }
 
+INLINE Type *enum_inner_type(Type *enum_type)
+{
+	assert(enum_type->type_kind == TYPE_ENUM || enum_type->type_kind == TYPE_CONST_ENUM);
+	return enum_type->decl->enums.type_info->type;
+}
 
 INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span)
 {
@@ -2966,9 +2981,9 @@ INLINE Type *type_flatten_for_bitstruct(Type *type)
 	{
 		type = type->decl->distinct->type;
 	}
-	if (type->type_kind == TYPE_ENUM)
+	if (type->type_kind == TYPE_ENUM || type->type_kind == TYPE_CONST_ENUM)
 	{
-		type = type->decl->enums.type_info->type->canonical;
+		type = enum_inner_type(type)->canonical;
 		goto RETRY;
 	}
 	return type;
@@ -2985,7 +3000,8 @@ static inline Type *type_base(Type *type)
 				type = type->decl->distinct->type;
 				break;
 			case TYPE_ENUM:
-				type = type->decl->enums.type_info->type;
+			case TYPE_CONST_ENUM:
+				type = enum_inner_type(type);
 				break;
 			case TYPE_OPTIONAL:
 				type = type->optional;
@@ -2998,22 +3014,40 @@ static inline Type *type_base(Type *type)
 	}
 }
 
+INLINE bool type_is_distinct_like(Type *type)
+{
+	TypeKind kind = type->type_kind;
+	return kind == TYPE_DISTINCT || kind == TYPE_CONST_ENUM;
+}
+
+static inline Type *type_inline(Type *type)
+{
+	assert(type_is_distinct_like(type));
+	return type->type_kind == TYPE_CONST_ENUM ? type->decl->enums.type_info->type : type->decl->distinct->type;
+}
+
+
 static inline Type *type_flat_distinct_inline(Type *type)
 {
-	do
+	while (1)
 	{
 		type = type->canonical;
-		if (type->type_kind != TYPE_DISTINCT) break;
-		Decl *decl = type->decl;
-		if (!decl->is_substruct) break;
-		type = decl->distinct->type;
-	} while (1);
-	return type;
+		switch (type->type_kind)
+		{
+			case TYPE_DISTINCT:
+			case TYPE_CONST_ENUM:
+				if (!type->decl->is_substruct) return type;
+				type = type_inline(type);
+				break;
+			default:
+				return type;
+		}
+	}
 }
 
 static inline Type *type_flat_distinct_enum_inline(Type *type)
 {
-	do
+	while (1)
 	{
 		type = type->canonical;
 		Decl *decl;
@@ -3021,13 +3055,18 @@ static inline Type *type_flat_distinct_enum_inline(Type *type)
 		{
 			case TYPE_DISTINCT:
 				decl = type->decl;
-				if (!decl->is_substruct) break;
+				if (!decl->is_substruct) return type;;
 				type = decl->distinct->type;
+				continue;
+			case TYPE_CONST_ENUM:
+				decl = type->decl;
+				if (!decl->is_substruct) return type;
+				type = decl->enums.type_info->type;
 				continue;
 			case TYPE_ENUM:
 				decl = type->decl;
-				if (!decl->is_substruct) break;
-				if (decl->enums.inline_value)
+				if (!decl->is_substruct) return type;
+				if (!compiler.build.old_enums || decl->enums.inline_value)
 				{
 					type = decl->enums.type_info->type;
 					continue;
@@ -3035,11 +3074,9 @@ static inline Type *type_flat_distinct_enum_inline(Type *type)
 				type = decl->enums.parameters[decl->enums.inline_index]->type;
 				continue;
 			default:
-				break;
+				return type;
 		}
-		break;
-	} while (1);
-	return type;
+	}
 }
 
 static inline Type *type_flatten_to_int(Type *type)
@@ -3057,6 +3094,9 @@ static inline Type *type_flatten_to_int(Type *type)
 				break;
 			case TYPE_BITSTRUCT:
 				type = type->decl->strukt.container_type->type;
+				break;
+			case TYPE_CONST_ENUM:
+				type = type->decl->enums.type_info->type;
 				break;
 			case TYPE_ENUM:
 				return type;
@@ -3079,6 +3119,9 @@ static inline CanonicalType *type_flatten(Type *type)
 		type = type->canonical;
 		switch (type->type_kind)
 		{
+			case TYPE_CONST_ENUM:
+				type = enum_inner_type(type);
+				break;
 			case TYPE_DISTINCT:
 				type = type->decl->distinct->type;
 				break;
@@ -3106,6 +3149,10 @@ static inline Type *type_flatten_no_export(Type *type)
 			case TYPE_DISTINCT:
 				if (type->decl->is_export) return type;
 				type = type->decl->distinct->type;
+				break;
+			case TYPE_CONST_ENUM:
+				if (type->decl->is_export) return type;
+				type = enum_inner_type(type);
 				break;
 			case TYPE_OPTIONAL:
 				type = type->optional;
@@ -3178,27 +3225,29 @@ INLINE bool type_is_number(Type *type)
 	return (kind >= TYPE_I8) && (kind <= TYPE_FLOAT_LAST);
 }
 
+
 static inline Type *type_flat_for_arithmethics(Type *type)
 {
 	while (true)
 	{
 		type = type->canonical;
+		Type *inner;
 		switch (type->type_kind)
 		{
 			case TYPE_OPTIONAL:
 				type = type->optional;
 				continue;
+			case TYPE_CONST_ENUM:
 			case TYPE_DISTINCT:
+				inner = type_inline(type);
+				if (type->decl->is_substruct)
+				{
+					type = inner;
+					continue;
+				}
 				break;
 			default:
 				return type;
-		}
-		Decl *decl = type->decl;
-		Type *inner = decl->distinct->type;
-		if (decl->is_substruct)
-		{
-			type = inner;
-			continue;
 		}
 		inner = type_flat_for_arithmethics(inner);
 		if (type_is_number_or_bool(inner)) return inner;
@@ -3551,6 +3600,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_MEMBER_SET:
 		case EXPR_RVALUE:
 		case EXPR_CT_SUBSCRIPT:
+		case EXPR_IOTA_DECL:
 			break;
 	}
 }
@@ -3881,6 +3931,19 @@ INLINE void expr_rewrite_ext_trunc(Expr *expr, Type *type, bool is_signed)
 	expr->expr_kind = EXPR_EXT_TRUNC;
 	expr->ext_trunc_expr = (ExprExtTrunc) { .inner = inner, .is_signed = is_signed };
 	expr->type = type_add_optional(type, IS_OPTIONAL(inner));
+}
+
+INLINE void expr_rewrite_const_integer(Expr *expr, Type *type, Int128 i)
+{
+	expr->expr_kind = EXPR_CONST;
+	expr->type = type;
+	expr->resolve_status = RESOLVE_DONE;
+	expr->const_expr.ixx = (Int) {
+		.i =  i,
+		.type = type_flatten_to_int(type)->type_kind
+	};
+	expr->const_expr.is_character = false;
+	expr->const_expr.const_kind = CONST_INTEGER;
 }
 
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)

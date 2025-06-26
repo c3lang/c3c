@@ -1585,7 +1585,6 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 		// If it's an enum this is handled in a special way.
 		is_enum_iterator = index_type->canonical->type_kind == TYPE_ENUM;
-
 		// We check that the index is either using integer or enums.
 		if (!type_is_integer(index_type) && !is_enum_iterator)
 		{
@@ -1710,7 +1709,7 @@ SKIP_OVERLOAD:;
 	}
 
 	// Find the actual index type -> flattening the enum
-	Type *actual_index_type = is_enum_iterator ? index_type->canonical->decl->enums.type_info->type : index_type;
+	Type *actual_index_type = is_enum_iterator ? enum_inner_type(index_type->canonical) : index_type;
 
 	// Generate the index variable
 	Decl *idx_decl = decl_new_generated_var(actual_index_type, VARDECL_LOCAL, index ? index->span : enumerator->span);
@@ -2358,8 +2357,8 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	{
 		if (is_enum)
 		{
-			uint32_t ord1 = const_expr->enum_val->enum_constant.ordinal;
-			uint32_t ord2 = to_const_expr->enum_val->enum_constant.ordinal;
+			uint32_t ord1 = const_expr->enum_val->enum_constant.inner_ordinal;
+			uint32_t ord2 = to_const_expr->enum_val->enum_constant.inner_ordinal;
 			if (ord1 > ord2)
 			{
 				sema_error_at(context, extend_span_with_token(expr->span, to_expr->span),
@@ -2435,8 +2434,8 @@ INLINE const char *create_missing_enums_in_switch_error(Ast **cases, unsigned fo
 			Expr *e = exprptr(cases[j]->case_stmt.expr);
 			Expr *e_to = exprptrzero(cases[j]->case_stmt.to_expr);
 			ASSERT_SPAN(e, expr_is_const_enum(e));
-			uint32_t ordinal_from = e->const_expr.enum_val->enum_constant.ordinal;
-			uint32_t ordinal_to = e_to ? e_to->const_expr.enum_val->enum_constant.ordinal : ordinal_from;
+			uint32_t ordinal_from = e->const_expr.enum_val->enum_constant.inner_ordinal;
+			uint32_t ordinal_to = e_to ? e_to->const_expr.enum_val->enum_constant.inner_ordinal : ordinal_from;
 			if (i >= ordinal_from && i <= ordinal_to) goto CONTINUE;
 		}
 		if (++printed != 1)
@@ -2591,6 +2590,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 			is_type = true;
 			FALLTHROUGH;
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_BOOL:
