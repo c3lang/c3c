@@ -33,7 +33,7 @@ fn void main() @TestZero
 
 %Foo = type { i32, [1020 x i8], i32, [1020 x i8] }
 
-@"$ct.test.Foo" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 2048, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 2048, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @test.f = local_unnamed_addr global %Foo zeroinitializer, align 1024
 
 define weak void @test.testme2() #0 {

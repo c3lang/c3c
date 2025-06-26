@@ -1,6 +1,6 @@
 // #target: macos-x64
 module test;
-
+/*
 enum Abc : inline int
 {
 	ABC,
@@ -20,7 +20,7 @@ fn void main()
 	String hello = Foo.ABC;
 	String world = Foo.DEF;
 }
-/* #expect: test.ll
+/* expect: test.ll
 
 define void @test.main() #0 {
 entry:

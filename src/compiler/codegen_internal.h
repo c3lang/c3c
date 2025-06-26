@@ -32,8 +32,9 @@ static inline Type *type_lowering(Type *type)
 			case TYPE_DISTINCT:
 				type = type->decl->distinct->type;
 				continue;
+			case TYPE_CONST_ENUM:
 			case TYPE_ENUM:
-				type = type->decl->enums.type_info->type;
+				type = enum_inner_type(type);
 				continue;
 			case TYPE_FUNC_PTR:
 			{

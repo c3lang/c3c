@@ -117,6 +117,7 @@ void type_append_name_to_scratch(Type *type)
 		case TYPE_TYPEDEF:
 			UNREACHABLE;
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_DISTINCT:
@@ -250,6 +251,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_WILDCARD:
 			return type->name;
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_TYPEDEF:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -342,8 +344,9 @@ RETRY:
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 			ASSERT(type->decl->enums.type_info->resolve_status == RESOLVE_DONE);
-			type = type->decl->enums.type_info->type->canonical;
+			type = enum_inner_type(type)->canonical;
 			goto RETRY;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -443,6 +446,7 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_FUNC_PTR:
 		case TYPE_FUNC_RAW:
 		case TYPE_VECTOR:
@@ -486,6 +490,7 @@ bool type_is_ordered(Type *type)
 		case TYPE_POINTER:
 		case TYPE_BOOL:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 			return true;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
@@ -528,7 +533,8 @@ bool type_is_comparable(Type *type)
 			type = type->array.base;
 			goto RETRY;
 		case TYPE_DISTINCT:
-			type = type->decl->distinct->type;
+		case TYPE_CONST_ENUM:
+			type = type_inline(type);
 			goto RETRY;
 		case TYPE_BOOL:
 		case ALL_INTS:
@@ -629,6 +635,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			}
 			return;
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -705,7 +712,8 @@ AlignSize type_abi_alignment(Type *type)
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
-			type = type->decl->enums.type_info->type->canonical;
+		case TYPE_CONST_ENUM:
+			type = enum_inner_type(type)->canonical;
 			goto RETRY;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -1191,6 +1199,7 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_FUNC_PTR:
 		case TYPE_FUNC_RAW:
 		case TYPE_STRUCT:
@@ -1457,6 +1466,7 @@ bool type_is_scalar(Type *type)
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_ANYFAULT:
 			return true;
 		case TYPE_BITSTRUCT:
@@ -1717,6 +1727,7 @@ bool type_may_have_method(Type *type)
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_BITSTRUCT:
 		case ALL_FLOATS:
 		case ALL_INTS:
@@ -1760,6 +1771,7 @@ bool type_may_have_sub_elements(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_ENUM:
 		case TYPE_BITSTRUCT:
+		case TYPE_CONST_ENUM:
 		case TYPE_INTERFACE:
 			return true;
 		default:
@@ -1892,14 +1904,14 @@ static inline Type *type_find_max_distinct_type(Type *left, Type *right)
 {
 	ASSERT(left == left->canonical && right == right->canonical);
 	ASSERT(left != right);
-	ASSERT(left->type_kind == TYPE_DISTINCT && right->type_kind == TYPE_DISTINCT);
+	ASSERT(type_is_distinct_like(left) && type_is_distinct_like(right));
 	static Type *left_types[MAX_SEARCH_DEPTH];
 	int depth = 0;
 	while (depth < MAX_SEARCH_DEPTH)
 	{
 		left_types[depth++] = left;
-		if (left->type_kind != TYPE_DISTINCT || !left->decl->is_substruct) break;
-		left = left->decl->distinct->type;
+		if (!type_is_distinct_like(left) || !left->decl->is_substruct) break;
+		left = type_inline(left);
 		if (left == right) return right;
 	}
 	if (depth == MAX_SEARCH_DEPTH)
@@ -1913,11 +1925,12 @@ static inline Type *type_find_max_distinct_type(Type *left, Type *right)
 		{
 			if (right == left_types[i]) return right;
 		}
-		if (right->type_kind != TYPE_DISTINCT || !right->decl->is_substruct) return NULL;
-		right = right->decl->distinct->type;
+		if (!type_is_distinct_like(right) || !right->decl->is_substruct) return NULL;
+		right = type_inline(right);
 		if (left == right) return right;
 	}
 }
+
 
 Type *type_find_max_type(Type *type, Type *other)
 {
@@ -1955,12 +1968,12 @@ RETRY_DISTINCT:
 		case TYPE_FLEXIBLE_ARRAY:
 			return NULL;
 		case ALL_INTS:
-			if (other->type_kind == TYPE_DISTINCT && type_underlying_is_numeric(other)) return other;
-			if (other->type_kind == TYPE_ENUM) return type_find_max_type(type, other->decl->enums.type_info->type->canonical);
+			if (type_is_distinct_like(other) && type_underlying_is_numeric(other)) return other;
+			if (other->type_kind == TYPE_ENUM) return type_find_max_type(type, enum_inner_type(other)->canonical);
 			if (other->type_kind == TYPE_VECTOR) return other;
 			return type_find_max_num_type(type, other);
 		case ALL_FLOATS:
-			if (other->type_kind == TYPE_DISTINCT && type_is_float(type_flatten(other))) return other;
+			if (type_is_distinct_like(other) && type_is_float(type_flatten(other))) return other;
 			if (other->type_kind == TYPE_VECTOR) return other;
 			return type_find_max_num_type(type, other);
 		case TYPE_ANY:
@@ -2048,7 +2061,8 @@ RETRY_DISTINCT:
 			// No implicit conversion between vectors
 			return NULL;
 		case TYPE_DISTINCT:
-			if (other->type_kind == TYPE_DISTINCT)
+		case TYPE_CONST_ENUM:
+			if (type_is_distinct_like(other))
 			{
 				return type_find_max_distinct_type(type, other);
 			}
@@ -2059,7 +2073,7 @@ RETRY_DISTINCT:
 			// Try matching with its inline type
 			if (type->decl->is_substruct)
 			{
-				type = type->decl->distinct->type;
+				type = type_inline(type);
 				goto RETRY_DISTINCT;
 			}
 			// distinct + any other type => no
@@ -2109,6 +2123,8 @@ unsigned type_get_introspection_kind(TypeKind kind)
 			return INTROSPECT_TYPE_POINTER;
 		case TYPE_ENUM:
 			return INTROSPECT_TYPE_ENUM;
+		case TYPE_CONST_ENUM:
+			return INTROSPECT_TYPE_CONST_ENUM;
 		case TYPE_FUNC_PTR:
 			return INTROSPECT_TYPE_FUNC;
 		case TYPE_STRUCT:
@@ -2167,6 +2183,7 @@ Module *type_base_module(Type *type)
 		case TYPE_FUNC_RAW:
 			return type->function.decl ? type->function.decl->unit->module : NULL;
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:

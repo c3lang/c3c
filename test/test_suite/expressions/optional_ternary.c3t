@@ -63,7 +63,7 @@ target triple = "x86_64-apple
 
 @"test.Foo$X" = linkonce constant %.fault { i64 ptrtoint (%.introspect* @"$ct.test.Foo" to i64), %"char[]" { i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.fault, i64 0, i64 0), i64 1 } }, align 8
 @.fault = internal constant [2 x i8] c"X\00", align 1
-@"$ct.test.Foo" = linkonce constant %.introspect { i8 9, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo" = linkonce constant %.introspect { i8 10, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @.zstr = internal constant [28 x i8] c"Runtime error force unwrap!\00", align 1
 @.zstr.1 = internal constant [20 x i8] c"optional_ternary.c3\00", align 1
 @.zstr.2 = internal constant [5 x i8] c"main\00", align 1

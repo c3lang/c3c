@@ -226,6 +226,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_BITSTRUCT:
 		case DECL_UNION:
 		case DECL_ENUM:
+		case DECL_CONST_ENUM:
 		case DECL_INTERFACE:
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
