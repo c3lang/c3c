@@ -201,21 +201,21 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			Decl *right_decl = right->enum_val;
 			// Non-matching cannot be compared.
 			if (right_decl->type != left_decl->type) return false;
-			int64_t right_ordinal = right->enum_val->enum_constant.ordinal;
+			int64_t right_ordinal = right->enum_val->enum_constant.inner_ordinal;
 			switch (op)
 			{
 				case BINARYOP_GT:
-					return left_decl->enum_constant.ordinal > right_ordinal;
+					return left_decl->enum_constant.inner_ordinal > right_ordinal;
 				case BINARYOP_GE:
-					return left_decl->enum_constant.ordinal >= right_ordinal;
+					return left_decl->enum_constant.inner_ordinal >= right_ordinal;
 				case BINARYOP_LT:
-					return left_decl->enum_constant.ordinal < right_ordinal;
+					return left_decl->enum_constant.inner_ordinal < right_ordinal;
 				case BINARYOP_LE:
-					return left_decl->enum_constant.ordinal <= right_ordinal;
+					return left_decl->enum_constant.inner_ordinal <= right_ordinal;
 				case BINARYOP_NE:
-					return left_decl->enum_constant.ordinal != right_ordinal;
+					return left_decl->enum_constant.inner_ordinal != right_ordinal;
 				case BINARYOP_EQ:
-					return left_decl->enum_constant.ordinal == right_ordinal;
+					return left_decl->enum_constant.inner_ordinal == right_ordinal;
 				default:
 					return false;
 			}

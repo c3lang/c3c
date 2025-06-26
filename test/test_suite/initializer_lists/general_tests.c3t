@@ -37,8 +37,8 @@ fn int test()
 %"int[]" = type { ptr, i64 }
 %"Bar[]" = type { ptr, i64 }
 
-@"$ct.general_tests.Baz" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@"$ct.general_tests.Bar" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.general_tests.Baz" = linkonce global %.introspect { i8 11, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.general_tests.Bar" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.__const = private unnamed_addr constant { i32, [4 x i8] } { i32 1, [4 x i8] undef }, align 8
 @test.foo1 = internal unnamed_addr global i32 22, align 4
 @.str = private unnamed_addr constant [7 x i8] c"Hello!\00", align 1

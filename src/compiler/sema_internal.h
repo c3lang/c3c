@@ -129,6 +129,7 @@ INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span);
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right, bool *failed_ref);
+bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl);
 
 INLINE bool sema_check_left_right_const(SemaContext *context, Expr *left, Expr *right)
 {

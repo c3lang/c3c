@@ -3,7 +3,12 @@
 ## 0.7.4 Change list
 
 ### Changes / improvements
+- Added const enums: `enum Foo : const`. Behaves like C enums but may be any type.
+- Casting to / from an enum is now possible again. No need to use `.ordinal` and `.from_ordinal`.
+- Inline associated enum values are deprecated, use `--use-old-enums` to re-enable them.
+
 ### Fixes
+
 ### Stdlib changes
 
 ## 0.7.3 Change list

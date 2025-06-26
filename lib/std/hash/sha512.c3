@@ -61,7 +61,7 @@ const ulong[80] K @local = {
 
 // See: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 //   All truncation types are simple to add onto the base SHA512 implementation at a (near) future time.
-enum HashTruncationType : uint (inline uint truncation_width, ulong[8] initial_state)
+enum HashTruncationType : uint (uint truncation_width, ulong[8] initial_state)
 {
     SHA512 = {
         512,

@@ -23,7 +23,7 @@ fn Foo getFoo(Foo f)
 %.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
 %Foo = type { i8, i8, i8 }
 
-@"$ct.test.Foo" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 3, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 3, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
 
 define i32 @test.testing() #0 {
 entry:

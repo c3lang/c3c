@@ -25,6 +25,8 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 			UNREACHABLE
 		case DECL_TYPEDEF:
 			return llvm_get_type(c, decl->type);
+		case DECL_CONST_ENUM:
+			return llvm_get_type(c, decl->enums.type_info->type);
 		case DECL_DISTINCT:
 			return llvm_get_type(c, decl->distinct->type);
 		case DECL_STRUCT:
@@ -544,7 +546,7 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 		{
 			assert(values);
 			BEValue value;
-			llvm_emit_expr_global_value(c, &value, enum_vals[i]->enum_constant.args[ai]);
+			llvm_emit_expr_global_value(c, &value, enum_vals[i]->enum_constant.associated[ai]);
 			LLVMValueRef llvm_value = llvm_load_value_store(c, &value);
 			values[i] = llvm_value;
 			if (!val_type)
@@ -619,9 +621,11 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_POINTER:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_POINTER, type->pointer, 0, NULL, false);
 		case TYPE_DISTINCT:
-			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_DISTINCT, type->decl->distinct->type, 0, NULL, false);
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_DISTINCT, type_inline(type), 0, NULL, false);
 		case TYPE_ENUM:
 			return llvm_get_introspection_for_enum(c, type);
+		case TYPE_CONST_ENUM:
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_CONST_ENUM, type_inline(type), vec_size(type->decl->enums.values), NULL, false);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return llvm_get_introspection_for_struct_union(c, type);

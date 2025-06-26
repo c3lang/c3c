@@ -62,6 +62,7 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
+static inline bool sema_analyse_raw_enum(SemaContext *context, Decl *decl, bool *erase_decl);
 
 static bool sema_check_section(SemaContext *context, Attr *attr)
 {
@@ -442,7 +443,8 @@ RETRY:;
 		case TYPE_SLICE:
 			return compiler.platform.align_pointer.align / 8;
 		case TYPE_ENUM:
-			type = type->decl->enums.type_info->type;
+		case TYPE_CONST_ENUM:
+			type = enum_inner_type(type);
 			goto RETRY;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -1021,6 +1023,7 @@ RETRY:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -1572,7 +1575,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		}
 		enum_value->type = decl->type;
 		DEBUG_LOG("* Checking enum constant %s.", enum_value->name);
-		enum_value->enum_constant.ordinal = i;
+		enum_value->enum_constant.inner_ordinal = i;
 		DEBUG_LOG("* Ordinal: %d", i);
 		ASSERT(enum_value->resolve_status == RESOLVE_NOT_DONE);
 		ASSERT(enum_value->decl_kind == DECL_ENUM_CONSTANT);
@@ -1591,12 +1594,12 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 			                  i128_to_string(value, 10, type_is_signed(flat_underlying_type), false),
 			                  type_quoted_error_string(type));
 		}
-		enum_value->enum_constant.ordinal = value.low;
+		enum_value->enum_constant.inner_ordinal = value.low;
 
 		// Update the value
 		value.low++;
 
-		Expr **args = enum_value->enum_constant.args;
+		Expr **args = enum_value->enum_constant.associated;
 		unsigned arg_count = vec_size(args);
 		if (arg_count > associated_value_count)
 		{
@@ -1621,7 +1624,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 	for (unsigned i = 0; i < enums; i++)
 	{
 		Decl *enum_value = enum_values[i];
-		Expr **args = enum_value->enum_constant.args;
+		Expr **args = enum_value->enum_constant.associated;
 		unsigned arg_count = vec_size(args);
 		if (arg_count > associated_value_count)
 		{
@@ -1651,6 +1654,115 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 ERR:
 	sema_decl_stack_restore(state);
 	return false;
+}
+
+bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl)
+{
+	Expr *value = decl->enum_constant.value;
+	if (!sema_analyse_inferred_expr(context, decl->type, value)) return decl_poison(decl);
+	if (!sema_cast_const(value))
+	{
+		SEMA_ERROR(value, "Expected an constant enum value.");
+		return decl_poison(decl);
+	}
+	if (value->type != decl->type)
+	{
+		if (!cast_implicit_binary(context, value, decl->type, NULL)) return decl_poison(decl);
+		cast_explicit_silent(context, value, decl->type);
+	}
+	return true;
+}
+static inline bool sema_analyse_raw_enum(SemaContext *context, Decl *decl, bool *erase_decl)
+{
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ENUM, erase_decl)) return decl_poison(decl);
+	if (*erase_decl) return true;
+	if (!sema_resolve_implemented_interfaces(context, decl, false)) return decl_poison(decl);
+
+	// Resolve the type of the enum.
+	if (!sema_resolve_type_info(context, decl->enums.type_info, RESOLVE_TYPE_DEFAULT)) return false;
+
+	Type *type = decl->enums.type_info->type;
+	if (!sema_resolve_type_decl(context, type)) return false;
+	Type *flat = type_flatten(type);
+	ASSERT_SPAN(decl, !type_is_optional(type) && "Already stopped when parsing.");
+
+	switch (sema_resolve_storage_type(context, type))
+	{
+		case STORAGE_ERROR:
+			return decl_poison(decl);
+		case STORAGE_NORMAL:
+			break;
+		case STORAGE_WILDCARD:
+			SEMA_ERROR(decl->enums.type_info, "No type can be inferred from the optional result.");
+			return decl_poison(decl);
+		case STORAGE_VOID:
+			SEMA_ERROR(decl->enums.type_info, "An enum may not have a void type.");
+			return decl_poison(decl);
+		case STORAGE_COMPILE_TIME:
+			SEMA_ERROR(decl->enums.type_info, "An enum may not have a compile time type.");
+			return decl_poison(decl);
+		case STORAGE_UNKNOWN:
+			SEMA_ERROR(decl->enums.type_info, "An enum may not be %s, as it has an unknown size.",
+				type_quoted_error_string(type));
+			return decl_poison(decl);
+	}
+
+	DEBUG_LOG("* Raw enum type resolved to %s.", type->name);
+
+	ASSERT_SPAN(decl, !decl->enums.parameters);
+
+	bool success = true;
+	unsigned enums = vec_size(decl->enums.values);
+
+	Decl **enum_values = decl->enums.values;
+	for (unsigned i = 0; i < enums; i++)
+	{
+		Decl *enum_value = enum_values[i];
+
+		bool erase_val = false;
+		if (!sema_analyse_attributes(context, enum_value, enum_value->attributes, ATTR_ENUM_VALUE, &erase_val)) return decl_poison(decl);
+		if (erase_val)
+		{
+			if (enums == 1)
+			{
+				RETURN_SEMA_ERROR(decl, "No enum values left in enum after @if resolution, there must be at least one.");
+			}
+			vec_erase_at(enum_values, i);
+			enums--;
+			i--;
+			continue;
+		}
+		enum_value->type = decl->type;
+		DEBUG_LOG("* Checking enum constant %s.", enum_value->name);
+		if (!enum_value->enum_constant.value)
+		{
+			if (!type_is_integer(flat))
+			{
+				RETURN_SEMA_ERROR(enum_value, "Enums with missing values must be an integer type.");
+			}
+			if (i == 0)
+			{
+				enum_value->enum_constant.value = expr_new_const_int(enum_value->span, type, 0);
+			}
+			else
+			{
+				Expr *expr = expr_new(EXPR_IOTA_DECL, enum_value->span);
+				expr->decl_expr = enum_values[i - 1];
+				enum_value->enum_constant.value = expr;
+			}
+		}
+		ASSERT(enum_value->resolve_status == RESOLVE_NOT_DONE);
+		ASSERT(enum_value->decl_kind == DECL_ENUM_CONSTANT);
+	}
+	decl->resolve_status = RESOLVE_DONE;
+	for (unsigned i = 0; i < enums; i++)
+	{
+		Decl *enum_value = enum_values[i];
+		enum_value->resolve_status = RESOLVE_RUNNING;
+		if (!sema_analyse_const_enum_constant_val(context, enum_value)) return decl_poison(decl);
+		enum_value->resolve_status = RESOLVE_DONE;
+	}
+	return success;
 }
 
 static inline bool sema_analyse_fault(SemaContext *context, Decl *decl, bool *erase_decl)
@@ -2699,6 +2811,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 				goto NOT_VALID_NAME;
 			}
 			FALLTHROUGH;
+		case TYPE_CONST_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		{
@@ -5113,6 +5226,7 @@ static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext
 	return true;
 }
 
+
 static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ALIAS, erase_decl)) return decl_poison(decl);
@@ -5184,6 +5298,7 @@ RETRY:
 			return true;
 		case TYPE_FUNC_RAW:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -5285,6 +5400,9 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			break;
 		case DECL_ENUM:
 			if (!sema_analyse_enum(context, decl, &erase_decl)) goto FAILED;
+			break;
+		case DECL_CONST_ENUM:
+			if (!sema_analyse_raw_enum(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_FAULT:
 			if (!sema_analyse_fault(context, decl, &erase_decl)) goto FAILED;

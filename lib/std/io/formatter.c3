@@ -205,6 +205,7 @@ fn usz? Formatter.out_str(&self, any arg) @private
 			}
 			self.width = 0;
 			return self.out_substr("0x")! + self.ntoa_any(arg, 16);
+		case CONST_ENUM:
 		case DISTINCT:
 			if (arg.type == String.typeid)
 			{

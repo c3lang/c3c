@@ -3486,6 +3486,7 @@ static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 		case ALL_INTS:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_FUNC_PTR:
 		case TYPE_INTERFACE:
 		case TYPE_ANY:
@@ -4772,7 +4773,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			return;
 		}
 		case CONST_ENUM:
-			llvm_value_set(be_value, llvm_const_int(c, type, expr->const_expr.enum_val->enum_constant.ordinal), type);
+			llvm_value_set(be_value, llvm_const_int(c, type, expr->const_expr.enum_val->enum_constant.inner_ordinal), type);
 			return;
 		case CONST_MEMBER:
 		case CONST_UNTYPED_LIST:
@@ -6409,10 +6410,13 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 			{
 				BEValue check;
 				LLVMBasicBlockRef exit = llvm_basic_block_new(c, "check_type_ok");
-				IntrospectType checks[8] = { INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_POINTER,
-											 INTROSPECT_TYPE_VECTOR, INTROSPECT_TYPE_ENUM,
-											 INTROSPECT_TYPE_SLICE, INTROSPECT_TYPE_DISTINCT,
-											 INTROSPECT_TYPE_OPTIONAL, INTROSPECT_TYPE_BITSTRUCT };
+				IntrospectType checks[9] = {
+					INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_POINTER,
+					INTROSPECT_TYPE_VECTOR, INTROSPECT_TYPE_ENUM,
+					INTROSPECT_TYPE_SLICE, INTROSPECT_TYPE_DISTINCT,
+					INTROSPECT_TYPE_CONST_ENUM, INTROSPECT_TYPE_BITSTRUCT,
+					INTROSPECT_TYPE_OPTIONAL,
+				};
 				for (int i = 0; i < 8; i++)
 				{
 					llvm_emit_int_comp_raw(c,

@@ -107,19 +107,20 @@ static bool x86_should_return_type_in_reg(Type *type)
 
 	switch (type->type_kind)
 	{
-		case TYPE_VECTOR:
-		case TYPE_VOID:
-		case TYPE_FUNC_RAW:
-		case TYPE_TYPEDEF:
-		case TYPE_DISTINCT:
-		case TYPE_ENUM:
-		case TYPE_TYPEID:
+		case CT_TYPES:
 		case TYPE_ANYFAULT:
 		case TYPE_BITSTRUCT:
-		case CT_TYPES:
-		case TYPE_OPTIONAL:
+		case TYPE_DISTINCT:
+		case TYPE_ENUM:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_FUNC_RAW:
 		case TYPE_INTERFACE:
+		case TYPE_OPTIONAL:
+		case TYPE_CONST_ENUM:
+		case TYPE_TYPEDEF:
+		case TYPE_TYPEID:
+		case TYPE_VECTOR:
+		case TYPE_VOID:
 			UNREACHABLE
 		case ALL_INTS:
 		case ALL_FLOATS:

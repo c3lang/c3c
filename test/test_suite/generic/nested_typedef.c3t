@@ -24,7 +24,7 @@ fn void main() {}
 
 /* #expect: test.ll
 
-@"$ct.test.Foo" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
-@"$ct.test.Foo2" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo2" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 define i32 @test.test() #0 {
 define i32 @test.test2() #0 {

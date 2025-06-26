@@ -255,6 +255,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_VAR:
 			case DECL_BITSTRUCT:
 			case DECL_INTERFACE:
+			case DECL_CONST_ENUM:
 				break;
 			case DECL_MACRO:
 			case DECL_FUNC:

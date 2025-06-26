@@ -167,7 +167,7 @@ fn usz? Socket.peek(&self, char[] bytes) @dynamic
 	return (usz)n;
 }
 
-enum SocketShutdownHow : (inline CInt native_value)
+enum SocketShutdownHow : (CInt native_value)
 {
 	RECEIVE = @select(env::WIN32, libc::SD_RECEIVE, libc::SHUT_RD),
 	SEND = @select(env::WIN32, libc::SD_SEND, libc::SHUT_WR),
@@ -176,7 +176,7 @@ enum SocketShutdownHow : (inline CInt native_value)
 
 fn void? Socket.shutdown(&self, SocketShutdownHow how)
 {
-	if (libc::shutdown(self.sock, how) < 0)
+	if (libc::shutdown(self.sock, how.native_value) < 0)
 	{
 		return os::socket_error()?;
 	}
