@@ -79,3 +79,4 @@ fn void test_sha512_million_a()
     }
     assert(sha.final() == x"e718483d0ce769644e2e42c7bc15b4638e1f98b13b2044285632a803afa973ebde0ff244877ea60a4cb0432ce577c31beb009c5c2c49aa2e4eadb217ad8cc09b");
 }
+

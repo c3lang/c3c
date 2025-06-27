@@ -84,3 +84,4 @@ fn void test_sha256_million_a()
    
     assert(sha.final() == x"CDC76E5C 9914FB92 81A1C7E2 84D73E67 F1809A48 A497200E 046D39CC C7112CD0");
 }
+

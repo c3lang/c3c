@@ -174,3 +174,4 @@ fn void sha256_transform(uint* state, char* buffer) @local {
     a = b = c = d = e = f = g = h = t1 = t2 = i = 0;
     m[:64] = buffer[:64] = 0;
 }
+
