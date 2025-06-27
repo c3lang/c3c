@@ -37,7 +37,7 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info);
 Expr* parse_constant_expr(ParseContext *c);
 
 Decl *parse_const_declaration(ParseContext *c, bool is_global, bool is_extern);
-Expr *parse_integer(ParseContext *c, Expr *left);
+Expr *parse_integer(ParseContext *c, Expr *left, SourceSpan lhs_start);
 Expr *parse_decl_or_expr(ParseContext *c);
 void recover_top_level(ParseContext *c);
 Expr *parse_cond(ParseContext *c);
@@ -78,7 +78,7 @@ bool parse_module(ParseContext *c, AstId contracts);
 bool try_consume(ParseContext *c, TokenType type);
 bool consume(ParseContext *c, TokenType type, const char *message, ...);
 bool consume_const_name(ParseContext *c, const char* type);
-Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, Precedence precedence);
+Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, SourceSpan lhs_start, Precedence precedence);
 
 INLINE const char *symstr(ParseContext *c)
 {
