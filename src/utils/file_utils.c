@@ -440,6 +440,28 @@ DONE:;
 	return lib_path;
 }
 
+void file_create_folders(const char *name)
+{
+	scratch_buffer_clear();
+	scratch_buffer_append(name);
+	char *path = scratch_buffer_to_string();
+	char *dir;
+	if (!file_namesplit(path, NULL, &dir))
+	{
+		error_exit("Failed to split %s", filename);
+	}
+	if (str_eq(dir, ".") || dir[0] == '\0') return;
+	if (!file_exists(dir)) dir_make_recursive(dir);
+	if (!file_exists(dir))
+	{
+		error_exit("Failed to create directory %s", dir);
+	}
+	if (!file_is_dir(dir))
+	{
+		error_exit("File %s is not a directory", dir);
+	}
+}
+
 char *file_get_dir(const char *full_path)
 {
 	char *dir = NULL;

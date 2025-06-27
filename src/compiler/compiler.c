@@ -676,17 +676,7 @@ void compiler_compile(void)
 			create_output_dir(compiler.build.output_dir);
 			output_exe = file_append_path(compiler.build.output_dir, output_exe);
 		}
-		char *dir_path = file_get_dir(output_exe);
-		if (dir_path && strlen(dir_path) && !file_is_dir(dir_path))
-		{
-			error_exit("Can't create '%s', the directory '%s' could not be found.", output_exe, dir_path);
-		}
-
-		if (file_is_dir(output_exe))
-		{
-			error_exit("Cannot create exe with the name '%s' - there is already a directory with that name.", output_exe);
-		}
-
+		file_create_folders(output_exe);
 		bool system_linker_available = link_libc() && compiler.platform.os != OS_TYPE_WIN32;
 		bool use_system_linker = system_linker_available && compiler.build.arch_os_target == default_target;
 		switch (compiler.build.linker_type)
@@ -786,15 +776,7 @@ void compiler_compile(void)
 			create_output_dir(compiler.build.output_dir);
 			output_static = file_append_path(compiler.build.output_dir, output_static);
 		}
-		char *dir_path = file_get_dir(output_static);
-		if (dir_path && strlen(dir_path) && !file_is_dir(dir_path))
-		{
-			error_exit("Can't create '%s', the directory '%s' could not be found.", output_static, dir_path);
-		}
-		if (file_is_dir(output_static))
-		{
-			error_exit("Cannot create a static library with the name '%s' - there is already a directory with that name.", output_exe);
-		}
+		file_create_folders(output_static);
 		if (!static_lib_linker(output_static, obj_files, output_file_count))
 		{
 			error_exit("Failed to produce static library '%s'.", output_static);
@@ -811,15 +793,7 @@ void compiler_compile(void)
 			create_output_dir(compiler.build.output_dir);
 			output_dynamic = file_append_path(compiler.build.output_dir, output_dynamic);
 		}
-		char *dir_path = file_get_dir(output_dynamic);
-		if (dir_path && strlen(dir_path) && !file_is_dir(dir_path))
-		{
-			error_exit("Can't create '%s', the directory '%s' could not be found.", output_dynamic, dir_path);
-		}
-		if (file_is_dir(output_dynamic))
-		{
-			error_exit("Cannot create a dynamic library with the name '%s' - there is already a directory with that name.", output_exe);
-		}
+		file_create_folders(output_dynamic);
 		if (!dynamic_lib_linker(output_dynamic, obj_files, output_file_count))
 		{
 			error_exit("Failed to produce dynamic library '%s'.", output_dynamic);
