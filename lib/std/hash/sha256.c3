@@ -71,7 +71,7 @@ fn void Sha256.update(&self, char[] data) {
     uint i = 0;
     uint len = data.len;
     uint buffer_pos = (uint)(self.bitcount / 8) % BLOCK_SIZE;
-    self.bitcount += (ulong)(len * 8);
+    self.bitcount += ((ulong)len * 8);
 
     while (len--) {
         self.buffer[buffer_pos++] = data[i++];
