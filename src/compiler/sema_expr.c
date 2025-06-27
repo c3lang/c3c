@@ -7515,6 +7515,8 @@ static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, 
 		}
 		else if (is_bitstruct)
 		{
+			// Avoid merging with value casts, eg (Bitstruct)1
+			if (!expr_is_const_initializer(left) || !expr_is_const_initializer(right)) goto DONE;
 			ConstInitializer *merged = sema_merge_bitstruct_const_initializers(left->const_expr.initializer,
 																			   right->const_expr.initializer, op);
 			expr->const_expr.initializer = merged;
@@ -7537,7 +7539,7 @@ static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, 
 			}
 		}
 	}
-
+DONE:
 	// 5. Assign the type
 	expr_binary_unify_failability(expr, left, right);
 	return true;
