@@ -8108,10 +8108,11 @@ RESOLVED:
 		RETURN_SEMA_ERROR(inner, error);
 	}
 
+	Type *no_optional = type_no_optional(inner->type)->canonical;
 	// 3. Get the pointer of the underlying type.
-	if (inner->type->type_kind == TYPE_FUNC_RAW)
+	if (no_optional->type_kind == TYPE_FUNC_RAW)
 	{
-		expr->type = type_get_func_ptr(inner->type);
+		expr->type = type_add_optional(type_get_func_ptr(no_optional), IS_OPTIONAL((inner)));
 		return true;
 	}
 	expr->type = type_get_ptr_recurse(inner->type);

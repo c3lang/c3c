@@ -66,6 +66,7 @@
 - Assert casting bitstruct to short/char #2237.
 - @tag didn't work with members #2236.
 - Assert comparing untyped lists #2240.
+- Fix bugs relating to optional interface addr-of #2244.
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.

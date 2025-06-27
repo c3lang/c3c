@@ -282,11 +282,8 @@ struct Type_
 	TypeKind type_kind;
 	CanonicalType *canonical;
 	const char *name;
-	union
-	{
-		Type **type_cache;
-		Type *func_ptr;
-	};
+	Type **type_cache;
+	Type *func_ptr;
 	union
 	{
 		void *backend_type;
