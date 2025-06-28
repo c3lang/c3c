@@ -78,13 +78,13 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 		switch (print_type)
 		{
 			case PRINT_TYPE_ERROR:
-				eprintf("Error|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
+				eprintf("\x1b[31;1mError\x1b[0m|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
 				return;
 			case PRINT_TYPE_NOTE:
 				// Note should not be passed on.
 				return;
 			case PRINT_TYPE_WARN:
-				eprintf("Warning|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
+				eprintf("\x1b[34;1mWarning\x1b[0m|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
 				return;
 			default:
 				UNREACHABLE
@@ -167,13 +167,13 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 		switch (print_type)
 		{
 			case PRINT_TYPE_ERROR:
-				eprintf("(%s:%d:%d) Error: %s\n\n", file->full_path, location.row, col_location, message);
+				eprintf("(%s:%d:%d) \x1b[31;1mError\x1b[0m: %s\n\n", file->full_path, location.row, col_location, message);
 				break;
 			case PRINT_TYPE_NOTE:
-				eprintf("(%s:%d:%d) Note: %s\n\n", file->full_path, location.row, col_location, message);
+				eprintf("(%s:%d:%d) \x1b[1mNote\x1b[0m: %s\n\n", file->full_path, location.row, col_location, message);
 				break;
 			case PRINT_TYPE_WARN:
-				eprintf("(%s:%d:%d) Warning: %s\n\n", file->full_path, location.row, col_location, message);
+				eprintf("(%s:%d:%d) \x1b[34;1mWarning\x1b[0m: %s\n\n", file->full_path, location.row, col_location, message);
 				break;
 			default:
 				UNREACHABLE
@@ -184,13 +184,13 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 		switch (print_type)
 		{
 			case PRINT_TYPE_ERROR:
-				eprintf("(%s:%d) Error: %s\n\n", file->full_path, location.row, message);
+				eprintf("(%s:%d) \x1b[31;1mError\x1b[0m: %s\n\n", file->full_path, location.row, message);
 				break;
 			case PRINT_TYPE_NOTE:
-				eprintf("(%s:%d) Note: %s\n\n", file->full_path, location.row, message);
+				eprintf("(%s:%d) \x1b[1mNote\x1b[0m: %s\n\n", file->full_path, location.row, message);
 				break;
 			case PRINT_TYPE_WARN:
-				eprintf("(%s:%d) Warning: %s\n\n", file->full_path, location.row, message);
+				eprintf("(%s:%d) \x1b[34;1mWarning\x1b[0m: %s\n\n", file->full_path, location.row, message);
 				break;
 			default:
 				UNREACHABLE
