@@ -2584,6 +2584,7 @@ BinaryOp binaryop_from_token(TokenType type);
 BinaryOp binaryop_assign_base_op(BinaryOp assign_binary_op);
 TokenType binaryop_to_token(BinaryOp type);
 
+bool use_ansi(void); // no idea where to put this, so its gonna be here for now
 
 // ---- static inline function implementations.
 

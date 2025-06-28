@@ -75,16 +75,32 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 	}
 	else if (compiler.build.test_output || compiler.build.benchmark_output)
 	{
+		bool ansi = use_ansi();
 		switch (print_type)
 		{
 			case PRINT_TYPE_ERROR:
-				eprintf("\x1b[31;1mError\x1b[0m|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
+				if (ansi)
+				{
+					eprintf("\x1b[31;1mError\x1b[0m|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
+				}
+				else
+				{
+					eprintf("Error|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
+				}
 				return;
 			case PRINT_TYPE_NOTE:
 				// Note should not be passed on.
 				return;
 			case PRINT_TYPE_WARN:
-				eprintf("\x1b[33;1mWarning\x1b[0m|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
+				if (ansi)
+				{
+					eprintf("\x1b[33;1mWarning\x1b[0m|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
+				}
+				else
+				{
+					eprintf("Warning|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
+
+				}
 				return;
 			default:
 				UNREACHABLE
@@ -162,18 +178,40 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 	}
 	eprintf("\n");
 
+	bool ansi = use_ansi();
 	if (col_location)
 	{
 		switch (print_type)
 		{
 			case PRINT_TYPE_ERROR:
-				eprintf("(%s:%d:%d) \x1b[31;1mError\x1b[0m: %s\n\n", file->full_path, location.row, col_location, message);
+				if (ansi)
+				{
+					eprintf("(%s:%d:%d) \x1b[31;1mError\x1b[0m: %s\n\n", file->full_path, location.row, col_location, message);
+				}
+				else 
+				{
+					eprintf("(%s:%d:%d) Error: %s\n\n", file->full_path, location.row, col_location, message);
+				}
 				break;
 			case PRINT_TYPE_NOTE:
-				eprintf("(%s:%d:%d) \x1b[1mNote\x1b[0m: %s\n\n", file->full_path, location.row, col_location, message);
+				if (ansi)
+				{
+					eprintf("(%s:%d:%d) \x1b[1mNote\x1b[0m: %s\n\n", file->full_path, location.row, col_location, message);
+				}
+				else
+				{
+					eprintf("(%s:%d:%d) Note: %s\n\n", file->full_path, location.row, col_location, message);
+				}
 				break;
 			case PRINT_TYPE_WARN:
-				eprintf("(%s:%d:%d) \x1b[33;1mWarning\x1b[0m: %s\n\n", file->full_path, location.row, col_location, message);
+				if (ansi)
+				{
+					eprintf("(%s:%d:%d) \x1b[33;1mWarning\x1b[0m: %s\n\n", file->full_path, location.row, col_location, message);
+				}
+				else 
+				{
+					eprintf("(%s:%d:%d) Warning: %s\n\n", file->full_path, location.row, col_location, message);
+				}
 				break;
 			default:
 				UNREACHABLE
@@ -184,13 +222,34 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 		switch (print_type)
 		{
 			case PRINT_TYPE_ERROR:
-				eprintf("(%s:%d) \x1b[31;1mError\x1b[0m: %s\n\n", file->full_path, location.row, message);
+				if (ansi)
+				{
+					eprintf("(%s:%d) \x1b[31;1mError\x1b[0m: %s\n\n", file->full_path, location.row, message);
+				}
+				else 
+				{
+					eprintf("(%s:%d) Error: %s\n\n", file->full_path, location.row, message);
+				}
 				break;
 			case PRINT_TYPE_NOTE:
-				eprintf("(%s:%d) \x1b[1mNote\x1b[0m: %s\n\n", file->full_path, location.row, message);
+				if (ansi) 
+				{
+					eprintf("(%s:%d) \x1b[1mNote\x1b[0m: %s\n\n", file->full_path, location.row, message);
+				} 
+				else
+				{
+					eprintf("(%s:%d) Note: %s\n\n", file->full_path, location.row, message);
+				}
 				break;
 			case PRINT_TYPE_WARN:
-				eprintf("(%s:%d) \x1b[33;1mWarning\x1b[0m: %s\n\n", file->full_path, location.row, message);
+				if (ansi)
+				{
+					eprintf("(%s:%d) \x1b[33;1mWarning\x1b[0m: %s\n\n", file->full_path, location.row, message);
+				}
+				else 
+				{
+					eprintf("(%s:%d) Warning: %s\n\n", file->full_path, location.row, message);
+				}
 				break;
 			default:
 				UNREACHABLE

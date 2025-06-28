@@ -900,16 +900,7 @@ static void setup_bool_define(const char *id, bool value)
 	setup_define(id, expr_new_const_bool(INVALID_SPAN, type_bool, value));
 }
 
-#if FETCH_AVAILABLE
-const char * vendor_fetch_single(const char* lib, const char* path) 
-{
-	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
-	const char *destination = file_append_path(path, str_printf("%s.c3l", lib));
-	const char *error = download_file("https://github.com", resource, destination);
-	return error;	
-}
-
-static bool use_ansi(void)
+bool use_ansi(void)
 {
 	switch (compiler.context.ansi)
 	{
@@ -925,6 +916,15 @@ static bool use_ansi(void)
 #else
 	return isatty(fileno(stdout));
 #endif
+}
+
+#if FETCH_AVAILABLE
+const char * vendor_fetch_single(const char* lib, const char* path) 
+{
+	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
+	const char *destination = file_append_path(path, str_printf("%s.c3l", lib));
+	const char *error = download_file("https://github.com", resource, destination);
+	return error;	
 }
 
 #define PROGRESS_BAR_LENGTH 35
