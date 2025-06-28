@@ -3031,7 +3031,7 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 	{
 		RETURN_SEMA_ERROR(key, "The ordinal should be an integer.");
 	}
-
+	bool is_const_enum = decl->decl_kind == DECL_CONST_ENUM;
 	if (sema_cast_const(key))
 	{
 		Int to_convert = key->const_expr.ixx;
@@ -3045,6 +3045,12 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 		{
 			RETURN_SEMA_ERROR(key, "The ordinal '%s' exceeds the max ordinal '%u'.", int_to_str(max, 10, false), max_enums - 1);
 		}
+		if (is_const_enum)
+		{
+			Expr *val = decl->enums.values[to_convert.i.low]->enum_constant.value;
+			*expr = *copy_expr_single(val);
+			return true;
+		}
 		expr->expr_kind = EXPR_CONST;
 		expr->const_expr = (ExprConst) {
 				.enum_val = decl->enums.values[to_convert.i.low],
@@ -3053,7 +3059,10 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 		expr->type = decl->type;
 		return true;
 	}
-
+	if (is_const_enum)
+	{
+		RETURN_SEMA_ERROR(key, ".from_ordinal on const enums is only valid with compile time constant arguments, maybe you can try using regular enums?");
+	}
 	expr->expr_kind = EXPR_ENUM_FROM_ORD;
 	expr->inner_expr = key;
 	expr->type = decl->type;
@@ -5353,13 +5362,13 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 				default:
 					return false;
 			}
-		case TYPE_PROPERTY_FROM_ORDINAL:
 		case TYPE_PROPERTY_LOOKUP:
 		case TYPE_PROPERTY_LOOKUP_FIELD:
 			return type->type_kind == TYPE_ENUM;
 		case TYPE_PROPERTY_MIN:
 		case TYPE_PROPERTY_MAX:
 			return type_is_float(type) || type_is_integer(type);
+		case TYPE_PROPERTY_FROM_ORDINAL:
 		case TYPE_PROPERTY_NAMES:
 		case TYPE_PROPERTY_VALUES:
 			return type->type_kind == TYPE_ENUM || original_type->canonical->type_kind == TYPE_CONST_ENUM;
