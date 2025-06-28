@@ -84,7 +84,7 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 				// Note should not be passed on.
 				return;
 			case PRINT_TYPE_WARN:
-				eprintf("\x1b[34;1mWarning\x1b[0m|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
+				eprintf("\x1b[33;1mWarning\x1b[0m|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
 				return;
 			default:
 				UNREACHABLE
@@ -173,7 +173,7 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 				eprintf("(%s:%d:%d) \x1b[1mNote\x1b[0m: %s\n\n", file->full_path, location.row, col_location, message);
 				break;
 			case PRINT_TYPE_WARN:
-				eprintf("(%s:%d:%d) \x1b[34;1mWarning\x1b[0m: %s\n\n", file->full_path, location.row, col_location, message);
+				eprintf("(%s:%d:%d) \x1b[33;1mWarning\x1b[0m: %s\n\n", file->full_path, location.row, col_location, message);
 				break;
 			default:
 				UNREACHABLE
@@ -190,7 +190,7 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 				eprintf("(%s:%d) \x1b[1mNote\x1b[0m: %s\n\n", file->full_path, location.row, message);
 				break;
 			case PRINT_TYPE_WARN:
-				eprintf("(%s:%d) \x1b[34;1mWarning\x1b[0m: %s\n\n", file->full_path, location.row, message);
+				eprintf("(%s:%d) \x1b[33;1mWarning\x1b[0m: %s\n\n", file->full_path, location.row, message);
 				break;
 			default:
 				UNREACHABLE
