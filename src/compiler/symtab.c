@@ -184,6 +184,7 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_PARENTOF] = KW_DEF("parentof");
 	type_property_list[TYPE_PROPERTY_QNAMEOF] = KW_DEF("qnameof");
 	type_property_list[TYPE_PROPERTY_RETURNS] = KW_DEF("returns");
+	type_property_list[TYPE_PROPERTY_SET] = KW_DEF("set");
 	type_property_list[TYPE_PROPERTY_SIZEOF] = KW_DEF("sizeof");
 	type_property_list[TYPE_PROPERTY_TAGOF] = KW_DEF("tagof");
 	type_property_list[TYPE_PROPERTY_HAS_TAGOF] = KW_DEF("has_tagof");
