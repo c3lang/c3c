@@ -65,6 +65,7 @@ const char *expr_kind_to_string(ExprKind kind)
 		case EXPR_MAKE_ANY: return "make_any";
 		case EXPR_MAKE_SLICE: return "make_slice";
 		case EXPR_MEMBER_GET: return "member_get";
+		case EXPR_MEMBER_SET: return "member_set";
 		case EXPR_NAMED_ARGUMENT: return "named_argument";
 		case EXPR_NOP: return "nop";
 		case EXPR_OPERATOR_CHARS: return "operator_chars";
@@ -223,6 +224,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_SUBSCRIPT:
 		case EXPR_MEMBER_GET:
 			return true;
+		case EXPR_MEMBER_SET:
 		case EXPR_SLICE:
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
@@ -328,6 +330,7 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_MACRO_BLOCK:
 		case EXPR_RETHROW:
 		case EXPR_MEMBER_GET:
+		case EXPR_MEMBER_SET:
 		case EXPR_BITACCESS:
 		case EXPR_COND:
 		case EXPR_PTR_ACCESS:
@@ -828,6 +831,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_TYPEINFO:
 		case EXPR_LAST_FAULT:
 		case EXPR_MEMBER_GET:
+		case EXPR_MEMBER_SET:
 			return true;
 		case EXPR_TWO:
 			return expr_is_pure(expr->two_expr.first) && expr_is_pure(expr->two_expr.last);

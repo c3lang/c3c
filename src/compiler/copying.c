@@ -335,6 +335,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			}
 			return expr;
 		case EXPR_MEMBER_GET:
+		case EXPR_MEMBER_SET:
 			fixup_decl(c, &expr->member_get_expr);
 			break;
 		case EXPR_SWIZZLE:

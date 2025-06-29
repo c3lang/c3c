@@ -28,6 +28,8 @@
 - Add `@allow_deprecated` attribute to functions to selectively allow deprecated declarations #2223.
 - Improve error message on pointer diff #2239.
 - Compile-time comparison of constant vectors. #1575.
+- $member.get supports bitstructs.
+- $member.set for setting members without the *& trick.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.
@@ -76,6 +78,7 @@
 - Add comparison with `==` for ZString types.
 - `is_array_or_slice_of_char` and `is_arrayptr_or_slice_of_char` are replaced by constant `@` variants.
 - `@pool` now has an optional `reserve` parameter, some minor changes to the temp_allocator API
+- io::struct_to_format now supports bitstructs.
 
 ## 0.7.2 Change list
 
