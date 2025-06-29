@@ -405,6 +405,16 @@ void compiler_parse(void)
 	compiler_parsing_time = bench_mark();
 }
 
+bool compiler_should_ouput_file(const char *file)
+{
+	if (!vec_size(compiler.build.emit_only)) return true;
+	FOREACH(const char *, f, compiler.build.emit_only)
+	{
+		if (str_eq(file, f)) return true;
+	}
+	return false;
+}
+
 static void create_output_dir(const char *dir)
 {
 	if (!dir) return;
@@ -669,6 +679,7 @@ void compiler_compile(void)
 		}
 		error_exit("Compilation produced no object files, maybe there was no code?");
 	}
+	if (vec_size(compiler.build.emit_only)) goto SKIP;
 	if (output_exe)
 	{
 		if (compiler.build.output_dir)
@@ -805,6 +816,7 @@ void compiler_compile(void)
 	}
 	else
 	{
+		SKIP:
 		compiler_print_bench();
 	}
 	free(obj_files);

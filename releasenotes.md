@@ -30,6 +30,7 @@
 - Compile-time comparison of constant vectors. #1575.
 - $member.get supports bitstructs.
 - $member.set for setting members without the *& trick.
+- Initial support for #1925, does not affect C compilation yet, and doesn't try to link etc. Using "--emit-only"
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.

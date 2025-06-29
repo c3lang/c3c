@@ -295,9 +295,10 @@ bool codegen_single_obj_output()
 	return compiler.build.single_module == SINGLE_MODULE_ON;
 }
 
-void codegen_setup_object_names(Module *module, const char **ir_filename, const char **asm_filename, const char **object_filename)
+void codegen_setup_object_names(Module *module, const char **base_name, const char **ir_filename, const char **asm_filename, const char **object_filename)
 {
 	const char *result = module_create_object_file_name(module);
+	*base_name = scratch_buffer_copy();
 	assert(compiler.build.object_file_dir);
 	if (codegen_single_obj_output())
 	{

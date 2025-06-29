@@ -96,6 +96,7 @@ typedef struct GenContext_
 	const char *ir_filename;
 	const char *object_filename;
 	const char *asm_filename;
+	const char *base_name;
 	LLVMTypeRef bool_type;
 	LLVMTypeRef byte_type;
 	LLVMTypeRef introspect_type;

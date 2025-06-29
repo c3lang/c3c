@@ -2418,6 +2418,7 @@ File *source_file_text_load(const char *filename, char *content);
 
 File *compile_and_invoke(const char *file, const char *args, const char *stdin_data, size_t limit);
 void compiler_parse(void);
+bool compiler_should_ouput_file(const char *file);
 void emit_json(void);
 
 void stable_init(STable *table, uint32_t initial_size);
@@ -2445,7 +2446,7 @@ const char *symtab_preset(const char *data, TokenType type);
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 void *llvm_target_machine_create(void);
-void codegen_setup_object_names(Module *module, const char **ir_filename, const char **asm_filename, const char **object_filename);
+void codegen_setup_object_names(Module *module, const char **base_name, const char **ir_filename, const char **asm_filename, const char **object_filename);
 void target_setup(BuildTarget *build_target);
 int target_alloca_addr_space();
 bool os_is_apple(OsType os_type);

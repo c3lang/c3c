@@ -158,6 +158,7 @@ static void usage(bool full)
 		print_opt("--use-stdlib=<yes|no>", "Include the standard library (default: yes).");
 		print_opt("--link-libc=<yes|no>", "Link libc other default libraries (default: yes).");
 		print_opt("--emit-stdlib=<yes|no>", "Output files for the standard library. (default: yes)");
+		print_opt("--emit-only <file>", "Output only the file matching <file>.");
 		print_opt("--panicfn <name>", "Override the panic function name.");
 		print_opt("--testfn <name>", "Override the test runner function name.");
 		print_opt("--benchfn <name>", "Override the benchmark runner function name.");
@@ -877,6 +878,12 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("emit-stdlib")))
 			{
 				options->emit_stdlib = parse_opt_select(EmitStdlib, argopt, on_off);
+				return;
+			}
+			if (match_longopt("emit-only"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --emit-only expects an output name, e.g. 'foo', to only output 'foo.o'.");
+				vec_add(options->emit_only, next_arg());
 				return;
 			}
 			if ((argopt = match_argopt("use-stdlib")))
