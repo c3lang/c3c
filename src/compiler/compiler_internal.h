@@ -2398,6 +2398,7 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info, ResolveTypeKind kind);
 bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info);
 
+bool use_ansi(void);
 void print_error_at(SourceSpan loc, const char *message, ...);
 void print_error_after(SourceSpan loc, const char *message, ...);
 void sema_note_prev_at(SourceSpan loc, const char *message, ...);
@@ -2583,7 +2584,6 @@ UnaryOp unaryop_from_token(TokenType type);
 BinaryOp binaryop_from_token(TokenType type);
 BinaryOp binaryop_assign_base_op(BinaryOp assign_binary_op);
 TokenType binaryop_to_token(BinaryOp type);
-
 
 // ---- static inline function implementations.
 
