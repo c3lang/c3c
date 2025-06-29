@@ -1,16 +1,26 @@
-module std::collections::tuple{Type1, Type2};
+module std::collections::pair{Type1, Type2};
 
-struct Tuple
+struct Pair
 {
 	Type1 first;
 	Type2 second;
 }
 
-module std::collections::triple{Type1, Type2, Type3};
+module std::collections::triplet{Type1, Type2, Type3};
 
-struct Triple
+struct Triplet
 {
 	Type1 first;
 	Type2 second;
 	Type3 third;
+}
+
+module std::collections::quartet{Type1, Type2, Type3, Type4};
+
+struct Quartet
+{
+	Type1 first;
+	Type2 second;
+	Type3 third;
+	Type4 fourth;
 }
