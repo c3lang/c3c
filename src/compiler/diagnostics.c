@@ -79,28 +79,13 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 		switch (print_type)
 		{
 			case PRINT_TYPE_ERROR:
-				if (ansi)
-				{
-					eprintf("\x1b[31;1mError\x1b[0m|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
-				}
-				else
-				{
-					eprintf("Error|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
-				}
+				eprintf("Error|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
 				return;
 			case PRINT_TYPE_NOTE:
 				// Note should not be passed on.
 				return;
 			case PRINT_TYPE_WARN:
-				if (ansi)
-				{
-					eprintf("\x1b[33;1mWarning\x1b[0m|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
-				}
-				else
-				{
-					eprintf("Warning|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
-
-				}
+				eprintf("Warning|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
 				return;
 			default:
 				UNREACHABLE
