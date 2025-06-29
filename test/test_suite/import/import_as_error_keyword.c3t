@@ -1,0 +1,7 @@
+module test;
+import std::io as fn; // #error: fn
+
+fn void main()
+{
+	fn::printn("Hello, World!"); // #error: fn
+}

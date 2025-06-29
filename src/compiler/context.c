@@ -309,7 +309,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 }
 
 
-bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive)
+bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive, const char *alias)
 {
 	DEBUG_LOG("SEMA: Add import of '%s'.", path->module);
 
@@ -321,6 +321,8 @@ bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, boo
 	import->import.path = path;
 	import->import.import_private_as_public = private_import;
 	import->import.is_non_recurse = is_non_recursive;
+	import->import.alias = alias;
+
 	vec_add(unit->imports, import);
 	if (private_import) vec_add(unit->public_imports, import);
 	DEBUG_LOG("Added import %s", path->module);

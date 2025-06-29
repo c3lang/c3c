@@ -1,0 +1,7 @@
+module test;
+import std::io as boo-far; // #error: -
+
+fn void main()
+{
+	io::printn("Hello, World!");
+}

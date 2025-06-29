@@ -1,0 +1,7 @@
+module test;
+import std::ascii as a, std::io as foo;
+
+fn void main()
+{
+	foo::printfn("Hello, World! %c", a::to_upper_m('a'));
+}
