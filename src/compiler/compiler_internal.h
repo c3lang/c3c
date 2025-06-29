@@ -282,11 +282,8 @@ struct Type_
 	TypeKind type_kind;
 	CanonicalType *canonical;
 	const char *name;
-	union
-	{
-		Type **type_cache;
-		Type *func_ptr;
-	};
+	Type **type_cache;
+	Type *func_ptr;
 	union
 	{
 		void *backend_type;
@@ -3551,6 +3548,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_DEFAULT_ARG:
 		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
+		case EXPR_MEMBER_SET:
 		case EXPR_RVALUE:
 		case EXPR_CT_SUBSCRIPT:
 			break;

@@ -631,6 +631,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_MAKE_ANY:
 		case EXPR_MAKE_SLICE:
 		case EXPR_MEMBER_GET:
+		case EXPR_MEMBER_SET:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
@@ -694,6 +695,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_DEFAULT_ARG:
 		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
+		case EXPR_MEMBER_SET:
 		case EXPR_EXT_TRUNC:
 		case EXPR_PTR_ACCESS:
 		case EXPR_VECTOR_TO_ARRAY:
@@ -3188,21 +3190,14 @@ INLINE bool sema_call_may_not_have_attributes(SemaContext *context, Expr *expr)
 	return true;
 }
 
-static inline bool sema_call_analyse_member_get(SemaContext *context, Expr *expr)
+INLINE bool sema_analyse_member_get_set_common(SemaContext *context, Decl *decl, Expr *inner, bool *is_bitrstruct)
 {
-	if (vec_size(expr->call_expr.arguments) != 1)
-	{
-		RETURN_SEMA_ERROR(expr, "Expected a single argument to '.get'.");
-	}
-	if (!sema_call_may_not_have_attributes(context, expr)) return false;
-	Expr *get = exprptr(expr->call_expr.function);
-	Expr *inner = expr->call_expr.arguments[0];
 	if (!sema_analyse_expr(context, inner)) return false;
-	Decl *decl = get->member_get_expr;
 	Type *type = type_flatten(inner->type);
-	if (type->type_kind != TYPE_STRUCT && type->type_kind != TYPE_UNION)
+	bool type_is_bitstruct = type->type_kind == TYPE_BITSTRUCT;
+	if (!type_is_bitstruct && type->type_kind != TYPE_STRUCT && type->type_kind != TYPE_UNION)
 	{
-		RETURN_SEMA_ERROR(inner, "This value does not match the member.");
+		RETURN_SEMA_ERROR(inner, "The member does not belong to the type %s.", type_quoted_error_string(inner->type));
 	}
 	Decl **members = type->decl->strukt.members;
 	ArrayIndex index = -1;
@@ -3216,9 +3211,47 @@ static inline bool sema_call_analyse_member_get(SemaContext *context, Expr *expr
 	}
 	if (index == -1)
 	{
-		RETURN_SEMA_ERROR(inner, "This value does not match the member.");
+		RETURN_SEMA_ERROR(inner, "The member does not belong to the type %s.", type_quoted_error_string(inner->type));
 	}
-	expr->expr_kind = EXPR_ACCESS_RESOLVED;
+	*is_bitrstruct = type_is_bitstruct;
+	return true;
+}
+
+static inline bool sema_call_analyse_member_set(SemaContext *context, Expr *expr)
+{
+	if (vec_size(expr->call_expr.arguments) != 2)
+	{
+		RETURN_SEMA_ERROR(expr, "Expected two arguments to '.set'.");
+	}
+	if (!sema_call_may_not_have_attributes(context, expr)) return false;
+	Expr *get = exprptr(expr->call_expr.function);
+	Decl *decl = get->member_get_expr;
+	Expr *inner = expr->call_expr.arguments[0];
+	bool is_bitstruct;
+	if (!sema_analyse_member_get_set_common(context, decl, inner, &is_bitstruct)) return false;
+	Expr *arg = expr->call_expr.arguments[1];
+	Expr *access = expr_new_expr(is_bitstruct ? EXPR_BITACCESS : EXPR_ACCESS_RESOLVED, expr);
+	access->access_resolved_expr = (ExprResolvedAccess) { .parent = inner, .ref = decl };
+	access->type = decl->type;
+	access->resolve_status = RESOLVE_DONE;
+	expr->expr_kind = EXPR_BINARY;
+	expr->binary_expr = (ExprBinary) { .left =  exprid(access), .right = exprid(arg), .operator = BINARYOP_ASSIGN };
+	return sema_expr_analyse_binary(context, NULL, expr, NULL);
+}
+
+static inline bool sema_call_analyse_member_get(SemaContext *context, Expr *expr)
+{
+	if (vec_size(expr->call_expr.arguments) != 1)
+	{
+		RETURN_SEMA_ERROR(expr, "Expected a single argument to '.get'.");
+	}
+	if (!sema_call_may_not_have_attributes(context, expr)) return false;
+	Expr *get = exprptr(expr->call_expr.function);
+	Decl *decl = get->member_get_expr;
+	Expr *inner = expr->call_expr.arguments[0];
+	bool is_bitstruct;
+	if (!sema_analyse_member_get_set_common(context, decl, inner, &is_bitstruct)) return false;
+	expr->expr_kind = is_bitstruct ? EXPR_BITACCESS : EXPR_ACCESS_RESOLVED;
 	expr->access_resolved_expr = (ExprResolvedAccess) { .parent = inner, .ref = decl };
 	expr->type = decl->type;
 	return true;
@@ -3228,19 +3261,17 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool
 	if (no_match_ref) *no_match_ref = true;
 	Expr *func_expr = exprptr(expr->call_expr.function);
 	if (!sema_analyse_expr_value(context, func_expr)) return false;
-	if (func_expr->expr_kind == EXPR_MACRO_BODY_EXPANSION)
-	{
-		return sema_call_analyse_body_expansion(context, expr);
-	}
-	if (func_expr->expr_kind == EXPR_MEMBER_GET)
-	{
-		return sema_call_analyse_member_get(context, expr);
-	}
 	bool optional = func_expr->type && IS_OPTIONAL(func_expr);
 	Decl *decl;
 	Expr *struct_var = NULL;
 	switch (func_expr->expr_kind)
 	{
+		case EXPR_MACRO_BODY_EXPANSION:
+			return sema_call_analyse_body_expansion(context, expr);
+		case EXPR_MEMBER_GET:
+			return sema_call_analyse_member_get(context, expr);
+		case EXPR_MEMBER_SET:
+			return sema_call_analyse_member_set(context, expr);
 		case EXPR_TYPECALL:
 			return sema_expr_analyse_typecall(context, expr);
 		case EXPR_BUILTIN:
@@ -4548,6 +4579,11 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 			expr->expr_kind = EXPR_TYPECALL;
 			expr->type_call_expr = (ExprTypeCall) { .type = decl, .property = type_property };
 			return true;
+		case TYPE_PROPERTY_SET:
+			expr->expr_kind = EXPR_MEMBER_SET;
+			expr->member_get_expr = decl;
+			expr->type = type_void;
+			return true;
 		case TYPE_PROPERTY_GET:
 			expr->expr_kind = EXPR_MEMBER_GET;
 			expr->member_get_expr = decl;
@@ -5082,6 +5118,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_EXTNAMEOF:
 		case TYPE_PROPERTY_FROM_ORDINAL:
 		case TYPE_PROPERTY_GET:
+		case TYPE_PROPERTY_SET:
 		case TYPE_PROPERTY_HAS_TAGOF:
 		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_IS_EQ:
@@ -5235,6 +5272,7 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 		case TYPE_PROPERTY_NONE:
 			return false;
 		case TYPE_PROPERTY_GET:
+		case TYPE_PROPERTY_SET:
 			return type == type_member;
 		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_NAN:
@@ -5390,6 +5428,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr->resolve_status = RESOLVE_DONE;
 			return true;
 		case TYPE_PROPERTY_GET:
+		case TYPE_PROPERTY_SET:
 			UNREACHABLE
 		case TYPE_PROPERTY_MEMBERSOF:
 		{
@@ -7515,6 +7554,8 @@ static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, 
 		}
 		else if (is_bitstruct)
 		{
+			// Avoid merging with value casts, eg (Bitstruct)1
+			if (!expr_is_const_initializer(left) || !expr_is_const_initializer(right)) goto DONE;
 			ConstInitializer *merged = sema_merge_bitstruct_const_initializers(left->const_expr.initializer,
 																			   right->const_expr.initializer, op);
 			expr->const_expr.initializer = merged;
@@ -7537,7 +7578,7 @@ static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, 
 			}
 		}
 	}
-
+DONE:
 	// 5. Assign the type
 	expr_binary_unify_failability(expr, left, right);
 	return true;
@@ -8108,10 +8149,11 @@ RESOLVED:
 		RETURN_SEMA_ERROR(inner, error);
 	}
 
+	Type *no_optional = type_no_optional(inner->type)->canonical;
 	// 3. Get the pointer of the underlying type.
-	if (inner->type->type_kind == TYPE_FUNC_RAW)
+	if (no_optional->type_kind == TYPE_FUNC_RAW)
 	{
-		expr->type = type_get_func_ptr(inner->type);
+		expr->type = type_add_optional(type_get_func_ptr(no_optional), IS_OPTIONAL((inner)));
 		return true;
 	}
 	expr->type = type_get_ptr_recurse(inner->type);
@@ -10090,6 +10132,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_TYPEID_INFO:
 			case EXPR_TYPECALL:
 			case EXPR_MEMBER_GET:
+			case EXPR_MEMBER_SET:
 			case EXPR_SPLAT:
 			case EXPR_EXT_TRUNC:
 			case EXPR_INT_TO_BOOL:
@@ -10442,6 +10485,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_MACRO_BODY:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_MEMBER_GET:
+		case EXPR_MEMBER_SET:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
@@ -10741,8 +10785,10 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 	if (!expr_ok(expr)) return false;
 	switch (expr->expr_kind)
 	{
+		case EXPR_MEMBER_SET:
+			RETURN_SEMA_ERROR(expr, "Expected two parameters to 'set', e.g. '$member.set(v, new_value)'.");
 		case EXPR_MEMBER_GET:
-			RETURN_SEMA_ERROR(expr, "Expected a parameter to 'get', e.g. '$member.get(value)'.");
+			RETURN_SEMA_ERROR(expr, "Expected a parameter to 'get', e.g. '$member.get(v)'.");
 		case EXPR_MACRO_BODY_EXPANSION:
 			if (!expr->body_expansion_expr.first_stmt)
 			{
@@ -10990,6 +11036,7 @@ IDENT_CHECK:;
 		case EXPR_MAKE_ANY:
 		case EXPR_MAKE_SLICE:
 		case EXPR_MEMBER_GET:
+		case EXPR_MEMBER_SET:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:

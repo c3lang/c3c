@@ -774,7 +774,12 @@ void header_gen(Module **modules, unsigned module_count)
 	{
 		filename = str_printf("%s.h", name);
 	}
+	file_create_folders(filename);
 	FILE *file = fopen(filename, "w");
+	if (!file)
+	{
+		error_exit("Failed to open header file %s", filename);
+	}
 	HeaderContext context = { .file = file, .gen_def = &table1, .gen_decl = &table2 };
 	HeaderContext *c = &context;
 	PRINTF("#include <stdint.h>\n");

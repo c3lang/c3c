@@ -162,7 +162,7 @@ static inline bool parse_asm_offset(ParseContext *c, ExprAsmArg *asm_arg)
 		PRINT_ERROR_HERE("Expected an integer value.");
 		return false;
 	}
-	Expr *offset = parse_integer(c, NULL);
+	Expr *offset = parse_integer(c, NULL, INVALID_SPAN);
 	ASSERT(expr_is_const_int(offset));
 	Int i = offset->const_expr.ixx;
 	if (i.i.high)
@@ -181,7 +181,7 @@ static inline bool parse_asm_scale(ParseContext *c, ExprAsmArg *asm_arg)
 		PRINT_ERROR_HERE("Expected an integer value.");
 		return false;
 	}
-	Expr *value = parse_integer(c, NULL);
+	Expr *value = parse_integer(c, NULL, INVALID_SPAN);
 	ASSERT(expr_is_const_int(value));
 	Int i = value->const_expr.ixx;
 	if (i.i.high)

@@ -2372,8 +2372,8 @@ static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *e
 static void llvm_emit_dynamic_method_addr(GenContext *c, BEValue *value, Expr *expr)
 {
 	llvm_emit_expr(c, value, expr->access_resolved_expr.parent);
-	llvm_emit_type_from_any(c, value);
 	llvm_value_rvalue(c, value);
+	llvm_emit_type_from_any(c, value);
 	LLVMValueRef introspect = LLVMBuildIntToPtr(c->builder, value->value, c->ptr_type, "");
 
 	Decl *dyn_fn = expr->access_resolved_expr.ref;
@@ -6983,6 +6983,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_ASM:
 		case EXPR_DESIGNATOR:
 		case EXPR_MEMBER_GET:
+		case EXPR_MEMBER_SET:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_BUILTIN:
 		case EXPR_OPERATOR_CHARS:

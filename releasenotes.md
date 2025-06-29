@@ -28,6 +28,8 @@
 - Add `@allow_deprecated` attribute to functions to selectively allow deprecated declarations #2223.
 - Improve error message on pointer diff #2239.
 - Compile-time comparison of constant vectors. #1575.
+- $member.get supports bitstructs.
+- $member.set for setting members without the *& trick.
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.
@@ -66,12 +68,17 @@
 - Assert casting bitstruct to short/char #2237.
 - @tag didn't work with members #2236.
 - Assert comparing untyped lists #2240.
+- Fix bugs relating to optional interface addr-of #2244.
+- Compiler null pointer when building a static-lib with -o somedir/... #2246
+- Segfault in the compiler when using a bitstruct constant defined using a cast with an operator #2248.
+- Default assert() message drops parens #2249.
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
 - Add comparison with `==` for ZString types.
 - `is_array_or_slice_of_char` and `is_arrayptr_or_slice_of_char` are replaced by constant `@` variants.
 - `@pool` now has an optional `reserve` parameter, some minor changes to the temp_allocator API
+- io::struct_to_format now supports bitstructs.
 - Add `String.escape`, `String.unescape` for escaping and unescaping a string.
 
 ## 0.7.2 Change list

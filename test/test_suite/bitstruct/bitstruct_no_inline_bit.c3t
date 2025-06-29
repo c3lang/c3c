@@ -1,0 +1,29 @@
+// #target: macos-x64
+module test;
+
+bitstruct BitstructFlags : uint
+{
+    bool first;
+    bool second;
+}
+const BitstructFlags B_FIRST = { true, false };
+const BitstructFlags B_FIRST2 = (BitstructFlags) 1;
+const BitstructFlags B_SECOND = { false, true };
+
+fn void main()
+{
+    BitstructFlags x = B_FIRST2 | B_SECOND;
+}
+
+/* #expect: test.ll
+
+@test.B_FIRST = local_unnamed_addr constant i32 1, align 4
+@test.B_FIRST2 = local_unnamed_addr constant i32 1, align 4
+@test.B_SECOND = local_unnamed_addr constant i32 2, align 4
+
+define void @test.main() #0 {
+entry:
+  %x = alloca i32, align 4
+  store i32 1, ptr %x, align 4
+  ret void
+}
