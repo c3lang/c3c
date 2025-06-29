@@ -1435,11 +1435,18 @@ typedef struct
 
 typedef struct
 {
-	bool is_ensure;
-	ExprId message;
-	ExprId expr;
-	Expr **args;
+    bool is_ensure;
+    ExprId message;
+    ExprId expr;
+    Expr **args;
 } AstAssertStmt;
+
+typedef struct
+{
+    bool has_prefix;
+    Expr *prefix;
+    Expr *message;
+} AstEchoStmt;
 
 
 typedef struct
@@ -1497,6 +1504,7 @@ typedef struct Ast_
 		AstAsmStmt asm_stmt;
 		const char *asm_label;
 		AstAssertStmt assert_stmt;          // 16
+        AstEchoStmt echo_stmt;
 		AstCaseStmt case_stmt;              // 32
 		AstCompoundStmt compound_stmt;      // 12
 		AstId ct_compound_stmt;
