@@ -1,4 +1,4 @@
-module std::core::test::string_escape::test @test;
+module std::core::test::string::test @test;
 
 struct EscapeTest
 {
@@ -63,23 +63,23 @@ UnescapeTest[] unescape_tests = {
     { `"\U0001F600"`, "😀", {} }, // Grinning face emoji
 
     // Error cases
-    { `"unterminated`, "", string_escape::UNTERMINATED_STRING },
-    { `unterminated"`, "", string_escape::UNTERMINATED_STRING },
-    { `"invalid\q"`, "", string_escape::INVALID_ESCAPE_SEQUENCE },
-    { `"incomplete\"`, "", string_escape::INVALID_ESCAPE_SEQUENCE },
-    { `"bad\x"`, "", string_escape::INVALID_HEX_ESCAPE },
-    { `"bad\xG1"`, "", string_escape::INVALID_HEX_ESCAPE },
-    { `"bad\u"`, "", string_escape::INVALID_UNICODE_ESCAPE },
-    { `"bad\uGGGG"`, "", string_escape::INVALID_UNICODE_ESCAPE },
-    { `"bad\U"`, "", string_escape::INVALID_UNICODE_ESCAPE },
-    { `"bad\UGGGGGGGG"`, "", string_escape::INVALID_UNICODE_ESCAPE },
+    { `"unterminated`, "", string::UNTERMINATED_STRING },
+    { `unterminated"`, "", string::UNTERMINATED_STRING },
+    { `"invalid\q"`, "", string::INVALID_ESCAPE_SEQUENCE },
+    { `"incomplete\"`, "", string::INVALID_ESCAPE_SEQUENCE },
+    { `"bad\x"`, "", string::INVALID_HEX_ESCAPE },
+    { `"bad\xG1"`, "", string::INVALID_HEX_ESCAPE },
+    { `"bad\u"`, "", string::INVALID_UNICODE_ESCAPE },
+    { `"bad\uGGGG"`, "", string::INVALID_UNICODE_ESCAPE },
+    { `"bad\U"`, "", string::INVALID_UNICODE_ESCAPE },
+    { `"bad\UGGGGGGGG"`, "", string::INVALID_UNICODE_ESCAPE },
 };
 
 fn void test_escape()
 {
     foreach (test : escape_tests)
     {
-        String result = string_escape::tescape(test.input);
+        String result = test.input.tescape();
         assert(result == test.expected_escaped,
                "escape(%s) = %s, expected %s",
                test.input, result, test.expected_escaped);
@@ -90,7 +90,7 @@ fn void test_escape_content()
 {
     foreach (test : escape_tests)
     {
-        String result = string_escape::tescape_content(test.input);
+        String result = test.input.tescape(strip_quotes: true);
         assert(result == test.expected_content_escaped,
                "escape_content(%s) = %s, expected %s",
                test.input, result, test.expected_content_escaped);
@@ -101,7 +101,7 @@ fn void test_unescape()
 {
     foreach (test : unescape_tests)
     {
-        String? result = string_escape::tunescape(test.input);
+        String? result = test.input.tunescape();
 
         if (test.expected_error)
         {
@@ -148,8 +148,8 @@ fn void test_roundtrip()
 
     foreach (original : test_strings)
     {
-        String escaped = string_escape::tescape(original);
-        String? unescaped = string_escape::tunescape(escaped);
+        String escaped = original.tescape();
+        String? unescaped = escaped.tunescape();
 
         if (try actual = unescaped)
         {
@@ -168,34 +168,34 @@ fn void test_roundtrip()
 fn void test_needs_escape()
 {
     // Characters that need escaping
-    assert(string_escape::needs_escape('"'));
-    assert(string_escape::needs_escape('\\'));
-    assert(string_escape::needs_escape('\n'));
-    assert(string_escape::needs_escape('\t'));
-    assert(string_escape::needs_escape('\r'));
-    assert(string_escape::needs_escape('\b'));
-    assert(string_escape::needs_escape('\f'));
-    assert(string_escape::needs_escape('\v'));
-    assert(string_escape::needs_escape('\0'));
-    assert(string_escape::needs_escape('\x01'));
-    assert(string_escape::needs_escape('\x1f'));
-    assert(string_escape::needs_escape('\x7f'));
+    assert(string::needs_escape('"'));
+    assert(string::needs_escape('\\'));
+    assert(string::needs_escape('\n'));
+    assert(string::needs_escape('\t'));
+    assert(string::needs_escape('\r'));
+    assert(string::needs_escape('\b'));
+    assert(string::needs_escape('\f'));
+    assert(string::needs_escape('\v'));
+    assert(string::needs_escape('\0'));
+    assert(string::needs_escape('\x01'));
+    assert(string::needs_escape('\x1f'));
+    assert(string::needs_escape('\x7f'));
 
     // Characters that don't need escaping
-    assert(!string_escape::needs_escape('a'));
-    assert(!string_escape::needs_escape('Z'));
-    assert(!string_escape::needs_escape('0'));
-    assert(!string_escape::needs_escape('9'));
-    assert(!string_escape::needs_escape(' '));
-    assert(!string_escape::needs_escape('!'));
-    assert(!string_escape::needs_escape('~'));
+    assert(!string::needs_escape('a'));
+    assert(!string::needs_escape('Z'));
+    assert(!string::needs_escape('0'));
+    assert(!string::needs_escape('9'));
+    assert(!string::needs_escape(' '));
+    assert(!string::needs_escape('!'));
+    assert(!string::needs_escape('~'));
 }
 
 fn void test_escape_len()
 {
     foreach (test : escape_tests)
     {
-        usz calculated_len = string_escape::escape_len(test.input);
+        usz calculated_len = string::escape_len(test.input);
         usz actual_len = test.expected_escaped.len;
         assert(calculated_len == actual_len,
                "escape_len(%s) = %d, but actual escaped length is %d",

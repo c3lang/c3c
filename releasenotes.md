@@ -72,6 +72,7 @@
 - Add comparison with `==` for ZString types.
 - `is_array_or_slice_of_char` and `is_arrayptr_or_slice_of_char` are replaced by constant `@` variants.
 - `@pool` now has an optional `reserve` parameter, some minor changes to the temp_allocator API
+- Add `String.escape`, `String.unescape` for escaping and unescaping a string.
 
 ## 0.7.2 Change list
 
