@@ -350,7 +350,8 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 			}
 			RETURN_SEMA_ERROR(expr, "This %sexpression lacks a concrete type.", type_is_optional(expr_type) ? "optional " : "");
 		case STORAGE_COMPILE_TIME:
-			RETURN_SEMA_ERROR(expr, "This expression has a compile time type %s.", type_quoted_error_string(expr_type));
+			type_info->type = type_untypedlist;
+			return true;
 	}
 	UNREACHABLE
 }

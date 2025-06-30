@@ -102,17 +102,6 @@ static bool sema_check_section(SemaContext *context, Attr *attr)
 static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
                                                         unsigned current_index, unsigned count)
 {
-	// We may have `void` arguments. They are not allowed in C3. Theoretically they could
-	// be permitted, but it would complicate semantics in general.
-	if (current->type && type_flatten(current->type) == type_void)
-	{
-		if (count == 1 && !current->name && current->var.kind == VARDECL_PARAM)
-		{
-			RETURN_SEMA_ERROR(current, "C-style 'foo(void)' style argument declarations are not valid, please remove 'void'.");
-		}
-		// Some languages would allow this, because it is a way to do overloading
-		RETURN_SEMA_ERROR(current, "Parameters may not be of type 'void'.");
-	}
 
 	const char *name = current->name;
 	// There is no need to do a check if it is anonymous.
@@ -1268,6 +1257,27 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
 			                                     : RESOLVE_TYPE_DEFAULT)) return decl_poison(param);
 			param->type = type_info->type;
+			switch (sema_resolve_storage_type(context, type_info->type))
+			{
+				case STORAGE_ERROR:
+					return false;
+				case STORAGE_VOID:
+					// We may have `void` arguments. They are not allowed in C3. Theoretically they could
+					// be permitted, but it would complicate semantics in general.
+					if (param_count == 1 && !param->name && param->var.kind == VARDECL_PARAM)
+					{
+						RETURN_SEMA_ERROR(param, "C-style 'foo(void)' style argument declarations are not valid, please remove 'void'.");
+					}
+					RETURN_SEMA_ERROR(type_info, "Parameters may not be of type 'void'.");
+				case STORAGE_NORMAL:
+					break;
+				case STORAGE_UNKNOWN:
+					RETURN_SEMA_ERROR(type_info, "This type is of unknown size, and cannot be a parameter. However, you can pass it by pointer.");
+				case STORAGE_WILDCARD:
+					RETURN_SEMA_ERROR(type_info, "The type cannot be determined for this parameter.");
+				case STORAGE_COMPILE_TIME:
+					RETURN_SEMA_ERROR(type_info, "A parameter may not be declared with a compile time type.");
+			}
 		}
 		if (i == format_index)
 		{
