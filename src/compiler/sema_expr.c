@@ -5310,6 +5310,13 @@ EVAL:
 
 static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, TypeProperty property)
 {
+	switch (original_type->type_kind)
+	{
+		case CT_TYPES:
+			return false;
+		default:
+			break;
+	}
 	CanonicalType *type = type_flatten(original_type);
 	switch (property)
 	{
@@ -5755,12 +5762,20 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 		}
 		if (parent->expr_kind == EXPR_TYPEINFO)
 		{
-			expr->type = type_typeid;
-			expr->expr_kind = EXPR_CONST;
-			expr->const_expr.const_kind = CONST_TYPEID;
-			expr->const_expr.typeid = parent->type_expr->type->canonical;
-			expr->resolve_status = RESOLVE_DONE;
-			return true;
+			Type *type = parent->type_expr->type->canonical;
+			switch (type->type_kind)
+			{
+				case CT_TYPES:
+					RETURN_SEMA_ERROR(parent, "You cannot take the typeid of a compile time type.");
+				default:
+					expr->type = type_typeid;
+					expr->expr_kind = EXPR_CONST;
+					expr->const_expr.const_kind = CONST_TYPEID;
+					expr->const_expr.typeid = parent->type_expr->type->canonical;
+					expr->resolve_status = RESOLVE_DONE;
+					return true;
+			}
+			UNREACHABLE
 		}
 		if (expr_is_const_member(parent))
 		{
