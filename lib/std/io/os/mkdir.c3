@@ -7,9 +7,11 @@ import std::os::posix;
 
 macro bool? native_mkdir(Path path, MkdirPermissions permissions)
 {
+	@pool()
+	{
 	$switch:
 		$case env::POSIX:
-			if (!posix::mkdir(path.as_zstr(), permissions == NORMAL ? 0o777 : 0o700)) return true;
+			if (!posix::mkdir(path.str_view().zstr_tcopy(), permissions == NORMAL ? 0o777 : 0o700)) return true;
 			switch (libc::errno())
 			{
 				case errno::EACCES:
@@ -23,11 +25,11 @@ macro bool? native_mkdir(Path path, MkdirPermissions permissions)
 				case errno::EEXIST: return false;
 				case errno::ELOOP: return io::SYMLINK_FAILED?;
 				case errno::ENOTDIR: return io::FILE_NOT_FOUND?;
-				default: return io::GENERAL_ERROR?;
+				case errno::ENOENT: return io::PARENT_DIR_MISSING?;
+				default:
+					return io::GENERAL_ERROR?;
 			}
 		$case env::WIN32:
-			@pool()
-			{
 				// TODO security attributes
 				if (win32::createDirectoryW(path.str_view().to_temp_utf16()!!, null)) return true;
 				switch (win32::getLastError())
@@ -43,8 +45,8 @@ macro bool? native_mkdir(Path path, MkdirPermissions permissions)
 					default:
 						return io::GENERAL_ERROR?;
 				}
-			};
 		$default:
 			return io::UNSUPPORTED_OPERATION?;
 	$endswitch
+	};
 }
