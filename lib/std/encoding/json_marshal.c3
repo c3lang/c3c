@@ -20,16 +20,16 @@ faultdef UNSUPPORTED_TYPE;
 macro String? marshal(value)
 {
     var $Type = $typeof(value);
-    
+
     // Only handle structs
     $if $Type.kindof != STRUCT:
         return UNSUPPORTED_TYPE?;
     $endif
-    
+
     DString result = dstring::temp();
-    
+
     result.append_char('{');
-    
+
     var $first = true;
     $foreach $member : $Type.membersof:
         $if $member.nameof != "":
@@ -37,59 +37,22 @@ macro String? marshal(value)
                 result.append_char(',');
             $endif
             $first = false;
-            
+
             // Add field name (always quoted)
             result.append_char('"');
             result.append($member.nameof);
             result.append(`":`);
-            
-            // Add field value based on type
-            var $FieldType = $member.typeid;
-            $switch $FieldType.kindof:
-                $case SIGNED_INT:
-                $case UNSIGNED_INT:
-                    // Integer field
-                    result.appendf("%d", $member.get(value));
-                $case FLOAT:
-                    // Float field
-                    result.appendf("%g", $member.get(value));
-                $case BOOL:
-                    // Boolean field
-                    result.append($member.get(value) ? "true" : "false");
-                $case ENUM:
-                    // Enum field - marshal as string name
-                    @pool()
-                    {
-                        String? enum_result = marshal_enum($member.get(value));
-                        if (catch err = enum_result) return err?;
-                        result.append(enum_result);
-                    };
-                $case STRUCT:
-                    // Nested struct field - recursively marshal
-                    @pool()
-                    {
-                        String? nested_result = marshal($member.get(value));
-                        if (catch err = nested_result) return err?;
-                        result.append(nested_result);
-                    };
-                $case ARRAY:
-                $case SLICE:
-                    // Array field - marshal as array
-                    @pool()
-                    {
-                        String? array_result = marshal_array($member.get(value));
-                        if (catch err = array_result) return err?;
-                        result.append(array_result);
-                    };
-                $default:
-                    $if $FieldType.typeid == String.typeid:
-                        // String field - use the string escape functionality
-                        result.append($member.get(value).tescape(false));
-                    $endif
-            $endswitch
+
+            // Add field value using common marshaling logic
+            @pool()
+            {
+                String? field_result = marshal_value($member.get(value));
+                if (catch err = field_result) return err?;
+                result.append(field_result);
+            };
         $endif
     $endforeach
-    
+
     result.append_char('}');
     return result.str_view();
 }
@@ -102,10 +65,13 @@ macro String? marshal(value)
 macro String? marshal_value(value)
 {
     var $Type = $typeof(value);
-    
+
     $switch $Type.kindof:
         $case STRUCT:
             return marshal(value);
+        $case ARRAY:
+        $case SLICE:
+            return marshal_array(value);
         $case SIGNED_INT:
         $case UNSIGNED_INT:
             return string::tformat("%d", value);
@@ -130,46 +96,23 @@ macro String? marshal_value(value)
  */
 macro String? marshal_array(array)
 {
-    var $Type = $typeof(array);
-    var $ElementType = $Type.inner;
-    
     DString result = dstring::temp();
-    
+
     result.append_char('[');
-    
+
     foreach (i, element : array)
     {
         if (i > 0) result.append_char(',');
-        
-        $switch $ElementType.kindof:
-            $case SIGNED_INT:
-            $case UNSIGNED_INT:
-                result.appendf("%d", element);
-            $case FLOAT:
-                result.appendf("%g", element);
-            $case BOOL:
-                result.append(element ? "true" : "false");
-            $case ENUM:
-                @pool()
-                {
-                    String? enum_result = marshal_enum(element);
-                    if (catch err = enum_result) return err?;
-                    result.append(enum_result);
-                };
-            $case STRUCT:
-                @pool()
-                {
-                    String? nested_result = marshal(element);
-                    if (catch err = nested_result) return err?;
-                    result.append(nested_result);
-                };
-            $default:
-                $if $ElementType.typeid == String.typeid:
-                    result.append(element.tescape(false));
-                $endif
-        $endswitch
+
+        // Use common marshaling logic for each element
+        @pool()
+        {
+            String? element_result = marshal_value(element);
+            if (catch err = element_result) return err?;
+            result.append(element_result);
+        };
     }
-    
+
     result.append_char(']');
     return result.str_view();
 }
