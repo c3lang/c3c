@@ -744,7 +744,7 @@ static void parse_option(BuildOptions *options)
 				options->old_slice_copy = true;
 				return;
 			}
-			if (match_longopt("use-new-enums"))
+			if (match_longopt("use-old-enums"))
 			{
 				options->old_enums = true;
 				return;
