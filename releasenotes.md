@@ -108,6 +108,7 @@
 - Add deprecation for `@param foo "abc"`.
 - Add `--header-output` and `header-output` options for controlling header output folder.
 - Generic faults is disallowed.
+- Detect when a slice on the stack is accidentally returned from a function.
 
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115

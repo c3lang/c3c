@@ -600,6 +600,13 @@ INLINE bool sema_check_not_stack_variable_escape(SemaContext *context, Expr *exp
 	Expr *outer = expr;
 	expr = sema_dive_into_expression(expr);
 	bool allow_pointer = false;
+	if (expr_is_const_slice(expr) && expr->const_expr.slice_init)
+	{
+		RETURN_SEMA_ERROR(outer, "A slice literal is backed by a stack allocated array which will be invalid once the function returns. "
+						  "However, you can place the literal in a global or 'static' variable and safely return that value as long "
+		                  "as the caller of the function won't modify the slice.");
+
+	}
 	// We only want && and &
 	if (expr->expr_kind == EXPR_SUBSCRIPT_ADDR)
 	{
