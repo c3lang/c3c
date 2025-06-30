@@ -111,6 +111,27 @@ struct Process
     int pid;
 }
 
+struct StatusInfo
+{
+    Status status;
+    Priority priority;
+}
+
+struct ArrayStruct
+{
+    String name;
+    int[3] fixed_numbers;
+    String[] names;
+    bool[] flags;
+}
+
+struct SliceStruct
+{
+    String title;
+    int[] numbers;
+    Person[] people;
+}
+
 fn void test_primitive_marshaling() @test
 {
     // Test integers
@@ -541,3 +562,177 @@ fn void test_struct_with_nested_arrays() @test
     assert(json.starts_with("{"));
     assert(json.ends_with("}"));
 }
+
+// ===== UNMARSHAL TESTS =====
+
+fn void test_simple_struct_unmarshaling() @test
+{
+    String json_str = `{"name":"John Doe","age":30,"is_active":true,"height":5.9,"status":"ACTIVE"}`;
+
+    Person? result = json::unmarshal(Person, json_str, mem);
+    Person person = result!!;
+
+    assert(person.name == "John Doe");
+    assert(person.age == 30);
+    assert(person.is_active == true);
+    assert(person.height == 5.9);
+    assert(person.status == Status.ACTIVE);
+}
+
+fn void test_roundtrip_marshal_unmarshal() @test
+{
+    // Create original struct
+    Person original = {
+        .name = "Alice Smith",
+        .age = 25,
+        .is_active = false,
+        .height = 5.6,
+        .status = Status.INACTIVE
+    };
+
+    // Marshal to JSON
+    String? marshal_result = json::marshal(original);
+    String json = marshal_result!!;
+
+    // Unmarshal back to struct
+    Person? unmarshal_result = json::unmarshal(Person, json, mem);
+    Person roundtrip = unmarshal_result!!;
+
+    // Verify they match
+    assert(roundtrip.name == original.name);
+    assert(roundtrip.age == original.age);
+    assert(roundtrip.is_active == original.is_active);
+    assert(roundtrip.height == original.height);
+    assert(roundtrip.status == original.status);
+}
+
+fn void test_nested_struct_unmarshaling() @test
+{
+    String json_str = `{"name":"Tech Corp","headquarters":{"street":"123 Main St","city":"New York","zip_code":10001},"employee_count":500}`;
+
+    Company? result = json::unmarshal(Company, json_str, mem);
+    Company company = result!!;
+
+    assert(company.name == "Tech Corp");
+    assert(company.headquarters.street == "123 Main St");
+    assert(company.headquarters.city == "New York");
+    assert(company.headquarters.zip_code == 10001);
+    assert(company.employee_count == 500);
+}
+
+fn void test_missing_fields_unmarshaling() @test
+{
+    // Test with missing optional fields - should use default values
+    String json_str = `{"name":"Partial Person","age":25}`;
+
+    Person? result = json::unmarshal(Person, json_str, mem);
+    Person person = result!!;
+
+    assert(person.name == "Partial Person");
+    assert(person.age == 25);
+    // Missing fields should have default values
+    assert(person.is_active == false);  // default bool value
+    assert(person.height == 0.0);       // default float value
+    assert(person.status == Status.ACTIVE); // default enum value (first one)
+}
+
+fn void test_array_unmarshaling() @test
+{
+    String json_str = `{"name":"Array Test","fixed_numbers":[1,2,3],"names":["Alice","Bob","Charlie"],"flags":[true,false,true]}`;
+
+    ArrayStruct? result = json::unmarshal(ArrayStruct, json_str, mem);
+    ArrayStruct arr_struct = result!!;
+
+    assert(arr_struct.name == "Array Test");
+
+    // Test fixed array
+    assert(arr_struct.fixed_numbers[0] == 1);
+    assert(arr_struct.fixed_numbers[1] == 2);
+    assert(arr_struct.fixed_numbers[2] == 3);
+
+    // Test string slice
+    assert(arr_struct.names.len == 3);
+    assert(arr_struct.names[0] == "Alice");
+    assert(arr_struct.names[1] == "Bob");
+    assert(arr_struct.names[2] == "Charlie");
+
+    // Test bool slice
+    assert(arr_struct.flags.len == 3);
+    assert(arr_struct.flags[0] == true);
+    assert(arr_struct.flags[1] == false);
+    assert(arr_struct.flags[2] == true);
+}
+
+fn void test_slice_with_structs_unmarshaling() @test
+{
+    String json_str = `{"title":"People List","numbers":[10,20,30],"people":[{"name":"John","age":30,"is_active":true,"height":5.9,"status":"ACTIVE"},{"name":"Jane","age":25,"is_active":false,"height":5.5,"status":"INACTIVE"}]}`;
+
+    SliceStruct? result = json::unmarshal(SliceStruct, json_str, mem);
+    SliceStruct slice_struct = result!!;
+
+    assert(slice_struct.title == "People List");
+
+    // Test int slice
+    assert(slice_struct.numbers.len == 3);
+    assert(slice_struct.numbers[0] == 10);
+    assert(slice_struct.numbers[1] == 20);
+    assert(slice_struct.numbers[2] == 30);
+
+    // Test struct slice
+    assert(slice_struct.people.len == 2);
+
+    assert(slice_struct.people[0].name == "John");
+    assert(slice_struct.people[0].age == 30);
+    assert(slice_struct.people[0].is_active == true);
+    assert(slice_struct.people[0].height == 5.9);
+    assert(slice_struct.people[0].status == Status.ACTIVE);
+
+    assert(slice_struct.people[1].name == "Jane");
+    assert(slice_struct.people[1].age == 25);
+    assert(slice_struct.people[1].is_active == false);
+    assert(slice_struct.people[1].height == 5.5);
+    assert(slice_struct.people[1].status == Status.INACTIVE);
+}
+
+fn void test_array_roundtrip() @test
+{
+    // Create original struct with arrays
+    ArrayStruct original = {
+        .name = "Test Arrays",
+        .fixed_numbers = {100, 200, 300},
+        .names = {"First", "Second", "Third"},
+        .flags = {false, true, false}
+    };
+
+    // Marshal to JSON
+    String? marshal_result = json::marshal(original);
+    String json = marshal_result!!;
+
+    // Unmarshal back to struct
+    ArrayStruct? unmarshal_result = json::unmarshal(ArrayStruct, json, mem);
+    ArrayStruct roundtrip = unmarshal_result!!;
+
+    // Verify they match
+    assert(roundtrip.name == original.name);
+
+    // Check fixed array
+    assert(roundtrip.fixed_numbers[0] == original.fixed_numbers[0]);
+    assert(roundtrip.fixed_numbers[1] == original.fixed_numbers[1]);
+    assert(roundtrip.fixed_numbers[2] == original.fixed_numbers[2]);
+
+    // Check string slice
+    assert(roundtrip.names.len == original.names.len);
+    assert(roundtrip.names[0] == original.names[0]);
+    assert(roundtrip.names[1] == original.names[1]);
+    assert(roundtrip.names[2] == original.names[2]);
+
+    // Check bool slice
+    assert(roundtrip.flags.len == original.flags.len);
+    assert(roundtrip.flags[0] == original.flags[0]);
+    assert(roundtrip.flags[1] == original.flags[1]);
+    assert(roundtrip.flags[2] == original.flags[2]);
+}
+
+
+
+
