@@ -9,6 +9,7 @@
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
+- Hex string formatter check incorrectly rejected slices.
 
 ### Stdlib changes
 

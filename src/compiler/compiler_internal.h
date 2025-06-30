@@ -3164,10 +3164,10 @@ static inline Type *type_flatten_no_export(Type *type)
 	}
 }
 
-static inline bool type_flat_is_char_array(Type *type)
+static inline bool type_flat_is_char_array_slice(Type *type)
 {
 	type = type_flatten(type);
-	if (type->type_kind != TYPE_ARRAY) return false;
+	if (type->type_kind != TYPE_ARRAY && type->type_kind != TYPE_SLICE) return false;
 	switch (type->array.base->type_kind)
 	{
 		case TYPE_I8:
@@ -3177,6 +3177,7 @@ static inline bool type_flat_is_char_array(Type *type)
 			return false;
 	}
 }
+
 
 INLINE Type *type_vector_type(Type *type)
 {
