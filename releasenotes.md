@@ -8,6 +8,7 @@
 - Inline associated enum values are deprecated, use `--use-old-enums` to re-enable them.
 
 ### Fixes
+- mkdir/rmdir would not work properly with substring paths on non-windows platforms.
 
 ### Stdlib changes
 

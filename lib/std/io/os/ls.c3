@@ -5,7 +5,11 @@ fn PathList? native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 {
 	PathList list;
 	list.init(allocator);
-	DIRPtr directory = posix::opendir(dir.str_view() ? dir.as_zstr() : (ZString)".");
+	DIRPtr directory @noinit;
+	@pool()
+	{
+		directory = posix::opendir(dir.str_view() ? dir.str_view().zstr_tcopy() : (ZString)".");
+	};
 	defer if (directory) posix::closedir(directory);
 	if (!directory) return (path::is_dir(dir) ? io::CANNOT_READ_DIR : io::FILE_NOT_DIR)?;
 	Posix_dirent* entry;
