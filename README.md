@@ -141,7 +141,7 @@ fn void main()
 
 ### Current status
 
-The current stable version of the compiler is **version 0.7.2**.
+The current stable version of the compiler is **version 0.7.3**.
 
 The upcoming 0.7.x releases will focus on expanding the standard library,
 fixing bugs and improving compile time analysis. 
