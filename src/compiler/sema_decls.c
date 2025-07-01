@@ -923,8 +923,13 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 	{
 		RETRY:;
 		Decl *method = functions[i];
+		if (method->name == kw_ptr || method->name == kw_type)
+		{
+			RETURN_SEMA_ERROR(method, "The method name '%s' would shadow the built-in property '.%s', "
+							 "please select a different name.", method->name, method->name);
+		}
 		// The method might have been resolved earlier, if so we either exit or go to the next.
-		// This might happen for example if it was resolved using $checks
+		// This might happen for example if it was resolved using $defined
 		if (method->resolve_status == RESOLVE_DONE)
 		{
 			if (!decl_ok(method)) return false;
