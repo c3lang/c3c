@@ -7,6 +7,7 @@
 - Casting to / from an enum is now possible again. No need to use `.ordinal` and `.from_ordinal`.
 - Inline associated enum values are deprecated, use `--use-old-enums` to re-enable them.
 - `$typeof` may return a compile time type.
+- Improved error messages on missing qualifier on enum value. #2260
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.

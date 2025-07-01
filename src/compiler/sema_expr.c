@@ -1110,6 +1110,26 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	// Rerun if we can't do inference.
 	if (!decl)
 	{
+		if (!expr->unresolved_ident_expr.path && expr->unresolved_ident_expr.is_const && (!to || to->canonical->type_kind != TYPE_ENUM))
+		{
+			CompilationUnit **units = context->unit->module->units;
+			FOREACH (CompilationUnit *, unit, units)
+			{
+				FOREACH(Decl *, decl, unit->enums)
+				{
+					FOREACH(Decl *, enum_val, decl->enums.values)
+					{
+						if (enum_val->name == expr->unresolved_ident_expr.ident)
+						{
+							RETURN_SEMA_ERROR(expr, "No constant named '%s' was found in the current scope. Did you "
+							   "mean the value '%s' of the enum '%s'? The enum type cannot be inferred%s, so in that case you need to use "
+								"the qualified name: '%s.%s'.",
+								enum_val->name, enum_val->name, decl->name, to ? " correctly" : "", decl->name, enum_val->name);
+						}
+					}
+				}
+			}
+		}
 		decl = sema_resolve_symbol(context, expr->unresolved_ident_expr.ident, expr->unresolved_ident_expr.path, expr->span);
 		(void)decl;
 		ASSERT_SPAN(expr, !decl);
