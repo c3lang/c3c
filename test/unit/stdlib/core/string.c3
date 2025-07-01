@@ -197,7 +197,12 @@ fn void test_zstring()
 	ZString test3 = "bye";
 	assert(test.zstr_tcopy() == test2);
 	assert(test.zstr_tcopy() != test3);
+	ZString null_string;
+	assert(test != null_string);
+	assert(null_string == null_string);
+	assert(null_string != test);
 }
+
 fn void test_replace()
 {
 	String test = "Befriend some dragons?";

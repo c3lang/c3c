@@ -13,6 +13,7 @@
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
 - Hex string formatter check incorrectly rejected slices.
 - Correctly reject interface methods `type` and `ptr`.
+- Comparing a null ZString with a non-null ZString would crash.
 
 ### Stdlib changes
 
