@@ -15,6 +15,7 @@
 - Correctly reject interface methods `type` and `ptr`.
 - Comparing a null ZString with a non-null ZString would crash.
 - Switch case with const non-int / enum would be treated as ints and crash. #2263
+- Missing bounds check on upper bound with const ranges `foo[1:3]`.
 
 ### Stdlib changes
 
