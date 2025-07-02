@@ -226,7 +226,6 @@ fn void test_struct_with_enums() @test
 
     // Parse the marshaled JSON back to verify it's valid and correct
     Object* parsed = json::tparse_string(json)!!;
-    defer parsed.free();
 
     // Verify all fields through the JSON Object API
     assert(parsed.get_string("title")!! == "Implement JSON marshaling");
@@ -253,7 +252,6 @@ fn void test_simple_struct_marshaling() @test
 
     // Parse the marshaled JSON back to verify it's valid and correct
     Object* parsed = json::tparse_string(json)!!;
-    defer parsed.free();
 
     // Verify all fields through the JSON Object API
     assert(parsed.get_string("name")!! == "John Doe");
@@ -281,7 +279,6 @@ fn void test_struct_with_multiple_fields() @test
 
     // Parse the marshaled JSON back to verify it's valid and correct
     Object* parsed = json::tparse_string(json)!!;
-    defer parsed.free();
 
     // Verify all fields through the JSON Object API
     assert(parsed.get_string("title")!! == "C3 Programming Book");
@@ -303,7 +300,6 @@ fn void test_array_marshaling() @test
 
     // Parse and verify integer array
     Object* parsed_numbers = json::tparse_string(result)!!;
-    defer parsed_numbers.free();
     assert(parsed_numbers.get_len() == 5);
     assert(parsed_numbers.get_int_at(0)!! == 1);
     assert(parsed_numbers.get_int_at(1)!! == 2);
@@ -317,7 +313,6 @@ fn void test_array_marshaling() @test
 
     // Parse and verify string array
     Object* parsed_words = json::tparse_string(result)!!;
-    defer parsed_words.free();
     assert(parsed_words.get_len() == 3);
     assert(parsed_words.get_string_at(0)!! == "hello");
     assert(parsed_words.get_string_at(1)!! == "world");
@@ -329,7 +324,6 @@ fn void test_array_marshaling() @test
 
     // Parse and verify float array
     Object* parsed_prices = json::tparse_string(result)!!;
-    defer parsed_prices.free();
     assert(parsed_prices.get_len() == 3);
     assert(parsed_prices.get_float_at(0)!! == 1.99f);
     assert(parsed_prices.get_float_at(1)!! == 2.50f);
@@ -341,7 +335,6 @@ fn void test_array_marshaling() @test
 
     // Parse and verify boolean array
     Object* parsed_flags = json::tparse_string(result)!!;
-    defer parsed_flags.free();
     assert(parsed_flags.get_len() == 3);
     assert(parsed_flags.get_bool_at(0)!! == true);
     assert(parsed_flags.get_bool_at(1)!! == false);
@@ -380,7 +373,6 @@ fn void test_string_escaping() @test
 
     // Parse the marshaled JSON back to verify escaping works correctly
     Object* parsed = json::tparse_string(json)!!;
-    defer parsed.free();
 
     // Verify that the original string with quotes is preserved correctly
     assert(parsed.get_string("name")!! == "John \"The Coder\" Doe");
@@ -452,7 +444,6 @@ fn void test_nested_struct_marshaling() @test
 
     // Parse the marshaled JSON back to verify it's valid and correct
     Object* parsed = json::tparse_string(json)!!;
-    defer parsed.free();
 
     // Verify top-level fields
     assert(parsed.get_string("name")!! == "Tech Corp");
@@ -496,7 +487,6 @@ fn void test_deeply_nested_struct_marshaling() @test
 
     // Parse the marshaled JSON back to verify it's valid and correct
     Object* parsed = json::tparse_string(json)!!;
-    defer parsed.free();
 
     // Verify top-level fields
     assert(parsed.get_float("salary")!! == 85000.0f);
@@ -545,7 +535,6 @@ fn void test_array_of_structs() @test
 
     // Parse the marshaled JSON back to verify it's valid and correct
     Object* parsed = json::tparse_string(json)!!;
-    defer parsed.free();
 
     // Verify array structure and length
     assert(parsed.get_len() == 2);
@@ -592,7 +581,6 @@ fn void test_struct_with_nested_arrays() @test
 
     // Parse the marshaled JSON back to verify it's valid and correct
     Object* parsed = json::tparse_string(json)!!;
-    defer parsed.free();
 
     // Verify top-level fields
     assert(parsed.get_string("name")!! == "Engineering");

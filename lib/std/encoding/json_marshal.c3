@@ -15,7 +15,7 @@ faultdef UNSUPPORTED_TYPE;
 <*
  Marshal a struct with primitive fields and nested structs to JSON.
 
- @param allocator : "The allocator to use for the result"
+ @param allocator: "The allocator to use for the result"
  @param value: "The struct value to marshal"
  @require @typekind(value) == STRUCT
  @return "The JSON string representation"
@@ -66,7 +66,7 @@ macro String? tmarshal(value) => marshal(tmem, value);
 <*
  Marshal a primitive value to JSON.
 
- @param allocator : "The allocator to use for the result"
+ @param allocator: "The allocator to use for the result"
  @param value: "The value to marshal"
  @return "The JSON string representation"
 *>
@@ -108,7 +108,7 @@ macro String? tmarshal_value(value) => marshal_value(tmem, value);
 <*
  Marshal an array of primitive values to JSON.
 
- @param allocator : "The allocator to use for the result"
+ @param allocator: "The allocator to use for the result"
  @param array: "The array to marshal"
  @return "The JSON array string representation"
 *>
