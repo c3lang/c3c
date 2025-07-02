@@ -1,0 +1,18 @@
+module foo;
+import bar;
+
+struct Foo
+{
+	MyEnum value;
+}
+
+module bar;
+
+enum MyEnum : const CInt
+{
+	VAL1 = 1,
+	VAL2 = 2,
+	VAL3 = 3,
+}
+
+fn void main() {}
