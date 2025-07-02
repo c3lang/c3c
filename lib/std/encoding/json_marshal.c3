@@ -1,32 +1,30 @@
 // Copyright (c) 2024 C3 Community. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
+
+<*
+ JSON marshaling for structs containing primitive types, enums, and nested structs.
+ Supports: String, int, float, double, bool, enums (always marshaled as enum names), nested structs
+*>
+
 module std::encoding::json;
 import std::core::string;
 
 faultdef UNSUPPORTED_TYPE;
 
-/**
- * JSON marshaling for structs containing primitive types, enums, and nested structs
- * Supports: String, int, float, double, bool, enums (always marshaled as enum names), nested structs
- * Uses temp allocator to avoid memory management issues
- */
+<*
+ Marshal a struct with primitive fields and nested structs to JSON.
 
-/**
- * Marshal a struct with primitive fields and nested structs to JSON
- * @param [in] value The struct value to marshal
- * @return The JSON string representation (using temp allocator)
- */
-macro String? marshal(value)
+ @param allocator : "The allocator to use for the result"
+ @param value: "The struct value to marshal"
+ @require @typekind(value) == STRUCT
+ @return "The JSON string representation"
+*>
+macro String? marshal(Allocator allocator, value)
 {
     var $Type = $typeof(value);
 
-    // Only handle structs
-    $if $Type.kindof != STRUCT:
-        return UNSUPPORTED_TYPE?;
-    $endif
-
-    DString result = dstring::temp();
+    DString result = dstring::new_with_capacity(allocator, 32);
 
     result.append_char('{');
 
@@ -46,32 +44,42 @@ macro String? marshal(value)
             // Add field value using common marshaling logic
             @pool()
             {
-                String? field_result = marshal_value($member.get(value));
-                if (catch err = field_result) return err?;
+                String field_result = marshal_value(allocator, $member.get(value))!;
                 result.append(field_result);
             };
         $endif
     $endforeach
 
     result.append_char('}');
-    return result.str_view();
+    return result.copy_str(allocator);
 }
 
-/**
- * Marshal a primitive value to JSON
- * @param [in] value The value to marshal
- * @return The JSON string representation (using temp allocator)
- */
-macro String? marshal_value(value)
+<*
+ Marshal a struct with primitive fields and nested structs to JSON using the temp allocator.
+
+ @param value: "The struct value to marshal"
+ @require @typekind(value) == STRUCT
+ @return "The JSON string representation"
+*>
+macro String? tmarshal(value) => marshal(tmem, value);
+
+<*
+ Marshal a primitive value to JSON.
+
+ @param allocator : "The allocator to use for the result"
+ @param value: "The value to marshal"
+ @return "The JSON string representation"
+*>
+macro String? marshal_value(Allocator allocator, value)
 {
     var $Type = $typeof(value);
 
     $switch $Type.kindof:
         $case STRUCT:
-            return marshal(value);
+            return marshal(allocator, value);
         $case ARRAY:
         $case SLICE:
-            return marshal_array(value);
+            return marshal_array(allocator, value);
         $case SIGNED_INT:
         $case UNSIGNED_INT:
             return string::tformat("%d", value);
@@ -89,14 +97,24 @@ macro String? marshal_value(value)
     $endswitch
 }
 
-/**
- * Marshal an array of primitive values to JSON
- * @param [in] array The array to marshal
- * @return The JSON array string representation (using temp allocator)
- */
-macro String? marshal_array(array)
+<*
+ Marshal a primitive value to JSON using the temp allocator.
+
+ @param value: "The value to marshal"
+ @return "The JSON string representation"
+*>
+macro String? tmarshal_value(value) => marshal_value(tmem, value);
+
+<*
+ Marshal an array of primitive values to JSON.
+
+ @param allocator : "The allocator to use for the result"
+ @param array: "The array to marshal"
+ @return "The JSON array string representation"
+*>
+macro String? marshal_array(Allocator allocator, array)
 {
-    DString result = dstring::temp();
+    DString result = dstring::new_with_capacity(allocator, 32);
 
     result.append_char('[');
 
@@ -107,22 +125,30 @@ macro String? marshal_array(array)
         // Use common marshaling logic for each element
         @pool()
         {
-            String? element_result = marshal_value(element);
-            if (catch err = element_result) return err?;
+            String element_result = marshal_value(allocator, element)!;
             result.append(element_result);
         };
     }
 
     result.append_char(']');
-    return result.str_view();
+    return result.copy_str(allocator);
 }
 
-/**
- * Marshal an enum value to JSON as a quoted string
- * Always uses the enum name, regardless of associated values
- * @param [in] enum_value The enum value to marshal
- * @return The JSON string representation (using temp allocator)
- */
+<*
+ Marshal an array of primitive values to JSON using the temp allocator.
+
+ @param array: "The array to marshal"
+ @return "The JSON array string representation"
+*>
+macro String? tmarshal_array(array) => marshal_array(tmem, array);
+
+<*
+ Marshal an enum value to JSON as a quoted string.
+ Always uses the enum name, regardless of associated values.
+
+ @param enum_value: "The enum value to marshal"
+ @return "The JSON string representation"
+*>
 macro String? marshal_enum(enum_value)
 {
     var $Type = $typeof(enum_value);

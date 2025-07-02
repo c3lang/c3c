@@ -114,80 +114,80 @@ struct Process
 fn void test_primitive_marshaling() @test
 {
     // Test integers
-    String? result = json::marshal_value(42);
-    assert(result!! == "42");
+    String result = json::tmarshal_value(42)!!;
+    assert(result == "42");
     
     // Test floats
-    result = json::marshal_value(3.14);
-    assert(result!!.starts_with("3.14"));
+    result = json::tmarshal_value(3.14)!!;
+    assert(result.starts_with("3.14"));
     
     // Test doubles
-    result = json::marshal_value(2.718281828);
-    assert(result!!.starts_with("2.718"));
+    result = json::tmarshal_value(2.718281828)!!;
+    assert(result.starts_with("2.718"));
     
     // Test booleans
-    result = json::marshal_value(true);
-    assert(result!! == "true");
+    result = json::tmarshal_value(true)!!;
+    assert(result == "true");
     
-    result = json::marshal_value(false);
-    assert(result!! == "false");
+    result = json::tmarshal_value(false)!!;
+    assert(result == "false");
     
     // Test strings
-    result = json::marshal_value("hello world");
-    assert(result!! == `"hello world"`);
+    result = json::tmarshal_value("hello world")!!;
+    assert(result == `"hello world"`);
     
     // Test string with special characters
-    result = json::marshal_value("Hello \"world\"");
-    assert(result!! == `"Hello \"world\""`);
+    result = json::tmarshal_value("Hello \"world\"")!!;
+    assert(result == `"Hello \"world\""`);
 }
 
 fn void test_enum_marshaling() @test
 {
     // Test individual enum values
-    String? result = json::marshal_value(Status.ACTIVE);
-    assert(result!! == `"ACTIVE"`);
+    String result = json::tmarshal_value(Status.ACTIVE)!!;
+    assert(result == `"ACTIVE"`);
 
-    result = json::marshal_value(Status.INACTIVE);
-    assert(result!! == `"INACTIVE"`);
+    result = json::tmarshal_value(Status.INACTIVE)!!;
+    assert(result == `"INACTIVE"`);
 
-    result = json::marshal_value(Status.PENDING);
-    assert(result!! == `"PENDING"`);
+    result = json::tmarshal_value(Status.PENDING)!!;
+    assert(result == `"PENDING"`);
 
-    result = json::marshal_value(Status.SUSPENDED);
-    assert(result!! == `"SUSPENDED"`);
+    result = json::tmarshal_value(Status.SUSPENDED)!!;
+    assert(result == `"SUSPENDED"`);
 
     // Test Priority enum
-    result = json::marshal_value(Priority.LOW);
-    assert(result!! == `"LOW"`);
+    result = json::tmarshal_value(Priority.LOW)!!;
+    assert(result == `"LOW"`);
 
-    result = json::marshal_value(Priority.MEDIUM);
-    assert(result!! == `"MEDIUM"`);
+    result = json::tmarshal_value(Priority.MEDIUM)!!;
+    assert(result == `"MEDIUM"`);
 
-    result = json::marshal_value(Priority.HIGH);
-    assert(result!! == `"HIGH"`);
+    result = json::tmarshal_value(Priority.HIGH)!!;
+    assert(result == `"HIGH"`);
 
-    result = json::marshal_value(Priority.CRITICAL);
-    assert(result!! == `"CRITICAL"`);
+    result = json::tmarshal_value(Priority.CRITICAL)!!;
+    assert(result == `"CRITICAL"`);
 }
 
 fn void test_enum_with_associated_values() @test
 {
     // Test enum with single String associated value (always uses enum names)
-    String? result = json::marshal_value(State.WAITING);
-    assert(result!! == `"WAITING"`);
+    String result = json::tmarshal_value(State.WAITING)!!;
+    assert(result == `"WAITING"`);
 
-    result = json::marshal_value(State.RUNNING);
-    assert(result!! == `"RUNNING"`);
+    result = json::tmarshal_value(State.RUNNING)!!;
+    assert(result == `"RUNNING"`);
 
-    result = json::marshal_value(State.TERMINATED);
-    assert(result!! == `"TERMINATED"`);
+    result = json::tmarshal_value(State.TERMINATED)!!;
+    assert(result == `"TERMINATED"`);
 
     // Test enum with multiple associated values (always uses enum names)
-    result = json::marshal_value(ComplexState.IDLE);
-    assert(result!! == `"IDLE"`);
+    result = json::tmarshal_value(ComplexState.IDLE)!!;
+    assert(result == `"IDLE"`);
 
-    result = json::marshal_value(ComplexState.BUSY);
-    assert(result!! == `"BUSY"`);
+    result = json::tmarshal_value(ComplexState.BUSY)!!;
+    assert(result == `"BUSY"`);
 }
 
 fn void test_struct_with_associated_value_enums() @test
@@ -199,8 +199,7 @@ fn void test_struct_with_associated_value_enums() @test
         .pid = 1234
     };
 
-    String? result = json::marshal(process);
-    String json = result!!;
+    String json = json::tmarshal(process)!!;
 
     // Check that enums always use the enum name
     assert(json.contains(`"name":"web_server"`));
@@ -222,8 +221,7 @@ fn void test_struct_with_enums() @test
         .estimated_hours = 8
     };
 
-    String? result = json::marshal(task);
-    String json = result!!;
+    String json = json::tmarshal(task)!!;
 
     // Check that enum fields are marshaled as strings
     assert(json.contains(`"title":"Implement JSON marshaling"`));
@@ -246,8 +244,7 @@ fn void test_simple_struct_marshaling() @test
         .status = Status.ACTIVE
     };
 
-    String? result = json::marshal(person);
-    String json = result!!;
+    String json = json::tmarshal(person)!!;
 
     // Check that all fields are present
     assert(json.contains(`"name":"John Doe"`));
@@ -271,9 +268,8 @@ fn void test_struct_with_multiple_fields() @test
         .in_stock = true
     };
     
-    String? result = json::marshal(product);
-    String json = result!!;
-    
+    String json = json::tmarshal(product)!!;
+
     // Check that all fields are present
     assert(json.contains(`"title":"C3 Programming Book"`));
     assert(json.contains(`"price":2999`));
@@ -290,46 +286,45 @@ fn void test_array_marshaling() @test
 {
     // Test integer arrays
     int[] numbers = { 1, 2, 3, 4, 5 };
-    String? result = json::marshal_array(numbers);
-    assert(result!! == "[1,2,3,4,5]");
+    String result = json::tmarshal_array(numbers)!!;
+    assert(result == "[1,2,3,4,5]");
     
     // Test string arrays
     String[] words = { "hello", "world", "test" };
-    result = json::marshal_array(words);
-    assert(result!! == `["hello","world","test"]`);
+    result = json::tmarshal_array(words)!!;
+    assert(result == `["hello","world","test"]`);
     
     // Test float arrays
     float[] prices = { 1.99, 2.50, 3.14 };
-    result = json::marshal_array(prices);
-    String json = result!!;
-    assert(json.starts_with("["));
-    assert(json.ends_with("]"));
-    assert(json.contains("1.99"));
-    assert(json.contains("2.5"));
-    assert(json.contains("3.14"));
+    result = json::tmarshal_array(prices)!!;
+    assert(result.starts_with("["));
+    assert(result.ends_with("]"));
+    assert(result.contains("1.99"));
+    assert(result.contains("2.5"));
+    assert(result.contains("3.14"));
     
     // Test boolean arrays
     bool[] flags = { true, false, true };
-    result = json::marshal_array(flags);
-    assert(result!! == "[true,false,true]");
+    result = json::tmarshal_array(flags)!!;
+    assert(result == "[true,false,true]");
 
     // Test enum arrays
     Status[] statuses = { Status.ACTIVE, Status.PENDING, Status.INACTIVE };
-    result = json::marshal_array(statuses);
-    assert(result!! == `["ACTIVE","PENDING","INACTIVE"]`);
+    result = json::tmarshal_array(statuses)!!;
+    assert(result == `["ACTIVE","PENDING","INACTIVE"]`);
 
     Priority[] priorities = { Priority.LOW, Priority.HIGH };
-    result = json::marshal_array(priorities);
-    assert(result!! == `["LOW","HIGH"]`);
+    result = json::tmarshal_array(priorities)!!;
+    assert(result == `["LOW","HIGH"]`);
 
     // Test enum arrays with associated values (always uses enum names)
     State[] states = { State.WAITING, State.RUNNING, State.TERMINATED };
-    result = json::marshal_array(states);
-    assert(result!! == `["WAITING","RUNNING","TERMINATED"]`);  // Always uses enum names
+    result = json::tmarshal_array(states)!!;
+    assert(result == `["WAITING","RUNNING","TERMINATED"]`);  // Always uses enum names
 
     ComplexState[] complex_states = { ComplexState.IDLE, ComplexState.BUSY };
-    result = json::marshal_array(complex_states);
-    assert(result!! == `["IDLE","BUSY"]`);  // Always uses enum names
+    result = json::tmarshal_array(complex_states)!!;
+    assert(result == `["IDLE","BUSY"]`);  // Always uses enum names
 }
 
 fn void test_string_escaping() @test
@@ -342,8 +337,7 @@ fn void test_string_escaping() @test
         .status = Status.ACTIVE
     };
 
-    String? result = json::marshal(person);
-    String json = result!!;
+    String json = json::tmarshal(person)!!;
 
     // Should properly escape quotes in the name
     assert(json.contains(`"name":"John \"The Coder\" Doe"`));
@@ -361,8 +355,7 @@ fn void test_empty_strings() @test
         .status = Status.INACTIVE
     };
 
-    String? result = json::marshal(person);
-    String json = result!!;
+    String json = json::tmarshal(person)!!;
 
     // Should handle empty strings and zero values properly
     assert(json.contains(`"name":""`));
@@ -382,9 +375,8 @@ fn void test_all_primitive_types() @test
         .flag = true
     };
     
-    String? result = json::marshal(data);
-    String json = result!!;
-    
+    String json = json::tmarshal(data)!!;
+
     // Verify all types are marshaled correctly
     assert(json.contains(`"text":"test string"`));
     assert(json.contains(`"integer":42`));
@@ -411,9 +403,8 @@ fn void test_nested_struct_marshaling() @test
         .employee_count = 500
     };
     
-    String? result = json::marshal(company);
-    String json = result!!;
-    
+    String json = json::tmarshal(company)!!;
+
     // Check that nested struct is properly marshaled
     assert(json.contains(`"name":"Tech Corp"`));
     assert(json.contains(`"headquarters":{`));
@@ -450,9 +441,8 @@ fn void test_deeply_nested_struct_marshaling() @test
         .is_remote = true
     };
     
-    String? result = json::marshal(employee);
-    String json = result!!;
-    
+    String json = json::tmarshal(employee)!!;
+
     // Check deeply nested structure
     assert(json.contains(`"personal_info":{`));
     assert(json.contains(`"name":"Alice Johnson"`));
@@ -488,9 +478,8 @@ fn void test_array_of_structs() @test
         }
     };
     
-    String? result = json::marshal_array(addresses);
-    String json = result!!;
-    
+    String json = json::tmarshal_array(addresses)!!;
+
     // Check array of structs
     assert(json.starts_with("["));
     assert(json.ends_with("]"));
@@ -523,9 +512,8 @@ fn void test_struct_with_nested_arrays() @test
         .priority = Priority.HIGH
     };
     
-    String? result = json::marshal(dept);
-    String json = result!!;
-    
+    String json = json::tmarshal(dept)!!;
+
     // Check that both primitive and struct arrays are marshaled correctly
     assert(json.contains(`"name":"Engineering"`));
     assert(json.contains(`"skills_required":["C3","Rust","Go"]`));
