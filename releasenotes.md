@@ -14,6 +14,7 @@
 - Hex string formatter check incorrectly rejected slices.
 - Correctly reject interface methods `type` and `ptr`.
 - Comparing a null ZString with a non-null ZString would crash.
+- Switch case with const non-int / enum would be treated as ints and crash. #2263
 
 ### Stdlib changes
 

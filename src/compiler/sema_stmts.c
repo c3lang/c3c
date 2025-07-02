@@ -2339,14 +2339,14 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	if (to_expr && !sema_analyse_expr_rhs(context, switch_type, to_expr, false, NULL, false)) return false;
 
 	bool is_range = to_expr != NULL;
-	bool first_is_const = sema_cast_const(expr);
+	bool first_is_const = sema_cast_const(expr) && (expr_is_const_int(expr) || expr_is_const_enum(expr));
 	(*actual_cases_ref)++;
 	if (!is_range && !first_is_const)
 	{
 		*if_chained = true;
 		return true;
 	}
-	if (is_range && (!first_is_const || !(expr_is_const_int(expr) || expr_is_const_enum(expr))))
+	if (is_range && !first_is_const)
 	{
 		sema_error_at(context, extend_span_with_token(expr->span, to_expr->span), "Ranges must be constant integers.");
 		return false;
