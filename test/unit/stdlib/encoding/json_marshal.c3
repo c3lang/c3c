@@ -1,5 +1,6 @@
 module json_marshal_test @test;
 import std::encoding::json;
+import std::collections::object;
 import std::io;
 
 // Test enums
@@ -223,11 +224,15 @@ fn void test_struct_with_enums() @test
 
     String json = json::tmarshal(task)!!;
 
-    // Check that enum fields are marshaled as strings
-    assert(json.contains(`"title":"Implement JSON marshaling"`));
-    assert(json.contains(`"status":"ACTIVE"`));
-    assert(json.contains(`"priority":"HIGH"`));
-    assert(json.contains(`"estimated_hours":8`));
+    // Parse the marshaled JSON back to verify it's valid and correct
+    Object* parsed = json::tparse_string(json)!!;
+    defer parsed.free();
+
+    // Verify all fields through the JSON Object API
+    assert(parsed.get_string("title")!! == "Implement JSON marshaling");
+    assert(parsed.get_string("status")!! == "ACTIVE");  // Enum marshaled as string
+    assert(parsed.get_string("priority")!! == "HIGH");  // Enum marshaled as string
+    assert(parsed.get_int("estimated_hours")!! == 8);
 
     // Should be valid JSON format
     assert(json.starts_with("{"));
@@ -246,14 +251,18 @@ fn void test_simple_struct_marshaling() @test
 
     String json = json::tmarshal(person)!!;
 
-    // Check that all fields are present
-    assert(json.contains(`"name":"John Doe"`));
-    assert(json.contains(`"age":30`));
-    assert(json.contains(`"is_active":true`));
-    assert(json.contains(`"height":5.9`));
-    assert(json.contains(`"status":"ACTIVE"`));
+    // Parse the marshaled JSON back to verify it's valid and correct
+    Object* parsed = json::tparse_string(json)!!;
+    defer parsed.free();
 
-    // Should start and end with braces
+    // Verify all fields through the JSON Object API
+    assert(parsed.get_string("name")!! == "John Doe");
+    assert(parsed.get_int("age")!! == 30);
+    assert(parsed.get_bool("is_active")!! == true);
+    assert(parsed.get_float("height")!! == 5.9f);
+    assert(parsed.get_string("status")!! == "ACTIVE");
+
+    // Also keep the original string checks for format verification
     assert(json.starts_with("{"));
     assert(json.ends_with("}"));
 }
@@ -267,17 +276,21 @@ fn void test_struct_with_multiple_fields() @test
         .rating = 4.8,
         .in_stock = true
     };
-    
+
     String json = json::tmarshal(product)!!;
 
-    // Check that all fields are present
-    assert(json.contains(`"title":"C3 Programming Book"`));
-    assert(json.contains(`"price":2999`));
-    assert(json.contains(`"category":"Programming"`));
-    assert(json.contains(`"rating":4.8`));
-    assert(json.contains(`"in_stock":true`));
-    
-    // Should start and end with braces
+    // Parse the marshaled JSON back to verify it's valid and correct
+    Object* parsed = json::tparse_string(json)!!;
+    defer parsed.free();
+
+    // Verify all fields through the JSON Object API
+    assert(parsed.get_string("title")!! == "C3 Programming Book");
+    assert(parsed.get_int("price")!! == 2999);
+    assert(parsed.get_string("category")!! == "Programming");
+    assert(parsed.get_float("rating")!! == 4.8f);
+    assert(parsed.get_bool("in_stock")!! == true);
+
+    // Also keep the original string checks for format verification
     assert(json.starts_with("{"));
     assert(json.ends_with("}"));
 }
@@ -287,26 +300,52 @@ fn void test_array_marshaling() @test
     // Test integer arrays
     int[] numbers = { 1, 2, 3, 4, 5 };
     String result = json::tmarshal_array(numbers)!!;
-    assert(result == "[1,2,3,4,5]");
-    
+
+    // Parse and verify integer array
+    Object* parsed_numbers = json::tparse_string(result)!!;
+    defer parsed_numbers.free();
+    assert(parsed_numbers.get_len() == 5);
+    assert(parsed_numbers.get_int_at(0)!! == 1);
+    assert(parsed_numbers.get_int_at(1)!! == 2);
+    assert(parsed_numbers.get_int_at(2)!! == 3);
+    assert(parsed_numbers.get_int_at(3)!! == 4);
+    assert(parsed_numbers.get_int_at(4)!! == 5);
+
     // Test string arrays
     String[] words = { "hello", "world", "test" };
     result = json::tmarshal_array(words)!!;
-    assert(result == `["hello","world","test"]`);
-    
+
+    // Parse and verify string array
+    Object* parsed_words = json::tparse_string(result)!!;
+    defer parsed_words.free();
+    assert(parsed_words.get_len() == 3);
+    assert(parsed_words.get_string_at(0)!! == "hello");
+    assert(parsed_words.get_string_at(1)!! == "world");
+    assert(parsed_words.get_string_at(2)!! == "test");
+
     // Test float arrays
     float[] prices = { 1.99, 2.50, 3.14 };
     result = json::tmarshal_array(prices)!!;
-    assert(result.starts_with("["));
-    assert(result.ends_with("]"));
-    assert(result.contains("1.99"));
-    assert(result.contains("2.5"));
-    assert(result.contains("3.14"));
-    
+
+    // Parse and verify float array
+    Object* parsed_prices = json::tparse_string(result)!!;
+    defer parsed_prices.free();
+    assert(parsed_prices.get_len() == 3);
+    assert(parsed_prices.get_float_at(0)!! == 1.99f);
+    assert(parsed_prices.get_float_at(1)!! == 2.50f);
+    assert(parsed_prices.get_float_at(2)!! == 3.14f);
+
     // Test boolean arrays
     bool[] flags = { true, false, true };
     result = json::tmarshal_array(flags)!!;
-    assert(result == "[true,false,true]");
+
+    // Parse and verify boolean array
+    Object* parsed_flags = json::tparse_string(result)!!;
+    defer parsed_flags.free();
+    assert(parsed_flags.get_len() == 3);
+    assert(parsed_flags.get_bool_at(0)!! == true);
+    assert(parsed_flags.get_bool_at(1)!! == false);
+    assert(parsed_flags.get_bool_at(2)!! == true);
 
     // Test enum arrays
     Status[] statuses = { Status.ACTIVE, Status.PENDING, Status.INACTIVE };
@@ -339,10 +378,16 @@ fn void test_string_escaping() @test
 
     String json = json::tmarshal(person)!!;
 
-    // Should properly escape quotes in the name
-    assert(json.contains(`"name":"John \"The Coder\" Doe"`));
-    assert(json.contains(`"age":25`));
-    assert(json.contains(`"status":"ACTIVE"`));
+    // Parse the marshaled JSON back to verify escaping works correctly
+    Object* parsed = json::tparse_string(json)!!;
+    defer parsed.free();
+
+    // Verify that the original string with quotes is preserved correctly
+    assert(parsed.get_string("name")!! == "John \"The Coder\" Doe");
+    assert(parsed.get_int("age")!! == 25);
+    assert(parsed.get_bool("is_active")!! == true);
+    assert(parsed.get_float("height")!! == 5.8f);
+    assert(parsed.get_string("status")!! == "ACTIVE");
 }
 
 fn void test_empty_strings() @test
@@ -396,23 +441,29 @@ fn void test_nested_struct_marshaling() @test
         .city = "New York",
         .zip_code = 10001
     };
-    
+
     Company company = {
         .name = "Tech Corp",
         .headquarters = address,
         .employee_count = 500
     };
-    
+
     String json = json::tmarshal(company)!!;
 
-    // Check that nested struct is properly marshaled
-    assert(json.contains(`"name":"Tech Corp"`));
-    assert(json.contains(`"headquarters":{`));
-    assert(json.contains(`"street":"123 Main St"`));
-    assert(json.contains(`"city":"New York"`));
-    assert(json.contains(`"zip_code":10001`));
-    assert(json.contains(`"employee_count":500`));
-    
+    // Parse the marshaled JSON back to verify it's valid and correct
+    Object* parsed = json::tparse_string(json)!!;
+    defer parsed.free();
+
+    // Verify top-level fields
+    assert(parsed.get_string("name")!! == "Tech Corp");
+    assert(parsed.get_int("employee_count")!! == 500);
+
+    // Verify nested struct fields
+    Object* headquarters = parsed.get("headquarters")!!;
+    assert(headquarters.get_string("street")!! == "123 Main St");
+    assert(headquarters.get_string("city")!! == "New York");
+    assert(headquarters.get_int("zip_code")!! == 10001);
+
     // Should be valid JSON format
     assert(json.starts_with("{"));
     assert(json.ends_with("}"));
@@ -440,24 +491,36 @@ fn void test_deeply_nested_struct_marshaling() @test
         .salary = 85000.0,
         .is_remote = true
     };
-    
+
     String json = json::tmarshal(employee)!!;
 
-    // Check deeply nested structure
-    assert(json.contains(`"personal_info":{`));
-    assert(json.contains(`"name":"Alice Johnson"`));
-    assert(json.contains(`"age":28`));
-    
-    assert(json.contains(`"employer":{`));
-    assert(json.contains(`"name":"Innovation Labs"`));
-    assert(json.contains(`"headquarters":{`));
-    assert(json.contains(`"street":"456 Tech Ave"`));
-    assert(json.contains(`"city":"San Francisco"`));
-    assert(json.contains(`"zip_code":94105`));
-    
-    assert(json.contains(`"salary":85000`));
-    assert(json.contains(`"is_remote":true`));
-    
+    // Parse the marshaled JSON back to verify it's valid and correct
+    Object* parsed = json::tparse_string(json)!!;
+    defer parsed.free();
+
+    // Verify top-level fields
+    assert(parsed.get_float("salary")!! == 85000.0f);
+    assert(parsed.get_bool("is_remote")!! == true);
+
+    // Verify personal_info nested struct
+    Object* personal_info = parsed.get("personal_info")!!;
+    assert(personal_info.get_string("name")!! == "Alice Johnson");
+    assert(personal_info.get_int("age")!! == 28);
+    assert(personal_info.get_bool("is_active")!! == true);
+    assert(personal_info.get_float("height")!! == 5.6f);
+    assert(personal_info.get_string("status")!! == "ACTIVE");
+
+    // Verify employer nested struct
+    Object* employer = parsed.get("employer")!!;
+    assert(employer.get_string("name")!! == "Innovation Labs");
+    assert(employer.get_int("employee_count")!! == 250);
+
+    // Verify deeply nested headquarters struct
+    Object* headquarters = employer.get("headquarters")!!;
+    assert(headquarters.get_string("street")!! == "456 Tech Ave");
+    assert(headquarters.get_string("city")!! == "San Francisco");
+    assert(headquarters.get_int("zip_code")!! == 94105);
+
     // Should be valid JSON format
     assert(json.starts_with("{"));
     assert(json.ends_with("}"));
@@ -477,18 +540,31 @@ fn void test_array_of_structs() @test
             .zip_code = 60601
         }
     };
-    
+
     String json = json::tmarshal_array(addresses)!!;
 
-    // Check array of structs
+    // Parse the marshaled JSON back to verify it's valid and correct
+    Object* parsed = json::tparse_string(json)!!;
+    defer parsed.free();
+
+    // Verify array structure and length
+    assert(parsed.get_len() == 2);
+
+    // Verify first address struct
+    Object* first_address = parsed.get_at(0);
+    assert(first_address.get_string("street")!! == "100 First St");
+    assert(first_address.get_string("city")!! == "Boston");
+    assert(first_address.get_int("zip_code")!! == 2101);
+
+    // Verify second address struct
+    Object* second_address = parsed.get_at(1);
+    assert(second_address.get_string("street")!! == "200 Second Ave");
+    assert(second_address.get_string("city")!! == "Chicago");
+    assert(second_address.get_int("zip_code")!! == 60601);
+
+    // Check array format
     assert(json.starts_with("["));
     assert(json.ends_with("]"));
-    assert(json.contains(`"street":"100 First St"`));
-    assert(json.contains(`"city":"Boston"`));
-    assert(json.contains(`"zip_code":2101`));
-    assert(json.contains(`"street":"200 Second Ave"`));
-    assert(json.contains(`"city":"Chicago"`));
-    assert(json.contains(`"zip_code":60601`));
 }
 
 fn void test_struct_with_nested_arrays() @test
@@ -511,19 +587,40 @@ fn void test_struct_with_nested_arrays() @test
         .budget = 1000000,
         .priority = Priority.HIGH
     };
-    
+
     String json = json::tmarshal(dept)!!;
 
-    // Check that both primitive and struct arrays are marshaled correctly
-    assert(json.contains(`"name":"Engineering"`));
-    assert(json.contains(`"skills_required":["C3","Rust","Go"]`));
-    assert(json.contains(`"office_locations":[`));
-    assert(json.contains(`"street":"100 Tech Blvd"`));
-    assert(json.contains(`"city":"Austin"`));
-    assert(json.contains(`"street":"200 Innovation Dr"`));
-    assert(json.contains(`"city":"Seattle"`));
-    assert(json.contains(`"budget":1000000`));
-    assert(json.contains(`"priority":"HIGH"`));
+    // Parse the marshaled JSON back to verify it's valid and correct
+    Object* parsed = json::tparse_string(json)!!;
+    defer parsed.free();
+
+    // Verify top-level fields
+    assert(parsed.get_string("name")!! == "Engineering");
+    assert(parsed.get_int("budget")!! == 1000000);
+    assert(parsed.get_string("priority")!! == "HIGH");
+
+    // Verify skills_required string array
+    Object* skills = parsed.get("skills_required")!!;
+    assert(skills.get_len() == 3);
+    assert(skills.get_string_at(0)!! == "C3");
+    assert(skills.get_string_at(1)!! == "Rust");
+    assert(skills.get_string_at(2)!! == "Go");
+
+    // Verify office_locations struct array
+    Object* locations = parsed.get("office_locations")!!;
+    assert(locations.get_len() == 2);
+
+    // Verify first office location
+    Object* first_office = locations.get_at(0);
+    assert(first_office.get_string("street")!! == "100 Tech Blvd");
+    assert(first_office.get_string("city")!! == "Austin");
+    assert(first_office.get_int("zip_code")!! == 78701);
+
+    // Verify second office location
+    Object* second_office = locations.get_at(1);
+    assert(second_office.get_string("street")!! == "200 Innovation Dr");
+    assert(second_office.get_string("city")!! == "Seattle");
+    assert(second_office.get_int("zip_code")!! == 98101);
 
     // Should be valid JSON format
     assert(json.starts_with("{"));
