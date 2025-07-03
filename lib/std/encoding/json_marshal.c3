@@ -25,6 +25,7 @@ macro String? marshal(Allocator allocator, value)
     var $Type = $typeof(value);
 
     DString result = dstring::new_with_capacity(allocator, 32);
+    defer result.free();
 
     result.append_char('{');
 
@@ -44,7 +45,7 @@ macro String? marshal(Allocator allocator, value)
             // Add field value using common marshaling logic
             @pool()
             {
-                String field_result = marshal_value(allocator, $member.get(value))!;
+                String field_result = tmarshal_value($member.get(value))!;
                 result.append(field_result);
             };
         $endif
@@ -115,6 +116,7 @@ macro String? tmarshal_value(value) => marshal_value(tmem, value);
 macro String? marshal_array(Allocator allocator, array)
 {
     DString result = dstring::new_with_capacity(allocator, 32);
+    defer result.free();
 
     result.append_char('[');
 
@@ -125,7 +127,7 @@ macro String? marshal_array(Allocator allocator, array)
         // Use common marshaling logic for each element
         @pool()
         {
-            String element_result = marshal_value(allocator, element)!;
+            String element_result = tmarshal_value(element)!;
             result.append(element_result);
         };
     }
