@@ -2867,6 +2867,12 @@ EXIT:
 			SEMA_NOTE(decl, "The macro was declared here.");
 			return false;
 		}
+		if (call_expr->type == type_untypedlist)
+		{
+			SEMA_ERROR(call_expr, "The macro returns an untyped list, but the macro did not evaluate to a constant. The macro needs to explicitly cast the return value to the expected type.");
+			SEMA_NOTE(decl, "The macro was declared here.");
+			return false;
+		}
 	}
 	return true;
 EXIT_FAIL:
