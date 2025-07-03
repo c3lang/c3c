@@ -18,6 +18,7 @@
 - Missing bounds check on upper bound with const ranges `foo[1:3]`.
 - Check up the hierarchy when considering if an interface cast is valid #2267.
 - Fix issue with labelled break inside of a $switch.
+- Non-const macros may not return untyped lists.
 
 ### Stdlib changes
 

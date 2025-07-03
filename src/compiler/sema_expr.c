@@ -2859,11 +2859,14 @@ EXIT:
 	}
 	sema_context_destroy(&macro_context);
 	call_expr->resolve_status = RESOLVE_DONE;
-	if (is_always_const && !expr_is_runtime_const(call_expr))
+	if (!expr_is_runtime_const(call_expr))
 	{
-		SEMA_ERROR(call_expr, "The macro failed to fold to a constant value, despite being '@const'.");
-		SEMA_NOTE(decl, "The macro was declared here.");
-		return false;
+		if (is_always_const)
+		{
+			SEMA_ERROR(call_expr, "The macro failed to fold to a constant value, despite being '@const'.");
+			SEMA_NOTE(decl, "The macro was declared here.");
+			return false;
+		}
 	}
 	return true;
 EXIT_FAIL:
