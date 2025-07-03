@@ -2224,9 +2224,10 @@ static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statem
 		return true;
 	}
 	Ast *last = NULL;
+	statement->ast_kind = AST_NOP_STMT;
 	AstId next = statement->next;
-	*statement = *astptr(replacement);
-	AstId current = astid(statement);
+	statement->next = replacement;
+	AstId current = replacement;
 	ASSERT(current);
 	while (current)
 	{
