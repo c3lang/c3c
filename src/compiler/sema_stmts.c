@@ -3048,6 +3048,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 	// Analysis is done turn the generated statements into a compound statement for lowering.
 	statement->ast_kind = AST_CT_COMPOUND_STMT;
 	statement->ct_compound_stmt = start;
+	sema_context_pop_ct_stack(context, for_context);
 	return true;
 FAILED:
 	sema_context_pop_ct_stack(context, for_context);

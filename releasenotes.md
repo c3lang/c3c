@@ -19,6 +19,7 @@
 - Check up the hierarchy when considering if an interface cast is valid #2267.
 - Fix issue with labelled break inside of a $switch.
 - Non-const macros may not return untyped lists.
+- `$for` ct-state not properly popped.
 
 ### Stdlib changes
 
