@@ -3887,24 +3887,25 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 					RETURN_SEMA_ERROR(index, "Index is out of range.");
 				}
 				ArraySize idx = index->const_expr.ixx.i.low;
+				ArrayIndex len = sema_len_from_const(current_expr);
+				if (idx > len || (idx == len && !start_from_end) || (idx == 0 && start_from_end))
+				{
+					if (check_valid) goto VALID_FAIL_POISON;
+					RETURN_SEMA_ERROR(index, "The index (%s%llu) is out of range, the length is just %llu.",
+									  start_from_end ? "^" : "",
+									  (unsigned long long)idx,
+									  (unsigned long long)len);
+				}
 				if (!is_const_initializer)
 				{
 					// Handle bytes / String
-					ArraySize len = current_expr->const_expr.bytes.len;
-					if (idx > len || (idx == len && !start_from_end) || (idx == 0 && start_from_end))
-					{
-						if (check_valid) goto VALID_FAIL_POISON;
-						RETURN_SEMA_ERROR(index, "The index (%s%llu) is out of range, the length is just %llu.",
-										  start_from_end ? "^" : "",
-										  (unsigned long long)idx,
-										  (unsigned long long)current_expr->const_expr.bytes.len);
-					}
 					if (start_from_end) idx = len - idx;
 					unsigned char c = current_expr->const_expr.bytes.ptr[idx];
 					expr_rewrite_const_int(expr, type_char, c);
 					expr->type = type_char;
 					return true;
 				}
+
 				if (sema_subscript_rewrite_index_const_list(current_expr, idx, start_from_end, expr)) return true;
 			}
 		}
@@ -5889,7 +5890,7 @@ CHECK_DEEPER:
 	// 9. Fix hard coded function `len` on slices and arrays
 	if (kw == kw_len)
 	{
-		ArrayIndex index = sema_len_from_const(current_parent);
+		ArrayIndex index = sema_len_from_expr(current_parent);
 		if (index > -1)
 		{
 			expr_rewrite_const_int(expr, type_isz, index);
