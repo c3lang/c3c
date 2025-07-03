@@ -9,6 +9,6 @@ macro test(int x)
 }
 fn int main()
 {
-	Test a = test(3);
+	Test a = test(3); // #error: returns an untyped list
     return 0;
 }
