@@ -410,6 +410,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(max_vector_size);
 	OVERRIDE_IF_SET(win.def);
 	OVERRIDE_IF_SET(no_entry);
+	OVERRIDE_IF_SET(echo_prefix);
 
 	OVERRIDE_IF_SET(macos.sysroot);
 	OVERRIDE_IF_SET(win.sdk);

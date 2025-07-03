@@ -2964,7 +2964,46 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 		SEMA_ERROR(message, "Expected a constant value.");
 		return false;
 	}
-	printf("] ");
+	const char *prefix = compiler.build.echo_prefix ? compiler.build.echo_prefix : "c3c:";
+	while (prefix[0] != 0)
+	{
+		const char *next_file = strstr(prefix, "{FILE}");
+		const char *next_line = strstr(prefix, "{LINE}");
+		const char *next = next_line;
+		if (next_file)
+		{
+			if (next_line && next_line < next_file)
+			{
+				next = next_line;
+				next_file = NULL;
+			}
+			else
+			{
+				next = next_file;
+				next_line = NULL;
+			}
+		}
+		if (!next)
+		{
+			printf("%s", prefix);
+			break;
+		}
+		if (prefix != next)
+		{
+			printf("%.*s", (int)(next - prefix), prefix);
+		}
+		prefix = next + 6;
+		if (next_line)
+		{
+			printf("%d", statement->span.row);
+		}
+		else
+		{
+			File *file = source_file_by_id(statement->span.file_id);
+			printf("%s", file->name);
+		}
+	}
+	printf(" ");
 	scratch_buffer_clear();
 	expr_const_to_scratch_buffer(&message->const_expr);
 	puts(scratch_buffer_to_string());

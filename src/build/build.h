@@ -484,6 +484,7 @@ typedef struct BuildOptions_
 		int api_version;
 	} android;
 	int build_threads;
+	const char *echo_prefix;
 	const char **libraries_to_fetch;
 	const char **files;
 	const char *test_filter;
@@ -649,6 +650,7 @@ typedef struct
 	const char **linker_libdirs;
 	const char **linker_libs;
 	const char *cpu;
+	const char *echo_prefix;
 	const char **link_args;
 	const char *build_dir;
 	const char *object_file_dir;

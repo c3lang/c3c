@@ -50,7 +50,7 @@ static const char *optsizes[3] = {
 	[SIZE_OPTIMIZATION_TINY] = "tiny",
 };
 
-static const char *linker[3] = {
+static const char *linker_kind[3] = {
 	[LINKER_TYPE_BUILTIN] = "builtin",
 	[LINKER_TYPE_CC] = "cc",
 	[LINKER_TYPE_CUSTOM] = "custom"

@@ -867,9 +867,9 @@ void compile_file_list(BuildOptions *options)
 		{
 			error_exit("The target is a 'prepare' target, and only 'build' can be used with it.");
 		}
-		OUTF("] Running prepare target '%s'.\n", options->target_select);
+		OUTF("Running prepare target '%s'.\n", options->target_select);
 		execute_scripts();
-		OUTF("] Completed.\n.");
+		OUTN("Completed.\n.");
 		return;
 	}
 	if (options->command == COMMAND_CLEAN_RUN)

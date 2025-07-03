@@ -3903,7 +3903,6 @@ INLINE void expr_rewrite_enum_from_ord(Expr *expr, Type *type)
 	expr->resolve_status = RESOLVE_DONE;
 }
 
-
 INLINE void expr_rewrite_slice_len(Expr *expr, Expr *inner, Type *type)
 {
 	ASSERT(inner->resolve_status == RESOLVE_DONE);
