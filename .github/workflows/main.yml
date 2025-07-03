@@ -288,6 +288,7 @@ jobs:
                 -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
                 -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
                 -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
+                -DLLVM_ENABLE_LIBXML2=OFF \
                 -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
           cmake --build build
 
@@ -440,6 +441,7 @@ jobs:
                 -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
                 -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
                 -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
+                -DLLVM_ENABLE_LIBXML2=OFF \
                 -DC3_LLVM_VERSION=${{matrix.llvm_version}}
           cmake --build build
       - name: CMake
@@ -454,6 +456,7 @@ jobs:
                 -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
                 -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
                 -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
+                -DLLVM_ENABLE_LIBXML2=OFF \
                 -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
           cmake --build build
       - name: Compile and run some examples
