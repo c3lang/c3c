@@ -12,7 +12,17 @@ ArrayIndex sema_len_from_const(Expr *expr)
 	// We also handle the case where we have a cast from a const array.
 	if (!sema_cast_const(expr))
 	{
-		if (type_flatten(expr->type)->type_kind != TYPE_SLICE) return -1;
+		Type *flat = type_flatten(expr->type);
+		switch (flat->type_kind)
+		{
+			case TYPE_ARRAY:
+			case TYPE_VECTOR:
+				return flat->array.len;
+			case TYPE_SLICE:
+				break;
+			default:
+				return -1;
+		}
 		if (expr->expr_kind == EXPR_SLICE)
 		{
 			return range_const_len(&expr->slice_expr.range);

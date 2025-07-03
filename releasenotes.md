@@ -21,6 +21,7 @@
 - Non-const macros may not return untyped lists.
 - `$for` ct-state not properly popped.
 - Inline `r / complex` for complex numbers fixed.
+- Const slice lengths were not always detected as constant.
 
 ### Stdlib changes
 

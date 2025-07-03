@@ -5889,28 +5889,18 @@ CHECK_DEEPER:
 	// 9. Fix hard coded function `len` on slices and arrays
 	if (kw == kw_len)
 	{
+		ArrayIndex index = sema_len_from_const(current_parent);
+		if (index > -1)
+		{
+			expr_rewrite_const_int(expr, type_isz, index);
+			return true;
+		}
 		if (flat_type->type_kind == TYPE_SLICE)
 		{
-			// Handle literal "foo".len which is now a slice.
-			sema_expr_flatten_const_ident(current_parent);
-			if (expr_is_const_string(current_parent))
-			{
-				expr_rewrite_const_int(expr, type_isz, current_parent->const_expr.bytes.len);
-				return true;
-			}
 			expr_rewrite_slice_len(expr, current_parent, type_usz);
 			return true;
 		}
-		if (flat_type->type_kind == TYPE_ARRAY || flat_type->type_kind == TYPE_VECTOR)
-		{
-			expr_rewrite_const_int(expr, type_isz, flat_type->array.len);
-			return true;
-		}
-		if (flat_type->type_kind == TYPE_UNTYPED_LIST)
-		{
-			expr_rewrite_const_int(expr, type_isz, vec_size(current_parent->const_expr.untyped_list));
-			return true;
-		}
+		assert(flat_type->type_kind != TYPE_ARRAY && flat_type->type_kind != TYPE_VECTOR);
 	}
 	if (flat_type->type_kind == TYPE_TYPEID)
 	{

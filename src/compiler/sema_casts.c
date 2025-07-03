@@ -2214,7 +2214,7 @@ static void cast_slice_to_bool(Expr *expr, Type *type)
 	}
 	if (expr_is_const_slice(expr))
 	{
-		expr_rewrite_const_bool(expr, type, expr->const_expr.slice_init != NULL);
+		expr_rewrite_const_bool(expr, type, expr->const_expr.slice_init != NULL && expr->const_expr.slice_init->kind != CONST_INIT_ZERO);
 		return;
 	}
 	Expr *inner = expr_copy(expr);

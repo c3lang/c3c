@@ -15,8 +15,5 @@ fn int main()
 /* #expect: test.ll
 
 entry:
-  %literal = alloca %Foo, align 8
-  call void @llvm.memset.p0.i64(ptr align 8 %literal, i8 0, i64 16, i1 false)
-  %ptradd = getelementptr inbounds i8, ptr %literal, i64 8
   ret i32 0
 }
