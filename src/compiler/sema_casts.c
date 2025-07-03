@@ -931,7 +931,7 @@ static bool rule_arrptr_to_slice(CastContext *cc, bool is_explicit, bool is_sile
 
 static bool rule_ulist_to_struct(CastContext *cc, UNUSED bool is_explicit, bool is_silent)
 {
-	ASSERT(expr_is_const_untyped_list(cc->expr));
+	ASSERT_SPAN(cc->expr, expr_is_const_untyped_list(cc->expr));
 	Expr **expressions = cc->expr->const_expr.untyped_list;
 	unsigned size = vec_size(expressions);
 	if (!size) return true;
