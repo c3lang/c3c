@@ -1222,6 +1222,16 @@ static bool rule_ptr_to_interface(CastContext *cc, bool is_explicit, bool is_sil
 	                  type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
 }
 
+bool is_parent_interface(Type *from_interface, Type *to_interface)
+{
+	FOREACH(TypeInfo *, parent, from_interface->decl->interfaces)
+	{
+		if (parent->type->canonical == to_interface) return true;
+		if (is_parent_interface(parent->type, to_interface)) return true;
+	}
+	return false;
+}
+
 static bool rule_interface_to_interface(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_explicit) return true;
@@ -1229,10 +1239,7 @@ static bool rule_interface_to_interface(CastContext *cc, bool is_explicit, bool 
 	Type *from_interface = cc->from;
 	Type *interface = cc->to->canonical;
 	if (!sema_resolve_type_decl(cc->context, from_interface)) return false;
-	FOREACH(TypeInfo *, parent, from_interface->decl->interfaces)
-	{
-		if (parent->type->canonical == interface) return true;
-	}
+	if (is_parent_interface(from_interface, interface)) return true;
 	if (is_silent) return false;
 	RETURN_CAST_ERROR(cc->expr, "%s is not a parent interface of %s, but you can insert an explicit cast '(%s)value' to enforce the (unsafe) conversion.",
 	                  type_quoted_error_string(cc->to), type_quoted_error_string(from_interface),

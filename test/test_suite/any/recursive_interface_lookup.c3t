@@ -1,0 +1,19 @@
+interface Foo
+{
+}
+
+interface Bar : Foo
+{
+}
+
+interface Baz : Bar
+{
+}
+
+fn void take(Foo foo) {}
+
+fn void main()
+{
+	Baz baz;
+	take(baz);
+}

@@ -16,6 +16,7 @@
 - Comparing a null ZString with a non-null ZString would crash.
 - Switch case with const non-int / enum would be treated as ints and crash. #2263
 - Missing bounds check on upper bound with const ranges `foo[1:3]`.
+- Check up the hierarchy when considering if an interface cast is valid #2267.
 
 ### Stdlib changes
 
