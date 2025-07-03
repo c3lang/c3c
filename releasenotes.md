@@ -20,6 +20,7 @@
 - Fix issue with labelled break inside of a $switch.
 - Non-const macros may not return untyped lists.
 - `$for` ct-state not properly popped.
+- Inline `r / complex` for complex numbers fixed.
 
 ### Stdlib changes
 

@@ -43,7 +43,7 @@ macro Complex Complex.sub_each(self, Real b) => { .v = self.v - b };
 macro Complex Complex.scale(self, Real r) @operator_s(*) => { .v = self.v * r };
 macro Complex Complex.mul(self, Complex b)@operator(*) => { self.r * b.r - self.c * b.c, self.r * b.c + b.r * self.c };
 macro Complex Complex.div_real(self, Real r) @operator(/) => { .v = self.v / r };
-macro Complex Complex.div_real_inverse(Complex c, Real r) @operator_r(/) => ((Complex) { .r = self }).div(c);
+macro Complex Complex.div_real_inverse(Complex c, Real r) @operator_r(/) => ((Complex) { .r = r }).div(c);
 macro Complex Complex.div(self, Complex b) @operator(/)
 {
 	Real div = b.v.dot(b.v);
