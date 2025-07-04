@@ -240,3 +240,76 @@ fn void test_invalid_numbers()
 		assert(false, "Expected INVALID_NUMBER error for [012.5]");
 	}
 }
+
+fn void test_trailing_characters()
+{
+	// Test invalid: trailing characters after string
+	if (catch err = json::parse_string(mem, `""x`))
+	{
+		assert(err == json::UNEXPECTED_CHARACTER);
+	}
+	else
+	{
+		assert(false, "Expected UNEXPECTED_CHARACTER error for \"\"x");
+	}
+
+	// Test invalid: trailing characters after number
+	if (catch err = json::parse_string(mem, "123abc"))
+	{
+		assert(err == json::UNEXPECTED_CHARACTER);
+	}
+	else
+	{
+		assert(false, "Expected UNEXPECTED_CHARACTER error for 123abc");
+	}
+
+	// Test invalid: trailing characters after boolean
+	if (catch err = json::parse_string(mem, "truex"))
+	{
+		assert(err == json::UNEXPECTED_CHARACTER);
+	}
+	else
+	{
+		assert(false, "Expected UNEXPECTED_CHARACTER error for truex");
+	}
+
+	// Test invalid: trailing characters after null
+	if (catch err = json::parse_string(mem, "nullx"))
+	{
+		assert(err == json::UNEXPECTED_CHARACTER);
+	}
+	else
+	{
+		assert(false, "Expected UNEXPECTED_CHARACTER error for nullx");
+	}
+
+	// Test invalid: trailing characters after array
+	if (catch err = json::parse_string(mem, "[1,2,3]x"))
+	{
+		assert(err == json::UNEXPECTED_CHARACTER);
+	}
+	else
+	{
+		assert(false, "Expected UNEXPECTED_CHARACTER error for [1,2,3]x");
+	}
+
+	// Test invalid: trailing characters after object
+	if (catch err = json::parse_string(mem, `{"a":1}x`))
+	{
+		assert(err == json::UNEXPECTED_CHARACTER);
+	}
+	else
+	{
+		assert(false, "Expected UNEXPECTED_CHARACTER error for {\"a\":1}x");
+	}
+
+	// Test valid: trailing whitespace should be allowed
+	Object* o1 = json::parse_string(mem, `""   `)!!;
+	defer o1.free();
+	assert(o1.s == "");
+
+	// Test valid: trailing newlines and tabs should be allowed
+	Object* o2 = json::parse_string(mem, "123\n\t  ")!!;
+	defer o2.free();
+	assert(o2.f == 123.0);
+}

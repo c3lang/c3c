@@ -24,7 +24,23 @@ fn Object*? parse(Allocator allocator, InStream s)
 		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator };
 		@pool()
 		{
-			return parse_any(&context);
+			Object* result = parse_any(&context)!;
+			// Check for trailing non-whitespace characters
+			if (catch err = advance(&context))
+			{
+				if (err != io::EOF)
+				{
+					result.free();
+					return err?;
+				}
+			}
+			else
+			{
+				// If advance succeeded, we have trailing characters
+				result.free();
+				return UNEXPECTED_CHARACTER?;
+			}
+			return result;
 		};
 	};
 }
