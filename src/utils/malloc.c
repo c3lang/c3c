@@ -17,8 +17,8 @@ static Vmem char_arena;
 void memory_init(size_t max_mem)
 {
 	if (max_mem) vmem_set_max_limit(max_mem);
-	vmem_init(&arena, 2048);
-	vmem_init(&char_arena, 512);
+	vmem_init(&arena, 4096);
+	vmem_init(&char_arena, 2048);
 	allocations_done = 0;
 	arena_zero = (uintptr_t)arena.ptr;
 	vmem_alloc(&arena, 16);

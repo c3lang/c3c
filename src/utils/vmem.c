@@ -28,7 +28,7 @@ static inline void mmap_init(Vmem *vmem, size_t size)
 	}
 #elif PLATFORM_POSIX
 	void* ptr = NULL;
-	size_t min_size = size / 16;
+	size_t min_size = size / 32;
 	if (min_size < 1) min_size = size;
 	while (size >= min_size)
 	{
@@ -74,8 +74,7 @@ static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 	if (vmem->size < allocated_after)
 	{
 		error_exit("⚠️Fatal Error! The compiler ran out of memory: more than %u MB was allocated from a single memory arena, "
-			"exceeding the current maximum limit. Perhaps you called some recursive macro? "
-			"Note that you can increase the max memory using the command line setting '--max-mem <limit in MB>' and attempt compiling again.",
+			"exceeding the current maximum limit. Perhaps you called some recursive macro?",
 			(unsigned)(vmem->size / (1024 * 1024)));
 	}
 	return ptr;
