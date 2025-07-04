@@ -6659,7 +6659,7 @@ static bool sema_binary_analyse_ct_subscript_op_assign(SemaContext *context, Exp
 	ArrayIndex idx = left->ct_subscript_expr.index;
 	Expr *lhs_expr = left_var->var.init_expr;
 	ASSERT_SPAN(lhs_expr, lhs_expr->expr_kind == EXPR_CONST);
-	Expr *value = expr_from_const_expr_at_index(left_var->var.init_expr, idx);
+	Expr *value = expr_from_const_expr_at_index(lhs_expr, idx);
 
 	BinaryOp op = binaryop_assign_base_op(expr->binary_expr.operator);
 	expr->binary_expr = (ExprBinary) { .left = exprid(value), .right = expr->binary_expr.right, .operator = op };
