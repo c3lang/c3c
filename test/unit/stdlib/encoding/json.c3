@@ -51,3 +51,124 @@ fn void test_temp_string()
 		assert(s2 == s, "Unexpectedly got %s and not %s", s2, s);
 	};
 }
+
+fn void test_valid_numbers()
+{
+	// Test valid integer
+	Object* o1 = json::parse_string(mem, "123")!!;
+	defer o1.free();
+	assert(o1.f == 123.0);
+
+	// Test valid negative integer
+	Object* o2 = json::parse_string(mem, "-456")!!;
+	defer o2.free();
+	assert(o2.f == -456.0);
+
+	// Test valid decimal
+	Object* o3 = json::parse_string(mem, "123.456")!!;
+	defer o3.free();
+	assert(o3.f == 123.456);
+
+	// Test valid negative decimal
+	Object* o4 = json::parse_string(mem, "-123.456")!!;
+	defer o4.free();
+	assert(o4.f == -123.456);
+
+	// Test valid scientific notation
+	Object* o5 = json::parse_string(mem, "1.23e10")!!;
+	defer o5.free();
+	assert(o5.f == 1.23e10);
+
+	// Test valid scientific notation with negative exponent
+	Object* o6 = json::parse_string(mem, "1.23e-10")!!;
+	defer o6.free();
+	assert(o6.f == 1.23e-10);
+
+	// Test valid scientific notation with positive exponent
+	Object* o7 = json::parse_string(mem, "1.23e+10")!!;
+	defer o7.free();
+	assert(o7.f == 1.23e+10);
+
+	// Test zero
+	Object* o8 = json::parse_string(mem, "0")!!;
+	defer o8.free();
+	assert(o8.f == 0.0);
+
+	// Test zero with decimal
+	Object* o9 = json::parse_string(mem, "0.0")!!;
+	defer o9.free();
+	assert(o9.f == 0.0);
+}
+
+fn void test_invalid_numbers()
+{
+	// Test invalid: decimal point without following digits
+	if (catch err = json::parse_string(mem, "[-2.]"))
+	{
+		assert(err == json::INVALID_NUMBER);
+	}
+	else
+	{
+		assert(false, "Expected INVALID_NUMBER error for [-2.]");
+	}
+
+	// Test invalid: decimal point without following digits (positive)
+	if (catch err = json::parse_string(mem, "[1.]"))
+	{
+		assert(err == json::INVALID_NUMBER);
+	}
+	else
+	{
+		assert(false, "Expected INVALID_NUMBER error for [1.]");
+	}
+
+	// Test invalid: leading decimal point
+	if (catch err = json::parse_string(mem, "[.5]"))
+	{
+		assert(err == json::UNEXPECTED_CHARACTER);
+	}
+	else
+	{
+		assert(false, "Expected UNEXPECTED_CHARACTER error for [.5]");
+	}
+
+	// Test invalid: multiple decimal points
+	if (catch err = json::parse_string(mem, "[1.2.3]"))
+	{
+		assert(err == json::UNEXPECTED_CHARACTER);
+	}
+	else
+	{
+		assert(false, "Expected UNEXPECTED_CHARACTER error for [1.2.3]");
+	}
+
+	// Test invalid: scientific notation without digits after e
+	if (catch err = json::parse_string(mem, "[1e]"))
+	{
+		assert(err == json::INVALID_NUMBER);
+	}
+	else
+	{
+		assert(false, "Expected INVALID_NUMBER error for [1e]");
+	}
+
+	// Test invalid: scientific notation with only sign after e
+	if (catch err = json::parse_string(mem, "[1e+]"))
+	{
+		assert(err == json::INVALID_NUMBER);
+	}
+	else
+	{
+		assert(false, "Expected INVALID_NUMBER error for [1e+]");
+	}
+
+	// Test invalid: scientific notation with only sign after e
+	if (catch err = json::parse_string(mem, "[1e-]"))
+	{
+		assert(err == json::INVALID_NUMBER);
+	}
+	else
+	{
+		assert(false, "Expected INVALID_NUMBER error for [1e-]");
+	}
+}
