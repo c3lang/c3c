@@ -9,7 +9,7 @@ import std::hash::whirlpool;
 
 fn void test_whirlpool_empty()
 {
-    char[whirlpool::HASH_SIZE] result = whirlpool::hash("")!!;
+    char[*] result = whirlpool::hash("");
 
     assert(result == x'19fa61d75522a4669b44e39c1d2e1726c530232130d407f89afee0964997f7a73e83be698b288febcf88e3e03c4f0757ea8964e59b63d93708b138cc42a66eb3');
 }
@@ -20,7 +20,66 @@ fn void test_whirlpool_gigahash_zeroes()
     char[] c = calloc(257 * (1024*1024))[:(257*1024*1024)];   // 257 MiB
     defer free(c);
 
-    assert(whirlpool::hash(c)!! == x'1476b930d51cb9a7649a46f723f999896ce37c41186ceeafe1290151bf2dfb4a14e4a3f9fed16fcaea31f874108d51284f07883652cda30c9a3427041fc35dff');
+    assert(whirlpool::hash(c) == x'1476b930d51cb9a7649a46f723f999896ce37c41186ceeafe1290151bf2dfb4a14e4a3f9fed16fcaea31f874108d51284f07883652cda30c9a3427041fc35dff');
+}
+
+
+fn void test_whirlpool_hmac()
+{
+    char[] key = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
+    char[] input = "test";
+
+    assert(whirlpool::hmac(key, input) == x'670f6920cfd6da970b7b1c6d883d622198c46b214f10d6ced4d6a03538a3e1e006b3717c4fe5e5b17d5fdfb70d698610b59ef554b0168583d2ec21578859c3b3');
+}
+
+
+fn void test_whirlpool_pbkdf2()
+{
+    char[] pw = "password";
+    char[] s = "salt";
+    char[whirlpool::HASH_SIZE] out;
+
+    whirlpool::pbkdf2(pw, s, 1, &out);
+    assert(out == x'7e25009bf8afade8ab33911d331b5b3e987fc7c3e2d5fdb3f33c183e837c357850a75eb8baad2c05b1e3bc7068c2a2d5c0f3e586f401610ad02f525c8fcf2cbd');
+
+    whirlpool::pbkdf2(pw, s, 2, &out);
+    assert(out == x'110b2e4266f03c334f6085bf421a68d6976a2f767e0bb6041a9c9315ec0d249fc8cb5fac1f9f3b87dbb98e9b4b220dfe0d6b55f88109dd558c30f0a0356f7d9f');
+
+    whirlpool::pbkdf2(pw, s, 4096, &out);
+    assert(out == x'4f4c0307915b7e3f948daaf41ee7805cd2967513a3be6975a7cce782402598e6bd950c5051ea0c8185beba487b13eb93f5a93b8e2e1e7535643f00dd7c39cad1');
+}
+
+
+fn void test_whirlpool_pbkdf2_2()
+{
+    char[] pw = "passwordPASSWORDpassword";
+    char[] s = "saltSALTsaltSALTsaltSALTsaltSALTsalt";
+    char[whirlpool::HASH_SIZE] out;
+
+    whirlpool::pbkdf2(pw, s, 4096, &out);
+    assert(out == x'b704488bcc9371a5fa3a7eb6e7555549a96eae3d572c0d505e1970f8460425d0ccc4cdb091f23082da6f94d3e594012075443491b608d81af37952c205403ad3');
+}
+
+
+fn void test_whirlpool_pbkdf2_3()
+{
+    char[] pw = "pass\0word";
+    char[] salt = "sa\0lt";
+    char[whirlpool::HASH_SIZE] out;
+
+    whirlpool::pbkdf2(pw, salt, 4096, &out);
+    assert(out == x'a5a8f2abe3b0cd5a4084987de2f6ef48ed6c4c399dacd00bedef0769c6d24c825398edeb3076fa799a1468cc74df5a15b30f935942472268de82a5929b56413d');
+}
+
+
+fn void test_whirlpool_pbkdf2_4()
+{
+    char[] pw = "i have a secret that i truly truly truly don't want you to be able to find out - it's a really long key and it's used to keep all my cat pictures safe and undisturbed. thank you very much for understanding, and have a great evening";
+    char[] salt = "cumin_turmeric_curry";
+    char[whirlpool::HASH_SIZE] out;
+
+    whirlpool::pbkdf2(pw, salt, 250_000, &out);
+    assert(out == x'14a4a663e373a705ff36c8184b8384b0ef1a80501533d5b23be6bdff14f6cc0c900cf5d8c39d9f9a44d7091f96c818adee3c8618455c530f9352c66a7806b8b6');
 }
 
 
@@ -54,13 +113,9 @@ fn void test_whirlpool_expected_outputs()
 {
     foreach (vector : TEST_VECTORS)
     {
-        char[whirlpool::HASH_SIZE] result = whirlpool::hash(vector.input)!!;
+        char[*] result = whirlpool::hash(vector.input);
 
-        test::@check(
-            result == vector.expected,
-            "Expected WHIRLPOOL hash output mismatch\n(%d :\n\t%s\n\tvs\n\t%s\n).\n\n",
-            vector.input.len, vector.expected, result
-        );
+        assert(result == vector.expected);
     }
 }
 
@@ -211,8 +266,8 @@ fn void test_whirlpool_sweep_block_size()
 
         for (usz x = 0; x < i; ++x) v[x] = 'A';
 
-        char[whirlpool::HASH_SIZE] result = whirlpool::hash(v)!!;
+        char[*] result = whirlpool::hash(v);
 
-        test::@check(result[..] == SEQUENTIAL_HASHES[i - 1], "Mismatch sequential hash on number (%d).\n", i);
+        assert(result[..] == SEQUENTIAL_HASHES[i - 1]);
     }
 }

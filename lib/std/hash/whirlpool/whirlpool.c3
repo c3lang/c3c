@@ -5,6 +5,8 @@
 // Dedicated from repo: https://github.com/NotsoanoNimus/whirlpool.c3l
 module std::hash::whirlpool;
 
+import std::hash::hmac;
+
 
 const BLOCK_SIZE = 64;
 const HASH_SIZE = 64;
@@ -19,39 +21,38 @@ struct Whirlpool
 }
 
 
-faultdef
-    INPUT_TOO_LARGE,
-    INVALID_BLOCK_SIZE
-    ;
+alias HmacWhirlpool = Hmac{Whirlpool, HASH_SIZE, BLOCK_SIZE};
+alias hmac = hmac::hash{Whirlpool, HASH_SIZE, BLOCK_SIZE};
+alias pbkdf2 = hmac::pbkdf2{Whirlpool, HASH_SIZE, BLOCK_SIZE};
 
 
-fn char[HASH_SIZE]? hash(char[] data)
+fn char[HASH_SIZE] hash(char[] data)
 {
-    Whirlpool w;
+    Whirlpool w @noinit;
     w.init();
-    w.update(data)!;
-    return w.final()!;
+    w.update(data);
+    return w.final();
 }
 
 
-fn void Whirlpool.init(&self) @inline
-{
-    // Do nothing - in the reference implementation this just sets the state to zero, which C3 implicitly does when '@noinit' is not used.
-}
+// WHIRLPOOL expects the content of the context to be ALL ZEROES when starting. Any place that uses @noinit
+//   must have the fields _explicitly_ zeroed in this manner.
+fn void Whirlpool.init(&self) @inline => *self = { {}, {}, 0, 0 };
 
 
-fn void? Whirlpool.update(&self, char[] data)
+fn void Whirlpool.update(&self, char[] data)
 {
     char remainder = (char)(self.counter_low & 0x3F);   // if not at an even BLOCK_SIZE, how many bytes are over it
     uint to_pad = BLOCK_SIZE - remainder;   // how many bytes must be filled to get the BLOCK_SIZE
 
-    if (data.len > ulong.max) return INPUT_TOO_LARGE?;
+    // Trim the input down to INT64_MAX in length. Anything above that is unrealistic anyways.
+    if (@unlikely(data.len > long.max)) data = data[:long.max];
 
     uint128 prev_ctr = self.counter_low;
     self.counter_low += data.len;
 
     // Handle counter rollover by just adding 1 onto 'high'. The overflow amount in 'low' remains valid.
-    //   Since 'data' is limited to UINT64_MAX, there are no edge cases where 'high' must be incremented by more than 1.
+    //   Since 'data' is limited to INT64_MAX, there are no edge cases where 'high' must be incremented by more than 1.
     //   This is so much data (> 2^128 bytes) that this will likely NEVER happen in practice...
     if (@unlikely(self.counter_low < prev_ctr)) ++self.counter_high;
 
@@ -65,14 +66,14 @@ fn void? Whirlpool.update(&self, char[] data)
         //   If the algorithm is finalized during a 'partial' block, it has its own padding to fill the remaining gap.
         if (data.len < to_pad) return;
 
-        self.process_block(((ulong*)&self.block[0])[:(BLOCK_SIZE / ulong.sizeof)])!;
+        self.process_block(((ulong*)&self.block[0])[:(BLOCK_SIZE / ulong.sizeof)]);
         data = data[to_pad..];
     }
 
     // Digest blocks wholesale.
     while (data.len >= BLOCK_SIZE)
     {
-        self.process_block(((ulong*)&data[0])[:(BLOCK_SIZE / ulong.sizeof)])!;
+        self.process_block(((ulong*)&data[0])[:(BLOCK_SIZE / ulong.sizeof)]);
 
         data = (data.len > BLOCK_SIZE) ? data[BLOCK_SIZE..] : {};
     }
@@ -87,7 +88,7 @@ fn void? Whirlpool.update(&self, char[] data)
 }
 
 
-fn char[HASH_SIZE]? Whirlpool.final(&self)
+fn char[HASH_SIZE] Whirlpool.final(&self)
 {
     char remainder = (char)(self.counter_low & 0x3F);   // if not at an even BLOCK_SIZE, how many bytes are over it
 
@@ -99,7 +100,7 @@ fn char[HASH_SIZE]? Whirlpool.final(&self)
     {
         while (remainder < 64) self.block[remainder++] = 0x00;
 
-        self.process_block(((ulong*)&self.block[0])[:(BLOCK_SIZE / ulong.sizeof)])!;
+        self.process_block(((ulong*)&self.block[0])[:(BLOCK_SIZE / ulong.sizeof)]);
 
         remainder = 0;
     }
@@ -113,7 +114,7 @@ fn char[HASH_SIZE]? Whirlpool.final(&self)
     *((uint128*)&self.block[48]) = $$bswap(self.counter_low << (uint128)3);
 
     // Process the final block.
-    self.process_block(((ulong*)&self.block[0])[:(BLOCK_SIZE / ulong.sizeof)])!;
+    self.process_block(((ulong*)&self.block[0])[:(BLOCK_SIZE / ulong.sizeof)]);
 
     // Each ulong in the resultant hash should be bit-swapped before the final return.
     char[HASH_SIZE] hash;
@@ -152,12 +153,13 @@ const ulong[10] RC = {
 };
 const ROUNDS = 10;
 
-fn void? Whirlpool.process_block(&self, ulong[] block) @local
+fn void Whirlpool.process_block(&self, ulong[] block) @local
 {
     ulong[2 * 8] k;   // key
     ulong[2 * 8] state;   // state
 
-    if (@unlikely(block.len != (BLOCK_SIZE / $sizeof(block[0])))) return INVALID_BLOCK_SIZE?;
+    // In this case, something went wrong. Since we can't really return an error, we just bail out.
+    if (@unlikely(block.len != (BLOCK_SIZE / $sizeof(block[0])))) return;
 
     // NOTE: These loops are unrolled with C3's Chad-tier compile-time evaluation.
     $for var $round = 0; $round < 8; ++$round :
