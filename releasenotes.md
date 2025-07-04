@@ -24,6 +24,7 @@
 - Inline `r / complex` for complex numbers fixed.
 - Const slice lengths were not always detected as constant.
 - Const slice indexing was not bounds checked.
+- Initialize pool correctly in print_backtrace.
 
 ### Stdlib changes
 
