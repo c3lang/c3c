@@ -328,3 +328,36 @@ fn void test_depth_limit()
 		assert(false, "Expected MAX_DEPTH_EXCEEDED error for deeply nested array with 150 brackets");
 	}
 }
+
+fn void test_comments_rejected()
+{
+	// Test the specific case: {"a":"b"}//
+	if (catch err = json::parse_string(mem, `{"a":"b"}//comment`))
+	{
+		// Should fail with some error - comments are not valid JSON
+	}
+	else
+	{
+		assert(false, "Expected error for {\"a\":\"b\"}// but parsing succeeded");
+	}
+
+	// Test that comments are rejected (JSON spec doesn't allow comments)
+	if (catch err = json::parse_string(mem, `{"a":"b"}//`))
+	{
+		// Should fail with some error - comments are not valid JSON
+	}
+	else
+	{
+		assert(false, "Expected error for JSON with comments but parsing succeeded");
+	}
+
+	// Test that just a slash is rejected
+	if (catch err = json::parse_string(mem, "/"))
+	{
+		// Should fail with some error - slash is not valid JSON
+	}
+	else
+	{
+		assert(false, "Expected error for single slash but parsing succeeded");
+	}
+}

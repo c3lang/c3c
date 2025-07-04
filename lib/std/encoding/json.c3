@@ -23,7 +23,7 @@ fn Object*? parse(Allocator allocator, InStream s)
 {
 	@stack_mem(512; Allocator smem)
 	{
-		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator, .depth = 0 };
+		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator, .depth = 0, .skip_comments = false };
 		@pool()
 		{
 			Object* result = parse_any(&context)!;
@@ -292,7 +292,7 @@ fn JsonTokenType? advance(JsonContext* context) @local
 			case '\v':
 				continue;
 			case '/':
-				if (!context.skip_comments) break;
+				if (!context.skip_comments) break WS;
 				c = read_next(context)!;
 				if (c != '*')
 				{
