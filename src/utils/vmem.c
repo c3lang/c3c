@@ -73,8 +73,10 @@ static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 	vmem->allocated = allocated_after;
 	if (vmem->size < allocated_after)
 	{
-		error_exit("Error: The compiler ran out of memory! Over %u MB was allocated from a single memory arena, perhaps "
-				   "you called some recursive macro?", (unsigned)(vmem->size / (1024 * 1024)));
+		error_exit("⚠️Fatal Error! The compiler ran out of memory: more than %u MB was allocated from a single memory arena, "
+			"exceeding the current maximum limit. Perhaps you called some recursive macro? "
+			"Note that you can increase the max memory using the command line setting '--max-mem <limit in MB>' and attempt compiling again.",
+			(unsigned)(vmem->size / (1024 * 1024)));
 	}
 	return ptr;
 }
