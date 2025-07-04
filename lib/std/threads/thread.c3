@@ -68,7 +68,16 @@ macro void? ConditionVariable.wait_timeout(&cond, Mutex* mutex, ulong ms)
 	return NativeConditionVariable.wait_timeout((NativeConditionVariable*)cond, (NativeMutex*)mutex, ms);
 }
 
-macro void? Thread.create(&thread, ThreadFn thread_fn, void* arg) => NativeThread.create(thread, thread_fn, arg);
+<*
+ Create and start a thread.
+
+ @require thread_fn != null : "A non null thread function is required"
+*>
+macro void? Thread.create(&thread, ThreadFn thread_fn, void* arg)
+{
+	return NativeThread.create(thread, thread_fn, arg);
+}
+
 macro void? Thread.detach(thread) => NativeThread.detach(thread);
 macro int? Thread.join(thread) => NativeThread.join(thread);
 macro bool Thread.equals(thread, Thread other) => NativeThread.equals(thread, other);
