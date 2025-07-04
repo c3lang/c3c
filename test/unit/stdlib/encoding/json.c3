@@ -361,3 +361,21 @@ fn void test_comments_rejected()
 		assert(false, "Expected error for single slash but parsing succeeded");
 	}
 }
+
+fn void test_null_bytes_rejected()
+{
+	// Test that null bytes in JSON are rejected (like n_multidigit_number_then_00.json)
+	// This simulates "123" + null byte + newline
+	char[5] json_with_null = { '1', '2', '3', 0, '\n' };
+	ByteReader reader;
+	reader.init(json_with_null[..]);
+
+	if (catch err = json::parse(mem, &reader))
+	{
+		assert(err == json::UNEXPECTED_CHARACTER);
+	}
+	else
+	{
+		assert(false, "Expected UNEXPECTED_CHARACTER error for JSON with null byte");
+	}
+}
