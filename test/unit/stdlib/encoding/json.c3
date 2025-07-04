@@ -115,6 +115,29 @@ fn void test_valid_numbers()
 	assert(o12.f == 0.0);
 }
 
+fn void test_duplicate_keys()
+{
+	// Test that duplicate keys are now allowed (should not fail)
+	Object* o1 = json::parse_string(mem, `{"a":"first","a":"second"}`)!!;
+	defer o1.free();
+	assert(o1.has_key("a"));
+	assert(o1.get_string("a")!! == "second"); // Last value wins
+
+	// Test multiple duplicate keys with different types
+	Object* o2 = json::parse_string(mem, `{"x":1,"x":"string","x":true}`)!!;
+	defer o2.free();
+	assert(o2.get_bool("x")!! == true); // Last value wins
+
+	// Test duplicate keys in nested objects
+	Object* o3 = json::parse_string(mem, `{"obj":{"a":1},"obj":{"b":2}}`)!!;
+	defer o3.free();
+	Object* nested = o3.get("obj")!!;
+	assert(nested.has_key("b"));
+	assert(nested.get_int("b")!! == 2);
+	// The first object should be completely replaced
+	assert(!nested.has_key("a"));
+}
+
 fn void test_invalid_numbers()
 {
 	// Test invalid: decimal point without following digits

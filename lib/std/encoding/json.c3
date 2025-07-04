@@ -5,7 +5,7 @@ module std::encoding::json;
 import std::io;
 import std::collections::object;
 
-faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, DUPLICATE_MEMBERS, INVALID_NUMBER;
+faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER;
 
 fn Object*? parse_string(Allocator allocator, String s)
 {
@@ -174,7 +174,6 @@ fn Object*? parse_map(JsonContext* context) @local
 		{
 			if (token != JsonTokenType.STRING) return UNEXPECTED_CHARACTER?;
 			DString string = context.last_string;
-			if (map.has_key(string.str_view())) return DUPLICATE_MEMBERS?;
 			// Copy the key to our temp holder, since our
 			// last_string may be used in parse_any
 			temp_key.clear();

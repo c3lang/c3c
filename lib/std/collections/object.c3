@@ -178,10 +178,11 @@ fn void Object.init_array_if_needed(&self) @private
 fn void Object.set_object(&self, String key, Object* new_object) @private
 {
 	self.init_map_if_needed();
-	ObjectInternalMapEntry*? entry = self.map.get_entry(key);
-	defer
+	if (try entry = self.map.get_entry(key))
 	{
-		(void)entry.value.free();
+		defer {
+		    entry.value.free();
+		}
 	}
 	self.map.set(key, new_object);
 }
