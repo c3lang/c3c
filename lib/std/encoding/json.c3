@@ -105,10 +105,25 @@ fn JsonTokenType? lex_number(JsonContext *context, char c) @local
 			t.append(c);
 			c = read_next(context)!;
 		}
-		while (c.is_digit())
+
+		// Handle the integer part with leading zero validation
+		if (!c.is_digit()) return INVALID_NUMBER?;
+
+		if (c == '0')
 		{
+			// If we start with '0', the next character must be '.', 'e', 'E', or end of number
 			t.append(c);
 			c = read_next(context)!;
+			if (c.is_digit()) return INVALID_NUMBER?; // Leading zero followed by digit is invalid
+		}
+		else
+		{
+			// Read all digits for non-zero start
+			while (c.is_digit())
+			{
+				t.append(c);
+				c = read_next(context)!;
+			}
 		}
 		if (c == '.')
 		{

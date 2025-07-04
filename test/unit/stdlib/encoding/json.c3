@@ -98,6 +98,21 @@ fn void test_valid_numbers()
 	Object* o9 = json::parse_string(mem, "0.0")!!;
 	defer o9.free();
 	assert(o9.f == 0.0);
+
+	// Test negative zero
+	Object* o10 = json::parse_string(mem, "-0")!!;
+	defer o10.free();
+	assert(o10.f == 0.0);
+
+	// Test zero with scientific notation
+	Object* o11 = json::parse_string(mem, "0e10")!!;
+	defer o11.free();
+	assert(o11.f == 0.0);
+
+	// Test zero with decimal and scientific notation
+	Object* o12 = json::parse_string(mem, "0.0e10")!!;
+	defer o12.free();
+	assert(o12.f == 0.0);
 }
 
 fn void test_invalid_numbers()
@@ -170,5 +185,35 @@ fn void test_invalid_numbers()
 	else
 	{
 		assert(false, "Expected INVALID_NUMBER error for [1e-]");
+	}
+
+	// Test invalid: leading zeros
+	if (catch err = json::parse_string(mem, "[012]"))
+	{
+		assert(err == json::INVALID_NUMBER);
+	}
+	else
+	{
+		assert(false, "Expected INVALID_NUMBER error for [012]");
+	}
+
+	// Test invalid: negative leading zeros
+	if (catch err = json::parse_string(mem, "[-012]"))
+	{
+		assert(err == json::INVALID_NUMBER);
+	}
+	else
+	{
+		assert(false, "Expected INVALID_NUMBER error for [-012]");
+	}
+
+	// Test invalid: leading zeros with decimal
+	if (catch err = json::parse_string(mem, "[012.5]"))
+	{
+		assert(err == json::INVALID_NUMBER);
+	}
+	else
+	{
+		assert(false, "Expected INVALID_NUMBER error for [012.5]");
 	}
 }
