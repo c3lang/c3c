@@ -164,6 +164,7 @@ fn void* callback(void* arg) @private
 {
 	NativeThread* thread = arg;
 	current_thread = *thread;
+	if (thread.thread_fn == null) return null;
 	return (void*)(iptr)thread.thread_fn(thread.arg);
 }
 
