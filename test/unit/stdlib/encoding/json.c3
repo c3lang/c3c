@@ -313,3 +313,18 @@ fn void test_trailing_characters()
 	defer o2.free();
 	assert(o2.f == 123.0);
 }
+
+fn void test_depth_limit()
+{
+	// Test that deeply nested arrays with 150 opening brackets exceed the depth limit of 128
+	String deep_json = "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[1]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]";
+
+	if (catch err = json::parse_string(mem, deep_json))
+	{
+		assert(err == json::MAX_DEPTH_EXCEEDED);
+	}
+	else
+	{
+		assert(false, "Expected MAX_DEPTH_EXCEEDED error for deeply nested array with 150 brackets");
+	}
+}

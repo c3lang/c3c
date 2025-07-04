@@ -5,7 +5,9 @@ module std::encoding::json;
 import std::io;
 import std::collections::object;
 
-faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER;
+faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_EXCEEDED;
+
+const uint MAX_JSON_DEPTH = 128;
 
 fn Object*? parse_string(Allocator allocator, String s)
 {
@@ -21,7 +23,7 @@ fn Object*? parse(Allocator allocator, InStream s)
 {
 	@stack_mem(512; Allocator smem)
 	{
-		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator };
+		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator, .depth = 0 };
 		@pool()
 		{
 			Object* result = parse_any(&context)!;
@@ -72,6 +74,7 @@ enum JsonTokenType @local
 struct JsonContext @local
 {
 	uint line;
+	uint depth;
 	InStream stream;
 	Allocator allocator;
 	JsonTokenType token;
@@ -179,6 +182,10 @@ fn JsonTokenType? lex_number(JsonContext *context, char c) @local
 
 fn Object*? parse_map(JsonContext* context) @local
 {
+	if (context.depth >= MAX_JSON_DEPTH) return MAX_DEPTH_EXCEEDED?;
+	context.depth++;
+	defer context.depth--;
+
 	Object* map = object::new_obj(context.allocator);
 	defer catch map.free();
 	JsonTokenType token = advance(context)!;
@@ -211,6 +218,10 @@ fn Object*? parse_map(JsonContext* context) @local
 
 fn Object*? parse_array(JsonContext* context) @local
 {
+	if (context.depth >= MAX_JSON_DEPTH) return MAX_DEPTH_EXCEEDED?;
+	context.depth++;
+	defer context.depth--;
+
 	Object* list = object::new_obj(context.allocator);
 	defer catch list.free();
 	JsonTokenType token = advance(context)!;
