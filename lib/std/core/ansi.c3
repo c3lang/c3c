@@ -1,6 +1,4 @@
-module std::core::ansi;
-
-import std::core::string;
+module std::core::string::ansi;
 
 enum AnsiColor : const inline String
 {
@@ -53,43 +51,21 @@ enum AnsiColor : const inline String
 <*
  8-bit color code
 
- @require index >= 0 && index <= 255 : `value must be within range 0-255`
  @return `the formatting char for the given background color`
 *>
-fn String color_8bit_fg(int index)
+macro String color_8bit(char $index, bool $bg = false)
 {
-    return string::format(mem, "\u001B[38;5;%dm", index);
-}
-
-<*
- 8-bit color code
-
- @require index >= 0 && index <= 255 : `value must be within range 0-255`
- @return `the formatting char for the given background color`
-*>
-fn String color_8bit_bg(int index)
-{
-    return string::format(mem, "\u001B[48;5;%dm", index);
+	int $mode = $bg ? 4 : 3;
+    return @sprintf("\u001B[%s8;5;%sm", $mode, $index);
 }
 
 <*
  24-bit color code
 
- @require r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255: `value must be within range 0-255`
  @return `the formatting char for the given foreground color`
 *>
-fn String rgb_fg(int r, int g, int b)
+macro String color_rgb(char $r, char $g, char $b, bool $bg = false)
 {
-    return string::format(mem, "\u001B[38;2;%d;%d;%dm", r, g, b);
-}
-
-<*
- 24-bit color code
-
- @require r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255: `value must be within range 0-255`
- @return `the formatting char for the given background color`
-*>
-fn String rgb_bg(int r, int g, int b)
-{
-    return string::format(mem, "\u001B[48;2;%d;%d;%dm", r, g, b);
+	int $mode = $bg ? 4 : 3;
+    return @sprintf("\u001B[%s8;2;%s;%s;%sm", $mode, $r, $g, $b);
 }
