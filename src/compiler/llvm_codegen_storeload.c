@@ -155,7 +155,7 @@ LLVMValueRef llvm_store_zero(GenContext *c, BEValue *ref)
 				AlignSize align;
 				LLVMValueRef element_ptr = llvm_emit_array_gep_raw(c, ref->value, array_type, i, ref->alignment, &align);
 				BEValue be_value;
-				llvm_value_set_address(&be_value, element_ptr, type->array.base, align);
+				llvm_value_set_address(c, &be_value, element_ptr, type->array.base, align);
 				llvm_store_zero(c, &be_value);
 			}
 			return NULL;
