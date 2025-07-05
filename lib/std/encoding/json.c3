@@ -5,7 +5,9 @@ module std::encoding::json;
 import std::io;
 import std::collections::object;
 
-faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, DUPLICATE_MEMBERS, INVALID_NUMBER;
+faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_EXCEEDED;
+
+const uint MAX_JSON_DEPTH = 128;
 
 fn Object*? parse_string(Allocator allocator, String s)
 {
@@ -21,10 +23,26 @@ fn Object*? parse(Allocator allocator, InStream s)
 {
 	@stack_mem(512; Allocator smem)
 	{
-		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator };
+		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator, .depth = 0, .skip_comments = false };
 		@pool()
 		{
-			return parse_any(&context);
+			Object* result = parse_any(&context)!;
+			// Check for trailing non-whitespace characters
+			if (catch err = advance(&context))
+			{
+				if (err != io::EOF)
+				{
+					result.free();
+					return err?;
+				}
+			}
+			else
+			{
+				// If advance succeeded, we have trailing characters
+				result.free();
+				return UNEXPECTED_CHARACTER?;
+			}
+			return result;
 		};
 	};
 }
@@ -56,6 +74,7 @@ enum JsonTokenType @local
 struct JsonContext @local
 {
 	uint line;
+	uint depth;
 	InStream stream;
 	Allocator allocator;
 	JsonTokenType token;
@@ -105,17 +124,35 @@ fn JsonTokenType? lex_number(JsonContext *context, char c) @local
 			t.append(c);
 			c = read_next(context)!;
 		}
-		while (c.is_digit())
+
+		// Handle the integer part with leading zero validation
+		if (!c.is_digit()) return INVALID_NUMBER?;
+
+		if (c == '0')
 		{
+			// If we start with '0', the next character must be '.', 'e', 'E', or end of number
 			t.append(c);
 			c = read_next(context)!;
+			if (c.is_digit()) return INVALID_NUMBER?; // Leading zero followed by digit is invalid
+		}
+		else
+		{
+			// Read all digits for non-zero start
+			while (c.is_digit())
+			{
+				t.append(c);
+				c = read_next(context)!;
+			}
 		}
 		if (c == '.')
 		{
 			t.append(c);
-			while (c = read_next(context)!, c.is_digit())
+			c = read_next(context)!;
+			if (!c.is_digit()) return INVALID_NUMBER?;
+			while (c.is_digit())
 			{
 				t.append(c);
+				c = read_next(context)!;
 			}
 		}
 		if ((c | 32) == 'e')
@@ -145,6 +182,10 @@ fn JsonTokenType? lex_number(JsonContext *context, char c) @local
 
 fn Object*? parse_map(JsonContext* context) @local
 {
+	if (context.depth >= MAX_JSON_DEPTH) return MAX_DEPTH_EXCEEDED?;
+	context.depth++;
+	defer context.depth--;
+
 	Object* map = object::new_obj(context.allocator);
 	defer catch map.free();
 	JsonTokenType token = advance(context)!;
@@ -156,7 +197,6 @@ fn Object*? parse_map(JsonContext* context) @local
 		{
 			if (token != JsonTokenType.STRING) return UNEXPECTED_CHARACTER?;
 			DString string = context.last_string;
-			if (map.has_key(string.str_view())) return DUPLICATE_MEMBERS?;
 			// Copy the key to our temp holder, since our
 			// last_string may be used in parse_any
 			temp_key.clear();
@@ -178,6 +218,10 @@ fn Object*? parse_map(JsonContext* context) @local
 
 fn Object*? parse_array(JsonContext* context) @local
 {
+	if (context.depth >= MAX_JSON_DEPTH) return MAX_DEPTH_EXCEEDED?;
+	context.depth++;
+	defer context.depth--;
+
 	Object* list = object::new_obj(context.allocator);
 	defer catch list.free();
 	JsonTokenType token = advance(context)!;
@@ -226,7 +270,7 @@ fn char? read_next(JsonContext* context) @local
 	}
 	if (c == 0)
 	{
-		context.reached_end = true;
+		return UNEXPECTED_CHARACTER?;
 	}
 	return c;
 }
@@ -248,7 +292,7 @@ fn JsonTokenType? advance(JsonContext* context) @local
 			case '\v':
 				continue;
 			case '/':
-				if (!context.skip_comments) break;
+				if (!context.skip_comments) break WS;
 				c = read_next(context)!;
 				if (c != '*')
 				{
