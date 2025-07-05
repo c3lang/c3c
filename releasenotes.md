@@ -29,6 +29,7 @@
 - `--max-mem` now works correctly again.
 - Casting a fault to a pointer would trigger an assert.
 - Make `to_float` more tolerant to spaces.
+- Fixes to thread local pointer handling.
 
 ### Stdlib changes
 
