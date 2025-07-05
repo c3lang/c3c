@@ -27,6 +27,7 @@
 - Initialize pool correctly in print_backtrace.
 - `--max-mem` now works correctly again.
 - Casting a fault to a pointer would trigger an assert.
+- Make `to_float` more tolerant to spaces.
 
 ### Stdlib changes
 
