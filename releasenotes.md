@@ -9,6 +9,7 @@
 - `$typeof` may return a compile time type.
 - Improved error messages on missing qualifier on enum value. #2260
 - Add `--echo-prefix` to edit the prefix with `$echo` statements. Supports {FILE} and {LINE}
+- Catch accidental `foo == BAR;` where `foo = BAR;` was most likely intended. #2274
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
