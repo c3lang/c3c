@@ -46,7 +46,7 @@ fn void Whirlpool.update(&self, char[] data)
     uint to_pad = BLOCK_SIZE - remainder;   // how many bytes must be filled to get the BLOCK_SIZE
 
     // Trim the input down to INT64_MAX in length. Anything above that is unrealistic anyways.
-    if (@unlikely(data.len > long.max)) data = data[:long.max];
+    if (@unlikely(data.len > isz.max)) data = data[:isz.max];
 
     uint128 prev_ctr = self.counter_low;
     self.counter_low += data.len;
