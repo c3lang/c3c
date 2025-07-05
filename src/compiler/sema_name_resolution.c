@@ -136,6 +136,19 @@ static inline Decl *sema_find_decl_in_module(Module *module, Path *path, const c
 	return module_find_symbol(module, symbol);
 }
 
+static inline Decl *sema_find_decl_by_alias(ImportDecl *import, Path *path, const char *symbol, Module **path_found_ref)
+{
+	if (!path) return NULL;
+	if (!import->alias) return NULL;
+	if (!str_eq(import->alias, path->module)) return NULL;
+
+	Module *module = import->module;
+	module->import_alias = import->alias;
+
+	*path_found_ref = module;
+	return module_find_symbol(module, symbol);
+}
+
 static bool sema_find_decl_in_imports(SemaContext *context, NameResolve *name_resolve, bool want_generic)
 {
 	Decl *decl = NULL;
@@ -150,10 +163,14 @@ static bool sema_find_decl_in_imports(SemaContext *context, NameResolve *name_re
 		// Is the decl in the import.
 		Decl *found = sema_find_decl_in_module(import->import.module, path, symbol, &name_resolve->path_found);
 
-		if (!decl_ok(found)) return false;
+		// Check for decl by alias
+		if (!found) found = sema_find_decl_by_alias(&import->import, path, symbol, &name_resolve->path_found);
 
 		// No match, so continue
 		if (!found) continue;
+
+		if (!decl_ok(found)) return false;
+
 		ASSERT(found->visibility != VISIBLE_LOCAL);
 
 		if (found->visibility != VISIBLE_PUBLIC)
@@ -655,15 +672,21 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 	}
 	if (!found && name_resolve->maybe_decl)
 	{
-		const char *maybe_name = decl_to_name(name_resolve->maybe_decl);
-		if (name_resolve->maybe_decl->unit->module->generic_module)
+		Decl *maybe_decl = name_resolve->maybe_decl;
+		const char *maybe_name = decl_to_name(maybe_decl);
+		if (maybe_decl->unit->module->generic_module)
 		{
-			const char *module_name = name_resolve->maybe_decl->unit->module->generic_module->name->module;
+			Module *generic_module = maybe_decl->unit->module->generic_module;
+			const char *module_name = generic_module->name->module;
+			const char *import_alias = generic_module->import_alias;
+			module_name = import_alias ? import_alias : module_name;
 			sema_error_at(context, span, "Did you mean the %s '%s' in the generic module %s? If so, use '%s{...}' instead.",
 			              maybe_name, symbol, module_name, symbol);
 			return;
 		}
-		const char *module_name = name_resolve->maybe_decl->unit->module->name->module;
+		const char *module_name = maybe_decl->unit->module->name->module;
+		const char *import_alias = maybe_decl->unit->module->import_alias;
+		module_name = import_alias ? import_alias : module_name;
 		if (path_name)
 		{
 			sema_error_at(context, span, "Did you mean the %s '%s::%s' in module %s? If so please add 'import %s'.",
@@ -678,16 +701,32 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 	if (name_resolve->ambiguous_other_decl)
 	{
 		ASSERT(found);
+		Decl *ambiguous_other_decl = name_resolve->ambiguous_other_decl;
 		const char *symbol_type = decl_to_name(found);
 		const char *found_path = found->unit->module->name->module;
-		const char *other_path = name_resolve->ambiguous_other_decl->unit->module->name->module;
+		const char *other_path = ambiguous_other_decl->unit->module->name->module;
+		const char *found_alias = found->unit->module->import_alias;
+		const char *other_alias = ambiguous_other_decl->unit->module->import_alias;
 		if (path_name)
 		{
-			sema_error_at(context, span,
-			              "The %s '%s::%s' is defined in both '%s' and '%s', "
-			              "please use either %s::%s or %s::%s to resolve the ambiguity.",
-			              symbol_type, path_name, symbol, found_path, other_path,
-			              found_path, symbol, other_path, symbol);
+			if (found_alias && other_alias && str_eq(found_alias, other_alias))
+			{
+				sema_error_at(context, span,
+							  "The %s '%s::%s' is defined in both '%s' and '%s', "
+							  "please use either %s::%s or %s::%s, "
+							  "or change one of the duplicate aliases '%s' to resolve the ambiguity.",
+							  symbol_type, path_name, symbol, found_path, other_path,
+							  found_path, symbol, other_path, symbol, found_alias);
+			}
+			else
+			{
+				sema_error_at(context, span,
+							  "The %s '%s::%s' is defined in both '%s' and '%s', "
+							  "please use either %s::%s or %s::%s (or use an alias like "
+				  			  "'import %s as foo;') to resolve the ambiguity.",
+							  symbol_type, path_name, symbol, found_path, other_path,
+							  found_path, symbol, other_path, symbol, found_path);
+			}
 		}
 		else
 		{

@@ -1396,6 +1396,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_ALIAS:
 		case TOKEN_AND:
 		case TOKEN_ARROW:
+		case TOKEN_AS:
 		case TOKEN_ATTRDEF:
 		case TOKEN_BANGBANG:
 		case TOKEN_BITSTRUCT:
