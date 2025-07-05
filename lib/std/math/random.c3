@@ -117,7 +117,7 @@ macro bool next_bool(random)
 *>
 macro float next_float(random)
 {
-	uint val = random.next_int() & (1 << 24 - 1);
+	uint val = random.next_int() & (1U << 24 - 1);
 	return val * 0x1.0p-24f;
 }
 
