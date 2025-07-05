@@ -56,7 +56,7 @@ enum AnsiColor : const inline String
 macro String color_8bit(char $index, bool $bg = false)
 {
 	int $mode = $bg ? 4 : 3;
-    return @sprintf("\u001B[%s8;5;%sm", $mode, $index);
+	return @sprintf("\u001B[%s8;5;%sm", $mode, $index);
 }
 
 <*
@@ -67,5 +67,5 @@ macro String color_8bit(char $index, bool $bg = false)
 macro String color_rgb(char $r, char $g, char $b, bool $bg = false)
 {
 	int $mode = $bg ? 4 : 3;
-    return @sprintf("\u001B[%s8;2;%s;%s;%sm", $mode, $r, $g, $b);
+	return @sprintf("\u001B[%s8;2;%s;%s;%sm", $mode, $r, $g, $b);
 }
