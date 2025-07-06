@@ -30,6 +30,7 @@
 - Casting a fault to a pointer would trigger an assert.
 - Make `to_float` more tolerant to spaces.
 - Fixes to thread local pointer handling.
+- Fixes to JSON parsing and Object.
 
 ### Stdlib changes
 

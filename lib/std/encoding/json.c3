@@ -5,7 +5,9 @@ module std::encoding::json;
 import std::io;
 import std::collections::object;
 
-faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, DUPLICATE_MEMBERS, INVALID_NUMBER;
+faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED;
+
+int max_depth = 128;
 
 fn Object*? parse_string(Allocator allocator, String s)
 {
@@ -24,7 +26,15 @@ fn Object*? parse(Allocator allocator, InStream s)
 		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator };
 		@pool()
 		{
-			return parse_any(&context);
+			Object* o = parse_any(&context)!;
+			defer catch o.free();
+			while (char c = read_next(&context)!, c != 0)
+			{
+				if (c.is_space()) continue;
+				return UNEXPECTED_CHARACTER?;
+			}
+			if (context.stream.available() ?? 0) return UNEXPECTED_CHARACTER?;
+			return o;
 		};
 	};
 }
@@ -62,11 +72,14 @@ struct JsonContext @local
 	DString last_string;
 	double last_number;
 	char current;
-	bitstruct : char {
+	int depth;
+	bitstruct : char
+	{
 		bool skip_comments;
 		bool reached_end;
 		bool pushed_back;
 	}
+
 }
 
 
@@ -105,10 +118,16 @@ fn JsonTokenType? lex_number(JsonContext *context, char c) @local
 			t.append(c);
 			c = read_next(context)!;
 		}
+		bool leading_zero = c == '0';
 		while (c.is_digit())
 		{
 			t.append(c);
 			c = read_next(context)!;
+			if (leading_zero)
+			{
+				if (c.is_digit()) return INVALID_NUMBER?;
+				leading_zero = false;
+			}
 		}
 		if (c == '.')
 		{
@@ -148,6 +167,8 @@ fn Object*? parse_map(JsonContext* context) @local
 	Object* map = object::new_obj(context.allocator);
 	defer catch map.free();
 	JsonTokenType token = advance(context)!;
+	defer context.depth--;
+	if (++context.depth >= max_depth) return json::MAX_DEPTH_REACHED?;
 
 	@stack_mem(256; Allocator mem)
 	{
@@ -156,7 +177,6 @@ fn Object*? parse_map(JsonContext* context) @local
 		{
 			if (token != JsonTokenType.STRING) return UNEXPECTED_CHARACTER?;
 			DString string = context.last_string;
-			if (map.has_key(string.str_view())) return DUPLICATE_MEMBERS?;
 			// Copy the key to our temp holder, since our
 			// last_string may be used in parse_any
 			temp_key.clear();
@@ -180,6 +200,8 @@ fn Object*? parse_array(JsonContext* context) @local
 {
 	Object* list = object::new_obj(context.allocator);
 	defer catch list.free();
+	defer context.depth--;
+	if (++context.depth >= max_depth) return json::MAX_DEPTH_REACHED?;
 	JsonTokenType token = advance(context)!;
 	while (token != JsonTokenType.RBRACKET)
 	{
@@ -248,7 +270,7 @@ fn JsonTokenType? advance(JsonContext* context) @local
 			case '\v':
 				continue;
 			case '/':
-				if (!context.skip_comments) break;
+				if (!context.skip_comments) break WS;
 				c = read_next(context)!;
 				if (c != '*')
 				{
