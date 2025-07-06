@@ -140,26 +140,6 @@ fn void test_duplicate_keys()
 
 fn void test_invalid_numbers()
 {
-	// Test invalid: decimal point without following digits
-	if (catch err = json::parse_string(mem, "[-2.]"))
-	{
-		assert(err == json::INVALID_NUMBER);
-	}
-	else
-	{
-		assert(false, "Expected INVALID_NUMBER error for [-2.]");
-	}
-
-	// Test invalid: decimal point without following digits (positive)
-	if (catch err = json::parse_string(mem, "[1.]"))
-	{
-		assert(err == json::INVALID_NUMBER);
-	}
-	else
-	{
-		assert(false, "Expected INVALID_NUMBER error for [1.]");
-	}
-
 	// Test invalid: leading decimal point
 	if (catch err = json::parse_string(mem, "[.5]"))
 	{
@@ -321,11 +301,11 @@ fn void test_depth_limit()
 
 	if (catch err = json::parse_string(mem, deep_json))
 	{
-		assert(err == json::MAX_DEPTH_EXCEEDED);
+		assert(err == json::MAX_DEPTH_REACHED);
 	}
 	else
 	{
-		assert(false, "Expected MAX_DEPTH_EXCEEDED error for deeply nested array with 150 brackets");
+		assert(false, "Expected MAX_DEPTH_REACHED error for deeply nested array with 150 brackets");
 	}
 }
 

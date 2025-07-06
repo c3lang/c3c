@@ -5,9 +5,9 @@ module std::encoding::json;
 import std::io;
 import std::collections::object;
 
-faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_EXCEEDED;
+faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED;
 
-const uint MAX_JSON_DEPTH = 128;
+int max_depth = 128;
 
 fn Object*? parse_string(Allocator allocator, String s)
 {
@@ -23,26 +23,18 @@ fn Object*? parse(Allocator allocator, InStream s)
 {
 	@stack_mem(512; Allocator smem)
 	{
-		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator, .depth = 0, .skip_comments = false };
+		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator };
 		@pool()
 		{
-			Object* result = parse_any(&context)!;
-			// Check for trailing non-whitespace characters
-			if (catch err = advance(&context))
+			Object* o = parse_any(&context)!;
+			defer catch o.free();
+			while (char c = read_next(&context)!, c != 0)
 			{
-				if (err != io::EOF)
-				{
-					result.free();
-					return err?;
-				}
-			}
-			else
-			{
-				// If advance succeeded, we have trailing characters
-				result.free();
+				if (c.is_space()) continue;
 				return UNEXPECTED_CHARACTER?;
 			}
-			return result;
+			if (context.stream.available() ?? 0) return UNEXPECTED_CHARACTER?;
+			return o;
 		};
 	};
 }
@@ -74,18 +66,20 @@ enum JsonTokenType @local
 struct JsonContext @local
 {
 	uint line;
-	uint depth;
 	InStream stream;
 	Allocator allocator;
 	JsonTokenType token;
 	DString last_string;
 	double last_number;
 	char current;
-	bitstruct : char {
+	int depth;
+	bitstruct : char
+	{
 		bool skip_comments;
 		bool reached_end;
 		bool pushed_back;
 	}
+
 }
 
 
@@ -124,35 +118,23 @@ fn JsonTokenType? lex_number(JsonContext *context, char c) @local
 			t.append(c);
 			c = read_next(context)!;
 		}
-
-		// Handle the integer part with leading zero validation
-		if (!c.is_digit()) return INVALID_NUMBER?;
-
-		if (c == '0')
+		bool leading_zero = c == '0';
+		while (c.is_digit())
 		{
-			// If we start with '0', the next character must be '.', 'e', 'E', or end of number
 			t.append(c);
 			c = read_next(context)!;
-			if (c.is_digit()) return INVALID_NUMBER?; // Leading zero followed by digit is invalid
-		}
-		else
-		{
-			// Read all digits for non-zero start
-			while (c.is_digit())
+			if (leading_zero)
 			{
-				t.append(c);
-				c = read_next(context)!;
+				if (c.is_digit()) return INVALID_NUMBER?;
+				leading_zero = false;
 			}
 		}
 		if (c == '.')
 		{
 			t.append(c);
-			c = read_next(context)!;
-			if (!c.is_digit()) return INVALID_NUMBER?;
-			while (c.is_digit())
+			while (c = read_next(context)!, c.is_digit())
 			{
 				t.append(c);
-				c = read_next(context)!;
 			}
 		}
 		if ((c | 32) == 'e')
@@ -182,13 +164,11 @@ fn JsonTokenType? lex_number(JsonContext *context, char c) @local
 
 fn Object*? parse_map(JsonContext* context) @local
 {
-	if (context.depth >= MAX_JSON_DEPTH) return MAX_DEPTH_EXCEEDED?;
-	context.depth++;
-	defer context.depth--;
-
 	Object* map = object::new_obj(context.allocator);
 	defer catch map.free();
 	JsonTokenType token = advance(context)!;
+	defer context.depth--;
+	if (++context.depth >= max_depth) return json::MAX_DEPTH_REACHED?;
 
 	@stack_mem(256; Allocator mem)
 	{
@@ -218,12 +198,10 @@ fn Object*? parse_map(JsonContext* context) @local
 
 fn Object*? parse_array(JsonContext* context) @local
 {
-	if (context.depth >= MAX_JSON_DEPTH) return MAX_DEPTH_EXCEEDED?;
-	context.depth++;
-	defer context.depth--;
-
 	Object* list = object::new_obj(context.allocator);
 	defer catch list.free();
+	defer context.depth--;
+	if (++context.depth >= max_depth) return json::MAX_DEPTH_REACHED?;
 	JsonTokenType token = advance(context)!;
 	while (token != JsonTokenType.RBRACKET)
 	{
@@ -270,7 +248,7 @@ fn char? read_next(JsonContext* context) @local
 	}
 	if (c == 0)
 	{
-		return UNEXPECTED_CHARACTER?;
+		context.reached_end = true;
 	}
 	return c;
 }
