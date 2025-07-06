@@ -1969,7 +1969,6 @@ RETRY_DISTINCT:
 			return NULL;
 		case ALL_INTS:
 			if (type_is_distinct_like(other) && type_underlying_is_numeric(other)) return other;
-			if (other->type_kind == TYPE_ENUM) return type_find_max_type(type, enum_inner_type(other)->canonical);
 			if (other->type_kind == TYPE_VECTOR) return other;
 			return type_find_max_num_type(type, other);
 		case ALL_FLOATS:

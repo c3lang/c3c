@@ -1,0 +1,31 @@
+// #target: macos-x64
+module test;
+
+enum Foo : inline uint
+{
+	BAR,
+	ABC,
+	DEF
+}
+
+const BAZ = (1U << Foo.BAR);
+
+fn int main()
+{
+	var $var = 1U << Foo.ABC;
+	var $var2 = 1U << Foo.DEF;
+	int a = $var;
+	int b = $var2;
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  store i32 2, ptr %a, align 4
+  store i32 4, ptr %b, align 4
+  ret i32 0
+}
