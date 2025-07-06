@@ -556,7 +556,6 @@ RETRY:
 			TODO;
 		case TYPE_FUNC_RAW:
 			UNREACHABLE
-			return;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			header_gen_struct_union_top(c, type->decl, is_pointer ? GEN_POINTER : GEN_FULL);

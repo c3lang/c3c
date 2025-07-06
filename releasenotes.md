@@ -9,6 +9,7 @@
 - `$typeof` may return a compile time type.
 - Improved error messages on missing qualifier on enum value. #2260
 - Add `--echo-prefix` to edit the prefix with `$echo` statements. Supports {FILE} and {LINE}
+- Catch accidental `foo == BAR;` where `foo = BAR;` was most likely intended. #2274
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
@@ -25,6 +26,10 @@
 - Const slice lengths were not always detected as constant.
 - Const slice indexing was not bounds checked.
 - Initialize pool correctly in print_backtrace.
+- `--max-mem` now works correctly again.
+- Casting a fault to a pointer would trigger an assert.
+- Make `to_float` more tolerant to spaces.
+- Fixes to thread local pointer handling.
 - Fixes to JSON parsing and Object.
 
 ### Stdlib changes

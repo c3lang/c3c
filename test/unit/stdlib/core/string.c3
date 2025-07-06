@@ -306,3 +306,9 @@ fn void tokenize_all_skip_last()
 	}
 	test::eq(str.str_view(), "foo--bar-baz-");
 }
+
+fn void test_float()
+{
+	test::eq_approx(- 2.04632e-05," - 2.04632e-05   ".to_float()!!, delta: 0.00001e-5);
+	test::eq_approx(2.04632e-05," + 2.04632e-05   ".to_float()!!, delta: 0.00001e-5);
+}

@@ -278,8 +278,6 @@ JSONObject *json_parse_array(JsonParser *parser)
 		return array;
 	}
 
-	size_t capacity = 16;
-	size_t index = 0;
 	while (1)
 	{
 		JSONObject *parsed = json_parse(parser);

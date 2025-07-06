@@ -2573,7 +2573,6 @@ INLINE Type *type_vector_type(Type *type);
 
 static inline CanonicalType *type_pointer_type(Type *type);
 static inline CanonicalType *type_flatten(Type *type);
-static inline bool type_flat_is_char_array(Type *type);
 static inline Type *type_base(Type *type);
 
 INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span);
@@ -3498,8 +3497,6 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 				default:
 					return;
 			}
-			expr_list_set_span(expr->expression_list, loc);
-			return;
 		case EXPR_CAST:
 			exprid_set_span(expr->cast_expr.expr, loc);
 			return;
@@ -4240,9 +4237,9 @@ INLINE bool check_module_name(Path *path)
 }
 
 #ifdef NDEBUG
-#define ASSERT_SPANF(node__, check__, format__, ...) do { } while(0)
-#define ASSERT_SPAN(node__, check__) do { } while(0)
-#define ASSERT_AT(span__, check__) do { } while(0)
+#define ASSERT_SPANF(node__, check__, format__, ...) do { (void)(check__); } while(0)
+#define ASSERT_SPAN(node__, check__) do { (void)(check__); } while(0)
+#define ASSERT_AT(span__, check__) do { (void)(check__);} while(0)
 #else
 #define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->span); eprintf(format__, __VA_ARGS__); ASSERT(check__); } } while(0)
 #define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->span); ASSERT(check__); } } while(0)

@@ -6659,7 +6659,7 @@ static bool sema_binary_analyse_ct_subscript_op_assign(SemaContext *context, Exp
 	ArrayIndex idx = left->ct_subscript_expr.index;
 	Expr *lhs_expr = left_var->var.init_expr;
 	ASSERT_SPAN(lhs_expr, lhs_expr->expr_kind == EXPR_CONST);
-	Expr *value = expr_from_const_expr_at_index(left_var->var.init_expr, idx);
+	Expr *value = expr_from_const_expr_at_index(lhs_expr, idx);
 
 	BinaryOp op = binaryop_assign_base_op(expr->binary_expr.operator);
 	expr->binary_expr = (ExprBinary) { .left = exprid(value), .right = expr->binary_expr.right, .operator = op };
@@ -11288,7 +11288,14 @@ bool sema_expr_check_discard(SemaContext *context, Expr *expr)
 		if (expr->call_expr.has_optional_arg) goto ERROR_ARGS;
 		return true;
 	}
-	if (!IS_OPTIONAL(expr)) return true;
+	if (!IS_OPTIONAL(expr))
+	{
+		if (expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator == BINARYOP_EQ)
+		{
+			RETURN_SEMA_ERROR(expr, "This equals check was discarded, which isn't allowed. You can assign it to a variable or explicitly ignore it with a void cast '(void)' if this is what you want.");
+		}
+		return true;
+	}
 	RETURN_SEMA_ERROR(expr, "An optional value was discarded, you can assign it to a variable, ignore it with a void cast '(void)', rethrow on optional with '!' or panic '!!' to avoid this error.");
 ERROR_ARGS:
 	RETURN_SEMA_ERROR(expr, "The result of this call is optional due to its argument(s). This optional result may not be implicitly discarded. Please assign it to a variable, ignore it with '(void)', rethrow with '!' or panic with '!!'.");

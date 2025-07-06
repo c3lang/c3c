@@ -462,7 +462,7 @@ macro String.to_real(chars, $Type) @private
 		$error "Unexpected type";
 	$endswitch
 
-	while (chars.len && chars[0] == ' ') chars = chars[1..];
+	chars = chars.trim();
 	if (!chars.len) return MALFORMED_FLOAT?;
 
 	if (chars.len != 1)
@@ -476,6 +476,9 @@ macro String.to_real(chars, $Type) @private
 				chars = chars[1..];
 		}
 	}
+	chars = chars.trim();
+	if (!chars.len) return MALFORMED_FLOAT?;
+
 	if (chars == "infinity" || chars == "INFINITY") return sign * $Type.inf;
 	if (chars == "NAN" || chars == "nan") return $Type.nan;
 
