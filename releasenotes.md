@@ -10,6 +10,7 @@
 - Improved error messages on missing qualifier on enum value. #2260
 - Add `--echo-prefix` to edit the prefix with `$echo` statements. Supports {FILE} and {LINE}
 - Catch accidental `foo == BAR;` where `foo = BAR;` was most likely intended. #2274
+- Improve error message when doing a rethrow in a function that doesn't return an optional.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
@@ -31,6 +32,7 @@
 - Make `to_float` more tolerant to spaces.
 - Fixes to thread local pointer handling.
 - Fixes to JSON parsing and Object.
+- Array indices are now using int64 internally.
 
 ### Stdlib changes
 

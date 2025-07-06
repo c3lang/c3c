@@ -16,11 +16,11 @@ typedef double Real;
 typedef uint64_t ByteSize;
 typedef uint32_t TypeSize;
 typedef int32_t IndexDiff;
-typedef int32_t ArrayIndex;
+typedef int64_t ArrayIndex;
 typedef uint16_t StructIndex;
 typedef uint32_t AlignSize;
 typedef int32_t ScopeId;
-typedef uint32_t ArraySize;
+typedef uint64_t ArraySize;
 typedef uint64_t BitSize;
 typedef uint16_t FileId;
 
@@ -34,7 +34,7 @@ typedef uint16_t FileId;
 #define UINT12_MAX        4095
 #define UINT20_MAX        1048575U
 
-#define MAX_ARRAYINDEX INT32_MAX
+#define MAX_ARRAYINDEX INT64_MAX
 #define MAX_FIXUPS 0xFFFFF
 #define MAX_HASH_SIZE (512 * 1024 * 1024)
 #define INVALID_SPAN ((SourceSpan){ .row = 0 })
@@ -72,6 +72,15 @@ typedef uint16_t FileId;
 #define TABLE_MAX_LOAD 0.5
 #define OUTF(...) do { if (!compiler.build.silent) printf(__VA_ARGS__); } while(0)
 #define OUTN(str__) do { if (!compiler.build.silent) puts(str__); } while(0)
+#ifdef NDEBUG
+#define ASSERT_SPANF(node__, check__, format__, ...) do { (void)(check__); } while(0)
+#define ASSERT_SPAN(node__, check__) do { (void)(check__); } while(0)
+#define ASSERT_AT(span__, check__) do { (void)(check__);} while(0)
+#else
+#define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->span); eprintf(format__, __VA_ARGS__); ASSERT(check__); } } while(0)
+#define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->span); ASSERT(check__); } } while(0)
+#define ASSERT_AT(span__, check__) do { if (!(check__)) { assert_print_line(span__); ASSERT(check__); } } while(0)
+#endif
 
 #define INVALID_PTR ((void*)(uintptr_t)0xAAAAAAAAAAAAAAAA)
 
@@ -704,7 +713,7 @@ typedef enum RangeType
 typedef struct
 {
 	ResolveStatus status : 3;
-	RangeType range_type;
+	RangeType range_type : 4;
 	bool start_from_end : 1;
 	bool end_from_end : 1;
 	bool is_len : 1;
@@ -2021,6 +2030,8 @@ INLINE bool compile_asserts(void)
 	return safe_mode_enabled() || compiler.build.testing;
 }
 
+void assert_print_line(SourceSpan span);
+
 bool ast_is_not_empty(Ast *ast);
 
 bool ast_is_compile_time(Ast *ast);
@@ -2944,6 +2955,7 @@ INLINE TypeInfoId type_info_id_new_base(Type *type, SourceSpan span)
 {
 	return type_infoid(type_info_new_base(type, span));
 }
+
 
 INLINE Type *type_new(TypeKind kind, const char *name)
 {
@@ -4236,16 +4248,12 @@ INLINE bool check_module_name(Path *path)
 	return true;
 }
 
-#ifdef NDEBUG
-#define ASSERT_SPANF(node__, check__, format__, ...) do { (void)(check__); } while(0)
-#define ASSERT_SPAN(node__, check__) do { (void)(check__); } while(0)
-#define ASSERT_AT(span__, check__) do { (void)(check__);} while(0)
-#else
-#define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->span); eprintf(format__, __VA_ARGS__); ASSERT(check__); } } while(0)
-#define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->span); ASSERT(check__); } } while(0)
-#define ASSERT_AT(span__, check__) do { if (!(check__)) { assert_print_line(span__); ASSERT(check__); } } while(0)
-#endif
-void assert_print_line(SourceSpan span);
+INLINE bool expr_is_valid_index(Expr *expr)
+{
+	ASSERT_SPAN(expr, expr_is_const_int(expr));
+	return int_fits(expr->const_expr.ixx, TYPE_I64);
+}
+
 
 const char *default_c_compiler(void);
 

@@ -3989,8 +3989,7 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 		{
 			SourceSpan span = start->span;
 			span = extend_span_with_token(span, end->span);
-			sema_error_at(context, span, "No common type can be found between start and end index.");
-			return false;
+			RETURN_SEMA_ERROR_AT(span, "No common type can be found between start and end index.");
 		}
 		if (!cast_implicit(context, start, common, false) || !cast_implicit(context, end, common, false)) return false;
 	}
@@ -4013,12 +4012,12 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 	if (end && sema_cast_const(end))
 	{
 		// Only ArrayIndex sized
-		if (!int_fits(end->const_expr.ixx, TYPE_I64))
+		if (!expr_is_valid_index(end))
 		{
 			RETURN_SEMA_ERROR(end, "The index cannot be stored in a 64-signed integer, which isn't supported.");
 		}
 
-		int64_t end_index = int_to_i64(end->const_expr.ixx);
+		ArrayIndex end_index = int_to_i64(end->const_expr.ixx);
 
 		if (range->end_from_end)
 		{
@@ -4026,11 +4025,11 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 			// Something like  1 .. ^4 with an unknown length.
 			if (len < 0) return true;
 			// Otherwise we fold the "from end"
-			end_index = len - end_index;
-			if (end_index < 0)
+			if (end_index > len)
 			{
-				RETURN_SEMA_ERROR(end, "An index may only be negative for pointers (it was: %lld).", end_index);
+				RETURN_SEMA_ERROR(end, "An index may only be negative for pointers (it was: %lld).", len - end_index);
 			}
+			end_index = len - end_index;
 			range->end_from_end = false;
 		}
 		if (end_index < 0 && env != RANGE_PTR)
@@ -4038,8 +4037,7 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 			RETURN_SEMA_ERROR(end, "An index may only be negative for pointers (it was: %lld).", end_index);
 		}
 		// No more analysis
-		if (end_index > MAX_ARRAYINDEX || end_index < -MAX_ARRAYINDEX) return true;
-		range->const_end = (ArrayIndex)end_index;
+		range->const_end = end_index;
 		range->range_type = range->is_len ? RANGE_CONST_LEN : RANGE_CONST_END;
 	}
 	else if (!end && len > 0)
@@ -4052,24 +4050,23 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 	if (sema_cast_const(start))
 	{
 		// Only ArrayIndex sized
-		if (!int_fits(start->const_expr.ixx, TYPE_I64))
+		if (!expr_is_valid_index(start))
 		{
 			RETURN_SEMA_ERROR(end, "The index cannot be stored in a 64-signed integer, which isn't supported.");
 		}
 		// Only ArrayIndex sized
-		int64_t start_index = int_to_i64(start->const_expr.ixx);
+		ArrayIndex start_index = int_to_i64(start->const_expr.ixx);
 		if (range->start_from_end)
 		{
 			if (start_index < 0) RETURN_SEMA_ERROR(end, "Negative numbers are not allowed when indexing from the end.");
 			// Something like  ^1 .. 4 with an unknown length.
 			if (len < 0) return true;
 			// Otherwise we fold the "from end"
-			start_index = len - start_index;
-			if (start_index < 0)
+			if (len < start_index)
 			{
-				RETURN_SEMA_ERROR(start, "An index may only be negative for pointers (it was: %lld).", start_index);
+				RETURN_SEMA_ERROR(start, "An index may only be negative for pointers (it was: %lld).", len - start_index);
 			}
-			if (start_index > MAX_ARRAYINDEX || start_index < -MAX_ARRAYINDEX) return true;
+			start_index = len - start_index;
 			range->start_from_end = false;
 		}
 		if (start_index < 0 && env != RANGE_PTR)
@@ -4083,20 +4080,19 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 		}
 		if (range->range_type == RANGE_CONST_END)
 		{
-			int64_t end_index = range->const_end;
+			ArrayIndex end_index = range->const_end;
 			if (end_index < start_index) RETURN_SEMA_ERROR(start, "The start index (%lld) should not be greater than the end index (%lld).",
 														   start_index, end_index);
-			if (start_index > MAX_ARRAYINDEX) return true;
-			range->const_end = (ArrayIndex)(end_index + 1 - start_index);
+			range->const_end = end_index + 1 - start_index;
 			range->range_type = RANGE_CONST_LEN;
 			range->is_len = true;
 		}
 		if (range->range_type == RANGE_CONST_LEN)
 		{
-			int64_t end_index = range->const_end;
+			ArrayIndex end_index = range->const_end;
 			range->range_type = RANGE_CONST_RANGE;
-			range->start_index = (ArrayIndex)start_index;
-			range->len_index = (ArrayIndex)end_index;
+			range->start_index = start_index;
+			range->len_index = end_index;
 		}
 	}
 	if (len > -1)
@@ -9002,8 +8998,10 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 		expr->rethrow_expr.in_block = NULL;
 		if (context->rtype && context->rtype->type_kind != TYPE_OPTIONAL)
 		{
-			RETURN_SEMA_ERROR(expr, "This expression implicitly returns with an optional result, "
-									"but the function does not allow optional results. Did you mean to use '!!' instead?");
+			RETURN_SEMA_ERROR(expr, "This expression is doing a rethrow, "
+									"but '%s' returns %s, which isn't an optional type. Did you intend to use '!!' instead?",
+									context->call_env.current_function->name,
+									type_quoted_error_string(context->rtype));
 		}
 	}
 	return true;

@@ -1130,13 +1130,13 @@ static Type *type_create_array(Type *element_type, ArraySize len, bool vector, b
 	Type *vec_arr;
 	if (vector)
 	{
-		vec_arr = type_new(TYPE_VECTOR, str_printf("%s[<%u>]", element_type->name, len));
+		vec_arr = type_new(TYPE_VECTOR, str_printf("%s[<%llu>]", element_type->name, (unsigned long long)len));
 		vec_arr->array.base = element_type;
 		vec_arr->array.len = len;
 	}
 	else
 	{
-		vec_arr = type_new(TYPE_ARRAY, str_printf("%s[%u]", element_type->name, len));
+		vec_arr = type_new(TYPE_ARRAY, str_printf("%s[%llu]", element_type->name, (unsigned long long)len));
 		vec_arr->array.base = element_type;
 		vec_arr->array.len = len;
 	}

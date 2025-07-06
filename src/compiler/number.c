@@ -491,7 +491,7 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case CONST_FLOAT:
 			return str_printf("%g", expr->fxx.f);
 		case CONST_STRING:
-			return str_printf("\"%*.s\"", expr->bytes.len, expr->bytes.ptr);
+			return str_printf("\"%*.s\"", (int)expr->bytes.len, expr->bytes.ptr);
 		case CONST_BYTES:
 			return "<binary data>";
 		case CONST_REF:
