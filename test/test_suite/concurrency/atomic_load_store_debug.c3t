@@ -23,7 +23,7 @@ fn void main()
 %.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
 %any = type { ptr, i64 }
 
-@"$ct.test.Ghh" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 12, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Ghh" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 12, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [3 x i8] c"%d\00", align 1
 @"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 

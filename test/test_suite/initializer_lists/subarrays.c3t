@@ -50,8 +50,8 @@ fn int main()
 %"int[]" = type { ptr, i64 }
 %Baz = type { double }
 
-@"$ct.subarrays.Baz" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@"$ct.subarrays.Bar" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.subarrays.Baz" = linkonce global %.introspect { i8 11, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.subarrays.Bar" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.__const_slice = private unnamed_addr global [2 x %Bar] [%Bar { i32 3, i32 4 }, %Bar { i32 8, i32 9 }], align 16
 @subarrays.arrbar = local_unnamed_addr global %"Bar[]" { ptr @.__const_slice, i64 2 }, align 8
 @.__const_slice.3 = private unnamed_addr global [2 x i32] [i32 1, i32 2], align 4
@@ -182,21 +182,20 @@ voiderr:                                          ; preds = %noerr_block15, %gua
   store i8 0, ptr %xy, align 1
   %25 = load i8, ptr %xy, align 1
   %26 = trunc i8 %25 to i1
-  %not = xor i1 %26, true
-  br i1 %not, label %if.then, label %if.exit
+  br i1 %26, label %if.exit, label %if.else
 
-if.then:                                          ; preds = %voiderr
+if.else:                                          ; preds = %voiderr
   %27 = call ptr @std.io.stdout()
   %28 = call i64 @std.io.File.write(ptr %retparam23, ptr %27, ptr @.str.10, i64 2)
   %not_err24 = icmp eq i64 %28, 0
   %29 = call i1 @llvm.expect.i1(i1 %not_err24, i1 true)
   br i1 %29, label %after_check26, label %assign_optional25
 
-assign_optional25:                                ; preds = %if.then
+assign_optional25:                                ; preds = %if.else
   store i64 %28, ptr %error_var21, align 8
   br label %guard_block27
 
-after_check26:                                    ; preds = %if.then
+after_check26:                                    ; preds = %if.else
   br label %noerr_block28
 
 guard_block27:                                    ; preds = %assign_optional25

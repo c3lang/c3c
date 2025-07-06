@@ -658,7 +658,7 @@ static void llvm_emit_overflow_builtin(GenContext *c, BEValue *be_value, Expr *e
 	llvm_emit_expr(c, &ref, ret_addr);
 	llvm_value_rvalue(c, &ref);
 	// Note that we can make additional improvements here!
-	llvm_value_set_address(&ref, ref.value, ref.type->pointer, type_abi_alignment(ref.type->pointer));
+	llvm_value_set_address(c, &ref, ref.value, ref.type->pointer, type_abi_alignment(ref.type->pointer));
 	LLVMTypeRef call_type[1] = { LLVMTypeOf(arg_slots[0]) };
 	unsigned intrinsic = type_is_signed(type_lowering(args[0]->type)) ? intrinsic_signed : intrinsic_unsigned;
 	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, call_type, 1, arg_slots, 2);

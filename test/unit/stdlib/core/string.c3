@@ -197,7 +197,12 @@ fn void test_zstring()
 	ZString test3 = "bye";
 	assert(test.zstr_tcopy() == test2);
 	assert(test.zstr_tcopy() != test3);
+	ZString null_string;
+	assert(test != null_string);
+	assert(null_string == null_string);
+	assert(null_string != test);
 }
+
 fn void test_replace()
 {
 	String test = "Befriend some dragons?";
@@ -300,4 +305,10 @@ fn void tokenize_all_skip_last()
         str.append("-");
 	}
 	test::eq(str.str_view(), "foo--bar-baz-");
+}
+
+fn void test_float()
+{
+	test::eq_approx(- 2.04632e-05," - 2.04632e-05   ".to_float()!!, delta: 0.00001e-5);
+	test::eq_approx(2.04632e-05," + 2.04632e-05   ".to_float()!!, delta: 0.00001e-5);
 }

@@ -106,6 +106,7 @@ static void usage(bool full)
 		print_opt("--path <dir>", "Use this as the base directory for the current command.");
 		print_opt("--template <template>", "Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
 		print_opt("--symtab <value>", "Sets the preferred symtab size.");
+		print_opt("--max-mem <value>", "Set the maximum memory size (in MB).");
 		print_opt("--run-once", "After running the output file, delete it immediately.");
 		print_opt("--suppress-run", "Build but do not run on test/benchmark options.");
 		print_opt("--trust=<option>", "Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
@@ -131,6 +132,7 @@ static void usage(bool full)
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
 		print_opt("--use-old-slice-copy", "Use the old slice copy semantics.");
+		print_opt("--use-old-enums", "Use the old enum syntax and semantics.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -139,6 +141,7 @@ static void usage(bool full)
 	{
 		PRINTF("");
 		print_opt("--ansi=<yes|no>", "Set colour output using ansi on/off, default is to try to detect it.");
+		print_opt("--echo-prefix <arg>", "Sets the prefix for any output using '$echo', defaults to 'c3c:'.");
 		print_opt("--test-filter <arg>", "Set a filter when running tests, running only matching tests.");
 		print_opt("--test-breakpoint", "When running tests, trigger a breakpoint on failure.");
 		print_opt("--test-nosort", "Do not sort tests.");
@@ -158,6 +161,7 @@ static void usage(bool full)
 		print_opt("--use-stdlib=<yes|no>", "Include the standard library (default: yes).");
 		print_opt("--link-libc=<yes|no>", "Link libc other default libraries (default: yes).");
 		print_opt("--emit-stdlib=<yes|no>", "Output files for the standard library. (default: yes)");
+		print_opt("--emit-only <file>", "Output only the file matching <file>.");
 		print_opt("--panicfn <name>", "Override the panic function name.");
 		print_opt("--testfn <name>", "Override the test runner function name.");
 		print_opt("--benchfn <name>", "Override the benchmark runner function name.");
@@ -723,6 +727,18 @@ static void parse_option(BuildOptions *options)
 				options->ansi = parse_opt_select(Ansi, argopt, on_off);
 				return;
 			}
+			if (match_longopt("max-mem"))
+			{
+				if (at_end() || next_is_opt())
+				{
+					FAIL_WITH_ERR_LONG("'--max-mem' expected a max memory.");
+				}
+				if (atoll(next_arg()) < 1)
+				{
+					FAIL_WITH_ERR_LONG("'--max-mem' expected a positive integer value.");
+				}
+				return;
+			}
 			if (match_longopt("sources"))
 			{
 				if (at_end() || next_is_opt())
@@ -740,6 +756,11 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("use-old-slice-copy"))
 			{
 				options->old_slice_copy = true;
+				return;
+			}
+			if (match_longopt("use-old-enums"))
+			{
+				options->old_enums = true;
 				return;
 			}
 			if (match_longopt("test-filter"))
@@ -856,7 +877,7 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("linker")))
 			{
 				options->custom_linker_path = NULL;
-				options->linker_type = parse_opt_select(LinkerType, argopt, linker);
+				options->linker_type = parse_opt_select(LinkerType, argopt, linker_kind);
 				if (options->linker_type == LINKER_TYPE_CUSTOM)
 				{
 					if (at_end() || next_is_opt()) error_exit("error: --linker=custom expects a valid linker name.");
@@ -877,6 +898,12 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("emit-stdlib")))
 			{
 				options->emit_stdlib = parse_opt_select(EmitStdlib, argopt, on_off);
+				return;
+			}
+			if (match_longopt("emit-only"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --emit-only expects an output name, e.g. 'foo', to only output 'foo.o'.");
+				vec_add(options->emit_only, next_arg());
 				return;
 			}
 			if ((argopt = match_argopt("use-stdlib")))
@@ -909,10 +936,10 @@ static void parse_option(BuildOptions *options)
 				options->riscv_float_capability = parse_opt_select(RiscvFloatCapability, argopt, riscv_capability);
 				return;
 			}
-			if ((argopt = match_argopt("max-vector-size")))
+			if (match_longopt("max-vector-size"))
 			{
-				int size = atoi(next_arg());
-				if (size < 128) error_exit("Expected a valid positive integer >= 128 or --max-vector-size.");
+				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
+				if (size < 128) error_exit("Expected a valid positive integer >= 128 for --max-vector-size.");
 				if (size > MAX_VECTOR_WIDTH) error_exit("Expected a valid positive integer <= %u for --max-vector-size.", (unsigned)MAX_VECTOR_WIDTH);
 				if (size != next_highest_power_of_2(size))
 				{
@@ -1012,6 +1039,12 @@ static void parse_option(BuildOptions *options)
 				if (threads < 1) PRINTF("Expected a valid integer 1 or higher.");
 				if (threads > MAX_THREADS) PRINTF("Cannot exceed %d threads.", MAX_THREADS);
 				options->build_threads = threads;
+				return;
+			}
+			if (match_longopt("echo-prefix"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --echo-prefix needs a prefix.");
+				options->echo_prefix = next_arg();
 				return;
 			}
 			if (match_longopt("target"))

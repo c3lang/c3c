@@ -322,6 +322,21 @@ INLINE LLVMValueRef llvm_get_struct_of_type(GenContext *c, Type *type, LLVMValue
 	return LLVMConstNamedStruct(llvm_get_type(c, type), vals, count);
 }
 
+INLINE LLVMValueRef llvm_const_integer(GenContext *c, Int128 i, Type *type)
+{
+	switch (type_lowering(type)->type_kind)
+	{
+		case TYPE_I128:
+		case TYPE_U128:
+		{
+			uint64_t words[2] = { i.low, i.high };
+			return LLVMConstIntOfArbitraryPrecision(llvm_get_type(c, type), 2, words);
+		}
+		default:
+			return llvm_const_int(c, type, i.low);
+	}
+}
+
 INLINE LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t val)
 {
 	type = type_lowering(type);

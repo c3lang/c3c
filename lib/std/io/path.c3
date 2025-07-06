@@ -527,7 +527,7 @@ fn String? normalize(String path_str, PathEnv path_env = DEFAULT_ENV)
 	return path_str[:len];
 }
 
-fn ZString Path.as_zstr(self) => (ZString)self.path_string.ptr;
+fn ZString Path.as_zstr(self) @deprecated => (ZString)self.path_string.ptr;
 
 fn String Path.root_directory(self)
 {

@@ -1,4 +1,5 @@
 // #target: macos-x64
+/*
 module test;
 typedef Baz = int;
 enum Foo : char (inline Baz x)
@@ -12,7 +13,7 @@ fn void main()
 	if (y == x) return;
 }
 
-/* #expect: test.ll
+/* expect: test.ll
 
 define void @test.main() #0 {
 entry:

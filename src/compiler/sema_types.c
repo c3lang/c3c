@@ -235,6 +235,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			return true;
+		case DECL_CONST_ENUM:
 		case DECL_DISTINCT:
 			if (resolve_type_kind & RESOLVE_TYPE_NO_CHECK_DISTINCT)
 			{
@@ -349,7 +350,8 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 			}
 			RETURN_SEMA_ERROR(expr, "This %sexpression lacks a concrete type.", type_is_optional(expr_type) ? "optional " : "");
 		case STORAGE_COMPILE_TIME:
-			RETURN_SEMA_ERROR(expr, "This expression has a compile time type %s.", type_quoted_error_string(expr_type));
+			type_info->type = type_untypedlist;
+			return true;
 	}
 	UNREACHABLE
 }

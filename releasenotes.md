@@ -1,5 +1,39 @@
 # C3C Release Notes
 
+## 0.7.4 Change list
+
+### Changes / improvements
+- Added const enums: `enum Foo : const`. Behaves like C enums but may be any type.
+- Casting to / from an enum is now possible again. No need to use `.ordinal` and `.from_ordinal`.
+- Inline associated enum values are deprecated, use `--use-old-enums` to re-enable them.
+- `$typeof` may return a compile time type.
+- Improved error messages on missing qualifier on enum value. #2260
+- Add `--echo-prefix` to edit the prefix with `$echo` statements. Supports {FILE} and {LINE}
+- Catch accidental `foo == BAR;` where `foo = BAR;` was most likely intended. #2274
+
+### Fixes
+- mkdir/rmdir would not work properly with substring paths on non-windows platforms.
+- Hex string formatter check incorrectly rejected slices.
+- Correctly reject interface methods `type` and `ptr`.
+- Comparing a null ZString with a non-null ZString would crash.
+- Switch case with const non-int / enum would be treated as ints and crash. #2263
+- Missing bounds check on upper bound with const ranges `foo[1:3]`.
+- Check up the hierarchy when considering if an interface cast is valid #2267.
+- Fix issue with labelled break inside of a $switch.
+- Non-const macros may not return untyped lists.
+- `$for` ct-state not properly popped.
+- Inline `r / complex` for complex numbers fixed.
+- Const slice lengths were not always detected as constant.
+- Const slice indexing was not bounds checked.
+- Initialize pool correctly in print_backtrace.
+- `--max-mem` now works correctly again.
+- Casting a fault to a pointer would trigger an assert.
+- Make `to_float` more tolerant to spaces.
+- Fixes to thread local pointer handling.
+- Fixes to JSON parsing and Object.
+
+### Stdlib changes
+
 ## 0.7.3 Change list
 
 ### Changes / improvements
@@ -25,7 +59,12 @@
 - Support distrinct types as the base type of bitstructs. #2218
 - Add hash::sha512 module to stdlib. #2227
 - Compile time type assignment (eg `$Foo = int`) is no longer an expression.
-- Add `@allow_deprecated` attribute to functions to selectively allow deprecated declarations #2223
+- Add `@allow_deprecated` attribute to functions to selectively allow deprecated declarations #2223.
+- Improve error message on pointer diff #2239.
+- Compile-time comparison of constant vectors. #1575.
+- $member.get supports bitstructs.
+- $member.set for setting members without the *& trick.
+- Initial support for #1925, does not affect C compilation yet, and doesn't try to link etc. Using "--emit-only"
 
 ### Fixes
 - `-2147483648`, MIN literals work correctly.
@@ -61,12 +100,21 @@
 - Overload resolution fixes to inline typedef #2226.
 - `math::overflow_*` wrappers incorrectly don't allow distinct integers #2221.
 - Compiler segfault when using distinct type in attribute imported from other module #2234.
+- Assert casting bitstruct to short/char #2237.
+- @tag didn't work with members #2236.
+- Assert comparing untyped lists #2240.
+- Fix bugs relating to optional interface addr-of #2244.
+- Compiler null pointer when building a static-lib with -o somedir/... #2246
+- Segfault in the compiler when using a bitstruct constant defined using a cast with an operator #2248.
+- Default assert() message drops parens #2249.
 
 ### Stdlib changes
 - Deprecate `String.is_zstr` and `String.quick_zstr` #2188.
 - Add comparison with `==` for ZString types.
 - `is_array_or_slice_of_char` and `is_arrayptr_or_slice_of_char` are replaced by constant `@` variants.
 - `@pool` now has an optional `reserve` parameter, some minor changes to the temp_allocator API
+- io::struct_to_format now supports bitstructs.
+- Add `String.escape`, `String.unescape` for escaping and unescaping a string.
 
 ## 0.7.2 Change list
 
@@ -94,6 +142,7 @@
 - Add deprecation for `@param foo "abc"`.
 - Add `--header-output` and `header-output` options for controlling header output folder.
 - Generic faults is disallowed.
+- Detect when a slice on the stack is accidentally returned from a function.
 
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115

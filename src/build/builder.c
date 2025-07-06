@@ -344,7 +344,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 
 	target->backend = options->backend;
 	target->old_slice_copy = options->old_slice_copy;
-
+	target->old_enums = options->old_enums;
 	// Remove feature flags
 	FOREACH(const char *, remove_feature, options->removed_feature_names)
 	{
@@ -410,6 +410,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(max_vector_size);
 	OVERRIDE_IF_SET(win.def);
 	OVERRIDE_IF_SET(no_entry);
+	OVERRIDE_IF_SET(echo_prefix);
 
 	OVERRIDE_IF_SET(macos.sysroot);
 	OVERRIDE_IF_SET(win.sdk);
@@ -477,7 +478,9 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		error_exit("Unable to detect the default target, please set an explicit --target value.");
 	}
 
+	target->emit_only = options->emit_only;
 	const char *target_name = arch_os_target[target->arch_os_target];
+	if (options->script_dir) target->script_dir = options->script_dir;
 	if (command_accepts_files(options->command))
 	{
 		target->build_dir = options->build_dir ? options->build_dir : ".build";
@@ -497,6 +500,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		if (!target->script_dir) target->script_dir = "scripts";
 	}
 	if (!options->run_dir) options->run_dir = target->run_dir;
+
 
 	target->ir_file_dir = options->llvm_out;
 	target->asm_file_dir = options->asm_out;

@@ -268,7 +268,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 			{
 				LLVMValueRef temp = llvm_emit_alloca_aligned(c, return_value.type, "ret$temp");
 				llvm_store_to_ptr(c, temp, &return_value);
-				llvm_value_set_address_abi_aligned(&return_value, temp, return_value.type);
+				llvm_value_set_address_abi_aligned(c, &return_value, temp, return_value.type);
 			}
 			else
 			{
@@ -297,7 +297,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
 		POP_DEFER_ERROR();
 		BEValue value;
-		llvm_value_set_address_abi_aligned(&value, error_out, type_fault);
+		llvm_value_set_address_abi_aligned(c, &value, error_out, type_fault);
 		llvm_emit_return_abi(c, NULL, &value);
 	}
 }
@@ -368,7 +368,7 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 	LLVMBasicBlockRef then_block = exit_block;
 	LLVMBasicBlockRef else_block = exit_block;
 
-	Ast *then_body = astptr(ast->if_stmt.then_body);
+	Ast *then_body = astptrzero(ast->if_stmt.then_body);
 	// Only generate a target if
 	if (ast_is_not_empty(then_body))
 	{
@@ -376,8 +376,7 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 	}
 
 	// We have an optional else block.
-	AstId else_id = ast->if_stmt.else_body;
-	Ast *else_body = else_id ? astptr(else_id) : NULL;
+	Ast *else_body = astptrzero(ast->if_stmt.else_body);
 	if (ast_is_not_empty(else_body))
 	{
 		else_block = llvm_basic_block_new(c, "if.else");
@@ -794,10 +793,10 @@ static void llvm_set_jump_table_values(ExprId from, ExprId to, Int *from_ref, In
 	if (type_flat->type_kind == TYPE_ENUM)
 	{
 		Type *low = type_lowering(type_flat);
-		*from_ref = (Int) { .i.low = from_expr->const_expr.enum_val->enum_constant.ordinal, .type = low->type_kind };
+		*from_ref = (Int) { .i.low = from_expr->const_expr.enum_val->enum_constant.inner_ordinal, .type = low->type_kind };
 		if (to)
 		{
-			*to_ref = (Int) { .i.low = to_expr->const_expr.enum_val->enum_constant.ordinal, .type = low->type_kind };
+			*to_ref = (Int) { .i.low = to_expr->const_expr.enum_val->enum_constant.inner_ordinal, .type = low->type_kind };
 		}
 		else
 		{
@@ -988,7 +987,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 	}
 
 	BEValue switch_var;
-	llvm_value_set_address_abi_aligned(&switch_var, llvm_emit_alloca_aligned(c, switch_type, "switch"), switch_type);
+	llvm_value_set_address_abi_aligned(c, &switch_var, llvm_emit_alloca_aligned(c, switch_type, "switch"), switch_type);
 	switch_ast->switch_stmt.codegen.retry.var = &switch_var;
 	llvm_store(c, &switch_var, switch_value);
 

@@ -125,7 +125,7 @@ fn void*? LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz a
 	if (init_type == ZERO)
 	{
 		void* data = alignment ? @aligned_alloc(fn void*(usz bytes) => libc::calloc(bytes, 1), bytes, alignment)!! : libc::calloc(bytes, 1);
-		return data ?: mem::OUT_OF_MEMORYY?;
+		return data ?: mem::OUT_OF_MEMORY?;
 	}
 	else
 	{

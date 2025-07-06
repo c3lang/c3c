@@ -62,6 +62,7 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
+static inline bool sema_analyse_raw_enum(SemaContext *context, Decl *decl, bool *erase_decl);
 
 static bool sema_check_section(SemaContext *context, Attr *attr)
 {
@@ -101,17 +102,6 @@ static bool sema_check_section(SemaContext *context, Attr *attr)
 static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
                                                         unsigned current_index, unsigned count)
 {
-	// We may have `void` arguments. They are not allowed in C3. Theoretically they could
-	// be permitted, but it would complicate semantics in general.
-	if (current->type && type_flatten(current->type) == type_void)
-	{
-		if (count == 1 && !current->name && current->var.kind == VARDECL_PARAM)
-		{
-			RETURN_SEMA_ERROR(current, "C-style 'foo(void)' style argument declarations are not valid, please remove 'void'.");
-		}
-		// Some languages would allow this, because it is a way to do overloading
-		RETURN_SEMA_ERROR(current, "Parameters may not be of type 'void'.");
-	}
 
 	const char *name = current->name;
 	// There is no need to do a check if it is anonymous.
@@ -442,7 +432,8 @@ RETRY:;
 		case TYPE_SLICE:
 			return compiler.platform.align_pointer.align / 8;
 		case TYPE_ENUM:
-			type = type->decl->enums.type_info->type;
+		case TYPE_CONST_ENUM:
+			type = enum_inner_type(type);
 			goto RETRY;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -932,8 +923,13 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 	{
 		RETRY:;
 		Decl *method = functions[i];
+		if (method->name == kw_ptr || method->name == kw_type)
+		{
+			RETURN_SEMA_ERROR(method, "The method name '%s' would shadow the built-in property '.%s', "
+							 "please select a different name.", method->name, method->name);
+		}
 		// The method might have been resolved earlier, if so we either exit or go to the next.
-		// This might happen for example if it was resolved using $checks
+		// This might happen for example if it was resolved using $defined
 		if (method->resolve_status == RESOLVE_DONE)
 		{
 			if (!decl_ok(method)) return false;
@@ -1021,6 +1017,7 @@ RETRY:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -1265,6 +1262,27 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
 			                                     : RESOLVE_TYPE_DEFAULT)) return decl_poison(param);
 			param->type = type_info->type;
+			switch (sema_resolve_storage_type(context, type_info->type))
+			{
+				case STORAGE_ERROR:
+					return false;
+				case STORAGE_VOID:
+					// We may have `void` arguments. They are not allowed in C3. Theoretically they could
+					// be permitted, but it would complicate semantics in general.
+					if (param_count == 1 && !param->name && param->var.kind == VARDECL_PARAM)
+					{
+						RETURN_SEMA_ERROR(param, "C-style 'foo(void)' style argument declarations are not valid, please remove 'void'.");
+					}
+					RETURN_SEMA_ERROR(type_info, "Parameters may not be of type 'void'.");
+				case STORAGE_NORMAL:
+					break;
+				case STORAGE_UNKNOWN:
+					RETURN_SEMA_ERROR(type_info, "This type is of unknown size, and cannot be a parameter. However, you can pass it by pointer.");
+				case STORAGE_WILDCARD:
+					RETURN_SEMA_ERROR(type_info, "The type cannot be determined for this parameter.");
+				case STORAGE_COMPILE_TIME:
+					RETURN_SEMA_ERROR(type_info, "A parameter may not be declared with a compile time type.");
+			}
 		}
 		if (i == format_index)
 		{
@@ -1572,7 +1590,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		}
 		enum_value->type = decl->type;
 		DEBUG_LOG("* Checking enum constant %s.", enum_value->name);
-		enum_value->enum_constant.ordinal = i;
+		enum_value->enum_constant.inner_ordinal = i;
 		DEBUG_LOG("* Ordinal: %d", i);
 		ASSERT(enum_value->resolve_status == RESOLVE_NOT_DONE);
 		ASSERT(enum_value->decl_kind == DECL_ENUM_CONSTANT);
@@ -1591,12 +1609,12 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 			                  i128_to_string(value, 10, type_is_signed(flat_underlying_type), false),
 			                  type_quoted_error_string(type));
 		}
-		enum_value->enum_constant.ordinal = value.low;
+		enum_value->enum_constant.inner_ordinal = value.low;
 
 		// Update the value
 		value.low++;
 
-		Expr **args = enum_value->enum_constant.args;
+		Expr **args = enum_value->enum_constant.associated;
 		unsigned arg_count = vec_size(args);
 		if (arg_count > associated_value_count)
 		{
@@ -1621,7 +1639,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 	for (unsigned i = 0; i < enums; i++)
 	{
 		Decl *enum_value = enum_values[i];
-		Expr **args = enum_value->enum_constant.args;
+		Expr **args = enum_value->enum_constant.associated;
 		unsigned arg_count = vec_size(args);
 		if (arg_count > associated_value_count)
 		{
@@ -1651,6 +1669,115 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 ERR:
 	sema_decl_stack_restore(state);
 	return false;
+}
+
+bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl)
+{
+	Expr *value = decl->enum_constant.value;
+	if (!sema_analyse_inferred_expr(context, decl->type, value)) return decl_poison(decl);
+	if (!sema_cast_const(value))
+	{
+		SEMA_ERROR(value, "Expected an constant enum value.");
+		return decl_poison(decl);
+	}
+	if (value->type != decl->type)
+	{
+		if (!cast_implicit_binary(context, value, decl->type, NULL)) return decl_poison(decl);
+		cast_explicit_silent(context, value, decl->type);
+	}
+	return true;
+}
+static inline bool sema_analyse_raw_enum(SemaContext *context, Decl *decl, bool *erase_decl)
+{
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ENUM, erase_decl)) return decl_poison(decl);
+	if (*erase_decl) return true;
+	if (!sema_resolve_implemented_interfaces(context, decl, false)) return decl_poison(decl);
+
+	// Resolve the type of the enum.
+	if (!sema_resolve_type_info(context, decl->enums.type_info, RESOLVE_TYPE_DEFAULT)) return false;
+
+	Type *type = decl->enums.type_info->type;
+	if (!sema_resolve_type_decl(context, type)) return false;
+	Type *flat = type_flatten(type);
+	ASSERT_SPAN(decl, !type_is_optional(type) && "Already stopped when parsing.");
+
+	switch (sema_resolve_storage_type(context, type))
+	{
+		case STORAGE_ERROR:
+			return decl_poison(decl);
+		case STORAGE_NORMAL:
+			break;
+		case STORAGE_WILDCARD:
+			SEMA_ERROR(decl->enums.type_info, "No type can be inferred from the optional result.");
+			return decl_poison(decl);
+		case STORAGE_VOID:
+			SEMA_ERROR(decl->enums.type_info, "An enum may not have a void type.");
+			return decl_poison(decl);
+		case STORAGE_COMPILE_TIME:
+			SEMA_ERROR(decl->enums.type_info, "An enum may not have a compile time type.");
+			return decl_poison(decl);
+		case STORAGE_UNKNOWN:
+			SEMA_ERROR(decl->enums.type_info, "An enum may not be %s, as it has an unknown size.",
+				type_quoted_error_string(type));
+			return decl_poison(decl);
+	}
+
+	DEBUG_LOG("* Raw enum type resolved to %s.", type->name);
+
+	ASSERT_SPAN(decl, !decl->enums.parameters);
+
+	bool success = true;
+	unsigned enums = vec_size(decl->enums.values);
+
+	Decl **enum_values = decl->enums.values;
+	for (unsigned i = 0; i < enums; i++)
+	{
+		Decl *enum_value = enum_values[i];
+
+		bool erase_val = false;
+		if (!sema_analyse_attributes(context, enum_value, enum_value->attributes, ATTR_ENUM_VALUE, &erase_val)) return decl_poison(decl);
+		if (erase_val)
+		{
+			if (enums == 1)
+			{
+				RETURN_SEMA_ERROR(decl, "No enum values left in enum after @if resolution, there must be at least one.");
+			}
+			vec_erase_at(enum_values, i);
+			enums--;
+			i--;
+			continue;
+		}
+		enum_value->type = decl->type;
+		DEBUG_LOG("* Checking enum constant %s.", enum_value->name);
+		if (!enum_value->enum_constant.value)
+		{
+			if (!type_is_integer(flat))
+			{
+				RETURN_SEMA_ERROR(enum_value, "Enums with missing values must be an integer type.");
+			}
+			if (i == 0)
+			{
+				enum_value->enum_constant.value = expr_new_const_int(enum_value->span, type, 0);
+			}
+			else
+			{
+				Expr *expr = expr_new(EXPR_IOTA_DECL, enum_value->span);
+				expr->decl_expr = enum_values[i - 1];
+				enum_value->enum_constant.value = expr;
+			}
+		}
+		ASSERT(enum_value->resolve_status == RESOLVE_NOT_DONE);
+		ASSERT(enum_value->decl_kind == DECL_ENUM_CONSTANT);
+	}
+	decl->resolve_status = RESOLVE_DONE;
+	for (unsigned i = 0; i < enums; i++)
+	{
+		Decl *enum_value = enum_values[i];
+		enum_value->resolve_status = RESOLVE_RUNNING;
+		if (!sema_analyse_const_enum_constant_val(context, enum_value)) return decl_poison(decl);
+		enum_value->resolve_status = RESOLVE_DONE;
+	}
+	return success;
 }
 
 static inline bool sema_analyse_fault(SemaContext *context, Decl *decl, bool *erase_decl)
@@ -2699,6 +2826,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 				goto NOT_VALID_NAME;
 			}
 			FALLTHROUGH;
+		case TYPE_CONST_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		{
@@ -3134,7 +3262,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			}
 			return true;
 			FAILED_OP_TYPE:
-			RETURN_SEMA_ERROR(attr, "'operator' requires an operator type argument: '[]', '[]=', '&[]' or 'len'.");
+			RETURN_SEMA_ERROR(attr, "'operator' requires an operator type argument. It should be any of the arithmetic and bit operators, equality operators, '[]', '[]=', '&[]' or 'len'.");
 		}
 		case ATTRIBUTE_ALIGN:
 			if (!expr)
@@ -3594,6 +3722,7 @@ static bool sema_analyse_attributes_inner(SemaContext *context, ResolvedAttrData
 static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
 									bool *erase_decl)
 {
+	if (decl->resolved_attributes) return true;
 	ResolvedAttrData data = { .tags = NULL, .overload = INVALID_SPAN };
 	if (!sema_analyse_attributes_inner(context, &data, decl, attrs, domain, NULL, erase_decl)) return false;
 	if (*erase_decl) return true;
@@ -5112,6 +5241,7 @@ static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext
 	return true;
 }
 
+
 static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ALIAS, erase_decl)) return decl_poison(decl);
@@ -5183,6 +5313,7 @@ RETRY:
 			return true;
 		case TYPE_FUNC_RAW:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -5284,6 +5415,9 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			break;
 		case DECL_ENUM:
 			if (!sema_analyse_enum(context, decl, &erase_decl)) goto FAILED;
+			break;
+		case DECL_CONST_ENUM:
+			if (!sema_analyse_raw_enum(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_FAULT:
 			if (!sema_analyse_fault(context, decl, &erase_decl)) goto FAILED;

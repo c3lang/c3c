@@ -1,0 +1,17 @@
+enum Test
+{
+    FOO,
+}
+
+fn int main()
+{
+	int v;
+    $switch (Test.FOO):
+    $case FOO:
+        if START: (v < 5)
+        {
+            if (v > 3) break START;
+        }
+    $endswitch
+    return 0;
+}

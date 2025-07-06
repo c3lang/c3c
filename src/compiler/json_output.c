@@ -101,6 +101,7 @@ static inline const char *decl_type_to_string(Decl *type)
 		case DECL_STRUCT: return "struct";
 		case DECL_UNION: return "union";
  		case DECL_TYPEDEF: return "typedef";
+		case DECL_CONST_ENUM: return "raw_enum";
 		case DECL_BODYPARAM:
 		case DECL_DECLARRAY:
 		case DECL_ERASED:

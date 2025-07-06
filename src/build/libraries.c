@@ -1,5 +1,5 @@
 #include "build_internal.h"
-#include "compiler/compiler.h"
+#include "compiler/compiler_internal.h"
 
 #define MANIFEST_FILE "manifest.json"
 
@@ -329,12 +329,12 @@ void resolve_libraries(BuildTarget *build_target)
 		}
 		FOREACH(const char *, exec, library->execs)
 		{
-			printf("] Execute '%s' for library '%s':", exec, library->provides);
+			OUTF("Execute '%s' for library '%s':", exec, library->provides);
 			puts(execute_cmd(exec, false, NULL, 2048));
 		}
 		FOREACH(const char *, exec, target->execs)
 		{
-			printf("] Execute '%s' for library '%s':", exec, library->provides);
+			OUTF("Execute '%s' for library '%s':", exec, library->provides);
 			puts(execute_cmd(exec, false, NULL, 2048));
 		}
 	}

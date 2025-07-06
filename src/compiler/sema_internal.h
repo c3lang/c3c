@@ -30,14 +30,14 @@
 #define SCOPE_END ASSERT(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = old_scope; } while(0)
 #define SCOPE_POP_ERROR() ((bool)(context->active_scope = old_scope, false))
 #define SCOPE_ERROR_END_OUTER() do { context->active_scope = stored_scope; } while(0)
-#define PUSH_X(ast, X) AstId _old_##X##_defer = context->X##_defer; Ast *_old_##X = context->X##_target; context->X##_target = ast; context->X##_defer = context->active_scope.defer_last
-#define POP_X(X) context->X##_target = _old_##X; context->X##_defer = _old_##X##_defer
-#define PUSH_CONTINUE(ast) PUSH_X(ast, continue)
-#define POP_CONTINUE() POP_X(continue)
-#define PUSH_BREAK(ast) PUSH_X(ast, break)
-#define POP_BREAK() POP_X(break)
-#define PUSH_NEXT(ast, sast) PUSH_X(ast, next); Ast *_old_next_switch = context->next_switch; context->next_switch = sast
-#define POP_NEXT() POP_X(next); context->next_switch = _old_next_switch
+#define PUSH_Y(ast, X) JumpTarget _old_##X = context->X##_jump; context->X##_jump = (JumpTarget) { ast, context->active_scope.defer_last }
+#define POP_Y(X) context->X##_jump = _old_##X;
+#define PUSH_CONTINUE(ast) PUSH_Y(ast, continue)
+#define POP_CONTINUE() POP_Y(continue)
+#define PUSH_BREAK(ast) PUSH_Y(ast, break)
+#define POP_BREAK() POP_Y(break)
+#define PUSH_NEXT(ast, sast) PUSH_Y(ast, next); Ast *_old_next_switch = context->next_switch; context->next_switch = sast
+#define POP_NEXT() POP_Y(next); context->next_switch = _old_next_switch
 #define PUSH_BREAKCONT(ast) PUSH_CONTINUE(ast); PUSH_BREAK(ast)
 #define POP_BREAKCONT() POP_CONTINUE(); POP_BREAK()
 #define CHECK_ON_DEFINED(ref__) do { if (!ref__) break; *ref__ = true; return false; } while(0)
@@ -47,7 +47,7 @@ Decl **global_context_acquire_locals_list(void);
 void generic_context_release_locals_list(Decl **);
 const char *context_filename(SemaContext *context);
 
-AstId context_get_defers(SemaContext *context, AstId defer_top, AstId defer_bottom, bool is_success);
+AstId context_get_defers(SemaContext *context, AstId defer_bottom, bool is_success);
 void context_pop_defers(SemaContext *context, AstId *next);
 void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast);
 void context_change_scope_for_label(SemaContext *context, DeclId label);
@@ -129,6 +129,7 @@ INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span);
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right, bool *failed_ref);
+bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl);
 
 INLINE bool sema_check_left_right_const(SemaContext *context, Expr *left, Expr *right)
 {
@@ -253,3 +254,4 @@ static inline TypeProperty type_property_by_name(const char *name)
 	}
 	return TYPE_PROPERTY_NONE;
 }
+

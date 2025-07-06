@@ -202,7 +202,7 @@ static inline bool sema_analyse_break_stmt(SemaContext *context, Ast *statement)
 {
 	// If there is no break target and there is no label,
 	// we skip.
-	if (!context->break_target && !statement->contbreak_stmt.is_label)
+	if (!context->break_jump.target && !statement->contbreak_stmt.is_label)
 	{
 		if (context_labels_exist_in_scope(context))
 		{
@@ -215,30 +215,28 @@ static inline bool sema_analyse_break_stmt(SemaContext *context, Ast *statement)
 	SET_JUMP_END(context, statement);
 	statement->contbreak_stmt.is_resolved = true;
 
-	AstId defer_begin;
-	Ast *parent;
+	JumpTarget jump_target = { .target = NULL };
 
 	if (statement->contbreak_stmt.label.name)
 	{
 		// If we have a label, pick it and set the parent astid to that target.
 		ASSIGN_DECL_OR_RET(Decl *target, sema_analyse_label(context, statement), false);
 		// We don't need to do any checking since all(!) label constructs support break.
-		parent = astptr(target->label.parent);
-		defer_begin = target->label.defer;
+
+		jump_target = (JumpTarget) { astptr(target->label.parent), target->label.defer };
 	}
 	else
 	{
 		// Jump to the default break target.
-		parent = context->break_target;
-		defer_begin = context->break_defer;
+		jump_target = context->break_jump;
 	}
 
-	ASSERT(parent);
-	parent->flow.has_break = true;
-	statement->contbreak_stmt.ast = astid(parent);
+	ASSERT(jump_target.target);
+	jump_target.target->flow.has_break = true;
+	statement->contbreak_stmt.ast = astid(jump_target.target);
 
 	// Append the defers.
-	statement->contbreak_stmt.defers = context_get_defers(context, context->active_scope.defer_last, defer_begin, true);
+	statement->contbreak_stmt.defers = context_get_defers(context, jump_target.defer, true);
 	return true;
 }
 
@@ -285,22 +283,20 @@ static inline bool sema_analyse_ct_compound_stmt(SemaContext *context, Ast *stat
 static inline bool sema_analyse_continue_stmt(SemaContext *context, Ast *statement)
 {
 	// If we have a plain continue and no continue label, we just failed.
-	if (!context->continue_target && !statement->contbreak_stmt.label.name)
+	if (!context->continue_jump.target && !statement->contbreak_stmt.label.name)
 	{
 		RETURN_SEMA_ERROR(statement, "'continue' is not allowed here.");
 	}
 
-	AstId defer_id;
-	Ast *parent;
+	JumpTarget jump_target = { .target = NULL };
 	if (statement->contbreak_stmt.label.name)
 	{
 		// If we have a label grab it.
 		ASSIGN_DECL_OR_RET(Decl *target, sema_analyse_label(context, statement), false);
-		defer_id = target->label.defer;
-		parent = astptr(target->label.parent);
+		jump_target = (JumpTarget) { astptr(target->label.parent), target->label.defer };
 
 		// Continue can only be used with "for" statements, skipping the "do {  };" statement
-		if (!ast_supports_continue(parent))
+		if (!ast_supports_continue(jump_target.target))
 		{
 			RETURN_SEMA_ERROR(statement, "'continue' may only be used with 'for', 'while' and 'do-while' statements.");
 		}
@@ -308,17 +304,16 @@ static inline bool sema_analyse_continue_stmt(SemaContext *context, Ast *stateme
 	else
 	{
 		// Use default defer and ast.
-		defer_id = context->continue_defer;
-		parent = context->continue_target;
+		jump_target = context->continue_jump;
 	}
 
 	// This makes the active scope jump.
 	SET_JUMP_END(context, statement);
 
 	// Link the parent and add the defers.
-	statement->contbreak_stmt.ast = astid(parent);
+	statement->contbreak_stmt.ast = astid(jump_target.target);
 	statement->contbreak_stmt.is_resolved = true;
-	statement->contbreak_stmt.defers = context_get_defers(context, context->active_scope.defer_last, defer_id, true);
+	statement->contbreak_stmt.defers = context_get_defers(context, jump_target.defer, true);
 	return true;
 }
 
@@ -456,16 +451,16 @@ static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bott
 }
 
 // Print defers at return (from macro/block or from function)
-static inline void sema_inline_return_defers(SemaContext *context, Ast *stmt, AstId defer_top, AstId defer_bottom)
+static inline void sema_inline_return_defers(SemaContext *context, Ast *stmt, AstId defer_bottom)
 {
 	// Store the cleanup defers, which will happen on try.
-	stmt->return_stmt.cleanup = context_get_defers(context, defer_top, defer_bottom, true);
+	stmt->return_stmt.cleanup = context_get_defers(context, defer_bottom, true);
 
 	// If we have an optional return, then we create a cleanup_fail
 	if (stmt->return_stmt.expr && IS_OPTIONAL(stmt->return_stmt.expr)
 		&& sema_defer_has_try_or_catch(context->active_scope.defer_last, context->block_return_defer))
 	{
-		stmt->return_stmt.cleanup_fail = context_get_defers(context, context->active_scope.defer_last, context->block_return_defer, false);
+		stmt->return_stmt.cleanup_fail = context_get_defers(context, context->block_return_defer, false);
 		return;
 	}
 	// Otherwise we make the cleanup fail be the same as the cleanup.
@@ -564,7 +559,6 @@ END:
  */
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement)
 {
-	bool is_macro = (context->active_scope.flags & SCOPE_MACRO) != 0;
 	ASSERT(context->active_scope.flags & SCOPE_MACRO);
 	statement->ast_kind = AST_BLOCK_EXIT_STMT;
 	SET_JUMP_END(context, statement);
@@ -580,22 +574,20 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 		{
 			if (!sema_analyse_expr(context, ret_expr)) return false;
 		}
-		if (is_macro && !sema_check_return_matches_opt_returns(context, ret_expr)) return false;
-
+		if (!sema_check_return_matches_opt_returns(context, ret_expr)) return false;
 	}
 	else
 	{
-		if (block_type && type_no_optional(block_type) != type_void)
+		// What if we already had an expected type and we do an empty return.
+		if (block_type && !type_is_void(type_no_optional(block_type)))
 		{
-			SEMA_ERROR(statement, "Expected a return value of type %s here.", type_quoted_error_string(block_type));
-			return false;
+			RETURN_SEMA_ERROR(statement, "Expected a return value of type %s here.", type_quoted_error_string(block_type));
 		}
 	}
 	statement->return_stmt.block_exit_ref = context->block_exit_ref;
-	sema_inline_return_defers(context, statement, context->active_scope.defer_last, context->block_return_defer);
-
-	if (is_macro && !sema_analyse_macro_constant_ensures(context, ret_expr)) return false;
-	vec_add(context->returns, statement);
+	sema_inline_return_defers(context, statement, context->block_return_defer);
+	if (!sema_analyse_macro_constant_ensures(context, ret_expr)) return false;
+	vec_add(context->block_returns, statement);
 	return true;
 }
 
@@ -608,6 +600,13 @@ INLINE bool sema_check_not_stack_variable_escape(SemaContext *context, Expr *exp
 	Expr *outer = expr;
 	expr = sema_dive_into_expression(expr);
 	bool allow_pointer = false;
+	if (expr_is_const_slice(expr) && expr->const_expr.slice_init)
+	{
+		RETURN_SEMA_ERROR(outer, "A slice literal is backed by a stack allocated array which will be invalid once the function returns. "
+						  "However, you can place the literal in a global or 'static' variable and safely return that value as long "
+		                  "as the caller of the function won't modify the slice.");
+
+	}
 	// We only want && and &
 	if (expr->expr_kind == EXPR_SUBSCRIPT_ADDR)
 	{
@@ -692,7 +691,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 		if (!sema_check_not_stack_variable_escape(context, return_expr)) return false;
 		if (!sema_check_return_matches_opt_returns(context, return_expr)) return false;
 		// Process any ensures.
-		sema_inline_return_defers(context, statement, context->active_scope.defer_last, 0);
+		sema_inline_return_defers(context, statement, 0);
 	}
 	else
 	{
@@ -701,7 +700,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 			SEMA_ERROR(statement, "Expected to return a result of type %s.", type_to_error_string(expected_rtype));
 			return false;
 		}
-		statement->return_stmt.cleanup = context_get_defers(context, context->active_scope.defer_last, 0, true);
+		statement->return_stmt.cleanup = context_get_defers(context, 0, true);
 	}
 
 	if (context->call_env.ensures)
@@ -770,6 +769,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_LAST_FAULT:
 		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
+		case EXPR_MEMBER_SET:
 		case EXPR_SPLAT:
 		case EXPR_MAKE_ANY:
 		case EXPR_DISCARD:
@@ -1052,7 +1052,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 			}
 			if (!sema_analyse_catch_unwrap(context, expr))
 			{
-				context->active_scope.is_invalid = true;
+				context->active_scope.is_poisoned = true;
 				return false;
 			}
 		default:
@@ -1592,7 +1592,6 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 		// If it's an enum this is handled in a special way.
 		is_enum_iterator = index_type->canonical->type_kind == TYPE_ENUM;
-
 		// We check that the index is either using integer or enums.
 		if (!type_is_integer(index_type) && !is_enum_iterator)
 		{
@@ -1717,7 +1716,7 @@ SKIP_OVERLOAD:;
 	}
 
 	// Find the actual index type -> flattening the enum
-	Type *actual_index_type = is_enum_iterator ? index_type->canonical->decl->enums.type_info->type : index_type;
+	Type *actual_index_type = is_enum_iterator ? enum_inner_type(index_type->canonical) : index_type;
 
 	// Generate the index variable
 	Decl *idx_decl = decl_new_generated_var(actual_index_type, VARDECL_LOCAL, index ? index->span : enumerator->span);
@@ -1891,14 +1890,8 @@ SKIP_OVERLOAD:;
 
 static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 {
-	// IMPROVE
-	// convert
-	// if (!x) A(); else B();
-	// into
-	// if (x) B(); else A();
-
 	bool else_jump;
-	bool then_jump;
+	bool then_jump = false;
 	bool success;
 
 	Expr *cond = exprptr(statement->if_stmt.cond);
@@ -1911,10 +1904,15 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	Ast *else_body = else_id ? astptr(else_id) : NULL;
 	CondResult result = COND_MISSING;
 	bool is_invalid = false;
+	bool reverse = false;
 	SCOPE_OUTER_START
 
 		success = sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL, &result);
-
+		if (success && cond->expr_kind == EXPR_COND)
+		{
+			Expr **list = cond->cond_expr;
+			reverse = vec_size(list) == 1 && list[0]->expr_kind == EXPR_UNARY && list[0]->unary_expr.operator == UNARYOP_NOT;
+		}
 		if (success && !ast_ok(then))
 		{
 			SEMA_ERROR(then,
@@ -1943,7 +1941,11 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 			context->active_scope.allow_dead_code = true;
 			bool warn = SEMA_WARN(statement, "This code will never execute.");
 			sema_note_prev_at(context->active_scope.end_jump.span, "This code is preventing it from exectuting");
-			if (!warn) return success = false;
+			if (!warn)
+			{
+				success = false;
+				goto END;
+			}
 		}
 
 		SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
@@ -1968,12 +1970,12 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 END:
 		context_pop_defers_and_replace_ast(context, statement);
 
-		is_invalid = context->active_scope.is_invalid;
+		is_invalid = context->active_scope.is_poisoned;
 	SCOPE_OUTER_END;
-	if (is_invalid) context->active_scope.is_invalid = is_invalid;
+	if (is_invalid) context->active_scope.is_poisoned = true;
 	if (!success)
 	{
-		if (then_jump && sema_catch_in_cond(cond)) context->active_scope.is_invalid = true;
+		if (then_jump && sema_catch_in_cond(cond)) context->active_scope.is_poisoned = true;
 		return false;
 	}
 	if (then_jump)
@@ -1992,6 +1994,12 @@ END:
 	{
 		SET_JUMP_END(context, statement);
 	}
+	if (reverse)
+	{
+		cond->cond_expr[0] = cond->cond_expr[0]->unary_expr.expr;
+		statement->if_stmt.else_body = statement->if_stmt.then_body;
+		statement->if_stmt.then_body = else_id;
+	}
 	return true;
 }
 
@@ -2001,8 +2009,7 @@ static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt)
 	if (!sema_analyse_ct_expr(context, body)) return false;
 	if (!expr_is_const_string(body))
 	{
-		SEMA_ERROR(body, "The asm statement expects a constant string.");
-		return false;
+		RETURN_SEMA_ERROR(body, "The asm statement expects a constant string.");
 	}
 	return true;
 }
@@ -2088,18 +2095,14 @@ static bool context_labels_exist_in_scope(SemaContext *context)
 
 static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 {
-		SET_JUMP_END(context, statement);
-	if (!context->next_target && !statement->nextcase_stmt.label.name && !statement->nextcase_stmt.expr && !statement->nextcase_stmt.is_default)
+	SET_JUMP_END(context, statement);
+	if (!context->next_jump.target && !statement->nextcase_stmt.label.name && !statement->nextcase_stmt.expr && !statement->nextcase_stmt.is_default)
 	{
 		if (context->next_switch)
 		{
-			SEMA_ERROR(statement, "A plain 'nextcase' is not allowed on the last case.");
+			RETURN_SEMA_ERROR(statement, "A plain 'nextcase' is not allowed on the last case.");
 		}
-		else
-		{
-			SEMA_ERROR(statement, "'nextcase' can only be used inside of a switch.");
-		}
-		return false;
+		RETURN_SEMA_ERROR(statement, "'nextcase' can only be used inside of a switch.");
 	}
 
 	Ast *parent = context->next_switch;
@@ -2133,7 +2136,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 			}
 		}
 		if (!default_ast) RETURN_SEMA_ERROR(statement, "There is no 'default' in the switch to jump to.");
-		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
+		statement->nextcase_stmt.defer_id = context_get_defers(context, parent->switch_stmt.defer, true);
 		statement->nextcase_stmt.case_switch_stmt = astid(default_ast);
 		statement->nextcase_stmt.switch_expr = NULL;
 		return true;
@@ -2143,9 +2146,9 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 	statement->nextcase_stmt.switch_expr = NULL;
 	if (!value)
 	{
-		ASSERT(context->next_target);
-		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
-		statement->nextcase_stmt.case_switch_stmt = astid(context->next_target);
+		ASSERT(context->next_jump.target);
+		statement->nextcase_stmt.defer_id = context_get_defers(context, parent->switch_stmt.defer, true);
+		statement->nextcase_stmt.case_switch_stmt = astid(context->next_jump.target);
 		return true;
 	}
 
@@ -2160,7 +2163,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 	{
 		TypeInfo *type_info = value->type_expr;
 		if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
-		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
+		statement->nextcase_stmt.defer_id = context_get_defers(context, parent->switch_stmt.defer, true);
 		if (cond->type->canonical != type_typeid)
 		{
 			SEMA_ERROR(statement, "Unexpected 'type' in as an 'nextcase' destination.");
@@ -2186,7 +2189,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 
 	if (!sema_analyse_expr_rhs(context, expected_type, value, false, NULL, false)) return false;
 
-	statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
+	statement->nextcase_stmt.defer_id = context_get_defers(context, parent->switch_stmt.defer, true);
 
 	if (sema_cast_const(value))
 	{
@@ -2203,8 +2206,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 				return true;
 			}
 		}
-		SEMA_ERROR(value, "There is no 'case %s' in the switch, please check if a case is missing or if this value is incorrect.", expr_const_to_error_string(&value->const_expr));
-		return false;
+		RETURN_SEMA_ERROR(value, "There is no 'case %s' in the switch, please check if a case is missing or if this value is incorrect.", expr_const_to_error_string(&value->const_expr));
 	}
 VARIABLE_JUMP:
 	statement->nextcase_stmt.case_switch_stmt = astid(parent);
@@ -2222,9 +2224,10 @@ static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statem
 		return true;
 	}
 	Ast *last = NULL;
+	statement->ast_kind = AST_NOP_STMT;
 	AstId next = statement->next;
-	*statement = *astptr(replacement);
-	AstId current = astid(statement);
+	statement->next = replacement;
+	AstId current = replacement;
 	ASSERT(current);
 	while (current)
 	{
@@ -2337,14 +2340,14 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	if (to_expr && !sema_analyse_expr_rhs(context, switch_type, to_expr, false, NULL, false)) return false;
 
 	bool is_range = to_expr != NULL;
-	bool first_is_const = sema_cast_const(expr);
+	bool first_is_const = sema_cast_const(expr) && (expr_is_const_int(expr) || expr_is_const_enum(expr));
 	(*actual_cases_ref)++;
 	if (!is_range && !first_is_const)
 	{
 		*if_chained = true;
 		return true;
 	}
-	if (is_range && (!first_is_const || !(expr_is_const_int(expr) || expr_is_const_enum(expr))))
+	if (is_range && !first_is_const)
 	{
 		sema_error_at(context, extend_span_with_token(expr->span, to_expr->span), "Ranges must be constant integers.");
 		return false;
@@ -2362,8 +2365,8 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	{
 		if (is_enum)
 		{
-			uint32_t ord1 = const_expr->enum_val->enum_constant.ordinal;
-			uint32_t ord2 = to_const_expr->enum_val->enum_constant.ordinal;
+			uint32_t ord1 = const_expr->enum_val->enum_constant.inner_ordinal;
+			uint32_t ord2 = to_const_expr->enum_val->enum_constant.inner_ordinal;
 			if (ord1 > ord2)
 			{
 				sema_error_at(context, extend_span_with_token(expr->span, to_expr->span),
@@ -2439,8 +2442,8 @@ INLINE const char *create_missing_enums_in_switch_error(Ast **cases, unsigned fo
 			Expr *e = exprptr(cases[j]->case_stmt.expr);
 			Expr *e_to = exprptrzero(cases[j]->case_stmt.to_expr);
 			ASSERT_SPAN(e, expr_is_const_enum(e));
-			uint32_t ordinal_from = e->const_expr.enum_val->enum_constant.ordinal;
-			uint32_t ordinal_to = e_to ? e_to->const_expr.enum_val->enum_constant.ordinal : ordinal_from;
+			uint32_t ordinal_from = e->const_expr.enum_val->enum_constant.inner_ordinal;
+			uint32_t ordinal_to = e_to ? e_to->const_expr.enum_val->enum_constant.inner_ordinal : ordinal_from;
 			if (i >= ordinal_from && i <= ordinal_to) goto CONTINUE;
 		}
 		if (++printed != 1)
@@ -2469,8 +2472,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 {
 	if (!type_is_comparable(switch_type))
 	{
-		sema_error_at(context, expr_span, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
-		return false;
+		RETURN_SEMA_ERROR_AT(expr_span, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
 	}
 	// We need an if-chain if this isn't an enum/integer type.
 	Type *flat = type_flatten(switch_type);
@@ -2596,6 +2598,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 			is_type = true;
 			FALLTHROUGH;
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_BOOL:
@@ -2961,7 +2964,46 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 		SEMA_ERROR(message, "Expected a constant value.");
 		return false;
 	}
-	printf("] ");
+	const char *prefix = compiler.build.echo_prefix ? compiler.build.echo_prefix : "c3c:";
+	while (prefix[0] != 0)
+	{
+		const char *next_file = strstr(prefix, "{FILE}");
+		const char *next_line = strstr(prefix, "{LINE}");
+		const char *next = next_line;
+		if (next_file)
+		{
+			if (next_line && next_line < next_file)
+			{
+				next = next_line;
+				next_file = NULL;
+			}
+			else
+			{
+				next = next_file;
+				next_line = NULL;
+			}
+		}
+		if (!next)
+		{
+			printf("%s", prefix);
+			break;
+		}
+		if (prefix != next)
+		{
+			printf("%.*s", (int)(next - prefix), prefix);
+		}
+		prefix = next + 6;
+		if (next_line)
+		{
+			printf("%d", statement->span.row);
+		}
+		else
+		{
+			File *file = source_file_by_id(statement->span.file_id);
+			printf("%s", file->name);
+		}
+	}
+	printf(" ");
 	scratch_buffer_clear();
 	expr_const_to_scratch_buffer(&message->const_expr);
 	puts(scratch_buffer_to_string());
@@ -3045,6 +3087,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 	// Analysis is done turn the generated statements into a compound statement for lowering.
 	statement->ast_kind = AST_CT_COMPOUND_STMT;
 	statement->ct_compound_stmt = start;
+	sema_context_pop_ct_stack(context, for_context);
 	return true;
 FAILED:
 	sema_context_pop_ct_stack(context, for_context);
@@ -3126,10 +3169,10 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 
 bool sema_analyse_statement(SemaContext *context, Ast *statement)
 {
-	if (context->active_scope.is_invalid) return false;
+	if (context->active_scope.is_poisoned) return false;
 	if (statement->ast_kind == AST_POISONED) return false;
 	EndJump end_jump = context->active_scope.end_jump;
-	unsigned returns = vec_size(context->returns);
+	unsigned returns = vec_size(context->block_returns);
 	if (!sema_analyse_statement_inner(context, statement)) return ast_poison(statement);
 	if (end_jump.active)
 	{
@@ -3145,7 +3188,7 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 			}
 			// Remove it
 		}
-		vec_resize(context->returns, returns);
+		vec_resize(context->block_returns, returns);
 		statement->ast_kind = AST_NOP_STMT;
 	}
 	return true;
@@ -3268,12 +3311,9 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	vec_resize(context->ct_locals, 0);
 
 	// Clear returns
-	vec_resize(context->returns, 0);
+	vec_resize(context->block_returns, 0);
 	context->scope_id = 0;
-	context->continue_target = NULL;
-	context->next_target = 0;
-	context->next_switch = 0;
-	context->break_target = 0;
+	context->break_jump = context->continue_jump = context->next_jump = (JumpTarget) { .target = NULL };
 	ASSERT(func->func_decl.body);
 	Ast *body = astptr(func->func_decl.body);
 	Decl **lambda_params = NULL;

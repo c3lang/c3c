@@ -95,6 +95,7 @@ static const char *c_type_name(GenContext *c, Type *type)
 		case TYPE_FUNC_RAW:
 		case TYPE_TYPEDEF:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
@@ -147,6 +148,7 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 		case TYPE_FUNC_RAW:
 		case TYPE_TYPEDEF:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
@@ -467,6 +469,7 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_MACRO_BODY_EXPANSION:
 			break;
 		case EXPR_MEMBER_GET:
+		case EXPR_MEMBER_SET:
 			break;
 		case EXPR_NAMED_ARGUMENT:
 			break;

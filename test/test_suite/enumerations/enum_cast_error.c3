@@ -2,23 +2,24 @@ enum Abc : char { ABC }
 
 fn void foo()
 {
-	Abc x = Abc.from_ordinal(10); // #error: exceeds the max
+
+	Abc x = (Abc)10; // #error: exceeds the max
 }
 
 fn void bar()
 {
 	int a;
-	Abc x = Abc.from_ordinal(a);
+	Abc x = (Abc)a;
 }
 
 fn void baz()
 {
 	int a;
-	Abc x = Abc.from_ordinal(0);
+	Abc x = (Abc)0;
 }
 
 fn void abc()
 {
 	int a;
-	Abc x = Abc.from_ordinal(-1); // #error: negative number
+	Abc x = (Abc)-1; // #error: negative number
 }

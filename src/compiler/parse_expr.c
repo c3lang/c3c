@@ -5,9 +5,9 @@
 #include "compiler_internal.h"
 #include "parser_internal.h"
 
-typedef Expr *(*ParseFn)(ParseContext *context, Expr *);
-static Expr *parse_subscript_expr(ParseContext *c, Expr *left);
-static Expr *parse_initializer_list(ParseContext *c, Expr *left);
+typedef Expr *(*ParseFn)(ParseContext *context, Expr *, SourceSpan lhs_span);
+static Expr *parse_subscript_expr(ParseContext *c, Expr *left, SourceSpan lhs_span);
+static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_span);
 static Expr *parse_integer_expr(ParseContext *c, bool negated);
 
 typedef struct
@@ -109,11 +109,11 @@ bool parse_generic_parameters(ParseContext *c, Expr ***exprs_ref)
 /**
  * rethrow_expr ::= call_expr '!'
  */
-static Expr *parse_rethrow_expr(ParseContext *c, Expr *left_side)
+static Expr *parse_rethrow_expr(ParseContext *c, Expr *left_side, SourceSpan lhs_start)
 {
 	ASSERT(expr_ok(left_side));
 	advance_and_verify(c, TOKEN_BANG);
-	Expr *expr = expr_new_expr(EXPR_RETHROW, left_side);
+	Expr *expr = expr_new(EXPR_RETHROW, lhs_start);
 	expr->rethrow_expr.inner = left_side;
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -123,7 +123,7 @@ static Expr *parse_rethrow_expr(ParseContext *c, Expr *left_side)
  * Parse lhs [op] [rhs]
  * This will return lhs if no candidate is found.
  */
-inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, Precedence precedence)
+inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, SourceSpan lhs_start, Precedence precedence)
 {
 	while (1)
 	{
@@ -147,7 +147,7 @@ inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, P
 			return poisoned_expr;
 		}
 		// The rule exists, so run it.
-		left_side = infix_rule(c, left_side);
+		left_side = infix_rule(c, left_side, lhs_start);
 	}
 	return left_side;
 }
@@ -157,6 +157,7 @@ inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, P
  */
 static Expr *parse_precedence(ParseContext *c, Precedence precedence)
 {
+	SourceSpan lhs_start = c->span;
 	// Get the rule for the previous token.
 	ParseFn prefix_rule = rules[c->tok].prefix;
 	// No prefix rule => either it's not an expression
@@ -167,11 +168,11 @@ static Expr *parse_precedence(ParseContext *c, Precedence precedence)
 		return poisoned_expr;
 	}
 	// Get the expression
-	Expr *left_side = prefix_rule(c, NULL);
+	Expr *left_side = prefix_rule(c, NULL, INVALID_SPAN);
 	// Exit if it's an error.
 	if (!expr_ok(left_side)) return left_side;
 	// Now parse the (optional) right hand side.
-	return parse_precedence_with_left_side(c, left_side, precedence);
+	return parse_precedence_with_left_side(c, left_side, lhs_start, precedence);
 }
 
 
@@ -402,7 +403,7 @@ static bool parse_param_path(ParseContext *c, DesignatorElement ***path)
 	}
 }
 
-static Expr *parse_lambda(ParseContext *c, Expr *left)
+static Expr *parse_lambda(ParseContext *c, Expr *left, SourceSpan lhs_span)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_LAMBDA);
@@ -614,7 +615,7 @@ Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl)
  * @param left must be null.
  * @return Expr *
  */
-static Expr *parse_type_identifier(ParseContext *c, Expr *left)
+static Expr *parse_type_identifier(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	return parse_type_expression_with_path(c, NULL);
@@ -627,7 +628,7 @@ static Expr *parse_type_identifier(ParseContext *c, Expr *left)
  * @param left must be null.
  * @return Expr *
  */
-static Expr *parse_splat(ParseContext *c, Expr *left)
+static Expr *parse_splat(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = expr_new(EXPR_SPLAT, c->span);
@@ -639,7 +640,7 @@ static Expr *parse_splat(ParseContext *c, Expr *left)
 /**
  * type_expr ::= type initializer_list?
  */
-static Expr *parse_type_expr(ParseContext *c, Expr *left)
+static Expr *parse_type_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEINFO);
@@ -663,7 +664,7 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left)
  * @param left must be null
  * @return Expr *
  */
-static Expr *parse_ct_stringify(ParseContext *c, Expr *left)
+static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	SourceSpan start_span = c->span;
@@ -686,7 +687,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left)
 /**
  * unary_expr ::= unary_op unary_prec_expr
  */
-static Expr *parse_unary_expr(ParseContext *c, Expr *left)
+static Expr *parse_unary_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Did not expect a left hand side!");
 
@@ -725,10 +726,10 @@ static Expr *parse_unary_expr(ParseContext *c, Expr *left)
 /**
  * post_unary_expr ::= <expr> unary_op
  */
-static Expr *parse_post_unary(ParseContext *c, Expr *left)
+static Expr *parse_post_unary(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(expr_ok(left));
-	Expr *unary = expr_new_expr(EXPR_POST_UNARY, left);
+	Expr *unary = expr_new(EXPR_POST_UNARY, lhs_start);
 	unary->unary_expr.expr = left;
 	unary->unary_expr.operator = unaryop_from_token(c->tok);
 	advance(c);
@@ -739,11 +740,11 @@ static Expr *parse_post_unary(ParseContext *c, Expr *left)
 /**
  * elvis_expr := <left> ?: ternary_prec_expr
  */
-static Expr *parse_elvis_expr(ParseContext *c, Expr *left_side)
+static Expr *parse_elvis_expr(ParseContext *c, Expr *left_side, SourceSpan lhs_start)
 {
 	ASSERT(expr_ok(left_side));
 
-	Expr *expr_ternary = expr_new_expr(EXPR_TERNARY, left_side);
+	Expr *expr_ternary = expr_new(EXPR_TERNARY, lhs_start);
 	expr_ternary->ternary_expr.cond = exprid(left_side);
 	advance_and_verify(c, TOKEN_ELVIS);
 	expr_ternary->ternary_expr.then_expr = 0;
@@ -757,11 +758,11 @@ static Expr *parse_elvis_expr(ParseContext *c, Expr *left_side)
  * optional_expr ::= <left> '?' '!'?
  * ternary_expr ::= <left> '?' expr ':' ternary_prec_expr
  */
-static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side)
+static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side, SourceSpan lhs_start)
 {
 	ASSERT(expr_ok(left_side));
 
-	Expr *expr = expr_new_expr(EXPR_TERNARY, left_side);
+	Expr *expr = expr_new(EXPR_TERNARY, lhs_start);
 	advance_and_verify(c, TOKEN_QUESTION);
 
 	// If we have no expression following *or* it is a '!' followed by no expression
@@ -796,7 +797,7 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side)
  * When parsing we retain EXPR_GROUP in order to require explicit parentheses later
  * as needed.
  */
-static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
+static Expr *parse_grouping_expr(ParseContext *c, Expr *left, SourceSpan lhs_span)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	SourceSpan span = c->span;
@@ -824,6 +825,7 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 						.span = span,
 						.cast_expr.type_info = type_infoid(info),
 						.cast_expr.expr = inner};
+				RANGE_EXTEND_PREV(expr);
 			}
 			break;
 		}
@@ -852,7 +854,7 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
  *	;
  *
  */
-static Expr *parse_initializer_list(ParseContext *c, Expr *left)
+static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_span)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST);
@@ -899,7 +901,7 @@ static Expr *parse_initializer_list(ParseContext *c, Expr *left)
 	return initializer_list;
 }
 
-static Expr *parse_orelse(ParseContext *c, Expr *left_side)
+static Expr *parse_orelse(ParseContext *c, Expr *left_side, SourceSpan lhs_start)
 {
 	ASSERT(left_side && expr_ok(left_side));
 
@@ -909,7 +911,7 @@ static Expr *parse_orelse(ParseContext *c, Expr *left_side)
 	// Assignment operators have precedence right -> left.
 	ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, PREC_TERNARY), poisoned_expr);
 
-	Expr *expr = expr_new_expr(EXPR_BINARY, left_side);
+	Expr *expr = expr_new(EXPR_BINARY, lhs_start);
 	expr->binary_expr.operator = BINARYOP_ELSE;
 	expr->binary_expr.left = exprid(left_side);
 	expr->binary_expr.right = exprid(right_side);
@@ -918,7 +920,7 @@ static Expr *parse_orelse(ParseContext *c, Expr *left_side)
 	return expr;
 }
 
-static Expr *parse_binary(ParseContext *c, Expr *left_side)
+static Expr *parse_binary(ParseContext *c, Expr *left_side, SourceSpan start)
 {
 	ASSERT(left_side && expr_ok(left_side));
 
@@ -938,7 +940,7 @@ static Expr *parse_binary(ParseContext *c, Expr *left_side)
 		ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, rules[operator_type].precedence + 1), poisoned_expr);
 	}
 
-	Expr *expr = expr_new_expr(EXPR_BINARY, left_side);
+	Expr *expr = expr_new(EXPR_BINARY, start);
 	expr->binary_expr.operator = binaryop_from_token(operator_type);
 	expr->binary_expr.left = exprid(left_side);
 	expr->binary_expr.right = exprid(right_side);
@@ -947,7 +949,7 @@ static Expr *parse_binary(ParseContext *c, Expr *left_side)
 	return expr;
 }
 
-static Expr *parse_call_expr(ParseContext *c, Expr *left)
+static Expr *parse_call_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(left && expr_ok(left));
 
@@ -976,7 +978,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	}
 	advance(c);
 
-	Expr *call = expr_new_expr(EXPR_CALL, left);
+	Expr *call = expr_new(EXPR_CALL, lhs_start);
 	call->call_expr.function = exprid(left);
 	call->call_expr.arguments = params;
 	RANGE_EXTEND_PREV(call);
@@ -1050,12 +1052,12 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 /**
  * subscript ::= '[' range_expr ']'
  */
-static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
+static Expr *parse_subscript_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(left && expr_ok(left));
 	advance_and_verify(c, TOKEN_LBRACKET);
 
-	Expr *subs_expr = expr_new_expr(EXPR_SUBSCRIPT, left);
+	Expr *subs_expr = expr_new(EXPR_SUBSCRIPT, lhs_start);
 	subs_expr->subscript_expr.expr = exprid(left);
 
 	Range range = { .range_type = RANGE_DYNAMIC };
@@ -1081,10 +1083,10 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 /**
  * generic_expr ::= IDENT generic_parameters
  */
-static Expr *parse_generic_expr(ParseContext *c, Expr *left)
+static Expr *parse_generic_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(left && expr_ok(left));
-	Expr *subs_expr = expr_new_expr(EXPR_GENERIC_IDENT, left);
+	Expr *subs_expr = expr_new(EXPR_GENERIC_IDENT, lhs_start);
 	subs_expr->generic_ident_expr.parent = exprid(left);
 	if (!parse_generic_parameters(c, &subs_expr->generic_ident_expr.parmeters)) return poisoned_expr;
 	RANGE_EXTEND_PREV(subs_expr);
@@ -1094,18 +1096,18 @@ static Expr *parse_generic_expr(ParseContext *c, Expr *left)
 /**
  * access_expr ::= '.' primary_expr
  */
-static Expr *parse_access_expr(ParseContext *c, Expr *left)
+static Expr *parse_access_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(left && expr_ok(left));
 	advance_and_verify(c, TOKEN_DOT);
-	Expr *access_expr = expr_new_expr(EXPR_ACCESS_UNRESOLVED, left);
+	Expr *access_expr = expr_new(EXPR_ACCESS_UNRESOLVED, lhs_start);
 	access_expr->access_unresolved_expr.parent = left;
 	ASSIGN_EXPR_OR_RET(access_expr->access_unresolved_expr.child, parse_precedence(c, PREC_PRIMARY), poisoned_expr);
 	RANGE_EXTEND_PREV(access_expr);
 	return access_expr;
 }
 
-static Expr *parse_ct_ident(ParseContext *c, Expr *left)
+static Expr *parse_ct_ident(ParseContext *c, Expr *left, SourceSpan lhs_span)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	if (try_consume(c, TOKEN_CT_CONST_IDENT))
@@ -1120,7 +1122,7 @@ static Expr *parse_ct_ident(ParseContext *c, Expr *left)
 }
 
 
-static Expr *parse_hash_ident(ParseContext *c, Expr *left)
+static Expr *parse_hash_ident(ParseContext *c, Expr *left, SourceSpan lhs_span)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_HASH_IDENT);
@@ -1133,7 +1135,7 @@ static Expr *parse_hash_ident(ParseContext *c, Expr *left)
 /**
  * ct_eval ::= CT_EVAL '(' expr ')'
  */
-static Expr *parse_ct_eval(ParseContext *c, Expr *left)
+static Expr *parse_ct_eval(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_EVAL);
@@ -1146,7 +1148,7 @@ static Expr *parse_ct_eval(ParseContext *c, Expr *left)
 }
 
 
-static Expr *parse_ct_defined(ParseContext *c, Expr *left)
+static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *defined = expr_new(EXPR_CT_DEFINED, c->span);
@@ -1161,7 +1163,7 @@ static Expr *parse_ct_defined(ParseContext *c, Expr *left)
  *
  * Note that this is tranformed to $typeof(expr).sizeof.
  */
-static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
+static Expr *parse_ct_sizeof(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *access = expr_new(EXPR_ACCESS_UNRESOLVED, c->span);
@@ -1186,7 +1188,7 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
 /**
  * ct_is_const ::= CT_IS_CONST '(' expr ')'
  */
-static Expr *parse_ct_is_const(ParseContext *c, Expr *left)
+static Expr *parse_ct_is_const(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *checks = expr_new(EXPR_CT_IS_CONST, c->span);
@@ -1201,7 +1203,7 @@ static Expr *parse_ct_is_const(ParseContext *c, Expr *left)
 /**
  * ct_checks ::= CT_EMBED '(' constant_expr (',' constant_expr)? ')'
  */
-static Expr *parse_ct_embed(ParseContext *c, Expr *left)
+static Expr *parse_ct_embed(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *embed = expr_new(EXPR_EMBED, c->span);
@@ -1221,7 +1223,7 @@ static Expr *parse_ct_embed(ParseContext *c, Expr *left)
  * ct_call ::= (CT_ALIGNOF | CT_FEATURE | CT_EXTNAMEOF | CT_OFFSETOF | CT_NAMEOF | CT_QNAMEOF) '(' flat_path ')'
  * flat_path ::= expr ('.' primary) | '[' expr ']')*
  */
-static Expr *parse_ct_call(ParseContext *c, Expr *left)
+static Expr *parse_ct_call(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_CALL);
@@ -1238,7 +1240,7 @@ static Expr *parse_ct_call(ParseContext *c, Expr *left)
 	return expr;
 }
 
-static Expr *parse_ct_assignable(ParseContext *c, Expr *left)
+static Expr *parse_ct_assignable(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_ASSIGNABLE);
@@ -1256,7 +1258,7 @@ static Expr *parse_ct_assignable(ParseContext *c, Expr *left)
 /**
  * ct_arg ::= VACOUNT | (VAARG | VAREF | VAEXPR | VACONST) '(' expr ')'
  */
-static Expr *parse_ct_arg(ParseContext *c, Expr *left)
+static Expr *parse_ct_arg(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_ARG);
@@ -1277,7 +1279,7 @@ static Expr *parse_ct_arg(ParseContext *c, Expr *left)
  * identifier ::= CONST_IDENT | IDENT
  * Note: if the identifier is "return" (only possible in doc lexing "mode"), create an EXPR_RETVAL instead.
  */
-static Expr *parse_identifier(ParseContext *c, Expr *left)
+static Expr *parse_identifier(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	if (symstr(c) == kw_return)
@@ -1294,7 +1296,7 @@ static Expr *parse_identifier(ParseContext *c, Expr *left)
 }
 
 
-static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left)
+static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Path *path;
@@ -1305,7 +1307,7 @@ static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left)
 		case TOKEN_CONST_IDENT:
 		case TOKEN_AT_IDENT:
 		{
-			Expr *expr = parse_identifier(c, NULL);
+			Expr *expr = parse_identifier(c, NULL, lhs_start);
 			expr->unresolved_ident_expr.path = path;
 			if (path)
 			{
@@ -1325,9 +1327,9 @@ static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left)
 /**
  * force_unwrap ::= expr '!!'
  */
-static Expr *parse_force_unwrap_expr(ParseContext *c, Expr *left)
+static Expr *parse_force_unwrap_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
-	Expr *force_unwrap_expr = expr_new_expr(EXPR_FORCE_UNWRAP, left);
+	Expr *force_unwrap_expr = expr_new(EXPR_FORCE_UNWRAP, lhs_start);
 	advance(c);
 	force_unwrap_expr->inner_expr = left;
 	RANGE_EXTEND_PREV(force_unwrap_expr);
@@ -1341,7 +1343,7 @@ static Expr *parse_force_unwrap_expr(ParseContext *c, Expr *left)
  *
  * Note this code accepts any ident as builtin, and relies on the lexer to prevent space between tokens.
  */
-static Expr *parse_builtin(ParseContext *c, Expr *left)
+static Expr *parse_builtin(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Had left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_BUILTIN);
@@ -1703,7 +1705,7 @@ EXIT:
 	return expr_int;
 }
 
-Expr *parse_integer(ParseContext *c, Expr *left)
+Expr *parse_integer(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	return parse_integer_expr(c, false);
 }
@@ -1765,7 +1767,7 @@ static void parse_base64(char *result_pointer, char *result_pointer_end, const c
 	DONE:;
 }
 
-static Expr *parse_bytes_expr(ParseContext *c, Expr *left)
+static Expr *parse_bytes_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Had left hand side");
 	ArraySize len = 0;
@@ -1819,7 +1821,7 @@ static Expr *parse_bytes_expr(ParseContext *c, Expr *left)
 /**
  * Char literals may be 1, 2, 4, 8 or 16 bytes. They are always unsigned.
  */
-static Expr *parse_char_lit(ParseContext *c, Expr *left)
+static Expr *parse_char_lit(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Had left hand side");
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST);
@@ -1861,7 +1863,7 @@ static Expr *parse_char_lit(ParseContext *c, Expr *left)
 /**
  * Parse a double from the underlying string into a constant.
  */
-static Expr *parse_double(ParseContext *c, Expr *left)
+static Expr *parse_double(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Had left hand side");
 	char *err;
@@ -1914,7 +1916,7 @@ static Expr *parse_double(ParseContext *c, Expr *left)
 /**
  * string_literal ::= STRING+
  */
-static Expr *parse_string_literal(ParseContext *c, Expr *left)
+static Expr *parse_string_literal(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Had left hand side");
 	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST);
@@ -1961,7 +1963,7 @@ static Expr *parse_string_literal(ParseContext *c, Expr *left)
 /*
  * bool ::= 'true' | 'false'
  */
-static Expr *parse_bool(ParseContext *c, Expr *left)
+static Expr *parse_bool(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST);
@@ -1975,7 +1977,7 @@ static Expr *parse_bool(ParseContext *c, Expr *left)
 /**
  * Parse 'null', creating a const void* with zero address.
  */
-static Expr *parse_null(ParseContext *c, Expr *left)
+static Expr *parse_null(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST);
@@ -1995,7 +1997,7 @@ Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *typ
 	Expr *expr = expr_new(EXPR_COMPOUND_LITERAL, type_info->span);
 	expr->expr_compound_literal.type_info = type_info;
 	EXPECT_OR_RET(TOKEN_LBRACE, poisoned_expr);
-	ASSIGN_EXPR_OR_RET(expr->expr_compound_literal.initializer, parse_initializer_list(c, NULL), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(expr->expr_compound_literal.initializer, parse_initializer_list(c, NULL, INVALID_SPAN), poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }

@@ -25,6 +25,19 @@ fn void test_sha512_longer()
     assert(sha.final() == x"7361ec4a617b6473fb751c44d1026db9442915a5fcea1a419e615d2f3bc5069494da28b8cf2e4412a1dc97d6848f9c84a254fb884ad0720a83eaa0434aeafd8c");
 }
 
+/*
+fn void gigahash_sha512()
+{
+    // This test is here because of an overflow that was present in SHA256.
+    char[] c = calloc(257 * (1024*1024))[:(257*1024*1024)];
+    defer free(c);
+
+    Sha512 sha;
+    sha.init();
+    sha.update(c);
+    assert(sha.final() == x"724999ca733fdd49f489fc59a49ce41460531a78aa0c03488be9f4a1e29f955bd325d47462c89234a8f587d8a5d6a9ab79137bc5ce3acbfb928553dba8431a36");
+}
+*/
 fn void test_pbkdf2()
 {
     char[] pw = "password";
@@ -67,3 +80,4 @@ fn void test_sha512_million_a()
     }
     assert(sha.final() == x"e718483d0ce769644e2e42c7bc15b4638e1f98b13b2044285632a803afa973ebde0ff244877ea60a4cb0432ce577c31beb009c5c2c49aa2e4eadb217ad8cc09b");
 }
+

@@ -141,7 +141,7 @@ fn void main()
 
 ### Current status
 
-The current stable version of the compiler is **version 0.7.2**.
+The current stable version of the compiler is **version 0.7.3**.
 
 The upcoming 0.7.x releases will focus on expanding the standard library,
 fixing bugs and improving compile time analysis. 
@@ -313,17 +313,25 @@ called `hello_world` or `hello_world.exe`depending on platform.
 1. Make sure you have Visual Studio 17 2022 installed or alternatively install the "Buildtools for Visual Studio" (https://aka.ms/vs/17/release/vs_BuildTools.exe) and then select "Desktop development with C++"
 2. Install CMake
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-4. Enter the C3C directory `cd c3c`.
-5. Set up the CMake build `cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release`
-6. Build: `cmake --build build --config Release`
-7. You should now have the c3c.exe
+4. Enter the C3C directory: `cd c3c`.
+5. Set up the CMake build: `cmake --preset windows-vs-2022-release`
+6. Build: `cmake --build --preset windows-vs-2022-release`
 
-You should now have a `c3c` executable.
+You should now have a `c3c` executable in `build\Release`.
 
-You can try it out by running some sample code: `c3c.exe compile ../resources/examples/hash.c3`
+You can try it out by running some sample code: `c3c.exe compile ../../resources/examples/hash.c3`
+
+Building `c3c` using Visual Studio Code is also supported when using the `CMake Tools` extension. Simply select the `Windows x64 Visual Studio 17 2022` configure preset and build.
 
 *Note that if you run into linking issues when building, make sure that you are using the latest version of VS17.*
 
+#### Compiling on Windows (Debug)
+
+Debug build requires a different set of LLVM libraries to be loaded for which a separate CMake configuration is used to avoid conflicts.
+1. Configure: `cmake --preset windows-vs-2022-debug`
+2. Build: `cmake --build --preset windows-vs-2022-debug`
+
+You should now have a `c3c` executable in `build-debug\Debug`.
 
 #### Compiling on Ubuntu 24.04 LTS
 
@@ -425,7 +433,12 @@ Editor plugins can be found at https://github.com/c3lang/editor-plugins.
 
 A huge **THANK YOU** goes out to all contributors and sponsors.
 
-A special thank you to sponsors [Caleb-o](https://github.com/Caleb-o) and [devdad](https://github.com/devdad) for going the extra mile.
+A special thank you to sponsors [Zack Puhl](https://github.com/NotsoanoNimus) and [konimarti](https://github.com/konimarti) for going the extra mile.
+
+And honorable mention goes to past sponsors:
+[Ygor Pontelo](https://github.com/ygorpontelo), [Simone Raimondi](https://github.com/SRaimondi),
+[Jan Válek](https://github.com/jan-valek), [Pierre Curto](https://github.com/pierrec), 
+[Caleb-o](https://github.com/Caleb-o) and [devdad](https://github.com/devdad)
 
 ## Star History
 

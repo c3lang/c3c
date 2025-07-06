@@ -99,11 +99,13 @@ macro anycast(any v, $Type) @builtin
 fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
 {
 	Allocator t = allocator::current_temp;
+	TempAllocator* t2 = allocator::top_temp;
 	TempAllocator* new_t = allocator::new_temp_allocator(smem, 0x1000)!!;
-	allocator::current_temp = new_t;
+	allocator::current_temp = allocator::top_temp = new_t;
 	defer
 	{
 		allocator::current_temp = t;
+		allocator::top_temp = t2;
 		new_t.free();
 	}
 	void*[256] buffer;

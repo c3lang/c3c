@@ -27,6 +27,19 @@ fn void test_sha256_longer()
     assert(sha.final() == x"59F109D9 533B2B70 E7C3B814 A2BD218F 78EA5D37 14455BC6 7987CF0D 664399CF");
 }
 
+/*
+fn void gigahash_sha256()
+{
+    // > 256 MiB is just at the threshold where the SHA bitcounter rolls overflows 'len', but doesn't hit the uint.max limit...
+    char[] c = calloc(257 * (1024*1024))[:(257*1024*1024)];
+    defer free(c);
+
+    Sha256 sha;
+    sha.init();
+    sha.update(c);
+    assert(sha.final() == x"053EADFD EC682CF1 6F3F8704 C7609C57 868DD757 65E08DC5 A7491F5D 06BCB74D");
+}
+*/
 fn void test_pbkdf2()
 {
     char[] pw = "password";
@@ -72,3 +85,4 @@ fn void test_sha256_million_a()
    
     assert(sha.final() == x"CDC76E5C 9914FB92 81A1C7E2 84D73E67 F1809A48 A497200E 046D39CC C7112CD0");
 }
+

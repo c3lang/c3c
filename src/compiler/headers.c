@@ -164,6 +164,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
 			PRINTF("%s", decl_get_extname(type->decl));
 			return;
 		case TYPE_BITSTRUCT:
@@ -551,9 +552,10 @@ RETRY:
 		case TYPE_ENUM:
 			header_gen_enum(c, 0, type->decl);
 			return;
+		case TYPE_CONST_ENUM:
+			TODO;
 		case TYPE_FUNC_RAW:
 			UNREACHABLE
-			return;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			header_gen_struct_union_top(c, type->decl, is_pointer ? GEN_POINTER : GEN_FULL);
@@ -774,7 +776,12 @@ void header_gen(Module **modules, unsigned module_count)
 	{
 		filename = str_printf("%s.h", name);
 	}
+	file_create_folders(filename);
 	FILE *file = fopen(filename, "w");
+	if (!file)
+	{
+		error_exit("Failed to open header file %s", filename);
+	}
 	HeaderContext context = { .file = file, .gen_def = &table1, .gen_decl = &table2 };
 	HeaderContext *c = &context;
 	PRINTF("#include <stdint.h>\n");

@@ -14,7 +14,7 @@ attrdef @Attr(MyInt x);
 
 /* #expect: test.ll
 
-@"$ct.test.Foo" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 
 define void @test.main() #0 {
 entry:

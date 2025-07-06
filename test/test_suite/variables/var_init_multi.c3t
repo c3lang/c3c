@@ -21,8 +21,10 @@ entry:
   %y = alloca i32, align 4
   %z = alloca ptr, align 16
   %w = alloca ptr, align 16
+  %0 = call ptr @llvm.threadlocal.address.p0(ptr @main.tx)
+  %1 = call ptr @llvm.threadlocal.address.p0(ptr @main.ty)
   store i32 0, ptr %x, align 4
   store i32 0, ptr %y, align 4
-  %0 = load i32, ptr %x, align 4
-  ret i32 %0
+  %2 = load i32, ptr %x, align 4
+  ret i32 %2
 }

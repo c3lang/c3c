@@ -6,11 +6,11 @@ enum MyEnum : int
 
 fn int toInt(MyEnum value)
 {
-	return (int)value; // #error: but you can use .ordinal
+	return (int)value;
 }
 
 fn MyEnum toEnum(int value)
 {
-	return (MyEnum)value; // #error: but you can use .from_ordinal()
+	return (MyEnum)value;
 }
 

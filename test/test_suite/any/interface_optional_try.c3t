@@ -1,0 +1,106 @@
+// #target: macos-x64
+module test;
+import std::io;
+
+interface VeryOptional
+{
+    fn void do_something() @optional;
+}
+
+struct Foo (VeryOptional)
+{
+    String name;
+}
+
+Foo foo = { "Foo" };
+
+fn VeryOptional? get_very_optional()
+{
+    return &foo;
+}
+
+fn void main()
+{
+    VeryOptional? v = get_very_optional();
+    if (try x = &v.do_something)
+    {
+
+    }
+    else
+    {
+        io::printfn("do_something is not implemented for Foo");
+    }
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %v = alloca %any, align 8
+  %v.f = alloca i64, align 8
+  %retparam = alloca %any, align 8
+  %x = alloca ptr, align 8
+  %.inlinecache = alloca ptr, align 8
+  %.cachedtype = alloca ptr, align 8
+  %retparam3 = alloca i64, align 8
+  store ptr null, ptr %.cachedtype, align 8
+  %0 = call i64 @test.get_very_optional(ptr %retparam)
+  %not_err = icmp eq i64 %0, 0
+  %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %1, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %entry
+  store i64 %0, ptr %v.f, align 8
+  br label %after_assign
+
+after_check:                                      ; preds = %entry
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %v, ptr align 8 %retparam, i32 16, i1 false)
+  store i64 0, ptr %v.f, align 8
+  br label %after_assign
+
+after_assign:                                     ; preds = %after_check, %assign_optional
+  store ptr null, ptr %x, align 8
+  %optval = load i64, ptr %v.f, align 8
+  %not_err1 = icmp eq i64 %optval, 0
+  %2 = call i1 @llvm.expect.i1(i1 %not_err1, i1 true)
+  br i1 %2, label %after_check2, label %catch_landing
+
+after_check2:                                     ; preds = %after_assign
+  %3 = load %any, ptr %v, align 8
+  %4 = extractvalue %any %3, 1
+  %5 = inttoptr i64 %4 to ptr
+  %type = load ptr, ptr %.cachedtype, align 8
+  %6 = icmp eq ptr %5, %type
+  br i1 %6, label %cache_hit, label %cache_miss
+
+cache_miss:                                       ; preds = %after_check2
+  %ptradd = getelementptr inbounds i8, ptr %5, i64 16
+  %7 = load ptr, ptr %ptradd, align 8
+  %8 = call ptr @.dyn_search(ptr %7, ptr @"$sel.do_something")
+  store ptr %8, ptr %.inlinecache, align 8
+  store ptr %5, ptr %.cachedtype, align 8
+  br label %9
+
+cache_hit:                                        ; preds = %after_check2
+  %cache_hit_fn = load ptr, ptr %.inlinecache, align 8
+  br label %9
+
+9:                                                ; preds = %cache_hit, %cache_miss
+  %fn_phi = phi ptr [ %cache_hit_fn, %cache_hit ], [ %8, %cache_miss ]
+  store ptr %fn_phi, ptr %x, align 8
+  br label %phi_try_catch
+
+catch_landing:                                    ; preds = %after_assign
+  br label %phi_try_catch
+
+phi_try_catch:                                    ; preds = %catch_landing, %9
+  %val = phi i1 [ true, %9 ], [ false, %catch_landing ]
+  br i1 %val, label %if.exit, label %if.else
+
+if.else:                                          ; preds = %phi_try_catch
+  %10 = call i64 @std.io.printfn(ptr %retparam3, ptr @.str.1, i64 39, ptr null, i64 0)
+  br label %if.exit
+
+if.exit:                                          ; preds = %if.else, %phi_try_catch
+  ret void
+}

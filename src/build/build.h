@@ -484,6 +484,7 @@ typedef struct BuildOptions_
 		int api_version;
 	} android;
 	int build_threads;
+	const char *echo_prefix;
 	const char **libraries_to_fetch;
 	const char **files;
 	const char *test_filter;
@@ -553,6 +554,7 @@ typedef struct BuildOptions_
 	bool run_once;
 	bool suppress_run;
 	bool old_slice_copy;
+	bool old_enums;
 	int verbosity_level;
 	const char *panicfn;
 	const char *benchfn;
@@ -565,6 +567,7 @@ typedef struct BuildOptions_
 	const char *header_out;
 	const char *obj_out;
 	const char *script_dir;
+	const char **emit_only;
 	RelocModel reloc_model;
 	X86VectorCapability x86_vector_capability;
 	X86CpuSet x86_cpu_set;
@@ -647,6 +650,7 @@ typedef struct
 	const char **linker_libdirs;
 	const char **linker_libs;
 	const char *cpu;
+	const char *echo_prefix;
 	const char **link_args;
 	const char *build_dir;
 	const char *object_file_dir;
@@ -656,6 +660,7 @@ typedef struct
 	const char *header_file_dir;
 	const char *script_dir;
 	const char *run_dir;
+	const char **emit_only;
 	bool is_non_project;
 	bool run_after_compile;
 	bool delete_after_run;
@@ -685,6 +690,7 @@ typedef struct
 	bool silence_deprecation;
 	bool print_stats;
 	bool old_slice_copy;
+	bool old_enums;
 	int build_threads;
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;

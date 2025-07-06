@@ -335,6 +335,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			}
 			return expr;
 		case EXPR_MEMBER_GET:
+		case EXPR_MEMBER_SET:
 			fixup_decl(c, &expr->member_get_expr);
 			break;
 		case EXPR_SWIZZLE:
@@ -404,6 +405,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_CATCH:
 			MACRO_COPY_DECL(expr->catch_expr.decl);
 			MACRO_COPY_EXPR_LIST(expr->catch_expr.exprs);
+			return expr;
+		case EXPR_IOTA_DECL:
+			fixup_decl(c, &expr->iota_decl_expr);
 			return expr;
 		case EXPR_IDENTIFIER:
 		{
@@ -1029,6 +1033,13 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			break;
 		case DECL_FAULT:
 			break;
+		case DECL_CONST_ENUM:
+			copy_decl_type(copy);
+			MACRO_COPY_TYPE_LIST(copy->interfaces);
+			MACRO_COPY_DECL_LIST(copy->methods);
+			MACRO_COPY_TYPE(copy->enums.type_info);
+			MACRO_COPY_DECL_LIST(copy->enums.values);
+			break;
 		case DECL_ENUM:
 			copy_decl_type(copy);
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
@@ -1071,8 +1082,17 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			// Note that the ast id should be patched by the parent.
 			return copy;
 		case DECL_ENUM_CONSTANT:
-			fixup_declid(c, &copy->enum_constant.parent);
-			MACRO_COPY_EXPR_LIST(copy->enum_constant.args);
+			if (copy->enum_constant.is_raw)
+			{
+				MACRO_COPY_EXPR_LIST(copy->enum_constant.associated);
+			}
+			else
+			{
+				if (copy->resolve_status != RESOLVE_DONE)
+				{
+					MACRO_COPY_EXPR(copy->enum_constant.value);
+				}
+			}
 			break;
 		case DECL_TYPEDEF:
 			copy_decl_type(copy);

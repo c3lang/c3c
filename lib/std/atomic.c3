@@ -175,6 +175,7 @@ macro bool is_native_atomic_type($Type)
 			$case BOOL:
 				return true;
 			$case DISTINCT:
+			$case CONST_ENUM:
 				return is_native_atomic_type($Type.inner);
 			$default:
 				return false;

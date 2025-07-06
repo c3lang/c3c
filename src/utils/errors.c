@@ -24,7 +24,7 @@ NORETURN void error_exit(const char *format, ...)
 	va_list arglist;
 	va_start(arglist, format);
 	vfprintf(stderr, format, arglist);
-	fprintf(stderr, "\n");
+	fprintf(stderr, "\n"); // NOLINT
 	va_end(arglist);
 	exit_compiler(EXIT_FAILURE);
 }

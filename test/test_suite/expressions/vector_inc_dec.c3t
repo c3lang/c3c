@@ -32,7 +32,7 @@ entry:
   store ptr %0, ptr %args, align 8
   %ptradd = getelementptr inbounds i8, ptr %args, i64 8
   store i64 %1, ptr %ptradd, align 8
-  %2 = call ptr @std.core.mem.calloc(i64 5000) #3
+  %2 = call ptr @std.core.mem.calloc(i64 5000) #4
   store ptr %2, ptr %x, align 8
   %3 = load ptr, ptr %x, align 8
   %4 = insertelement <1 x ptr> undef, ptr %3, i64 0

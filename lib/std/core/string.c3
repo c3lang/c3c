@@ -582,6 +582,7 @@ fn bool ZString.eq(self, ZString other) @operator(==)
 	char* a = self;
 	char* b = other;
 	if (a == b) return true;
+	if (!a || !b) return false;
 	for (;; a++, b++)
 	{
 		char c = *a;

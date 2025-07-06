@@ -440,10 +440,10 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 			BEValue member;
 			llvm_emit_slice_pointer(c, value, &member);
 			llvm_value_rvalue(c, &member);
-			llvm_value_set_address(value,
-								   member.value,
-								   type_get_ptr(value->type->array.base),
-								   type_abi_alignment(value->type->array.base));
+			llvm_value_set_address(c,
+			                       value,
+			                       member.value,
+			                       type_get_ptr(value->type->array.base), type_abi_alignment(value->type->array.base));
 			return;
 		}
 		default:
@@ -856,6 +856,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.ssub_overflow = lookup_intrinsic("llvm.ssub.with.overflow");
 	intrinsic_id.ssub_sat = lookup_intrinsic("llvm.ssub.sat");
 	intrinsic_id.smul_fixed_sat = lookup_intrinsic("llvm.smul.fix.sat");
+	intrinsic_id.threadlocal_address = lookup_intrinsic("llvm.threadlocal.address");
 	intrinsic_id.trap = lookup_intrinsic("llvm.trap");
 	intrinsic_id.trunc = lookup_intrinsic("llvm.trunc");
 	intrinsic_id.uadd_overflow = lookup_intrinsic("llvm.uadd.with.overflow");
@@ -1004,6 +1005,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 		case DECL_UNION:
 		case DECL_ENUM:
 		case DECL_BITSTRUCT:
+		case DECL_CONST_ENUM:
 			llvm_get_typeid(context, decl->type);
 			break;
 	}
@@ -1068,6 +1070,7 @@ static inline void llvm_optimize(GenContext *c)
 const char *llvm_codegen(void *context)
 {
 	GenContext *c = context;
+	if (!compiler_should_ouput_file(c->base_name)) return NULL;
 	llvm_optimize(c);
 
 	// Serialize the LLVM IR, if requested, also verify the IR in this case
@@ -1359,6 +1362,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_CT_ASSERT:
 		case DECL_DISTINCT:
 		case DECL_ENUM:
+		case DECL_CONST_ENUM:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
 		case DECL_LABEL:

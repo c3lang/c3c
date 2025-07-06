@@ -76,13 +76,13 @@ void compiler_init(BuildOptions *build_options)
 	compiler.context.module_list = NULL;
 	compiler.context.generic_module_list = NULL;
 	compiler.context.method_extensions = NULL;
-	vmem_init(&ast_arena, 512);
+	vmem_init(&ast_arena, 4096);
 	ast_calloc();
-	vmem_init(&expr_arena, 512);
+	vmem_init(&expr_arena, 4096);
 	expr_calloc();
-	vmem_init(&decl_arena, 256);
+	vmem_init(&decl_arena, 4096);
 	decl_calloc();
-	vmem_init(&type_info_arena, 256);
+	vmem_init(&type_info_arena, 4096);
 	type_info_calloc();
 	// Create zero index value.
 	if (build_options->std_lib_dir)
@@ -405,6 +405,16 @@ void compiler_parse(void)
 	compiler_parsing_time = bench_mark();
 }
 
+bool compiler_should_ouput_file(const char *file)
+{
+	if (!vec_size(compiler.build.emit_only)) return true;
+	FOREACH(const char *, f, compiler.build.emit_only)
+	{
+		if (str_eq(file, f)) return true;
+	}
+	return false;
+}
+
 static void create_output_dir(const char *dir)
 {
 	if (!dir) return;
@@ -669,6 +679,7 @@ void compiler_compile(void)
 		}
 		error_exit("Compilation produced no object files, maybe there was no code?");
 	}
+	if (vec_size(compiler.build.emit_only)) goto SKIP;
 	if (output_exe)
 	{
 		if (compiler.build.output_dir)
@@ -676,17 +687,7 @@ void compiler_compile(void)
 			create_output_dir(compiler.build.output_dir);
 			output_exe = file_append_path(compiler.build.output_dir, output_exe);
 		}
-		char *dir_path = file_get_dir(output_exe);
-		if (dir_path && strlen(dir_path) && !file_is_dir(dir_path))
-		{
-			error_exit("Can't create '%s', the directory '%s' could not be found.", output_exe, dir_path);
-		}
-
-		if (file_is_dir(output_exe))
-		{
-			error_exit("Cannot create exe with the name '%s' - there is already a directory with that name.", output_exe);
-		}
-
+		file_create_folders(output_exe);
 		bool system_linker_available = link_libc() && compiler.platform.os != OS_TYPE_WIN32;
 		bool use_system_linker = system_linker_available && compiler.build.arch_os_target == default_target;
 		switch (compiler.build.linker_type)
@@ -786,15 +787,7 @@ void compiler_compile(void)
 			create_output_dir(compiler.build.output_dir);
 			output_static = file_append_path(compiler.build.output_dir, output_static);
 		}
-		char *dir_path = file_get_dir(output_static);
-		if (dir_path && strlen(dir_path) && !file_is_dir(dir_path))
-		{
-			error_exit("Can't create '%s', the directory '%s' could not be found.", output_static, dir_path);
-		}
-		if (file_is_dir(output_static))
-		{
-			error_exit("Cannot create a static library with the name '%s' - there is already a directory with that name.", output_exe);
-		}
+		file_create_folders(output_static);
 		if (!static_lib_linker(output_static, obj_files, output_file_count))
 		{
 			error_exit("Failed to produce static library '%s'.", output_static);
@@ -811,15 +804,7 @@ void compiler_compile(void)
 			create_output_dir(compiler.build.output_dir);
 			output_dynamic = file_append_path(compiler.build.output_dir, output_dynamic);
 		}
-		char *dir_path = file_get_dir(output_dynamic);
-		if (dir_path && strlen(dir_path) && !file_is_dir(dir_path))
-		{
-			error_exit("Can't create '%s', the directory '%s' could not be found.", output_dynamic, dir_path);
-		}
-		if (file_is_dir(output_dynamic))
-		{
-			error_exit("Cannot create a dynamic library with the name '%s' - there is already a directory with that name.", output_exe);
-		}
+		file_create_folders(output_dynamic);
 		if (!dynamic_lib_linker(output_dynamic, obj_files, output_file_count))
 		{
 			error_exit("Failed to produce dynamic library '%s'.", output_dynamic);
@@ -831,6 +816,7 @@ void compiler_compile(void)
 	}
 	else
 	{
+		SKIP:
 		compiler_print_bench();
 	}
 	free(obj_files);
@@ -881,9 +867,9 @@ void compile_file_list(BuildOptions *options)
 		{
 			error_exit("The target is a 'prepare' target, and only 'build' can be used with it.");
 		}
-		OUTF("] Running prepare target '%s'.\n", options->target_select);
+		OUTF("Running prepare target '%s'.\n", options->target_select);
 		execute_scripts();
-		OUTF("] Completed.\n.");
+		OUTN("Completed.\n.");
 		return;
 	}
 	if (options->command == COMMAND_CLEAN_RUN)
@@ -926,16 +912,7 @@ static void setup_bool_define(const char *id, bool value)
 	setup_define(id, expr_new_const_bool(INVALID_SPAN, type_bool, value));
 }
 
-#if FETCH_AVAILABLE
-const char * vendor_fetch_single(const char* lib, const char* path) 
-{
-	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
-	const char *destination = file_append_path(path, str_printf("%s.c3l", lib));
-	const char *error = download_file("https://github.com", resource, destination);
-	return error;	
-}
-
-static bool use_ansi(void)
+bool use_ansi(void)
 {
 	switch (compiler.context.ansi)
 	{
@@ -951,6 +928,15 @@ static bool use_ansi(void)
 #else
 	return isatty(fileno(stdout));
 #endif
+}
+
+#if FETCH_AVAILABLE
+const char * vendor_fetch_single(const char* lib, const char* path) 
+{
+	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
+	const char *destination = file_append_path(path, str_printf("%s.c3l", lib));
+	const char *error = download_file("https://github.com", resource, destination);
+	return error;	
 }
 
 #define PROGRESS_BAR_LENGTH 35
