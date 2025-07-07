@@ -747,6 +747,172 @@ bool asm_is_supported(ArchType arch)
 	}
 }
 
+static void scratch_append_bit(const char *name, const char *string, bool *has_print_reg)
+{
+	if (*has_print_reg)
+	{
+		scratch_buffer_append("/");
+	}
+	else
+	{
+		*has_print_reg = true;
+	}
+	scratch_buffer_append(name);
+	scratch_buffer_append(string);
+}
+
+static void scratch_append_bits(const char *name, AsmArgBits bits)
+{
+	bool has_print = false;
+	if (bits & ARG_BITS_512) scratch_append_bit(name, "512", &has_print);
+	if (bits & ARG_BITS_256) scratch_append_bit(name, "256", &has_print);
+	if (bits & ARG_BITS_128) scratch_append_bit(name, "128", &has_print);
+	if (bits & ARG_BITS_80) scratch_append_bit(name, "80", &has_print);
+	if (bits & ARG_BITS_64) scratch_append_bit(name, "64", &has_print);
+	if (bits & ARG_BITS_32) scratch_append_bit(name, "32", &has_print);
+	if (bits & ARG_BITS_20) scratch_append_bit(name, "20", &has_print);
+	if (bits & ARG_BITS_16) scratch_append_bit(name, "16", &has_print);
+	if (bits & ARG_BITS_12) scratch_append_bit(name, "12", &has_print);
+	if (bits & ARG_BITS_8) scratch_append_bit(name, "8", &has_print);
+	if (bits & ARG_BITS_5) scratch_append_bit(name, "5", &has_print);
+}
+
+static void arm_arg_to_scratch(AsmArgType type)
+{
+	scratch_buffer_clear();
+	if (type.is_write && !type.is_readwrite) scratch_buffer_append("w");
+	if (type.is_readwrite)  scratch_buffer_append("rw");
+	if (scratch_buffer.len) scratch_buffer_append(":");
+	bool has_print = false;
+	if (type.imm_arg_ubits)
+	{
+		scratch_append_bits("immu", type.imm_arg_ubits);
+		has_print = true;
+	}
+	if (type.imm_arg_ibits)
+	{
+		if (has_print) scratch_buffer_append("/");
+		scratch_append_bits("imm", type.imm_arg_ibits);
+		has_print = true;
+	}
+	if (type.ireg_bits)
+	{
+		if (has_print) scratch_buffer_append("/");
+		scratch_append_bits("r", type.ireg_bits);
+		has_print = true;
+	}
+	if (type.float_bits)
+	{
+		if (has_print) scratch_buffer_append("/");
+		scratch_append_bits("f", type.float_bits);
+		has_print = true;
+	}
+	if (type.vec_bits)
+	{
+		if (has_print) scratch_buffer_append("/");
+		scratch_append_bits("v", type.vec_bits);
+		has_print = true;
+	}
+	if (type.is_address)
+	{
+		if (has_print) scratch_buffer_append("/");
+		scratch_buffer_append("mem");
+	}
+}
+
+static int comp(const void *a_ptr, const void *b_ptr)
+{
+	const AsmInstruction *a = a_ptr;
+	const AsmInstruction *b = b_ptr;
+	if (a->name == b->name) return 0;
+	if (!a->name) return -1;
+	if (!b->name) return 1;
+	return strcmp(a->name, b->name);
+}
+
+static void print_arch_asm(PlatformTarget *target)
+{
+	AsmInstruction instructions[ASM_INSTRUCTION_MAX];
+	memcpy(instructions, target->instructions, sizeof(target->instructions));
+	qsort(instructions, ASM_INSTRUCTION_MAX, sizeof(instructions[0]), comp);
+	printf("+------------+--------------------------------+-----------------------------------------------------------------------+\n");
+	printf("| instr      | clobbers                       | args                                                                  |\n");
+	printf("+------------+--------------------------------+-----------------------------------------------------------------------+\n");
+	for (int i = 0; i < ASM_INSTRUCTION_MAX; i++)
+	{
+		AsmInstruction *instruction = &instructions[i];
+		if (!instruction->name) continue;
+		printf("| %-10s | ", instruction->name);
+		scratch_buffer_clear();
+		Clobbers clobbers = instruction->mask;
+		switch (target->arch)
+		{
+			case ARCH_TYPE_X86_64:
+			case ARCH_TYPE_X86:
+			{
+				for (X86Clobbers cl = 0; cl <= X86_TMM7; cl++)
+				{
+					if (clobbers.mask[cl / 64] & (1ULL << (cl % 64)))
+					{
+						scratch_buffer_append(X86ClobberNames[cl]);
+						scratch_buffer_append(", ");
+					}
+				}
+				break;
+			}
+			case ARCH_TYPE_AARCH64:
+			case ARCH_TYPE_AARCH64_32:
+			case ARCH_TYPE_AARCH64_BE:
+			{
+				for (Aarch64Clobbers cl = 0; cl <= AARCH64_V31; cl++)
+				{
+					if (clobbers.mask[cl / 64] & (1ULL << (cl % 64)))
+					{
+						scratch_buffer_append(Aarch64ClobberNames[cl]);
+						scratch_buffer_append(", ");
+					}
+				}
+				break;
+			}
+			default:
+				UNREACHABLE
+		}
+		if (scratch_buffer.len) scratch_buffer.len -= 2;
+		printf("%-30s | ", scratch_buffer_to_string());
+		int len = 0;
+		for (unsigned j = 0; j < instruction->param_count; j++)
+		{
+			if (j != 0)
+			{
+				len += 2;
+				printf(", ");
+			}
+			arm_arg_to_scratch(instruction->param[j]);
+			printf("%s", scratch_buffer_to_string());
+			len += scratch_buffer.len;
+		}
+		for (int j = 0; j < 70 - len; j++) printf(" ");
+		printf("|\n");
+	}
+	printf("+------------+--------------------------------+-----------------------------------------------------------------------+\n");
+}
+void print_asm(PlatformTarget *target)
+{
+	init_asm(target);
+	switch (target->arch)
+	{
+		case ARCH_TYPE_X86_64:
+		case ARCH_TYPE_X86:
+		case ARCH_TYPE_AARCH64:
+		case ARCH_TYPE_AARCH64_32:
+		case ARCH_TYPE_AARCH64_BE:
+			print_arch_asm(target);
+			return;
+		default:
+			printf("Printing ASM for target is not yet supported.");
+			return;
+	}
+}
 void init_asm(PlatformTarget *target)
 {
 	if (target->asm_initialized) return;

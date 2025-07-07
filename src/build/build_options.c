@@ -191,6 +191,7 @@ static void usage(bool full)
 		print_opt("--list-manifest-properties", "List all available keys used in manifest.json files.");
 		print_opt("--list-targets", "List all architectures the compiler supports.");
 		print_opt("--list-type-properties", "List all type properties.");
+		print_opt("--list-asm", "List all asm instructions for the current target.");
 		PRINTF("");
 		print_opt("--print-output", "Print the object files created to stdout.");
 		print_opt("--print-input", "Print inputted C3 files to stdout.");
@@ -1005,6 +1006,11 @@ static void parse_option(BuildOptions *options)
 			{
 				options->print_type_properties = true;
 				options->command = COMMAND_PRINT_SYNTAX;
+				return;
+			}
+			if (match_longopt("list-asm"))
+			{
+				options->print_asm = true;
 				return;
 			}
 			if (match_longopt("list-project-properties"))

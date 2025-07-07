@@ -99,6 +99,10 @@ void compiler_init(BuildOptions *build_options)
 	{
 		compiler.context.should_print_environment = true;
 	}
+	if (build_options->print_asm)
+	{
+		compiler.context.should_print_asm = true;
+	}
 }
 
 static void compiler_lex(void)
@@ -1429,6 +1433,11 @@ void compile()
 	if (compiler.context.should_print_environment)
 	{
 		print_build_env();
+		exit_compiler(COMPILER_SUCCESS_EXIT);
+	}
+	if (compiler.context.should_print_asm)
+	{
+		print_asm(&compiler.platform);
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 	check_sanitizer_options(&compiler.build);

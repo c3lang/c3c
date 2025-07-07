@@ -1877,6 +1877,7 @@ typedef struct
 typedef struct
 {
 	bool should_print_environment;
+	bool should_print_asm;
 	Ansi ansi;
 	HTable modules;
 	Module *core_module;
@@ -2169,6 +2170,7 @@ Ast *copy_ast_defer(Ast *source_ast);
 TypeInfo *copy_type_info_single(TypeInfo *type_info);
 
 void init_asm(PlatformTarget *target);
+void print_asm_list(PlatformTarget *target);
 AsmRegister *asm_reg_by_name(PlatformTarget *target, const char *name);
 AsmInstruction *asm_instr_by_name(const char *name);
 INLINE const char *asm_clobber_by_index(unsigned index);
@@ -4322,4 +4324,5 @@ INLINE bool expr_is_valid_index(Expr *expr)
 const char *default_c_compiler(void);
 
 void print_build_env(void);
+void print_asm(PlatformTarget *target);
 const char *os_type_to_string(OsType os);
