@@ -3057,6 +3057,44 @@ static inline Type *type_flat_distinct_inline(Type *type)
 	}
 }
 
+static inline CanonicalType *type_vector_base(CanonicalType *type)
+{
+	return type->type_kind == TYPE_VECTOR ? type->array.base->canonical : type;
+}
+
+static inline Type *type_flatten_and_inline(Type *type)
+{
+	while (1)
+	{
+		type = type->canonical;
+		Decl *decl;
+		switch (type->type_kind)
+		{
+			case TYPE_OPTIONAL:
+				type = type->optional;
+				continue;
+			case TYPE_DISTINCT:
+				type = type->decl->distinct->type;
+				continue;
+			case TYPE_CONST_ENUM:
+				type = type->decl->enums.type_info->type;
+				continue;
+			case TYPE_ENUM:
+				decl = type->decl;
+				if (!decl->is_substruct) return type;
+				if (!compiler.build.old_enums || decl->enums.inline_value)
+				{
+					type = decl->enums.type_info->type;
+					continue;
+				}
+				type = decl->enums.parameters[decl->enums.inline_index]->type;
+				continue;
+			default:
+				return type;
+		}
+	}
+}
+
 static inline Type *type_flat_distinct_enum_inline(Type *type)
 {
 	while (1)
@@ -3124,6 +3162,32 @@ static inline Type *type_flatten_to_int(Type *type)
 	}
 }
 
+static inline CanonicalType *type_distinct_inline(Type *type)
+{
+	while (1)
+	{
+		type = type->canonical;
+		switch (type->type_kind)
+		{
+			case TYPE_ENUM:
+				if (!type->decl->is_substruct) return type;
+				FALLTHROUGH;
+			case TYPE_CONST_ENUM:
+				type = enum_inner_type(type);
+				break;
+			case TYPE_DISTINCT:
+				type = type->decl->distinct->type;
+				break;
+			case TYPE_OPTIONAL:
+				type = type->optional;
+				break;
+			case TYPE_TYPEDEF:
+				UNREACHABLE
+			default:
+				return type;
+		}
+	}
+}
 static inline CanonicalType *type_flatten(Type *type)
 {
 	while (1)

@@ -89,7 +89,8 @@ static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, 
 static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, Expr *right, OperatorOverload overload, bool *failed_ref);
 static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
-static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Type *left_type, Type *left_type_flat, Expr *right, Type *right_type_flat, bool *failed_ref);
+static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Expr *left, Type *left_type_flat, Expr *right, Type *right_type_flat, bool *failed_ref,bool
+                                      is_assign);
 static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
@@ -6983,7 +6984,7 @@ BITSTRUCT_OK:
 
 	if (is_shift)
 	{
-		if (!sema_expr_check_shift_rhs(context, expr, left->type, type_flatten(left->type), right, type_flatten(right->type), failed_ref))
+		if (!sema_expr_check_shift_rhs(context, expr, left, type_flatten_and_inline(left->type), right, type_flatten_and_inline(right->type), failed_ref, true))
 		{
 			return false;
 		}
@@ -7685,35 +7686,74 @@ DONE:
 	return true;
 }
 
-static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Type *left_type, Type *left_type_flat,
-	Expr *right, Type *right_type_flat, bool *failed_ref)
+static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Expr *left,
+                                      Type *left_type_flat, Expr *right, Type *right_type_flat, bool *failed_ref,bool is_assign)
 {
-	if (left_type_flat->type_kind == TYPE_VECTOR && right_type_flat->type_kind != TYPE_VECTOR)
+	// For a constant rhs side we will make a series of checks.
+	// We could extend this by checking vectors
+	if (sema_cast_const(right) && expr_is_const_int(right))
+	{
+		// Make sure the value does not exceed the bitsize of
+		// the left hand side. We ignore this check for lhs being a constant.
+
+
+		Type *base = type_vector_base(left_type_flat);
+		ASSERT_SPAN(expr, type_kind_is_any_integer(base->type_kind));
+		if (int_ucomp(right->const_expr.ixx, base->builtin.bitsize, BINARYOP_GE))
+		{
+			RETURN_SEMA_ERROR(right, "The shift is not less than the bitsize of %s.", type_quoted_error_string(type_no_optional(left->type)));
+		}
+
+		// Make sure that the RHS is positive.
+		if (int_is_neg(right->const_expr.ixx))
+		{
+			RETURN_SEMA_ERROR(right, "A shift must be a positive number.");
+		}
+	}
+
+	// If LHS is vector but RHS isn't? Promote.
+	bool lhs_is_vec = left_type_flat->type_kind == TYPE_VECTOR;
+	if (lhs_is_vec && right_type_flat->type_kind != TYPE_VECTOR)
 	{
 		// Create a vector from the right hand side.
 		Type *right_vec = type_get_vector(right->type, left_type_flat->array.len);
 		if (!cast_explicit_checkable(context, right, right_vec, failed_ref)) return false;
 	}
 
-	// 4. For a constant rhs side we will make a series of checks.
-	if (sema_cast_const(right) && expr_is_const_int(right))
+	bool rhs_is_vec = right_type_flat->type_kind == TYPE_VECTOR;
+	if (!lhs_is_vec && rhs_is_vec)
 	{
-		// 4a. Make sure the value does not exceed the bitsize of
-		//     the left hand side. We ignore this check for lhs being a constant.
-
-		ASSERT_SPAN(expr, type_kind_is_any_integer(left_type_flat->type_kind));
-		if (int_ucomp(right->const_expr.ixx, left_type_flat->builtin.bitsize, BINARYOP_GE))
+		if (is_assign)
 		{
-			RETURN_SEMA_ERROR(right, "The shift is not less than the bitsize of %s.", type_quoted_error_string(type_no_optional(left_type)));
+			RETURN_SEMA_ERROR(right, "The shift cannot be a vector of type %s when shifting a variable of type %s.",
+				left->type, right->type);
 		}
+		Type *left_vec = type_get_vector(left->type, right_type_flat->array.len);
+		if (!cast_explicit_checkable(context, left, left_vec, failed_ref)) return false;
 
-		// 4b. Make sure that the RHS is positive.
-		if (int_is_neg(right->const_expr.ixx))
-		{
-			RETURN_SEMA_ERROR(right, "A shift must be a positive number.");
-		}
 	}
-	return true;
+	// Same type is always ok
+	Type *right_type = type_no_optional(right->type)->canonical;
+	if (type_no_optional(left->type)->canonical == right_type) return true;
+
+	Type *base = right_type;
+	if (right_type->type_kind == TYPE_VECTOR)
+	{
+		base = right_type->array.base->canonical;
+		base = type_flat_distinct_enum_inline(base);
+		right_type = type_get_vector(base, right_type->array.len);
+	}
+	else
+	{
+		base = type_flat_distinct_enum_inline(base);
+		right_type = base;
+	}
+	if (!type_is_integer(base))
+	{
+		RETURN_SEMA_ERROR(right, "The right hand shift must be an integer type, or match the left hand side type, but it was %s",
+			type_quoted_error_string(right->type), type_quoted_error_string(left->type));
+	}
+	return cast_implicit_binary(context, right, right_type, failed_ref);
 }
 /**
  * Analyse >> and << operations.
@@ -7737,18 +7777,19 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 	// 3. Promote lhs using the usual numeric promotion.
 	if (!cast_implicit_binary(context, left, cast_numeric_arithmetic_promotion(lhs_type), failed_ref)) return false;
 
-	Type *flat_left = type_flatten(left->type);
-	Type *flat_right = type_flatten(right->type);
-
-	// 2. Only integers or integer vectors may be shifted.
-	if (!type_flat_is_intlike(flat_left) || !type_flat_is_intlike(flat_right)
-		|| (flat_right->type_kind == TYPE_VECTOR && flat_left->type_kind != TYPE_VECTOR))
+	Type *flat_left = type_flatten_and_inline(left->type);
+	Type *flat_right = type_flatten_and_inline(right->type);
+	if (flat_left->type_kind == TYPE_VECTOR)
 	{
-		CHECK_ON_DEFINED(failed_ref);
-		return sema_type_error_on_binop(context, expr);
+		Type *left_base = type_flatten_and_inline(flat_left->array.base);
+		if (!type_is_integer(left_base)) goto FAIL;
+	}
+	else
+	{
+		if (!type_is_integer(flat_left)) goto FAIL;
 	}
 
-	if (!sema_expr_check_shift_rhs(context, expr, left->type, flat_left, right, flat_right, failed_ref)) return false;
+	if (!sema_expr_check_shift_rhs(context, expr, left, flat_left, right, flat_right, failed_ref, false)) return false;
 
 	// Fold constant expressions.
 	if (expr_is_const_int(right) && sema_cast_const(left))
@@ -7768,6 +7809,9 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 	// 6. Set the type
 	expr->type = type_add_optional(left->type, IS_OPTIONAL(right));
 	return true;
+FAIL:
+	CHECK_ON_DEFINED(failed_ref);
+	return sema_type_error_on_binop(context, expr);
 }
 
 
