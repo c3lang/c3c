@@ -847,6 +847,19 @@ static void print_arch_asm(PlatformTarget *target)
 		Clobbers clobbers = instruction->mask;
 		switch (target->arch)
 		{
+			case ARCH_TYPE_RISCV32:
+			case ARCH_TYPE_RISCV64:
+			{
+				for (RISCVClobbers cl = 0; cl <= RISCV_MSIP; cl++)
+				{
+					if (clobbers.mask[cl / 64] & (1ULL << (cl % 64)))
+					{
+						scratch_buffer_append(RISCVClobberNames[cl]);
+						scratch_buffer_append(", ");
+					}
+				}
+				break;
+			}
 			case ARCH_TYPE_X86_64:
 			case ARCH_TYPE_X86:
 			{
@@ -906,6 +919,8 @@ void print_asm(PlatformTarget *target)
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_32:
 		case ARCH_TYPE_AARCH64_BE:
+		case ARCH_TYPE_RISCV32:
+		case ARCH_TYPE_RISCV64:
 			print_arch_asm(target);
 			return;
 		default:
