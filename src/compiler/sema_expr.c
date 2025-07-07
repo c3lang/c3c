@@ -64,7 +64,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 static inline bool sema_expr_analyse_unary(SemaContext *context, Expr *expr, bool *failed_ref, CheckType check);
 static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, bool allow_fail);
 
-static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr);
+static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr, Type *to);
 static inline bool sema_expr_analyse_force_unwrap(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_typeid(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool *no_match_ref);
@@ -9069,7 +9069,7 @@ static inline bool sema_expr_analyse_unary(SemaContext *context, Expr *expr, boo
 }
 
 
-static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr, Type *to)
 {
 	if (context->call_env.kind != CALL_ENV_FUNCTION)
 	{
@@ -9110,6 +9110,15 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 		expr->rethrow_expr.in_block = NULL;
 		if (context->rtype && context->rtype->type_kind != TYPE_OPTIONAL)
 		{
+			// Sometimes people write "int? foo = bar()!;" which is likely a mistake.
+			if (to && type_is_optional(to))
+			{
+				RETURN_SEMA_ERROR(expr, "This expression is doing a rethrow, "
+										"but '%s' returns %s, which isn't an optional type. Since you are assigning to "
+				                        "an optional, maybe you added '!' by mistake?",
+										context->call_env.current_function->name,
+										type_quoted_error_string(context->rtype));
+			}
 			RETURN_SEMA_ERROR(expr, "This expression is doing a rethrow, "
 									"but '%s' returns %s, which isn't an optional type. Did you intend to use '!!' instead?",
 									context->call_env.current_function->name,
@@ -10867,7 +10876,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_COMPOUND_LITERAL:
 			return sema_expr_analyse_compound_literal(context, expr);
 		case EXPR_RETHROW:
-			return sema_expr_analyse_rethrow(context, expr);
+			return sema_expr_analyse_rethrow(context, expr, NULL);
 		case EXPR_CONST:
 			return true;
 		case EXPR_CT_EVAL:
@@ -10935,11 +10944,6 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr, CondResult *result
 bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional, bool *no_match_ref,
 						   bool as_binary)
 {
-	if (to && type_is_optional(to))
-	{
-		to = to->optional;
-		ASSERT_SPAN(expr, allow_optional);
-	}
 	if (expr->expr_kind == EXPR_EMBED && allow_optional)
 	{
 		if (!sema_expr_analyse_embed(context, expr, true)) return false;
@@ -10949,7 +10953,8 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 		if (!sema_analyse_inferred_expr(context, to, expr)) return false;
 	}
 	if (!sema_cast_rvalue(context, expr, true)) return false;
-	Type *to_canonical = to ? to->canonical : NULL;
+	if (to) to = type_no_optional(to);
+	Type *to_canonical = to ? type_no_optional(to)->canonical : NULL;
 	Type *rhs_type = expr->type;
 	Type *rhs_type_canonical = rhs_type->canonical;
 	// Let's have a better error on `return io::FILE_NOT_FOUND;` when the return type is not fault.
@@ -11475,6 +11480,7 @@ bool sema_cast_const(Expr *expr)
 
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr)
 {
+	Type *original_type = to;
 	to = type_no_optional(to);
 RETRY:
 	switch (expr->resolve_status)
@@ -11507,7 +11513,7 @@ RETRY:
 			InliningSpan *old_span = context->inlined_at;
 			context->inlined_at = new_span;
 			expr_replace(expr, expr->expr_other_context.inner);
-			bool success = sema_analyse_inferred_expr(context, to, expr);
+			bool success = sema_analyse_inferred_expr(context, original_type, expr);
 			context->inlined_at = old_span;
 			return success;
 		}
@@ -11529,6 +11535,9 @@ RETRY:
 			break;
 		case EXPR_CT_ARG:
 			if (!sema_expr_analyse_ct_arg(context, to, expr)) return expr_poison(expr);
+			break;
+		case EXPR_RETHROW:
+			if (!sema_expr_analyse_rethrow(context, expr, original_type)) return expr_poison(expr);
 			break;
 		case EXPR_UNARY:
 			if (to && expr->unary_expr.operator == UNARYOP_TADDR && to->canonical->type_kind == TYPE_POINTER && to->canonical != type_voidptr)

@@ -4,6 +4,7 @@ fn int? test() => 1;
 
 fn int main()
 {
-	test()!; // #error: This expression is doing a rethrow
+	test()!; // #error: Did you intend to use '!!' instead
+	int? a = test()!; // #error: maybe you added '!' by mistake?
 	return 0;
 }
