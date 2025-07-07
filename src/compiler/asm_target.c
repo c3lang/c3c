@@ -702,8 +702,8 @@ static void init_asm_x86(PlatformTarget* target)
 	reg_instr(target, "iretl", NULL);
 	reg_instr(target, "iretw", NULL);
 	reg_instr(target, "iretq", NULL);
-	reg_instr(target, "rdtsc", NULL);
-	reg_instr(target, "rdtscp", NULL);
+	reg_instr_clob(target, "rdtsc",  clobbers_make_from(rax_mask, X86_RDX, -1), NULL);
+	reg_instr_clob(target, "rdtscp",  clobbers_make_from(rax_mask, X86_RDX, X86_RCX, -1), NULL);
 	reg_instr(target, "ret", NULL);
 	reg_instr(target, "push", "imm8");
 	reg_instr(target, "pushw", "r16/mem/imm16");
