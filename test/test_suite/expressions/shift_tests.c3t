@@ -38,7 +38,7 @@ fn int main()
   %11 = freeze <2 x i32> %shl3
   store <2 x i32> %11, ptr %f4, align 8
   %12 = load <2 x i32>, ptr %f4, align 8
-  %shl4 = shl <2 x i32> <i32 1, i32 1>, %12
+  %shl4 = shl <2 x i32>
   %13 = freeze <2 x i32> %shl4
   store <2 x i32> %13, ptr %f5, align 8
   ret i32 0
