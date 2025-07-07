@@ -7725,6 +7725,7 @@ static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Expr *le
 	{
 		if (is_assign)
 		{
+			if (failed_ref) return *failed_ref = true, false;
 			RETURN_SEMA_ERROR(right, "The shift cannot be a vector of type %s when shifting a variable of type %s.",
 				left->type, right->type);
 		}
@@ -7750,6 +7751,7 @@ static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Expr *le
 	}
 	if (!type_is_integer(base))
 	{
+		if (failed_ref) return *failed_ref = true, false;
 		RETURN_SEMA_ERROR(right, "The right hand shift must be an integer type, or match the left hand side type, but it was %s",
 			type_quoted_error_string(right->type), type_quoted_error_string(left->type));
 	}
