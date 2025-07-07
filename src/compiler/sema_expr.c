@@ -46,7 +46,6 @@ typedef struct
 
 // Properties
 static inline BuiltinFunction builtin_by_name(const char *name);
-static inline bool sema_constant_fold_ops(Expr *expr);
 static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, CheckType check, bool check_valid);
 static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, CheckType check);
@@ -187,7 +186,8 @@ static inline void sema_create_const_membersof(Expr *expr, Type *type, AlignSize
 static inline void sema_create_const_methodsof(SemaContext *context, Expr *expr, Type *type);
 
 static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr *right);
-static inline bool expr_both_const(Expr *left, Expr *right);
+static inline bool expr_both_const_foldable(Expr *left, Expr *right, BinaryOp op);
+static inline bool expr_const_foldable_unary(Expr *expr, UnaryOp unary);
 static inline bool sema_identifier_find_possible_inferred(SemaContext *context, Type *to, Expr *expr);
 static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *expr, const char *name, Decl *decl);
 
@@ -210,31 +210,6 @@ static bool sema_replace_with_overload(SemaContext *context, Expr *expr, Expr *l
 
 // -- implementations
 
-// Limit folding to integers and floats, exclude vectors.
-static inline bool sema_constant_fold_ops(Expr *expr)
-{
-	if (!sema_cast_const(expr)) return false;
-	switch (expr->const_expr.const_kind)
-	{
-		case CONST_INTEGER:
-		case CONST_FLOAT:
-		case CONST_BOOL:
-		case CONST_ENUM:
-		case CONST_FAULT:
-		case CONST_STRING:
-		case CONST_POINTER:
-		case CONST_TYPEID:
-		case CONST_BYTES:
-		case CONST_MEMBER:
-			return true;
-		case CONST_INITIALIZER:
-		case CONST_SLICE:
-		case CONST_UNTYPED_LIST:
-		case CONST_REF:
-			return false;
-	}
-	UNREACHABLE
-}
 
 typedef struct
 {
@@ -437,9 +412,100 @@ Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl)
 	return embedded_struct;
 }
 
-static inline bool expr_both_const(Expr *left, Expr *right)
+static inline bool expr_const_foldable_unary(Expr *expr, UnaryOp unary)
 {
-	return sema_cast_const(left) && sema_cast_const(right) && expr_is_const(left) && expr_is_const(right);
+	if (!sema_cast_const(expr) || !expr_is_const(expr)) return false;
+	ConstKind kind = expr->const_expr.const_kind;
+	switch (unary)
+	{
+		case UNARYOP_INC:
+		case UNARYOP_DEC:
+			return false;
+		case UNARYOP_PLUS:
+		case UNARYOP_NEG:
+			return kind == CONST_FLOAT || kind == CONST_INTEGER;
+		case UNARYOP_BITNEG:
+			return kind == CONST_BOOL || kind == CONST_INTEGER;
+		case UNARYOP_NOT:
+			return kind == CONST_BOOL;
+		case UNARYOP_ERROR:
+			UNREACHABLE
+		case UNARYOP_DEREF:
+		case UNARYOP_ADDR:
+		case UNARYOP_TADDR:
+			UNREACHABLE
+	}
+	UNREACHABLE
+}
+static inline bool expr_both_const_foldable(Expr *left, Expr *right, BinaryOp op)
+{
+	if (!sema_cast_const(left) || !sema_cast_const(right) || !expr_is_const(left) || !expr_is_const(right)) return false;
+	ConstKind a = left->const_expr.const_kind;
+	ConstKind b = right->const_expr.const_kind;
+	switch (a)
+	{
+		case CONST_BOOL:
+			if (a != b) return false;
+			switch (op)
+			{
+				case BINARYOP_BIT_AND:
+				case BINARYOP_BIT_OR:
+				case BINARYOP_BIT_XOR:
+				case BINARYOP_NE:
+				case BINARYOP_EQ:
+				case BINARYOP_AND:
+				case BINARYOP_OR:
+					return true;
+				default:
+					return false;
+			}
+		case CONST_FLOAT:
+		case CONST_INTEGER:
+			if (a != b) return false;
+			return op != BINARYOP_AND && op != BINARYOP_OR;
+		case CONST_BYTES:
+		case CONST_STRING:
+			if (op != BINARYOP_EQ && op != BINARYOP_NE) return false;
+			return a == b || b == CONST_SLICE || b == CONST_BYTES || b == CONST_STRING;
+		case CONST_ENUM:
+		case CONST_FAULT:
+		case CONST_TYPEID:
+		case CONST_REF:
+			break;
+		case CONST_POINTER:
+			if (op == BINARYOP_SUB) return true;
+			break;
+		case CONST_SLICE:
+			if (op != BINARYOP_EQ && op != BINARYOP_NE) return false;
+			return b == CONST_BYTES || b == CONST_STRING;
+		case CONST_INITIALIZER:
+			switch (type_flatten(left->type)->type_kind)
+			{
+				case TYPE_VECTOR:
+					if (a != b) return false;
+					return op == BINARYOP_EQ || op == BINARYOP_NE;
+				case TYPE_BITSTRUCT:
+					if (a != b) return false;
+					switch (op)
+					{
+						case BINARYOP_EQ:
+						case BINARYOP_NE:
+						case BINARYOP_BIT_AND:
+						case BINARYOP_BIT_XOR:
+						case BINARYOP_BIT_OR:
+							return true;
+						default:
+							return false;
+					}
+				default:
+					return false;
+			}
+		case CONST_UNTYPED_LIST:
+			return false;
+		case CONST_MEMBER:
+			return true;
+	}
+	return (a == b) && (op == BINARYOP_EQ || op == BINARYOP_NE);
 }
 
 static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr *right)
@@ -7143,7 +7209,7 @@ static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Exp
 	sema_expr_convert_enum_to_int(left);
 	if (!cast_implicit(context, right, left->type, true)) return false;
 	expr->type = type_add_optional(left_type, IS_OPTIONAL(left) || IS_OPTIONAL(right));
-	if (expr_both_const(left, right))
+	if (expr_both_const_foldable(left, right, BINARYOP_ADD))
 	{
 		Int i;
 		if (is_sub)
@@ -7214,8 +7280,7 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 				RETURN_SEMA_ERROR(expr, "'%s' - '%s' is not allowed. Subtracting pointers of different types is not allowed.", type_to_error_string(left_type), type_to_error_string(right_type));
 			}
 
-			if (!right_is_pointer_vector && !left_is_pointer_vector
-				&& expr_both_const(left, right) && sema_constant_fold_ops(left) && sema_constant_fold_ops(right))
+			if (expr_both_const_foldable(left, right, BINARYOP_SUB))
 			{
 				expr_rewrite_const_int(expr, type_isz, (left->const_expr.ptr - right->const_expr.ptr) /
 													   type_size(left_type->pointer));
@@ -7307,7 +7372,7 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 	expr->type = type_add_optional(left->type, IS_OPTIONAL(right));
 
 	// 8. Handle constant folding.
-	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
+	if (expr_both_const_foldable(left, right, BINARYOP_SUB))
 	{
 		Type *type = expr->type;
 		expr_replace(expr, left);
@@ -7446,7 +7511,7 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 	if (!overload) return true;
 
 	// 5. Handle the "both const" case. We should only see ints and floats at this point.
-	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
+	if (expr_both_const_foldable(left, right, BINARYOP_ADD))
 	{
 		expr_replace(expr, left);
 		switch (left->const_expr.const_kind)
@@ -7487,7 +7552,7 @@ static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left,
 	if (!overload) return true;
 
 	// 2. Handle constant folding.
-	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
+	if (expr_both_const_foldable(left, right, BINARYOP_MULT))
 	{
 		expr_replace(expr, left);
 		switch (left->const_expr.const_kind)
@@ -7543,7 +7608,7 @@ static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, 
 	}
 
 	// 3. Perform constant folding.
-	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
+	if (expr_both_const_foldable(left, right, BINARYOP_DIV))
 	{
 		expr_replace(expr, left);
 		switch (left->const_expr.const_kind)
@@ -7587,7 +7652,7 @@ static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, 
 		}
 
 		// 4. Constant fold
-		if (expr_both_const(left, right) && sema_constant_fold_ops(left))
+		if (expr_both_const_foldable(left, right, BINARYOP_MOD))
 		{
 			expr_replace(expr, left);
 			// 4a. Remember this is remainder.
@@ -7600,7 +7665,7 @@ static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, 
 		if (sema_cast_const(right) && int_is_zero(right->const_expr.ixx)) RETURN_SEMA_ERROR(right, "Cannot perform %% with a constant zero.");
 
 		// 4. Constant fold
-		if (expr_both_const(left, right) && sema_constant_fold_ops(left))
+		if (expr_both_const_foldable(left, right, BINARYOP_MOD))
 		{
 			expr_replace(expr, left);
 			// 4a. Remember this is remainder.
@@ -7633,7 +7698,7 @@ static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, 
 	}
 
 	// 3. Do constant folding if both sides are constant.
-	if (expr_both_const(left, right) && (sema_constant_fold_ops(left) || is_bitstruct))
+	if (expr_both_const_foldable(left, right, BINARYOP_BIT_AND))
 	{
 		BinaryOp op = expr->binary_expr.operator;
 		expr_replace(expr, left);
@@ -7794,7 +7859,7 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 	if (!sema_expr_check_shift_rhs(context, expr, left, flat_left, right, flat_right, failed_ref, false)) return false;
 
 	// Fold constant expressions.
-	if (expr_is_const_int(right) && sema_cast_const(left))
+	if (expr_both_const_foldable(left, right, BINARYOP_SHL))
 	{
 		expr_replace(expr, left);
 		if (shr)
@@ -7822,7 +7887,7 @@ static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *lef
 	if (!sema_binary_analyse_subexpr(context, left, right)) return false;
 	if (!cast_explicit_checkable(context, left, type_bool, failed_ref) || !cast_explicit_checkable(context, right, type_bool, failed_ref)) return false;
 
-	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
+	if (expr_both_const_foldable(left, right, BINARYOP_AND))
 	{
 		if (expr->binary_expr.operator == BINARYOP_AND)
 		{
@@ -8034,7 +8099,7 @@ NEXT:
 DONE:
 
 	// 7. Do constant folding.
-	if (expr_both_const(left, right) && (sema_constant_fold_ops(left) || type_flatten(left->type)->type_kind == TYPE_VECTOR))
+	if (expr_both_const_foldable(left, right, BINARYOP_EQ))
 	{
 		expr->const_expr.b = expr_const_compare(&left->const_expr, &right->const_expr, expr->binary_expr.operator);
 		expr->const_expr.const_kind = CONST_BOOL;
@@ -8371,7 +8436,7 @@ static inline bool sema_expr_analyse_neg_plus(SemaContext *context, Expr *expr)
 		return true;
 	}
 	// 4. If it's non-const, we're done.
-	if (!sema_constant_fold_ops(inner))
+	if (!expr_const_foldable_unary(inner, UNARYOP_NEG))
 	{
 		expr->type = inner->type;
 		return true;
@@ -8436,7 +8501,7 @@ VALID_VEC:
 	if (!cast_implicit_checked(context, inner, result_type, false, failed_ref)) return false;
 
 	// 3. The simple case, non-const.
-	if (!sema_constant_fold_ops(inner))
+	if (!expr_const_foldable_unary(inner, UNARYOP_BITNEG))
 	{
 
 		expr->type = inner->type;
@@ -8506,6 +8571,7 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 
 	if (sema_cast_const(inner))
 	{
+		ASSERT_SPAN(expr, expr_const_foldable_unary(inner, UNARYOP_NOT));
 		ASSERT_SPAN(expr, inner->const_expr.const_kind == CONST_BOOL);
 		expr->const_expr.const_kind = CONST_BOOL;
 		expr->expr_kind = EXPR_CONST;
