@@ -50,7 +50,8 @@ faultdef
  "\r" will be filtered from the String.
 
  @param stream : `The stream to read from.`
- @require @is_instream(stream) : `The stream must implement InStream.`
+ @require !($defined(&stream) &&& @is_instream(&stream)) : "The value for 'stream' should have been passed as a pointer and not as a value, please add '&'."
+ @require @is_instream(stream) : `Make sure that the stream is actually an InStream.`
  @param [inout] allocator : `the allocator to use.`
  @return `The string containing the data read.`
 *>
@@ -94,6 +95,7 @@ macro String? readline(Allocator allocator, stream = io::stdin())
  on the temporary allocator and does not need to be freed.
 
  @param stream : `The stream to read from.`
+ @require !($defined(&stream) &&& @is_instream(&stream)) : "The value for 'stream' should have been passed as a pointer and not as a value, please add '&'."
  @require @is_instream(stream) : `The stream must implement InStream.`
  @return `The temporary string containing the data read.`
 *>

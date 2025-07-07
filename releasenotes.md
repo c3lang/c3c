@@ -33,8 +33,10 @@
 - Fixes to thread local pointer handling.
 - Fixes to JSON parsing and Object.
 - Array indices are now using int64 internally.
+- Bit shift operation fails with inline uint enum despite matching underlying type #2279.
 
 ### Stdlib changes
+- Improve contract for readline. #2280
 
 ## 0.7.3 Change list
 
