@@ -8366,9 +8366,11 @@ RESOLVED:
 	if (no_optional->type_kind == TYPE_FUNC_RAW)
 	{
 		expr->type = type_add_optional(type_get_func_ptr(no_optional), IS_OPTIONAL((inner)));
-		return true;
 	}
-	expr->type = type_get_ptr_recurse(inner->type);
+	else
+	{
+		expr->type = type_get_ptr_recurse(inner->type);
+	}
 	if (inner->expr_kind == EXPR_IDENTIFIER)
 	{
 		Decl *ident = inner->ident_expr;

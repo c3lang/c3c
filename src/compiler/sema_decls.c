@@ -1675,7 +1675,7 @@ bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl)
 {
 	Expr *value = decl->enum_constant.value;
 	if (!sema_analyse_inferred_expr(context, decl->type, value)) return decl_poison(decl);
-	if (!sema_cast_const(value))
+	if (!expr_is_runtime_const(value))
 	{
 		SEMA_ERROR(value, "Expected an constant enum value.");
 		return decl_poison(decl);

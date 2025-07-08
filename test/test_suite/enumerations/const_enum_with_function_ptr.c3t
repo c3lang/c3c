@@ -1,0 +1,35 @@
+// #target: macos-x64
+module test;
+import std;
+fn int foo() => 0;
+alias FooFn = fn int();
+
+enum Foo : (FooFn f)
+{
+  FOO = fn int() => 0, // allowed
+  BAR = &foo, // allowed
+}
+
+enum Bar : const FooFn
+{
+  FOO = fn int() => 0, // allowed
+  BAR = &foo, // Error: Expected an constant enum value.
+}
+fn int main()
+{
+	Bar b = FOO;
+	Bar b2 = BAR;
+	var $c = &foo == &foo;
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %b = alloca ptr, align 8
+  %b2 = alloca ptr, align 8
+  store ptr @"test.$global$lambda2", ptr %b, align 8
+  store ptr @test.foo, ptr %b2, align 8
+  ret i32 0
+}

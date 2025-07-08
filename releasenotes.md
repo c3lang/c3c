@@ -37,6 +37,7 @@
 - Array indices are now using int64 internally.
 - Bit shift operation fails with inline uint enum despite matching underlying type #2279.
 - Fix to codegen when using a bitstruct constant defined using a cast with an operator #2248.
+- Function pointers are now compile time constants. 
 
 ### Stdlib changes
 - Improve contract for readline. #2280
