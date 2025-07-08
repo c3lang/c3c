@@ -3241,9 +3241,10 @@ static inline Type *type_flatten_no_export(Type *type)
 	}
 }
 
-static inline bool type_flat_is_char_array_slice(Type *type)
+static inline bool type_flat_is_valid_for_arg_h(Type *type)
 {
 	type = type_flatten(type);
+	if (type->type_kind == TYPE_POINTER) return true;
 	if (type->type_kind != TYPE_ARRAY && type->type_kind != TYPE_SLICE) return false;
 	switch (type->array.base->type_kind)
 	{

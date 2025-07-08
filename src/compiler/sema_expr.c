@@ -2168,9 +2168,9 @@ NEXT_FLAG:
 				goto NEXT;
 			case 'H':
 			case 'h':
-				if (!type_flat_is_char_array_slice(type))
+				if (!type_flat_is_valid_for_arg_h(type))
 				{
-					RETURN_SEMA_ERROR(vaargs[idx], "Expected a char array or slice here.");
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer, char array or slice here.");
 				}
 				goto NEXT;
 			default:
