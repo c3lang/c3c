@@ -6369,7 +6369,7 @@ Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs)
 				}
 				Expr **new_args = sema_splat_arraylike_insert(context, exprs, inner, len, i);
 				if (!new_args) return false;
-				if (!exprs) return NULL;
+				exprs = new_args;
 				count = vec_size(exprs);
 				expand = true;
 				break;

@@ -39,6 +39,7 @@
 - Bit shift operation fails with inline uint enum despite matching underlying type #2279.
 - Fix to codegen when using a bitstruct constant defined using a cast with an operator #2248.
 - Function pointers are now compile time constants. 
+- Splat 8 arguments can sometimes cause incorrect behaviour in the compiler. #2283
 
 ### Stdlib changes
 - Improve contract for readline. #2280
