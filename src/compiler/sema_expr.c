@@ -7134,6 +7134,22 @@ static bool sema_replace_with_overload(SemaContext *context, Expr *expr, Expr *l
 	return true;
 }
 
+static inline bool sema_check_untyped_promotion(SemaContext *context, Expr *expr, bool is_left, CanonicalType *max_flat, Type *max)
+{
+	Type *flat = type_flatten(expr->type);
+	if (!type_is_unsigned(flat) || type_size(max_flat) != type_size(flat)) return true;
+	if (sema_cast_const(expr) && expr_is_const_int(expr) && expr_const_will_overflow(&expr->const_expr, max_flat->type_kind))
+	{
+		RETURN_SEMA_ERROR(expr,
+			"This expression (%s) will be implicitly converted to a signed type due to the %s-hand side being signed, but the value does not fit %s. "
+			"To fix this, either cast the value explicitly, or make the %s-hand side an unsigned type.",
+			expr_const_to_error_string(&expr->const_expr), is_left ? "right" : "left", type_quoted_error_string(max),
+			is_left ? "right" : "left");
+	}
+
+	return true;
+
+}
 static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type,
 											 Expr *parent, const char *error_message, bool allow_bool_vec,
 											 OperatorOverload *operator_overload_ref,
@@ -7154,6 +7170,12 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 			return sema_type_error_on_binop(context, parent);
 		}
 		RETURN_SEMA_ERROR(parent, error_message, type_quoted_error_string(left->type), type_quoted_error_string(right->type));
+	}
+	Type *flat_max = type_flatten(max);
+	if (type_is_signed(flat_max))
+	{
+		if (!sema_check_untyped_promotion(context, left, true, flat_max, max)) return false;
+		if (!sema_check_untyped_promotion(context, right, false, flat_max, max)) return false;
 	}
 	return cast_implicit_binary(context, left, max, failed_ref) &&
 		   cast_implicit_binary(context, right, max, failed_ref);

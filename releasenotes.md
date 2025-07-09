@@ -13,6 +13,7 @@
 - Improve error message when doing a rethrow in a function that doesn't return an optional.
 - Add `--list-asm` to view all supported `asm` instructions.
 - Formatting option "%h" now supports pointers.
+- Improve error on unsigned implicit conversion to signed.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
