@@ -4943,6 +4943,7 @@ static inline bool sema_create_const_min(Expr *expr, Type *type, Type *flat)
 		expr->expr_kind = EXPR_CONST;
 		expr->const_expr.const_kind = CONST_INTEGER;
 		expr->const_expr.is_character = false;
+		expr->const_expr.is_hex = false;
 		expr->type = type;
 		expr->resolve_status = RESOLVE_DONE;
 		expr->const_expr.ixx.type = flat->type_kind;
@@ -4959,9 +4960,11 @@ static inline bool sema_create_const_min(Expr *expr, Type *type, Type *flat)
 				break;
 			case TYPE_I64:
 				expr->const_expr.ixx.i = (Int128){ 0xFFFFFFFFFFFFFFFF, 1ULL << 63 };
+				expr->const_expr.is_hex = true;
 				break;
 			case TYPE_I128:
 				expr->const_expr.ixx.i = (Int128){ 1ULL << 63, 0 };
+				expr->const_expr.is_hex = true;
 				break;
 			default:
 				expr->const_expr.ixx.i = (Int128){ 0, 0 };
@@ -5141,6 +5144,7 @@ static inline bool sema_create_const_max(Expr *expr, Type *type, Type *flat)
 		expr->const_expr.const_kind = CONST_INTEGER;
 		expr->const_expr.is_character = false;
 		expr->type = type;
+		expr->const_expr.is_hex = false;
 		expr->resolve_status = RESOLVE_DONE;
 		expr->const_expr.ixx.type = flat->type_kind;
 		switch (flat->type_kind)
@@ -5156,9 +5160,11 @@ static inline bool sema_create_const_max(Expr *expr, Type *type, Type *flat)
 				break;
 			case TYPE_I64:
 				expr->const_expr.ixx.i = (Int128){ 0, 0x7FFFFFFFFFFFFFFFLL };
+				expr->const_expr.is_hex = true;
 				break;
 			case TYPE_I128:
 				expr->const_expr.ixx.i = (Int128){ 0x7FFFFFFFFFFFFFFFLL, 0xFFFFFFFFFFFFFFFFLL };
+				expr->const_expr.is_hex = true;
 				break;
 			case TYPE_U8:
 				expr->const_expr.ixx.i = (Int128){ 0, 0xFF };
@@ -5171,9 +5177,11 @@ static inline bool sema_create_const_max(Expr *expr, Type *type, Type *flat)
 				break;
 			case TYPE_U64:
 				expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFFFFFFFFFLL };
+				expr->const_expr.is_hex = true;
 				break;
 			case TYPE_U128:
 				expr->const_expr.ixx.i = (Int128){ 0xFFFFFFFFFFFFFFFFLL, 0xFFFFFFFFFFFFFFFFLL };
+				expr->const_expr.is_hex = true;
 				break;
 			default:
 				UNREACHABLE

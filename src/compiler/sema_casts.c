@@ -567,10 +567,8 @@ static bool sema_error_const_int_out_of_range(CastContext *cc, Expr *expr, Expr 
 				   expr->const_expr.enum_val->var.index,
 				   type_quoted_error_string(to_type));
 	}
-	const char *error_value = expr->const_expr.is_hex ? int_to_str(expr->const_expr.ixx, 16, true)
-	                                                  : expr_const_to_error_string(&expr->const_expr);
-	RETURN_CAST_ERROR(problem, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.", error_value,
-			   type_quoted_error_string(to_type));
+	RETURN_CAST_ERROR(problem, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.",
+		expr_const_to_error_string(&expr->const_expr), type_quoted_error_string(to_type));
 }
 
 
