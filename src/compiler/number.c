@@ -487,11 +487,11 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case CONST_BOOL:
 			return expr->b ? "true" : "false";
 		case CONST_INTEGER:
-			return int_to_str(expr->ixx, 10, false);
+			return int_to_str(expr->ixx, expr->is_hex ? 16 : 10, true);
 		case CONST_FLOAT:
 			return str_printf("%g", expr->fxx.f);
 		case CONST_STRING:
-			return str_printf("\"%*.s\"", expr->bytes.len, expr->bytes.ptr);
+			return str_printf("\"%*.s\"", (int)expr->bytes.len, expr->bytes.ptr);
 		case CONST_BYTES:
 			return "<binary data>";
 		case CONST_REF:

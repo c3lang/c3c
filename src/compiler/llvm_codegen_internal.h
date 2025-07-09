@@ -233,6 +233,7 @@ typedef struct
 	unsigned ssub_sat;
 	unsigned trap;
 	unsigned debugtrap;
+	unsigned threadlocal_address;
 	unsigned trunc;
 	unsigned uadd_overflow;
 	unsigned uadd_sat;
@@ -333,8 +334,8 @@ void llvm_value_rvalue(GenContext *c, BEValue *value);
 void llvm_value_deref(GenContext *c, BEValue *value);
 void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type);
 void llvm_value_set_int(GenContext *c, BEValue *value, Type *type, uint64_t i);
-void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type, AlignSize alignment);
-void llvm_value_set_address_abi_aligned(BEValue *value, LLVMValueRef llvm_value, Type *type);
+void llvm_value_set_address(GenContext *c, BEValue *value, LLVMValueRef llvm_value, Type *type, AlignSize alignment);
+void llvm_value_set_address_abi_aligned(GenContext *c, BEValue *value, LLVMValueRef llvm_value, Type *type);
 void llvm_value_set_decl_address(GenContext *c, BEValue *value, Decl *decl);
 void llvm_value_set_decl(GenContext *c, BEValue *value, Decl *decl);
 void llvm_value_fold_optional(GenContext *c, BEValue *value);

@@ -433,7 +433,7 @@ Editor plugins can be found at https://github.com/c3lang/editor-plugins.
 
 A huge **THANK YOU** goes out to all contributors and sponsors.
 
-A special thank you to sponsor [Zack Puhl](https://github.com/NotsoanoNimus) for going the extra mile.
+A special thank you to sponsors [Zack Puhl](https://github.com/NotsoanoNimus) and [konimarti](https://github.com/konimarti) for going the extra mile.
 
 And honorable mention goes to past sponsors:
 [Ygor Pontelo](https://github.com/ygorpontelo), [Simone Raimondi](https://github.com/SRaimondi),

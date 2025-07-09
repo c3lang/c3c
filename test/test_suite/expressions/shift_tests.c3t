@@ -1,0 +1,45 @@
+// #target: macos-x64
+module test;
+typedef Foo = inline int;
+
+fn int main()
+{
+	Foo u = 2;
+	int f = 1 << u;
+	Foo f2 = (Foo)1 << u;
+	Foo[<2>] f3 = (Foo[<2>]) { 1, 2 } << u;
+	int[<2>] f4 = (int[<2>]) { 1, 2 } << u;
+	int[<2>] f5 = 1 << f4;
+
+	return 0;
+}
+
+/* #expect: test.ll
+
+  store i32 2, ptr %u, align 4
+  %0 = load i32, ptr %u, align 4
+  %shl = shl i32 1, %0
+  %1 = freeze i32 %shl
+  store i32 %1, ptr %f, align 4
+  %2 = load i32, ptr %u, align 4
+  %shl1 = shl i32 1, %2
+  %3 = freeze i32 %shl1
+  store i32 %3, ptr %f2, align 4
+  %4 = load i32, ptr %u, align 4
+  %5 = insertelement <2 x i32> undef, i32 %4, i64 0
+  %6 = insertelement <2 x i32> %5, i32 %4, i64 1
+  %shl2 = shl <2 x i32> <i32 1, i32 2>, %6
+  %7 = freeze <2 x i32> %shl2
+  store <2 x i32> %7, ptr %f3, align 8
+  %8 = load i32, ptr %u, align 4
+  %9 = insertelement <2 x i32> undef, i32 %8, i64 0
+  %10 = insertelement <2 x i32> %9, i32 %8, i64 1
+  %shl3 = shl <2 x i32> <i32 1, i32 2>, %10
+  %11 = freeze <2 x i32> %shl3
+  store <2 x i32> %11, ptr %f4, align 8
+  %12 = load <2 x i32>, ptr %f4, align 8
+  %shl4 = shl <2 x i32>
+  %13 = freeze <2 x i32> %shl4
+  store <2 x i32> %13, ptr %f5, align 8
+  ret i32 0
+}

@@ -594,6 +594,7 @@ typedef struct BuildOptions_
 	bool print_precedence;
 	bool print_linking;
 	bool print_env;
+	bool print_asm;
 	bool benchmarking;
 	bool testing;
 } BuildOptions;

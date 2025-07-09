@@ -203,7 +203,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 		case TYPE_ARRAY:
 			PRINTF("struct { ");
 			header_print_type(c, type->array.base);
-			PRINTF(" arr[%d]; }", type->array.len);
+			PRINTF(" arr[%llu]; }", (unsigned long long)type->array.len);
 			return;
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
@@ -227,7 +227,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 				default:
 					UNREACHABLE;
 			}
-			PRINTF("%dx%d", (int)type_bit_size(type->array.base), type->array.len);
+			PRINTF("%dx%llu", (int)type_bit_size(type->array.base), (unsigned long long)type->array.len);
 			return;
 	}
 }
@@ -345,7 +345,7 @@ static void header_gen_members(HeaderContext *c, int indent, Decl **members)
 				{
 					case TYPE_ARRAY:
 						header_print_type(c, type->array.base);
-						PRINTF(" %s[%d];\n", member->name, type->array.len);
+						PRINTF(" %s[%llu];\n", member->name, (unsigned long long)type->array.len);
 						break;
 					case TYPE_FLEXIBLE_ARRAY:
 						header_print_type(c, type->array.base);
@@ -556,7 +556,6 @@ RETRY:
 			TODO;
 		case TYPE_FUNC_RAW:
 			UNREACHABLE
-			return;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			header_gen_struct_union_top(c, type->decl, is_pointer ? GEN_POINTER : GEN_FULL);
@@ -575,7 +574,7 @@ RETRY:
 			header_print_type(c, flat_type);
 			PRINTF(" ");
 			header_print_type(c, type);
-			PRINTF(" __attribute__((vector_size(%d)));\n", (int)type_size(flat_type) * type->array.len);
+			PRINTF(" __attribute__((vector_size(%llu)));\n", (int)type_size(flat_type) * (unsigned long long)type->array.len);
 			return;
 		}
 	}

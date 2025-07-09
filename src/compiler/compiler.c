@@ -76,13 +76,13 @@ void compiler_init(BuildOptions *build_options)
 	compiler.context.module_list = NULL;
 	compiler.context.generic_module_list = NULL;
 	compiler.context.method_extensions = NULL;
-	vmem_init(&ast_arena, 512);
+	vmem_init(&ast_arena, 4096);
 	ast_calloc();
-	vmem_init(&expr_arena, 512);
+	vmem_init(&expr_arena, 4096);
 	expr_calloc();
-	vmem_init(&decl_arena, 256);
+	vmem_init(&decl_arena, 4096);
 	decl_calloc();
-	vmem_init(&type_info_arena, 256);
+	vmem_init(&type_info_arena, 4096);
 	type_info_calloc();
 	// Create zero index value.
 	if (build_options->std_lib_dir)
@@ -98,6 +98,10 @@ void compiler_init(BuildOptions *build_options)
 	if (build_options->print_env)
 	{
 		compiler.context.should_print_environment = true;
+	}
+	if (build_options->print_asm)
+	{
+		compiler.context.should_print_asm = true;
 	}
 }
 
@@ -1429,6 +1433,11 @@ void compile()
 	if (compiler.context.should_print_environment)
 	{
 		print_build_env();
+		exit_compiler(COMPILER_SUCCESS_EXIT);
+	}
+	if (compiler.context.should_print_asm)
+	{
+		print_asm(&compiler.platform);
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 	check_sanitizer_options(&compiler.build);

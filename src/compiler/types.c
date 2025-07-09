@@ -1130,13 +1130,13 @@ static Type *type_create_array(Type *element_type, ArraySize len, bool vector, b
 	Type *vec_arr;
 	if (vector)
 	{
-		vec_arr = type_new(TYPE_VECTOR, str_printf("%s[<%u>]", element_type->name, len));
+		vec_arr = type_new(TYPE_VECTOR, str_printf("%s[<%llu>]", element_type->name, (unsigned long long)len));
 		vec_arr->array.base = element_type;
 		vec_arr->array.len = len;
 	}
 	else
 	{
-		vec_arr = type_new(TYPE_ARRAY, str_printf("%s[%u]", element_type->name, len));
+		vec_arr = type_new(TYPE_ARRAY, str_printf("%s[%llu]", element_type->name, (unsigned long long)len));
 		vec_arr->array.base = element_type;
 		vec_arr->array.len = len;
 	}
@@ -1969,7 +1969,6 @@ RETRY_DISTINCT:
 			return NULL;
 		case ALL_INTS:
 			if (type_is_distinct_like(other) && type_underlying_is_numeric(other)) return other;
-			if (other->type_kind == TYPE_ENUM) return type_find_max_type(type, enum_inner_type(other)->canonical);
 			if (other->type_kind == TYPE_VECTOR) return other;
 			return type_find_max_num_type(type, other);
 		case ALL_FLOATS:

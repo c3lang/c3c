@@ -16,11 +16,11 @@ typedef double Real;
 typedef uint64_t ByteSize;
 typedef uint32_t TypeSize;
 typedef int32_t IndexDiff;
-typedef int32_t ArrayIndex;
+typedef int64_t ArrayIndex;
 typedef uint16_t StructIndex;
 typedef uint32_t AlignSize;
 typedef int32_t ScopeId;
-typedef uint32_t ArraySize;
+typedef uint64_t ArraySize;
 typedef uint64_t BitSize;
 typedef uint16_t FileId;
 
@@ -34,7 +34,7 @@ typedef uint16_t FileId;
 #define UINT12_MAX        4095
 #define UINT20_MAX        1048575U
 
-#define MAX_ARRAYINDEX INT32_MAX
+#define MAX_ARRAYINDEX INT64_MAX
 #define MAX_FIXUPS 0xFFFFF
 #define MAX_HASH_SIZE (512 * 1024 * 1024)
 #define INVALID_SPAN ((SourceSpan){ .row = 0 })
@@ -72,6 +72,15 @@ typedef uint16_t FileId;
 #define TABLE_MAX_LOAD 0.5
 #define OUTF(...) do { if (!compiler.build.silent) printf(__VA_ARGS__); } while(0)
 #define OUTN(str__) do { if (!compiler.build.silent) puts(str__); } while(0)
+#ifdef NDEBUG
+#define ASSERT_SPANF(node__, check__, format__, ...) do { (void)(check__); } while(0)
+#define ASSERT_SPAN(node__, check__) do { (void)(check__); } while(0)
+#define ASSERT_AT(span__, check__) do { (void)(check__);} while(0)
+#else
+#define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->span); eprintf(format__, __VA_ARGS__); ASSERT(check__); } } while(0)
+#define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->span); ASSERT(check__); } } while(0)
+#define ASSERT_AT(span__, check__) do { if (!(check__)) { assert_print_line(span__); ASSERT(check__); } } while(0)
+#endif
 
 #define INVALID_PTR ((void*)(uintptr_t)0xAAAAAAAAAAAAAAAA)
 
@@ -704,7 +713,7 @@ typedef enum RangeType
 typedef struct
 {
 	ResolveStatus status : 3;
-	RangeType range_type;
+	RangeType range_type : 4;
 	bool start_from_end : 1;
 	bool end_from_end : 1;
 	bool is_len : 1;
@@ -1868,6 +1877,7 @@ typedef struct
 typedef struct
 {
 	bool should_print_environment;
+	bool should_print_asm;
 	Ansi ansi;
 	HTable modules;
 	Module *core_module;
@@ -2021,6 +2031,8 @@ INLINE bool compile_asserts(void)
 	return safe_mode_enabled() || compiler.build.testing;
 }
 
+void assert_print_line(SourceSpan span);
+
 bool ast_is_not_empty(Ast *ast);
 
 bool ast_is_compile_time(Ast *ast);
@@ -2158,6 +2170,7 @@ Ast *copy_ast_defer(Ast *source_ast);
 TypeInfo *copy_type_info_single(TypeInfo *type_info);
 
 void init_asm(PlatformTarget *target);
+void print_asm_list(PlatformTarget *target);
 AsmRegister *asm_reg_by_name(PlatformTarget *target, const char *name);
 AsmInstruction *asm_instr_by_name(const char *name);
 INLINE const char *asm_clobber_by_index(unsigned index);
@@ -2573,7 +2586,6 @@ INLINE Type *type_vector_type(Type *type);
 
 static inline CanonicalType *type_pointer_type(Type *type);
 static inline CanonicalType *type_flatten(Type *type);
-static inline bool type_flat_is_char_array(Type *type);
 static inline Type *type_base(Type *type);
 
 INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span);
@@ -2946,6 +2958,7 @@ INLINE TypeInfoId type_info_id_new_base(Type *type, SourceSpan span)
 	return type_infoid(type_info_new_base(type, span));
 }
 
+
 INLINE Type *type_new(TypeKind kind, const char *name)
 {
 	Type *type = CALLOCS(Type);
@@ -3046,6 +3059,44 @@ static inline Type *type_flat_distinct_inline(Type *type)
 	}
 }
 
+static inline CanonicalType *type_vector_base(CanonicalType *type)
+{
+	return type->type_kind == TYPE_VECTOR ? type->array.base->canonical : type;
+}
+
+static inline Type *type_flatten_and_inline(Type *type)
+{
+	while (1)
+	{
+		type = type->canonical;
+		Decl *decl;
+		switch (type->type_kind)
+		{
+			case TYPE_OPTIONAL:
+				type = type->optional;
+				continue;
+			case TYPE_DISTINCT:
+				type = type->decl->distinct->type;
+				continue;
+			case TYPE_CONST_ENUM:
+				type = type->decl->enums.type_info->type;
+				continue;
+			case TYPE_ENUM:
+				decl = type->decl;
+				if (!decl->is_substruct) return type;
+				if (!compiler.build.old_enums || decl->enums.inline_value)
+				{
+					type = decl->enums.type_info->type;
+					continue;
+				}
+				type = decl->enums.parameters[decl->enums.inline_index]->type;
+				continue;
+			default:
+				return type;
+		}
+	}
+}
+
 static inline Type *type_flat_distinct_enum_inline(Type *type)
 {
 	while (1)
@@ -3113,6 +3164,32 @@ static inline Type *type_flatten_to_int(Type *type)
 	}
 }
 
+static inline CanonicalType *type_distinct_inline(Type *type)
+{
+	while (1)
+	{
+		type = type->canonical;
+		switch (type->type_kind)
+		{
+			case TYPE_ENUM:
+				if (!type->decl->is_substruct) return type;
+				FALLTHROUGH;
+			case TYPE_CONST_ENUM:
+				type = enum_inner_type(type);
+				break;
+			case TYPE_DISTINCT:
+				type = type->decl->distinct->type;
+				break;
+			case TYPE_OPTIONAL:
+				type = type->optional;
+				break;
+			case TYPE_TYPEDEF:
+				UNREACHABLE
+			default:
+				return type;
+		}
+	}
+}
 static inline CanonicalType *type_flatten(Type *type)
 {
 	while (1)
@@ -3164,9 +3241,10 @@ static inline Type *type_flatten_no_export(Type *type)
 	}
 }
 
-static inline bool type_flat_is_char_array_slice(Type *type)
+static inline bool type_flat_is_valid_for_arg_h(Type *type)
 {
 	type = type_flatten(type);
+	if (type->type_kind == TYPE_POINTER) return true;
 	if (type->type_kind != TYPE_ARRAY && type->type_kind != TYPE_SLICE) return false;
 	switch (type->array.base->type_kind)
 	{
@@ -3498,8 +3576,6 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 				default:
 					return;
 			}
-			expr_list_set_span(expr->expression_list, loc);
-			return;
 		case EXPR_CAST:
 			exprid_set_span(expr->cast_expr.expr, loc);
 			return;
@@ -4239,18 +4315,15 @@ INLINE bool check_module_name(Path *path)
 	return true;
 }
 
-#ifdef NDEBUG
-#define ASSERT_SPANF(node__, check__, format__, ...) do { } while(0)
-#define ASSERT_SPAN(node__, check__) do { } while(0)
-#define ASSERT_AT(span__, check__) do { } while(0)
-#else
-#define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->span); eprintf(format__, __VA_ARGS__); ASSERT(check__); } } while(0)
-#define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->span); ASSERT(check__); } } while(0)
-#define ASSERT_AT(span__, check__) do { if (!(check__)) { assert_print_line(span__); ASSERT(check__); } } while(0)
-#endif
-void assert_print_line(SourceSpan span);
+INLINE bool expr_is_valid_index(Expr *expr)
+{
+	ASSERT_SPAN(expr, expr_is_const_int(expr));
+	return int_fits(expr->const_expr.ixx, TYPE_I64);
+}
+
 
 const char *default_c_compiler(void);
 
 void print_build_env(void);
+void print_asm(PlatformTarget *target);
 const char *os_type_to_string(OsType os);

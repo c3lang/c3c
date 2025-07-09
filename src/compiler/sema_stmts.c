@@ -1890,7 +1890,7 @@ SKIP_OVERLOAD:;
 
 static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 {
-	bool else_jump;
+	bool else_jump = false;
 	bool then_jump = false;
 	bool success;
 

@@ -5,8 +5,8 @@ fn void test()
     int i = 0;
     if (i!) return; // #error: No optional to rethrow before '!' in the expression, please remove '!'
     int? j = 0;
-    if (j!) return; // #error: This expression implicitly returns with an optional result, but the function
-    if ((j!)!) return; // #error: This expression implicitly returns with an optional result, but the function
+    if (j!) return; // #error: This expression is doing a rethrow
+    if ((j!)!) return; // #error: This expression is doing a rethrow
 }
 
 fn void? test2()

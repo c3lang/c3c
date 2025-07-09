@@ -257,7 +257,7 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			if (prev) return false;
 			c_emit_type_decl(c, type->array.base);
 			int id = ++c->typename;
-			PRINTF("typedef struct { %s ptr[%u]; } __c3_array%d;\n", c_type_name(c, type->array.base), type->array.len, id);
+			PRINTF("typedef struct { %s ptr[%llu]; } __c3_array%d;\n", c_type_name(c, type->array.base), (unsigned long long)type->array.len, id);
 			scratch_buffer_clear();
 			scratch_buffer_printf(" __c3_array%d", id);
 			htable_set(&c->gen_decl, type, scratch_buffer_copy());

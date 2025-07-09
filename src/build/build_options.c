@@ -106,6 +106,7 @@ static void usage(bool full)
 		print_opt("--path <dir>", "Use this as the base directory for the current command.");
 		print_opt("--template <template>", "Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
 		print_opt("--symtab <value>", "Sets the preferred symtab size.");
+		print_opt("--max-mem <value>", "Set the maximum memory size (in MB).");
 		print_opt("--run-once", "After running the output file, delete it immediately.");
 		print_opt("--suppress-run", "Build but do not run on test/benchmark options.");
 		print_opt("--trust=<option>", "Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
@@ -190,6 +191,7 @@ static void usage(bool full)
 		print_opt("--list-manifest-properties", "List all available keys used in manifest.json files.");
 		print_opt("--list-targets", "List all architectures the compiler supports.");
 		print_opt("--list-type-properties", "List all type properties.");
+		print_opt("--list-asm", "List all asm instructions for the current target.");
 		PRINTF("");
 		print_opt("--print-output", "Print the object files created to stdout.");
 		print_opt("--print-input", "Print inputted C3 files to stdout.");
@@ -726,6 +728,18 @@ static void parse_option(BuildOptions *options)
 				options->ansi = parse_opt_select(Ansi, argopt, on_off);
 				return;
 			}
+			if (match_longopt("max-mem"))
+			{
+				if (at_end() || next_is_opt())
+				{
+					FAIL_WITH_ERR_LONG("'--max-mem' expected a max memory.");
+				}
+				if (atoll(next_arg()) < 1)
+				{
+					FAIL_WITH_ERR_LONG("'--max-mem' expected a positive integer value.");
+				}
+				return;
+			}
 			if (match_longopt("sources"))
 			{
 				if (at_end() || next_is_opt())
@@ -992,6 +1006,11 @@ static void parse_option(BuildOptions *options)
 			{
 				options->print_type_properties = true;
 				options->command = COMMAND_PRINT_SYNTAX;
+				return;
+			}
+			if (match_longopt("list-asm"))
+			{
+				options->print_asm = true;
 				return;
 			}
 			if (match_longopt("list-project-properties"))

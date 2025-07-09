@@ -75,7 +75,6 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 	}
 	else if (compiler.build.test_output || compiler.build.benchmark_output)
 	{
-		bool ansi = use_ansi();
 		switch (print_type)
 		{
 			case PRINT_TYPE_ERROR:

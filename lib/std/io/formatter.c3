@@ -495,6 +495,11 @@ fn usz? Formatter.vprintf(&self, String format, any[] anys)
 							out = ((char*)current.ptr)[:current.type.sizeof];
 							break;
 						}
+						if (current.type.kindof == POINTER)
+						{
+							out = ((*(char**)current.ptr))[:current.type.inner.sizeof];
+							break;
+						}
 						total_len += self.out_substr("<INVALID>")!;
 						continue;
 				}

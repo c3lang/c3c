@@ -567,10 +567,8 @@ static bool sema_error_const_int_out_of_range(CastContext *cc, Expr *expr, Expr 
 				   expr->const_expr.enum_val->var.index,
 				   type_quoted_error_string(to_type));
 	}
-	const char *error_value = expr->const_expr.is_hex ? int_to_str(expr->const_expr.ixx, 16, true)
-	                                                  : expr_const_to_error_string(&expr->const_expr);
-	RETURN_CAST_ERROR(problem, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.", error_value,
-			   type_quoted_error_string(to_type));
+	RETURN_CAST_ERROR(problem, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.",
+		expr_const_to_error_string(&expr->const_expr), type_quoted_error_string(to_type));
 }
 
 
@@ -1854,6 +1852,7 @@ static void cast_int_to_enum(Expr *expr, Type *type)
 	{
 		Int to_convert = expr->const_expr.ixx;
 		unsigned max_enums = vec_size(decl->enums.values);
+		(void)max_enums;
 		assert(max_enums > to_convert.i.low);
 		expr->expr_kind = EXPR_CONST;
 		expr->const_expr = (ExprConst) {
@@ -2499,7 +2498,7 @@ CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1] = {
  {    0,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // CONST ENUM
  {XX2VO,      0, PT2BO, PT2IN,     0,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0, PT2PT,     0,     0, PT2PT,     0,     0,     0     }, // FUNC
  {XX2VO,      0, TI2BO, TI2IN,     0, TI2PT,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, TI2PT, TI2PT,     0,     0     }, // TYPEID
- {XX2VO,      0, AF2BO, FA2IN,     0, FA2IN,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, FA2IN, FA2IN,     0,     0     }, // ANYFAULT
+ {XX2VO,      0, AF2BO, FA2IN,     0, FA2PT,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, FA2IN, FA2IN,     0,     0     }, // ANYFAULT
  {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT,     0, EX2VC,     0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0, PT2PT,     0,     0,     0, PT2PT,     0,     0     }, // VOIDPTR
  {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT, AP2SL, EX2VC,     0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0,     0,     0,     0, PT2PT, PT2PT, PT2FE,     0     }, // ARRAYPTR
  {    0,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // INFERRED
