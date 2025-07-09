@@ -40,6 +40,7 @@
 - Fix to codegen when using a bitstruct constant defined using a cast with an operator #2248.
 - Function pointers are now compile time constants. 
 - Splat 8 arguments can sometimes cause incorrect behaviour in the compiler. #2283
+- Correctly poison the analysis after a failed $assert or $error. #2284
 
 ### Stdlib changes
 - Improve contract for readline. #2280

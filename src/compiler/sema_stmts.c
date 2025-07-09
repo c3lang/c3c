@@ -2930,7 +2930,7 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 		if (!sema_analyse_expr(context, message_expr)) return false;
 		if (message_expr->expr_kind != EXPR_CONST || message_expr->const_expr.const_kind != CONST_STRING)
 		{
-			SEMA_ERROR(message_expr, "Expected a string as the error message.");
+			RETURN_SEMA_ERROR(message_expr, "Expected a string as the error message.");
 		}
 	}
 	CondResult res = expr ? sema_check_comp_time_bool(context, expr) : COND_FALSE;
@@ -2949,6 +2949,7 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 		{
 			sema_error_at(context, span, "Compile time assert failed.");
 		}
+		context->active_scope.is_poisoned = true;
 		return false;
 	}
 	statement->ast_kind = AST_NOP_STMT;
