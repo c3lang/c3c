@@ -14,6 +14,13 @@ fn void test_whirlpool_empty()
     assert(result == x'19fa61d75522a4669b44e39c1d2e1726c530232130d407f89afee0964997f7a73e83be698b288febcf88e3e03c4f0757ea8964e59b63d93708b138cc42a66eb3');
 }
 
+fn void test_whirlpool_test_vector()
+{
+	Whirlpool w;
+	w.update("The quick br");
+	w.update("own fox jumps over the lazy dog");
+    assert(w.final() == x'B97DE512E91E3828B40D2B0FDCE9CEB3C4A71F9BEA8D88E75C4FA854DF36725FD2B52EB6544EDCACD6F8BEDDFEA403CB55AE31F03AD62A5EF54E42EE82C3FB35');
+}
 
 fn void test_whirlpool_gigahash_zeroes()
 {
@@ -26,7 +33,7 @@ fn void test_whirlpool_gigahash_zeroes()
 
 fn void test_whirlpool_hmac()
 {
-    char[] key = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
+    char[] key = x'00010203040506070809';
     char[] input = "test";
 
     assert(whirlpool::hmac(key, input) == x'670f6920cfd6da970b7b1c6d883d622198c46b214f10d6ced4d6a03538a3e1e006b3717c4fe5e5b17d5fdfb70d698610b59ef554b0168583d2ec21578859c3b3');
