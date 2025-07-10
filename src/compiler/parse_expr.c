@@ -76,7 +76,7 @@ bool parse_range(ParseContext *c, Range *range)
 	return true;
 }
 
-static bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_token)
+bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_token)
 {
 	while (!try_consume(c, end_token))
 	{
@@ -89,21 +89,6 @@ static bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_to
 		}
 	}
 	return true;
-}
-/**
- * generic_parameters ::= '{' expr (',' expr) '}'
- */
-bool parse_generic_parameters(ParseContext *c, Expr ***exprs_ref)
-{
-	advance_and_verify(c, TOKEN_LBRACE);
-	while (true)
-	{
-		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
-		vec_add(*exprs_ref, expr);
-		if (try_consume(c, TOKEN_COMMA)) continue;
-		CONSUME_OR_RET(TOKEN_RBRACE, false);
-		return true;
-	}
 }
 
 /**
@@ -640,7 +625,7 @@ static Expr *parse_splat(ParseContext *c, Expr *left, SourceSpan lhs_start)
 /**
  * type_expr ::= type initializer_list?
  */
-static Expr *parse_type_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_type_expr(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEINFO);
@@ -687,7 +672,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceSpan lhs_star
 /**
  * unary_expr ::= unary_op unary_prec_expr
  */
-static Expr *parse_unary_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_unary_expr(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Did not expect a left hand side!");
 
@@ -797,7 +782,7 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side, SourceSpan lhs
  * When parsing we retain EXPR_GROUP in order to require explicit parentheses later
  * as needed.
  */
-static Expr *parse_grouping_expr(ParseContext *c, Expr *left, SourceSpan lhs_span)
+static Expr *parse_grouping_expr(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	SourceSpan span = c->span;
@@ -854,7 +839,7 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left, SourceSpan lhs_spa
  *	;
  *
  */
-static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_span)
+static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST);
@@ -870,16 +855,20 @@ static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_
 			{
 				if (designated == 0)
 				{
-					RETURN_PRINT_ERROR_AT(poisoned_expr, expr, "Designated initialization with '[] = ...' and '.param = ...' cannot be mixed with normal initialization.");
+					designated = expr->designator_expr.path[0]->kind == DESIGNATOR_FIELD ? 1 : 2;
+					goto ERROR;
 				}
-				designated = 1;
+				designated = expr->designator_expr.path[0]->kind == DESIGNATOR_FIELD ? 1 : 2;
 				continue;
 			}
-			if (designated == 1)
-			{
-				RETURN_PRINT_ERROR_AT(poisoned_expr, expr, "Normal initialization cannot be mixed with designated initialization.");
-			}
+			if (designated > 0) goto ERROR;
 			designated = 0;
+			continue;
+ERROR:;
+			const char *error = designated == 1 ? ".field" : "[1]";
+			RETURN_PRINT_ERROR_AT(poisoned_expr, expr, "You’re using both named and unnamed values "
+				"in the same initializer. Try using either all '%s = value' or all regular values — "
+				"but not both together.", error);
 		}
 		if (!try_consume(c, TOKEN_RBRACE))
 		{
@@ -887,7 +876,7 @@ static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_
 			return poisoned_expr;
 		}
 		RANGE_EXTEND_PREV(initializer_list);
-		if (designated == 1)
+		if (designated > 0)
 		{
 			initializer_list->designated_init_list = exprs;
 			initializer_list->expr_kind = EXPR_DESIGNATED_INITIALIZER_LIST;
@@ -1088,7 +1077,8 @@ static Expr *parse_generic_expr(ParseContext *c, Expr *left, SourceSpan lhs_star
 	ASSERT(left && expr_ok(left));
 	Expr *subs_expr = expr_new(EXPR_GENERIC_IDENT, lhs_start);
 	subs_expr->generic_ident_expr.parent = exprid(left);
-	if (!parse_generic_parameters(c, &subs_expr->generic_ident_expr.parmeters)) return poisoned_expr;
+	advance_and_verify(c, TOKEN_LBRACE);
+	if (!parse_expr_list(c, &subs_expr->generic_ident_expr.parmeters, TOKEN_RBRACE)) return poisoned_expr;
 	RANGE_EXTEND_PREV(subs_expr);
 	return subs_expr;
 }
