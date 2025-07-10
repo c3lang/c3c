@@ -2756,6 +2756,49 @@ INLINE bool parse_doc_to_eol(ParseContext *c)
 	return false;
 }
 
+INLINE bool parse_doc_check_skip_string_eos(ParseContext *c)
+{
+	if (tok_is(c, TOKEN_STRING)) return true;
+	if (!tok_is(c, TOKEN_DOCS_EOL)) return false;
+	if (peek(c) != TOKEN_STRING) return false;
+	advance_and_verify(c, TOKEN_DOCS_EOL);
+	return true;
+}
+
+INLINE bool parse_docs_to_comment(ParseContext *c)
+{
+	if (try_consume(c, TOKEN_COLON)) return true;
+	if (!tok_is(c, TOKEN_DOCS_EOL)) return false;
+	if (peek(c) == TOKEN_COLON)
+	{
+		advance_and_verify(c, TOKEN_DOCS_EOL);
+		advance_and_verify(c, TOKEN_COLON);
+		return true;
+	}
+	return false;
+}
+
+static bool parse_doc_discarded_comment(ParseContext *c)
+{
+	if (try_consume(c, TOKEN_STRING))
+	{
+		PRINT_DEPRECATED_AT(c->span, "Not using ':' before the description is deprecated");
+		return true;
+	}
+	if (!parse_docs_to_comment(c)) return true;
+	if (!parse_doc_check_skip_string_eos(c)) return true;
+	return parse_joined_strings(c, NULL, NULL);
+}
+static bool parse_doc_direct_comment(ParseContext *c)
+{
+	if (tok_is(c, TOKEN_DOCS_EOL) && peek(c) == TOKEN_STRING)
+	{
+		advance(c);
+	}
+	if (!tok_is(c, TOKEN_STRING)) return true;
+	return parse_joined_strings(c, NULL, NULL);
+}
+
 /**
  * contract ::= expression_list (':'? STRING)?
  */
@@ -2782,9 +2825,11 @@ static inline bool parse_doc_contract(ParseContext *c, AstId *docs, AstId **docs
 	}
 	scratch_buffer_append_remove_space(start, (int)(end - start));
 	scratch_buffer_append("\" violated");
-	if (try_consume(c, TOKEN_COLON))
+	bool docs_to_comment = false;
+	if (parse_docs_to_comment(c))
 	{
-		if (!tok_is(c, TOKEN_STRING))
+		docs_to_comment = true;
+		if (!parse_doc_check_skip_string_eos(c))
 		{
 			print_error_at(c->prev_span, "Expected a string after ':'");
 			return false;
@@ -2793,10 +2838,13 @@ static inline bool parse_doc_contract(ParseContext *c, AstId *docs, AstId **docs
 	if (tok_is(c, TOKEN_STRING))
 	{
 		scratch_buffer_append(": '");
-		scratch_buffer_append(symstr(c));
+		if (!parse_joined_strings(c, NULL, NULL)) return false;
 		scratch_buffer_append("'.");
 		ast->contract_stmt.contract.comment = scratch_buffer_copy();
-		advance(c);
+		if (!docs_to_comment)
+		{
+			SEMA_DEPRECATED(ast, "Not using ':' before the description is deprecated");
+		}
 	}
 	else
 	{
@@ -2855,17 +2903,21 @@ static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **do
 		case TOKEN_HASH_IDENT:
 			break;
 		default:
-			PRINT_ERROR_HERE("Expected a parameter name here.");
-			return false;
+			RETURN_PRINT_ERROR_HERE("Expected a parameter name here.");
 	}
 	ast->contract_stmt.param.name = symstr(c);
 	ast->contract_stmt.param.span = c->span;
 	ast->contract_stmt.param.modifier = mod;
 	ast->contract_stmt.param.by_ref = is_ref;
 	advance(c);
-	if (try_consume(c, TOKEN_COLON))
+
+	if (parse_docs_to_comment(c))
 	{
-		CONSUME_OR_RET(TOKEN_STRING, false);
+		if (!parse_doc_check_skip_string_eos(c))
+		{
+			RETURN_PRINT_ERROR_LAST("Expected a string after ':'");
+		}
+		if (!parse_joined_strings(c, NULL, NULL)) return false;
 	}
 	else
 	{
@@ -2910,14 +2962,7 @@ static inline bool parse_doc_optreturn(ParseContext *c, AstId *docs, AstId **doc
 	}
 	RANGE_EXTEND_PREV(ast);
 	// Just ignore our potential string:
-	if (try_consume(c, TOKEN_COLON))
-	{
-		CONSUME_OR_RET(TOKEN_STRING, false);
-	}
-	else if (try_consume(c, TOKEN_STRING))
-	{
-		RETURN_PRINT_ERROR_LAST("Expected a ':' before the description.");
-	}
+	if (!parse_doc_discarded_comment(c)) return false;
 	ast->contract_stmt.faults = returns;
 	append_docs(docs_next, docs, ast);
 	return true;
@@ -2944,13 +2989,10 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 
 	while (!try_consume(c, TOKEN_DOCS_END))
 	{
-		// Skip empty lines.
 		if (try_consume(c, TOKEN_DOCS_EOL)) continue;
-
 		if (!tok_is(c, TOKEN_AT_IDENT))
 		{
-			PRINT_ERROR_HERE("Expected a directive starting with '@' here, like '@param' or `@require`");
-			return false;
+			RETURN_PRINT_ERROR_HERE("Expected a directive starting with '@' here, like '@param' or `@require`");
 		}
 		const char *name = symstr(c);
 		if (name == kw_at_param)
@@ -2966,13 +3008,13 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 			}
 			else
 			{
-				if (!consume(c, TOKEN_STRING, "Expected a string description.")) return false;
+				if (!parse_doc_direct_comment(c)) return false;
 			}
 		}
 		else if (name == kw_at_deprecated)
 		{
 			advance(c);
-			(void)try_consume(c, TOKEN_STRING);
+			if (!parse_doc_discarded_comment(c)) return false;
 			REMINDER("Implement @deprecated tracking");
 		}
 		else if (name == kw_at_require)
@@ -2987,17 +3029,19 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 		{
 			Ast *ast = ast_new_curr(c, AST_CONTRACT);
 			ast->contract_stmt.kind = CONTRACT_PURE;
-			append_docs(next, contracts_ref, ast);
 			advance(c);
+			if (!parse_doc_discarded_comment(c)) return false;
+			append_docs(next, contracts_ref, ast);
 		}
 		else
 		{
 			advance(c);
+			if (!parse_doc_direct_comment(c)) return false;
 			if (parse_doc_to_eol(c)) continue;
-			if (!consume(c, TOKEN_STRING, "Expected a string description for the custom contract '%s'.", name)) return false;
+			RETURN_PRINT_ERROR_HERE("Expected a string description for the custom contract '%s'.", name);
 		}
 		if (parse_doc_to_eol(c)) continue;
-		PRINT_ERROR_HERE("Expected end of line here.");
+		PRINT_ERROR_HERE("Expected the end of the contract here.");
 		return false;
 	}
 	return true;

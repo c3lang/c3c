@@ -85,13 +85,12 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 	{
 		if (is_vector)
 		{
-			SEMA_ERROR(len_expr, "A vector may not exceed %d in bit width.", compiler.build.max_vector_size);
+			RETURN_VAL_SEMA_ERROR(type_info_poison(type_info), len_expr, "A vector may not exceed %d in bit width.", compiler.build.max_vector_size);
 		}
 		else
 		{
-			SEMA_ERROR(len_expr, "The array length may not exceed %lld.", MAX_ARRAY_SIZE);
+			RETURN_VAL_SEMA_ERROR(type_info_poison(type_info), len_expr, "The array length may not exceed %lld.", MAX_ARRAY_SIZE);
 		}
-		return type_info_poison(type_info);
 	}
 	// We're done, return the size and mark it as a success.
 	*len_ref = (ArraySize)len.i.low;

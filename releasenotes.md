@@ -16,6 +16,7 @@
 - Improve error on unsigned implicit conversion to signed.
 - Update error message for struct initialization #2286
 - `$is_const` is deprecated in favour of `@is_const` based on `$defined`.
+- Multiline contract comments #2113
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
@@ -45,6 +46,7 @@
 - Correctly poison the analysis after a failed $assert or $error. #2284
 - `$foo` variables could be assigned non-compile time values.
 - `$foo[0] = ...` was incorrectly requiring that the assigned values were compile time constants.
+- "Inlined at" would sometimes show the current location.
 
 ### Stdlib changes
 - Improve contract for readline. #2280

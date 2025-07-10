@@ -560,13 +560,16 @@ SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_
 	return temp_context;
 }
 
-void sema_print_inline(SemaContext *context)
+void sema_print_inline(SemaContext *context, SourceSpan original)
 {
 	if (!context) return;
 	InliningSpan *inlined_at = context->inlined_at;
 	while (inlined_at)
 	{
-		sema_note_prev_at(inlined_at->span, "Inlined from here.");
+		if (inlined_at->span.a != original.a)
+		{
+			sema_note_prev_at(inlined_at->span, "Inlined from here.");
+		}
 		inlined_at = inlined_at->prev;
 	}
 }
@@ -577,7 +580,7 @@ void sema_error_at(SemaContext *context, SourceSpan span, const char *message, .
 	va_start(list, message);
 	sema_verror_range(span, message, list);
 	va_end(list);
-	sema_print_inline(context);
+	sema_print_inline(context, span);
 }
 
 bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ...)
@@ -594,6 +597,6 @@ bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ..
 		sema_verror_range(span, message, list);
 	}
 	va_end(list);
-	sema_print_inline(context);
+	sema_print_inline(context, span);
 	return is_warn;
 }

@@ -637,9 +637,50 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 		value->kind = CV_VALUE;
 	}
 
-	PRINT("/* TODO ZERO INIT */\n");
-	//llvm_store_zero(c, value);
-	//llvm_value_set(value, llvm_get_zero(c, var_type), var_type);
+	switch (var_type->type_kind)
+	{
+		case TYPE_BOOL:
+			PRINTF("___var_%d = false;\n", value->var);
+			break;
+		case ALL_INTS:
+		case ALL_FLOATS:
+			PRINTF("___var_%d = 0;\n", value->var);
+			break;
+		case TYPE_POISONED:
+		case TYPE_VOID:
+		case TYPE_DISTINCT:
+		case TYPE_CONST_ENUM:
+		case TYPE_FUNC_RAW:
+		case TYPE_BITSTRUCT:
+		case TYPE_TYPEDEF:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+		case TYPE_OPTIONAL:
+		case TYPE_WILDCARD:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+			UNREACHABLE
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
+			PRINTF("___var_%d = (c3_any_t){ NULL, NULL };\n", value->var);
+			break;
+		case TYPE_ANYFAULT:
+		case TYPE_TYPEID:
+		case TYPE_FUNC_PTR:
+		case TYPE_POINTER:
+		case TYPE_ENUM:
+			PRINTF("___var_%d = 0;\n", value->var);
+			break;
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_SLICE:
+		case TYPE_ARRAY:
+		case TYPE_VECTOR:
+			PRINT("/* TODO ZERO INIT */\n");
+
+	}
 }
 
 static void c_emit_return(GenContext *c, Ast *stmt)
@@ -758,9 +799,9 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 		case AST_CASE_STMT:
 			break;
 		case AST_COMPOUND_STMT:
-			PRINT("  {\n");
+			PRINT("{\n");
 			c_emit_stmt_chain(c, stmt->compound_stmt.first_stmt);
-			PRINT("  }\n");
+			PRINT("}\n");
 			return;
 		case AST_CONTINUE_STMT:
 			break;

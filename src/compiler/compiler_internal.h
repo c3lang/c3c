@@ -67,6 +67,8 @@ typedef uint16_t FileId;
 #define SEMA_NOTE(_node, ...) sema_note_prev_at((_node)->span, __VA_ARGS__)
 #define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output && !compiler.build.silence_deprecation) print_error_at((_node)->span, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
  sema_note_prev_at((_node)->span, __VA_ARGS__); } while (0)
+#define PRINT_DEPRECATED_AT(span__, ...) do { if (compiler.build.test_output && !compiler.build.silence_deprecation) print_error_at(span__, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
+sema_note_prev_at(span__, __VA_ARGS__); } while (0)
 
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
@@ -2982,7 +2984,7 @@ INLINE bool type_convert_will_trunc(Type *destination, Type *source)
 // Useful sanity check function.
 INLINE void advance_and_verify(ParseContext *context, TokenType token_type)
 {
-	ASSERT(context->tok == token_type);
+	ASSERT_SPAN(context, context->tok == token_type);
 	advance(context);
 }
 
