@@ -14,6 +14,10 @@
 //
 // Read more: https://en.wikipedia.org/wiki/SipHash
 //
+//
+<*
+@require OutType.typeid == uint128.typeid || OutType.typeid == ulong.typeid : "Module OutType must be either uint128 or ulong."
+*>
 module std::hash::siphash { OutType, BLOCK_ROUNDS, FINALIZE_ROUNDS };
 
 
@@ -31,9 +35,6 @@ struct SipHash
 }
 
 
-<*
-@require OutType.typeid == uint128.typeid || OutType.typeid == ulong.typeid : "Module OutType must be either uint128 or ulong."
-*>
 fn OutType hash(char[] data, uint128 key)
 {
 	SipHash s;
@@ -42,9 +43,6 @@ fn OutType hash(char[] data, uint128 key)
 	return s.final();
 }
 
-<*
-@require OutType.typeid == uint128.typeid || OutType.typeid == ulong.typeid : "Module OutType must be either uint128 or ulong."
-*>
 fn void SipHash.init(&self, uint128 key)
 {
 	self.key = key;
