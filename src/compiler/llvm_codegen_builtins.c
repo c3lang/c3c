@@ -61,7 +61,7 @@ INLINE void llvm_emit_swizzle(GenContext *c, BEValue *result_value, Expr *expr, 
 	unsigned mask_len = count - mask_start;
 	if (mask_len > MASK_VALS)
 	{
-		mask_val = malloc(sizeof(LLVMValueRef) * (mask_len));
+		mask_val = MALLOC(sizeof(LLVMValueRef) * (mask_len));
 	}
 	for (unsigned i = mask_start; i < count; i++)
 	{
