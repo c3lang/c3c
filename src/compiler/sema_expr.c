@@ -92,7 +92,7 @@ static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Expr *le
                                       is_assign);
 static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool *failed_ref);
-static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
+static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, BinaryOp operator);
@@ -6538,16 +6538,19 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 	return true;
 }
 
-static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
-	// Do regular lvalue evaluation of the identifier
-	if (!sema_analyse_expr_lvalue(context, left, NULL)) return false;
+	ASSERT_SPAN(left, left->resolve_status == RESOLVE_DONE);
 
 	// Evaluate right side to using inference from last type.
 	if (!sema_analyse_inferred_expr(context, left->type, right)) return false;
 
+	if (!expr_is_runtime_const(right))
+	{
+		if (failed_ref) return *failed_ref = true, false;
+		RETURN_SEMA_ERROR(right, "You can only assign constants to a compile time variable.");
+	}
 	Decl *ident = left->ct_ident_expr.decl;
-
 
 	ident->var.init_expr = right;
 	expr_replace(expr, right);
@@ -6565,7 +6568,7 @@ static bool sema_expr_analyse_ct_subscript_rhs(SemaContext *context, Decl *ct_va
 	{
 		if (!sema_analyse_expr_rhs(context, type_get_indexed_type(ct_var->type), right, false, NULL, false)) return false;
 	}
-	if (!sema_cast_const(right))
+	if (!expr_is_runtime_const(right))
 	{
 		RETURN_SEMA_ERROR(right, "The argument must be a constant value.");
 	}
@@ -6654,7 +6657,7 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 	{
 		case EXPR_CT_IDENT:
 			// $foo = ...
-			return sema_expr_analyse_ct_identifier_assign(context, expr, left, right);
+			return sema_expr_analyse_ct_identifier_assign(context, expr, left, right, failed_ref);
 		case EXPR_CT_SUBSCRIPT:
 			return sema_expr_analyse_ct_subscript_assign(context, expr, left, right);
 		default:

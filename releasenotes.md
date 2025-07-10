@@ -15,6 +15,8 @@
 - Formatting option "%h" now supports pointers.
 - Improve error on unsigned implicit conversion to signed.
 - Update error message for struct initialization #2286
+- `$is_const` is deprecated in favour of `@is_const` based on `$defined`.
+
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
 - Hex string formatter check incorrectly rejected slices.
@@ -41,6 +43,8 @@
 - Function pointers are now compile time constants. 
 - Splat 8 arguments can sometimes cause incorrect behaviour in the compiler. #2283
 - Correctly poison the analysis after a failed $assert or $error. #2284
+- `$foo` variables could be assigned non-compile time values.
+- `$foo[0] = ...` was incorrectly requiring that the assigned values were compile time constants.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
