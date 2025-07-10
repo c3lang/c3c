@@ -48,6 +48,7 @@
 
 ### Stdlib changes
 - Improve contract for readline. #2280
+- Added Whirlpool hash.
 
 ## 0.7.3 Change list
 
