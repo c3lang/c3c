@@ -248,7 +248,7 @@ fn char? read_next(JsonContext* context) @local
 	}
 	if (c == 0)
 	{
-		context.reached_end = true;
+		return UNEXPECTED_CHARACTER?;
 	}
 	return c;
 }

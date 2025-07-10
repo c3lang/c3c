@@ -345,8 +345,8 @@ fn void test_comments_rejected()
 fn void test_null_bytes_rejected()
 {
 	// Test that null bytes in JSON are rejected (like n_multidigit_number_then_00.json)
-	// This simulates "123" + null byte + newline
-	char[5] json_with_null = { '1', '2', '3', 0, '\n' };
+	// This simulates "123" + null byte
+	char[] json_with_null = { '1', '2', '3', 0 };
 	ByteReader reader;
 	reader.init(json_with_null[..]);
 
