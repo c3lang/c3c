@@ -47,6 +47,7 @@
 - `$foo` variables could be assigned non-compile time values.
 - `$foo[0] = ...` was incorrectly requiring that the assigned values were compile time constants.
 - "Inlined at" would sometimes show the current location.
+- Fixed bug splatting constants into constants.
 
 ### Stdlib changes
 - Improve contract for readline. #2280

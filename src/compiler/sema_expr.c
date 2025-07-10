@@ -1663,7 +1663,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Expr *arg, ArraySize len, ArrayIndex index)
 {
 	args = sema_prepare_splat_insert(args, len, index);
-	if (expr_is_const(arg))
+	if (sema_cast_const(arg))
 	{
 		for (ArrayIndex i = 0; i < len; i++)
 		{
@@ -1674,6 +1674,11 @@ INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Exp
 			args[i + index] = subscript;
 		}
 		return args;
+	}
+	if (context->call_env.kind != CALL_ENV_FUNCTION)
+	{
+		SEMA_ERROR(arg, "Cannot splat a non-constant value in a global context.");
+		return NULL;
 	}
 	Decl *temp = decl_new_generated_var(arg->type, VARDECL_LOCAL, arg->span);
 	Expr *decl_expr = expr_generate_decl(temp, arg);
