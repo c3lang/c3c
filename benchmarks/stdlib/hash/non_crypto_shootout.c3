@@ -1,0 +1,60 @@
+// Copyright (c) 2025 Zack Puhl <github@xmit.xyz>. All rights reserved.
+// Use of this source code is governed by the MIT license
+// a copy of which can be found in the LICENSE_STDLIB file.
+module non_crypto_benchmarks;
+
+
+const usz COMMON_ITERATIONS = 1 << 18;
+
+const char[] COMMON_1 = { 0xA5 };
+const char[] COMMON_4 = { 0xA5, 0xA5, 0xA5, 0xA5, };
+const char[] COMMON_8 = { 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, };
+const char[] COMMON_16 = { 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, 0xA5, };
+
+char[] common_1024;
+
+
+fn void initialize_bench() @init
+{
+    set_benchmark_warmup_iterations(3);
+    set_benchmark_max_iterations(COMMON_ITERATIONS + 3);
+
+    common_1024 = ((char*)malloc(1024))[:1024]; for (usz i = 0; i < 1024; ++i) common_1024[i] = 0xA5;
+}
+
+
+// =======================================================================================
+module non_crypto_benchmarks @benchmark;
+
+import std::hash;
+
+
+fn void fnv64a_1() => fnv64a::hash(COMMON_1);
+fn void fnv32a_1() => fnv32a::hash(COMMON_1);
+fn void wyhash2_1() => wyhash2::hash(COMMON_1);
+fn void metro64_1() => metro64::hash(COMMON_1);
+fn void metro128_1() => metro128::hash(COMMON_1);
+
+fn void fnv64a_4() => fnv64a::hash(COMMON_4);
+fn void fnv32a_4() => fnv32a::hash(COMMON_4);
+fn void wyhash2_4() => wyhash2::hash(COMMON_4);
+fn void metro64_4() => metro64::hash(COMMON_4);
+fn void metro128_4() => metro128::hash(COMMON_4);
+
+fn void fnv64a_8() => fnv64a::hash(COMMON_8);
+fn void fnv32a_8() => fnv32a::hash(COMMON_8);
+fn void wyhash2_8() => wyhash2::hash(COMMON_8);
+fn void metro64_8() => metro64::hash(COMMON_8);
+fn void metro128_8() => metro128::hash(COMMON_8);
+
+fn void fnv64a_16() => fnv64a::hash(COMMON_16);
+fn void fnv32a_16() => fnv32a::hash(COMMON_16);
+fn void wyhash2_16() => wyhash2::hash(COMMON_16);
+fn void metro64_16() => metro64::hash(COMMON_16);
+fn void metro128_16() => metro128::hash(COMMON_16);
+
+fn void fnv64a_1024() => fnv64a::hash(common_1024);
+fn void fnv32a_1024() => fnv32a::hash(common_1024);
+// NOTE: wyhash2 cannot be used on inputs > 16 bytes.
+fn void metro64_1024() => metro64::hash(common_1024);
+fn void metro128_1024() => metro128::hash(common_1024);
