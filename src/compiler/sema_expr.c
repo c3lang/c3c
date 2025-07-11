@@ -11284,6 +11284,10 @@ IDENT_CHECK:;
 				return sema_analyse_expr_lvalue(context, expr, failed_ref);
 			}
 			break;
+		case EXPR_RECAST:
+		case EXPR_CAST:
+			if (failed_ref) goto FAILED_REF;
+			RETURN_SEMA_ERROR(expr, "Assignment to casts is not possible (this sub-expression is a value, not an address), maybe you put the order of the operators wrong?");
 		case EXPR_CT_EVAL:
 			if (!sema_expr_resolve_ct_eval(context, expr)) return false;
 			goto RETRY;
@@ -11336,7 +11340,7 @@ IDENT_CHECK:;
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
-		case EXPR_RECAST:
+
 		case EXPR_RETHROW:
 		case EXPR_RETVAL:
 		case EXPR_RVALUE:
@@ -11358,7 +11362,6 @@ IDENT_CHECK:;
 		case EXPR_SUBSCRIPT_ADDR:
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_MACRO_BODY:
-		case EXPR_CAST:
 		case EXPR_CATCH_UNRESOLVED:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_EMBED:
