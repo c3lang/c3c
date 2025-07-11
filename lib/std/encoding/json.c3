@@ -132,9 +132,12 @@ fn JsonTokenType? lex_number(JsonContext *context, char c) @local
 		if (c == '.')
 		{
 			t.append(c);
-			while (c = read_next(context)!, c.is_digit())
+			c = read_next(context)!;
+			if (!c.is_digit()) return INVALID_NUMBER?;
+			while (c.is_digit())
 			{
 				t.append(c);
+				c = read_next(context)!;
 			}
 		}
 		if ((c | 32) == 'e')
