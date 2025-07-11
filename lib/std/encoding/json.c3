@@ -118,6 +118,7 @@ fn JsonTokenType? lex_number(JsonContext *context, char c) @local
 			t.append(c);
 			c = read_next(context)!;
 		}
+		if (!c.is_digit()) return INVALID_NUMBER?;
 		bool leading_zero = c == '0';
 		while (c.is_digit())
 		{

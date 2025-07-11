@@ -159,6 +159,15 @@ fn void test_invalid_numbers()
 		assert(false, "Expected INVALID_NUMBER error for [-2.]");
 	}
 
+	if (catch err = json::parse_string(mem, "[-.123]"))
+	{
+		assert(err == json::INVALID_NUMBER);
+	}
+	else
+	{
+		assert(false, "Expected INVALID_NUMBER error for [-.123]");
+	}
+
 	// Test invalid: multiple decimal points
 	if (catch err = json::parse_string(mem, "[1.2.3]"))
 	{
