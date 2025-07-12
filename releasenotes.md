@@ -15,6 +15,7 @@
 - Formatting option "%h" now supports pointers.
 - Improve error on unsigned implicit conversion to signed.
 - Update error message for struct initialization #2286
+- Add SipHash family of keyed PRFs. #2287 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
 - Hex string formatter check incorrectly rejected slices.

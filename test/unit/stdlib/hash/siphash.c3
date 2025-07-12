@@ -1,6 +1,17 @@
 // Copyright (c) 2025 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
+module siphash_tests;
+
+
+char[64] plaintext;
+
+fn void init_tests() @init
+{
+	for (char i = 0; i < plaintext.len; ++i) plaintext[i] = i;
+}
+
+
 module siphash_tests @test;
 
 import std::hash::siphash;
@@ -11,19 +22,20 @@ import std::hash::siphash24_128;
 import std::hash::siphash48_128;
 
 
+const uint128 DEFAULT_TEST_KEY = 0x0f0e_0d0c_0b0a_0908_0706_0504_0302_0100;
+
+
+fn void sanity_check_default_test_key()
+	=> test::@check(((char*)&DEFAULT_TEST_KEY)[:16] == { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }, "Bad key value as char[].");
+
+
 fn void streamed_plaintext_64()
 {
-	uint128 key = 0x0f0e_0d0c_0b0a_0908_0706_0504_0302_0100;
-	test::@check(((char*)&key)[:16] == (char[]){ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }, "Bad key value.");
-
 	ulong expected = 0x958a324ceb064572;
-
-	char[64] plaintext;
-	for (char i = 0; i < plaintext.len; ++i) plaintext[i] = i;
 
 	SipHash24 s;
 
-	s.init(key);
+	s.init(DEFAULT_TEST_KEY);
 
 	s.update(plaintext[:5]);
 	s.update(plaintext[5:25]);
@@ -37,17 +49,11 @@ fn void streamed_plaintext_64()
 
 fn void streamed_plaintext_128()
 {
-	uint128 key = 0x0f0e_0d0c_0b0a_0908_0706_0504_0302_0100;
-	test::@check(((char*)&key)[:16] == (char[]){ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }, "Bad key value.");
-
 	uint128 expected = 0x7cbd3f979a063e504a83502f77d15051;
-
-	char[64] plaintext;
-	for (char i = 0; i < plaintext.len; ++i) plaintext[i] = i;
 
 	SipHash24_128 s;
 
-	s.init(key);
+	s.init(DEFAULT_TEST_KEY);
 
 	s.update(plaintext[:1]);
 	s.update(plaintext[1:2]);
@@ -83,16 +89,9 @@ const ulong[64] VECTORS_24 = {
 
 fn void siphash24_vectors()
 {
-	uint128 key = 0x0f0e_0d0c_0b0a_0908_0706_0504_0302_0100;
-	test::@check(((char*)&key)[:16] == (char[]){ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }, "Bad key value.");
-
-	char[64] plaintext;
-
-	for (char i = 0; i < plaintext.len; ++i) plaintext[i] = i;
-
 	for (usz i = 0; i < VECTORS_24.len; ++i)
 	{
-		ulong hashval = siphash24::hash(plaintext[:i], key);
+		ulong hashval = siphash24::hash(plaintext[:i], DEFAULT_TEST_KEY);
 
 		test::@check(hashval == VECTORS_24[i], "Expected hash mismatch [%x expected // %x actual].", VECTORS_24[i], hashval);
 	}
@@ -120,16 +119,9 @@ const ulong[64] VECTORS_48 = {
 
 fn void siphash48_vectors()
 {
-	uint128 key = 0x0f0e_0d0c_0b0a_0908_0706_0504_0302_0100;
-	test::@check(((char*)&key)[:16] == (char[]){ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }, "Bad key value.");
-
-	char[64] plaintext;
-
-	for (char i = 0; i < plaintext.len; ++i) plaintext[i] = i;
-
 	for (usz i = 0; i < VECTORS_48.len; ++i)
 	{
-		ulong hashval = siphash48::hash(plaintext[:i], key);
+		ulong hashval = siphash48::hash(plaintext[:i], DEFAULT_TEST_KEY);
 
 		test::@check(hashval == VECTORS_48[i], "Expected hash mismatch [%x expected // %x actual].", VECTORS_48[i], hashval);
 	}
@@ -159,16 +151,9 @@ const uint128[64] VECTORS_24_128 = {
 
 fn void siphash24_128_vectors()
 {
-	uint128 key = 0x0f0e_0d0c_0b0a_0908_0706_0504_0302_0100;
-	test::@check(((char*)&key)[:16] == (char[]){ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }, "Bad key value.");
-
-	char[64] plaintext;
-
-	for (char i = 0; i < plaintext.len; ++i) plaintext[i] = i;
-
 	for (usz i = 0; i < VECTORS_24_128.len; ++i)
 	{
-		uint128 hashval = siphash24_128::hash(plaintext[:i], key);
+		uint128 hashval = siphash24_128::hash(plaintext[:i], DEFAULT_TEST_KEY);
 
 		test::@check(hashval == VECTORS_24_128[i], "Expected hash mismatch [%x expected // %x actual].", VECTORS_24_128[i], hashval);
 	}
@@ -196,16 +181,9 @@ const uint128[64] VECTORS_48_128 = {
 
 fn void siphash48_128_vectors()
 {
-	uint128 key = 0x0f0e_0d0c_0b0a_0908_0706_0504_0302_0100;
-	test::@check(((char*)&key)[:16] == (char[]){ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }, "Bad key value.");
-
-	char[64] plaintext;
-
-	for (char i = 0; i < plaintext.len; ++i) plaintext[i] = i;
-
 	for (usz i = 0; i < VECTORS_48_128.len; ++i)
 	{
-		uint128 hashval = siphash48_128::hash(plaintext[:i], key);
+		uint128 hashval = siphash48_128::hash(plaintext[:i], DEFAULT_TEST_KEY);
 
 		test::@check(hashval == VECTORS_48_128[i], "Expected hash mismatch [%x expected // %x actual].", VECTORS_48_128[i], hashval);
 	}

@@ -27,11 +27,6 @@ struct SipHash
 	long m;
 	int m_idx;
 	usz len;
-	union
-	{
-		uint128 key;
-		ulong[2] key_64;
-	}
 }
 
 
@@ -45,12 +40,13 @@ fn OutType hash(char[] data, uint128 key)
 
 fn void SipHash.init(&self, uint128 key)
 {
-	self.key = key;
+	ulong[2] key_64 = bitcast(key, ulong[2]);
+
 	self.v = {
-		0x736f6d6570736575 ^ self.key_64[0],
-		0x646f72616e646f6d ^ self.key_64[1],
-		0x6c7967656e657261 ^ self.key_64[0],
-		0x7465646279746573 ^ self.key_64[1],
+		0x736f_6d65_7073_6575 ^ key_64[0],
+		0x646f_7261_6e64_6f6d ^ key_64[1],
+		0x6c79_6765_6e65_7261 ^ key_64[0],
+		0x7465_6462_7974_6573 ^ key_64[1],
 	};
 
 	$if OutType.typeid == uint128.typeid :
@@ -65,7 +61,7 @@ fn void SipHash.update(&self, char[] data)
 
 	foreach (byte : data)
 	{
-		self.m |= ((long)byte << (self.m_idx++ << 3));
+		self.m |= (long)byte << (self.m_idx++ << 3);
 
 		if (self.m_idx < 8) continue;
 
@@ -86,10 +82,9 @@ fn void SipHash.update(&self, char[] data)
 
 fn OutType SipHash.final(&self)
 {
-	char message_length_mod_256 = (char)(self.len % 0xFF);
+	char[8] last = { [7] = (char)self.len };
 
-	while (self.m_idx < 7) self.update({0});
-	self.update({message_length_mod_256});
+	self.update(last[(self.m_idx < 7 ? self.m_idx : 7)..]);
 
 	$if OutType.typeid == uint128.typeid :
 		self.v[2] ^= 0xEE;
@@ -102,9 +97,9 @@ fn OutType SipHash.final(&self)
 	$endfor
 
 	$if OutType.typeid == ulong.typeid :
-		return (ulong)(self.v[0] ^ self.v[1] ^ self.v[2] ^ self.v[3]);
+		return self.v[0] ^ self.v[1] ^ self.v[2] ^ self.v[3];
 	$else
-		ulong lo = (self.v[0] ^ self.v[1] ^ self.v[2] ^ self.v[3]);
+		ulong lo = self.v[0] ^ self.v[1] ^ self.v[2] ^ self.v[3];
 
 		self.v[1] ^= 0xDD;
 
@@ -112,9 +107,7 @@ fn OutType SipHash.final(&self)
 			self.round();
 		$endfor
 
-		ulong hi = (ulong)(self.v[0] ^ self.v[1] ^ self.v[2] ^ self.v[3]);
-
-		return ((uint128)lo | ((uint128)hi << (uint128)64));
+		return lo | ((uint128)(self.v[0] ^ self.v[1] ^ self.v[2] ^ self.v[3]) << 64);
 	$endif
 }
 
