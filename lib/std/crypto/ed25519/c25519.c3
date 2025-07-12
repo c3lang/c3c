@@ -3,8 +3,8 @@
  The set of F_(2^255-19)-rational curve points is a group of order 2^3*(2^252 + 0x14def9dea2f79cd65812631a5cf5d3ed)
 */
 
-module std::crypto::ed25519::c25519;
-import std::crypto::ed25519::f25519;
+module std::crypto::ed25519::c25519 @private;
+import std::crypto::ed25519::f25519 @public;
 
 // Affine coordinates.
 struct Point {

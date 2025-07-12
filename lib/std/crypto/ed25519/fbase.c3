@@ -2,7 +2,7 @@
  Modular arithmetic over the prime field F_(2^252+0x14def9dea2f79cd65812631a5cf5d3ed)
 */
 
-module std::crypto::ed25519::fbase;
+module std::crypto::ed25519::fbase @private;
 import std::math;
 
 typedef Int = inline char[32];

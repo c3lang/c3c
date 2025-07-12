@@ -1,5 +1,5 @@
 module std::crypto::ed25519_test @test;
-import std::crypto::ed25519 @norecurse;
+import std::crypto::ed25519;
 
 fn void ed25519_keygen_sign_verify() @test {
     PrivateKey private_key = x"97b0d0435be3a583df0b77aff277e5fc8f857cae1a827723241bb9bbf7e96018";

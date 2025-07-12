@@ -3,6 +3,7 @@
 */
 
 module std::crypto::ed25519;
+import std::crypto::ed25519::c25519 @public, std::crypto::ed25519::f25519 @public, std::crypto::ed25519::fbase @public;
 import std::hash::sha512;
 
 alias PrivateKey = char[32];
@@ -96,7 +97,7 @@ fn bool verify(char[] message, char[] signature, char[] public_key) {
 }
 
 // Base point for Ed25519. Generate a subgroup of order 2^252+0x14def9dea2f79cd65812631a5cf5d3ed
-const Projection BASE = {
+const Projection BASE @private = {
     {
         0x1a, 0xd5, 0x25, 0x8f, 0x60, 0x2d, 0x56, 0xc9,
         0xb2, 0xa7, 0x25, 0x95, 0x60, 0xc7, 0x2c, 0x69,
