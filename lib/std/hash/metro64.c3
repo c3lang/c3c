@@ -76,7 +76,7 @@ fn void MetroHash64.update(&self, char[] data)
 
 	self.bytes += data.len;
 
-	for (; data.len >= 32; data = data.len > 32 ? data[32..] : {})
+	for (; data.len >= 32; data = data[32:^32])
 	{
 		self.state[0] += ((ulong*)data.ptr)[0] * K[0]; self.state[0] = self.state[0].rotr(29) + self.state[2];
 		self.state[1] += ((ulong*)data.ptr)[1] * K[1]; self.state[1] = self.state[1].rotr(29) + self.state[3];
@@ -111,7 +111,7 @@ fn ulong MetroHash64.final(&self)
 		self.state[2] ^= (self.state[2] * K[3]).rotr(21) + self.state[1];
 		self.state[0] += self.state[2];
 
-		final_data = final_data.len > 16 ? final_data[16..] : {};
+		final_data = final_data[16:^16];
 	}
 
 	if (final_data.len >= 8)
@@ -119,7 +119,7 @@ fn ulong MetroHash64.final(&self)
 		self.state[0] += ((ulong*)final_data.ptr)[0] * K[3];
 		self.state[0] ^= self.state[0].rotr(55) * K[1];
 
-		final_data = final_data.len > 8 ? final_data[8..] : {};
+		final_data = final_data[8:^8];
 	}
 
 	if (final_data.len >= 4)
@@ -127,7 +127,7 @@ fn ulong MetroHash64.final(&self)
 		self.state[0] += ((uint*)final_data.ptr)[0] * K[3];
 		self.state[0] ^= self.state[0].rotr(26) * K[1];
 
-		final_data = final_data.len > 4 ? final_data[4..] : {};
+		final_data = final_data[4:^4];
 	}
 
 	if (final_data.len >= 2)
@@ -135,7 +135,7 @@ fn ulong MetroHash64.final(&self)
 		self.state[0] += ((ushort*)final_data.ptr)[0] * K[3];
 		self.state[0] ^= self.state[0].rotr(48) * K[1];
 
-		final_data = final_data.len > 2 ? final_data[2..] : {};
+		final_data = final_data[2:^2];
 	}
 
 	if (final_data.len >= 1)

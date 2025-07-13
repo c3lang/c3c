@@ -75,7 +75,7 @@ fn void MetroHash128.update(&self, char[] data)
 
 	self.bytes += data.len;
 
-	for (; data.len >= 32; data = data.len > 32 ? data[32..] : {})
+	for (; data.len >= 32; data = data[32:^32])
 	{
 		self.state[0] += ((ulong*)data.ptr)[0] * K[0]; self.state[0] = self.state[0].rotr(29) + self.state[2];
 		self.state[1] += ((ulong*)data.ptr)[1] * K[1]; self.state[1] = self.state[1].rotr(29) + self.state[3];
@@ -107,7 +107,7 @@ fn uint128 MetroHash128.final(&self)
 		self.state[0] ^= ((self.state[0] * K[2]) + self.state[1]).rotr(45) * K[1];
 		self.state[1] ^= ((self.state[1] * K[3]) + self.state[0]).rotr(45) * K[0];
 
-		final_data = final_data.len > 16 ? final_data[16..] : {};
+		final_data = final_data[16:^16];
 	}
 
 	if (final_data.len >= 8)
@@ -115,7 +115,7 @@ fn uint128 MetroHash128.final(&self)
 		self.state[0] += ((ulong*)final_data.ptr)[0] * K[2]; self.state[0] = self.state[0].rotr(33) * K[3];
 		self.state[0] ^= ((self.state[0] * K[2]) + self.state[1]).rotr(27) * K[1];
 
-		final_data = final_data.len > 8 ? final_data[8..] : {};
+		final_data = final_data[8:^8];
 	}
 
 	if (final_data.len >= 4)
@@ -123,7 +123,7 @@ fn uint128 MetroHash128.final(&self)
 		self.state[1] += ((uint*)final_data.ptr)[0] * K[2]; self.state[1] = self.state[1].rotr(33) * K[3];
 		self.state[1] ^= ((self.state[1] * K[3]) + self.state[0]).rotr(46) * K[0];
 
-		final_data = final_data.len > 4 ? final_data[4..] : {};
+		final_data = final_data[4:^4];
 	}
 
 	if (final_data.len >= 2)
@@ -131,7 +131,7 @@ fn uint128 MetroHash128.final(&self)
 		self.state[0] += ((ushort*)final_data.ptr)[0] * K[2]; self.state[0] = self.state[0].rotr(33) * K[3];
 		self.state[0] ^= ((self.state[0] * K[2]) + self.state[1]).rotr(22) * K[1];
 
-		final_data = final_data.len > 2 ? final_data[2..] : {};
+		final_data = final_data[2:^2];
 	}
 
 	if (final_data.len >= 1)
