@@ -286,7 +286,7 @@ macro compare_exchange_volatile(ptr, compare, value, AtomicOrdering $success = S
 *>
 fn usz aligned_offset(usz offset, usz alignment)
 {
-	return alignment * ((offset + alignment - 1) / alignment);
+	return (offset + alignment - 1) & ~(alignment - 1);
 }
 
 macro void* aligned_pointer(void* ptr, usz alignment)
