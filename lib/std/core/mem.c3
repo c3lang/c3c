@@ -7,6 +7,10 @@ import std::math;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
 const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
+const ulong KB = 1024;
+const ulong MB = KB * 1024;
+const ulong GB = MB * 1024;
+const ulong TB = GB * 1024;
 
 faultdef OUT_OF_MEMORY, INVALID_ALLOC_SIZE;
 
@@ -282,7 +286,7 @@ macro compare_exchange_volatile(ptr, compare, value, AtomicOrdering $success = S
 *>
 fn usz aligned_offset(usz offset, usz alignment)
 {
-	return alignment * ((offset + alignment - 1) / alignment);
+	return (offset + alignment - 1) & ~(alignment - 1);
 }
 
 macro void* aligned_pointer(void* ptr, usz alignment)

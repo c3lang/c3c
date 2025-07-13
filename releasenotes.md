@@ -15,7 +15,11 @@
 - Formatting option "%h" now supports pointers.
 - Improve error on unsigned implicit conversion to signed.
 - Update error message for struct initialization #2286
+- `$is_const` is deprecated in favour of `@is_const` based on `$defined`.
+- Multiline contract comments #2113
+- Removed the use of temp allocator in backtrace printing.
 - Add komihash, a5hash, metrohash64, metrohash128, and wyhash2 variants with tests/benchmark. #2293
+
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
 - Hex string formatter check incorrectly rejected slices.
@@ -42,9 +46,16 @@
 - Function pointers are now compile time constants. 
 - Splat 8 arguments can sometimes cause incorrect behaviour in the compiler. #2283
 - Correctly poison the analysis after a failed $assert or $error. #2284
+- `$foo` variables could be assigned non-compile time values.
+- `$foo[0] = ...` was incorrectly requiring that the assigned values were compile time constants.
+- "Inlined at" would sometimes show the current location.
+- Fixed bug splatting constants into constants.
+- New Virtual Memory arena allocator
 
 ### Stdlib changes
 - Improve contract for readline. #2280
+- Added Whirlpool hash.
+- Added string::bformat.
 
 ## 0.7.3 Change list
 

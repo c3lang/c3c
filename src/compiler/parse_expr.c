@@ -1097,7 +1097,7 @@ static Expr *parse_access_expr(ParseContext *c, Expr *left, SourceSpan lhs_start
 	return access_expr;
 }
 
-static Expr *parse_ct_ident(ParseContext *c, Expr *left, SourceSpan lhs_span)
+static Expr *parse_ct_ident(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	if (try_consume(c, TOKEN_CT_CONST_IDENT))
@@ -1112,7 +1112,7 @@ static Expr *parse_ct_ident(ParseContext *c, Expr *left, SourceSpan lhs_span)
 }
 
 
-static Expr *parse_hash_ident(ParseContext *c, Expr *left, SourceSpan lhs_span)
+static Expr *parse_hash_ident(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_HASH_IDENT);
@@ -1125,7 +1125,7 @@ static Expr *parse_hash_ident(ParseContext *c, Expr *left, SourceSpan lhs_span)
 /**
  * ct_eval ::= CT_EVAL '(' expr ')'
  */
-static Expr *parse_ct_eval(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_ct_eval(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_EVAL);
@@ -1138,7 +1138,7 @@ static Expr *parse_ct_eval(ParseContext *c, Expr *left, SourceSpan lhs_start)
 }
 
 
-static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *defined = expr_new(EXPR_CT_DEFINED, c->span);
@@ -1153,7 +1153,7 @@ static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceSpan lhs_start)
  *
  * Note that this is tranformed to $typeof(expr).sizeof.
  */
-static Expr *parse_ct_sizeof(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_ct_sizeof(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *access = expr_new(EXPR_ACCESS_UNRESOLVED, c->span);
@@ -1178,7 +1178,7 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left, SourceSpan lhs_start)
 /**
  * ct_is_const ::= CT_IS_CONST '(' expr ')'
  */
-static Expr *parse_ct_is_const(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_ct_is_const(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *checks = expr_new(EXPR_CT_IS_CONST, c->span);
@@ -1187,13 +1187,14 @@ static Expr *parse_ct_is_const(ParseContext *c, Expr *left, SourceSpan lhs_start
 	ASSIGN_EXPR_OR_RET(checks->inner_expr, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(checks);
+	SEMA_DEPRECATED(checks, "The $is_const macro is deprecated. Use @is_const(...) instead.");
 	return checks;
 }
 
 /**
  * ct_checks ::= CT_EMBED '(' constant_expr (',' constant_expr)? ')'
  */
-static Expr *parse_ct_embed(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_ct_embed(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *embed = expr_new(EXPR_EMBED, c->span);
@@ -1213,7 +1214,7 @@ static Expr *parse_ct_embed(ParseContext *c, Expr *left, SourceSpan lhs_start)
  * ct_call ::= (CT_ALIGNOF | CT_FEATURE | CT_EXTNAMEOF | CT_OFFSETOF | CT_NAMEOF | CT_QNAMEOF) '(' flat_path ')'
  * flat_path ::= expr ('.' primary) | '[' expr ']')*
  */
-static Expr *parse_ct_call(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_ct_call(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_CALL);
@@ -1230,7 +1231,7 @@ static Expr *parse_ct_call(ParseContext *c, Expr *left, SourceSpan lhs_start)
 	return expr;
 }
 
-static Expr *parse_ct_assignable(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_ct_assignable(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_ASSIGNABLE);
@@ -1903,20 +1904,16 @@ static Expr *parse_double(ParseContext *c, Expr *left, SourceSpan lhs_start)
 	return number;
 }
 
-/**
- * string_literal ::= STRING+
- */
-static Expr *parse_string_literal(ParseContext *c, Expr *left, SourceSpan lhs_start)
-{
-	ASSERT(!left && "Had left hand side");
-	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST);
 
+bool parse_joined_strings(ParseContext *c, const char **str_ref, size_t *len_ref)
+{
 	const char *str = symstr(c);
 	size_t len = c->data.strlen;
 	advance_and_verify(c, TOKEN_STRING);
-
+	if (!str_ref) scratch_buffer_append(str);
 	// This is wasteful for adding many tokens together
 	// and can be optimized.
+	if (tok_is(c, TOKEN_DOCS_EOL) && peek(c) == TOKEN_STRING) advance(c);
 	while (tok_is(c, TOKEN_STRING))
 	{
 		// Grab the token.
@@ -1927,21 +1924,44 @@ static Expr *parse_string_literal(ParseContext *c, Expr *left, SourceSpan lhs_st
 			advance_and_verify(c, TOKEN_STRING);
 			continue;
 		}
-		// Create new string and copy.
-		char *buffer = malloc_string(len + next_len + 1);
-		memcpy(buffer, str, len);
-		memcpy(buffer + len, symstr(c), next_len);
-		len += next_len;
-		buffer[len] = '\0';
-		str = buffer;
+		if (!str_ref)
+		{
+			scratch_buffer_append(symstr(c));
+		}
+		else
+		{
+			// Create new string and copy.
+			char *buffer = malloc_string(len + next_len + 1);
+			memcpy(buffer, str, len);
+			memcpy(buffer + len, symstr(c), next_len);
+			len += next_len;
+			buffer[len] = '\0';
+			str = buffer;
+		}
 		advance_and_verify(c, TOKEN_STRING);
+		if (tok_is(c, TOKEN_DOCS_EOL) && peek(c) == TOKEN_STRING) advance(c);
 	}
 	if (len > UINT32_MAX)
 	{
 		PRINT_ERROR_HERE("String exceeded max size.");
-		return poisoned_expr;
+		return false;
 	}
+	if (!str_ref) return true;
 	ASSERT(str);
+	*str_ref = str;
+	*len_ref = len;
+	return true;
+}
+/**
+ * string_literal ::= STRING+
+ */
+static Expr *parse_string_literal(ParseContext *c, Expr *left, SourceSpan lhs_start)
+{
+	ASSERT(!left && "Had left hand side");
+	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST);
+	const char *str;
+	size_t len;
+	if (!parse_joined_strings(c, &str, &len)) return poisoned_expr;
 	expr_string->const_expr.bytes.ptr = str;
 	expr_string->const_expr.bytes.len = (uint32_t)len;
 	expr_string->type = type_string;

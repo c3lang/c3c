@@ -108,6 +108,19 @@ fn String format(Allocator allocator, String fmt, args...) @format(1) => @pool()
 }
 
 <*
+ Return a new String created using the formatting function.
+
+ @param [inout] buffer : `The buffer to use`
+ @param [in] fmt : `The formatting string`
+*>
+fn String bformat(char[] buffer, String fmt, args...) @format(1)
+{
+	DString str = dstring::new_with_capacity(allocator::wrap(buffer), fmt.len + args.len * 8);
+	str.appendf(fmt, ...args);
+	return str.str_view();
+}
+
+<*
  Return a temporary String created using the formatting function.
 
  @param [in] fmt : `The formatting string`

@@ -115,10 +115,10 @@ fn bool clear_var(String name) => @pool()
 	$endswitch
 }
 
-fn String? executable_path(Allocator allocator)
+fn String? executable_path()
 {
 	$if env::DARWIN:
-		return darwin::executable_path(allocator);
+		return darwin::executable_path();
 	$else
 		return NOT_FOUND?;
 	$endif

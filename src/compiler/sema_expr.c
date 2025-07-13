@@ -92,7 +92,7 @@ static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Expr *le
                                       is_assign);
 static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool *failed_ref);
-static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
+static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, BinaryOp operator);
@@ -1663,7 +1663,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Expr *arg, ArraySize len, ArrayIndex index)
 {
 	args = sema_prepare_splat_insert(args, len, index);
-	if (expr_is_const(arg))
+	if (sema_cast_const(arg))
 	{
 		for (ArrayIndex i = 0; i < len; i++)
 		{
@@ -1674,6 +1674,11 @@ INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Exp
 			args[i + index] = subscript;
 		}
 		return args;
+	}
+	if (context->call_env.kind != CALL_ENV_FUNCTION)
+	{
+		SEMA_ERROR(arg, "Cannot splat a non-constant value in a global context.");
+		return NULL;
 	}
 	Decl *temp = decl_new_generated_var(arg->type, VARDECL_LOCAL, arg->span);
 	Expr *decl_expr = expr_generate_decl(temp, arg);
@@ -6538,16 +6543,19 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 	return true;
 }
 
-static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
-	// Do regular lvalue evaluation of the identifier
-	if (!sema_analyse_expr_lvalue(context, left, NULL)) return false;
+	ASSERT_SPAN(left, left->resolve_status == RESOLVE_DONE);
 
 	// Evaluate right side to using inference from last type.
 	if (!sema_analyse_inferred_expr(context, left->type, right)) return false;
 
+	if (!expr_is_runtime_const(right))
+	{
+		if (failed_ref) return *failed_ref = true, false;
+		RETURN_SEMA_ERROR(right, "You can only assign constants to a compile time variable.");
+	}
 	Decl *ident = left->ct_ident_expr.decl;
-
 
 	ident->var.init_expr = right;
 	expr_replace(expr, right);
@@ -6565,7 +6573,7 @@ static bool sema_expr_analyse_ct_subscript_rhs(SemaContext *context, Decl *ct_va
 	{
 		if (!sema_analyse_expr_rhs(context, type_get_indexed_type(ct_var->type), right, false, NULL, false)) return false;
 	}
-	if (!sema_cast_const(right))
+	if (!expr_is_runtime_const(right))
 	{
 		RETURN_SEMA_ERROR(right, "The argument must be a constant value.");
 	}
@@ -6654,7 +6662,7 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 	{
 		case EXPR_CT_IDENT:
 			// $foo = ...
-			return sema_expr_analyse_ct_identifier_assign(context, expr, left, right);
+			return sema_expr_analyse_ct_identifier_assign(context, expr, left, right, failed_ref);
 		case EXPR_CT_SUBSCRIPT:
 			return sema_expr_analyse_ct_subscript_assign(context, expr, left, right);
 		default:
@@ -11276,6 +11284,10 @@ IDENT_CHECK:;
 				return sema_analyse_expr_lvalue(context, expr, failed_ref);
 			}
 			break;
+		case EXPR_RECAST:
+		case EXPR_CAST:
+			if (failed_ref) goto FAILED_REF;
+			RETURN_SEMA_ERROR(expr, "Assignment to casts is not possible (this sub-expression is a value, not an address), maybe you put the order of the operators wrong?");
 		case EXPR_CT_EVAL:
 			if (!sema_expr_resolve_ct_eval(context, expr)) return false;
 			goto RETRY;
@@ -11328,7 +11340,7 @@ IDENT_CHECK:;
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
-		case EXPR_RECAST:
+
 		case EXPR_RETHROW:
 		case EXPR_RETVAL:
 		case EXPR_RVALUE:
@@ -11350,7 +11362,6 @@ IDENT_CHECK:;
 		case EXPR_SUBSCRIPT_ADDR:
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_MACRO_BODY:
-		case EXPR_CAST:
 		case EXPR_CATCH_UNRESOLVED:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_EMBED:
