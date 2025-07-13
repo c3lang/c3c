@@ -1,6 +1,10 @@
 // Copyright (c) 2025 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
+//
+// An implementation of Wang Yi's wyhash(2) algorithm in C3:
+//    https://github.com/wangyi-fudan/wyhash
+//
 module std::hash::wyhash2;
 
 

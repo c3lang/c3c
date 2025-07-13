@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 //
-// An implementation of Aleksey Vaneev's komihash, version 5.11, in C3:
+// An implementation of Aleksey Vaneev's komihash, version 5.27, in C3:
 //   https://github.com/avaneev/komihash
 //
 // The license for komihash from the above repository at the time of writing is as follows:
