@@ -8,21 +8,21 @@ import std::hash::a5hash;
 
 fn void vector_1()
 {
-    char[] input = "This is a test of a5hash.";
-    ulong expected = 0xb163640b41959e6b;
+	char[] input = "This is a test of a5hash.";
+	ulong expected = 0xb163640b41959e6b;
 
-    ulong actual = a5hash::hash(input);
+	ulong actual = a5hash::hash(input);
 
-    test::@check(actual == expected, "Hash mismatch (%x expected // %x actual).", expected, actual);
+	test::@check(actual == expected, "Hash mismatch (%x expected // %x actual).", expected, actual);
 }
 
 
 fn void vector_2()
 {
-    char[] input = "7 chars";
-    ulong expected = 0xe49a0cc72256bbac;
+	char[] input = "7 chars";
+	ulong expected = 0xe49a0cc72256bbac;
 
-    ulong actual = a5hash::hash(input);
+	ulong actual = a5hash::hash(input);
 
-    test::@check(actual == expected, "Hash mismatch (%x expected // %x actual).", expected, actual);
+	test::@check(actual == expected, "Hash mismatch (%x expected // %x actual).", expected, actual);
 }
