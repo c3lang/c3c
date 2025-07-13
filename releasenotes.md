@@ -17,6 +17,7 @@
 - Update error message for struct initialization #2286
 - `$is_const` is deprecated in favour of `@is_const` based on `$defined`.
 - Multiline contract comments #2113
+- Removed the use of temp allocator in backtrace printing.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
@@ -52,6 +53,7 @@
 ### Stdlib changes
 - Improve contract for readline. #2280
 - Added Whirlpool hash.
+- Added string::bformat.
 
 ## 0.7.3 Change list
 
