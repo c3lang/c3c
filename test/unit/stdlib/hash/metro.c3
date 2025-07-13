@@ -59,11 +59,10 @@ const ulong[66] VECTORS_SWEEP_64 = {
 
 fn void metro64_sweep()
 {
-	char[66] v;
+	char[66] v = { [0..65] = 'a' };
 
 	for (usz x = 0; x < v.len; ++x)
 	{
-		v[x] = 'a';
 		ulong actual = metro64::hash(v[:x], 1337);
 
 		test::@check(actual == VECTORS_SWEEP_64[x],
@@ -119,11 +118,10 @@ const uint128[66] VECTORS_SWEEP_128 = {
 
 fn void metro128_sweep()
 {
-	char[66] v;
+	char[66] v = { [0..65] = 'a' };
 
 	for (usz x = 0; x < v.len; ++x)
 	{
-		v[x] = 'a';
 		uint128 actual = metro128::hash(v[:x], 1337);
 
 		test::@check(actual == VECTORS_SWEEP_128[x],
