@@ -7,6 +7,10 @@ import std::math;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
 const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
+const ulong KB = 1024;
+const ulong MB = KB * 1024;
+const ulong GB = MB * 1024;
+const ulong TB = GB * 1024;
 
 faultdef OUT_OF_MEMORY, INVALID_ALLOC_SIZE;
 
