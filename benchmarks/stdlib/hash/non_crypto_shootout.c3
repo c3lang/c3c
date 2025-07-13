@@ -34,45 +34,53 @@ fn void fnv32a_1() => fnv32a::hash(COMMON_1);
 fn void wyhash2_1() => wyhash2::hash(COMMON_1);
 fn void metro64_1() => metro64::hash(COMMON_1);
 fn void metro128_1() => metro128::hash(COMMON_1);
+fn void a5hash_1() => a5hash::hash(COMMON_1);
 
 fn void fnv64a_4() => fnv64a::hash(COMMON_4);
 fn void fnv32a_4() => fnv32a::hash(COMMON_4);
 fn void wyhash2_4() => wyhash2::hash(COMMON_4);
 fn void metro64_4() => metro64::hash(COMMON_4);
 fn void metro128_4() => metro128::hash(COMMON_4);
+fn void a5hash_4() => a5hash::hash(COMMON_4);
 
 fn void fnv64a_8() => fnv64a::hash(COMMON_8);
 fn void fnv32a_8() => fnv32a::hash(COMMON_8);
 fn void wyhash2_8() => wyhash2::hash(COMMON_8);
 fn void metro64_8() => metro64::hash(COMMON_8);
 fn void metro128_8() => metro128::hash(COMMON_8);
+fn void a5hash_8() => a5hash::hash(COMMON_8);
 
 fn void fnv64a_16() => fnv64a::hash(COMMON_16);
 fn void fnv32a_16() => fnv32a::hash(COMMON_16);
 fn void wyhash2_16() => wyhash2::hash(COMMON_16);
 fn void metro64_16() => metro64::hash(COMMON_16);
 fn void metro128_16() => metro128::hash(COMMON_16);
+fn void a5hash_16() => a5hash::hash(COMMON_16);
 
 fn void fnv64a_32() => fnv64a::hash(COMMON_32);
 fn void fnv32a_32() => fnv32a::hash(COMMON_32);
 // NOTE: wyhash2 cannot be used on inputs > 16 bytes.
 fn void metro64_32() => metro64::hash(COMMON_32);
 fn void metro128_32() => metro128::hash(COMMON_32);
+fn void a5hash_32() => a5hash::hash(COMMON_32);
 
 fn void fnv64a_64() => fnv64a::hash(COMMON_64);
 fn void fnv32a_64() => fnv32a::hash(COMMON_64);
 // NOTE: wyhash2 cannot be used on inputs > 16 bytes.
 fn void metro64_64() => metro64::hash(COMMON_64);
 fn void metro128_64() => metro128::hash(COMMON_64);
+fn void a5hash_64() => a5hash::hash(COMMON_64);
 
 fn void fnv64a_128() => fnv64a::hash(COMMON_128);
 fn void fnv32a_128() => fnv32a::hash(COMMON_128);
 // NOTE: wyhash2 cannot be used on inputs > 16 bytes.
 fn void metro64_128() => metro64::hash(COMMON_128);
 fn void metro128_128() => metro128::hash(COMMON_128);
+fn void a5hash_128() => a5hash::hash(COMMON_128);
 
 fn void fnv64a_1024() => fnv64a::hash(COMMON_1024);
 fn void fnv32a_1024() => fnv32a::hash(COMMON_1024);
 // NOTE: wyhash2 cannot be used on inputs > 16 bytes.
 fn void metro64_1024() => metro64::hash(COMMON_1024);
 fn void metro128_1024() => metro128::hash(COMMON_1024);
+fn void a5hash_1024() => a5hash::hash(COMMON_1024);
