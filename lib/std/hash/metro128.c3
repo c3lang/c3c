@@ -75,19 +75,12 @@ fn void MetroHash128.update(&self, char[] data)
 
 	self.bytes += data.len;
 
-	while (data.len >= 32)
+	for (; data.len >= 32; data = data.len > 32 ? data[32..] : {})
 	{
 		self.state[0] += ((ulong*)data.ptr)[0] * K[0]; self.state[0] = self.state[0].rotr(29) + self.state[2];
 		self.state[1] += ((ulong*)data.ptr)[1] * K[1]; self.state[1] = self.state[1].rotr(29) + self.state[3];
 		self.state[2] += ((ulong*)data.ptr)[2] * K[2]; self.state[2] = self.state[2].rotr(29) + self.state[0];
 		self.state[3] += ((ulong*)data.ptr)[3] * K[3]; self.state[3] = self.state[3].rotr(29) + self.state[1];
-
-		switch
-		{
-			case data.len > 32: data = data[32..];
-			case data.len == 32: data = {};
-			default: data = data[:data.len];
-		}
 	}
 
 	// Gobble up the leftover bytes. Nom nom.
