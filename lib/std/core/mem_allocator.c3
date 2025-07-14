@@ -1,7 +1,7 @@
 module std::core::mem::allocator;
 import std::math;
 
-// C3 has multiple different allocators available:
+// C3 has several different allocators available:
 //
 // Name                     Arena  Uses buffer  OOM Fallback?     Mark?   Reset?
 // ArenaAllocator             Yes          Yes             No       Yes      Yes
@@ -12,6 +12,7 @@ import std::math;
 // OnStackAllocator           Yes          Yes            Yes        No       No   *Note: Used by @stack_mem
 // TempAllocator              Yes           No            Yes        No*      No*  *Note: Mark/reset using @pool
 // TrackingAllocator           No           No            N/A        No       No   *Note: Wraps other heap allocator
+// Vmem                       Yes           No             No       Yes      Yes   *Note: Can be set to huge sizes
 
 const DEFAULT_SIZE_PREFIX = usz.sizeof;
 const DEFAULT_SIZE_PREFIX_ALIGNMENT = usz.alignof;

@@ -16,6 +16,10 @@
 - Improve error on unsigned implicit conversion to signed.
 - Update error message for struct initialization #2286
 - Add SipHash family of keyed PRFs. #2287 
+- `$is_const` is deprecated in favour of `@is_const` based on `$defined`.
+- Multiline contract comments #2113
+- Removed the use of temp allocator in backtrace printing.
+
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
 - Hex string formatter check incorrectly rejected slices.
@@ -42,9 +46,19 @@
 - Function pointers are now compile time constants. 
 - Splat 8 arguments can sometimes cause incorrect behaviour in the compiler. #2283
 - Correctly poison the analysis after a failed $assert or $error. #2284
+- `$foo` variables could be assigned non-compile time values.
+- `$foo[0] = ...` was incorrectly requiring that the assigned values were compile time constants.
+- "Inlined at" would sometimes show the current location.
+- Fixed bug splatting constants into constants.
+- Resize bug when resizing memory down in ArenaAllocator, DynamicArenaAllocator, BackedArenaAllocator.
+- Error message for missing arg incorrect for methods with zero args #2296.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
+- Added Whirlpool hash.
+- Added string::bformat.
+- Virtual memory library.
+- New virtual emory arena allocator.
 
 ## 0.7.3 Change list
 

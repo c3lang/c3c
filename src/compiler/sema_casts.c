@@ -20,7 +20,7 @@ typedef struct // NOLINT
 	bool is_binary_conversion;
 } CastContext;
 
-#define RETURN_CAST_ERROR(_node, ...) do { print_error_at((_node)->span, __VA_ARGS__); sema_print_inline(cc->context); return false; } while (0)
+#define RETURN_CAST_ERROR(_node, ...) do { print_error_at((_node)->span, __VA_ARGS__); sema_print_inline(cc->context, (_node)->span); return false; } while (0)
 
 static bool sema_error_const_int_out_of_range(CastContext *cc, Expr *expr, Expr *problem, Type *to_type);
 static Expr *recursive_may_narrow(Expr *expr, Type *type);

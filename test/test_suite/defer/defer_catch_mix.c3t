@@ -343,7 +343,7 @@ missing_function:                                 ; preds = %6
   store %"char[]" { ptr @.func, i64 4 }, ptr %taddr5, align 8
   %10 = load [2 x i64], ptr %taddr5, align 8
   %11 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %11([2 x i64] %8, [2 x i64] %9, [2 x i64] %10, i32 97) #4
+  call void %11([2 x i64] %8, [2 x i64] %9, [2 x i64] %10,
   unreachable
 
 match:                                            ; preds = %6
@@ -379,7 +379,7 @@ panic_block:                                      ; preds = %assign_optional
   %"$$temp" = insertvalue %"any[]" %24, i64 1, 1
   store %"any[]" %"$$temp", ptr %taddr10, align 8
   %25 = load [2 x i64], ptr %taddr10, align 8
-  call void @std.core.builtin.panicf([2 x i64] %21, [2 x i64] %22, [2 x i64] %23, i32 261, [2 x i64] %25) #4
+  call void @std.core.builtin.panicf([2 x i64] %21, [2 x i64] %22, [2 x i64] %23,
   unreachable
 
 noerr_block:                                      ; preds = %after_check

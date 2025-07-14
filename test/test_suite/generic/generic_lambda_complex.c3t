@@ -37,7 +37,7 @@ struct TextTag
 }
 
 <*
- @require self.tags.len == 0 "template already initialized"
+ @require self.tags.len == 0 : "template already initialized"
  @require tag_start != tag_end
  *>
 fn void? TextTemplate.init(&self, String template, String tag_start = "{{", String tag_end = "}}", Allocator using = allocator::heap())

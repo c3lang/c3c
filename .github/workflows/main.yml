@@ -90,7 +90,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -O1
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -O1 -D SLOW_TESTS
 
       - name: run compiler tests
         run: |
@@ -347,7 +347,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ../build/c3c compile-test unit
+          ../build/c3c compile-test unit -D SLOW_TESTS
 
       - name: Build testproject
         run: |
@@ -493,7 +493,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ../build/c3c compile-test unit --sanitize=address
+          ../build/c3c compile-test unit --sanitize=address -D SLOW_TESTS
 
       - name: Build testproject
         run: |
@@ -587,7 +587,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ../build/c3c compile-test unit
+          ../build/c3c compile-test unit -D SLOW_TESTS
 
       - name: Build testproject
         run: |
@@ -669,7 +669,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ../build/c3c compile-test unit -O1
+          ../build/c3c compile-test unit -O1 -D SLOW_TESTS
 
       - name: Test WASM
         run: |

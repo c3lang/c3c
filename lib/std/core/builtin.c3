@@ -98,41 +98,34 @@ macro anycast(any v, $Type) @builtin
 
 fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
 {
-	Allocator t = allocator::current_temp;
-	TempAllocator* t2 = allocator::top_temp;
-	TempAllocator* new_t = allocator::new_temp_allocator(smem, 0x1000)!!;
-	allocator::current_temp = allocator::top_temp = new_t;
-	defer
-	{
-		allocator::current_temp = t;
-		allocator::top_temp = t2;
-		new_t.free();
-	}
 	void*[256] buffer;
 	void*[] backtraces = backtrace::capture_current(&buffer);
 	backtraces_to_ignore++;
-	BacktraceList? backtrace = backtrace::symbolize_backtrace(tmem, backtraces);
-	if (catch backtrace) return false;
-	if (backtrace.len() <= backtraces_to_ignore) return false;
-	io::eprint("\nERROR: '");
-	io::eprint(message);
-	io::eprintn("'");
-	foreach (i, &trace : backtrace)
+	@stack_mem(2048; Allocator mem)
 	{
-		if (i < backtraces_to_ignore) continue;
-		String inline_suffix = trace.is_inline ? " [inline]" : "";
-		if (trace.is_unknown())
+		BacktraceList? backtrace = backtrace::symbolize_backtrace(mem, backtraces);
+		if (catch backtrace) return false;
+		if (backtrace.len() <= backtraces_to_ignore) return false;
+		io::eprint("\nERROR: '");
+		io::eprint(message);
+		io::eprintn("'");
+		foreach (i, &trace : backtrace)
 		{
-			io::eprintfn("  in ???%s", inline_suffix);
-			continue;
+			if (i < backtraces_to_ignore) continue;
+			String inline_suffix = trace.is_inline ? " [inline]" : "";
+			if (trace.is_unknown())
+			{
+				io::eprintfn("  in ???%s", inline_suffix);
+				continue;
+			}
+			if (trace.has_file())
+			{
+				io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
+				continue;
+			}
+			io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
 		}
-		if (trace.has_file())
-		{
-			io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
-			continue;
-		}
-		io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
-	}
+	};
 	return true;
 
 }

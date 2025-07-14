@@ -20,6 +20,12 @@ macro bool @is_vector(#value) @const => types::is_vector($typeof(#value));
 macro bool @is_same_vector_type(#value1, #value2) @const => types::is_same_vector_type($typeof(#value1), $typeof(#value2));
 macro bool @assign_to(#value1, #value2) @const => $assignable(#value1, $typeof(#value2));
 macro bool @is_lvalue(#value) => $defined(#value = #value);
+macro bool @assignable_to(#foo, $Type) @const @builtin => $defined(*&&($Type){} = #foo);
+macro bool @is_const(#foo) @const @builtin
+{
+	var $v;
+	return $defined($v = #foo);
+}
 
 macro promote_int(x)
 {
