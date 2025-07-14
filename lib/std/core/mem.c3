@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem;
 import std::core::mem::allocator @public;
+import std::os::posix;
 import std::math;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
@@ -17,6 +18,19 @@ faultdef OUT_OF_MEMORY, INVALID_ALLOC_SIZE;
 macro bool @constant_is_power_of_2($x) @const @private
 {
 	return $x != 0 && ($x & ($x - 1)) == 0;
+}
+
+fn usz os_pagesize()
+{
+	$switch:
+		$case env::POSIX:
+			return posix::getpagesize();
+		$case env::WIN32:
+			// Possibly improve this
+			return 4096;
+		$default:
+			return 4096;
+	$endswitch
 }
 
 <*
