@@ -56,6 +56,7 @@
 - Improve contract for readline. #2280
 - Added Whirlpool hash.
 - Added string::bformat.
+- VirtualMemory type and functions.
 
 ## 0.7.3 Change list
 
