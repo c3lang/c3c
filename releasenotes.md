@@ -49,13 +49,14 @@
 - `$foo[0] = ...` was incorrectly requiring that the assigned values were compile time constants.
 - "Inlined at" would sometimes show the current location.
 - Fixed bug splatting constants into constants.
-- New Virtual Memory arena allocator
+- Resize bug when resizing memory down in ArenaAllocator, DynamicArenaAllocator, BackedArenaAllocator.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
 - Added Whirlpool hash.
 - Added string::bformat.
-- VirtualMemory type and functions.
+- Virtual memory library.
+- New virtual emory arena allocator.
 
 ## 0.7.3 Change list
 
