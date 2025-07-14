@@ -1999,7 +1999,8 @@ SPLAT_NORMAL:;
 		{
 			int missing = 1;
 			for (int j = i + 1; j < func_param_count; j++) if (!actual_args[j]) missing++;
-			if (vec_size(callee->params) == 1)
+			int implicit_args = callee->struct_var ? 1 : 0;
+			if (vec_size(callee->params) == 1 + implicit_args)
 			{
 				if (param->type)
 				{
@@ -2014,7 +2015,7 @@ SPLAT_NORMAL:;
 				print_error_after(last->span, "Expected '%s: ...' after this argument.", param->name);
 				RETURN_NOTE_FUNC_DEFINITION;
 			}
-			if (!num_args)
+			if (num_args == implicit_args)
 			{
 				if (missing != needed)
 				{

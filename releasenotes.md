@@ -50,6 +50,7 @@
 - "Inlined at" would sometimes show the current location.
 - Fixed bug splatting constants into constants.
 - Resize bug when resizing memory down in ArenaAllocator, DynamicArenaAllocator, BackedArenaAllocator.
+- Error message for missing arg incorrect for methods with zero args #2296.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
