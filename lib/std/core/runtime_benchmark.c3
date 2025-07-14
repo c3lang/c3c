@@ -38,6 +38,13 @@ fn void set_benchmark_max_iterations(uint value) @builtin
     benchmark_max_iterations = value;
 }
 
+
+Clock benchmark_clock @local;
+NanoDuration benchmark_nano_seconds @local;
+
+macro @start_benchmark() => benchmark_clock = std::time::clock::now();
+macro @end_benchmark() => benchmark_nano_seconds = benchmark_clock.mark();
+
 fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 {
 	usz max_name;
@@ -61,7 +68,6 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 	long sys_clock_started;
 	long sys_clock_finished;
 	long sys_clocks;
-	Clock clock;
 
 	foreach(unit : benchmarks)
 	{
@@ -75,19 +81,23 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 			unit.func() @inline;
 		}
 
-		clock = std::time::clock::now();
+		NanoDuration running_timer;
 		sys_clock_started = $$sysclock();
+		benchmark_nano_seconds = 0;
 
 		for (uint i = 0; i < benchmark_max_iterations; i++)
 		{
+			@start_benchmark();   // can be overridden by calls inside the unit's func
 			unit.func() @inline;
+
+			if (!benchmark_nano_seconds) @end_benchmark();
+			running_timer += benchmark_nano_seconds;
 		}
 
 		sys_clock_finished = $$sysclock();
-		NanoDuration nano_seconds = clock.mark();
 		sys_clocks = sys_clock_finished - sys_clock_started;
 
-		io::printfn("[COMPLETE] %.2f ns, %.2f CPU's clocks", (float)nano_seconds / benchmark_max_iterations, (float)sys_clocks / benchmark_max_iterations);
+		io::printfn("[COMPLETE] %.2f ns, %.2f CPU's clocks", (float)running_timer / benchmark_max_iterations, (float)sys_clocks / benchmark_max_iterations);
 	}
 
 	io::printfn("\n%d benchmark%s run.\n", benchmarks.len, benchmarks.len > 1 ? "s" : "");
