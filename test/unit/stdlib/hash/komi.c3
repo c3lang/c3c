@@ -72,6 +72,9 @@ fn void unseeded_string_vectors()
 
 fn void unseeded_bulk_vectors()
 {
+	$assert BULK_INTERVALS.len == EXPECTED_BULK_UNSEEDED.len
+		: "BULK_INTERVALS length does not match the given BULK test set.";
+
 	for (usz i = 0; i < BULK_INTERVALS.len; ++i)
 	{
 		char[] input = bulk[:BULK_INTERVALS[i]];
@@ -123,12 +126,17 @@ fn void seeded_string_vectors()
 
 		ulong actual = komi::hash(input, TEST_SEED);
 
-		test::@check(actual == expected, "Hash mismatch for seed 0x123456789abcdef '%s' (%x expected // %x actual).", (ZString)input, expected, actual);
+		test::@check(actual == expected,
+			"Hash mismatch for seed 0x123456789abcdef '%s' (%x expected // %x actual).",
+			(ZString)input, expected, actual);
 	}
 }
 
 fn void seeded_bulk_vectors()
 {
+	$assert BULK_INTERVALS.len == EXPECTED_BULK_SEEDED.len
+		: "BULK_INTERVALS length does not match the given BULK test set.";
+
 	for (usz i = 0; i < BULK_INTERVALS.len; ++i)
 	{
 		char[] input = bulk[:BULK_INTERVALS[i]];
@@ -136,7 +144,9 @@ fn void seeded_bulk_vectors()
 
 		ulong actual = komi::hash(input, TEST_SEED);
 
-		test::@check(actual == expected, "Hash mismatch for unseeded bulk interval %d (idx %d) (%x expected // %x actual).", BULK_INTERVALS[i], i, expected, actual);
+		test::@check(actual == expected,
+			"Hash mismatch for unseeded bulk interval %d (idx %d) (%x expected // %x actual).",
+			BULK_INTERVALS[i], i, expected, actual);
 	}
 }
 
@@ -180,12 +190,17 @@ fn void seeded_string_vectors_2()
 
 		ulong actual = komi::hash(input, TEST_SEED_2);
 
-		test::@check(actual == expected, "Hash mismatch for seed 0x100 '%s' (%x expected // %x actual).", (ZString)input, expected, actual);
+		test::@check(actual == expected,
+			"Hash mismatch for seed 0x100 '%s' (%x expected // %x actual).",
+			(ZString)input, expected, actual);
 	}
 }
 
 fn void seeded_bulk_vectors_2()
 {
+	$assert BULK_INTERVALS.len == EXPECTED_BULK_SEEDED_2.len
+		: "BULK_INTERVALS length does not match the given BULK test set.";
+
 	for (usz i = 0; i < BULK_INTERVALS.len; ++i)
 	{
 		char[] input = bulk[:BULK_INTERVALS[i]];
@@ -193,6 +208,8 @@ fn void seeded_bulk_vectors_2()
 
 		ulong actual = komi::hash(input, TEST_SEED_2);
 
-		test::@check(actual == expected, "Hash mismatch for unseeded bulk interval %d (idx %d) (%x expected // %x actual).", BULK_INTERVALS[i], i, expected, actual);
+		test::@check(actual == expected,
+			"Hash mismatch for unseeded bulk interval %d (idx %d) (%x expected // %x actual).",
+			BULK_INTERVALS[i], i, expected, actual);
 	}
 }
