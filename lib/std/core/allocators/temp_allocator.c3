@@ -1,4 +1,4 @@
-module std::core::mem::allocator @if(!env::POSIX || !$feature(VMEM_TEMP));
+module std::core::mem::allocator @if(!(env::POSIX || env::WIN32) || !$feature(VMEM_TEMP));
 import std::io, std::math;
 
 // This implements the temp allocator.
@@ -326,7 +326,7 @@ fn void*? TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz al
 	return &page.data[0];
 }
 
-module std::core::mem::allocator @if(env::POSIX && $feature(VMEM_TEMP));
+module std::core::mem::allocator @if((env::POSIX || env::WIN32) && $feature(VMEM_TEMP));
 import std::math;
 
 tlocal VmemOptions temp_allocator_default_options = {
