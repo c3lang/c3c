@@ -206,7 +206,7 @@ macro void? protect(Vmem* mem, usz after) @local
 		mem.memory.commit(page_start, page_len)!;
 		if (mem.options.protect_unused_pages || over_high_water)
 		{
-			mem.memory.set_access(page_start, page_len, READWRITE)!;
+			mem.memory.protect(page_start, page_len, READWRITE)!;
 		}
 		mem.last_page = page_after;
 	}
@@ -234,8 +234,8 @@ macro void unprotect(Vmem* mem, usz after) @local
 	{
 		usz start = page_after << shift;
 		usz len = (last_page - page_after) << shift;
-		if (mem.options.shrink_on_reset) (void)mem.memory.release(start, len);
-		if (mem.options.protect_unused_pages) (void)mem.memory.set_access(start, len, PROTECTED);
+		if (mem.options.protect_unused_pages) (void)mem.memory.protect(start, len, PROTECTED);
+		if (mem.options.shrink_on_reset) (void)mem.memory.decommit(start, len);
 	}
 	mem.allocated = after;
 }

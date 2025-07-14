@@ -39,7 +39,19 @@ fn VirtualMemory? virtual_alloc(usz size, VirtualMemoryAccess access)
 	}
 }
 
-macro void? VirtualMemory.commit(self, usz offset, usz len) {}
+<*
+ @param offset : "Starting from what offset to commit"
+ @param len : "To what len to commit"
+ @require offset < self.size : "Offset out of range"
+ @require offset + len < self.size : "Length out of range"
+ @require offset == 0 || math::is_power_of_2(offset) : "Offset should be a power of 2"
+ @require math::is_power_of_2(len) : "Length should be a multiple of the page size"
+ @return? VMEM_UPDATE_FAILED, VMEM_ACCESS_NOT_ALLOWED, VMEM_PAGE_NOT_ALIGNED, VMEM_OVERFLOW, VMEM_UNKNOWN_ERROR
+*>
+macro void? VirtualMemory.commit(self, usz offset, usz len)
+{
+	return self.protect(offset, len, READWRITE);
+}
 
 <*
  @param offset : "Starting from what offset to update"
@@ -51,7 +63,7 @@ macro void? VirtualMemory.commit(self, usz offset, usz len) {}
  @require math::is_power_of_2(len) : "Length should be a multiple of the page size"
  @return? VMEM_ACCESS_NOT_ALLOWED, VMEM_PAGE_NOT_ALIGNED, VMEM_OVERFLOW, VMEM_UNKNOWN_ERROR
 *>
-fn void? VirtualMemory.set_access(self, usz offset, usz len, VirtualMemoryAccess access)
+fn void? VirtualMemory.protect(self, usz offset, usz len, VirtualMemoryAccess access)
 {
 	if (posix::mprotect(self.ptr + offset, len, access.posix_val))
 	{
@@ -75,7 +87,7 @@ fn void? VirtualMemory.set_access(self, usz offset, usz len, VirtualMemoryAccess
  @require math::is_power_of_2(len) : "Length should be a multiple of the page size"
  @return? VMEM_UPDATE_FAILED
 *>
-fn void? VirtualMemory.release(self, usz offset, usz len)
+fn void? VirtualMemory.decommit(self, usz offset, usz len)
 {
 	if (posix::madvise(self.ptr + offset, len, posix::MADV_DONTNEED)) return VMEM_UPDATE_FAILED?;
 }
@@ -142,7 +154,7 @@ macro void? VirtualMemory.commit(self, usz offset, usz len)
  @require math::is_power_of_2(len) : "Length should be a multiple of the page size"
  @return? VMEM_UPDATE_FAILED
 *>
-macro void? VirtualMemory.set_access(self, usz offset, usz len, VirtualMemoryAccess access)
+macro void? VirtualMemory.protect(self, usz offset, usz len, VirtualMemoryAccess access)
 {
 	Win32_Protect old;
 	if (!win32::virtualProtect(self.ptr + offset, len, access.win32_val, &old))
@@ -152,15 +164,15 @@ macro void? VirtualMemory.set_access(self, usz offset, usz len, VirtualMemoryAcc
 }
 
 <*
- @param offset : "Starting from what offset to release"
- @param len : "To what len to release"
+ @param offset : "Starting from what offset to decommit"
+ @param len : "To what len to decommit"
  @require offset < self.size : "Offset out of range"
  @require offset + len < self.size : "Length out of range"
  @require offset == 0 || math::is_power_of_2(offset) : "Offset should be a power of 2"
  @require math::is_power_of_2(len) : "Length should be a multiple of the page size"
  @return? VMEM_UPDATE_FAILED
 *>
-fn void? VirtualMemory.release(self, usz offset, usz len)
+fn void? VirtualMemory.decommit(self, usz offset, usz len)
 {
 	if (!win32::virtualFree(self.ptr + offset, len, MEM_DECOMMIT)) return VMEM_UPDATE_FAILED?;
 }
