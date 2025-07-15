@@ -318,6 +318,25 @@ fn void? NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
 	return timedwait(cond, mtx, (uint)ms) @inline;
 }
 
+<*
+ @require mtx.initialized : "Mutex was not initialized"
+*>
+fn void? NativeConditionVariable.wait_for(&cond, NativeMutex* mtx, Duration duration) @inline
+{
+  if (duration < 0) return thread::WAIT_TIMEOUT?;
+	long ms = math::min(duration.to_ms(), uint.max);
+	return timedwait(cond, mtx, (uint)ms) @inline;
+}
+
+<*
+ @require mtx.initialized : "Mutex was not initialized"
+*>
+fn void? NativeConditionVariable.wait_until(&cond, NativeMutex* mtx, Time time) @inline
+{
+	Duration duration = time - time::now();
+	return cond.wait_for(mtx, duration);
+}
+
 fn void? NativeThread.create(&thread, ThreadFn func, void* args)
 {
 	if (!(*thread = (NativeThread)win32::createThread(null, 0, func, args, 0, null))) return thread::INIT_FAILED?;

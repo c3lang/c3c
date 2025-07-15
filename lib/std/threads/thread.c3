@@ -67,6 +67,14 @@ macro void? ConditionVariable.wait_timeout(&cond, Mutex* mutex, ulong ms)
 {
 	return NativeConditionVariable.wait_timeout((NativeConditionVariable*)cond, (NativeMutex*)mutex, ms);
 }
+macro void? ConditionVariable.wait_for(&cond, Mutex* mutex, Duration duration)
+{
+	return NativeConditionVariable.wait_for((NativeConditionVariable*)cond, (NativeMutex*)mutex, duration);
+}
+macro void? ConditionVariable.wait_until(&cond, Mutex* mutex, Time time)
+{
+	return NativeConditionVariable.wait_until((NativeConditionVariable*)cond, (NativeMutex*)mutex, time);
+}
 
 <*
  Create and start a thread.

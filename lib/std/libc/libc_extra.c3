@@ -24,3 +24,11 @@ fn TimeSpec Duration.to_timespec(self) @inline
 	Time_t sec = (Time_t)(self / time::SEC);
 	return { .s = sec, .ns = ns };
 }
+
+<*
+ Convert a timestamp to a timespec.
+*>
+fn TimeSpec Time.to_timespec(self) @inline
+{
+	return ((Duration)self).to_timespec();
+}

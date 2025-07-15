@@ -58,6 +58,7 @@
 - Added string::bformat.
 - Virtual memory library.
 - New virtual emory arena allocator.
+- Add `ConditionVariable.wait_until` and `ConditionVariable.wait_for`
 
 ## 0.7.3 Change list
 
