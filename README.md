@@ -280,10 +280,9 @@ See the `build-with-docker.sh` script for more information on other configurable
 3. Install LLVM 17+: `brew install llvm`
 4. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 5. Enter the C3C directory `cd c3c`.
-6. Create a build directory `mkdir build`
-7. Change directory to the build directory `cd build`
-8. Set up CMake build for debug: `cmake ..`
-9. Build: `cmake --build .`
+6. Set up CMake build for debug: `cmake -B build -S .`
+7. Build: `cmake --build build`
+8. Change directory to the build directory `cd build`
 
 #### Installing on Windows using Scoop
 
@@ -350,10 +349,9 @@ You should now have a `c3c` executable in `build-debug\Debug`.
 2. Install LLVM 18 `sudo apt-get install cmake git clang zlib1g zlib1g-dev libllvm18 llvm llvm-dev llvm-runtime liblld-dev liblld-18 libpolly-18-dev`
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 4. Enter the C3C directory `cd c3c`.
-5. Create a build directory `mkdir build`
-6. Change directory to the build directory `cd build`
-7. Set up CMake build: `cmake ..`
-8. Build: `cmake --build .`
+5. Set up CMake build: `cmake -B build -S .`
+6. Build: `cmake --build build`
+7. Change directory to the build directory `cd build`
 
 You should now have a `c3c` executable.
 
@@ -366,13 +364,12 @@ You can try it out by running some sample code: `./c3c compile ../resources/exam
 2. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
     - If you only need the latest commit, you may want to make a shallow clone instead: `git clone https://github.com/c3lang/c3c.git --depth=1`
 3. Enter the directory: `cd c3c`
-4. Create a build directory: `mkdir build`
-5. Enter the build directory: `cd build`
-6. Create the CMake build cache: `cmake ..`
-7. Build: `cmake --build .`
+4. Create the CMake build cache: `cmake -B build -S .`
+5. Build: `cmake --build build`
+6. Enter the build directory: `cd build`
 
 Your c3c executable should have compiled properly. You may want to test it: `./c3c compile ../resources/examples/hash.c3`  
-For a sytem-wide installation, run the following as root: `cmake --install .`
+For a system-wide installation, run the following as root: `cmake --install .`
 
 
 #### Compiling on Fedora
@@ -382,9 +379,9 @@ For a sytem-wide installation, run the following as root: `cmake --install .`
 3. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
     - If you only need the latest commit, you may want to make a shallow clone: `git clone https://github.com/c3lang/c3c.git --depth=1`
 4. Enter the C3C directory: `cd c3c`
-5. Create a build directory and navigate into it: `mkdir build && cd build`
-6. Create the CMake build cache. The Fedora repositories provide `.so` libraries for lld, so you need to set the C3_LINK_DYNAMIC flag: `cmake .. -DC3_LINK_DYNAMIC=1`
-7. Build the project: `cmake --build .`
+5. Create the CMake build cache. The Fedora repositories provide `.so` libraries for lld, so you need to set the C3_LINK_DYNAMIC flag: `cmake -B build -S . -DC3_LINK_DYNAMIC=1`
+6. Build the project: `cmake --build build`
+7. Enter the build directory: `cd build`
 
 The c3c binary should be created in the build directory. You can try it out by running some sample code: `./c3c compile ../resources/examples/hash.c3`
 
@@ -412,11 +409,10 @@ After compilation, the `c3c` binary will be located in the `build` directory. Yo
 2. Install or compile LLVM and LLD *libraries* (version 17+ or higher)
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 4. Enter the C3C directory `cd c3c`.
-5. Create a build directory `mkdir build`
-6. Change directory to the build directory `cd build`
-7. Set up CMake build for debug: `cmake ..`. At this point you may need to manually 
-provide the link path to the LLVM CMake directories, e.g. `cmake -DLLVM_DIR=/usr/local/opt/llvm/lib/cmake/llvm/ ..`
-8. Build: `cmake --build .`
+5. Set up CMake build for debug: `cmake -B build -S .`. At this point you may need to manually 
+provide the link path to the LLVM CMake directories, e.g. `cmake -DLLVM_DIR=/usr/local/opt/llvm/lib/cmake/llvm/ .`
+6. Build: `cmake --build build`
+7. Change directory to the build directory `cd build`
 
 *A note on compiling for Linux/Unix/MacOS: to be able to fetch vendor libraries
 libcurl is needed. The CMake script should detect it if it is available. Note that
