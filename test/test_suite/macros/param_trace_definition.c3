@@ -15,9 +15,9 @@ fn int main()
 
     char[] some_slice = "abcdefg";
 
-    char* ref = op - ((ctrl & 31) << 8) - 1;
+    char* ref = op - ((ctrl & 31) << 8) - 1; // #error: conversion requires an explicit cast
 
-    if (@unlikely_that_this_is_false(null < ref)) test(); // #error: conversion requires an explicit cast
+    if (@unlikely_that_this_is_false(null < ref)) test();
     test();
     return 0;
 }
