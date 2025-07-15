@@ -7352,7 +7352,7 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 		}
 
 		// 6. Convert to isz
-		if (!cast_implicit_binary(context, right, offset_type, failed_ref)) return true;
+		if (!cast_implicit_binary(context, right, offset_type, failed_ref)) return false;
 
 		if (left->expr_kind == EXPR_POINTER_OFFSET)
 		{

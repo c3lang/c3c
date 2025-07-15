@@ -52,6 +52,7 @@
 - Resize bug when resizing memory down in ArenaAllocator, DynamicArenaAllocator, BackedArenaAllocator.
 - Error message for missing arg incorrect for methods with zero args #2296.
 - Fix stringify of $vaexpr #2301.
+- Segfault when failing to cast subexpression to 'isz' in pointer subtraction #2305.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
