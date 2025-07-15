@@ -659,7 +659,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceSpan lhs_star
 	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
 	const char *end = c->lexer.lexing_start - 1;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-	if (inner->expr_kind == EXPR_HASH_IDENT)
+	if (inner->expr_kind == EXPR_HASH_IDENT || (inner->expr_kind == EXPR_CT_ARG && inner->ct_arg_expr.type == TOKEN_CT_VAEXPR))
 	{
 		Expr *expr = expr_new(EXPR_STRINGIFY, start_span);
 		expr->inner_expr = inner;

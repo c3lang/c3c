@@ -10591,18 +10591,31 @@ static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *ex
 {
 	Expr *inner = expr->inner_expr;
 	// Only hash ident style stringify reaches here.
-	ASSERT_SPAN(expr, inner->expr_kind == EXPR_HASH_IDENT);
 	while (true)
 	{
-		Decl *decl = sema_resolve_symbol(context, inner->ct_ident_expr.identifier, NULL, inner->span);
-		if (!decl) return false;
-		inner = decl->var.init_expr;
-		while (inner->expr_kind == EXPR_OTHER_CONTEXT)
+		switch (inner->expr_kind)
 		{
-			context = inner->expr_other_context.context;
-			inner = inner->expr_other_context.inner;
+			case EXPR_CT_ARG:
+			{
+				ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(inner->ct_arg_expr.arg), NULL), false);
+				inner = arg_expr;
+				continue;
+			}
+			case EXPR_OTHER_CONTEXT:
+				context = inner->expr_other_context.context;
+				inner = inner->expr_other_context.inner;
+				continue;
+			case EXPR_HASH_IDENT:
+			{
+				Decl *decl = sema_resolve_symbol(context, inner->ct_ident_expr.identifier, NULL, inner->span);
+				if (!decl) return false;
+				inner = decl->var.init_expr;
+				continue;
+			}
+			default:
+				break;
 		}
-		if (inner->expr_kind != EXPR_HASH_IDENT) break;
+		break;
 	}
 	const char *desc = span_to_string(inner->span);
 	if (!desc)
