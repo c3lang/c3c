@@ -213,3 +213,41 @@ fn void seeded_bulk_vectors_2()
 			BULK_INTERVALS[i], i, expected, actual);
 	}
 }
+
+
+const ulong[] EXPECTED_SWEEP = {
+	0x5cdcdaf25a774bdf, 0x1e5c3d2098586a17, 0x138664c4f409a6aa, 0x6936cf53c986deb1,
+	0x3417ed7d7a081094, 0xd38acf8461008782, 0xf19e49a8a7c77869, 0xb4c60ae1c52e8a13,
+	0xc6e7ceffa4af2605, 0xc219152657fcc7b9, 0x9562052479b8007c, 0xb4395e5aec193f02,
+	0x80d9987c7e56ca6f, 0x03a29a5f5d9918d3, 0x2d4988241df24218, 0x8d569336b00c6578,
+	0x1975540b1f4ed2bc, 0x7265c30b704afb6e, 0x173f6f524900ec6d, 0xcc86a82757407a99,
+	0xacc0654d841e5e31, 0x67345fcf0f031a01, 0x5914b9ebdc010c00, 0x1c61fe5bda86efb4,
+	0x6e133aa91b2d9218, 0x84357177a1c7df4e, 0x8cdd00e42ceeea38, 0x0fa84a74c35fd8f3,
+	0x9f33f6baf88e1b8b, 0xe3d86438fdc4bbb5, 0x9be24abc570ab17d, 0x2d76ab384b25e64d,
+	0xecdc96ef224dc58f, 0x62940f1aa710e4ee, 0xf45e451deff06f7b, 0x9250f7c75be78b2d,
+	0x600298c67b78935e, 0x35180e348bdd7e95, 0x101cf10a0c10c8cf, 0xea20c0ab77226b52,
+	0x1182f1b40f5e68b8, 0xf12820779d3a6eef, 0x34c21125302e30bd, 0x9a61527aa22e1000,
+	0x24a9c494a2cc820e, 0x56f3fc85980c2630, 0xeb260f799a9dab96, 0xddee1e0ca36342f9,
+	0x2249255270abe787, 0x588d83ead4d6085d, 0x8833170d2fdc30ce, 0x9ac09ffc9290461e,
+	0xabb332ab60963f6f, 0x9a5ae4156a1d7b76, 0x2466ca4ff4acf4a4, 0xde76c11cc56419ef,
+	0x619f641aa58485ea, 0x34d208b1da1e5684, 0xff4ab73c565450e2, 0xb09fdca3ec15641c,
+	0x4eaba3d39397930a, 0x1c5cad34c08a56bd, 0x182989a7334faf06, 0xefcc05ca09cde68e,
+	0xac04e3c6d5439ab5, 0xfeeee75b73596fe3, 0x1d35e0da61e6888a, 0x55c89cc84bbb5faf,
+	0x39981a0668198e8f, 0x17851ab16d9312ee, 0x0caec994194bd050, 0x90f47d9d7bfd3861,
+	0x3c45c729da026626, 0xf0ab0708bac2eefb, 0x6c6c15ce7b59daa9, 0xf47920556419e57b,
+	0x7d997797acc04e3a, 0x329c7665007f9d3f, 0x113774f05438d762, 0x4be67982859ac5f4,
+};
+
+fn void sweep()
+{
+	char[] input = { [0..EXPECTED_SWEEP.len] = 'z' };
+
+	foreach (i, expected : EXPECTED_SWEEP)
+	{
+		ulong actual = komi::hash(input[:i], 0x0abab1234321);
+
+		test::@check(actual == expected,
+			"Hash mismatch for seed 0x100 '%s' (%x expected // %x actual).",
+			(ZString)input, expected, actual);
+	}
+}

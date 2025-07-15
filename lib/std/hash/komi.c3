@@ -101,7 +101,7 @@ fn ulong hash(char[] data, ulong seed = 0)
 				seed5, 0xBE54_66CF_34E9_0C6C ^ seed5, 0xC0AC_29B7_C97C_50DD ^ seed5, 0x3F84_D5B5_B547_0917 ^ seed5,
 			};
 
-			// HASHLOOP64 - due to the way variables are updated here at different scopes, keep this unrolled
+			// HASHLOOP64
 			for (; data.len >= 64; data = data[64:^64])
 			{
 				$for var $x = 0; $x < 4; ++$x :
@@ -122,32 +122,14 @@ fn ulong hash(char[] data, ulong seed = 0)
 			seed5 = seeds[4] ^ seeds[5] ^ seeds[6] ^ seeds[7];
 		}
 
-		if (data.len >= 32)
+		for (; data.len >= 16; data = data[16:^16])
 		{
-			// HASH16
-			$for var $x = 0; $x < 2; ++$x:
-				@komimul(
-					@unaligned_load(*(ulong*)&data[0 + ($x * 16)], 1) ^ seed1,
-					@unaligned_load(*(ulong*)&data[8 + ($x * 16)], 1) ^ seed5,
-					seed1, seed5
-				);
-				seed1 ^= seed5;
-			$endfor
-
-			data = data[32:^32];
-		}
-
-		if (data.len >= 16)
-		{
-			// HASH16
 			@komimul(
 				@unaligned_load(*(ulong*)&data[0], 1) ^ seed1,
 				@unaligned_load(*(ulong*)&data[8], 1) ^ seed5,
 				seed1, seed5
 			);
 			seed1 ^= seed5;
-
-			data = data[16:^16];
 		}
 
 		if (data.len < 8)
