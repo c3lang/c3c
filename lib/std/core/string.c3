@@ -622,12 +622,17 @@ fn usz ZString.char_len(str)
 
 fn usz ZString.len(self)
 {
-	usz len = 0;
-	char* ptr = (char*)self;
-	while (char c = ptr++[0]) len++;
+	usz len;
+	for (char* ptr = (char*)self; *ptr; ptr++) len++;
 	return len;
 }
 
+fn usz WString.len(self)
+{
+	usz len;
+	for (Char16* ptr = (Char16*)self; *ptr; ptr++) len++;
+	return len;
+}
 
 fn ZString String.zstr_copy(self, Allocator allocator)
 {
