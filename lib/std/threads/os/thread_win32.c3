@@ -324,7 +324,8 @@ fn void? NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
 fn void? NativeConditionVariable.wait_for(&cond, NativeMutex* mtx, Duration duration) @inline
 {
   if (duration < 0) return thread::WAIT_TIMEOUT?;
-	long ms = math::min(duration.to_ms(), uint.max);
+	long ms = duration.to_ms();
+	if (ms > uint.max) ms = uint.max;
 	return timedwait(cond, mtx, (uint)ms) @inline;
 }
 
