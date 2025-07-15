@@ -1492,6 +1492,7 @@ static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, 
 	return true;
 }
 
+#define RETURN_ERR_WITH_DEFINITION do { if (compiler.context.errors_found != errors) SEMA_NOTE(definition, "The definition is here."); return false; } while (0)
 
 static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param, Decl *definition, bool *optional_ref,
 								   bool *no_match_ref, bool macro, bool is_method_target)
@@ -1499,6 +1500,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 	VarDeclKind kind = param->var.kind;
 	Type *type = param->type;
 	// 16. Analyse a regular argument.
+	unsigned errors = compiler.context.errors_found;
 	switch (kind)
 	{
 		case VARDECL_PARAM:
@@ -1527,11 +1529,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 										   "passed as a parameter, you can pass a pointer to it though.",
 									  type_quoted_error_string(arg->type));
 			}
-			if (!sema_call_check_contract_param_match(context, param, arg))
-			{
-				SEMA_NOTE(definition, "The definition was here.");
-				return false;
-			}
+			if (!sema_call_check_contract_param_match(context, param, arg)) RETURN_ERR_WITH_DEFINITION;
 			if (!param->alignment)
 			{
 				ASSERT(macro && "Only in the macro case should we need to insert the alignment.");
@@ -1543,8 +1541,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 			{
 				if (!sema_analyse_expr_rhs(context, param->type, arg, true, NULL, false))
 				{
-					SEMA_NOTE(definition, "The definition is here.");
-					return false;
+					RETURN_ERR_WITH_DEFINITION;
 				}
 			}
 			// #foo
@@ -1566,8 +1563,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 			ASSERT(macro);
 			if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref, false))
 			{
-				SEMA_NOTE(definition, "The definition is here.");
-				return false;
+				RETURN_ERR_WITH_DEFINITION;
 			}
 			if (!sema_cast_const(arg) && !expr_is_runtime_const(arg))
 			{
@@ -1580,7 +1576,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 			break;
 		case VARDECL_PARAM_CT_TYPE:
 			// $Foo
-			if (!sema_analyse_expr_value(context, arg)) return false;
+			if (!sema_analyse_expr_value(context, arg)) RETURN_ERR_WITH_DEFINITION;
 
 			if (arg->expr_kind == EXPR_TYPEINFO)
 			{
@@ -7274,6 +7270,105 @@ static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Exp
 	return true;
 
 }
+
+INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right, CanonicalType *left_type, Type *cast_to_iptr, bool *failed_ref)
+{
+	Type *right_type = type_no_optional(right->type)->canonical;
+	bool left_is_ptr_vector = left_type->type_kind != TYPE_POINTER;
+	ArraySize vec_len = left_is_ptr_vector ? left_type->array.len : 0;
+	// We restore the type to ensure distinct types are tested against each other.
+	left_type = type_no_optional(left->type)->canonical;
+
+	bool right_is_pointer_vector = type_is_pointer_vector(right_type);
+	bool right_is_pointer = right_is_pointer_vector || right_type->type_kind == TYPE_POINTER;
+
+	Type *offset_type = vec_len ? type_get_vector(type_isz, vec_len) : type_isz;
+
+	// 3. ptr - other pointer
+	if (right_is_pointer)
+	{
+		// Restore the type
+		right_type = type_no_optional(right->type)->canonical;
+
+		// 3a. Require that both types are the same.
+		sema_binary_unify_voidptr(left, right, &left_type, &right_type);
+		if (left_type != right_type)
+		{
+			CHECK_ON_DEFINED(failed_ref);
+			RETURN_SEMA_ERROR(expr, "'%s' - '%s' is not allowed. Subtracting pointers of different types is not allowed.",
+				type_to_error_string(left_type), type_to_error_string(right_type));
+		}
+
+		if (expr_both_const_foldable(left, right, BINARYOP_SUB))
+		{
+			expr_rewrite_const_int(expr, type_isz, (left->const_expr.ptr - right->const_expr.ptr) /
+			                                       type_size(left_type->pointer));
+			return true;
+		}
+		// 3b. Set the type
+		expr->type = offset_type;
+		return true;
+	}
+
+	right_type = right->type->canonical;
+
+	bool right_is_vector = right_type->type_kind == TYPE_VECTOR;
+	// 4. Check that the right hand side is an integer.
+	if (!type_flat_is_intlike(right_type))
+	{
+		CHECK_ON_DEFINED(failed_ref);
+		RETURN_SEMA_ERROR(expr, "Cannot subtract '%s' from '%s'", type_to_error_string(right_type),
+		                  type_to_error_string(left_type));
+	}
+
+	// 5. Make sure that the integer does not exceed isz in size.
+	ArraySize max_size = right_is_vector ? type_size(offset_type) : type_size(type_isz);
+	if (type_size(right_type) > max_size)
+	{
+		CHECK_ON_DEFINED(failed_ref);
+		RETURN_SEMA_ERROR(expr, "Cannot subtract %s from a %s, you need to add an explicit a narrowing cast to %s.",
+		                  type_quoted_error_string(right->type),
+		                  left_is_ptr_vector ? "pointer vector" : "pointer",
+		                  type_quoted_error_string(right_is_vector ? offset_type : type_isz));
+	}
+
+	// 6. Convert to isz
+	if (!cast_implicit_binary(context, right, offset_type, failed_ref)) return false;
+
+	if (left->expr_kind == EXPR_POINTER_OFFSET)
+	{
+		SourceSpan old_span = expr->span;
+		*expr = *left;
+		left->span = old_span;
+		left->expr_kind = EXPR_BINARY;
+		left->binary_expr = (ExprBinary){
+			.operator = BINARYOP_SUB,
+			.left = expr->pointer_offset_expr.offset,
+			.right = exprid(right)
+		};
+		left->resolve_status = RESOLVE_NOT_DONE;
+		if (!sema_analyse_expr(context, left)) return false;
+		expr->pointer_offset_expr.offset = exprid(left);
+	}
+	else
+	{
+		expr->expr_kind = EXPR_POINTER_OFFSET;
+		expr->pointer_offset_expr.ptr = exprid(left);
+		expr->pointer_offset_expr.offset = exprid(expr_negate_expr(right));
+		expr->pointer_offset_expr.raw_offset = false;
+	}
+
+	expr->resolve_status = RESOLVE_NOT_DONE;
+	if (!sema_analyse_expr(context, expr)) return false;
+
+	if (cast_to_iptr)
+	{
+		expr->resolve_status = RESOLVE_DONE;
+		return cast_explicit(context, expr, cast_to_iptr);
+	}
+
+	return true;
+}
 /**
  * Analyse a - b
  * @return true if analysis succeeded
@@ -7292,101 +7387,11 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 
 	bool left_is_pointer_vector = type_is_pointer_vector(left_type);
 	bool left_is_pointer = left_is_pointer_vector || left_type->type_kind == TYPE_POINTER;
+
 	// 2. Handle the ptr - x and ptr - other_pointer
 	if (left_is_pointer)
 	{
-		ArraySize vec_len = left_is_pointer_vector ? left_type->array.len : 0;
-		// We restore the type to ensure distinct types are tested against each other.
-		left_type = type_no_optional(left->type)->canonical;
-
-		bool right_is_pointer_vector = type_is_pointer_vector(right_type);
-		bool right_is_pointer = right_is_pointer_vector || right_type->type_kind == TYPE_POINTER;
-
-		Type *offset_type = vec_len ? type_get_vector(type_isz, vec_len) : type_isz;
-
-		// 3. ptr - other pointer
-		if (right_is_pointer)
-		{
-
-			// Restore the type
-			right_type = type_no_optional(right->type)->canonical;
-
-			// 3a. Require that both types are the same.
-			sema_binary_unify_voidptr(left, right, &left_type, &right_type);
-			if (left_type != right_type)
-			{
-				if (failed_ref) {}
-				RETURN_SEMA_ERROR(expr, "'%s' - '%s' is not allowed. Subtracting pointers of different types is not allowed.", type_to_error_string(left_type), type_to_error_string(right_type));
-			}
-
-			if (expr_both_const_foldable(left, right, BINARYOP_SUB))
-			{
-				expr_rewrite_const_int(expr, type_isz, (left->const_expr.ptr - right->const_expr.ptr) /
-													   type_size(left_type->pointer));
-				return true;
-			}
-			// 3b. Set the type
-			expr->type = offset_type;
-			return true;
-		}
-
-		right_type = right->type->canonical;
-
-		bool right_is_vector = right_type->type_kind == TYPE_VECTOR;
-		// 4. Check that the right hand side is an integer.
-		if (!type_flat_is_intlike(right_type))
-		{
-			CHECK_ON_DEFINED(failed_ref);
-			RETURN_SEMA_ERROR(expr, "Cannot subtract '%s' from '%s'", type_to_error_string(right_type), type_to_error_string(left_type));
-		}
-
-		// 5. Make sure that the integer does not exceed isz in size.
-		ArraySize max_size = right_is_vector ? type_size(offset_type) : type_size(type_isz);
-		if (type_size(right_type) > max_size)
-		{
-			CHECK_ON_DEFINED(failed_ref);
-			RETURN_SEMA_ERROR(expr, "Cannot subtract %s from a %s, you need to add an explicit a narrowing cast to %s.",
-							  type_quoted_error_string(right->type),
-							  left_is_pointer_vector ? "pointer vector" : "pointer",
-							  type_quoted_error_string(right_is_vector ? offset_type : type_isz));
-		}
-
-		// 6. Convert to isz
-		if (!cast_implicit_binary(context, right, offset_type, failed_ref)) return false;
-
-		if (left->expr_kind == EXPR_POINTER_OFFSET)
-		{
-			SourceSpan old_span = expr->span;
-			*expr = *left;
-			left->span = old_span;
-			left->expr_kind = EXPR_BINARY;
-			left->binary_expr = (ExprBinary){
-					.operator = BINARYOP_SUB,
-					.left = expr->pointer_offset_expr.offset,
-					.right = exprid(right)
-			};
-			left->resolve_status = RESOLVE_NOT_DONE;
-			if (!sema_analyse_expr(context, left)) return false;
-			expr->pointer_offset_expr.offset = exprid(left);
-		}
-		else
-		{
-			expr->expr_kind = EXPR_POINTER_OFFSET;
-			expr->pointer_offset_expr.ptr = exprid(left);
-			expr->pointer_offset_expr.offset = exprid(expr_negate_expr(right));
-			expr->pointer_offset_expr.raw_offset = false;
-		}
-
-		expr->resolve_status = RESOLVE_NOT_DONE;
-		if (!sema_analyse_expr(context, expr)) return false;
-
-		if (cast_to_iptr)
-		{
-			expr->resolve_status = RESOLVE_DONE;
-			return cast_explicit(context, expr, cast_to_iptr);
-		}
-
-		return true;
+		return sema_expr_analyse_ptr_sub(context, expr, left, right, left_type, cast_to_iptr, failed_ref);
 	}
 
 	// Enum - Enum and Enum - int
@@ -7394,8 +7399,6 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 	{
 		return sema_expr_analyse_enum_add_sub(context, expr, left, right, failed_ref);
 	}
-	left_type = type_no_optional(left->type)->canonical;
-	right_type = type_no_optional(right->type)->canonical;
 
 	// 7. Attempt arithmetic promotion, to promote both to a common type.
 	OperatorOverload overload = OVERLOAD_MINUS;
@@ -7404,18 +7407,13 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 	{
 		return false;
 	}
+
 	if (!overload) return true;
-
-	left_type = left->type->canonical;
-
-	expr->type = type_add_optional(left->type, IS_OPTIONAL(right));
 
 	// 8. Handle constant folding.
 	if (expr_both_const_foldable(left, right, BINARYOP_SUB))
 	{
-		Type *type = expr->type;
 		expr_replace(expr, left);
-		expr->type = type;
 		switch (left->const_expr.const_kind)
 		{
 			case CONST_INTEGER:
@@ -7429,10 +7427,74 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 		}
 	}
 
+	expr_binary_unify_failability(expr, left, right);
+
 	return true;
 
 }
 
+INLINE bool sema_expr_analyse_ptr_add(SemaContext *context, Expr *expr, Expr *left, Expr *right, CanonicalType *left_type, CanonicalType *right_type, Type *cast_to_iptr, bool *failed_ref)
+{
+	bool left_is_vec = left_type->type_kind == TYPE_VECTOR;
+	bool right_is_vec = right_type->type_kind == TYPE_VECTOR;
+	ArraySize vec_len = left_is_vec ? left_type->array.len : 0;
+
+	// 3a. Check that the other side is an integer of some sort.
+	if (!type_is_integer(right_type))
+	{
+		if (!left_is_vec || !right_is_vec || !type_is_integer(right_type->array.base))
+		{
+			CHECK_ON_DEFINED(failed_ref);
+			RETURN_SEMA_ERROR(right, "A value of type '%s' cannot be added to '%s', an integer was expected here.",
+			                  type_to_error_string(right->type),
+			                  type_to_error_string(left->type));
+		}
+	}
+
+	// 3b. Cast it to usz or isz depending on underlying type.
+	//     Either is fine, but it looks a bit nicer if we actually do this and keep the sign.
+	bool success = cast_explicit(context, right, left_is_vec ? type_get_vector(type_isz, vec_len) : type_isz);
+
+	// No need to check the cast we just ensured it was an integer.
+	ASSERT_SPAN(expr, success && "This should always work");
+	(void) success;
+
+	// Folding offset.
+	if (left->expr_kind == EXPR_POINTER_OFFSET)
+	{
+		SourceSpan old_span = expr->span;
+		*expr = *left;
+		left->span = old_span;
+		left->expr_kind = EXPR_BINARY;
+		left->binary_expr = (ExprBinary){
+			.operator = BINARYOP_ADD,
+			.left = expr->pointer_offset_expr.offset,
+			.right = exprid(right)
+		};
+		left->resolve_status = RESOLVE_NOT_DONE;
+		if (!sema_analyse_expr(context, left)) return false;
+		expr->pointer_offset_expr.offset = exprid(left);
+	}
+	else
+	{
+		// Set the type and other properties.
+		expr->type = left->type;
+		expr->pointer_offset_expr.raw_offset = false;
+		expr->pointer_offset_expr.ptr = exprid(left);
+		expr->pointer_offset_expr.offset = exprid(right);
+		expr->expr_kind = EXPR_POINTER_OFFSET;
+	}
+
+	expr->resolve_status = RESOLVE_NOT_DONE;
+	if (!sema_analyse_expr(context, expr)) return false;
+
+	if (cast_to_iptr)
+	{
+		expr->resolve_status = RESOLVE_DONE;
+		return cast_explicit(context, expr, cast_to_iptr);
+	}
+	return true;
+}
 /**
  * Analyse a + b
  * @return true if it succeeds.
@@ -7470,64 +7532,7 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 	//    so check if we want to do the normal pointer add special handling.
 	if (left_is_pointer)
 	{
-		bool left_is_vec = left_type->type_kind == TYPE_VECTOR;
-		bool right_is_vec = right_type->type_kind == TYPE_VECTOR;
-		ArraySize vec_len = left_is_vec ? left_type->array.len : 0;
-		// 3a. Check that the other side is an integer of some sort.
-		if (!type_is_integer(right_type))
-		{
-			if (!left_is_vec || !right_is_vec || !type_is_integer(right_type->array.base))
-			{
-				CHECK_ON_DEFINED(failed_ref);
-				RETURN_SEMA_ERROR(right, "A value of type '%s' cannot be added to '%s', an integer was expected here.",
-								  type_to_error_string(right->type),
-								  type_to_error_string(left->type));
-			}
-		}
-
-		// 3b. Cast it to usz or isz depending on underlying type.
-		//     Either is fine, but it looks a bit nicer if we actually do this and keep the sign.
-		bool success = cast_explicit(context, right, left_is_vec ? type_get_vector(type_isz, vec_len) : type_isz);
-
-		// No need to check the cast we just ensured it was an integer.
-		ASSERT_SPAN(expr, success && "This should always work");
-		(void)success;
-
-		// Folding offset.
-		if (left->expr_kind == EXPR_POINTER_OFFSET)
-		{
-			SourceSpan old_span = expr->span;
-			*expr = *left;
-			left->span = old_span;
-			left->expr_kind = EXPR_BINARY;
-			left->binary_expr = (ExprBinary){
-					.operator = BINARYOP_ADD,
-					.left = expr->pointer_offset_expr.offset,
-					.right = exprid(right)
-			};
-			left->resolve_status = RESOLVE_NOT_DONE;
-			if (!sema_analyse_expr(context, left)) return false;
-			expr->pointer_offset_expr.offset = exprid(left);
-		}
-		else
-		{
-			// Set the type and other properties.
-			expr->type = left->type;
-			expr->pointer_offset_expr.raw_offset = false;
-			expr->pointer_offset_expr.ptr = exprid(left);
-			expr->pointer_offset_expr.offset = exprid(right);
-			expr->expr_kind = EXPR_POINTER_OFFSET;
-		}
-
-		expr->resolve_status = RESOLVE_NOT_DONE;
-		if (!sema_analyse_expr(context, expr)) return false;
-
-		if (cast_to_iptr)
-		{
-			expr->resolve_status = RESOLVE_DONE;
-			return cast_explicit(context, expr, cast_to_iptr);
-		}
-		return true;
+		return sema_expr_analyse_ptr_add(context, expr, left, right, left_type, right_type, cast_to_iptr, failed_ref);
 	}
 
 	if (left_type->type_kind == TYPE_ENUM || right_type->type_kind == TYPE_ENUM)
