@@ -91,83 +91,78 @@ fn ulong hash(char[] data, ulong seed = 0)
 			r1h = @unaligned_load(*(ulong*)&data[16], 1) ^ seed1;
 			r2h = (((@unaligned_load(*(ulong*)&data[^8], 1) >> 8) | ((ulong)1 << 56)) >> (((int)(data.len * 8) ^ 248))) ^ seed5;
 		}
-
-		// HASHFIN
-		@komimul(r1h, r2h, seed1, seed5);
-		seed1 ^= seed5;
-		@komimul(seed1, seed5, seed1, seed5);
-		seed1 ^= seed5;
-		return seed1;
-	}
-	else if (data.len >= 64)
-	{
-		ulong[8] seeds = {
-			seed1, 0x1319_8A2E_0370_7344 ^ seed1, 0xA409_3822_299F_31D0 ^ seed1, 0x082E_FA98_EC4E_6C89 ^ seed1,
-			seed5, 0xBE54_66CF_34E9_0C6C ^ seed5, 0xC0AC_29B7_C97C_50DD ^ seed5, 0x3F84_D5B5_B547_0917 ^ seed5,
-		};
-
-		// HASHLOOP64 - due to the way variables are updated here at different scopes, keep this unrolled
-		for (; data.len >= 64; data = data[64:^64])
-		{
-			$for var $x = 0; $x < 4; ++$x :
-				@komimul(
-					@unaligned_load(*(ulong*)&data[0 + ($x * 8)], 1) ^ seeds[$x],
-					@unaligned_load(*(ulong*)&data[32 + ($x * 8)], 1) ^ seeds[4 + $x],
-					seeds[$x], seeds[4 + $x]
-				);
-			$endfor
-
-			seeds[3] ^= seeds[6];
-			seeds[0] ^= seeds[7];
-			seeds[2] ^= seeds[5];
-			seeds[1] ^= seeds[4];
-		}
-
-		seed1 = seeds[0] ^ seeds[1] ^ seeds[2] ^ seeds[3];
-		seed5 = seeds[4] ^ seeds[5] ^ seeds[6] ^ seeds[7];
-	}
-
-	// Epilogue. Not splitting this out to another function.
-	if (data.len >= 32)
-	{
-		// HASH16
-		$for var $x = 0; $x < 2; ++$x:
-			@komimul(
-				@unaligned_load(*(ulong*)&data[0 + ($x * 16)], 1) ^ seed1,
-				@unaligned_load(*(ulong*)&data[8 + ($x * 16)], 1) ^ seed5,
-				seed1, seed5
-			);
-			seed1 ^= seed5;
-		$endfor
-
-		data = data[32:^32];
-	}
-
-	if (data.len >= 16)
-	{
-		// HASH16
-		@komimul(
-			@unaligned_load(*(ulong*)&data[0], 1) ^ seed1,
-			@unaligned_load(*(ulong*)&data[8], 1) ^ seed5,
-			seed1, seed5
-		);
-		seed1 ^= seed5;
-
-		data = data[16:^16];
-	}
-
-	if (data.len < 8)
-	{
-		// NOTE: This is translated from the original code. It grabs the last ulong off the buffer even though the
-		//        data slice is less than 8 bytes. This is possible because this branch only occurs in a loop where
-		//        the original data slice length is >= 32.
-		r1h = (((@unaligned_load(*(ulong*)(data.ptr + data.len - 8), 1) >> 8) | ((ulong)1 << 56)) >> ((data.len * 8) ^ 0x38)) ^ seed1;
-		r2h = seed5;
 	}
 	else
 	{
-		r1h = @unaligned_load(*(ulong*)data.ptr, 1) ^ seed1;
-		r2h = (((@unaligned_load(*(ulong*)&data[^8], 1) >> 8) | ((ulong)1 << 56)) >> ((data.len * 8) ^ 0x78)) ^ seed5;
+		if (data.len >= 64)
+		{
+			ulong[8] seeds = {
+				seed1, 0x1319_8A2E_0370_7344 ^ seed1, 0xA409_3822_299F_31D0 ^ seed1, 0x082E_FA98_EC4E_6C89 ^ seed1,
+				seed5, 0xBE54_66CF_34E9_0C6C ^ seed5, 0xC0AC_29B7_C97C_50DD ^ seed5, 0x3F84_D5B5_B547_0917 ^ seed5,
+			};
+
+			// HASHLOOP64 - due to the way variables are updated here at different scopes, keep this unrolled
+			for (; data.len >= 64; data = data[64:^64])
+			{
+				$for var $x = 0; $x < 4; ++$x :
+					@komimul(
+						@unaligned_load(*(ulong*)&data[0 + ($x * 8)], 1) ^ seeds[$x],
+						@unaligned_load(*(ulong*)&data[32 + ($x * 8)], 1) ^ seeds[4 + $x],
+						seeds[$x], seeds[4 + $x]
+					);
+				$endfor
+
+				seeds[3] ^= seeds[6];
+				seeds[0] ^= seeds[7];
+				seeds[2] ^= seeds[5];
+				seeds[1] ^= seeds[4];
+			}
+
+			seed1 = seeds[0] ^ seeds[1] ^ seeds[2] ^ seeds[3];
+			seed5 = seeds[4] ^ seeds[5] ^ seeds[6] ^ seeds[7];
+		}
+
+		if (data.len >= 32)
+		{
+			// HASH16
+			$for var $x = 0; $x < 2; ++$x:
+				@komimul(
+					@unaligned_load(*(ulong*)&data[0 + ($x * 16)], 1) ^ seed1,
+					@unaligned_load(*(ulong*)&data[8 + ($x * 16)], 1) ^ seed5,
+					seed1, seed5
+				);
+				seed1 ^= seed5;
+			$endfor
+
+			data = data[32:^32];
+		}
+
+		if (data.len >= 16)
+		{
+			// HASH16
+			@komimul(
+				@unaligned_load(*(ulong*)&data[0], 1) ^ seed1,
+				@unaligned_load(*(ulong*)&data[8], 1) ^ seed5,
+				seed1, seed5
+			);
+			seed1 ^= seed5;
+
+			data = data[16:^16];
+		}
+
+		if (data.len < 8)
+		{
+			// NOTE: This is translated from the original code. It grabs the last ulong off the buffer even though the
+			//        data slice is less than 8 bytes. This is possible because this branch only occurs in a loop where
+			//        the original data slice length is >= 32.
+			r1h = (((@unaligned_load(*(ulong*)(data.ptr + data.len - 8), 1) >> 8) | ((ulong)1 << 56)) >> ((data.len * 8) ^ 0x38)) ^ seed1;
+			r2h = seed5;
+		}
+		else
+		{
+			r1h = @unaligned_load(*(ulong*)data.ptr, 1) ^ seed1;
+			r2h = (((@unaligned_load(*(ulong*)&data[^8], 1) >> 8) | ((ulong)1 << 56)) >> ((data.len * 8) ^ 0x78)) ^ seed5;
+		}
 	}
 
 	// HASHFIN
