@@ -24,7 +24,7 @@ static int get_executable_path_raw(char *buffer)
 	if (!_wfullpath(buffer2, buffer1, MAX_EXE_PATH)) error_exit("Failed to get the full module path.");
 	int length_ = (int)wcslen(buffer2);
 
-	length = WideCharToMultiByte(CP_UTF8, 0, buffer2, length_, buffer, MAX_EXE_PATH, NULL, NULL);
+	int length = WideCharToMultiByte(CP_UTF8, 0, buffer2, length_, buffer, MAX_EXE_PATH, NULL, NULL);
 	if (!length) error_exit("Failed to convert module path.");
 	return length;
 }
