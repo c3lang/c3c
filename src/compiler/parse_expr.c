@@ -50,12 +50,10 @@ bool parse_range(ParseContext *c, Range *range)
 	bool is_len_range = range->is_len = try_consume(c, TOKEN_COLON);
 	if (!is_len_range && !try_consume(c, TOKEN_DOTDOT))
 	{
-		// Otherwise this is not a range.
-		range->is_range = false;
+		// Otherwise this is a single element
+		range->range_type = RANGE_SINGLE_ELEMENT;
 		return true;
 	}
-	range->is_range = true;
-
 	// Is there an expression next?
 	range->end_from_end = try_consume(c, TOKEN_BIT_XOR);
 	if (range->end_from_end || parse_current_is_expr(c))
@@ -443,6 +441,11 @@ Expr *parse_vasplat(ParseContext *c)
 	if (try_consume(c, TOKEN_LBRACKET))
 	{
 		if (!parse_range(c, &expr->vasplat_expr)) return poisoned_expr;
+		if (expr->vasplat_expr.range_type == RANGE_SINGLE_ELEMENT)
+		{
+			PRINT_ERROR_AT(expr, "$vasplat expected a range.");
+			return poisoned_expr;
+		}
 		CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_expr);
 	}
 	RANGE_EXTEND_PREV(expr);
@@ -1052,7 +1055,7 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left, SourceSpan lhs_st
 	Range range = { .range_type = RANGE_DYNAMIC };
 	if (!parse_range(c, &range)) return poisoned_expr;
 	CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_expr);
-	if (!range.is_range)
+	if (range.range_type == RANGE_SINGLE_ELEMENT)
 	{
 		subs_expr->subscript_expr.index = (SubscriptIndex) {
 				.expr = range.start,

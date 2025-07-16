@@ -195,6 +195,8 @@ void copy_range(CopyStruct *c, Range *range)
 {
 	switch (range->range_type)
 	{
+		case RANGE_SINGLE_ELEMENT:
+			UNREACHABLE
 		case RANGE_CONST_LEN:
 		case RANGE_CONST_END:
 			MACRO_COPY_EXPRID(range->start);

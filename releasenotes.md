@@ -18,6 +18,7 @@
 - `$is_const` is deprecated in favour of `@is_const` based on `$defined`.
 - Multiline contract comments #2113
 - Removed the use of temp allocator in backtrace printing.
+- `env::AUTHORS` and `env::AUTHOR_EMAILS` added.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.

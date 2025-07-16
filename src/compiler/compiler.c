@@ -1489,7 +1489,22 @@ void compile()
 	setup_bool_define("THREAD_SANITIZER", compiler.build.feature.sanitize_thread);
 	setup_string_define("BUILD_HASH", GIT_HASH);
 	setup_string_define("BUILD_DATE", compiler_date_to_iso());
-
+	Expr *expr_names = expr_new(EXPR_CONST, INVALID_SPAN);
+	Expr *expr_emails = expr_new(EXPR_CONST, INVALID_SPAN);
+	expr_names->const_expr.const_kind = CONST_UNTYPED_LIST;
+	expr_emails->const_expr.const_kind = CONST_UNTYPED_LIST;
+	expr_names->type = type_untypedlist;
+	expr_emails->type = type_untypedlist;
+	expr_names->resolve_status = expr_names->resolve_status = RESOLVE_DONE;
+	FOREACH(AuthorEntry, entry, compiler.build.authors)
+	{
+		Expr *const_name = expr_new_const_string(INVALID_SPAN, entry.author); // NOLINT
+		Expr *const_email = expr_new_const_string(INVALID_SPAN, entry.email ? entry.email : ""); // NOLINT
+		vec_add(expr_names->const_expr.untyped_list, const_name);
+		vec_add(expr_emails->const_expr.untyped_list, const_email);
+	}
+	setup_define("AUTHORS", expr_names);
+	setup_define("AUTHOR_EMAILS", expr_emails);
 	type_init_cint();
 	compiler_init_time = bench_mark();
 

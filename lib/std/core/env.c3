@@ -198,6 +198,7 @@ macro bool os_is_posix() @const
 		return false;
 	$endswitch
 }
-
+const String[] AUTHORS = $$AUTHORS;
+const String[] AUTHOR_EMAILS = $$AUTHOR_EMAILS;
 const BUILTIN_EXPECT_IS_DISABLED = $feature(DISABLE_BUILTIN_EXPECT);
 const BUILTIN_PREFETCH_IS_DISABLED = $feature(DISABLE_BUILTIN_PREFETCH);

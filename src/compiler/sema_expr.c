@@ -1146,7 +1146,8 @@ static inline bool sema_identifier_find_possible_inferred(SemaContext *context, 
 
 static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, Expr *expr)
 {
-	ASSERT_SPAN(expr, expr && expr->unresolved_ident_expr.ident);
+	ASSERT(expr);
+	ASSERT_SPAN(expr, expr->unresolved_ident_expr.ident);
 	DEBUG_LOG("Resolving identifier '%s'", expr->unresolved_ident_expr.ident);
 
 	ASSERT_SPAN(expr, expr->resolve_status != RESOLVE_DONE);
@@ -6212,11 +6213,6 @@ static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions,
 	unsigned start_idx = 0;
 	if (start)
 	{
-		if (!range->is_range)
-		{
-			SEMA_ERROR(expr, "$vasplat expected a range.");
-			return NULL;
-		}
 		if (!sema_analyse_expr(context, start)) return NULL;
 		if (!expr_is_const_int(start))
 		{
