@@ -14,11 +14,11 @@
 #include <wchar.h>
 #include <windows.h>
 
-static int get_executable_path_raw(HMODULE module, char *buffer)
+static int get_executable_path_raw(char *buffer)
 {
 	wchar_t buffer1[MAX_EXE_PATH];
 	wchar_t buffer2[MAX_EXE_PATH];
-	DWORD size = GetModuleFileNameW(module, buffer1, MAX_EXE_PATH);
+	DWORD size = GetModuleFileNameW(NULL, buffer1, MAX_EXE_PATH);
 	if (!size) error_exit("Failed to get module path.");
 	if (size == MAX_EXE_PATH) error_exit("Module path too long");
 	if (!_wfullpath(buffer2, buffer1, MAX_EXE_PATH)) error_exit("Failed to get the full module path.");
@@ -42,7 +42,7 @@ static int get_executable_path_raw(char *out)
 	char *resolved = realpath(PROC_SELF_EXE, buffer);
 	if (!resolved) error_exit("Failed to retrieve executable path");
 	int length = (int)strlen(resolved);
-	if (length < MAX_EXE_PATH) error_exit("Executable path too long");
+	if (length >= MAX_EXE_PATH) error_exit("Executable path too long");
 	memcpy(out, resolved, length);
 	out[length] = 0;
 	return length;
