@@ -54,6 +54,7 @@
 - Fix stringify of $vaexpr #2301.
 - Segfault when failing to cast subexpression to 'isz' in pointer subtraction #2305.
 - Fix unexpected display of macro definition when passing a poisoned expression #2305.
+- Fix `Formatter.print` returning incorrect size.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
@@ -61,6 +62,7 @@
 - Added string::bformat.
 - Virtual memory library.
 - New virtual emory arena allocator.
+- Added `WString.len`.
 
 ## 0.7.3 Change list
 
