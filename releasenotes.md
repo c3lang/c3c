@@ -57,6 +57,7 @@
 - Fix stringify of $vaexpr #2301.
 - Segfault when failing to cast subexpression to 'isz' in pointer subtraction #2305.
 - Fix unexpected display of macro definition when passing a poisoned expression #2305.
+- `@links` on macros would not be added to calling functions.
 
 ### Stdlib changes
 - Improve contract for readline. #2280

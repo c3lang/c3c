@@ -862,13 +862,17 @@ static ResolvedAttrData *copy_attrs_resolved(CopyStruct *c, ResolvedAttrData *da
 {
 	if (!data) return NULL;
 	ResolvedAttrData *copy = MALLOCS(ResolvedAttrData);
+	const char **new_links = NULL;
+	FOREACH(const char *, link, data->links) vec_add(new_links, link);
 	*copy = (ResolvedAttrData) {
 			.tags = copy_attributes(c, data->tags),
 			.deprecated = data->deprecated,
-			.links = data->links,
+			.links = new_links,
 			.section = data->section,
 			.wasm_module = data->wasm_module
 	};
+	const char **new = NULL;
+
 	return copy;
 }
 
