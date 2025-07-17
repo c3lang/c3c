@@ -1496,7 +1496,7 @@ void compile()
 	expr_emails->const_expr.const_kind = CONST_UNTYPED_LIST;
 	expr_names->type = type_untypedlist;
 	expr_emails->type = type_untypedlist;
-	expr_names->resolve_status = expr_names->resolve_status = RESOLVE_DONE;
+	expr_names->resolve_status = expr_emails->resolve_status = RESOLVE_DONE;
 	FOREACH(AuthorEntry, entry, compiler.build.authors)
 	{
 		Expr *const_name = expr_new_const_string(INVALID_SPAN, entry.author); // NOLINT
