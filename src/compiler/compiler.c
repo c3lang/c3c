@@ -1473,6 +1473,7 @@ void compile()
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)compiler.build.optsize, type_int);
 	setup_bool_define("COMPILER_SAFE_MODE", safe_mode_enabled());
 	setup_bool_define("DEBUG_SYMBOLS", compiler.build.debug_info == DEBUG_INFO_FULL);
+	setup_bool_define("PANIC_MSG", compiler.build.feature.panic_level != PANIC_OFF);
 	setup_bool_define("BACKTRACE", compiler.build.show_backtrace != SHOW_BACKTRACE_OFF);
 #if LLVM_AVAILABLE
     setup_int_define("LLVM_VERSION", llvm_version_major, type_int);

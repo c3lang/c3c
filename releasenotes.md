@@ -19,6 +19,8 @@
 - Multiline contract comments #2113
 - Removed the use of temp allocator in backtrace printing.
 - `env::AUTHORS` and `env::AUTHOR_EMAILS` added.
+- Suppress codegen of panic printing with when panic messages are set to "off".
+- Implicit linking of libc math when libc math functions are used.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
