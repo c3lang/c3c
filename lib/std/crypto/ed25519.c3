@@ -15,7 +15,10 @@ alias Signature = char[2 * PublicKey.len];
  @param [in] private_key : "32 bytes of cryptographically secure random data"
  @require private_key.len == PrivateKey.len
 *>
-fn PublicKey public_keygen(char[] private_key) => pack(&&unproject(&&BASE.mul(expand_private_key(private_key)[:FBaseInt.len])));
+fn PublicKey public_keygen(char[] private_key)
+{
+	return pack(&&unproject(&&(BASE * expand_private_key(private_key)[:FBaseInt.len])));
+}
 
 <*
  Sign a message.
@@ -40,7 +43,7 @@ fn Signature sign(char[] message, char[] private_key, char[] public_key)
 
 	FBaseInt k = from_bytes(&&sha.final());
 
-	r[:F25519Int.len] = pack(&&unproject(&&BASE.mul(k[..])))[..];
+	r[:F25519Int.len] = pack(&&unproject(&&(BASE * k[..])))[..];
 
 	sha.init();
 
@@ -51,7 +54,7 @@ fn Signature sign(char[] message, char[] private_key, char[] public_key)
 	FBaseInt z = from_bytes(&&sha.final());
 	FBaseInt e = from_bytes(exp[:FBaseInt.len]);
 
-	r[F25519Int.len..] = z.mul(&e).add(&k)[..];
+	r[F25519Int.len..] = (z * e + k)[..];
 
 	return r;
 }
@@ -69,7 +72,7 @@ fn bool verify(char[] message, char[] signature, char[] public_key)
 {
 	char ok = 1;
 
-	F25519Int lhs = pack(&&unproject(&&BASE.mul(signature[F25519Int.len..])));
+	F25519Int lhs = pack(&&unproject(&&(BASE * signature[F25519Int.len..])));
 
 	Unpacking unp_p = unpack_on_curve((F25519Int*)public_key);
 	Projection p = project(&unp_p.point);
@@ -84,13 +87,13 @@ fn bool verify(char[] message, char[] signature, char[] public_key)
 
 	FBaseInt z = from_bytes(&&sha.final());
 
-	p = p.mul(z[..]);
+	p = p * z[..];
 
 	Unpacking unp_q = unpack_on_curve((F25519Int*)signature[:F25519Int.len]);
 	Projection q = project(&unp_q.point);
 	ok &= unp_q.on_curve;
 
-	p = p.add(&q);
+	p = p + q;
 
 	F25519Int rhs = pack(&&unproject(&p));
 
@@ -100,18 +103,9 @@ fn bool verify(char[] message, char[] signature, char[] public_key)
 // Base point for Ed25519. Generate a subgroup of order 2^252+0x14def9dea2f79cd65812631a5cf5d3ed
 const Projection BASE @private =
 {
-	x"1ad5258f602d56c9
-	  b2a7259560c72c69
-	  5cdcd6fd31e2a4c0
-	  fe536ecdd3366921",
-	x"5866666666666666
-	  6666666666666666
-	  6666666666666666
-	  6666666666666666",
-	x"a3ddb7a5b38ade6d
-	  f5525177809ff020
-	  7de3ab648e4eea66
-	  65768bd70f5f8767",
+	x"1ad5258f602d56c9 b2a7259560c72c69 5cdcd6fd31e2a4c0 fe536ecdd3366921",
+	x"5866666666666666 6666666666666666 6666666666666666 6666666666666666",
+	x"a3ddb7a5b38ade6d f5525177809ff020 7de3ab648e4eea66 65768bd70f5f8767",
 	ONE
 };
 
@@ -171,7 +165,7 @@ const Projection NEUTRAL =
 
  @param [&in] p
 *>
-fn Projection project(Point* p) => {p.x, p.y, p.x.mul(&p.y), ONE};
+fn Projection project(Point* p) => { p.x, p.y, p.x * p.y, ONE };
 
 <*
  Convert projective to affine coordinates.
@@ -183,8 +177,8 @@ fn Point unproject(Projection* p)
 	Point r @noinit;
 
 	F25519Int inv = p.z.inv();
-	r.x = p.x.mul(&inv);
-	r.y = p.y.mul(&inv);
+	r.x = p.x * inv;
+	r.y = p.y * inv;
 
 	r.x.normalize();
 	r.y.normalize();
@@ -193,16 +187,10 @@ fn Point unproject(Projection* p)
 }
 
 // d parameter for edwards25519 : -121665/121666
-const F25519Int D = x"a3785913ca4deb75
-                      abd841414d0a7000
-                      98e879777940c78c
-                      73fe6f2bee6c0352";
+const F25519Int D = x"a3785913ca4deb75 abd841414d0a7000 98e879777940c78c 73fe6f2bee6c0352";
 
 // 2*d
-const F25519Int DD = x"59f1b226949bd6eb
-                       56b183829a14e000
-                       30d1f3eef2808e19
-                       e7fcdf56dcd90624";
+const F25519Int DD = x"59f1b226949bd6eb 56b183829a14e000 30d1f3eef2808e19 e7fcdf56dcd90624";
 
 <*
  Compress a point.
@@ -241,14 +229,14 @@ fn Unpacking unpack_on_curve(F25519Int* encoding)
 	p.y = *encoding;
 	p.y[^1] &= 0b01111111;
 
-	F25519Int y2 = p.y.mul(&p.y);
-	F25519Int x2 = D.mul(&y2).add(&ONE).inv().mul(&&y2.sub(&ONE));
+	F25519Int y2 = p.y * p.y;
+	F25519Int x2 = (D * y2 + ONE).inv() * (y2 - ONE);
 
 	F25519Int x = x2.sqrt();
 
-	p.x = f25519_select(&x, &&x.neg(), (x[0] ^ parity) & 1);
+	p.x = f25519_select(&x, &&-x, (x[0] ^ parity) & 1);
 
-	F25519Int _x2 = p.x.mul(&p.x);
+	F25519Int _x2 = p.x * p.x;
 
 	x2.normalize();
 	_x2.normalize();
@@ -256,28 +244,29 @@ fn Unpacking unpack_on_curve(F25519Int* encoding)
 	return {p, eq(&x2, &_x2)};
 }
 
+macro Projection Projection.@add(&s, Projection #p) @operator(+) => s.add(@addr(#p));
 <*
  Addition.
 
  @param [&in] s
 *>
-fn Projection Projection.add(&s, Projection* p)
+fn Projection Projection.add(&s, Projection* p) @operator(+)
 {
 	Projection r @noinit;
 
-	F25519Int a = s.y.sub(&s.x).mul(&&p.y.sub(&p.x));
-	F25519Int b = s.y.add(&s.x).mul(&&p.y.add(&p.x));
-	F25519Int c = s.t.mul(&DD).mul(&p.t);
-	F25519Int d = s.z.mul(&p.z).mul_s(2);
-	F25519Int e = b.sub(&a);
-	F25519Int f = d.sub(&c);
-	F25519Int g = d.add(&c);
-	F25519Int h = b.add(&a);
+	F25519Int a = (s.y - s.x) * (p.y - p.x);
+	F25519Int b = (s.y + s.x) * (p.y + p.x);
+	F25519Int c = s.t * DD * p.t;
+	F25519Int d = (s.z * p.z).mul_s(2);
+	F25519Int e = b - a;
+	F25519Int f = d - c;
+	F25519Int g = d + c;
+	F25519Int h = b + a;
 
-	r.x = e.mul(&f);
-	r.y = g.mul(&h);
-	r.t = e.mul(&h);
-	r.z = f.mul(&g);
+	r.x = e * f;
+	r.y = g * h;
+	r.t = e * h;
+	r.z = f * g;
 
 	return r;
 }
@@ -291,19 +280,19 @@ fn Projection Projection.twice(&s)
 {
 	Projection r @noinit;
 
-	F25519Int a = s.x.mul(&s.x);
-	F25519Int b = s.y.mul(&s.y);
-	F25519Int c = s.z.mul(&s.z).mul_s(2);
-	F25519Int d = s.x.add(&s.y);
-	F25519Int e = d.mul(&d).sub(&a).sub(&b);
-	F25519Int g = b.sub(&a);
-	F25519Int f = g.sub(&c);
-	F25519Int h = b.neg().sub(&a);
+	F25519Int a = s.x * s.x;
+	F25519Int b = s.y * s.y;
+	F25519Int c = (s.z * s.z).mul_s(2);
+	F25519Int d = s.x + s.y;
+	F25519Int e = d * d - a - b;
+	F25519Int g = b - a;
+	F25519Int f = g - c;
+	F25519Int h = -b - a;
 
-	r.x = e.mul(&f);
-	r.y = g.mul(&h);
-	r.t = e.mul(&h);
-	r.z = f.mul(&g);
+	r.x = e * f;
+	r.y = g * h;
+	r.t = e * h;
+	r.z = f * g;
 
 	return r;
 }
@@ -314,7 +303,7 @@ fn Projection Projection.twice(&s)
  @param [&in] s
  @param [in] n
 *>
-fn Projection Projection.mul(&s, char[] n)
+fn Projection Projection.mul(&s, char[] n) @operator(*)
 {
 	Projection r = NEUTRAL;
 
@@ -322,7 +311,7 @@ fn Projection Projection.mul(&s, char[] n)
 	{
 		r = r.twice();
 
-		Projection t = r.add(s);
+		Projection t = r + s;
 
 		char bit = n[i >> 3] >> (i & 7) & 1;
 		r.x = f25519_select(&r.x, &t.x, bit);
@@ -424,21 +413,23 @@ fn F25519Int f25519_select(F25519Int* zero, F25519Int* one, char condition)
 	return r;
 }
 
+macro F25519Int F25519Int.@add(&s, F25519Int #n) @operator(+) => s.add(@addr(#n));
+
 <*
  Addition.
 
  @param [&in] s
  @param [&in] n
 *>
-fn F25519Int F25519Int.add(&s, F25519Int* n)
+fn F25519Int F25519Int.add(&s, F25519Int* n) @operator(+)
 {
 	F25519Int r @noinit;
 
 	ushort c;
-	for (usz i; i < F25519Int.len; i++)
+	foreach (i, v : *s)
 	{
 		c >>= 8;
-		c += (*s)[i] + (*n)[i];
+		c += v + (*n)[i];
 		r[i] = (char)c;
 	}
 
@@ -447,13 +438,15 @@ fn F25519Int F25519Int.add(&s, F25519Int* n)
 	return r;
 }
 
+macro F25519Int F25519Int.@sub(&s, F25519Int #n) @operator(-) => s.sub(@addr(#n));
+
 <*
  Substraction.
 
  @param [&in] s
  @param [&in] n
 *>
-fn F25519Int F25519Int.sub(&s, F25519Int* n)
+fn F25519Int F25519Int.sub(&s, F25519Int* n) @operator(-)
 {
 	// Compute s+2*p-n instead of s-n to avoid underflow.
 	F25519Int r @noinit;
@@ -478,15 +471,15 @@ fn F25519Int F25519Int.sub(&s, F25519Int* n)
 
  @param [&in] s
 *>
-fn F25519Int F25519Int.neg(&s)
+fn F25519Int F25519Int.neg(&s) @operator(-)
 {
-	// Compute 2*p-s insead of -s to avoid underflow.
+	// Compute 2*p-s instead of -s to avoid underflow.
 	F25519Int r @noinit;
 
 	uint c = (char)~(2 * 19 - 1);
-	for (usz i; i + 1 < F25519Int.len; i++)
+	foreach (i, v : ((char*)s)[:F25519Int.len - 1])
 	{
-		c += 0b11111111_00000000 - (*s)[i];
+		c += 0b11111111_00000000 - v;
 		r[i] = (char)c;
 		c >>= 8;
 	}
@@ -498,18 +491,21 @@ fn F25519Int F25519Int.neg(&s)
 	return r;
 }
 
+
+macro F25519Int F25519Int.@mul(&s, F25519Int #n) @operator(*) => s.mul(@addr(#n));
+
 <*
  Multiplication.
 
  @param [&in] s
  @param [&in] n
 *>
-fn F25519Int F25519Int.mul(&s, F25519Int* n)
+fn F25519Int F25519Int.mul(&s, F25519Int* n) @operator(*)
 {
 	F25519Int r @noinit;
 
 	uint c;
-	for (usz i; i < F25519Int.len; i++)
+	for (usz i = 0; i < F25519Int.len; i++)
 	{
 		c >>= 8;
 		for (usz j; j <= i; j++) c += (*s)[j] * (*n)[i - j];
@@ -533,10 +529,10 @@ fn F25519Int F25519Int.mul_s(&s, uint n)
 	F25519Int r @noinit;
 
 	uint c;
-	for (usz i; i < F25519Int.len; i++)
+	foreach (i, v : *s)
 	{
 		c >>= 8;
-		c += (*s)[i] * n;
+		c += v * n;
 		r[i] = (char)c;
 	}
 
@@ -555,17 +551,13 @@ fn F25519Int F25519Int.inv(&s)
 	//Compute s^(p-2)
 	F25519Int r = *s;
 
-	for (usz i; i < 255 - 1 - 5; i++) r = r.mul(&r).mul(s);
+	for (usz i; i < 255 - 1 - 5; i++) r = r * r * *s;
 
-	r = r.mul(&r);
-
-	r = r.mul(&r).mul(s);
-
-	r = r.mul(&r);
-
-	r = r.mul(&r).mul(s);
-
-	r = r.mul(&r).mul(s);
+	r *= r;
+	r = r * r * s;
+	r *= r;
+	r = r * r * s;
+	r = r * r * s;
 
 	return r;
 }
@@ -579,11 +571,10 @@ fn F25519Int F25519Int.pow_2523(&s) @local
 {
 	F25519Int r = *s;
 
-	for (usz i; i < 252 - 1 - 2; i++) r = r.mul(&r).mul(s);
+	for (usz i; i < 252 - 1 - 2; i++) r = r * r * *s;
 
-	r = r.mul(&r);
-
-	r = r.mul(&r).mul(s);
+	r = r * r;
+	r = r * r * s;
 
 	return r;
 }
@@ -595,9 +586,10 @@ fn F25519Int F25519Int.pow_2523(&s) @local
 *>
 fn F25519Int F25519Int.sqrt(&s)
 {
-	F25519Int twice = s.mul_s(2); F25519Int pow = twice.pow_2523();
+	F25519Int twice = s.mul_s(2);
+	F25519Int pow = twice.pow_2523();
 
-	return twice.mul(&pow).mul(&pow).sub(&ONE).mul(s).mul(&pow);
+	return ((twice * pow * pow) - ONE) * s * pow;
 }
 
 
@@ -612,10 +604,7 @@ import std::math;
 typedef FBaseInt = inline char[32];
 
 // Order of the field : 2^252+0x14def9dea2f79cd65812631a5cf5d3ed
-const FBaseInt ORDER = x"edd3f55c1a631258
-                         d69cf7a2def9de14
-                         0000000000000000
-                         0000000000000010";
+const FBaseInt ORDER = x"edd3f55c1a631258 d69cf7a2def9de14 0000000000000000 0000000000000010";
 
 <*
  FBaseInterpret bytes as a normalized element.
@@ -635,13 +624,13 @@ fn FBaseInt from_bytes(char[] bytes)
 
 	if (mod)
 	{
-		r = r.shl(mod);
+		r <<= mod;
 		r[0] |= bytes[^bytec + 1] >> (8 - mod);
 	}
 
 	for (isz i = rem - 1; i >= 0; i--)
 	{
-		r = r.shl(1);
+		r <<= 1;
 		r[0] |= bytes[i >> 3] >> (i & 7) & 1;
 		r = r.sub_l(&ORDER);
 	}
@@ -664,13 +653,15 @@ fn FBaseInt fbase_select(FBaseInt* zero, FBaseInt* one, char condition)
 	return r;
 }
 
+macro FBaseInt FBaseInt.@add(&s, FBaseInt #n) @operator(+) => s.add(@addr(#n));
+
 <*
  Addition.
 
  @param [&in] s
  @param [&in] n
 *>
-fn FBaseInt FBaseInt.add(&s, FBaseInt* n)
+fn FBaseInt FBaseInt.add(&s, FBaseInt* n) @operator(+)
 {
 	FBaseInt r @noinit;
 
@@ -710,7 +701,7 @@ fn FBaseInt FBaseInt.sub_l(&s, FBaseInt* n)
 
  @param [&in] s
 *>
-fn FBaseInt FBaseInt.shl(&s, usz n)
+fn FBaseInt FBaseInt.shl(&s, usz n) @operator(<<)
 {
 	FBaseInt r @noinit;
 
@@ -725,20 +716,21 @@ fn FBaseInt FBaseInt.shl(&s, usz n)
 	return r;
 }
 
+macro FBaseInt FBaseInt.@mul(&s, FBaseInt #n) @operator(*) => s.mul(@addr(#n));
 <*
  Multiplication.
 
  @param [&in] s
  @param [&in] n
 *>
-fn FBaseInt FBaseInt.mul(&s, FBaseInt* n)
+fn FBaseInt FBaseInt.mul(&s, FBaseInt* n) @operator(*)
 {
 	FBaseInt r;
 
 	for (isz i = 252; i >= 0; i--)
 	{
-		r = r.shl(1).sub_l(&ORDER);
-		r = fbase_select(&r, &&r.add(s), (*n)[i >> 3] >> (i & 7) & 1);
+		r = (r << 1).sub_l(&ORDER);
+		r = fbase_select(&r, &&(r + s), (*n)[i >> 3] >> (i & 7) & 1);
 	}
 
 	return r;
