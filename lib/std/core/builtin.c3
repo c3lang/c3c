@@ -96,60 +96,53 @@ macro anycast(any v, $Type) @builtin
 	return ($Type*)v.ptr;
 }
 
-fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
+fn bool print_backtrace(String message, int backtraces_to_ignore) @if (env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
 {
-	Allocator t = allocator::current_temp;
-	TempAllocator* t2 = allocator::top_temp;
-	TempAllocator* new_t = allocator::new_temp_allocator(smem, 0x1000)!!;
-	allocator::current_temp = allocator::top_temp = new_t;
-	defer
-	{
-		allocator::current_temp = t;
-		allocator::top_temp = t2;
-		new_t.free();
-	}
 	void*[256] buffer;
 	void*[] backtraces = backtrace::capture_current(&buffer);
 	backtraces_to_ignore++;
-	BacktraceList? backtrace = backtrace::symbolize_backtrace(tmem, backtraces);
-	if (catch backtrace) return false;
-	if (backtrace.len() <= backtraces_to_ignore) return false;
-	io::eprint("\nERROR: '");
-	io::eprint(message);
-	io::eprintn("'");
-	foreach (i, &trace : backtrace)
+	@stack_mem(2048; Allocator mem)
 	{
-		if (i < backtraces_to_ignore) continue;
-		String inline_suffix = trace.is_inline ? " [inline]" : "";
-		if (trace.is_unknown())
+		BacktraceList? backtrace = backtrace::symbolize_backtrace(mem, backtraces);
+		if (catch backtrace) return false;
+		if (backtrace.len() <= backtraces_to_ignore) return false;
+		io::eprint("\nERROR: '");
+		io::eprint(message);
+		io::eprintn("'");
+		foreach (i, &trace : backtrace)
 		{
-			io::eprintfn("  in ???%s", inline_suffix);
-			continue;
+			if (i < backtraces_to_ignore) continue;
+			String inline_suffix = trace.is_inline ? " [inline]" : "";
+			if (trace.is_unknown())
+			{
+				io::eprintfn("  in ???%s", inline_suffix);
+				continue;
+			}
+			if (trace.has_file())
+			{
+				io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
+				continue;
+			}
+			io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
 		}
-		if (trace.has_file())
-		{
-			io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
-			continue;
-		}
-		io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
-	}
+	};
 	return true;
 
 }
 
 fn void default_panic(String message, String file, String function, uint line) @if(env::NATIVE_STACKTRACE)
 {
-	$if $defined(io::stderr):
-	if (!print_backtrace(message, 2))
-	{
-		io::eprintfn("\nERROR: '%s', in %s (%s:%d)", message, function, file, line);
-	}
+	$if $defined(io::stderr) && env::PANIC_MSG:
+		if (!print_backtrace(message, 2))
+		{
+			io::eprintfn("\nERROR: '%s', in %s (%s:%d)", message, function, file, line);
+		}
 	$endif
 	$$trap();
 
 }
 
-macro void abort(String string = "Unrecoverable error reached", ...) @builtin @noreturn
+macro void abort(String string = "Unrecoverable error reached", ...) @format(0) @builtin @noreturn
 {
 	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat);
 	$$trap();
@@ -157,20 +150,22 @@ macro void abort(String string = "Unrecoverable error reached", ...) @builtin @n
 
 bool in_panic @local = false;
 
-fn void default_panic(String message, String file, String function, uint line) @if(!env::NATIVE_STACKTRACE)
+fn void default_panic(String message, String file, String function, uint line) @if (!env::NATIVE_STACKTRACE)
 {
-	if (in_panic)
-	{
-		io::eprintn("Panic inside of panic.");
-		return;
-	}
-	in_panic = true;
-	$if $defined(io::stderr):
-	io::eprint("\nERROR: '");
-	io::eprint(message);
-	io::eprintfn("', in %s (%s:%d)", function, file, line);
+	$if $defined(io::stderr) && env::PANIC_MSG:
+		if (in_panic)
+		{
+			io::eprintn("Panic inside of panic.");
+			return;
+		}
+		in_panic = true;
+		$if $defined(io::stderr):
+		io::eprint("\nERROR: '");
+		io::eprint(message);
+		io::eprintfn("', in %s (%s:%d)", function, file, line);
+		$endif
+		in_panic = false;
 	$endif
-	in_panic = false;
 	$$trap();
 }
 
@@ -180,21 +175,23 @@ PanicFn panic = &default_panic;
 
 fn void panicf(String fmt, String file, String function, uint line, args...)
 {
-	if (in_panic)
-	{
-		io::eprint("Panic inside of panic: ");
-		io::eprintn(fmt);
-		return;
-	}
-	in_panic = true;
-	@stack_mem(512; Allocator allocator)
-	{
-		DString s;
-		s.init(allocator);
-		s.appendf(fmt, ...args);
-		in_panic = false;
-		panic(s.str_view(), file, function, line);
-	};
+	$if $defined(io::stderr) && env::PANIC_MSG:
+		if (in_panic)
+		{
+			io::eprint("Panic inside of panic: ");
+			io::eprintn(fmt);
+			return;
+		}
+		in_panic = true;
+		@stack_mem(512; Allocator allocator)
+		{
+			DString s;
+			s.init(allocator);
+			s.appendf(fmt, ...args);
+			in_panic = false;
+			panic(s.str_view(), file, function, line);
+		};
+	$endif
 }
 
 <*

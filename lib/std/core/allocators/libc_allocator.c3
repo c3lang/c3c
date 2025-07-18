@@ -8,11 +8,8 @@ import libc;
 <*
  The LibcAllocator is a wrapper around malloc to conform to the Allocator interface.
 *>
-typedef LibcAllocator (Allocator, Printable) = uptr;
+typedef LibcAllocator (Allocator) = uptr;
 const LibcAllocator LIBC_ALLOCATOR = {};
-
-fn String LibcAllocator.to_string(&self, Allocator allocator) @dynamic => "Libc allocator".copy(allocator);
-fn usz? LibcAllocator.to_format(&self, Formatter *format) @dynamic => format.print("Libc allocator");
 
 module std::core::mem::allocator @if(env::POSIX);
 import std::os;

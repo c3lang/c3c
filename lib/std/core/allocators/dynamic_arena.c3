@@ -117,7 +117,7 @@ fn void*? DynamicArenaAllocator.resize(&self, void* old_pointer, usz size, usz a
 		return old_pointer;
 	}
 	void* new_mem = self.acquire(size, NO_ZERO, alignment)!;
-	mem::copy(new_mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT);
+	mem::copy(new_mem, old_pointer, math::min(old_size, size), mem::DEFAULT_MEM_ALIGNMENT);
 	return new_mem;
 }
 

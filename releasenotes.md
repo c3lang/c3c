@@ -15,8 +15,15 @@
 - Formatting option "%h" now supports pointers.
 - Improve error on unsigned implicit conversion to signed.
 - Update error message for struct initialization #2286
+- Add SipHash family of keyed PRFs. #2287 
 - `$is_const` is deprecated in favour of `@is_const` based on `$defined`.
 - Multiline contract comments #2113
+- Removed the use of temp allocator in backtrace printing.
+- `env::AUTHORS` and `env::AUTHOR_EMAILS` added.
+- Suppress codegen of panic printing with when panic messages are set to "off".
+- Implicit linking of libc math when libc math functions are used.
+- Allow even smaller memory limits.
+- Check unaligned array access.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
@@ -48,11 +55,22 @@
 - `$foo[0] = ...` was incorrectly requiring that the assigned values were compile time constants.
 - "Inlined at" would sometimes show the current location.
 - Fixed bug splatting constants into constants.
+- Resize bug when resizing memory down in ArenaAllocator, DynamicArenaAllocator, BackedArenaAllocator.
+- Error message for missing arg incorrect for methods with zero args #2296.
+- Fix stringify of $vaexpr #2301.
+- Segfault when failing to cast subexpression to 'isz' in pointer subtraction #2305.
+- Fix unexpected display of macro definition when passing a poisoned expression #2305.
+- `@links` on macros would not be added to calling functions.
+- Fix `Formatter.print` returning incorrect size.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
 - Added Whirlpool hash.
 - Added Ed25519.
+- Added string::bformat.
+- Virtual memory library.
+- New virtual emory arena allocator.
+- Added `WString.len`.
 
 ## 0.7.3 Change list
 

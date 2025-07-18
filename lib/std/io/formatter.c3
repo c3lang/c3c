@@ -69,7 +69,6 @@ struct Formatter
 		PrintFlags flags;
 		uint width;
 		uint prec;
-		usz idx;
 		fault first_fault;
 	}
 }
@@ -571,5 +570,5 @@ fn usz? Formatter.print(&self, String str)
 		self.out_fn = &out_null_fn;
 	}
 	foreach (c : str) self.out(c)!;
-	return self.idx;
+	return str.len;
 }

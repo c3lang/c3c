@@ -375,14 +375,8 @@ static inline const char *lib_find(const char *exe_path, const char *rel_path)
 
 const char *find_rel_exe_dir(const char *dir)
 {
-	char *path = find_executable_path();
+	const char *path = find_executable_path();
 	INFO_LOG("Detected executable path at %s", path);
-	size_t strlen_path = strlen(path);
-	// Remove any last path slash
-	if (strlen_path > 1 && (path[strlen_path - 1] == '/' || path[strlen_path - 1] == '\\'))
-	{
-		path[strlen_path - 1] = '\0';
-	}
 	struct stat info;
 	const char *attempts[5] = { "/../", "/lib/", "/../lib/", "/", "/../../lib/" };
 
@@ -412,16 +406,10 @@ const char *find_lib_dir(void)
 		}
 		return strdup(lib_dir_env);
 	}
-	char *path = find_executable_path();
+	const char *path = find_executable_path();
 
 	INFO_LOG("Detected executable path at %s", path);
 
-	size_t strlen_path = strlen(path);
-	// Remove any last path slash
-	if (strlen_path > 1 && (path[strlen_path - 1] == '/' || path[strlen_path - 1] == '\\'))
-	{
-		path[strlen_path - 1] = '\0';
-	}
 	const char *lib_path = NULL;
 	if ((lib_path = lib_find(path, "/../lib/c3/"))) goto DONE;
 	if ((lib_path = lib_find(path, "/../lib/"))) goto DONE;
@@ -436,7 +424,6 @@ const char *find_lib_dir(void)
 
 	INFO_LOG("Could not find the standard library /lib/std/");
 DONE:;
-	free(path);
 	return lib_path;
 }
 

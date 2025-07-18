@@ -3,16 +3,39 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem;
 import std::core::mem::allocator @public;
+import std::os::posix, std::os::win32;
 import std::math;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
 const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
+const ulong KB = 1024;
+const ulong MB = KB * 1024;
+const ulong GB = MB * 1024;
+const ulong TB = GB * 1024;
 
 faultdef OUT_OF_MEMORY, INVALID_ALLOC_SIZE;
 
 macro bool @constant_is_power_of_2($x) @const @private
 {
 	return $x != 0 && ($x & ($x - 1)) == 0;
+}
+
+fn usz os_pagesize()
+{
+	$switch:
+		$case env::POSIX:
+			static usz pagesize;
+			if (pagesize) return pagesize;
+			return pagesize = posix::getpagesize();
+		$case env::WIN32:
+			static usz pagesize;
+			if (pagesize) return pagesize;
+		    Win32_SYSTEM_INFO info;
+            win32::getSystemInfo(&info);
+			return pagesize = info.dwPageSize;
+		$default:
+			return 4096;
+	$endswitch
 }
 
 <*
@@ -282,7 +305,7 @@ macro compare_exchange_volatile(ptr, compare, value, AtomicOrdering $success = S
 *>
 fn usz aligned_offset(usz offset, usz alignment)
 {
-	return alignment * ((offset + alignment - 1) / alignment);
+	return (offset + alignment - 1) & ~(alignment - 1);
 }
 
 macro void* aligned_pointer(void* ptr, usz alignment)
@@ -296,6 +319,11 @@ macro void* aligned_pointer(void* ptr, usz alignment)
 fn bool ptr_is_aligned(void* ptr, usz alignment) @inline
 {
 	return (uptr)ptr & ((uptr)alignment - 1) == 0;
+}
+
+fn bool ptr_is_page_aligned(void* ptr) @inline
+{
+	return (uptr)ptr & ((uptr)os_pagesize() - 1) == 0;
 }
 
 macro void zero_volatile(char[] data)

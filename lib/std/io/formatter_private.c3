@@ -660,7 +660,6 @@ fn usz? Formatter.out_char(&self, any arg) @private
 fn usz? Formatter.out_reverse(&self, char[] buf) @private
 {
 	usz n;
-	usz buffer_start_idx = self.idx;
 	usz len = buf.len;
 	// pad spaces up to given width
 	if (!self.flags.zeropad && !self.flags.left)

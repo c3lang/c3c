@@ -137,7 +137,7 @@ fn void*? BackedArenaAllocator.resize(&self, void* pointer, usz size, usz alignm
 	}
 
 	AllocChunk* data = self.acquire(size, NO_ZERO, alignment)!;
-	mem::copy(data, pointer, chunk.size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
+	mem::copy(data, pointer, math::min(size, chunk.size), mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 
 	return data;
 }

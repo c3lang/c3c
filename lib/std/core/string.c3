@@ -108,6 +108,19 @@ fn String format(Allocator allocator, String fmt, args...) @format(1) => @pool()
 }
 
 <*
+ Return a new String created using the formatting function.
+
+ @param [inout] buffer : `The buffer to use`
+ @param [in] fmt : `The formatting string`
+*>
+fn String bformat(char[] buffer, String fmt, args...) @format(1)
+{
+	DString str = dstring::new_with_capacity(allocator::wrap(buffer), fmt.len + args.len * 8);
+	str.appendf(fmt, ...args);
+	return str.str_view();
+}
+
+<*
  Return a temporary String created using the formatting function.
 
  @param [in] fmt : `The formatting string`
@@ -609,12 +622,17 @@ fn usz ZString.char_len(str)
 
 fn usz ZString.len(self)
 {
-	usz len = 0;
-	char* ptr = (char*)self;
-	while (char c = ptr++[0]) len++;
+	usz len;
+	for (char* ptr = (char*)self; *ptr; ptr++) len++;
 	return len;
 }
 
+fn usz WString.len(self)
+{
+	usz len;
+	for (Char16* ptr = (Char16*)self; *ptr; ptr++) len++;
+	return len;
+}
 
 fn ZString String.zstr_copy(self, Allocator allocator)
 {
