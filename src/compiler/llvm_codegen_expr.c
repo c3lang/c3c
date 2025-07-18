@@ -764,6 +764,23 @@ static inline void llvm_emit_subscript(GenContext *c, BEValue *value, Expr *expr
 		return;
 	}
 	llvm_emit_subscript_addr(c, value, expr);
+
+	if (safe_mode_enabled() && value->alignment > 1 && !c->emitting_load_store_check && parent_type->type_kind != TYPE_ARRAY)
+	{
+		LLVMValueRef as_int = LLVMBuildPtrToInt(c->builder, value->value, llvm_get_type(c, type_usz), "");
+		LLVMValueRef align = llvm_const_int(c, type_usz, value->alignment);
+		LLVMValueRef rem = LLVMBuildURem(c->builder, as_int, align, "");
+		LLVMValueRef is_not_zero = LLVMBuildICmp(c->builder, LLVMIntNE, rem, llvm_get_zero(c, type_usz), "");
+		c->emitting_load_store_check = true;
+		BEValue value1;
+		BEValue value2;
+		llvm_value_set(&value1, align, type_usz);
+		llvm_value_set(&value2, rem, type_usz);
+		llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", parent_expr->span, "Unaligned access: ptr %% %s = %s, use @unaligned_load / @unaligned_store for unaligned access.",
+			&value1, &value2);
+		c->emitting_load_store_check = false;
+	}
+
 }
 
 static inline void llvm_emit_pointer_offset(GenContext *c, BEValue *value, Expr *expr)

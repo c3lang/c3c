@@ -23,6 +23,7 @@
 - Suppress codegen of panic printing with when panic messages are set to "off".
 - Implicit linking of libc math when libc math functions are used.
 - Allow even smaller memory limits.
+- Check unaligned array access.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
