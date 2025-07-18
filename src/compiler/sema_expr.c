@@ -4862,16 +4862,20 @@ static inline bool sema_create_const_len(Expr *expr, Type *type, Type *flat)
 	ASSERT_SPAN(expr, flat == type_flatten(flat) && "Should be flattened already.");
 
 	size_t len;
-	if (type->type_kind == TYPE_CONST_ENUM) goto ENUMS;
+	if (type->type_kind == TYPE_CONST_ENUM)
+	{
+		len = vec_size(type->decl->enums.values);
+		expr_rewrite_const_int(expr, type_usz, len);
+		return true;
+	}
 	switch (flat->type_kind)
 	{
 		case TYPE_ARRAY:
 		case TYPE_VECTOR:
-			len = type->array.len;
+			len = flat->array.len;
 			break;
 		case TYPE_ENUM:
-ENUMS:
-			len = vec_size(type->decl->enums.values);
+			len = vec_size(flat->decl->enums.values);
 			break;
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
