@@ -62,6 +62,7 @@
 - Fix unexpected display of macro definition when passing a poisoned expression #2305.
 - `@links` on macros would not be added to calling functions.
 - Fix `Formatter.print` returning incorrect size.
+- A distinct type based on an array would yield .len == 0
 
 ### Stdlib changes
 - Improve contract for readline. #2280
