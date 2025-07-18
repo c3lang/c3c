@@ -6,6 +6,9 @@ import std::math::complex;
 import std::math::matrix;
 import std::math::quaternion;
 
+attrdef @MathLibc(name) = @extern(name), @link(env::POSIX, "m");
+attrdef @LinkMath = @link(env::POSIX, "m");
+
 const E = 2.718281828459045235360287471352662497757247093699959574966967627724076630353547594571382178525166427427466;
 const LOG2E = 1.44269504088896340735992468100189214; // log2(e)
 const LOG10E = 0.434294481903251827651128918916605082; // log10(e)
@@ -232,14 +235,14 @@ macro asinh(x)
 <*
  @require values::@is_floatlike(x) : `The input must be a floating point value or float vector`
 *>
-macro ceil(x) => $$ceil(x);
+macro ceil(x) @LinkMath => $$ceil(x);
 
 <*
  Ceil for compile time evaluation.
 
  @require @typeis($input, double) || @typeis($input, float) : "Only float and double may be used"
 *>
-macro @ceil($input) @const => $$ceil($input);
+macro @ceil($input) @const @LinkMath => $$ceil($input);
 
 <*
  Constrain the value to lie within the given interval.
@@ -253,18 +256,18 @@ macro @ceil($input) @const => $$ceil($input);
  @require values::@assign_to(lower, x) : `The lower bound must be convertable to the value type.`
  @require values::@assign_to(upper, x) : `The upper bound must be convertable to the value type.`
 *>
-macro clamp(x, lower, upper) => $$max(($typeof(x))lower, $$min(x, ($typeof(x))upper));
+macro clamp(x, lower, upper) @LinkMath => $$max(($typeof(x))lower, $$min(x, ($typeof(x))upper));
 
 <*
  @require values::@is_promotable_to_floatlike(mag) : `The input must be a number value or float vector`
  @require $defined(($typeof(values::promote_int(mag)))mag) : `It's not possible to cast the sign to the type of the magnitude`
 *>
-macro copysign(mag, sgn) => $$copysign(values::promote_int_same(mag, sgn), ($typeof(values::promote_int_same(mag, sgn)))sgn);
+macro copysign(mag, sgn) @LinkMath => $$copysign(values::promote_int_same(mag, sgn), ($typeof(values::promote_int_same(mag, sgn)))sgn);
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro cos(x) => $$cos(values::promote_int(x));
+macro cos(x) @LinkMath => $$cos(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
@@ -294,17 +297,17 @@ macro cotanh(x) => (exp(2.0 * x) + 1.0) / (exp(2.0 * x) - 1.0);
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro exp(x) => $$exp(values::promote_int(x));
+macro exp(x) @LinkMath => $$exp(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro exp2(x) => $$exp2(values::promote_int(x));
+macro exp2(x) @LinkMath => $$exp2(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro floor(x) => $$floor(values::promote_int(x));
+macro floor(x) @LinkMath => $$floor(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(a) : `The input must be a number or float vector`
@@ -313,7 +316,7 @@ macro floor(x) => $$floor(values::promote_int(x));
  @require values::@is_same_vector_type(a, b) : `The input types must be equal`
  @require values::@is_same_vector_type(a, c) : `The input types must match`
 *>
-macro fma(a, b, c) => $$fma(a, b, c);
+macro fma(a, b, c) @LinkMath => $$fma(a, b, c);
 
 
 <*
@@ -326,13 +329,13 @@ macro hypot(x, y) => sqrt(sqr(x) + sqr(y));
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
 *>
-macro ln(x) => $$log(values::promote_int(x));
+macro ln(x) @LinkMath => $$log(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
  @require values::@is_promotable_to_floatlike(base) : `The base must be a number or a float vector`
 *>
-macro log(x, base)
+macro log(x, base) @LinkMath
 {
 	return $$log(values::promote_int_same(x, base)) / $$log(values::promote_int_same(base, x));
 }
@@ -340,12 +343,12 @@ macro log(x, base)
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
 *>
-macro log2(x) => $$log2(values::promote_int(x));
+macro log2(x) @LinkMath => $$log2(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
 *>
-macro log10(x) => $$log10(values::promote_int(x));
+macro log10(x) @LinkMath => $$log10(values::promote_int(x));
 
 <*
  @require types::is_numerical($typeof(x)) : `The input must be a floating point value or float vector`
@@ -1012,33 +1015,33 @@ macro void float.set_word(float* f, uint u) => *f = bitcast(u, float);
 
 macro double scalbn(double x, int n) => _scalbn(x, n);
 
-extern fn double _atan(double x) @extern("atan");
-extern fn float _atanf(float x) @extern("atanf");
-extern fn double _atan2(double, double) @extern("atan2");
-extern fn float _atan2f(float, float) @extern("atan2f");
+extern fn double _atan(double x) @MathLibc("atan");
+extern fn float _atanf(float x) @MathLibc("atanf");
+extern fn double _atan2(double, double) @MathLibc("atan2");
+extern fn float _atan2f(float, float) @MathLibc("atan2f");
 
-extern fn void _sincos(double, double*, double*) @extern("__sincos") @link("m") @if(env::DARWIN);
-extern fn void _sincosf(float, float*, float*) @extern("__sincosf") @link("m") @if(env::DARWIN);
+extern fn void _sincos(double, double*, double*) @MathLibc("__sincos") @if(env::DARWIN);
+extern fn void _sincosf(float, float*, float*) @MathLibc("__sincosf") @if(env::DARWIN);
 
-extern fn void _sincos(double, double*, double*) @extern("sincos") @link("m") @if(!env::DARWIN && !env::WIN32);
-extern fn void _sincosf(float, float*, float*) @extern("sincosf") @link("m") @if(!env::DARWIN && !env::WIN32);
+extern fn void _sincos(double, double*, double*) @MathLibc("sincos") @if(!env::DARWIN && !env::WIN32);
+extern fn void _sincosf(float, float*, float*) @MathLibc("sincosf") @if(!env::DARWIN && !env::WIN32);
 
 fn void _sincos(double a, double* s, double* c) @extern("sincos") @if(env::WIN32) { *s = sin(a); *c = cos(a); }
 fn void _sincosf(float a, float* s, float* c) @extern("sincosf") @if(env::WIN32)  { *s = sin(a); *c = cos(a); }
 
-extern fn double _tan(double x) @extern("tan");
-extern fn float _tanf(float x) @extern("tanf");
-extern fn double _scalbn(double x, int n) @extern("scalbn");
-extern fn double _acos(double x) @extern("acos");
-extern fn double _asin(double x) @extern("asin");
-extern fn double _acosh(double x) @extern("acosh");
-extern fn double _asinh(double x) @extern("asinh");
-extern fn double _atanh(double x) @extern("atanh");
-extern fn float _acosf(float x) @extern("acosf");
-extern fn float _asinf(float x) @extern("asinf");
-extern fn float _acoshf(float x) @extern("acoshf");
-extern fn float _asinhf(float x) @extern("asinhf");
-extern fn float _atanhf(float x) @extern("atanhf");
+extern fn double _tan(double x) @MathLibc("tan");
+extern fn float _tanf(float x) @MathLibc("tanf");
+extern fn double _scalbn(double x, int n) @MathLibc("scalbn");
+extern fn double _acos(double x) @MathLibc("acos");
+extern fn double _asin(double x) @MathLibc("asin");
+extern fn double _acosh(double x) @MathLibc("acosh");
+extern fn double _asinh(double x) @MathLibc("asinh");
+extern fn double _atanh(double x) @MathLibc("atanh");
+extern fn float _acosf(float x) @MathLibc("acosf");
+extern fn float _asinf(float x) @MathLibc("asinf");
+extern fn float _acoshf(float x) @MathLibc("acoshf");
+extern fn float _asinhf(float x) @MathLibc("asinhf");
+extern fn float _atanhf(float x) @MathLibc("atanhf");
 
 
 fn double _frexp(double x, int* e)
@@ -1092,21 +1095,21 @@ fn float _frexpf(float x, int* e)
 	}
 }
 
-macro overflow_add_helper(x, y) @local
+macro overflow_add_helper(x, y) @local @LinkMath
 {
 	$typeof(x) res @noinit;
 	if ($$overflow_add(x, y, &res)) return OVERFLOW?;
 	return res;
 }
 
-macro overflow_sub_helper(x, y) @local
+macro overflow_sub_helper(x, y) @local @LinkMath
 {
 	$typeof(x) res @noinit;
 	if ($$overflow_sub(x, y, &res)) return OVERFLOW?;
 	return res;
 }
 
-macro overflow_mul_helper(x, y) @local
+macro overflow_mul_helper(x, y) @local @LinkMath
 {
 	$typeof(x) res @noinit;
 	if ($$overflow_mul(x, y, &res)) return OVERFLOW?;
@@ -1120,7 +1123,7 @@ macro overflow_mul_helper(x, y) @local
  @require values::@is_flat_intlike(a) &&& values::@is_flat_intlike(b) : "a and b must both be integer or integer vector based"
  @require $defined(*out) &&& values::@is_same_type(*out, a) : "out must be a pointer of the same type as a and b"
 *>
-macro bool overflow_add(a, b, out) => $$overflow_add(a, b, out);
+macro bool overflow_add(a, b, out) @LinkMath => $$overflow_add(a, b, out);
 
 <*
  @param [&out] out : "Where the result of the subtraction is stored"
@@ -1129,7 +1132,7 @@ macro bool overflow_add(a, b, out) => $$overflow_add(a, b, out);
  @require values::@is_flat_intlike(a) &&& values::@is_flat_intlike(b) : "a and b must both be integer or integer vector based"
  @require $defined(*out) &&& values::@is_same_type(*out, a) : "out must be a pointer of the same type as a and b"
 *>
-macro bool overflow_sub(a, b, out) => $$overflow_sub(a, b, out);
+macro bool overflow_sub(a, b, out) @LinkMath => $$overflow_sub(a, b, out);
 
 <*
  @param [&out] out : "Where the result of the multiplication is stored"
@@ -1138,7 +1141,7 @@ macro bool overflow_sub(a, b, out) => $$overflow_sub(a, b, out);
  @require values::@is_flat_intlike(a) &&& values::@is_flat_intlike(b) : "a and b must both be integer or integer vector based"
  @require $defined(*out) &&& values::@is_same_type(*out, a) : "out must be a pointer of the same type as a and b"
 *>
-macro bool overflow_mul(a, b, out) => $$overflow_mul(a, b, out);
+macro bool overflow_mul(a, b, out) @LinkMath => $$overflow_mul(a, b, out);
 
 <*
  @require types::is_vector($Type) || ($Type.kindof == ARRAY &&& types::is_numerical($typefrom($Type.inner)))

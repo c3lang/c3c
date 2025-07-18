@@ -18,6 +18,10 @@
 - `$is_const` is deprecated in favour of `@is_const` based on `$defined`.
 - Multiline contract comments #2113
 - Removed the use of temp allocator in backtrace printing.
+- `env::AUTHORS` and `env::AUTHOR_EMAILS` added.
+- Suppress codegen of panic printing with when panic messages are set to "off".
+- Implicit linking of libc math when libc math functions are used.
+- Allow even smaller memory limits.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
@@ -54,6 +58,7 @@
 - Fix stringify of $vaexpr #2301.
 - Segfault when failing to cast subexpression to 'isz' in pointer subtraction #2305.
 - Fix unexpected display of macro definition when passing a poisoned expression #2305.
+- `@links` on macros would not be added to calling functions.
 - Fix `Formatter.print` returning incorrect size.
 
 ### Stdlib changes

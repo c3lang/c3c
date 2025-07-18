@@ -2611,6 +2611,8 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	BEValue start_index;
 	switch (range.range_type)
 	{
+		case RANGE_SINGLE_ELEMENT:
+			UNREACHABLE
 		case RANGE_DYNAMIC:
 		case RANGE_CONST_LEN:
 		case RANGE_CONST_END:
@@ -2680,6 +2682,8 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		// Get the index.
 		switch (range.range_type)
 		{
+			case RANGE_SINGLE_ELEMENT:
+				UNREACHABLE
 			case RANGE_DYNAMIC:
 				llvm_emit_exprid(c, &end_index, range.end);
 				llvm_value_rvalue(c, &end_index);

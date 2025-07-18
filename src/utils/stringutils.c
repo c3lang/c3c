@@ -332,6 +332,11 @@ char *str_cat(const char *a, const char *b)
 	return buffer;
 }
 
+char *str_dup(const char *str)
+{
+	return str_copy(str, strlen(str));
+}
+
 char *str_copy(const char *start, size_t str_len)
 {
 	char *dst = calloc_string(str_len + 1);

@@ -137,6 +137,7 @@ const bool BACKTRACE = $$BACKTRACE;
 const usz LLVM_VERSION = $$LLVM_VERSION;
 const bool BENCHMARKING = $$BENCHMARKING;
 const bool TESTING = $$TESTING;
+const bool PANIC_MSG = $$PANIC_MSG;
 const MemoryEnvironment MEMORY_ENV = MemoryEnvironment.from_ordinal($$MEMORY_ENVIRONMENT);
 const bool TRACK_MEMORY = DEBUG_SYMBOLS && (COMPILER_SAFE_MODE || TESTING);
 const bool X86_64 = ARCH_TYPE == X86_64;
@@ -198,6 +199,7 @@ macro bool os_is_posix() @const
 		return false;
 	$endswitch
 }
-
+const String[] AUTHORS = $$AUTHORS;
+const String[] AUTHOR_EMAILS = $$AUTHOR_EMAILS;
 const BUILTIN_EXPECT_IS_DISABLED = $feature(DISABLE_BUILTIN_EXPECT);
 const BUILTIN_PREFETCH_IS_DISABLED = $feature(DISABLE_BUILTIN_PREFETCH);
