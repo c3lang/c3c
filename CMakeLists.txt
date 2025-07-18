@@ -262,7 +262,11 @@ if(C3_WITH_LLVM)
         find_library(LLD_COFF NAMES liblldCOFF.dylib lldCOFF.lib lldCOFF.a liblldCOFF.dll.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
         find_library(LLD_COMMON NAMES liblldCommon.dylib lldCommon.lib lldCommon.a liblldCommon.dll.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
         find_library(LLD_ELF NAMES liblldELF.dylib lldELF.lib lldELF.a liblldELF.dll.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
-        find_library(LLD_MACHO NAMES liblldMachO.dylib lldMachO.lib lldMachO.a liblldMachO.dll.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+            find_library(LLD_MACHO NAMES liblldMachO.dylib lldMachO.lib lldMachO.a liblldMachO.dll.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        else()
+            message(STATUS "the maintainers of LLVM on this platform has deliberately excluded targets, which makes it impossible to offer the standard cross compilation available in the normal compiler")
+        endif()
         find_library(LLD_MINGW NAMES liblldMinGW.dylib lldMinGW.lib lldMinGW.a liblldMinGW.dll.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
         find_library(LLD_WASM NAMES liblldWasm.dylib lldWasm.lib lldWasm.a liblldWasm.dll.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
     else()
@@ -275,7 +279,11 @@ if(C3_WITH_LLVM)
         find_library(LLD_COFF NAMES liblldCOFF.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
         find_library(LLD_COMMON NAMES liblldCommon.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
         find_library(LLD_ELF NAMES liblldELF.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
-        find_library(LLD_MACHO NAMES liblldMachO.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+            find_library(LLD_MACHO NAMES liblldMachO.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        else()
+            message(STATUS "the maintainers of LLVM on this platform has deliberately excluded targets, which makes it impossible to offer the standard cross compilation available in the normal compiler")
+        endif()
         find_library(LLD_MINGW NAMES liblldMinGW.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
         find_library(LLD_WASM NAMES liblldWasm.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
     endif()
@@ -286,7 +294,7 @@ if(C3_WITH_LLVM)
             ${LLD_WASM}
             ${LLD_MINGW}
             ${LLD_ELF}
-            ${LLD_MACHO}
+            #  ${LLD_MACHO}
             ${LLD_COMMON}
     )
 
@@ -512,7 +520,7 @@ endif ()
 
 if (CURL_FOUND)
     target_link_libraries(c3c ${CURL_LIBRARIES})
-    target_include_directories(c3c PRIVATE ${CURL_INCLUDES})
+    target_include_directories(c3c PRIVATE ${CURL_INCLUDE_DIRS})
     target_compile_definitions(c3c PUBLIC CURL_FOUND=1)
 else()
     target_compile_definitions(c3c PUBLIC CURL_FOUND=0)

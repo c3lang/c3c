@@ -107,9 +107,13 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 		case ELF:
 			success = lld::elf::link(CALL_ARGS);
 			break;
+#ifndef __OpenBSD__
 		case MACHO:
 			success = lld::macho::link(CALL_ARGS);
 			break;
+#else
+#warning "the maintainers of LLVM on this platform has deliberately excluded targets, which makes it impossible to offer the standard cross compilation available in the normal compiler"
+#endif
 		case WASM:
 			success = lld::wasm::link(CALL_ARGS);
 			break;

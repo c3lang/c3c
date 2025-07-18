@@ -140,6 +140,42 @@ static int get_executable_path_raw(char *out)
 	return length;
 }
 
+#elif defined(__OpenBSD__)
+// this target doesn't have a reliable way to get full path to the executable
+// a partially functional fix is implemented
+
+extern const char *compiler_exe_name;
+
+static int get_executable_path_raw(char *out)
+{
+	char tmp[PATH_MAX] = { 0 };
+	if (compiler_exe_name[0] == '.')
+		realpath(compiler_exe_name, tmp);
+	else if (compiler_exe_name[0] == '/')
+		strcpy(tmp, compiler_exe_name);
+	else if (strcmp(compiler_exe_name, "c3c") == 0) {
+		char *path = getenv("PATH");
+		int len = 0;
+		do {
+			len = strcspn(path, ":");
+			strncat(tmp, path, len);
+			tmp[len] = '/';
+			strcat(tmp, "c3c");
+			if (realpath(tmp, tmp) != NULL) break;
+			memset(tmp, 0, len + 4); // to account for /c3c
+			path += len + 1;
+		} while (path[-1]);
+		if (path[-1] == 0) error_exit("Unable to find full path of the executable");
+	} else error_exit("Unable to find full path of the executable");
+	
+	int length = strlen(tmp);
+	if (length >= MAX_EXE_PATH) error_exit("Executable path too long");
+	memcpy(out, tmp, length);
+	out[length] = 0;
+	
+	return length;
+}
+
 #else
 
 #error unsupported platform

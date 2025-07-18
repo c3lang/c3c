@@ -669,7 +669,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_TYPE_TVOS:
 		case OS_TYPE_WASI:
 			break;
-		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FREEBSD:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_NETBSD:
 			linker_setup_freebsd(args_ref, linker_type, is_dylib);
@@ -776,7 +776,7 @@ Linker linker_find_linker_type(void)
 		case OS_UNSUPPORTED:
 		case OS_TYPE_UNKNOWN:
 		case OS_TYPE_NONE:
-		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FREEBSD:
 		case OS_TYPE_LINUX:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
@@ -1120,7 +1120,7 @@ bool static_lib_linker(const char *output_file, const char **files, unsigned fil
 		case OS_TYPE_WIN32:
 			format = AR_COFF;
 			break;
-		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FREEBSD:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
 			format = AR_BSD;

@@ -120,7 +120,7 @@ static bool os_target_use_thread_local(OsType os)
 		case OS_TYPE_NONE:
 			return false;
 		case OS_DARWIN_TYPES:
-		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FREEBSD:
 		case OS_TYPE_LINUX:
 		case OS_TYPE_ANDROID:
 		case OS_TYPE_NETBSD:
@@ -269,7 +269,7 @@ static inline void target_setup_x86_abi(BuildTarget *target)
 	{
 		case OS_DARWIN_TYPES:
 		case OS_TYPE_DRAGON_FLY:
-		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FREEBSD:
 		case OS_TYPE_ELFIAMCU:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_WIN32:
@@ -1279,7 +1279,7 @@ static OsType os_from_llvm_string(StringSlice os_string)
 	STRCASE("cloudabi", OS_TYPE_CLOUD_ABI)
 	STRCASE("darwin", OS_TYPE_MACOSX)
 	STRCASE("dragonfly", OS_TYPE_DRAGON_FLY)
-	STRCASE("freebsd", OS_TYPE_FREE_BSD)
+	STRCASE("freebsd", OS_TYPE_FREEBSD)
 	STRCASE("fuchsia", OS_TYPE_FUCHSIA)
 	STRCASE("ios", OS_TYPE_IOS)
 	STRCASE("kfreebsd", OS_TYPE_KFREEBSD)
@@ -1480,7 +1480,7 @@ static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type)
 		case OS_TYPE_ANDROID:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
-		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FREEBSD:
 			return OBJ_FORMAT_ELF;
 		case OS_DARWIN_TYPES:
 			return OBJ_FORMAT_MACHO;
@@ -1535,7 +1535,7 @@ static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 		case OS_TYPE_LINUX:
 		case OS_TYPE_ANDROID:
 		case OS_TYPE_NONE:
-		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FREEBSD:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_WASI:
@@ -1715,7 +1715,7 @@ static RelocModel arch_os_reloc_default(ArchType arch, OsType os, EnvironmentTyp
 				return RELOC_BIG_PIC;
 			case OS_TYPE_WASI:
 				return RELOC_NONE;
-			case OS_TYPE_FREE_BSD:
+			case OS_TYPE_FREEBSD:
 			case OS_TYPE_NETBSD:
 			case OS_TYPE_UNKNOWN:
 			case OS_TYPE_NONE:
@@ -1734,7 +1734,7 @@ static RelocModel arch_os_reloc_default(ArchType arch, OsType os, EnvironmentTyp
 	{
 		case OS_TYPE_UNKNOWN:
 		case OS_TYPE_NONE:
-		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FREEBSD:
 		case OS_TYPE_NETBSD:
 			switch (arch)
 			{
@@ -1773,7 +1773,7 @@ static bool arch_os_pic_default_forced(ArchType arch, OsType os)
 		case OS_TYPE_WASI:
 		case OS_TYPE_UNKNOWN:
 		case OS_TYPE_NONE:
-		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FREEBSD:
 		case OS_TYPE_LINUX:
 		case OS_TYPE_ANDROID:
 		case OS_TYPE_NETBSD:

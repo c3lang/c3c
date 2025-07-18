@@ -28,7 +28,7 @@ static inline void mmap_init(Vmem *vmem, size_t size)
 	}
 #elif PLATFORM_POSIX
 	void* ptr = NULL;
-	size_t min_size = size / 128;
+	size_t min_size = size / 512;
 	if (min_size < 1) min_size = size;
 	while (size >= min_size)
 	{
