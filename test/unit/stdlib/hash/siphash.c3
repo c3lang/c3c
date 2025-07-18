@@ -1,29 +1,17 @@
 // Copyright (c) 2025 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module siphash_tests;
+module std::hash::siphash_tests;
+import std::math;
+
+char[64] plaintext = math::iota(char[64]);
 
 
-char[64] plaintext;
+module std::hash::siphash_tests @test;
 
-fn void init_tests() @init
-{
-	for (char i = 0; i < plaintext.len; ++i) plaintext[i] = i;
-}
-
-
-module siphash_tests @test;
-
-import std::hash::siphash;
-
-import std::hash::siphash24;
-import std::hash::siphash48;
-import std::hash::siphash24_128;
-import std::hash::siphash48_128;
-
+import std::hash;
 
 const uint128 DEFAULT_TEST_KEY = 0x0f0e_0d0c_0b0a_0908_0706_0504_0302_0100;
-
 
 fn void sanity_check_default_test_key()
 	=> test::@check(((char*)&DEFAULT_TEST_KEY)[:16] == { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }, "Bad key value as char[].");

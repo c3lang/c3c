@@ -15,6 +15,36 @@
 // Read more: https://en.wikipedia.org/wiki/SipHash
 //
 //
+
+// COMMON HASH VARIANTS.
+// These two forms of SipHash (24 and 48) are the most widely
+// used by many implementations.
+
+// These provide typical 64-bit hash results.
+// -- Best for performance-critical applications.
+module std::hash::siphash24;
+import std::hash::siphash;
+alias SipHash24 = SipHash { ulong, 2, 4 };
+alias hash = siphash::hash { ulong, 2, 4 };
+
+// -- Best for conservative security applications.
+module std::hash::siphash48;
+import std::hash::siphash;
+alias SipHash48 = SipHash { ulong, 4, 8 };
+alias hash = siphash::hash { ulong, 4, 8 };
+
+
+// Exact same as above, but for 128-bit outputs. Algorithm internally changes slightly.
+module std::hash::siphash24_128;
+import std::hash::siphash;
+alias SipHash24_128 = SipHash { uint128, 2, 4 };
+alias hash = siphash::hash { uint128, 2, 4 };
+
+module std::hash::siphash48_128;
+import std::hash::siphash;
+alias SipHash48_128 = SipHash { uint128, 4, 8 };
+alias hash = siphash::hash { uint128, 4, 8 };
+
 <*
 @require OutType.typeid == uint128.typeid || OutType.typeid == ulong.typeid : "Module OutType must be either uint128 or ulong."
 *>
@@ -28,7 +58,6 @@ struct SipHash
 	int m_idx;
 	usz len;
 }
-
 
 fn OutType hash(char[] data, uint128 key)
 {
@@ -54,7 +83,9 @@ fn void SipHash.init(&self, uint128 key)
 	$endif
 }
 
-
+<*
+ @param [in] data : "Bytes to hash"
+*>
 fn void SipHash.update(&self, char[] data)
 {
 	self.len += data.len;
@@ -78,7 +109,6 @@ fn void SipHash.update(&self, char[] data)
 		self.m = 0;
 	}
 }
-
 
 fn OutType SipHash.final(&self)
 {
@@ -132,36 +162,3 @@ fn void SipHash.round(&self) @local
 
 
 
-// =======================================================================================
-// =======================================================================================
-// =======================================================================================
-// COMMON HASH VARIANTS.
-//   These two forms of SipHash (24 and 48) are the most widely used by many implementations.
-//   Thus, rather than leaving it to developers to "just know" which module values to choose,
-//   it's best to predefine these common choices.
-
-
-// These provide typical 64-bit hash results.
-// -- Best for performance-critical applications.
-module std::hash::siphash24;
-import std::hash::siphash;
-alias SipHash24 = SipHash { ulong, 2, 4 };
-alias hash = siphash::hash { ulong, 2, 4 };
-
-// -- Best for conservative security applications.
-module std::hash::siphash48;
-import std::hash::siphash;
-alias SipHash48 = SipHash { ulong, 4, 8 };
-alias hash = siphash::hash { ulong, 4, 8 };
-
-
-// Exact same as above, but for 128-bit outputs. Algorithm internally changes slightly.
-module std::hash::siphash24_128;
-import std::hash::siphash;
-alias SipHash24_128 = SipHash { uint128, 2, 4 };
-alias hash = siphash::hash { uint128, 2, 4 };
-
-module std::hash::siphash48_128;
-import std::hash::siphash;
-alias SipHash48_128 = SipHash { uint128, 4, 8 };
-alias hash = siphash::hash { uint128, 4, 8 };
