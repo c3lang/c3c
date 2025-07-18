@@ -28,20 +28,20 @@ static inline void mmap_init(Vmem *vmem, size_t size)
 	}
 #elif PLATFORM_POSIX
 	void* ptr = NULL;
-	size_t min_size = size / 32;
+	size_t min_size = size / 128;
 	if (min_size < 1) min_size = size;
 	while (size >= min_size)
 	{
 		ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 		// It worked?
-		if (ptr != MAP_FAILED && ptr) break;
+		if (ptr != MAP_FAILED) break;
 		// Did it fail in a non-retriable way?
 		if (errno != ENOMEM && errno != EOVERFLOW && errno != EAGAIN) break;
 		// Try a smaller size
 		size /= 2;
 	}
 	// Check if we ended on a failure.
-	if ((ptr == MAP_FAILED) || !ptr)
+	if (ptr == MAP_FAILED)
 	{
 		FATAL_ERROR("Failed to map a virtual memory block.");
 	}
