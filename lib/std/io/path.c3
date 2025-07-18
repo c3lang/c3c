@@ -155,6 +155,11 @@ fn Path? from_wstring(Allocator allocator, WString path) => @pool()
 	return path::new(allocator, string::tfrom_wstring(path)!);
 }
 
+fn Path? from_win32_wstring(Allocator allocator, WString path) @deprecated => @pool()
+{
+	return path::new(allocator, string::tfrom_wstring(path)!);
+}
+
 fn Path? for_windows(Allocator allocator, String path) => new(allocator, path, WIN32);
 
 fn Path? for_posix(Allocator allocator, String path) => new(allocator, path, POSIX);
