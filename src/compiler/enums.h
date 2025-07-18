@@ -964,6 +964,7 @@ typedef enum
 	OVERLOADS_COUNT = OVERLOAD_SHR_ASSIGN
 } OperatorOverload;
 
+#define OVERLOAD_NONE ((OperatorOverload)0)
 typedef enum
 {
 	OS_TYPE_UNKNOWN,

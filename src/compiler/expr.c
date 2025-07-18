@@ -904,6 +904,8 @@ bool expr_is_pure(Expr *expr)
 			if (!exprid_is_pure(expr->slice_expr.expr)) return false;
 			switch (expr->slice_expr.range.range_type)
 			{
+				case RANGE_SINGLE_ELEMENT:
+					UNREACHABLE
 				case RANGE_CONST_RANGE:
 					return true;
 				case RANGE_CONST_END:

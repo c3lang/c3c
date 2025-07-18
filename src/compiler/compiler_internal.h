@@ -710,7 +710,9 @@ typedef enum RangeType
 	RANGE_CONST_END,
 	RANGE_CONST_LEN,
 	RANGE_CONST_RANGE,
+	RANGE_SINGLE_ELEMENT,
 } RangeType;
+
 
 typedef struct
 {
@@ -719,7 +721,6 @@ typedef struct
 	bool start_from_end : 1;
 	bool end_from_end : 1;
 	bool is_len : 1;
-	bool is_range : 1;
 	bool is_optional : 1;
 	union
 	{
