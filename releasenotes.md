@@ -63,14 +63,17 @@
 - `@links` on macros would not be added to calling functions.
 - Fix `Formatter.print` returning incorrect size.
 - A distinct type based on an array would yield .len == 0
+- Overloading addition with a pointer would not work.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
 - Added Whirlpool hash.
+- Added Ed25519.
 - Added string::bformat.
 - Virtual memory library.
 - New virtual emory arena allocator.
 - Added `WString.len`.
+- Added `@addr` macro.
 
 ## 0.7.3 Change list
 

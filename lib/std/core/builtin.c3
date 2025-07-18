@@ -96,6 +96,14 @@ macro anycast(any v, $Type) @builtin
 	return ($Type*)v.ptr;
 }
 
+macro @addr(#val) @builtin
+{
+	$if $defined(&#val):
+		return &#val;
+	$else
+		return &&#val;
+	$endif
+}
 fn bool print_backtrace(String message, int backtraces_to_ignore) @if (env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
 {
 	void*[256] buffer;

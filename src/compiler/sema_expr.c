@@ -208,8 +208,10 @@ static inline bool sema_analyse_maybe_dead_expr(SemaContext *, Expr *expr, bool 
 static inline bool sema_insert_binary_overload(SemaContext *context, Expr *expr, Decl *overload, Expr *lhs, Expr *rhs, bool reverse);
 static bool sema_replace_with_overload(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *left_type, OperatorOverload* operator_overload_ref);
 
-// -- implementations
+INLINE bool sema_expr_analyse_ptr_add(SemaContext *context, Expr *expr, Expr *left, Expr *right, CanonicalType *left_type, CanonicalType *right_type, Type *cast_to_iptr, bool *failed_ref);
+static Type *defer_iptr_cast(Expr *maybe_pointer);
 
+// -- implementations
 
 typedef struct
 {
@@ -7188,10 +7190,29 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 											 OperatorOverload *operator_overload_ref,
 											 bool *failed_ref)
 {
+	OperatorOverload overload = *operator_overload_ref;
 	if (type_is_user_defined(left_type) || type_is_user_defined(right_type))
 	{
 		if (!sema_replace_with_overload(context, parent, left, right, left_type, operator_overload_ref)) return false;
 		if (!*operator_overload_ref) return true;
+	}
+
+	if (overload == OVERLOAD_PLUS)
+	{
+		Type *cast_to_iptr = defer_iptr_cast(left);
+		if (!cast_to_iptr) cast_to_iptr = defer_iptr_cast(right);
+		left_type = type_no_optional(left->type)->canonical;
+		right_type = type_no_optional(right->type)->canonical;
+		if (type_is_pointer_like(left_type))
+		{
+			*operator_overload_ref = OVERLOAD_NONE;
+			return sema_expr_analyse_ptr_add(context, parent, left, right, left_type, right_type, cast_to_iptr, failed_ref);
+		}
+		if (type_is_pointer_like(right_type))
+		{
+			*operator_overload_ref = OVERLOAD_NONE;
+			return sema_expr_analyse_ptr_add(context, parent, right, left, right_type, left_type, cast_to_iptr, failed_ref);
+		}
 	}
 
 	Type *max = cast_numeric_arithmetic_promotion(type_find_max_type(left_type, right_type));
@@ -7525,45 +7546,14 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 	//    this is safe in the pointer case actually.
 	if (!sema_binary_analyse_subexpr(context, left, right)) return false;
 
-	Type *cast_to_iptr = defer_iptr_cast(left);
-	if (!cast_to_iptr) cast_to_iptr = defer_iptr_cast(right);
 
 	Type *left_type = type_no_optional(left->type)->canonical;
 	Type *right_type = type_no_optional(right->type)->canonical;
-
-	bool right_is_pointer = type_is_pointer_like(right_type);
-	bool left_is_pointer = type_is_pointer_like(left_type);
-	// 2. To detect pointer additions, reorder if needed
-	if (right_is_pointer && !left_is_pointer)
-	{
-		Expr *temp = right;
-		right = left;
-		left = temp;
-		right_type = left_type;
-		left_type = left->type->canonical;
-		left_is_pointer = true;
-		right_is_pointer = false;
-		(void)right_is_pointer;
-		expr->binary_expr.left = exprid(left);
-		expr->binary_expr.right = exprid(right);
-	}
-
-	// 3. The "left" will now always be the pointer.
-	//    so check if we want to do the normal pointer add special handling.
-	if (left_is_pointer)
-	{
-		return sema_expr_analyse_ptr_add(context, expr, left, right, left_type, right_type, cast_to_iptr, failed_ref);
-	}
 
 	if (left_type->type_kind == TYPE_ENUM || right_type->type_kind == TYPE_ENUM)
 	{
 		return sema_expr_analyse_enum_add_sub(context, expr, left, right, failed_ref);
 	}
-
-	left_type = type_no_optional(left->type)->canonical;
-	right_type = type_no_optional(right->type)->canonical;
-
-	ASSERT_SPAN(expr, !cast_to_iptr);
 
 	// 4. Do a binary arithmetic promotion
 	OperatorOverload overload = OVERLOAD_PLUS;
