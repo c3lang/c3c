@@ -15,6 +15,7 @@
 - Formatting option "%h" now supports pointers.
 - Improve error on unsigned implicit conversion to signed.
 - Update error message for struct initialization #2286
+- Add SipHash family of keyed PRFs. #2287 
 - `$is_const` is deprecated in favour of `@is_const` based on `$defined`.
 - Multiline contract comments #2113
 - Removed the use of temp allocator in backtrace printing.
