@@ -5,17 +5,17 @@
 module std::crypto::ed25519;
 import std::hash::sha512;
 
-alias PrivateKey = char[32];
-alias PublicKey = char[PrivateKey.len];
-alias Signature = char[2 * PublicKey.len];
+alias Ed25519PrivateKey = char[32];
+alias Ed25519PublicKey = char[Ed25519PrivateKey.len];
+alias Ed25519Signature = char[2 * Ed25519PublicKey.len];
 
 <*
  Generate a public key from a private key.
 
  @param [in] private_key : "32 bytes of cryptographically secure random data"
- @require private_key.len == PrivateKey.len
+ @require private_key.len == Ed25519PrivateKey.len
 *>
-fn PublicKey public_keygen(char[] private_key)
+fn Ed25519PublicKey public_keygen(char[] private_key)
 {
 	return pack(&&unproject(&&(BASE * expand_private_key(private_key)[:FBaseInt.len])));
 }
@@ -26,12 +26,12 @@ fn PublicKey public_keygen(char[] private_key)
  @param [in] message
  @param [in] private_key
  @param [in] public_key
- @require private_key.len == PrivateKey.len
- @require public_key.len == PublicKey.len
+ @require private_key.len == Ed25519PrivateKey.len
+ @require public_key.len == Ed25519PublicKey.len
 *>
-fn Signature sign(char[] message, char[] private_key, char[] public_key)
+fn Ed25519Signature sign(char[] message, char[] private_key, char[] public_key)
 {
-	Signature r @noinit;
+	Ed25519Signature r @noinit;
 
 	char[*] exp = expand_private_key(private_key);
 
@@ -65,8 +65,8 @@ fn Signature sign(char[] message, char[] private_key, char[] public_key)
  @param [in] message
  @param [in] signature
  @param [in] public_key
- @require signature.len == Signature.len
- @require public_key.len == PublicKey.len
+ @require signature.len == Ed25519Signature.len
+ @require public_key.len == Ed25519PublicKey.len
 *>
 fn bool verify(char[] message, char[] signature, char[] public_key)
 {
@@ -113,7 +113,7 @@ const Projection BASE @private =
  Compute the pruned SHA-512 hash of a private key.
 
  @param [in] private_key
- @require private_key.len == PrivateKey.len
+ @require private_key.len == Ed25519PrivateKey.len
 *>
 fn char[sha512::HASH_SIZE] expand_private_key(char[] private_key) @local
 {
