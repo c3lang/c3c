@@ -66,6 +66,7 @@
 - Fix `Formatter.print` returning incorrect size.
 - A distinct type based on an array would yield .len == 0
 - Overloading addition with a pointer would not work.
+- Copying const enums and regular enums incorrect #2313.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
