@@ -1,0 +1,20 @@
+module generic_module_enum{N};
+
+enum Foo : char (String s)
+{
+	BAR = "bar",
+}
+
+module generic_module_enum_test;
+import generic_module_enum;
+
+fn void test()
+
+{
+	Foo{3} foo;
+}
+
+fn void main()
+{
+	test();
+}

@@ -85,7 +85,7 @@ OsType hostinfo_os_type(void)
 #if __APPLE__
 	return OS_TYPE_MACOSX;
 #else
-    if (system("freebsd-version -k") == 0) return OS_TYPE_FREE_BSD;
+    if (system("freebsd-version -k") == 0) return OS_TYPE_FREEBSD;
     if (system("uname -r") == 0) return OS_TYPE_LINUX;
     if (system("cd C:/Windows") == 0) return OS_TYPE_WIN32;
     return OS_TYPE_UNKNOWN;
@@ -96,7 +96,8 @@ static const char *llvm_os_name(OsType os)
 {
 	switch (os)
 	{
-		case OS_TYPE_FREE_BSD: return "freebsd";
+		case OS_TYPE_FREEBSD: return "freebsd";
+		case OS_TYPE_OPENBSD: return "openbsd";
 		case OS_TYPE_LINUX: return "linux";
 		case OS_TYPE_WIN32: return "win32";
 		case OS_TYPE_MACOSX: return "darwin";

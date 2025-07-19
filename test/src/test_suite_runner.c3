@@ -442,7 +442,7 @@ fn void test_file(Path file_path)
 	// Start process
 	SubProcess compilation = process::create(cmdline.array_view(), { .search_user_path, .no_window, .inherit_environment })!!;
 	defer compilation.destroy();
-    CInt result = compilation.join()!!;
+    CInt result = compilation.join() ?? 1;
 	DString out;
 	io::copy_to(&&compilation.stderr(), &out)!!;
 	if (result != 0 && result != 1)

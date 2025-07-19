@@ -646,6 +646,7 @@ typedef struct Decl_
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
+	bool attr_structlike : 1;
 	union
 	{
 		void *backend_ref;
@@ -710,7 +711,9 @@ typedef enum RangeType
 	RANGE_CONST_END,
 	RANGE_CONST_LEN,
 	RANGE_CONST_RANGE,
+	RANGE_SINGLE_ELEMENT,
 } RangeType;
+
 
 typedef struct
 {
@@ -719,7 +722,6 @@ typedef struct
 	bool start_from_end : 1;
 	bool end_from_end : 1;
 	bool is_len : 1;
-	bool is_range : 1;
 	bool is_optional : 1;
 	union
 	{

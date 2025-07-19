@@ -40,3 +40,13 @@ extern fn Win32_LPVOID virtualAlloc(Win32_LPVOID lpAddres, Win32_SIZE_T dwSize, 
 extern fn Win32_PVOID virtualAlloc2(Win32_HANDLE process, Win32_PVOID baseAddress, Win32_SIZE_T size, Win32_AllocationType allocationType, Win32_ULONG pageProtection, Win32_MEM_EXTENDED_PARAMETER* extendedParameters, Win32_ULONG parameterCount) @extern("VirtualAlloc2");
 extern fn Win32_BOOL virtualFree(Win32_LPVOID lpAddress, Win32_SIZE_T dwSize, Win32_FreeType dwFreeType) @extern("VirtualFree");
 extern fn Win32_BOOL virtualProtect(Win32_LPVOID lpAddress, Win32_SIZE_T dwSize, Win32_Protect flNewProtect, Win32_Protect* lpflOldProtect) @extern("VirtualProtect");
+
+fn usz allocation_granularity()
+{
+    static usz granularity;
+	if (granularity) return granularity;
+
+	Win32_SYSTEM_INFO info;
+	win32::getSystemInfo(&info);
+	return granularity = (usz)info.dwAllocationGranularity;
+}

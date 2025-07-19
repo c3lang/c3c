@@ -1,5 +1,5 @@
 module std::core::mem::allocator;
-
+import std::math;
 <*
  The OnStackAllocator is similar to the ArenaAllocator: it allocates from a chunk of memory
  given to it.
@@ -124,7 +124,7 @@ fn void*? OnStackAllocator.resize(&self, void* old_pointer, usz size, usz alignm
 	OnStackAllocatorHeader* header = old_pointer - OnStackAllocatorHeader.sizeof;
 	usz old_size = header.size;
 	void* mem = self.acquire(size, NO_ZERO, alignment)!;
-	mem::copy(mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
+	mem::copy(mem, old_pointer, math::min(old_size, size), mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
 }
 

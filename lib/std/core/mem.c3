@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem;
 import std::core::mem::allocator @public;
-import std::os::posix;
+import std::os::posix, std::os::win32;
 import std::math;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
@@ -24,10 +24,15 @@ fn usz os_pagesize()
 {
 	$switch:
 		$case env::POSIX:
-			return posix::getpagesize();
+			static usz pagesize;
+			if (pagesize) return pagesize;
+			return pagesize = posix::getpagesize();
 		$case env::WIN32:
-			// Possibly improve this
-			return 4096;
+			static usz pagesize;
+			if (pagesize) return pagesize;
+		    Win32_SYSTEM_INFO info;
+            win32::getSystemInfo(&info);
+			return pagesize = info.dwPageSize;
 		$default:
 			return 4096;
 	$endswitch
@@ -314,6 +319,11 @@ macro void* aligned_pointer(void* ptr, usz alignment)
 fn bool ptr_is_aligned(void* ptr, usz alignment) @inline
 {
 	return (uptr)ptr & ((uptr)alignment - 1) == 0;
+}
+
+fn bool ptr_is_page_aligned(void* ptr) @inline
+{
+	return (uptr)ptr & ((uptr)os_pagesize() - 1) == 0;
 }
 
 macro void zero_volatile(char[] data)

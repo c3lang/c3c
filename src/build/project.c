@@ -184,7 +184,29 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 			error_exit("Error reading %s: output extension '%s' must start with a '.'", context.file, target->extension);
 		}
 	}
-
+	else
+	{
+		const char **authors = get_optional_string_array(context, json, "authors");
+		AuthorEntry *author_list = NULL;
+		FOREACH(const char *, author, authors)
+		{
+			const char *email_start = strstr(author, "<");
+			if (email_start)
+			{
+				const char *end = strstr(email_start + 1, ">");
+				if (!end || end[1] != 0 || email_start + 1 == end) error_exit("Error reading %s: invalid author format '%s'", author);
+				const char *email = str_trim(str_copy(email_start + 1, end - email_start - 1));
+				AuthorEntry entry = { str_trim(str_copy(author, email_start - author)), email };
+				vec_add(author_list, entry);
+			}
+			else
+			{
+				AuthorEntry entry = { str_trim(str_dup(author)), NULL };
+				vec_add(author_list, entry);
+			}
+		}
+		target->authors = author_list;
+	}
 	// "Before compilation" execution
 	APPEND_STRING_LIST(&target->exec, "exec");
 

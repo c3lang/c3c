@@ -66,8 +66,8 @@ fn void test_timezone()
 	Time t1 = d1.time;
 	Time t2 = d2.time;
 
-	assert(t1 == 1665792000000000);
-	assert(t2 == 1665766800000000);
+	assert(t1 == (Time)1665792000000000);
+	assert(t2 == (Time)1665766800000000);
 
 	// to_gmt_offset should keep the timesampt value
 	tz = d1.to_gmt_offset(offset);

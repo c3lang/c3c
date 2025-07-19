@@ -453,6 +453,8 @@ RETRY:
 			sema_trace_expr_liveness(exprptr(expr->slice_expr.expr));
 			switch (expr->slice_expr.range.range_type)
 			{
+				case RANGE_SINGLE_ELEMENT:
+					UNREACHABLE
 				case RANGE_CONST_RANGE:
 					return;
 				case RANGE_DYNAMIC:

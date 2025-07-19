@@ -190,6 +190,8 @@ static inline IndexDiff range_const_len(Range *range)
 {
 	switch (range->range_type)
 	{
+		case RANGE_SINGLE_ELEMENT:
+			UNREACHABLE;
 		case RANGE_CONST_LEN:
 			return range->const_end;
 		case RANGE_CONST_END:

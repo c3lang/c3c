@@ -142,12 +142,26 @@ fn void? NativeConditionVariable.wait(&cond, NativeMutex* mtx)
 *>
 fn void? NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
 {
-	TimeSpec now;
-	if (libc::timespec_get(&now, libc::TIME_UTC) != libc::TIME_UTC) return thread::WAIT_FAILED?;
-	now.ns += (CLong)((ms % 1000) * 1000_000);
-	now.s += (Time_t)(ms / 1000 + now.ns / 1000_000_000);
-	now.ns = now.ns % 1000_000_000;
-	switch (posix::pthread_cond_timedwait(cond, &mtx.mutex, &now))
+	Time time = time::now() + time::ms(ms);
+	return cond.wait_until(mtx, time) @inline;
+}
+
+<*
+ @require mtx.is_initialized()
+*>
+fn void? NativeConditionVariable.wait_timeout_duration(&cond, NativeMutex* mtx, Duration duration)
+{
+  if (duration < time::DURATION_ZERO) return thread::WAIT_TIMEOUT?;
+	Time time = time::now() + duration;
+	return cond.wait_until(mtx, time) @inline;
+}
+
+<*
+ @require mtx.is_initialized()
+*>
+fn void? NativeConditionVariable.wait_until(&cond, NativeMutex* mtx, Time time)
+{
+	switch (posix::pthread_cond_timedwait(cond, &mtx.mutex, &&time.to_timespec()))
 	{
 		case errno::ETIMEDOUT:
 			return thread::WAIT_TIMEOUT?;
@@ -216,7 +230,7 @@ fn void native_thread_yield()
 
 fn void? native_sleep_nano(NanoDuration nano)
 {
-	if (nano <= 0) return;
+	if (nano <= time::NANO_DURATION_ZERO) return;
 	if (libc::nanosleep(&&nano.to_timespec(), null)) return thread::INTERRUPTED?;
 }
 
