@@ -26,6 +26,7 @@
 - Check unaligned array access.
 - Add "@structlike" for typedefs.
 - "poison" the current function early when a declaration can't be correctly resolved.
+- Add komihash, a5hash, metrohash64, metrohash128, and wyhash2 variants with tests/benchmark. #2293
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
