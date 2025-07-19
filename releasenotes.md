@@ -25,6 +25,7 @@
 - Allow even smaller memory limits.
 - Check unaligned array access.
 - Add "@structlike" for typedefs.
+- "poison" the current function early when a declaration can't be correctly resolved.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.

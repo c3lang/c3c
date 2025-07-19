@@ -27,7 +27,7 @@ import abc @norecurse @public;
 
 fn int test()
 {
-	Abc x; // #error: is '@private'
+	{ Abc x; } // #error: is '@private'
 	abc::baz::test(); // #error: is '@private'
 	return 0;
 }
