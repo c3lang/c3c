@@ -5,11 +5,11 @@ import std::time, libc;
 typedef TcpSocket = inline Socket;
 typedef TcpServerSocket = inline Socket;
 
-fn TcpSocket? connect(String host, uint port, Duration timeout = 0, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
+fn TcpSocket? connect(String host, uint port, Duration timeout = time::DURATION_ZERO, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
 {
 	AddrInfo* ai =  net::addrinfo(host, port, ip_protocol.ai_family, os::SOCK_STREAM)!;
 	defer os::freeaddrinfo(ai);
-	if (timeout > 0)
+	if (timeout > time::DURATION_ZERO)
 	{
 		return (TcpSocket)net::connect_with_timeout_from_addrinfo(ai, options, timeout)!;
 	}

@@ -149,9 +149,9 @@ fn void? NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
 <*
  @require mtx.is_initialized()
 *>
-fn void? NativeConditionVariable.wait_for(&cond, NativeMutex* mtx, Duration duration)
+fn void? NativeConditionVariable.wait_timeout_duration(&cond, NativeMutex* mtx, Duration duration)
 {
-  if (duration < 0) return thread::WAIT_TIMEOUT?;
+  if (duration < time::DURATION_ZERO) return thread::WAIT_TIMEOUT?;
 	Time time = time::now() + duration;
 	return cond.wait_until(mtx, time) @inline;
 }
@@ -230,7 +230,7 @@ fn void native_thread_yield()
 
 fn void? native_sleep_nano(NanoDuration nano)
 {
-	if (nano <= 0) return;
+	if (nano <= time::NANO_DURATION_ZERO) return;
 	if (libc::nanosleep(&&nano.to_timespec(), null)) return thread::INTERRUPTED?;
 }
 

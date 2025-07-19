@@ -646,6 +646,7 @@ typedef struct Decl_
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
+	bool attr_structlike : 1;
 	union
 	{
 		void *backend_ref;

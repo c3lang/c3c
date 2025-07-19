@@ -3112,6 +3112,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_REFLECT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_SAFEMACRO] = ATTR_MACRO,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
+			[ATTRIBUTE_STRUCTLIKE] = ATTR_DISTINCT,
 			[ATTRIBUTE_TAG] = ATTR_BITSTRUCT_MEMBER | ATTR_MEMBER | USER_DEFINED_TYPES | CALLABLE_TYPE,
 			[ATTRIBUTE_TEST] = ATTR_FUNC,
 			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL),
@@ -3432,6 +3433,9 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				}
 			}
 			if (!decl->func_decl.priority) decl->func_decl.priority = MAX_PRIORITY;
+			return true;
+		case ATTRIBUTE_STRUCTLIKE:
+			decl->attr_structlike = true;
 			return true;
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_EXTERN:

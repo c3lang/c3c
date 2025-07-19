@@ -1393,7 +1393,7 @@ static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 	{
 		is_const = true;
 	}
-	if (is_const)
+	if (is_const && (cc->is_binary_conversion || !cc->to->decl->attr_structlike))
 	{
 		cc->to = flat;
 		cc->to_group = flat_group;

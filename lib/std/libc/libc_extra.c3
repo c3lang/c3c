@@ -4,7 +4,7 @@ import std::time;
 <*
  Return a "timespec" from a duration.
 
- @require self >= 0
+ @require self >= time::NANO_DURATION_ZERO
 *>
 fn TimeSpec NanoDuration.to_timespec(self) @inline
 {
@@ -16,7 +16,7 @@ fn TimeSpec NanoDuration.to_timespec(self) @inline
 <*
  Convert a duration to a timespec.
 
- @require self >= 0
+ @require self >= time::DURATION_ZERO
 *>
 fn TimeSpec Duration.to_timespec(self) @inline
 {
