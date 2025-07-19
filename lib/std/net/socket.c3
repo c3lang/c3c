@@ -23,7 +23,7 @@ macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
 	}
 }
 
-const Duration POLL_FOREVER = -1;
+const Duration POLL_FOREVER = (Duration)-1;
 
 typedef PollSubscribes = ushort;
 typedef PollEvents = ushort;

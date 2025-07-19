@@ -24,6 +24,7 @@
 - Implicit linking of libc math when libc math functions are used.
 - Allow even smaller memory limits.
 - Check unaligned array access.
+- Add "@structlike" for typedefs.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
@@ -74,6 +75,7 @@
 - New virtual emory arena allocator.
 - Added `WString.len`.
 - Added `@addr` macro.
+- Add `ConditionVariable.wait_until` and `ConditionVariable.wait_for`
 
 ## 0.7.3 Change list
 
