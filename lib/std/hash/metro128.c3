@@ -77,10 +77,10 @@ fn void MetroHash128.update(&self, char[] data)
 
 	for (; data.len >= 32; data = data[32:^32])
 	{
-		self.state[0] += ((ulong*)data.ptr)[0] * K[0]; self.state[0] = self.state[0].rotr(29) + self.state[2];
-		self.state[1] += ((ulong*)data.ptr)[1] * K[1]; self.state[1] = self.state[1].rotr(29) + self.state[3];
-		self.state[2] += ((ulong*)data.ptr)[2] * K[2]; self.state[2] = self.state[2].rotr(29) + self.state[0];
-		self.state[3] += ((ulong*)data.ptr)[3] * K[3]; self.state[3] = self.state[3].rotr(29) + self.state[1];
+		self.state[0] += @unaligned_load(((ulong*)data.ptr)[0], 1) * K[0]; self.state[0] = self.state[0].rotr(29) + self.state[2];
+		self.state[1] += @unaligned_load(((ulong*)data.ptr)[1], 1) * K[1]; self.state[1] = self.state[1].rotr(29) + self.state[3];
+		self.state[2] += @unaligned_load(((ulong*)data.ptr)[2], 1) * K[2]; self.state[2] = self.state[2].rotr(29) + self.state[0];
+		self.state[3] += @unaligned_load(((ulong*)data.ptr)[3], 1) * K[3]; self.state[3] = self.state[3].rotr(29) + self.state[1];
 	}
 
 	// Gobble up the leftover bytes. Nom nom.
@@ -112,7 +112,7 @@ fn uint128 MetroHash128.final(&self)
 
 	if (final_data.len >= 8)
 	{
-		self.state[0] += ((ulong*)final_data.ptr)[0] * K[2]; self.state[0] = self.state[0].rotr(33) * K[3];
+		self.state[0] += @unaligned_load(((ulong*)final_data.ptr)[0], 1) * K[2]; self.state[0] = self.state[0].rotr(33) * K[3];
 		self.state[0] ^= ((self.state[0] * K[2]) + self.state[1]).rotr(27) * K[1];
 
 		final_data = final_data[8:^8];
@@ -120,7 +120,7 @@ fn uint128 MetroHash128.final(&self)
 
 	if (final_data.len >= 4)
 	{
-		self.state[1] += ((uint*)final_data.ptr)[0] * K[2]; self.state[1] = self.state[1].rotr(33) * K[3];
+		self.state[1] += @unaligned_load(((uint*)final_data.ptr)[0], 1) * K[2]; self.state[1] = self.state[1].rotr(33) * K[3];
 		self.state[1] ^= ((self.state[1] * K[3]) + self.state[0]).rotr(46) * K[0];
 
 		final_data = final_data[4:^4];
@@ -128,7 +128,7 @@ fn uint128 MetroHash128.final(&self)
 
 	if (final_data.len >= 2)
 	{
-		self.state[0] += ((ushort*)final_data.ptr)[0] * K[2]; self.state[0] = self.state[0].rotr(33) * K[3];
+		self.state[0] += @unaligned_load(((ushort*)final_data.ptr)[0], 1) * K[2]; self.state[0] = self.state[0].rotr(33) * K[3];
 		self.state[0] ^= ((self.state[0] * K[2]) + self.state[1]).rotr(22) * K[1];
 
 		final_data = final_data[2:^2];

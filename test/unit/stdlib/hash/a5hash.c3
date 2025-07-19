@@ -16,6 +16,13 @@ fn void vector_1()
 	test::@check(actual == expected, "Hash mismatch (%x expected // %x actual).", expected, actual);
 }
 
+fn void vector_offset()
+{
+	char[] input = "This is a test of a5hash.";
+
+	ulong actual = a5hash::hash(input[1..]);
+}
+
 
 fn void vector_2()
 {

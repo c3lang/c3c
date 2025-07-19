@@ -132,6 +132,12 @@ fn void seeded_string_vectors()
 	}
 }
 
+fn void seeded_offset()
+{
+	char[] x = "kepkoewkopkfpokfoewkfokweokefkfkkpoewkf";
+	ulong actual = komi::hash(x[1..], TEST_SEED);
+}
+
 fn void seeded_bulk_vectors()
 {
 	$assert BULK_INTERVALS.len == EXPECTED_BULK_SEEDED.len
