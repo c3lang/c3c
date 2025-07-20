@@ -348,10 +348,10 @@ fn void F25519Int.reduce_carry(&s, uint carry)
 
 	carry *= 19;
 
-	for (usz i; i < F25519Int.len; i++)
+	foreach (i, &v : s)
 	{
-		carry += (*s)[i];
-		(*s)[i] = (char)carry;
+		carry += *v;
+		*v = (char)carry;
 		carry >>= 8;
 	}
 }
@@ -368,9 +368,9 @@ fn void F25519Int.normalize(&s)
 	// Substract p
 	F25519Int sub @noinit;
 	ushort c = 19;
-	for (usz i; i + 1 < F25519Int.len; i++)
+	foreach (i, v : (*s)[:^1])
 	{
-		c += (*s)[i];
+		c += v;
 		sub[i] = (char)c;
 		c >>= 8;
 	}
@@ -389,7 +389,7 @@ fn void F25519Int.normalize(&s)
 fn char eq(F25519Int* a, F25519Int* b)
 {
 	char e;
-	for (usz i; i < F25519Int.len; i++) e |= (*a)[i] ^ (*b)[i];
+	foreach (i, v : a) e |= v ^ (*b)[i];
 
 	e |= (e >> 4);
 	e |= (e >> 2);
@@ -408,7 +408,7 @@ fn F25519Int f25519_select(F25519Int* zero, F25519Int* one, char condition)
 {
 	F25519Int r @noinit;
 
-	for (usz i; i < F25519Int.len; i++) r[i] = (*zero)[i] ^ (-condition & ((*one)[i] ^ (*zero)[i]));
+	foreach (i, z : zero) r[i] = z ^ (-condition & ((*one)[i] ^ z));
 
 	return r;
 }
@@ -426,7 +426,7 @@ fn F25519Int F25519Int.add(&s, F25519Int* n) @operator(+)
 	F25519Int r @noinit;
 
 	ushort c;
-	foreach (i, v : *s)
+	foreach (i, v : s)
 	{
 		c >>= 8;
 		c += v + (*n)[i];
@@ -452,9 +452,9 @@ fn F25519Int F25519Int.sub(&s, F25519Int* n) @operator(-)
 	F25519Int r @noinit;
 
 	uint c = (char)~(2 * 19 - 1);
-	for (usz i; i + 1 < F25519Int.len; i++)
+	foreach (i, v : (*s)[:^1])
 	{
-		c += 0b11111111_00000000 + (*s)[i] - (*n)[i];
+		c += 0b11111111_00000000 + v - (*n)[i];
 		r[i] = (char)c;
 		c >>= 8;
 	}
@@ -477,7 +477,7 @@ fn F25519Int F25519Int.neg(&s) @operator(-)
 	F25519Int r @noinit;
 
 	uint c = (char)~(2 * 19 - 1);
-	foreach (i, v : ((char*)s)[:F25519Int.len - 1])
+	foreach (i, v : (*s)[:^1])
 	{
 		c += 0b11111111_00000000 - v;
 		r[i] = (char)c;
@@ -490,7 +490,6 @@ fn F25519Int F25519Int.neg(&s) @operator(-)
 
 	return r;
 }
-
 
 macro F25519Int F25519Int.@mul(&s, F25519Int #n) @operator(*) => s.mul(@addr(#n));
 
@@ -529,7 +528,7 @@ fn F25519Int F25519Int.mul_s(&s, uint n)
 	F25519Int r @noinit;
 
 	uint c;
-	foreach (i, v : *s)
+	foreach (i, v : s)
 	{
 		c >>= 8;
 		c += v * n;
@@ -551,7 +550,7 @@ fn F25519Int F25519Int.inv(&s)
 	//Compute s^(p-2)
 	F25519Int r = *s;
 
-	for (usz i; i < 255 - 1 - 5; i++) r = r * r * *s;
+	for (usz i; i < 255 - 1 - 5; i++) r = r * r * s;
 
 	r *= r;
 	r = r * r * s;
@@ -571,9 +570,9 @@ fn F25519Int F25519Int.pow_2523(&s) @local
 {
 	F25519Int r = *s;
 
-	for (usz i; i < 252 - 1 - 2; i++) r = r * r * *s;
+	for (usz i; i < 252 - 1 - 2; i++) r = r * r * s;
 
-	r = r * r;
+	r *= r;
 	r = r * r * s;
 
 	return r;
@@ -589,7 +588,7 @@ fn F25519Int F25519Int.sqrt(&s)
 	F25519Int twice = s.mul_s(2);
 	F25519Int pow = twice.pow_2523();
 
-	return ((twice * pow * pow) - ONE) * s * pow;
+	return (twice * pow * pow - ONE) * s * pow;
 }
 
 
@@ -607,7 +606,7 @@ typedef FBaseInt = inline char[32];
 const FBaseInt ORDER = x"edd3f55c1a631258 d69cf7a2def9de14 0000000000000000 0000000000000010";
 
 <*
- FBaseInterpret bytes as a normalized element.
+ Interpret bytes as a normalized element.
 
  @param [in] bytes
 *>
@@ -648,7 +647,7 @@ fn FBaseInt fbase_select(FBaseInt* zero, FBaseInt* one, char condition)
 {
 	FBaseInt r @noinit;
 
-	for (usz i; i < FBaseInt.len; i++) r[i] = (*zero)[i] ^ (-condition & ((*one)[i] ^ (*zero)[i]));
+	foreach (i, z : zero) r[i] = z ^ (-condition & ((*one)[i] ^ z));
 
 	return r;
 }
@@ -666,9 +665,9 @@ fn FBaseInt FBaseInt.add(&s, FBaseInt* n) @operator(+)
 	FBaseInt r @noinit;
 
 	ushort c;
-	for (usz i; i < FBaseInt.len; i++)
+	foreach (i, v : s)
 	{
-		c += (*s)[i] + (*n)[i];
+		c += v + (*n)[i];
 		r[i] = (char)c;
 		c >>= 8;
 	}
@@ -686,9 +685,9 @@ fn FBaseInt FBaseInt.sub_l(&s, FBaseInt* n)
 {
 	FBaseInt sub @noinit;
 	ushort c;
-	for (usz i; i < FBaseInt.len; i++)
+	foreach (i, v : s)
 	{
-		c = (*s)[i] - (*n)[i] - c;
+		c = v - (*n)[i] - c;
 		sub[i] = (char)c;
 		c = (c >> 8) & 1;
 	}
@@ -706,9 +705,9 @@ fn FBaseInt FBaseInt.shl(&s, usz n) @operator(<<)
 	FBaseInt r @noinit;
 
 	ushort c;
-	for (usz i; i < FBaseInt.len; i++)
+	foreach (i, v : s)
 	{
-		c |= (*s)[i] << n;
+		c |= v << n;
 		r[i] = (char)c;
 		c >>= 8;
 	}
