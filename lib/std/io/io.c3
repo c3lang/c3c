@@ -120,7 +120,7 @@ macro usz? fprint(out, x)
 		$case ZString: return out.write(x.str_view());
 		$case DString: return out.write(x.str_view());
 		$default:
-			$if $assignable(x, String):
+			$if @assignable_to(x, String):
 				return out.write((String)x);
 			$else
 				$if is_struct_with_default_print($Type):

@@ -107,6 +107,22 @@ macro @addr(#val) @builtin
 	$endif
 }
 
+macro typeid @typeid(#value) @const @builtin
+{
+	return $typeof(#value).typeid;
+}
+
+macro TypeKind @typekind(#value) @const @builtin
+{
+	return $typeof(#value).kindof;
+}
+
+macro bool @typeis(#value, $Type) @const @builtin
+{
+	return $typeof(#value).typeid == $Type.typeid;
+}
+
+
 fn bool print_backtrace(String message, int backtraces_to_ignore) @if (env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
 {
 	void*[256] buffer;
@@ -291,7 +307,7 @@ macro enum_by_name($Type, String enum_name) @builtin
  @param $Type : `The type of the enum`
  @require $Type.kindof == ENUM : `Only enums may be used`
  @require $defined($Type.#value) : `Expected '#value' to match an enum associated value`
- @require $assignable(value, $typeof(($Type){}.#value)) : `Expected the value to match the type of the associated value`
+ @require @assignable_to(value, $typeof(($Type){}.#value)) : `Expected the value to match the type of the associated value`
  @ensure @typeis(return, $Type)
  @return? NOT_FOUND
 *>
@@ -344,7 +360,7 @@ macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 
 <*
  @require values::@is_int(#value) || values::@is_bool(#value)
- @require $assignable(expected, $typeof(#value))
+ @require @assignable_to(expected, $typeof(#value))
  @require $probability >= 0 && $probability <= 1.0
 *>
 macro @expect(#value, expected, $probability = 1.0) @builtin

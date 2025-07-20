@@ -195,7 +195,7 @@ fn Entry*? HashMap.get_entry(&map, Key key)
 
 <*
  Get the value or update and
- @require $assignable(#expr, Value)
+ @require @assignable_to(#expr, Value)
 *>
 macro Value HashMap.@get_or_set(&map, Key key, Value #expr)
 {

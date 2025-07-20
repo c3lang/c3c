@@ -131,7 +131,7 @@ macro atan2(x, y)
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
  @require @typekind(sinp) == POINTER : "Expected sinp to be a pointer"
  @require values::@is_same_type(sinp, cosp) : "Expected sinp and cosp to have the same type"
- @require $assignable(x, $typeof(*sinp)) : "Expected x and sinp/cosp to have the same type"
+ @require @assignable_to(x, $typeof(*sinp)) : "Expected x and sinp/cosp to have the same type"
 *>
 macro sincos_ref(x, sinp, cosp)
 {
@@ -397,7 +397,7 @@ macro nearbyint(x) => $$nearbyint(x);
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
- @require $assignable(exp, $typeof(values::promote_int(x))) || values::@is_int(exp) : `The input must be an integer, castable to the type of x`
+ @require @assignable_to(exp, $typeof(values::promote_int(x))) || values::@is_int(exp) : `The input must be an integer, castable to the type of x`
 *>
 macro pow(x, exp)
 {
