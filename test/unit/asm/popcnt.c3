@@ -1,4 +1,4 @@
-module test::inline_asm::popcnt;
+module test::inline_asm::popcnt @if (env::X86_64);
 
 fn void popcntw() @test
 {
