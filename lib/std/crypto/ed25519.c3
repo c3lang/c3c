@@ -408,7 +408,7 @@ fn F25519Int f25519_select(F25519Int* zero, F25519Int* one, char condition)
 {
 	F25519Int r @noinit;
 
-	foreach (i, z: zero) r[i] = z ^ (-condition & ((*one)[i] ^ z));
+	foreach (i, z : zero) r[i] = z ^ (-condition & ((*one)[i] ^ z));
 
 	return r;
 }
