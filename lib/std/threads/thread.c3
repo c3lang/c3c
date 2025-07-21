@@ -48,6 +48,11 @@ macro void? TimedMutex.lock_timeout(&mutex, ulong ms) => NativeTimedMutex.lock_t
 macro bool  TimedMutex.try_lock(&mutex) => NativeTimedMutex.try_lock((NativeTimedMutex*)mutex);
 macro void? TimedMutex.unlock(&mutex) => NativeTimedMutex.unlock((NativeTimedMutex*)mutex);
 
+macro void fence(AtomicOrdering $ordering) @safemacro
+{
+	$$fence($ordering.ordinal);
+}
+
 macro void Mutex.@in_lock(&mutex; @body)
 {
 	(void)mutex.lock();

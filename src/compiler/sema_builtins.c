@@ -1006,6 +1006,22 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args_match(context, args, 3)) return false;
 			rtype = args[0]->type;
 			break;
+		case BUILTIN_FENCE:
+			ASSERT(arg_count == 1);
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTEGER}, 1)) return false;
+			if (!sema_cast_const(args[0])) RETURN_SEMA_ERROR(args[0], "Ordering must be a compile time constant.");
+			if (!is_valid_atomicity(context, args[0])) return false;
+			switch (args[0]->const_expr.ixx.i.low)
+			{
+				case ATOMIC_NONE:
+				case ATOMIC_RELAXED:
+				case ATOMIC_UNORDERED:
+					RETURN_SEMA_ERROR(args[0], "'none', 'relaxed' and 'unordered' are not valid for fence.");
+				default:
+					break;
+			}
+			rtype = type_void;
+			break;
 		case BUILTIN_ATOMIC_LOAD:
 		{
 			ASSERT(arg_count == 3);
@@ -1228,6 +1244,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_EXACT_NEG:
 		case BUILTIN_EXP2:
 		case BUILTIN_EXP:
+		case BUILTIN_FENCE:
 		case BUILTIN_FLOOR:
 		case BUILTIN_FRAMEADDRESS:
 		case BUILTIN_LLRINT:

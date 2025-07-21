@@ -698,6 +698,7 @@ typedef struct
 	bool print_stats;
 	bool old_slice_copy;
 	bool old_enums;
+	bool single_threaded;
 	int build_threads;
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;

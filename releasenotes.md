@@ -29,6 +29,7 @@
 - Add komihash, a5hash, metrohash64, metrohash128, and wyhash2 variants with tests/benchmark. #2293
 - '$assignable' is deprecated.
 - Deprecate allocator::heap() and allocator::temp()
+- Add `thread::fence` providing a thread fence.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
@@ -83,6 +84,7 @@
 - Added `@addr` macro.
 - Add `ConditionVariable.wait_until` and `ConditionVariable.wait_for`
 - Added readline_to_stream that takes a stream.
+- Added `Ref` and `RefCounted` experimental functionality.
 
 ## 0.7.3 Change list
 
