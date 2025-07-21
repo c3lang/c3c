@@ -70,6 +70,7 @@
 - A distinct type based on an array would yield .len == 0
 - Overloading addition with a pointer would not work.
 - Copying const enums and regular enums incorrect #2313.
+- Regression: Chaining an optional together with contracts could in some cases lose the optional.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
@@ -81,6 +82,7 @@
 - Added `WString.len`.
 - Added `@addr` macro.
 - Add `ConditionVariable.wait_until` and `ConditionVariable.wait_for`
+- Added readline_to_stream that takes a stream.
 
 ## 0.7.3 Change list
 

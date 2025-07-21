@@ -1359,14 +1359,13 @@ void llvm_emit_ignored_expr(GenContext *c, Expr *expr)
 		LLVMBasicBlockRef discard_fail = llvm_basic_block_new(c, "voiderr");
 		PUSH_CATCH_VAR_BLOCK(NULL, discard_fail);
 		llvm_emit_expr(c, &value, expr);
-		llvm_value_fold_optional(c, &value);
 		EMIT_EXPR_LOC(c, expr);
 		// We only optimize if there is no instruction the current block
 		if (!LLVMGetFirstInstruction(c->current_block))
 		{
 			llvm_prune_optional(c, discard_fail);
 		}
-		else
+		else if (!llvm_basic_block_is_unused(discard_fail))
 		{
 			llvm_emit_br(c, discard_fail);
 			llvm_emit_block(c, discard_fail);

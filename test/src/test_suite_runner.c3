@@ -11,7 +11,8 @@ Path test_dir;
 bool print_to_file;
 String stdlib;
 
-fn void main(String[] args)
+
+fn int main(String[] args)
 {
 	// Grab the name for `usage`
 	String appname = args[0];
@@ -86,7 +87,7 @@ fn void main(String[] args)
 	io::printfn("Found %d tests: %.1f%% (%d / %d) passed (%d skipped).",
         test_count, (100.0 * success_count) / math::max(1, test_count - skip_count),
         success_count, test_count - skip_count, skip_count);
-    os::exit(success_count == test_count - skip_count ? 0 :  1);
+    return success_count == test_count - skip_count ? 0 :  1;
 }
 
 struct Error

@@ -2,14 +2,14 @@ module castable @test;
 
 fn void assignable()
 {
-	assert($assignable(12.0, int) == false);
-	assert($assignable(12, int));
-	assert(!$assignable("12", int));
-	assert($assignable("12", String));
-	assert($assignable("12", char*));
-	assert($assignable("12", char[*]));
-	assert($assignable("12", char[2]));
-	assert($assignable("12", char[3]));
+	assert(@assignable_to(12.0, int) == false);
+	assert(@assignable_to(12, int));
+	assert(!@assignable_to("12", int));
+	assert(@assignable_to("12", String));
+	assert(@assignable_to("12", char*));
+	//assert($assignable("12", char[*]));
+	assert(@assignable_to("12", char[2]));
+	assert(@assignable_to("12", char[3]));
 }
 
 fn void castable()

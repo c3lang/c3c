@@ -10,5 +10,5 @@ macro void read(src, Allocator allocator, n)
 fn void main()
 {
     ByteReader br;
-    read(&br, allocator::temp(), 10)!!;
+    read(&br, tmem, 10)!!;
 }

@@ -477,7 +477,7 @@ struct TrieNode
 	bool valid;
 }
 
-fn void Trie.init(&self, usz initial_capacity = 8, Allocator using = allocator::heap())
+fn void Trie.init(&self, usz initial_capacity = 8, Allocator using = mem)
 {
 	*self = {};
 	self.nodes.init(using, initial_capacity);

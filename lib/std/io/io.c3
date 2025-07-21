@@ -57,35 +57,16 @@ faultdef
 *>
 macro String? readline(Allocator allocator, stream = io::stdin())
 {
-	bool $is_stream = @typeis(stream, InStream);
-	$if $is_stream:
-		$typeof(&stream.read_byte) func = &stream.read_byte;
-		char val = func((void*)stream)!;
-	$else
-		char val = stream.read_byte()!;
-	$endif
-
-	if (val == '\n') return "";
+	if (allocator == tmem)
+	{
+		DString str = dstring::temp_with_capacity(256);
+		readline_to_stream(&str, stream)!;
+		return str.str_view();
+	}
 	@pool()
 	{
 		DString str = dstring::temp_with_capacity(256);
-		if (val != '\r') str.append(val);
-		while (1)
-		{
-			$if $is_stream:
-				char? c = func((void*)stream);
-			$else
-				char? c = stream.read_byte();
-			$endif
-			if (catch err = c)
-			{
-				if (err == io::EOF) break;
-				return err?;
-			}
-			if (c == '\r') continue;
-			if (c == '\n') break;
-			str.append_char(c);
-		}
+		readline_to_stream(&str, stream)!;
 		return str.copy_str(allocator);
 	};
 }
@@ -104,6 +85,65 @@ macro String? treadline(stream = io::stdin())
 	return readline(tmem, stream) @inline;
 }
 
+<*
+ Reads a string, see `readline`, the data is passed to an outstream
+
+ @param out_stream : `The stream to write to`
+ @param in_stream : `The stream to read from.`
+ @require !($defined(&in_stream) &&& @is_instream(&in_stream)) : "The value for 'in_stream' should have been passed as a pointer and not as a value, please add '&'."
+ @require !($defined(&out_stream) &&& @is_outstream(&out_stream)) : "The value for 'out_stream' should have been passed as a pointer and not as a value, please add '&'."
+ @require @is_instream(in_stream) : `The in_stream must implement InStream.`
+ @require @is_outstream(out_stream) : `The out_stream must implement OutStream.`
+ @return `The number of bytes written`
+*>
+macro usz? readline_to_stream(out_stream, in_stream = io::stdin())
+{
+	bool $is_stream = @typeis(in_stream, InStream);
+	$if $is_stream:
+		var func = &in_stream.read_byte;
+		char val = func((void*)in_stream)!;
+	$else
+		char val = in_stream.read_byte()!;
+	$endif
+	bool $is_out_stream = @typeis(out_stream, OutStream);
+	$if $is_out_stream:
+		var out_func = &out_stream.write_byte;
+	$endif
+
+	if (val == '\n') return 0;
+	usz len;
+	if (val != '\r')
+	{
+		$if $is_out_stream:
+			out_func((void*)out_stream.ptr, val)!;
+		$else
+			out_stream.write_byte(val)!;
+		$endif
+		len++;
+	}
+	while (1)
+	{
+		$if $is_stream:
+			char? c = func((void*)in_stream);
+		$else
+			char? c = in_stream.read_byte();
+		$endif
+		if (catch err = c)
+		{
+			if (err == io::EOF) break;
+			return err?;
+		}
+		if (c == '\r') continue;
+		if (c == '\n') break;
+		$if $is_out_stream:
+			out_func((void*)out_stream.ptr, c)!;
+		$else
+			out_stream.write_byte(c)!;
+		$endif
+		len++;
+	}
+	return len;
+}
 <*
  Print a value to a stream.
 
