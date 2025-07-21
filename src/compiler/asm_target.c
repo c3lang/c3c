@@ -709,6 +709,10 @@ static void init_asm_x86(PlatformTarget* target)
 	reg_instr(target, "pushw", "r16/mem/imm16");
 	reg_instr(target, "popw", "w:r16/mem");
 
+	reg_instr_clob(target, "popcntw", cc_flag_mask, "w:r16, r16/mem");
+	reg_instr_clob(target, "popcntl", cc_flag_mask, "w:r32, r32/mem");
+	reg_instr_clob(target, "popcntq", cc_flag_mask, "w:r64, r64/mem");
+
 	target->clobber_name_list = X86ClobberNames;
 	target->extra_clobbers = "~{flags},~{dirflag},~{fspr}";
 	if (target->arch == ARCH_TYPE_X86)
