@@ -1,8 +1,9 @@
 name: OpenBSD CI
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ master, dev, ci_testing, experiments ]
+    branches: [ master, dev, ci_testing, experiments, openbsd_support ]
   pull_request:
     branches: [ master, dev ]
 
@@ -22,7 +23,6 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [
 
     steps:
       - uses: actions/checkout@v4
