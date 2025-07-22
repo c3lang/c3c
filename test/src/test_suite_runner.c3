@@ -411,6 +411,10 @@ fn void test_file(Path file_path)
 	// Construct the compile line
 	List{String} cmdline;
 	cmdline.push(compiler_path.str_view());
+	$if env::OPENBSD:
+		cmdline.push("--max-mem");
+		cmdline.push("128");
+	$endif
 	cmdline.push("compile-only");
 	cmdline.push("--test");
 	if (stdlib)

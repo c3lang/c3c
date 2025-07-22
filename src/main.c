@@ -4,6 +4,9 @@
 #include "utils/lib.h"
 #include <compiler_tests/benchmark.h>
 
+#ifdef __OpenBSD__
+#include <sys/resource.h>
+#endif
 
 bool debug_log = false;
 
@@ -27,6 +30,13 @@ int main_real(int argc, const char *argv[])
 {
 	srand((unsigned int)time(NULL));
 	compiler_exe_name = argv[0];
+#ifdef __OpenBSD__
+	// override data size constrain set up by the system */
+	struct rlimit l;
+	getrlimit(RLIMIT_DATA, &l);
+	l.rlim_cur = l.rlim_max;
+	setrlimit(RLIMIT_DATA, &l);
+#endif
 	bench_begin();
 
 	// Setjmp will allow us to add things like fuzzing with
