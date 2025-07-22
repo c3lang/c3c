@@ -1,19 +1,20 @@
 name: CI
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master, dev, ci_testing, experiments ]
+  pull_request:
+    branches: [ master, dev ]
 
-# on:
-#   push:
-#     branches: [ master, dev, ci_testing, experiments ]
-#   pull_request:
-#     branches: [ master, dev ]
-# Temporary
 env:
   LLVM_RELEASE_VERSION_WINDOWS: 18
   LLVM_RELEASE_VERSION_MAC: 17
   LLVM_RELEASE_VERSION_LINUX: 17
+  LLVM_RELEASE_VERSION_OPENBSD: 19
   LLVM_RELEASE_VERSION_UBUNTU22: 17
   LLVM_DEV_VERSION: 21
+  OPENBSD_RELEASE: "7.7"
 jobs:
 
   build-msvc:
@@ -753,6 +754,119 @@ jobs:
           nix build -L ".#c3c-checks"
         fi
 
+  build-openbsd:
+    runs-on: ubuntu-latest
+    strategy:
+      # Don't abort runners if a single one fails
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: OpenBSD VM
+        uses: vmactions/openbsd-vm@main
+        with:
+          prepare: |
+            pkg_add cmake llvm-19.1.7p3 ninja
+
+          run: |
+            echo "CMake"
+            cmake -B build \
+              -G Ninja \
+              -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
+              -DLLVM_ENABLE_LIBXML2=OFF \
+              -DC3_LLVM_VERSION=${LLVM_RELEASE_VERSION_OPENBSD}
+            cmake --build build
+            echo "Compile and run some examples"
+            cd resources
+            ../build/c3c compile examples/base64.c3
+            ../build/c3c compile examples/binarydigits.c3
+            ../build/c3c compile examples/brainfk.c3
+            ../build/c3c compile examples/factorial_macro.c3
+            ../build/c3c compile examples/fasta.c3
+            ../build/c3c compile examples/gameoflife.c3
+            ../build/c3c compile examples/hash.c3
+            ../build/c3c compile-only examples/levenshtein.c3
+            ../build/c3c compile examples/load_world.c3
+            ../build/c3c compile-only examples/map.c3
+            ../build/c3c compile examples/mandelbrot.c3
+            ../build/c3c compile examples/plus_minus.c3
+            ../build/c3c compile examples/nbodies.c3
+            ../build/c3c compile examples/spectralnorm.c3
+            ../build/c3c compile examples/swap.c3
+            ../build/c3c compile examples/contextfree/boolerr.c3
+            ../build/c3c compile examples/contextfree/dynscope.c3
+            ../build/c3c compile examples/contextfree/guess_number.c3
+            ../build/c3c compile examples/contextfree/multi.c3
+            ../build/c3c compile examples/contextfree/cleanup.c3
+            ../build/c3c compile-run examples/hello_world_many.c3
+            ../build/c3c compile-run examples/time.c3
+            ../build/c3c compile-run examples/fannkuch-redux.c3
+            ../build/c3c compile-run examples/contextfree/boolerr.c3
+            ../build/c3c compile-run examples/load_world.c3
+            ../build/c3c compile-run examples/process.c3
+            ../build/c3c compile-run examples/ls.c3
+            ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
+            cd ..
+            echo "Compile and run dynlib-test"
+            cd resources/examples/dynlib-test
+            ../../../build/c3c -vv dynamic-lib add.c3
+            mv add.so libadd.so
+            cc test.c -L. -ladd -Wl,-rpath=.         
+            ./a.out
+            ../../../build/c3c compile-run test.c3 -L . -l add -z -Wl,-rpath=.
+            cd ../../../
+            echo "Compile and run staticlib-test"
+            cd resources/examples/staticlib-test
+            ../../../build/c3c -vv static-lib add.c3
+            mv add.a libadd.a
+            cc test.c -L. -ladd         
+            ./a.out
+            ../../../build/c3c compile-run test.c3 -L . -l add           
+            cd ../../../
+            echo "Compile run unit tests"
+            cd test
+            ../build/c3c --max-mem 128 compile-test unit -D SLOW_TESTS
+            cd ..
+            echo "Build testproject"
+            cd resources/testproject
+            ../../build/c3c run -vvv --trust=full
+            cd ../../
+            echo "Test WASM"
+            cd resources/testfragments
+            ../../build/c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
+            cd ../../
+            echo "Build testproject direct linker"
+            cd resources/testproject
+            ../../build/c3c run -vvv --linker=builtin --trust=full
+            cd ../../
+            echo "Init a library & a project"
+            ./build/c3c init-lib mylib
+            ls mylib.c3l
+            ./build/c3c init myproject
+            ls myproject
+            echo "run compiler tests"
+            cd test
+            ../build/c3c --max-mem 128 compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/
+            cd ..
+
+      - name: bundle_output
+        run: |
+          mkdir c3
+          cp -r lib c3
+          cp msvc_build_libraries.py c3
+          cp build/c3c c3
+          cp README.md c3
+          cp releasenotes.md c3
+          tar czf c3-openbsd-${OPENBSD_RELEASE}-${{matrix.build_type}}.tar.gz c3
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: c3-openbsd-${OPENBSD_RELEASE}-${{matrix.build_type}}
+          path: c3-openbsd-${OPENBSD_RELEASE}-${{matrix.build_type}}.tar.gz
+
   release:
     runs-on: ubuntu-22.04
     needs: [build-msvc, build-linux, build-mac, build-linux-ubuntu22]
@@ -775,6 +889,8 @@ jobs:
       - run: zip -r c3-windows-debug.zip c3-windows-Debug
       - run: mv c3-linux-Release/c3-linux-Release.tar.gz c3-linux-Release/c3-linux.tar.gz
       - run: mv c3-linux-Debug/c3-linux-Debug.tar.gz c3-linux-Debug/c3-linux-debug.tar.gz
+      - run: mv c3-openbsd-${OPENBSD_RELEASE}-Release/c3-openbsd-${OPENBSD_RELEASE}-Release.tar.gz c3-openbsd-${OPENBSD_RELEASE}-Release/c3-openbsd-${OPENBSD_RELEASE}.tar.gz
+      - run: mv c3-openbsd-${OPENBSD_RELEASE}-Debug/c3-openbsd-${OPENBSD_RELEASE}-Debug.tar.gz c3-openbsd-${OPENBSD_RELEASE}-Debug/c3-openbsd-${OPENBSD_RELEASE}-debug.tar.gz
       - run: mv c3-ubuntu-22-Release/c3-ubuntu-22-Release.tar.gz c3-ubuntu-22-Release/c3-ubuntu-22.tar.gz
       - run: mv c3-ubuntu-22-Debug/c3-ubuntu-22-Debug.tar.gz c3-ubuntu-22-Debug/c3-ubuntu-22-debug.tar.gz
       - run: mv c3-macos-Release/c3-macos-Release.zip c3-macos-Release/c3-macos.zip
@@ -796,6 +912,8 @@ jobs:
             c3-windows-debug.zip
             c3-linux-Release/c3-linux.tar.gz
             c3-linux-Debug/c3-linux-debug.tar.gz
+            c3-openbsd-${OPENBSD_RELEASE}-Release/c3-openbsd-${OPENBSD_RELEASE}.tar.gz
+            c3-openbsd-${OPENBSD_RELEASE}-Debug/c3-openbsd-${OPENBSD_RELEASE}-debug.tar.gz
             c3-ubuntu-22-Release/c3-ubuntu-22.tar.gz
             c3-ubuntu-22-Debug/c3-ubuntu-22-debug.tar.gz
             c3-macos-Release/c3-macos.zip
