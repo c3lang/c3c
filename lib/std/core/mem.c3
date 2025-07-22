@@ -997,9 +997,10 @@ macro Type Volatile.set(&self, Type val)
 }
 
 <*
- @require @constant_is_power_of_2(ALIGNMENT) : "The alignment must be a power of 2"
+ @require mem::@constant_is_power_of_2(ALIGNMENT) : "The alignment must be a power of 2"
 *>
 module std::core::mem::alignment { Type, ALIGNMENT };
+import std::core::mem @public;
 
 <*
  An AlignedRef offers correctly aligned access to addresses that may be unaligned or overaligned.
