@@ -312,3 +312,56 @@ fn void test_float()
 	test::eq_approx(- 2.04632e-05," - 2.04632e-05   ".to_float()!!, delta: 0.00001e-5);
 	test::eq_approx(2.04632e-05," + 2.04632e-05   ".to_float()!!, delta: 0.00001e-5);
 }
+
+fn void test_pascal_to_snake()
+{
+	String[2][*] test_cases = {
+		{ "HTTPRequest2Handler", "http_request2_handler" },
+		{ "MyJSON2XMLConverter", "my_json2_xml_converter"},
+		{ "Foo3C3CBazHello", "foo3_c3_c_baz_hello" },
+		{ "TLAWithABCs", "tla_with_ab_cs" },
+		{ "HTMLToPDFConverter", "html_to_pdf_converter"},
+		{ "OAuth2Token", "o_auth2_token" },
+		{ "startMIDDLELast", "start_middle_last" }
+	};
+	foreach (s : test_cases)
+	{
+		test::eq(s[0].pascal_to_snake_copy(tmem), s[1]);
+	}
+}
+
+fn void test_snake_pascal()
+{
+	String[2][*] test_cases = {
+		{ "http_request2_handler", "HttpRequest2Handler", },
+		{ "my_json2_xml_converter", "MyJson2XmlConverter", },
+		{ "foo3_c3_c_baz_hello", "Foo3C3CBazHello",  },
+		{ "tla_with_ab_cs", "TlaWithAbCs",  },
+		{ "html_to_pdf_converter", "HtmlToPdfConverter", },
+		{ "o_auth2_token", "OAuth2Token",  },
+		{ "start_middle_last", "StartMiddleLast",  }
+	};
+	foreach (s : test_cases)
+	{
+		test::eq(s[0].snake_to_pascal_copy(tmem), s[1]);
+	}
+}
+
+fn void test_snake_pascal_self_modify()
+{
+	String[2][*] test_cases = {
+		{ "http_request2_handler", "HttpRequest2Handler", },
+		{ "my_json2_xml_converter", "MyJson2XmlConverter", },
+		{ "foo3_c3_c_baz_hello", "Foo3C3CBazHello",  },
+		{ "tla_with_ab_cs", "TlaWithAbCs",  },
+		{ "html_to_pdf_converter", "HtmlToPdfConverter", },
+		{ "o_auth2_token", "OAuth2Token",  },
+		{ "start_middle_last", "StartMiddleLast",  }
+	};
+	foreach (s : test_cases)
+	{
+		String s2 = s[0].tcopy();
+		s2.convert_snake_to_pascal();
+		test::eq(s2, s[1]);
+	}
+}

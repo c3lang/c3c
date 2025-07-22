@@ -87,6 +87,7 @@
 - Added `Ref` and `RefCounted` experimental functionality.
 - Added `Volatile` generic type.
 - Added `UnalignedRef` generic type.
+- Add String conversion functions snake_case -> PascalCase and vice versa.
 
 ## 0.7.3 Change list
 
