@@ -85,6 +85,7 @@
 - Add `ConditionVariable.wait_until` and `ConditionVariable.wait_for`
 - Added readline_to_stream that takes a stream.
 - Added `Ref` and `RefCounted` experimental functionality.
+- Add `Volatile` generic type.
 
 ## 0.7.3 Change list
 

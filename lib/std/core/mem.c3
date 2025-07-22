@@ -968,3 +968,18 @@ fn void* __memcpy(void* dst, void* src, usz n) @weak @export("memcpy")
 	}
 	return dst;
 }
+
+
+module std::core::mem::volatile { Type };
+
+typedef Volatile @structlike = Type;
+
+macro Type Volatile.get(&self)
+{
+	return @volatile_load(*(Type*)self);
+}
+
+macro Type Volatile.set(&self, Type val)
+{
+	return @volatile_store(*(Type*)self, val);
+}
