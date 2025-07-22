@@ -532,6 +532,11 @@ static void linker_setup_freebsd(const char ***args_ref, Linker linker_type, boo
 {
 	if (linker_type == LINKER_CC) {
 		linking_add_link(&compiler.linking, "pthread");
+		linking_add_link(&compiler.linking, "execinfo"); // for backtrace
+		if (compiler.build.debug_info == DEBUG_INFO_FULL)
+		{
+			add_plain_arg("-rdynamic");
+		}
 		return;
 	}
 	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");

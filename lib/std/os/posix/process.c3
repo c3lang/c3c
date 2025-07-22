@@ -58,7 +58,9 @@ const CInt WUNTRACES = 2;
 JmpBuf backtrace_jmpbuf @local;
 alias BacktraceFn = fn CInt(void** buffer, CInt size);
 
-fn CInt backtrace(void** buffer, CInt size)
+extern fn CInt backtrace(void** buffer, CInt size) @if(env::OPENBSD);
+
+fn CInt backtrace(void** buffer, CInt size) @if(env::LINUX)
 {
 	if (size < 1) return 0;
 	void* handle = libc::dlopen("libc.so.6", libc::RTLD_LAZY|libc::RTLD_NODELETE);
