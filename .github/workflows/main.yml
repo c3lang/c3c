@@ -1,11 +1,13 @@
 name: CI
 
-on:
-  push:
-    branches: [ master, dev, ci_testing, experiments ]
-  pull_request:
-    branches: [ master, dev ]
+on: workflow_dispatch
 
+# on:
+#   push:
+#     branches: [ master, dev, ci_testing, experiments ]
+#   pull_request:
+#     branches: [ master, dev ]
+# Temporary
 env:
   LLVM_RELEASE_VERSION_WINDOWS: 18
   LLVM_RELEASE_VERSION_MAC: 17

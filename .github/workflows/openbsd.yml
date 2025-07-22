@@ -1,0 +1,42 @@
+name: OpenBSD CI
+
+on:
+  push:
+    branches: [ master, dev, ci_testing, experiments ]
+  pull_request:
+    branches: [ master, dev ]
+
+env:
+  LLVM_RELEASE_VERSION_WINDOWS: 18
+  LLVM_RELEASE_VERSION_MAC: 17
+  LLVM_RELEASE_VERSION_LINUX: 17
+  LLVM_RELEASE_VERSION_OPENBSD: 19
+  LLVM_RELEASE_VERSION_UBUNTU22: 17
+  LLVM_DEV_VERSION: 21
+jobs:
+
+  build-openbsd:
+    runs-on: ubuntu-latest
+    strategy:
+      # Don't abort runners if a single one fails
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+        llvm_version: [
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: OpenBSD VM
+        uses: vmactions/openbsd-vm@main
+        with:
+          prepare: |
+            pkg_add cmake llvm-19.1.7p3 ninja
+
+          run: |
+            cmake -B build \
+              -G Ninja \
+              -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
+              -DLLVM_ENABLE_LIBXML2=OFF \
+              -DC3_LLVM_VERSION=${LLVM_RELEASE_VERSION_OPENBSD}
+            cmake --build build
+            ls build
