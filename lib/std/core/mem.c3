@@ -931,6 +931,18 @@ fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMEN
 	return tmem.resize(ptr, size, alignment)!!;
 }
 
+<*
+ Takes the address of a possibly unaligned variable or member,
+ and offers safe access to that member, by constructing an AlignedRef.
+
+ @require $defined(&#arg) : "It must be possible to take the address of the argument."
+ @return "An 'AlignedRef' with the proper type and alignment, with a pointer to argument"
+*>
+macro @aligned_addr(#arg) @builtin
+{
+	return (AlignedRef{$typeof(#arg), $alignof(#arg)})&#arg;
+}
+
 module std::core::mem @if(env::NO_LIBC);
 
 fn CInt __memcmp(void* s1, void* s2, usz n) @weak @export("memcmp")
@@ -982,4 +994,24 @@ macro Type Volatile.get(&self)
 macro Type Volatile.set(&self, Type val)
 {
 	return @volatile_store(*(Type*)self, val);
+}
+
+<*
+ @require @constant_is_power_of_2(ALIGNMENT) : "The alignment must be a power of 2"
+*>
+module std::core::mem::alignment { Type, ALIGNMENT };
+
+<*
+ An AlignedRef offers correctly aligned access to addresses that may be unaligned or overaligned.
+*>
+typedef AlignedRef = Type*;
+
+macro Type AlignedRef.get(self)
+{
+	return @unaligned_load(*(Type*)self, ALIGNMENT);
+}
+
+macro Type AlignedRef.set(&self, Type val)
+{
+	return @unaligned_store(*(Type*)self, val, ALIGNMENT);
 }
