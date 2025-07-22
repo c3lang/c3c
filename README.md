@@ -12,6 +12,7 @@ Precompiled binaries for the following operating systems are available:
 - Debian x64 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-linux.tar.gz), [install instructions](#installing-on-debian-with-precompiled-binaries).
 - Ubuntu x86 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-ubuntu-20.tar.gz), [install instructions](#installing-on-ubuntu-with-precompiled-binaries).
 - MacOS Arm64 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-macos.zip), [install instructions](#installing-on-macos-with-precompiled-binaries).
+- OpenBSD 7.7 x64 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-openbsd-7.7.tar.gz), [install instructions](#installing-on-openbsd-with-precompiled-binaries).
 
 The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
 
@@ -176,12 +177,14 @@ The compiler is currently verified to compile on Linux, Windows and MacOS.
 | NetBSD x86               | Untested                      | Untested                | No          | Yes      | Untested | Yes*       |
 | NetBSD x64               | Untested                      | Untested                | No          | Yes      | Untested | Yes*       |
 | OpenBSD x86              | Untested                      | Untested                | No          | Yes      | Untested | Yes*       |
-| OpenBSD x64              | Untested                      | Untested                | No          | Yes      | Untested | Yes*       |
+| OpenBSD x64              | Yes*                          | Yes                     | Yes*        | Yes      | Untested | Yes*       |
 | MCU x86                  | No                            | Untested                | No          | No       | No       | Yes*       |
 | Wasm32                   | No                            | Yes                     | No          | No       | No       | No         |
 | Wasm64                   | No                            | Untested                | No          | No       | No       | No         |
 
-*\* Inline asm is still a work in progress*
+*\* Inline asm is still a work in progress*<br>
+*\* OpenBSD 7.7 is the only tested version*<br>
+*\* OpenBSD has limited stacktrace, needs to be tested further*
 
 More platforms will be supported in the future.
 
@@ -226,6 +229,14 @@ This installs the latest prerelease build, as opposed to the latest released ver
 4. Run `./c3c`.
 
 (*Note that there is a known issue with debug symbol generation on MacOS 13, see [issue #1086](https://github.com/c3lang/c3c/issues/1086))
+
+#### Installing on OpenBSD with precompiled binaries
+1. Download tar file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-openbsd-7.7.tar.gz](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-openbsd-7.7.tar.gz)
+   (debug version [here](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-openbsd-7.7-debug.tar.gz))
+2. Unpack executable and standard lib.
+3. Run `./c3c`.
+
+(*Note that this is specifically for OpenBSD 7.7, running it on any other version is prone to ABI breaks)
 
 #### Installing on Arch Linux
 Arch includes c3c in the official 'extra' repo. It can be easily installed the usual way:
