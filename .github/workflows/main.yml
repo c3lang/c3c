@@ -858,13 +858,13 @@ jobs:
           cp build/c3c c3
           cp README.md c3
           cp releasenotes.md c3
-          tar czf c3-openbsd-${OPENBSD_RELEASE}-${{matrix.build_type}}.tar.gz c3
+          tar czf c3-openbsd-$OPENBSD_RELEASE-${{matrix.build_type}}.tar.gz c3
 
       - name: upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: c3-openbsd-${OPENBSD_RELEASE}-${{matrix.build_type}}
-          path: c3-openbsd-${OPENBSD_RELEASE}-${{matrix.build_type}}.tar.gz
+          name: c3-openbsd-$OPENBSD_RELEASE-${{matrix.build_type}}
+          path: c3-openbsd-$OPENBSD_RELEASE-${{matrix.build_type}}.tar.gz
 
   release:
     runs-on: ubuntu-22.04
@@ -888,8 +888,8 @@ jobs:
       - run: zip -r c3-windows-debug.zip c3-windows-Debug
       - run: mv c3-linux-Release/c3-linux-Release.tar.gz c3-linux-Release/c3-linux.tar.gz
       - run: mv c3-linux-Debug/c3-linux-Debug.tar.gz c3-linux-Debug/c3-linux-debug.tar.gz
-      - run: mv c3-openbsd-${OPENBSD_RELEASE}-Release/c3-openbsd-${OPENBSD_RELEASE}-Release.tar.gz c3-openbsd-${OPENBSD_RELEASE}-Release/c3-openbsd-${OPENBSD_RELEASE}.tar.gz
-      - run: mv c3-openbsd-${OPENBSD_RELEASE}-Debug/c3-openbsd-${OPENBSD_RELEASE}-Debug.tar.gz c3-openbsd-${OPENBSD_RELEASE}-Debug/c3-openbsd-${OPENBSD_RELEASE}-debug.tar.gz
+      - run: mv c3-openbsd-$OPENBSD_RELEASE-Release/c3-openbsd-$OPENBSD_RELEASE-Release.tar.gz c3-openbsd-$OPENBSD_RELEASE-Release/c3-openbsd-$OPENBSD_RELEASE.tar.gz
+      - run: mv c3-openbsd-$OPENBSD_RELEASE-Debug/c3-openbsd-$OPENBSD_RELEASE-Debug.tar.gz c3-openbsd-$OPENBSD_RELEASE-Debug/c3-openbsd-$OPENBSD_RELEASE-debug.tar.gz
       - run: mv c3-ubuntu-22-Release/c3-ubuntu-22-Release.tar.gz c3-ubuntu-22-Release/c3-ubuntu-22.tar.gz
       - run: mv c3-ubuntu-22-Debug/c3-ubuntu-22-Debug.tar.gz c3-ubuntu-22-Debug/c3-ubuntu-22-debug.tar.gz
       - run: mv c3-macos-Release/c3-macos-Release.zip c3-macos-Release/c3-macos.zip
@@ -911,8 +911,8 @@ jobs:
             c3-windows-debug.zip
             c3-linux-Release/c3-linux.tar.gz
             c3-linux-Debug/c3-linux-debug.tar.gz
-            c3-openbsd-${OPENBSD_RELEASE}-Release/c3-openbsd-${OPENBSD_RELEASE}.tar.gz
-            c3-openbsd-${OPENBSD_RELEASE}-Debug/c3-openbsd-${OPENBSD_RELEASE}-debug.tar.gz
+            c3-openbsd-$OPENBSD_RELEASE-Release/c3-openbsd-$OPENBSD_RELEASE.tar.gz
+            g3-openbsd-$OPENBSD_RELEASE-Debug/c3-openbsd-$OPENBSD_RELEASE-debug.tar.gz
             c3-ubuntu-22-Release/c3-ubuntu-22.tar.gz
             c3-ubuntu-22-Debug/c3-ubuntu-22-debug.tar.gz
             c3-macos-Release/c3-macos.zip
