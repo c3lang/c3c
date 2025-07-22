@@ -12,7 +12,7 @@ Precompiled binaries for the following operating systems are available:
 - Debian x64 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-linux.tar.gz), [install instructions](#installing-on-debian-with-precompiled-binaries).
 - Ubuntu x86 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-ubuntu-20.tar.gz), [install instructions](#installing-on-ubuntu-with-precompiled-binaries).
 - MacOS Arm64 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-macos.zip), [install instructions](#installing-on-macos-with-precompiled-binaries).
-- OpenBSD 7.7 x64 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-openbsd-7.7.tar.gz), [install instructions](#installing-on-openbsd-with-precompiled-binaries).
+- OpenBSD x64 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-openbsd.tar.gz), [install instructions](#installing-on-openbsd-with-precompiled-binaries).
 
 The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
 
@@ -231,8 +231,8 @@ This installs the latest prerelease build, as opposed to the latest released ver
 (*Note that there is a known issue with debug symbol generation on MacOS 13, see [issue #1086](https://github.com/c3lang/c3c/issues/1086))
 
 #### Installing on OpenBSD with precompiled binaries
-1. Download tar file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-openbsd-7.7.tar.gz](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-openbsd-7.7.tar.gz)
-   (debug version [here](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-openbsd-7.7-debug.tar.gz))
+1. Download tar file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-openbsd.tar.gz](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-openbsd.tar.gz)
+   (debug version [here](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-openbsd-debug.tar.gz))
 2. Unpack executable and standard lib.
 3. Run `./c3c`.
 
