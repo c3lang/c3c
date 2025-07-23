@@ -220,6 +220,39 @@ fn void? decommit(void* ptr, usz len, bool block = true)
 }
 
 <*
+ Map a portion of an already-opened file into memory.
+
+ @param fd : "File descriptor"
+ @param size : "Number of bytes to map, will be rounded up to page size"
+ @param offset : "Byte offset in file, must be page size aligned"
+ @param access : "The initial access permissions"
+ @param shared : "if True then MAP_SHARED else MAP_PRIVATE"
+ @return? mem::OUT_OF_MEMORY, RANGE_OVERFLOW, UNKNOWN_ERROR, ACCESS_DENIED, INVALID_ARGS
+ @return "Pointer to the mapped region"
+*>
+fn void*? map_file(Fd fd, usz size, usz offset = 0, VirtualMemoryAccess access = READ, bool shared = false)
+{
+	$switch:
+		$case env::POSIX:
+			CInt flags = shared ? posix::MAP_SHARED : posix::MAP_PRIVATE;
+			void* ptr = posix::mmap(null, aligned_alloc_size(size), access.to_posix(), flags, fd, offset);
+			if (ptr != posix::MAP_FAILED) return ptr;
+			switch (libc::errno())
+			{
+				case errno::ENOMEM:    return mem::OUT_OF_MEMORY?;
+				case errno::EOVERFLOW: return RANGE_OVERFLOW?;
+				case errno::EPERM:     return ACCESS_DENIED?;
+				case errno::EINVAL:    return INVALID_ARGS?;
+				default:               return UNKNOWN_ERROR?;
+			}
+		$case env::WIN32:
+			unsupported("'vm.map_file' not implemented on Win32");
+		$default:
+			unsupported("'vm.map_file' only available on Posix");
+	$endswitch
+}
+
+<*
  Create a VirtualMemory using
 
  @param size : "The size of the memory to allocate."
