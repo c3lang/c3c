@@ -316,10 +316,10 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 			// The case of int[*][2] x = ...
 			return type_add_optional(type_get_array(indexed, to_infer->array.len), is_optional);
 		case TYPE_INFERRED_ARRAY:
-			ASSERT(type_is_arraylike(type_flatten(actual_type)));
+			if (!type_is_arraylike(type_flatten(actual_type))) return to_infer;
 			return type_add_optional(type_get_array(indexed, type_flatten(actual_type)->array.len), is_optional);
 		case TYPE_INFERRED_VECTOR:
-			ASSERT(type_is_arraylike(type_flatten(actual_type)));
+			if (!type_is_arraylike(type_flatten(actual_type))) return to_infer;
 			return type_add_optional(type_get_vector(indexed, type_flatten(actual_type)->array.len), is_optional);
 		case TYPE_SLICE:
 			return type_add_optional(type_get_slice(indexed), is_optional);
@@ -1249,6 +1249,12 @@ static bool rule_ptr_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
 	if (cc->to->type_kind != TYPE_POINTER) return sema_cast_error(cc, false, is_silent);
 
 	Type *new_type = type_infer_len_from_actual_type(cc->to, cc->from);
+
+	if (type_to_group(new_type) == CONV_INFERRED)
+	{
+		if (is_silent) return false;
+		RETURN_CAST_ERROR(cc->expr, "This expression, of type %s, cannot be used to infer the length of %s.", type_quoted_error_string(cc->from), type_quoted_error_string(cc->to));
+	}
 	cast_context_set_to(cc, new_type->pointer->canonical);
 	cast_context_set_from(cc, cc->from->pointer);
 	return cast_is_allowed(cc, is_explicit, is_silent);
