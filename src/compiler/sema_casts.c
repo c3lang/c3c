@@ -1796,7 +1796,8 @@ static void cast_int_to_int(Expr *expr, Type *type)
 	}
 
 	// Insert runtime casts on non-const.
-	if (!expr_is_const_int(expr))
+
+	if (!sema_cast_const(expr) || !expr_is_const_int(expr))
 	{
 		expr_rewrite_ext_trunc(expr, type, type_is_signed(type_flatten_to_int(expr->type)));
 		return;
