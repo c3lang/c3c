@@ -5,8 +5,6 @@ module std::collections::set {Value};
 import std::math;
 import std::io @norecurse;
 
-const Allocator SET_HEAP_ALLOCATOR = (Allocator)&dummy;
-
 const LinkedHashSet LINKEDONHEAP = { .allocator = SET_HEAP_ALLOCATOR };
 
 struct LinkedEntry
