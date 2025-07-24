@@ -174,7 +174,7 @@ fn usz HashMap.len(&map) @inline
 fn Value*? HashMap.get_ref(&map, Key key)
 {
 	if (!map.count) return NOT_FOUND?;
-	uint hash = key.hash();
+	uint hash = rehash(key.hash());
 	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return &e.value;
@@ -185,7 +185,7 @@ fn Value*? HashMap.get_ref(&map, Key key)
 fn Entry*? HashMap.get_entry(&map, Key key)
 {
 	if (!map.count) return NOT_FOUND?;
-	uint hash = key.hash();
+	uint hash = rehash(key.hash());
 	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return e;
@@ -205,7 +205,7 @@ macro Value HashMap.@get_or_set(&map, Key key, Value #expr)
 		map.set(key, val);
 		return val;
 	}
-	uint hash = key.hash();
+	uint hash = rehash(key.hash());
 	uint index = index_for(hash, map.table.len);
 	for (Entry *e = map.table[index]; e != null; e = e.next)
 	{
@@ -238,7 +238,7 @@ fn bool HashMap.set(&map, Key key, Value value) @operator([]=)
 		default:
 			break;
 	}
-	uint hash = key.hash();
+	uint hash = rehash(key.hash());
 	uint index = index_for(hash, map.table.len);
 	for (Entry *e = map.table[index]; e != null; e = e.next)
 	{
@@ -459,7 +459,7 @@ fn void HashMap.put_all_for_create(&map, HashMap* other_map) @private
 
 fn void HashMap.put_for_create(&map, Key key, Value value) @private
 {
-	uint hash = key.hash();
+	uint hash = rehash(key.hash());
 	uint i = index_for(hash, map.table.len);
 	for (Entry *e = map.table[i]; e != null; e = e.next)
 	{
@@ -480,7 +480,7 @@ fn void HashMap.free_internal(&map, void* ptr) @inline @private
 fn bool HashMap.remove_entry_for_key(&map, Key key) @private
 {
 	if (!map.count) return false;
-	uint hash = key.hash();
+	uint hash = rehash(key.hash());
 	uint i = index_for(hash, map.table.len);
 	Entry* prev = map.table[i];
 	Entry* e = prev;
@@ -577,6 +577,12 @@ fn Key HashMapKeyIterator.get(&self, usz idx) @operator([])
 fn usz HashMapValueIterator.len(self) @operator(len) => self.map.count;
 fn usz HashMapKeyIterator.len(self) @operator(len) => self.map.count;
 fn usz HashMapIterator.len(self) @operator(len) => self.map.count;
+
+fn uint rehash(uint hash) @inline @private
+{
+	hash ^= (hash >> 20) ^ (hash >> 12);
+	return hash ^ ((hash >> 7) ^ (hash >> 4));
+}
 
 macro uint index_for(uint hash, uint capacity) @private
 {
