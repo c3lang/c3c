@@ -15,10 +15,21 @@
 - Formatting option "%h" now supports pointers.
 - Improve error on unsigned implicit conversion to signed.
 - Update error message for struct initialization #2286
+- Add SipHash family of keyed PRFs. #2287 
 - `$is_const` is deprecated in favour of `@is_const` based on `$defined`.
 - Multiline contract comments #2113
 - Removed the use of temp allocator in backtrace printing.
+- `env::AUTHORS` and `env::AUTHOR_EMAILS` added.
+- Suppress codegen of panic printing with when panic messages are set to "off".
+- Implicit linking of libc math when libc math functions are used.
+- Allow even smaller memory limits.
+- Check unaligned array access.
+- Add "@structlike" for typedefs.
+- "poison" the current function early when a declaration can't be correctly resolved.
 - Add komihash, a5hash, metrohash64, metrohash128, and wyhash2 variants with tests/benchmark. #2293
+- '$assignable' is deprecated.
+- Deprecate allocator::heap() and allocator::temp()
+- Add `thread::fence` providing a thread fence.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
@@ -50,13 +61,35 @@
 - `$foo[0] = ...` was incorrectly requiring that the assigned values were compile time constants.
 - "Inlined at" would sometimes show the current location.
 - Fixed bug splatting constants into constants.
-- New Virtual Memory arena allocator
+- Resize bug when resizing memory down in ArenaAllocator, DynamicArenaAllocator, BackedArenaAllocator.
+- Error message for missing arg incorrect for methods with zero args #2296.
+- Fix stringify of $vaexpr #2301.
+- Segfault when failing to cast subexpression to 'isz' in pointer subtraction #2305.
+- Fix unexpected display of macro definition when passing a poisoned expression #2305.
+- `@links` on macros would not be added to calling functions.
+- Fix `Formatter.print` returning incorrect size.
+- A distinct type based on an array would yield .len == 0
+- Overloading addition with a pointer would not work.
+- Copying const enums and regular enums incorrect #2313.
+- Regression: Chaining an optional together with contracts could in some cases lose the optional.
+- `char[*] b = *(char[*]*)&a;` would crash the compiler if `a` was a slice. #2320
+- Implicitly cast const int expressions would sometimes not be detected as compile time const.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
 - Added Whirlpool hash.
+- Added Ed25519.
 - Added string::bformat.
-- VirtualMemory type and functions.
+- Virtual memory library.
+- New virtual emory arena allocator.
+- Added `WString.len`.
+- Added `@addr` macro.
+- Add `ConditionVariable.wait_until` and `ConditionVariable.wait_for`
+- Added readline_to_stream that takes a stream.
+- Added `Ref` and `RefCounted` experimental functionality.
+- Added `Volatile` generic type.
+- Added `UnalignedRef` generic type.
+- Add String conversion functions snake_case -> PascalCase and vice versa.
 
 ## 0.7.3 Change list
 

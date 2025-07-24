@@ -39,12 +39,12 @@ fn usz? available(InStream s)
 
 macro bool @is_instream(#expr)
 {
-	return $assignable(#expr, InStream);
+	return @assignable_to(#expr, InStream);
 }
 
 macro bool @is_outstream(#expr)
 {
-	return $assignable(#expr, OutStream);
+	return @assignable_to(#expr, OutStream);
 }
 
 <*

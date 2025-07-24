@@ -1,5 +1,7 @@
 module std::core::string;
 import std::io;
+import std::core::mem::allocator;
+
 
 typedef String @if(!$defined(String)) = inline char[];
 <*
@@ -622,12 +624,17 @@ fn usz ZString.char_len(str)
 
 fn usz ZString.len(self)
 {
-	usz len = 0;
-	char* ptr = (char*)self;
-	while (char c = ptr++[0]) len++;
+	usz len;
+	for (char* ptr = (char*)self; *ptr; ptr++) len++;
 	return len;
 }
 
+fn usz WString.len(self)
+{
+	usz len;
+	for (Char16* ptr = (Char16*)self; *ptr; ptr++) len++;
+	return len;
+}
 
 fn ZString String.zstr_copy(self, Allocator allocator)
 {
@@ -769,6 +776,92 @@ fn String String.to_upper_copy(self, Allocator allocator)
 	copy.convert_to_upper();
 	return copy;
 }
+
+fn String String.capitalize_copy(self, Allocator allocator)
+{
+	String s = self.copy(allocator);
+	if (s.len > 0 && s[0].is_lower())
+	{
+		s[0] &= (char)~0x20;
+	}
+	return s;
+}
+
+<*
+ Convert a string from `snake_case` to PascalCase.
+
+ @param [in] self
+ @return `"FooBar" from "foo_bar" the resulting pointer may safely be cast to ZString.`
+*>
+fn String String.snake_to_pascal_copy(self, Allocator allocator)
+{
+	Splitter splitter = self.tokenize("_");
+	char[] new_string = allocator::alloc_array(allocator, char, self.len + 1);
+	usz index = 0;
+	while (try s = splitter.next())
+	{
+		assert(s.len > 0);
+		char c = s[0];
+		if (c.is_lower()) c = c.to_upper();
+		new_string[index++] = c;
+		s = s[1..];
+		new_string[index:s.len] = s[..];
+		index += s.len;
+	}
+	new_string[index] = 0;
+	return (String)new_string[:index];
+}
+
+<*
+ Movifies the current string from `snake_case` to PascalCase.
+
+ @param [inout] self
+*>
+fn void String.convert_snake_to_pascal(&self)
+{
+	Splitter splitter = self.tokenize("_");
+	String new_string = *self;
+	usz index = 0;
+	while (try s = splitter.next())
+	{
+		assert(s.len > 0);
+		char c = s[0];
+		if (c.is_lower()) c = c.to_upper();
+		new_string[index++] = c;
+		s = s[1..];
+		new_string[index:s.len] = s[..];
+		index += s.len;
+	}
+	*self = new_string[:index];
+}
+
+<*
+ Convert a string from `PascalCase` to `snake_case`.
+
+ @param [in] self
+ @return `"foo_bar" from "FooBar" the resulting pointer may safely be cast to ZString.`
+*>
+fn String String.pascal_to_snake_copy(self, Allocator allocator) => @pool()
+{
+	DString d;
+	d.init(tmem, (usz)(self.len * 1.5));
+	usz index = 0;
+	foreach (i, c : self)
+	{
+		if (c.is_upper())
+		{
+			if (i > 0 && ((self[i - 1].is_lower() || self[i - 1].is_digit()) || (i < self.len - 1 && self[i + 1].is_lower())))
+            {
+                d.append_char('_');
+            }
+			d.append_char(c.to_lower());
+			continue;
+		}
+		d.append_char(c);
+	}
+	return d.copy_str(allocator);
+}
+
 
 fn StringIterator String.iterator(self)
 {

@@ -96,7 +96,34 @@ macro anycast(any v, $Type) @builtin
 	return ($Type*)v.ptr;
 }
 
-fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
+macro bool @assignable_to(#foo, $Type) @const @builtin => $defined(*&&($Type){} = #foo);
+
+macro @addr(#val) @builtin
+{
+	$if $defined(&#val):
+		return &#val;
+	$else
+		return &&#val;
+	$endif
+}
+
+macro typeid @typeid(#value) @const @builtin
+{
+	return $typeof(#value).typeid;
+}
+
+macro TypeKind @typekind(#value) @const @builtin
+{
+	return $typeof(#value).kindof;
+}
+
+macro bool @typeis(#value, $Type) @const @builtin
+{
+	return $typeof(#value).typeid == $Type.typeid;
+}
+
+
+fn bool print_backtrace(String message, int backtraces_to_ignore) @if (env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
 {
 	void*[256] buffer;
 	void*[] backtraces = backtrace::capture_current(&buffer);
@@ -132,17 +159,17 @@ fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIV
 
 fn void default_panic(String message, String file, String function, uint line) @if(env::NATIVE_STACKTRACE)
 {
-	$if $defined(io::stderr):
-	if (!print_backtrace(message, 2))
-	{
-		io::eprintfn("\nERROR: '%s', in %s (%s:%d)", message, function, file, line);
-	}
+	$if $defined(io::stderr) && env::PANIC_MSG:
+		if (!print_backtrace(message, 2))
+		{
+			io::eprintfn("\nERROR: '%s', in %s (%s:%d)", message, function, file, line);
+		}
 	$endif
 	$$trap();
 
 }
 
-macro void abort(String string = "Unrecoverable error reached", ...) @builtin @noreturn
+macro void abort(String string = "Unrecoverable error reached", ...) @format(0) @builtin @noreturn
 {
 	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat);
 	$$trap();
@@ -150,20 +177,22 @@ macro void abort(String string = "Unrecoverable error reached", ...) @builtin @n
 
 bool in_panic @local = false;
 
-fn void default_panic(String message, String file, String function, uint line) @if(!env::NATIVE_STACKTRACE)
+fn void default_panic(String message, String file, String function, uint line) @if (!env::NATIVE_STACKTRACE)
 {
-	if (in_panic)
-	{
-		io::eprintn("Panic inside of panic.");
-		return;
-	}
-	in_panic = true;
-	$if $defined(io::stderr):
-	io::eprint("\nERROR: '");
-	io::eprint(message);
-	io::eprintfn("', in %s (%s:%d)", function, file, line);
+	$if $defined(io::stderr) && env::PANIC_MSG:
+		if (in_panic)
+		{
+			io::eprintn("Panic inside of panic.");
+			return;
+		}
+		in_panic = true;
+		$if $defined(io::stderr):
+		io::eprint("\nERROR: '");
+		io::eprint(message);
+		io::eprintfn("', in %s (%s:%d)", function, file, line);
+		$endif
+		in_panic = false;
 	$endif
-	in_panic = false;
 	$$trap();
 }
 
@@ -173,21 +202,23 @@ PanicFn panic = &default_panic;
 
 fn void panicf(String fmt, String file, String function, uint line, args...)
 {
-	if (in_panic)
-	{
-		io::eprint("Panic inside of panic: ");
-		io::eprintn(fmt);
-		return;
-	}
-	in_panic = true;
-	@stack_mem(512; Allocator allocator)
-	{
-		DString s;
-		s.init(allocator);
-		s.appendf(fmt, ...args);
-		in_panic = false;
-		panic(s.str_view(), file, function, line);
-	};
+	$if $defined(io::stderr) && env::PANIC_MSG:
+		if (in_panic)
+		{
+			io::eprint("Panic inside of panic: ");
+			io::eprintn(fmt);
+			return;
+		}
+		in_panic = true;
+		@stack_mem(512; Allocator allocator)
+		{
+			DString s;
+			s.init(allocator);
+			s.appendf(fmt, ...args);
+			in_panic = false;
+			panic(s.str_view(), file, function, line);
+		};
+	$endif
 }
 
 <*
@@ -276,7 +307,7 @@ macro enum_by_name($Type, String enum_name) @builtin
  @param $Type : `The type of the enum`
  @require $Type.kindof == ENUM : `Only enums may be used`
  @require $defined($Type.#value) : `Expected '#value' to match an enum associated value`
- @require $assignable(value, $typeof(($Type){}.#value)) : `Expected the value to match the type of the associated value`
+ @require @assignable_to(value, $typeof(($Type){}.#value)) : `Expected the value to match the type of the associated value`
  @ensure @typeis(return, $Type)
  @return? NOT_FOUND
 *>
@@ -329,7 +360,7 @@ macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 
 <*
  @require values::@is_int(#value) || values::@is_bool(#value)
- @require $assignable(expected, $typeof(#value))
+ @require @assignable_to(expected, $typeof(#value))
  @require $probability >= 0 && $probability <= 1.0
 *>
 macro @expect(#value, expected, $probability = 1.0) @builtin

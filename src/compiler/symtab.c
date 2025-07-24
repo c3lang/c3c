@@ -224,6 +224,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_EXP2] = KW_DEF("exp2");
 	builtin_list[BUILTIN_EXPECT] = KW_DEF("expect");
 	builtin_list[BUILTIN_EXPECT_WITH_PROBABILITY] = KW_DEF("expect_with_probability");
+	builtin_list[BUILTIN_FENCE] = KW_DEF("fence");
 	builtin_list[BUILTIN_FLOOR] = KW_DEF("floor");
 	builtin_list[BUILTIN_FMA] = KW_DEF("fma");
 	builtin_list[BUILTIN_FMULADD] = KW_DEF("fmuladd");
@@ -373,6 +374,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_REFLECT] = KW_DEF("@reflect");
 	attribute_list[ATTRIBUTE_SAFEMACRO] = KW_DEF("@safemacro");
 	attribute_list[ATTRIBUTE_SECTION] = KW_DEF("@section");
+	attribute_list[ATTRIBUTE_STRUCTLIKE] = KW_DEF("@structlike");
 	attribute_list[ATTRIBUTE_TEST] = KW_DEF("@test");
 	attribute_list[ATTRIBUTE_TAG] = KW_DEF("@tag");
 	attribute_list[ATTRIBUTE_UNUSED] = KW_DEF("@unused");

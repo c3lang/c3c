@@ -137,12 +137,13 @@ const bool BACKTRACE = $$BACKTRACE;
 const usz LLVM_VERSION = $$LLVM_VERSION;
 const bool BENCHMARKING = $$BENCHMARKING;
 const bool TESTING = $$TESTING;
+const bool PANIC_MSG = $$PANIC_MSG;
 const MemoryEnvironment MEMORY_ENV = MemoryEnvironment.from_ordinal($$MEMORY_ENVIRONMENT);
 const bool TRACK_MEMORY = DEBUG_SYMBOLS && (COMPILER_SAFE_MODE || TESTING);
 const bool X86_64 = ARCH_TYPE == X86_64;
 const bool X86 = ARCH_TYPE == X86;
 const bool AARCH64 = ARCH_TYPE == AARCH64;
-const bool NATIVE_STACKTRACE = LINUX || DARWIN || WIN32;
+const bool NATIVE_STACKTRACE = LINUX || DARWIN || OPENBSD || WIN32;
 const bool LINUX = LIBC && OS_TYPE == LINUX;
 const bool DARWIN = LIBC && os_is_darwin();
 const bool WIN32 = LIBC && OS_TYPE == WIN32;
@@ -159,7 +160,7 @@ const bool MEMORY_SANITIZER = $$MEMORY_SANITIZER;
 const bool THREAD_SANITIZER = $$THREAD_SANITIZER;
 const bool ANY_SANITIZER = ADDRESS_SANITIZER || MEMORY_SANITIZER || THREAD_SANITIZER;
 const int LANGUAGE_DEV_VERSION = $$LANGUAGE_DEV_VERSION;
-const bool HAS_NATIVE_ERRNO = env::LINUX || env::ANDROID || env::DARWIN || env::WIN32;
+const bool HAS_NATIVE_ERRNO = env::LINUX || env::ANDROID || env::OPENBSD || env::DARWIN || env::WIN32;
 
 macro bool os_is_darwin() @const
 {
@@ -198,6 +199,7 @@ macro bool os_is_posix() @const
 		return false;
 	$endswitch
 }
-
+const String[] AUTHORS = $$AUTHORS;
+const String[] AUTHOR_EMAILS = $$AUTHOR_EMAILS;
 const BUILTIN_EXPECT_IS_DISABLED = $feature(DISABLE_BUILTIN_EXPECT);
 const BUILTIN_PREFETCH_IS_DISABLED = $feature(DISABLE_BUILTIN_PREFETCH);

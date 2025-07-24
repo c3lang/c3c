@@ -11,7 +11,8 @@ Path test_dir;
 bool print_to_file;
 String stdlib;
 
-fn void main(String[] args)
+
+fn int main(String[] args)
 {
 	// Grab the name for `usage`
 	String appname = args[0];
@@ -86,7 +87,7 @@ fn void main(String[] args)
 	io::printfn("Found %d tests: %.1f%% (%d / %d) passed (%d skipped).",
         test_count, (100.0 * success_count) / math::max(1, test_count - skip_count),
         success_count, test_count - skip_count, skip_count);
-    os::exit(success_count == test_count - skip_count ? 0 :  1);
+    return success_count == test_count - skip_count ? 0 :  1;
 }
 
 struct Error
@@ -410,6 +411,10 @@ fn void test_file(Path file_path)
 	// Construct the compile line
 	List{String} cmdline;
 	cmdline.push(compiler_path.str_view());
+	$if env::OPENBSD:
+		cmdline.push("--max-mem");
+		cmdline.push("128");
+	$endif
 	cmdline.push("compile-only");
 	cmdline.push("--test");
 	if (stdlib)
@@ -442,7 +447,7 @@ fn void test_file(Path file_path)
 	// Start process
 	SubProcess compilation = process::create(cmdline.array_view(), { .search_user_path, .no_window, .inherit_environment })!!;
 	defer compilation.destroy();
-    CInt result = compilation.join()!!;
+    CInt result = compilation.join() ?? 1;
 	DString out;
 	io::copy_to(&&compilation.stderr(), &out)!!;
 	if (result != 0 && result != 1)

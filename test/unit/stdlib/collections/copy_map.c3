@@ -6,7 +6,7 @@ alias IntMap = HashMap{String, int};
 fn void copy_map() @test
 {
 	TrackingAllocator alloc;
-	alloc.init(allocator::heap());
+	alloc.init(mem);
 	defer alloc.free();
 	assert(alloc.allocated() == 0);
     mem::@scoped(&alloc)

@@ -9,6 +9,12 @@ import std::hash::wyhash2;
 fn void simple_vector()
 	=> test::@check(0xb4808df22d44ffcf == wyhash2::hash("abc"));
 
+fn void offset_check()
+{
+	char[*] x = "0123293829";
+	wyhash2::hash(x[1..]);
+}
+
 fn void simple_vector_seeded()
 	=> test::@check(0x9c962ca4764da6f4 == wyhash2::hash("aax", 2));
 

@@ -157,6 +157,12 @@ INLINE void llvm_emit_atomic_store(GenContext *c, BEValue *result_value, Expr *e
 	}
 }
 
+INLINE void llvm_emit_fence(GenContext *c, BEValue *result_value, Expr *expr)
+{
+	LLVMValueRef value = LLVMBuildFence(c->builder, llvm_atomic_ordering(expr->call_expr.arguments[0]->const_expr.ixx.i.low), compiler.build.single_threaded, "");
+	llvm_value_set(result_value, value, type_void);
+}
+
 INLINE void llvm_emit_unaligned_store(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	bool emit_check = c->emitting_load_store_check;
@@ -772,6 +778,9 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			return;
 		case BUILTIN_VOLATILE_LOAD:
 			llvm_emit_volatile_load(c, result_value, expr);
+			return;
+		case BUILTIN_FENCE:
+			llvm_emit_fence(c, result_value, expr);
 			return;
 		case BUILTIN_ATOMIC_STORE:
 			llvm_emit_atomic_store(c, result_value, expr);

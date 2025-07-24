@@ -1,0 +1,47 @@
+// #target: macos-x64
+module test;
+import std::io;
+
+fn int main(String[] args)
+{
+	String a = @foo1(args);
+    String b = @foo2(args);
+    String c = @foo3(args);
+  return 0;
+}
+
+macro @foo1(#expr)
+{
+	return $stringify(#expr);
+}
+
+macro @foo2(...)
+{
+	return $stringify($vaexpr[0]);
+}
+
+macro @foo3(#expr)
+{
+	return @foo2(#expr);
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [5 x i8] c"args\00", align 1
+@.str.1 = private unnamed_addr constant [5 x i8] c"args\00", align 1
+@.str.2 = private unnamed_addr constant [5 x i8] c"args\00", align 1
+
+define i32 @test.main(ptr %0, i64 %1) #0 {
+entry:
+  %args = alloca %"char[][]", align 8
+  %a = alloca %"char[]", align 8
+  %b = alloca %"char[]", align 8
+  %c = alloca %"char[]", align 8
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  store %"char[]" { ptr @.str, i64 4 }, ptr %a, align 8
+  store %"char[]" { ptr @.str.1, i64 4 }, ptr %b, align 8
+  store %"char[]" { ptr @.str.2, i64 4 }, ptr %c, align 8
+  ret i32 0
+}

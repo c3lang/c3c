@@ -10,6 +10,16 @@ import std::hash::metro128;
 const char[] TEST_KEY = "012345678901234567890123456789012345678901234567890123456789012";
 
 
+fn void metro64_offset()
+{
+	metro64::hash(TEST_KEY[1..]);
+}
+
+fn void metro128_offset()
+{
+	metro128::hash(TEST_KEY[1..]);
+}
+
 fn void metro64_vectors()
 {
 	ulong expected_0 = 0xad4b7006ae3d756b;

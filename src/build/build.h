@@ -601,6 +601,12 @@ typedef struct BuildOptions_
 
 typedef struct
 {
+	const char *author;
+	const char *email;
+} AuthorEntry;
+
+typedef struct
+{
 	struct Library__ *parent;
 	ArchOsTarget arch_os;
 	const char *cc;
@@ -692,6 +698,7 @@ typedef struct
 	bool print_stats;
 	bool old_slice_copy;
 	bool old_enums;
+	bool single_threaded;
 	int build_threads;
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;
@@ -728,6 +735,7 @@ typedef struct
 	const char **csources;
 	const char **cinclude_dirs;
 	const char **exec;
+	AuthorEntry *authors;
 	const char **feature_list;
 	const char *custom_linker_path;
 	struct

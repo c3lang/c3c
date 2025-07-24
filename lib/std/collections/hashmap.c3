@@ -90,7 +90,7 @@ macro HashMap* HashMap.init_with_key_values(&self, Allocator allocator, ..., uin
 *>
 macro HashMap* HashMap.tinit_with_key_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	return self.tinit_with_key_values(tmem, capacity, load_factor);
+	return self.init_with_key_values(tmem, $vasplat, capacity: capacity, load_factor: load_factor);
 }
 
 <*
@@ -195,7 +195,7 @@ fn Entry*? HashMap.get_entry(&map, Key key)
 
 <*
  Get the value or update and
- @require $assignable(#expr, Value)
+ @require @assignable_to(#expr, Value)
 *>
 macro Value HashMap.@get_or_set(&map, Key key, Value #expr)
 {

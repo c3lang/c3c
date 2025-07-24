@@ -42,7 +42,6 @@ entry:
   store i32 0, ptr %x, align 4
   store i64 0, ptr %y.f, align 8
   store i32 0, ptr %y, align 4
-  %optval = load i64, ptr %y.f, align 8
   %0 = call i64 @test.foo()
   br label %postfailed
 postfailed:                                       ; preds = %entry

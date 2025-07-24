@@ -88,8 +88,8 @@ fn String? executable_path()
 		char[4096] buf;
 		uint temp_len = buf.len;
     	if (darwin_NSGetExecutablePath(&buf, &temp_len) < 0) return NOT_FOUND?;
-    	path[:temp_len] = buf[:temp_len];
-    	len = temp_len;
+    	path[:len] = buf[:len];
+    	len = (int)((ZString)&buf).len();
     }
     return (String)path[:len];
 }

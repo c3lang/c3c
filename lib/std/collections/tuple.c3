@@ -9,8 +9,8 @@ struct Pair
 <*
  @param [&out] a
  @param [&out] b
- @require $assignable(self.first, $typeof(*a)) : "You cannot assign the first value to a"
- @require $assignable(self.second, $typeof(*b)) : "You cannot assign the second value to b"
+ @require @assignable_to(self.first, $typeof(*a)) : "You cannot assign the first value to a"
+ @require @assignable_to(self.second, $typeof(*b)) : "You cannot assign the second value to b"
 *>
 macro void Pair.unpack(&self, a, b)
 {
@@ -31,9 +31,9 @@ struct Triple
  @param [&out] a
  @param [&out] b
  @param [&out] c
- @require $assignable(self.first, $typeof(*a)) : "You cannot assign the first value to a"
- @require $assignable(self.second, $typeof(*b)) : "You cannot assign the second value to b"
- @require $assignable(self.third, $typeof(*c)) : "You cannot assign the second value to c"
+ @require @assignable_to(self.first, $typeof(*a)) : "You cannot assign the first value to a"
+ @require @assignable_to(self.second, $typeof(*b)) : "You cannot assign the second value to b"
+ @require @assignable_to(self.third, $typeof(*c)) : "You cannot assign the second value to c"
 *>
 macro void Triple.unpack(&self, a, b, c)
 {

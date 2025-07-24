@@ -2,9 +2,6 @@ module std::core::values;
 import std::core::types;
 
 
-macro typeid @typeid(#value) @const @builtin => $typeof(#value).typeid;
-macro TypeKind @typekind(#value) @const @builtin => $typeof(#value).kindof;
-macro bool @typeis(#value, $Type) @const @builtin => $typeof(#value).typeid == $Type.typeid;
 <*
  Return true if two values have the same type before any conversions.
 *>
@@ -18,9 +15,8 @@ macro bool @is_promotable_to_floatlike(#value) @const => types::is_promotable_to
 macro bool @is_promotable_to_float(#value) @const => types::is_promotable_to_float($typeof(#value));
 macro bool @is_vector(#value) @const => types::is_vector($typeof(#value));
 macro bool @is_same_vector_type(#value1, #value2) @const => types::is_same_vector_type($typeof(#value1), $typeof(#value2));
-macro bool @assign_to(#value1, #value2) @const => $assignable(#value1, $typeof(#value2));
+macro bool @assign_to(#value1, #value2) @const => @assignable_to(#value1, $typeof(#value2));
 macro bool @is_lvalue(#value) => $defined(#value = #value);
-macro bool @assignable_to(#foo, $Type) @const @builtin => $defined(*&&($Type){} = #foo);
 macro bool @is_const(#foo) @const @builtin
 {
 	var $v;

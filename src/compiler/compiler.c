@@ -1473,6 +1473,7 @@ void compile()
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)compiler.build.optsize, type_int);
 	setup_bool_define("COMPILER_SAFE_MODE", safe_mode_enabled());
 	setup_bool_define("DEBUG_SYMBOLS", compiler.build.debug_info == DEBUG_INFO_FULL);
+	setup_bool_define("PANIC_MSG", compiler.build.feature.panic_level != PANIC_OFF);
 	setup_bool_define("BACKTRACE", compiler.build.show_backtrace != SHOW_BACKTRACE_OFF);
 #if LLVM_AVAILABLE
     setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
@@ -1489,7 +1490,22 @@ void compile()
 	setup_bool_define("THREAD_SANITIZER", compiler.build.feature.sanitize_thread);
 	setup_string_define("BUILD_HASH", GIT_HASH);
 	setup_string_define("BUILD_DATE", compiler_date_to_iso());
-
+	Expr *expr_names = expr_new(EXPR_CONST, INVALID_SPAN);
+	Expr *expr_emails = expr_new(EXPR_CONST, INVALID_SPAN);
+	expr_names->const_expr.const_kind = CONST_UNTYPED_LIST;
+	expr_emails->const_expr.const_kind = CONST_UNTYPED_LIST;
+	expr_names->type = type_untypedlist;
+	expr_emails->type = type_untypedlist;
+	expr_names->resolve_status = expr_emails->resolve_status = RESOLVE_DONE;
+	FOREACH(AuthorEntry, entry, compiler.build.authors)
+	{
+		Expr *const_name = expr_new_const_string(INVALID_SPAN, entry.author); // NOLINT
+		Expr *const_email = expr_new_const_string(INVALID_SPAN, entry.email ? entry.email : ""); // NOLINT
+		vec_add(expr_names->const_expr.untyped_list, const_name);
+		vec_add(expr_emails->const_expr.untyped_list, const_email);
+	}
+	setup_define("AUTHORS", expr_names);
+	setup_define("AUTHOR_EMAILS", expr_emails);
 	type_init_cint();
 	compiler_init_time = bench_mark();
 
@@ -1741,7 +1757,8 @@ static bool is_posix(OsType os)
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_LINUX:
 		case OS_TYPE_KFREEBSD:
-		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FREEBSD:
+		case OS_TYPE_OPENBSD:
 		case OS_TYPE_SOLARIS:
 			return true;
 		case OS_TYPE_WIN32:

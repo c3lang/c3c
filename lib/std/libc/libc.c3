@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2021-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module libc;
@@ -7,6 +7,9 @@ module libc;
 const int EXIT_FAILURE = 1;
 const int EXIT_SUCCESS = 0;
 const int RAND_MAX = 0x7fffffff;
+
+alias WChar @if(env::WIN32) = Char16;
+alias WChar @if(!env::WIN32) = Char32;
 
 struct DivResult
 {
@@ -148,6 +151,7 @@ extern fn void qsort(void* base, usz items, usz size, CompareFunction compare);
 extern fn CInt raise(CInt signal);
 extern fn CInt rand();
 extern fn isz read(Fd fd, void* buf, usz nbyte) @if(!env::WIN32);
+extern fn isz readlink(ZString pathname, char* buf, int bufsize) @if(!env::WIN32);
 extern fn void* realloc(void* ptr, usz size);
 extern fn CInt remove(ZString filename);
 extern fn CInt rename(ZString old_name, ZString new_name);

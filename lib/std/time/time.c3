@@ -1,13 +1,15 @@
 module std::time;
 import std::io, std::time::os;
 
-typedef Time = long;
-typedef Duration = long;
-typedef Clock = ulong;
-typedef NanoDuration (Printable) = long;
+typedef Time @structlike = long;
+typedef Duration @structlike = long;
+typedef Clock @structlike = ulong;
+typedef NanoDuration (Printable) @structlike = long;
 
 const Time FAR_FUTURE = long.max;
 const Time FAR_PAST = long.min;
+
+const NanoDuration NANO_DURATION_ZERO = 0;
 const Duration US = 1;
 const Duration MS = 1_000;
 const Duration SEC = 1_000_000;
@@ -18,6 +20,7 @@ const Duration WEEK = 7 * DAY;
 const Duration MONTH = 30 * DAY;
 const Duration YEAR = 36525 * DAY / 100;
 const Duration FOREVER = long.max;
+const Duration DURATION_ZERO = 0;
 
 fn Duration us(long l) @inline => l * US;
 fn Duration ms(long l) @inline => l * MS;
@@ -78,7 +81,7 @@ fn Time now()
 	$if $defined(native_timestamp):
 		return os::native_timestamp();
 	$else
-		return 0;
+		return (Time)0;
 	$endif
 }
 
@@ -114,31 +117,31 @@ macro Duration Duration.mult(#td, long #val) @operator_s(*) @safemacro => (Durat
 fn usz? NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 {
 	NanoDuration nd = *self;
-	if (nd == 0)
+	if (nd == NANO_DURATION_ZERO)
 	{
 		return formatter.printf("0s")!;
 	}
 
-	bool neg = nd < 0;
+	bool neg = nd < NANO_DURATION_ZERO;
 	if (neg) nd = -nd;
 
 	DString str = dstring::temp_with_capacity(64);
-	if (nd < 1_000_000_000)
+	if (nd < (NanoDuration)1_000_000_000)
 	{
 		// Less than 1s: print milliseconds, microseconds and nanoseconds.
 		NanoDuration ms = nd / 1_000_000;
-		if (ms > 0)
+		if (ms > NANO_DURATION_ZERO)
 		{
 			str.appendf("%dms", ms);
 			nd -= ms * 1_000_000;
 		}
 		NanoDuration us = nd / 1000;
-		if (us > 0)
+		if (us > NANO_DURATION_ZERO)
 		{
 			str.appendf("%dµs", us);
 			nd -= us * 1000;
 		}
-		if (nd > 0)
+		if (nd > NANO_DURATION_ZERO)
 		{
 			str.appendf("%dns", nd);
 		}
@@ -150,19 +153,19 @@ fn usz? NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 
 		nd /= 1_000_000_000;
 		NanoDuration hour = nd / 3600;
-		if (hour > 0)
+		if (hour > NANO_DURATION_ZERO)
 		{
 			str.appendf("%dh", hour);
 			nd -= hour * 3600;
 		}
 		NanoDuration min = nd / 60;
-		if (min > 0)
+		if (min > NANO_DURATION_ZERO)
 		{
 			str.appendf("%dm", min);
 			nd -= min * 60;
 		}
 		NanoDuration sec = nd;
-		if (ms > 0)
+		if (ms > NANO_DURATION_ZERO)
 		{
 			// Ignore trailing zeroes.
 			while (ms / 10 * 10 == ms) ms /= 10;

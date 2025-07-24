@@ -12,10 +12,10 @@ fn Clock native_clock()
 	ulong mult = 0;
 	if (!freq.quadPart)
 	{
-		if (!win32::queryPerformanceFrequency(&freq)) return 0;
+		if (!win32::queryPerformanceFrequency(&freq)) return (Clock)0;
 	}
 	Win32_LARGE_INTEGER counter @noinit;
-	if (!win32::queryPerformanceCounter(&counter)) return 0;
+	if (!win32::queryPerformanceCounter(&counter)) return (Clock)0;
 	return (Clock)counter.quadPart.muldiv(1_000_000_000, freq.quadPart);
 }
 

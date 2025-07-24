@@ -138,7 +138,7 @@ fn void*? ArenaAllocator.resize(&self, void *old_pointer, usz size, usz alignmen
 	}
 	// Otherwise just allocate new memory.
 	void* mem = self.acquire(size, NO_ZERO, alignment)!;
-	mem::copy(mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
+	mem::copy(mem, old_pointer, math::min(size, old_size), mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
 }
 

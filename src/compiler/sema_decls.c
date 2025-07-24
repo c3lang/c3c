@@ -3112,6 +3112,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_REFLECT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_SAFEMACRO] = ATTR_MACRO,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
+			[ATTRIBUTE_STRUCTLIKE] = ATTR_DISTINCT,
 			[ATTRIBUTE_TAG] = ATTR_BITSTRUCT_MEMBER | ATTR_MEMBER | USER_DEFINED_TYPES | CALLABLE_TYPE,
 			[ATTRIBUTE_TEST] = ATTR_FUNC,
 			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL),
@@ -3432,6 +3433,9 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				}
 			}
 			if (!decl->func_decl.priority) decl->func_decl.priority = MAX_PRIORITY;
+			return true;
+		case ATTRIBUTE_STRUCTLIKE:
+			decl->attr_structlike = true;
 			return true;
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_EXTERN:
@@ -4635,6 +4639,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 
 	VarDeclKind kind = decl->var.kind;
 
+	bool success = true;
 	bool is_global = !local;
 	switch (kind)
 	{
@@ -4807,25 +4812,26 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		CallEnvKind env_kind = context->call_env.kind;
 		if (is_static) context->call_env.kind = CALL_ENV_FUNCTION_STATIC;
 		decl->in_init = true;
-		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false, true, NULL))
-		{
-			context->call_env.kind = env_kind;
-			return decl_poison(decl);
-		}
+		success = sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false, true, NULL);
 		decl->in_init = false;
 		context->call_env.kind = env_kind;
-
 		if (infer_len)
 		{
+			if (!success) return decl_poison(decl);
 			decl->type = type_add_optional(init->type, IS_OPTIONAL(decl));
 		}
 
 		// 2. Check const-ness
-		if (global_level_var && !expr_is_runtime_const(init))
+		if (global_level_var)
 		{
-			SEMA_ERROR(init, "The expression must be a constant value.");
-			return decl_poison(decl);
+			if (!success) return decl_poison(decl);
+			if (!expr_is_runtime_const(init))
+			{
+				SEMA_ERROR(init, "The expression must be a constant value.");
+				return decl_poison(decl);
+			}
 		}
+		if (!success) goto EXIT_OK;
 		if (global_level_var || !type_is_abi_aggregate(init->type)) sema_cast_const(init);
 		if (expr_is_const(init))
 		{
@@ -4846,7 +4852,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	{
 		if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
 	}
-	return true;
+	return success;
 }
 
 

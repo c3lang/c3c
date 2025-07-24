@@ -48,6 +48,11 @@ macro void? TimedMutex.lock_timeout(&mutex, ulong ms) => NativeTimedMutex.lock_t
 macro bool  TimedMutex.try_lock(&mutex) => NativeTimedMutex.try_lock((NativeTimedMutex*)mutex);
 macro void? TimedMutex.unlock(&mutex) => NativeTimedMutex.unlock((NativeTimedMutex*)mutex);
 
+macro void fence(AtomicOrdering $ordering) @safemacro
+{
+	$$fence($ordering.ordinal);
+}
+
 macro void Mutex.@in_lock(&mutex; @body)
 {
 	(void)mutex.lock();
@@ -63,9 +68,21 @@ macro void? ConditionVariable.wait(&cond, Mutex* mutex)
 {
 	return NativeConditionVariable.wait((NativeConditionVariable*)cond, (NativeMutex*)mutex);
 }
-macro void? ConditionVariable.wait_timeout(&cond, Mutex* mutex, ulong ms)
+<*
+ @require @assignable_to(#ms_or_duration, Duration) || @assignable_to(#ms_or_duration, ulong)
+*>
+macro void? ConditionVariable.wait_timeout(&cond, Mutex* mutex, #ms_or_duration) @safemacro
 {
-	return NativeConditionVariable.wait_timeout((NativeConditionVariable*)cond, (NativeMutex*)mutex, ms);
+	$if @assignable_to(#ms_or_duration, Duration):
+		return NativeConditionVariable.wait_timeout_duration((NativeConditionVariable*)cond, (NativeMutex*)mutex, #ms_or_duration);
+	$else
+		return NativeConditionVariable.wait_timeout((NativeConditionVariable*)cond, (NativeMutex*)mutex, #ms_or_duration);
+	$endif
+}
+
+macro void? ConditionVariable.wait_until(&cond, Mutex* mutex, Time time)
+{
+	return NativeConditionVariable.wait_until((NativeConditionVariable*)cond, (NativeMutex*)mutex, time);
 }
 
 <*

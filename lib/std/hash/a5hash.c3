@@ -76,37 +76,17 @@ fn ulong hash(char[] data, ulong seed = 0)
 		}
 		else
 		{
-			usz mo = data.len >> 3;
+			a = ((ulong)@unaligned_load(*(uint*)&data[0], 1) << 32)
+				| @unaligned_load(*(uint*)&data[^4], 1);
 
-			a = ((ulong)@unaligned_load(*(uint*)data.ptr, 1) << 32)
-				| @unaligned_load(*(uint*)(data.ptr + data.len - 4), 1);
-
-			b = ((ulong)@unaligned_load(*(uint*)(data.ptr + mo * 4), 1) << 32)
-				| @unaligned_load(*(uint*)(data.ptr + data.len - 4 - (mo * 4)), 1);
+			b = ((ulong)@unaligned_load(*(uint*)&data[(data.len >> 3) * 4], 1) << 32)
+				| @unaligned_load(*(uint*)(data.ptr + data.len - 4 - (data.len >> 3) * 4), 1);
 		}
-
-		@a5mul(a ^ seed1, b ^ seed2, seed1, seed2);
-		@a5mul(val01 ^ seed1, seed2, a, b);
-
-		return a ^ b;
 	}
-
-	a = b = 0;
-
-	if (data.len != 0)
+	else
 	{
-		a = (ulong)data[0];
-		a = data[0];
-
-		if (data.len != 1)
-		{
-			a |= (ulong)data[1] << 8;
-
-			if (data.len != 2)
-			{
-				a |= (ulong)data[2] << 16;
-			}
-		}
+		a = data.len ? (data[0] | (data.len > 1 ? ((ulong)data[1] << 8) : 0) | (data.len > 2 ? ((ulong)data[2] << 16) : 0)) : 0;
+		b = 0;
 	}
 
 	@a5mul(a ^ seed1, b ^ seed2, seed1, seed2);
