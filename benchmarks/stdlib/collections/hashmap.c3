@@ -17,14 +17,12 @@ HashMap { int, int } modifying_numbers_random;
 
 fn void bench_setup() @init
 {
-	// set_benchmark_warmup_iterations(3);
-	// set_benchmark_max_iterations(1 + 3);
-	set_benchmark_max_iterations(1);
-	// TODO ^ increase max iter to 2048 when finished
+	set_benchmark_warmup_iterations(3);
+	set_benchmark_max_iterations(4096 + 3);
 
-    random::seed(&rand, 0x4528_21E6_38D0_1377);
+    random::seed(&rand, 0x4528_21e6_38d0_1377);
 
-    for (usz i = 0; i < 1000; ++i) modifying_numbers_random.set(rand.next_int(), rand.next_int());
+    for (usz i = 0; i < 1_000; ++i) modifying_numbers_random.set(rand.next_int(), rand.next_int());
 }
 
 
@@ -75,72 +73,71 @@ fn void generic_hash_speeds()
 	String x = "abc";
 	char[] y = "abc";
 	assert(x.hash() == y.hash());
+	String z1 = "This is a much longer string than the above value because longer values lead to longer hashing times.";
+	char[] z2 = "This is a much longer string than the above value because longer values lead to longer hashing times.";
+	assert(z1.hash() == z2.hash());
 	assert(int.typeid.hash());
 }
 
 
-fn void modifying_numbers_init_from_map()
-{
-	$for var $x = 0; $x < 100; ++$x :
-	{   // scope 'v'
-		HashMap { int, int } v;
-		v.init_from_map(mem, &modifying_numbers_random);
-		v.free();
-	}
-	$endfor
-}
-
-
-fn void insert_erase_100k_int_100k()
+fn void modifying_numbers_init_from_map() => @pool()
 {
 	HashMap { int, int } v;
-	v.init(mem);
-
-	runtime::@start_benchmark();
-	for (int i = 0; i < 100_000; ++i) v[i] = i;
-	v.clear();
-
-	for (int i = 0; i < 100_000; ++i) v[i] = i;
-	for (int i = 0; i < 100_000; ++i) v.remove(i);
-
-	runtime::@end_benchmark();
+	v.tinit_from_map(&modifying_numbers_random);
 	v.free();
 }
 
 
-fn void random_access_1m_int_100k()
+fn void insert_erase() => @pool()
 {
 	HashMap { int, int } v;
 	v.tinit();
 
-	uint bound = 100_000;
+	runtime::@start_benchmark();
+	for (int i = 0; i < 1_000; ++i) v[i] = i;
+	v.clear();
+
+	for (int i = 0; i < 1_000; ++i) v[i] = i;
+	for (int i = 0; i < 1_000; ++i) v.remove(i);
+
+	runtime::@end_benchmark();
+	v.free();
+}
+
+
+fn void random_access() => @pool()
+{
+	HashMap { int, int } v;
+	v.tinit();
+
+	uint bound = 1_000;
 	usz pseudo_checksum = 0;
 
 	for (uint i = 0; i < bound; ++i) v[i] = i;
 
 	runtime::@start_benchmark();
-	for (uint i = 0; i < 1_000_000; ++i) pseudo_checksum += (v[i.hash() % bound] ?? 0);
+	for (uint i = 0; i < 10_000; ++i) pseudo_checksum += (v[i.hash() % bound] ?? 0);
 	runtime::@end_benchmark();
 
 	v.free();
 }
 
 
-fn void random_access_erase_1m_int_100k()
+fn void random_access_erase() => @pool()
 {
 	HashMap { int, int } v;
-	v.init(mem);
+	v.tinit();
 
-	uint bound = 100_000;
+	uint bound = 1_000;
 
 	for (uint i = 0; i < bound; ++i) v[i] = i;
 
 	runtime::@start_benchmark();
-	for (uint i = 0; i < 1_000_000; ++i)
+	for (uint i = 0; i < 10_000; ++i)
 	{
 		v[i.hash() % bound] = i;   // supplant an entry
 
-		v.remove(random::next(rand, bound));   // remove a random entry
+		v.remove(random::next(&rand, bound));   // remove a random entry
 	}
 	runtime::@end_benchmark();
 
@@ -148,27 +145,15 @@ fn void random_access_erase_1m_int_100k()
 }
 
 
-// TODO!
-// fn void iterator()
-// {
-// 	HashMap { int, int } v;
-// 	v.init(mem);
-
-// 	uint bound = 100_000;
-
-// 	for (uint i = 0; i < bound; ++i) v[i] = i;
-// }
-
-
-fn void random_access_string_keys_100k()
+fn void random_access_string_keys() => @pool()
 {
 	HashMap { String, ulong } v;
-	v.init(mem);
+	v.tinit();
 
 	usz pseudo_checksum = 0;
 	String[5_000] saved;
 
-	for (usz i = 0; i < 100_000; ++i)
+	for (usz i = 0; i < saved.len; ++i)
 	{
 		ulong hash = i.hash();
 		String b64key = base64::tencode(@as_char_view(hash));
@@ -179,9 +164,9 @@ fn void random_access_string_keys_100k()
 	}
 
 	runtime::@start_benchmark();
-	for (usz i = 0; i < 100_000; ++i)
+	for (usz i = 0; i < saved.len; ++i)
 	{
-		pseudo_checksum += v[ saved[random::next(rand, saved.len)] ]!! % 512;
+		pseudo_checksum += v[ saved[random::next(&rand, saved.len)] ]!! % 512;
 	}
 	runtime::@end_benchmark();
 
