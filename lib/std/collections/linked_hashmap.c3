@@ -638,8 +638,8 @@ struct LinkedHashMapIterator
 	bool started;
 }
 
-typedef LinkedHashMapValueIterator = LinkedHashMapIterator;
-typedef LinkedHashMapKeyIterator = LinkedHashMapIterator;
+typedef LinkedHashMapValueIterator = inline LinkedHashMapIterator;
+typedef LinkedHashMapKeyIterator = inline LinkedHashMapIterator;
 
 fn usz LinkedHashMapValueIterator.len(self) @operator(len) => self.map.count;
 fn usz LinkedHashMapKeyIterator.len(self) @operator(len) => self.map.count;
