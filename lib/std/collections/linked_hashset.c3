@@ -133,7 +133,12 @@ fn bool LinkedHashSet.is_initialized(&set)
 fn LinkedHashSet* LinkedHashSet.init_from_set(&self, Allocator allocator, LinkedHashSet* other_set)
 {
     self.init(allocator, other_set.table.len, other_set.load_factor);
-    self.put_all_for_create(other_set);
+    LinkedEntry* entry = other_set.head;
+    while (entry)
+    {
+        self.put_for_create(entry.value);
+        entry = entry.after;
+    }
     return self;
 }
 
@@ -532,19 +537,6 @@ fn usz? LinkedHashSet.to_format(&self, Formatter* f) @dynamic
         len += f.printf("%s", entry.value)!;
     };
     return len + f.print(" }");
-}
-
-fn void LinkedHashSet.put_all_for_create(&set, LinkedHashSet* other_set) @private
-{
-    if (!other_set.count) return;
-    foreach (LinkedEntry *e : other_set.table)
-    {
-        while (e)
-        {
-            set.put_for_create(e.value);
-            e = e.next;
-        }
-    }
 }
 
 fn void LinkedHashSet.put_for_create(&set, Value value) @private
