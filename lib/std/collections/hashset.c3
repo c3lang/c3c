@@ -81,9 +81,9 @@ macro HashSet* HashSet.init_with_values(&self, Allocator allocator, ..., uint ca
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-macro HashSet* HashSet.tinit_with_key_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro HashSet* HashSet.tinit_with_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	return self.init_with_key_values(tmem, $vasplat, capacity: capacity, load_factor: load_factor);
+	return self.init_with_values(tmem, $vasplat, capacity: capacity, load_factor: load_factor);
 }
 
 <*
@@ -132,7 +132,7 @@ fn bool HashSet.is_initialized(&set)
  @param [&in] other_set : "The set to copy from."
  @require !self.is_initialized() : "Set was already initialized"
 *>
-fn HashSet* HashSet.init_from_map(&self, Allocator allocator, HashSet* other_set)
+fn HashSet* HashSet.init_from_set(&self, Allocator allocator, HashSet* other_set)
 {
 	self.init(allocator, other_set.table.len, other_set.load_factor);
 	self.put_all_for_create(other_set);
@@ -143,9 +143,9 @@ fn HashSet* HashSet.init_from_map(&self, Allocator allocator, HashSet* other_set
  @param [&in] other_set : "The set to copy from."
  @require !set.is_initialized() : "Set was already initialized"
 *>
-fn HashSet* HashSet.tinit_from_map(&set, HashSet* other_set)
+fn HashSet* HashSet.tinit_from_set(&set, HashSet* other_set)
 {
-	return set.init_from_map(tmem, other_set) @inline;
+	return set.init_from_set(tmem, other_set) @inline;
 }
 
 fn bool HashSet.is_empty(&set) @inline
@@ -240,7 +240,7 @@ fn void HashSet.free(&set)
 	if (!set.is_initialized()) return;
 	set.clear();
 	set.free_internal(set.table.ptr);
-	set.table = {};
+    set.table = {};
 }
 
 <*
