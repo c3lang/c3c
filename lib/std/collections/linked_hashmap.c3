@@ -12,23 +12,23 @@ const LinkedHashMap LINKEDONHEAP = { .allocator = MAP_HEAP_ALLOCATOR };
 
 struct LinkedEntry
 {
-    uint hash;
-    Key key;
-    Value value;
-    LinkedEntry* next;		// For bucket chain
-    LinkedEntry* before;	// Previous in insertion order
-    LinkedEntry* after;		// Next in insertion order
+	uint hash;
+	Key key;
+	Value value;
+	LinkedEntry* next;		// For bucket chain
+	LinkedEntry* before;	// Previous in insertion order
+	LinkedEntry* after;		// Next in insertion order
 }
 
 struct LinkedHashMap (Printable)
 {
-    LinkedEntry*[] table;
-    Allocator allocator;
-    usz count;
-    usz threshold;
-    float load_factor;
-    LinkedEntry* head;		// First inserted LinkedEntry
-    LinkedEntry* tail;		// Last inserted LinkedEntry
+	LinkedEntry*[] table;
+	Allocator allocator;
+	usz count;
+	usz threshold;
+	float load_factor;
+	LinkedEntry* head;		// First inserted LinkedEntry
+	LinkedEntry* tail;		// Last inserted LinkedEntry
 }
 
 
@@ -47,7 +47,7 @@ fn LinkedHashMap* LinkedHashMap.init(&self, Allocator allocator, usz capacity = 
 	self.threshold = (usz)(capacity * load_factor);
 	self.table = allocator::new_array(allocator, LinkedEntry*, capacity);
 	self.head = null;
-    self.tail = null;
+	self.tail = null;
 	return self;
 }
 
@@ -112,7 +112,6 @@ fn LinkedHashMap* LinkedHashMap.init_from_keys_and_values(&self, Allocator alloc
 	return self;
 }
 
-
 <*
  @param [in] keys : "The keys for the LinkedHashMap entries"
  @param [in] values : "The values for the LinkedHashMap entries"
@@ -159,19 +158,22 @@ fn LinkedHashMap* LinkedHashMap.tinit_from_map(&map, LinkedHashMap* other_map)
 	return map.init_from_map(tmem, other_map) @inline;
 }
 
-fn bool LinkedHashMap.is_empty(&map) @inline => !map.count;
+fn bool LinkedHashMap.is_empty(&map) @inline 
+{
+    return !map.count;
+};
 
 fn usz LinkedHashMap.len(&map) @inline => map.count;
 
 fn Value*? LinkedHashMap.get_ref(&map, Key key)
 {
 	if (!map.count) return NOT_FOUND?;
-    uint hash = rehash(key.hash());
-    for (LinkedEntry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
-    {
-        if (e.hash == hash && equals(key, e.key)) return &e.value;
-    }
-    return NOT_FOUND?;
+	uint hash = rehash(key.hash());
+	for (LinkedEntry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
+	{
+		if (e.hash == hash && equals(key, e.key)) return &e.value;
+	}
+	return NOT_FOUND?;
 }
 
 fn LinkedEntry*? LinkedHashMap.get_entry(&map, Key key)
@@ -215,15 +217,15 @@ fn bool LinkedHashMap.has_key(&map, Key key) => @ok(map.get_ref(key));
 fn bool LinkedHashMap.set(&map, Key key, Value value) @operator([]=)
 {
 	// If the map isn't initialized, use the defaults to initialize it.
-    switch (map.allocator.ptr)
-    {
-    	case &dummy:
-    	    map.init(mem);
-    	case null:
-    	    map.tinit();
-    	default:
-    		break;
-    }
+	switch (map.allocator.ptr)
+	{
+		case &dummy:
+			map.init(mem);
+		case null:
+			map.tinit();
+		default:
+			break;
+	}
 	uint hash = rehash(key.hash());
 	uint index = index_for(hash, map.table.len);
 	for (LinkedEntry *e = map.table[index]; e != null; e = e.next)
@@ -246,23 +248,23 @@ fn void? LinkedHashMap.remove(&map, Key key) @maydiscard
 fn void LinkedHashMap.clear(&map)
 {
 	if (!map.count) return;
-    
-    LinkedEntry* entry = map.head;
-    while (entry)
-    {
-        LinkedEntry* next = entry.after;
-        map.free_entry(entry);
-        entry = next;
-    }
-    
-    foreach (LinkedEntry** &bucket : map.table)
-    {
-        *bucket = null;
-    }
-    
-    map.count = 0;
-    map.head = null;
-    map.tail = null;
+	
+	LinkedEntry* entry = map.head;
+	while (entry)
+	{
+		LinkedEntry* next = entry.after;
+		map.free_entry(entry);
+		entry = next;
+	}
+	
+	foreach (LinkedEntry** &bucket : map.table)
+	{
+		*bucket = null;
+	}
+	
+	map.count = 0;
+	map.head = null;
+	map.tail = null;
 }
 
 fn void LinkedHashMap.free(&map)
@@ -281,21 +283,21 @@ fn Key[] LinkedHashMap.tkeys(&self)
 fn Key[] LinkedHashMap.keys(&self, Allocator allocator)
 {
 	if (!self.count) return {};
-    
-    Key[] list = allocator::alloc_array(allocator, Key, self.count);
-    usz index = 0;
-    
-    LinkedEntry* entry = self.head;
-    while (entry)
-    {
-        $if COPY_KEYS:
-            list[index++] = entry.key.copy(allocator);
-        $else
-            list[index++] = entry.key;
-        $endif
-        entry = entry.after;
-    }
-    return list;
+	
+	Key[] list = allocator::alloc_array(allocator, Key, self.count);
+	usz index = 0;
+	
+	LinkedEntry* entry = self.head;
+	while (entry)
+	{
+		$if COPY_KEYS:
+			list[index++] = entry.key.copy(allocator);
+		$else
+			list[index++] = entry.key;
+		$endif
+		entry = entry.after;
+	}
+	return list;
 }
 
 macro LinkedHashMap.@each(map; @body(key, value))
@@ -309,11 +311,11 @@ macro LinkedHashMap.@each(map; @body(key, value))
 macro LinkedHashMap.@each_entry(map; @body(entry))
 {
 	LinkedEntry* entry = map.head;
-    while (entry)
-    {
-        @body(entry);
-        entry = entry.after;
-    }
+	while (entry)
+	{
+		@body(entry);
+		entry = entry.after;
+	}
 }
 
 fn Value[] LinkedHashMap.tvalues(&map) => map.values(tmem) @inline;
@@ -321,28 +323,28 @@ fn Value[] LinkedHashMap.tvalues(&map) => map.values(tmem) @inline;
 fn Value[] LinkedHashMap.values(&self, Allocator allocator)
 {
 	if (!self.count) return {};
-    Value[] list = allocator::alloc_array(allocator, Value, self.count);
-    usz index = 0;
-    LinkedEntry* entry = self.head;
-    while (entry)
-    {
-        list[index++] = entry.value;
-        entry = entry.after;
-    }
-    return list;
+	Value[] list = allocator::alloc_array(allocator, Value, self.count);
+	usz index = 0;
+	LinkedEntry* entry = self.head;
+	while (entry)
+	{
+		list[index++] = entry.value;
+		entry = entry.after;
+	}
+	return list;
 }
 
 fn bool LinkedHashMap.has_value(&map, Value v) @if(VALUE_IS_EQUATABLE)
 {
 	if (!map.count) return false;
-    
-    LinkedEntry* entry = map.head;
-    while (entry)
-    {
-        if (equals(v, entry.value)) return true;
-        entry = entry.after;
-    }
-    return false;
+	
+	LinkedEntry* entry = map.head;
+	while (entry)
+	{
+		if (equals(v, entry.value)) return true;
+		entry = entry.after;
+	}
+	return false;
 }
 
 fn LinkedHashMapIterator LinkedHashMap.iter(&self) => { .map = self, .current = self.head, .started = false };
@@ -353,148 +355,148 @@ fn LinkedHashMapKeyIterator LinkedHashMap.key_iter(&self) => { .map = self, .cur
 
 fn bool LinkedHashMapIterator.next(&self)
 {
-    if (!self.started)
-    {
-        self.current = self.map.head;
-        self.started = true;
-    }
-    else if (self.current)
-    {
-        self.current = self.current.after;
-    }
-    return self.current != null;
+	if (!self.started)
+	{
+		self.current = self.map.head;
+		self.started = true;
+	}
+	else if (self.current)
+	{
+		self.current = self.current.after;
+	}
+	return self.current != null;
 }
 
 fn LinkedEntry*? LinkedHashMapIterator.get(&self)
 {
-    return self.current ? self.current : NOT_FOUND?;
+	return self.current ? self.current : NOT_FOUND?;
 }
 
 fn Value*? LinkedHashMapValueIterator.get(&self)
 {
-    return self.current ? &self.current.value : NOT_FOUND?;
+	return self.current ? &self.current.value : NOT_FOUND?;
 }
 
 fn Key*? LinkedHashMapKeyIterator.get(&self)
 {
-    return self.current ? &self.current.key : NOT_FOUND?;
+	return self.current ? &self.current.key : NOT_FOUND?;
 }
 
 fn bool LinkedHashMapIterator.has_next(&self)
 {
-    if (!self.started) return self.map.head != null;
-    return self.current && self.current.after != null;
+	if (!self.started) return self.map.head != null;
+	return self.current && self.current.after != null;
 }
 
 // --- private methods
 
 fn void LinkedHashMap.add_entry(&map, uint hash, Key key, Value value, uint bucket_index) @private
 {
-    $if COPY_KEYS:
-    key = key.copy(map.allocator);
-    $endif
-    
-    LinkedEntry* entry = allocator::new(map.allocator, LinkedEntry, {
-        .hash = hash,
-        .key = key,
-        .value = value,
-        .next = map.table[bucket_index],
-        .before = map.tail,
-        .after = null
-    });
-    
-    // Update bucket chain
-    map.table[bucket_index] = entry;
-    
-    // Update linked list
-    if (map.tail)
-    {
-        map.tail.after = entry;
-        entry.before = map.tail;
-    }
-    else
-    {
-        map.head = entry;
-    }
-    map.tail = entry;
-    
-    if (map.count++ >= map.threshold)
-    {
-        map.resize(map.table.len * 2);
-    }
+	$if COPY_KEYS:
+	key = key.copy(map.allocator);
+	$endif
+	
+	LinkedEntry* entry = allocator::new(map.allocator, LinkedEntry, {
+		.hash = hash,
+		.key = key,
+		.value = value,
+		.next = map.table[bucket_index],
+		.before = map.tail,
+		.after = null
+	});
+	
+	// Update bucket chain
+	map.table[bucket_index] = entry;
+	
+	// Update linked list
+	if (map.tail)
+	{
+		map.tail.after = entry;
+		entry.before = map.tail;
+	}
+	else
+	{
+		map.head = entry;
+	}
+	map.tail = entry;
+	
+	if (map.count++ >= map.threshold)
+	{
+		map.resize(map.table.len * 2);
+	}
 }
 
 fn void LinkedHashMap.resize(&map, uint new_capacity) @private
 {
-    LinkedEntry*[] old_table = map.table;
-    uint old_capacity = old_table.len;
-    
-    if (old_capacity == MAXIMUM_CAPACITY)
-    {
-        map.threshold = uint.max;
-        return;
-    }
-    
-    LinkedEntry*[] new_table = allocator::new_array(map.allocator, LinkedEntry*, new_capacity);
-    map.table = new_table;
-    map.threshold = (uint)(new_capacity * map.load_factor);
-    
-    // Rehash all entries - linked list order remains unchanged
-    foreach (uint i, LinkedEntry *e : old_table)
-    {
-        if (!e) continue;
-        
-        // Split the bucket chain into two chains based on new bit
-        LinkedEntry* lo_head = null;
-        LinkedEntry* lo_tail = null;
-        LinkedEntry* hi_head = null;
-        LinkedEntry* hi_tail = null;
-        
-        do
-        {
-            LinkedEntry* next = e.next;
-            if ((e.hash & old_capacity) == 0)
-            {
-                if (!lo_tail)
-                {
-                    lo_head = e;
-                }
-                else
-                {
-                    lo_tail.next = e;
-                }
-                lo_tail = e;
-            }
-            else
-            {
-                if (!hi_tail)
-                {
-                    hi_head = e;
-                }
-                else
-                {
-                    hi_tail.next = e;
-                }
-                hi_tail = e;
-            }
-            e.next = null;
-            e = next;
-        }
-        while (e);
-        
-        if (lo_tail)
-        {
-            lo_tail.next = null;
-            new_table[i] = lo_head;
-        }
-        if (hi_tail)
-        {
-            hi_tail.next = null;
-            new_table[i + old_capacity] = hi_head;
-        }
-    }
-    
-    map.free_internal(old_table.ptr);
+	LinkedEntry*[] old_table = map.table;
+	uint old_capacity = old_table.len;
+	
+	if (old_capacity == MAXIMUM_CAPACITY)
+	{
+		map.threshold = uint.max;
+		return;
+	}
+	
+	LinkedEntry*[] new_table = allocator::new_array(map.allocator, LinkedEntry*, new_capacity);
+	map.table = new_table;
+	map.threshold = (uint)(new_capacity * map.load_factor);
+	
+	// Rehash all entries - linked list order remains unchanged
+	foreach (uint i, LinkedEntry *e : old_table)
+	{
+		if (!e) continue;
+		
+		// Split the bucket chain into two chains based on new bit
+		LinkedEntry* lo_head = null;
+		LinkedEntry* lo_tail = null;
+		LinkedEntry* hi_head = null;
+		LinkedEntry* hi_tail = null;
+		
+		do
+		{
+			LinkedEntry* next = e.next;
+			if ((e.hash & old_capacity) == 0)
+			{
+				if (!lo_tail)
+				{
+					lo_head = e;
+				}
+				else
+				{
+					lo_tail.next = e;
+				}
+				lo_tail = e;
+			}
+			else
+			{
+				if (!hi_tail)
+				{
+					hi_head = e;
+				}
+				else
+				{
+					hi_tail.next = e;
+				}
+				hi_tail = e;
+			}
+			e.next = null;
+			e = next;
+		}
+		while (e);
+		
+		if (lo_tail)
+		{
+			lo_tail.next = null;
+			new_table[i] = lo_head;
+		}
+		if (hi_tail)
+		{
+			hi_tail.next = null;
+			new_table[i + old_capacity] = hi_head;
+		}
+	}
+	
+	map.free_internal(old_table.ptr);
 }
 
 fn usz? LinkedHashMap.to_format(&self, Formatter* f) @dynamic
@@ -505,7 +507,7 @@ fn usz? LinkedHashMap.to_format(&self, Formatter* f) @dynamic
 	{
 		if (len > 2) len += f.print(", ")!;
 		len += f.printf("%s: %s", entry.key, entry.value)!;
-    };
+	};
 	return len + f.print(" }");
 }
 
@@ -558,57 +560,57 @@ fn void LinkedHashMap.put_for_create(&map, Key key, Value value) @private
 
 fn void LinkedHashMap.free_internal(&map, void* ptr) @inline @private
 {
-    allocator::free(map.allocator, ptr);
+	allocator::free(map.allocator, ptr);
 }
 
 fn bool LinkedHashMap.remove_entry_for_key(&map, Key key) @private
 {
-    if (!map.count) return false;
-    
-    uint hash = rehash(key.hash());
-    uint i = index_for(hash, map.table.len);
-    LinkedEntry* prev = null;
-    LinkedEntry* e = map.table[i];
-    
-    while (e)
-    {
-        if (e.hash == hash && equals(key, e.key))
-        {
-            if (prev)
-            {
-                prev.next = e.next;
-            }
-            else
-            {
-                map.table[i] = e.next;
-            }
-            
-            if (e.before)
-            {
-                e.before.after = e.after;
-            }
-            else
-            {
-                map.head = e.after;
-            }
-            
-            if (e.after)
-            {
-                e.after.before = e.before;
-            }
-            else
-            {
-                map.tail = e.before;
-            }
-            
-            map.count--;
-            map.free_entry(e);
-            return true;
-        }
-        prev = e;
-        e = e.next;
-    }
-    return false;
+	if (!map.count) return false;
+	
+	uint hash = rehash(key.hash());
+	uint i = index_for(hash, map.table.len);
+	LinkedEntry* prev = null;
+	LinkedEntry* e = map.table[i];
+	
+	while (e)
+	{
+		if (e.hash == hash && equals(key, e.key))
+		{
+			if (prev)
+			{
+				prev.next = e.next;
+			}
+			else
+			{
+				map.table[i] = e.next;
+			}
+			
+			if (e.before)
+			{
+				e.before.after = e.after;
+			}
+			else
+			{
+				map.head = e.after;
+			}
+			
+			if (e.after)
+			{
+				e.after.before = e.before;
+			}
+			else
+			{
+				map.tail = e.before;
+			}
+			
+			map.count--;
+			map.free_entry(e);
+			return true;
+		}
+		prev = e;
+		e = e.next;
+	}
+	return false;
 }
 
 fn void LinkedHashMap.create_entry(&map, uint hash, Key key, Value value, int bucket_index) @private
@@ -633,8 +635,8 @@ fn void LinkedHashMap.free_entry(&self, LinkedEntry *entry) @local
 
 struct LinkedHashMapIterator
 {
-    LinkedHashMap* map;
-    LinkedEntry* current;
+	LinkedHashMap* map;
+	LinkedEntry* current;
 	bool started;
 }
 
