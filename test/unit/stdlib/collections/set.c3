@@ -77,7 +77,7 @@ fn void set_operations()
 	set2.tinit_with_values(2, 3, 4);
 	defer set2.free();
 
-	IntSet union_set = set1.tmerge(&set2);
+	IntSet union_set = set1.tunion_with(&set2);
 	defer union_set.free();
 	assert(union_set.contains(1));
 	assert(union_set.contains(2));
@@ -186,6 +186,25 @@ fn void string_set_test()
 	assert(set.add("hello"));
 	assert(set.add("world"));
 	assert(!set.add("hello"));
+
+	assert(set.contains("hello"));
+	assert(set.contains("world"));
+	assert(!set.contains("foo"));
+
+	set.remove("hello");
+	assert(!set.contains("hello"));
+	assert(set.len() == 1);
+}
+
+fn void add_all_test()
+{
+	StringSet set;
+	set.init(mem);
+	defer set.free();
+
+	String[] list = { "hello", "world", "hello" };
+	usz total = set.add_all(list);
+	assert(total == 2);
 
 	assert(set.contains("hello"));
 	assert(set.contains("world"));

@@ -11,6 +11,7 @@ const float DEFAULT_LOAD_FACTOR = 0.75;
 
 const Allocator SET_HEAP_ALLOCATOR = (Allocator)&dummy;
 
+<* Copy the ONHEAP allocator to initialize to a set that is heap allocated *>
 const HashSet ONHEAP = { .allocator = SET_HEAP_ALLOCATOR };
 
 struct Entry 
@@ -146,6 +147,9 @@ fn HashSet* HashSet.tinit_from_set(&set, HashSet* other_set)
 }
 
 <*
+ Check if the set is empty
+
+ @return "true if it is empty"
  @pure
 *>
 fn bool HashSet.is_empty(&set) @inline
@@ -153,6 +157,42 @@ fn bool HashSet.is_empty(&set) @inline
 	return !set.count;
 }
 
+<*
+ Add all elements in the slice to the set.
+
+ @param [in] list
+ @return "The number of new elements added"
+ @ensure total <= list.len
+*>
+fn usz HashSet.add_all(&set, Value[] list)
+{
+	usz total;
+	foreach (v : list)
+	{
+		if (set.add(v)) total++;
+	}
+	return total;
+}
+
+<*
+ @param [&in] other
+ @return "The number of new elements added"
+ @ensure return <= other.count
+*>
+fn usz HashSet.add_all_from(&set, HashSet* other)
+{
+	usz total;
+	other.@each(;Value value)
+	{
+		if (set.add(value)) total++;
+	};
+	return total;
+}
+
+<*
+ @param value : "The value to add"
+ @return "true if the value didn't exist in the set"
+*>
 fn bool HashSet.add(&set, Value value)
 {
 	// If the set isn't initialized, use the defaults to initialize it.
@@ -175,6 +215,9 @@ fn bool HashSet.add(&set, Value value)
 	return true;
 }
 
+<*
+ Iterate over all the values in the set
+*>
 macro HashSet.@each(set; @body(value))
 {
 	if (!set.count) return;
@@ -188,6 +231,12 @@ macro HashSet.@each(set; @body(value))
 	}
 }
 
+<*
+ Check if the set contains the given value.
+
+ @param value : "The value to check"
+ @return "true if it exists in the set"
+*>
 fn bool HashSet.contains(&set, Value value)
 {
 	if (!set.count) return false;
@@ -199,11 +248,43 @@ fn bool HashSet.contains(&set, Value value)
 	return false;
 }
 
+<*
+ Remove a single value from the set.
+
+ @param value : "The value to remove"
+ @return? NOT_FOUND : "If the entry is not found"
+*>
 fn void? HashSet.remove(&set, Value value) @maydiscard
 {
 	if (!set.remove_entry_for_value(value)) return NOT_FOUND?;
 }
 
+fn usz HashSet.remove_all(&set, Value[] values)
+{
+	usz total;
+	foreach (v : values)
+	{
+		if (set.remove_entry_for_value(v)) total++;
+	}
+	return total;
+}
+
+<*
+ @param [&in] other : "Other set"
+*>
+fn usz HashSet.remove_all_from(&set, HashSet* other)
+{
+	usz total;
+	other.@each(;Value val)
+    {
+		if (set.remove_entry_for_value(val)) total++;
+    };
+    return total;
+}
+
+<*
+ Free all memory allocated by the hash set.
+*>
 fn void HashSet.free(&set) 
 {
 	if (!set.is_initialized()) return;
@@ -248,32 +329,32 @@ fn void HashSet.reserve(&set, usz capacity)
 	}
 }
 
+
+
 // --- Set Operations ---
 
 <*
+ Returns the union of two sets (A | B)
+
  @param [&in] other : "The other set to union with"
  @param [&inout] allocator : "Allocator for the new set"
  @return "A new set containing the union of both sets"
 *>
-fn HashSet HashSet.merge(&self, Allocator allocator, HashSet* other)
+fn HashSet HashSet.union_with(&self, Allocator allocator, HashSet* other)
 {
 	usz new_capacity = math::next_power_of_2(self.count + other.count);
 	HashSet result;
 	result.init(allocator, new_capacity, self.load_factor);
-	self.@each(;Value val)
-	{
-		result.add(val);
-	};
-	other.@each(;Value val)
-	{
-		result.add(val);
-	};
+	result.add_all_from(self);
+	result.add_all_from(other);
 	return result;
 }
 
-fn HashSet HashSet.tmerge(&self, HashSet* other) => self.merge(tmem, other);
+fn HashSet HashSet.tunion_with(&self, HashSet* other) => self.union_with(tmem, other);
 
 <*
+ Returns the intersection of the two sets (A & B)
+
  @param [&in] other : "The other set to intersect with"
  @param [&inout] allocator : "Allocator for the new set"
  @return "A new set containing the intersection of both sets"
@@ -298,6 +379,8 @@ fn HashSet HashSet.intersection(&self, Allocator allocator, HashSet* other)
 fn HashSet HashSet.tintersection(&self, HashSet* other) => self.intersection(tmem, other);
 
 <*
+ Return this set - other, so (A & ~B)
+
  @param [&in] other : "The other set to compare with"
  @param [&inout] allocator : "Allocator for the new set"
  @return "A new set containing elements in this set but not in the other"
@@ -306,7 +389,6 @@ fn HashSet HashSet.difference(&self, Allocator allocator, HashSet* other)
 {
 	HashSet result;
 	result.init(allocator, self.table.len, self.load_factor);
-
 	self.@each(;Value value)
 	{
 		if (!other.contains(value))
@@ -320,6 +402,8 @@ fn HashSet HashSet.difference(&self, Allocator allocator, HashSet* other)
 fn HashSet HashSet.tdifference(&self, HashSet* other) => self.difference(tmem, other) @inline;
 
 <*
+ Check if this hash set is a subset of another set.
+
  @param [&in] other : "The other set to check against"
  @return "True if all elements of this set are in the other set"
 *>
@@ -516,6 +600,7 @@ fn usz HashSetIterator.len(&self) @operator(len)
 	return self.set.count;
 }
 
+<* @pure *>
 fn uint rehash(uint hash) @inline @private
 {
 	hash ^= (hash >> 20) ^ (hash >> 12);
