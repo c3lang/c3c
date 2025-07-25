@@ -77,7 +77,7 @@ fn void set_operations()
 	set2.tinit_with_values(2, 3, 4);
 	defer set2.free();
 
-	IntSet union_set = set1.tunion_with(&set2);
+	IntSet union_set = set1.tset_union(&set2);
 	defer union_set.free();
 	assert(union_set.contains(1));
 	assert(union_set.contains(2));
@@ -94,12 +94,18 @@ fn void set_operations()
 	assert(intersect_set.len() == 2);
 
 	IntSet diff_set = set1.tdifference(&set2);
-	defer diff_set.free();
 	assert(diff_set.contains(1));
 	assert(!diff_set.contains(2));
 	assert(!diff_set.contains(3));
 	assert(!diff_set.contains(4));
 	assert(diff_set.len() == 1);
+
+	IntSet sdiff_set = set1.tsymmetric_difference(&set2);
+	assert(sdiff_set.contains(1));
+	assert(!sdiff_set.contains(2));
+	assert(!sdiff_set.contains(3));
+	assert(sdiff_set.contains(4));
+	assert(sdiff_set.len() == 2);
 
 	IntSet subset;
 	subset.tinit_with_values(2, 3);

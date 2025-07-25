@@ -340,7 +340,7 @@ fn void HashSet.reserve(&set, usz capacity)
  @param [&inout] allocator : "Allocator for the new set"
  @return "A new set containing the union of both sets"
 *>
-fn HashSet HashSet.union_with(&self, Allocator allocator, HashSet* other)
+fn HashSet HashSet.set_union(&self, Allocator allocator, HashSet* other)
 {
 	usz new_capacity = math::next_power_of_2(self.count + other.count);
 	HashSet result;
@@ -350,7 +350,7 @@ fn HashSet HashSet.union_with(&self, Allocator allocator, HashSet* other)
 	return result;
 }
 
-fn HashSet HashSet.tunion_with(&self, HashSet* other) => self.union_with(tmem, other);
+fn HashSet HashSet.tset_union(&self, HashSet* other) => self.set_union(tmem, other);
 
 <*
  Returns the intersection of the two sets (A & B)
@@ -400,6 +400,30 @@ fn HashSet HashSet.difference(&self, Allocator allocator, HashSet* other)
 }
 
 fn HashSet HashSet.tdifference(&self, HashSet* other) => self.difference(tmem, other) @inline;
+
+<*
+ Return (A ^ B)
+
+ @param [&in] other : "The other set to compare with"
+ @param [&inout] allocator : "Allocator for the new set"
+ @return "A new set containing elements in this set or the other, but not both"
+*>
+fn HashSet HashSet.symmetric_difference(&self, Allocator allocator, HashSet* other)
+{
+	HashSet result;
+	result.init(allocator, self.table.len, self.load_factor);
+	result.add_all_from(self);
+	other.@each(;Value value)
+	{
+		if (!result.add(value))
+		{
+			result.remove(value);
+		}
+	};
+	return result;
+}
+
+fn HashSet HashSet.tsymmetric_difference(&self, HashSet* other) => self.symmetric_difference(tmem, other) @inline;
 
 <*
  Check if this hash set is a subset of another set.
