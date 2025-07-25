@@ -116,8 +116,6 @@ fn void linked_set_copy()
 
 	TestLinkedHashSet copy;
 	copy.tinit_from_set(&original);
-	io::printn(original);
-	io::printn(copy);
 
 	assert(copy.len() == original.len());
 	
