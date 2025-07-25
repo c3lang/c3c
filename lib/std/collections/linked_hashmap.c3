@@ -161,7 +161,7 @@ fn LinkedHashMap* LinkedHashMap.tinit_from_map(&map, LinkedHashMap* other_map)
 fn bool LinkedHashMap.is_empty(&map) @inline 
 {
     return !map.count;
-};
+}
 
 fn usz LinkedHashMap.len(&map) @inline => map.count;
 
