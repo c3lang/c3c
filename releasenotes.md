@@ -73,6 +73,7 @@
 - Copying const enums and regular enums incorrect #2313.
 - Regression: Chaining an optional together with contracts could in some cases lose the optional.
 - `char[*] b = *(char[*]*)&a;` would crash the compiler if `a` was a slice. #2320
+- Implicitly cast const int expressions would sometimes not be detected as compile time const.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
