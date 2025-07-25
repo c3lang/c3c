@@ -79,7 +79,7 @@ macro HashSet* HashSet.init_with_values(&self, Allocator allocator, ..., uint ca
 <*
  @require capacity > 0 : "The capacity must be 1 or higher"
  @require load_factor > 0.0 : "The load factor must be higher than 0"
- @require !self.is_initialized() : "Map was already initialized"
+ @require !self.is_initialized() : "Set was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
 macro HashSet* HashSet.tinit_with_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
@@ -92,7 +92,7 @@ macro HashSet* HashSet.tinit_with_values(&self, ..., uint capacity = DEFAULT_INI
  @param [&inout] allocator : "The allocator to use"
  @require capacity > 0 : "The capacity must be 1 or higher"
  @require load_factor > 0.0 : "The load factor must be higher than 0"
- @require !self.is_initialized() : "Map was already initialized"
+ @require !self.is_initialized() : "Set was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
 fn HashSet* HashSet.init_from_values(&self, Allocator allocator, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
