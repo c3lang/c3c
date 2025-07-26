@@ -2809,7 +2809,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	}
 	else if (is_no_return)
 	{
-		SEMA_ERROR(context->block_returns[0], "Return used despite macro being marked '@noreturn'.");
+		SEMA_ERROR(macro_context.block_returns[0], "Return used despite macro being marked '@noreturn'.");
 		goto EXIT_FAIL;
 	}
 

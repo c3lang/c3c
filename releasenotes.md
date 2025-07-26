@@ -74,6 +74,9 @@
 - Regression: Chaining an optional together with contracts could in some cases lose the optional.
 - `char[*] b = *(char[*]*)&a;` would crash the compiler if `a` was a slice. #2320
 - Implicitly cast const int expressions would sometimes not be detected as compile time const.
+- Using @noreturn in a short body macro would not work properly #2326.
+- Bug when reporting error in a macro return would crash the compiler #2326.
+- Short body return expression would not have the correct span.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
