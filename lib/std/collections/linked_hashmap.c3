@@ -158,9 +158,9 @@ fn LinkedHashMap* LinkedHashMap.tinit_from_map(&map, LinkedHashMap* other_map)
 	return map.init_from_map(tmem, other_map) @inline;
 }
 
-fn bool LinkedHashMap.is_empty(&map) @inline 
+fn bool LinkedHashMap.is_empty(&map) @inline
 {
-    return !map.count;
+	return !map.count;
 }
 
 fn usz LinkedHashMap.len(&map) @inline => map.count;
@@ -533,14 +533,9 @@ fn void LinkedHashMap.transfer(&map, LinkedEntry*[] new_table) @private
 fn void LinkedHashMap.put_all_for_create(&map, LinkedHashMap* other_map) @private
 {
 	if (!other_map.count) return;
-	foreach (LinkedEntry *e : other_map.table)
-	{
-		while (e)
-		{
-			map.put_for_create(e.key, e.value);
-			e = e.next;
-		}
-	}
+	other_map.@each(; Key key, Value value) {
+		map.set(key, value);
+	};
 }
 
 fn void LinkedHashMap.put_for_create(&map, Key key, Value value) @private
