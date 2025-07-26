@@ -410,6 +410,7 @@ macro swizzle2(v, v2, ...) @builtin
 {
 	return $$swizzle2(v, v2, $vasplat);
 }
+
 <*
  Return the excuse in the Optional if it is Empty, otherwise
  return a null fault.
@@ -432,6 +433,22 @@ macro bool @ok(#expr) @builtin
 {
 	if (catch #expr) return false;
 	return true;
+}
+
+<*
+ Check if an Optional expression evaluates to a fault. If so, return it;
+ else, assign the result to an expression.
+
+ @require @typeis(#expr, $typeof(#v)?) &&& @typekind(#expr) == OPTIONAL : `Type of #expr must be an Optional of #v`
+*>
+macro void? @assign_or(#v, #expr) @builtin
+{
+	var $Type = $typeof(#v);
+	$Type? res = #expr;
+
+	if (catch err = res) return err?;
+
+	#v = res;
 }
 
 <*
