@@ -28,6 +28,24 @@ fn void test_enum_by_name()
 	assert(@catch(enum_by_name(Tester, "GHI")) == NOT_FOUND);
 }
 
+fn void test_assign_or()
+{
+	assert(enum_by_name(Tester, "ABC")!! == Tester.ABC);
+
+	Tester val;
+	if (catch @assign_or(val, enum_by_name(Tester, "ABC"))) abort("Test failure");
+	assert(val == Tester.ABC);
+
+	Tester another;
+	if (catch err = @assign_or(another, enum_by_name(Tester, "GHI")))
+	{
+		assert(err == NOT_FOUND);
+		return;
+	}
+
+	abort("Test failure");
+}
+
 fn void test_likely()
 {
 	int a = 2;
