@@ -229,15 +229,15 @@ fn bool HashMap.has_key(&map, Key key)
 fn bool HashMap.set(&map, Key key, Value value) @operator([]=)
 {
 	// If the map isn't initialized, use the defaults to initialize it.
-    switch (map.allocator.ptr)
-    {
-    	case &dummy:
-    	    map.init(mem);
-    	case null:
-    	    map.tinit();
-    	default:
-    		break;
-    }
+	switch (map.allocator.ptr)
+	{
+		case &dummy:
+			map.init(mem);
+		case null:
+			map.tinit();
+		default:
+			break;
+	}
 	uint hash = rehash(key.hash());
 	uint index = index_for(hash, map.table.len);
 	for (Entry *e = map.table[index]; e != null; e = e.next)
@@ -421,7 +421,7 @@ fn usz? HashMap.to_format(&self, Formatter* f) @dynamic
 	{
 		if (len > 2) len += f.print(", ")!;
 		len += f.printf("%s: %s", entry.key, entry.value)!;
-    };
+	};
 	return len + f.print(" }");
 }
 
