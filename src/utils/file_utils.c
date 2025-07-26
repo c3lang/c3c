@@ -525,9 +525,11 @@ bool file_exists(const char *path)
 
 bool file_path_is_relative(const char *file_name)
 {
+	if (NULL == file_name || !strlen(file_name)) return false;
+
 	// returns !full_path condition
 #if PLATFORM_WINDOWS
-	return !(file_name[0] == '\\' || (char_is_alpha(file_name[0]) && 0 == strncmp(&file_name[1], ":\\", 2)));
+	return !(file_name[0] == '\\' || (strlen(file_name) >= 3 && char_is_alpha(file_name[0]) && 0 == strncmp(&file_name[1], ":\\", 2)));
 #else
 	return file_name[0] != '/';
 #endif
