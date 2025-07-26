@@ -79,6 +79,7 @@ bool file_delete_file(const char *path);
 void file_delete_dir(const char *path);
 bool file_is_dir(const char *file);
 bool file_exists(const char *path);
+bool file_path_is_relative(const char *file_name);
 FILE *file_open_read(const char *path);
 bool file_touch(const char *path);
 char *file_read_binary(const char *path, size_t *size);
@@ -494,6 +495,11 @@ static inline bool char_is_digit_or_(char c)
 static inline bool char_is_digit(char c)
 {
 	return c >= '0' && c <= '9';
+}
+
+static inline bool char_is_alpha(char c)
+{
+	return char_is_lower(c) || char_is_upper(c);
 }
 
 static char hex_conv[256] = {

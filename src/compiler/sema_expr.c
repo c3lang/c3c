@@ -9984,7 +9984,7 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 	const char *string = filename->const_expr.bytes.ptr;
 	char *path;
 	char *name;
-	if (file_namesplit(unit->file->full_path, &name, &path))
+	if (file_path_is_relative(unit->file->full_path) && file_namesplit(unit->file->full_path, &name, &path))
 	{
 		string = file_append_path(path, string);
 	}
