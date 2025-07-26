@@ -575,6 +575,13 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 			if (!sema_analyse_expr(context, ret_expr)) return false;
 		}
 		if (!sema_check_return_matches_opt_returns(context, ret_expr)) return false;
+		if (ret_expr->expr_kind == EXPR_CALL && ret_expr->call_expr.no_return)
+		{
+			statement->ast_kind = AST_EXPR_STMT;
+			statement->expr_stmt = ret_expr;
+			sema_inline_return_defers(context, statement, context->block_return_defer);
+			return true;
+		}
 	}
 	else
 	{

@@ -1077,6 +1077,7 @@ static inline Ast *parse_return_stmt(ParseContext *c)
 	if (!tok_is(c, TOKEN_EOS))
 	{
 		ASSIGN_EXPR_OR_RET(ast->return_stmt.expr, parse_expr(c), poisoned_ast);
+		RANGE_EXTEND_PREV(ast);
 	}
 	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;
@@ -1532,6 +1533,7 @@ Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool is_regular_f
 	TypeInfo *rtype = return_type ? type_infoptr(return_type) : NULL;
 	bool is_void_return = rtype && rtype->resolve_status == RESOLVE_DONE && rtype->type->type_kind == TYPE_VOID;
 	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_ast);
+	ret->span = expr->span;
 	if (expr->expr_kind == EXPR_CALL && expr->call_expr.macro_body)
 	{
 		ret->ast_kind = AST_EXPR_STMT;
@@ -1548,7 +1550,7 @@ Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool is_regular_f
 	}
 	ret->return_stmt.expr = expr;
 END:;
-	RANGE_EXTEND_PREV(ast);
+
 	if (is_regular_fn)
 	{
 		CONSUME_EOS_OR_RET(poisoned_ast);

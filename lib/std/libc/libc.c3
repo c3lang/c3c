@@ -8,6 +8,9 @@ const int EXIT_FAILURE = 1;
 const int EXIT_SUCCESS = 0;
 const int RAND_MAX = 0x7fffffff;
 
+alias WChar @if(env::WIN32) = Char16;
+alias WChar @if(!env::WIN32) = Char32;
+
 struct DivResult
 {
 	CInt quot;

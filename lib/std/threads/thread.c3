@@ -73,7 +73,7 @@ macro void? ConditionVariable.wait(&cond, Mutex* mutex)
 *>
 macro void? ConditionVariable.wait_timeout(&cond, Mutex* mutex, #ms_or_duration) @safemacro
 {
-	$if @implicit_to(#ms_or_duration):
+	$if @assignable_to(#ms_or_duration, Duration):
 		return NativeConditionVariable.wait_timeout_duration((NativeConditionVariable*)cond, (NativeMutex*)mutex, #ms_or_duration);
 	$else
 		return NativeConditionVariable.wait_timeout((NativeConditionVariable*)cond, (NativeMutex*)mutex, #ms_or_duration);
