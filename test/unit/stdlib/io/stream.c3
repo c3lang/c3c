@@ -87,3 +87,117 @@ fn void read_short_bytearray_test()
 	assert(read == &&x'aabbcc00112233');
 	free(read);
 }
+
+fn void read_until_delimiter_test()
+{
+	// Test basic functionality - read until delimiter found
+	ByteReader reader = io::wrap_bytes("hello,world");
+	ByteWriter writer;
+	writer.tinit();
+
+	usz bytes_read = io::read_until_delimiter(&reader, &writer, ",")!!;
+	assert(bytes_read == 5);
+	assert(writer.str_view() == "hello");
+}
+
+fn void read_until_delimiter_eof_test()
+{
+	// Test EOF case - delimiter not found
+	ByteReader reader = io::wrap_bytes("hello");
+	ByteWriter writer;
+	writer.tinit();
+
+	assert(@catch(io::read_until_delimiter(&reader, &writer, ",")));
+}
+
+fn void read_until_delimiter_empty_test()
+{
+	// Test empty input
+	ByteReader reader = io::wrap_bytes("");
+	ByteWriter writer;
+	writer.tinit();
+
+	assert(@catch(io::read_until_delimiter(&reader, &writer, ",")));
+}
+
+fn void read_until_delimiter_immediate_test()
+{
+	// Test delimiter at start
+	ByteReader reader = io::wrap_bytes(",hello");
+	ByteWriter writer;
+	writer.tinit();
+
+	usz bytes_read = io::read_until_delimiter(&reader, &writer, ",")!!;
+	assert(bytes_read == 0);
+	assert(writer.str_view() == "");
+}
+
+fn void read_until_delimiter_output_full_test()
+{
+	// Test output stream full/failed to write
+	ByteReader reader = io::wrap_bytes("hello,world");
+	ByteWriter writer;
+	char[3] small_buffer;
+	writer.init_with_buffer(&small_buffer);
+
+	// This should fail when trying to write the 4th byte since buffer is only 3 bytes
+	assert(@catch(io::read_until_delimiter(&reader, &writer, ",")));
+}
+
+fn void read_until_delimiter_crlf_test()
+{
+	// Test CRLF delimiter
+	ByteReader reader = io::wrap_bytes("hello\r\nworld");
+	ByteWriter writer;
+	writer.tinit();
+
+	usz bytes_read = io::read_until_delimiter(&reader, &writer, "\r\n")!!;
+	assert(bytes_read == 5);
+	assert(writer.str_view() == "hello");
+}
+
+fn void read_until_delimiter_single_char_test()
+{
+	// Test single character - should behave like read_until_delimiter
+	ByteReader reader = io::wrap_bytes("hello,world");
+	ByteWriter writer;
+	writer.tinit();
+
+	usz bytes_read = io::read_until_delimiter(&reader, &writer, ",")!!;
+	assert(bytes_read == 5);
+	assert(writer.str_view() == "hello");
+}
+
+fn void read_until_delimiter_empty_delimiter_test()
+{
+	// Test empty delimiter - should return 0
+	ByteReader reader = io::wrap_bytes("hello");
+	ByteWriter writer;
+	writer.tinit();
+
+	usz bytes_read = io::read_until_delimiter(&reader, &writer, "")!!;
+	assert(bytes_read == 0);
+	assert(writer.str_view() == "");
+}
+
+fn void read_until_delimiter_partial_match_test()
+{
+	// Test partial match that doesn't complete
+	ByteReader reader = io::wrap_bytes("hello\rworld\r\nend");
+	ByteWriter writer;
+	writer.tinit();
+
+	usz bytes_read = io::read_until_delimiter(&reader, &writer, "\r\n")!!;
+	assert(bytes_read == 11); // "hello\rworld"
+	assert(writer.str_view() == "hello\rworld");
+}
+
+fn void read_until_delimiter_multichar_eof_test()
+{
+	// Test EOF without finding delimiter
+	ByteReader reader = io::wrap_bytes("hello\rworld");
+	ByteWriter writer;
+	writer.tinit();
+
+	assert(@catch(io::read_until_delimiter(&reader, &writer, "\r\n")));
+}
