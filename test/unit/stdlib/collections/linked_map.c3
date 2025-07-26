@@ -136,6 +136,7 @@ fn void linked_map_copy()
 		assert(key == expected_order[index]);
 		index++;
 	};
+	assert(index == 3); // check if @each worked
 }
 
 fn void linked_map_iterators()
