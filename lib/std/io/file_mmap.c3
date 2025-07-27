@@ -28,7 +28,7 @@ fn void? FileMmap.destroy(&self)
 	self.vm.destroy()!;
 }
 
-module std::io::file;
+module std::io::file @if(env::LIBC &&& env::POSIX);
 
 <*
  Maps a region of an already-opened file into memory
