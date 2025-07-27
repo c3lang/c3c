@@ -18,7 +18,7 @@ fn void map_read_only() @test
 	File f = file::open(FNAME, "rb")!!;
 	defer f.close()!!;
 
-	mmap::FileMmap mapped_file = file::file_mmap(f, 0, 0, vm::VirtualMemoryAccess.READ)!!;
+	mmap::FileMmap mapped_file = file::mmap_file(f, 0, 0, vm::VirtualMemoryAccess.READ)!!;
 	defer mapped_file.destroy()!!;
 	
     	char[] view = mapped_file.bytes();
@@ -37,7 +37,7 @@ fn void map_read_write() @test
 
  	bool shared = true;
  	File f = file::open(FNAME, "r+")!!;
-	mmap::FileMmap region = file::file_mmap(f, 0, 0, vm::VirtualMemoryAccess.READWRITE, shared)!!;
+	mmap::FileMmap region = file::mmap_file(f, 0, 0, vm::VirtualMemoryAccess.READWRITE, shared)!!;
 
  	region.bytes()[1] = 'Z';
 
@@ -56,7 +56,7 @@ fn void map_with_offset(String fname, usz offset, usz size, char[] reference_msg
 	File f = file::open(fname, "r")!!;
 	defer f.close()!!;
 
-	mmap::FileMmap mapped_file = file::file_mmap(f, offset, size, vm::VirtualMemoryAccess.READ)!!;
+	mmap::FileMmap mapped_file = file::mmap_file(f, offset, size, vm::VirtualMemoryAccess.READ)!!;
 	defer mapped_file.destroy()!!;
 
 	usz expected_size = size;
@@ -99,7 +99,7 @@ fn void map_from_filename() @test
 	char[] msg = "Hello, world";
 	write_file(FNAME, msg);
 
-	mmap::FileMmap mapped_file = file::filename_mmap(FNAME, "rb", 0, 0, vm::VirtualMemoryAccess.READ)!!;
+	mmap::FileMmap mapped_file = file::mmap_open(FNAME, "rb", 0, 0, vm::VirtualMemoryAccess.READ)!!;
 	defer mapped_file.destroy()!!;
 
 	char[] view = mapped_file.bytes();
