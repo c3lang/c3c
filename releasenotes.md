@@ -30,6 +30,7 @@
 - '$assignable' is deprecated.
 - Deprecate allocator::heap() and allocator::temp()
 - Add `thread::fence` providing a thread fence.
+- Place output in `out` by default for projects. Use temp folder for building at the command line.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
@@ -77,6 +78,7 @@
 - Using @noreturn in a short body macro would not work properly #2326.
 - Bug when reporting error in a macro return would crash the compiler #2326.
 - Short body return expression would not have the correct span.
+- Fix issue where recursively creating a dir would be incorrectly marked as a failure the first time.
 
 ### Stdlib changes
 - Improve contract for readline. #2280

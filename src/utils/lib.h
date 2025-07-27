@@ -65,6 +65,7 @@ char *win_utf16to8(const uint16_t *name);
 // Use as if it was mkdir(..., 0755) == 0
 bool dir_make(const char *path);
 bool dir_make_recursive(char *path);
+const char *dir_make_temp_dir(void);
 // Use as if it was chdir(...) == 0
 bool dir_change(const char *path);
 const char *filename(const char *path);

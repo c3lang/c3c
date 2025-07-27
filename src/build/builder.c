@@ -271,6 +271,28 @@ static LinkLibc libc_from_arch_os(ArchOsTarget target)
 #define OVERRIDE_IF_SET(prop_) do { if (options->prop_) target->prop_ = options->prop_; } while (0)
 #define set_if_updated(target_, original_) do { if ((int)original_ != -1) target_ = original_; } while (0)
 
+static void set_dir_with_default(const char **setting, const char *option, const char *default_value)
+{
+	if (option)
+	{
+		*setting = option;
+		return;
+	}
+	if (!*setting) *setting = default_value;
+}
+
+static void set_output_dir_from_options(const char **setting, const char *option, const char *default_value, const char *target_name, const char *out_dir)
+{
+	if (option)
+	{
+		*setting = option;
+	}
+	if (!*setting)
+	{
+		*setting = file_append_path(file_append_path(out_dir, default_value), target_name);
+	}
+}
+
 static void update_build_target_from_options(BuildTarget *target, BuildOptions *options)
 {
 	switch (options->command)
@@ -480,51 +502,43 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 
 	target->emit_only = options->emit_only;
 	const char *target_name = arch_os_target[target->arch_os_target];
-	if (options->script_dir) target->script_dir = options->script_dir;
+	OVERRIDE_IF_SET(run_dir);
+
 	if (command_accepts_files(options->command))
 	{
-		target->build_dir = options->build_dir ? options->build_dir : ".build";
-		if (!target->script_dir) target->script_dir = ".";
+		set_dir_with_default(&target->output_dir, options->output_dir, ".");
+		if (!target->build_dir)
+		{
+			if (!options->build_dir)
+			{
+				options->build_dir = dir_make_temp_dir();
+				if (!options->build_dir)
+				{
+					error_exit("Unable to create temporary directory for build.");
+				}
+			}
+			target->build_dir = options->build_dir;
+		}
+		set_dir_with_default(&target->script_dir, options->script_dir, ".");
 	}
 	else
 	{
-		if (!target->build_dir) target->build_dir = "build";
-		if (options->build_dir)
-		{
-			target->build_dir = options->build_dir;
-		}
-		else
-		{
-			options->build_dir = target->build_dir;
-		}
-		if (!target->script_dir) target->script_dir = "scripts";
+		set_dir_with_default(&target->output_dir, options->output_dir, "out");
+		set_dir_with_default(&target->build_dir, options->build_dir, "build");
+		set_dir_with_default(&target->script_dir, options->script_dir, "scripts");
 	}
-	if (!options->run_dir) options->run_dir = target->run_dir;
-
 
 	target->ir_file_dir = options->llvm_out;
-	target->asm_file_dir = options->asm_out;
-	target->header_file_dir = options->header_out;
-	target->object_file_dir = options->obj_out;
-	if (!target->ir_file_dir)
+	set_output_dir_from_options(&target->ir_file_dir, options->llvm_out, "llvm", target_name, target->build_dir);
+	set_output_dir_from_options(&target->asm_file_dir, options->asm_out, "asm", target_name, target->output_dir);
+	set_output_dir_from_options(&target->header_file_dir, options->header_out, "headers", target_name, target->output_dir);
+	if (target->type == TARGET_TYPE_OBJECT_FILES)
 	{
-		target->ir_file_dir = options->build_dir
-			? file_append_path(file_append_path(options->build_dir, "llvm"), target_name)
-			: file_append_path("llvm", target_name);
-		}
-	if (!target->asm_file_dir)
-	{
-		target->asm_file_dir = options->build_dir
-			? file_append_path(file_append_path(options->build_dir, "asm"), target_name)
-			: file_append_path("asm", target_name);
+		set_output_dir_from_options(&target->object_file_dir, options->obj_out, "obj", target_name, target->output_dir);
 	}
-	if (!target->object_file_dir)
+	else
 	{
-		target->object_file_dir = file_append_path(file_append_path(target->build_dir, "obj"), target_name);
-	}
-	if (!target->header_file_dir)
-	{
-		target->header_file_dir = target->output_dir ? target->output_dir : target->build_dir;
+		set_output_dir_from_options(&target->object_file_dir, options->obj_out, "obj", target_name, target->build_dir);
 	}
 
 	if (options->files)
@@ -577,7 +591,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		target->emit_asm = false;
 		target->emit_object_files = false;
 	}
-	target->run_dir = options->run_dir;
 	if (options->no_obj)
 	{
 		target->emit_object_files = false;
