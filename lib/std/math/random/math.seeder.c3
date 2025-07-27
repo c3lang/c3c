@@ -1,5 +1,5 @@
 module std::math::random;
-import std::hash::a5hash, std::time;
+import std::hash::metro64, std::time;
 
 const ODD_PHI64 @local = 0x9e3779b97f4a7c15;
 const MUL_MCG64 @local = 0xf1357aea2e62a9c5;
@@ -69,7 +69,7 @@ fn void seeder(char[] input, char[] out_buffer)
 
 macro uint hash(value) @local
 {
-	return (uint)a5hash::hash(&&bitcast(value, char[$sizeof(value)]));
+	return (uint)metro64::hash(&&bitcast(value, char[$sizeof(value)]));
 }
 
 fn char[8 * 4] entropy() @if(!env::WASM_NOLIBC)

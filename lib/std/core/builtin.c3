@@ -487,8 +487,8 @@ macro uint ichar[<*>].hash(self)   => hash_vec(self);
 macro uint bool[<*>].hash(self)    => hash_vec(self);
 
 macro uint typeid.hash(typeid t) => @generic_hash(((ulong)(uptr)t));
-macro uint String.hash(String c) => (uint)a5hash::hash(c);
-macro uint char[].hash(char[] c) => (uint)a5hash::hash(c);
+macro uint String.hash(String c) => (uint)metro64::hash(c);
+macro uint char[].hash(char[] c) => (uint)metro64::hash(c);
 macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
 <*
@@ -499,7 +499,7 @@ macro uint hash_array(array_ptr) @local
 	var $len = $sizeof(*array_ptr);
 
 	$if $len > 16:
-		return (uint)a5hash::hash(((char*)array_ptr)[:$len]);
+		return (uint)metro64::hash(((char*)array_ptr)[:$len]);
 	$else
 		return (uint)wyhash2::hash(((char*)array_ptr)[:$len]);
 	$endif
@@ -513,7 +513,7 @@ macro uint hash_vec(vec) @local
 	var $len = $sizeof(vec.len * $typeof(vec).inner.sizeof);
 
 	$if $len > 16:
-		return (uint)a5hash::hash(((char*)&&vec)[:$len]);
+		return (uint)metro64::hash(((char*)&&vec)[:$len]);
 	$else
 		return (uint)wyhash2::hash(((char*)&&vec)[:$len]);
 	$endif
