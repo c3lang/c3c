@@ -447,7 +447,23 @@ macro String @str_upper(String $str) @builtin => $$str_upper($str);
 macro String @str_lower(String $str) @builtin => $$str_lower($str);
 macro uint @str_hash(String $str) @builtin => $$str_hash($str);
 
-macro @generic_hash(value) => (uint)wyhash2::hash(@as_char_view(value));
+macro @generic_hash_core(h, value)
+{
+	h ^= (uint)value; // insert lowest 32 bits
+	h *= 0x96f59e5b; // diffuse them up
+	h ^= h >> 16; // diffuse them down
+	return h;
+}
+
+macro @generic_hash(value)
+{
+	uint h = @generic_hash_core((uint)0x3efd4391, value);
+	$for var $cnt = 4; $cnt < $sizeof(value); $cnt += 4:
+		value >>= 32; // reduce value
+		h = @generic_hash_core(h, value);
+	$endfor
+	return h;
+}
 
 
 macro uint int128.hash(self)       => @generic_hash(self);
@@ -487,8 +503,8 @@ macro uint ichar[<*>].hash(self)   => hash_vec(self);
 macro uint bool[<*>].hash(self)    => hash_vec(self);
 
 macro uint typeid.hash(typeid t) => @generic_hash(((ulong)(uptr)t));
-macro uint String.hash(String c) => (uint)metro64::hash(c);
-macro uint char[].hash(char[] c) => (uint)metro64::hash(c);
+macro uint String.hash(String c) => (uint)a5hash::hash(c);
+macro uint char[].hash(char[] c) => (uint)a5hash::hash(c);
 macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
 <*
@@ -499,7 +515,7 @@ macro uint hash_array(array_ptr) @local
 	var $len = $sizeof(*array_ptr);
 
 	$if $len > 16:
-		return (uint)metro64::hash(((char*)array_ptr)[:$len]);
+		return (uint)komi::hash(((char*)array_ptr)[:$len]);
 	$else
 		return (uint)wyhash2::hash(((char*)array_ptr)[:$len]);
 	$endif
@@ -513,7 +529,7 @@ macro uint hash_vec(vec) @local
 	var $len = $sizeof(vec.len * $typeof(vec).inner.sizeof);
 
 	$if $len > 16:
-		return (uint)metro64::hash(((char*)&&vec)[:$len]);
+		return (uint)komi::hash(((char*)&&vec)[:$len]);
 	$else
 		return (uint)wyhash2::hash(((char*)&&vec)[:$len]);
 	$endif

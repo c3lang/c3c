@@ -11,6 +11,8 @@ import std::collections::map;
 import std::math::random;
 
 
+const DEFAULT_ITERATIONS = 16384;
+
 Lcg64Random rand;
 
 HashMap { int, int } modifying_numbers_random;
@@ -18,7 +20,11 @@ HashMap { int, int } modifying_numbers_random;
 fn void bench_setup() @init
 {
 	set_benchmark_warmup_iterations(3);
-	set_benchmark_max_iterations(4096 + 3);
+	set_benchmark_max_iterations(DEFAULT_ITERATIONS);
+
+	// TODO: Cannot take the address of a @benchmark function. If we could, we could pass &insert_erase as a fn ptr and use the $qnameof CT eval internally.
+	set_benchmark_func_iterations($qnameof(insert_erase), 32);
+	set_benchmark_func_iterations($qnameof(random_access), 1024);
 
     random::seed(&rand, 0x4528_21e6_38d0_1377);
 
@@ -80,6 +86,45 @@ fn void generic_hash_speeds()
 }
 
 
+fn void hash_speeds_of_many_random_values() => @pool()
+{
+	var $arrsz = 10_000;
+	uint fake_checksum;
+
+	char[] chars = allocator::new_array(tmem, char, $arrsz)[:$arrsz];
+	foreach (&v : chars) *v = (char)random::next(&rand, uint.max);
+
+	ushort[] shorts = allocator::new_array(tmem, ushort, $arrsz)[:$arrsz];
+	foreach (&v : shorts) *v = (ushort)random::next(&rand, uint.max);
+
+	uint[] ints = allocator::new_array(tmem, uint, $arrsz)[:$arrsz];
+	foreach (&v : ints) *v = random::next(&rand, uint.max);
+
+	ulong[] longs = allocator::new_array(tmem, ulong, $arrsz)[:$arrsz];
+	foreach (&v : longs) *v = (ulong)random::next(&rand, uint.max);
+
+	uint128[] vwideints = allocator::new_array(tmem, uint128, $arrsz)[:$arrsz];
+	foreach (&v : vwideints) *v = (uint128)random::next(&rand, uint.max);
+
+	char[48][] zstrs = allocator::new_array(tmem, char[48], $arrsz)[:$arrsz];
+	String[$arrsz] strs;
+	foreach (x, &v : zstrs)
+	{
+		foreach (&c : (*v)[:random::next(&rand, 48)]) *c = (char)random::next(&rand, char.max);
+		strs[x] = ((ZString)&v[0]).str_view();
+	}
+
+	runtime::@start_benchmark();
+	foreach (v : chars) fake_checksum += v.hash();
+	foreach (v : shorts) fake_checksum += v.hash();
+	foreach (v : ints) fake_checksum += v.hash();
+	foreach (v : longs) fake_checksum += v.hash();
+	foreach (v : vwideints) fake_checksum += v.hash();
+	foreach (v : strs) fake_checksum += v.hash();
+	runtime::@end_benchmark();
+}
+
+
 fn void modifying_numbers_init_from_map() => @pool()
 {
 	HashMap { int, int } v;
@@ -90,17 +135,16 @@ fn void modifying_numbers_init_from_map() => @pool()
 
 fn void insert_erase() => @pool()
 {
+	uint iters = 1_000_000;
 	HashMap { int, int } v;
 	v.tinit();
 
 	runtime::@start_benchmark();
-	for (int i = 0; i < 1_000; ++i) v[i] = i;
-	v.clear();
-
-	for (int i = 0; i < 1_000; ++i) v[i] = i;
-	for (int i = 0; i < 1_000; ++i) v.remove(i);
+	for (int i = 0; i < iters; ++i) v[i] = i;
+	for (int i = 0; i < iters; ++i) v.remove(i);
 
 	runtime::@end_benchmark();
+
 	v.free();
 }
 
@@ -110,13 +154,13 @@ fn void random_access() => @pool()
 	HashMap { int, int } v;
 	v.tinit();
 
-	uint bound = 1_000;
+	uint bound = 10_000;
 	usz pseudo_checksum = 0;
 
 	for (uint i = 0; i < bound; ++i) v[i] = i;
 
 	runtime::@start_benchmark();
-	for (uint i = 0; i < 10_000; ++i) pseudo_checksum += (v[i.hash() % bound] ?? 0);
+	for (uint i = 0; i < 1_000_000; ++i) pseudo_checksum += (v[i.hash() % bound] ?? 0);
 	runtime::@end_benchmark();
 
 	v.free();
@@ -128,12 +172,12 @@ fn void random_access_erase() => @pool()
 	HashMap { int, int } v;
 	v.tinit();
 
-	uint bound = 1_000;
+	uint bound = 10_000;
 
 	for (uint i = 0; i < bound; ++i) v[i] = i;
 
 	runtime::@start_benchmark();
-	for (uint i = 0; i < 10_000; ++i)
+	for (uint i = 0; i < bound; ++i)
 	{
 		v[i.hash() % bound] = i;   // supplant an entry
 
