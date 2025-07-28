@@ -9996,12 +9996,12 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 		}
 	}
 	if (!expr_is_const_string(filename)) RETURN_SEMA_ERROR(filename, "A compile time string was expected.");
-
+	if (!filename->const_expr.bytes.len) RETURN_SEMA_ERROR(filename, "Expected a non-empty string.");
 	CompilationUnit *unit = context->unit;
 	const char *string = filename->const_expr.bytes.ptr;
 	char *path;
 	char *name;
-	if (file_namesplit(unit->file->full_path, &name, &path))
+	if (file_path_is_relative(string) && file_namesplit(unit->file->full_path, &name, &path))
 	{
 		string = file_append_path(path, string);
 	}

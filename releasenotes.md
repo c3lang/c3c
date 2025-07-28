@@ -31,6 +31,7 @@
 - Deprecate allocator::heap() and allocator::temp()
 - Add `thread::fence` providing a thread fence.
 - Place output in `out` by default for projects. Use temp folder for building at the command line.
+- Allow absolute paths for `$embed`.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.

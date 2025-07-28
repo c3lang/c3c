@@ -564,6 +564,20 @@ bool file_exists(const char *path)
 	return S_ISDIR(st.st_mode) || S_ISREG(st.st_mode) || S_ISREG(st.st_mode);
 }
 
+bool file_path_is_relative(const char *file_name)
+{
+	assert(file_name);
+	size_t len = strlen(file_name);
+	if (!len) return false;
+
+	// returns !full_path condition
+#if PLATFORM_WINDOWS
+	return !(file_name[0] == '\\' || (len >= 2 && char_is_letter(file_name[0]) && file_name[1] == ':'));
+#else
+	return file_name[0] != '/';
+#endif
+}
+
 #define PATH_BUFFER_SIZE 16384
 static char path_buffer[PATH_BUFFER_SIZE];
 

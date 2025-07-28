@@ -80,6 +80,7 @@ bool file_delete_file(const char *path);
 void file_delete_dir(const char *path);
 bool file_is_dir(const char *file);
 bool file_exists(const char *path);
+bool file_path_is_relative(const char *file_name);
 FILE *file_open_read(const char *path);
 bool file_touch(const char *path);
 char *file_read_binary(const char *path, size_t *size);
