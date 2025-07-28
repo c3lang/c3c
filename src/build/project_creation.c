@@ -164,6 +164,10 @@ const char *MAIN_TEMPLATE =
 		"\treturn 0;\n"
 		"}\n";
 
+const char *GITIGNORE_TEMPLATE =
+		"build/\n"
+		"out/\n";
+
 const char* MAIN_INTERFACE_TEMPLATE =
 		"module %s;\n"
 		"\n"
@@ -290,6 +294,7 @@ void create_project(BuildOptions *build_options)
 	chdir_or_fail(build_options, build_options->project_name);
 
 CREATE:
+	create_file_or_fail(build_options, ".gitignore", GITIGNORE_TEMPLATE);
 	create_file_or_fail(build_options, "LICENSE", NULL);
 	create_file_or_fail(build_options, "README.md", NULL);
 	create_file_or_fail(build_options, "project.json", template, build_options->project_name);
