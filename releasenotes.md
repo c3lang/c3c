@@ -79,6 +79,7 @@
 - Bug when reporting error in a macro return would crash the compiler #2326.
 - Short body return expression would not have the correct span.
 - Fix issue where recursively creating a dir would be incorrectly marked as a failure the first time.
+- `@format` did not work correctly with macros #2341.
 
 ### Stdlib changes
 - Improve contract for readline. #2280

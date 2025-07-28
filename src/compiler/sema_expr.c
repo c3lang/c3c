@@ -1722,6 +1722,21 @@ static inline ArrayIndex sema_len_from_expr(Expr *expr)
 	return range_const_len(&expr->slice_expr.range);
 }
 
+INLINE Type *sema_get_va_type(SemaContext *context, Expr *expr, Variadic variadic)
+{
+	if (variadic == VARIADIC_RAW)
+	{
+		if (expr->resolve_status != RESOLVE_DONE)
+		{
+			expr = copy_expr_single(expr);
+			if (!sema_analyse_expr(context, expr)) return poisoned_type;
+		}
+		return type_flatten(expr->type);
+	}
+	assert(expr->expr_kind == EXPR_MAKE_ANY);
+	return type_flatten(expr->make_any_expr.typeid->const_expr.typeid);
+}
+
 INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional,
 										 bool *no_match_ref)
 {
@@ -2074,9 +2089,8 @@ NEXT_FLAG:
 		}
 		if (idx == vacount) goto TOO_FEW_ARGUMENTS;
 		expr = vaargs[idx];
-		assert(expr->expr_kind == EXPR_MAKE_ANY);
-		Type *type = expr->make_any_expr.typeid->const_expr.typeid;
-		type = type_flatten(type);
+		Type *type = sema_get_va_type(context, expr, variadic);
+		if (!type_ok(type)) return false;
 
 		// Possible variable width
 		if (c == '*')
@@ -2089,9 +2103,8 @@ NEXT_FLAG:
 			c = data[i];
 			if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 			expr = vaargs[idx];
-			assert(expr->expr_kind == EXPR_MAKE_ANY);
-			type = expr->make_any_expr.typeid->const_expr.typeid;
-			type = type_flatten(type);
+			type = sema_get_va_type(context, expr, variadic);
+			if (!type_ok(type)) return false;
 		}
 		else
 		{
@@ -2115,9 +2128,7 @@ NEXT_FLAG:
 				c = data[i];
 				if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 				expr = vaargs[idx];
-				assert(expr->expr_kind == EXPR_MAKE_ANY);
-				type = expr->make_any_expr.typeid->const_expr.typeid;
-				type = type_flatten(type);
+				if (!type_ok(type)) return false;
 			}
 			else
 			{
