@@ -131,6 +131,15 @@ INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSiz
 INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span);
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right, bool *failed_ref);
 bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl);
+bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain, bool *erase_decl);
+
+INLINE bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl)
+{
+	assert((domain & CALLABLE_TYPE) == domain);
+	if (!sema_analyse_attributes(context, decl, decl->attributes, domain,
+								 erase_decl)) return decl_poison(decl);
+	return true;
+}
 
 INLINE bool sema_check_left_right_const(SemaContext *context, Expr *left, Expr *right)
 {

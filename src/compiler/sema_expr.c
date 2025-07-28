@@ -1722,6 +1722,21 @@ static inline ArrayIndex sema_len_from_expr(Expr *expr)
 	return range_const_len(&expr->slice_expr.range);
 }
 
+INLINE Type *sema_get_va_type(SemaContext *context, Expr *expr, Variadic variadic)
+{
+	if (variadic == VARIADIC_RAW)
+	{
+		if (expr->resolve_status != RESOLVE_DONE)
+		{
+			expr = copy_expr_single(expr);
+			if (!sema_analyse_expr(context, expr)) return poisoned_type;
+		}
+		return type_flatten(expr->type);
+	}
+	assert(expr->expr_kind == EXPR_MAKE_ANY);
+	return type_flatten(expr->make_any_expr.typeid->const_expr.typeid);
+}
+
 INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional,
 										 bool *no_match_ref)
 {
@@ -2074,9 +2089,8 @@ NEXT_FLAG:
 		}
 		if (idx == vacount) goto TOO_FEW_ARGUMENTS;
 		expr = vaargs[idx];
-		assert(expr->expr_kind == EXPR_MAKE_ANY);
-		Type *type = expr->make_any_expr.typeid->const_expr.typeid;
-		type = type_flatten(type);
+		Type *type = sema_get_va_type(context, expr, variadic);
+		if (!type_ok(type)) return false;
 
 		// Possible variable width
 		if (c == '*')
@@ -2089,9 +2103,8 @@ NEXT_FLAG:
 			c = data[i];
 			if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 			expr = vaargs[idx];
-			assert(expr->expr_kind == EXPR_MAKE_ANY);
-			type = expr->make_any_expr.typeid->const_expr.typeid;
-			type = type_flatten(type);
+			type = sema_get_va_type(context, expr, variadic);
+			if (!type_ok(type)) return false;
 		}
 		else
 		{
@@ -2115,9 +2128,7 @@ NEXT_FLAG:
 				c = data[i];
 				if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 				expr = vaargs[idx];
-				assert(expr->expr_kind == EXPR_MAKE_ANY);
-				type = expr->make_any_expr.typeid->const_expr.typeid;
-				type = type_flatten(type);
+				if (!type_ok(type)) return false;
 			}
 			else
 			{
@@ -4683,7 +4694,10 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		if (missing_ref) goto MISSING_REF;
 		RETURN_SEMA_ERROR(expr, "No method or inner struct/union '%s.%s' found.", type_to_error_string(decl->type), name);
 	}
-
+	if (!member->unit)
+	{
+		if (!sema_analyse_decl(context, decl)) return false;
+	}
 	if (member->decl_kind == DECL_VAR || member->decl_kind == DECL_UNION || member->decl_kind == DECL_STRUCT || member->decl_kind == DECL_BITSTRUCT)
 	{
 		expr->expr_kind = EXPR_CONST;
@@ -4805,6 +4819,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		RETURN_SEMA_ERROR(expr, "No member '%s' found.", name);
 	}
 
+	ASSERT_SPAN(expr, member->unit);
 
 	expr->expr_kind = EXPR_CONST;
 	expr->resolve_status = RESOLVE_DONE;
@@ -6110,6 +6125,7 @@ CHECK_DEEPER:
 
 	Decl *member = sema_decl_stack_find_decl_member(context, decl, kw, METHODS_AND_FIELDS);
 	if (!decl_ok(member)) return false;
+
 	if (member && decl->decl_kind == DECL_ENUM && member->decl_kind == DECL_VAR && sema_cast_const(parent))
 	{
 		if (!sema_analyse_decl(context, decl)) return false;
@@ -6176,6 +6192,7 @@ CHECK_DEEPER:
 		RETURN_SEMA_ERROR(expr, "There is no field or method '%s.%s'.", type_to_error_string(parent->type), kw);
 	}
 
+	if (!member->unit && !sema_analyse_decl(context, decl)) return false;
 	if (!sema_analyse_decl(context, member)) return false;
 
 	ASSERT_SPAN(expr, member->type);
@@ -9979,12 +9996,12 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 		}
 	}
 	if (!expr_is_const_string(filename)) RETURN_SEMA_ERROR(filename, "A compile time string was expected.");
-
+	if (!filename->const_expr.bytes.len) RETURN_SEMA_ERROR(filename, "Expected a non-empty string.");
 	CompilationUnit *unit = context->unit;
 	const char *string = filename->const_expr.bytes.ptr;
 	char *path;
 	char *name;
-	if (file_namesplit(unit->file->full_path, &name, &path))
+	if (file_path_is_relative(string) && file_namesplit(unit->file->full_path, &name, &path))
 	{
 		string = file_append_path(path, string);
 	}
@@ -10142,6 +10159,12 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	decl->name = scratch_buffer_copy();
 	decl->extname = decl->name;
 	decl->type = type_new_func(decl, sig);
+	bool erase_decl = false;
+	if (!sema_analyse_func_macro(context, decl, ATTR_FUNC, &erase_decl)) return false;
+	if (erase_decl)
+	{
+		RETURN_SEMA_ERROR(decl, "`@if` can't be placed on a lambda.");
+	}
 	if (!sema_analyse_function_signature(context, decl, NULL, sig->abi, sig)) return false;
 	if (flat && flat->pointer->function.prototype->raw_type != decl->type->function.prototype->raw_type)
 	{

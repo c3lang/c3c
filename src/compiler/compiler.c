@@ -422,6 +422,7 @@ bool compiler_should_ouput_file(const char *file)
 static void create_output_dir(const char *dir)
 {
 	if (!dir) return;
+	if (strlen(dir) == 0) return;
 	if (file_exists(dir))
 	{
 		if (!file_is_dir(dir)) error_exit("Output directory is not a directory %s.", dir);
@@ -429,7 +430,8 @@ static void create_output_dir(const char *dir)
 	}
 	scratch_buffer_clear();
 	scratch_buffer_append(dir);
-	if (!dir_make_recursive(scratch_buffer_to_string()))
+	dir_make_recursive(scratch_buffer_to_string());
+	if (!file_exists(dir))
 	{
 		error_exit("Failed to create directory '%s'.", dir);
 	}
@@ -477,20 +479,15 @@ void compiler_compile(void)
 	void **gen_contexts;
 	void (*task)(void *);
 
-
-	if (compiler.build.asm_file_dir || compiler.build.ir_file_dir || compiler.build.emit_object_files)
-	{
-		create_output_dir(compiler.build.build_dir);
-	}
-	if (compiler.build.ir_file_dir && (compiler.build.emit_llvm || compiler.build.test_output || compiler.build.lsp_output))
+	if ((compiler.build.emit_llvm || compiler.build.test_output || compiler.build.lsp_output))
 	{
 		create_output_dir(compiler.build.ir_file_dir);
 	}
-	if (compiler.build.asm_file_dir && compiler.build.emit_asm)
+	if (compiler.build.emit_asm)
 	{
 		create_output_dir(compiler.build.asm_file_dir);
 	}
-	if (compiler.build.object_file_dir && compiler.build.emit_object_files)
+	if (compiler.build.emit_object_files)
 	{
 		create_output_dir(compiler.build.object_file_dir);
 	}
@@ -505,6 +502,18 @@ void compiler_compile(void)
 	if (compiler.build.type == TARGET_TYPE_STATIC_LIB)
 	{
 		compiler.build.single_module = SINGLE_MODULE_ON;
+	}
+	if (compiler.build.emit_asm)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(compiler.build.asm_file_dir);
+		dir_make_recursive(scratch_buffer_to_string());
+	}
+	if (compiler.build.emit_object_files)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(compiler.build.object_file_dir);
+		dir_make_recursive(scratch_buffer_to_string());
 	}
 	switch (compiler.build.backend)
 	{
