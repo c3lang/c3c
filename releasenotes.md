@@ -30,6 +30,7 @@
 - '$assignable' is deprecated.
 - Deprecate allocator::heap() and allocator::temp()
 - Add `thread::fence` providing a thread fence.
+- Add `@try` and `@try_catch`.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
