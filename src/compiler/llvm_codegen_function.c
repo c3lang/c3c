@@ -516,7 +516,14 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	// Insert a return (and defer) if needed.
 	if (c->current_block && !LLVMGetBasicBlockTerminator(c->current_block))
 	{
-		llvm_emit_return_implicit(c);
+		if (signature)
+		{
+			llvm_emit_return_implicit(c);
+		}
+		else
+		{
+			llvm_emit_unreachable(c);
+		}
 	}
 
 	LLVMBasicBlockRef last_block = LLVMGetLastBasicBlock(c->cur_func.ref);

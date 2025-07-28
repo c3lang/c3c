@@ -12,6 +12,6 @@ fn void start() @export("_start") @naked @nostrip {
 define void @_start() #0 {
 entry:
   call void asm sideeffect alignstack "syscall \0A", "~{cc},~{rax},~{rcx},~{r11},~{flags},~{dirflag},~{fspr}"()
-  ret void
+  unreachable
 }
 
