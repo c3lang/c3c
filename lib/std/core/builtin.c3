@@ -441,7 +441,7 @@ macro bool @ok(#expr) @builtin
 
  @require @typeis(#expr, $typeof(#v)?) &&& @typekind(#expr) == OPTIONAL : `Type of #expr must be an Optional of #v`
 *>
-macro void? @assign_or(#v, #expr) @builtin
+macro void? @try_set(#v, #expr) @builtin
 {
 	var $Type = $typeof(#v);
 	$Type? res = #expr;
