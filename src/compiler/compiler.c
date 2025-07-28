@@ -479,20 +479,15 @@ void compiler_compile(void)
 	void **gen_contexts;
 	void (*task)(void *);
 
-
-	if (compiler.build.asm_file_dir || compiler.build.ir_file_dir || compiler.build.emit_object_files)
-	{
-		create_output_dir(compiler.build.build_dir);
-	}
-	if (compiler.build.ir_file_dir && (compiler.build.emit_llvm || compiler.build.test_output || compiler.build.lsp_output))
+	if ((compiler.build.emit_llvm || compiler.build.test_output || compiler.build.lsp_output))
 	{
 		create_output_dir(compiler.build.ir_file_dir);
 	}
-	if (compiler.build.asm_file_dir && compiler.build.emit_asm)
+	if (compiler.build.emit_asm)
 	{
 		create_output_dir(compiler.build.asm_file_dir);
 	}
-	if (compiler.build.object_file_dir && compiler.build.emit_object_files)
+	if (compiler.build.emit_object_files)
 	{
 		create_output_dir(compiler.build.object_file_dir);
 	}
