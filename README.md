@@ -410,7 +410,7 @@ After compilation, the `c3c` binary will be located in the `build` directory. Yo
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 4. Enter the C3C directory `cd c3c`.
 5. Set up CMake build for debug: `cmake -B build -S .`. At this point you may need to manually 
-provide the link path to the LLVM CMake directories, e.g. `cmake -DLLVM_DIR=/usr/local/opt/llvm/lib/cmake/llvm/ .`
+provide the link path to the LLVM CMake directories, e.g. `cmake -B build -S . -DLLVM_DIR=/usr/local/opt/llvm/lib/cmake/llvm/`
 6. Build: `cmake --build build`
 7. Change directory to the build directory `cd build`
 
