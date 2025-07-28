@@ -276,13 +276,15 @@ See the `build-with-docker.sh` script for more information on other configurable
 
 #### Installing on OS X using Homebrew
 
-2. Install CMake: `brew install cmake`
-3. Install LLVM 17+: `brew install llvm`
-4. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-5. Enter the C3C directory `cd c3c`.
-6. Set up CMake build for debug: `cmake -B build -S .`
-7. Build: `cmake --build build`
-8. Change directory to the build directory `cd build`
+1. Install [Homebrew](https://brew.sh/)
+2. Install LLVM 17+: `brew install llvm`
+3. Install lld: `brew install lld`
+4. Install CMake: `brew install cmake`
+5. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
+6. Enter the C3C directory `cd c3c`.
+7. Set up CMake build for debug: `cmake -B build -S .`
+8. Build: `cmake --build build`
+9. Change directory to the build directory `cd build`
 
 #### Installing on Windows using Scoop
 
@@ -346,7 +348,7 @@ You should now have a `c3c` executable in `build-debug\Debug`.
 #### Compiling on Ubuntu 24.04 LTS
 
 1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
-2. Install LLVM 18 `sudo apt-get install cmake git clang zlib1g zlib1g-dev libllvm18 llvm llvm-dev llvm-runtime liblld-dev liblld-18 libpolly-18-dev`
+2. Install LLVM 18 `sudo apt-get install cmake git clang zlib1g zlib1g-dev libllvm18 llvm llvm-dev llvm-runtime liblld-dev liblld-18 libpolly-18-dev`. If you're using Ubuntu 25.04, also install `libpolly-20-dev`.
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 4. Enter the C3C directory `cd c3c`.
 5. Set up CMake build: `cmake -B build -S .`
@@ -387,7 +389,7 @@ The c3c binary should be created in the build directory. You can try it out by r
 
 #### Compiling on Arch Linux
 
-1. Install required project dependencies: `sudo pacman -S curl lld llvm-libs clang cmake git libedit llvm`
+1. Install required project dependencies: `sudo pacman -S curl lld llvm-libs clang cmake git libedit llvm libxml2`
 2. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
     - If you only need the latest commit, you may want to make a shallow clone: `git clone https://github.com/c3lang/c3c.git --depth=1`
 3. Enter the C3C directory: `cd c3c`
@@ -397,7 +399,7 @@ cmake -B build \
     -D C3_LINK_DYNAMIC=ON \
     -D CMAKE_BUILD_TYPE=Release
 ```
-5. Build the project: `make -C build`.
+5. Build the project: `cmake --build build`.
 
 After compilation, the `c3c` binary will be located in the `build` directory. You can test it by compiling an example: `./build/c3c compile resources/examples/ls.c3`.
 
