@@ -410,6 +410,7 @@ macro swizzle2(v, v2, ...) @builtin
 {
 	return $$swizzle2(v, v2, $vasplat);
 }
+
 <*
  Return the excuse in the Optional if it is Empty, otherwise
  return a null fault.
@@ -432,6 +433,67 @@ macro bool @ok(#expr) @builtin
 {
 	if (catch #expr) return false;
 	return true;
+}
+
+<*
+ Check if an Optional expression evaluates to a fault. If so, return it;
+ else, assign the result to an expression.
+
+ @require $defined(#v = #v) : "#v must be a variable"
+ @require $defined(#expr!) : "Expected an optional expression"
+ @require @assignable_to(#expr!!, $typeof(#v))  : `Type of #expr must be an optional of #v's type`
+*>
+macro void? @try(#v, #expr) @builtin
+{
+	var res = #expr;
+	if (catch err = res) return err?;
+	#v = res;
+}
+
+<*
+ Check if an Optional expression evaluates to a fault. If so, return true if it is the
+ expected fault, the optional if it is unexpected, or false if there was no fault and
+ the assign happened.
+
+ This can be used in like this:
+
+  while (true)
+  {
+    char[] data;
+    // Read until end of file
+    if (@try_catch(data, load_line(), io::EOF)) break;
+    .. use data ..
+  }
+
+ In this example we read until we reach an EOF, which is expected. However, if we encounter some other
+ fault, we rethrow is. Without this macro, the code is instead written like:
+
+  while (true)
+  {
+    char[]? data;
+    data = load_line();
+    if (catch err = data)
+    {
+      if (err = io::EOF) break;
+      return err?
+    }
+    .. use data ..
+  }
+
+ @require $defined(#v = #v) : "#v must be a variable"
+ @require $defined(#expr!) : "Expected an optional expression"
+ @require @assignable_to(#expr!!, $typeof(#v))  : `Type of #expr must be an optional of #v's type`
+ @return "True if it was the expected fault, false if the variable was assigned, otherwise returns an optional."
+*>
+macro bool? @try_catch(#v, #expr, fault expected_fault) @builtin
+{
+	var res = #expr;
+	if (catch err = res)
+	{
+		return err == expected_fault ? true : err?;
+	}
+	#v = res;
+	return false;
 }
 
 <*
