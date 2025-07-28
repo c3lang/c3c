@@ -324,8 +324,7 @@ void codegen_setup_object_names(Module *module, const char **base_name, const ch
 		*object_filename = file_append_path(compiler.build.object_file_dir, str_printf("%s%s", result, get_object_extension()));
 	}
 
-	*ir_filename = str_printf(compiler.build.backend == BACKEND_LLVM ? "%s.ll" : "%s.ir", result);
-	if (compiler.build.ir_file_dir) *ir_filename = file_append_path(compiler.build.ir_file_dir, *ir_filename);
+	*ir_filename = file_append_path(compiler.build.ir_file_dir, str_printf(compiler.build.backend == BACKEND_LLVM ? "%s.ll" : "%s.ir", result));
 	if (compiler.build.emit_asm)
 	{
 		*asm_filename = str_printf("%s.s", result);

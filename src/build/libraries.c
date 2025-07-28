@@ -206,7 +206,7 @@ static inline JSONObject *resolve_zip_library(BuildTarget *build_target, const c
 	scratch_buffer_clear();
 	assert(build_target->build_dir);
 	scratch_buffer_append(build_target->build_dir);
-	scratch_buffer_printf("/_c3l/%s/", lib_name);
+	scratch_buffer_printf("/unpacked_c3l/%s/", lib_name);
 	char *lib_dir = scratch_buffer_copy();
 	char *lib_dir_copy = scratch_buffer_copy();
 	scratch_buffer_append("checksum.txt");

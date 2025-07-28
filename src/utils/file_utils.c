@@ -86,6 +86,47 @@ bool dir_make(const char *path)
 #endif
 }
 
+#if !PLATFORM_WINDOWS
+const char *find_temp_dir(void)
+{
+	const char* temp_base;
+	if ((temp_base = getenv("TMPDIR"))) return temp_base;
+	if ((temp_base = getenv("TMP"))) return temp_base;
+	if ((temp_base = getenv("TEMP"))) return temp_base;
+	if ((temp_base = getenv("TEMPDIR"))) return temp_base;
+	return "/tmp";
+}
+#endif
+
+const char *dir_make_temp_dir(void)
+{
+	char buffer[PATH_MAX];
+#if PLATFORM_WINDOWS
+	char temp_path[PATH_MAX];
+	if (!GetTempPathA(PATH_MAX, temp_path)) return NULL;
+
+	if (!GetTempFileNameA(temp_path, "c3c", 0, buffer)) return NULL;
+
+	// Delete the temp file
+	if (!DeleteFileA(buffer)) return NULL;
+
+	// Create a directory instead
+	if (!CreateDirectoryA(buffer, NULL))
+	{
+		return NULL;
+	}
+	return str_copy(buffer, strlen(buffer));
+#else
+	const char *temp_dir = find_temp_dir();
+	const char *format = str_has_suffix(temp_dir, "/") ? "%sc3cXXXXXXX" : "%s/c3cXXXXXXX";
+	int result = snprintf(buffer, PATH_MAX, format, find_temp_dir());
+	if (result < 0 || result >= PATH_MAX) return NULL;
+	const char *out = mkdtemp(buffer);
+	if (out == NULL) return NULL;
+	return str_copy(buffer, strlen(buffer));
+#endif
+}
+
 bool dir_make_recursive(char *path)
 {
 	size_t len = strlen(path);
@@ -605,6 +646,7 @@ void file_copy_file(const char *src_path, const char *dst_path, bool overwrite)
 bool file_delete_file(const char *path)
 {
 	ASSERT(path);
+	if (!file_exists(path)) return false;
 #if (_MSC_VER)
 	return DeleteFileW(win_utf8to16(path));
 #else

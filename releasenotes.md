@@ -30,6 +30,7 @@
 - '$assignable' is deprecated.
 - Deprecate allocator::heap() and allocator::temp()
 - Add `thread::fence` providing a thread fence.
+- Place output in `out` by default for projects. Use temp folder for building at the command line.
 - Allow absolute paths for `$embed`.
 
 ### Fixes
@@ -78,6 +79,11 @@
 - Using @noreturn in a short body macro would not work properly #2326.
 - Bug when reporting error in a macro return would crash the compiler #2326.
 - Short body return expression would not have the correct span.
+- Fix issue where recursively creating a dir would be incorrectly marked as a failure the first time.
+- `@format` did not work correctly with macros #2341.
+- Crash when parsing recursive type declaration #2345.
+- Remove unnecessary "ret" in naked functions #2344.
+- Lambdas now properly follow its attributes #2346.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
