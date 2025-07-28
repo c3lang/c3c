@@ -529,7 +529,7 @@ bool file_path_is_relative(const char *file_name)
 
 	// returns !full_path condition
 #if PLATFORM_WINDOWS
-	return !(file_name[0] == '\\' || (strlen(file_name) >= 3 && char_is_alpha(file_name[0]) && 0 == strncmp(&file_name[1], ":\\", 2)));
+	return !(file_name[0] == '\\' || (strlen(file_name) >= 2 && char_is_alpha(file_name[0]) && file_name[1] == ':'));
 #else
 	return file_name[0] != '/';
 #endif
