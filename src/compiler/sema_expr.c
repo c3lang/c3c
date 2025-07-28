@@ -4694,7 +4694,10 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		if (missing_ref) goto MISSING_REF;
 		RETURN_SEMA_ERROR(expr, "No method or inner struct/union '%s.%s' found.", type_to_error_string(decl->type), name);
 	}
-
+	if (!member->unit)
+	{
+		if (!sema_analyse_decl(context, decl)) return false;
+	}
 	if (member->decl_kind == DECL_VAR || member->decl_kind == DECL_UNION || member->decl_kind == DECL_STRUCT || member->decl_kind == DECL_BITSTRUCT)
 	{
 		expr->expr_kind = EXPR_CONST;
@@ -4816,6 +4819,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		RETURN_SEMA_ERROR(expr, "No member '%s' found.", name);
 	}
 
+	ASSERT_SPAN(expr, member->unit);
 
 	expr->expr_kind = EXPR_CONST;
 	expr->resolve_status = RESOLVE_DONE;
@@ -6121,6 +6125,7 @@ CHECK_DEEPER:
 
 	Decl *member = sema_decl_stack_find_decl_member(context, decl, kw, METHODS_AND_FIELDS);
 	if (!decl_ok(member)) return false;
+
 	if (member && decl->decl_kind == DECL_ENUM && member->decl_kind == DECL_VAR && sema_cast_const(parent))
 	{
 		if (!sema_analyse_decl(context, decl)) return false;
@@ -6187,6 +6192,7 @@ CHECK_DEEPER:
 		RETURN_SEMA_ERROR(expr, "There is no field or method '%s.%s'.", type_to_error_string(parent->type), kw);
 	}
 
+	if (!member->unit && !sema_analyse_decl(context, decl)) return false;
 	if (!sema_analyse_decl(context, member)) return false;
 
 	ASSERT_SPAN(expr, member->type);
