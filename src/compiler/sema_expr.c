@@ -10159,6 +10159,12 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	decl->name = scratch_buffer_copy();
 	decl->extname = decl->name;
 	decl->type = type_new_func(decl, sig);
+	bool erase_decl = false;
+	if (!sema_analyse_func_macro(context, decl, ATTR_FUNC, &erase_decl)) return false;
+	if (erase_decl)
+	{
+		RETURN_SEMA_ERROR(decl, "`@if` can't be placed on a lambda.");
+	}
 	if (!sema_analyse_function_signature(context, decl, NULL, sig->abi, sig)) return false;
 	if (flat && flat->pointer->function.prototype->raw_type != decl->type->function.prototype->raw_type)
 	{

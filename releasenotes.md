@@ -82,6 +82,7 @@
 - `@format` did not work correctly with macros #2341.
 - Crash when parsing recursive type declaration #2345.
 - Remove unnecessary "ret" in naked functions #2344.
+- Lambdas now properly follow its attributes #2346.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
