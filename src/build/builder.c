@@ -528,8 +528,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		set_dir_with_default(&target->script_dir, options->script_dir, "scripts");
 	}
 
-	target->ir_file_dir = options->llvm_out;
-	set_output_dir_from_options(&target->ir_file_dir, options->llvm_out, "llvm", target_name, target->build_dir);
+	set_output_dir_from_options(&target->ir_file_dir, options->llvm_out, "llvm", target_name, target->output_dir);
 	set_output_dir_from_options(&target->asm_file_dir, options->asm_out, "asm", target_name, target->output_dir);
 	set_output_dir_from_options(&target->header_file_dir, options->header_out, "headers", target_name, target->output_dir);
 	if (target->type == TARGET_TYPE_OBJECT_FILES)
