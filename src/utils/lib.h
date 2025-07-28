@@ -497,11 +497,6 @@ static inline bool char_is_digit(char c)
 	return c >= '0' && c <= '9';
 }
 
-static inline bool char_is_alpha(char c)
-{
-	return char_is_lower(c) || char_is_upper(c);
-}
-
 static char hex_conv[256] = {
 		['0'] = 1,
 		['1'] = 2,

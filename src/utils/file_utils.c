@@ -525,11 +525,13 @@ bool file_exists(const char *path)
 
 bool file_path_is_relative(const char *file_name)
 {
-	if (NULL == file_name || !strlen(file_name)) return false;
+	assert(file_name);
+	size_t len = strlen(file_name);
+	if (!len) return false;
 
 	// returns !full_path condition
 #if PLATFORM_WINDOWS
-	return !(file_name[0] == '\\' || (strlen(file_name) >= 2 && char_is_alpha(file_name[0]) && file_name[1] == ':'));
+	return !(file_name[0] == '\\' || (len >= 2 && char_is_letter(file_name[0]) && file_name[1] == ':'));
 #else
 	return file_name[0] != '/';
 #endif
