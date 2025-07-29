@@ -1262,12 +1262,18 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 					return true;
 				}
 				break;
+			case VARDECL_PARAM:
+				if (context->call_env.is_naked_fn)
+				{
+					RETURN_SEMA_ERROR(expr, "Parameters may not be directly accessed in '@naked' functions.");
+				}
+				break;
 			case VARDECL_GLOBAL:
 				if (context->call_env.pure)
 				{
-					SEMA_ERROR(expr, "'@pure' functions may not access globals.");
-					return false;
+					RETURN_SEMA_ERROR(expr, "'@pure' functions may not access globals.");
 				}
+				break;
 			default:
 				break;
 		}
