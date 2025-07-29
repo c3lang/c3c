@@ -77,6 +77,8 @@ fn String? get_home_dir(Allocator allocator)
 	return get_var(allocator, home);
 }
 
+fn String? tget_home_dir() => get_home_dir(tmem);
+
 
 <*
 Returns the current user's config directory.
@@ -96,6 +98,8 @@ fn Path? get_config_dir(Allocator allocator) => @pool()
 		return path::temp(s).append(allocator, DIR);
 	$endif
 }
+
+fn Path? tget_config_dir() => get_config_dir(tmem);
 
 
 <*
