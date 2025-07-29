@@ -1473,7 +1473,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 			const char *ndk_path = getenv("ANDROID_NDK");
 			if (!ndk_path)
 			{
-				FAIL_WITH_ERR("Can't find Android NDK, please set --ndk-path.");
+				FAIL_WITH_ERR("Can't find Android NDK, please set --android-ndk.");
 			}
 			build_options.android.ndk_path = strdup(ndk_path);
 		}

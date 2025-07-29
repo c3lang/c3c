@@ -85,6 +85,7 @@
 - Crash when parsing recursive type declaration #2345.
 - Remove unnecessary "ret" in naked functions #2344.
 - Lambdas now properly follow its attributes #2346.
+- Not setting android-ndk resulted in a "set ndk-path" error.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
