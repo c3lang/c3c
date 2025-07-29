@@ -3,14 +3,15 @@ module test;
 
 alias IntFn = fn int();
 IntFn lambda @export = fn () => 1;
-IntFn lambda_naked @export = fn () @naked => 2;
+IntFn lambda_naked @export = fn () @naked { asm("ret"); };
 
 /* #expect: test.ll
 
 ; Function Attrs: naked nounwind uwtable
 define internal i32 @"test.$global$lambda2"() #0 {
 entry:
-  ret i32 2
+  call void asm sideeffect alignstack "ret", "~{dirflag},~{fpsr},~{flags}"()
+  unreachable
 }
 
 ; Function Attrs: nounwind uwtable

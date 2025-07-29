@@ -87,6 +87,7 @@
 - Lambdas now properly follow its attributes #2346.
 - Not setting android-ndk resulted in a "set ndk-path" error.
 - Lambda deduplication would be incorrect when generated at the global scope.
+- Allow accessing parameters in a naked function, just disallow `return`, this fixes #1955.
 
 ### Stdlib changes
 - Improve contract for readline. #2280
