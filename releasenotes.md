@@ -86,6 +86,7 @@
 - Remove unnecessary "ret" in naked functions #2344.
 - Lambdas now properly follow its attributes #2346.
 - Not setting android-ndk resulted in a "set ndk-path" error.
+- Lambda deduplication would be incorrect when generated at the global scope.
 
 ### Stdlib changes
 - Improve contract for readline. #2280

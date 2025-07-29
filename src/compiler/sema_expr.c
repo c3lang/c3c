@@ -9925,6 +9925,7 @@ INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 			case VARDECL_PARAM_CT:
 				if (!expr_is_const(ct_param->var.init_expr)) return false;
 				if (!expr_is_const(param->var.init_expr)) return false;
+				if (!expr_both_const_foldable(ct_param->var.init_expr, param->var.init_expr, BINARYOP_EQ)) return false;
 				if (!expr_const_compare(&ct_param->var.init_expr->const_expr,
 										&param->var.init_expr->const_expr, BINARYOP_EQ)) return false;
 				break;
@@ -10186,6 +10187,11 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	// Before function analysis, lambda evaluation is deferred
 	if (unit->module->stage < ANALYSIS_FUNCTIONS)
 	{
+		// Because we cannot check if the parameter is used before everything, set them all as read.
+		FOREACH(Decl *, decl, ct_lambda_parameters)
+		{
+			decl->var.is_read = true;
+		}
 		vec_add(unit->module->lambdas_to_evaluate, decl);
 	}
 	else
