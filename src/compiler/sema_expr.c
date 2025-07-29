@@ -9197,6 +9197,10 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr, T
 									context->call_env.current_function->name,
 									type_quoted_error_string(context->rtype));
 		}
+		if (context->call_env.is_naked_fn)
+		{
+			RETURN_SEMA_ERROR(expr, "Rethrow is not allowed in a '@naked' function.");
+		}
 	}
 	return true;
 }
