@@ -89,11 +89,18 @@ fn Path? get_config_dir(Allocator allocator) => @pool()
 		$if env::DARWIN:
 			String s = tget_var("HOME")!;
 			const DIR = "Library/Application Support";
+			return path::temp(s).append(allocator, DIR);
 		$else
-			String s = tget_var("XDG_CONFIG_HOME") ?? tget_var("HOME")!;
-			const DIR = ".config";
+			String? config_path = tget_var("XDG_CONFIG_HOME");
+			if (catch config_path) {
+				String home_dir = tget_var("HOME")!;
+				const DIR = ".config";
+
+				return path::temp(home_dir).append(allocator, DIR);
+			} else {
+				return path::new(allocator, config_path);
+			}
 		$endif
-		return path::temp(s).append(allocator, DIR);
 	$endif
 }
 
