@@ -75,7 +75,7 @@ static inline Decl *sema_resolve_external_symbol(SemaContext *context, Expr *exp
 		SEMA_ERROR(expr, "Optional variables are not allowed in asm.");
 		return NULL;
 	}
-	if (decl->var.kind == VARDECL_PARAM && context->call_env.is_naked_fn)
+	if (decl->var.kind == VARDECL_PARAM && context->call_env.is_naked_fn && !(context->active_scope.flags & SCOPE_MACRO))
 	{
 		SEMA_ERROR(expr, "Function parameters in '@naked' functions may not be directly referenced.");
 		return NULL;

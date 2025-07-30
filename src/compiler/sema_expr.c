@@ -1263,7 +1263,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 				}
 				break;
 			case VARDECL_PARAM:
-				if (context->call_env.is_naked_fn)
+				if (context->call_env.is_naked_fn && !(context->active_scope.flags & SCOPE_MACRO))
 				{
 					RETURN_SEMA_ERROR(expr, "Parameters may not be directly accessed in '@naked' functions.");
 				}
