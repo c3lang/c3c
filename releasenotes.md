@@ -103,6 +103,8 @@
 - Added `Ref` and `RefCounted` experimental functionality.
 - Added `Volatile` generic type.
 - Added `UnalignedRef` generic type.
+- Added `HashSet` generic type.
+- Added `LinkedHashSet` and `LinkedHashMap` generic types.
 - Add String conversion functions snake_case -> PascalCase and vice versa.
 
 ## 0.7.3 Change list
