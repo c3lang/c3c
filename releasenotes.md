@@ -33,6 +33,7 @@
 - Place output in `out` by default for projects. Use temp folder for building at the command line.
 - Allow absolute paths for `$embed`.
 - Add `@try` and `@try_catch`.
+- Add OpenBSD to `env::INET_DEVICES` and add required socket constants.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
