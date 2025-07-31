@@ -346,6 +346,29 @@ macro log(x, base) @LinkMath
 macro log2(x) @LinkMath => $$log2(values::promote_int(x));
 
 <*
+ @require values::@is_int($x) : `The input value must be an integer.`
+ @require $x >= 0 : `The input value must be a positive integer.`
+ @return `A floored base-2 log of an input integer value.`
+*>
+macro @intlog2($x)
+{
+	$if $x <= 1:
+		return 0;
+	$endif
+
+	$typeof($x) $y = 1;
+	$typeof($x) $z = 0;
+	$for ; $y < $x; $y += $y, ++$z:
+	$endfor
+
+	$if $y == $x:
+		return $z;
+	$else
+		return $z - 1;
+	$endif
+}
+
+<*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
 *>
 macro log10(x) @LinkMath => $$log10(values::promote_int(x));
