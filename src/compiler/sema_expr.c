@@ -2571,12 +2571,13 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	bool is_always_const = decl->func_decl.signature.attrs.always_const;
 	if (decl->resolved_attributes && decl->attrs_resolved && decl->attrs_resolved->links)
 	{
-		Decl *func = context->call_env.current_function;
-		if (!func)
+		if (context->call_env.kind != CALL_ENV_FUNCTION && context->call_env.kind != CALL_ENV_FUNCTION_STATIC)
 		{
-			RETURN_SEMA_ERROR(call_expr, "Cannot call macro with '@links' outside of a function.");
+			goto SKIP_LINK;
 		}
-		assert(func->resolved_attributes);
+		Decl *func = context->call_env.current_function;
+		ASSERT_SPAN(func, func);
+		ASSERT_SPAN(func, func->resolved_attributes);
 		if (!func->attrs_resolved)
 		{
 			func->attrs_resolved = MALLOCS(ResolvedAttrData);
@@ -2589,6 +2590,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		}
 		func->attrs_resolved->links = updated;
 	}
+	SKIP_LINK:;
 	bool is_outer = call_expr->call_expr.is_outer_call;
 	ASSERT_SPAN(call_expr, decl->decl_kind == DECL_MACRO);
 

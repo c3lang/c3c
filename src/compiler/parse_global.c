@@ -266,9 +266,9 @@ bool parse_module(ParseContext *c, AstId contracts)
 			{
 				unsigned args = vec_size(attr->exprs);
 				if (args < 1) RETURN_PRINT_ERROR_AT(false, attr, "'@link' needs at least 1 argument.");
-			}
 				vec_add(c->unit->attr_links, attr);
 				continue;
+			}
 			case ATTRIBUTE_IF:
 				if (c->unit->if_attr) RETURN_PRINT_ERROR_AT(false, attr, "'@if' appeared more than once.");
 				c->unit->if_attr = attr;
