@@ -358,8 +358,7 @@ macro @intlog2($x)
 
 	$typeof($x) $y = 1;
 	$typeof($x) $z = 0;
-	$for ; $y < $x; $y += $y, ++$z:
-	$endfor
+	$for ; $y < $x; $y += $y, ++$z: $endfor
 
 	$if $y == $x:
 		return $z;
