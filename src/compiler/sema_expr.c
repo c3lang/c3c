@@ -6726,10 +6726,14 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 	}
 	if (left->expr_kind == EXPR_SUBSCRIPT_ASSIGN)
 	{
+		Decl *temp = decl_new_generated_var(right->type, VARDECL_LOCAL, right->span);
+		Expr *expr_rh = expr_generate_decl(temp, right);
 		Expr **args = NULL;
 		vec_add(args, exprptr(left->subscript_assign_expr.index));
-		vec_add(args, right);
-		return sema_insert_method_call(context, expr, declptr(left->subscript_assign_expr.method), exprptr(left->subscript_assign_expr.expr), args, false);
+		vec_add(args, expr_variable(temp));
+		if (!sema_insert_method_call(context, expr, declptr(left->subscript_assign_expr.method), exprptr(left->subscript_assign_expr.expr), args, false)) return false;
+		expr_rewrite_two(expr, expr_rh, expr_copy(expr));
+		return true;
 	}
 	if (left->expr_kind == EXPR_BITACCESS)
 	{

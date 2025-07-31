@@ -106,17 +106,16 @@ Expr *expr_remove_recast(Expr *expr)
 	return expr;
 }
 
-BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional, bool is_init)
+BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *ref_expr, Expr *expr, LLVMValueRef optional, bool is_init)
 {
-	ASSERT(llvm_value_is_addr(ref));
-
-	assert((optional || !IS_OPTIONAL(expr)) && "Assumed an optional address if it's an optional expression.");
+	ASSERT(ref_expr || llvm_value_is_addr(ref));
 
 	expr = expr_remove_recast(expr);
 
 	// Special optimization of handling of optional
 	if (expr->expr_kind == EXPR_OPTIONAL)
 	{
+		assert(!ref_expr);
 		PUSH_CLEAR_CATCH();
 
 		BEValue result;
@@ -124,6 +123,9 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		llvm_emit_expr(c, &result, expr->inner_expr);
 
 		llvm_value_rvalue(c, &result);
+
+		assert((optional || !IS_OPTIONAL(expr)) && "Assumed an optional address if it's an optional expression.");
+
 
 		LLVMValueRef err_val = result.value;
 		// Store it in the optional
@@ -147,6 +149,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 
 	if (IS_OPTIONAL(expr))
 	{
+		assert(!ref_expr);
 		assign_block = llvm_basic_block_new(c, "after_assign");
 		ASSERT(optional);
 		if (c->catch.fault)
@@ -168,10 +171,12 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	if (type_flat_is_vector(expr->type))
 	{
 		llvm_emit_expr(c, &value, expr);
+		if (ref_expr) llvm_emit_expr(c, ref, ref_expr);
 		llvm_store(c, ref, &value);
 	}
 	else if (expr_is_const_initializer(expr))
 	{
+		if (ref_expr) llvm_emit_expr(c, ref, ref_expr);
 		llvm_emit_const_initialize_reference(c, ref, expr);
 		value = *ref;
 	}
@@ -179,15 +184,18 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	{
 		if (is_init)
 		{
+			assert(!ref_expr);
 			llvm_emit_initialize_reference(c, ref, expr);
 		}
 		else
 		{
 			BEValue val;
-			AlignSize alignment = type_alloca_alignment(ref->type);
-			LLVMValueRef temp = llvm_emit_alloca(c, llvm_get_type(c, ref->type), alignment, ".assign_list");
-			llvm_value_set_address(c, &val, temp, ref->type, alignment);
+			Type *type = ref_expr ? type_lowering(ref_expr->type) : ref->type;
+			AlignSize alignment = type_alloca_alignment(type);
+			LLVMValueRef temp = llvm_emit_alloca(c, llvm_get_type(c, type), alignment, ".assign_list");
+			llvm_value_set_address(c, &val, temp, type, alignment);
 			llvm_emit_initialize_reference(c, &val, expr);
+			if (ref_expr) llvm_emit_expr(c, ref, ref_expr);
 			llvm_store(c, ref, &val);
 		}
 		value = *ref;
@@ -196,11 +204,13 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	{
 		if (expr->expr_kind == EXPR_CALL)
 		{
-			llvm_emit_call_expr(c, &value, expr, ref);
+			llvm_emit_call_expr(c, &value, expr, ref_expr ? NULL : ref);
+			if (ref_expr) llvm_emit_expr(c, ref, ref_expr);
 		}
 		else
 		{
 			llvm_emit_expr(c, &value, expr);
+			if (ref_expr) llvm_emit_expr(c, ref, ref_expr);
 		}
 		if (!c->current_block) goto AFTER_STORE;
 		if (value.type != type_void) llvm_store(c, ref, &value);
@@ -215,6 +225,7 @@ AFTER_STORE:;
 
 	if (assign_block)
 	{
+		assert(!ref_expr);
 		llvm_emit_br(c, assign_block);
 		if (rejump_block)
 		{
@@ -4493,19 +4504,18 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	if (binary_op == BINARYOP_ASSIGN)
 	{
 		Expr *left = exprptr(expr->binary_expr.left);
-		llvm_emit_expr(c, be_value, left);
-		ASSERT(llvm_value_is_addr(be_value));
-		LLVMValueRef optional_ref = NULL;
 
 		// If the LHS is an identifier, then we're assigning the optional value to that.
 		if (left->expr_kind == EXPR_IDENTIFIER)
 		{
-			optional_ref = decl_optional_ref(left->ident_expr);
-			be_value->kind = BE_ADDRESS;
+			llvm_value_set_decl(c, be_value, left->ident_expr);
+			*be_value = llvm_emit_assign_expr(c, be_value, NULL, exprptr(expr->binary_expr.right), decl_optional_ref(left->ident_expr), false);
+			return;
 		}
 
+		*be_value = llvm_emit_assign_expr(c, be_value, left, exprptr(expr->binary_expr.right), NULL, false);
+
 		// Emit the result.
-		*be_value = llvm_emit_assign_expr(c, be_value, exprptr(expr->binary_expr.right), optional_ref, false);
 		return;
 	}
 

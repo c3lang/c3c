@@ -33,6 +33,7 @@
 - Place output in `out` by default for projects. Use temp folder for building at the command line.
 - Allow absolute paths for `$embed`.
 - Add `@try` and `@try_catch`.
+- Assignment evaluation order now right->left, following C++17 and possibly C23.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
