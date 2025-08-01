@@ -18,6 +18,10 @@ macro void Pair.unpack(&self, a, b)
 	*b = self.second;
 }
 
+fn bool Pair.equal(self, Pair other) @operator(==)
+	=> self.first == other.first && self.second == other.second;
+
+
 module std::collections::triple{Type1, Type2, Type3};
 
 struct Triple
@@ -41,6 +45,10 @@ macro void Triple.unpack(&self, a, b, c)
 	*b = self.second;
 	*c = self.third;
 }
+
+fn bool Triple.equal(self, Triple other) @operator(==)
+	=> self.first == other.first && self.second == other.second && self.third == other.third;
+
 
 module std::collections::tuple{Type1, Type2};
 
