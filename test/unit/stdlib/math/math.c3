@@ -457,6 +457,24 @@ fn void test_log() @test
 	}
 }
 
+fn void test_ct_intlog2() @test @if($feature(SLOW_TESTS))
+{
+	uint128 actual, expected;
+	$for var $x = 0; $x <= 128; ++$x :
+		expected = (uint128)math::floor(math::log2($x));
+		actual = (uint128)math::@intlog2($x);
+		assert(expected == actual, "input %d: floor(log2($x)) -> %d is not equal to @intlog2($x) -> %d", $x, expected, actual);
+	$endfor
+
+	var $logme = (uint128)1;
+	$for var $x = 0; $x < 8192; ++$x :
+		$logme *= 13;
+		expected = (uint128)math::floor(math::log2((uint128)$logme));
+		actual = (uint128)math::@intlog2((uint128)$logme);
+		assert(expected == actual, "input %d (idx %d): floor(log2(|$logme|)) -> %d is not equal to @intlog2(|$logme|) -> %d", $logme, $x, expected, actual);
+	$endfor
+}
+
 fn void test_pow() @test
 {
 	int[<10>] e =  { 2, 1, 0, -1, -2, 2, 1, 0, -1, -2 };

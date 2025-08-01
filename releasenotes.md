@@ -34,6 +34,7 @@
 - Allow absolute paths for `$embed`.
 - Add `@try` and `@try_catch`.
 - Assignment evaluation order now right->left, following C++17 and possibly C23.
+- Add compile-time `@intlog2` macro to math.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
