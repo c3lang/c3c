@@ -1,5 +1,8 @@
 module arraytests @test;
 
+import std::collections::pair;
+
+
 fn void contains()
 {
 	int[3] a = { 1, 2, 3 };
@@ -36,4 +39,44 @@ fn void concat()
 	int[] c = array::concat(mem, a[1..2], a);
 	defer free(c);
 	assert (c == (int[]){ 2, 3, 1, 2, 3 });
+}
+
+fn void zip() => @pool()
+{
+	char[] left = "abcde";
+	long[] right = { -1, 0x8000, 0 };
+
+	Pair {char, long}[] expected = { {'a', -1}, {'b', 0x8000}, {'c', 0} };
+
+	foreach (i, c : array::tzip(left, right)) assert(c == expected[i]);
+}
+
+fn void zip_longest()
+{
+	//
+}
+
+fn void zip_longest_fill()
+{
+	//
+}
+
+fn void zip_with()
+{
+	//
+}
+
+fn void zip_with_longest()
+{
+	//
+}
+
+fn void zip_with_longest_fill()
+{
+	//
+}
+
+fn void zip_with_into()
+{
+	//
 }

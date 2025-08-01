@@ -318,6 +318,23 @@ macro clone(Allocator allocator, value) @nodiscard
 }
 
 <*
+ @param [&inout] allocator : "The allocator used to clone"
+ @param slice : "The slice to clone"
+ @return "A pointer to the cloned slice"
+
+ @require @typekind(slice) == SLICE || @typekind(slice) == ARRAY
+*>
+macro clone_slice(Allocator allocator, slice) @nodiscard
+{
+	var $Type = $typeof(slice[0]);
+
+	$Type* new_arr = new_array(allocator, $typeof(slice[0]), slice.len);
+	foreach (i, &v : slice) mem::copy(&new_arr[i], v, $Type.sizeof);
+
+	return new_arr[:slice.len];
+}
+
+<*
  Clone overaligned values. Must be released using free_aligned.
 
  @param [&inout] allocator : "The allocator to use to clone"
