@@ -89,6 +89,7 @@
 - Not setting android-ndk resulted in a "set ndk-path" error.
 - Lambda deduplication would be incorrect when generated at the global scope.
 - Disallow accessing parameters in a naked function, as well as `return`, this fixes #1955.
+- Assigning string literal to char[<*>] stores pointer rather than characters. #2357
 
 ### Stdlib changes
 - Improve contract for readline. #2280
