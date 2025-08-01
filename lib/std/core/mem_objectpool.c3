@@ -19,6 +19,9 @@ union SingleSizeObjectPoolEntry
 <*
  Object pool pre-allocating objects backed by an Allocator which are then reserved for the user,
  objects deallocated by the user are later re-used by future object allocations
+
+ `grow_capacity` can be changed in order to affect how many objects will be allocated by next pool allocation,
+ it has to be greater than 0
 *>
 struct SingleSizeObjectPool
 {
