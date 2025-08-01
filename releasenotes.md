@@ -6,6 +6,8 @@
 - Support `alias foo = module std::io` module aliasing.
 
 ### Fixes
+- List.remove_at would incorrectly trigger ASAN.
+
 ### Stdlib changes
 
 ## 0.7.4 Change list
