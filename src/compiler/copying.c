@@ -1122,6 +1122,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_AST(decl->ct_assert_decl);
 			break;
 		case DECL_IMPORT:
+		case DECL_ALIAS_PATH:
 			break;
 		case DECL_MACRO:
 			MACRO_COPY_ASTID(copy->func_decl.docs);

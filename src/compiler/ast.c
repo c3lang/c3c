@@ -52,9 +52,6 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 	TypeKind kind = TYPE_POISONED;
 	switch (decl_type)
 	{
-		case DECL_FNTYPE:
-		case DECL_FUNC:
-			UNREACHABLE
 		case DECL_INTERFACE:
 			kind = TYPE_INTERFACE;
 			break;
@@ -79,8 +76,10 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 		case DECL_BITSTRUCT:
 			kind = TYPE_BITSTRUCT;
 			break;
-		case NON_TYPE_DECLS:
+		case DECL_FNTYPE:
+		case DECL_FUNC:
 		case DECL_ERASED:
+		case NON_TYPE_DECLS:
 			UNREACHABLE
 	}
 	Type *type = type_new(kind, name ? name : "$anon");
@@ -115,7 +114,7 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_CT_EXEC: return "compile time exec include";
 		case DECL_CT_INCLUDE: return "an include";
 		case DECL_DECLARRAY: return "a declarray";
-		case DECL_ALIAS: case DECL_TYPEDEF: return "an alias";
+		case DECL_ALIAS: case DECL_ALIAS_PATH: case DECL_TYPEDEF: return "an alias";
 		case DECL_DISTINCT: return "a distinct type";
 		case DECL_ENUM: return "an enum";
 		case DECL_CONST_ENUM: return "a raw enum";

@@ -116,6 +116,33 @@ void sema_analysis_pass_process_imports(Module *module)
 			import->import.module = import_module;
 NEXT:;
 		}
+		FOREACH_IDX(idx, Decl *, alias_module,  unit->module_aliases)
+		{
+			Path *path = alias_module->module_alias_decl.alias_path;
+			Module *import_module = global_context_find_module(path->module);
+
+			// 5. Do we find it?
+			if (!import_module)
+			{
+				PRINT_ERROR_AT(path, "No module named '%s' could be found, did you type the name right?", path->module);
+				continue;
+			}
+			alias_module->module_alias_decl.module = import_module;
+			alias_module->resolve_status = RESOLVE_DONE;
+			for (unsigned i = 0; i < idx; i++)
+			{
+				if (unit->module_aliases[i]->name == alias_module->name)
+				{
+					PRINT_ERROR_AT(alias_module, "The module alias must be unique.");
+					break;
+				}
+			}
+			if (alias_module->attributes)
+			{
+				PRINT_ERROR_AT(alias_module->attributes[0], "Module aliases cannot have attributes.");
+				break;
+			}
+		}
 		total_import_count += import_count;
 	}
 	(void)total_import_count; // workaround for clang 13.0

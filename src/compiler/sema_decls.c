@@ -4849,6 +4849,7 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 {
 	CompilationUnit *copy = unit_create(unit->file);
 	copy->imports = copy_decl_list_single(unit->imports);
+	copy->module_aliases = copy_decl_list_single(unit->module_aliases);
 	copy->public_imports = NULL;
 	if (unit->public_imports)
 	{
@@ -5420,17 +5421,18 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_ALIAS:
 			if (!sema_analyse_alias(context, decl, &erase_decl)) goto FAILED;
 			break;
-		case DECL_POISONED:
-		case DECL_IMPORT:
-		case DECL_ENUM_CONSTANT:
-		case DECL_LABEL:
+		case DECL_ALIAS_PATH:
+		case DECL_BODYPARAM:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
-		case DECL_DECLARRAY:
-		case DECL_BODYPARAM:
-		case DECL_CT_INCLUDE:
 		case DECL_CT_EXEC:
+		case DECL_CT_INCLUDE:
+		case DECL_DECLARRAY:
+		case DECL_ENUM_CONSTANT:
 		case DECL_GROUP:
+		case DECL_IMPORT:
+		case DECL_LABEL:
+		case DECL_POISONED:
 			UNREACHABLE
 	}
 	if (erase_decl)

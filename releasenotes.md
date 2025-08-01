@@ -1,5 +1,13 @@
 # C3C Release Notes
 
+## 0.7.5 Change list
+
+### Changes / improvements
+- Support `alias foo = module std::io` module aliasing.
+
+### Fixes
+### Stdlib changes
+
 ## 0.7.4 Change list
 
 ### Changes / improvements
