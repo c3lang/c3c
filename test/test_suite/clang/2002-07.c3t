@@ -319,16 +319,13 @@ fn int strcmp(char *s1, char *s2) {
 @.str = private unnamed_addr constant [7 x i8] c"<none>\00", align 1
 @.str.11 = private unnamed_addr constant [14 x i8] c"Hello world!\0A\00", align 1
 
-; Function Attrs:
 declare ptr @malloc(i32) #0
 
-; Function Attrs:
 define ptr @foo.passThroughList(ptr %0) #0 {
 entry:
   ret ptr %0
 }
 
-; Function Attrs:
 define void @foo.foo() #0 {
 entry:
   %0 = load i32, ptr @foo.foo.10, align 4
@@ -339,7 +336,6 @@ entry:
   ret void
 }
 
-; Function Attrs:
 define void @foo.insertIntoListTail(ptr %0, i32 %1) #0 {
 entry:
   %l = alloca ptr, align 8
@@ -360,9 +356,9 @@ loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  %6 = load ptr, ptr %l, align 8
-  %7 = call ptr @malloc(i32 16)
-  store ptr %7, ptr %6, align 8
+  %6 = call ptr @malloc(i32 16)
+  %7 = load ptr, ptr %l, align 8
+  store ptr %6, ptr %7, align 8
   %8 = load ptr, ptr %l, align 8
   %9 = load ptr, ptr %8, align 8
   store i32 %1, ptr %9, align 8
@@ -373,7 +369,6 @@ loop.exit:                                        ; preds = %loop.cond
   ret void
 }
 
-; Function Attrs:
 define ptr @foo.findData(ptr %0, i32 %1) #0 {
 entry:
   %i2nb = icmp eq ptr %0, null
@@ -397,10 +392,8 @@ if.exit2:                                         ; preds = %if.exit
   ret ptr %4
 }
 
-; Function Attrs:
 declare void @foundIt() #0
 
-; Function Attrs:
 define void @foo.doListStuff() #0 {
 entry:
   %myList = alloca ptr, align 8
@@ -443,7 +436,6 @@ if.exit6:                                         ; preds = %if.then5, %if.exit3
   ret void
 }
 
-; Function Attrs:
 define i32 @foo.floatcomptest(ptr %0, ptr %1, ptr %2, ptr %3) #0 {
 entry:
   %4 = load double, ptr %0, align 8
@@ -463,7 +455,6 @@ or.phi:                                           ; preds = %or.rhs, %entry
   ret i32 %zext
 }
 
-; Function Attrs:
 define ptr @foo.memset_impl(ptr %0, i32 %1, i32 %2) #0 {
 entry:
   %len = alloca i32, align 4
@@ -480,9 +471,9 @@ loop.cond:                                        ; preds = %loop.body, %entry
   br i1 %neq, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
+  %trunc = trunc i32 %1 to i8
   %4 = load i64, ptr %dstp, align 8
   %intptr = inttoptr i64 %4 to ptr
-  %trunc = trunc i32 %1 to i8
   store i8 %trunc, ptr %intptr, align 1
   %5 = load i64, ptr %dstp, align 8
   %add = add i64 %5, 1
@@ -496,7 +487,6 @@ loop.exit:                                        ; preds = %loop.cond
   ret ptr %0
 }
 
-; Function Attrs:
 define internal ptr @foo.localmalloc(i32 %0) #0 {
 entry:
   %blah = alloca ptr, align 8
@@ -516,7 +506,6 @@ if.exit:                                          ; preds = %entry
   ret ptr null
 }
 
-; Function Attrs:
 define void @foo.testRetStruct(ptr noalias sret(%PBVTest) align 8 %0, float %1, double %2, i32 %3) #0 {
 entry:
   %t = alloca %PBVTest, align 8
@@ -530,10 +519,8 @@ entry:
   ret void
 }
 
-; Function Attrs:
 declare void @testRetStruct2(ptr noalias sret(%PBVTest) align 8) #0
 
-; Function Attrs:
 define double @foo.callRetStruct(float %0, double %1, i32 %2) #0 {
 entry:
   %t = alloca %PBVTest, align 8
@@ -547,10 +534,8 @@ entry:
   ret double %fadd2
 }
 
-; Function Attrs:
 declare i32 @fp(i32, ptr) #0
 
-; Function Attrs:
 define void @foo.__bb_exit_func() #0 {
 entry:
   %0 = load ptr, ptr @foo.ext, align 8
@@ -570,17 +555,14 @@ cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   ret void
 }
 
-; Function Attrs:
 declare i32 @puts(ptr) #0
 
-; Function Attrs:
 define i32 @foo.ptrFunc(ptr %0, i32 %1) #0 {
 entry:
   %2 = call i32 %0(i32 %1)
   ret i32 %2
 }
 
-; Function Attrs:
 define zeroext i8 @foo.ptrFunc2(ptr byval([30 x ptr]) align 8 %0, i32 %1) #0 {
 entry:
   %sext = sext i32 %1 to i64
@@ -591,13 +573,10 @@ entry:
   ret i8 %trunc
 }
 
-; Function Attrs:
 declare zeroext i8 @smallArgs2(i8 zeroext, i8 zeroext, i64, i8 zeroext, i8 zeroext) #0
 
-; Function Attrs:
 declare i32 @someFuncA() #0
 
-; Function Attrs:
 define zeroext i8 @foo.smallArgs(i8 zeroext %0, i8 zeroext %1, i8 zeroext %2, i8 zeroext %3) #0 {
 entry:
   %4 = call i32 @someFuncA()
@@ -612,7 +591,6 @@ entry:
   ret i8 %5
 }
 
-; Function Attrs:
 define internal i32 @foo.f0(ptr byval(%Quad) align 8 %0, i32 %1) #0 {
 entry:
   %r = alloca %Quad, align 8
@@ -620,19 +598,19 @@ entry:
   br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
-  %ptradd = getelementptr inbounds i8, ptr %r, i64 4
-  %ptradd1 = getelementptr inbounds i8, ptr %0, i64 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd, ptr align 4 %ptradd1, i32 4, i1 false)
+  %ptradd = getelementptr inbounds i8, ptr %0, i64 4
+  %ptradd1 = getelementptr inbounds i8, ptr %r, i64 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd1, ptr align 4 %ptradd, i32 4, i1 false)
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %entry
-  %ptradd2 = getelementptr inbounds i8, ptr %0, i64 8
-  %ptradd3 = getelementptr inbounds i8, ptr %r, i64 4
-  store ptr %ptradd3, ptr %ptradd2, align 8
-  %ptradd4 = getelementptr inbounds i8, ptr %0, i64 20
-  %ptradd5 = getelementptr inbounds i8, ptr %0, i64 16
-  store i8 1, ptr %ptradd5, align 8
-  store i32 1, ptr %ptradd4, align 4
+  %ptradd2 = getelementptr inbounds i8, ptr %r, i64 4
+  %ptradd3 = getelementptr inbounds i8, ptr %0, i64 8
+  store ptr %ptradd2, ptr %ptradd3, align 8
+  %ptradd4 = getelementptr inbounds i8, ptr %0, i64 16
+  store i8 1, ptr %ptradd4, align 8
+  %ptradd5 = getelementptr inbounds i8, ptr %0, i64 20
+  store i32 1, ptr %ptradd5, align 4
   store i32 1, ptr %0, align 8
   %ptradd6 = getelementptr inbounds i8, ptr %0, i64 4
   %ptradd7 = getelementptr inbounds i8, ptr %ptradd6, i64 2
@@ -649,7 +627,6 @@ if.exit:                                          ; preds = %if.then, %entry
   ret i32 %sub
 }
 
-; Function Attrs:
 define i32 @foo.f1(ptr %0, i32 %1) #0 {
 entry:
   %r = alloca %Quad, align 8
@@ -661,10 +638,10 @@ if.then:                                          ; preds = %entry
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %entry
-  %ptradd = getelementptr inbounds i8, ptr %0, i64 20
-  %ptradd1 = getelementptr inbounds i8, ptr %0, i64 16
-  store i8 1, ptr %ptradd1, align 8
-  store i32 1, ptr %ptradd, align 4
+  %ptradd = getelementptr inbounds i8, ptr %0, i64 16
+  store i8 1, ptr %ptradd, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %0, i64 20
+  store i32 1, ptr %ptradd1, align 4
   store i32 1, ptr %0, align 8
   %ptradd2 = getelementptr inbounds i8, ptr %0, i64 4
   %ptradd3 = getelementptr inbounds i8, ptr %ptradd2, i64 2
@@ -681,7 +658,6 @@ if.exit:                                          ; preds = %if.then, %entry
   ret i32 %sub
 }
 
-; Function Attrs:
 define i32 @foo.badFunc(float %0) #0 {
 entry:
   %result = alloca i32, align 4
@@ -698,10 +674,8 @@ if.exit:                                          ; preds = %if.then, %entry
   ret i32 %1
 }
 
-; Function Attrs:
 declare i32 @ef1(ptr, ptr, ptr) #0
 
-; Function Attrs:
 define i32 @foo.func(i32 %0, i64 %1) #0 {
 entry:
   %result = alloca i32, align 4
@@ -718,7 +692,6 @@ entry:
   ret i32 %4
 }
 
-; Function Attrs:
 define signext i16 @foo.funFunc(i64 %0, i8 zeroext %1) #0 {
 entry:
   %zext = zext i8 %1 to i64
@@ -727,13 +700,11 @@ entry:
   ret i16 %trunc
 }
 
-; Function Attrs:
 define i32 @foo.castTest(i32 %0) #0 {
 entry:
   ret i32 %0
 }
 
-; Function Attrs:
 define double @foo.testAdd(double %0, float %1) #0 {
 entry:
   %fpfpext = fpext float %1 to double
@@ -742,7 +713,6 @@ entry:
   ret double %fadd1
 }
 
-; Function Attrs:
 define i32 @foo.funcZ(i32 %0, i32 %1) #0 {
 entry:
   %i = alloca i32, align 4
@@ -778,7 +748,6 @@ loop.exit:                                        ; preds = %loop.cond
   ret i32 %mul4
 }
 
-; Function Attrs:
 define i32 @foo.sumArray(ptr %0, i32 %1) #0 {
 entry:
   %i = alloca i32, align 4
@@ -810,7 +779,6 @@ loop.exit:                                        ; preds = %loop.cond
   ret i32 %7
 }
 
-; Function Attrs:
 define i32 @foo.arrayParam(ptr %0) #0 {
 entry:
   %ptradd = getelementptr inbounds i8, ptr %0, i64 200
@@ -822,7 +790,6 @@ entry:
   ret i32 %2
 }
 
-; Function Attrs:
 define i32 @foo.arrayToSum() #0 {
 entry:
   %a = alloca [100 x i32], align 16
@@ -838,10 +805,10 @@ loop.cond:                                        ; preds = %loop.body, %entry
 
 loop.body:                                        ; preds = %loop.cond
   %1 = load i32, ptr %i, align 4
-  %sext = sext i32 %1 to i64
-  %ptroffset = getelementptr inbounds [4 x i8], ptr %a, i64 %sext
+  %mul = mul i32 %1, 4
   %2 = load i32, ptr %i, align 4
-  %mul = mul i32 %2, 4
+  %sext = sext i32 %2 to i64
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %a, i64 %sext
   store i32 %mul, ptr %ptroffset, align 4
   %3 = load i32, ptr %i, align 4
   %add = add i32 %3, 1
@@ -887,7 +854,6 @@ loop.exit:                                        ; preds = %loop.cond
   ret i32 0
 }
 
-; Function Attrs:
 define double @foo.mathFunc(double %0, double %1, double %2, double %3, double %4, double %5, double %6, double %7, double %8, double %9, double %10, double %11, double %12, double %13, double %14, double %15, double %16) #0 {
 entry:
   %fadd = fadd double %0, %1
@@ -909,7 +875,6 @@ entry:
   ret double %fadd15
 }
 
-; Function Attrs:
 define void @foo.strcpy(ptr %0, ptr %1) #0 {
 entry:
   %s1 = alloca ptr, align 8
@@ -919,14 +884,14 @@ entry:
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %2 = load ptr, ptr %s1, align 8
+  %2 = load ptr, ptr %s2, align 8
   %ptradd_any = getelementptr i8, ptr %2, i64 1
-  store ptr %ptradd_any, ptr %s1, align 8
-  %3 = load ptr, ptr %s2, align 8
+  store ptr %ptradd_any, ptr %s2, align 8
+  %3 = load ptr, ptr %s1, align 8
   %ptradd_any1 = getelementptr i8, ptr %3, i64 1
-  store ptr %ptradd_any1, ptr %s2, align 8
-  %4 = load i8, ptr %3, align 1
-  store i8 %4, ptr %2, align 1
+  store ptr %ptradd_any1, ptr %s1, align 8
+  %4 = load i8, ptr %2, align 1
+  store i8 %4, ptr %3, align 1
   %i2b = icmp ne i8 %4, 0
   br i1 %i2b, label %loop.body, label %loop.exit
 
@@ -964,14 +929,14 @@ loop.exit:                                        ; preds = %loop.cond
   br label %loop.cond2
 
 loop.cond2:                                       ; preds = %loop.body6, %loop.exit
-  %5 = load ptr, ptr %s1, align 8
+  %5 = load ptr, ptr %s2, align 8
   %ptradd_any3 = getelementptr i8, ptr %5, i64 1
-  store ptr %ptradd_any3, ptr %s1, align 8
-  %6 = load ptr, ptr %s2, align 8
+  store ptr %ptradd_any3, ptr %s2, align 8
+  %6 = load ptr, ptr %s1, align 8
   %ptradd_any4 = getelementptr i8, ptr %6, i64 1
-  store ptr %ptradd_any4, ptr %s2, align 8
-  %7 = load i8, ptr %6, align 1
-  store i8 %7, ptr %5, align 1
+  store ptr %ptradd_any4, ptr %s1, align 8
+  %7 = load i8, ptr %5, align 1
+  store i8 %7, ptr %6, align 1
   %i2b5 = icmp ne i8 %7, 0
   br i1 %i2b5, label %loop.body6, label %loop.exit7
 

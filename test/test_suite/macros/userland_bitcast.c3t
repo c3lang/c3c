@@ -113,14 +113,14 @@ loop.cond:                                        ; preds = %loop.body, %entry
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %2 = load ptr, ptr %to, align 8
+  %2 = load ptr, ptr %b, align 8
   %3 = load i64, ptr %i, align 8
   %ptroffset = getelementptr inbounds [2 x i8], ptr %2, i64 %3
-  %4 = load ptr, ptr %b, align 8
+  %4 = load ptr, ptr %to, align 8
   %5 = load i64, ptr %i, align 8
   %ptroffset4 = getelementptr inbounds [2 x i8], ptr %4, i64 %5
-  %6 = load i16, ptr %ptroffset4, align 2
-  store i16 %6, ptr %ptroffset, align 2
+  %6 = load i16, ptr %ptroffset, align 2
+  store i16 %6, ptr %ptroffset4, align 2
   %7 = load i64, ptr %i, align 8
   %add = add i64 %7, 2
   store i64 %add, ptr %i, align 8
@@ -131,7 +131,6 @@ loop.exit:                                        ; preds = %loop.cond
   ret i64 %8
 }
 
-; Function Attrs:
 define i32 @userland_bitcast.test(float %0) #0 {
 entry:
   %expr = alloca float, align 4
@@ -151,14 +150,14 @@ loop.cond:                                        ; preds = %loop.body, %entry
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %2 = load ptr, ptr %to, align 8
+  %2 = load ptr, ptr %b, align 8
   %3 = load i64, ptr %i, align 8
   %ptradd = getelementptr inbounds i8, ptr %2, i64 %3
-  %4 = load ptr, ptr %b, align 8
+  %4 = load ptr, ptr %to, align 8
   %5 = load i64, ptr %i, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %4, i64 %5
-  %6 = load i8, ptr %ptradd1, align 1
-  store i8 %6, ptr %ptradd, align 1
+  %6 = load i8, ptr %ptradd, align 1
+  store i8 %6, ptr %ptradd1, align 1
   %7 = load i64, ptr %i, align 8
   %add = add i64 %7, 1
   store i64 %add, ptr %i, align 8
@@ -169,7 +168,6 @@ loop.exit:                                        ; preds = %loop.cond
   ret i32 %8
 }
 
-; Function Attrs:
 define void @userland_bitcast.main() #0 {
 entry:
   %f = alloca float, align 4
@@ -212,14 +210,14 @@ loop.cond:                                        ; preds = %loop.body, %entry
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %2 = load ptr, ptr %to, align 8
+  %2 = load ptr, ptr %b, align 8
   %3 = load i64, ptr %i1, align 8
   %ptroffset = getelementptr inbounds [4 x i8], ptr %2, i64 %3
-  %4 = load ptr, ptr %b, align 8
+  %4 = load ptr, ptr %to, align 8
   %5 = load i64, ptr %i1, align 8
   %ptroffset2 = getelementptr inbounds [4 x i8], ptr %4, i64 %5
-  %6 = load i32, ptr %ptroffset2, align 4
-  store i32 %6, ptr %ptroffset, align 4
+  %6 = load i32, ptr %ptroffset, align 4
+  store i32 %6, ptr %ptroffset2, align 4
   %7 = load i64, ptr %i1, align 8
   %add = add i64 %7, 4
   store i64 %add, ptr %i1, align 8
@@ -241,14 +239,14 @@ loop.cond8:                                       ; preds = %loop.body10, %loop.
   br i1 %lt9, label %loop.body10, label %loop.exit14
 
 loop.body10:                                      ; preds = %loop.cond8
-  %11 = load ptr, ptr %to6, align 8
+  %11 = load ptr, ptr %b5, align 8
   %12 = load i64, ptr %i7, align 8
   %ptroffset11 = getelementptr inbounds [4 x i8], ptr %11, i64 %12
-  %13 = load ptr, ptr %b5, align 8
+  %13 = load ptr, ptr %to6, align 8
   %14 = load i64, ptr %i7, align 8
   %ptroffset12 = getelementptr inbounds [4 x i8], ptr %13, i64 %14
-  %15 = load i32, ptr %ptroffset12, align 4
-  store i32 %15, ptr %ptroffset11, align 4
+  %15 = load i32, ptr %ptroffset11, align 4
+  store i32 %15, ptr %ptroffset12, align 4
   %16 = load i64, ptr %i7, align 8
   %add13 = add i64 %16, 4
   store i64 %add13, ptr %i7, align 8
@@ -277,14 +275,14 @@ loop.cond21:                                      ; preds = %loop.body23, %loop.
   br i1 %lt22, label %loop.body23, label %loop.exit27
 
 loop.body23:                                      ; preds = %loop.cond21
-  %23 = load ptr, ptr %to19, align 8
+  %23 = load ptr, ptr %b18, align 8
   %24 = load i64, ptr %i20, align 8
   %ptroffset24 = getelementptr inbounds [8 x i8], ptr %23, i64 %24
-  %25 = load ptr, ptr %b18, align 8
+  %25 = load ptr, ptr %to19, align 8
   %26 = load i64, ptr %i20, align 8
   %ptroffset25 = getelementptr inbounds [8 x i8], ptr %25, i64 %26
-  %27 = load i64, ptr %ptroffset25, align 8
-  store i64 %27, ptr %ptroffset24, align 8
+  %27 = load i64, ptr %ptroffset24, align 8
+  store i64 %27, ptr %ptroffset25, align 8
   %28 = load i64, ptr %i20, align 8
   %add26 = add i64 %28, 8
   store i64 %add26, ptr %i20, align 8
@@ -306,14 +304,14 @@ loop.cond33:                                      ; preds = %loop.body35, %loop.
   br i1 %lt34, label %loop.body35, label %loop.exit39
 
 loop.body35:                                      ; preds = %loop.cond33
-  %32 = load ptr, ptr %to31, align 8
+  %32 = load ptr, ptr %b30, align 8
   %33 = load i64, ptr %i32, align 8
   %ptroffset36 = getelementptr inbounds [8 x i8], ptr %32, i64 %33
-  %34 = load ptr, ptr %b30, align 8
+  %34 = load ptr, ptr %to31, align 8
   %35 = load i64, ptr %i32, align 8
   %ptroffset37 = getelementptr inbounds [8 x i8], ptr %34, i64 %35
-  %36 = load i64, ptr %ptroffset37, align 8
-  store i64 %36, ptr %ptroffset36, align 8
+  %36 = load i64, ptr %ptroffset36, align 8
+  store i64 %36, ptr %ptroffset37, align 8
   %37 = load i64, ptr %i32, align 8
   %add38 = add i64 %37, 8
   store i64 %add38, ptr %i32, align 8

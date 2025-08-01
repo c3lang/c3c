@@ -2571,12 +2571,13 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	bool is_always_const = decl->func_decl.signature.attrs.always_const;
 	if (decl->resolved_attributes && decl->attrs_resolved && decl->attrs_resolved->links)
 	{
-		Decl *func = context->call_env.current_function;
-		if (!func)
+		if (context->call_env.kind != CALL_ENV_FUNCTION && context->call_env.kind != CALL_ENV_FUNCTION_STATIC)
 		{
-			RETURN_SEMA_ERROR(call_expr, "Cannot call macro with '@links' outside of a function.");
+			goto SKIP_LINK;
 		}
-		assert(func->resolved_attributes);
+		Decl *func = context->call_env.current_function;
+		ASSERT_SPAN(func, func);
+		ASSERT_SPAN(func, func->resolved_attributes);
 		if (!func->attrs_resolved)
 		{
 			func->attrs_resolved = MALLOCS(ResolvedAttrData);
@@ -2589,6 +2590,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		}
 		func->attrs_resolved->links = updated;
 	}
+	SKIP_LINK:;
 	bool is_outer = call_expr->call_expr.is_outer_call;
 	ASSERT_SPAN(call_expr, decl->decl_kind == DECL_MACRO);
 
@@ -6726,10 +6728,14 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 	}
 	if (left->expr_kind == EXPR_SUBSCRIPT_ASSIGN)
 	{
+		Decl *temp = decl_new_generated_var(right->type, VARDECL_LOCAL, right->span);
+		Expr *expr_rh = expr_generate_decl(temp, right);
 		Expr **args = NULL;
 		vec_add(args, exprptr(left->subscript_assign_expr.index));
-		vec_add(args, right);
-		return sema_insert_method_call(context, expr, declptr(left->subscript_assign_expr.method), exprptr(left->subscript_assign_expr.expr), args, false);
+		vec_add(args, expr_variable(temp));
+		if (!sema_insert_method_call(context, expr, declptr(left->subscript_assign_expr.method), exprptr(left->subscript_assign_expr.expr), args, false)) return false;
+		expr_rewrite_two(expr, expr_rh, expr_copy(expr));
+		return true;
 	}
 	if (left->expr_kind == EXPR_BITACCESS)
 	{

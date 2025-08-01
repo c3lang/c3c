@@ -34,6 +34,7 @@
 - Allow absolute paths for `$embed`.
 - Add `@try` and `@try_catch`.
 - Add OpenBSD to `env::INET_DEVICES` and add required socket constants.
+- Assignment evaluation order now right->left, following C++17 and possibly C23.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
@@ -89,6 +90,7 @@
 - Not setting android-ndk resulted in a "set ndk-path" error.
 - Lambda deduplication would be incorrect when generated at the global scope.
 - Disallow accessing parameters in a naked function, as well as `return`, this fixes #1955.
+- Assigning string literal to char[<*>] stores pointer rather than characters. #2357
 
 ### Stdlib changes
 - Improve contract for readline. #2280

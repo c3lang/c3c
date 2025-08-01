@@ -695,11 +695,11 @@ void compiler_compile(void)
 	if (vec_size(compiler.build.emit_only)) goto SKIP;
 	if (output_exe)
 	{
-		if (compiler.build.output_dir)
+		if (file_path_is_relative(output_exe))
 		{
-			create_output_dir(compiler.build.output_dir);
 			output_exe = file_append_path(compiler.build.output_dir, output_exe);
 		}
+		;
 		file_create_folders(output_exe);
 		bool system_linker_available = link_libc() && compiler.platform.os != OS_TYPE_WIN32;
 		bool use_system_linker = system_linker_available && compiler.build.arch_os_target == default_target;
@@ -795,9 +795,8 @@ void compiler_compile(void)
 	}
 	else if (output_static)
 	{
-		if (compiler.build.output_dir)
+		if (file_path_is_relative(output_static))
 		{
-			create_output_dir(compiler.build.output_dir);
 			output_static = file_append_path(compiler.build.output_dir, output_static);
 		}
 		file_create_folders(output_static);
@@ -812,9 +811,8 @@ void compiler_compile(void)
 	}
 	else if (output_dynamic)
 	{
-		if (compiler.build.output_dir)
+		if (file_path_is_relative(output_dynamic))
 		{
-			create_output_dir(compiler.build.output_dir);
 			output_dynamic = file_append_path(compiler.build.output_dir, output_dynamic);
 		}
 		file_create_folders(output_dynamic);

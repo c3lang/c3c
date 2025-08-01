@@ -1,0 +1,59 @@
+// #target: macos-x64
+module test;
+import std;
+
+DString x;
+fn int[2] a()
+{
+	x.append("a");
+	return { 1, 2 };
+}
+fn int idx()
+{
+	x.append("i");
+	return 0;
+}
+fn int abc()
+{
+	x.append("abc");
+	return 1;
+}
+fn List{int} l()
+{
+	List{int} l;
+	l.push(2);
+	return l;
+}
+
+fn int main(String[] args)
+{
+	l()[idx()] = abc();
+	a()[idx()] = abc();
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @test.main(ptr %0, i64 %1) #0 {
+entry:
+  %args = alloca %"char[][]", align 8
+  %sretparam = alloca %List, align 8
+  %result = alloca [2 x i32], align 4
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  %2 = call i32 @test.abc()
+  call void @test.l(ptr sret(%List) align 8 %sretparam)
+  %3 = call i32 @test.idx()
+  %sext = sext i32 %3 to i64
+  call void @"std_collections_list$int$.List.set"(ptr %sretparam, i64 %sext, i32 %2)
+  %4 = call i32 @test.abc()
+  %5 = call i64 @test.a()
+  store i64 %5, ptr %result, align 4
+  %6 = call i32 @test.idx()
+  %sext1 = sext i32 %6 to i64
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %result, i64 %sext1
+  store i32 %4, ptr %ptroffset, align 4
+  ret i32 0
+}
+
