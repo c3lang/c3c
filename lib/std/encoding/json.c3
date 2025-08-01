@@ -118,6 +118,7 @@ fn JsonTokenType? lex_number(JsonContext *context, char c) @local
 			t.append(c);
 			c = read_next(context)!;
 		}
+		if (!c.is_digit()) return INVALID_NUMBER?;
 		bool leading_zero = c == '0';
 		while (c.is_digit())
 		{
@@ -132,9 +133,12 @@ fn JsonTokenType? lex_number(JsonContext *context, char c) @local
 		if (c == '.')
 		{
 			t.append(c);
-			while (c = read_next(context)!, c.is_digit())
+			c = read_next(context)!;
+			if (!c.is_digit()) return INVALID_NUMBER?;
+			while (c.is_digit())
 			{
 				t.append(c);
+				c = read_next(context)!;
 			}
 		}
 		if ((c | 32) == 'e')
@@ -248,7 +252,7 @@ fn char? read_next(JsonContext* context) @local
 	}
 	if (c == 0)
 	{
-		context.reached_end = true;
+		return UNEXPECTED_CHARACTER?;
 	}
 	return c;
 }

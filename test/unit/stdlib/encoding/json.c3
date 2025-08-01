@@ -150,6 +150,24 @@ fn void test_invalid_numbers()
 		assert(false, "Expected UNEXPECTED_CHARACTER error for [.5]");
 	}
 
+	if (catch err = json::parse_string(mem, "[-2.]"))
+	{
+		assert(err == json::INVALID_NUMBER);
+	}
+	else
+	{
+		assert(false, "Expected INVALID_NUMBER error for [-2.]");
+	}
+
+	if (catch err = json::parse_string(mem, "[-.123]"))
+	{
+		assert(err == json::INVALID_NUMBER);
+	}
+	else
+	{
+		assert(false, "Expected INVALID_NUMBER error for [-.123]");
+	}
+
 	// Test invalid: multiple decimal points
 	if (catch err = json::parse_string(mem, "[1.2.3]"))
 	{
@@ -345,8 +363,8 @@ fn void test_comments_rejected()
 fn void test_null_bytes_rejected()
 {
 	// Test that null bytes in JSON are rejected (like n_multidigit_number_then_00.json)
-	// This simulates "123" + null byte + newline
-	char[5] json_with_null = { '1', '2', '3', 0, '\n' };
+	// This simulates "123" + null byte
+	char[] json_with_null = { '1', '2', '3', 0 };
 	ByteReader reader;
 	reader.init(json_with_null[..]);
 
