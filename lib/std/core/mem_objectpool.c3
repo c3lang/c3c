@@ -13,8 +13,7 @@ struct SingleSizeObjectPoolNode {
 }
 
 union SingleSizeObjectPoolEntry {
-	SingleSizeObjectPoolEntry *previous;
-	void *data;
+	void *previous;
 }
 
 struct SingleSizeObjectPool {
@@ -23,7 +22,7 @@ struct SingleSizeObjectPool {
 	SingleSizeObjectPoolNode *tail;
 	void *next_free;
 	void *freelist;
-	usz object_size, grow_size;
+	usz object_size, grow_capacity;
 	bool initialized;
 }
 
@@ -40,7 +39,7 @@ macro void SingleSizeObjectPool.init(&self, Allocator alloc, $Type,
 	self.head.capacity = capacity;
 	self.next_free = self.head.buffer;
 	self.freelist = null;
-	self.grow_size = capacity;
+	self.grow_capacity = capacity;
 	self.initialized = true;
 }
 
@@ -102,13 +101,13 @@ fn bool SingleSizeObjectPool.check_ptr(&self, void *ptr) @local
 }
 
 <*
- @require self.grow_size > 0 : "How many objects will it store"
+ @require self.grow_capacity > 0 : "How many objects will it store"
 *>
 fn void SingleSizeObjectPool.new_node(&self) @local
 {
 	SingleSizeObjectPoolNode *node = allocator::new(self.allocator, SingleSizeObjectPoolNode);
-	node.buffer = allocator::calloc(self.allocator, self.grow_size * self.object_size);
-	node.capacity = self.grow_size;
+	node.buffer = allocator::calloc(self.allocator, self.grow_capacity * self.object_size);
+	node.capacity = self.grow_capacity;
 	self.tail.next = node;
 	self.tail = node;
 	self.next_free = node.buffer;

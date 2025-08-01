@@ -1,0 +1,91 @@
+module std::core::objectpool_test;
+
+import std;
+
+struct Foo
+{
+    int a;
+    double b;
+    bool c;
+}
+
+fn void test_basic_allocation() @test
+{
+    SingleSizeObjectPool pool;
+    defer pool.free();
+    pool.init(mem, int);
+
+    int *ptr1 = pool.alloc();
+    int *ptr2 = pool.alloc();
+    assert(((usz) ptr2) - ((usz) ptr1) >= int.sizeof);
+}
+
+fn void test_large_allocation() @test
+{
+    SingleSizeObjectPool pool;
+    defer pool.free();
+    pool.init(mem, Foo);
+
+    Foo *ptr1 = pool.alloc();
+    Foo *ptr2 = pool.alloc();
+    assert(((usz) ptr2) - ((usz) ptr1) >= Foo.sizeof);
+}
+
+fn void test_basic_capacity() @test
+{
+    SingleSizeObjectPool pool;
+    defer pool.free();
+    pool.init(mem, int, 2);
+
+    int *ptr1 = pool.alloc();
+    int *ptr2 = pool.alloc();
+    assert(((usz) ptr2) - ((usz) ptr1) >= int.sizeof);
+}
+
+fn void test_basic_capacity_different_grow_capacity() @test
+{
+    SingleSizeObjectPool pool;
+    defer pool.free();
+    pool.init(mem, int, 1);
+
+    pool.alloc();
+    pool.grow_capacity = 2;
+
+    pool.alloc();
+    pool.alloc();
+    pool.grow_capacity = 1;
+
+    pool.alloc();
+
+    assert(pool.head.buffer != null);
+    assert(pool.head.next.buffer != null);
+    assert(pool.head.next.next.buffer != null);
+    assert(pool.head.next.next.next == null);
+}
+
+fn void test_basic_object_reuse() @test
+{
+    SingleSizeObjectPool pool;
+    defer pool.free();
+    pool.init(mem, int, 1);
+
+    int*[10] objs;
+    for (int i = 0; i < 10; i++) objs[i] = pool.alloc();
+
+    int *obj1 = objs[1];
+    pool.dealloc(obj1);
+
+    int *obj3 = objs[3];
+    pool.dealloc(obj3);
+
+    int *obj7 = objs[7];
+    pool.dealloc(obj7);
+
+    int *obj2 = objs[2];
+    pool.dealloc(obj2);
+
+    assert(obj2 == pool.alloc());
+    assert(obj7 == pool.alloc());
+    assert(obj3 == pool.alloc());
+    assert(obj1 == pool.alloc());
+}
