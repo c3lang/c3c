@@ -165,6 +165,73 @@ fn usz? copy_to(InStream in, OutStream dst, char[] buffer = {})
 	$endswitch
 }
 
+
+<*
+ Read from input stream byte by byte until delimiter is found, writing each byte to output stream.
+
+ @param [&inout] in : "The input stream to read from"
+ @param [&inout] out : "The output stream to write to"
+ @param delimiter : "The delimiter (single character or string) to stop reading at"
+ @return "Number of bytes read from input stream (excluding delimiter), or error"
+ @require @is_instream(in)
+ @require @is_outstream(out)
+*>
+macro usz? read_until_delimiter(in, out, String delimiter)
+{
+	if (delimiter.len == 0) return 0;
+
+	usz bytes_read = 0;
+	usz match_pos = 0;
+	char[] match_buffer = mem::temp_array(char, delimiter.len);
+
+	while (true)
+	{
+		char c = in.read_byte()!;
+
+		// Check if this character matches the current position in delimiter
+		if (c == delimiter[match_pos])
+		{
+			match_buffer[match_pos] = c;
+			match_pos++;
+
+			// Full delimiter matched?
+			if (match_pos == delimiter.len)
+			{
+				return bytes_read;
+			}
+		}
+		else
+		{
+			// No match, write any buffered characters first
+			if (match_pos > 0)
+			{
+				out.write(match_buffer[:match_pos])!;
+				bytes_read += match_pos;
+				match_pos = 0;
+
+				// Check if current character starts a new potential match
+				if (c == delimiter[0])
+				{
+					match_buffer[0] = c;
+					match_pos = 1;
+				}
+				else
+				{
+					// Write the current character
+					out.write_byte(c)!;
+					bytes_read++;
+				}
+			}
+			else
+			{
+				// Write the current character
+				out.write_byte(c)!;
+				bytes_read++;
+			}
+		}
+	}
+}
+
 macro usz? copy_through_buffer(InStream in, OutStream dst, char[] buffer) @local
 {
 	usz total_copied;
