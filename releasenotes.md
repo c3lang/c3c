@@ -12,6 +12,7 @@
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
+- Add OpenBSD to `env::INET_DEVICES` and add required socket constants.
 
 ## 0.7.4 Change list
 
