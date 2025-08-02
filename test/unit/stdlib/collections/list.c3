@@ -20,6 +20,22 @@ fn void overaligned_type()
 	assert((usz)l.get_ref(2) - (usz)l.get_ref(1) == Overalign.sizeof);
 }
 
+fn void remove_at()
+{
+	IntList test;
+	test.init(mem);
+	defer test.free();
+	test.add_array({ 1, 2, 3, 4 });
+	test::eq(test.array_view(), (int[]){ 1, 2, 3, 4 });
+	test.remove_at(0);
+	test::eq(test.array_view(), (int[]){ 2, 3, 4 });
+	test.remove_at(1);
+	test::eq(test.array_view(), (int[]){ 2, 4 });
+	test.remove_at(1);
+	test::eq(test.array_view(), (int[]){ 2 });
+	test.remove_at(0);
+	test::eq(test.array_view(), (int[]){ });
+}
 
 fn void delete_contains_index()
 {

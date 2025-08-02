@@ -156,17 +156,18 @@ void decl_register(Decl *decl)
 	{
 		case DECL_ERASED:
 			return;
-		case DECL_POISONED:
+		case DECL_ALIAS_PATH:
+		case DECL_BODYPARAM:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
 		case DECL_CT_EXEC:
+		case DECL_CT_INCLUDE:
+		case DECL_DECLARRAY:
 		case DECL_ENUM_CONSTANT:
+		case DECL_GROUP:
 		case DECL_IMPORT:
 		case DECL_LABEL:
-		case DECL_DECLARRAY:
-		case DECL_BODYPARAM:
-		case DECL_CT_INCLUDE:
-		case DECL_GROUP:
+		case DECL_POISONED:
 			UNREACHABLE
 		case DECL_ATTRIBUTE:
 		case DECL_BITSTRUCT:
@@ -264,13 +265,14 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			vec_add(unit->attributes, decl);
 			decl_register(decl);
 			break;
+		case DECL_ALIAS_PATH:
+		case DECL_BODYPARAM:
+		case DECL_DECLARRAY:
 		case DECL_ENUM_CONSTANT:
+		case DECL_FNTYPE:
+		case DECL_GROUP:
 		case DECL_IMPORT:
 		case DECL_LABEL:
-		case DECL_DECLARRAY:
-		case DECL_BODYPARAM:
-		case DECL_GROUP:
-		case DECL_FNTYPE:
 			UNREACHABLE
 		case DECL_CT_EXEC:
 		case DECL_CT_INCLUDE:
@@ -326,6 +328,15 @@ bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, boo
 	vec_add(unit->imports, import);
 	if (private_import) vec_add(unit->public_imports, import);
 	DEBUG_LOG("Added import %s", path->module);
+	return true;
+}
+
+bool unit_add_alias(CompilationUnit *unit, Decl *alias)
+{
+	DEBUG_LOG("SEMA: Add module alias '%s'.", alias->name);
+
+	if (!check_module_name(alias->module_alias_decl.alias_path)) return false;
+	vec_add(unit->module_aliases, alias);
 	return true;
 }
 
