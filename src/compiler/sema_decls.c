@@ -4,7 +4,6 @@
 
 #include "sema_internal.h"
 
-static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl);
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, Decl *decl);
@@ -43,8 +42,6 @@ static const char *attribute_domain_to_string(AttributeDomain domain);
 static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_data, Decl *decl, Attr *attr, AttributeDomain domain, bool *erase_decl);
 static bool sema_analyse_attributes_inner(SemaContext *context, ResolvedAttrData *attr_data, Decl *decl, Attr **attrs, AttributeDomain domain,
 										  Decl *top, bool *erase_decl);
-static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
-									bool *erase_decl);
 static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_check_section(SemaContext *context, Attr *attr);
 static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext *c, Decl *decl, bool *erase_decl);
@@ -3723,8 +3720,7 @@ static bool sema_analyse_attributes_inner(SemaContext *context, ResolvedAttrData
 	return true;
 }
 
-static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
-									bool *erase_decl)
+bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain, bool *erase_decl)
 {
 	if (decl->resolved_attributes) return true;
 	ResolvedAttrData data = { .tags = NULL, .overload = INVALID_SPAN };
@@ -4154,13 +4150,6 @@ REGISTER_MAIN:
 	return true;
 }
 
-static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl)
-{
-	assert((domain & CALLABLE_TYPE) == domain);
-	if (!sema_analyse_attributes(context, decl, decl->attributes, domain,
-								 erase_decl)) return decl_poison(decl);
-	return true;
-}
 
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl)
 {
@@ -4860,6 +4849,7 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 {
 	CompilationUnit *copy = unit_create(unit->file);
 	copy->imports = copy_decl_list_single(unit->imports);
+	copy->module_aliases = copy_decl_list_single(unit->module_aliases);
 	copy->public_imports = NULL;
 	if (unit->public_imports)
 	{
@@ -5431,17 +5421,18 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_ALIAS:
 			if (!sema_analyse_alias(context, decl, &erase_decl)) goto FAILED;
 			break;
-		case DECL_POISONED:
-		case DECL_IMPORT:
-		case DECL_ENUM_CONSTANT:
-		case DECL_LABEL:
+		case DECL_ALIAS_PATH:
+		case DECL_BODYPARAM:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
-		case DECL_DECLARRAY:
-		case DECL_BODYPARAM:
-		case DECL_CT_INCLUDE:
 		case DECL_CT_EXEC:
+		case DECL_CT_INCLUDE:
+		case DECL_DECLARRAY:
+		case DECL_ENUM_CONSTANT:
 		case DECL_GROUP:
+		case DECL_IMPORT:
+		case DECL_LABEL:
+		case DECL_POISONED:
 			UNREACHABLE
 	}
 	if (erase_decl)

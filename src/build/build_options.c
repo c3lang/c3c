@@ -1362,7 +1362,7 @@ static void parse_option(BuildOptions *options)
 			break;
 
 	}
-	FAIL_WITH_ERR("Cannot process the unknown option \"%s\".", current_arg);
+	FAIL_WITH_ERR_LONG("Cannot process the unknown option \"%s\".", current_arg);
 }
 
 BuildOptions parse_arguments(int argc, const char *argv[])
@@ -1473,7 +1473,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 			const char *ndk_path = getenv("ANDROID_NDK");
 			if (!ndk_path)
 			{
-				FAIL_WITH_ERR("Can't find Android NDK, please set --ndk-path.");
+				FAIL_WITH_ERR("Can't find Android NDK, please set --android-ndk.");
 			}
 			build_options.android.ndk_path = strdup(ndk_path);
 		}

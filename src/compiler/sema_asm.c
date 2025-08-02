@@ -59,6 +59,29 @@ static inline AsmArgGroup sema_ireg_for_type(Type *type)
 	}
 }
  */
+
+static inline Decl *sema_resolve_external_symbol(SemaContext *context, Expr *expr, const char *name)
+{
+	Decl *decl = sema_resolve_symbol(context, name, NULL, expr->span);
+	if (!decl) return NULL;
+
+	if (decl->decl_kind != DECL_VAR)
+	{
+		SEMA_ERROR(expr, "Expected a global or local variable.");
+		return NULL;
+	}
+	if (IS_OPTIONAL(decl))
+	{
+		SEMA_ERROR(expr, "Optional variables are not allowed in asm.");
+		return NULL;
+	}
+	if (decl->var.kind == VARDECL_PARAM && context->call_env.is_naked_fn && !(context->active_scope.flags & SCOPE_MACRO))
+	{
+		SEMA_ERROR(expr, "Function parameters in '@naked' functions may not be directly referenced.");
+		return NULL;
+	}
+	return decl;
+}
 static inline bool sema_reg_int_suported_type(AsmArgType arg, Type *type)
 {
 	ASSERT(type_flatten(type) == type);
@@ -347,21 +370,11 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 {
 	ExprAsmArg *arg = &expr->expr_asm_arg;
 	const char *name = arg->ident.name;
-	Decl *decl = sema_resolve_symbol(context, name, NULL, expr->span);
+	Decl *decl = sema_resolve_external_symbol(context, expr, name);
 	if (!decl) return false;
 
 	ASSERT(arg->kind == ASM_ARG_REGVAR);
 	arg->ident.ident_decl = decl;
-	if (decl->decl_kind != DECL_VAR)
-	{
-		SEMA_ERROR(expr, "Expected a global or local variable.");
-		return false;
-	}
-	if (IS_OPTIONAL(decl))
-	{
-		SEMA_ERROR(expr, "Optional variables are not allowed in asm.");
-		return false;
-	}
 	bool is_write = arg_type.is_write;
 	bool is_read = !arg_type.is_write || arg_type.is_readwrite;
 	arg->ident.is_input = !is_write;
@@ -441,18 +454,10 @@ static inline bool sema_check_asm_memvar(SemaContext *context, AsmInlineBlock *b
 {
 	ExprAsmArg *arg = &expr->expr_asm_arg;
 	const char *name = arg->ident.name;
-	Decl *decl = sema_resolve_symbol(context, name, NULL, expr->span);
+	Decl *decl = sema_resolve_external_symbol(context, expr, name);
 	if (!decl) return false;
 	ASSERT(arg->kind == ASM_ARG_MEMVAR);
 	arg->ident.ident_decl = decl;
-	if (decl->decl_kind != DECL_VAR)
-	{
-		RETURN_SEMA_ERROR(expr, "Expected a global or local variable.");
-	}
-	if (IS_OPTIONAL(decl))
-	{
-		RETURN_SEMA_ERROR(expr, "Optional variables are not allowed in asm.");
-	}
 	bool is_write = arg_type.is_write;
 	bool is_read = !arg_type.is_write || arg_type.is_readwrite;
 	arg->ident.is_input = !is_write;

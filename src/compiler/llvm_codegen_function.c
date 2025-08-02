@@ -10,7 +10,7 @@ static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef valu
 static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment);
 static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index);
 static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index);
-static inline void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body, Decl *decl);
+static inline void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body, Decl *decl, bool is_naked);
 
 
 /**
@@ -431,13 +431,13 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 	llvm_emit_body(c,
 	               decl->backend_ref,
 	               type_get_resolved_prototype(decl->type),
-	               decl->func_decl.attr_naked ? NULL : &decl->func_decl.signature,
-	               astptr(decl->func_decl.body), decl);
+	               &decl->func_decl.signature,
+	               astptr(decl->func_decl.body), decl, decl->func_decl.attr_naked);
 }
 
 
 void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body,
-                    Decl *decl)
+                    Decl *decl, bool is_naked)
 {
 	ASSERT(prototype && function && body);
 	// Signature is NULL if the function is naked.
@@ -494,13 +494,11 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	}
 
 
-	if (signature)
+	// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
+	FOREACH_IDX(i, Decl *, param, signature->params)
 	{
-		// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
-		FOREACH_IDX(i, Decl *, param, signature->params)
-		{
-			llvm_emit_func_parameter(c, param, prototype->abi_args[i], &arg, i);
-		}
+		if (!param->name && is_naked) continue;
+		llvm_emit_func_parameter(c, param, prototype->abi_args[i], &arg, i);
 	}
 
 	LLVMSetCurrentDebugLocation2(c->builder, NULL);
@@ -516,7 +514,14 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	// Insert a return (and defer) if needed.
 	if (c->current_block && !LLVMGetBasicBlockTerminator(c->current_block))
 	{
-		llvm_emit_return_implicit(c);
+		if (!is_naked)
+		{
+			llvm_emit_return_implicit(c);
+		}
+		else
+		{
+			llvm_emit_unreachable(c);
+		}
 	}
 
 	LLVMBasicBlockRef last_block = LLVMGetLastBasicBlock(c->cur_func.ref);
