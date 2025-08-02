@@ -4,6 +4,7 @@
 
 ### Changes / improvements
 - Support `alias foo = module std::io` module aliasing.
+- Add compile-time `@intlog2` macro to math.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
