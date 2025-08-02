@@ -46,7 +46,6 @@
 - Place output in `out` by default for projects. Use temp folder for building at the command line.
 - Allow absolute paths for `$embed`.
 - Add `@try` and `@try_catch`.
-- Add OpenBSD to `env::INET_DEVICES` and add required socket constants.
 - Assignment evaluation order now right->left, following C++17 and possibly C23.
 
 ### Fixes
