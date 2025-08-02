@@ -136,6 +136,7 @@ macro zip(Allocator allocator, left, right) @nodiscard
 {
 	var $LeftType = $typeof(left[0]);
 	var $RightType = $typeof(right[0]);
+
 	var $Type = Pair { $LeftType, $RightType };
 
 	usz result_len = min(left.len, right.len);
@@ -145,6 +146,9 @@ macro zip(Allocator allocator, left, right) @nodiscard
 	$RightType[] right_clone = allocator::clone_slice(allocator, right);
 
 	foreach (idx, &item : result) *item = { left_clone[idx], right_clone[idx] };
+
+	allocator::free(allocator, left_clone.ptr);
+	allocator::free(allocator, right_clone.ptr);
 
 	return result;
 }
@@ -174,14 +178,39 @@ macro tzip(left, right) @nodiscard => zip(tmem, left, right);
  @require left.len > 0 || right.len > 0 : `At least one array/slice must contain an item.`
  @ensure return.len == max(left.len, right.len)
 *>
-macro zip_longest(Allocator allocator, left, right, void* fill_value = null) @nodiscard
+macro zip_longest(Allocator allocator, left, right, fill_value = EMPTY_MACRO_SLOT) @nodiscard
 {
 	var $LeftType = $typeof(left[0]);
 	var $RightType = $typeof(right[0]);
 	var $Type = Pair { $LeftType, $RightType };
 
-	$LeftType filled_left = (null == fill_value || left.len > right.len) ? ($LeftType){} : *($LeftType*)fill_value;
-	$RightType filled_right = (null == fill_value || right.len > left.len) ? ($RightType){} : *($RightType*)fill_value;
+	$LeftType filled_left;
+	$RightType filled_right;
+
+	$if @is_empty_macro_slot(fill_value):
+		filled_left = 0;
+		filled_right = 0;
+	$else
+		$if @assignable_to(fill_value, $LeftType):
+			filled_left = ($LeftType)fill_value;
+		$else
+			$if types::is_numerical($LeftType):
+				filled_left = 0;
+			$else
+				filled_left = {};
+			$endif
+		$endif
+
+		$if @assignable_to(fill_value, $RightType):
+			filled_right = ($RightType)fill_value;
+		$else
+			$if types::is_numerical($RightType):
+				filled_right = 0;
+			$else
+				filled_right = {};
+			$endif
+		$endif
+	$endif
 
 	usz result_len = max(left.len, right.len);
 	$Type[] result = allocator::alloc_array(allocator, $Type, result_len)[:result_len];
@@ -211,7 +240,8 @@ macro zip_longest(Allocator allocator, left, right, void* fill_value = null) @no
  @require left.len > 0 || right.len > 0 : `At least one array/slice must contain an item.`
  @ensure return.len == max(left.len, right.len)
 *>
-macro tzip_longest(left, right, void* fill_value = null) @nodiscard => zip_longest(tmem, left, right, fill_value);
+macro tzip_longest(left, right, fill_value = EMPTY_MACRO_SLOT) @nodiscard
+	=> zip_longest(tmem, left, right, fill_value);
 
 
 <*
@@ -271,7 +301,7 @@ macro tzip_with(left, right, operation) @nodiscard => zip_with(tmem, left, right
  @require left.len > 0 || right.len > 0 : `At least one array/slice must contain an item.`
  @ensure return.len == max(left.len, right.len)
 *>
-macro zip_with_longest(Allocator allocator, left, right, operation, fill_value = 0) @nodiscard
+macro zip_with_longest(Allocator allocator, left, right, operation, fill_value = EMPTY_MACRO_SLOT) @nodiscard
 {
 	var $Type = $typeof(left[0]);
 
@@ -280,8 +310,13 @@ macro zip_with_longest(Allocator allocator, left, right, operation, fill_value =
 
 	foreach (i, &v : new_arr)
 	{
-		$Type lval = i >= left.len ? fill_value : left[i];
-		$Type rval = i >= right.len ? fill_value : right[i];
+		$if @is_empty_macro_slot(fill_value):
+			$Type lval = i >= left.len ? 0 : left[i];
+			$Type rval = i >= right.len ? 0 : right[i];
+		$else
+			$Type lval = i >= left.len ? ($Type)fill_value : left[i];
+			$Type rval = i >= right.len ? ($Type)fill_value : right[i];
+		$endif
 
 		*v = operation(lval, rval);
 	}
@@ -303,7 +338,8 @@ macro zip_with_longest(Allocator allocator, left, right, operation, fill_value =
  @require left.len > 0 || right.len > 0 : `At least one array/slice must contain an item.`
  @ensure return.len == max(left.len, right.len)
 *>
-macro tzip_with_longest(left, right, operation, fill_value = {}) @nodiscard => zip_with_longest(tmem, left, right, operation, fill_value);
+macro tzip_with_longest(left, right, operation, fill_value = EMPTY_MACRO_SLOT) @nodiscard
+	=> zip_with_longest(tmem, left, right, operation, fill_value);
 
 
 <*
@@ -327,15 +363,13 @@ macro tzip_with_longest(left, right, operation, fill_value = {}) @nodiscard => z
  and stores the end result in-place within the `partial_cipher` slice. This is in contrast to a
  regular `zip_with` which will create a cloned final result and return it.
 
- @param [inout] left
- @param [in] right
+ @param [inout] left : `Slice to store results of applied functor/operation.`
+ @param [in] right : `Slice to apply in the functor/operation.`
  @param operation : "The function to apply. Must have a signature of `$typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
 
- @require @typeis(left, $typeof(right)) : `Both operands must be the same type.`
  @require @typekind(left) == SLICE || @typekind(left) == ARRAY
  @require @typekind(right) == SLICE || @typekind(right) == ARRAY
- @require left.len > 0 : `The destination slice/array cannot be empty.`
- @require right.len >= left.len : `Right side of operation must be >= the destination (left) side; consider using a sub-array of data for the assignment.`
+ @require right.len >= left.len : `Right side length must be >= the destination (left) side; consider using a sub-array of data for the assignment.`
 *>
 macro zip_with_into(left, right, operation)
 {
