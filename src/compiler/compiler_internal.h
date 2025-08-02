@@ -598,6 +598,11 @@ typedef struct
 	};
 } DefineDecl;
 
+typedef union
+{
+	Path *alias_path;
+	Module *module;
+} ModuleAliasDecl;
 
 typedef struct
 {
@@ -690,6 +695,7 @@ typedef struct Decl_
 		Decl** ct_else_decl;
 		Decl** decls;
 		DefineDecl define_decl;
+		ModuleAliasDecl module_alias_decl;
 		EnumConstantDecl enum_constant;
 		ExecDecl exec_decl;
 		Expr* expand_decl;
@@ -1658,6 +1664,7 @@ struct CompilationUnit_
 	Module *module;
 	File *file;
 	Decl **imports;
+	Decl **module_aliases;
 	Decl **public_imports;
 	Decl **types;
 	Decl **functions;
@@ -1877,6 +1884,7 @@ typedef struct CopyStruct_
 typedef struct
 {
 	const char **links;
+	bool link_math;
 } Linking;
 
 typedef struct
@@ -2230,6 +2238,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
 void unit_register_external_symbol(SemaContext *context, Decl *decl);
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
+bool unit_add_alias(CompilationUnit *unit, Decl *decl);
 bool context_set_module_from_filename(ParseContext *context);
 bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters);
 bool context_is_macro(SemaContext *context);

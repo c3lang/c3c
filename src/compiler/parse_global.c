@@ -2149,7 +2149,37 @@ static inline Decl *parse_alias_type(ParseContext *c)
 }
 
 /**
- * define_ident ::= 'define' (IDENT | CONST_IDENT | AT_IDENT) attributes? '=' identifier_alias generic_params?
+ * define_ident ::= 'alias' 'module' IDENT = path
+ */
+static inline Decl *parse_alias_module(ParseContext *c, Decl *decl, TokenType token_type)
+{
+	advance_and_verify(c, TOKEN_MODULE);
+
+	if (token_type != TOKEN_IDENT)
+	{
+		PRINT_ERROR_AT(decl, "A (lower case) module name was expected here.");
+		return poisoned_decl;
+	}
+
+	if (!str_is_valid_lowercase_name(decl->name))
+	{
+		PRINT_ERROR_AT(decl, "The module name must be all lower case.");
+		return poisoned_decl;
+	}
+
+	decl->decl_kind = DECL_ALIAS_PATH;
+
+	Path *path = parse_module_path(c);
+	if (!path) return poisoned_decl;
+
+	decl->module_alias_decl.alias_path = path;
+
+	RANGE_EXTEND_PREV(decl);
+	CONSUME_EOS_OR_RET(poisoned_decl);
+	return decl;
+}
+/**
+ * define_ident ::= 'alias' (IDENT | CONST_IDENT | AT_IDENT) attributes? '=' (('module' path) | identifier_alias generic_params?)
  *
  * identifier_alias ::= path? (IDENT | CONST_IDENT | AT_IDENT)
  */
@@ -2157,7 +2187,6 @@ static inline Decl *parse_alias_ident(ParseContext *c)
 {
 	// 1. Store the beginning of the "alias".
 	advance_and_verify(c, TOKEN_ALIAS);
-
 
 	// 2. At this point we expect an ident or a const token.
 	//    since the Type is handled.
@@ -2182,16 +2211,21 @@ static inline Decl *parse_alias_ident(ParseContext *c)
 	// 3. Set up the "define".
 	Decl *decl = decl_new(DECL_ALIAS, symstr(c), c->span);
 
-	if (decl->name == kw_main)
-	{
-		RETURN_PRINT_ERROR_AT(poisoned_decl, decl, "'main' is reserved and cannot be used as an alias.");
-	}
 	// 4. Advance and consume the '='
 	advance(c);
 
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
+
+	if (tok_is(c, TOKEN_MODULE))
+	{
+		return parse_alias_module(c, decl, alias_type);
+	}
+	if (decl->name == kw_main)
+	{
+		RETURN_PRINT_ERROR_AT(poisoned_decl, decl, "'main' is reserved and cannot be used as an alias.");
+	}
 
 	if (tok_is(c, TOKEN_FN))
 	{
@@ -3169,6 +3203,16 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 		case TOKEN_ALIAS:
 			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_alias(c);
+			if (decl->decl_kind == DECL_ALIAS_PATH)
+			{
+				if (!context_out)
+				{
+					PRINT_ERROR_HERE("'alias module' may not appear inside a compile time statement.");
+					return poisoned_decl;
+				}
+				if (!unit_add_alias(c->unit, decl)) return poisoned_decl;
+				return NULL;
+			}
 			break;
 		case TOKEN_ATTRDEF:
 			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;

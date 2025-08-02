@@ -1,5 +1,17 @@
 # C3C Release Notes
 
+## 0.7.5 Change list
+
+### Changes / improvements
+- Support `alias foo = module std::io` module aliasing.
+- Add compile-time `@intlog2` macro to math.
+
+### Fixes
+- List.remove_at would incorrectly trigger ASAN.
+- With avx512, passing a 512 bit vector in a union would be lowered incorrectly, causing an assert. #2362
+
+### Stdlib changes
+
 ## 0.7.4 Change list
 
 ### Changes / improvements

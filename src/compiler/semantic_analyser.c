@@ -224,38 +224,37 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 		decl->unit = unit;
 		switch (decl->decl_kind)
 		{
-			case DECL_ENUM_CONSTANT:
-			case DECL_DECLARRAY:
-			case DECL_ERASED:
-			case DECL_LABEL:
-				UNREACHABLE
-			case DECL_POISONED:
-			case DECL_IMPORT:
+			case DECL_ALIAS_PATH:
 			case DECL_CT_ASSERT:
 			case DECL_CT_ECHO:
-			case DECL_FNTYPE:
-			case DECL_CT_INCLUDE:
 			case DECL_CT_EXEC:
+			case DECL_CT_INCLUDE:
+			case DECL_FNTYPE:
+			case DECL_IMPORT:
+			case DECL_POISONED:
 				continue;
-			case DECL_ATTRIBUTE:
-				break;
 			case DECL_FAULT:
 				PRINT_ERROR_AT(decl, "Generic modules cannot use 'faultdef', place the declaration in a separate sub module or parent module instead.");
 				decl_poison(decl);
 				break;
 			case DECL_BODYPARAM:
+			case DECL_DECLARRAY:
+			case DECL_ENUM_CONSTANT:
+			case DECL_ERASED:
 			case DECL_GROUP:
+			case DECL_LABEL:
 				UNREACHABLE
 			case DECL_ALIAS:
+			case DECL_ATTRIBUTE:
+			case DECL_BITSTRUCT:
+			case DECL_CONST_ENUM:
 			case DECL_DISTINCT:
 			case DECL_ENUM:
+			case DECL_INTERFACE:
 			case DECL_STRUCT:
 			case DECL_TYPEDEF:
 			case DECL_UNION:
 			case DECL_VAR:
-			case DECL_BITSTRUCT:
-			case DECL_INTERFACE:
-			case DECL_CONST_ENUM:
 				break;
 			case DECL_MACRO:
 			case DECL_FUNC:
