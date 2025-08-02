@@ -107,8 +107,6 @@ fn double Time.diff_hour(time, Time other) => (long)time.diff_us(other) / (doubl
 fn double Time.diff_days(time, Time other) => (long)time.diff_us(other) / (double)DAY;
 fn double Time.diff_weeks(time, Time other) => (long)time.diff_us(other) / (double)WEEK;
 
-fn bool Time.eq(time, Time other) @operator(==) @inline => !time.diff_us(other);
-
 fn double NanoDuration.to_sec(nd) => (double)nd / 1_000_000_000.0;
 fn long NanoDuration.to_ms(nd) => (long)nd / 1_000_000;
 fn Duration NanoDuration.to_duration(nd) => (Duration)nd / 1_000;

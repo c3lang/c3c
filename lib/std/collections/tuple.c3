@@ -1,5 +1,4 @@
 module std::collections::pair{Type1, Type2};
-
 import std::io;
 
 struct Pair (Printable)
@@ -9,7 +8,9 @@ struct Pair (Printable)
 }
 
 fn usz? Pair.to_format(&self, Formatter* f) @dynamic
-	=> f.printf("{ %s, %s }", self.first, self.second);
+{
+	return f.printf("{ %s, %s }", self.first, self.second);
+}
 
 <*
  @param [&out] a
@@ -23,12 +24,14 @@ macro void Pair.unpack(&self, a, b)
 	*b = self.second;
 }
 
-fn bool Pair.equal(self, Pair other) @operator(==)
-	=> self.first == other.first && self.second == other.second;
+fn bool Pair.equal(self, Pair other) @operator(==) @if (types::has_equals(Type1) &&& types::has_equals(Type2))
+{
+	return self.first == other.first && self.second == other.second;
+}
+
 
 
 module std::collections::triple{Type1, Type2, Type3};
-
 import std::io;
 
 struct Triple (Printable)
@@ -39,8 +42,9 @@ struct Triple (Printable)
 }
 
 fn usz? Triple.to_format(&self, Formatter* f) @dynamic
-	=> f.printf("{ %s, %s, %s }", self.first, self.second, self.third);
-
+{
+	return f.printf("{ %s, %s, %s }", self.first, self.second, self.third);
+}
 <*
  @param [&out] a
  @param [&out] b
@@ -56,8 +60,10 @@ macro void Triple.unpack(&self, a, b, c)
 	*c = self.third;
 }
 
-fn bool Triple.equal(self, Triple other) @operator(==)
-	=> self.first == other.first && self.second == other.second && self.third == other.third;
+fn bool Triple.equal(self, Triple other) @operator(==) @if (types::has_equals(Type1) &&& types::has_equals(Type2) &&& types::has_equals(Type3))
+{
+	return self.first == other.first && self.second == other.second && self.third == other.third;
+}
 
 
 module std::collections::tuple{Type1, Type2};
