@@ -11,6 +11,7 @@
 - With avx512, passing a 512 bit vector in a union would be lowered incorrectly, causing an assert. #2362
 
 ### Stdlib changes
+- Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
 
 ## 0.7.4 Change list
 
