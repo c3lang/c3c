@@ -268,6 +268,7 @@ static void linker_setup_macos(const char ***args_ref, Linker linker_type)
 		error_exit("Cannot crosslink MacOS without providing --macossdk.");
 	}
 	linking_add_link(&compiler.linking, "System");
+	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 	add_plain_arg("-syslibroot");
 	add_quote_arg(compiler.build.macos.sysroot);
 	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no_pie");
@@ -406,6 +407,7 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 			add_plain_arg("-nostdlib");
 			return;
 		}
+		if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 		if (compiler.build.debug_info == DEBUG_INFO_FULL)
 		{
 			add_plain_arg("-rdynamic");
@@ -450,6 +452,7 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 	add_concat_file_arg(crt_dir, "crtn.o");
 	add_concat_quote_arg("-L", crt_dir);
 	add_plain_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
+	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 	linking_add_link(&compiler.linking, "pthread");
 	linking_add_link(&compiler.linking, "c");
 	add_plain_arg("-L/usr/lib/");
@@ -525,12 +528,15 @@ static void linker_setup_android(const char ***args_ref, Linker linker_type, boo
 	add_plain_arg(scratch_buffer_copy());
 
 	add_plain_arg("-ldl");
+	if (compiler.linking.link_math) add_plain_arg("-lm");
 	add_plain_arg("-lc");
 }
 
 static void linker_setup_freebsd(const char ***args_ref, Linker linker_type, bool is_dylib)
 {
-	if (linker_type == LINKER_CC) {
+	if (linker_type == LINKER_CC)
+	{
+		if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 		linking_add_link(&compiler.linking, "pthread");
 		linking_add_link(&compiler.linking, "execinfo"); // for backtrace
 		if (compiler.build.debug_info == DEBUG_INFO_FULL)
@@ -573,6 +579,7 @@ static void linker_setup_freebsd(const char ***args_ref, Linker linker_type, boo
 	add_concat_quote_arg("-L", crt_dir);
 	add_plain_arg("--dynamic-linker=/libexec/ld-elf.so.1");
 	linking_add_link(&compiler.linking, "c");
+	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 	linking_add_link(&compiler.linking, "gcc");
 	linking_add_link(&compiler.linking, "gcc_s");
 

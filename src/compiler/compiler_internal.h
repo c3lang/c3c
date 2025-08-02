@@ -1877,6 +1877,7 @@ typedef struct CopyStruct_
 typedef struct
 {
 	const char **links;
+	bool link_math;
 } Linking;
 
 typedef struct
