@@ -4722,7 +4722,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case CONST_STRING:
 		{
 			Type *str_type = type_lowering(expr->type);
-			bool is_array = str_type->type_kind == TYPE_ARRAY;
+			bool is_array = str_type->type_kind == TYPE_ARRAY || (str_type->type_kind == TYPE_VECTOR && type_size(type->array.base) == 1);
 			if (is_array && llvm_is_global_eval(c))
 			{
 				// In the global alloc case, create the byte array.

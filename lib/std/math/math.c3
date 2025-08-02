@@ -7,7 +7,6 @@ import std::math::matrix;
 import std::math::quaternion;
 
 attrdef @MathLibc(name) = @extern(name), @link(env::POSIX, "m");
-attrdef @LinkMath = @link(env::POSIX, "m");
 
 const E = 2.718281828459045235360287471352662497757247093699959574966967627724076630353547594571382178525166427427466;
 const LOG2E = 1.44269504088896340735992468100189214; // log2(e)
@@ -235,14 +234,14 @@ macro asinh(x)
 <*
  @require values::@is_floatlike(x) : `The input must be a floating point value or float vector`
 *>
-macro ceil(x) @LinkMath => $$ceil(x);
+macro ceil(x) => $$ceil(x);
 
 <*
  Ceil for compile time evaluation.
 
  @require @typeis($input, double) || @typeis($input, float) : "Only float and double may be used"
 *>
-macro @ceil($input) @const @LinkMath => $$ceil($input);
+macro @ceil($input) @const => $$ceil($input);
 
 <*
  Constrain the value to lie within the given interval.
@@ -256,18 +255,18 @@ macro @ceil($input) @const @LinkMath => $$ceil($input);
  @require values::@assign_to(lower, x) : `The lower bound must be convertable to the value type.`
  @require values::@assign_to(upper, x) : `The upper bound must be convertable to the value type.`
 *>
-macro clamp(x, lower, upper) @LinkMath => $$max(($typeof(x))lower, $$min(x, ($typeof(x))upper));
+macro clamp(x, lower, upper) => $$max(($typeof(x))lower, $$min(x, ($typeof(x))upper));
 
 <*
  @require values::@is_promotable_to_floatlike(mag) : `The input must be a number value or float vector`
  @require $defined(($typeof(values::promote_int(mag)))mag) : `It's not possible to cast the sign to the type of the magnitude`
 *>
-macro copysign(mag, sgn) @LinkMath => $$copysign(values::promote_int_same(mag, sgn), ($typeof(values::promote_int_same(mag, sgn)))sgn);
+macro copysign(mag, sgn) => $$copysign(values::promote_int_same(mag, sgn), ($typeof(values::promote_int_same(mag, sgn)))sgn);
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro cos(x) @LinkMath => $$cos(values::promote_int(x));
+macro cos(x) => $$cos(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
@@ -297,17 +296,17 @@ macro cotanh(x) => (exp(2.0 * x) + 1.0) / (exp(2.0 * x) - 1.0);
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro exp(x) @LinkMath => $$exp(values::promote_int(x));
+macro exp(x) => $$exp(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro exp2(x) @LinkMath => $$exp2(values::promote_int(x));
+macro exp2(x) => $$exp2(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro floor(x) @LinkMath => $$floor(values::promote_int(x));
+macro floor(x) => $$floor(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(a) : `The input must be a number or float vector`
@@ -316,7 +315,7 @@ macro floor(x) @LinkMath => $$floor(values::promote_int(x));
  @require values::@is_same_vector_type(a, b) : `The input types must be equal`
  @require values::@is_same_vector_type(a, c) : `The input types must match`
 *>
-macro fma(a, b, c) @LinkMath => $$fma(a, b, c);
+macro fma(a, b, c) => $$fma(a, b, c);
 
 
 <*
@@ -329,13 +328,13 @@ macro hypot(x, y) => sqrt(sqr(x) + sqr(y));
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
 *>
-macro ln(x) @LinkMath => $$log(values::promote_int(x));
+macro ln(x) => $$log(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
  @require values::@is_promotable_to_floatlike(base) : `The base must be a number or a float vector`
 *>
-macro log(x, base) @LinkMath
+macro log(x, base)
 {
 	return $$log(values::promote_int_same(x, base)) / $$log(values::promote_int_same(base, x));
 }
@@ -343,7 +342,7 @@ macro log(x, base) @LinkMath
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
 *>
-macro log2(x) @LinkMath => $$log2(values::promote_int(x));
+macro log2(x) => $$log2(values::promote_int(x));
 
 <*
  @require values::@is_int($x) : `The input value must be an integer.`
@@ -365,7 +364,7 @@ macro @intlog2($x)
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
 *>
-macro log10(x) @LinkMath => $$log10(values::promote_int(x));
+macro log10(x) => $$log10(values::promote_int(x));
 
 <*
  @require types::is_numerical($typeof(x)) : `The input must be a floating point value or float vector`
@@ -1112,21 +1111,21 @@ fn float _frexpf(float x, int* e)
 	}
 }
 
-macro overflow_add_helper(x, y) @local @LinkMath
+macro overflow_add_helper(x, y) @local
 {
 	$typeof(x) res @noinit;
 	if ($$overflow_add(x, y, &res)) return OVERFLOW?;
 	return res;
 }
 
-macro overflow_sub_helper(x, y) @local @LinkMath
+macro overflow_sub_helper(x, y) @local
 {
 	$typeof(x) res @noinit;
 	if ($$overflow_sub(x, y, &res)) return OVERFLOW?;
 	return res;
 }
 
-macro overflow_mul_helper(x, y) @local @LinkMath
+macro overflow_mul_helper(x, y) @local
 {
 	$typeof(x) res @noinit;
 	if ($$overflow_mul(x, y, &res)) return OVERFLOW?;
@@ -1140,7 +1139,7 @@ macro overflow_mul_helper(x, y) @local @LinkMath
  @require values::@is_flat_intlike(a) &&& values::@is_flat_intlike(b) : "a and b must both be integer or integer vector based"
  @require $defined(*out) &&& values::@is_same_type(*out, a) : "out must be a pointer of the same type as a and b"
 *>
-macro bool overflow_add(a, b, out) @LinkMath => $$overflow_add(a, b, out);
+macro bool overflow_add(a, b, out) => $$overflow_add(a, b, out);
 
 <*
  @param [&out] out : "Where the result of the subtraction is stored"
@@ -1149,7 +1148,7 @@ macro bool overflow_add(a, b, out) @LinkMath => $$overflow_add(a, b, out);
  @require values::@is_flat_intlike(a) &&& values::@is_flat_intlike(b) : "a and b must both be integer or integer vector based"
  @require $defined(*out) &&& values::@is_same_type(*out, a) : "out must be a pointer of the same type as a and b"
 *>
-macro bool overflow_sub(a, b, out) @LinkMath => $$overflow_sub(a, b, out);
+macro bool overflow_sub(a, b, out) => $$overflow_sub(a, b, out);
 
 <*
  @param [&out] out : "Where the result of the multiplication is stored"
@@ -1158,7 +1157,7 @@ macro bool overflow_sub(a, b, out) @LinkMath => $$overflow_sub(a, b, out);
  @require values::@is_flat_intlike(a) &&& values::@is_flat_intlike(b) : "a and b must both be integer or integer vector based"
  @require $defined(*out) &&& values::@is_same_type(*out, a) : "out must be a pointer of the same type as a and b"
 *>
-macro bool overflow_mul(a, b, out) @LinkMath => $$overflow_mul(a, b, out);
+macro bool overflow_mul(a, b, out) => $$overflow_mul(a, b, out);
 
 <*
  @require types::is_vector($Type) || ($Type.kindof == ARRAY &&& types::is_numerical($typefrom($Type.inner)))

@@ -1,5 +1,16 @@
 # C3C Release Notes
 
+## 0.7.5 Change list
+
+### Changes / improvements
+- Support `alias foo = module std::io` module aliasing.
+
+### Fixes
+- List.remove_at would incorrectly trigger ASAN.
+- With avx512, passing a 512 bit vector in a union would be lowered incorrectly, causing an assert. #2362
+
+### Stdlib changes
+
 ## 0.7.4 Change list
 
 ### Changes / improvements
@@ -90,6 +101,7 @@
 - Not setting android-ndk resulted in a "set ndk-path" error.
 - Lambda deduplication would be incorrect when generated at the global scope.
 - Disallow accessing parameters in a naked function, as well as `return`, this fixes #1955.
+- Assigning string literal to char[<*>] stores pointer rather than characters. #2357
 
 ### Stdlib changes
 - Improve contract for readline. #2280
