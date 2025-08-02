@@ -13,6 +13,20 @@ fn void time_diff()
 	test::eq(t, t2);
 }
 
+fn void time_eq()
+{
+	Time t = time::now();
+	Time t2 = t;
+
+	assert(t == t2);
+
+	t2 += time::US;
+	assert(t != t2);
+
+	t2 -= time::US;
+	assert(t == t2);
+}
+
 fn void clock_diff()
 {
 	Clock c = clock::now();

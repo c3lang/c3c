@@ -49,6 +49,44 @@ fn void test_parse_and_add()
     test::eq(x.day, 4);
 }
 
+fn void datetime_eq()
+{
+	DateTime d = datetime::from_date(1973, APRIL, 27, 12, 23, 55, 34);
+	DateTime d2 = d;
+
+	assert(d == d2);
+
+	d2 = d2.add_days(6);
+	assert(d != d2);
+
+	d2 = d2.add_days(-5);
+	assert(d != d2);
+
+	d2 = d2.add_days(-1);
+	assert(d == d2);
+}
+
+fn void tzdatetime_eq()
+{
+	int offset1_hours = 7;
+	int offset2_hours = -1;
+
+	TzDateTime d1 = datetime::from_date_tz(2022, OCTOBER, 15, 9, 07, 45, gmt_offset: offset1_hours * 3600);
+	TzDateTime d2 = datetime::from_date_tz(2022, OCTOBER, 15, 1, 07, 45, gmt_offset: offset2_hours * 3600);
+
+	assert(d1 == d2);
+
+	d2 = d2.add_years(30);
+	assert(d1 != d2);
+
+	offset1_hours = 12;
+	offset2_hours = -10;
+
+	d1 = datetime::from_date_tz(2022, OCTOBER, 15, 20, 15, 31, gmt_offset: offset1_hours * 3600);
+	d2 = datetime::from_date_tz(2022, OCTOBER, 14, 22, 15, 31, gmt_offset: offset2_hours * 3600);
+	assert(d1 == d2);
+}
+
 fn void test_timezone()
 {
 	int offset_hours = 7;
