@@ -1,0 +1,41 @@
+// #target: macos-x64
+// #opt: --x86cpu=avx512
+module abi;
+
+union Mask64
+{
+    bool[<64>] m;
+    ulong ul;
+}
+
+fn Mask64 make_mask(ulong n)
+{
+    Mask64 mask;
+    mask.ul = n;
+    return mask;
+}
+
+fn int main()
+{
+    make_mask(20);
+    return 0;
+}
+
+/* #expect: abi.ll
+
+define void @abi.make_mask(ptr noalias sret(%Mask64) align 64 %0, i64 %1) #0 {
+entry:
+  %mask = alloca %Mask64, align 64
+  call void @llvm.memset.p0.i64(ptr align 64 %mask, i8 0, i64 64, i1 false)
+  store i64 %1, ptr %mask, align 64
+  call void @llvm.memcpy.p0.p0.i32(ptr align 64 %0, ptr align 64 %mask, i32 64, i1 false)
+  ret void
+}
+
+; Function Attrs: nounwind uwtable
+define i32 @main() #0 {
+entry:
+  %sretparam = alloca %Mask64, align 64
+  call void @abi.make_mask(ptr sret(%Mask64) align 64 %sretparam, i64 20)
+  ret i32 0
+}

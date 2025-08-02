@@ -7,6 +7,7 @@
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
+- With avx512, passing a 512 bit vector in a union would be lowered incorrectly, causing an assert. #2362
 
 ### Stdlib changes
 
