@@ -1,10 +1,15 @@
 module std::collections::pair{Type1, Type2};
 
-struct Pair
+import std::io;
+
+struct Pair (Printable)
 {
 	Type1 first;
 	Type2 second;
 }
+
+fn usz? Pair.to_format(&self, Formatter* f) @dynamic
+	=> f.printf("{ %s, %s }", self.first, self.second);
 
 <*
  @param [&out] a
@@ -24,12 +29,17 @@ fn bool Pair.equal(self, Pair other) @operator(==)
 
 module std::collections::triple{Type1, Type2, Type3};
 
-struct Triple
+import std::io;
+
+struct Triple (Printable)
 {
 	Type1 first;
 	Type2 second;
 	Type3 third;
 }
+
+fn usz? Triple.to_format(&self, Formatter* f) @dynamic
+	=> f.printf("{ %s, %s, %s }", self.first, self.second, self.third);
 
 <*
  @param [&out] a
