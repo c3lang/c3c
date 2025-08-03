@@ -14,11 +14,14 @@ static Vmem arena;
 uintptr_t arena_zero;
 static Vmem char_arena;
 
+#define START_VMEM_SIZE (sizeof(size_t) == 4 ? 1024 : 4096)
+
 void memory_init(size_t max_mem)
 {
 	if (max_mem) vmem_set_max_limit(max_mem);
-	vmem_init(&arena, 4096);
-	vmem_init(&char_arena, 2048);
+
+	vmem_init(&arena, START_VMEM_SIZE);
+	vmem_init(&char_arena, START_VMEM_SIZE / 2);
 	allocations_done = 0;
 	arena_zero = (uintptr_t)arena.ptr;
 	vmem_alloc(&arena, 16);
@@ -73,7 +76,7 @@ void run_arena_allocator_tests(void)
 	ASSERT(calloc_arena(10) != calloc_arena(10) && "Expected different values...");
 	printf("-- Tested basic allocation - OK.\n");
 	ASSERT(arena.allocated == 48 && "Expected allocations rounded to next 16 bytes");
-	calloc_arena(1);
+	(void)calloc_arena(1);
 	ASSERT(arena.allocated == 64 && "Expected allocations rounded to next 16 bytes");
 	printf("-- Tested allocation alignment - OK.\n");
 	ASSERT(calloc_arena(1024 * 1024) != NULL && "Expected allocation to work");

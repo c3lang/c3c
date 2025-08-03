@@ -40,6 +40,8 @@ static const char *out_name(void)
 	return NULL;
 }
 
+#define START_VMEM_SIZE (sizeof(size_t) == 4 ? 1024 : 4096)
+
 void compiler_init(BuildOptions *build_options)
 {
 	// Process --path
@@ -76,13 +78,14 @@ void compiler_init(BuildOptions *build_options)
 	compiler.context.module_list = NULL;
 	compiler.context.generic_module_list = NULL;
 	compiler.context.method_extensions = NULL;
-	vmem_init(&ast_arena, 4096);
+
+	vmem_init(&ast_arena, START_VMEM_SIZE);
 	ast_calloc();
-	vmem_init(&expr_arena, 4096);
+	vmem_init(&expr_arena, START_VMEM_SIZE);
 	expr_calloc();
-	vmem_init(&decl_arena, 4096);
+	vmem_init(&decl_arena, START_VMEM_SIZE);
 	decl_calloc();
-	vmem_init(&type_info_arena, 4096);
+	vmem_init(&type_info_arena, START_VMEM_SIZE);
 	type_info_calloc();
 	// Create zero index value.
 	if (build_options->std_lib_dir)
