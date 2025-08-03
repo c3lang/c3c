@@ -688,6 +688,10 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	// 1. We mark that the current scope ends with a jump.
 	SET_JUMP_END(context, statement);
 
+	if (context->call_env.is_naked_fn)
+	{
+		RETURN_SEMA_ERROR(statement, "'return' is not allowed in '@naked' functions.");
+	}
 	Type *expected_rtype = context->rtype;
 	ASSERT(expected_rtype && "We should always have known type from a function return.");
 
@@ -3309,6 +3313,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	context->original_module = NULL;
 	context->call_env = (CallEnv) {
 		.current_function = func,
+		.is_naked_fn = func->func_decl.attr_naked,
 		.kind = CALL_ENV_FUNCTION,
 		.pure = func->func_decl.signature.attrs.is_pure,
 		.ignore_deprecation = func->allow_deprecated || (func->resolved_attributes && func->attrs_resolved && func->attrs_resolved->deprecated && func->resolved_attributes && func->attrs_resolved->deprecated)
@@ -3353,7 +3358,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		bool is_naked = func->func_decl.attr_naked;
 		if (!is_naked) sema_append_contract_asserts(assert_first, body);
 		Type *canonical_rtype = type_no_optional(prototype->rtype)->canonical;
-		if (has_ensures && type_is_void(canonical_rtype))
+		if (!is_naked && has_ensures && type_is_void(canonical_rtype))
 		{
 			AstId* append_pos = &body->compound_stmt.first_stmt;
 			if (*append_pos)
@@ -3372,7 +3377,7 @@ NEXT:
 		ASSERT_SPAN(func,context->active_scope.depth == 1);
 		if (!context->active_scope.end_jump.active)
 		{
-			if (canonical_rtype != type_void)
+			if (canonical_rtype != type_void && !is_naked)
 			{
 				RETURN_SEMA_ERROR(func, "Missing return statement at the end of the function.");
 			}

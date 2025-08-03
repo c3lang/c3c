@@ -1,5 +1,22 @@
 # C3C Release Notes
 
+## 0.7.5 Change list
+
+### Changes / improvements
+- Support `alias foo = module std::io` module aliasing.
+- Add compile-time `@intlog2` macro to math.
+
+### Fixes
+- List.remove_at would incorrectly trigger ASAN.
+- With avx512, passing a 512 bit vector in a union would be lowered incorrectly, causing an assert. #2362
+- Codegen error in `if (try x = (true ? io::EOF? : 1))`, i.e. using if-try with a known Empty.
+- Codegen error in `if (try x = (false ? io::EOF? : 1))`, i.e. using if-try with a CT known value.
+- Reduce allocated Vmem for the compiler on 32 bit machines.
+
+### Stdlib changes
+- Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
+- Add OpenBSD to `env::INET_DEVICES` and add required socket constants.
+
 ## 0.7.4 Change list
 
 ### Changes / improvements
@@ -30,6 +47,10 @@
 - '$assignable' is deprecated.
 - Deprecate allocator::heap() and allocator::temp()
 - Add `thread::fence` providing a thread fence.
+- Place output in `out` by default for projects. Use temp folder for building at the command line.
+- Allow absolute paths for `$embed`.
+- Add `@try` and `@try_catch`.
+- Assignment evaluation order now right->left, following C++17 and possibly C23.
 
 ### Fixes
 - mkdir/rmdir would not work properly with substring paths on non-windows platforms.
@@ -77,6 +98,15 @@
 - Using @noreturn in a short body macro would not work properly #2326.
 - Bug when reporting error in a macro return would crash the compiler #2326.
 - Short body return expression would not have the correct span.
+- Fix issue where recursively creating a dir would be incorrectly marked as a failure the first time.
+- `@format` did not work correctly with macros #2341.
+- Crash when parsing recursive type declaration #2345.
+- Remove unnecessary "ret" in naked functions #2344.
+- Lambdas now properly follow its attributes #2346.
+- Not setting android-ndk resulted in a "set ndk-path" error.
+- Lambda deduplication would be incorrect when generated at the global scope.
+- Disallow accessing parameters in a naked function, as well as `return`, this fixes #1955.
+- Assigning string literal to char[<*>] stores pointer rather than characters. #2357
 
 ### Stdlib changes
 - Improve contract for readline. #2280
@@ -92,6 +122,8 @@
 - Added `Ref` and `RefCounted` experimental functionality.
 - Added `Volatile` generic type.
 - Added `UnalignedRef` generic type.
+- Added `HashSet` generic type.
+- Added `LinkedHashSet` and `LinkedHashMap` generic types.
 - Add String conversion functions snake_case -> PascalCase and vice versa.
 
 ## 0.7.3 Change list

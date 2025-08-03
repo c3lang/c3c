@@ -36,8 +36,8 @@ faultname_ok:                                     ; preds = %entry
   br label %faultname_exit
 
 faultname_exit:                                   ; preds = %faultname_ok, %faultname_no
-  %faultname = phi ptr [ %faultname_zero, %faultname_no ], [ %3, %faultname_ok ]
-  %4 = insertvalue %any undef, ptr %faultname, 0
+  %faultname.phi = phi ptr [ %faultname_zero, %faultname_no ], [ %3, %faultname_ok ]
+  %4 = insertvalue %any undef, ptr %faultname.phi, 0
   %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 16
   store %any %5, ptr %ptradd, align 16
