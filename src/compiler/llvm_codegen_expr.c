@@ -4263,18 +4263,26 @@ void llvm_emit_try_assign_try_catch(GenContext *c, bool is_try, BEValue *be_valu
 	// 6. If we haven't jumped yet, do it here (on error) to the catch block.
 	llvm_value_fold_optional(c, be_value);
 
-	// 7. If we have a variable, then we make the store.
-	if (var_addr)
+	// 7. Store the success block.
+	LLVMBasicBlockRef success_block = llvm_get_current_block_if_in_use(c);
+
+	// 8. If we have a variable, then we make the store.
+	if (success_block && var_addr)
 	{
 		ASSERT(is_try && "Storing will only happen on try.");
 		llvm_store(c, var_addr, be_value);
 	}
 
-	// 8. Restore the error stack.
+	// 9. Restore the error stack.
 	POP_CATCH();
 
-	// 9. Store the success block.
-	LLVMBasicBlockRef success_block = c->current_block;
+	// 10. Special handling if no success.
+	if (!success_block)
+	{
+		llvm_emit_block(c, catch_block);
+		llvm_value_set(be_value, LLVMConstInt(c->bool_type, is_try ? 0 : 1, false), type_bool);
+		return;
+	}
 
 	// 10. Jump to the phi
 	llvm_emit_br(c, phi_catch);
