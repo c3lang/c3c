@@ -16,6 +16,8 @@
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
 - Add OpenBSD to `env::INET_DEVICES` and add required socket constants.
+- Added `FileMmap` to manage memory mapped files.
+- Add `vm::mmap_file` to memory map a file.
 
 ## 0.7.4 Change list
 

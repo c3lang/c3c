@@ -22,10 +22,12 @@ fn char[] FileMmap.bytes(&self)
 <*
   Destroys the underlyng VirtualMemory object ie. calls munmap()"
 *>
-fn void? FileMmap.destroy(&self)
+fn void? FileMmap.destroy(&self) @maydiscard
 {
-	self.file.close()!;
-	self.vm.destroy()!;
+	fault err1 = @catch(self.file.close());
+	fault err2 = @catch(self.vm.destroy());
+	if (err1) return err1?;
+	if (err2) return err2?;
 }
 
 module std::io::file @if(env::LIBC &&& env::POSIX);
@@ -63,7 +65,7 @@ fn mmap::FileMmap? mmap_file(File file, usz offset = 0, usz len = 0, vm::Virtual
 	void* ptr = vm::mmap_file(file.fd(), map_len, map_offset, access, shared)!;
 
 	// FileMmap does not own the supplied file
-	return {(File){}, {ptr, map_len, access}, page_offset, len};
+	return {{}, {ptr, map_len, access}, page_offset, len};
 }
 
 <*
@@ -79,6 +81,7 @@ fn mmap::FileMmap? mmap_file(File file, usz offset = 0, usz len = 0, vm::Virtual
 fn mmap::FileMmap? mmap_open(String filename, String mode, usz offset = 0, usz len = 0, vm::VirtualMemoryAccess access = READ, bool shared = false)
 {
 	File file = open(filename, mode)!;
+	defer catch (void)file.close();
 	FileMmap mm = mmap_file(file, offset, len, access, shared)!;
 
 	// FileMmap owns the file and it will close it on destroy()
