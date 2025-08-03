@@ -10,6 +10,7 @@
 - List.remove_at would incorrectly trigger ASAN.
 - With avx512, passing a 512 bit vector in a union would be lowered incorrectly, causing an assert. #2362
 - Codegen error in `if (try x = (true ? io::EOF? : 1))`, i.e. using if-try with a known Empty.
+- Codegen error in `if (try x = (false ? io::EOF? : 1))`, i.e. using if-try with a CT known value.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.

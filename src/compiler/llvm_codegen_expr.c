@@ -4284,8 +4284,15 @@ void llvm_emit_try_assign_try_catch(GenContext *c, bool is_try, BEValue *be_valu
 		return;
 	}
 
+	if (llvm_basic_block_is_unused(catch_block))
+	{
+		llvm_value_set(be_value, LLVMConstInt(c->bool_type, is_try ? 1 : 0, false), type_bool);
+		return;
+	}
+
 	// 10. Jump to the phi
 	llvm_emit_br(c, phi_catch);
+
 
 	// 11. Emit the catch and jump.
 	llvm_emit_block(c, catch_block);
