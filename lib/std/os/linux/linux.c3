@@ -89,6 +89,35 @@ struct Linux_Dl_info
 	void*       dli_saddr;     /* Address of nearest symbol */
 }
 
+alias Dl_iterate_phdr_callback64 = fn CInt(Linux_dl_phdr_info_64*, usz, void*);
+alias Dl_iterate_phdr_callback32 = fn CInt(Linux_dl_phdr_info_32*, usz, void*);
+extern fn CInt dl_iterate_phdr64(Dl_iterate_phdr_callback64 callback, void* data);
+extern fn CInt dl_iterate_phdr32(Dl_iterate_phdr_callback32 callback, void* data);
+
+struct Linux_dl_phdr_info_64
+{
+	Elf64_Addr  dlpi_addr;
+	ZString     dlpi_name;
+	Elf64_Phdr* dlpi_phdr;
+	Elf64_Half  dlpi_phnum;
+	ulong       dlpi_adds;
+	ulong       dlpi_subs;
+	usz         dlpi_tsl_modid;
+	void*       dlpi_tls_data;
+}
+
+struct Linux_dl_phdr_info_32
+{
+	Elf32_Addr  dlpi_addr;
+	ZString     dlpi_name;
+	Elf32_Phdr* dlpi_phdr;
+	Elf32_Half  dlpi_phnum;
+	ulong       dlpi_adds;
+	ulong       dlpi_subs;
+	usz         dlpi_tsl_modid;
+	void*       dlpi_tls_data;
+}
+
 fn ulong? elf_module_image_base(String path) @local
 {
 	File file = file::open(path, "rb")!;
