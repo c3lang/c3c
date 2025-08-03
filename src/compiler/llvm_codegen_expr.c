@@ -1271,6 +1271,8 @@ static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr 
 
 void llvm_set_phi(LLVMValueRef phi, LLVMValueRef val1, LLVMBasicBlockRef block1, LLVMValueRef val2, LLVMBasicBlockRef block2)
 {
+	ASSERT(!llvm_basic_block_is_unused(block1));
+	ASSERT(!llvm_basic_block_is_unused(block2));
 	LLVMValueRef vals[2] = { val1, val2 };
 	LLVMBasicBlockRef blocks[2] = { block1, block2 };
 	LLVMAddIncoming(phi, vals, blocks, 2);
@@ -1291,6 +1293,21 @@ void llvm_new_phi(GenContext *c, BEValue *value, const char *name, Type *type, L
 			assert(other_type == c->bool_type);
 			val2 = LLVMBuildZExt(c->builder, val2, ret_type, "");
 		}
+	}
+	if (llvm_basic_block_is_unused(block1))
+	{
+		if (llvm_basic_block_is_unused(block2))
+		{
+			llvm_value_set(value, llvm_get_zero_raw(ret_type), type);
+			return;
+		}
+		llvm_value_set(value, val2, type);
+		return;
+	}
+	if (llvm_basic_block_is_unused(block2))
+	{
+		llvm_value_set(value, val1, type);
+		return;
 	}
 	LLVMValueRef phi = LLVMBuildPhi(c->builder, ret_type, name);
 	llvm_set_phi(phi, val1, block1, val2, block2);
@@ -3429,6 +3446,10 @@ static void llvm_emit_slice_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	LLVMValueRef failure = LLVMConstInt(c->bool_type, want_match ? 0 : 1, false);
 	LLVMValueRef logic_values[3] = { success, failure, failure };
 	LLVMBasicBlockRef blocks[3] = { all_match_block, no_match_block, match_fail_block };
+	for (int i = 0; i < 3; i++)
+	{
+		ASSERT(!llvm_basic_block_is_unused(blocks[i]));
+	}
 	LLVMAddIncoming(phi, logic_values, blocks, 3);
 
 	llvm_value_set(be_value, phi, type_bool);
@@ -6666,9 +6687,9 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			LLVMValueRef fault_data = LLVMBuildIntToPtr(c->builder, be_value->value, c->ptr_type, "");
 			llvm_emit_br(c, exit_block);
 			llvm_emit_block(c, exit_block);
-			LLVMValueRef phi = LLVMBuildPhi(c->builder, c->ptr_type, "faultname");
-			llvm_set_phi(phi, zero.value, zero_block, fault_data, ok_block);
-			llvm_value_set_address_abi_aligned(c, be_value, phi, type_chars);
+
+			llvm_new_phi(c, be_value, "faultname.phi", type_chars, zero.value, zero_block, fault_data, ok_block);
+			llvm_value_set_address_abi_aligned(c, be_value, be_value->value, type_chars);
 			return;
 		}
 		case ACCESS_ENUMNAME:
