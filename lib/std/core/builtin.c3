@@ -39,20 +39,24 @@ macro @is_valid_macro_slot(#arg) @const @builtin => !@typeis(#arg, EmptySlot);
 macro @rnd() @const @builtin => $$rnd();
 
 /*
- Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
+ Use `NO_MORE_ELEMENT` when reading the end of an iterator, or accessing a result out of bounds.
 */
 faultdef NO_MORE_ELEMENT @builtin;
 
 /*
- Use `SearchResult` when trying to return a value from some collection but the element is missing.
+ Use `NOT_FOUND` when trying to return a value from some collection but the element is missing.
 */
 faultdef NOT_FOUND @builtin;
 
 /*
- Use `CastResult` when an attempt at conversion fails.
+ Use `TYPE_MISMATCH` when an attempt at conversion fails.
 */
 faultdef TYPE_MISMATCH @builtin;
 
+/*
+ Use `CAPACITY_EXCEEDED` when trying to add to a bounded list or similar.
+*/
+faultdef CAPACITY_EXCEEDED @builtin;
 
 alias VoidFn = fn void();
 
