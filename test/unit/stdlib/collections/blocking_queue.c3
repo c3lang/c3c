@@ -180,7 +180,6 @@ fn void test_bounded_queue() @test
 	assert(q.is_empty());
 	(void) q.free();
 }
-
 // Track produced and consumed counts
 int produced = 0;
 int consumed = 0;
@@ -194,22 +193,25 @@ fn void test_timeout_operations_threaded() @test
 	Thread[THREAD_COUNT] consumers;
 
 	// Create threads
-	foreach (i, &thread: producers) {
-		assert(@ok(thread.create(fn int(void* arg) {
+	foreach (i, &thread: producers)
+	{
+		thread.create(fn int(void* arg) {
 			TestQueue* q = (TestQueue*)arg;
 			for (int i = 0; i < ITEMS_PER_THREAD; i++)
 			{
-				while (@catch(q.poll_timeout(time::MS * 10)) == thread::WAIT_TIMEOUT)
+				while (@catch(q.poll_timeout(time::MS * 10)))
 				{
 					// Retry if timeout occurs
 				}
 				atomic::fetch_add(&consumed, 1);
 			}
 			return 0;
-		}, &q)));
+		}, &q)!!;
 	}
-	foreach (i, &thread: consumers) {
-		assert(@ok(thread.create(fn int(void* arg) {
+	foreach (i, &thread: consumers)
+	{
+		thread.create(fn int(void* arg)
+		{
 			TestQueue* q = (TestQueue*)arg;
 			for (int i = 0; i < ITEMS_PER_THREAD; i++)
 			{
@@ -220,30 +222,34 @@ fn void test_timeout_operations_threaded() @test
 				atomic::fetch_add(&produced, 1);
 			}
 			return 0;
-		}, &q)));
+		}, &q)!!;
 	}
 
 	// Wait with timeout
 	bool all_ok = true;
 	Clock timer = clock::now();
-	foreach (i, &thread: producers) {
-		if (timer.to_now() > (NanoDuration)5000000000) {
+	foreach (i, &thread: producers)
+	{
+		if (timer.to_now() > time::sec(5).to_nano())
+		{
 			all_ok = false;
 			break;
 		}
-		all_ok &= ((thread.join()??1) == 0);
+		all_ok &= (thread.join() ?? 1) == 0;
 	}
-	foreach (i, &thread: consumers) {
-		if (timer.to_now() > (NanoDuration)5000000000) {
+	foreach (i, &thread: consumers)
+	{
+		if (timer.to_now() > time::sec(5).to_nano())
+		{
 			all_ok = false;
 			break;
 		}
-		all_ok &= ((thread.join()??1) == 0);
+		all_ok &= (thread.join() ?? 1) == 0;
 	}
 
 	// Verify counts
 	assert(all_ok);
 	assert(produced == consumed + q.size(), "Production/consumption mismatch");
 	assert(q.is_empty());
-	(void) q.free();
+	q.free();
 }

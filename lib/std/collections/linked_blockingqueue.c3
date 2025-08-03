@@ -201,14 +201,12 @@ fn Value? LinkedBlockingQueue.poll_timeout(&self, Duration timeout)
 		// Use while loop to handle spurious wakeups
 		if (!self.count)
 		{
-			Clock start = clock::now();
-			Clock end = start + timeout;
+			Time start = time::now();
+			Time end = start + timeout;
 			while (!self.count)
 			{
-				NanoDuration diff = end - clock::now();
-				Duration d = diff.to_duration();
-				if (d <= time::DURATION_ZERO) break;
-				(void)self.not_empty.wait_timeout(&self.lock, timeout);
+        		if (end <= time::now()) break;
+        		if (catch self.not_empty.wait_until(&self.lock, end)) break;
 			}
 			if (!self.count) return NO_MORE_ELEMENT?;
 		}
@@ -288,8 +286,13 @@ fn void? LinkedBlockingQueue.push_timeout(&self, Value value, Duration timeout)
 	{
 		if (self.capacity > 0 && self.count >= self.capacity)
 		{
-			self.not_full.wait_timeout(&self.lock, timeout) ?? CAPACITY_EXCEEDED?!;
-			// Recheck after wait
+			Time start = time::now();
+			Time end = start + timeout;
+        	while (self.capacity > 0 && self.count >= self.capacity)
+			{
+        		if (end <= time::now()) break;
+				if (catch self.not_empty.wait_until(&self.lock, end)) break;
+			}
 			if (self.capacity > 0 && self.count >= self.capacity) return CAPACITY_EXCEEDED?;
 		}
 
