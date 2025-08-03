@@ -311,6 +311,7 @@ fn void? NativeConditionVariable.wait(&cond, NativeMutex* mtx) @inline
 
 <*
  @require mtx.initialized : "Mutex was not initialized"
+  @return? thread::WAIT_TIMEOUT, thread::WAIT_FAILED
 *>
 fn void? NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms) @inline
 {
@@ -320,6 +321,7 @@ fn void? NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
 
 <*
  @require mtx.initialized : "Mutex was not initialized"
+  @return? thread::WAIT_TIMEOUT, thread::WAIT_FAILED
 *>
 fn void? NativeConditionVariable.wait_timeout_duration(&cond, NativeMutex* mtx, Duration duration) @inline
 {
@@ -331,6 +333,7 @@ fn void? NativeConditionVariable.wait_timeout_duration(&cond, NativeMutex* mtx, 
 
 <*
  @require mtx.initialized : "Mutex was not initialized"
+  @return? thread::WAIT_TIMEOUT, thread::WAIT_FAILED
 *>
 fn void? NativeConditionVariable.wait_until(&cond, NativeMutex* mtx, Time time) @inline
 {
