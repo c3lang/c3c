@@ -339,6 +339,8 @@ macro bool is_same_vector_type($Type1, $Type2) @const
 	$endif
 }
 
+macro bool has_equals($Type) @const => $defined(($Type){} == ($Type){});
+
 macro bool is_equatable_type($Type) @const
 {
 	$if $defined($Type.less) || $defined($Type.compare_to) || $defined($Type.equals):

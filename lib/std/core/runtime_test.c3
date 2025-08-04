@@ -171,6 +171,11 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	usz max_name;
 	bool sort_tests = true;
 	bool check_leaks = true;
+	if (!tests.len)
+	{
+		io::printn("There are no test units to run.");
+		return true;   // no tests == technically a pass
+	}
 	foreach (&unit : tests)
 	{
 		if (max_name < unit.name.len) max_name = unit.name.len;
@@ -305,7 +310,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		}
 		mem.free();
 	}
-	io::printfn("\n%d test%s run.\n", test_count-tests_skipped, test_count > 1 ? "s" : "");
+	io::printfn("\n%d test%s run.\n", test_count-tests_skipped, test_count != 1 ? "s" : "");
 
 	int n_failed = test_count - tests_passed - tests_skipped;
 	io::printf("Test Result: %s%s%s: ",

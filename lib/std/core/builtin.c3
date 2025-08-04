@@ -39,20 +39,24 @@ macro @is_valid_macro_slot(#arg) @const @builtin => !@typeis(#arg, EmptySlot);
 macro @rnd() @const @builtin => $$rnd();
 
 /*
- Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
+ Use `NO_MORE_ELEMENT` when reading the end of an iterator, or accessing a result out of bounds.
 */
 faultdef NO_MORE_ELEMENT @builtin;
 
 /*
- Use `SearchResult` when trying to return a value from some collection but the element is missing.
+ Use `NOT_FOUND` when trying to return a value from some collection but the element is missing.
 */
 faultdef NOT_FOUND @builtin;
 
 /*
- Use `CastResult` when an attempt at conversion fails.
+ Use `TYPE_MISMATCH` when an attempt at conversion fails.
 */
 faultdef TYPE_MISMATCH @builtin;
 
+/*
+ Use `CAPACITY_EXCEEDED` when trying to add to a bounded list or similar.
+*/
+faultdef CAPACITY_EXCEEDED @builtin;
 
 alias VoidFn = fn void();
 
@@ -565,8 +569,8 @@ macro uint ichar[<*>].hash(self)   => hash_vec(self);
 macro uint bool[<*>].hash(self)    => hash_vec(self);
 
 macro uint typeid.hash(typeid t) => @generic_hash(((ulong)(uptr)t));
-macro uint String.hash(String c) => (uint)fnv32a::hash(c);
-macro uint char[].hash(char[] c) => (uint)fnv32a::hash(c);
+macro uint String.hash(String c) => (uint)a5hash::hash(c);
+macro uint char[].hash(char[] c) => (uint)a5hash::hash(c);
 macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
 <*
@@ -574,7 +578,13 @@ macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 *>
 macro uint hash_array(array_ptr) @local
 {
-	return (uint)fnv32a::hash(((char*)array_ptr)[:$sizeof(*array_ptr)]);
+	var $len = $sizeof(*array_ptr);
+
+	$if $len > 16:
+		return (uint)komi::hash(((char*)array_ptr)[:$len]);
+	$else
+		return (uint)wyhash2::hash(((char*)array_ptr)[:$len]);
+	$endif
 }
 
 <*
@@ -582,7 +592,13 @@ macro uint hash_array(array_ptr) @local
 *>
 macro uint hash_vec(vec) @local
 {
-	return (uint)fnv32a::hash(((char*)&&vec)[:$sizeof(vec.len * $typeof(vec).inner.sizeof)]);
+	var $len = $sizeof(vec.len * $typeof(vec).inner.sizeof);
+
+	$if $len > 16:
+		return (uint)komi::hash(((char*)&&vec)[:$len]);
+	$else
+		return (uint)wyhash2::hash(((char*)&&vec)[:$len]);
+	$endif
 }
 
 const MAX_FRAMEADDRESS = 128;

@@ -624,15 +624,16 @@ RETRY:
 		case DECL_ATTRIBUTE:
 		case DECL_FAULT:
 			return;
+		case DECL_ALIAS_PATH:
+		case DECL_BODYPARAM:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
 		case DECL_CT_EXEC:
-		case DECL_IMPORT:
 		case DECL_CT_INCLUDE:
+		case DECL_GROUP:
+		case DECL_IMPORT:
 		case DECL_LABEL:
 		case DECL_MACRO:
-		case DECL_BODYPARAM:
-		case DECL_GROUP:
 			UNREACHABLE
 		case DECL_FNTYPE:
 			sema_trace_func_liveness(&decl->fntype_decl);

@@ -96,6 +96,7 @@ static inline const char *decl_type_to_string(Decl *type)
 		case DECL_FUNC: return "function";
 		case DECL_GROUP: return "globals";
 		case DECL_IMPORT: return "import";
+		case DECL_ALIAS_PATH: return "module_alias";
 		case DECL_MACRO: return "macro";
 		case DECL_INTERFACE: return "interface";
 		case DECL_STRUCT: return "struct";

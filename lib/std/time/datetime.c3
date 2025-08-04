@@ -112,6 +112,11 @@ fn TzDateTime TzDateTime.to_gmt_offset(self, int gmt_offset) {
 	return { dt, gmt_offset };
 }
 
+fn bool TzDateTime.eq(self, TzDateTime other) @operator(==) @inline
+{
+	return self.to_gmt_offset(0).time == other.to_gmt_offset(0).time;
+}
+
 <*
  @require day >= 1 && day < 32
  @require hour >= 0 && hour < 24
@@ -257,3 +262,5 @@ fn Duration DateTime.diff_us(self, DateTime from) @operator(-)
 {
 	return self.time.diff_us(from.time);
 }
+
+fn bool DateTime.eq(self, DateTime other) @operator(==) @inline => self.time == other.time;

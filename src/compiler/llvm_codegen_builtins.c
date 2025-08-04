@@ -829,6 +829,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			llvm_emit_matrix_multiply(c, result_value, expr);
 			return;
 		case BUILTIN_MATRIX_TRANSPOSE:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.matrix_transpose);
 			return;
 		case BUILTIN_SYSCLOCK:
@@ -844,30 +845,39 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			llvm_emit_prefetch(c, result_value, expr);
 			return;
 		case BUILTIN_REDUCE_AND:
+			compiler.linking.link_math = true;
 			llvm_emit_reduce_int_builtin(c, intrinsic_id.vector_reduce_and, result_value, expr);
 			return;
 		case BUILTIN_REDUCE_OR:
+			compiler.linking.link_math = true;
 			llvm_emit_reduce_int_builtin(c, intrinsic_id.vector_reduce_or, result_value, expr);
 			return;
 		case BUILTIN_REDUCE_MIN:
+			compiler.linking.link_math = true;
 			llvm_emit_3_variant_builtin(c, result_value, expr, intrinsic_id.vector_reduce_smin, intrinsic_id.vector_reduce_umin, intrinsic_id.vector_reduce_fmin);
 			return;
 		case BUILTIN_REDUCE_MAX:
+			compiler.linking.link_math = true;
 			llvm_emit_3_variant_builtin(c, result_value, expr, intrinsic_id.vector_reduce_smax, intrinsic_id.vector_reduce_umax, intrinsic_id.vector_reduce_fmax);
 			return;
 		case BUILTIN_REDUCE_XOR:
+			compiler.linking.link_math = true;
 			llvm_emit_reduce_int_builtin(c, intrinsic_id.vector_reduce_xor, result_value, expr);
 			return;
 		case BUILTIN_REDUCE_ADD:
+			compiler.linking.link_math = true;
 			llvm_emit_reduce_int_builtin(c, intrinsic_id.vector_reduce_add, result_value, expr);
 			return;
 		case BUILTIN_REDUCE_MUL:
+			compiler.linking.link_math = true;
 			llvm_emit_reduce_int_builtin(c, intrinsic_id.vector_reduce_mul, result_value, expr);
 			return;
 		case BUILTIN_REDUCE_FADD:
+			compiler.linking.link_math = true;
 			llvm_emit_reduce_float_builtin(c, intrinsic_id.vector_reduce_fadd, result_value, expr);
 			return;
 		case BUILTIN_REDUCE_FMUL:
+			compiler.linking.link_math = true;
 			llvm_emit_reduce_float_builtin(c, intrinsic_id.vector_reduce_fmul, result_value, expr);
 			return;
 		case BUILTIN_EXACT_DIV:
@@ -876,15 +886,19 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		case BUILTIN_EXACT_SUB:
 		case BUILTIN_EXACT_MOD:
 		case BUILTIN_EXACT_NEG:
+			compiler.linking.link_math = true;
 			llvm_emit_wrap_builtin(c, result_value, expr, func);
 			return;
 		case BUILTIN_OVERFLOW_ADD:
+			compiler.linking.link_math = true;
 			llvm_emit_overflow_builtin(c, result_value, expr, intrinsic_id.sadd_overflow, intrinsic_id.uadd_overflow);
 			return;
 		case BUILTIN_OVERFLOW_SUB:
+			compiler.linking.link_math = true;
 			llvm_emit_overflow_builtin(c, result_value, expr, intrinsic_id.ssub_overflow, intrinsic_id.usub_overflow);
 			return;
 		case BUILTIN_OVERFLOW_MUL:
+			compiler.linking.link_math = true;
 			llvm_emit_overflow_builtin(c, result_value, expr, intrinsic_id.smul_overflow, intrinsic_id.umul_overflow);
 			return;
 		case BUILTIN_CTTZ:
@@ -926,21 +940,27 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			llvm_emit_3_variant_builtin(c, result_value, expr, intrinsic_id.smin, intrinsic_id.umin, intrinsic_id.minnum);
 			return;
 		case BUILTIN_SAT_SHL:
+			compiler.linking.link_math = true;
 			llvm_emit_3_variant_builtin(c, result_value, expr, intrinsic_id.sshl_sat, intrinsic_id.ushl_sat, 0);
 			return;
 		case BUILTIN_SAT_ADD:
+			compiler.linking.link_math = true;
 			llvm_emit_3_variant_builtin(c, result_value, expr, intrinsic_id.sadd_sat, intrinsic_id.uadd_sat, 0);
 			return;
 		case BUILTIN_SAT_SUB:
+			compiler.linking.link_math = true;
 			llvm_emit_3_variant_builtin(c, result_value, expr, intrinsic_id.ssub_sat, intrinsic_id.usub_sat, 0);
 			return;
 		case BUILTIN_SAT_MUL:
+			compiler.linking.link_math = true;
 			llvm_emit_3_variant_builtin(c, result_value, expr, intrinsic_id.smul_fixed_sat, intrinsic_id.umul_fixed_sat, 0);
 			return;
 		case BUILTIN_ABS:
+			compiler.linking.link_math = true;
 			llvm_emit_abs_builtin(c, result_value, expr);
 			return;
 		case BUILTIN_POW_INT:
+			compiler.linking.link_math = true;
 			llvm_emit_pow_int_builtin(c, result_value, expr);
 			return;
 		case BUILTIN_BITREVERSE:
@@ -953,24 +973,31 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.ceil);
 			return;
 		case BUILTIN_COS:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.cos);
 			return;
 		case BUILTIN_COPYSIGN:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.copysign);
 			return;
 		case BUILTIN_FLOOR:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.floor);
 			return;
 		case BUILTIN_EXP:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.exp);
 			return;
 		case BUILTIN_EXP2:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.exp2);
 			return;
 		case BUILTIN_FMA:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.fma);
 			return;
 		case BUILTIN_FMULADD:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.fmuladd);
 			return;
 		case BUILTIN_FSHL:
@@ -980,37 +1007,47 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.fshr);
 			return;
 		case BUILTIN_GET_ROUNDING_MODE:
+			compiler.linking.link_math = true;
 			llvm_value_set(result_value, llvm_emit_call_intrinsic(c, intrinsic_id.get_rounding, NULL, 0, NULL, 0), expr->type);
 			return;
 		case BUILTIN_LOG:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.log);
 			return;
 		case BUILTIN_LOG2:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.log2);
 			return;
 		case BUILTIN_LOG10:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.log10);
 			return;
 		case BUILTIN_POW:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.pow);
 			return;
 		case BUILTIN_NEARBYINT:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.nearbyint);
 			return;
 		case BUILTIN_POPCOUNT:
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.ctpop);
 			return;
 		case BUILTIN_RINT:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.rint);
 			return;
 		case BUILTIN_ROUND:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.round);
 			return;
 		case BUILTIN_ROUNDEVEN:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.roundeven);
 			return;
 		case BUILTIN_SET_ROUNDING_MODE:
 			{
+				compiler.linking.link_math = true;
 				Expr **args = expr->call_expr.arguments;
 				LLVMValueRef arg_slots[1];
 				llvm_emit_intrinsic_args(c, args, arg_slots, 1);
@@ -1036,23 +1073,30 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			llvm_emit_builtin_args_types3(c, result_value, expr, intrinsic_id.wasm_memory_size, expr->type, NULL, NULL);
 			return;
 		case BUILTIN_SIN:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.sin);
 			return;
 		case BUILTIN_SQRT:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.sqrt);
 			return;
 		case BUILTIN_TRUNC:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.trunc);
 			return;
 		case BUILTIN_LRINT:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.lrint);
 			return;
 		case BUILTIN_LROUND:
+			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.lround);
 			return;
 		case BUILTIN_LLRINT:
+			compiler.linking.link_math = true;
 			TODO
 		case BUILTIN_LLROUND:
+			compiler.linking.link_math = true;
 			TODO
 		case BUILTIN_STR_HASH:
 		case BUILTIN_STR_LOWER:
