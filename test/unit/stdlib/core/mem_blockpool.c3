@@ -1,4 +1,4 @@
-module std::core::objectpool_test;
+module std::core::fixedblockpool_test;
 
 import std;
 
@@ -7,15 +7,18 @@ struct Foo
 	int a;
 	double b;
 	bool c;
+	char[2] x;
 }
 
 fn void test_basic_allocation() @test
 {
-	SingleSizeObjectPool pool;
+	FixedBlockPool pool;
 	defer pool.free();
 	pool.init(mem, int);
 
+	test::eq(pool.used, 0);
 	int *ptr1 = pool.alloc();
+	test::eq(pool.used, 1);
 	int *ptr2 = pool.alloc();
 	assert(((usz) ptr2) - ((usz) ptr1) >= int.sizeof);
 	assert(pool.used == 2);
@@ -23,7 +26,7 @@ fn void test_basic_allocation() @test
 
 fn void test_large_allocation() @test
 {
-	SingleSizeObjectPool pool;
+	FixedBlockPool pool;
 	defer pool.free();
 	pool.init(mem, Foo);
 
@@ -31,11 +34,13 @@ fn void test_large_allocation() @test
 	Foo *ptr2 = pool.alloc();
 	assert(((usz) ptr2) - ((usz) ptr1) >= Foo.sizeof);
 	assert(pool.used == 2);
+	pool.dealloc(ptr1);
+	pool.dealloc(ptr2);
 }
 
 fn void test_basic_capacity() @test
 {
-	SingleSizeObjectPool pool;
+	FixedBlockPool pool;
 	defer pool.free();
 	pool.init(mem, int, 2);
 
@@ -47,7 +52,7 @@ fn void test_basic_capacity() @test
 
 fn void test_basic_capacity_different_grow_capacity() @test
 {
-	SingleSizeObjectPool pool;
+	FixedBlockPool pool;
 	defer pool.free();
 	pool.init(mem, int, 1);
 
@@ -70,18 +75,20 @@ fn void test_basic_capacity_different_grow_capacity() @test
 
 fn void test_basic_object_reuse() @test
 {
-	SingleSizeObjectPool pool;
+	FixedBlockPool pool;
 	defer pool.free();
 	pool.init(mem, int, 1);
 
 	int*[10] objs;
 	for (int i = 0; i < 10; i++) objs[i] = pool.alloc();
+	test::eq(pool.used, 10);
 
 	int *obj1 = objs[1];
 	pool.dealloc(obj1);
-
+	test::eq(pool.used, 9);
 	int *obj3 = objs[3];
 	pool.dealloc(obj3);
+	test::eq(pool.used, 8);
 
 	int *obj7 = objs[7];
 	pool.dealloc(obj7);
@@ -92,6 +99,7 @@ fn void test_basic_object_reuse() @test
 	assert(obj2 == pool.alloc());
 	assert(obj7 == pool.alloc());
 	assert(obj3 == pool.alloc());
+	test::eq(pool.used, 9);
 	assert(obj1 == pool.alloc());
 	assert(pool.used == 10);
 }
