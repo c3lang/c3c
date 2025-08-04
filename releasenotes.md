@@ -18,6 +18,7 @@
 - Add OpenBSD to `env::INET_DEVICES` and add required socket constants.
 - Added `FileMmap` to manage memory mapped files.
 - Add `vm::mmap_file` to memory map a file.
+- Updated hash functions in default hash methods.
 
 ## 0.7.4 Change list
 
