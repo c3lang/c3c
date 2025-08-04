@@ -173,3 +173,14 @@ fn void test_hash_repeat()
 	assert((bool[100]){}.hash() == (bool[100]){}.hash());
 	assert(int.typeid.hash() == int.typeid.hash());
 }
+
+fn void test_ct_clz()
+{
+	assert(@clz((ulong)0) == ulong.sizeof * 8);
+	assert(@clz((char)1) == (char.sizeof * 8) - 1);
+	assert(@clz((uint)0x8000_0000) == 0);
+	assert(@clz((ushort)0x0100) == 7);
+	assert(@clz((long)-1) == 0);
+	assert(@clz((uint128)0x87) == 120);
+	assert(@clz((char)(0x44 - 0x40)) == 5);
+}
