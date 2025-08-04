@@ -10083,11 +10083,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 {
 	Decl *decl = expr->lambda_expr;
 	if (!decl_ok(decl)) return false;
-	if (decl->resolve_status == RESOLVE_DONE)
-	{
-		expr->type = type_get_func_ptr(decl->type);
-		return true;
-	}
+	assert(decl->resolve_status != RESOLVE_DONE);
 	Type *flat = target_type ? type_flatten(target_type) : NULL;
 	if (flat)
 	{
@@ -10224,19 +10220,18 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	}
 
 	expr->type = type_get_func_ptr(decl->type);
-	// If it's a distinct type we have to make a cast.
 	expr->resolve_status = RESOLVE_DONE;
+	expr_rewrite_const_ref(expr, decl);
+	// If it's a distinct type we have to make a cast.
 	if (target_type && expr->type != target_type && !cast_explicit(context, expr, target_type)) return false;
 	if (multiple)
 	{
 		vec_add(original->func_decl.generated_lambda, decl);
 	}
 	decl->resolve_status = RESOLVE_DONE;
-	expr_rewrite_const_ref(expr, decl);
 	return true;
 FAIL_NO_INFER:
-	SEMA_ERROR(expr, "Inferred lambda expressions cannot be used unless the type can be determined.");
-	return false;
+	RETURN_SEMA_ERROR(expr, "Inferred lambda expressions cannot be used unless the type can be determined.");
 }
 
 static inline bool sema_expr_analyse_ct_feature(SemaContext *context, Expr *expr)
