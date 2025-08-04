@@ -124,12 +124,12 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
  Zip together two separate arrays/slices into a single array of Pairs. Values will be collected
  up to the length of the shorter array. Pair elements (and thus arrays) do not have to be the same type.
 
+ @param [&inout] allocator : "The allocator to use; default is the heap allocator."
  @param [in] left
  @param [in] right
- @param [&inout] allocator : "The allocator to use, default is the heap allocator"
+
  @require @typekind(left) == SLICE || @typekind(left) == ARRAY
  @require @typekind(right) == SLICE || @typekind(right) == ARRAY
- @require left.len > 0 || right.len > 0 : `At least one array/slice must contain an item.`
  @ensure return.len == min(left.len, right.len)
 *>
 macro zip(Allocator allocator, left, right) @nodiscard
@@ -140,6 +140,8 @@ macro zip(Allocator allocator, left, right) @nodiscard
 	var $Type = Pair { $LeftType, $RightType };
 
 	usz result_len = min(left.len, right.len);
+	if (result_len == 0) return ($Type[]){};
+
 	$Type[] result = allocator::alloc_array(allocator, $Type, result_len)[:result_len];
 
 	$LeftType[] left_clone = allocator::clone_slice(allocator, left);
@@ -158,9 +160,9 @@ macro zip(Allocator allocator, left, right) @nodiscard
 
  @param [in] left
  @param [in] right
+
  @require @typekind(left) == SLICE || @typekind(left) == ARRAY
  @require @typekind(right) == SLICE || @typekind(right) == ARRAY
- @require left.len > 0 || right.len > 0 : `At least one array/slice must contain an item.`
  @ensure return.len == min(left.len, right.len)
 *>
 macro tzip(left, right) @nodiscard => zip(tmem, left, right);
@@ -170,12 +172,13 @@ macro tzip(left, right) @nodiscard => zip(tmem, left, right);
  Zip together two separate arrays/slices into a single array of Pairs. Values will be collected
  up to the length of the LONGER array. Pair elements (and thus arrays) do not have to be the same type.
 
+ @param [&inout] allocator : "The allocator to use, default is the heap allocator"
  @param [in] left
  @param [in] right
- @param [&inout] allocator : "The allocator to use, default is the heap allocator"
+ @param fill_value : "The value used to fill or pad the shorter iterable to the length of the longer one while zipping. Defaults to an empty value (0 or {})."
+
  @require @typekind(left) == SLICE || @typekind(left) == ARRAY
  @require @typekind(right) == SLICE || @typekind(right) == ARRAY
- @require left.len > 0 || right.len > 0 : `At least one array/slice must contain an item.`
  @ensure return.len == max(left.len, right.len)
 *>
 macro zip_longest(Allocator allocator, left, right, fill_value = EMPTY_MACRO_SLOT) @nodiscard
@@ -187,6 +190,8 @@ macro zip_longest(Allocator allocator, left, right, fill_value = EMPTY_MACRO_SLO
 	$LeftType filled_left;
 	$RightType filled_right;
 
+	// The right type is a bit tough to discern because it can't be assumed at compile-time.
+	//   The fill_value is typed based on the shorter iterable, because that is the array being padded with the fill_value.
 	$if @is_empty_macro_slot(fill_value):
 		filled_left = 0;
 		filled_right = 0;
@@ -213,6 +218,8 @@ macro zip_longest(Allocator allocator, left, right, fill_value = EMPTY_MACRO_SLO
 	$endif
 
 	usz result_len = max(left.len, right.len);
+	if (result_len == 0) return ($Type[]){};
+
 	$Type[] result = allocator::alloc_array(allocator, $Type, result_len)[:result_len];
 
 	$LeftType[] left_clone = allocator::clone_slice(allocator, left);
@@ -235,27 +242,32 @@ macro zip_longest(Allocator allocator, left, right, fill_value = EMPTY_MACRO_SLO
  @param [in] left
  @param [in] right
  @param [in] fill_value
+ @param fill_value : "The value used to fill or pad the shorter iterable to the length of the longer one while zipping. Defaults to an empty value (0 or {})."
+
  @require @typekind(left) == SLICE || @typekind(left) == ARRAY
  @require @typekind(right) == SLICE || @typekind(right) == ARRAY
- @require left.len > 0 || right.len > 0 : `At least one array/slice must contain an item.`
  @ensure return.len == max(left.len, right.len)
 *>
-macro tzip_longest(left, right, fill_value = EMPTY_MACRO_SLOT) @nodiscard
-	=> zip_longest(tmem, left, right, fill_value);
+macro tzip_longest(left, right, fill_value = EMPTY_MACRO_SLOT) @nodiscard => zip_longest(tmem, left, right, fill_value);
 
 
 <*
  Apply an operation to each element of two slices or arrays and return the results of
  each operation into a new array.
 
+ This essentially combines Iterable1 with Iterable2 using the `operation` functor.
+
+ See the functional `zipWith` construct, which has a more appropriate name than, e.g., `map`;
+   a la: https://hackage.haskell.org/package/base-4.21.0.0/docs/Prelude.html#v:zipWith
+
+ @param [&inout] allocator : "The allocator to use; default is the heap allocator."
  @param [inout] left
  @param [in] right
  @param operation : "The function to apply. Must have a signature of $typeof(a) (a, b), where the type of 'a' and 'b' is the element type of left/right respectively."
 
- @require @typeis(left, $typeof(right)) : `Both operands must be the same type.`
  @require @typekind(left) == SLICE || @typekind(left) == ARRAY
  @require @typekind(right) == SLICE || @typekind(right) == ARRAY
- @require left.len > 0 || right.len > 0 : `At least one array/slice must contain an item.`
+ @require @assignable_to(operation, $typeof(fn $typeof(left[0]) ($typeof(left[0]) l, $typeof(right[0]) r) => l)) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
  @ensure return.len == min(left.len, right.len)
 *>
 macro zip_with(Allocator allocator, left, right, operation) @nodiscard
@@ -263,6 +275,8 @@ macro zip_with(Allocator allocator, left, right, operation) @nodiscard
 	var $Type = $typeof(left[0]);
 
 	usz result_len = min(left.len, right.len);
+	if (result_len == 0) return ($Type[]){};
+
 	$Type[] new_arr = allocator::alloc_array(allocator, $Type, result_len)[:result_len];
 
 	foreach (i, &v : new_arr) *v = operation(left[i], right[i]);
@@ -277,10 +291,9 @@ macro zip_with(Allocator allocator, left, right, operation) @nodiscard
  @param [in] right
  @param operation : `The function to apply. Must have a signature of $typeof(a) (a, b), where the type of 'a' and 'b' is the element type of left/right respectively.`
 
- @require @typeis(left, $typeof(right)) : `Both operands must be the same type.`
  @require @typekind(left) == SLICE || @typekind(left) == ARRAY
  @require @typekind(right) == SLICE || @typekind(right) == ARRAY
- @require left.len > 0 || right.len > 0 : `At least one array/slice must contain an item.`
+ @require @assignable_to(operation, $typeof(fn $typeof(left[0]) ($typeof(left[0]) l, $typeof(right[0]) r) => l)) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
  @ensure return.len == min(left.len, right.len)
 *>
 macro tzip_with(left, right, operation) @nodiscard => zip_with(tmem, left, right, operation);
@@ -290,15 +303,15 @@ macro tzip_with(left, right, operation) @nodiscard => zip_with(tmem, left, right
  Apply an operation to each element of two slices or arrays and return the results of
  each operation into a new array.
 
+ @param [&inout] allocator : "The allocator to use; default is the heap allocator."
  @param [inout] left
  @param [in] right
  @param operation : "The function to apply. Must have a signature of $typeof(a) (a, b), where the type of 'a' and 'b' is the element type of left/right respectively."
+ @param fill_value : "The default value to apply to the shorter iterable BEFORE the application of the `operation` functor."
 
- @require @typeis(left, $typeof(right)) : `Both operands must be the same type.`
  @require @typekind(left) == SLICE || @typekind(left) == ARRAY
  @require @typekind(right) == SLICE || @typekind(right) == ARRAY
- @require @typeis(left, $typeof(left)) : `The fill value must be the same type as the zipped array.`
- @require left.len > 0 || right.len > 0 : `At least one array/slice must contain an item.`
+ @require @assignable_to(operation, $typeof(fn $typeof(left[0]) ($typeof(left[0]) l, $typeof(right[0]) r) => l)) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
  @ensure return.len == max(left.len, right.len)
 *>
 macro zip_with_longest(Allocator allocator, left, right, operation, fill_value = EMPTY_MACRO_SLOT) @nodiscard
@@ -306,13 +319,21 @@ macro zip_with_longest(Allocator allocator, left, right, operation, fill_value =
 	var $Type = $typeof(left[0]);
 
 	usz result_len = max(left.len, right.len);
+	if (result_len == 0) return ($Type[]){};
+
 	$Type[] new_arr = allocator::alloc_array(allocator, $Type, result_len)[:result_len];
+
+	$if types::is_numerical($Type):
+		$Type empty_value = 0;
+	$else
+		$Type empty_value = {};
+	$endif
 
 	foreach (i, &v : new_arr)
 	{
 		$if @is_empty_macro_slot(fill_value):
-			$Type lval = i >= left.len ? 0 : left[i];
-			$Type rval = i >= right.len ? 0 : right[i];
+			$Type lval = i >= left.len ? empty_value : left[i];
+			$Type rval = i >= right.len ? empty_value : right[i];
 		$else
 			$Type lval = i >= left.len ? ($Type)fill_value : left[i];
 			$Type rval = i >= right.len ? ($Type)fill_value : right[i];
@@ -329,17 +350,15 @@ macro zip_with_longest(Allocator allocator, left, right, operation, fill_value =
 
  @param [inout] left
  @param [in] right
- @param operation : `The function to apply. Must have a signature of $typeof(a) (a, b), where the type of 'a' and 'b' is the element type of left/right respectively.`
+ @param operation : "The function to apply. Must have a signature of $typeof(a) (a, b), where the type of 'a' and 'b' is the element type of left/right respectively."
+ @param fill_value : "The default value to apply to the shorter iterable BEFORE the application of the `operation` functor."
 
- @require @typeis(left, $typeof(right)) : `Both operands must be the same type.`
  @require @typekind(left) == SLICE || @typekind(left) == ARRAY
  @require @typekind(right) == SLICE || @typekind(right) == ARRAY
- @require @typeis(left, $typeof(left)) : `The fill value must be the same type as the zipped array.`
- @require left.len > 0 || right.len > 0 : `At least one array/slice must contain an item.`
+ @require @assignable_to(operation, $typeof(fn $typeof(left[0]) ($typeof(left[0]) l, $typeof(right[0]) r) => l)) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
  @ensure return.len == max(left.len, right.len)
 *>
-macro tzip_with_longest(left, right, operation, fill_value = EMPTY_MACRO_SLOT) @nodiscard
-	=> zip_with_longest(tmem, left, right, operation, fill_value);
+macro tzip_with_longest(left, right, operation, fill_value = EMPTY_MACRO_SLOT) @nodiscard => zip_with_longest(tmem, left, right, operation, fill_value);
 
 
 <*
@@ -353,14 +372,14 @@ macro tzip_with_longest(left, right, operation, fill_value = EMPTY_MACRO_SLOT) @
  char[] partial_cipher = get_next_plaintext_block();
 
  array::zip_with_into(
-     partial_cipher[ENCRYPT_OFFSET:XOR_KEY.len],
-	 XOR_KEY,
+     partial_cipher[ENCRYPT_OFFSET:BASE_KEY.len],
+	 BASE_KEY,
 	 fn char (char a, char b) => a ^ (b * 5) % 37
  );
  ```
 
- This applies the lambda expression to the left (`partial_cipher`) and right (`XOR_KEY`) slices
- and stores the end result in-place within the `partial_cipher` slice. This is in contrast to a
+ This parameterizes the lambda function with left (`partial_cipher`) and right (`BASE_KEY`) slice
+ elements and stores the end result in-place within the left slice. This is in contrast to a
  regular `zip_with` which will create a cloned final result and return it.
 
  @param [inout] left : `Slice to store results of applied functor/operation.`
@@ -370,6 +389,7 @@ macro tzip_with_longest(left, right, operation, fill_value = EMPTY_MACRO_SLOT) @
  @require @typekind(left) == SLICE || @typekind(left) == ARRAY
  @require @typekind(right) == SLICE || @typekind(right) == ARRAY
  @require right.len >= left.len : `Right side length must be >= the destination (left) side; consider using a sub-array of data for the assignment.`
+ @require @assignable_to(operation, $typeof(fn $typeof(left[0]) ($typeof(left[0]) l, $typeof(right[0]) r) => l)) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
 *>
 macro zip_with_into(left, right, operation)
 {

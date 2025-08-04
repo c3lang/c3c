@@ -134,7 +134,7 @@ fn void zip_longest_fill_struct() => @pool()
 
 fn void zip_with() => @pool()
 {
-	char[] left = { 'a', 'b', 'c', 'd', 'e' };   // convert to array style eso it's not read-only memory
+	char[] left = "abcde";
 	char[] right = { 0x05, 0x04, 0x03, 0x00 };
 
 	char[] expected = "fffd";
@@ -147,7 +147,7 @@ fn void zip_with() => @pool()
 
 fn void zip_with_longest() => @pool()
 {
-	char[] left = { 'a', 'b', 'c', 'd', 'e' };   // convert to array style eso it's not read-only memory
+	char[] left = "abcde";
 	char[] right = { 0x05, 0x04 };
 
 	char[] expected = "ffcde";
@@ -160,7 +160,7 @@ fn void zip_with_longest() => @pool()
 
 fn void zip_with_longest_fill() => @pool()
 {
-	char[] left = { 'a', 'b', 'c', 'd', 'e' };   // convert to array style so it's not read-only memory
+	char[] left = "abcde";
 	char[] right = { 0x05, 0x04 };
 
 	char[] expected = "ffghi";
