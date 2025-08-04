@@ -1,5 +1,4 @@
 module std::core::mem::objectpool;
-import libc;
 import std::core::mem, std::core::mem::allocator;
 
 const INITIAL_CAPACITY = 0;
@@ -22,6 +21,8 @@ union SingleSizeObjectPoolEntry
 
  `grow_capacity` can be changed in order to affect how many objects will be allocated by next pool allocation,
  it has to be greater than 0
+ `allocated` number of allocated objects
+ `used` number of used objects by the user
 *>
 struct SingleSizeObjectPool
 {
@@ -31,13 +32,16 @@ struct SingleSizeObjectPool
 	void *next_free;
 	void *freelist;
 	usz object_size, grow_capacity;
+	usz allocated, used;
 	bool initialized;
 }
 
 <*
- Initialize a object pool
+ Initialize an object pool
 
  @param [in] allocator : "The allocator to use"
+ @param $Type : "The type used for setting the object size"
+ @param capacity : "The amount of objects to be pre-allocated"
  @require !self.initialized : "The object pool must not be initialized"
 *>
 macro void SingleSizeObjectPool.init(&self, Allocator allocator, $Type, usz capacity = INITIAL_CAPACITY)
@@ -54,16 +58,21 @@ macro void SingleSizeObjectPool.init(&self, Allocator allocator, $Type, usz capa
 	self.freelist = null;
 	self.grow_capacity = capacity;
 	self.initialized = true;
+	self.allocated = capacity;
+	self.used = 0;
 }
 
 <*
- Initialize a object pool using Temporary allocator
+ Initialize an object pool using Temporary allocator
 
  @require !self.initialized : "The object pool must not be initialized"
+ @param capacity : "The amount of objects to be pre-allocated"
 *>
 macro void SingleSizeObjectPool.tinit(&self, $Type, usz capacity = INITIAL_CAPACITY) => self.init(tmem, $Type, capacity);
 
 <*
+ Free up the entire object pool
+
  @require self.initialized : "The object pool must be initialized"
 *>
 fn void SingleSizeObjectPool.free(&self)
@@ -79,6 +88,8 @@ fn void SingleSizeObjectPool.free(&self)
 		allocator::free(self.allocator, current);
 	}
 	self.initialized = false;
+	self.allocated = 0;
+	self.used = 0;
 }
 
 <*
@@ -88,11 +99,14 @@ fn void SingleSizeObjectPool.free(&self)
 *>
 fn void *SingleSizeObjectPool.alloc(&self)
 {
+	defer self.used++;
+
 	if (self.freelist != null)
 	{
 		SingleSizeObjectPoolEntry *entry = self.freelist;
 		self.freelist = entry.previous;
-		return libc::memset(entry, 0, self.object_size);
+		mem::set(entry, 0, self.object_size);
+		return entry;
 	}
 
 	void *end = self.tail.buffer + (self.tail.capacity * self.object_size);
@@ -114,6 +128,7 @@ fn void SingleSizeObjectPool.dealloc(&self, void *ptr)
 	SingleSizeObjectPoolEntry *entry = ptr;
 	entry.previous = self.freelist;
 	self.freelist = entry;
+	self.used--;
 }
 
 <*
@@ -144,4 +159,5 @@ fn void SingleSizeObjectPool.new_node(&self) @local
 	self.tail.next = node;
 	self.tail = node;
 	self.next_free = node.buffer;
+	self.allocated += node.capacity;
 }

@@ -18,6 +18,7 @@ fn void test_basic_allocation() @test
 	int *ptr1 = pool.alloc();
 	int *ptr2 = pool.alloc();
 	assert(((usz) ptr2) - ((usz) ptr1) >= int.sizeof);
+	assert(pool.used == 2);
 }
 
 fn void test_large_allocation() @test
@@ -29,6 +30,7 @@ fn void test_large_allocation() @test
 	Foo *ptr1 = pool.alloc();
 	Foo *ptr2 = pool.alloc();
 	assert(((usz) ptr2) - ((usz) ptr1) >= Foo.sizeof);
+	assert(pool.used == 2);
 }
 
 fn void test_basic_capacity() @test
@@ -40,6 +42,7 @@ fn void test_basic_capacity() @test
 	int *ptr1 = pool.alloc();
 	int *ptr2 = pool.alloc();
 	assert(((usz) ptr2) - ((usz) ptr1) >= int.sizeof);
+	assert(pool.used == 2);
 }
 
 fn void test_basic_capacity_different_grow_capacity() @test
@@ -61,6 +64,8 @@ fn void test_basic_capacity_different_grow_capacity() @test
 	assert(pool.head.next.buffer != null);
 	assert(pool.head.next.next.buffer != null);
 	assert(pool.head.next.next.next == null);
+	assert(pool.used == 4);
+	assert(pool.allocated == 4);
 }
 
 fn void test_basic_object_reuse() @test
@@ -88,4 +93,5 @@ fn void test_basic_object_reuse() @test
 	assert(obj7 == pool.alloc());
 	assert(obj3 == pool.alloc());
 	assert(obj1 == pool.alloc());
+	assert(pool.used == 10);
 }
