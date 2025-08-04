@@ -13,6 +13,7 @@
 - Codegen error in `if (try x = (false ? io::EOF? : 1))`, i.e. using if-try with a CT known value.
 - Reduce allocated Vmem for the compiler on 32 bit machines.
 - Bug causing a compiler error when parsing a broken lambda inside of an expression.
+- Fixed: regression in comments for `@deprecated` and `@pure`.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.

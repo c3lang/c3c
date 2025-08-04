@@ -3048,7 +3048,7 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 		else if (name == kw_at_deprecated)
 		{
 			advance(c);
-			if (!parse_doc_discarded_comment(c)) return false;
+			if (!parse_doc_direct_comment(c)) return false;
 			REMINDER("Implement @deprecated tracking");
 		}
 		else if (name == kw_at_require)
@@ -3064,7 +3064,7 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 			Ast *ast = ast_new_curr(c, AST_CONTRACT);
 			ast->contract_stmt.kind = CONTRACT_PURE;
 			advance(c);
-			if (!parse_doc_discarded_comment(c)) return false;
+			if (!parse_doc_direct_comment(c)) return false;
 			append_docs(next, contracts_ref, ast);
 		}
 		else
