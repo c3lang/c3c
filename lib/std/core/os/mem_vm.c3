@@ -2,7 +2,7 @@
  The VM module holds code for working with virtual memory on supported platforms (currently Win32 and Posix)
 *>
 module std::core::mem::vm;
-import std::os::win32, std::os::posix, libc;
+import std::io, std::os::win32, std::os::posix, libc;
 
 <*
  VirtualMemory is an abstraction for working with an allocated virtual memory area. It will invoke vm:: functions
@@ -217,6 +217,36 @@ fn void? decommit(void* ptr, usz len, bool block = true)
 		$default:
 			unsupported("'virtual_decommit' is only available on Win32 and Posix.");
 	$endswitch
+}
+
+<*
+ Map a portion of an already-opened file into memory.
+
+ @param fd : "File descriptor"
+ @param size : "Number of bytes to map, will be rounded up to page size"
+ @param offset : "Byte offset in file, must be page size aligned"
+ @param access : "The initial access permissions"
+ @param shared : "if True then MAP_SHARED else MAP_PRIVATE"
+ @return? mem::OUT_OF_MEMORY, RANGE_OVERFLOW, UNKNOWN_ERROR, ACCESS_DENIED, INVALID_ARGS, io::NO_PERMISSION, io::FILE_NOT_VALID, io::WOULD_BLOCK, io::FILE_NOT_FOUND
+ @return "Pointer to the mapped region"
+*>
+fn void*? mmap_file(Fd fd, usz size, usz offset = 0, VirtualMemoryAccess access = READ, bool shared = false) @if (env::POSIX)
+{
+	CInt flags = shared ? posix::MAP_SHARED : posix::MAP_PRIVATE;
+	void* ptr = posix::mmap(null, aligned_alloc_size(size), access.to_posix(), flags, fd, offset);
+	if (ptr != posix::MAP_FAILED) return ptr;
+	switch (libc::errno())
+	{
+		case errno::ENOMEM:    return mem::OUT_OF_MEMORY?;
+		case errno::EOVERFLOW: return RANGE_OVERFLOW?;
+		case errno::EPERM:     return ACCESS_DENIED?;
+		case errno::EINVAL:    return INVALID_ARGS?;
+		case errno::EACCES:    return io::NO_PERMISSION?;
+		case errno::EBADF:     return io::FILE_NOT_VALID?;
+		case errno::EAGAIN:    return io::WOULD_BLOCK?;
+		case errno::ENXIO:     return io::FILE_NOT_FOUND?;
+		default:               return UNKNOWN_ERROR?;
+	}
 }
 
 <*

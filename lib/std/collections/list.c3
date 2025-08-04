@@ -137,9 +137,10 @@ fn Type? List.pop_first(&self)
 *>
 fn void List.remove_at(&self, usz index)
 {
-	self.set_size(self.size - 1);
-	if (!self.size || index == self.size) return;
-	self.entries[index .. self.size - 1] = self.entries[index + 1 .. self.size];
+	usz new_size = self.size - 1;
+	defer self.set_size(new_size);
+	if (!new_size || index == new_size) return;
+	self.entries[index .. new_size - 1] = self.entries[index + 1 .. new_size];
 }
 
 fn void List.add_all(&self, List* other_list)

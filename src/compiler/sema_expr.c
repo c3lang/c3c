@@ -928,19 +928,20 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_FAULT:
 			expr_rewrite_const_fault(expr, decl);
 			return true;
-		case DECL_DISTINCT:
-		case DECL_TYPEDEF:
-		case DECL_DECLARRAY:
-		case DECL_BODYPARAM:
-		case DECL_CT_INCLUDE:
-		case DECL_CT_EXEC:
-		case DECL_GROUP:
-		case DECL_ERASED:
-		case DECL_IMPORT:
-		case DECL_ATTRIBUTE:
-		case DECL_CT_ASSERT:
 		case DECL_ALIAS:
+		case DECL_ALIAS_PATH:
+		case DECL_ATTRIBUTE:
+		case DECL_BODYPARAM:
+		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
+		case DECL_CT_EXEC:
+		case DECL_CT_INCLUDE:
+		case DECL_DECLARRAY:
+		case DECL_DISTINCT:
+		case DECL_ERASED:
+		case DECL_GROUP:
+		case DECL_IMPORT:
+		case DECL_TYPEDEF:
 			UNREACHABLE
 		case DECL_POISONED:
 			return expr_poison(expr);
@@ -9721,7 +9722,8 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 						break;
 				}
 				FALLTHROUGH;
-			case DECL_POISONED:
+			case DECL_ALIAS:
+			case DECL_ALIAS_PATH:
 			case DECL_ATTRIBUTE:
 			case DECL_BODYPARAM:
 			case DECL_CT_ASSERT:
@@ -9734,7 +9736,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 			case DECL_IMPORT:
 			case DECL_LABEL:
 			case DECL_MACRO:
-			case DECL_ALIAS:
+			case DECL_POISONED:
 				RETURN_SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
 			case DECL_FAULT:
 				goto RETURN_CT;

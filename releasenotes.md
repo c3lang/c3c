@@ -1,5 +1,27 @@
 # C3C Release Notes
 
+## 0.7.5 Change list
+
+### Changes / improvements
+- Support `alias foo = module std::io` module aliasing.
+- Add compile-time `@intlog2` macro to math.
+
+### Fixes
+- List.remove_at would incorrectly trigger ASAN.
+- With avx512, passing a 512 bit vector in a union would be lowered incorrectly, causing an assert. #2362
+- Codegen error in `if (try x = (true ? io::EOF? : 1))`, i.e. using if-try with a known Empty.
+- Codegen error in `if (try x = (false ? io::EOF? : 1))`, i.e. using if-try with a CT known value.
+- Reduce allocated Vmem for the compiler on 32 bit machines.
+- Bug causing a compiler error when parsing a broken lambda inside of an expression.
+- Fixed: regression in comments for `@deprecated` and `@pure`.
+
+### Stdlib changes
+- Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
+- Add OpenBSD to `env::INET_DEVICES` and add required socket constants.
+- Added `FileMmap` to manage memory mapped files.
+- Add `vm::mmap_file` to memory map a file.
+- Updated hash functions in default hash methods.
+
 ## 0.7.4 Change list
 
 ### Changes / improvements
@@ -105,6 +127,8 @@
 - Added `Ref` and `RefCounted` experimental functionality.
 - Added `Volatile` generic type.
 - Added `UnalignedRef` generic type.
+- Added `HashSet` generic type.
+- Added `LinkedHashSet` and `LinkedHashMap` generic types.
 - Add String conversion functions snake_case -> PascalCase and vice versa.
 
 ## 0.7.3 Change list

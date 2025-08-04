@@ -405,7 +405,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left, SourceSpan lhs_span)
 	Decl **decls = NULL;
 	Variadic variadic = VARIADIC_NONE;
 	int vararg_index = -1;
-	if (!parse_parameters(c, &decls, &variadic, &vararg_index, PARAM_PARSE_LAMBDA)) return false;
+	if (!parse_parameters(c, &decls, &variadic, &vararg_index, PARAM_PARSE_LAMBDA)) return poisoned_expr;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	Signature *sig = &func->func_decl.signature;
 	sig->vararg_index = vararg_index < 0 ? vec_size(decls) : vararg_index;

@@ -428,7 +428,7 @@ static inline Ast* parse_asm_block_stmt(ParseContext *c)
 		else
 		{
 			PRINT_ERROR_HERE("Only the '@pure' attribute is allowed.");
-			return false;
+			return poisoned_ast;
 		}
 		advance_and_verify(c, TOKEN_AT_IDENT);
 		if (!tok_is(c, TOKEN_LBRACE))
@@ -463,7 +463,7 @@ static inline Ast* parse_asm_block_stmt(ParseContext *c)
 		else
 		{
 			PRINT_ERROR_HERE("Only the '@pure' attribute is allowed.");
-			return false;
+			return poisoned_ast;
 		}
 		advance_and_verify(c, TOKEN_AT_IDENT);
 	}
