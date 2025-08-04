@@ -14,7 +14,7 @@ fn void test_basic_allocation() @test
 {
 	FixedBlockPool pool;
 	defer pool.free();
-	pool.init(mem, int);
+	pool.init_for_type(mem, int);
 
 	test::eq(pool.used, 0);
 	int *ptr1 = pool.alloc();
@@ -24,11 +24,31 @@ fn void test_basic_allocation() @test
 	assert(pool.used == 2);
 }
 
+struct Bar @align(128)
+{
+	int a;
+	int b;
+}
+fn void test_basic_overallocation() @test
+{
+	FixedBlockPool pool;
+	defer pool.free();
+	pool.init_for_type(mem, Bar);
+	assert(pool.alignment == 128);
+	test::eq(pool.used, 0);
+	int *ptr1 = pool.alloc();
+	test::eq(((iptr)ptr1) % 128, 0);
+	test::eq(pool.used, 1);
+	int *ptr2 = pool.alloc();
+	test::eq(((iptr)ptr2) % 128, 0);
+	test::eq(pool.used, 2);
+}
+
 fn void test_large_allocation() @test
 {
 	FixedBlockPool pool;
 	defer pool.free();
-	pool.init(mem, Foo);
+	pool.init_for_type(mem, Foo);
 
 	Foo *ptr1 = pool.alloc();
 	Foo *ptr2 = pool.alloc();
@@ -42,7 +62,7 @@ fn void test_basic_capacity() @test
 {
 	FixedBlockPool pool;
 	defer pool.free();
-	pool.init(mem, int, 2);
+	pool.init_for_type(mem, int, 2);
 
 	int *ptr1 = pool.alloc();
 	int *ptr2 = pool.alloc();
@@ -54,7 +74,7 @@ fn void test_basic_capacity_different_grow_capacity() @test
 {
 	FixedBlockPool pool;
 	defer pool.free();
-	pool.init(mem, int, 1);
+	pool.init_for_type(mem, int, 1);
 
 	pool.alloc();
 	pool.grow_capacity = 2;
@@ -77,7 +97,7 @@ fn void test_basic_object_reuse() @test
 {
 	FixedBlockPool pool;
 	defer pool.free();
-	pool.init(mem, int, 1);
+	pool.init_for_type(mem, int, 1);
 
 	int*[10] objs;
 	for (int i = 0; i < 10; i++) objs[i] = pool.alloc();
