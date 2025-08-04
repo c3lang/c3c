@@ -495,10 +495,12 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 
 
 	// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
-	FOREACH_IDX(i, Decl *, param, signature->params)
+	if (!is_naked)
 	{
-		if (!param->name && is_naked) continue;
-		llvm_emit_func_parameter(c, param, prototype->abi_args[i], &arg, i);
+		FOREACH_IDX(i, Decl *, param, signature->params)
+		{
+			llvm_emit_func_parameter(c, param, prototype->abi_args[i], &arg, i);
+		}
 	}
 
 	LLVMSetCurrentDebugLocation2(c->builder, NULL);
