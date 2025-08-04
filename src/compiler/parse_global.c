@@ -2592,11 +2592,6 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	if (try_consume(c, TOKEN_COLON))
 	{
 		is_const_enum = try_consume(c, TOKEN_CONST);
-		if (is_const_enum && compiler.build.old_enums)
-		{
-			PRINT_ERROR_LAST("'const' enums are not available with '--use-old-enums'.");
-			return poisoned_decl;
-		}
 		if (!tok_is(c, TOKEN_LPAREN) && !tok_is(c, TOKEN_LBRACE))
 		{
 			val_is_inline = try_consume(c, TOKEN_INLINE);

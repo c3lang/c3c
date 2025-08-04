@@ -1539,7 +1539,6 @@ static bool rule_enum_to_value(CastContext *cc, bool is_explicit, bool is_silent
 	{
 		if (!enum_decl->is_substruct)
 		{
-
 			return sema_cast_error(cc, false, is_silent);
 		}
 

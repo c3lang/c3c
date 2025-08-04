@@ -5704,7 +5704,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 					.property = property };
 				return true;
 			}
-			goto TYPE_CALL;;
+			goto TYPE_CALL;
 		case TYPE_PROPERTY_LOOKUP:
 			if (!compiler.build.old_enums)
 			{
