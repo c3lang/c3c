@@ -33,7 +33,7 @@ fn Object*? parse(Allocator allocator, InStream s)
 				if (c.is_space()) continue;
 				return UNEXPECTED_CHARACTER?;
 			}
-			if (context.stream.available() ?? 0) return UNEXPECTED_CHARACTER?;
+			if (!@catch(context.stream.read_byte())) return UNEXPECTED_CHARACTER?;
 			return o;
 		};
 	};

@@ -380,22 +380,22 @@ entry:
   %arg = alloca ptr, align 8
   %len = alloca i64, align 8
   %ptr = alloca ptr, align 8
-  %len18 = alloca i64, align 8
+  %len16 = alloca i64, align 8
   store ptr null, ptr %.cachedtype, align 8
   store i32 %0, ptr %.anon, align 4
-  !140
+
   store ptr %1, ptr %.anon1, align 8
-  !140
+
   %2 = load i32, ptr %.anon, align 4
   store i32 %2, ptr %argc, align 4
   %3 = load ptr, ptr %.anon1, align 8
   store ptr %3, ptr %argv, align 8
-  !145
+
   %4 = load i32, ptr %argc, align 4
   store i32 %4, ptr %argc2, align 4
   %5 = load ptr, ptr %argv, align 8
   store ptr %5, ptr %argv3, align 8
-  !148
+
   %6 = load i32, ptr %argc2, align 4, !dbg !150
   %sext = sext i32 %6 to i64, !dbg !150
   store i64 %sext, ptr %elements, align 8
@@ -507,38 +507,37 @@ loop.body:                                        ; preds = %loop.cond
   store ptr %37, ptr %arg, align 8, !dbg !179
 
   store i64 0, ptr %len, align 8, !dbg !182
-  %38 = load ptr, ptr %list5, align 8, !dbg !183
-  %39 = load i32, ptr %i, align 4, !dbg !184
-  %sext15 = sext i32 %39 to i64, !dbg !184
-  %ptroffset16 = getelementptr inbounds [16 x i8], ptr %38, i64 %sext15, !dbg !184
-  %40 = load ptr, ptr %arg, align 8, !dbg !185
-  %41 = load ptr, ptr %arg, align 8
-  store ptr %41, ptr %ptr, align 8
+  %38 = load ptr, ptr %arg, align 8, !dbg !183
+  %39 = load ptr, ptr %arg, align 8
+  store ptr %39, ptr %ptr, align 8
+  store i64 0, ptr %len16, align 8, !dbg !188
+  br label %loop.cond17, !dbg !189
 
-  store i64 0, ptr %len18, align 8, !dbg !190
-  br label %loop.cond19, !dbg !191
+loop.cond17:                                      ; preds = %loop.body19, %loop.body
+  %40 = load ptr, ptr %ptr, align 8, !dbg !190
+  %41 = load i64, ptr %len16, align 8, !dbg !192
+  %ptradd18 = getelementptr inbounds i8, ptr %40, i64 %41, !dbg !192
+  %42 = load i8, ptr %ptradd18, align 1, !dbg !192
+  %i2b = icmp ne i8 %42, 0, !dbg !192
+  br i1 %i2b, label %loop.body19, label %loop.exit, !dbg !192
 
-loop.cond19:                                      ; preds = %loop.body21, %loop.body
-  %42 = load ptr, ptr %ptr, align 8, !dbg !192
-  %43 = load i64, ptr %len18, align 8, !dbg !194
-  %ptradd20 = getelementptr inbounds i8, ptr %42, i64 %43, !dbg !194
-  %44 = load i8, ptr %ptradd20, align 1, !dbg !194
-  %i2b = icmp ne i8 %44, 0, !dbg !194
-  br i1 %i2b, label %loop.body21, label %loop.exit, !dbg !194
+loop.body19:                                      ; preds = %loop.cond17
+  %43 = load i64, ptr %len16, align 8, !dbg !193
+  %add20 = add i64 %43, 1, !dbg !193
+  store i64 %add20, ptr %len16, align 8, !dbg !193
+  br label %loop.cond17, !dbg !193
 
-loop.body21:                                      ; preds = %loop.cond19
-  %45 = load i64, ptr %len18, align 8, !dbg !195
-  %add22 = add i64 %45, 1, !dbg !195
-  store i64 %add22, ptr %len18, align 8, !dbg !195
-  br label %loop.cond19, !dbg !195
-
-loop.exit:                                        ; preds = %loop.cond19
-  %46 = load i64, ptr %len18, align 8, !dbg !196
-  %add23 = add i64 0, %46, !dbg !196
-  %size24 = sub i64 %add23, 0, !dbg !196
-  %47 = insertvalue %"char[]" undef, ptr %40, 0, !dbg !196
-  %48 = insertvalue %"char[]" %47, i64 %size24, 1, !dbg !196
-  store %"char[]" %48, ptr %ptroffset16, align 8, !dbg !196
+loop.exit:                                        ; preds = %loop.cond17
+  %44 = load i64, ptr %len16, align 8, !dbg !194
+  %add21 = add i64 0, %44, !dbg !194
+  %size22 = sub i64 %add21, 0, !dbg !194
+  %45 = insertvalue %"char[]" undef, ptr %38, 0, !dbg !194
+  %46 = insertvalue %"char[]" %45, i64 %size22, 1, !dbg !194
+  %47 = load ptr, ptr %list5, align 8, !dbg !195
+  %48 = load i32, ptr %i, align 4, !dbg !196
+  %sext23 = sext i32 %48 to i64, !dbg !196
+  %ptroffset24 = getelementptr inbounds [16 x i8], ptr %47, i64 %sext23, !dbg !196
+  store %"char[]" %46, ptr %ptroffset24, align 8, !dbg !196
   %49 = load i32, ptr %i, align 4, !dbg !197
   %add25 = add i32 %49, 1, !dbg !197
   store i32 %add25, ptr %i, align 4, !dbg !197
@@ -681,6 +680,7 @@ no_match:                                         ; preds = %compare
 !72 = !DILocation(line: 35, column: 49, scope: !66)
 !73 = !DILocalVariable(name: "name", arg: 3, scope: !66, file: !7, line: 35, type: !39)
 !74 = !DILocation(line: 35, column: 63, scope: !66)
+!75 =
 !76 = distinct !DISubprogram(name: "new", linkageName: "new", scope: !77, file: !77
 !77 = !DIFile(filename: "mem.c3", directory:
 !78 = !DILocation(line: 37, column: 9, scope: !66)

@@ -1,5 +1,5 @@
 module std::net::os;
-const bool SUPPORTS_INET = env::LIBC && (env::WIN32 || env::DARWIN || env::LINUX || env::ANDROID);
+const bool SUPPORTS_INET = env::LIBC && (env::WIN32 || env::DARWIN || env::LINUX || env::ANDROID || env::OPENBSD);
 
 typedef AIFamily = CInt;
 typedef AIProtocol = CInt;
@@ -23,7 +23,7 @@ struct AddrInfo
 		ZString ai_canonname;
 		SockAddrPtr ai_addr;
 	}
-	struct @if(env::LINUX)
+	struct @if(env::LINUX || env::OPENBSD)
 	{
 		SockAddrPtr ai_addr;
 		ZString ai_canonname;
@@ -58,7 +58,7 @@ extern fn void freeaddrinfo(AddrInfo* res) @if(SUPPORTS_INET);
 extern fn CInt setsockopt(NativeSocket socket, CInt level, CInt optname, void* optval, Socklen_t optlen) @if(SUPPORTS_INET);
 extern fn CInt getsockopt(NativeSocket socket, CInt level, CInt optname, void* optval, Socklen_t optlen) @if(SUPPORTS_INET);
 
-module std::net::os @if(!env::LIBC || !(env::WIN32 || env::DARWIN || env::LINUX || env::ANDROID));
+module std::net::os @if(!env::LIBC || !(env::WIN32 || env::DARWIN || env::LINUX || env::ANDROID || env::OPENBSD));
 
 const AIFamily PLATFORM_AF_INET6        = 0;
 const AIFamily PLATFORM_AF_IPX          = 0;

@@ -928,19 +928,20 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_FAULT:
 			expr_rewrite_const_fault(expr, decl);
 			return true;
-		case DECL_DISTINCT:
-		case DECL_TYPEDEF:
-		case DECL_DECLARRAY:
-		case DECL_BODYPARAM:
-		case DECL_CT_INCLUDE:
-		case DECL_CT_EXEC:
-		case DECL_GROUP:
-		case DECL_ERASED:
-		case DECL_IMPORT:
-		case DECL_ATTRIBUTE:
-		case DECL_CT_ASSERT:
 		case DECL_ALIAS:
+		case DECL_ALIAS_PATH:
+		case DECL_ATTRIBUTE:
+		case DECL_BODYPARAM:
+		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
+		case DECL_CT_EXEC:
+		case DECL_CT_INCLUDE:
+		case DECL_DECLARRAY:
+		case DECL_DISTINCT:
+		case DECL_ERASED:
+		case DECL_GROUP:
+		case DECL_IMPORT:
+		case DECL_TYPEDEF:
 			UNREACHABLE
 		case DECL_POISONED:
 			return expr_poison(expr);
@@ -1262,12 +1263,18 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 					return true;
 				}
 				break;
+			case VARDECL_PARAM:
+				if (context->call_env.is_naked_fn && !(context->active_scope.flags & SCOPE_MACRO))
+				{
+					RETURN_SEMA_ERROR(expr, "Parameters may not be directly accessed in '@naked' functions.");
+				}
+				break;
 			case VARDECL_GLOBAL:
 				if (context->call_env.pure)
 				{
-					SEMA_ERROR(expr, "'@pure' functions may not access globals.");
-					return false;
+					RETURN_SEMA_ERROR(expr, "'@pure' functions may not access globals.");
 				}
+				break;
 			default:
 				break;
 		}
@@ -1722,6 +1729,21 @@ static inline ArrayIndex sema_len_from_expr(Expr *expr)
 	return range_const_len(&expr->slice_expr.range);
 }
 
+INLINE Type *sema_get_va_type(SemaContext *context, Expr *expr, Variadic variadic)
+{
+	if (variadic == VARIADIC_RAW)
+	{
+		if (expr->resolve_status != RESOLVE_DONE)
+		{
+			expr = copy_expr_single(expr);
+			if (!sema_analyse_expr(context, expr)) return poisoned_type;
+		}
+		return type_flatten(expr->type);
+	}
+	assert(expr->expr_kind == EXPR_MAKE_ANY);
+	return type_flatten(expr->make_any_expr.typeid->const_expr.typeid);
+}
+
 INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional,
 										 bool *no_match_ref)
 {
@@ -2074,9 +2096,8 @@ NEXT_FLAG:
 		}
 		if (idx == vacount) goto TOO_FEW_ARGUMENTS;
 		expr = vaargs[idx];
-		assert(expr->expr_kind == EXPR_MAKE_ANY);
-		Type *type = expr->make_any_expr.typeid->const_expr.typeid;
-		type = type_flatten(type);
+		Type *type = sema_get_va_type(context, expr, variadic);
+		if (!type_ok(type)) return false;
 
 		// Possible variable width
 		if (c == '*')
@@ -2089,9 +2110,8 @@ NEXT_FLAG:
 			c = data[i];
 			if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 			expr = vaargs[idx];
-			assert(expr->expr_kind == EXPR_MAKE_ANY);
-			type = expr->make_any_expr.typeid->const_expr.typeid;
-			type = type_flatten(type);
+			type = sema_get_va_type(context, expr, variadic);
+			if (!type_ok(type)) return false;
 		}
 		else
 		{
@@ -2115,9 +2135,7 @@ NEXT_FLAG:
 				c = data[i];
 				if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 				expr = vaargs[idx];
-				assert(expr->expr_kind == EXPR_MAKE_ANY);
-				type = expr->make_any_expr.typeid->const_expr.typeid;
-				type = type_flatten(type);
+				if (!type_ok(type)) return false;
 			}
 			else
 			{
@@ -2554,12 +2572,13 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	bool is_always_const = decl->func_decl.signature.attrs.always_const;
 	if (decl->resolved_attributes && decl->attrs_resolved && decl->attrs_resolved->links)
 	{
-		Decl *func = context->call_env.current_function;
-		if (!func)
+		if (context->call_env.kind != CALL_ENV_FUNCTION && context->call_env.kind != CALL_ENV_FUNCTION_STATIC)
 		{
-			RETURN_SEMA_ERROR(call_expr, "Cannot call macro with '@links' outside of a function.");
+			goto SKIP_LINK;
 		}
-		assert(func->resolved_attributes);
+		Decl *func = context->call_env.current_function;
+		ASSERT_SPAN(func, func);
+		ASSERT_SPAN(func, func->resolved_attributes);
 		if (!func->attrs_resolved)
 		{
 			func->attrs_resolved = MALLOCS(ResolvedAttrData);
@@ -2572,6 +2591,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		}
 		func->attrs_resolved->links = updated;
 	}
+	SKIP_LINK:;
 	bool is_outer = call_expr->call_expr.is_outer_call;
 	ASSERT_SPAN(call_expr, decl->decl_kind == DECL_MACRO);
 
@@ -2809,7 +2829,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	}
 	else if (is_no_return)
 	{
-		SEMA_ERROR(context->block_returns[0], "Return used despite macro being marked '@noreturn'.");
+		SEMA_ERROR(macro_context.block_returns[0], "Return used despite macro being marked '@noreturn'.");
 		goto EXIT_FAIL;
 	}
 
@@ -4683,7 +4703,10 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		if (missing_ref) goto MISSING_REF;
 		RETURN_SEMA_ERROR(expr, "No method or inner struct/union '%s.%s' found.", type_to_error_string(decl->type), name);
 	}
-
+	if (!member->unit)
+	{
+		if (!sema_analyse_decl(context, decl)) return false;
+	}
 	if (member->decl_kind == DECL_VAR || member->decl_kind == DECL_UNION || member->decl_kind == DECL_STRUCT || member->decl_kind == DECL_BITSTRUCT)
 	{
 		expr->expr_kind = EXPR_CONST;
@@ -4805,6 +4828,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		RETURN_SEMA_ERROR(expr, "No member '%s' found.", name);
 	}
 
+	ASSERT_SPAN(expr, member->unit);
 
 	expr->expr_kind = EXPR_CONST;
 	expr->resolve_status = RESOLVE_DONE;
@@ -6110,6 +6134,7 @@ CHECK_DEEPER:
 
 	Decl *member = sema_decl_stack_find_decl_member(context, decl, kw, METHODS_AND_FIELDS);
 	if (!decl_ok(member)) return false;
+
 	if (member && decl->decl_kind == DECL_ENUM && member->decl_kind == DECL_VAR && sema_cast_const(parent))
 	{
 		if (!sema_analyse_decl(context, decl)) return false;
@@ -6176,6 +6201,7 @@ CHECK_DEEPER:
 		RETURN_SEMA_ERROR(expr, "There is no field or method '%s.%s'.", type_to_error_string(parent->type), kw);
 	}
 
+	if (!member->unit && !sema_analyse_decl(context, decl)) return false;
 	if (!sema_analyse_decl(context, member)) return false;
 
 	ASSERT_SPAN(expr, member->type);
@@ -6703,10 +6729,14 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 	}
 	if (left->expr_kind == EXPR_SUBSCRIPT_ASSIGN)
 	{
+		Decl *temp = decl_new_generated_var(right->type, VARDECL_LOCAL, right->span);
+		Expr *expr_rh = expr_generate_decl(temp, right);
 		Expr **args = NULL;
 		vec_add(args, exprptr(left->subscript_assign_expr.index));
-		vec_add(args, right);
-		return sema_insert_method_call(context, expr, declptr(left->subscript_assign_expr.method), exprptr(left->subscript_assign_expr.expr), args, false);
+		vec_add(args, expr_variable(temp));
+		if (!sema_insert_method_call(context, expr, declptr(left->subscript_assign_expr.method), exprptr(left->subscript_assign_expr.expr), args, false)) return false;
+		expr_rewrite_two(expr, expr_rh, expr_copy(expr));
+		return true;
 	}
 	if (left->expr_kind == EXPR_BITACCESS)
 	{
@@ -9180,6 +9210,10 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr, T
 									context->call_env.current_function->name,
 									type_quoted_error_string(context->rtype));
 		}
+		if (context->call_env.is_naked_fn)
+		{
+			RETURN_SEMA_ERROR(expr, "Rethrow is not allowed in a '@naked' function.");
+		}
 	}
 	return true;
 }
@@ -9688,7 +9722,8 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 						break;
 				}
 				FALLTHROUGH;
-			case DECL_POISONED:
+			case DECL_ALIAS:
+			case DECL_ALIAS_PATH:
 			case DECL_ATTRIBUTE:
 			case DECL_BODYPARAM:
 			case DECL_CT_ASSERT:
@@ -9701,7 +9736,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 			case DECL_IMPORT:
 			case DECL_LABEL:
 			case DECL_MACRO:
-			case DECL_ALIAS:
+			case DECL_POISONED:
 				RETURN_SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
 			case DECL_FAULT:
 				goto RETURN_CT;
@@ -9908,6 +9943,7 @@ INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 			case VARDECL_PARAM_CT:
 				if (!expr_is_const(ct_param->var.init_expr)) return false;
 				if (!expr_is_const(param->var.init_expr)) return false;
+				if (!expr_both_const_foldable(ct_param->var.init_expr, param->var.init_expr, BINARYOP_EQ)) return false;
 				if (!expr_const_compare(&ct_param->var.init_expr->const_expr,
 										&param->var.init_expr->const_expr, BINARYOP_EQ)) return false;
 				break;
@@ -9979,12 +10015,12 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 		}
 	}
 	if (!expr_is_const_string(filename)) RETURN_SEMA_ERROR(filename, "A compile time string was expected.");
-
+	if (!filename->const_expr.bytes.len) RETURN_SEMA_ERROR(filename, "Expected a non-empty string.");
 	CompilationUnit *unit = context->unit;
 	const char *string = filename->const_expr.bytes.ptr;
 	char *path;
 	char *name;
-	if (file_namesplit(unit->file->full_path, &name, &path))
+	if (file_path_is_relative(string) && file_namesplit(unit->file->full_path, &name, &path))
 	{
 		string = file_append_path(path, string);
 	}
@@ -10142,6 +10178,12 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	decl->name = scratch_buffer_copy();
 	decl->extname = decl->name;
 	decl->type = type_new_func(decl, sig);
+	bool erase_decl = false;
+	if (!sema_analyse_func_macro(context, decl, ATTR_FUNC, &erase_decl)) return false;
+	if (erase_decl)
+	{
+		RETURN_SEMA_ERROR(decl, "`@if` can't be placed on a lambda.");
+	}
 	if (!sema_analyse_function_signature(context, decl, NULL, sig->abi, sig)) return false;
 	if (flat && flat->pointer->function.prototype->raw_type != decl->type->function.prototype->raw_type)
 	{
@@ -10163,6 +10205,11 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	// Before function analysis, lambda evaluation is deferred
 	if (unit->module->stage < ANALYSIS_FUNCTIONS)
 	{
+		// Because we cannot check if the parameter is used before everything, set them all as read.
+		FOREACH(Decl *, decl, ct_lambda_parameters)
+		{
+			decl->var.is_read = true;
+		}
 		vec_add(unit->module->lambdas_to_evaluate, decl);
 	}
 	else

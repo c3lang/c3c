@@ -79,7 +79,7 @@ fn String? get_home_dir(Allocator allocator)
 
 
 <*
-Returns the current user's config directory.
+ Returns the current user's config directory.
 *>
 fn Path? get_config_dir(Allocator allocator) => @pool()
 {
@@ -87,13 +87,15 @@ fn Path? get_config_dir(Allocator allocator) => @pool()
 		return path::new(allocator, tget_var("AppData"));
 	$else
 		$if env::DARWIN:
-			String s = tget_var("HOME")!;
+			String home_dir = tget_var("HOME")!;
 			const DIR = "Library/Application Support";
 		$else
-			String s = tget_var("XDG_CONFIG_HOME") ?? tget_var("HOME")!;
+			String? config_path = tget_var("XDG_CONFIG_HOME");
+			if (try config_path && config_path.len > 0) return path::new(allocator, config_path);
+			String home_dir = tget_var("HOME")!;
 			const DIR = ".config";
 		$endif
-		return path::temp(s).append(allocator, DIR);
+		return path::temp(home_dir).append(allocator, DIR);
 	$endif
 }
 

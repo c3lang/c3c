@@ -65,6 +65,7 @@ char *win_utf16to8(const uint16_t *name);
 // Use as if it was mkdir(..., 0755) == 0
 bool dir_make(const char *path);
 bool dir_make_recursive(char *path);
+const char *dir_make_temp_dir(void);
 // Use as if it was chdir(...) == 0
 bool dir_change(const char *path);
 const char *filename(const char *path);
@@ -79,6 +80,7 @@ bool file_delete_file(const char *path);
 void file_delete_dir(const char *path);
 bool file_is_dir(const char *file);
 bool file_exists(const char *path);
+bool file_path_is_relative(const char *file_name);
 FILE *file_open_read(const char *path);
 bool file_touch(const char *path);
 char *file_read_binary(const char *path, size_t *size);

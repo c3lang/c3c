@@ -29,6 +29,7 @@ entry:
   %taddr9 = alloca i64, align 8
   %varargslots10 = alloca [2 x %any], align 16
   %indirectarg13 = alloca %"any[]", align 8
+  %add = add i32 %1, 1
   %checknull = icmp eq ptr %0, null
   %2 = call i1 @llvm.expect.i1(i1 %checknull, i1 false)
   br i1 %2, label %panic, label %checkok
@@ -41,7 +42,6 @@ checkok:                                          ; preds = %entry
   br i1 %6, label %panic1, label %checkok3
 
 checkok3:                                         ; preds = %checkok
-  %add = add i32 %1, 1
   store i32 %add, ptr %0, align 4
   %checknull4 = icmp eq ptr %0, null
   %7 = call i1 @llvm.expect.i1(i1 %checknull4, i1 false)

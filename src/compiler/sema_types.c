@@ -267,21 +267,22 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			}
 			FALLTHROUGH;
 		case DECL_ALIAS:
-		case DECL_FUNC:
-		case DECL_ENUM_CONSTANT:
-		case DECL_IMPORT:
-		case DECL_MACRO:
-		case DECL_LABEL:
+		case DECL_ALIAS_PATH:
 		case DECL_ATTRIBUTE:
+		case DECL_ENUM_CONSTANT:
 		case DECL_FAULT:
+		case DECL_FUNC:
+		case DECL_IMPORT:
+		case DECL_LABEL:
+		case DECL_MACRO:
 			SEMA_ERROR(type_info, "This is not a type.");
 			return type_info_poison(type_info);
+		case DECL_BODYPARAM:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
-		case DECL_DECLARRAY:
-		case DECL_BODYPARAM:
-		case DECL_CT_INCLUDE:
 		case DECL_CT_EXEC:
+		case DECL_CT_INCLUDE:
+		case DECL_DECLARRAY:
 		case DECL_GROUP:
 			UNREACHABLE
 	}

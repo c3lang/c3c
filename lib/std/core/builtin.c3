@@ -39,20 +39,24 @@ macro @is_valid_macro_slot(#arg) @const @builtin => !@typeis(#arg, EmptySlot);
 macro @rnd() @const @builtin => $$rnd();
 
 /*
- Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
+ Use `NO_MORE_ELEMENT` when reading the end of an iterator, or accessing a result out of bounds.
 */
 faultdef NO_MORE_ELEMENT @builtin;
 
 /*
- Use `SearchResult` when trying to return a value from some collection but the element is missing.
+ Use `NOT_FOUND` when trying to return a value from some collection but the element is missing.
 */
 faultdef NOT_FOUND @builtin;
 
 /*
- Use `CastResult` when an attempt at conversion fails.
+ Use `TYPE_MISMATCH` when an attempt at conversion fails.
 */
 faultdef TYPE_MISMATCH @builtin;
 
+/*
+ Use `CAPACITY_EXCEEDED` when trying to add to a bounded list or similar.
+*/
+faultdef CAPACITY_EXCEEDED @builtin;
 
 alias VoidFn = fn void();
 
@@ -410,6 +414,7 @@ macro swizzle2(v, v2, ...) @builtin
 {
 	return $$swizzle2(v, v2, $vasplat);
 }
+
 <*
  Return the excuse in the Optional if it is Empty, otherwise
  return a null fault.
@@ -432,6 +437,67 @@ macro bool @ok(#expr) @builtin
 {
 	if (catch #expr) return false;
 	return true;
+}
+
+<*
+ Check if an Optional expression evaluates to a fault. If so, return it;
+ else, assign the result to an expression.
+
+ @require $defined(#v = #v) : "#v must be a variable"
+ @require $defined(#expr!) : "Expected an optional expression"
+ @require @assignable_to(#expr!!, $typeof(#v))  : `Type of #expr must be an optional of #v's type`
+*>
+macro void? @try(#v, #expr) @builtin
+{
+	var res = #expr;
+	if (catch err = res) return err?;
+	#v = res;
+}
+
+<*
+ Check if an Optional expression evaluates to a fault. If so, return true if it is the
+ expected fault, the optional if it is unexpected, or false if there was no fault and
+ the assign happened.
+
+ This can be used in like this:
+
+  while (true)
+  {
+    char[] data;
+    // Read until end of file
+    if (@try_catch(data, load_line(), io::EOF)) break;
+    .. use data ..
+  }
+
+ In this example we read until we reach an EOF, which is expected. However, if we encounter some other
+ fault, we rethrow is. Without this macro, the code is instead written like:
+
+  while (true)
+  {
+    char[]? data;
+    data = load_line();
+    if (catch err = data)
+    {
+      if (err = io::EOF) break;
+      return err?
+    }
+    .. use data ..
+  }
+
+ @require $defined(#v = #v) : "#v must be a variable"
+ @require $defined(#expr!) : "Expected an optional expression"
+ @require @assignable_to(#expr!!, $typeof(#v))  : `Type of #expr must be an optional of #v's type`
+ @return "True if it was the expected fault, false if the variable was assigned, otherwise returns an optional."
+*>
+macro bool? @try_catch(#v, #expr, fault expected_fault) @builtin
+{
+	var res = #expr;
+	if (catch err = res)
+	{
+		return err == expected_fault ? true : err?;
+	}
+	#v = res;
+	return false;
 }
 
 <*
