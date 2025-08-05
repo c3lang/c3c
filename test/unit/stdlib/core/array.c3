@@ -135,7 +135,7 @@ fn void zip_longest_fill_struct() => @pool()
 fn void zip_with() => @pool()
 {
 	char[] left = "abcde";
-	char[] right = { 0x05, 0x04, 0x03, 0x00 };
+	char[4] right = { 0x05, 0x04, 0x03, 0x00 };
 
 	char[] expected = "fffd";
 
@@ -165,7 +165,22 @@ fn void zip_with_longest_fill() => @pool()
 
 	char[] expected = "ffghi";
 
-	char[] zipped = array::tzip_with_longest(left, right, fn char (char a, char b) => a + b, 0x04);
+	char[] zipped = array::tzip_with_longest(left, right, fn char (char a, char b) => a + b, (char)0x04);
+
+	assert(zipped.len == 5);
+	foreach (i, c : zipped) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
+}
+
+fn void zip_with_longest_fill_pointers() => @pool()
+{
+	ZString field = "0123456789abcdefghijklmnopqrstuvwxyz-_=!";
+
+	char*[] left = { &field[3], &field[1] };
+	char[] right = { 0x05, 0x04, 0x0A, 0x10, 0x11 };
+
+	char[] expected = "85agh";
+
+	char[] zipped = array::tzip_with_longest(left, right, fn char (char* a, char b) => a[b], &field[0]);
 
 	assert(zipped.len == 5);
 	foreach (i, c : zipped) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
@@ -201,7 +216,7 @@ fn void zip_with_longest_fill_struct() => @pool()
 fn void zip_with_into()
 {
 	char[] left = { '1', '2', '3', '4' };
-	String[] right = { "one", "two", "three", "four", "five", "six" };
+	String[6] right = { "one", "two", "three", "four", "five", "six" };
 
 	char[] expected = { '4', '5', '8', '8' };
 
