@@ -1883,7 +1883,7 @@ static Expr *parse_double(ParseContext *c, Expr *left, SourceSpan lhs_start)
 	char *err;
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST);
 	const char *original = symstr(c);
-	bool is_hex = original[0] == '0' && original[1] == 'x';
+	bool is_hex = original[0] == '0' && (original[1] == 'x' || original[1] == 'X');
 	// This is set to try to print in a similar manner as the input.
 	number->const_expr.is_hex = is_hex;
 	if (c->data.lex_len > 3)
