@@ -328,10 +328,10 @@ macro clone_slice(Allocator allocator, slice) @nodiscard
 {
 	var $Type = $typeof(slice[0]);
 
-	$Type* new_arr = new_array(allocator, $typeof(slice[0]), slice.len);
-	foreach (i, &v : slice) mem::copy(&new_arr[i], v, $Type.sizeof);
+	$Type[] new_arr = new_array(allocator, $Type, slice.len);
+	mem::copy(new_arr.ptr, slice.ptr, slice.len * $Type.sizeof);
 
-	return new_arr[:slice.len];
+	return new_arr;
 }
 
 <*
