@@ -450,8 +450,14 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	ASSERT_SPAN(inner, inner->resolve_status == RESOLVE_NOT_DONE);
 
 	bool was_recursive = false;
+	if (compiler.generic_depth >= MAX_GENERIC_DEPTH)
+	{
+		RETURN_SEMA_ERROR(type_info, "Generic resolution of this type has become deeply nested, it was aborted after reaching %d recursions.", compiler.generic_depth);
+	}
+	compiler.generic_depth++;
 	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name,
 	                                                   inner->span, type_info->generic.params, &was_recursive);
+	compiler.generic_depth--;
 	if (!decl_ok(type)) return false;
 	if (!sema_analyse_decl(context, type)) return false;
 	type_info->type = type->type;

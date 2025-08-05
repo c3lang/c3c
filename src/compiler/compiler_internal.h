@@ -48,6 +48,7 @@ typedef uint16_t FileId;
 #define MAX_BITSTRUCT 0x1000
 #define MAX_MEMBERS ((StructIndex)1) << 15
 #define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
+#define MAX_GENERIC_DEPTH 32
 #define MAX_PRIORITY 0xFFFF
 #define MAX_TYPE_SIZE UINT32_MAX
 #define MAX_GLOBAL_DECL_STACK (65536)
@@ -1931,6 +1932,7 @@ typedef struct
 	Linking linking;
 	GlobalContext context;
 	const char *obj_output;
+	int generic_depth;
 } CompilerState;
 
 extern CompilerState compiler;
