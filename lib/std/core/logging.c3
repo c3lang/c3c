@@ -169,6 +169,19 @@ struct NullLogger (Logger)
 fn void NullLogger.log(&self, LogPriority priority, LogCategory category, LogTag tag, String file, String function, int line, String fmt, any[] args) @dynamic
 {}
 
+struct MultiLogger (Logger)
+{
+	Logger[] loggers;
+}
+
+fn void MultiLogger.log(&self, LogPriority priority, LogCategory category, LogTag tag, String file, String function, int line, String fmt, any[] args) @dynamic
+{
+	foreach (logger : self.loggers)
+	{
+		logger.log(priority, category, tag, file, function, line, fmt, args);
+	}
+}
+
 
 module std::core::log @private;
 import std::io, std::thread, std::time;
