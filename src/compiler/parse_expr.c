@@ -73,8 +73,29 @@ bool parse_range(ParseContext *c, Range *range)
 	range->end = 0;
 	return true;
 }
+bool parse_generic_expr_list(ParseContext *c, Expr ***exprs_ref)
+{
+	SourceSpan start = c->span;
+	advance_and_verify(c, TOKEN_LBRACE);
+	if (try_consume(c, TOKEN_RBRACE))
+	{
+		print_error_at(extend_span_with_token(start, c->prev_span), "At least one generic parameter was expected here.");
+		return false;
+	}
+	do
+	{
+		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
+		vec_add(*exprs_ref, expr);
+		if (!try_consume(c, TOKEN_COMMA))
+		{
+			CONSUME_OR_RET(TOKEN_RBRACE, false);
+			return true;
+		}
+	} while (!try_consume(c, TOKEN_RBRACE));
+	return true;
+}
 
-bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_token)
+static bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_token)
 {
 	while (!try_consume(c, end_token))
 	{
@@ -1080,8 +1101,7 @@ static Expr *parse_generic_expr(ParseContext *c, Expr *left, SourceSpan lhs_star
 	ASSERT(left && expr_ok(left));
 	Expr *subs_expr = expr_new(EXPR_GENERIC_IDENT, lhs_start);
 	subs_expr->generic_ident_expr.parent = exprid(left);
-	advance_and_verify(c, TOKEN_LBRACE);
-	if (!parse_expr_list(c, &subs_expr->generic_ident_expr.parmeters, TOKEN_RBRACE)) return poisoned_expr;
+	if (!parse_generic_expr_list(c, &subs_expr->generic_ident_expr.parameters)) return poisoned_expr;
 	RANGE_EXTEND_PREV(subs_expr);
 	return subs_expr;
 }
@@ -1863,7 +1883,7 @@ static Expr *parse_double(ParseContext *c, Expr *left, SourceSpan lhs_start)
 	char *err;
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST);
 	const char *original = symstr(c);
-	bool is_hex = original[0] == '0' && original[1] == 'x';
+	bool is_hex = original[0] == '0' && (original[1] == 'x' || original[1] == 'X');
 	// This is set to try to print in a similar manner as the input.
 	number->const_expr.is_hex = is_hex;
 	if (c->data.lex_len > 3)
