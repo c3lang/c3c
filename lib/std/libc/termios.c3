@@ -1,15 +1,15 @@
 module libc::termios @if(env::LIBC &&& env::POSIX);
 
-fn int sendBreak(Fd fd, int duration) => tcsendbreak(fd, duration);
+fn int send_break(Fd fd, int duration) => tcsendbreak(fd, duration);
 fn int drain(Fd fd) => tcdrain(fd);
 fn int flush(Fd fd, int queue_selector) => tcflush(fd, queue_selector);
 fn int flow(Fd fd, int action) => tcflow(fd, action);
-fn Speed Termios.getOSpeed(Termios* self) => cfgetospeed(self);
-fn Speed Termios.getISpeed(Termios* self) => cfgetispeed(self);
-fn int Termios.setOSpeed(Termios* self, Speed speed) => cfsetospeed(self, speed);
-fn int Termios.setISpeed(Termios* self, Speed speed) => cfsetispeed(self, speed);
-fn int Termios.getAttr(Termios* self, Fd fd) => tcgetattr(fd, self);
-fn int Termios.setAttr(Termios* self, Fd fd, Tcactions optional_actions) => tcsetattr(fd, optional_actions, self);
+fn Speed Termios.get_ospeed(Termios* self) => cfgetospeed(self);
+fn Speed Termios.get_ispeed(Termios* self) => cfgetispeed(self);
+fn int Termios.set_ospeed(Termios* self, Speed speed) => cfsetospeed(self, speed);
+fn int Termios.set_ispeed(Termios* self, Speed speed) => cfsetispeed(self, speed);
+fn int Termios.get_attr(Termios* self, Fd fd) => tcgetattr(fd, self);
+fn int Termios.set_attr(Termios* self, Fd fd, Tcactions optional_actions) => tcsetattr(fd, optional_actions, self);
 
 module libc::termios @if(!env::LIBC ||| !env::POSIX);
 

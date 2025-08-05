@@ -64,116 +64,194 @@ extern fn CInt sigaction(CInt signum, Sigaction *action, Sigaction *oldaction);
 
 module libc::termios @if(env::LIBC &&& env::POSIX);
 
-typedef Cc = char;
-typedef Speed = CUInt;
-typedef Tcflags = CUInt;
-typedef Tcactions = CInt;
+bitstruct Tc_iflags : CUInt
+{
+	bool ignbrk;
+	bool brkint;
+	bool ignpar;
+	bool parmrk;
+	bool inpck;
+	bool istrip;
+	bool inlcr;
+	bool igncr;
+	bool icrnl;
+	bool iuclc;
+	bool ixon;
+	bool ixany;
+	bool ixoff;
+	bool imaxbel;
+	bool iutf8;
+}
 
-const Tcactions TCOOFF = 0;
-const Tcactions TCOON = 1;
-const Tcactions TCIOFF = 2;
-const Tcactions TCION = 3;
-const Tcactions TCIFLUSH = 0;
-const Tcactions TCOFLUSH = 1;
-const Tcactions TCIOFLUSH = 2;
-const Tcactions TCSANOW = 0;
-const Tcactions TCSADRAIN = 1;
-const Tcactions TCSAFLUSH = 2;
-const Speed B0 = 0000000;
-const Speed B50 = 0000001;
-const Speed B75 = 0000002;
-const Speed B110 = 0000003;
-const Speed B134 = 0000004;
-const Speed B150 = 0000005;
-const Speed B200 = 0000006;
-const Speed B300 = 0000007;
-const Speed B600 = 0000010;
-const Speed B1200 = 0000011;
-const Speed B1800 = 0000012;
-const Speed B2400 = 0000013;
-const Speed B4800 = 0000014;
-const Speed B9600 = 0000015;
-const Speed B19200 = 0000016;
-const Speed B38400 = 0000017;
-const Speed B57600 = 0010001;
-const Speed B115200 = 0010002;
-const Speed B230400 = 0010003;
-const Speed B460800 = 0010004;
-const Speed B500000 = 0010005;
-const Speed B576000 = 0010006;
-const Speed B921600 = 0010007;
-const Speed B1000000 = 0010010;
-const Speed B1152000 = 0010011;
-const Speed B1500000 = 0010012;
-const Speed B2000000 = 0010013;
-const Speed B2500000 = 0010014;
-const Speed B3000000 = 0010015;
-const Speed B3500000 = 0010016;
-const Speed B4000000 = 0010017;
-const Speed MAX_BAUD = B4000000;
-const Tcflags VINTR = 0;
-const Tcflags VQUIT = 1;
-const Tcflags VERASE = 2;
-const Tcflags VKILL = 3;
-const Tcflags VEOF = 4;
-const Tcflags VTIME = 5;
-const Tcflags VMIN = 6;
-const Tcflags VSWTC = 7;
-const Tcflags VSTART = 8;
-const Tcflags VSTOP = 9;
-const Tcflags VSUSP = 10;
-const Tcflags VEOL = 11;
-const Tcflags VREPRINT = 12;
-const Tcflags VDISCARD = 13;
-const Tcflags VWERASE = 14;
-const Tcflags VLNEXT = 15;
-const Tcflags VEOL2 = 16;
-const Tcflags ISIG = 0000001;
-const Tcflags ICANON = 0000002;
-const Tcflags ECHO = 0000010;
-const Tcflags ECHOE = 0000020;
-const Tcflags ECHOK = 0000040;
-const Tcflags ECHONL = 0000100;
-const Tcflags NOFLSH = 0000200;
-const Tcflags TOSTOP = 0000400;
-const Tcflags IEXTEN = 0100000;
-const Tcflags CSIZE = 0000060;
-const Tcflags CS5 = 0000000;
-const Tcflags CS6 = 0000020;
-const Tcflags CS7 = 0000040;
-const Tcflags CS8 = 0000060;
-const Tcflags CSTOPB = 0000100;
-const Tcflags CREAD = 0000200;
-const Tcflags PARENB = 0000400;
-const Tcflags PARODD = 0001000;
-const Tcflags HUPCL = 0002000;
-const Tcflags CLOCAL = 0004000;
-const Tcflags OPOST = 0000001;
-const Tcflags OLCUC = 0000002;
-const Tcflags ONLCR = 0000004;
-const Tcflags OCRNL = 0000010;
-const Tcflags ONOCR = 0000020;
-const Tcflags ONLRET = 0000040;
-const Tcflags OFILL = 0000100;
-const Tcflags OFDEL = 0000200;
-const Tcflags VTDLY = 0040000;
-const Tcflags VT0 = 0000000;
-const Tcflags VT1 = 0040000;
-const Tcflags IGNBRK = 0000001;
-const Tcflags BRKINT = 0000002;
-const Tcflags IGNPAR = 0000004;
-const Tcflags PARMRK = 0000010;
-const Tcflags INPCK = 0000020;
-const Tcflags ISTRIP = 0000040;
-const Tcflags INLCR = 0000100;
-const Tcflags IGNCR = 0000200;
-const Tcflags ICRNL = 0000400;
-const Tcflags IUCLC = 0001000;
-const Tcflags IXON = 0002000;
-const Tcflags IXANY = 0004000;
-const Tcflags IXOFF = 0010000;
-const Tcflags IMAXBEL = 0020000;
-const Tcflags IUTF8 = 0040000;
+bitstruct Tc_oflags : CUInt
+{
+	bool opost : 0;
+	bool olcuc : 1;
+	bool onlcr : 2;
+	bool ocrnl : 3;
+	bool onocr : 4;
+	bool onlret : 5;
+	bool ofill : 6;
+	bool ofdel : 7;
+	T_nldly nldly : 8..8;
+	T_crdly crdly : 9..10;
+	T_tabdly tabdly : 11..12;
+	T_bsdly bsdly : 13..13;
+	T_vtdly vtdly : 14..14;
+	T_ffdly ffdly : 15..15;
+}
+
+bitstruct Tc_cflags : CUInt
+{
+	T_csize csize : 4..5;
+	bool cstopb : 6;
+	bool creadb : 7;
+	bool parenb : 8;
+	bool parodd : 9;
+	bool hupcl : 10;
+	bool clocal : 11;
+	bool addrb : 29;
+}
+
+bitstruct Tc_lflags : CUInt
+{
+	bool isig : 0;
+	bool icanon : 1;
+	bool xcase : 2;
+	bool echo : 3;
+	bool echoe : 4;
+	bool echok : 5;
+	bool echonl : 6;
+	bool noflsh : 7;
+	bool tostop : 8;
+	bool echoctl : 9;
+	bool echoprt : 10;
+	bool echoke : 11;
+	bool flusho : 12;
+	bool pendin : 14;
+	bool iexten : 15;
+	bool extproc : 16;
+}
+
+enum T_nldly : const char
+{
+	NL0 = 0b0,
+	NL1 = 0b1,
+}
+
+enum T_crdly : const char
+{
+	CR0 = 0b00,
+	CR1 = 0b01,
+	CR2 = 0b10,
+	CR3 = 0b11,
+}
+
+enum T_tabdly : const char
+{
+	TAB0 = 0b00,
+	TAB1 = 0b01,
+	TAB2 = 0b10,
+	TAB3 = 0b11,
+	XTABS = TAB3,
+}
+
+enum T_bsdly : const char
+{
+	BS0 = 0b0,
+	BS1 = 0b1,
+}
+
+enum T_ffdly : const char
+{
+	FF0 = 0b0,
+	FF1 = 0b1,
+}
+
+enum T_vtdly : const char
+{
+	VT0 = 0b0,
+	VT1 = 0b1,
+}
+
+enum T_csize : const char
+{
+	CS5 = 0b00,
+	CS6 = 0b01,
+	CS7 = 0b10,
+	CS8 = 0b11,
+}
+
+enum Speed : const CUInt
+{
+	B0 = 0o0000000,
+	B50 = 0o0000001,
+	B75 = 0o0000002,
+	B110 = 0o0000003,
+	B134 = 0o0000004,
+	B150 = 0o0000005,
+	B200 = 0o0000006,
+	B300 = 0o0000007,
+	B600 = 0o0000010,
+	B1200 = 0o0000011,
+	B1800 = 0o0000012,
+	B2400 = 0o0000013,
+	B4800 = 0o0000014,
+	B9600 = 0o0000015,
+	B19200 = 0o0000016,
+	B38400 = 0o0000017,
+	B57600 = 0o0010001,
+	B115200 = 0o0010002,
+	B230400 = 0o0010003,
+	B460800 = 0o0010004,
+	B500000 = 0o0010005,
+	B576000 = 0o0010006,
+	B921600 = 0o0010007,
+	B1000000 = 0o0010010,
+	B1152000 = 0o0010011,
+	B1500000 = 0o0010012,
+	B2000000 = 0o0010013,
+	B2500000 = 0o0010014,
+	B3000000 = 0o0010015,
+	B3500000 = 0o0010016,
+	B4000000 = 0o0010017,
+	MAX_BAUD = B4000000,
+}
+
+enum Cc : const char
+{
+	VINTR = 0,
+	VQUIT = 1,
+	VERASE = 2,
+	VKILL = 3,
+	VEOF = 4,
+	VTIME = 5,
+	VMIN = 6,
+	VSWTC = 7,
+	VSTART = 8,
+	VSTOP = 9,
+	VSUSP = 10,
+	VEOL = 11,
+	VREPRINT = 12,
+	VDISCARD = 13,
+	VWERASE = 14,
+	VLNEXT = 15,
+	VEOL2 = 16,
+}
+
+enum Tcactions : const CInt
+{
+	TCOOFF = 0,
+	TCOON = 1,
+	TCIOFF = 2,
+	TCION = 3,
+	TCIFLUSH = 0,
+	TCOFLUSH = 1,
+	TCIOFLUSH = 2,
+	TCSANOW = 0,
+	TCSADRAIN = 1,
+	TCSAFLUSH = 2,
+}
 
 extern fn CInt tcgetattr(Fd fd, Termios* self);
 extern fn CInt tcsetattr(Fd fd, Tcactions optional_actions, Termios* self);
@@ -189,13 +267,12 @@ extern fn CInt cfsetispeed(Termios* self, Speed speed);
 const CInt NCCS = 32;
 struct Termios
 {
-	Tcflags c_iflag;
-	Tcflags c_oflag;
-	Tcflags c_cflag;
-	Tcflags c_lflag;
+	Tc_iflags c_iflag;
+	Tc_oflags c_oflag;
+	Tc_cflags c_cflag;
+	Tc_lflags c_lflag;
 	Cc c_line;
 	Cc[NCCS] c_cc;
 	Speed c_ispeed;
 	Speed c_ospeed;
-} 
-
+}
