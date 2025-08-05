@@ -14,6 +14,8 @@
 - Reduce allocated Vmem for the compiler on 32 bit machines.
 - Bug causing a compiler error when parsing a broken lambda inside of an expression.
 - Fixed: regression in comments for `@deprecated` and `@pure`.
+- Detect recursive creation of generics #2366.
+- Compiler assertion when defining a function with return type untyped_list #2368.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
