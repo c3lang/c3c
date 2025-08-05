@@ -1097,7 +1097,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 			{
 				RETURN_SEMA_ERROR(expr, "The ternary would be an 'untyped list', you need to explicitly type one or both branches to a runtime type.");
 			}
-			RETURN_SEMA_ERROR(expr, "A ternary must always return a runtime type, but it was %s.", type_quoted_error_string(left_canonical));
+			RETURN_SEMA_ERROR(expr, "A ternary must always return a runtime type, but it was %s.", type_invalid_storage_type_name(left_canonical));
 			break;
 		default:
 			break;

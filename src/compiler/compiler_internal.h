@@ -2935,7 +2935,7 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 		case TYPE_UNTYPED_LIST:
 			return "an untyped list";
 		case TYPE_TYPEINFO:
-			return "a type";
+			return "a typeinfo";
 		case TYPE_WILDCARD:
 			return "an empty value";
 		default:

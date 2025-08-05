@@ -340,6 +340,7 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 		case STORAGE_NORMAL:
 		case STORAGE_VOID:
 		case STORAGE_UNKNOWN:
+		case STORAGE_COMPILE_TIME:
 			type_info->type = expr_type;
 			return true;
 		case STORAGE_WILDCARD:
@@ -349,9 +350,6 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 				return true;
 			}
 			RETURN_SEMA_ERROR(expr, "This %sexpression lacks a concrete type.", type_is_optional(expr_type) ? "optional " : "");
-		case STORAGE_COMPILE_TIME:
-			type_info->type = type_untypedlist;
-			return true;
 	}
 	UNREACHABLE
 }
