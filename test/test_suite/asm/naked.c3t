@@ -9,11 +9,20 @@ fn void start() @export("_start") @naked @nostrip {
         }
 }
 
+fn void foo(char a) @naked @nostrip { }
+
+
 /* #expect: testing.ll
 
 define void @_start() #0 {
 entry:
   call void asm sideeffect alignstack "movq $$60, %rax\0Amovq $$42, %rdi\0Asyscall \0A", "~{cc},~{rax},~{rcx},~{r8},~{r11},~{flags},~{dirflag},~{fspr}"()
+  unreachable
+}
+
+; Function Attrs: naked nounwind uwtable
+define void @testing.foo(i8 zeroext %0) #0 {
+entry:
   unreachable
 }
 
