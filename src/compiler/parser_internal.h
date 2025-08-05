@@ -55,7 +55,7 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type);
 Decl *parse_var_decl(ParseContext *c);
 bool parse_current_is_expr(ParseContext *c);
 bool parse_joined_strings(ParseContext *c, const char **str_ref, size_t *len_ref);
-bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_token);
+bool parse_generic_expr_list(ParseContext *c, Expr ***exprs_ref);
 bool parse_parameters(ParseContext *c, Decl ***params_ref,
                       Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind);
 

@@ -872,7 +872,7 @@ typedef struct
 typedef struct
 {
 	ExprId parent;
-	Expr **parmeters;
+	Expr **parameters;
 } ExprGenericIdent;
 
 typedef struct

@@ -499,8 +499,7 @@ static inline TypeInfo *parse_generic_type(ParseContext *c, TypeInfo *type)
 {
 	ASSERT(type_info_ok(type));
 	TypeInfo *generic_type = type_info_new(TYPE_INFO_GENERIC, type->span);
-	advance_and_verify(c, TOKEN_LBRACE);
-	if (!parse_expr_list(c, &generic_type->generic.params, TOKEN_RBRACE)) return poisoned_type_info;
+	if (!parse_generic_expr_list(c, &generic_type->generic.params)) return poisoned_type_info;
 	generic_type->generic.base = type;
 	return generic_type;
 }
