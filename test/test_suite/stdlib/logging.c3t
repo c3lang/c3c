@@ -1,0 +1,54 @@
+// #target: macos-x64
+module test;
+import std;
+
+fn void main()
+{
+	log::@category_scope(log::CATEGORY_KERNEL)
+	{
+		log::@tag_scope("YO")
+		{
+			log::info("Hello");
+		};
+	};
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %old = alloca i8, align 1
+  %old1 = alloca [12 x i8], align 1
+  %result = alloca [12 x i8], align 1
+  %tempcoerce = alloca { i64, i32 }, align 8
+  %category = alloca i8, align 1
+  %0 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.log.default_category)
+  %1 = load i8, ptr %0, align 1
+  store i8 %1, ptr %old, align 1
+  %2 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.log.default_category)
+  store i8 2, ptr %2, align 1
+  call void @llvm.assume(i1 true)
+  %3 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.log.current_tag)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %old1, ptr align 1 %3, i32 12, i1 false)
+  call void @llvm.assume(i1 true)
+  %4 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.log.current_tag)
+  %5 = call { i64, i32 } @std.core.log.create_tag(ptr @.str, i64 2)
+  store { i64, i32 } %5, ptr %tempcoerce, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %result, ptr align 8 %tempcoerce, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %4, ptr align 1 %result, i32 12, i1 false)
+  %6 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.log.default_category)
+  %7 = load i8, ptr %6, align 1
+  store i8 %7, ptr %category, align 1
+  %8 = load i8, ptr %category, align 1
+  call void @std.core.log.call_log(i32 2, i8 zeroext %8, ptr @.str.1, i64 5, ptr null, i64 0)
+  %9 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.log.current_tag)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %9, ptr align 1 %old1, i32 12, i1 false)
+  %10 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.log.default_category)
+  %11 = load i8, ptr %old, align 1
+  store i8 %11, ptr %10, align 1
+  ret void
+}
+
+declare extern_weak { i64, i32 } @std.core.log.create_tag(ptr, i64) #0
+
+declare extern_weak void @std.core.log.call_log(i32, i8 zeroext, ptr, i64, ptr, i64) #0

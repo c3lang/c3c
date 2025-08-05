@@ -26,6 +26,7 @@
 - Add `vm::mmap_file` to memory map a file.
 - Updated hash functions in default hash methods.
 - Added `FixedBlockPool` which is a memory pool for fixed size blocks.
+- Added the experimental `std::core::log` for logging.
 
 ## 0.7.4 Change list
 
