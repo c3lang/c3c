@@ -8575,7 +8575,7 @@ static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr, b
 	}
 
 VALID_VEC:
-	if (is_bitstruct && sema_cast_const(inner))
+	if (is_bitstruct && sema_cast_const(inner) && expr_is_const_initializer(inner))
 	{
 		expr_replace(expr, inner);
 		sema_invert_bitstruct_const_initializer(expr->const_expr.initializer);
