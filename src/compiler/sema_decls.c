@@ -5164,7 +5164,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	ASSERT(parameter_count > 0);
 	if (parameter_count != vec_size(params))
 	{
-		ASSERT(vec_size(params));
+		ASSERT_AT(span, vec_size(params));
 		sema_error_at(c, extend_span_with_token(params[0]->span, vectail(params)->span),
 					  "The generic module expected %d arguments, but you supplied %d, did you make a mistake?",
 					  parameter_count,

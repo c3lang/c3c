@@ -10073,7 +10073,7 @@ static inline bool sema_expr_analyse_generic_ident(SemaContext *context, Expr *e
 	}
 	Decl *symbol = sema_analyse_parameterized_identifier(context, parent->unresolved_ident_expr.path,
 														 parent->unresolved_ident_expr.ident, parent->span,
-														 expr->generic_ident_expr.parmeters, NULL);
+														 expr->generic_ident_expr.parameters, NULL);
 	if (!decl_ok(symbol)) return false;
 	expr_resolve_ident(expr, symbol);
 	return true;

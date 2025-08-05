@@ -16,6 +16,7 @@
 - Fixed: regression in comments for `@deprecated` and `@pure`.
 - Detect recursive creation of generics #2366.
 - Compiler assertion when defining a function with return type untyped_list #2368.
+- Compiler assert when using generic parameters list without any parameters. #2369
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
