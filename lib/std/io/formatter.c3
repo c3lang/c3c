@@ -149,7 +149,7 @@ fn usz? Formatter.out_str(&self, any arg) @private
 		case FAULT:
 			return self.out_substr((*(fault*)arg.ptr).nameof ?: "<EMPTY-FAULT>");
 		case INTERFACE:
-			if (!*(usz*)arg.ptr) return self.out_substr("<EMPTY-INTERFACE>");
+			if (!*(uptr*)arg.ptr) return self.out_substr("<EMPTY-INTERFACE>");
 			nextcase;
 		case ANY:
 			return self.out_str(*(any*)arg);
