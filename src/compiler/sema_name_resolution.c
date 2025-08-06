@@ -127,11 +127,31 @@ Decl *sema_decl_stack_find_decl_member(SemaContext *context, Decl *decl_owner, c
 	return member;
 }
 
-static inline Decl *sema_find_decl_in_module(Module *module, Path *path, const char *symbol, Module **path_found_ref)
+static inline Decl *sema_find_decl_in_module(Module *module, Path *path, const char *symbol, Module **path_found_ref, bool recursive)
 {
-	if (!path) return module_find_symbol(module, symbol);
+	if (!path)
+	{
+		Decl *decl = module_find_symbol(module, symbol);
+		if (decl) return decl;
+		if (!recursive) return NULL;
+		FOREACH (Module *, submodule, module->sub_modules)
+		{
+			Decl *match = sema_find_decl_in_module(submodule, path, symbol, path_found_ref, true);
+			if (match) return match;
+		}
+		return NULL;
+	}
 	if (path->len > module->name->len) return NULL;
-	if (!matches_subpath(module->name, path)) return NULL;
+	if (!matches_subpath(module->name, path))
+	{
+		if (!recursive) return NULL;
+		FOREACH (Module *, submodule, module->sub_modules)
+		{
+			Decl *match = sema_find_decl_in_module(submodule, path, symbol, path_found_ref, true);
+			if (match) return match;
+		}
+		return NULL;
+	}
 	*path_found_ref = module;
 	return module_find_symbol(module, symbol);
 }
@@ -149,7 +169,7 @@ static bool sema_find_decl_in_imports(SemaContext *context, NameResolve *name_re
 		bool is_private_import = import->import.import_private_as_public;
 		if (!path && (decl || !is_private_import)) continue;
 		// Is the decl in the import.
-		Decl *found = sema_find_decl_in_module(import->import.module, path, symbol, &name_resolve->path_found);
+		Decl *found = sema_find_decl_in_module(import->import.module, path, symbol, &name_resolve->path_found, !import->import.is_non_recurse);
 
 		if (!decl_ok(found)) return false;
 
@@ -206,7 +226,7 @@ Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *in
 	Module *path_found = NULL;
 	FOREACH(Module *, module, module_list)
 	{
-		Decl *decl = sema_find_decl_in_module(module, path, interned_name, &path_found);
+		Decl *decl = sema_find_decl_in_module(module, path, interned_name, &path_found, false);
 		if (decl) return decl;
 	}
 	return NULL;
@@ -431,25 +451,22 @@ static bool sema_find_decl_in_global(SemaContext *context, DeclTable *table, Mod
 static bool sema_resolve_path_symbol(SemaContext *context, NameResolve *name_resolve)
 {
 	Path *path = name_resolve->path;
-	ASSERT(path);
+	ASSERT(path && "Expected path.");
 	name_resolve->ambiguous_other_decl = NULL;
 	name_resolve->path_found = NULL;
 	name_resolve->found = NULL;
-	ASSERT(name_resolve->path && "Expected path.");
 
-	if (path != NULL)
+	FOREACH(Decl *, decl_alias, context->unit->module_aliases)
 	{
-		FOREACH(Decl *, decl_alias, context->unit->module_aliases)
+		if (path->module == decl_alias->name)
 		{
-			if (path->module == decl_alias->name)
-			{
-				assert(decl_alias->resolve_status == RESOLVE_DONE);
-				name_resolve->path_found = decl_alias->module_alias_decl.module;
-				name_resolve->path = name_resolve->path_found->name;
-				break;
-			}
+			assert(decl_alias->resolve_status == RESOLVE_DONE);
+			name_resolve->path_found = decl_alias->module_alias_decl.module;
+			name_resolve->path = name_resolve->path_found->name;
+			break;
 		}
 	}
+
 	const char *symbol = name_resolve->symbol;
 	// 0. std module special handling.
 	if (path->module == compiler.context.std_module_path.module)
