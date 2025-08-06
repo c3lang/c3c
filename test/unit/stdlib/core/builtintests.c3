@@ -173,3 +173,20 @@ fn void test_hash_repeat()
 	assert((bool[100]){}.hash() == (bool[100]){}.hash());
 	assert(int.typeid.hash() == int.typeid.hash());
 }
+
+fn void test_bitsizeof()
+{
+	// compile-time
+	assert(bitsizeof(uint128) == 128);
+	assert(bitsizeof(ulong) == 64);
+	assert(bitsizeof(int) == 32);
+	assert(bitsizeof(short) == 16);
+	assert(bitsizeof(char) == 8);
+	assert(bitsizeof(char[200]) == 1600);
+
+	// runtime
+	assert(@bitsizeof((char)0x07) == 8);
+	assert(@bitsizeof(0x1000ul) == 64);
+	assert(@bitsizeof(0) == 32);
+	assert(@bitsizeof((char[*])"abcdefghi") == 72);
+}

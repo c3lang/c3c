@@ -85,6 +85,10 @@ macro void @swap(#a, #b) @builtin
 	#b = temp;
 }
 
+macro bitsizeof($Type) @builtin @const => $Type.sizeof * 8;
+
+macro @bitsizeof(#expr) @builtin => $sizeof(#expr) * 8;
+
 <*
  Convert an `any` type to a type, returning an failure if there is a type mismatch.
 
