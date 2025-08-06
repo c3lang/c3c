@@ -20,10 +20,13 @@ fn void various_cornercases() @test
     test::eq(string::tformat("%s", z), "[100]");
 
     fault p; fault o = DERP;
-    test::eq(string::tformat("%s|%s", p, o), "(nofault)|format_test::DERP");
+    test::eq(string::tformat("%s|%s", p, o), "(empty-fault)|format_test::DERP");
 
     Decl y;
-    test::eq(string::tformat("%s", y), "(null)");
+    test::eq(string::tformat("%s", y), "(empty-interface)");
+
+    any xx;
+    test::eq(string::tformat("%s", xx), "(empty-any)");
 
     int* x;
     test::eq(string::tformat("%s", x), "0x0");

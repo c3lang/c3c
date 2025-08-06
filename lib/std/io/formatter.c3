@@ -147,11 +147,13 @@ fn usz? Formatter.out_str(&self, any arg) @private
 			return self.out_substr("void");
 		case FAULT:
 			fault f = *(fault*)arg.ptr;
-			return self.out_substr(f ? f.nameof : "(nofault)");
+			return self.out_substr(f ? f.nameof : "(empty-fault)");
 		case INTERFACE:
+			any a = *(any*)arg;
+			return a ? self.out_str(a) : self.out_substr("(empty-interface)");
 		case ANY:
 			any a = *(any*)arg;
-			return a ? self.out_str(a) : self.out_substr("(null)");
+			return a ? self.out_str(a) : self.out_substr("(empty-any)");
 		case OPTIONAL:
 			unreachable();
 		case SIGNED_INT:
