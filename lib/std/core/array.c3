@@ -111,3 +111,87 @@ macro concat(Allocator allocator, arr1, arr2) @nodiscard
  @ensure return.len == arr1.len + arr2.len
 *>
 macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
+
+
+<*
+ Apply a reduction/folding operation to an iterable type.
+
+ @param [in] array
+ @require @typekind(array) == SLICE || @typekind(array) == ARRAY
+*>
+macro @reduce(array, identity, #operation)
+{
+	$if @typeis(#operation, char) ||| @typeis(#operation, String):
+		var $InnerType = $typeof(array[0]);
+		$if !types::is_numerical($InnerType) &&& !types::is_bool($InnerType):
+			$error "The array must consist of numerical values when using summary operators.";
+		$endif
+
+		$typeof(fn $InnerType ($InnerType i, $InnerType e) => i) $func;
+
+		$if @typeis(#operation, String):
+			$switch #operation:
+				$case "&&":  $func = fn (i, e) => i && e;
+				$case "||":  $func = fn (i, e) => i || e;
+				$case "<<":  $func = fn (i, e) => i << e;
+				$case ">>":  $func = fn (i, e) => i >> e;
+				$case "<<<": $func = fn (i, e) => i.rotl(e);
+				$case ">>>": $func = fn (i, e) => i.rotr(e);
+				$case "?:":  $func = fn (i, e) => e ?: i;
+
+				$default: $error "The given sigil is not a valid summary operator for `fold`.";
+			$endswitch
+		$else
+			$switch #operation:
+				$case '+': $func = fn (i, e) => i + e;
+				$case '-': $func = fn (i, e) => i - e;
+				$case '*': $func = fn (i, e) => i * e;
+				$case '/': $func = fn (i, e) => i / e;
+				$case '%': $func = fn (i, e) => i % e;
+				$case '&': $func = fn (i, e) => i & e;
+				$case '|': $func = fn (i, e) => i | e;
+				$case '^': $func = fn (i, e) => i ^ e;
+
+				$default: $error "The given sigil is not a valid summary operator for `fold`.";
+			$endswitch
+		$endif
+
+		foreach (element : array) identity = $func(identity, element);
+	$else
+		// Fold using whatever operation is passed.
+		foreach (element : array) identity = #operation(identity, element);
+	$endif
+
+	return identity;
+}
+
+
+// macro typeid any_predicate_type(#expr)
+// {
+// 	// $switch $typeof(#expr).kindof:
+// 	// 	$case 
+// 	// $endswitch
+// }
+
+
+// macro @filter(Allocator allocator, array, #predicate) @nodiscard
+
+<*
+ @require @assignable_to(#predicate, $typeof(fn bool ($typeof(array[0]) a) => true))
+*>
+macro bool @any(array, #predicate)
+{
+	$typeof(fn bool ($typeof(array[0]) a) => true) $predicate = #predicate;
+	foreach (element : array) if ($predicate(element)) return true;
+	return false;
+}
+
+<*
+ @require @assignable_to(#predicate, $typeof(fn bool ($typeof(array[0]) a) => true))
+*>
+macro bool @all(array, #predicate)
+{
+	$typeof(fn bool ($typeof(array[0]) a) => true) $func = #predicate;
+	foreach (element : array) if (!$func(element)) return false;
+	return true;
+}
