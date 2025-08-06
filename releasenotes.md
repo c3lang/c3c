@@ -20,6 +20,7 @@
 - Parsing difference between "0x00." and "0X00." literals #2371
 - Fixed bug generating `$c += 1` when `$c` was derived from a pointer but behind a cast.
 - Compiler segfault when using bitwise not on number literal cast to bitstruct #2373.
+- Formatter did not properly handle "null" for any, and null for empty faults. #2375
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.

@@ -146,10 +146,12 @@ fn usz? Formatter.out_str(&self, any arg) @private
 		case VOID:
 			return self.out_substr("void");
 		case FAULT:
-			return self.out_substr((*(fault*)arg.ptr).nameof);
+			fault f = *(fault*)arg.ptr;
+			return self.out_substr(f ? f.nameof : "(nofault)");
 		case INTERFACE:
 		case ANY:
-			return self.out_str(*(any*)arg);
+			any a = *(any*)arg;
+			return a ? self.out_str(a) : self.out_substr("(null)");
 		case OPTIONAL:
 			unreachable();
 		case SIGNED_INT:
