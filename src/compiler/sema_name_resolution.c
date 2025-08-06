@@ -431,25 +431,22 @@ static bool sema_find_decl_in_global(SemaContext *context, DeclTable *table, Mod
 static bool sema_resolve_path_symbol(SemaContext *context, NameResolve *name_resolve)
 {
 	Path *path = name_resolve->path;
-	ASSERT(path);
+	ASSERT(path && "Expected path.");
 	name_resolve->ambiguous_other_decl = NULL;
 	name_resolve->path_found = NULL;
 	name_resolve->found = NULL;
-	ASSERT(name_resolve->path && "Expected path.");
 
-	if (path != NULL)
+	FOREACH(Decl *, decl_alias, context->unit->module_aliases)
 	{
-		FOREACH(Decl *, decl_alias, context->unit->module_aliases)
+		if (path->module == decl_alias->name)
 		{
-			if (path->module == decl_alias->name)
-			{
-				assert(decl_alias->resolve_status == RESOLVE_DONE);
-				name_resolve->path_found = decl_alias->module_alias_decl.module;
-				name_resolve->path = name_resolve->path_found->name;
-				break;
-			}
+			assert(decl_alias->resolve_status == RESOLVE_DONE);
+			name_resolve->path_found = decl_alias->module_alias_decl.module;
+			name_resolve->path = name_resolve->path_found->name;
+			break;
 		}
 	}
+
 	const char *symbol = name_resolve->symbol;
 	// 0. std module special handling.
 	if (path->module == compiler.context.std_module_path.module)
