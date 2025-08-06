@@ -1,0 +1,12 @@
+// #target: macos-x64
+module test;
+bitstruct Foo : uint
+{
+	bool test : 2;
+}
+
+fn int main()
+{
+	~(Foo)2;
+	return 0;
+}

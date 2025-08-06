@@ -1,0 +1,19 @@
+// #target: macos-x64
+module test;
+macro checker()
+{
+    long $b = (iptr) ((uint*) bool.typeid);
+    $b += 1;
+    return $b;
+}
+fn int main()
+{
+	long x = checker();
+	return 0;
+}
+
+/* #expect: test.ll
+
+  %x = alloca i64, align 8
+  store i64 ptrtoint (ptr getelementptr (i8, ptr @"$ct.bool", i64 1) to i64), ptr %x, align 8
+  ret i32 0

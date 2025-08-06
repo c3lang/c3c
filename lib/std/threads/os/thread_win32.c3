@@ -15,6 +15,11 @@ struct NativeMutex
 	}
 }
 
+fn bool NativeMutex.is_initialized(&self)
+{
+	return self.initialized;
+}
+
 struct NativeTimedMutex
 {
 	Win32_SRWLOCK srw_lock;
