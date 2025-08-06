@@ -6,6 +6,7 @@
 - Support `alias foo = module std::io` module aliasing.
 - Add compile-time `@intlog2` macro to math.
 - Add compile-time `@clz` builtin. #2367
+- Add `bitsizeof` macro builtins. #2376
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.

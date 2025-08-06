@@ -184,3 +184,22 @@ fn void test_ct_clz()
 	assert(@clz((uint128)0x87) == 120);
 	assert(@clz((char)(0x44 - 0x40)) == 5);
 }
+
+fn void test_bitsizeof()
+{
+	assert(bitsizeof(uint128) == 128);
+	assert(bitsizeof(ulong) == 64);
+	assert(bitsizeof(int) == 32);
+	assert(bitsizeof(short) == 16);
+	assert(bitsizeof(char) == 8);
+	assert(bitsizeof(char[200]) == 1600);
+
+	// Checks that they may be converted
+	int x = bitsizeof(char);
+	int y = @bitsizeof(1);
+
+	assert(@bitsizeof((char)0x07) == 8);
+	assert(@bitsizeof(0x1000ul) == 64);
+	assert(@bitsizeof(0) == 32);
+	assert(@bitsizeof((char[*])"abcdefghi") == 72);
+}
