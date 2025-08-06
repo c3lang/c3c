@@ -6764,13 +6764,13 @@ static bool sema_binary_analyse_ct_op_assign(SemaContext *context, Expr *expr, E
 	if (!sema_expr_analyse_binary(context, NULL, expr, NULL)) return false;
 	expr->resolve_status = RESOLVE_DONE;
 
-	if (!sema_cast_const(expr))
+	if (!expr_is_runtime_const(expr))
 	{
-		RETURN_SEMA_ERROR(exprptr(expr->binary_expr.right), "Expected a constant expression.");
+		RETURN_SEMA_ERROR(expr, "Expected this to result in a constant expression.");
 	}
 
 	left_var->var.init_expr = expr;
-	left->type = expr->type;
+	left_var->type = expr->type;
 	return true;
 }
 
@@ -8575,7 +8575,7 @@ static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr, b
 	}
 
 VALID_VEC:
-	if (is_bitstruct && sema_cast_const(inner))
+	if (is_bitstruct && sema_cast_const(inner) && expr_is_const_initializer(inner))
 	{
 		expr_replace(expr, inner);
 		sema_invert_bitstruct_const_initializer(expr->const_expr.initializer);
