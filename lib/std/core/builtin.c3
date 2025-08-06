@@ -417,10 +417,10 @@ macro swizzle2(v, v2, ...) @builtin
 
 
 <*
- Returns the count of leading bits from an integer at compile-time.
+ Returns the count of leading zero bits from an integer at compile-time.
 
- @require types::is_int($typeof($value)) : "Compile-time `clz` input must be an integer"
- @require $sizeof($value) * 8 <= 128 : "Compile-time `clz` can only accept 128-bit integers or lower."
+ @require types::is_int($typeof($value)) : "Input value must be an integer"
+ @require $sizeof($value) * 8 <= 128 : "Input value must be 128 bits wide or lower"
 *>
 macro @clz($value) @builtin @const
 {
