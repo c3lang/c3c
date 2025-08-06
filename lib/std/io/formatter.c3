@@ -137,6 +137,7 @@ fn usz? Formatter.out_unknown(&self, String category, any arg) @private
 {
 	return self.out_substr("<") + self.out_substr(category) + self.out_substr(" type:") + self.ntoa((iptr)arg.type, false, 16) + self.out_substr(", addr:") + self.ntoa((iptr)arg.ptr, false, 16) + self.out_substr(">");
 }
+import eee;
 fn usz? Formatter.out_str(&self, any arg) @private
 {
 	switch (arg.type.kindof)
@@ -146,8 +147,10 @@ fn usz? Formatter.out_str(&self, any arg) @private
 		case VOID:
 			return self.out_substr("void");
 		case FAULT:
-			return self.out_substr((*(fault*)arg.ptr).nameof);
+			return self.out_substr((*(fault*)arg.ptr).nameof ?: "<EMPTY-FAULT>");
 		case INTERFACE:
+			if (!*(usz*)arg.ptr) return self.out_substr("<EMPTY-INTERFACE>");
+			nextcase;
 		case ANY:
 			return self.out_str(*(any*)arg);
 		case OPTIONAL:
