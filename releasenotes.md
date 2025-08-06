@@ -30,6 +30,7 @@
 - Updated hash functions in default hash methods.
 - Added `FixedBlockPool` which is a memory pool for fixed size blocks.
 - Added the experimental `std::core::log` for logging.
+- Added array `zip`, `zip_with`, `zip_with_into`, and similar functionalities. #2370
 
 ## 0.7.4 Change list
 
