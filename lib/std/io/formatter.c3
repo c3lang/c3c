@@ -137,7 +137,6 @@ fn usz? Formatter.out_unknown(&self, String category, any arg) @private
 {
 	return self.out_substr("<") + self.out_substr(category) + self.out_substr(" type:") + self.ntoa((iptr)arg.type, false, 16) + self.out_substr(", addr:") + self.ntoa((iptr)arg.ptr, false, 16) + self.out_substr(">");
 }
-import eee;
 fn usz? Formatter.out_str(&self, any arg) @private
 {
 	switch (arg.type.kindof)
