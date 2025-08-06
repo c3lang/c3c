@@ -319,7 +319,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			return expr;
 		case EXPR_GENERIC_IDENT:
 			MACRO_COPY_EXPRID(expr->generic_ident_expr.parent);
-			MACRO_COPY_EXPR_LIST(expr->generic_ident_expr.parmeters);
+			MACRO_COPY_EXPR_LIST(expr->generic_ident_expr.parameters);
 			return expr;
 		case EXPR_MACRO_BODY_EXPANSION:
 			MACRO_COPY_EXPR_LIST(expr->body_expansion_expr.values);

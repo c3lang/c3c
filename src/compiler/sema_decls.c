@@ -235,8 +235,9 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 				case STORAGE_NORMAL:
 					break;
 				case STORAGE_VOID:
+					RETURN_SEMA_ERROR(type_info, "Members cannot be %s.", type_quoted_error_string(type));
 				case STORAGE_COMPILE_TIME:
-					RETURN_SEMA_ERROR(type_info, "Members cannot be of type %s.", type_quoted_error_string(type));
+					RETURN_SEMA_ERROR(type_info, "Members cannot be %s.", type_invalid_storage_type_name(type));
 				case STORAGE_WILDCARD:
 				case STORAGE_UNKNOWN:
 					RETURN_SEMA_ERROR(type_info, "%s has unknown size and cannot be used as a member.", type_quoted_error_string(type));
@@ -1108,6 +1109,21 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
 		                                     : RESOLVE_TYPE_DEFAULT)) return false;
 		rtype = rtype_info->type;
+		switch (sema_resolve_storage_type(context, rtype))
+		{
+			case STORAGE_ERROR:
+				return false;
+			case STORAGE_VOID:
+			case STORAGE_NORMAL:
+				break;
+			case STORAGE_UNKNOWN:
+				RETURN_SEMA_ERROR(rtype_info, "This type is of unknown size, and cannot be a return value. However, you can pass it by pointer.");
+			case STORAGE_WILDCARD:
+				RETURN_SEMA_ERROR(rtype_info, "The type cannot be determined for this return value.");
+			case STORAGE_COMPILE_TIME:
+				if (is_macro) break;
+				RETURN_SEMA_ERROR(rtype_info, "A function may not return %s, only macros may do so.",  type_invalid_storage_type_name(rtype));
+		}
 		if (sig->attrs.noreturn && !type_is_void(rtype))
 		{
 			RETURN_SEMA_ERROR(rtype_info, "@noreturn cannot be used on %s not returning 'void'.", is_macro ? "macros" : "functions");
@@ -1278,7 +1294,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				case STORAGE_WILDCARD:
 					RETURN_SEMA_ERROR(type_info, "The type cannot be determined for this parameter.");
 				case STORAGE_COMPILE_TIME:
-					RETURN_SEMA_ERROR(type_info, "A parameter may not be declared with a compile time type.");
+					RETURN_SEMA_ERROR(type_info, "The type of a parameter may not %s.", type_invalid_storage_type_name(type_info->type));
 			}
 		}
 		if (i == format_index)
@@ -1711,7 +1727,7 @@ static inline bool sema_analyse_raw_enum(SemaContext *context, Decl *decl, bool 
 			SEMA_ERROR(decl->enums.type_info, "An enum may not have a void type.");
 			return decl_poison(decl);
 		case STORAGE_COMPILE_TIME:
-			SEMA_ERROR(decl->enums.type_info, "An enum may not have a compile time type.");
+			SEMA_ERROR(decl->enums.type_info, "An enum may not be %s.", type_invalid_storage_type_name(type));
 			return decl_poison(decl);
 		case STORAGE_UNKNOWN:
 			SEMA_ERROR(decl->enums.type_info, "An enum may not be %s, as it has an unknown size.",
@@ -2179,7 +2195,7 @@ static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *
 			RETURN_SEMA_ERROR(rtype, "The return type cannot be 'void'.");
 		case STORAGE_COMPILE_TIME:
 			RETURN_SEMA_ERROR(rtype, "The return type is %s which is a compile time type, which isn't allowed.",
-			                  type_quoted_error_string(rtype->type));
+			                  type_invalid_storage_type_name(rtype->type));
 		case STORAGE_UNKNOWN:
 			RETURN_SEMA_ERROR(rtype, "%s has unknown size and cannot be used as a return type.",
 			                  type_quoted_error_string(rtype->type));
@@ -4506,8 +4522,8 @@ static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceS
 			}
 			RETURN_SEMA_ERROR_AT(span, "The use of %s as a variable type is not permitted.", type_quoted_error_string(type));
 		case STORAGE_COMPILE_TIME:
-			RETURN_SEMA_ERROR_AT(span, "The variable cannot have an compile time %s type.",
-			                     type_quoted_error_string(type));
+			RETURN_SEMA_ERROR_AT(span, "The variable cannot be %s which is an compile time type.",
+			                     type_invalid_storage_type_name(type));
 		case STORAGE_UNKNOWN:
 			RETURN_SEMA_ERROR_AT(span, "%s has unknown size, and so it cannot be a variable type.",
 			                     type_quoted_error_string(type));
@@ -4960,7 +4976,7 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 				case STORAGE_WILDCARD:
 					RETURN_SEMA_ERROR(type_info, "The type is undefined and cannot be used as a parameter type.");
 				case STORAGE_COMPILE_TIME:
-					RETURN_SEMA_ERROR(type_info, "Expected a runtime type.");
+					RETURN_SEMA_ERROR(type_info, "Expected a runtime type but it was %s.", type_invalid_storage_type_name(type));
 				case STORAGE_UNKNOWN:
 					RETURN_SEMA_ERROR(type_info,
 					                  "%s doesn't have a well defined size and cannot be used as a parameter type.",
@@ -5148,7 +5164,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	ASSERT(parameter_count > 0);
 	if (parameter_count != vec_size(params))
 	{
-		ASSERT(vec_size(params));
+		ASSERT_AT(span, vec_size(params));
 		sema_error_at(c, extend_span_with_token(params[0]->span, vectail(params)->span),
 					  "The generic module expected %d arguments, but you supplied %d, did you make a mistake?",
 					  parameter_count,
