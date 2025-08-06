@@ -4,12 +4,20 @@ fn int send_break(Fd fd, int duration) => tcsendbreak(fd, duration);
 fn int drain(Fd fd) => tcdrain(fd);
 fn int flush(Fd fd, int queue_selector) => tcflush(fd, queue_selector);
 fn int flow(Fd fd, int action) => tcflow(fd, action);
-fn Speed Termios.get_ospeed(Termios* self) => cfgetospeed(self);
-fn Speed Termios.get_ispeed(Termios* self) => cfgetispeed(self);
-fn int Termios.set_ospeed(Termios* self, Speed speed) => cfsetospeed(self, speed);
-fn int Termios.set_ispeed(Termios* self, Speed speed) => cfsetispeed(self, speed);
-fn int Termios.get_attr(Termios* self, Fd fd) => tcgetattr(fd, self);
-fn int Termios.set_attr(Termios* self, Fd fd, Tcactions optional_actions) => tcsetattr(fd, optional_actions, self);
+fn Speed Termios.get_ospeed(&self) => cfgetospeed(self);
+fn Speed Termios.get_ispeed(&self) => cfgetispeed(self);
+fn int Termios.set_ospeed(&self, Speed speed) => cfsetospeed(self, speed);
+fn int Termios.set_ispeed(&self, Speed speed) => cfsetispeed(self, speed);
+fn int Termios.get_attr(&self, Fd fd) => tcgetattr(fd, self);
+fn int Termios.set_attr(&self, Fd fd, Tcactions optional_actions) => tcsetattr(fd, optional_actions, self);
+
+fn int sendBreak(Fd fd, int duration) @deprecated => send_break(fd, duration);
+fn Speed Termios.getOSpeed(&self) @deprecated => self.get_ospeed();
+fn Speed Termios.getISpeed(&self) @deprecated => self.get_ispeed();
+fn int Termios.setOSpeed(&self, Speed speed) @deprecated => self.set_ospeed(speed);
+fn int Termios.setISpeed(&self, Speed speed) @deprecated => self.set_ispeed(speed);
+fn int Termios.getAttr(&self, Fd fd) @deprecated => self.get_attr(fd);
+fn int Termios.setAttr(&self, Fd fd, Tcactions optional_actions) @deprecated => self.set_attr(fd, optional_actions);
 
 module libc::termios @if(!env::LIBC ||| !env::POSIX);
 
