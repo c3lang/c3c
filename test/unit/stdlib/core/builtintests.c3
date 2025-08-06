@@ -183,6 +183,10 @@ fn void test_bitsizeof()
 	assert(bitsizeof(char) == 8);
 	assert(bitsizeof(char[200]) == 1600);
 
+	// Checks that they may be converted
+	int x = bitsizeof(char);
+	int y = @bitsizeof(1);
+
 	assert(@bitsizeof((char)0x07) == 8);
 	assert(@bitsizeof(0x1000ul) == 64);
 	assert(@bitsizeof(0) == 32);
