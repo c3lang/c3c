@@ -18,10 +18,10 @@ import libc, std::hash, std::io, std::os::backtrace;
 macro foo(a, #b = EMPTY_MACRO_SLOT)
 {
 	$if @is_valid_macro_slot(#b):
-        return invoke_foo2(a, #b);
-    $else
-        return invoke_foo1(a);
-    $endif
+		return invoke_foo2(a, #b);
+	$else
+		return invoke_foo1(a);
+	$endif
 }
 *>
 const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
@@ -419,6 +419,33 @@ macro swizzle2(v, v2, ...) @builtin
 	return $$swizzle2(v, v2, $vasplat);
 }
 
+
+<*
+ Returns the count of leading zero bits from an integer at compile-time.
+
+ @require types::is_int($typeof($value)) : "Input value must be an integer"
+ @require $sizeof($value) * 8 <= 128 : "Input value must be 128 bits wide or lower"
+*>
+macro @clz($value) @builtin @const
+{
+	$if $value == 0:
+		return $sizeof($value) * 8;   // it's all leading zeroes
+	$endif
+
+	usz $n = 0;
+	uint128 $x = (uint128)$value;
+
+	$if $x <= 0x0000_0000_0000_0000_FFFF_FFFF_FFFF_FFFF: $n += 64; $x <<= 64; $endif
+	$if $x <= 0x0000_0000_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 32; $x <<= 32; $endif
+	$if $x <= 0x0000_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 16; $x <<= 16; $endif
+	$if $x <= 0x00FF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 8;  $x <<= 8;  $endif
+	$if $x <= 0x0FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 4;  $x <<= 4;  $endif
+	$if $x <= 0x3FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 2;  $x <<= 2;  $endif
+	$if $x <= 0x7FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 1;             $endif
+
+	return $n % ($sizeof($value) * 8);   // mod by the bitsize of the input value to go back from uint128 -> it's-type
+}
+
 <*
  Return the excuse in the Optional if it is Empty, otherwise
  return a null fault.
@@ -467,10 +494,10 @@ macro void? @try(#v, #expr) @builtin
 
   while (true)
   {
-    char[] data;
-    // Read until end of file
-    if (@try_catch(data, load_line(), io::EOF)) break;
-    .. use data ..
+	char[] data;
+	// Read until end of file
+	if (@try_catch(data, load_line(), io::EOF)) break;
+	.. use data ..
   }
 
  In this example we read until we reach an EOF, which is expected. However, if we encounter some other
@@ -478,14 +505,14 @@ macro void? @try(#v, #expr) @builtin
 
   while (true)
   {
-    char[]? data;
-    data = load_line();
-    if (catch err = data)
-    {
-      if (err = io::EOF) break;
-      return err?
-    }
-    .. use data ..
+	char[]? data;
+	data = load_line();
+	if (catch err = data)
+	{
+	  if (err = io::EOF) break;
+	  return err?
+	}
+	.. use data ..
   }
 
  @require $defined(#v = #v) : "#v must be a variable"
