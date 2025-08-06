@@ -277,7 +277,7 @@ struct Termios
 	Speed c_ospeed;
 }
 
-typedef Tcflags @deprecated = CUInt;
+typedef Tcflags = CUInt;
 
 const Tcactions TCOOFF @deprecated = 0;
 const Tcactions TCOON @deprecated = 1;
@@ -321,7 +321,7 @@ const Speed B3000000 @deprecated = 0o0010015;
 const Speed B3500000 @deprecated = 0o0010016;
 const Speed B4000000 @deprecated = 0o0010017;
 const Speed MAX_BAUD @deprecated = B4000000;
-const Tcflags VINTR @deprecated = 0o0;
+const Tcflags VINTR @deprecated = 0;
 const Tcflags VQUIT @deprecated = 1;
 const Tcflags VERASE @deprecated = 2;
 const Tcflags VKILL @deprecated = 3;
