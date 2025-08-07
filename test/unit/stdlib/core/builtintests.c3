@@ -203,3 +203,12 @@ fn void test_bitsizeof()
 	assert(@bitsizeof(0) == 32);
 	assert(@bitsizeof((char[*])"abcdefghi") == 72);
 }
+
+fn void test_ct_min_max()
+{
+	assert(@min(4, 5) == 4);
+	assert(@max(1.234, 1.2345) == 1.2345);
+	assert(@min(4, 5, 6, 7, 8.90, 3.14) == 3.14);
+	assert(@max(0, 0, 1.234, 1.2345, 0.2) == 1.2345);
+	assert(@max(127.9999999, 45 + 46, bitsizeof(uint128)) == 128);
+}
