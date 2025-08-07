@@ -130,7 +130,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 					{
 						RETURN_SEMA_ERROR(e, "The type of an untyped list cannot be inferred, you can try adding an explicit type to solve this.");
 					}
-					RETURN_SEMA_ERROR(e, "You can't use a compile time type as an assert argument.");
+					RETURN_SEMA_ERROR(e, "You can't use a compile time type (%s) as an assert argument.", type_invalid_storage_type_name(e->type));
 				case STORAGE_UNKNOWN:
 					RETURN_SEMA_ERROR(e, "You can't use an argument of type %s in an assert.", type_quoted_error_string(e->type));
 			}

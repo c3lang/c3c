@@ -106,17 +106,16 @@ Expr *expr_remove_recast(Expr *expr)
 	return expr;
 }
 
-BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional, bool is_init)
+BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *ref_expr, Expr *expr, LLVMValueRef optional, bool is_init)
 {
-	ASSERT(llvm_value_is_addr(ref));
-
-	assert((optional || !IS_OPTIONAL(expr)) && "Assumed an optional address if it's an optional expression.");
+	ASSERT(ref_expr || llvm_value_is_addr(ref));
 
 	expr = expr_remove_recast(expr);
 
 	// Special optimization of handling of optional
 	if (expr->expr_kind == EXPR_OPTIONAL)
 	{
+		assert(!ref_expr);
 		PUSH_CLEAR_CATCH();
 
 		BEValue result;
@@ -124,6 +123,9 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		llvm_emit_expr(c, &result, expr->inner_expr);
 
 		llvm_value_rvalue(c, &result);
+
+		assert((optional || !IS_OPTIONAL(expr)) && "Assumed an optional address if it's an optional expression.");
+
 
 		LLVMValueRef err_val = result.value;
 		// Store it in the optional
@@ -147,6 +149,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 
 	if (IS_OPTIONAL(expr))
 	{
+		assert(!ref_expr);
 		assign_block = llvm_basic_block_new(c, "after_assign");
 		ASSERT(optional);
 		if (c->catch.fault)
@@ -168,10 +171,12 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	if (type_flat_is_vector(expr->type))
 	{
 		llvm_emit_expr(c, &value, expr);
+		if (ref_expr) llvm_emit_expr(c, ref, ref_expr);
 		llvm_store(c, ref, &value);
 	}
 	else if (expr_is_const_initializer(expr))
 	{
+		if (ref_expr) llvm_emit_expr(c, ref, ref_expr);
 		llvm_emit_const_initialize_reference(c, ref, expr);
 		value = *ref;
 	}
@@ -179,15 +184,18 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	{
 		if (is_init)
 		{
+			assert(!ref_expr);
 			llvm_emit_initialize_reference(c, ref, expr);
 		}
 		else
 		{
 			BEValue val;
-			AlignSize alignment = type_alloca_alignment(ref->type);
-			LLVMValueRef temp = llvm_emit_alloca(c, llvm_get_type(c, ref->type), alignment, ".assign_list");
-			llvm_value_set_address(c, &val, temp, ref->type, alignment);
+			Type *type = ref_expr ? type_lowering(ref_expr->type) : ref->type;
+			AlignSize alignment = type_alloca_alignment(type);
+			LLVMValueRef temp = llvm_emit_alloca(c, llvm_get_type(c, type), alignment, ".assign_list");
+			llvm_value_set_address(c, &val, temp, type, alignment);
 			llvm_emit_initialize_reference(c, &val, expr);
+			if (ref_expr) llvm_emit_expr(c, ref, ref_expr);
 			llvm_store(c, ref, &val);
 		}
 		value = *ref;
@@ -196,11 +204,13 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	{
 		if (expr->expr_kind == EXPR_CALL)
 		{
-			llvm_emit_call_expr(c, &value, expr, ref);
+			llvm_emit_call_expr(c, &value, expr, ref_expr ? NULL : ref);
+			if (ref_expr) llvm_emit_expr(c, ref, ref_expr);
 		}
 		else
 		{
 			llvm_emit_expr(c, &value, expr);
+			if (ref_expr) llvm_emit_expr(c, ref, ref_expr);
 		}
 		if (!c->current_block) goto AFTER_STORE;
 		if (value.type != type_void) llvm_store(c, ref, &value);
@@ -215,6 +225,7 @@ AFTER_STORE:;
 
 	if (assign_block)
 	{
+		assert(!ref_expr);
 		llvm_emit_br(c, assign_block);
 		if (rejump_block)
 		{
@@ -1260,6 +1271,8 @@ static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr 
 
 void llvm_set_phi(LLVMValueRef phi, LLVMValueRef val1, LLVMBasicBlockRef block1, LLVMValueRef val2, LLVMBasicBlockRef block2)
 {
+	ASSERT(!llvm_basic_block_is_unused(block1));
+	ASSERT(!llvm_basic_block_is_unused(block2));
 	LLVMValueRef vals[2] = { val1, val2 };
 	LLVMBasicBlockRef blocks[2] = { block1, block2 };
 	LLVMAddIncoming(phi, vals, blocks, 2);
@@ -1280,6 +1293,21 @@ void llvm_new_phi(GenContext *c, BEValue *value, const char *name, Type *type, L
 			assert(other_type == c->bool_type);
 			val2 = LLVMBuildZExt(c->builder, val2, ret_type, "");
 		}
+	}
+	if (llvm_basic_block_is_unused(block1))
+	{
+		if (llvm_basic_block_is_unused(block2))
+		{
+			llvm_value_set(value, llvm_get_zero_raw(ret_type), type);
+			return;
+		}
+		llvm_value_set(value, val2, type);
+		return;
+	}
+	if (llvm_basic_block_is_unused(block2))
+	{
+		llvm_value_set(value, val1, type);
+		return;
 	}
 	LLVMValueRef phi = LLVMBuildPhi(c->builder, ret_type, name);
 	llvm_set_phi(phi, val1, block1, val2, block2);
@@ -3418,6 +3446,10 @@ static void llvm_emit_slice_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	LLVMValueRef failure = LLVMConstInt(c->bool_type, want_match ? 0 : 1, false);
 	LLVMValueRef logic_values[3] = { success, failure, failure };
 	LLVMBasicBlockRef blocks[3] = { all_match_block, no_match_block, match_fail_block };
+	for (int i = 0; i < 3; i++)
+	{
+		ASSERT(!llvm_basic_block_is_unused(blocks[i]));
+	}
 	LLVMAddIncoming(phi, logic_values, blocks, 3);
 
 	llvm_value_set(be_value, phi, type_bool);
@@ -4252,21 +4284,36 @@ void llvm_emit_try_assign_try_catch(GenContext *c, bool is_try, BEValue *be_valu
 	// 6. If we haven't jumped yet, do it here (on error) to the catch block.
 	llvm_value_fold_optional(c, be_value);
 
-	// 7. If we have a variable, then we make the store.
-	if (var_addr)
+	// 7. Store the success block.
+	LLVMBasicBlockRef success_block = llvm_get_current_block_if_in_use(c);
+
+	// 8. If we have a variable, then we make the store.
+	if (success_block && var_addr)
 	{
 		ASSERT(is_try && "Storing will only happen on try.");
 		llvm_store(c, var_addr, be_value);
 	}
 
-	// 8. Restore the error stack.
+	// 9. Restore the error stack.
 	POP_CATCH();
 
-	// 9. Store the success block.
-	LLVMBasicBlockRef success_block = c->current_block;
+	// 10. Special handling if no success.
+	if (!success_block)
+	{
+		llvm_emit_block(c, catch_block);
+		llvm_value_set(be_value, LLVMConstInt(c->bool_type, is_try ? 0 : 1, false), type_bool);
+		return;
+	}
+
+	if (llvm_basic_block_is_unused(catch_block))
+	{
+		llvm_value_set(be_value, LLVMConstInt(c->bool_type, is_try ? 1 : 0, false), type_bool);
+		return;
+	}
 
 	// 10. Jump to the phi
 	llvm_emit_br(c, phi_catch);
+
 
 	// 11. Emit the catch and jump.
 	llvm_emit_block(c, catch_block);
@@ -4493,19 +4540,18 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	if (binary_op == BINARYOP_ASSIGN)
 	{
 		Expr *left = exprptr(expr->binary_expr.left);
-		llvm_emit_expr(c, be_value, left);
-		ASSERT(llvm_value_is_addr(be_value));
-		LLVMValueRef optional_ref = NULL;
 
 		// If the LHS is an identifier, then we're assigning the optional value to that.
 		if (left->expr_kind == EXPR_IDENTIFIER)
 		{
-			optional_ref = decl_optional_ref(left->ident_expr);
-			be_value->kind = BE_ADDRESS;
+			llvm_value_set_decl(c, be_value, left->ident_expr);
+			*be_value = llvm_emit_assign_expr(c, be_value, NULL, exprptr(expr->binary_expr.right), decl_optional_ref(left->ident_expr), false);
+			return;
 		}
 
+		*be_value = llvm_emit_assign_expr(c, be_value, left, exprptr(expr->binary_expr.right), NULL, false);
+
 		// Emit the result.
-		*be_value = llvm_emit_assign_expr(c, be_value, exprptr(expr->binary_expr.right), optional_ref, false);
 		return;
 	}
 
@@ -4712,7 +4758,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case CONST_STRING:
 		{
 			Type *str_type = type_lowering(expr->type);
-			bool is_array = str_type->type_kind == TYPE_ARRAY;
+			bool is_array = str_type->type_kind == TYPE_ARRAY || (str_type->type_kind == TYPE_VECTOR && type_size(type->array.base) == 1);
 			if (is_array && llvm_is_global_eval(c))
 			{
 				// In the global alloc case, create the byte array.
@@ -6641,9 +6687,9 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			LLVMValueRef fault_data = LLVMBuildIntToPtr(c->builder, be_value->value, c->ptr_type, "");
 			llvm_emit_br(c, exit_block);
 			llvm_emit_block(c, exit_block);
-			LLVMValueRef phi = LLVMBuildPhi(c->builder, c->ptr_type, "faultname");
-			llvm_set_phi(phi, zero.value, zero_block, fault_data, ok_block);
-			llvm_value_set_address_abi_aligned(c, be_value, phi, type_chars);
+
+			llvm_new_phi(c, be_value, "faultname.phi", type_chars, zero.value, zero_block, fault_data, ok_block);
+			llvm_value_set_address_abi_aligned(c, be_value, be_value->value, type_chars);
 			return;
 		}
 		case ACCESS_ENUMNAME:

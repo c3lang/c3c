@@ -65,7 +65,7 @@ alias MemoryAllocFn = fn char[]?(usz);
 
 
 
-fn usz alignment_for_allocation(usz alignment) @inline @private
+fn usz alignment_for_allocation(usz alignment) @inline
 {
 	return alignment < mem::DEFAULT_MEM_ALIGNMENT ? mem::DEFAULT_MEM_ALIGNMENT : alignment;
 }

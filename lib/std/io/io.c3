@@ -254,7 +254,7 @@ macro void eprint(x)
 
  @param x : "The value to print"
 *>
-macro void eprintn(x)
+macro void eprintn(x = "")
 {
 	(void)fprintn(io::stderr(), x);
 }

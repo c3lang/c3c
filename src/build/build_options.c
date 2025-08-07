@@ -1362,7 +1362,7 @@ static void parse_option(BuildOptions *options)
 			break;
 
 	}
-	FAIL_WITH_ERR("Cannot process the unknown option \"%s\".", current_arg);
+	FAIL_WITH_ERR_LONG("Cannot process the unknown option \"%s\".", current_arg);
 }
 
 BuildOptions parse_arguments(int argc, const char *argv[])

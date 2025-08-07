@@ -1,0 +1,19 @@
+// #target: macos-x64
+module test;
+import std;
+fn int main()
+{
+	if (try x = (false ? io::EOF? : 3))
+	{}
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %x = alloca i32, align 4
+  store i32 0, ptr %x, align 4
+  store i32 3, ptr %x, align 4
+  ret i32 0
+}

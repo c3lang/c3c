@@ -310,7 +310,7 @@ void codegen_setup_object_names(Module *module, const char **base_name, const ch
 		{
 			res = str_printf("%s%s", result, ext);
 		}
-		compiler.obj_output = *object_filename = file_append_path(compiler.build.output_dir ? compiler.build.output_dir : ".", res);
+		compiler.obj_output = *object_filename = (file_path_is_relative(res) ? file_append_path(compiler.build.output_dir, res) : res);
 		char *dir_path = NULL;
 		char *filename = NULL;
 		file_get_dir_and_filename_from_full(compiler.obj_output, &filename, &dir_path);

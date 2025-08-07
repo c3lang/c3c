@@ -18,10 +18,10 @@ import libc, std::hash, std::io, std::os::backtrace;
 macro foo(a, #b = EMPTY_MACRO_SLOT)
 {
 	$if @is_valid_macro_slot(#b):
-        return invoke_foo2(a, #b);
-    $else
-        return invoke_foo1(a);
-    $endif
+		return invoke_foo2(a, #b);
+	$else
+		return invoke_foo1(a);
+	$endif
 }
 *>
 const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
@@ -39,20 +39,28 @@ macro @is_valid_macro_slot(#arg) @const @builtin => !@typeis(#arg, EmptySlot);
 macro @rnd() @const @builtin => $$rnd();
 
 /*
- Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
+ Use `NO_MORE_ELEMENT` when reading the end of an iterator, or accessing a result out of bounds.
 */
 faultdef NO_MORE_ELEMENT @builtin;
 
 /*
- Use `SearchResult` when trying to return a value from some collection but the element is missing.
+ Use `NOT_FOUND` when trying to return a value from some collection but the element is missing.
 */
 faultdef NOT_FOUND @builtin;
 
 /*
- Use `CastResult` when an attempt at conversion fails.
+ Use `TYPE_MISMATCH` when an attempt at conversion fails.
 */
 faultdef TYPE_MISMATCH @builtin;
 
+/*
+ Use `CAPACITY_EXCEEDED` when trying to add to a bounded list or similar.
+*/
+faultdef CAPACITY_EXCEEDED @builtin;
+/*
+ Use `NOT_IMPLEMENTED` when something is conditionally available.
+*/
+faultdef NOT_IMPLEMENTED @builtin;
 
 alias VoidFn = fn void();
 
@@ -80,6 +88,10 @@ macro void @swap(#a, #b) @builtin
 	#a = #b;
 	#b = temp;
 }
+
+macro usz bitsizeof($Type) @builtin @const => $Type.sizeof * 8u;
+
+macro usz @bitsizeof(#expr) @builtin @const => $sizeof(#expr) * 8u;
 
 <*
  Convert an `any` type to a type, returning an failure if there is a type mismatch.
@@ -411,6 +423,33 @@ macro swizzle2(v, v2, ...) @builtin
 	return $$swizzle2(v, v2, $vasplat);
 }
 
+
+<*
+ Returns the count of leading zero bits from an integer at compile-time.
+
+ @require types::is_int($typeof($value)) : "Input value must be an integer"
+ @require $sizeof($value) * 8 <= 128 : "Input value must be 128 bits wide or lower"
+*>
+macro @clz($value) @builtin @const
+{
+	$if $value == 0:
+		return $sizeof($value) * 8;   // it's all leading zeroes
+	$endif
+
+	usz $n = 0;
+	uint128 $x = (uint128)$value;
+
+	$if $x <= 0x0000_0000_0000_0000_FFFF_FFFF_FFFF_FFFF: $n += 64; $x <<= 64; $endif
+	$if $x <= 0x0000_0000_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 32; $x <<= 32; $endif
+	$if $x <= 0x0000_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 16; $x <<= 16; $endif
+	$if $x <= 0x00FF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 8;  $x <<= 8;  $endif
+	$if $x <= 0x0FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 4;  $x <<= 4;  $endif
+	$if $x <= 0x3FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 2;  $x <<= 2;  $endif
+	$if $x <= 0x7FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 1;             $endif
+
+	return $n % ($sizeof($value) * 8);   // mod by the bitsize of the input value to go back from uint128 -> it's-type
+}
+
 <*
  Return the excuse in the Optional if it is Empty, otherwise
  return a null fault.
@@ -459,10 +498,10 @@ macro void? @try(#v, #expr) @builtin
 
   while (true)
   {
-    char[] data;
-    // Read until end of file
-    if (@try_catch(data, load_line(), io::EOF)) break;
-    .. use data ..
+	char[] data;
+	// Read until end of file
+	if (@try_catch(data, load_line(), io::EOF)) break;
+	.. use data ..
   }
 
  In this example we read until we reach an EOF, which is expected. However, if we encounter some other
@@ -470,14 +509,14 @@ macro void? @try(#v, #expr) @builtin
 
   while (true)
   {
-    char[]? data;
-    data = load_line();
-    if (catch err = data)
-    {
-      if (err = io::EOF) break;
-      return err?
-    }
-    .. use data ..
+	char[]? data;
+	data = load_line();
+	if (catch err = data)
+	{
+	  if (err = io::EOF) break;
+	  return err?
+	}
+	.. use data ..
   }
 
  @require $defined(#v = #v) : "#v must be a variable"
@@ -565,8 +604,8 @@ macro uint ichar[<*>].hash(self)   => hash_vec(self);
 macro uint bool[<*>].hash(self)    => hash_vec(self);
 
 macro uint typeid.hash(typeid t) => @generic_hash(((ulong)(uptr)t));
-macro uint String.hash(String c) => (uint)fnv32a::hash(c);
-macro uint char[].hash(char[] c) => (uint)fnv32a::hash(c);
+macro uint String.hash(String c) => (uint)a5hash::hash(c);
+macro uint char[].hash(char[] c) => (uint)a5hash::hash(c);
 macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
 <*
@@ -574,7 +613,13 @@ macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 *>
 macro uint hash_array(array_ptr) @local
 {
-	return (uint)fnv32a::hash(((char*)array_ptr)[:$sizeof(*array_ptr)]);
+	var $len = $sizeof(*array_ptr);
+
+	$if $len > 16:
+		return (uint)komi::hash(((char*)array_ptr)[:$len]);
+	$else
+		return (uint)wyhash2::hash(((char*)array_ptr)[:$len]);
+	$endif
 }
 
 <*
@@ -582,7 +627,13 @@ macro uint hash_array(array_ptr) @local
 *>
 macro uint hash_vec(vec) @local
 {
-	return (uint)fnv32a::hash(((char*)&&vec)[:$sizeof(vec.len * $typeof(vec).inner.sizeof)]);
+	var $len = $sizeof(vec.len * $typeof(vec).inner.sizeof);
+
+	$if $len > 16:
+		return (uint)komi::hash(((char*)&&vec)[:$len]);
+	$else
+		return (uint)wyhash2::hash(((char*)&&vec)[:$len]);
+	$endif
 }
 
 const MAX_FRAMEADDRESS = 128;

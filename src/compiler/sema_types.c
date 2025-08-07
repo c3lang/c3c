@@ -267,21 +267,22 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			}
 			FALLTHROUGH;
 		case DECL_ALIAS:
-		case DECL_FUNC:
-		case DECL_ENUM_CONSTANT:
-		case DECL_IMPORT:
-		case DECL_MACRO:
-		case DECL_LABEL:
+		case DECL_ALIAS_PATH:
 		case DECL_ATTRIBUTE:
+		case DECL_ENUM_CONSTANT:
 		case DECL_FAULT:
+		case DECL_FUNC:
+		case DECL_IMPORT:
+		case DECL_LABEL:
+		case DECL_MACRO:
 			SEMA_ERROR(type_info, "This is not a type.");
 			return type_info_poison(type_info);
+		case DECL_BODYPARAM:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
-		case DECL_DECLARRAY:
-		case DECL_BODYPARAM:
-		case DECL_CT_INCLUDE:
 		case DECL_CT_EXEC:
+		case DECL_CT_INCLUDE:
+		case DECL_DECLARRAY:
 		case DECL_GROUP:
 			UNREACHABLE
 	}
@@ -339,6 +340,7 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 		case STORAGE_NORMAL:
 		case STORAGE_VOID:
 		case STORAGE_UNKNOWN:
+		case STORAGE_COMPILE_TIME:
 			type_info->type = expr_type;
 			return true;
 		case STORAGE_WILDCARD:
@@ -348,9 +350,6 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 				return true;
 			}
 			RETURN_SEMA_ERROR(expr, "This %sexpression lacks a concrete type.", type_is_optional(expr_type) ? "optional " : "");
-		case STORAGE_COMPILE_TIME:
-			type_info->type = type_untypedlist;
-			return true;
 	}
 	UNREACHABLE
 }
@@ -449,8 +448,14 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	ASSERT_SPAN(inner, inner->resolve_status == RESOLVE_NOT_DONE);
 
 	bool was_recursive = false;
+	if (compiler.generic_depth >= MAX_GENERIC_DEPTH)
+	{
+		RETURN_SEMA_ERROR(type_info, "Generic resolution of this type has become deeply nested, it was aborted after reaching %d recursions.", compiler.generic_depth);
+	}
+	compiler.generic_depth++;
 	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name,
 	                                                   inner->span, type_info->generic.params, &was_recursive);
+	compiler.generic_depth--;
 	if (!decl_ok(type)) return false;
 	if (!sema_analyse_decl(context, type)) return false;
 	type_info->type = type->type;

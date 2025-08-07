@@ -48,6 +48,7 @@ typedef uint16_t FileId;
 #define MAX_BITSTRUCT 0x1000
 #define MAX_MEMBERS ((StructIndex)1) << 15
 #define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
+#define MAX_GENERIC_DEPTH 32
 #define MAX_PRIORITY 0xFFFF
 #define MAX_TYPE_SIZE UINT32_MAX
 #define MAX_GLOBAL_DECL_STACK (65536)
@@ -598,6 +599,11 @@ typedef struct
 	};
 } DefineDecl;
 
+typedef union
+{
+	Path *alias_path;
+	Module *module;
+} ModuleAliasDecl;
 
 typedef struct
 {
@@ -690,6 +696,7 @@ typedef struct Decl_
 		Decl** ct_else_decl;
 		Decl** decls;
 		DefineDecl define_decl;
+		ModuleAliasDecl module_alias_decl;
 		EnumConstantDecl enum_constant;
 		ExecDecl exec_decl;
 		Expr* expand_decl;
@@ -865,7 +872,7 @@ typedef struct
 typedef struct
 {
 	ExprId parent;
-	Expr **parmeters;
+	Expr **parameters;
 } ExprGenericIdent;
 
 typedef struct
@@ -1658,6 +1665,7 @@ struct CompilationUnit_
 	Module *module;
 	File *file;
 	Decl **imports;
+	Decl **module_aliases;
 	Decl **public_imports;
 	Decl **types;
 	Decl **functions;
@@ -1877,6 +1885,7 @@ typedef struct CopyStruct_
 typedef struct
 {
 	const char **links;
+	bool link_math;
 } Linking;
 
 typedef struct
@@ -1923,6 +1932,7 @@ typedef struct
 	Linking linking;
 	GlobalContext context;
 	const char *obj_output;
+	int generic_depth;
 } CompilerState;
 
 extern CompilerState compiler;
@@ -2230,6 +2240,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
 void unit_register_external_symbol(SemaContext *context, Decl *decl);
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
+bool unit_add_alias(CompilationUnit *unit, Decl *decl);
 bool context_set_module_from_filename(ParseContext *context);
 bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters);
 bool context_is_macro(SemaContext *context);
@@ -2924,7 +2935,7 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 		case TYPE_UNTYPED_LIST:
 			return "an untyped list";
 		case TYPE_TYPEINFO:
-			return "a type";
+			return "a typeinfo";
 		case TYPE_WILDCARD:
 			return "an empty value";
 		default:
