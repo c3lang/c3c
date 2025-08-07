@@ -1,6 +1,6 @@
 # Prerequisites
 *.d
-
+testrun
 # Object files
 *.o
 *.ko
