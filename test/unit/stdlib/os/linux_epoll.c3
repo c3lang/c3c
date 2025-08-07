@@ -1,6 +1,7 @@
 module std::os::linux @test @if (env::LINUX);
 import std::net::os;
 import std::os::posix;
+import libc;
 
 fn void test_epoll_create()
 {
