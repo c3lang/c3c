@@ -5,6 +5,8 @@
 ### Changes / improvements
 - Support `alias foo = module std::io` module aliasing.
 - Add compile-time `@intlog2` macro to math.
+- Add compile-time `@clz` builtin. #2367
+- Add `bitsizeof` macro builtins. #2376
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
@@ -21,6 +23,7 @@
 - Fixed bug generating `$c += 1` when `$c` was derived from a pointer but behind a cast.
 - Compiler segfault when using bitwise not on number literal cast to bitstruct #2373.
 - Formatter did not properly handle "null" for any, and null for empty faults. #2375
+- Bitstructs no longer overloadable with bitops. #2374
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.

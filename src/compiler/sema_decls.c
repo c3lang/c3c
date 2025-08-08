@@ -2059,9 +2059,9 @@ const char *operator_overload_to_string(OperatorOverload operator_overload)
 		case OVERLOAD_ELEMENT_AT:
 		case OVERLOAD_ELEMENT_REF:
 		case OVERLOAD_ELEMENT_SET:
-		case OVERLOAD_LEN:
-		case OVERLOAD_NEGATE:
-		case OVERLOAD_UNARY_MINUS:		UNREACHABLE
+		case OVERLOAD_LEN:				UNREACHABLE
+		case OVERLOAD_NEGATE:			return "~";
+		case OVERLOAD_UNARY_MINUS:		return "-";
 		case OVERLOAD_PLUS:				return "+";
 		case OVERLOAD_MINUS:			return "-";
 		case OVERLOAD_MULTIPLY:			return "*";
@@ -2445,6 +2445,26 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 		return false;
 	}
 
+	if (parent_type->canonical->type_kind == TYPE_BITSTRUCT)
+	{
+		switch (operator)
+		{
+			case OVERLOAD_XOR:
+			case OVERLOAD_AND:
+			case OVERLOAD_OR:
+			case OVERLOAD_XOR_ASSIGN:
+			case OVERLOAD_AND_ASSIGN:
+			case OVERLOAD_OR_ASSIGN:
+			case OVERLOAD_NEGATE:
+			{
+				SourceSpan span = method_find_overload_span(method);
+				RETURN_SEMA_ERROR_AT(span, "Bitstructs do not support overloading the '%s' operator.",
+								  operator_overload_to_string(operator));
+			}
+			default:
+				break;
+		}
+	}
 	// Check that actual types match up
 	Type *value;
 	Type *index_type;
