@@ -50,6 +50,21 @@ fn uint native_cpu()
 	return count;
 }
 
+module std::thread::cpu @if(env::OPENBSD);
+import std::os::openbsd;
+import libc;
+
+fn uint native_cpu()
+{
+	uint ncpu;
+	usz len = uint.sizeof;
+	int[2] mib = { openbsd::CTL_HW, openbsd::HW_NCPU };
+
+	libc::sysctl(&mib, 2, &ncpu, &len, null, 0);
+
+	return max(1, ncpu);
+}
+
 module std::thread::cpu @if(env::LINUX);
 import libc;
 
