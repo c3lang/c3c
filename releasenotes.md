@@ -33,6 +33,7 @@
 - Updated hash functions in default hash methods.
 - Added `FixedBlockPool` which is a memory pool for fixed size blocks.
 - Added the experimental `std::core::log` for logging.
+- Added `@reduce`, `@filter`, `@any`, `@all`, `@sum`, `@product`, `@minimum`, and `@maximum` to the core `array` module.
 
 ## 0.7.4 Change list
 

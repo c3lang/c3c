@@ -118,6 +118,7 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
 
  @param [in] array
  @require @typekind(array) == SLICE || @typekind(array) == ARRAY
+ @require @typekind(#operation) == FUNC ||| @typeis(#operation, char) ||| @typeis(#operation, String)
 *>
 macro @reduce(array, identity, #operation)
 {
@@ -165,16 +166,78 @@ macro @reduce(array, identity, #operation)
 	return identity;
 }
 
+<*
+ @param[in] array
+ @require @typekind(array) == SLICE || @typekind(array) == ARRAY
+ @require types::is_numerical($typeof(array[0])) : "Must be an array of numbers"
+*>
+macro @sum(array)
+{
+	return @reduce(array, 0, '+');
+}
 
-// macro typeid any_predicate_type(#expr)
-// {
-// 	// $switch $typeof(#expr).kindof:
-// 	// 	$case 
-// 	// $endswitch
-// }
+<*
+ @param[in] array
+ @require @typekind(array) == SLICE || @typekind(array) == ARRAY
+ @require types::is_numerical($typeof(array[0])) : "Must be an array of numbers"
+*>
+macro @product(array)
+{
+	return @reduce(array, 1, '*');
+}
+
+<*
+ @param[in] array
+ @require @typekind(array) == SLICE || @typekind(array) == ARRAY
+ @require types::is_numerical($typeof(array[0])) : "Must be an array of numbers"
+*>
+macro @minimum(array)
+{
+	return min(...array);
+}
+
+<*
+ @param[in] array
+ @require @typekind(array) == SLICE || @typekind(array) == ARRAY
+ @require types::is_numerical($typeof(array[0])) : "Must be an array of numbers"
+*>
+macro @maximum(array)
+{
+	return max(...array);
+}
 
 
-// macro @filter(Allocator allocator, array, #predicate) @nodiscard
+<*
+ Count how many array objects match the predicate, without performing any memory allocations
+ or returning the filtered matches.
+*>
+macro usz @match_count(array, #predicate)
+{
+	usz result = 0;
+	$typeof(fn bool ($typeof(array[0]) a) => true) $predicate = #predicate;
+	foreach (element : array) if ($predicate(element)) ++result;
+	return result;
+}
+
+
+macro @filter(Allocator allocator, array, #predicate) @nodiscard
+{
+	var $InnerType = $typeof(array[0]);
+
+	usz amount = @match_count(array, #predicate);
+	if (!amount) return ($InnerType[]){};
+
+	$InnerType[] result = allocator::new_array(allocator, $InnerType, amount);
+
+	$typeof(fn bool ($InnerType a) => true) $predicate = #predicate;
+	usz result_index;
+	foreach (&element : array) if ($predicate(*element)) mem::copy(&result[result_index++], element, $InnerType.sizeof);
+
+	return result;
+}
+
+macro @tfilter(array, #predicate) @nodiscard => @filter(tmem, array, #predicate);
+
 
 <*
  @require @assignable_to(#predicate, $typeof(fn bool ($typeof(array[0]) a) => true))
@@ -191,7 +254,7 @@ macro bool @any(array, #predicate)
 *>
 macro bool @all(array, #predicate)
 {
-	$typeof(fn bool ($typeof(array[0]) a) => true) $func = #predicate;
-	foreach (element : array) if (!$func(element)) return false;
+	$typeof(fn bool ($typeof(array[0]) a) => true) $predicate = #predicate;
+	foreach (element : array) if (!$predicate(element)) return false;
 	return true;
 }
