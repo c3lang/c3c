@@ -428,6 +428,19 @@ fn bool String.contains(s, String substr)
 }
 
 <*
+ Check if a character is found in the string.
+
+ @param [in] s
+ @param character : "The character to look for."
+ @pure
+ @return "true if the string contains the character, false otherwise"
+*>
+fn bool String.contains_char(s, char character)
+{
+	return @ok(s.index_of_char(character));
+}
+
+<*
  Check how many non-overlapping instances of a substring there is.
 
  If the substring has zero length, the number of matches is zero.
