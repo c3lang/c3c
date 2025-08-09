@@ -1,0 +1,100 @@
+name: "🪲 Bug Report"
+description: "Use this template to report a bug."
+labels: ["Bug"]
+body:
+    - type: "markdown"
+      attributes:
+          value: |
+              > [!IMPORTANT]
+              > To save time for both you and our development team, we highly encourage discussing your bug on our Discord
+              server in the **#bugs** channel before submitting a new issue.
+              > This step helps in understanding the issue and determining if it's a bug at all.
+              Only proceed with this report if your issue remains unresolved after the Discord discussion.
+              >
+              > [Join our Discord Server](https://discord.gg/qN76R87)
+
+    - type: "textarea"
+      id: "description"
+      attributes:
+          label: "Describe the bug"
+          description: "What is the problem? A clear and concise description of the bug."
+      validations:
+          required: true
+
+    - type: "textarea"
+      id: "reproduction"
+      attributes:
+          label: "Reproduction Steps"
+          description: "Detail the steps needed to reproduce the issue. This can include a self-contained, concise snippet of
+                        code, if applicable.\n\n
+                        For more complex issues, provide a link to a repository with the smallest sample that reproduces
+                        the bug.\n
+                        If the issue can be replicated without code, please provide a clear, step-by-step description of
+                        the actions or conditions necessary to reproduce it.\n
+                        Avoid including business logic or unrelated details, as this makes diagnosis more difficult.\n\n
+                        Whether it's a sequence of actions, code samples, or specific conditions, ensure that the steps
+                        are clear enough to be easily followed and replicated."
+      validations:
+          required: true
+
+    - type: "textarea"
+      id: "expected"
+      attributes:
+          label: "Expected Behavior"
+          description: "What did you expect to happen?"
+      validations:
+          required: true
+
+    - type: "textarea"
+      id: "current"
+      attributes:
+          label: "Current Behavior"
+          description: "What actually happened?\n\n
+                        Please include full errors, uncaught exceptions, stack traces, and relevant logs.\n
+                        If service/functions responses are relevant, please include wire logs."
+      validations:
+          required: true
+
+    - type: "textarea"
+      id: "workaround"
+      attributes:
+          label: "Possible Workaround"
+          description: "If you find any workaround for this problem - please, provide it here."
+      validations:
+          required: false
+
+    - type: "textarea"
+      id: "context"
+      attributes:
+          label: "Additional Information/Context"
+          description: "Anything else that might be relevant for troubleshooting this bug.\n
+                        Providing context helps us come up with a solution that is most useful in the real world."
+      validations:
+          required: false
+
+    - type: "input"
+      id: "discussion_link"
+      attributes:
+          label: "Link to Discord discussion"
+          description: "Provide a link to the first message of bug's discussion on Discord.\n
+                        This will help to keep history of why this bug exists."
+      validations:
+          required: false
+
+    - type: "input"
+      id: "version"
+      attributes:
+          label: "C3 version"
+          description: "You should use `c3c --version` to fill up this section.\n\n
+                        Please make sure to update your C3 compiler before reporting any issues as it may have already been fixed."
+      validations:
+          required: true
+
+    - type: "textarea"
+      id: "environment"
+      attributes:
+          label: "Environment details (OS name and version, etc.)"
+          description: "Text you place here will be automatically wrapped into a code block."
+          render: "bash"
+      validations:
+          required: true
