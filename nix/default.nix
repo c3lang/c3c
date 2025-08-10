@@ -59,7 +59,11 @@ in llvmPackages.stdenv.mkDerivation (_:
     libffi
   ] ++ lib.optionals llvmPackages.stdenv.hostPlatform.isDarwin [ xar ];
 
-  doCheck = llvmPackages.stdenv.system == "x86_64-linux" && checks;
+  doCheck = checks && lib.elem llvmPackages.stdenv.system [
+    "x86_64-linux"
+    "x86_64-darwin"
+    "aarch64-darwin"
+  ];
 
   # In check phase we preserve BUILD directory as
   # we need to return to it before install phase
