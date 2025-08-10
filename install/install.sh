@@ -11,7 +11,7 @@ __wrap__() {
 
     REPOURL="${C3_REPOURL:-https://github.com/c3lang/c3c}"
     PLATFORM="$(uname -s)"
-    ARCH="${C3_ARCH:-$(uname -m)}"
+    # ARCH="${C3_ARCH:-$(uname -m)}"
     IS_MSYS=false
 
     if [ "${PLATFORM-}" = "Darwin" ]; then
