@@ -2,12 +2,11 @@
   lib,
   llvmPackages,
   cmake,
-  python3,
   curl,
   libxml2,
   libffi,
   xar,
-  rev ? "unknown",
+  rev,
   debug ? false,
   checks ? false,
 }: let 
@@ -16,8 +15,8 @@
   inherit (lib.lists) findFirst;
   inherit (lib.asserts) assertMsg;
   inherit (lib.strings) hasInfix splitString removeSuffix removePrefix optionalString;
-in llvmPackages.stdenv.mkDerivation (finalAttrs: {
-
+in llvmPackages.stdenv.mkDerivation (_: 
+{
   pname = "c3c${optionalString debug "-debug"}";
 
   version = let
@@ -28,13 +27,11 @@ in llvmPackages.stdenv.mkDerivation (finalAttrs: {
 
   src = ../.;
   
-  cmakeBuildType = if debug then "Debug" else "Release";
-  
   postPatch = ''
-    substituteInPlace git_hash.cmake \
-      --replace-fail "\''${GIT_HASH}" "${rev}"
+    substituteInPlace git_hash.cmake --replace-fail "\''${GIT_HASH}" "${rev}"
   '';
 
+  cmakeBuildType = if debug then "Debug" else "Release";
   cmakeFlags = [
     "-DC3_ENABLE_CLANGD_LSP=${if debug then "ON" else "OFF"}"
     "-DC3_LLD_DIR=${llvmPackages.lld.lib}/lib"
@@ -54,19 +51,20 @@ in llvmPackages.stdenv.mkDerivation (finalAttrs: {
     libffi
   ] ++ lib.optionals llvmPackages.stdenv.hostPlatform.isDarwin [ xar ];
 
-  nativeCheckInputs = lib.optionals checks [ 
-    python3
-  ];
-
   doCheck = llvmPackages.stdenv.system == "x86_64-linux" && checks;
-
+  # In check phase we preserve BUILD directory as
+  # we need to return to it before install phase
   checkPhase = ''
-    runHook preCheck
-    ( cd ../resources/testproject; ../../build/c3c build --trust=full )
-    ( cd ../test; ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c test_suite )
-    runHook postCheck
-  '';
+    local BUILD_DIR=$(pwd)
+    
+    cd ../resources/testproject
+    ../../build/c3c build --trust=full
 
+    cd ../../test
+    ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c ./test_suite
+    
+    cd $BUILD_DIR
+  '';
 
   meta = with lib; {
     description = "Compiler for the C3 language";
