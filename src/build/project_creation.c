@@ -4,6 +4,23 @@
 
 #include "build_internal.h"
 
+
+#include <errno.h>
+#include <string.h>
+
+#if defined(_WIN32)
+#  include <windows.h>
+#else
+// Some projects define __unused; musl headers use it as a field name.
+// Undef it before pulling in <sys/stat.h> to avoid a preprocessor clash.
+#  ifdef __unused
+#    undef __unused
+#  endif
+#  include <sys/stat.h>
+#  include <unistd.h>
+#endif
+
+
 const char* JSON_EXE =
 		"{\n"
 		"  // Language version of C3.\n"
@@ -201,6 +218,7 @@ static void mkdir_or_fail(BuildOptions *build_options, const char *name);
 static void chdir_or_fail(BuildOptions *build_options, const char *name);
 static void create_file_or_fail(BuildOptions *build_options, const char *filename, const char *fmt, ...);
 static const char *module_name(BuildOptions *build_options);
+static int dir_exists(const char *path);
 
 void create_library(BuildOptions *build_options)
 {
@@ -245,6 +263,17 @@ void create_library(BuildOptions *build_options)
 	printf("The '%s' library has been set up in the directory '%s'.\n", build_options->project_name, dir);
 }
 
+static int direxi(const char *path) 
+{
+#if defined(_WIN32)
+	DWORD attr = GetFileAttributesA(path);
+	return (attr != INVALID_FILE_ATTRIBUTES) && (attr & FILE_DIRECTORY_ATTRIBUTES);
+#else
+	struct stat st;
+	return (stat(path, &st) == 0) && S_ISDIR(st.st_mode);
+#endif
+}
+
 void create_project(BuildOptions *build_options)
 {
 	const char *template;
@@ -287,10 +316,20 @@ void create_project(BuildOptions *build_options)
 		error_exit("Can't open path '%s'.", build_options->path);
 	}
 
-	if (!dir_make(build_options->project_name))
-	{
-		error_exit("Could not create directory '%s'.", build_options->project_name);
-	}
+    if (dir_exists(build_options->project_name)) {
+        error_exit("Directory '%s' already exists.", build_options->project_name);
+    }
+
+    if (!dir_make(build_options->project_name)) {
+        // If dir_make() sets errno, distinguish EEXIST (race) from other errors
+        if (errno == EEXIST) {
+            error_exit("Directory '%s' already exists.", build_options->project_name);
+        } else {
+            error_exit("Could not create directory '%s': %s",
+                       build_options->project_name, strerror(errno));
+        }
+    }
+
 	chdir_or_fail(build_options, build_options->project_name);
 
 CREATE:
@@ -315,6 +354,18 @@ CREATE:
 }
 
 // Helper functions:
+
+static int dir_exists(const char *path)
+{
+	#if defined(_WIN32)
+    DWORD attr = GetFileAttributesA(path);
+    return (attr != INVALID_FILE_ATTRIBUTES) && (attr & FILE_ATTRIBUTE_DIRECTORY);
+#else
+    struct stat st;
+    return (stat(path, &st) == 0) && S_ISDIR(st.st_mode);
+#endif
+}
+
 
 static const char *module_name(BuildOptions *build_options)
 {
