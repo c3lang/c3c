@@ -17,7 +17,12 @@ __wrap__() {
     if [ "${PLATFORM-}" = "Darwin" ]; then
         PLATFORM="macos"
     elif [ "${PLATFORM-}" = "Linux" ]; then
-        PLATFORM="ubuntu-22"
+        OS="$(cat /etc/issue | grep -o Ubuntu)"
+        if [ "${OS-}" = "Ubuntu" ]; then
+            PLATFORM="ubuntu-22"
+        else
+            PLATFORM="debian"
+        fi
     elif [ "${PLATFORM-}" = "Openbsd" ]; then
         PLATFORM="openbsd"
     elif [ "$(uname -o)" = "Msys" ]; then
