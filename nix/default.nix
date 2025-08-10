@@ -54,7 +54,9 @@ in llvmPackages.stdenv.mkDerivation (finalAttrs: {
     libffi
   ] ++ lib.optionals llvmPackages.stdenv.hostPlatform.isDarwin [ xar ];
 
-  nativeCheckInputs = [ python3 ];
+  nativeCheckInputs = lib.optionals checks [ 
+    python3
+  ];
 
   doCheck = llvmPackages.stdenv.system == "x86_64-linux" && checks;
 
