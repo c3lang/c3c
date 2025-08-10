@@ -5,6 +5,8 @@
 ### Changes / improvements
 - Support `alias foo = module std::io` module aliasing.
 - Add compile-time `@intlog2` macro to math.
+- Add compile-time `@clz` builtin. #2367
+- Add `bitsizeof` macro builtins. #2376
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
@@ -18,6 +20,10 @@
 - Compiler assertion when defining a function with return type untyped_list #2368.
 - Compiler assert when using generic parameters list without any parameters. #2369
 - Parsing difference between "0x00." and "0X00." literals #2371
+- Fixed bug generating `$c += 1` when `$c` was derived from a pointer but behind a cast.
+- Compiler segfault when using bitwise not on number literal cast to bitstruct #2373.
+- Formatter did not properly handle "null" for any, and null for empty faults. #2375
+- Bitstructs no longer overloadable with bitops. #2374
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
@@ -26,6 +32,7 @@
 - Add `vm::mmap_file` to memory map a file.
 - Updated hash functions in default hash methods.
 - Added `FixedBlockPool` which is a memory pool for fixed size blocks.
+- Added the experimental `std::core::log` for logging.
 - Updated termios bindings to use bitstructs and fixed some constants with incorrect values #2372
 
 ## 0.7.4 Change list

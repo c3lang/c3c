@@ -6764,13 +6764,13 @@ static bool sema_binary_analyse_ct_op_assign(SemaContext *context, Expr *expr, E
 	if (!sema_expr_analyse_binary(context, NULL, expr, NULL)) return false;
 	expr->resolve_status = RESOLVE_DONE;
 
-	if (!sema_cast_const(expr))
+	if (!expr_is_runtime_const(expr))
 	{
-		RETURN_SEMA_ERROR(exprptr(expr->binary_expr.right), "Expected a constant expression.");
+		RETURN_SEMA_ERROR(expr, "Expected this to result in a constant expression.");
 	}
 
 	left_var->var.init_expr = expr;
-	left->type = expr->type;
+	left_var->type = expr->type;
 	return true;
 }
 
@@ -6961,6 +6961,7 @@ static bool sema_expr_analyse_op_assign_enum_ptr(SemaContext *context, Expr *rhs
 	}
 	return true;
 }
+
 /**
  * Analyse *= /= %= ^= |= &= += -= <<= >>=
  *
@@ -7026,12 +7027,7 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 	Type *canonical = no_fail->canonical;
 	if (type_is_user_defined(canonical))
 	{
-		if (canonical->type_kind == TYPE_BITSTRUCT)
-		{
-			if (operator == BINARYOP_BIT_OR_ASSIGN
-				|| operator == BINARYOP_BIT_AND_ASSIGN
-				|| operator == BINARYOP_BIT_XOR_ASSIGN) goto SKIP_OVERLOAD_CHECK;
-		}
+		if (canonical->type_kind == TYPE_BITSTRUCT && is_bit_op) goto SKIP_OVERLOAD_CHECK;
 		BoolErr b = sema_insert_overload_in_op_assign_or_error(context, expr, left, right, operator, no_fail->canonical);
 		if (b == BOOL_ERR) return false;
 		if (b == BOOL_TRUE) return true;
@@ -8575,7 +8571,7 @@ static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr, b
 	}
 
 VALID_VEC:
-	if (is_bitstruct && sema_cast_const(inner))
+	if (is_bitstruct && sema_cast_const(inner) && expr_is_const_initializer(inner))
 	{
 		expr_replace(expr, inner);
 		sema_invert_bitstruct_const_initializer(expr->const_expr.initializer);
@@ -8589,7 +8585,6 @@ VALID_VEC:
 	// 3. The simple case, non-const.
 	if (!expr_const_foldable_unary(inner, UNARYOP_BITNEG))
 	{
-
 		expr->type = inner->type;
 		return true;
 	}

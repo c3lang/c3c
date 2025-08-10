@@ -34,6 +34,7 @@ faultdef
 	CHANNEL_CLOSED;
 
 macro void? Mutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, {});
+macro bool Mutex.is_initialized(mutex) => ((NativeMutex*)&mutex).is_initialized();
 macro void? RecursiveMutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, {.recursive});
 macro void? Mutex.destroy(&mutex) => NativeMutex.destroy((NativeMutex*)mutex);
 macro void? Mutex.lock(&mutex) => NativeMutex.lock((NativeMutex*)mutex);
