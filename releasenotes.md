@@ -7,6 +7,7 @@
 - Add compile-time `@intlog2` macro to math.
 - Add compile-time `@clz` builtin. #2367
 - Add `bitsizeof` macro builtins. #2376
+- Improved directory creation error messages in project and library creation commands.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
