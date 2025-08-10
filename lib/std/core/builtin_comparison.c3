@@ -126,3 +126,36 @@ macro max(x, ...) @builtin
 	$endif
 }
 
+
+<*
+ @require types::is_numerical($typeof($a))
+*>
+macro @max($a, ...) @builtin @const
+{
+	$if $vacount == 1:
+		return $a > $vaconst[0] ? $a : $vaconst[0];
+	$else
+		var $result = $a;
+		$for var $x = 0; $x < $vacount; ++$x:
+			$if $vaconst[$x] > $result: $result = $vaconst[$x]; $endif
+		$endfor
+		return $result;
+	$endif
+}
+
+<*
+ @require types::is_numerical($typeof($a))
+*>
+macro @min($a, ...) @builtin @const
+{
+	$if $vacount == 1:
+		return $a < $vaconst[0] ? $a : $vaconst[0];
+	$else
+		var $result = $a;
+		$for var $x = 0; $x < $vacount; ++$x:
+			$if $vaconst[$x] < $result: $result = $vaconst[$x]; $endif
+		$endfor
+		return $result;
+	$endif
+}
+
