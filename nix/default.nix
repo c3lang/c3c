@@ -27,11 +27,19 @@ in llvmPackages.stdenv.mkDerivation (_:
 
   src = ../.;
   
-  postPatch = ''
+  # Here we substitute GIT_HASH which is not set for cmake in nix builds.
+  # Similar situation is with __DATE__ and __TIME__ macros, which are
+  # set to "Jan 01 1980 00:00:00" by default.
+  patchPhase = ''
     substituteInPlace git_hash.cmake --replace-fail "\''${GIT_HASH}" "${rev}"
+
+    local FILE_NAMES="$(find src -type f)"
+    substituteInPlace $FILE_NAMES --replace-quiet "__DATE__" "\"$(date '+%b %d %Y')\""
+    substituteInPlace $FILE_NAMES --replace-quiet "__TIME__" "\"$(date '+%T')\""
   '';
 
   cmakeBuildType = if debug then "Debug" else "Release";
+
   cmakeFlags = [
     "-DC3_ENABLE_CLANGD_LSP=${if debug then "ON" else "OFF"}"
     "-DC3_LLD_DIR=${llvmPackages.lld.lib}/lib"
@@ -52,6 +60,7 @@ in llvmPackages.stdenv.mkDerivation (_:
   ] ++ lib.optionals llvmPackages.stdenv.hostPlatform.isDarwin [ xar ];
 
   doCheck = llvmPackages.stdenv.system == "x86_64-linux" && checks;
+
   # In check phase we preserve BUILD directory as
   # we need to return to it before install phase
   checkPhase = ''
