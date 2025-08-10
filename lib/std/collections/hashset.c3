@@ -329,10 +329,7 @@ fn void HashSet.reserve(&set, usz capacity)
 	}
 }
 
-fn Value[] HashSet.tvalues(&set)
-{
-	return set.values(tmem) @inline;
-}
+fn Value[] HashSet.tvalues(&self) => self.values(tmem) @inline;
 
 fn Value[] HashSet.values(&self, Allocator allocator)
 {
