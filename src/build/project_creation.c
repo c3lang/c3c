@@ -9,7 +9,7 @@
 #include <string.h>
 
 #if defined(_WIN32)
-#	include <windows.h>
+#include <windows.h>
 #else
 /* Some projects define __unused; musl headers use it as a field name.
  * Undef it before pulling in <sys/stat.h> to avoid a preprocessor clash.
@@ -237,9 +237,22 @@ void create_library(BuildOptions *build_options)
 	}
 
 	const char *dir = str_cat(build_options->project_name, ".c3l");
+	if (dir_exists(dir))
+	{
+		exit_fail("Directory '%s' already exists.", dir);
+	}
+
 	if (!dir_make(dir))
 	{
-		exit_fail("Could not create directory %s.", dir);
+		if (errno == EEXIST)
+		{
+			exit_fail("Directory '%s' already exists.", dir);
+		}
+		else
+		{
+			exit_fail("Could not create directory '%s': %s",
+			          dir, strerror(errno));
+		}
 	}
 
 	chdir_or_fail(build_options, dir);
