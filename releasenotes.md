@@ -26,6 +26,7 @@
 - Add `vm::mmap_file` to memory map a file.
 - Updated hash functions in default hash methods.
 - Added `FixedBlockPool` which is a memory pool for fixed size blocks.
+- Updated termios bindings to use bitstructs and fixed some constants with incorrect values #2372
 
 ## 0.7.4 Change list
 
