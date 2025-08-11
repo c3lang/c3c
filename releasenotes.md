@@ -25,6 +25,7 @@
 - Formatter did not properly handle "null" for any, and null for empty faults. #2375
 - Bitstructs no longer overloadable with bitops. #2374
 - types::has_equals fails with assert for bitstructs #2377
+- Fix `native_cpus` functionality for OpenBSD systems. #2387
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
