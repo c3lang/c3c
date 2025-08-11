@@ -223,6 +223,8 @@ For example, you can force the installation of the 0.7.4 version:
 $env:C3_VERSION='0.7.4'; powershell -ExecutionPolicy Bypass -Command "iwr -useb https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install/install.ps1 | iex"
 ```
 
+If you don't have Visual Studio 17 installed you can either do so, or run the `msvc_build_libraries.py` Python script which will download the necessary files to compile on Windows.
+
 ### Installing on Windows with precompiled binaries
 1. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-windows.zip](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-windows.zip)
 (debug version [here](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-windows-debug.zip))
