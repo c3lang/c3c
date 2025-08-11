@@ -1,5 +1,8 @@
 module std::core::array;
+
 import std::core::array::slice;
+import std::math;
+
 
 <*
  Returns true if the array contains at least one element, else false
@@ -111,3 +114,47 @@ macro concat(Allocator allocator, arr1, arr2) @nodiscard
  @ensure return.len == arr1.len + arr2.len
 *>
 macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
+
+
+<*
+ @param[&inout] allocator
+ @require @is_empty_macro_slot(stop) ||| (types::is_int($typeof(stop)) && stop <= isz.max && stop >= isz.min)
+ @require @is_empty_macro_slot(step) ||| types::is_int($typeof(step))
+*>
+macro isz[] range(Allocator allocator, isz start_stop, stop = EMPTY_MACRO_SLOT, step = EMPTY_MACRO_SLOT, bool inclusive = false)
+{
+	// when no stop is provided, the range is expected to be 0..start_stop
+	isz real_start = @is_valid_macro_slot(stop) ? start_stop : 0;
+	isz real_stop = @is_valid_macro_slot(stop) ? (isz)stop : start_stop;
+	isz real_step = @is_valid_macro_slot(step) ? (isz)step : 1;
+
+	if (!real_step) real_step = 1;   // no zero-step values; force a 1
+
+	if ((real_start > real_stop && real_step > 0) || (real_start < real_stop && real_step < 0)) real_step *= -1;
+
+	isz final_length = (isz)math::ceil((float)math::abs((float)(real_start - real_stop) / real_step));
+	if (inclusive && !((real_start - real_stop) % real_step)) ++final_length;
+
+	if (!final_length) return {};
+
+	isz[] result = allocator::new_array(allocator, isz, final_length);
+
+	for (
+		usz j = 0, isz i = real_start;
+		real_stop > real_start
+			? (inclusive ? i <= real_stop : i < real_stop)
+			: (inclusive ? i >= real_stop : i > real_stop);
+		i += real_step, ++j
+	) result[j] = i;
+
+	return result;
+}
+
+<*
+ @require @is_empty_macro_slot(stop) ||| (types::is_int($typeof(stop)) && stop <= isz.max && stop >= isz.min)
+ @require @is_empty_macro_slot(step) ||| types::is_int($typeof(step))
+*>
+macro isz[] trange(isz start_stop, stop = EMPTY_MACRO_SLOT, step = EMPTY_MACRO_SLOT, bool inclusive = false)
+{
+	return range(tmem, start_stop, stop, step, inclusive);
+}

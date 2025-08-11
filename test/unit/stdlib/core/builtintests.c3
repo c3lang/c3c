@@ -212,3 +212,33 @@ fn void test_ct_min_max()
 	assert(@max(0, 0, 1.234, 1.2345, 0.2) == 1.2345);
 	assert(@max(127.9999999, 45 + 46, bitsizeof(uint128)) == 128);
 }
+
+fn void range()
+{
+	// ascending
+	assert({0, 1, 2, 3, 4} == @range(5));
+	assert({0, 1, 2, 3, 4, 5} == @range(5, $inclusive: true));
+	assert({0, 2, 4} == @range(5, $step: 2));
+	assert({0, 2, 4} == @range(5, $step: 2, $inclusive: true));
+	assert({2, 3, 4, 5} == @range(2, 5, $inclusive: true));
+
+	// descending
+	assert({2, 1, 0, -1, -2, -3, -4} == @range(2, -5));
+	assert({0, -1, -2, -3, -4, -5} == @range(-5, $inclusive: true));
+	assert({-2, -3, -4, -5} == @range(-2, -5, $inclusive: true));
+	// -- purposefully using the wrong sign for 'step' here to show it will work regardless
+	assert({0, -2, -4} == @range(-5, $step: 2));
+	assert({0, -2, -4} == @range(-5, $step: 2, $inclusive: true));
+
+	// misc
+	assert({-2, -1, 0, 1} == @range(-2, 2));
+	assert({-2, -1, 0, 1, 2} == @range(-2, 2, $inclusive: true));
+	assert({-18, -8, 2, 12, 22} == @range(-18, 25, 10));
+	assert({-18, -8, 2, 12, 22} == @range(-18, 25, 10, $inclusive: true));
+	assert({2, 4} == @range(2, 6, 2));
+
+	// iterate
+	isz z;
+	foreach (i : @range(200, $step: 25, $inclusive: true)) z += i;
+	assert(z == 0 + 25 + 50 + 75 + 100 + 125 + 150 + 175 + 200);
+}

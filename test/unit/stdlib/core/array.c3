@@ -37,3 +37,42 @@ fn void concat()
 	defer free(c);
 	assert (c == (int[]){ 2, 3, 1, 2, 3 });
 }
+
+fn void range() => @pool()
+{
+	// quick alloc/free
+	isz[] t = array::range(mem, 3);
+	assert(t.len == 3);
+	mem::free(t.ptr);
+
+	// empty
+	assert({} == array::trange(0));
+	assert({} == array::trange(-10_000, -10_000));
+
+	// ascending
+	assert({0, 1, 2, 3, 4} == array::trange(5));
+	assert({0, 1, 2, 3, 4, 5} == array::trange(5, inclusive: true));
+	assert({0, 2, 4} == array::trange(5, step: 2));
+	assert({0, 2, 4} == array::trange(5, step: 2, inclusive: true));
+	assert({2, 3, 4, 5} == array::trange(2, 5, inclusive: true));
+
+	// descending
+	assert({2, 1, 0, -1, -2, -3, -4} == array::trange(2, -5));
+	assert({0, -1, -2, -3, -4, -5} == array::trange(-5, inclusive: true));
+	assert({-2, -3, -4, -5} == array::trange(-2, -5, inclusive: true));
+	// -- purposefully using the wrong sign for 'step' here to show it will work regardless
+	assert({0, -2, -4} == array::trange(-5, step: 2));
+	assert({0, -2, -4} == array::trange(-5, step: 2, inclusive: true));
+
+	// misc
+	assert({-2, -1, 0, 1} == array::trange(-2, 2));
+	assert({-2, -1, 0, 1, 2} == array::trange(-2, 2, inclusive: true));
+	assert({-18, -8, 2, 12, 22} == array::trange(-18, 25, 10));
+	assert({-18, -8, 2, 12, 22} == array::trange(-18, 25, 10, inclusive: true));
+	assert({2, 4} == array::trange(2, 6, 2));
+
+	// iterate
+	isz z;
+	foreach (i : array::trange(200, step: 25, inclusive: true)) z += i;
+	assert(z == 0 + 25 + 50 + 75 + 100 + 125 + 150 + 175 + 200);
+}

@@ -538,20 +538,18 @@ macro bool? @try_catch(#v, #expr, fault expected_fault) @builtin
 
 <*
  @require types::is_int($typeof($start_stop))
- @require @is_empty_macro_slot($stop) ||| types::is_int($typeof($stop))
- @require @is_empty_macro_slot($step) ||| types::is_int($typeof($step))
+ @require @is_empty_macro_slot($stop) ||| (types::is_int($typeof($stop)) &&& $stop <= isz.max &&& $stop >= isz.min)
+ @require @is_empty_macro_slot($step) ||| (types::is_int($typeof($step)) &&& $step != 0)
 *>
 macro isz[*] @range(isz $start_stop, $stop = EMPTY_MACRO_SLOT, $step = EMPTY_MACRO_SLOT, bool $inclusive = false) @builtin @const
 {
 	isz $real_start = @is_valid_macro_slot($stop) ? $start_stop : 0;
-	isz $real_stop = @is_valid_macro_slot($stop) ? (isz)$stop : $start_stop;
-	isz $real_step = @is_valid_macro_slot($step) ? (isz)$step : 1;
+	isz $real_stop  = @is_valid_macro_slot($stop) ? (isz)$stop : $start_stop;
+	isz $real_step  = @is_valid_macro_slot($step) ? (isz)$step : 1;
 
 	$if ($real_start > $real_stop &&& $real_step > 0) ||| ($real_start < $real_stop &&& $real_step < 0):
 		$real_step *= -1;   // flip the sign of 'step' automatically if necessary
 	$endif
-
-	$assert $real_step != 0 : "A compile-time range cannot use a zero 'step' value.";
 
 	// a poor man's CT absolute value |max - min| ensures a positive length integer
 	var $interval = @max($real_start, $real_stop) - @min($real_start, $real_stop);
@@ -578,45 +576,6 @@ macro isz[*] @range(isz $start_stop, $stop = EMPTY_MACRO_SLOT, $step = EMPTY_MAC
 	$endfor
 
 	return $result;
-}
-
-<*
- @param[&inout] allocator
- @require @is_empty_macro_slot(stop) ||| types::is_int($typeof(stop))
- @require @is_empty_macro_slot(step) ||| types::is_int($typeof(step))
-*>
-macro isz[] range(Allocator allocator, isz start_stop, stop = EMPTY_MACRO_SLOT, step = EMPTY_MACRO_SLOT, bool inclusive = false) @builtin
-{
-	// when no stop is provided, the range is expected to be 0..start_stop
-	isz real_start = @is_valid_macro_slot(stop) ? start_stop : 0;
-	isz real_stop = @is_valid_macro_slot(stop) ? (isz)stop : start_stop;
-	isz real_step = @is_valid_macro_slot(step) ? (isz)step : 1;
-
-	if (!real_step) real_step = 1;   // no zero-step values; force a 1
-
-	if ((real_start > real_stop && real_step > 0) || (real_start < real_stop && real_step < 0)) real_step *= -1;
-
-	isz final_length = (isz)math::ceil((float)math::abs((float)(real_start - real_stop) / real_step));
-	if (inclusive && !((real_start - real_stop) % real_step)) ++final_length;
-
-	if (!final_length) return {};
-
-	isz[] result = allocator::new_array(allocator, isz, final_length);
-
-	for (
-		usz j = 0, isz i = real_start;
-		real_stop > real_start
-			? (inclusive ? i <= real_stop : i < real_stop)
-			: (inclusive ? i >= real_stop : i > real_stop);
-		i += real_step, ++j
-	) result[j] = i;
-
-	return result;
-}
-
-macro isz[] trange(isz start_stop, stop = EMPTY_MACRO_SLOT, step = EMPTY_MACRO_SLOT) @builtin
-{
-	return range(tmem, start_stop, stop, step);
 }
 
 
