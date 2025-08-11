@@ -231,6 +231,8 @@ fn void range()
 	assert({0, -2, -4} == @range(-5, $step: 2, $inclusive: true));
 
 	// misc
+	assert({0, 1, 2} == @range($stop: 3));
+	assert({0, 1, 2, 3} == @range($stop: 3, $inclusive: true));
 	assert({-2, -1, 0, 1} == @range(-2, 2));
 	assert({-2, -1, 0, 1, 2} == @range(-2, 2, $inclusive: true));
 	assert({-18, -8, 2, 12, 22} == @range(-18, 25, 10));

@@ -47,6 +47,7 @@ fn void range() => @pool()
 
 	// empty
 	assert({} == array::trange(0));
+	assert({} == array::trange());
 	assert({} == array::trange(-10_000, -10_000));
 
 	// ascending
@@ -65,6 +66,8 @@ fn void range() => @pool()
 	assert({0, -2, -4} == array::trange(-5, step: 2, inclusive: true));
 
 	// misc
+	assert({0, 1, 2} == array::trange(stop: 3));
+	assert({0, 1, 2, 3} == array::trange(stop: 3, inclusive: true));
 	assert({-2, -1, 0, 1} == array::trange(-2, 2));
 	assert({-2, -1, 0, 1, 2} == array::trange(-2, 2, inclusive: true));
 	assert({-18, -8, 2, 12, 22} == array::trange(-18, 25, 10));

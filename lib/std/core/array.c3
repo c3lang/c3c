@@ -121,7 +121,7 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
  @require @is_empty_macro_slot(stop) ||| (types::is_int($typeof(stop)) && stop <= isz.max && stop >= isz.min)
  @require @is_empty_macro_slot(step) ||| types::is_int($typeof(step))
 *>
-macro isz[] range(Allocator allocator, isz start_stop, stop = EMPTY_MACRO_SLOT, step = EMPTY_MACRO_SLOT, bool inclusive = false)
+macro isz[] range(Allocator allocator, isz start_stop = 0, stop = EMPTY_MACRO_SLOT, step = EMPTY_MACRO_SLOT, bool inclusive = false)
 {
 	// when no stop is provided, the range is expected to be 0..start_stop
 	isz real_start = @is_valid_macro_slot(stop) ? start_stop : 0;
@@ -154,7 +154,7 @@ macro isz[] range(Allocator allocator, isz start_stop, stop = EMPTY_MACRO_SLOT, 
  @require @is_empty_macro_slot(stop) ||| (types::is_int($typeof(stop)) && stop <= isz.max && stop >= isz.min)
  @require @is_empty_macro_slot(step) ||| types::is_int($typeof(step))
 *>
-macro isz[] trange(isz start_stop, stop = EMPTY_MACRO_SLOT, step = EMPTY_MACRO_SLOT, bool inclusive = false)
+macro isz[] trange(isz start_stop = 0, stop = EMPTY_MACRO_SLOT, step = EMPTY_MACRO_SLOT, bool inclusive = false)
 {
 	return range(tmem, start_stop, stop, step, inclusive);
 }

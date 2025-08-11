@@ -541,7 +541,7 @@ macro bool? @try_catch(#v, #expr, fault expected_fault) @builtin
  @require @is_empty_macro_slot($stop) ||| (types::is_int($typeof($stop)) &&& $stop <= isz.max &&& $stop >= isz.min)
  @require @is_empty_macro_slot($step) ||| (types::is_int($typeof($step)) &&& $step != 0)
 *>
-macro isz[*] @range(isz $start_stop, $stop = EMPTY_MACRO_SLOT, $step = EMPTY_MACRO_SLOT, bool $inclusive = false) @builtin @const
+macro isz[*] @range(isz $start_stop = 0, $stop = EMPTY_MACRO_SLOT, $step = EMPTY_MACRO_SLOT, bool $inclusive = false) @builtin @const
 {
 	isz $real_start = @is_valid_macro_slot($stop) ? $start_stop : 0;
 	isz $real_stop  = @is_valid_macro_slot($stop) ? (isz)$stop : $start_stop;
