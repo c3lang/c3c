@@ -1439,6 +1439,24 @@ static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEVal
 	llvm_store_raw(c, ref, llvm_emit_const_bitstruct(c, initializer));
 }
 
+static bool llvm_should_use_const_copy(ConstInitializer *const_init)
+{
+	if (type_size(const_init->type) <= 32) return true;
+	switch (const_init->kind)
+	{
+		case CONST_INIT_ZERO:
+		case CONST_INIT_STRUCT:
+		case CONST_INIT_UNION:
+		case CONST_INIT_ARRAY_VALUE:
+		case CONST_INIT_VALUE:
+			return false;
+		case CONST_INIT_ARRAY:
+			return vec_size(const_init->init_array.elements) >= 16;
+		case CONST_INIT_ARRAY_FULL:
+			return true;
+	}
+	UNREACHABLE
+}
 static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializer *const_init, bool top)
 {
 	if (const_init->type->type_kind == TYPE_VECTOR)
@@ -1459,7 +1477,7 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 		return;
 	}
 	// In case of small const initializers, or full arrays - use copy.
-	if (const_init->kind == CONST_INIT_ARRAY_FULL || type_size(const_init->type) <= 32)
+	if (llvm_should_use_const_copy(const_init))
 	{
 		if (top && const_init_local_init_may_be_global(const_init))
 		{
@@ -2022,7 +2040,6 @@ static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *
 	ASSERT(expr_is_const_initializer(expr));
 	ASSERT(type_flatten(expr->type)->type_kind != TYPE_SLICE);
 	llvm_emit_const_init_ref(c, ref, expr->const_expr.initializer, true);
-	return;
 }
 
 /**
