@@ -6,29 +6,27 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, ... } @ inputs: inputs.flake-utils.lib.eachDefaultSystem 
+  outputs = { self, ... }@inputs: inputs.flake-utils.lib.eachDefaultSystem 
   (system: 
     let pkgs = import inputs.nixpkgs { inherit system; }; 
-        call = set: pkgs.callPackage ./nix/default.nix ( 
-          set // { 
-            rev = self.rev or "unknown"; 
-          } 
-        );
+        c3cBuild = set: pkgs.callPackage ./nix/default.nix (set // { 
+          rev = self.rev or "unknown"; 
+        });
     in {
       packages = {
         default = self.packages.${system}.c3c;
 
-        c3c = call {};
+        c3c = c3cBuild {};
         
-        c3c-checks = pkgs.callPackage ./nix/default.nix { 
+        c3c-checks = c3cBuild { 
           checks = true; 
         };
 
-        c3c-debug = pkgs.callPackage ./nix/default.nix { 
+        c3c-debug = c3cBuild { 
           debug = true; 
         };
 
-        c3c-debug-checks = pkgs.callPackage ./nix/default.nix { 
+        c3c-debug-checks = c3cBuild { 
           debug = true; 
           checks = true; 
         };

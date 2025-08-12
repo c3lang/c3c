@@ -4265,16 +4265,19 @@ static inline bool sema_expr_analyse_range(SemaContext *context, Range *range, A
 	}
 }
 
-static inline void sema_slice_initializer(Expr *expr, Expr *subscripted, Range *range)
+static inline bool sema_slice_initializer(SemaContext *context, Expr *expr, Expr *subscripted, Range *range)
 {
 	ConstInitializer *initializer = subscripted->const_expr.initializer;
-	ASSERT(type_is_arraylike(initializer->type));
+	if (!type_is_arraylike(initializer->type))
+	{
+		RETURN_SEMA_ERROR(expr, "It's not possible to slice an expression of type %s.", type_quoted_error_string(subscripted->type));
+	}
 	Type *new_type = type_get_slice(type_get_indexed_type(subscripted->type));
 	// Turn zero length into an untyped list.
 	if (range->len_index == 0)
 	{
 		expr_rewrite_const_empty_slice(expr, new_type);
-		return;
+		return true;
 	}
 	bool is_vec = initializer->type->type_kind == TYPE_VECTOR;
 	Type *inner_type = is_vec
@@ -4319,6 +4322,7 @@ static inline void sema_slice_initializer(Expr *expr, Expr *subscripted, Range *
 	subscripted->const_expr.const_kind = CONST_SLICE;
 	expr_replace(expr, subscripted);
 	expr->type = new_type;
+	return true;
 }
 
 static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, CheckType check)
@@ -4385,8 +4389,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
 				expr_replace(expr, subscripted);
 				return true;
 			case CONST_INITIALIZER:
-				sema_slice_initializer(expr, subscripted, range);
-				return true;
+				return sema_slice_initializer(context, expr, subscripted, range);
 			case CONST_SLICE:
 				if (!subscripted->const_expr.slice_init)
 				{
@@ -4394,8 +4397,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
 					expr_replace(expr, subscripted);
 					return true;
 				}
-				sema_slice_initializer(expr, subscripted, range);
-				return true;
+				return sema_slice_initializer(context, expr, subscripted, range);
 			case CONST_POINTER:
 			case CONST_FLOAT:
 			case CONST_INTEGER:
