@@ -8,10 +8,9 @@
 
   outputs = { self, ... }@inputs: inputs.flake-utils.lib.eachDefaultSystem 
   (system: 
-    let pkgs = import inputs.nixpkgs { inherit system; }; 
-        c3cBuild = set: pkgs.callPackage ./nix/default.nix (set // { 
-          rev = self.rev or "unknown"; 
-        });
+    let 
+      pkgs = import inputs.nixpkgs { inherit system; };
+      c3cBuild = set: pkgs.callPackage ./nix/default.nix (set // { rev = self.rev or "unknown"; });
     in {
       packages = {
         default = self.packages.${system}.c3c;
