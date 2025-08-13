@@ -1,12 +1,15 @@
 # Prerequisites
 *.d
 testrun
+benchmarkrun
+
 # Object files
 *.o
 *.ko
 *.obj
 *.elf
 *.ll
+*.wasm
 
 # Linker output
 *.ilk
