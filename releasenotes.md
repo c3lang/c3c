@@ -38,6 +38,7 @@
 - Updated hash functions in default hash methods.
 - Added `FixedBlockPool` which is a memory pool for fixed size blocks.
 - Added the experimental `std::core::log` for logging.
+- Updated termios bindings to use bitstructs and fixed some constants with incorrect values #2372
 
 ## 0.7.4 Change list
 
