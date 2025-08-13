@@ -2,26 +2,25 @@
 .SYNOPSIS
     C3 install script.
 .DESCRIPTION
-    This script is used to install C3 on Windows from the command line.
+    This script installs C3 on Windows from the command line.
 .PARAMETER C3Version
     Specifies the version of C3 to install.
-    The default value is 'latest'. You can also specify it by setting the
-    environment variable 'C3_VERSION'.
+    Default is 'latest'. Can also be set via environment variable 'C3_VERSION'.
 .PARAMETER C3Home
-    Specifies C3's home directory.
-    The default value is '$Env:USERPROFILE\.c3'. You can also specify it by
-    setting the environment variable 'C3_HOME'.
+    Specifies C3's installation directory.
+    Default is '$Env:USERPROFILE\.c3'. Can also be set via environment variable 'C3_HOME'.
 .PARAMETER NoPathUpdate
-    If specified, the script will not update the PATH environment variable.
+    If specified, the script will not modify the PATH environment variable.
 .PARAMETER C3Repourl
-    Specifies C3's repo url.
-    The default value is 'https://github.com/c3lang/c3c'. You can also specify it by
-    setting the environment variable 'C3_REPOURL'.
+    Specifies the repository URL of C3.
+    Default is 'https://github.com/c3lang/c3c'. Can also be set via environment variable 'C3_REPOURL'.
 .LINK
     https://c3-lang.org/
 .LINK
     https://github.com/c3lang/c3c
 #>
+
+# Script parameters with defaults
 param (
     [string] $C3Version = 'latest',
     [string] $C3Home = "$Env:USERPROFILE\.c3",
@@ -29,9 +28,12 @@ param (
     [string] $C3Repourl = 'https://github.com/c3lang/c3c'
 )
 
+# Enable strict mode for better error handling
 Set-StrictMode -Version Latest
 
+# Function to broadcast environment variable changes to Windows system
 function Publish-Env {
+    # Add P/Invoke type if it does not exist
     if (-not ("Win32.NativeMethods" -as [Type])) {
         Add-Type -Namespace Win32 -Name NativeMethods -MemberDefinition @"
 [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
@@ -41,10 +43,12 @@ public static extern IntPtr SendMessageTimeout(
 "@
     }
 
+    # Constants for broadcasting environment changes
     $HWND_BROADCAST = [IntPtr] 0xffff
     $WM_SETTINGCHANGE = 0x1a
     $result = [UIntPtr]::Zero
 
+    # Broadcast the message to all windows
     [Win32.Nativemethods]::SendMessageTimeout($HWND_BROADCAST,
         $WM_SETTINGCHANGE,
         [UIntPtr]::Zero,
@@ -55,6 +59,7 @@ public static extern IntPtr SendMessageTimeout(
     ) | Out-Null
 }
 
+# Function to write or update an environment variable in the registry
 function Write-Env {
     param(
         [String] $name,
@@ -62,6 +67,7 @@ function Write-Env {
         [Switch] $global
     )
 
+    # Determine the registry key based on scope (user or system)
     $RegisterKey = if ($global) {
         Get-Item -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager'
     } else {
@@ -69,9 +75,12 @@ function Write-Env {
     }
 
     $EnvRegisterKey = $RegisterKey.OpenSubKey('Environment', $true)
+
+    # If value is null, delete the variable
     if ($null -eq $val) {
         $EnvRegisterKey.DeleteValue($name)
     } else {
+        # Determine the correct registry value type
         $RegistryValueKind = if ($val.Contains('%')) {
             [Microsoft.Win32.RegistryValueKind]::ExpandString
         } elseif ($EnvRegisterKey.GetValue($name)) {
@@ -81,15 +90,19 @@ function Write-Env {
         }
         $EnvRegisterKey.SetValue($name, $val, $RegistryValueKind)
     }
+
+    # Broadcast the change to the system
     Publish-Env
 }
 
+# Function to get an environment variable from the registry
 function Get-Env {
     param(
         [String] $name,
         [Switch] $global
     )
 
+    # Determine registry key based on scope
     $RegisterKey = if ($global) {
         Get-Item -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager'
     } else {
@@ -98,75 +111,25 @@ function Get-Env {
 
     $EnvRegisterKey = $RegisterKey.OpenSubKey('Environment')
     $RegistryValueOption = [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames
+
+    # Retrieve the value without expanding environment variables
     $EnvRegisterKey.GetValue($name, $null, $RegistryValueOption)
 }
 
-# Not yet
-# function Get-TargetTriple() {
-#   try {
-#     # NOTE: this might return X64 on ARM64 Windows, which is OK since emulation is available.
-#     # It works correctly starting in PowerShell Core 7.3 and Windows PowerShell in Win 11 22H2.
-#     # Ideally this would just be
-#     #   [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
-#     # but that gets a type from the wrong assembly on Windows PowerShell (i.e. not Core)
-#     $a = [System.Reflection.Assembly]::LoadWithPartialName("System.Runtime.InteropServices.RuntimeInformation")
-#     $t = $a.GetType("System.Runtime.InteropServices.RuntimeInformation")
-#     $p = $t.GetProperty("OSArchitecture")
-#     # Possible OSArchitecture Values: https://learn.microsoft.com/dotnet/api/system.runtime.interopservices.architecture
-#     # Rust supported platforms: https://doc.rust-lang.org/stable/rustc/platform-support.html
-#     switch ($p.GetValue($null).ToString())
-#     {
-#       "X86" { return "i686-pc-windows-msvc" }
-#       "X64" { return "x86_64-pc-windows-msvc" }
-#       "Arm" { return "thumbv7a-pc-windows-msvc" }
-#       "Arm64" { return "aarch64-pc-windows-msvc" }
-#     }
-#   } catch {
-#     # The above was added in .NET 4.7.1, so Windows PowerShell in versions of Windows
-#     # prior to Windows 10 v1709 may not have this API.
-#     Write-Verbose "Get-TargetTriple: Exception when trying to determine OS architecture."
-#     Write-Verbose $_
-#   }
+# Override defaults if environment variables exist
+if ($Env:C3_VERSION) { $C3Version = $Env:C3_VERSION }
+if ($Env:C3_HOME) { $C3Home = $Env:C3_HOME }
+if ($Env:C3_NO_PATH_UPDATE) { $NoPathUpdate = $true }
+if ($Env:C3_REPOURL) { $C3Repourl = $Env:C3_REPOURL -replace '/$', '' }
 
-#   # This is available in .NET 4.0. We already checked for PS 5, which requires .NET 4.5.
-#   Write-Verbose("Get-TargetTriple: falling back to Is64BitOperatingSystem.")
-#   if ([System.Environment]::Is64BitOperatingSystem) {
-#     return "x86_64-pc-windows-msvc"
-#   } else {
-#     return "i686-pc-windows-msvc"
-#   }
-# }
-
-if ($Env:C3_VERSION) {
-    $C3Version = $Env:C3_VERSION
-}
-
-if ($Env:C3_HOME) {
-    $C3Home = $Env:C3_HOME
-}
-
-if ($Env:C3_NO_PATH_UPDATE) {
-    $NoPathUpdate = $true
-}
-
-if ($Env:C3_REPOURL) {
-    $C3Repourl = $Env:C3_REPOURL -replace '/$', ''
-}
-
-# Repository name
-#$ARCH = Get-TargetTriple
-
-# if (-not @("x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc") -contains $ARCH) {
-#     throw "ERROR: could not find binaries for this platform ($ARCH)."
-# }
-
-# $BINARY = "c3-$ARCH"
+# Set binary name
 $BINARY = "c3-windows"
 
+# Determine the download URL based on version
 if ($C3Version -eq 'latest') {
     $DOWNLOAD_URL = "$C3Repourl/releases/latest/download/$BINARY.zip"
 } else {
-    # Check if version is incorrectly specified without prefix 'v', and prepend 'v' in this case
+    # Ensure version starts with 'v'
     $C3Version = "v" + ($C3Version -replace '^v', '')
     $DOWNLOAD_URL = "$C3Repourl/releases/download/$C3Version/$BINARY.zip"
 }
@@ -177,37 +140,45 @@ Write-Host "This script will automatically download and install C3 ($C3Version) 
 Write-Host "Getting it from this url: $DOWNLOAD_URL"
 Write-Host "The binary will be installed into '$BinDir'"
 
+# Create temporary file for download
 $TEMP_FILE = [System.IO.Path]::GetTempFileName()
 
 try {
+    # Download the binary
     Invoke-WebRequest -Uri $DOWNLOAD_URL -OutFile $TEMP_FILE
 
-    # Remove previous install
+    # Remove previous installation if it exists
     if (Test-Path -Path $BinDir) {
         Remove-Item -Path $BinDir -Recurse -Force | Out-Null
     }
 
+    # Rename temp file to .zip
     $ZIP_FILE = $TEMP_FILE + ".zip"
     Rename-Item -Path $TEMP_FILE -NewName $ZIP_FILE
 
-    # Extract c3 from the downloaded zip file
+    # Extract downloaded zip
     Expand-Archive -Path $ZIP_FILE -DestinationPath $Env:USERPROFILE -Force
+
+    # Rename extracted folder to target installation directory
     Rename-Item -Path "$Env:USERPROFILE/c3-windows-Release" -NewName $BinDir
 } catch {
     Write-Host "Error: '$DOWNLOAD_URL' is not available or failed to download"
     exit 1
 } finally {
+    # Cleanup temporary zip file
     Remove-Item -Path $ZIP_FILE
 }
 
-# Add c3 folder to PATH if the folder is not already in the PATH variable
+# Update PATH environment variable if requested
 if (!$NoPathUpdate) {
     $PATH = Get-Env 'PATH'
     if ($PATH -notlike "*$BinDir*") {
         Write-Output "Adding $BinDir to PATH"
-        # For future sessions
+
+        # Persist PATH for future sessions
         Write-Env -name 'PATH' -val "$BinDir;$PATH"
-        # For current session
+
+        # Update PATH for current session
         $Env:PATH = "$BinDir;$PATH"
         Write-Output "You may need to restart your shell"
     } else {
