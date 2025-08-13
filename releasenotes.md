@@ -28,6 +28,7 @@
 - types::has_equals fails with assert for bitstructs #2377
 - Fix `native_cpus` functionality for OpenBSD systems. #2387
 - Assert triggered when trying to slice a struct.
+- Improve codegen for stack allocated large non-zero arrays.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
