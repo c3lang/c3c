@@ -10,7 +10,8 @@ __wrap__() {
     C3_HOME="${C3_HOME/#\~/$HOME}"
     BIN_DIR="$C3_HOME"
     # C3 compiler repository URL
-    REPOURL="${C3_REPOURL:-https://github.com/c3lang/c3c}"
+    REPO="c3lang/c3c"
+    REPOURL="${C3_REPOURL:-https://github.com/$REPO}"
 
     detect_platform() {
         # Detects the operating system
@@ -25,40 +26,21 @@ __wrap__() {
             linux)   # Linux distributions
                 if [ -r /etc/os-release ]; then
                     . /etc/os-release
-                    case "$ID" in
-                        ubuntu)
-                            echo "ubuntu-22"
-                            ;;
-                        debian)
-                            echo "debian"
-                            ;;
-                        *)
-                            errors+="Unsupported OS ID: $ID."
-                            ;;
-                    esac
+                    echo "$ID"
                 elif [ -r /etc/issue ]; then
                     # Fallback method to detect distribution
-                    distrib="$(cat /etc/issue | tr '[:upper:]' '[:lower:]')"
-                    if [[ "$distrib" == *"ubuntu"* ]]; then
-                        echo "ubuntu-22"
-                    elif [[ "$distrib" == *"debian"* ]]; then
-                        echo "debian"
-                    else
-                        errors+="Unsupported OS."
-                    fi
+                    distrib="$(cut -d' ' -f1 /etc/issue | tr '[:upper:]' '[:lower:]')"
+                    echo $distrib
                 else
                     errors+="Unable to detect operating system."
                 fi
-                ;;
-            openbsd)  # OpenBSD
-                echo "openbsd"
                 ;;
             msys*|mingw*|cygwin*)  # Windows (Git Bash / MSYS / Cygwin)
                 IS_MSYS=true
                 echo "windows"
                 ;;
             *)
-                errors+="Unable to detect operating system."
+                echo $os_type
                 ;;
         esac
 
@@ -71,6 +53,11 @@ __wrap__() {
 
     # Determine platform string
     PLATFORM="$(detect_platform)"
+
+    # Tips for Ubuntu
+    if [[ "$PLATFORM" == "ubuntu" ]]; then
+        PLATFORM="ubuntu-22"
+    fi
 
     # File extension for the archive (ZIP for Windows, TAR.GZ for others)
     EXT=".tar.gz"
