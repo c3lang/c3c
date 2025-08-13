@@ -213,7 +213,7 @@ fn void test_ct_min_max()
 	assert(@max(127.9999999, 45 + 46, bitsizeof(uint128)) == 128);
 }
 
-fn void range()
+fn void test_ct_range()
 {
 	// ascending
 	assert({0, 1, 2, 3, 4} == @range(5));

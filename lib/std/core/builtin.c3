@@ -482,7 +482,7 @@ macro bool @ok(#expr) @builtin
  @require $defined(#expr!) : "Expected an optional expression"
  @require @assignable_to(#expr!!, $typeof(#v))  : `Type of #expr must be an optional of #v's type`
 *>
-macro void? @try(#v, #expr) @builtin
+macro void? @try(#v, #expr) @builtin @maydiscard
 {
 	var res = #expr;
 	if (catch err = res) return err?;

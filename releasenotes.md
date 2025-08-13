@@ -25,6 +25,10 @@
 - Compiler segfault when using bitwise not on number literal cast to bitstruct #2373.
 - Formatter did not properly handle "null" for any, and null for empty faults. #2375
 - Bitstructs no longer overloadable with bitops. #2374
+- types::has_equals fails with assert for bitstructs #2377
+- Fix `native_cpus` functionality for OpenBSD systems. #2387
+- Assert triggered when trying to slice a struct.
+- Improve codegen for stack allocated large non-zero arrays.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
@@ -35,6 +39,7 @@
 - Added `FixedBlockPool` which is a memory pool for fixed size blocks.
 - Added the experimental `std::core::log` for logging.
 - Added `array::range` and compile-time `@range` builtins.
+- Updated termios bindings to use bitstructs and fixed some constants with incorrect values #2372
 
 ## 0.7.4 Change list
 
