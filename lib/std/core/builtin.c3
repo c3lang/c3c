@@ -538,14 +538,17 @@ macro bool? @try_catch(#v, #expr, fault expected_fault) @builtin
 
 <*
  @require types::is_int($typeof($start_stop))
+ @require types::is_int($OfType)
  @require @is_empty_macro_slot($stop) ||| (types::is_int($typeof($stop)) &&& $stop <= isz.max &&& $stop >= isz.min)
  @require @is_empty_macro_slot($step) ||| (types::is_int($typeof($step)) &&& $step != 0)
 *>
-macro isz[*] @range(isz $start_stop = 0, $stop = EMPTY_MACRO_SLOT, $step = EMPTY_MACRO_SLOT, bool $inclusive = false) @builtin @const
+macro @range($start_stop = 0, $stop = EMPTY_MACRO_SLOT, $step = EMPTY_MACRO_SLOT, bool $inclusive = false, $OfType = isz) @builtin @const
 {
-	isz $real_start = @is_valid_macro_slot($stop) ? $start_stop : 0;
-	isz $real_stop  = @is_valid_macro_slot($stop) ? (isz)$stop : $start_stop;
-	isz $real_step  = @is_valid_macro_slot($step) ? (isz)$step : 1;
+	// These are `int128` types because by default, we want to be able to accommodate the LARGEST computable values.
+	//   Do NOT make these $OfType, as it disturbs the calculation of the resulting array's range based on the type.
+	int128 $real_start = @is_valid_macro_slot($stop) ? $start_stop : 0;
+	int128 $real_stop  = @is_valid_macro_slot($stop) ? (int128)$stop : $start_stop;
+	int128 $real_step  = @is_valid_macro_slot($step) ? (int128)$step : 1;
 
 	$if ($real_start > $real_stop &&& $real_step > 0) ||| ($real_start < $real_stop &&& $real_step < 0):
 		$real_step *= -1;   // flip the sign of 'step' automatically if necessary
@@ -555,24 +558,28 @@ macro isz[*] @range(isz $start_stop = 0, $stop = EMPTY_MACRO_SLOT, $step = EMPTY
 	var $interval = @max($real_start, $real_stop) - @min($real_start, $real_stop);
 	var $abs_step = ($real_step < 0) ? -$real_step : $real_step;
 
-	isz $final_length = (isz)($interval / (float)$abs_step) + ($interval % $abs_step ? 1 : 0);
+	int128 $final_length = (int128)($interval / (float)$abs_step) + ($interval % $abs_step ? 1 : 0);
 	$if $final_length < 0: $final_length = -$final_length; $endif
 
 	// only add the extra slot if the end value is a multiple of the step
 	$if $inclusive && !($interval % $abs_step): ++$final_length; $endif
 
-	$assert $final_length != 0
+	$assert $final_length > 0
 		: "A compile-time range cannot return a zero-length array (start %s, stop %s, step %s).", $real_start, $real_stop, $real_step;
 
-	isz[$final_length] $result;
+	$assert $final_length < isz.max
+		: "A compile-time range should never be larger than isz.max. You need to use something more efficient.";
+
+	$OfType[(usz)$final_length] $result;
 
 	$for
 		var $j = 0, var $i = $real_start;
 		$real_stop > $real_start
 			? ($inclusive ? $i <= $real_stop : $i < $real_stop)
 			: ($inclusive ? $i >= $real_stop : $i > $real_stop);
-		++$j, $i += $real_step :
-			$result[$j] = $i;
+		++$j, $i += $real_step
+	:
+			$result[$j] = ($OfType)$i;
 	$endfor
 
 	return $result;

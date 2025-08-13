@@ -239,8 +239,24 @@ fn void test_ct_range()
 	assert({-18, -8, 2, 12, 22} == @range(-18, 25, 10, $inclusive: true));
 	assert({2, 4} == @range(2, 6, 2));
 
+	// type-based wraparound
+	assert({254, 255, 0, 1, 2} == @range(254, 258, $inclusive: true, $OfType: char));   // overflow
+	assert({2, 1, 0, 255, 254} == @range(258, 254, $inclusive: true, $OfType: char));   // underflow
+	assert({126, 127, -128, -127, -126} == @range(126, 130, $inclusive: true, $OfType: ichar));   // signed overflow
+	assert({-126, -127, -128, 127, 126} == @range(130, 126, $inclusive: true, $OfType: ichar));   // signed underflow
+	assert({-126, -128, 126} == @range(130, 126, -2, $inclusive: true, $OfType: ichar));   // signed stepped underflow
+
 	// iterate
 	isz z;
 	foreach (i : @range(200, $step: 25, $inclusive: true)) z += i;
 	assert(z == 0 + 25 + 50 + 75 + 100 + 125 + 150 + 175 + 200);
+
+	// typed returns
+	// assert($typeof(@range(2)) == isz);
+	var $range = @range(2);   // workaround for buggy line above; issue #2402
+	assert(@typeis($range, isz[2]));
+	$range = @range(4, $OfType: char); assert(@typeis($range, char[4]));
+	$range = @range(8, $step: 2, $OfType: uint128); assert(@typeis($range, uint128[4]));
+	$range = @range(4, 16, 3, true, long); assert(@typeis($range, long[5]));
+	$range = @range($stop: 1200, $inclusive: true, $OfType: char); assert(@typeis($range, char[1201]));
 }
