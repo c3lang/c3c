@@ -62,6 +62,8 @@ __wrap__() {
 
     download_file() {
         # Download the archive using curl or wget
+        # Check that the curl version is not 8.8.0, which is broken for --write-out
+        # https://github.com/curl/curl/issues/13845
         if command -v curl >/dev/null && [[ "$(curl --version | awk 'NR==1{print $2}')" != "8.8.0" ]]; then
             curl -SL "$URL" -o "$TEMP_FILE"
         elif command -v wget >/dev/null; then
