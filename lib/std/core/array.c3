@@ -118,43 +118,47 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
 
 <*
  @param[&inout] allocator
+ @require types::is_int($typeof(start_stop))
+ @require types::is_int($OfType)
  @require @is_empty_macro_slot(stop) ||| (types::is_int($typeof(stop)) && stop <= isz.max && stop >= isz.min)
  @require @is_empty_macro_slot(step) ||| types::is_int($typeof(step))
 *>
-macro isz[] range(Allocator allocator, isz start_stop = 0, stop = EMPTY_MACRO_SLOT, step = EMPTY_MACRO_SLOT, bool inclusive = false)
+macro range(Allocator allocator, start_stop = 0, stop = EMPTY_MACRO_SLOT, step = EMPTY_MACRO_SLOT, bool inclusive = false, $OfType = isz)
 {
 	// when no stop is provided, the range is expected to be 0..start_stop
-	isz real_start = @is_valid_macro_slot(stop) ? start_stop : 0;
-	isz real_stop = @is_valid_macro_slot(stop) ? (isz)stop : start_stop;
-	isz real_step = @is_valid_macro_slot(step) ? (isz)step : 1;
+	int128 real_start = @is_valid_macro_slot(stop) ? start_stop : 0;
+	int128 real_stop = @is_valid_macro_slot(stop) ? (int128)stop : start_stop;
+	int128 real_step = @is_valid_macro_slot(step) ? (int128)step : 1;
 
 	if (!real_step) real_step = 1;   // no zero-step values; force a 1
 
 	if ((real_start > real_stop && real_step > 0) || (real_start < real_stop && real_step < 0)) real_step *= -1;
 
-	isz final_length = (isz)math::ceil((float)math::abs((float)(real_start - real_stop) / real_step));
+	int128 final_length = (int128)math::ceil((float)math::abs((float)(real_start - real_stop) / real_step));
 	if (inclusive && !((real_start - real_stop) % real_step)) ++final_length;
 
-	if (!final_length) return {};
+	if (!final_length || final_length >= usz.max) return {};
 
-	isz[] result = allocator::new_array(allocator, isz, final_length);
+	$OfType[] result = allocator::new_array(allocator, $OfType, (usz)final_length);
 
 	for (
-		usz j = 0, isz i = real_start;
+		usz j = 0, int128 i = real_start;
 		real_stop > real_start
 			? (inclusive ? i <= real_stop : i < real_stop)
 			: (inclusive ? i >= real_stop : i > real_stop);
 		i += real_step, ++j
-	) result[j] = i;
+	) result[j] = ($OfType)i;
 
 	return result;
 }
 
 <*
+ @require types::is_int($typeof(start_stop))
+ @require types::is_int($OfType)
  @require @is_empty_macro_slot(stop) ||| (types::is_int($typeof(stop)) && stop <= isz.max && stop >= isz.min)
  @require @is_empty_macro_slot(step) ||| types::is_int($typeof(step))
 *>
-macro isz[] trange(isz start_stop = 0, stop = EMPTY_MACRO_SLOT, step = EMPTY_MACRO_SLOT, bool inclusive = false)
+macro trange(start_stop = 0, stop = EMPTY_MACRO_SLOT, step = EMPTY_MACRO_SLOT, bool inclusive = false, $OfType = isz)
 {
-	return range(tmem, start_stop, stop, step, inclusive);
+	return range(tmem, start_stop, stop, step, inclusive, $OfType);
 }

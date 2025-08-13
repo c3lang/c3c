@@ -74,8 +74,22 @@ fn void range() => @pool()
 	assert({-18, -8, 2, 12, 22} == array::trange(-18, 25, 10, inclusive: true));
 	assert({2, 4} == array::trange(2, 6, 2));
 
+	// type-based wraparound
+	assert({254, 255, 0, 1, 2} == array::trange(254, 258, inclusive: true, $OfType: char));   // overflow
+	assert({2, 1, 0, 255, 254} == array::trange(258, 254, inclusive: true, $OfType: char));   // underflow
+	assert({126, 127, -128, -127, -126} == array::trange(126, 130, inclusive: true, $OfType: ichar));   // signed overflow
+	assert({-126, -127, -128, 127, 126} == array::trange(130, 126, inclusive: true, $OfType: ichar));   // signed underflow
+	assert({-126, -128, 126} == array::trange(130, 126, -2, inclusive: true, $OfType: ichar));   // signed stepped underflow
+
 	// iterate
 	isz z;
 	foreach (i : array::trange(200, step: 25, inclusive: true)) z += i;
 	assert(z == 0 + 25 + 50 + 75 + 100 + 125 + 150 + 175 + 200);
+
+	// typed returns
+	assert(@typeis(array::trange(2), isz[]));
+	assert(@typeis(array::trange(4, $OfType: char), char[]));
+	assert(@typeis(array::trange(8, step: 2, $OfType: uint128), uint128[]));
+	assert(@typeis(array::trange(4, 16, 3, true, long), long[]));
+	assert(@typeis(array::trange(stop: 1200, inclusive: true, $OfType: char), char[]));
 }
