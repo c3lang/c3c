@@ -23,18 +23,6 @@ __wrap__() {
             darwin)  # macOS
                 echo "macos"
                 ;;
-            linux)   # Linux distributions
-                if [ -r /etc/os-release ]; then
-                    . /etc/os-release
-                    echo "$ID"
-                elif [ -r /etc/issue ]; then
-                    # Fallback method to detect distribution
-                    distrib="$(cut -d' ' -f1 /etc/issue | tr '[:upper:]' '[:lower:]')"
-                    echo $distrib
-                else
-                    errors+="Unable to detect operating system."
-                fi
-                ;;
             msys*|mingw*|cygwin*)  # Windows (Git Bash / MSYS / Cygwin)
                 IS_MSYS=true
                 echo "windows"
@@ -53,11 +41,6 @@ __wrap__() {
 
     # Determine platform string
     PLATFORM="$(detect_platform)"
-
-    # Tips for Ubuntu
-    if [[ "$PLATFORM" == "ubuntu" ]]; then
-        PLATFORM="ubuntu-22"
-    fi
 
     # File extension for the archive (ZIP for Windows, TAR.GZ for others)
     EXT=".tar.gz"
