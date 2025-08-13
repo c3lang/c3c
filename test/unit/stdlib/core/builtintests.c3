@@ -173,3 +173,42 @@ fn void test_hash_repeat()
 	assert((bool[100]){}.hash() == (bool[100]){}.hash());
 	assert(int.typeid.hash() == int.typeid.hash());
 }
+
+fn void test_ct_clz()
+{
+	assert(@clz((ulong)0) == ulong.sizeof * 8);
+	assert(@clz((char)1) == (char.sizeof * 8) - 1);
+	assert(@clz((uint)0x8000_0000) == 0);
+	assert(@clz((ushort)0x0100) == 7);
+	assert(@clz((long)-1) == 0);
+	assert(@clz((uint128)0x87) == 120);
+	assert(@clz((char)(0x44 - 0x40)) == 5);
+}
+
+fn void test_bitsizeof()
+{
+	assert(bitsizeof(uint128) == 128);
+	assert(bitsizeof(ulong) == 64);
+	assert(bitsizeof(int) == 32);
+	assert(bitsizeof(short) == 16);
+	assert(bitsizeof(char) == 8);
+	assert(bitsizeof(char[200]) == 1600);
+
+	// Checks that they may be converted
+	int x = bitsizeof(char);
+	int y = @bitsizeof(1);
+
+	assert(@bitsizeof((char)0x07) == 8);
+	assert(@bitsizeof(0x1000ul) == 64);
+	assert(@bitsizeof(0) == 32);
+	assert(@bitsizeof((char[*])"abcdefghi") == 72);
+}
+
+fn void test_ct_min_max()
+{
+	assert(@min(4, 5) == 4);
+	assert(@max(1.234, 1.2345) == 1.2345);
+	assert(@min(4, 5, 6, 7, 8.90, 3.14) == 3.14);
+	assert(@max(0, 0, 1.234, 1.2345, 0.2) == 1.2345);
+	assert(@max(127.9999999, 45 + 46, bitsizeof(uint128)) == 128);
+}
