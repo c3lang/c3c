@@ -16,7 +16,6 @@ __wrap__() {
     detect_platform() {
         # Detects the operating system
         local os_type
-        local errors=""
         os_type="$(uname -s | tr '[:upper:]' '[:lower:]')"
 
         case "$os_type" in
@@ -31,12 +30,6 @@ __wrap__() {
                 echo $os_type
                 ;;
         esac
-
-        # Exit if any error occurred during detection
-        if [[ -n "$errors" ]]; then
-            echo "Error: $errors" >&2
-            exit 1
-        fi
     }
 
     # Determine platform string
