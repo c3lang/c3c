@@ -29,6 +29,7 @@
 - Fix `native_cpus` functionality for OpenBSD systems. #2387
 - Assert triggered when trying to slice a struct.
 - Improve codegen for stack allocated large non-zero arrays.
+- Implement `a5hash` in the compiler for compile-time `$$str_hash` to match `String.hash()`.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
