@@ -32,6 +32,7 @@
 - Fix `native_cpus` functionality for OpenBSD systems. #2387
 - Assert triggered when trying to slice a struct.
 - Improve codegen for stack allocated large non-zero arrays.
+- Implement `a5hash` in the compiler for compile-time `$$str_hash` to match `String.hash()`.
 - Functions being tested for overload are now always checked before test.
 - Compile time indexing at compile time in a $typeof was no considered compile time.
 
