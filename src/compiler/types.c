@@ -520,7 +520,7 @@ bool type_is_comparable(Type *type)
 			return false;
 		case TYPE_UNION:
 		case TYPE_STRUCT:
-			return type->decl->attr_compact;
+			return type->decl->attr_compact && compiler.build.old_compact_eq;
 		case TYPE_BITSTRUCT:
 			type = type->decl->strukt.container_type->type;
 			goto RETRY;

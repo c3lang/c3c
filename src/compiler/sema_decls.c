@@ -159,6 +159,8 @@ static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Dec
 
 /**
  * Analyse a struct or union field.
+ *
+ * This will also push the member to the current declaration stack.
  */
 static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl, bool *erase_decl)
 {
@@ -174,7 +176,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 	if (decl->resolve_status == RESOLVE_RUNNING) RETURN_SEMA_ERROR(decl, "Circular dependency resolving member.");
 
 	// Mark the unit, it should not have been assigned at this point.
-	ASSERT(!decl->unit || decl->unit->module->is_generic || decl->unit == parent->unit);
+	ASSERT_SPAN(decl, !decl->unit || decl->unit->module->is_generic || decl->unit == parent->unit);
 	decl->unit = parent->unit;
 
 	// Pick the domain for attribute analysis.
@@ -216,17 +218,23 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 	}
 
 	bool is_export = parent->is_export;
+
 	// Analysis depends on the underlying type.
 	switch (decl->decl_kind)
 	{
+		// A regular member
 		case DECL_VAR:
 		{
-			ASSERT(decl->var.kind == VARDECL_MEMBER);
+			ASSERT_SPAN(decl, decl->var.kind == VARDECL_MEMBER);
 			decl->resolve_status = RESOLVE_RUNNING;
+
+			// Resolve the type
 			// Inferred types are not strictly allowed, but we use the int[*] for the flexible array member.
-			ASSERT(type_infoptrzero(decl->var.type_info));
+			ASSERT_SPAN(decl, decl->var.type_info);
 			TypeInfo *type_info = type_infoptr(decl->var.type_info);
-			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_FLEXIBLE)) return decl_poison(decl);
+			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_FLEXIBLE)) return false;
+
+			// Check the resulting storage type:
 			Type *type = type_info->type;
 			switch (sema_resolve_storage_type(context, type))
 			{
@@ -246,16 +254,19 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 			decl->resolve_status = RESOLVE_DONE;
 			return true;
 		}
+		// It might be a struct of union
 		case DECL_STRUCT:
 		case DECL_UNION:
 			// Extend the nopadding attributes to nested structs.
 			if (parent->attr_nopadding) decl->attr_nopadding = true;
 			if (parent->attr_compact) decl->attr_compact = true;
 			FALLTHROUGH;
+			// The common case for all inline types:
 		case DECL_BITSTRUCT:
+			// Set the nested type as export if this one is exported.
 			decl->is_export = is_export;
-			if (!sema_analyse_decl(context, decl)) return false;
-			return true;
+			// Perform the analysis
+			return sema_analyse_decl(context, decl);
 		default:
 			UNREACHABLE
 	}
@@ -1851,6 +1862,7 @@ INLINE bool decl_matches_overload(Decl *method, Type *type, OperatorOverload ove
 
 static inline OverloadMatch operator_in_module_typed(SemaContext *c, Module *module, OperatorOverload operator_overload, OverloadType overload_type, Type *method_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, OverloadMatch match, Decl **ambiguous_ref)
 {
+	if (match == OVERLOAD_MATCH_ERROR) return match;
 	if (module->is_generic) return match;
 	match = sema_find_typed_operator_in_list(c, module->private_method_extensions, operator_overload, OVERLOAD_TYPE_SYMMETRIC, method_type, binary_arg, binary_type, candidate_ref, match, ambiguous_ref);
 	FOREACH(Module *, sub_module, module->sub_modules)
@@ -1940,10 +1952,12 @@ static Decl *sema_find_exact_typed_operator_in_list(Decl **methods, OperatorOver
 
 static OverloadMatch sema_find_typed_operator_in_list(SemaContext *context, Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, OverloadMatch last_match, Decl **ambiguous_ref)
 {
-	if (last_match == OVERLOAD_MATCH_AMBIGUOUS_EXACT) return last_match;
+	if (last_match == OVERLOAD_MATCH_AMBIGUOUS_EXACT || last_match == OVERLOAD_MATCH_ERROR) return last_match;
 	Decl *candidate = *candidate_ref;
 	FOREACH(Decl *, func, methods)
 	{
+		if (!sema_analyse_decl(context, func)) return OVERLOAD_MATCH_ERROR;
+		ASSERT_SPAN(func, func->resolve_status == RESOLVE_DONE);
 		if (func->func_decl.operator != operator_overload) continue;
 		if (parent_type && parent_type != typeget(func->func_decl.type_parent)) continue;
 		if ((overload_type & func->func_decl.overload_type) == 0) continue;
@@ -2031,7 +2045,7 @@ static Decl *sema_find_exact_typed_operator(SemaContext *context, Type *type, Op
 	return NULL;
 }
 
-static OverloadMatch sema_find_typed_operator_type(SemaContext *context, OperatorOverload operator_overload, OverloadType overloat_type, Type *lhs_type, Type *rhs_type, Expr *rhs, Decl **candidate_ref, OverloadMatch last_match, Decl **ambiguous_ref)
+OverloadMatch sema_find_typed_operator_type(SemaContext *context, OperatorOverload operator_overload, OverloadType overloat_type, Type *lhs_type, Type *rhs_type, Expr *rhs, Decl **candidate_ref, OverloadMatch last_match, Decl **ambiguous_ref)
 {
 	// Can we find the overload directly on the method?
 	last_match = sema_find_typed_operator_in_list(
@@ -2120,6 +2134,7 @@ Decl *sema_find_typed_operator(SemaContext *context, OperatorOverload operator_o
 		return poisoned_decl;
 	}
 
+	if (current_match == OVERLOAD_MATCH_ERROR) return poisoned_decl;
 	if (candidate != first) *reverse = true;
 
 	return candidate;
