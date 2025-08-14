@@ -4316,6 +4316,7 @@ static inline bool sema_slice_initializer(SemaContext *context, Expr *expr, Expr
 					elements--;
 					i--;
 				}
+				element->init_array_value.index -= range->start_index;
 			}
 			if (vec_size(initializer->init_array.elements) == 0)
 			{
@@ -11789,10 +11790,15 @@ TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, 
 	}
 }
 
+
+/*
+ * Rewrite an expression into an expression call.
+ */
 bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *method_decl, Expr *parent, Expr **arguments, bool reverse_overload)
 {
 	SourceSpan original_span = method_call->span;
 	Expr *resolve = method_call;
+	// In this case we need to resolve the second argument first.
 	if (reverse_overload)
 	{
 		if (!expr_is_const(parent))

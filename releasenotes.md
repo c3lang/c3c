@@ -35,6 +35,7 @@
 - Implement `a5hash` in the compiler for compile-time `$$str_hash` to match `String.hash()`.
 - Functions being tested for overload are now always checked before test.
 - Compile time indexing at compile time in a $typeof was no considered compile time.
+- Slicing a constant array with designated initialization would not update the indexes.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
