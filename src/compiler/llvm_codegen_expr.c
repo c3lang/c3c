@@ -3573,6 +3573,7 @@ MEMCMP:
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_BITSTRUCT:
+			assert(compiler.build.old_compact_eq);
 			if (array_base->decl->attr_compact) goto MEMCMP;
 			break;
 		case TYPE_POISONED:

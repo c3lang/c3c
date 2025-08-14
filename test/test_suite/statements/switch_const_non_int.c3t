@@ -2,11 +2,12 @@
 module test;
 import std;
 
-struct Foo @compact
+struct Foo
 {
 	int value;
 }
 
+fn bool Foo.eq(&self, Foo other) @operator(==) => self.value == other.value;
 const Foo FOO1 = { 15 };
 const Foo FOO2 = { 20 };
 
