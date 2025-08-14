@@ -252,11 +252,9 @@ fn void test_ct_range()
 	assert(z == 0 + 25 + 50 + 75 + 100 + 125 + 150 + 175 + 200);
 
 	// typed returns
-	// assert($typeof(@range(2)) == isz);
-	var $range = @range(2);   // workaround for buggy line above; issue #2402
-	assert(@typeis($range, isz[2]));
-	$range = @range(4, $OfType: char); assert(@typeis($range, char[4]));
-	$range = @range(8, $step: 2, $OfType: uint128); assert(@typeis($range, uint128[4]));
-	$range = @range(4, 16, 3, true, long); assert(@typeis($range, long[5]));
-	$range = @range($stop: 1200, $inclusive: true, $OfType: char); assert(@typeis($range, char[1201]));
+	assert(@typeis(@range(2), isz[2]));
+	assert(@typeis(@range(4, $OfType: char), char[4]));
+	assert(@typeis(@range(8, $step: 2, $OfType: uint128), uint128[4]));
+	assert(@typeis(@range(4, 16, 3, true, long), long[5]));
+	assert(@typeis(@range($stop: 1200, $inclusive: true, $OfType: char), char[1201]));
 }
