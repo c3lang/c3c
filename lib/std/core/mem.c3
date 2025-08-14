@@ -646,7 +646,7 @@ macro void @pool(usz reserve = 0; @body) @builtin
 	@body();
 }
 
-module std::core::mem @if(env::WASM_NOLIBC);
+module std::core::mem @if(env::FREESTANDING_WASM);
 import std::core::mem::allocator @public;
 SimpleHeapAllocator wasm_allocator @private;
 extern int __heap_base;
