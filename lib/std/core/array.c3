@@ -4,9 +4,6 @@ import std::core::array::slice;
 import std::collections::pair;
 
 
-faultdef INVALID_FILL_TYPE;
-
-
 <*
  Returns true if the array contains at least one element, else false
  
@@ -183,8 +180,8 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
  @require @is_empty_macro_slot(#operation) ||| @typekind(#operation) == FUNC
  @require @is_empty_macro_slot(#operation) ||| @assignable_to(left[0], $typeof(#operation).paramsof[0].type) : "The first functor param must be assignable to the type of `left`."
  @require @is_empty_macro_slot(#operation) ||| @assignable_to(right[0], $typeof(#operation).paramsof[1].type) : "The second functor param must be assignable to the type of `right`."
- @require @is_empty_macro_slot(fill_with) ||| types::is_int($typeof(fill_with)) ||| @assignable_to(fill_with, $typeof(left[0])) ||| @assignable_to(fill_with, $typeof(right[0])) :
-	"The specified fill value does not match either the left or the right array's underlying type. Try an explicit cast on `fill_with` instead."
+ @require @is_empty_macro_slot(fill_with) || types::is_int($typeof(fill_with)) || (right.len > left.len && @assignable_to(fill_with, $typeof(left[0]))) || (left.len > right.len && @assignable_to(fill_with, $typeof(right[0]))) :
+	"The specified fill value is not properly assignable to the type of the shorter array. You can try an explicit cast on `fill_with` instead."
 
  @ensure (@is_empty_macro_slot(fill_with) && return.len == min(left.len, right.len)) || (@is_valid_macro_slot(fill_with) && return.len == max(left.len, right.len))
 *>
@@ -210,21 +207,16 @@ macro @zip(Allocator allocator, left, right, #operation = EMPTY_MACRO_SLOT, fill
 			{
 				$if types::is_int($typeof(fill_with)) ||| @assignable_to(fill_with, $RightType):
 					right_fill = ($RightType)fill_with;
-				$else
-					return INVALID_FILL_TYPE?;
 				$endif
 			}
 			else
 			{
 				$if types::is_int($typeof(fill_with)) ||| @assignable_to(fill_with, $LeftType):
 					left_fill = ($LeftType)fill_with;
-				$else
-					return INVALID_FILL_TYPE?;
 				$endif
 			}
 		}
 	$endif
-	if (false) return INVALID_FILL_TYPE?;   // make the macro return type ALWAYS optional
 
 	usz result_len = @is_empty_macro_slot(fill_with) ? min(left.len, right.len) : max(left.len, right.len);
 	if (result_len == 0) return ($Type[]){};
@@ -259,10 +251,11 @@ macro @zip(Allocator allocator, left, right, #operation = EMPTY_MACRO_SLOT, fill
 
  @require @typekind(left) == SLICE || @typekind(left) == ARRAY
  @require @typekind(right) == SLICE || @typekind(right) == ARRAY
+ @require @is_empty_macro_slot(#operation) ||| @typekind(#operation) == FUNC
  @require @is_empty_macro_slot(#operation) ||| @assignable_to(left[0], $typeof(#operation).paramsof[0].type) : "The first functor param must be assignable to the type of `left`."
  @require @is_empty_macro_slot(#operation) ||| @assignable_to(right[0], $typeof(#operation).paramsof[1].type) : "The second functor param must be assignable to the type of `right`."
- @require @is_empty_macro_slot(fill_with) ||| types::is_int($typeof(fill_with)) ||| @assignable_to(fill_with, $typeof(left[0])) ||| @assignable_to(fill_with, $typeof(right[0])) :
-	"The specified fill value does not match either the left or the right array's underlying type. Try an explicit cast on `fill_with` instead."
+ @require @is_empty_macro_slot(fill_with) || types::is_int($typeof(fill_with)) || (right.len > left.len && @assignable_to(fill_with, $typeof(left[0]))) || (left.len > right.len && @assignable_to(fill_with, $typeof(right[0]))) :
+	"The specified fill value is not properly assignable to the type of the shorter array. You can try an explicit cast on `fill_with` instead."
 
  @ensure (@is_empty_macro_slot(fill_with) && return.len == min(left.len, right.len)) || (@is_valid_macro_slot(fill_with) && return.len == max(left.len, right.len))
 *>
