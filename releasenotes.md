@@ -11,6 +11,7 @@
 - Deprecate `@compact` use for comparison. Old behaviour is enabled using `--use-old-compact-eq`.
 - Switch available for types implementing `@operator(==)`.
 - `Type.is_eq` is now true for types with `==` overload.
+- Methods ignore visibility settings.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
