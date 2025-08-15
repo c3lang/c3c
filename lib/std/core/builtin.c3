@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::builtin;
-import libc, std::hash, std::io, std::os::backtrace;
+import libc, std::hash, std::io, std::os::backtrace, std::math;
 
 
 <*
@@ -534,6 +534,57 @@ macro bool? @try_catch(#v, #expr, fault expected_fault) @builtin
 	#v = res;
 	return false;
 }
+
+
+<*
+ @require types::is_int($typeof($start_stop))
+ @require types::is_int($OfType)
+ @require @is_empty_macro_slot($stop) ||| (types::is_int($typeof($stop)) &&& $stop <= isz.max &&& $stop >= isz.min)
+ @require @is_empty_macro_slot($step) ||| (types::is_int($typeof($step)) &&& $step != 0)
+*>
+macro @range($start_stop = 0, $stop = EMPTY_MACRO_SLOT, $step = EMPTY_MACRO_SLOT, bool $inclusive = false, $OfType = isz) @builtin @const
+{
+	// These are `int128` types because by default, we want to be able to accommodate the LARGEST computable values.
+	//   Do NOT make these $OfType, as it disturbs the calculation of the resulting array's range based on the type.
+	int128 $real_start = @is_valid_macro_slot($stop) ? $start_stop : 0;
+	int128 $real_stop  = @is_valid_macro_slot($stop) ? (int128)$stop : $start_stop;
+	int128 $real_step  = @is_valid_macro_slot($step) ? (int128)$step : 1;
+
+	$if ($real_start > $real_stop &&& $real_step > 0) ||| ($real_start < $real_stop &&& $real_step < 0):
+		$real_step *= -1;   // flip the sign of 'step' automatically if necessary
+	$endif
+
+	// a poor man's CT absolute value |max - min| ensures a positive length integer
+	var $interval = @max($real_start, $real_stop) - @min($real_start, $real_stop);
+	var $abs_step = ($real_step < 0) ? -$real_step : $real_step;
+
+	int128 $final_length = (int128)($interval / (float)$abs_step) + ($interval % $abs_step ? 1 : 0);
+	$if $final_length < 0: $final_length = -$final_length; $endif
+
+	// only add the extra slot if the end value is a multiple of the step
+	$if $inclusive && !($interval % $abs_step): ++$final_length; $endif
+
+	$assert $final_length > 0
+		: "A compile-time range cannot return a zero-length array (start %s, stop %s, step %s).", $real_start, $real_stop, $real_step;
+
+	$assert $final_length < isz.max
+		: "A compile-time range should never be larger than isz.max. You need to use something more efficient.";
+
+	$OfType[(usz)$final_length] $result;
+
+	$for
+		var $j = 0, var $i = $real_start;
+		$real_stop > $real_start
+			? ($inclusive ? $i <= $real_stop : $i < $real_stop)
+			: ($inclusive ? $i >= $real_stop : $i > $real_stop);
+		++$j, $i += $real_step
+	:
+			$result[$j] = ($OfType)$i;
+	$endfor
+
+	return $result;
+}
+
 
 <*
  @require $defined(&#value, (char*)&#value) : "This must be a value that can be viewed as a char array"
