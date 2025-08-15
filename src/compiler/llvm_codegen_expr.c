@@ -2638,19 +2638,26 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	ASSERT(slice->expr_kind == EXPR_SLICE);
 
 	Expr *parent_expr = exprptr(slice->subscript_expr.expr);
-
 	Type *parent_type = type_flatten(parent_expr->type);
+	parent_type = type_no_optional(parent_type);
 	BEValue parent_addr_x;
 	llvm_emit_expr(c, &parent_addr_x, parent_expr);
-	llvm_value_addr(c, &parent_addr_x);
-	LLVMValueRef parent_addr = parent_addr_x.value;
 	LLVMValueRef parent_load_value = NULL;
 	LLVMValueRef parent_base;
-	parent_type = type_no_optional(parent_type);
+	LLVMValueRef parent_addr;
+	if (parent_type->type_kind == TYPE_POINTER)
+	{
+		llvm_value_rvalue(c, &parent_addr_x);
+		parent_load_value = parent_base = parent_addr_x.value;
+	}
+	else
+	{
+		llvm_value_addr(c, &parent_addr_x);
+		parent_addr = parent_addr_x.value;
+	}
 	switch (parent_type->type_kind)
 	{
 		case TYPE_POINTER:
-			parent_load_value = parent_base = LLVMBuildLoad2(c->builder, llvm_get_type(c, parent_type), parent_addr, "");
 			break;
 		case TYPE_SLICE:
 			parent_load_value = LLVMBuildLoad2(c->builder, llvm_get_type(c, parent_type), parent_addr, "");
