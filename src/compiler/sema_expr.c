@@ -2135,6 +2135,7 @@ NEXT_FLAG:
 				c = data[i];
 				if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 				expr = vaargs[idx];
+				type = sema_get_va_type(context, expr, variadic);
 				if (!type_ok(type)) return false;
 			}
 			else
@@ -3719,7 +3720,7 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 	ArrayIndex size;
 	bool check_len = !context->call_env.in_no_eval || current_type == type_untypedlist;
 	Expr *len_expr = current_expr->expr_kind == EXPR_CT_IDENT ? current_expr->ct_ident_expr.decl->var.init_expr : current_expr;
-	if (check_len && expr_is_const_int(index) && (size = sema_len_from_expr(len_expr)) >= 0)
+	if (expr_is_const_int(index) && (size = sema_len_from_expr(len_expr)) >= 0)
 	{
 		// 4c. And that it's in range.
 		if (int_is_neg(index->const_expr.ixx))
@@ -3729,6 +3730,11 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 		}
 		if (!int_fits(index->const_expr.ixx, TYPE_I64) || size == 0)
 		{
+			if (!check_len)
+			{
+				index_value = -1;
+				goto SKIP;
+			}
 			if (check_valid) return false;
 			RETURN_SEMA_ERROR(index, "The index is out of range.", size);
 		}
@@ -3739,6 +3745,11 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 		}
 		if (index_value < 0 || index_value >= size)
 		{
+			if (!check_len)
+			{
+				index_value = -1;
+				goto SKIP;
+			}
 			if (check_valid) return false;
 			if (start_from_end)
 			{
@@ -3757,6 +3768,7 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 			                  (long long) size - 1);
 		}
 	}
+SKIP:
 	*index_ref = index_value;
 	*current_type_ref = current_type;
 	*current_expr_ref = current_expr;
@@ -4305,6 +4317,7 @@ static inline bool sema_slice_initializer(SemaContext *context, Expr *expr, Expr
 					elements--;
 					i--;
 				}
+				element->init_array_value.index -= range->start_index;
 			}
 			if (vec_size(initializer->init_array.elements) == 0)
 			{
@@ -5598,7 +5611,19 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr_rewrite_const_bool(expr, type_bool, type_is_ordered(flat));
 			return true;
 		case TYPE_PROPERTY_IS_EQ:
-			expr_rewrite_const_bool(expr, type_bool, type_is_comparable(flat));
+			if (type_is_comparable(flat))
+			{
+				expr_rewrite_const_bool(expr, type_bool, type_is_comparable(flat));
+				return true;
+			}
+			if (type_is_user_defined(type))
+			{
+				BoolErr res = sema_type_has_equality_overload(context, type);
+				if (res == BOOL_ERR) return false;
+				expr_rewrite_const_bool(expr, type_bool, res == BOOL_TRUE);
+				return true;
+			}
+			expr_rewrite_const_bool(expr, type_bool, false);
 			return true;
 		case TYPE_PROPERTY_IS_SUBSTRUCT:
 			expr_rewrite_const_bool(expr, type_bool, type_is_substruct(flat));
@@ -7327,9 +7352,7 @@ static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Exp
 		Decl **enums = left_type->decl->enums.values;
 		if (int_is_neg(i) || int_ucomp(i, vec_size(enums), BINARYOP_GE))
 		{
-			SEMA_ERROR(expr, "This does not result in a valid enum. If you want to do the %s, cast the enum to an integer.",
-					   is_sub ? "subtraction" : "addition");
-			return false;
+			RETURN_SEMA_ERROR(expr, "This does not result in a valid enum. If you want to do the %s, cast the enum to an integer.", is_sub ? "subtraction" : "addition");
 		}
 		ASSERT_SPAN(expr, left_type->decl->resolve_status == RESOLVE_DONE);
 		expr->const_expr = (ExprConst) { .const_kind = CONST_ENUM, .enum_val = enums[int_to_i64(i)] };
@@ -8045,6 +8068,29 @@ static bool sema_binary_is_unsigned_always_same_comparison(SemaContext *context,
 
 }
 
+BoolErr sema_type_has_equality_overload(SemaContext *context, CanonicalType *type)
+{
+	assert(type->canonical == type);
+	Decl *candidate = NULL;
+	Decl *ambiguous = NULL;
+	OverloadMatch match = sema_find_typed_operator_type(context, OVERLOAD_EQUAL, OVERLOAD_TYPE_LEFT, type, type, NULL, &candidate, OVERLOAD_MATCH_NONE, &ambiguous);
+	if (match == OVERLOAD_MATCH_NONE) match = sema_find_typed_operator_type(context, OVERLOAD_NOT_EQUAL, OVERLOAD_TYPE_LEFT, type, type, NULL, &candidate, OVERLOAD_MATCH_NONE, &ambiguous);
+	switch (match)
+	{
+		case OVERLOAD_MATCH_ERROR:
+			return BOOL_ERR;
+		case OVERLOAD_MATCH_EXACT:
+		case OVERLOAD_MATCH_WILDCARD:
+		case OVERLOAD_MATCH_CONVERSION:
+			return BOOL_TRUE;
+		case OVERLOAD_MATCH_NONE:
+		case OVERLOAD_MATCH_AMBIGUOUS_WILDCARD:
+		case OVERLOAD_MATCH_AMBIGUOUS_CONVERSION:
+		case OVERLOAD_MATCH_AMBIGUOUS_EXACT:
+			return BOOL_FALSE;
+	}
+	UNREACHABLE
+}
 /**
  * Analyze a == b, a != b, a > b, a < b, a >= b, a <= b
  * @return
@@ -11743,10 +11789,15 @@ TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, 
 	}
 }
 
+
+/*
+ * Rewrite an expression into an expression call.
+ */
 bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *method_decl, Expr *parent, Expr **arguments, bool reverse_overload)
 {
 	SourceSpan original_span = method_call->span;
 	Expr *resolve = method_call;
+	// In this case we need to resolve the second argument first.
 	if (reverse_overload)
 	{
 		if (!expr_is_const(parent))

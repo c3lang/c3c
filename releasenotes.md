@@ -8,6 +8,9 @@
 - Add compile-time `@clz` builtin. #2367
 - Add `bitsizeof` macro builtins. #2376
 - Add compile-time `@min` and `@max` builtins. #2378
+- Deprecate `@compact` use for comparison. Old behaviour is enabled using `--use-old-compact-eq`.
+- Switch available for types implementing `@operator(==)`.
+- `Type.is_eq` is now true for types with `==` overload.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
@@ -29,6 +32,11 @@
 - Fix `native_cpus` functionality for OpenBSD systems. #2387
 - Assert triggered when trying to slice a struct.
 - Improve codegen for stack allocated large non-zero arrays.
+- Implement `a5hash` in the compiler for compile-time `$$str_hash` to match `String.hash()`.
+- Functions being tested for overload are now always checked before test.
+- Compile time indexing at compile time in a $typeof was no considered compile time.
+- Slicing a constant array with designated initialization would not update the indexes.
+- Fix for bug when `@format` encountered `*` in some cases.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
@@ -40,6 +48,7 @@
 - Added the experimental `std::core::log` for logging.
 - Added array `zip`, `zip_with`, `zip_with_into`, and similar functionalities. #2370
 - Updated termios bindings to use bitstructs and fixed some constants with incorrect values #2372
+- Added libloaderapi to `std::os::win32`.
 
 ## 0.7.4 Change list
 
