@@ -36,6 +36,7 @@
 - Functions being tested for overload are now always checked before test.
 - Compile time indexing at compile time in a $typeof was no considered compile time.
 - Slicing a constant array with designated initialization would not update the indexes.
+- Fix for bug when `@format` encountered `*` in some cases.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.

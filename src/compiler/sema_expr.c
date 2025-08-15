@@ -2135,6 +2135,7 @@ NEXT_FLAG:
 				c = data[i];
 				if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 				expr = vaargs[idx];
+				type = sema_get_va_type(context, expr, variadic);
 				if (!type_ok(type)) return false;
 			}
 			else
@@ -7351,9 +7352,7 @@ static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Exp
 		Decl **enums = left_type->decl->enums.values;
 		if (int_is_neg(i) || int_ucomp(i, vec_size(enums), BINARYOP_GE))
 		{
-			SEMA_ERROR(expr, "This does not result in a valid enum. If you want to do the %s, cast the enum to an integer.",
-					   is_sub ? "subtraction" : "addition");
-			return false;
+			RETURN_SEMA_ERROR(expr, "This does not result in a valid enum. If you want to do the %s, cast the enum to an integer.", is_sub ? "subtraction" : "addition");
 		}
 		ASSERT_SPAN(expr, left_type->decl->resolve_status == RESOLVE_DONE);
 		expr->const_expr = (ExprConst) { .const_kind = CONST_ENUM, .enum_val = enums[int_to_i64(i)] };
