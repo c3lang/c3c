@@ -17,31 +17,33 @@ fn TestStructZip TestStructZip.mult(self, TestStructZip other) @operator(*)
 }
 
 fn bool TestStructZip.eq(self, TestStructZip other) @operator(==)
-	=> self.a == other.a && self.b == other.b;
+{
+	return self.a == other.a && self.b == other.b;
+}
 
 fn usz? TestStructZip.to_format(&self, Formatter* f) @dynamic
-	=> f.printf("{ %d, %d }", self.a, self.b);
-
+{
+	return f.printf("{ %d, %d }", self.a, self.b);
+}
 
 module array_test @test;
-
 import std::collections::pair;
 
 
 fn void contains()
 {
 	int[3] a = { 1, 2, 3 };
-	assert(array::contains(a, 2) == true);
-	assert(array::contains(a, 15) == false);
+	assert(array::contains(a, 2));
+	assert(!array::contains(a, 15));
 }
 
 fn void find()
 {
 	int[3] a = { 1, 2, 3 };
-	assert(array::index_of(a, 2)!! == 1);
-	assert(array::index_of(a, 1)!! == 0);
-	assert(array::index_of(a, 3)!! == 2);
-	assert(@catch(array::index_of(a, 4)) == NOT_FOUND);
+	test::eq(array::index_of(a, 2)!!, 1);
+	test::eq(array::index_of(a, 1)!!, 0);
+	test::eq(array::index_of(a, 3)!!, 2);
+	test::@error(array::index_of(a, 4), NOT_FOUND);
 }
 
 fn void find_subarray()
