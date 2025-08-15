@@ -46,7 +46,7 @@
 - Updated hash functions in default hash methods.
 - Added `FixedBlockPool` which is a memory pool for fixed size blocks.
 - Added the experimental `std::core::log` for logging.
-- Added array `zip`, `zip_with`, `zip_with_into`, and similar functionalities. #2370
+- Added array `@zip` and `@zip_into` macros. #2370
 - Updated termios bindings to use bitstructs and fixed some constants with incorrect values #2372
 - Added libloaderapi to `std::os::win32`.
 

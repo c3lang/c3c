@@ -74,59 +74,59 @@ fn void zip() => @pool()
 
 	Pair{char, long}[] expected = { {'a', -1}, {'b', 0x8000}, {'c', 0} };
 
-	Pair{char, long}[] zipped = array::tzip(left, right);
+	Pair{char, long}[] zipped = array::@tzip(left, right)!!;
 
 	assert(zipped.len == 3);
 	foreach (i, c : zipped) assert(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
 }
 
-fn void zip_longest() => @pool()
+fn void zip_fill_with_default() => @pool()
 {
 	char[] left = "abcde";
 	long[] right = { -1, 0x8000, 0 };
 
 	Pair{char, long}[] expected = { {'a', -1}, {'b', 0x8000}, {'c', 0}, {'d', 0}, {'e', 0} };
 
-	Pair{char, long}[] zipped = array::tzip_longest(left, right);
+	Pair{char, long}[] zipped = array::@tzip(left, right, fill_with: 0)!!;
 
 	assert(zipped.len == 5);
 	foreach (i, c : zipped) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
 }
 
-fn void zip_longest_fill() => @pool()
+fn void zip_fill_with_char() => @pool()
 {
 	char[] left = "abcde";
 	long[] right = { -1, 0x8000, 0 };
 
 	Pair{char, long}[] expected = { {'a', -1}, {'b', 0x8000}, {'c', 0}, {'d', 0x40}, {'e', 0x40} };
 
-	Pair{char, long}[] zipped = array::tzip_longest(left, right, 0x40);
+	Pair{char, long}[] zipped = array::@tzip(left, right, fill_with: 0x40)!!;
 
 	assert(zipped.len == 5);
 	foreach (i, c : zipped) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
 }
 
-fn void zip_longest_fill_string() => @pool()
+fn void zip_fill_with_string() => @pool()
 {
 	String[] left = { "abcde", "123456" };
 	long[] right = { -1, 0x8000, 20, 30, 40 };
 
 	Pair{String, long}[] expected = { {"abcde", -1}, {"123456", 0x8000}, {"aaa", 20}, {"aaa", 30}, {"aaa", 40} };
 
-	Pair{String, long}[] zipped = array::tzip_longest(left, right, "aaa");
+	Pair{String, long}[] zipped = array::@tzip(left, right, fill_with: "aaa")!!;
 
 	assert(zipped.len == 5);
 	foreach (i, c : zipped) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
 }
 
-fn void zip_longest_fill_struct() => @pool()
+fn void zip_fill_with_struct() => @pool()
 {
 	String[] left = { "abcde", "123456", "zzz" };
 	TestStructZip[] right = { {1, 2} };
 
 	Pair{String, TestStructZip}[] expected = { {"abcde", {1, 2}}, {"123456", {100, 200}}, {"zzz", {100, 200}} };
 
-	Pair{String, TestStructZip}[] zipped = array::tzip_longest(left, right, (TestStructZip){100, 200});
+	Pair{String, TestStructZip}[] zipped = array::@tzip(left, right, fill_with: (TestStructZip){100, 200})!!;
 
 	assert(zipped.len == 3);
 	foreach (i, c : zipped) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
@@ -139,39 +139,39 @@ fn void zip_with() => @pool()
 
 	char[] expected = "fffd";
 
-	char[] zipped = array::tzip_with(left, right, fn char (char a, char b) => a + b);
+	char[] zipped = array::@tzip(left, right, fn char (char a, char b) => a + b)!!;
 
 	assert(zipped.len == 4);
 	foreach (i, c : zipped) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
 }
 
-fn void zip_with_longest() => @pool()
+fn void zip_with_fill_with_default() => @pool()
 {
 	char[] left = "abcde";
 	char[] right = { 0x05, 0x04 };
 
 	char[] expected = "ffcde";
 
-	char[] zipped = array::tzip_with_longest(left, right, fn char (char a, char b) => a + b);
+	char[] zipped = array::@tzip(left, right, fn char (char a, char b) => a + b, 0)!!;
 
 	assert(zipped.len == 5);
 	foreach (i, c : zipped) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
 }
 
-fn void zip_with_longest_fill() => @pool()
+fn void zip_with_fill_with_char() => @pool()
 {
 	char[] left = "abcde";
 	char[] right = { 0x05, 0x04 };
 
 	char[] expected = "ffghi";
 
-	char[] zipped = array::tzip_with_longest(left, right, fn char (char a, char b) => a + b, (char)0x04);
+	char[] zipped = array::@tzip(left, right, fn char (char a, char b) => a + b, 0x04)!!;
 
 	assert(zipped.len == 5);
 	foreach (i, c : zipped) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
 }
 
-fn void zip_with_longest_fill_pointers() => @pool()
+fn void zip_with_fill_with_pointers() => @pool()
 {
 	ZString field = "0123456789abcdefghijklmnopqrstuvwxyz-_=!";
 
@@ -180,48 +180,63 @@ fn void zip_with_longest_fill_pointers() => @pool()
 
 	char[] expected = "85agh";
 
-	char[] zipped = array::tzip_with_longest(left, right, fn char (char* a, char b) => a[b], &field[0]);
+	char[] zipped = array::@tzip(left, right, fn char (char* a, char b) => a[b], &field[0])!!;
 
 	assert(zipped.len == 5);
 	foreach (i, c : zipped) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
 }
 
-fn void zip_with_longest_fill_string() => @pool()
+fn void zip_with_fill_with_string() => @pool()
 {
 	String[] left = { "Hello", "World", "Foo", "Bazzy" };
 	String[] right = { " there", "!" };
 
 	String[] expected = { "Hello there", "World!", "FooBar", "BazzyBar" };
 
-	String[] zipped = array::tzip_with_longest(left, right, fn String (String a, String b) => a.tconcat(b), fill_value: "Bar");
+	String[] zipped = array::@tzip(left, right, fn String (String a, String b) => a.tconcat(b), "Bar")!!;
 
 	assert(zipped.len == 4);
 	foreach (i, c : zipped) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
 }
 
-fn void zip_with_longest_fill_struct() => @pool()
+fn void zip_with_fill_with_struct() => @pool()
 {
 	TestStructZip[] left = { {1, 2}, {300, 400} };
 	TestStructZip[] right = { {-1, -1} };
 
 	TestStructZip[] expected = { {-1, -2}, {600, 1200} };
 
-	TestStructZip[] zipped = array::tzip_with_longest(
-		left, right, fn TestStructZip (TestStructZip a, TestStructZip b) => a * b, fill_value: (TestStructZip){2, 3});
+	TestStructZip[] zipped = array::@tzip(left, right, fn TestStructZip (TestStructZip a, TestStructZip b) => a * b, (TestStructZip){2, 3})!!;
 
 	assert(zipped.len == 2);
 	foreach (i, c : zipped) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
 }
 
-fn void zip_with_into()
+fn void zip_into()
 {
 	char[] left = { '1', '2', '3', '4' };
 	String[6] right = { "one", "two", "three", "four", "five", "six" };
 
 	char[] expected = { '4', '5', '8', '8' };
 
-	array::zip_with_into(left, right, fn char (char a, String b) => a + (char)b.len);
+	array::@zip_into(left, right, fn (a, b) => a + (char)b.len);
 
 	assert(left.len == 4);
 	foreach (i, c : left) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
+}
+
+
+typedef AnIncompatibleType = String;
+
+// This test case specifically bypasses ALL lambda parameter checks and such, but it's attempting to fill the
+//   TestStructZip` array with values from `AnIncompatibleType`. Since AT RUNTIME this is not valid, we throw
+//   a fault from within `zip_with`. This test is ensuring that works as expected.
+fn void zip_faults_properly() => @pool()
+{
+	AnIncompatibleType[] left = { "abc", "def", "ghi", "123", "456" };
+	TestStructZip[] right = { {-1, -1} };
+
+	char[]? zipped = array::@tzip(left, right, fn char (AnIncompatibleType a, TestStructZip b) => 'x', (AnIncompatibleType)"sure to throw");
+
+	assert(@catch(zipped) == array::INVALID_FILL_TYPE);
 }
