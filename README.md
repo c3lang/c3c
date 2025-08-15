@@ -462,8 +462,13 @@ this functionality is non-essential and it is perfectly fine to user the compile
 
 #### Licensing
 
-The C3 compiler is licensed under LGPL 3.0, the standard library itself is
-MIT licensed.
+Unless specified otherwise, the code in this repository is MIT licensed.
+The exception is the compiler source code (the source code under `src`),
+which is licensed under LGPL 3.0. 
+
+This means you are free to use all parts of standard library, 
+tests, benchmarks, grammar, examples and so on under the MIT license, including 
+using those libraries and tests if your build your own C3 compiler.
 
 #### Editor plugins
 
