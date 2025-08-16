@@ -39,6 +39,7 @@
 - Slicing a constant array with designated initialization would not update the indexes.
 - Fix for bug when `@format` encountered `*` in some cases.
 - Compiler segfault on global slice initialization with null[:0] #2404.
+- Use correct allocator in `replace`.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
