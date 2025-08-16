@@ -27,11 +27,11 @@ Bar y = { 1 };
 
 fn int test()
 {
-	x.get1(); // #error: method
+	x.get1();
 	x.get2();
-	x.get3(); // #error: method
-	y.get1(); // #error: method
+	x.get3();
+	y.get1();
 	y.get2();
-	y.get3(); // #error: method
+	y.get3();
 	return 1;
 }

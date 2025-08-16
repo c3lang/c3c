@@ -749,7 +749,7 @@ static bool sema_check_interface(SemaContext *context, Decl *decl, TypeInfo *int
 static inline bool sema_check_interfaces(SemaContext *context, Decl *decl)
 {
 	Decl **store = sema_decl_stack_store();
-	FOREACH(Decl *, method, decl->methods) sema_decl_stack_push(method);
+	sema_add_methods_to_decl_stack(context, decl);
 	FOREACH(TypeInfo *, interface_type, decl->interfaces)
 	{
 		if (!sema_check_interface(context, decl, interface_type, interface_type))

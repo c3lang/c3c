@@ -75,9 +75,10 @@ void compiler_init(BuildOptions *build_options)
 
 	htable_init(&compiler.context.features, 1024);
 	htable_init(&compiler.context.compiler_defines, 16 * 1024);
+	methodtable_init(&compiler.context.method_extensions, 16 * 1024);
 	compiler.context.module_list = NULL;
 	compiler.context.generic_module_list = NULL;
-	compiler.context.method_extensions = NULL;
+	compiler.context.method_extension_list = NULL;
 
 	vmem_init(&ast_arena, START_VMEM_SIZE);
 	ast_calloc();

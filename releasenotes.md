@@ -11,6 +11,7 @@
 - Deprecate `@compact` use for comparison. Old behaviour is enabled using `--use-old-compact-eq`.
 - Switch available for types implementing `@operator(==)`.
 - `Type.is_eq` is now true for types with `==` overload.
+- Methods ignore visibility settings.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
@@ -37,6 +38,7 @@
 - Compile time indexing at compile time in a $typeof was no considered compile time.
 - Slicing a constant array with designated initialization would not update the indexes.
 - Fix for bug when `@format` encountered `*` in some cases.
+- Compiler segfault on global slice initialization with null[:0] #2404.
 - Use correct allocator in `replace`.
 
 ### Stdlib changes
