@@ -7,15 +7,19 @@
   libffi,
   xar,
   rev,
+  keepDebugInfo,
   debug ? false,
   checks ? false,
-}: let 
+}: 
+let 
   inherit (builtins) readFile elemAt;
-  # inherit (lib.sources) cleanSourceWith cleanSource; 
   inherit (lib.lists) findFirst;
   inherit (lib.asserts) assertMsg;
   inherit (lib.strings) hasInfix splitString removeSuffix removePrefix optionalString;
-in llvmPackages.stdenv.mkDerivation (_: 
+  # Applying keepDebugInfo to stdenv we want to use will retain sources for debug build
+  stdenv = if debug then keepDebugInfo llvmPackages.stdenv else llvmPackages.stdenv;
+in
+  stdenv.mkDerivation (_: 
 {
   pname = "c3c${optionalString debug "-debug"}";
 
@@ -57,9 +61,9 @@ in llvmPackages.stdenv.mkDerivation (_:
     curl
     libxml2
     libffi
-  ] ++ lib.optionals llvmPackages.stdenv.hostPlatform.isDarwin [ xar ];
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [ xar ];
 
-  doCheck = checks && lib.elem llvmPackages.stdenv.system [
+  doCheck = checks && lib.elem stdenv.system [
     "x86_64-linux"
     "x86_64-darwin"
     "aarch64-darwin"
