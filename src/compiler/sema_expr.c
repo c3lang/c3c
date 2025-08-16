@@ -2578,7 +2578,6 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			goto SKIP_LINK;
 		}
 		Decl *func = context->call_env.current_function;
-		ASSERT_SPAN(func, func);
 		ASSERT_SPAN(func, func->resolved_attributes);
 		if (!func->attrs_resolved)
 		{
@@ -2773,7 +2772,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		if (param->var.init_expr)
 		{
 			Type *param_type = param->type;
-			if (param_type && (param->var.out_param || param->var.not_null))
+			if (param_type && param->var.type_info && (param->var.out_param || param->var.not_null))
 			{
 				param_type = type_flatten(param_type);
 				if (param_type->type_kind != TYPE_POINTER && param_type->type_kind != TYPE_SLICE && param_type->type_kind != TYPE_INTERFACE && param_type->type_kind != TYPE_ANY)
@@ -2782,7 +2781,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 					goto EXIT_FAIL;
 				}
 			}
-			if (param->var.not_null)
+			if (param->var.not_null && (param_type->type_kind == TYPE_POINTER || param_type->type_kind == TYPE_SLICE || param_type->type_kind == TYPE_INTERFACE || param_type->type_kind == TYPE_ANY))
 			{
 				Expr *expr = expr_variable(param);
 				Expr *binary = expr_new_expr(EXPR_BINARY, expr);

@@ -3,7 +3,6 @@ module std::core::array;
 import std::core::array::slice;
 import std::collections::pair;
 
-
 <*
  Returns true if the array contains at least one element, else false
  
@@ -173,17 +172,12 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
  @param [in] left : "The left-side array. These items will be placed as the First in each Pair"
  @param [in] right : "The right-side array. These items will be placed as the Second in each Pair"
  @param #operation : "The function to apply. Must have a signature of `$typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
- @param fill_with : "The value used to fill or pad the shorter iterable to the length of the longer one while zipping. Defaults to an empty value (0 or {})."
+ @param fill_with : "The value used to fill or pad the shorter iterable to the length of the longer one while zipping."
 
- @require @typekind(left) == SLICE || @typekind(left) == ARRAY
- @require @typekind(right) == SLICE || @typekind(right) == ARRAY
- @require @is_empty_macro_slot(#operation) ||| @typekind(#operation) == FUNC
- @require @is_empty_macro_slot(#operation) ||| @assignable_to(left[0], $typeof(#operation).paramsof[0].type) : "The first functor param must be assignable to the type of `left`."
- @require @is_empty_macro_slot(#operation) ||| @assignable_to(right[0], $typeof(#operation).paramsof[1].type) : "The second functor param must be assignable to the type of `right`."
- @require @is_empty_macro_slot(fill_with) || types::is_int($typeof(fill_with)) || (right.len > left.len && @assignable_to(fill_with, $typeof(left[0]))) || (left.len > right.len && @assignable_to(fill_with, $typeof(right[0]))) :
-	"The specified fill value is not properly assignable to the type of the shorter array. You can try an explicit cast on `fill_with` instead."
+ @require @is_valid_list(left) &&& @is_valid_list(right) : "Left and right sides must be integer indexable"
+ @require @is_valid_operation(#operation, left, right) : "The operator must take two parameters matching the elements of the left and right side"
+ @require @is_valid_fill(left, right, fill_with) : "The specified fill value does not match either the left or the right array's underlying type."
 
- @ensure (@is_empty_macro_slot(fill_with) && return.len == min(left.len, right.len)) || (@is_valid_macro_slot(fill_with) && return.len == max(left.len, right.len))
 *>
 macro @zip(Allocator allocator, left, right, #operation = EMPTY_MACRO_SLOT, fill_with = EMPTY_MACRO_SLOT) @nodiscard
 {
@@ -191,49 +185,55 @@ macro @zip(Allocator allocator, left, right, #operation = EMPTY_MACRO_SLOT, fill
 	var $RightType = $typeof(right[0]);
 
 	var $Type = Pair { $LeftType, $RightType };
-	$if @is_valid_macro_slot(#operation):
+	bool $is_op = @is_valid_macro_slot(#operation);
+	$if $is_op:
 		$Type = $typeof(#operation).returns;
 	$endif
 
-	var $LambdaType = $typeof(fn $Type ($LeftType a, $RightType b) => ($Type){});
-	$LambdaType $operation = ($LambdaType)#operation;
+
+	usz left_len = find_len(left);
+	usz right_len = find_len(right);
 
 	$LeftType left_fill;
 	$RightType right_fill;
-	$if @is_valid_macro_slot(fill_with):
-		if (!values::@is_default(fill_with))
+	usz result_len = min(left_len, right_len);
+	bool $has_fill = @is_valid_macro_slot(fill_with);
+	$if $has_fill:
+		switch
 		{
-			if (left.len > right.len)
-			{
-				$if types::is_int($typeof(fill_with)) ||| @assignable_to(fill_with, $RightType):
+			case left_len > right_len:
+				$if !$defined(($RightType)fill_with):
+					unreachable();
+				$else
 					right_fill = ($RightType)fill_with;
+					result_len = left_len;
 				$endif
-			}
-			else
-			{
-				$if types::is_int($typeof(fill_with)) ||| @assignable_to(fill_with, $LeftType):
+			case left_len < right_len:
+				$if !$defined(($LeftType)fill_with):
+					unreachable();
+				$else
 					left_fill = ($LeftType)fill_with;
+					result_len = right_len;
 				$endif
-			}
 		}
 	$endif
 
-	usz result_len = @is_empty_macro_slot(fill_with) ? min(left.len, right.len) : max(left.len, right.len);
 	if (result_len == 0) return ($Type[]){};
 
-	$Type[] result = allocator::alloc_array(allocator, $Type, result_len)[:result_len];
+	$Type[] result = allocator::alloc_array(allocator, $Type, result_len);
 
 	foreach (idx, &item : result)
 	{
-		$if @is_valid_macro_slot(#operation):
-			$LeftType lval = idx >= left.len ? left_fill : left[idx];
-			$RightType rval = idx >= right.len ? right_fill : right[idx];
-
+		$if $is_op:
+			var $LambdaType = $typeof(fn $Type ($LeftType a, $RightType b) => ($Type){});
+			$LambdaType $operation = ($LambdaType)#operation;
+			$LeftType lval = idx >= left_len ? left_fill : left[idx];
+			$RightType rval = idx >= right_len ? right_fill : right[idx];
 			*item = $operation(lval, rval);
 		$else
 			*item = {
-				idx >= left.len ? left_fill : left[idx],
-				idx >= right.len ? right_fill : right[idx]
+				idx >= left_len ? left_fill : left[idx],
+				idx >= right_len ? right_fill : right[idx]
 			};
 		$endif
 	}
@@ -247,17 +247,12 @@ macro @zip(Allocator allocator, left, right, #operation = EMPTY_MACRO_SLOT, fill
  @param [in] left : "The left-side array. These items will be placed as the First in each Pair"
  @param [in] right : "The right-side array. These items will be placed as the Second in each Pair"
  @param #operation : "The function to apply. Must have a signature of `$typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
- @param fill_with : "The value used to fill or pad the shorter iterable to the length of the longer one while zipping. Defaults to an empty value (0 or {})."
+ @param fill_with : "The value used to fill or pad the shorter iterable to the length of the longer one while zipping."
 
- @require @typekind(left) == SLICE || @typekind(left) == ARRAY
- @require @typekind(right) == SLICE || @typekind(right) == ARRAY
- @require @is_empty_macro_slot(#operation) ||| @typekind(#operation) == FUNC
- @require @is_empty_macro_slot(#operation) ||| @assignable_to(left[0], $typeof(#operation).paramsof[0].type) : "The first functor param must be assignable to the type of `left`."
- @require @is_empty_macro_slot(#operation) ||| @assignable_to(right[0], $typeof(#operation).paramsof[1].type) : "The second functor param must be assignable to the type of `right`."
- @require @is_empty_macro_slot(fill_with) || types::is_int($typeof(fill_with)) || (right.len > left.len && @assignable_to(fill_with, $typeof(left[0]))) || (left.len > right.len && @assignable_to(fill_with, $typeof(right[0]))) :
-	"The specified fill value is not properly assignable to the type of the shorter array. You can try an explicit cast on `fill_with` instead."
+ @require @is_valid_list(left) &&& @is_valid_list(right) : "Left and right sides must be integer indexable"
+ @require @is_valid_operation(#operation, left, right) : "The operator must take two parameters matching the elements of the left and right side"
+ @require @is_valid_fill(left, right, fill_with) : "The specified fill value does not match either the left or the right array's underlying type."
 
- @ensure (@is_empty_macro_slot(fill_with) && return.len == min(left.len, right.len)) || (@is_valid_macro_slot(fill_with) && return.len == max(left.len, right.len))
 *>
 macro @tzip(left, right, #operation = EMPTY_MACRO_SLOT, fill_with = EMPTY_MACRO_SLOT) @nodiscard
 {
@@ -290,15 +285,56 @@ macro @tzip(left, right, #operation = EMPTY_MACRO_SLOT, fill_with = EMPTY_MACRO_
  @param [in] right : `Slice to apply in the functor/operation.`
  @param #operation : "The function to apply. Must have a signature of `$typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
 
- @require @typekind(left) == SLICE || @typekind(left) == ARRAY
- @require @typekind(right) == SLICE || @typekind(right) == ARRAY
- @require right.len >= left.len : `Right side length must be >= the destination (left) side length; consider using a sub-array of data for the assignment.`
- @require @assignable_to(#operation, $typeof(fn $typeof(left[0]) ($typeof(left[0]) l, $typeof(right[0]) r) => l)) :
- 	"The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
+ @require @is_valid_list(left) : "Expected a valid list"
+ @require @is_valid_list(right) : "Expected a valid list"
+ @require find_len(right) >= find_len(left) : `Right side length must be >= the destination (left) side length; consider using a sub-array of data for the assignment.`
+ @require @assignable_to(#operation, $typefrom(@zip_into_fn(left, right))) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
 *>
 macro @zip_into(left, right, #operation)
 {
-	$typeof(fn $typeof(left[0]) ($typeof(left[0]) l, $typeof(right[0]) r) => l) $operation = #operation;
+	$typefrom(@zip_into_fn(left, right)) $operation = #operation;
 
 	foreach (i, &v : left) *v = $operation(left[i], right[i]);
+}
+
+
+// --- helper functions
+
+macro typeid @zip_into_fn(#left, #right) @private @const
+{
+	return @typeid(fn $typeof(#left[0]) ($typeof(#left[0]) l, $typeof(#right[0]) r) => l);
+}
+macro bool @is_valid_operation(#operation, #left, #right) @const @private
+{
+	$switch:
+		$case @is_empty_macro_slot(#operation):
+			return true;
+		$case @typekind(#operation) != FUNC:
+			return false;
+		$default:
+			return $defined(#operation(#left[0], #right[0]));
+	$endswitch
+}
+
+macro bool @is_valid_list(#expr) @const @private
+{
+	return $defined(#expr[0]) &&& ($defined(#expr.len) ||| $defined(#expr.len()));
+}
+
+macro bool @is_valid_fill(left, right, fill_with) @private
+{
+	if (@is_empty_macro_slot(fill_with)) return true;
+	usz left_len = @select($defined(left.len()), left.len(), left.len);
+	usz right_len = @select($defined(right.len()), right.len(), right.len);
+	if (left_len == right_len) return true;
+	return left_len > right_len ? $defined(($typeof(right[0]))fill_with) : $defined(($typeof(left[0]))fill_with);
+}
+
+macro usz find_len(list)
+{
+	$if $defined(list.len()):
+		return list.len();
+	$else
+		return list.len;
+	$endif
 }

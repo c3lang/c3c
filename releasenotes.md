@@ -11,6 +11,8 @@
 - Deprecate `@compact` use for comparison. Old behaviour is enabled using `--use-old-compact-eq`.
 - Switch available for types implementing `@operator(==)`.
 - `Type.is_eq` is now true for types with `==` overload.
+- Allow inout etc on untyped macro parameters even if they are not pointers.
+- Deprecate `add_array` in favour of `push_all` on lists.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.

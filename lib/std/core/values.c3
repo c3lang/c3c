@@ -23,13 +23,6 @@ macro bool @is_const(#foo) @const @builtin
 	return $defined($v = #foo);
 }
 
-macro bool @is_default(#value)
-{
-	$typeof(#value) i;   // zero-initialized
-
-	return types::has_equals($typeof(#value)) ? (#value == i) : mem::equals(&&#value, &i, 1);
-}
-
 macro promote_int(x)
 {
 	$if @is_int(x):

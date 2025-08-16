@@ -1,7 +1,5 @@
 module array_test;
-
 import std::io;
-
 
 struct TestStructZip (Printable)
 {
@@ -27,7 +25,7 @@ fn usz? TestStructZip.to_format(&self, Formatter* f) @dynamic
 }
 
 module array_test @test;
-import std::collections::pair;
+import std::collections::pair, std::collections::list;
 
 
 fn void contains()
@@ -77,6 +75,22 @@ fn void zip() => @pool()
 	Pair{char, long}[] expected = { {'a', -1}, {'b', 0x8000}, {'c', 0} };
 
 	Pair{char, long}[] zipped = array::@tzip(left, right);
+
+	test::eq(zipped.len, 3);
+	foreach (i, c : zipped) assert(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
+}
+
+fn void zip_list() => @pool()
+{
+	char[] left = "abcde";
+	List{long} l;
+	l.push(-1);
+	l.push(0x8000);
+	l.push(0);
+
+	Pair{char, long}[] expected = { {'a', -1}, {'b', 0x8000}, {'c', 0} };
+
+	Pair{char, long}[] zipped = array::@tzip(left, l);
 
 	test::eq(zipped.len, 3);
 	foreach (i, c : zipped) assert(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
@@ -225,4 +239,18 @@ fn void zip_into()
 
 	test::eq(left.len, 4);
 	foreach (i, c : left) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
+}
+
+fn void zip_into_list() => @pool()
+{
+	List{char} l;
+	l.push_all({ '1', '2', '3', '4' });
+	String[6] right = { "one", "two", "three", "four", "five", "six" };
+
+	char[] expected = { '4', '5', '8', '8' };
+
+	array::@zip_into(l, right, fn (a, b) => a + (char)b.len);
+
+	test::eq(l.len(), 4);
+	foreach (i, c : l) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
 }
