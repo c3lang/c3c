@@ -2309,7 +2309,7 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 			{
 				RETURN_SEMA_ERROR(method, "Only regular overloads can have untyped right hand parameters");
 			}
-			is_wildcard = method->func_decl.is_wildcard_overload = true;
+			is_wildcard = (method->func_decl.is_wildcard_overload = true);
 			second_param = type_void;
 		}
 		second_param = second_param->canonical;
