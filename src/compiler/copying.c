@@ -16,6 +16,7 @@ static Ast *ast_copy_deep(CopyStruct *c, Ast *source);
 static Ast **copy_ast_list(CopyStruct *c, Ast **to_copy);
 static Decl *copy_decl(CopyStruct *c, Decl *decl);
 static Decl **copy_decl_list(CopyStruct *c, Decl **decl_list);
+static Methods *copy_decl_methods(CopyStruct *c, Methods *methods);
 static TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source);
 
 static inline void copy_reg_ref(CopyStruct *c, void *original, void *result)
@@ -871,8 +872,6 @@ static ResolvedAttrData *copy_attrs_resolved(CopyStruct *c, ResolvedAttrData *da
 			.section = data->section,
 			.wasm_module = data->wasm_module
 	};
-	const char **new = NULL;
-
 	return copy;
 }
 
@@ -911,6 +910,19 @@ Decl **copy_decl_list(CopyStruct *c, Decl **decl_list)
 	Decl **result = NULL;
 	FOREACH(Decl *, decl, decl_list) vec_add(result, copy_decl(c, decl));
 	return result;
+}
+
+static Methods *copy_decl_methods(CopyStruct *c, Methods *methods)
+{
+	if (!methods) return NULL;
+	Methods *copy = CALLOCS(Methods);
+	decltable_init(&copy->method_table, 64);
+
+	FOREACH(Decl *, method, methods->methods)
+	{
+		methods_add(copy, copy_decl(c, method));
+	}
+	return copy;
 }
 
 TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
@@ -1004,7 +1016,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_INTERFACE:
 			copy_decl_type(copy);
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
-			MACRO_COPY_DECL_LIST(copy->methods);
+			MACRO_COPY_DECL_METHODS(copy->method_table);
 			MACRO_COPY_DECL_LIST(copy->interface_methods);
 			break;
 		case DECL_CT_EXEC:
@@ -1024,7 +1036,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_LIST(copy->strukt.members);
 			MACRO_COPY_DECLID(copy->strukt.padded_decl_id);
-			MACRO_COPY_DECL_LIST(copy->methods);
+			MACRO_COPY_DECL_METHODS(copy->method_table);
 			break;
 		case DECL_DECLARRAY:
 		case DECL_GROUP:
@@ -1035,21 +1047,21 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_LIST(copy->strukt.members);
 			MACRO_COPY_TYPE(copy->strukt.container_type);
-			MACRO_COPY_DECL_LIST(copy->methods);
+			MACRO_COPY_DECL_METHODS(copy->method_table);
 			break;
 		case DECL_FAULT:
 			break;
 		case DECL_CONST_ENUM:
 			copy_decl_type(copy);
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
-			MACRO_COPY_DECL_LIST(copy->methods);
+			MACRO_COPY_DECL_METHODS(copy->method_table);
 			MACRO_COPY_TYPE(copy->enums.type_info);
 			MACRO_COPY_DECL_LIST(copy->enums.values);
 			break;
 		case DECL_ENUM:
 			copy_decl_type(copy);
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
-			MACRO_COPY_DECL_LIST(copy->methods);
+			MACRO_COPY_DECL_METHODS(copy->method_table);
 			MACRO_COPY_DECL_LIST(copy->enums.parameters);
 			MACRO_COPY_TYPE(copy->enums.type_info);
 			MACRO_COPY_DECL_LIST(copy->enums.values);
@@ -1112,7 +1124,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_DISTINCT:
 			copy_decl_type(copy);
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
-			MACRO_COPY_DECL_LIST(copy->methods);
+			MACRO_COPY_DECL_METHODS(copy->method_table);
 			MACRO_COPY_TYPE(copy->distinct);
 			break;
 		case DECL_CT_ECHO:

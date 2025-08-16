@@ -1,0 +1,19 @@
+// #target: macos-x64
+module test;
+char[] bad @export = null[:0];
+
+fn void main()
+{
+	char[] good = null[:0];
+}
+
+/* #expect: test.ll
+
+@test__bad = local_unnamed_addr global %"char[]" zeroinitializer, align 8
+
+define void @test.main() #0 {
+entry:
+  %good = alloca %"char[]", align 8
+  store %"char[]" zeroinitializer, ptr %good, align 8
+  ret void
+}

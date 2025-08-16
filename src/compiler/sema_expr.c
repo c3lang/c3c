@@ -3615,7 +3615,7 @@ static Expr *sema_expr_find_subscript_type_or_overload_for_subscript(SemaContext
                                                                      Decl **overload_ptr)
 {
 	Decl *overload = NULL;
-	overload = sema_find_untyped_operator(context, current_expr->type, overload_type, NULL);
+	overload = sema_find_untyped_operator(current_expr->type, overload_type, NULL);
 	if (overload)
 	{
 		// Overload for []=
@@ -3832,7 +3832,7 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 	{
 		if (start_from_end)
 		{
-			Decl *len = sema_find_untyped_operator(context, current_expr->type, OVERLOAD_LEN, NULL);
+			Decl *len = sema_find_untyped_operator(current_expr->type, OVERLOAD_LEN, NULL);
 			if (!len)
 			{
 				if (check_valid) goto VALID_FAIL_POISON;
@@ -3947,7 +3947,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	{
 		if (start_from_end)
 		{
-			Decl *len = sema_find_untyped_operator(context, current_expr->type, OVERLOAD_LEN, NULL);
+			Decl *len = sema_find_untyped_operator(current_expr->type, OVERLOAD_LEN, NULL);
 			if (!len)
 			{
 				if (check_valid) goto VALID_FAIL_POISON;
@@ -4620,35 +4620,6 @@ static inline bool sema_analyse_macro_func_access(SemaContext *context, Expr *ex
 	return sema_expr_analyse_type_access(context, expr, parent->type, identifier, missing_ref);
 }
 
-static inline Decl *sema_check_for_type_method(SemaContext *context, Expr *expr, Type *parent_type, const char *name, bool *missing_ref)
-{
-	ASSERT(parent_type == parent_type->canonical);
-	Decl *ambiguous = NULL;
-	Decl *private = NULL;
-	Decl *member = sema_resolve_type_method(context->unit, parent_type, name, &ambiguous, &private);
-	if (private)
-	{
-		if (missing_ref)
-		{
-			*missing_ref = true;
-		}
-		else
-		{
-			SEMA_ERROR(expr, "The method '%s' has private visibility.", name);
-		}
-
-		return poisoned_decl;
-	}
-	if (ambiguous)
-	{
-		SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, "
-		                 "it may refer to method defined in '%s' or one in '%s'",
-		           name, member->unit->module->name->module, ambiguous->unit->module->name->module);
-		return poisoned_decl;
-	}
-	return member;
-}
-
 static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, Type *parent_type, Expr *identifier, bool *missing_ref)
 {
 	ASSERT_SPAN(expr, identifier->expr_kind == EXPR_UNRESOLVED_IDENTIFIER);
@@ -4667,7 +4638,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 
 	if (!type_may_have_sub_elements(canonical))
 	{
-		Decl *member = sema_check_for_type_method(context, expr, parent_type->canonical, name, missing_ref);
+		Decl *member = sema_resolve_type_method(parent_type->canonical, name);
 		if (!decl_ok(member)) return false;
 		if (!member)
 		{
@@ -4705,11 +4676,11 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			UNREACHABLE
 	}
 
-	Decl *member = sema_decl_stack_find_decl_member(context, decl, name, METHODS_AND_FIELDS);
+	Decl *member = sema_decl_stack_find_decl_member(context, decl, name, FIELDS_ONLY);
 	if (!decl_ok(member)) return false;
 	if (!member)
 	{
-		member = sema_check_for_type_method(context, expr, decl->type, name, missing_ref);
+		member = sema_resolve_type_method(decl->type, name);
 		if (!decl_ok(member)) return false;
 	}
 	if (!member)
@@ -5191,12 +5162,13 @@ CONTINUE:
 			sema_append_interface_methods(decl, &method_exprs, expr->span);
 		}
 		// Look through natively defined methods.
-		append_to_method_list(decl->methods, &method_exprs, expr->span);
+		Methods *methods = decl->method_table;
+		if (methods) append_to_method_list(methods->methods, &method_exprs, expr->span);
 	}
-	append_extension_methods(type, context->unit->local_method_extensions, &method_exprs, expr->span);
-	append_extension_methods(type, context->unit->module->private_method_extensions, &method_exprs, expr->span);
-	append_extension_methods(type, compiler.context.method_extensions, &method_exprs, expr->span);
-
+	else
+	{
+		append_extension_methods(type, compiler.context.method_extension_list, &method_exprs, expr->span);
+	}
 	type = type_find_parent_type(type);
 	if (type) goto CONTINUE;
 	expr_rewrite_const_untyped_list(expr, method_exprs);
@@ -6127,20 +6099,7 @@ CHECK_DEEPER:
 	// 9. At this point we may only have distinct, struct, union, error, enum, interface
 	if (!type_may_have_sub_elements(type))
 	{
-		Decl *ambiguous = NULL;
-		Decl *private = NULL;
-		Decl *method = sema_resolve_type_method(context->unit, type, kw, &ambiguous, &private);
-		if (private)
-		{
-			if (missing_ref) goto MISSING_REF;
-			RETURN_SEMA_ERROR(expr, "The method '%s' has private visibility.", kw);
-		}
-		if (ambiguous)
-		{
-			RETURN_SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, "
-									"it may refer to method defined in '%s' or one in '%s'",
-									kw, method->unit->module->name->module, ambiguous->unit->module->name->module);
-		}
+		Decl *method = sema_resolve_type_method(type, kw);
 		if (!method)
 		{
 			if (missing_ref) goto MISSING_REF;
@@ -6158,7 +6117,7 @@ CHECK_DEEPER:
 	// 10. Dump all members and methods into a decl stack.
 	Decl *decl = type->decl;
 
-	Decl *member = sema_decl_stack_find_decl_member(context, decl, kw, METHODS_AND_FIELDS);
+	Decl *member = sema_decl_stack_find_decl_member(context, decl, kw, METHODS_INTERFACES_AND_FIELDS);
 	if (!decl_ok(member)) return false;
 
 	if (member && decl->decl_kind == DECL_ENUM && member->decl_kind == DECL_VAR && sema_cast_const(parent))
@@ -6173,24 +6132,22 @@ CHECK_DEEPER:
 		return true;
 	}
 	Decl *private = NULL;
-	if (!member)
+	if (!member && decl->decl_kind == DECL_INTERFACE)
 	{
-		Decl *ambiguous = NULL;
-		member = sema_resolve_method(context->unit, decl, kw, &ambiguous, &private);
-		// Look at interface parents
-		if (!member && decl->decl_kind == DECL_INTERFACE)
+		Decl *inf;
+		FOREACH(TypeInfo *, parent_interface, decl->interfaces)
 		{
-			FOREACH(TypeInfo *, parent_interface, decl->interfaces)
+			if (!sema_resolve_type_info(context, parent_interface, RESOLVE_TYPE_NO_CHECK_DISTINCT)) return false;
+			Decl *parent_decl = parent_interface->type->decl;
+			Decl *value = sema_resolve_method(parent_decl, kw);
+			if (value && member)
 			{
-				member = sema_resolve_method(context->unit, parent_interface->type->decl, kw, &ambiguous, &private);
-				if (member) break;
+				RETURN_SEMA_ERROR(expr, "Ambiguous method '%s' on '%s', it was implemented on both '%s' and '%s'.", kw,
+					type_to_error_string(parent->type),
+					inf->name, parent_decl->name);
 			}
-		}
-		if (ambiguous)
-		{
-			ASSERT(member);
-			RETURN_SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
-					   kw, member->unit->module->name->module, ambiguous->unit->module->name->module);
+			member = value;
+			inf = parent_decl;
 		}
 	}
 
@@ -6874,7 +6831,7 @@ INLINE bool sema_rewrite_op_assign(SemaContext *context, Expr *expr, Expr *left,
 	{
 		Expr *parent = exprptr(left->subscript_assign_expr.expr);
 		Type *parent_type = type_no_optional(parent->type)->canonical;
-		Decl *operator = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_REF, NULL);
+		Decl *operator = sema_find_untyped_operator(parent_type, OVERLOAD_ELEMENT_REF, NULL);
 		Expr *index = exprptr(left->subscript_assign_expr.index);
 		if (operator)
 		{
@@ -6884,7 +6841,7 @@ INLINE bool sema_rewrite_op_assign(SemaContext *context, Expr *expr, Expr *left,
 			goto AFTER_ADDR;
 		}
 		// If we only have []=, then we need []
-		operator = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_AT, NULL);
+		operator = sema_find_untyped_operator(parent_type, OVERLOAD_ELEMENT_AT, NULL);
 		if (!operator)
 		{
 			RETURN_SEMA_ERROR(left, "There is no overload for [] for %s.", type_quoted_error_string(type_no_optional(left->type)));
@@ -8527,7 +8484,7 @@ static inline bool sema_expr_analyse_neg_plus(SemaContext *context, Expr *expr)
 	// Check for overload
 	if (type_is_user_defined(canonical))
 	{
-		Decl *overload = sema_find_untyped_operator(context, canonical, OVERLOAD_UNARY_MINUS, NULL);
+		Decl *overload = sema_find_untyped_operator(canonical, OVERLOAD_UNARY_MINUS, NULL);
 		if (overload)
 		{
 			// Plus just returns inner
@@ -8603,7 +8560,7 @@ static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr, b
 
 	if (type_is_user_defined(canonical) && canonical->type_kind != TYPE_BITSTRUCT)
 	{
-		Decl *overload = sema_find_untyped_operator(context, canonical, OVERLOAD_NEGATE, NULL);
+		Decl *overload = sema_find_untyped_operator(canonical, OVERLOAD_NEGATE, NULL);
 		if (overload) return sema_insert_method_call(context, expr, overload, inner, NULL, false);
 	}
 
@@ -8779,7 +8736,7 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 {
 	Expr *increased = exprptr(subscript_expr->subscript_assign_expr.expr);
 	Type *type_check = increased->type->canonical;
-	Decl *operator = sema_find_untyped_operator(context, type_check, OVERLOAD_ELEMENT_REF, NULL);
+	Decl *operator = sema_find_untyped_operator(type_check, OVERLOAD_ELEMENT_REF, NULL);
 	Expr **args = NULL;
 	// The simple case: we have &[] so just replace it by that.
 	if (operator)
@@ -8791,7 +8748,7 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 		return true;
 	}
 	// We need []= and [] now.
-	operator = sema_find_untyped_operator(context, type_check, OVERLOAD_ELEMENT_AT, NULL);
+	operator = sema_find_untyped_operator(type_check, OVERLOAD_ELEMENT_AT, NULL);
 	if (!operator)
 	{
 		RETURN_SEMA_ERROR(main, "There is no overload for [] for %s.", type_quoted_error_string(increased->type));
@@ -9614,15 +9571,6 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 	if (!decl_ok(member)) return false;
 	if (!member)
 	{
-		Decl *ambiguous = NULL;
-		Decl *private = NULL;
-		member = sema_resolve_method(context->unit, actual_type->decl, kw, &ambiguous, &private);
-		if (ambiguous)
-		{
-			sema_error_at(context, loc, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
-					   kw, member->unit->module->name->module, ambiguous->unit->module->name->module);
-			return false;
-		}
 		if (is_missing)
 		{
 			*is_missing = true;
