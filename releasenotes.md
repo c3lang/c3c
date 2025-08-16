@@ -12,6 +12,8 @@
 - Switch available for types implementing `@operator(==)`.
 - `Type.is_eq` is now true for types with `==` overload.
 - Methods ignore visibility settings.
+- Allow inout etc on untyped macro parameters even if they are not pointers.
+- Deprecate `add_array` in favour of `push_all` on lists.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
@@ -49,6 +51,7 @@
 - Updated hash functions in default hash methods.
 - Added `FixedBlockPool` which is a memory pool for fixed size blocks.
 - Added the experimental `std::core::log` for logging.
+- Added array `@zip` and `@zip_into` macros. #2370
 - Updated termios bindings to use bitstructs and fixed some constants with incorrect values #2372
 - Added libloaderapi to `std::os::win32`.
 
