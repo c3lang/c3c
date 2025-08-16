@@ -214,7 +214,7 @@ fn String String.treplace(self, String needle, String new_str)
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim(self, String to_trim = "\t\n\r ")
+fn String String.trim(self, String to_trim = "\f\v\t\n\r ")
 {
     return self.trim_left(to_trim).trim_right(to_trim);
 }
@@ -227,7 +227,7 @@ fn String String.trim(self, String to_trim = "\t\n\r ")
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim_left(self, String to_trim = "\t\n\r ")
+fn String String.trim_left(self, String to_trim = "\f\v\t\n\r ")
 {
 	usz start = 0;
 	usz len = self.len;
@@ -244,7 +244,7 @@ fn String String.trim_left(self, String to_trim = "\t\n\r ")
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim_right(self, String to_trim = "\t\n\r ")
+fn String String.trim_right(self, String to_trim = "\f\v\t\n\r ")
 {
 	usz len = self.len;
 	while (len > 0 && char_in_set(self[len - 1], to_trim)) len--;
