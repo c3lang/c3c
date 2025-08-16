@@ -53,6 +53,7 @@
 - Added the experimental `std::core::log` for logging.
 - Added array `@zip` and `@zip_into` macros. #2370
 - Updated termios bindings to use bitstructs and fixed some constants with incorrect values #2372
+- Add Freestanding OS types to runtime `env::` booleans.
 - Added libloaderapi to `std::os::win32`.
 - Added `HashSet.values` and `String.contains_char` #2386
 

@@ -72,7 +72,7 @@ macro uint hash(value) @local
 	return (uint)a5hash::hash(&&bitcast(value, char[$sizeof(value)]));
 }
 
-fn char[8 * 4] entropy() @if(!env::WASM_NOLIBC)
+fn char[8 * 4] entropy() @if(!env::FREESTANDING_WASM)
 {
 	void* addr = malloc(1);
 	free(addr);
@@ -91,7 +91,7 @@ fn char[8 * 4] entropy() @if(!env::WASM_NOLIBC)
 	return bitcast(entropy_data, char[8 * 4]);
 }
 
-fn char[8 * 4] entropy() @if(env::WASM_NOLIBC)
+fn char[8 * 4] entropy() @if(env::FREESTANDING_WASM)
 {
 	static uint random_int;
 	random_int += 0xedf19156;

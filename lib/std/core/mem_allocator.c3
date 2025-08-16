@@ -511,7 +511,7 @@ macro Allocator temp() @deprecated("Use 'tmem' instead")
 
 alias tmem @builtin = current_temp;
 
-fn void allow_implicit_temp_allocator_on_load_thread() @init(1) @local @if(env::LIBC || env::WASM_NOLIBC)
+fn void allow_implicit_temp_allocator_on_load_thread() @init(1) @local @if(env::LIBC || env::FREESTANDING_WASM)
 {
 	auto_create_temp = true;
 }
