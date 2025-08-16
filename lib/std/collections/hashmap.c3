@@ -332,10 +332,7 @@ macro HashMap.@each_entry(map; @body(entry))
 	}
 }
 
-fn Value[] HashMap.tvalues(&map)
-{
-	return map.values(tmem) @inline;
-}
+fn Value[] HashMap.tvalues(&self) => self.values(tmem) @inline;
 
 fn Value[] HashMap.values(&self, Allocator allocator)
 {

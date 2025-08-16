@@ -54,6 +54,7 @@
 - Added array `@zip` and `@zip_into` macros. #2370
 - Updated termios bindings to use bitstructs and fixed some constants with incorrect values #2372
 - Added libloaderapi to `std::os::win32`.
+- Added `HashSet.values` and `String.contains_char` #2386
 
 ## 0.7.4 Change list
 
@@ -70,7 +71,7 @@
 - Formatting option "%h" now supports pointers.
 - Improve error on unsigned implicit conversion to signed.
 - Update error message for struct initialization #2286
-- Add SipHash family of keyed PRFs. #2287 
+- Add SipHash family of keyed PRFs. #2287
 - `$is_const` is deprecated in favour of `@is_const` based on `$defined`.
 - Multiline contract comments #2113
 - Removed the use of temp allocator in backtrace printing.
@@ -113,7 +114,7 @@
 - Array indices are now using int64 internally.
 - Bit shift operation fails with inline uint enum despite matching underlying type #2279.
 - Fix to codegen when using a bitstruct constant defined using a cast with an operator #2248.
-- Function pointers are now compile time constants. 
+- Function pointers are now compile time constants.
 - Splat 8 arguments can sometimes cause incorrect behaviour in the compiler. #2283
 - Correctly poison the analysis after a failed $assert or $error. #2284
 - `$foo` variables could be assigned non-compile time values.
@@ -217,7 +218,7 @@
 - Incorrect codegen if a macro ends with unreachable and is assigned to something. #2210
 - Fix error for named arguments-order with compile-time arguments #2212
 - Bug in AST copying would make operator overloading like `+=` compile incorrectly #2217.
-- `$defined(#expr)` broken with binary. #2219 
+- `$defined(#expr)` broken with binary. #2219
 - Method ambiguity when importing parent module publicly in private submodule. #2208
 - Linker errors when shadowing @local with public function #2198
 - Bug when offsetting pointers of large structs using ++ and --.
