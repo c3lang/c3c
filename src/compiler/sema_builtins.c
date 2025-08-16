@@ -313,7 +313,7 @@ bool sema_expr_analyse_str_hash(SemaContext *context, Expr *expr)
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to take the hash of it.");
 	}
-	uint32_t hash = fnv1a(inner->const_expr.bytes.ptr, inner->const_expr.bytes.len);
+	uint32_t hash = (uint32_t)a5hash(inner->const_expr.bytes.ptr, inner->const_expr.bytes.len, 0);
 	expr_rewrite_const_int(expr, type_uint, hash);
 	return true;
 }

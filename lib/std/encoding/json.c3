@@ -26,15 +26,7 @@ fn Object*? parse(Allocator allocator, InStream s)
 		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator };
 		@pool()
 		{
-			Object* o = parse_any(&context)!;
-			defer catch o.free();
-			while (char c = read_next(&context)!, c != 0)
-			{
-				if (c.is_space()) continue;
-				return UNEXPECTED_CHARACTER?;
-			}
-			if (!@catch(context.stream.read_byte())) return UNEXPECTED_CHARACTER?;
-			return o;
+			return parse_any(&context)!;
 		};
 	};
 }

@@ -83,7 +83,7 @@ alias List = List{int};
 fn void quicksort_list()
 {
     List list;
-    list.add_array({ 2, 1, 3});
+    list.push_all({ 2, 1, 3});
     sort::quicksort(list, &sort::cmp_int_value);
     assert(check::int_sort(list.array_view()));
 }

@@ -174,6 +174,18 @@ fn void test_hash_repeat()
 	assert(int.typeid.hash() == int.typeid.hash());
 }
 
+fn void test_builtin_string_hashing() => @pool()
+{
+	var $x = "";
+    ulong l;
+    $for var $i = 0; $i < 65; ++$i:   // 65 is a good length to reliably test all branches w/o being excessive
+        l = string::tformat("%s%s", $x, $i).hash();
+        var $r = $$str_hash(@sprintf("%s%s", $x, $i));
+        assert((uint)l == (uint)$r, "Builtin $$str_hash mismatch against String.hash()");
+        $x = $x +++ "a";
+    $endfor
+}
+
 fn void test_ct_clz()
 {
 	assert(@clz((ulong)0) == ulong.sizeof * 8);
@@ -202,4 +214,13 @@ fn void test_bitsizeof()
 	assert(@bitsizeof(0x1000ul) == 64);
 	assert(@bitsizeof(0) == 32);
 	assert(@bitsizeof((char[*])"abcdefghi") == 72);
+}
+
+fn void test_ct_min_max()
+{
+	assert(@min(4, 5) == 4);
+	assert(@max(1.234, 1.2345) == 1.2345);
+	assert(@min(4, 5, 6, 7, 8.90, 3.14) == 3.14);
+	assert(@max(0, 0, 1.234, 1.2345, 0.2) == 1.2345);
+	assert(@max(127.9999999, 45 + 46, bitsizeof(uint128)) == 128);
 }

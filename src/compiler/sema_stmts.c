@@ -46,7 +46,7 @@ static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, As
 static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases,
                                          unsigned index, bool *if_chained, bool *max_ranged, uint64_t *actual_cases_ref,
 										 Int *low, Int *high);
-static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases);
+static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, CanonicalType *switch_type, Ast **cases);
 
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
 static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan source);
@@ -1574,11 +1574,11 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	if (!value_type || canonical->type_kind == TYPE_DISTINCT)
 	{
 		// Get the overload for .len
-		len = sema_find_untyped_operator(context, enumerator->type, OVERLOAD_LEN, NULL);
+		len = sema_find_untyped_operator(enumerator->type, OVERLOAD_LEN, NULL);
 		// For foo[]
-		Decl *by_val = sema_find_untyped_operator(context, enumerator->type, OVERLOAD_ELEMENT_AT, NULL);
+		Decl *by_val = sema_find_untyped_operator(enumerator->type, OVERLOAD_ELEMENT_AT, NULL);
 		// For &foo[]
-		Decl *by_ref = sema_find_untyped_operator(context, enumerator->type, OVERLOAD_ELEMENT_REF, NULL);
+		Decl *by_ref = sema_find_untyped_operator(enumerator->type, OVERLOAD_ELEMENT_REF, NULL);
 
 		// If we don't have .len, or there is neither by val nor by ref
 		if (!len || (!by_val && !by_ref))
@@ -2484,18 +2484,31 @@ DONE:;
 	scratch_buffer_append(" - either add them or use 'default'.");
 	return scratch_buffer_to_string();
 }
-static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases)
+static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, CanonicalType *switch_type, Ast **cases)
 {
-	if (!type_is_comparable(switch_type))
+	bool is_enum_switch = false;
+	bool if_chain = true;
+	Decl **enum_values = NULL;
+	if (type_is_user_defined(switch_type) && switch_type->type_kind != TYPE_ENUM)
+	{
+		BoolErr res = sema_type_has_equality_overload(context, switch_type);
+		if (res == BOOL_ERR) return false;
+		if (res == BOOL_TRUE) goto FOUND;
+	}
+	if (type_is_comparable(switch_type))
+	{
+		Type *flat = type_flatten(switch_type);
+		TypeKind flat_switch_type_kind = flat->type_kind;
+		is_enum_switch = flat_switch_type_kind == TYPE_ENUM;
+		if (is_enum_switch) enum_values = flat->decl->enums.values;
+		// We need an if-chain if this isn't an enum/integer type.
+		if_chain = !is_enum_switch && !type_kind_is_any_integer(flat_switch_type_kind);
+	}
+	else
 	{
 		RETURN_SEMA_ERROR_AT(expr_span, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
 	}
-	// We need an if-chain if this isn't an enum/integer type.
-	Type *flat = type_flatten(switch_type);
-	TypeKind flat_switch_type_kind = flat->type_kind;
-	bool is_enum_switch = flat_switch_type_kind == TYPE_ENUM;
-	bool if_chain = !is_enum_switch && !type_kind_is_any_integer(flat_switch_type_kind);
-
+FOUND:;
 	Ast *default_case = NULL;
 	ASSERT(context->active_scope.defer_start == context->active_scope.defer_last);
 
@@ -2549,7 +2562,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 		POP_NEXT();
 	}
 
-	if (!exhaustive && is_enum_switch) exhaustive = actual_enum_cases == vec_size(flat->decl->enums.values);
+	if (!exhaustive && is_enum_switch) exhaustive = actual_enum_cases == vec_size(enum_values);
 	bool all_jump_end = exhaustive;
 	for (unsigned i = 0; i < case_count; i++)
 	{
@@ -2568,7 +2581,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	}
 	if (is_enum_switch && !exhaustive && success)
 	{
-		RETURN_SEMA_ERROR(statement, create_missing_enums_in_switch_error(cases, actual_enum_cases, flat->decl->enums.values));
+		RETURN_SEMA_ERROR(statement, create_missing_enums_in_switch_error(cases, actual_enum_cases, enum_values));
 	}
 	if (statement->flow.jump)
 	{

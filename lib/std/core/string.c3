@@ -187,7 +187,7 @@ fn String String.replace(self, Allocator allocator, String needle, String new_st
 	@pool()
 	{
 		String[] split = self.tsplit(needle);
-		return dstring::join(tmem, split, new_str).copy_str(mem);
+		return dstring::join(tmem, split, new_str).copy_str(allocator);
 	};
 }
 
