@@ -219,7 +219,7 @@ void create_library(BuildOptions *build_options)
 		exit_fail("Can't open path %s", build_options->path);
 	}
 
-        const char *dir = str_cat(build_options->project_name, ".c3l");
+	const char *dir = str_cat(build_options->project_name, ".c3l");
 	if (file_exists(dir))
 	{
 		if (file_is_dir(dir)) exit_fail("Directory '%s' already exists.", dir);
@@ -300,8 +300,6 @@ void create_project(BuildOptions *build_options)
 		else
 			error_exit("Path '%s' exists and is not a directory.", build_options->project_name);
 	}
- 
-		
 
 	if (!dir_make(build_options->project_name))
 	{
