@@ -4,23 +4,6 @@
 
 #include "build_internal.h"
 
-
-#include <errno.h>
-#include <string.h>
-
-#if defined(_WIN32)
-#include <windows.h>
-#else
-/* Some projects define __unused; musl headers use it as a field name.
- * Undef it before pulling in <sys/stat.h> to avoid a preprocessor clash.
- */
-#if defined(__unused)
-#undef __unused
-#endif
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
-
 const char* JSON_EXE =
 		"{\n"
 		"  // Language version of C3.\n"
@@ -218,7 +201,7 @@ static void mkdir_or_fail(BuildOptions *build_options, const char *name);
 static void chdir_or_fail(BuildOptions *build_options, const char *name);
 static void create_file_or_fail(BuildOptions *build_options, const char *filename, const char *fmt, ...);
 static const char *module_name(BuildOptions *build_options);
-static int dir_exists(const char *path);
+//static int dir_exists(const char *path);
 
 void create_library(BuildOptions *build_options)
 {
@@ -236,23 +219,16 @@ void create_library(BuildOptions *build_options)
 		exit_fail("Can't open path %s", build_options->path);
 	}
 
-	const char *dir = str_cat(build_options->project_name, ".c3l");
-	if (dir_exists(dir))
+        const char *dir = str_cat(build_options->project_name, ".c3l");
+	if (file_exists(dir))
 	{
-		exit_fail("Directory '%s' already exists.", dir);
+		if (file_is_dir(dir)) exit_fail("Directory '%s' already exists.", dir);
+		else exit_fail("Path '%s' exists ad is not a directory.", dir);
 	}
 
 	if (!dir_make(dir))
 	{
-		if (errno == EEXIST)
-		{
-			exit_fail("Directory '%s' already exists.", dir);
-		}
-		else
-		{
-			exit_fail("Could not create directory '%s': %s",
-			          dir, strerror(errno));
-		}
+		exit_fail("Could not create directory '%s'", dir);
 	}
 
 	chdir_or_fail(build_options, dir);
@@ -317,23 +293,19 @@ void create_project(BuildOptions *build_options)
 	{
 		error_exit("Can't open path '%s'.", build_options->path);
 	}
-
-	if (dir_exists(build_options->project_name))
-	{
-		error_exit("Directory '%s' already exists.", build_options->project_name);
+	
+	if (file_exists(build_options->project_name)) {
+		if (file_is_dir(build_options->project_name))
+			error_exit("Directory '%s' already exists.", build_options->project_name);
+		else
+			error_exit("Path '%s' exists and is not a directory.", build_options->project_name);
 	}
+ 
+		
 
 	if (!dir_make(build_options->project_name))
 	{
-		if (errno == EEXIST)
-		{
-			error_exit("Directory '%s' already exists.", build_options->project_name);
-		}
-		else
-		{
-			error_exit("Could not create directory '%s': %s",
-			           build_options->project_name, strerror(errno));
-		}
+		error_exit("Could not create directory '%s'.", build_options->project_name);
 	}
 
 	chdir_or_fail(build_options, build_options->project_name);
@@ -360,18 +332,6 @@ CREATE:
 }
 
 // Helper functions:
-
-static int dir_exists(const char *path)
-{
-#if defined(_WIN32)
-	DWORD attr = GetFileAttributesA(path);
-	return (attr != INVALID_FILE_ATTRIBUTES) && (attr & FILE_ATTRIBUTE_DIRECTORY);
-#else
-	struct stat st;
-	return (stat(path, &st) == 0) && S_ISDIR(st.st_mode);
-#endif
-}
-
 
 static const char *module_name(BuildOptions *build_options)
 {
