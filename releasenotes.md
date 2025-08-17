@@ -14,6 +14,7 @@
 - Methods ignore visibility settings.
 - Allow inout etc on untyped macro parameters even if they are not pointers.
 - Deprecate `add_array` in favour of `push_all` on lists.
+- Improve error message for missing `$endif`.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
