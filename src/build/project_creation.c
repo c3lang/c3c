@@ -201,7 +201,6 @@ static void mkdir_or_fail(BuildOptions *build_options, const char *name);
 static void chdir_or_fail(BuildOptions *build_options, const char *name);
 static void create_file_or_fail(BuildOptions *build_options, const char *filename, const char *fmt, ...);
 static const char *module_name(BuildOptions *build_options);
-//static int dir_exists(const char *path);
 
 void create_library(BuildOptions *build_options)
 {
