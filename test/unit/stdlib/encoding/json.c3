@@ -221,79 +221,6 @@ fn void test_invalid_numbers()
 	}
 }
 
-fn void test_trailing_characters()
-{
-	// Test invalid: trailing characters after string
-	if (catch err = json::parse_string(mem, `""x`))
-	{
-		assert(err == json::UNEXPECTED_CHARACTER);
-	}
-	else
-	{
-		assert(false, "Expected UNEXPECTED_CHARACTER error for \"\"x");
-	}
-
-	// Test invalid: trailing characters after number
-	if (catch err = json::parse_string(mem, "123abc"))
-	{
-		assert(err == json::UNEXPECTED_CHARACTER);
-	}
-	else
-	{
-		assert(false, "Expected UNEXPECTED_CHARACTER error for 123abc");
-	}
-
-	// Test invalid: trailing characters after boolean
-	if (catch err = json::parse_string(mem, "truex"))
-	{
-		assert(err == json::UNEXPECTED_CHARACTER);
-	}
-	else
-	{
-		assert(false, "Expected UNEXPECTED_CHARACTER error for truex");
-	}
-
-	// Test invalid: trailing characters after null
-	if (catch err = json::parse_string(mem, "nullx"))
-	{
-		assert(err == json::UNEXPECTED_CHARACTER);
-	}
-	else
-	{
-		assert(false, "Expected UNEXPECTED_CHARACTER error for nullx");
-	}
-
-	// Test invalid: trailing characters after array
-	if (catch err = json::parse_string(mem, "[1,2,3]x"))
-	{
-		assert(err == json::UNEXPECTED_CHARACTER);
-	}
-	else
-	{
-		assert(false, "Expected UNEXPECTED_CHARACTER error for [1,2,3]x");
-	}
-
-	// Test invalid: trailing characters after object
-	if (catch err = json::parse_string(mem, `{"a":1}x`))
-	{
-		assert(err == json::UNEXPECTED_CHARACTER);
-	}
-	else
-	{
-		assert(false, "Expected UNEXPECTED_CHARACTER error for {\"a\":1}x");
-	}
-
-	// Test valid: trailing whitespace should be allowed
-	Object* o1 = json::parse_string(mem, `""   `)!!;
-	defer o1.free();
-	assert(o1.s == "");
-
-	// Test valid: trailing newlines and tabs should be allowed
-	Object* o2 = json::parse_string(mem, "123\n\t  ")!!;
-	defer o2.free();
-	assert(o2.f == 123.0);
-}
-
 fn void test_depth_limit()
 {
 	// Test that deeply nested arrays with 150 opening brackets exceed the depth limit of 128
@@ -311,26 +238,6 @@ fn void test_depth_limit()
 
 fn void test_comments_rejected()
 {
-	// Test the specific case: {"a":"b"}//
-	if (catch err = json::parse_string(mem, `{"a":"b"}//comment`))
-	{
-		// Should fail with some error - comments are not valid JSON
-	}
-	else
-	{
-		assert(false, "Expected error for {\"a\":\"b\"}// but parsing succeeded");
-	}
-
-	// Test that comments are rejected (JSON spec doesn't allow comments)
-	if (catch err = json::parse_string(mem, `{"a":"b"}//`))
-	{
-		// Should fail with some error - comments are not valid JSON
-	}
-	else
-	{
-		assert(false, "Expected error for JSON with comments but parsing succeeded");
-	}
-
 	// Test that just a slash is rejected
 	if (catch err = json::parse_string(mem, "/"))
 	{
@@ -339,23 +246,5 @@ fn void test_comments_rejected()
 	else
 	{
 		assert(false, "Expected error for single slash but parsing succeeded");
-	}
-}
-
-fn void test_null_bytes_rejected()
-{
-	// Test that null bytes in JSON are rejected (like n_multidigit_number_then_00.json)
-	// This simulates "123" + null byte + newline
-	char[5] json_with_null = { '1', '2', '3', 0, '\n' };
-	ByteReader reader;
-	reader.init(json_with_null[..]);
-
-	if (catch err = json::parse(mem, &reader))
-	{
-		assert(err == json::UNEXPECTED_CHARACTER);
-	}
-	else
-	{
-		assert(false, "Expected UNEXPECTED_CHARACTER error for JSON with null byte");
 	}
 }

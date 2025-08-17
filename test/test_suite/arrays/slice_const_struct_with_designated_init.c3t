@@ -1,0 +1,68 @@
+// #target: macos-x64
+module test;
+
+enum Aboba: char
+{
+	FOO,
+	BAR,
+	BAZ,
+}
+
+macro abobize($aboba_str)
+{
+	Aboba[$aboba_str.len] $abobas;
+
+	$for var $i = 0; $i < $abobas.len; $i++:
+		char $symbol = $aboba_str[$i];
+		$switch $symbol:
+			$case 'f':
+				$abobas[$i] = FOO;
+			$case 'r':
+				$abobas[$i] = BAR;
+			$case 'z':
+				$abobas[$i] = BAZ;
+			$default:
+				$error @sprintf("Unexpected symbol in lexical analysis: %s", $symbol);
+		$endswitch
+	$endfor
+
+	return $abobas;
+}
+
+fn int main(String[] args)
+{
+	do_aboba();
+	return 0;
+}
+
+macro do_aboba()
+{
+	var $a = abobize("zfrzfr")[2..];
+	Aboba[] x = $a;
+	Aboba y = $a[0];
+	assert(y == BAR);
+}
+
+/* #expect: test.ll
+
+@.__const = private unnamed_addr constant [4 x i8] c"\01\02\00\01", align 1
+
+define i32 @test.main(ptr %0, i64 %1) #0 {
+entry:
+  %args = alloca %"char[][]", align 8
+  %x = alloca %"char[]", align 8
+  %literal = alloca [4 x i8], align 1
+  %y = alloca i8, align 1
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %literal, ptr align 1 @.__const, i32 4, i1 false)
+  %2 = insertvalue %"char[]" undef, ptr %literal, 0
+  %3 = insertvalue %"char[]" %2, i64 4, 1
+  store %"char[]" %3, ptr %x, align 8
+  store i8 1, ptr %y, align 1
+  %4 = load i8, ptr %y, align 1
+  %eq = icmp eq i8 %4, 1
+  call void @llvm.assume(i1 %eq)
+  ret i32 0
+}

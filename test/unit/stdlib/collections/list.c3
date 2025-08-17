@@ -25,7 +25,7 @@ fn void remove_at()
 	IntList test;
 	test.init(mem);
 	defer test.free();
-	test.add_array({ 1, 2, 3, 4 });
+	test.push_all({ 1, 2, 3, 4 });
 	test::eq(test.array_view(), (int[]){ 1, 2, 3, 4 });
 	test.remove_at(0);
 	test::eq(test.array_view(), (int[]){ 2, 3, 4 });
@@ -41,7 +41,7 @@ fn void delete_contains_index()
 {
 	IntList test;
 
-	test.add_array({ 1, 2 });
+	test.push_all({ 1, 2 });
 	assert(test.contains(1));
 	assert(test.contains(2));
 	assert(!test.contains(0));
@@ -70,7 +70,7 @@ fn void delete_contains_index()
 fn void compact()
 {
 	PtrList test;
-	test.add_array({ null, &test });
+	test.push_all({ null, &test });
 	assert(test.compact_count() == 1);
 	test.push(null);
 	assert(test.compact_count() == 1);
@@ -85,7 +85,7 @@ fn void reverse()
 	IntList test;
 
 	test.reverse();
-	test.add_array({ 1, 2 });
+	test.push_all({ 1, 2 });
 	test.push(3);
 	assert(test.array_view() == { 1, 2, 3});
 	test.reverse();
@@ -101,13 +101,13 @@ fn void remove_if()
 	IntList test;
 	usz removed;
 
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_if(&filter);
 	assert(removed == 3);
 	assert(test.array_view() == {1, 2});
 
 	test.clear();
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_if(&select);
 	assert(removed == 2);
 	assert(test.array_view() == {11, 10, 20});
@@ -135,13 +135,13 @@ fn void remove_using_test()
 	IntList test;
 	usz removed;
 
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_using_test(fn bool(i, ctx) => *i >= *(int*)ctx, &&10);
 	assert(removed == 3);
 	assert(test.array_view() == {1, 2});
 
 	test.clear();
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_using_test(fn bool(i, ctx) => *i < *(int*)ctx, &&10);
 	assert(removed == 2);
 	assert(test.array_view() == {11, 10, 20});
@@ -152,13 +152,13 @@ fn void retain_if()
 	IntList test;
 	usz removed;
 
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.retain_if(&select);
 	assert(removed == 3);
 	assert(test.array_view() == {1, 2});
 
 	test.clear();
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.retain_if(&filter);
 	assert(removed == 2);
 	assert(test.array_view() == {11, 10, 20});
@@ -169,13 +169,13 @@ fn void retain_using_test()
 	IntList test;
 	usz removed;
 
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_using_test(fn bool(i, ctx) => *i >= *(int*)ctx, &&10);
 	assert(removed == 3);
 	assert(test.array_view() == {1, 2});
 
 	test.clear();
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_using_test(fn bool(i, ctx) => *i < *(int*)ctx, &&10);
 	assert(removed == 2);
 	assert(test.array_view() == {11, 10, 20});

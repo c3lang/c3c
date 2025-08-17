@@ -56,5 +56,5 @@ struct Stat @if(!env::X86_64)
 
 extern fn CInt stat(ZString path, Stat* stat);
 
-extern fn CInt get_nprocs();
-extern fn CInt get_nprocs_conf();
+extern fn CInt sysctl(CInt *name, CUInt namelen, void *oldp, usz *oldlenp, void *newp, usz newlen);
+

@@ -118,6 +118,27 @@ void context_pop_defers(SemaContext *context, AstId *next)
 	context->active_scope.defer_last = defer_start;
 }
 
+void sema_add_methods_to_decl_stack(SemaContext *context, Decl *decl)
+{
+	if (!decl->method_table) return;
+	FOREACH(Decl *, func, decl->method_table->methods)
+	{
+		switch (func->visibility)
+		{
+			case VISIBLE_LOCAL:
+				if (context->unit != func->unit) continue;
+				break;
+			case VISIBLE_PRIVATE:
+				if (context->unit->module != func->unit->module) continue;
+				break;
+			default:
+				break;
+		}
+		sema_decl_stack_push(func);
+	}
+}
+
+
 
 void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast)
 {

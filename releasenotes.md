@@ -7,6 +7,13 @@
 - Add compile-time `@intlog2` macro to math.
 - Add compile-time `@clz` builtin. #2367
 - Add `bitsizeof` macro builtins. #2376
+- Add compile-time `@min` and `@max` builtins. #2378
+- Deprecate `@compact` use for comparison. Old behaviour is enabled using `--use-old-compact-eq`.
+- Switch available for types implementing `@operator(==)`.
+- `Type.is_eq` is now true for types with `==` overload.
+- Methods ignore visibility settings.
+- Allow inout etc on untyped macro parameters even if they are not pointers.
+- Deprecate `add_array` in favour of `push_all` on lists.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
@@ -24,6 +31,17 @@
 - Compiler segfault when using bitwise not on number literal cast to bitstruct #2373.
 - Formatter did not properly handle "null" for any, and null for empty faults. #2375
 - Bitstructs no longer overloadable with bitops. #2374
+- types::has_equals fails with assert for bitstructs #2377
+- Fix `native_cpus` functionality for OpenBSD systems. #2387
+- Assert triggered when trying to slice a struct.
+- Improve codegen for stack allocated large non-zero arrays.
+- Implement `a5hash` in the compiler for compile-time `$$str_hash` to match `String.hash()`.
+- Functions being tested for overload are now always checked before test.
+- Compile time indexing at compile time in a $typeof was no considered compile time.
+- Slicing a constant array with designated initialization would not update the indexes.
+- Fix for bug when `@format` encountered `*` in some cases.
+- Compiler segfault on global slice initialization with null[:0] #2404.
+- Use correct allocator in `replace`.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
@@ -33,6 +51,11 @@
 - Updated hash functions in default hash methods.
 - Added `FixedBlockPool` which is a memory pool for fixed size blocks.
 - Added the experimental `std::core::log` for logging.
+- Added array `@zip` and `@zip_into` macros. #2370
+- Updated termios bindings to use bitstructs and fixed some constants with incorrect values #2372
+- Add Freestanding OS types to runtime `env::` booleans.
+- Added libloaderapi to `std::os::win32`.
+- Added `HashSet.values` and `String.contains_char` #2386
 
 ## 0.7.4 Change list
 
@@ -49,7 +72,7 @@
 - Formatting option "%h" now supports pointers.
 - Improve error on unsigned implicit conversion to signed.
 - Update error message for struct initialization #2286
-- Add SipHash family of keyed PRFs. #2287 
+- Add SipHash family of keyed PRFs. #2287
 - `$is_const` is deprecated in favour of `@is_const` based on `$defined`.
 - Multiline contract comments #2113
 - Removed the use of temp allocator in backtrace printing.
@@ -92,7 +115,7 @@
 - Array indices are now using int64 internally.
 - Bit shift operation fails with inline uint enum despite matching underlying type #2279.
 - Fix to codegen when using a bitstruct constant defined using a cast with an operator #2248.
-- Function pointers are now compile time constants. 
+- Function pointers are now compile time constants.
 - Splat 8 arguments can sometimes cause incorrect behaviour in the compiler. #2283
 - Correctly poison the analysis after a failed $assert or $error. #2284
 - `$foo` variables could be assigned non-compile time values.
@@ -196,7 +219,7 @@
 - Incorrect codegen if a macro ends with unreachable and is assigned to something. #2210
 - Fix error for named arguments-order with compile-time arguments #2212
 - Bug in AST copying would make operator overloading like `+=` compile incorrectly #2217.
-- `$defined(#expr)` broken with binary. #2219 
+- `$defined(#expr)` broken with binary. #2219
 - Method ambiguity when importing parent module publicly in private submodule. #2208
 - Linker errors when shadowing @local with public function #2198
 - Bug when offsetting pointers of large structs using ++ and --.

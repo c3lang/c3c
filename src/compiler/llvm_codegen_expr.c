@@ -1439,6 +1439,24 @@ static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEVal
 	llvm_store_raw(c, ref, llvm_emit_const_bitstruct(c, initializer));
 }
 
+static bool llvm_should_use_const_copy(ConstInitializer *const_init)
+{
+	if (type_size(const_init->type) <= 32) return true;
+	switch (const_init->kind)
+	{
+		case CONST_INIT_ZERO:
+		case CONST_INIT_STRUCT:
+		case CONST_INIT_UNION:
+		case CONST_INIT_ARRAY_VALUE:
+		case CONST_INIT_VALUE:
+			return false;
+		case CONST_INIT_ARRAY:
+			return vec_size(const_init->init_array.elements) >= 16;
+		case CONST_INIT_ARRAY_FULL:
+			return true;
+	}
+	UNREACHABLE
+}
 static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializer *const_init, bool top)
 {
 	if (const_init->type->type_kind == TYPE_VECTOR)
@@ -1459,7 +1477,7 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 		return;
 	}
 	// In case of small const initializers, or full arrays - use copy.
-	if (const_init->kind == CONST_INIT_ARRAY_FULL || type_size(const_init->type) <= 32)
+	if (llvm_should_use_const_copy(const_init))
 	{
 		if (top && const_init_local_init_may_be_global(const_init))
 		{
@@ -2022,7 +2040,6 @@ static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *
 	ASSERT(expr_is_const_initializer(expr));
 	ASSERT(type_flatten(expr->type)->type_kind != TYPE_SLICE);
 	llvm_emit_const_init_ref(c, ref, expr->const_expr.initializer, true);
-	return;
 }
 
 /**
@@ -2621,19 +2638,26 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	ASSERT(slice->expr_kind == EXPR_SLICE);
 
 	Expr *parent_expr = exprptr(slice->subscript_expr.expr);
-
 	Type *parent_type = type_flatten(parent_expr->type);
+	parent_type = type_no_optional(parent_type);
 	BEValue parent_addr_x;
 	llvm_emit_expr(c, &parent_addr_x, parent_expr);
-	llvm_value_addr(c, &parent_addr_x);
-	LLVMValueRef parent_addr = parent_addr_x.value;
 	LLVMValueRef parent_load_value = NULL;
 	LLVMValueRef parent_base;
-	parent_type = type_no_optional(parent_type);
+	LLVMValueRef parent_addr;
+	if (parent_type->type_kind == TYPE_POINTER)
+	{
+		llvm_value_rvalue(c, &parent_addr_x);
+		parent_load_value = parent_base = parent_addr_x.value;
+	}
+	else
+	{
+		llvm_value_addr(c, &parent_addr_x);
+		parent_addr = parent_addr_x.value;
+	}
 	switch (parent_type->type_kind)
 	{
 		case TYPE_POINTER:
-			parent_load_value = parent_base = LLVMBuildLoad2(c->builder, llvm_get_type(c, parent_type), parent_addr, "");
 			break;
 		case TYPE_SLICE:
 			parent_load_value = LLVMBuildLoad2(c->builder, llvm_get_type(c, parent_type), parent_addr, "");
@@ -3556,6 +3580,7 @@ MEMCMP:
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_BITSTRUCT:
+			assert(compiler.build.old_compact_eq);
 			if (array_base->decl->attr_compact) goto MEMCMP;
 			break;
 		case TYPE_POISONED:

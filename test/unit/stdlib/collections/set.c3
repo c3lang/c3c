@@ -184,7 +184,7 @@ fn void edge_cases()
 alias StringSet = HashSet{String};
 
 fn void string_set_test()
-{    
+{
 	StringSet set;
 	set.tinit();
 	defer set.free();
@@ -204,21 +204,113 @@ fn void string_set_test()
 
 fn void add_all_test()
 {
+	StringSet set1;
+	set1.init(mem);
+	defer set1.free();
+
+	String[] list = {"hello", "world", "hello"};
+	usz total = set1.add_all(list);
+	assert(total == 2);
+
+	assert(set1.contains("hello"));
+	assert(set1.contains("world"));
+	assert(!set1.contains("foo"));
+
+	set1.remove("hello");
+	assert(!set1.contains("hello"));
+	assert(set1.len() == 1);
+
+	StringSet set2;
+	set2.init(mem);
+	defer set2.free();
+
+	total = set2.add_all({"foo", "bar"});
+	assert(total == 2);
+
+	total = set2.add_all_from(&set1);
+	assert(total == 1);
+
+	assert(set2.contains("foo"));
+	assert(set2.contains("bar"));
+	assert(set2.contains("world"));
+	assert(!set2.contains("hello"));
+}
+
+fn void remove_all_test()
+{
+	String[] list1 = {"foo", "bar", "baz"};
+	String[] list2 = {"Hello", "World", "foo"};
+	String[] list3 = {"the", "C3", "compiler", "said", "Hello"};
+
+	StringSet set1;
+	set1.init_from_values(mem, list1);
+	defer set1.free();
+	assert(set1.len() == 3);
+
+	StringSet set2;
+	set2.init_from_values(mem, list1);
+	defer set2.free();
+	assert(set1.len() == 3);
+
+	usz total = set2.add_all(list2);
+	assert(total == 2);
+	assert(set2.len() == 5);
+
+	total = set2.remove_all(list1);
+	assert(total == 3);
+
+	assert(set2.len() == 2);
+	assert(set2.contains("Hello"));
+	assert(set2.contains("World"));
+	assert(!set2.contains("foo"));
+	assert(!set2.contains("bar"));
+	assert(!set2.contains("baz"));
+
+	total = set1.add_all(list3);
+	assert(total == 5);
+	assert(set1.len() == 8);
+
+	total = set1.remove_all_from(&set2);
+	assert(total == 1);
+
+	assert(set1.len() == 7);
+	assert(set1.contains("foo"));
+	assert(set1.contains("bar"));
+	assert(set1.contains("baz"));
+	assert(set1.contains("the"));
+	assert(set1.contains("C3"));
+	assert(set1.contains("compiler"));
+	assert(set1.contains("said"));
+	assert(!set1.contains("Hello"));
+}
+
+fn void values_test()
+{
 	StringSet set;
 	set.init(mem);
 	defer set.free();
 
-	String[] list = { "hello", "world", "hello" };
-	usz total = set.add_all(list);
-	assert(total == 2);
+	String[] values = set.values(mem);
+	assert(values.len == 0);
+	free(values);
 
-	assert(set.contains("hello"));
-	assert(set.contains("world"));
-	assert(!set.contains("foo"));
+	String[] list1 = {"foo", "bar", "baz"};
+	set.add_all(list1);
+	assert(set.len() == 3);
 
-	set.remove("hello");
-	assert(!set.contains("hello"));
-	assert(set.len() == 1);
+	values = set.values(mem);
+	assert(values.len == 3);
+	assert(array::contains(values, "foo"));
+	assert(array::contains(values, "bar"));
+	assert(array::contains(values, "baz"));
+	free(values);
+
+	set.remove("bar");
+	values = set.tvalues();
+	assert(values.len == 2);
+	assert(array::contains(values, "foo"));
+	assert(array::contains(values, "baz"));
+	assert(!array::contains(values, "bar"));
 }
 
 fn void is_initialized_test()

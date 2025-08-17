@@ -1,5 +1,6 @@
 module std::os::win32;
 
+alias Win32_FARPROC = void*;
 alias Win32_BOOL = int;
 alias Win32_BOOLEAN = Win32_BYTE;
 alias Win32_BYTE = char;
