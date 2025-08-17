@@ -1049,7 +1049,7 @@ static inline bool parse_ct_compound_stmt(ParseContext *c, AstId *start, SourceS
 static inline Ast *parse_ct_if_stmt(ParseContext *c)
 {
 	Ast *ast = ast_new_curr(c, AST_CT_IF_STMT);
-	SourceSpan if_span = c->span;             // remember where $if started
+	SourceSpan if_span = c->span;
 
 	advance_and_verify(c, TOKEN_CT_IF);
 
