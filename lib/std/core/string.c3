@@ -187,7 +187,7 @@ fn String String.replace(self, Allocator allocator, String needle, String new_st
 	@pool()
 	{
 		String[] split = self.tsplit(needle);
-		return dstring::join(tmem, split, new_str).copy_str(mem);
+		return dstring::join(tmem, split, new_str).copy_str(allocator);
 	};
 }
 
@@ -425,6 +425,19 @@ fn String[]? String.split_to_buffer(s, String delimiter, String[] buffer, usz ma
 fn bool String.contains(s, String substr)
 {
 	return @ok(s.index_of(substr));
+}
+
+<*
+ Check if a character is found in the string.
+
+ @param [in] s
+ @param character : "The character to look for."
+ @pure
+ @return "true if the string contains the character, false otherwise"
+*>
+fn bool String.contains_char(s, char character)
+{
+	return @ok(s.index_of_char(character));
 }
 
 <*

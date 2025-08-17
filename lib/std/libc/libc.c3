@@ -259,6 +259,8 @@ macro CFile stdout() { return (CFile*)(uptr)STDOUT_FD; }
 macro CFile stderr() { return (CFile*)(uptr)STDERR_FD; }
 
 module libc @if(!env::LIBC);
+import std::core::mem;
+
 
 fn void longjmp(JmpBuf* buffer, CInt value) @weak @extern("longjmp") @nostrip
 {
@@ -288,22 +290,9 @@ fn void* realloc(void* ptr, usz size) @weak @extern("realloc") @nostrip
 	unreachable("realloc unavailable");
 }
 
-fn void* memcpy(void* dest, void* src, usz n) @weak @extern("memcpy") @nostrip
-{
-	for (usz i = 0; i < n; i++) ((char*)dest)[i] = ((char*)src)[i];
-	return dest;
-}
-
-fn void* memmove(void* dest, void* src, usz n) @weak @extern("memmove") @nostrip
-{
-	return memcpy(dest, src, n) @inline;
-}
-
-fn void* memset(void* dest, CInt value, usz n) @weak @extern("memset") @nostrip
-{
-	for (usz i = 0; i < n; i++) ((char*)dest)[i] = (char)value;
-	return dest;
-}
+alias memcpy = mem::__memcpy;
+alias memmove = mem::__memcpy;
+alias memset = mem::__memset;
 
 fn int fseek(CFile stream, SeekIndex offset, int whence) @weak @extern("fseek") @nostrip
 {
