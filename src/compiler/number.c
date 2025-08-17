@@ -127,6 +127,55 @@ INLINE ConstInitializer *expr_const_array_init_at(ConstInitializer *init, ArrayS
 	}
 	UNREACHABLE;
 }
+
+INLINE void swap_to_zero_to_left(ConstInitializer **left_ref, ConstInitializer **right_ref)
+{
+	ConstInitializer *right = *right_ref;
+	if (right->kind == CONST_INIT_ZERO)
+	{
+		*right_ref = *left_ref;
+		*left_ref = right;
+	}
+}
+
+
+static bool expr_const_compare_bitstruct(const ExprConst *left, const ExprConst *right, BinaryOp op)
+{
+	ConstInitializer *lhs = left->initializer;
+	ConstInitializer *rhs = right->initializer;
+	swap_to_zero_to_left(&lhs, &rhs);
+	bool find_eq = op == BINARYOP_EQ;
+	if (lhs->kind == CONST_INIT_ZERO) return const_init_is_zero(rhs) ? find_eq : !find_eq;
+	ConstInitializer **lhs_inits = lhs->init_struct;
+	ConstInitializer **rhs_inits = rhs->init_struct;
+	Decl **members = lhs->type->decl->strukt.members;
+	unsigned len = vec_size(members);
+	for (unsigned i = 0; i < len; i++)
+	{
+		ConstInitializer *init_lhs = lhs_inits[i];
+		ConstInitializer *init_rhs = rhs_inits[i];
+		swap_to_zero_to_left(&init_lhs, &init_rhs);
+		// Zero case
+		if (lhs->kind == CONST_INIT_ZERO)
+		{
+			if (const_init_is_zero(rhs)) continue;
+			return !find_eq;
+		}
+		// Both should have values
+		Expr *lhs_expr = init_lhs->init_value;
+		Expr *rhs_expr = init_rhs->init_value;
+
+		bool to_const = sema_cast_const(lhs_expr) && sema_cast_const(rhs_expr);
+		assert(to_const);
+		if (!expr_const_compare(&lhs_expr->const_expr, &rhs_expr->const_expr, BINARYOP_EQ))
+		{
+			return !find_eq;
+		}
+	}
+	return find_eq;
+}
+
+
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op)
 {
 	bool is_eq;
@@ -252,6 +301,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 						if (a_is_zero != b_is_zero) goto MISMATCH;
 						continue;
 					}
+					assert(a && b);
 					assert(b->kind == CONST_INIT_VALUE && a->kind == CONST_INIT_VALUE);
 					Expr *a_value = a->init_value;
 					Expr *b_value = b->init_value;
@@ -261,6 +311,10 @@ MISMATCH:
 					return op != BINARYOP_EQ;
 				}
 				return op == BINARYOP_EQ;
+			}
+			if (left->initializer->type->type_kind == TYPE_BITSTRUCT)
+			{
+				return expr_const_compare_bitstruct(left, right, op);
 			}
 			FALLTHROUGH;
 		case CONST_SLICE:

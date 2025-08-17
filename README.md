@@ -264,6 +264,38 @@ cd c3c-git
 makepkg -si
 ```
 
+#### Installing via Nix
+
+You can access `c3c` via [flake.nix](./flake.nix), which will contain the latest commit of the compiler. To add `c3c` to your `flake.nix`, do the following:
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs?ref=nixpkgs-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+    c3c.url = "github:c3lang/c3c";
+    # Those are desired if you don't want to copy extra nixpkgs
+    c3c.inputs = {
+      nixpkgs.follows = "nixpkgs";
+      flake-utils.follows = "flake-utils";
+    };
+  };
+
+  outputs = { self, ... } @ inputs: inputs.flake-utils.lib.eachDefaultSystem (system: 
+    let 
+      pkgs = import inputs.nixpkgs { inherit system; };
+      c3c = inputs.c3c.packages.${system}.c3c;
+    in 
+    {
+      devShells.default = pkgs.mkShell {
+        buildInputs = [
+          pkgs.c3c
+        ];
+      };
+    }
+  );
+}
+```
+
 #### Building via Docker
 
 You can build `c3c` using an Ubuntu container. By default, the script will build through Ubuntu 22.04. You can specify the version by passing the `UBUNTU_VERSION` environment variable.
@@ -404,6 +436,14 @@ cmake -B build \
 After compilation, the `c3c` binary will be located in the `build` directory. You can test it by compiling an example: `./build/c3c compile resources/examples/ls.c3`.
 
 6. To install the compiler globally: `sudo cmake --install build`
+
+#### Compiling on NixOS
+
+1. Enter nix shell, by typing `nix develop` in root directory
+2. Configure cmake via `cmake . -Bbuild $=C3_CMAKE_FLAGS`. Note: passing `C3_CMAKE_FLAGS` is needed in due to generate `compile_commands.json` and find missing libs.
+4. Build it `cmake --build build`
+5. Test it out: `./build/c3c -V`
+6. If you use `clangd` lsp server for your editor, it is recommended to make a symbolic link to `compile_command.json` in the root: `ln -s ./build/compile_commands.json compile_commands.json`
 
 #### Compiling on other Linux / Unix variants
 
