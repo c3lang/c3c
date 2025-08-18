@@ -1,0 +1,95 @@
+module test;
+import std;
+fn int main()
+{
+	int i = 10;
+	do
+	{
+		io::printfn("%s", i);
+	} while (@my_ok(nonzero(--i)));
+	return 0;
+}
+
+macro @my_ok(#z)
+{
+	if (catch #z) return false;
+	return true;
+}
+
+faultdef WAS_ZERO;
+
+fn int? nonzero(int x)
+{
+	if (x == 0) return WAS_ZERO?;
+	return x;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %i = alloca i32, align 4
+  %varargslots = alloca [1 x %any], align 8
+  %retparam = alloca i64, align 8
+  %taddr = alloca %"char[]", align 8
+  %taddr1 = alloca %"any[]", align 8
+  %blockret = alloca i8, align 1
+  %temp_err = alloca i64, align 8
+  %retparam2 = alloca i32, align 4
+  store i32 10, ptr %i, align 4
+  br label %loop.body
+
+loop.body:                                        ; preds = %expr_block.exit, %entry
+  %0 = insertvalue %any undef, ptr %i, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %1, ptr %varargslots, align 8
+  %2 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %2, i64 1, 1
+  store %"char[]" { ptr @.str, i64 2 }, ptr %taddr, align 8
+  %3 = load [2 x i64], ptr %taddr, align 8
+  store %"any[]" %"$$temp", ptr %taddr1, align 8
+  %4 = load [2 x i64], ptr %taddr1, align 8
+  %5 = call i64 @std.io.printfn(ptr %retparam, [2 x i64] %3, [2 x i64] %4)
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %loop.body
+  br label %testblock
+
+testblock:                                        ; preds = %loop.cond
+  %6 = load i32, ptr %i, align 4
+  %sub = sub i32 %6, 1
+  store i32 %sub, ptr %i, align 4
+  %7 = call i64 @test.nonzero(ptr %retparam2, i32 %sub)
+  %not_err = icmp eq i64 %7, 0
+  %8 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %8, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %testblock
+  store i64 %7, ptr %temp_err, align 8
+  br label %end_block
+
+after_check:                                      ; preds = %testblock
+  store i64 0, ptr %temp_err, align 8
+  br label %end_block
+
+end_block:                                        ; preds = %after_check, %assign_optional
+  %9 = load i64, ptr %temp_err, align 8
+  %i2b = icmp ne i64 %9, 0
+  br i1 %i2b, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %end_block
+  store i8 0, ptr %blockret, align 1
+  br label %expr_block.exit
+
+if.exit:                                          ; preds = %end_block
+  store i8 1, ptr %blockret, align 1
+  br label %expr_block.exit
+
+expr_block.exit:                                  ; preds = %if.exit, %if.then
+  %10 = load i8, ptr %blockret, align 1
+  %11 = trunc i8 %10 to i1
+  br i1 %11, label %loop.body, label %loop.exit
+
+loop.exit:                                        ; preds = %expr_block.exit
+  ret i32 0
+}
