@@ -111,7 +111,7 @@ fn void test_ref()
     t.init(tmem);
     (&t["a"]).init(tmem);
 
-    (*&t["a"])["b"] = "ab";
+    t["a"]["b"] = "ab";
     test::eq("ab", t["a"]["b"]!!);
 }
 

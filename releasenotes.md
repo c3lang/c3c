@@ -16,6 +16,7 @@
 - Deprecate `add_array` in favour of `push_all` on lists.
 - Fix max module name to 31 chars and the entire module path to 63 characters.
 - Improve error message for missing `$endif`.
+- `foo[x][y] = b` now interpreted as `(*&foo[x])[y] = b` which allows overloads to do chained [] accesses.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.

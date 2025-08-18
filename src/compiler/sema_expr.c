@@ -3691,6 +3691,10 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 		if (!subscript_type)
 		{
 			if (check_valid) return false;
+			if (overload_type == OVERLOAD_ELEMENT_REF)
+			{
+				RETURN_SEMA_ERROR(expr, "Getting a reference to a subscript of %s is not possible.", type_quoted_error_string(subscripted->type));
+			}
 			RETURN_SEMA_ERROR(expr, "Indexing a value of type %s is not possible.", type_quoted_error_string(subscripted->type));
 		}
 		if (!overload) current_type = type_flatten(current_expr->type);
@@ -3789,13 +3793,27 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 {
 	// Evaluate the expression to index.
 	Expr *subscripted = exprptr(expr->subscript_expr.expr);
-	if (subscripted->expr_kind == EXPR_CT_IDENT)
+	switch (subscripted->expr_kind)
 	{
-		if (!sema_analyse_expr_lvalue(context, subscripted, NULL)) return false;
-	}
-	else
-	{
-		if (!sema_analyse_expr(context, subscripted)) return false;
+		case EXPR_CT_IDENT:
+			if (!sema_analyse_expr_lvalue(context, subscripted, NULL)) return false;
+			break;
+		case EXPR_SUBSCRIPT:
+		{
+			Expr *inner = expr_copy(subscripted);
+			subscripted->expr_kind = EXPR_UNARY;
+			subscripted->unary_expr.operator = UNARYOP_ADDR;
+			subscripted->unary_expr.expr = inner;
+
+			inner = expr_copy(subscripted);
+			subscripted->expr_kind = EXPR_UNARY;
+			subscripted->unary_expr.operator = UNARYOP_DEREF;
+			subscripted->unary_expr.expr = inner;
+			FALLTHROUGH;
+		}
+		default:
+			if (!sema_analyse_expr(context, subscripted)) return false;
+			break;
 	}
 
 	if (!sema_expr_check_assign(context, expr, NULL)) return false;
