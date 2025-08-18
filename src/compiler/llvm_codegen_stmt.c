@@ -1588,7 +1588,7 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 {
 	if (LLVMIsAConstantInt(value->value))
 	{
-		ASSERT(!LLVMConstIntGetZExtValue(value->value) && "Unexpected bounds check failed.");
+		ASSERT_AT(loc, !LLVMConstIntGetZExtValue(value->value) && "Unexpected bounds check failed.");
 		return;
 	}
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
