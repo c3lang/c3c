@@ -15,6 +15,7 @@
 - Allow inout etc on untyped macro parameters even if they are not pointers.
 - Deprecate `add_array` in favour of `push_all` on lists.
 - Fix max module name to 31 chars and the entire module path to 63 characters.
+- Improve error message for missing `$endif`.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.

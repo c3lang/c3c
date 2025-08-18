@@ -1022,13 +1022,18 @@ static inline Ast *parse_var_stmt(ParseContext *c)
 	return ast;
 }
 
-static inline bool parse_ct_compound_stmt(ParseContext *c, AstId *start)
+static inline bool parse_ct_compound_stmt(ParseContext *c, AstId *start, Ast *start_if)
 {
 	AstId *next = start;
 	while (1)
 	{
 		TokenType tok = c->tok;
 		if (tok == TOKEN_CT_ELSE || tok == TOKEN_CT_ENDIF) break;
+		if (tok == TOKEN_RBRACE || tok == TOKEN_EOF) {
+			PRINT_ERROR_HERE("Expected '$endif' for '$if'");
+			SEMA_NOTE(start_if, "The unterminated '$if' was here.");
+			return false;
+		}
 		ASSIGN_AST_OR_RET(Ast *stmt, parse_stmt(c), false);
 		ast_append(&next, stmt);
 	}
@@ -1044,17 +1049,18 @@ static inline bool parse_ct_compound_stmt(ParseContext *c, AstId *start)
 static inline Ast *parse_ct_if_stmt(ParseContext *c)
 {
 	Ast *ast = ast_new_curr(c, AST_CT_IF_STMT);
+
 	advance_and_verify(c, TOKEN_CT_IF);
 
 	ASSIGN_EXPR_OR_RET(ast->ct_if_stmt.expr, parse_expr(c), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_COLON, poisoned_ast);
-	if (!parse_ct_compound_stmt(c, &ast->ct_if_stmt.then)) return poisoned_ast;
+	if (!parse_ct_compound_stmt(c, &ast->ct_if_stmt.then, ast)) return poisoned_ast;
 
 	if (tok_is(c, TOKEN_CT_ELSE))
 	{
 		Ast *else_ast = new_ast(AST_CT_ELSE_STMT, c->span);
 		advance_and_verify(c, TOKEN_CT_ELSE);
-		if (!parse_ct_compound_stmt(c, &else_ast->ct_else_stmt)) return poisoned_ast;
+		if (!parse_ct_compound_stmt(c, &else_ast->ct_else_stmt, ast)) return poisoned_ast;
 		ast->ct_if_stmt.elif = astid(else_ast);
 	}
 	CONSUME_OR_RET(TOKEN_CT_ENDIF, poisoned_ast);
