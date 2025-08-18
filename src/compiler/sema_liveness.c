@@ -525,8 +525,6 @@ void sema_trace_liveness(void)
 	bool keep_benchmarks = compiler.build.benchmarking;
 	FOREACH(Decl *, function, compiler.context.method_extensions)
 	{
-		// function->func_decl.attr_dynamic is sometimes set to true in case of 
-		// macro body method. Refer to https://github.com/c3lang/c3c/issues/2398
 		if (function->decl_kind == DECL_MACRO) continue;
 		if (function->func_decl.attr_dynamic) function->no_strip = true;
 		if (function->is_export || function->no_strip) sema_trace_decl_liveness(function);
