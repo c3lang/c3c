@@ -47,6 +47,7 @@
 - Compiler segfault with struct containing list of structs with an inline member #2416
 - Occasionally when using macro method extensions on built-in types, the liveness checker would try to process them. #2398
 - Miscompilation of do-while when the while starts with a branch #2394.
+- Compiler assert when calling unassigned CT functions #2418.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
