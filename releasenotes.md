@@ -50,6 +50,7 @@
 - Miscompilation of do-while when the while starts with a branch #2394.
 - Compiler assert when calling unassigned CT functions #2418.
 - Fixed crash in header generation when exporting functions with const enums (#2384).
+- Fix incorrect panic message when slicing with negative size.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.

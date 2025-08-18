@@ -2791,6 +2791,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 				llvm_emit_int_comp(c, &excess, &start_index, &end_index, BINARYOP_GT);
 				BEValue actual_end_len = end_index;
 				actual_end_len.value = llvm_emit_sub_int(c, end_index.type, end_index.value, start_index.value, slice->span);
+				actual_end_len.type = type_isz;
 				llvm_emit_panic_if_true(c, &excess, "Negative slice length", slice->span, "Negative value (%d) given for slice length.", &actual_end_len, NULL);
 				if (len.value)
 				{
