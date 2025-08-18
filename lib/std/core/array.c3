@@ -2,6 +2,7 @@ module std::core::array;
 
 import std::core::array::slice;
 import std::collections::pair;
+import std::io;
 
 <*
  Returns true if the array contains at least one element, else false
@@ -164,40 +165,48 @@ macro @reduce(array, identity, #operation)
 {
 	$if @assignable_to(#operation, $typefrom(@reduce_fn(array, identity))):
 		$typefrom(@reduce_fn(array, identity)) $func = #operation;
-		foreach (element : array) identity = $func(identity, element);
+		foreach (index, element : array) identity = $func(identity, element, index);
 	$else
 		var $InnerType = $typeof(array[0]);
+		var $IdentityType = $typeof(identity);
 
 		$if !types::is_numerical($InnerType) &&& !types::has_operator($InnerType, #operation):
 			$error "The InnerType of the array must have the given operator defined.";
 		$endif
 
-		$typeof(fn $InnerType ($InnerType i, $InnerType e) => i) $func;
+		$typeof(fn $IdentityType ($IdentityType i, $InnerType e, usz u) => i) $func;
 
 		$switch #operation:
-			$case "<<":  $func = fn (i, e) => i << e;
-			$case ">>":  $func = fn (i, e) => i >> e;
-			$case "+":   $func = fn (i, e) => i + e;
-			$case "-":   $func = fn (i, e) => i - e;
-			$case "*":   $func = fn (i, e) => i * e;
-			$case "/":   $func = fn (i, e) => i / e;
-			$case "%":   $func = fn (i, e) => i % e;
-			$case "&":   $func = fn (i, e) => i & e;
-			$case "|":   $func = fn (i, e) => i | e;
-			$case "^":   $func = fn (i, e) => i ^ e;
+			$case "<<": $func = fn (i, e, u) => i << e;
+			$case ">>": $func = fn (i, e, u) => i >> e;
+			$case "+": $func = fn (i, e, u) => i + e;
+			$case "-": $func = fn (i, e, u) => i - e;
+			$case "*": $func = fn (i, e, u) => i * e;
+			$case "/": $func = fn (i, e, u) => i / e;
+			$case "%": $func = fn (i, e, u) => i % e;
+			$case "&": $func = fn (i, e, u) => i & e;
+			$case "|": $func = fn (i, e, u) => i | e;
+			$case "^": $func = fn (i, e, u) => i ^ e;
+			$case ".len": $func = fn (i, e, u) {
+				$if ($defined(e.len())):
+					return i + e.len();
+				$else
+					return i + e.len;
+				$endif
+			};
 			$default:
 				// Sigils specific to numeric types only. Done this way because no `$nextcase` token exists.
 				$if types::is_numerical($InnerType):
 					$switch #operation:
-						$case "<<<":	$func = fn (i, e) => i.rotl(e);
-						$case ">>>":	$func = fn (i, e) => i.rotr(e);
-						$case "|~":		$func = fn (i, e) => i | ~e;
-						$case "&~":		$func = fn (i, e) => i & ~e;
-						$case "count_positive":	$func = fn (i, e) => i += (e > 0 ? 1 : 0);
-						$case "count_negative":	$func = fn (i, e) => i += (e < 0 ? 1 : 0);
-						$case "count_zero":		$func = fn (i, e) => i += (e == 0 ? 1 : 0);
-						$case "sum_sq":			$func = fn (i, e) => i += (e * e);
-						$case "sum_cube":		$func = fn (i, e) => i += (e * e * e);
+						$case "<<<": $func = fn (i, e, u) => i.rotl(e);
+						$case ">>>": $func = fn (i, e, u) => i.rotr(e);
+						$case "|~": $func = fn (i, e, u) => i | ~e;
+						$case "&~": $func = fn (i, e, u) => i & ~e;
+						$case "count_positive": $func = fn (i, e, u) => i += (e > 0 ? 1 : 0);
+						$case "count_negative": $func = fn (i, e, u) => i += (e < 0 ? 1 : 0);
+						$case "count_zero": $func = fn (i, e, u) => i += (e == 0 ? 1 : 0);
+						$case "sum_squares": $func = fn (i, e, u) => i += (e * e);
+						$case "sum_cubes": $func = fn (i, e, u) => i += (e * e * e);
 						$default: $error "The given sigil is not a valid summary operator";
 					$endswitch
 				$else
@@ -205,7 +214,7 @@ macro @reduce(array, identity, #operation)
 				$endif
 		$endswitch
 
-		foreach (element : array) identity = $func(identity, element) @pure;
+		foreach (index, element : array) identity = $func(identity, element, index) @pure;
 	$endif
 
 	return identity;
@@ -259,7 +268,7 @@ macro @product(array, identity_value = 1)
  For example:
  ```c3
  int[] arr = { 0, 20, 4, 30 };
- int[] matched_indices = array::@indices_of(mem, arr, fn (a) => a > 10);
+ int[] matched_indices = array::@indices_of(mem, arr, fn (u, a) => a > 10);
  ```
 
  The `matched_indices` variable should contain a dynamically-allocated array of `[1, 3]`,
@@ -270,17 +279,17 @@ macro @product(array, identity_value = 1)
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require @assignable_to(#predicate, $typefrom(@any_predicate_type(array)))
+ @require @assignable_to(#predicate, $typefrom(@predicate_fn(array)))
 *>
 macro usz[] @indices_of(Allocator allocator, array, #predicate)
 {
-	usz[] results = allocator::new_array(allocator, usz, array.len);
+	usz[] results = allocator::new_array(allocator, usz, find_len(array));
 	usz matches;
 
-	$typefrom(@any_predicate_type(array)) $predicate = #predicate;
+	$typefrom(@predicate_fn(array)) $predicate = #predicate;
 	foreach (index, &element : array)
 	{
-		if ($predicate(*element)) results[matches++] = index;
+		if ($predicate(*element, index)) results[matches++] = index;
 	}
 
 	return results[:matches];
@@ -293,7 +302,7 @@ macro usz[] @indices_of(Allocator allocator, array, #predicate)
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require @assignable_to(#predicate, $typefrom(@any_predicate_type(array)))
+ @require @assignable_to(#predicate, $typefrom(@predicate_fn(array)))
 *>
 macro usz[] @tindices_of(array, #predicate)
 {
@@ -318,7 +327,7 @@ macro usz[] @tindices_of(array, #predicate)
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require @assignable_to(#predicate, $typefrom(@any_predicate_type(array)))
+ @require @assignable_to(#predicate, $typefrom(@predicate_fn(array)))
 *>
 macro @filter(Allocator allocator, array, #predicate) @nodiscard
 {
@@ -343,7 +352,7 @@ macro @filter(Allocator allocator, array, #predicate) @nodiscard
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require @assignable_to(#predicate, $typefrom(@any_predicate_type(array)))
+ @require @assignable_to(#predicate, $typefrom(@predicate_fn(array)))
 *>
 macro @tfilter(array, #predicate) @nodiscard
 {
@@ -359,12 +368,12 @@ macro @tfilter(array, #predicate) @nodiscard
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require @assignable_to(#predicate, $typefrom(@any_predicate_type(array)))
+ @require @assignable_to(#predicate, $typefrom(@predicate_fn(array)))
 *>
 macro bool @any(array, #predicate)
 {
-	$typefrom(@any_predicate_type(array)) $predicate = #predicate;
-	foreach (&element : array) if ($predicate(*element)) return true;
+	$typefrom(@predicate_fn(array)) $predicate = #predicate;
+	foreach (index, &element : array) if ($predicate(*element, index)) return true;
 	return false;
 }
 
@@ -377,12 +386,12 @@ macro bool @any(array, #predicate)
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require @assignable_to(#predicate, $typeof(fn bool ($typeof(array[0]) a) => true))
+ @require @assignable_to(#predicate, $typefrom(@predicate_fn(array)))
 *>
 macro bool @all(array, #predicate)
 {
-	$typefrom(@any_predicate_type(array)) $predicate = #predicate;
-	foreach (&element : array) if (!$predicate(*element)) return false;
+	$typefrom(@predicate_fn(array)) $predicate = #predicate;
+	foreach (index, &element : array) if (!$predicate(*element, index)) return false;
 	return true;
 }
 
@@ -457,7 +466,6 @@ macro @zip(Allocator allocator, left, right, #operation = EMPTY_MACRO_SLOT, fill
 	$if $is_op:
 		$Type = $typeof(#operation).returns;
 	$endif
-
 
 	usz left_len = find_len(left);
 	usz right_len = find_len(right);
@@ -570,14 +578,14 @@ macro @zip_into(left, right, #operation)
 module std::core::array @private;
 
 
-macro typeid @any_predicate_type(#array) @const
+macro typeid @predicate_fn(#array) @const
 {
-	return $typeof(fn bool ($typeof(#array[0]) a) => true).typeid;
+	return $typeof(fn bool ($typeof(#array[0]) a, usz index = 0) => true).typeid;
 }
 
 macro typeid @reduce_fn(#array, #identity) @const
 {
-	return @typeid(fn $typeof(#identity) ($typeof(#identity) i, $typeof(#array[0]) a) => i);
+	return @typeid(fn $typeof(#identity) ($typeof(#identity) i, $typeof(#array[0]) a, usz index = 0) => i);
 }
 
 macro typeid @zip_into_fn(#left, #right) @const
