@@ -57,6 +57,6 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %e, ptr align 16 @.__const.7, i32 32, i1 false)
   store %"char[]" { ptr @.emptystr, i64 0 }, ptr %f, align 8
   store %"char[]" { ptr @.str.8, i64 3 }, ptr %g, align 8
-  store i32 1000299617, ptr %h, align 4
+  store i32 -1151103613, ptr %h, align 4
   ret i32 0
 }

@@ -7,6 +7,6 @@ macro foo(x) => *x = 1;
 
 fn int main()
 {
-	foo(0); // #error: Expected a pointer
+	foo(0); // #error: x must be
 	return 0;
 }

@@ -523,8 +523,9 @@ void sema_trace_liveness(void)
 	}
 	bool keep_tests = compiler.build.testing;
 	bool keep_benchmarks = compiler.build.benchmarking;
-	FOREACH(Decl *, function, compiler.context.method_extensions)
+	FOREACH(Decl *, function, compiler.context.method_extension_list)
 	{
+		if (function->decl_kind == DECL_MACRO) continue;
 		if (function->func_decl.attr_dynamic) function->no_strip = true;
 		if (function->is_export || function->no_strip) sema_trace_decl_liveness(function);
 	}
@@ -548,10 +549,6 @@ void sema_trace_liveness(void)
 			{
 				if (var->is_export || var->no_strip) sema_trace_decl_liveness(var);
 			}
-			FOREACH(Decl *, method, unit->local_method_extensions)
-			{
-				if (method->is_export || method->no_strip) sema_trace_decl_liveness(method);
-			}
 		}
 	}
 }
@@ -566,7 +563,9 @@ INLINE void sema_trace_enum_associated(Decl *decl)
 }
 INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
 {
-	Decl **methods = decl->methods;
+	Methods *table = decl->method_table;
+	if (!table) return;
+	Decl **methods = table->methods;
 	unsigned method_count = vec_size(methods);
 	if (!method_count) return;
 	for (unsigned i = 0; i < method_count; i++)

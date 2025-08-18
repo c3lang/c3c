@@ -51,6 +51,7 @@ macro @select(bool $bool, #value_1, #value_2) @builtin
 		return #value_2;
 	$endif
 }
+
 macro promote_int_same(x, y)
 {
 	$if @is_int(x):

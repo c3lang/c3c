@@ -68,7 +68,7 @@ fn void sorted()
 		// with list
 		List{int} list;
 		list.tinit();
-		list.add_array(tc.input);
+		list.push_all(tc.input);
 
 		got = is_sorted(list);
 		assert(got == tc.want, "list: %s, got: %s, want: %s",

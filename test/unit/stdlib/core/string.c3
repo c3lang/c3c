@@ -255,6 +255,24 @@ fn void test_rindex_of_char()
 	assert(@catch(test.index_of_char('x')));
 }
 
+fn void test_contains()
+{
+	String test = "hello world hello";
+	assert(test.contains("o"));
+	assert(test.contains("ll"));
+	assert(test.contains(" hello"));
+	assert(!test.contains("wi"));
+}
+
+fn void contains_char()
+{
+	String test = "hello world hello";
+	assert(test.contains_char('o'));
+	assert(test.contains_char('l'));
+	assert(test.contains_char('h'));
+	assert(!test.contains_char('x'));
+}
+
 fn void test_base_13_convesion()
 {
 	assert("13".to_long(13)!! == 13 + 3);

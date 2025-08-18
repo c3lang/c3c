@@ -110,14 +110,18 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 		uint current_benchmark_iterations = bench_fn_iters[unit.name] ?? benchmark_max_iterations;
 		char[] perc_str = { [0..19] = ' ', [20] = 0 };
 		int perc = 0;
+		uint print_step = current_benchmark_iterations / 100;
 
 		for (this_iteration = 0; this_iteration < current_benchmark_iterations; ++this_iteration)
 		{
-			perc_str[0..(uint)math::floor((this_iteration / (float)current_benchmark_iterations) * 20)] = '#';
-			perc = (uint)math::ceil(100 * (this_iteration / (float)current_benchmark_iterations));
+			if (0 == this_iteration % print_step)   // only print right about when the % will update
+			{
+				perc_str[0..(uint)math::floor((this_iteration / (float)current_benchmark_iterations) * 20)] = '#';
+				perc = (uint)math::ceil(100 * (this_iteration / (float)current_benchmark_iterations));
 
-			io::printf("\r%s [%s] %d / %d (%d%%)", name.str_view(), (ZString)perc_str, this_iteration, current_benchmark_iterations, perc);
-			io::stdout().flush()!!;
+				io::printf("\r%s [%s] %d / %d (%d%%)", name.str_view(), (ZString)perc_str, this_iteration, current_benchmark_iterations, perc);
+				io::stdout().flush()!!;
+			}
 
 			@start_benchmark();   // can be overridden by calls inside the unit's func
 

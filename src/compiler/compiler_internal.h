@@ -52,6 +52,8 @@ typedef uint16_t FileId;
 #define MAX_PRIORITY 0xFFFF
 #define MAX_TYPE_SIZE UINT32_MAX
 #define MAX_GLOBAL_DECL_STACK (65536)
+#define MAX_MODULE_NAME 31
+#define MAX_MODULE_PATH 63
 #define MEMCMP_INLINE_REGS 8
 #define UINT128_MAX ((Int128) { UINT64_MAX, UINT64_MAX })
 #define INT128_MAX ((Int128) { INT64_MAX, UINT64_MAX })
@@ -120,6 +122,22 @@ typedef struct
 	Real f;
 	TypeKind type;
 } Float;
+
+typedef struct
+{
+	uint32_t count;
+	uint32_t capacity;
+	uint32_t max_load;
+	DeclId *methods;
+} MethodTable;
+
+typedef struct
+{
+	uint32_t count;
+	uint32_t capacity;
+	uint32_t max_load;
+	DeclId *entries;
+} DeclTable;
 
 struct ConstInitializer_
 {
@@ -619,6 +637,13 @@ typedef struct
 	AstId parent;
 } LabelDecl;
 
+typedef struct
+{
+	DeclId overloads[OVERLOADS_COUNT + 1];
+	DeclTable method_table;
+	Decl **methods;
+} Methods;
+
 typedef struct Decl_
 {
 	const char *name;
@@ -678,7 +703,7 @@ typedef struct Decl_
 		struct
 		{
 			TypeInfo **interfaces;
-			Decl **methods;
+			Methods *method_table;
 			union
 			{
 				// Enums and Fault
@@ -1570,7 +1595,6 @@ typedef struct Module_
 	AnalysisStage stage : 6;
 
 	AstId contracts;
-	Decl** private_method_extensions;
 	HTable symbols;
 	struct CompilationUnit_ **units;
 	Module *generic_module;
@@ -1652,14 +1676,6 @@ typedef struct
 	LexMode mode;
 } Lexer;
 
-typedef struct
-{
-	uint32_t count;
-	uint32_t capacity;
-	uint32_t max_load;
-	DeclId *entries;
-} DeclTable;
-
 struct CompilationUnit_
 {
 	Module *module;
@@ -1697,7 +1713,6 @@ struct CompilationUnit_
 	Decl *main_function;
 	HTable local_symbols;
 	int lambda_count;
-	Decl **local_method_extensions;
 	TypeInfo **check_type_variable_array;
 	struct
 	{
@@ -1899,7 +1914,6 @@ typedef struct
 	Module **module_list;
 	Module **generic_module_list;
 	Type **type;
-	Decl **method_extensions;
 	const char *lib_dir;
 	const char **sources;
 	File **loaded_sources;
@@ -1911,6 +1925,8 @@ typedef struct
 	HTable compiler_defines;
 	HTable features;
 	Module std_module;
+	MethodTable method_extensions;
+	Decl **method_extension_list;
 	DeclTable symbols;
 	PathTable path_symbols;
 	DeclTable generic_symbols;
@@ -2160,6 +2176,7 @@ UNUSED bool i128_get_bit(const Int128 *op, int bit);
 #define MACRO_COPY_DECL(x) x = copy_decl(c, x)
 #define MACRO_COPY_DECLID(x) x = declid_copy_deep(c, x)
 #define MACRO_COPY_DECL_LIST(x) x = copy_decl_list(c, x)
+#define MACRO_COPY_DECL_METHODS(x) x = copy_decl_methods(c, x)
 #define MACRO_COPY_EXPR(x) x = copy_expr(c, x)
 #define MACRO_COPY_EXPRID(x) x = exprid_copy_deep(c, x)
 #define MACRO_COPY_TYPE(x) x = copy_type_info(c, x)
@@ -2370,6 +2387,7 @@ Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span)
 typedef enum FindMember
 {
 	METHODS_AND_FIELDS,
+	METHODS_INTERFACES_AND_FIELDS,
 	FIELDS_ONLY
 } FindMember;
 
@@ -2418,8 +2436,9 @@ void sema_expr_convert_enum_to_int(Expr *expr);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
 bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_resolve);
-Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
-Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
+Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const char *method_name);
+Decl *sema_resolve_method(Decl *type, const char *method_name);
+Decl *sema_resolve_method_only(Decl *type, const char *method_name);
 Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const char *method_name);
 bool sema_resolve_type_decl(SemaContext *context, Type *type);
 bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type);
@@ -2475,6 +2494,10 @@ UNUSED void stable_clear(STable *table);
 void decltable_init(DeclTable *table, uint32_t initial_size);
 DeclId decltable_get(DeclTable *table, const char *name);
 void decltable_set(DeclTable *table, Decl *decl);
+
+void methodtable_init(MethodTable *table, uint32_t initial_size);
+DeclId methodtable_get(MethodTable *table, Type *type, const char *name);
+DeclId methodtable_set(MethodTable *table, Decl *method);
 
 const char *scratch_buffer_interned(void);
 const char *scratch_buffer_interned_as(TokenType *type);
@@ -2542,7 +2565,6 @@ bool type_is_abi_aggregate(Type *type);
 bool type_is_int128(Type *type);
 
 Type *type_from_token(TokenType type);
-bool type_is_user_defined(Type *type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);
 bool type_flat_is_floatlike(Type *type);
 bool type_flat_is_intlike(Type *type);
@@ -2608,6 +2630,7 @@ INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span);
 INLINE TypeInfo *type_info_new_base(Type *type, SourceSpan span);
 INLINE bool type_info_ok(TypeInfo *type_info);
 INLINE bool type_info_poison(TypeInfo *type);
+INLINE bool type_is_user_defined(Type *type);
 
 int type_kind_bitsize(TypeKind kind);
 INLINE bool type_kind_is_signed(TypeKind kind);
@@ -3019,6 +3042,46 @@ INLINE Type *type_flatten_for_bitstruct(Type *type)
 	return type;
 }
 
+static inline void methods_add(Methods *methods, Decl *method)
+{
+	vec_add(methods->methods, method);
+	OperatorOverload operator = method->func_decl.operator;
+	if (operator)
+	{
+		unsigned len = vec_size(method->func_decl.signature.params);
+		if (operator == OVERLOAD_MINUS && len == 1)
+		{
+			method->func_decl.operator = operator = OVERLOAD_UNARY_MINUS;
+		}
+
+		if (len > 1 && !method->func_decl.signature.params[1]->var.type_info)
+		{
+			method->func_decl.is_wildcard_overload = true;
+		}
+		DeclId *decl = &methods->overloads[operator];
+		if (!*decl)
+		{
+			*decl = declid(method);
+		}
+		else
+		{
+			Decl *current = declptr(*decl);
+			if (current->decl_kind != DECL_DECLARRAY)
+			{
+				Decl *decl_array = decl_new(DECL_DECLARRAY, NULL,  INVALID_SPAN);
+				vec_add(decl_array->decls, declptr(*decl));
+				vec_add(decl_array->decls, method);
+				*decl = declid(decl_array);
+			}
+			else
+			{
+				vec_add(current->decls, method);
+			}
+		}
+	}
+	decltable_set(&methods->method_table, method);
+}
+
 static inline Type *type_base(Type *type)
 {
 	while (1)
@@ -3145,6 +3208,21 @@ static inline Type *type_flat_distinct_enum_inline(Type *type)
 				return type;
 		}
 	}
+}
+
+INLINE bool type_is_user_defined(Type *type)
+{
+	static const bool user_defined_types[TYPE_LAST + 1] = {
+		[TYPE_ENUM] = true,
+		[TYPE_STRUCT] = true,
+		[TYPE_FUNC_RAW] = true,
+		[TYPE_UNION] = true,
+		[TYPE_DISTINCT] = true,
+		[TYPE_BITSTRUCT] = true,
+		[TYPE_TYPEDEF] = true,
+		[TYPE_INTERFACE] = true,
+	};
+	return user_defined_types[type->type_kind];
 }
 
 static inline Type *type_flatten_to_int(Type *type)

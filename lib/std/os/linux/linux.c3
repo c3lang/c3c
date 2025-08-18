@@ -1,5 +1,34 @@
 module std::os::linux @if(env::LINUX);
-import libc, std::os, std::io, std::collections::list;
+import libc, std::os, std::io, std::collections::list, std::net::os;
+
+// https://man7.org/linux/man-pages/man3/inet_ntop.3.html
+extern fn char** inet_ntop(int, void*, char*, Socklen_t);
+
+// https://linux.die.net/man/3/ntohs
+<*
+* The htonl() function converts the unsigned integer hostlong from host byte order to network byte order.
+*>
+extern fn uint htonl(uint hostlong);
+<*
+* The htons() function converts the unsigned short integer hostshort from host byte order to network byte order.
+*>
+extern fn ushort htons(ushort hostshort);
+<*
+* The ntohl() function converts the unsigned integer netlong from network byte order to host byte order.
+*>
+extern fn uint ntohl(uint netlong);
+<*
+* The ntohs() function converts the unsigned short integer netshort from network byte order to host byte order.
+*>
+extern fn ushort ntohs(ushort netshort);
+
+// https://man7.org/linux/man-pages/man3/bzero.3.html
+<*
+* The bzero() function erases the data in the n bytes of the memory
+* starting at the location pointed to by s, by writing zeros (bytes
+* containing '\0') to that area.
+*>
+extern fn void bzero(char*, usz);
 
 extern fn isz readlink(ZString path, char* buf, usz bufsize);
 
