@@ -51,6 +51,8 @@
 - Compiler assert when calling unassigned CT functions #2418.
 - Fixed crash in header generation when exporting functions with const enums (#2384).
 - Fix incorrect panic message when slicing with negative size.
+- Incorrect type checking when &[] and [] return optional values.
+- Failed to find subscript overloading on optional values.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
@@ -65,6 +67,7 @@
 - Add Freestanding OS types to runtime `env::` booleans.
 - Added libloaderapi to `std::os::win32`.
 - Added `HashSet.values` and `String.contains_char` #2386
+- Added `&[]` overload to HashMap.
 
 ## 0.7.4 Change list
 

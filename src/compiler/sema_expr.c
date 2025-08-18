@@ -11781,7 +11781,7 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 			.call_expr.is_func_ref = true,
 			.call_expr.is_type_method = true,
 	};
-	Type *type = parent->type->canonical;
+	Type *type = type_no_optional(parent->type)->canonical;
 	Decl *first_param = method_decl->func_decl.signature.params[0];
 	Type *first = first_param->type->canonical;
 	// Deref / addr as needed.
@@ -11796,7 +11796,7 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 			if (!sema_expr_rewrite_insert_deref(context, parent)) return false;
 		}
 	}
-	ASSERT_SPAN(method_call, parent && parent->type && first == parent->type->canonical);
+	ASSERT_SPAN(method_call, first == type_no_optional(parent->type)->canonical);
 	unit_register_external_symbol(context, method_decl);
 	if (!sema_expr_analyse_general_call(context, method_call, method_decl, parent, false,
 										NULL)) return expr_poison(method_call);
