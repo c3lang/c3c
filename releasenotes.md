@@ -42,6 +42,7 @@
 - Fix for bug when `@format` encountered `*` in some cases.
 - Compiler segfault on global slice initialization with null[:0] #2404.
 - Use correct allocator in `replace`.
+- Fix incorrect panic message when slicing with negative size.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
