@@ -43,6 +43,7 @@
 - Fix for bug when `@format` encountered `*` in some cases.
 - Compiler segfault on global slice initialization with null[:0] #2404.
 - Use correct allocator in `replace`.
+- Regression: 1 character module names would create an error.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
