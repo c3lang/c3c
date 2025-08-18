@@ -287,9 +287,9 @@ macro usz[] @indices_of(Allocator allocator, array, #predicate)
 	usz matches;
 
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
-	foreach (index, &element : array)
+	foreach (index, element : array)
 	{
-		if ($predicate(*element, index)) results[matches++] = index;
+		if ($predicate(element, index)) results[matches++] = index;
 	}
 
 	return results[:matches];
@@ -318,7 +318,7 @@ macro usz[] @tindices_of(array, #predicate)
  For example:
  ```c3
  int[] my_arr = { 1, 2, 4, 10, 11, 45 };
- int[] evens = array::@filter(mem, my_arr, fn (a) => !(a % 2));
+ int[] evens = array::@filter(mem, my_arr, fn (e, u) => !(e % 2));
  assert(evens == (int[]){2, 4, 10 });
  ```
 
@@ -373,7 +373,7 @@ macro @tfilter(array, #predicate) @nodiscard
 macro bool @any(array, #predicate)
 {
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
-	foreach (index, &element : array) if ($predicate(*element, index)) return true;
+	foreach (index, element : array) if ($predicate(element, index)) return true;
 	return false;
 }
 
@@ -391,7 +391,7 @@ macro bool @any(array, #predicate)
 macro bool @all(array, #predicate)
 {
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
-	foreach (index, &element : array) if (!$predicate(*element, index)) return false;
+	foreach (index, element : array) if (!$predicate(element, index)) return false;
 	return true;
 }
 
