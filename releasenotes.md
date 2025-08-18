@@ -14,6 +14,7 @@
 - Methods ignore visibility settings.
 - Allow inout etc on untyped macro parameters even if they are not pointers.
 - Deprecate `add_array` in favour of `push_all` on lists.
+- Fix max module name to 31 chars and the entire module path to 63 characters.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
@@ -42,6 +43,11 @@
 - Fix for bug when `@format` encountered `*` in some cases.
 - Compiler segfault on global slice initialization with null[:0] #2404.
 - Use correct allocator in `replace`.
+- Regression: 1 character module names would create an error.
+- Compiler segfault with struct containing list of structs with an inline member #2416
+- Occasionally when using macro method extensions on built-in types, the liveness checker would try to process them. #2398
+- Miscompilation of do-while when the while starts with a branch #2394.
+- Compiler assert when calling unassigned CT functions #2418.
 - Fixed crash in header generation when exporting functions with const enums (#2384).
 
 ### Stdlib changes

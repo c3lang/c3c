@@ -2319,7 +2319,7 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 	{
 		RETURN_SEMA_ERROR(method, "Only user-defined types may have overloads.");
 	}
-	
+
 	Decl *other = NULL;
 	if (operator >= OVERLOAD_TYPED_START)
 	{
@@ -2737,6 +2737,7 @@ static inline bool sema_compare_method_with_interface(SemaContext *context, Decl
  */
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 {
+	ASSERT_SPAN(decl, decl->decl_kind == DECL_FUNC);
 	// Check for @init, @finalizer, @test and @benchmark
 	if (decl->func_decl.attr_init | decl->func_decl.attr_finalizer)
 	{
