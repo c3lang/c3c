@@ -98,9 +98,11 @@ static inline Path *parse_module_path(ParseContext *c)
 	ASSERT(tok_is(c, TOKEN_IDENT));
 	scratch_buffer_clear();
 	SourceSpan span = c->span;
+	int max_exceeded = 0;
 	while (1)
 	{
 		const char *string = symstr(c);
+		size_t len = c->data.lex_len;
 		if (!try_consume(c, TOKEN_IDENT))
 		{
 			if (token_is_keyword_ident(c->tok))
@@ -116,13 +118,41 @@ static inline Path *parse_module_path(ParseContext *c)
 			PRINT_ERROR_HERE("Each '::' must be followed by a regular lower case sub module name.");
 			return NULL;
 		}
-		scratch_buffer_append(string);
+		if (len > MAX_MODULE_NAME)
+		{
+			PRINT_ERROR_LAST("The module name is too long, it's %d characters (%d more than the maximum allowed %d characters).", (int)len, (int)len - MAX_MODULE_NAME, MAX_MODULE_NAME);
+			return NULL;
+		}
+		if (max_exceeded)
+		{
+			max_exceeded += len;
+		}
+		else
+		{
+			scratch_buffer_append(string);
+			if (scratch_buffer.len > MAX_MODULE_PATH)
+			{
+				max_exceeded = scratch_buffer.len;
+			}
+		}
 		if (!try_consume(c, TOKEN_SCOPE))
 		{
 			span = extend_span_with_token(span, c->prev_span);
 			break;
 		}
-		scratch_buffer_append("::");
+		if (max_exceeded)
+		{
+			max_exceeded += 2;
+		}
+		else
+		{
+			scratch_buffer_append("::");
+		}
+	}
+	// This way we can highlight the entire span.
+	if (max_exceeded)
+	{
+		print_error_at(extend_span_with_token(span, c->prev_span), "The full module path is too long, it's %lld characters (%lld more than the maximum allowed %lld characters).", (long long int)max_exceeded, (long long int)max_exceeded - MAX_MODULE_PATH, (long long int)MAX_MODULE_PATH);
 	}
 	return path_create_from_string(scratch_buffer_to_string(), scratch_buffer.len, span);
 }

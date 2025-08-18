@@ -525,6 +525,7 @@ void sema_trace_liveness(void)
 	bool keep_benchmarks = compiler.build.benchmarking;
 	FOREACH(Decl *, function, compiler.context.method_extension_list)
 	{
+		if (function->decl_kind == DECL_MACRO) continue;
 		if (function->func_decl.attr_dynamic) function->no_strip = true;
 		if (function->is_export || function->no_strip) sema_trace_decl_liveness(function);
 	}

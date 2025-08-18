@@ -143,8 +143,8 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 static void sema_binary_unify_voidptr(Expr *left, Expr *right, Type **left_type_ref, Type **right_type_ref);
 
 // -- function helper functions
-static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type,
-											  bool optional, bool *no_match_ref);
+static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Expr *var,
+                                              Type *func_ptr_type, bool optional,bool *no_match_ref);
 static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr, Decl *decl,
 											   Expr *struct_var, bool optional, bool *no_match_ref);
 
@@ -2386,7 +2386,7 @@ SKIP_CONTRACTS:
 	return true;
 }
 
-static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type, bool optional, bool *no_match_ref)
+static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Expr *var, Type *func_ptr_type, bool optional,bool *no_match_ref)
 {
 	func_ptr_type = type_flat_distinct_inline(func_ptr_type);
 	if (func_ptr_type->type_kind != TYPE_FUNC_PTR)
@@ -2398,6 +2398,10 @@ static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, 
 		}
 		RETURN_SEMA_ERROR(expr, "Only macros, functions and function pointers may be invoked, this is of type '%s'.",
 						  type_to_error_string(func_ptr_type));
+	}
+	if (sema_cast_const(var) && expr_is_const_pointer(var) && var->const_expr.ptr == 0)
+	{
+		RETURN_SEMA_ERROR(var, "You cannot call a null function pointer.");
 	}
 	Type *pointee = func_ptr_type->pointer;
 	expr->call_expr.is_pointer_call = true;
@@ -3129,9 +3133,9 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 	expr->call_expr.is_type_method = struct_var != NULL;
 	if (decl == NULL)
 	{
-		return sema_expr_analyse_var_call(context, expr,
-										  type_flatten(exprptr(expr->call_expr.function)->type), optional,
-										  no_match_ref);
+		Expr *var = exprptr(expr->call_expr.function);
+		return sema_expr_analyse_var_call(context, expr, var, type_flatten(var->type),
+		                                  optional, no_match_ref);
 	}
 	if (!sema_analyse_decl(context, decl)) return false;
 	switch (decl->decl_kind)
@@ -3141,9 +3145,14 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 			expr->call_expr.is_func_ref = true;
 			return sema_expr_analyse_macro_call(context, expr, struct_var, decl, optional, no_match_ref);
 		case DECL_VAR:
+		{
 			ASSERT_SPAN(expr, struct_var == NULL);
-			return sema_expr_analyse_var_call(context, expr, decl->type->canonical, optional || IS_OPTIONAL(decl),
-											  no_match_ref);
+			Expr *var = exprptr(expr->call_expr.function);
+			ASSERT_SPAN(expr, var);
+			return sema_expr_analyse_var_call(context, expr, var, decl->type->canonical,
+											  optional || IS_OPTIONAL(decl), no_match_ref);
+
+		}
 		case DECL_FUNC:
 			expr->call_expr.func_ref = declid(decl);
 			expr->call_expr.is_func_ref = true;
@@ -4638,7 +4647,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 
 	if (!type_may_have_sub_elements(canonical))
 	{
-		Decl *member = sema_resolve_type_method(parent_type->canonical, name);
+		Decl *member = sema_resolve_type_method(context, parent_type->canonical, name);
 		if (!decl_ok(member)) return false;
 		if (!member)
 		{
@@ -4680,7 +4689,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	if (!decl_ok(member)) return false;
 	if (!member)
 	{
-		member = sema_resolve_type_method(decl->type, name);
+		member = sema_resolve_type_method(context, decl->type, name);
 		if (!decl_ok(member)) return false;
 	}
 	if (!member)
@@ -6099,7 +6108,7 @@ CHECK_DEEPER:
 	// 9. At this point we may only have distinct, struct, union, error, enum, interface
 	if (!type_may_have_sub_elements(type))
 	{
-		Decl *method = sema_resolve_type_method(type, kw);
+		Decl *method = sema_resolve_type_method(context, type, kw);
 		if (!method)
 		{
 			if (missing_ref) goto MISSING_REF;

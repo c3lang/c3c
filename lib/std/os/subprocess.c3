@@ -292,6 +292,7 @@ fn String? execute_stdout_to_buffer(char[] buffer, String[] command_line, SubPro
 	SubProcess process = process::create(command_line, options, environment)!;
 	process.join()!;
 	usz len = process.read_stdout(buffer.ptr, buffer.len)!;
+	if (len == 0) return "";
 	return (String)buffer[:len - 1];
 }
 
