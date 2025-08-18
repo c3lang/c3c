@@ -4638,7 +4638,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 
 	if (!type_may_have_sub_elements(canonical))
 	{
-		Decl *member = sema_resolve_type_method(parent_type->canonical, name);
+		Decl *member = sema_resolve_type_method(context, parent_type->canonical, name);
 		if (!decl_ok(member)) return false;
 		if (!member)
 		{
@@ -4680,7 +4680,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	if (!decl_ok(member)) return false;
 	if (!member)
 	{
-		member = sema_resolve_type_method(decl->type, name);
+		member = sema_resolve_type_method(context, decl->type, name);
 		if (!decl_ok(member)) return false;
 	}
 	if (!member)
@@ -6099,7 +6099,7 @@ CHECK_DEEPER:
 	// 9. At this point we may only have distinct, struct, union, error, enum, interface
 	if (!type_may_have_sub_elements(type))
 	{
-		Decl *method = sema_resolve_type_method(type, kw);
+		Decl *method = sema_resolve_type_method(context, type, kw);
 		if (!method)
 		{
 			if (missing_ref) goto MISSING_REF;

@@ -2436,7 +2436,7 @@ void sema_expr_convert_enum_to_int(Expr *expr);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
 bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_resolve);
-Decl *sema_resolve_type_method(CanonicalType *type, const char *method_name);
+Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const char *method_name);
 Decl *sema_resolve_method(Decl *type, const char *method_name);
 Decl *sema_resolve_method_only(Decl *type, const char *method_name);
 Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const char *method_name);

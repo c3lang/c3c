@@ -954,7 +954,7 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 	UNREACHABLE
 }
 
-Decl *sema_resolve_type_method(CanonicalType *type, const char *method_name)
+Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const char *method_name)
 {
 	RETRY:
 	if (!type_is_user_defined(type))
@@ -972,9 +972,11 @@ Decl *sema_resolve_type_method(CanonicalType *type, const char *method_name)
 		}
 	}
 	Decl *type_decl = type->decl;
+	if (!decl_ok(type_decl)) return poisoned_decl;
 	Methods *methods = type_decl->method_table;
 	Decl *found = methods ? declptrzero(decltable_get(&methods->method_table, method_name)) : NULL;
 	if (found || !type_decl->is_substruct) return found;
+	if (!sema_analyse_decl(context, type_decl)) return poisoned_decl;
 	switch (type->type_kind)
 	{
 		case TYPE_STRUCT:
