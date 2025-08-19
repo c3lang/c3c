@@ -293,11 +293,16 @@ void create_project(BuildOptions *build_options)
 		error_exit("Can't open path '%s'.", build_options->path);
 	}
 	
-	if (file_exists(build_options->project_name)) {
+	if (file_exists(build_options->project_name))
+	{
 		if (file_is_dir(build_options->project_name))
+		{
 			error_exit("Directory '%s' already exists.", build_options->project_name);
+		}
 		else
+		{
 			error_exit("Path '%s' exists and is not a directory.", build_options->project_name);
+		}
 	}
 
 	if (!dir_make(build_options->project_name))
