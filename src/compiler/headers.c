@@ -553,7 +553,9 @@ RETRY:
 			header_gen_enum(c, 0, type->decl);
 			return;
 		case TYPE_CONST_ENUM:
-			TODO;
+			// TODO;
+			type = type_flatten(type);
+			goto RETRY;
 		case TYPE_FUNC_RAW:
 			UNREACHABLE
 		case TYPE_STRUCT:
