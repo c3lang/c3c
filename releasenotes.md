@@ -54,6 +54,7 @@
 - Fix incorrect panic message when slicing with negative size.
 - Incorrect type checking when &[] and [] return optional values.
 - Failed to find subscript overloading on optional values.
+- `Socket.get_option` didn't properly call `getsockopt`, and `getsockopt` had an invalid signature.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
