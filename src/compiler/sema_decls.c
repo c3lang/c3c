@@ -1851,7 +1851,7 @@ static bool sema_analyse_operator_common(SemaContext *context, Decl *method, Typ
 
 Decl *sema_find_untyped_operator(Type *type, OperatorOverload operator_overload, Decl *skipped)
 {
-	type = type->canonical;
+	type = type_no_optional(type)->canonical;
 	assert(operator_overload < OVERLOAD_TYPED_START);
 	if (!type_may_have_sub_elements(type)) return NULL;
 	Decl *def = type->decl;
@@ -2098,7 +2098,7 @@ static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *
 			RETURN_SEMA_ERROR(rtype, "%s has unknown size and cannot be used as a return type.",
 			                  type_quoted_error_string(rtype->type));
 	}
-	if (method->func_decl.operator == OVERLOAD_ELEMENT_REF && !type_is_pointer(rtype->type))
+	if (method->func_decl.operator == OVERLOAD_ELEMENT_REF && !type_is_pointer(type_no_optional(rtype->type)))
 	{
 		RETURN_SEMA_ERROR(rtype, "The return type must be a pointer, but it is returning %s, did you mean to overload [] instead?",
 		                  type_quoted_error_string(rtype->type));
@@ -2224,7 +2224,7 @@ static inline void sema_get_overload_arguments(Decl *method, Type **value_ref, T
 			*index_ref = method->func_decl.signature.params[1]->type->canonical;
 			return;
 		case OVERLOAD_ELEMENT_REF:
-			*value_ref = type_no_optional(typeget(method->func_decl.signature.rtype)->canonical->pointer);
+			*value_ref = type_no_optional(typeget(method->func_decl.signature.rtype))->canonical->pointer;
 			*index_ref = method->func_decl.signature.params[1]->type->canonical;
 			return;
 		case OVERLOAD_ELEMENT_SET:
