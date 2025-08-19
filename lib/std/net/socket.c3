@@ -116,7 +116,7 @@ fn void? Socket.set_option(&self, SocketOption option, bool value)
 fn bool? Socket.get_option(&self, SocketOption option)
 {
 	CInt flag;
-	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
+	int errcode = os::getsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
 	if (errcode != 0) return SOCKOPT_FAILED?;
 	return (bool)flag;
 }
