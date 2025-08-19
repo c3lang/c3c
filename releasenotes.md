@@ -70,6 +70,7 @@
 - Added libloaderapi to `std::os::win32`.
 - Added `HashSet.values` and `String.contains_char` #2386
 - Added `&[]` overload to HashMap.
+- Deprecated `PollSubscribes` and `PollEvents` in favour of `PollSubscribe` and `PollEvent` and made them const enums.
 
 ## 0.7.4 Change list
 
