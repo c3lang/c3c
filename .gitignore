@@ -80,8 +80,10 @@ TAGS
 /.cache/
 /compile_commands.json
 
-# 'nix build' resulting symlink
+# Nix
 result
+/.envrc
+/.direnv/
 
 # macOS
 .DS_Store
