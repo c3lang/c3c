@@ -407,7 +407,7 @@ static bool parse_param_path(ParseContext *c, DesignatorElement ***path)
 	}
 }
 
-static Expr *parse_lambda(ParseContext *c, Expr *left, SourceSpan lhs_span)
+static Expr *parse_lambda(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_LAMBDA);
@@ -622,9 +622,10 @@ Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl)
  *
  * @param c the context
  * @param left must be null.
+ * @param lhs_start unused
  * @return Expr *
  */
-static Expr *parse_type_identifier(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_type_identifier(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	return parse_type_expression_with_path(c, NULL);
@@ -635,9 +636,10 @@ static Expr *parse_type_identifier(ParseContext *c, Expr *left, SourceSpan lhs_s
  *
  * @param c the context
  * @param left must be null.
+ * @param lhs_start unused
  * @return Expr *
  */
-static Expr *parse_splat(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_splat(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = expr_new(EXPR_SPLAT, c->span);
@@ -671,9 +673,10 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left, SourceSpan lhs_start U
  *
  * @param c the context
  * @param left must be null
+ * @param lhs_start unused
  * @return Expr *
  */
-static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	SourceSpan start_span = c->span;

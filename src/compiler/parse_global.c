@@ -764,7 +764,8 @@ INLINE bool parse_rethrow_bracket(ParseContext *c, SourceSpan start)
 /**
  * optional_type ::= type '!'?
  * @param c
- * @return
+ * @param allow_generic should generic be allowed
+ * @return The resulting type
  */
 static inline TypeInfo *parse_optional_type_maybe_generic(ParseContext *c, bool allow_generic)
 {

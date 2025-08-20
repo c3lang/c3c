@@ -17,6 +17,7 @@
 - Fix max module name to 31 chars and the entire module path to 63 characters.
 - Improve error message for missing `$endif`.
 - `foo[x][y] = b` now interpreted as `(*&foo[x])[y] = b` which allows overloads to do chained [] accesses.
+- Error if a stack allocated variable is too big (configurable with `--max-stack-object-size`).
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.

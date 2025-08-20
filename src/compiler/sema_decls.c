@@ -4789,6 +4789,16 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	{
 		if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
 	}
+	if (decl->var.kind == VARDECL_LOCAL && type_size(decl->type) > compiler.build.max_stack_object_size * 1024)
+	{
+		size_t size = type_size(decl->type);
+		RETURN_SEMA_ERROR(
+			decl, "The size of this local variable (%s%d Kb) exceeds the maximum allowed stack object size (%d Kb), "
+			"you can increase this limit with --max-stack-object-size, but be aware that too large objects "
+			"allocated on the stack may lead to the stack running out of memory.", size % 1024 == 0 ? "" : "over ",
+			size / 1024,
+			compiler.build.max_stack_object_size);
+	}
 	return success;
 }
 
