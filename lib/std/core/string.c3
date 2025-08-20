@@ -138,7 +138,7 @@ fn String tformat(String fmt, args...) @format(0)
  Check if a character is in a set.
 
  @param c : `the character to check`
- @param [in] set : `The formatting string`
+ @param [in] set : `String containing the characters`
  @pure
  @return `True if a character is in the set`
 *>
