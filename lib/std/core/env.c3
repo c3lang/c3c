@@ -5,10 +5,22 @@ module std::core::env;
 
 enum CompilerOptLevel
 {
+	NONE,
+	LESS,
+	MORE,
+	AGGRESSIVE,
+}
+
+enum CompilerOptSetting
+{
 	O0,
 	O1,
 	O2,
-	O3
+	O3,
+	O4,
+	O5,
+	SMALL,
+	TINY,
 }
 
 enum MemoryEnvironment
@@ -126,6 +138,7 @@ const bool ARCH_64_BIT = $$REGISTER_SIZE == 64;
 const bool LIBC = $$COMPILER_LIBC_AVAILABLE;
 const bool NO_LIBC = !$$COMPILER_LIBC_AVAILABLE;
 const CompilerOptLevel COMPILER_OPT_LEVEL = CompilerOptLevel.from_ordinal($$COMPILER_OPT_LEVEL);
+const CompilerOptSetting COMPILER_OPT_SETTING = CompilerOptSetting.from_ordinal($$COMPILER_OPT_SETTING);
 const bool BIG_ENDIAN = $$PLATFORM_BIG_ENDIAN;
 const bool I128_NATIVE_SUPPORT = $$PLATFORM_I128_SUPPORTED;
 const bool F16_SUPPORT = $$PLATFORM_F16_SUPPORTED;
