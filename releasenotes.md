@@ -72,6 +72,8 @@
 - Added `HashSet.values` and `String.contains_char` #2386
 - Added `&[]` overload to HashMap.
 - Deprecated `PollSubscribes` and `PollEvents` in favour of `PollSubscribe` and `PollEvent` and made them const enums.
+- Added `AsciiCharset` for matching ascii characters quickly.
+- Added `String.trim_charset`.
 
 ## 0.7.4 Change list
 
