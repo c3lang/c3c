@@ -1,6 +1,5 @@
 module std::core::string;
-import std::io;
-import std::core::mem::allocator;
+import std::io, std::ascii;
 
 
 typedef String @if(!$defined(String)) = inline char[];
@@ -138,7 +137,7 @@ fn String tformat(String fmt, args...) @format(0)
  Check if a character is in a set.
 
  @param c : `the character to check`
- @param [in] set : `The formatting string`
+ @param [in] set : `String containing the characters`
  @pure
  @return `True if a character is in the set`
 *>
@@ -187,7 +186,7 @@ fn String String.replace(self, Allocator allocator, String needle, String new_st
 	@pool()
 	{
 		String[] split = self.tsplit(needle);
-		return dstring::join(tmem, split, new_str).copy_str(mem);
+		return dstring::join(tmem, split, new_str).copy_str(allocator);
 	};
 }
 
@@ -217,6 +216,23 @@ fn String String.treplace(self, String needle, String new_str)
 fn String String.trim(self, String to_trim = "\f\v\t\n\r ")
 {
     return self.trim_left(to_trim).trim_right(to_trim);
+}
+
+<*
+ Remove characters from the front and end of a string.
+
+ @param [in] self : `The string to trim`
+ @param to_trim : `The set of characters to trim, defaults to whitespace`
+ @pure
+ @return `a substring of the string passed in`
+*>
+fn String String.trim_charset(self, AsciiCharset to_trim = ascii::WHITESPACE_SET)
+{
+	usz start = 0;
+	usz len = self.len;
+	while (start < len && to_trim.contains(self[start])) start++;
+	while (len > start && to_trim.contains(self[len - 1])) len--;
+    return self[start..len - 1];
 }
 
 <*
@@ -425,6 +441,19 @@ fn String[]? String.split_to_buffer(s, String delimiter, String[] buffer, usz ma
 fn bool String.contains(s, String substr)
 {
 	return @ok(s.index_of(substr));
+}
+
+<*
+ Check if a character is found in the string.
+
+ @param [in] s
+ @param character : "The character to look for."
+ @pure
+ @return "true if the string contains the character, false otherwise"
+*>
+fn bool String.contains_char(s, char character)
+{
+	return @ok(s.index_of_char(character));
 }
 
 <*

@@ -25,31 +25,54 @@ macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
 
 const Duration POLL_FOREVER = (Duration)-1;
 
-typedef PollSubscribes = ushort;
-typedef PollEvents = ushort;
+enum PollSubscribe : const ushort
+{
+	ANY_READ     = os::POLLIN,
+	PRIO_READ    = os::POLLPRI,
+	OOB_READ     = os::POLLRDBAND,
+	READ         = os::POLLRDNORM,
+	ANY_WRITE    = os::POLLOUT,
+	OOB_WRITE    = os::POLLWRBAND,
+	WRITE        = os::POLLWRNORM,
+}
 
-const PollSubscribes SUBSCRIBE_ANY_READ     = os::POLLIN;
-const PollSubscribes SUBSCRIBE_PRIO_READ    = os::POLLPRI;
-const PollSubscribes SUBSCRIBE_OOB_READ     = os::POLLRDBAND;
-const PollSubscribes SUBSCRIBE_READ         = os::POLLRDNORM;
-const PollSubscribes SUBSCRIBE_ANY_WRITE    = os::POLLOUT;
-const PollSubscribes SUBSCRIBE_OOB_WRITE    = os::POLLWRBAND;
-const PollSubscribes SUBSCRIBE_WRITE        = os::POLLWRNORM;
+const PollSubscribe SUBSCRIBE_ANY_READ     = (PollSubscribe)os::POLLIN;
+const PollSubscribe SUBSCRIBE_PRIO_READ    = (PollSubscribe)os::POLLPRI;
+const PollSubscribe SUBSCRIBE_OOB_READ     = (PollSubscribe)os::POLLRDBAND;
+const PollSubscribe SUBSCRIBE_READ         = (PollSubscribe)os::POLLRDNORM;
+const PollSubscribe SUBSCRIBE_ANY_WRITE    = (PollSubscribe)os::POLLOUT;
+const PollSubscribe SUBSCRIBE_OOB_WRITE    = (PollSubscribe)os::POLLWRBAND;
+const PollSubscribe SUBSCRIBE_WRITE        = (PollSubscribe)os::POLLWRNORM;
 
-const PollEvents POLL_EVENT_READ_PRIO  = os::POLLPRI;
-const PollEvents POLL_EVENT_READ_OOB   = os::POLLRDBAND;
-const PollEvents POLL_EVENT_READ       = os::POLLRDNORM;
-const PollEvents POLL_EVENT_WRITE_OOB  = os::POLLWRBAND;
-const PollEvents POLL_EVENT_WRITE      = os::POLLWRNORM;
-const PollEvents POLL_EVENT_DISCONNECT = os::POLLHUP;
-const PollEvents POLL_EVENT_ERROR      = os::POLLERR;
-const PollEvents POLL_EVENT_INVALID    = os::POLLNVAL;
+enum PollEvent : const ushort
+{
+	READ_PRIO  = os::POLLPRI,
+	READ_OOB   = os::POLLRDBAND,
+	READ       = os::POLLRDNORM,
+	WRITE_OOB  = os::POLLWRBAND,
+	WRITE      = os::POLLWRNORM,
+	DISCONNECT = os::POLLHUP,
+	ERROR      = os::POLLERR,
+	INVALID    = os::POLLNVAL,
+}
+
+const PollEvent POLL_EVENT_READ_PRIO  = (PollEvent)os::POLLPRI;
+const PollEvent POLL_EVENT_READ_OOB   = (PollEvent)os::POLLRDBAND;
+const PollEvent POLL_EVENT_READ       = (PollEvent)os::POLLRDNORM;
+const PollEvent POLL_EVENT_WRITE_OOB  = (PollEvent)os::POLLWRBAND;
+const PollEvent POLL_EVENT_WRITE      = (PollEvent)os::POLLWRNORM;
+const PollEvent POLL_EVENT_DISCONNECT = (PollEvent)os::POLLHUP;
+const PollEvent POLL_EVENT_ERROR      = (PollEvent)os::POLLERR;
+const PollEvent POLL_EVENT_INVALID    = (PollEvent)os::POLLNVAL;
+
+alias PollSubscribes @deprecated("Use PollSubscribe") = PollSubscribe;
+alias PollEvents @deprecated("Use PollEvent") = PollEvent;
 
 struct Poll
 {
 	NativeSocket socket;
-	PollSubscribes events;
-	PollEvents revents;
+	PollSubscribe events;
+	PollEvent revents;
 }
 
 <*
@@ -116,7 +139,8 @@ fn void? Socket.set_option(&self, SocketOption option, bool value)
 fn bool? Socket.get_option(&self, SocketOption option)
 {
 	CInt flag;
-	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
+	Socklen_t socklen = CInt.sizeof;
+	int errcode = os::getsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, &socklen);
 	if (errcode != 0) return SOCKOPT_FAILED?;
 	return (bool)flag;
 }

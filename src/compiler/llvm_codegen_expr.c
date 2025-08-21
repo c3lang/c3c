@@ -2643,8 +2643,8 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	BEValue parent_addr_x;
 	llvm_emit_expr(c, &parent_addr_x, parent_expr);
 	LLVMValueRef parent_load_value = NULL;
-	LLVMValueRef parent_base;
-	LLVMValueRef parent_addr;
+	LLVMValueRef parent_base = NULL;
+	LLVMValueRef parent_addr = NULL;
 	if (parent_type->type_kind == TYPE_POINTER)
 	{
 		llvm_value_rvalue(c, &parent_addr_x);
@@ -2791,6 +2791,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 				llvm_emit_int_comp(c, &excess, &start_index, &end_index, BINARYOP_GT);
 				BEValue actual_end_len = end_index;
 				actual_end_len.value = llvm_emit_sub_int(c, end_index.type, end_index.value, start_index.value, slice->span);
+				actual_end_len.type = type_isz;
 				llvm_emit_panic_if_true(c, &excess, "Negative slice length", slice->span, "Negative value (%d) given for slice length.", &actual_end_len, NULL);
 				if (len.value)
 				{

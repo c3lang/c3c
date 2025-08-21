@@ -318,6 +318,23 @@ macro clone(Allocator allocator, value) @nodiscard
 }
 
 <*
+ @param [&inout] allocator : "The allocator used to clone"
+ @param slice : "The slice to clone"
+ @return "A pointer to the cloned slice"
+
+ @require @typekind(slice) == SLICE || @typekind(slice) == ARRAY
+*>
+macro clone_slice(Allocator allocator, slice) @nodiscard
+{
+	var $Type = $typeof(slice[0]);
+
+	$Type[] new_arr = new_array(allocator, $Type, slice.len);
+	mem::copy(new_arr.ptr, &slice[0], slice.len * $Type.sizeof);
+
+	return new_arr;
+}
+
+<*
  Clone overaligned values. Must be released using free_aligned.
 
  @param [&inout] allocator : "The allocator to use to clone"
@@ -494,7 +511,7 @@ macro Allocator temp() @deprecated("Use 'tmem' instead")
 
 alias tmem @builtin = current_temp;
 
-fn void allow_implicit_temp_allocator_on_load_thread() @init(1) @local @if(env::LIBC || env::WASM_NOLIBC)
+fn void allow_implicit_temp_allocator_on_load_thread() @init(1) @local @if(env::LIBC || env::FREESTANDING_WASM)
 {
 	auto_create_temp = true;
 }

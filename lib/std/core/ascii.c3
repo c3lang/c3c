@@ -112,3 +112,27 @@ const char[256] HEX_VALUE = {
 const char[256] TO_UPPER @private = { ['a'..'z'] = 'a' - 'A' };
 const char[256] TO_LOWER @private  = { ['A'..'Z'] = 'a' - 'A' };
 
+typedef AsciiCharset = uint128;
+
+macro AsciiCharset @create_set(String $string) @const
+{
+	AsciiCharset $set;
+	$foreach $c : $string:
+		$set |= 1ULL << $c;
+	$endforeach
+	return $set;
+}
+
+fn AsciiCharset create_set(String string)
+{
+	AsciiCharset set;
+	foreach (c : string) set |= (AsciiCharset)1ULL << c;
+	return set;
+}
+
+macro bool AsciiCharset.contains(set, char c) => !!(c < 128) & !!(set & (AsciiCharset)(1ULL << c));
+
+const AsciiCharset WHITESPACE_SET = @create_set("\t\n\v\f\r ");
+const AsciiCharset NUMBER_SET = @create_set("0123456789");
+
+

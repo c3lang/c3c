@@ -53,10 +53,39 @@ const AIFamily AF_APPLETALK                     = PLATFORM_AF_APPLETALK;
 
 const O_NONBLOCK = PLATFORM_O_NONBLOCK;
 
+
+<*
+ The getaddrinfo() function is used to get a list of IP addresses and port numbers for host hostname and service servname.
+
+ @param [in] nodename
+ @param [in] servname
+ @param [in] hints
+ @param [out] res
+ @require (void*)nodename || (void*)servname : "One the names must be non-null"
+*>
 extern fn CInt getaddrinfo(ZString nodename, ZString servname, AddrInfo* hints, AddrInfo** res) @if(SUPPORTS_INET);
+
+<*
+ freeaddrinfo() frees an AddrInfo created by getaddrinfo.
+
+ @param [&in] res
+*>
 extern fn void freeaddrinfo(AddrInfo* res) @if(SUPPORTS_INET);
+
+<*
+ Set options on a socket.
+
+ @param [out] optval
+*>
 extern fn CInt setsockopt(NativeSocket socket, CInt level, CInt optname, void* optval, Socklen_t optlen) @if(SUPPORTS_INET);
-extern fn CInt getsockopt(NativeSocket socket, CInt level, CInt optname, void* optval, Socklen_t optlen) @if(SUPPORTS_INET);
+
+<*
+ Get options on a socket
+
+ @param [in] optval
+ @param [inout] optlen
+*>
+extern fn CInt getsockopt(NativeSocket socket, CInt level, CInt optname, void* optval, Socklen_t* optlen) @if(SUPPORTS_INET);
 
 module std::net::os @if(!env::LIBC || !(env::WIN32 || env::DARWIN || env::LINUX || env::ANDROID || env::OPENBSD));
 

@@ -14,14 +14,14 @@ const Allocator SET_HEAP_ALLOCATOR = (Allocator)&dummy;
 <* Copy the ONHEAP allocator to initialize to a set that is heap allocated *>
 const HashSet ONHEAP = { .allocator = SET_HEAP_ALLOCATOR };
 
-struct Entry 
+struct Entry
 {
 	uint hash;
 	Value value;
 	Entry* next;
 }
 
-struct HashSet (Printable) 
+struct HashSet (Printable)
 {
 	Entry*[] table;
 	Allocator allocator;
@@ -39,7 +39,7 @@ fn int HashSet.len(&self) @operator(len) => (int) self.count;
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn HashSet* HashSet.init(&self, Allocator allocator, usz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR) 
+fn HashSet* HashSet.init(&self, Allocator allocator, usz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	capacity = math::next_power_of_2(capacity);
 	self.allocator = allocator;
@@ -285,7 +285,7 @@ fn usz HashSet.remove_all_from(&set, HashSet* other)
 <*
  Free all memory allocated by the hash set.
 *>
-fn void HashSet.free(&set) 
+fn void HashSet.free(&set)
 {
 	if (!set.is_initialized()) return;
 	set.clear();
@@ -329,7 +329,23 @@ fn void HashSet.reserve(&set, usz capacity)
 	}
 }
 
+fn Value[] HashSet.tvalues(&self) => self.values(tmem) @inline;
 
+fn Value[] HashSet.values(&self, Allocator allocator)
+{
+	if (!self.count) return {};
+	Value[] list = allocator::alloc_array(allocator, Value, self.count);
+	usz index = 0;
+	foreach (Entry* entry : self.table)
+	{
+		while (entry)
+		{
+			list[index++] = entry.value;
+			entry = entry.next;
+		}
+	}
+	return list;
+}
 
 // --- Set Operations ---
 

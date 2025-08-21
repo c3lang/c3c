@@ -52,6 +52,8 @@ typedef uint16_t FileId;
 #define MAX_PRIORITY 0xFFFF
 #define MAX_TYPE_SIZE UINT32_MAX
 #define MAX_GLOBAL_DECL_STACK (65536)
+#define MAX_MODULE_NAME 31
+#define MAX_MODULE_PATH 63
 #define MEMCMP_INLINE_REGS 8
 #define UINT128_MAX ((Int128) { UINT64_MAX, UINT64_MAX })
 #define INT128_MAX ((Int128) { INT64_MAX, UINT64_MAX })
@@ -2434,7 +2436,7 @@ void sema_expr_convert_enum_to_int(Expr *expr);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
 bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_resolve);
-Decl *sema_resolve_type_method(CanonicalType *type, const char *method_name);
+Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const char *method_name);
 Decl *sema_resolve_method(Decl *type, const char *method_name);
 Decl *sema_resolve_method_only(Decl *type, const char *method_name);
 Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const char *method_name);

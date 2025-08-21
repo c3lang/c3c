@@ -121,7 +121,24 @@ fn usz ElasticArray.add_all_to_limit(&self, ElasticArray* other_list)
 
  @param [in] array
 *>
-fn usz ElasticArray.add_array_to_limit(&self, Type[] array)
+fn usz ElasticArray.add_array_to_limit(&self, Type[] array) @deprecated("Use push_all_to_limit")
+{
+	if (!array.len) return 0;
+	foreach (i, &value : array)
+	{
+		if (self.size == MAX_SIZE) return array.len - i;
+		self.entries[self.size++] = *value;
+	}
+	return 0;
+}
+
+<*
+ Add as many values from this array as possible, returning the
+ number of elements that didn't fit.
+
+ @param [in] array
+*>
+fn usz ElasticArray.push_all_to_limit(&self, Type[] array)
 {
 	if (!array.len) return 0;
 	foreach (i, &value : array)
@@ -139,7 +156,7 @@ fn usz ElasticArray.add_array_to_limit(&self, Type[] array)
  @require array.len + self.size <= MAX_SIZE : `Size would exceed max.`
  @ensure self.size >= array.len
 *>
-fn void ElasticArray.add_array(&self, Type[] array)
+fn void ElasticArray.add_array(&self, Type[] array) @deprecated("Use push_all")
 {
 	if (!array.len) return;
 	foreach (&value : array)
@@ -148,6 +165,21 @@ fn void ElasticArray.add_array(&self, Type[] array)
 	}
 }
 
+<*
+ Add the values of an array to this list.
+
+ @param [in] array
+ @require array.len + self.size <= MAX_SIZE : `Size would exceed max.`
+ @ensure self.size >= array.len
+*>
+fn void ElasticArray.push_all(&self, Type[] array)
+{
+	if (!array.len) return;
+	foreach (&value : array)
+	{
+		self.entries[self.size++] = *value;
+	}
+}
 
 
 <*

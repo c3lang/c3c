@@ -1851,7 +1851,7 @@ static bool sema_analyse_operator_common(SemaContext *context, Decl *method, Typ
 
 Decl *sema_find_untyped_operator(Type *type, OperatorOverload operator_overload, Decl *skipped)
 {
-	type = type->canonical;
+	type = type_no_optional(type)->canonical;
 	assert(operator_overload < OVERLOAD_TYPED_START);
 	if (!type_may_have_sub_elements(type)) return NULL;
 	Decl *def = type->decl;
@@ -2098,7 +2098,7 @@ static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *
 			RETURN_SEMA_ERROR(rtype, "%s has unknown size and cannot be used as a return type.",
 			                  type_quoted_error_string(rtype->type));
 	}
-	if (method->func_decl.operator == OVERLOAD_ELEMENT_REF && !type_is_pointer(rtype->type))
+	if (method->func_decl.operator == OVERLOAD_ELEMENT_REF && !type_is_pointer(type_no_optional(rtype->type)))
 	{
 		RETURN_SEMA_ERROR(rtype, "The return type must be a pointer, but it is returning %s, did you mean to overload [] instead?",
 		                  type_quoted_error_string(rtype->type));
@@ -2224,7 +2224,7 @@ static inline void sema_get_overload_arguments(Decl *method, Type **value_ref, T
 			*index_ref = method->func_decl.signature.params[1]->type->canonical;
 			return;
 		case OVERLOAD_ELEMENT_REF:
-			*value_ref = type_no_optional(typeget(method->func_decl.signature.rtype)->canonical->pointer);
+			*value_ref = type_no_optional(typeget(method->func_decl.signature.rtype))->canonical->pointer;
 			*index_ref = method->func_decl.signature.params[1]->type->canonical;
 			return;
 		case OVERLOAD_ELEMENT_SET:
@@ -2309,7 +2309,7 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 			{
 				RETURN_SEMA_ERROR(method, "Only regular overloads can have untyped right hand parameters");
 			}
-			is_wildcard = method->func_decl.is_wildcard_overload = true;
+			is_wildcard = (method->func_decl.is_wildcard_overload = true);
 			second_param = type_void;
 		}
 		second_param = second_param->canonical;
@@ -2319,7 +2319,7 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 	{
 		RETURN_SEMA_ERROR(method, "Only user-defined types may have overloads.");
 	}
-	
+
 	Decl *other = NULL;
 	if (operator >= OVERLOAD_TYPED_START)
 	{
@@ -2737,6 +2737,7 @@ static inline bool sema_compare_method_with_interface(SemaContext *context, Decl
  */
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 {
+	ASSERT_SPAN(decl, decl->decl_kind == DECL_FUNC);
 	// Check for @init, @finalizer, @test and @benchmark
 	if (decl->func_decl.attr_init | decl->func_decl.attr_finalizer)
 	{
@@ -4787,6 +4788,16 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	if (!decl->alignment)
 	{
 		if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
+	}
+	if (decl->var.kind == VARDECL_LOCAL && type_size(decl->type) > compiler.build.max_stack_object_size * 1024)
+	{
+		size_t size = type_size(decl->type);
+		RETURN_SEMA_ERROR(
+			decl, "The size of this local variable (%s%d Kb) exceeds the maximum allowed stack object size (%d Kb), "
+			"you can increase this limit with --max-stack-object-size, but be aware that too large objects "
+			"allocated on the stack may lead to the stack running out of memory.", size % 1024 == 0 ? "" : "over ",
+			size / 1024,
+			compiler.build.max_stack_object_size);
 	}
 	return success;
 }

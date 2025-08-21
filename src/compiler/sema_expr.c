@@ -143,8 +143,8 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 static void sema_binary_unify_voidptr(Expr *left, Expr *right, Type **left_type_ref, Type **right_type_ref);
 
 // -- function helper functions
-static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type,
-											  bool optional, bool *no_match_ref);
+static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Expr *var,
+                                              Type *func_ptr_type, bool optional,bool *no_match_ref);
 static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr, Decl *decl,
 											   Expr *struct_var, bool optional, bool *no_match_ref);
 
@@ -2386,7 +2386,7 @@ SKIP_CONTRACTS:
 	return true;
 }
 
-static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type, bool optional, bool *no_match_ref)
+static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Expr *var, Type *func_ptr_type, bool optional,bool *no_match_ref)
 {
 	func_ptr_type = type_flat_distinct_inline(func_ptr_type);
 	if (func_ptr_type->type_kind != TYPE_FUNC_PTR)
@@ -2398,6 +2398,10 @@ static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, 
 		}
 		RETURN_SEMA_ERROR(expr, "Only macros, functions and function pointers may be invoked, this is of type '%s'.",
 						  type_to_error_string(func_ptr_type));
+	}
+	if (sema_cast_const(var) && expr_is_const_pointer(var) && var->const_expr.ptr == 0)
+	{
+		RETURN_SEMA_ERROR(var, "You cannot call a null function pointer.");
 	}
 	Type *pointee = func_ptr_type->pointer;
 	expr->call_expr.is_pointer_call = true;
@@ -2578,7 +2582,6 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			goto SKIP_LINK;
 		}
 		Decl *func = context->call_env.current_function;
-		ASSERT_SPAN(func, func);
 		ASSERT_SPAN(func, func->resolved_attributes);
 		if (!func->attrs_resolved)
 		{
@@ -2773,7 +2776,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		if (param->var.init_expr)
 		{
 			Type *param_type = param->type;
-			if (param_type && (param->var.out_param || param->var.not_null))
+			if (param_type && param->var.type_info && (param->var.out_param || param->var.not_null))
 			{
 				param_type = type_flatten(param_type);
 				if (param_type->type_kind != TYPE_POINTER && param_type->type_kind != TYPE_SLICE && param_type->type_kind != TYPE_INTERFACE && param_type->type_kind != TYPE_ANY)
@@ -2782,7 +2785,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 					goto EXIT_FAIL;
 				}
 			}
-			if (param->var.not_null)
+			if (param->var.not_null && (param_type->type_kind == TYPE_POINTER || param_type->type_kind == TYPE_SLICE || param_type->type_kind == TYPE_INTERFACE || param_type->type_kind == TYPE_ANY))
 			{
 				Expr *expr = expr_variable(param);
 				Expr *binary = expr_new_expr(EXPR_BINARY, expr);
@@ -3130,9 +3133,9 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 	expr->call_expr.is_type_method = struct_var != NULL;
 	if (decl == NULL)
 	{
-		return sema_expr_analyse_var_call(context, expr,
-										  type_flatten(exprptr(expr->call_expr.function)->type), optional,
-										  no_match_ref);
+		Expr *var = exprptr(expr->call_expr.function);
+		return sema_expr_analyse_var_call(context, expr, var, type_flatten(var->type),
+		                                  optional, no_match_ref);
 	}
 	if (!sema_analyse_decl(context, decl)) return false;
 	switch (decl->decl_kind)
@@ -3142,9 +3145,14 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 			expr->call_expr.is_func_ref = true;
 			return sema_expr_analyse_macro_call(context, expr, struct_var, decl, optional, no_match_ref);
 		case DECL_VAR:
+		{
 			ASSERT_SPAN(expr, struct_var == NULL);
-			return sema_expr_analyse_var_call(context, expr, decl->type->canonical, optional || IS_OPTIONAL(decl),
-											  no_match_ref);
+			Expr *var = exprptr(expr->call_expr.function);
+			ASSERT_SPAN(expr, var);
+			return sema_expr_analyse_var_call(context, expr, var, decl->type->canonical,
+											  optional || IS_OPTIONAL(decl), no_match_ref);
+
+		}
 		case DECL_FUNC:
 			expr->call_expr.func_ref = declid(decl);
 			expr->call_expr.is_func_ref = true;
@@ -3683,6 +3691,10 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 		if (!subscript_type)
 		{
 			if (check_valid) return false;
+			if (overload_type == OVERLOAD_ELEMENT_REF)
+			{
+				RETURN_SEMA_ERROR(expr, "Getting a reference to a subscript of %s is not possible.", type_quoted_error_string(subscripted->type));
+			}
 			RETURN_SEMA_ERROR(expr, "Indexing a value of type %s is not possible.", type_quoted_error_string(subscripted->type));
 		}
 		if (!overload) current_type = type_flatten(current_expr->type);
@@ -3781,13 +3793,27 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 {
 	// Evaluate the expression to index.
 	Expr *subscripted = exprptr(expr->subscript_expr.expr);
-	if (subscripted->expr_kind == EXPR_CT_IDENT)
+	switch (subscripted->expr_kind)
 	{
-		if (!sema_analyse_expr_lvalue(context, subscripted, NULL)) return false;
-	}
-	else
-	{
-		if (!sema_analyse_expr(context, subscripted)) return false;
+		case EXPR_CT_IDENT:
+			if (!sema_analyse_expr_lvalue(context, subscripted, NULL)) return false;
+			break;
+		case EXPR_SUBSCRIPT:
+		{
+			Expr *inner = expr_copy(subscripted);
+			subscripted->expr_kind = EXPR_UNARY;
+			subscripted->unary_expr.operator = UNARYOP_ADDR;
+			subscripted->unary_expr.expr = inner;
+
+			inner = expr_copy(subscripted);
+			subscripted->expr_kind = EXPR_UNARY;
+			subscripted->unary_expr.operator = UNARYOP_DEREF;
+			subscripted->unary_expr.expr = inner;
+			FALLTHROUGH;
+		}
+		default:
+			if (!sema_analyse_expr(context, subscripted)) return false;
+			break;
 	}
 
 	if (!sema_expr_check_assign(context, expr, NULL)) return false;
@@ -4639,7 +4665,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 
 	if (!type_may_have_sub_elements(canonical))
 	{
-		Decl *member = sema_resolve_type_method(parent_type->canonical, name);
+		Decl *member = sema_resolve_type_method(context, parent_type->canonical, name);
 		if (!decl_ok(member)) return false;
 		if (!member)
 		{
@@ -4681,7 +4707,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	if (!decl_ok(member)) return false;
 	if (!member)
 	{
-		member = sema_resolve_type_method(decl->type, name);
+		member = sema_resolve_type_method(context, decl->type, name);
 		if (!decl_ok(member)) return false;
 	}
 	if (!member)
@@ -6100,7 +6126,7 @@ CHECK_DEEPER:
 	// 9. At this point we may only have distinct, struct, union, error, enum, interface
 	if (!type_may_have_sub_elements(type))
 	{
-		Decl *method = sema_resolve_type_method(type, kw);
+		Decl *method = sema_resolve_type_method(context, type, kw);
 		if (!method)
 		{
 			if (missing_ref) goto MISSING_REF;
@@ -11773,7 +11799,7 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 			.call_expr.is_func_ref = true,
 			.call_expr.is_type_method = true,
 	};
-	Type *type = parent->type->canonical;
+	Type *type = type_no_optional(parent->type)->canonical;
 	Decl *first_param = method_decl->func_decl.signature.params[0];
 	Type *first = first_param->type->canonical;
 	// Deref / addr as needed.
@@ -11788,7 +11814,7 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 			if (!sema_expr_rewrite_insert_deref(context, parent)) return false;
 		}
 	}
-	ASSERT_SPAN(method_call, parent && parent->type && first == parent->type->canonical);
+	ASSERT_SPAN(method_call, first == type_no_optional(parent->type)->canonical);
 	unit_register_external_symbol(context, method_decl);
 	if (!sema_expr_analyse_general_call(context, method_call, method_decl, parent, false,
 										NULL)) return expr_poison(method_call);
