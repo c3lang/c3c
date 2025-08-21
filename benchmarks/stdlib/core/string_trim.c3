@@ -32,15 +32,15 @@ macro void trim_bench($trim_str, String $target = WHITESPACE_TARGET) => @pool()
 
 module string_trim_wars @benchmark;
 
-fn void trim_control() => (void)trim_bench(" ");   // only spaces
+fn void trim_control() => trim_bench(" ");   // only spaces
 
-fn void trim_whitespace_default() => (void)trim_bench("\t\n\r ");   // default set
-fn void trim_whitespace_default_ordered() => (void)trim_bench(" \n\t\r");   // default \w set, but ordered by expected freq
+fn void trim_whitespace_default() => trim_bench("\t\n\r ");   // default set
+fn void trim_whitespace_default_ordered() => trim_bench(" \n\t\r");   // default \w set, but ordered by expected freq
 
-fn void trim_whitespace_bad() => (void)trim_bench("\f\v\n\t\r ");   // bad-perf ordering, all \w
+fn void trim_whitespace_bad() => trim_bench("\f\v\n\t\r ");   // bad-perf ordering, all \w
 
-fn void trim_whitespace_ordered_extended() => (void)trim_bench(" \n\t\r\f\v");   // proposed ordering, all \w
-fn void trim_charset_whitespace() => (void)trim_bench(ascii::WHITESPACE_SET);   // use charset, all \w
+fn void trim_whitespace_ordered_extended() => trim_bench(" \n\t\r\f\v");   // proposed ordering, all \w
+fn void trim_charset_whitespace() => trim_bench(ascii::WHITESPACE_SET);   // use charset, all \w
 
-fn void trim_many() => (void)trim_bench(" \n\t\r\f\v0123456789", WHITESPACE_NUMERIC_TARGET);   // ordered, all \w + num
-fn void trim_charset_many() => (void)trim_bench(ascii::WHITESPACE_SET | ascii::NUMBER_SET, WHITESPACE_NUMERIC_TARGET);   // set, all \w + num
+fn void trim_many() => trim_bench(" \n\t\r\f\v0123456789", WHITESPACE_NUMERIC_TARGET);   // ordered, all \w + num
+fn void trim_charset_many() => trim_bench(ascii::WHITESPACE_SET | ascii::NUMBER_SET, WHITESPACE_NUMERIC_TARGET);   // set, all \w + num
