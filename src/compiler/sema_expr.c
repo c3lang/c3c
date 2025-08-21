@@ -11179,7 +11179,8 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 			if (mutate) sema_expr_flatten_const_ident(expr->access_resolved_expr.parent);
 			return true;
 		case EXPR_TYPEINFO:
-			RETURN_SEMA_ERROR(expr, "A type must be followed by either (...) or '.' unless passed as a macro type argument or assigned to a compile time type variable.");
+			expr_rewrite_const_typeid(expr, expr->type_expr->type);
+			return true;
 		case EXPR_CT_IDENT:
 			if (mutate && !sema_cast_ct_ident_rvalue(context, expr)) return false;
 			break;

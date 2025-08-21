@@ -19,6 +19,7 @@
 - `foo[x][y] = b` now interpreted as `(*&foo[x])[y] = b` which allows overloads to do chained [] accesses.
 - Error if a stack allocated variable is too big (configurable with `--max-stack-object-size`).
 - Add `@safeinfer` to allow `var` to be used locally.
+- Types converts to typeid implicitly.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
