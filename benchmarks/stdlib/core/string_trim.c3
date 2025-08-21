@@ -14,6 +14,8 @@ macro String trim_bench($trim_str, String $target = WHITESPACE_TARGET) => @pool(
 	String s1;
 	String s2 = $target.tcopy();
 
+	runtime::@start_benchmark();
+
 	$switch:
 	$case @typeis($trim_str, String):
 		s1 = s2.trim($trim_str);
@@ -21,6 +23,8 @@ macro String trim_bench($trim_str, String $target = WHITESPACE_TARGET) => @pool(
 		s1 = s2.trim_charset($trim_str);
 	$default: $error "Unable to determine the right String `trim` operation to use.";
 	$endswitch
+
+	runtime::@end_benchmark();
 
 	return s1;
 }
