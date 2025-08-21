@@ -1,7 +1,7 @@
 module string_trim_wars;
 
-const String WHITESPACE_TARGET = "    \n \t \ra \tbcde\r\n \t  \v";
-const String WHITESPACE_NUMERIC_TARGET = " 25290   09\n69 \t 99\ra \tbcde123\r\n32 3\t4 43 \v0000\t";
+const String WHITESPACE_TARGET = "    \n\t\r\f\va \tbcde\v\f\r\t\n    ";
+const String WHITESPACE_NUMERIC_TARGET = " 25290   0969  99a \tbcde12332 34 43          0000";
 
 fn void initialize_bench() @init
 {
@@ -9,7 +9,7 @@ fn void initialize_bench() @init
 	set_benchmark_max_iterations(1 << 24);
 }
 
-macro String trim_bench($trim_str, String $target = WHITESPACE_TARGET) => @pool()
+macro void trim_bench($trim_str, String $target = WHITESPACE_TARGET) => @pool()
 {
 	String s1;
 	String s2 = $target.tcopy();
@@ -24,15 +24,15 @@ macro String trim_bench($trim_str, String $target = WHITESPACE_TARGET) => @pool(
 	$default: $error "Unable to determine the right String `trim` operation to use.";
 	$endswitch
 
-	runtime::@end_benchmark();
+	@volatile_load(s1);
 
-	return s1;
+	runtime::@end_benchmark();
 }
 
 
 module string_trim_wars @benchmark;
 
-fn void trim_control() => (void)trim_bench("");   // no trim
+fn void trim_control() => (void)trim_bench(" ");   // only spaces
 
 fn void trim_whitespace_default() => (void)trim_bench("\t\n\r ");   // default set
 fn void trim_whitespace_default_ordered() => (void)trim_bench(" \n\t\r");   // default \w set, but ordered by expected freq
