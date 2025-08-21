@@ -9,15 +9,16 @@ fn void initialize_bench() @init
 	set_benchmark_max_iterations(1 << 24);
 }
 
-macro String trim_bench($trim_str, String $target = WHITESPACE_TARGET)
+macro String trim_bench($trim_str, String $target = WHITESPACE_TARGET) => @pool()
 {
 	String s1;
+	String s2 = $target.tcopy();
 
 	$switch:
 	$case @typeis($trim_str, String):
-		s1 = $target.trim($trim_str);
+		s1 = s2.trim($trim_str);
 	$case @typeis($trim_str, AsciiCharset):
-		s1 = $target.trim_charset($trim_str);
+		s1 = s2.trim_charset($trim_str);
 	$default: $error "Unable to determine the right String `trim` operation to use.";
 	$endswitch
 
