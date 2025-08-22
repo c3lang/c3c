@@ -3055,6 +3055,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_PURE] = ATTR_CALL,
 			[ATTRIBUTE_REFLECT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_SAFEMACRO] = ATTR_MACRO,
+			[ATTRIBUTE_SAFEINFER] = ATTR_GLOBAL | ATTR_LOCAL,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_STRUCTLIKE] = ATTR_DISTINCT,
 			[ATTRIBUTE_TAG] = ATTR_BITSTRUCT_MEMBER | ATTR_MEMBER | USER_DEFINED_TYPES | CALLABLE_TYPE,
@@ -3420,6 +3421,9 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_COMPACT:
 			decl->attr_nopadding = true;
 			decl->attr_compact = true;
+			break;
+		case ATTRIBUTE_SAFEINFER:
+			decl->var.safe_infer = true;
 			break;
 		case ATTRIBUTE_NOINIT:
 			decl->var.no_init = true;
@@ -4651,9 +4655,9 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			return decl_poison(decl);
 		}
 		ASSERT(!decl->var.no_init);
-		if (kind == VARDECL_LOCAL && !context_is_macro(context) && init_expr->expr_kind != EXPR_LAMBDA)
+		if (kind == VARDECL_LOCAL && !context_is_macro(context) && init_expr->expr_kind != EXPR_LAMBDA && !decl->var.safe_infer)
 		{
-			SEMA_ERROR(decl, "Defining a variable using 'var %s = ...' is only allowed inside a macro, or when defining a lambda.", decl->name);
+			SEMA_ERROR(decl, "Defining a variable using 'var %s = ...' is only allowed inside a macro, or when defining a lambda. You can override this by adding the attribute '@safeinfer' to the declaration.", decl->name);
 			return decl_poison(decl);
 		}
 		if (!sema_analyse_expr(context, init_expr)) return decl_poison(decl);
@@ -4788,6 +4792,16 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	if (!decl->alignment)
 	{
 		if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
+	}
+	if (decl->var.kind == VARDECL_LOCAL && type_size(decl->type) > compiler.build.max_stack_object_size * 1024)
+	{
+		size_t size = type_size(decl->type);
+		RETURN_SEMA_ERROR(
+			decl, "The size of this local variable (%s%d Kb) exceeds the maximum allowed stack object size (%d Kb), "
+			"you can increase this limit with --max-stack-object-size, but be aware that too large objects "
+			"allocated on the stack may lead to the stack running out of memory.", size % 1024 == 0 ? "" : "over ",
+			size / 1024,
+			compiler.build.max_stack_object_size);
 	}
 	return success;
 }

@@ -2643,8 +2643,8 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	BEValue parent_addr_x;
 	llvm_emit_expr(c, &parent_addr_x, parent_expr);
 	LLVMValueRef parent_load_value = NULL;
-	LLVMValueRef parent_base;
-	LLVMValueRef parent_addr;
+	LLVMValueRef parent_base = NULL;
+	LLVMValueRef parent_addr = NULL;
 	if (parent_type->type_kind == TYPE_POINTER)
 	{
 		llvm_value_rvalue(c, &parent_addr_x);

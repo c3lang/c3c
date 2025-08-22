@@ -545,7 +545,7 @@ RETRY:
 		}
 		default:
 			// Check type sizes
-			goto CHECK_SIZE;
+			break;
 	}
 CHECK_SIZE:
 	if (type_size(expr->type) > type_size(type)) return expr;
@@ -721,13 +721,9 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 			                  type_quoted_error_string(to),
 			                  type_to_error_string(type_no_optional(to)));
 		}
-		else
-		{
-			RETURN_CAST_ERROR(expr,
-			                  "It is not possible to cast %s to the inner type %s.",
-			                  type_quoted_error_string(type_no_optional(expr->type)), type_quoted_error_string(to));
-		}
-
+		RETURN_CAST_ERROR(expr,
+		                  "It is not possible to cast %s to the inner type %s.",
+		                  type_quoted_error_string(type_no_optional(expr->type)), type_quoted_error_string(to));
 	}
 	if (may_cast_explicit)
 	{
@@ -837,7 +833,7 @@ static bool rule_ptr_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 }
 
 
-static bool rule_all_ok(CastContext *cc, bool is_explicit, bool silent)
+static bool rule_all_ok(CastContext *cc UNUSED, bool is_explicit UNUSED, bool silent UNUSED)
 {
 	return true;
 }

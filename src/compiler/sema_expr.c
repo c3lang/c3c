@@ -1461,13 +1461,9 @@ static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, 
 	{
 		if (callee->macro)
 		{
-			SEMA_ERROR(body_arguments[0], "This macro does not support arguments.");
+			RETURN_SEMA_ERROR(body_arguments[0], "This macro does not support arguments.");
 		}
-		else
-		{
-			SEMA_ERROR(body_arguments[0], "Only macro calls may have body arguments for a trailing block.");
-		}
-		return false;
+		RETURN_SEMA_ERROR(body_arguments[0], "Only macro calls may have body arguments for a trailing block.");
 	}
 
 	// 2. If there is a body then...
@@ -1476,14 +1472,12 @@ static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, 
 		// 2a. If not a macro then this is an error.
 		if (!callee->macro)
 		{
-			SEMA_ERROR(call, "Only macro calls may take a trailing block.");
-			return false;
+			RETURN_SEMA_ERROR(call, "Only macro calls may take a trailing block.");
 		}
 		// 2b. If we don't have a block parameter, then this is an error as well
 		if (!callee->block_parameter)
 		{
-			SEMA_ERROR(call, "This macro does not support trailing statements, please remove it.");
-			return false;
+			RETURN_SEMA_ERROR(call, "This macro does not support trailing statements, please remove it.");
 		}
 
 		// 2c. This is a macro and it has a block parameter. Everything is fine!
@@ -1494,8 +1488,7 @@ static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, 
 	if (callee->block_parameter)
 	{
 		ASSERT_SPAN(call, callee->macro);
-		SEMA_ERROR(call, "Expected call to have a trailing statement, did you forget to add it?");
-		return false;
+		RETURN_SEMA_ERROR(call, "Expected call to have a trailing statement, did you forget to add it?");
 	}
 
 	// 4. No "body" and no block parameter, this is fine.
@@ -11186,7 +11179,8 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 			if (mutate) sema_expr_flatten_const_ident(expr->access_resolved_expr.parent);
 			return true;
 		case EXPR_TYPEINFO:
-			RETURN_SEMA_ERROR(expr, "A type must be followed by either (...) or '.' unless passed as a macro type argument or assigned to a compile time type variable.");
+			expr_rewrite_const_typeid(expr, expr->type_expr->type);
+			return true;
 		case EXPR_CT_IDENT:
 			if (mutate && !sema_cast_ct_ident_rvalue(context, expr)) return false;
 			break;

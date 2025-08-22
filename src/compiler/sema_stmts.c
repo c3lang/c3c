@@ -49,7 +49,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, CanonicalType *switch_type, Ast **cases);
 
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
-static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan source);
+static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan span);
 static bool sema_analyse_ensure(SemaContext *context, Ast *directive);
 static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive);
 
@@ -880,11 +880,9 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 		{
 			if (decl->var.kind == VARDECL_UNWRAPPED)
 			{
-				SEMA_ERROR(ident, "This variable is already unwrapped, so you cannot use 'try' on it again, please remove the 'try'.");
-				return false;
+				RETURN_SEMA_ERROR(ident, "This variable is already unwrapped, so you cannot use 'try' on it again, please remove the 'try'.");
 			}
-			SEMA_ERROR(ident, "Expected this variable to be an optional, otherwise it can't be used for unwrap, maybe you didn't intend to use 'try'?");
-			return false;
+			RETURN_SEMA_ERROR(ident, "Expected this variable to be an optional, otherwise it can't be used for unwrap, maybe you didn't intend to use 'try'?");
 		}
 		expr->expr_kind = EXPR_TRY;
 		expr->try_expr = (ExprTry) { .decl = decl };
@@ -929,7 +927,6 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	if (!IS_OPTIONAL(optional))
 	{
 		RETURN_SEMA_ERROR(optional, "Expected an optional expression to 'try' here. If it isn't an optional, remove 'try'.");
-		return false;
 	}
 
 	if (var_type)
@@ -959,9 +956,8 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 
 static inline bool sema_analyse_try_unwrap_chain(SemaContext *context, Expr *expr, CondType cond_type, CondResult *result)
 {
-	ASSERT(cond_type == COND_TYPE_UNWRAP_BOOL);
-
-	ASSERT(expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN);
+	ASSERT_SPAN(expr, cond_type == COND_TYPE_UNWRAP_BOOL);
+	ASSERT_SPAN(expr, expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN);
 
 	FOREACH(Expr *, chain_element, expr->try_unwrap_chain_expr)
 	{
@@ -3239,8 +3235,7 @@ static bool sema_analyse_ensure(SemaContext *context, Ast *directive)
 	{
 		if (expr->expr_kind == EXPR_DECL)
 		{
-			SEMA_ERROR(expr, "Only expressions are allowed.");
-			return false;
+			RETURN_SEMA_ERROR(expr, "Only expressions are allowed.");
 		}
 	}
 	return true;

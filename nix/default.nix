@@ -26,7 +26,10 @@ in llvmPackages.stdenv.mkDerivation (_:
     removeSuffix "\"" ( removePrefix "\"" ( elemAt ( splitString " " foundLine ) 2 ) );
 
   src = ../.;
-  
+ 
+  # See https://github.com/symphorien/nixseparatedebuginfod for usage
+  separateDebugInfo = true;
+
   # Here we substitute GIT_HASH which is not set for cmake in nix builds.
   # Similar situation is with __DATE__ and __TIME__ macros, which are
   # set to "Jan 01 1980 00:00:00" by default.
