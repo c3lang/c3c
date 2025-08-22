@@ -141,82 +141,17 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
  i *= 12;   // my_slice[2]
  ```
 
- The `#operation` parameter can be a function pointer or a lambda type. However, it can also be
- a brief string acting as a "summary operator". The summary operator is an alias to a pure labmda
- function that is inserted at compile-time.
-
- ```c3
- uint128[] input = {1, 4, -2};
- uint128 identity = 1;
- uint128 final = array::@reduce(input, identity, "<<<");   // 1.rotl(1).rotl(4).rotl(-2)
- assert(final == 8);
- ```
-
- The `"<<<"` token is an alias for the lambda `fn (i, e) => i.rotl(e);`, a bitwise rotate-left accumulator.
-
  @param [in] array
  @param identity
- @param #operation : "The operation to apply. This can be a lambda, function pointer, or string type."
+ @param #operation : "The reduction/folding labmda function or function pointer to apply."
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require @assignable_to(#operation, $typefrom(@reduce_fn(array, identity))) ||| @typeis(#operation, String)
+ @require @assignable_to(#operation, $typefrom(@reduce_fn(array, identity))) : "Invalid lambda or function pointer type"
 *>
 macro @reduce(array, identity, #operation)
 {
-	$if @assignable_to(#operation, $typefrom(@reduce_fn(array, identity))):
-		$typefrom(@reduce_fn(array, identity)) $func = #operation;
-		foreach (index, element : array) identity = $func(identity, element, index);
-	$else
-		var $InnerType = $typeof(array[0]);
-		var $IdentityType = $typeof(identity);
-
-		$if !types::is_numerical($InnerType) &&& !types::has_operator($InnerType, #operation):
-			$error "The InnerType of the array must have the given operator defined.";
-		$endif
-
-		$typeof(fn $IdentityType ($IdentityType i, $InnerType e, usz u) => i) $func;
-
-		$switch #operation:
-			$case "<<": $func = fn (i, e, u) => i << e;
-			$case ">>": $func = fn (i, e, u) => i >> e;
-			$case "+": $func = fn (i, e, u) => i + e;
-			$case "-": $func = fn (i, e, u) => i - e;
-			$case "*": $func = fn (i, e, u) => i * e;
-			$case "/": $func = fn (i, e, u) => i / e;
-			$case "%": $func = fn (i, e, u) => i % e;
-			$case "&": $func = fn (i, e, u) => i & e;
-			$case "|": $func = fn (i, e, u) => i | e;
-			$case "^": $func = fn (i, e, u) => i ^ e;
-			$case ".len": $func = fn (i, e, u) {
-				$if ($defined(e.len())):
-					return i + e.len();
-				$else
-					return i + e.len;
-				$endif
-			};
-			$default:
-				// Sigils specific to numeric types only. Done this way because no `$nextcase` token exists.
-				$if types::is_numerical($InnerType):
-					$switch #operation:
-						$case "<<<": $func = fn (i, e, u) => i.rotl(e);
-						$case ">>>": $func = fn (i, e, u) => i.rotr(e);
-						$case "|~": $func = fn (i, e, u) => i | ~e;
-						$case "&~": $func = fn (i, e, u) => i & ~e;
-						$case "count_positive": $func = fn (i, e, u) => i += (e > 0 ? 1 : 0);
-						$case "count_negative": $func = fn (i, e, u) => i += (e < 0 ? 1 : 0);
-						$case "count_zero": $func = fn (i, e, u) => i += (e == 0 ? 1 : 0);
-						$case "sum_squares": $func = fn (i, e, u) => i += (e * e);
-						$case "sum_cubes": $func = fn (i, e, u) => i += (e * e * e);
-						$default: $error "The given sigil is not a valid summary operator";
-					$endswitch
-				$else
-					$error "The given sigil is not a valid summary operator.";
-				$endif
-		$endswitch
-
-		foreach (index, element : array) identity = $func(identity, element, index) @pure;
-	$endif
-
+	$typefrom(@reduce_fn(array, identity)) $func = #operation;
+	foreach (index, element : array) identity = $func(identity, element, index);
 	return identity;
 }
 
@@ -235,7 +170,7 @@ macro @reduce(array, identity, #operation)
 *>
 macro @sum(array, identity_value = 0)
 {
-	return @reduce(array, ($typeof(array[0]))identity_value, "+");
+	return @reduce(array, ($typeof(array[0]))identity_value, fn (acc, e, u) => acc + e);
 }
 
 <*
@@ -253,7 +188,7 @@ macro @sum(array, identity_value = 0)
 *>
 macro @product(array, identity_value = 1)
 {
-	return @reduce(array, ($typeof(array[0]))identity_value, "*");
+	return @reduce(array, ($typeof(array[0]))identity_value, fn (acc, e, u) => acc * e);
 }
 
 

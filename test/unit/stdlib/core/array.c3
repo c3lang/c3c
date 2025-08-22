@@ -78,12 +78,7 @@ fn void reduce() => @pool()
 {
 	int[] int_slice = { 1, 8, 12 };
 	test::eq(2 * 1 * 8 * 12, array::@reduce(int_slice, 2, fn (i, e, u) => i * e));
-	test::eq(array::@reduce(int_slice, 2, "*"), array::@reduce(int_slice, 2, fn (i, e, u) => i * e));
 	test::eq(array::@product(int_slice, 2), array::@reduce(int_slice, 2, fn (i, e, u) => i * e));
-
-	test::eq(((uint128)2).rotl(1).rotl(8).rotl(12), array::@reduce(int_slice, 2, "<<<"));
-
-	test::eq(array::@reduce(int_slice, 5, "sum_cubes"), array::@reduce(int_slice, 5, fn (i, e, u) => i + (e * e * e)));
 
 	String[] c3_is_great = { "hello,", " world.", " C3 ", "is ", "great!" };
 	test::eq("Ahem! hello, world. C3 is great!", array::@reduce(c3_is_great, "Ahem! ", fn (i, e, u) => i.tconcat(e)));
@@ -91,8 +86,6 @@ fn void reduce() => @pool()
 	List {String} l;
 	l.push_all({ "abc", "adef", "ghi", "a12345" });
 	test::eq(array::@reduce(l, (usz)0, fn (acc, e, u) => acc + e.len + u), 0 + (3 + 0) + (4 + 1) + (3 + 2) + (6 + 3));
-	test::eq(16, array::@reduce(l, (usz)0, ".len"));
-	test::eq(array::@reduce(l, (usz)0, fn (acc, e, u) => acc + e.len), array::@reduce(l, (usz)0, ".len"));
 }
 
 fn void sum()
