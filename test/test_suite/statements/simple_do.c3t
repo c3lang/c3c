@@ -54,19 +54,12 @@ entry:
   store i32 10, ptr %i, align 4
   br label %loop.body
 
-loop.cond:                                        ; preds = %if.exit
-  %0 = load i32, ptr %i, align 4
-  %sub = sub i32 %0, 1
-  store i32 %sub, ptr %i, align 4
-  %gt = icmp sgt i32 %0, 0
-  br i1 %gt, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond, %entry
-  %1 = call i32 @foo.test()
-  call void (ptr, ...) @printf(ptr @.str, i32 %1)
-  %2 = load i32, ptr %i, align 4
-  %gt1 = icmp sgt i32 %2, 100
-  br i1 %gt1, label %if.then, label %if.exit
+  %0 = call i32 @foo.test()
+  call void (ptr, ...) @printf(ptr @.str, i32 %0)
+  %1 = load i32, ptr %i, align 4
+  %gt = icmp sgt i32 %1, 100
+  br i1 %gt, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %loop.body
   br label %loop.exit
@@ -74,33 +67,40 @@ if.then:                                          ; preds = %loop.body
 if.exit:                                          ; preds = %loop.body
   br label %loop.cond
 
-loop.exit:                                        ; preds = %if.then, %loop.cond
+loop.cond:                                        ; preds = %if.exit
+  %2 = load i32, ptr %i, align 4
+  %sub = sub i32 %2, 1
+  store i32 %sub, ptr %i, align 4
+  %gt1 = icmp sgt i32 %2, 0
+  br i1 %gt1, label %loop.body, label %loop.exit
+
+loop.exit:                                        ; preds = %loop.cond, %if.then
   store i32 1, ptr %i, align 4
-  br label %loop.body3
+  br label %loop.body2
 
-loop.cond2:                                       ; preds = %if.exit5
-  %3 = load i32, ptr %i, align 4
-  %add = add i32 %3, 1
-  store i32 %add, ptr %i, align 4
-  %lt = icmp slt i32 %3, 100
-  br i1 %lt, label %loop.body3, label %loop.exit6
-
-loop.body3:                                       ; preds = %loop.cond2, %loop.exit
-  %4 = call i32 @foo.test()
+loop.body2:                                       ; preds = %loop.cond5, %loop.exit
+  %3 = call i32 @foo.test()
+  %4 = load i32, ptr %i, align 4
+  call void (ptr, ...) @printf(ptr @.str.1, i32 %4, i32 %3)
   %5 = load i32, ptr %i, align 4
-  call void (ptr, ...) @printf(ptr @.str.1, i32 %5, i32 %4)
-  %6 = load i32, ptr %i, align 4
-  %smod = srem i32 %6, 3
+  %smod = srem i32 %5, 3
   %eq = icmp eq i32 %smod, 0
-  br i1 %eq, label %if.then4, label %if.exit5
+  br i1 %eq, label %if.then3, label %if.exit4
 
-if.then4:                                         ; preds = %loop.body3
+if.then3:                                         ; preds = %loop.body2
   br label %loop.exit6
 
-if.exit5:                                         ; preds = %loop.body3
-  br label %loop.cond2
+if.exit4:                                         ; preds = %loop.body2
+  br label %loop.cond5
 
-loop.exit6:                                       ; preds = %if.then4, %loop.cond2
+loop.cond5:                                       ; preds = %if.exit4
+  %6 = load i32, ptr %i, align 4
+  %add = add i32 %6, 1
+  store i32 %add, ptr %i, align 4
+  %lt = icmp slt i32 %6, 100
+  br i1 %lt, label %loop.body2, label %loop.exit6
+
+loop.exit6:                                       ; preds = %loop.cond5, %if.then3
   ret void
 }
 

@@ -520,7 +520,7 @@ bool type_is_comparable(Type *type)
 			return false;
 		case TYPE_UNION:
 		case TYPE_STRUCT:
-			return type->decl->attr_compact;
+			return type->decl->attr_compact && compiler.build.old_compact_eq;
 		case TYPE_BITSTRUCT:
 			type = type->decl->strukt.container_type->type;
 			goto RETRY;
@@ -1058,23 +1058,6 @@ bool type_is_structurally_equivalent(Type *type1, Type *type2)
 	return true;
 }
 
-bool type_is_user_defined(Type *type)
-{
-	switch (type->type_kind)
-	{
-		case TYPE_ENUM:
-		case TYPE_FUNC_RAW:
-		case TYPE_STRUCT:
-		case TYPE_UNION:
-		case TYPE_DISTINCT:
-		case TYPE_BITSTRUCT:
-		case TYPE_TYPEDEF:
-		case TYPE_INTERFACE:
-			return true;
-		default:
-			return false;
-	}
-}
 
 Type *type_get_indexed_type(Type *type)
 {

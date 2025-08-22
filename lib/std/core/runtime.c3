@@ -39,7 +39,7 @@ macro @enum_lookup_new($Type, $name, value)
 }
 
 
-module std::core::runtime @if(WASM_NOLIBC);
+module std::core::runtime @if(env::FREESTANDING_WASM);
 
 extern fn void __wasm_call_ctors();
 fn void wasm_initialize() @extern("_initialize") @wasm

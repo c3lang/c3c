@@ -104,8 +104,6 @@ extern fn Win32_BOOL symGetLineFromInlineContext(Win32_HANDLE hProcess, Win32_DW
 extern fn Win32_ULONG rtlWalkFrameChain(Win32_PVOID*, Win32_ULONG, Win32_ULONG) @extern("RtlWalkFrameChain");
 extern fn Win32_BOOL symInitialize(Win32_HANDLE hProcess, Win32_PCSTR userSearchPath, Win32_BOOL fInvadeProcess) @extern("SymInitialize");
 extern fn Win32_BOOL symCleanup(Win32_HANDLE hProcess) @extern("SymCleanup");
-extern fn Win32_DWORD getModuleFileNameA(Win32_HMODULE hModule, Win32_LPSTR lpFilename, Win32_DWORD nSize) @extern("GetModuleFileNameA");
-extern fn Win32_DWORD getModuleFileNameExA(Win32_HANDLE hProcess, Win32_HMODULE hModule, Win32_LPSTR lpFilename, Win32_DWORD nSize) @extern("GetModuleFileNameExA");
 extern fn Win32_DWORD64 symLoadModuleEx(Win32_HANDLE hProcess, Win32_HANDLE hFile, Win32_PCSTR imageName, Win32_PCSTR moduleName, Win32_DWORD64 baseOfDll, Win32_DWORD dllSize, Win32_PMODLOAD_DATA data, Win32_DWORD flags) @extern("SymLoadModule");
 extern fn Win32_BOOL stackWalk64(Win32_DWORD machineType, Win32_HANDLE hProcess, Win32_HANDLE hThread, Win32_LPSTACKFRAME64 stackFrame, Win32_PVOID contextRecord, Win32_PREAD_PROCESS_MEMORY_ROUTINE64   readMemoryRoutine, Win32_PFUNCTION_TABLE_ACCESS_ROUTINE64 functionTableAccessRoutine, Win32_PGET_MODULE_BASE_ROUTINE64 getModuleBaseRoutine, Win32_PTRANSLATE_ADDRESS_ROUTINE64 translateAddress) @extern("StackWalk64");
 extern fn void rtlCaptureContext(Win32_PCONTEXT contextRecord) @extern("RtlCaptureContext");
@@ -120,8 +118,6 @@ extern fn Win32_BOOL symFromAddr(Win32_HANDLE hProcess, Win32_DWORD64 address, W
 extern fn Win32_BOOL symGetLineFromAddr64(Win32_HANDLE hProcess, Win32_DWORD64 dwAddr, Win32_PDWORD pdwDisplacement, Win32_PIMAGEHLP_LINE64 line) @extern("SymGetLineFromAddr64");
 extern fn Win32_WORD rtlCaptureStackBackTrace(Win32_DWORD framesToSkip, Win32_DWORD framesToCapture, Win32_PVOID *backTrace, Win32_PDWORD backTraceHash) @extern("RtlCaptureStackBackTrace");
 extern fn Win32_BOOL symGetModuleInfo64(Win32_HANDLE hProcess, Win32_DWORD64 qwAddr, Win32_PIMAGEHLP_MODULE64 moduleInfo) @extern("SymGetModuleInfo64");
-extern fn Win32_HANDLE getModuleHandleA(Win32_LPCSTR lpModuleName) @extern("GetModuleHandleA");
-extern fn Win32_HANDLE getModuleHandleW(Win32_LPCWSTR lpModuleName) @extern("GetModuleHandleW");
 
 fn Win32_DWORD? load_modules()
 {

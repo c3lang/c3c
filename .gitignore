@@ -1,12 +1,16 @@
 # Prerequisites
 *.d
 testrun
+benchmarkrun
+
 # Object files
 *.o
 *.ko
 *.obj
 *.elf
 *.ll
+*.wasm
+*.s
 
 # Linker output
 *.ilk
@@ -76,8 +80,10 @@ TAGS
 /.cache/
 /compile_commands.json
 
-# 'nix build' resulting symlink
+# Nix
 result
+/.envrc
+/.direnv/
 
 # macOS
 .DS_Store

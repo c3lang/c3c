@@ -2,10 +2,11 @@ module std::core::values;
 import std::core::types;
 
 
+macro bool @typematch(#value1, #value2) @builtin @const => $typeof(#value1) == $typeof(#value2);
 <*
  Return true if two values have the same type before any conversions.
 *>
-macro bool @is_same_type(#value1, #value2) @const => $typeof(#value1).typeid == $typeof(#value2).typeid;
+macro bool @is_same_type(#value1, #value2) @const @deprecated("Use @typematch") => $typeof(#value1).typeid == $typeof(#value2).typeid;
 macro bool @is_bool(#value) @const => types::is_bool($typeof(#value));
 macro bool @is_int(#value) @const => types::is_int($typeof(#value));
 macro bool @is_flat_intlike(#value) @const => types::is_flat_intlike($typeof(#value));
@@ -51,6 +52,7 @@ macro @select(bool $bool, #value_1, #value_2) @builtin
 		return #value_2;
 	$endif
 }
+
 macro promote_int_same(x, y)
 {
 	$if @is_int(x):

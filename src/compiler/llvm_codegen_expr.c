@@ -2638,19 +2638,26 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	ASSERT(slice->expr_kind == EXPR_SLICE);
 
 	Expr *parent_expr = exprptr(slice->subscript_expr.expr);
-
 	Type *parent_type = type_flatten(parent_expr->type);
+	parent_type = type_no_optional(parent_type);
 	BEValue parent_addr_x;
 	llvm_emit_expr(c, &parent_addr_x, parent_expr);
-	llvm_value_addr(c, &parent_addr_x);
-	LLVMValueRef parent_addr = parent_addr_x.value;
 	LLVMValueRef parent_load_value = NULL;
-	LLVMValueRef parent_base;
-	parent_type = type_no_optional(parent_type);
+	LLVMValueRef parent_base = NULL;
+	LLVMValueRef parent_addr = NULL;
+	if (parent_type->type_kind == TYPE_POINTER)
+	{
+		llvm_value_rvalue(c, &parent_addr_x);
+		parent_load_value = parent_base = parent_addr_x.value;
+	}
+	else
+	{
+		llvm_value_addr(c, &parent_addr_x);
+		parent_addr = parent_addr_x.value;
+	}
 	switch (parent_type->type_kind)
 	{
 		case TYPE_POINTER:
-			parent_load_value = parent_base = LLVMBuildLoad2(c->builder, llvm_get_type(c, parent_type), parent_addr, "");
 			break;
 		case TYPE_SLICE:
 			parent_load_value = LLVMBuildLoad2(c->builder, llvm_get_type(c, parent_type), parent_addr, "");
@@ -2784,6 +2791,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 				llvm_emit_int_comp(c, &excess, &start_index, &end_index, BINARYOP_GT);
 				BEValue actual_end_len = end_index;
 				actual_end_len.value = llvm_emit_sub_int(c, end_index.type, end_index.value, start_index.value, slice->span);
+				actual_end_len.type = type_isz;
 				llvm_emit_panic_if_true(c, &excess, "Negative slice length", slice->span, "Negative value (%d) given for slice length.", &actual_end_len, NULL);
 				if (len.value)
 				{
@@ -3573,6 +3581,7 @@ MEMCMP:
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_BITSTRUCT:
+			assert(compiler.build.old_compact_eq);
 			if (array_base->decl->attr_compact) goto MEMCMP;
 			break;
 		case TYPE_POISONED:

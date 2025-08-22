@@ -103,3 +103,16 @@ fn void map_copy()
 	assert(hash_map_copy.len() == hash_map.len());
 
 }
+
+alias Test = HashMap{String, HashMap {String, String}};
+fn void test_ref()
+{
+    Test t;
+    t.init(tmem);
+    (&t["a"]).init(tmem);
+
+    t["a"]["b"] = "ab";
+    test::eq("ab", t["a"]["b"]!!);
+}
+
+

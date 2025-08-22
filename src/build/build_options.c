@@ -133,6 +133,7 @@ static void usage(bool full)
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
 		print_opt("--use-old-slice-copy", "Use the old slice copy semantics.");
 		print_opt("--use-old-enums", "Use the old enum syntax and semantics.");
+		print_opt("--use-old-compact-eq", "Enable the old ability to use '@compact' to make a struct comparable.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -176,6 +177,7 @@ static void usage(bool full)
 		print_opt("--win64-simd=<option>", "Win64 SIMD ABI: array, full.");
 		print_opt("--win-debug=<option>", "Select debug output on Windows: codeview or dwarf (default: codeview).");
 		print_opt("--max-vector-size <number>", "Set the maximum vector bit size to allow (default: 4096).");
+		print_opt("--max-stack-object-size <number>", "Set the maximum size of a stack object in KB (default: 128).");
 		PRINTF("");
 		print_opt("--print-linking", "Print linker arguments.");
 		PRINTF("");
@@ -764,6 +766,11 @@ static void parse_option(BuildOptions *options)
 				options->old_enums = true;
 				return;
 			}
+			if (match_longopt("use-old-compact-eq"))
+			{
+				options->old_compact_eq = true;
+				return;
+			}
 			if (match_longopt("test-filter"))
 			{
 				if (at_end() || next_is_opt()) FAIL_WITH_ERR_LONG("error: --test-filter needs an argument.");
@@ -937,6 +944,14 @@ static void parse_option(BuildOptions *options)
 				options->riscv_float_capability = parse_opt_select(RiscvFloatCapability, argopt, riscv_capability);
 				return;
 			}
+			if (match_longopt("max-stack-object-size"))
+			{
+				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
+				if (size < 1) error_exit("Expected a valid positive integer >= 1 for --max-stack-object-size.");
+				if (size > MAX_STACK_OBJECT_SIZE) error_exit("Expected a valid positive integer <= %u for --max-vector-size.", (unsigned)MAX_STACK_OBJECT_SIZE);
+				options->max_stack_object_size = size;
+				return;
+			}
 			if (match_longopt("max-vector-size"))
 			{
 				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
@@ -946,6 +961,7 @@ static void parse_option(BuildOptions *options)
 				{
 					error_exit("The --max-vector-size value must be a power of 2, try using %u instead.", next_highest_power_of_2(size));
 				}
+				options->max_vector_size = size;
 				return;
 			}
 			if ((argopt = match_argopt("memory-env")))

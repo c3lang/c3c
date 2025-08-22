@@ -646,7 +646,7 @@ macro void @pool(usz reserve = 0; @body) @builtin
 	@body();
 }
 
-module std::core::mem @if(WASM_NOLIBC);
+module std::core::mem @if(env::FREESTANDING_WASM);
 import std::core::mem::allocator @public;
 SimpleHeapAllocator wasm_allocator @private;
 extern int __heap_base;
@@ -686,6 +686,12 @@ macro @clone(value) @builtin @nodiscard
 
 <*
  @param value : "The value to clone"
+ @return "A pointer to the cloned value"
+*>
+macro @clone_slice(value) @builtin @nodiscard => allocator::clone_slice(mem, value);
+
+<*
+ @param value : "The value to clone"
  @return "A pointer to the cloned value, which must be released using free_aligned"
 *>
 macro @clone_aligned(value) @builtin @nodiscard
@@ -705,6 +711,12 @@ macro @tclone(value) @builtin @nodiscard
 		return allocator::clone_aligned(tmem, value);
 	$endif
 }
+
+<*
+ @param value : "The value to clone"
+ @return "A pointer to the cloned value"
+*>
+macro @tclone_slice(value) @builtin @nodiscard => allocator::clone_slice(tmem, value);
 
 fn void* malloc(usz size) @builtin @inline @nodiscard
 {

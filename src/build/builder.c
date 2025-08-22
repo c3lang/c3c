@@ -367,6 +367,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->backend = options->backend;
 	target->old_slice_copy = options->old_slice_copy;
 	target->old_enums = options->old_enums;
+	target->old_compact_eq = options->old_compact_eq;
 	// Remove feature flags
 	FOREACH(const char *, remove_feature, options->removed_feature_names)
 	{
@@ -430,6 +431,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(benchfn);
 	OVERRIDE_IF_SET(symtab_size);
 	OVERRIDE_IF_SET(max_vector_size);
+	OVERRIDE_IF_SET(max_stack_object_size);
 	OVERRIDE_IF_SET(win.def);
 	OVERRIDE_IF_SET(no_entry);
 	OVERRIDE_IF_SET(echo_prefix);
@@ -445,6 +447,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(android.api_version);
 
 	if (!target->max_vector_size) target->max_vector_size = DEFAULT_VECTOR_WIDTH;
+	if (!target->max_stack_object_size) target->max_stack_object_size = DEFAULT_STACK_OBJECT_SIZE;
 
 	if (target->quiet && !options->verbosity_level) options->verbosity_level = -1;
 

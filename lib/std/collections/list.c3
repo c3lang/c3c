@@ -57,7 +57,7 @@ fn List* List.tinit(&self, usz initial_capacity = 16)
 fn List* List.init_with_array(&self, Allocator allocator, Type[] values)
 {
 	self.init(allocator, values.len) @inline;
-	self.add_array(values) @inline;
+	self.push_all(values) @inline;
 	return self;
 }
 
@@ -70,7 +70,7 @@ fn List* List.init_with_array(&self, Allocator allocator, Type[] values)
 fn List* List.tinit_with_array(&self, Type[] values)
 {
 	self.tinit(values.len) @inline;
-	self.add_array(values) @inline;
+	self.push_all(values) @inline;
 	return self;
 }
 
@@ -199,7 +199,21 @@ fn Type[] List.array_view(&self)
  @param [in] array
  @ensure self.size >= array.len
 *>
-fn void List.add_array(&self, Type[] array)
+fn void List.add_array(&self, Type[] array) @deprecated("Use push_all")
+{
+	if (!array.len) return;
+	self.reserve(array.len);
+	usz index = self.set_size(self.size + array.len);
+	self.entries[index : array.len] = array[..];
+}
+
+<*
+ Add the values of an array to this list.
+
+ @param [in] array
+ @ensure self.size >= array.len
+*>
+fn void List.push_all(&self, Type[] array)
 {
 	if (!array.len) return;
 	self.reserve(array.len);

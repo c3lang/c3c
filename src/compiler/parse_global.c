@@ -98,9 +98,11 @@ static inline Path *parse_module_path(ParseContext *c)
 	ASSERT(tok_is(c, TOKEN_IDENT));
 	scratch_buffer_clear();
 	SourceSpan span = c->span;
+	int max_exceeded = 0;
 	while (1)
 	{
 		const char *string = symstr(c);
+		size_t len = c->data.lex_len;
 		if (!try_consume(c, TOKEN_IDENT))
 		{
 			if (token_is_keyword_ident(c->tok))
@@ -116,13 +118,41 @@ static inline Path *parse_module_path(ParseContext *c)
 			PRINT_ERROR_HERE("Each '::' must be followed by a regular lower case sub module name.");
 			return NULL;
 		}
-		scratch_buffer_append(string);
+		if (len > MAX_MODULE_NAME)
+		{
+			PRINT_ERROR_LAST("The module name is too long, it's %d characters (%d more than the maximum allowed %d characters).", (int)len, (int)len - MAX_MODULE_NAME, MAX_MODULE_NAME);
+			return NULL;
+		}
+		if (max_exceeded)
+		{
+			max_exceeded += len;
+		}
+		else
+		{
+			scratch_buffer_append(string);
+			if (scratch_buffer.len > MAX_MODULE_PATH)
+			{
+				max_exceeded = scratch_buffer.len;
+			}
+		}
 		if (!try_consume(c, TOKEN_SCOPE))
 		{
 			span = extend_span_with_token(span, c->prev_span);
 			break;
 		}
-		scratch_buffer_append("::");
+		if (max_exceeded)
+		{
+			max_exceeded += 2;
+		}
+		else
+		{
+			scratch_buffer_append("::");
+		}
+	}
+	// This way we can highlight the entire span.
+	if (max_exceeded)
+	{
+		print_error_at(extend_span_with_token(span, c->prev_span), "The full module path is too long, it's %lld characters (%lld more than the maximum allowed %lld characters).", (long long int)max_exceeded, (long long int)max_exceeded - MAX_MODULE_PATH, (long long int)MAX_MODULE_PATH);
 	}
 	return path_create_from_string(scratch_buffer_to_string(), scratch_buffer.len, span);
 }
@@ -734,7 +764,8 @@ INLINE bool parse_rethrow_bracket(ParseContext *c, SourceSpan start)
 /**
  * optional_type ::= type '!'?
  * @param c
- * @return
+ * @param allow_generic should generic be allowed
+ * @return The resulting type
  */
 static inline TypeInfo *parse_optional_type_maybe_generic(ParseContext *c, bool allow_generic)
 {
@@ -826,7 +857,7 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 
 	bool is_cond;
 	if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
-	decl->is_cond = true;
+	decl->is_cond = is_cond;
 	if (tok_is(c, TOKEN_EQ))
 	{
 		if (!decl)
@@ -918,6 +949,8 @@ Decl *parse_var_decl(ParseContext *c)
 	// analyser. The runtime variables must have an initializer unlike the CT ones.
 	advance_and_verify(c, TOKEN_VAR);
 	Decl *decl;
+	bool is_cond;
+	SourceSpan span;
 	switch (c->tok)
 	{
 		case TOKEN_CONST_IDENT:
@@ -926,6 +959,8 @@ Decl *parse_var_decl(ParseContext *c)
 		case TOKEN_IDENT:
 			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL);
 			advance(c);
+			if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
+			decl->is_cond = is_cond;
 			if (!tok_is(c, TOKEN_EQ))
 			{
 				PRINT_ERROR_HERE("'var' must always have an initial value, or the type cannot be inferred.");
@@ -935,16 +970,16 @@ Decl *parse_var_decl(ParseContext *c)
 			ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), poisoned_decl);
 			break;
 		case TOKEN_CT_IDENT:
-			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL_CT);
-			advance(c);
-			if (try_consume(c, TOKEN_EQ))
-			{
-				ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), poisoned_decl);
-			}
-			break;
 		case TOKEN_CT_TYPE_IDENT:
-			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL_CT_TYPE);
+			decl = decl_new_var_current(c, NULL, c->tok == TOKEN_CT_IDENT ? VARDECL_LOCAL_CT : VARDECL_LOCAL_CT_TYPE);
 			advance(c);
+			span = c->span;
+			if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
+			if (is_cond || decl->attributes)
+			{
+				print_error_at(span, "Attributes are not allowed on compile time variables.");
+				return poisoned_decl;
+			}
 			if (try_consume(c, TOKEN_EQ))
 			{
 				ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), poisoned_decl);

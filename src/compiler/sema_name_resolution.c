@@ -82,13 +82,7 @@ static bool add_interface_to_decl_stack(SemaContext *context, Decl *decl)
 
 static bool add_members_to_decl_stack(SemaContext *context, Decl *decl, FindMember find)
 {
-	if (find != FIELDS_ONLY)
-	{
-		FOREACH(Decl *, func, decl->methods)
-		{
-			sema_decl_stack_push(func);
-		}
-	}
+	if (find != FIELDS_ONLY) sema_add_methods_to_decl_stack(context, decl);
 	while (decl->decl_kind == DECL_DISTINCT)
 	{
 		Type *type = decl->distinct->type->canonical;
@@ -124,7 +118,12 @@ Decl *sema_decl_stack_find_decl_member(SemaContext *context, Decl *decl_owner, c
 	if (!add_members_to_decl_stack(context, decl_owner, find)) return poisoned_decl;
 	Decl *member = sema_decl_stack_resolve_symbol(symbol);
 	sema_decl_stack_restore(state);
-	return member;
+	if (member || find == FIELDS_ONLY) return member;
+	if (find == METHODS_AND_FIELDS)
+	{
+		return sema_resolve_method_only(decl_owner, symbol);
+	}
+	return sema_resolve_method(decl_owner, symbol);
 }
 
 static inline Decl *sema_find_decl_in_module(Module *module, Path *path, const char *symbol, Module **path_found_ref)
@@ -839,56 +838,36 @@ Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const ch
 	return NULL;
 }
 
-
-
-Decl *sema_resolve_method_in_module(Module *module, Type *actual_type, const char *method_name,
-									Decl **private_found, Decl **ambiguous, MethodSearchType search_type)
+Decl *sema_resolve_method_only(Decl *type, const char *method_name)
 {
-	if (module->is_generic) return NULL;
-	Decl *found = sema_find_extension_method_in_list(module->private_method_extensions, actual_type, method_name);
-	// The found one might not be visible
-	if (found && search_type < METHOD_SEARCH_CURRENT && found->visibility == VISIBLE_PRIVATE)
+	Methods *methods = type->method_table;
+	Decl *found = NULL;
+	if (methods)
 	{
-		*private_found = found;
-		found = NULL;
+		found = declptrzero(decltable_get(&methods->method_table, method_name));
 	}
-	assert(!found || found->visibility != VISIBLE_LOCAL);
-	if (found && search_type == METHOD_SEARCH_CURRENT) return found;
-	// We are now searching submodules, so hide the private ones.
-	if (search_type == METHOD_SEARCH_CURRENT) search_type = METHOD_SEARCH_SUBMODULE_CURRENT;
-	FOREACH(Module *, mod, module->sub_modules)
-	{
-		Decl *new_found = sema_resolve_method_in_module(mod, actual_type, method_name, private_found, ambiguous,
-		                                                search_type);
-		if (!new_found) continue;
-		if (found)
-		{
-			*ambiguous = new_found;
-			return found;
-		}
-		found = new_found;
-	}
-	// We might have it ambiguous due to searching sub modules.
 	return found;
 }
 
-Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
+Decl *sema_resolve_method(Decl *type, const char *method_name)
 {
 	// Interface, prefer interface methods.
-	if (type->decl_kind == DECL_INTERFACE)
+	bool is_interface = type->decl_kind == DECL_INTERFACE;
+	if (is_interface)
 	{
 		FOREACH(Decl *, method, type->interface_methods)
 		{
 			if (method_name == method->name) return method;
 		}
 	}
-	// Look through natively defined methods.
-	FOREACH(Decl *, method, type->methods)
-	{
-		if (method_name == method->name) return method;
-	}
 
-	return sema_resolve_type_method(unit, type->type, method_name, ambiguous_ref, private_ref);
+	Methods *methods = type->method_table;
+	Decl *found = NULL;
+	if (methods)
+	{
+		found = declptrzero(decltable_get(&methods->method_table, method_name));
+	}
+	return found;
 }
 
 bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_info)
@@ -975,75 +954,43 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 	UNREACHABLE
 }
 
-Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
+Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const char *method_name)
 {
-	ASSERT(type == type->canonical);
-	Decl *private = NULL;
-	Decl *ambiguous = NULL;
-	Decl *found = sema_find_extension_method_in_list(unit->local_method_extensions, type, method_name);
-	if (!found) found = sema_resolve_method_in_module(unit->module, type, method_name, &private, &ambiguous, METHOD_SEARCH_CURRENT);
-	if (ambiguous)
+	RETRY:
+	if (!type_is_user_defined(type))
 	{
-		*ambiguous_ref = ambiguous;
-		ASSERT(found);
-		return found;
-	}
-
-	// 2. Lookup in imports
-	FOREACH(Decl *, import, unit->imports)
-	{
-		if (import->import.module->is_generic) continue;
-
-		Decl *new_found = sema_resolve_method_in_module(import->import.module, type, method_name,
-														&private, &ambiguous,
-														import->import.import_private_as_public
-														? METHOD_SEARCH_PRIVATE_IMPORTED
-														: METHOD_SEARCH_IMPORTED);
-		if (!new_found || found == new_found) continue;
-		if (found)
+		Decl *found = declptrzero(methodtable_get(&compiler.context.method_extensions, type, method_name));
+		if (found) return found;
+		switch (type->type_kind)
 		{
-			*ambiguous_ref = new_found;
-			return found;
-		}
-		found = new_found;
-		if (ambiguous)
-		{
-			*ambiguous_ref = ambiguous;
-			return found;
+			case TYPE_ARRAY:
+				return declptrzero(methodtable_get(&compiler.context.method_extensions, type_get_inferred_array(type->array.base), method_name));
+			case TYPE_VECTOR:
+				return declptrzero(methodtable_get(&compiler.context.method_extensions, type_get_inferred_vector(type->array.base), method_name));
+			default:
+				return NULL;
 		}
 	}
-	if (!found)
+	Decl *type_decl = type->decl;
+	if (!decl_ok(type_decl)) return poisoned_decl;
+	Methods *methods = type_decl->method_table;
+	Decl *found = methods ? declptrzero(decltable_get(&methods->method_table, method_name)) : NULL;
+	if (found || !type_decl->is_substruct) return found;
+	if (!sema_analyse_decl(context, type_decl)) return poisoned_decl;
+	switch (type->type_kind)
 	{
-		found = sema_resolve_method_in_module(compiler.context.core_module, type, method_name,
-		                                      &private, &ambiguous, METHOD_SEARCH_IMPORTED);
+		case TYPE_STRUCT:
+			type = type_decl->strukt.members[0]->type->canonical;
+			goto RETRY;
+		case TYPE_DISTINCT:
+			type = type_decl->distinct->type->canonical;
+			goto RETRY;
+		case TYPE_ENUM:
+			type = type_decl->enums.type_info->type->canonical;
+			goto RETRY;
+		default:
+			UNREACHABLE
 	}
-	if (found && ambiguous)
-	{
-		*ambiguous_ref = ambiguous;
-		return found;
-	}
-	if (!found)
-	{
-		found = sema_find_extension_method_in_list(compiler.context.method_extensions, type, method_name);
-		private = NULL;
-	}
-	if (private) *private_ref = private;
-	if (!found)
-	{
-		if (type->type_kind == TYPE_ARRAY)
-		{
-			Type *inferred_array = type_get_inferred_array(type->array.base);
-			found = sema_resolve_type_method(unit, inferred_array, method_name, ambiguous_ref, private_ref);
-			if (found) *private_ref = NULL;
-		}
-		else if (type->type_kind == TYPE_VECTOR)
-		{
-			Type *inferred_vector = type_get_inferred_vector(type->array.base);
-			found = sema_resolve_type_method(unit, inferred_vector, method_name, ambiguous_ref, private_ref);
-			if (found) *private_ref = NULL;
-		}
-	}
-	return found;
 }
 
 bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_resolve)
