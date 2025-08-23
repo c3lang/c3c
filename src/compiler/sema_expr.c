@@ -5972,9 +5972,9 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	{
 		return sema_expr_analyse_type_access(context, expr, parent->type_expr->type, identifier, missing_ref);
 	}
-	if (parent->expr_kind == EXPR_IDENTIFIER)
+	if (parent->expr_kind == EXPR_IDENTIFIER || expr_is_const_ref(parent))
 	{
-		Decl *decl = parent->ident_expr;
+		Decl *decl = parent->expr_kind == EXPR_IDENTIFIER ? parent->ident_expr : parent->const_expr.global_ref;
 		switch (decl->decl_kind)
 		{
 			case DECL_FUNC:

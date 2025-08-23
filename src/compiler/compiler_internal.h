@@ -4341,6 +4341,12 @@ INLINE bool expr_is_const_fault(Expr *expr)
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_FAULT;
 }
 
+INLINE bool expr_is_const_ref(Expr *expr)
+{
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_REF;
+}
+
 INLINE bool expr_is_const_pointer(Expr *expr)
 {
 	ASSERT(expr->resolve_status == RESOLVE_DONE);
