@@ -149,7 +149,7 @@ entry:
 
 get_dtable:                                       ; preds = %next_parent, %entry
   %typeid = phi ptr [ %0, %entry ], [ %parent_ptr, %next_parent ]
-  %dtable_ref = getelementptr inbounds %.introspect, ptr %typeid, i32 0, i32 2
+  %dtable_ref = getelementptr inbounds
   %dtable = load ptr, ptr %dtable_ref, align 8
   br label %check
 
@@ -159,7 +159,7 @@ check:                                            ; preds = %no_match, %get_dtab
   br i1 %3, label %next_parent, label %compare
 
 next_parent:                                      ; preds = %check
-  %parent_ref = getelementptr inbounds %.introspect, ptr %typeid, i32 0, i32 1
+  %parent_ref = getelementptr inbounds
   %parent = load i64, ptr %parent_ref, align 8
   %parent_ptr = inttoptr i64 %parent to ptr
   %4 = icmp eq ptr %parent_ptr, null
