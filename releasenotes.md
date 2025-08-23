@@ -61,6 +61,7 @@
 - `Socket.get_option` didn't properly call `getsockopt`, and `getsockopt` had an invalid signature.
 - Taking the address of a label would cause a crash. #2430
 - `@tag` was not allowed to repeat.
+- Lambdas on the top level were not exported by default. #2428
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.

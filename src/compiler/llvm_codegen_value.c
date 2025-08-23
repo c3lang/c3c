@@ -44,10 +44,6 @@ void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type)
 
 void llvm_value_set_address(GenContext *c, BEValue *value, LLVMValueRef llvm_value, Type *type, AlignSize alignment)
 {
-	if (alignment == 0)
-	{
-		puts("TODO");
-	}
 	ASSERT(alignment > 0);
 	if (LLVMIsAGlobalVariable(llvm_value) && LLVMIsThreadLocal(llvm_value))
 	{
