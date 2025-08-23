@@ -130,7 +130,7 @@ macro atan2(x, y)
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
  @require @typekind(sinp) == POINTER : "Expected sinp to be a pointer"
  @require @typematch(sinp, cosp) : "Expected sinp and cosp to have the same type"
- @require @assignable_to(x, $typeof(*sinp)) : "Expected x and sinp/cosp to have the same type"
+ @require $defined(*sinp = x) : "Expected x and sinp/cosp to have the same type"
 *>
 macro sincos_ref(x, sinp, cosp)
 {

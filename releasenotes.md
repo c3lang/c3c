@@ -20,6 +20,7 @@
 - Error if a stack allocated variable is too big (configurable with `--max-stack-object-size`).
 - Add `@safeinfer` to allow `var` to be used locally.
 - Types converts to typeid implicitly.
+- Allow `$defined` take declarations: `$defined(int x = y)`
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
@@ -58,6 +59,7 @@
 - Incorrect type checking when &[] and [] return optional values.
 - Failed to find subscript overloading on optional values.
 - `Socket.get_option` didn't properly call `getsockopt`, and `getsockopt` had an invalid signature.
+- Taking the address of a label would cause a crash. #2430
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.

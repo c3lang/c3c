@@ -15,8 +15,8 @@ fn usz? Pair.to_format(&self, Formatter* f) @dynamic
 <*
  @param [&out] a
  @param [&out] b
- @require @assignable_to(self.first, $typeof(*a)) : "You cannot assign the first value to a"
- @require @assignable_to(self.second, $typeof(*b)) : "You cannot assign the second value to b"
+ @require $defined(*a = self.first) : "You cannot assign the first value to a"
+ @require $defined(*b = self.second) : "You cannot assign the second value to b"
 *>
 macro void Pair.unpack(&self, a, b)
 {
@@ -49,9 +49,9 @@ fn usz? Triple.to_format(&self, Formatter* f) @dynamic
  @param [&out] a
  @param [&out] b
  @param [&out] c
- @require @assignable_to(self.first, $typeof(*a)) : "You cannot assign the first value to a"
- @require @assignable_to(self.second, $typeof(*b)) : "You cannot assign the second value to b"
- @require @assignable_to(self.third, $typeof(*c)) : "You cannot assign the second value to c"
+ @require $defined(*a = self.first) : "You cannot assign the first value to a"
+ @require $defined(*b = self.second) : "You cannot assign the second value to b"
+ @require $defined(*c = self.third) : "You cannot assign the second value to c"
 *>
 macro void Triple.unpack(&self, a, b, c)
 {
