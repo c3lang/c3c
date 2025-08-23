@@ -1187,14 +1187,20 @@ RETRY:;
 	if (result != BOOL_FALSE) return result == BOOL_TRUE;
 	if (!decl->is_substruct) return false;
 	Type *inner;
-	if (decl->decl_kind == DECL_DISTINCT)
+	switch (decl->decl_kind)
 	{
-		inner = decl->distinct->type->canonical;
-	}
-	else
-	{
-		ASSERT(decl->decl_kind == DECL_STRUCT);
-		inner = decl->strukt.members[0]->type->canonical;
+		case DECL_DISTINCT:
+			inner = decl->distinct->type->canonical;
+			break;
+		case DECL_STRUCT:
+			inner = decl->strukt.members[0]->type->canonical;
+			break;
+		case DECL_ENUM:
+		case DECL_CONST_ENUM:
+			// Could be made to work.
+			return false;
+		default:
+			UNREACHABLE
 	}
 	if (!type_may_implement_interface(inner)) return false;
 	decl = inner->decl;

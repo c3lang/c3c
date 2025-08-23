@@ -21,6 +21,7 @@
 - Add `@safeinfer` to allow `var` to be used locally.
 - Types converts to typeid implicitly.
 - Allow `$defined` take declarations: `$defined(int x = y)`
+- Struct and typedef subtypes inherit dynamic functions.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
