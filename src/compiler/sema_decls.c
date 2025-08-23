@@ -4470,7 +4470,7 @@ static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceS
 /**
  * Analyse $foo and $Foo variables.
  */
-bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
+bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_failed)
 {
 	Expr *init;
 	ASSERT(decl->decl_kind == DECL_VAR && "Should only be called on variables.");
@@ -4500,6 +4500,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				// If this isn't a type, it's an error.
 				if (!expr_is_const_typeid(init))
 				{
+					if (check_failed) goto FAIL_CHECK;
 					SEMA_ERROR(decl->var.init_expr, "Expected a type assigned to %s.", decl->name);
 					goto FAIL;
 				}
@@ -4519,6 +4520,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				{
 					if (type_is_inferred(decl->type))
 					{
+						if (check_failed) goto FAIL_CHECK;
 						SEMA_ERROR(type_info, "No size could be inferred.");
 						goto FAIL;
 					}
@@ -4536,6 +4538,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				// Check that it is constant.
 				if (!expr_is_runtime_const(init))
 				{
+					if (check_failed) goto FAIL_CHECK;
 					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 					goto FAIL;
 				}
@@ -4546,6 +4549,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			{
 				if (init->expr_kind == EXPR_TYPEINFO)
 				{
+					if (check_failed) goto FAIL_CHECK;
 					SEMA_ERROR(init, "You can't assign a type to a regular compile time variable like '%s', but it would be allowed if the variable was a compile time type variable. Such a variable needs to have a type-like name, e.g. '$MyType'.", decl->name);
 					goto FAIL;
 				}
@@ -4553,6 +4557,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				// Check it is constant.
 				if (!expr_is_runtime_const(init))
 				{
+					if (check_failed) goto FAIL_CHECK;
 					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 					goto FAIL;
 				}
@@ -4567,6 +4572,12 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			UNREACHABLE
 	}
 	return sema_add_local(context, decl);
+FAIL_CHECK:
+	if (check_failed)
+	{
+		*check_failed = true;
+		return false;
+	}
 FAIL:
 	sema_add_local(context, decl);
 	return decl_poison(decl);
@@ -4574,7 +4585,7 @@ FAIL:
 /**
  * Analyse a regular global or local declaration, e.g. int x = 123
  */
-bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
+bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *check_defined)
 {
 	ASSERT(decl->decl_kind == DECL_VAR && "Unexpected declaration type");
 
@@ -4586,7 +4597,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	{
 		case VARDECL_LOCAL_CT:
 		case VARDECL_LOCAL_CT_TYPE:
-			return sema_analyse_var_decl_ct(context, decl);
+			return sema_analyse_var_decl_ct(context, decl, check_defined);
 		case VARDECL_GLOBAL:
 			is_global = true;
 			break;
@@ -4626,7 +4637,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	{
 
 	}
-	else
+	else if (!check_defined)
 	{
 		if (context->call_env.kind == CALL_ENV_GLOBAL_INIT && !context->call_env.in_no_eval)
 		{
@@ -4655,15 +4666,16 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			return decl_poison(decl);
 		}
 		ASSERT(!decl->var.no_init);
-		if (kind == VARDECL_LOCAL && !context_is_macro(context) && init_expr->expr_kind != EXPR_LAMBDA && !decl->var.safe_infer)
+		if (!check_defined && kind == VARDECL_LOCAL && !context_is_macro(context) && init_expr->expr_kind != EXPR_LAMBDA && !decl->var.safe_infer)
 		{
 			SEMA_ERROR(decl, "Defining a variable using 'var %s = ...' is only allowed inside a macro, or when defining a lambda. You can override this by adding the attribute '@safeinfer' to the declaration.", decl->name);
 			return decl_poison(decl);
 		}
 		if (!sema_analyse_expr(context, init_expr)) return decl_poison(decl);
-		if (global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
+		if (check_defined || global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
 		if (global_level_var && !expr_is_runtime_const(init_expr))
 		{
+			if (check_defined) return *check_defined = true, false;
 			SEMA_ERROR(init_expr, "This expression cannot be evaluated at compile time.");
 			return decl_poison(decl);
 		}
@@ -4675,14 +4687,18 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			case STORAGE_NORMAL:
 				break;
 			case STORAGE_WILDCARD:
+				if (check_defined) return *check_defined = true, false;
 				SEMA_ERROR(init_expr, "No type can be inferred from the optional result.");
 				return decl_poison(decl);
 			case STORAGE_VOID:
+				if (check_defined) return *check_defined = true, false;
 				SEMA_ERROR(init_expr, "You cannot initialize a value to 'void'.");
 				return decl_poison(decl);
 			case STORAGE_COMPILE_TIME:
+				if (check_defined) return *check_defined = true, false;
 				if (init_expr->type == type_untypedlist)
 				{
+					if (check_defined) return *check_defined = true, false;
 					SEMA_ERROR(init_expr,
 					           "The type of an untyped list cannot be inferred, you can try adding an explicit type to solve this.");
 					return decl_poison(decl);
@@ -4697,6 +4713,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 				SEMA_ERROR(init_expr, "You can't store a compile time type in a variable.");
 				return decl_poison(decl);
 			case STORAGE_UNKNOWN:
+				if (check_defined) return *check_defined = true, false;
 				SEMA_ERROR(init_expr, "You cannot initialize a value to %s as it has unknown size.",
 				           type_quoted_error_string(init_expr->type));
 				return decl_poison(decl);
@@ -4753,7 +4770,8 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		CallEnvKind env_kind = context->call_env.kind;
 		if (is_static) context->call_env.kind = CALL_ENV_FUNCTION_STATIC;
 		decl->in_init = true;
-		success = sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false, true, NULL);
+		success = sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false, true, check_defined);
+		if (!success && check_defined) return false;
 		decl->in_init = false;
 		context->call_env.kind = env_kind;
 		if (infer_len)
@@ -4768,6 +4786,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			if (!success) return decl_poison(decl);
 			if (!expr_is_runtime_const(init))
 			{
+				if (check_defined) return *check_defined = true, false;
 				SEMA_ERROR(init, "The expression must be a constant value.");
 				return decl_poison(decl);
 			}
@@ -5359,7 +5378,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			if (!sema_analyse_macro(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_VAR:
-			if (!sema_analyse_var_decl(context, decl, false)) goto FAILED;
+			if (!sema_analyse_var_decl(context, decl, false, NULL)) goto FAILED;
 			break;
 		case DECL_ATTRIBUTE:
 			if (!sema_analyse_attribute_decl(context, context, decl, &erase_decl)) goto FAILED;

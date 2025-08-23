@@ -944,7 +944,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	Decl *decl = decl_new_var(ident->unresolved_ident_expr.ident, ident->span, var_type, VARDECL_LOCAL);
 
 	// 4e. Analyse it
-	if (!sema_analyse_var_decl(context, decl, true)) return false;
+	if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
 
 	expr->expr_kind = EXPR_TRY;
 	expr->try_expr = (ExprTry) { .decl = decl, .optional = optional };
@@ -1003,7 +1003,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 	decl->var.no_init = true;
 
 	// 4e. Analyse it
-	if (!sema_analyse_var_decl(context, decl, true)) return false;
+	if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
 
 RESOLVE_EXPRS:;
 	Expr **exprs = expr->unresolved_catch_expr.exprs;
@@ -1221,12 +1221,12 @@ static inline bool sema_analyse_decls_stmt(SemaContext *context, Ast *statement)
 		VarDeclKind kind = decl->var.kind;
 		if (kind == VARDECL_LOCAL_CT_TYPE || kind == VARDECL_LOCAL_CT)
 		{
-			if (!sema_analyse_var_decl_ct(context, decl)) return false;
+			if (!sema_analyse_var_decl_ct(context, decl, NULL)) return false;
 			statement->decls_stmt[i] = NULL;
 		}
 		else
 		{
-			if (!sema_analyse_var_decl(context, decl, true)) return false;
+			if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
 			should_nop = false;
 		}
 	}
@@ -1239,7 +1239,7 @@ static inline bool sema_analyse_declare_stmt(SemaContext *context, Ast *statemen
 	Decl *decl = statement->declare_stmt;
 	VarDeclKind kind = decl->var.kind;
 	bool erase = kind == VARDECL_LOCAL_CT_TYPE || kind == VARDECL_LOCAL_CT;
-	if (!sema_analyse_var_decl(context, decl, true))
+	if (!sema_analyse_var_decl(context, decl, true, NULL))
 	{
 		if (!decl_ok(decl)) context->active_scope.is_poisoned = true;
 		return false;
@@ -3061,7 +3061,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 					SEMA_ERROR(expr, "Only 'var $foo' and 'var $Type' declarations are allowed in '$for'");
 					goto FAILED;
 				}
-				if (!sema_analyse_var_decl_ct(context, decl)) goto FAILED;
+				if (!sema_analyse_var_decl_ct(context, decl, NULL)) goto FAILED;
 				continue;
 			}
 			// If expression evaluate it and make sure it is constant.
