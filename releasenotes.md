@@ -60,6 +60,7 @@
 - Failed to find subscript overloading on optional values.
 - `Socket.get_option` didn't properly call `getsockopt`, and `getsockopt` had an invalid signature.
 - Taking the address of a label would cause a crash. #2430
+- `@tag` was not allowed to repeat.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
