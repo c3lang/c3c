@@ -8,14 +8,14 @@ IntFn lambda_naked @export = fn () @naked { asm("ret"); };
 /* #expect: test.ll
 
 ; Function Attrs: naked nounwind uwtable
-define internal i32 @"test.$global$lambda2"() #0 {
+define i32 @"test.$global$lambda2"() #0 {
 entry:
   call void asm sideeffect alignstack "ret", "~{dirflag},~{fpsr},~{flags}"()
   unreachable
 }
 
 ; Function Attrs: nounwind uwtable
-define internal i32 @"test.$global$lambda1"() #1 {
+define i32 @"test.$global$lambda1"() #1 {
 entry:
   ret i32 1
 }
