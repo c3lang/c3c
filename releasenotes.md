@@ -82,6 +82,7 @@
 - Deprecated `PollSubscribes` and `PollEvents` in favour of `PollSubscribe` and `PollEvent` and made them const enums.
 - Added `AsciiCharset` for matching ascii characters quickly.
 - Added `String.trim_charset`.
+- Added generic `InterfaceList` to store a list of values that implement a specific interface
 
 ## 0.7.4 Change list
 
