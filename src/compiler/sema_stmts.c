@@ -798,7 +798,6 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_MACRO_BLOCK:
 		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
-		case EXPR_HASH_IDENT:
 		case EXPR_IDENTIFIER:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_LAMBDA:
@@ -911,7 +910,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	if (ident->expr_kind != EXPR_UNRESOLVED_IDENTIFIER) RETURN_SEMA_ERROR(ident, "A variable name was expected here.");
 	ASSERT(ident->resolve_status != RESOLVE_DONE);
 	if (ident->unresolved_ident_expr.path) RETURN_SEMA_ERROR(ident->unresolved_ident_expr.path, "The variable may not have a path.");
-	if (ident->unresolved_ident_expr.is_const) RETURN_SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
+	if (ident->unresolved_ident_expr.ident_type != IDENT_NORMAL) RETURN_SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
 	const char *ident_name = ident->unresolved_ident_expr.ident;
 
 	// Special check for `if (try a = a)`
@@ -996,7 +995,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 	}
 
 	if (ident->unresolved_ident_expr.path) RETURN_SEMA_ERROR(ident->unresolved_ident_expr.path, "The variable may not have a path.");
-	if (ident->unresolved_ident_expr.is_const) RETURN_SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
+	if (ident->unresolved_ident_expr.ident_type != IDENT_NORMAL) RETURN_SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
 
 	// 4d. A new declaration is created.
 	decl = decl_new_var(ident->unresolved_ident_expr.ident, ident->span, type, VARDECL_LOCAL);
@@ -3247,7 +3246,7 @@ static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
 	{
 		if (ret->contract_fault.resolved) continue;
 		Expr *expr = ret->contract_fault.expr;
-		if (expr->expr_kind != EXPR_UNRESOLVED_IDENTIFIER && !expr->unresolved_ident_expr.is_const)
+		if (expr->expr_kind != EXPR_UNRESOLVED_IDENTIFIER || expr->unresolved_ident_expr.ident_type != IDENT_CONST)
 		{
 			RETURN_SEMA_ERROR(expr, "Expected a fault name here.");
 		}

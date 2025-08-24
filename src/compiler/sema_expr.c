@@ -323,35 +323,39 @@ Expr *sema_resolve_string_ident(SemaContext *context, Expr *inner, bool report_m
 	ASSERT_SPAN(inner, expr_is_const_string(inner));
 	Path *path = NULL;
 	const char *interned_version = NULL;
-	TokenType token = sema_splitpathref(inner->const_expr.bytes.ptr, inner->const_expr.bytes.len, &path, &interned_version);
+	const char *bytes = inner->const_expr.bytes.ptr;
+	size_t len = inner->const_expr.bytes.len;
+	TokenType token = sema_splitpathref(bytes, len, &path, &interned_version);
 	switch (token)
 	{
 		case TOKEN_CONST_IDENT:
-			inner->unresolved_ident_expr.is_const = true;
+			inner->unresolved_ident_expr.ident_type = IDENT_CONST;
+			goto IDENT_CHECK;
 			break;
-		case TOKEN_HASH_IDENT:
-			if (path) goto NO_PATH;
-			inner->expr_kind = EXPR_HASH_IDENT;
-			inner->ct_ident_expr.identifier = interned_version;
-			inner->resolve_status = RESOLVE_NOT_DONE;
-			return inner;
 		case TOKEN_CT_IDENT:
 			if (path) goto NO_PATH;
 			inner->expr_kind = EXPR_CT_IDENT;
 			inner->ct_ident_expr.identifier = interned_version;
 			inner->resolve_status = RESOLVE_NOT_DONE;
 			return inner;
+		case TOKEN_HASH_IDENT:
+			if (path) goto NO_PATH;
+			inner->unresolved_ident_expr.ident_type = IDENT_HASH;
+			goto IDENT_CHECK;
 		case TOKEN_AT_IDENT:
+			inner->unresolved_ident_expr.ident_type = IDENT_AT;
+			goto IDENT_CHECK;
 		case TOKEN_IDENT:
+			inner->unresolved_ident_expr.ident_type = IDENT_NORMAL;
+IDENT_CHECK:
 			if (!interned_version)
 			{
 				if (report_missing)
 				{
-					SEMA_ERROR(inner, "'%.*s' could not be found, did you spell it right?", (int)inner->const_expr.bytes.len, inner->const_expr.bytes.ptr);
+					SEMA_ERROR(inner, "'%.*s' could not be found, did you spell it right?", (int)len, bytes);
 				}
 				return NULL;
 			}
-			inner->unresolved_ident_expr.is_const = false;
 			break;
 		case TYPE_TOKENS:
 		{
@@ -670,7 +674,6 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 			if (failed_ref) goto FAILED_REF;
 			RETURN_SEMA_ERROR(top_expr, "You cannot assign to a constant expression.");
 		case EXPR_CT_ARG:
-		case EXPR_HASH_IDENT:
 		case EXPR_POISONED:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_ASM:
@@ -825,8 +828,6 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT_ADDR:
 			return true;
-		case EXPR_HASH_IDENT:
-			return false;
 		case EXPR_TWO:
 			return expr_may_ref(expr->two_expr.last);
 		case EXPR_EXPRESSION_LIST:
@@ -1181,7 +1182,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	// Rerun if we can't do inference.
 	if (!decl)
 	{
-		if (!expr->unresolved_ident_expr.path && expr->unresolved_ident_expr.is_const && (!to || to->canonical->type_kind != TYPE_ENUM))
+		if (!expr->unresolved_ident_expr.path && expr->unresolved_ident_expr.ident_type == IDENT_CONST && (!to || to->canonical->type_kind != TYPE_ENUM))
 		{
 			CompilationUnit **units = context->unit->module->units;
 			FOREACH (CompilationUnit *, unit, units)
@@ -1369,7 +1370,7 @@ EVAL_BOTH:
 static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *left, Expr *right)
 {
 	// Special handling of f = FOO_BAR
-	if (right->expr_kind == EXPR_UNRESOLVED_IDENTIFIER && right->unresolved_ident_expr.is_const)
+	if (right->expr_kind == EXPR_UNRESOLVED_IDENTIFIER && right->unresolved_ident_expr.ident_type == IDENT_CONST)
 	{
 		if (!sema_analyse_expr(context, left)) return false;
 		switch (type_flatten(left->type)->type_kind)
@@ -1382,7 +1383,7 @@ static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *left,
 		}
 	}
 	// Special handling of f = FOO_BAR
-	if (left->expr_kind == EXPR_UNRESOLVED_IDENTIFIER && left->unresolved_ident_expr.is_const)
+	if (left->expr_kind == EXPR_UNRESOLVED_IDENTIFIER && left->unresolved_ident_expr.ident_type == IDENT_CONST)
 	{
 		if (!sema_analyse_expr(context, right)) return false;
 		switch (type_flatten(right->type)->type_kind)
@@ -4482,11 +4483,6 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
 RETRY:
 	switch (child->expr_kind)
 	{
-		case EXPR_HASH_IDENT:
-			SEMA_DEPRECATED(child, "Using 'abc.#foo' access style is deprecated. Use 'abc.eval($foo)' instead.");
-			if (!sema_expr_fold_hash(context, child)) return NULL;
-			in_hash = true;
-			goto RETRY;
 		case EXPR_OTHER_CONTEXT:
 		{
 			Expr *inner = child->expr_other_context.inner;
@@ -4499,6 +4495,13 @@ RETRY:
 		case EXPR_UNRESOLVED_IDENTIFIER:
 			// A path is not allowed.
 			if (child->unresolved_ident_expr.path) break;
+			if (child->unresolved_ident_expr.ident_type == IDENT_HASH)
+			{
+				SEMA_DEPRECATED(child, "Using 'abc.#foo' access style is deprecated. Use 'abc.eval($foo)' instead.");
+				if (!sema_expr_fold_hash(context, child)) return child;
+				in_hash = true;
+				goto RETRY;
+			}
 			return child;
 		case EXPR_CT_IDENT:
 			if (child->resolve_status == RESOLVE_DONE) goto ALREADY_RESOLVED;
@@ -4645,9 +4648,9 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	ASSERT_SPAN(expr, identifier->expr_kind == EXPR_UNRESOLVED_IDENTIFIER);
 	Type *canonical = parent_type->canonical;
 	const char *name = identifier->unresolved_ident_expr.ident;
-	bool is_const = identifier->unresolved_ident_expr.is_const;
+	IdentType ident_type = identifier->unresolved_ident_expr.ident_type;
 
-	if (!is_const)
+	if (ident_type != IDENT_CONST)
 	{
 		TypeProperty property = type_property_by_name(name);
 		if (sema_type_property_is_valid_for_type(canonical, property))
@@ -4674,7 +4677,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	{
 		case DECL_ENUM:
 		case DECL_CONST_ENUM:
-			if (is_const)
+			if (ident_type == IDENT_CONST)
 			{
 				if (!sema_expr_analyse_enum_constant(context, expr, name, decl))
 				{
@@ -4740,9 +4743,9 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 
 	Decl *decl = parent->const_expr.member.decl;
 	const char *name = identifier->unresolved_ident_expr.ident;
-	bool is_const = identifier->unresolved_ident_expr.is_const;
+	IdentType ident_type = identifier->unresolved_ident_expr.ident_type;
 
-	if (is_const)
+	if (ident_type == IDENT_CONST)
 	{
 		if (missing_ref) goto MISSING_REF;
 		RETURN_SEMA_ERROR(expr, "There is no member '%s' for %s.", name, type_to_error_string(decl->type));
@@ -6682,22 +6685,31 @@ static bool sema_expr_analyse_ct_subscript_assign(SemaContext *context, Expr *ex
 
 static bool sema_expr_fold_hash(SemaContext *context, Expr *expr)
 {
-	assert(expr->expr_kind == EXPR_HASH_IDENT);
-	while (expr->expr_kind == EXPR_HASH_IDENT)
+	bool did_fold = false;
+	while (expr->expr_kind == EXPR_UNRESOLVED_IDENTIFIER && (expr->unresolved_ident_expr.ident_type == IDENT_HASH || expr->unresolved_ident_expr.ident_type == IDENT_AT))
 	{
-		ASSERT(expr && expr->hash_ident_expr.identifier);
-		DEBUG_LOG("Resolving identifier '%s'", expr->hash_ident_expr.identifier);
-		Decl *decl = sema_resolve_symbol(context, expr->hash_ident_expr.identifier, NULL, expr->span);
+		ASSERT(expr && expr->unresolved_ident_expr.ident);
+		DEBUG_LOG("Resolving identifier '%s'", expr->unresolved_ident_expr.ident);
+		Decl *decl = sema_find_path_symbol(context, expr->unresolved_ident_expr.ident, NULL);
+
 
 		// Already handled
-		if (!decl) return expr_poison(expr);
-
+		if (!decl)
+		{
+			return BOOL_FALSE;
+		}
+		if (decl->decl_kind != DECL_VAR) break;
 		ASSERT_SPAN(expr, decl->decl_kind == DECL_VAR);
-		DEBUG_LOG("Replacing expr (%p) with '%s' (%p) expression resolve: %d", expr, expr_kind_to_string(decl->var.init_expr->expr_kind), decl->var.init_expr, decl->var.init_expr->resolve_status);
-		expr_replace(expr, copy_expr_single(decl->var.init_expr));
-		REMINDER("Handle inlining at");
+		if (decl->var.kind == VARDECL_PARAM_EXPR)
+		{
+			DEBUG_LOG("Replacing expr (%p) with '%s' (%p) expression resolve: %d", expr, expr_kind_to_string(decl->var.init_expr->expr_kind), decl->var.init_expr, decl->var.init_expr->resolve_status);
+			expr_replace(expr, copy_expr_single(decl->var.init_expr));
+			did_fold = true;
+			continue;
+		}
+		break;
 	}
-	return expr_ok(expr);
+	return expr_ok(expr) ? (did_fold ? BOOL_TRUE : BOOL_FALSE) : BOOL_ERR;
 }
 /**
  * Analyse a = b
@@ -8412,6 +8424,10 @@ RETRY:;
 	{
 		case EXPR_POISONED:
 			return false;
+		case EXPR_UNRESOLVED_IDENTIFIER:
+			if (inner->unresolved_ident_expr.ident_type != IDENT_AT && inner->unresolved_ident_expr.ident_type != IDENT_HASH) break;
+			if (sema_expr_fold_hash(context, inner)) goto RETRY;
+			break;
 		case EXPR_OTHER_CONTEXT:
 		{
 			Expr *inner_c = inner->expr_other_context.inner;
@@ -8419,9 +8435,6 @@ RETRY:;
 			expr_replace(inner, inner_c);
 			return sema_expr_analyse_addr(c2, expr, failed_ref, check);
 		}
-		case EXPR_HASH_IDENT:
-			if (!sema_expr_fold_hash(context, inner)) return false;
-			goto RETRY;
 		case EXPR_SUBSCRIPT:
 			inner->expr_kind = EXPR_SUBSCRIPT_ADDR;
 			if (failed_ref)
@@ -10254,7 +10267,7 @@ static inline bool sema_expr_analyse_ct_feature(SemaContext *context, Expr *expr
 	Expr *inner = expr->ct_call_expr.main_var;
 	if (expr->ct_call_expr.flat_path) goto ERROR;
 	if (inner->expr_kind != EXPR_UNRESOLVED_IDENTIFIER) goto ERROR;
-	if (!inner->unresolved_ident_expr.is_const) goto ERROR;
+	if (inner->unresolved_ident_expr.ident_type != IDENT_CONST) goto ERROR;
 
 	const char *name = inner->unresolved_ident_expr.ident;
 	void *value = htable_get(&compiler.context.features, (void *)name);
@@ -10311,6 +10324,11 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			{
 				Decl *decl = sema_find_path_symbol(active_context, main_expr->unresolved_ident_expr.ident, main_expr->unresolved_ident_expr.path);
 				if (!decl_ok(decl)) goto FAIL;
+				if (decl && decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM_EXPR)
+				{
+					main_expr = copy_expr_single(decl->var.init_expr);
+					goto RETRY;
+				}
 				success = decl != NULL;
 				break;
 			}
@@ -10341,13 +10359,6 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				if (!expr_ok(eval)) return false;
 				success = eval != NULL;
 				break;
-			}
-			case EXPR_HASH_IDENT:
-			{
-				Decl *decl = sema_resolve_symbol(active_context, main_expr->hash_ident_expr.identifier, NULL, main_expr->span);
-				if (!decl) goto FAIL;
-				main_expr = copy_expr_single(decl->var.init_expr);
-				goto RETRY;
 			}
 			case EXPR_SUBSCRIPT:
 			{
@@ -10682,13 +10693,9 @@ static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *ex
 				context = inner->expr_other_context.context;
 				inner = inner->expr_other_context.inner;
 				continue;
-			case EXPR_HASH_IDENT:
-			{
-				Decl *decl = sema_resolve_symbol(context, inner->ct_ident_expr.identifier, NULL, inner->span);
-				if (!decl) return false;
-				inner = decl->var.init_expr;
-				continue;
-			}
+			case EXPR_UNRESOLVED_IDENTIFIER:
+				if (sema_expr_fold_hash(context, inner)) continue;
+				break;
 			default:
 				break;
 		}
@@ -10697,7 +10704,7 @@ static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *ex
 	const char *desc = span_to_string(inner->span);
 	if (!desc)
 	{
-		RETURN_SEMA_ERROR(expr, "Failed to stringify hash variable contents - they must be a single line and not exceed 255 characters.");
+		RETURN_SEMA_ERROR(expr, "Failed to stringify expr variable contents - they must be a single line and not exceed 255 characters.");
 	}
 	expr_rewrite_const_string(expr, desc);
 	return true;
@@ -10976,9 +10983,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			return sema_expr_analyse_builtin(context, expr, true);
 		case EXPR_CT_CALL:
 			return sema_expr_analyse_ct_call(context, expr);
-		case EXPR_HASH_IDENT:
-			if (!sema_expr_fold_hash(context, expr)) return false;
-			return sema_analyse_expr_check(context, expr, check);
 		case EXPR_CT_IDENT:
 			return sema_expr_analyse_ct_identifier(context, expr);
 		case EXPR_OPTIONAL:
@@ -11025,6 +11029,10 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_IDENTIFIER:
 			UNREACHABLE
 		case EXPR_UNRESOLVED_IDENTIFIER:
+			if (sema_expr_fold_hash(context, expr))
+			{
+				return sema_analyse_expr_check(context, expr, check);
+			}
 			return sema_expr_analyse_identifier(context, NULL, expr);
 		case EXPR_CALL:
 			return sema_expr_analyse_call(context, expr, NULL);
@@ -11280,10 +11288,6 @@ static inline bool sema_analyse_expr_lvalue_dispatch(SemaContext *context, Expr 
 RETRY:
 	switch (expr->expr_kind)
 	{
-		case EXPR_HASH_IDENT:
-			DEBUG_LOG("Expand hash ident");
-			if (!sema_expr_fold_hash(context, expr)) return false;
-			goto RETRY;
 		case EXPR_CT_IDENT:
 			return sema_expr_resolve_ct_identifier(context, expr);
 		case EXPR_SUBSCRIPT:
@@ -11313,6 +11317,7 @@ RETRY:
 			if (!sema_analyse_expr_dispatch(context, expr, CHECK_VALUE)) return false;
 			goto IDENT_CHECK;
 		case EXPR_UNRESOLVED_IDENTIFIER:
+			if (sema_expr_fold_hash(context, expr)) goto RETRY;
 			if (!sema_analyse_expr_dispatch(context, expr, CHECK_VALUE)) return false;
 			FALLTHROUGH;
 		case EXPR_IDENTIFIER:
@@ -11638,9 +11643,6 @@ RETRY:
 	expr->resolve_status = RESOLVE_RUNNING;
 	switch (expr->expr_kind)
 	{
-		case EXPR_HASH_IDENT:
-			if (!sema_expr_fold_hash(context, expr)) return false;
-			goto RETRY;
 		case EXPR_OTHER_CONTEXT:
 		{
 			InliningSpan *new_span = context->inlined_at;
@@ -11657,6 +11659,7 @@ RETRY:
 			if (!sema_expr_analyse_initializer_list(context, to, expr)) return expr_poison(expr);
 			break;
 		case EXPR_UNRESOLVED_IDENTIFIER:
+			if (sema_expr_fold_hash(context, expr)) goto RETRY;
 			if (!sema_expr_analyse_identifier(context, to, expr)) return expr_poison(expr);
 			break;
 		case EXPR_LAMBDA:

@@ -50,7 +50,6 @@ const char *expr_kind_to_string(ExprKind kind)
 		case EXPR_FORCE_UNWRAP: return "force_unwrap";
 		case EXPR_FLOAT_TO_INT: return "float_to_int";
 		case EXPR_GENERIC_IDENT: return "generic_ident";
-		case EXPR_HASH_IDENT: return "hash_ident";
 		case EXPR_IDENTIFIER: return "identifier";
 		case EXPR_UNRESOLVED_IDENTIFIER: return "unresolved_identifier";
 		case EXPR_INITIALIZER_LIST: return "initializer_list";
@@ -480,7 +479,6 @@ bool expr_is_runtime_const(Expr *expr)
 			return false;
 		case EXPR_CT_CALL:
 		case EXPR_TYPEINFO:
-		case EXPR_HASH_IDENT:
 		case EXPR_CT_IDENT:
 		case EXPR_POISONED:
 		case EXPR_CT_ARG:
@@ -876,7 +874,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_DECL:
 		case EXPR_OPTIONAL:
 		case EXPR_RETHROW:
-		case EXPR_HASH_IDENT:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_INITIALIZER_LIST:

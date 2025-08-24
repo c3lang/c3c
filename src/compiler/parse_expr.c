@@ -672,7 +672,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceSpan lhs_star
 	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
 	const char *end = c->lexer.lexing_start - 1;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-	if (inner->expr_kind == EXPR_HASH_IDENT || (inner->expr_kind == EXPR_CT_ARG && inner->ct_arg_expr.type == TOKEN_CT_VAEXPR))
+	if ((inner->expr_kind == EXPR_UNRESOLVED_IDENTIFIER && (inner->unresolved_ident_expr.ident_type == IDENT_AT || inner->unresolved_ident_expr.ident_type == IDENT_HASH)) || (inner->expr_kind == EXPR_CT_ARG && inner->ct_arg_expr.type == TOKEN_CT_VAEXPR))
 	{
 		Expr *expr = expr_new(EXPR_STRINGIFY, start_span);
 		expr->inner_expr = inner;
@@ -1123,17 +1123,6 @@ static Expr *parse_ct_ident(ParseContext *c, Expr *left, SourceSpan lhs_span UNU
 	return expr;
 }
 
-
-static Expr *parse_hash_ident(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSED)
-{
-	ASSERT(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_HASH_IDENT);
-	expr->ct_ident_expr.identifier = symstr(c);
-	advance_and_verify(c, TOKEN_HASH_IDENT);
-	return expr;
-}
-
-
 /**
  * ct_eval ::= CT_EVAL '(' expr ')'
  */
@@ -1304,7 +1293,23 @@ static Expr *parse_identifier(ParseContext *c, Expr *left, SourceSpan lhs_start)
 	}
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_UNRESOLVED_IDENTIFIER);
 	expr->unresolved_ident_expr.ident = symstr(c);
-	expr->unresolved_ident_expr.is_const = tok_is(c, TOKEN_CONST_IDENT);
+	switch (c->tok)
+	{
+		case TOKEN_CONST_IDENT:
+			expr->unresolved_ident_expr.ident_type = IDENT_CONST;
+			break;
+		case TOKEN_AT_IDENT:
+			expr->unresolved_ident_expr.ident_type = IDENT_AT;
+			break;
+		case TOKEN_HASH_IDENT:
+			expr->unresolved_ident_expr.ident_type = IDENT_HASH;
+			break;
+		case TOKEN_IDENT:
+			expr->unresolved_ident_expr.ident_type = IDENT_NORMAL;
+			break;
+		default:
+			UNREACHABLE;
+	}
 	advance(c);
 	return expr;
 }
@@ -2158,7 +2163,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CONST_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		[TOKEN_CT_CONST_IDENT] = { parse_ct_ident, NULL, PREC_NONE },
 		[TOKEN_CT_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE },
-		[TOKEN_HASH_IDENT] = { parse_hash_ident, NULL, PREC_NONE },
+		[TOKEN_HASH_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		[TOKEN_AT_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		[TOKEN_ELLIPSIS] = { parse_splat, NULL, PREC_NONE },
 		[TOKEN_FN] = { parse_lambda, NULL, PREC_NONE },

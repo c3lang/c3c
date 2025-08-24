@@ -128,28 +128,28 @@ macro Type Atomic.clear(&self, AtomicOrdering ordering = SEQ_CONSISTENT) @if(typ
 	return @atomic_exec_no_arg(atomic::flag_clear, data, ordering);
 }
 
-macro @atomic_exec(#func, data, value, ordering) @local
+macro @atomic_exec(@func, data, value, ordering) @local
 {
 	switch(ordering) 
 	{
-		case RELAXED: return #func(data, value, RELAXED);
-		case ACQUIRE: return #func(data, value, ACQUIRE);
-		case RELEASE: return #func(data, value, RELEASE);
-		case ACQUIRE_RELEASE: return #func(data, value, ACQUIRE_RELEASE);
-		case SEQ_CONSISTENT: return #func(data, value, SEQ_CONSISTENT);
+		case RELAXED: return @func(data, value, RELAXED);
+		case ACQUIRE: return @func(data, value, ACQUIRE);
+		case RELEASE: return @func(data, value, RELEASE);
+		case ACQUIRE_RELEASE: return @func(data, value, ACQUIRE_RELEASE);
+		case SEQ_CONSISTENT: return @func(data, value, SEQ_CONSISTENT);
 		default: unreachable("Ordering may not be non-atomic or unordered.");
 	}
 }
 
-macro @atomic_exec_no_arg(#func, data, ordering) @local
+macro @atomic_exec_no_arg(@func, data, ordering) @local
 {
 	switch(ordering)
 	{
-		case RELAXED: return #func(data, RELAXED);
-		case ACQUIRE: return #func(data, ACQUIRE);
-		case RELEASE: return #func(data, RELEASE);
-		case ACQUIRE_RELEASE: return #func(data, ACQUIRE_RELEASE);
-		case SEQ_CONSISTENT: return #func(data, SEQ_CONSISTENT);
+		case RELAXED: return @func(data, RELAXED);
+		case ACQUIRE: return @func(data, ACQUIRE);
+		case RELEASE: return @func(data, RELEASE);
+		case ACQUIRE_RELEASE: return @func(data, ACQUIRE_RELEASE);
+		case SEQ_CONSISTENT: return @func(data, SEQ_CONSISTENT);
 		default: unreachable("Ordering may not be non-atomic or unordered.");
 	}
 }
@@ -157,9 +157,9 @@ macro @atomic_exec_no_arg(#func, data, ordering) @local
 module std::atomic;
 import std::math;
 
-macro bool @is_native_atomic_value(#value) @private
+macro bool @is_native_atomic_value(@value) @private
 {
-	return is_native_atomic_type($typeof(#value));
+	return is_native_atomic_type($typeof(@value));
 }
 
 macro bool is_native_atomic_type($Type)

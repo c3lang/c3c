@@ -1632,6 +1632,17 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 				}
 				param_kind = VARDECL_PARAM_EXPR;
 				break;
+			case TOKEN_AT_IDENT:
+				// expression @foo
+				name = symstr(c);
+				advance_and_verify(c, TOKEN_AT_IDENT);
+				if (ellipsis || tok_is(c, TOKEN_ELLIPSIS))
+				{
+					PRINT_ERROR_LAST("Expression parameters may not be varargs, use untyped macro varargs '...' instead.");
+					return false;
+				}
+				param_kind = VARDECL_PARAM_EXPR;
+				break;
 				// Compile time type $Type
 			case TOKEN_CT_TYPE_IDENT:
 				name = symstr(c);
@@ -2164,15 +2175,18 @@ static inline Decl *parse_alias_type(ParseContext *c)
 			type_info = expr->type_expr;
 			break;
 		case EXPR_UNRESOLVED_IDENTIFIER:
-			if (expr->unresolved_ident_expr.is_const)
+			switch (expr->unresolved_ident_expr.ident_type)
 			{
-				print_error_at(decl->span, "A constant may not have a type name alias, it must have an all caps name.");
+				case IDENT_CONST:
+					print_error_at(decl->span, "A constant may not have a type name alias, it must have an all caps name.");
+					return poisoned_decl;
+				case IDENT_AT:
+				case IDENT_HASH:
+				case IDENT_NORMAL:
+					print_error_at(decl->span, "An identifier may not be aliased with type name, it must start with a lower case letter.");
+					return poisoned_decl;
 			}
-			else
-			{
-				print_error_at(decl->span, "An identifier may not be aliased with type name, it must start with a lower case letter.");
-			}
-			return poisoned_decl;
+			UNREACHABLE;
 		default:
 			PRINT_ERROR_HERE("Expected a type to alias here.");
 			return poisoned_decl;

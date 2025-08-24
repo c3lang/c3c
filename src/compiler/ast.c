@@ -405,6 +405,26 @@ bool decl_needs_prefix(Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case DECL_VAR:
+			switch (decl->var.kind)
+			{
+				case VARDECL_CONST:
+				case VARDECL_GLOBAL:
+				case VARDECL_UNWRAPPED:
+				case VARDECL_ERASE:
+				case VARDECL_REWRAPPED:
+					break;
+				case VARDECL_LOCAL:
+				case VARDECL_PARAM:
+				case VARDECL_MEMBER:
+				case VARDECL_BITMEMBER:
+				case VARDECL_PARAM_EXPR:
+				case VARDECL_PARAM_CT:
+				case VARDECL_PARAM_CT_TYPE:
+				case VARDECL_LOCAL_CT:
+				case VARDECL_LOCAL_CT_TYPE:
+					return false;
+			}
+			FALLTHROUGH;
 		case DECL_ALIAS:
 		case DECL_FUNC:
 		case DECL_MACRO:

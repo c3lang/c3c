@@ -948,11 +948,12 @@ typedef struct
 	TypeProperty property;
 } ExprTypeCall;
 
+
 typedef struct
 {
 	Path *path;
 	const char *ident;
-	bool is_const;
+	IdentType ident_type;
 } ExprUnresolvedIdentifier;
 
 typedef struct
@@ -3733,7 +3734,6 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_GENERIC_IDENT:
-		case EXPR_HASH_IDENT:
 		case EXPR_IDENTIFIER:
 		case EXPR_LAMBDA:
 		case EXPR_LAST_FAULT:

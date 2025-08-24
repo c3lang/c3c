@@ -432,7 +432,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		}
 		case EXPR_UNRESOLVED_IDENTIFIER:
 		case EXPR_CT_IDENT:
-		case EXPR_HASH_IDENT:
 			ASSERT(expr->resolve_status != RESOLVE_DONE);
 			return expr;
 		case EXPR_BENCHMARK_HOOK:
