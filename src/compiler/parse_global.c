@@ -764,7 +764,8 @@ INLINE bool parse_rethrow_bracket(ParseContext *c, SourceSpan start)
 /**
  * optional_type ::= type '!'?
  * @param c
- * @return
+ * @param allow_generic should generic be allowed
+ * @return The resulting type
  */
 static inline TypeInfo *parse_optional_type_maybe_generic(ParseContext *c, bool allow_generic)
 {
@@ -856,7 +857,7 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 
 	bool is_cond;
 	if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
-	decl->is_cond = true;
+	decl->is_cond = is_cond;
 	if (tok_is(c, TOKEN_EQ))
 	{
 		if (!decl)
@@ -887,6 +888,16 @@ Expr *parse_decl_or_expr(ParseContext *c)
 	// If it's not a type info, we assume an expr.
 	if (expr->expr_kind != EXPR_TYPEINFO) return expr;
 
+	switch (c->tok)
+	{
+		case TOKEN_RPAREN:
+		case TOKEN_RBRACKET:
+		case TOKEN_RBRACE:
+		case TOKEN_RVEC:
+			return expr;
+		default:
+			break;
+	}
 	// Otherwise we expect a declaration.
 	ASSIGN_DECL_OR_RET(decl, parse_local_decl_after_type(c, expr->type_expr), poisoned_expr);
 DECL:
@@ -948,6 +959,8 @@ Decl *parse_var_decl(ParseContext *c)
 	// analyser. The runtime variables must have an initializer unlike the CT ones.
 	advance_and_verify(c, TOKEN_VAR);
 	Decl *decl;
+	bool is_cond;
+	SourceSpan span;
 	switch (c->tok)
 	{
 		case TOKEN_CONST_IDENT:
@@ -956,6 +969,8 @@ Decl *parse_var_decl(ParseContext *c)
 		case TOKEN_IDENT:
 			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL);
 			advance(c);
+			if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
+			decl->is_cond = is_cond;
 			if (!tok_is(c, TOKEN_EQ))
 			{
 				PRINT_ERROR_HERE("'var' must always have an initial value, or the type cannot be inferred.");
@@ -965,16 +980,16 @@ Decl *parse_var_decl(ParseContext *c)
 			ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), poisoned_decl);
 			break;
 		case TOKEN_CT_IDENT:
-			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL_CT);
-			advance(c);
-			if (try_consume(c, TOKEN_EQ))
-			{
-				ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), poisoned_decl);
-			}
-			break;
 		case TOKEN_CT_TYPE_IDENT:
-			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL_CT_TYPE);
+			decl = decl_new_var_current(c, NULL, c->tok == TOKEN_CT_IDENT ? VARDECL_LOCAL_CT : VARDECL_LOCAL_CT_TYPE);
 			advance(c);
+			span = c->span;
+			if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
+			if (is_cond || decl->attributes)
+			{
+				print_error_at(span, "Attributes are not allowed on compile time variables.");
+				return poisoned_decl;
+			}
 			if (try_consume(c, TOKEN_EQ))
 			{
 				ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), poisoned_decl);
@@ -1272,12 +1287,14 @@ static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref,
 				*visibility_ref = visibility = parsed_visibility;
 				continue;
 			}
+			if (attr->attr_kind == ATTRIBUTE_TAG) goto ADD;
 		}
 		const char *name = attr->name;
 		FOREACH(Attr *, other_attr, *attributes_ref)
 		{
 			if (other_attr->name == name) RETURN_PRINT_ERROR_AT(false, attr, "Repeat of attribute '%s' here.", name);
 		}
+ADD:
 		vec_add(*attributes_ref, attr);
 		if (use_comma && !try_consume(c, TOKEN_COMMA)) break;
 	}

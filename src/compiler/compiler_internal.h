@@ -466,6 +466,7 @@ typedef struct VarDecl_
 	bool is_temp : 1;
 	bool copy_const : 1;
 	bool defaulted : 1;
+	bool safe_infer : 1;
 	union
 	{
 		Expr *init_expr;
@@ -2418,8 +2419,8 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl);
 
 bool sema_analyse_method_register(SemaContext *context, Decl *method);
 bool sema_resolve_type_structure(SemaContext *context, Type *type);
-bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl);
-bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local);
+bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defined);
+bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *check_defined);
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_statement(SemaContext *context, Ast *statement);
@@ -4338,6 +4339,12 @@ INLINE bool expr_is_const_fault(Expr *expr)
 {
 	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_FAULT;
+}
+
+INLINE bool expr_is_const_ref(Expr *expr)
+{
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_REF;
 }
 
 INLINE bool expr_is_const_pointer(Expr *expr)

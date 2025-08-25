@@ -95,20 +95,6 @@ bool parse_generic_expr_list(ParseContext *c, Expr ***exprs_ref)
 	return true;
 }
 
-static bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_token)
-{
-	while (!try_consume(c, end_token))
-	{
-		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
-		vec_add(*exprs_ref, expr);
-		if (!try_consume(c, TOKEN_COMMA))
-		{
-			CONSUME_OR_RET(end_token, false);
-			return true;
-		}
-	}
-	return true;
-}
 
 /**
  * rethrow_expr ::= call_expr '!'
@@ -407,7 +393,7 @@ static bool parse_param_path(ParseContext *c, DesignatorElement ***path)
 	}
 }
 
-static Expr *parse_lambda(ParseContext *c, Expr *left, SourceSpan lhs_span)
+static Expr *parse_lambda(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_LAMBDA);
@@ -622,9 +608,10 @@ Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl)
  *
  * @param c the context
  * @param left must be null.
+ * @param lhs_start unused
  * @return Expr *
  */
-static Expr *parse_type_identifier(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_type_identifier(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	return parse_type_expression_with_path(c, NULL);
@@ -635,9 +622,10 @@ static Expr *parse_type_identifier(ParseContext *c, Expr *left, SourceSpan lhs_s
  *
  * @param c the context
  * @param left must be null.
+ * @param lhs_start unused
  * @return Expr *
  */
-static Expr *parse_splat(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_splat(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = expr_new(EXPR_SPLAT, c->span);
@@ -671,9 +659,10 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left, SourceSpan lhs_start U
  *
  * @param c the context
  * @param left must be null
+ * @param lhs_start unused
  * @return Expr *
  */
-static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	SourceSpan start_span = c->span;
@@ -1167,7 +1156,18 @@ static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceSpan lhs_start 
 	Expr *defined = expr_new(EXPR_CT_DEFINED, c->span);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	if (!parse_expr_list(c, &defined->expression_list, TOKEN_RPAREN)) return poisoned_expr;
+	while (!try_consume(c, TOKEN_RPAREN))
+	{
+
+		ASSIGN_EXPR_OR_RET(Expr *expr, parse_decl_or_expr(c), poisoned_expr);
+		vec_add(defined->expression_list, expr);
+		if (!try_consume(c, TOKEN_COMMA))
+		{
+			CONSUME_OR_RET(TOKEN_RPAREN, false);
+			break;
+		}
+	}
+	RANGE_EXTEND_PREV(defined);
 	return defined;
 
 }

@@ -545,7 +545,7 @@ RETRY:
 		}
 		default:
 			// Check type sizes
-			goto CHECK_SIZE;
+			break;
 	}
 CHECK_SIZE:
 	if (type_size(expr->type) > type_size(type)) return expr;
@@ -721,13 +721,9 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 			                  type_quoted_error_string(to),
 			                  type_to_error_string(type_no_optional(to)));
 		}
-		else
-		{
-			RETURN_CAST_ERROR(expr,
-			                  "It is not possible to cast %s to the inner type %s.",
-			                  type_quoted_error_string(type_no_optional(expr->type)), type_quoted_error_string(to));
-		}
-
+		RETURN_CAST_ERROR(expr,
+		                  "It is not possible to cast %s to the inner type %s.",
+		                  type_quoted_error_string(type_no_optional(expr->type)), type_quoted_error_string(to));
 	}
 	if (may_cast_explicit)
 	{
@@ -837,7 +833,7 @@ static bool rule_ptr_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 }
 
 
-static bool rule_all_ok(CastContext *cc, bool is_explicit, bool silent)
+static bool rule_all_ok(CastContext *cc UNUSED, bool is_explicit UNUSED, bool silent UNUSED)
 {
 	return true;
 }
@@ -1191,14 +1187,20 @@ RETRY:;
 	if (result != BOOL_FALSE) return result == BOOL_TRUE;
 	if (!decl->is_substruct) return false;
 	Type *inner;
-	if (decl->decl_kind == DECL_DISTINCT)
+	switch (decl->decl_kind)
 	{
-		inner = decl->distinct->type->canonical;
-	}
-	else
-	{
-		ASSERT(decl->decl_kind == DECL_STRUCT);
-		inner = decl->strukt.members[0]->type->canonical;
+		case DECL_DISTINCT:
+			inner = decl->distinct->type->canonical;
+			break;
+		case DECL_STRUCT:
+			inner = decl->strukt.members[0]->type->canonical;
+			break;
+		case DECL_ENUM:
+		case DECL_CONST_ENUM:
+			// Could be made to work.
+			return false;
+		default:
+			UNREACHABLE
 	}
 	if (!type_may_implement_interface(inner)) return false;
 	decl = inner->decl;
