@@ -22,6 +22,7 @@
 - Types converts to typeid implicitly.
 - Allow `$defined` take declarations: `$defined(int x = y)`
 - Struct and typedef subtypes inherit dynamic functions.
+- Improved directory creation error messages in project and library creation commands.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
