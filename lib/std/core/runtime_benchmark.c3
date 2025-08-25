@@ -51,12 +51,24 @@ fn void set_benchmark_func_iterations(String func, uint value) @builtin
 
 Clock benchmark_clock @local;
 NanoDuration benchmark_nano_seconds @local;
+long cycle_start @local;
+long cycle_stop @local;
 DString benchmark_log @local;
 bool benchmark_warming @local;
 uint this_iteration @local;
 
-macro @start_benchmark() => benchmark_clock = std::time::clock::now();
-macro @end_benchmark() => benchmark_nano_seconds = benchmark_clock.mark();
+macro @start_benchmark()
+{
+	benchmark_clock = std::time::clock::now();
+	cycle_start = $$sysclock();
+}
+
+macro @end_benchmark()
+{
+	benchmark_nano_seconds = benchmark_clock.mark();
+	cycle_stop = $$sysclock();
+}
+
 macro @log_benchmark(msg, args...) => @pool()
 {
 	if (benchmark_warming) return;
@@ -85,10 +97,6 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 
 	name.clear();
 
-	long sys_clock_started;
-	long sys_clock_finished;
-	long sys_clocks;
-
 	foreach (unit : benchmarks)
 	{
 		defer name.clear();
@@ -104,15 +112,14 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 		benchmark_warming = false;
 
 		NanoDuration running_timer;
-		sys_clock_started = $$sysclock();
-		benchmark_nano_seconds = {};
+		long total_clocks;
 
 		uint current_benchmark_iterations = bench_fn_iters[unit.name] ?? benchmark_max_iterations;
 		char[] perc_str = { [0..19] = ' ', [20] = 0 };
 		int perc = 0;
 		uint print_step = current_benchmark_iterations / 100;
 
-		for (this_iteration = 0; this_iteration < current_benchmark_iterations; ++this_iteration)
+		for (this_iteration = 0; this_iteration < current_benchmark_iterations; ++this_iteration, benchmark_nano_seconds = {})
 		{
 			if (0 == this_iteration % print_step)   // only print right about when the % will update
 			{
@@ -127,23 +134,31 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 
 			unit.func() @inline;
 
-			if (!benchmark_nano_seconds) @end_benchmark();
+			if (benchmark_nano_seconds == (NanoDuration){}) @end_benchmark();   // only mark when it wasn't already by the unit.func
+
+			total_clocks += cycle_stop - cycle_start;
 			running_timer += benchmark_nano_seconds;
 		}
 
-		sys_clock_finished = $$sysclock();
-		sys_clocks = sys_clock_finished - sys_clock_started;
-
-		float clock_cycles = (float)sys_clocks / current_benchmark_iterations;
+		float clock_cycles = (float)total_clocks / current_benchmark_iterations;
 		float measurement = (float)running_timer / current_benchmark_iterations;
 		String[] units = { "nanoseconds", "microseconds", "milliseconds", "seconds" };
 
 		float adjusted_measurement = measurement;
 		while (adjusted_measurement > 1_000) adjusted_measurement /= 1_000;
+		float adjusted_runtime_total = (float)running_timer;
+		while (adjusted_runtime_total > 1_000) adjusted_runtime_total /= 1_000;
 
 		io::printf("\r%s ", name.str_view());
-		io::printfn("[COMPLETE] %.2f %s, %.2f CPU clocks, %d iterations",
-			adjusted_measurement, units[math::min(3, (int)math::floor(math::log(measurement, 1_000)))], clock_cycles, current_benchmark_iterations);
+		io::printfn(
+			"[COMPLETE] %.2f %s, %.2f CPU clocks, %d iterations (runtime %.2f %s)",
+			adjusted_measurement,
+			units[math::min(3, (int)math::floor(math::log(measurement, 1_000)))],
+			clock_cycles,
+			current_benchmark_iterations,
+			adjusted_runtime_total,
+			units[math::min(3, (int)math::floor(math::log((float)running_timer, 1_000)))],
+		);
 	}
 
 	io::printfn("\n%d benchmark%s run.\n", benchmarks.len, benchmarks.len > 1 ? "s" : "");
