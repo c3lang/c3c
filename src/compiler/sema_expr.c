@@ -11315,7 +11315,7 @@ RETRY:
 			goto IDENT_CHECK;
 		case EXPR_UNRESOLVED_IDENTIFIER:
 			if (!sema_analyse_expr_dispatch(context, expr, CHECK_VALUE)) return false;
-			FALLTHROUGH;
+			goto RETRY;
 		case EXPR_IDENTIFIER:
 IDENT_CHECK:;
 		{
