@@ -5059,7 +5059,7 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 	return true;
 }
 
-static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module, SourceSpan error_span)
+static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module, SourceSpan param_span, SourceSpan invocation_span)
 {
 	ASSERT(module->contracts);
 	AstId contract = module->contracts;
@@ -5071,7 +5071,11 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 		SemaContext temp_context;
 		if (ast->contract_stmt.kind == CONTRACT_COMMENT) continue;
 		ASSERT_SPAN(ast, ast->contract_stmt.kind == CONTRACT_REQUIRE);
+		InliningSpan *old_span = c->inlined_at;
+		InliningSpan new_span = { .prev = old_span, .span = invocation_span };
 		SemaContext *new_context = context_transform_for_eval(c, &temp_context, module->units[0]);
+		new_context->inlined_at = &new_span;
+
 		FOREACH(Expr *, expr, ast->contract_stmt.contract.decl_exprs->expression_list)
 		{
 			CondResult res = sema_check_comp_time_bool(new_context, expr);
@@ -5079,13 +5083,13 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 			if (res == COND_TRUE) continue;
 			if (ast->contract_stmt.contract.comment)
 			{
-				sema_error_at(c, error_span,
+				sema_error_at(c, param_span,
 				              "Parameter(s) would violate constraint: %s.",
 				              ast->contract_stmt.contract.comment);
 			}
 			else
 			{
-				sema_error_at(c, error_span, "Parameter(s) failed validation: %s",
+				sema_error_at(c, param_span, "Parameter(s) failed validation: %s",
 				              ast->contract_stmt.contract.expr_string);
 			}
 			FAIL:
@@ -5111,7 +5115,7 @@ bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, con
 }
 
 Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span,
-                                            Expr **params, bool *was_recursive_ref)
+                                            Expr **params, bool *was_recursive_ref, SourceSpan invocation_span)
 {
 	NameResolve name_resolve = {
 			.path = decl_path,
@@ -5167,8 +5171,8 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	{
 		if (instantiated_module->contracts)
 		{
-			SourceSpan error_span = extend_span_with_token(params[0]->span, params[parameter_count - 1]->span);
-			if (!sema_analyse_generic_module_contracts(c, instantiated_module, error_span))
+			SourceSpan param_span = extend_span_with_token(params[0]->span, params[parameter_count - 1]->span);
+			if (!sema_analyse_generic_module_contracts(c, instantiated_module, param_span, invocation_span))
 			{
 				return poisoned_decl;
 			}

@@ -64,6 +64,7 @@
 - `@tag` was not allowed to repeat.
 - Lambdas on the top level were not exported by default. #2428
 - `has_tagof` on tagged lambdas returns false #2432
+- Properly add "inlined at" for generic instantiation errors #2382.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
