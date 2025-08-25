@@ -222,7 +222,7 @@ void create_library(BuildOptions *build_options)
 	if (file_exists(dir))
 	{
 		if (file_is_dir(dir)) exit_fail("Directory '%s' already exists.", dir);
-		else exit_fail("Path '%s' exists ad is not a directory.", dir);
+		exit_fail("Path '%s' exists and is not a directory.", dir);
 	}
 
 	if (!dir_make(dir))
@@ -299,10 +299,7 @@ void create_project(BuildOptions *build_options)
 		{
 			error_exit("Directory '%s' already exists.", build_options->project_name);
 		}
-		else
-		{
-			error_exit("Path '%s' exists and is not a directory.", build_options->project_name);
-		}
+		error_exit("Path '%s' exists and is not a directory.", build_options->project_name);
 	}
 
 	if (!dir_make(build_options->project_name))
