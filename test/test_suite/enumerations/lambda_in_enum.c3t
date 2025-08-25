@@ -1,0 +1,19 @@
+// #target: macos-x64
+module test;
+alias SomethingFn = fn void();
+enum TestEnum : char (SomethingFn f)
+{
+	FOO = fn () {}
+}
+
+/* #expect: test.ll
+
+@.enum.FOO = internal constant [4 x i8] c"FOO\00", align 1
+@"$ct.char" = linkonce global %.introspect { i8 3, i64 0, ptr null, i64 1, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.TestEnum" = linkonce global { i8, i64, ptr, i64, i64, i64, [1 x %"char[]"] } { i8 8, i64 0, ptr null, i64 1, i64 ptrtoint (ptr @"$ct.char" to i64), i64 1, [1 x %"char[]"] [%"char[]" { ptr @.enum.FOO, i64 3 }] }, align 8
+@"test.TestEnum$f" = linkonce constant [1 x ptr] [ptr @"test.$global$lambda1"], align 8
+
+define void @"test.$global$lambda1"() #0 {
+entry:
+  ret void
+}

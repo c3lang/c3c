@@ -5519,14 +5519,28 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 		LLVMBasicBlockRef entry;
 		LLVMBuilderRef builder = llvm_create_function_entry(c, func, &entry);
 
-		LLVMValueRef dtable_ptr_in = LLVMGetParam(func, 0);
+		LLVMValueRef typeid_ptr_in = LLVMGetParam(func, 0);
 		LLVMValueRef func_ref = LLVMGetParam(func, 1);
 
+		LLVMBasicBlockRef get_dtable = llvm_basic_block_new(c, "get_dtable");
 		LLVMBasicBlockRef check = llvm_basic_block_new(c, "check");
+		LLVMBasicBlockRef next_parent = llvm_basic_block_new(c, "next_parent");
 		LLVMBasicBlockRef missing_function = llvm_basic_block_new(c, "missing_function");
 		LLVMBasicBlockRef compare = llvm_basic_block_new(c, "compare");
 		LLVMBasicBlockRef match = llvm_basic_block_new(c, "match");
 		LLVMBasicBlockRef no_match = llvm_basic_block_new(c, "no_match");
+
+		LLVMBuildBr(builder, get_dtable);
+
+		LLVMAppendExistingBasicBlock(func, get_dtable);
+		LLVMPositionBuilderAtEnd(builder, get_dtable);
+
+		LLVMValueRef typeid = LLVMBuildPhi(builder, c->ptr_type, "typeid");
+		LLVMAddIncoming(typeid, &typeid_ptr_in, &entry, 1);
+
+		LLVMValueRef dtable_ref = LLVMBuildStructGEP2(builder, c->introspect_type, typeid, INTROSPECT_INDEX_DTABLE, "dtable_ref");
+		LLVMValueRef dtable_ptr_start = LLVMBuildLoad2(builder, c->ptr_type, dtable_ref, "dtable");
+		LLVMSetAlignment(dtable_ptr_start, type_abi_alignment(type_voidptr));
 
 		LLVMBuildBr(builder, check);
 
@@ -5538,12 +5552,27 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 		// dtable_ptr == null
 		LLVMValueRef cmp = LLVMBuildICmp(builder, LLVMIntEQ, dtable_ptr, LLVMConstNull(c->ptr_type), "");
 
-		// if (cmp) goto missing_function else compare
-		LLVMBuildCondBr(builder, cmp, missing_function, compare);
+		// if (cmp) goto next_parent else compare
+		LLVMBuildCondBr(builder, cmp, next_parent, compare);
+
+		LLVMAppendExistingBasicBlock(func, next_parent);
+		LLVMPositionBuilderAtEnd(builder, next_parent);
+
+		LLVMValueRef parent_ref = LLVMBuildStructGEP2(builder, c->introspect_type, typeid, INTROSPECT_INDEX_PARENTOF, "parent_ref");
+		LLVMValueRef parent_ptr = LLVMBuildLoad2(builder, c->typeid_type, parent_ref, "parent");
+		LLVMSetAlignment(parent_ptr, type_abi_alignment(type_voidptr));
+		parent_ptr = LLVMBuildIntToPtr(builder, parent_ptr, c->ptr_type, "parent_ptr");
+
+		LLVMValueRef cmp2 = LLVMBuildICmp(builder, LLVMIntEQ, parent_ptr, LLVMConstNull(c->ptr_type), "");
+
+		// if (cmp) goto missing_function else get_dtable
+		LLVMAddIncoming(typeid, &parent_ptr, &next_parent, 1);
+		LLVMBuildCondBr(builder, cmp2, missing_function, get_dtable);
 
 		// missing_function: return null
 		LLVMAppendExistingBasicBlock(func, missing_function);
 		LLVMPositionBuilderAtEnd(builder, missing_function);
+
 		LLVMBuildRet(builder, LLVMConstNull(c->ptr_type));
 
 		// function_type = dtable_ptr.function_type
@@ -5579,7 +5608,7 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 		// goto check
 		LLVMBuildBr(builder, check);
 
-		llvm_set_phi(dtable_ptr, dtable_ptr_in, entry, next, no_match);
+		llvm_set_phi(dtable_ptr, dtable_ptr_start, get_dtable, next, no_match);
 		LLVMDisposeBuilder(builder);
 	}
 	// Insert cache.
@@ -5604,15 +5633,7 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 	LLVMValueRef compare = LLVMBuildICmp(c->builder, LLVMIntEQ, type_id_ptr, cached_type_id, "");
 	llvm_emit_cond_br_raw(c, compare, cache_hit, cache_miss);
 	llvm_emit_block(c, cache_miss);
-	AlignSize align;
-	LLVMValueRef dtable_ref = llvm_emit_struct_gep_raw(c,
-													   type_id_ptr,
-													   c->introspect_type,
-													   INTROSPECT_INDEX_DTABLE,
-													   llvm_abi_alignment(c, c->introspect_type),
-													   &align);
-	LLVMValueRef dtable_ptr = llvm_load(c, c->ptr_type, dtable_ref, align, "");
-	LLVMValueRef params[2] = { dtable_ptr, selector };
+	LLVMValueRef params[2] = { type_id_ptr, selector };
 	LLVMValueRef call = LLVMBuildCall2(c->builder, type, func, params, 2, "");
 	// Store in cache.
 	llvm_store_to_ptr_raw(c, cache_fn_ptr, call, type_voidptr);

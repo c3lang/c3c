@@ -3104,13 +3104,14 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 
 }
 
+// Conversion MyEnum.FOO -> MyEnum.ordinal, will change the type.
 void sema_expr_convert_enum_to_int(Expr *expr)
 {
 	ASSERT(type_flatten(expr->type)->type_kind == TYPE_ENUM);
 	Type *underlying_type = type_base(expr->type);
 	if (sema_cast_const(expr))
 	{
-		ASSERT(expr->const_expr.const_kind == CONST_ENUM);
+		ASSERT(expr_is_const_enum(expr));
 		expr_rewrite_const_int(expr, underlying_type, expr->const_expr.enum_val->enum_constant.inner_ordinal);
 	}
 	if (expr->expr_kind == EXPR_ENUM_FROM_ORD)
@@ -5972,9 +5973,9 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	{
 		return sema_expr_analyse_type_access(context, expr, parent->type_expr->type, identifier, missing_ref);
 	}
-	if (parent->expr_kind == EXPR_IDENTIFIER)
+	if (parent->expr_kind == EXPR_IDENTIFIER || expr_is_const_ref(parent))
 	{
-		Decl *decl = parent->ident_expr;
+		Decl *decl = parent->expr_kind == EXPR_IDENTIFIER ? parent->ident_expr : parent->const_expr.global_ref;
 		switch (decl->decl_kind)
 		{
 			case DECL_FUNC:
@@ -10084,8 +10085,8 @@ static inline bool sema_expr_analyse_generic_ident(SemaContext *context, Expr *e
 		RETURN_SEMA_ERROR(parent, "Expected an identifier to parameterize.");
 	}
 	Decl *symbol = sema_analyse_parameterized_identifier(context, parent->unresolved_ident_expr.path,
-														 parent->unresolved_ident_expr.ident, parent->span,
-														 expr->generic_ident_expr.parameters, NULL);
+	                                                     parent->unresolved_ident_expr.ident, parent->span,
+	                                                     expr->generic_ident_expr.parameters, NULL, expr->span);
 	if (!decl_ok(symbol)) return false;
 	expr_resolve_ident(expr, symbol);
 	return true;
@@ -10218,6 +10219,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		{
 			decl->var.is_read = true;
 		}
+		decl->is_external_visible = true;
 		vec_add(unit->module->lambdas_to_evaluate, decl);
 	}
 	else

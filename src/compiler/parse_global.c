@@ -1287,12 +1287,14 @@ static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref,
 				*visibility_ref = visibility = parsed_visibility;
 				continue;
 			}
+			if (attr->attr_kind == ATTRIBUTE_TAG) goto ADD;
 		}
 		const char *name = attr->name;
 		FOREACH(Attr *, other_attr, *attributes_ref)
 		{
 			if (other_attr->name == name) RETURN_PRINT_ERROR_AT(false, attr, "Repeat of attribute '%s' here.", name);
 		}
+ADD:
 		vec_add(*attributes_ref, attr);
 		if (use_comma && !try_consume(c, TOKEN_COMMA)) break;
 	}
