@@ -188,8 +188,9 @@ fn LinkedEntry*? LinkedHashMap.get_entry(&map, Key key)
 }
 
 <*
- Get the value or update and
- @require @assignable_to(#expr, Value)
+ Get the value or set it to the value
+
+ @require $defined(Value val = #expr)
 *>
 macro Value LinkedHashMap.@get_or_set(&map, Key key, Value #expr)
 {

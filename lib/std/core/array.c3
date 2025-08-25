@@ -10,7 +10,7 @@ import std::io;
  @param [in] array
  @param [in] element
  @require @typekind(array) == SLICE || @typekind(array) == ARRAY
- @require @typeis(array[0], $typeof(element)) : "array and element must have the same type"
+ @require @typematch(array[0], element) : "array and element must have the same type"
 *>
 macro bool contains(array, element)
 {
@@ -27,6 +27,8 @@ macro bool contains(array, element)
  
  @param [in] array
  @param [in] element
+ @require @typekind(array) == SLICE || @typekind(array) == ARRAY
+ @require @typematch(array[0], element) : "array and element must have the same type"
  @return "the first index of the element"
  @return? NOT_FOUND
 *>
@@ -88,7 +90,7 @@ macro rindex_of(array, element)
  @param [&inout] allocator : "The allocator to use, default is the heap allocator"
  @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
  @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
- @require @typeis(arr1[0], $typeof(arr2[0])) : "Arrays must have the same type"
+ @require @typematch(arr1[0], arr2[0]) : "Arrays must have the same type"
  @ensure result.len == arr1.len + arr2.len
 *>
 macro concat(Allocator allocator, arr1, arr2) @nodiscard
@@ -114,7 +116,7 @@ macro concat(Allocator allocator, arr1, arr2) @nodiscard
  @param [in] arr2
  @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
  @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
- @require @typeis(arr1[0], $typeof(arr2[0])) : "Arrays must have the same type"
+ @require @typematch(arr1[0], arr2[0]) : "Arrays must have the same type"
  @ensure return.len == arr1.len + arr2.len
 *>
 macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);

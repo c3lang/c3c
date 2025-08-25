@@ -608,9 +608,15 @@ RETRY:
 			FALLTHROUGH;
 		case DECL_CONST_ENUM:
 		case DECL_BITSTRUCT:
-		case DECL_STRUCT:
-		case DECL_UNION:
 		case DECL_INTERFACE:
+		case DECL_UNION:
+			sema_trace_decl_dynamic_methods(decl);
+			return;
+		case DECL_STRUCT:
+			if (decl->is_substruct)
+			{
+				sema_trace_type_liveness(decl->strukt.members[0]->type);
+			}
 			sema_trace_decl_dynamic_methods(decl);
 			return;
 		case DECL_ENUM_CONSTANT:

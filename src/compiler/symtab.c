@@ -372,6 +372,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_PURE] = kw_at_pure;
 	attribute_list[ATTRIBUTE_PUBLIC] = KW_DEF("@public");
 	attribute_list[ATTRIBUTE_REFLECT] = KW_DEF("@reflect");
+	attribute_list[ATTRIBUTE_SAFEINFER] = KW_DEF("@safeinfer");
 	attribute_list[ATTRIBUTE_SAFEMACRO] = KW_DEF("@safemacro");
 	attribute_list[ATTRIBUTE_SECTION] = KW_DEF("@section");
 	attribute_list[ATTRIBUTE_STRUCTLIKE] = KW_DEF("@structlike");

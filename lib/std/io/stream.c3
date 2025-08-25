@@ -37,14 +37,24 @@ fn usz? available(InStream s)
 	return 0;
 }
 
-macro bool @is_instream(#expr)
+macro bool @is_instream(#expr) @const
 {
 	return @assignable_to(#expr, InStream);
 }
 
-macro bool @is_outstream(#expr)
+macro bool @is_not_instream_if_ptr(#expr) @const
+{
+	return !$defined(&#expr) ||| !@is_instream(&#expr);
+}
+
+macro bool @is_outstream(#expr) @const
 {
 	return @assignable_to(#expr, OutStream);
+}
+
+macro bool @is_not_outstream_if_ptr(#expr) @const
+{
+	return !$defined(&#expr) ||| !@is_outstream(&#expr);
 }
 
 <*

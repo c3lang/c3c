@@ -1,0 +1,12 @@
+struct Foo @tag("a", true) @tag("b", false)
+{
+	int a;
+}
+fn void main()
+{
+	Foo x;
+	$assert(Foo.has_tagof("b"));
+	$assert(Foo.has_tagof("a"));
+	$assert(Foo.tagof("a"));
+	$assert(!Foo.tagof("b"));
+}

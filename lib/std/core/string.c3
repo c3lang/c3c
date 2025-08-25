@@ -1,6 +1,5 @@
 module std::core::string;
-import std::io;
-import std::core::mem::allocator;
+import std::io, std::ascii;
 
 
 typedef String @if(!$defined(String)) = inline char[];
@@ -138,7 +137,7 @@ fn String tformat(String fmt, args...) @format(0)
  Check if a character is in a set.
 
  @param c : `the character to check`
- @param [in] set : `The formatting string`
+ @param [in] set : `String containing the characters`
  @pure
  @return `True if a character is in the set`
 *>
@@ -214,9 +213,26 @@ fn String String.treplace(self, String needle, String new_str)
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim(self, String to_trim = "\t\n\r ")
+fn String String.trim(self, String to_trim = " \n\t\r\f\v")
 {
     return self.trim_left(to_trim).trim_right(to_trim);
+}
+
+<*
+ Remove characters from the front and end of a string.
+
+ @param [in] self : `The string to trim`
+ @param to_trim : `The set of characters to trim, defaults to whitespace`
+ @pure
+ @return `a substring of the string passed in`
+*>
+fn String String.trim_charset(self, AsciiCharset to_trim = ascii::WHITESPACE_SET)
+{
+	usz start = 0;
+	usz len = self.len;
+	while (start < len && to_trim.contains(self[start])) start++;
+	while (len > start && to_trim.contains(self[len - 1])) len--;
+    return self[start..len - 1];
 }
 
 <*
@@ -227,7 +243,7 @@ fn String String.trim(self, String to_trim = "\t\n\r ")
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim_left(self, String to_trim = "\t\n\r ")
+fn String String.trim_left(self, String to_trim = " \n\t\r\f\v")
 {
 	usz start = 0;
 	usz len = self.len;
@@ -244,7 +260,7 @@ fn String String.trim_left(self, String to_trim = "\t\n\r ")
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim_right(self, String to_trim = "\t\n\r ")
+fn String String.trim_right(self, String to_trim = " \n\t\r\f\v")
 {
 	usz len = self.len;
 	while (len > 0 && char_in_set(self[len - 1], to_trim)) len--;

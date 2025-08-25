@@ -49,7 +49,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, CanonicalType *switch_type, Ast **cases);
 
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
-static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan source);
+static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan span);
 static bool sema_analyse_ensure(SemaContext *context, Ast *directive);
 static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive);
 
@@ -880,11 +880,9 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 		{
 			if (decl->var.kind == VARDECL_UNWRAPPED)
 			{
-				SEMA_ERROR(ident, "This variable is already unwrapped, so you cannot use 'try' on it again, please remove the 'try'.");
-				return false;
+				RETURN_SEMA_ERROR(ident, "This variable is already unwrapped, so you cannot use 'try' on it again, please remove the 'try'.");
 			}
-			SEMA_ERROR(ident, "Expected this variable to be an optional, otherwise it can't be used for unwrap, maybe you didn't intend to use 'try'?");
-			return false;
+			RETURN_SEMA_ERROR(ident, "Expected this variable to be an optional, otherwise it can't be used for unwrap, maybe you didn't intend to use 'try'?");
 		}
 		expr->expr_kind = EXPR_TRY;
 		expr->try_expr = (ExprTry) { .decl = decl };
@@ -929,7 +927,6 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	if (!IS_OPTIONAL(optional))
 	{
 		RETURN_SEMA_ERROR(optional, "Expected an optional expression to 'try' here. If it isn't an optional, remove 'try'.");
-		return false;
 	}
 
 	if (var_type)
@@ -947,7 +944,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	Decl *decl = decl_new_var(ident->unresolved_ident_expr.ident, ident->span, var_type, VARDECL_LOCAL);
 
 	// 4e. Analyse it
-	if (!sema_analyse_var_decl(context, decl, true)) return false;
+	if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
 
 	expr->expr_kind = EXPR_TRY;
 	expr->try_expr = (ExprTry) { .decl = decl, .optional = optional };
@@ -959,9 +956,8 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 
 static inline bool sema_analyse_try_unwrap_chain(SemaContext *context, Expr *expr, CondType cond_type, CondResult *result)
 {
-	ASSERT(cond_type == COND_TYPE_UNWRAP_BOOL);
-
-	ASSERT(expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN);
+	ASSERT_SPAN(expr, cond_type == COND_TYPE_UNWRAP_BOOL);
+	ASSERT_SPAN(expr, expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN);
 
 	FOREACH(Expr *, chain_element, expr->try_unwrap_chain_expr)
 	{
@@ -1007,7 +1003,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 	decl->var.no_init = true;
 
 	// 4e. Analyse it
-	if (!sema_analyse_var_decl(context, decl, true)) return false;
+	if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
 
 RESOLVE_EXPRS:;
 	Expr **exprs = expr->unresolved_catch_expr.exprs;
@@ -1225,12 +1221,12 @@ static inline bool sema_analyse_decls_stmt(SemaContext *context, Ast *statement)
 		VarDeclKind kind = decl->var.kind;
 		if (kind == VARDECL_LOCAL_CT_TYPE || kind == VARDECL_LOCAL_CT)
 		{
-			if (!sema_analyse_var_decl_ct(context, decl)) return false;
+			if (!sema_analyse_var_decl_ct(context, decl, NULL)) return false;
 			statement->decls_stmt[i] = NULL;
 		}
 		else
 		{
-			if (!sema_analyse_var_decl(context, decl, true)) return false;
+			if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
 			should_nop = false;
 		}
 	}
@@ -1243,7 +1239,7 @@ static inline bool sema_analyse_declare_stmt(SemaContext *context, Ast *statemen
 	Decl *decl = statement->declare_stmt;
 	VarDeclKind kind = decl->var.kind;
 	bool erase = kind == VARDECL_LOCAL_CT_TYPE || kind == VARDECL_LOCAL_CT;
-	if (!sema_analyse_var_decl(context, decl, true))
+	if (!sema_analyse_var_decl(context, decl, true, NULL))
 	{
 		if (!decl_ok(decl)) context->active_scope.is_poisoned = true;
 		return false;
@@ -3065,7 +3061,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 					SEMA_ERROR(expr, "Only 'var $foo' and 'var $Type' declarations are allowed in '$for'");
 					goto FAILED;
 				}
-				if (!sema_analyse_var_decl_ct(context, decl)) goto FAILED;
+				if (!sema_analyse_var_decl_ct(context, decl, NULL)) goto FAILED;
 				continue;
 			}
 			// If expression evaluate it and make sure it is constant.
@@ -3239,8 +3235,7 @@ static bool sema_analyse_ensure(SemaContext *context, Ast *directive)
 	{
 		if (expr->expr_kind == EXPR_DECL)
 		{
-			SEMA_ERROR(expr, "Only expressions are allowed.");
-			return false;
+			RETURN_SEMA_ERROR(expr, "Only expressions are allowed.");
 		}
 	}
 	return true;

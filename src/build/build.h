@@ -585,6 +585,7 @@ typedef struct BuildOptions_
 	MemoryEnvironment memory_environment;
 	SanitizeMode sanitize_mode;
 	uint32_t max_vector_size;
+	uint32_t max_stack_object_size;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;
@@ -725,6 +726,7 @@ typedef struct
 	LinkerType linker_type;
 	uint32_t symtab_size;
 	uint32_t max_vector_size;
+	uint32_t max_stack_object_size;
 	uint32_t switchrange_max_size;
 	uint32_t switchjump_max_size;
 	const char **args;
