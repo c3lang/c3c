@@ -4571,6 +4571,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 		default:
 			UNREACHABLE
 	}
+	if (check_failed) return true;
 	return sema_add_local(context, decl);
 FAIL_CHECK:
 	if (check_failed)

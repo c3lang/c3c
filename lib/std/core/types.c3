@@ -339,41 +339,7 @@ macro bool is_same_vector_type($Type1, $Type2) @const
 	$endif
 }
 
-macro bool has_equals($Type) @const => has_operator($Type, "==");
-
-macro bool has_operator($Type, String $operator) @const
-{
-	$switch $operator:
-	$case ".len": return $defined(($Type){}.len);
-	$case "[]": return $defined(($Type){}[0]);
-	$case "&[]": return $defined(($Type){}[0]);
-	$case "[]=": return $defined(($Type){}[0] = ($Type){});
-	$case "~": return $defined(~($Type){});
-	$case "+": return $defined(($Type){} + ($Type){});
-	$case "-": return $defined(($Type){} - ($Type){});
-	$case "*": return $defined(($Type){} * ($Type){});
-	$case "/": return $defined(($Type){} / ($Type){});
-	$case "%": return $defined(($Type){} % ($Type){});
-	$case "&": return $defined(($Type){} & ($Type){});
-	$case "|": return $defined(($Type){} | ($Type){});
-	$case "^": return $defined(($Type){} ^ ($Type){});
-	$case "<<": return $defined(($Type){} << ($Type){});
-	$case ">>": return $defined(($Type){} >> ($Type){});
-	$case "==": return $defined(($Type){} == ($Type){});
-	$case "!=": return $defined(($Type){} != ($Type){});
-	$case "+=": return $defined(($Type){} += ($Type){});
-	$case "-=": return $defined(($Type){} -= ($Type){});
-	$case "*=": return $defined(($Type){} *= ($Type){});
-	$case "/=": return $defined(($Type){} /= ($Type){});
-	$case "%=": return $defined(($Type){} %= ($Type){});
-	$case "&=": return $defined(($Type){} &= ($Type){});
-	$case "|=": return $defined(($Type){} |= ($Type){});
-	$case "^=": return $defined(($Type){} ^= ($Type){});
-	$case "<<=": return $defined(($Type){} <<= ($Type){});
-	$case ">>=": return $defined(($Type){} >>= ($Type){});
-	$default: return false;
-	$endswitch
-}
+macro bool has_equals($Type) @const => $defined(($Type){} == ($Type){});
 
 macro bool is_equatable_type($Type) @const
 {

@@ -1,8 +1,5 @@
 module std::core::array;
-
-import std::core::array::slice;
-import std::collections::pair;
-import std::io;
+import std::collections::pair, std::io;
 
 <*
  Returns true if the array contains at least one element, else false
@@ -148,7 +145,7 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
  @param #operation : "The reduction/folding labmda function or function pointer to apply."
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require @assignable_to(#operation, $typefrom(@reduce_fn(array, identity))) : "Invalid lambda or function pointer type"
+ @require $defined($typefrom(@reduce_fn(array, identity)) $func = #operation) : "Invalid lambda or function pointer type"
 *>
 macro @reduce(array, identity, #operation)
 {
@@ -163,12 +160,12 @@ macro @reduce(array, identity, #operation)
 
  @pure
 
- @param[in] array
+ @param [in] array
  @param identity_value : "The base accumulator value to use for the sum"
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require types::has_operator($typeof(array[0]), "+") : "Array element type must implement the '+' operator"
- @require @assignable_to(identity_value, $typeof(array[0])) : "The identity type must be assignable to the array element type"
+ @require $defined(array[0] + array[0]) : "Array element type must implement the '+' operator"
+ @require $defined($typeof(array[0]) t = identity_value) : "The identity type must be assignable to the array element type"
 *>
 macro @sum(array, identity_value = 0)
 {
@@ -181,18 +178,17 @@ macro @sum(array, identity_value = 0)
 
  @pure
 
- @param[in] array
+ @param [in] array
  @param identity_value : "The base accumulator value to use for the product"
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require types::has_operator($typeof(array[0]), "*") : "Array element type must implement the '*' operator"
- @require @assignable_to(identity_value, $typeof(array[0])) : "The identity type must be assignable to the array element type"
+ @require $defined(array[0] * array[0]) : "Array element type must implement the '*' operator"
+ @require $defined($typeof(array[0]) t = identity_value) : "The identity type must be assignable to the array element type"
 *>
 macro @product(array, identity_value = 1)
 {
 	return @reduce(array, ($typeof(array[0]))identity_value, fn (acc, e, u) => acc * e);
 }
-
 
 <*
  Applies a given predicate function to each element of an array and returns a new
@@ -212,11 +208,11 @@ macro @product(array, identity_value = 1)
  and thus its count indicates that 2 of the 4 elements matched the predicate condition.
 
  @param [&inout] allocator
- @param[in] array
+ @param [in] array
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require @assignable_to(#predicate, $typefrom(@predicate_fn(array)))
+ @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro usz[] @indices_of(Allocator allocator, array, #predicate)
 {
@@ -235,11 +231,11 @@ macro usz[] @indices_of(Allocator allocator, array, #predicate)
 <*
  Array `@indices_of` using the temp allocator.
 
- @param[in] array
+ @param [in] array
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require @assignable_to(#predicate, $typefrom(@predicate_fn(array)))
+ @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro usz[] @tindices_of(array, #predicate)
 {
@@ -259,12 +255,12 @@ macro usz[] @tindices_of(array, #predicate)
  assert(evens == (int[]){2, 4, 10 });
  ```
 
- @param[&inout] allocator
- @param[in] array
+ @param [&inout] allocator
+ @param [in] array
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require @assignable_to(#predicate, $typefrom(@predicate_fn(array)))
+ @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro @filter(Allocator allocator, array, #predicate) @nodiscard
 {
@@ -285,11 +281,11 @@ macro @filter(Allocator allocator, array, #predicate) @nodiscard
 <*
  Array `@filter` using the temp allocator.
 
- @param[in] array
+ @param [in] array
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require @assignable_to(#predicate, $typefrom(@predicate_fn(array)))
+ @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro @tfilter(array, #predicate) @nodiscard
 {
@@ -301,11 +297,11 @@ macro @tfilter(array, #predicate) @nodiscard
  Returns `true` if _any_ element of the input array returns `true` when
  the `#predicate` function is applied.
 
- @param[in] array
+ @param [in] array
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require @assignable_to(#predicate, $typefrom(@predicate_fn(array)))
+ @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro bool @any(array, #predicate)
 {
@@ -319,11 +315,11 @@ macro bool @any(array, #predicate)
  Returns `true` if _all_ elements of the input array return `true` when
  the `#predicate` function is applied.
 
- @param[in] array
+ @param [in] array
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require @assignable_to(#predicate, $typefrom(@predicate_fn(array)))
+ @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro bool @all(array, #predicate)
 {

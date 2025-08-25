@@ -74,7 +74,6 @@
 - Updated hash functions in default hash methods.
 - Added `FixedBlockPool` which is a memory pool for fixed size blocks.
 - Added the experimental `std::core::log` for logging.
-- Added array `@reduce`, `@filter`, `@any`, `@all`, `@sum`, `@product`, and `@indices_of` macros.
 - Added array `@zip` and `@zip_into` macros. #2370
 - Updated termios bindings to use bitstructs and fixed some constants with incorrect values #2372
 - Add Freestanding OS types to runtime `env::` booleans.
@@ -84,6 +83,7 @@
 - Deprecated `PollSubscribes` and `PollEvents` in favour of `PollSubscribe` and `PollEvent` and made them const enums.
 - Added `AsciiCharset` for matching ascii characters quickly.
 - Added `String.trim_charset`.
+- Added array `@reduce`, `@filter`, `@any`, `@all`, `@sum`, `@product`, and `@indices_of` macros.
 
 ## 0.7.4 Change list
 
