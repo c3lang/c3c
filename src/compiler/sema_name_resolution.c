@@ -971,6 +971,7 @@ Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const 
 				return NULL;
 		}
 	}
+	if (!type_may_have_method(type)) return NULL;
 	Decl *type_decl = type->decl;
 	if (!decl_ok(type_decl)) return poisoned_decl;
 	Methods *methods = type_decl->method_table;
