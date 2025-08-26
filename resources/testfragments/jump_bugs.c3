@@ -3,7 +3,7 @@ module test;
 
 fn void test1()
 {
-	switch (0) @jump
+	switch (0)
     {
         case 0:
             break;
@@ -16,12 +16,12 @@ enum Foo { A, B, }
 fn void main()
 {
 	test1();
-	/*
-	switch (Foo.A) @jump
+
+	switch (Foo.A)
 	{
         default:
 			break;
-	}*/
+	}
 }
 
 /* #expect: test.ll
