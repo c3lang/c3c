@@ -232,11 +232,10 @@ macro usz? read_varint(stream, x_ptr)
 }
 <*
  @require @is_outstream(stream)
- @require @typekind(x).is_int()
+ @require $Type.kindof.is_int()
 *>
-macro usz? write_varint(stream, x)
+macro usz? write_varint(stream, $Type x)
 {
-	var $Type = $typeof(x);
 	const MAX = MAX_VARS[$Type.sizeof];
 	char[MAX] buffer @noinit;
 	usz i;

@@ -187,19 +187,19 @@ void print_type(FILE *file, TypeInfo *type)
 		case TYPE_COMPRESSED_PTR:
 			fputs("*", file);
 			break;
-		case TYPE_COMPRESSED_SUB:
+		case TYPE_COMPRESSED_SLICE:
 			fputs("[]", file);
 			break;
-		case TYPE_COMPRESSED_SUBPTR:
+		case TYPE_COMPRESSED_SLICEPTR:
 			fputs("[]*", file);
 			break;
 		case TYPE_COMPRESSED_PTRPTR:
 			fputs("**", file);
 			break;
-		case TYPE_COMPRESSED_PTRSUB:
+		case TYPE_COMPRESSED_PTRSLICE:
 			fputs("*[]", file);
 			break;
-		case TYPE_COMPRESSED_SUBSUB:
+		case TYPE_COMPRESSED_SLICESLICE:
 			fputs("[][]", file);
 			break;
 	}

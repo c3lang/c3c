@@ -1103,13 +1103,14 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	bool is_macro = sig->is_macro;
 	bool is_macro_at_name = sig->is_at_macro || sig->is_safemacro;
 	// Check return type
-	ASSERT(sig->rtype || sig->is_macro);
+	TypeInfoId sig_rtype = sig->is_capture_return ? 0 : sig->rtype;
+	ASSERT(sig_rtype || sig->is_macro);
 	Type *rtype = NULL;
 	int format_index = (int)sig->attrs.format - 1;
-	if (sig->rtype)
+	if (sig_rtype)
 	{
-		TypeInfo *rtype_info = type_infoptr(sig->rtype);
-		if (!sema_resolve_type_info(context, type_infoptr(sig->rtype),
+		TypeInfo *rtype_info = type_infoptr(sig_rtype);
+		if (!sema_resolve_type_info(context, rtype_info,
 		                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
 		                                     : RESOLVE_TYPE_DEFAULT)) return false;
 		rtype = rtype_info->type;
@@ -1272,7 +1273,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		param->unit = context->unit;
 		ASSERT(param->decl_kind == DECL_VAR);
 		VarDeclKind var_kind = param->var.kind;
-		TypeInfo *type_info = type_infoptrzero(param->var.type_info);
+		TypeInfo *type_info = param->var.is_typecapture ? NULL: type_infoptrzero(param->var.type_info);
 		if (type_info)
 		{
 			if (!sema_resolve_type_info(context, type_info,
@@ -1835,7 +1836,7 @@ static bool sema_analyse_operator_common(SemaContext *context, Decl *method, Typ
 		RETURN_SEMA_ERROR(method, "Not enough parameters, '%s' requires %u.", method->name, (unsigned)parameters);
 	}
 
-	if (!signature->rtype) RETURN_SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
+	if (signature->is_capture_return || !signature->rtype) RETURN_SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
 
 	FOREACH(Decl *, param, params)
 	{
@@ -2055,7 +2056,7 @@ static inline bool sema_analyse_operator_arithmetics(SemaContext *context, Decl 
 	{
 		RETURN_SEMA_ERROR(method, "Not enough parameters, '%s' requires 2 parameters.", method->name);
 	}
-	if (!signature->rtype) RETURN_SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
+	if (signature->is_capture_return || !signature->rtype) RETURN_SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
 	TypeInfo *rtype = type_infoptr(signature->rtype);
 	if (IS_OPTIONAL(rtype))
 	{
@@ -2673,6 +2674,7 @@ static inline Decl *sema_find_interface_for_method(SemaContext *context, Canonic
  */
 static inline bool sema_compare_method_with_interface(SemaContext *context, Decl *decl, Decl *implemented_method)
 {
+	assert(decl->decl_kind == DECL_FUNC);
 	Signature interface_sig = implemented_method->func_decl.signature;
 	Signature this_sig = decl->func_decl.signature;
 	Type *any_rtype = typeget(interface_sig.rtype);

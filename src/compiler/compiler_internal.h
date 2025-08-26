@@ -458,6 +458,7 @@ typedef struct VarDecl_
 	bool is_written : 1;
 	bool is_addr : 1;
 	bool self_addr : 1;
+	bool is_typecapture : 1;
 	bool is_threadlocal : 1;
 	bool no_init : 1;
 	bool no_alias : 1;
@@ -537,6 +538,7 @@ struct Signature_
 	bool is_macro : 1;
 	bool is_at_macro : 1;
 	bool is_safemacro : 1;
+	bool is_capture_return : 1;
 	Variadic variadic : 3;
 	CallABI abi : 8;
 	unsigned vararg_index;
@@ -3527,6 +3529,7 @@ INLINE Decl *decl_flatten(Decl *decl)
 	}
 	return decl;
 }
+
 
 static inline DeclKind decl_from_token(TokenType type)
 {

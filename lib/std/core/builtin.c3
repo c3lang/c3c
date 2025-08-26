@@ -623,11 +623,11 @@ macro uint hash_array(array_ptr) @local
 }
 
 <*
- @require @typekind(vec) == VECTOR
+ @require $Vec.typeof == VECTOR
 *>
-macro uint hash_vec(vec) @local
+macro uint hash_vec($Vec vec) @local
 {
-	var $len = $sizeof(vec.len * $typeof(vec).inner.sizeof);
+	var $len = $sizeof(vec.len * $Vec.inner.sizeof);
 
 	$if $len > 16:
 		return (uint)komi::hash(((char*)&&vec)[:$len]);

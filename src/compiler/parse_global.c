@@ -561,13 +561,13 @@ static inline TypeInfo *parse_array_type_index(ParseContext *c, TypeInfo *type)
 		switch (type->subtype)
 		{
 			case TYPE_COMPRESSED_NONE:
-				type->subtype = TYPE_COMPRESSED_SUB;
+				type->subtype = TYPE_COMPRESSED_SLICE;
 				break;
 			case TYPE_COMPRESSED_PTR:
-				type->subtype = TYPE_COMPRESSED_PTRSUB;
+				type->subtype = TYPE_COMPRESSED_PTRSLICE;
 				break;
-			case TYPE_COMPRESSED_SUB:
-				type->subtype = TYPE_COMPRESSED_SUBSUB;
+			case TYPE_COMPRESSED_SLICE:
+				type->subtype = TYPE_COMPRESSED_SLICESLICE;
 				break;
 			default:
 				goto DIRECT_SLICE;
@@ -653,8 +653,8 @@ static inline TypeInfo *parse_type_with_base_maybe_generic(ParseContext *c, Type
 						case TYPE_COMPRESSED_PTR:
 							type_info->subtype = TYPE_COMPRESSED_PTRPTR;
 							break;
-						case TYPE_COMPRESSED_SUB:
-							type_info->subtype = TYPE_COMPRESSED_SUBPTR;
+						case TYPE_COMPRESSED_SLICE:
+							type_info->subtype = TYPE_COMPRESSED_SLICEPTR;
 							break;
 						default:
 						{
@@ -1451,13 +1451,25 @@ static bool parse_next_is_typed_parameter(ParseContext *c, ParameterParseKind pa
 		case TOKEN_CT_VATYPE:
 			return parse_kind == PARAM_PARSE_LAMBDA || parse_kind == PARAM_PARSE_CALL;
 		case TOKEN_CT_TYPE_IDENT:
-			if (parse_kind == PARAM_PARSE_LAMBDA) return true;
-			if (parse_kind != PARAM_PARSE_CALL) return false;
+			switch (parse_kind)
+			{
+				case PARAM_PARSE_MACRO:
+				case PARAM_PARSE_CALL:
+					break;
+				case PARAM_PARSE_FUNC:
+				case PARAM_PARSE_BODY:
+				case PARAM_PARSE_ATTR:
+					return false;
+				case PARAM_PARSE_LAMBDA:
+					return true;
+			}
 			switch (peek(c))
 			{
 				case TOKEN_IDENT:
 				case TOKEN_HASH_IDENT:
 				case TOKEN_CT_IDENT:
+				case TOKEN_LBRACKET:
+				case TOKEN_STAR:
 					return true;
 				default:
 					return false;
@@ -1517,8 +1529,10 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 
 		// Now we have the following possibilities: "foo", "Foo foo", "Foo... foo", "foo...", "Foo"
 		TypeInfo *type = NULL;
+		bool is_type_capture = false;
 		if (parse_next_is_typed_parameter(c, parse_kind))
 		{
+			is_type_capture = parse_kind == PARAM_PARSE_MACRO && tok_is(c, TOKEN_CT_TYPE_IDENT);
 			// Parse the type,
 			ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), false);
 			ellipsis = try_consume(c, TOKEN_ELLIPSIS);
@@ -1669,6 +1683,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 		}
 		Decl *param = decl_new_var(name, span, type, param_kind);
 		param->var.type_info = type ? type_infoid(type) : 0;
+		if (is_type_capture) param->var.is_typecapture = true;
 		param->var.self_addr = ref;
 		if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL)) return false;
 		if (!no_name)
@@ -2369,6 +2384,10 @@ static inline bool parse_func_macro_header(ParseContext *c, Decl *decl)
 	if (is_macro && token_is_keyword(c->tok) && c->lexer.token_type == TOKEN_LPAREN)
 	{
 		RETURN_PRINT_ERROR_HERE("This is a reserved keyword and can't be used as a macro name.");
+	}
+	if (is_macro && tok_is(c, TOKEN_CT_TYPE_IDENT))
+	{
+		decl->func_decl.signature.is_capture_return = true;
 	}
 	ASSIGN_TYPE_OR_RET(rtype, parse_optional_type(c), false);
 

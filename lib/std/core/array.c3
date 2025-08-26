@@ -6,10 +6,10 @@ import std::collections::pair, std::io;
  
  @param [in] array
  @param [in] element
- @require @typekind(array) == SLICE || @typekind(array) == ARRAY
- @require @typematch(array[0], element) : "array and element must have the same type"
+ @require $Arr.kindof == SLICE || $Arr.kindof == ARRAY
+ @require $Arr.inner == $Type : "array and element must have the same type"
 *>
-macro bool contains(array, element)
+macro bool contains($Arr array, $Type element)
 {
 	foreach (&item : array)
 	{

@@ -499,12 +499,12 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 	{
 		case TYPE_COMPRESSED_NONE:
 		case TYPE_COMPRESSED_PTR:
-		case TYPE_COMPRESSED_SUBPTR:
+		case TYPE_COMPRESSED_SLICEPTR:
 		case TYPE_COMPRESSED_PTRPTR:
-		case TYPE_COMPRESSED_PTRSUB:
+		case TYPE_COMPRESSED_PTRSLICE:
 			break;
-		case TYPE_COMPRESSED_SUB:
-		case TYPE_COMPRESSED_SUBSUB:
+		case TYPE_COMPRESSED_SLICE:
+		case TYPE_COMPRESSED_SLICESLICE:
 			resolve_kind = resolve_kind & ~RESOLVE_TYPE_NO_CHECK_DISTINCT;
 			break;
 	}
@@ -562,20 +562,20 @@ APPEND_QUALIFIERS:
 		case TYPE_COMPRESSED_PTR:
 			type_info->type = type_get_ptr(type_info->type);
 			break;
-		case TYPE_COMPRESSED_SUB:
+		case TYPE_COMPRESSED_SLICE:
 			if (!sema_check_array_type(context, type_info, type_info->type, TYPE_INFO_SLICE, 0, &type_info->type)) return type_info_poison(type_info);
 			break;
-		case TYPE_COMPRESSED_SUBPTR:
+		case TYPE_COMPRESSED_SLICEPTR:
 			if (!sema_check_array_type(context, type_info, type_info->type, TYPE_INFO_SLICE, 0, &type_info->type)) return type_info_poison(type_info);
 			type_info->type = type_get_ptr(type_info->type);
 			break;
 		case TYPE_COMPRESSED_PTRPTR:
 			type_info->type = type_get_ptr(type_get_ptr(type_info->type));
 			break;
-		case TYPE_COMPRESSED_PTRSUB:
+		case TYPE_COMPRESSED_PTRSLICE:
 			type_info->type = type_get_slice(type_get_ptr(type_info->type));
 			break;
-		case TYPE_COMPRESSED_SUBSUB:
+		case TYPE_COMPRESSED_SLICESLICE:
 			if (!sema_check_array_type(context, type_info, type_info->type, TYPE_INFO_SLICE, 0, &type_info->type)) return type_info_poison(type_info);
 			type_info->type = type_get_slice(type_info->type);
 			break;

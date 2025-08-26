@@ -157,7 +157,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 													 Expr *struct_var,
 													 bool optional, const char *name, bool *no_match_ref);
 static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, Expr *call, CalledDecl *callee);
-static inline bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional, bool *no_match_ref);
+static inline bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional, bool *no_match_ref, Decl **type_capture);
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
 static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end, bool check_valid);
@@ -1497,13 +1497,166 @@ static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, 
 
 #define RETURN_ERR_WITH_DEFINITION do { if (compiler.context.errors_found != errors) SEMA_NOTE(definition, "The definition is here."); return false; } while (0)
 
+
+static Decl *sema_macro_capture_type(SemaContext *context, Decl *param, Expr *arg)
+{
+	Type *param_type = arg->type;
+	TypeInfo *type = type_infoptr(param->var.type_info);
+	while (true)
+	{
+		param_type = param_type->canonical;
+		switch (type->subtype)
+		{
+			case TYPE_COMPRESSED_NONE:
+				break;
+			case TYPE_COMPRESSED_PTR:
+				if (param_type->type_kind != TYPE_POINTER) goto NO_MATCH;
+				param_type = param_type->pointer;
+				type->subtype = TYPE_COMPRESSED_NONE;
+				continue;
+			case TYPE_COMPRESSED_SLICE:
+				if (param_type->type_kind != TYPE_SLICE) goto NO_MATCH;
+				param_type = param_type->array.base;
+				type->subtype = TYPE_COMPRESSED_NONE;
+				continue;
+			case TYPE_COMPRESSED_SLICEPTR:
+				if (param_type->type_kind != TYPE_POINTER) goto NO_MATCH;
+				param_type = param_type->pointer;
+				type->subtype = TYPE_COMPRESSED_SLICE;
+				continue;
+			case TYPE_COMPRESSED_PTRPTR:
+				if (param_type->type_kind != TYPE_POINTER) goto NO_MATCH;
+				param_type = param_type->pointer;
+				type->subtype = TYPE_COMPRESSED_PTR;
+				continue;
+			case TYPE_COMPRESSED_PTRSLICE:
+				if (param_type->type_kind != TYPE_SLICE) goto NO_MATCH;
+				param_type = param_type->array.base;
+				type->subtype = TYPE_COMPRESSED_PTR;
+				continue;
+			case TYPE_COMPRESSED_SLICESLICE:
+				if (param_type->type_kind != TYPE_SLICE) goto NO_MATCH;
+				param_type = param_type->array.base;
+				type->subtype = TYPE_COMPRESSED_SLICE;
+				continue;
+		}
+		ASSERT(type->subtype == TYPE_COMPRESSED_NONE);
+		switch (type->kind)
+		{
+			case TYPE_INFO_POISON: return NULL;
+			case TYPE_INFO_TYPEOF:
+			case TYPE_INFO_VATYPE:
+			case TYPE_INFO_EVALTYPE:
+			case TYPE_INFO_TYPEFROM:
+			case TYPE_INFO_GENERIC:
+			case TYPE_INFO_IDENTIFIER: UNREACHABLE;
+			case TYPE_INFO_CT_IDENTIFIER: goto DO_MATCH;
+			case TYPE_INFO_ARRAY:
+				if (param_type->type_kind != TYPE_ARRAY) goto NO_MATCH;
+				goto LEN_CHECK;
+			case TYPE_INFO_VECTOR:
+				if (param_type->type_kind != TYPE_VECTOR) goto NO_MATCH;
+			LEN_CHECK:
+				{
+					ArraySize size;
+					if (!sema_resolve_array_like_len(context, type, &size)) return false;
+					if (param_type->array.len != size) goto NO_MATCH;
+					param_type = param_type->array.base;
+					type = type->array.base;
+					continue;
+				}
+			case TYPE_INFO_INFERRED_ARRAY:
+				if (param_type->type_kind != TYPE_ARRAY) goto NO_MATCH;
+				param_type = param_type->array.base;
+				type = type->array.base;
+				continue;
+			case TYPE_INFO_INFERRED_VECTOR:
+				if (param_type->type_kind != TYPE_VECTOR) goto NO_MATCH;
+				param_type = param_type->array.base;
+				type = type->array.base;
+				continue;
+			case TYPE_INFO_SLICE:
+				if (param_type->type_kind != TYPE_SLICE) goto NO_MATCH;
+				param_type = param_type->array.base;
+				type = type->array.base;
+				continue;
+			case TYPE_INFO_POINTER:
+				if (param_type->type_kind != TYPE_POINTER) goto NO_MATCH;
+				param_type = param_type->pointer;
+				type = type->pointer;
+				continue;
+				break;
+		}
+		break;
+	}
+DO_MATCH:;
+	const char *name = type->unresolved.name;
+	Decl *new_param = decl_new_var(name, arg->span, NULL, VARDECL_PARAM_CT_TYPE);
+	new_param->var.init_expr = expr_new_const_typeid(param->span, param_type);
+	return new_param;
+NO_MATCH:
+	RETURN_SEMA_ERROR(arg, "Type is not valid %s", type_quoted_error_string(arg->type));
+	return NULL;
+}
+static bool sema_patch_captured_type(TypeInfo *type, Decl **captured)
+{
+	assert(type->resolve_status != RESOLVE_DONE);
+	if (!captured || !captured[0]) return false;
+	while (true)
+	{
+		switch (type->kind)
+		{
+			case TYPE_INFO_ARRAY:
+			case TYPE_INFO_VECTOR:
+			case TYPE_INFO_SLICE:
+			case TYPE_INFO_INFERRED_ARRAY:
+			case TYPE_INFO_INFERRED_VECTOR:
+				type = type->array.base;
+				continue;
+			case TYPE_INFO_POINTER:
+				type = type->pointer;
+				continue;
+			case TYPE_INFO_CT_IDENTIFIER:
+			{
+				Decl *d;
+				const char *name = type->unresolved.name;
+				while ((d = *captured) != NULL)
+				{
+					if (d->name == name)
+					{
+						type->kind = TYPE_INFO_TYPEFROM;
+						type->unresolved_type_expr = d->var.init_expr;
+						return true;
+					}
+					captured++;
+				}
+				return false;
+			}
+			default:
+				UNREACHABLE;
+		}
+	}
+}
 static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param, Decl *definition, bool *optional_ref,
-								   bool *no_match_ref, bool macro, bool is_method_target)
+								   bool *no_match_ref, bool macro, bool is_method_target, Decl **type_capture)
 {
 	VarDeclKind kind = param->var.kind;
-	Type *type = param->type;
 	// 16. Analyse a regular argument.
 	unsigned errors = compiler.context.errors_found;
+	bool try_capture = false;
+	if (type_capture && param->var.is_typecapture)
+	{
+		if (sema_patch_captured_type(type_infoptr(param->var.type_info), type_capture))
+		{
+			if (!sema_resolve_type_info(context, type_infoptr(param->var.type_info), RESOLVE_TYPE_ALLOW_INFER)) return false;
+			param->type = typeget(param->var.type_info);
+		}
+		else
+		{
+			try_capture = true;
+		}
+	}
+	Type *type = param->type;
 	switch (kind)
 	{
 		case VARDECL_PARAM:
@@ -1607,11 +1760,25 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 	{
 		param->type = type_no_optional(arg->type);
 	}
+	if (try_capture)
+	{
+		Decl *new_param = sema_macro_capture_type(context, param, arg);
+		if (!new_param) return false;
+		for (int i = 0; i < MAX_PARAMS; i++)
+		{
+			if (!type_capture[i])
+			{
+				type_capture[i] = new_param;
+				type_capture[i + 1] = NULL;
+				break;
+			}
+		}
+	}
 	return true;
 }
 
 INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, Expr *call, Decl *param,
-                                      bool *no_match_ref, Expr **expr_ref, bool *optional)
+                                      bool *no_match_ref, Expr **expr_ref, bool *optional, Decl **type_capture)
 {
 	Expr *init_expr = param->var.init_expr;
 	if (!init_expr) return true;
@@ -1627,7 +1794,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 																			  : call->span.row;
 			new_context->original_module = context->original_module;
 			success = sema_analyse_parameter(new_context, arg, param, callee->definition, optional, no_match_ref,
-											 callee->macro, false);
+											 callee->macro, false, type_capture);
 		SCOPE_END;
 		sema_context_destroy(&default_context);
 		if (no_match_ref && *no_match_ref) return true;
@@ -1643,7 +1810,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 			param->var.defaulted = true;
 			if (parameter_checked) return true;
 			return sema_analyse_parameter(context, arg, param, callee->definition, optional, no_match_ref,
-			                              callee->macro, false);
+			                              callee->macro, false, type_capture);
 		default:
 			break;
 	}
@@ -1655,7 +1822,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 	*expr_ref = function_scope_arg;
 	if (parameter_checked) return true;
 	return sema_analyse_parameter(context, function_scope_arg, param, callee->definition, optional, no_match_ref,
-								  callee->macro, false);
+								  callee->macro, false, type_capture);
 }
 
 
@@ -1738,7 +1905,7 @@ INLINE Type *sema_get_va_type(SemaContext *context, Expr *expr, Variadic variadi
 }
 
 INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional,
-										 bool *no_match_ref)
+                                         bool *no_match_ref, Decl **type_capture)
 {
 	// Check body arguments (for macro calls, or possibly broken
 	if (!sema_call_check_invalid_body_arguments(context, call, callee)) return false;
@@ -1896,7 +2063,7 @@ SPLAT_NORMAL:;
 				if (!sema_set_default_argument(context, callee, call,
 				                               params[j], no_match_ref,
 				                               &actual_args[j],
-				                               optional))
+				                               optional, type_capture))
 				{
 					return false;
 				}
@@ -1906,7 +2073,7 @@ SPLAT_NORMAL:;
 
 			actual_args[index] = arg->named_argument_expr.value;
 			if (!sema_analyse_parameter(context, actual_args[index], param, callee->definition, optional, no_match_ref,
-										callee->macro, false)) return false;
+										callee->macro, false, type_capture)) return false;
 			continue;
 		}
 		if (call->call_expr.va_is_splat)
@@ -1983,7 +2150,7 @@ SPLAT_NORMAL:;
 			vec_add(call->call_expr.varargs, arg);
 			continue;
 		}
-		if (!sema_analyse_parameter(context, arg, params[i], callee->definition, optional, no_match_ref, callee->macro, callee->struct_var && i == 0)) return false;
+		if (!sema_analyse_parameter(context, arg, params[i], callee->definition, optional, no_match_ref, callee->macro, callee->struct_var && i == 0, type_capture)) return false;
 		actual_args[i] = arg;
 	}
 	if (num_args) last = args[num_args - 1];
@@ -1996,7 +2163,7 @@ SPLAT_NORMAL:;
 		if (i == vaarg_index && variadic != VARIADIC_NONE) continue;
 
 		if (!sema_set_default_argument(context, callee, call, params[i], no_match_ref, &actual_args[i],
-		                               optional)) return false;
+		                               optional, type_capture)) return false;
 	}
 	for (int i = 0; i < func_param_count; i++)
 	{
@@ -2289,7 +2456,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 
 	if (sig->attrs.noreturn) expr->call_expr.no_return = true;
 
-	if (!sema_call_evaluate_arguments(context, &callee, expr, &optional, no_match_ref)) return false;
+	if (!sema_call_evaluate_arguments(context, &callee, expr, &optional, no_match_ref, NULL)) return false;
 
 	Type *rtype = type->function.prototype->rtype;
 	if (expr->call_expr.is_dynamic_dispatch)
@@ -2564,6 +2731,8 @@ static inline bool sema_expr_setup_call_analysis(SemaContext *context, CalledDec
 
 	return true;
 }
+
+
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl,
 								  bool call_var_optional, bool *no_match_ref)
 {
@@ -2620,7 +2789,9 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	};
 
 	bool has_optional_arg = call_var_optional;
-	if (!sema_call_evaluate_arguments(context, &callee, call_expr, &has_optional_arg, no_match_ref)) return false;
+	Decl *captured_types[MAX_PARAMS + 1];
+	captured_types[0] = NULL;
+	if (!sema_call_evaluate_arguments(context, &callee, call_expr, &has_optional_arg, no_match_ref, captured_types)) return false;
 
 	unsigned vararg_index = sig->vararg_index;
 	Expr **args = call_expr->call_expr.arguments;
@@ -2743,7 +2914,18 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	context_change_scope_with_flags(context, SCOPE_NONE);
 	SemaContext macro_context;
 
-	Type *rtype = typeget(sig->rtype);
+	TypeInfo *rtype_info = type_infoptrzero(sig->rtype);
+	if (sig->is_capture_return)
+	{
+	 	rtype_info = copy_type_info_single(rtype_info);
+		if (!sema_patch_captured_type(rtype_info, captured_types))
+		{
+			SEMA_ERROR(rtype_info, "The return type could not be inferred from any captured types, are you sure it's a captured parameter?");
+			goto EXIT_FAIL;
+		}
+		if (!sema_resolve_type_info(context, rtype_info, RESOLVE_TYPE_DEFAULT)) goto EXIT_FAIL;
+	}
+	Type *rtype = rtype_info ? rtype_info->type : NULL;
 	bool optional_return = rtype && type_is_optional(rtype);
 	bool may_be_optional = !rtype || optional_return;
 	if (rtype) rtype = type_no_optional(rtype);
@@ -2758,6 +2940,12 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		goto EXIT_FAIL;
 	}
 
+	for (int idx = 0; idx < MAX_PARAMS; idx++)
+	{
+		if (!captured_types[idx]) break;
+		if (!sema_add_local(&macro_context, captured_types[idx])) return false;
+	}
+
 	AstId assert_first = 0;
 	AstId* next = &assert_first;
 
@@ -2769,7 +2957,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		if (param->var.init_expr)
 		{
 			Type *param_type = param->type;
-			if (param_type && param->var.type_info && (param->var.out_param || param->var.not_null))
+			if (param->var.type_info && (param->var.out_param || param->var.not_null))
 			{
 				param_type = type_flatten(param_type);
 				if (param_type->type_kind != TYPE_POINTER && param_type->type_kind != TYPE_SLICE && param_type->type_kind != TYPE_INTERFACE && param_type->type_kind != TYPE_ANY)
@@ -3028,7 +3216,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 	{
 		Decl *param = params[i];
 		Expr *expr = args[i];
-		if (!sema_analyse_parameter(macro_context, expr, param, body_decl, &has_optional_arg, NULL, true, false))
+		if (!sema_analyse_parameter(macro_context, expr, param, body_decl, &has_optional_arg, NULL, true, false, NULL))
 		{
 			return false;
 		}

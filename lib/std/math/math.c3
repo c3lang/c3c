@@ -69,14 +69,14 @@ enum RoundingMode : int
 faultdef OVERFLOW, MATRIX_INVERSE_DOESNT_EXIST;
 
 <*
- @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
+ @require types::is_numerical($Num) : `The input must be a numerical value or numerical vector`
 *>
-macro deg_to_rad(x) => x * PI / 180;
+macro deg_to_rad($Num x) => x * PI / 180;
 
 <*
- @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
+ @require types::is_numerical($Num) : `The input must be a numerical value or numerical vector`
 *>
-macro abs(x) => $$abs(x);
+macro abs($Num x) => $$abs(x);
 
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
@@ -103,13 +103,12 @@ macro is_approx_rel(x, y, eps)
 <*
  @require values::@is_int(x) : `The input must be an integer`
 *>
-macro sign(x)
+macro $Num sign($Num x)
 {
-	var $Type = $typeof(x);
-	$if $Type.kindof == UNSIGNED_INT:
-		return ($Type)(x > 0);
+	$if $Num.kindof == UNSIGNED_INT:
+		return ($Num)(x > 0);
 	$else
-		return ($Type)(x > 0) - ($Type)(x < 0);
+		return ($Num)(x > 0) - ($Num)(x < 0);
 	$endif
 }
 
@@ -117,9 +116,9 @@ macro sign(x)
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
  @require values::@is_int(y) || values::@is_float(y) : "Expected an integer or floating point value"
 *>
-macro atan2(x, y)
+macro atan2($Num1 x, $Num2 y)
 {
-	$if @typeis(x, float) && @typeis(y, float):
+	$if $Num1 == float || $Num2 == float:
 		return _atan2f(x, y);
 	$else
 		return _atan2(x, y);
@@ -132,12 +131,12 @@ macro atan2(x, y)
  @require @typematch(sinp, cosp) : "Expected sinp and cosp to have the same type"
  @require $defined(*sinp = x) : "Expected x and sinp/cosp to have the same type"
 *>
-macro sincos_ref(x, sinp, cosp)
+macro void sincos_ref($Num x, $Num* sinp, $Num* cosp)
 {
-	$if @typeis(sinp, float*.typeid):
-		return _sincosf(x, sinp, cosp);
+	$if $Num == float:
+		_sincosf(x, sinp, cosp);
 	$else
-		return _sincos(x, sinp, cosp);
+		_sincos(x, sinp, cosp);
 	$endif
 }
 
@@ -147,9 +146,9 @@ macro sincos_ref(x, sinp, cosp)
  @param x : `the angle in radians`
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
 *>
-macro sincos(x)
+macro sincos($Num x)
 {
-	$if @typeis(x, float):
+	$if $Num == float:
 		float[<2>] v @noinit;
 		_sincosf(x, &v[0], &v[1]);
 	$else
@@ -162,9 +161,9 @@ macro sincos(x)
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
 *>
-macro atan(x)
+macro atan($Num x)
 {
-	$if @typeis(x, float):
+	$if $Num == float:
 		return _atanf(x);
 	$else
 		return _atan(x);
@@ -174,9 +173,9 @@ macro atan(x)
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
 *>
-macro atanh(x)
+macro atanh($Num x)
 {
-	$if @typeis(x, float):
+	$if $Num == float:
 		return _atanhf(x);
 	$else
 		return _atanh(x);
@@ -186,9 +185,9 @@ macro atanh(x)
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
 *>
-macro acos(x)
+macro acos($Num x)
 {
-	$if @typeis(x, float):
+	$if $Num == float:
 		return _acosf(x);
 	$else
 		return _acos(x);
@@ -198,9 +197,9 @@ macro acos(x)
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
 *>
-macro acosh(x)
+macro acosh($Num x)
 {
-	$if @typeis(x, float):
+	$if $Num == float:
 		return _acoshf(x);
 	$else
 		return _acosh(x);
@@ -210,9 +209,9 @@ macro acosh(x)
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
 *>
-macro asin(x)
+macro asin($Num x)
 {
-	$if @typeis(x, float):
+	$if $Num == float:
 		return _asinf(x);
 	$else
 		return _asin(x);
@@ -222,9 +221,9 @@ macro asin(x)
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
 *>
-macro asinh(x)
+macro asinh($Num x)
 {
-	$if @typeis(x, float):
+	$if $Num == float:
 		return _asinhf(x);
 	$else
 		return _asinh(x);
@@ -1111,23 +1110,23 @@ fn float _frexpf(float x, int* e)
 	}
 }
 
-macro overflow_add_helper(x, y) @local
+macro $Num overflow_add_helper($Num x, $Num y) @local
 {
-	$typeof(x) res @noinit;
+	$Num res @noinit;
 	if ($$overflow_add(x, y, &res)) return OVERFLOW?;
 	return res;
 }
 
-macro overflow_sub_helper(x, y) @local
+macro $Num overflow_sub_helper($Num x, $Num y) @local
 {
-	$typeof(x) res @noinit;
+	$Num res @noinit;
 	if ($$overflow_sub(x, y, &res)) return OVERFLOW?;
 	return res;
 }
 
-macro overflow_mul_helper(x, y) @local
+macro $Num overflow_mul_helper($Num x, $Num y) @local
 {
-	$typeof(x) res @noinit;
+	$Num res @noinit;
 	if ($$overflow_mul(x, y, &res)) return OVERFLOW?;
 	return res;
 }
@@ -1135,29 +1134,23 @@ macro overflow_mul_helper(x, y) @local
 <*
  @param [&out] out : "Where the result of the addition is stored"
  @return "Whether the addition resulted in an integer overflow"
- @require @typematch(a, b) : "a and b must be the same type"
  @require values::@is_flat_intlike(a) &&& values::@is_flat_intlike(b) : "a and b must both be integer or integer vector based"
- @require $defined(*out) &&& @typematch(*out, a) : "out must be a pointer of the same type as a and b"
-*>
-macro bool overflow_add(a, b, out) => $$overflow_add(a, b, out);
+ *>
+macro bool overflow_add($Num a, $Num b, $Num* out) => $$overflow_add(a, b, out);
 
 <*
  @param [&out] out : "Where the result of the subtraction is stored"
  @return "Whether the subtraction resulted in an integer overflow"
- @require @typematch(a, b) : "a and b must be the same type"
  @require values::@is_flat_intlike(a) &&& values::@is_flat_intlike(b) : "a and b must both be integer or integer vector based"
- @require $defined(*out) &&& @typematch(*out, a) : "out must be a pointer of the same type as a and b"
-*>
-macro bool overflow_sub(a, b, out) => $$overflow_sub(a, b, out);
+ *>
+macro bool overflow_sub($Num a, $Num b, $Num* out) => $$overflow_sub(a, b, out);
 
 <*
  @param [&out] out : "Where the result of the multiplication is stored"
  @return "Whether the multiplication resulted in an integer overflow"
- @require @typematch(a, b) : "a and b must be the same type"
  @require values::@is_flat_intlike(a) &&& values::@is_flat_intlike(b) : "a and b must both be integer or integer vector based"
- @require $defined(*out) &&& @typematch(*out, a) : "out must be a pointer of the same type as a and b"
 *>
-macro bool overflow_mul(a, b, out) => $$overflow_mul(a, b, out);
+macro bool overflow_mul($Num a, $Num b, $Num* out) => $$overflow_mul(a, b, out);
 
 <*
  @require types::is_vector($Type) || ($Type.kindof == ARRAY &&& types::is_numerical($typefrom($Type.inner)))
@@ -1171,10 +1164,9 @@ macro iota($Type)
 	return $val;
 }
 
-macro mul_div_helper(val, mul, div) @private
+macro $Num mul_div_helper($Num val, $Num mul, $Num div) @private
 {
-	var $Type = $typeof(val);
-	return ($Type)(($Type)mul * (val / ($Type)div) + ($Type)mul * (val % ($Type)div) / ($Type)div);
+	return mul * (val / div) + mul * (val % div) / div;
 }
 macro char char.muldiv(self, char mul, char div) => mul_div_helper(self, mul, div);
 macro ichar ichar.muldiv(self, ichar mul, ichar div) => mul_div_helper(self, mul, div);
@@ -1194,49 +1186,49 @@ macro bool @is_same_vector_or_scalar(#vector_value, #vector_or_scalar) @private
  @require @is_same_vector_or_scalar(self, mul) : `mul must be a vector of the same type as self, or be an integer scalar`
  @require @is_same_vector_or_scalar(self, div) : `div must be a vector of the same type as self, or be an integer scalar`
 *>
-macro char[<*>] char[<*>].muldiv(self, mul, div)  => mul_div_helper(self, mul, div);
+macro char[<*>] char[<*>].muldiv(self, mul, div)  => mul_div_helper(self, ($typeof(self))mul, ($typeof(self))div);
 
 <*
  @require @is_same_vector_or_scalar(self, mul) : `mul must be a vector of the same type as self, or be an integer scalar`
  @require @is_same_vector_or_scalar(self, div) : `div must be a vector of the same type as self, or be an integer scalar`
 *>
-macro ichar[<*>] ichar[<*>].muldiv(self, mul, div)  => mul_div_helper(self, mul, div);
+macro ichar[<*>] ichar[<*>].muldiv(self, mul, div)  => mul_div_helper(self, ($typeof(self))mul, ($typeof(self))div);
 
 <*
  @require @is_same_vector_or_scalar(self, mul) : `mul must be a vector of the same type as self, or be an integer scalar`
  @require @is_same_vector_or_scalar(self, div) : `div must be a vector of the same type as self, or be an integer scalar`
 *>
-macro short[<*>] short[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
+macro short[<*>] short[<*>].muldiv(self, mul, div) => mul_div_helper(self, ($typeof(self))mul, ($typeof(self))div);
 
 <*
  @require @is_same_vector_or_scalar(self, mul) : `mul must be a vector of the same type as self, or be an integer scalar`
  @require @is_same_vector_or_scalar(self, div) : `div must be a vector of the same type as self, or be an integer scalar`
 *>
-macro ushort[<*>] ushort[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
+macro ushort[<*>] ushort[<*>].muldiv(self, mul, div) => mul_div_helper(self, ($typeof(self))mul, ($typeof(self))div);
 
 <*
  @require @is_same_vector_or_scalar(self, mul) : `mul must be a vector of the same type as self, or be an integer scalar`
  @require @is_same_vector_or_scalar(self, div) : `div must be a vector of the same type as self, or be an integer scalar`
 *>
-macro int[<*>] int[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
+macro int[<*>] int[<*>].muldiv(self, mul, div) => mul_div_helper(self, ($typeof(self))mul, ($typeof(self))div);
 
 <*
  @require @is_same_vector_or_scalar(self, mul) : `mul must be a vector of the same type as self, or be an integer scalar`
  @require @is_same_vector_or_scalar(self, div) : `div must be a vector of the same type as self, or be an integer scalar`
 *>
-macro uint[<*>] uint[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
+macro uint[<*>] uint[<*>].muldiv(self, mul, div) => mul_div_helper(self, ($typeof(self))mul, ($typeof(self))div);
 
 <*
  @require @is_same_vector_or_scalar(self, mul) : `mul must be a vector of the same type as self, or be an integer scalar`
  @require @is_same_vector_or_scalar(self, div) : `div must be a vector of the same type as self, or be an integer scalar`
 *>
-macro long[<*>] long[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
+macro long[<*>] long[<*>].muldiv(self, mul, div) => mul_div_helper(self, ($typeof(self))mul, ($typeof(self))div);
 
 <*
  @require @is_same_vector_or_scalar(self, mul) : `mul must be a vector of the same type as self, or be an integer scalar`
  @require @is_same_vector_or_scalar(self, div) : `div must be a vector of the same type as self, or be an integer scalar`
 *>
-macro ulong[<*>] ulong[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
+macro ulong[<*>] ulong[<*>].muldiv(self, mul, div) => mul_div_helper(self, ($typeof(self))mul, ($typeof(self))div);
 
 <*
  @require types::is_int($typeof(a)) : `The input must be an integer`

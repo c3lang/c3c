@@ -91,10 +91,10 @@ bitstruct UInt128LE : uint128 @littleendian
  @require @is_array_or_slice_of_char(bytes) : "argument must be an array, a pointer to an array or a slice of char"
  @require is_bitorder($Type) : "type must be a bitorder integer"
 *>
-macro read(bytes, $Type)
+macro read($Val bytes, $Type)
 {
 	char[] s;
-	$switch @typekind(bytes):
+	$switch $Val.kindof:
 		$case POINTER:
 			s = (*bytes)[:$Type.sizeof];
 		$default:
