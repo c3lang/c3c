@@ -938,6 +938,8 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 
 static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast, bool is_typeid)
 {
+	puts("ENTER SWITCH BODY");
+	usleep(1000);
 	DEBUG_LOG("Emit switch body");
 	bool is_if_chain = switch_ast->switch_stmt.flow.if_chain;
 	Type *switch_type = switch_value->type;
