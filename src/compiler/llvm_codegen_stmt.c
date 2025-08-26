@@ -938,6 +938,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 
 static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast, bool is_typeid)
 {
+	DEBUG_LOG("Emit switch body");
 	bool is_if_chain = switch_ast->switch_stmt.flow.if_chain;
 	Type *switch_type = switch_value->type;
 	Ast **cases = switch_ast->switch_stmt.cases;
@@ -990,6 +991,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 		}
 		case_stmt->case_stmt.backend_block = next_block;
 	}
+	DEBUG_LOG("Emit switch var");
 
 	BEValue switch_var;
 	llvm_value_set_address_abi_aligned(c, &switch_var, llvm_emit_alloca_aligned(c, switch_type, "switch"), switch_type);
@@ -1004,15 +1006,20 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 
 	if (is_if_chain)
 	{
+		DEBUG_LOG("Emit switch if");
+
 		llvm_emit_switch_body_if_chain(c, cases, default_case, &switch_current_val, exit_block, is_typeid);
 		return;
 	}
+
+	DEBUG_LOG("Emit switch maybe jump");
 
 	if (switch_ast->switch_stmt.flow.jump)
 	{
 		llvm_emit_switch_jump_table(c, switch_ast, cases, default_case, &switch_current_val, exit_block);
 		return;
 	}
+	DEBUG_LOG("Emit switch regular");
 	ASSERT(!is_typeid);
 
 	LLVMValueRef switch_stmt = LLVMBuildSwitch(c->builder, switch_current_val.value, default_case ? default_case->case_stmt.backend_block : exit_block, case_count);
