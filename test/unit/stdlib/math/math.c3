@@ -669,6 +669,14 @@ fn void test_muldiv()
 	assert(k.muldiv(20,-10) == (ichar[<4>]){-40,-60,-80,-100});
 }
 
+fn void test_clamp()
+{
+	test::eq(math::clamp(10, 2, 8), 8);
+	test::eq(math::clamp(1, 2, 8), 2);
+	test::eq(math::clamp(10.2, 2.3, 8.7), 8.7);
+	test::eq(math::clamp(1.0, 2.3, 8.7), 2.3);
+}
+
 fn void test_gcd() @test
 {
 	assert(math::gcd(20,15) == 5);

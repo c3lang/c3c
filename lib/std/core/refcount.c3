@@ -21,7 +21,7 @@ fn Ref wrap(Type* ptr, Allocator allocator = mem)
 }
 <*
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], Type) : "The first argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined(Type a = $vaexpr[0]) : "The first argument must be an initializer for the type"
 *>
 macro Ref new(..., Allocator allocator = mem)
 {
@@ -99,7 +99,7 @@ struct RefCounted
 }
 
 <*
- @require @assignable_to(refcounted, RefCounted*) : "Expected a ref counted value"
+ @require $defined(RefCounted* c = refcounted) : "Expected a ref counted value"
 *>
 macro retain(refcounted)
 {
@@ -112,7 +112,7 @@ macro retain(refcounted)
 }
 
 <*
- @require @assignable_to(refcounted, RefCounted*) : "Expected a ref counted value"
+ @require $defined(RefCounted* c = refcounted) : "Expected a ref counted value"
  @require !$defined(refcounted.dealloc()) ||| @typeis(refcounted.dealloc(), void)
    : "Expected refcounted type to have a valid dealloc"
 *>

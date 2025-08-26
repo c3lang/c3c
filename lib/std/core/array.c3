@@ -497,7 +497,7 @@ macro @tzip(left, right, #operation = EMPTY_MACRO_SLOT, fill_with = EMPTY_MACRO_
  @require @is_valid_list(left) : "Expected a valid list"
  @require @is_valid_list(right) : "Expected a valid list"
  @require find_len(right) >= find_len(left) : `Right side length must be >= the destination (left) side length; consider using a sub-array of data for the assignment.`
- @require @assignable_to(#operation, $typefrom(@zip_into_fn(left, right))) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
+ @require $defined($typefrom(@zip_into_fn(left, right)) x = #operation) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
 *>
 macro @zip_into(left, right, #operation)
 {

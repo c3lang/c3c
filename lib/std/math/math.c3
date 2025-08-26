@@ -252,8 +252,8 @@ macro @ceil($input) @const => $$ceil($input);
  @return "lower if x < lower, upper if x > upper, otherwise return x."
 
  @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
- @require values::@assign_to(lower, x) : `The lower bound must be convertable to the value type.`
- @require values::@assign_to(upper, x) : `The upper bound must be convertable to the value type.`
+ @require $defined(x = lower) : `The lower bound must be convertable to the value type.`
+ @require $defined(x = upper) : `The upper bound must be convertable to the value type.`
 *>
 macro clamp(x, lower, upper) => $$max(($typeof(x))lower, $$min(x, ($typeof(x))upper));
 
@@ -413,7 +413,7 @@ macro nearbyint(x) => $$nearbyint(x);
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
- @require @assignable_to(exp, $typeof(values::promote_int(x))) || values::@is_int(exp) : `The input must be an integer, castable to the type of x`
+ @require $defined($typeof(values::promote_int(x)) v = exp) || values::@is_int(exp) : `The input must be an integer, castable to the type of x`
 *>
 macro pow(x, exp)
 {

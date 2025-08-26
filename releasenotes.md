@@ -23,6 +23,7 @@
 - Allow `$defined` take declarations: `$defined(int x = y)`
 - Struct and typedef subtypes inherit dynamic functions.
 - Improved directory creation error messages in project and library creation commands.
+- `@assignable_to` is deprecated in favour of `$define`
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.

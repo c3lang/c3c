@@ -433,7 +433,7 @@ macro void set_inline(void* dst, char val, usz $len, usz $dst_align = 0, bool $i
  @require values::@inner_kind(b) == TypeKind.SLICE || values::@inner_kind(b) == TypeKind.POINTER
  @require values::@inner_kind(a) != TypeKind.SLICE || len == -1
  @require values::@inner_kind(a) != TypeKind.POINTER || len > -1
- @require values::@assign_to(a, b) && values::@assign_to(b, a)
+ @require $defined(a = b, b = a)
 *>
 macro bool equals(a, b, isz len = -1, usz $align = 0)
 {
@@ -740,7 +740,7 @@ fn void* tmalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
 
 <*
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
 *>
 macro new($Type, ...) @nodiscard
@@ -756,7 +756,7 @@ macro new($Type, ...) @nodiscard
 
 <*
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
 *>
 macro new_with_padding($Type, usz padding, ...) @nodiscard
@@ -774,7 +774,7 @@ macro new_with_padding($Type, usz padding, ...) @nodiscard
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
 *>
 macro new_aligned($Type, ...) @nodiscard
 {
@@ -814,7 +814,7 @@ macro alloc_aligned($Type) @nodiscard
 
 <*
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
 *>
 macro tnew($Type, ...) @nodiscard
 {
@@ -829,7 +829,7 @@ macro tnew($Type, ...) @nodiscard
 
 <*
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
 *>
 macro temp_with_padding($Type, usz padding, ...) @nodiscard
 {

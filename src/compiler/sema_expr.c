@@ -10618,7 +10618,7 @@ static inline bool sema_expr_analyse_iota_decl(SemaContext *context, Expr *expr)
 
 static inline bool sema_expr_analyse_assignable(SemaContext *context, Expr *expr)
 {
-	SEMA_DEPRECATED(expr, "$assignable is deprecated, use the '@assignable_to' macro instead.");
+	SEMA_DEPRECATED(expr, "$assignable is deprecated, use '$defined(Type t = expr)' instead.");
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_RUNNING);
 	Expr *type_expr = exprptr(expr->assignable_expr.type);
 	bool in_no_eval = context->call_env.in_no_eval;

@@ -39,7 +39,7 @@ fn usz? available(InStream s)
 
 macro bool @is_instream(#expr) @const
 {
-	return @assignable_to(#expr, InStream);
+	return $defined(InStream i = #expr);
 }
 
 macro bool @is_not_instream_if_ptr(#expr) @const
@@ -49,7 +49,7 @@ macro bool @is_not_instream_if_ptr(#expr) @const
 
 macro bool @is_outstream(#expr) @const
 {
-	return @assignable_to(#expr, OutStream);
+	return $defined(OutStream s = #expr);
 }
 
 macro bool @is_not_outstream_if_ptr(#expr) @const

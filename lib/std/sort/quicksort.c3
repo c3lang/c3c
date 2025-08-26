@@ -115,7 +115,7 @@ macro @partition(Type list, isz l, isz h, CmpFn cmp, Context context)
 {
 	var $has_cmp = @is_valid_macro_slot(cmp);
 	var $has_context = @is_valid_macro_slot(context);
-	var $cmp_by_value = $has_cmp &&& @assignable_to(list[0], CmpFn.paramsof[0].type);
+	var $cmp_by_value = $has_cmp &&& $defined($typefrom(CmpFn.paramsof[0].type) v = list[0]);
 
 	ElementType pivot = list[l];
 	while (l < h)

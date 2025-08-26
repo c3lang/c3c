@@ -203,7 +203,7 @@ macro Object* Object.object_from_value(&self, value) @private
 			return value;
 		$case $Type.typeid == void*.typeid:
 			return &NULL_OBJECT;
-		$case @assignable_to(value, String):
+		$case $defined(String x = value):
 			return new_string(value, self.allocator);
 		$default:
 			$error "Unsupported object type.";

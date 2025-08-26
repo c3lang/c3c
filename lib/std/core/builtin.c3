@@ -108,7 +108,7 @@ macro anycast(any v, $Type) @builtin
 	return ($Type*)v.ptr;
 }
 
-macro bool @assignable_to(#foo, $Type) @const @builtin => $defined(*&&($Type){} = #foo);
+macro bool @assignable_to(#foo, $Type) @const @builtin @deprecated("use '$define($Type x = #foo)'") => $defined(*&&($Type){} = #foo);
 
 macro @addr(#val) @builtin
 {
@@ -319,7 +319,7 @@ macro enum_by_name($Type, String enum_name) @builtin
  @param $Type : `The type of the enum`
  @require $Type.kindof == ENUM : `Only enums may be used`
  @require $defined($Type.#value) : `Expected '#value' to match an enum associated value`
- @require @assignable_to(value, $typeof(($Type){}.#value)) : `Expected the value to match the type of the associated value`
+ @require $defined($typeof(($Type){}.#value) v = value) : `Expected the value to match the type of the associated value`
  @ensure @typeis(return, $Type)
  @return? NOT_FOUND
 *>
@@ -372,7 +372,7 @@ macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 
 <*
  @require values::@is_int(#value) || values::@is_bool(#value)
- @require @assignable_to(expected, $typeof(#value))
+ @require $defined($typeof(#value) v = expected)
  @require $probability >= 0 && $probability <= 1.0
 *>
 macro @expect(#value, expected, $probability = 1.0) @builtin
@@ -480,7 +480,7 @@ macro bool @ok(#expr) @builtin
 
  @require $defined(#v = #v) : "#v must be a variable"
  @require $defined(#expr!) : "Expected an optional expression"
- @require @assignable_to(#expr!!, $typeof(#v))  : `Type of #expr must be an optional of #v's type`
+ @require $defined(#v = #expr!!)  : `Type of #expr must be an optional of #v's type`
 *>
 macro void? @try(#v, #expr) @builtin @maydiscard
 {
@@ -521,7 +521,7 @@ macro void? @try(#v, #expr) @builtin @maydiscard
 
  @require $defined(#v = #v) : "#v must be a variable"
  @require $defined(#expr!) : "Expected an optional expression"
- @require @assignable_to(#expr!!, $typeof(#v))  : `Type of #expr must be an optional of #v's type`
+ @require $defined(#v = #expr!!)  : `Type of #expr must be an optional of #v's type`
  @return "True if it was the expected fault, false if the variable was assigned, otherwise returns an optional."
 *>
 macro bool? @try_catch(#v, #expr, fault expected_fault) @builtin
