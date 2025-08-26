@@ -139,6 +139,7 @@ const char *MANIFEST_TEMPLATE =
 		"{\n"
 		"  \"provides\" : \"%s\",\n"
 		"  // \"sources\" : [ \"src/**\" ],\n"
+        "  \"linklib-dir\" : \"linked-libs\",\n"
 		"  \"targets\" : {\n"
 		"%s"
 		"  }\n"
@@ -241,11 +242,12 @@ void create_library(BuildOptions *build_options)
 	const char *interface_file = scratch_buffer_copy();
 	create_file_or_fail(build_options, interface_file, MAIN_INTERFACE_TEMPLATE, module_name(build_options));
 	scratch_buffer_clear();
+	mkdir_or_fail(build_options, "linked-libs");
 	for (int i = 0; i < sizeof(DEFAULT_TARGETS) / sizeof(char*); i++)
 	{
 		const char *target = DEFAULT_TARGETS[i];
 		scratch_buffer_printf(MANIFEST_TARGET, target);
-		mkdir_or_fail(build_options, target);
+		mkdir_or_fail(build_options, file_append_path_temp("linked-libs", target));
 	}
 	create_file_or_fail(build_options, "manifest.json", MANIFEST_TEMPLATE, build_options->project_name, scratch_buffer_to_string());
 	printf("The '%s' library has been set up in the directory '%s'.\n", build_options->project_name, dir);

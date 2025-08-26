@@ -24,6 +24,8 @@
 - Struct and typedef subtypes inherit dynamic functions.
 - Improved directory creation error messages in project and library creation commands.
 - `@assignable_to` is deprecated in favour of `$define`
+- Add `linklib-dir` to c3l-libraries to place their linked libraries in. Defaults to `linked-libs`
+- If the `os-arch` linked library doesn't exist, try with `os` for c3l libs.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.

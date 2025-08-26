@@ -628,6 +628,7 @@ typedef struct Library__
 {
 	const char *dir;
 	const char *provides;
+	const char *linklib_dir;
 	const char **dependencies;
 	const char **execs;
 	const char *cc;
