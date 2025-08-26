@@ -303,7 +303,7 @@ jobs:
           ../build/c3c compile examples/fasta.c3
           ../build/c3c compile examples/gameoflife.c3
           ../build/c3c compile examples/hash.c3
-          ../build/c3c compile testfragments/jump_bugs.c3 --test
+          ../build/c3c compile testfragments/jump_bugs.c3 --test -g0
           ../build/c3c compile-only examples/levenshtein.c3
           ../build/c3c compile examples/load_world.c3
           ../build/c3c compile-only examples/map.c3
