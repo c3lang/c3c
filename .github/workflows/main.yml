@@ -297,7 +297,7 @@ jobs:
       - name: Compile and run some examples
         run: |
           cd resources
-          ../build/c3c compile testfragments/jump_bugs.c3 --test -g0 -vvv
+          ../build/c3c compile testfragments/jump_bugs.c3 -P -g0 -vvv
 
       - name: Compile and run dynlib-test
         run: |

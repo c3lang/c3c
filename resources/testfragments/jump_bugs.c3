@@ -3,7 +3,7 @@ module test;
 
 fn void test1()
 {
-	switch (0)
+	switch (0) @jump
     {
         case 0:
             break;
@@ -17,7 +17,7 @@ fn void main()
 {
 	test1();
 
-	switch (Foo.A)
+	switch (Foo.A) @jump
 	{
         default:
 			break;
