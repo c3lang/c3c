@@ -751,7 +751,6 @@ static LLVMValueRef llvm_emit_switch_jump_stmt(GenContext *c,
 									   LLVMBasicBlockRef default_block,
 									   BEValue *switch_value)
 {
-	DEBUG_LOG("Emit jump stmt");
 	ASSERT_SPAN(switch_ast, min_index > -1);
 	unsigned case_count = vec_size(cases);
 	BEValue min_val;
@@ -766,25 +765,20 @@ static LLVMValueRef llvm_emit_switch_jump_stmt(GenContext *c,
 	}
 	LLVMValueRef is_valid = LLVMBuildICmp(c->builder, LLVMIntUGT, switch_value->value, llvm_const_int(c, switch_value->type, count - 1), "");
 	LLVMBasicBlockRef switch_block = llvm_basic_block_new(c, "jumpblock");
-	DEBUG_LOG("Emit br");
 	LLVMBuildCondBr(c->builder, is_valid, default_block, switch_block);
 	c->current_block = NULL;
 	llvm_emit_block(c, switch_block);
 	AlignSize align;
 	LLVMTypeRef type = LLVMArrayType(c->ptr_type, count);
-	DEBUG_LOG("Emit index");
 	LLVMValueRef index = llvm_emit_array_gep_raw_index(c, jump_table, type, switch_value, llvm_abi_alignment(c, type), &align);
 	LLVMValueRef addr = llvm_load(c, c->ptr_type, index, align, "target");
-	DEBUG_LOG("Emit indirectbr");
 	LLVMValueRef instr = LLVMBuildIndirectBr(c->builder, addr, case_count);
 	c->current_block = NULL;
-	DEBUG_LOG("Emit switch done");
 	return instr;
 }
 
 static void llvm_set_jump_table_values(ExprId from, ExprId to, Int *from_ref, Int *to_ref)
 {
-	DEBUG_LOG("Set jump table values");
 	Expr *from_expr = exprptr(from);
 	Expr *to_expr = exprptrzero(to);
 	Type *type_flat = type_flatten(from_expr->type);
@@ -808,7 +802,6 @@ static void llvm_set_jump_table_values(ExprId from, ExprId to, Int *from_ref, In
 		*from_ref = from_expr->const_expr.ixx;
 		*to_ref = to_expr ? to_expr->const_expr.ixx : *from_ref;
 	}
-	DEBUG_LOG("Set jump table values done");
 
 }
 static void llvm_emit_switch_jump_table(GenContext *c,
@@ -888,13 +881,16 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 		refs = MALLOC(sizeof(LLVMValueRef) * count);
 	}
 #undef REF_STACK
-	LLVMValueRef default_block_address = LLVMBlockAddress(c->cur_func.ref, default_block);
 	ASSERT(count < DEFAULT_SWITCH_JUMP_MAX_SIZE + 1);
 	memset(refs, 0, sizeof(LLVMValueRef) * count);
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		Ast *case_stmt = cases[i];
 		LLVMBasicBlockRef block = case_stmt->case_stmt.backend_block;
+		if (!case_stmt->case_stmt.body) continue;
+		llvm_emit_block(c, block);
+		llvm_emit_stmt(c, case_stmt->case_stmt.body);
+		llvm_emit_br(c, exit_block);
 		if (case_stmt->ast_kind != AST_DEFAULT_STMT)
 		{
 			Int value, to_value;
@@ -905,21 +901,16 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 			uint64_t to_val = to_value.i.low;
 			for (uint64_t j = from_val; j <= to_val; j++)
 			{
-				DEBUG_LOG("Set create block address");
 				refs[j] = LLVMBlockAddress(c->cur_func.ref, block);
 			}
 			// No fallthrough
 			if (!case_stmt->case_stmt.body) continue;
-			DEBUG_LOG("Add dest");
 			LLVMAddDestination(instr, block);
 		}
-		if (!case_stmt->case_stmt.body) continue;
-		DEBUG_LOG("Emit block body");
-		llvm_emit_block(c, block);
-		llvm_emit_stmt(c, case_stmt->case_stmt.body);
-		llvm_emit_br(c, exit_block);
 	}
 
+	llvm_emit_block(c, exit_block);
+	LLVMValueRef default_block_address = LLVMBlockAddress(c->cur_func.ref, default_block);
 	bool found = false;
 	for (uint64_t i = 0; i < count; i++)
 	{
@@ -927,20 +918,14 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 		refs[i] = default_block_address;
 		if (found) continue;
 		found = true;
-		DEBUG_LOG("Add another destination");
 		LLVMAddDestination(instr, default_block);
 	}
-	DEBUG_LOG("Set init");
 	LLVMSetInitializer(jmptable, LLVMConstArray(c->ptr_type, refs, count));
-	DEBUG_LOG("Set init done");
-	llvm_emit_block(c, exit_block);
+
 }
 
 static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast, bool is_typeid)
 {
-	puts("ENTER SWITCH BODY");
-	usleep(1000);
-	DEBUG_LOG("Emit switch body");
 	bool is_if_chain = switch_ast->switch_stmt.flow.if_chain;
 	Type *switch_type = switch_value->type;
 	Ast **cases = switch_ast->switch_stmt.cases;
@@ -993,7 +978,6 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 		}
 		case_stmt->case_stmt.backend_block = next_block;
 	}
-	DEBUG_LOG("Emit switch var");
 
 	BEValue switch_var;
 	llvm_value_set_address_abi_aligned(c, &switch_var, llvm_emit_alloca_aligned(c, switch_type, "switch"), switch_type);
@@ -1008,20 +992,15 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 
 	if (is_if_chain)
 	{
-		DEBUG_LOG("Emit switch if");
-
 		llvm_emit_switch_body_if_chain(c, cases, default_case, &switch_current_val, exit_block, is_typeid);
 		return;
 	}
-
-	DEBUG_LOG("Emit switch maybe jump");
 
 	if (switch_ast->switch_stmt.flow.jump)
 	{
 		llvm_emit_switch_jump_table(c, switch_ast, cases, default_case, &switch_current_val, exit_block);
 		return;
 	}
-	DEBUG_LOG("Emit switch regular");
 	ASSERT(!is_typeid);
 
 	LLVMValueRef switch_stmt = LLVMBuildSwitch(c->builder, switch_current_val.value, default_case ? default_case->case_stmt.backend_block : exit_block, case_count);
