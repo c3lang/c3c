@@ -57,6 +57,7 @@ bool module_should_weaken(Module *module)
 
 static void gencontext_init(GenContext *context, Module *module, LLVMContextRef shared_context)
 {
+	puts("BEGIN EMIT");
 	ASSERT(LLVMIsMultithreaded());
 	memset(context, 0, sizeof(GenContext));
 	context->weaken = module_should_weaken(module);
