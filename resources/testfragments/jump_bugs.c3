@@ -1,6 +1,6 @@
 // #target: macos-aarch64
 module test;
-/*
+
 fn void test1()
 {
 	switch (0) @jump
@@ -10,12 +10,12 @@ fn void test1()
         default:
 	}
 }
-*/
+
 enum Foo { A, B, }
 
 fn void main()
 {
-	//test1();
+	test1();
 	/*
 	switch (Foo.A) @jump
 	{
