@@ -16,11 +16,12 @@ enum Foo { A, B, }
 fn void main()
 {
 	//test1();
+	/*
 	switch (Foo.A) @jump
 	{
         default:
 			break;
-	}
+	}*/
 }
 
 /* #expect: test.ll
