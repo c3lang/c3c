@@ -71,6 +71,7 @@
 - Properly add "inlined at" for generic instantiation errors #2382.
 - Inlining a const as an lvalue would take the wrong path and corrupt the expression node.
 - Grabbing (missing) methods on function pointers would cause crash #2434.
+- Fix alignment on jump table.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.

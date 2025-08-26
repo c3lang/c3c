@@ -865,9 +865,8 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 
 	Type *goto_array_type = type_get_array(type_voidptr, count);
 	LLVMTypeRef llvm_array_type = llvm_get_type(c, goto_array_type);
-	AlignSize alignment = type_alloca_alignment(switch_value->type);
 
-	LLVMValueRef jmptable = llvm_add_global_raw(c, "jumptable", llvm_array_type, alignment);
+	LLVMValueRef jmptable = llvm_add_global_raw(c, "jumptable", llvm_array_type, 0);
 	switch_ast->switch_stmt.codegen.jump.jmptable = jmptable;
 
 	llvm_set_private_declaration(jmptable);

@@ -25,7 +25,7 @@ fn void main()
 
 /* #expect: test.ll
 
-@jumptable = private unnamed_addr constant [1 x ptr] [ptr blockaddress(@test.test1, %switch.case)], align 4
+@jumptable = private unnamed_addr constant [1 x ptr] [ptr blockaddress(@test.test1, %switch.case)], align 8
 
 define void @test.test1() #0 {
 entry:

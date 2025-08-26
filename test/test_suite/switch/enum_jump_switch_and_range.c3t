@@ -39,9 +39,9 @@ fn void main(String[] args)
 /* #expect: test.ll
 
 
-@jumptable = private unnamed_addr constant [3 x ptr] [ptr blockaddress(@test.second_test, %switch.case), ptr blockaddress(@test.second_test, %switch.case), ptr blockaddress(@test.second_test, %switch.case)], align 4
-@jumptable.1 = private unnamed_addr constant [9 x ptr] [ptr blockaddress(@test.third_test, %switch.case), ptr blockaddress(@test.third_test, %switch.case), ptr blockaddress(@test.third_test, %switch.case), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.case14)], align 4
-@jumptable.4 = private unnamed_addr constant [2 x ptr] [ptr blockaddress(@test.main, %switch.case), ptr blockaddress(@test.main, %switch.case14)], align 4
+@jumptable = private unnamed_addr constant [3 x ptr] [ptr blockaddress(@test.second_test, %switch.case), ptr blockaddress(@test.second_test, %switch.case), ptr blockaddress(@test.second_test, %switch.case)], align 8
+@jumptable.1 = private unnamed_addr constant [9 x ptr] [ptr blockaddress(@test.third_test, %switch.case), ptr blockaddress(@test.third_test, %switch.case), ptr blockaddress(@test.third_test, %switch.case), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.case14)], align 8
+@jumptable.4 = private unnamed_addr constant [2 x ptr] [ptr blockaddress(@test.main, %switch.case), ptr blockaddress(@test.main, %switch.case14)], align 8
 
   store i32 %0, ptr %switch, align 4
   br label %switch.entry
