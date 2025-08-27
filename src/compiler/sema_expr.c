@@ -10268,6 +10268,7 @@ ERROR:
 
 static inline bool sema_expr_analyse_ct_is_const(SemaContext *context, Expr *expr)
 {
+	SEMA_DEPRECATED(expr, "$is_const is deprecated, use '$defined(var $e = expr)' instead.");
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_RUNNING);
 	Expr *inner = expr->inner_expr;
 	if (!sema_analyse_expr(context, inner)) return false;

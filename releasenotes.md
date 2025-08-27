@@ -28,6 +28,8 @@
 - If the `os-arch` linked library doesn't exist, try with `os` for c3l libs.
 - A file with an inferred module may not contain additional other modules. 
 - Update error message for missing body after if/for/etc #2289.
+- `@is_const` is deprecated in favour of directly using `$defined`.
+- `@is_lvalue(#value)` is deprecated in favour of directly using `$defined`.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
@@ -193,7 +195,7 @@
 - Added Ed25519.
 - Added string::bformat.
 - Virtual memory library.
-- New virtual emory arena allocator.
+- New virtual memory arena allocator.
 - Added `WString.len`.
 - Added `@addr` macro.
 - Add `ConditionVariable.wait_until` and `ConditionVariable.wait_for`

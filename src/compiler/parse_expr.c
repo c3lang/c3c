@@ -1210,7 +1210,6 @@ static Expr *parse_ct_is_const(ParseContext *c, Expr *left, SourceSpan lhs_start
 	ASSIGN_EXPR_OR_RET(checks->inner_expr, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(checks);
-	SEMA_DEPRECATED(checks, "The $is_const macro is deprecated. Use @is_const(...) instead.");
 	return checks;
 }
 

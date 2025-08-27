@@ -69,7 +69,7 @@ alias VoidFn = fn void();
  macro scope.
 
  @param #variable : `the variable to store and restore`
- @require values::@is_lvalue(#variable)
+ @require $defined(#variable = #variable) : `Expected an actual variable`
 *>
 macro void @scope(#variable; @body) @builtin
 {
