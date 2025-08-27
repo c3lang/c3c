@@ -26,7 +26,8 @@
 - `@assignable_to` is deprecated in favour of `$define`
 - Add `linklib-dir` to c3l-libraries to place their linked libraries in. Defaults to `linked-libs`
 - If the `os-arch` linked library doesn't exist, try with `os` for c3l libs.
-- A file with an inferred module may not contain additional other modules.
+- A file with an inferred module may not contain additional other modules. 
+- Update error message for missing body after if/for/etc #2289.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
