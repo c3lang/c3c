@@ -3190,6 +3190,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 	if (tok != TOKEN_MODULE && !c->unit->module)
 	{
 		if (!context_set_module_from_filename(c)) return poisoned_decl;
+		c->unit->module_generated = true;
 		// Pass the docs to the next thing.
 	}
 
@@ -3230,6 +3231,14 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			advance(c);
 			if (c->unit->module)
 			{
+				if (c->unit->module_generated)
+				{
+					print_error_at(c->unit->module->name->span, "This file begins with an auto-generated module '%s', which isn't compatible with having other module sections, please start the file with an explicit 'module'.",
+						c->unit->module->name->module);
+					sema_note_prev_at(c->span, "This declaration creates the next module section.");
+					c->unit->module_generated = false;
+					return poisoned_decl;
+				}
 				// We might run into another module declaration. If so, create a new unit.
 				ParseContext *new_context = CALLOCS(ParseContext);
 				*new_context = *c;

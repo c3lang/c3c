@@ -11,6 +11,7 @@ const char *manifest_default_keys[][2] = {
 		{"cflags", "C compiler flags."},
 		{"dependencies", "List of C3 libraries to also include."},
 		{"exec", "Scripts run for all platforms."},
+		{"linklib-dir", "Set the directory where to find linked libraries."},
 		{"provides", "The library name"},
 		{"targets", "The map of supported platforms"},
 		{"vendor", "Vendor specific extensions, ignored by c3c."},
@@ -107,6 +108,7 @@ static Library *add_library(JSONObject *json, const char *dir)
 	}
 	library->provides = provides;
 	library->execs = get_optional_string_array(context, json, "exec");
+	library->linklib_dir = get_optional_string(context, json, "linklib-dir");
 	library->dependencies = get_optional_string_array(context, json, "dependencies");
 	library->cc = get_optional_string(context, json, "cc");
 	library->cflags = get_cflags(context, json, NULL);
@@ -319,8 +321,27 @@ void resolve_libraries(BuildTarget *build_target)
 			file_add_wildcard_files(&build_target->sources, library->dir, false, c3_suffix_list, 3);
 		}
 		vec_add(build_target->library_list, library);
-		const char *libdir = file_append_path(library->dir, arch_os_target[build_target->arch_os_target]);
-		if (file_is_dir(libdir)) vec_add(build_target->linker_libdirs, libdir);
+		const char *lib_base = library->linklib_dir ? file_append_path_temp(library->dir, library->linklib_dir) : library->dir;
+		const char *arch_os = arch_os_target[build_target->arch_os_target];
+		char *libdir = file_append_path(lib_base, arch_os);
+		if (file_is_dir(libdir))
+		{
+			vec_add(build_target->linker_libdirs, libdir);
+		}
+		else
+		{
+			// Fallback to the arch in case of a common one, e.g. "macos-x64" -> "macos"
+			char *c = strchr(arch_os, '-');
+			if (c)
+			{
+				size_t to_remove = strlen(arch_os) - (c - arch_os);
+				libdir[strlen(libdir) - to_remove] = 0;
+				if (file_is_dir(libdir))
+				{
+					vec_add(build_target->linker_libdirs, libdir);
+				}
+			}
+		}
 		if ((vec_size(library->execs) || vec_size(target->execs)) && build_target->trust_level < TRUST_FULL)
 		{
 			error_exit("Could not use library '%s' as it requires 'exec' trust level to execute (it "

@@ -185,7 +185,7 @@ fn void Object.set_object(&self, String key, Object* new_object) @private
 
 <*
  @require self.allocator != null : "This object is not properly initialized, was it really created using 'new'"
- @require !@typeis(value, void*) ||| value == null : "void pointers cannot be stored in an object"
+ @require $typeof(value) != void* ||| value == null : "void pointers cannot be stored in an object"
 *>
 macro Object* Object.object_from_value(&self, value) @private
 {
@@ -203,7 +203,7 @@ macro Object* Object.object_from_value(&self, value) @private
 			return value;
 		$case $Type.typeid == void*.typeid:
 			return &NULL_OBJECT;
-		$case @assignable_to(value, String):
+		$case $defined(String x = value):
 			return new_string(value, self.allocator);
 		$default:
 			$error "Unsupported object type.";

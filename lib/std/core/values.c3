@@ -16,12 +16,11 @@ macro bool @is_promotable_to_floatlike(#value) @const => types::is_promotable_to
 macro bool @is_promotable_to_float(#value) @const => types::is_promotable_to_float($typeof(#value));
 macro bool @is_vector(#value) @const => types::is_vector($typeof(#value));
 macro bool @is_same_vector_type(#value1, #value2) @const => types::is_same_vector_type($typeof(#value1), $typeof(#value2));
-macro bool @assign_to(#value1, #value2) @const => @assignable_to(#value1, $typeof(#value2));
-macro bool @is_lvalue(#value) => $defined(#value = #value);
-macro bool @is_const(#foo) @const @builtin
+macro bool @assign_to(#value1, #value2) @const @deprecated("use '$defined(#value1 = #value2)'") => @assignable_to(#value1, $typeof(#value2));
+macro bool @is_lvalue(#value) @deprecated("use '$defined(#value = #value)'")=> $defined(#value = #value);
+macro bool @is_const(#foo) @const @builtin @deprecated("use '$defined(var $v = expr)'")
 {
-	var $v;
-	return $defined($v = #foo);
+	return $defined(var $v = #foo);
 }
 
 macro promote_int(x)

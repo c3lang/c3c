@@ -322,7 +322,7 @@ macro clone(Allocator allocator, value) @nodiscard
  @param slice : "The slice to clone"
  @return "A pointer to the cloned slice"
 
- @require @typekind(slice) == SLICE || @typekind(slice) == ARRAY
+ @require $kindof(slice) == SLICE || $kindof(slice) == ARRAY
 *>
 macro clone_slice(Allocator allocator, slice) @nodiscard
 {
@@ -365,7 +365,7 @@ macro void*? @aligned_alloc(#alloc_fn, usz bytes, usz alignment)
 	if (alignment < void*.alignof) alignment = void*.alignof;
 	usz header = AlignedBlock.sizeof + alignment;
 	usz alignsize = bytes + header;
-	$if @typekind(#alloc_fn(bytes)) == OPTIONAL:
+	$if $kindof(#alloc_fn(bytes)) == OPTIONAL:
 		void* data = #alloc_fn(alignsize)!;
 	$else
 		void* data = #alloc_fn(alignsize);
@@ -386,7 +386,7 @@ struct AlignedBlock
 macro void? @aligned_free(#free_fn, void* old_pointer)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
-	$if @typekind(#free_fn(desc.start)) == OPTIONAL:
+	$if $kindof(#free_fn(desc.start)) == OPTIONAL:
 	#free_fn(desc.start)!;
 	$else
 	#free_fn(desc.start);
@@ -403,7 +403,7 @@ macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 	void* data_start = desc.start;
 	void* new_data = @aligned_alloc(#calloc_fn, bytes, alignment)!;
 	mem::copy(new_data, old_pointer, desc.len < bytes ? desc.len : bytes, 1, 1);
-	$if @typekind(#free_fn(data_start)) == OPTIONAL:
+	$if $kindof(#free_fn(data_start)) == OPTIONAL:
 	#free_fn(data_start)!;
 	$else
 	#free_fn(data_start);

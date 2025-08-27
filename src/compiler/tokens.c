@@ -363,6 +363,8 @@ const char *token_type_to_string(TokenType type)
 			return "$is_const";
 		case TOKEN_CT_INCLUDE:
 			return "$include";
+		case TOKEN_CT_KINDOF:
+			return "$kindof";
 		case TOKEN_CT_VACOUNT:
 			return "$vacount";
 		case TOKEN_CT_VATYPE:

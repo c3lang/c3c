@@ -8,7 +8,7 @@ Sort list using the quick sort algorithm.
 *>
 macro insertionsort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin @safemacro
 {
-	$if @typekind(list) == POINTER &&& (@typekind(*list) == ARRAY || @typekind(*list) == VECTOR):
+	$if $kindof(list) == POINTER &&& ($kindof(*list) == ARRAY || $kindof(*list) == VECTOR):
 		$typeof((*list)[0])[] list2 = list;
 		is::isort{$typeof(list2), $typeof(cmp), $typeof(context)}(list2, 0, list.len, cmp, context);
 	$else
@@ -25,7 +25,7 @@ fn void isort(Type list, usz low, usz high, CmpFn comp, Context context)
 {
 	var $has_cmp = @is_valid_macro_slot(comp);
 	var $has_context = @is_valid_macro_slot(context);
-	var $cmp_by_value = $has_cmp &&& @assignable_to(list[0], CmpFn.paramsof[0].type);
+	var $cmp_by_value = $has_cmp &&& $defined($typefrom(CmpFn.paramsof[0].type) p = list[0]);
 	var $has_get_ref =  $defined(&list[0]);
 	for (usz i = low; i < high; ++i)
 	{

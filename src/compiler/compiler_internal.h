@@ -1698,6 +1698,7 @@ struct CompilationUnit_
 	bool is_interface_file;
 	bool benchmark_by_default;
 	bool test_by_default;
+	bool module_generated;
 	Attr **attr_links;
 	Decl **generic_defines;
 	Decl **ct_asserts;

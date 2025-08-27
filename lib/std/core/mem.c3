@@ -45,7 +45,7 @@ fn usz os_pagesize()
  @param mask : "The mask for the load"
  @param passthru : "The value to use for non masked values"
  @require $defined(*ptr = passthru) : "Pointer and passthru must match"
- @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
+ @require $kindof(passthru) == VECTOR : "Expected passthru to be a vector"
  @require passthru.len == mask.len : "Mask and passthru must have the same length"
 
  @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
@@ -64,7 +64,7 @@ macro masked_load(ptr, bool[<*>] mask, passthru)
  @param $alignment : "The alignment to assume for the pointer"
 
  @require $defined(*ptr = passthru) : "Pointer and passthru must match"
- @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
+ @require $kindof(passthru) == VECTOR : "Expected passthru to be a vector"
  @require passthru.len == mask.len : "Mask and passthru must have the same length"
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
 
@@ -82,8 +82,8 @@ macro @masked_load_aligned(ptr, bool[<*>] mask, passthru, usz $alignment)
  @param mask : "The mask for the load"
  @param passthru : "The value to use for non masked values"
 
- @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
- @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
+ @require $kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ @require $kindof(passthru) == VECTOR : "Expected passthru to be a vector"
  @require $defined(*ptrvec[0] = passthru[0]) : "Pointer and passthru must match"
  @require passthru.len == mask.len : "Mask and passthru must have the same length"
  @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
@@ -104,8 +104,8 @@ macro gather(ptrvec, bool[<*>] mask, passthru)
  @param passthru : "The value to use for non masked values"
  @param $alignment : "The alignment to assume for the pointers"
 
- @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
- @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
+ @require $kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ @require $kindof(passthru) == VECTOR : "Expected passthru to be a vector"
  @require $defined(*ptrvec[0] = passthru[0]) : "Pointer and passthru must match"
  @require passthru.len == mask.len : "Mask and passthru must have the same length"
  @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
@@ -127,7 +127,7 @@ macro @gather_aligned(ptrvec, bool[<*>] mask, passthru, usz $alignment)
  @param mask : "The mask for the store"
 
  @require $defined(*ptr = value) : "Pointer and value must match"
- @require @typekind(value) == VECTOR : "Expected value to be a vector"
+ @require $kindof(value) == VECTOR : "Expected value to be a vector"
  @require value.len == mask.len : "Mask and value must have the same length"
 *>
 macro masked_store(ptr, value, bool[<*>] mask)
@@ -142,7 +142,7 @@ macro masked_store(ptr, value, bool[<*>] mask)
  @param $alignment : "The alignment of the pointer"
 
  @require $defined(*ptr = value) : "Pointer and value must match"
- @require @typekind(value) == VECTOR : "Expected value to be a vector"
+ @require $kindof(value) == VECTOR : "Expected value to be a vector"
  @require value.len == mask.len : "Mask and value must have the same length"
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
 
@@ -156,8 +156,8 @@ macro @masked_store_aligned(ptr, value, bool[<*>] mask, usz $alignment)
  @param ptrvec : "The vector pointer containing the addresses to store to."
  @param value : "The value to store masked"
  @param mask : "The mask for the store"
- @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
- @require @typekind(value) == VECTOR : "Expected value to be a vector"
+ @require $kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ @require $kindof(value) == VECTOR : "Expected value to be a vector"
  @require $defined(*ptrvec[0] = value[0]) : "Pointer and value must match"
  @require value.len == mask.len : "Mask and value must have the same length"
  @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
@@ -174,8 +174,8 @@ macro scatter(ptrvec, value, bool[<*>] mask)
  @param mask : "The mask for the store"
  @param $alignment : "The alignment of the load"
 
- @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
- @require @typekind(value) == VECTOR : "Expected value to be a vector"
+ @require $kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ @require $kindof(value) == VECTOR : "Expected value to be a vector"
  @require $defined(*ptrvec[0] = value[0]) : "Pointer and value must match"
  @require value.len == mask.len : "Mask and value must have the same length"
  @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
@@ -433,7 +433,7 @@ macro void set_inline(void* dst, char val, usz $len, usz $dst_align = 0, bool $i
  @require values::@inner_kind(b) == TypeKind.SLICE || values::@inner_kind(b) == TypeKind.POINTER
  @require values::@inner_kind(a) != TypeKind.SLICE || len == -1
  @require values::@inner_kind(a) != TypeKind.POINTER || len > -1
- @require values::@assign_to(a, b) && values::@assign_to(b, a)
+ @require $defined(a = b, b = a)
 *>
 macro bool equals(a, b, isz len = -1, usz $align = 0)
 {
@@ -740,7 +740,7 @@ fn void* tmalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
 
 <*
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
 *>
 macro new($Type, ...) @nodiscard
@@ -756,7 +756,7 @@ macro new($Type, ...) @nodiscard
 
 <*
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
 *>
 macro new_with_padding($Type, usz padding, ...) @nodiscard
@@ -774,7 +774,7 @@ macro new_with_padding($Type, usz padding, ...) @nodiscard
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
 *>
 macro new_aligned($Type, ...) @nodiscard
 {
@@ -814,7 +814,7 @@ macro alloc_aligned($Type) @nodiscard
 
 <*
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
 *>
 macro tnew($Type, ...) @nodiscard
 {
@@ -829,7 +829,7 @@ macro tnew($Type, ...) @nodiscard
 
 <*
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
 *>
 macro temp_with_padding($Type, usz padding, ...) @nodiscard
 {

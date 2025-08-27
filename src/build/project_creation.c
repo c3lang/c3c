@@ -139,6 +139,7 @@ const char *MANIFEST_TEMPLATE =
 		"{\n"
 		"  \"provides\" : \"%s\",\n"
 		"  // \"sources\" : [ \"src/**\" ],\n"
+        "  \"linklib-dir\" : \"linked-libs\",\n"
 		"  \"targets\" : {\n"
 		"%s"
 		"  }\n"
@@ -219,9 +220,15 @@ void create_library(BuildOptions *build_options)
 	}
 
 	const char *dir = str_cat(build_options->project_name, ".c3l");
+	if (file_exists(dir))
+	{
+		if (file_is_dir(dir)) exit_fail("Directory '%s' already exists.", dir);
+		exit_fail("Path '%s' exists and is not a directory.", dir);
+	}
+
 	if (!dir_make(dir))
 	{
-		exit_fail("Could not create directory %s.", dir);
+		exit_fail("Could not create directory '%s'", dir);
 	}
 
 	chdir_or_fail(build_options, dir);
@@ -235,11 +242,12 @@ void create_library(BuildOptions *build_options)
 	const char *interface_file = scratch_buffer_copy();
 	create_file_or_fail(build_options, interface_file, MAIN_INTERFACE_TEMPLATE, module_name(build_options));
 	scratch_buffer_clear();
+	mkdir_or_fail(build_options, "linked-libs");
 	for (int i = 0; i < sizeof(DEFAULT_TARGETS) / sizeof(char*); i++)
 	{
 		const char *target = DEFAULT_TARGETS[i];
 		scratch_buffer_printf(MANIFEST_TARGET, target);
-		mkdir_or_fail(build_options, target);
+		mkdir_or_fail(build_options, file_append_path_temp("linked-libs", target));
 	}
 	create_file_or_fail(build_options, "manifest.json", MANIFEST_TEMPLATE, build_options->project_name, scratch_buffer_to_string());
 	printf("The '%s' library has been set up in the directory '%s'.\n", build_options->project_name, dir);
@@ -286,11 +294,21 @@ void create_project(BuildOptions *build_options)
 	{
 		error_exit("Can't open path '%s'.", build_options->path);
 	}
+	
+	if (file_exists(build_options->project_name))
+	{
+		if (file_is_dir(build_options->project_name))
+		{
+			error_exit("Directory '%s' already exists.", build_options->project_name);
+		}
+		error_exit("Path '%s' exists and is not a directory.", build_options->project_name);
+	}
 
 	if (!dir_make(build_options->project_name))
 	{
 		error_exit("Could not create directory '%s'.", build_options->project_name);
 	}
+
 	chdir_or_fail(build_options, build_options->project_name);
 
 CREATE:

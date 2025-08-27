@@ -121,7 +121,7 @@ bool context_set_module_from_filename(ParseContext *context)
 		return false;
 	}
 	Path *path = CALLOCS(Path);
-	path->span = INVALID_SPAN;
+	path->span = context->span;
 	path->module = module_name;
 	path->len = scratch_buffer.len;
 	return create_module_or_check_name(context->unit, path, NULL);

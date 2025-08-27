@@ -366,7 +366,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	target->cpu = get_string(context, json, "cpu", target->cpu);
 
 	// WinCRT
-	WinCrtLinking wincrt = GET_SETTING(WinCrtLinking, "wincrt", wincrt_linking, "'none', 'static-debug', 'staticdebug, 'dynamic-debug' or 'dynamic'.");
+	WinCrtLinking wincrt = GET_SETTING(WinCrtLinking, "wincrt", wincrt_linking, "'none', 'static', 'static-debug, 'dynamic-debug' or 'dynamic'.");
 	if (wincrt != WIN_CRT_DEFAULT) target->win.crt_linking = wincrt;
 
 	// fp-math

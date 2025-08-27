@@ -133,7 +133,7 @@ macro double next_double(random)
 }
 
 // True if the value is a Random.
-macro bool is_random(random) => @assignable_to(random, Random);
+macro bool is_random(random) => $defined(Random r = random);
 
 macro uint128 @long_to_int128(#function) => (uint128)#function << 64 + #function;
 macro ulong @int_to_long(#function) => (ulong)#function << 32 + #function;

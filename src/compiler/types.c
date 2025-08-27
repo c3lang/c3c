@@ -138,7 +138,7 @@ void type_append_name_to_scratch(Type *type)
 			{
 				scratch_buffer_append("void");
 			}
-			scratch_buffer_append_char('!');
+			scratch_buffer_append_char('?');
 			break;
 		case TYPE_SLICE:
 			type_append_name_to_scratch(type->array.base);

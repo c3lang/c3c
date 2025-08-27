@@ -101,7 +101,7 @@ macro is_approx_rel(x, y, eps)
 }
 
 <*
- @require values::@is_int(x) : `The input must be an integer`
+ @require $kindof(x).is_int() : `The input must be an integer`
 *>
 macro sign(x)
 {
@@ -119,7 +119,7 @@ macro sign(x)
 *>
 macro atan2(x, y)
 {
-	$if @typeis(x, float) && @typeis(y, float):
+	$if $typeof(x) == float &&& $typeof(y) == float:
 		return _atan2f(x, y);
 	$else
 		return _atan2(x, y);
@@ -128,16 +128,16 @@ macro atan2(x, y)
 
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
- @require @typekind(sinp) == POINTER : "Expected sinp to be a pointer"
+ @require $kindof(sinp) == POINTER : "Expected sinp to be a pointer"
  @require @typematch(sinp, cosp) : "Expected sinp and cosp to have the same type"
- @require $defined(*sinp = x) : "Expected x and sinp/cosp to have the same type"
+ @require $defined(*sinp = x) : "Expected x and *sinp/*cosp to have the same type"
 *>
 macro sincos_ref(x, sinp, cosp)
 {
-	$if @typeis(sinp, float*.typeid):
-		return _sincosf(x, sinp, cosp);
+	$if $typeof(sinp) == float*:
+		_sincosf(x, sinp, cosp);
 	$else
-		return _sincos(x, sinp, cosp);
+		_sincos(x, sinp, cosp);
 	$endif
 }
 
@@ -149,7 +149,7 @@ macro sincos_ref(x, sinp, cosp)
 *>
 macro sincos(x)
 {
-	$if @typeis(x, float):
+	$if $typeof(x) == float:
 		float[<2>] v @noinit;
 		_sincosf(x, &v[0], &v[1]);
 	$else
@@ -164,7 +164,7 @@ macro sincos(x)
 *>
 macro atan(x)
 {
-	$if @typeis(x, float):
+	$if $typeof(x) == float:
 		return _atanf(x);
 	$else
 		return _atan(x);
@@ -176,7 +176,7 @@ macro atan(x)
 *>
 macro atanh(x)
 {
-	$if @typeis(x, float):
+	$if $typeof(x) == float:
 		return _atanhf(x);
 	$else
 		return _atanh(x);
@@ -188,7 +188,7 @@ macro atanh(x)
 *>
 macro acos(x)
 {
-	$if @typeis(x, float):
+	$if $typeof(x) == float:
 		return _acosf(x);
 	$else
 		return _acos(x);
@@ -200,7 +200,7 @@ macro acos(x)
 *>
 macro acosh(x)
 {
-	$if @typeis(x, float):
+	$if $typeof(x) == float:
 		return _acoshf(x);
 	$else
 		return _acosh(x);
@@ -212,7 +212,7 @@ macro acosh(x)
 *>
 macro asin(x)
 {
-	$if @typeis(x, float):
+	$if $typeof(x) == float:
 		return _asinf(x);
 	$else
 		return _asin(x);
@@ -224,7 +224,7 @@ macro asin(x)
 *>
 macro asinh(x)
 {
-	$if @typeis(x, float):
+	$if $typeof(x) == float:
 		return _asinhf(x);
 	$else
 		return _asinh(x);
@@ -239,7 +239,7 @@ macro ceil(x) => $$ceil(x);
 <*
  Ceil for compile time evaluation.
 
- @require @typeis($input, double) || @typeis($input, float) : "Only float and double may be used"
+ @require $kindof($input) == FLOAT : "Only float and double may be used"
 *>
 macro @ceil($input) @const => $$ceil($input);
 
@@ -252,8 +252,8 @@ macro @ceil($input) @const => $$ceil($input);
  @return "lower if x < lower, upper if x > upper, otherwise return x."
 
  @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
- @require values::@assign_to(lower, x) : `The lower bound must be convertable to the value type.`
- @require values::@assign_to(upper, x) : `The upper bound must be convertable to the value type.`
+ @require $defined(x = lower) : `The lower bound must be convertable to the value type.`
+ @require $defined(x = upper) : `The upper bound must be convertable to the value type.`
 *>
 macro clamp(x, lower, upper) => $$max(($typeof(x))lower, $$min(x, ($typeof(x))upper));
 
@@ -413,7 +413,7 @@ macro nearbyint(x) => $$nearbyint(x);
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
- @require @assignable_to(exp, $typeof(values::promote_int(x))) || values::@is_int(exp) : `The input must be an integer, castable to the type of x`
+ @require $defined($typeof(values::promote_int(x)) v = exp) || values::@is_int(exp) : `The input must be an integer, castable to the type of x`
 *>
 macro pow(x, exp)
 {

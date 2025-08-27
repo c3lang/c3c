@@ -34,7 +34,7 @@ switch.entry:                                     ; preds = %entry
 jumpblock:                                        ; preds = %switch.entry
   %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable, i32 %2
   %target = load ptr, ptr %ptroffset, align 8
-  indirectbr ptr %target, [label %switch.case, label %switch.case4]
+  indirectbr ptr %target, [label %switch.case, label %switch.case4, label %switch.default]
 
 switch.case:                                      ; preds = %jumpblock5, %jumpblock1, %jumpblock
   %4 = load i32, ptr %x, align 4
@@ -60,6 +60,6 @@ jumpblock5:                                       ; preds = %switch.case4
   %target7 = load ptr, ptr %ptroffset6, align 8
   indirectbr ptr %target7, [label %switch.case, label %switch.case4, label %switch.default]
 
-switch.default:                                   ; preds = %jumpblock5, %switch.case4, %jumpblock1, %switch.case, %switch.entry
+switch.default:                                   ; preds = %jumpblock, %jumpblock5, %switch.case4, %jumpblock1, %switch.case, %switch.entry
   unreachable
 }

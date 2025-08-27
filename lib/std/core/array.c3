@@ -1,14 +1,12 @@
 module std::core::array;
-
-import std::core::array::slice;
-import std::collections::pair;
+import std::collections::pair, std::io;
 
 <*
  Returns true if the array contains at least one element, else false
  
  @param [in] array
  @param [in] element
- @require @typekind(array) == SLICE || @typekind(array) == ARRAY
+ @require $kindof(array) == SLICE || $kindof(array) == ARRAY
  @require @typematch(array[0], element) : "array and element must have the same type"
 *>
 macro bool contains(array, element)
@@ -26,7 +24,7 @@ macro bool contains(array, element)
  
  @param [in] array
  @param [in] element
- @require @typekind(array) == SLICE || @typekind(array) == ARRAY
+ @require $kindof(array) == SLICE || $kindof(array) == ARRAY
  @require @typematch(array[0], element) : "array and element must have the same type"
  @return "the first index of the element"
  @return? NOT_FOUND
@@ -50,9 +48,9 @@ macro index_of(array, element)
  @param xlen : "The length of the slice in x, defaults to the length of the array"
  @param ylen : "The length of the slice in y, defaults to the length of the array"
  @return "A Slice2d from the array"
- @require @typekind(array_ptr) == POINTER
- @require @typekind(*array_ptr) == VECTOR || @typekind(*array_ptr) == ARRAY
- @require @typekind((*array_ptr)[0]) == VECTOR || @typekind((*array_ptr)[0]) == ARRAY
+ @require $kindof(array_ptr) == POINTER
+ @require $kindof(*array_ptr) == VECTOR || $kindof(*array_ptr) == ARRAY
+ @require $kindof((*array_ptr)[0]) == VECTOR || $kindof((*array_ptr)[0]) == ARRAY
 *>
 macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
 {
@@ -87,8 +85,8 @@ macro rindex_of(array, element)
  @param [in] arr1
  @param [in] arr2
  @param [&inout] allocator : "The allocator to use, default is the heap allocator"
- @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
- @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
+ @require $kindof(arr1) == SLICE || $kindof(arr1) == ARRAY
+ @require $kindof(arr2) == SLICE || $kindof(arr2) == ARRAY
  @require @typematch(arr1[0], arr2[0]) : "Arrays must have the same type"
  @ensure result.len == arr1.len + arr2.len
 *>
@@ -113,12 +111,222 @@ macro concat(Allocator allocator, arr1, arr2) @nodiscard
 
  @param [in] arr1
  @param [in] arr2
- @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
- @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
+ @require $kindof(arr1) == SLICE || $kindof(arr1) == ARRAY
+ @require $kindof(arr2) == SLICE || $kindof(arr2) == ARRAY
  @require @typematch(arr1[0], arr2[0]) : "Arrays must have the same type"
  @ensure return.len == arr1.len + arr2.len
 *>
 macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
+
+
+<*
+ Apply a reduction/folding operation to an iterable type. This walks along the input array
+ and applies an `#operation` to each value, returning it to the `identity` (or "accumulator")
+ base value.
+
+ For example:
+ ```c3
+ int[] my_slice = { 1, 8, 12 };
+ int folded = array::@reduce(my_slice, 2, fn (i, e) => i * e);
+ assert(folded == (2 * 1 * 8 * 12));
+ ```
+
+ Notice how the given `identity` value started the multiplication chain at 2. When enumerating
+ `my_slice`, each element is accumulated onto the `identity` value with each sequential iteration.
+ ```
+ i = 2;   // identity value
+ i *= 1;   // my_slice[0]
+ i *= 8;   // my_slice[1]
+ i *= 12;   // my_slice[2]
+ ```
+
+ @param [in] array
+ @param identity
+ @param #operation : "The reduction/folding labmda function or function pointer to apply."
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $defined($typefrom(@reduce_fn(array, identity)) $func = #operation) : "Invalid lambda or function pointer type"
+*>
+macro @reduce(array, identity, #operation)
+{
+	$typefrom(@reduce_fn(array, identity)) $func = #operation;
+	foreach (index, element : array) identity = $func(identity, element, index);
+	return identity;
+}
+
+<*
+ Apply a summation operator (+) to an identity value across a span of array elements
+ and return the final accumulated result.
+
+ @pure
+
+ @param [in] array
+ @param identity_value : "The base accumulator value to use for the sum"
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $defined(array[0] + array[0]) : "Array element type must implement the '+' operator"
+ @require $defined($typeof(array[0]) t = identity_value) : "The identity type must be assignable to the array element type"
+*>
+macro @sum(array, identity_value = 0)
+{
+	return @reduce(array, ($typeof(array[0]))identity_value, fn (acc, e, u) => acc + e);
+}
+
+<*
+ Apply a product operator (*) to an identity value across a span of array elements
+ and return the final accumulated result.
+
+ @pure
+
+ @param [in] array
+ @param identity_value : "The base accumulator value to use for the product"
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $defined(array[0] * array[0]) : "Array element type must implement the '*' operator"
+ @require $defined($typeof(array[0]) t = identity_value) : "The identity type must be assignable to the array element type"
+*>
+macro @product(array, identity_value = 1)
+{
+	return @reduce(array, ($typeof(array[0]))identity_value, fn (acc, e, u) => acc * e);
+}
+
+<*
+ Applies a given predicate function to each element of an array and returns a new
+ array of `usz` values, each element representing an index within the original array
+ where the predicate returned `true`.
+
+ The `.len` value of the returned array can also be used to quickly identify how many
+ input array elements matched the predicate.
+
+ For example:
+ ```c3
+ int[] arr = { 0, 20, 4, 30 };
+ int[] matched_indices = array::@indices_of(mem, arr, fn (u, a) => a > 10);
+ ```
+
+ The `matched_indices` variable should contain a dynamically-allocated array of `[1, 3]`,
+ and thus its count indicates that 2 of the 4 elements matched the predicate condition.
+
+ @param [&inout] allocator
+ @param [in] array
+ @param #predicate
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
+*>
+macro usz[] @indices_of(Allocator allocator, array, #predicate)
+{
+	usz[] results = allocator::new_array(allocator, usz, find_len(array));
+	usz matches;
+
+	$typefrom(@predicate_fn(array)) $predicate = #predicate;
+	foreach (index, element : array)
+	{
+		if ($predicate(element, index)) results[matches++] = index;
+	}
+
+	return results[:matches];
+}
+
+<*
+ Array `@indices_of` using the temp allocator.
+
+ @param [in] array
+ @param #predicate
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
+*>
+macro usz[] @tindices_of(array, #predicate)
+{
+	return @indices_of(tmem, array, #predicate);
+}
+
+
+<*
+ Applies a predicate function to each element of an input array and returns a new array
+ containing shallow copies of _only_ the elements for which the predicate function returned
+ a `true` value.
+
+ For example:
+ ```c3
+ int[] my_arr = { 1, 2, 4, 10, 11, 45 };
+ int[] evens = array::@filter(mem, my_arr, fn (e, u) => !(e % 2));
+ assert(evens == (int[]){2, 4, 10 });
+ ```
+
+ @param [&inout] allocator
+ @param [in] array
+ @param #predicate
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
+*>
+macro @filter(Allocator allocator, array, #predicate) @nodiscard
+{
+	var $InnerType = $typeof(array[0]);
+
+	usz[] matched_indices = @indices_of(allocator, array, #predicate);
+	defer allocator::free(allocator, matched_indices.ptr);   // can free this upon leaving this call
+
+	if (!matched_indices.len) return ($InnerType[]){};
+
+	$InnerType[] result = allocator::new_array(allocator, $InnerType, matched_indices.len);
+
+	foreach (i, index : matched_indices) result[i] = array[index];
+
+	return result;
+}
+
+<*
+ Array `@filter` using the temp allocator.
+
+ @param [in] array
+ @param #predicate
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
+*>
+macro @tfilter(array, #predicate) @nodiscard
+{
+	return @filter(tmem, array, #predicate);
+}
+
+
+<*
+ Returns `true` if _any_ element of the input array returns `true` when
+ the `#predicate` function is applied.
+
+ @param [in] array
+ @param #predicate
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
+*>
+macro bool @any(array, #predicate)
+{
+	$typefrom(@predicate_fn(array)) $predicate = #predicate;
+	foreach (index, element : array) if ($predicate(element, index)) return true;
+	return false;
+}
+
+
+<*
+ Returns `true` if _all_ elements of the input array return `true` when
+ the `#predicate` function is applied.
+
+ @param [in] array
+ @param #predicate
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
+*>
+macro bool @all(array, #predicate)
+{
+	$typefrom(@predicate_fn(array)) $predicate = #predicate;
+	foreach (index, element : array) if (!$predicate(element, index)) return false;
+	return true;
+}
 
 
 <*
@@ -191,7 +399,6 @@ macro @zip(Allocator allocator, left, right, #operation = EMPTY_MACRO_SLOT, fill
 	$if $is_op:
 		$Type = $typeof(#operation).returns;
 	$endif
-
 
 	usz left_len = find_len(left);
 	usz right_len = find_len(right);
@@ -290,7 +497,7 @@ macro @tzip(left, right, #operation = EMPTY_MACRO_SLOT, fill_with = EMPTY_MACRO_
  @require @is_valid_list(left) : "Expected a valid list"
  @require @is_valid_list(right) : "Expected a valid list"
  @require find_len(right) >= find_len(left) : `Right side length must be >= the destination (left) side length; consider using a sub-array of data for the assignment.`
- @require @assignable_to(#operation, $typefrom(@zip_into_fn(left, right))) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
+ @require $defined($typefrom(@zip_into_fn(left, right)) x = #operation) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
 *>
 macro @zip_into(left, right, #operation)
 {
@@ -301,29 +508,42 @@ macro @zip_into(left, right, #operation)
 
 
 // --- helper functions
+module std::core::array @private;
 
-macro typeid @zip_into_fn(#left, #right) @private @const
+
+macro typeid @predicate_fn(#array) @const
+{
+	return $typeof(fn bool ($typeof(#array[0]) a, usz index = 0) => true).typeid;
+}
+
+macro typeid @reduce_fn(#array, #identity) @const
+{
+	return @typeid(fn $typeof(#identity) ($typeof(#identity) i, $typeof(#array[0]) a, usz index = 0) => i);
+}
+
+macro typeid @zip_into_fn(#left, #right) @const
 {
 	return @typeid(fn $typeof(#left[0]) ($typeof(#left[0]) l, $typeof(#right[0]) r) => l);
 }
-macro bool @is_valid_operation(#operation, #left, #right) @const @private
+
+macro bool @is_valid_operation(#operation, #left, #right) @const
 {
 	$switch:
 		$case @is_empty_macro_slot(#operation):
 			return true;
-		$case @typekind(#operation) != FUNC:
+		$case $kindof(#operation) != FUNC:
 			return false;
 		$default:
 			return $defined(#operation(#left[0], #right[0]));
 	$endswitch
 }
 
-macro bool @is_valid_list(#expr) @const @private
+macro bool @is_valid_list(#expr) @const
 {
 	return $defined(#expr[0]) &&& ($defined(#expr.len) ||| $defined(#expr.len()));
 }
 
-macro bool @is_valid_fill(left, right, fill_with) @private
+macro bool @is_valid_fill(left, right, fill_with)
 {
 	if (@is_empty_macro_slot(fill_with)) return true;
 	usz left_len = @select($defined(left.len()), left.len(), left.len);
