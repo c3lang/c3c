@@ -27,8 +27,8 @@ macro foo(a, #b = EMPTY_MACRO_SLOT)
 const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
 
 typedef EmptySlot = void*;
-macro @is_empty_macro_slot(#arg) @const @builtin => @typeis(#arg, EmptySlot);
-macro @is_valid_macro_slot(#arg) @const @builtin => !@typeis(#arg, EmptySlot);
+macro @is_empty_macro_slot(#arg) @const @builtin => $typeof(#arg) == EmptySlot;
+macro @is_valid_macro_slot(#arg) @const @builtin => $typeof(#arg) != EmptySlot;
 
 <*
  Returns a random value at compile time.
@@ -99,7 +99,7 @@ macro usz @bitsizeof(#expr) @builtin @const => $sizeof(#expr) * 8u;
  @param v : `the any to convert to the given type.`
  @param $Type : `the type to convert to`
  @return `The any.ptr converted to its type.`
- @ensure @typeis(return, $Type*)
+ @ensure $typeof(return) == $Type*
  @return? TYPE_MISMATCH
 *>
 macro anycast(any v, $Type) @builtin
@@ -124,12 +124,12 @@ macro typeid @typeid(#value) @const @builtin
 	return $typeof(#value).typeid;
 }
 
-macro TypeKind @typekind(#value) @const @builtin
+macro TypeKind @typekind(#value) @const @builtin @deprecated("Use `$kindof(#value)`.")
 {
-	return $typeof(#value).kindof;
+	return $kindof(#value);
 }
 
-macro bool @typeis(#value, $Type) @const @builtin
+macro bool @typeis(#value, $Type) @const @builtin @deprecated("Use `$typeof(#value) == $Type` instead.")
 {
 	return $typeof(#value).typeid == $Type.typeid;
 }
@@ -285,7 +285,7 @@ macro any.as_inner(&self)
  @param $Type : "the type to cast to"
 
  @require $sizeof(expr) == $Type.sizeof  : "Cannot bitcast between types of different size."
- @ensure @typeis(return, $Type)
+ @ensure $typeof(return) == $Type*
 *>
 macro bitcast(expr, $Type) @builtin
 {
@@ -302,7 +302,7 @@ macro bitcast(expr, $Type) @builtin
  @param $Type : `The type of the enum`
  @param [in] enum_name : `The name of the enum to search for`
  @require $Type.kindof == ENUM : `Only enums may be used`
- @ensure @typeis(return, $Type)
+ @ensure $typeof(return) == $Type*
  @return? NOT_FOUND
 *>
 macro enum_by_name($Type, String enum_name) @builtin
@@ -320,7 +320,7 @@ macro enum_by_name($Type, String enum_name) @builtin
  @require $Type.kindof == ENUM : `Only enums may be used`
  @require $defined($Type.#value) : `Expected '#value' to match an enum associated value`
  @require $defined($typeof(($Type){}.#value) v = value) : `Expected the value to match the type of the associated value`
- @ensure @typeis(return, $Type)
+ @ensure $typeof(return) == $Type*
  @return? NOT_FOUND
 *>
 macro @enum_from_value($Type, #value, value) @builtin @deprecated("Use Enum.lookup_field and Enum.lookup")
@@ -454,7 +454,7 @@ macro @clz($value) @builtin @const
  Return the excuse in the Optional if it is Empty, otherwise
  return a null fault.
 
- @require @typekind(#expr) == OPTIONAL : `@catch expects an Optional value`
+ @require $kindof(#expr) == OPTIONAL : `@catch expects an Optional value`
 *>
 macro fault @catch(#expr) @builtin
 {
@@ -466,7 +466,7 @@ macro fault @catch(#expr) @builtin
  Check if an Optional expression holds a value or is empty, returning true
  if it has a value.
 
- @require @typekind(#expr) == OPTIONAL : `@ok expects an Optional value`
+ @require $kindof(#expr) == OPTIONAL : `@ok expects an Optional value`
 *>
 macro bool @ok(#expr) @builtin
 {
@@ -609,7 +609,7 @@ macro uint char[].hash(char[] c) => (uint)a5hash::hash(c);
 macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
 <*
- @require @typekind(array_ptr) == POINTER &&& @typekind(*array_ptr) == ARRAY
+ @require $kindof(array_ptr) == POINTER &&& $kindof(*array_ptr) == ARRAY
 *>
 macro uint hash_array(array_ptr) @local
 {
@@ -623,7 +623,7 @@ macro uint hash_array(array_ptr) @local
 }
 
 <*
- @require @typekind(vec) == VECTOR
+ @require $kindof(vec) == VECTOR
 *>
 macro uint hash_vec(vec) @local
 {

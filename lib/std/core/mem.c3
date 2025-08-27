@@ -45,7 +45,7 @@ fn usz os_pagesize()
  @param mask : "The mask for the load"
  @param passthru : "The value to use for non masked values"
  @require $defined(*ptr = passthru) : "Pointer and passthru must match"
- @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
+ @require $kindof(passthru) == VECTOR : "Expected passthru to be a vector"
  @require passthru.len == mask.len : "Mask and passthru must have the same length"
 
  @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
@@ -64,7 +64,7 @@ macro masked_load(ptr, bool[<*>] mask, passthru)
  @param $alignment : "The alignment to assume for the pointer"
 
  @require $defined(*ptr = passthru) : "Pointer and passthru must match"
- @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
+ @require $kindof(passthru) == VECTOR : "Expected passthru to be a vector"
  @require passthru.len == mask.len : "Mask and passthru must have the same length"
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
 
@@ -82,8 +82,8 @@ macro @masked_load_aligned(ptr, bool[<*>] mask, passthru, usz $alignment)
  @param mask : "The mask for the load"
  @param passthru : "The value to use for non masked values"
 
- @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
- @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
+ @require $kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ @require $kindof(passthru) == VECTOR : "Expected passthru to be a vector"
  @require $defined(*ptrvec[0] = passthru[0]) : "Pointer and passthru must match"
  @require passthru.len == mask.len : "Mask and passthru must have the same length"
  @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
@@ -104,8 +104,8 @@ macro gather(ptrvec, bool[<*>] mask, passthru)
  @param passthru : "The value to use for non masked values"
  @param $alignment : "The alignment to assume for the pointers"
 
- @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
- @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
+ @require $kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ @require $kindof(passthru) == VECTOR : "Expected passthru to be a vector"
  @require $defined(*ptrvec[0] = passthru[0]) : "Pointer and passthru must match"
  @require passthru.len == mask.len : "Mask and passthru must have the same length"
  @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
@@ -127,7 +127,7 @@ macro @gather_aligned(ptrvec, bool[<*>] mask, passthru, usz $alignment)
  @param mask : "The mask for the store"
 
  @require $defined(*ptr = value) : "Pointer and value must match"
- @require @typekind(value) == VECTOR : "Expected value to be a vector"
+ @require $kindof(value) == VECTOR : "Expected value to be a vector"
  @require value.len == mask.len : "Mask and value must have the same length"
 *>
 macro masked_store(ptr, value, bool[<*>] mask)
@@ -142,7 +142,7 @@ macro masked_store(ptr, value, bool[<*>] mask)
  @param $alignment : "The alignment of the pointer"
 
  @require $defined(*ptr = value) : "Pointer and value must match"
- @require @typekind(value) == VECTOR : "Expected value to be a vector"
+ @require $kindof(value) == VECTOR : "Expected value to be a vector"
  @require value.len == mask.len : "Mask and value must have the same length"
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
 
@@ -156,8 +156,8 @@ macro @masked_store_aligned(ptr, value, bool[<*>] mask, usz $alignment)
  @param ptrvec : "The vector pointer containing the addresses to store to."
  @param value : "The value to store masked"
  @param mask : "The mask for the store"
- @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
- @require @typekind(value) == VECTOR : "Expected value to be a vector"
+ @require $kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ @require $kindof(value) == VECTOR : "Expected value to be a vector"
  @require $defined(*ptrvec[0] = value[0]) : "Pointer and value must match"
  @require value.len == mask.len : "Mask and value must have the same length"
  @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
@@ -174,8 +174,8 @@ macro scatter(ptrvec, value, bool[<*>] mask)
  @param mask : "The mask for the store"
  @param $alignment : "The alignment of the load"
 
- @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
- @require @typekind(value) == VECTOR : "Expected value to be a vector"
+ @require $kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ @require $kindof(value) == VECTOR : "Expected value to be a vector"
  @require $defined(*ptrvec[0] = value[0]) : "Pointer and value must match"
  @require value.len == mask.len : "Mask and value must have the same length"
  @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"

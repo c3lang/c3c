@@ -6,7 +6,7 @@
  then free the pointer and the atomic variable assuming that they are allocated using the Allocator in the Ref.
 
  @require !$defined(Type.dealloc) ||| $defined(Type.dealloc(&&(Type){})) : "'dealloc' must only take a pointer to the underlying type"
- @require !$defined(Type.dealloc) ||| @typeis((Type){}.dealloc(), void) : "'dealloc' must return 'void'"
+ @require !$defined(Type.dealloc) ||| $typeof((Type){}.dealloc()) ==  void : "'dealloc' must return 'void'"
 *>
 module std::core::mem::ref { Type };
 import std::thread, std::atomic;
@@ -113,7 +113,7 @@ macro retain(refcounted)
 
 <*
  @require $defined(RefCounted* c = refcounted) : "Expected a ref counted value"
- @require !$defined(refcounted.dealloc()) ||| @typeis(refcounted.dealloc(), void)
+ @require !$defined(refcounted.dealloc()) ||| $typeof(refcounted.dealloc()) == void
    : "Expected refcounted type to have a valid dealloc"
 *>
 macro void release(refcounted)

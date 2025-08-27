@@ -17,9 +17,9 @@ macro void trim_bench($trim_str, String $target = WHITESPACE_TARGET) => @pool()
 	runtime::@start_benchmark();
 
 	$switch:
-	$case @typeis($trim_str, String):
+	$case $typeof($trim_str) == String:
 		s1 = s2.trim($trim_str);
-	$case @typeis($trim_str, AsciiCharset):
+	$case $typeof($$trim_str) == AsciiCharset:
 		s1 = s2.trim_charset($trim_str);
 	$default: $error "Unable to determine the right String `trim` operation to use.";
 	$endswitch

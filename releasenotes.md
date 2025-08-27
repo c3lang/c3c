@@ -30,6 +30,9 @@
 - Update error message for missing body after if/for/etc #2289.
 - `@is_const` is deprecated in favour of directly using `$defined`.
 - `@is_lvalue(#value)` is deprecated in favour of directly using `$defined`.
+- Added `$kindof` compile time function.
+- Deprecated `@typekind` macro in favour of `$kindof`.
+- Deprecated `@typeis` macro in favour of `$typeof(#foo) == int`.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.

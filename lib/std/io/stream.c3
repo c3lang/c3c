@@ -197,7 +197,7 @@ const char[*] MAX_VARS @private = { [2] = 3, [4] = 5, [8] = 10 };
 
 <*
  @require @is_instream(stream)
- @require @typekind(x_ptr) == POINTER && $typeof(x_ptr).inner.kindof.is_int()
+ @require $kindof(x_ptr) == POINTER && $typeof(x_ptr).inner.kindof.is_int()
 *>
 macro usz? read_varint(stream, x_ptr)
 {
@@ -232,7 +232,7 @@ macro usz? read_varint(stream, x_ptr)
 }
 <*
  @require @is_outstream(stream)
- @require @typekind(x).is_int()
+ @require $kindof(x).is_int()
 *>
 macro usz? write_varint(stream, x)
 {

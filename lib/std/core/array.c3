@@ -6,7 +6,7 @@ import std::collections::pair, std::io;
  
  @param [in] array
  @param [in] element
- @require @typekind(array) == SLICE || @typekind(array) == ARRAY
+ @require $kindof(array) == SLICE || $kindof(array) == ARRAY
  @require @typematch(array[0], element) : "array and element must have the same type"
 *>
 macro bool contains(array, element)
@@ -24,7 +24,7 @@ macro bool contains(array, element)
  
  @param [in] array
  @param [in] element
- @require @typekind(array) == SLICE || @typekind(array) == ARRAY
+ @require $kindof(array) == SLICE || $kindof(array) == ARRAY
  @require @typematch(array[0], element) : "array and element must have the same type"
  @return "the first index of the element"
  @return? NOT_FOUND
@@ -48,9 +48,9 @@ macro index_of(array, element)
  @param xlen : "The length of the slice in x, defaults to the length of the array"
  @param ylen : "The length of the slice in y, defaults to the length of the array"
  @return "A Slice2d from the array"
- @require @typekind(array_ptr) == POINTER
- @require @typekind(*array_ptr) == VECTOR || @typekind(*array_ptr) == ARRAY
- @require @typekind((*array_ptr)[0]) == VECTOR || @typekind((*array_ptr)[0]) == ARRAY
+ @require $kindof(array_ptr) == POINTER
+ @require $kindof(*array_ptr) == VECTOR || $kindof(*array_ptr) == ARRAY
+ @require $kindof((*array_ptr)[0]) == VECTOR || $kindof((*array_ptr)[0]) == ARRAY
 *>
 macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
 {
@@ -85,8 +85,8 @@ macro rindex_of(array, element)
  @param [in] arr1
  @param [in] arr2
  @param [&inout] allocator : "The allocator to use, default is the heap allocator"
- @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
- @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
+ @require $kindof(arr1) == SLICE || $kindof(arr1) == ARRAY
+ @require $kindof(arr2) == SLICE || $kindof(arr2) == ARRAY
  @require @typematch(arr1[0], arr2[0]) : "Arrays must have the same type"
  @ensure result.len == arr1.len + arr2.len
 *>
@@ -111,8 +111,8 @@ macro concat(Allocator allocator, arr1, arr2) @nodiscard
 
  @param [in] arr1
  @param [in] arr2
- @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
- @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
+ @require $kindof(arr1) == SLICE || $kindof(arr1) == ARRAY
+ @require $kindof(arr2) == SLICE || $kindof(arr2) == ARRAY
  @require @typematch(arr1[0], arr2[0]) : "Arrays must have the same type"
  @ensure return.len == arr1.len + arr2.len
 *>
@@ -531,7 +531,7 @@ macro bool @is_valid_operation(#operation, #left, #right) @const
 	$switch:
 		$case @is_empty_macro_slot(#operation):
 			return true;
-		$case @typekind(#operation) != FUNC:
+		$case $kindof(#operation) != FUNC:
 			return false;
 		$default:
 			return $defined(#operation(#left[0], #right[0]));

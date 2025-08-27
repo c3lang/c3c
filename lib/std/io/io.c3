@@ -98,14 +98,14 @@ macro String? treadline(stream = io::stdin())
 *>
 macro usz? readline_to_stream(out_stream, in_stream = io::stdin())
 {
-	bool $is_stream = @typeis(in_stream, InStream);
+	bool $is_stream = $typeof(in_stream) == InStream;
 	$if $is_stream:
 		var func = &in_stream.read_byte;
 		char val = func((void*)in_stream)!;
 	$else
 		char val = in_stream.read_byte()!;
 	$endif
-	bool $is_out_stream = @typeis(out_stream, OutStream);
+	bool $is_out_stream = $typeof(out_stream) == OutStream;
 	$if $is_out_stream:
 		var out_func = &out_stream.write_byte;
 	$endif
@@ -215,7 +215,7 @@ macro usz? fprintn(out, x = "")
 	usz len = fprint(out, x)!;
 	out.write_byte('\n')!;
 	$switch:
-		$case @typeid(out) == OutStream.typeid:
+		$case $typeof(out) == OutStream:
 			if (&out.flush) out.flush()!;
 		$case $defined(out.flush):
 			out.flush()!;

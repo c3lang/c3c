@@ -1383,13 +1383,14 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_ASSIGNABLE:
 		case TOKEN_CT_CONCAT:
 		case TOKEN_CT_CONST_IDENT:
-		case TOKEN_CT_IS_CONST:
 		case TOKEN_CT_DEFINED:
 		case TOKEN_CT_EMBED:
 		case TOKEN_CT_EVAL:
 		case TOKEN_CT_EXTNAMEOF:
 		case TOKEN_CT_FEATURE:
 		case TOKEN_CT_IDENT:
+		case TOKEN_CT_IS_CONST:
+		case TOKEN_CT_KINDOF:
 		case TOKEN_CT_NAMEOF:
 		case TOKEN_CT_OFFSETOF:
 		case TOKEN_CT_OR:

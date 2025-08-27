@@ -8,7 +8,7 @@ Sort list using the quick sort algorithm.
 *>
 macro insertionsort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin @safemacro
 {
-	$if @typekind(list) == POINTER &&& (@typekind(*list) == ARRAY || @typekind(*list) == VECTOR):
+	$if $kindof(list) == POINTER &&& ($kindof(*list) == ARRAY || $kindof(*list) == VECTOR):
 		$typeof((*list)[0])[] list2 = list;
 		is::isort{$typeof(list2), $typeof(cmp), $typeof(context)}(list2, 0, list.len, cmp, context);
 	$else

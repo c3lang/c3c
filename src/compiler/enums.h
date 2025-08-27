@@ -1267,6 +1267,7 @@ typedef enum
 	TOKEN_CT_IF,                // $if
 	TOKEN_CT_INCLUDE,           // $include
 	TOKEN_CT_IS_CONST,          // $is_const
+	TOKEN_CT_KINDOF,            // $kindof
 	TOKEN_CT_NAMEOF,            // $nameof
 	TOKEN_CT_OFFSETOF,          // $offsetof
 	TOKEN_CT_QNAMEOF,           // $qnameof

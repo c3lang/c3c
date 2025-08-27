@@ -9,7 +9,7 @@ Sort list using the quick sort algorithm.
 *>
 macro quicksort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
-	$if @typekind(list) == POINTER &&& (@typekind(*list) == ARRAY || @typekind(*list) == VECTOR):
+	$if $kindof(list) == POINTER &&& ($kindof(*list) == ARRAY || $kindof(*list) == VECTOR):
 		$typeof((*list)[0])[] list2 = list;
 		qs::qsort{$typeof(list2), $typeof(cmp), $typeof(context)}(list2, 0, (isz)list.len - 1, cmp, context);
 	$else
