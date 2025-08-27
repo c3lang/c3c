@@ -17,7 +17,7 @@ const float EXPF_P2 = -2.7777778450e-03f;
 const float EXPF_P3 = 6.6137559770e-05f;
 const float EXPF_P4 = -1.6533901999e-06f;
 
-fn double exp(double x) @extern("exp")
+fn double exp(double x) @extern("exp") @nostrip @weak
 {
     if (x != x) return x;
     if (x == double.inf) return double.inf;
@@ -38,7 +38,7 @@ fn double exp(double x) @extern("exp")
     return ldexp(exp_r, (int)k);
 }
 
-fn float expf(float x) @extern("expf")
+fn float expf(float x) @extern("expf") @nostrip @weak
 {
     if (x != x) return x;
     if (x == float.inf) return float.inf;
