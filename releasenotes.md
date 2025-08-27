@@ -72,6 +72,7 @@
 - Inlining a const as an lvalue would take the wrong path and corrupt the expression node.
 - Grabbing (missing) methods on function pointers would cause crash #2434.
 - Fix alignment on jump table.
+- Fix correct `?` after optional function name when reporting type errors.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
