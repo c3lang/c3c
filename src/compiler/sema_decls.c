@@ -954,7 +954,6 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 			SEMA_ERROR(type_infoptr(method->func_decl.type_parent), "Interfaces should not be declared as methods.");
 			return decl_poison(method);
 		}
-		method->func_decl.attr_interface_method = true;
 		bool erase = false;
 
 		// Insert the first parameter, which is the implicit `void*`

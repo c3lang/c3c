@@ -1225,8 +1225,12 @@ PARSE_EXPR:
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 {
 	Visibility visibility = c->unit->default_visibility;
-	if (decl->decl_kind == DECL_FUNC) decl->func_decl.attr_test = c->unit->test_by_default;
-	if (decl->decl_kind == DECL_FUNC) decl->func_decl.attr_benchmark = c->unit->benchmark_by_default;
+	// Transfer the test / benchmark properties
+	if (decl->decl_kind == DECL_FUNC && !decl->func_decl.attr_interface_method && !decl->func_decl.type_parent)
+	{
+		decl->func_decl.attr_test = c->unit->test_by_default;
+		decl->func_decl.attr_benchmark = c->unit->benchmark_by_default;
+	}
 	decl->is_export = c->unit->export_by_default;
 	bool is_builtin = false;
 	bool is_cond;
@@ -2692,6 +2696,7 @@ static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, Func
 	Decl *func = decl_calloc();
 	func->decl_kind = DECL_FUNC;
 	func->func_decl.docs = contracts;
+	func->func_decl.attr_interface_method = parse_kind == FUNC_PARSE_INTERFACE;
 	if (!parse_func_macro_header(c, func)) return poisoned_decl;
 	if (func->name[0] == '@')
 	{
