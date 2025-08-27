@@ -761,12 +761,17 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side, SourceSpan lhs
 	ASSERT(expr_ok(left_side));
 
 	Expr *expr = expr_new(EXPR_TERNARY, lhs_start);
-	advance_and_verify(c, TOKEN_QUESTION);
+	bool is_const = tok_is(c, TOKEN_CT_TERNARY);
+	advance(c);
 
-	// If we have no expression following *or* it is a '!' followed by no expression
-	// in this case it's an optional expression.
-	if (!rules[c->tok].prefix || ((c->tok == TOKEN_BANG || c->tok == TOKEN_BANGBANG) && !rules[peek(c)].prefix))
+	if (is_const)
 	{
+		expr->ternary_expr.is_const = true;
+	}
+	else if (!rules[c->tok].prefix || ((c->tok == TOKEN_BANG || c->tok == TOKEN_BANGBANG) && !rules[peek(c)].prefix))
+	{
+		// If we have no expression following *or* it is a '!' followed by no expression
+		// in this case it's an optional expression.
 		expr->expr_kind = EXPR_OPTIONAL;
 		expr->inner_expr = left_side;
 		RANGE_EXTEND_PREV(expr);
@@ -2197,6 +2202,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_QNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_SIZEOF] = { parse_ct_sizeof, NULL, PREC_NONE },
 		[TOKEN_CT_STRINGIFY] = { parse_ct_stringify, NULL, PREC_NONE },
+		[TOKEN_CT_TERNARY] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_CT_TYPEFROM] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_TYPEOF] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_VAARG] = { parse_ct_arg, NULL, PREC_NONE },

@@ -1027,11 +1027,20 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 	Expr *left = exprptrzero(expr->ternary_expr.then_expr);
 	Expr *cond = exprptr(expr->ternary_expr.cond);
 	CondResult path = COND_MISSING;
+	bool is_const = expr->ternary_expr.is_const;
 	// Normal
 	if (left)
 	{
 		if (!sema_analyse_cond_expr(context, cond, &path)) return expr_poison(expr);
-		if (!sema_analyse_maybe_dead_expr(context, left, path == COND_FALSE, infer_type)) return expr_poison(expr);
+		if (is_const && path == COND_MISSING)
+		{
+			RETURN_SEMA_ERROR(cond, "When using '\?\?\?' the cond expression must evaluate to a constant.");
+		}
+		bool is_left = path == COND_TRUE;
+		if (!is_const || is_left)
+		{
+			if (!sema_analyse_maybe_dead_expr(context, left, !is_left, infer_type)) return expr_poison(expr);
+		}
 	}
 	else
 	{
@@ -1069,8 +1078,28 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 		}
 	}
 
+	bool is_right = path == COND_FALSE;
+
 	Expr *right = exprptr(expr->ternary_expr.else_expr);
-	if (!sema_analyse_maybe_dead_expr(context, right, path == COND_TRUE, infer_type)) return expr_poison(expr);
+	if (!is_const || is_right)
+	{
+		if (!sema_analyse_maybe_dead_expr(context, right, !is_right, infer_type)) return expr_poison(expr);
+	}
+
+	if (is_const)
+	{
+		switch (path)
+		{
+			case COND_TRUE:
+				expr_replace(expr, left);
+				return true;
+			case COND_FALSE:
+				expr_replace(expr, right);
+				return true;
+			default:
+				UNREACHABLE
+		}
+	}
 
 	Type *left_canonical = left->type->canonical;
 	Type *right_canonical = right->type->canonical;

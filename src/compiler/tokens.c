@@ -88,6 +88,8 @@ const char *token_type_to_string(TokenType type)
 			return "|||";
 		case TOKEN_CT_CONCAT:
 			return "+++";
+		case TOKEN_CT_TERNARY:
+			return "???";
 		case TOKEN_DIV_ASSIGN:
 			return "/=";
 		case TOKEN_DOTDOT:

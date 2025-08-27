@@ -781,6 +781,7 @@ typedef struct
 	ExprId then_expr; // May be null for elvis!
 	ExprId else_expr;
 	bool grouped : 1;
+	bool is_const : 1;
 } ExprTernary;
 
 typedef struct

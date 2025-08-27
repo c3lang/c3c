@@ -43,7 +43,7 @@ macro promote_int(x)
  @param #value_2
  @returns `The selected value.`
 *>
-macro @select(bool $bool, #value_1, #value_2) @builtin
+macro @select(bool $bool, #value_1, #value_2) @builtin @deprecated("Use '$bool ? #value_1 : #value_2' instead.")
 {
 	$if $bool:
 		return #value_1;

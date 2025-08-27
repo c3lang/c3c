@@ -1145,6 +1145,7 @@ typedef enum
 	TOKEN_CT_AND,           // &&&
 	TOKEN_CT_CONCAT,        // +++
 	TOKEN_CT_OR,            // |||
+	TOKEN_CT_TERNARY,       // ???
 	// Literals.
 	TOKEN_IDENT,            // Any normal ident.
 	TOKEN_CONST_IDENT,      // Any purely uppercase ident,
