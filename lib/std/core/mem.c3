@@ -20,6 +20,9 @@ macro bool @constant_is_power_of_2($x) @const @private
 	return $x != 0 && ($x & ($x - 1)) == 0;
 }
 
+<*
+ @return "The os page size."
+*>
 fn usz os_pagesize()
 {
 	$switch:
@@ -238,6 +241,9 @@ macro @volatile_store(#x, value) @builtin
 	return $$volatile_store(&#x, ($typeof(#x))value);
 }
 
+<*
+ All possible atomic orderings
+*>
 enum AtomicOrdering : int
 {
 	NOT_ATOMIC,         // Not atomic
@@ -739,9 +745,12 @@ fn void* tmalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
 }
 
 <*
+ @param $Type : "The type to allocate"
+
  @require $vacount < 2 : "Too many arguments."
  @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ @return "A pointer to data of type $Type."
 *>
 macro new($Type, ...) @nodiscard
 {
@@ -755,9 +764,12 @@ macro new($Type, ...) @nodiscard
 }
 
 <*
+ @param $Type : "The type to allocate"
+ @param padding : "The padding to add after the allocation"
+
  @require $vacount < 2 : "Too many arguments."
  @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
- @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ @return "A pointer to data of type $Type."
 *>
 macro new_with_padding($Type, usz padding, ...) @nodiscard
 {
@@ -773,8 +785,12 @@ macro new_with_padding($Type, usz padding, ...) @nodiscard
 <*
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+
+ @param $Type : "The type to allocate"
+
  @require $vacount < 2 : "Too many arguments."
  @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
+ @return "A pointer to data of type $Type with the proper alignment"
 *>
 macro new_aligned($Type, ...) @nodiscard
 {
@@ -788,7 +804,10 @@ macro new_aligned($Type, ...) @nodiscard
 }
 
 <*
+ @param $Type : "The type to allocate"
+
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ @return "A pointer to uninitialized data for the type $Type"
 *>
 macro alloc($Type) @nodiscard
 {
@@ -796,7 +815,11 @@ macro alloc($Type) @nodiscard
 }
 
 <*
+ @param $Type : "The type to allocate"
+ @param padding : "The padding to add after the allocation"
+
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ @return "A pointer to uninitialized data for the type $Type"
 *>
 macro alloc_with_padding($Type, usz padding) @nodiscard
 {
@@ -804,8 +827,12 @@ macro alloc_with_padding($Type, usz padding) @nodiscard
 }
 
 <*
+
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+
+ @param $Type : "The type to allocate"
+ @return "A pointer to uninitialized data for the type $Type with the proper alignment"
 *>
 macro alloc_aligned($Type) @nodiscard
 {
@@ -813,8 +840,11 @@ macro alloc_aligned($Type) @nodiscard
 }
 
 <*
+ @param $Type : "The type to allocate"
+
  @require $vacount < 2 : "Too many arguments."
  @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
+ @return "A pointer to temporary data of type $Type."
 *>
 macro tnew($Type, ...) @nodiscard
 {
@@ -828,8 +858,12 @@ macro tnew($Type, ...) @nodiscard
 }
 
 <*
- @require $vacount < 2 : "Too many arguments."
+ @param $Type : "The type to allocate"
+ @param padding : "The padding to add after the allocation"
+
+@require $vacount < 2 : "Too many arguments."
  @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
+ @return "A pointer to temporary data of type $Type with added padding at the end."
 *>
 macro temp_with_padding($Type, usz padding, ...) @nodiscard
 {
