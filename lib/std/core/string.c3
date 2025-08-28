@@ -109,16 +109,25 @@ fn String format(Allocator allocator, String fmt, args...) @format(1) => @pool()
 }
 
 <*
- Return a new String created using the formatting function.
+ Return a new String created using the formatting function, the resulting string must fit the buffer.
 
  @param [inout] buffer : `The buffer to use`
  @param [in] fmt : `The formatting string`
 *>
 fn String bformat(char[] buffer, String fmt, args...) @format(1)
 {
-	DString str = dstring::new_with_capacity(allocator::wrap(buffer), fmt.len + args.len * 8);
-	str.appendf(fmt, ...args);
-	return str.str_view();
+	Formatter f;
+	OutputFn format_fn = fn void?(void* buf, char c) {
+		char[]* buffer_ref = buf;
+		char[] buffer = *buffer_ref;
+		if (buffer.len == 0) return io::BUFFER_EXCEEDED?;
+		buffer[0] = c;
+		*buffer_ref = buffer[1..];
+	};
+	char[] buffer_copy = buffer;
+	f.init(format_fn, &buffer_copy);
+	usz len = f.vprintf(fmt, args)!!;
+	return (String)buffer[:len];
 }
 
 <*
