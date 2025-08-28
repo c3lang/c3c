@@ -1834,13 +1834,25 @@ void *llvm_target_machine_create(void)
 	{
 		llvm_initialized = true;
 #if XTENSA_AVAILABLE
+#ifndef XTENSA_DISABLE
 		INITIALIZE_TARGET(Xtensa);
 #endif
+#endif
+#ifndef ARM_DISABLE
 		INITIALIZE_TARGET(ARM);
+#endif
+#ifndef AARCH64_DISABLE
 		INITIALIZE_TARGET(AArch64);
+#endif
+#ifndef RISCV_DISABLE
 		INITIALIZE_TARGET(RISCV);
+#endif
+#ifndef WASM_DISABLE
 		INITIALIZE_TARGET(WebAssembly);
+#endif
+#ifndef X86_DISABLE
 		INITIALIZE_TARGET(X86);
+#endif
 		// To support more targets, add them above.
 	}
 	char *err = NULL;
