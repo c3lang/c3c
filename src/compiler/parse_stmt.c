@@ -1394,6 +1394,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_NAMEOF:
 		case TOKEN_CT_OFFSETOF:
 		case TOKEN_CT_OR:
+		case TOKEN_CT_TERNARY:
 		case TOKEN_CT_QNAMEOF:
 		case TOKEN_CT_SIZEOF:
 		case TOKEN_CT_STRINGIFY:

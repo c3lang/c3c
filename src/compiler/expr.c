@@ -448,7 +448,7 @@ bool expr_is_runtime_const(Expr *expr)
 			}
 			goto RETRY;
 		case EXPR_TERNARY:
-			ASSERT(!exprid_is_runtime_const(expr->ternary_expr.cond));
+			ASSERT(!exprid_is_runtime_const(expr->ternary_expr.cond) && !expr->ternary_expr.is_const);
 			return false;
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_LAST_FAULT:

@@ -546,17 +546,10 @@ macro bool @is_valid_list(#expr) @const
 macro bool @is_valid_fill(left, right, fill_with)
 {
 	if (@is_empty_macro_slot(fill_with)) return true;
-	usz left_len = @select($defined(left.len()), left.len(), left.len);
-	usz right_len = @select($defined(right.len()), right.len(), right.len);
+	usz left_len = $defined(left.len()) ??? left.len() : left.len;
+	usz right_len = $defined(right.len()) ??? right.len() : right.len;
 	if (left_len == right_len) return true;
 	return left_len > right_len ? $defined(($typeof(right[0]))fill_with) : $defined(($typeof(left[0]))fill_with);
 }
 
-macro usz find_len(list)
-{
-	$if $defined(list.len()):
-		return list.len();
-	$else
-		return list.len;
-	$endif
-}
+macro usz find_len(list) => $defined(list.len()) ??? list.len() : list.len;

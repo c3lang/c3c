@@ -204,10 +204,10 @@ fn void StderrLogger.log(&self, LogPriority priority, LogCategory category, LogT
 }
 
 alias LogFn = fn void(void*, LogPriority priority, LogCategory category, LogTag tag, String file, String function, int line, String fmt, any[] args);
-LogFn current_logfn = @select(env::LIBC, (LogFn)&StderrLogger.log, (LogFn)&NullLogger.log);
+LogFn current_logfn = env::LIBC ??? (LogFn)&StderrLogger.log : (LogFn)&NullLogger.log;
 OnceFlag log_init;
 Mutex logger_mutex;
-Logger current_logger = @select(env::LIBC, &stderr_logger, &null_logger);
+Logger current_logger = env::LIBC ??? &stderr_logger : &null_logger;
 StderrLogger stderr_logger @if (env::LIBC);
 NullLogger null_logger;
 LogPriority[256] config_priorities = { [0..255] = ERROR, [CATEGORY_APPLICATION] = INFO, [CATEGORY_TEST] = VERBOSE, [CATEGORY_ASSERT] = WARN};
