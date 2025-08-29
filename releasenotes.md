@@ -33,6 +33,8 @@
 - Added `$kindof` compile time function.
 - Deprecated `@typekind` macro in favour of `$kindof`.
 - Deprecated `@typeis` macro in favour of `$typeof(#foo) == int`.
+- `$defined(#hash)` will not check the internal expression, just that `#hash` exists.
+- Added optional macro arguments using `macro foo(int x = ...)` which can be checked using `$defined(x)`.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
@@ -104,6 +106,7 @@
 - Added `String.trim_charset`.
 - Added array `@reduce`, `@filter`, `@any`, `@all`, `@sum`, `@product`, and `@indices_of` macros.
 - `String.bformat` has reduced overhead.
+- Supplemental `roundeven` has a normal implementation.
 
 ## 0.7.4 Change list
 

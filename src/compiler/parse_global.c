@@ -1679,7 +1679,19 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 		{
 			if (try_consume(c, TOKEN_EQ))
 			{
-				if (!parse_decl_initializer(c, param)) return poisoned_decl;
+				if (try_consume(c, TOKEN_ELLIPSIS))
+				{
+					if (parse_kind != PARAM_PARSE_MACRO)
+					{
+						PRINT_ERROR_HERE("Optional arguments with '...' is only allowed as macro arguments.");
+						return poisoned_decl;
+					}
+					param->var.no_init = true;
+				}
+				else
+				{
+					if (!parse_decl_initializer(c, param)) return poisoned_decl;
+				}
 			}
 		}
 		if (ellipsis)

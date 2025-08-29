@@ -746,39 +746,39 @@ fn void* tmalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
 
 <*
  @param $Type : "The type to allocate"
+ @param #init : "The optional initializer"
 
- @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
+ @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
  @return "A pointer to data of type $Type."
 *>
-macro new($Type, ...) @nodiscard
+macro new($Type, #init = ...) @nodiscard @safemacro
 {
-	$if $vacount == 0:
-		return ($Type*)calloc($Type.sizeof);
-	$else
+	$if $defined(#init):
 		$Type* val = malloc($Type.sizeof);
-		*val = $vaexpr[0];
+		*val = #init;
 		return val;
+	$else
+		return ($Type*)calloc($Type.sizeof);
 	$endif
 }
 
 <*
  @param $Type : "The type to allocate"
  @param padding : "The padding to add after the allocation"
+ @param #init : "The optional initializer"
 
- @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
+ @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
  @return "A pointer to data of type $Type."
 *>
-macro new_with_padding($Type, usz padding, ...) @nodiscard
+macro new_with_padding($Type, usz padding, #init = ...) @nodiscard @safemacro
 {
-	$if $vacount == 0:
-		return ($Type*)calloc($Type.sizeof + padding);
-	$else
+	$if $defined(#init):
 		$Type* val = malloc($Type.sizeof + padding);
-		*val = $vaexpr[0];
+		*val = #init;
 		return val;
+	$else
+		return ($Type*)calloc($Type.sizeof + padding);
 	$endif
 }
 
@@ -787,19 +787,19 @@ macro new_with_padding($Type, usz padding, ...) @nodiscard
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
  @param $Type : "The type to allocate"
+ @param #init : "The optional initializer"
 
- @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
+ @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
  @return "A pointer to data of type $Type with the proper alignment"
 *>
-macro new_aligned($Type, ...) @nodiscard
+macro new_aligned($Type, #init = ...) @nodiscard @safemacro
 {
-	$if $vacount == 0:
-		return ($Type*)calloc_aligned($Type.sizeof, $Type.alignof);
-	$else
+	$if $defined(#init):
 		$Type* val = malloc_aligned($Type.sizeof, $Type.alignof);
-		*val = $vaexpr[0];
+		*val = #init;
 		return val;
+	$else
+		return ($Type*)calloc_aligned($Type.sizeof, $Type.alignof);
 	$endif
 }
 
@@ -841,38 +841,38 @@ macro alloc_aligned($Type) @nodiscard
 
 <*
  @param $Type : "The type to allocate"
+ @param #init : "The optional initializer"
 
- @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
+ @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
  @return "A pointer to temporary data of type $Type."
 *>
-macro tnew($Type, ...) @nodiscard
+macro tnew($Type, #init = ...) @nodiscard @safemacro
 {
-	$if $vacount == 0:
-		return ($Type*)tcalloc($Type.sizeof, $Type.alignof) @inline;
-	$else
+	$if $defined(#init):
 		$Type* val = tmalloc($Type.sizeof, $Type.alignof) @inline;
-		*val = $vaexpr[0];
+		*val = #init;
 		return val;
+	$else
+		return ($Type*)tcalloc($Type.sizeof, $Type.alignof) @inline;
 	$endif
 }
 
 <*
  @param $Type : "The type to allocate"
  @param padding : "The padding to add after the allocation"
+ @param #init : "The optional initializer"
 
-@require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| $defined($Type a = $vaexpr[0]) : "The second argument must be an initializer for the type"
+ @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
  @return "A pointer to temporary data of type $Type with added padding at the end."
 *>
-macro temp_with_padding($Type, usz padding, ...) @nodiscard
+macro temp_with_padding($Type, usz padding, #init = ...) @nodiscard @safemacro
 {
-	$if $vacount == 0:
-		return ($Type*)tcalloc($Type.sizeof + padding, $Type.alignof) @inline;
-	$else
+	$if $defined(#init):
 		$Type* val = tmalloc($Type.sizeof + padding, $Type.alignof) @inline;
-		*val = $vaexpr[0];
+		*val = #init;
 		return val;
+	$else
+		return ($Type*)tcalloc($Type.sizeof + padding, $Type.alignof) @inline;
 	$endif
 }
 

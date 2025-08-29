@@ -1643,7 +1643,15 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
                                       bool *no_match_ref, Expr **expr_ref, bool *optional)
 {
 	Expr *init_expr = param->var.init_expr;
-	if (!init_expr) return true;
+	if (!init_expr)
+	{
+		// Handle foo = ... macro init
+		if (param->var.no_init)
+		{
+			param->var.defaulted = true;
+		}
+		return true;
+	}
 	Expr *arg = copy_expr_single(init_expr);
 	bool parameter_checked = false;
 	if (arg->resolve_status != RESOLVE_DONE)
@@ -2031,8 +2039,9 @@ SPLAT_NORMAL:;
 	{
 		if (i == vaarg_index) continue;
 		if (actual_args[i]) continue;
-		// Argument missing, that's bad.
 		Decl *param = params[i];
+		if (param->var.no_init) continue; // Macro empty args
+		// Argument missing, that's bad.
 		if (no_match_ref)
 		{
 			*no_match_ref = true;
@@ -2118,6 +2127,7 @@ NEXT_FLAG:
 		}
 		if (idx == vacount) goto TOO_FEW_ARGUMENTS;
 		expr = vaargs[idx];
+		if (!expr) goto TOO_FEW_ARGUMENTS;
 		Type *type = sema_get_va_type(context, expr, variadic);
 		if (!type_ok(type)) return false;
 
@@ -2132,6 +2142,7 @@ NEXT_FLAG:
 			c = data[i];
 			if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 			expr = vaargs[idx];
+			if (!expr) goto TOO_FEW_ARGUMENTS;
 			type = sema_get_va_type(context, expr, variadic);
 			if (!type_ok(type)) return false;
 		}
@@ -2157,6 +2168,7 @@ NEXT_FLAG:
 				c = data[i];
 				if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 				expr = vaargs[idx];
+				if (!expr) goto TOO_FEW_ARGUMENTS;
 				type = sema_get_va_type(context, expr, variadic);
 				if (!type_ok(type)) return false;
 			}
@@ -2675,6 +2687,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			}
 		}
 		param->var.init_expr = args[i];
+		if (!args[i]) continue;
 		// Lazy arguments doesn't affect optional arg.
 		if (param->var.kind == VARDECL_PARAM_EXPR) continue;
 		has_optional_arg = has_optional_arg || IS_OPTIONAL(args[i]);
@@ -2794,6 +2807,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		// Skip raw vararg
 		if (!param) continue;
+		if (param->var.no_init && param->var.defaulted) continue;
 		if (!sema_add_local(&macro_context, param)) goto EXIT_FAIL;
 		if (param->var.init_expr)
 		{
@@ -10345,6 +10359,13 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				success = decl != NULL;
 				break;
 			}
+			case EXPR_HASH_IDENT:
+			{
+				Decl *decl = sema_find_symbol(active_context, main_expr->hash_ident_expr.identifier);
+				if (!decl_ok(decl)) goto FAIL;
+				success = decl != NULL;
+				break;
+			}
 			case EXPR_COMPILER_CONST:
 				success = sema_expr_analyse_compiler_const(active_context, main_expr, false);
 				break;
@@ -10372,13 +10393,6 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				if (!expr_ok(eval)) return false;
 				success = eval != NULL;
 				break;
-			}
-			case EXPR_HASH_IDENT:
-			{
-				Decl *decl = sema_resolve_symbol(active_context, main_expr->hash_ident_expr.identifier, NULL, main_expr->span);
-				if (!decl) goto FAIL;
-				main_expr = copy_expr_single(decl->var.init_expr);
-				goto RETRY;
 			}
 			case EXPR_SUBSCRIPT:
 			{
