@@ -104,6 +104,7 @@
 - Added `String.trim_charset`.
 - Added array `@reduce`, `@filter`, `@any`, `@all`, `@sum`, `@product`, and `@indices_of` macros.
 - `String.bformat` has reduced overhead.
+- Added generic `InterfaceList` to store a list of values that implement a specific interface
 
 ## 0.7.4 Change list
 
