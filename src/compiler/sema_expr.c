@@ -10414,6 +10414,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 		SemaContext *active_context = context;
 		bool in_no_eval = active_context->call_env.in_no_eval;
 		active_context->call_env.in_no_eval = true;
+		bool unroll_hash = false;
 	RETRY:
 		switch (main_expr->expr_kind)
 		{
@@ -10440,6 +10441,13 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			}
 			case EXPR_HASH_IDENT:
 			{
+				if (unroll_hash)
+				{
+					Decl *decl = sema_resolve_symbol(active_context, main_expr->hash_ident_expr.identifier, NULL, main_expr->span);
+					if (!decl) goto FAIL;
+					main_expr = copy_expr_single(decl->var.init_expr);
+					goto RETRY;
+				}
 				Decl *decl = sema_find_symbol(active_context, main_expr->hash_ident_expr.identifier);
 				if (!decl_ok(decl)) goto FAIL;
 				success = decl != NULL;
@@ -10470,7 +10478,12 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			{
 				Expr *eval = sema_ct_eval_expr(active_context, "$eval", main_expr->inner_expr, false);
 				if (!expr_ok(eval)) return false;
-				success = eval != NULL;
+				if (eval)
+				{
+					main_expr = eval;
+					goto RETRY;
+				}
+				success = false;
 				break;
 			}
 			case EXPR_SUBSCRIPT:
@@ -10486,12 +10499,21 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				break;
 			}
 			case EXPR_CAST:
+			{
+				TypeInfo *typeinfo = type_infoptr(main_expr->cast_expr.type_info);
+				if (typeinfo->resolve_status == RESOLVE_DONE && typeinfo->type == type_void)
+				{
+					main_expr = exprptr(main_expr->cast_expr.expr);
+					unroll_hash = true;
+					goto RETRY;
+				}
 				if (!sema_expr_analyse_cast(active_context, main_expr, &failed))
 				{
 					if (!failed) goto FAIL;
 					success = false;
 				}
 				break;
+			}
 			case EXPR_CT_IDENT:
 			{
 				Decl *decl = sema_resolve_symbol(active_context, main_expr->ct_ident_expr.identifier, NULL, main_expr->span);

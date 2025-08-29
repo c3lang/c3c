@@ -33,7 +33,7 @@
 - Added `$kindof` compile time function.
 - Deprecated `@typekind` macro in favour of `$kindof`.
 - Deprecated `@typeis` macro in favour of `$typeof(#foo) == int`.
-- `$defined(#hash)` will not check the internal expression, just that `#hash` exists.
+- `$defined(#hash)` will not check the internal expression, just that `#hash` exists. Use `$defined((void)#hash)` for the old behaviour.
 - Added optional macro arguments using `macro foo(int x = ...)` which can be checked using `$defined(x)`.
 
 ### Fixes
