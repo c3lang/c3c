@@ -1189,6 +1189,11 @@ static inline Ast* parse_ct_switch_stmt(ParseContext *c)
 	advance_and_verify(c, TOKEN_CT_SWITCH);
 	if (!tok_is(c, TOKEN_COLON))
 	{
+		if (tok_is(c, TOKEN_CT_CASE))
+		{
+			PRINT_ERROR_LAST("Expected ':' after '$switch'.");
+			return poisoned_ast;
+		}
 		ASSIGN_EXPRID_OR_RET(ast->ct_switch_stmt.cond, parse_constant_expr(c), poisoned_ast);
 	}
 	CONSUME_OR_RET(TOKEN_COLON, poisoned_ast);
