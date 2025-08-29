@@ -385,17 +385,17 @@ macro bool @all(array, #predicate)
  @param fill_with : "The value used to fill or pad the shorter iterable to the length of the longer one while zipping."
 
  @require @is_valid_list(left) &&& @is_valid_list(right) : "Left and right sides must be integer indexable"
- @require @is_valid_operation(#operation, left, right) : "The operator must take two parameters matching the elements of the left and right side"
- @require @is_valid_fill(left, right, fill_with) : "The specified fill value does not match either the left or the right array's underlying type."
+ @require @is_valid_operation(left, right, ...#operation) : "The operator must take two parameters matching the elements of the left and right side"
+ @require @is_valid_fill(left, right, ...fill_with) : "The specified fill value does not match either the left or the right array's underlying type."
 
 *>
-macro @zip(Allocator allocator, left, right, #operation = EMPTY_MACRO_SLOT, fill_with = EMPTY_MACRO_SLOT) @nodiscard
+macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) @nodiscard
 {
 	var $LeftType = $typeof(left[0]);
 	var $RightType = $typeof(right[0]);
 
 	var $Type = Pair { $LeftType, $RightType };
-	bool $is_op = @is_valid_macro_slot(#operation);
+	bool $is_op = $defined(#operation);
 	$if $is_op:
 		$Type = $typeof(#operation).returns;
 	$endif
@@ -406,8 +406,7 @@ macro @zip(Allocator allocator, left, right, #operation = EMPTY_MACRO_SLOT, fill
 	$LeftType left_fill;
 	$RightType right_fill;
 	usz result_len = min(left_len, right_len);
-	bool $has_fill = @is_valid_macro_slot(fill_with);
-	$if $has_fill:
+	$if $defined(fill_with):
 		switch
 		{
 			case left_len > right_len:
@@ -459,13 +458,13 @@ macro @zip(Allocator allocator, left, right, #operation = EMPTY_MACRO_SLOT, fill
  @param fill_with : "The value used to fill or pad the shorter iterable to the length of the longer one while zipping."
 
  @require @is_valid_list(left) &&& @is_valid_list(right) : "Left and right sides must be integer indexable"
- @require @is_valid_operation(#operation, left, right) : "The operator must take two parameters matching the elements of the left and right side"
- @require @is_valid_fill(left, right, fill_with) : "The specified fill value does not match either the left or the right array's underlying type."
+ @require @is_valid_operation(left, right, ...#operation) : "The operator must take two parameters matching the elements of the left and right side"
+ @require @is_valid_fill(left, right, ...fill_with) : "The specified fill value does not match either the left or the right array's underlying type."
 
 *>
-macro @tzip(left, right, #operation = EMPTY_MACRO_SLOT, fill_with = EMPTY_MACRO_SLOT) @nodiscard
+macro @tzip(left, right, #operation = ..., fill_with = ...) @nodiscard
 {
-	return @zip(tmem, left, right, #operation, fill_with);
+	return @zip(tmem, left, right, #operation: ...#operation, fill_with: ...fill_with);
 }
 
 
@@ -526,10 +525,10 @@ macro typeid @zip_into_fn(#left, #right) @const
 	return @typeid(fn $typeof(#left[0]) ($typeof(#left[0]) l, $typeof(#right[0]) r) => l);
 }
 
-macro bool @is_valid_operation(#operation, #left, #right) @const
+macro bool @is_valid_operation(#left, #right, #operation = ...) @const
 {
 	$switch:
-		$case @is_empty_macro_slot(#operation):
+		$case !$defined(#operation):
 			return true;
 		$case $kindof(#operation) != FUNC:
 			return false;
@@ -543,13 +542,16 @@ macro bool @is_valid_list(#expr) @const
 	return $defined(#expr[0]) &&& ($defined(#expr.len) ||| $defined(#expr.len()));
 }
 
-macro bool @is_valid_fill(left, right, fill_with)
+macro bool @is_valid_fill(left, right, fill_with = ...)
 {
-	if (@is_empty_macro_slot(fill_with)) return true;
-	usz left_len = $defined(left.len()) ??? left.len() : left.len;
-	usz right_len = $defined(right.len()) ??? right.len() : right.len;
-	if (left_len == right_len) return true;
-	return left_len > right_len ? $defined(($typeof(right[0]))fill_with) : $defined(($typeof(left[0]))fill_with);
+	$if !$defined(fill_with):
+		return true;
+	$else
+		usz left_len = $defined(left.len()) ??? left.len() : left.len;
+		usz right_len = $defined(right.len()) ??? right.len() : right.len;
+		if (left_len == right_len) return true;
+		return left_len > right_len ? $defined(($typeof(right[0]))fill_with) : $defined(($typeof(left[0]))fill_with);
+	$endif
 }
 
 macro usz find_len(list) => $defined(list.len()) ??? list.len() : list.len;

@@ -1759,6 +1759,51 @@ static inline ArrayIndex sema_len_from_expr(Expr *expr)
 	return range_const_len(&expr->slice_expr.range);
 }
 
+static Decl *sema_find_splat_arg(Decl *macro, const char *name)
+{
+	FOREACH(Decl *, decl, macro->func_decl.signature.params)
+	{
+		if (decl->name == name) return decl;
+	}
+	return NULL;
+}
+
+typedef enum
+{
+	SPLAT_ZERO,
+	SPLAT_ONE,
+	SPLAT_NONE,
+}  SplatResult;
+
+static SplatResult sema_splat_optional_argument(SemaContext *context, Expr *expr)
+{
+	Decl *macro = context->current_macro;
+	if (!macro) return SPLAT_NONE;
+	Decl *candidate = NULL;
+	switch (expr->expr_kind)
+	{
+		case EXPR_UNRESOLVED_IDENTIFIER:
+			if (expr->unresolved_ident_expr.path) break;
+			candidate = sema_find_splat_arg(macro, expr->unresolved_ident_expr.ident);
+			break;
+		case EXPR_HASH_IDENT:
+			candidate = sema_find_splat_arg(macro, expr->hash_ident_expr.identifier);
+			break;
+		case EXPR_CT_IDENT:
+			candidate = sema_find_splat_arg(macro, expr->ct_ident_expr.identifier);
+			break;
+		default:
+			return false;
+	}
+	if (!candidate) return SPLAT_NONE;
+	if (!candidate->var.no_init) return SPLAT_NONE;
+	// We found it, it's a valid variable.
+	Decl *local = sema_find_local(context, candidate->name);
+	if (local && local->var.kind == candidate->var.kind) return SPLAT_ONE;
+	// It's missing! Let's splat-zero
+	return SPLAT_ZERO;
+}
+
 INLINE Type *sema_get_va_type(SemaContext *context, Expr *expr, Variadic variadic)
 {
 	if (variadic == VARIADIC_RAW)
@@ -1842,7 +1887,20 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 		if (arg->expr_kind == EXPR_SPLAT)
 		{
 			Expr *inner = arg->inner_expr;
-
+			switch (sema_splat_optional_argument(context, inner))
+			{
+				case SPLAT_ZERO:
+					vec_erase_at(args, i);
+					i--;
+					num_args--;
+					continue;
+				case SPLAT_ONE:
+					expr_replace(arg, inner);
+					i--;
+					continue;
+				case SPLAT_NONE:
+					break;
+			}
 			if (!sema_analyse_expr(context, inner)) return false;
 
 			// Let's try fit up a slice to the in the vaslot
@@ -1942,6 +2000,27 @@ SPLAT_NORMAL:;
 			last_named_arg = arg;
 
 			actual_args[index] = arg->named_argument_expr.value;
+			if (actual_args[index]->expr_kind == EXPR_SPLAT)
+			{
+				Expr *inner = actual_args[index]->inner_expr;
+				switch (sema_splat_optional_argument(context, inner))
+				{
+					case SPLAT_ZERO:
+						if (!sema_set_default_argument(context, callee, call,
+											   params[index], no_match_ref,
+											   &actual_args[index],
+											   optional))
+						{
+							return false;
+						}
+						continue;
+					case SPLAT_ONE:
+						expr_replace(actual_args[index], inner);
+						break;
+					case SPLAT_NONE:
+						break;
+				}
+			}
 			if (!sema_analyse_parameter(context, actual_args[index], param, callee->definition, optional, no_match_ref,
 										callee->macro, false)) return false;
 			continue;
