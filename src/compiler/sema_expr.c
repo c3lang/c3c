@@ -10058,11 +10058,11 @@ static inline Type *sema_evaluate_type_copy(SemaContext *context, TypeInfo *type
 INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 {
 	unsigned param_count = vec_size(ct_lambda_params);
-	ASSERT(vec_size(candidate->func_decl.lambda_ct_parameters) == param_count);
-	if (!param_count) return true;
+	if (vec_size(candidate->func_decl.lambda_ct_parameters) != param_count) return false;
 	FOREACH_IDX(i, Decl *, param, candidate->func_decl.lambda_ct_parameters)
 	{
 		Decl *ct_param = ct_lambda_params[i];
+		if (param->name != ct_param->name) return false;
 		if (!param->var.is_read) continue;
 		ASSERT(ct_param->resolve_status == RESOLVE_DONE || param->resolve_status == RESOLVE_DONE);
 		ASSERT(ct_param->var.kind == param->var.kind);
@@ -10516,8 +10516,9 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			}
 			case EXPR_CT_IDENT:
 			{
-				Decl *decl = sema_resolve_symbol(active_context, main_expr->ct_ident_expr.identifier, NULL, main_expr->span);
-				if (!decl) goto FAIL;
+				Decl *decl = sema_find_symbol(active_context, main_expr->ct_ident_expr.identifier);
+				if (!decl_ok(decl)) goto FAIL;
+				success = decl != NULL;
 				break;
 			}
 			case EXPR_CALL:
