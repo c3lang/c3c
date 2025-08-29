@@ -244,7 +244,7 @@ macro void InterfaceList.insert_at(&self, usz index, type)
 		self.push(type);
 		return;
 	}
-	Type value = allocator::copy(self.allocator, type);
+	Type value = allocator::clone(self.allocator, type);
 	self._insert_at(self, index, value);
 }
 
@@ -450,7 +450,7 @@ macro void InterfaceList.set(&self, usz index, value)
 		return;
 	}
 	self.free_element(self.entries[index]);
-	self.entries[index] = allocator::copy(self.allocator, value);
+	self.entries[index] = allocator::clone(self.allocator, value);
 }
 
 // -- private
