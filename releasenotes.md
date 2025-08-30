@@ -86,6 +86,7 @@
 - Make `log` and `exp` no-strip.
 - `@test`/`@benchmark` on module would attach to interface and regular methods.
 - Deprecated `@select` in favor of `???`.
+- Enum inference, like `Foo x = $eval("A")`, now works correctly for `$eval`.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.

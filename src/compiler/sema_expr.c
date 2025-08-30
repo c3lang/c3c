@@ -11821,6 +11821,9 @@ RETRY:
 		case EXPR_RETHROW:
 			if (!sema_expr_analyse_rethrow(context, expr, original_type)) return expr_poison(expr);
 			break;
+		case EXPR_CT_EVAL:
+			if (!sema_expr_resolve_ct_eval(context, expr)) return expr_poison(expr);
+			goto RETRY;
 		case EXPR_UNARY:
 			if (to && expr->unary_expr.operator == UNARYOP_TADDR && to->canonical->type_kind == TYPE_POINTER && to->canonical != type_voidptr)
 			{
