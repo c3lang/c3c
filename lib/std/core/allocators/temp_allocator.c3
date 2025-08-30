@@ -331,7 +331,7 @@ import std::math;
 
 tlocal VmemOptions temp_allocator_default_options = {
 	.shrink_on_reset = env::MEMORY_ENV != NORMAL,
-	.protect_unused_pages = env::COMPILER_OPT_LEVEL <= O1 || env::COMPILER_SAFE_MODE,
+	.protect_unused_pages = env::COMPILER_OPT_LEVEL <= MORE || env::COMPILER_SAFE_MODE,
 	.scratch_released_data = env::COMPILER_SAFE_MODE
 };
 
