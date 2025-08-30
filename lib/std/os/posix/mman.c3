@@ -11,7 +11,8 @@ const MAP_SHARED    = 0x0001;  // share changes
 const MAP_PRIVATE   = 0x0002;  // changes are private
 
 const MAP_FILE       = 0x0000; // map from file (default)
-const MAP_ANONYMOUS  = 0x1000; // allocated from memory, swap space
+
+const MAP_ANONYMOUS  =  env::LINUX ??? 0x20 : 0x1000; // allocated from memory, swap space
 
 const void* MAP_FAILED = (void *)(uptr)-1; // mmap failed
 const MADV_NORMAL     = 0; // no further special treatment
