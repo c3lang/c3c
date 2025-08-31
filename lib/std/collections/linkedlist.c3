@@ -3,6 +3,8 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::linkedlist{Type};
 
+import std::io;
+
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
 
 struct Node @private
@@ -16,8 +18,34 @@ struct LinkedList
 {
 	Allocator allocator;
 	usz size;
-	Node *_first;
-	Node *_last;
+	Node* _first;
+	Node* _last;
+}
+
+fn usz? LinkedList.to_format(&self, Formatter* f) @dynamic
+{
+	usz len;
+	usz list_end = self.len() - 1;
+	len += f.print("{ ")!;
+	foreach (i, e : self.iter()) len += f.printf(i != list_end ? "%s, " : "%s", e)!;
+	len += f.print(" }")!;
+	return len;
+}
+
+macro LinkedList @new(Allocator allocator, Type[] #default_values = {})
+{
+	LinkedList new_list;
+	new_list.init(allocator);
+	new_list.push_all(#default_values);
+	return new_list;
+}
+
+<*
+ @require values::@is_list(#default_values)
+*>
+macro LinkedList @tnew(Type[] #default_values = {})
+{
+	return @new(tmem, #default_values);
 }
 
 <*
