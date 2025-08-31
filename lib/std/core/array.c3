@@ -216,7 +216,7 @@ macro @product(array, identity_value = 1)
 *>
 macro usz[] @indices_of(Allocator allocator, array, #predicate)
 {
-	usz[] results = allocator::new_array(allocator, usz, find_len(array));
+	usz[] results = allocator::new_array(allocator, usz, values::find_len(array));
 	usz matches;
 
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
@@ -400,8 +400,8 @@ macro @zip(Allocator allocator, left, right, #operation = EMPTY_MACRO_SLOT, fill
 		$Type = $typeof(#operation).returns;
 	$endif
 
-	usz left_len = find_len(left);
-	usz right_len = find_len(right);
+	usz left_len = values::find_len(left);
+	usz right_len = values::find_len(right);
 
 	$LeftType left_fill;
 	$RightType right_fill;
@@ -496,7 +496,7 @@ macro @tzip(left, right, #operation = EMPTY_MACRO_SLOT, fill_with = EMPTY_MACRO_
 
  @require values::@is_list(left) : "Expected a valid list"
  @require values::@is_list(right) : "Expected a valid list"
- @require find_len(right) >= find_len(left) : `Right side length must be >= the destination (left) side length; consider using a sub-array of data for the assignment.`
+ @require values::find_len(right) >= values::find_len(left) : `Right side length must be >= the destination (left) side length; consider using a sub-array of data for the assignment.`
  @require $defined($typefrom(@zip_into_fn(left, right)) x = #operation) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
 *>
 macro @zip_into(left, right, #operation)
