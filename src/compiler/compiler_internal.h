@@ -2449,6 +2449,7 @@ Decl *sema_find_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);
 Decl *sema_find_label_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);
+Decl *sema_find_local(SemaContext *context, const char *symbol);
 Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
 BoolErr sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 
@@ -2583,6 +2584,9 @@ FunctionPrototype *type_get_resolved_prototype(Type *type);
 bool type_is_inner_type(Type *type);
 const char *type_to_error_string(Type *type);
 const char *type_quoted_error_string(Type *type);
+const char *type_quoted_error_string_with_path(Type *type);
+const char *type_error_string_maybe_with_path(Type *type, Type *other_type);
+const char *type_quoted_error_string_maybe_with_path(Type *type, Type *other_type);
 INLINE bool type_may_negate(Type *type);
 INLINE bool type_is_builtin(TypeKind kind);
 INLINE bool type_convert_will_trunc(Type *destination, Type *source);

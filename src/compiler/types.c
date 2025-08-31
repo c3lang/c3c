@@ -6,6 +6,7 @@
 
 
 static Type *flatten_raw_function_type(Type *type);
+static const char *type_to_error_string_with_path(Type *type);
 
 static struct
 {
@@ -99,6 +100,18 @@ Type *type_int_unsigned_by_bitsize(BitSize bit_size)
 	}
 }
 
+const char *type_quoted_error_string_maybe_with_path(Type *type, Type *other_type)
+{
+	if (!str_eq(type_no_optional(type)->name, type_no_optional(other_type)->name)) return type_quoted_error_string(type);
+	return type_quoted_error_string_with_path(type);
+}
+
+const char *type_error_string_maybe_with_path(Type *type, Type *other_type)
+{
+	if (!str_eq(type_no_optional(type)->name, type_no_optional(other_type)->name)) return type_to_error_string(type);
+	return type_to_error_string_with_path(type);
+}
+
 const char *type_quoted_error_string(Type *type)
 {
 	if (type->canonical != type)
@@ -106,6 +119,15 @@ const char *type_quoted_error_string(Type *type)
 		return str_printf("'%s' (%s)", type_to_error_string(type), type_to_error_string(type->canonical));
 	}
 	return str_printf("'%s'", type_to_error_string(type));
+}
+
+const char *type_quoted_error_string_with_path(Type *type)
+{
+	if (type->canonical != type)
+	{
+		return str_printf("'%s' (%s)", type_to_error_string_with_path(type), type_to_error_string_with_path(type->canonical));
+	}
+	return str_printf("'%s'", type_to_error_string_with_path(type));
 }
 
 void type_append_name_to_scratch(Type *type)
@@ -234,6 +256,7 @@ static void type_add_parent_to_scratch(Decl *decl)
 			return;
 	}
 }
+
 const char *type_to_error_string(Type *type)
 {
 	switch (type->type_kind)
@@ -297,6 +320,77 @@ const char *type_to_error_string(Type *type)
 			return str_printf("%s[*]", type_to_error_string(type->array.base));
 		case TYPE_SLICE:
 			return str_printf("%s[]", type_to_error_string(type->array.base));
+	}
+	UNREACHABLE
+}
+
+static const char *type_to_error_string_with_path(Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+			return "poisoned";
+		case TYPE_VOID:
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_ANYFAULT:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_ANY:
+		case TYPE_MEMBER:
+		case TYPE_WILDCARD:
+			return type->name;
+		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
+		case TYPE_TYPEDEF:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_DISTINCT:
+		case TYPE_BITSTRUCT:
+		case TYPE_INTERFACE:
+		{
+			Decl *decl = type->decl;
+			const char *suffix = decl->unit->module->generic_suffix;
+			scratch_buffer_clear();
+			scratch_buffer_append(decl->unit->module->name->module);
+			scratch_buffer_append("::");
+			if (suffix || type_is_inner_type(type))
+			{
+				type_add_parent_to_scratch(decl);
+			}
+			scratch_buffer_append(decl->name);
+			if (suffix) scratch_buffer_append(suffix);
+			return scratch_buffer_copy();
+		}
+		case TYPE_FUNC_PTR:
+			type = type->pointer;
+			FALLTHROUGH;
+		case TYPE_FUNC_RAW:
+			if (!type->function.prototype) return type->name;
+			scratch_buffer_clear();
+			scratch_buffer_append("fn ");
+			type_append_func_to_scratch(type->function.prototype);
+			return scratch_buffer_copy();
+		case TYPE_INFERRED_VECTOR:
+			return str_printf("%s[<*>]", type_to_error_string_with_path(type->array.base));
+		case TYPE_VECTOR:
+			return str_printf("%s[<%llu>]", type_to_error_string_with_path(type->array.base), (unsigned long long)type->array.len);
+		case TYPE_TYPEINFO:
+			return "typeinfo";
+		case TYPE_TYPEID:
+			return "typeid";
+		case TYPE_POINTER:
+			return str_printf("%s*", type_to_error_string_with_path(type->pointer));
+		case TYPE_OPTIONAL:
+			if (!type->optional) return "void?";
+			return str_printf("%s?", type_to_error_string_with_path(type->optional));
+		case TYPE_ARRAY:
+			return str_printf("%s[%llu]", type_to_error_string_with_path(type->array.base), (unsigned long long)type->array.len);
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+			return str_printf("%s[*]", type_to_error_string_with_path(type->array.base));
+		case TYPE_SLICE:
+			return str_printf("%s[]", type_to_error_string_with_path(type->array.base));
 	}
 	UNREACHABLE
 }
