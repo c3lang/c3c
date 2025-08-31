@@ -721,11 +721,19 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
 	if (parent_type_kind == TYPE_SLICE)
 	{
-		needs_len = safe_mode_enabled() || start_from_end;
+		needs_len = (safe_mode_enabled() && !llvm_is_global_eval(c)) || start_from_end;
 		if (needs_len)
 		{
-			llvm_emit_slice_len(c, value, &len);
-			llvm_value_rvalue(c, &len);
+			if (LLVMIsAGlobalVariable(value->value))
+			{
+				llvm_value_set(&len, LLVMGetInitializer(value->value), parent_type);
+				llvm_emit_slice_len(c, &len, &len);
+			}
+			else
+			{
+				llvm_emit_slice_len(c, value, &len);
+				llvm_value_rvalue(c, &len);
+			}
 		}
 	}
 	else if (parent_type_kind == TYPE_ARRAY || parent_type_kind == TYPE_VECTOR)
@@ -5080,11 +5088,17 @@ void llvm_emit_slice_pointer(GenContext *c, BEValue *slice, BEValue *pointer)
 	llvm_value_fold_optional(c, slice);
 	if (slice->kind == BE_ADDRESS)
 	{
+		if (LLVMIsAGlobalVariable(slice->value))
+		{
+			llvm_value_set(slice, LLVMGetInitializer(slice->value), slice->type);
+			goto NEXT;
+		}
 		AlignSize alignment;
 		LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, slice->value, llvm_get_type(c, slice->type), 0, slice->alignment, &alignment);
 		llvm_value_set_address(c, pointer, ptr, ptr_type, alignment);
 		return;
 	}
+NEXT:;
 	LLVMValueRef ptr = llvm_emit_extract_value(c, slice->value, 0);
 	llvm_value_set(pointer, ptr, ptr_type);
 }

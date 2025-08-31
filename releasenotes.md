@@ -89,6 +89,7 @@
 - Enum inference, like `Foo x = $eval("A")`, now works correctly for `$eval`.
 - Fix regression where files were added more than once. #2442
 - Disambiguate types when they have the same name and need cast between each other.
+- Compiler module-scope pointer to slice with offset, causes assert. #2446
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
