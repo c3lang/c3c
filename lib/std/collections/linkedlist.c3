@@ -406,13 +406,11 @@ fn void LinkedList.unlink(&self, Node* x) @private
 <*
  @require values::@is_list(other) &&& $defined(Type z = other[0])
 *>
-fn bool LinkedList.eq(&self, LinkedList other) @operator(==) @if (ELEMENT_IS_EQUATABLE)
+macro bool LinkedList.eq(&self, other) @operator(==) @if(ELEMENT_IS_EQUATABLE)
 {
 	if (self.len() != values::find_len(other)) return false;
-
-	bool equal = true;
-	foreach (i, v : self.iter()) equal &= v == other[i];
-	return equal;
+	foreach (i, v : self.iter()) if(v != other[i]) return false;
+	return true;
 }
 
 
