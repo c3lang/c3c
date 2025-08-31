@@ -107,7 +107,10 @@
 - Added array `@reduce`, `@filter`, `@any`, `@all`, `@sum`, `@product`, and `@indices_of` macros.
 - `String.bformat` has reduced overhead.
 - Supplemental `roundeven` has a normal implementation.
-- Add operators to `LinkedList` to support `[]` indexing and `foreach`/`foreach_r`.
+- Add `LinkedList` iterator to support `[]` and `foreach`/`foreach_r`. #2438
+- Make `LinkedList` printable and add `==` operator. #2438
+- Add `values::@is_list` to ensure an expression is indexable. #2438
+- Add `values::find_len` to get an object's length with `.len` or `.len()` dynamically. #2438
 
 ## 0.7.4 Change list
 
