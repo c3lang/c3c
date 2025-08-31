@@ -120,7 +120,7 @@ fn void LinkedList.push(&self, Type value)
 
 fn void LinkedList.push_all(&self, Type[] value)
 {
-	foreach_r (v : value) self.push(v);
+	foreach (v : value) self.push(v);
 }
 
 fn Type? LinkedList.peek(&self) => self.first() @inline;
