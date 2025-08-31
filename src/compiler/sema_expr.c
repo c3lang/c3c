@@ -1793,7 +1793,7 @@ static SplatResult sema_splat_optional_argument(SemaContext *context, Expr *expr
 			candidate = sema_find_splat_arg(macro, expr->ct_ident_expr.identifier);
 			break;
 		default:
-			return false;
+			return SPLAT_NONE;
 	}
 	if (!candidate) return SPLAT_NONE;
 	if (!candidate->var.no_init) return SPLAT_NONE;
