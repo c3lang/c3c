@@ -1,3 +1,4 @@
+// #target: macos-aarch64
 module other_module;
 int[] list_of_ints = { 1, 2, 3 };
 int* ref_to_2nd = &list_of_ints[^1];
