@@ -33,6 +33,9 @@
 - Added `$kindof` compile time function.
 - Deprecated `@typekind` macro in favour of `$kindof`.
 - Deprecated `@typeis` macro in favour of `$typeof(#foo) == int`.
+- `$defined(#hash)` will not check the internal expression, just that `#hash` exists. Use `$defined((void)#hash)` for the old behaviour.
+- Added optional macro arguments using `macro foo(int x = ...)` which can be checked using `$defined(x)`.
+- Add compile time ternary `$val ??? <expr> : <expr>`.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
@@ -82,8 +85,8 @@
 - Fix correct `?` after optional function name when reporting type errors.
 - Make `log` and `exp` no-strip.
 - `@test`/`@benchmark` on module would attach to interface and regular methods.
-- Add compile time ternary `$val ??? <expr> : <expr>`.
 - Deprecated `@select` in favor of `???`.
+- Enum inference, like `Foo x = $eval("A")`, now works correctly for `$eval`.
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
@@ -104,6 +107,7 @@
 - Added `String.trim_charset`.
 - Added array `@reduce`, `@filter`, `@any`, `@all`, `@sum`, `@product`, and `@indices_of` macros.
 - `String.bformat` has reduced overhead.
+- Supplemental `roundeven` has a normal implementation.
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
 
 ## 0.7.4 Change list

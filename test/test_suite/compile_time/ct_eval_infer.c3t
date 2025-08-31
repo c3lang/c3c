@@ -1,0 +1,20 @@
+module test;
+import std;
+
+enum Foo
+{
+	A, B
+}
+
+struct Test
+{
+	Foo a;
+}
+fn void main()
+{
+
+	var $member = Test.membersof[0];
+	Test x;
+	x.a = $eval("A");
+	io::printn(x);
+}

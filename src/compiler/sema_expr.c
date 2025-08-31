@@ -1643,7 +1643,15 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
                                       bool *no_match_ref, Expr **expr_ref, bool *optional)
 {
 	Expr *init_expr = param->var.init_expr;
-	if (!init_expr) return true;
+	if (!init_expr)
+	{
+		// Handle foo = ... macro init
+		if (param->var.no_init)
+		{
+			param->var.defaulted = true;
+		}
+		return true;
+	}
 	Expr *arg = copy_expr_single(init_expr);
 	bool parameter_checked = false;
 	if (arg->resolve_status != RESOLVE_DONE)
@@ -1751,6 +1759,51 @@ static inline ArrayIndex sema_len_from_expr(Expr *expr)
 	return range_const_len(&expr->slice_expr.range);
 }
 
+static Decl *sema_find_splat_arg(Decl *macro, const char *name)
+{
+	FOREACH(Decl *, decl, macro->func_decl.signature.params)
+	{
+		if (decl->name == name) return decl;
+	}
+	return NULL;
+}
+
+typedef enum
+{
+	SPLAT_ZERO,
+	SPLAT_ONE,
+	SPLAT_NONE,
+}  SplatResult;
+
+static SplatResult sema_splat_optional_argument(SemaContext *context, Expr *expr)
+{
+	Decl *macro = context->current_macro;
+	if (!macro) return SPLAT_NONE;
+	Decl *candidate = NULL;
+	switch (expr->expr_kind)
+	{
+		case EXPR_UNRESOLVED_IDENTIFIER:
+			if (expr->unresolved_ident_expr.path) break;
+			candidate = sema_find_splat_arg(macro, expr->unresolved_ident_expr.ident);
+			break;
+		case EXPR_HASH_IDENT:
+			candidate = sema_find_splat_arg(macro, expr->hash_ident_expr.identifier);
+			break;
+		case EXPR_CT_IDENT:
+			candidate = sema_find_splat_arg(macro, expr->ct_ident_expr.identifier);
+			break;
+		default:
+			return false;
+	}
+	if (!candidate) return SPLAT_NONE;
+	if (!candidate->var.no_init) return SPLAT_NONE;
+	// We found it, it's a valid variable.
+	Decl *local = sema_find_local(context, candidate->name);
+	if (local && local->var.kind == candidate->var.kind) return SPLAT_ONE;
+	// It's missing! Let's splat-zero
+	return SPLAT_ZERO;
+}
+
 INLINE Type *sema_get_va_type(SemaContext *context, Expr *expr, Variadic variadic)
 {
 	if (variadic == VARIADIC_RAW)
@@ -1834,7 +1887,20 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 		if (arg->expr_kind == EXPR_SPLAT)
 		{
 			Expr *inner = arg->inner_expr;
-
+			switch (sema_splat_optional_argument(context, inner))
+			{
+				case SPLAT_ZERO:
+					vec_erase_at(args, i);
+					i--;
+					num_args--;
+					continue;
+				case SPLAT_ONE:
+					expr_replace(arg, inner);
+					i--;
+					continue;
+				case SPLAT_NONE:
+					break;
+			}
 			if (!sema_analyse_expr(context, inner)) return false;
 
 			// Let's try fit up a slice to the in the vaslot
@@ -1934,6 +2000,27 @@ SPLAT_NORMAL:;
 			last_named_arg = arg;
 
 			actual_args[index] = arg->named_argument_expr.value;
+			if (actual_args[index]->expr_kind == EXPR_SPLAT)
+			{
+				Expr *inner = actual_args[index]->inner_expr;
+				switch (sema_splat_optional_argument(context, inner))
+				{
+					case SPLAT_ZERO:
+						if (!sema_set_default_argument(context, callee, call,
+											   params[index], no_match_ref,
+											   &actual_args[index],
+											   optional))
+						{
+							return false;
+						}
+						continue;
+					case SPLAT_ONE:
+						expr_replace(actual_args[index], inner);
+						break;
+					case SPLAT_NONE:
+						break;
+				}
+			}
 			if (!sema_analyse_parameter(context, actual_args[index], param, callee->definition, optional, no_match_ref,
 										callee->macro, false)) return false;
 			continue;
@@ -2031,8 +2118,9 @@ SPLAT_NORMAL:;
 	{
 		if (i == vaarg_index) continue;
 		if (actual_args[i]) continue;
-		// Argument missing, that's bad.
 		Decl *param = params[i];
+		if (param->var.no_init) continue; // Macro empty args
+		// Argument missing, that's bad.
 		if (no_match_ref)
 		{
 			*no_match_ref = true;
@@ -2118,6 +2206,7 @@ NEXT_FLAG:
 		}
 		if (idx == vacount) goto TOO_FEW_ARGUMENTS;
 		expr = vaargs[idx];
+		if (!expr) goto TOO_FEW_ARGUMENTS;
 		Type *type = sema_get_va_type(context, expr, variadic);
 		if (!type_ok(type)) return false;
 
@@ -2132,6 +2221,7 @@ NEXT_FLAG:
 			c = data[i];
 			if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 			expr = vaargs[idx];
+			if (!expr) goto TOO_FEW_ARGUMENTS;
 			type = sema_get_va_type(context, expr, variadic);
 			if (!type_ok(type)) return false;
 		}
@@ -2157,6 +2247,7 @@ NEXT_FLAG:
 				c = data[i];
 				if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 				expr = vaargs[idx];
+				if (!expr) goto TOO_FEW_ARGUMENTS;
 				type = sema_get_va_type(context, expr, variadic);
 				if (!type_ok(type)) return false;
 			}
@@ -2675,6 +2766,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			}
 		}
 		param->var.init_expr = args[i];
+		if (!args[i]) continue;
 		// Lazy arguments doesn't affect optional arg.
 		if (param->var.kind == VARDECL_PARAM_EXPR) continue;
 		has_optional_arg = has_optional_arg || IS_OPTIONAL(args[i]);
@@ -2794,6 +2886,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		// Skip raw vararg
 		if (!param) continue;
+		if (param->var.no_init && param->var.defaulted) continue;
 		if (!sema_add_local(&macro_context, param)) goto EXIT_FAIL;
 		if (param->var.init_expr)
 		{
@@ -9965,11 +10058,11 @@ static inline Type *sema_evaluate_type_copy(SemaContext *context, TypeInfo *type
 INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 {
 	unsigned param_count = vec_size(ct_lambda_params);
-	ASSERT(vec_size(candidate->func_decl.lambda_ct_parameters) == param_count);
-	if (!param_count) return true;
+	if (vec_size(candidate->func_decl.lambda_ct_parameters) != param_count) return false;
 	FOREACH_IDX(i, Decl *, param, candidate->func_decl.lambda_ct_parameters)
 	{
 		Decl *ct_param = ct_lambda_params[i];
+		if (param->name != ct_param->name) return false;
 		if (!param->var.is_read) continue;
 		ASSERT(ct_param->resolve_status == RESOLVE_DONE || param->resolve_status == RESOLVE_DONE);
 		ASSERT(ct_param->var.kind == param->var.kind);
@@ -10321,6 +10414,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 		SemaContext *active_context = context;
 		bool in_no_eval = active_context->call_env.in_no_eval;
 		active_context->call_env.in_no_eval = true;
+		bool unroll_hash = false;
 	RETRY:
 		switch (main_expr->expr_kind)
 		{
@@ -10341,6 +10435,20 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_UNRESOLVED_IDENTIFIER:
 			{
 				Decl *decl = sema_find_path_symbol(active_context, main_expr->unresolved_ident_expr.ident, main_expr->unresolved_ident_expr.path);
+				if (!decl_ok(decl)) goto FAIL;
+				success = decl != NULL;
+				break;
+			}
+			case EXPR_HASH_IDENT:
+			{
+				if (unroll_hash)
+				{
+					Decl *decl = sema_resolve_symbol(active_context, main_expr->hash_ident_expr.identifier, NULL, main_expr->span);
+					if (!decl) goto FAIL;
+					main_expr = copy_expr_single(decl->var.init_expr);
+					goto RETRY;
+				}
+				Decl *decl = sema_find_symbol(active_context, main_expr->hash_ident_expr.identifier);
 				if (!decl_ok(decl)) goto FAIL;
 				success = decl != NULL;
 				break;
@@ -10370,15 +10478,13 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			{
 				Expr *eval = sema_ct_eval_expr(active_context, "$eval", main_expr->inner_expr, false);
 				if (!expr_ok(eval)) return false;
-				success = eval != NULL;
+				if (eval)
+				{
+					main_expr = eval;
+					goto RETRY;
+				}
+				success = false;
 				break;
-			}
-			case EXPR_HASH_IDENT:
-			{
-				Decl *decl = sema_resolve_symbol(active_context, main_expr->hash_ident_expr.identifier, NULL, main_expr->span);
-				if (!decl) goto FAIL;
-				main_expr = copy_expr_single(decl->var.init_expr);
-				goto RETRY;
 			}
 			case EXPR_SUBSCRIPT:
 			{
@@ -10393,16 +10499,26 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				break;
 			}
 			case EXPR_CAST:
+			{
+				TypeInfo *typeinfo = type_infoptr(main_expr->cast_expr.type_info);
+				if (typeinfo->resolve_status == RESOLVE_DONE && typeinfo->type == type_void)
+				{
+					main_expr = exprptr(main_expr->cast_expr.expr);
+					unroll_hash = true;
+					goto RETRY;
+				}
 				if (!sema_expr_analyse_cast(active_context, main_expr, &failed))
 				{
 					if (!failed) goto FAIL;
 					success = false;
 				}
 				break;
+			}
 			case EXPR_CT_IDENT:
 			{
-				Decl *decl = sema_resolve_symbol(active_context, main_expr->ct_ident_expr.identifier, NULL, main_expr->span);
-				if (!decl) goto FAIL;
+				Decl *decl = sema_find_symbol(active_context, main_expr->ct_ident_expr.identifier);
+				if (!decl_ok(decl)) goto FAIL;
+				success = decl != NULL;
 				break;
 			}
 			case EXPR_CALL:
@@ -11705,6 +11821,9 @@ RETRY:
 		case EXPR_RETHROW:
 			if (!sema_expr_analyse_rethrow(context, expr, original_type)) return expr_poison(expr);
 			break;
+		case EXPR_CT_EVAL:
+			if (!sema_expr_resolve_ct_eval(context, expr)) return expr_poison(expr);
+			goto RETRY;
 		case EXPR_UNARY:
 			if (to && expr->unary_expr.operator == UNARYOP_TADDR && to->canonical->type_kind == TYPE_POINTER && to->canonical != type_voidptr)
 			{

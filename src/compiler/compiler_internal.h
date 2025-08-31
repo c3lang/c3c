@@ -2449,6 +2449,7 @@ Decl *sema_find_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);
 Decl *sema_find_label_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);
+Decl *sema_find_local(SemaContext *context, const char *symbol);
 Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
 BoolErr sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 

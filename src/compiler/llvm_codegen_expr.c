@@ -6218,6 +6218,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 	{
 		// Skip vararg
 		if (!val) continue;
+		if (val->var.no_init && val->var.defaulted) continue;
 		// In case we have a constant, we never do an emit. The value is already folded.
 		switch (val->var.kind)
 		{
