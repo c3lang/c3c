@@ -8235,7 +8235,8 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 				UNREACHABLE
 		}
 		Expr **args = NULL;
-		if (overload->func_decl.signature.params[1]->type->canonical->type_kind == TYPE_POINTER)
+		Decl *first_param = overload->func_decl.signature.params[1];
+		if (first_param->type && first_param->type->canonical->type_kind == TYPE_POINTER)
 		{
 			expr_insert_addr(right);
 		}

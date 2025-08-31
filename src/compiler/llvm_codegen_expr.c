@@ -724,7 +724,7 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 		needs_len = (safe_mode_enabled() && !llvm_is_global_eval(c)) || start_from_end;
 		if (needs_len)
 		{
-			if (LLVMIsAGlobalVariable(value->value))
+			if (LLVMIsAGlobalVariable(value->value) && llvm_is_global_eval(c))
 			{
 				llvm_value_set(&len, LLVMGetInitializer(value->value), parent_type);
 				llvm_emit_slice_len(c, &len, &len);
@@ -5088,7 +5088,7 @@ void llvm_emit_slice_pointer(GenContext *c, BEValue *slice, BEValue *pointer)
 	llvm_value_fold_optional(c, slice);
 	if (slice->kind == BE_ADDRESS)
 	{
-		if (LLVMIsAGlobalVariable(slice->value))
+		if (LLVMIsAGlobalVariable(slice->value) && llvm_is_global_eval(c))
 		{
 			llvm_value_set(slice, LLVMGetInitializer(slice->value), slice->type);
 			goto NEXT;
