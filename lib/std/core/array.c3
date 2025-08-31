@@ -120,6 +120,17 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
 
 
 <*
+ If the given list object has an iterator method, return the iterator. If not, just return the list.
+
+ @require values::@is_list(list)
+*>
+macro @iter(list)
+{
+	return $defined(list.iter) ??? list.iter() : list;
+}
+
+
+<*
  Apply a reduction/folding operation to an iterable type. This walks along the input array
  and applies an `#operation` to each value, returning it to the `identity` (or "accumulator")
  base value.
@@ -150,7 +161,7 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
 macro @reduce(array, identity, #operation)
 {
 	$typefrom(@reduce_fn(array, identity)) $func = #operation;
-	foreach (index, element : array) identity = $func(identity, element, index);
+	foreach (index, element : @iter(array)) identity = $func(identity, element, index);
 	return identity;
 }
 
@@ -220,7 +231,7 @@ macro usz[] @indices_of(Allocator allocator, array, #predicate)
 	usz matches;
 
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
-	foreach (index, element : array)
+	foreach (index, element : @iter(array))
 	{
 		if ($predicate(element, index)) results[matches++] = index;
 	}
@@ -306,7 +317,7 @@ macro @tfilter(array, #predicate) @nodiscard
 macro bool @any(array, #predicate)
 {
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
-	foreach (index, element : array) if ($predicate(element, index)) return true;
+	foreach (index, element : @iter(array)) if ($predicate(element, index)) return true;
 	return false;
 }
 
@@ -324,7 +335,7 @@ macro bool @any(array, #predicate)
 macro bool @all(array, #predicate)
 {
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
-	foreach (index, element : array) if (!$predicate(element, index)) return false;
+	foreach (index, element : @iter(array)) if (!$predicate(element, index)) return false;
 	return true;
 }
 
@@ -500,7 +511,7 @@ macro @zip_into(left, right, #operation)
 {
 	$typefrom(@zip_into_fn(left, right)) $operation = #operation;
 
-	foreach (i, &v : left) *v = $operation(left[i], right[i]);
+	foreach (i, &v : @iter(left)) *v = $operation(left[i], right[i]);
 }
 
 
