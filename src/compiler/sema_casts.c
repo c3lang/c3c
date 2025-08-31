@@ -727,21 +727,23 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 	}
 	if (may_cast_explicit)
 	{
+		Type *typeto = type_no_optional(to);
+		Type *from = type_no_optional(expr->type);
 		if (expr->type->canonical->type_kind == TYPE_DISTINCT
 			&& type_no_optional(to)->canonical->type_kind == TYPE_DISTINCT)
 		{
 			RETURN_CAST_ERROR(expr,
 					   "Implicitly casting %s to %s is not permitted. It's possible to do an explicit cast by placing '(%s)' before the expression. However, explicit casts between distinct types are usually not intended and are not safe.",
-					   type_quoted_error_string(type_no_optional(expr->type)),
-					   type_quoted_error_string(to),
-					   type_to_error_string(type_no_optional(to)));
+					   type_quoted_error_string_maybe_with_path(from, typeto),
+					   type_quoted_error_string_maybe_with_path(to, from),
+					   type_error_string_maybe_with_path(typeto, from));
 
 		}
 		RETURN_CAST_ERROR(expr,
 		           "Implicitly casting %s to %s is not permitted, but you may do an explicit cast by placing '(%s)' before the expression.",
-		           type_quoted_error_string(type_no_optional(expr->type)),
-		           type_quoted_error_string(to),
-		           type_to_error_string(type_no_optional(to)));
+		           type_quoted_error_string_maybe_with_path(from, typeto),
+				   type_quoted_error_string_maybe_with_path(to, from),
+				   type_error_string_maybe_with_path(typeto, from));
 	}
 	if (to->type_kind == TYPE_INTERFACE)
 	{
