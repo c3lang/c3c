@@ -71,7 +71,7 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool
 
 static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr, bool *failed_ref);
 static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *expr, bool report_missing);
-static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_type, Expr *expr);
+static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_type, Expr *expr, bool *no_match_ref);
 static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_ct_call(SemaContext *context, Expr *expr);
@@ -10426,41 +10426,41 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				active_context->call_env.in_no_eval = true;
 				main_expr = main_expr->expr_other_context.inner;
 				goto RETRY;
-			case EXPR_ACCESS_UNRESOLVED:
+		case EXPR_ACCESS_UNRESOLVED:
 				if (!sema_expr_analyse_access(active_context, main_expr, &failed, CHECK_VALUE, false))
 				{
 					if (!failed) goto FAIL;
 					success = false;
 				}
 				break;
-			case EXPR_UNRESOLVED_IDENTIFIER:
+		case EXPR_UNRESOLVED_IDENTIFIER:
+		{
+			Decl *decl = sema_find_path_symbol(active_context, main_expr->unresolved_ident_expr.ident, main_expr->unresolved_ident_expr.path);
+			if (!decl_ok(decl)) goto FAIL;
+			success = decl != NULL;
+			break;
+		}
+		case EXPR_HASH_IDENT:
+		{
+			if (unroll_hash)
 			{
-				Decl *decl = sema_find_path_symbol(active_context, main_expr->unresolved_ident_expr.ident, main_expr->unresolved_ident_expr.path);
-				if (!decl_ok(decl)) goto FAIL;
-				success = decl != NULL;
-				break;
+				Decl *decl = sema_resolve_symbol(active_context, main_expr->hash_ident_expr.identifier, NULL, main_expr->span);
+				if (!decl) goto FAIL;
+				main_expr = copy_expr_single(decl->var.init_expr);
+				goto RETRY;
 			}
-			case EXPR_HASH_IDENT:
-			{
-				if (unroll_hash)
-				{
-					Decl *decl = sema_resolve_symbol(active_context, main_expr->hash_ident_expr.identifier, NULL, main_expr->span);
-					if (!decl) goto FAIL;
-					main_expr = copy_expr_single(decl->var.init_expr);
-					goto RETRY;
-				}
-				Decl *decl = sema_find_symbol(active_context, main_expr->hash_ident_expr.identifier);
-				if (!decl_ok(decl)) goto FAIL;
-				success = decl != NULL;
-				break;
-			}
-			case EXPR_COMPILER_CONST:
+			Decl *decl = sema_find_symbol(active_context, main_expr->hash_ident_expr.identifier);
+			if (!decl_ok(decl)) goto FAIL;
+			success = decl != NULL;
+			break;
+		}
+		case EXPR_COMPILER_CONST:
 				success = sema_expr_analyse_compiler_const(active_context, main_expr, false);
 				break;
-			case EXPR_BUILTIN:
+		case EXPR_BUILTIN:
 				success = sema_expr_analyse_builtin(active_context, main_expr, false);
 				break;
-			case EXPR_UNARY:
+		case EXPR_UNARY:
 				main_expr->resolve_status = RESOLVE_RUNNING;
 				if (!sema_expr_analyse_unary(active_context, main_expr, &failed, CHECK_VALUE))
 				{
@@ -10468,107 +10468,107 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 					success = false;
 				}
 				break;
-			case EXPR_TYPEINFO:
+		case EXPR_TYPEINFO:
+		{
+			Type *type = sema_expr_check_type_exists(active_context, main_expr->type_expr);
+			if (!type_ok(type)) goto FAIL;
+			success = type != NULL;
+			break;
+		}
+		case EXPR_CT_EVAL:
+		{
+			Expr *eval = sema_ct_eval_expr(active_context, "$eval", main_expr->inner_expr, false);
+			if (!expr_ok(eval)) return false;
+			if (eval)
 			{
-				Type *type = sema_expr_check_type_exists(active_context, main_expr->type_expr);
-				if (!type_ok(type)) goto FAIL;
-				success = type != NULL;
-				break;
+				main_expr = eval;
+				goto RETRY;
 			}
-			case EXPR_CT_EVAL:
+			success = false;
+			break;
+		}
+		case EXPR_SUBSCRIPT:
+		{
+			if (!sema_expr_analyse_subscript(active_context, main_expr, CHECK_VALUE, true))
 			{
-				Expr *eval = sema_ct_eval_expr(active_context, "$eval", main_expr->inner_expr, false);
-				if (!expr_ok(eval)) return false;
-				if (eval)
-				{
-					main_expr = eval;
-					goto RETRY;
-				}
+				goto FAIL;
+			}
+			if (!expr_ok(main_expr))
+			{
 				success = false;
-				break;
 			}
-			case EXPR_SUBSCRIPT:
+			break;
+		}
+		case EXPR_CAST:
+		{
+			TypeInfo *typeinfo = type_infoptr(main_expr->cast_expr.type_info);
+			if (typeinfo->resolve_status == RESOLVE_DONE && typeinfo->type == type_void)
 			{
-				if (!sema_expr_analyse_subscript(active_context, main_expr, CHECK_VALUE, true))
-				{
-					goto FAIL;
-				}
-				if (!expr_ok(main_expr))
-				{
-					success = false;
-				}
-				break;
+				main_expr = exprptr(main_expr->cast_expr.expr);
+				unroll_hash = true;
+				goto RETRY;
 			}
-			case EXPR_CAST:
+			if (!sema_expr_analyse_cast(active_context, main_expr, &failed))
 			{
-				TypeInfo *typeinfo = type_infoptr(main_expr->cast_expr.type_info);
-				if (typeinfo->resolve_status == RESOLVE_DONE && typeinfo->type == type_void)
-				{
-					main_expr = exprptr(main_expr->cast_expr.expr);
-					unroll_hash = true;
-					goto RETRY;
-				}
-				if (!sema_expr_analyse_cast(active_context, main_expr, &failed))
-				{
-					if (!failed) goto FAIL;
-					success = false;
-				}
-				break;
+				if (!failed) goto FAIL;
+				success = false;
 			}
-			case EXPR_CT_IDENT:
+			break;
+		}
+		case EXPR_CT_IDENT:
+		{
+			Decl *decl = sema_find_symbol(active_context, main_expr->ct_ident_expr.identifier);
+			if (!decl_ok(decl)) goto FAIL;
+			success = decl != NULL;
+			break;
+		}
+		case EXPR_CALL:
+		{
+			bool no_match;
+			if (!sema_expr_analyse_call(active_context, main_expr, &no_match))
 			{
-				Decl *decl = sema_find_symbol(active_context, main_expr->ct_ident_expr.identifier);
-				if (!decl_ok(decl)) goto FAIL;
-				success = decl != NULL;
-				break;
+				if (!no_match) goto FAIL;
+				success = false;
 			}
-			case EXPR_CALL:
-			{
-				bool no_match;
-				if (!sema_expr_analyse_call(active_context, main_expr, &no_match))
-				{
-					if (!no_match) goto FAIL;
-					success = false;
-				}
-				break;
-			}
-			case EXPR_FORCE_UNWRAP:
+			break;
+		}
+		case EXPR_FORCE_UNWRAP:
 				if (!sema_analyse_expr(active_context, main_expr->inner_expr)) goto FAIL;
 				success = IS_OPTIONAL(main_expr->inner_expr);
 				break;
-			case EXPR_RETHROW:
+		case EXPR_RETHROW:
 				if (!sema_analyse_expr(active_context, main_expr->rethrow_expr.inner)) goto FAIL;
 				success = IS_OPTIONAL(main_expr->rethrow_expr.inner);
 				break;
-			case EXPR_OPTIONAL:
+		case EXPR_OPTIONAL:
 				if (!sema_expr_analyse_optional(active_context, main_expr, &failed))
 				{
 					if (!failed) goto FAIL;
 					success = false;
 				}
 				break;
-			case EXPR_POISONED:
+		case EXPR_POISONED:
 				success = false;
 				break;
-			case EXPR_CATCH_UNRESOLVED:
-			case EXPR_CATCH:
-			case EXPR_COND:
-			case EXPR_TEST_HOOK:
-			case EXPR_DESIGNATOR:
-			case EXPR_BENCHMARK_HOOK:
-			case EXPR_TRY_UNRESOLVED:
-			case EXPR_TRY:
-			case EXPR_TRY_UNWRAP_CHAIN:
-			case EXPR_OPERATOR_CHARS:
-			case EXPR_MACRO_BODY_EXPANSION:
-			case EXPR_BUILTIN_ACCESS:
-			case EXPR_LAST_FAULT:
-			case EXPR_DEFAULT_ARG:
-			case EXPR_IDENTIFIER:
-			case EXPR_NAMED_ARGUMENT:
-			case EXPR_ACCESS_RESOLVED:
-			case EXPR_CT_SUBSCRIPT:
-			case EXPR_IOTA_DECL:
+		case EXPR_CATCH_UNRESOLVED:
+		case EXPR_CATCH:
+		case EXPR_COND:
+		case EXPR_TEST_HOOK:
+		case EXPR_DESIGNATOR:
+		case EXPR_BENCHMARK_HOOK:
+		case EXPR_TRY_UNRESOLVED:
+		case EXPR_TRY:
+		case EXPR_TRY_UNWRAP_CHAIN:
+		case EXPR_OPERATOR_CHARS:
+		case EXPR_MACRO_BODY_EXPANSION:
+		case EXPR_BUILTIN_ACCESS:
+		case EXPR_LAST_FAULT:
+		case EXPR_DEFAULT_ARG:
+		case EXPR_IDENTIFIER:
+		case EXPR_NAMED_ARGUMENT:
+		case EXPR_ACCESS_RESOLVED:
+		case EXPR_CT_SUBSCRIPT:
+		case EXPR_IOTA_DECL:
 				UNREACHABLE
 			case EXPR_DECL:
 				if (!sema_analyse_var_decl(context, main_expr->decl_expr, true, &failed))
@@ -10577,7 +10577,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 					success = false;
 				}
 				break;
-			case EXPR_BINARY:
+		case EXPR_BINARY:
 				main_expr->resolve_status = RESOLVE_RUNNING;
 				if (!sema_expr_analyse_binary(active_context, NULL, main_expr, &failed))
 				{
@@ -10585,14 +10585,20 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 					success = false;
 				}
 				break;
-			case EXPR_COMPOUND_LITERAL:
+		case EXPR_COMPOUND_LITERAL:
 				if (!sema_expr_analyse_compound_literal(context, main_expr, &failed))
 				{
 					if (!failed) goto FAIL;
 					success = false;
 				}
 				break;
-			case EXPR_CT_ARG:
+		case EXPR_CT_ARG:
+				if (!sema_expr_analyse_ct_arg(context, NULL, main_expr, &failed))
+				{
+					if (!failed) goto FAIL;
+					success = false;
+				}
+				break;
 			case EXPR_BITACCESS:
 			case EXPR_BITASSIGN:
 			case EXPR_EMBED:
@@ -10665,14 +10671,13 @@ FAIL:
 	return true;
 }
 
-static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_type, Expr *expr)
+static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_type, Expr *expr, bool *no_match_ref)
 {
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_RUNNING);
 	TokenType type = expr->ct_arg_expr.type;
 	if (!context->current_macro)
 	{
-		SEMA_ERROR(expr, "'%s' can only be used inside of a macro.", token_type_to_string(type));
-		return false;
+		RETURN_SEMA_ERROR(expr, "'%s' can only be used inside of a macro.", token_type_to_string(type));
 	}
 	switch (type)
 	{
@@ -10701,7 +10706,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 			// Not found, so generate a new.
 			if (!decl)
 			{
-				if (!sema_analyse_inferred_expr(context, infer_type, arg_expr, NULL)) return false;
+				if (!sema_analyse_inferred_expr(context, infer_type, arg_expr, no_match_ref)) return false;
 				switch (sema_resolve_storage_type(context, arg_expr->type))
 				{
 					case STORAGE_ERROR:
@@ -10727,7 +10732,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 			// An expr argument, this means we copy and evaluate.
 			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg), NULL), false);
 			expr_replace(expr, copy_expr_single(arg_expr));
-			return sema_analyse_inferred_expr(context, infer_type, expr, NULL);
+			return sema_analyse_inferred_expr(context, infer_type, expr, no_match_ref);
 		}
 		case TOKEN_CT_VACONST:
 		{
@@ -10737,6 +10742,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 			if (!sema_analyse_inferred_expr(context, infer_type, arg_expr, NULL)) return false;
 			if (!sema_cast_const(arg_expr))
 			{
+				if (no_match_ref) goto NO_MATCH;
 				RETURN_SEMA_ERROR(arg_expr, "This argument needs to be a compile time constant.");
 			}
 			expr_replace(expr, arg_expr);
@@ -10746,6 +10752,9 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 		default:
 			UNREACHABLE
 	}
+NO_MATCH:
+	*no_match_ref = true;
+	return false;
 }
 
 static inline bool sema_expr_analyse_iota_decl(SemaContext *context, Expr *expr)
@@ -11091,7 +11100,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_CT_DEFINED:
 			return sema_expr_analyse_ct_defined(context, expr);
 		case EXPR_CT_ARG:
-			return sema_expr_analyse_ct_arg(context, NULL, expr);
+			return sema_expr_analyse_ct_arg(context, NULL, expr, NULL);
 		case EXPR_STRINGIFY:
 			if (!sema_expr_analyse_ct_stringify(context, expr)) return false;
 			return true;
@@ -11823,7 +11832,7 @@ RETRY:
 			if (!sema_expr_analyse_ternary(context, to, expr)) return expr_poison(expr);
 			break;
 		case EXPR_CT_ARG:
-			if (!sema_expr_analyse_ct_arg(context, to, expr)) return expr_poison(expr);
+			if (!sema_expr_analyse_ct_arg(context, to, expr, no_match_ref)) return expr_poison(expr);
 			break;
 		case EXPR_RETHROW:
 			if (!sema_expr_analyse_rethrow(context, expr, original_type)) return expr_poison(expr);

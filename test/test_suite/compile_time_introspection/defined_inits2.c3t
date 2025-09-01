@@ -1,0 +1,14 @@
+struct Test
+{
+    int a;
+}
+fn int main(String[] args)
+{
+    int x = test(Test, 1 + {"a"});
+    return 0;
+}
+
+macro test($Type, ...)
+{
+    return $defined($Type t = $vaexpr[0]);
+}
