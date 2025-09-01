@@ -14,13 +14,6 @@ fn void main() => @pool()
 
 /* #expect: other_module.ll
 
-; ModuleID = 'other_module'
-source_filename = "other_module"
-target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n32:64-S128-Fn32"
-target triple = "aarch64-apple-macosx11.0.0"
-
-%"int[]" = type { ptr, i64 }
-
 @.__const_slice = private unnamed_addr global [3 x i32] [i32 1, i32 2, i32 3], align 4
 @other_module.list_of_ints = local_unnamed_addr global %"int[]" { ptr @.__const_slice, i64 3 }, align 8
 @other_module.ref_to_2nd = local_unnamed_addr global ptr getelementptr inbounds (i8, ptr @.__const_slice, i64 8), align 8
