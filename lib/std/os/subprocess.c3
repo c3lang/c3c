@@ -35,7 +35,7 @@ bitstruct SubProcessOptions : int
 {
 	// Combine stdout and stderr to the same file
 	bool combined_stdout_stderr;
-	// Child process should inhert env variables of parent process
+	// Child process should inherit env variables of parent process
 	bool inherit_environment;
 	// Enable async reading of stdout/stderr before completion
 	bool read_async;

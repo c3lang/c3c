@@ -4551,7 +4551,7 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	// Operation + assign
 	if (binary_op > BINARYOP_ASSIGN)
 	{
-		// Finde the base op.
+		// Find the base op.
 		BinaryOp base_op = binaryop_assign_base_op(binary_op);
 		ASSERT(base_op != BINARYOP_ERROR);
 

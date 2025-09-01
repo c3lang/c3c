@@ -541,7 +541,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		AlignSize member_type_alignment;
 		if (type_is_user_defined(member_type) && member_type->decl->resolve_status == RESOLVE_RUNNING)
 		{
-			SEMA_ERROR(member, "Recursive defintion of %s.", type_quoted_error_string(member_type));
+			SEMA_ERROR(member, "Recursive definition of %s.", type_quoted_error_string(member_type));
 			return decl_poison(decl);
 		}
 		if (!sema_set_abi_alignment(context, member->type, &member_type_alignment)) return decl_poison(decl);

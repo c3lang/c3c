@@ -252,8 +252,8 @@ macro @ceil($input) @const => $$ceil($input);
  @return "lower if x < lower, upper if x > upper, otherwise return x."
 
  @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
- @require $defined(x = lower) : `The lower bound must be convertable to the value type.`
- @require $defined(x = upper) : `The upper bound must be convertable to the value type.`
+ @require $defined(x = lower) : `The lower bound must be convertible to the value type.`
+ @require $defined(x = upper) : `The upper bound must be convertible to the value type.`
 *>
 macro clamp(x, lower, upper) => $$max(($typeof(x))lower, $$min(x, ($typeof(x))upper));
 
