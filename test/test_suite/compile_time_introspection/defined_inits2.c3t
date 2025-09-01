@@ -4,7 +4,7 @@ struct Test
 }
 fn int main(String[] args)
 {
-    int x = test(Test, 1 + {"a"});
+    int x = test(Test, {"a"});
     return 0;
 }
 
