@@ -1690,7 +1690,7 @@ ERR:
 bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl)
 {
 	Expr *value = decl->enum_constant.value;
-	if (!sema_analyse_inferred_expr(context, decl->type, value)) return decl_poison(decl);
+	if (!sema_analyse_inferred_expr(context, decl->type, value,NULL)) return decl_poison(decl);
 	if (!expr_is_runtime_const(value))
 	{
 		SEMA_ERROR(value, "Expected an constant enum value.");
@@ -3612,7 +3612,7 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 			if (!sema_resolve_type_info(context, type_infoptr(param->var.type_info), RESOLVE_TYPE_DEFAULT)) return false;
 			Type *type = typeget(param->var.type_info);
 			ASSERT_SPAN(decl, type);
-			if (!sema_analyse_inferred_expr(context, type, expr)) goto ERR;
+			if (!sema_analyse_inferred_expr(context, type, expr, NULL)) goto ERR;
 			if (!cast_implicit(context, expr, type, false)) goto ERR;
 			if (!sema_cast_const(expr))
 			{

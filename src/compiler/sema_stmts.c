@@ -1494,7 +1494,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 		if (variable_type_info)
 		{
-			if (!sema_analyse_inferred_expr(context, inferred_type, enumerator)) return SCOPE_POP_ERROR();
+			if (!sema_analyse_inferred_expr(context, inferred_type, enumerator,NULL)) return SCOPE_POP_ERROR();
 		}
 		else
 		{

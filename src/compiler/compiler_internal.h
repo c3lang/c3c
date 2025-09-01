@@ -2416,7 +2416,7 @@ bool sema_analyse_expr(SemaContext *context, Expr *expr);
 bool sema_cast_const(Expr *expr);
 
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
-bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);
+bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
 
 bool sema_analyse_method_register(SemaContext *context, Decl *method);
@@ -2429,7 +2429,7 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement);
 
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right,
                                          bool is_unwrapped_var, bool is_declaration, bool *failed_ref);
-bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr);
+bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
 Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs);
 
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional,
