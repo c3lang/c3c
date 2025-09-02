@@ -4626,6 +4626,11 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 		return decl_poison(decl);
 	}
 
+	if (decl->var.no_init && decl->var.init_expr)
+	{
+		SEMA_ERROR(decl->var.init_expr, "'@noinit' variables may not have initializers.");
+		return decl_poison(decl);
+	}
 	if (erase_decl)
 	{
 		decl->decl_kind = DECL_ERASED;

@@ -3,7 +3,10 @@
 ## 0.7.6 Change list
 
 ### Changes / improvements
+
 ### Fixes
+- Compiler assert with var x @noinit = 0 #2452
+
 ### Stdlib changes
 
 ## 0.7.5 Change list
