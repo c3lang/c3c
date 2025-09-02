@@ -6,6 +6,7 @@
 
 ### Fixes
 - Compiler assert with var x @noinit = 0 #2452
+- Confusing error message when type has [] overloaded but not []= #2453
 
 ### Stdlib changes
 

@@ -3807,11 +3807,15 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 		if (!subscript_type)
 		{
 			if (check_valid) return false;
-			if (overload_type == OVERLOAD_ELEMENT_REF)
+			switch (overload_type)
 			{
-				RETURN_SEMA_ERROR(expr, "Getting a reference to a subscript of %s is not possible.", type_quoted_error_string(subscripted->type));
+				case OVERLOAD_ELEMENT_REF:
+					RETURN_SEMA_ERROR(expr, "Getting a reference to a subscript of %s is not possible.", type_quoted_error_string(subscripted->type));
+				case OVERLOAD_ELEMENT_SET:
+					RETURN_SEMA_ERROR(expr, "Assigning to a subscript of %s is not possible.", type_quoted_error_string(subscripted->type));
+				default:
+					RETURN_SEMA_ERROR(expr, "Indexing a value of type %s is not possible.", type_quoted_error_string(subscripted->type));
 			}
-			RETURN_SEMA_ERROR(expr, "Indexing a value of type %s is not possible.", type_quoted_error_string(subscripted->type));
 		}
 		if (!overload) current_type = type_flatten(current_expr->type);
 	}
