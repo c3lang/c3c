@@ -327,6 +327,7 @@ static inline Expr *sema_dive_into_expression(Expr *expr)
 		{
 			case EXPR_RVALUE:
 			case EXPR_RECAST:
+			case EXPR_PTR_ACCESS:
 				expr = expr->inner_expr;
 				continue;
 			case EXPR_MAKE_SLICE:
@@ -630,8 +631,18 @@ INLINE bool sema_check_not_stack_variable_escape(SemaContext *context, Expr *exp
 	expr = expr->unary_expr.expr;
 CHECK_ACCESS:
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_DONE);
-	while (expr->expr_kind == EXPR_ACCESS_RESOLVED) expr = expr->access_resolved_expr.parent;
-
+	// &foo.bar.baz => foo
+	while (expr->expr_kind == EXPR_ACCESS_RESOLVED)
+	{
+		// If we indexed into something, like &foo.bar.baz[3]
+		if (allow_pointer)
+		{
+			// Then if foo.bar.baz was a pointer or slice, that's ok.
+			TypeKind kind = type_flatten(expr->type)->type_kind;
+			if (kind == TYPE_POINTER || kind == TYPE_SLICE) return true;
+		}
+		expr = expr->access_resolved_expr.parent;
+	}
 	if (expr->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *decl = expr->ident_expr;
 	if (decl->decl_kind != DECL_VAR) return true;
@@ -639,6 +650,8 @@ CHECK_ACCESS:
 	{
 		case VARDECL_LOCAL:
 			if (decl->var.is_static) return true;
+			FALLTHROUGH;
+		case VARDECL_PARAM:
 			switch (type_flatten(decl->type)->type_kind)
 			{
 				case TYPE_POINTER:
@@ -649,15 +662,12 @@ CHECK_ACCESS:
 				default:
 					break;
 			}
-			FALLTHROUGH;
-		case VARDECL_PARAM:
 			break;
 		default:
 			return true;
 	}
-	SEMA_ERROR(outer, "A pointer to a local variable will be invalid once the function returns. "
+	RETURN_SEMA_ERROR(outer, "A pointer to a local variable will be invalid once the function returns. "
 					  "Allocate the data on the heap or temp memory to return a pointer.");
-	return false;
 }
 
 /**
