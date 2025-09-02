@@ -193,9 +193,9 @@ fn usz? Socket.peek(&self, char[] bytes) @dynamic
 
 enum SocketShutdownHow : (CInt native_value)
 {
-	RECEIVE = @select(env::WIN32, libc::SD_RECEIVE, libc::SHUT_RD),
-	SEND = @select(env::WIN32, libc::SD_SEND, libc::SHUT_WR),
-	BOTH = @select(env::WIN32, libc::SD_BOTH, libc::SHUT_RDWR),
+	RECEIVE = env::WIN32 ??? libc::SD_RECEIVE : libc::SHUT_RD,
+	SEND = env::WIN32 ??? libc::SD_SEND : libc::SHUT_WR,
+	BOTH = env::WIN32 ??? libc::SD_BOTH : libc::SHUT_RDWR,
 }
 
 fn void? Socket.shutdown(&self, SocketShutdownHow how)

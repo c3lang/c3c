@@ -865,9 +865,8 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 
 	Type *goto_array_type = type_get_array(type_voidptr, count);
 	LLVMTypeRef llvm_array_type = llvm_get_type(c, goto_array_type);
-	AlignSize alignment = type_alloca_alignment(switch_value->type);
 
-	LLVMValueRef jmptable = llvm_add_global_raw(c, "jumptable", llvm_array_type, alignment);
+	LLVMValueRef jmptable = llvm_add_global_raw(c, "jumptable", llvm_array_type, 0);
 	switch_ast->switch_stmt.codegen.jump.jmptable = jmptable;
 
 	llvm_set_private_declaration(jmptable);
@@ -875,16 +874,15 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 	LLVMValueRef instr = llvm_emit_switch_jump_stmt(c, switch_ast, cases, count, min_index, jmptable, default_block, switch_value);
 
 #define REF_STACK 16
-	LLVMValueRef refs_stack[REF_STACK];
-	LLVMValueRef *refs = refs_stack;
+	void *refs_stack[REF_STACK];
+	void **refs = refs_stack;
 	if (count > REF_STACK)
 	{
-		refs = MALLOC(sizeof(LLVMValueRef) * count);
+		refs = MALLOC(sizeof(void *) * count);
 	}
 #undef REF_STACK
-	LLVMValueRef default_block_address = LLVMBlockAddress(c->cur_func.ref, default_block);
 	ASSERT(count < DEFAULT_SWITCH_JUMP_MAX_SIZE + 1);
-	memset(refs, 0, sizeof(LLVMValueRef) * count);
+	memset(refs, 0, sizeof(void *) * count);
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		Ast *case_stmt = cases[i];
@@ -899,7 +897,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 			uint64_t to_val = to_value.i.low;
 			for (uint64_t j = from_val; j <= to_val; j++)
 			{
-				refs[j] = LLVMBlockAddress(c->cur_func.ref, block);
+				refs[j] = block;
 			}
 			// No fallthrough
 			if (!case_stmt->case_stmt.body) continue;
@@ -915,13 +913,19 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 	for (uint64_t i = 0; i < count; i++)
 	{
 		if (refs[i]) continue;
-		refs[i] = default_block_address;
+		refs[i] = default_block;
 		if (found) continue;
 		found = true;
 		LLVMAddDestination(instr, default_block);
 	}
-	LLVMSetInitializer(jmptable, LLVMConstArray(c->ptr_type, refs, count));
+	LLVMAddDestination(instr, default_block);
 	llvm_emit_block(c, exit_block);
+	for (uint64_t i = 0; i < count; i++)
+	{
+		LLVMValueRef block_address = LLVMBlockAddress(c->cur_func.ref, refs[i]);
+		refs[i] = block_address;
+	}
+	LLVMSetInitializer(jmptable, LLVMConstArray(c->ptr_type, (LLVMValueRef *)refs, count));
 }
 
 static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast, bool is_typeid)

@@ -954,7 +954,6 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 			SEMA_ERROR(type_infoptr(method->func_decl.type_parent), "Interfaces should not be declared as methods.");
 			return decl_poison(method);
 		}
-		method->func_decl.attr_interface_method = true;
 		bool erase = false;
 
 		// Insert the first parameter, which is the implicit `void*`
@@ -1691,7 +1690,7 @@ ERR:
 bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl)
 {
 	Expr *value = decl->enum_constant.value;
-	if (!sema_analyse_inferred_expr(context, decl->type, value)) return decl_poison(decl);
+	if (!sema_analyse_inferred_expr(context, decl->type, value,NULL)) return decl_poison(decl);
 	if (!expr_is_runtime_const(value))
 	{
 		SEMA_ERROR(value, "Expected an constant enum value.");
@@ -3613,7 +3612,7 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 			if (!sema_resolve_type_info(context, type_infoptr(param->var.type_info), RESOLVE_TYPE_DEFAULT)) return false;
 			Type *type = typeget(param->var.type_info);
 			ASSERT_SPAN(decl, type);
-			if (!sema_analyse_inferred_expr(context, type, expr)) goto ERR;
+			if (!sema_analyse_inferred_expr(context, type, expr, NULL)) goto ERR;
 			if (!cast_implicit(context, expr, type, false)) goto ERR;
 			if (!sema_cast_const(expr))
 			{
@@ -4470,7 +4469,7 @@ static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceS
 /**
  * Analyse $foo and $Foo variables.
  */
-bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
+bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_failed)
 {
 	Expr *init;
 	ASSERT(decl->decl_kind == DECL_VAR && "Should only be called on variables.");
@@ -4500,6 +4499,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				// If this isn't a type, it's an error.
 				if (!expr_is_const_typeid(init))
 				{
+					if (check_failed) goto FAIL_CHECK;
 					SEMA_ERROR(decl->var.init_expr, "Expected a type assigned to %s.", decl->name);
 					goto FAIL;
 				}
@@ -4519,6 +4519,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				{
 					if (type_is_inferred(decl->type))
 					{
+						if (check_failed) goto FAIL_CHECK;
 						SEMA_ERROR(type_info, "No size could be inferred.");
 						goto FAIL;
 					}
@@ -4536,6 +4537,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				// Check that it is constant.
 				if (!expr_is_runtime_const(init))
 				{
+					if (check_failed) goto FAIL_CHECK;
 					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 					goto FAIL;
 				}
@@ -4546,6 +4548,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			{
 				if (init->expr_kind == EXPR_TYPEINFO)
 				{
+					if (check_failed) goto FAIL_CHECK;
 					SEMA_ERROR(init, "You can't assign a type to a regular compile time variable like '%s', but it would be allowed if the variable was a compile time type variable. Such a variable needs to have a type-like name, e.g. '$MyType'.", decl->name);
 					goto FAIL;
 				}
@@ -4553,6 +4556,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				// Check it is constant.
 				if (!expr_is_runtime_const(init))
 				{
+					if (check_failed) goto FAIL_CHECK;
 					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 					goto FAIL;
 				}
@@ -4566,7 +4570,14 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 		default:
 			UNREACHABLE
 	}
+	if (check_failed) return true;
 	return sema_add_local(context, decl);
+FAIL_CHECK:
+	if (check_failed)
+	{
+		*check_failed = true;
+		return false;
+	}
 FAIL:
 	sema_add_local(context, decl);
 	return decl_poison(decl);
@@ -4574,7 +4585,7 @@ FAIL:
 /**
  * Analyse a regular global or local declaration, e.g. int x = 123
  */
-bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
+bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *check_defined)
 {
 	ASSERT(decl->decl_kind == DECL_VAR && "Unexpected declaration type");
 
@@ -4586,7 +4597,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	{
 		case VARDECL_LOCAL_CT:
 		case VARDECL_LOCAL_CT_TYPE:
-			return sema_analyse_var_decl_ct(context, decl);
+			return sema_analyse_var_decl_ct(context, decl, check_defined);
 		case VARDECL_GLOBAL:
 			is_global = true;
 			break;
@@ -4626,7 +4637,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	{
 
 	}
-	else
+	else if (!check_defined)
 	{
 		if (context->call_env.kind == CALL_ENV_GLOBAL_INIT && !context->call_env.in_no_eval)
 		{
@@ -4655,15 +4666,16 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			return decl_poison(decl);
 		}
 		ASSERT(!decl->var.no_init);
-		if (kind == VARDECL_LOCAL && !context_is_macro(context) && init_expr->expr_kind != EXPR_LAMBDA && !decl->var.safe_infer)
+		if (!check_defined && kind == VARDECL_LOCAL && !context_is_macro(context) && init_expr->expr_kind != EXPR_LAMBDA && !decl->var.safe_infer)
 		{
 			SEMA_ERROR(decl, "Defining a variable using 'var %s = ...' is only allowed inside a macro, or when defining a lambda. You can override this by adding the attribute '@safeinfer' to the declaration.", decl->name);
 			return decl_poison(decl);
 		}
 		if (!sema_analyse_expr(context, init_expr)) return decl_poison(decl);
-		if (global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
+		if (check_defined || global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
 		if (global_level_var && !expr_is_runtime_const(init_expr))
 		{
+			if (check_defined) return *check_defined = true, false;
 			SEMA_ERROR(init_expr, "This expression cannot be evaluated at compile time.");
 			return decl_poison(decl);
 		}
@@ -4675,14 +4687,18 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			case STORAGE_NORMAL:
 				break;
 			case STORAGE_WILDCARD:
+				if (check_defined) return *check_defined = true, false;
 				SEMA_ERROR(init_expr, "No type can be inferred from the optional result.");
 				return decl_poison(decl);
 			case STORAGE_VOID:
+				if (check_defined) return *check_defined = true, false;
 				SEMA_ERROR(init_expr, "You cannot initialize a value to 'void'.");
 				return decl_poison(decl);
 			case STORAGE_COMPILE_TIME:
+				if (check_defined) return *check_defined = true, false;
 				if (init_expr->type == type_untypedlist)
 				{
+					if (check_defined) return *check_defined = true, false;
 					SEMA_ERROR(init_expr,
 					           "The type of an untyped list cannot be inferred, you can try adding an explicit type to solve this.");
 					return decl_poison(decl);
@@ -4697,6 +4713,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 				SEMA_ERROR(init_expr, "You can't store a compile time type in a variable.");
 				return decl_poison(decl);
 			case STORAGE_UNKNOWN:
+				if (check_defined) return *check_defined = true, false;
 				SEMA_ERROR(init_expr, "You cannot initialize a value to %s as it has unknown size.",
 				           type_quoted_error_string(init_expr->type));
 				return decl_poison(decl);
@@ -4753,7 +4770,8 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		CallEnvKind env_kind = context->call_env.kind;
 		if (is_static) context->call_env.kind = CALL_ENV_FUNCTION_STATIC;
 		decl->in_init = true;
-		success = sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false, true, NULL);
+		success = sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false, true, check_defined);
+		if (!success && check_defined) return false;
 		decl->in_init = false;
 		context->call_env.kind = env_kind;
 		if (infer_len)
@@ -4768,6 +4786,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			if (!success) return decl_poison(decl);
 			if (!expr_is_runtime_const(init))
 			{
+				if (check_defined) return *check_defined = true, false;
 				SEMA_ERROR(init, "The expression must be a constant value.");
 				return decl_poison(decl);
 			}
@@ -5040,7 +5059,7 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 	return true;
 }
 
-static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module, SourceSpan error_span)
+static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module, SourceSpan param_span, SourceSpan invocation_span)
 {
 	ASSERT(module->contracts);
 	AstId contract = module->contracts;
@@ -5052,7 +5071,11 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 		SemaContext temp_context;
 		if (ast->contract_stmt.kind == CONTRACT_COMMENT) continue;
 		ASSERT_SPAN(ast, ast->contract_stmt.kind == CONTRACT_REQUIRE);
+		InliningSpan *old_span = c->inlined_at;
+		InliningSpan new_span = { .prev = old_span, .span = invocation_span };
 		SemaContext *new_context = context_transform_for_eval(c, &temp_context, module->units[0]);
+		new_context->inlined_at = &new_span;
+
 		FOREACH(Expr *, expr, ast->contract_stmt.contract.decl_exprs->expression_list)
 		{
 			CondResult res = sema_check_comp_time_bool(new_context, expr);
@@ -5060,13 +5083,13 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 			if (res == COND_TRUE) continue;
 			if (ast->contract_stmt.contract.comment)
 			{
-				sema_error_at(c, error_span,
+				sema_error_at(c, param_span,
 				              "Parameter(s) would violate constraint: %s.",
 				              ast->contract_stmt.contract.comment);
 			}
 			else
 			{
-				sema_error_at(c, error_span, "Parameter(s) failed validation: %s",
+				sema_error_at(c, param_span, "Parameter(s) failed validation: %s",
 				              ast->contract_stmt.contract.expr_string);
 			}
 			FAIL:
@@ -5092,7 +5115,7 @@ bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, con
 }
 
 Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span,
-                                            Expr **params, bool *was_recursive_ref)
+                                            Expr **params, bool *was_recursive_ref, SourceSpan invocation_span)
 {
 	NameResolve name_resolve = {
 			.path = decl_path,
@@ -5148,8 +5171,8 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	{
 		if (instantiated_module->contracts)
 		{
-			SourceSpan error_span = extend_span_with_token(params[0]->span, params[parameter_count - 1]->span);
-			if (!sema_analyse_generic_module_contracts(c, instantiated_module, error_span))
+			SourceSpan param_span = extend_span_with_token(params[0]->span, params[parameter_count - 1]->span);
+			if (!sema_analyse_generic_module_contracts(c, instantiated_module, param_span, invocation_span))
 			{
 				return poisoned_decl;
 			}
@@ -5359,7 +5382,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			if (!sema_analyse_macro(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_VAR:
-			if (!sema_analyse_var_decl(context, decl, false)) goto FAILED;
+			if (!sema_analyse_var_decl(context, decl, false, NULL)) goto FAILED;
 			break;
 		case DECL_ATTRIBUTE:
 			if (!sema_analyse_attribute_decl(context, context, decl, &erase_decl)) goto FAILED;

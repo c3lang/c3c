@@ -612,10 +612,10 @@ const char *file_append_path_temp(const char *path, const char *name)
 	return path_buffer;
 }
 
-const char *file_append_path(const char *path, const char *name)
+char *file_append_path(const char *path, const char *name)
 {
 	size_t path_len = strlen(path);
-	if (!path_len) return name;
+	if (!path_len) return str_dup(name);
 #if PLATFORM_WINDOWS
 	if (path[path_len - 1] == '\\') return str_cat(path, name);
 	if (path[path_len - 1] == '/') return str_cat(path, name);

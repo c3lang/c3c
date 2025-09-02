@@ -109,16 +109,25 @@ fn String format(Allocator allocator, String fmt, args...) @format(1) => @pool()
 }
 
 <*
- Return a new String created using the formatting function.
+ Return a new String created using the formatting function, the resulting string must fit the buffer.
 
  @param [inout] buffer : `The buffer to use`
  @param [in] fmt : `The formatting string`
 *>
 fn String bformat(char[] buffer, String fmt, args...) @format(1)
 {
-	DString str = dstring::new_with_capacity(allocator::wrap(buffer), fmt.len + args.len * 8);
-	str.appendf(fmt, ...args);
-	return str.str_view();
+	Formatter f;
+	OutputFn format_fn = fn void?(void* buf, char c) {
+		char[]* buffer_ref = buf;
+		char[] buffer = *buffer_ref;
+		if (buffer.len == 0) return io::BUFFER_EXCEEDED?;
+		buffer[0] = c;
+		*buffer_ref = buffer[1..];
+	};
+	char[] buffer_copy = buffer;
+	f.init(format_fn, &buffer_copy);
+	usz len = f.vprintf(fmt, args)!!;
+	return (String)buffer[:len];
 }
 
 <*
@@ -213,7 +222,7 @@ fn String String.treplace(self, String needle, String new_str)
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim(self, String to_trim = "\t\n\r ")
+fn String String.trim(self, String to_trim = " \n\t\r\f\v")
 {
     return self.trim_left(to_trim).trim_right(to_trim);
 }
@@ -243,7 +252,7 @@ fn String String.trim_charset(self, AsciiCharset to_trim = ascii::WHITESPACE_SET
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim_left(self, String to_trim = "\t\n\r ")
+fn String String.trim_left(self, String to_trim = " \n\t\r\f\v")
 {
 	usz start = 0;
 	usz len = self.len;
@@ -260,7 +269,7 @@ fn String String.trim_left(self, String to_trim = "\t\n\r ")
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim_right(self, String to_trim = "\t\n\r ")
+fn String String.trim_right(self, String to_trim = " \n\t\r\f\v")
 {
 	usz len = self.len;
 	while (len > 0 && char_in_set(self[len - 1], to_trim)) len--;

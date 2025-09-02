@@ -888,6 +888,16 @@ Expr *parse_decl_or_expr(ParseContext *c)
 	// If it's not a type info, we assume an expr.
 	if (expr->expr_kind != EXPR_TYPEINFO) return expr;
 
+	switch (c->tok)
+	{
+		case TOKEN_RPAREN:
+		case TOKEN_RBRACKET:
+		case TOKEN_RBRACE:
+		case TOKEN_RVEC:
+			return expr;
+		default:
+			break;
+	}
 	// Otherwise we expect a declaration.
 	ASSIGN_DECL_OR_RET(decl, parse_local_decl_after_type(c, expr->type_expr), poisoned_expr);
 DECL:
@@ -1215,8 +1225,12 @@ PARSE_EXPR:
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 {
 	Visibility visibility = c->unit->default_visibility;
-	if (decl->decl_kind == DECL_FUNC) decl->func_decl.attr_test = c->unit->test_by_default;
-	if (decl->decl_kind == DECL_FUNC) decl->func_decl.attr_benchmark = c->unit->benchmark_by_default;
+	// Transfer the test / benchmark properties
+	if (decl->decl_kind == DECL_FUNC && !decl->func_decl.attr_interface_method && !decl->func_decl.type_parent)
+	{
+		decl->func_decl.attr_test = c->unit->test_by_default;
+		decl->func_decl.attr_benchmark = c->unit->benchmark_by_default;
+	}
 	decl->is_export = c->unit->export_by_default;
 	bool is_builtin = false;
 	bool is_cond;
@@ -1277,12 +1291,14 @@ static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref,
 				*visibility_ref = visibility = parsed_visibility;
 				continue;
 			}
+			if (attr->attr_kind == ATTRIBUTE_TAG) goto ADD;
 		}
 		const char *name = attr->name;
 		FOREACH(Attr *, other_attr, *attributes_ref)
 		{
 			if (other_attr->name == name) RETURN_PRINT_ERROR_AT(false, attr, "Repeat of attribute '%s' here.", name);
 		}
+ADD:
 		vec_add(*attributes_ref, attr);
 		if (use_comma && !try_consume(c, TOKEN_COMMA)) break;
 	}
@@ -1663,7 +1679,19 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 		{
 			if (try_consume(c, TOKEN_EQ))
 			{
-				if (!parse_decl_initializer(c, param)) return poisoned_decl;
+				if (try_consume(c, TOKEN_ELLIPSIS))
+				{
+					if (parse_kind != PARAM_PARSE_MACRO)
+					{
+						PRINT_ERROR_HERE("Optional arguments with '...' is only allowed as macro arguments.");
+						return poisoned_decl;
+					}
+					param->var.no_init = true;
+				}
+				else
+				{
+					if (!parse_decl_initializer(c, param)) return poisoned_decl;
+				}
 			}
 		}
 		if (ellipsis)
@@ -2680,6 +2708,7 @@ static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, Func
 	Decl *func = decl_calloc();
 	func->decl_kind = DECL_FUNC;
 	func->func_decl.docs = contracts;
+	func->func_decl.attr_interface_method = parse_kind == FUNC_PARSE_INTERFACE;
 	if (!parse_func_macro_header(c, func)) return poisoned_decl;
 	if (func->name[0] == '@')
 	{
@@ -3178,6 +3207,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 	if (tok != TOKEN_MODULE && !c->unit->module)
 	{
 		if (!context_set_module_from_filename(c)) return poisoned_decl;
+		c->unit->module_generated = true;
 		// Pass the docs to the next thing.
 	}
 
@@ -3218,6 +3248,14 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			advance(c);
 			if (c->unit->module)
 			{
+				if (c->unit->module_generated)
+				{
+					print_error_at(c->unit->module->name->span, "This file begins with an auto-generated module '%s', which isn't compatible with having other module sections, please start the file with an explicit 'module'.",
+						c->unit->module->name->module);
+					sema_note_prev_at(c->span, "This declaration creates the next module section.");
+					c->unit->module_generated = false;
+					return poisoned_decl;
+				}
 				// We might run into another module declaration. If so, create a new unit.
 				ParseContext *new_context = CALLOCS(ParseContext);
 				*new_context = *c;

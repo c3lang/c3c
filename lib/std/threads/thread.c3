@@ -70,12 +70,12 @@ macro void? ConditionVariable.wait(&cond, Mutex* mutex)
 	return NativeConditionVariable.wait((NativeConditionVariable*)cond, (NativeMutex*)mutex);
 }
 <*
- @require @assignable_to(#ms_or_duration, Duration) || @assignable_to(#ms_or_duration, ulong)
+ @require $defined(Duration d = #ms_or_duration) ||| $defined(ulong l = #ms_or_duration)
  @return? thread::WAIT_TIMEOUT, thread::WAIT_FAILED
 *>
 macro void? ConditionVariable.wait_timeout(&cond, Mutex* mutex, #ms_or_duration) @safemacro
 {
-	$if @assignable_to(#ms_or_duration, Duration):
+	$if $defined(*&&(Duration){} = #ms_or_duration):
 		return NativeConditionVariable.wait_timeout_duration((NativeConditionVariable*)cond, (NativeMutex*)mutex, #ms_or_duration);
 	$else
 		return NativeConditionVariable.wait_timeout((NativeConditionVariable*)cond, (NativeMutex*)mutex, #ms_or_duration);

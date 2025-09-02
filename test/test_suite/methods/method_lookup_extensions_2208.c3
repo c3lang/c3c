@@ -1,3 +1,4 @@
+module okok;
 fn void main() {}
 module foo @private;
 

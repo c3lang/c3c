@@ -39,7 +39,7 @@ fn usz? available(InStream s)
 
 macro bool @is_instream(#expr) @const
 {
-	return @assignable_to(#expr, InStream);
+	return $defined(InStream i = #expr);
 }
 
 macro bool @is_not_instream_if_ptr(#expr) @const
@@ -49,7 +49,7 @@ macro bool @is_not_instream_if_ptr(#expr) @const
 
 macro bool @is_outstream(#expr) @const
 {
-	return @assignable_to(#expr, OutStream);
+	return $defined(OutStream s = #expr);
 }
 
 macro bool @is_not_outstream_if_ptr(#expr) @const
@@ -197,7 +197,7 @@ const char[*] MAX_VARS @private = { [2] = 3, [4] = 5, [8] = 10 };
 
 <*
  @require @is_instream(stream)
- @require @typekind(x_ptr) == POINTER && $typeof(x_ptr).inner.kindof.is_int()
+ @require $kindof(x_ptr) == POINTER && $typeof(x_ptr).inner.kindof.is_int()
 *>
 macro usz? read_varint(stream, x_ptr)
 {
@@ -232,7 +232,7 @@ macro usz? read_varint(stream, x_ptr)
 }
 <*
  @require @is_outstream(stream)
- @require @typekind(x).is_int()
+ @require $kindof(x).is_int()
 *>
 macro usz? write_varint(stream, x)
 {

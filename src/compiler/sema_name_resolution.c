@@ -490,7 +490,7 @@ static inline Decl *sema_find_ct_local(SemaContext *context, const char *symbol)
 	return NULL;
 }
 
-static inline Decl *sema_find_local(SemaContext *context, const char *symbol)
+Decl *sema_find_local(SemaContext *context, const char *symbol)
 {
 	if (symbol[0] == '$') return sema_find_ct_local(context, symbol);
 	Decl **locals = context->locals;
@@ -971,6 +971,7 @@ Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const 
 				return NULL;
 		}
 	}
+	if (!type_may_have_method(type)) return NULL;
 	Decl *type_decl = type->decl;
 	if (!decl_ok(type_decl)) return poisoned_decl;
 	Methods *methods = type_decl->method_table;

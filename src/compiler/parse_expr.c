@@ -95,20 +95,6 @@ bool parse_generic_expr_list(ParseContext *c, Expr ***exprs_ref)
 	return true;
 }
 
-static bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_token)
-{
-	while (!try_consume(c, end_token))
-	{
-		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
-		vec_add(*exprs_ref, expr);
-		if (!try_consume(c, TOKEN_COMMA))
-		{
-			CONSUME_OR_RET(end_token, false);
-			return true;
-		}
-	}
-	return true;
-}
 
 /**
  * rethrow_expr ::= call_expr '!'
@@ -775,12 +761,17 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side, SourceSpan lhs
 	ASSERT(expr_ok(left_side));
 
 	Expr *expr = expr_new(EXPR_TERNARY, lhs_start);
-	advance_and_verify(c, TOKEN_QUESTION);
+	bool is_const = tok_is(c, TOKEN_CT_TERNARY);
+	advance(c);
 
-	// If we have no expression following *or* it is a '!' followed by no expression
-	// in this case it's an optional expression.
-	if (!rules[c->tok].prefix || ((c->tok == TOKEN_BANG || c->tok == TOKEN_BANGBANG) && !rules[peek(c)].prefix))
+	if (is_const)
 	{
+		expr->ternary_expr.is_const = true;
+	}
+	else if (!rules[c->tok].prefix || ((c->tok == TOKEN_BANG || c->tok == TOKEN_BANGBANG) && !rules[peek(c)].prefix))
+	{
+		// If we have no expression following *or* it is a '!' followed by no expression
+		// in this case it's an optional expression.
 		expr->expr_kind = EXPR_OPTIONAL;
 		expr->inner_expr = left_side;
 		RANGE_EXTEND_PREV(expr);
@@ -1170,7 +1161,18 @@ static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceSpan lhs_start 
 	Expr *defined = expr_new(EXPR_CT_DEFINED, c->span);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	if (!parse_expr_list(c, &defined->expression_list, TOKEN_RPAREN)) return poisoned_expr;
+	while (!try_consume(c, TOKEN_RPAREN))
+	{
+
+		ASSIGN_EXPR_OR_RET(Expr *expr, parse_decl_or_expr(c), poisoned_expr);
+		vec_add(defined->expression_list, expr);
+		if (!try_consume(c, TOKEN_COMMA))
+		{
+			CONSUME_OR_RET(TOKEN_RPAREN, false);
+			break;
+		}
+	}
+	RANGE_EXTEND_PREV(defined);
 	return defined;
 
 }
@@ -1213,7 +1215,6 @@ static Expr *parse_ct_is_const(ParseContext *c, Expr *left, SourceSpan lhs_start
 	ASSIGN_EXPR_OR_RET(checks->inner_expr, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(checks);
-	SEMA_DEPRECATED(checks, "The $is_const macro is deprecated. Use @is_const(...) instead.");
 	return checks;
 }
 
@@ -1270,6 +1271,27 @@ static Expr *parse_ct_assignable(ParseContext *c, Expr *left, SourceSpan lhs_sta
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
+}
+
+static Expr *parse_ct_kindof(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+{
+	ASSERT(!left && "Unexpected left hand side");
+	Expr *access = expr_new(EXPR_ACCESS_UNRESOLVED, c->span);
+	advance(c);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	Expr *typeof_expr = expr_new(EXPR_TYPEINFO, inner->span);
+	TypeInfo *type_info = type_info_new(TYPE_INFO_TYPEOF, inner->span);
+	type_info->optional = try_consume(c, TOKEN_BANG);
+	type_info->unresolved_type_expr = inner;
+	typeof_expr->type_expr = type_info;
+	access->access_unresolved_expr.parent = typeof_expr;
+	Expr *ident = expr_new(EXPR_UNRESOLVED_IDENTIFIER, c->span);
+	ident->unresolved_ident_expr.ident = type_property_list[TYPE_PROPERTY_KINDOF];
+	access->access_unresolved_expr.child = ident;
+	RANGE_EXTEND_PREV(access);
+	return access;
 }
 
 /**
@@ -2174,11 +2196,13 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_EXTNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_FEATURE] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_IS_CONST] = {parse_ct_is_const, NULL, PREC_NONE },
+		[TOKEN_CT_KINDOF] = { parse_ct_kindof, NULL, PREC_NONE },
 		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_QNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_SIZEOF] = { parse_ct_sizeof, NULL, PREC_NONE },
 		[TOKEN_CT_STRINGIFY] = { parse_ct_stringify, NULL, PREC_NONE },
+		[TOKEN_CT_TERNARY] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_CT_TYPEFROM] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_TYPEOF] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_VAARG] = { parse_ct_arg, NULL, PREC_NONE },

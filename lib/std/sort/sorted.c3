@@ -39,7 +39,7 @@ macro int @sort_cmp(list, pos, cmp, ctx) @local
 {
 	var $has_cmp = @is_valid_macro_slot(cmp);
 	var $has_context = @is_valid_macro_slot(ctx);
-	var $cmp_by_value = $has_cmp &&& @assignable_to(list[0], $typeof(cmp).paramsof[0].type);
+	var $cmp_by_value = $has_cmp &&& $defined($typefrom($typeof(cmp).paramsof[0].type) v = list[0]);
 
 	var a = list[pos];
 	var b = list[pos+1];

@@ -19,7 +19,7 @@ const float LOGF_L4 = 2.4279078841e-01f;
 const double SQRT2 = 1.41421356237309504880;
 const float SQRT2F = 1.41421356237309504880f;
 
-fn double log(double x) @extern("log")
+fn double log(double x) @extern("log") @nostrip @weak
 {
     if (x != x) return x;
     if (x < 0.0) return double.nan;
@@ -50,7 +50,7 @@ fn double log(double x) @extern("log")
     return k * LOG_LN2_HI - ((hfsq - (s * (hfsq + r) + k * LOG_LN2_LO)) - f);
 }
 
-fn float logf(float x) @extern("logf")
+fn float logf(float x) @extern("logf") @nostrip @weak
 {
     if (x != x) return x;
     if (x < 0.0f) return float.nan;

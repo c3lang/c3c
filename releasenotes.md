@@ -20,6 +20,22 @@
 - Error if a stack allocated variable is too big (configurable with `--max-stack-object-size`).
 - Add `@safeinfer` to allow `var` to be used locally.
 - Types converts to typeid implicitly.
+- Allow `$defined` take declarations: `$defined(int x = y)`
+- Struct and typedef subtypes inherit dynamic functions.
+- Improved directory creation error messages in project and library creation commands.
+- `@assignable_to` is deprecated in favour of `$define`
+- Add `linklib-dir` to c3l-libraries to place their linked libraries in. Defaults to `linked-libs`
+- If the `os-arch` linked library doesn't exist, try with `os` for c3l libs.
+- A file with an inferred module may not contain additional other modules. 
+- Update error message for missing body after if/for/etc #2289.
+- `@is_const` is deprecated in favour of directly using `$defined`.
+- `@is_lvalue(#value)` is deprecated in favour of directly using `$defined`.
+- Added `$kindof` compile time function.
+- Deprecated `@typekind` macro in favour of `$kindof`.
+- Deprecated `@typeis` macro in favour of `$typeof(#foo) == int`.
+- `$defined(#hash)` will not check the internal expression, just that `#hash` exists. Use `$defined((void)#hash)` for the old behaviour.
+- Added optional macro arguments using `macro foo(int x = ...)` which can be checked using `$defined(x)`.
+- Add compile time ternary `$val ??? <expr> : <expr>`.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
@@ -58,6 +74,26 @@
 - Incorrect type checking when &[] and [] return optional values.
 - Failed to find subscript overloading on optional values.
 - `Socket.get_option` didn't properly call `getsockopt`, and `getsockopt` had an invalid signature.
+- Taking the address of a label would cause a crash. #2430
+- `@tag` was not allowed to repeat.
+- Lambdas on the top level were not exported by default. #2428
+- `has_tagof` on tagged lambdas returns false #2432
+- Properly add "inlined at" for generic instantiation errors #2382.
+- Inlining a const as an lvalue would take the wrong path and corrupt the expression node.
+- Grabbing (missing) methods on function pointers would cause crash #2434.
+- Fix alignment on jump table.
+- Fix correct `?` after optional function name when reporting type errors.
+- Make `log` and `exp` no-strip.
+- `@test`/`@benchmark` on module would attach to interface and regular methods.
+- Deprecated `@select` in favor of `???`.
+- Enum inference, like `Foo x = $eval("A")`, now works correctly for `$eval`.
+- Fix regression where files were added more than once. #2442
+- Disambiguate types when they have the same name and need cast between each other.
+- Compiler module-scope pointer to slice with offset, causes assert. #2446
+- Compiler hangs on == overload if other is generic #2443
+- Fix missing end of line when encountering errors in project creation.
+- Const enum methods are not being recognized. #2445
+- $defined returns an error when assigning a struct initializer with an incorrect type #2449
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
@@ -76,6 +112,9 @@
 - Deprecated `PollSubscribes` and `PollEvents` in favour of `PollSubscribe` and `PollEvent` and made them const enums.
 - Added `AsciiCharset` for matching ascii characters quickly.
 - Added `String.trim_charset`.
+- Added array `@reduce`, `@filter`, `@any`, `@all`, `@sum`, `@product`, and `@indices_of` macros.
+- `String.bformat` has reduced overhead.
+- Supplemental `roundeven` has a normal implementation.
 
 ## 0.7.4 Change list
 
@@ -174,7 +213,7 @@
 - Added Ed25519.
 - Added string::bformat.
 - Virtual memory library.
-- New virtual emory arena allocator.
+- New virtual memory arena allocator.
 - Added `WString.len`.
 - Added `@addr` macro.
 - Add `ConditionVariable.wait_until` and `ConditionVariable.wait_for`

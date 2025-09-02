@@ -781,6 +781,7 @@ typedef struct
 	ExprId then_expr; // May be null for elvis!
 	ExprId else_expr;
 	bool grouped : 1;
+	bool is_const : 1;
 } ExprTernary;
 
 typedef struct
@@ -1698,6 +1699,7 @@ struct CompilationUnit_
 	bool is_interface_file;
 	bool benchmark_by_default;
 	bool test_by_default;
+	bool module_generated;
 	Attr **attr_links;
 	Decl **generic_defines;
 	Decl **ct_asserts;
@@ -2414,20 +2416,20 @@ bool sema_analyse_expr(SemaContext *context, Expr *expr);
 bool sema_cast_const(Expr *expr);
 
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
-bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);
+bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
 
 bool sema_analyse_method_register(SemaContext *context, Decl *method);
 bool sema_resolve_type_structure(SemaContext *context, Type *type);
-bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl);
-bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local);
+bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defined);
+bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *check_defined);
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_statement(SemaContext *context, Ast *statement);
 
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right,
                                          bool is_unwrapped_var, bool is_declaration, bool *failed_ref);
-bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr);
+bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
 Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs);
 
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional,
@@ -2447,6 +2449,7 @@ Decl *sema_find_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);
 Decl *sema_find_label_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);
+Decl *sema_find_local(SemaContext *context, const char *symbol);
 Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
 BoolErr sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 
@@ -2581,6 +2584,9 @@ FunctionPrototype *type_get_resolved_prototype(Type *type);
 bool type_is_inner_type(Type *type);
 const char *type_to_error_string(Type *type);
 const char *type_quoted_error_string(Type *type);
+const char *type_quoted_error_string_with_path(Type *type);
+const char *type_error_string_maybe_with_path(Type *type, Type *other_type);
+const char *type_quoted_error_string_maybe_with_path(Type *type, Type *other_type);
 INLINE bool type_may_negate(Type *type);
 INLINE bool type_is_builtin(TypeKind kind);
 INLINE bool type_convert_will_trunc(Type *destination, Type *source);
@@ -3215,6 +3221,7 @@ INLINE bool type_is_user_defined(Type *type)
 {
 	static const bool user_defined_types[TYPE_LAST + 1] = {
 		[TYPE_ENUM] = true,
+		[TYPE_CONST_ENUM] = true,
 		[TYPE_STRUCT] = true,
 		[TYPE_FUNC_RAW] = true,
 		[TYPE_UNION] = true,
@@ -4339,6 +4346,12 @@ INLINE bool expr_is_const_fault(Expr *expr)
 {
 	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_FAULT;
+}
+
+INLINE bool expr_is_const_ref(Expr *expr)
+{
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_REF;
 }
 
 INLINE bool expr_is_const_pointer(Expr *expr)

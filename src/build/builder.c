@@ -622,7 +622,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 void init_default_build_target(BuildTarget *target, BuildOptions *options)
 {
 	*target = default_build_target;
-	target->source_dirs = options->files;
+	target->source_dirs = NULL;
 	target->name = options->output_name;
 	target->output_name = options->output_name;
 	update_build_target_from_options(target, options);

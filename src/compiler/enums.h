@@ -1145,6 +1145,7 @@ typedef enum
 	TOKEN_CT_AND,           // &&&
 	TOKEN_CT_CONCAT,        // +++
 	TOKEN_CT_OR,            // |||
+	TOKEN_CT_TERNARY,       // ???
 	// Literals.
 	TOKEN_IDENT,            // Any normal ident.
 	TOKEN_CONST_IDENT,      // Any purely uppercase ident,
@@ -1267,6 +1268,7 @@ typedef enum
 	TOKEN_CT_IF,                // $if
 	TOKEN_CT_INCLUDE,           // $include
 	TOKEN_CT_IS_CONST,          // $is_const
+	TOKEN_CT_KINDOF,            // $kindof
 	TOKEN_CT_NAMEOF,            // $nameof
 	TOKEN_CT_OFFSETOF,          // $offsetof
 	TOKEN_CT_QNAMEOF,           // $qnameof

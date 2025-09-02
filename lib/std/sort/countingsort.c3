@@ -32,7 +32,7 @@ alias Indexs @private = char[256];
 alias ElementType = $typeof((Type){}[0]);
 
 const bool NO_KEY_FN @private = types::is_same(KeyFn, EmptySlot);
-const bool KEY_BY_VALUE @private = NO_KEY_FN ||| @assignable_to((ElementType){}, KeyFn.paramsof[0].type);
+const bool KEY_BY_VALUE @private = NO_KEY_FN ||| $defined($typefrom(KeyFn.paramsof[0].type) x = (ElementType){});
 const bool LIST_HAS_REF @private = $defined(&(Type){}[0]);
 
 alias KeyFnReturnType @if(!NO_KEY_FN) = $typefrom(KeyFn.returns) ;

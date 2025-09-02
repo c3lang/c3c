@@ -16,7 +16,7 @@ macro bool @is_sortable(#list)
 			return false;
 		$case !$defined(#list.len):
 			return false;
-		$case @typekind(#list) == VECTOR || @typekind(#list) == ARRAY:
+		$case $kindof(#list) == VECTOR || $kindof(#list) == ARRAY:
 			return false;
 		$case $defined(&#list[0]) &&& !types::is_same($typeof(&#list[0]), $typeof(#list[0])*):
 			return false;
@@ -49,7 +49,7 @@ macro bool @is_cmp_key_fn(#key_fn, #list)
 {
 	$switch:
 		$case @is_empty_macro_slot(#key_fn): return true;
-		$case $typeof(#key_fn).kindof != FUNC: return false;
+		$case $kindof(#key_fn) != FUNC: return false;
 		$case $typeof(#key_fn).returns.kindof != UNSIGNED_INT: return false;
 		$case $defined(#key_fn(#list[0])): return true;
 		$case $defined(#key_fn(&&(#list[0]))): return true;
