@@ -7,6 +7,7 @@
 ### Fixes
 - Compiler assert with var x @noinit = 0 #2452
 - Confusing error message when type has [] overloaded but not []= #2453
+- $defined(x[0] = val) causes an error instead of returning false when a type does not have []= defined #2454
 
 ### Stdlib changes
 
