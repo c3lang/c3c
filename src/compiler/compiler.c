@@ -413,7 +413,7 @@ void compiler_parse(void)
 	compiler_parsing_time = bench_mark();
 }
 
-bool compiler_should_ouput_file(const char *file)
+bool compiler_should_output_file(const char *file)
 {
 	if (!vec_size(compiler.build.emit_only)) return true;
 	FOREACH(const char *, f, compiler.build.emit_only)

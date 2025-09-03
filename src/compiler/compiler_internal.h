@@ -2478,7 +2478,7 @@ File *source_file_text_load(const char *filename, char *content);
 
 File *compile_and_invoke(const char *file, const char *args, const char *stdin_data, size_t limit);
 void compiler_parse(void);
-bool compiler_should_ouput_file(const char *file);
+bool compiler_should_output_file(const char *file);
 void emit_json(void);
 
 void stable_init(STable *table, uint32_t initial_size);

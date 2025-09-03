@@ -9120,7 +9120,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 
 	EndJump active_scope_jump = context->active_scope.end_jump;
 
-	// First we analyse the "else" and try to implictly cast.
+	// First we analyse the "else" and try to implicitly cast.
 	if (!sema_analyse_inferred_expr(context, infer_type, right, NULL)) return false;
 
 	if (left->expr_kind == EXPR_OPTIONAL)
@@ -11001,7 +11001,7 @@ static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, b
 static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr *expr, bool *no_match_ref)
 {
 	TypeInfo *type_info = expr->expr_compound_literal.type_info;
-	// We allow infering the size of arrays.
+	// We allow inferring the size of arrays.
 	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_INFER)) return false;
 	Type *type = type_info->type;
 	if (type_is_optional(type))
