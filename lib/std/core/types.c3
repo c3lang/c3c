@@ -115,7 +115,7 @@ fn bool TypeKind.is_int(kind) @inline
 	return kind == TypeKind.SIGNED_INT || kind == TypeKind.UNSIGNED_INT;
 }
 
-macro bool is_slice_convertable($Type)
+macro bool is_slice_convertible($Type)
 {
 	$switch $Type.kindof:
 		$case SLICE:

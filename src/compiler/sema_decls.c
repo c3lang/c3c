@@ -5146,10 +5146,10 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	AnalysisStage stage = c->unit->module->generic_module
 			? c->unit->module->stage
 			: c->unit->module->stage - 1;
-	bool instatiation = false;
+	bool instantiation = false;
 	if (!instantiated_module)
 	{
-		instatiation = true;
+		instantiation = true;
 		Path *path = CALLOCS(Path);
 		path->module = path_string;
 		path->span = module->name->span;
@@ -5167,7 +5167,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		sema_error_at(c, span, "The generic module '%s' does not have '%s' for this parameterization.", module->name->module, name);
 		return poisoned_decl;
 	}
-	if (instatiation)
+	if (instantiation)
 	{
 		if (instantiated_module->contracts)
 		{
