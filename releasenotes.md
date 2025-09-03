@@ -11,6 +11,7 @@
 - Returning pointer to index of slice stored in a struct from method taking self incorrectly detected as returning pointer to local variable #2455.
 
 ### Stdlib changes
+- Added generic `InterfaceList` to store a list of values that implement a specific interface
 
 ## 0.7.5 Change list
 
@@ -127,7 +128,6 @@
 - Added array `@reduce`, `@filter`, `@any`, `@all`, `@sum`, `@product`, and `@indices_of` macros.
 - `String.bformat` has reduced overhead.
 - Supplemental `roundeven` has a normal implementation.
-- Added generic `InterfaceList` to store a list of values that implement a specific interface
 
 ## 0.7.4 Change list
 
