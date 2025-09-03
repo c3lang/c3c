@@ -11,6 +11,7 @@
 - Returning pointer to index of slice stored in a struct from method taking self incorrectly detected as returning pointer to local variable #2455.
 
 ### Stdlib changes
+- Added generic `InterfaceList` to store a list of values that implement a specific interface
 
 ## 0.7.5 Change list
 
