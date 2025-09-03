@@ -283,7 +283,7 @@
 - Linker errors when shadowing @local with public function #2198
 - Bug when offsetting pointers of large structs using ++ and --.
 - `x++` and `x--` works on pointer vectors #2222.
-- `x += 1` and `x -= 1` works propertly on pointer vectors #2222.
+- `x += 1` and `x -= 1` works properly on pointer vectors #2222.
 - Fixes to `x += { 1, 1 }` for enum and pointer vectors #2222.
 - Linking fails on operator method imported as `@public` #2224.
 - Lambda C-style vaargs were not properly rejected, leading to crash #2229.
@@ -410,7 +410,7 @@
 - Regression with invalid setup of the WASM temp allocator.
 - Correctly detect multiple overloads of the same type.
 - ABI bug on x64 Linux / MacOS when passing a union containing a struct of 3 floats. #2087
-- Bug with slice acces as inline struct member #2088.
+- Bug with slice access as inline struct member #2088.
 - `@if` now does implicit conversion to bool like `$if`. #2086
 - Fix broken enum inline -> bool conversions #2094.
 - `@if` was ignored on attrdef, regression 0.7 #2093.
@@ -555,7 +555,7 @@
 ### Changes / improvements
 - Contracts @require/@ensure are no longer treated as conditionals, but must be explicitly bool.
 - Add `win-debug` setting to be able to pick dwarf for output #1855.
-- Error on switch case fallthough if there is more than one newline #1849.
+- Error on switch case fallthrough if there is more than one newline #1849.
 - Added flags to `c3c project view` to filter displayed properties
 - Compile time array assignment #1806.
 - Allow `+++` to work on all types of arrays.
@@ -582,7 +582,7 @@
 - Fix issue with `@const` where the statement `$foo = 1;` was not considered constant.
 - Const strings and bytes were not properly converted to compile time bools.
 - Concatenating a const empty slice with another array caused a null pointer access.
-- Fix `linux-crt` and `linux-crtbegin` not getting recognized as a project paramater
+- Fix `linux-crt` and `linux-crtbegin` not getting recognized as a project parameter
 - Fix dues to crash when converting a const vector to another vector #1864.
 - Filter `$exec` output from `\r`, which otherwise would cause a compiler assert #1867.
 - Fixes to `"exec" use, including issue when compiling with MinGW.
@@ -704,7 +704,7 @@
 - Prohibit raw vaargs in regular functions with a function body.
 - Assert on certain slice to slice casts. #1768.
 - Fix vector float -> bool conversion.
-- Fix `+a = 1` erronously being accepted.
+- Fix `+a = 1` erroneously being accepted.
 - Fix not freeing a zero length String
 - Macros with trailing bodys aren't allowed as the single statement after a while loop with no body #1772.
 - Deref subscripts as needed for macro ref method arguments. #1789
@@ -1655,7 +1655,7 @@
 
 - Allow any expression as default expression.
 - Allow using enums for indexing arrays.
-- Added $convertable / $castable compile time functions.
+- Added $convertible / $castable compile time functions.
 - Removed ´func´ deprecated keyword
 - Slicing a distinct type now returns the distinct type.
 - Renamed @autoimport -> @builtin
@@ -1672,7 +1672,7 @@
 - Add linker and linked dir arguments to build files.
 - Auto-import std::core.
 - LLVM 15 support.
-- Beter native file handling for MSVC
+- Better native file handling for MSVC
 - New import rules – recursive imports
 - Add lld linking for FreeBSD
 - User defined attributes. @Foo = @inline
