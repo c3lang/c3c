@@ -28,7 +28,7 @@ module std::sort::cs{Type, KeyFn};
 
 alias Counts @private = usz[256];
 alias Ranges @private = usz[257];
-alias Indices @private = char[256];
+alias Indexs @private = char[256];
 alias ElementType = $typeof((Type){}[0]);
 
 const bool NO_KEY_FN @private = types::is_same(KeyFn, EmptySlot);
@@ -55,7 +55,7 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 
 	Counts counts;
 	Ranges ranges;
-	Indices indices;
+	Indexs indexs;
 
 	KeyFnReturnType mn = ~(KeyFnReturnType)0;
 	KeyFnReturnType mx = 0;
@@ -96,8 +96,8 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 	usz total = 0;
 	foreach (char i, count : counts)
 	{
-		indices[fallback0_count]       = i;
-		indices[255 - recursion_count] = i;
+		indexs[fallback0_count]       = i;
+		indexs[255 - recursion_count] = i;
 
 		fallback0_count += (ushort)(count > 1 && count <= 32);
 		recursion_count += (ushort)(count > 128);
@@ -108,13 +108,13 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 	}
 	ranges[256] = total;
 	
-	ushort remaining_indices = 256 - (fallback0_count + recursion_count);
-	for(ushort i = 0; (i < 256) && remaining_indices; i++) {
-		indices[fallback0_count + fallback1_count] = (char)i;
+	ushort remaining_indexs = 256 - (fallback0_count + recursion_count);
+	for(ushort i = 0; (i < 256) && remaining_indexs; i++) {
+		indexs[fallback0_count + fallback1_count] = (char)i;
 		usz count = ranges[i + 1] - ranges[i];
 		ushort within_fallback1_range = (ushort)(count > 32 && count <= 128);
 		fallback1_count += within_fallback1_range;
-		remaining_indices -= within_fallback1_range;
+		remaining_indexs -= within_fallback1_range;
 	}
 	
 	if (!keys_ordered)
@@ -151,7 +151,7 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 	if (byte_idx)
 	{
 		for (usz p = 0; p < fallback0_count; p++) {
-			usz i = indices[p];
+			usz i = indexs[p];
 
 			usz	start_offset = ranges[i];
 			usz	end_offset   = ranges[i + 1];
@@ -160,7 +160,7 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 		}
 
 		for (usz p = 0; p < fallback1_count; p++) {
-			usz i = indices[fallback0_count + p];
+			usz i = indexs[fallback0_count + p];
 
 			usz	start_offset = ranges[i];
 			usz	end_offset   = ranges[i + 1];
@@ -170,7 +170,7 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 
 		for (usz p = 0; p < recursion_count; p++)
 		{
-			usz i = indices[255 - p];
+			usz i = indexs[255 - p];
 
 			usz	start_offset = ranges[i];
 			usz	end_offset   = ranges[i + 1];

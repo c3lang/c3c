@@ -74,7 +74,7 @@ typedef enum
 	ARCH_TYPE_AARCH64,      // AArch64 (little endian): aarch64
 	ARCH_TYPE_AARCH64_BE,   // AArch64 (big endian): aarch64_be
 	ARCH_TYPE_AARCH64_32,   // AArch64 (little endian) ILP32: aarch64_32
-	ARCH_TYPE_ARC,          // ARC: Synopsis ARC
+	ARCH_TYPE_ARC,          // ARC: Synopsys ARC
 	ARCH_TYPE_AVR,          // AVR: Atmel AVR microcontroller
 	ARCH_TYPE_BPFEL,        // eBPF or extended BPF or 64-bit BPF (little endian)
 	ARCH_TYPE_BPFEB,        // eBPF or extended BPF or 64-bit BPF (big endian)

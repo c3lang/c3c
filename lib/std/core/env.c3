@@ -68,7 +68,7 @@ enum ArchType
 	AARCH64,      // AArch64 (little endian): aarch64
 	AARCH64_BE,   // AArch64 (big endian): aarch64_be
 	AARCH64_32,   // AArch64 (little endian) ILP32: aarch64_32
-	ARC,          // ARC: Synopsis ARC
+	ARC,          // ARC: Synopsys ARC
 	AVR,          // AVR: Atmel AVR microcontroller
 	BPFEL,        // eBPF or extended BPF or 64-bit BPF (little endian)
 	BPFEB,        // eBPF or extended BPF or 64-bit BPF (big endian)
