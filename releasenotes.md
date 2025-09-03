@@ -1,5 +1,17 @@
 # C3C Release Notes
 
+## 0.7.6 Change list
+
+### Changes / improvements
+
+### Fixes
+- Compiler assert with var x @noinit = 0 #2452
+- Confusing error message when type has [] overloaded but not []= #2453
+- $defined(x[0] = val) causes an error instead of returning false when a type does not have []= defined #2454
+- Returning pointer to index of slice stored in a struct from method taking self incorrectly detected as returning pointer to local variable #2455.
+
+### Stdlib changes
+
 ## 0.7.5 Change list
 
 ### Changes / improvements
@@ -87,6 +99,13 @@
 - `@test`/`@benchmark` on module would attach to interface and regular methods.
 - Deprecated `@select` in favor of `???`.
 - Enum inference, like `Foo x = $eval("A")`, now works correctly for `$eval`.
+- Fix regression where files were added more than once. #2442
+- Disambiguate types when they have the same name and need cast between each other.
+- Compiler module-scope pointer to slice with offset, causes assert. #2446
+- Compiler hangs on == overload if other is generic #2443
+- Fix missing end of line when encountering errors in project creation.
+- Const enum methods are not being recognized. #2445
+- $defined returns an error when assigning a struct initializer with an incorrect type #2449
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.

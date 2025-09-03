@@ -439,7 +439,7 @@ static void exit_fail(const char *fmt, ...)
 	va_start(list, fmt);
 	vfprintf(stderr, fmt, list);
 	va_end(list);
-	fputs("", stderr);
+	fputs("\n", stderr);
 	exit_compiler(EXIT_FAILURE);
 }
 
@@ -453,7 +453,7 @@ static void exit_fail(const char *fmt, ...)
 	}
 	vfprintf(stderr, fmt, list);
 	va_end(list);
-	fputs("", stderr);
+	fputs("\n", stderr);
 	exit_compiler(EXIT_FAILURE);
 }
 

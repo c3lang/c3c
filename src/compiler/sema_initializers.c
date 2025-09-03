@@ -4,14 +4,14 @@
 
 #include "sema_internal.h"
 
-static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *context, Decl *assigned, Expr *initializer);
+static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *context, Decl *assigned, Expr *initializer, bool *no_match_ref);
 static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *context, Type *assigned, Type *flattened,
-															 Expr *initializer);
-static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, Expr *initializer);
+                                                             Expr *initializer, bool *no_match_ref);
+static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, Expr *initializer, bool *no_match_ref);
 static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type *assigned, Type *flattened,
-													 Expr *initializer);
+                                                     Expr *initializer, bool *no_match_ref);
 static inline void sema_not_enough_elements_error(SemaContext *context, Expr *initializer, int element);
-static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *assigned_type, Type *flattened, Expr *expr);
+static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *assigned_type, Type *flattened, Expr *expr, bool *no_match_ref);
 static void sema_create_const_initializer_from_designated_init(ConstInitializer *const_init, Expr *initializer);
 static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, DesignatorElement ***elements_ref, unsigned *index, bool is_substruct);
 static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr);
@@ -182,7 +182,7 @@ static inline void sema_not_enough_elements_error(SemaContext *context, Expr *in
  * Perform analysis for a plain initializer, that is one initializing all fields.
  * @return true if analysis succeeds.
  */
-static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *context, Decl *assigned, Expr *initializer)
+static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *context, Decl *assigned, Expr *initializer, bool *no_match_ref)
 {
 	ASSERT(assigned->resolve_status == RESOLVE_DONE);
 	Expr **elements = initializer->initializer_list;
@@ -198,6 +198,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	// 2. We don't support this actually, but we used to. Maybe we will in the future.
 	if (elements_needed == 0)
 	{
+		if (no_match_ref) goto NO_MATCH;
 		// Generate a nice error message for zero.
 		RETURN_SEMA_ERROR(elements[0], "Too many elements in initializer, it must be empty.");
 	}
@@ -222,6 +223,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		//    user pinpoint where they put the double elements.
 		if (i >= elements_needed)
 		{
+			if (no_match_ref) goto NO_MATCH;
 			ASSERT(i < size);
 			RETURN_SEMA_ERROR(elements[i], "Too many elements in initializer, expected only %d.", elements_needed);
 		}
@@ -245,6 +247,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 			}
 			if (i >= size)
 			{
+				if (!no_match_ref) goto NO_MATCH;
 				sema_not_enough_elements_error(context, initializer, (int)i);
 				return false;
 			}
@@ -265,12 +268,13 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		}
 		if (i >= size)
 		{
+			if (!no_match_ref) goto NO_MATCH;
 			sema_not_enough_elements_error(context, initializer, i);
 			return false;
 		}
 		Expr *element = elements[i];
 		// 6. We know the required type, so resolve the expression.
-		if (!sema_analyse_expr_rhs(context, members[i]->type, element, true, NULL, false)) return false;
+		if (!sema_analyse_expr_rhs(context, members[i]->type, element, true, no_match_ref, false)) return false;
 		if (member->decl_kind == DECL_VAR && member->var.kind == VARDECL_BITMEMBER)
 		{
 			if (!sema_bit_assignment_check(context, element, members[i])) return false;
@@ -302,7 +306,9 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 
 	// 7. Done!
 	return true;
-
+NO_MATCH:;
+	*no_match_ref = true;
+	return false;
 }
 
 Expr *sema_create_struct_from_expressions(Decl *struct_decl, SourceSpan span, Expr **exprs)
@@ -316,7 +322,7 @@ Expr *sema_create_struct_from_expressions(Decl *struct_decl, SourceSpan span, Ex
  * @return true if analysis succeeds.
  */
 static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *context, Type *assigned, Type *flattened,
-															 Expr *initializer)
+                                                             Expr *initializer, bool *no_match_ref)
 {
 	Expr **elements = initializer->initializer_list;
 	bool inferred_len = type_len_is_inferred(flattened);
@@ -338,9 +344,9 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 
 	if (expected_members == 0 && !inferred_len)
 	{
+		if (no_match_ref) goto NO_MATCH;
 		// Generate a nice error message for zero.
-		SEMA_ERROR(elements[0], "Too many elements in initializer, it must be empty.");
-		return false;
+		RETURN_SEMA_ERROR(elements[0], "Too many elements in initializer, it must be empty.");
 	}
 
 	bool optional = false;
@@ -353,12 +359,12 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 		Expr *element = elements[i];
 		if (!inferred_len && i >= expected_members)
 		{
-			SEMA_ERROR(element, "Too many elements in initializer, expected only %d.", expected_members);
-			return false;
+			if (no_match_ref) goto NO_MATCH;
+			RETURN_SEMA_ERROR(element, "Too many elements in initializer, expected only %d.", expected_members);
 		}
 		if (is_vector)
 		{
-			if (!sema_analyse_inferred_expr(context, inner_type, element)) return false;
+			if (!sema_analyse_inferred_expr(context, inner_type, element, no_match_ref)) return false;
 			Type *element_type = element->type;
 			Type *element_flat = type_flatten(element_type);
 			if (element_flat->type_kind == TYPE_VECTOR
@@ -367,8 +373,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				unsigned len = element_flat->array.len;
 				if (!inferred_len && i + len > expected_members)
 				{
-					SEMA_ERROR(element, "Too many elements in initializer when expanding, expected only %d.", expected_members);
-					return false;
+					RETURN_SEMA_ERROR(element, "Too many elements in initializer when expanding, expected only %d.", expected_members);
 				}
 				Expr *expr_two = expr_new_expr(EXPR_TWO, element);
 				Decl *decl = decl_new_generated_var(element_type, VARDECL_LOCAL, element->span);
@@ -394,19 +399,19 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				optional = optional || IS_OPTIONAL(element);
 				continue;
 			}
-			if (!cast_implicit(context, element, inner_type, false)) return false;
+			if (!cast_implicit_checked(context, element, inner_type, false, no_match_ref)) return false;
 			optional = optional || IS_OPTIONAL(element);
 		}
 		else
 		{
-			if (!sema_analyse_expr_rhs(context, inner_type, element, true, NULL, false)) return false;
+			if (!sema_analyse_expr_rhs(context, inner_type, element, true, no_match_ref, false)) return false;
 			if (inner_is_inferred)
 			{
 				if (inferred_element)
 				{
-					if (!cast_implicit(context, element, inferred_element, false))
+					if (!cast_implicit_checked(context, element, inferred_element, false, no_match_ref))
 					{
-						SEMA_NOTE(elements[0], "Type inferred from here.");
+						if (!no_match_ref) SEMA_NOTE(elements[0], "Type inferred from here.");
 						return false;
 					}
 				}
@@ -422,8 +427,8 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	{
 		if (!inferred_element)
 		{
-			SEMA_ERROR(initializer, "Zero sized elements are not allowed when inferring size.");
-			return false;
+			if (no_match_ref) goto NO_MATCH;
+			RETURN_SEMA_ERROR(initializer, "Zero sized elements are not allowed when inferring size.");
 		}
 		inner_type = inferred_element;
 	}
@@ -441,8 +446,8 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 
 	if (!inferred_len && expected_members > count)
 	{
-		SEMA_ERROR(elements[count - 1], "Too few elements in initializer, %d elements are needed.", expected_members);
-		return false;
+		if (no_match_ref) goto NO_MATCH;
+		RETURN_SEMA_ERROR(elements[count - 1], "Too few elements in initializer, %d elements are needed.", expected_members);
 	}
 
 	initializer->resolve_status = RESOLVE_DONE;
@@ -464,9 +469,12 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 
 	// 7. Done!
 	return true;
+NO_MATCH:;
+	*no_match_ref = true;
+	return false;
 }
 
-static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, Expr *initializer)
+static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, Expr *initializer, bool *no_match_ref)
 {
 	Expr **init_list = initializer->initializer_list;
 	FOREACH(Expr *, element, init_list)
@@ -474,6 +482,11 @@ static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, E
 		if (!sema_analyse_expr(context, element)) return false;
 		if (!sema_cast_const(element))
 		{
+			if (no_match_ref)
+			{
+				*no_match_ref = true;
+				return false;
+			}
 			RETURN_SEMA_ERROR(element, "An untyped list can only have "
 									   "constant elements, you can try "
 									   "to type the list by prefixing the type and possibly enclosing it in parentheses, "
@@ -488,7 +501,7 @@ static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, E
 }
 
 static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type *assigned, Type *flattened,
-													 Expr *initializer)
+                                                     Expr *initializer, bool *no_match_ref)
 {
 	Expr **init_expressions = initializer->designated_init_list;
 	Type *original = flattened->canonical;
@@ -513,7 +526,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 			bitmember_count_without_value += 1;
 		}
 		if (!value) RETURN_SEMA_ERROR(expr, "This initializer needs a value.");
-		if (!sema_analyse_expr_rhs(context, result, value, true, NULL, false)) return false;
+		if (!sema_analyse_expr_rhs(context, result, value, true, no_match_ref, false)) return false;
 		if (is_bitmember)
 		{
 			if (!sema_bit_assignment_check(context, value, member)) return false;
@@ -525,7 +538,8 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 			inner_type = type_no_optional(value->type);
 		}
 	}
-	if (bitmember_count_without_value != 0 && bitmember_count_without_value != vec_size(init_expressions)) {
+	if (bitmember_count_without_value != 0 && bitmember_count_without_value != vec_size(init_expressions))
+	{
 		RETURN_SEMA_ERROR(initializer, "Mixing the omission of initializers is not permitted.");
 	}
 	Type *type;
@@ -549,7 +563,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 }
 
 
-static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *assigned_type, Type *flattened, Expr *expr)
+static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *assigned_type, Type *flattened, Expr *expr, bool *no_match_ref)
 {
 	// Note at this point this we either have
 	// EXPR_DESIGNATED_INITIALIZER_LIST
@@ -559,13 +573,13 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 	// 1. Designated initializer is separately evaluated.
 	if (expr->expr_kind == EXPR_DESIGNATED_INITIALIZER_LIST)
 	{
-		return sema_expr_analyse_designated_initializer(context, assigned_type, flattened, expr);
+		return sema_expr_analyse_designated_initializer(context, assigned_type, flattened, expr,NULL);
 	}
 
 	if (expr->expr_kind == EXPR_CONST)
 	{
 		ASSERT(expr->const_expr.const_kind == CONST_INITIALIZER);
-		return cast_implicit(context, expr, assigned_type, false);
+		return cast_implicit_checked(context, expr, assigned_type, false, no_match_ref);
 	}
 	ASSERT(expr->expr_kind == EXPR_INITIALIZER_LIST);
 
@@ -583,8 +597,8 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 	{
 		if (type_len_is_inferred(assigned_type))
 		{
-			SEMA_ERROR(expr, "Zero length arrays / vectors are not permitted.");
-			return false;
+			if (no_match_ref) goto NO_MATCH;
+			RETURN_SEMA_ERROR(expr, "Zero length arrays / vectors are not permitted.");
 		}
 		if (flattened == type_untypedlist)
 		{
@@ -598,7 +612,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 	// 4. We might have a complist, because were analyzing $foo = { ... } or similar.
 	if (assigned_type == type_untypedlist)
 	{
-		return sema_expr_analyse_untyped_initializer(context, expr);
+		return sema_expr_analyse_untyped_initializer(context, expr, no_match_ref);
 	}
 
 	// 5. If not, then we see if we have an array.
@@ -609,11 +623,14 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 		flattened->type_kind == TYPE_SLICE ||
 		flattened->type_kind == TYPE_VECTOR)
 	{
-		return sema_expr_analyse_array_plain_initializer(context, assigned_type, flattened, expr);
+		return sema_expr_analyse_array_plain_initializer(context, assigned_type, flattened, expr, no_match_ref);
 	}
 
 	expr->type = assigned_type;
-	return sema_expr_analyse_struct_plain_initializer(context, flattened->decl, expr);
+	return sema_expr_analyse_struct_plain_initializer(context, flattened->decl, expr, no_match_ref);
+NO_MATCH:;
+	*no_match_ref = true;
+	return false;
 }
 
 /**
@@ -773,7 +790,7 @@ ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs,
 	return lhs;
 }
 
-bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr)
+bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref)
 {
 
 	if (!to) to = type_untypedlist;
@@ -801,7 +818,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_VECTOR:
-			return sema_expr_analyse_initializer(context, to, flattened, expr);
+			return sema_expr_analyse_initializer(context, to, flattened, expr, no_match_ref);
 		case TYPE_SLICE:
 		{
 			if (is_zero_init)
@@ -811,7 +828,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 			}
 			// Resolve this as an inferred array.
 			Type *type = type_get_inferred_array(flattened->array.base);
-			if (!sema_expr_analyse_initializer(context, type, type, expr)) return false;
+			if (!sema_expr_analyse_initializer(context, type, type, expr, no_match_ref)) return false;
 			if (expr_is_const_initializer(expr))
 			{
 				ConstInitializer *init = expr->const_expr.initializer;
@@ -823,6 +840,11 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 			expr->resolve_status = RESOLVE_DONE;
 			expr_insert_addr(expr);
 			if (!sema_analyse_expr(context, expr)) return false;
+			if (no_match_ref)
+			{
+				if (!cast_explicit_silent(context, expr, to)) goto NO_MATCH;
+				return true;
+			}
 			return cast_explicit(context, expr, to);
 		}
 		case TYPE_POINTER:
@@ -832,6 +854,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 				expr_rewrite_to_const_zero(expr, to);
 				return true;
 			}
+			if (no_match_ref) goto NO_MATCH;
 			RETURN_SEMA_ERROR(expr, "Pointers cannot be initialized using an initializer list, instead you need to take the address of an array.");
 		case TYPE_VOID:
 		case TYPE_POISONED:
@@ -840,6 +863,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+			if (no_match_ref) goto NO_MATCH;
 			RETURN_SEMA_ERROR(expr, "You cannot use %s with an initializer list.", type_quoted_error_string(to));
 		default:
 			if (is_zero_init)
@@ -850,7 +874,11 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 			}
 			break;
 	}
+	if (no_match_ref) goto NO_MATCH;
 	RETURN_SEMA_ERROR(expr, "You cannot use %s with a non-empty initializer list.", type_quoted_error_string(to));
+NO_MATCH:
+	*no_match_ref = true;
+	return false;
 }
 
 void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value)
