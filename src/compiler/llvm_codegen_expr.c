@@ -3858,7 +3858,10 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 
 	// Only jump to phi if we didn't have an immediate jump. That would
 	// for example happen on "{| defer foo(); return Foo.ERR?; |} ?? 123"
-	if (success_end_block) llvm_emit_br(c, phi_block);
+	if (success_end_block)
+	{
+		if (!llvm_emit_br(c, phi_block)) success_end_block = NULL;
+	}
 
 	// Emit else
 	llvm_emit_block(c, else_block);
@@ -3881,27 +3884,28 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 		}
 	}
 
+	// If there wasn't a success, then we end here, even if the else was a jump.
+	if (!success_end_block)
+	{
+		*be_value = else_value;
+		return;
+	}
+
 	LLVMBasicBlockRef else_block_exit = llvm_get_current_block_if_in_use(c);
 
 	// While the value may not be an optional, we may get a jump
 	// from this construction: foo() ?? (bar()?)
 	// In this case the else block is empty.
-	if (!else_block_exit)
+	if (!else_block_exit || !llvm_emit_br(c, phi_block))
 	{
 		llvm_emit_block(c, phi_block);
 		*be_value = real_value;
 		return;
 	}
 
-	llvm_emit_br(c, phi_block);
 	llvm_emit_block(c, phi_block);
 
-	// Was there never a success, if so the result is the be_value.
-	if (!success_end_block)
-	{
-		*be_value = else_value;
-		return;
-	}
+	assert(success_end_block && else_block_exit);
 
 	// Emit an address if the phi is was by address
 	if (was_address)
