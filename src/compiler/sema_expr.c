@@ -216,19 +216,22 @@ static Type *defer_iptr_cast(Expr *maybe_pointer);
 typedef struct
 {
 	bool in_no_eval;
+	InliningSpan *old_inlining;
 } ContextSwitchState;
 
 static inline ContextSwitchState context_switch_state_push(SemaContext *context, SemaContext *new_context)
 {
 
-	ContextSwitchState state = { .in_no_eval = new_context->call_env.in_no_eval, };
+	ContextSwitchState state = { .in_no_eval = new_context->call_env.in_no_eval, .old_inlining = new_context->inlined_at };
 	new_context->call_env.in_no_eval = context->call_env.in_no_eval;
+	new_context->inlined_at = context->inlined_at;
 	return state;
 }
 
 static inline void context_switch_stat_pop(SemaContext *swapped, ContextSwitchState state)
 {
 	swapped->call_env.in_no_eval = state.in_no_eval;
+	swapped->inlined_at = state.old_inlining;
 }
 
 Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)

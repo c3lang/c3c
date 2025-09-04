@@ -48,7 +48,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit);
 
-static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params);
+static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params, SourceSpan from_span);
 
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
@@ -4851,7 +4851,7 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 	return copy;
 }
 
-static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params)
+static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params, SourceSpan from_span)
 {
 	unsigned decls = 0;
 	Decl* params_decls[MAX_PARAMS];
@@ -4902,6 +4902,7 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 		new_module->contracts = astid(copy_ast_macro(astptr(module->contracts)));
 		copy_end();
 	}
+	new_module->inlined_at = (InliningSpan) { .span = from_span, .prev = copy_inlining_span(context->inlined_at) };
 
 	return new_module;
 }
@@ -5159,7 +5160,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		path->module = path_string;
 		path->span = module->name->span;
 		path->len = scratch_buffer.len;
-		instantiated_module = module_instantiate_generic(c, module, path, params);
+		instantiated_module = module_instantiate_generic(c, module, path, params, invocation_span);
 		if (!instantiated_module) return poisoned_decl;
 		if (!sema_generate_parameterized_name_to_scratch(c, module, params, false, NULL)) return poisoned_decl;
 		instantiated_module->generic_suffix = scratch_buffer_copy();

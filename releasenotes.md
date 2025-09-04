@@ -9,6 +9,8 @@
 - Confusing error message when type has [] overloaded but not []= #2453
 - $defined(x[0] = val) causes an error instead of returning false when a type does not have []= defined #2454
 - Returning pointer to index of slice stored in a struct from method taking self incorrectly detected as returning pointer to local variable #2455.
+- Inlining location when accessing #foo symbols.
+- Improve inlined-at when checking generic code.
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface

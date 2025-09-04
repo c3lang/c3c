@@ -1604,6 +1604,7 @@ Module *compiler_find_or_create_module(Path *module_name, const char **parameter
 	// Set up the module.
 	module = CALLOCS(Module);
 	module->name = module_name;
+	module->inlined_at = (InliningSpan) { INVALID_SPAN, NULL };
 	size_t first = 0;
 	for (size_t i = module_name->len; i > 0; i--)
 	{
