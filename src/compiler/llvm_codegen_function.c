@@ -55,11 +55,12 @@ bool llvm_emit_check_block_branch(GenContext *c)
 	return true;
 }
 
-void llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block)
+bool llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block)
 {
-	if (!llvm_emit_check_block_branch(c)) return;
+	if (!llvm_emit_check_block_branch(c)) return false;
 	c->current_block = NULL;
 	LLVMBuildBr(c->builder, next_block);
+	return true;
 }
 
 

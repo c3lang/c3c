@@ -11,9 +11,12 @@
 - Returning pointer to index of slice stored in a struct from method taking self incorrectly detected as returning pointer to local variable #2455.
 - Inlining location when accessing #foo symbols.
 - Improve inlined-at when checking generic code.
+- Fix codegen bug in expressions like `foo(x()) ?? io::EOF?` causing irregular crashes.
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
+- Added `path::home_directory`, `path::documents_directory`, `path::videos_directory`, `path::pictures_directory`, `path::desktop_directory`, `path::screenshots_directory`,
+  `path::public_share_directory`, `path::templates_directory`, `path::saved_games_directory`, `path::music_directory`, `path::downloads_directory`.
 
 ## 0.7.5 Change list
 

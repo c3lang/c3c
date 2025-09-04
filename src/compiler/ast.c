@@ -404,10 +404,12 @@ bool decl_needs_prefix(Decl *decl)
 {
 	switch (decl->decl_kind)
 	{
-		case DECL_VAR:
-		case DECL_ALIAS:
 		case DECL_FUNC:
 		case DECL_MACRO:
+			if (decl->func_decl.type_parent) return false;
+			FALLTHROUGH;
+		case DECL_VAR:
+		case DECL_ALIAS:
 		case DECL_FAULT:
 			return !decl->is_autoimport;
 		default:

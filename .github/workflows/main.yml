@@ -88,15 +88,15 @@ jobs:
           ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib55 --print-linking examples\raylib\raylib_snake.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib55 --print-linking examples\raylib\raylib_tetris.c3
 
+      - name: run compiler tests
+        run: |
+          cd test
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run -O1 src/test_suite_runner.c3 -- ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
+
       - name: Compile run unit tests
         run: |
           cd test
           ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -O1 -D SLOW_TESTS
-
-      - name: run compiler tests
-        run: |
-          cd test
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run -O1 src/test_suite_runner.c3 -- ..\build\${{ matrix.build_type }}\c3c.exe test_suite/ --no-terminal
 
       - name: Test python script
         run: |
