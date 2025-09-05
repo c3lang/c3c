@@ -589,7 +589,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 			llvm_emit_br(c, cond_block);
 			break;
 		case LOOP_INFINITE:
-			// We might have an infinite loop
+			// We might have an infite loop
 			if (!loop_start_block)
 			{
 				SourceSpan loc = ast->span;

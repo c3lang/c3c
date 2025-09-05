@@ -135,8 +135,8 @@ fn void bsearch() @test
 	key = 6;
 	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_cint);
 	assert(*found == 6);
-	CInt non_existent_key = 12;
-	found = (CInt*) libc::bsearch(&non_existent_key, int_ar, 7, CInt.sizeof, &compare_cint);
+	CInt non_existant_key = 12;
+	found = (CInt*) libc::bsearch(&non_existant_key, int_ar, 7, CInt.sizeof, &compare_cint);
 	assert(found == null);
 
 	Event[] events = {

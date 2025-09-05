@@ -13,7 +13,7 @@ struct ByteBuffer (InStream, OutStream)
 
 <*
  ByteBuffer provides a streamable read/write buffer.
- max_read defines how many bytes might be kept before its internal buffer is shrunk.
+ max_read defines how many bytes might be kept before its internal buffer is shrinked.
  @require self.bytes.len == 0 : "Buffer already initialized."
 *>
 fn ByteBuffer* ByteBuffer.init(&self, Allocator allocator, usz max_read, usz initial_capacity = 16)

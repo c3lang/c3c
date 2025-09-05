@@ -20,7 +20,7 @@ fn char[] FileMmap.bytes(&self)
 }
 
 <*
-  Destroys the underlying VirtualMemory object ie. calls munmap()"
+  Destroys the underlyng VirtualMemory object ie. calls munmap()"
 *>
 fn void? FileMmap.destroy(&self) @maydiscard
 {

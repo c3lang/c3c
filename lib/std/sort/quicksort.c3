@@ -82,8 +82,8 @@ fn void qsort(Type list, isz low, isz high, CmpFn cmp, Context context)
 }
 
 <*
-@require low <= k : "kth smallest element is smaller than lower bounds"
-@require k <= high : "kth smallest element is larger than upper bounds"
+@require low <= k : "kth smalles element is smaller than lower bounds"
+@require k <= high : "kth smalles element is larger than upper bounds"
 *>
 fn ElementType? qselect(Type list, isz low, isz high, isz k, CmpFn cmp, Context context)
 {

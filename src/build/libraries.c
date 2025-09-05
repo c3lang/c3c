@@ -103,7 +103,7 @@ static Library *add_library(JSONObject *json, const char *dir)
 	if (!str_is_valid_lowercase_name(provides))
 	{
 		char *res = strdup(provides);
-		str_elide_in_place(res, 32);
+		str_ellide_in_place(res, 32);
 		error_exit("Invalid 'provides' module name in %s, was '%s', the name should only contain alphanumerical letters and '_'.", library->dir, res);
 	}
 	library->provides = provides;

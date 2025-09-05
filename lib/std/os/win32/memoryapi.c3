@@ -36,7 +36,7 @@ enum Win32_FreeType : const Win32_DWORD
 	MEM_COALESCE_PLACEHOLDERS = 0x00000001,
 	MEM_PRESERVE_PLACEHOLDER  = 0x00000002,
 }
-extern fn Win32_LPVOID virtualAlloc(Win32_LPVOID lpAddress, Win32_SIZE_T dwSize, Win32_AllocationType flAllocationType, Win32_Protect flProtect) @extern("VirtualAlloc");
+extern fn Win32_LPVOID virtualAlloc(Win32_LPVOID lpAddres, Win32_SIZE_T dwSize, Win32_AllocationType flAllocationType, Win32_Protect flProtect) @extern("VirtualAlloc");
 extern fn Win32_PVOID virtualAlloc2(Win32_HANDLE process, Win32_PVOID baseAddress, Win32_SIZE_T size, Win32_AllocationType allocationType, Win32_ULONG pageProtection, Win32_MEM_EXTENDED_PARAMETER* extendedParameters, Win32_ULONG parameterCount) @extern("VirtualAlloc2");
 extern fn Win32_BOOL virtualFree(Win32_LPVOID lpAddress, Win32_SIZE_T dwSize, Win32_FreeType dwFreeType) @extern("VirtualFree");
 extern fn Win32_BOOL virtualProtect(Win32_LPVOID lpAddress, Win32_SIZE_T dwSize, Win32_Protect flNewProtect, Win32_Protect* lpflOldProtect) @extern("VirtualProtect");

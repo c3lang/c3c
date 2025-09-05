@@ -592,17 +592,6 @@ void sema_print_inline(SemaContext *context, SourceSpan original)
 		}
 		inlined_at = inlined_at->prev;
 	}
-	InliningSpan span = context->compilation_unit->module->inlined_at;
-	if (span.span.a == INVALID_SPAN.a) return;
-	inlined_at = &span;
-	while (inlined_at)
-	{
-		if (inlined_at->span.a != original.a)
-		{
-			sema_note_prev_at(inlined_at->span, "Inlined from here.");
-		}
-		inlined_at = inlined_at->prev;
-	}
 }
 
 void sema_error_at(SemaContext *context, SourceSpan span, const char *message, ...)

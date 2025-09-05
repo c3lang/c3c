@@ -218,7 +218,7 @@ enum Speed : const CUInt
 	MAX_BAUD = B4000000,
 }
 
-enum Cc : const inline char
+enum Cc : const char
 {
 	VINTR = 0,
 	VQUIT = 1,

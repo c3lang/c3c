@@ -1159,11 +1159,3 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 	return copy;
 }
 
-InliningSpan *copy_inlining_span(InliningSpan *span)
-{
-	if (!span) return NULL;
-	InliningSpan *copy_span = MALLOCS(InliningSpan);
-	copy_span->span = span->span;
-	copy_span->prev = copy_inlining_span(span->prev);
-	return copy_span;
-}

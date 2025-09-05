@@ -58,7 +58,7 @@ fn CInt __atomic_compare_exchange(CInt size, any ptr, any expected, any desired,
 				nextcase;
 			$endif
 		default:
-			unreachable("Unsupported size (%d) for atomic_compare_exchange", size);
+			unreachable("Unsuported size (%d) for atomic_compare_exchange", size);
 	}
 	return 0;
 }

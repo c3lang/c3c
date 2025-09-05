@@ -7,7 +7,7 @@ import libc, std::hash, std::io, std::os::backtrace;
 
 <*
  EMPTY_MACRO_SLOT is a value used for implementing optional arguments for macros in an efficient
- way. It relies on the fact that distinct types are not implicitly convertible.
+ way. It relies on the fact that distinct types are not implicitly convertable.
 
  You can use `@is_empty_macro_slot()` and `@is_valid_macro_slot()` to figure out whether
  the argument has been used or not.

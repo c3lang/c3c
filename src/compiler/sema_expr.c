@@ -216,22 +216,19 @@ static Type *defer_iptr_cast(Expr *maybe_pointer);
 typedef struct
 {
 	bool in_no_eval;
-	InliningSpan *old_inlining;
 } ContextSwitchState;
 
 static inline ContextSwitchState context_switch_state_push(SemaContext *context, SemaContext *new_context)
 {
 
-	ContextSwitchState state = { .in_no_eval = new_context->call_env.in_no_eval, .old_inlining = new_context->inlined_at };
+	ContextSwitchState state = { .in_no_eval = new_context->call_env.in_no_eval, };
 	new_context->call_env.in_no_eval = context->call_env.in_no_eval;
-	new_context->inlined_at = context->inlined_at;
 	return state;
 }
 
 static inline void context_switch_stat_pop(SemaContext *swapped, ContextSwitchState state)
 {
 	swapped->call_env.in_no_eval = state.in_no_eval;
-	swapped->inlined_at = state.old_inlining;
 }
 
 Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
@@ -3810,15 +3807,11 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 		if (!subscript_type)
 		{
 			if (check_valid) return false;
-			switch (overload_type)
+			if (overload_type == OVERLOAD_ELEMENT_REF)
 			{
-				case OVERLOAD_ELEMENT_REF:
-					RETURN_SEMA_ERROR(expr, "Getting a reference to a subscript of %s is not possible.", type_quoted_error_string(subscripted->type));
-				case OVERLOAD_ELEMENT_SET:
-					RETURN_SEMA_ERROR(expr, "Assigning to a subscript of %s is not possible.", type_quoted_error_string(subscripted->type));
-				default:
-					RETURN_SEMA_ERROR(expr, "Indexing a value of type %s is not possible.", type_quoted_error_string(subscripted->type));
+				RETURN_SEMA_ERROR(expr, "Getting a reference to a subscript of %s is not possible.", type_quoted_error_string(subscripted->type));
 			}
+			RETURN_SEMA_ERROR(expr, "Indexing a value of type %s is not possible.", type_quoted_error_string(subscripted->type));
 		}
 		if (!overload) current_type = type_flatten(current_expr->type);
 	}
@@ -3912,7 +3905,7 @@ SKIP:
 	return true;
 }
 
-static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr *expr, bool *failed_ref)
+static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr *expr, bool check_valid)
 {
 	// Evaluate the expression to index.
 	Expr *subscripted = exprptr(expr->subscript_expr.expr);
@@ -3951,11 +3944,12 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 	Decl *overload;
 	Type *subscript_type;
 	int64_t index_value;
-	if (!sema_expr_resolve_subscript_index(context, expr, subscripted, index, &current_type, &current_expr, &subscript_type, &overload, &index_value, false, OVERLOAD_ELEMENT_SET, failed_ref != NULL))
+	if (!sema_expr_resolve_subscript_index(context, expr, subscripted, index, &current_type, &current_expr, &subscript_type, &overload, &index_value, false, OVERLOAD_ELEMENT_SET, check_valid))
 	{
-		if (failed_ref && expr_ok(index))
+		if (check_valid && expr_ok(index))
 		{
-			*failed_ref = true;
+			expr_poison(expr);
+			return true;
 		}
 		return false;
 	}
@@ -3965,7 +3959,7 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 	{
 		if (index_value == -1)
 		{
-			if (failed_ref) goto VALID_FAIL_POISON;
+			if (check_valid) goto VALID_FAIL_POISON;
 			RETURN_SEMA_ERROR(index, "Assigning to a compile time constant requires a constant index.");
 		}
 		expr->expr_kind = EXPR_CT_SUBSCRIPT;
@@ -3984,7 +3978,7 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 			Decl *len = sema_find_untyped_operator(current_expr->type, OVERLOAD_LEN, NULL);
 			if (!len)
 			{
-				if (failed_ref) goto VALID_FAIL_POISON;
+				if (check_valid) goto VALID_FAIL_POISON;
 				RETURN_SEMA_ERROR(subscripted, "Cannot index '%s' from the end, since there is no 'len' overload.", type_to_error_string(subscripted->type));
 			}
 			if (!sema_analyse_expr(context, current_expr)) return false;
@@ -4018,9 +4012,9 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 	// Check range
 	bool remove_from_back = false;
 	if (!sema_slice_index_is_in_range(context, current_type, index, false, start_from_end, &remove_from_back,
-	                                  failed_ref != NULL))
+	                                  check_valid))
 	{
-		if (failed_ref) goto VALID_FAIL_POISON;
+		if (check_valid) goto VALID_FAIL_POISON;
 		return false;
 	}
 	if (remove_from_back)
@@ -4032,8 +4026,8 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 	expr->type = type_add_optional(subscript_type, optional);
 	return true;
 VALID_FAIL_POISON:
-	*failed_ref = true;
-	return false;
+	expr_poison(expr);
+	return true;
 }
 
 static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, CheckType check, bool check_valid)
@@ -5965,7 +5959,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 		};
 		if (is_lvalue)
 		{
-			if (!sema_expr_analyse_subscript_lvalue(context, expr, NULL)) return false;
+			if (!sema_expr_analyse_subscript_lvalue(context, expr, false)) return false;
 		}
 		else
 		{
@@ -9123,7 +9117,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 
 	EndJump active_scope_jump = context->active_scope.end_jump;
 
-	// First we analyse the "else" and try to implicitly cast.
+	// First we analyse the "else" and try to implictly cast.
 	if (!sema_analyse_inferred_expr(context, infer_type, right, NULL)) return false;
 
 	if (left->expr_kind == EXPR_OPTIONAL)
@@ -9195,7 +9189,7 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Type *infer_ty
 	{
 		if (left->expr_kind != EXPR_TYPEINFO)
 		{
-			if (!sema_analyse_expr_lvalue(context, left, failed_ref)) return false;
+			if (!sema_analyse_expr_lvalue(context, left, NULL)) return false;
 		}
 	}
 	else
@@ -11004,7 +10998,7 @@ static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, b
 static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr *expr, bool *no_match_ref)
 {
 	TypeInfo *type_info = expr->expr_compound_literal.type_info;
-	// We allow inferring the size of arrays.
+	// We allow infering the size of arrays.
 	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_INFER)) return false;
 	Type *type = type_info->type;
 	if (type_is_optional(type))
@@ -11456,7 +11450,7 @@ RETRY:
 		case EXPR_CT_IDENT:
 			return sema_expr_resolve_ct_identifier(context, expr);
 		case EXPR_SUBSCRIPT:
-			return sema_expr_analyse_subscript_lvalue(context, expr, failed_ref);
+			return sema_expr_analyse_subscript_lvalue(context, expr, false);
 		case EXPR_OTHER_CONTEXT:
 		{
 			DEBUG_LOG("Switch context");

@@ -5,5 +5,5 @@ struct GlobalNode
 
 struct Ast
 {
-	GlobalNode global; // #error: Recursive definition of 'GlobalNode'
+	GlobalNode global; // #error: Recursive defintion of 'GlobalNode'
 }

@@ -472,7 +472,7 @@ bool sema_expr_analyse_str_wide(SemaContext *context, Expr *expr, BuiltinFunctio
 		data += increment - 1;
 		if (!from_codepoint)
 		{
-			RETURN_SEMA_ERROR(inner, "Unparsable codepoint in string.");
+			RETURN_SEMA_ERROR(inner, "Unparseable codepoint in string.");
 		}
 		if (type == type_ushort && from_codepoint & 0xFFFF0000)
 		{

@@ -432,7 +432,7 @@ struct Win32_XMM_SAVE_AREA32
 	Win32_UCHAR     tagWord;
 	Win32_UCHAR     reserved1;
 	Win32_USHORT    errorOpcode;
-	Win32_ULONG     errorOffset;
+	Win32_ULONG     errrorOffset;
 	Win32_USHORT    errorSelector;
 	Win32_USHORT    reserved2;
 	Win32_ULONG     dataOffset;

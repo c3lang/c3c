@@ -24,7 +24,7 @@ fn int main(String[] args)
 	// Retain our current path.
 	start_cwd = path::tcwd()!!;
 
-	// Create our test path, note that this prevents us from doing tests in parallel
+	// Create our test path, note that this prevents us from doing tests in parallell
 	test_dir = start_cwd.tappend("_c3test_")!!;
 	defer (void)path::rmtree(test_dir);
 

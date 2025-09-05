@@ -273,7 +273,7 @@ fn void contains_char()
 	assert(!test.contains_char('x'));
 }
 
-fn void test_base_13_conversion()
+fn void test_base_13_convesion()
 {
 	assert("13".to_long(13)!! == 13 + 3);
 	assert("1a".to_long(13)!! == 13 + 10);

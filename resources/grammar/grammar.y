@@ -887,7 +887,6 @@ statement
 	| asm_block_stmt
 	| ct_echo_stmt
 	| ct_assert_stmt
-	| ct_error_stmt
 	| ct_if_stmt
 	| ct_switch_stmt
 	| ct_foreach_stmt
@@ -928,35 +927,14 @@ optional_label
 	| empty
 	;
 
-ct_assert_expr_list
-	: ',' constant_expr
-	| ct_assert_expr_list ',' constant_expr
-	;
-
 ct_assert_stmt
 	: CT_ASSERT constant_expr ':' constant_expr ';'
-	| CT_ASSERT constant_expr ':' constant_expr ct_assert_expr_list ';'
 	| CT_ASSERT constant_expr ';'
-	;
-
-ct_error_stmt
-	: CT_ERROR constant_expr ';'
-	| CT_ERROR constant_expr ct_assert_expr_list ';'
+	| CT_ERROR constant_expr ';'
 	;
 
 ct_include_stmt
-	: CT_INCLUDE constant_expr opt_attributes ';'
-	;
-
-ct_exec_list
-	: constant_expr
-	| ct_exec_list ',' constant_expr
-	;
-
-ct_exec_stmt
-	: CT_EXEC '(' string_expr ')' opt_attributes ';'
-	| CT_EXEC '(' string_expr ',' '{' ct_exec_list opt_comma '}' ')' opt_attributes ';'
-	| CT_EXEC '(' string_expr ',' '{' ct_exec_list opt_comma '}' ',' constant_expr ')' opt_attributes ';'
+	: CT_INCLUDE string_expr ';'
 	;
 
 ct_echo_stmt
@@ -1099,7 +1077,7 @@ faults
 	| faults ',' CONST_IDENT opt_attributes
 	;
 
-faultdef_declaration
+fault_declaration
 	: FAULTDEF faults ';'
 	;
 
@@ -1154,12 +1132,12 @@ parameter
 	| CT_IDENT ELLIPSIS
 	;
 
-func_definition_decl
+func_defintion_decl
 	: FN func_header fn_parameter_list opt_attributes ';'
 	;
 
 func_definition
-	: func_definition_decl
+	: func_defintion_decl
 	| FN func_header fn_parameter_list opt_attributes macro_func_body
 	;
 
@@ -1237,23 +1215,19 @@ opt_generic_parameters
 
 define_ident
 	: IDENT opt_attributes '=' path_ident opt_generic_parameters
-	| IDENT opt_attributes '=' MODULE path_ident opt_generic_parameters
 	| CONST_IDENT  opt_attributes '=' path_const opt_generic_parameters
 	| AT_IDENT opt_attributes '=' path_at_ident opt_generic_parameters
 	;
 
-attrdef_declaration
-	: ATTRDEF define_attribute ';'
-	;
-
-alias_declaration
+define_declaration
 	: ALIAS define_ident ';'
+	| ATTRDEF define_attribute ';'
 	| ALIAS TYPE_IDENT opt_attributes '=' typedef_type opt_attributes ';'
 	;
 
 interface_body
-	: func_definition_decl
-	| interface_body func_definition_decl
+	: func_defintion_decl
+	| interface_body func_defintion_decl
 	;
 
 interface_declaration
@@ -1271,7 +1245,7 @@ interface_declaration_name
 	| TYPE_IDENT ':' interface_parents
 	;
 
-typedef_declaration
+distinct_declaration
 	: TYPEDEF TYPE_IDENT opt_interface_impl opt_attributes '=' opt_inline type ';'
 	;
 
@@ -1300,42 +1274,44 @@ import_decl
 	;
 
 translation_unit
-	: module top_level_after_module
-	| top_level_no_module
+	: top_level_statements
 	| empty
 	;
 
-top_level_decl
-	: import_decl
-	| func_definition
-	| EXTERN func_definition
-	| const_declaration
-	| EXTERN const_declaration
-	| global_declaration
-	| EXTERN global_declaration
+top_level_statements
+	: top_level
+	| top_level_statements top_level
+	;
+
+opt_extern
+	: EXTERN
+	| empty
+	;
+
+exec_decl
+	: CT_EXEC '(' expr ')' opt_attributes ';'
+	| CT_EXEC '(' expr ',' initializer_list ')' opt_attributes ';'
+	| CT_EXEC '(' expr ',' initializer_list ',' expr ')' opt_attributes ';'
+	;
+
+top_level
+	: module
+	| import_decl
+	| exec_decl
+	| opt_extern func_definition
+	| opt_extern const_declaration
+	| opt_extern global_declaration
 	| ct_assert_stmt
 	| ct_echo_stmt
 	| ct_include_stmt
-	| ct_exec_stmt
 	| struct_declaration
-	| faultdef_declaration
+	| fault_declaration
 	| enum_declaration
 	| macro_declaration
-	| alias_declaration
-	| attrdef_declaration
+	| define_declaration
 	| bitstruct_declaration
-	| typedef_declaration
+	| distinct_declaration
 	| interface_declaration
-	;
-
-top_level_after_module
-	: top_level_decl
-	| top_level_after_module top_level_decl
-	;
-
-top_level_no_module
-	: top_level_decl
-	| top_level_after_module top_level_decl
 	;
 
 %%

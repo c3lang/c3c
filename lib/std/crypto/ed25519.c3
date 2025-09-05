@@ -365,7 +365,7 @@ fn void F25519Int.normalize(&s)
 {
 	s.reduce_carry((*s)[^1] >> 7);
 
-	// Subtract p
+	// Substract p
 	F25519Int sub @noinit;
 	ushort c = 19;
 	foreach (i, v : (*s)[:^1])
@@ -399,7 +399,7 @@ fn char eq(F25519Int* a, F25519Int* b)
 }
 
 <*
- Constant-time conditional selection. Result is undefined if condition is neither 0 nor 1.
+ Constant-time conditonal selection. Result is undefined if condition is neither 0 nor 1.
 
  @param [&in] zero : "selected if condition is 0"
  @param [&in] one : "selected if condition is 1"
@@ -441,7 +441,7 @@ fn F25519Int F25519Int.add(&s, F25519Int* n) @operator(+)
 macro F25519Int F25519Int.@sub(&s, F25519Int #n) @operator(-) => s.sub(@addr(#n));
 
 <*
- Subtraction.
+ Substraction.
 
  @param [&in] s
  @param [&in] n
@@ -638,7 +638,7 @@ fn FBaseInt from_bytes(char[] bytes)
 }
 
 <*
- Constant-time conditional selection. Result is undefined if condition is neither 0 nor 1.
+ Constant-time conditonal selection. Result is undefined if condition is neither 0 nor 1.
 
  @param [&in] zero : "selected if condition is 0"
  @param [&in] one : "selected if condition is 1"
@@ -676,7 +676,7 @@ fn FBaseInt FBaseInt.add(&s, FBaseInt* n) @operator(+)
 }
 
 <*
- Subtraction if RHS is less than LHS else identity.
+ Substraction if RHS is less than LHS else identity.
 
  @param [&in] s
  @param [&in] n

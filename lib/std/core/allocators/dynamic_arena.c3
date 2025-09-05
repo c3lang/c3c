@@ -13,7 +13,7 @@ import std::math;
 
  The advantage over the BackedArenaAllocator, is that when allocating beyond the first "page", it will
  retain the characteristics of an arena allocator (allocating a large piece of memory then handing off
- memory from that memory), whereas the BackedArenaAllocator will have heap allocator characteristics.
+ memory from that memory), wheras the BackedArenaAllocator will have heap allocator characteristics.
 *>
 struct DynamicArenaAllocator (Allocator)
 {

@@ -413,7 +413,7 @@ void compiler_parse(void)
 	compiler_parsing_time = bench_mark();
 }
 
-bool compiler_should_output_file(const char *file)
+bool compiler_should_ouput_file(const char *file)
 {
 	if (!vec_size(compiler.build.emit_only)) return true;
 	FOREACH(const char *, f, compiler.build.emit_only)
@@ -1604,7 +1604,6 @@ Module *compiler_find_or_create_module(Path *module_name, const char **parameter
 	// Set up the module.
 	module = CALLOCS(Module);
 	module->name = module_name;
-	module->inlined_at = (InliningSpan) { INVALID_SPAN, NULL };
 	size_t first = 0;
 	for (size_t i = module_name->len; i > 0; i--)
 	{

@@ -1070,7 +1070,7 @@ static inline void llvm_optimize(GenContext *c)
 const char *llvm_codegen(void *context)
 {
 	GenContext *c = context;
-	if (!compiler_should_output_file(c->base_name)) return NULL;
+	if (!compiler_should_ouput_file(c->base_name)) return NULL;
 	llvm_optimize(c);
 
 	// Serialize the LLVM IR, if requested, also verify the IR in this case

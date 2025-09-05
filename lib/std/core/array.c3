@@ -142,7 +142,7 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
 
  @param [in] array
  @param identity
- @param #operation : "The reduction/folding lambda function or function pointer to apply."
+ @param #operation : "The reduction/folding labmda function or function pointer to apply."
 
  @require @is_valid_list(array) : "Expected a valid list"
  @require $defined($typefrom(@reduce_fn(array, identity)) $func = #operation) : "Invalid lambda or function pointer type"

@@ -67,7 +67,7 @@ const int SO_WANTMORE            = 0x4000; // Apple: Give hint when more data re
 const int SO_WANTOOBFLAG         = 0x8000; // Apple: Want OOB in MSG_FLAG on receive
 
 const int SO_SNDBUF              = 0x1001; // Send buffer size
-const int SO_RCVBUF              = 0x1002; // Receive buffer size
+const int SO_RCVBUF              = 0x1002; // Recieve buffer size
 const int SO_SNDLOWAT            = 0x1003; // Send low-water mark
 const int SO_RCVLOWAT            = 0x1004; // Receive low-water mark
 const int SO_SNDTIMEO            = 0x1005; // Send timeout
