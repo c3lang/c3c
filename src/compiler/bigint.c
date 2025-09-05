@@ -32,6 +32,7 @@ UNUSED static char digit_to_char(uint8_t digit, bool upper)
 		return (char)(digit + (upper ? 'A' : 'a') - 10);
 	}
 	FATAL_ERROR("Can't reach");
+	return 0;
 }
 
 #define HI32(_x) ((_x) >> 32)

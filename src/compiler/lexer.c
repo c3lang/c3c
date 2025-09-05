@@ -277,7 +277,7 @@ static void skip_whitespace(Lexer *lexer)
 				break;
 			case '\r':
 				// Already filtered out.
-				UNREACHABLE
+				UNREACHABLE_VOID
 			default:
 				return;
 		}

@@ -505,7 +505,7 @@ void c_abi_func_create_x86(FunctionPrototype *prototype)
 			regs.int_regs = compiler.platform.default_number_regs_x86;
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	// 3. Special case for MCU:
 	if (compiler.platform.x86.is_mcu_api)

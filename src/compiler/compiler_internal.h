@@ -3645,7 +3645,7 @@ static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 			const_init_set_span(init->init_array_value.element, loc);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 static inline void expr_list_set_span(Expr **expr, SourceSpan loc);

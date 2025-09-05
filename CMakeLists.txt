@@ -70,15 +70,16 @@ else()
 endif()
 
 # Options
-set(C3_LINK_DYNAMIC         OFF      CACHE BOOL   "Link dynamically with LLVM/LLD libs")
-set(C3_WITH_LLVM            ON       CACHE BOOL   "Build with LLVM")
-set(C3_LLVM_VERSION         "auto"   CACHE STRING "Use LLVM version [default: auto]")
-set(C3_USE_MIMALLOC         OFF      CACHE BOOL   "Use built-in mimalloc")
-set(C3_MIMALLOC_TAG         "v1.7.3" CACHE STRING "Used version of mimalloc")
-set(C3_USE_TB               OFF      CACHE BOOL   "Use TB")
-set(C3_LLD_DIR              ""       CACHE STRING "Use custom LLD directory")
-set(C3_ENABLE_CLANGD_LSP    OFF      CACHE BOOL   "Enable/Disable output of compile commands during generation")
-set(LLVM_CRT_LIBRARY_DIR    ""       CACHE STRING "Use custom llvm's compiler-rt directory")
+set(C3_LINK_DYNAMIC         OFF                         CACHE BOOL   "Link dynamically with LLVM/LLD libs")
+set(C3_WITH_LLVM            ON                          CACHE BOOL   "Build with LLVM")
+set(C3_LLVM_VERSION         "auto"                      CACHE STRING "Use LLVM version [default: auto]")
+set(C3_USE_MIMALLOC         OFF                         CACHE BOOL   "Use built-in mimalloc")
+set(C3_MIMALLOC_TAG         "v1.7.3"                    CACHE STRING "Used version of mimalloc")
+set(C3_USE_TB               OFF                         CACHE BOOL   "Use TB")
+set(C3_LLD_DIR              ""                          CACHE STRING "Use custom LLD directory")
+set(C3_ENABLE_CLANGD_LSP    OFF                         CACHE BOOL   "Enable/Disable output of compile commands during generation")
+set(LLVM_CRT_LIBRARY_DIR    ""                          CACHE STRING "Use custom llvm's compiler-rt directory")
+set(TCC_LIB_PATH            "/usr/lib/tcc/libtcc1.a"    CACHE STRING "Use custom libtcc1.a path")
 
 set(C3_OPTIONS
         C3_LINK_DYNAMIC
@@ -573,6 +574,17 @@ else()
         -Wno-unused-parameter
     )
     target_link_options(c3c PRIVATE -pthread)
+endif()
+
+if(CMAKE_C_COMPILER_ID STREQUAL "TinyCC")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-eh-frame-hdr -z noexecstack")
+
+    # Link the static tcc runtime archive if it exists
+    if(EXISTS "${TCC_LIB_PATH}")
+        target_link_libraries(c3c "${TCC_LIB_PATH}")
+    else()
+        message(FATAL_ERROR "TCC runtime not found at ${TCC_LIB_PATH}; Ensure the path is correct.")
+    endif()
 endif()
 
 install(TARGETS c3c DESTINATION bin)

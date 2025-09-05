@@ -223,7 +223,7 @@ INLINE void llvm_emit_atomic_fetch(GenContext *c, BuiltinFunction func, BEValue 
 			op = LLVMAtomicRMWBinOpUDecWrap;
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	LLVMValueRef res = LLVMBuildAtomicRMW(c->builder, op, val, llvm_load_value_store(c, result_value),
 	                   llvm_atomic_ordering(expr->call_expr.arguments[3]->const_expr.ixx.i.low),
@@ -342,7 +342,7 @@ static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *exp
 			break;
 		case ARCH_UNSUPPORTED:
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	LLVMValueRef result = LLVMBuildCall2(c->builder, func_type, inline_asm, arg_results, arguments, "syscall");
 	llvm_value_set(be_value, result, type_uptr);
@@ -718,7 +718,7 @@ static void llvm_emit_wrap_builtin(GenContext *c, BEValue *result_value, Expr *e
 			}
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	llvm_value_set(result_value, res, expr->type);
 }
@@ -731,7 +731,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 	{
 		case BUILTIN_ANY_MAKE:
 			// Folded in the frontend.
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case BUILTIN_UNREACHABLE:
 			llvm_emit_unreachable_stmt(c, result_value);
 			return;
@@ -769,7 +769,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		case BUILTIN_VECCOMPEQ:
 		case BUILTIN_VECCOMPGT:
 		case BUILTIN_VECCOMPGE:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case BUILTIN_REVERSE:
 			llvm_emit_reverse(c, result_value, expr);
 			return;
@@ -1106,9 +1106,9 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		case BUILTIN_WIDESTRING_32:
 		case BUILTIN_RND:
 		case BUILTIN_SPRINTF:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case BUILTIN_NONE:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }

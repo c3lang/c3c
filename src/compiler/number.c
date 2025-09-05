@@ -73,7 +73,7 @@ void expr_contract_array(ExprConst *expr_const, ConstKind contract_type)
 		case CONST_INIT_UNION:
 		case CONST_INIT_VALUE:
 		case CONST_INIT_ARRAY_VALUE:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case CONST_INIT_ARRAY:
 		{
 			FOREACH(ConstInitializer *, init, initializer->init_array.elements)
@@ -455,7 +455,7 @@ void const_init_to_scratch_buffer(ConstInitializer *init)
 			const_init_to_scratch_buffer(init->init_array_value.element);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 void expr_const_to_scratch_buffer(const ExprConst *expr)
 {
@@ -529,7 +529,7 @@ void expr_const_to_scratch_buffer(const ExprConst *expr)
 			return;
 		}
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 const char *expr_const_to_error_string(const ExprConst *expr)
 {

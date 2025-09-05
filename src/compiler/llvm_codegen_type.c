@@ -18,11 +18,11 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		case NON_TYPE_DECLS:
 		case DECL_FNTYPE:
 		case DECL_INTERFACE:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case DECL_BITSTRUCT:
 			return llvm_get_type(c, decl->strukt.container_type->type);
 		case DECL_FUNC:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case DECL_TYPEDEF:
 			return llvm_get_type(c, decl->type);
 		case DECL_CONST_ENUM:
@@ -101,7 +101,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 	switch (type->type_kind)
 	{
 		case TYPE_TYPEDEF:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_ARRAY:
 			for (ArraySize i = type->array.len; i > 0; i--)
 			{
@@ -144,7 +144,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 			vec_add(*params_ref, llvm_get_type(context, type));
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgInfo *arg_info, LLVMTypeRef **params)
@@ -211,7 +211,7 @@ LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototyp
 	switch (ret_arg_info->kind)
 	{
 		case ABI_ARG_EXPAND:
-			UNREACHABLE;
+			UNREACHABLE_VOID;
 		case ABI_ARG_INDIRECT:
 			vec_add(*params, c->ptr_type);
 			retval = llvm_get_type(c, type_void);
@@ -237,7 +237,7 @@ LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototyp
 			retval = llvm_get_type(c, call_return_type);
 			break;
 		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case ABI_ARG_DIRECT_COERCE_INT:
 			retval = LLVMIntTypeInContext(c->context, type_size(call_return_type) * 8);
 			break;
@@ -311,7 +311,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 	{
 		case LOWERED_TYPES:
 			// If this is reachable, then we're not doing the proper lowering.
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return any_type->backend_type = llvm_type_from_decl(c, any_type->decl);
@@ -647,7 +647,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_TYPEDEF:
 			return llvm_get_typeid(c, type->canonical);
 		case CT_TYPES:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_VOID:
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_VOID, 0);
 		case TYPE_BOOL:

@@ -2217,7 +2217,7 @@ static inline void sema_get_overload_arguments(Decl *method, Type **value_ref, T
 	switch (method->func_decl.operator)
 	{
 		case OVERLOAD_LEN:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case OVERLOAD_ELEMENT_AT:
 			*value_ref = type_no_optional(typeget(method->func_decl.signature.rtype)->canonical);
 			*index_ref = method->func_decl.signature.params[1]->type->canonical;
@@ -2231,7 +2231,7 @@ static inline void sema_get_overload_arguments(Decl *method, Type **value_ref, T
 			*index_ref = method->func_decl.signature.params[1]->type->canonical;
 			return;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 }
 
