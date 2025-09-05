@@ -64,7 +64,7 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 				eprintf("warn");
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 		eprintf("|");
 		eprint_escaped_string(file->full_path);
@@ -87,7 +87,7 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 				eprintf("Warning|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
 				return;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 	unsigned max_line_length = (unsigned)round(log10(location.row)) + 1;
@@ -198,7 +198,7 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 				}
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 	else
@@ -236,7 +236,7 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 				}
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 
 	}

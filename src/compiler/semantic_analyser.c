@@ -174,7 +174,7 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 		switch (module->stage)
 		{
 			case ANALYSIS_NOT_BEGUN:
-				UNREACHABLE
+				UNREACHABLE_VOID
 			case ANALYSIS_MODULE_HIERARCHY:
 				sema_analyse_pass_module_hierarchy(module);
 				break;
@@ -264,7 +264,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_ERASED:
 			case DECL_GROUP:
 			case DECL_LABEL:
-				UNREACHABLE
+				UNREACHABLE_VOID
 			case DECL_ALIAS:
 			case DECL_ATTRIBUTE:
 			case DECL_BITSTRUCT:

@@ -649,7 +649,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_VOID:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_WILDCARD:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case ALL_INTS:
 			expr_rewrite_const_int(expr, type, 0);
 			return;
@@ -688,7 +688,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_SLICE:
 			expr_rewrite_const_empty_slice(expr, type);
 			return;

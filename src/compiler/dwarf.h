@@ -1,6 +1,9 @@
 #pragma once
+
+#ifndef __TINYC__
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCUnusedMacroInspection"
+#endif
 
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
@@ -285,4 +288,6 @@
 
 #define DWARF_PRODUCER_NAME "c3c"
 
+#ifndef __TINYC__
 #pragma clang diagnostic pop
+#endif

@@ -251,7 +251,7 @@ static inline void target_setup_arm_abi(void)
 			compiler.platform.arm.abi_variant = ARM_ABI_AAPCS;
 			break;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 static inline void target_setup_x86_abi(BuildTarget *target)
@@ -731,7 +731,7 @@ static void x86_features_add_feature(X86Features *cpu_features, X86Feature featu
 			x86_features_add_feature(cpu_features, X86_FEAT_AVX512FP16);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 
@@ -961,7 +961,7 @@ static void x86features_from_cpu(X86Features *cpu_features, X86CpuSet cpu_set)
 			x86_features_from_host(cpu_features);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 static inline bool x86_has_all_features(X86Features *feature_to_test, X86Features *features_to_match)
@@ -1578,7 +1578,8 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 	{
 		case ARCH_TYPE_UNKNOWN:
 		case ARCH_UNSUPPORTED:
-			UNREACHABLE
+			UNREACHABLE_VOID;
+			return (AlignData) { 0, 0 };
 		case ARCH_TYPE_ARM:
 		case ARCH_TYPE_THUMB:
 		case ARCH_TYPE_ARMB:
@@ -1614,7 +1615,8 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 			if (os == OS_TYPE_WIN32 || os == OS_TYPE_NACL) return (AlignData) { 64, 64 };
 			return (AlignData) { 32, 64 };
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID;
+	return (AlignData) { 0, 0 };
 }
 
 static unsigned arch_big_endian(ArchType arch)
@@ -1653,7 +1655,8 @@ static AlignData os_target_alignment_of_float(OsType os, ArchType arch, uint32_t
 	{
 		case ARCH_TYPE_UNKNOWN:
 		case ARCH_UNSUPPORTED:
-			UNREACHABLE
+			UNREACHABLE_VOID;
+			break;
 		case ARCH_TYPE_X86:
 			if (os == OS_TYPE_ELFIAMCU && bits >= 32) return (AlignData) { 32, 32 };
 			if (os == OS_TYPE_WIN32 || os == OS_TYPE_NACL)
@@ -1685,7 +1688,8 @@ static AlignData os_target_alignment_of_float(OsType os, ArchType arch, uint32_t
 			if (bits == 128 && os == OS_TYPE_ELFIAMCU) return (AlignData) { 32, 32 };
 			return (AlignData) { bits , bits };
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID;
+	return (AlignData) { 0, 0 };
 }
 
 static const char *os_dynamic_library_suffix(OsType os)
@@ -1924,7 +1928,7 @@ void target_setup(BuildTarget *target)
 	switch (target->optlevel)
 	{
 		case OPTIMIZATION_NOT_SET:
-			UNREACHABLE;
+			UNREACHABLE_VOID;
 		case OPTIMIZATION_AGGRESSIVE:
 			level = LLVMCodeGenLevelAggressive;
 			break;
@@ -1938,7 +1942,7 @@ void target_setup(BuildTarget *target)
 			level = LLVMCodeGenLevelNone;
 			break;
 		default:
-			UNREACHABLE;
+			UNREACHABLE_VOID;
 	}
 
 	compiler.platform.llvm_opt_level = (int)level;
@@ -2013,7 +2017,7 @@ void target_setup(BuildTarget *target)
 	switch (compiler.platform.arch)
 	{
 		case ARCH_UNSUPPORTED:
-			UNREACHABLE
+			UNREACHABLE_VOID
 			break;
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:

@@ -372,7 +372,7 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 	{
 		case LOWERED_TYPES:
 		case TYPE_FUNC_RAW:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_VOID:
 			*current = CLASS_NO_CLASS;
 			break;
@@ -552,7 +552,7 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 		case LOWERED_TYPES:
 		case TYPE_VOID:
 		case TYPE_FUNC_RAW:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_U64:
 		case TYPE_I64:
 		case TYPE_POINTER:
@@ -592,7 +592,7 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 			if (offset < 16) return abi_type_get(type_ulong);
 			break;
 		case TYPE_FLEXIBLE_ARRAY:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_ARRAY:
 		{
 			Type *element = type->array.base;

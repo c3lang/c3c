@@ -521,6 +521,7 @@ static inline bool sema_check_asm_arg_value(SemaContext *context, AsmInlineBlock
 		return true;
 	}
 	TODO
+	UNREACHABLE
 }
 static inline bool sema_check_asm_arg(SemaContext *context, AsmInlineBlock *block, AsmInstruction *instr, AsmArgType arg_type, Expr *expr)
 {

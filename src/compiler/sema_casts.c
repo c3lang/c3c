@@ -639,7 +639,7 @@ static void expr_recursively_rewrite_untyped_list(Expr *expr, Type *to_type)
 		case TYPE_STRUCT:
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	Decl *decl = flat->decl;
 	Decl **members = decl->strukt.members;
@@ -1717,7 +1717,7 @@ static void vector_const_initializer_convert_to_type(ConstInitializer *initializ
 			break;
 		case CONST_INIT_UNION:
 		case CONST_INIT_STRUCT:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case CONST_INIT_ARRAY_VALUE:
 			vector_const_initializer_convert_to_type(initializer->init_array_value.element, to_type);
 			break;
@@ -1973,7 +1973,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 					expr_rewrite_to_float_to_int(expr, to_type);
 					return;
 				default:
-					UNREACHABLE;
+					UNREACHABLE_VOID;
 			}
 		}
 
@@ -1991,7 +1991,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 				expr_rewrite_to_int_to_float(expr, to_type);
 				return;
 			}
-			UNREACHABLE;
+			UNREACHABLE_VOID;
 		}
 
 		if (type_is_integer(from_element))
@@ -2019,14 +2019,14 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 				case TYPE_ANYFAULT:
 					expr_rewrite_to_int_to_ptr(expr, to_type);
 				default:
-					UNREACHABLE;
+					UNREACHABLE_VOID;
 			}
 		}
 		// The rest will be different pointer types
 		switch (to_element->type_kind)
 		{
 			case ALL_FLOATS:
-				UNREACHABLE
+				UNREACHABLE_VOID
 				return;
 			case TYPE_BOOL:
 			{
@@ -2046,7 +2046,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 				expr_rewrite_rvalue(expr, to_type);
 				return;
 			default:
-				UNREACHABLE;
+				UNREACHABLE_VOID;
 		}
 	}
 
@@ -2252,7 +2252,7 @@ static void cast_vecarr_to_slice(Expr *expr, Type *to_type)
 {
 	if (!sema_cast_const(expr))
 	{
-		UNREACHABLE
+		UNREACHABLE_VOID
 	}
 	ASSERT(expr_is_const(expr));
 	switch (expr->const_expr.const_kind)
@@ -2268,7 +2268,7 @@ static void cast_vecarr_to_slice(Expr *expr, Type *to_type)
 		case CONST_UNTYPED_LIST:
 		case CONST_REF:
 		case CONST_MEMBER:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case CONST_BYTES:
 		case CONST_STRING:
 			expr->type = to_type;
@@ -2280,7 +2280,7 @@ static void cast_vecarr_to_slice(Expr *expr, Type *to_type)
 			return;
 		}
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 static void cast_slice_to_vecarr(Expr *expr, Type *to_type)
 {
@@ -2297,7 +2297,7 @@ static void cast_slice_to_vecarr(Expr *expr, Type *to_type)
 				return;
 			}
 			default:
-				UNREACHABLE;
+				UNREACHABLE_VOID;
 		}
 	}
 	if (expr_is_const_slice(expr))

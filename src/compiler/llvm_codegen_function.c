@@ -334,7 +334,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 		case ABI_ARG_EXPAND:
 			// Expands to multiple slots -
 			// Not applicable to return values.
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case ABI_ARG_EXPAND_COERCE:
 		{
 			// Pick the return as an address.
@@ -382,7 +382,7 @@ DIRECT_RETURN:
 			return;
 		}
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 void llvm_emit_return_implicit(GenContext *c)

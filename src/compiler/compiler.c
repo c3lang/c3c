@@ -164,10 +164,12 @@ void thread_compile_task_tb(void *compile_data)
 const char *tilde_codegen(void *context)
 {
 	error_exit("TB backend not available.");
+	UNREACHABLE
 }
 void **tilde_gen(Module** modules, unsigned module_count)
 {
 	error_exit("TB backend not available.");
+	UNREACHABLE
 }
 
 #endif
@@ -538,7 +540,7 @@ void compiler_compile(void)
 			task = &thread_compile_task_tb;
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	compiler_ir_gen_time = bench_mark();
 	const char *output_exe = NULL;
@@ -577,7 +579,7 @@ void compiler_compile(void)
 			case TARGET_TYPE_PREPARE:
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 	if (compiler.build.emit_llvm)

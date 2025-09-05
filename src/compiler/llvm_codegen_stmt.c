@@ -82,7 +82,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		case VARDECL_GLOBAL:
 		case VARDECL_MEMBER:
 		case VARDECL_BITMEMBER:
-			UNREACHABLE;
+			UNREACHABLE_VOID;
 		case VARDECL_PARAM:
 		{
 			Expr *init_expr = decl->var.init_expr;
@@ -104,7 +104,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 			return;
 		case VARDECL_LOCAL_CT:
 		case VARDECL_LOCAL_CT_TYPE:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 
 	// Get the declaration and the LLVM type.
@@ -603,7 +603,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 			llvm_emit_br(c, loop_start_block);
 			break;
 		case LOOP_NONE:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 
 	ASSERT(inc_block || body_block || cond_block);
@@ -1090,7 +1090,7 @@ void llvm_emit_break(GenContext *c, Ast *ast)
 			break;
 		case AST_FOREACH_STMT:
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	llvm_emit_jmp(c, jump);
 }
@@ -1106,13 +1106,13 @@ void llvm_emit_continue(GenContext *c, Ast *ast)
 		case AST_IF_STMT:
 		case AST_SWITCH_STMT:
 		case AST_FOREACH_STMT:
-			UNREACHABLE
+			UNREACHABLE_VOID
 			break;
 		case AST_FOR_STMT:
 			jump = jump_target->for_stmt.codegen.continue_block;
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	llvm_emit_jmp(c, jump);
 }
@@ -1644,7 +1644,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_CASE_STMT:
 		case AST_DEFAULT_STMT:
 		case CT_AST:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case AST_EXPR_STMT:
 			llvm_emit_expr_stmt(c, ast);
 			break;

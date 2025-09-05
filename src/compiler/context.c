@@ -168,7 +168,7 @@ void decl_register(Decl *decl)
 		case DECL_IMPORT:
 		case DECL_LABEL:
 		case DECL_POISONED:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case DECL_ATTRIBUTE:
 		case DECL_BITSTRUCT:
 		case DECL_DISTINCT:
@@ -273,7 +273,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_GROUP:
 		case DECL_IMPORT:
 		case DECL_LABEL:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case DECL_CT_EXEC:
 		case DECL_CT_INCLUDE:
 			vec_add(unit->ct_includes, decl);

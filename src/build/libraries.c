@@ -127,6 +127,7 @@ static Library *find_library(Library **libs, size_t lib_count, const char *name)
 		if (str_eq(libs[i]->provides, name)) return libs[i];
 	}
 	error_exit("Required library '%s' could not be found. You can add additional library search paths using '--libdir' in case you forgot one.", name);
+	UNREACHABLE
 }
 
 static void add_library_dependency(BuildTarget *build_target, Library *library, Library **library_list, size_t lib_count)
