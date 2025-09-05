@@ -48,7 +48,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit);
 
-static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params);
+static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params, SourceSpan from_span);
 
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
@@ -541,7 +541,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		AlignSize member_type_alignment;
 		if (type_is_user_defined(member_type) && member_type->decl->resolve_status == RESOLVE_RUNNING)
 		{
-			SEMA_ERROR(member, "Recursive defintion of %s.", type_quoted_error_string(member_type));
+			SEMA_ERROR(member, "Recursive definition of %s.", type_quoted_error_string(member_type));
 			return decl_poison(decl);
 		}
 		if (!sema_set_abi_alignment(context, member->type, &member_type_alignment)) return decl_poison(decl);
@@ -4626,6 +4626,11 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 		return decl_poison(decl);
 	}
 
+	if (decl->var.no_init && decl->var.init_expr)
+	{
+		SEMA_ERROR(decl->var.init_expr, "'@noinit' variables may not have initializers.");
+		return decl_poison(decl);
+	}
 	if (erase_decl)
 	{
 		decl->decl_kind = DECL_ERASED;
@@ -4846,7 +4851,7 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 	return copy;
 }
 
-static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params)
+static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params, SourceSpan from_span)
 {
 	unsigned decls = 0;
 	Decl* params_decls[MAX_PARAMS];
@@ -4897,6 +4902,7 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 		new_module->contracts = astid(copy_ast_macro(astptr(module->contracts)));
 		copy_end();
 	}
+	new_module->inlined_at = (InliningSpan) { .span = from_span, .prev = copy_inlining_span(context->inlined_at) };
 
 	return new_module;
 }
@@ -5146,15 +5152,15 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	AnalysisStage stage = c->unit->module->generic_module
 			? c->unit->module->stage
 			: c->unit->module->stage - 1;
-	bool instatiation = false;
+	bool instantiation = false;
 	if (!instantiated_module)
 	{
-		instatiation = true;
+		instantiation = true;
 		Path *path = CALLOCS(Path);
 		path->module = path_string;
 		path->span = module->name->span;
 		path->len = scratch_buffer.len;
-		instantiated_module = module_instantiate_generic(c, module, path, params);
+		instantiated_module = module_instantiate_generic(c, module, path, params, invocation_span);
 		if (!instantiated_module) return poisoned_decl;
 		if (!sema_generate_parameterized_name_to_scratch(c, module, params, false, NULL)) return poisoned_decl;
 		instantiated_module->generic_suffix = scratch_buffer_copy();
@@ -5167,7 +5173,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		sema_error_at(c, span, "The generic module '%s' does not have '%s' for this parameterization.", module->name->module, name);
 		return poisoned_decl;
 	}
-	if (instatiation)
+	if (instantiation)
 	{
 		if (instantiated_module->contracts)
 		{

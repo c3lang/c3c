@@ -273,7 +273,7 @@ bool sema_error_failed_cast(SemaContext *context, Expr *expr, Type *from, Type *
  */
 Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 {
-	// This may be called on types not inferrable,
+	// This may be called on types not inferable,
 	// if so we assume the original type
 	if (!type_len_is_inferred(to_infer)) return to_infer;
 

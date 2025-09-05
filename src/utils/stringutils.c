@@ -168,7 +168,7 @@ bool str_is_valid_constant(const char *string)
     return true;
 }
 
-void str_ellide_in_place(char *string, size_t max_size_shown)
+void str_elide_in_place(char *string, size_t max_size_shown)
 {
 	size_t len = strlen(string);
 	if (max_size_shown > len) return;

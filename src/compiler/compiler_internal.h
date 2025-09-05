@@ -166,6 +166,25 @@ struct ConstInitializer_
 	};
 };
 
+typedef union
+{
+	struct
+	{
+		FileId file_id;
+		unsigned char length;
+		unsigned char col;
+		uint32_t row;
+	};
+	uint64_t a;
+} SourceSpan;
+
+static_assert(sizeof(SourceSpan) == 8, "Expected 8 bytes");
+
+typedef struct InliningSpan_
+{
+	SourceSpan span;
+	struct InliningSpan_ *prev;
+} InliningSpan;
 
 typedef struct
 {
@@ -211,20 +230,7 @@ typedef struct
 	const char *full_path;
 } File;
 
-typedef union
-{
-	struct
-	{
-		FileId file_id;
-		unsigned char length;
-		unsigned char col;
-		uint32_t row;
-	};
-	uint64_t a;
-} SourceSpan;
 
-
-static_assert(sizeof(SourceSpan) == 8, "Expected 8 bytes");
 
 typedef struct
 {
@@ -1607,6 +1613,7 @@ typedef struct Module_
 	Decl **tests;
 	Decl **lambdas_to_evaluate;
 	const char *generic_suffix;
+	InliningSpan inlined_at;
 } Module;
 
 
@@ -1757,11 +1764,7 @@ typedef struct JumpTarget_
 	AstId defer;
 } JumpTarget;
 
-typedef struct InliningSpan_
-{
-	SourceSpan span;
-	struct InliningSpan_ *prev;
-} InliningSpan;
+
 
 struct SemaContext_
 {
@@ -2203,6 +2206,7 @@ Decl **copy_decl_list_macro(Decl **decl_list);
 Ast *copy_ast_macro(Ast *source_ast);
 Ast *copy_ast_defer(Ast *source_ast);
 TypeInfo *copy_type_info_single(TypeInfo *type_info);
+InliningSpan *copy_inlining_span(InliningSpan *span);
 
 void init_asm(PlatformTarget *target);
 void print_asm_list(PlatformTarget *target);
@@ -2478,7 +2482,7 @@ File *source_file_text_load(const char *filename, char *content);
 
 File *compile_and_invoke(const char *file, const char *args, const char *stdin_data, size_t limit);
 void compiler_parse(void);
-bool compiler_should_ouput_file(const char *file);
+bool compiler_should_output_file(const char *file);
 void emit_json(void);
 
 void stable_init(STable *table, uint32_t initial_size);

@@ -147,7 +147,7 @@ int str_findlist(const char *value, unsigned count, const char** elements);
 // Sprintf style, saved to an arena allocated string
 char *str_printf(const char *var, ...) __printflike(1, 2);
 char *str_vprintf(const char *var, va_list list);
-void str_ellide_in_place(char *string, size_t max_size_shown);
+void str_elide_in_place(char *string, size_t max_size_shown);
 bool str_is_valid_lowercase_name(const char *string);
 bool str_is_valid_constant(const char *string);
 const char *str_unescape(char *string);

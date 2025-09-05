@@ -249,7 +249,7 @@ static void project_view_usage()
 	PRINTF("the results will be printed out like they are in the full view.");
 	PRINTF("Otherwise the \"<header>: \" is left out.");
 	PRINTF("");
-	PRINTF("With flags on, each selected property will be seperated by an empty");
+	PRINTF("With flags on, each selected property will be separated by an empty");
 	PRINTF("line, and properties with multiple values (like --authors) will have");
 	PRINTF("their values printed each on a new line.");
 	PRINTF("");
@@ -1270,7 +1270,7 @@ static void parse_option(BuildOptions *options)
 						           name);
 					}
 					char *name_copy = strdup(name);
-					str_ellide_in_place(name_copy, 32);
+					str_elide_in_place(name_copy, 32);
 					if (strchr(name, '/') != NULL || (PLATFORM_WINDOWS && strchr(name, '\\') != NULL))
 					{
 						error_exit(

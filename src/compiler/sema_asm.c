@@ -82,7 +82,7 @@ static inline Decl *sema_resolve_external_symbol(SemaContext *context, Expr *exp
 	}
 	return decl;
 }
-static inline bool sema_reg_int_suported_type(AsmArgType arg, Type *type)
+static inline bool sema_reg_int_supported_type(AsmArgType arg, Type *type)
 {
 	ASSERT(type_flatten(type) == type);
 	unsigned bits = type_bit_size(type);
@@ -104,7 +104,7 @@ INLINE bool sema_reg_is_valid_in_slot(AsmRegister *reg, AsmArgType arg_type)
 	UNREACHABLE
 }
 
-static inline bool sema_reg_float_suported_type(AsmArgType arg, Type *type)
+static inline bool sema_reg_float_supported_type(AsmArgType arg, Type *type)
 {
 	ASSERT(type_flatten(type) == type);
 	if (!arg.float_bits) return false;
@@ -415,7 +415,7 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 			SEMA_ERROR(expr, "An integer variable was not expected here.");
 			return false;
 		}
-		if (!sema_reg_int_suported_type(arg_type, type))
+		if (!sema_reg_int_supported_type(arg_type, type))
 		{
 			unsigned bits = arg_bits_max(arg_type.ireg_bits, 0);
 			ASSERT(bits);
@@ -437,7 +437,7 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 			SEMA_ERROR(expr, "A floating point variable was not expected here.");
 			return false;
 		}
-		if (!sema_reg_float_suported_type(arg_type, type))
+		if (!sema_reg_float_supported_type(arg_type, type))
 		{
 			SEMA_ERROR(expr, "%s is not supported in this position, convert it to a valid type.",
 					   type_quoted_error_string(decl->type));
@@ -500,7 +500,7 @@ static inline bool sema_check_asm_arg_value(SemaContext *context, AsmInlineBlock
 	if (type_is_pointer_type(type)) type = type_uptr->canonical;
 	if (type_is_integer(type))
 	{
-		if (!sema_reg_int_suported_type(arg_type, type))
+		if (!sema_reg_int_supported_type(arg_type, type))
 		{
 			SEMA_ERROR(expr, "%s is not valid for this slot.", type_quoted_error_string(inner->type));
 			return false;
@@ -511,7 +511,7 @@ static inline bool sema_check_asm_arg_value(SemaContext *context, AsmInlineBlock
 	}
 	if (type_is_float(type))
 	{
-		if (!sema_reg_float_suported_type(arg_type, type))
+		if (!sema_reg_float_supported_type(arg_type, type))
 		{
 			SEMA_ERROR(expr, "%s is not valid for this slot.", type_quoted_error_string(inner->type));
 			return false;

@@ -1179,7 +1179,7 @@ static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceSpan lhs_start 
 /**
  * ct_sizeof ::= CT_SIZEOF '(' expr ')'
  *
- * Note that this is tranformed to $typeof(expr).sizeof.
+ * Note that this is transformed to $typeof(expr).sizeof.
  */
 static Expr *parse_ct_sizeof(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
@@ -1599,7 +1599,7 @@ EXIT:
 		is_unsigned = false;
 		if (i128_comp(i, INT128_MIN, type_u128) == CMP_GT)
 		{
-			PRINT_ERROR_AT(expr_int, "The negated integer size would exeed an int128.");
+			PRINT_ERROR_AT(expr_int, "The negated integer size would exceed an int128.");
 			return poisoned_expr;
 		}
 		if (negated) i = i128_neg(i);
