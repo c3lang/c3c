@@ -134,4 +134,4 @@
 
 void evprintf(const char *format, va_list list);
 void eprintf(const char *format, ...);
-NORETURN void error_exit(const char *format, ...) ;
+NORETURN void error_exit(const char *format, ...);

@@ -88,7 +88,7 @@ INLINE AsmArgBits parse_bits(const char **desc)
 		return ARG_BITS_5;
 	}
 	error_exit("Invalid bits: %s.", *desc);
-	return 0;
+	UNREACHABLE
 }
 
 INLINE AsmArgType decode_arg_type(const char **desc)

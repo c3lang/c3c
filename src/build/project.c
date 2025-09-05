@@ -595,7 +595,7 @@ BuildTarget *project_select_target(const char *filename, Project *project, const
 		if (str_eq(target->name, optional_target)) return target;
 	}
 	error_exit("No build target named '%s' was found in %s. Was it misspelled?", optional_target, filename);
-	return 0;
+	UNREACHABLE
 }
 
 JSONObject *project_json_load(const char **filename_ref)

@@ -524,7 +524,7 @@ static void c_emit_jump_to_optional_exit(GenContext *c, int value)
 static int c_emit_load(GenContext *c, VariableId id)
 {
 	TODO
-	return 0;
+	UNREACHABLE
 }
 
 static void c_value_fold_optional(GenContext *c, CValue *value)

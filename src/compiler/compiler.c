@@ -164,12 +164,12 @@ void thread_compile_task_tb(void *compile_data)
 const char *tilde_codegen(void *context)
 {
 	error_exit("TB backend not available.");
-	return 0;
+	UNREACHABLE
 }
 void **tilde_gen(Module** modules, unsigned module_count)
 {
 	error_exit("TB backend not available.");
-	return 0;
+	UNREACHABLE
 }
 
 #endif

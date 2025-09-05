@@ -86,7 +86,7 @@ Type *type_int_signed_by_bitsize(BitSize bitsize)
 		case 128: return type_i128;
 		default: FATAL_ERROR("Illegal bitsize %d", bitsize);
 	}
-	return 0;
+	UNREACHABLE
 }
 Type *type_int_unsigned_by_bitsize(BitSize bit_size)
 {
@@ -99,7 +99,7 @@ Type *type_int_unsigned_by_bitsize(BitSize bit_size)
 		case 128: return type_u128;
 		default: FATAL_ERROR("Illegal bitsize");
 	}
-	return 0;
+	UNREACHABLE
 }
 
 const char *type_quoted_error_string_maybe_with_path(Type *type, Type *other_type)

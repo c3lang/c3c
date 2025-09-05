@@ -47,7 +47,7 @@ static const char *ld_target(ArchType arch_type)
 		default:
 			error_exit("Architecture currently not available for cross linking.");
 	}
-	return 0;
+	UNREACHABLE
 }
 
 static void linker_setup_windows(const char ***args_ref, Linker linker_type, const char *output_file)

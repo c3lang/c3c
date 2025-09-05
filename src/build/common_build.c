@@ -149,7 +149,7 @@ int get_valid_string_setting(BuildParseContext context, JSONObject *json, const 
 		error_exit("In file '%s': '%s' had an invalid value for '%s', expected %s", context.file, context.target, key, expected);
 	}
 	error_exit("In file '%s': Invalid value for '%s', expected %s", context.file, key, expected);
-	return 0;
+	UNREACHABLE
 }
 
 int get_valid_enum_from_string(const char *str, const char *target, const char **values, int count, const char *expected)
@@ -161,7 +161,7 @@ int get_valid_enum_from_string(const char *str, const char *target, const char *
 		error_exit("'%s' had an invalid value, expected %s", target, expected);
 	}
 	error_exit("Invalid value, expected %s", expected);
-	return 0;
+	UNREACHABLE
 }
 
 long get_valid_integer(BuildParseContext context, JSONObject *table, const char *key, bool mandatory)

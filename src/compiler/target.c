@@ -1656,7 +1656,7 @@ static AlignData os_target_alignment_of_float(OsType os, ArchType arch, uint32_t
 		case ARCH_TYPE_UNKNOWN:
 		case ARCH_UNSUPPORTED:
 			UNREACHABLE_VOID;
-			return (AlignData) { 0, 0 };
+			break;
 		case ARCH_TYPE_X86:
 			if (os == OS_TYPE_ELFIAMCU && bits >= 32) return (AlignData) { 32, 32 };
 			if (os == OS_TYPE_WIN32 || os == OS_TYPE_NACL)
