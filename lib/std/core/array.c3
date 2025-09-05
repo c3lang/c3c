@@ -120,6 +120,17 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
 
 
 <*
+ If the given list object has an iterator method, return the iterator. If not, just return the list.
+
+ @require values::@is_list(list)
+*>
+macro @iter(list)
+{
+	return $defined(list.iter) ??? list.iter() : list;
+}
+
+
+<*
  Apply a reduction/folding operation to an iterable type. This walks along the input array
  and applies an `#operation` to each value, returning it to the `identity` (or "accumulator")
  base value.
@@ -144,13 +155,13 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
  @param identity
  @param #operation : "The reduction/folding labmda function or function pointer to apply."
 
- @require @is_valid_list(array) : "Expected a valid list"
+ @require values::@is_list(array) : "Expected a valid list"
  @require $defined($typefrom(@reduce_fn(array, identity)) $func = #operation) : "Invalid lambda or function pointer type"
 *>
 macro @reduce(array, identity, #operation)
 {
 	$typefrom(@reduce_fn(array, identity)) $func = #operation;
-	foreach (index, element : array) identity = $func(identity, element, index);
+	foreach (index, element : @iter(array)) identity = $func(identity, element, index);
 	return identity;
 }
 
@@ -163,7 +174,7 @@ macro @reduce(array, identity, #operation)
  @param [in] array
  @param identity_value : "The base accumulator value to use for the sum"
 
- @require @is_valid_list(array) : "Expected a valid list"
+ @require values::@is_list(array) : "Expected a valid list"
  @require $defined(array[0] + array[0]) : "Array element type must implement the '+' operator"
  @require $defined($typeof(array[0]) t = identity_value) : "The identity type must be assignable to the array element type"
 *>
@@ -181,7 +192,7 @@ macro @sum(array, identity_value = 0)
  @param [in] array
  @param identity_value : "The base accumulator value to use for the product"
 
- @require @is_valid_list(array) : "Expected a valid list"
+ @require values::@is_list(array) : "Expected a valid list"
  @require $defined(array[0] * array[0]) : "Array element type must implement the '*' operator"
  @require $defined($typeof(array[0]) t = identity_value) : "The identity type must be assignable to the array element type"
 *>
@@ -211,16 +222,16 @@ macro @product(array, identity_value = 1)
  @param [in] array
  @param #predicate
 
- @require @is_valid_list(array) : "Expected a valid list"
+ @require values::@is_list(array) : "Expected a valid list"
  @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro usz[] @indices_of(Allocator allocator, array, #predicate)
 {
-	usz[] results = allocator::new_array(allocator, usz, find_len(array));
+	usz[] results = allocator::new_array(allocator, usz, values::find_len(array));
 	usz matches;
 
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
-	foreach (index, element : array)
+	foreach (index, element : @iter(array))
 	{
 		if ($predicate(element, index)) results[matches++] = index;
 	}
@@ -234,7 +245,7 @@ macro usz[] @indices_of(Allocator allocator, array, #predicate)
  @param [in] array
  @param #predicate
 
- @require @is_valid_list(array) : "Expected a valid list"
+ @require values::@is_list(array) : "Expected a valid list"
  @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro usz[] @tindices_of(array, #predicate)
@@ -259,7 +270,7 @@ macro usz[] @tindices_of(array, #predicate)
  @param [in] array
  @param #predicate
 
- @require @is_valid_list(array) : "Expected a valid list"
+ @require values::@is_list(array) : "Expected a valid list"
  @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro @filter(Allocator allocator, array, #predicate) @nodiscard
@@ -284,7 +295,7 @@ macro @filter(Allocator allocator, array, #predicate) @nodiscard
  @param [in] array
  @param #predicate
 
- @require @is_valid_list(array) : "Expected a valid list"
+ @require values::@is_list(array) : "Expected a valid list"
  @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro @tfilter(array, #predicate) @nodiscard
@@ -300,13 +311,13 @@ macro @tfilter(array, #predicate) @nodiscard
  @param [in] array
  @param #predicate
 
- @require @is_valid_list(array) : "Expected a valid list"
+ @require values::@is_list(array) : "Expected a valid list"
  @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro bool @any(array, #predicate)
 {
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
-	foreach (index, element : array) if ($predicate(element, index)) return true;
+	foreach (index, element : @iter(array)) if ($predicate(element, index)) return true;
 	return false;
 }
 
@@ -318,13 +329,13 @@ macro bool @any(array, #predicate)
  @param [in] array
  @param #predicate
 
- @require @is_valid_list(array) : "Expected a valid list"
+ @require values::@is_list(array) : "Expected a valid list"
  @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro bool @all(array, #predicate)
 {
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
-	foreach (index, element : array) if (!$predicate(element, index)) return false;
+	foreach (index, element : @iter(array)) if (!$predicate(element, index)) return false;
 	return true;
 }
 
@@ -384,10 +395,9 @@ macro bool @all(array, #predicate)
  @param #operation : "The function to apply. Must have a signature of `$typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
  @param fill_with : "The value used to fill or pad the shorter iterable to the length of the longer one while zipping."
 
- @require @is_valid_list(left) &&& @is_valid_list(right) : "Left and right sides must be integer indexable"
+ @require values::@is_list(left) &&& values::@is_list(right) : "Left and right sides must be integer indexable"
  @require @is_valid_operation(left, right, ...#operation) : "The operator must take two parameters matching the elements of the left and right side"
  @require @is_valid_fill(left, right, ...fill_with) : "The specified fill value does not match either the left or the right array's underlying type."
-
 *>
 macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) @nodiscard
 {
@@ -400,8 +410,8 @@ macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) 
 		$Type = $typeof(#operation).returns;
 	$endif
 
-	usz left_len = find_len(left);
-	usz right_len = find_len(right);
+	usz left_len = values::find_len(left);
+	usz right_len = values::find_len(right);
 
 	$LeftType left_fill;
 	$RightType right_fill;
@@ -457,10 +467,9 @@ macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) 
  @param #operation : "The function to apply. Must have a signature of `$typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
  @param fill_with : "The value used to fill or pad the shorter iterable to the length of the longer one while zipping."
 
- @require @is_valid_list(left) &&& @is_valid_list(right) : "Left and right sides must be integer indexable"
+ @require values::@is_list(left) &&& values::@is_list(right) : "Left and right sides must be integer indexable"
  @require @is_valid_operation(left, right, ...#operation) : "The operator must take two parameters matching the elements of the left and right side"
  @require @is_valid_fill(left, right, ...fill_with) : "The specified fill value does not match either the left or the right array's underlying type."
-
 *>
 macro @tzip(left, right, #operation = ..., fill_with = ...) @nodiscard
 {
@@ -493,16 +502,16 @@ macro @tzip(left, right, #operation = ..., fill_with = ...) @nodiscard
  @param [in] right : `Slice to apply in the functor/operation.`
  @param #operation : "The function to apply. Must have a signature of `$typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
 
- @require @is_valid_list(left) : "Expected a valid list"
- @require @is_valid_list(right) : "Expected a valid list"
- @require find_len(right) >= find_len(left) : `Right side length must be >= the destination (left) side length; consider using a sub-array of data for the assignment.`
+ @require values::@is_list(left) : "Expected a valid list"
+ @require values::@is_list(right) : "Expected a valid list"
+ @require values::find_len(right) >= values::find_len(left) : `Right side length must be >= the destination (left) side length; consider using a sub-array of data for the assignment.`
  @require $defined($typefrom(@zip_into_fn(left, right)) x = #operation) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
 *>
 macro @zip_into(left, right, #operation)
 {
 	$typefrom(@zip_into_fn(left, right)) $operation = #operation;
 
-	foreach (i, &v : left) *v = $operation(left[i], right[i]);
+	foreach (i, &v : @iter(left)) *v = $operation(left[i], right[i]);
 }
 
 
@@ -537,11 +546,6 @@ macro bool @is_valid_operation(#left, #right, #operation = ...) @const
 	$endswitch
 }
 
-macro bool @is_valid_list(#expr) @const
-{
-	return $defined(#expr[0]) &&& ($defined(#expr.len) ||| $defined(#expr.len()));
-}
-
 macro bool @is_valid_fill(left, right, fill_with = ...)
 {
 	$if !$defined(fill_with):
@@ -553,5 +557,3 @@ macro bool @is_valid_fill(left, right, fill_with = ...)
 		return left_len > right_len ? $defined(($typeof(right[0]))fill_with) : $defined(($typeof(left[0]))fill_with);
 	$endif
 }
-
-macro usz find_len(list) => $defined(list.len()) ??? list.len() : list.len;

@@ -56,6 +56,7 @@ long cycle_stop @local;
 DString benchmark_log @local;
 bool benchmark_warming @local;
 uint this_iteration @local;
+bool benchmark_stop @local;
 
 macro @start_benchmark()
 {
@@ -67,6 +68,12 @@ macro @end_benchmark()
 {
 	benchmark_nano_seconds = benchmark_clock.mark();
 	cycle_stop = $$sysclock();
+}
+
+macro @kill_benchmark(String format, ...)
+{
+	@log_benchmark(format, $vasplat);
+	benchmark_stop = true;
 }
 
 macro @log_benchmark(msg, args...) => @pool()
@@ -133,6 +140,7 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 			@start_benchmark();   // can be overridden by calls inside the unit's func
 
 			unit.func() @inline;
+			if (benchmark_stop) return false;
 
 			if (benchmark_nano_seconds == (NanoDuration){}) @end_benchmark();   // only mark when it wasn't already by the unit.func
 

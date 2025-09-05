@@ -3,12 +3,14 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::linkedlist{Type};
 
+import std::io;
+
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
 
-struct Node @private
+struct Node
 {
-	Node *next;
-	Node *prev;
+	Node* next;
+	Node* prev;
 	Type value;
 }
 
@@ -16,8 +18,34 @@ struct LinkedList
 {
 	Allocator allocator;
 	usz size;
-	Node *_first;
-	Node *_last;
+	Node* _first;
+	Node* _last;
+}
+
+fn usz? LinkedList.to_format(&self, Formatter* f) @dynamic
+{
+	usz len;
+	usz list_end = self.len() - 1;
+	len += f.print("{ ")!;
+	foreach (i, e : self.iter()) len += f.printf(i != list_end ? "%s, " : "%s", e)!;
+	len += f.print(" }")!;
+	return len;
+}
+
+macro LinkedList @new(Allocator allocator, Type[] #default_values = {})
+{
+	LinkedList new_list;
+	new_list.init(allocator);
+	new_list.push_all(#default_values);
+	return new_list;
+}
+
+<*
+ @require values::@is_list(#default_values)
+*>
+macro LinkedList @tnew(Type[] #default_values = {})
+{
+	return @new(tmem, #default_values);
 }
 
 <*
@@ -68,6 +96,11 @@ fn void LinkedList.push_front(&self, Type value)
 	self.size++;
 }
 
+fn void LinkedList.push_front_all(&self, Type[] value)
+{
+	foreach_r (v : value) self.push_front(v);
+}
+
 fn void LinkedList.push(&self, Type value)
 {
 	Node *last = self._last;
@@ -83,6 +116,11 @@ fn void LinkedList.push(&self, Type value)
 		last.next = new_node;
 	}
 	self.size++;
+}
+
+fn void LinkedList.push_all(&self, Type[] value)
+{
+	foreach (v : value) self.push(v);
 }
 
 fn Type? LinkedList.peek(&self) => self.first() @inline;
@@ -115,7 +153,7 @@ fn void LinkedList.clear(&self)
 	self.size = 0;
 }
 
-fn usz LinkedList.len(&self) @inline => self.size;
+fn usz LinkedList.len(&self) @operator(len) @inline => self.size;
 
 <*
  @require index < self.size
@@ -133,10 +171,11 @@ macro Node* LinkedList.node_at_index(&self, usz index)
 	while (index--) node = node.next;
 	return node;
 }
+
 <*
  @require index < self.size
 *>
-fn Type LinkedList.get(&self, usz index)
+fn Type LinkedList.get(&self, usz index) @operator([])
 {
 	return self.node_at_index(index).value;
 }
@@ -144,10 +183,38 @@ fn Type LinkedList.get(&self, usz index)
 <*
  @require index < self.size
 *>
-fn void LinkedList.set(&self, usz index, Type element)
+fn Type* LinkedList.get_ref(&self, usz index) @operator(&[])
+{
+	return &self.node_at_index(index).value;
+}
+
+<*
+ @require index < self.size
+*>
+fn void LinkedList.set(&self, usz index, Type element) @operator([]=)
 {
 	self.node_at_index(index).value = element;
 }
+
+fn usz? LinkedList.index_of(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
+{
+	for (Node* node = self._first, usz i = 0; node != null; node = node.next, ++i)
+	{
+		if (node.value == t) return i;
+	}
+	return NOT_FOUND?;
+}
+
+fn usz? LinkedList.rindex_of(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
+{
+	for (Node* node = self._last, usz i = self.size - 1; node != null; node = node.prev, --i)
+	{
+		if (node.value == t) return i;
+		if (i == 0) break;
+	}
+	return NOT_FOUND?;
+}
+
 
 <*
  @require index < self.size
@@ -333,4 +400,91 @@ fn void LinkedList.unlink(&self, Node* x) @private
 	}
 	self.free_node(x);
 	self.size--;
+}
+
+
+<*
+ @require values::@is_list(other) &&& $defined(Type z = other[0])
+*>
+macro bool LinkedList.eq(&self, other) @operator(==) @if(ELEMENT_IS_EQUATABLE)
+{
+	if (self.len() != values::find_len(other)) return false;
+	foreach (i, v : self.iter()) if(v != other[i]) return false;
+	return true;
+}
+
+
+fn LinkedListNodeIterator LinkedList.iter_node(&self)
+{
+	return { .list = self, .current_node = self._first };
+}
+
+fn LinkedListIterator LinkedList.iter(&self)
+{
+	return (LinkedListIterator)self.iter_node();
+}
+
+
+struct LinkedListNodeIterator
+{
+	LinkedList* list;
+	Node* current_node;
+	usz current_index;
+}
+
+fn usz LinkedListNodeIterator.len(&self) @operator(len) => self.list.size;
+
+<*
+ @require index < self.list.size
+*>
+fn Node* LinkedListNodeIterator.get_ref(&self, usz index) @operator(&[])
+{
+	if (index == self.list.size - 1)
+	{
+		self.current_node = self.list._last;
+		self.current_index = index;
+	}
+
+	while (self.current_index != index)
+	{
+		switch
+		{
+			case index < self.current_index:   // reverse iteration
+				self.current_node = self.current_node.prev;
+				self.current_index--;
+			case index > self.current_index:
+				self.current_node = self.current_node.next;
+				self.current_index++;
+		}
+	}
+
+	return self.current_node;
+}
+
+<*
+ @require index < self.list.size
+*>
+fn Node LinkedListNodeIterator.get(&self, usz index) @operator([]) => *(self.get_ref(index));
+
+
+typedef LinkedListIterator = LinkedListNodeIterator;
+
+fn usz LinkedListIterator.len(&self) @operator(len) => self.list.size;
+
+<*
+ @require index < self.list.size
+*>
+fn Type* LinkedListIterator.get_ref(&self, usz index) @operator(&[]) => &((LinkedListNodeIterator*)self).get_ref(index).value;
+
+<*
+ @require index < self.list.size
+*>
+fn Type LinkedListIterator.get(&self, usz index) @operator([]) => ((LinkedListNodeIterator*)self).get(index).value;
+
+<*
+ @require index < self.list.size
+*>
+fn void LinkedListIterator.set(&self, usz index, Type value) @operator([]=)
+{
+	((LinkedListNodeIterator*)self).get_ref(index).value = value;
 }
