@@ -842,8 +842,8 @@ INLINE void expand_csources(const char *base_dir, const char **source_dirs, cons
 {
 	if (source_dirs)
 	{
-		static const char* c_suffix_list[3] = { ".c" };
-		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, NULL, 1, false);
+		static const char* c_suffix_list[3] = { ".c", ".m" };
+		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, NULL, 2, false);
 	}
 }
 
