@@ -17,6 +17,7 @@ static WindowsSDK *sdk = NULL;
 #if PLATFORM_WINDOWS
 
 WindowsSDK get_windows_link_paths(void);
+const char *get_windows_cl_path(void);
 
 static WindowsSDK loaded;
 WindowsSDK *windows_get_sdk(void)
@@ -29,10 +30,18 @@ WindowsSDK *windows_get_sdk(void)
 	return sdk;
 }
 
+const char * windows_get_cl(void) {
+	return get_windows_cl_path();
+}
+
 #else
 
 WindowsSDK *windows_get_sdk(void)
 {
+	return NULL;
+}
+
+const char * windows_get_cl(void) {
 	return NULL;
 }
 

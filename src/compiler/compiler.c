@@ -1754,7 +1754,7 @@ const char *default_c_compiler(void)
 		return cc;
 	}
 #if PLATFORM_WINDOWS
-	return cc = "cl.exe";
+	return cc = windows_get_cl();
 #else
 	return cc = "cc";
 #endif

@@ -2524,6 +2524,7 @@ bool arch_is_wasm(ArchType type);
 const char *macos_sysroot(void);
 MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
 WindowsSDK *windows_get_sdk(void);
+const char *windows_get_cl(void);
 const char *windows_cross_compile_library(void);
 
 void c_abi_func_create(FunctionPrototype *proto);
