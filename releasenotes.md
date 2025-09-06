@@ -56,6 +56,7 @@
 - `$defined(#hash)` will not check the internal expression, just that `#hash` exists. Use `$defined((void)#hash)` for the old behaviour.
 - Added optional macro arguments using `macro foo(int x = ...)` which can be checked using `$defined(x)`.
 - Add compile time ternary `$val ??? <expr> : <expr>`.
+- Allow doc comments on individual struct members, faultdefs and enum values #2427.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
