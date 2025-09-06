@@ -293,10 +293,6 @@ jobs:
                 -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
           cmake --build build
 
-      - name: Vendor-fetch
-        run: |
-          ./build/c3c vendor-fetch raylib55
-
       - name: Compile and run some examples
         run: |
           cd resources
@@ -385,6 +381,10 @@ jobs:
           ./build/c3c init myproject
           ls myproject
 
+      - name: Vendor-fetch
+        run: |
+          ./build/c3c vendor-fetch raylib55
+
       - name: run compiler tests
         run: |
           cd test
@@ -465,10 +465,6 @@ jobs:
                 -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
           cmake --build build
 
-      - name: Vendor-fetch
-        run: |
-          ./build/c3c vendor-fetch raylib55
-
       - name: Compile and run some examples
         run: |
           cd resources
@@ -514,6 +510,10 @@ jobs:
         run: |
           cd resources/testproject
           ../../build/c3c run -vvv --linker=builtin --trust=full
+
+      - name: Vendor-fetch
+        run: |
+          ./build/c3c vendor-fetch raylib55
 
       - name: run compiler tests
         run: |
