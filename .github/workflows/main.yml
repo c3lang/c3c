@@ -236,7 +236,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install common deps
         run: |
-          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl
+          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev
 
       - name: Install Clang ${{matrix.llvm_version}}
         run: |
@@ -381,6 +381,10 @@ jobs:
           ./build/c3c init myproject
           ls myproject
 
+      - name: Vendor-fetch
+        run: |
+          ./build/c3c vendor-fetch raylib55
+
       - name: run compiler tests
         run: |
           cd test
@@ -416,7 +420,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install common deps
         run: |
-          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl
+          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev
 
       - name: Install Clang ${{matrix.llvm_version}}
         run: |
@@ -460,6 +464,7 @@ jobs:
                 -DLLVM_ENABLE_LIBXML2=OFF \
                 -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
           cmake --build build
+
       - name: Compile and run some examples
         run: |
           cd resources
@@ -505,6 +510,10 @@ jobs:
         run: |
           cd resources/testproject
           ../../build/c3c run -vvv --linker=builtin --trust=full
+
+      - name: Vendor-fetch
+        run: |
+          ./build/c3c vendor-fetch raylib55
 
       - name: run compiler tests
         run: |
