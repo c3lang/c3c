@@ -10404,6 +10404,34 @@ static inline bool sema_expr_analyse_ct_is_const(SemaContext *context, Expr *exp
 	expr_rewrite_const_bool(expr, type_bool, sema_cast_const(inner));
 	return true;
 }
+static bool sema_expr_analyse_lenof(SemaContext *context, Expr *expr, bool *missing_ref)
+{
+	Expr *inner = expr->inner_expr;
+	if (!sema_analyse_expr(context, inner)) return false;
+	Type *canonical = inner->type->canonical;
+	Decl *len = sema_find_untyped_operator(canonical, OVERLOAD_LEN, NULL);
+	if (len)
+	{
+		return sema_insert_method_call(context, expr, len, inner, NULL, false);
+	}
+	switch (canonical->type_kind)
+	{
+		case TYPE_ARRAY:
+		case TYPE_VECTOR:
+			expr_rewrite_const_int(expr, type_isz, canonical->array.len);
+			return true;
+		case TYPE_SLICE:
+			expr_rewrite_slice_len(expr, inner, type_isz);
+			return true;
+		default:
+			if (missing_ref)
+			{
+				*missing_ref = true;
+				return false;
+			}
+			RETURN_SEMA_ERROR(inner, "%s does support lenof()", type_quoted_error_string(inner->type));
+	}
+}
 
 static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr)
 {
@@ -10432,7 +10460,14 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				active_context->call_env.in_no_eval = true;
 				main_expr = main_expr->expr_other_context.inner;
 				goto RETRY;
-		case EXPR_ACCESS_UNRESOLVED:
+		case EXPR_LENOF:
+				if (!sema_expr_analyse_lenof(active_context, main_expr, &failed))
+				{
+					if (!failed) goto FAIL;
+					success = false;
+				}
+				break;
+			case EXPR_ACCESS_UNRESOLVED:
 				if (!sema_expr_analyse_access(active_context, main_expr, &failed, CHECK_VALUE, false))
 				{
 					if (!failed) goto FAIL;
@@ -11053,6 +11088,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_MAKE_SLICE:
 		case EXPR_CT_SUBSCRIPT:
 			UNREACHABLE
+		case EXPR_LENOF:
+			return sema_expr_analyse_lenof(context, expr, NULL);
 		case EXPR_IOTA_DECL:
 			return sema_expr_analyse_iota_decl(context, expr);
 		case EXPR_TWO:
@@ -11601,7 +11638,7 @@ IDENT_CHECK:;
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
-
+		case EXPR_LENOF:
 		case EXPR_RETHROW:
 		case EXPR_RETVAL:
 		case EXPR_RVALUE:

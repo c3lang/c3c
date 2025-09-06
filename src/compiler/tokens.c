@@ -235,6 +235,8 @@ const char *token_type_to_string(TokenType type)
 			return "interface";
 		case TOKEN_IMPORT:
 			return "import";
+		case TOKEN_LENOF:
+			return "lenof";
 		case TOKEN_MACRO:
 			return "macro";
 		case TOKEN_MODULE:

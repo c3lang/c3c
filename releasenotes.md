@@ -3,6 +3,8 @@
 ## 0.7.6 Change list
 
 ### Changes / improvements
+- Add lenof() compile time function #2439
+- Allow doc comments on individual struct members, faultdefs and enum values #2427.
 
 ### Fixes
 - Compiler assert with var x @noinit = 0 #2452
@@ -12,6 +14,8 @@
 - Inlining location when accessing #foo symbols.
 - Improve inlined-at when checking generic code.
 - Fix codegen bug in expressions like `foo(x()) ?? io::EOF?` causing irregular crashes.
+- Correctly silence "unsupported architecture" warning with `--quiet` #2465
+- Overloading &[] should be enough for foreach. #2466
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
@@ -56,7 +60,6 @@
 - `$defined(#hash)` will not check the internal expression, just that `#hash` exists. Use `$defined((void)#hash)` for the old behaviour.
 - Added optional macro arguments using `macro foo(int x = ...)` which can be checked using `$defined(x)`.
 - Add compile time ternary `$val ??? <expr> : <expr>`.
-- Allow doc comments on individual struct members, faultdefs and enum values #2427.
 
 ### Fixes
 - List.remove_at would incorrectly trigger ASAN.
@@ -115,8 +118,6 @@
 - Fix missing end of line when encountering errors in project creation.
 - Const enum methods are not being recognized. #2445
 - $defined returns an error when assigning a struct initializer with an incorrect type #2449
-- Correctly silence "unsupported architecture" warning with `--quiet` #2465
-- Overloading &[] should be enough for foreach. #2466
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
