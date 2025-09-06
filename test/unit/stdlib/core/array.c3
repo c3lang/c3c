@@ -32,7 +32,7 @@ fn usz? ArrTestStruct.to_format(&self, Formatter* f) @dynamic
 }
 
 module array_test @test;
-import std::collections::pair, std::collections::list;
+import std::collections;
 
 
 fn void contains()
@@ -86,6 +86,10 @@ fn void reduce() => @pool()
 	List {String} l;
 	l.push_all({ "abc", "adef", "ghi", "a12345" });
 	test::eq(array::@reduce(l, (usz)0, fn (acc, e, u) => acc + e.len + u), 0 + (3 + 0) + (4 + 1) + (3 + 2) + (6 + 3));
+
+	LinkedList {String} ll;
+	ll.push_all({ "abc", "adef", "ghi", "a12345" });
+	test::eq(array::@reduce(ll.array_view(), (usz)0, fn (acc, e, u) => acc + e.len + u), 0 + (3 + 0) + (4 + 1) + (3 + 2) + (6 + 3));
 }
 
 fn void sum()
@@ -127,6 +131,10 @@ fn void indices_of() => @pool()
 	List {String} l;
 	l.push_all({ "abc", "adef", "ghi", "a12345" });
 	test::eq(array::@tindices_of(l, fn (e, u) => e.len <= 3), (usz[]){0, 2});
+
+	LinkedList {String} ll;
+	ll.push_all({ "abc", "adef", "ghi", "a12345" });
+	test::eq(array::@tindices_of(ll.array_view(), fn (e, u) => e.len <= 3), (usz[]){0, 2});
 }
 
 fn void filter() => @pool()
@@ -143,6 +151,10 @@ fn void filter() => @pool()
 	List {String} l;
 	l.push_all({ "abc", "adef", "ghi", "a12345" });
 	test::eq(array::@tfilter(l, fn (e, u) => e.len <= 3), (String[]){ "abc", "ghi" });
+
+	LinkedList {String} ll;
+	ll.push_all({ "abc", "adef", "ghi", "a12345" });
+	test::eq(array::@tfilter(ll.array_view(), fn (e, u) => e.len <= 3), (String[]){ "abc", "ghi" });
 }
 
 fn void any_true() => @pool()
@@ -159,6 +171,11 @@ fn void any_true() => @pool()
 	l.push_all({ "abc", "adef", "ghi", "a12345" });
 	test::@check(array::@any(l, fn (e, u) => e.len > 5));
 	test::@check(!array::@any(l, fn (e, u) => e == "hi"));
+
+	LinkedList {String} ll;
+	ll.push_all({ "abc", "adef", "ghi", "a12345" });
+	test::@check(array::@any(ll.array_view(), fn (e, u) => e.len > 5));
+	test::@check(!array::@any(ll.array_view(), fn (e, u) => e == "hi"));
 }
 
 fn void all_true() => @pool()
@@ -175,6 +192,11 @@ fn void all_true() => @pool()
 	l.push_all({ "abc", "adef", "ghi", "a12345" });
 	test::@check(array::@all(l, fn (e, u) => e.len > 1));
 	test::@check(!array::@all(l, fn (e, u) => e.len > 3));
+
+	LinkedList {String} ll;
+	ll.push_all({ "abc", "adef", "ghi", "a12345" });
+	test::@check(array::@all(ll.array_view(), fn (e, u) => e.len > 1));
+	test::@check(!array::@all(ll.array_view(), fn (e, u) => e.len > 3));
 }
 
 
@@ -364,4 +386,18 @@ fn void zip_into_list() => @pool()
 
 	test::eq(l.len(), 4);
 	foreach (i, c : l) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
+}
+
+fn void zip_into_linked_list() => @pool()
+{
+	LinkedList{char} l;
+	l.push_all({ '1', '2', '3', '4' });
+	String[6] right = { "one", "two", "three", "four", "five", "six" };
+
+	char[] expected = { '4', '5', '8', '8' };
+
+	array::@zip_into(l.array_view(), right, fn (a, b) => a + (char)b.len);
+
+	test::eq(l.len(), 4);
+	foreach (i, c : l.array_view()) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
 }

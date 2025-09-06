@@ -387,7 +387,6 @@ macro bool @all(array, #predicate)
  @require @is_valid_list(left) &&& @is_valid_list(right) : "Left and right sides must be integer indexable"
  @require @is_valid_operation(left, right, ...#operation) : "The operator must take two parameters matching the elements of the left and right side"
  @require @is_valid_fill(left, right, ...fill_with) : "The specified fill value does not match either the left or the right array's underlying type."
-
 *>
 macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) @nodiscard
 {
@@ -460,7 +459,6 @@ macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) 
  @require @is_valid_list(left) &&& @is_valid_list(right) : "Left and right sides must be integer indexable"
  @require @is_valid_operation(left, right, ...#operation) : "The operator must take two parameters matching the elements of the left and right side"
  @require @is_valid_fill(left, right, ...fill_with) : "The specified fill value does not match either the left or the right array's underlying type."
-
 *>
 macro @tzip(left, right, #operation = ..., fill_with = ...) @nodiscard
 {

@@ -17,6 +17,8 @@
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
 - Added `path::home_directory`, `path::documents_directory`, `path::videos_directory`, `path::pictures_directory`, `path::desktop_directory`, `path::screenshots_directory`,
   `path::public_share_directory`, `path::templates_directory`, `path::saved_games_directory`, `path::music_directory`, `path::downloads_directory`.
+- Add `LinkedList` array_view to support `[]` and `foreach`/`foreach_r`. #2438
+- Make `LinkedList` printable and add `==` operator. #2438
 
 ## 0.7.5 Change list
 
