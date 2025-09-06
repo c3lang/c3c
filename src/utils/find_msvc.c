@@ -57,7 +57,7 @@ const char *get_windows_cl_path(void)
 
 	// We have the version, so we're done with the path:
 	scratch_buffer_clear();
-	scratch_buffer_printf("%s\\VC\\Tools\\MSVC\\%s\\bin\\Hostx64\\x64\\", install_path, version);
+	scratch_buffer_printf("%s\\VC\\Tools\\MSVC\\%s\\bin\\Hostx64\\x64\\cl.exe", install_path, version);
 	return scratch_buffer_copy();
 }
 
