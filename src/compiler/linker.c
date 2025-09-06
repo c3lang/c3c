@@ -1031,6 +1031,10 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 	const char ***args_ref = &parts;
 	add_quote_arg(cc);
 
+	if (is_cl_exe) {
+		add_plain_arg("/nologo");
+	}
+
 	FOREACH(const char *, include_dir, include_dirs)
 	{
 		add_concat_quote_arg(is_cl_exe ? "/I" : "-I ", include_dir);
@@ -1059,6 +1063,12 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 		add_plain_arg("-o");
 		add_quote_arg(out_name);
 	}
+
+#if PLATFORM_WINDOWS
+	if (is_cl_exe) {
+		_putenv_s("INCLUDE", windows_get_sdk()->cl_include_env);
+	}
+#endif
 
 	const char *output = assemble_linker_command(parts, PLATFORM_WINDOWS);
 	DEBUG_LOG("Compiling c sources using '%s'", output);
