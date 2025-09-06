@@ -46,20 +46,23 @@ WindowsSDK get_windows_paths()
 	scratch_buffer_printf("%s\\lib\\x64", vs_path);
 	out.vs_library_path = scratch_buffer_copy();
 
-	scratch_buffer_clear();
-	scratch_buffer_printf("%s\\bin\\Hostx64\\x64\\cl.exe", vs_path);
-	out.cl_path = scratch_buffer_copy();
+	if (getenv("INCLUDE") == NULL) {
 
-	scratch_buffer_clear();
-	scratch_buffer_printf("%s\\include;", vs_path);
-	scratch_buffer_printf("%s\\cppwinrt;", windows_sdk_include_root);
-	scratch_buffer_printf("%s\\cppwinrt;", windows_sdk_include_root);
-	scratch_buffer_printf("%s\\shared;", windows_sdk_include_root);
-	scratch_buffer_printf("%s\\ucrt;", windows_sdk_include_root);
-	scratch_buffer_printf("%s\\um;", windows_sdk_include_root);
-	scratch_buffer_printf("%s\\winrt;", windows_sdk_include_root);
+		scratch_buffer_clear();
+		scratch_buffer_printf("%s\\bin\\Hostx64\\x64\\cl.exe", vs_path);
+		out.cl_path = scratch_buffer_copy();
 
-	out.cl_include_env = scratch_buffer_copy();
+		scratch_buffer_clear();
+		scratch_buffer_printf("%s\\include;", vs_path);
+		scratch_buffer_printf("%s\\cppwinrt;", windows_sdk_include_root);
+		scratch_buffer_printf("%s\\cppwinrt;", windows_sdk_include_root);
+		scratch_buffer_printf("%s\\shared;", windows_sdk_include_root);
+		scratch_buffer_printf("%s\\ucrt;", windows_sdk_include_root);
+		scratch_buffer_printf("%s\\um;", windows_sdk_include_root);
+		scratch_buffer_printf("%s\\winrt;", windows_sdk_include_root);
+
+		out.cl_include_env = scratch_buffer_copy();
+	}
 
 	free(root);
 	vmem_free(vs_path);

@@ -1066,7 +1066,10 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 
 #if PLATFORM_WINDOWS
 	if (is_cl_exe) {
-		_putenv_s("INCLUDE", windows_get_sdk()->cl_include_env);
+		WindowsSDK * sdk = windows_get_sdk();
+		if (sdk != NULL && sdk->cl_include_env != NULL) {
+			_putenv_s("INCLUDE", sdk->cl_include_env);
+		}
 	}
 #endif
 

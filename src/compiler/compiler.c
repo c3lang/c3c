@@ -1754,7 +1754,13 @@ const char *default_c_compiler(void)
 		return cc;
 	}
 #if PLATFORM_WINDOWS
-	return cc = windows_get_sdk()->cl_path;
+	WindowsSDK *sdk = windows_get_sdk();
+
+	if (sdk != NULL && sdk->cl_path != NULL) {
+		return sdk->cl_path;
+	} else {
+		return cc = "cl.exe";
+	}
 #else
 	return cc = "cc";
 #endif
