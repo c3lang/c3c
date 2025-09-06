@@ -166,6 +166,25 @@ struct ConstInitializer_
 	};
 };
 
+typedef union
+{
+	struct
+	{
+		FileId file_id;
+		unsigned char length;
+		unsigned char col;
+		uint32_t row;
+	};
+	uint64_t a;
+} SourceSpan;
+
+static_assert(sizeof(SourceSpan) == 8, "Expected 8 bytes");
+
+typedef struct InliningSpan_
+{
+	SourceSpan span;
+	struct InliningSpan_ *prev;
+} InliningSpan;
 
 typedef struct
 {
@@ -211,20 +230,7 @@ typedef struct
 	const char *full_path;
 } File;
 
-typedef union
-{
-	struct
-	{
-		FileId file_id;
-		unsigned char length;
-		unsigned char col;
-		uint32_t row;
-	};
-	uint64_t a;
-} SourceSpan;
 
-
-static_assert(sizeof(SourceSpan) == 8, "Expected 8 bytes");
 
 typedef struct
 {
@@ -1607,6 +1613,7 @@ typedef struct Module_
 	Decl **tests;
 	Decl **lambdas_to_evaluate;
 	const char *generic_suffix;
+	InliningSpan inlined_at;
 } Module;
 
 
@@ -1757,11 +1764,7 @@ typedef struct JumpTarget_
 	AstId defer;
 } JumpTarget;
 
-typedef struct InliningSpan_
-{
-	SourceSpan span;
-	struct InliningSpan_ *prev;
-} InliningSpan;
+
 
 struct SemaContext_
 {
@@ -2203,6 +2206,7 @@ Decl **copy_decl_list_macro(Decl **decl_list);
 Ast *copy_ast_macro(Ast *source_ast);
 Ast *copy_ast_defer(Ast *source_ast);
 TypeInfo *copy_type_info_single(TypeInfo *type_info);
+InliningSpan *copy_inlining_span(InliningSpan *span);
 
 void init_asm(PlatformTarget *target);
 void print_asm_list(PlatformTarget *target);
@@ -2416,7 +2420,7 @@ bool sema_analyse_expr(SemaContext *context, Expr *expr);
 bool sema_cast_const(Expr *expr);
 
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
-bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);
+bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
 
 bool sema_analyse_method_register(SemaContext *context, Decl *method);
@@ -2429,7 +2433,7 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement);
 
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right,
                                          bool is_unwrapped_var, bool is_declaration, bool *failed_ref);
-bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr);
+bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
 Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs);
 
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional,
@@ -2478,7 +2482,7 @@ File *source_file_text_load(const char *filename, char *content);
 
 File *compile_and_invoke(const char *file, const char *args, const char *stdin_data, size_t limit);
 void compiler_parse(void);
-bool compiler_should_ouput_file(const char *file);
+bool compiler_should_output_file(const char *file);
 void emit_json(void);
 
 void stable_init(STable *table, uint32_t initial_size);
@@ -3641,7 +3645,7 @@ static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 			const_init_set_span(init->init_array_value.element, loc);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 static inline void expr_list_set_span(Expr **expr, SourceSpan loc);

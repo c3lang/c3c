@@ -16,7 +16,7 @@ typedef enum FunctionParse_
 static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, FunctionParse parse_kind);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref, ArrayIndex *inline_index);
-static Decl *parse_include(ParseContext *c);
+static Decl *parse_ct_include(ParseContext *c);
 static Decl *parse_exec(ParseContext *c);
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
 INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl);
@@ -3139,7 +3139,7 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 	return true;
 }
 
-static Decl *parse_include(ParseContext *c)
+static Decl *parse_ct_include(ParseContext *c)
 {
 	SourceSpan loc = c->span;
 	Decl *decl = decl_new(DECL_CT_INCLUDE, NULL, loc);
@@ -3323,7 +3323,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			return NULL;
 		case TOKEN_CT_INCLUDE:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_include(c);
+			decl = parse_ct_include(c);
 			break;
 		case TOKEN_CT_EXEC:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;

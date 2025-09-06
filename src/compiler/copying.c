@@ -197,7 +197,7 @@ void copy_range(CopyStruct *c, Range *range)
 	switch (range->range_type)
 	{
 		case RANGE_SINGLE_ELEMENT:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case RANGE_CONST_LEN:
 		case RANGE_CONST_END:
 			MACRO_COPY_EXPRID(range->start);
@@ -209,7 +209,7 @@ void copy_range(CopyStruct *c, Range *range)
 			MACRO_COPY_EXPRID(range->end);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 INLINE ConstInitializer **copy_const_initializer_list(CopyStruct *c, ConstInitializer **initializer_list)
@@ -253,7 +253,7 @@ static inline void copy_const_initializer(CopyStruct *c, ConstInitializer **init
 			copy_const_initializer(c, &copy->init_array_value.element);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 INLINE Expr *copy_const_expr(CopyStruct *c, Expr *expr)
@@ -1159,3 +1159,11 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 	return copy;
 }
 
+InliningSpan *copy_inlining_span(InliningSpan *span)
+{
+	if (!span) return NULL;
+	InliningSpan *copy_span = MALLOCS(InliningSpan);
+	copy_span->span = span->span;
+	copy_span->prev = copy_inlining_span(span->prev);
+	return copy_span;
+}

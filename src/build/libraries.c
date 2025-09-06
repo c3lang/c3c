@@ -103,7 +103,7 @@ static Library *add_library(JSONObject *json, const char *dir)
 	if (!str_is_valid_lowercase_name(provides))
 	{
 		char *res = strdup(provides);
-		str_ellide_in_place(res, 32);
+		str_elide_in_place(res, 32);
 		error_exit("Invalid 'provides' module name in %s, was '%s', the name should only contain alphanumerical letters and '_'.", library->dir, res);
 	}
 	library->provides = provides;
@@ -127,6 +127,7 @@ static Library *find_library(Library **libs, size_t lib_count, const char *name)
 		if (str_eq(libs[i]->provides, name)) return libs[i];
 	}
 	error_exit("Required library '%s' could not be found. You can add additional library search paths using '--libdir' in case you forgot one.", name);
+	UNREACHABLE
 }
 
 static void add_library_dependency(BuildTarget *build_target, Library *library, Library **library_list, size_t lib_count)

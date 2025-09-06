@@ -88,6 +88,7 @@ INLINE AsmArgBits parse_bits(const char **desc)
 		return ARG_BITS_5;
 	}
 	error_exit("Invalid bits: %s.", *desc);
+	UNREACHABLE
 }
 
 INLINE AsmArgType decode_arg_type(const char **desc)
@@ -563,7 +564,7 @@ static void init_asm_riscv(PlatformTarget *target)
 			bits = ARG_BITS_32;
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	reg_register_list(target, riscv_gp_integer_regs, 32, ASM_REG_INT, bits, RISCV_X0);
 	reg_register_list(target, riscv_arg_integer_regs, 8, ASM_REG_INT, bits, RISCV_X10);
@@ -892,7 +893,7 @@ static void print_arch_asm(PlatformTarget *target)
 				break;
 			}
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 		if (scratch_buffer.len) scratch_buffer.len -= 2;
 		printf("%-30s | ", scratch_buffer_to_string());
@@ -960,7 +961,7 @@ void init_asm(PlatformTarget *target)
 			error_exit("Xtensa asm support not yet available.");
 		case ARCH_TYPE_UNKNOWN:
 			error_exit("Unknown arch does not support asm.");
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case ARCH_TYPE_PPC:
 		case ARCH_TYPE_PPC64:
 		case ARCH_TYPE_PPC64LE:
@@ -973,5 +974,5 @@ void init_asm(PlatformTarget *target)
 		case ARCH_UNSUPPORTED:
 			error_exit("Arch is unsupported and does not support inline asm.");
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }

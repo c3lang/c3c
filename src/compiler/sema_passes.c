@@ -355,7 +355,7 @@ INLINE void register_includes(CompilationUnit *unit, Decl **decls)
 				include_decls = sema_load_include(unit, include);
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 		FOREACH(Decl *, decl, include_decls)
 		{

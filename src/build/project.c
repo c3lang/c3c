@@ -246,7 +246,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 		if (!str_is_valid_lowercase_name(name))
 		{
 			char *name_copy = strdup(name);
-			str_ellide_in_place(name_copy, 32);
+			str_elide_in_place(name_copy, 32);
 			error_exit("Error reading %s: invalid library target name '%s' – it should only contain alphanumerical letters and '_'.", context.file, name_copy);
 		}
 	}
@@ -359,7 +359,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 		case SANITIZE_ADDRESS: target->feature.sanitize_address = true; break;
 		case SANITIZE_MEMORY: target->feature.sanitize_memory = true; break;
 		case SANITIZE_THREAD: target->feature.sanitize_thread = true; break;
-		default: UNREACHABLE;
+		default: UNREACHABLE_VOID;
 	}
 
 	// Cpu
@@ -595,6 +595,7 @@ BuildTarget *project_select_target(const char *filename, Project *project, const
 		if (str_eq(target->name, optional_target)) return target;
 	}
 	error_exit("No build target named '%s' was found in %s. Was it misspelled?", optional_target, filename);
+	UNREACHABLE
 }
 
 JSONObject *project_json_load(const char **filename_ref)

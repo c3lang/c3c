@@ -47,6 +47,7 @@ static const char *ld_target(ArchType arch_type)
 		default:
 			error_exit("Architecture currently not available for cross linking.");
 	}
+	UNREACHABLE
 }
 
 static void linker_setup_windows(const char ***args_ref, Linker linker_type, const char *output_file)
@@ -69,7 +70,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 			is_debug = true;
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	if (!link_libc()) return;
 	bool link_with_dynamic_debug_libc = true;
@@ -111,7 +112,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 					scratch_buffer_append("/x86");
 					break;
 				default:
-					UNREACHABLE
+					UNREACHABLE_VOID
 			}
 			if (file_exists(scratch_buffer_to_string()))
 			{
@@ -761,7 +762,7 @@ static void append_fpie_pic_options(RelocModel reloc, const char ***args_ref)
 	switch (reloc)
 	{
 		case RELOC_DEFAULT:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case RELOC_NONE:
 			add_plain_arg("-fno-pic");
 			break;

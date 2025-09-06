@@ -86,6 +86,7 @@ Type *type_int_signed_by_bitsize(BitSize bitsize)
 		case 128: return type_i128;
 		default: FATAL_ERROR("Illegal bitsize %d", bitsize);
 	}
+	UNREACHABLE
 }
 Type *type_int_unsigned_by_bitsize(BitSize bit_size)
 {
@@ -98,6 +99,7 @@ Type *type_int_unsigned_by_bitsize(BitSize bit_size)
 		case 128: return type_u128;
 		default: FATAL_ERROR("Illegal bitsize");
 	}
+	UNREACHABLE
 }
 
 const char *type_quoted_error_string_maybe_with_path(Type *type, Type *other_type)
@@ -137,7 +139,7 @@ void type_append_name_to_scratch(Type *type)
 	{
 		case TYPE_POISONED:
 		case TYPE_TYPEDEF:
-			UNREACHABLE;
+			UNREACHABLE_VOID;
 		case TYPE_ENUM:
 		case TYPE_CONST_ENUM:
 		case TYPE_STRUCT:
@@ -186,7 +188,7 @@ void type_append_name_to_scratch(Type *type)
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 		case TYPE_WILDCARD:
-			UNREACHABLE
+			UNREACHABLE_VOID
 			break;
 		case TYPE_FUNC_PTR:
 			type = type->pointer;
@@ -654,7 +656,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 	switch (type->type_kind)
 	{
 		case CT_TYPES:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_ANY:
 			scratch_buffer_append("any$");
 			return;
@@ -741,7 +743,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			type_mangle_introspect_name_to_buffer(type->canonical);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...)

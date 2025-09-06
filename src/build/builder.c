@@ -213,7 +213,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			break;
 		case OPT_SETTING_NOT_SET:
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	COPY_IF_DEFAULT(target->optsize, optsize);
 	COPY_IF_DEFAULT(target->optlevel, optlevel);
@@ -493,7 +493,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case SANITIZE_ADDRESS: target->feature.sanitize_address = true; break;
 		case SANITIZE_MEMORY: target->feature.sanitize_memory = true; break;
 		case SANITIZE_THREAD: target->feature.sanitize_thread = true; break;
-		default: UNREACHABLE;
+		default: UNREACHABLE_VOID;
 	}
 
 	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT) target->arch_os_target = default_target;

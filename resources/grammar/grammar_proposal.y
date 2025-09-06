@@ -1144,12 +1144,12 @@ parameter
 	| CT_IDENT ELLIPSIS
 	;
 
-func_defintion_decl
+func_definition_decl
 	: FN func_header fn_parameter_list opt_attributes ';'
 	;
 
 func_definition
-	: func_defintion_decl
+	: func_definition_decl
 	| FN func_header fn_parameter_list opt_attributes macro_func_body
 	;
 
@@ -1223,8 +1223,8 @@ define_declaration
 	;
 
 interface_body
-	: func_defintion_decl
-	| interface_body func_defintion_decl
+	: func_definition_decl
+	| interface_body func_definition_decl
 	;
 
 interface_declaration
