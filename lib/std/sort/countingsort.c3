@@ -10,7 +10,7 @@ Sort list using the counting sort algorithm.
 *>
 macro countingsort(list, key_fn = EMPTY_MACRO_SLOT) @builtin
 {
-	usz len = sort::len_from_list(list);
+	usz len = lengthof(list);
 	cs::csort{$typeof(list), $typeof(key_fn)}(list, 0, len, key_fn, ~((uint)0));
 }
 

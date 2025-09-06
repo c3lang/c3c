@@ -10429,7 +10429,7 @@ static bool sema_expr_analyse_lenof(SemaContext *context, Expr *expr, bool *miss
 				*missing_ref = true;
 				return false;
 			}
-			RETURN_SEMA_ERROR(inner, "%s does support lenof()", type_quoted_error_string(inner->type));
+			RETURN_SEMA_ERROR(inner, "%s does support lengthof()", type_quoted_error_string(inner->type));
 	}
 }
 
@@ -10460,7 +10460,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				active_context->call_env.in_no_eval = true;
 				main_expr = main_expr->expr_other_context.inner;
 				goto RETRY;
-		case EXPR_LENOF:
+		case EXPR_LENGTHOF:
 				if (!sema_expr_analyse_lenof(active_context, main_expr, &failed))
 				{
 					if (!failed) goto FAIL;
@@ -11088,7 +11088,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_MAKE_SLICE:
 		case EXPR_CT_SUBSCRIPT:
 			UNREACHABLE
-		case EXPR_LENOF:
+		case EXPR_LENGTHOF:
 			return sema_expr_analyse_lenof(context, expr, NULL);
 		case EXPR_IOTA_DECL:
 			return sema_expr_analyse_iota_decl(context, expr);
@@ -11638,7 +11638,7 @@ IDENT_CHECK:;
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
-		case EXPR_LENOF:
+		case EXPR_LENGTHOF:
 		case EXPR_RETHROW:
 		case EXPR_RETVAL:
 		case EXPR_RVALUE:

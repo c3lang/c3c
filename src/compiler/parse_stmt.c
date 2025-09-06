@@ -1409,7 +1409,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_VAEXPR:
 		case TOKEN_FALSE:
 		case TOKEN_INTEGER:
-		case TOKEN_LENOF:
+		case TOKEN_LENGTHOF:
 		case TOKEN_LPAREN:
 		case TOKEN_MINUS:
 		case TOKEN_MINUSMINUS:

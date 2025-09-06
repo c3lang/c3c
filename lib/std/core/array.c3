@@ -216,7 +216,7 @@ macro @product(array, identity_value = 1)
 *>
 macro usz[] @indices_of(Allocator allocator, array, #predicate)
 {
-	usz[] results = allocator::new_array(allocator, usz, find_len(array));
+	usz[] results = allocator::new_array(allocator, usz, lengthof(array));
 	usz matches;
 
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
@@ -399,8 +399,8 @@ macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) 
 		$Type = $typeof(#operation).returns;
 	$endif
 
-	usz left_len = find_len(left);
-	usz right_len = find_len(right);
+	usz left_len = lengthof(left);
+	usz right_len = lengthof(right);
 
 	$LeftType left_fill;
 	$RightType right_fill;
@@ -493,7 +493,7 @@ macro @tzip(left, right, #operation = ..., fill_with = ...) @nodiscard
 
  @require @is_valid_list(left) : "Expected a valid list"
  @require @is_valid_list(right) : "Expected a valid list"
- @require find_len(right) >= find_len(left) : `Right side length must be >= the destination (left) side length; consider using a sub-array of data for the assignment.`
+ @require lengthof(right) >= lengthof(left) : `Right side length must be >= the destination (left) side length; consider using a sub-array of data for the assignment.`
  @require $defined($typefrom(@zip_into_fn(left, right)) x = #operation) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
 *>
 macro @zip_into(left, right, #operation)
@@ -537,7 +537,7 @@ macro bool @is_valid_operation(#left, #right, #operation = ...) @const
 
 macro bool @is_valid_list(#expr) @const
 {
-	return $defined(#expr[0]) &&& ($defined(#expr.len) ||| $defined(#expr.len()));
+	return $defined(#expr[0], lengthof(#expr));
 }
 
 macro bool @is_valid_fill(left, right, fill_with = ...)
@@ -545,11 +545,9 @@ macro bool @is_valid_fill(left, right, fill_with = ...)
 	$if !$defined(fill_with):
 		return true;
 	$else
-		usz left_len = $defined(left.len()) ??? left.len() : left.len;
-		usz right_len = $defined(right.len()) ??? right.len() : right.len;
+		usz left_len = lengthof(left);
+		usz right_len = lengthof(right);
 		if (left_len == right_len) return true;
 		return left_len > right_len ? $defined(($typeof(right[0]))fill_with) : $defined(($typeof(left[0]))fill_with);
 	$endif
 }
-
-macro usz find_len(list) => $defined(list.len()) ??? list.len() : list.len;

@@ -120,7 +120,7 @@ fn int[] to_ints(TestL l) => @map(tmem, l.array_view(), fn int(Test x) => x.test
 import std::core::array @public;
 macro @map(Allocator alloc, array, operation)
 {
-	var res = allocator::alloc_array(alloc, $typeof(operation).returns, array::find_len(array));
+	var res = allocator::alloc_array(alloc, $typeof(operation).returns, lengthof(array));
 	foreach (i, val : array) res[i] = operation(val);
 	return res;
 }

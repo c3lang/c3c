@@ -1238,13 +1238,13 @@ static Expr *parse_ct_embed(ParseContext *c, Expr *left, SourceSpan lhs_start UN
 }
 
 /**
- * lenof ::= LENOF '(' expr ')'
+ * lengthof ::= LENGTHOF '(' expr ')'
  * flat_path ::= expr ('.' primary) | '[' expr ']')*
  */
-static Expr *parse_lenof(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_lengthof(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_LENOF);
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_LENGTHOF);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
@@ -2171,7 +2171,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_TRUE] = { parse_bool, NULL, PREC_NONE },
 		[TOKEN_FALSE] = { parse_bool, NULL, PREC_NONE },
 		[TOKEN_NULL] = { parse_null, NULL, PREC_NONE },
-		[TOKEN_LENOF] = { parse_lenof, NULL, PREC_NONE },
+		[TOKEN_LENGTHOF] = { parse_lengthof, NULL, PREC_NONE },
 		[TOKEN_INTEGER] = { parse_integer, NULL, PREC_NONE },
 		[TOKEN_BUILTIN] = { parse_builtin, NULL, PREC_NONE },
 		[TOKEN_CHAR_LITERAL] = { parse_char_lit, NULL, PREC_NONE },

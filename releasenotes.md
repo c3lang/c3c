@@ -3,7 +3,7 @@
 ## 0.7.6 Change list
 
 ### Changes / improvements
-- Add lenof() compile time function #2439
+- Add lengthof() compile time function #2439
 - Allow doc comments on individual struct members, faultdefs and enum values #2427.
 
 ### Fixes

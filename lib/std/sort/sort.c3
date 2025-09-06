@@ -1,13 +1,5 @@
 module std::sort;
 
-macro usz len_from_list(list)
-{
-	$if $defined(list.len()):
-		return list.len();
-	$else
-		return list.len;
-	$endif
-}
 
 macro bool @is_sortable(#list)
 {

@@ -12,7 +12,7 @@ macro insertionsort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @b
 		$typeof((*list)[0])[] list2 = list;
 		is::isort{$typeof(list2), $typeof(cmp), $typeof(context)}(list2, 0, list.len, cmp, context);
 	$else
-		usz len = sort::len_from_list(list);
+		usz len = lengthof(list);
 		is::isort{$typeof(list), $typeof(cmp), $typeof(context)}(list, 0, (isz)len, cmp, context);
 	$endif
 }

@@ -12,7 +12,7 @@ macro quicksort(list, cmp = null)
 {
     var $Type = $typeof(list);
     var $CmpType = $typeof(cmp);
-    usz len = sort::len_from_list(list);
+    usz len = lengthof(list);
     test_generic::sort{$Type, $CmpType}(list, 0, (isz)len - 1, cmp);
 }
 
@@ -70,7 +70,6 @@ entry:
   %tc = alloca %"int[]", align 8
   %list = alloca %"int[]", align 8
   %len = alloca i64, align 8
-  %list9 = alloca %"int[]", align 8
   store %"int[]" zeroinitializer, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 16
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal1, ptr align 4 @.__const, i32 8, i1 false)
@@ -111,15 +110,14 @@ loop.body:                                        ; preds = %loop.cond
   %ptroffset = getelementptr inbounds [16 x i8], ptr %12, i64 %13
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tc, ptr align 8 %ptroffset, i32 16, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %list, ptr align 8 %tc, i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %list9, ptr align 8 %list, i32 16, i1 false)
-  %ptradd10 = getelementptr inbounds i8, ptr %list9, i64 8
-  %14 = load i64, ptr %ptradd10, align 8
+  %ptradd9 = getelementptr inbounds i8, ptr %list, i64 8
+  %14 = load i64, ptr %ptradd9, align 8
   store i64 %14, ptr %len, align 8
   %15 = load i64, ptr %len, align 8
   %sub = sub i64 %15, 1
   %lo = load ptr, ptr %list, align 8
-  %ptradd11 = getelementptr inbounds i8, ptr %list, i64 8
-  %hi = load i64, ptr %ptradd11, align 8
+  %ptradd10 = getelementptr inbounds i8, ptr %list, i64 8
+  %hi = load i64, ptr %ptradd10, align 8
   call void @"test_generic$sa$int$fn$int$int$$int$$.sort"(ptr %lo, i64 %hi, i64 0, i64 %sub, ptr @sort_test.cmp_int_value)
   %16 = load i64, ptr %.anon, align 8
   %addnuw = add nuw i64 %16, 1
@@ -130,7 +128,6 @@ loop.exit:                                        ; preds = %loop.cond
   ret void
 }
 
-; Function Attrs:
 define void @sort_test.quicksort_with_value2() #0 {
 entry:
   %tcases = alloca %"int[][]", align 8
@@ -143,7 +140,6 @@ entry:
   %tc = alloca %"int[]", align 8
   %list = alloca %"int[]", align 8
   %len = alloca i64, align 8
-  %list9 = alloca %"int[]", align 8
   store %"int[]" zeroinitializer, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 16
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal1, ptr align 4 @.__const.4, i32 8, i1 false)
@@ -184,15 +180,14 @@ loop.body:                                        ; preds = %loop.cond
   %ptroffset = getelementptr inbounds [16 x i8], ptr %12, i64 %13
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tc, ptr align 8 %ptroffset, i32 16, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %list, ptr align 8 %tc, i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %list9, ptr align 8 %list, i32 16, i1 false)
-  %ptradd10 = getelementptr inbounds i8, ptr %list9, i64 8
-  %14 = load i64, ptr %ptradd10, align 8
+  %ptradd9 = getelementptr inbounds i8, ptr %list, i64 8
+  %14 = load i64, ptr %ptradd9, align 8
   store i64 %14, ptr %len, align 8
   %15 = load i64, ptr %len, align 8
   %sub = sub i64 %15, 1
   %lo = load ptr, ptr %list, align 8
-  %ptradd11 = getelementptr inbounds i8, ptr %list, i64 8
-  %hi = load i64, ptr %ptradd11, align 8
+  %ptradd10 = getelementptr inbounds i8, ptr %list, i64 8
+  %hi = load i64, ptr %ptradd10, align 8
   call void @"test_generic$sa$int$fn$int$int$$int$$.sort"(ptr %lo, i64 %hi, i64 0, i64 %sub, ptr @sort_test.cmp_int_value2)
   %16 = load i64, ptr %.anon, align 8
   %addnuw = add nuw i64 %16, 1

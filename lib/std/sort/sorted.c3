@@ -9,7 +9,7 @@ Returns true if list is sorted in either ascending or descending order.
 macro bool is_sorted(list, cmp = EMPTY_MACRO_SLOT, ctx = EMPTY_MACRO_SLOT) @builtin
 {
 	var $Type = $typeof(list);
-	usz len = sort::len_from_list(list);
+	usz len = lengthof(list);
 	if (len <= 1) return true;
 	var check_sort = fn bool($Type list, usz start, usz end, $typeof(cmp) cmp, $typeof(ctx) ctx)
 	{
