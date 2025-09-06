@@ -40,6 +40,8 @@ typedef struct
 typedef struct {
 	char* windows_sdk_path;
 	char* vs_library_path;
+	char* cl_path;
+	char* cl_include;
 } WindowsSDK;
 
 #define MAX_STRING_BUFFER 0x10000

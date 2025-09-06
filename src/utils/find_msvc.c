@@ -11,7 +11,7 @@
 static char *find_visual_studio(void);
 static char *find_windows_kit_root(void);
 
-WindowsSDK get_windows_link_paths()
+WindowsSDK get_windows_paths()
 {
 	WindowsSDK out = {0};
 
@@ -23,42 +23,24 @@ WindowsSDK get_windows_link_paths()
 	}
 
 	out.windows_sdk_path = path;
-	out.vs_library_path = find_visual_studio();
+
+	char *vs_path = find_visual_studio();
+
+	scratch_buffer_clear();
+	scratch_buffer_printf("%s\\lib\\x64", vs_path);
+	out.vs_library_path = scratch_buffer_copy();
+
+	scratch_buffer_clear();
+	scratch_buffer_printf("%s\\bin\\Hostx64\\x64\\cl.exe", vs_path);
+	out.cl_path = scratch_buffer_copy();
+
+	scratch_buffer_clear();
+	scratch_buffer_printf("%s\\include", vs_path);
+	out.cl_include = scratch_buffer_copy();
+
+	vmem_free(vs_path);
 
 	return out;
-}
-
-const char *get_windows_cl_path(void)
-{
-	// Let's locate vswhere.exe
-	char *path = win_utf16to8(_wgetenv(L"ProgramFiles(x86)"));
-	scratch_buffer_clear();
-	scratch_buffer_printf("\"%s\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -prerelease -property installationPath -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -products *", path);
-	char *install_path = NULL;
-
-	// Call vswhere.exe
-	if (!execute_cmd_failable(scratch_buffer_to_string(), &install_path, NULL, 0))
-	{
-		error_exit("Failed to find vswhere.exe to detect MSVC.");
-	}
-
-	// Find and read the version file.
-	scratch_buffer_clear();
-	scratch_buffer_printf("%s\\VC\\Auxiliary\\Build\\Microsoft.VCToolsVersion.default.txt", install_path);
-	const char *version_file = scratch_buffer_to_string();
-	DEBUG_LOG("MSVC version file: %s", version_file);
-	size_t size;
-	char *version = file_read_all(scratch_buffer_to_string(), &size);
-	if (version) version = str_trim(version);
-	if (!version || strlen(version) == 0)
-	{
-		error_exit("Failed to detect MSVC, could not read %s.", scratch_buffer_to_string());
-	}
-
-	// We have the version, so we're done with the path:
-	scratch_buffer_clear();
-	scratch_buffer_printf("%s\\VC\\Tools\\MSVC\\%s\\bin\\Hostx64\\x64\\cl.exe", install_path, version);
-	return scratch_buffer_copy();
 }
 
 static char *find_visual_studio(void)
@@ -90,7 +72,7 @@ static char *find_visual_studio(void)
 
 	// We have the version, so we're done with the path:
 	scratch_buffer_clear();
-	scratch_buffer_printf("%s\\VC\\Tools\\MSVC\\%s\\lib\\x64", install_path, version);
+	scratch_buffer_printf("%s\\VC\\Tools\\MSVC\\%s", install_path, version);
 	return scratch_buffer_copy();
 }
 
