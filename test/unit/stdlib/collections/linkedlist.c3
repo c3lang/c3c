@@ -45,7 +45,7 @@ fn void test_get() => @pool()
 	test::eq(list.get(2), -3);
 	test::eq(list.get(1), 55);
 	test::eq(list.get(0), 23);
-	test::eq(list[0], 23);
+	test::eq(list.array_view()[0], 23);
 }
 
 fn void test_insert() => @pool()
@@ -207,17 +207,17 @@ fn void test_remove_first() => @pool()
 fn void test_push_all_ordering() => @pool()
 {
 	IntList l = linkedlist::@tnew{int}({ 23, 45, 66 });
-	test::eq(l[0], 23);
-	test::eq(l[1], 45);
-	test::eq(l[2], 66);
+	test::eq(l.array_view()[0], 23);
+	test::eq(l.array_view()[1], 45);
+	test::eq(l.array_view()[2], 66);
 
 	IntList l2 = linkedlist::@tnew{int}({ 23, 45, 66 });
 	l2.push_front_all({ 3, 6 });
-	test::eq(l2[0], 3);
-	test::eq(l2[1], 6);
-	test::eq(l2[2], 23);
-	test::eq(l2[3], 45);
-	test::eq(l2[4], 66);
+	test::eq(l2.array_view()[0], 3);
+	test::eq(l2.array_view()[1], 6);
+	test::eq(l2.array_view()[2], 23);
+	test::eq(l2.array_view()[3], 45);
+	test::eq(l2.array_view()[4], 66);
 }
 
 fn void test_index_of() => @pool()
@@ -231,18 +231,18 @@ fn void test_index_of() => @pool()
 fn void test_operators() => @pool()
 {
 	IntList list = linkedlist::@tnew{int}({ 17, 109, 2, 8 });
-	foreach (i, &e : list) *e += 2;
-	test::eq(list[0], 19);
-	test::eq(list[1], 111);
-	test::eq(list[2], 4);
-	test::eq(list[3], 10);
+	foreach (i, &e : list.array_view()) *e += 2;
+	test::eq(list.array_view()[0], 19);
+	test::eq(list.array_view()[1], 111);
+	test::eq(list.array_view()[2], 4);
+	test::eq(list.array_view()[3], 10);
 }
 
 fn void test_iterator_set() => @pool()
 {
 	IntList list = linkedlist::@tnew{int}({ 17, 109, 2, 8 });
 	IntList expected = linkedlist::@tnew{int}({1, 2, 3, 4});
-	foreach (int i, &v : list.iter()) *v = i + 1;
+	foreach (int i, &v : list.array_view()) *v = i + 1;
 	test::eq(list, expected);
 }
 
@@ -251,6 +251,6 @@ fn void test_iterator_reverse_set() => @pool()
 	IntList list = linkedlist::@tnew{int}({ 17, 109, 2, 8 });
 	IntList pushed = linkedlist::@tnew{int}();
 	IntList expected = linkedlist::@tnew{int}({8, 2, 109, 17});
-	foreach_r (int i, v : list.iter()) pushed.push(v);
+	foreach_r (int i, v : list.array_view()) pushed.push(v);
 	test::eq(pushed, expected);
 }

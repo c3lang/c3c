@@ -17,6 +17,8 @@
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
 - Added `path::home_directory`, `path::documents_directory`, `path::videos_directory`, `path::pictures_directory`, `path::desktop_directory`, `path::screenshots_directory`,
   `path::public_share_directory`, `path::templates_directory`, `path::saved_games_directory`, `path::music_directory`, `path::downloads_directory`.
+- Add `LinkedList` array_view to support `[]` and `foreach`/`foreach_r`. #2438
+- Make `LinkedList` printable and add `==` operator. #2438
 
 ## 0.7.5 Change list
 
@@ -133,10 +135,6 @@
 - Added array `@reduce`, `@filter`, `@any`, `@all`, `@sum`, `@product`, and `@indices_of` macros.
 - `String.bformat` has reduced overhead.
 - Supplemental `roundeven` has a normal implementation.
-- Add `LinkedList` iterator to support `[]` and `foreach`/`foreach_r`. #2438
-- Make `LinkedList` printable and add `==` operator. #2438
-- Add `values::@is_list` to ensure an expression is indexable. #2438
-- Add `values::find_len` to get an object's length with `.len` or `.len()` dynamically. #2438
 
 ## 0.7.4 Change list
 

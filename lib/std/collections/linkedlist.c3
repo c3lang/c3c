@@ -2,7 +2,6 @@
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::linkedlist{Type};
-
 import std::io;
 
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
@@ -24,12 +23,12 @@ struct LinkedList
 
 fn usz? LinkedList.to_format(&self, Formatter* f) @dynamic
 {
-	usz len;
-	usz list_end = self.len() - 1;
-	len += f.print("{ ")!;
-	foreach (i, e : self.iter()) len += f.printf(i != list_end ? "%s, " : "%s", e)!;
-	len += f.print(" }")!;
-	return len;
+	usz len = f.print("{ ")!;
+	for (Node* node = self._first; node != null; node.next)
+	{
+		len += f.printf(node.next ? "%s, " : "s", node.value)!;
+	}
+	return len + f.print(" }");
 }
 
 macro LinkedList @new(Allocator allocator, Type[] #default_values = {})
@@ -40,9 +39,6 @@ macro LinkedList @new(Allocator allocator, Type[] #default_values = {})
 	return new_list;
 }
 
-<*
- @require values::@is_list(#default_values)
-*>
 macro LinkedList @tnew(Type[] #default_values = {})
 {
 	return @new(tmem, #default_values);
@@ -153,7 +149,7 @@ fn void LinkedList.clear(&self)
 	self.size = 0;
 }
 
-fn usz LinkedList.len(&self) @operator(len) @inline => self.size;
+fn usz LinkedList.len(&self) @inline => self.size;
 
 <*
  @require index < self.size
@@ -175,7 +171,7 @@ macro Node* LinkedList.node_at_index(&self, usz index)
 <*
  @require index < self.size
 *>
-fn Type LinkedList.get(&self, usz index) @operator([])
+fn Type LinkedList.get(&self, usz index)
 {
 	return self.node_at_index(index).value;
 }
@@ -183,7 +179,7 @@ fn Type LinkedList.get(&self, usz index) @operator([])
 <*
  @require index < self.size
 *>
-fn Type* LinkedList.get_ref(&self, usz index) @operator(&[])
+fn Type* LinkedList.get_ref(&self, usz index)
 {
 	return &self.node_at_index(index).value;
 }
@@ -191,7 +187,7 @@ fn Type* LinkedList.get_ref(&self, usz index) @operator(&[])
 <*
  @require index < self.size
 *>
-fn void LinkedList.set(&self, usz index, Type element) @operator([]=)
+fn void LinkedList.set(&self, usz index, Type element)
 {
 	self.node_at_index(index).value = element;
 }
@@ -403,41 +399,48 @@ fn void LinkedList.unlink(&self, Node* x) @private
 }
 
 
-<*
- @require values::@is_list(other) &&& $defined(Type z = other[0])
-*>
 macro bool LinkedList.eq(&self, other) @operator(==) @if(ELEMENT_IS_EQUATABLE)
 {
-	if (self.len() != values::find_len(other)) return false;
-	foreach (i, v : self.iter()) if(v != other[i]) return false;
+	Node* node1 = self._first;
+	Node* node2 = other._first;
+	while (true)
+	{
+		if (!node1) return node2 == null;
+		if (!node2) return false;
+		if (node1.value != node2.value) return false;
+		node1 = node1.next;
+		node2 = node2.next;
+	}
 	return true;
 }
 
-
-fn LinkedListNodeIterator LinkedList.iter_node(&self)
+fn LinkedListArrayView LinkedList.array_view(&self)
 {
 	return { .list = self, .current_node = self._first };
 }
 
-fn LinkedListIterator LinkedList.iter(&self)
-{
-	return (LinkedListIterator)self.iter_node();
-}
 
-
-struct LinkedListNodeIterator
+struct LinkedListArrayView
 {
 	LinkedList* list;
 	Node* current_node;
 	usz current_index;
 }
 
-fn usz LinkedListNodeIterator.len(&self) @operator(len) => self.list.size;
+fn usz LinkedListArrayView.len(&self) @operator(len) => self.list.size;
 
 <*
  @require index < self.list.size
 *>
-fn Node* LinkedListNodeIterator.get_ref(&self, usz index) @operator(&[])
+fn Type LinkedListArrayView.get(&self, usz index) @operator([])
+{
+	return *self.get_ref(index);
+}
+
+<*
+ @require index < self.list.size
+*>
+fn Type* LinkedListArrayView.get_ref(&self, usz index) @operator(&[])
 {
 	if (index == self.list.size - 1)
 	{
@@ -458,33 +461,5 @@ fn Node* LinkedListNodeIterator.get_ref(&self, usz index) @operator(&[])
 		}
 	}
 
-	return self.current_node;
-}
-
-<*
- @require index < self.list.size
-*>
-fn Node LinkedListNodeIterator.get(&self, usz index) @operator([]) => *(self.get_ref(index));
-
-
-typedef LinkedListIterator = LinkedListNodeIterator;
-
-fn usz LinkedListIterator.len(&self) @operator(len) => self.list.size;
-
-<*
- @require index < self.list.size
-*>
-fn Type* LinkedListIterator.get_ref(&self, usz index) @operator(&[]) => &((LinkedListNodeIterator*)self).get_ref(index).value;
-
-<*
- @require index < self.list.size
-*>
-fn Type LinkedListIterator.get(&self, usz index) @operator([]) => ((LinkedListNodeIterator*)self).get(index).value;
-
-<*
- @require index < self.list.size
-*>
-fn void LinkedListIterator.set(&self, usz index, Type value) @operator([]=)
-{
-	((LinkedListNodeIterator*)self).get_ref(index).value = value;
+	return &self.current_node.value;
 }

@@ -22,10 +22,6 @@ macro bool @is_const(#foo) @const @builtin @deprecated("use '$defined(var $v = e
 {
 	return $defined(var $v = #foo);
 }
-macro bool @is_list(#expr) @const
-{
-	return $defined(#expr[0]) &&& ($defined(#expr.len) ||| $defined(#expr.len()));
-}
 
 macro promote_int(x)
 {
@@ -35,8 +31,6 @@ macro promote_int(x)
 		return x;
 	$endif
 }
-
-macro usz find_len(list) => $defined(list.len()) ??? list.len() : list.len;
 
 <*
  Select between two values at compile time,

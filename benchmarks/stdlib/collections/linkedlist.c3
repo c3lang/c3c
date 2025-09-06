@@ -25,26 +25,14 @@ module linkedlist_benchmarks @benchmark;
 String die_str = "Failed to find the value `1`. Is something broken?";
 
 
-fn void foreach_linear()
-{
-    foreach (v : long_list) if (v == NEEDLE) return;
-    runtime::@kill_benchmark(die_str);
-}
-
 fn void foreach_iterator()
 {
-    foreach (v : long_list.iter()) if (v == NEEDLE) return;
-    runtime::@kill_benchmark(die_str);
-}
-
-fn void foreach_r_linear()
-{
-    foreach_r (v : long_list) if (v == NEEDLE) return;
+    foreach (v : long_list.array_view()) if (v == NEEDLE) return;
     runtime::@kill_benchmark(die_str);
 }
 
 fn void foreach_r_iterator()
 {
-    foreach_r (v : long_list.iter()) if (v == NEEDLE) return;
+    foreach_r (v : long_list.array_view()) if (v == NEEDLE) return;
     runtime::@kill_benchmark(die_str);
 }
