@@ -16,6 +16,7 @@
 - Fix codegen bug in expressions like `foo(x()) ?? io::EOF?` causing irregular crashes.
 - Correctly silence "unsupported architecture" warning with `--quiet` #2465
 - Overloading &[] should be enough for foreach. #2466
+- Any register allowed in X86_64 inline asm address. #2463
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface

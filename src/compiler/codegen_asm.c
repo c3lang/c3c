@@ -34,6 +34,7 @@ static inline void codegen_create_x86att_arg(AsmInlineBlock *block, unsigned inp
 			scratch_buffer_append_char('$');
 			scratch_buffer_append_unsigned_int(arg->index + input_offset);
 			return;
+		case ASM_ARG_MEMADDR:
 		case ASM_ARG_MEMVAR:
 		case ASM_ARG_REGVAR:
 			scratch_buffer_append_char('$');
@@ -82,8 +83,6 @@ static inline void codegen_create_x86att_arg(AsmInlineBlock *block, unsigned inp
 			}
 			scratch_buffer_append_char(')');
 			return;
-		case ASM_ARG_ADDROF:
-			TODO
 	}
 	UNREACHABLE_VOID
 }
@@ -117,7 +116,7 @@ static inline void codegen_create_aarch64_arg(AsmInlineBlock *block, unsigned in
 			return;
 		case ASM_ARG_ADDR:
 			TODO
-		case ASM_ARG_ADDROF:
+		case ASM_ARG_MEMADDR:
 			TODO
 	}
 	UNREACHABLE_VOID
@@ -168,7 +167,7 @@ static inline void codegen_create_riscv_arg(AsmInlineBlock *block, unsigned inpu
 			}
 			scratch_buffer_append_char(')');
 			return;
-		case ASM_ARG_ADDROF:
+		case ASM_ARG_MEMADDR:
 			TODO
 	}
 	UNREACHABLE_VOID
