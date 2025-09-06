@@ -115,6 +115,7 @@
 - Const enum methods are not being recognized. #2445
 - $defined returns an error when assigning a struct initializer with an incorrect type #2449
 - Correctly silence "unsupported architecture" warning with `--quiet` #2465
+- Overloading &[] should be enough for foreach. #2466
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.

@@ -1574,7 +1574,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	Decl *index_function = NULL;
 	Type *index_type = type_usz;
 	bool is_enum_iterator = false;
-
+	bool need_deref = false;
 	// Now we lower the foreach...
 	// If we can't find a value, or this is distinct, then we assume there is an overload.
 	if (!value_type || canonical->type_kind == TYPE_DISTINCT)
@@ -1607,6 +1607,12 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 		// Get the proper macro
 		index_function = value_by_ref ? by_ref : by_val;
+		if (!index_function)
+		{
+			assert(!value_by_ref);
+			need_deref = true;
+			index_function = by_ref;
+		}
 		ASSERT_SPAN(statement, index_function);
 
 		// The index type is the second parameter.
@@ -1623,6 +1629,11 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		// The return type is the value type if it is known (it's inferred for macros)
 		TypeInfoId rtype = index_function->func_decl.signature.rtype;
 		value_type = rtype ? type_infoptr(rtype)->type : NULL;
+		if (need_deref && value_type)
+		{
+			if (value_type->type_kind != TYPE_POINTER) RETURN_SEMA_ERROR(enumerator, "Expected the index function to return a pointer.");
+			value_type = value_type->pointer;
+		}
 	}
 
 SKIP_OVERLOAD:;
@@ -1884,12 +1895,19 @@ SKIP_OVERLOAD:;
 		expr_rewrite_enum_from_ord(index_expr, index_type);
 	}
 	subscript->subscript_expr.index.expr = exprid(index_expr);
-	if (value_by_ref)
+	if (value_by_ref || need_deref)
 	{
 		Expr *addr = expr_new(EXPR_UNARY, subscript->span);
 		addr->unary_expr.operator = UNARYOP_ADDR;
 		addr->unary_expr.expr = subscript;
 		subscript = addr;
+	}
+	if (need_deref)
+	{
+		Expr *deref = expr_new(EXPR_UNARY, subscript->span);
+		deref->unary_expr.operator = UNARYOP_DEREF;
+		deref->unary_expr.expr = subscript;
+		subscript = deref;
 	}
 	var->var.init_expr = subscript;
 	ast_append(&succ, value_declare_ast);
