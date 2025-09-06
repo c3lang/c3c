@@ -1960,7 +1960,7 @@ void target_setup(BuildTarget *target)
 	compiler.platform.arch = arch_from_llvm_string(slice_next_token(&target_triple_string, '-'));
 	if (!arch_is_supported(compiler.platform.arch))
 	{
-		printf("WARNING! This architecture is unsupported.\n");
+		OUTF("WARNING! This architecture is unsupported.\n");
 	}
 	compiler.platform.vendor = vendor_from_llvm_string(slice_next_token(&target_triple_string, '-'));
 	compiler.platform.os = os_from_llvm_string(slice_next_token(&target_triple_string, '-'));
