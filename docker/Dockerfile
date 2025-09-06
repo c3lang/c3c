@@ -6,7 +6,7 @@ ENV LLVM_DEV_VERSION=20
 
 ARG CMAKE_VERSION=3.20
 
-RUN apt-get update && apt-get install -y wget gnupg software-properties-common zlib1g zlib1g-dev python3 ninja-build curl g++ && \
+RUN apt-get update && apt-get install -y wget gnupg software-properties-common zlib1g zlib1g-dev python3 ninja-build curl g++ libcurl4-openssl-dev && \
     wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-$CMAKE_VERSION-linux-x86_64.sh && \
     mkdir -p /opt/cmake && \
     sh cmake-${CMAKE_VERSION}-linux-x86_64.sh --prefix=/opt/cmake --skip-license && \
