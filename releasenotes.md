@@ -18,6 +18,7 @@
 - Overloading &[] should be enough for foreach. #2466
 - Any register allowed in X86_64 inline asm address. #2463
 - int val = some_int + some_distinct_inline_int errors that int cannot be cast to DistinctInt #2468
+- Compiler hang with unaligned load-store pair. #2470
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
