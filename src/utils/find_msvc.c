@@ -2,8 +2,6 @@
 
 #if PLATFORM_WINDOWS
 
-#include "vmem.h"
-
 #include <windows.h>
 #include <string.h>
 #include <stdio.h>
@@ -38,7 +36,6 @@ WindowsSDK get_windows_paths()
 	if (!windows_sdk_include_root)
 	{
 		free(root);
-		vmem_free(out.windows_sdk_path);
 		error_exit("Failed to find Include dir in windows kit root.");
 	}
 
@@ -67,8 +64,6 @@ WindowsSDK get_windows_paths()
 	}
 
 	free(root);
-	vmem_free(vs_path);
-	vmem_free(windows_sdk_include_root);
 	return out;
 }
 
