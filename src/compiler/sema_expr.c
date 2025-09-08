@@ -1108,7 +1108,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 	Type *right_canonical = right->type->canonical;
 	if (left_canonical != right_canonical)
 	{
-		Type *max = type_find_max_type(type_no_optional(left_canonical), type_no_optional(right_canonical));
+		Type *max = type_find_max_type(type_no_optional(left_canonical), type_no_optional(right_canonical), left, right);
 		if (!max)
 		{
 			SEMA_ERROR(expr, "Cannot find a common parent type of '%s' and '%s'",
@@ -2566,7 +2566,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 		if (common_type == rtype || (type_is_void(common_type) && rtype == type_wildcard)) continue;
 
 		// 4. Find the max of the old and new.
-		Type *max = type_find_max_type(common_type, rtype); // NOLINT
+		Type *max = type_find_max_type(common_type, rtype, NULL, NULL);
 
 		// 5. No match -> error.
 		if (!max)
@@ -4256,7 +4256,7 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 	if (IS_OPTIONAL(start)) range->is_optional = true;
 	if (end && end_type != start_type)
 	{
-		Type *common = type_find_max_type(start_type, end_type);
+		Type *common = type_find_max_type(start_type, end_type, NULL, NULL);
 		if (!common)
 		{
 			SourceSpan span = start->span;
@@ -7373,7 +7373,7 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 		}
 	}
 
-	Type *max = cast_numeric_arithmetic_promotion(type_find_max_type(left_type, right_type));
+	Type *max = cast_numeric_arithmetic_promotion(type_find_max_type(left_type, right_type, left, right));
 	if (!max || (!type_underlying_is_numeric(max) && !(allow_bool_vec && type_flat_is_bool_vector(max))))
 	{
 		CHECK_ON_DEFINED(failed_ref);
@@ -8275,7 +8275,7 @@ NEXT:
 
 
 	// 3. In the normal case, treat this as a binary op, finding the max type.
-	Type *max = type_find_max_type(left_type, right_type);
+	Type *max = type_find_max_type(left_type, right_type, left, right);
 
 	// 4. If no common type, then that's an error:
 	if (!max)
@@ -9143,7 +9143,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 	bool add_optional = type_is_optional(else_type);
 	type = type_no_optional(type);
 	else_type = type_no_optional(else_type);
-	Type *common = type_find_max_type(type, else_type);
+	Type *common = type_find_max_type(type, else_type, left, right);
 	if (!common)
 	{
 		CHECK_ON_DEFINED(failed_ref);
