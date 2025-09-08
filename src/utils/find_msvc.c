@@ -2,6 +2,8 @@
 
 #if PLATFORM_WINDOWS
 
+#include "vmem.h"
+
 #include <windows.h>
 #include <string.h>
 #include <stdio.h>
