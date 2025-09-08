@@ -60,7 +60,7 @@ macro typeid unsigned_int_from_bitsize(usz $bitsize) @private
 	$endswitch
 }
 
-module std::core::cinterop @if(env::MACOS && env::AARCH64);
+module std::core::cinterop @if(env::DARWIN && env::AARCH64);
 
 typedef CVaList = void*;
 macro CVaList.next(&self, $Type)
