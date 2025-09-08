@@ -59,3 +59,14 @@ macro typeid unsigned_int_from_bitsize(usz $bitsize) @private
 		$default: $error("Invalid bitsize");
 	$endswitch
 }
+
+module std::core::cinterop @if(env::MACOS && env::AARCH64);
+
+typedef CVaList = void*;
+macro CVaList.next(&self, $Type)
+{
+	void *ptr = mem::aligned_pointer((void*)*self, max($Type.alignof, 8));
+	defer *self = (CVaList)(ptr + 1);
+	return *($Type*)ptr;
+}
+
