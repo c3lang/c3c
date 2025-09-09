@@ -45,8 +45,8 @@ WindowsSDK get_windows_paths()
 	scratch_buffer_printf("%s\\lib\\x64", vs_path);
 	out.vs_library_path = scratch_buffer_copy();
 
-	if (getenv("INCLUDE") == NULL) {
-
+	if (!getenv("INCLUDE"))
+	{
 		scratch_buffer_clear();
 		scratch_buffer_printf("%s\\bin\\Hostx64\\x64\\cl.exe", vs_path);
 		out.cl_path = scratch_buffer_copy();
