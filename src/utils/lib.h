@@ -40,6 +40,8 @@ typedef struct
 typedef struct {
 	char* windows_sdk_path;
 	char* vs_library_path;
+	char* cl_path;
+	char* cl_include_env;
 } WindowsSDK;
 
 #define MAX_STRING_BUFFER 0x10000
@@ -153,6 +155,7 @@ bool str_is_valid_constant(const char *string);
 const char *str_unescape(char *string);
 bool str_is_identifier(const char *string);
 bool str_eq(const char *str1, const char *str2);
+bool str_ends_with(const char *str, const char *end);
 bool str_is_type(const char *string);
 bool slice_is_type(const char *string, size_t);
 bool str_is_integer(const char *string);

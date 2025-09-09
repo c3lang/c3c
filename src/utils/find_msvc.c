@@ -10,24 +10,62 @@
 
 static char *find_visual_studio(void);
 static char *find_windows_kit_root(void);
+static char *find_best_version(const char *root, const char *subdir);
 
-WindowsSDK get_windows_link_paths()
+WindowsSDK get_windows_paths()
 {
 	WindowsSDK out = {0};
 
-	char *path = find_windows_kit_root();
+	char *root = find_windows_kit_root();
 
-	if (!path)
+	if (!root)
 	{
 		error_exit("Failed to find windows kit root.");
 	}
 
-	out.windows_sdk_path = path;
-	out.vs_library_path = find_visual_studio();
+	out.windows_sdk_path = find_best_version(root, "Lib");
 
+	if (!out.windows_sdk_path)
+	{	
+		free(root);
+		error_exit("Failed to find Lib dir in windows kit root.");
+	}
+
+	char *windows_sdk_include_root = find_best_version(root, "Include");
+
+	if (!windows_sdk_include_root)
+	{
+		free(root);
+		error_exit("Failed to find Include dir in windows kit root.");
+	}
+
+	char *vs_path = find_visual_studio();
+
+	scratch_buffer_clear();
+	scratch_buffer_printf("%s\\lib\\x64", vs_path);
+	out.vs_library_path = scratch_buffer_copy();
+
+	if (!getenv("INCLUDE"))
+	{
+		scratch_buffer_clear();
+		scratch_buffer_printf("%s\\bin\\Hostx64\\x64\\cl.exe", vs_path);
+		out.cl_path = scratch_buffer_copy();
+
+		scratch_buffer_clear();
+		scratch_buffer_printf("%s\\include;", vs_path);
+		scratch_buffer_printf("%s\\cppwinrt;", windows_sdk_include_root);
+		scratch_buffer_printf("%s\\cppwinrt;", windows_sdk_include_root);
+		scratch_buffer_printf("%s\\shared;", windows_sdk_include_root);
+		scratch_buffer_printf("%s\\ucrt;", windows_sdk_include_root);
+		scratch_buffer_printf("%s\\um;", windows_sdk_include_root);
+		scratch_buffer_printf("%s\\winrt;", windows_sdk_include_root);
+
+		out.cl_include_env = scratch_buffer_copy();
+	}
+
+	free(root);
 	return out;
 }
-
 
 static char *find_visual_studio(void)
 {
@@ -58,10 +96,9 @@ static char *find_visual_studio(void)
 
 	// We have the version, so we're done with the path:
 	scratch_buffer_clear();
-	scratch_buffer_printf("%s\\VC\\Tools\\MSVC\\%s\\lib\\x64", install_path, version);
+	scratch_buffer_printf("%s\\VC\\Tools\\MSVC\\%s", install_path, version);
 	return scratch_buffer_copy();
 }
-
 
 static char *find_windows_kit_root(void)
 {
@@ -91,9 +128,15 @@ static char *find_windows_kit_root(void)
 	char *root = win_utf16to8(value);
 	free(value);
 
+	return root;
+}
+
+static char *find_best_version(const char *root, const char *subdir)
+{
 	scratch_buffer_clear();
 	scratch_buffer_append(root);
-	scratch_buffer_append("Lib\\*");
+	scratch_buffer_append(subdir);
+	scratch_buffer_append("\\*");
 
 	WIN32_FIND_DATAW find_data;
 	uint16_t *wildcard_name = win_utf8to16(scratch_buffer_to_string());
@@ -126,19 +169,18 @@ static char *find_windows_kit_root(void)
 	while (FindNextFileW(handle, &find_data));
 	FindClose(handle);
 
-	if (!best_file) goto SEARCH_FAILED;;
+	if (!best_file) goto SEARCH_FAILED;
 
 	scratch_buffer_clear();
 	scratch_buffer_append(root);
-	scratch_buffer_append("Lib\\");
+	scratch_buffer_append(subdir);
+	scratch_buffer_append("\\");
 	scratch_buffer_append(best_file);
 
-	free(root);
 	free(best_file);
 	return scratch_buffer_copy();
 
 SEARCH_FAILED:
-	free(root);
 	return NULL;
 }
 

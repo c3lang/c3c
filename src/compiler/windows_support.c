@@ -16,14 +16,14 @@ static WindowsSDK *sdk = NULL;
 
 #if PLATFORM_WINDOWS
 
-WindowsSDK get_windows_link_paths(void);
+WindowsSDK get_windows_paths(void);
 
 static WindowsSDK loaded;
 WindowsSDK *windows_get_sdk(void)
 {
 	if (!sdk)
 	{
-		loaded = get_windows_link_paths();
+		loaded = get_windows_paths();
 		sdk = &loaded;
 	}
 	return sdk;

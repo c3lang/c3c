@@ -1008,7 +1008,7 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 	if (!dir) dir = compiler.build.build_dir;
 	if (output_subdir) dir = dir ? file_append_path(dir, output_subdir) : output_subdir;
 	if (dir) dir_make(dir);
-	bool is_cl_exe = str_eq(cc, "cl.exe");
+	bool is_cl_exe = str_ends_with(cc, "cl.exe");
 	char *filename = NULL;
 	bool split_worked = file_namesplit(file, &filename, NULL);
 	if (!split_worked) error_exit("Cannot compile '%s'", file);
@@ -1030,6 +1030,8 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 	const char **parts = NULL;
 	const char ***args_ref = &parts;
 	add_quote_arg(cc);
+
+	if (is_cl_exe) add_plain_arg("/nologo");
 
 	FOREACH(const char *, include_dir, include_dirs)
 	{
@@ -1059,6 +1061,17 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 		add_plain_arg("-o");
 		add_quote_arg(out_name);
 	}
+
+#if PLATFORM_WINDOWS
+	if (is_cl_exe)
+	{
+		WindowsSDK *sdk = windows_get_sdk();
+		if (sdk && sdk->cl_include_env)
+		{
+			_putenv_s("INCLUDE", sdk->cl_include_env);
+		}
+	}
+#endif
 
 	const char *output = assemble_linker_command(parts, PLATFORM_WINDOWS);
 	DEBUG_LOG("Compiling c sources using '%s'", output);
