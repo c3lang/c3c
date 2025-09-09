@@ -26,7 +26,7 @@
   `path::public_share_directory`, `path::templates_directory`, `path::saved_games_directory`, `path::music_directory`, `path::downloads_directory`.
 - Add `LinkedList` array_view to support `[]` and `foreach`/`foreach_r`. #2438
 - Make `LinkedList` printable and add `==` operator. #2438
-- CVaList support on MacOS aarch64.
+- CVaList support on MacOS aarch64, SysV ABI x64.
 
 ## 0.7.5 Change list
 
