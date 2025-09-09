@@ -1865,6 +1865,10 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 	ASSERT(kind <= other_kind && "Expected ordering");
 	ASSERT(kind != other_kind);
 
+	// If the other is a vector then we always set that one as the max.
+	if (other_kind == TYPE_VECTOR) return other_num;
+
+
 	// 1. The only conversions need to happen if the other type is a number.
 	if (other_kind < TYPE_INTEGER_FIRST || other_kind > TYPE_FLOAT_LAST) return NULL;
 
@@ -1925,7 +1929,7 @@ static inline Type *type_find_max_ptr_type(Type *type, Type *other)
 	// Slice and vararray can implicitly convert to a pointer.
 	if (other->type_kind == TYPE_SLICE)
 	{
-		Type *max_type = type_find_max_type(type->pointer, other->pointer);
+		Type *max_type = type_find_max_type(type->pointer, other->pointer, false, false);
 		if (!max_type) return NULL;
 		return type_get_ptr(max_type);
 	}
@@ -1959,7 +1963,7 @@ static inline Type *type_find_max_ptr_type(Type *type, Type *other)
 	{
 		return other;
 	}
-	Type *max_type = type_find_max_type(pointer_type, other_pointer_type);
+	Type *max_type = type_find_max_type(pointer_type, other_pointer_type, false, false);
 	if (!max_type) return NULL;
 	return type_get_ptr(max_type);
 }
@@ -2011,57 +2015,97 @@ static inline Type *type_find_max_distinct_type(Type *left, Type *right)
 }
 
 
-Type *type_find_max_type(Type *type, Type *other)
+Type *type_find_max_type(Type *type, Type *other, Expr *first, Expr *second)
 {
 	type = type->canonical;
 	other = other->canonical;
 	ASSERT(!type_is_optional(type) && !type_is_optional(other));
 
 RETRY_DISTINCT:
+	// Same type, max is the type
 	if (type == other) return type;
 
+	// One type is wildcard, max is the type which isn't wildcard
 	if (type == type_wildcard) return other;
 	if (other == type_wildcard) return type;
 
-	// Sort types
+	// Sort types to make it easier
 	if (type->type_kind > other->type_kind)
 	{
 		Type *temp = type;
+		Expr *first_expr = first;
 		type = other;
+		first = second;
 		other = temp;
+		second = first_expr;
 	}
 
-	// The following relies on type kind ordering
+	// The following relies on type kind ordering, with the "lowest" type kind on top, this means the other type kind is
+	// further down in the list
 	switch (type->type_kind)
 	{
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
 		case TYPE_POISONED:
-		case TYPE_OPTIONAL:
-		case TYPE_WILDCARD:
+			// Should never get here
 			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_BOOL:
-		case TYPE_TYPEINFO:
-		case TYPE_BITSTRUCT:
-		case TYPE_FLEXIBLE_ARRAY:
+			if (type_has_inline(other))
+			{
+				other = type_flat_distinct_inline(other);
+				goto RETRY_DISTINCT;
+			}
 			return NULL;
 		case ALL_INTS:
-			if (type_is_distinct_like(other) && type_underlying_is_numeric(other)) return other;
-			if (other->type_kind == TYPE_VECTOR) return other;
+		{
+			// If Foo + 1, then we allow this if Foo is a distinct type or const enum that has
+			// integer or float as the base type.
+			if (first && type_is_distinct_like(other) && type_underlying_is_numeric(other) && expr_is_const(first)) return other;
+			// See if we can flatten it.
+			if (type_has_inline(other))
+			{
+				other = type_flat_distinct_inline(other);
+				goto RETRY_DISTINCT;
+			}
+			// Now let's just compare the numerical type, including vectors
 			return type_find_max_num_type(type, other);
+		}
 		case ALL_FLOATS:
-			if (type_is_distinct_like(other) && type_is_float(type_flatten(other))) return other;
-			if (other->type_kind == TYPE_VECTOR) return other;
+		{
+			// If Foo + 1.0, then we allow this if Foo is a distinct type or const enum that has
+			// float as the base type.
+			if (first && type_is_distinct_like(other) && type_underlying_is_numeric(other) && expr_is_const(first)) return other;
+			// See if we can flatten it.
+			if (type_has_inline(other))
+			{
+				other = type_flat_distinct_inline(other);
+				goto RETRY_DISTINCT;
+			}
+			// Now let's just compare the numerical type, including vectors
 			return type_find_max_num_type(type, other);
+		}
 		case TYPE_ANY:
 			// any + interface => any
 			if (other == type_voidptr) return other;
+			if (type_has_inline(other))
+			{
+				other = type_flat_distinct_inline(other);
+				goto RETRY_DISTINCT;
+			}
 			return other->type_kind == TYPE_INTERFACE ? type : NULL;
 		case TYPE_INTERFACE:
 			// interface + void* => void*
+			if (type_has_inline(other))
+			{
+				other = type_flat_distinct_inline(other);
+				goto RETRY_DISTINCT;
+			}
 			return other == type_voidptr ? type_voidptr : NULL;
 		case TYPE_POINTER:
+			if (type_has_inline(other))
+			{
+				other = type_flat_distinct_inline(other);
+				goto RETRY_DISTINCT;
+			}
 			if (type->pointer->type_kind == TYPE_ARRAY)
 			{
 				Type *array_base = type->pointer->array.base->canonical;
@@ -2092,38 +2136,62 @@ RETRY_DISTINCT:
 			// And possibly the other pointer as well
 			if (other->type_kind == TYPE_POINTER) other = type_decay_array_pointer(other);
 			return type_find_max_ptr_type(type, other);
-		case TYPE_ENUM:
-			if (type->decl->is_substruct)
-			{
-				return type_find_max_type(type_flat_distinct_enum_inline(type), other);
-			}
-			return NULL;
 		case TYPE_ANYFAULT:
-			return type_fault;
+		case TYPE_TYPEID:
+			if (type_has_inline(other))
+			{
+				other = type_flat_distinct_inline(other);
+				goto RETRY_DISTINCT;
+			}
+			return type;
 		case TYPE_FUNC_PTR:
 			if (other == type_voidptr) return other;
+			if (type_has_inline(other))
+			{
+				other = type_flat_distinct_inline(other);
+				goto RETRY_DISTINCT;
+			}
 			if (other->type_kind != TYPE_FUNC_PTR) return NULL;
 			if (other->pointer->function.prototype->raw_type != type->pointer->function.prototype->raw_type) return NULL;
 			return type;
+		case TYPE_DISTINCT:
+		case TYPE_CONST_ENUM:
+			if (type_is_distinct_like(other))
+			{
+				return type_find_max_distinct_type(type, other);
+			}
+			// Try matching with its inline type
+			if (type->decl->is_substruct)
+			{
+				type = type_inline(type);
+				goto RETRY_DISTINCT;
+			}
+			// distinct + any other type => no
+			return NULL;
+		case TYPE_ENUM:
+			// Note that the int case is already handled
+			if (type->decl->is_substruct)
+			{
+				return type_find_max_type(type_flat_distinct_enum_inline(type), other, first, second);
+			}
+			return NULL;
 		case TYPE_FUNC_RAW:
 			UNREACHABLE
+		case TYPE_UNION:
+		case TYPE_STRUCT:
+		case TYPE_BITSTRUCT:
+			// union/struct + anything else => no
+			// even if the struct has an inline type, this should not
+			// be implicit
+			return NULL;
+		case TYPE_TYPEDEF:
+			UNREACHABLE // Should only handle canonical types
 		case TYPE_UNTYPED_LIST:
 			if (other->type_kind == TYPE_ARRAY) return other;
 			if (other->type_kind == TYPE_VECTOR) return other;
 			if (other->type_kind == TYPE_STRUCT) return other;
 			if (other->type_kind == TYPE_SLICE) return other;
 			return NULL;
-		case TYPE_UNION:
-		case TYPE_STRUCT:
-			// union/struct + anything else => no
-			// even if the struct has an inline type, this should not
-			// be implicit
-			return NULL;
-		case TYPE_TYPEID:
-		case TYPE_MEMBER:
-			return NULL;
-		case TYPE_TYPEDEF:
-			UNREACHABLE
 		case TYPE_SLICE:
 			// slice + [array, vector of the same type] => yes
 			if (type_is_arraylike(other) && (other->array.base->canonical == type->array.base->canonical))
@@ -2135,26 +2203,23 @@ RETRY_DISTINCT:
 		case TYPE_ARRAY:
 			// array + [other array, vector] => no
 			return NULL;
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+			// Already handled
+			UNREACHABLE
+		case TYPE_OPTIONAL:
+			// Should never be passed here
+			UNREACHABLE
+		case TYPE_WILDCARD:
+			// Handled above
+			UNREACHABLE
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+			return NULL;
+			UNREACHABLE
 		case TYPE_VECTOR:
 			// No implicit conversion between vectors
-			return NULL;
-		case TYPE_DISTINCT:
-		case TYPE_CONST_ENUM:
-			if (type_is_distinct_like(other))
-			{
-				return type_find_max_distinct_type(type, other);
-			}
-			if (other->type_kind == TYPE_ENUM && other->decl->is_substruct)
-			{
-				return type_find_max_type(type, type_flat_distinct_enum_inline(other));
-			}
-			// Try matching with its inline type
-			if (type->decl->is_substruct)
-			{
-				type = type_inline(type);
-				goto RETRY_DISTINCT;
-			}
-			// distinct + any other type => no
 			return NULL;
 	}
 	UNREACHABLE

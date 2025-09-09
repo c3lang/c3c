@@ -2541,7 +2541,7 @@ AlignSize type_abi_alignment(Type *type);
 bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...);
 AlignSize type_alloca_alignment(Type *type);
 Type *type_find_largest_union_element(Type *type);
-Type *type_find_max_type(Type *type, Type *other);
+Type *type_find_max_type(Type *type, Type *other, Expr *first, Expr *second);
 Type *type_find_max_type_may_fail(Type *type, Type *other);
 Type *type_abi_find_single_struct_element(Type *type);
 Module *type_base_module(Type *type);
@@ -3118,16 +3118,32 @@ static inline Type *type_base(Type *type)
 	}
 }
 
+
+static const bool is_distinct_like[TYPE_LAST + 1] = {
+	[TYPE_ENUM] = true,
+	[TYPE_CONST_ENUM] = true,
+	[TYPE_DISTINCT] = true
+};
+
+INLINE bool typekind_is_distinct_like(TypeKind kind)
+{
+	return is_distinct_like[kind];
+}
+
 INLINE bool type_is_distinct_like(Type *type)
 {
-	TypeKind kind = type->type_kind;
-	return kind == TYPE_DISTINCT || kind == TYPE_CONST_ENUM;
+	return is_distinct_like[type->type_kind];
+}
+
+static bool type_has_inline(Type *type)
+{
+	return is_distinct_like[type->type_kind] && type->decl->is_substruct;
 }
 
 static inline Type *type_inline(Type *type)
 {
 	assert(type_is_distinct_like(type));
-	return type->type_kind == TYPE_CONST_ENUM ? type->decl->enums.type_info->type : type->decl->distinct->type;
+	return type->type_kind == TYPE_DISTINCT ? type->decl->distinct->type : type->decl->enums.type_info->type;
 }
 
 
@@ -3136,16 +3152,8 @@ static inline Type *type_flat_distinct_inline(Type *type)
 	while (1)
 	{
 		type = type->canonical;
-		switch (type->type_kind)
-		{
-			case TYPE_DISTINCT:
-			case TYPE_CONST_ENUM:
-				if (!type->decl->is_substruct) return type;
-				type = type_inline(type);
-				break;
-			default:
-				return type;
-		}
+		if (!type_has_inline(type)) return type;
+		type = type_inline(type);
 	}
 }
 

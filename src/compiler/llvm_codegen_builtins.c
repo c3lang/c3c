@@ -169,10 +169,9 @@ INLINE void llvm_emit_unaligned_store(GenContext *c, BEValue *result_value, Expr
 	c->emitting_load_store_check = true;
 	BEValue value;
 	llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
+	llvm_value_rvalue(c, &value);
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
-	llvm_value_deref(c, &value);
-	value.alignment = expr->call_expr.arguments[2]->const_expr.ixx.i.low;
-	llvm_store(c, &value, result_value);
+	llvm_store_to_ptr_aligned(c, value.value, result_value, expr->call_expr.arguments[2]->const_expr.ixx.i.low);
 	c->emitting_load_store_check = emit_check;
 }
 

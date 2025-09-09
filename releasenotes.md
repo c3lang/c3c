@@ -16,6 +16,9 @@
 - Fix codegen bug in expressions like `foo(x()) ?? io::EOF?` causing irregular crashes.
 - Correctly silence "unsupported architecture" warning with `--quiet` #2465
 - Overloading &[] should be enough for foreach. #2466
+- Any register allowed in X86_64 inline asm address. #2463
+- int val = some_int + some_distinct_inline_int errors that int cannot be cast to DistinctInt #2468
+- Compiler hang with unaligned load-store pair. #2470
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
@@ -23,6 +26,7 @@
   `path::public_share_directory`, `path::templates_directory`, `path::saved_games_directory`, `path::music_directory`, `path::downloads_directory`.
 - Add `LinkedList` array_view to support `[]` and `foreach`/`foreach_r`. #2438
 - Make `LinkedList` printable and add `==` operator. #2438
+- CVaList support on MacOS aarch64, SysV ABI x64.
 
 ## 0.7.5 Change list
 

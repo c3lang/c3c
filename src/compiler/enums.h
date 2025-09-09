@@ -156,26 +156,26 @@ typedef enum FLAG_ATTR
 
 typedef enum
 {
-	ASM_ARG_REG,
-	ASM_ARG_ADDR,
-	ASM_ARG_REGVAR,
-	ASM_ARG_ADDROF,
-	ASM_ARG_MEMVAR,
-	ASM_ARG_VALUE,
-	ASM_ARG_INT,
+	ASM_ARG_REG,     // A register
+	ASM_ARG_ADDR,    // [...]
+	ASM_ARG_REGVAR,  // foo - variable in a register, r/=r/+r
+	ASM_ARG_MEMADDR, // &foo - address to a variable
+	ASM_ARG_MEMVAR,  // [&foo]
+	ASM_ARG_VALUE,   // -1, (expr), 1, 3.0
+	ASM_ARG_INT,     // Converted from VALUE
 } AsmArgKind;
 
 typedef enum
 {
-	ASM_SCALE_1,
+	ASM_SCALE_1,    // *
 	ASM_SCALE_2,
 	ASM_SCALE_4,
 	ASM_SCALE_8,
-	ASM_SCALE_SHR,
-	ASM_SCALE_SHL,
-	ASM_SCALE_ASHL,
-	ASM_SCALE_ROR,
-	ASM_SCALE_RRX,
+	ASM_SCALE_SHR,  // >>
+	ASM_SCALE_SHL,  // <<
+	ASM_SCALE_ASHL, // >>>
+	ASM_SCALE_ROR,  // ror
+	ASM_SCALE_RRX,  // rrx
 } AsmOffsetType;
 
 typedef enum

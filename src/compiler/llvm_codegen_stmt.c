@@ -1351,6 +1351,15 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 			pointer_type[param_count] = NULL;
 			switch (val->kind)
 			{
+				case ASM_ARG_MEMADDR:
+					llvm_value_set_decl(c, &value, val->ident.ident_decl);
+					llvm_value_addr(c, &value);
+					value.kind = BE_VALUE;
+					pointer_type[param_count] = NULL;
+					value.type = type_get_ptr(value.type);
+					ASSERT(!val->ident.copy_output);
+					codegen_append_constraints(&clobber_list, "r");
+					break;
 				case ASM_ARG_MEMVAR:
 					llvm_value_set_decl(c, &value, val->ident.ident_decl);
 					llvm_value_addr(c, &value);

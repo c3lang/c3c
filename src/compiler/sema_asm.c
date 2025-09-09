@@ -39,27 +39,6 @@ static inline Type *max_supported_imm_int(bool is_signed, AsmArgType arg)
 	return type_int_unsigned_by_bitsize(next_highest_power_of_2(bits));
 }
 
-/*
-static inline AsmArgGroup sema_ireg_for_type(Type *type)
-{
-	switch (type_size(type))
-	{
-		case 1:
-			return AARG_R8;
-		case 2:
-			return AARG_R16;
-		case 4:
-			return AARG_R32;
-		case 8:
-			return AARG_R64;
-		case 16:
-			return AARG_R128;
-		default:
-			UNREACHABLE
-	}
-}
- */
-
 static inline Decl *sema_resolve_external_symbol(SemaContext *context, Expr *expr, const char *name)
 {
 	Decl *decl = sema_resolve_symbol(context, name, NULL, expr->span);
@@ -89,20 +68,6 @@ static inline bool sema_reg_int_supported_type(AsmArgType arg, Type *type)
 	return next_highest_power_of_2(arg_bits_max(arg.ireg_bits, bits)) == bits;
 }
 
-INLINE bool sema_reg_is_valid_in_slot(AsmRegister *reg, AsmArgType arg_type)
-{
-	switch (reg->type)
-	{
-		case ASM_REG_INT:
-			return (arg_type.ireg_bits & reg->bits) != 0;
-		case ASM_REG_FLOAT:
-			return (arg_type.float_bits & reg->bits) != 0;
-		case ASM_REF_FVEC:
-		case ASM_REG_IVEC:
-			return (arg_type.vec_bits & reg->bits) != 0;
-	}
-	UNREACHABLE
-}
 
 static inline bool sema_reg_float_supported_type(AsmArgType arg, Type *type)
 {
@@ -205,6 +170,7 @@ static inline bool sema_check_asm_arg(SemaContext *context, AsmInlineBlock *bloc
 
 static inline bool sema_check_asm_arg_addr(SemaContext *context, AsmInlineBlock *block, AsmInstruction *instr, AsmArgType arg_type, Expr *expr)
 {
+	// This is an argument [rdx + rsi * 2 + 1] etc
 	if (!arg_type.is_address)
 	{
 		RETURN_SEMA_ERROR(expr, "An address cannot appear in this slot.");
@@ -213,47 +179,56 @@ static inline bool sema_check_asm_arg_addr(SemaContext *context, AsmInlineBlock 
 	Expr *base = exprptr(asm_arg->base);
 	ASSERT(base->expr_kind == EXPR_ASM);
 	ExprAsmArg *base_arg = &base->expr_asm_arg;
-	AsmArgType any_ireg = { .ireg_bits = (AsmArgBits)0xFF };
+	AsmArgType address_size = { .ireg_bits = ARG_BITS_16 | ARG_BITS_32 | ARG_BITS_64 }; // NO_LINT
 	unsigned bit_size = 0;
 	switch (base_arg->kind)
 	{
 		case ASM_ARG_REG:
-			if (!sema_check_asm_arg(context, block, instr, any_ireg, base)) return false;
+			// Here the register, or the variable in a register provides the address
+			// so `movl [foo], 1` which is taking the address in `foo`
+			if (!sema_check_asm_arg(context, block, instr, address_size, base)) return false;
 			bit_size = arg_bits_max(base_arg->reg.ref->bits, 0);
 			break;
 		case ASM_ARG_REGVAR:
-			if (!sema_check_asm_arg(context, block, instr, any_ireg, base)) return false;
+			if (!sema_check_asm_arg(context, block, instr, address_size, base)) return false;
 			bit_size = type_bit_size(base_arg->ident.ident_decl->type);
 			break;
-		case ASM_ARG_ADDROF:
-			TODO
-			break;
-		default:
-			RETURN_SEMA_ERROR(expr, "Expected a register here.");
+		case ASM_ARG_MEMADDR:
+			// Here we have [&foo] BUT it's not a direct address. This is not allowed.
+			RETURN_SEMA_ERROR(expr, "An &foo cannot appear as parts of an address with offset. Place it in a register first.");
+		case ASM_ARG_ADDR:
+		case ASM_ARG_MEMVAR:
+		case ASM_ARG_VALUE:
+		case ASM_ARG_INT:
+			RETURN_SEMA_ERROR(expr, "A register was expected here.");
 	}
 	Expr *index = exprptrzero(asm_arg->idx);
-
 	if (index)
 	{
-		unsigned index_size = 0;
 		ExprAsmArg *index_arg = &index->expr_asm_arg;
 		switch (index_arg->kind)
 		{
 			case ASM_ARG_REG:
-				if (!sema_check_asm_arg(context, block, instr, any_ireg, index)) return false;
-				index_size = arg_bits_max(base_arg->reg.ref->bits, 0);
+				if (!sema_check_asm_arg(context, block, instr, address_size, index)) return false;
+				if (bit_size != arg_bits_max(index_arg->reg.ref->bits, 0))
+				{
+					RETURN_SEMA_ERROR(expr, "Index register size (%d) does not match base register size (%d).", bit_size, arg_bits_max(index_arg->reg.ref->bits, 0));
+				}
 				break;
 			case ASM_ARG_REGVAR:
-				if (!sema_check_asm_arg(context, block, instr, any_ireg, index)) return false;
-				index_size = type_bit_size(index_arg->ident.ident_decl->type);
+				if (!sema_check_asm_arg(context, block, instr, address_size, index)) return false;
+				if (bit_size != type_bit_size(index_arg->ident.ident_decl->type))
+				{
+					RETURN_SEMA_ERROR(expr, "Index size (%d) does not match base register size (%d).", bit_size, type_bit_size(index_arg->ident.ident_decl->type));
+				}
 				break;
+			case ASM_ARG_MEMADDR:
+			case ASM_ARG_ADDR:
+			case ASM_ARG_MEMVAR:
+			case ASM_ARG_VALUE:
+			case ASM_ARG_INT:
 			default:
-				SEMA_ERROR(expr, "Expected a register here.");
-				return false;
-		}
-		if (bit_size != index_size)
-		{
-			RETURN_SEMA_ERROR(index, "Expected the same register size as for the base value.");
+				RETURN_SEMA_ERROR(expr, "Expected a register here.");
 		}
 	}
 	if ((compiler.platform.arch == ARCH_TYPE_RISCV32 || 
@@ -271,15 +246,33 @@ static inline bool sema_check_asm_arg_addr(SemaContext *context, AsmInlineBlock 
 	return true;
 }
 
+// Check if this argument is a valid register
 static inline bool sema_check_asm_arg_reg(SemaContext *context, AsmInlineBlock *block, AsmInstruction *instr, AsmArgType arg_type, Expr *expr)
 {
 	const char *name = expr->expr_asm_arg.reg.name;
 	AsmRegister *reg = expr->expr_asm_arg.reg.ref = asm_reg_by_name(&compiler.platform, name);
 	if (!reg) RETURN_SEMA_ERROR(expr, "Expected a valid register name.");
-	if (!sema_reg_is_valid_in_slot(reg, arg_type))
+	bool is_valid = false;
+	// Does the instruction allow a register of this size?
+	switch (reg->type)
+	{
+		case ASM_REG_INT:
+			is_valid = (arg_type.ireg_bits & reg->bits) != 0;
+			break;
+		case ASM_REG_FLOAT:
+			is_valid = (arg_type.float_bits & reg->bits) != 0;
+			break;
+		case ASM_REF_FVEC:
+		case ASM_REG_IVEC:
+			is_valid = (arg_type.vec_bits & reg->bits) != 0;
+			break;
+	}
+	// This could probably be improved to say what sizes are allowed.
+	if (!is_valid)
 	{
 		RETURN_SEMA_ERROR(expr, "'%s' is not valid in this slot.", reg->name);
 	}
+	// If we're writing to the register, then it needs to be clobbered.
 	if (arg_type.is_write)
 	{
 		sema_add_clobber(block, reg->clobber_index);
@@ -383,8 +376,7 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 		decl->var.is_read = true;
 		if (decl->var.out_param)
 		{
-			SEMA_ERROR(expr, "An 'out' variable may not be read from.");
-			return false;
+			RETURN_SEMA_ERROR(expr, "An 'out' variable may not be read from.");
 		}
 		asm_reg_add_input(block, arg);
 	}
@@ -393,8 +385,7 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 		decl->var.is_written = true;
 		if (decl->var.in_param)
 		{
-			SEMA_ERROR(expr, "An 'in' variable may not be written to.");
-			return false;
+			RETURN_SEMA_ERROR(expr, "An 'in' variable may not be written to.");
 		}
 		asm_reg_add_output(block, arg);
 	}
@@ -409,19 +400,16 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 		{
 			if (arg_type.is_address)
 			{
-				SEMA_ERROR(expr, "You need to pass the variable by address.");
-				return false;
+				RETURN_SEMA_ERROR(expr, "You need to pass the variable by address.");
 			}
-			SEMA_ERROR(expr, "An integer variable was not expected here.");
-			return false;
+			RETURN_SEMA_ERROR(expr, "An integer variable was not expected here.");
 		}
 		if (!sema_reg_int_supported_type(arg_type, type))
 		{
 			unsigned bits = arg_bits_max(arg_type.ireg_bits, 0);
 			ASSERT(bits);
-			SEMA_ERROR(expr, "%s is not supported in this position, convert it to a valid type, like %s.",
+			RETURN_SEMA_ERROR(expr, "%s is not supported in this position, convert it to a valid type, like %s.",
 					   type_quoted_error_string(decl->type), type_quoted_error_string(type_int_signed_by_bitsize(bits)));
-			return false;
 		}
 		return true;
 	}
@@ -429,27 +417,21 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 	{
 		if (!arg_type.float_bits)
 		{
-			if (arg_type.is_address)
-			{
-				SEMA_ERROR(expr, "You need to pass the variable by address.");
-				return false;
-			}
-			SEMA_ERROR(expr, "A floating point variable was not expected here.");
-			return false;
+			if (arg_type.is_address) RETURN_SEMA_ERROR(expr, "You need to pass the variable by address.");
+			RETURN_SEMA_ERROR(expr, "A floating point variable was not expected here.");
 		}
 		if (!sema_reg_float_supported_type(arg_type, type))
 		{
-			SEMA_ERROR(expr, "%s is not supported in this position, convert it to a valid type.",
-					   type_quoted_error_string(decl->type));
-			return false;
+			RETURN_SEMA_ERROR(expr, "%s is not supported in this position, convert it to a valid type.",
+			                  type_quoted_error_string(decl->type));
 		}
 		return true;
 
 	}
-	SEMA_ERROR(expr, "%s is not supported as an argument.", type_quoted_error_string(decl->type));
-	return false;
+	RETURN_SEMA_ERROR(expr, "%s is not supported as an argument.", type_quoted_error_string(decl->type));
 }
 
+// This is handling [&foo]
 static inline bool sema_check_asm_memvar(SemaContext *context, AsmInlineBlock *block, AsmInstruction *instr, AsmArgType arg_type, Expr *expr)
 {
 	ExprAsmArg *arg = &expr->expr_asm_arg;
@@ -479,6 +461,30 @@ static inline bool sema_check_asm_memvar(SemaContext *context, AsmInlineBlock *b
 		}
 		asm_reg_add_output(block, arg);
 	}
+	if (!arg_type.is_address) RETURN_SEMA_ERROR(expr, "This slot does not accept an address.");
+	return true;
+}
+
+// This is pure &foo
+static inline bool sema_check_asm_arg_addrof_var(SemaContext *context, AsmInlineBlock *block, AsmInstruction *instr, AsmArgType arg_type, Expr *expr)
+{
+	ExprAsmArg *arg = &expr->expr_asm_arg;
+	const char *name = arg->ident.name;
+	Decl *decl = sema_resolve_external_symbol(context, expr, name);
+	if (!decl) return false;
+	ASSERT(arg->kind == ASM_ARG_MEMADDR);
+	arg->ident.ident_decl = decl;
+	if (arg_type.is_write || arg_type.is_readwrite)
+	{
+		RETURN_SEMA_ERROR(expr, "This slot is written to, you can't use an address for that, maybe you intended [&foo] or similar?");
+	}
+	arg->ident.is_input = true;
+	decl->var.is_read = true;
+	if (decl->var.out_param && !decl->var.in_param)
+	{
+		RETURN_SEMA_ERROR(expr, "An 'out' variable may not be read from.");
+	}
+	asm_reg_add_input(block, arg);
 	if (!arg_type.is_address)
 	{
 		RETURN_SEMA_ERROR(expr, "This slot does not accept an address.");
@@ -493,8 +499,7 @@ static inline bool sema_check_asm_arg_value(SemaContext *context, AsmInlineBlock
 	if (expr_is_const_int(inner)) return sema_check_asm_arg_const_int(context, block, instr, arg_type, expr, inner);
 	if (arg_type.is_write)
 	{
-		SEMA_ERROR(expr, "This position is written to, you can't use an expression for that.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "This position is written to, you can't use an expression for that.");
 	}
 	Type *type = type_flatten(inner->type);
 	if (type_is_pointer_type(type)) type = type_uptr->canonical;
@@ -502,8 +507,7 @@ static inline bool sema_check_asm_arg_value(SemaContext *context, AsmInlineBlock
 	{
 		if (!sema_reg_int_supported_type(arg_type, type))
 		{
-			SEMA_ERROR(expr, "%s is not valid for this slot.", type_quoted_error_string(inner->type));
-			return false;
+			RETURN_SEMA_ERROR(expr, "%s is not valid for this slot.", type_quoted_error_string(inner->type));
 		}
 		asm_reg_add_input(block, &expr->expr_asm_arg);
 		expr->type = type;
@@ -513,14 +517,13 @@ static inline bool sema_check_asm_arg_value(SemaContext *context, AsmInlineBlock
 	{
 		if (!sema_reg_float_supported_type(arg_type, type))
 		{
-			SEMA_ERROR(expr, "%s is not valid for this slot.", type_quoted_error_string(inner->type));
-			return false;
+			RETURN_SEMA_ERROR(expr, "%s is not valid for this slot.", type_quoted_error_string(inner->type));
 		}
 		asm_reg_add_input(block, &expr->expr_asm_arg);
 		expr->type = type;
 		return true;
 	}
-	TODO
+	RETURN_SEMA_ERROR(expr, "%s is not valid for this slot.", type_quoted_error_string(inner->type));
 	UNREACHABLE
 }
 static inline bool sema_check_asm_arg(SemaContext *context, AsmInlineBlock *block, AsmInstruction *instr, AsmArgType arg_type, Expr *expr)
@@ -528,7 +531,7 @@ static inline bool sema_check_asm_arg(SemaContext *context, AsmInlineBlock *bloc
 	switch (expr->expr_asm_arg.kind)
 	{
 		case ASM_ARG_INT:
-			return true;
+			UNREACHABLE
 		case ASM_ARG_REG:
 			return sema_check_asm_arg_reg(context, block, instr, arg_type, expr);
 		case ASM_ARG_ADDR:
@@ -539,9 +542,8 @@ static inline bool sema_check_asm_arg(SemaContext *context, AsmInlineBlock *bloc
 			return sema_check_asm_var(context, block, instr, arg_type, expr);
 		case ASM_ARG_MEMVAR:
 			return sema_check_asm_memvar(context, block, instr, arg_type, expr);
-		case ASM_ARG_ADDROF:
-			TODO
-			break;
+		case ASM_ARG_MEMADDR:
+			return sema_check_asm_arg_addrof_var(context, block, instr, arg_type, expr);
 	}
 	UNREACHABLE
 }
@@ -551,7 +553,7 @@ bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt
 	ASSERT(compiler.platform.asm_initialized);
 
 	AsmInstruction *instr = asm_instr_by_name(asm_stmt->asm_stmt.instruction);
-	if (!instr) RETURN_SEMA_ERROR(asm_stmt, "Unknown instruction");
+	if (!instr) RETURN_SEMA_ERROR(asm_stmt, "Unknown instruction for the current target.");
 
 	// Check arguments
 	Expr **args = asm_stmt->asm_stmt.args;

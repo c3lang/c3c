@@ -220,6 +220,10 @@ static inline bool parse_asm_scale(ParseContext *c, ExprAsmArg *asm_arg)
 	return true;
 }
 
+/*
+ * Asm [REG + BAR * 4], [&foo]
+ * asm_addr ::= '[' asm_expr
+ */
 static inline bool parse_asm_addr(ParseContext *c, ExprAsmArg *asm_arg)
 {
 	asm_arg->kind = ASM_ARG_ADDR;
@@ -229,7 +233,8 @@ static inline bool parse_asm_addr(ParseContext *c, ExprAsmArg *asm_arg)
 	// Simple case [foo]
 	if (try_consume(c, TOKEN_RBRACKET))
 	{
-		if (base->expr_asm_arg.kind == ASM_ARG_ADDROF)
+		// Here we're covering [&foo]
+		if (base->expr_asm_arg.kind == ASM_ARG_MEMADDR)
 		{
 			*asm_arg = base->expr_asm_arg;
 			asm_arg->kind = ASM_ARG_MEMVAR;
@@ -318,9 +323,11 @@ static inline bool parse_asm_addr(ParseContext *c, ExprAsmArg *asm_arg)
 	return true;
 }
 /**
- *
- * @param c
- * @return
+ * asm_expr ::= asm_addr | asm_reg | asm_regvar | asm_addrof | asm_argvalue
+ * asm_reg = CT_IDENT | CT_CONST_IDENT (register name)
+ * asm_regvar = IDENT (variable)
+ * asm_addof = '&' IDENT (variable address)
+ * asm_argvalue = ('-'? INTEGER) | CONST_IDENT | FLOAT | '(' expr ')'
  */
 static inline Expr *parse_asm_expr(ParseContext *c)
 {
@@ -347,7 +354,7 @@ static inline Expr *parse_asm_expr(ParseContext *c)
 			advance(c);
 			return expr;
 		case TOKEN_AMP:
-			expr->expr_asm_arg.kind = ASM_ARG_ADDROF;
+			expr->expr_asm_arg.kind = ASM_ARG_MEMADDR;
 			advance(c);
 			expr->expr_asm_arg.ident.name = c->data.string;
 			if (!try_consume(c, TOKEN_IDENT))
@@ -379,6 +386,12 @@ static inline Expr *parse_asm_expr(ParseContext *c)
 	}
 }
 
+/*
+ * asm_label | asm_stmt
+ * asm_label     ::= CONST_IDENT ':'
+ * asm_stmt      ::= IDENT | int ('.' IDENT) )? asm_expr_list? ';'
+ * asm_expr_list ::= asm_expr (',' asm_expr)* ','?
+ */
 static inline Ast *parse_asm_stmt(ParseContext *c)
 {
 	Ast *asm_stmt = ast_new_curr(c, AST_ASM_STMT);

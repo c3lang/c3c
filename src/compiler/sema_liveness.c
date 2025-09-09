@@ -75,11 +75,12 @@ static void sema_trace_asm_arg_list(ExprAsmArg **list)
 		switch (asm_arg->kind)
 		{
 			case ASM_ARG_ADDR:
-			case ASM_ARG_ADDROF:
 				TODO
+				return;
 			case ASM_ARG_REG:
 			case ASM_ARG_INT:
 				continue;
+			case ASM_ARG_MEMADDR:
 			case ASM_ARG_MEMVAR:
 			case ASM_ARG_REGVAR:
 				sema_trace_decl_liveness(asm_arg->ident.ident_decl);
@@ -289,7 +290,7 @@ RETRY:
 			switch (expr->expr_asm_arg.kind)
 			{
 				case ASM_ARG_REG:
-				case ASM_ARG_ADDROF:
+				case ASM_ARG_MEMADDR:
 				case ASM_ARG_REGVAR:
 				case ASM_ARG_INT:
 				case ASM_ARG_MEMVAR:
