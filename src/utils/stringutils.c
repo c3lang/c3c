@@ -234,14 +234,6 @@ bool str_has_suffix(const char *name, const char *suffix)
 	return memcmp(name + name_len - suffix_len, suffix, suffix_len) == 0;
 }
 
-bool str_ends_with(const char *str1, const char *str2)
-{
-	size_t len1 = strlen(str1);
-	size_t len2 = strlen(str2);
-	if (len2 > len1) return false;
-	return memcmp(str1 + len1 - len2, str2, len2) == 0;
-}
-
 bool str_start_with(const char *name, const char *prefix)
 {
 	size_t suffix_len = strlen(prefix);
