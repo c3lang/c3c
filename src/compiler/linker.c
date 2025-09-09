@@ -1008,7 +1008,7 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 	if (!dir) dir = compiler.build.build_dir;
 	if (output_subdir) dir = dir ? file_append_path(dir, output_subdir) : output_subdir;
 	if (dir) dir_make(dir);
-	bool is_cl_exe = str_has_suffix(cc, "cl.exe");
+	bool is_cl_exe = str_ends_with(cc, "cl.exe");
 	char *filename = NULL;
 	bool split_worked = file_namesplit(file, &filename, NULL);
 	if (!split_worked) error_exit("Cannot compile '%s'", file);
