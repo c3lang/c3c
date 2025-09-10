@@ -3907,6 +3907,14 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 
 	assert(success_end_block && else_block_exit);
 
+	// We might have a void here
+	if (!real_value.value)
+	{
+		assert(type_flatten(expr->type) == type_void);
+		assert(!else_value.value);
+		llvm_value_set(be_value, NULL, type_void);
+		return;
+	}
 	// Emit an address if the phi is was by address
 	if (was_address)
 	{
