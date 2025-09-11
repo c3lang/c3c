@@ -4775,7 +4775,16 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 		CallEnvKind env_kind = context->call_env.kind;
 		if (is_static) context->call_env.kind = CALL_ENV_FUNCTION_STATIC;
 		decl->in_init = true;
+
+		Module *generic = type_find_generic(decl->type);
+		if (generic)
+		{
+			Module *temp = context->generic.infer;
+			context->generic.infer = generic;
+			generic = temp;
+		}
 		success = sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false, true, check_defined);
+		context->generic.infer = generic;
 		if (!success && check_defined) return false;
 		decl->in_init = false;
 		context->call_env.kind = env_kind;

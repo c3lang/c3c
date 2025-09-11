@@ -834,6 +834,17 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 	if (found->unit->module->is_generic)
 	{
 		if (name_resolve->is_parameterized) return true;
+		if (context->generic.infer)
+		{
+			if (context->generic.infer->generic_module != found->unit->module)
+			{
+				if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
+				RETURN_SEMA_ERROR_AT(name_resolve->span, "Found '%s' in the generic module '%s', but it doesn't match the inferred module '%s'.", found->name, found->unit->module->name->module,
+					context->generic.infer->generic_module->name->module);
+			}
+			Decl *symbol = module_find_symbol(context->generic.infer, found->name);
+			if (symbol) return name_resolve->found = symbol, true;
+		}
 		if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
 		RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is defined in the generic module '%s', but no parameters where given.", found->name, found->unit->module->name->module);
 	}
