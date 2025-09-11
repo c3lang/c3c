@@ -37,10 +37,15 @@ enum EpollEvents: const inline uint
 	EPOLLET = 1u << 31
 }
 
-/* Valid opcodes ( "op" parameter ) to issue to epoll_ctl().  */
-const uint EPOLL_CTL_ADD = 1; /* Add a file descriptor to the interface.  */
-const uint EPOLL_CTL_DEL = 2; /* Remove a file descriptor from the interface.  */
-const uint EPOLL_CTL_MOD = 3; /* Change file descriptor epoll_event structure.  */
+/*
+ Valid opcodes ( "op" parameter ) to issue to epoll_ctl().
+*/
+<* Add a file descriptor to the interface. *>
+const uint EPOLL_CTL_ADD = 1;
+<* Remove a file descriptor from the interface. *>
+const uint EPOLL_CTL_DEL = 2;
+<* Change file descriptor epoll_event structure. *>
+const uint EPOLL_CTL_MOD = 3;
 
 union EpollData 
 {
@@ -52,8 +57,10 @@ union EpollData
 
 struct EpollEvent @packed 
 {
-	uint	events; /* Epoll events */
-	EpollData data; /* User data variable */
+	<* Epoll events *>
+	uint	events;
+	<* User data variable *>
+	EpollData data;
 }
 
 struct EpollParams 
@@ -62,7 +69,7 @@ struct EpollParams
 	ushort  busy_poll_budget;
 	char	prefer_busy_poll;
 	
-	/* pad the struct to a multiple of 64bits */
+	<* pad the struct to a multiple of 64bits *>
 	char	__pad;
 }
 
@@ -74,10 +81,14 @@ struct EpollParams
  * to encode the in/out status of the parameter; for now
  * we restrict parameters to at most 256 bytes (disklabels are 216 bytes).
  */
-const IOCPARM_MASK =	0xff;		/* parameters must be < 256 bytes */
-const IOC_VOID =		0x20000000;	/* no parameters */
-const IOC_OUT =			0x40000000;	/* copy out parameters */
-const IOC_IN =			0x80000000;	/* copy in parameters */
+<* parameters must be < 256 bytes *>
+const IOCPARM_MASK =	0xff;
+<* no parameters *>
+const IOC_VOID =		0x20000000;
+<* copy out parameters *>
+const IOC_OUT =			0x40000000;
+<* copy in parameters *>
+const IOC_IN =			0x80000000;
 const IOC_INOUT =		(IOC_IN|IOC_OUT);
 
 macro ulong @ioctl_IO   ($x,$y)		 @const  => (IOC_VOID | (($x)<<8)|y);

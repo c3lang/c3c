@@ -4,56 +4,104 @@
 *>
 module std::core::ascii;
 
-macro bool @is_lower(c)  => ASCII_LOOKUP[c].lower;      // Is a-z
-macro bool @is_upper(c)  => ASCII_LOOKUP[c].upper;      // Is A-Z
-macro bool @is_digit(c)  => ASCII_LOOKUP[c].digit;      // Is 0-9
-macro bool @is_bdigit(c) => ASCII_LOOKUP[c].bin_digit;  // Is 0-1
-macro bool @is_odigit(c) => ASCII_LOOKUP[c].oct_digit;  // Is 0-7
-macro bool @is_xdigit(c) => ASCII_LOOKUP[c].hex_digit;  // Is 0-9 or a-f or A-F
-macro bool @is_alpha(c)  => ASCII_LOOKUP[c].alpha;      // Is a-z or A-Z
-macro bool @is_print(c)  => ASCII_LOOKUP[c].printable;  // Is a printable character (space or higher and < 127
-macro bool @is_graph(c)  => ASCII_LOOKUP[c].graph;      // Does it show any graphics (printable but not space)
-macro bool @is_space(c)  => ASCII_LOOKUP[c].space;      // Is it a space character: space, tab, linefeed etc
-macro bool @is_alnum(c)  => ASCII_LOOKUP[c].alphanum;   // Is it alpha or digit
-macro bool @is_punct(c)  => ASCII_LOOKUP[c].punct;      // Is it "graph" but not digit or letter
-macro bool @is_blank(c)  => ASCII_LOOKUP[c].blank;      // Is it a blank space: space or tab
-macro bool @is_cntrl(c)  => ASCII_LOOKUP[c].control;    // Is it a control character: before space or 127
-macro char @to_lower(c)  => c + TO_LOWER[c];            // Convert A-Z to a-z if found
-macro char @to_upper(c)  => c - TO_UPPER[c];            // Convert a-z to A-Z if found
+<* Is a-z *>
+macro bool @is_lower(c)  => ASCII_LOOKUP[c].lower;
+<* Is A-Z *>
+macro bool @is_upper(c)  => ASCII_LOOKUP[c].upper;
+<* Is 0-9 *>
+macro bool @is_digit(c)  => ASCII_LOOKUP[c].digit;
+<* Is 0-1 *>
+macro bool @is_bdigit(c) => ASCII_LOOKUP[c].bin_digit;
+<* Is 0-7 *>
+macro bool @is_odigit(c) => ASCII_LOOKUP[c].oct_digit;
+<* Is 0-9 or a-f or A-F *>
+macro bool @is_xdigit(c) => ASCII_LOOKUP[c].hex_digit;
+<* Is a-z or A-Z *>
+macro bool @is_alpha(c)  => ASCII_LOOKUP[c].alpha;
+<* Is a printable character (space or higher and < 127 *>
+macro bool @is_print(c)  => ASCII_LOOKUP[c].printable;
+<* Does it show any graphics (printable but not space) *>
+macro bool @is_graph(c)  => ASCII_LOOKUP[c].graph;
+<* Is it a space character: space, tab, linefeed etc *>
+macro bool @is_space(c)  => ASCII_LOOKUP[c].space;
+<* Is it alpha or digit *>
+macro bool @is_alnum(c)  => ASCII_LOOKUP[c].alphanum;
+<* Is it "graph" but not digit or letter *>
+macro bool @is_punct(c)  => ASCII_LOOKUP[c].punct;
+<* Is it a blank space: space or tab *>
+macro bool @is_blank(c)  => ASCII_LOOKUP[c].blank;
+<* Is it a control character: before space or 127 *>
+macro bool @is_cntrl(c)  => ASCII_LOOKUP[c].control;
+<* Convert A-Z to a-z if found *>
+macro char @to_lower(c)  => c + TO_LOWER[c];
+<* Convert a-z to A-Z if found *>
+macro char @to_upper(c)  => c - TO_UPPER[c];
 
-fn bool is_lower(char c)  => @is_lower(c);  // Is a-z
-fn bool is_upper(char c)  => @is_upper(c);  // Is A-Z
-fn bool is_digit(char c)  => @is_digit(c);  // Is 0-9
-fn bool is_bdigit(char c) => @is_bdigit(c); // Is 0-1
-fn bool is_odigit(char c) => @is_odigit(c); // Is 0-7
-fn bool is_xdigit(char c) => @is_xdigit(c); // Is 0-9 or a-f or A-F
-fn bool is_alpha(char c)  => @is_alpha(c);  // Is a-z or A-Z
-fn bool is_print(char c)  => @is_print(c);  // Is a printable character (space or higher and < 127
-fn bool is_graph(char c)  => @is_graph(c);  // Does it show any graphics (printable but not space)
-fn bool is_space(char c)  => @is_space(c);  // Is it a space character: space, tab, linefeed etc
-fn bool is_alnum(char c)  => @is_alnum(c);  // Is it alpha or digit
-fn bool is_punct(char c)  => @is_punct(c);  // Is it "graph" but not digit or letter
-fn bool is_blank(char c)  => @is_blank(c);  // Is it a blank space: space or tab
-fn bool is_cntrl(char c)  => @is_cntrl(c);  // Is it a control character: before space or 127
-fn char to_lower(char c)  => @to_lower(c);  // Convert A-Z to a-z if found
-fn char to_upper(char c)  => @to_upper(c);  // Convert a-z to A-Z if found
+<* Is a-z *>
+fn bool is_lower(char c)  => @is_lower(c);
+<* Is A-Z *>
+fn bool is_upper(char c)  => @is_upper(c);
+<* Is 0-9 *>
+fn bool is_digit(char c)  => @is_digit(c);
+<* Is 0-1 *>
+fn bool is_bdigit(char c) => @is_bdigit(c);
+<* Is 0-7 *>
+fn bool is_odigit(char c) => @is_odigit(c);
+<* Is 0-9 or a-f or A-F *>
+fn bool is_xdigit(char c) => @is_xdigit(c);
+<* Is a-z or A-Z *>
+fn bool is_alpha(char c)  => @is_alpha(c);
+<* Is a printable character (space or higher and < 127 *>
+fn bool is_print(char c)  => @is_print(c);
+<* Does it show any graphics (printable but not space) *>
+fn bool is_graph(char c)  => @is_graph(c);
+<* Is it a space character: space, tab, linefeed etc *>
+fn bool is_space(char c)  => @is_space(c);
+<* Is it alpha or digit *>
+fn bool is_alnum(char c)  => @is_alnum(c);
+<* Is it "graph" but not digit or letter *>
+fn bool is_punct(char c)  => @is_punct(c);
+<* Is it a blank space: space or tab *>
+fn bool is_blank(char c)  => @is_blank(c);
+<* Is it a control character: before space or 127 *>
+fn bool is_cntrl(char c)  => @is_cntrl(c);
+<* Convert A-Z to a-z if found *>
+fn char to_lower(char c)  => @to_lower(c);
+<* Convert a-z to A-Z if found *>
+fn char to_upper(char c)  => @to_upper(c);
 
 // The following methods are macro methods for the same functions
+<* Is a-z *>
 macro bool char.is_lower(char c)  => @is_lower(c);
+<* Is A-Z *>
 macro bool char.is_upper(char c)  => @is_upper(c);
+<* Is 0-9 *>
 macro bool char.is_digit(char c)  => @is_digit(c);
+<* Is 0-1 *>
 macro bool char.is_bdigit(char c) => @is_bdigit(c);
+<* Is 0-7 *>
 macro bool char.is_odigit(char c) => @is_odigit(c);
+<* Is 0-9 or a-f or A-F *>
 macro bool char.is_xdigit(char c) => @is_xdigit(c);
+<* Is a-z or A-Z *>
 macro bool char.is_alpha(char c)  => @is_alpha(c);
+<* Is a printable character (space or higher and < 127 *>
 macro bool char.is_print(char c)  => @is_print(c);
+<* Does it show any graphics (printable but not space) *>
 macro bool char.is_graph(char c)  => @is_graph(c);
+<* Is it a space character: space, tab, linefeed etc *>
 macro bool char.is_space(char c)  => @is_space(c);
+<* Is it alpha or digit *>
 macro bool char.is_alnum(char c)  => @is_alnum(c);
+<* Is it "graph" but not digit or letter *>
 macro bool char.is_punct(char c)  => @is_punct(c);
+<* Is it a blank space: space or tab *>
 macro bool char.is_blank(char c)  => @is_blank(c);
+<* Is it a control character: before space or 127 *>
 macro bool char.is_cntrl(char c)  => @is_cntrl(c);
+<* Convert A-Z to a-z if found *>
 macro char char.to_lower(char c)  => @to_lower(c);
+<* Convert a-z to A-Z if found *>
 macro char char.to_upper(char c)  => @to_upper(c);
 
 <*

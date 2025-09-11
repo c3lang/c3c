@@ -9,8 +9,10 @@ const uint PIXELS_MAX = 400000000;
 *>
 enum QOIColorspace : char (char id)
 {
-	SRGB = 0, 	// sRGB with linear alpha
-	LINEAR = 1 	// all channels linear
+	<* sRGB with linear alpha *>
+	SRGB = 0,
+	<* all channels linear *>
+	LINEAR = 1
 }
 
 <*
@@ -391,13 +393,18 @@ const OP_RUN = 0b11;
 
 struct Header @packed
 {
-	uint be_magic;	// magic bytes "qoif"
-	uint be_width;	// image width in pixels (BE)
-	uint be_height;	// image height in pixels (BE)
+	<* magic bytes "qoif" *>
+	uint be_magic;
+	<* image width in pixels (BE) *>
+	uint be_width;
+	<* image height in pixels (BE) *>
+	uint be_height;
 
 	// informative fields
-	char channels;	// 3 = RGB, 4 = RGB
-	char colorspace;	// 0 = sRGB with linear alpha, 1 = all channels linear
+	<* 3 = RGB, 4 = RGB *>
+	char channels;
+	<* 0 = sRGB with linear alpha, 1 = all channels linear *>
+	char colorspace;
 }
 
 const char[*] END_OF_STREAM = {0, 0, 0, 0, 0, 0, 0, 1};

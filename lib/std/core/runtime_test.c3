@@ -14,9 +14,9 @@ TestContext* test_context @private;
 struct TestContext
 {
 	JmpBuf buf;
-	// Allows filtering test cased or modules by substring, e.g. 'foo::', 'foo::test_add'
+	<* Allows filtering test cased or modules by substring, e.g. 'foo::', 'foo::test_add' *>
 	String test_filter;
-	// Triggers debugger breakpoint when assert or test:: checks failed
+	<* Triggers debugger breakpoint when assert or test:: checks failed *>
 	bool breakpoint_on_assert;
 
 	// internal state
