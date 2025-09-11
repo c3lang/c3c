@@ -1886,6 +1886,7 @@ typedef struct
 	const char *symbol;
 	Module *path_found;
 	bool suppress_error;
+	bool is_parameterized;
 } NameResolve;
 
 typedef struct
@@ -1935,7 +1936,6 @@ typedef struct
 	Decl **method_extension_list;
 	DeclTable symbols;
 	PathTable path_symbols;
-	DeclTable generic_symbols;
 	Path std_module_path;
 	Type *string_type;
 	Decl *panic_var;
@@ -2250,7 +2250,6 @@ const char *build_base_name(void);
 void global_context_clear_errors(void);
 void global_context_add_type(Type *type);
 void global_context_add_decl(Decl *type_decl);
-void global_context_add_generic_decl(Decl *decl);
 
 void linking_add_link(Linking *linker, const char *link);
 
@@ -2442,7 +2441,6 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 void sema_expr_convert_enum_to_int(Expr *expr);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
-bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_resolve);
 Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const char *method_name);
 Decl *sema_resolve_method(Decl *type, const char *method_name);
 Decl *sema_resolve_method_only(Decl *type, const char *method_name);
@@ -2455,6 +2453,7 @@ Decl *sema_find_label_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);
 Decl *sema_find_local(SemaContext *context, const char *symbol);
 Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
+Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
 BoolErr sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref);

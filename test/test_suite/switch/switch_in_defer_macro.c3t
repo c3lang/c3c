@@ -25,7 +25,7 @@ enum Kind : char
 }
 
 
-alias TokenTrie = Trie{Token, ushort};
+alias TokenTrie = trie::Trie{Token, ushort};
 
 alias Ident = fn bool (usz index, char c);
 
@@ -404,8 +404,8 @@ module lexer_test;
 import lexer;
 import std::io;
 
-alias Lexer = Lexer{Token, Comment};
-alias Kind = Kind{Token, Comment};
+alias Lexer = lexer::Lexer{Token, Comment};
+alias Kind = lexer::Kind{Token, Comment};
 
 enum Token : char (String token)
 {
@@ -638,7 +638,7 @@ fn bool Bitmap.is_empty(&self)
 module trie_test;
 import trie;
 
-alias Trie = Trie{String, char};
+alias Trie = trie::Trie{String, char};
 
 fn void test()
 {
