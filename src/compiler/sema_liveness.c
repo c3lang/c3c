@@ -68,28 +68,33 @@ static void sema_trace_stmt_chain_liveness(AstId astid)
 	}
 	REMINDER("Optimize to ignore after return");
 }
+static void sema_trace_expr_asm_arg(ExprAsmArg *arg)
+{
+	switch (arg->kind)
+	{
+		case ASM_ARG_ADDR:
+			sema_trace_exprid_liveness(arg->base);
+			sema_trace_exprid_liveness(arg->idx);
+			return;
+		case ASM_ARG_REG:
+		case ASM_ARG_INT:
+			return;
+		case ASM_ARG_MEMADDR:
+		case ASM_ARG_MEMVAR:
+		case ASM_ARG_REGVAR:
+			sema_trace_decl_liveness(arg->ident.ident_decl);
+			return;
+		case ASM_ARG_VALUE:
+			sema_trace_exprid_liveness(arg->expr_id);
+			return;
+	}
+	UNREACHABLE_VOID
+}
 static void sema_trace_asm_arg_list(ExprAsmArg **list)
 {
 	FOREACH(ExprAsmArg *, asm_arg, list)
 	{
-		switch (asm_arg->kind)
-		{
-			case ASM_ARG_ADDR:
-				TODO
-				return;
-			case ASM_ARG_REG:
-			case ASM_ARG_INT:
-				continue;
-			case ASM_ARG_MEMADDR:
-			case ASM_ARG_MEMVAR:
-			case ASM_ARG_REGVAR:
-				sema_trace_decl_liveness(asm_arg->ident.ident_decl);
-				continue;
-			case ASM_ARG_VALUE:
-				sema_trace_exprid_liveness(asm_arg->expr_id);
-				continue;
-		}
-		UNREACHABLE_VOID
+		sema_trace_expr_asm_arg(asm_arg);
 	}
 }
 
@@ -287,20 +292,8 @@ RETRY:
 			expr = expr->access_resolved_expr.parent;
 			goto RETRY;
 		case EXPR_ASM:
-			switch (expr->expr_asm_arg.kind)
-			{
-				case ASM_ARG_REG:
-				case ASM_ARG_MEMADDR:
-				case ASM_ARG_REGVAR:
-				case ASM_ARG_INT:
-				case ASM_ARG_MEMVAR:
-					return;
-				case ASM_ARG_VALUE:
-				case ASM_ARG_ADDR:
-					sema_trace_expr_liveness(exprptr(expr->expr_asm_arg.expr_id));
-					return;
-			}
-			UNREACHABLE_VOID
+			sema_trace_expr_asm_arg(&expr->expr_asm_arg);
+			return;
 		case EXPR_BINARY:
 		case EXPR_BITASSIGN:
 			sema_trace_expr_liveness(exprptr(expr->binary_expr.left));
