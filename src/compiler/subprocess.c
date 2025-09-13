@@ -12,6 +12,14 @@
 #include <windows.h>
 #endif
 
+#if defined(__linux__)
+pid_t cpid;
+void signal_to_subprocess(int sig)
+{
+	kill(cpid, sig);
+}
+#endif
+
 int run_subprocess(const char *name, const char **args)
 {
 #if PLATFORM_WINDOWS
@@ -105,7 +113,7 @@ int run_subprocess(const char *name, const char **args)
 
 	return exit_status;
 #else
-	pid_t cpid = fork();
+	cpid = fork();
 	if (cpid < 0)
 	{
 		eprintf("Could not fork child process %s: %s\n", name, strerror(errno));
@@ -129,6 +137,7 @@ int run_subprocess(const char *name, const char **args)
 		exit(0);
 	}
 
+	signal(SIGINT, signal_to_subprocess);
 	for (;;)
 	{
 		int wstatus = 0;
