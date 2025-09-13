@@ -18,6 +18,7 @@ static Decl *copy_decl(CopyStruct *c, Decl *decl);
 static Decl **copy_decl_list(CopyStruct *c, Decl **decl_list);
 static Methods *copy_decl_methods(CopyStruct *c, Methods *methods);
 static TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source);
+static void copy_expr_asm_arg(CopyStruct *c, ExprAsmArg *arg);
 
 static inline void copy_reg_ref(CopyStruct *c, void *original, void *result)
 {
@@ -464,20 +465,8 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPRID(expr->subscript_expr.index.expr);
 			return expr;
 		case EXPR_ASM:
-			switch (expr->expr_asm_arg.kind)
-			{
-				case ASM_ARG_REG:
-				case ASM_ARG_MEMADDR:
-				case ASM_ARG_REGVAR:
-				case ASM_ARG_INT:
-				case ASM_ARG_MEMVAR:
-					return expr;
-				case ASM_ARG_VALUE:
-				case ASM_ARG_ADDR:
-					MACRO_COPY_EXPRID(expr->expr_asm_arg.expr_id);
-					return expr;
-			}
-			UNREACHABLE
+			copy_expr_asm_arg(c, &expr->expr_asm_arg);
+			return expr;
 		case EXPR_CT_ASSIGNABLE:
 			MACRO_COPY_EXPRID(expr->assignable_expr.expr);
 			MACRO_COPY_EXPRID(expr->assignable_expr.type);
@@ -635,6 +624,41 @@ void doc_ast_copy(CopyStruct *c, AstContractStmt *doc)
 	}
 }
 
+static void copy_expr_asm_arg(CopyStruct *c, ExprAsmArg *arg)
+{
+	switch (arg->kind)
+	{
+		case ASM_ARG_MEMADDR:
+		case ASM_ARG_REGVAR:
+		case ASM_ARG_MEMVAR:
+			if (arg->resolved) fixup_decl(c, &arg->ident.ident_decl);
+			return;
+		case ASM_ARG_REG:
+		case ASM_ARG_INT:
+			return;
+		case ASM_ARG_ADDR:
+			MACRO_COPY_EXPRID(arg->base);
+			MACRO_COPY_EXPRID(arg->idx);
+			return;
+		case ASM_ARG_VALUE:
+			MACRO_COPY_EXPRID(arg->expr_id);
+			return;
+	}
+	UNREACHABLE_VOID
+}
+static ExprAsmArg **copy_expr_asm_arg_list(CopyStruct *c, ExprAsmArg **args)
+{
+	ExprAsmArg **new_args = NULL;
+	FOREACH(ExprAsmArg *, arg, args)
+	{
+		ExprAsmArg *new_arg = MALLOCS(ExprAsmArg);
+		*new_arg = *arg;
+		copy_expr_asm_arg(c, new_arg);
+		vec_add(new_args, new_arg);
+	}
+	return new_args;
+}
+
 Ast *ast_copy_deep(CopyStruct *c, Ast *source)
 {
 	if (!source) return NULL;
@@ -681,6 +705,9 @@ RETRY:
 				*block = *ast->asm_block_stmt.block;
 				ast->asm_block_stmt.block = block;
 				MACRO_COPY_ASTID(block->asm_stmt);
+				MACRO_COPY_AST_LIST(block->labels);
+				block->input = copy_expr_asm_arg_list(c, block->input);
+				block->output_vars = copy_expr_asm_arg_list(c, block->output_vars);
 			}
 			break;
 		case AST_ASM_STMT:

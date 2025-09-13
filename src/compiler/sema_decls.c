@@ -4817,7 +4817,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 	{
 		if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
 	}
-	if (decl->var.kind == VARDECL_LOCAL && type_size(decl->type) > compiler.build.max_stack_object_size * 1024)
+	if (decl->var.kind == VARDECL_LOCAL && !is_static && type_size(decl->type) > compiler.build.max_stack_object_size * 1024)
 	{
 		size_t size = type_size(decl->type);
 		RETURN_SEMA_ERROR(
