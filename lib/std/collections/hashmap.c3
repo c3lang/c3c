@@ -30,8 +30,10 @@ struct HashMap (Printable)
 {
 	Entry*[] table;
 	Allocator allocator;
-	uint count; // Number of elements
-	uint threshold; // Resize limit
+	<* Last inserted LinkedEntry *>
+	uint count;
+	<* Resize limit *>
+	uint threshold;
 	float load_factor;
 }
 

@@ -15,23 +15,30 @@ alias Win32_PMEM_EXTENDED_PARAMETER_TYPE = Win32_MEM_EXTENDED_PARAMETER_TYPE;
 
 enum Win32_MEM_EXTENDED_PARAMETER_ATTRIBUTE : const Win32_DWORD64
 {
-	NONPAGED       = 0x02,  // The allocation is non-pageable.
-	NONPAGED_LARGE = 0x08,  // The allocation is mapped using large pages.
-	NONPAGED_HUGE  = 0x10,  // The allocation is mapped using huge pages.
-	EC_CODE	       = 0x40,  // The allocation will contain emulation-compatible (EC) code.
+	<* The allocation is non-pageable. *>
+	NONPAGED       = 0x02,
+	<* The allocation is mapped using large pages. *>
+	NONPAGED_LARGE = 0x08,
+	<* The allocation is mapped using huge pages. *>
+	NONPAGED_HUGE  = 0x10,
+	<* The allocation will contain emulation-compatible (EC) code. *>
+	EC_CODE	       = 0x40,
 }
 
 struct Win32_MEM_EXTENDED_PARAMETER
 {
 	Win32_MEM_EXTENDED_PARAMETER_TYPE type;
-    union
-    {
-        Win32_MEM_EXTENDED_PARAMETER_ATTRIBUTE attribute;  // If type is ATTRIBUTE_FLAGS
-        Win32_DWORD64                          nodeNumber; // If type is NUMA_NODE
-        Win32_PVOID                            pointer;    // If type is ADDRESS_REQUIREMENTS
-        Win32_SIZE_T                           size;
-        Win32_HANDLE                           handle;
-        Win32_DWORD                            uLong;
-    }
+	union
+	{
+		<* If type is ATTRIBUTE_FLAGS *>
+		Win32_MEM_EXTENDED_PARAMETER_ATTRIBUTE attribute;
+		<* If type is NUMA_NODE *>
+		Win32_DWORD64                          nodeNumber;
+		<* If type is ADDRESS_REQUIREMENTS *>
+		Win32_PVOID                            pointer;
+		Win32_SIZE_T                           size;
+		Win32_HANDLE                           handle;
+		Win32_DWORD                            uLong;
+	}
 }
 alias Win32_PMEM_EXTENDED_PARAMETER = Win32_MEM_EXTENDED_PARAMETER*;

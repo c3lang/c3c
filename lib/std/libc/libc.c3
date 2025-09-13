@@ -407,17 +407,28 @@ alias SeekIndex = CLong;
 
 struct Tm
 {
-	CInt	tm_sec;		// seconds after the minute [0-60]
-	CInt	tm_min;		// minutes after the hour [0-59]
-	CInt	tm_hour;	// hours since midnight [0-23]
-	CInt	tm_mday;	// day of the month [1-31]
-	CInt	tm_mon;		// months since January [0-11]
-	CInt	tm_year;	// years since 1900
-	CInt	tm_wday;	// days since Sunday [0-6]
-	CInt	tm_yday;	// days since January 1 [0-365]
-	CInt	tm_isdst;	// Daylight Savings Time flag
-	TimeOffset tm_gmtoff @if(!env::WIN32);	/* offset from UTC in seconds */
-	char* tm_zone @if(!env::WIN32);	/* timezone abbreviation */
+	<* seconds after the minute [0-60] *>
+	CInt	tm_sec;
+	<* minutes after the hour [0-59] *>
+	CInt	tm_min;
+	<* hours since midnight [0-23] *>
+	CInt	tm_hour;
+	<* day of the month [1-31] *>
+	CInt	tm_mday;
+	<* months since January [0-11] *>
+	CInt	tm_mon;
+	<* years since 1900 *>
+	CInt	tm_year;
+	<* days since Sunday [0-6] *>
+	CInt	tm_wday;
+	<* days since January 1 [0-365] *>
+	CInt	tm_yday;
+	<* Daylight Savings Time flag *>
+	CInt	tm_isdst;
+	<* offset from UTC in seconds *>
+	TimeOffset tm_gmtoff @if(!env::WIN32);
+	<* timezone abbreviation *>
+	char* tm_zone @if(!env::WIN32);
 	CInt tm_nsec @if(env::WASI);
 }
 
@@ -433,7 +444,7 @@ alias Clock_t @if(env::WIN32) = int;
 alias Clock_t @if(!env::WIN32) = CLong;
 
 alias TimeOffset @if(env::WASI) = int;
-alias TimeOffset @if(!env::WASI) = CLong ;
+alias TimeOffset @if(!env::WASI) = CLong;
 
 const int TIME_UTC = 1;
 

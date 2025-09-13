@@ -15,9 +15,12 @@ struct LinkedEntry
 	uint hash;
 	Key key;
 	Value value;
-	LinkedEntry* next;		// For bucket chain
-	LinkedEntry* before;	// Previous in insertion order
-	LinkedEntry* after;		// Next in insertion order
+	<* For bucket chain *>
+	LinkedEntry* next;
+	<* Previous in insertion order *>
+	LinkedEntry* before;
+	<* Next in insertion order *>
+	LinkedEntry* after;
 }
 
 struct LinkedHashMap (Printable)
@@ -27,8 +30,10 @@ struct LinkedHashMap (Printable)
 	usz count;
 	usz threshold;
 	float load_factor;
-	LinkedEntry* head;		// First inserted LinkedEntry
-	LinkedEntry* tail;		// Last inserted LinkedEntry
+	<* First inserted LinkedEntry *>
+	LinkedEntry* head;
+	<* Last inserted LinkedEntry *>
+	LinkedEntry* tail;
 }
 
 

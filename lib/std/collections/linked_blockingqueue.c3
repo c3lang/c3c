@@ -7,16 +7,22 @@ const INITIAL_CAPACITY = 16;
 struct QueueEntry 
 {
 	Value value;
-	QueueEntry* next;    // Next in queue order
-	QueueEntry* prev;    // Previous in queue order
+	<* Next in queue order *>
+	QueueEntry* next;
+	<* Previous in queue order *>
+	QueueEntry* prev;
 }
 
 struct LinkedBlockingQueue 
 {
-	QueueEntry* head;      // First element in queue
-	QueueEntry* tail;      // Last element in queue
-	usz count;             // Current number of elements
-	usz capacity;          // Maximum capacity (0 for unbounded)
+	<* First element in queue *>
+	QueueEntry* head;
+	<* Last element in queue *>
+	QueueEntry* tail;
+	<* Current number of elements *>
+	usz count;
+	<* Maximum capacity (0 for unbounded) *>
+	usz capacity;
 	Mutex lock;
 	ConditionVariable not_empty;
 	ConditionVariable not_full;

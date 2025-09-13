@@ -7,10 +7,12 @@ const uint PIXELS_MAX = 400000000;
  Purely informative. It will be saved to the file header,
  but does not affect how chunks are en-/decoded.
 *>
-enum QOIColorspace : char (char id)
+enum QOIColorspace : const char
 {
-	SRGB = 0, 	// sRGB with linear alpha
-	LINEAR = 1 	// all channels linear
+	<* sRGB with linear alpha *>
+	SRGB = 0,
+	<* all channels linear *>
+	LINEAR = 1
 }
 
 <*
@@ -19,7 +21,7 @@ enum QOIColorspace : char (char id)
  AUTO can be used when decoding to automatically determine
  the channels from the file's header.
 *>
-enum QOIChannels : char (char id)
+enum QOIChannels : const inline char
 {
 	AUTO = 0,
 	RGB = 3,
@@ -132,7 +134,7 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 	if (pixels > PIXELS_MAX) return TOO_MANY_PIXELS?;
 	
 	// check input data size
-	uint image_size = pixels * desc.channels.id;
+	uint image_size = pixels * desc.channels;
 	if (image_size != input.len) return INVALID_DATA?;
 
 	// allocate memory for encoded data (output)
@@ -146,13 +148,13 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 		.be_magic = bswap('qoif'),
 		.be_width = bswap(desc.width),
 		.be_height = bswap(desc.height),
-		.channels = desc.channels.id,
-		.colorspace = desc.colorspace.id
+		.channels = desc.channels,
+		.colorspace = desc.colorspace
 	};
 
 	uint pos = Header.sizeof; 	// Current position in output
 	uint loc;					// Current position in image (top-left corner)
-	uint loc_end = image_size - desc.channels.id; // End of image data
+	uint loc_end = image_size - desc.channels; // End of image data
 	char run_length = 0; 		// Length of the current run
 	
 	Pixel[64] palette; // Zero-initialized by default
@@ -163,7 +165,7 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 	ichar[<3>] luma; // ...and luma
 
 	// write chunks
-	for (loc = 0; loc < image_size; loc += desc.channels.id)
+	for (loc = 0; loc < image_size; loc += desc.channels)
 	{
 		// set previous pixel
 		prev = p;
@@ -292,8 +294,8 @@ fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels c
 	// copy header data to desc
 	desc.width = bswap(header.be_width);
 	desc.height = bswap(header.be_height);
-	desc.channels = @enumcast(QOIChannels, header.channels)!; 			// Rethrow if invalid
-	desc.colorspace = @enumcast(QOIColorspace, header.colorspace)!;	// Rethrow if invalid
+	desc.channels = header.channels;
+	desc.colorspace = header.colorspace;
 	if (desc.channels == AUTO) return INVALID_DATA?; // Channels must be specified in the header
 
 	// check width and height
@@ -314,11 +316,11 @@ fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels c
 	if (channels == AUTO) channels = desc.channels;
 	
 	// allocate memory for image data
-	usz image_size = (usz)pixels * channels.id;
+	usz image_size = (usz)pixels * channels;
 	char[] image = allocator::alloc_array(allocator, char, image_size);
 	defer catch allocator::free(allocator, image);
 
-	for (loc = 0; loc < image_size; loc += channels.id)
+	for (loc = 0; loc < image_size; loc += channels)
 	{
 		// get chunk tag
 		tag = data[pos];
@@ -391,30 +393,21 @@ const OP_RUN = 0b11;
 
 struct Header @packed
 {
-	uint be_magic;	// magic bytes "qoif"
-	uint be_width;	// image width in pixels (BE)
-	uint be_height;	// image height in pixels (BE)
+	<* magic bytes "qoif" *>
+	uint be_magic;
+	<* image width in pixels (BE) *>
+	uint be_width;
+	<* image height in pixels (BE) *>
+	uint be_height;
 
 	// informative fields
-	char channels;	// 3 = RGB, 4 = RGB
-	char colorspace;	// 0 = sRGB with linear alpha, 1 = all channels linear
+	<* 3 = RGB, 4 = RGB *>
+	QOIChannels channels;
+	<* 0 = sRGB with linear alpha, 1 = all channels linear *>
+	QOIColorspace colorspace;
 }
 
 const char[*] END_OF_STREAM = {0, 0, 0, 0, 0, 0, 0, 1};
-
-// inefficient, but it's only run once at a time
-
-<*
- @return? INVALID_DATA
-*>
-macro @enumcast($Type, raw)
-{
-	foreach (value : $Type.values)
-	{
-		if (value.id == raw) return value;
-	}
-	return INVALID_DATA?;
-}
 
 typedef Pixel = inline char[<4>];
 macro char Pixel.hash(Pixel p)

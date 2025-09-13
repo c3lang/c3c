@@ -212,7 +212,8 @@ fn F25519Int pack(Point* p)
 struct Unpacking
 {
 	Point point;
-	char on_curve; // Non-zero if true.
+	<* Non-zero if true. *>
+	char on_curve;
 }
 
 <*

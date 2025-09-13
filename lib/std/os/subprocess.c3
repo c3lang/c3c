@@ -33,19 +33,21 @@ struct SubProcess
 
 bitstruct SubProcessOptions : int
 {
-	// Combine stdout and stderr to the same file
+	<* Combine stdout and stderr to the same file *>
 	bool combined_stdout_stderr;
-	// Child process should inherit env variables of parent process
+	<* Child process should inherit env variables of parent process *>
 	bool inherit_environment;
-	// Enable async reading of stdout/stderr before completion
+	<* Enable async reading of stdout/stderr before completion *>
 	bool read_async;
-	// Spawn child process without window if supported
+	<* Spawn child process without window if supported *>
 	bool no_window;
-	// Search for program names in the PATH variable. Always enabled on Windows.
-	// Note: this will **not** search for paths in any provided custom environment
-	// and instead uses the PATH of the spawning process.
+	<*
+	 Search for program names in the PATH variable. Always enabled on Windows.
+	 Note: this will **not** search for paths in any provided custom environment
+	 and instead uses the PATH of the spawning process.
+	*>
 	bool search_user_path;
-	// Inherit the parent's stdin, stdout, and stderr handles instead of creating pipes
+	<* Inherit the parent's stdin, stdout, and stderr handles instead of creating pipes *>
 	bool inherit_stdio;
 }
 

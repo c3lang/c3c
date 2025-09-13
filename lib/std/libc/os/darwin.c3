@@ -17,17 +17,28 @@ struct Stat
 	Gid_t st_gid;
 	Dev_t st_rdev;
 
-	TimeSpec st_atimespec; // time of last access
-	TimeSpec st_mtimespec; // time of last data modification
-	TimeSpec st_ctimespec; // time of last status change
-	TimeSpec st_birthtimespec; // time of file creation(birth)
-	Off_t st_size; // file size, in bytes
-	Blkcnt_t st_blocks; // blocks allocated for file
-	Blksize_t st_blocksize; // optimal blocksize for I/O
-	uint st_flags; // user defined flags for file
-	uint st_gen; // file generation number
-	int st_lspare; // RESERVED
-	long[2] st_qspare; // RESERVED
+	<* time of last access *>
+	TimeSpec st_atimespec;
+	<* time of last data modification *>
+	TimeSpec st_mtimespec;
+	<* time of last status change *>
+	TimeSpec st_ctimespec;
+	<* time of file creation(birth) *>
+	TimeSpec st_birthtimespec;
+	<* file size, in bytes *>
+	Off_t st_size;
+	<* blocks allocated for file *>
+	Blkcnt_t st_blocks;
+	<* optimal blocksize for I/O *>
+	Blksize_t st_blocksize;
+	<* user defined flags for file *>
+	uint st_flags;
+	<* file generation number *>
+	uint st_gen;
+	<* RESERVED *>
+	int st_lspare;
+	<* RESERVED *>
+	long[2] st_qspare;
 }
 
 extern fn int stat(ZString str, Stat* stat) @extern("stat64");
