@@ -285,7 +285,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 		htable_set(&unit->module->symbols, (void *)decl->name, decl);
 		if (decl->visibility == VISIBLE_PUBLIC)
 		{
-			global_context_add_generic_decl(decl);
+			global_context_add_decl(decl);
 		}
 	}
 }

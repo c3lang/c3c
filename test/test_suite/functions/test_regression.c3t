@@ -98,7 +98,7 @@ struct Foo
 alias getValueInt = test2::getValue{int};
 alias getValueDouble = test2::getValue{double};
 alias IntBlob = test2::Blob{int};
-alias DoubleBlob = Blob{double};
+alias DoubleBlob = test2::Blob{double};
 alias getMultInt = test2::getMult{int};
 alias getMultDouble = test2::getMult{double};
 

@@ -135,7 +135,7 @@ static inline Decl *sema_find_decl_in_module(Module *module, Path *path, const c
 	return module_find_symbol(module, symbol);
 }
 
-static bool sema_find_decl_in_imports(SemaContext *context, NameResolve *name_resolve, bool want_generic)
+static bool sema_find_decl_in_imports(SemaContext *context, NameResolve *name_resolve)
 {
 	Decl *decl = NULL;
 	// 1. Loop over imports.
@@ -144,7 +144,6 @@ static bool sema_find_decl_in_imports(SemaContext *context, NameResolve *name_re
 
 	FOREACH(Decl *, import, context->unit->imports)
 	{
-		if (import->import.module->is_generic != want_generic) continue;
 		bool is_private_import = import->import.import_private_as_public;
 		if (!path && (decl || !is_private_import)) continue;
 		// Is the decl in the import.
@@ -187,15 +186,11 @@ static bool sema_find_decl_in_imports(SemaContext *context, NameResolve *name_re
 	return true;
 }
 
-static inline Module *sema_is_path_found(Module **modules, Path *path, bool want_generic)
+static inline Module *sema_is_path_found(Module **modules, Path *path)
 {
 	FOREACH(Module *, module, modules)
 	{
-		if (module->is_generic != want_generic) continue;
-		if (matches_subpath(module->name, path))
-		{
-			return module;
-		}
+		if (matches_subpath(module->name, path)) return module;
 	}
 	return NULL;
 }
@@ -359,8 +354,7 @@ static Decl *sema_find_decl_by_short_path(Path *path, const char *name)
 	return pathtable_get(&compiler.context.path_symbols, (void*)path->module, (void*)name);
 }
 
-static bool sema_find_decl_in_global(SemaContext *context, DeclTable *table, Module **module_list,
-                                      NameResolve *name_resolve, bool want_generic)
+static bool sema_find_decl_in_global(SemaContext *context, DeclTable *table, Module **module_list, NameResolve *name_resolve)
 {
 	const char *symbol = name_resolve->symbol;
 	Path *path = name_resolve->path;
@@ -370,7 +364,7 @@ static bool sema_find_decl_in_global(SemaContext *context, DeclTable *table, Mod
 	if (!decl_ids)
 	{
 		// Update the path found
-		if (path && !name_resolve->path_found) name_resolve->path_found = sema_is_path_found(module_list, path, want_generic);
+		if (path && !name_resolve->path_found) name_resolve->path_found = sema_is_path_found(module_list, path);
 		name_resolve->found = NULL;
 		return true;
 	}
@@ -472,12 +466,11 @@ static bool sema_resolve_path_symbol(SemaContext *context, NameResolve *name_res
 		return true;
 	}
 	// 3. Loop over imports.
-	if (!sema_find_decl_in_imports(context, name_resolve, false)) return false;
+	if (!sema_find_decl_in_imports(context, name_resolve)) return false;
 
 	// 4. Go to global search
 	if (name_resolve->found) return true;
-	return sema_find_decl_in_global(context, &compiler.context.symbols, compiler.context.module_list,
-	                                name_resolve, false);
+	return sema_find_decl_in_global(context, &compiler.context.symbols, compiler.context.module_list, name_resolve);
 }
 
 static inline Decl *sema_find_ct_local(SemaContext *context, const char *symbol)
@@ -547,10 +540,10 @@ static bool sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_
 		return true;
 	}
 
-	if (!sema_find_decl_in_imports(context, name_resolve, false)) return false;
+	if (!sema_find_decl_in_imports(context, name_resolve)) return false;
 	if (name_resolve->found) return true;
 
-	return sema_find_decl_in_global(context, &compiler.context.symbols, NULL, name_resolve, false);
+	return sema_find_decl_in_global(context, &compiler.context.symbols, NULL, name_resolve);
 }
 
 #define MAX_TEST 256
@@ -754,6 +747,52 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 	}
 }
 
+INLINE Module *sema_module_matches_path(SemaContext *context, Module *module, Path *path)
+{
+	if (matches_subpath(module->name, path))
+	{
+		FOREACH(Decl *, import, context->unit->imports)
+		{
+			Module *mod = module;
+			while (mod)
+			{
+				if (import->import.module == mod)
+				{
+					return module;
+				}
+				mod = mod->parent_module;
+			}
+		}
+	}
+	return NULL;
+}
+
+INLINE Module *sema_find_module_for_path(SemaContext *context, Path *path, bool prefer_generic)
+{
+	if (prefer_generic)
+	{
+		FOREACH(Module *, module, compiler.context.generic_module_list)
+		{
+			Module *module_match = sema_module_matches_path(context, module, path);
+			if (module_match) return module_match;
+		}
+	}
+	FOREACH(Module *, module, compiler.context.module_list)
+	{
+		Module *module_match = sema_module_matches_path(context, module, path);
+		if (module_match) return module_match;
+	}
+	if (!prefer_generic)
+	{
+		FOREACH(Module *, module, compiler.context.generic_module_list)
+		{
+			Module *module_match = sema_module_matches_path(context, module, path);
+			if (module_match) return module_match;
+		}
+	}
+	return NULL;
+}
+
 INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_resolve)
 {
 	name_resolve->ambiguous_other_decl = NULL;
@@ -765,39 +804,7 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		if (!name_resolve->found && !name_resolve->maybe_decl && !name_resolve->private_decl && !name_resolve->path_found)
 		{
 			if (name_resolve->suppress_error) return true;
-			Module *module_with_path = NULL;
-			FOREACH(Module *, module, compiler.context.module_list)
-			{
-				if (matches_subpath(module->name, name_resolve->path))
-				{
-					FOREACH(Decl *, import, context->unit->imports)
-					{
-						Module *mod = module;
-						while (mod)
-						{
-							if (import->import.module == mod)
-							{
-								module_with_path = module;
-								goto MOD_FOUND;
-							}
-							mod = mod->parent_module;
-						}
-					}
-				}
-			}
-MOD_FOUND:
-			if (!module_with_path)
-			{
-				FOREACH(Module *, module, compiler.context.generic_module_list)
-				{
-					if (matches_subpath(module->name, name_resolve->path))
-					{
-						RETURN_SEMA_ERROR(name_resolve->path,
-						                  "%s is a generic module, did you forget to add the generic parameter(s) {...} after '%s'?",
-						                  module->name->module, name_resolve->symbol);
-					}
-				}
-			}
+			Module *module_with_path = sema_find_module_for_path(context, name_resolve->path, name_resolve->is_parameterized);
 			if (module_with_path)
 			{
 				RETURN_SEMA_ERROR(name_resolve, "'%s' could not be found in %s.", name_resolve->symbol, module_with_path->name->module);
@@ -817,12 +824,53 @@ MOD_FOUND:
 		sema_report_error_on_decl(context, name_resolve);
 		return false;
 	}
-	unit_register_external_symbol(context, found);
 	if (found->is_if && context->call_env.in_if_resolution.a)
 	{
 		sema_error_at(context, context->call_env.in_if_resolution, "This @if expression is dependent on '%s' which is also conditional.", found->name);
 		SEMA_NOTE(found, "'%s' is defined here.", found->name);
 		return false;
+	}
+	unit_register_external_symbol(context, found);
+	if (found->unit->module->is_generic)
+	{
+		if (name_resolve->is_parameterized) return true;
+		if (context->generic.infer)
+		{
+			if (context->generic.infer->generic_module != found->unit->module)
+			{
+				if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
+				RETURN_SEMA_ERROR_AT(name_resolve->span, "Found '%s' in the generic module '%s', but it doesn't match the inferred module '%s'.", found->name, found->unit->module->name->module,
+					context->generic.infer->generic_module->name->module);
+			}
+			Decl *symbol = module_find_symbol(context->generic.infer, found->name);
+			if (symbol) return name_resolve->found = symbol, true;
+		}
+		if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
+		RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is defined in the generic module '%s', but no parameters where given.", found->name, found->unit->module->name->module);
+	}
+	else
+	{
+		if (!name_resolve->is_parameterized) return true;
+		if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
+		bool is_type = decl_is_user_defined_type(name_resolve->found);
+		const char *str = is_type ? "type" : "symbol";
+		if (found->unit->module->generic_suffix)
+		{
+			if (found->unit->module->generic_module == context->unit->module->generic_module)
+			{
+				RETURN_SEMA_ERROR_AT(name_resolve->span, "Generating a parameterized %s '%s' in the same module as the original "
+											 "is not allowed, you need to place it outside of the '%s' module.",
+					str, found->name, context->unit->module->generic_module->name->module);
+			}
+			RETURN_SEMA_ERROR_AT(name_resolve->span, "This %s was matched as '%s%s' in module '%s%s', so parameterizing it further doesn't work.", str, found->name, found->unit->module->generic_suffix, found->unit->module->generic_module->name->module, found->unit->module->generic_suffix);
+		}
+		if (is_type)
+		{
+			RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is not a generic type. Did you want an initializer "
+										   "but forgot () around the type? That is, you typed '%s { ... }' but intended '(%s) { ... }'?",
+										   name_resolve->symbol, name_resolve->symbol, name_resolve->symbol);
+		}
+		RETURN_SEMA_ERROR_AT(name_resolve->span, "Found '%s' in module '%s', but it is not a generic %s.", found->name, found->unit->module->name->module, str);
 	}
 	return true;
 }
@@ -994,45 +1042,6 @@ Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const 
 	}
 }
 
-bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_resolve)
-{
-	name_resolve->ambiguous_other_decl = NULL;
-	name_resolve->private_decl = NULL;
-	name_resolve->path_found = NULL;
-
-	if (!sema_find_decl_in_imports(context, name_resolve, true)) return false;
-	if (!name_resolve->found)
-	{
-		if (!sema_find_decl_in_global(context, &compiler.context.generic_symbols,
-		                                compiler.context.generic_module_list,
-		                                name_resolve, true)) return false;
-	}
-	// 14. Error report
-	if (!name_resolve->found || name_resolve->ambiguous_other_decl)
-	{
-		if (name_resolve->suppress_error) return name_resolve->found = NULL, false;
-		if (!name_resolve->ambiguous_other_decl)
-		{
-			BoolErr res = sema_symbol_is_defined_in_scope(context, name_resolve->symbol);
-			if (res == BOOL_TRUE)
-			{
-				sema_error_at(context, name_resolve->span, "'%s' is not a generic type. Did you want an initializer "
-											   "but forgot () around the type? That is, you typed '%s { ... }' but intended '(%s) { ... }'?",
-											   name_resolve->symbol, name_resolve->symbol, name_resolve->symbol);
-				return false;
-			}
-		}
-		sema_report_error_on_decl(context, name_resolve);
-		return false;
-	}
-	if (!decl_is_user_defined_type(name_resolve->found) && !name_resolve->path && !name_resolve->found->is_autoimport)
-	{
-		if (name_resolve->suppress_error) return false;
-		RETURN_SEMA_ERROR(name_resolve, "Function and variables must be prefixed with a path, e.g. 'foo::%s'.", name_resolve->symbol);
-	}
-	return true;
-}
-
 /**
  * Silently find a symbol, will return NULL, Poison or the value
  */
@@ -1121,6 +1130,36 @@ Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, 
 	return resolve.found;
 }
 
+/**
+ * Resolves a symbol, return NULL if an error was found (and signalled),
+ * otherwise the decl.
+ */
+Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span)
+{
+	NameResolve resolve = {
+		.path = path,
+		.span = span,
+		.symbol = symbol,
+		.is_parameterized = true
+	};
+	if (!sema_resolve_symbol_common(context, &resolve)) return NULL;
+	Decl *found = resolve.found;
+	ASSERT(found);
+	if (!decl_ok(found)) return NULL;
+	return resolve.found;
+}
+
+bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, const char *name, SourceSpan span)
+{
+	NameResolve name_resolve = {
+		.path = decl_path,
+		.span = span,
+		.symbol = name,
+		.suppress_error = true,
+		.is_parameterized = true
+	};
+	return sema_resolve_symbol_common(context, &name_resolve) && name_resolve.found;
+}
 
 static inline void sema_append_local(SemaContext *context, Decl *decl)
 {

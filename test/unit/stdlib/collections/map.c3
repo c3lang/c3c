@@ -11,7 +11,7 @@ struct MapTest
     String key;
     usz value;
 }
-alias List = List{MapTest};
+alias ListMap = List{MapTest};
 
 fn void map()
 {
@@ -40,7 +40,7 @@ fn void map()
         assert(tc.value == v);
     }
 
-    List list;
+    ListMap list;
     list.tinit();
     m.@each(;String key, usz value)
     {

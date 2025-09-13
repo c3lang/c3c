@@ -5,6 +5,8 @@
 ### Changes / improvements
 - Add lengthof() compile time function #2439
 - Allow doc comments on individual struct members, faultdefs and enum values #2427.
+- Infer generic parameters lhs -> rhs: `List{int} x = list::NOHEAP`.
+- Unify generic and regular module namespace.
 
 ### Fixes
 - Compiler assert with var x @noinit = 0 #2452

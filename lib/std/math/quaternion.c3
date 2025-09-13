@@ -2,8 +2,8 @@ module std::math;
 
 // Predefined quaternion aliases.
 
-alias Quaternionf = Quaternion {float};
-alias Quaternion = Quaternion {double};
+alias Quaternionf = QuaternionNumber {float};
+alias Quaternion = QuaternionNumber {double};
 alias QUATERNION_IDENTITY  @builtin = quaternion::IDENTITY {double};
 alias QUATERNIONF_IDENTITY @builtin = quaternion::IDENTITY {float};
 
@@ -15,7 +15,7 @@ alias QUATERNIONF_IDENTITY @builtin = quaternion::IDENTITY {float};
 
 module std::math::quaternion {Real};
 import std::math::vector;
-union Quaternion
+union QuaternionNumber
 {
 	struct
 	{
@@ -24,22 +24,22 @@ union Quaternion
 	Real[<4>] v;
 }
 
-const Quaternion IDENTITY = { 0, 0, 0, 1 };
+const QuaternionNumber IDENTITY = { 0, 0, 0, 1 };
 
-macro Quaternion Quaternion.add(self, Quaternion b) @operator(+) => { .v = self.v + b.v };
-macro Quaternion Quaternion.add_each(self, Real b) => { .v = self.v + b };
-macro Quaternion Quaternion.sub(self, Quaternion b) @operator(-) => { .v = self.v - b.v };
-macro Quaternion Quaternion.negate(self) @operator(-) => { .v = -self.v };
-macro Quaternion Quaternion.sub_each(self, Real b) => { .v = self.v - b };
-macro Quaternion Quaternion.scale(self, Real s) @operator_s(*) => { .v = self.v * s };
-macro Quaternion Quaternion.normalize(self) => { .v = self.v.normalize() };
-macro Real Quaternion.length(self) => self.v.length();
-macro Quaternion Quaternion.lerp(self, Quaternion q2, Real amount) => { .v = self.v.lerp(q2.v, amount) };
-macro Matrix4f Quaternion.to_matrixf(&self) => into_matrix(self, Matrix4f);
-macro Matrix4 Quaternion.to_matrix(&self) => into_matrix(self, Matrix4);
-fn Quaternion Quaternion.nlerp(self, Quaternion q2, Real amount) => { .v = self.v.lerp(q2.v, amount).normalize() };
+macro QuaternionNumber QuaternionNumber.add(self, QuaternionNumber b) @operator(+) => { .v = self.v + b.v };
+macro QuaternionNumber QuaternionNumber.add_each(self, Real b) => { .v = self.v + b };
+macro QuaternionNumber QuaternionNumber.sub(self, QuaternionNumber b) @operator(-) => { .v = self.v - b.v };
+macro QuaternionNumber QuaternionNumber.negate(self) @operator(-) => { .v = -self.v };
+macro QuaternionNumber QuaternionNumber.sub_each(self, Real b) => { .v = self.v - b };
+macro QuaternionNumber QuaternionNumber.scale(self, Real s) @operator_s(*) => { .v = self.v * s };
+macro QuaternionNumber QuaternionNumber.normalize(self) => { .v = self.v.normalize() };
+macro Real QuaternionNumber.length(self) => self.v.length();
+macro QuaternionNumber QuaternionNumber.lerp(self, QuaternionNumber q2, Real amount) => { .v = self.v.lerp(q2.v, amount) };
+macro Matrix4f QuaternionNumber.to_matrixf(&self) => into_matrix(self, Matrix4f);
+macro Matrix4 QuaternionNumber.to_matrix(&self) => into_matrix(self, Matrix4);
+fn QuaternionNumber QuaternionNumber.nlerp(self, QuaternionNumber q2, Real amount) => { .v = self.v.lerp(q2.v, amount).normalize() };
 
-fn Quaternion Quaternion.invert(self)
+fn QuaternionNumber QuaternionNumber.invert(self)
 {
 	Real length_sq = self.v.dot(self.v);
 	if (length_sq <= 0) return self;
@@ -47,9 +47,9 @@ fn Quaternion Quaternion.invert(self)
 	return { self.v[0] * -inv_length, self.v[1] * -inv_length, self.v[2] * -inv_length, self.v[3] * inv_length };
 }
 
-fn Quaternion Quaternion.slerp(self, Quaternion q2, Real amount)
+fn QuaternionNumber QuaternionNumber.slerp(self, QuaternionNumber q2, Real amount)
 {
-	Quaternion result = {};
+	QuaternionNumber result = {};
 
 	Real[<4>] q2v = q2.v;
 	Real cos_half_theta = self.v.dot(q2v);
@@ -76,7 +76,7 @@ fn Quaternion Quaternion.slerp(self, Quaternion q2, Real amount)
 	return { .v = q1v * ratio_a + q2v * ratio_b };
 }
 
-fn Quaternion Quaternion.mul(self, Quaternion b) @operator(*)
+fn QuaternionNumber QuaternionNumber.mul(self, QuaternionNumber b) @operator(*)
 {
 	return { self.i * b.l + self.l * b.i + self.j * b.k - self.k * b.j,
 			 self.j * b.l + self.l * b.j + self.k * b.i - self.i * b.k,
@@ -84,9 +84,9 @@ fn Quaternion Quaternion.mul(self, Quaternion b) @operator(*)
 			 self.l * b.l - self.i * b.i - self.j * self.j - self.k * self.k };
 }
 
-macro into_matrix(Quaternion* q, $Type) @private
+macro into_matrix(QuaternionNumber* q, $Type) @private
 {
-    Quaternion rotation = q.normalize();
+    QuaternionNumber rotation = q.normalize();
     var x = rotation.i;
     var y = rotation.j;
     var z = rotation.k;

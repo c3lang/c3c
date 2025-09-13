@@ -4,5 +4,5 @@ import std::collections::maybe;
 
 fn void test()
 {
-    maybe::Maybe{float} f = (Maybe) {.value=6.6, .has_value=true}; // #error: Did you mean the struct
+    (Maybe) {.value=6.6, .has_value=true}; // #error: is defined in the generic module
 }

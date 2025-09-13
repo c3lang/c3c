@@ -11,7 +11,7 @@ struct MapTest
 	String key;
 	usz value;
 }
-alias List = List{MapTest};
+alias ListMap = List{MapTest};
 
 fn void linked_map_basic()
 {

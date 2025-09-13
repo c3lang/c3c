@@ -78,11 +78,11 @@ fn void quicksort_with_lambda()
     }
 }
 
-alias List = List{int};
+alias List2 = List{int};
 
 fn void quicksort_list()
 {
-    List list;
+    List2 list;
     list.push_all({ 2, 1, 3});
     sort::quicksort(list, &sort::cmp_int_value);
     assert(check::int_sort(list.array_view()));
