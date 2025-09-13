@@ -15,31 +15,21 @@ const PLATFORM_O_NONBLOCK = 0o4000;
 // https://github.com/torvalds/linux/blob/master/include/uapi/asm-generic/socket.h
 const int SOL_SOCKET = 1;
 
-<* turn on debugging info recording *>
-const int SO_DEBUG                   = 1;
-<* allow local address reuse *>
-const int SO_REUSEADDR               = 2;
+const int SO_DEBUG                   = 1; // turn on debugging info recording
+const int SO_REUSEADDR               = 2; // allow local address reuse
 const int SO_TYPE                    = 3;
 const int SO_ERROR                   = 4;
-<* just use interface addresses *>
-const int SO_DONTROUTE               = 5;
-<* permit sending of broadcast msgs *>
-const int SO_BROADCAST               = 6;
-<* Send buffer size *>
-const int SO_SNDBUF                  = 7;
-<* Receive buffer size *>
-const int SO_RCVBUF                  = 8;
-<* keep connections alive *>
-const int SO_KEEPALIVE               = 9;
-<* leave received OOB data in line *>
-const int SO_OOBINLINE	             = 10;
+const int SO_DONTROUTE               = 5; // just use interface addresses
+const int SO_BROADCAST               = 6; // permit sending of broadcast msgs
+const int SO_SNDBUF                  = 7; // Send buffer size
+const int SO_RCVBUF                  = 8; // Receive buffer size
+const int SO_KEEPALIVE               = 9; // keep connections alive
+const int SO_OOBINLINE	             = 10; // leave received OOB data in line
 const int SO_NO_CHECK                = 11;
 const int SO_PRIORITY                = 12;
-<* linger on close if data present (in ticks) *>
-const int SO_LINGER	                 = 13;
+const int SO_LINGER	                 = 13; // linger on close if data present (in ticks)
 const int SO_BSDCOMPAT               = 14;
-<* allow local address & port reuse *>
-const int SO_REUSEPORT               = 15;
+const int SO_REUSEPORT               = 15; // allow local address & port reuse
 const int SO_RCVLOWAT                = 18;
 const int SO_SNDLOWAT                = 19;
 const int SO_RCVTIMEO                = 20; // IMPORTANT Verify before use

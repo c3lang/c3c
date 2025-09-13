@@ -34,16 +34,11 @@ struct AddrInfo
 
 const PLATFORM_O_NONBLOCK @if(!$defined(PLATFORM_O_NONBLOCK)) = 0;
 
-<* Stream *>
-const AISockType SOCK_STREAM                    = 1;
-<* Datagram *>
-const AISockType SOCK_DGRAM                     = 2;
-<* Raw *>
-const AISockType SOCK_RAW                       = 3;
-<* Reliably delivered *>
-const AISockType SOCK_RDM                       = 4;
-<* Sequential packet *>
-const AISockType SOCK_SEQPACKET                 = 5;
+const AISockType SOCK_STREAM                    = 1; // Stream
+const AISockType SOCK_DGRAM                     = 2; // Datagram
+const AISockType SOCK_RAW                       = 3; // Raw
+const AISockType SOCK_RDM                       = 4; // Reliably delivered
+const AISockType SOCK_SEQPACKET                 = 5; // Sequential packet
 
 const AIFlags AI_PASSIVE                        = 0x1;
 const AIFlags AI_CANONNAME                      = 0x2;

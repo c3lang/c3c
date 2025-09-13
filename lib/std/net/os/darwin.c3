@@ -50,84 +50,48 @@ const int PLATFORM_O_NONBLOCK = 0x04;
 
 // https://opensource.apple.com/source/xnu/xnu-4570.41.2/bsd/sys/socket.h.auto.html
 const int SOL_SOCKET             = 0xffff;
-<* turn on debugging info recording *>
-const int SO_DEBUG               = 0x0001;
-<* socket has had listen() *>
-const int SO_ACCEPTCONN          = 0x0002;
-<* allow local address reuse *>
-const int SO_REUSEADDR           = 0x0004;
-<* keep connections alive *>
-const int SO_KEEPALIVE           = 0x0008;
-<* just use interface addresses *>
-const int SO_DONTROUTE           = 0x0010;
-<* permit sending of broadcast msgs *>
-const int SO_BROADCAST           = 0x0020;
-<* bypass hardware when possible *>
-const int SO_USELOOPBACK         = 0x0040;
-<* linger on close if data present (in ticks) *>
-const int SO_LINGER	             = 0x0080;
-<* leave received OOB data in line *>
-const int SO_OOBINLINE	         = 0x0100;
-<* allow local address & port reuse *>
-const int SO_REUSEPORT           = 0x0200;
-<* timestamp received dgram traffic *>
-const int SO_TIMESTAMP	         = 0x0400;
-<* Monotonically increasing timestamp on rcvd dgram *>
-const int SO_TIMESTAMP_MONOTONIC = 0x0800;
-<* Apple Retain unread data *>
-const int SO_DONTTRUNC           = 0x2000;
-<* Apple: Give hint when more data ready *>
-const int SO_WANTMORE            = 0x4000;
-<* Apple: Give hint when more data ready *>
-const int SO_WANTOOBFLAG         = 0x8000;
+const int SO_DEBUG               = 0x0001; // turn on debugging info recording
+const int SO_ACCEPTCONN          = 0x0002; // socket has had listen()
+const int SO_REUSEADDR           = 0x0004; // allow local address reuse
+const int SO_KEEPALIVE           = 0x0008; // keep connections alive
+const int SO_DONTROUTE           = 0x0010; // just use interface addresses
+const int SO_BROADCAST           = 0x0020; // permit sending of broadcast msgs
+const int SO_USELOOPBACK         = 0x0040; // bypass hardware when possible
+const int SO_LINGER	             = 0x0080; // linger on close if data present (in ticks)
+const int SO_OOBINLINE	         = 0x0100; // leave received OOB data in line
+const int SO_REUSEPORT           = 0x0200; // allow local address & port reuse
+const int SO_TIMESTAMP	         = 0x0400; // timestamp received dgram traffic
+const int SO_TIMESTAMP_MONOTONIC = 0x0800; // Monotonically increasing timestamp on rcvd dgram
+const int SO_DONTTRUNC           = 0x2000; // Apple Retain unread data
+const int SO_WANTMORE            = 0x4000; // Apple: Give hint when more data ready
+const int SO_WANTOOBFLAG         = 0x8000; // Apple: Want OOB in MSG_FLAG on receive
 
-<* Send buffer size *>
-const int SO_SNDBUF              = 0x1001;
-<* Receive buffer size *>
-const int SO_RCVBUF              = 0x1002;
-<* Send low-water mark *>
-const int SO_SNDLOWAT            = 0x1003;
-<* Receive low-water mark *>
-const int SO_RCVLOWAT            = 0x1004;
-<* Send timeout *>
-const int SO_SNDTIMEO            = 0x1005;
-<* Receive timeout *>
-const int SO_RCVTIMEO            = 0x1006;
-<* Get error status and clear *>
-const int SO_ERROR               = 0x1007;
-<* Socket type *>
-const int SO_TYPE                = 0x1008;
-<* Socket MAC label *>
-const int SO_LABEL               = 0x1010;
-<* Socket peer MAC label *>
-const int SO_PEERLABEL           = 0x1011;
-<* Apple: get 1st-packet byte count *>
-const int SO_NREAD               = 0x1020;
-<* Apple: Install socket-level NKE *>
-const int SO_NKE                 = 0x1021;
-<* Apple: No SIGPIPE on EPIPE *>
-const int SO_NOSIGPIPE           = 0x1022;
-<* Apple: Returns EADDRNOTAVAIL when src is not available anymore *>
-const int SO_NOADDRERR           = 0x1023;
-<* Apple: Get number of bytes currently in send socket buffer *>
-const int SO_NWRITE              = 0x1024;
-<* Apple: Allow reuse of port/socket by different userids *>
-const int SO_REUSESHAREUID       = 0x1025;
-<* linger on close if data present (in seconds) *>
-const int SO_LINGER_SEC          = 0x1080;
+const int SO_SNDBUF              = 0x1001; // Send buffer size
+const int SO_RCVBUF              = 0x1002; // Receive buffer size
+const int SO_SNDLOWAT            = 0x1003; // Send low-water mark
+const int SO_RCVLOWAT            = 0x1004; // Receive low-water mark
+const int SO_SNDTIMEO            = 0x1005; // Send timeout
+const int SO_RCVTIMEO            = 0x1006; // Receive timeout
+const int SO_ERROR               = 0x1007; // Get error status and clear
+const int SO_TYPE                = 0x1008; // Socket type
+const int SO_LABEL               = 0x1010; // Socket MAC label
+const int SO_PEERLABEL           = 0x1011; // Socket peer MAC label
+const int SO_NREAD               = 0x1020; // Apple: get 1st-packet byte count
+const int SO_NKE                 = 0x1021; // Apple: Install socket-level NKE
+const int SO_NOSIGPIPE           = 0x1022; // Apple: No SIGPIPE on EPIPE
+const int SO_NOADDRERR           = 0x1023; // Apple: Returns EADDRNOTAVAIL when src is not available anymore
+const int SO_NWRITE              = 0x1024; // Apple: Get number of bytes currently in send socket buffer
+const int SO_REUSESHAREUID       = 0x1025; // Apple: Allow reuse of port/socket by different userids
+const int SO_LINGER_SEC          = 0x1080; // linger on close if data present (in seconds)
 
 
 const CShort POLLRDNORM          = 0x0040;
 const CShort POLLRDBAND          = 0x0080;
 const CShort POLLWRNORM          = POLLOUT;
 const CShort POLLWRBAND          = 0x0100;
-<* file may have been extended *>
-const CShort POLLEXTEND          = 0x0200;
-<* file attributes may have changed *>
-const CShort POLLATTRIB          = 0x0400;
-<* (un)link/rename may have happened *>
-const CShort POLLNLINK           = 0x0800;
-<* file's contents may have changed *>
-const CShort POLLWRITE           = 0x1000;
+const CShort POLLEXTEND          = 0x0200; // file may have been extended
+const CShort POLLATTRIB          = 0x0400; // file attributes may have changed
+const CShort POLLNLINK           = 0x0800; // (un)link/rename may have happened
+const CShort POLLWRITE           = 0x1000; // file's contents may have changed
 
 const CInt MSG_PEEK = 0x0002;
