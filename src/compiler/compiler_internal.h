@@ -3251,13 +3251,15 @@ INLINE bool type_is_user_defined(Type *type)
 
 static inline Module *type_find_generic(Type *type)
 {
+	Type *canonical = type->canonical;
+	if (canonical != type && type_is_user_defined(canonical))
+	{
+		Module *module = canonical->decl->unit->module;
+		if (module->generic_module) return module;
+	}
 	if (!type_is_user_defined(type)) return NULL;
 	Module *module = type->decl->unit->module;
 	if (module->generic_module) return module;
-	Type *canonical = type->canonical;
-	if (canonical == type) return NULL;
-	if (!type_is_user_defined(canonical)) return NULL;
-	module = canonical->decl->unit->module;
 	return module->generic_module ? module : NULL;
 }
 static inline Type *type_flatten_to_int(Type *type)
