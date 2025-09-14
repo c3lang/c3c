@@ -296,6 +296,29 @@ You can access `c3c` via [flake.nix](./flake.nix), which will contain the latest
 }
 ```
 
+
+### Installing on Gentoo
+
+`c3c` is available in the [Gentoo GURU overlay](https://wiki.gentoo.org/wiki/Project:GURU).
+
+Enable and sync the GURU repository (if not already done):
+
+```sh
+sudo eselect repository enable guru
+sudo emaint sync -r guru
+```
+
+Install `c3c` with:
+
+```sh
+sudo emerge -av dev-lang/c3c
+```
+
+* The compiler binary is installed to `/usr/bin/c3c`.
+* The standard library is installed to `/usr/lib/c3`.
+
+For Gentoo-specific issues, please use the [Gentoo Bugzilla](https://bugs.gentoo.org/) (Product: *GURU*).
+
 #### Building via Docker
 
 You can build `c3c` using an Ubuntu container. By default, the script will build through Ubuntu 22.04. You can specify the version by passing the `UBUNTU_VERSION` environment variable.
