@@ -30,6 +30,7 @@
 - Add `LinkedList` array_view to support `[]` and `foreach`/`foreach_r`. #2438
 - Make `LinkedList` printable and add `==` operator. #2438
 - CVaList support on MacOS aarch64, SysV ABI x64.
+- Add `io::skip` and `io::read_le` and `io::write_le` family of functions.
 
 ## 0.7.5 Change list
 
