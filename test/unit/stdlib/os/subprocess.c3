@@ -145,7 +145,11 @@ fn void test_inherit_stdio_redirect()
 }
 
 fn void test_write_to_stdin() @test {
+$if env::WIN32:
+	SubProcess? subprocess = process::create({`powershell`, `-C`, `Read-Host`}, {.inherit_environment = true});
+$else
 	SubProcess? subprocess = process::create({"tee"}, {.read_async = true});
+$endif
 	test::eq(@ok(subprocess), true);
 	usz? write = subprocess!!.write_to_stdin(")");
 	test::eq(@ok(write), true);
