@@ -531,3 +531,9 @@ fn bool? SubProcess.is_running(&self)
 		return false;
 	$endif
 }
+
+fn usz? SubProcess.write_to_stdin(&self, char[] buffer)
+{
+	if (!self.stdin_file) return FAILED_TO_OPEN_STDIN?;
+	return os::native_fwrite(self.stdin_file, buffer);
+}
