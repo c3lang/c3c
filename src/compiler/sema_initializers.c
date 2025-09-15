@@ -247,7 +247,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 			}
 			if (i >= size)
 			{
-				if (!no_match_ref) goto NO_MATCH;
+				if (no_match_ref) goto NO_MATCH;
 				sema_not_enough_elements_error(context, initializer, (int)i);
 				return false;
 			}
@@ -268,7 +268,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		}
 		if (i >= size)
 		{
-			if (!no_match_ref) goto NO_MATCH;
+			if (no_match_ref) goto NO_MATCH;
 			sema_not_enough_elements_error(context, initializer, i);
 			return false;
 		}
