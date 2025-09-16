@@ -22,6 +22,7 @@
 - `??` with void results on both sides cause a compiler crash #2472.
 - Stack object size limit error on a static object. #2476
 - Compiler segfault when modifying variable using an inline assembly block inside defer #2450.
+- Compile time switch over type would not correctly compare function pointer types.
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface

@@ -1598,6 +1598,10 @@ bool type_is_subtype(Type *type, Type *possible_subtype)
 	{
 		possible_subtype = possible_subtype->canonical;
 		if (type == possible_subtype) return true;
+		if (type->type_kind == TYPE_FUNC_PTR && possible_subtype->type_kind == TYPE_FUNC_PTR)
+		{
+			return type->pointer->function.prototype->raw_type == possible_subtype->pointer->function.prototype->raw_type;
+		}
 		possible_subtype = type_find_parent_type(possible_subtype);
 	}
 	return false;

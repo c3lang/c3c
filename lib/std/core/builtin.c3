@@ -108,7 +108,7 @@ macro anycast(any v, $Type) @builtin
 	return ($Type*)v.ptr;
 }
 
-macro bool @assignable_to(#foo, $Type) @const @builtin @deprecated("use '$define($Type x = #foo)'") => $defined(*&&($Type){} = #foo);
+macro bool @assignable_to(#foo, $Type) @const @builtin @deprecated("use '$defined($Type x = #foo)'") => $defined(*&&($Type){} = #foo);
 
 macro @addr(#val) @builtin
 {
