@@ -5,6 +5,7 @@
 ### Changes / improvements
 - Add lengthof() compile time function #2439
 - Allow doc comments on individual struct members, faultdefs and enum values #2427.
+- `$alignof`, `$offsetof` and `$nameof` can now be used in `$defined`.
 
 ### Fixes
 - Compiler assert with var x @noinit = 0 #2452

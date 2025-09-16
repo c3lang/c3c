@@ -73,8 +73,8 @@ static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr, 
 static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *expr, bool report_missing);
 static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_type, Expr *expr, bool *no_match_ref);
 static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *expr);
-static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *expr);
-static inline bool sema_expr_analyse_ct_call(SemaContext *context, Expr *expr);
+static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *expr, bool *failed_ref);
+static inline bool sema_expr_analyse_ct_call(SemaContext *context, Expr *expr, bool *failed_ref);
 
 static inline bool sema_expr_analyse_retval(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_expr_list(SemaContext *context, Expr *expr);
@@ -108,9 +108,8 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_taddr(SemaContext *context, Expr *expr, bool *failed_ref);
 
 // -- ct_call
-static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr);
-
-static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr);
+static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr, bool *failed_ref);
+static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr, bool *failed_ref);
 static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr);
 
 // -- returns
@@ -163,7 +162,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end, bool check_valid);
 static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions, Expr *expr, unsigned insert_point);
 static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, CheckType check);
-static Decl *sema_expr_analyse_var_path(SemaContext *context, Expr *expr);
+static Decl *sema_expr_analyse_var_path(SemaContext *context, Expr *expr, bool *failed_ref);
 static inline bool sema_expr_analyse_decl_element(SemaContext *context, DesignatorElement *element, Type *type, Decl **member_ref, ArraySize *index_ref, Type **return_type, unsigned i, SourceSpan loc, bool *is_missing);
 static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_info);
 static inline bool sema_cast_ct_ident_rvalue(SemaContext *context, Expr *expr);
@@ -9594,7 +9593,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 
 
 
-static Decl *sema_expr_analyse_var_path(SemaContext *context, Expr *expr)
+static Decl *sema_expr_analyse_var_path(SemaContext *context, Expr *expr, bool *failed_ref)
 {
 	if (!sema_analyse_expr_value(context, expr)) return NULL;
 	Expr *current = expr;
@@ -9609,7 +9608,13 @@ RETRY:
 			decl = current->ident_expr;
 			break;
 		default:
+			if (failed_ref)
+			{
+				*failed_ref = true;
+				return NULL;
+			}
 			SEMA_ERROR(expr, "A variable was expected here.");
+
 			return NULL;
 	}
 	if (!sema_analyse_decl(context, decl)) return NULL;
@@ -9736,11 +9741,11 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 	return true;
 }
 
-static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr, bool *failed_ref)
 {
 	Expr *main_var = expr->ct_call_expr.main_var;
 	DesignatorElement **path = expr->ct_call_expr.flat_path;
-	Decl *decl = sema_expr_analyse_var_path(context, main_var);
+	Decl *decl = sema_expr_analyse_var_path(context, main_var, failed_ref);
 	if (!decl) return false;
 	Type *type = decl->type;
 	switch (sema_resolve_storage_type(context, type))
@@ -9750,6 +9755,11 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 		case STORAGE_NORMAL:
 			break;
 		default:
+			if (failed_ref)
+			{
+				*failed_ref = true;
+				return false;
+			}
 			RETURN_SEMA_ERROR(main_var, "Cannot use '$alignof' on type %s.", type_quoted_error_string(type));
 	}
 	AlignSize align;
@@ -9824,10 +9834,10 @@ static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, Toke
 	expr_rewrite_const_string(expr, scratch_buffer_copy());
 }
 
-static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr, bool *failed_ref)
 {
 	Expr *main_var = expr->ct_call_expr.main_var;
-	Decl *decl = sema_expr_analyse_var_path(context, main_var);
+	Decl *decl = sema_expr_analyse_var_path(context, main_var, failed_ref);
 	if (!decl) return false;
 
 	TokenType name_type = expr->ct_call_expr.token_type;
@@ -10626,6 +10636,14 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 					success = false;
 				}
 				break;
+		case EXPR_CT_CALL:
+				main_expr->resolve_status = RESOLVE_RUNNING;
+				if (!sema_expr_analyse_ct_call(active_context, main_expr, &failed))
+				{
+					if (!failed) goto FAIL;
+					success = false;
+				}
+				break;
 		case EXPR_COMPOUND_LITERAL:
 				if (!sema_expr_analyse_compound_literal(context, main_expr, &failed))
 				{
@@ -10669,7 +10687,6 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_STRINGIFY:
 			case EXPR_TERNARY:
 			case EXPR_CT_ASSIGNABLE:
-			case EXPR_CT_CALL:
 			case EXPR_EXPRESSION_LIST:
 			case EXPR_POST_UNARY:
 			case EXPR_TYPEID:
@@ -10700,6 +10717,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_TWO:
 				if (!sema_analyse_expr(active_context, main_expr)) goto FAIL;
 				break;
+
 		}
 		active_context->call_env.in_no_eval = in_no_eval;
 		if (success) continue;
@@ -10919,16 +10937,15 @@ static inline bool sema_expr_resolve_ct_eval(SemaContext *context, Expr *expr)
 	return true;
 }
 
-static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *expr, bool *failed_ref)
 {
 	Expr *main_var = expr->ct_call_expr.main_var;
-	Decl *decl = sema_expr_analyse_var_path(context, main_var);
+	Decl *decl = sema_expr_analyse_var_path(context, main_var, failed_ref);
 	if (!decl) return false;
 	DesignatorElement **path = expr->ct_call_expr.flat_path;
 	if (!vec_size(path))
 	{
-		SEMA_ERROR(expr, "Expected a path to get the offset of.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "Expected a path to get the offset of.");
 	}
 
 	ByteSize offset = 0;
@@ -10963,20 +10980,20 @@ static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *exp
 	return true;
 }
 
-static inline bool sema_expr_analyse_ct_call(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_ct_call(SemaContext *context, Expr *expr, bool *failed_ref)
 {
 	switch (expr->ct_call_expr.token_type)
 	{
 		case TOKEN_CT_DEFINED:
 			return sema_expr_analyse_ct_defined(context, expr);
 		case TOKEN_CT_ALIGNOF:
-			return sema_expr_analyse_ct_alignof(context, expr);
+			return sema_expr_analyse_ct_alignof(context, expr, failed_ref);
 		case TOKEN_CT_OFFSETOF:
-			return sema_expr_analyse_ct_offsetof(context, expr);
+			return sema_expr_analyse_ct_offsetof(context, expr, failed_ref);
 		case TOKEN_CT_QNAMEOF:
 		case TOKEN_CT_NAMEOF:
 		case TOKEN_CT_EXTNAMEOF:
-			return sema_expr_analyse_ct_nameof(context, expr);
+			return sema_expr_analyse_ct_nameof(context, expr, failed_ref);
 		case TOKEN_CT_FEATURE:
 			return sema_expr_analyse_ct_feature(context, expr);
 		default:
@@ -11181,7 +11198,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_BUILTIN:
 			return sema_expr_analyse_builtin(context, expr, true);
 		case EXPR_CT_CALL:
-			return sema_expr_analyse_ct_call(context, expr);
+			return sema_expr_analyse_ct_call(context, expr, NULL);
 		case EXPR_HASH_IDENT:
 			if (!sema_expr_fold_hash(context, expr)) return false;
 			return sema_analyse_expr_check(context, expr, check);
