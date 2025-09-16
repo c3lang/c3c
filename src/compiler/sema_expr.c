@@ -75,6 +75,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *expr, bool *failed_ref);
 static inline bool sema_expr_analyse_ct_call(SemaContext *context, Expr *expr, bool *failed_ref);
+static inline bool sema_analyse_expr_rhs_param(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
 
 static inline bool sema_expr_analyse_retval(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_expr_list(SemaContext *context, Expr *expr);
@@ -1544,7 +1545,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 				// This only happens in body arguments
 				RETURN_SEMA_ERROR(arg, "Named arguments are not supported for body parameters.");
 			}
-			if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref, false)) return false;
+			if (!sema_analyse_expr_rhs_param(context, type, arg, no_match_ref)) return false;
 			if (IS_OPTIONAL(arg)) *optional_ref = true;
 			switch (sema_resolve_storage_type(context, arg->type))
 			{
@@ -1573,7 +1574,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 		case VARDECL_PARAM_EXPR:
 			if (param->type)
 			{
-				if (!sema_analyse_expr_rhs(context, param->type, arg, true, NULL, false))
+				if (!sema_analyse_expr_rhs_param(context, param->type, arg, NULL))
 				{
 					RETURN_ERR_WITH_DEFINITION;
 				}
@@ -1595,7 +1596,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 		case VARDECL_PARAM_CT:
 			// $foo
 			ASSERT(macro);
-			if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref, false))
+			if (!sema_analyse_expr_rhs_param(context, type, arg, no_match_ref))
 			{
 				RETURN_ERR_WITH_DEFINITION;
 			}
@@ -6850,9 +6851,20 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 
 	bool is_unwrapped_var = expr_is_unwrapped_ident(left);
 
+	Module *generic = type_find_generic(left->type);
+	if (generic)
+	{
+		Module *temp = context->generic.infer;
+		context->generic.infer = generic;
+		generic = temp;
+	}
 	// 3. Evaluate right side to required type.
-	if (!sema_expr_analyse_assign_right_side(context, expr, left->type, right, is_unwrapped_var, false, failed_ref)) return false;
-
+	if (!sema_expr_analyse_assign_right_side(context, expr, left->type, right, is_unwrapped_var, false, failed_ref))
+	{
+		context->generic.infer = generic;
+		return false;
+	}
+	context->generic.infer = generic;
 	if (is_unwrapped_var && IS_OPTIONAL(right))
 	{
 		sema_rewrap_var(context, left->ident_expr);
@@ -11294,6 +11306,14 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr, CondResult *result
 	return true;
 }
 
+static inline bool sema_analyse_expr_rhs_param(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref)
+{
+	Module *generic_module = context->generic.infer;
+	context->generic.infer = to ? type_find_generic(to) : NULL;
+	bool success = sema_analyse_expr_rhs(context, to, expr, true, no_match_ref, false);
+	context->generic.infer = generic_module;
+	return success;
+}
 
 bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional, bool *no_match_ref,
 						   bool as_binary)

@@ -6,6 +6,8 @@
 - Add lengthof() compile time function #2439
 - Allow doc comments on individual struct members, faultdefs and enum values #2427.
 - `$alignof`, `$offsetof` and `$nameof` can now be used in `$defined`.
+- Infer generic parameters lhs -> rhs: `List{int} x = list::NOHEAP`.
+- Unify generic and regular module namespace.
 
 ### Fixes
 - Compiler assert with var x @noinit = 0 #2452
@@ -24,6 +26,7 @@
 - Stack object size limit error on a static object. #2476
 - Compiler segfault when modifying variable using an inline assembly block inside defer #2450.
 - Compile time switch over type would not correctly compare function pointer types.
+- Regression: Compiler segfault when assigning struct literal with too few members #2483
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
@@ -32,6 +35,7 @@
 - Add `LinkedList` array_view to support `[]` and `foreach`/`foreach_r`. #2438
 - Make `LinkedList` printable and add `==` operator. #2438
 - CVaList support on MacOS aarch64, SysV ABI x64.
+- Add `io::skip` and `io::read_le` and `io::write_le` family of functions.
 
 ## 0.7.5 Change list
 

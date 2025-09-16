@@ -1,0 +1,24 @@
+module test;
+import std, libc, test2;
+
+fn void hello(Foo{int} x) {}
+fn void main()
+{
+	List{int} l = list::ONHEAP;
+	Maybe{int} m = maybe::value(3);
+	List{int} y = (List){};
+	Quaternion z = quaternion::IDENTITY;
+	z = z * quaternion::IDENTITY;
+	hello(test2::get_foo());
+	hello((Foo){});
+	hello(test2::get_foo{int}());
+}
+
+module test2 {Type};
+
+fn Foo get_foo() => {};
+
+struct Foo
+{
+	Type t;
+}

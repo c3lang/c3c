@@ -71,7 +71,6 @@ void compiler_init(BuildOptions *build_options)
 	htable_init(&compiler.context.modules, 16 * 1024);
 	pathtable_init(&compiler.context.path_symbols, INITIAL_SYMBOL_MAP);
 	decltable_init(&compiler.context.symbols, INITIAL_SYMBOL_MAP);
-	decltable_init(&compiler.context.generic_symbols, INITIAL_GENERIC_SYMBOL_MAP);
 
 	htable_init(&compiler.context.features, 1024);
 	htable_init(&compiler.context.compiler_defines, 16 * 1024);
@@ -1540,18 +1539,10 @@ void compile()
 	compiler_compile();
 }
 
-
-
-
 void global_context_add_decl(Decl *decl)
 {
 	decltable_set(&compiler.context.symbols, decl);
 	pathtable_set(&compiler.context.path_symbols, decl);
-}
-
-void global_context_add_generic_decl(Decl *decl)
-{
-	decltable_set(&compiler.context.generic_symbols, decl);
 }
 
 void linking_add_link(Linking *linking, const char *link)
