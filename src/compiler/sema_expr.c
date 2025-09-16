@@ -73,8 +73,6 @@ static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr, 
 static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *expr, bool report_missing);
 static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_type, Expr *expr, bool *no_match_ref);
 static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *expr);
-static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *expr);
-static inline bool sema_expr_analyse_ct_call(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *expr, bool *failed_ref);
 static inline bool sema_expr_analyse_ct_call(SemaContext *context, Expr *expr, bool *failed_ref);
 static inline bool sema_analyse_expr_rhs_param(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
