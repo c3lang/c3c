@@ -528,6 +528,7 @@ static inline bool sema_check_asm_arg_value(SemaContext *context, AsmInlineBlock
 }
 static inline bool sema_check_asm_arg(SemaContext *context, AsmInlineBlock *block, AsmInstruction *instr, AsmArgType arg_type, Expr *expr)
 {
+	expr->expr_asm_arg.resolved = true;
 	switch (expr->expr_asm_arg.kind)
 	{
 		case ASM_ARG_INT:

@@ -1000,6 +1000,7 @@ typedef struct
 	unsigned short index : 16;
 	AsmOffsetType offset_type : 6;
 	bool neg_offset : 1;
+	bool resolved : 1;
 	union
 	{
 		struct {
