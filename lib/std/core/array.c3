@@ -3,7 +3,7 @@ import std::collections::pair, std::io;
 
 <*
  Returns true if the array contains at least one element, else false
- 
+
  @param [in] array
  @param [in] element
  @require $kindof(array) == SLICE || $kindof(array) == ARRAY
@@ -15,13 +15,13 @@ macro bool contains(array, element)
 	{
 		if (*item == element) return true;
 	}
-	return false;	
+	return false;
 }
 
 
 <*
  Return the first index of element found in the array, searching from the start.
- 
+
  @param [in] array
  @param [in] element
  @require $kindof(array) == SLICE || $kindof(array) == ARRAY

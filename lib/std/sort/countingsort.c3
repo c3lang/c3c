@@ -82,7 +82,7 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 		mn = k < mn ? k : mn;
 		mx = k > mx ? k : mx;
 
-		keys_ordered = keys_ordered & (char)(key_byte >= last_key); 
+		keys_ordered = keys_ordered & (char)(key_byte >= last_key);
 		last_key = key_byte;
 	}
 
@@ -107,7 +107,7 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 		total += count;
 	}
 	ranges[256] = total;
-	
+
 	ushort remaining_indexs = 256 - (fallback0_count + recursion_count);
 	for(ushort i = 0; (i < 256) && remaining_indexs; i++) {
 		indexs[fallback0_count + fallback1_count] = (char)i;
@@ -116,7 +116,7 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 		fallback1_count += within_fallback1_range;
 		remaining_indexs -= within_fallback1_range;
 	}
-	
+
 	if (!keys_ordered)
 	{
 		usz sorted_count = 0;
