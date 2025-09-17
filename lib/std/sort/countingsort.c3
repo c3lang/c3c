@@ -8,18 +8,18 @@ Sort list using the counting sort algorithm.
  @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
  @require @is_cmp_key_fn(key_fn, list) : "Expected a transformation function which returns an unsigned integer."
 *>
-macro countingsort(list, key_fn = EMPTY_MACRO_SLOT) @builtin
+macro void countingsort(list, key_fn = EMPTY_MACRO_SLOT) @builtin
 {
 	usz len = lengthof(list);
 	cs::csort{$typeof(list), $typeof(key_fn)}(list, 0, len, key_fn, ~((uint)0));
 }
 
-macro insertionsort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
+macro void insertionsort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
 	is::isort{$typeof(list), $typeof(cmp), $typeof(context)}(list, (usz)start, (usz)end, cmp, context);
 }
 
-macro quicksort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
+macro void quicksort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
 	qs::qsort{$typeof(list), $typeof(cmp), $typeof(context)}(list, (isz)start, (isz)(end-1), cmp, context);
 }

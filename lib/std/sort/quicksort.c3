@@ -7,7 +7,7 @@ Sort list using the quick sort algorithm.
  @require @is_valid_cmp_fn(cmp, list, context) : "Expected a comparison function which compares values"
  @require @is_valid_context(cmp, context) : "Expected a valid context"
 *>
-macro quicksort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
+macro void quicksort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
 	$if $kindof(list) == POINTER &&& ($kindof(*list) == ARRAY || $kindof(*list) == VECTOR):
 		$typeof((*list)[0])[] list2 = list;
@@ -111,7 +111,7 @@ fn ElementType? qselect(Type list, isz low, isz high, isz k, CmpFn cmp, Context 
 	return NOT_FOUND?;
 }
 
-macro @partition(Type list, isz l, isz h, CmpFn cmp, Context context)
+macro isz @partition(Type list, isz l, isz h, CmpFn cmp, Context context)
 {
 	var $has_cmp = @is_valid_macro_slot(cmp);
 	var $has_context = @is_valid_macro_slot(context);

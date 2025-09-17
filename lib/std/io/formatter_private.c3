@@ -22,7 +22,7 @@ fn usz? print_hex_chars(Formatter* f, char[] out, bool uppercase) @inline
 	return len;
 }
 
-macro Formatter.first_err(&self, fault f)
+macro fault Formatter.first_err(&self, fault f)
 {
 	if (self.first_fault) return self.first_fault;
 	self.first_fault = f;

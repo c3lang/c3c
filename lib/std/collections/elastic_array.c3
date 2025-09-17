@@ -11,7 +11,7 @@ alias ElementPredicate = fn bool(Type *type);
 alias ElementTest = fn bool(Type *type, any context);
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
 const ELEMENT_IS_POINTER = Type.kindof == POINTER;
-macro type_is_overaligned() => Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
+macro bool type_is_overaligned() => Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
 
 struct ElasticArray (Printable)
 {

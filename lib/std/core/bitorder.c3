@@ -119,7 +119,7 @@ macro write(x, bytes, $Type)
 	*($typeof(x)*)s.ptr = bitcast(x, $Type).val;
 }
 
-macro is_bitorder($Type)
+macro bool is_bitorder($Type)
 {
 	$switch $Type:
 		$case UShortLE:

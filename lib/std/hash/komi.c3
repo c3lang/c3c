@@ -33,7 +33,7 @@
 module std::hash::komi;
 
 
-macro @komimul(#u, #v, #lo, #hi) @local
+macro void @komimul(#u, #v, #lo, #hi) @local
 {
 	uint128 imd = (uint128)#u * (uint128)#v;
 	#lo = (ulong)imd;

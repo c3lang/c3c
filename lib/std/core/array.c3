@@ -29,7 +29,7 @@ macro bool contains(array, element)
  @return "the first index of the element"
  @return? NOT_FOUND
 *>
-macro index_of(array, element)
+macro usz? index_of(array, element)
 {
 	foreach (i, &e : array)
 	{
@@ -63,13 +63,13 @@ macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
 
 <*
  Return the first index of element found in the array, searching in reverse from the end.
- 
+
  @param [in] array
  @param [in] element
  @return "the last index of the element"
  @return? NOT_FOUND
 *>
-macro rindex_of(array, element)
+macro usz? rindex_of(array, element)
 {
 	foreach_r (i, &e : array)
 	{

@@ -135,7 +135,7 @@ fn void ByteBuffer.grow(&self, usz n)
 	self.bytes = p[:n];
 }
 
-macro ByteBuffer.shrink(&self)
+macro void ByteBuffer.shrink(&self)
 {
 	if (self.read_idx >= self.max_read)
 	{

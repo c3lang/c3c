@@ -72,6 +72,7 @@ macro masked_load(ptr, bool[<*>] mask, passthru)
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
 
  @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
+ @ensure $typeof(return) == $typeof(*ptr)
 *>
 macro @masked_load_aligned(ptr, bool[<*>] mask, passthru, usz $alignment)
 {
