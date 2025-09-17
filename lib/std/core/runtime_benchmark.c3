@@ -60,7 +60,7 @@ bool benchmark_stop @local;
 
 macro void @start_benchmark()
 {
-	benchmark_clock = std::time::clock::now();
+	benchmark_clock = clock::now();
 	cycle_start = $$sysclock();
 }
 
