@@ -41,7 +41,7 @@ module std::io::file @if(env::LIBC &&& env::POSIX);
  @return? mem::OUT_OF_MEMORY, vm::ACCESS_DENIED, vm::RANGE_OVERFLOW, vm::INVALID_ARGS, vm::UNKNOWN_ERROR, io::NO_PERMISSION, io::FILE_NOT_VALID, io::WOULD_BLOCK, io::FILE_NOT_FOUND
  @return "Memory mapped region. Must be released with FileMmap.destroy(). Provided File will not be closed"
 *>
-fn mmap::FileMmap? mmap_file(File file, usz offset = 0, usz len = 0, vm::VirtualMemoryAccess access = READ, bool shared = false)
+fn FileMmap? mmap_file(File file, usz offset = 0, usz len = 0, VirtualMemoryAccess access = READ, bool shared = false)
 {
 	if (len == 0)
 	{
@@ -78,7 +78,7 @@ fn mmap::FileMmap? mmap_file(File file, usz offset = 0, usz len = 0, vm::Virtual
  @return? mem::OUT_OF_MEMORY, vm::ACCESS_DENIED, vm::RANGE_OVERFLOW, vm::INVALID_ARGS, vm::UNKNOWN_ERROR, io::NO_PERMISSION, io::FILE_NOT_VALID, io::WOULD_BLOCK, io::FILE_NOT_FOUND
  @return "Memory mapped region. Must be released with FileMmap.destroy()"
 *>
-fn mmap::FileMmap? mmap_open(String filename, String mode, usz offset = 0, usz len = 0, vm::VirtualMemoryAccess access = READ, bool shared = false)
+fn FileMmap? mmap_open(String filename, String mode, usz offset = 0, usz len = 0, VirtualMemoryAccess access = READ, bool shared = false)
 {
 	File file = open(filename, mode)!;
 	defer catch (void)file.close();
