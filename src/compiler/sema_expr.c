@@ -2180,6 +2180,10 @@ CHECK_FORMAT:;
 	// Check
 	Expr *expr = actual_args[format_index];
 	if (!sema_cast_const(expr) || call->call_expr.va_is_splat) return true;
+	if (!expr_is_const_string(expr))
+	{
+		RETURN_SEMA_ERROR(expr, "The format string must be a constant string.");
+	}
 	assert(expr_is_const_string(expr));
 	const char *data = expr->const_expr.bytes.ptr;
 	size_t len = expr->const_expr.bytes.len;

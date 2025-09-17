@@ -27,6 +27,7 @@
 - Compiler segfault when modifying variable using an inline assembly block inside defer #2450.
 - Compile time switch over type would not correctly compare function pointer types.
 - Regression: Compiler segfault when assigning struct literal with too few members #2483
+- Fix compile time format check when the formatting string is a constant slice.
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
