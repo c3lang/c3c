@@ -13,7 +13,7 @@ const Allocator LIST_HEAP_ALLOCATOR = (Allocator)&dummy;
 
 const List ONHEAP = { .allocator = LIST_HEAP_ALLOCATOR };
 
-macro type_is_overaligned() => Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
+macro bool type_is_overaligned() => Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
 
 struct List (Printable)
 {

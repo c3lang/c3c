@@ -43,7 +43,7 @@ fn LinkedHashSet* LinkedHashSet.init(&self, Allocator allocator, usz capacity = 
 	self.threshold = (usz)(capacity * load_factor);
 	self.load_factor = load_factor;
 	self.table = allocator::new_array(allocator, LinkedEntry*, capacity);
-	
+
 	self.head = null;
 	self.tail = null;
 	return self;
@@ -304,7 +304,7 @@ fn void LinkedHashSet.free(&set)
 fn void LinkedHashSet.clear(&set)
 {
 	if (!set.count) return;
-	
+
 	LinkedEntry* entry = set.head;
 	while (entry)
 	{
@@ -312,12 +312,12 @@ fn void LinkedHashSet.clear(&set)
 		set.free_entry(entry);
 		entry = next;
 	}
-	
+
 	foreach (LinkedEntry** &bucket : set.table)
 	{
 		*bucket = null;
 	}
-	
+
 	set.count = 0;
 	set.head = null;
 	set.tail = null;
@@ -363,16 +363,16 @@ fn LinkedHashSet LinkedHashSet.intersection(&self, Allocator allocator, LinkedHa
 {
 	LinkedHashSet result;
 	result.init(allocator, math::min(self.table.len, other.table.len), self.load_factor);
-	
+
 	// Iterate through the smaller set for efficiency
 	LinkedHashSet* smaller = self.count <= other.count ? self : other;
 	LinkedHashSet* larger = self.count > other.count ? self : other;
-	
-	smaller.@each(;Value value) 
+
+	smaller.@each(;Value value)
     {
 		if (larger.contains(value)) result.add(value);
 	};
-	
+
 	return result;
 }
 
@@ -435,7 +435,7 @@ fn bool LinkedHashSet.is_subset(&self, LinkedHashSet* other)
 {
 	if (self.count == 0) return true;
 	if (self.count > other.count) return false;
-	
+
 	self.@each(; Value value) {
 		if (!other.contains(value)) return false;
 	};
@@ -453,10 +453,10 @@ fn void LinkedHashSet.add_entry(&set, uint hash, Value value, uint bucket_index)
 		.before = set.tail,
 		.after = null
 	});
-	
+
 	// Update bucket chain
 	set.table[bucket_index] = entry;
-	
+
 	// Update linked list
 	if (set.tail)
 	{
@@ -468,7 +468,7 @@ fn void LinkedHashSet.add_entry(&set, uint hash, Value value, uint bucket_index)
 		set.head = entry;
 	}
 	set.tail = entry;
-	
+
 	if (set.count++ >= set.threshold)
 	{
 		set.resize(set.table.len * 2);
@@ -479,28 +479,28 @@ fn void LinkedHashSet.resize(&set, usz new_capacity) @private
 {
 	LinkedEntry*[] old_table = set.table;
 	usz old_capacity = old_table.len;
-	
+
 	if (old_capacity == MAXIMUM_CAPACITY)
 	{
 		set.threshold = uint.max;
 		return;
 	}
-	
+
 	LinkedEntry*[] new_table = allocator::new_array(set.allocator, LinkedEntry*, new_capacity);
 	set.table = new_table;
 	set.threshold = (uint)(new_capacity * set.load_factor);
-	
+
 	// Rehash all entries - linked list order remains unchanged
 	foreach (uint i, LinkedEntry *e : old_table)
 	{
 		if (!e) continue;
-		
+
 		// Split the bucket chain into two chains based on new bit
 		LinkedEntry* lo_head = null;
 		LinkedEntry* lo_tail = null;
 		LinkedEntry* hi_head = null;
 		LinkedEntry* hi_tail = null;
-		
+
 		do
 		{
 			LinkedEntry* next = e.next;
@@ -532,7 +532,7 @@ fn void LinkedHashSet.resize(&set, usz new_capacity) @private
 			e = next;
 		}
 		while (e);
-		
+
 		if (lo_tail)
 		{
 			lo_tail.next = null;
@@ -544,7 +544,7 @@ fn void LinkedHashSet.resize(&set, usz new_capacity) @private
 			new_table[i + old_capacity] = hi_head;
 		}
 	}
-	
+
 	set.free_internal(old_table.ptr);
 }
 
@@ -601,16 +601,16 @@ fn void LinkedHashSet.free_internal(&set, void* ptr) @inline @private
 
 fn void LinkedHashSet.create_entry(&set, uint hash, Value value, int bucket_index) @private
 {
-	LinkedEntry* entry = allocator::new(set.allocator, LinkedEntry, { 
-		.hash = hash, 
-		.value = value, 
+	LinkedEntry* entry = allocator::new(set.allocator, LinkedEntry, {
+		.hash = hash,
+		.value = value,
 		.next = set.table[bucket_index],
 		.before = set.tail,
 		.after = null
 	});
-	
+
 	set.table[bucket_index] = entry;
-	
+
 	// Update linked list
 	if (set.tail)
 	{
@@ -622,19 +622,19 @@ fn void LinkedHashSet.create_entry(&set, uint hash, Value value, int bucket_inde
 		set.head = entry;
 	}
 	set.tail = entry;
-	
+
 	set.count++;
 }
 
 fn bool LinkedHashSet.remove_entry_for_value(&set, Value value) @private
 {
 	if (!set.count) return false;
-	
+
 	uint hash = rehash(value.hash());
 	uint i = index_for(hash, set.table.len);
 	LinkedEntry* prev = null;
 	LinkedEntry* e = set.table[i];
-	
+
 	while (e)
 	{
 		if (e.hash == hash && equals(value, e.value))
@@ -647,7 +647,7 @@ fn bool LinkedHashSet.remove_entry_for_value(&set, Value value) @private
 			{
 				set.table[i] = e.next;
 			}
-			
+
 			if (e.before)
 			{
 				e.before.after = e.after;
@@ -656,7 +656,7 @@ fn bool LinkedHashSet.remove_entry_for_value(&set, Value value) @private
 			{
 				set.head = e.after;
 			}
-			
+
 			if (e.after)
 			{
 				e.after.before = e.before;
@@ -665,7 +665,7 @@ fn bool LinkedHashSet.remove_entry_for_value(&set, Value value) @private
 			{
 				set.tail = e.before;
 			}
-			
+
 			set.count--;
 			set.free_entry(e);
 			return true;
@@ -715,7 +715,7 @@ fn bool LinkedHashSetIterator.has_next(&self)
 	return self.current && self.current.after != null;
 }
 
-fn usz LinkedHashSetIterator.len(&self) @operator(len) 
+fn usz LinkedHashSetIterator.len(&self) @operator(len)
 {
     return self.set.count;
 }

@@ -3,25 +3,25 @@
 module std::math::vector;
 import std::math;
 
-macro double[<*>].sq_magnitude(self) => self.dot(self);
-macro float[<*>].sq_magnitude(self) => self.dot(self);
+macro double double[<*>].sq_magnitude(self) => self.dot(self);
+macro float float[<*>].sq_magnitude(self) => self.dot(self);
 
-macro double[<*>].distance_sq(self, double[<*>] v2) => (self - v2).sq_magnitude();
-macro float[<*>].distance_sq(self, float[<*>] v2) => (self - v2).sq_magnitude();
+macro double double[<*>].distance_sq(self, double[<*>] v2) => (self - v2).sq_magnitude();
+macro float float[<*>].distance_sq(self, float[<*>] v2) => (self - v2).sq_magnitude();
 
-macro float[<2>].transform(self, Matrix4f mat) => transform2(self, mat);
-macro float[<2>].rotate(self, float angle) => rotate(self, angle);
-macro float[<2>].angle(self, float[<2>] v2) => math::atan2(v2.y, v2.x) - math::atan2(self.y, self.x);
+macro float[<2>] float[<2>].transform(self, Matrix4f mat) => transform2(self, mat);
+macro float[<2>] float[<2>].rotate(self, float angle) => rotate(self, angle);
+macro float[<2>] float[<2>].angle(self, float[<2>] v2) => math::atan2(v2.y, v2.x) - math::atan2(self.y, self.x);
 
-macro double[<2>].transform(self, Matrix4 mat) => transform2(self, mat);
-macro double[<2>].rotate(self, double angle) => rotate(self, angle);
-macro double[<2>].angle(self, double[<2>] v2) => math::atan2(v2.y, v2.x) - math::atan2(self.y, self.x);
+macro double[<2>] double[<2>].transform(self, Matrix4 mat) => transform2(self, mat);
+macro double[<2>] double[<2>].rotate(self, double angle) => rotate(self, angle);
+macro double[<2>] double[<2>].angle(self, double[<2>] v2) => math::atan2(v2.y, v2.x) - math::atan2(self.y, self.x);
 
-macro float[<*>].clamp_mag(self, float min, float max) => clamp_magnitude(self, min, max);
-macro double[<*>].clamp_mag(self, double min, double max) => clamp_magnitude(self, min, max);
+macro float[<*>] float[<*>].clamp_mag(self, float min, float max) => clamp_magnitude(self, min, max);
+macro double[<*>] double[<*>].clamp_mag(self, double min, double max) => clamp_magnitude(self, min, max);
 
-macro float[<*>].towards(self, float[<*>] target, float max_distance) => towards(self, target, max_distance);
-macro double[<*>].towards(self, double[<*>] target, double max_distance) => towards(self, target, max_distance);
+macro float[<*>] float[<*>].towards(self, float[<*>] target, float max_distance) => towards(self, target, max_distance);
+macro double[<*>] double[<*>].towards(self, double[<*>] target, double max_distance) => towards(self, target, max_distance);
 
 fn float[<3>] float[<3>].cross(self, float[<3>] v2) => cross3(self, v2);
 fn double[<3>] double[<3>].cross(self, double[<3>] v2) => cross3(self, v2);

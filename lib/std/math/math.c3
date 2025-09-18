@@ -82,7 +82,7 @@ macro abs(x) => $$abs(x);
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
  @require values::@is_int(y) || values::@is_float(y) : "Expected an integer or floating point value"
 *>
-macro is_approx(x, y, eps)
+macro bool is_approx(x, y, eps)
 {
 	if (x == y) return true;
 	if (is_nan(x) || is_nan(y)) return false;
@@ -93,7 +93,7 @@ macro is_approx(x, y, eps)
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
  @require values::@is_int(y) || values::@is_float(y) : "Expected an integer or floating point value"
 *>
-macro is_approx_rel(x, y, eps)
+macro bool is_approx_rel(x, y, eps)
 {
 	if (x == y) return true;
 	if (is_nan(x) || is_nan(y)) return false;
@@ -132,7 +132,7 @@ macro atan2(x, y)
  @require @typematch(sinp, cosp) : "Expected sinp and cosp to have the same type"
  @require $defined(*sinp = x) : "Expected x and *sinp/*cosp to have the same type"
 *>
-macro sincos_ref(x, sinp, cosp)
+macro void sincos_ref(x, sinp, cosp)
 {
 	$if $typeof(sinp) == float*:
 		_sincosf(x, sinp, cosp);
@@ -540,7 +540,7 @@ macro bool is_finite(x)
 <*
  @require values::@is_promotable_to_float(x) : `The input must be a float`
 *>
-macro is_nan(x)
+macro bool is_nan(x)
 {
 	$switch $typeof(x):
 	$case float:
@@ -554,7 +554,7 @@ macro is_nan(x)
 <*
  @require values::@is_promotable_to_float(x) : `The input must be a float`
 *>
-macro is_inf(x)
+macro bool is_inf(x)
 {
 	$switch $typeof(x):
 	$case float:

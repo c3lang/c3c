@@ -27,8 +27,8 @@ macro foo(a, #b = EMPTY_MACRO_SLOT)
 const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
 
 typedef EmptySlot = void*;
-macro @is_empty_macro_slot(#arg) @const @builtin => $typeof(#arg) == EmptySlot;
-macro @is_valid_macro_slot(#arg) @const @builtin => $typeof(#arg) != EmptySlot;
+macro bool @is_empty_macro_slot(#arg) @const @builtin => $typeof(#arg) == EmptySlot;
+macro bool @is_valid_macro_slot(#arg) @const @builtin => $typeof(#arg) != EmptySlot;
 
 <*
  Returns a random value at compile time.
@@ -430,7 +430,7 @@ macro swizzle2(v, v2, ...) @builtin
  @require types::is_int($typeof($value)) : "Input value must be an integer"
  @require $sizeof($value) * 8 <= 128 : "Input value must be 128 bits wide or lower"
 *>
-macro @clz($value) @builtin @const
+macro uint @clz($value) @builtin @const
 {
 	$if $value == 0:
 		return $sizeof($value) * 8;   // it's all leading zeroes
@@ -556,7 +556,7 @@ macro @generic_hash_core(h, value)
 	return h;
 }
 
-macro @generic_hash(value)
+macro uint @generic_hash(value)
 {
 	uint h = @generic_hash_core((uint)0x3efd4391, value);
 	$for var $cnt = 4; $cnt < $sizeof(value); $cnt += 4:

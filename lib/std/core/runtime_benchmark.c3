@@ -58,25 +58,25 @@ bool benchmark_warming @local;
 uint this_iteration @local;
 bool benchmark_stop @local;
 
-macro @start_benchmark()
+macro void @start_benchmark()
 {
-	benchmark_clock = std::time::clock::now();
+	benchmark_clock = clock::now();
 	cycle_start = $$sysclock();
 }
 
-macro @end_benchmark()
+macro void @end_benchmark()
 {
 	benchmark_nano_seconds = benchmark_clock.mark();
 	cycle_stop = $$sysclock();
 }
 
-macro @kill_benchmark(String format, ...)
+macro void @kill_benchmark(String format, ...)
 {
 	@log_benchmark(format, $vasplat);
 	benchmark_stop = true;
 }
 
-macro @log_benchmark(msg, args...) => @pool()
+macro void @log_benchmark(msg, args...) => @pool()
 {
 	if (benchmark_warming) return;
 

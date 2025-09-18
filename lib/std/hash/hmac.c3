@@ -83,7 +83,7 @@ fn char[HASH_BYTES] Hmac.final(&self)
 const IPAD @private = 0x36;
 const OPAD @private = 0x5C;
 
-macro @derive(Hmac *hmac_start, char[] salt, uint iterations, usz index, char[] out)
+macro void @derive(Hmac *hmac_start, char[] salt, uint iterations, usz index, char[] out)
 {
 	assert(out.len == HASH_BYTES);
 	char[HASH_BYTES] tmp @noinit;
