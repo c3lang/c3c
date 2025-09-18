@@ -2,6 +2,8 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
+#include <iso646.h>
+
 #include "compiler_internal.h"
 
 static inline bool expr_list_is_constant_eval(Expr **exprs);
@@ -574,16 +576,18 @@ Expr *expr_new_two(Expr *first, Expr *second)
 void expr_insert_addr(Expr *original)
 {
 	ASSERT(original->resolve_status == RESOLVE_DONE);
+	Type *type = original->type;
+	bool optional = type_is_optional(type);
+	Type *new_type = type_add_optional(type_get_ptr(type_no_optional(type)), optional);
 	if (original->expr_kind == EXPR_UNARY && original->unary_expr.operator == UNARYOP_DEREF)
 	{
 		*original = *original->unary_expr.expr;
+		original->type = new_type;
 		return;
 	}
 	Expr *inner = expr_copy(original);
 	original->expr_kind = EXPR_UNARY;
-	Type *inner_type = inner->type;
-	bool optional = type_is_optional(inner->type);
-	original->type = type_add_optional(type_get_ptr(type_no_optional(inner_type)), optional);
+	original->type = new_type;
 	original->unary_expr.operator = UNARYOP_ADDR;
 	original->unary_expr.expr = inner;
 }

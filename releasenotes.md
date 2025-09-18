@@ -30,6 +30,7 @@
 - Regression: Compiler segfault when assigning struct literal with too few members #2483
 - Fix compile time format check when the formatting string is a constant slice.
 - Compiler segfault for invalid e-mails in project.json. #2488
+- Taking `.ordinal` from an enum passed by pointer and then taking the address of this result would return the enum, not int.
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
