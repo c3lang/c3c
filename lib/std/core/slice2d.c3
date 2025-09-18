@@ -33,7 +33,7 @@ fn usz Slice2d.count(&self)
 <*
  Step through each element of the slice.
 *>
-macro Slice2d.@each(&self; @body(usz[<2>], Type))
+macro void Slice2d.@each(&self; @body(usz[<2>], Type))
 {
 	foreach (y, line : *self)
 	{
@@ -47,7 +47,7 @@ macro Slice2d.@each(&self; @body(usz[<2>], Type))
 <*
  Step through each element of the slice *by reference*
 *>
-macro Slice2d.@each_ref(&self; @body(usz[<2>], Type*))
+macro void Slice2d.@each_ref(&self; @body(usz[<2>], Type*))
 {
 	foreach (y, line : *self)
 	{

@@ -430,7 +430,7 @@ macro swizzle2(v, v2, ...) @builtin
  @require types::is_int($typeof($value)) : "Input value must be an integer"
  @require $sizeof($value) * 8 <= 128 : "Input value must be 128 bits wide or lower"
 *>
-macro usz @clz($value) @builtin @const
+macro uint @clz($value) @builtin @const
 {
 	$if $value == 0:
 		return $sizeof($value) * 8;   // it's all leading zeroes
