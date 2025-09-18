@@ -1518,6 +1518,7 @@ void compile()
 	}
 	setup_define("AUTHORS", expr_names);
 	setup_define("AUTHOR_EMAILS", expr_emails);
+	setup_string_define("PROJECT_VERSION", compiler.build.version);
 	type_init_cint();
 	compiler_init_time = bench_mark();
 

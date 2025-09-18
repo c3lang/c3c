@@ -7,7 +7,7 @@ extern fn void printf(char *, ...);
 
 fn int main()
 {
-    printf("Hello World!\n");
+    printf("Hello World %s!\n", env::PROJECT_VERSION);
     printf("Authors:");
     io::printn(env::AUTHORS);
     printf("Author emails:");

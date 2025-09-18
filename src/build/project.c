@@ -194,7 +194,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 			if (email_start)
 			{
 				const char *end = strstr(email_start + 1, ">");
-				if (!end || end[1] != 0 || email_start + 1 == end) error_exit("Error reading %s: invalid author format '%s'", author);
+				if (!end || end[1] != 0 || email_start + 1 == end) error_exit("Error reading %s: invalid author format '%s', expected an e-mail address between '< >'.", context.file, author);
 				const char *email = str_trim(str_copy(email_start + 1, end - email_start - 1));
 				AuthorEntry entry = { str_trim(str_copy(author, email_start - author)), email };
 				vec_add(author_list, entry);

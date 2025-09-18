@@ -8,6 +8,7 @@
 - `$alignof`, `$offsetof` and `$nameof` can now be used in `$defined`.
 - Infer generic parameters lhs -> rhs: `List{int} x = list::NOHEAP`.
 - Unify generic and regular module namespace.
+- `env::PROJECT_VERSION` now returns the version in project.json.
 
 ### Fixes
 - Compiler assert with var x @noinit = 0 #2452
@@ -28,6 +29,7 @@
 - Compile time switch over type would not correctly compare function pointer types.
 - Regression: Compiler segfault when assigning struct literal with too few members #2483
 - Fix compile time format check when the formatting string is a constant slice.
+- Compiler segfault for invalid e-mails in project.json. #2488
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
