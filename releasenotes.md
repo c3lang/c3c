@@ -34,6 +34,7 @@
 - Fix compile time format check when the formatting string is a constant slice.
 - Compiler segfault for invalid e-mails in project.json. #2488
 - Taking `.ordinal` from an enum passed by pointer and then taking the address of this result would return the enum, not int.
+- Alias and distinct types didn't check the underlying type wasn't compile time or optional.
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
