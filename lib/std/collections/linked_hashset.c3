@@ -11,20 +11,27 @@ struct LinkedEntry
 {
 	uint hash;
 	Value value;
-	LinkedEntry* next;	  // For bucket chain
-	LinkedEntry* before;	// Previous in insertion order
-	LinkedEntry* after;	 // Next in insertion order
+	<* For bucket chain *>
+	LinkedEntry* next;
+	<* Previous in insertion order *>
+	LinkedEntry* before;
+	<* Next in insertion order *>
+	LinkedEntry* after;
 }
 
 struct LinkedHashSet (Printable)
 {
 	LinkedEntry*[] table;
 	Allocator allocator;
-	usz count;			  // Number of elements
-	usz threshold;		  // Resize limit
+	<* Number of elements *>
+	usz count;
+	<* Resize limit *>
+	usz threshold;
 	float load_factor;
-	LinkedEntry* head;	  // First inserted LinkedEntry
-	LinkedEntry* tail;	  // Last inserted LinkedEntry
+	<* Resize limit *>
+	LinkedEntry* head;
+	<* First inserted LinkedEntry *>
+	LinkedEntry* tail;
 }
 
 fn int LinkedHashSet.len(&self) @operator(len) => (int) self.count;

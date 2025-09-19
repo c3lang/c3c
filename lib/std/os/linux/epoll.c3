@@ -52,8 +52,10 @@ union EpollData
 
 struct EpollEvent @packed 
 {
-	uint	events; /* Epoll events */
-	EpollData data; /* User data variable */
+	<* Epoll events *>
+	uint	events;
+	<* User data variable *>
+	EpollData data;
 }
 
 struct EpollParams 
@@ -62,7 +64,7 @@ struct EpollParams
 	ushort  busy_poll_budget;
 	char	prefer_busy_poll;
 	
-	/* pad the struct to a multiple of 64bits */
+	<* pad the struct to a multiple of 64bits *>
 	char	__pad;
 }
 

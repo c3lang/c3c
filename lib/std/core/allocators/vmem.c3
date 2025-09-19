@@ -22,9 +22,12 @@ struct Vmem (Allocator)
 
 bitstruct VmemOptions : int
 {
-	bool shrink_on_reset;         // Release memory on reset
-	bool protect_unused_pages;    // Protect unused pages on reset
-	bool scratch_released_data;   // Overwrite released data with 0xAA
+	<* Release memory on reset *>
+	bool shrink_on_reset;
+	<* Protect unused pages on reset *>
+	bool protect_unused_pages;
+	<* Overwrite released data with 0xAA *>
+	bool scratch_released_data;
 }
 
 <*
@@ -38,11 +41,11 @@ bitstruct VmemOptions : int
 fn void? Vmem.init(&self, usz preferred_size, usz reserve_page_size = 0, VmemOptions options = { true, true, env::COMPILER_SAFE_MODE }, usz min_size = 0)
 {
 	static usz page_size = 0;
-    if (!page_size) page_size = mem::os_pagesize();
-    if (page_size < reserve_page_size) page_size = reserve_page_size;
-    preferred_size = mem::aligned_offset(preferred_size, page_size);
-    if (!min_size) min_size = max(preferred_size / 1024, 1);
-    VirtualMemory? memory = mem::OUT_OF_MEMORY?;
+	if (!page_size) page_size = mem::os_pagesize();
+	if (page_size < reserve_page_size) page_size = reserve_page_size;
+	preferred_size = mem::aligned_offset(preferred_size, page_size);
+	if (!min_size) min_size = max(preferred_size / 1024, 1);
+	VirtualMemory? memory = mem::OUT_OF_MEMORY?;
 	while (preferred_size >= min_size)
 	{
 		memory = vm::virtual_alloc(preferred_size, PROTECTED);

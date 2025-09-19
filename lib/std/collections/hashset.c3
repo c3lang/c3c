@@ -25,8 +25,10 @@ struct HashSet (Printable)
 {
 	Entry*[] table;
 	Allocator allocator;
-	usz count; 		// Number of elements
-	usz threshold; 	// Resize limit
+	<* Number of elements *>
+	usz count;
+	<* Resize limit *>
+	usz threshold;
 	float load_factor;
 }
 
