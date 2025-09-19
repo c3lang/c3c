@@ -41,14 +41,14 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bo
 static bool sema_check_section(SemaContext *context, Attr *attr);
 static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext *c, Decl *decl, bool *erase_decl);
 
-static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
+static inline bool sema_analyse_type_alias(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceSpan span);
 static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool *erase_decl);
 
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit);
 
-static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params);
+static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params, SourceSpan from_span);
 
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
@@ -541,7 +541,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		AlignSize member_type_alignment;
 		if (type_is_user_defined(member_type) && member_type->decl->resolve_status == RESOLVE_RUNNING)
 		{
-			SEMA_ERROR(member, "Recursive defintion of %s.", type_quoted_error_string(member_type));
+			SEMA_ERROR(member, "Recursive definition of %s.", type_quoted_error_string(member_type));
 			return decl_poison(decl);
 		}
 		if (!sema_set_abi_alignment(context, member->type, &member_type_alignment)) return decl_poison(decl);
@@ -1460,7 +1460,7 @@ static inline bool sema_analyse_fntype(SemaContext *context, Decl *decl, bool *e
 	return sema_analyse_function_signature(context, decl, NULL, sig->abi, sig);
 }
 
-static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl)
+static inline bool sema_analyse_type_alias(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ALIAS, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
@@ -1478,6 +1478,24 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 	TypeInfo *info = decl->type_alias_decl.type_info;
 	info->in_def = true;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
+	if (type_is_optional(info->type))
+	{
+		RETURN_SEMA_ERROR(info, "You cannot create an alias for an optional type like %s.", type_quoted_error_string(info->type));
+	}
+	switch (sema_resolve_storage_type(context, info->type))
+	{
+		case STORAGE_ERROR:
+			return false;
+		case STORAGE_NORMAL:
+		case STORAGE_UNKNOWN:
+		case STORAGE_VOID:
+			break;
+		case STORAGE_WILDCARD:
+			RETURN_SEMA_ERROR(info, "You cannot create an alias for the wildcard type.");
+		case STORAGE_COMPILE_TIME:
+			RETURN_SEMA_ERROR(info, "You cannot create an alias for %s as it is a compile time type.",
+							  type_invalid_storage_type_name(info->type));
+	}
 	decl->type->canonical = info->type->canonical;
 	// Do we need anything else?
 	return true;
@@ -1504,6 +1522,20 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 
 	// Optional isn't allowed of course.
 	if (type_is_optional(info->type)) RETURN_SEMA_ERROR(decl, "You cannot create a distinct type from an optional.");
+	switch (sema_resolve_storage_type(context, info->type))
+	{
+		case STORAGE_ERROR:
+			return false;
+		case STORAGE_NORMAL:
+		case STORAGE_UNKNOWN:
+		case STORAGE_VOID:
+			break;
+		case STORAGE_WILDCARD:
+			RETURN_SEMA_ERROR(info, "You cannot create a distinct type from the wildcard type.");
+		case STORAGE_COMPILE_TIME:
+			RETURN_SEMA_ERROR(info, "You cannot create a distinct type for %s as it is a compile time type.",
+							  type_invalid_storage_type_name(info->type));
+	}
 
 	// Distinct types drop the canonical part.
 	info->type = info->type->canonical;
@@ -2217,7 +2249,7 @@ static inline void sema_get_overload_arguments(Decl *method, Type **value_ref, T
 	switch (method->func_decl.operator)
 	{
 		case OVERLOAD_LEN:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case OVERLOAD_ELEMENT_AT:
 			*value_ref = type_no_optional(typeget(method->func_decl.signature.rtype)->canonical);
 			*index_ref = method->func_decl.signature.params[1]->type->canonical;
@@ -2231,7 +2263,7 @@ static inline void sema_get_overload_arguments(Decl *method, Type **value_ref, T
 			*index_ref = method->func_decl.signature.params[1]->type->canonical;
 			return;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 }
 
@@ -4626,6 +4658,11 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 		return decl_poison(decl);
 	}
 
+	if (decl->var.no_init && decl->var.init_expr)
+	{
+		SEMA_ERROR(decl->var.init_expr, "'@noinit' variables may not have initializers.");
+		return decl_poison(decl);
+	}
 	if (erase_decl)
 	{
 		decl->decl_kind = DECL_ERASED;
@@ -4770,7 +4807,16 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 		CallEnvKind env_kind = context->call_env.kind;
 		if (is_static) context->call_env.kind = CALL_ENV_FUNCTION_STATIC;
 		decl->in_init = true;
+
+		Module *generic = type_find_generic(decl->type);
+		if (generic)
+		{
+			Module *temp = context->generic.infer;
+			context->generic.infer = generic;
+			generic = temp;
+		}
 		success = sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false, true, check_defined);
+		context->generic.infer = generic;
 		if (!success && check_defined) return false;
 		decl->in_init = false;
 		context->call_env.kind = env_kind;
@@ -4812,7 +4858,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 	{
 		if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
 	}
-	if (decl->var.kind == VARDECL_LOCAL && type_size(decl->type) > compiler.build.max_stack_object_size * 1024)
+	if (decl->var.kind == VARDECL_LOCAL && !is_static && type_size(decl->type) > compiler.build.max_stack_object_size * 1024)
 	{
 		size_t size = type_size(decl->type);
 		RETURN_SEMA_ERROR(
@@ -4846,7 +4892,7 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 	return copy;
 }
 
-static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params)
+static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params, SourceSpan from_span)
 {
 	unsigned decls = 0;
 	Decl* params_decls[MAX_PARAMS];
@@ -4897,6 +4943,7 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 		new_module->contracts = astid(copy_ast_macro(astptr(module->contracts)));
 		copy_end();
 	}
+	new_module->inlined_at = (InliningSpan) { .span = from_span, .prev = copy_inlining_span(context->inlined_at) };
 
 	return new_module;
 }
@@ -5101,31 +5148,11 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 	return true;
 }
 
-
-bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, const char *name, SourceSpan span)
-{
-	NameResolve name_resolve = {
-		.path = decl_path,
-		.span = span,
-		.symbol = name,
-		.suppress_error = true
-	};
-
-	return unit_resolve_parameterized_symbol(context, &name_resolve);
-}
-
 Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span,
                                             Expr **params, bool *was_recursive_ref, SourceSpan invocation_span)
 {
-	NameResolve name_resolve = {
-			.path = decl_path,
-			.span = span,
-			.symbol = name
-	};
-
-	if (!unit_resolve_parameterized_symbol(c, &name_resolve)) return poisoned_decl;
-	Decl *alias = name_resolve.found;
-	ASSERT(alias);
+	Decl *alias = sema_resolve_parameterized_symbol(c, name, decl_path, span);
+	if (!alias) return poisoned_decl;
 	Module *module = alias->unit->module;
 
 	unsigned parameter_count = vec_size(module->parameters);
@@ -5146,15 +5173,15 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	AnalysisStage stage = c->unit->module->generic_module
 			? c->unit->module->stage
 			: c->unit->module->stage - 1;
-	bool instatiation = false;
+	bool instantiation = false;
 	if (!instantiated_module)
 	{
-		instatiation = true;
+		instantiation = true;
 		Path *path = CALLOCS(Path);
 		path->module = path_string;
 		path->span = module->name->span;
 		path->len = scratch_buffer.len;
-		instantiated_module = module_instantiate_generic(c, module, path, params);
+		instantiated_module = module_instantiate_generic(c, module, path, params, invocation_span);
 		if (!instantiated_module) return poisoned_decl;
 		if (!sema_generate_parameterized_name_to_scratch(c, module, params, false, NULL)) return poisoned_decl;
 		instantiated_module->generic_suffix = scratch_buffer_copy();
@@ -5167,7 +5194,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		sema_error_at(c, span, "The generic module '%s' does not have '%s' for this parameterization.", module->name->module, name);
 		return poisoned_decl;
 	}
-	if (instatiation)
+	if (instantiation)
 	{
 		if (instantiated_module->contracts)
 		{
@@ -5391,7 +5418,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			if (!sema_analyse_distinct(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_TYPEDEF:
-			if (!sema_analyse_typedef(context, decl, &erase_decl)) goto FAILED;
+			if (!sema_analyse_type_alias(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_ENUM:
 			if (!sema_analyse_enum(context, decl, &erase_decl)) goto FAILED;

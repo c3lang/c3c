@@ -1,7 +1,7 @@
 module std::net @if(os::SUPPORTS_INET);
 import std::time, libc, std::os;
 
-macro apply_sockoptions(sockfd, options) @private
+macro void? apply_sockoptions(sockfd, options) @private
 {
 	Socket sock = { .sock = sockfd };
 	foreach (o : options) sock.set_option(o, true)!;
@@ -96,7 +96,7 @@ fn Socket? connect_async_from_addrinfo(AddrInfo* addrinfo, SocketOption[] option
 	return os::socket_error()?;
 }
 
-macro @network_loop_over_ai(network, host, port; @body(fd, ai)) @private
+macro void @network_loop_over_ai(network, host, port; @body(fd, ai)) @private
 {
 	AddrInfo* ai = network.addrinfo(host, port)!;
 	AddrInfo* first = ai;

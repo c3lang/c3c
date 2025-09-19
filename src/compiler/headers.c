@@ -96,7 +96,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 	{
 		case CT_TYPES:
 		case TYPE_OPTIONAL:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_VOID:
 			PRINTF("void");
 			return;
@@ -199,7 +199,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 			header_print_type(c, type->canonical);
 			return;
 		case TYPE_FLEXIBLE_ARRAY:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_ARRAY:
 			PRINTF("struct { ");
 			header_print_type(c, type->array.base);
@@ -225,7 +225,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 					PRINTF("float");
 					break;
 				default:
-					UNREACHABLE;
+					UNREACHABLE_VOID;
 			}
 			PRINTF("%dx%llu", (int)type_bit_size(type->array.base), (unsigned long long)type->array.len);
 			return;
@@ -372,7 +372,7 @@ static void header_gen_members(HeaderContext *c, int indent, Decl **members)
 				PRINTF(" __bits%d;\n", ++i);
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 }
@@ -482,7 +482,7 @@ static void header_ensure_member_types_exist(HeaderContext *c, Decl **members)
 			case DECL_BITSTRUCT:
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 }
@@ -500,7 +500,7 @@ RETRY:
 	{
 		case CT_TYPES:
 		case TYPE_OPTIONAL:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case ALL_FLOATS:
@@ -557,7 +557,7 @@ RETRY:
 			type = type_flatten(type);
 			goto RETRY;
 		case TYPE_FUNC_RAW:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			header_gen_struct_union_top(c, type->decl, is_pointer ? GEN_POINTER : GEN_FULL);
@@ -664,7 +664,7 @@ static void header_gen_global_var(HeaderContext *c, Decl *decl, bool fn_globals,
 			case CONST_INITIALIZER:
 			case CONST_UNTYPED_LIST:
 			case CONST_BYTES:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 	if (!fn_globals)
@@ -758,7 +758,7 @@ static void process_queue(HeaderContext *c)
 				header_gen_struct_union_top(c, decl, GEN_DEFINITION);
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 	vec_resize(c->type_queue, 0);

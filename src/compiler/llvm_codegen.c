@@ -447,7 +447,7 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 			return;
 		}
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 }
 
@@ -988,7 +988,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 		case NON_TYPE_DECLS:
 		case DECL_ERASED:
 		case DECL_FNTYPE:
-			UNREACHABLE;
+			UNREACHABLE_VOID;
 		case DECL_TYPEDEF:
 			if (decl->type_alias_decl.is_func)
 			{
@@ -997,7 +997,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 			break;
 		case DECL_FUNC:
 			// Never directly invoked.
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case DECL_INTERFACE:
 			break;
 		case DECL_DISTINCT:
@@ -1070,7 +1070,7 @@ static inline void llvm_optimize(GenContext *c)
 const char *llvm_codegen(void *context)
 {
 	GenContext *c = context;
-	if (!compiler_should_ouput_file(c->base_name)) return NULL;
+	if (!compiler_should_output_file(c->base_name)) return NULL;
 	llvm_optimize(c);
 
 	// Serialize the LLVM IR, if requested, also verify the IR in this case

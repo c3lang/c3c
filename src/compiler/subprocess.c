@@ -5,11 +5,20 @@
 
 #if PLATFORM_POSIX
 #include <sys/wait.h>
+
+pid_t cpid;
 #endif
 
 #if PLATFORM_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#endif
+
+#if defined(__linux__)
+void signal_to_subprocess(int sig)
+{
+	kill(cpid, sig);
+}
 #endif
 
 int run_subprocess(const char *name, const char **args)
@@ -105,7 +114,7 @@ int run_subprocess(const char *name, const char **args)
 
 	return exit_status;
 #else
-	pid_t cpid = fork();
+	cpid = fork();
 	if (cpid < 0)
 	{
 		eprintf("Could not fork child process %s: %s\n", name, strerror(errno));
@@ -129,6 +138,9 @@ int run_subprocess(const char *name, const char **args)
 		exit(0);
 	}
 
+#if defined(__linux__)
+	signal(SIGINT, signal_to_subprocess);
+#endif
 	for (;;)
 	{
 		int wstatus = 0;

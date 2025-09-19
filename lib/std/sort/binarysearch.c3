@@ -10,7 +10,7 @@ in [0, array.len) where x would be inserted or cmp(i) is true and cmp(j) is true
 macro usz binarysearch(list, x, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
 	usz i;
-	usz len = len_from_list(list);
+	usz len = lengthof(list);
 	var $no_cmp = @is_empty_macro_slot(cmp);
 	var $has_context = @is_valid_macro_slot(context);
 	for (usz j = len; i < j;)

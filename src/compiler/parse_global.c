@@ -16,7 +16,7 @@ typedef enum FunctionParse_
 static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, FunctionParse parse_kind);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref, ArrayIndex *inline_index);
-static Decl *parse_include(ParseContext *c);
+static Decl *parse_ct_include(ParseContext *c);
 static Decl *parse_exec(ParseContext *c);
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
 INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl);
@@ -1728,7 +1728,22 @@ static inline bool parse_fn_parameter_list(ParseContext *c, Signature *signature
 
 // --- Parse types
 
-
+static bool parse_element_contract(ParseContext *c, const char *error)
+{
+	AstId contracts = 0;
+	if (!parse_contracts(c, &contracts)) return false;
+	if (!contracts) return true;
+	Ast *ast = astptr(contracts);
+	while (ast)
+	{
+		if (ast->ast_kind != AST_CONTRACT || ast->contract_stmt.kind != CONTRACT_COMMENT)
+		{
+			RETURN_PRINT_ERROR_AT(false, ast, "No constraints are allowed on %s.", error);
+		}
+		ast = astptrzero(ast->next);
+	}
+	return true;
+}
 /**
  * Expect pointer to after '{'
  *
@@ -1754,6 +1769,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 	ArrayIndex index = 0;
 	while (!tok_is(c, TOKEN_RBRACE))
 	{
+		if (!parse_element_contract(c, "struct/union members")) return decl_poison(parent);
 		TokenType token_type = c->tok;
 		if (token_type == TOKEN_STRUCT || token_type == TOKEN_UNION || token_type == TOKEN_BITSTRUCT)
 		{
@@ -1894,7 +1910,7 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 		return poisoned_decl;
 	}
 	// 2. Now parse the type which we know is here.
-	ASSIGN_TYPE_OR_RET(decl->distinct, parse_type(c), poisoned_decl);
+	ASSIGN_TYPE_OR_RET(decl->distinct, parse_optional_type(c), poisoned_decl);
 
 	ASSERT(!tok_is(c, TOKEN_LBRACE));
 
@@ -1938,6 +1954,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 	bool is_consecutive = false;
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
+		if (!parse_element_contract(c, "bitstruct members")) return decl_poison(decl);
 		ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_base_type(c), false);
 		Decl *member_decl = decl_new_var_current(c, type, VARDECL_BITMEMBER);
 
@@ -2476,6 +2493,7 @@ static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 
 static inline Decl *parse_fault(ParseContext *c)
 {
+	if (!parse_element_contract(c, "faults")) return poisoned_decl;
 	Decl *decl = decl_new(DECL_FAULT, symstr(c), c->span);
 	if (!consume_const_name(c, "fault")) return poisoned_decl;
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
@@ -2556,6 +2574,7 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 	Decl **values = NULL;
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
+		if (!parse_element_contract(c, "enum values")) return false;
 		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, symstr(c), c->span);
 		if (is_const_enum) enum_const->enum_constant.is_raw = is_const_enum;
 		enum_const->visibility = visibility;
@@ -3139,7 +3158,7 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 	return true;
 }
 
-static Decl *parse_include(ParseContext *c)
+static Decl *parse_ct_include(ParseContext *c)
 {
 	SourceSpan loc = c->span;
 	Decl *decl = decl_new(DECL_CT_INCLUDE, NULL, loc);
@@ -3323,7 +3342,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			return NULL;
 		case TOKEN_CT_INCLUDE:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_include(c);
+			decl = parse_ct_include(c);
 			break;
 		case TOKEN_CT_EXEC:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;

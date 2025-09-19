@@ -3,7 +3,7 @@ import std::collections::pair, std::io;
 
 <*
  Returns true if the array contains at least one element, else false
- 
+
  @param [in] array
  @param [in] element
  @require $kindof(array) == SLICE || $kindof(array) == ARRAY
@@ -15,13 +15,13 @@ macro bool contains(array, element)
 	{
 		if (*item == element) return true;
 	}
-	return false;	
+	return false;
 }
 
 
 <*
  Return the first index of element found in the array, searching from the start.
- 
+
  @param [in] array
  @param [in] element
  @require $kindof(array) == SLICE || $kindof(array) == ARRAY
@@ -29,7 +29,7 @@ macro bool contains(array, element)
  @return "the first index of the element"
  @return? NOT_FOUND
 *>
-macro index_of(array, element)
+macro usz? index_of(array, element)
 {
 	foreach (i, &e : array)
 	{
@@ -63,13 +63,13 @@ macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
 
 <*
  Return the first index of element found in the array, searching in reverse from the end.
- 
+
  @param [in] array
  @param [in] element
  @return "the last index of the element"
  @return? NOT_FOUND
 *>
-macro rindex_of(array, element)
+macro usz? rindex_of(array, element)
 {
 	foreach_r (i, &e : array)
 	{
@@ -142,7 +142,7 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
 
  @param [in] array
  @param identity
- @param #operation : "The reduction/folding labmda function or function pointer to apply."
+ @param #operation : "The reduction/folding lambda function or function pointer to apply."
 
  @require @is_valid_list(array) : "Expected a valid list"
  @require $defined($typefrom(@reduce_fn(array, identity)) $func = #operation) : "Invalid lambda or function pointer type"
@@ -216,7 +216,7 @@ macro @product(array, identity_value = 1)
 *>
 macro usz[] @indices_of(Allocator allocator, array, #predicate)
 {
-	usz[] results = allocator::new_array(allocator, usz, find_len(array));
+	usz[] results = allocator::new_array(allocator, usz, lengthof(array));
 	usz matches;
 
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
@@ -387,7 +387,6 @@ macro bool @all(array, #predicate)
  @require @is_valid_list(left) &&& @is_valid_list(right) : "Left and right sides must be integer indexable"
  @require @is_valid_operation(left, right, ...#operation) : "The operator must take two parameters matching the elements of the left and right side"
  @require @is_valid_fill(left, right, ...fill_with) : "The specified fill value does not match either the left or the right array's underlying type."
-
 *>
 macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) @nodiscard
 {
@@ -400,8 +399,8 @@ macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) 
 		$Type = $typeof(#operation).returns;
 	$endif
 
-	usz left_len = find_len(left);
-	usz right_len = find_len(right);
+	usz left_len = lengthof(left);
+	usz right_len = lengthof(right);
 
 	$LeftType left_fill;
 	$RightType right_fill;
@@ -460,7 +459,6 @@ macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) 
  @require @is_valid_list(left) &&& @is_valid_list(right) : "Left and right sides must be integer indexable"
  @require @is_valid_operation(left, right, ...#operation) : "The operator must take two parameters matching the elements of the left and right side"
  @require @is_valid_fill(left, right, ...fill_with) : "The specified fill value does not match either the left or the right array's underlying type."
-
 *>
 macro @tzip(left, right, #operation = ..., fill_with = ...) @nodiscard
 {
@@ -495,7 +493,7 @@ macro @tzip(left, right, #operation = ..., fill_with = ...) @nodiscard
 
  @require @is_valid_list(left) : "Expected a valid list"
  @require @is_valid_list(right) : "Expected a valid list"
- @require find_len(right) >= find_len(left) : `Right side length must be >= the destination (left) side length; consider using a sub-array of data for the assignment.`
+ @require lengthof(right) >= lengthof(left) : `Right side length must be >= the destination (left) side length; consider using a sub-array of data for the assignment.`
  @require $defined($typefrom(@zip_into_fn(left, right)) x = #operation) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
 *>
 macro @zip_into(left, right, #operation)
@@ -539,7 +537,7 @@ macro bool @is_valid_operation(#left, #right, #operation = ...) @const
 
 macro bool @is_valid_list(#expr) @const
 {
-	return $defined(#expr[0]) &&& ($defined(#expr.len) ||| $defined(#expr.len()));
+	return $defined(#expr[0], lengthof(#expr));
 }
 
 macro bool @is_valid_fill(left, right, fill_with = ...)
@@ -547,11 +545,9 @@ macro bool @is_valid_fill(left, right, fill_with = ...)
 	$if !$defined(fill_with):
 		return true;
 	$else
-		usz left_len = $defined(left.len()) ??? left.len() : left.len;
-		usz right_len = $defined(right.len()) ??? right.len() : right.len;
+		usz left_len = lengthof(left);
+		usz right_len = lengthof(right);
 		if (left_len == right_len) return true;
 		return left_len > right_len ? $defined(($typeof(right[0]))fill_with) : $defined(($typeof(left[0]))fill_with);
 	$endif
 }
-
-macro usz find_len(list) => $defined(list.len()) ??? list.len() : list.len;

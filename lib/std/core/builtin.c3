@@ -7,7 +7,7 @@ import libc, std::hash, std::io, std::os::backtrace;
 
 <*
  EMPTY_MACRO_SLOT is a value used for implementing optional arguments for macros in an efficient
- way. It relies on the fact that distinct types are not implicitly convertable.
+ way. It relies on the fact that distinct types are not implicitly convertible.
 
  You can use `@is_empty_macro_slot()` and `@is_valid_macro_slot()` to figure out whether
  the argument has been used or not.
@@ -27,8 +27,8 @@ macro foo(a, #b = EMPTY_MACRO_SLOT)
 const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
 
 typedef EmptySlot = void*;
-macro @is_empty_macro_slot(#arg) @const @builtin => $typeof(#arg) == EmptySlot;
-macro @is_valid_macro_slot(#arg) @const @builtin => $typeof(#arg) != EmptySlot;
+macro bool @is_empty_macro_slot(#arg) @const @builtin => $typeof(#arg) == EmptySlot;
+macro bool @is_valid_macro_slot(#arg) @const @builtin => $typeof(#arg) != EmptySlot;
 
 <*
  Returns a random value at compile time.
@@ -108,7 +108,7 @@ macro anycast(any v, $Type) @builtin
 	return ($Type*)v.ptr;
 }
 
-macro bool @assignable_to(#foo, $Type) @const @builtin @deprecated("use '$define($Type x = #foo)'") => $defined(*&&($Type){} = #foo);
+macro bool @assignable_to(#foo, $Type) @const @builtin @deprecated("use '$defined($Type x = #foo)'") => $defined(*&&($Type){} = #foo);
 
 macro @addr(#val) @builtin
 {
@@ -430,7 +430,7 @@ macro swizzle2(v, v2, ...) @builtin
  @require types::is_int($typeof($value)) : "Input value must be an integer"
  @require $sizeof($value) * 8 <= 128 : "Input value must be 128 bits wide or lower"
 *>
-macro @clz($value) @builtin @const
+macro uint @clz($value) @builtin @const
 {
 	$if $value == 0:
 		return $sizeof($value) * 8;   // it's all leading zeroes
@@ -556,7 +556,7 @@ macro @generic_hash_core(h, value)
 	return h;
 }
 
-macro @generic_hash(value)
+macro uint @generic_hash(value)
 {
 	uint h = @generic_hash_core((uint)0x3efd4391, value);
 	$for var $cnt = 4; $cnt < $sizeof(value); $cnt += 4:

@@ -918,10 +918,7 @@ static Expr *parse_orelse(ParseContext *c, Expr *left_side, SourceSpan lhs_start
 	// Assignment operators have precedence right -> left.
 	ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, PREC_TERNARY), poisoned_expr);
 
-	Expr *expr = expr_new(EXPR_BINARY, lhs_start);
-	expr->binary_expr.operator = BINARYOP_ELSE;
-	expr->binary_expr.left = exprid(left_side);
-	expr->binary_expr.right = exprid(right_side);
+	Expr *expr = expr_new_binary(lhs_start, left_side, right_side, BINARYOP_ELSE);
 
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -947,10 +944,7 @@ static Expr *parse_binary(ParseContext *c, Expr *left_side, SourceSpan start)
 		ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, rules[operator_type].precedence + 1), poisoned_expr);
 	}
 
-	Expr *expr = expr_new(EXPR_BINARY, start);
-	expr->binary_expr.operator = binaryop_from_token(operator_type);
-	expr->binary_expr.left = exprid(left_side);
-	expr->binary_expr.right = exprid(right_side);
+	Expr *expr = expr_new_binary(start, left_side, right_side, binaryop_from_token(operator_type));
 
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -1179,7 +1173,7 @@ static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceSpan lhs_start 
 /**
  * ct_sizeof ::= CT_SIZEOF '(' expr ')'
  *
- * Note that this is tranformed to $typeof(expr).sizeof.
+ * Note that this is transformed to $typeof(expr).sizeof.
  */
 static Expr *parse_ct_sizeof(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
@@ -1235,6 +1229,22 @@ static Expr *parse_ct_embed(ParseContext *c, Expr *left, SourceSpan lhs_start UN
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(embed);
 	return embed;
+}
+
+/**
+ * lengthof ::= LENGTHOF '(' expr ')'
+ * flat_path ::= expr ('.' primary) | '[' expr ']')*
+ */
+static Expr *parse_lengthof(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+{
+	ASSERT(!left && "Unexpected left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_LENGTHOF);
+	advance(c);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	RANGE_EXTEND_PREV(expr);
+	return expr;
 }
 
 /**
@@ -1599,7 +1609,7 @@ EXIT:
 		is_unsigned = false;
 		if (i128_comp(i, INT128_MIN, type_u128) == CMP_GT)
 		{
-			PRINT_ERROR_AT(expr_int, "The negated integer size would exeed an int128.");
+			PRINT_ERROR_AT(expr_int, "The negated integer size would exceed an int128.");
 			return poisoned_expr;
 		}
 		if (negated) i = i128_neg(i);
@@ -2155,6 +2165,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_TRUE] = { parse_bool, NULL, PREC_NONE },
 		[TOKEN_FALSE] = { parse_bool, NULL, PREC_NONE },
 		[TOKEN_NULL] = { parse_null, NULL, PREC_NONE },
+		[TOKEN_LENGTHOF] = { parse_lengthof, NULL, PREC_NONE },
 		[TOKEN_INTEGER] = { parse_integer, NULL, PREC_NONE },
 		[TOKEN_BUILTIN] = { parse_builtin, NULL, PREC_NONE },
 		[TOKEN_CHAR_LITERAL] = { parse_char_lit, NULL, PREC_NONE },

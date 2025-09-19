@@ -107,7 +107,8 @@ fn void hash_speeds_of_many_random_values() => @pool()
 	foreach (&v : vwideints) *v = (uint128)random::next(&rand, uint.max);
 
 	char[48][] zstrs = allocator::new_array(tmem, char[48], $arrsz)[:$arrsz];
-	String[$arrsz] strs;
+
+	String[] strs = mem::temp_array(String, $arrsz);
 	foreach (x, &v : zstrs)
 	{
 		foreach (&c : (*v)[:random::next(&rand, 48)]) *c = (char)random::next(&rand, char.max);
@@ -195,7 +196,7 @@ fn void random_access_string_keys() => @pool()
 	v.tinit();
 
 	usz pseudo_checksum = 0;
-	String[5_000] saved;
+	String[] saved = mem::temp_array(String, 5_000);
 
 	for (usz i = 0; i < saved.len; ++i)
 	{

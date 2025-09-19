@@ -124,7 +124,7 @@ void print_type(FILE *file, TypeInfo *type)
 	switch (type->kind)
 	{
 		case TYPE_INFO_POISON:
-			UNREACHABLE;
+			UNREACHABLE_VOID;
 		case TYPE_INFO_IDENTIFIER:
 		case TYPE_INFO_CT_IDENTIFIER:
 			if (type->unresolved.path)
@@ -329,7 +329,7 @@ static inline void emit_param(FILE *file, Decl *decl)
 			PRINT("type");
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	PRINTF("\",\n\t\t\t\t\t\"name\": \"%s\",\n", decl->name ? decl->name : "");
 	PRINTF("\t\t\t\t\t\"type\": \"");

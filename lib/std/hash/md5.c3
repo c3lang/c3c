@@ -106,7 +106,7 @@ macro @h(x, y, z) => (x ^ y) ^ z;
 macro @h2(x, y, z) => x ^ (y ^ z);
 macro @i(x, y, z) => y ^ (x | ~z);
 
-macro @step(#f, a, b, c, d, ptr, n, t, s)
+macro void @step(#f, a, b, c, d, ptr, n, t, s)
 {
 	*a += #f(b, c, d) + @unaligned_load(*(uint *)&ptr[n * 4], 2) + t;
 	*a = (*a << s) | ((*a & 0xffffffff) >> (32 - s));

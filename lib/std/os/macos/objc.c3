@@ -20,6 +20,9 @@ macro bool ObjcClass.equals(ObjcClass a, ObjcClass b) => a == b;
 fn ObjcId alloc(ObjcClass cls) => objc::msg_send(cls, SendVoid, "alloc");
 fn void release(ObjcId id) => objc::msg_send(id, SendVoid, "release"); 
 
+alias NSUInteger = $typefrom(env::ARCH_64_BIT ??? ulong : uint);
+alias NSInteger = $typefrom(env::ARCH_64_BIT ??? long : int);
+
 macro ObjcClass? class_by_name(ZString c)
 {
 	ObjcClass cls = objc::lookUpClass(c);
@@ -43,6 +46,15 @@ macro msg_send(id, $FunctionType, ZString $selector, ...)
 	return (($FunctionType)&msgSend)((ObjcId)id, sel_getUid($selector), $vasplat);
 }
 
+macro void @autoreleasepool(;@body())
+{
+	void* ctx = objc_autoreleasePoolPush();
+	defer objc_autoreleasePoolPop(ctx);
+	@body();
+}
+
+extern fn void* objc_autoreleasePoolPush();
+extern fn void objc_autoreleasePoolPop(void* context);
 extern fn ObjcClass getClass(ZString name) @extern("objc_getClass");
 extern fn int getClassList(ObjcClass* buffer, int buffer_count) @extern("objc_getClassList");
 extern fn ObjcClass lookUpClass(ZString name) @extern("objc_lookUpClass") @builtin;

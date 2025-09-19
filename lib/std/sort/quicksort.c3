@@ -2,18 +2,19 @@ module std::sort;
 import std::sort::qs;
 
 <*
-Sort list using the quick sort algorithm.
+ Sort list using the quick sort algorithm.
+
  @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
  @require @is_valid_cmp_fn(cmp, list, context) : "Expected a comparison function which compares values"
  @require @is_valid_context(cmp, context) : "Expected a valid context"
 *>
-macro quicksort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
+macro void quicksort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
 	$if $kindof(list) == POINTER &&& ($kindof(*list) == ARRAY || $kindof(*list) == VECTOR):
 		$typeof((*list)[0])[] list2 = list;
 		qs::qsort{$typeof(list2), $typeof(cmp), $typeof(context)}(list2, 0, (isz)list.len - 1, cmp, context);
 	$else
-		usz len = sort::len_from_list(list);
+		usz len = lengthof(list);
 		qs::qsort{$typeof(list), $typeof(cmp), $typeof(context)}(list, 0, (isz)len - 1, cmp, context);
 	$endif
 }
@@ -29,7 +30,7 @@ list will be partially sorted.
 *>
 macro quickselect(list, isz k, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
-	usz len = sort::len_from_list(list);
+	usz len = lengthof(list);
 	return qs::qselect{$typeof(list), $typeof(cmp), $typeof(context)}(list, 0, (isz)len - 1, k, cmp, context);
 }
 
@@ -82,8 +83,8 @@ fn void qsort(Type list, isz low, isz high, CmpFn cmp, Context context)
 }
 
 <*
-@require low <= k : "kth smalles element is smaller than lower bounds"
-@require k <= high : "kth smalles element is larger than upper bounds"
+@require low <= k : "kth smallest element is smaller than lower bounds"
+@require k <= high : "kth smallest element is larger than upper bounds"
 *>
 fn ElementType? qselect(Type list, isz low, isz high, isz k, CmpFn cmp, Context context)
 {
@@ -111,7 +112,7 @@ fn ElementType? qselect(Type list, isz low, isz high, isz k, CmpFn cmp, Context 
 	return NOT_FOUND?;
 }
 
-macro @partition(Type list, isz l, isz h, CmpFn cmp, Context context)
+macro isz @partition(Type list, isz l, isz h, CmpFn cmp, Context context)
 {
 	var $has_cmp = @is_valid_macro_slot(cmp);
 	var $has_context = @is_valid_macro_slot(context);

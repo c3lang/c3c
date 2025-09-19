@@ -327,6 +327,7 @@ static inline Expr *sema_dive_into_expression(Expr *expr)
 		{
 			case EXPR_RVALUE:
 			case EXPR_RECAST:
+			case EXPR_PTR_ACCESS:
 				expr = expr->inner_expr;
 				continue;
 			case EXPR_MAKE_SLICE:
@@ -498,6 +499,7 @@ static inline bool sema_check_return_matches_opt_returns(SemaContext *context, E
 
 static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_expr)
 {
+	if (!context->current_macro) return true;
 	ASSERT(context->current_macro);
 	// This is a per return check, so we don't do it if the return expression is missing,
 	// or if it is optional, or – obviously - if there are no '@ensure'.
@@ -630,8 +632,18 @@ INLINE bool sema_check_not_stack_variable_escape(SemaContext *context, Expr *exp
 	expr = expr->unary_expr.expr;
 CHECK_ACCESS:
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_DONE);
-	while (expr->expr_kind == EXPR_ACCESS_RESOLVED) expr = expr->access_resolved_expr.parent;
-
+	// &foo.bar.baz => foo
+	while (expr->expr_kind == EXPR_ACCESS_RESOLVED)
+	{
+		// If we indexed into something, like &foo.bar.baz[3]
+		if (allow_pointer)
+		{
+			// Then if foo.bar.baz was a pointer or slice, that's ok.
+			TypeKind kind = type_flatten(expr->type)->type_kind;
+			if (kind == TYPE_POINTER || kind == TYPE_SLICE) return true;
+		}
+		expr = expr->access_resolved_expr.parent;
+	}
 	if (expr->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *decl = expr->ident_expr;
 	if (decl->decl_kind != DECL_VAR) return true;
@@ -639,6 +651,8 @@ CHECK_ACCESS:
 	{
 		case VARDECL_LOCAL:
 			if (decl->var.is_static) return true;
+			FALLTHROUGH;
+		case VARDECL_PARAM:
 			switch (type_flatten(decl->type)->type_kind)
 			{
 				case TYPE_POINTER:
@@ -649,15 +663,12 @@ CHECK_ACCESS:
 				default:
 					break;
 			}
-			FALLTHROUGH;
-		case VARDECL_PARAM:
 			break;
 		default:
 			return true;
 	}
-	SEMA_ERROR(outer, "A pointer to a local variable will be invalid once the function returns. "
+	RETURN_SEMA_ERROR(outer, "A pointer to a local variable will be invalid once the function returns. "
 					  "Allocate the data on the heap or temp memory to return a pointer.");
-	return false;
 }
 
 /**
@@ -1564,7 +1575,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	Decl *index_function = NULL;
 	Type *index_type = type_usz;
 	bool is_enum_iterator = false;
-
+	bool need_deref = false;
 	// Now we lower the foreach...
 	// If we can't find a value, or this is distinct, then we assume there is an overload.
 	if (!value_type || canonical->type_kind == TYPE_DISTINCT)
@@ -1597,6 +1608,12 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 		// Get the proper macro
 		index_function = value_by_ref ? by_ref : by_val;
+		if (!index_function)
+		{
+			assert(!value_by_ref);
+			need_deref = true;
+			index_function = by_ref;
+		}
 		ASSERT_SPAN(statement, index_function);
 
 		// The index type is the second parameter.
@@ -1613,6 +1630,11 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		// The return type is the value type if it is known (it's inferred for macros)
 		TypeInfoId rtype = index_function->func_decl.signature.rtype;
 		value_type = rtype ? type_infoptr(rtype)->type : NULL;
+		if (need_deref && value_type)
+		{
+			if (value_type->type_kind != TYPE_POINTER) RETURN_SEMA_ERROR(enumerator, "Expected the index function to return a pointer.");
+			value_type = value_type->pointer;
+		}
 	}
 
 SKIP_OVERLOAD:;
@@ -1802,11 +1824,8 @@ SKIP_OVERLOAD:;
 	if (is_reverse)
 	{
 		// Create __idx$ > 0
-		cond = expr_new(EXPR_BINARY, idx_decl->span);
-		cond->binary_expr.operator = BINARYOP_GT;
-		cond->binary_expr.left = exprid(expr_variable(idx_decl));
 		Expr *rhs = expr_new_const_int(enumerator->span, index_type, 0);
-		cond->binary_expr.right = exprid(rhs);
+		cond = expr_new_binary(idx_decl->span, expr_variable(idx_decl), rhs, BINARYOP_GT);
 
 		// Create --__idx$
 		Expr *dec = expr_new(EXPR_UNARY, idx_decl->span);
@@ -1874,12 +1893,19 @@ SKIP_OVERLOAD:;
 		expr_rewrite_enum_from_ord(index_expr, index_type);
 	}
 	subscript->subscript_expr.index.expr = exprid(index_expr);
-	if (value_by_ref)
+	if (value_by_ref || need_deref)
 	{
 		Expr *addr = expr_new(EXPR_UNARY, subscript->span);
 		addr->unary_expr.operator = UNARYOP_ADDR;
 		addr->unary_expr.expr = subscript;
 		subscript = addr;
+	}
+	if (need_deref)
+	{
+		Expr *deref = expr_new(EXPR_UNARY, subscript->span);
+		deref->unary_expr.operator = UNARYOP_DEREF;
+		deref->unary_expr.expr = subscript;
+		subscript = deref;
 	}
 	var->var.init_expr = subscript;
 	ast_append(&succ, value_declare_ast);

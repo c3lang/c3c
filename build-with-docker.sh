@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 : ${DOCKER:=docker}
 : ${IMAGE:="c3c-builder"}

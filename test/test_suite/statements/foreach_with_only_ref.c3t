@@ -1,0 +1,47 @@
+module test;
+import std;
+
+struct Foo { int a; }
+fn usz Foo.len(&self) @operator(len) => 1;
+fn int* Foo.get_ref(&self, usz idx) @operator(&[]) => &self.a;
+
+fn void test(int a) {}
+
+fn void main()
+{
+	Foo x = { 100 };
+	foreach (a : x) test(a);
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %x = alloca %Foo, align 4
+  %.anon = alloca i64, align 8
+  %a = alloca i32, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 4, i1 false)
+  %0 = call i64 @test.Foo.len(ptr %x)
+  store i64 0, ptr %.anon, align 8
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %loop.body, %entry
+  %1 = load i64, ptr %.anon, align 8
+  %lt = icmp ult i64 %1, %0
+  br i1 %lt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %2 = load i64, ptr %.anon, align 8
+  %3 = call ptr @test.Foo.get_ref(ptr %x, i64 %2)
+  %4 = load i32, ptr %3, align 4
+  store i32 %4, ptr %a, align 4
+  %5 = load i32, ptr %a, align 4
+  call void @test.test(i32 %5)
+  %6 = load i64, ptr %.anon, align 8
+  %addnuw = add nuw i64 %6, 1
+  store i64 %addnuw, ptr %.anon, align 8
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  ret void
+}

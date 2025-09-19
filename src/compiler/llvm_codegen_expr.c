@@ -678,7 +678,7 @@ static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *re
 			}
 			return;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 
 	}
 }
@@ -711,6 +711,9 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 	Expr *parent_expr = exprptr(expr->subscript_expr.expr);
 	Expr *index_expr = exprptr(expr->subscript_expr.index.expr);
 	Type *parent_type = type_lowering(parent_expr->type);
+
+	bool is_safe = !expr->subscript_expr.no_check && safe_mode_enabled();
+
 	// First, get thing being subscripted.
 	llvm_emit_expr(c, value, parent_expr);
 	BEValue len = { .value = NULL };
@@ -721,7 +724,7 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
 	if (parent_type_kind == TYPE_SLICE)
 	{
-		needs_len = (safe_mode_enabled() && !llvm_is_global_eval(c)) || start_from_end;
+		needs_len = (is_safe && !llvm_is_global_eval(c)) || start_from_end;
 		if (needs_len)
 		{
 			if (LLVMIsAGlobalVariable(value->value) && llvm_is_global_eval(c))
@@ -740,7 +743,7 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 	{
 		// From back should always be folded.
 		ASSERT(!expr_is_const(expr) || !start_from_end);
-		needs_len = (safe_mode_enabled() && !expr_is_const(expr)) || start_from_end;
+		needs_len = (is_safe && !expr_is_const(expr)) || start_from_end;
 		if (needs_len)
 		{
 			llvm_value_set_int(c, &len, type_isz, value->type->array.len);
@@ -760,7 +763,7 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 		ASSERT(needs_len);
 		index.value = LLVMBuildNUWSub(c->builder, llvm_zext_trunc(c, len.value, llvm_get_type(c, index.type)), index.value, "");
 	}
-	if (needs_len && safe_mode_enabled() && !llvm_is_global_eval(c))
+	if (needs_len && is_safe && !llvm_is_global_eval(c))
 	{
 		llvm_emit_array_bounds_check(c, &index, len.value, index_expr->span);
 	}
@@ -867,7 +870,7 @@ static void llvm_emit_member_addr(GenContext *c, BEValue *value, Decl *parent, D
 				llvm_value_struct_gep(c, value, value, (unsigned)index);
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 		parent = found;
 	} while (found != member);
@@ -1508,7 +1511,7 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 			llvm_store_zero(c, ref);
 			return;
 		case CONST_INIT_ARRAY_VALUE:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case CONST_INIT_ARRAY_FULL:
 		{
 			LLVMValueRef array_ref = ref->value;
@@ -1580,7 +1583,7 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 			return;
 		}
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 static inline void llvm_emit_initialize_reference_vector(GenContext *c, BEValue *ref, Type *real_type, Expr **elements)
@@ -1817,7 +1820,7 @@ static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref,
 			llvm_emit_initialize_designated_const_range(c, ref, offset, current, last, expr, emitted_value);
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 }
 
@@ -2070,7 +2073,7 @@ static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, E
 			llvm_emit_initialize_reference_designated(c, ref, expr);
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 }
 
@@ -2187,7 +2190,7 @@ static void llvm_emit_vec_comp(GenContext *c, BEValue *result, BEValue *lhs, BEV
 				res = LLVMBuildFCmp(c->builder, LLVMRealOLT, lhs->value, rhs->value, "lt");
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 	else
@@ -2216,7 +2219,7 @@ static void llvm_emit_vec_comp(GenContext *c, BEValue *result, BEValue *lhs, BEV
 				res = LLVMBuildICmp(c->builder, is_signed ? LLVMIntSLT : LLVMIntULT, lhs->value, rhs->value, "lt");
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 	llvm_value_set(result, res, type);
@@ -2462,7 +2465,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 			FATAL_ERROR("Illegal unary op %s", expr->unary_expr.operator);
 		case UNARYOP_PLUS:
 			// Folded
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case UNARYOP_NOT:
 			llvm_emit_expr(c, value, inner);
 			if (type_flat_is_vector(type))
@@ -2550,7 +2553,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_pre_inc_dec(c, value, inner, -1, !expr->unary_expr.no_wrap);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 
@@ -2677,7 +2680,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 			parent_base = parent_addr;
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 
 	// Emit the start and end
@@ -2688,7 +2691,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	switch (range.range_type)
 	{
 		case RANGE_SINGLE_ELEMENT:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case RANGE_DYNAMIC:
 		case RANGE_CONST_LEN:
 		case RANGE_CONST_END:
@@ -2725,7 +2728,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 				llvm_value_set_int(c, &len, start_type, parent_type->array.len);
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 
@@ -2759,7 +2762,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		switch (range.range_type)
 		{
 			case RANGE_SINGLE_ELEMENT:
-				UNREACHABLE
+				UNREACHABLE_VOID
 			case RANGE_DYNAMIC:
 				llvm_emit_exprid(c, &end_index, range.end);
 				llvm_value_rvalue(c, &end_index);
@@ -2877,7 +2880,7 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 			start_pointer = llvm_emit_pointer_inbounds_gep_raw(c, llvm_get_pointee_type(c, parent.type), parent.value, start.value);
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 
 	// Create a new slice type
@@ -3178,7 +3181,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 					llvm_value_set(result, llvm_const_int(c, type_bool, 1), type_bool);
 					return;
 				default:
-					UNREACHABLE
+					UNREACHABLE_VOID
 			}
 		}
 		lhs_signed = false;
@@ -3210,7 +3213,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 				value = LLVMBuildICmp(c->builder, LLVMIntULT, lhs_value, rhs_value, "lt");
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 		if (vector_type)
 		{
@@ -3247,7 +3250,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 			comp_value = LLVMBuildICmp(c->builder, LLVMIntSLT, lhs_value, rhs_value, "lt");
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 
 	// If right side is also signed then this is fine.
@@ -3297,7 +3300,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 			comp_value = LLVMBuildOr(c->builder, check_value, comp_value, "siui-lt");
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	if (vector_type)
 	{
@@ -3335,7 +3338,7 @@ static void llvm_emit_ptr_comparison(GenContext *c, BEValue *result, BEValue *lh
 			val = LLVMBuildICmp(c->builder, LLVMIntULT, lhs_value, rhs_value, "lt");
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	llvm_value_set(result, val, type_bool);
 }
@@ -3369,7 +3372,7 @@ static void llvm_emit_any_comparison(GenContext *c, BEValue *result, BEValue *lh
 			res = LLVMBuildOr(c->builder, val, val2, "any_ne");
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	llvm_value_set(result, res, type_bool);
 }
@@ -3604,7 +3607,7 @@ MEMCMP:
 		case TYPE_WILDCARD:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_BOOL:
 		case ALL_FLOATS:
 		case TYPE_SLICE:
@@ -3737,7 +3740,7 @@ static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 			val = LLVMBuildFCmp(c->builder, LLVMRealOLT, lhs_value, rhs_value, "lt");
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	if (vector_type)
 	{
@@ -3783,7 +3786,7 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 	switch (lhs->type->type_kind)
 	{
 		case TYPE_VOID:
-			UNREACHABLE;
+			UNREACHABLE_VOID;
 		case TYPE_BOOL:
 		case ALL_INTS:
 			llvm_value_rvalue(c, lhs);
@@ -3807,7 +3810,7 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 			return;
 		case LOWERED_TYPES:
 		case TYPE_FLEXIBLE_ARRAY:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			llvm_emit_struct_comparison(c, result, lhs, rhs, binary_op);
@@ -3858,7 +3861,10 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 
 	// Only jump to phi if we didn't have an immediate jump. That would
 	// for example happen on "{| defer foo(); return Foo.ERR?; |} ?? 123"
-	if (success_end_block) llvm_emit_br(c, phi_block);
+	if (success_end_block)
+	{
+		if (!llvm_emit_br(c, phi_block)) success_end_block = NULL;
+	}
 
 	// Emit else
 	llvm_emit_block(c, else_block);
@@ -3881,28 +3887,37 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 		}
 	}
 
-	LLVMBasicBlockRef else_block_exit = llvm_get_current_block_if_in_use(c);
-
-	// While the value may not be an optional, we may get a jump
-	// from this construction: foo() ?? (bar()?)
-	// In this case the else block is empty.
-	if (!else_block_exit)
-	{
-		llvm_emit_block(c, phi_block);
-		*be_value = real_value;
-		return;
-	}
-
-	llvm_emit_br(c, phi_block);
-	llvm_emit_block(c, phi_block);
-
-	// Was there never a success, if so the result is the be_value.
+	// If there wasn't a success, then we end here, even if the else was a jump.
 	if (!success_end_block)
 	{
 		*be_value = else_value;
 		return;
 	}
 
+	LLVMBasicBlockRef else_block_exit = llvm_get_current_block_if_in_use(c);
+
+	// While the value may not be an optional, we may get a jump
+	// from this construction: foo() ?? (bar()?)
+	// In this case the else block is empty.
+	if (!else_block_exit || !llvm_emit_br(c, phi_block))
+	{
+		llvm_emit_block(c, phi_block);
+		*be_value = real_value;
+		return;
+	}
+
+	llvm_emit_block(c, phi_block);
+
+	assert(success_end_block && else_block_exit);
+
+	// We might have a void here
+	if (!real_value.value)
+	{
+		assert(type_flatten(expr->type) == type_void);
+		assert(!else_value.value);
+		llvm_value_set(be_value, NULL, type_void);
+		return;
+	}
 	// Emit an address if the phi is was by address
 	if (was_address)
 	{
@@ -4039,7 +4054,7 @@ void llvm_emit_bitstruct_binary_op(GenContext *c, BEValue *be_value, BEValue *lh
 			val = LLVMBuildXor(c->builder, l, r, "xor");
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	LLVMValueRef store = llvm_emit_alloca(c, big_int, lhs->alignment, "");
 	llvm_store_to_ptr_raw_aligned(c, store, val, lhs->alignment);
@@ -4119,7 +4134,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 	switch (binary_op)
 	{
 		case BINARYOP_ERROR:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case BINARYOP_MULT:
 			if (is_float)
 			{
@@ -4277,7 +4292,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 		case BINARYOP_CT_OR:
 		case BINARYOP_CT_CONCAT:
 			// Handled elsewhere.
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	ASSERT(val);
 	llvm_value_set(be_value, val, expr->type);
@@ -4551,7 +4566,7 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	// Operation + assign
 	if (binary_op > BINARYOP_ASSIGN)
 	{
-		// Finde the base op.
+		// Find the base op.
 		BinaryOp base_op = binaryop_assign_base_op(binary_op);
 		ASSERT(base_op != BINARYOP_ERROR);
 
@@ -4881,7 +4896,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			llvm_value_set(be_value, NULL, type_void);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 
@@ -4922,7 +4937,7 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_VOID:
 		case TYPE_FUNC_RAW:
 		case TYPE_FLEXIBLE_ARRAY:
-			UNREACHABLE
+			UNREACHABLE_VOID
 			break;
 		case TYPE_BOOL:
 		case ALL_INTS:
@@ -5371,7 +5386,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 	{
 		case ABI_ARG_EXPAND:
 		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case ABI_ARG_IGNORE:
 			// 12. Basically void returns or empty structs.
 			//     Here we know we don't have an optional or any return value that can be used.
@@ -5744,7 +5759,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 			break;
 		case ABI_ARG_EXPAND:
 		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case ABI_ARG_DIRECT_PAIR:
 		case ABI_ARG_IGNORE:
 		case ABI_ARG_DIRECT_COERCE_INT:
@@ -5867,7 +5882,7 @@ INLINE void llvm_emit_vasplat_expr(GenContext *c, BEValue *value_ref, Expr *vasp
 		case TYPE_SLICE:
 			return;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 
 }
@@ -6218,15 +6233,17 @@ DONE:
 static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	DebugScope *old_inline_location = c->debug.block_stack;
-	DebugScope updated;
-	if (llvm_use_debug(c))
+	DebugScope updated_val;
+	DebugScope *inline_location = old_inline_location;
+	Decl *macro = expr->macro_block.macro;
+	if (llvm_use_debug(c) && macro)
 	{
 		SourceSpan span = expr->span;
-		Decl *macro = expr->macro_block.macro;
 		LLVMMetadataRef macro_def = llvm_debug_create_macro(c, macro);
 		LLVMMetadataRef loc = llvm_create_debug_location(c, span);
 
-		updated = (DebugScope) { .lexical_block = macro_def, .inline_loc = loc, .outline_loc = old_inline_location };
+		updated_val = (DebugScope) { .lexical_block = macro_def, .inline_loc = loc, .outline_loc = old_inline_location };
+		inline_location = &updated_val;
 	}
 	FOREACH(Decl *, val, expr->macro_block.params)
 	{
@@ -6246,7 +6263,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 			case VARDECL_REWRAPPED:
 			case VARDECL_ERASE:
 			case VARDECL_BITMEMBER:
-				UNREACHABLE
+				UNREACHABLE_VOID
 			case VARDECL_PARAM_CT:
 			case VARDECL_PARAM_CT_TYPE:
 			case VARDECL_PARAM_EXPR:
@@ -6261,7 +6278,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		llvm_emit_expr(c, &value, init_expr);
 		if (llvm_value_is_addr(&value) || val->var.is_written || val->var.is_addr || llvm_use_accurate_debug_info(c))
 		{
-			c->debug.block_stack = &updated;
+			c->debug.block_stack = inline_location;
 			llvm_emit_and_set_decl_alloca(c, val);
 			llvm_store_decl(c, val, &value);
 			continue;
@@ -6270,7 +6287,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		val->backend_value = value.value;
 	}
 
-	c->debug.block_stack = &updated;
+	c->debug.block_stack = inline_location;
 	llvm_emit_return_block(c, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
 	bool is_unreachable = expr->macro_block.is_noreturn && c->current_block;
 	if (is_unreachable)
@@ -6375,7 +6392,7 @@ static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *val
 					break;
 				case DESIGNATOR_FIELD:
 				default:
-					UNREACHABLE
+					UNREACHABLE_VOID
 			}
 		}
 	}
@@ -6638,9 +6655,9 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				return;
 			}
 		case TYPEID_INFO_PARENTOF:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)
@@ -6779,7 +6796,7 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			llvm_emit_type_from_any(c, be_value);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 static LLVMValueRef llvm_get_benchmark_hook_global(GenContext *c, Expr *expr)
@@ -7109,7 +7126,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case UNRESOLVED_EXPRS:
 		case EXPR_SUBSCRIPT_ASSIGN:
 			// These are folded in the semantic analysis step.
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case EXPR_LAMBDA:
 		case EXPR_COND:
 		case EXPR_ASM:
@@ -7119,7 +7136,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_BUILTIN:
 		case EXPR_OPERATOR_CHARS:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case EXPR_TWO:
 			llvm_emit_expr(c, value, expr->two_expr.first);
 			llvm_emit_expr(c, value, expr->two_expr.last);
@@ -7322,7 +7339,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_bitaccess(c, value, expr);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 

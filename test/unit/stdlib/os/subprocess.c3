@@ -143,3 +143,21 @@ fn void test_inherit_stdio_redirect()
     assert(stdout_bytes == 0, "Should read 0 bytes from stdout");
     assert(stderr_bytes == 0, "Should read 0 bytes from stderr");
 }
+
+fn void test_write_to_stdin() @test {
+$if env::WIN32:
+	SubProcess? subprocess = process::create({`powershell`, `-C`, `Read-Host`}, {.inherit_environment = true});
+$else
+	SubProcess? subprocess = process::create({"tee"}, {.read_async = true});
+$endif
+	test::eq(@ok(subprocess), true);
+	usz? write = subprocess!!.write_to_stdin(")");
+	test::eq(@ok(write), true);
+	test::eq(write!!, 1);
+	char buf;
+	test::eq(@ok(subprocess!!.join()), true);
+	usz? read = subprocess!!.read_stdout(&buf, 1);
+	test::eq(@ok(read), true);
+	test::eq(read!!, 1);
+	test::eq(buf, ')');
+}

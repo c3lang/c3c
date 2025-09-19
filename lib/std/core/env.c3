@@ -206,5 +206,6 @@ macro bool os_is_posix() @const
 }
 const String[] AUTHORS = $$AUTHORS;
 const String[] AUTHOR_EMAILS = $$AUTHOR_EMAILS;
+const String PROJECT_VERSION = $$PROJECT_VERSION;
 const BUILTIN_EXPECT_IS_DISABLED = $feature(DISABLE_BUILTIN_EXPECT);
 const BUILTIN_PREFETCH_IS_DISABLED = $feature(DISABLE_BUILTIN_PREFETCH);

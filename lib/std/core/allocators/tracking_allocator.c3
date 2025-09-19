@@ -19,7 +19,7 @@ alias AllocMap = HashMap { uptr, Allocation };
 // It tracks allocations using a hash map but
 // is not compatible with allocators that uses mark()
 //
-// It is also embarassingly single-threaded, so
+// It is also embarrassingly single-threaded, so
 // do not use it to track allocations that cross threads.
 
 struct TrackingAllocator (Allocator)

@@ -174,7 +174,7 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 		switch (module->stage)
 		{
 			case ANALYSIS_NOT_BEGUN:
-				UNREACHABLE
+				UNREACHABLE_VOID
 			case ANALYSIS_MODULE_HIERARCHY:
 				sema_analyse_pass_module_hierarchy(module);
 				break;
@@ -264,7 +264,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_ERASED:
 			case DECL_GROUP:
 			case DECL_LABEL:
-				UNREACHABLE
+				UNREACHABLE_VOID
 			case DECL_ALIAS:
 			case DECL_ATTRIBUTE:
 			case DECL_BITSTRUCT:
@@ -285,7 +285,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 		htable_set(&unit->module->symbols, (void *)decl->name, decl);
 		if (decl->visibility == VISIBLE_PUBLIC)
 		{
-			global_context_add_generic_decl(decl);
+			global_context_add_decl(decl);
 		}
 	}
 }
@@ -584,6 +584,17 @@ void sema_print_inline(SemaContext *context, SourceSpan original)
 {
 	if (!context) return;
 	InliningSpan *inlined_at = context->inlined_at;
+	while (inlined_at)
+	{
+		if (inlined_at->span.a != original.a)
+		{
+			sema_note_prev_at(inlined_at->span, "Inlined from here.");
+		}
+		inlined_at = inlined_at->prev;
+	}
+	InliningSpan span = context->compilation_unit->module->inlined_at;
+	if (span.span.a == INVALID_SPAN.a) return;
+	inlined_at = &span;
 	while (inlined_at)
 	{
 		if (inlined_at->span.a != original.a)

@@ -387,7 +387,7 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			break;
 		case CONST_UNTYPED_LIST:
 		case CONST_MEMBER:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	PRINT("/* CONST EXPR */\n");
 }
@@ -418,7 +418,7 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 			break;
 		case NON_RUNTIME_EXPR:
 		case UNRESOLVED_EXPRS:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case EXPR_ACCESS_RESOLVED:
 			break;
 		case EXPR_ASM:
@@ -524,6 +524,7 @@ static void c_emit_jump_to_optional_exit(GenContext *c, int value)
 static int c_emit_load(GenContext *c, VariableId id)
 {
 	TODO
+	UNREACHABLE
 }
 
 static void c_value_fold_optional(GenContext *c, CValue *value)
@@ -582,7 +583,7 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 		case VARDECL_GLOBAL:
 		case VARDECL_MEMBER:
 		case VARDECL_BITMEMBER:
-			UNREACHABLE;
+			UNREACHABLE_VOID;
 		case VARDECL_PARAM:
 		case VARDECL_UNWRAPPED:
 		case VARDECL_ERASE:
@@ -590,7 +591,7 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 			return;
 		case VARDECL_LOCAL_CT:
 		case VARDECL_LOCAL_CT_TYPE:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 
 	// Get the declaration and the LLVM type.
@@ -661,7 +662,7 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 		case TYPE_WILDCARD:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
 			PRINTF("___var_%d = (c3_any_t){ NULL, NULL };\n", value->var);
@@ -785,7 +786,7 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 	switch (stmt->ast_kind)
 	{
 		case AST_POISONED:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case AST_ASM_STMT:
 			break;
 		case AST_ASM_BLOCK_STMT:
@@ -817,7 +818,7 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 		case AST_CT_IF_STMT:
 		case AST_CT_SWITCH_STMT:
 		case AST_CT_TYPE_ASSIGN_STMT:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case AST_DECLARE_STMT:
 		{
 			CValue value;

@@ -140,7 +140,7 @@ macro ulong @int_to_long(#function) => (ulong)#function << 32 + #function;
 macro uint @short_to_int(#function) => (uint)#function << 16 + #function;
 macro ushort @char_to_short(#function) => (ushort)#function << 8 + #function;
 
-macro @random_value_to_bytes(#function, char[] bytes)
+macro void @random_value_to_bytes(#function, char[] bytes)
 {
 	var $byte_size = $sizeof(#function());
 	usz len = bytes.len;
@@ -174,7 +174,7 @@ interface Random
 }
 
 
-macro init_default_random() @private
+macro void init_default_random() @private
 {
 	if (!default_random_initialized)
 	{

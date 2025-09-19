@@ -4,31 +4,31 @@ import std::collections::growablebitset;
 import std::collections::list;
 import std::io;
 
-alias List = List {usz};
+alias List2 = List {usz};
 
-alias BitSet = BitSet {2048};
+alias BitSet2 = BitSet {2048};
 
 fn void bit_ops_assign()
 {
-	BitSet bs;
-	BitSet bs2;
+	BitSet2 bs;
+	BitSet2 bs2;
 	bs.set(4);
 	bs.set(6);
 	bs2.set(4);
 	bs2.set(8);
-	BitSet bs3 = bs;
+	BitSet2 bs3 = bs;
 	bs3 ^= bs2;
 	assert(!bs3.get(4));
 	assert(!bs3.get(5));
 	assert(bs3.get(6));
 	assert(bs3.get(8));
-	BitSet bs4 = bs;
+	BitSet2 bs4 = bs;
 	bs4 |= bs2;
 	assert(bs4.get(4));
 	assert(!bs4.get(5));
 	assert(bs4.get(6));
 	assert(bs4.get(8));
-	BitSet bs5 = bs;
+	BitSet2 bs5 = bs;
 	bs5 &= bs2;
 	assert(bs5.get(4));
 	assert(!bs5.get(5));
@@ -38,23 +38,23 @@ fn void bit_ops_assign()
 
 fn void bit_ops()
 {
-	BitSet bs;
-	BitSet bs2;
+	BitSet2 bs;
+	BitSet2 bs2;
 	bs.set(4);
 	bs.set(6);
 	bs2.set(4);
 	bs2.set(8);
-	BitSet bs3 = bs ^ bs2;
+	BitSet2 bs3 = bs ^ bs2;
 	assert(!bs3.get(4));
 	assert(!bs3.get(5));
 	assert(bs3.get(6));
 	assert(bs3.get(8));
-	BitSet bs4 = bs | bs2;
+	BitSet2 bs4 = bs | bs2;
 	assert(bs4.get(4));
 	assert(!bs4.get(5));
 	assert(bs4.get(6));
 	assert(bs4.get(8));
-	BitSet bs5 = bs & bs2;
+	BitSet2 bs5 = bs & bs2;
 	assert(bs5.get(4));
 	assert(!bs5.get(5));
 	assert(!bs5.get(6));
@@ -62,7 +62,7 @@ fn void bit_ops()
 }
 fn void set_get()
 {
-	BitSet bs;
+	BitSet2 bs;
 	assert(bs.cardinality() == 0);
 
 	assert(!bs.get(0));
@@ -75,7 +75,7 @@ fn void set_get()
 	assert(bs.get(2000));
 	assert(bs.cardinality() == 2);
 
-	List found;
+	List2 found;
 	foreach (i, x : bs)
 	{
 		switch (i)
@@ -97,10 +97,10 @@ fn void set_get()
 	assert(bs.cardinality() == 0);
 }
 
-alias GrowableBitSet = GrowableBitSet{char};
+alias GrowableBitSetChar = GrowableBitSet{char};
 fn void growable_set_get()
 {
-	GrowableBitSet bs;
+	GrowableBitSetChar bs;
 	bs.tinit();
 	assert(bs.cardinality() == 0, "Invalid cardinality");
 
@@ -118,7 +118,7 @@ fn void growable_set_get()
 	assert(bs.data.len() == 251, "Len should be 251");
 	assert(bs.len() == 2001, "Len should be 2001");
 
-	List found;
+	List2 found;
 	foreach (i, x : bs)
 	{
 		switch (i)

@@ -166,6 +166,25 @@ struct ConstInitializer_
 	};
 };
 
+typedef union
+{
+	struct
+	{
+		FileId file_id;
+		unsigned char length;
+		unsigned char col;
+		uint32_t row;
+	};
+	uint64_t a;
+} SourceSpan;
+
+static_assert(sizeof(SourceSpan) == 8, "Expected 8 bytes");
+
+typedef struct InliningSpan_
+{
+	SourceSpan span;
+	struct InliningSpan_ *prev;
+} InliningSpan;
 
 typedef struct
 {
@@ -211,20 +230,7 @@ typedef struct
 	const char *full_path;
 } File;
 
-typedef union
-{
-	struct
-	{
-		FileId file_id;
-		unsigned char length;
-		unsigned char col;
-		uint32_t row;
-	};
-	uint64_t a;
-} SourceSpan;
 
-
-static_assert(sizeof(SourceSpan) == 8, "Expected 8 bytes");
 
 typedef struct
 {
@@ -849,6 +855,7 @@ typedef struct
 {
 	ExprId expr;
 	SubscriptIndex index;
+	bool no_check;
 } ExprSubscript;
 
 typedef struct
@@ -994,6 +1001,7 @@ typedef struct
 	unsigned short index : 16;
 	AsmOffsetType offset_type : 6;
 	bool neg_offset : 1;
+	bool resolved : 1;
 	union
 	{
 		struct {
@@ -1607,6 +1615,7 @@ typedef struct Module_
 	Decl **tests;
 	Decl **lambdas_to_evaluate;
 	const char *generic_suffix;
+	InliningSpan inlined_at;
 } Module;
 
 
@@ -1757,11 +1766,7 @@ typedef struct JumpTarget_
 	AstId defer;
 } JumpTarget;
 
-typedef struct InliningSpan_
-{
-	SourceSpan span;
-	struct InliningSpan_ *prev;
-} InliningSpan;
+
 
 struct SemaContext_
 {
@@ -1800,6 +1805,10 @@ struct SemaContext_
 	DynamicScope active_scope;
 	Expr *return_expr;
 	bool is_temp;
+	struct
+	{
+		Module *infer;
+	} generic;
 };
 
 typedef struct
@@ -1883,6 +1892,7 @@ typedef struct
 	const char *symbol;
 	Module *path_found;
 	bool suppress_error;
+	bool is_parameterized;
 } NameResolve;
 
 typedef struct
@@ -1932,7 +1942,6 @@ typedef struct
 	Decl **method_extension_list;
 	DeclTable symbols;
 	PathTable path_symbols;
-	DeclTable generic_symbols;
 	Path std_module_path;
 	Type *string_type;
 	Decl *panic_var;
@@ -1952,6 +1961,8 @@ typedef struct
 	GlobalContext context;
 	const char *obj_output;
 	int generic_depth;
+	double exec_time;
+	double script_time;
 } CompilerState;
 
 extern CompilerState compiler;
@@ -2024,6 +2035,13 @@ ARENA_DEF(expr, Expr)
 ARENA_DEF(decl, Decl)
 ARENA_DEF(type_info, TypeInfo)
 
+INLINE Ast *ast_new(AstKind kind, SourceSpan span)
+{
+	Ast *ast = ast_calloc();
+	ast->ast_kind = kind;
+	ast->span = span;
+	return ast;
+}
 
 INLINE TypeInfo *vartype(Decl *var)
 {
@@ -2203,6 +2221,7 @@ Decl **copy_decl_list_macro(Decl **decl_list);
 Ast *copy_ast_macro(Ast *source_ast);
 Ast *copy_ast_defer(Ast *source_ast);
 TypeInfo *copy_type_info_single(TypeInfo *type_info);
+InliningSpan *copy_inlining_span(InliningSpan *span);
 
 void init_asm(PlatformTarget *target);
 void print_asm_list(PlatformTarget *target);
@@ -2246,7 +2265,6 @@ const char *build_base_name(void);
 void global_context_clear_errors(void);
 void global_context_add_type(Type *type);
 void global_context_add_decl(Decl *type_decl);
-void global_context_add_generic_decl(Decl *decl);
 
 void linking_add_link(Linking *linker, const char *link);
 
@@ -2307,16 +2325,18 @@ Expr *expr_new_const_string(SourceSpan span, const char *string);
 Expr *expr_new_const_null(SourceSpan span, Type *type);
 Expr *expr_new_const_initializer(SourceSpan span, Type *type, ConstInitializer *initializer);
 Expr *expr_new_expr_list_resolved(SourceSpan span, Type *type, Expr **expressions);
+Expr *expr_new_binary(SourceSpan span, Expr *left, Expr *right, BinaryOp op);
+Expr *expr_new_cond(Expr *expr);
 const char *expr_kind_to_string(ExprKind kind);
 bool expr_is_simple(Expr *expr, bool to_float);
 bool expr_is_pure(Expr *expr);
 bool expr_is_runtime_const(Expr *expr);
-Expr *expr_generate_decl(Decl *decl, Expr *assign);
 Expr *expr_new_two(Expr *first, Expr *second);
 void expr_rewrite_two(Expr *original, Expr *first, Expr *second);
 void expr_insert_addr(Expr *original);
 bool sema_expr_rewrite_insert_deref(SemaContext *context, Expr *original);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
+Expr *expr_generated_local(Expr *assign, Decl **decl_ref);
 Expr *expr_variable(Decl *decl);
 Expr *expr_negate_expr(Expr *expr);
 bool expr_may_addr(Expr *expr);
@@ -2438,7 +2458,6 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 void sema_expr_convert_enum_to_int(Expr *expr);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
-bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_resolve);
 Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const char *method_name);
 Decl *sema_resolve_method(Decl *type, const char *method_name);
 Decl *sema_resolve_method_only(Decl *type, const char *method_name);
@@ -2451,6 +2470,7 @@ Decl *sema_find_label_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);
 Decl *sema_find_local(SemaContext *context, const char *symbol);
 Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
+Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
 BoolErr sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref);
@@ -2478,7 +2498,7 @@ File *source_file_text_load(const char *filename, char *content);
 
 File *compile_and_invoke(const char *file, const char *args, const char *stdin_data, size_t limit);
 void compiler_parse(void);
-bool compiler_should_ouput_file(const char *file);
+bool compiler_should_output_file(const char *file);
 void emit_json(void);
 
 void stable_init(STable *table, uint32_t initial_size);
@@ -2537,7 +2557,7 @@ AlignSize type_abi_alignment(Type *type);
 bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...);
 AlignSize type_alloca_alignment(Type *type);
 Type *type_find_largest_union_element(Type *type);
-Type *type_find_max_type(Type *type, Type *other);
+Type *type_find_max_type(Type *type, Type *other, Expr *first, Expr *second);
 Type *type_find_max_type_may_fail(Type *type, Type *other);
 Type *type_abi_find_single_struct_element(Type *type);
 Module *type_base_module(Type *type);
@@ -3114,16 +3134,32 @@ static inline Type *type_base(Type *type)
 	}
 }
 
+
+static const bool is_distinct_like[TYPE_LAST + 1] = {
+	[TYPE_ENUM] = true,
+	[TYPE_CONST_ENUM] = true,
+	[TYPE_DISTINCT] = true
+};
+
+INLINE bool typekind_is_distinct_like(TypeKind kind)
+{
+	return is_distinct_like[kind];
+}
+
 INLINE bool type_is_distinct_like(Type *type)
 {
-	TypeKind kind = type->type_kind;
-	return kind == TYPE_DISTINCT || kind == TYPE_CONST_ENUM;
+	return is_distinct_like[type->type_kind];
+}
+
+static bool type_has_inline(Type *type)
+{
+	return is_distinct_like[type->type_kind] && type->decl->is_substruct;
 }
 
 static inline Type *type_inline(Type *type)
 {
 	assert(type_is_distinct_like(type));
-	return type->type_kind == TYPE_CONST_ENUM ? type->decl->enums.type_info->type : type->decl->distinct->type;
+	return type->type_kind == TYPE_DISTINCT ? type->decl->distinct->type : type->decl->enums.type_info->type;
 }
 
 
@@ -3132,16 +3168,8 @@ static inline Type *type_flat_distinct_inline(Type *type)
 	while (1)
 	{
 		type = type->canonical;
-		switch (type->type_kind)
-		{
-			case TYPE_DISTINCT:
-			case TYPE_CONST_ENUM:
-				if (!type->decl->is_substruct) return type;
-				type = type_inline(type);
-				break;
-			default:
-				return type;
-		}
+		if (!type_has_inline(type)) return type;
+		type = type_inline(type);
 	}
 }
 
@@ -3233,6 +3261,20 @@ INLINE bool type_is_user_defined(Type *type)
 	return user_defined_types[type->type_kind];
 }
 
+
+static inline Module *type_find_generic(Type *type)
+{
+	Type *canonical = type->canonical;
+	if (canonical != type && type_is_user_defined(canonical))
+	{
+		Module *module = canonical->decl->unit->module;
+		if (module->generic_module) return module;
+	}
+	if (!type_is_user_defined(type)) return NULL;
+	Module *module = type->decl->unit->module;
+	if (module->generic_module) return module;
+	return module->generic_module ? module : NULL;
+}
 static inline Type *type_flatten_to_int(Type *type)
 {
 	while (1)
@@ -3641,7 +3683,7 @@ static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 			const_init_set_span(init->init_array_value.element, loc);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 static inline void expr_list_set_span(Expr **expr, SourceSpan loc);
@@ -3709,6 +3751,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_RECAST:
+		case EXPR_LENGTHOF:
 			expr_set_span(expr->inner_expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:

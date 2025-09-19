@@ -26,6 +26,7 @@ Vmem type_info_arena;
 static double compiler_init_time;
 static double compiler_parsing_time;
 static double compiler_sema_time;
+static double compiler_exec_time;
 static double compiler_ir_gen_time;
 static double compiler_codegen_time;
 static double compiler_link_time;
@@ -71,7 +72,6 @@ void compiler_init(BuildOptions *build_options)
 	htable_init(&compiler.context.modules, 16 * 1024);
 	pathtable_init(&compiler.context.path_symbols, INITIAL_SYMBOL_MAP);
 	decltable_init(&compiler.context.symbols, INITIAL_SYMBOL_MAP);
-	decltable_init(&compiler.context.generic_symbols, INITIAL_GENERIC_SYMBOL_MAP);
 
 	htable_init(&compiler.context.features, 1024);
 	htable_init(&compiler.context.compiler_defines, 16 * 1024);
@@ -164,10 +164,12 @@ void thread_compile_task_tb(void *compile_data)
 const char *tilde_codegen(void *context)
 {
 	error_exit("TB backend not available.");
+	UNREACHABLE
 }
 void **tilde_gen(Module** modules, unsigned module_count)
 {
 	error_exit("TB backend not available.");
+	UNREACHABLE
 }
 
 #endif
@@ -318,11 +320,23 @@ static void compiler_print_bench(void)
 		double link_time = compiler_link_time - compiler_codegen_time;
 		if (compiler_link_time >= 0) last = compiler_link_time;
 		printf("Frontend -------------------- Time --- %% total\n");
-		if (compiler_init_time >= 0) printf("Initialization took: %10.3f ms  %8.1f %%\n", compiler_init_time * 1000, compiler_init_time * 100 / last);
+		if (compiler_init_time >= 0)
+		{
+			compiler_init_time -= compiler.script_time;
+			printf("Initialization took: %10.3f ms  %8.1f %%\n", compiler_init_time * 1000, compiler_init_time * 100 / last);
+			if (compiler.script_time > 0)
+			{
+				printf("Scripts took:        %10.3f ms  %8.1f %%\n", compiler.script_time * 1000, compiler.script_time * 100 / last);
+			}
+		}
 		if (compiler_parsing_time >= 0) printf("Parsing took:        %10.3f ms  %8.1f %%\n", parse_time * 1000, parse_time * 100 / last);
 		if (compiler_sema_time >= 0)
 		{
 			printf("Analysis took:       %10.3f ms  %8.1f %%\n", sema_time * 1000, sema_time * 100 / last);
+			if (compiler.exec_time > 0)
+			{
+				printf(" - Scripts took:     %10.3f ms  %8.1f %%\n", compiler.exec_time * 1000, compiler.exec_time * 100 / last);
+			}
 			printf("TOTAL:               %10.3f ms  %8.1f %%\n", compiler_sema_time * 1000, compiler_sema_time * 100 / last);
 			puts("");
 		}
@@ -413,7 +427,7 @@ void compiler_parse(void)
 	compiler_parsing_time = bench_mark();
 }
 
-bool compiler_should_ouput_file(const char *file)
+bool compiler_should_output_file(const char *file)
 {
 	if (!vec_size(compiler.build.emit_only)) return true;
 	FOREACH(const char *, f, compiler.build.emit_only)
@@ -455,6 +469,7 @@ void compiler_compile(void)
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 	compiler_sema_time = bench_mark();
+	compiler_exec_time = compiler.exec_time;
 	Module **modules = compiler.context.module_list;
 	unsigned module_count = vec_size(modules);
 	if (module_count > MAX_MODULES)
@@ -538,7 +553,7 @@ void compiler_compile(void)
 			task = &thread_compile_task_tb;
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	compiler_ir_gen_time = bench_mark();
 	const char *output_exe = NULL;
@@ -577,7 +592,7 @@ void compiler_compile(void)
 			case TARGET_TYPE_PREPARE:
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 	if (compiler.build.emit_llvm)
@@ -840,8 +855,8 @@ INLINE void expand_csources(const char *base_dir, const char **source_dirs, cons
 {
 	if (source_dirs)
 	{
-		static const char* c_suffix_list[3] = { ".c" };
-		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, NULL, 1, false);
+		static const char* c_suffix_list[3] = { ".c", ".m" };
+		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, NULL, 2, false);
 	}
 }
 
@@ -1233,6 +1248,7 @@ void execute_scripts(void)
 			error_exit("Failed to open script dir '%s'", compiler.build.script_dir);
 		}
 	}
+	double start = bench_mark();
 	FOREACH(const char *, exec, compiler.build.exec)
 	{
 		StringSlice execs = slice_from_string(exec);
@@ -1258,6 +1274,7 @@ PRINT_SCRIPT:;
 		}
 	}
 	dir_change(old_path);
+	compiler.script_time += bench_mark() - start;
 }
 
 static void check_address_sanitizer_options(BuildTarget *target)
@@ -1517,6 +1534,7 @@ void compile()
 	}
 	setup_define("AUTHORS", expr_names);
 	setup_define("AUTHOR_EMAILS", expr_emails);
+	setup_string_define("PROJECT_VERSION", compiler.build.version);
 	type_init_cint();
 	compiler_init_time = bench_mark();
 
@@ -1538,18 +1556,10 @@ void compile()
 	compiler_compile();
 }
 
-
-
-
 void global_context_add_decl(Decl *decl)
 {
 	decltable_set(&compiler.context.symbols, decl);
 	pathtable_set(&compiler.context.path_symbols, decl);
-}
-
-void global_context_add_generic_decl(Decl *decl)
-{
-	decltable_set(&compiler.context.generic_symbols, decl);
 }
 
 void linking_add_link(Linking *linking, const char *link)
@@ -1604,6 +1614,7 @@ Module *compiler_find_or_create_module(Path *module_name, const char **parameter
 	// Set up the module.
 	module = CALLOCS(Module);
 	module->name = module_name;
+	module->inlined_at = (InliningSpan) { INVALID_SPAN, NULL };
 	size_t first = 0;
 	for (size_t i = module_name->len; i > 0; i--)
 	{
@@ -1751,6 +1762,12 @@ const char *default_c_compiler(void)
 		return cc;
 	}
 #if PLATFORM_WINDOWS
+	WindowsSDK *sdk = windows_get_sdk();
+
+	if (sdk && sdk->cl_path)
+	{
+		return cc = sdk->cl_path;
+	}
 	return cc = "cl.exe";
 #else
 	return cc = "cc";
