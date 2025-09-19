@@ -918,10 +918,7 @@ static Expr *parse_orelse(ParseContext *c, Expr *left_side, SourceSpan lhs_start
 	// Assignment operators have precedence right -> left.
 	ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, PREC_TERNARY), poisoned_expr);
 
-	Expr *expr = expr_new(EXPR_BINARY, lhs_start);
-	expr->binary_expr.operator = BINARYOP_ELSE;
-	expr->binary_expr.left = exprid(left_side);
-	expr->binary_expr.right = exprid(right_side);
+	Expr *expr = expr_new_binary(lhs_start, left_side, right_side, BINARYOP_ELSE);
 
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -947,10 +944,7 @@ static Expr *parse_binary(ParseContext *c, Expr *left_side, SourceSpan start)
 		ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, rules[operator_type].precedence + 1), poisoned_expr);
 	}
 
-	Expr *expr = expr_new(EXPR_BINARY, start);
-	expr->binary_expr.operator = binaryop_from_token(operator_type);
-	expr->binary_expr.left = exprid(left_side);
-	expr->binary_expr.right = exprid(right_side);
+	Expr *expr = expr_new_binary(start, left_side, right_side, binaryop_from_token(operator_type));
 
 	RANGE_EXTEND_PREV(expr);
 	return expr;

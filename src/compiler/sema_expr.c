@@ -5735,20 +5735,18 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr_rewrite_const_bool(expr, type_bool, type_is_ordered(flat));
 			return true;
 		case TYPE_PROPERTY_IS_EQ:
-			if (type_is_comparable(flat))
+			switch (sema_type_can_check_equality_with_overload(context, flat))
 			{
-				expr_rewrite_const_bool(expr, type_bool, type_is_comparable(flat));
-				return true;
+				case BOOL_ERR:
+					return false;
+				case BOOL_TRUE:
+					expr_rewrite_const_bool(expr, type_bool, true);
+					return true;
+				case BOOL_FALSE:
+					expr_rewrite_const_bool(expr, type_bool, false);
+					return true;
 			}
-			if (type_is_user_defined(type))
-			{
-				BoolErr res = sema_type_has_equality_overload(context, type);
-				if (res == BOOL_ERR) return false;
-				expr_rewrite_const_bool(expr, type_bool, res == BOOL_TRUE);
-				return true;
-			}
-			expr_rewrite_const_bool(expr, type_bool, false);
-			return true;
+			UNREACHABLE
 		case TYPE_PROPERTY_IS_SUBSTRUCT:
 			expr_rewrite_const_bool(expr, type_bool, type_is_substruct(flat));
 			return true;
@@ -8211,6 +8209,179 @@ BoolErr sema_type_has_equality_overload(SemaContext *context, CanonicalType *typ
 	}
 	UNREACHABLE
 }
+
+BoolErr sema_type_can_check_equality_with_overload(SemaContext *context, Type *type)
+{
+	RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_INFERRED_VECTOR:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_POISONED:
+			UNREACHABLE
+		case TYPE_VOID:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_OPTIONAL:
+		case TYPE_MEMBER:
+		case TYPE_UNTYPED_LIST:
+			return false;
+		case TYPE_UNION:
+		case TYPE_STRUCT:
+			if (type->decl->attr_compact && compiler.build.old_compact_eq) return true;
+			return sema_type_has_equality_overload(context, type);
+		case TYPE_BITSTRUCT:
+			return true;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_SLICE:
+		case TYPE_ARRAY:
+			// Arrays are comparable if elements are
+			type = type->array.base;
+			goto RETRY;
+		case TYPE_DISTINCT:
+		case TYPE_CONST_ENUM:
+			if (sema_type_has_equality_overload(context, type)) return true;
+			type = type_inline(type);
+			goto RETRY;
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
+		case TYPE_ANYFAULT:
+		case TYPE_TYPEID:
+		case TYPE_POINTER:
+		case TYPE_ENUM:
+		case TYPE_FUNC_PTR:
+		case TYPE_FUNC_RAW:
+		case TYPE_TYPEINFO:
+		case TYPE_VECTOR:
+		case TYPE_WILDCARD:
+			return true;
+	}
+	UNREACHABLE
+}
+
+INLINE Decl *ast_append_generated_local(Ast **ast_current_ref, Expr *init)
+{
+	Ast *ast = ast_new(AST_DECLARE_STMT, init->span);
+	Decl *var = decl_new_generated_var(init->type, VARDECL_LOCAL, init->span);
+	assert(init->resolve_status == RESOLVE_DONE);
+	var->var.init_expr = init;
+	ast->declare_stmt = var;
+	(*ast_current_ref)->next = astid(ast);
+	*ast_current_ref = ast;
+	return var;
+}
+
+static inline bool sema_rewrite_expr_as_macro_block(SemaContext *context, Expr *expr, AstId start)
+{
+	Type *old_expected_block = context->expected_block_type;
+	BlockExit **old_exit_ref = context->block_exit_ref;
+	context->expected_block_type = type_bool;
+	BlockExit** block_exit_ref = CALLOCS(BlockExit*);
+	context->block_exit_ref = block_exit_ref;
+	bool success;
+	Ast *compound_stmt = ast_new(AST_COMPOUND_STMT, expr->span);
+	compound_stmt->compound_stmt.first_stmt = start;
+	SCOPE_START_WITH_FLAGS(SCOPE_MACRO)
+		success = sema_analyse_stmt_chain(context, compound_stmt);
+	SCOPE_END;
+	context->expected_block_type = old_expected_block;
+	context->block_exit_ref = old_exit_ref;
+
+	if (!success) return false;
+	expr->expr_kind = EXPR_MACRO_BLOCK;
+	expr->resolve_status = RESOLVE_DONE;
+	expr->type = type_bool;
+	expr->macro_block = (ExprMacroBlock) {
+		.first_stmt = astid(compound_stmt),
+		.block_exit = block_exit_ref
+	};
+	return true;
+}
+static bool sema_rewrite_slice_comparison(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *max)
+{
+	Ast dummy;
+	Ast *current = &dummy;
+	Decl *left_var = left->expr_kind == EXPR_IDENTIFIER ? left->ident_expr : ast_append_generated_local(&current, left);
+	Decl *right_var = right->expr_kind == EXPR_IDENTIFIER ? right->ident_expr : ast_append_generated_local(&current, right);
+	Decl *len_var_left = NULL;
+	ArraySize len = 0;
+	SourceSpan default_span = expr->span;
+	if (max->type_kind == TYPE_ARRAY)
+	{
+		len = max->array.len;
+	}
+	else
+	{
+		Expr *len_left = expr_new(EXPR_SLICE_LEN, left->span);
+		Expr *len_right = expr_new(EXPR_SLICE_LEN, right->span);
+		len_left->inner_expr = expr_variable(left_var);
+		len_right->inner_expr = expr_variable(right_var);
+		len_left->type = type_usz;
+		len_right->type = type_usz;
+		if (!sema_analyse_expr(context, len_left)) return false;
+		if (!sema_analyse_expr(context, len_right)) return false;
+		len_var_left = ast_append_generated_local(&current, len_left);
+		Ast *ast_if = ast_new(AST_IF_STMT, default_span);
+		Expr *expr_comparison = expr_new_binary(default_span, expr_variable(len_var_left), len_right, BINARYOP_NE);
+		Ast *ast_then = ast_new(AST_RETURN_STMT, default_span);
+		ast_then->return_stmt.expr = expr_new_const_bool(default_span, type_bool, false);
+		ast_if->if_stmt = (AstIfStmt) {
+			.cond = exprid(expr_new_cond(expr_comparison)),
+			.then_body = astid(ast_then),
+		};
+		current->next = astid(ast_if);
+		current = ast_if;
+	}
+	Decl *index = ast_append_generated_local(&current, expr_new_const_int(default_span, type_usz, 0));
+	Ast *ast = ast_new(AST_FOR_STMT, default_span);
+	Expr *cond_expr;
+	if (len > 0)
+	{
+		cond_expr = expr_new_binary(default_span, expr_variable(index), expr_new_const_int(default_span, type_usz, len), BINARYOP_LT);
+	}
+	else
+	{
+		cond_expr = expr_new_binary(default_span, expr_variable(index), expr_variable(len_var_left), BINARYOP_LT);
+	}
+	ast->for_stmt.cond = exprid(expr_new_cond(cond_expr));
+	Expr *update = expr_new(EXPR_UNARY, default_span);
+	update->unary_expr.expr = expr_variable(index);
+	update->unary_expr.operator = UNARYOP_INC;
+	update->unary_expr.no_wrap = true;
+	ast->for_stmt.incr = exprid(update);
+
+	Expr *left_check = expr_new(EXPR_SUBSCRIPT, default_span);
+	left_check->subscript_expr.expr = exprid(expr_variable(left_var));
+	left_check->subscript_expr.index.expr = exprid(expr_variable(index));
+	left_check->subscript_expr.no_check = true;
+	Expr *right_check = expr_new(EXPR_SUBSCRIPT, default_span);
+	right_check->subscript_expr.expr = exprid(expr_variable(right_var));
+	right_check->subscript_expr.index.expr = exprid(expr_variable(index));
+	right_check->subscript_expr.no_check = true;
+
+	Expr *expr_comparison = expr_new_binary(default_span, left_check, right_check, BINARYOP_NE);
+	Ast *ast_then = ast_new(AST_RETURN_STMT, default_span);
+	ast_then->return_stmt.expr = expr_new_const_bool(default_span, type_bool, false);
+	Ast *ast_if = ast_new(AST_IF_STMT, default_span);
+	ast_if->if_stmt = (AstIfStmt) {
+		.cond = exprid(expr_new_cond(expr_comparison)),
+		.then_body = astid(ast_then),
+	};
+	ast->for_stmt.body = astid(ast_if);
+
+	current->next = astid(ast);
+	current = ast;
+	Ast *ast_after = ast_new(AST_RETURN_STMT, default_span);
+	ast_after->return_stmt.expr = expr_new_const_bool(default_span, type_bool, true);
+	current->next = astid(ast_after);
+
+	return sema_rewrite_expr_as_macro_block(context, expr, dummy.next);
+}
+
 /**
  * Analyze a == b, a != b, a > b, a < b, a >= b, a <= b
  * @return
@@ -8311,12 +8482,6 @@ NEXT:
 	{
 		RETURN_SEMA_ERROR(expr, "Both sides are untyped and cannot be compared. Please cast one or both sides to a type, e.g. (Foo){ 1, 2 } == { 1, 2 }.");
 	}
-	if (!type_is_comparable(max))
-	{
-		CHECK_ON_DEFINED(failed_ref);
-		RETURN_SEMA_ERROR(expr, "%s does not support comparisons.",
-						  type_quoted_error_string(left->type));
-	}
 
 	if (!is_equality_type_op)
 	{
@@ -8327,6 +8492,7 @@ NEXT:
 									"cannot be ordered, did you make a mistake?",
 							  type_quoted_error_string(left->type));
 		}
+
 		if (type_is_pointer_type(max))
 		{
 
@@ -8344,6 +8510,26 @@ NEXT:
 	bool success = cast_explicit_checkable(context, left, max, failed_ref) && cast_explicit_checkable(context, right, max, failed_ref);
 	ASSERT_SPAN(expr, success);
 
+	if (!type_is_comparable(max))
+	{
+		if (is_equality_type_op && (max->type_kind == TYPE_SLICE || max->type_kind == TYPE_ARRAY))
+		{
+			Type *base = max->array.base;
+			switch (sema_type_has_equality_overload(context, base))
+			{
+				case BOOL_ERR:
+					return false;
+				case BOOL_FALSE:
+					break;
+				case BOOL_TRUE:
+					return sema_rewrite_slice_comparison(context, expr, left, right, max);
+			}
+		}
+
+		CHECK_ON_DEFINED(failed_ref);
+		RETURN_SEMA_ERROR(expr, "%s does not support comparisons.",
+						  type_quoted_error_string(left->type));
+	}
 
 DONE:
 

@@ -1,0 +1,202 @@
+// #target: macos-x64
+module test;
+import std;
+import std::core::env;
+
+struct Foo
+{
+	int a;
+}
+
+fn bool Foo.eq(self, Foo f) @operator(==)
+{
+	return self.a == f.a;
+}
+
+fn Foo[2] get()
+{
+	return { { 2 }, { 5 }};
+}
+fn void main()
+{
+	Foo f = { 2 };
+	Foo h = { 2 };
+	Foo[] g = { f, h };
+	Foo[] z = { f, f };
+	bool test = g == z;
+	Foo[2] g2 = { f, h };
+	Foo[2] z2 = { f, f };
+	bool test2 = g2 == z2;
+	bool test3 = g2 == get();
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %f = alloca %Foo, align 4
+  %h = alloca %Foo, align 4
+  %g = alloca %"Foo[]", align 8
+  %literal = alloca [2 x %Foo], align 4
+  %z = alloca %"Foo[]", align 8
+  %literal1 = alloca [2 x %Foo], align 4
+  %test = alloca i8, align 1
+  %blockret = alloca i8, align 1
+  %.anon = alloca i64, align 8
+  %g2 = alloca [2 x %Foo], align 4
+  %z2 = alloca [2 x %Foo], align 4
+  %test2 = alloca i8, align 1
+  %blockret9 = alloca i8, align 1
+  %.anon10 = alloca i64, align 8
+  %test3 = alloca i8, align 1
+  %blockret21 = alloca i8, align 1
+  %.anon22 = alloca [2 x %Foo], align 4
+  %result = alloca [2 x %Foo], align 4
+  %.anon23 = alloca i64, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %f, ptr align 4 @.__const.1, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %h, ptr align 4 @.__const.2, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 %f, i32 4, i1 false)
+  %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd, ptr align 4 %h, i32 4, i1 false)
+  %0 = insertvalue %"Foo[]" undef, ptr %literal, 0
+  %1 = insertvalue %"Foo[]" %0, i64 2, 1
+  store %"Foo[]" %1, ptr %g, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal1, ptr align 4 %f, i32 4, i1 false)
+  %ptradd2 = getelementptr inbounds i8, ptr %literal1, i64 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd2, ptr align 4 %f, i32 4, i1 false)
+  %2 = insertvalue %"Foo[]" undef, ptr %literal1, 0
+  %3 = insertvalue %"Foo[]" %2, i64 2, 1
+  store %"Foo[]" %3, ptr %z, align 8
+  %ptradd3 = getelementptr inbounds i8, ptr %g, i64 8
+  %4 = load i64, ptr %ptradd3, align 8
+  %ptradd4 = getelementptr inbounds i8, ptr %z, i64 8
+  %5 = load i64, ptr %ptradd4, align 8
+  %neq = icmp ne i64 %4, %5
+  br i1 %neq, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  store i8 0, ptr %blockret, align 1
+  br label %expr_block.exit
+
+if.exit:                                          ; preds = %entry
+  store i64 0, ptr %.anon, align 8
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %if.exit6, %if.exit
+  %6 = load i64, ptr %.anon, align 8
+  %lt = icmp ult i64 %6, %4
+  br i1 %lt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %7 = load ptr, ptr %g, align 8
+  %8 = load i64, ptr %.anon, align 8
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %7, i64 %8
+  %9 = load ptr, ptr %z, align 8
+  %10 = load i64, ptr %.anon, align 8
+  %ptroffset5 = getelementptr inbounds [4 x i8], ptr %9, i64 %10
+  %11 = load i32, ptr %ptroffset, align 4
+  %12 = load i32, ptr %ptroffset5, align 4
+  %13 = call i8 @test.Foo.eq(i32 %11, i32 %12)
+  %14 = trunc i8 %13 to i1
+  br i1 %14, label %if.exit6, label %if.else
+
+if.else:                                          ; preds = %loop.body
+  store i8 0, ptr %blockret, align 1
+  br label %expr_block.exit
+
+if.exit6:                                         ; preds = %loop.body
+  %15 = load i64, ptr %.anon, align 8
+  %addnuw = add nuw i64 %15, 1
+  store i64 %addnuw, ptr %.anon, align 8
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  store i8 1, ptr %blockret, align 1
+  br label %expr_block.exit
+
+expr_block.exit:                                  ; preds = %loop.exit, %if.else, %if.then
+  %16 = load i8, ptr %blockret, align 1
+  store i8 %16, ptr %test, align 1
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %g2, ptr align 4 %f, i32 4, i1 false)
+  %ptradd7 = getelementptr inbounds i8, ptr %g2, i64 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd7, ptr align 4 %h, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %z2, ptr align 4 %f, i32 4, i1 false)
+  %ptradd8 = getelementptr inbounds i8, ptr %z2, i64 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd8, ptr align 4 %f, i32 4, i1 false)
+  store i64 0, ptr %.anon10, align 8
+  br label %loop.cond11
+
+loop.cond11:                                      ; preds = %if.exit17, %expr_block.exit
+  %17 = load i64, ptr %.anon10, align 8
+  %lt12 = icmp ult i64 %17, 2
+  br i1 %lt12, label %loop.body13, label %loop.exit19
+
+loop.body13:                                      ; preds = %loop.cond11
+  %18 = load i64, ptr %.anon10, align 8
+  %ptroffset14 = getelementptr inbounds [4 x i8], ptr %g2, i64 %18
+  %19 = load i64, ptr %.anon10, align 8
+  %ptroffset15 = getelementptr inbounds [4 x i8], ptr %z2, i64 %19
+  %20 = load i32, ptr %ptroffset14, align 4
+  %21 = load i32, ptr %ptroffset15, align 4
+  %22 = call i8 @test.Foo.eq(i32 %20, i32 %21)
+  %23 = trunc i8 %22 to i1
+  br i1 %23, label %if.exit17, label %if.else16
+
+if.else16:                                        ; preds = %loop.body13
+  store i8 0, ptr %blockret9, align 1
+  br label %expr_block.exit20
+
+if.exit17:                                        ; preds = %loop.body13
+  %24 = load i64, ptr %.anon10, align 8
+  %addnuw18 = add nuw i64 %24, 1
+  store i64 %addnuw18, ptr %.anon10, align 8
+  br label %loop.cond11
+
+loop.exit19:                                      ; preds = %loop.cond11
+  store i8 1, ptr %blockret9, align 1
+  br label %expr_block.exit20
+
+expr_block.exit20:                                ; preds = %loop.exit19, %if.else16
+  %25 = load i8, ptr %blockret9, align 1
+  store i8 %25, ptr %test2, align 1
+  %26 = call i64 @test.get()
+  store i64 %26, ptr %result, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %.anon22, ptr align 4 %result, i32 8, i1 false)
+  store i64 0, ptr %.anon23, align 8
+  br label %loop.cond24
+
+loop.cond24:                                      ; preds = %if.exit30, %expr_block.exit20
+  %27 = load i64, ptr %.anon23, align 8
+  %lt25 = icmp ult i64 %27, 2
+  br i1 %lt25, label %loop.body26, label %loop.exit32
+
+loop.body26:                                      ; preds = %loop.cond24
+  %28 = load i64, ptr %.anon23, align 8
+  %ptroffset27 = getelementptr inbounds [4 x i8], ptr %g2, i64 %28
+  %29 = load i64, ptr %.anon23, align 8
+  %ptroffset28 = getelementptr inbounds [4 x i8], ptr %.anon22, i64 %29
+  %30 = load i32, ptr %ptroffset27, align 4
+  %31 = load i32, ptr %ptroffset28, align 4
+  %32 = call i8 @test.Foo.eq(i32 %30, i32 %31)
+  %33 = trunc i8 %32 to i1
+  br i1 %33, label %if.exit30, label %if.else29
+
+if.else29:                                        ; preds = %loop.body26
+  store i8 0, ptr %blockret21, align 1
+  br label %expr_block.exit33
+
+if.exit30:                                        ; preds = %loop.body26
+  %34 = load i64, ptr %.anon23, align 8
+  %addnuw31 = add nuw i64 %34, 1
+  store i64 %addnuw31, ptr %.anon23, align 8
+  br label %loop.cond24
+
+loop.exit32:                                      ; preds = %loop.cond24
+  store i8 1, ptr %blockret21, align 1
+  br label %expr_block.exit33
+
+expr_block.exit33:                                ; preds = %loop.exit32, %if.else29
+  %35 = load i8, ptr %blockret21, align 1
+  store i8 %35, ptr %test3, align 1
+  ret void
+}

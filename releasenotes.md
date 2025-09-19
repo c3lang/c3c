@@ -9,6 +9,7 @@
 - Infer generic parameters lhs -> rhs: `List{int} x = list::NOHEAP`.
 - Unify generic and regular module namespace.
 - `env::PROJECT_VERSION` now returns the version in project.json.
+- Comparing slices and arrays of user-defined types that implement == operator now works #2486.
 
 ### Fixes
 - Compiler assert with var x @noinit = 0 #2452

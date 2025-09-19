@@ -711,6 +711,9 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 	Expr *parent_expr = exprptr(expr->subscript_expr.expr);
 	Expr *index_expr = exprptr(expr->subscript_expr.index.expr);
 	Type *parent_type = type_lowering(parent_expr->type);
+
+	bool is_safe = !expr->subscript_expr.no_check && safe_mode_enabled();
+
 	// First, get thing being subscripted.
 	llvm_emit_expr(c, value, parent_expr);
 	BEValue len = { .value = NULL };
@@ -721,7 +724,7 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
 	if (parent_type_kind == TYPE_SLICE)
 	{
-		needs_len = (safe_mode_enabled() && !llvm_is_global_eval(c)) || start_from_end;
+		needs_len = (is_safe && !llvm_is_global_eval(c)) || start_from_end;
 		if (needs_len)
 		{
 			if (LLVMIsAGlobalVariable(value->value) && llvm_is_global_eval(c))
@@ -740,7 +743,7 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 	{
 		// From back should always be folded.
 		ASSERT(!expr_is_const(expr) || !start_from_end);
-		needs_len = (safe_mode_enabled() && !expr_is_const(expr)) || start_from_end;
+		needs_len = (is_safe && !expr_is_const(expr)) || start_from_end;
 		if (needs_len)
 		{
 			llvm_value_set_int(c, &len, type_isz, value->type->array.len);
@@ -760,7 +763,7 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 		ASSERT(needs_len);
 		index.value = LLVMBuildNUWSub(c->builder, llvm_zext_trunc(c, len.value, llvm_get_type(c, index.type)), index.value, "");
 	}
-	if (needs_len && safe_mode_enabled() && !llvm_is_global_eval(c))
+	if (needs_len && is_safe && !llvm_is_global_eval(c))
 	{
 		llvm_emit_array_bounds_check(c, &index, len.value, index_expr->span);
 	}
@@ -6230,15 +6233,17 @@ DONE:
 static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	DebugScope *old_inline_location = c->debug.block_stack;
-	DebugScope updated;
-	if (llvm_use_debug(c))
+	DebugScope updated_val;
+	DebugScope *inline_location = old_inline_location;
+	Decl *macro = expr->macro_block.macro;
+	if (llvm_use_debug(c) && macro)
 	{
 		SourceSpan span = expr->span;
-		Decl *macro = expr->macro_block.macro;
 		LLVMMetadataRef macro_def = llvm_debug_create_macro(c, macro);
 		LLVMMetadataRef loc = llvm_create_debug_location(c, span);
 
-		updated = (DebugScope) { .lexical_block = macro_def, .inline_loc = loc, .outline_loc = old_inline_location };
+		updated_val = (DebugScope) { .lexical_block = macro_def, .inline_loc = loc, .outline_loc = old_inline_location };
+		inline_location = &updated_val;
 	}
 	FOREACH(Decl *, val, expr->macro_block.params)
 	{
@@ -6273,7 +6278,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		llvm_emit_expr(c, &value, init_expr);
 		if (llvm_value_is_addr(&value) || val->var.is_written || val->var.is_addr || llvm_use_accurate_debug_info(c))
 		{
-			c->debug.block_stack = &updated;
+			c->debug.block_stack = inline_location;
 			llvm_emit_and_set_decl_alloca(c, val);
 			llvm_store_decl(c, val, &value);
 			continue;
@@ -6282,7 +6287,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		val->backend_value = value.value;
 	}
 
-	c->debug.block_stack = &updated;
+	c->debug.block_stack = inline_location;
 	llvm_emit_return_block(c, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
 	bool is_unreachable = expr->macro_block.is_noreturn && c->current_block;
 	if (is_unreachable)

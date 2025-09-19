@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE file.
 
 #include <iso646.h>
+#include <math.h>
 
 #include "compiler_internal.h"
 
@@ -592,6 +593,16 @@ void expr_insert_addr(Expr *original)
 	original->unary_expr.expr = inner;
 }
 
+Expr *expr_generated_local(Expr *assign, Decl **decl_ref)
+{
+	Decl *decl = decl_new_generated_var(assign->type, VARDECL_LOCAL, assign->span);
+	Expr *expr_decl = expr_new(EXPR_DECL, decl->span);
+	expr_decl->decl_expr = decl;
+	decl->var.init_expr = assign;
+	*decl_ref = decl;
+	return expr_decl;
+}
+
 Expr *expr_generate_decl(Decl *decl, Expr *assign)
 {
 	ASSERT(decl->decl_kind == DECL_VAR);
@@ -1006,6 +1017,23 @@ bool expr_is_simple(Expr *expr, bool to_float)
 	UNREACHABLE
 }
 
+Expr *expr_new_binary(SourceSpan span, Expr *left, Expr *right, BinaryOp op)
+{
+	Expr *expr = expr_calloc();
+	expr->expr_kind = EXPR_BINARY;
+	expr->span = span;
+	expr->binary_expr.operator = op;
+	expr->binary_expr.left = exprid(left);
+	expr->binary_expr.right = exprid(right);
+	return expr;
+}
+
+Expr *expr_new_cond(Expr *expr)
+{
+	Expr *cond = expr_new(EXPR_COND, expr->span);
+	vec_add(cond->cond_expr, expr);
+	return cond;
+}
 
 Expr *expr_new(ExprKind kind, SourceSpan start)
 {

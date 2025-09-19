@@ -499,6 +499,7 @@ static inline bool sema_check_return_matches_opt_returns(SemaContext *context, E
 
 static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_expr)
 {
+	if (!context->current_macro) return true;
 	ASSERT(context->current_macro);
 	// This is a per return check, so we don't do it if the return expression is missing,
 	// or if it is optional, or – obviously - if there are no '@ensure'.
@@ -1823,11 +1824,8 @@ SKIP_OVERLOAD:;
 	if (is_reverse)
 	{
 		// Create __idx$ > 0
-		cond = expr_new(EXPR_BINARY, idx_decl->span);
-		cond->binary_expr.operator = BINARYOP_GT;
-		cond->binary_expr.left = exprid(expr_variable(idx_decl));
 		Expr *rhs = expr_new_const_int(enumerator->span, index_type, 0);
-		cond->binary_expr.right = exprid(rhs);
+		cond = expr_new_binary(idx_decl->span, expr_variable(idx_decl), rhs, BINARYOP_GT);
 
 		// Create --__idx$
 		Expr *dec = expr_new(EXPR_UNARY, idx_decl->span);

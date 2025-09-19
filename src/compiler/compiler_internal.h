@@ -855,6 +855,7 @@ typedef struct
 {
 	ExprId expr;
 	SubscriptIndex index;
+	bool no_check;
 } ExprSubscript;
 
 typedef struct
@@ -2032,6 +2033,13 @@ ARENA_DEF(expr, Expr)
 ARENA_DEF(decl, Decl)
 ARENA_DEF(type_info, TypeInfo)
 
+INLINE Ast *ast_new(AstKind kind, SourceSpan span)
+{
+	Ast *ast = ast_calloc();
+	ast->ast_kind = kind;
+	ast->span = span;
+	return ast;
+}
 
 INLINE TypeInfo *vartype(Decl *var)
 {
@@ -2315,16 +2323,18 @@ Expr *expr_new_const_string(SourceSpan span, const char *string);
 Expr *expr_new_const_null(SourceSpan span, Type *type);
 Expr *expr_new_const_initializer(SourceSpan span, Type *type, ConstInitializer *initializer);
 Expr *expr_new_expr_list_resolved(SourceSpan span, Type *type, Expr **expressions);
+Expr *expr_new_binary(SourceSpan span, Expr *left, Expr *right, BinaryOp op);
+Expr *expr_new_cond(Expr *expr);
 const char *expr_kind_to_string(ExprKind kind);
 bool expr_is_simple(Expr *expr, bool to_float);
 bool expr_is_pure(Expr *expr);
 bool expr_is_runtime_const(Expr *expr);
-Expr *expr_generate_decl(Decl *decl, Expr *assign);
 Expr *expr_new_two(Expr *first, Expr *second);
 void expr_rewrite_two(Expr *original, Expr *first, Expr *second);
 void expr_insert_addr(Expr *original);
 bool sema_expr_rewrite_insert_deref(SemaContext *context, Expr *original);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
+Expr *expr_generated_local(Expr *assign, Decl **decl_ref);
 Expr *expr_variable(Decl *decl);
 Expr *expr_negate_expr(Expr *expr);
 bool expr_may_addr(Expr *expr);
