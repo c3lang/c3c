@@ -26,6 +26,7 @@ Vmem type_info_arena;
 static double compiler_init_time;
 static double compiler_parsing_time;
 static double compiler_sema_time;
+static double compiler_exec_time;
 static double compiler_ir_gen_time;
 static double compiler_codegen_time;
 static double compiler_link_time;
@@ -319,11 +320,23 @@ static void compiler_print_bench(void)
 		double link_time = compiler_link_time - compiler_codegen_time;
 		if (compiler_link_time >= 0) last = compiler_link_time;
 		printf("Frontend -------------------- Time --- %% total\n");
-		if (compiler_init_time >= 0) printf("Initialization took: %10.3f ms  %8.1f %%\n", compiler_init_time * 1000, compiler_init_time * 100 / last);
+		if (compiler_init_time >= 0)
+		{
+			compiler_init_time -= compiler.script_time;
+			printf("Initialization took: %10.3f ms  %8.1f %%\n", compiler_init_time * 1000, compiler_init_time * 100 / last);
+			if (compiler.script_time > 0)
+			{
+				printf("Scripts took:        %10.3f ms  %8.1f %%\n", compiler.script_time * 1000, compiler.script_time * 100 / last);
+			}
+		}
 		if (compiler_parsing_time >= 0) printf("Parsing took:        %10.3f ms  %8.1f %%\n", parse_time * 1000, parse_time * 100 / last);
 		if (compiler_sema_time >= 0)
 		{
 			printf("Analysis took:       %10.3f ms  %8.1f %%\n", sema_time * 1000, sema_time * 100 / last);
+			if (compiler.exec_time > 0)
+			{
+				printf(" - Scripts took:     %10.3f ms  %8.1f %%\n", compiler.exec_time * 1000, compiler.exec_time * 100 / last);
+			}
 			printf("TOTAL:               %10.3f ms  %8.1f %%\n", compiler_sema_time * 1000, compiler_sema_time * 100 / last);
 			puts("");
 		}
@@ -456,6 +469,7 @@ void compiler_compile(void)
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 	compiler_sema_time = bench_mark();
+	compiler_exec_time = compiler.exec_time;
 	Module **modules = compiler.context.module_list;
 	unsigned module_count = vec_size(modules);
 	if (module_count > MAX_MODULES)
@@ -1234,6 +1248,7 @@ void execute_scripts(void)
 			error_exit("Failed to open script dir '%s'", compiler.build.script_dir);
 		}
 	}
+	double start = bench_mark();
 	FOREACH(const char *, exec, compiler.build.exec)
 	{
 		StringSlice execs = slice_from_string(exec);
@@ -1259,6 +1274,7 @@ PRINT_SCRIPT:;
 		}
 	}
 	dir_change(old_path);
+	compiler.script_time += bench_mark() - start;
 }
 
 static void check_address_sanitizer_options(BuildTarget *target)

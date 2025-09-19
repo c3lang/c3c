@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "sema_internal.h"
+#include "compiler_tests/benchmark.h"
 
 void parent_path(StringSlice *slice)
 {
@@ -259,6 +260,7 @@ static bool exec_arg_append_to_scratch(Expr *arg)
 
 static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 {
+	double bench = bench_mark();
 	if (compiler.build.trust_level < TRUST_FULL)
 	{
 		RETURN_PRINT_ERROR_AT(NULL, decl, "'$exec' not permitted, trust level must be set to '--trust=full' to permit it.");
@@ -338,6 +340,7 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	{
 		RETURN_PRINT_ERROR_AT(NULL, decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDE_DIRECTIVES);
 	}
+	compiler.exec_time += bench_mark() - bench;
 	return parse_include_file(file, unit);
 }
 

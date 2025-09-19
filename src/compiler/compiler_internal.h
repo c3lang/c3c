@@ -1961,6 +1961,8 @@ typedef struct
 	GlobalContext context;
 	const char *obj_output;
 	int generic_depth;
+	double exec_time;
+	double script_time;
 } CompilerState;
 
 extern CompilerState compiler;
