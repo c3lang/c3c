@@ -1,11 +1,9 @@
 // Copyright (c) 2025 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-//
 
-// These provide typical 64-bit hash results.
 <*
- A common variant of SipHash that is widely used. Best for performance-critical applications.
+ Best for performance-critical applications.
  See std::hash::siphash for more information.
 *>
 module std::hash::siphash24;
@@ -14,7 +12,7 @@ alias SipHash24 = SipHash { ulong, 2, 4 };
 alias hash = siphash::hash { ulong, 2, 4 };
 
 <*
- A common variant of SipHash that is widely used. Best for security-focused applications.
+ Best for security-focused applications.
  See std::hash::siphash for more information.
 *>
 module std::hash::siphash48;
