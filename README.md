@@ -209,11 +209,42 @@ This installs the latest prerelease build, as opposed to the latest released ver
 3. If you don't have Visual Studio 17 installed you can either do so, or run the `msvc_build_libraries.py` Python script which will download the necessary files to compile on Windows. 
 4. Run `c3c.exe`.
 
+#### Installing on Windows with the install script
+
+Open a PowerShell terminal (you may need to run it as an administrator) and run the following command:
+```bash
+iwr -useb https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install/install.ps1 | iex
+```
+The script will inform you once the installation is successful and add the `~/.c3` directory to your PATH, which will allow you to run the c3c command from any location.
+
+You can choose another version with option `C3_VERSION`.
+For example, you can force the installation of the 0.7.4 version:
+```bash
+$env:C3_VERSION='0.7.4'; powershell -ExecutionPolicy Bypass -Command "iwr -useb https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install/install.ps1 | iex"
+```
+
+If you don't have Visual Studio 17 installed you can either do so, or run the `msvc_build_libraries.py` Python script which will download the necessary files to compile on Windows.
+
+
 #### Installing on Debian with precompiled binaries
 1. Download tar file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-linux.tar.gz](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-linux.tar.gz)
    (debug version [here](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-linux-debug.tar.gz))
 2. Unpack executable and standard lib.
 3. Run `./c3c`.
+
+#### Installing on Debian with the install script
+
+Open a terminal and run the following command:
+```bash
+curl -fsSL https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install/install.sh | bash
+```
+The C3 compiler will be installed, and the script will also update your ~/.bashrc to include `~/.c3` in your PATH, allowing you to invoke the c3c command from anywhere. You might need to restart your terminal or source your shell for the changes to take effect.
+
+You can choose another version with option `C3_VERSION`.
+For example, you can force the installation of the 0.7.4 version:
+```bash
+curl -fsSL https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install/install.sh | C3_VERSION=0.7.4 bash
+```
 
 #### Installing on Ubuntu with precompiled binaries
 1. Download tar file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-ubuntu-20.tar.gz](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-ubuntu-20.tar.gz)
@@ -295,7 +326,6 @@ You can access `c3c` via [flake.nix](./flake.nix), which will contain the latest
   );
 }
 ```
-
 
 ### Installing on Gentoo
 
