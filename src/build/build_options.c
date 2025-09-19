@@ -128,6 +128,10 @@ static void usage(bool full)
 		print_opt("--panic-msg=<yes|no>", "Turn panic message output on or off.");
 		print_opt("--optlevel=<option>", "Code optimization level: none, less, more, max.");
 		print_opt("--optsize=<option>", "Code size optimization: none, small, tiny.");
+		print_opt("--unroll-loops=<yes|no>", "Enable loop unrolling.");
+		print_opt("--loop-vectorize=<yes|no>", "Enable loop auto-vectorization.");
+		print_opt("--slp-vectorize=<yes|no>", "Enable SLP (superword-level parallelism) auto-vectorization.");
+		print_opt("--merge-functions=<yes|no>", "Enable function merging.");
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
@@ -860,6 +864,26 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("optlevel")))
 			{
 				options->optlevel = parse_opt_select(OptimizationLevel, argopt, optlevels);
+				return;
+			}
+			if ((argopt = match_argopt("merge-functions")))
+			{
+				options->merge_functions = parse_opt_select(MergeFunctions, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("loop-vectorize")))
+			{
+				options->loop_vectorization = parse_opt_select(AutoVectorization, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("unroll-loops")))
+			{
+				options->unroll_loops = parse_opt_select(UnrollLoops, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("slp-vectorize")))
+			{
+				options->slp_vectorization = parse_opt_select(AutoVectorization, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("safe")))

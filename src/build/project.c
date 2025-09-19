@@ -27,10 +27,13 @@ const char *project_default_keys[][2] = {
 		{"linker", "'builtin' for the builtin linker, 'cc' for the system linker or <path> to a custom compiler."},
 		{"linker-search-paths", "Linker search paths."},
 		{"linux-crt", "Set the directory to use for finding crt1.o and related files."},
+		{"linux-crtbegin", "Set the directory to use for finding crtbegin.o and related files."},
+		{"loop-vectorize", "Force enable/disable loop auto-vectorization."},
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
 		{"macossdk", "Set the directory for the MacOS SDK for cross compilation."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
+		{"merge-functions", "Force enable/disable function merging."},
 		{"no-entry", "Do not generate (or require) a main function."},
 		{"opt", "Optimization setting: O0, O1, O2, O3, O4, O5, Os, Oz."},
 		{"optlevel", "Code optimization level: none, less, more, max."},
@@ -46,6 +49,7 @@ const char *project_default_keys[][2] = {
 		{"script-dir", "The directory where 'exec' is run."},
 		{"show-backtrace", "Print backtrace on signals."},
 		{"single-module", "Compile all modules together, enables more inlining."},
+		{"slp-vectorize", "Force enable/disable SLP auto-vectorization."},
 		{"soft-float", "Output soft-float functions."},
 		{"sources", "Paths to project sources for all targets."},
 		{"strip-unused", "Strip unused code and globals from the output. (default: true)"},
@@ -55,6 +59,7 @@ const char *project_default_keys[][2] = {
 		{"test-sources", "Paths to project test sources for all targets."},
 		{"testfn", "Override the test function."},
 		{"trap-on-wrap", "Make signed and unsigned integer overflow generate a panic rather than wrapping."},
+		{"unroll-loops", "Force enable/disable loop unrolling optimization."},
 		{"use-stdlib", "Include the standard library (default: true)."},
 		{"vendor", "Vendor specific extensions, ignored by c3c."},
 		{"version", "Version using semantic versioning."},
@@ -65,7 +70,6 @@ const char *project_default_keys[][2] = {
 		{"x86-stack-struct-return", "Return structs on the stack for x86."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
 		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
-		{"linux-crtbegin", "Set the directory to use for finding crtbegin.o and related files."},
 };
 
 const int project_default_keys_count = ELEMENTLEN(project_default_keys);
@@ -101,10 +105,13 @@ const char* project_target_keys[][2] = {
 		{"linker-search-paths", "Additional linker search paths for the target."},
 		{"linker-search-paths-override", "Linker search paths for this target, overriding global settings."},
 		{"linux-crt", "Set the directory to use for finding crt1.o and related files."},
+		{"linux-crtbegin", "Set the directory to use for finding crtbegin.o and related files."},
+		{"loop-vectorize", "Force enable/disable loop auto-vectorization."},
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
 		{"macossdk", "Set the directory for the MacOS SDK for cross compilation."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
+		{"merge-functions", "Force enable/disable function merging."},
 		{"name", "Set the name to be different from the target name."},
 		{"no-entry", "Do not generate (or require) a main function."},
 		{"opt", "Optimization setting: O0, O1, O2, O3, O4, O5, Os, Oz."},
@@ -121,6 +128,7 @@ const char* project_target_keys[][2] = {
 		{"script-dir", "The directory where 'exec' is run."},
 		{"show-backtrace", "Print backtrace on signals."},
 		{"single-module", "Compile all modules together, enables more inlining."},
+		{"slp-vectorize", "Force enable/disable SLP auto-vectorization."},
 		{"soft-float", "Output soft-float functions."},
 		{"sources", "Additional paths to project sources for the target."},
 		{"sources-override", "Paths to project sources for this target, overriding global settings."},
@@ -132,6 +140,7 @@ const char* project_target_keys[][2] = {
 		{"testfn", "Override the test function."},
 		{"trap-on-wrap", "Make signed and unsigned integer overflow generate a panic rather than wrapping."},
 		{"type", "Type of output, one of 'executable', 'static-lib', 'dynamic-lib', 'benchmark', 'test', 'object-files' and 'prepare'." },
+		{"unroll-loops", "Force enable/disable loop unrolling optimization."},
 		{"use-stdlib", "Include the standard library (default: true)."},
 		{"vendor", "Vendor specific extensions, ignored by c3c."},
 		{"version", "Version using semantic versioning."},
@@ -142,7 +151,7 @@ const char* project_target_keys[][2] = {
 		{"x86-stack-struct-return", "Return structs on the stack for x86."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
 		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
-		{"linux-crtbegin", "Set the directory to use for finding crtbegin.o and related files."},
+
 };
 
 const int project_target_keys_count = ELEMENTLEN(project_target_keys);
@@ -266,6 +275,11 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// Size optimization
 	target->optsize = GET_SETTING(SizeOptimizationLevel, "optsize", optsizes, "`none`, `small`, `tiny`.");
+
+	target->loop_vectorization = (AutoVectorization)get_valid_bool(context, json, "loop-vectorize", target->loop_vectorization);
+	target->slp_vectorization = (AutoVectorization)get_valid_bool(context, json, "slp-vectorize", target->slp_vectorization);
+	target->unroll_loops = (UnrollLoops)get_valid_bool(context, json, "unroll-loops", target->unroll_loops);
+	target->merge_functions = (MergeFunctions)get_valid_bool(context, json, "merge-functions", target->merge_functions);
 
 	static const char *opt_settings[8] = {
 			[OPT_SETTING_O0] = "O0",
