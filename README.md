@@ -209,7 +209,7 @@ This installs the latest prerelease build, as opposed to the latest released ver
 3. If you don't have Visual Studio 17 installed you can either do so, or run the `msvc_build_libraries.py` Python script which will download the necessary files to compile on Windows. 
 4. Run `c3c.exe`.
 
-#### Installing on Windows with an install script
+#### Installing on Windows with the install script
 
 Open a PowerShell terminal (you may need to run it as an administrator) and run the following command:
 ```bash
@@ -232,7 +232,7 @@ If you don't have Visual Studio 17 installed you can either do so, or run the `m
 2. Unpack executable and standard lib.
 3. Run `./c3c`.
 
-#### Installing on Debian using the install script
+#### Installing on Debian with the install script
 
 Open a terminal and run the following command:
 ```bash
