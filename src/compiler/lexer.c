@@ -278,6 +278,14 @@ static void skip_whitespace(Lexer *lexer)
 			case '\r':
 				// Already filtered out.
 				UNREACHABLE_VOID
+			case '#':
+				if (lexer->file_begin == lexer->current && peek_next(lexer) == '!')
+				{
+					skip(lexer, 2);
+					parse_line_comment(lexer);
+					continue;
+				}
+				return;
 			default:
 				return;
 		}

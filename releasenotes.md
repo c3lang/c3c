@@ -12,6 +12,7 @@
 - Comparing slices and arrays of user-defined types that implement == operator now works #2486.
 - Add 'loop-vectorize', 'slp-vectorize', 'unroll-loops' and 'merge-functions' optimization flags #2491. 
 - Add exec timings to -vv output #2490.
+- Support #! as a comment on the first line only.
 
 ### Fixes
 - Compiler assert with var x @noinit = 0 #2452
