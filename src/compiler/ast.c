@@ -483,10 +483,7 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 		Type *parent = type_infoptr(decl->func_decl.type_parent)->type->canonical;
 		if (type_is_user_defined(parent))
 		{
-			Decl *parent_decl = parent->decl;
-			if (parent_decl->unit && parent_decl->unit->module) scratch_buffer_append_module(parent_decl->unit->module, decl->is_export);
-			scratch_buffer_append(decl->is_export ? "__" : ".");
-			scratch_buffer_append(parent->name);
+			scratch_buffer_set_extern_decl_name(parent->decl, false);
 			scratch_buffer_append(decl->is_export ? "__" : ".");
 			scratch_buffer_append(decl->name);
 			return;
@@ -501,7 +498,16 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 	Module *module = decl->unit ? decl->unit->module : NULL;
 	if (module) scratch_buffer_append_module(module, decl->is_export);
 	scratch_buffer_append(decl->is_export ? "__" : ".");
-	scratch_buffer_append(decl->name ? decl->name : "$anon");
+	const char *name = decl_is_user_defined_type(decl) ? decl->type->name : decl->name;
+	if (!name) name = "$anon";
+	if (decl->is_export)
+	{
+		scratch_buffer_append_but_mangle_underscore_dot(name);
+	}
+	else
+	{
+		scratch_buffer_append(name);
+	}
 	if (decl->visibility == VISIBLE_LOCAL)
 	{
 		assert(module);

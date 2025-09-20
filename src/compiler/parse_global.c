@@ -1791,6 +1791,12 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 				member = decl_new_with_type(symstr(c), c->span, decl_kind);
 				advance_and_verify(c, TOKEN_IDENT);
 			}
+			scratch_buffer_clear();
+			scratch_buffer_append(parent->type->name);
+			scratch_buffer_append(".");
+			scratch_buffer_append(member->name ? member->name : "$anon");
+			member->type->name = scratch_buffer_interned();
+
 			member->strukt.parent = declid(parent);
 			if (decl_kind == DECL_BITSTRUCT)
 			{

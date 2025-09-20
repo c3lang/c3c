@@ -93,7 +93,7 @@ entry:
   %ptradd7 = getelementptr inbounds i8, ptr %x, i64 32
   store float 9.000000e+00, ptr %ptradd7, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %m, ptr align 4 @.__const, i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %m2, ptr align 4 @.__const.16, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %m2, ptr align 4 @.__const.9, i32 16, i1 false)
   %0 = load float, ptr %x, align 4
   %fpfpext = fpext float %0 to double
   %ptradd8 = getelementptr inbounds i8, ptr %x, i64 4

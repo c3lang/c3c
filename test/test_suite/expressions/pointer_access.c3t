@@ -42,9 +42,9 @@ fn void testSimple()
 %.anon = type { i32, i32 }
 %.anon.0 = type { double }
 
-@"$ct.pointer_access.c" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 40, i64 0, i64 5, [0 x i64] zeroinitializer }, align 8
-@"$ct.pointer_access.$anon" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@"$ct.pointer_access.$anon.4" = linkonce global %.introspect { i8 11, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.pointer_access.ExtraSimple.c" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 40, i64 0, i64 5, [0 x i64] zeroinitializer }, align 8
+@"$ct.pointer_access.ExtraSimple.$anon" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.pointer_access.ExtraSimple.$anon.4" = linkonce global %.introspect { i8 11, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @"$ct.pointer_access.ExtraSimple" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 72, i64 0, i64 6, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [71 x i8] c"a = %d, c.e = %f, c.f = %f, c.j = %f, g = %d, o0 = %f, r = %d, s = %d\0A\00", align 1
 
