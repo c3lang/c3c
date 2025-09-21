@@ -341,6 +341,7 @@ typedef enum
 	BINARYOP_CT_AND,
 	BINARYOP_CT_OR,
 	BINARYOP_CT_CONCAT,
+	BINARYOP_CT_CONCAT_ASSIGN,
 	// Don't change the ordering for GT to EQ or things will break
 	BINARYOP_GT,
 	BINARYOP_GE,
@@ -1147,6 +1148,8 @@ typedef enum
 	TOKEN_CT_CONCAT,        // +++
 	TOKEN_CT_OR,            // |||
 	TOKEN_CT_TERNARY,       // ???
+	TOKEN_CT_CONCAT_ASSIGN, // +++=
+
 	// Literals.
 	TOKEN_IDENT,            // Any normal ident.
 	TOKEN_CONST_IDENT,      // Any purely uppercase ident,

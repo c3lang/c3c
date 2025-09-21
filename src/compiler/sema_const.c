@@ -484,6 +484,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 				.const_kind = CONST_UNTYPED_LIST,
 				.untyped_list = untyped_exprs
 		};
+
 		return true;
 	}
 	// Zero slice + zero slice => slice
