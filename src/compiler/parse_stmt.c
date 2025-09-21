@@ -1400,6 +1400,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_AND:
 		case TOKEN_CT_ASSIGNABLE:
 		case TOKEN_CT_CONCAT:
+		case TOKEN_CT_CONCAT_ASSIGN:
 		case TOKEN_CT_CONST_IDENT:
 		case TOKEN_CT_DEFINED:
 		case TOKEN_CT_EMBED:

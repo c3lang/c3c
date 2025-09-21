@@ -13,6 +13,7 @@
 - Add 'loop-vectorize', 'slp-vectorize', 'unroll-loops' and 'merge-functions' optimization flags #2491. 
 - Add exec timings to -vv output #2490.
 - Support #! as a comment on the first line only.
+- Add `+++=` operator.
 
 ### Fixes
 - Compiler assert with var x @noinit = 0 #2452

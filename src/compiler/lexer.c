@@ -1361,7 +1361,7 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 		case '+':
 			if (match(lexer, '+'))
 			{
-				if (match(lexer, '+')) return new_token(lexer, TOKEN_CT_CONCAT, "+++");
+				if (match(lexer, '+')) return match(lexer, '=') ? new_token(lexer, TOKEN_CT_CONCAT_ASSIGN, "+++=") : new_token(lexer, TOKEN_CT_CONCAT, "+++");
 				return new_token(lexer, TOKEN_PLUSPLUS, "++");
 			}
 			if (match(lexer, '=')) return new_token(lexer, TOKEN_PLUS_ASSIGN, "+=");

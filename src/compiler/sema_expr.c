@@ -9383,6 +9383,24 @@ static inline bool sema_expr_analyse_ct_and_or(SemaContext *context, Expr *expr,
 	return true;
 }
 
+static bool sema_expr_analyse_ct_concat_assign(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right, bool *failed_ref)
+{
+	ASSERT_SPAN(concat_expr, concat_expr->resolve_status == RESOLVE_RUNNING);
+	Expr *left_copy = copy_expr_single(left);
+	if (!sema_analyse_expr_lvalue(context, left_copy, NULL)) return false;
+	if (!sema_analyse_expr(context, left)) return false;
+	if (!sema_analyse_inferred_expr(context, left->type, right, NULL)) return false;
+	if (!sema_expr_analyse_ct_concat(context, concat_expr, left, right, NULL)) return false;
+	Expr *result_copy = copy_expr_single(concat_expr);
+	concat_expr->binary_expr.left = exprid(left_copy);
+	concat_expr->binary_expr.right = exprid(result_copy);
+	concat_expr->resolve_status = RESOLVE_NOT_DONE;
+	concat_expr->binary_expr.operator = BINARYOP_ASSIGN;
+	concat_expr->expr_kind = EXPR_BINARY;
+	concat_expr->resolve_status = RESOLVE_RUNNING;
+	return sema_expr_analyse_binary(context, NULL, concat_expr, failed_ref);
+}
+
 static inline bool sema_expr_analyse_binary(SemaContext *context, Type *infer_type, Expr *expr, bool *failed_ref)
 {
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_RUNNING);
@@ -9394,6 +9412,10 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Type *infer_ty
 		RETURN_SEMA_ERROR(expr, "You need to add explicit parentheses to clarify precedence.");
 	}
 	BinaryOp operator = expr->binary_expr.operator;
+	if (operator == BINARYOP_CT_CONCAT_ASSIGN)
+	{
+		return sema_expr_analyse_ct_concat_assign(context, expr, left, right, failed_ref);
+	}
 	if (operator >= BINARYOP_ASSIGN)
 	{
 		if (left->expr_kind != EXPR_TYPEINFO)
@@ -9412,6 +9434,8 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Type *infer_ty
 			UNREACHABLE
 		case BINARYOP_CT_CONCAT:
 			return sema_expr_analyse_ct_concat(context, expr, left, right, failed_ref);
+		case BINARYOP_CT_CONCAT_ASSIGN:
+			UNREACHABLE
 		case BINARYOP_CT_OR:
 		case BINARYOP_CT_AND:
 			return sema_expr_analyse_ct_and_or(context, expr, left, right);

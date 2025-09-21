@@ -437,6 +437,7 @@ RETRY:
 				case BINARYOP_CT_OR:
 				case BINARYOP_CT_AND:
 				case BINARYOP_CT_CONCAT:
+				case BINARYOP_CT_CONCAT_ASSIGN:
 					// This should be folded already.
 					UNREACHABLE
 				case BINARYOP_VEC_GT:
