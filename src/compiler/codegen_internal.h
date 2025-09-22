@@ -24,12 +24,12 @@ static inline Type *type_lowering(Type *type)
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_TYPEDEF:
+			case TYPE_ALIAS:
 				UNREACHABLE
 			case TYPE_OPTIONAL:
 				type = type->optional;
 				continue;
-			case TYPE_DISTINCT:
+			case TYPE_TYPEDEF:
 				type = type->decl->distinct->type;
 				continue;
 			case TYPE_CONST_ENUM:

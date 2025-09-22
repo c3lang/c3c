@@ -1140,7 +1140,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 				MACRO_COPY_EXPR_LIST(copy->enum_constant.associated);
 			}
 			break;
-		case DECL_TYPEDEF:
+		case DECL_TYPE_ALIAS:
 			copy_decl_type(copy);
 			if (copy->type_alias_decl.is_func)
 			{
@@ -1149,7 +1149,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			}
 			MACRO_COPY_TYPE(copy->type_alias_decl.type_info);
 			break;
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 			copy_decl_type(copy);
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_METHODS(copy->method_table);

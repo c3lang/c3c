@@ -66,7 +66,7 @@ INLINE const char *decl_get_extname(Decl *decl)
 
 static bool type_is_func_pointer(Type *type)
 {
-	if (type->type_kind != TYPE_DISTINCT && type->type_kind != TYPE_TYPEDEF) return false;
+	if (type->type_kind != TYPE_TYPEDEF && type->type_kind != TYPE_ALIAS) return false;
 	type = type_flatten(type);
 	return type->type_kind == TYPE_FUNC_PTR;
 }
@@ -178,7 +178,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 		case TYPE_ANYFAULT:
 			PRINTF("c3fault_t");
 			return;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			if (type->decl->is_export)
 			{
 				PRINTF("%s", decl_get_extname(type->decl));
@@ -186,7 +186,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 			}
 			header_print_type(c, type->decl->distinct->type);
 			return;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			if (type == type_usz) { PRINTF("size_t"); return; }
 			if (type == type_isz) { PRINTF("ptrdiff_t"); return; }
 			if (type == type_iptr) { PRINTF("intptr_t"); return; }
@@ -511,7 +511,7 @@ RETRY:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
 			return;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		{
 			if (!header_try_gen_both(c, type)) return;
 			Type *underlying_type = type->decl->distinct->type;
@@ -521,7 +521,7 @@ RETRY:
 			PRINTF(" %s;\n", decl_get_extname(type->decl));
 			return;
 		}
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 		{
 			if (!header_try_gen_both(c, type)) return;
 			Type *underlying_type = type->canonical;

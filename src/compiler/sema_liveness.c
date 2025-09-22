@@ -587,7 +587,7 @@ RETRY:
 	{
 		case DECL_ERASED:
 			return;
-		case DECL_TYPEDEF:
+		case DECL_TYPE_ALIAS:
 			sema_trace_type_liveness(decl->type);
 			return;
 		case DECL_ALIAS:
@@ -597,7 +597,7 @@ RETRY:
 			sema_trace_decl_dynamic_methods(decl);
 			sema_trace_enum_associated(decl);
 			return;
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 			sema_trace_type_liveness(decl->distinct->type);
 			FALLTHROUGH;
 		case DECL_CONST_ENUM:

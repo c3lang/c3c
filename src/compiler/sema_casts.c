@@ -729,8 +729,8 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 	{
 		Type *typeto = type_no_optional(to);
 		Type *from = type_no_optional(expr->type);
-		if (expr->type->canonical->type_kind == TYPE_DISTINCT
-			&& type_no_optional(to)->canonical->type_kind == TYPE_DISTINCT)
+		if (expr->type->canonical->type_kind == TYPE_TYPEDEF
+			&& type_no_optional(to)->canonical->type_kind == TYPE_TYPEDEF)
 		{
 			RETURN_CAST_ERROR(expr,
 					   "Implicitly casting %s to %s is not permitted. It's possible to do an explicit cast by placing '(%s)' before the expression. However, explicit casts between distinct types are usually not intended and are not safe.",
@@ -1191,7 +1191,7 @@ RETRY:;
 	Type *inner;
 	switch (decl->decl_kind)
 	{
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 			inner = decl->distinct->type->canonical;
 			break;
 		case DECL_STRUCT:
@@ -1617,7 +1617,7 @@ static bool rule_bits_to_int(CastContext *cc, bool is_explicit, bool is_silent)
 RETRY:
 	if (base_type != to)
 	{
-		if (base_type->type_kind == TYPE_DISTINCT && (base_type->decl->is_substruct || is_explicit))
+		if (base_type->type_kind == TYPE_TYPEDEF && (base_type->decl->is_substruct || is_explicit))
 		{
 			base_type = base_type->decl->distinct->type->canonical;
 			goto RETRY;
@@ -2540,13 +2540,13 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_TYPEID]           = CONV_TYPEID,
 	[TYPE_POINTER]          = CONV_POINTER,
 	[TYPE_ENUM]             = CONV_ENUM,
-	[TYPE_CONST_ENUM]         = CONV_RAW_ENUM,
+	[TYPE_CONST_ENUM]       = CONV_RAW_ENUM,
 	[TYPE_FUNC_PTR]         = CONV_FUNC,
 	[TYPE_STRUCT]           = CONV_STRUCT,
 	[TYPE_UNION]            = CONV_UNION,
 	[TYPE_BITSTRUCT]        = CONV_BITSTRUCT,
-	[TYPE_TYPEDEF]          = CONV_NO,
-	[TYPE_DISTINCT]         = CONV_DISTINCT,
+	[TYPE_ALIAS]            = CONV_NO,
+	[TYPE_TYPEDEF]          = CONV_DISTINCT,
 	[TYPE_ARRAY]            = CONV_ARRAY,
 	[TYPE_SLICE]            = CONV_SLICE,
 	[TYPE_FLEXIBLE_ARRAY]   = CONV_NO,

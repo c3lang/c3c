@@ -989,7 +989,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 		case DECL_ERASED:
 		case DECL_FNTYPE:
 			UNREACHABLE_VOID;
-		case DECL_TYPEDEF:
+		case DECL_TYPE_ALIAS:
 			if (decl->type_alias_decl.is_func)
 			{
 				REMINDER("Emit func typeid");
@@ -1000,7 +1000,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 			UNREACHABLE_VOID
 		case DECL_INTERFACE:
 			break;
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_ENUM:
@@ -1360,7 +1360,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_ATTRIBUTE:
 		case DECL_BITSTRUCT:
 		case DECL_CT_ASSERT:
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 		case DECL_ENUM:
 		case DECL_CONST_ENUM:
 		case DECL_ENUM_CONSTANT:
@@ -1369,7 +1369,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_LABEL:
 		case DECL_MACRO:
 		case DECL_STRUCT:
-		case DECL_TYPEDEF:
+		case DECL_TYPE_ALIAS:
 		case DECL_UNION:
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:

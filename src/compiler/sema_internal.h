@@ -266,11 +266,11 @@ static inline StorageType sema_resolve_storage_type(SemaContext *context, Type *
 		case TYPE_OPTIONAL:
 			type = type->optional;
 			goto RETRY;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			if (!sema_analyse_decl(context, type->decl)) return false;
 			type = type->canonical;
 			goto RETRY;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			is_distinct = true;
 			if (!sema_analyse_decl(context, type->decl)) return false;
 			type = type->decl->distinct->type;

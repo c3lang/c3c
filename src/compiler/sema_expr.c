@@ -248,7 +248,7 @@ Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
 			expr = expr_access_inline_member(parent, decl);
 			break;
 		}
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		{
 			Decl *decl = type->decl;
 			if (!decl->is_substruct) return NULL;
@@ -942,11 +942,11 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_CT_EXEC:
 		case DECL_CT_INCLUDE:
 		case DECL_DECLARRAY:
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 		case DECL_ERASED:
 		case DECL_GROUP:
 		case DECL_IMPORT:
-		case DECL_TYPEDEF:
+		case DECL_TYPE_ALIAS:
 			UNREACHABLE
 		case DECL_POISONED:
 			return expr_poison(expr);
@@ -4592,7 +4592,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
 	// Retain the original type when doing distinct slices.
 	Type *result_type = type_get_slice(inner_type);
 	Type *original_type_canonical = original_type->canonical;
-	if (original_type_canonical->type_kind == TYPE_DISTINCT && type_base(original_type_canonical) == result_type)
+	if (original_type_canonical->type_kind == TYPE_TYPEDEF && type_base(original_type_canonical) == result_type)
 	{
 		result_type = original_type;
 	}
@@ -4823,7 +4823,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			break;
 		case DECL_UNION:
 		case DECL_STRUCT:
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 		case DECL_BITSTRUCT:
 		case DECL_INTERFACE:
 			break;
@@ -5065,7 +5065,7 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 		case TYPE_OPTIONAL:
 			inner = type->optional;
 			break;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			inner = type->decl->distinct->type->canonical;
 			break;
 		case TYPE_CONST_ENUM:
@@ -5628,7 +5628,7 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 			{
 				case TYPE_POINTER:
 				case TYPE_OPTIONAL:
-				case TYPE_DISTINCT:
+				case TYPE_TYPEDEF:
 				case TYPE_ENUM:
 				case TYPE_CONST_ENUM:
 				case TYPE_BITSTRUCT:
@@ -5693,7 +5693,7 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 				case TYPE_POISONED:
 				case TYPE_VOID:
 				case TYPE_FUNC_RAW:
-				case TYPE_TYPEDEF:
+				case TYPE_ALIAS:
 				case TYPE_UNTYPED_LIST:
 				case TYPE_FLEXIBLE_ARRAY:
 				case TYPE_OPTIONAL:
@@ -8233,7 +8233,7 @@ BoolErr sema_type_can_check_equality_with_overload(SemaContext *context, Type *t
 			return sema_type_has_equality_overload(context, type);
 		case TYPE_BITSTRUCT:
 			return true;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_SLICE:
@@ -8241,7 +8241,7 @@ BoolErr sema_type_can_check_equality_with_overload(SemaContext *context, Type *t
 			// Arrays are comparable if elements are
 			type = type->array.base;
 			goto RETRY;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		case TYPE_CONST_ENUM:
 			if (sema_type_has_equality_overload(context, type)) return true;
 			type = type_inline(type);
@@ -9573,16 +9573,16 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr, T
 }
 
 
+// Analyse x!!
 static inline bool sema_expr_analyse_force_unwrap(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->inner_expr;
 	if (!sema_analyse_expr(context, inner)) return false;
-	expr->type = type_no_optional(inner->type);
 	if (!IS_OPTIONAL(inner))
 	{
-		SEMA_ERROR(expr, "No optional to rethrow before '!!' in the expression, please remove '!!'.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "No optional to rethrow before '!!' in the expression, please remove '!!'.");
 	}
+	expr->type = type_no_optional(inner->type);
 	return true;
 }
 
@@ -10097,7 +10097,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr,
 			case DECL_FAULT:
 				goto RETURN_CT;
 			case DECL_BITSTRUCT:
-			case DECL_DISTINCT:
+			case DECL_TYPEDEF:
 			case DECL_ENUM:
 			case DECL_CONST_ENUM:
 			case DECL_ENUM_CONSTANT:
@@ -10105,7 +10105,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr,
 			case DECL_FUNC:
 			case DECL_INTERFACE:
 			case DECL_STRUCT:
-			case DECL_TYPEDEF:
+			case DECL_TYPE_ALIAS:
 			case DECL_UNION:
 				// TODO verify that all of these are correct
 				goto RETURN_CT; // NOLINT

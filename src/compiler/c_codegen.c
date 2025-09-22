@@ -91,9 +91,9 @@ static const char *c_type_name(GenContext *c, Type *type)
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_INTERFACE:
-		case TYPE_DISTINCT:
-		case TYPE_FUNC_RAW:
 		case TYPE_TYPEDEF:
+		case TYPE_FUNC_RAW:
+		case TYPE_ALIAS:
 		case TYPE_ENUM:
 		case TYPE_CONST_ENUM:
 		case TYPE_UNTYPED_LIST:
@@ -144,9 +144,9 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 		case ALL_FLOATS:
 		case TYPE_POINTER:
 			return false;
-		case TYPE_DISTINCT:
-		case TYPE_FUNC_RAW:
 		case TYPE_TYPEDEF:
+		case TYPE_FUNC_RAW:
+		case TYPE_ALIAS:
 		case TYPE_ENUM:
 		case TYPE_CONST_ENUM:
 		case TYPE_UNTYPED_LIST:
@@ -649,11 +649,11 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 			break;
 		case TYPE_POISONED:
 		case TYPE_VOID:
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		case TYPE_CONST_ENUM:
 		case TYPE_FUNC_RAW:
 		case TYPE_BITSTRUCT:
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_INFERRED_ARRAY:

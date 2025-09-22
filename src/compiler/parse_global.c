@@ -1896,15 +1896,15 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 {
 	advance_and_verify(c, TOKEN_TYPEDEF);
 
-	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_DISTINCT);
+	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_TYPEDEF);
 
 	if (!consume_type_name(c, "distinct type")) return poisoned_decl;
 	if (!parse_interface_impls(c, &decl->interfaces)) return poisoned_decl;
 
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
-	decl->type->type_kind = TYPE_DISTINCT;
-	decl->decl_kind = DECL_DISTINCT;
+	decl->type->type_kind = TYPE_TYPEDEF;
+	decl->decl_kind = DECL_TYPEDEF;
 
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 
@@ -2175,8 +2175,8 @@ static inline Decl *parse_alias_type(ParseContext *c)
 	// 1. Did we have `fn`? In that case it's a function pointer.
 	if (try_consume(c, TOKEN_FN))
 	{
-		decl->decl_kind = DECL_TYPEDEF;
-		decl_add_type(decl, TYPE_TYPEDEF);
+		decl->decl_kind = DECL_TYPE_ALIAS;
+		decl_add_type(decl, TYPE_ALIAS);
 		decl->type_alias_decl.is_func = true;
 		Decl *decl_type = decl_new(DECL_FNTYPE, decl->name, c->prev_span);
 		decl->type_alias_decl.decl = decl_type;
@@ -2220,8 +2220,8 @@ static inline Decl *parse_alias_type(ParseContext *c)
 
 	decl->type_alias_decl.type_info = type_info;
 	decl->type_alias_decl.is_func = false;
-	decl->decl_kind = DECL_TYPEDEF;
-	decl_add_type(decl, TYPE_TYPEDEF);
+	decl->decl_kind = DECL_TYPE_ALIAS;
+	decl_add_type(decl, TYPE_ALIAS);
 	if (type_info->kind == TYPE_INFO_IDENTIFIER && type_info->resolve_status == RESOLVE_NOT_DONE
 		&& type_info->unresolved.name == decl->name)
 	{

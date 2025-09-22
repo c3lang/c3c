@@ -67,11 +67,11 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 		case DECL_CONST_ENUM:
 			kind = TYPE_CONST_ENUM;
 			break;
-		case DECL_DISTINCT:
-			kind = TYPE_DISTINCT;
-			break;
 		case DECL_TYPEDEF:
 			kind = TYPE_TYPEDEF;
+			break;
+		case DECL_TYPE_ALIAS:
+			kind = TYPE_ALIAS;
 			break;
 		case DECL_BITSTRUCT:
 			kind = TYPE_BITSTRUCT;
@@ -114,8 +114,8 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_CT_EXEC: return "compile time exec include";
 		case DECL_CT_INCLUDE: return "an include";
 		case DECL_DECLARRAY: return "a declarray";
-		case DECL_ALIAS: case DECL_ALIAS_PATH: case DECL_TYPEDEF: return "an alias";
-		case DECL_DISTINCT: return "a distinct type";
+		case DECL_ALIAS: case DECL_ALIAS_PATH: case DECL_TYPE_ALIAS: return "an alias";
+		case DECL_TYPEDEF: return "a distinct type";
 		case DECL_ENUM: return "an enum";
 		case DECL_CONST_ENUM: return "a raw enum";
 		case DECL_ENUM_CONSTANT: return "an enum value";
@@ -429,7 +429,7 @@ Decl *decl_find_enum_constant(Decl *decl, const char *name)
 AlignSize decl_find_member_offset(Decl *decl, Decl *member)
 {
 	static const AlignSize NO_MATCH = ~(AlignSize)0;
-	while (decl->decl_kind == DECL_DISTINCT) decl = decl->distinct->type->decl;
+	while (decl->decl_kind == DECL_TYPEDEF) decl = decl->distinct->type->decl;
 	Decl **members = NULL;
 	switch (decl->decl_kind)
 	{

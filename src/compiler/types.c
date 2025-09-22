@@ -138,13 +138,13 @@ void type_append_name_to_scratch(Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			UNREACHABLE_VOID;
 		case TYPE_ENUM:
 		case TYPE_CONST_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		case TYPE_BITSTRUCT:
 		case TYPE_INTERFACE:
 			scratch_buffer_append(type->decl->name);
@@ -277,10 +277,10 @@ const char *type_to_error_string(Type *type)
 			return type->name;
 		case TYPE_ENUM:
 		case TYPE_CONST_ENUM:
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		case TYPE_BITSTRUCT:
 		case TYPE_INTERFACE:
 		{
@@ -344,10 +344,10 @@ static const char *type_to_error_string_with_path(Type *type)
 			return type->name;
 		case TYPE_ENUM:
 		case TYPE_CONST_ENUM:
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		case TYPE_BITSTRUCT:
 		case TYPE_INTERFACE:
 		{
@@ -418,7 +418,7 @@ RETRY:
 			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
 			type = type->decl->strukt.container_type->type;
 			goto RETRY;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
 			type = type->decl->distinct->type;
 			goto RETRY;
@@ -436,7 +436,7 @@ RETRY:
 		case TYPE_OPTIONAL:
 			type = type->optional;
 			goto RETRY;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
@@ -525,10 +525,10 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_OPTIONAL:
 			type = type->optional;
 			goto RETRY;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			type = type->decl->distinct->type;
 			goto RETRY;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
 		case CT_TYPES:
@@ -588,10 +588,10 @@ bool type_is_ordered(Type *type)
 		case TYPE_ENUM:
 		case TYPE_CONST_ENUM:
 			return true;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			type = type->decl->distinct->type;
 			goto RETRY;
 		default:
@@ -620,7 +620,7 @@ bool type_is_comparable(Type *type)
 		case TYPE_BITSTRUCT:
 			type = type->decl->strukt.container_type->type;
 			goto RETRY;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_SLICE:
@@ -628,7 +628,7 @@ bool type_is_comparable(Type *type)
 			// Arrays are comparable if elements are
 			type = type->array.base;
 			goto RETRY;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		case TYPE_CONST_ENUM:
 			type = type_inline(type);
 			goto RETRY;
@@ -735,11 +735,11 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		case TYPE_INTERFACE:
 			scratch_buffer_set_extern_decl_name(type->decl, false);
 			return;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			type_mangle_introspect_name_to_buffer(type->canonical);
 			return;
 	}
@@ -801,10 +801,10 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_OPTIONAL:
 			type = type->optional;
 			goto RETRY;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			type = type->decl->distinct->type;
 			goto RETRY;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
@@ -1170,13 +1170,13 @@ Type *type_get_indexed_type(Type *type)
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_VECTOR:
 			return type->array.base->canonical;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_OPTIONAL:
 			type = type->optional;
 			goto RETRY;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
 		default:
@@ -1251,11 +1251,11 @@ bool type_is_valid_for_vector(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_ANYFAULT:
 			return true;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
 			type = type->decl->distinct->type;
 			goto RETRY;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
 		default:
@@ -1268,7 +1268,7 @@ bool type_is_valid_for_array(Type *type)
 	RETRY:
 	switch (type->type_kind)
 	{
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
 			type = type->decl->distinct->type;
 			goto RETRY;
@@ -1291,7 +1291,7 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_SLICE:
 		case TYPE_VECTOR:
 			return true;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
 			type = type->canonical;
 			goto RETRY;
@@ -1364,14 +1364,14 @@ static void type_init(const char *name, Type *location, TypeKind kind, unsigned 
 
 static void type_create_alias(const char *name, Type *location, Type *canonical)
 {
-	Decl *decl = decl_new(DECL_TYPEDEF, name, INVALID_SPAN);
+	Decl *decl = decl_new(DECL_TYPE_ALIAS, name, INVALID_SPAN);
 	decl->resolve_status = RESOLVE_DONE;
 	decl->type_alias_decl.type_info = type_info_new_base(canonical, INVALID_SPAN);
 	decl->unit = compiler.context.core_unit;
 	decl->is_export = true;
 	*location = (Type) {
 		.decl = decl,
-		.type_kind = TYPE_TYPEDEF,
+		.type_kind = TYPE_ALIAS,
 		.name = name,
 		.canonical = canonical
 	};
@@ -1476,7 +1476,7 @@ void type_setup(PlatformTarget *target)
 	type_init("fault", &t.fault, TYPE_ANYFAULT, target->width_pointer, target->align_pointer);
 	type_chars = type_get_slice(type_char);
 	type_wildcard_optional = type_get_optional(type_wildcard);
-	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_DISTINCT);
+	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_TYPEDEF);
 	string_decl->unit = compiler.context.core_unit;
 	string_decl->extname = string_decl->name;
 	string_decl->is_substruct = true;
@@ -1551,14 +1551,14 @@ bool type_is_scalar(Type *type)
 		case TYPE_BITSTRUCT:
 			type = type->decl->strukt.container_type->type;
 			goto RETRY;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_OPTIONAL:
 			type = type->optional;
 			if (!type) return false;
 			goto RETRY;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
 	}
@@ -1570,7 +1570,7 @@ Type *type_find_parent_type(Type *type)
 	ASSERT(type->canonical);
 	switch (type->type_kind)
 	{
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		{
 			Decl *decl = type->decl;
 			return decl->is_substruct ? decl->distinct->type : NULL;
@@ -1806,7 +1806,7 @@ bool type_may_have_method(Type *type)
 	DECL_TYPE_KIND_REAL(kind, type)
 	switch (kind)
 	{
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_ENUM:
@@ -1826,7 +1826,7 @@ bool type_may_have_method(Type *type)
 		case TYPE_BOOL:
 		case TYPE_INTERFACE:
 			return true;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			UNREACHABLE
 		case TYPE_POINTER:
 			return type == type_voidptr;
@@ -1849,7 +1849,7 @@ bool type_may_have_sub_elements(Type *type)
 	DECL_TYPE_KIND_REAL(kind, type)
 	switch (kind)
 	{
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_ENUM:
@@ -2158,7 +2158,7 @@ RETRY_DISTINCT:
 			if (other->type_kind != TYPE_FUNC_PTR) return NULL;
 			if (other->pointer->function.prototype->raw_type != type->pointer->function.prototype->raw_type) return NULL;
 			return type;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		case TYPE_CONST_ENUM:
 			if (type_is_distinct_like(other))
 			{
@@ -2188,7 +2188,7 @@ RETRY_DISTINCT:
 			// even if the struct has an inline type, this should not
 			// be implicit
 			return NULL;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			UNREACHABLE // Should only handle canonical types
 		case TYPE_UNTYPED_LIST:
 			if (other->type_kind == TYPE_ARRAY) return other;
@@ -2281,9 +2281,9 @@ unsigned type_get_introspection_kind(TypeKind kind)
 		case TYPE_BITSTRUCT:
 			return INTROSPECT_TYPE_BITSTRUCT;
 		case TYPE_FUNC_RAW:
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			UNREACHABLE
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			return INTROSPECT_TYPE_DISTINCT;
 		case TYPE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
@@ -2334,10 +2334,10 @@ Module *type_base_module(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		case TYPE_INTERFACE:
 			return type->decl->unit ? type->decl->unit->module : NULL;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_ARRAY:

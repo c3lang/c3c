@@ -95,7 +95,7 @@ void gencontext_begin_module(GenContext *c)
 			}
 			case TYPE_STRUCT:
 			case TYPE_UNION:
-			case TYPE_DISTINCT:
+			case TYPE_TYPEDEF:
 				type->decl->backend_ref = NULL;
 				break;
 			case TYPE_FUNC_RAW:

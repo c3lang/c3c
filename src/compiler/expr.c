@@ -696,7 +696,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			expr->resolve_status = RESOLVE_DONE;
 			break;
 		case TYPE_FUNC_RAW:
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
@@ -714,7 +714,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_ARRAY:
 			expr_rewrite_const_initializer(expr, type, const_init_new_zero(type));
 			return;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			expr_rewrite_to_const_zero(expr, canonical->decl->distinct->type);
 			break;
 	}

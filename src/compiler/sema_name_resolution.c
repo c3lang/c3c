@@ -83,7 +83,7 @@ static bool add_interface_to_decl_stack(SemaContext *context, Decl *decl)
 static bool add_members_to_decl_stack(SemaContext *context, Decl *decl, FindMember find)
 {
 	if (find != FIELDS_ONLY) sema_add_methods_to_decl_stack(context, decl);
-	while (decl->decl_kind == DECL_DISTINCT)
+	while (decl->decl_kind == DECL_TYPEDEF)
 	{
 		Type *type = decl->distinct->type->canonical;
 		if (!type_is_user_defined(type)) break;
@@ -269,7 +269,7 @@ INLINE Type *sema_fold_weak(SemaContext *context, Decl *decl)
 			if (!sema_analyse_decl(context, decl)) return NULL;
 		}
 		Type *type = decl->type_alias_decl.type_info->type;
-		if (type->type_kind != TYPE_TYPEDEF) return type;
+		if (type->type_kind != TYPE_ALIAS) return type;
 		decl = type->decl;
 	}
 	return decl->type;
@@ -292,7 +292,7 @@ static BoolErr sema_first_is_preferred(SemaContext *context, Decl *decl, Decl *d
 	if ((decl->is_autoimport && !decl2->is_autoimport)
 		|| (decl2->unit->module->generic_module && !decl->unit->module->generic_module)) return BOOL_TRUE;
 	// Now analyse common parents, we only check if this is a redef.
-	if (decl2->decl_kind != DECL_TYPEDEF || !decl2->is_weak) return BOOL_FALSE;
+	if (decl2->decl_kind != DECL_TYPE_ALIAS || !decl2->is_weak) return BOOL_FALSE;
 
 	Type *weak2 = sema_fold_weak(context, decl2);
 	if (!weak2) return BOOL_ERR;
@@ -301,7 +301,7 @@ static BoolErr sema_first_is_preferred(SemaContext *context, Decl *decl, Decl *d
 	if (weak2 == decl->type) return BOOL_TRUE;
 
 	// If we can't fold the decl then we're done.
-	if (decl->decl_kind != DECL_TYPEDEF || !decl->is_weak) return BOOL_FALSE;
+	if (decl->decl_kind != DECL_TYPE_ALIAS || !decl->is_weak) return BOOL_FALSE;
 
 	Type *weak = sema_fold_weak(context, decl);
 	if (!weak) return BOOL_ERR;
@@ -980,9 +980,9 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 			return sema_resolve_type_decl(context, type->optional);
 		case TYPE_TYPEINFO:
 			UNREACHABLE
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			return sema_resolve_type_decl(context, type->canonical);
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			if (!sema_analyse_decl(context, type->decl)) return false;
 			return sema_resolve_type_decl(context, type->decl->distinct->type);
 		case TYPE_FUNC_RAW:
@@ -1031,7 +1031,7 @@ Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const 
 		case TYPE_STRUCT:
 			type = type_decl->strukt.members[0]->type->canonical;
 			goto RETRY;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			type = type_decl->distinct->type->canonical;
 			goto RETRY;
 		case TYPE_ENUM:

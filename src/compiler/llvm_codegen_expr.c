@@ -3597,9 +3597,9 @@ MEMCMP:
 			break;
 		case TYPE_POISONED:
 		case TYPE_VOID:
-		case TYPE_DISTINCT:
-		case TYPE_FUNC_RAW:
 		case TYPE_TYPEDEF:
+		case TYPE_FUNC_RAW:
+		case TYPE_ALIAS:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_UNTYPED_LIST:

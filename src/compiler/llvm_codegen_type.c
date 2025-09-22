@@ -23,11 +23,11 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 			return llvm_get_type(c, decl->strukt.container_type->type);
 		case DECL_FUNC:
 			UNREACHABLE_VOID
-		case DECL_TYPEDEF:
+		case DECL_TYPE_ALIAS:
 			return llvm_get_type(c, decl->type);
 		case DECL_CONST_ENUM:
 			return llvm_get_type(c, decl->enums.type_info->type);
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 			return llvm_get_type(c, decl->distinct->type);
 		case DECL_STRUCT:
 		{
@@ -100,7 +100,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 {
 	switch (type->type_kind)
 	{
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			UNREACHABLE_VOID
 		case TYPE_ARRAY:
 			for (ArraySize i = type->array.len; i > 0; i--)
@@ -620,7 +620,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_INTERFACE, NULL, 0, NULL, false);
 		case TYPE_POINTER:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_POINTER, type->pointer, 0, NULL, false);
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_DISTINCT, type_inline(type), 0, NULL, false);
 		case TYPE_ENUM:
 			return llvm_get_introspection_for_enum(c, type);
@@ -644,7 +644,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
 			return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_BITSTRUCT, type->decl->strukt.container_type->type, 0, NULL, false);
 		}
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			return llvm_get_typeid(c, type->canonical);
 		case CT_TYPES:
 			UNREACHABLE_VOID

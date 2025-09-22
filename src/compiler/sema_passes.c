@@ -625,10 +625,10 @@ INLINE void sema_analyse_inner_func_ptr(SemaContext *c, Decl *decl)
 	Type *inner;
 	switch (decl->decl_kind)
 	{
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 			inner = decl->distinct->type;
 			break;
-		case DECL_TYPEDEF:
+		case DECL_TYPE_ALIAS:
 			inner = decl->type->canonical;
 			break;
 		default:
@@ -777,7 +777,7 @@ void sema_analysis_pass_interface(Module *module)
 		{
 			switch (decl->decl_kind)
 			{
-				case DECL_DISTINCT:
+				case DECL_TYPEDEF:
 				case DECL_STRUCT:
 				case DECL_UNION:
 				case DECL_ENUM:

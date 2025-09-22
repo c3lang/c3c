@@ -235,7 +235,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			type_info->resolve_status = RESOLVE_DONE;
 			return true;
 		case DECL_CONST_ENUM:
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 			if (resolve_type_kind & RESOLVE_TYPE_NO_CHECK_DISTINCT)
 			{
 				type_info->type = decl->type;
@@ -243,10 +243,10 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 				return true;
 			}
 			FALLTHROUGH;
-		case DECL_TYPEDEF:
+		case DECL_TYPE_ALIAS:
 			if (!sema_analyse_decl(context, decl)) return type_info_poison(type_info);
 			type_info->type = decl->type;
-			assert (type_info->type->canonical->type_kind != TYPE_TYPEDEF);
+			assert (type_info->type->canonical->type_kind != TYPE_ALIAS);
 			type_info->resolve_status = RESOLVE_DONE;
 			return true;
 		case DECL_POISONED:
@@ -423,7 +423,7 @@ bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info)
 	if (type_info->subtype != TYPE_COMPRESSED_NONE) return false;
 	Decl *decl = sema_find_path_symbol(context, type_info->unresolved.name, type_info->unresolved.path);
 	if (!decl) return false;
-	if (decl->decl_kind != DECL_TYPEDEF) return false;
+	if (decl->decl_kind != DECL_TYPE_ALIAS) return false;
 	if (decl->resolve_status == RESOLVE_DONE) return false;
 	if (decl->type_alias_decl.is_func) return false;
 	type_info = decl->type_alias_decl.type_info;
@@ -619,7 +619,7 @@ static Type *flatten_raw_function_type(Type *type)
 	Type *current;
 	switch (type->type_kind)
 	{
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			return flatten_raw_function_type(type->canonical);
 		case TYPE_FUNC_RAW:
 			return type->function.prototype->raw_type;

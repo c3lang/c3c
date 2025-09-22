@@ -171,11 +171,11 @@ void decl_register(Decl *decl)
 			UNREACHABLE_VOID
 		case DECL_ATTRIBUTE:
 		case DECL_BITSTRUCT:
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 		case DECL_ENUM:
 		case DECL_CONST_ENUM:
 		case DECL_STRUCT:
-		case DECL_TYPEDEF:
+		case DECL_TYPE_ALIAS:
 		case DECL_UNION:
 		case DECL_ALIAS:
 		case DECL_FUNC:
@@ -236,10 +236,10 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			decl_register(decl);
 			break;
 		case DECL_INTERFACE:
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 		case DECL_STRUCT:
 		case DECL_UNION:
-		case DECL_TYPEDEF:
+		case DECL_TYPE_ALIAS:
 		case DECL_BITSTRUCT:
 			ASSERT(decl->name);
 			vec_add(unit->types, decl);

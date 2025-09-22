@@ -1563,7 +1563,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	// However, if we have something distinct, that flattens to a pointer, we should never take the
 	// the underlying pointee type.
-	if (canonical->type_kind == TYPE_DISTINCT && type_flatten(canonical)->type_kind == TYPE_POINTER)
+	if (canonical->type_kind == TYPE_TYPEDEF && type_flatten(canonical)->type_kind == TYPE_POINTER)
 	{
 		value_type = NULL;
 	}
@@ -1578,7 +1578,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	bool need_deref = false;
 	// Now we lower the foreach...
 	// If we can't find a value, or this is distinct, then we assume there is an overload.
-	if (!value_type || canonical->type_kind == TYPE_DISTINCT)
+	if (!value_type || canonical->type_kind == TYPE_TYPEDEF)
 	{
 		// Get the overload for .len
 		len = sema_find_untyped_operator(enumerator->type, OVERLOAD_LEN, NULL);

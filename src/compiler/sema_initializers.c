@@ -330,9 +330,9 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	// We have the case where "Foo = int[*]"
 	if (inferred_len && !type_len_is_inferred(assigned))
 	{
-		ASSERT(assigned->type_kind == TYPE_TYPEDEF);
-		ASSERT(assigned->decl->decl_kind == DECL_TYPEDEF);
-		while (assigned->type_kind == TYPE_TYPEDEF) assigned = assigned->decl->type;
+		ASSERT(assigned->type_kind == TYPE_ALIAS);
+		ASSERT(assigned->decl->decl_kind == DECL_TYPE_ALIAS);
+		while (assigned->type_kind == TYPE_ALIAS) assigned = assigned->decl->type;
 		ASSERT(type_len_is_inferred(assigned));
 	}
 	// Prefer the typedef index: define Bar = int; Bar[1] => Bar and not int
@@ -859,7 +859,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_VOID:
 		case TYPE_POISONED:
 		case TYPE_FUNC_RAW:
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
