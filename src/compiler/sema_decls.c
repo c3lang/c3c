@@ -5207,6 +5207,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		if (stage > ANALYSIS_POST_REGISTER)
 		{
 			sema_analyze_stage(instantiated_module, stage);
+			if (compiler.context.errors_found) return poisoned_decl;
 		}
 	}
 
