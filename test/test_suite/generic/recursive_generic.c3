@@ -7,7 +7,7 @@ Aa {int} a;
 
 module test1 {Type};
 import test2;
-alias Cc = Aa {Bb {Type}}; // #error:in the same module as the original is not allowed
+alias Cc = Aa {Bb {Type}}; // #error: Generic resolution of this type has become deeply nested
 struct Aa {Type a;}
 
 module test2 {Type};

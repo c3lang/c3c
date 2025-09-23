@@ -858,9 +858,10 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		{
 			if (found->unit->module->generic_module == context->unit->module->generic_module)
 			{
-				RETURN_SEMA_ERROR_AT(name_resolve->span, "Generating a parameterized %s '%s' in the same module as the original "
-											 "is not allowed, you need to place it outside of the '%s' module.",
-					str, found->name, context->unit->module->generic_module->name->module);
+				Decl *decl = module_find_symbol(context->unit->module->generic_module, found->name);
+				ASSERT(decl);
+				name_resolve->found = decl;
+				return true;
 			}
 			RETURN_SEMA_ERROR_AT(name_resolve->span, "This %s was matched as '%s%s' in module '%s%s', so parameterizing it further doesn't work.", str, found->name, found->unit->module->generic_suffix, found->unit->module->generic_module->name->module, found->unit->module->generic_suffix);
 		}
