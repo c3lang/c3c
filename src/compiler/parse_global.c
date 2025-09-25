@@ -1656,6 +1656,10 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 					print_error_after(c->prev_span, "Expected a parameter.");
 					return false;
 				}
+				if (parse_kind == PARAM_PARSE_MACRO && ellipsis && type)
+				{
+					print_error_after(c->prev_span, "A typed macro vaarg must have a parameter name.");
+				}
 				no_name = true;
 				span = c->prev_span;
 				param_kind = VARDECL_PARAM;
