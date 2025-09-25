@@ -2,10 +2,10 @@ module foo { Type };
 
 import std::collections::list;
 
-struct Foo {
+struct Foo { // #error: Recursive definition of 'Foo'
     Type foo;
     Allocator allocator;
-    List { Foo } children; // #error: Recursive definition of 'Foo'
+    List { Foo } children;
 }
 
 module test;
