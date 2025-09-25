@@ -134,7 +134,7 @@ macro void init()
 	log_init.call(fn () => (void)logger_mutex.init());
 }
 
-fn void call_log(LogPriority prio, LogCategory category, String fmt, args...)
+macro void call_log(LogPriority prio, LogCategory category, String fmt, args...)
 {
 	LogPriority priority = mem::@atomic_load(config_priorities[category], UNORDERED);
 	if (priority > prio) return;
@@ -199,7 +199,11 @@ fn void StderrLogger.log(&self, LogPriority priority, LogCategory category, LogT
 		str.init(mem, 256);
 		str.appendf(fmt, ...args);
 		TzDateTime time = datetime::now().to_local();
+		$if FULL_LOG:
+		io::eprintfn("[%02d:%02d:%02d:%04d] %s:%d[%s] %s", time.hour, time.min, time.sec, (time.usec / 1000), file, line, priority, str);
+		$else
 		io::eprintfn("[%02d:%02d:%02d:%04d] [%s] %s", time.hour, time.min, time.sec, (time.usec / 1000), priority, str);
+		$endif
 	};
 }
 
