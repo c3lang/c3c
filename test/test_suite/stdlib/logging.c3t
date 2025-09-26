@@ -22,6 +22,9 @@ entry:
   %result = alloca [12 x i8], align 1
   %tempcoerce = alloca { i64, i32 }, align 8
   %category = alloca i8, align 1
+  %category2 = alloca i8, align 1
+  %indirectarg = alloca %"char[]", align 8
+  %indirectarg3 = alloca %"any[]", align 8
   %0 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.log.default_category)
   %1 = load i8, ptr %0, align 1
   store i8 %1, ptr %old, align 1
@@ -40,15 +43,20 @@ entry:
   %7 = load i8, ptr %6, align 1
   store i8 %7, ptr %category, align 1
   %8 = load i8, ptr %category, align 1
-  call void @std.core.log.call_log(i32 2, i8 zeroext %8, ptr @.str.1, i64 5, ptr null, i64 0)
-  %9 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.log.current_tag)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %9, ptr align 1 %old1, i32 12, i1 false)
-  %10 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.log.default_category)
-  %11 = load i8, ptr %old, align 1
-  store i8 %11, ptr %10, align 1
+  store i8 %8, ptr %category2, align 1
+  %9 = load i8, ptr %category2, align 1
+  store %"char[]" { ptr @.str.1, i64 5 }, ptr %indirectarg, align 8
+  store %"any[]" zeroinitializer, ptr %indirectarg3, align 8
+  call void @std.core.log.call_log_internal(i32 2, i8 zeroext %9, ptr @.emptystr, i64 0, ptr @.emptystr, i64 0, i32 0, ptr byval(%"char[]") align 8 %indirectarg, ptr byval(%"any[]") align 8 %indirectarg3)
+  %10 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.log.current_tag)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %10, ptr align 1 %old1, i32 12, i1 false)
+  %11 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.log.default_category)
+  %12 = load i8, ptr %old, align 1
+  store i8 %12, ptr %11, align 1
   ret void
 }
 
 declare extern_weak { i64, i32 } @std.core.log.create_tag(ptr, i64) #0
 
-declare extern_weak void @std.core.log.call_log(i32, i8 zeroext, ptr, i64, ptr, i64) #0
+declare extern_weak void @std.core.log.call_log_internal(i32, i8 zeroext, ptr, i64, ptr, i64, i32, ptr byval(%"char[]") align 8, ptr byval(%"any[]") align 8) #0
+

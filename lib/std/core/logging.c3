@@ -136,6 +136,15 @@ macro void init()
 
 macro void call_log(LogPriority prio, LogCategory category, String fmt, args...)
 {
+	$if FULL_LOG:
+	call_log_internal(prio, category, $$FILE, $$FUNC, $$LINE, fmt, args);
+	$else
+	call_log_internal(prio, category, "", "", 0, fmt, args);
+	$endif
+}
+
+fn void call_log_internal(LogPriority prio, LogCategory category, String file, String func, int line, String fmt, any[] args)
+{
 	LogPriority priority = mem::@atomic_load(config_priorities[category], UNORDERED);
 	if (priority > prio) return;
 	init();
@@ -143,11 +152,7 @@ macro void call_log(LogPriority prio, LogCategory category, String fmt, args...)
 	Logger logger = current_logger;
 	LogFn logfn = current_logfn;
 	defer if (locked) (void)logger_mutex.unlock();
-	$if FULL_LOG:
-	logfn(logger.ptr, prio, category, current_tag, $$FILE, $$FUNC, $$LINE, fmt, args);
-	$else
-	logfn(logger.ptr, prio, category, current_tag, "", "", 0, fmt, args);
-	$endif
+	logfn(logger.ptr, prio, category, current_tag, file, func, line, fmt, args);
 }
 
 fn String? get_category_name(LogCategory category)
@@ -200,7 +205,7 @@ fn void StderrLogger.log(&self, LogPriority priority, LogCategory category, LogT
 		str.appendf(fmt, ...args);
 		TzDateTime time = datetime::now().to_local();
 		$if FULL_LOG:
-		io::eprintfn("[%02d:%02d:%02d:%04d] %s:%d[%s] %s", time.hour, time.min, time.sec, (time.usec / 1000), file, line, priority, str);
+		io::eprintfn("[%02d:%02d:%02d:%04d] %s:%d [%s] %s", time.hour, time.min, time.sec, (time.usec / 1000), file, line, priority, str);
 		$else
 		io::eprintfn("[%02d:%02d:%02d:%04d] [%s] %s", time.hour, time.min, time.sec, (time.usec / 1000), priority, str);
 		$endif
