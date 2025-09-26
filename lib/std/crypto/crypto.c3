@@ -9,4 +9,3 @@ fn bool safe_compare(void* data1, void* data2, usz len)
 	}
 	return match == 0;
 }
-

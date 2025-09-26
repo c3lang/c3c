@@ -2357,6 +2357,7 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 			return false;
 		}
 	}
+
 	if (expr->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *ident = expr->ident_expr;
 	if (ident->decl_kind != DECL_VAR) return true;
@@ -3927,6 +3928,9 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 		case EXPR_CT_IDENT:
 			if (!sema_analyse_expr_lvalue(context, subscripted, NULL)) return false;
 			break;
+		case EXPR_UNARY:
+			subscripted->unary_expr.no_read = true;
+			goto DEFAULT;
 		case EXPR_SUBSCRIPT:
 		{
 			Expr *inner = expr_copy(subscripted);
@@ -3938,9 +3942,11 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 			subscripted->expr_kind = EXPR_UNARY;
 			subscripted->unary_expr.operator = UNARYOP_DEREF;
 			subscripted->unary_expr.expr = inner;
+			subscripted->unary_expr.no_read = true;
 			FALLTHROUGH;
 		}
 		default:
+DEFAULT:
 			if (!sema_analyse_expr(context, subscripted)) return false;
 			break;
 	}
@@ -11657,6 +11663,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 			break;
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
+			/*
 		{
 			Expr *inner = exprptr(expr->expr_kind == EXPR_SUBSCRIPT ? expr->subscript_expr.expr : expr->slice_expr.expr);
 			if (inner->expr_kind != EXPR_IDENTIFIER) break;
@@ -11665,7 +11672,8 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 			if (!decl->var.out_param || decl->var.in_param) break;
 			if (context->active_scope.flags & (SCOPE_ENSURE | SCOPE_ENSURE_MACRO)) break;
 			RETURN_SEMA_ERROR(expr, "'out' parameters may not be read.");
-		}
+		}*/
+			break;
 		case EXPR_UNARY:
 		{
 			if (expr->unary_expr.operator != UNARYOP_DEREF) break;
@@ -11673,6 +11681,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 			if (inner->expr_kind != EXPR_IDENTIFIER) break;
 			Decl *decl = inner->ident_expr;
 			if (decl->decl_kind != DECL_VAR) break;
+			if (expr->unary_expr.no_read) break;
 			if (!decl->var.out_param || decl->var.in_param) break;
 			if (context->active_scope.flags & (SCOPE_ENSURE | SCOPE_ENSURE_MACRO)) return true;
 			RETURN_SEMA_ERROR(expr, "'out' parameters may not be read.");
