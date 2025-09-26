@@ -6676,6 +6676,17 @@ static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Typ
 	return true;
 
 SLICE_COPY:;
+	while (right->expr_kind == EXPR_SLICE)
+	{
+		Expr *inner = exprptr(right->slice_expr.expr);
+		if (inner->expr_kind != EXPR_IDENTIFIER) break;
+		Decl *decl = inner->ident_expr;
+		if (decl->decl_kind != DECL_VAR) break;
+		if (!decl->var.out_param || decl->var.in_param) break;
+		if (context->active_scope.flags & (SCOPE_ENSURE | SCOPE_ENSURE_MACRO)) break;
+		RETURN_SEMA_ERROR(right, "'out' parameters may not be read.");
+	}
+
 	if (!sema_analyse_expr_rhs(context, left_type, right, false, NULL, false)) return false;
 	Range *left_range = &left->slice_expr.range;
 	IndexDiff left_len = range_const_len(left_range);
@@ -11661,19 +11672,26 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 		case EXPR_IDENTIFIER:
 			if (mutate && !sema_cast_ident_rvalue(context, expr)) return false;
 			break;
-		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
-			/*
 		{
-			Expr *inner = exprptr(expr->expr_kind == EXPR_SUBSCRIPT ? expr->subscript_expr.expr : expr->slice_expr.expr);
+			Expr *inner = exprptr(expr->subscript_expr.expr);
+			if (inner->expr_kind != EXPR_IDENTIFIER) break;
+			Decl *decl = inner->ident_expr;
+			if (decl->decl_kind != DECL_VAR) break;
+			if (!decl->var.out_param || decl->var.in_param) break;
+			if (context->active_scope.flags & (SCOPE_ENSURE | SCOPE_ENSURE_MACRO)) break;
+			break;
+		}
+		case EXPR_SUBSCRIPT:
+		{
+			Expr *inner = exprptr(expr->subscript_expr.expr);
 			if (inner->expr_kind != EXPR_IDENTIFIER) break;
 			Decl *decl = inner->ident_expr;
 			if (decl->decl_kind != DECL_VAR) break;
 			if (!decl->var.out_param || decl->var.in_param) break;
 			if (context->active_scope.flags & (SCOPE_ENSURE | SCOPE_ENSURE_MACRO)) break;
 			RETURN_SEMA_ERROR(expr, "'out' parameters may not be read.");
-		}*/
-			break;
+		}
 		case EXPR_UNARY:
 		{
 			if (expr->unary_expr.operator != UNARYOP_DEREF) break;

@@ -584,7 +584,7 @@ fn void inv_cipher(Aes* aes, char[] round_key)
 
 <*¨
  @param type : "The AES variant to expant the key for"
- @param [out] round_key : "Key to expand into"
+ @param [inout] round_key : "Key to expand into"
  @param [in] key : "The key to expand"
  @require key.len == type.key.key_len : "Key does not match expected length."
 *>
