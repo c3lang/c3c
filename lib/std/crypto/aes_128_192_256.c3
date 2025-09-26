@@ -1,10 +1,11 @@
+// Experimental implementation
 module std::crypto::aes128;
 import std::crypto::aes;
 
 fn char[] encrypt(Allocator allocator, char[16]* key, char[aes::BLOCKLEN] iv, char[] data)
 {
 	Aes aes @noinit;
-	aes.init_with_iv(AES128, CTR, key, iv);
+	aes.init(AES128, key, iv, CTR);
 	defer aes.destroy();
 	return aes.encrypt(allocator, data);
 }
@@ -17,7 +18,7 @@ fn char[] tencrypt(char[16]* key, char[aes::BLOCKLEN] iv, char[] data)
 fn char[] decrypt(Allocator allocator, char[16]* key, char[aes::BLOCKLEN] iv, char[] data)
 {
 	Aes aes @noinit;
-	aes.init_with_iv(AES128, CTR, key, iv);
+	aes.init(AES128, key, iv, CTR);
 	defer aes.destroy();
 	return aes.decrypt(allocator, data);
 }
@@ -33,7 +34,7 @@ import std::crypto::aes;
 fn char[] encrypt(Allocator allocator, char[24]* key, char[aes::BLOCKLEN] iv, char[] data)
 {
 	Aes aes @noinit;
-	aes.init_with_iv(AES192, CTR, key, iv);
+	aes.init(AES192, key, iv, CTR);
 	defer aes.destroy();
 	return aes.encrypt(allocator, data);
 }
@@ -46,7 +47,7 @@ fn char[] tencrypt(char[24]* key, char[aes::BLOCKLEN] iv, char[] data)
 fn char[] decrypt(Allocator allocator, char[24]* key, char[aes::BLOCKLEN] iv, char[] data)
 {
 	Aes aes @noinit;
-	aes.init_with_iv(AES192, CTR, key, iv);
+	aes.init(AES192, key, iv, CTR);
 	defer aes.destroy();
 	return aes.decrypt(allocator, data);
 }
@@ -62,7 +63,7 @@ import std::crypto::aes;
 fn char[] encrypt(Allocator allocator, char[32]* key, char[aes::BLOCKLEN] iv, char[] data)
 {
 	Aes aes @noinit;
-	aes.init_with_iv(AES256, CTR, key, iv);
+	aes.init(AES256, key, iv, CTR);
 	defer aes.destroy();
 	return aes.encrypt(allocator, data);
 }
@@ -75,7 +76,7 @@ fn char[] tencrypt(char[32]* key, char[aes::BLOCKLEN] iv, char[] data)
 fn char[] decrypt(Allocator allocator, char[32]* key, char[aes::BLOCKLEN] iv, char[] data)
 {
 	Aes aes @noinit;
-	aes.init_with_iv(AES256, CTR, key, iv);
+	aes.init(AES256, key, iv, CTR);
 	defer aes.destroy();
 	return aes.decrypt(allocator, data);
 }
