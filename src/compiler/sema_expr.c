@@ -48,11 +48,10 @@ typedef struct
 
 // Properties
 static inline BuiltinFunction builtin_by_name(const char *name);
-static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, CheckType check, bool check_valid);
+static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, CheckType check, bool *failed_ref);
 static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, CheckType check);
-static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bool *missing_ref, CheckType check,
-                                            bool lvalue);
+static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bool *missing_ref, CheckType check);
 static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr *expr, bool *no_match_ref);
 static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, bool throw_error);
 static inline bool sema_expr_analyse_binary(SemaContext *context, Type *infer_type, Expr *expr, bool *failed_ref);
@@ -162,7 +161,7 @@ static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, 
 static inline bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional, bool *no_match_ref);
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
-static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end, bool check_valid);
+static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end, bool *missing_ref);
 static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions, Expr *expr, unsigned insert_point);
 static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, CheckType check);
 static Decl *sema_expr_analyse_var_path(SemaContext *context, Expr *expr, bool *failed_ref);
@@ -3631,7 +3630,7 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool
 }
 
 static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index,
-                                         bool from_end, bool *remove_from_end, bool check_valid)
+                                         bool from_end, bool *remove_from_end, bool *missing_ref)
 {
 	ASSERT_SPAN(index_expr, type == type->canonical);
 	if (!sema_cast_const(index_expr)) return true;
@@ -3670,17 +3669,17 @@ RETRY:;
 			// Checking end can only be done for arrays.
 			if (end_index && idx >= len)
 			{
-				if (check_valid) return false;
+				if (missing_ref) return *missing_ref = true, false;
 				RETURN_SEMA_ERROR(index_expr, "End index out of bounds, was %lld, exceeding %lld.", (long long)idx, (long long)len);
 			}
 			if (!end_index && idx >= len)
 			{
 				if (len == 0)
 				{
-					if (check_valid) return false;
+				if (missing_ref) return *missing_ref = true, false;
 					RETURN_SEMA_ERROR(index_expr, "Cannot index into a zero size list.");
 				}
-				if (check_valid) return false;
+				if (missing_ref) return *missing_ref = true, false;
 				RETURN_SEMA_ERROR(index_expr, "Index out of bounds, was %lld, exceeding maximum (%lld).", (long long)idx, (long long)len - 1);
 			}
 			break;
@@ -3691,7 +3690,7 @@ RETRY:;
 			// From end we can only do sanity checks ^0 is invalid for non-end index. ^-1 and less is invalid for all.
 			if (idx == 0 && !end_index)
 			{
-				if (check_valid) return false;
+				if (missing_ref) return *missing_ref = true, false;
 				RETURN_SEMA_ERROR(index_expr,
 				                  "Array index out of bounds, index from end (%lld) must be greater than zero or it will exceed the max array index.",
 				                  (long long) idx);
@@ -3785,7 +3784,7 @@ static Expr *sema_expr_find_subscript_type_or_overload_for_subscript(SemaContext
 	return NULL;
 }
 
-static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr *expr, Expr *subscripted, Expr *index, Type **current_type_ref, Expr **current_expr_ref, Type **subscript_type_ref, Decl **overload_ref, int64_t *index_ref, bool is_ref, OperatorOverload overload_type, bool check_valid)
+static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr *expr, Expr *subscripted, Expr *index, Type **current_type_ref, Expr **current_expr_ref, Type **subscript_type_ref, Decl **overload_ref, int64_t *index_ref, bool is_ref, OperatorOverload overload_type, bool* missing_ref)
 {
 	Decl *overload = NULL;
 	Type *subscript_type = NULL;
@@ -3808,7 +3807,7 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 			if (sema_expr_find_subscript_type_or_overload_for_subscript(context, subscripted, overload_type, &subscript_type,
 			                                                            &overload))
 			{
-				if (check_valid) return false;
+				if (missing_ref) return *missing_ref = true, false;
 				RETURN_SEMA_ERROR(expr, "A function or macro with '@operator(&[])' is not defined for %s, "
 				                        "so you need && to take the address of the temporary.",
 				                  type_quoted_error_string(subscripted->type));
@@ -3816,7 +3815,7 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 		}
 		if (!subscript_type)
 		{
-			if (check_valid) return false;
+			if (missing_ref) return *missing_ref = true, false;
 			switch (overload_type)
 			{
 				case OVERLOAD_ELEMENT_REF:
@@ -3855,7 +3854,7 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
 	if (start_from_end && (current_type->type_kind == TYPE_POINTER || current_type->type_kind == TYPE_FLEXIBLE_ARRAY))
 	{
-		if (check_valid) return false;
+		if (missing_ref) return *missing_ref = true, false;
 		RETURN_SEMA_ERROR(index, "Indexing from the end is not allowed for pointers "
 		                         "and flexible array members.");
 	}
@@ -3867,7 +3866,7 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 		// 4c. And that it's in range.
 		if (int_is_neg(index->const_expr.ixx))
 		{
-			if (check_valid) return false;
+			if (missing_ref) return *missing_ref = true, false;
 			RETURN_SEMA_ERROR(index, "The index may not be negative.");
 		}
 		if (!int_fits(index->const_expr.ixx, TYPE_I64) || size == 0)
@@ -3877,7 +3876,7 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 				index_value = -1;
 				goto SKIP;
 			}
-			if (check_valid) return false;
+			if (missing_ref) return *missing_ref = true, false;
 			RETURN_SEMA_ERROR(index, "The index is out of range.", size);
 		}
 		index_value = int_to_i64(index->const_expr.ixx);
@@ -3892,7 +3891,7 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 				index_value = -1;
 				goto SKIP;
 			}
-			if (check_valid) return false;
+			if (missing_ref) return *missing_ref = true, false;
 			if (start_from_end)
 			{
 				RETURN_SEMA_ERROR(index,
@@ -3963,12 +3962,8 @@ DEFAULT:
 	Decl *overload;
 	Type *subscript_type;
 	int64_t index_value;
-	if (!sema_expr_resolve_subscript_index(context, expr, subscripted, index, &current_type, &current_expr, &subscript_type, &overload, &index_value, false, OVERLOAD_ELEMENT_SET, failed_ref != NULL))
+	if (!sema_expr_resolve_subscript_index(context, expr, subscripted, index, &current_type, &current_expr, &subscript_type, &overload, &index_value, false, OVERLOAD_ELEMENT_SET, failed_ref))
 	{
-		if (failed_ref && expr_ok(index))
-		{
-			*failed_ref = true;
-		}
 		return false;
 	}
 
@@ -4030,9 +4025,8 @@ DEFAULT:
 	// Check range
 	bool remove_from_back = false;
 	if (!sema_slice_index_is_in_range(context, current_type, index, false, start_from_end, &remove_from_back,
-	                                  failed_ref != NULL))
+	                                  failed_ref))
 	{
-		if (failed_ref) goto VALID_FAIL_POISON;
 		return false;
 	}
 	if (remove_from_back)
@@ -4048,7 +4042,7 @@ VALID_FAIL_POISON:
 	return false;
 }
 
-static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, CheckType check, bool check_valid)
+static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, CheckType check, bool *failed_ref)
 {
 	ASSERT(expr->expr_kind == EXPR_SUBSCRIPT || expr->expr_kind == EXPR_SUBSCRIPT_ADDR);
 	bool is_eval_ref = expr->expr_kind == EXPR_SUBSCRIPT_ADDR;
@@ -4070,22 +4064,14 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	int64_t index_value;
 	OperatorOverload overload_type = check == CHECK_VALUE ? OVERLOAD_ELEMENT_AT : OVERLOAD_ELEMENT_REF;
 
-	if (!sema_expr_resolve_subscript_index(context, expr, subscripted, index, &current_type, &current_expr, &subscript_type, &overload, &index_value, is_eval_ref, overload_type, check_valid))
-	{
-		if (check_valid && expr_ok(index))
-		{
-			expr_poison(expr);
-			return true;
-		}
-		return false;
-	}
+	if (!sema_expr_resolve_subscript_index(context, expr, subscripted, index, &current_type, &current_expr, &subscript_type, &overload, &index_value, is_eval_ref, overload_type, failed_ref)) return false;
 
 	// 4. If we are indexing into a complist
 	if (current_type == type_untypedlist)
 	{
 		if (is_eval_ref)
 		{
-			if (check_valid) goto VALID_FAIL_POISON;
+			if (failed_ref) return *failed_ref = true, false;
 			RETURN_SEMA_ERROR(subscripted, "You need to use && to take the address of a temporary.");
 		}
 		// 4a. This may either be an initializer list or a CT value
@@ -4094,7 +4080,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		// 4b. Now we need to check that we actually have a valid type.
 		if (index_value < 0)
 		{
-			if (check_valid) goto VALID_FAIL_POISON;
+			if (failed_ref) return *failed_ref = true, false;
 			RETURN_SEMA_ERROR(index, "To subscript an untyped list a compile time integer index is needed.");
 		}
 		expr_replace(expr, current_expr->const_expr.untyped_list[index_value]);
@@ -4111,7 +4097,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			Decl *len = sema_find_untyped_operator(current_expr->type, OVERLOAD_LEN, NULL);
 			if (!len)
 			{
-				if (check_valid) goto VALID_FAIL_POISON;
+				if (failed_ref) return *failed_ref = true, false;
 				RETURN_SEMA_ERROR(subscripted, "Cannot index '%s' from the end, since there is no 'len' overload.", type_to_error_string(subscripted->type));
 			}
 			if (!sema_analyse_expr(context, current_expr)) return false;
@@ -4142,9 +4128,8 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	// Check range
 	bool remove_from_back = false;
 	if (!sema_slice_index_is_in_range(context, current_type, index, false, start_from_end, &remove_from_back,
-	                                  check_valid))
+	                                  failed_ref))
 	{
-		if (check_valid) goto VALID_FAIL_POISON;
 		return false;
 	}
 	if (remove_from_back)
@@ -4167,14 +4152,14 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			{
 				if (!int_fits(index->const_expr.ixx, TYPE_U32))
 				{
-					if (check_valid) goto VALID_FAIL_POISON;
+					if (failed_ref) return *failed_ref = true, false;
 					RETURN_SEMA_ERROR(index, "Index is out of range.");
 				}
 				ArraySize idx = index->const_expr.ixx.i.low;
 				ArrayIndex len = sema_len_from_const(current_expr);
 				if (idx > len || (idx == len && !start_from_end) || (idx == 0 && start_from_end))
 				{
-					if (check_valid) goto VALID_FAIL_POISON;
+					if (failed_ref) return *failed_ref = true, false;
 					RETURN_SEMA_ERROR(index, "The index (%s%llu) is out of range, the length is just %llu.",
 									  start_from_end ? "^" : "",
 									  (unsigned long long)idx,
@@ -4203,9 +4188,6 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	{
 		expr->type = type_add_optional(subscript_type, optional);
 	}
-	return true;
-VALID_FAIL_POISON:
-	expr_poison(expr);
 	return true;
 }
 
@@ -5920,11 +5902,12 @@ bool sema_expr_rewrite_insert_deref(SemaContext *context, Expr *original)
 }
 
 static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, Expr *parent, Type *flat_type,
-                                             const char *kw, unsigned len, CheckType check, bool is_lvalue)
+                                             const char *kw, unsigned len, CheckType check)
 {
 	unsigned vec_len = flat_type->array.len;
 	Type *indexed_type = type_get_indexed_type(parent->type);
 	assert(indexed_type);
+	bool is_lvalue = expr->access_unresolved_expr.is_lvalue;
 	if (is_lvalue) check = CHECK_VALUE;
 	ASSERT_SPAN(expr, len > 0);
 	int index = 0;
@@ -5979,7 +5962,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 		}
 		else
 		{
-			if (!sema_expr_analyse_subscript(context, expr, check, false)) return false;
+			if (!sema_expr_analyse_subscript(context, expr, check, NULL)) return false;
 		}
 		expr->resolve_status = RESOLVE_DONE;
 		if (check == CHECK_ADDRESS)
@@ -6044,13 +6027,13 @@ static inline void sema_expr_flatten_const_ident(Expr *expr)
 /**
  * Analyse "x.y"
  */
-static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bool *missing_ref, CheckType check, bool lvalue)
+static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bool *missing_ref, CheckType check)
 {
 	Expr *parent = expr->access_unresolved_expr.parent;
 	if (missing_ref) *missing_ref = false;
 
 	// 1. Resolve the left hand
-	if (!sema_analyse_expr_check(context, parent, check != CHECK_VALUE ? CHECK_ADDRESS : CHECK_VALUE)) return false;
+	if (!sema_analyse_expr_check(context, parent, check)) return false;
 
 	// 2. The right hand side may be a @ident or ident
 	Expr *child = expr->access_unresolved_expr.child;
@@ -6199,7 +6182,7 @@ CHECK_DEEPER:
 				if (!swizzle[(int)kw[i]]) goto NOT_SWIZZLE;
 			}
 			// TODO should we do a missing for this as well?
-			return sema_expr_analyse_swizzle(context, expr, current_parent, flat_type, kw, len, check, lvalue);
+			return sema_expr_analyse_swizzle(context, expr, current_parent, flat_type, kw, len, check);
 			NOT_SWIZZLE:;
 		}
 	}
@@ -8776,14 +8759,9 @@ RETRY:;
 			inner->expr_kind = EXPR_SUBSCRIPT_ADDR;
 			if (failed_ref)
 			{
-				if (!sema_expr_analyse_subscript(context, inner, CHECK_ADDRESS, true)) return false;
-				if (!expr_ok(inner))
-				{
-					*failed_ref = true;
-					return false;
-				}
+				if (!sema_expr_analyse_subscript(context, inner, CHECK_ADDRESS, failed_ref)) return false;
 			}
-			if (!sema_analyse_expr_address(context, inner)) return false;
+			if (!sema_analyse_expr_check(context, inner, CHECK_ADDRESS)) return false;
 			expr_replace(expr, inner);
 			return true;
 		case EXPR_ACCESS_RESOLVED:
@@ -8791,7 +8769,7 @@ RETRY:;
 		{
 			Expr *parent = inner->access_resolved_expr.parent;
 			if (parent->expr_kind == EXPR_TYPEINFO) break;
-			if (!sema_analyse_expr_address(context, parent)) return false;
+			if (!sema_analyse_expr_check(context, inner, CHECK_ADDRESS)) return false;
 			break;
 		}
 		default:
@@ -8803,7 +8781,7 @@ RESOLVED:
 		RETURN_SEMA_ERROR(expr, "It's not possible to take the address of a compile time value.");
 	}
 
-	if (!sema_analyse_expr_address(context, inner)) return false;
+	if (!sema_analyse_expr_check(context, inner, CHECK_ADDRESS)) return false;
 
 	// 2. Take the address.
 	const char *error = sema_addr_check_may_take(inner);
@@ -10723,7 +10701,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				}
 				break;
 			case EXPR_ACCESS_UNRESOLVED:
-				if (!sema_expr_analyse_access(active_context, main_expr, &failed, CHECK_VALUE, false))
+				if (!sema_expr_analyse_access(active_context, main_expr, &failed, CHECK_VALUE))
 				{
 					if (!failed) goto FAIL;
 					success = false;
@@ -10785,12 +10763,9 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 		}
 		case EXPR_SUBSCRIPT:
 		{
-			if (!sema_expr_analyse_subscript(active_context, main_expr, CHECK_VALUE, true))
+			if (!sema_expr_analyse_subscript(active_context, main_expr, CHECK_VALUE, &failed))
 			{
-				goto FAIL;
-			}
-			if (!expr_ok(main_expr))
-			{
+				if (!failed) goto FAIL;
 				success = false;
 			}
 			break;
@@ -11498,13 +11473,13 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			return sema_expr_analyse_call(context, expr, NULL);
 		case EXPR_SUBSCRIPT:
 		case EXPR_SUBSCRIPT_ADDR:
-			return sema_expr_analyse_subscript(context, expr, check, false);
+			return sema_expr_analyse_subscript(context, expr, check, NULL);
 		case EXPR_BITACCESS:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_ACCESS_RESOLVED:
 			UNREACHABLE
 		case EXPR_ACCESS_UNRESOLVED:
-			return sema_expr_analyse_access(context, expr, NULL, check, false);
+			return sema_expr_analyse_access(context, expr, NULL, check);
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			return sema_expr_analyse_initializer_list(context, type_untypedlist, expr, NULL);
@@ -11755,11 +11730,6 @@ static inline bool sema_analyse_expr_check(SemaContext *context, Expr *expr, Che
 	RESOLVE(expr, sema_analyse_expr_dispatch(context, expr, check))
 }
 
-bool sema_analyse_expr_address(SemaContext *context, Expr *expr)
-{
-	return sema_analyse_expr_check(context, expr, CHECK_ADDRESS);
-}
-
 
 static inline bool sema_analyse_expr_lvalue_dispatch(SemaContext *context, Expr *expr, bool *failed_ref)
 {
@@ -11872,7 +11842,8 @@ IDENT_CHECK:;
 		case EXPR_SLICE:
 			return sema_expr_analyse_slice(context, expr, CHECK_ADDRESS);
 		case EXPR_ACCESS_UNRESOLVED:
-			return sema_expr_analyse_access(context, expr, failed_ref, CHECK_ADDRESS, true);
+			expr->access_unresolved_expr.is_lvalue = true;
+			return sema_expr_analyse_access(context, expr, failed_ref, CHECK_ADDRESS);
 		case EXPR_EXT_TRUNC:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_DISCARD:

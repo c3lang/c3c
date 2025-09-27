@@ -90,7 +90,6 @@ void sema_analyze_stage(Module *module, AnalysisStage stage);
 void sema_trace_liveness(void);
 
 Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing);
-bool sema_analyse_expr_address(SemaContext *context, Expr *expr);
 
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr, bool *failed_ref);
 

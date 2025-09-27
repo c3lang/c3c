@@ -920,6 +920,7 @@ typedef struct
 {
 	Expr *parent;
 	Expr *child;
+	bool is_lvalue;
 } ExprUnresolvedAccess;
 
 typedef struct DesignatorElement_
