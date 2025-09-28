@@ -791,6 +791,10 @@ void compiler_compile(void)
 			}
 			name = scratch_buffer_to_string();
 			const char *full_path = realpath(scratch_buffer_to_string(), NULL);
+			if (!full_path)
+			{
+				error_exit("The binary '%s' was unexpectedly not found.", scratch_buffer_to_string());
+			}
 			OUTF("Launching %s", name);
 			FOREACH(const char *, arg, compiler.build.args)
 			{
