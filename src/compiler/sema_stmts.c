@@ -113,7 +113,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 		if (!expr_is_const_string(message_expr)) RETURN_SEMA_ERROR(message_expr, "Expected a constant string as the error message.");
 		FOREACH(Expr *, e, statement->assert_stmt.args)
 		{
-			if (!sema_analyse_expr(context, e)) return false;
+			if (!sema_analyse_expr_rvalue(context, e)) return false;
 			if (IS_OPTIONAL(e)) RETURN_SEMA_ERROR(e, "Optionals cannot be used as assert arguments, use '?""?', '!' or '!!' to fix this.");
 			switch (sema_resolve_storage_type(context, e->type))
 			{
@@ -574,7 +574,7 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 		}
 		else
 		{
-			if (!sema_analyse_expr(context, ret_expr)) return false;
+			if (!sema_analyse_expr_rvalue(context, ret_expr)) return false;
 		}
 		if (!sema_check_return_matches_opt_returns(context, ret_expr)) return false;
 		if (ret_expr->expr_kind == EXPR_CALL && ret_expr->call_expr.no_return)
@@ -868,7 +868,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	// Case A. Unwrapping a single variable.
 	if (!optional)
 	{
-		if (!sema_analyse_expr(context, ident)) return false;
+		if (!sema_analyse_expr_rvalue(context, ident)) return false;
 		// The `try foo()` case.
 		if (ident->expr_kind != EXPR_IDENTIFIER)
 		{
@@ -933,7 +933,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	}
 
 	// 3b. Evaluate the expression
-	if (!sema_analyse_expr(context, optional)) return false;
+	if (!sema_analyse_expr_rvalue(context, optional)) return false;
 
 	if (!IS_OPTIONAL(optional))
 	{
@@ -1020,7 +1020,7 @@ RESOLVE_EXPRS:;
 	Expr **exprs = expr->unresolved_catch_expr.exprs;
 	FOREACH(Expr *, fail, exprs)
 	{
-		if (!sema_analyse_expr(context, fail)) return false;
+		if (!sema_analyse_expr_rvalue(context, fail)) return false;
 		if (!type_is_optional(fail->type))
 		{
 			RETURN_SEMA_ERROR(fail, "This expression is not optional, did you add it by mistake?");
@@ -1076,7 +1076,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		default:
 			break;
 	}
-	return sema_analyse_expr(context, expr);
+	return sema_analyse_expr_rvalue(context, expr);
 }
 /**
  * An decl-expr-list is a list of a mixture of declarations and expressions.
@@ -1103,7 +1103,7 @@ static inline bool sema_analyse_cond_list(SemaContext *context, Expr *expr, Cond
 	// 2. Walk through each of our declarations / expressions as if they were regular expressions.
 	for (unsigned i = 0; i < entries - 1; i++)
 	{
-		if (!sema_analyse_expr(context, dexprs[i])) return false;
+		if (!sema_analyse_expr_rvalue(context, dexprs[i])) return false;
 	}
 
 	if (!sema_analyse_last_cond(context, dexprs[entries - 1], cond_type, result)) return false;
@@ -1208,7 +1208,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 static inline bool sema_analyse_ct_type_assign_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *right = statement->ct_type_assign_stmt.type_expr;
-	if (!sema_analyse_expr_value(context, right)) return false;
+	if (!sema_analyse_expr(context, right)) return false;
 	if (right->expr_kind == EXPR_TYPEINFO)
 	{
 		expr_rewrite_const_typeid(right, right->type_expr->type);
@@ -1262,7 +1262,7 @@ static inline bool sema_analyse_declare_stmt(SemaContext *context, Ast *statemen
 static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *expr = statement->expr_stmt;
-	if (!sema_analyse_expr(context, expr)) return false;
+	if (!sema_analyse_expr_rvalue(context, expr)) return false;
 	if (!sema_expr_check_discard(context, expr)) return false;
 	switch (expr->expr_kind)
 	{
@@ -1407,7 +1407,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 
 		if (statement->for_stmt.init)
 		{
-			success = sema_analyse_expr(context, exprptr(statement->for_stmt.init));
+			success = sema_analyse_expr_rvalue(context, exprptr(statement->for_stmt.init));
 		}
 
 		// Conditional scope start
@@ -1454,7 +1454,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 		{
 			// Incr scope start
 			SCOPE_START
-				success = sema_analyse_expr(context, exprptr(statement->for_stmt.incr));
+				success = sema_analyse_expr_rvalue(context, exprptr(statement->for_stmt.incr));
 				// Incr scope end
 			SCOPE_END;
 		}
@@ -1509,7 +1509,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		}
 		else
 		{
-			if (!sema_analyse_expr(context, enumerator)) return SCOPE_POP_ERROR();
+			if (!sema_analyse_expr_rvalue(context, enumerator)) return SCOPE_POP_ERROR();
 		}
 		// And pop the cond scope.
 	SCOPE_END;
@@ -1735,7 +1735,7 @@ SKIP_OVERLOAD:;
 				len_call = NULL;
 				break;
 			case TYPE_SLICE:
-				if (!sema_analyse_expr(context, enum_val)) return false;
+				if (!sema_analyse_expr_rvalue(context, enum_val)) return false;
 				len_call = expr_new_expr(EXPR_SLICE_LEN, enumerator);
 				expr_rewrite_slice_len(len_call, enum_val, type_isz);
 				break;
@@ -2978,7 +2978,7 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 	Expr *message_expr = message ? exprptr(message) : NULL;
 	if (message_expr)
 	{
-		if (!sema_analyse_expr(context, message_expr)) return false;
+		if (!sema_analyse_expr_rvalue(context, message_expr)) return false;
 		if (message_expr->expr_kind != EXPR_CONST || message_expr->const_expr.const_kind != CONST_STRING)
 		{
 			RETURN_SEMA_ERROR(message_expr, "Expected a string as the error message.");
@@ -3010,7 +3010,7 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *message = statement->expr_stmt;
-	if (!sema_analyse_expr(context, message)) return false;
+	if (!sema_analyse_expr_rvalue(context, message)) return false;
 	if (message->expr_kind != EXPR_CONST)
 	{
 		SEMA_ERROR(message, "Expected a constant value.");
@@ -3277,7 +3277,7 @@ static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
 		{
 			RETURN_SEMA_ERROR(expr, "Expected a fault name here.");
 		}
-		if (!sema_analyse_expr(context, expr)) return false;
+		if (!sema_analyse_expr_rvalue(context, expr)) return false;
 		if (!expr_is_const_fault(expr)) RETURN_SEMA_ERROR(expr, "A fault is required.");
 		Decl *decl = expr->const_expr.fault;
 		if (!decl) RETURN_SEMA_ERROR(expr, "A non-null fault is required.");

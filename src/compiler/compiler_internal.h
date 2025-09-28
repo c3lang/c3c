@@ -2437,7 +2437,7 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr, CondResult *result
 bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional, bool *no_match_ref,
                            bool as_binary);
 
-bool sema_analyse_expr(SemaContext *context, Expr *expr);
+bool sema_analyse_expr_rvalue(SemaContext *context, Expr *expr);
 bool sema_cast_const(Expr *expr);
 
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);

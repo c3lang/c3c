@@ -495,7 +495,7 @@ static inline bool sema_check_asm_arg_addrof_var(SemaContext *context, AsmInline
 static inline bool sema_check_asm_arg_value(SemaContext *context, AsmInlineBlock *block, AsmInstruction *instr, AsmArgType arg_type, Expr *expr)
 {
 	Expr *inner = exprptr(expr->expr_asm_arg.expr_id);
-	if (!sema_analyse_expr(context, inner)) return false;
+	if (!sema_analyse_expr_rvalue(context, inner)) return false;
 	if (expr_is_const_int(inner)) return sema_check_asm_arg_const_int(context, block, instr, arg_type, expr, inner);
 	if (arg_type.is_write)
 	{

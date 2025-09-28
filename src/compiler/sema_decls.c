@@ -800,7 +800,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 	if (member->var.bit_is_expr)
 	{
 		Expr *start = member->var.start;
-		if (!sema_analyse_expr(context, start)) return false;
+		if (!sema_analyse_expr_rvalue(context, start)) return false;
 
 		// Check for negative, non integer or non const values.
 		if (!sema_cast_const(start) || !type_is_integer(start->type) || int_is_neg(start->const_expr.ixx))
@@ -823,7 +823,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 		if (end)
 		{
 			// Analyse the end
-			if (!sema_analyse_expr(context, end)) return false;
+			if (!sema_analyse_expr_rvalue(context, end)) return false;
 			if (!sema_cast_const(end) || !type_is_integer(end->type) || int_is_neg(end->const_expr.ixx))
 			{
 				SEMA_ERROR(end, "This must be a constant non-negative integer value.");
@@ -3130,7 +3130,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			attr_data->deprecated = "";
 			if (expr)
 			{
-				if (!sema_analyse_expr(context, expr)) return false;
+				if (!sema_analyse_expr_rvalue(context, expr)) return false;
 				if (!expr_is_const_string(expr))
 				{
 					RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
@@ -3154,7 +3154,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			break;
 		case ATTRIBUTE_CALLCONV:
 			if (!expr) RETURN_SEMA_ERROR(decl, "Expected a string argument.");
-			if (expr && !sema_analyse_expr(context, expr)) return false;
+			if (expr && !sema_analyse_expr_rvalue(context, expr)) return false;
 			if (!expr_is_const_string(expr)) RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
 			if (!update_call_abi_from_string(context, decl, expr)) return false;
 			return true;
@@ -3167,9 +3167,9 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			if (args != 2) RETURN_SEMA_ERROR(attr, "'@tag' requires two arguments.");
 			Expr *string = attr->exprs[0];
 			Expr *val = attr->exprs[1];
-			if (!sema_analyse_expr(context, string)) return false;
+			if (!sema_analyse_expr_rvalue(context, string)) return false;
 			if (!sema_cast_const(string) || !expr_is_const_string(string)) RETURN_SEMA_ERROR(string, "Expected a constant string here, usage is: '@tag(name, value)'.");
-			if (!sema_analyse_expr(context, val)) return false;
+			if (!sema_analyse_expr_rvalue(context, val)) return false;
 			if (!sema_cast_const(val)) RETURN_SEMA_ERROR(val, "Expected a constant value here, usage is: '@tag(name, value)'.");
 			const char *name = string->const_expr.bytes.ptr;
 			FOREACH_IDX(i, Attr *, tag, attr_data->tags)
@@ -3246,7 +3246,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			{
 				RETURN_SEMA_ERROR(attr, "'align' requires an power-of-2 argument, e.g. align(8).");
 			}
-			if (!sema_analyse_expr(context, expr)) return false;
+			if (!sema_analyse_expr_rvalue(context, expr)) return false;
 			if (!expr_is_const_int(expr))
 			{
 				RETURN_SEMA_ERROR(expr, "Expected a constant integer value as argument.");
@@ -3288,13 +3288,13 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				}
 				Expr *module = expr;
 				expr = attr->exprs[1];
-				if (!sema_analyse_expr(context, module)) return false;
+				if (!sema_analyse_expr_rvalue(context, module)) return false;
 				if (!expr_is_const_string(module))
 				{
 					RETURN_SEMA_ERROR(module, "Expected a constant string value as argument.");
 				}
 				attr_data->wasm_module = module->const_expr.bytes.ptr;
-				if (!sema_analyse_expr(context, expr)) return false;
+				if (!sema_analyse_expr_rvalue(context, expr)) return false;
 				if (!expr_is_const_string(expr))
 				{
 					RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
@@ -3310,7 +3310,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			}
 			if (expr)
 			{
-				if (!sema_analyse_expr(context, expr)) return false;
+				if (!sema_analyse_expr_rvalue(context, expr)) return false;
 				if (!expr_is_const_string(expr))
 				{
 					RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
@@ -3332,7 +3332,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			return true;
 		case ATTRIBUTE_IF:
 			if (!expr) RETURN_SEMA_ERROR(attr, "'@if' requires a boolean argument.");
-			if (!sema_analyse_expr(context, expr)) return false;
+			if (!sema_analyse_expr_rvalue(context, expr)) return false;
 			if (!cast_explicit_silent(context, expr, type_bool) || !sema_cast_const(expr))
 			{
 				RETURN_SEMA_ERROR(expr, "Expected a boolean compile time constant value.");
@@ -3345,7 +3345,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			goto PARSE;
 		case ATTRIBUTE_FORMAT:
 			if (args != 1) RETURN_SEMA_ERROR(attr, "'@format' expects the index of the format string as the argument, e.g. '@format(1)'.");
-			if (!sema_analyse_expr(context, expr)) return false;
+			if (!sema_analyse_expr_rvalue(context, expr)) return false;
 			if (!type_is_integer(expr->type) || !sema_cast_const(expr))
 			{
 				RETURN_SEMA_ERROR(expr, "Expected an integer compile time constant value.");
@@ -3376,7 +3376,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_LINK:
 			if (args < 1) RETURN_SEMA_ERROR(attr, "'@link' requires at least one argument.");
 			Expr *cond = args > 1 ? attr->exprs[0] : NULL;
-			if (cond && !sema_analyse_expr(context, cond)) return false;
+			if (cond && !sema_analyse_expr_rvalue(context, cond)) return false;
 			int start = 0;
 			bool has_link = true;
 			if (cond && expr_is_const_bool(cond))
@@ -3387,7 +3387,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			for (unsigned i = start; i < args; i++)
 			{
 				Expr *string = attr->exprs[i];
-				if (!sema_analyse_expr(context, string)) return false;
+				if (!sema_analyse_expr_rvalue(context, string)) return false;
 				if (!expr_is_const_string(string)) RETURN_SEMA_ERROR(string, "Expected a constant string here, usage is: '@link(cond1, link1, link2, ...)'.");
 				if (has_link) vec_add(attr_data->links, string->const_expr.bytes.ptr);
 			}
@@ -3397,7 +3397,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		PARSE:;
 			if (expr)
 			{
-				if (!sema_analyse_expr(context, expr)) return false;
+				if (!sema_analyse_expr_rvalue(context, expr)) return false;
 				if (!expr_is_const_int(expr))
 				{
 					RETURN_SEMA_ERROR(attr, "Expected an integer value.");
@@ -3423,7 +3423,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			{
 				RETURN_SEMA_ERROR(attr, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name, attr->name);
 			}
-			if (!sema_analyse_expr(context, expr)) return false;
+			if (!sema_analyse_expr_rvalue(context, expr)) return false;
 			if (!expr_is_const_string(expr))
 			{
 				RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
@@ -3488,7 +3488,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			{
 				RETURN_SEMA_ERROR(attr, "'%s' requires a string argument, e.g. %s(\"address\").", attr->name, attr->name);
 			}
-			if (!sema_analyse_expr(context, expr)) return false;
+			if (!sema_analyse_expr_rvalue(context, expr)) return false;
 			if (!expr_is_const_string(expr))
 			{
 				RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
@@ -4521,7 +4521,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 			if ((init = decl->var.init_expr))
 			{
 				// Try to fold any constant into an lvalue.
-				if (!sema_analyse_expr_value(context, init)) goto FAIL;
+				if (!sema_analyse_expr(context, init)) goto FAIL;
 
 				if (init->expr_kind == EXPR_TYPEINFO)
 				{
@@ -4584,7 +4584,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 					SEMA_ERROR(init, "You can't assign a type to a regular compile time variable like '%s', but it would be allowed if the variable was a compile time type variable. Such a variable needs to have a type-like name, e.g. '$MyType'.", decl->name);
 					goto FAIL;
 				}
-				if (!sema_analyse_expr(context, init)) goto FAIL;
+				if (!sema_analyse_expr_rvalue(context, init)) goto FAIL;
 				// Check it is constant.
 				if (!expr_is_runtime_const(init))
 				{
@@ -4708,7 +4708,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 			SEMA_ERROR(decl, "Defining a variable using 'var %s = ...' is only allowed inside a macro, or when defining a lambda. You can override this by adding the attribute '@safeinfer' to the declaration.", decl->name);
 			return decl_poison(decl);
 		}
-		if (!sema_analyse_expr(context, init_expr)) return decl_poison(decl);
+		if (!sema_analyse_expr_rvalue(context, init_expr)) return decl_poison(decl);
 		if (check_defined || global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
 		if (global_level_var && !expr_is_runtime_const(init_expr))
 		{
@@ -5256,7 +5256,7 @@ static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *er
 	if (*erase_decl) return true;
 
 	Expr *expr = decl->define_decl.alias_expr;
-	if (!sema_analyse_expr_value(context, expr)) return false;
+	if (!sema_analyse_expr(context, expr)) return false;
 	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
 		RETURN_SEMA_ERROR(decl, "To alias a type, the alias name must start with uppercase and contain at least one lowercase letter.");

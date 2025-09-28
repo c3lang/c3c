@@ -479,7 +479,7 @@ static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, E
 	Expr **init_list = initializer->initializer_list;
 	FOREACH(Expr *, element, init_list)
 	{
-		if (!sema_analyse_expr(context, element)) return false;
+		if (!sema_analyse_expr_rvalue(context, element)) return false;
 		if (!sema_cast_const(element))
 		{
 			if (no_match_ref)
@@ -839,7 +839,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 			}
 			expr->resolve_status = RESOLVE_DONE;
 			expr_insert_addr(expr);
-			if (!sema_analyse_expr(context, expr)) return false;
+			if (!sema_analyse_expr_rvalue(context, expr)) return false;
 			if (no_match_ref)
 			{
 				if (!cast_explicit_silent(context, expr, to)) goto NO_MATCH;
@@ -1313,7 +1313,7 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 
 static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *index)
 {
-	if (!sema_analyse_expr(context, index))
+	if (!sema_analyse_expr_rvalue(context, index))
 	{
 		return -1;
 	}

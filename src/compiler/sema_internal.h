@@ -93,7 +93,7 @@ Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *mi
 
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr, bool *failed_ref);
 
-bool sema_analyse_expr_value(SemaContext *context, Expr *expr);
+bool sema_analyse_expr(SemaContext *context, Expr *expr);
 Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
 void expr_set_to_ref(Expr *expr);
 bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);

@@ -39,7 +39,7 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 	Expr *len_expr = type_info->array.len;
 
 	// Analyse it.
-	if (!sema_analyse_expr(context, len_expr)) return type_info_poison(type_info);
+	if (!sema_analyse_expr_rvalue(context, len_expr)) return type_info_poison(type_info);
 
 	if (!cast_to_index_len(context, len_expr, true)) return type_info_poison(type_info);
 
@@ -328,7 +328,7 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 	Expr *expr = type_info->unresolved_type_expr;
 	bool in_no_eval = context->call_env.in_no_eval;
 	context->call_env.in_no_eval = true;
-	bool success = sema_analyse_expr_value(context, expr);
+	bool success = sema_analyse_expr(context, expr);
 	context->call_env.in_no_eval = in_no_eval;
 	if (!success) return false;
 	Type *expr_type = expr->type;
@@ -357,7 +357,7 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
 	Expr *expr = type_info->unresolved_type_expr;
-	if (!sema_analyse_expr(context, expr)) return false;
+	if (!sema_analyse_expr_rvalue(context, expr)) return false;
 	if (!sema_cast_const(expr))
 	{
 		RETURN_SEMA_ERROR(expr, "Expected a constant value.");
@@ -408,7 +408,7 @@ INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info)
 		RETURN_SEMA_ERROR(type_info, "'%s' can only be used inside of a macro.", token_type_to_string(TOKEN_CT_VATYPE));
 	}
 	ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr, NULL), false);
-	if (!sema_analyse_expr_value(context, arg_expr)) return false;
+	if (!sema_analyse_expr(context, arg_expr)) return false;
 	if (arg_expr->expr_kind != EXPR_TYPEINFO) RETURN_SEMA_ERROR(arg_expr, "The argument was not a type.");
 	type_info->type = arg_expr->type_expr->type;
 	return true;

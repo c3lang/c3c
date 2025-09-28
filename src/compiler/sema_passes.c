@@ -494,13 +494,13 @@ CHECK_LINK:
 			unsigned args = vec_size(exprs);
 			ASSERT(args > 0 && "Should already have been checked.");
 			Expr *cond = args > 1 ? attr->exprs[0] : NULL;
-			if (cond && !sema_analyse_expr(&context, cond)) goto FAIL_CONTEXT;
+			if (cond && !sema_analyse_expr_rvalue(&context, cond)) goto FAIL_CONTEXT;
 			bool start = cond && expr_is_const_bool(cond) ? 1 : 0;
 			bool add = start == 0 ? true : cond->const_expr.b;
 			for (unsigned i = start; i < args; i++)
 			{
 				Expr *string = attr->exprs[i];
-				if (!sema_analyse_expr(&context, string)) goto FAIL_CONTEXT;
+				if (!sema_analyse_expr_rvalue(&context, string)) goto FAIL_CONTEXT;
 				if (!expr_is_const_string(string))
 				{
 					PRINT_ERROR_AT(string, "Expected a constant string here, usage is: "

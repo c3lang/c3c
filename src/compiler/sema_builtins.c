@@ -175,7 +175,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, b
 	{
 		Expr *arg = args[i];
 		// Analyse the expressions
-		if (!sema_analyse_expr(context, arg)) return false;
+		if (!sema_analyse_expr_rvalue(context, arg)) return false;
 		// Expect vector
 		if (!type_flat_is_vector(arg->type)) RETURN_SEMA_ERROR(arg, "A vector was expected here.");
 		// Optional-ness updated
@@ -219,7 +219,7 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 	Expr **args = expr->call_expr.arguments;
 	Expr *pointer = args[0];
 
-	if (!sema_analyse_expr(context, pointer)) return false;
+	if (!sema_analyse_expr_rvalue(context, pointer)) return false;
 
 	bool optional = IS_OPTIONAL(pointer);
 	Type *comp_type = type_flatten(pointer->type);
@@ -308,7 +308,7 @@ bool sema_expr_analyse_rnd(SemaContext *context UNUSED, Expr *expr)
 bool sema_expr_analyse_str_hash(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->call_expr.arguments[0];
-	if (!sema_analyse_expr(context, inner)) return true;
+	if (!sema_analyse_expr_rvalue(context, inner)) return true;
 	if (!expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to take the hash of it.");
@@ -322,7 +322,7 @@ bool sema_expr_analyse_str_find(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->call_expr.arguments[0];
 	Expr *inner_find = expr->call_expr.arguments[1];
-	if (!sema_analyse_expr(context, inner) || !sema_analyse_expr(context, inner_find)) return true;
+	if (!sema_analyse_expr_rvalue(context, inner) || !sema_analyse_expr_rvalue(context, inner_find)) return true;
 	if (!expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to search.");
@@ -341,7 +341,7 @@ bool sema_expr_analyse_str_find(SemaContext *context, Expr *expr)
 bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunction func)
 {
 	Expr *inner = expr->call_expr.arguments[0];
-	if (!sema_analyse_expr(context, inner)) return true;
+	if (!sema_analyse_expr_rvalue(context, inner)) return true;
 	if (!expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to take convert.");
@@ -432,14 +432,14 @@ bool sema_expr_analyse_str_wide(SemaContext *context, Expr *expr, BuiltinFunctio
 	if (arg_count == 2)
 	{
 		Expr *zero_term = args[1];
-		if (!sema_analyse_expr(context, zero_term)) return false;
+		if (!sema_analyse_expr_rvalue(context, zero_term)) return false;
 		if (!sema_cast_const(zero_term) || !expr_is_const_bool(zero_term))
 		{
 			RETURN_SEMA_ERROR(zero_term, "Expected a boolean value here, to determine zero termination or not.");
 		}
 		zero_terminate = zero_term->const_expr.b;
 	}
-	if (!sema_analyse_expr(context, inner)) return false;
+	if (!sema_analyse_expr_rvalue(context, inner)) return false;
 	if (!sema_cast_const(inner) && !expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to convert to a wide string.");
@@ -576,7 +576,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 	//    exact type size, we don't do any forced promotion.
 	for (unsigned i = 0; i < arg_count; i++)
 	{
-		if (!sema_analyse_expr(context, args[i])) return false;
+		if (!sema_analyse_expr_rvalue(context, args[i])) return false;
 		optional = optional || type_is_optional(args[i]->type);
 	}
 
