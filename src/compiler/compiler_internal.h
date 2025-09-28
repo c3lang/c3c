@@ -857,6 +857,7 @@ typedef struct
 	ExprId expr;
 	SubscriptIndex index;
 	bool no_check;
+	bool ref;
 } ExprSubscript;
 
 typedef struct
@@ -921,6 +922,7 @@ typedef struct
 	Expr *parent;
 	Expr *child;
 	bool is_lvalue;
+	bool is_ref;
 } ExprUnresolvedAccess;
 
 typedef struct DesignatorElement_
@@ -1173,6 +1175,7 @@ typedef struct
 	Expr *inner;
 	SemaContext *context;
 	SourceSpan inline_at;
+	bool is_ref;
 } ExprOtherContext;
 
 typedef struct

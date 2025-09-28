@@ -95,6 +95,7 @@ bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr, bool *failed_ref
 
 bool sema_analyse_expr_value(SemaContext *context, Expr *expr);
 Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
+void expr_set_to_ref(Expr *expr);
 bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);
 Decl *sema_find_typed_operator(SemaContext *context, OperatorOverload operator_overload, SourceSpan span, Expr *lhs, Expr *rhs, bool *reverse);
 OverloadMatch sema_find_typed_operator_type(SemaContext *context, OperatorOverload operator_overload, OverloadType overload_type, Type *lhs_type, Type *rhs_type, Expr *rhs, Decl **candidate_ref, OverloadMatch last_match, Decl **ambiguous_ref);
