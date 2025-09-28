@@ -39,6 +39,7 @@
 - Alias and distinct types didn't check the underlying type wasn't compile time or optional.
 - Incorrect nameof on nested struct names. #2492
 - Issue not correctly aborting compilation on recursive generics.
+- Crash during codegen when taking the typeid of an empty enum with associated values.
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface

@@ -557,6 +557,7 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 			if (val_type != LLVMTypeOf(llvm_value)) mixed = true;
 		}
 		Decl *associated_value = associated_values[ai];
+		if (!val_type)val_type = llvm_get_type(c, associated_value->type);
 		LLVMValueRef associated_value_arr = mixed ? llvm_get_packed_struct(c, values, elements)
 				: llvm_get_array(val_type, values, elements);
 		scratch_buffer_set_extern_decl_name(decl, true);
