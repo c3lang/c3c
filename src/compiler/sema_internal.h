@@ -275,6 +275,8 @@ static inline StorageType sema_resolve_storage_type(SemaContext *context, Type *
 			if (!sema_analyse_decl(context, type->decl)) return false;
 			type = type->decl->distinct->type;
 			goto RETRY;
+		case TYPE_FLEXIBLE_ARRAY:
+			return STORAGE_UNKNOWN;
 		default:
 			return STORAGE_NORMAL;
 	}

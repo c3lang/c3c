@@ -6862,6 +6862,10 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 		default:
 			break;
 	}
+	if (left->type && left->type->type_kind == TYPE_FLEXIBLE_ARRAY)
+	{
+		RETURN_SEMA_ERROR(left, "You can't assign to a flexible array member, but you may index into it and mutate it that way.");
+	}
 
 	// 2. Check assignability
 	if (!sema_expr_check_assign(context, left, failed_ref)) return false;
@@ -7174,7 +7178,13 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 			break;
 	}
 
+	if (left->type->type_kind == TYPE_FLEXIBLE_ARRAY)
+	{
+		RETURN_SEMA_ERROR(left, "You can't assign to a flexible array member, but you may index into it and mutate it that way.");
+	}
+
 	// 2. Verify that the left side is assignable.
+
 	if (!sema_expr_check_assign(context, left, NULL)) return false;
 
 	Type *left_type_canonical = left->type->canonical;

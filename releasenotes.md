@@ -41,6 +41,7 @@
 - Issue not correctly aborting compilation on recursive generics.
 - Crash during codegen when taking the typeid of an empty enum with associated values.
 - Assert when the binary doesn't get created and --run-once is used. #2502
+- Prevent `foo.bar = {}` when `bar` is a flexible array member.
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
