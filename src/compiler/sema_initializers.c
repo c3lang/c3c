@@ -545,7 +545,14 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	Type *type;
 	if (!is_structlike && is_inferred)
 	{
-		 type = type_from_inferred(flattened, type_get_indexed_type(assigned), (ArraySize)(max_index + 1));
+		if (type_is_infer_type(flattened))
+		{
+			type = type_from_inferred(flattened, inner_type, (ArraySize)(max_index + 1));
+		}
+		else
+		{
+			type = type_from_inferred(flattened, inner_type, flattened->array.len);
+		}
 	}
 	else
 	{
@@ -620,6 +627,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 		flattened->type_kind == TYPE_ARRAY ||
 		flattened->type_kind == TYPE_INFERRED_ARRAY ||
 		flattened->type_kind == TYPE_INFERRED_VECTOR ||
+		flattened->type_kind == TYPE_FLEXIBLE_ARRAY ||
 		flattened->type_kind == TYPE_SLICE ||
 		flattened->type_kind == TYPE_VECTOR)
 	{
@@ -817,6 +825,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_BITSTRUCT:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
+		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_VECTOR:
 			return sema_expr_analyse_initializer(context, to, flattened, expr, no_match_ref);
 		case TYPE_SLICE:

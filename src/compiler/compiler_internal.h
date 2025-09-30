@@ -2745,7 +2745,6 @@ INLINE bool type_len_is_inferred(Type *type)
 				continue;
 			case TYPE_ARRAY:
 			case TYPE_SLICE:
-			case TYPE_FLEXIBLE_ARRAY:
 			case TYPE_VECTOR:
 				type = type->array.base;
 				continue;
@@ -2754,7 +2753,9 @@ INLINE bool type_len_is_inferred(Type *type)
 				return true;
 			case TYPE_POINTER:
 				type = type->pointer;
+				if (type->canonical->type_kind == TYPE_FLEXIBLE_ARRAY) return false;
 				continue;
+			case TYPE_FLEXIBLE_ARRAY:
 			default:
 				return false;
 		}
@@ -3436,10 +3437,30 @@ INLINE bool type_is_func_ptr(Type *fn_type)
 	return fn_type->canonical->type_kind == TYPE_FUNC_PTR;
 }
 
-INLINE bool type_is_inferred(Type *type)
+INLINE bool type_is_infer_type(Type *type)
 {
 	TypeKind kind = type->type_kind;
 	return kind == TYPE_INFERRED_VECTOR || kind == TYPE_INFERRED_ARRAY;
+}
+
+INLINE bool type_is_inferred(Type *type)
+{
+RETRY:;
+	TypeKind kind = type->type_kind;
+	switch (kind)
+	{
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+			return true;
+		case TYPE_ARRAY:
+			type = type->array.base->canonical;
+			goto RETRY;
+		case TYPE_POINTER:
+			type = type->pointer->canonical;
+			goto RETRY;
+		default:
+			return false;
+	}
 }
 
 INLINE bool type_is_number_or_bool(Type *type)
