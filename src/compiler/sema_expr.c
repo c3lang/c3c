@@ -10501,6 +10501,10 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		Decl *decl_cached = sema_find_cached_lambda(context, flat, decl, ct_lambda_parameters);
 		if (decl_cached)
 		{
+			if (context->unit->module != context->compilation_unit->module)
+			{
+				decl_cached->is_external_visible = true;
+			}
 			expr->type = type_get_func_ptr(decl_cached->type);
 			expr_rewrite_const_ref(expr, decl_cached);
 			return true;
@@ -10571,6 +10575,10 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	decl->name = scratch_buffer_copy();
 	decl->extname = decl->name;
 	decl->type = type_new_func(decl, sig);
+	if (context->unit->module != context->compilation_unit->module)
+	{
+		decl->is_external_visible = true;
+	}
 	bool erase_decl = false;
 	if (!sema_analyse_func_macro(context, decl, ATTR_FUNC, &erase_decl)) return false;
 	if (erase_decl)
