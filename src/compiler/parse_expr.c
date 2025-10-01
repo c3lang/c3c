@@ -595,7 +595,7 @@ Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl)
 		}
 		else
 		{
-			ASSIGN_EXPR_OR_RET(expr, parse_expr(c), poisoned_expr);
+			ASSIGN_EXPR_OR_RET(expr, parse_decl_or_expr(c), poisoned_expr);
 		}
 		vec_add(expr_list->expression_list, expr);
 		if (!try_consume(c, TOKEN_COMMA)) break;

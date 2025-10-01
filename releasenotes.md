@@ -43,6 +43,7 @@
 - Assert when the binary doesn't get created and --run-once is used. #2502
 - Prevent `foo.bar = {}` when `bar` is a flexible array member. #2497
 - Fix several issues relating to multi-level inference like `int[*][*]` #2505
+- `$for int $a = 1; $a < 2; $a++` would not parse.
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
