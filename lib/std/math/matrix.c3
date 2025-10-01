@@ -124,7 +124,7 @@ fn Matrix3x3 Matrix3x3.mul(&self, Matrix3x3 b) @operator(*)
 	};
 }
 
-fn Matrix4x4 Matrix4x4.mul(Matrix4x4* self, Matrix4x4 b) @operator(*)
+fn Matrix4x4 Matrix4x4.mul(&self, Matrix4x4 b) @operator(*)
 {
 	return {
 		self.m00 * b.m00 + self.m01 * b.m10 + self.m02 * b.m20 + self.m03 * b.m30,
