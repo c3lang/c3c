@@ -402,6 +402,25 @@ fn Matrix4x4 Matrix4x4.rotate_x(&self, Real r)
 	});
 }
 
+// r in radians
+fn Matrix4x4 Matrix4x4.rotate_axis(&self, Real r, Real[<3>] v)
+{
+	Real len = math::sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+	Real x = v[0] / len;
+	Real y = v[1] / len;
+	Real z = v[2] / len;
+
+	Real s = math::sin(r);
+	Real c = math::cos(r);
+	Real k = 1.0 - c;
+
+	return self.mul({
+		x*x*k + c,     x*y*k + z*s,  x*z*k - y*s,  0,
+		y*x*k - z*s,   y*y*k + c,    y*z*k + x*s,  0,
+		z*x*k + y*s,   z*y*k - x*s,  z*z*k + c,    0,
+		0,             0,            0,            1,
+	});
+}
 
 fn Matrix3x3 Matrix3x3.scale(&self, Real[<2>] v)
 {
