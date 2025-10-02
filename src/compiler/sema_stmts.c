@@ -1989,20 +1989,23 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 		SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
 			if (result == COND_FALSE) context->active_scope.is_dead = true;
 			success = success && sema_analyse_statement(context, then);
-			then_jump = context->active_scope.end_jump.active;
+			then_jump = context->active_scope.end_jump.active && !(statement->if_stmt.flow.label && statement->if_stmt.flow.has_break);
 		SCOPE_END;
 
 		if (!success) goto END;
 		else_jump = false;
 		if (statement->if_stmt.else_body)
 		{
+			bool store_break = statement->if_stmt.flow.has_break;
+			statement->if_stmt.flow.has_break = false;
 			SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
 				if (result == COND_TRUE) context->active_scope.is_dead = true;
 				sema_remove_unwraps_from_try(context, cond);
 				sema_unwrappable_from_catch_in_else(context, cond);
 				success = success && sema_analyse_statement(context, else_body);
-				else_jump = context->active_scope.end_jump.active;
+				else_jump = context->active_scope.end_jump.active && !(statement->if_stmt.flow.label && statement->if_stmt.flow.has_break);
 			SCOPE_END;
+			statement->if_stmt.flow.has_break |= store_break;
 		}
 
 END:
@@ -2022,6 +2025,7 @@ END:
 	}
 	if (then_jump && else_jump && !statement->flow.has_break)
 	{
+
 		SET_JUMP_END(context, statement);
 	}
 	else if (then_jump && result == COND_TRUE)

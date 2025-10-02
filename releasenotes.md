@@ -45,6 +45,7 @@
 - Fix several issues relating to multi-level inference like `int[*][*]` #2505
 - `$for int $a = 1; $a < 2; $a++` would not parse.
 - Fix lambda-in-macro visibility, where lambdas would sometimes not correctly link if used through a macro.
+- Dead code analysis with labelled `if` did not work properly.
 
 ### Stdlib changes
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
