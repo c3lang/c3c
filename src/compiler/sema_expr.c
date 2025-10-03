@@ -1781,7 +1781,7 @@ static Decl *sema_find_splat_arg(Decl *macro, const char *name)
 {
 	FOREACH(Decl *, decl, macro->func_decl.signature.params)
 	{
-		if (decl->name == name) return decl;
+		if (decl && decl->name == name) return decl;
 	}
 	return NULL;
 }

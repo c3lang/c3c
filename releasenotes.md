@@ -48,6 +48,7 @@
 - Dead code analysis with labelled `if` did not work properly.
 
 ### Stdlib changes
+- Added AES encryption functions.
 - Added generic `InterfaceList` to store a list of values that implement a specific interface
 - Added `path::home_directory`, `path::documents_directory`, `path::videos_directory`, `path::pictures_directory`, `path::desktop_directory`, `path::screenshots_directory`,
   `path::public_share_directory`, `path::templates_directory`, `path::saved_games_directory`, `path::music_directory`, `path::downloads_directory`.
@@ -150,6 +151,7 @@
 - Fix missing end of line when encountering errors in project creation.
 - Const enum methods are not being recognized. #2445
 - $defined returns an error when assigning a struct initializer with an incorrect type #2449
+- Compiler segfault when splatting variable that does not exist in untyped vaarg macro #2509
 
 ### Stdlib changes
 - Add `==` to `Pair`, `Triple` and TzDateTime. Add print to `Pair` and `Triple`.
