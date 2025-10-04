@@ -116,6 +116,9 @@ macro usz? write_all(stream, char[] buffer)
 	return n;
 }
 
+<*
+ @require @is_instream(s)
+*>
 macro usz? read_using_read_byte(s, char[] buffer)
 {
 	usz len = 0;
@@ -133,12 +136,18 @@ macro usz? read_using_read_byte(s, char[] buffer)
 	return len;
 }
 
+<*
+ @require @is_outstream(s)
+*>
 macro void? write_byte_using_write(s, char c)
 {
 	char[1] buff = { c };
 	s.write(&buff)!;
 }
 
+<*
+ @require @is_instream(s)
+*>
 macro char? read_byte_using_read(s)
 {
 	char[1] buffer;
@@ -149,10 +158,12 @@ macro char? read_byte_using_read(s)
 
 alias ReadByteFn = fn char?();
 
-
+<*
+ @require @is_outstream(s)
+*>
 macro usz? write_using_write_byte(s, char[] bytes)
 {
-	foreach (c : bytes) s.write_byte(self, c)!;
+	foreach (c : bytes) s.write_byte(c)!;
 	return bytes.len;
 }
 

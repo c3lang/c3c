@@ -3,7 +3,10 @@
 ## 0.7.7 Change list
 
 ### Changes / improvements
+
 ### Fixes
+- Bug in `io::write_using_write_byte`.
+
 ### Stdlib changes
 
 ## 0.7.6 Change list
