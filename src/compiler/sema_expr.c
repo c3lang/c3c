@@ -3855,7 +3855,7 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 	}
 	else
 	{
-		if (!sema_analyse_expr(context, index))
+		if (!sema_analyse_expr_rvalue(context, index))
 		{
 			expr_poison(index);
 			return false;
@@ -3875,7 +3875,7 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 	ArrayIndex size;
 	bool check_len = !context->call_env.in_no_eval || current_type == type_untypedlist;
 	Expr *len_expr = current_expr->expr_kind == EXPR_CT_IDENT ? current_expr->ct_ident_expr.decl->var.init_expr : current_expr;
-	if (expr_is_const_int(index) && (size = sema_len_from_expr(len_expr)) >= 0)
+	if (sema_cast_const(index)&& expr_is_const_int(index) && (size = sema_len_from_expr(len_expr)) >= 0)
 	{
 		// 4c. And that it's in range.
 		if (int_is_neg(index->const_expr.ixx))

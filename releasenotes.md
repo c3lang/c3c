@@ -6,6 +6,7 @@
 
 ### Fixes
 - Bug in `io::write_using_write_byte`.
+- Bitstruct value cannot be used to index a const array in compile time. #2512
 
 ### Stdlib changes
 
