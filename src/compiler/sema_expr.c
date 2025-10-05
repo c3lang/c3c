@@ -2695,7 +2695,8 @@ static inline bool sema_expr_setup_call_analysis(SemaContext *context, CalledDec
 		expr->expr_other_context.inner = expr_inner;
 		expr->expr_other_context.context = context;
 	}
-	macro_context->macro_varargs = callee->macro && callee->signature->variadic == VARIADIC_RAW ? call_expr->call_expr.varargs : NULL;
+	macro_context->macro_has_vaargs = callee->macro && callee->signature->variadic == VARIADIC_RAW;
+	macro_context->macro_varargs = macro_context->macro_has_vaargs ? call_expr->call_expr.varargs : NULL;
 	macro_context->original_inline_line = context->original_inline_line ? context->original_inline_line : call_expr->span.row;
 	macro_context->original_module = context->original_module ? context->original_module : context->compilation_unit->module;
 	macro_context->macro_params = params;
@@ -10986,9 +10987,9 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 {
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_RUNNING);
 	TokenType type = expr->ct_arg_expr.type;
-	if (!context->current_macro)
+	if (!context->macro_has_vaargs)
 	{
-		RETURN_SEMA_ERROR(expr, "'%s' can only be used inside of a macro.", token_type_to_string(type));
+		RETURN_SEMA_ERROR(expr, "'%s' can only be used inside of a macro with untyped vaargs.", token_type_to_string(type));
 	}
 	switch (type)
 	{

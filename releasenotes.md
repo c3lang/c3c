@@ -3,6 +3,7 @@
 ## 0.7.7 Change list
 
 ### Changes / improvements
+- Error when using $vaarg/$vacount/$vasplat and similar in a macro without vaargs #2510.
 
 ### Fixes
 - Bug in `io::write_using_write_byte`.

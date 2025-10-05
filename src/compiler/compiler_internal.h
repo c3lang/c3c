@@ -1800,6 +1800,7 @@ struct SemaContext_
 		Type *expected_block_type;
 		Ast **block_returns;
 		Expr **macro_varargs;
+		bool macro_has_vaargs;
 		Decl **macro_params;
 		bool macro_has_ensures;
 		Decl** ct_locals;
