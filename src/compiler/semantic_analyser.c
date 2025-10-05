@@ -584,11 +584,13 @@ void sema_print_inline(SemaContext *context, SourceSpan original)
 {
 	if (!context) return;
 	InliningSpan *inlined_at = context->inlined_at;
+	SourceSpan last_span = INVALID_SPAN;
 	while (inlined_at)
 	{
-		if (inlined_at->span.a != original.a)
+		if (inlined_at->span.a != original.a && inlined_at->span.a != last_span.a)
 		{
 			sema_note_prev_at(inlined_at->span, "Inlined from here.");
+			last_span = inlined_at->span;
 		}
 		inlined_at = inlined_at->prev;
 	}

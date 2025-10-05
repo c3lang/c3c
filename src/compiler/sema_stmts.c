@@ -2339,6 +2339,8 @@ static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context
 		{
 			ast_poison(ast);
 			all_ok = false;
+			// Don't continue inside a macro, since we get too many "inlined" errors.
+			if (context->current_macro) break;
 		}
 	}
 	AstId *next = ast ? &ast_last(ast)->next : &compound_statement->compound_stmt.first_stmt;
