@@ -12046,18 +12046,20 @@ bool sema_cast_const(Expr *expr)
 		{
 			Expr *parent = expr->access_resolved_expr.parent;
 			Type *flat = type_flatten(parent->type);
+			if (!sema_cast_const(parent)) return false;
 			switch (flat->type_kind)
 			{
 				case TYPE_UNION:
 				case TYPE_UNTYPED_LIST:
-				case TYPE_BITSTRUCT:
 				case TYPE_STRUCT:
+					break;
+				case TYPE_BITSTRUCT:
+					if (!expr_is_const_initializer(parent)) return false;
 					break;
 				default:
 					return false;
 			}
-			if (!sema_cast_const(expr->access_resolved_expr.parent)) return false;
-			if (!sema_expr_fold_to_member(expr, expr->access_resolved_expr.parent, expr->access_resolved_expr.ref)) return false;
+			if (!sema_expr_fold_to_member(expr, parent, expr->access_resolved_expr.ref)) return false;
 			return true;
 		}
 		case EXPR_SLICE:

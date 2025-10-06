@@ -580,7 +580,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 	// 1. Designated initializer is separately evaluated.
 	if (expr->expr_kind == EXPR_DESIGNATED_INITIALIZER_LIST)
 	{
-		return sema_expr_analyse_designated_initializer(context, assigned_type, flattened, expr,NULL);
+		return sema_expr_analyse_designated_initializer(context, assigned_type, flattened, expr, no_match_ref);
 	}
 
 	if (expr->expr_kind == EXPR_CONST)

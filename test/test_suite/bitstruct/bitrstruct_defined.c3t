@@ -4,3 +4,4 @@ bitstruct Test : char
 }
 
 $assert !$defined((Test){123});
+$assert !$defined((Test){.type = 123});
