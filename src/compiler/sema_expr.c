@@ -6905,7 +6905,7 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 	}
 	if (left->expr_kind == EXPR_BITACCESS)
 	{
-		if (!sema_bit_assignment_check(context, right, left->access_resolved_expr.ref)) return false;
+		if (!sema_bit_assignment_check(context, right, left->access_resolved_expr.ref, failed_ref)) return false;
 		expr->expr_kind = EXPR_BITASSIGN;
 	}
 	return true;
@@ -12310,7 +12310,7 @@ static inline bool sema_insert_binary_overload(SemaContext *context, Expr *expr,
 }
 
 // Check if the assignment fits
-bool sema_bit_assignment_check(SemaContext *context, Expr *right, Decl *member)
+bool sema_bit_assignment_check(SemaContext *context, Expr *right, Decl *member, bool *failed_ref)
 {
 	// Don't check non-consts and non integers.
 	if (!sema_cast_const(right) || !type_is_integer(right->type)) return true;
@@ -12322,6 +12322,7 @@ bool sema_bit_assignment_check(SemaContext *context, Expr *right, Decl *member)
 
 	if (int_bits_needed(right->const_expr.ixx) > bits)
 	{
+		if (failed_ref) return *failed_ref = true, false;
 		RETURN_SEMA_ERROR(right, "This constant would be truncated if stored in the "
 								 "bitstruct, do you need a wider bit range?");
 	}

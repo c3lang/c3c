@@ -9,6 +9,7 @@
 - Bug in `io::write_using_write_byte`.
 - Bitstruct value cannot be used to index a const array in compile time. #2512
 - Compiler fails to stop error print in recursive macro, and also prints unnecessary "inline at" #2513.
+- Bitstruct truncated constant error escapes `$defined` #2515
 
 ### Stdlib changes
 

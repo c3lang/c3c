@@ -277,7 +277,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		if (!sema_analyse_expr_rhs(context, members[i]->type, element, true, no_match_ref, false)) return false;
 		if (member->decl_kind == DECL_VAR && member->var.kind == VARDECL_BITMEMBER)
 		{
-			if (!sema_bit_assignment_check(context, element, members[i])) return false;
+			if (!sema_bit_assignment_check(context, element, members[i], no_match_ref)) return false;
 		}
 		optional = optional || IS_OPTIONAL(element);
 	}
@@ -529,7 +529,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		if (!sema_analyse_expr_rhs(context, result, value, true, no_match_ref, false)) return false;
 		if (is_bitmember)
 		{
-			if (!sema_bit_assignment_check(context, value, member)) return false;
+			if (!sema_bit_assignment_check(context, value, member, no_match_ref)) return false;
 		}
 		optional = optional || IS_OPTIONAL(value);
 		expr->resolve_status = RESOLVE_DONE;

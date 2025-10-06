@@ -1,0 +1,6 @@
+bitstruct Test : char
+{
+	char type : 0..2;
+}
+
+$assert !$defined((Test){123});

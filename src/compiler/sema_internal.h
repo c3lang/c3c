@@ -113,7 +113,7 @@ Expr *sema_resolve_string_ident(SemaContext *context, Expr *inner, bool report_m
 bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt);
 bool sema_expr_analyse_sprintf(SemaContext *context, Expr *expr, Expr *format_string, Expr **args, unsigned num_args);
 
-bool sema_bit_assignment_check(SemaContext *context, Expr *right, Decl *member);
+bool sema_bit_assignment_check(SemaContext *context, Expr *right, Decl *member, bool *failed_ref);
 CondResult sema_check_comp_time_bool(SemaContext *context, Expr *expr);
 
 bool sema_expr_check_assign(SemaContext *context, Expr *expr, bool *failed_ref);
