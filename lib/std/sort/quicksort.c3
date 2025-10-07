@@ -4,39 +4,50 @@ import std::sort::qs;
 <*
  Sort list using the quick sort algorithm.
 
+ @require @list_is_by_ref(list) : "Expected a list passed by reference or be a slice"
  @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
  @require @is_valid_cmp_fn(cmp, list, context) : "Expected a comparison function which compares values"
  @require @is_valid_context(cmp, context) : "Expected a valid context"
 *>
 macro void quicksort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
-	$if $kindof(list) == POINTER &&& ($kindof(*list) == ARRAY || $kindof(*list) == VECTOR):
-		$typeof((*list)[0])[] list2 = list;
-		qs::qsort{$typeof(list2), $typeof(cmp), $typeof(context)}(list2, 0, (isz)list.len - 1, cmp, context);
+	$if $kindof(list) == SLICE:
+		qs::qsort{$typeof(list), $typeof(cmp), $typeof(context)}(list, 0, (isz)list.len - 1, cmp, context);
 	$else
-		usz len = lengthof(list);
-		qs::qsort{$typeof(list), $typeof(cmp), $typeof(context)}(list, 0, (isz)len - 1, cmp, context);
+		qs::qsort{$typeof(*list), $typeof(cmp), $typeof(context)}(list, 0, (isz)lengthof(*list) - 1, cmp, context);
 	$endif
 }
 
 <*
-Select the (k+1)th smallest element in an unordered list using Hoare's
-selection algorithm (Quickselect). k should be between 0 and len-1. The data
-list will be partially sorted.
+ Select the (k+1)th smallest element in an unordered list using Hoare's
+ selection algorithm (Quickselect). k should be between 0 and len-1. The data
+ list will be partially sorted.
 
+ @require @list_is_by_ref(list) : "Expected a list passed by reference or be a slice"
  @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
  @require @is_valid_cmp_fn(cmp, list, context) : "expected a comparison function which compares values"
  @require @is_valid_context(cmp, context) : "Expected a valid context"
 *>
 macro quickselect(list, isz k, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
-	usz len = lengthof(list);
-	return qs::qselect{$typeof(list), $typeof(cmp), $typeof(context)}(list, 0, (isz)len - 1, k, cmp, context);
+	$if $kindof(list) == SLICE:
+		return qs::qselect{$typeof(list), $typeof(cmp), $typeof(context)}(list, 0, (isz)list.len - 1, k, cmp, context);
+	$else
+		return qs::qselect{$typeof(*list), $typeof(cmp), $typeof(context)}(list, 0, (isz)lengthof(*list) - 1, k, cmp, context);
+	$endif
 }
 
 module std::sort::qs{Type, CmpFn, Context};
 
 alias ElementType = $typeof(((Type){})[0]);
+const bool IS_SLICE = Type.kindof == SLICE;
+alias ListType = $typefrom(IS_SLICE ??? Type : Type*);
+macro list_get(ListType l, i) @if(!IS_SLICE) => (*l)[i];
+macro list_get(ListType l, i) @if(IS_SLICE) => l[i];
+macro list_get_ref(ListType l, i) @if(!IS_SLICE) => &(*l)[i];
+macro list_get_ref(ListType l, i) @if(IS_SLICE) => &l[i];
+macro list_set(ListType l, i, v) @if(!IS_SLICE) => (*l)[i] = v;
+macro list_set(ListType l, i, v) @if(IS_SLICE) => l[i] = v;
 
 struct StackElementItem @private
 {
@@ -48,7 +59,7 @@ alias Stack @private = StackElementItem[64];
 
 // Based on https://alienryderflex.com/quicksort by Darel Rex Finley, Public Domain.
 
-fn void qsort(Type list, isz low, isz high, CmpFn cmp, Context context)
+fn void qsort(ListType list, isz low, isz high, CmpFn cmp, Context context)
 {
 	if (low >= 0 && high >= 0 && low < high)
 	{
@@ -86,7 +97,7 @@ fn void qsort(Type list, isz low, isz high, CmpFn cmp, Context context)
 @require low <= k : "kth smallest element is smaller than lower bounds"
 @require k <= high : "kth smallest element is larger than upper bounds"
 *>
-fn ElementType? qselect(Type list, isz low, isz high, isz k, CmpFn cmp, Context context)
+fn ElementType? qselect(ListType list, isz low, isz high, isz k, CmpFn cmp, Context context)
 {
 	if (low >= 0 && high >= 0 && low < high)
 	{
@@ -98,7 +109,7 @@ fn ElementType? qselect(Type list, isz low, isz high, isz k, CmpFn cmp, Context 
 		while (l <= h && max_retries--)
 		{
 			pivot = @partition(list, l, h, cmp, context);
-			if (k == pivot) return list[k];
+			if (k == pivot) return list_get(list, k);
 			if (k < pivot)
 			{
 				h = pivot - 1;
@@ -112,40 +123,40 @@ fn ElementType? qselect(Type list, isz low, isz high, isz k, CmpFn cmp, Context 
 	return NOT_FOUND?;
 }
 
-macro isz @partition(Type list, isz l, isz h, CmpFn cmp, Context context)
+macro isz @partition(ListType list, isz l, isz h, CmpFn cmp, Context context)
 {
 	var $has_cmp = @is_valid_macro_slot(cmp);
 	var $has_context = @is_valid_macro_slot(context);
-	var $cmp_by_value = $has_cmp &&& $defined($typefrom(CmpFn.paramsof[0].type) v = list[0]);
+	var $cmp_by_value = $has_cmp &&& $defined($typefrom(CmpFn.paramsof[0].type) v = list_get(list, 0));
 
-	ElementType pivot = list[l];
+	ElementType pivot = list_get(list, l);
 	while (l < h)
 	{
 		$switch:
 			$case $cmp_by_value && $has_context:
-				while (cmp(list[h], pivot, context) >= 0 && l < h) h--;
-				if (l < h) list[l++] = list[h];
-				while (cmp(list[l], pivot, context) <= 0 && l < h) l++;
+				while (cmp(list_get(list, h), pivot, context) >= 0 && l < h) h--;
+				if (l < h) list_set(list, l++, list_get(list, h));
+				while (cmp(list_get(list, l), pivot, context) <= 0 && l < h) l++;
 			$case $cmp_by_value:
-				while (cmp(list[h], pivot) >= 0 && l < h) h--;
-				if (l < h) list[l++] = list[h];
-				while (cmp(list[l], pivot) <= 0 && l < h) l++;
+				while (cmp(list_get(list, h), pivot) >= 0 && l < h) h--;
+				if (l < h) list_set(list, l++, list_get(list, h));
+				while (cmp(list_get(list, l), pivot) <= 0 && l < h) l++;
 			$case $has_cmp && $has_context:
-				while (cmp(&list[h], &pivot, context) >= 0 && l < h) h--;
-				if (l < h) list[l++] = list[h];
-				while (cmp(&list[l], &pivot, context) <= 0 && l < h) l++;
+				while (cmp(list_get_ref(list, h), &pivot, context) >= 0 && l < h) h--;
+				if (l < h) list_set(list, l++, list_get(list, h));
+				while (cmp(list_get_ref(list, l), &pivot, context) <= 0 && l < h) l++;
 			$case $has_cmp:
-				while (cmp(&list[h], &pivot) >= 0 && l < h) h--;
-				if (l < h) list[l++] = list[h];
-				while (cmp(&list[l], &pivot) <= 0 && l < h) l++;
+				while (cmp(list_get_ref(list, h), &pivot) >= 0 && l < h) h--;
+				if (l < h) list_set(list, l++, list_get(list, h));
+				while (cmp(list_get_ref(list, l), &pivot) <= 0 && l < h) l++;
 			$default:
-				while (greater_eq(list[h], pivot) && l < h) h--;
-				if (l < h) list[l++] = list[h];
-				while (less_eq(list[l], pivot) && l < h) l++;
+				while (greater_eq(list_get(list, h), pivot) && l < h) h--;
+				if (l < h) list_set(list, l++, list_get(list, h));
+				while (less_eq(list_get(list, l), pivot) && l < h) l++;
 		$endswitch
-		if (l < h) list[h--] = list[l];
+		if (l < h) list_set(list, h--, list_get(list, l));
 	}
-	list[l] = pivot;
+	list_set(list, l, pivot);
 
 	return l;
 }

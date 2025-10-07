@@ -47,7 +47,7 @@ fn void map()
         list.push({key, value});
     };
     assert(list.len() == tcases.len);
-    quicksort(list, fn int (MapTest a, MapTest b) => (int)(a.value - b.value));
+    quicksort(&list, fn int (MapTest a, MapTest b) => (int)(a.value - b.value));
     foreach (i, tc : tcases)
     {
         assert(tc.key == list[i].key);

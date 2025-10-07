@@ -15,6 +15,7 @@
 - Incorrect visibility on local globals with public aliases. #2519
 
 ### Stdlib changes
+- Sorting functions correctly took slices by value, but also other types by value. Now, only slices are accepted by value, other containers are always by ref.
 
 ## 0.7.6 Change list
 

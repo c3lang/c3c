@@ -10693,7 +10693,7 @@ static bool sema_expr_analyse_lenof(SemaContext *context, Expr *expr, bool *miss
 				*missing_ref = true;
 				return false;
 			}
-			RETURN_SEMA_ERROR(inner, "%s does support lengthof()", type_quoted_error_string(inner->type));
+			RETURN_SEMA_ERROR(inner, "%s does not support lengthof()", type_quoted_error_string(inner->type));
 	}
 }
 

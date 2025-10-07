@@ -21,11 +21,11 @@ fn void bench_ctr_xcrypt() @benchmark
 	Aes ctx;
 
 	// encrypt
-	ctx.init_with_iv(aes, CTR, key, iv);
+	ctx.init(aes, key, iv);
 	ctx.encrypt_buffer(text, &out);
 
 	// decrypt
-	ctx.init_with_iv(aes, CTR, key, iv);
+	ctx.init(aes, key, iv);
 	ctx.decrypt_buffer(cipher, &out);
 }
 

@@ -84,7 +84,7 @@ fn void insertionsort_list()
 {
     InsertionSortTestList list;
     list.push_all({ 2, 1, 3});
-    sort::insertionsort(list, &sort::cmp_int_value);
+    sort::insertionsort(&list, &sort::cmp_int_value);
     assert(check::int_ascending_sort(list.array_view()));
 }
 

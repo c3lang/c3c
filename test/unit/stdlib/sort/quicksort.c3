@@ -84,7 +84,7 @@ fn void quicksort_list()
 {
     List2 list;
     list.push_all({ 2, 1, 3});
-    sort::quicksort(list, &sort::cmp_int_value);
+    sort::quicksort(&list, &sort::cmp_int_value);
     assert(check::int_sort(list.array_view()));
 }
 

@@ -4,24 +4,39 @@ import std::sort::cs;
 import std::sort::qs;
 
 <*
-Sort list using the counting sort algorithm.
+
+ Sort list using the counting sort algorithm.
+
+ @require @list_is_by_ref(list) : "Expected the list to be passed by reference"
  @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
  @require @is_cmp_key_fn(key_fn, list) : "Expected a transformation function which returns an unsigned integer."
 *>
 macro void countingsort(list, key_fn = EMPTY_MACRO_SLOT) @builtin
 {
-	usz len = lengthof(list);
-	cs::csort{$typeof(list), $typeof(key_fn)}(list, 0, len, key_fn, ~((uint)0));
+	$if $kindof(list) == SLICE:
+		cs::csort{$typeof(list), $typeof(key_fn)}(list, 0, list.len, key_fn, ~((uint)0));
+	$else
+		cs::csort{$typeof(*list), $typeof(key_fn)}(list, 0, lengthof(*list), key_fn, ~((uint)0));
+	$endif
 }
 
 macro void insertionsort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
-	is::isort{$typeof(list), $typeof(cmp), $typeof(context)}(list, (usz)start, (usz)end, cmp, context);
+	$if $kindof(list) == SLICE:
+		is::isort{$typeof((list)), $typeof(cmp), $typeof(context)}(list, (usz)start, (usz)end, cmp, context);
+	$else
+		is::isort{$typeof((*list)), $typeof(cmp), $typeof(context)}(list, (usz)start, (usz)end, cmp, context);
+	$endif
+
 }
 
 macro void quicksort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
-	qs::qsort{$typeof(list), $typeof(cmp), $typeof(context)}(list, (isz)start, (isz)(end-1), cmp, context);
+	$if $kindof(list) == SLICE:
+		qs::qsort{$typeof((list)), $typeof(cmp), $typeof(context)}(list, (isz)start, (isz)(end-1), cmp, context);
+	$else
+		qs::qsort{$typeof((*list)), $typeof(cmp), $typeof(context)}(list, (isz)start, (isz)(end-1), cmp, context);
+	$endif
 }
 
 module std::sort::cs{Type, KeyFn};
@@ -42,7 +57,14 @@ alias CmpCallback @if(!KEY_BY_VALUE && NO_KEY_FN) = fn int(ElementType*, Element
 alias CmpCallback @if(KEY_BY_VALUE && !NO_KEY_FN) = fn int(ElementType, ElementType, KeyFn);
 alias CmpCallback @if(!KEY_BY_VALUE && !NO_KEY_FN) = fn int(ElementType*, ElementType*, KeyFn);
 
-fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
+const bool IS_SLICE = Type.kindof == SLICE;
+alias ListType = $typefrom(IS_SLICE ??? Type : Type*);
+macro list_get(ListType l, i) @if(!IS_SLICE) => (*l)[i];
+macro list_get(ListType l, i) @if(IS_SLICE) => l[i];
+macro list_get_ref(ListType l, i) @if(!IS_SLICE) => &(*l)[i];
+macro list_get_ref(ListType l, i) @if(IS_SLICE) => &l[i];
+
+fn void csort(ListType list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 {
 	if (high <= low) return;
 	$if NO_KEY_FN:
@@ -67,13 +89,13 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 	{
 		$switch:
 			$case NO_KEY_FN:
-				KeyFnReturnType k = list[i];
+				KeyFnReturnType k = list_get(list, i);
 			$case KEY_BY_VALUE:
-				KeyFnReturnType k = key_fn(list[i]);
+				KeyFnReturnType k = key_fn(list_get(list, i));
 			$case LIST_HAS_REF:
-				KeyFnReturnType k = key_fn(&list[i]);
+				KeyFnReturnType k = key_fn(list_get_ref(list, i));
 			$default:
-				KeyFnReturnType k = key_fn(&&list[i]);
+				KeyFnReturnType k = key_fn(&&list_get(list, i));
 		$endswitch;
 
 		char key_byte = (char)((k >> (byte_idx * 8)) & 0xff);
@@ -131,17 +153,21 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 				{
 					$switch:
 					$case NO_KEY_FN:
-						KeyFnReturnType k = list[low + s];
+						KeyFnReturnType k = list_get(list, low + s);
 					$case KEY_BY_VALUE:
-						KeyFnReturnType k = key_fn(list[low + s]);
+						KeyFnReturnType k = key_fn(list_get(list, low + s));
 					$case LIST_HAS_REF:
-						KeyFnReturnType k = key_fn(&list[low + s]);
+						KeyFnReturnType k = key_fn(list_get_ref(list, low + s));
 					$default:
-						KeyFnReturnType k = key_fn(&&list[low + s]);
+						KeyFnReturnType k = key_fn(&&list_get(list, low + s));
 					$endswitch;
 					char k_idx = (char)(k >> (byte_idx * 8));
 					usz target_idx = counts[k_idx];
-					@swap(list[low + s], list[low + target_idx]);
+					$if IS_SLICE:
+						@swap(list[low + s], list[low + target_idx]);
+					$else
+						@swap((*list)[low + s], (*list)[low + target_idx]);
+					$endif
 					counts[k_idx]++;
 				}
 			}

@@ -79,7 +79,7 @@ fn void countingsort_list()
 {
 	CountingSortTestList list;
 	list.push_all({ 2, 1, 3});
-	sort::countingsort(list, &sort::key_int_value);
+	sort::countingsort(&list, &sort::key_int_value);
 	assert(check::int_ascending_sort(list.array_view()));
 }
 
@@ -94,7 +94,7 @@ fn void countingsort_random_large_list()
 		list.push(random.next_int());
 	}
 
-	sort::countingsort(list, &sort::key_int_value);
+	sort::countingsort(&list, &sort::key_int_value);
 	assert(check::int_ascending_sort(list.array_view()));
 	list.free();
 }
