@@ -1,0 +1,20 @@
+// #target: macos-x64
+module test1;
+alias x = y;
+int y @local = 1;
+
+module test;
+import test1;
+
+fn int main(String[] args)
+{
+	return test1::x;
+}
+
+/* #expect: test1.ll
+
+@test1.y.10 = local_unnamed_addr global i32 1, align 4
+
+// #expect: test.ll
+
+@test1.y.10 = external global i32, align 4

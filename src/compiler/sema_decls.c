@@ -5302,6 +5302,10 @@ static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *er
 	}
 	decl->type = symbol->type;
 	decl->define_decl.alias = symbol;
+	if (decl_is_externally_visible(decl) && !decl_is_externally_visible(symbol))
+	{
+		symbol->is_external_visible = true;
+	}
 	return true;
 }
 

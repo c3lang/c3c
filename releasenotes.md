@@ -12,6 +12,7 @@
 - Bitstruct truncated constant error escapes `$defined` #2515.
 - Compiler segfault when accessing member of number cast to bitstruct #2516.
 - Compiler assert when getting a member of a `bitstruct : char @bigendian` #2517.
+- Incorrect visibility on local globals with public aliases. #2519
 
 ### Stdlib changes
 
