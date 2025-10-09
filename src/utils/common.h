@@ -22,7 +22,9 @@
 
 #define NO_ARENA 0
 #define MAX_VECTOR_WIDTH 65536
+#define MAX_STACK_OBJECT_SIZE (256 * 1024)
 #define DEFAULT_VECTOR_WIDTH 4096
+#define DEFAULT_STACK_OBJECT_SIZE 64
 #define MAX_ARRAY_SIZE INT64_MAX
 #define MAX_SOURCE_LOCATION_LEN 255
 #define PROJECT_JSON "project.json"
@@ -117,7 +119,8 @@
 
 #define ASSERT(_condition) do { if (!(_condition)) { FATAL_ERROR("Violated assert: " #_condition); } } while (0)
 #define WARNING(_string, ...) do { eprintf("WARNING: "); eprintf(_string, ##__VA_ARGS__); eprintf("\n"); } while(0)
-#define UNREACHABLE FATAL_ERROR("Should be unreachable");
+#define UNREACHABLE_VOID FATAL_ERROR("Should be unreachable");
+#define UNREACHABLE UNREACHABLE_VOID; return 0;
 
 #define TODO FATAL_ERROR("TODO reached");
 #define UNSUPPORTED do { error_exit("Unsupported functionality"); } while (0)
@@ -131,4 +134,4 @@
 
 void evprintf(const char *format, va_list list);
 void eprintf(const char *format, ...);
-NORETURN void error_exit(const char *format, ...) ;
+NORETURN void error_exit(const char *format, ...);

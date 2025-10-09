@@ -1,0 +1,15 @@
+module test;
+
+enum Enum : const int
+{
+    E0, E1
+}
+
+fn void Enum.foo(self) {}
+
+fn int main()
+{
+    Enum e = E0;
+    e.foo();
+    return 0;
+}

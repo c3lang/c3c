@@ -45,7 +45,7 @@ fn Path? tcwd() => cwd(tmem) @inline;
 *>
 macro void? chdir(path)
 {
-	$if @typeis(path, String):
+	$if $typeof(path) == String:
 		@pool()
 		{
 			return os::native_chdir(temp(path));
@@ -57,9 +57,21 @@ macro void? chdir(path)
 
 fn Path? temp_directory(Allocator allocator) => os::native_temp_directory(allocator);
 
+fn Path? home_directory(Allocator allocator) => os::native_home_directory(allocator);
+fn Path? desktop_directory(Allocator allocator) => os::native_user_directory(allocator, DESKTOP);
+fn Path? videos_directory(Allocator allocator) => os::native_user_directory(allocator, VIDEOS);
+fn Path? music_directory(Allocator allocator) => os::native_user_directory(allocator, MUSIC);
+fn Path? documents_directory(Allocator allocator) => os::native_user_directory(allocator, DOCUMENTS);
+fn Path? screenshots_directory(Allocator allocator) => os::native_user_directory(allocator, SCREENSHOTS);
+fn Path? saved_games_directory(Allocator allocator) => os::native_user_directory(allocator, SAVED_GAMES);
+fn Path? downloads_directory(Allocator allocator) => os::native_user_directory(allocator, DOWNLOADS);
+fn Path? pictures_directory(Allocator allocator) => os::native_user_directory(allocator, PICTURES);
+fn Path? templates_directory(Allocator allocator) => os::native_user_directory(allocator, TEMPLATES);
+fn Path? public_share_directory(Allocator allocator) => os::native_user_directory(allocator, PUBLIC_SHARE);
+
 fn void? delete(Path path) => os::native_remove(path.str_view()) @inline;
 
-macro bool @is_pathlike(#path) => @typeis(#path, String) || @typeis(#path, Path);
+macro bool @is_pathlike(#path) @const => $typeof(#path) == String ||| $typeof(#path) == Path;
 
 macro bool is_separator(char c, PathEnv path_env = DEFAULT_ENV)
 {
@@ -95,7 +107,7 @@ enum MkdirPermissions
 *>
 macro bool? mkdir(path, bool recursive = false, MkdirPermissions permissions = NORMAL)
 {
-	$if @typeis(path, String):
+	$if $typeof(path) == String:
 		@pool() { return _mkdir(temp(path), recursive, permissions); };
 	$else
 		return _mkdir(path, recursive, permissions);
@@ -113,7 +125,7 @@ macro bool? mkdir(path, bool recursive = false, MkdirPermissions permissions = N
 *>
 macro bool? rmdir(path)
 {
-	$if @typeis(path, String):
+	$if $typeof(path) == String:
 		@pool() { return _rmdir(temp(path)); };
 	$else
 		return _mkdir(path);

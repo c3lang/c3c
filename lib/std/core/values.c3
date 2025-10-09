@@ -2,10 +2,11 @@ module std::core::values;
 import std::core::types;
 
 
+macro bool @typematch(#value1, #value2) @builtin @const => $typeof(#value1) == $typeof(#value2);
 <*
  Return true if two values have the same type before any conversions.
 *>
-macro bool @is_same_type(#value1, #value2) @const => $typeof(#value1).typeid == $typeof(#value2).typeid;
+macro bool @is_same_type(#value1, #value2) @const @deprecated("Use @typematch") => $typeof(#value1).typeid == $typeof(#value2).typeid;
 macro bool @is_bool(#value) @const => types::is_bool($typeof(#value));
 macro bool @is_int(#value) @const => types::is_int($typeof(#value));
 macro bool @is_flat_intlike(#value) @const => types::is_flat_intlike($typeof(#value));
@@ -15,12 +16,11 @@ macro bool @is_promotable_to_floatlike(#value) @const => types::is_promotable_to
 macro bool @is_promotable_to_float(#value) @const => types::is_promotable_to_float($typeof(#value));
 macro bool @is_vector(#value) @const => types::is_vector($typeof(#value));
 macro bool @is_same_vector_type(#value1, #value2) @const => types::is_same_vector_type($typeof(#value1), $typeof(#value2));
-macro bool @assign_to(#value1, #value2) @const => @assignable_to(#value1, $typeof(#value2));
-macro bool @is_lvalue(#value) => $defined(#value = #value);
-macro bool @is_const(#foo) @const @builtin
+macro bool @assign_to(#value1, #value2) @const @deprecated("use '$defined(#value1 = #value2)'") => @assignable_to(#value1, $typeof(#value2));
+macro bool @is_lvalue(#value) @deprecated("use '$defined(#value = #value)'")=> $defined(#value = #value);
+macro bool @is_const(#foo) @const @builtin @deprecated("use '$defined(var $v = expr)'")
 {
-	var $v;
-	return $defined($v = #foo);
+	return $defined(var $v = #foo);
 }
 
 macro promote_int(x)
@@ -43,7 +43,7 @@ macro promote_int(x)
  @param #value_2
  @returns `The selected value.`
 *>
-macro @select(bool $bool, #value_1, #value_2) @builtin
+macro @select(bool $bool, #value_1, #value_2) @builtin @deprecated("Use '$bool ? #value_1 : #value_2' instead.")
 {
 	$if $bool:
 		return #value_1;
@@ -51,6 +51,7 @@ macro @select(bool $bool, #value_1, #value_2) @builtin
 		return #value_2;
 	$endif
 }
+
 macro promote_int_same(x, y)
 {
 	$if @is_int(x):

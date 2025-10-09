@@ -47,7 +47,7 @@ fn void main()
 @.str.9 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
 @.str.10 = private unnamed_addr constant [12 x i8] c"fn int(int)\00", align 1
 @.str.11 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
-@.str.12 = private unnamed_addr constant [13 x i8] c"fn int!(int)\00", align 1
+@.str.12 = private unnamed_addr constant [13 x i8] c"fn int?(int)\00", align 1
 @"$ct.fn$int$int$" = linkonce global %.introspect { i8 13, i64 0, ptr null, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
 define void @test.main() #0 {

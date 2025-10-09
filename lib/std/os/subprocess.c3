@@ -33,19 +33,21 @@ struct SubProcess
 
 bitstruct SubProcessOptions : int
 {
-	// Combine stdout and stderr to the same file
+	<* Combine stdout and stderr to the same file *>
 	bool combined_stdout_stderr;
-	// Child process should inhert env variables of parent process
+	<* Child process should inherit env variables of parent process *>
 	bool inherit_environment;
-	// Enable async reading of stdout/stderr before completion
+	<* Enable async reading of stdout/stderr before completion *>
 	bool read_async;
-	// Spawn child process without window if supported
+	<* Spawn child process without window if supported *>
 	bool no_window;
-	// Search for program names in the PATH variable. Always enabled on Windows.
-	// Note: this will **not** search for paths in any provided custom environment
-	// and instead uses the PATH of the spawning process.
+	<*
+	 Search for program names in the PATH variable. Always enabled on Windows.
+	 Note: this will **not** search for paths in any provided custom environment
+	 and instead uses the PATH of the spawning process.
+	*>
 	bool search_user_path;
-	// Inherit the parent's stdin, stdout, and stderr handles instead of creating pipes
+	<* Inherit the parent's stdin, stdout, and stderr handles instead of creating pipes *>
 	bool inherit_stdio;
 }
 
@@ -292,6 +294,7 @@ fn String? execute_stdout_to_buffer(char[] buffer, String[] command_line, SubPro
 	SubProcess process = process::create(command_line, options, environment)!;
 	process.join()!;
 	usz len = process.read_stdout(buffer.ptr, buffer.len)!;
+	if (len == 0) return "";
 	return (String)buffer[:len - 1];
 }
 
@@ -529,4 +532,10 @@ fn bool? SubProcess.is_running(&self)
 		self.join()!;
 		return false;
 	$endif
+}
+
+fn usz? SubProcess.write_to_stdin(&self, char[] buffer)
+{
+	if (!self.stdin_file) return FAILED_TO_OPEN_STDIN?;
+	return os::native_fwrite(self.stdin_file, buffer);
 }

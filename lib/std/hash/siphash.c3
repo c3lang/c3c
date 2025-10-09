@@ -1,52 +1,52 @@
 // Copyright (c) 2025 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-//
-// SipHash is a secure pseudorandom function (PRF) which digests a 128-bit key
-//   and a variable-length message to produce a 64- or 128-bit hash value. 
-//
-// SipHash can be employed in numerous useful ways and structures, e.g.:
-//   - Hash Tables
-//   - Message Authentication Codes
-//   - Denial of Service (hash flooding) resistance
-//   - Bloom filters
-//   - Keyed runtime identifier derivation
-//
-// Read more: https://en.wikipedia.org/wiki/SipHash
-//
-//
 
-// COMMON HASH VARIANTS.
-// These two forms of SipHash (24 and 48) are the most widely
-// used by many implementations.
-
-// These provide typical 64-bit hash results.
-// -- Best for performance-critical applications.
+<*
+ Best for performance-critical applications.
+ See std::hash::siphash for more information.
+*>
 module std::hash::siphash24;
 import std::hash::siphash;
 alias SipHash24 = SipHash { ulong, 2, 4 };
 alias hash = siphash::hash { ulong, 2, 4 };
 
-// -- Best for conservative security applications.
+<*
+ Best for security-focused applications.
+ See std::hash::siphash for more information.
+*>
 module std::hash::siphash48;
 import std::hash::siphash;
 alias SipHash48 = SipHash { ulong, 4, 8 };
 alias hash = siphash::hash { ulong, 4, 8 };
 
 
-// Exact same as above, but for 128-bit outputs. Algorithm internally changes slightly.
+<* Exact same as siphash24, but for 128-bit outputs. Algorithm internally changes slightly. *>
 module std::hash::siphash24_128;
 import std::hash::siphash;
 alias SipHash24_128 = SipHash { uint128, 2, 4 };
 alias hash = siphash::hash { uint128, 2, 4 };
 
+<* Exact same as siphash48, but for 128-bit outputs. Algorithm internally changes slightly. *>
 module std::hash::siphash48_128;
 import std::hash::siphash;
 alias SipHash48_128 = SipHash { uint128, 4, 8 };
 alias hash = siphash::hash { uint128, 4, 8 };
 
 <*
-@require OutType.typeid == uint128.typeid || OutType.typeid == ulong.typeid : "Module OutType must be either uint128 or ulong."
+ SipHash is a secure pseudorandom function (PRF) which digests a 128-bit key
+  and a variable-length message to produce a 64- or 128-bit hash value.
+
+ SipHash can be employed in numerous useful ways and structures, e.g.:
+  - Hash Tables
+  - Message Authentication Codes
+  - Denial of Service (hash flooding) resistance
+  - Bloom filters
+  - Keyed runtime identifier derivation
+
+  Read more: https://en.wikipedia.org/wiki/SipHash
+
+ @require OutType.typeid == uint128.typeid || OutType.typeid == ulong.typeid : "Module OutType must be either uint128 or ulong."
 *>
 module std::hash::siphash { OutType, BLOCK_ROUNDS, FINALIZE_ROUNDS };
 

@@ -74,31 +74,29 @@ after_check2:                                     ; preds = %after_assign
   br i1 %6, label %cache_hit, label %cache_miss
 
 cache_miss:                                       ; preds = %after_check2
-  %ptradd = getelementptr inbounds i8, ptr %5, i64 16
-  %7 = load ptr, ptr %ptradd, align 8
-  %8 = call ptr @.dyn_search(ptr %7, ptr @"$sel.do_something")
-  store ptr %8, ptr %.inlinecache, align 8
+  %7 = call ptr @.dyn_search(ptr %5, ptr @"$sel.do_something")
+  store ptr %7, ptr %.inlinecache, align 8
   store ptr %5, ptr %.cachedtype, align 8
-  br label %9
+  br label %8
 
 cache_hit:                                        ; preds = %after_check2
   %cache_hit_fn = load ptr, ptr %.inlinecache, align 8
-  br label %9
+  br label %8
 
-9:                                                ; preds = %cache_hit, %cache_miss
-  %fn_phi = phi ptr [ %cache_hit_fn, %cache_hit ], [ %8, %cache_miss ]
+8:                                                ; preds = %cache_hit, %cache_miss
+  %fn_phi = phi ptr [ %cache_hit_fn, %cache_hit ], [ %7, %cache_miss ]
   store ptr %fn_phi, ptr %x, align 8
   br label %phi_try_catch
 
 catch_landing:                                    ; preds = %after_assign
   br label %phi_try_catch
 
-phi_try_catch:                                    ; preds = %catch_landing, %9
-  %val = phi i1 [ true, %9 ], [ false, %catch_landing ]
+phi_try_catch:                                    ; preds = %catch_landing, %8
+  %val = phi i1 [ true, %8 ], [ false, %catch_landing ]
   br i1 %val, label %if.exit, label %if.else
 
 if.else:                                          ; preds = %phi_try_catch
-  %10 = call i64 @std.io.printfn(ptr %retparam3, ptr @.str.1, i64 39, ptr null, i64 0)
+  %9 = call i64 @std.io.printfn(ptr %retparam3, ptr @.str.1, i64 39, ptr null, i64 0)
   br label %if.exit
 
 if.exit:                                          ; preds = %if.else, %phi_try_catch

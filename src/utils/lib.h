@@ -40,6 +40,8 @@ typedef struct
 typedef struct {
 	char* windows_sdk_path;
 	char* vs_library_path;
+	char* cl_path;
+	char* cl_include_env;
 } WindowsSDK;
 
 #define MAX_STRING_BUFFER 0x10000
@@ -93,7 +95,7 @@ void file_get_dir_and_filename_from_full(const char *full_path, char **filename,
 void file_find_top_dir();
 bool file_has_suffix_in_list(const char *file_name, int name_len, const char **suffix_list, int suffix_count);
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count);
-const char *file_append_path(const char *path, const char *name);
+char *file_append_path(const char *path, const char *name);
 const char *file_append_path_temp(const char *path, const char *name);
 
 const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, int suffix_count, bool error_on_mismatch);
@@ -147,12 +149,13 @@ int str_findlist(const char *value, unsigned count, const char** elements);
 // Sprintf style, saved to an arena allocated string
 char *str_printf(const char *var, ...) __printflike(1, 2);
 char *str_vprintf(const char *var, va_list list);
-void str_ellide_in_place(char *string, size_t max_size_shown);
+void str_elide_in_place(char *string, size_t max_size_shown);
 bool str_is_valid_lowercase_name(const char *string);
 bool str_is_valid_constant(const char *string);
 const char *str_unescape(char *string);
 bool str_is_identifier(const char *string);
 bool str_eq(const char *str1, const char *str2);
+bool str_ends_with(const char *str, const char *end);
 bool str_is_type(const char *string);
 bool slice_is_type(const char *string, size_t);
 bool str_is_integer(const char *string);
@@ -176,6 +179,7 @@ void scratch_buffer_append_remove_space(const char *start, int len);
 void scratch_buffer_append_signed_int(int64_t i);
 void scratch_buffer_append_double(double d);
 void scratch_buffer_append_shell_escaped(const char *string);
+void scratch_buffer_append_but_mangle_underscore_dot(const char *name);
 void scratch_buffer_append_cmd_argument(const char *string);
 UNUSED void scratch_buffer_append_unsigned_int(uint64_t i);
 void scratch_buffer_printf(const char *format, ...);
@@ -208,6 +212,7 @@ static inline int char_hex_to_nibble(char c);
 INLINE char char_nibble_to_hex(int c);
 
 static inline uint32_t fnv1a(const char *key, uint32_t len);
+static inline uint64_t a5hash(const char *key, uint32_t len, uint64_t seed);
 
 INLINE uint32_t vec_size(const void *vec);
 static inline void vec_resize(void *vec, uint32_t new_size);
@@ -254,6 +259,83 @@ static inline uint32_t fnv1a(const char *key, uint32_t len)
 		hash = FNV1a(key[i], hash);
 	}
 	return hash;
+}
+
+// see: `int64_mult` in bigint.c - there is no need to import all these declarations just for this
+static inline void _a5mul(uint64_t u, uint64_t v, uint64_t *lo, uint64_t *hi)
+{
+	uint64_t ul = u & 0xFFFFFFFF;
+	uint64_t vl = v & 0xFFFFFFFF;
+	uint64_t t  = ul * vl;
+	uint64_t w3 = t & 0xFFFFFFFF;
+	uint64_t k  = t >> 32;
+
+	u >>= 32;
+	t = u * vl + k;
+	k = t & 0xFFFFFFFF;
+	uint64_t w1 = t >> 32;
+
+	v >>= 32;
+	t = ul * v + k;
+
+	*hi = (u * v) + w1 + (t >> 32);
+	*lo = (t << 32) + w3;
+}
+
+static inline uint64_t a5hash(const char *key, uint32_t len, uint64_t seed)
+{
+	uint64_t widened_len = (uint64_t)len;
+	uint64_t seed1 = 0x243F6A8885A308D3 ^ widened_len;
+	uint64_t seed2 = 0x452821E638D01377 ^ widened_len;
+	uint64_t val10 = 0xAAAAAAAAAAAAAAAA;
+	uint64_t val01 = 0x5555555555555555;
+	uint64_t a, b;
+	const char *scroll = key, *end = key + len;
+
+	_a5mul(seed2 ^ (seed & val10), seed1 ^ (seed & val01), &seed1, &seed2);
+
+	val10 ^= seed2;
+
+	if (len > 3)
+	{
+		if (len > 16)
+		{
+			val01 ^= seed1;
+
+			for (; end - scroll > 16; scroll += 16)
+			{
+				_a5mul(((uint64_t *)scroll)[0] ^ seed1, ((uint64_t *)scroll)[1] ^ seed2, &seed1, &seed2);
+
+				seed1 += val01;
+				seed2 += val10;
+			}
+
+			a = *(uint64_t *)(scroll + (end - scroll) - 16);
+			b = *(uint64_t *)(scroll + (end - scroll) - 8);
+		}
+		else
+		{
+			a = ((uint64_t)(*(uint32_t *)scroll) << 32) | *(uint32_t *)(end - 4);
+			b = ((uint64_t)(*(uint32_t *)&scroll[(len >> 3) * 4]) << 32)
+				| *(uint32_t *)(end - 4 - (len >> 3) * 4);
+		}
+	}
+	else
+	{
+		a = len
+			? (uint64_t)(
+				(uint64_t)scroll[0]
+				| (len > 1 ? ((uint64_t)scroll[1] << 8) : 0)
+				| (len > 2 ? ((uint64_t)scroll[2] << 16) : 0)
+			)
+			: 0;
+		b = 0;
+	}
+
+	_a5mul(a ^ seed1, b ^ seed2, &seed1, &seed2);
+	_a5mul(val01 ^ seed1, seed2, &a, &b);
+
+	return a ^ b;
 }
 
 typedef struct

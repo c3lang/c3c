@@ -14,9 +14,9 @@ TestContext* test_context @private;
 struct TestContext
 {
 	JmpBuf buf;
-	// Allows filtering test cased or modules by substring, e.g. 'foo::', 'foo::test_add'
+	<* Allows filtering test cased or modules by substring, e.g. 'foo::', 'foo::test_add' *>
 	String test_filter;
-	// Triggers debugger breakpoint when assert or test:: checks failed
+	<* Triggers debugger breakpoint when assert or test:: checks failed *>
 	bool breakpoint_on_assert;
 
 	// internal state
@@ -140,7 +140,6 @@ fn void unmute_output(bool has_error) @local
 	usz log_size = test_context.fake_stdout.seek(0, Seek.CURSOR)!!;
 	if (has_error)
 	{
-		io::printf("\nTesting %s ", test_context.current_test_name);
 		io::printn(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
 	}
 

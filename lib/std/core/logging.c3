@@ -134,20 +134,25 @@ macro void init()
 	log_init.call(fn () => (void)logger_mutex.init());
 }
 
-fn void call_log(LogPriority prio, LogCategory category, String fmt, args...)
+macro void call_log(LogPriority prio, LogCategory category, String fmt, args...)
+{
+	$if FULL_LOG:
+	call_log_internal(prio, category, $$FILE, $$FUNC, $$LINE, fmt, args);
+	$else
+	call_log_internal(prio, category, "", "", 0, fmt, args);
+	$endif
+}
+
+fn void call_log_internal(LogPriority prio, LogCategory category, String file, String func, int line, String fmt, any[] args)
 {
 	LogPriority priority = mem::@atomic_load(config_priorities[category], UNORDERED);
-	if (priority < prio) return;
+	if (priority > prio) return;
 	init();
 	bool locked = logger_mutex.is_initialized() && @ok(logger_mutex.lock());
 	Logger logger = current_logger;
 	LogFn logfn = current_logfn;
 	defer if (locked) (void)logger_mutex.unlock();
-	$if FULL_LOG:
-	logfn(logger.ptr, prio, category, current_tag, $$FILE, $$FUNC, $$LINE, fmt, args);
-	$else
-	logfn(logger.ptr, prio, category, current_tag, "", "", 0, fmt, args);
-	$endif
+	logfn(logger.ptr, prio, category, current_tag, file, func, line, fmt, args);
 }
 
 fn String? get_category_name(LogCategory category)
@@ -199,15 +204,19 @@ fn void StderrLogger.log(&self, LogPriority priority, LogCategory category, LogT
 		str.init(mem, 256);
 		str.appendf(fmt, ...args);
 		TzDateTime time = datetime::now().to_local();
+		$if FULL_LOG:
+		io::eprintfn("[%02d:%02d:%02d:%04d] %s:%d [%s] %s", time.hour, time.min, time.sec, (time.usec / 1000), file, line, priority, str);
+		$else
 		io::eprintfn("[%02d:%02d:%02d:%04d] [%s] %s", time.hour, time.min, time.sec, (time.usec / 1000), priority, str);
+		$endif
 	};
 }
 
 alias LogFn = fn void(void*, LogPriority priority, LogCategory category, LogTag tag, String file, String function, int line, String fmt, any[] args);
-LogFn current_logfn = @select(env::LIBC, (LogFn)&StderrLogger.log, (LogFn)&NullLogger.log);
+LogFn current_logfn = env::LIBC ??? (LogFn)&StderrLogger.log : (LogFn)&NullLogger.log;
 OnceFlag log_init;
 Mutex logger_mutex;
-Logger current_logger = @select(env::LIBC, &stderr_logger, &null_logger);
+Logger current_logger = env::LIBC ??? &stderr_logger : &null_logger;
 StderrLogger stderr_logger @if (env::LIBC);
 NullLogger null_logger;
 LogPriority[256] config_priorities = { [0..255] = ERROR, [CATEGORY_APPLICATION] = INFO, [CATEGORY_TEST] = VERBOSE, [CATEGORY_ASSERT] = WARN};

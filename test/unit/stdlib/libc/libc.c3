@@ -15,8 +15,7 @@ fn void abs() @test
 	CInt x = 21;
 	assert(libc::abs(x) == 21);
 	assert(libc::abs(-x) == 21);
-	$assert @typeis(libc::abs(x), CInt);
-	$assert @typeis(libc::abs(-x), CInt);
+	$assert $typeof(libc::abs(x)) == CInt;
 }
 
 fn void asctime() @test
@@ -72,37 +71,28 @@ fn void atexit() @test
 fn void atof() @test
 {
 	assert(libc::atof("123.45") == 123.45);
-	$assert @typeis(libc::atof("123.45"), double);
+	$assert $typeof(libc::atof("123.45")) == double;
 	assert(libc::atof("-3.14") == -3.14);
-	$assert @typeis(libc::atof("-3.14"), double);
 	assert(libc::atof("x") == 0.0);
-	$assert @typeis(libc::atof("x"), double);
 	assert(libc::atof("") == 0.0);
-	$assert @typeis(libc::atof(""), double);
 }
 
 fn void atoi() @test
 {
 	assert(libc::atoi("123") == 123);
-	$assert @typeis(libc::atoi("123"), int);
+	$assert $typeof(libc::atoi("123")) == CInt;
 	assert(libc::atoi("-3.14") == -3);
-	$assert @typeis(libc::atoi("-3.14"), int);
 	assert(libc::atoi("x") == 0);
-	$assert @typeis(libc::atoi("x"), int);
 	assert(libc::atoi("") == 0);
-	$assert @typeis(libc::atoi(""), int);
 }
 
 fn void atoll() @test
 {
-	assert(libc::atoi("123") == 123);
-	$assert @typeis(libc::atoi("123"), int);
-	assert(libc::atoi("-3.14") == -3);
-	$assert @typeis(libc::atoi("-3.14"), int);
-	assert(libc::atoi("x") == 0);
-	$assert @typeis(libc::atoi("x"), int);
-	assert(libc::atoi("") == 0);
-	$assert @typeis(libc::atoi(""), int);
+	assert(libc::atoll("123") == 123);
+	assert(libc::atoll("-3.14") == -3);
+	$assert $typeof(libc::atoll("-3.14")) == CLongLong;
+	assert(libc::atoll("x") == 0);
+	assert(libc::atoll("") == 0);
 }
 
 // Compare function, struct and function for libc::bsearch test
@@ -145,8 +135,8 @@ fn void bsearch() @test
 	key = 6;
 	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_cint);
 	assert(*found == 6);
-	CInt non_existant_key = 12;
-	found = (CInt*) libc::bsearch(&non_existant_key, int_ar, 7, CInt.sizeof, &compare_cint);
+	CInt non_existent_key = 12;
+	found = (CInt*) libc::bsearch(&non_existent_key, int_ar, 7, CInt.sizeof, &compare_cint);
 	assert(found == null);
 
 	Event[] events = {

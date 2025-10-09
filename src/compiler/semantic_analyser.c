@@ -118,6 +118,27 @@ void context_pop_defers(SemaContext *context, AstId *next)
 	context->active_scope.defer_last = defer_start;
 }
 
+void sema_add_methods_to_decl_stack(SemaContext *context, Decl *decl)
+{
+	if (!decl->method_table) return;
+	FOREACH(Decl *, func, decl->method_table->methods)
+	{
+		switch (func->visibility)
+		{
+			case VISIBLE_LOCAL:
+				if (context->unit != func->unit) continue;
+				break;
+			case VISIBLE_PRIVATE:
+				if (context->unit->module != func->unit->module) continue;
+				break;
+			default:
+				break;
+		}
+		sema_decl_stack_push(func);
+	}
+}
+
+
 
 void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast)
 {
@@ -153,7 +174,7 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 		switch (module->stage)
 		{
 			case ANALYSIS_NOT_BEGUN:
-				UNREACHABLE
+				UNREACHABLE_VOID
 			case ANALYSIS_MODULE_HIERARCHY:
 				sema_analyse_pass_module_hierarchy(module);
 				break;
@@ -243,16 +264,16 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_ERASED:
 			case DECL_GROUP:
 			case DECL_LABEL:
-				UNREACHABLE
+				UNREACHABLE_VOID
 			case DECL_ALIAS:
 			case DECL_ATTRIBUTE:
 			case DECL_BITSTRUCT:
 			case DECL_CONST_ENUM:
-			case DECL_DISTINCT:
+			case DECL_TYPEDEF:
 			case DECL_ENUM:
 			case DECL_INTERFACE:
 			case DECL_STRUCT:
-			case DECL_TYPEDEF:
+			case DECL_TYPE_ALIAS:
 			case DECL_UNION:
 			case DECL_VAR:
 				break;
@@ -264,7 +285,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 		htable_set(&unit->module->symbols, (void *)decl->name, decl);
 		if (decl->visibility == VISIBLE_PUBLIC)
 		{
-			global_context_add_generic_decl(decl);
+			global_context_add_decl(decl);
 		}
 	}
 }
@@ -563,6 +584,19 @@ void sema_print_inline(SemaContext *context, SourceSpan original)
 {
 	if (!context) return;
 	InliningSpan *inlined_at = context->inlined_at;
+	SourceSpan last_span = INVALID_SPAN;
+	while (inlined_at)
+	{
+		if (inlined_at->span.a != original.a && inlined_at->span.a != last_span.a)
+		{
+			sema_note_prev_at(inlined_at->span, "Inlined from here.");
+			last_span = inlined_at->span;
+		}
+		inlined_at = inlined_at->prev;
+	}
+	InliningSpan span = context->compilation_unit->module->inlined_at;
+	if (span.span.a == INVALID_SPAN.a) return;
+	inlined_at = &span;
 	while (inlined_at)
 	{
 		if (inlined_at->span.a != original.a)

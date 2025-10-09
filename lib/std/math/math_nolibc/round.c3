@@ -31,7 +31,8 @@ fn float _roundf(float x) @extern("roundf") @weak @nostrip
 	uint u = bitcast(x, uint);
 	int e = (u >> 23) & 0xff;
 	if (e >= 0x7f + 23) return x;
-	if (u >> 31) x = -x;
+	bool signed = u >> 31 != 0;
+	if (signed) x = -x;
 	if (e < 0x7f - 1)
 	{
 		force_eval_add(x, TOINTF);
@@ -47,7 +48,7 @@ fn float _roundf(float x) @extern("roundf") @weak @nostrip
 		default:
 			y = y + x;
 	}
-	if (u >> 31) y = -y;
+	if (signed) y = -y;
 	return y;
 }
 

@@ -297,7 +297,7 @@ static inline ConstInitializer *expr_const_initializer_from_expr(Expr *expr)
  *
  * 1. String/Bytes + ... => String/Bytes
  * 2. Vector/slice/array + Untyped list => Merged untyped list
- * 3. Vector/slice/array + arraylike => vector/array iff canoncial match, otherwise Untyped list
+ * 3. Vector/slice/array + arraylike => vector/array iff canonical match, otherwise Untyped list
  * 4. Untyped list + Vector/array/slice => Merged untyped list
  * 5. Vector/array/slice + element => Vector/array/slice + 1 len iff canonical match, Untyped list otherwise
  * 6. Untyped list + element => Untyped list
@@ -484,6 +484,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 				.const_kind = CONST_UNTYPED_LIST,
 				.untyped_list = untyped_exprs
 		};
+
 		return true;
 	}
 	// Zero slice + zero slice => slice

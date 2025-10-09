@@ -95,20 +95,6 @@ bool parse_generic_expr_list(ParseContext *c, Expr ***exprs_ref)
 	return true;
 }
 
-static bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_token)
-{
-	while (!try_consume(c, end_token))
-	{
-		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
-		vec_add(*exprs_ref, expr);
-		if (!try_consume(c, TOKEN_COMMA))
-		{
-			CONSUME_OR_RET(end_token, false);
-			return true;
-		}
-	}
-	return true;
-}
 
 /**
  * rethrow_expr ::= call_expr '!'
@@ -407,7 +393,7 @@ static bool parse_param_path(ParseContext *c, DesignatorElement ***path)
 	}
 }
 
-static Expr *parse_lambda(ParseContext *c, Expr *left, SourceSpan lhs_span)
+static Expr *parse_lambda(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_LAMBDA);
@@ -609,7 +595,7 @@ Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl)
 		}
 		else
 		{
-			ASSIGN_EXPR_OR_RET(expr, parse_expr(c), poisoned_expr);
+			ASSIGN_EXPR_OR_RET(expr, parse_decl_or_expr(c), poisoned_expr);
 		}
 		vec_add(expr_list->expression_list, expr);
 		if (!try_consume(c, TOKEN_COMMA)) break;
@@ -622,9 +608,10 @@ Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl)
  *
  * @param c the context
  * @param left must be null.
+ * @param lhs_start unused
  * @return Expr *
  */
-static Expr *parse_type_identifier(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_type_identifier(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	return parse_type_expression_with_path(c, NULL);
@@ -635,9 +622,10 @@ static Expr *parse_type_identifier(ParseContext *c, Expr *left, SourceSpan lhs_s
  *
  * @param c the context
  * @param left must be null.
+ * @param lhs_start unused
  * @return Expr *
  */
-static Expr *parse_splat(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_splat(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = expr_new(EXPR_SPLAT, c->span);
@@ -671,9 +659,10 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left, SourceSpan lhs_start U
  *
  * @param c the context
  * @param left must be null
+ * @param lhs_start unused
  * @return Expr *
  */
-static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	SourceSpan start_span = c->span;
@@ -772,12 +761,17 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side, SourceSpan lhs
 	ASSERT(expr_ok(left_side));
 
 	Expr *expr = expr_new(EXPR_TERNARY, lhs_start);
-	advance_and_verify(c, TOKEN_QUESTION);
+	bool is_const = tok_is(c, TOKEN_CT_TERNARY);
+	advance(c);
 
-	// If we have no expression following *or* it is a '!' followed by no expression
-	// in this case it's an optional expression.
-	if (!rules[c->tok].prefix || ((c->tok == TOKEN_BANG || c->tok == TOKEN_BANGBANG) && !rules[peek(c)].prefix))
+	if (is_const)
 	{
+		expr->ternary_expr.is_const = true;
+	}
+	else if (!rules[c->tok].prefix || ((c->tok == TOKEN_BANG || c->tok == TOKEN_BANGBANG) && !rules[peek(c)].prefix))
+	{
+		// If we have no expression following *or* it is a '!' followed by no expression
+		// in this case it's an optional expression.
 		expr->expr_kind = EXPR_OPTIONAL;
 		expr->inner_expr = left_side;
 		RANGE_EXTEND_PREV(expr);
@@ -868,13 +862,18 @@ static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST);
 	advance_and_verify(c, TOKEN_LBRACE);
+	Expr *splat = NULL;
 	if (!try_consume(c, TOKEN_RBRACE))
 	{
 		Expr **exprs = NULL;
 		if (!parse_init_list(c, &exprs, TOKEN_RBRACE, NULL, true)) return poisoned_expr;
 		int designated = -1;
-		FOREACH(Expr *, expr, exprs)
+		FOREACH_IDX(i, Expr *, expr, exprs)
 		{
+			if (i == 0 && expr->expr_kind == EXPR_SPLAT)
+			{
+				splat = expr;
+			}
 			if (expr->expr_kind == EXPR_DESIGNATOR)
 			{
 				if (designated == 0)
@@ -882,10 +881,12 @@ static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_
 					designated = expr->designator_expr.path[0]->kind == DESIGNATOR_FIELD ? 1 : 2;
 					goto ERROR;
 				}
+
 				designated = expr->designator_expr.path[0]->kind == DESIGNATOR_FIELD ? 1 : 2;
 				continue;
 			}
 			if (designated > 0) goto ERROR;
+			if (designated == -1 && splat) continue;
 			designated = 0;
 			continue;
 ERROR:;
@@ -902,7 +903,12 @@ ERROR:;
 		RANGE_EXTEND_PREV(initializer_list);
 		if (designated > 0)
 		{
-			initializer_list->designated_init_list = exprs;
+			if (splat)
+			{
+				vec_erase_front(exprs, 1);
+				splat = splat->inner_expr;
+			}
+			initializer_list->designated_init = (ExprDesignatedInit) { .splat = splat, .list = exprs };
 			initializer_list->expr_kind = EXPR_DESIGNATED_INITIALIZER_LIST;
 		}
 		else
@@ -924,10 +930,7 @@ static Expr *parse_orelse(ParseContext *c, Expr *left_side, SourceSpan lhs_start
 	// Assignment operators have precedence right -> left.
 	ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, PREC_TERNARY), poisoned_expr);
 
-	Expr *expr = expr_new(EXPR_BINARY, lhs_start);
-	expr->binary_expr.operator = BINARYOP_ELSE;
-	expr->binary_expr.left = exprid(left_side);
-	expr->binary_expr.right = exprid(right_side);
+	Expr *expr = expr_new_binary(lhs_start, left_side, right_side, BINARYOP_ELSE);
 
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -953,10 +956,7 @@ static Expr *parse_binary(ParseContext *c, Expr *left_side, SourceSpan start)
 		ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, rules[operator_type].precedence + 1), poisoned_expr);
 	}
 
-	Expr *expr = expr_new(EXPR_BINARY, start);
-	expr->binary_expr.operator = binaryop_from_token(operator_type);
-	expr->binary_expr.left = exprid(left_side);
-	expr->binary_expr.right = exprid(right_side);
+	Expr *expr = expr_new_binary(start, left_side, right_side, binaryop_from_token(operator_type));
 
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -1167,14 +1167,25 @@ static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceSpan lhs_start 
 	Expr *defined = expr_new(EXPR_CT_DEFINED, c->span);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	if (!parse_expr_list(c, &defined->expression_list, TOKEN_RPAREN)) return poisoned_expr;
+	while (!try_consume(c, TOKEN_RPAREN))
+	{
+
+		ASSIGN_EXPR_OR_RET(Expr *expr, parse_decl_or_expr(c), poisoned_expr);
+		vec_add(defined->expression_list, expr);
+		if (!try_consume(c, TOKEN_COMMA))
+		{
+			CONSUME_OR_RET(TOKEN_RPAREN, false);
+			break;
+		}
+	}
+	RANGE_EXTEND_PREV(defined);
 	return defined;
 
 }
 /**
  * ct_sizeof ::= CT_SIZEOF '(' expr ')'
  *
- * Note that this is tranformed to $typeof(expr).sizeof.
+ * Note that this is transformed to $typeof(expr).sizeof.
  */
 static Expr *parse_ct_sizeof(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
@@ -1210,7 +1221,6 @@ static Expr *parse_ct_is_const(ParseContext *c, Expr *left, SourceSpan lhs_start
 	ASSIGN_EXPR_OR_RET(checks->inner_expr, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(checks);
-	SEMA_DEPRECATED(checks, "The $is_const macro is deprecated. Use @is_const(...) instead.");
 	return checks;
 }
 
@@ -1231,6 +1241,22 @@ static Expr *parse_ct_embed(ParseContext *c, Expr *left, SourceSpan lhs_start UN
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(embed);
 	return embed;
+}
+
+/**
+ * lengthof ::= LENGTHOF '(' expr ')'
+ * flat_path ::= expr ('.' primary) | '[' expr ']')*
+ */
+static Expr *parse_lengthof(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+{
+	ASSERT(!left && "Unexpected left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_LENGTHOF);
+	advance(c);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	RANGE_EXTEND_PREV(expr);
+	return expr;
 }
 
 /**
@@ -1267,6 +1293,27 @@ static Expr *parse_ct_assignable(ParseContext *c, Expr *left, SourceSpan lhs_sta
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
+}
+
+static Expr *parse_ct_kindof(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+{
+	ASSERT(!left && "Unexpected left hand side");
+	Expr *access = expr_new(EXPR_ACCESS_UNRESOLVED, c->span);
+	advance(c);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	Expr *typeof_expr = expr_new(EXPR_TYPEINFO, inner->span);
+	TypeInfo *type_info = type_info_new(TYPE_INFO_TYPEOF, inner->span);
+	type_info->optional = try_consume(c, TOKEN_BANG);
+	type_info->unresolved_type_expr = inner;
+	typeof_expr->type_expr = type_info;
+	access->access_unresolved_expr.parent = typeof_expr;
+	Expr *ident = expr_new(EXPR_UNRESOLVED_IDENTIFIER, c->span);
+	ident->unresolved_ident_expr.ident = type_property_list[TYPE_PROPERTY_KINDOF];
+	access->access_unresolved_expr.child = ident;
+	RANGE_EXTEND_PREV(access);
+	return access;
 }
 
 /**
@@ -1574,7 +1621,7 @@ EXIT:
 		is_unsigned = false;
 		if (i128_comp(i, INT128_MIN, type_u128) == CMP_GT)
 		{
-			PRINT_ERROR_AT(expr_int, "The negated integer size would exeed an int128.");
+			PRINT_ERROR_AT(expr_int, "The negated integer size would exceed an int128.");
 			return poisoned_expr;
 		}
 		if (negated) i = i128_neg(i);
@@ -2130,6 +2177,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_TRUE] = { parse_bool, NULL, PREC_NONE },
 		[TOKEN_FALSE] = { parse_bool, NULL, PREC_NONE },
 		[TOKEN_NULL] = { parse_null, NULL, PREC_NONE },
+		[TOKEN_LENGTHOF] = { parse_lengthof, NULL, PREC_NONE },
 		[TOKEN_INTEGER] = { parse_integer, NULL, PREC_NONE },
 		[TOKEN_BUILTIN] = { parse_builtin, NULL, PREC_NONE },
 		[TOKEN_CHAR_LITERAL] = { parse_char_lit, NULL, PREC_NONE },
@@ -2137,7 +2185,8 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_REAL] = { parse_double, NULL, PREC_NONE },
 		[TOKEN_OR] = { NULL, parse_binary, PREC_OR },
 		[TOKEN_CT_OR] = { NULL, parse_binary, PREC_OR },
-		[TOKEN_CT_CONCAT] = { NULL, parse_binary, PREC_MULTIPLICATIVE },
+		[TOKEN_CT_CONCAT] = { NULL, parse_binary, PREC_ADDITIVE },
+		[TOKEN_CT_CONCAT_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_AND] = { parse_unary_expr, parse_binary, PREC_AND },
 		[TOKEN_CT_AND] = { parse_unary_expr, parse_binary, PREC_AND },
 		[TOKEN_EQ] = { NULL, parse_binary, PREC_ASSIGNMENT },
@@ -2171,11 +2220,13 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_EXTNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_FEATURE] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_IS_CONST] = {parse_ct_is_const, NULL, PREC_NONE },
+		[TOKEN_CT_KINDOF] = { parse_ct_kindof, NULL, PREC_NONE },
 		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_QNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_SIZEOF] = { parse_ct_sizeof, NULL, PREC_NONE },
 		[TOKEN_CT_STRINGIFY] = { parse_ct_stringify, NULL, PREC_NONE },
+		[TOKEN_CT_TERNARY] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_CT_TYPEFROM] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_TYPEOF] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_VAARG] = { parse_ct_arg, NULL, PREC_NONE },

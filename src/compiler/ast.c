@@ -67,11 +67,11 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 		case DECL_CONST_ENUM:
 			kind = TYPE_CONST_ENUM;
 			break;
-		case DECL_DISTINCT:
-			kind = TYPE_DISTINCT;
-			break;
 		case DECL_TYPEDEF:
 			kind = TYPE_TYPEDEF;
+			break;
+		case DECL_TYPE_ALIAS:
+			kind = TYPE_ALIAS;
 			break;
 		case DECL_BITSTRUCT:
 			kind = TYPE_BITSTRUCT;
@@ -114,8 +114,8 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_CT_EXEC: return "compile time exec include";
 		case DECL_CT_INCLUDE: return "an include";
 		case DECL_DECLARRAY: return "a declarray";
-		case DECL_ALIAS: case DECL_ALIAS_PATH: case DECL_TYPEDEF: return "an alias";
-		case DECL_DISTINCT: return "a distinct type";
+		case DECL_ALIAS: case DECL_ALIAS_PATH: case DECL_TYPE_ALIAS: return "an alias";
+		case DECL_TYPEDEF: return "a distinct type";
 		case DECL_ENUM: return "an enum";
 		case DECL_CONST_ENUM: return "a raw enum";
 		case DECL_ENUM_CONSTANT: return "an enum value";
@@ -194,6 +194,7 @@ BinaryOp binary_op[TOKEN_LAST + 1] = {
 		[TOKEN_CT_AND] = BINARYOP_CT_AND,
 		[TOKEN_CT_OR] = BINARYOP_CT_OR,
 		[TOKEN_CT_CONCAT] = BINARYOP_CT_CONCAT,
+		[TOKEN_CT_CONCAT_ASSIGN] = BINARYOP_CT_CONCAT_ASSIGN,
 		[TOKEN_QUESTQUEST] = BINARYOP_ELSE,
 		[TOKEN_AMP] = BINARYOP_BIT_AND,
 		[TOKEN_BIT_OR] = BINARYOP_BIT_OR,
@@ -404,10 +405,12 @@ bool decl_needs_prefix(Decl *decl)
 {
 	switch (decl->decl_kind)
 	{
-		case DECL_VAR:
-		case DECL_ALIAS:
 		case DECL_FUNC:
 		case DECL_MACRO:
+			if (decl->func_decl.type_parent) return false;
+			FALLTHROUGH;
+		case DECL_VAR:
+		case DECL_ALIAS:
 		case DECL_FAULT:
 			return !decl->is_autoimport;
 		default:
@@ -427,7 +430,7 @@ Decl *decl_find_enum_constant(Decl *decl, const char *name)
 AlignSize decl_find_member_offset(Decl *decl, Decl *member)
 {
 	static const AlignSize NO_MATCH = ~(AlignSize)0;
-	while (decl->decl_kind == DECL_DISTINCT) decl = decl->distinct->type->decl;
+	while (decl->decl_kind == DECL_TYPEDEF) decl = decl->distinct->type->decl;
 	Decl **members = NULL;
 	switch (decl->decl_kind)
 	{
@@ -481,10 +484,7 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 		Type *parent = type_infoptr(decl->func_decl.type_parent)->type->canonical;
 		if (type_is_user_defined(parent))
 		{
-			Decl *parent_decl = parent->decl;
-			if (parent_decl->unit && parent_decl->unit->module) scratch_buffer_append_module(parent_decl->unit->module, decl->is_export);
-			scratch_buffer_append(decl->is_export ? "__" : ".");
-			scratch_buffer_append(parent->name);
+			scratch_buffer_set_extern_decl_name(parent->decl, false);
 			scratch_buffer_append(decl->is_export ? "__" : ".");
 			scratch_buffer_append(decl->name);
 			return;
@@ -499,7 +499,16 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 	Module *module = decl->unit ? decl->unit->module : NULL;
 	if (module) scratch_buffer_append_module(module, decl->is_export);
 	scratch_buffer_append(decl->is_export ? "__" : ".");
-	scratch_buffer_append(decl->name ? decl->name : "$anon");
+	const char *name = decl_is_user_defined_type(decl) ? decl->type->name : decl->name;
+	if (!name) name = "$anon";
+	if (decl->is_export)
+	{
+		scratch_buffer_append_but_mangle_underscore_dot(name);
+	}
+	else
+	{
+		scratch_buffer_append(name);
+	}
 	if (decl->visibility == VISIBLE_LOCAL)
 	{
 		assert(module);

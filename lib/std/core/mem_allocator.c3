@@ -167,7 +167,7 @@ macro void free_aligned(Allocator allocator, void* ptr)
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_aligned' instead"
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type t = $vaexpr[0]) : "The second argument must be an initializer for the type"
 *>
 macro new(Allocator allocator, $Type, ...) @nodiscard
 {
@@ -183,7 +183,7 @@ macro new(Allocator allocator, $Type, ...) @nodiscard
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_aligned' instead"
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type t = $vaexpr[0]) : "The second argument must be an initializer for the type"
 *>
 macro new_try(Allocator allocator, $Type, ...) @nodiscard
 {
@@ -200,7 +200,7 @@ macro new_try(Allocator allocator, $Type, ...) @nodiscard
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type t = $vaexpr[0]) : "The second argument must be an initializer for the type"
 *>
 macro new_aligned(Allocator allocator, $Type, ...) @nodiscard
 {
@@ -318,6 +318,23 @@ macro clone(Allocator allocator, value) @nodiscard
 }
 
 <*
+ @param [&inout] allocator : "The allocator used to clone"
+ @param slice : "The slice to clone"
+ @return "A pointer to the cloned slice"
+
+ @require $kindof(slice) == SLICE || $kindof(slice) == ARRAY
+*>
+macro clone_slice(Allocator allocator, slice) @nodiscard
+{
+	var $Type = $typeof(slice[0]);
+
+	$Type[] new_arr = new_array(allocator, $Type, slice.len);
+	mem::copy(new_arr.ptr, &slice[0], slice.len * $Type.sizeof);
+
+	return new_arr;
+}
+
+<*
  Clone overaligned values. Must be released using free_aligned.
 
  @param [&inout] allocator : "The allocator to use to clone"
@@ -348,7 +365,7 @@ macro void*? @aligned_alloc(#alloc_fn, usz bytes, usz alignment)
 	if (alignment < void*.alignof) alignment = void*.alignof;
 	usz header = AlignedBlock.sizeof + alignment;
 	usz alignsize = bytes + header;
-	$if @typekind(#alloc_fn(bytes)) == OPTIONAL:
+	$if $kindof(#alloc_fn(bytes)) == OPTIONAL:
 		void* data = #alloc_fn(alignsize)!;
 	$else
 		void* data = #alloc_fn(alignsize);
@@ -369,7 +386,7 @@ struct AlignedBlock
 macro void? @aligned_free(#free_fn, void* old_pointer)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
-	$if @typekind(#free_fn(desc.start)) == OPTIONAL:
+	$if $kindof(#free_fn(desc.start)) == OPTIONAL:
 	#free_fn(desc.start)!;
 	$else
 	#free_fn(desc.start);
@@ -386,7 +403,7 @@ macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 	void* data_start = desc.start;
 	void* new_data = @aligned_alloc(#calloc_fn, bytes, alignment)!;
 	mem::copy(new_data, old_pointer, desc.len < bytes ? desc.len : bytes, 1, 1);
-	$if @typekind(#free_fn(data_start)) == OPTIONAL:
+	$if $kindof(#free_fn(data_start)) == OPTIONAL:
 	#free_fn(data_start)!;
 	$else
 	#free_fn(data_start);
@@ -494,7 +511,7 @@ macro Allocator temp() @deprecated("Use 'tmem' instead")
 
 alias tmem @builtin = current_temp;
 
-fn void allow_implicit_temp_allocator_on_load_thread() @init(1) @local @if(env::LIBC || env::WASM_NOLIBC)
+fn void allow_implicit_temp_allocator_on_load_thread() @init(1) @local @if(env::LIBC || env::FREESTANDING_WASM)
 {
 	auto_create_temp = true;
 }

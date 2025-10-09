@@ -25,7 +25,7 @@ fn void main()
 
 /* #expect: test.ll
 
-@jumptable = private unnamed_addr constant [1 x ptr] [ptr blockaddress(@test.test1, %switch.case)], align 4
+@jumptable = private unnamed_addr constant [1 x ptr] [ptr blockaddress(@test.test1, %switch.case)], align 8
 
 define void @test.test1() #0 {
 entry:
@@ -41,12 +41,12 @@ switch.entry:                                     ; preds = %entry
 jumpblock:                                        ; preds = %switch.entry
   %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable, i32 %0
   %target = load ptr, ptr %ptroffset, align 8
-  indirectbr ptr %target, [label %switch.case]
+  indirectbr ptr %target, [label %switch.case, label %switch.exit]
 
 switch.case:                                      ; preds = %jumpblock
   br label %switch.exit
 
-switch.exit:                                      ; preds = %switch.case, %switch.entry
+switch.exit:                                      ; preds = %jumpblock, %switch.case, %switch.entry
   ret void
 }
 

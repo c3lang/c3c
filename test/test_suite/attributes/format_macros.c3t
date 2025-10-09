@@ -1,5 +1,3 @@
-import std;
-
 module abort_test;
 
 fn int main()

@@ -1,0 +1,23 @@
+// #target: macos-x64
+module test;
+module test;
+import std, libc;
+
+fn void unaligned_load_store(void* dst, void* src) @nostrip
+{
+    $$unaligned_store(dst, $$unaligned_load((char*)src, 2), 2);
+}
+
+fn int main()
+{
+	return 0;
+}
+
+/* #expect: test.ll
+
+define void @test.unaligned_load_store(ptr %0, ptr %1) #0 {
+entry:
+  %2 = load i8, ptr %1, align 2
+  store i8 %2, ptr %0, align 2
+  ret void
+}

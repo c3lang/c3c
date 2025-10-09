@@ -110,14 +110,14 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case CT_TYPES:
 		case TYPE_ANYFAULT:
 		case TYPE_BITSTRUCT:
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		case TYPE_ENUM:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_FUNC_RAW:
 		case TYPE_INTERFACE:
 		case TYPE_OPTIONAL:
 		case TYPE_CONST_ENUM:
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 		case TYPE_TYPEID:
 		case TYPE_VECTOR:
 		case TYPE_VOID:
@@ -505,7 +505,7 @@ void c_abi_func_create_x86(FunctionPrototype *prototype)
 			regs.int_regs = compiler.platform.default_number_regs_x86;
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	// 3. Special case for MCU:
 	if (compiler.platform.x86.is_mcu_api)

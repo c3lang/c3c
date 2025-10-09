@@ -94,7 +94,7 @@ bitstruct UInt128LE : uint128 @littleendian
 macro read(bytes, $Type)
 {
 	char[] s;
-	$switch @typekind(bytes):
+	$switch $kindof(bytes):
 		$case POINTER:
 			s = (*bytes)[:$Type.sizeof];
 		$default:
@@ -110,7 +110,7 @@ macro read(bytes, $Type)
 macro write(x, bytes, $Type)
 {
 	char[] s;
-	$switch @typekind(bytes):
+	$switch $kindof(bytes):
 		$case POINTER:
 			s = (*bytes)[:$Type.sizeof];
 		$default:
@@ -119,7 +119,7 @@ macro write(x, bytes, $Type)
 	*($typeof(x)*)s.ptr = bitcast(x, $Type).val;
 }
 
-macro is_bitorder($Type)
+macro bool is_bitorder($Type)
 {
 	$switch $Type:
 		$case UShortLE:

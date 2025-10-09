@@ -6,7 +6,7 @@
  then free the pointer and the atomic variable assuming that they are allocated using the Allocator in the Ref.
 
  @require !$defined(Type.dealloc) ||| $defined(Type.dealloc(&&(Type){})) : "'dealloc' must only take a pointer to the underlying type"
- @require !$defined(Type.dealloc) ||| @typeis((Type){}.dealloc(), void) : "'dealloc' must return 'void'"
+ @require !$defined(Type.dealloc) ||| $typeof((Type){}.dealloc()) ==  void : "'dealloc' must return 'void'"
 *>
 module std::core::mem::ref { Type };
 import std::thread, std::atomic;
@@ -21,7 +21,7 @@ fn Ref wrap(Type* ptr, Allocator allocator = mem)
 }
 <*
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| @assignable_to($vaexpr[0], Type) : "The first argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined(Type a = $vaexpr[0]) : "The first argument must be an initializer for the type"
 *>
 macro Ref new(..., Allocator allocator = mem)
 {
@@ -99,7 +99,7 @@ struct RefCounted
 }
 
 <*
- @require @assignable_to(refcounted, RefCounted*) : "Expected a ref counted value"
+ @require $defined(RefCounted* c = refcounted) : "Expected a ref counted value"
 *>
 macro retain(refcounted)
 {
@@ -112,8 +112,8 @@ macro retain(refcounted)
 }
 
 <*
- @require @assignable_to(refcounted, RefCounted*) : "Expected a ref counted value"
- @require !$defined(refcounted.dealloc()) ||| @typeis(refcounted.dealloc(), void)
+ @require $defined(RefCounted* c = refcounted) : "Expected a ref counted value"
+ @require !$defined(refcounted.dealloc()) ||| $typeof(refcounted.dealloc()) == void
    : "Expected refcounted type to have a valid dealloc"
 *>
 macro void release(refcounted)

@@ -55,7 +55,8 @@ struct Exp2Data @private
 	double shift;
 	double negln2hiN;
 	double negln2loN;
-	double[4] poly; // Last four coefficients.
+	<* Last four coefficients. *>
+	double[4] poly;
 	double exp2_shift;
 	double[EXP2_POLY_ORDER] exp2_poly;
 	ulong[2 * EXP_DATA_WIDTH] tab;

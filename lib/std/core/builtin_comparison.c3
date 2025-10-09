@@ -6,7 +6,7 @@ module std::core::builtin;
 <*
  @require types::@comparable_value(a) && types::@comparable_value(b)
 *>
-macro less(a, b) @builtin
+macro bool less(a, b) @builtin
 {
 	$switch:
 	$case $defined(a.less):
@@ -21,7 +21,7 @@ macro less(a, b) @builtin
 <*
  @require types::@comparable_value(a) && types::@comparable_value(b)
 *>
-macro less_eq(a, b) @builtin
+macro bool less_eq(a, b) @builtin
 {
 	$switch:
 	$case $defined(a.less):
@@ -36,7 +36,7 @@ macro less_eq(a, b) @builtin
 <*
  @require types::@comparable_value(a) && types::@comparable_value(b)
 *>
-macro greater(a, b) @builtin
+macro bool greater(a, b) @builtin
 {
 	$switch:
 	$case $defined(a.less):
@@ -65,7 +65,7 @@ macro int compare_to(a, b) @builtin
 <*
  @require types::@comparable_value(a) && types::@comparable_value(b)
 *>
-macro greater_eq(a, b) @builtin
+macro bool greater_eq(a, b) @builtin
 {
 	$switch:
 	$case $defined(a.less):

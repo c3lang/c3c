@@ -213,7 +213,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			break;
 		case OPT_SETTING_NOT_SET:
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	COPY_IF_DEFAULT(target->optsize, optsize);
 	COPY_IF_DEFAULT(target->optlevel, optlevel);
@@ -431,6 +431,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(benchfn);
 	OVERRIDE_IF_SET(symtab_size);
 	OVERRIDE_IF_SET(max_vector_size);
+	OVERRIDE_IF_SET(max_stack_object_size);
 	OVERRIDE_IF_SET(win.def);
 	OVERRIDE_IF_SET(no_entry);
 	OVERRIDE_IF_SET(echo_prefix);
@@ -446,6 +447,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(android.api_version);
 
 	if (!target->max_vector_size) target->max_vector_size = DEFAULT_VECTOR_WIDTH;
+	if (!target->max_stack_object_size) target->max_stack_object_size = DEFAULT_STACK_OBJECT_SIZE;
 
 	if (target->quiet && !options->verbosity_level) options->verbosity_level = -1;
 
@@ -491,7 +493,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case SANITIZE_ADDRESS: target->feature.sanitize_address = true; break;
 		case SANITIZE_MEMORY: target->feature.sanitize_memory = true; break;
 		case SANITIZE_THREAD: target->feature.sanitize_thread = true; break;
-		default: UNREACHABLE;
+		default: UNREACHABLE_VOID;
 	}
 
 	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT) target->arch_os_target = default_target;
@@ -620,7 +622,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 void init_default_build_target(BuildTarget *target, BuildOptions *options)
 {
 	*target = default_build_target;
-	target->source_dirs = options->files;
+	target->source_dirs = NULL;
 	target->name = options->output_name;
 	target->output_name = options->output_name;
 	update_build_target_from_options(target, options);

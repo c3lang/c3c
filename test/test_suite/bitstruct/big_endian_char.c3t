@@ -1,0 +1,16 @@
+bitstruct Instruction : char @bigendian
+{
+	ushort count : 4..7;
+}
+
+bitstruct Instruction2 : char @littleendian
+{
+	ushort count : 4..7;
+}
+
+fn int main(String[] args)
+{
+	Instruction a;
+	Instruction2 b;
+	return a.count;
+}

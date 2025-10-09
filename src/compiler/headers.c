@@ -66,7 +66,7 @@ INLINE const char *decl_get_extname(Decl *decl)
 
 static bool type_is_func_pointer(Type *type)
 {
-	if (type->type_kind != TYPE_DISTINCT && type->type_kind != TYPE_TYPEDEF) return false;
+	if (type->type_kind != TYPE_TYPEDEF && type->type_kind != TYPE_ALIAS) return false;
 	type = type_flatten(type);
 	return type->type_kind == TYPE_FUNC_PTR;
 }
@@ -96,7 +96,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 	{
 		case CT_TYPES:
 		case TYPE_OPTIONAL:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_VOID:
 			PRINTF("void");
 			return;
@@ -178,7 +178,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 		case TYPE_ANYFAULT:
 			PRINTF("c3fault_t");
 			return;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			if (type->decl->is_export)
 			{
 				PRINTF("%s", decl_get_extname(type->decl));
@@ -186,7 +186,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 			}
 			header_print_type(c, type->decl->distinct->type);
 			return;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			if (type == type_usz) { PRINTF("size_t"); return; }
 			if (type == type_isz) { PRINTF("ptrdiff_t"); return; }
 			if (type == type_iptr) { PRINTF("intptr_t"); return; }
@@ -199,7 +199,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 			header_print_type(c, type->canonical);
 			return;
 		case TYPE_FLEXIBLE_ARRAY:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_ARRAY:
 			PRINTF("struct { ");
 			header_print_type(c, type->array.base);
@@ -225,7 +225,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 					PRINTF("float");
 					break;
 				default:
-					UNREACHABLE;
+					UNREACHABLE_VOID;
 			}
 			PRINTF("%dx%llu", (int)type_bit_size(type->array.base), (unsigned long long)type->array.len);
 			return;
@@ -372,7 +372,7 @@ static void header_gen_members(HeaderContext *c, int indent, Decl **members)
 				PRINTF(" __bits%d;\n", ++i);
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 }
@@ -482,7 +482,7 @@ static void header_ensure_member_types_exist(HeaderContext *c, Decl **members)
 			case DECL_BITSTRUCT:
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 }
@@ -500,7 +500,7 @@ RETRY:
 	{
 		case CT_TYPES:
 		case TYPE_OPTIONAL:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case ALL_FLOATS:
@@ -511,7 +511,7 @@ RETRY:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
 			return;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 		{
 			if (!header_try_gen_both(c, type)) return;
 			Type *underlying_type = type->decl->distinct->type;
@@ -521,7 +521,7 @@ RETRY:
 			PRINTF(" %s;\n", decl_get_extname(type->decl));
 			return;
 		}
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 		{
 			if (!header_try_gen_both(c, type)) return;
 			Type *underlying_type = type->canonical;
@@ -553,9 +553,11 @@ RETRY:
 			header_gen_enum(c, 0, type->decl);
 			return;
 		case TYPE_CONST_ENUM:
-			TODO;
+			// TODO;
+			type = type_flatten(type);
+			goto RETRY;
 		case TYPE_FUNC_RAW:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			header_gen_struct_union_top(c, type->decl, is_pointer ? GEN_POINTER : GEN_FULL);
@@ -662,7 +664,7 @@ static void header_gen_global_var(HeaderContext *c, Decl *decl, bool fn_globals,
 			case CONST_INITIALIZER:
 			case CONST_UNTYPED_LIST:
 			case CONST_BYTES:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 	if (!fn_globals)
@@ -756,7 +758,7 @@ static void process_queue(HeaderContext *c)
 				header_gen_struct_union_top(c, decl, GEN_DEFINITION);
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 	vec_resize(c->type_queue, 0);

@@ -15,9 +15,12 @@ struct LinkedEntry
 	uint hash;
 	Key key;
 	Value value;
-	LinkedEntry* next;		// For bucket chain
-	LinkedEntry* before;	// Previous in insertion order
-	LinkedEntry* after;		// Next in insertion order
+	<* For bucket chain *>
+	LinkedEntry* next;
+	<* Previous in insertion order *>
+	LinkedEntry* before;
+	<* Next in insertion order *>
+	LinkedEntry* after;
 }
 
 struct LinkedHashMap (Printable)
@@ -27,8 +30,10 @@ struct LinkedHashMap (Printable)
 	usz count;
 	usz threshold;
 	float load_factor;
-	LinkedEntry* head;		// First inserted LinkedEntry
-	LinkedEntry* tail;		// Last inserted LinkedEntry
+	<* First inserted LinkedEntry *>
+	LinkedEntry* head;
+	<* Last inserted LinkedEntry *>
+	LinkedEntry* tail;
 }
 
 
@@ -188,8 +193,9 @@ fn LinkedEntry*? LinkedHashMap.get_entry(&map, Key key)
 }
 
 <*
- Get the value or update and
- @require @assignable_to(#expr, Value)
+ Get the value or set it to the value
+
+ @require $defined(Value val = #expr)
 *>
 macro Value LinkedHashMap.@get_or_set(&map, Key key, Value #expr)
 {
@@ -248,7 +254,7 @@ fn void? LinkedHashMap.remove(&map, Key key) @maydiscard
 fn void LinkedHashMap.clear(&map)
 {
 	if (!map.count) return;
-	
+
 	LinkedEntry* entry = map.head;
 	while (entry)
 	{
@@ -256,12 +262,12 @@ fn void LinkedHashMap.clear(&map)
 		map.free_entry(entry);
 		entry = next;
 	}
-	
+
 	foreach (LinkedEntry** &bucket : map.table)
 	{
 		*bucket = null;
 	}
-	
+
 	map.count = 0;
 	map.head = null;
 	map.tail = null;
@@ -283,10 +289,10 @@ fn Key[] LinkedHashMap.tkeys(&self)
 fn Key[] LinkedHashMap.keys(&self, Allocator allocator)
 {
 	if (!self.count) return {};
-	
+
 	Key[] list = allocator::alloc_array(allocator, Key, self.count);
 	usz index = 0;
-	
+
 	LinkedEntry* entry = self.head;
 	while (entry)
 	{
@@ -337,7 +343,7 @@ fn Value[] LinkedHashMap.values(&self, Allocator allocator)
 fn bool LinkedHashMap.has_value(&map, Value v) @if(VALUE_IS_EQUATABLE)
 {
 	if (!map.count) return false;
-	
+
 	LinkedEntry* entry = map.head;
 	while (entry)
 	{
@@ -395,7 +401,7 @@ fn void LinkedHashMap.add_entry(&map, uint hash, Key key, Value value, uint buck
 	$if COPY_KEYS:
 	key = key.copy(map.allocator);
 	$endif
-	
+
 	LinkedEntry* entry = allocator::new(map.allocator, LinkedEntry, {
 		.hash = hash,
 		.key = key,
@@ -404,10 +410,10 @@ fn void LinkedHashMap.add_entry(&map, uint hash, Key key, Value value, uint buck
 		.before = map.tail,
 		.after = null
 	});
-	
+
 	// Update bucket chain
 	map.table[bucket_index] = entry;
-	
+
 	// Update linked list
 	if (map.tail)
 	{
@@ -419,7 +425,7 @@ fn void LinkedHashMap.add_entry(&map, uint hash, Key key, Value value, uint buck
 		map.head = entry;
 	}
 	map.tail = entry;
-	
+
 	if (map.count++ >= map.threshold)
 	{
 		map.resize(map.table.len * 2);
@@ -430,28 +436,28 @@ fn void LinkedHashMap.resize(&map, uint new_capacity) @private
 {
 	LinkedEntry*[] old_table = map.table;
 	uint old_capacity = old_table.len;
-	
+
 	if (old_capacity == MAXIMUM_CAPACITY)
 	{
 		map.threshold = uint.max;
 		return;
 	}
-	
+
 	LinkedEntry*[] new_table = allocator::new_array(map.allocator, LinkedEntry*, new_capacity);
 	map.table = new_table;
 	map.threshold = (uint)(new_capacity * map.load_factor);
-	
+
 	// Rehash all entries - linked list order remains unchanged
 	foreach (uint i, LinkedEntry *e : old_table)
 	{
 		if (!e) continue;
-		
+
 		// Split the bucket chain into two chains based on new bit
 		LinkedEntry* lo_head = null;
 		LinkedEntry* lo_tail = null;
 		LinkedEntry* hi_head = null;
 		LinkedEntry* hi_tail = null;
-		
+
 		do
 		{
 			LinkedEntry* next = e.next;
@@ -483,7 +489,7 @@ fn void LinkedHashMap.resize(&map, uint new_capacity) @private
 			e = next;
 		}
 		while (e);
-		
+
 		if (lo_tail)
 		{
 			lo_tail.next = null;
@@ -495,7 +501,7 @@ fn void LinkedHashMap.resize(&map, uint new_capacity) @private
 			new_table[i + old_capacity] = hi_head;
 		}
 	}
-	
+
 	map.free_internal(old_table.ptr);
 }
 
@@ -561,12 +567,12 @@ fn void LinkedHashMap.free_internal(&map, void* ptr) @inline @private
 fn bool LinkedHashMap.remove_entry_for_key(&map, Key key) @private
 {
 	if (!map.count) return false;
-	
+
 	uint hash = rehash(key.hash());
 	uint i = index_for(hash, map.table.len);
 	LinkedEntry* prev = null;
 	LinkedEntry* e = map.table[i];
-	
+
 	while (e)
 	{
 		if (e.hash == hash && equals(key, e.key))
@@ -579,7 +585,7 @@ fn bool LinkedHashMap.remove_entry_for_key(&map, Key key) @private
 			{
 				map.table[i] = e.next;
 			}
-			
+
 			if (e.before)
 			{
 				e.before.after = e.after;
@@ -588,7 +594,7 @@ fn bool LinkedHashMap.remove_entry_for_key(&map, Key key) @private
 			{
 				map.head = e.after;
 			}
-			
+
 			if (e.after)
 			{
 				e.after.before = e.before;
@@ -597,7 +603,7 @@ fn bool LinkedHashMap.remove_entry_for_key(&map, Key key) @private
 			{
 				map.tail = e.before;
 			}
-			
+
 			map.count--;
 			map.free_entry(e);
 			return true;

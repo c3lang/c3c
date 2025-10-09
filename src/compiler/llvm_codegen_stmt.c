@@ -82,7 +82,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		case VARDECL_GLOBAL:
 		case VARDECL_MEMBER:
 		case VARDECL_BITMEMBER:
-			UNREACHABLE;
+			UNREACHABLE_VOID;
 		case VARDECL_PARAM:
 		{
 			Expr *init_expr = decl->var.init_expr;
@@ -104,7 +104,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 			return;
 		case VARDECL_LOCAL_CT:
 		case VARDECL_LOCAL_CT_TYPE:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 
 	// Get the declaration and the LLVM type.
@@ -501,6 +501,29 @@ static inline LoopType loop_type_for_cond(Expr *cond, bool do_while)
 	return LOOP_NORMAL;
 }
 
+static void llmv_emit_for_cond(GenContext *c, Expr *cond, LLVMBasicBlockRef cond_block, LLVMBasicBlockRef loop_start_block, LLVMBasicBlockRef exit_block)
+{
+	// Emit the block
+	llvm_emit_block(c, cond_block);
+	BEValue be_value;
+	ASSERT(cond);
+	if (cond->expr_kind == EXPR_COND)
+	{
+		llvm_emit_cond(c, &be_value, cond, true);
+	}
+	else
+	{
+		llvm_emit_expr(c, &be_value, cond);
+	}
+	if (llvm_get_current_block_if_in_use(c))
+	{
+		llvm_value_rvalue(c, &be_value);
+		ASSERT(llvm_value_is_bool(&be_value));
+
+		// Jump to start or exit
+		llvm_emit_cond_br(c, &be_value, loop_start_block, exit_block);
+	}
+}
 void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 {
 	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->span);
@@ -509,12 +532,6 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 	{
 		llvm_emit_ignored_expr(c, exprptr(ast->for_stmt.init));
 	}
-	ExprId incr = ast->for_stmt.incr;
-
-	LLVMBasicBlockRef inc_block = incr ? llvm_basic_block_new(c, "loop.inc") : NULL;
-	Ast *body = astptr(ast->for_stmt.body);
-	LLVMBasicBlockRef body_block = ast_is_not_empty(body) ? llvm_basic_block_new(c, "loop.body") : NULL;
-	LLVMBasicBlockRef cond_block = NULL;
 
 	// Skipping first cond? This is do-while semantics
 	bool skip_first = ast->for_stmt.flow.skip_first;
@@ -522,164 +539,134 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 	ExprId cond_id = ast->for_stmt.cond;
 	Expr *cond = cond_id ? exprptr(cond_id) : NULL;
 	LoopType loop = loop_type_for_cond(cond, skip_first);
+	Ast *body = astptr(ast->for_stmt.body);
+	ExprId incr = ast->for_stmt.incr;
 
-	// This is the starting block to loop back to, and may either be cond, body or inc
-	LLVMBasicBlockRef loop_start_block = body_block ? body_block : inc_block;
-
-	// We only emit a cond block if we have a normal loop.
-	if (loop == LOOP_NORMAL)
+	if (loop == LOOP_NONE)
 	{
-		cond_block = llvm_basic_block_new(c, "loop.cond");
-		loop_start_block = cond_block;
-	}
-
-	// In the case that *none* of the blocks exist.
-	if (!inc_block && !body_block && !cond_block)
-	{
-		if (loop == LOOP_INFINITE)
+		// while (0) -> never entered
+		if (!skip_first) return;
+		ASSERT(!incr && "There should not be an incr in do-while");
+		// do while(0) -> emit once
+		LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "loop.exit");
+		ast->for_stmt.codegen.continue_block = exit_block;
+		ast->for_stmt.codegen.exit_block = exit_block;
+		llvm_emit_stmt(c, body);
+		if (!llvm_basic_block_is_unused(exit_block))
 		{
-			SourceSpan loc = ast->span;
-
-			llvm_emit_panic(c, "Infinite loop found", loc, NULL, NULL);
-			llvm_emit_block(c, llvm_basic_block_new(c, "unreachable_block"));
-			DEBUG_POP_LEXICAL_SCOPE(c);
-			return;
+			llvm_emit_br(c, exit_block);
+			llvm_emit_block(c, exit_block);
 		}
 		DEBUG_POP_LEXICAL_SCOPE(c);
 		return;
 	}
 
-	ASSERT(loop_start_block != NULL);
-
+	LLVMBasicBlockRef inc_block = incr ? llvm_basic_block_new(c, "loop.inc") : NULL;
+	LLVMBasicBlockRef body_block = ast_is_not_empty(body) ? llvm_basic_block_new(c, "loop.body") : NULL;
+	LLVMBasicBlockRef cond_block = NULL;
 	LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "loop.exit");
+
+	// This is the starting block to loop back to, and may either be body, inc or cond
+	LLVMBasicBlockRef loop_start_block = body_block ? body_block : inc_block;
+
+	bool start_with_cond = false;
+	switch (loop)
+	{
+		case LOOP_NORMAL:
+			// We only emit a cond block if we have a normal loop.
+			cond_block = llvm_basic_block_new(c, "loop.cond");
+			// Start with cond if we can't start anywhere.
+			if (!loop_start_block) loop_start_block = cond_block;
+			// Jump to the cond block on for/while
+			if (skip_first)
+			{
+				ASSERT(loop_start_block);
+				llvm_emit_br(c, loop_start_block);
+				break;
+			}
+			// Otherwise start with cond block
+			start_with_cond = true;
+			llvm_emit_br(c, cond_block);
+			break;
+		case LOOP_INFINITE:
+			// We might have an infinite loop
+			if (!loop_start_block)
+			{
+				SourceSpan loc = ast->span;
+
+				llvm_emit_panic(c, "Infinite loop found", loc, NULL, NULL);
+				llvm_emit_block(c, llvm_basic_block_new(c, "unreachable_block"));
+				DEBUG_POP_LEXICAL_SCOPE(c);
+				return;
+			}
+			// Otherwise just jump to the start block.
+			llvm_emit_br(c, loop_start_block);
+			break;
+		case LOOP_NONE:
+			UNREACHABLE_VOID
+	}
+
+	ASSERT(inc_block || body_block || cond_block);
+	ASSERT(loop_start_block != NULL);
 
 	// Break is simple it always jumps out.
 	// For continue:
-	// 1. If there is inc, jump to the condition
-	// 2. If this is not looping, jump to the exit, otherwise go to cond/body depending on what the start is.
-	LLVMBasicBlockRef continue_block = inc_block;
-	if (!continue_block)
-	{
-		continue_block = loop == LOOP_NONE ? exit_block : loop_start_block;
-	}
+	// 1. Jump to inc if it exists
+	// 2. Otherwise jump to cond
+	// 3. If cond doesn't exist, jump to body
+	ASSERT(loop != LOOP_NONE);
+	LLVMBasicBlockRef continue_block = inc_block ? inc_block : (cond_block ? cond_block : body_block);
 
 	ast->for_stmt.codegen.continue_block = continue_block;
 	ast->for_stmt.codegen.exit_block = exit_block;
 
-	// We have a normal loop, so we emit a cond.
-	if (loop == LOOP_NORMAL)
-	{
-		// Emit a jump for do-while semantics, to skip the initial cond.
-		if (skip_first)
-		{
-			LLVMBasicBlockRef do_while_start = body_block ? body_block : inc_block;
-			// Only jump if we have a body / inc
-			// if the case is do {} while (...) then we basically can treat this as while (...) {}
-			llvm_emit_br(c, do_while_start ? do_while_start : cond_block);
-		}
-		else
-		{
-			llvm_emit_br(c, cond_block);
-		}
+	if (start_with_cond) llmv_emit_for_cond(c, cond, cond_block, loop_start_block, exit_block);
 
-		// Emit the block
-		llvm_emit_block(c, cond_block);
-		BEValue be_value;
-		ASSERT(cond);
-		if (cond->expr_kind == EXPR_COND)
-		{
-			llvm_emit_cond(c, &be_value, cond, true);
-		}
-		else
-		{
-			llvm_emit_expr(c, &be_value, cond);
-		}
-		llvm_value_rvalue(c, &be_value);
-		ASSERT(llvm_value_is_bool(&be_value));
-
-		// If we have a body, conditionally jump to it.
-		LLVMBasicBlockRef cond_success = body_block ? body_block : inc_block;
-		// If there is a while (...) { } we need to set the success to this block
-		if (!cond_success) cond_success = cond_block;
-		// Otherwise jump to inc or cond depending on what's available.
-		llvm_emit_cond_br(c, &be_value, cond_success, exit_block);
-	}
-
-	// The optional cond is emitted, so emit the body
+	// Emit the body
 	if (body_block)
 	{
-		// If we have LOOP_NONE, then we don't need a new block here
-		// since we will just exit. That leaves the infinite loop.
-		switch (loop)
-		{
-			case LOOP_NORMAL:
-				// If we have LOOP_NORMAL, we already emitted a br to the body.
-				// so emit the block
-				llvm_emit_block(c, body_block);
-				break;
-			case LOOP_INFINITE:
-				// In this case we have no cond, so we need to emit the br and
-				// then the block
-				llvm_emit_br(c, body_block);
-				llvm_emit_block(c, body_block);
-			case LOOP_NONE:
-				// If there is no loop, then we will just fall through and the
-				// block is needed.
-				body_block = NULL;
-				break;
-		}
-		// Now emit the body
+		// If we have do-while we jump to the body block.
+		llvm_emit_block(c, body_block);
 		llvm_emit_stmt(c, body);
-
-		// Did we have a jump to inc yet?
-		if (inc_block && !llvm_basic_block_is_unused(inc_block))
+		// Was inc used by now? Otherwise we can just continue and emit the incr here.
+		if (c->current_block && inc_block && continue_block == inc_block && llvm_basic_block_is_unused(inc_block))
 		{
-			// If so we emit the jump to the inc block.
-			llvm_emit_br(c, inc_block);
+			inc_block = NULL;
+			llvm_emit_ignored_expr(c, exprptr(incr));
+			// If a cond exists, jump to it, otherwise jump to the start block
+			llvm_emit_br(c, cond_block ? cond_block : loop_start_block);
 		}
 		else
 		{
-			inc_block = NULL;
+			// We have a separate inc due to use of continue or no inc
+			llvm_emit_br(c, continue_block);
 		}
 	}
 
-	if (incr)
+	// Emit the inc (if we didn't fold it)
+	if (inc_block)
 	{
-		// We might have neither body nor cond
-		// In that case we do a jump from the init.
-		if (loop_start_block == inc_block)
-		{
-			llvm_emit_br(c, inc_block);
-		}
-		if (inc_block)
-		{
-			// Emit the block if it exists.
-			// The inc block might also be the end of the body block.
-			llvm_emit_block(c, inc_block);
-		}
-		if (llvm_get_current_block_if_in_use(c))
-		{
-			if (incr) llvm_emit_ignored_expr(c, exprptr(incr));
-		}
+		// Emit the block if it exists.
+		// The inc block might also be the end of the body block.
+		llvm_emit_block(c, inc_block);
+		llvm_emit_ignored_expr(c, exprptr(incr));
+		// If a cond exists, jump to it, otherwise jump to the start block
+		llvm_emit_br(c, cond_block ? cond_block : loop_start_block);
 	}
 
-	// Loop back.
-	if (loop != LOOP_NONE)
+	if (!start_with_cond && cond_block)
 	{
-		llvm_emit_br(c, loop_start_block);
-	}
-	else
-	{
-		// If the exit block is unused, just skip it.
-		if (llvm_basic_block_is_unused(exit_block))
-		{
-			DEBUG_POP_LEXICAL_SCOPE(c);
-			return;
-		}
-		llvm_emit_br(c, exit_block);
+		llmv_emit_for_cond(c, cond, cond_block, loop_start_block, exit_block);
 	}
 
-	// And insert exit block
+	// If the exit block is unused, just skip it.
+	if (llvm_basic_block_is_unused(exit_block))
+	{
+		DEBUG_POP_LEXICAL_SCOPE(c);
+		return;
+	}
+
+	// Emit the exit block.
 	llvm_emit_block(c, exit_block);
 	DEBUG_POP_LEXICAL_SCOPE(c);
 }
@@ -878,9 +865,8 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 
 	Type *goto_array_type = type_get_array(type_voidptr, count);
 	LLVMTypeRef llvm_array_type = llvm_get_type(c, goto_array_type);
-	AlignSize alignment = type_alloca_alignment(switch_value->type);
 
-	LLVMValueRef jmptable = llvm_add_global_raw(c, "jumptable", llvm_array_type, alignment);
+	LLVMValueRef jmptable = llvm_add_global_raw(c, "jumptable", llvm_array_type, 0);
 	switch_ast->switch_stmt.codegen.jump.jmptable = jmptable;
 
 	llvm_set_private_declaration(jmptable);
@@ -888,16 +874,15 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 	LLVMValueRef instr = llvm_emit_switch_jump_stmt(c, switch_ast, cases, count, min_index, jmptable, default_block, switch_value);
 
 #define REF_STACK 16
-	LLVMValueRef refs_stack[REF_STACK];
-	LLVMValueRef *refs = refs_stack;
+	void *refs_stack[REF_STACK];
+	void **refs = refs_stack;
 	if (count > REF_STACK)
 	{
-		refs = MALLOC(sizeof(LLVMValueRef) * count);
+		refs = MALLOC(sizeof(void *) * count);
 	}
 #undef REF_STACK
-	LLVMValueRef default_block_address = LLVMBlockAddress(c->cur_func.ref, default_block);
 	ASSERT(count < DEFAULT_SWITCH_JUMP_MAX_SIZE + 1);
-	memset(refs, 0, sizeof(LLVMValueRef) * count);
+	memset(refs, 0, sizeof(void *) * count);
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		Ast *case_stmt = cases[i];
@@ -912,7 +897,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 			uint64_t to_val = to_value.i.low;
 			for (uint64_t j = from_val; j <= to_val; j++)
 			{
-				refs[j] = LLVMBlockAddress(c->cur_func.ref, block);
+				refs[j] = block;
 			}
 			// No fallthrough
 			if (!case_stmt->case_stmt.body) continue;
@@ -928,13 +913,19 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 	for (uint64_t i = 0; i < count; i++)
 	{
 		if (refs[i]) continue;
-		refs[i] = default_block_address;
+		refs[i] = default_block;
 		if (found) continue;
 		found = true;
 		LLVMAddDestination(instr, default_block);
 	}
-	LLVMSetInitializer(jmptable, LLVMConstArray(c->ptr_type, refs, count));
+	LLVMAddDestination(instr, default_block);
 	llvm_emit_block(c, exit_block);
+	for (uint64_t i = 0; i < count; i++)
+	{
+		LLVMValueRef block_address = LLVMBlockAddress(c->cur_func.ref, refs[i]);
+		refs[i] = block_address;
+	}
+	LLVMSetInitializer(jmptable, LLVMConstArray(c->ptr_type, (LLVMValueRef *)refs, count));
 }
 
 static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast, bool is_typeid)
@@ -1099,7 +1090,7 @@ void llvm_emit_break(GenContext *c, Ast *ast)
 			break;
 		case AST_FOREACH_STMT:
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	llvm_emit_jmp(c, jump);
 }
@@ -1115,13 +1106,13 @@ void llvm_emit_continue(GenContext *c, Ast *ast)
 		case AST_IF_STMT:
 		case AST_SWITCH_STMT:
 		case AST_FOREACH_STMT:
-			UNREACHABLE
+			UNREACHABLE_VOID
 			break;
 		case AST_FOR_STMT:
 			jump = jump_target->for_stmt.codegen.continue_block;
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	llvm_emit_jmp(c, jump);
 }
@@ -1360,6 +1351,15 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 			pointer_type[param_count] = NULL;
 			switch (val->kind)
 			{
+				case ASM_ARG_MEMADDR:
+					llvm_value_set_decl(c, &value, val->ident.ident_decl);
+					llvm_value_addr(c, &value);
+					value.kind = BE_VALUE;
+					pointer_type[param_count] = NULL;
+					value.type = type_get_ptr(value.type);
+					ASSERT(!val->ident.copy_output);
+					codegen_append_constraints(&clobber_list, "r");
+					break;
 				case ASM_ARG_MEMVAR:
 					llvm_value_set_decl(c, &value, val->ident.ident_decl);
 					llvm_value_addr(c, &value);
@@ -1601,7 +1601,7 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 {
 	if (LLVMIsAConstantInt(value->value))
 	{
-		ASSERT(!LLVMConstIntGetZExtValue(value->value) && "Unexpected bounds check failed.");
+		ASSERT_AT(loc, !LLVMConstIntGetZExtValue(value->value) && "Unexpected bounds check failed.");
 		return;
 	}
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
@@ -1653,7 +1653,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_CASE_STMT:
 		case AST_DEFAULT_STMT:
 		case CT_AST:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case AST_EXPR_STMT:
 			llvm_emit_expr_stmt(c, ast);
 			break;

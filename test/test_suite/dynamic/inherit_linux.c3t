@@ -69,9 +69,9 @@ entry:
   %.inlinecache = alloca ptr, align 8
   %.cachedtype = alloca ptr, align 8
   %w = alloca %any, align 8
-  %.inlinecache3 = alloca ptr, align 8
-  %.cachedtype4 = alloca ptr, align 8
-  store ptr null, ptr %.cachedtype4, align 8
+  %.inlinecache2 = alloca ptr, align 8
+  %.cachedtype3 = alloca ptr, align 8
+  store ptr null, ptr %.cachedtype3, align 8
   store ptr null, ptr %.cachedtype, align 8
   %0 = call ptr @std.core.mem.malloc(i64 8) #1
   %1 = insertvalue %any undef, ptr %0, 0
@@ -83,56 +83,62 @@ entry:
   %type = load ptr, ptr %.cachedtype, align 8
   %5 = icmp eq ptr %4, %type
   br i1 %5, label %cache_hit, label %cache_miss
+
 cache_miss:                                       ; preds = %entry
-  %ptradd1 = getelementptr inbounds i8, ptr %4, i64 16
-  %6 = load ptr, ptr %ptradd1, align 8
-  %7 = call ptr @.dyn_search(ptr %6, ptr @"$sel.tesT")
-  store ptr %7, ptr %.inlinecache, align 8
+  %6 = call ptr @.dyn_search(ptr %4, ptr @"$sel.tesT")
+  store ptr %6, ptr %.inlinecache, align 8
   store ptr %4, ptr %.cachedtype, align 8
-  br label %8
+  br label %7
+
 cache_hit:                                        ; preds = %entry
   %cache_hit_fn = load ptr, ptr %.inlinecache, align 8
-  br label %8
-8:                                                ; preds = %cache_hit, %cache_miss
-  %fn_phi = phi ptr [ %cache_hit_fn, %cache_hit ], [ %7, %cache_miss ]
-  %9 = icmp eq ptr %fn_phi, null
-  br i1 %9, label %missing_function, label %match
-missing_function:                                 ; preds = %8
-  %10 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %10(ptr @.panic_msg, i64 41, ptr @.file
+  br label %7
+
+7:                                                ; preds = %cache_hit, %cache_miss
+  %fn_phi = phi ptr [ %cache_hit_fn, %cache_hit ], [ %6, %cache_miss ]
+  %8 = icmp eq ptr %fn_phi, null
+  br i1 %8, label %missing_function, label %match
+
+missing_function:                                 ; preds = %7
+  %9 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %9(ptr @.panic_msg, i64 41, ptr @.file
   unreachable
-match:                                            ; preds = %8
-  %11 = load ptr, ptr %z, align 8
-  call void %fn_phi(ptr %11)
-  %12 = load %any, ptr %z, align 8
-  store %any %12, ptr %w, align 8
-  %ptradd2 = getelementptr inbounds i8, ptr %w, i64 8
-  %13 = load i64, ptr %ptradd2, align 8
-  %14 = inttoptr i64 %13 to ptr
-  %type5 = load ptr, ptr %.cachedtype4, align 8
-  %15 = icmp eq ptr %14, %type5
-  br i1 %15, label %cache_hit8, label %cache_miss6
-cache_miss6:                                      ; preds = %match
-  %ptradd7 = getelementptr inbounds i8, ptr %14, i64 16
-  %16 = load ptr, ptr %ptradd7, align 8
-  %17 = call ptr @.dyn_search(ptr %16, ptr @"$sel.tesT")
-  store ptr %17, ptr %.inlinecache3, align 8
-  store ptr %14, ptr %.cachedtype4, align 8
-  br label %18
-cache_hit8:                                       ; preds = %match
-  %cache_hit_fn9 = load ptr, ptr %.inlinecache3, align 8
-  br label %18
-18:                                               ; preds = %cache_hit8, %cache_miss6
-  %fn_phi10 = phi ptr [ %cache_hit_fn9, %cache_hit8 ], [ %17, %cache_miss6 ]
-  %19 = icmp eq ptr %fn_phi10, null
-  br i1 %19, label %missing_function11, label %match12
-missing_function11:                               ; preds = %18
-  %20 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %20(ptr @.panic_msg, i64 41, ptr @.file, i64 16, ptr @.func, i64 4, i32 36)
+
+match:                                            ; preds = %7
+  %10 = load ptr, ptr %z, align 8
+  call void %fn_phi(ptr %10)
+  %11 = load %any, ptr %z, align 8
+  store %any %11, ptr %w, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %w, i64 8
+  %12 = load i64, ptr %ptradd1, align 8
+  %13 = inttoptr i64 %12 to ptr
+  %type4 = load ptr, ptr %.cachedtype3, align 8
+  %14 = icmp eq ptr %13, %type4
+  br i1 %14, label %cache_hit6, label %cache_miss5
+
+cache_miss5:                                      ; preds = %match
+  %15 = call ptr @.dyn_search(ptr %13, ptr @"$sel.tesT")
+  store ptr %15, ptr %.inlinecache2, align 8
+  store ptr %13, ptr %.cachedtype3, align 8
+  br label %16
+
+cache_hit6:                                       ; preds = %match
+  %cache_hit_fn7 = load ptr, ptr %.inlinecache2, align 8
+  br label %16
+
+16:                                               ; preds = %cache_hit6, %cache_miss5
+  %fn_phi8 = phi ptr [ %cache_hit_fn7, %cache_hit6 ], [ %15, %cache_miss5 ]
+  %17 = icmp eq ptr %fn_phi8, null
+  br i1 %17, label %missing_function9, label %match10
+
+missing_function9:                                ; preds = %16
+  %18 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %18(ptr @.panic_msg, i64 41, ptr @.file, i64 16, ptr @.func, i64 4, i32 36) #2
   unreachable
-match12:                                          ; preds = %18
-  %21 = load ptr, ptr %w, align 8
-  call void %fn_phi10(ptr %21)
+
+match10:                                          ; preds = %16
+  %19 = load ptr, ptr %w, align 8
+  call void %fn_phi8(ptr %19)
   ret void
 }
 define i32 @main(i32 %0, ptr %1) #0 {
@@ -143,55 +149,80 @@ entry:
 
 define weak ptr @.dyn_search(ptr %0, ptr %1) unnamed_addr comdat {
 entry:
+  br label %get_dtable
+
+get_dtable:                                       ; preds = %next_parent, %entry
+  %typeid = phi ptr [ %0, %entry ], [ %parent_ptr, %next_parent ]
+  %dtable_ref = getelementptr inbounds
+  %dtable = load ptr, ptr %dtable_ref, align 8
   br label %check
-check:                                            ; preds = %no_match, %entry
-  %2 = phi ptr [ %0, %entry ], [ %9, %no_match ]
+
+check:                                            ; preds = %no_match, %get_dtable
+  %2 = phi ptr [ %dtable, %get_dtable ], [ %10, %no_match ]
   %3 = icmp eq ptr %2, null
-  br i1 %3, label %missing_function, label %compare
-missing_function:                                 ; preds = %check
+  br i1 %3, label %next_parent, label %compare
+
+next_parent:                                      ; preds = %check
+  %parent_ref = getelementptr inbounds
+  %parent = load i64, ptr %parent_ref, align 8
+  %parent_ptr = inttoptr i64 %parent to ptr
+  %4 = icmp eq ptr %parent_ptr, null
+  br i1 %4, label %missing_function, label %get_dtable
+
+missing_function:                                 ; preds = %next_parent
   ret ptr null
+
 compare:                                          ; preds = %check
-  %4 = getelementptr inbounds
-  %5 = load ptr, ptr %4, align 8
-  %6 = icmp eq ptr %5, %1
-  br i1 %6, label %match, label %no_match
+  %5 = getelementptr inbounds
+  %6 = load ptr, ptr %5, align 8
+  %7 = icmp eq ptr %6, %1
+  br i1 %7, label %match, label %no_match
+
 match:                                            ; preds = %compare
-  %7 = load ptr, ptr %2, align 8
-  ret ptr %7
+  %8 = load ptr, ptr %2, align 8
+  ret ptr %8
+
 no_match:                                         ; preds = %compare
-  %8 = getelementptr inbounds
-  %9 = load ptr, ptr %8, align 8
+  %9 = getelementptr inbounds
+  %10 = load ptr, ptr %9, align 8
   br label %check
 }
+
 define internal void @.c3_dynamic_register() align 8 {
 entry:
   %next_val = load ptr, ptr getelementptr inbounds
   %0 = icmp eq ptr %next_val, inttoptr (i64 -1 to ptr)
   br i1 %0, label %dtable_check, label %dtable_skip
+
 dtable_check:                                     ; preds = %dtable_check, %entry
   %dtable_ref = phi ptr [ getelementptr inbounds
   %dtable_ptr = load ptr, ptr %dtable_ref, align 8
   %1 = icmp eq ptr %dtable_ptr, null
   %next_dtable_ref = getelementptr inbounds
   br i1 %1, label %dtable_found, label %dtable_check
+
 dtable_found:                                     ; preds = %dtable_check
   store ptr @"$ct.dyn.inherit.Test.tesT", ptr %dtable_ref, align 8
   store ptr null, ptr getelementptr inbounds
   br label %dtable_skip
+
 dtable_skip:                                      ; preds = %dtable_found, %entry
   %next_val1 = load ptr, ptr getelementptr inbounds
   %2 = icmp eq ptr %next_val1, inttoptr (i64 -1 to ptr)
   br i1 %2, label %dtable_check2, label %dtable_skip7
+
 dtable_check2:                                    ; preds = %dtable_check2, %dtable_skip
   %dtable_ref3 = phi ptr [ getelementptr inbounds
   %dtable_ptr4 = load ptr, ptr %dtable_ref3, align 8
   %3 = icmp eq ptr %dtable_ptr4, null
   %next_dtable_ref5 = getelementptr inbounds
   br i1 %3, label %dtable_found6, label %dtable_check2
+
 dtable_found6:                                    ; preds = %dtable_check2
   store ptr @"$ct.dyn.inherit.Test.hello", ptr %dtable_ref3, align 8
   store ptr null, ptr getelementptr inbounds
   br label %dtable_skip7
+
 dtable_skip7:                                     ; preds = %dtable_found6, %dtable_skip
   ret void
 }

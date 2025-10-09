@@ -174,7 +174,7 @@ static void json_parse_string(JsonParser *parser)
 	}
 
 
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 static inline void json_lexer_advance(JsonParser *parser)
@@ -256,7 +256,7 @@ static inline void json_lexer_advance(JsonParser *parser)
 			json_error(parser, "Unexpected symbol found.");
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 static inline bool consume(JsonParser *parser, JSONTokenType token)

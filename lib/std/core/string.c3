@@ -1,6 +1,5 @@
 module std::core::string;
-import std::io;
-import std::core::mem::allocator;
+import std::io, std::ascii;
 
 
 typedef String @if(!$defined(String)) = inline char[];
@@ -110,16 +109,25 @@ fn String format(Allocator allocator, String fmt, args...) @format(1) => @pool()
 }
 
 <*
- Return a new String created using the formatting function.
+ Return a new String created using the formatting function, the resulting string must fit the buffer.
 
  @param [inout] buffer : `The buffer to use`
  @param [in] fmt : `The formatting string`
 *>
 fn String bformat(char[] buffer, String fmt, args...) @format(1)
 {
-	DString str = dstring::new_with_capacity(allocator::wrap(buffer), fmt.len + args.len * 8);
-	str.appendf(fmt, ...args);
-	return str.str_view();
+	Formatter f;
+	OutputFn format_fn = fn void?(void* buf, char c) {
+		char[]* buffer_ref = buf;
+		char[] buffer = *buffer_ref;
+		if (buffer.len == 0) return io::BUFFER_EXCEEDED?;
+		buffer[0] = c;
+		*buffer_ref = buffer[1..];
+	};
+	char[] buffer_copy = buffer;
+	f.init(format_fn, &buffer_copy);
+	usz len = f.vprintf(fmt, args)!!;
+	return (String)buffer[:len];
 }
 
 <*
@@ -138,7 +146,7 @@ fn String tformat(String fmt, args...) @format(0)
  Check if a character is in a set.
 
  @param c : `the character to check`
- @param [in] set : `The formatting string`
+ @param [in] set : `String containing the characters`
  @pure
  @return `True if a character is in the set`
 *>
@@ -187,7 +195,7 @@ fn String String.replace(self, Allocator allocator, String needle, String new_st
 	@pool()
 	{
 		String[] split = self.tsplit(needle);
-		return dstring::join(tmem, split, new_str).copy_str(mem);
+		return dstring::join(tmem, split, new_str).copy_str(allocator);
 	};
 }
 
@@ -214,9 +222,26 @@ fn String String.treplace(self, String needle, String new_str)
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim(self, String to_trim = "\t\n\r ")
+fn String String.trim(self, String to_trim = " \n\t\r\f\v")
 {
     return self.trim_left(to_trim).trim_right(to_trim);
+}
+
+<*
+ Remove characters from the front and end of a string.
+
+ @param [in] self : `The string to trim`
+ @param to_trim : `The set of characters to trim, defaults to whitespace`
+ @pure
+ @return `a substring of the string passed in`
+*>
+fn String String.trim_charset(self, AsciiCharset to_trim = ascii::WHITESPACE_SET)
+{
+	usz start = 0;
+	usz len = self.len;
+	while (start < len && to_trim.contains(self[start])) start++;
+	while (len > start && to_trim.contains(self[len - 1])) len--;
+    return self[start..len - 1];
 }
 
 <*
@@ -227,7 +252,7 @@ fn String String.trim(self, String to_trim = "\t\n\r ")
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim_left(self, String to_trim = "\t\n\r ")
+fn String String.trim_left(self, String to_trim = " \n\t\r\f\v")
 {
 	usz start = 0;
 	usz len = self.len;
@@ -244,7 +269,7 @@ fn String String.trim_left(self, String to_trim = "\t\n\r ")
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim_right(self, String to_trim = "\t\n\r ")
+fn String String.trim_right(self, String to_trim = " \n\t\r\f\v")
 {
 	usz len = self.len;
 	while (len > 0 && char_in_set(self[len - 1], to_trim)) len--;
@@ -425,6 +450,19 @@ fn String[]? String.split_to_buffer(s, String delimiter, String[] buffer, usz ma
 fn bool String.contains(s, String substr)
 {
 	return @ok(s.index_of(substr));
+}
+
+<*
+ Check if a character is found in the string.
+
+ @param [in] s
+ @param character : "The character to look for."
+ @pure
+ @return "true if the string contains the character, false otherwise"
+*>
+fn bool String.contains_char(s, char character)
+{
+	return @ok(s.index_of_char(character));
 }
 
 <*

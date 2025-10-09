@@ -39,7 +39,7 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 	Expr *len_expr = type_info->array.len;
 
 	// Analyse it.
-	if (!sema_analyse_expr(context, len_expr)) return type_info_poison(type_info);
+	if (!sema_analyse_expr_rvalue(context, len_expr)) return type_info_poison(type_info);
 
 	if (!cast_to_index_len(context, len_expr, true)) return type_info_poison(type_info);
 
@@ -235,7 +235,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			type_info->resolve_status = RESOLVE_DONE;
 			return true;
 		case DECL_CONST_ENUM:
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 			if (resolve_type_kind & RESOLVE_TYPE_NO_CHECK_DISTINCT)
 			{
 				type_info->type = decl->type;
@@ -243,10 +243,10 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 				return true;
 			}
 			FALLTHROUGH;
-		case DECL_TYPEDEF:
+		case DECL_TYPE_ALIAS:
 			if (!sema_analyse_decl(context, decl)) return type_info_poison(type_info);
 			type_info->type = decl->type;
-			assert (type_info->type->canonical->type_kind != TYPE_TYPEDEF);
+			assert (type_info->type->canonical->type_kind != TYPE_ALIAS);
 			type_info->resolve_status = RESOLVE_DONE;
 			return true;
 		case DECL_POISONED:
@@ -328,7 +328,7 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 	Expr *expr = type_info->unresolved_type_expr;
 	bool in_no_eval = context->call_env.in_no_eval;
 	context->call_env.in_no_eval = true;
-	bool success = sema_analyse_expr_value(context, expr);
+	bool success = sema_analyse_expr(context, expr);
 	context->call_env.in_no_eval = in_no_eval;
 	if (!success) return false;
 	Type *expr_type = expr->type;
@@ -357,7 +357,7 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
 	Expr *expr = type_info->unresolved_type_expr;
-	if (!sema_analyse_expr(context, expr)) return false;
+	if (!sema_analyse_expr_rvalue(context, expr)) return false;
 	if (!sema_cast_const(expr))
 	{
 		RETURN_SEMA_ERROR(expr, "Expected a constant value.");
@@ -403,12 +403,12 @@ INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, Res
 // $vatype(...)
 INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info)
 {
-	if (!context->current_macro)
+	if (!context->macro_has_vaargs)
 	{
-		RETURN_SEMA_ERROR(type_info, "'%s' can only be used inside of a macro.", token_type_to_string(TOKEN_CT_VATYPE));
+		RETURN_SEMA_ERROR(type_info, "'%s' can only be used inside of a macro with untyped vaargs.", token_type_to_string(TOKEN_CT_VATYPE));
 	}
 	ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr, NULL), false);
-	if (!sema_analyse_expr_value(context, arg_expr)) return false;
+	if (!sema_analyse_expr(context, arg_expr)) return false;
 	if (arg_expr->expr_kind != EXPR_TYPEINFO) RETURN_SEMA_ERROR(arg_expr, "The argument was not a type.");
 	type_info->type = arg_expr->type_expr->type;
 	return true;
@@ -423,7 +423,7 @@ bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info)
 	if (type_info->subtype != TYPE_COMPRESSED_NONE) return false;
 	Decl *decl = sema_find_path_symbol(context, type_info->unresolved.name, type_info->unresolved.path);
 	if (!decl) return false;
-	if (decl->decl_kind != DECL_TYPEDEF) return false;
+	if (decl->decl_kind != DECL_TYPE_ALIAS) return false;
 	if (decl->resolve_status == RESOLVE_DONE) return false;
 	if (decl->type_alias_decl.is_func) return false;
 	type_info = decl->type_alias_decl.type_info;
@@ -454,7 +454,7 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	}
 	compiler.generic_depth++;
 	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name,
-	                                                   inner->span, type_info->generic.params, &was_recursive);
+	                                                   inner->span, type_info->generic.params, &was_recursive, type_info->span);
 	compiler.generic_depth--;
 	if (!decl_ok(type)) return false;
 	if (!sema_analyse_decl(context, type)) return false;
@@ -619,7 +619,7 @@ static Type *flatten_raw_function_type(Type *type)
 	Type *current;
 	switch (type->type_kind)
 	{
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			return flatten_raw_function_type(type->canonical);
 		case TYPE_FUNC_RAW:
 			return type->function.prototype->raw_type;

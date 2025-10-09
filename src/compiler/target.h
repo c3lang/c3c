@@ -57,9 +57,9 @@ typedef struct
 typedef struct
 {
 	const char *name;
-	AsmArgType param[MAX_ASM_INSTRUCTION_PARAMS];
+	AsmArgType param[MAX_ASM_INSTRUCTION_PARAMS]; // Types of arguments available in each slot
 	unsigned param_count;
-	Clobbers mask;
+	Clobbers mask;                                // Which will it clobber
 } AsmInstruction;
 
 typedef struct

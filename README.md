@@ -142,7 +142,7 @@ fn void main()
 
 ### Current status
 
-The current stable version of the compiler is **version 0.7.4**.
+The current stable version of the compiler is **version 0.7.6**.
 
 The upcoming 0.7.x releases will focus on expanding the standard library,
 fixing bugs and improving compile time analysis. 
@@ -209,11 +209,42 @@ This installs the latest prerelease build, as opposed to the latest released ver
 3. If you don't have Visual Studio 17 installed you can either do so, or run the `msvc_build_libraries.py` Python script which will download the necessary files to compile on Windows. 
 4. Run `c3c.exe`.
 
+#### Installing on Windows with the install script
+
+Open a PowerShell terminal (you may need to run it as an administrator) and run the following command:
+```bash
+iwr -useb https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install/install.ps1 | iex
+```
+The script will inform you once the installation is successful and add the `~/.c3` directory to your PATH, which will allow you to run the c3c command from any location.
+
+You can choose another version with option `C3_VERSION`.
+For example, you can force the installation of the 0.7.4 version:
+```bash
+$env:C3_VERSION='0.7.4'; powershell -ExecutionPolicy Bypass -Command "iwr -useb https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install/install.ps1 | iex"
+```
+
+If you don't have Visual Studio 17 installed you can either do so, or run the `msvc_build_libraries.py` Python script which will download the necessary files to compile on Windows.
+
+
 #### Installing on Debian with precompiled binaries
 1. Download tar file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-linux.tar.gz](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-linux.tar.gz)
    (debug version [here](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-linux-debug.tar.gz))
 2. Unpack executable and standard lib.
 3. Run `./c3c`.
+
+#### Installing on Debian with the install script
+
+Open a terminal and run the following command:
+```bash
+curl -fsSL https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install/install.sh | bash
+```
+The C3 compiler will be installed, and the script will also update your ~/.bashrc to include `~/.c3` in your PATH, allowing you to invoke the c3c command from anywhere. You might need to restart your terminal or source your shell for the changes to take effect.
+
+You can choose another version with option `C3_VERSION`.
+For example, you can force the installation of the 0.7.4 version:
+```bash
+curl -fsSL https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install/install.sh | C3_VERSION=0.7.4 bash
+```
 
 #### Installing on Ubuntu with precompiled binaries
 1. Download tar file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-ubuntu-20.tar.gz](https://github.com/c3lang/c3c/releases/download/latest-prerelease/c3-ubuntu-20.tar.gz)
@@ -295,6 +326,28 @@ You can access `c3c` via [flake.nix](./flake.nix), which will contain the latest
   );
 }
 ```
+
+### Installing on Gentoo
+
+`c3c` is available in the [Gentoo GURU overlay](https://wiki.gentoo.org/wiki/Project:GURU).
+
+Enable and sync the GURU repository (if not already done):
+
+```sh
+sudo eselect repository enable guru
+sudo emaint sync -r guru
+```
+
+Install `c3c` with:
+
+```sh
+sudo emerge -av dev-lang/c3c
+```
+
+* The compiler binary is installed to `/usr/bin/c3c`.
+* The standard library is installed to `/usr/lib/c3`.
+
+For Gentoo-specific issues, please use the [Gentoo Bugzilla](https://bugs.gentoo.org/) (Product: *GURU*).
 
 #### Building via Docker
 
@@ -462,8 +515,13 @@ this functionality is non-essential and it is perfectly fine to user the compile
 
 #### Licensing
 
-The C3 compiler is licensed under LGPL 3.0, the standard library itself is
-MIT licensed.
+Unless specified otherwise, the code in this repository is MIT licensed.
+The exception is the compiler source code (the source code under `src`),
+which is licensed under LGPL 3.0. 
+
+This means you are free to use all parts of standard library, 
+tests, benchmarks, grammar, examples and so on under the MIT license, including 
+using those libraries and tests if your build your own C3 compiler.
 
 #### Editor plugins
 

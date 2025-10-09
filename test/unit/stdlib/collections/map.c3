@@ -11,7 +11,7 @@ struct MapTest
     String key;
     usz value;
 }
-alias List = List{MapTest};
+alias ListMap = List{MapTest};
 
 fn void map()
 {
@@ -40,14 +40,14 @@ fn void map()
         assert(tc.value == v);
     }
 
-    List list;
+    ListMap list;
     list.tinit();
     m.@each(;String key, usz value)
     {
         list.push({key, value});
     };
     assert(list.len() == tcases.len);
-    quicksort(list, fn int (MapTest a, MapTest b) => (int)(a.value - b.value));
+    quicksort(&list, fn int (MapTest a, MapTest b) => (int)(a.value - b.value));
     foreach (i, tc : tcases)
     {
         assert(tc.key == list[i].key);
@@ -103,3 +103,16 @@ fn void map_copy()
 	assert(hash_map_copy.len() == hash_map.len());
 
 }
+
+alias Test = HashMap{String, HashMap {String, String}};
+fn void test_ref()
+{
+    Test t;
+    t.init(tmem);
+    (&t["a"]).init(tmem);
+
+    t["a"]["b"] = "ab";
+    test::eq("ab", t["a"]["b"]!!);
+}
+
+

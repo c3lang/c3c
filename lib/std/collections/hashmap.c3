@@ -30,8 +30,10 @@ struct HashMap (Printable)
 {
 	Entry*[] table;
 	Allocator allocator;
-	uint count; // Number of elements
-	uint threshold; // Resize limit
+	<* Last inserted LinkedEntry *>
+	uint count;
+	<* Resize limit *>
+	uint threshold;
 	float load_factor;
 }
 
@@ -182,6 +184,24 @@ fn Value*? HashMap.get_ref(&map, Key key)
 	return NOT_FOUND?;
 }
 
+fn Value* HashMap.get_or_create_ref(&map, Key key) @operator(&[])
+{
+	uint hash = rehash(key.hash());
+	if (map.count)
+	{
+		for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
+		{
+			if (e.hash == hash && equals(key, e.key)) return &e.value;
+		}
+	}
+	map.set(key, {});
+	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
+    {
+    	if (e.hash == hash && equals(key, e.key)) return &e.value;
+    }
+	unreachable();
+}
+
 fn Entry*? HashMap.get_entry(&map, Key key)
 {
 	if (!map.count) return NOT_FOUND?;
@@ -194,8 +214,9 @@ fn Entry*? HashMap.get_entry(&map, Key key)
 }
 
 <*
- Get the value or update and
- @require @assignable_to(#expr, Value)
+ Get the value or set it to the value
+
+ @require $defined(Value val = #expr)
 *>
 macro Value HashMap.@get_or_set(&map, Key key, Value #expr)
 {
@@ -332,10 +353,7 @@ macro HashMap.@each_entry(map; @body(entry))
 	}
 }
 
-fn Value[] HashMap.tvalues(&map)
-{
-	return map.values(tmem) @inline;
-}
+fn Value[] HashMap.tvalues(&self) => self.values(tmem) @inline;
 
 fn Value[] HashMap.values(&self, Allocator allocator)
 {

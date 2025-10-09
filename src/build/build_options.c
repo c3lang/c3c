@@ -128,6 +128,10 @@ static void usage(bool full)
 		print_opt("--panic-msg=<yes|no>", "Turn panic message output on or off.");
 		print_opt("--optlevel=<option>", "Code optimization level: none, less, more, max.");
 		print_opt("--optsize=<option>", "Code size optimization: none, small, tiny.");
+		print_opt("--unroll-loops=<yes|no>", "Enable loop unrolling.");
+		print_opt("--loop-vectorize=<yes|no>", "Enable loop auto-vectorization.");
+		print_opt("--slp-vectorize=<yes|no>", "Enable SLP (superword-level parallelism) auto-vectorization.");
+		print_opt("--merge-functions=<yes|no>", "Enable function merging.");
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
@@ -177,6 +181,7 @@ static void usage(bool full)
 		print_opt("--win64-simd=<option>", "Win64 SIMD ABI: array, full.");
 		print_opt("--win-debug=<option>", "Select debug output on Windows: codeview or dwarf (default: codeview).");
 		print_opt("--max-vector-size <number>", "Set the maximum vector bit size to allow (default: 4096).");
+		print_opt("--max-stack-object-size <number>", "Set the maximum size of a stack object in KB (default: 128).");
 		PRINTF("");
 		print_opt("--print-linking", "Print linker arguments.");
 		PRINTF("");
@@ -248,7 +253,7 @@ static void project_view_usage()
 	PRINTF("the results will be printed out like they are in the full view.");
 	PRINTF("Otherwise the \"<header>: \" is left out.");
 	PRINTF("");
-	PRINTF("With flags on, each selected property will be seperated by an empty");
+	PRINTF("With flags on, each selected property will be separated by an empty");
 	PRINTF("line, and properties with multiple values (like --authors) will have");
 	PRINTF("their values printed each on a new line.");
 	PRINTF("");
@@ -861,6 +866,26 @@ static void parse_option(BuildOptions *options)
 				options->optlevel = parse_opt_select(OptimizationLevel, argopt, optlevels);
 				return;
 			}
+			if ((argopt = match_argopt("merge-functions")))
+			{
+				options->merge_functions = parse_opt_select(MergeFunctions, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("loop-vectorize")))
+			{
+				options->loop_vectorization = parse_opt_select(AutoVectorization, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("unroll-loops")))
+			{
+				options->unroll_loops = parse_opt_select(UnrollLoops, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("slp-vectorize")))
+			{
+				options->slp_vectorization = parse_opt_select(AutoVectorization, argopt, on_off);
+				return;
+			}
 			if ((argopt = match_argopt("safe")))
 			{
 				options->safety_level = parse_opt_select(SafetyLevel, argopt, on_off);
@@ -943,6 +968,14 @@ static void parse_option(BuildOptions *options)
 				options->riscv_float_capability = parse_opt_select(RiscvFloatCapability, argopt, riscv_capability);
 				return;
 			}
+			if (match_longopt("max-stack-object-size"))
+			{
+				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
+				if (size < 1) error_exit("Expected a valid positive integer >= 1 for --max-stack-object-size.");
+				if (size > MAX_STACK_OBJECT_SIZE) error_exit("Expected a valid positive integer <= %u for --max-vector-size.", (unsigned)MAX_STACK_OBJECT_SIZE);
+				options->max_stack_object_size = size;
+				return;
+			}
 			if (match_longopt("max-vector-size"))
 			{
 				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
@@ -952,6 +985,7 @@ static void parse_option(BuildOptions *options)
 				{
 					error_exit("The --max-vector-size value must be a power of 2, try using %u instead.", next_highest_power_of_2(size));
 				}
+				options->max_vector_size = size;
 				return;
 			}
 			if ((argopt = match_argopt("memory-env")))
@@ -1260,7 +1294,7 @@ static void parse_option(BuildOptions *options)
 						           name);
 					}
 					char *name_copy = strdup(name);
-					str_ellide_in_place(name_copy, 32);
+					str_elide_in_place(name_copy, 32);
 					if (strchr(name, '/') != NULL || (PLATFORM_WINDOWS && strchr(name, '\\') != NULL))
 					{
 						error_exit(

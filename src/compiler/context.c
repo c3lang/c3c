@@ -121,7 +121,7 @@ bool context_set_module_from_filename(ParseContext *context)
 		return false;
 	}
 	Path *path = CALLOCS(Path);
-	path->span = INVALID_SPAN;
+	path->span = context->span;
 	path->module = module_name;
 	path->len = scratch_buffer.len;
 	return create_module_or_check_name(context->unit, path, NULL);
@@ -168,14 +168,14 @@ void decl_register(Decl *decl)
 		case DECL_IMPORT:
 		case DECL_LABEL:
 		case DECL_POISONED:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case DECL_ATTRIBUTE:
 		case DECL_BITSTRUCT:
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 		case DECL_ENUM:
 		case DECL_CONST_ENUM:
 		case DECL_STRUCT:
-		case DECL_TYPEDEF:
+		case DECL_TYPE_ALIAS:
 		case DECL_UNION:
 		case DECL_ALIAS:
 		case DECL_FUNC:
@@ -236,10 +236,10 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			decl_register(decl);
 			break;
 		case DECL_INTERFACE:
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 		case DECL_STRUCT:
 		case DECL_UNION:
-		case DECL_TYPEDEF:
+		case DECL_TYPE_ALIAS:
 		case DECL_BITSTRUCT:
 			ASSERT(decl->name);
 			vec_add(unit->types, decl);
@@ -273,7 +273,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_GROUP:
 		case DECL_IMPORT:
 		case DECL_LABEL:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case DECL_CT_EXEC:
 		case DECL_CT_INCLUDE:
 			vec_add(unit->ct_includes, decl);

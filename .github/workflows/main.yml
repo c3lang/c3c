@@ -8,11 +8,11 @@ on:
 
 env:
   LLVM_RELEASE_VERSION_WINDOWS: 18
-  LLVM_RELEASE_VERSION_MAC: 17
-  LLVM_RELEASE_VERSION_LINUX: 17
+  LLVM_RELEASE_VERSION_MAC: 18
+  LLVM_RELEASE_VERSION_LINUX: 19
   LLVM_RELEASE_VERSION_OPENBSD: 19
-  LLVM_RELEASE_VERSION_UBUNTU22: 17
-  LLVM_DEV_VERSION: 21
+  LLVM_RELEASE_VERSION_UBUNTU22: 19
+  LLVM_DEV_VERSION: 22
 jobs:
 
   build-msvc:
@@ -88,15 +88,15 @@ jobs:
           ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib55 --print-linking examples\raylib\raylib_snake.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib55 --print-linking examples\raylib\raylib_tetris.c3
 
+      - name: run compiler tests
+        run: |
+          cd test
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run -O1 src/test_suite_runner.c3 -- ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
+
       - name: Compile run unit tests
         run: |
           cd test
           ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -O1 -D SLOW_TESTS
-
-      - name: run compiler tests
-        run: |
-          cd test
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run -O1 src/test_suite_runner.c3 -- ..\build\${{ matrix.build_type }}\c3c.exe test_suite/ --no-terminal
 
       - name: Test python script
         run: |
@@ -230,13 +230,14 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 18, 19, 20]
+        llvm_version: [17, 18, 19, 20, 21, 22]
 
     steps:
       - uses: actions/checkout@v4
       - name: Install common deps
         run: |
-          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl
+          sudo apt-get update
+          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev
 
       - name: Install Clang ${{matrix.llvm_version}}
         run: |
@@ -381,6 +382,10 @@ jobs:
           ./build/c3c init myproject
           ls myproject
 
+      - name: Vendor-fetch
+        run: |
+          ./build/c3c vendor-fetch raylib55
+
       - name: run compiler tests
         run: |
           cd test
@@ -416,7 +421,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install common deps
         run: |
-          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl
+          sudo apt-get update
+          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev
 
       - name: Install Clang ${{matrix.llvm_version}}
         run: |
@@ -460,6 +466,7 @@ jobs:
                 -DLLVM_ENABLE_LIBXML2=OFF \
                 -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
           cmake --build build
+
       - name: Compile and run some examples
         run: |
           cd resources
@@ -505,6 +512,10 @@ jobs:
         run: |
           cd resources/testproject
           ../../build/c3c run -vvv --linker=builtin --trust=full
+
+      - name: Vendor-fetch
+        run: |
+          ./build/c3c vendor-fetch raylib55
 
       - name: run compiler tests
         run: |

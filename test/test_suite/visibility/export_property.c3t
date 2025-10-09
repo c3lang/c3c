@@ -31,7 +31,7 @@ struct Test
 %Test = type { %.anon, i32, i32, [0 x i32] }
 %.anon = type { i32, i32 }
 
-@"$ct.test.$anon" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Test.$anon" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @"$ct.test.Test" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 16, i64 0, i64 4, [0 x i64] zeroinitializer }, align 8
 @.enum.ABC = internal constant [4 x i8] c"ABC\00", align 1
 @.enum.DEF = internal constant [4 x i8] c"DEF\00", align 1

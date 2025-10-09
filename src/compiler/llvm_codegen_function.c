@@ -55,11 +55,12 @@ bool llvm_emit_check_block_branch(GenContext *c)
 	return true;
 }
 
-void llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block)
+bool llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block)
 {
-	if (!llvm_emit_check_block_branch(c)) return;
+	if (!llvm_emit_check_block_branch(c)) return false;
 	c->current_block = NULL;
 	LLVMBuildBr(c->builder, next_block);
+	return true;
 }
 
 
@@ -334,7 +335,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 		case ABI_ARG_EXPAND:
 			// Expands to multiple slots -
 			// Not applicable to return values.
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case ABI_ARG_EXPAND_COERCE:
 		{
 			// Pick the return as an address.
@@ -382,7 +383,7 @@ DIRECT_RETURN:
 			return;
 		}
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 void llvm_emit_return_implicit(GenContext *c)

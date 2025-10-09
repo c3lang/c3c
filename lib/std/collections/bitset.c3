@@ -136,6 +136,7 @@ fn void BitSet.unset(&self, usz i)
  @param i : "The index of the bit"
 
  @require i < SIZE : "Index was out of range"
+ @pure
 *>
 fn bool BitSet.get(&self, usz i) @operator([]) @inline
 {
@@ -144,6 +145,11 @@ fn bool BitSet.get(&self, usz i) @operator([]) @inline
 	return self.data[q] & (1 << r) != 0;
 }
 
+<*
+ Return the number of bits.
+
+ @pure
+*>
 fn usz BitSet.len(&self) @operator(len) @inline
 {
 	return SZ * BITS;

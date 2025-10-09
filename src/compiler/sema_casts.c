@@ -132,6 +132,7 @@ static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent)
 	// Make sure they have the same group.
 	ConvGroup from_group = cc->from_group;
 	ConvGroup to_group = cc->to_group;
+
 	CastRule rule = (from_group == CONV_NO || to_group == CONV_NO) ? NULL : cast_rules[from_group][to_group];
 
 	// No rule => no
@@ -192,7 +193,7 @@ void cast_no_check(Expr *expr, Type *to_type, bool add_optional)
 		expr->type = type_add_optional(expr->type, add_optional);
 		return;
 	}
-	error_exit("Trying cast function from %s to %s\n", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
+	error_exit("Missing cast function from %s to %s\n", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
 }
 
 /**
@@ -273,7 +274,7 @@ bool sema_error_failed_cast(SemaContext *context, Expr *expr, Type *from, Type *
  */
 Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 {
-	// This may be called on types not inferrable,
+	// This may be called on types not inferable,
 	// if so we assume the original type
 	if (!type_len_is_inferred(to_infer)) return to_infer;
 
@@ -437,6 +438,7 @@ RETRY:
 				case BINARYOP_CT_OR:
 				case BINARYOP_CT_AND:
 				case BINARYOP_CT_CONCAT:
+				case BINARYOP_CT_CONCAT_ASSIGN:
 					// This should be folded already.
 					UNREACHABLE
 				case BINARYOP_VEC_GT:
@@ -545,7 +547,7 @@ RETRY:
 		}
 		default:
 			// Check type sizes
-			goto CHECK_SIZE;
+			break;
 	}
 CHECK_SIZE:
 	if (type_size(expr->type) > type_size(type)) return expr;
@@ -585,7 +587,7 @@ static void expr_recursively_rewrite_untyped_list(Expr *expr, Type *to_type)
 	ConstInitializer **elements = NULL;
 	Type *flat = type_flatten(to_type);
 	bool is_slice = flat->type_kind == TYPE_SLICE;
-	if (type_is_inferred(flat))
+	if (type_is_infer_type(flat))
 	{
 		assert(vec_size(values) > 0);
 		to_type = type_from_inferred(flat, type_get_indexed_type(to_type), vec_size(values));
@@ -639,7 +641,7 @@ static void expr_recursively_rewrite_untyped_list(Expr *expr, Type *to_type)
 		case TYPE_STRUCT:
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	Decl *decl = flat->decl;
 	Decl **members = decl->strukt.members;
@@ -721,31 +723,29 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 			                  type_quoted_error_string(to),
 			                  type_to_error_string(type_no_optional(to)));
 		}
-		else
-		{
-			RETURN_CAST_ERROR(expr,
-			                  "It is not possible to cast %s to the inner type %s.",
-			                  type_quoted_error_string(type_no_optional(expr->type)), type_quoted_error_string(to));
-		}
-
+		RETURN_CAST_ERROR(expr,
+		                  "It is not possible to cast %s to the inner type %s.",
+		                  type_quoted_error_string(type_no_optional(expr->type)), type_quoted_error_string(to));
 	}
 	if (may_cast_explicit)
 	{
-		if (expr->type->canonical->type_kind == TYPE_DISTINCT
-			&& type_no_optional(to)->canonical->type_kind == TYPE_DISTINCT)
+		Type *typeto = type_no_optional(to);
+		Type *from = type_no_optional(expr->type);
+		if (expr->type->canonical->type_kind == TYPE_TYPEDEF
+			&& type_no_optional(to)->canonical->type_kind == TYPE_TYPEDEF)
 		{
 			RETURN_CAST_ERROR(expr,
 					   "Implicitly casting %s to %s is not permitted. It's possible to do an explicit cast by placing '(%s)' before the expression. However, explicit casts between distinct types are usually not intended and are not safe.",
-					   type_quoted_error_string(type_no_optional(expr->type)),
-					   type_quoted_error_string(to),
-					   type_to_error_string(type_no_optional(to)));
+					   type_quoted_error_string_maybe_with_path(from, typeto),
+					   type_quoted_error_string_maybe_with_path(to, from),
+					   type_error_string_maybe_with_path(typeto, from));
 
 		}
 		RETURN_CAST_ERROR(expr,
 		           "Implicitly casting %s to %s is not permitted, but you may do an explicit cast by placing '(%s)' before the expression.",
-		           type_quoted_error_string(type_no_optional(expr->type)),
-		           type_quoted_error_string(to),
-		           type_to_error_string(type_no_optional(to)));
+		           type_quoted_error_string_maybe_with_path(from, typeto),
+				   type_quoted_error_string_maybe_with_path(to, from),
+				   type_error_string_maybe_with_path(typeto, from));
 	}
 	if (to->type_kind == TYPE_INTERFACE)
 	{
@@ -837,7 +837,7 @@ static bool rule_ptr_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 }
 
 
-static bool rule_all_ok(CastContext *cc, bool is_explicit, bool silent)
+static bool rule_all_ok(CastContext *cc UNUSED, bool is_explicit UNUSED, bool silent UNUSED)
 {
 	return true;
 }
@@ -991,13 +991,38 @@ static bool rule_ulist_to_inferred(CastContext *cc, UNUSED bool is_explicit, boo
 		RETURN_CAST_ERROR(cc->expr, "This untyped list would infer to a zero elements, which is not allowed.");
 	}
 	Type *base = cc->to->array.base;
+	bool is_infer = type_is_infer_type(base);
+	ArrayIndex inferred_len = -1;
 	FOREACH(Expr *, expr, expressions)
 	{
 		if (!may_cast(cc->context, expr, base, false, true))
 		{
-			RETURN_CAST_ERROR(cc->expr, "This untyped list contains an element of type %s which cannot be converted to %s.",
+			RETURN_CAST_ERROR(cc->expr, "This untyped list contained an element of type %s which could not be converted to %s.",
 			                  type_quoted_error_string(expr->type), type_quoted_error_string(base));
 		}
+		if (is_infer)
+		{
+			ArrayIndex len = sema_len_from_const(expr);
+			if (len == 0) continue;
+			if (inferred_len < 0)
+			{
+				inferred_len = len;
+			}
+			else
+			{
+				if (inferred_len != len)
+				{
+					if (is_silent) return false;
+					RETURN_CAST_ERROR(cc->expr, "This untyped list contains elements that have different lengths, so it is not possible to infer the length for %s.",
+						type_quoted_error_string(cc->to_type));
+				}
+			}
+		}
+	}
+	if (is_infer && inferred_len < 0)
+	{
+		if (is_silent) return false;
+		RETURN_CAST_ERROR(cc->expr, "This untyped list would infer to a zero elements, which is not allowed.");
 	}
 	return true;
 }
@@ -1191,14 +1216,20 @@ RETRY:;
 	if (result != BOOL_FALSE) return result == BOOL_TRUE;
 	if (!decl->is_substruct) return false;
 	Type *inner;
-	if (decl->decl_kind == DECL_DISTINCT)
+	switch (decl->decl_kind)
 	{
-		inner = decl->distinct->type->canonical;
-	}
-	else
-	{
-		ASSERT(decl->decl_kind == DECL_STRUCT);
-		inner = decl->strukt.members[0]->type->canonical;
+		case DECL_TYPEDEF:
+			inner = decl->distinct->type->canonical;
+			break;
+		case DECL_STRUCT:
+			inner = decl->strukt.members[0]->type->canonical;
+			break;
+		case DECL_ENUM:
+		case DECL_CONST_ENUM:
+			// Could be made to work.
+			return false;
+		default:
+			UNREACHABLE
 	}
 	if (!type_may_implement_interface(inner)) return false;
 	decl = inner->decl;
@@ -1613,7 +1644,7 @@ static bool rule_bits_to_int(CastContext *cc, bool is_explicit, bool is_silent)
 RETRY:
 	if (base_type != to)
 	{
-		if (base_type->type_kind == TYPE_DISTINCT && (base_type->decl->is_substruct || is_explicit))
+		if (base_type->type_kind == TYPE_TYPEDEF && (base_type->decl->is_substruct || is_explicit))
 		{
 			base_type = base_type->decl->distinct->type->canonical;
 			goto RETRY;
@@ -1713,7 +1744,7 @@ static void vector_const_initializer_convert_to_type(ConstInitializer *initializ
 			break;
 		case CONST_INIT_UNION:
 		case CONST_INIT_STRUCT:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case CONST_INIT_ARRAY_VALUE:
 			vector_const_initializer_convert_to_type(initializer->init_array_value.element, to_type);
 			break;
@@ -1969,7 +2000,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 					expr_rewrite_to_float_to_int(expr, to_type);
 					return;
 				default:
-					UNREACHABLE;
+					UNREACHABLE_VOID;
 			}
 		}
 
@@ -1987,7 +2018,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 				expr_rewrite_to_int_to_float(expr, to_type);
 				return;
 			}
-			UNREACHABLE;
+			UNREACHABLE_VOID;
 		}
 
 		if (type_is_integer(from_element))
@@ -2015,14 +2046,14 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 				case TYPE_ANYFAULT:
 					expr_rewrite_to_int_to_ptr(expr, to_type);
 				default:
-					UNREACHABLE;
+					UNREACHABLE_VOID;
 			}
 		}
 		// The rest will be different pointer types
 		switch (to_element->type_kind)
 		{
 			case ALL_FLOATS:
-				UNREACHABLE
+				UNREACHABLE_VOID
 				return;
 			case TYPE_BOOL:
 			{
@@ -2042,7 +2073,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 				expr_rewrite_rvalue(expr, to_type);
 				return;
 			default:
-				UNREACHABLE;
+				UNREACHABLE_VOID;
 		}
 	}
 
@@ -2248,7 +2279,7 @@ static void cast_vecarr_to_slice(Expr *expr, Type *to_type)
 {
 	if (!sema_cast_const(expr))
 	{
-		UNREACHABLE
+		UNREACHABLE_VOID
 	}
 	ASSERT(expr_is_const(expr));
 	switch (expr->const_expr.const_kind)
@@ -2264,7 +2295,7 @@ static void cast_vecarr_to_slice(Expr *expr, Type *to_type)
 		case CONST_UNTYPED_LIST:
 		case CONST_REF:
 		case CONST_MEMBER:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case CONST_BYTES:
 		case CONST_STRING:
 			expr->type = to_type;
@@ -2276,7 +2307,7 @@ static void cast_vecarr_to_slice(Expr *expr, Type *to_type)
 			return;
 		}
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 static void cast_slice_to_vecarr(Expr *expr, Type *to_type)
 {
@@ -2293,7 +2324,7 @@ static void cast_slice_to_vecarr(Expr *expr, Type *to_type)
 				return;
 			}
 			default:
-				UNREACHABLE;
+				UNREACHABLE_VOID;
 		}
 	}
 	if (expr_is_const_slice(expr))
@@ -2536,13 +2567,13 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_TYPEID]           = CONV_TYPEID,
 	[TYPE_POINTER]          = CONV_POINTER,
 	[TYPE_ENUM]             = CONV_ENUM,
-	[TYPE_CONST_ENUM]         = CONV_RAW_ENUM,
+	[TYPE_CONST_ENUM]       = CONV_RAW_ENUM,
 	[TYPE_FUNC_PTR]         = CONV_FUNC,
 	[TYPE_STRUCT]           = CONV_STRUCT,
 	[TYPE_UNION]            = CONV_UNION,
 	[TYPE_BITSTRUCT]        = CONV_BITSTRUCT,
-	[TYPE_TYPEDEF]          = CONV_NO,
-	[TYPE_DISTINCT]         = CONV_DISTINCT,
+	[TYPE_ALIAS]            = CONV_NO,
+	[TYPE_TYPEDEF]          = CONV_DISTINCT,
 	[TYPE_ARRAY]            = CONV_ARRAY,
 	[TYPE_SLICE]            = CONV_SLICE,
 	[TYPE_FLEXIBLE_ARRAY]   = CONV_NO,

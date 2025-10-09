@@ -536,7 +536,7 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 										  NULL, 0, NULL, 0);
 	}
 
-	Type *original_type = type->type_kind == TYPE_TYPEDEF ? type->canonical : decl->distinct->type;
+	Type *original_type = type->type_kind == TYPE_ALIAS ? type->canonical : decl->distinct->type;
 
 	// Use forward references in case we haven't resolved the original type, since we could have this:
 	if (!type->canonical->backend_debug_type)
@@ -667,8 +667,8 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return type->backend_debug_type = llvm_debug_structlike_type(c, type, scope);
-		case TYPE_DISTINCT:
 		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			return type->backend_debug_type = llvm_debug_typedef_type(c, type);
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_ARRAY:

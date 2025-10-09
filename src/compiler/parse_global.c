@@ -16,7 +16,7 @@ typedef enum FunctionParse_
 static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, FunctionParse parse_kind);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref, ArrayIndex *inline_index);
-static Decl *parse_include(ParseContext *c);
+static Decl *parse_ct_include(ParseContext *c);
 static Decl *parse_exec(ParseContext *c);
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
 INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl);
@@ -98,9 +98,11 @@ static inline Path *parse_module_path(ParseContext *c)
 	ASSERT(tok_is(c, TOKEN_IDENT));
 	scratch_buffer_clear();
 	SourceSpan span = c->span;
+	int max_exceeded = 0;
 	while (1)
 	{
 		const char *string = symstr(c);
+		size_t len = c->data.lex_len;
 		if (!try_consume(c, TOKEN_IDENT))
 		{
 			if (token_is_keyword_ident(c->tok))
@@ -116,13 +118,41 @@ static inline Path *parse_module_path(ParseContext *c)
 			PRINT_ERROR_HERE("Each '::' must be followed by a regular lower case sub module name.");
 			return NULL;
 		}
-		scratch_buffer_append(string);
+		if (len > MAX_MODULE_NAME)
+		{
+			PRINT_ERROR_LAST("The module name is too long, it's %d characters (%d more than the maximum allowed %d characters).", (int)len, (int)len - MAX_MODULE_NAME, MAX_MODULE_NAME);
+			return NULL;
+		}
+		if (max_exceeded)
+		{
+			max_exceeded += len;
+		}
+		else
+		{
+			scratch_buffer_append(string);
+			if (scratch_buffer.len > MAX_MODULE_PATH)
+			{
+				max_exceeded = scratch_buffer.len;
+			}
+		}
 		if (!try_consume(c, TOKEN_SCOPE))
 		{
 			span = extend_span_with_token(span, c->prev_span);
 			break;
 		}
-		scratch_buffer_append("::");
+		if (max_exceeded)
+		{
+			max_exceeded += 2;
+		}
+		else
+		{
+			scratch_buffer_append("::");
+		}
+	}
+	// This way we can highlight the entire span.
+	if (max_exceeded)
+	{
+		print_error_at(extend_span_with_token(span, c->prev_span), "The full module path is too long, it's %lld characters (%lld more than the maximum allowed %lld characters).", (long long int)max_exceeded, (long long int)max_exceeded - MAX_MODULE_PATH, (long long int)MAX_MODULE_PATH);
 	}
 	return path_create_from_string(scratch_buffer_to_string(), scratch_buffer.len, span);
 }
@@ -734,7 +764,8 @@ INLINE bool parse_rethrow_bracket(ParseContext *c, SourceSpan start)
 /**
  * optional_type ::= type '!'?
  * @param c
- * @return
+ * @param allow_generic should generic be allowed
+ * @return The resulting type
  */
 static inline TypeInfo *parse_optional_type_maybe_generic(ParseContext *c, bool allow_generic)
 {
@@ -826,7 +857,7 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 
 	bool is_cond;
 	if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
-	decl->is_cond = true;
+	decl->is_cond = is_cond;
 	if (tok_is(c, TOKEN_EQ))
 	{
 		if (!decl)
@@ -857,6 +888,16 @@ Expr *parse_decl_or_expr(ParseContext *c)
 	// If it's not a type info, we assume an expr.
 	if (expr->expr_kind != EXPR_TYPEINFO) return expr;
 
+	switch (c->tok)
+	{
+		case TOKEN_RPAREN:
+		case TOKEN_RBRACKET:
+		case TOKEN_RBRACE:
+		case TOKEN_RVEC:
+			return expr;
+		default:
+			break;
+	}
 	// Otherwise we expect a declaration.
 	ASSIGN_DECL_OR_RET(decl, parse_local_decl_after_type(c, expr->type_expr), poisoned_expr);
 DECL:
@@ -918,6 +959,8 @@ Decl *parse_var_decl(ParseContext *c)
 	// analyser. The runtime variables must have an initializer unlike the CT ones.
 	advance_and_verify(c, TOKEN_VAR);
 	Decl *decl;
+	bool is_cond;
+	SourceSpan span;
 	switch (c->tok)
 	{
 		case TOKEN_CONST_IDENT:
@@ -926,6 +969,8 @@ Decl *parse_var_decl(ParseContext *c)
 		case TOKEN_IDENT:
 			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL);
 			advance(c);
+			if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
+			decl->is_cond = is_cond;
 			if (!tok_is(c, TOKEN_EQ))
 			{
 				PRINT_ERROR_HERE("'var' must always have an initial value, or the type cannot be inferred.");
@@ -935,16 +980,16 @@ Decl *parse_var_decl(ParseContext *c)
 			ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), poisoned_decl);
 			break;
 		case TOKEN_CT_IDENT:
-			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL_CT);
-			advance(c);
-			if (try_consume(c, TOKEN_EQ))
-			{
-				ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), poisoned_decl);
-			}
-			break;
 		case TOKEN_CT_TYPE_IDENT:
-			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL_CT_TYPE);
+			decl = decl_new_var_current(c, NULL, c->tok == TOKEN_CT_IDENT ? VARDECL_LOCAL_CT : VARDECL_LOCAL_CT_TYPE);
 			advance(c);
+			span = c->span;
+			if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
+			if (is_cond || decl->attributes)
+			{
+				print_error_at(span, "Attributes are not allowed on compile time variables.");
+				return poisoned_decl;
+			}
 			if (try_consume(c, TOKEN_EQ))
 			{
 				ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), poisoned_decl);
@@ -1180,8 +1225,12 @@ PARSE_EXPR:
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 {
 	Visibility visibility = c->unit->default_visibility;
-	if (decl->decl_kind == DECL_FUNC) decl->func_decl.attr_test = c->unit->test_by_default;
-	if (decl->decl_kind == DECL_FUNC) decl->func_decl.attr_benchmark = c->unit->benchmark_by_default;
+	// Transfer the test / benchmark properties
+	if (decl->decl_kind == DECL_FUNC && !decl->func_decl.attr_interface_method && !decl->func_decl.type_parent)
+	{
+		decl->func_decl.attr_test = c->unit->test_by_default;
+		decl->func_decl.attr_benchmark = c->unit->benchmark_by_default;
+	}
 	decl->is_export = c->unit->export_by_default;
 	bool is_builtin = false;
 	bool is_cond;
@@ -1242,12 +1291,14 @@ static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref,
 				*visibility_ref = visibility = parsed_visibility;
 				continue;
 			}
+			if (attr->attr_kind == ATTRIBUTE_TAG) goto ADD;
 		}
 		const char *name = attr->name;
 		FOREACH(Attr *, other_attr, *attributes_ref)
 		{
 			if (other_attr->name == name) RETURN_PRINT_ERROR_AT(false, attr, "Repeat of attribute '%s' here.", name);
 		}
+ADD:
 		vec_add(*attributes_ref, attr);
 		if (use_comma && !try_consume(c, TOKEN_COMMA)) break;
 	}
@@ -1605,6 +1656,10 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 					print_error_after(c->prev_span, "Expected a parameter.");
 					return false;
 				}
+				if (parse_kind == PARAM_PARSE_MACRO && ellipsis && type)
+				{
+					print_error_after(c->prev_span, "A typed macro vaarg must have a parameter name.");
+				}
 				no_name = true;
 				span = c->prev_span;
 				param_kind = VARDECL_PARAM;
@@ -1628,7 +1683,19 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 		{
 			if (try_consume(c, TOKEN_EQ))
 			{
-				if (!parse_decl_initializer(c, param)) return poisoned_decl;
+				if (try_consume(c, TOKEN_ELLIPSIS))
+				{
+					if (parse_kind != PARAM_PARSE_MACRO)
+					{
+						PRINT_ERROR_HERE("Optional arguments with '...' is only allowed as macro arguments.");
+						return poisoned_decl;
+					}
+					param->var.no_init = true;
+				}
+				else
+				{
+					if (!parse_decl_initializer(c, param)) return poisoned_decl;
+				}
 			}
 		}
 		if (ellipsis)
@@ -1665,7 +1732,22 @@ static inline bool parse_fn_parameter_list(ParseContext *c, Signature *signature
 
 // --- Parse types
 
-
+static bool parse_element_contract(ParseContext *c, const char *error)
+{
+	AstId contracts = 0;
+	if (!parse_contracts(c, &contracts)) return false;
+	if (!contracts) return true;
+	Ast *ast = astptr(contracts);
+	while (ast)
+	{
+		if (ast->ast_kind != AST_CONTRACT || ast->contract_stmt.kind != CONTRACT_COMMENT)
+		{
+			RETURN_PRINT_ERROR_AT(false, ast, "No constraints are allowed on %s.", error);
+		}
+		ast = astptrzero(ast->next);
+	}
+	return true;
+}
 /**
  * Expect pointer to after '{'
  *
@@ -1691,6 +1773,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 	ArrayIndex index = 0;
 	while (!tok_is(c, TOKEN_RBRACE))
 	{
+		if (!parse_element_contract(c, "struct/union members")) return decl_poison(parent);
 		TokenType token_type = c->tok;
 		if (token_type == TOKEN_STRUCT || token_type == TOKEN_UNION || token_type == TOKEN_BITSTRUCT)
 		{
@@ -1712,6 +1795,12 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 				member = decl_new_with_type(symstr(c), c->span, decl_kind);
 				advance_and_verify(c, TOKEN_IDENT);
 			}
+			scratch_buffer_clear();
+			scratch_buffer_append(parent->type->name);
+			scratch_buffer_append(".");
+			scratch_buffer_append(member->name ? member->name : "$anon");
+			member->type->name = scratch_buffer_interned();
+
 			member->strukt.parent = declid(parent);
 			if (decl_kind == DECL_BITSTRUCT)
 			{
@@ -1811,15 +1900,15 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 {
 	advance_and_verify(c, TOKEN_TYPEDEF);
 
-	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_DISTINCT);
+	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_TYPEDEF);
 
 	if (!consume_type_name(c, "distinct type")) return poisoned_decl;
 	if (!parse_interface_impls(c, &decl->interfaces)) return poisoned_decl;
 
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
-	decl->type->type_kind = TYPE_DISTINCT;
-	decl->decl_kind = DECL_DISTINCT;
+	decl->type->type_kind = TYPE_TYPEDEF;
+	decl->decl_kind = DECL_TYPEDEF;
 
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 
@@ -1831,7 +1920,7 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 		return poisoned_decl;
 	}
 	// 2. Now parse the type which we know is here.
-	ASSIGN_TYPE_OR_RET(decl->distinct, parse_type(c), poisoned_decl);
+	ASSIGN_TYPE_OR_RET(decl->distinct, parse_optional_type(c), poisoned_decl);
 
 	ASSERT(!tok_is(c, TOKEN_LBRACE));
 
@@ -1875,6 +1964,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 	bool is_consecutive = false;
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
+		if (!parse_element_contract(c, "bitstruct members")) return decl_poison(decl);
 		ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_base_type(c), false);
 		Decl *member_decl = decl_new_var_current(c, type, VARDECL_BITMEMBER);
 
@@ -2089,8 +2179,8 @@ static inline Decl *parse_alias_type(ParseContext *c)
 	// 1. Did we have `fn`? In that case it's a function pointer.
 	if (try_consume(c, TOKEN_FN))
 	{
-		decl->decl_kind = DECL_TYPEDEF;
-		decl_add_type(decl, TYPE_TYPEDEF);
+		decl->decl_kind = DECL_TYPE_ALIAS;
+		decl_add_type(decl, TYPE_ALIAS);
 		decl->type_alias_decl.is_func = true;
 		Decl *decl_type = decl_new(DECL_FNTYPE, decl->name, c->prev_span);
 		decl->type_alias_decl.decl = decl_type;
@@ -2134,8 +2224,8 @@ static inline Decl *parse_alias_type(ParseContext *c)
 
 	decl->type_alias_decl.type_info = type_info;
 	decl->type_alias_decl.is_func = false;
-	decl->decl_kind = DECL_TYPEDEF;
-	decl_add_type(decl, TYPE_TYPEDEF);
+	decl->decl_kind = DECL_TYPE_ALIAS;
+	decl_add_type(decl, TYPE_ALIAS);
 	if (type_info->kind == TYPE_INFO_IDENTIFIER && type_info->resolve_status == RESOLVE_NOT_DONE
 		&& type_info->unresolved.name == decl->name)
 	{
@@ -2413,6 +2503,7 @@ static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 
 static inline Decl *parse_fault(ParseContext *c)
 {
+	if (!parse_element_contract(c, "faults")) return poisoned_decl;
 	Decl *decl = decl_new(DECL_FAULT, symstr(c), c->span);
 	if (!consume_const_name(c, "fault")) return poisoned_decl;
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
@@ -2493,6 +2584,7 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 	Decl **values = NULL;
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
+		if (!parse_element_contract(c, "enum values")) return false;
 		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, symstr(c), c->span);
 		if (is_const_enum) enum_const->enum_constant.is_raw = is_const_enum;
 		enum_const->visibility = visibility;
@@ -2645,6 +2737,7 @@ static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, Func
 	Decl *func = decl_calloc();
 	func->decl_kind = DECL_FUNC;
 	func->func_decl.docs = contracts;
+	func->func_decl.attr_interface_method = parse_kind == FUNC_PARSE_INTERFACE;
 	if (!parse_func_macro_header(c, func)) return poisoned_decl;
 	if (func->name[0] == '@')
 	{
@@ -3075,7 +3168,7 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 	return true;
 }
 
-static Decl *parse_include(ParseContext *c)
+static Decl *parse_ct_include(ParseContext *c)
 {
 	SourceSpan loc = c->span;
 	Decl *decl = decl_new(DECL_CT_INCLUDE, NULL, loc);
@@ -3143,6 +3236,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 	if (tok != TOKEN_MODULE && !c->unit->module)
 	{
 		if (!context_set_module_from_filename(c)) return poisoned_decl;
+		c->unit->module_generated = true;
 		// Pass the docs to the next thing.
 	}
 
@@ -3183,6 +3277,14 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			advance(c);
 			if (c->unit->module)
 			{
+				if (c->unit->module_generated)
+				{
+					print_error_at(c->unit->module->name->span, "This file begins with an auto-generated module '%s', which isn't compatible with having other module sections, please start the file with an explicit 'module'.",
+						c->unit->module->name->module);
+					sema_note_prev_at(c->span, "This declaration creates the next module section.");
+					c->unit->module_generated = false;
+					return poisoned_decl;
+				}
 				// We might run into another module declaration. If so, create a new unit.
 				ParseContext *new_context = CALLOCS(ParseContext);
 				*new_context = *c;
@@ -3250,7 +3352,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			return NULL;
 		case TOKEN_CT_INCLUDE:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_include(c);
+			decl = parse_ct_include(c);
 			break;
 		case TOKEN_CT_EXEC:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;

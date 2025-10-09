@@ -1,15 +1,78 @@
 module std::math::math_rt;
 
-fn float __roundevenf(float f) @extern("roundevenf") @weak @nostrip
+const double TOINT = 1 / math::DOUBLE_EPSILON;
+const float TOINTF = (float)(1 / math::FLOAT_EPSILON);
+macro force_eval_add(x, v)
 {
-	// Slow implementation
-	return math::round(f / 2) * 2;
+	$typeof(x) temp @noinit;
+	@volatile_store(temp, x + v);
 }
 
-fn double __roundeven(double d) @extern("roundeven") @weak @nostrip
+fn double __roundeven(double x) @extern("roundeven") @weak @nostrip
 {
-	// Slow implementation
-	return math::round(d / 2) * 2;
+	ulong u = bitcast(x, ulong);
+	int e = (int)((u >> 52) & 0x7ff);
+	if (e >= 0x3ff + 52) return x;
+	bool signed = u >> 63 != 0;
+	if (signed) x = -x;
+	if (e < 0x3ff - 1)
+	{
+		/* raise inexact if x!=0 */
+		force_eval_add(x, TOINT);
+		return 0 * x;
+	}
+	double y = (x + TOINT) - TOINT - x;
+	switch
+	{
+		case y > 0.5:
+			y = y + x - 1;
+		case y < -0.5:
+			y = y + x + 1;
+		case y == 0.5 || y == -0.5:
+            if (u & 1)
+            {
+                y = x + (y > 0 ? y + 1 : y - 1);
+                break;
+            }
+            nextcase;
+		default:
+			y = y + x;
+	}
+	if (signed) y = -y;
+	return y;
+}
+
+fn float __roundevenf(float x) @extern("roundevenf") @weak @nostrip
+{
+	uint u = bitcast(x, uint);
+	int e = (u >> 23) & 0xff;
+	if (e >= 0x7f + 23) return x;
+	bool signed = u >> 31 != 0;
+	if (signed) x = -x;
+	if (e < 0x7f - 1)
+	{
+		force_eval_add(x, TOINTF);
+		return 0 * x;
+	}
+	float y = (x + TOINTF) - TOINTF - x;
+	switch
+	{
+		case y > 0.5f:
+			y = y + x - 1;
+		case y < -0.5f:
+			y = y + x + 1;
+		case y == 0.5f || y == -0.5f:
+            if (u & 1)
+            {
+                y = x + (y > 0.0f ? y + 1.0f : y - 1.0f);
+                break;
+            }
+            nextcase;
+		default:
+			y = y + x;
+	}
+	if (signed) y = -y;
+	return y;
 }
 
 fn double __powidf2(double a, int b) @extern("__powidf2") @weak @nostrip

@@ -424,7 +424,7 @@ INLINE LLVMValueRef llvm_get_struct_of_type(GenContext *c, Type *type, LLVMValue
 // -- Jumps --
 void llvm_emit_cond_br(GenContext *context, BEValue *value, LLVMBasicBlockRef then_block, LLVMBasicBlockRef else_block);
 void llvm_emit_cond_br_raw(GenContext *context, LLVMValueRef b, LLVMBasicBlockRef then_block, LLVMBasicBlockRef else_block);
-void llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block);
+bool llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block);
 void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef opt_value);
 void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optional);
 void llvm_emit_return_implicit(GenContext *c);
