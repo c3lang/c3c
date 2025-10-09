@@ -592,7 +592,8 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPR_LIST(expr->initializer_list);
 			return expr;
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
-			MACRO_COPY_EXPR_LIST(expr->designated_init_list);
+			MACRO_COPY_EXPR(expr->designated_init.splat);
+			MACRO_COPY_EXPR_LIST(expr->designated_init.list);
 			return expr;
 		case EXPR_EXPRESSION_LIST:
 			MACRO_COPY_EXPR_LIST(expr->expression_list);

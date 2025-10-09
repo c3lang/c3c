@@ -862,13 +862,18 @@ static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST);
 	advance_and_verify(c, TOKEN_LBRACE);
+	Expr *splat = NULL;
 	if (!try_consume(c, TOKEN_RBRACE))
 	{
 		Expr **exprs = NULL;
 		if (!parse_init_list(c, &exprs, TOKEN_RBRACE, NULL, true)) return poisoned_expr;
 		int designated = -1;
-		FOREACH(Expr *, expr, exprs)
+		FOREACH_IDX(i, Expr *, expr, exprs)
 		{
+			if (i == 0 && expr->expr_kind == EXPR_SPLAT)
+			{
+				splat = expr;
+			}
 			if (expr->expr_kind == EXPR_DESIGNATOR)
 			{
 				if (designated == 0)
@@ -876,10 +881,12 @@ static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_
 					designated = expr->designator_expr.path[0]->kind == DESIGNATOR_FIELD ? 1 : 2;
 					goto ERROR;
 				}
+
 				designated = expr->designator_expr.path[0]->kind == DESIGNATOR_FIELD ? 1 : 2;
 				continue;
 			}
 			if (designated > 0) goto ERROR;
+			if (designated == -1 && splat) continue;
 			designated = 0;
 			continue;
 ERROR:;
@@ -896,7 +903,12 @@ ERROR:;
 		RANGE_EXTEND_PREV(initializer_list);
 		if (designated > 0)
 		{
-			initializer_list->designated_init_list = exprs;
+			if (splat)
+			{
+				vec_erase_front(exprs, 1);
+				splat = splat->inner_expr;
+			}
+			initializer_list->designated_init = (ExprDesignatedInit) { .splat = splat, .list = exprs };
 			initializer_list->expr_kind = EXPR_DESIGNATED_INITIALIZER_LIST;
 		}
 		else

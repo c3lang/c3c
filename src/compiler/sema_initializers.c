@@ -503,7 +503,17 @@ static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, E
 static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type *assigned, Type *flattened,
                                                      Expr *initializer, bool *no_match_ref)
 {
-	Expr **init_expressions = initializer->designated_init_list;
+	Expr **init_expressions = initializer->designated_init.list;
+	Expr *splat = initializer->designated_init.splat;
+	if (splat)
+	{
+		if (!sema_analyse_expr_rvalue(context, splat)) return false;
+		sema_cast_const(splat);
+		if (IS_OPTIONAL(splat))
+		{
+			RETURN_SEMA_ERROR(splat, "An optional splat is not permitted.");
+		}
+	}
 	Type *original = flattened->canonical;
 	bool is_bitstruct = original->type_kind == TYPE_BITSTRUCT;
 	bool is_structlike = type_is_union_or_strukt(original) || is_bitstruct;
@@ -557,6 +567,36 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	else
 	{
 		type = assigned;
+	}
+	if (splat && type->canonical != splat->type->canonical)
+	{
+		if (type_is_subtype(splat->type->canonical, type->canonical))
+		{
+			Decl *decl = original->decl;
+			Expr *designator = expr_new(EXPR_DESIGNATOR, initializer->span);
+			DesignatorElement **elements = NULL;
+			while (true)
+			{
+				DesignatorElement *designator_element = MALLOCS(DesignatorElement);
+				designator_element->kind = DESIGNATOR_FIELD;
+				designator_element->index = 0;
+				vec_add(elements, designator_element);
+				assert(decl->is_substruct);
+				Decl *member = decl->strukt.members[0];
+				if (member->type->canonical == splat->type) break;
+				decl = member;
+			}
+			designator->resolve_status = RESOLVE_DONE;
+			designator->designator_expr.path = elements;
+			designator->designator_expr.value = splat;
+			designator->type = splat->type;
+			vec_insert_first(initializer->designated_init.list, designator);
+			initializer->designated_init.splat = NULL;
+		}
+		else
+		{
+			RETURN_SEMA_ERROR(splat, "Splat type does not match initializer type.");
+		}
 	}
 	initializer->type = type_add_optional(type, optional);
 	initializer->resolve_status = RESOLVE_DONE;
@@ -647,7 +687,17 @@ NO_MATCH:;
 static void sema_create_const_initializer_from_designated_init(ConstInitializer *const_init, Expr *initializer)
 {
 	// Flatten the type since the external type might be typedef or a distinct type.
-	const_init_rewrite_to_zero(const_init, type_flatten(initializer->type));
+	Type *flattened = type_flatten(initializer->type);
+	if (initializer->designated_init.splat)
+	{
+		Expr *splat = initializer->designated_init.splat;
+		ASSERT_SPAN(splat, expr_is_const_initializer(splat));
+		*const_init = *splat->const_expr.initializer;
+	}
+	else
+	{
+		const_init_rewrite_to_zero(const_init, flattened);
+	}
 	ASSERT(type_flatten(initializer->type)->type_kind != TYPE_SLICE);
 	// Loop through the initializers.
 	FOREACH(Expr *, expr, initializer->initializer_list)

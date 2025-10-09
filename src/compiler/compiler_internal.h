@@ -1181,6 +1181,12 @@ typedef struct
 
 typedef struct
 {
+	Expr **list;
+	Expr *splat;
+} ExprDesignatedInit;
+
+typedef struct
+{
 	Expr *inner;
 	bool is_signed;
 } ExprExtTrunc;
@@ -1231,7 +1237,7 @@ struct Expr_
 		ExprIdentifierRaw ct_ident_expr;            // 24
 		Decl *decl_expr;                            // 8
 		Decl *iota_decl_expr;                       // 8
-		Expr **designated_init_list;                // 8
+		ExprDesignatedInit designated_init;         // 16
 		ExprDesignator designator_expr;             // 16
 		ExprNamedArgument named_argument_expr;
 		ExprEmbedExpr embed_expr;                   // 16
@@ -3719,6 +3725,7 @@ static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
 
 static inline void expr_set_span(Expr *expr, SourceSpan loc)
 {
+	if (!expr) return;
 	expr->span = loc;
 	switch (expr->expr_kind)
 	{
@@ -3755,7 +3762,8 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 			expr_list_set_span(expr->initializer_list, loc);
 			return;
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
-			expr_list_set_span(expr->designated_init_list, loc);
+			expr_set_span(expr->designated_init.splat, loc);
+			expr_list_set_span(expr->designated_init.list, loc);
 			return;
 		case EXPR_MAKE_ANY:
 			expr_set_span(expr->make_any_expr.inner, loc);

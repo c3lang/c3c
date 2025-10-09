@@ -420,7 +420,7 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_INITIALIZER_LIST:
 			return expr_list_is_constant_eval(expr->initializer_list);
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
-			return expr_list_is_constant_eval(expr->designated_init_list);
+			return (!expr->designated_init.splat || expr_is_const(expr->designated_init.splat)) && expr_list_is_constant_eval(expr->designated_init.list);
 		case EXPR_SLICE:
 			if (!exprid_is_runtime_const(expr->slice_expr.expr)) return false;
 			return expr->slice_expr.range.range_type == RANGE_CONST_RANGE;

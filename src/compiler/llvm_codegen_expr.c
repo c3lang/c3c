@@ -49,7 +49,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_emit_memcmp(GenContext *c, BEValue *be_value, LLVMValueRef ptr, LLVMValueRef other_ptr, LLVMValueRef size);
 static LLVMTypeRef llvm_find_inner_struct_type_for_coerce(GenContext *c, LLVMTypeRef struct_type, ByteSize dest_size);
 static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef *args, unsigned *arg_count_ref, AlignSize alignment);
-static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContext *c, BEValue *ref, Decl *bitstruct, Expr **elements);
+static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContext *c, BEValue *ref, Decl *bitstruct, Expr **elements, Expr *splat);
 INLINE LLVMValueRef llvm_emit_bitstruct_value_update(GenContext *c, LLVMValueRef current_val, TypeSize bits, LLVMTypeRef bitstruct_type, Decl *member, LLVMValueRef val);
 INLINE void llvm_emit_initialize_reference_bitstruct_array(GenContext *c, BEValue *ref, Decl *bitstruct, Expr** elements);
 #define MAX_AGG 16
@@ -1824,12 +1824,21 @@ static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref,
 	}
 }
 
-static inline void llvm_emit_initialize_reference_designated_bitstruct_array(GenContext *c, BEValue *ref, Decl *bitstruct, Expr **elements)
+static inline void llvm_emit_initialize_reference_designated_bitstruct_array(GenContext *c, BEValue *ref, Decl *bitstruct, Expr **elements, Expr *splat)
 {
 	LLVMTypeRef type = llvm_get_type(c, ref->type);
 	bool is_bitswap = bitstruct_requires_bitswap(bitstruct);
 	llvm_value_addr(c, ref);
-	llvm_store_zero(c, ref);
+	if (splat)
+	{
+		BEValue splat_val;
+		llvm_emit_expr(c, &splat_val, splat);
+		llvm_store(c, ref, &splat_val);
+	}
+	else
+	{
+		llvm_store_zero(c, ref);
+	}
 	AlignSize alignment = ref->alignment;
 	LLVMValueRef array_ptr = ref->value;
 	// Now walk through the elements.
@@ -1845,16 +1854,27 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct_array(Gen
 	}
 }
 
-static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContext *c, BEValue *ref, Decl *bitstruct, Expr **elements)
+static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContext *c, BEValue *ref, Decl *bitstruct, Expr **elements, Expr *splat)
 {
 	Type *underlying_type = type_lowering(ref->type);
 	if (underlying_type->type_kind == TYPE_ARRAY)
 	{
-		llvm_emit_initialize_reference_designated_bitstruct_array(c, ref, bitstruct, elements);
+		llvm_emit_initialize_reference_designated_bitstruct_array(c, ref, bitstruct, elements, splat);
 		return;
 	}
 	LLVMTypeRef type = llvm_get_type(c, underlying_type);
-	LLVMValueRef data = LLVMConstNull(type);
+	LLVMValueRef data;
+	if (!splat)
+	{
+		data = LLVMConstNull(type);
+	}
+	else
+	{
+		BEValue splat_val;
+		llvm_emit_expr(c, &splat_val, splat);
+		llvm_value_rvalue(c, &splat_val);
+		data = splat_val.value;
+	}
 	TypeSize bits = type_bit_size(underlying_type);
 
 	// Now walk through the elements.
@@ -1877,13 +1897,15 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContex
 
 static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEValue *ref, Expr *expr)
 {
-	Expr **elements = expr->designated_init_list;
+
+	Expr **elements = expr->designated_init.list;
+	Expr *splat = expr->designated_init.splat;
 	ASSERT(vec_size(elements));
 	Type *type = type_flatten(expr->type);
 	ASSERT(type->type_kind != TYPE_SLICE);
 	if (type->type_kind == TYPE_BITSTRUCT)
 	{
-		llvm_emit_initialize_reference_designated_bitstruct(c, ref, type->decl, elements);
+		llvm_emit_initialize_reference_designated_bitstruct(c, ref, type->decl, elements, splat);
 		return;
 	}
 
@@ -1891,7 +1913,16 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 	llvm_value_addr(c, ref);
 
 	// Clear the memory
-	llvm_store_zero(c, ref);
+	if (splat)
+	{
+		BEValue splat_value;
+		llvm_emit_expr(c, &splat_value, splat);
+		llvm_store(c, ref, &splat_value);
+	}
+	else
+	{
+		llvm_store_zero(c, ref);
+	}
 
 	// Now walk through the elements.
 	FOREACH(Expr *, designator, elements)
@@ -6369,8 +6400,19 @@ static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *val
 	}
 	else
 	{
-		vec_value = llvm_get_zero_raw(llvm_type);
-		Expr **elements = expr->designated_init_list;
+		Expr **elements = expr->designated_init.list;
+		Expr *splat = expr->designated_init.splat;
+		if (splat)
+		{
+			BEValue splat_val;
+			llvm_emit_expr(c, &splat_val, splat);
+			llvm_value_rvalue(c, &splat_val);
+			vec_value = splat_val.value;
+		}
+		else
+		{
+			vec_value = llvm_get_zero_raw(llvm_type);
+		}
 
 		FOREACH(Expr *, designator, elements)
 		{

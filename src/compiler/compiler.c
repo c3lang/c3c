@@ -1171,8 +1171,8 @@ void print_syntax(BuildOptions *options)
 		puts(" 8. Relational | < > <= >= == !=");
 		puts(" 9. And        | && &&&");
 		puts("10. Or         | || |||");
-		puts("11. Ternary    | ?: ??");
-		puts("12. Assign     | = *= /= %= -= += |= &= ^= <<= >>=");
+		puts("11. Ternary    | ?: ?? ???");
+		puts("12. Assign     | = *= /= %= -= += |= &= ^= <<= >>= +++=");
 	}
 
 }

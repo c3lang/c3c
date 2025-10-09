@@ -4,6 +4,7 @@
 
 ### Changes / improvements
 - Error when using $vaarg/$vacount/$vasplat and similar in a macro without vaargs #2510.
+- Add splat defaults for designated initialization #2441.
 
 ### Fixes
 - Bug in `io::write_using_write_byte`.
@@ -13,6 +14,7 @@
 - Compiler segfault when accessing member of number cast to bitstruct #2516.
 - Compiler assert when getting a member of a `bitstruct : char @bigendian` #2517.
 - Incorrect visibility on local globals with public aliases. #2519
+- Add ??? and +++= to list-precedence.
 
 ### Stdlib changes
 - Sorting functions correctly took slices by value, but also other types by value. Now, only slices are accepted by value, other containers are always by ref.

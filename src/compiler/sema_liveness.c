@@ -401,7 +401,8 @@ RETRY:
 			sema_trace_expr_list_liveness(expr->expression_list);
 			return;
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
-			sema_trace_expr_list_liveness(expr->designated_init_list);
+			sema_trace_expr_liveness(expr->designated_init.splat);
+			sema_trace_expr_list_liveness(expr->designated_init.list);
 			return;
 		case EXPR_IDENTIFIER:
 			sema_trace_decl_liveness(expr->ident_expr);
