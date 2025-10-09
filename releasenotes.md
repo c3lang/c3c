@@ -18,6 +18,7 @@
 
 ### Stdlib changes
 - Sorting functions correctly took slices by value, but also other types by value. Now, only slices are accepted by value, other containers are always by ref.
+- Added `array::range` and compile-time `@range` builtins.
 
 ## 0.7.6 Change list
 
