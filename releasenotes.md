@@ -5,6 +5,7 @@
 ### Changes / improvements
 - Error when using $vaarg/$vacount/$vasplat and similar in a macro without vaargs #2510.
 - Add splat defaults for designated initialization #2441.
+- Add new builtins `$$str_snakecase` `$$str_replace` and `$$str_pascalcase`.
 
 ### Fixes
 - Bug in `io::write_using_write_byte`.
@@ -18,6 +19,7 @@
 
 ### Stdlib changes
 - Sorting functions correctly took slices by value, but also other types by value. Now, only slices are accepted by value, other containers are always by ref.
+- Added `@str_snakecase`, `@str_replace` and `@str_pascalcase` builtin compile time macros based on the `$$` builtins.
 
 ## 0.7.6 Change list
 

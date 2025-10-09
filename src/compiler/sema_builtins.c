@@ -2,8 +2,8 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 #include <math.h>
-
 #include "sema_internal.h"
+#include <ctype.h>
 
 
 typedef enum
@@ -305,7 +305,60 @@ bool sema_expr_analyse_rnd(SemaContext *context UNUSED, Expr *expr)
 	return true;
 }
 
-bool sema_expr_analyse_str_hash(SemaContext *context, Expr *expr)
+static bool sema_expr_analyse_str_replace(SemaContext *context, Expr *expr, Expr *arg, Expr *pattern, Expr *replace, Expr *limit)
+{
+	if (!sema_analyse_expr_rvalue(context, arg)) return false;
+	if (!sema_cast_const(arg) || !expr_is_const_string(arg))
+	{
+		RETURN_SEMA_ERROR(arg, "Expected a constant string replace a pattern in.");
+	}
+	if (!sema_analyse_expr_rvalue(context, pattern)) return false;
+	if (!sema_cast_const(pattern) || !expr_is_const_string(pattern))
+	{
+		RETURN_SEMA_ERROR(pattern, "Expected a constant pattern to replace.");
+	}
+	if (!sema_analyse_expr_rvalue(context, replace)) return false;
+	if (!sema_cast_const(replace) || !expr_is_const_string(replace))
+	{
+		RETURN_SEMA_ERROR(replace, "Expected a constant replacement string.");
+	}
+	if (!sema_analyse_expr_rvalue(context, limit)) return false;
+	if (!sema_cast_const(limit) || !expr_is_const_int(limit))
+	{
+		RETURN_SEMA_ERROR(limit, "Expected a constant limit.");
+	}
+	const char *inner_str = arg->const_expr.bytes.ptr;
+	ArraySize len = arg->const_expr.bytes.len;
+	const char *pattern_str = pattern->const_expr.bytes.ptr;
+	ArraySize pattern_len = pattern->const_expr.bytes.len;
+	const char *replace_str = replace->const_expr.bytes.ptr;
+	ArraySize limit_int = int_ucomp(limit->const_expr.ixx, MAX_ARRAY_SIZE, BINARYOP_GT) ? 0 : limit->const_expr.ixx.i.low;
+	scratch_buffer_clear();
+	ArrayIndex index = 0;
+	if (limit_int == 0) limit_int = UINT64_MAX;
+	while (index < len)
+	{
+		const char *end = strstr(inner_str + index, pattern_str);
+		if (end == NULL)
+		{
+			scratch_buffer_append(inner_str + index);
+			break;
+		}
+		scratch_buffer_append_len(inner_str + index, end - inner_str - index);
+		scratch_buffer_append(replace_str);
+		index = end - inner_str + pattern_len;
+		limit_int--;
+		if (limit_int == 0)
+		{
+			scratch_buffer_append(inner_str + index);
+			break;
+		}
+	}
+	expr_rewrite_const_string(expr, scratch_buffer_copy());
+	return true;
+}
+
+static bool sema_expr_analyse_str_hash(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->call_expr.arguments[0];
 	if (!sema_analyse_expr_rvalue(context, inner)) return true;
@@ -354,7 +407,20 @@ bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunctio
 		expr_replace(expr, inner);
 		return true;
 	}
-	char *new_string = malloc_string(len + 1);
+	char *new_string;
+	if (func == BUILTIN_STR_SNAKECASE)
+	{
+		int uppers = 0;
+		for (ArrayIndex i = 0; i < len; i++)
+		{
+			if (isupper(string[i])) uppers++;
+		}
+		new_string = malloc_string(len + 1 + uppers);
+	}
+	else
+	{
+		new_string = malloc_string(len + 1);
+	}
 	switch (func)
 	{
 		case BUILTIN_STR_LOWER:
@@ -364,6 +430,49 @@ bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunctio
 				new_string[i] = (char)(char_is_upper(c) ? (c | 0x20) : c);
 			}
 			break;
+		case BUILTIN_STR_SNAKECASE:
+		{
+			size_t index = 0;
+			for (ArraySize i = 0; i < len; i++)
+			{
+				char c = string[i];
+				if (isupper(c))
+				{
+					if (i > 0 && ((islower(string[i - 1]) || isdigit(string[i - 1])) || (i < len - 1 && islower(string[i + 1]))))
+					{
+						new_string[index++] = '_';
+					}
+					new_string[index++] = tolower(c);
+					continue;
+				}
+				new_string[index++] = c;
+			}
+			len = index;
+			break;
+		}
+		case BUILTIN_STR_PASCALCASE:
+		{
+			bool capitalize = true;
+			size_t j = 0;
+			for (ArraySize i = 0; i < len; i++)
+			{
+				char c = string[i];
+				if (!isalpha(c))
+				{
+					capitalize = true;
+					continue;
+				}
+				if (capitalize)
+				{
+					new_string[j++] = toupper(c);
+					capitalize = false;
+					continue;
+				}
+				new_string[j++] = tolower(c);
+			}
+			len = j;
+			break;
+		}
 		case BUILTIN_STR_UPPER:
 			for (ArraySize i = 0; i < len; i++)
 			{
@@ -538,8 +647,12 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_rnd(context, expr);
 		case BUILTIN_STR_HASH:
 			return sema_expr_analyse_str_hash(context, expr);
+		case BUILTIN_STR_REPLACE:
+			return sema_expr_analyse_str_replace(context, expr, args[0], args[1], args[2], args[3]);
 		case BUILTIN_STR_UPPER:
 		case BUILTIN_STR_LOWER:
+		case BUILTIN_STR_PASCALCASE:
+		case BUILTIN_STR_SNAKECASE:
 			return sema_expr_analyse_str_conv(context, expr, func);
 		case BUILTIN_STR_FIND:
 			return sema_expr_analyse_str_find(context, expr);
@@ -592,7 +705,10 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_STR_HASH:
 		case BUILTIN_STR_UPPER:
 		case BUILTIN_STR_LOWER:
+		case BUILTIN_STR_PASCALCASE:
+		case BUILTIN_STR_SNAKECASE:
 		case BUILTIN_STR_FIND:
+		case BUILTIN_STR_REPLACE:
 		case BUILTIN_WIDESTRING_16:
 		case BUILTIN_WIDESTRING_32:
 		case BUILTIN_SPRINTF:
@@ -1274,6 +1390,8 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_STR_HASH:
 		case BUILTIN_STR_UPPER:
 		case BUILTIN_STR_LOWER:
+		case BUILTIN_STR_SNAKECASE:
+		case BUILTIN_STR_PASCALCASE:
 		case BUILTIN_TRUNC:
 		case BUILTIN_VOLATILE_LOAD:
 		case BUILTIN_WASM_MEMORY_SIZE:
@@ -1326,6 +1444,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_MASKED_LOAD:
 		case BUILTIN_GATHER:
 		case BUILTIN_SCATTER:
+		case BUILTIN_STR_REPLACE:
 			return 4;
 		case BUILTIN_ATOMIC_FETCH_EXCHANGE:
 		case BUILTIN_ATOMIC_FETCH_ADD:

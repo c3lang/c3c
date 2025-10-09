@@ -608,6 +608,7 @@ bool sema_expr_analyse_sprintf(SemaContext *context, Expr *expr, Expr *format_st
 	return true;
 }
 
+
 static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Expr *expr, bool *failed_ref)
 {
 	if (expr->expr_kind == EXPR_CT_SUBSCRIPT) return true;
