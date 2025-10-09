@@ -451,9 +451,9 @@ fn void range() => @pool()
 	assert(z == 0 + 25 + 50 + 75 + 100 + 125 + 150 + 175 + 200);
 
 	// typed returns
-	assert(@typeis(array::trange(2), isz[]));
-	assert(@typeis(array::trange(4, $OfType: char), char[]));
-	assert(@typeis(array::trange(8, step: 2, $OfType: uint128), uint128[]));
-	assert(@typeis(array::trange(4, 16, 3, true, long), long[]));
-	assert(@typeis(array::trange(stop: 1200, inclusive: true, $OfType: char), char[]));
+	assert($typeof(array::trange(2)) == isz[]);
+	assert($typeof(array::trange(4, $OfType: char)) == char[]);
+	assert($typeof(array::trange(8, step: 2, $OfType: uint128)) == uint128[]);
+	assert($typeof(array::trange(4, 16, 3, true, long)) == long[]);
+	assert($typeof(array::trange(stop: 1200, inclusive: true, $OfType: char)) == char[]);
 }
