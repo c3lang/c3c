@@ -153,6 +153,8 @@ macro range(Allocator allocator, start_stop = 0, stop = EMPTY_MACRO_SLOT, step =
 			: (inclusive ? i >= real_stop : i > real_stop);
 		i += real_step, ++j
 	) result[j] = ($OfType)i;
+
+	return result;
 }
 
 <*
