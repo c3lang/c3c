@@ -7,6 +7,7 @@
 - Add splat defaults for designated initialization #2441.
 - Add new builtins `$$str_snakecase` `$$str_replace` and `$$str_pascalcase`.
 - `"build-dir"` option now available for `project.json`, added to project. #2323
+- Allow `..` ranges to use "a..a-1" in order to express zero length.
 
 ### Fixes
 - Bug in `io::write_using_write_byte`.

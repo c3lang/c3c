@@ -4258,6 +4258,7 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 	if (!sema_analyse_expr_rvalue(context, start)) return false;
 	if (end && !sema_analyse_expr_rvalue(context, end)) return false;
 
+	ArrayIndex lowest = range->is_len ? 0 : -1;
 	if (!cast_to_index_len(context, start, false)) return false;
 	if (end && !cast_to_index_len(context, end, false)) return false;
 	Type *end_type = end ? type_no_optional(end->type) : NULL;
@@ -4307,14 +4308,14 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 			// Something like  1 .. ^4 with an unknown length.
 			if (len < 0) return true;
 			// Otherwise we fold the "from end"
-			if (end_index > len)
+			if (end_index + lowest > len)
 			{
 				RETURN_SEMA_ERROR(end, "An index may only be negative for pointers (it was: %lld).", len - end_index);
 			}
 			end_index = len - end_index;
 			range->end_from_end = false;
 		}
-		if (end_index < 0 && env != RANGE_PTR)
+		if (end_index < lowest && env != RANGE_PTR)
 		{
 			RETURN_SEMA_ERROR(end, "An index may only be negative for pointers (it was: %lld).", end_index);
 		}
@@ -4363,7 +4364,7 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 		if (range->range_type == RANGE_CONST_END)
 		{
 			ArrayIndex end_index = range->const_end;
-			if (end_index < start_index) RETURN_SEMA_ERROR(start, "The start index (%lld) should not be greater than the end index (%lld).",
+			if (end_index - lowest < start_index) RETURN_SEMA_ERROR(start, "The start index (%lld) should not be greater than the end index (%lld).",
 														   start_index, end_index);
 			range->const_end = end_index + 1 - start_index;
 			range->range_type = RANGE_CONST_LEN;
