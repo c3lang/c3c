@@ -6,6 +6,7 @@
 - Error when using $vaarg/$vacount/$vasplat and similar in a macro without vaargs #2510.
 - Add splat defaults for designated initialization #2441.
 - Add new builtins `$$str_snakecase` `$$str_replace` and `$$str_pascalcase`.
+- `"build-dir"` option now available for `project.json`, added to project. #2323
 
 ### Fixes
 - Bug in `io::write_using_write_byte`.

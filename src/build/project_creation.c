@@ -27,6 +27,8 @@ const char* JSON_EXE =
 		"  // \"c-sources\": [ \"csource/**\" ],\n"
 		"  // Include directories for C sources relative to the project file.\n"
 		"  // \"c-include-dirs\": [ \"csource/include\" ],\n"
+		"  // Build location, relative to project file.\n"
+		"  \"build-dir\": \"build\",\n"
 		"  // Output location, relative to project file.\n"
 		"  \"output\": \"build\",\n"
 		"  // Architecture and OS target.\n"
