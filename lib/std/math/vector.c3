@@ -41,8 +41,8 @@ fn double double[<3>].angle(self, double[<3>] v2) => angle3(self, v2);
 fn float[<3>] float[<3>].refract(self, float[<3>] n, float r) => refract3(self, n, r);
 fn double[<3>] double[<3>].refract(self, double[<3>] n, double r) => refract3(self, n, r);
 
-fn float[<3>] float[<3>].rotate_quat(self, Quaternionf q) => rotate_by_quat3(self, q);
-fn double[<3>] double[<3>].rotate_quat(self, Quaternion q) => rotate_by_quat3(self, q);
+fn float[<3>] float[<3>].rotate_quat(self, Quaternionf q) => q * self;
+fn double[<3>] double[<3>].rotate_quat(self, Quaternion q) => q * self;
 
 fn float[<3>] float[<3>].rotate_axis(self, float[<3>] axis, float angle) => rotate_axis_angle(self, axis, angle);
 fn double[<3>] double[<3>].rotate_axis(self, double[<3>] axis, double angle) => rotate_axis_angle(self, axis, angle);
@@ -142,21 +142,6 @@ macro void ortho_normalize3(v1, v2) @private
 	var v1n = *v1 = v1.normalize();
 	var vn1 = v1n.cross(*v2).normalize();
 	*v2 = v1n.cross(vn1);
-}
-
-macro rotate_by_quat3(v, q) @private
-{
-	return ($typeof(v)){
-		v[0] * (q.i * q.i + q.l * q.l - q.j * q.j - q.k * q.k)
-			+ v[1] * (2 * q.i * q.j - 2 * q.l * q.k)
-			+ v[2] * (2 * q.i * q.k - 2 * q.l * q.j),
-		v[0] * (2 * q.l * q.k + 2 * q.i * q.j)
-			+ v[1] * (q.l * q.l - q.i * q.i + q.j * q.j - q.k * q.k)
-			+ v[2] * (-2 * q.l * q.i + 2 * q.j * q.k),
-		v[0] * (-2 * q.l * q.j + 2 * q.i * q.k)
-			+ v[1] * (2 * q.l * q.i + 2 * q.j * q.k)
-			+ v[2] * (q.l * q.l - q.i * q.i - q.j * q.j + q.k * q.k)
-	};
 }
 
 macro rotate_axis_angle(v, axis, angle) @private
