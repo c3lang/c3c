@@ -1,20 +1,32 @@
 // #target: macos-x64
 module test1;
 alias x = y;
-int y @local = 1;
+int y @private = 1;
+
+module test2;
+int z @private = 1;
 
 module test;
 import test1;
+import test2 @public;
+
+alias z = test2::z;
 
 fn int main(String[] args)
 {
-	return test1::x;
+	return test1::x + z;
 }
+
 
 /* #expect: test1.ll
 
-@test1.y.10 = local_unnamed_addr global i32 1, align 4
+@test1.y = local_unnamed_addr global i32 1, align 4
+
+/* #expect: test2.ll
+
+@test2.z = local_unnamed_addr global i32 1, align 4
 
 // #expect: test.ll
 
-@test1.y.10 = external global i32, align 4
+@test1.y = external global i32, align 4
+@test2.z = external global i32, align 4

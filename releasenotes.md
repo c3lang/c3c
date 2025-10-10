@@ -8,7 +8,8 @@
 - Add new builtins `$$str_snakecase` `$$str_replace` and `$$str_pascalcase`.
 - `"build-dir"` option now available for `project.json`, added to project. #2323
 - Allow `..` ranges to use "a..a-1" in order to express zero length.
-
+- Disallow aliasing of `@local` symbols with a higher visibility in the alias.
+ 
 ### Fixes
 - Bug in `io::write_using_write_byte`.
 - Bitstruct value cannot be used to index a const array in compile time. #2512
@@ -16,8 +17,8 @@
 - Bitstruct truncated constant error escapes `$defined` #2515.
 - Compiler segfault when accessing member of number cast to bitstruct #2516.
 - Compiler assert when getting a member of a `bitstruct : char @bigendian` #2517.
-- Incorrect visibility on local globals with public aliases. #2519
 - Add ??? and +++= to list-precedence.
+- Fix issues with linking when using symbol aliases. #2519
 
 ### Stdlib changes
 - Sorting functions correctly took slices by value, but also other types by value. Now, only slices are accepted by value, other containers are always by ref.
