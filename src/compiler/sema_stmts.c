@@ -298,7 +298,7 @@ static inline bool sema_analyse_continue_stmt(SemaContext *context, Ast *stateme
 		// Continue can only be used with "for" statements, skipping the "do {  };" statement
 		if (!ast_supports_continue(jump_target.target))
 		{
-			RETURN_SEMA_ERROR(statement, "'continue' may only be used with 'for', 'while' and 'do-while' statements.");
+			RETURN_SEMA_ERROR(statement, "'continue' may only be used with 'for', 'foreach', 'while' and 'do-while' statements.");
 		}
 	}
 	else
@@ -3338,8 +3338,10 @@ bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, So
 
 bool sema_analyse_function_body(SemaContext *context, Decl *func)
 {
+	// Stop if it's already poisoned.
 	if (!decl_ok(func)) return false;
 
+	// Check the signature here we test for variadic raw, since we don't support it.
 	Signature *signature = &func->func_decl.signature;
 	if (signature->variadic == VARIADIC_RAW)
 	{
@@ -3347,8 +3349,12 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 						  " please use typed vaargs on the form 'int... args' or "
 						  "untyped vaargs on the form 'args...' instead.");
 	}
+
+	// Pull out the prototype
 	FunctionPrototype *prototype = func->type->function.prototype;
-	ASSERT(prototype);
+	ASSERT_SPAN(func, prototype);
+
+	// Set up the context for analysis
 	context->original_inline_line = 0;
 	context->original_module = NULL;
 	context->call_env = (CallEnv) {
@@ -3356,23 +3362,23 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		.is_naked_fn = func->func_decl.attr_naked,
 		.kind = CALL_ENV_FUNCTION,
 		.pure = func->func_decl.signature.attrs.is_pure,
-		.ignore_deprecation = func->allow_deprecated || (func->resolved_attributes && func->attrs_resolved && func->attrs_resolved->deprecated && func->resolved_attributes && func->attrs_resolved->deprecated)
+		.ignore_deprecation = func->allow_deprecated || decl_is_deprecated(func)
 	};
+
 	context->rtype = prototype->rtype;
 	context->macro_call_depth = 0;
 	context->active_scope = (DynamicScope) {
-			.scope_id = 0,
 			.depth = 0,
 			.label_start = 0,
 			.current_local = 0
 	};
 	vec_resize(context->ct_locals, 0);
-
 	// Clear returns
 	vec_resize(context->block_returns, 0);
-	context->scope_id = 0;
+	// Zero out any jumps
 	context->break_jump = context->continue_jump = context->next_jump = (JumpTarget) { .target = NULL };
-	ASSERT(func->func_decl.body);
+	ASSERT_SPAN(func, func->func_decl.body);
+
 	Ast *body = astptr(func->func_decl.body);
 	Decl **lambda_params = NULL;
 	SCOPE_START
@@ -3383,6 +3389,8 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		}
 		if (func->func_decl.is_lambda)
 		{
+			// If we're a lambda we need to pass on the compile time values that will
+			// be baked into the function.
 			lambda_params = copy_decl_list_single(func->func_decl.lambda_ct_parameters);
 			FOREACH(Decl *, ct_param, lambda_params)
 			{

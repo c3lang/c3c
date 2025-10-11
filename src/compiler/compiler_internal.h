@@ -19,7 +19,6 @@ typedef int32_t IndexDiff;
 typedef int64_t ArrayIndex;
 typedef uint16_t StructIndex;
 typedef uint32_t AlignSize;
-typedef int32_t ScopeId;
 typedef uint64_t ArraySize;
 typedef uint64_t BitSize;
 typedef uint16_t FileId;
@@ -1639,7 +1638,6 @@ typedef struct EndJump_
 
 typedef struct DynamicScope_
 {
-	ScopeId scope_id;
 	bool allow_dead_code : 1;
 	bool is_dead : 1;
 	bool is_poisoned : 1;
@@ -1789,7 +1787,6 @@ struct SemaContext_
 	CallEnv call_env;
 	Decl *current_macro;
 	InliningSpan *inlined_at;
-	ScopeId scope_id;
 	unsigned macro_call_depth;
 	// Jump tracking
 	JumpTarget break_jump;
@@ -2308,7 +2305,7 @@ const char *decl_safe_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
 const char *decl_to_a_name(Decl *decl);
 int decl_count_elements(Decl *structlike);
-void decl_append_links_to_global(Decl *decl);
+void decl_append_links_to_global_during_codegen(Decl *decl);
 
 INLINE bool decl_ok(Decl *decl);
 INLINE bool decl_poison(Decl *decl);
@@ -2319,6 +2316,7 @@ static inline Decl *decl_raw(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 static inline bool decl_is_var_local(Decl *decl);
 bool decl_is_ct_var(Decl *decl);
+bool decl_is_deprecated(Decl *decl);
 Decl *decl_find_enum_constant(Decl *decl, const char *name);
 bool decl_needs_prefix(Decl *decl);
 AlignSize decl_find_member_offset(Decl *decl, Decl *member);

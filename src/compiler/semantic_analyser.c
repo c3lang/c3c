@@ -35,7 +35,6 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 
 	unsigned label_start = new_label_scope ? last_local : context->active_scope.label_start;
 	context->active_scope = (DynamicScope) {
-			.scope_id = ++context->scope_id,
 			.allow_dead_code = false,
 			.is_dead = scope_is_dead,
 			.is_poisoned = scope_is_poisoned,
@@ -47,10 +46,6 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 			.defer_start = parent_defer,
 			.flags = flags,
 	};
-	if (context->scope_id == 0)
-	{
-		FATAL_ERROR("Too many scopes.");
-	}
 }
 
 const char *context_filename(SemaContext *context)

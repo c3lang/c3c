@@ -201,7 +201,7 @@ INLINE Attr* attr_find_kind(Attr **attrs, AttributeType attr_type)
 INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span)
 {
 	ASSERT(decl->resolve_status == RESOLVE_DONE);
-	if (!decl->resolved_attributes || !decl->attrs_resolved || !decl->attrs_resolved->deprecated) return;
+	if (!decl_is_deprecated(decl)) return;
 	if (context->call_env.ignore_deprecation) return;
 	const char *msg = decl->attrs_resolved->deprecated;
 

@@ -541,7 +541,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	// Skip real constants.
 	if (!decl->type) return;
 
-	decl_append_links_to_global(decl);
+	decl_append_links_to_global_during_codegen(decl);
 
 	LLVMValueRef init_value;
 

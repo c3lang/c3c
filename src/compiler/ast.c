@@ -35,6 +35,10 @@ Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span)
 	return decl;
 }
 
+bool decl_is_deprecated(Decl *decl)
+{
+	return decl->resolved_attributes && decl->attrs_resolved && decl->attrs_resolved->deprecated;
+}
 
 // Check if local or parameter $foo/$Foo
 bool decl_is_ct_var(Decl *decl)
@@ -43,12 +47,12 @@ bool decl_is_ct_var(Decl *decl)
 	return decl_var_kind_is_ct(decl->var.kind);
 }
 
-Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
+Decl *decl_new_with_type(const char *name, SourceSpan span, DeclKind decl_type)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = decl_type;
 	decl->name = name;
-	decl->span = loc;
+	decl->span = span;
 	TypeKind kind = TYPE_POISONED;
 	switch (decl_type)
 	{
@@ -95,6 +99,7 @@ const char *decl_safe_name(Decl *decl)
 	if (decl->name) return decl->name;
 	return decl_to_name(decl);
 }
+
 const char *decl_to_name(Decl *decl)
 {
 	const char *name = decl_to_a_name(decl);
@@ -155,9 +160,9 @@ const char *decl_to_a_name(Decl *decl)
 }
 
 
-Decl *decl_new_var(const char *name, SourceSpan loc, TypeInfo *type, VarDeclKind kind)
+Decl *decl_new_var(const char *name, SourceSpan span, TypeInfo *type, VarDeclKind kind)
 {
-	Decl *decl = decl_new(DECL_VAR, name, loc);
+	Decl *decl = decl_new(DECL_VAR, name, span);
 	decl->var.kind = kind;
 	decl->var.type_info = type ? type_infoid(type) : 0;
 	return decl;
@@ -173,7 +178,7 @@ Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span)
 	decl->var.is_temp = true;
 	decl->type = type;
 	decl->alignment = type ? type_alloca_alignment(type) : 0;
-	ASSERT(!type || !type_is_user_defined(type) || type->decl->resolve_status == RESOLVE_DONE);
+	ASSERT_AT(span, !type || !type_is_user_defined(type) || type->decl->resolve_status == RESOLVE_DONE);
 	decl->var.type_info = type_info_id_new_base(type, span);
 	decl->resolve_status = RESOLVE_DONE;
 	return decl;
@@ -292,8 +297,8 @@ AttributeType attribute_by_name(const char *name)
 	return ATTRIBUTE_NONE;
 }
 
-
-void decl_append_links_to_global(Decl *decl)
+// Look for the @link directive, if a decl is codegen then add it to the linking process.
+void decl_append_links_to_global_during_codegen(Decl *decl)
 {
 	CompilationUnit *unit = decl->unit;
 	if (unit && unit->links)
@@ -310,16 +315,22 @@ void decl_append_links_to_global(Decl *decl)
 	}
 }
 
+/*
+ * Count the expected number of elements needed for an initializer
+ * by folding any anonymous structs and unions.
+ */
 int decl_count_elements(Decl *structlike)
 {
 	int elements = 0;
 	Decl **members = structlike->strukt.members;
 	unsigned member_size = vec_size(members);
 	if (member_size == 0) return 0;
+	// In the case we have a union, we only count the first element.
 	if (structlike->decl_kind == DECL_UNION) member_size = 1;
 	for (unsigned i = 0; i < member_size; i++)
 	{
 		Decl *member = members[i];
+		// Recursively count the anonymous struct/unions
 		if (member->decl_kind != DECL_VAR && !member->name)
 		{
 			elements += decl_count_elements(member);
@@ -330,6 +341,7 @@ int decl_count_elements(Decl *structlike)
 	return elements;
 }
 
+// This is used to check if a macro folds to a single compile time value.
 bool ast_is_compile_time(Ast *ast)
 {
 	switch (ast->ast_kind)
@@ -341,6 +353,7 @@ bool ast_is_compile_time(Ast *ast)
 			if (!ast->return_stmt.expr) return true;
 			return expr_is_runtime_const(ast->return_stmt.expr);
 		case AST_EXPR_STMT:
+			// $a; is fine
 			return expr_is_runtime_const(ast->expr_stmt);
 		case AST_CT_COMPOUND_STMT:
 		{
@@ -365,14 +378,25 @@ bool ast_is_compile_time(Ast *ast)
 	}
 }
 
+// Should this declaration be linked externally
 bool decl_is_externally_visible(Decl *decl)
 {
 	return decl->is_external_visible || decl->visibility == VISIBLE_PUBLIC || decl->is_export;
 }
 
 
+/*
+ * Is this declartion a global of some sort?
+ * In other words a static, thread local, global constant or a global
+ */
 bool decl_is_global(Decl *ident)
 {
+	switch (ident->decl_kind)
+	{
+		case DECL_FUNC: return true;
+		case DECL_VAR: break;
+		default: return false;
+	}
 	switch (ident->var.kind)
 	{
 		case VARDECL_LOCAL:
@@ -396,11 +420,13 @@ bool decl_is_global(Decl *ident)
 	UNREACHABLE
 }
 
+// Is is @local or is it @private but never imported in some other compilation unit (module)
 bool decl_is_local(Decl *decl)
 {
 	return !decl->is_external_visible && decl->visibility != VISIBLE_PUBLIC && !decl->is_export;
 }
 
+// Does the decl need to be prefixed, or is it for some reason like a builtin.
 bool decl_needs_prefix(Decl *decl)
 {
 	switch (decl->decl_kind)
@@ -418,6 +444,7 @@ bool decl_needs_prefix(Decl *decl)
 	}
 }
 
+// Find a particular enum by name.
 Decl *decl_find_enum_constant(Decl *decl, const char *name)
 {
 	FOREACH(Decl *, enum_constant, decl->enums.values)
@@ -426,6 +453,7 @@ Decl *decl_find_enum_constant(Decl *decl, const char *name)
 	}
 	return NULL;
 }
+
 
 AlignSize decl_find_member_offset(Decl *decl, Decl *member)
 {
@@ -442,7 +470,7 @@ AlignSize decl_find_member_offset(Decl *decl, Decl *member)
 		default:
 			return NO_MATCH;
 	}
-	ASSERT(members);
+	ASSERT_SPAN(decl, members);
 	unsigned list = vec_size(members);
 	for (unsigned i = 0; i < list; i++)
 	{
@@ -460,9 +488,12 @@ AlignSize decl_find_member_offset(Decl *decl, Decl *member)
 	return NO_MATCH;
 }
 
+// Is it a for statement, AST_FOREACH should not reach here.
 bool ast_supports_continue(Ast *stmt)
 {
+	ASSERT_SPAN(stmt, stmt->ast_kind != AST_FOREACH_STMT);
 	if (stmt->ast_kind != AST_FOR_STMT) return false;
+	// We don't support `continue` in a `do { };` statement.
 	return stmt->for_stmt.cond || !stmt->flow.skip_first;
 }
 
@@ -511,7 +542,7 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 	}
 	if (decl->visibility == VISIBLE_LOCAL)
 	{
-		assert(module);
+		ASSERT_SPAN(decl, module);
 		scratch_buffer_printf(".%u", (unsigned)declid(decl));
 	}
 }

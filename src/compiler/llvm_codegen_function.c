@@ -673,7 +673,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 {
 	ASSERT_SPAN(decl, decl->decl_kind == DECL_FUNC);
 	// Resolve function backend type for function.
-	decl_append_links_to_global(decl);
+	decl_append_links_to_global_during_codegen(decl);
 	LLVMValueRef function = llvm_get_ref(c, decl);
 	decl->backend_ref = function;
 	if (decl->attrs_resolved && decl->attrs_resolved->section)
