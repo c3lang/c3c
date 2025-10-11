@@ -3110,8 +3110,13 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 	// We set a maximum of macro iterations.
 	// we might consider reducing this.
 	unsigned current_ct_scope = sema_context_push_ct_stack(context);
-	for (int i = 0; i < MAX_MACRO_ITERATIONS; i++)
+	for (int i = 0; ; i++)
 	{
+		if (i >= compiler.build.max_macro_iterations)
+		{
+			SEMA_ERROR(statement, "Too many iterations in '$for' (it exceeded %d), you can change this limit using '--max-macro-iterations'.", compiler.build.max_macro_iterations);
+			goto FAILED;
+		}
 		sema_context_pop_ct_stack(context, current_ct_scope);
 		// First evaluate the cond, which we note that we *must* have.
 		// we need to make a copy

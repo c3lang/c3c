@@ -432,6 +432,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(symtab_size);
 	OVERRIDE_IF_SET(max_vector_size);
 	OVERRIDE_IF_SET(max_stack_object_size);
+	OVERRIDE_IF_SET(max_macro_iterations);
 	OVERRIDE_IF_SET(win.def);
 	OVERRIDE_IF_SET(no_entry);
 	OVERRIDE_IF_SET(echo_prefix);
@@ -448,7 +449,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 
 	if (!target->max_vector_size) target->max_vector_size = DEFAULT_VECTOR_WIDTH;
 	if (!target->max_stack_object_size) target->max_stack_object_size = DEFAULT_STACK_OBJECT_SIZE;
-
+	if (!target->max_macro_iterations) target->max_macro_iterations = DEFAULT_MAX_MACRO_ITERATIONS;
 	if (target->quiet && !options->verbosity_level) options->verbosity_level = -1;
 
 	if (options->silence_deprecation || options->verbosity_level < 0) target->silence_deprecation = true;

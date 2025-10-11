@@ -182,6 +182,7 @@ static void usage(bool full)
 		print_opt("--win-debug=<option>", "Select debug output on Windows: codeview or dwarf (default: codeview).");
 		print_opt("--max-vector-size <number>", "Set the maximum vector bit size to allow (default: 4096).");
 		print_opt("--max-stack-object-size <number>", "Set the maximum size of a stack object in KB (default: 128).");
+		print_opt("--max-macro-iterations <number>", "Set the maximum number of iterations in a macro loop (default: 1048575).");
 		PRINTF("");
 		print_opt("--print-linking", "Print linker arguments.");
 		PRINTF("");
@@ -972,8 +973,16 @@ static void parse_option(BuildOptions *options)
 			{
 				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
 				if (size < 1) error_exit("Expected a valid positive integer >= 1 for --max-stack-object-size.");
-				if (size > MAX_STACK_OBJECT_SIZE) error_exit("Expected a valid positive integer <= %u for --max-vector-size.", (unsigned)MAX_STACK_OBJECT_SIZE);
+				if (size > MAX_STACK_OBJECT_SIZE) error_exit("Expected a valid positive integer <= %u for --max-stack-object-size.", (unsigned)MAX_STACK_OBJECT_SIZE);
 				options->max_stack_object_size = size;
+				return;
+			}
+			if (match_longopt("max-macro-iterations"))
+			{
+				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
+				if (size < 1) error_exit("Expected a valid positive integer >= 128 for --max-macro-iterations");
+				if (size > MAX_MACRO_ITERATIONS) error_exit("Expected a valid positive integer <= %u for --max-macro-iterations.", (unsigned)MAX_MACRO_ITERATIONS);
+				options->max_macro_iterations = size;
 				return;
 			}
 			if (match_longopt("max-vector-size"))

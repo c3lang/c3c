@@ -586,6 +586,7 @@ typedef struct BuildOptions_
 	SanitizeMode sanitize_mode;
 	uint32_t max_vector_size;
 	uint32_t max_stack_object_size;
+	uint32_t max_macro_iterations;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;
@@ -728,6 +729,7 @@ typedef struct
 	uint32_t symtab_size;
 	uint32_t max_vector_size;
 	uint32_t max_stack_object_size;
+	uint32_t max_macro_iterations;
 	uint32_t switchrange_max_size;
 	uint32_t switchjump_max_size;
 	const char **args;
