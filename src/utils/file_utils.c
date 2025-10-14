@@ -197,6 +197,8 @@ bool file_namesplit(const char *path, char** filename_ptr, char** directory_ptr)
 {
 	size_t len = strlen(path);
 	if (len == 0) return false;
+	if (len == 1 && path[0] == '.') return false;
+	if (len == 2 && path[0] == '.' && path[1] == '.') return false;
 	size_t found_at = (size_t)-1;
 	for (size_t i = len - 1; i > 0; i--)
 	{
@@ -207,8 +209,6 @@ bool file_namesplit(const char *path, char** filename_ptr, char** directory_ptr)
 		}
 	}
 	size_t file_len = (found_at != ((size_t)-1)) ? len - found_at - 1 : len;
-	if (file_len == 1 && path[0] == '.') return false;
-	if (file_len == 2 && path[0] == '.' && path[1] == '.') return false;
 	if (!file_len) return false;
 	if (filename_ptr) *filename_ptr = str_copy(&path[len - file_len], file_len);
 	if (!directory_ptr) return true;
@@ -476,7 +476,7 @@ void file_create_folders(const char *name)
 	char *dir;
 	if (!file_namesplit(path, NULL, &dir))
 	{
-		error_exit("Failed to split %s", filename);
+		error_exit("Failed to split %s", path);
 	}
 	if (str_eq(dir, ".") || dir[0] == '\0') return;
 	if (!file_exists(dir)) dir_make_recursive(dir);
