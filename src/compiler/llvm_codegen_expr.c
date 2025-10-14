@@ -2493,7 +2493,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 	switch (expr->unary_expr.operator)
 	{
 		case UNARYOP_ERROR:
-			FATAL_ERROR("Illegal unary op %s", expr->unary_expr.operator);
+			FATAL_ERROR("Illegal unary op %d", expr->unary_expr.operator);
 		case UNARYOP_PLUS:
 			// Folded
 			UNREACHABLE_VOID

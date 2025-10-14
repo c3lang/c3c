@@ -112,11 +112,11 @@
   } while (0)
 #endif
 
-#define FATAL_ERROR(_string, ...) do { error_exit("\xe2\x9a\xa0\xef\xb8\x8f The compiler encountered an unexpected error: \"%s\".\n\n" \
+#define FATAL_ERROR(_format, ...) do { error_exit("\xe2\x9a\xa0\xef\xb8\x8f The compiler encountered an unexpected error: \"" _format "\".\n\n" \
  "- Function: %s(...)\n" \
  "- Source file: %s:%d\n\n" \
- "\xf0\x9f\x99\x8f Please consider taking the time to file an issue on GitHub, so that we can get it fixed:\n\n" \
- "https://github.com/c3lang/c3c/issues/new so that we can get it fixed.", _string, __func__, __FILE__, __LINE__, ##__VA_ARGS__); } while(0)
+ "\xf0\x9f\x99\x8f Please consider taking the time to file an issue on GitHub (https://github.com/c3lang/c3c/issues/new), so that we can get it fixed.\n", \
+  ##__VA_ARGS__, __func__, __FILE__, __LINE__); } while(0)
 
 
 #define ASSERT(_condition) do { if (!(_condition)) { FATAL_ERROR("Violated assert: " #_condition); } } while (0)
@@ -128,7 +128,7 @@
 #define UNSUPPORTED do { error_exit("Unsupported functionality"); } while (0)
 
 #define TEST_ASSERT(condition_, string_) while (!(condition_)) { FATAL_ERROR(string_); }
-#define TEST_ASSERTF(condition_, string_, ...) while (!(condition_)) { char* str_ = str_printf(string_, __VA_ARGS__); FATAL_ERROR(str_); }
+#define TEST_ASSERTF(condition_, format_, ...) while (!(condition_)) { FATAL_ERROR(format_, __VA_ARGS__); }
 
 #define EXPECT(_string, _value, _expected) \
  do { long long __tempval1 = _value; long long __tempval2 = _expected; \
@@ -136,4 +136,4 @@
 
 void evprintf(const char *format, va_list list);
 void eprintf(const char *format, ...);
-NORETURN void error_exit(const char *format, ...);
+NORETURN  __attribute__((format (printf, 1, 2))) void error_exit(const char *format, ...);
