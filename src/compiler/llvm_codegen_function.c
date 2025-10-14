@@ -224,7 +224,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 		}
 		case ABI_ARG_DIRECT_COERCE:
 		{
-			LLVMTypeRef coerce_type = llvm_get_type(c, info->direct_coerce_type);
+			LLVMTypeRef coerce_type = llvm_abi_type(c, info->direct_coerce_type);
 			if (coerce_type == llvm_get_type(c, decl->type))
 			{
 				goto DIRECT_FROM_COERCE;
@@ -377,7 +377,7 @@ DIRECT_RETURN:
 		}
 		case ABI_ARG_DIRECT_COERCE:
 		{
-			LLVMTypeRef coerce_type = llvm_get_type(c, info->direct_coerce_type);
+			LLVMTypeRef coerce_type = llvm_abi_type(c, info->direct_coerce_type);
 			if (coerce_type == llvm_get_type(c, call_return_type)) goto DIRECT_RETURN;
 			llvm_emit_return_value(c, llvm_emit_coerce(c, coerce_type, return_value, call_return_type));
 			return;

@@ -1820,12 +1820,32 @@ struct SemaContext_
 	} generic;
 };
 
+typedef enum
+{
+	ABI_TYPE_INT_24 = 1,
+	ABI_TYPE_INT_40 = 3,
+	ABI_TYPE_INT_48 = 5,
+	ABI_TYPE_INT_56 = 7,
+	ABI_TYPE_INT_VEC_2 = 9,
+	ABI_TYPE_INT_VEC_4 = 11,
+	ABI_TYPE_FLOAT_VEC_2 = 13,
+	ABI_TYPE_FLOAT_VEC_4 = 15,
+	ABI_TYPE_LONG_VEC_2 = 17,
+	ABI_TYPE_FLOAT16_VEC_2 = 19,
+	ABI_TYPE_FLOAT16_VEC_4 = 21,
+	ABI_TYPE_BFLOAT16_VEC_2 = 23,
+	ABI_TYPE_BFLOAT16_VEC_4 = 25,
+	ABI_TYPE_DOUBLE_VEC_2 = 27,
+	ABI_TYPE_DOUBLE_VEC_4 = 29,
+	ABI_TYPE_DOUBLE_VEC_8 = 31,
+} AbiSpecType;
+
 typedef struct
 {
 	union
 	{
 		Type *type;
-		uintptr_t int_bits_plus_1;
+		AbiSpecType abi_type;
 	};
 } AbiType;
 
@@ -1856,7 +1876,7 @@ typedef struct ABIArgInfo_
 			Type *lo;
 			Type *hi;
 		} coerce_expand;
-		Type *direct_coerce_type;
+		AbiType direct_coerce_type;
 		uint8_t direct_struct_expand;
 		struct
 		{
@@ -2565,7 +2585,6 @@ unsigned type_get_introspection_kind(TypeKind kind);
 void type_mangle_introspect_name_to_buffer(Type *type);
 AlignSize type_abi_alignment(Type *type);
 bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...);
-AlignSize type_alloca_alignment(Type *type);
 Type *type_find_largest_union_element(Type *type);
 Type *type_find_max_type(Type *type, Type *other, Expr *first, Expr *second);
 Type *type_find_max_type_may_fail(Type *type, Type *other);
@@ -2582,9 +2601,10 @@ Type *type_get_slice(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
 Type *type_get_inferred_vector(Type *arr_type);
 Type *type_get_flexible_array(Type *arr_type);
-
+AlignSize type_alloca_alignment(Type *type);
 Type *type_get_optional(Type *optional_type);
 Type *type_get_vector(Type *vector_type, unsigned len);
+Type *type_get_simd(Type *vector_type, unsigned len);
 Type *type_get_vector_bool(Type *original_type);
 Type *type_int_signed_by_bitsize(BitSize bitsize);
 Type *type_int_unsigned_by_bitsize(BitSize bit_size);

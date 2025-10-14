@@ -187,7 +187,7 @@ static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgIn
 		case ABI_ARG_DIRECT_COERCE:
 		{
 			// Normal direct.
-			vec_add(*params, llvm_get_type(c, arg_info->direct_coerce_type));
+			vec_add(*params, llvm_abi_type(c, arg_info->direct_coerce_type));
 			break;
 		}
 		case ABI_ARG_DIRECT_PAIR:
@@ -242,7 +242,7 @@ LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototyp
 			retval = LLVMIntTypeInContext(c->context, type_size(call_return_type) * 8);
 			break;
 		case ABI_ARG_DIRECT_COERCE:
-			retval = llvm_get_type(c, ret_arg_info->direct_coerce_type);
+			retval = llvm_abi_type(c, ret_arg_info->direct_coerce_type);
 			break;
 	}
 
@@ -404,7 +404,26 @@ LLVMTypeRef llvm_get_twostruct(GenContext *context, LLVMTypeRef lo, LLVMTypeRef 
 LLVMTypeRef llvm_abi_type(GenContext *c, AbiType type)
 {
 	if (abi_type_is_type(type)) return llvm_get_type(c, type.type);
-	return LLVMIntTypeInContext(c->context, type.int_bits_plus_1 - 1);
+	switch (type.abi_type)
+	{
+		case ABI_TYPE_INT_24:         return LLVMIntTypeInContext(c->context, 24);
+		case ABI_TYPE_INT_40:         return LLVMIntTypeInContext(c->context, 40);
+		case ABI_TYPE_INT_48:         return LLVMIntTypeInContext(c->context, 48);
+		case ABI_TYPE_INT_56:         return LLVMIntTypeInContext(c->context, 56);
+		case ABI_TYPE_INT_VEC_2:      return LLVMVectorType(LLVMIntTypeInContext(c->context, 32), 2);
+		case ABI_TYPE_INT_VEC_4:      return LLVMVectorType(LLVMIntTypeInContext(c->context, 32), 4);
+		case ABI_TYPE_FLOAT_VEC_2:    return LLVMVectorType(LLVMFloatTypeInContext(c->context), 2);
+		case ABI_TYPE_FLOAT_VEC_4:    return LLVMVectorType(LLVMFloatTypeInContext(c->context), 4);
+		case ABI_TYPE_FLOAT16_VEC_2:  return LLVMVectorType(LLVMHalfTypeInContext(c->context), 2);
+		case ABI_TYPE_FLOAT16_VEC_4:  return LLVMVectorType(LLVMHalfTypeInContext(c->context), 4);
+		case ABI_TYPE_BFLOAT16_VEC_2: return LLVMVectorType(LLVMBFloatTypeInContext(c->context), 2);
+		case ABI_TYPE_BFLOAT16_VEC_4: return LLVMVectorType(LLVMBFloatTypeInContext(c->context), 4);
+		case ABI_TYPE_LONG_VEC_2:     return LLVMVectorType(LLVMIntTypeInContext(c->context, 64), 2);
+		case ABI_TYPE_DOUBLE_VEC_2:   return LLVMVectorType(LLVMDoubleTypeInContext(c->context), 2);
+		case ABI_TYPE_DOUBLE_VEC_4:   return LLVMVectorType(LLVMDoubleTypeInContext(c->context), 4);
+		case ABI_TYPE_DOUBLE_VEC_8:   return LLVMVectorType(LLVMDoubleTypeInContext(c->context), 8);
+	}
+	UNREACHABLE;
 }
 
 

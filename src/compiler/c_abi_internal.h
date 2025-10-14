@@ -22,7 +22,9 @@ ABIArgInfo *abi_arg_new_direct_int_ext_by_reg(Type *int_to_extend, bool by_reg);
 ABIArgInfo *abi_arg_new_direct_coerce_int_ext_by_reg(Type *int_to_extend, bool by_reg);
 ABIArgInfo *abi_arg_new_direct_coerce_int_ext(Type *int_to_extend);
 ABIArgInfo *abi_arg_new_direct_coerce_int(void);
-ABIArgInfo *abi_arg_new_direct_coerce_type(Type *type);
+ABIArgInfo *abi_arg_new_direct_coerce_type(AbiType type);
+ABIArgInfo *abi_arg_new_direct_coerce_type_spec(AbiSpecType type);
+ABIArgInfo *abi_arg_new_direct_coerce_type_bits(int bits);
 ABIArgInfo *abi_arg_new_direct_struct_expand_i32(uint8_t elements);
 ABIArgInfo *abi_arg_new_expand_coerce_pair(Type *first_element, Type *second_element, unsigned hi_offset, bool packed);
 ABIArgInfo *abi_arg_new_indirect_realigned(AlignSize alignment, Type *by_val_type);
@@ -60,17 +62,32 @@ static inline AbiType abi_type_get(Type *type)
 	return (AbiType) { .type = type };
 }
 
+static inline AbiType abi_type_spec(AbiSpecType type)
+{
+	return (AbiType) { .abi_type = type };
+}
+
 static inline AbiType abi_type_get_int_bits(BitSize bits)
 {
 	switch (bits)
 	{
+		case 24:
+			return (AbiType) { .abi_type = ABI_TYPE_INT_24 };
+		case 40:
+			return (AbiType) { .abi_type = ABI_TYPE_INT_40 };
+		case 48:
+			return (AbiType) { .abi_type = ABI_TYPE_INT_48 };
+		case 56:
+			return (AbiType) { .abi_type = ABI_TYPE_INT_56 };
 		case 8:
 		case 16:
 		case 32:
 		case 64:
+		case 128:
 			return (AbiType) { .type = type_int_unsigned_by_bitsize(bits) };
 		default:
-			return (AbiType) { .int_bits_plus_1 = bits + 1 };
+			UNREACHABLE_VOID;
+			return (AbiType) { .type = NULL };
 	}
 }
 

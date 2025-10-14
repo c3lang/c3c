@@ -5241,7 +5241,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 		}
 		case ABI_ARG_DIRECT_COERCE:
 		{
-			LLVMTypeRef coerce_type = llvm_get_type(c, info->direct_coerce_type);
+			LLVMTypeRef coerce_type = llvm_abi_type(c, info->direct_coerce_type);
 			if (coerce_type == llvm_get_type(c, type))
 			{
 				args[(*arg_count_ref)++] = llvm_load_value_store(c, be_value);
@@ -5507,7 +5507,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 			// 16. A direct coerce, this is basically "call result" bitcast return type.
 
 			// 16a. Get the type of the return.
-			LLVMTypeRef coerce = llvm_get_type(c, ret_info->direct_coerce_type);
+			LLVMTypeRef coerce = llvm_abi_type(c, ret_info->direct_coerce_type);
 
 			// 16b. If we don't have any coerce type, or the actual LLVM types are the same, we're done.
 			if (coerce == llvm_get_type(c, call_return_type))

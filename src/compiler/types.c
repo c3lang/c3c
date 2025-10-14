@@ -1057,6 +1057,17 @@ Type *type_get_inferred_vector(Type *arr_type)
 	return type_generate_inferred_vector(arr_type, false);
 }
 
+AlignSize type_alloca_alignment(Type *type)
+{
+	AlignSize align = type_abi_alignment(type);
+	if (align < 16 && (compiler.platform.abi == ABI_X64 || compiler.platform.abi == ABI_WIN64))
+	{
+		type = type_flatten(type);
+		if (type->type_kind == TYPE_ARRAY && type_size(type) >= 16) return 16;
+	}
+	return align;
+}
+
 Type *type_get_flexible_array(Type *arr_type)
 {
 	ASSERT(type_is_valid_for_array(arr_type));
@@ -1317,6 +1328,11 @@ Type *type_get_vector_bool(Type *original_type)
 	Type *type = type_flatten(original_type);
 	ByteSize size = type_size(type->array.base);
 	return type_get_vector(type_int_signed_by_bitsize((unsigned)size * 8), (unsigned)original_type->array.len);
+}
+
+Type *type_get_simd(Type *vector_type, unsigned len)
+{
+	return type_get_vector(vector_type, len);
 }
 
 Type *type_get_vector(Type *vector_type, unsigned len)

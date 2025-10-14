@@ -361,11 +361,11 @@ static Decl *x64_get_member_at_offset(Decl *decl, unsigned offset)
 	return last_match;
 }
 
-static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X64Class *hi_class, NamedArgument named)
+static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X64Class *hi_class, NamedArgument named) // NOLINT
 {
 	*lo_class = CLASS_NO_CLASS;
 	*hi_class = CLASS_NO_CLASS;
-	X64Class *current = offset_base < 8 ? lo_class : hi_class;
+	X64Class *current = offset_base < 8 ? lo_class : hi_class; // NOLINT - avoid incorrect analysis
 	*current = CLASS_MEMORY;
 	type = type_lowering(type);
 	switch (type->type_kind)
@@ -497,10 +497,10 @@ static Type *x64_get_fp_type_at_offset(Type *type, unsigned ir_offset)
 	return NULL;
 }
 
-static Type *x64_get_sse_type_at_offset(Type *type, unsigned ir_offset, Type *source_type, unsigned source_offset)
+static AbiType x64_get_sse_type_at_offset(Type *type, unsigned ir_offset, Type *source_type, unsigned source_offset)
 {
 	Type *float_type = x64_get_fp_type_at_offset(type, ir_offset);
-	if (!float_type || float_type == type_double) return type_double;
+	if (!float_type || float_type == type_double) return abi_type_get(type_double);
 
 	ByteSize size = type_size(float_type);
 	ByteSize source_size = type_size(source_type) - source_offset;
@@ -520,25 +520,30 @@ static Type *x64_get_sse_type_at_offset(Type *type, unsigned ir_offset, Type *so
 			float_type2 = x64_get_fp_type_at_offset(type, ir_offset + 4);
 		}
 		// If we can't get a second FP type, return a simple half or float.
-		if (!float_type2) return float_type;
+		if (!float_type2) return abi_type_get(float_type);
 	}
 
 	if (float_type == type_float && float_type == float_type2)
 	{
-		return type_get_vector(float_type, 2);
+		return abi_type_spec(ABI_TYPE_FLOAT_VEC_2);
 	}
 
 	if (type_is_16bit_float(float_type) && type_is_16bit_float(float_type2))
 	{
 		bool has_following_float = source_size > 4
 				&& x64_get_fp_type_at_offset(type, ir_offset + 4) != NULL;
-		return type_get_vector(float_type, has_following_float ? 4 : 2);
+		if (float_type->type_kind == TYPE_BF16)
+		{
+			return abi_type_spec(has_following_float ? ABI_TYPE_BFLOAT16_VEC_4 : ABI_TYPE_BFLOAT16_VEC_2);
+		}
+		return abi_type_spec(has_following_float ? ABI_TYPE_FLOAT16_VEC_4 : ABI_TYPE_FLOAT16_VEC_2);
 	}
+
 	if (type_is_16bit_float(float_type) || type_is_16bit_float(float_type2))
 	{
-		return type_get_vector(type_float16, 4);
+		return abi_type_spec(ABI_TYPE_FLOAT16_VEC_4);
 	}
-	return type_double;
+	return abi_type_get(type_double);
 }
 
 /**
@@ -632,7 +637,7 @@ static AbiType x64_get_byte_vector_type(Type *type)
 		if (compiler.platform.x64.pass_int128_vector_in_mem && type_is_int128(element))
 		{
 			// Convert to u64
-			return abi_type_get(type_get_vector(type_ulong, type_size(type) / 8));
+			return (AbiType) { .abi_type = ABI_TYPE_LONG_VEC_2 };
 		}
 		return abi_type_get(type);
 	}
@@ -644,7 +649,15 @@ static AbiType x64_get_byte_vector_type(Type *type)
 	ASSERT(size == 16 || size == 32 || size == 64);
 
 	// Return a vector type based on the size.
-	return abi_type_get(type_get_vector(type_double, size / 8));
+	switch (size)
+	{
+		case 16: return (AbiType) { .abi_type = ABI_TYPE_DOUBLE_VEC_2 };
+		case 32: return (AbiType) { .abi_type = ABI_TYPE_DOUBLE_VEC_4 };
+		case 64: return (AbiType) { .abi_type = ABI_TYPE_DOUBLE_VEC_8 };
+		default:
+			UNREACHABLE_VOID;
+			return (AbiType) { .type = NULL };
+	}
 }
 
 static ABIArgInfo *x64_get_argument_pair_return(AbiType low_type, AbiType high_type)
@@ -695,7 +708,7 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 			}
 			break;
 		case CLASS_SSE:
-			result_type = abi_type_get(x64_get_sse_type_at_offset(return_type, 0, return_type, 0));
+			result_type = x64_get_sse_type_at_offset(return_type, 0, return_type, 0);
 			break;
 		default:
 			UNREACHABLE
@@ -714,7 +727,7 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 			break;
 		case CLASS_SSE:
 			ASSERT(lo_class != CLASS_NO_CLASS);
-			high_part = abi_type_get(x64_get_sse_type_at_offset(return_type, 8, return_type, 8));
+			high_part = x64_get_sse_type_at_offset(return_type, 8, return_type, 8);
 			break;
 		case CLASS_SSEUP:
 			// AMD64-ABI 3.2.3p4: Rule 5. If the class is SSEUP, the eightbyte
@@ -732,16 +745,11 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 	// first class struct aggregate with the high and low part: {low, high}
 	if (abi_type_is_valid(high_part)) return x64_get_argument_pair_return(result_type, high_part);
 
-	if (abi_type_is_type(result_type))
+	if (abi_type_match(result_type, return_type))
 	{
-		if (return_type->canonical == result_type.type->canonical)
-		{
-			return abi_arg_new_direct();
-		}
-		return abi_arg_new_direct_coerce_type(result_type.type->canonical);
+		return abi_arg_new_direct();
 	}
-	ASSERT(result_type.int_bits_plus_1 - 1 == type_size(return_type) * 8);
-	return abi_arg_new_direct_coerce_int();
+	return abi_arg_new_direct_coerce_type(result_type);
 }
 
 /**
@@ -765,7 +773,7 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 	ASSERT(hi_class != CLASS_MEMORY || lo_class == CLASS_MEMORY);
 	ASSERT(hi_class != CLASS_SSEUP || lo_class == CLASS_SSE);
 
-	AbiType result_type;
+	AbiType result_type = ABI_TYPE_EMPTY;
 	*needed_registers = (Registers) { 0, 0 };
 
 	// Start by checking the lower class.
@@ -789,7 +797,7 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 			}
 			break;
 		case CLASS_SSE:
-			result_type = abi_type_get(x64_get_sse_type_at_offset(type, 0, type, 0));
+			result_type = x64_get_sse_type_at_offset(type, 0, type, 0);
 			needed_registers->sse_registers++;
 			break;
 	}
@@ -810,7 +818,7 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 			break;
 		case CLASS_SSE:
 			needed_registers->sse_registers++;
-			high_part = abi_type_get(x64_get_sse_type_at_offset(type, 8, type, 8));
+			high_part = x64_get_sse_type_at_offset(type, 8, type, 8);
 			ASSERT(lo_class != CLASS_NO_CLASS && "empty first 8 bytes not allowed, this is C++ stuff");
 			break;
 		case CLASS_SSEUP:
@@ -824,19 +832,19 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 	// first class struct aggregate with the high and low part: {low, high}
 	if (abi_type_is_valid(high_part)) return x64_get_argument_pair_return(result_type, high_part);
 
+	if (abi_type_match(result_type, type))
+	{
+		return abi_arg_new_direct();
+	}
 	if (abi_type_is_type(result_type))
 	{
 		Type *result = result_type.type->canonical;
-		type = type->canonical;
-		if (type == result) return abi_arg_new_direct();
 		if (type_is_integer(type) && type_is_integer(result) && type->builtin.bytesize == result->builtin.bytesize)
 		{
 			return abi_arg_new_direct();
 		}
-		return abi_arg_new_direct_coerce_type(result);
 	}
-	ASSERT(result_type.int_bits_plus_1 - 1 == type_size(type) * 8);
-	return abi_arg_new_direct_coerce_int();
+	return abi_arg_new_direct_coerce_type(result_type);
 }
 
 bool x64_type_is_structure(Type *type)
