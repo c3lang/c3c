@@ -22,6 +22,7 @@ extern fn CInt bind(NativeSocket socket, SockAddrPtr address, Socklen_t address_
 extern fn CInt listen(NativeSocket socket, CInt backlog);
 extern fn NativeSocket accept(NativeSocket socket, SockAddrPtr address, Socklen_t* address_len);
 extern fn CInt poll(Posix_pollfd* fds, Posix_nfds_t nfds, CInt timeout);
+extern fn CInt socketpair(AIFamily domain, AISockType type, CInt protocol, NativeSocket[2]* sv);
 
 const CUShort POLLIN      = 0x0001;
 const CUShort POLLPRI     = 0x0002;
