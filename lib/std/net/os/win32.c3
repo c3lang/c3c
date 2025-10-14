@@ -21,6 +21,7 @@ extern fn int connect(NativeSocket, SockAddrPtr address, Socklen_t address_len);
 extern fn int bind(NativeSocket, SockAddrPtr address, Socklen_t address_len);
 extern fn int listen(NativeSocket, int backlog);
 extern fn NativeSocket accept(NativeSocket, SockAddrPtr address, Socklen_t* address_len);
+extern fn CInt getsockname(NativeSocket socket, SockAddrPtr address, Socklen_t* address_len);
 
 macro bool NativeSocket.is_valid(self)
 {
