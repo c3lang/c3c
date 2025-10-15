@@ -10,6 +10,7 @@
 - Allow `..` ranges to use "a..a-1" in order to express zero length.
 - Disallow aliasing of `@local` symbols with a higher visibility in the alias.
 - Add `--max-macro-iterations` to set macro iteration limit.
+- Add `TcpSocketPair` to create a pair of local tcp sockets.
 
 ### Fixes
 - Bug in `io::write_using_write_byte`.
