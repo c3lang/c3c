@@ -152,14 +152,7 @@ void c_abi_func_create_win64(FunctionPrototype *prototype)
 			break;
 	}
 
-	prototype->ret_abi_info = win64_classify(&regs, prototype->abi_ret_type, true, is_vector_call);
-	if (prototype->ret_by_ref)
-	{
-		prototype->ret_by_ref_abi_info = win64_classify(&regs,
-														type_get_ptr(type_lowering(prototype->ret_by_ref_type)),
-														false,
-														is_vector_call);
-	}
+	prototype->ret_abi_info = win64_classify(&regs, prototype->return_type, true, is_vector_call);
 
 	// Set up parameter registers.
 	switch (prototype->call_abi)

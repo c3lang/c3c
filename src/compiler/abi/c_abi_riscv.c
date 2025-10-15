@@ -251,7 +251,7 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype)
 	unsigned gpr = 8;
 	unsigned fpr = 8;
 
-	Type *ret_type = type_lowering(prototype->abi_ret_type);
+	Type *ret_type = type_lowering(prototype->return_type);
 	ABIArgInfo *ret_abi = prototype->ret_abi_info = riscv_classify_return(ret_type);
 
 	// IsRetIndirect is true if classifyArgumentType indicated the value should
@@ -273,12 +273,6 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype)
 	unsigned arg_gprs_left = is_ret_indirect ? gpr - 1 : gpr;
 	unsigned arg_fprs_left = compiler.platform.riscv.flen ? fpr : 0;
 
-	// If we have an optional, then the return type is a parameter.
-	if (prototype->ret_by_ref)
-	{
-		prototype->ret_by_ref_abi_info = riscv_classify_argument_type(type_get_ptr(type_lowering(prototype->ret_by_ref_type)),
-																	  true, &arg_gprs_left, &arg_fprs_left);
-	}
 
 	prototype->abi_args = riscv_create_params(prototype->param_types, true, &arg_gprs_left, &arg_fprs_left);
 	prototype->abi_varargs = riscv_create_params(prototype->varargs, false, &arg_gprs_left, &arg_fprs_left);

@@ -674,24 +674,30 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 	proto->raw_variadic = sig->variadic == VARIADIC_RAW;
 	proto->vararg_index = sig->vararg_index;
 	Type *rtype = type_infoptr(sig->rtype)->type;
-	proto->rtype = rtype;
+	proto->ret_rewrite = PARAM_RW_NONE;
+	Type **param_types = VECNEW(Type*, param_count + 1);
+	Type *rtype_flat = type_flatten(rtype);
 	if (type_is_optional(rtype))
 	{
-		proto->is_optional = true;
-		Type *real_return_type = rtype->optional;
-		proto->ret_by_ref_type = rtype->optional;
-		proto->ret_by_ref = !type_is_void(real_return_type);
-		proto->abi_ret_type = type_fault;
+		proto->return_type = type_fault;
+		if (type_is_void(rtype_flat))
+		{
+			proto->ret_rewrite = PARAM_RW_RETURN_OPTIONAL;
+		}
+		else
+		{
+			proto->ret_rewrite = PARAM_RW_RETURN_BY_REF;
+			vec_add(param_types, type_get_ptr(rtype_flat));
+		}
 	}
 	else
 	{
-		proto->ret_by_ref_type = proto->abi_ret_type = rtype;
+		proto->return_type = rtype;
 	}
 	proto->call_abi = abi;
 
-	if (param_count)
+	if (param_count || proto->ret_rewrite == PARAM_RW_RETURN_BY_REF)
 	{
-		Type **param_types = VECNEW(Type*, param_count);
 		Decl **param_copy = VECNEW(Decl*, param_count);
 		for (unsigned i = 0; i < param_count; i++)
 		{
@@ -700,8 +706,26 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 			decl->var.type_info = 0;
 			decl->var.init_expr = NULL;
 			decl->name = NULL;
-			vec_add(param_types, decl->type);
 			vec_add(param_copy, decl);
+			Type *flat_type = type_flatten(decl->type);
+			switch (flat_type->type_kind)
+			{
+				/*
+				case TYPE_VECTOR:
+					if (decl->var.as_simd) break;
+					decl->var.rewrite = PARAM_RW_VEC_TO_ARRAY;
+					flat_type = type_get_array(flat_type->array.base, flat_type->array.len);
+					break;*/
+					/*
+				case TYPE_SLICE:
+					decl->var.rewrite = PARAM_RW_EXPAND_ELEMENTS;
+					vec_add(param_types, type_usz->canonical);
+					flat_type = type_get_ptr(flat_type->array.base);
+					break;*/
+				default:
+					break;
+			}
+			vec_add(param_types, flat_type);
 		}
 		proto->param_types = param_types;
 		proto->param_copy = param_copy;
@@ -709,12 +733,12 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 
 	scratch_buffer_clear();
 	scratch_buffer_append("fn ");
-	type_append_name_to_scratch(proto->rtype);
+	type_append_name_to_scratch(rtype->canonical);
 	scratch_buffer_append_char('(');
-	FOREACH_IDX(idx, Type *, val, proto->param_types)
+	FOREACH_IDX(idx, Decl *, val, sig->params)
 	{
 		if (idx != 0) scratch_buffer_append(", ");
-		type_append_name_to_scratch(val);
+		type_append_name_to_scratch(val->type->canonical);
 	}
 	scratch_buffer_append_char(')');
 	Type *type = type_new(TYPE_FUNC_RAW, scratch_buffer_interned());
@@ -794,14 +818,15 @@ static int compare_function(Signature *sig, FunctionPrototype *proto)
 	bool is_raw_variadic = sig->variadic == VARIADIC_RAW;
 	if (is_raw_variadic != proto->raw_variadic) return -1;
 	Decl **params = sig->params;
-	Type **other_params = proto->param_types;
+	Signature *raw_sig = proto->raw_type->function.signature;
+	Decl **other_params = raw_sig->params;
 	unsigned param_count = vec_size(params);
 	if (param_count != vec_size(other_params)) return -1;
-	if (!compare_func_param(type_infoptr(sig->rtype)->type, proto->rtype)) return -1;
+	if (!compare_func_param(typeget(sig->rtype), typeget(proto->raw_type->function.signature->rtype))) return -1;
 	FOREACH_IDX(i, Decl *, param, params)
 	{
-		Type *other_param = other_params[i];
-		if (!compare_func_param(param->type, other_param->canonical)) return -1;
+		Type *other_param = other_params[i]->type;
+		if (!compare_func_param(param->type->canonical, other_param->canonical)) return -1;
 	}
 	return 0;
 }

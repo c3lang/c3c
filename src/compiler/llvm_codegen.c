@@ -1205,7 +1205,6 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	LLVMValueRef function = decl->backend_ref;
 	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
 	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0, NULL);
-	unsigned params = vec_size(prototype->param_types);
 	if (c->debug.enable_stacktrace)
 	{
 		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
@@ -1213,17 +1212,21 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	}
 	llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
 	llvm_attribute_add_string(c, function, "no-trapping-math", "true", -1);
-
-	if (prototype->ret_by_ref)
+	unsigned index = prototype->ret_rewrite == PARAM_RW_RETURN_BY_REF ? 1 : 0;
+	FOREACH(Decl *, param, prototype->param_copy)
 	{
-		ABIArgInfo *info = prototype->ret_by_ref_abi_info;
-		llvm_emit_param_attributes(c, function, prototype->ret_by_ref_abi_info, false, info->param_index_start + 1,
-		                           info->param_index_end, NULL);
-	}
-	for (unsigned i = 0; i < params; i++)
-	{
-		ABIArgInfo *info = prototype->abi_args[i];
-		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end, decl->func_decl.signature.params[i]);
+		ABIArgInfo *info;
+		switch (param->var.rewrite)
+		{
+			case PARAM_RW_EXPAND_ELEMENTS:
+				info = prototype->abi_args[index++];
+				llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end, param);
+				break;
+			default:
+				break;
+		}
+		info = prototype->abi_args[index++];
+		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end, param);
 	}
 	// We ignore decl->func_decl.attr_inline and place it in every call instead.
 	if (decl->func_decl.attr_noinline)

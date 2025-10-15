@@ -67,7 +67,7 @@ static AlignSize max_alignment_vector;
 #define OPTIONAL_OFFSET 5
 #define ARRAY_OFFSET 6
 
-static void type_append_func_to_scratch(FunctionPrototype *prototype);
+static void type_append_func_to_scratch(Signature *signature);
 
 void type_init_cint(void)
 {
@@ -194,7 +194,7 @@ void type_append_name_to_scratch(Type *type)
 			type = type->pointer;
 			FALLTHROUGH;
 		case TYPE_FUNC_RAW:
-			type_append_func_to_scratch(type->function.prototype);
+			type_append_func_to_scratch(type->function.signature);
 			break;
 		case TYPE_ARRAY:
 			type_append_name_to_scratch(type->array.base);
@@ -205,22 +205,23 @@ void type_append_name_to_scratch(Type *type)
 	}
 }
 
-static void type_append_func_to_scratch(FunctionPrototype *prototype)
+static void type_append_func_to_scratch(Signature *signature)
 {
-	type_append_name_to_scratch(prototype->rtype);
+	type_append_name_to_scratch(typeget(signature->rtype));
 	scratch_buffer_append_char('(');
-	unsigned elements = vec_size(prototype->param_types);
+	unsigned elements = vec_size(signature->params);
 	for (unsigned i = 0; i < elements; i++)
 	{
 		if (i > 0)
 		{
 			scratch_buffer_append_char(',');
 		}
-		type_append_name_to_scratch(prototype->param_types[i]);
+		type_append_name_to_scratch(signature->params[i]->type);
 	}
-	if (prototype->raw_variadic && elements > 0)
+	if (signature->variadic == VARIADIC_RAW)
 	{
-		scratch_buffer_append_char(',');
+		if (elements > 0) scratch_buffer_append_char(',');
+		scratch_buffer_append("...");
 	}
 	scratch_buffer_append_char(')');
 }
@@ -300,7 +301,7 @@ const char *type_to_error_string(Type *type)
 			if (!type->function.prototype) return type->name;
 			scratch_buffer_clear();
 			scratch_buffer_append("fn ");
-			type_append_func_to_scratch(type->function.prototype);
+			type_append_func_to_scratch(type->function.signature);
 			return scratch_buffer_copy();
 		case TYPE_INFERRED_VECTOR:
 			return str_printf("%s[<*>]", type_to_error_string(type->array.base));
@@ -371,7 +372,7 @@ static const char *type_to_error_string_with_path(Type *type)
 			if (!type->function.prototype) return type->name;
 			scratch_buffer_clear();
 			scratch_buffer_append("fn ");
-			type_append_func_to_scratch(type->function.prototype);
+			type_append_func_to_scratch(type->function.signature);
 			return scratch_buffer_copy();
 		case TYPE_INFERRED_VECTOR:
 			return str_printf("%s[<*>]", type_to_error_string_with_path(type->array.base));

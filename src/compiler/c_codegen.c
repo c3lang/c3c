@@ -175,13 +175,13 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			Type *base = type;
 			type = type->pointer;
 			FunctionPrototype *proto = type->function.prototype;
-			c_emit_type_decl(c, proto->rtype);
+			c_emit_type_decl(c, proto->return_type);
 			FOREACH (Type *, t, proto->param_types)
 			{
 				c_emit_type_decl(c, t);
 			}
 			int id = ++c->typename;
-			PRINTF("typedef %s(*__c3_fn%d)(", c_type_name(c, proto->rtype), id);
+			PRINTF("typedef %s(*__c3_fn%d)(", c_type_name(c, proto->return_type), id);
 			FOREACH_IDX(i, Type *, t, proto->param_types)
 			{
 				if (i != 0) PRINT(",");

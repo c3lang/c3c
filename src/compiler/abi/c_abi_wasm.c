@@ -65,12 +65,7 @@ ABIArgInfo **wasm_create_params(Type **params)
 
 void c_abi_func_create_wasm(FunctionPrototype *prototype)
 {
-	prototype->ret_abi_info = wasm_classify_return(type_lowering(prototype->abi_ret_type));
-	if (prototype->ret_by_ref)
-	{
-		prototype->ret_by_ref_abi_info = wasm_classify_argument_type(type_get_ptr(prototype->ret_by_ref_type));
-	}
-
+	prototype->ret_abi_info = wasm_classify_return(type_lowering(prototype->return_type));
 	prototype->abi_args = wasm_create_params(prototype->param_types);
 	prototype->abi_varargs = wasm_create_params(prototype->varargs);
 }

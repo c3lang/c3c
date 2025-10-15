@@ -516,11 +516,7 @@ void c_abi_func_create_x86(FunctionPrototype *prototype)
 
 	// 4. Classify the return type. In the case of optional, we need to classify the optional itself as the
 	//    return type.
-	prototype->ret_abi_info = x86_classify_return(prototype->call_abi, &regs, prototype->abi_ret_type);
-	if (prototype->ret_by_ref)
-	{
-		prototype->ret_by_ref_abi_info = x86_classify_argument(prototype->call_abi, &regs, type_get_ptr(type_lowering(prototype->ret_by_ref_type)));
-	}
+	prototype->ret_abi_info = x86_classify_return(prototype->call_abi, &regs, prototype->return_type);
 
 	/*
 	 * // The chain argument effectively gives us another free register.

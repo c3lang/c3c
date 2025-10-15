@@ -248,7 +248,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 
 	LLVMBasicBlockRef error_return_block = NULL;
 	LLVMValueRef error_out = NULL;
-	if (c->cur_func.prototype && type_is_optional(c->cur_func.prototype->rtype))
+	if (c->cur_func.prototype && c->cur_func.prototype->ret_rewrite != PARAM_RW_NONE)
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
 		error_out = llvm_emit_alloca_aligned(c, type_fault, "reterr");

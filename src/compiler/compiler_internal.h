@@ -472,6 +472,8 @@ typedef struct VarDecl_
 	bool copy_const : 1;
 	bool defaulted : 1;
 	bool safe_infer : 1;
+	bool as_simd : 1;
+	ParamRewrite rewrite : 3;
 	union
 	{
 		Expr *init_expr;
@@ -1893,18 +1895,14 @@ typedef struct FunctionPrototype_
 	CallABI call_abi : 4;
 	bool raw_variadic : 1;
 	bool use_win64 : 1;
-	bool is_optional : 1;
-	bool ret_by_ref : 1;
 	bool is_resolved : 1;
 	unsigned short vararg_index;
-	Type *rtype;
+	ParamRewrite ret_rewrite : 8;
+	Type *return_type;
 	Type **param_types;
 	Decl **param_copy;
 	Type **varargs;
-	Type *ret_by_ref_type;
-	Type *abi_ret_type;
 	ABIArgInfo *ret_abi_info;
-	ABIArgInfo *ret_by_ref_abi_info;
 	ABIArgInfo **abi_args;
 	ABIArgInfo **abi_varargs;
 	Type *raw_type;

@@ -2435,7 +2435,6 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 
 	if (!sema_call_evaluate_arguments(context, &callee, expr, &optional, no_match_ref)) return false;
 
-	Type *rtype = type->function.prototype->rtype;
 	if (expr->call_expr.is_dynamic_dispatch)
 	{
 		Expr *any_val = expr->call_expr.arguments[0];
@@ -2513,6 +2512,7 @@ END_CONTRACT:
 SKIP_CONTRACTS:
 	expr->call_expr.has_optional_arg = optional;
 
+	Type *rtype = typeget(type->function.signature->rtype);
 	if (!type_is_void(rtype))
 	{
 		bool is_optional_return = type_is_optional(rtype);

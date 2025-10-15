@@ -9,7 +9,7 @@ static void llvm_append_xxlizer(GenContext *c, unsigned  priority, bool is_initi
 static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef value);
 static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment);
 static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index);
-static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index);
+static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo ***abi_info_ref, Type ***types_ref, unsigned *index, unsigned real_index);
 static inline void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body, Decl *decl, bool is_naked);
 
 
@@ -257,12 +257,55 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 		}
 	}
 }
-static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index)
+static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo ***abi_info_ref, Type ***types_ref, unsigned *index, unsigned real_index)
 {
 	ASSERT(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
+	ABIArgInfo *info = *((*abi_info_ref)++);
+	Type *type = *((*types_ref)++);
 	// Allocate room on stack, but do not copy.
-	llvm_process_parameter_value(context, decl, abi_info, index);
+	switch (decl->var.rewrite)
+	{
+		case PARAM_RW_EXPAND_ELEMENTS:
+		{
+			ASSERT(type_flatten(decl->type)->type_kind == TYPE_SLICE);
+			llvm_emit_and_set_decl_alloca(context, decl);
+			LLVMTypeRef llvm_type = llvm_get_type(context, decl->type);
+			AlignSize align;
+			LLVMValueRef ptr_len = llvm_emit_struct_gep_raw(context, decl->backend_ref, llvm_type, 0, decl->alignment, &align);
+			LLVMValueRef ptr_ptr = llvm_emit_struct_gep_raw(context, decl->backend_ref, llvm_type, 1, decl->alignment, &align);
+			BEValue temp;
+			Decl *len = decl_new_generated_var(type, VARDECL_LOCAL, decl->span);
+			llvm_process_parameter_value(context, len, info, index);
+			llvm_value_set_decl(context, &temp, len);
+			llvm_store_to_ptr(context, ptr_len, &temp);
+			info = *((*abi_info_ref)++);
+			type = *((*types_ref)++);
+			Decl *ptr = decl_new_generated_var(type, VARDECL_LOCAL, decl->span);
+			llvm_process_parameter_value(context, ptr, info, index);
+			llvm_value_set_decl(context, &temp, ptr);
+			llvm_store_to_ptr(context, ptr_ptr, &temp);
+			break;
+		}
+		case PARAM_RW_VEC_TO_ARRAY:
+		{
+			llvm_emit_and_set_decl_alloca(context, decl);
+			Decl *arr = decl_new_generated_var(type, VARDECL_LOCAL, decl->span);
+			llvm_process_parameter_value(context, arr, info, index);
+			BEValue temp;
+			llvm_value_set_decl(context, &temp, arr);
+			llvm_value_addr(context, &temp);
+			temp.type = decl->type;
+			llvm_store_decl(context, decl, &temp);
+			break;
+		}
+		case PARAM_RW_NONE:
+			llvm_process_parameter_value(context, decl, info, index);
+			break;
+		case PARAM_RW_RETURN_BY_REF:
+		case PARAM_RW_RETURN_OPTIONAL:
+			UNREACHABLE_VOID;
+	}
 	if (llvm_use_debug(context))
 	{
 		llvm_emit_debug_parameter(context, decl, real_index);
@@ -299,14 +342,14 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 	// If we have an optional it's always the return argument, so we need to copy
 	// the return value into the return value holder.
 	LLVMValueRef return_out = c->return_out;
-	Type *call_return_type = prototype->abi_ret_type;
+	Type *call_return_type = prototype->return_type;
 
 	BEValue no_fail;
 
 	// In this case we use the optional as the actual return.
-	if (prototype->is_optional)
+	if (prototype->ret_rewrite != PARAM_RW_NONE)
 	{
-		if (return_value && return_value->type != type_void)
+		if (return_value && prototype->ret_rewrite == PARAM_RW_RETURN_BY_REF)
 		{
 			ASSERT(return_value->value);
 			llvm_store_to_ptr_aligned(c, c->return_out, return_value, type_alloca_alignment(return_value->type));
@@ -388,17 +431,23 @@ DIRECT_RETURN:
 
 void llvm_emit_return_implicit(GenContext *c)
 {
-	Type *rtype_real = c->cur_func.prototype ? c->cur_func.prototype->rtype : type_void;
-	if (type_lowering(type_no_optional(rtype_real)) != type_void)
+	if (!c->cur_func.prototype) goto VOID;
+	Type *rtype_real = c->cur_func.prototype->return_type;
+	switch (c->cur_func.prototype->ret_rewrite)
 	{
-		LLVMBuildUnreachable(c->builder);
-		return;
+		case PARAM_RW_NONE:
+			if (type_is_void(type_flatten(rtype_real))) goto VOID;
+			FALLTHROUGH;
+		case PARAM_RW_RETURN_BY_REF:
+			LLVMBuildUnreachable(c->builder);
+			return;
+		case PARAM_RW_RETURN_OPTIONAL:
+			llvm_emit_return_abi(c, NULL, NULL);
+			return;
+		default:
+			UNREACHABLE_VOID;
 	}
-	if (type_is_optional(rtype_real))
-	{
-		llvm_emit_return_abi(c, NULL, NULL);
-		return;
-	}
+VOID:;
 	BEValue value;
 	llvm_value_set(&value, llvm_get_zero(c, type_fault), type_fault);
 	llvm_emit_return_abi(c, NULL, &value);
@@ -479,7 +528,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	c->return_out = NULL;
 	if (prototype->ret_abi_info->kind == ABI_ARG_INDIRECT)
 	{
-		if (prototype->is_optional)
+		if (prototype->ret_rewrite != PARAM_RW_NONE)
 		{
 			c->optional_out = llvm_get_next_param(c, &arg);
 		}
@@ -488,9 +537,13 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 			c->return_out = llvm_get_next_param(c, &arg);
 		}
 	}
-	if (prototype->ret_by_ref_abi_info)
+	Type **types = prototype->param_types;
+	ABIArgInfo **abi_args = prototype->abi_args;
+	if (prototype->ret_rewrite == PARAM_RW_RETURN_BY_REF)
 	{
 		ASSERT(!c->return_out);
+		types++;
+		abi_args++;
 		c->return_out = llvm_get_next_param(c, &arg);
 	}
 
@@ -500,7 +553,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	{
 		FOREACH_IDX(i, Decl *, param, signature->params)
 		{
-			llvm_emit_func_parameter(c, param, prototype->abi_args[i], &arg, i);
+			llvm_emit_func_parameter(c, param, &abi_args, &types, &arg, i);
 		}
 	}
 

@@ -895,15 +895,8 @@ void c_abi_func_create_x64(FunctionPrototype *prototype)
 			.sse_registers = 8
 	};
 
-	prototype->ret_abi_info = x64_classify_return(type_lowering(prototype->abi_ret_type));
+	prototype->ret_abi_info = x64_classify_return(type_lowering(prototype->return_type));
 	if (abi_arg_is_indirect(prototype->ret_abi_info)) available_registers.int_registers--;
-
-	if (prototype->ret_by_ref)
-	{
-		prototype->ret_by_ref_abi_info = x64_classify_parameter(type_get_ptr(type_lowering(prototype->ret_by_ref_type)),
-																&available_registers,
-																NAMED);
-	}
 
 	Type **params = prototype->param_types;
 	unsigned param_count = vec_size(prototype->param_types);

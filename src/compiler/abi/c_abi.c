@@ -302,11 +302,7 @@ ABIArgInfo *c_abi_classify_argument_type_default(Type *type)
 
 void c_abi_func_create_default(FunctionPrototype *prototype)
 {
-	prototype->ret_abi_info = c_abi_classify_return_type_default(prototype->abi_ret_type);
-	if (prototype->ret_by_ref)
-	{
-		prototype->ret_by_ref_abi_info = c_abi_classify_return_type_default(type_get_ptr(type_flatten(prototype->ret_by_ref_type)));
-	}
+	prototype->ret_abi_info = c_abi_classify_return_type_default(prototype->return_type);
 
 	Type **params = prototype->param_types;
 	unsigned param_count = vec_size(prototype->param_types);

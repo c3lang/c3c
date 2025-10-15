@@ -216,11 +216,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 void c_abi_func_create_aarch64(FunctionPrototype *prototype)
 {
 
-	prototype->ret_abi_info = aarch64_classify_return_type(prototype->abi_ret_type, prototype->raw_variadic);
-	if (prototype->ret_by_ref)
-	{
-		prototype->ret_by_ref_abi_info = aarch64_classify_argument_type(type_get_ptr(type_flatten(prototype->ret_by_ref_type)));
-	}
+	prototype->ret_abi_info = aarch64_classify_return_type(prototype->return_type, prototype->raw_variadic);
 
 	Type **params = prototype->param_types;
 	unsigned param_count = vec_size(prototype->param_types);

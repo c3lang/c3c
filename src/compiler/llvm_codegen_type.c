@@ -202,7 +202,7 @@ static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgIn
 LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototype, LLVMTypeRef **params)
 {
 	LLVMTypeRef retval = NULL;
-	Type *call_return_type = prototype->abi_ret_type;
+	Type *call_return_type = prototype->return_type;
 	ABIArgInfo *ret_arg_info = prototype->ret_abi_info;
 
 	ret_arg_info->param_index_end = 0;
@@ -244,12 +244,6 @@ LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototyp
 		case ABI_ARG_DIRECT_COERCE:
 			retval = llvm_abi_type(c, ret_arg_info->direct_coerce_type);
 			break;
-	}
-
-	// If it's optional and it's not void (meaning ret_abi_info will be NULL)
-	if (prototype->ret_by_ref)
-	{
-		add_func_type_param(c, type_get_ptr(type_lowering(prototype->ret_by_ref_type)), prototype->ret_by_ref_abi_info, params);
 	}
 
 	// Add in all of the required arguments.
