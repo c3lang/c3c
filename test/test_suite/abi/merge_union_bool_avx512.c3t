@@ -2,23 +2,25 @@
 // #opt: --x86cpu=avx512
 module abi;
 
+typedef Bool64v = bool[<64>] @simd;
+
 union Mask64
 {
-    bool[<64>] m;
-    ulong ul;
+	Bool64v m;
+	ulong ul;
 }
 
 fn Mask64 make_mask(ulong n)
 {
-    Mask64 mask;
-    mask.ul = n;
-    return mask;
+	Mask64 mask;
+	mask.ul = n;
+	return mask;
 }
 
 fn int main()
 {
-    make_mask(20);
-    return 0;
+	make_mask(20);
+	return 0;
 }
 
 /* #expect: abi.ll

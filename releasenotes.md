@@ -12,7 +12,9 @@
 - Add `--max-macro-iterations` to set macro iteration limit.
 - Improved generic inference in initializers #2541. 
 - "Maybe-deref" subscripting `foo.[i] += 1` #2540.
-
+- ABI change for vectors: store and pass them as arrays #2542
+- Add @simd and @align attributes to typedef #2543
+- 
 ### Fixes
 - Bug in `io::write_using_write_byte`.
 - Bitstruct value cannot be used to index a const array in compile time. #2512

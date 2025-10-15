@@ -8,7 +8,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl);
 
 static inline LLVMTypeRef llvm_type_from_array(GenContext *context, Type *type);
 static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *type);
-static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgInfo *arg_info, LLVMTypeRef **params);
+static inline void add_func_type_param(GenContext *c, ABIArgInfo *arg_info, LLVMTypeRef **params);
 
 static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 {
@@ -42,7 +42,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 				{
 					vec_add(types, llvm_const_padding_type(c, member->padding));
 				}
-				vec_add(types, llvm_get_type(c, member->type));
+				vec_add(types, llvm_get_type(c, lowered_member_type(member)));
 			}
 			if (decl->strukt.padding)
 			{
@@ -103,6 +103,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 		case TYPE_ALIAS:
 			UNREACHABLE_VOID
 		case TYPE_ARRAY:
+		case TYPE_VECTOR:
 			for (ArraySize i = type->array.len; i > 0; i--)
 			{
 				param_expand(context, params_ref, type->array.base);
@@ -112,7 +113,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 		{
 			FOREACH(Decl *, member, type->decl->strukt.members)
 			{
-				param_expand(context, params_ref, member->type);
+				param_expand(context, params_ref, lowered_member_type(member));
 			}
 			return;
 		}
@@ -128,11 +129,11 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 			// after flattening. Thus we have to use the "largest" field.
 			FOREACH(Decl *, member, type->decl->strukt.members)
 			{
-				Type *member_type = member->type;
+				Type *member_type = lowered_member_type(member);
 				if (type_size(member_type) > largest)
 				{
 					largest = type_size(member_type);
-					largest_type = type_flatten(member_type);
+					largest_type = member_type;
 				}
 			}
 			if (!largest) return;
@@ -147,8 +148,9 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 	UNREACHABLE_VOID
 }
 
-static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgInfo *arg_info, LLVMTypeRef **params)
+static inline void add_func_type_param(GenContext *c, ABIArgInfo *arg_info, LLVMTypeRef **params)
 {
+	Type *param_type = arg_info->original_type;
 	arg_info->param_index_start = (ArrayIndex)vec_size(*params);
 	switch (arg_info->kind)
 	{
@@ -202,7 +204,7 @@ static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgIn
 LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototype, LLVMTypeRef **params)
 {
 	LLVMTypeRef retval = NULL;
-	Type *call_return_type = prototype->abi_ret_type;
+	Type *call_return_type = prototype->return_info.type;
 	ABIArgInfo *ret_arg_info = prototype->ret_abi_info;
 
 	ret_arg_info->param_index_end = 0;
@@ -246,21 +248,15 @@ LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototyp
 			break;
 	}
 
-	// If it's optional and it's not void (meaning ret_abi_info will be NULL)
-	if (prototype->ret_by_ref)
-	{
-		add_func_type_param(c, type_get_ptr(type_lowering(prototype->ret_by_ref_type)), prototype->ret_by_ref_abi_info, params);
-	}
-
 	// Add in all of the required arguments.
-	FOREACH_IDX(i, Type *, type, prototype->param_types)
+	for (unsigned i = 0; i < prototype->param_count; i++)
 	{
-		add_func_type_param(c, type, prototype->abi_args[i], params);
+		add_func_type_param(c, prototype->abi_args[i], params);
 	}
 
-	FOREACH_IDX(j, Type *, type, prototype->varargs)
+	for (unsigned i = 0; i < prototype->param_vacount; i++)
 	{
-		add_func_type_param(c, type, prototype->abi_varargs[j], params);
+		add_func_type_param(c, prototype->abi_varargs[i], params);
 	}
 	return retval;
 }

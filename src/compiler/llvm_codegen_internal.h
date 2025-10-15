@@ -474,6 +474,7 @@ bool llvm_temp_as_address(Type *type);
 INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index);
 LLVMValueRef llvm_emit_aggregate_two(GenContext *c, Type *type, LLVMValueRef value1, LLVMValueRef value2);
 LLVMValueRef llvm_emit_const_vector(LLVMValueRef value, ArraySize len);
+LLVMValueRef llvm_emit_const_vector_pot(LLVMValueRef value, ArraySize len);
 LLVMValueRef llvm_emit_struct_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index,
                                       unsigned struct_alignment, AlignSize *alignment);
 LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, unsigned index, AlignSize array_alignment, AlignSize *alignment);
@@ -515,7 +516,7 @@ LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value
 
 static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi);
 void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype *prototype, LLVMTypeRef func_type, LLVMValueRef func, LLVMValueRef *args, unsigned arg_count, int inline_flag, LLVMValueRef error_var, bool sret_return, BEValue *synthetic_return_param, bool no_return);
-void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_ref, ABIArgInfo *info, BEValue *be_value, Type *type);
+void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_ref, ABIArgInfo *info, BEValue *be_value);
 
 // -- Dynamic interface --
 LLVMValueRef llvm_get_selector(GenContext *c, const char *name);
@@ -554,6 +555,8 @@ void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
 void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value);
 void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr);
 LLVMMetadataRef llvm_debug_create_macro(GenContext *c, Decl *macro);
+void llvm_emit_array_to_vector(GenContext *c, BEValue *value, Type *to);
+void llvm_emit_vec_to_array(GenContext *c, BEValue *value, Type *type);
 
 // -- Optional --
 LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value);

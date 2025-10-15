@@ -154,7 +154,7 @@ INLINE LLVMValueRef llvm_emit_trunc_bool(GenContext *c, LLVMValueRef value)
 
 INLINE LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, unsigned index)
 {
-	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
+	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind )
 	{
 		return LLVMBuildExtractElement(c->builder, agg, llvm_const_int(c, type_usz, index), "");
 	}

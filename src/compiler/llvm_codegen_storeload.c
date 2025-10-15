@@ -7,7 +7,31 @@
 LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *c, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment)
 {
 	ASSERT(alignment > 0);
-	assert(LLVMTypeOf(value) != c->bool_type);
+	LLVMTypeRef type = LLVMTypeOf(value);
+	ASSERT(type != c->bool_type);
+	if (LLVMGetTypeKind(type) == LLVMVectorTypeKind)
+	{
+		unsigned len = LLVMGetVectorSize(LLVMTypeOf(value));
+		if (!is_power_of_two(len))
+		{
+			ByteSize size = llvm_store_size(c, type);
+			if (size < aligned_offset(alignment, size))
+			{
+				unsigned npot = next_highest_power_of_2(len);
+				static LLVMValueRef vec[MAX_VECTOR_WIDTH];
+				LLVMTypeRef mask_type = llvm_get_type(c, type_uint);
+				for (unsigned i = 0; i < len; i++)
+				{
+					vec[i] = LLVMConstInt(mask_type, i, 0);
+				}
+				for (unsigned i = len; i < npot; i++)
+				{
+					vec[i] = LLVMGetPoison(mask_type);
+				}
+				value = LLVMBuildShuffleVector(c->builder, value, LLVMGetPoison(type), LLVMConstVector(vec, npot), "expandvec");
+			}
+		}
+	}
 	LLVMValueRef ref = LLVMBuildStore(c->builder, value, pointer);
 	llvm_set_alignment(ref, alignment);
 	return ref;
@@ -30,7 +54,7 @@ bool llvm_temp_as_address(Type *type)
 			// Ok by value.
 			return false;
 		default:
-			return type_is_abi_aggregate(type);
+			return type_is_aggregate(type);
 	}
 }
 
@@ -39,7 +63,7 @@ LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, 
 	// If we have an address but not an aggregate, do a load.
 	ASSERT(alignment);
 	llvm_value_fold_optional(c, value);
-	if (value->kind == BE_ADDRESS && !type_is_abi_aggregate(value->type))
+	if (value->kind == BE_ADDRESS && !type_is_aggregate(value->type))
 	{
 		value->value = llvm_load_value_store(c, value);
 		value->kind = BE_VALUE;
@@ -77,6 +101,25 @@ LLVMValueRef llvm_load(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, Al
 	ASSERT(alignment > 0);
 	ASSERT(!llvm_is_global_eval(c));
 	ASSERT(LLVMGetTypeContext(type) == c->context);
+	if (LLVMGetTypeKind(type) == LLVMVectorTypeKind)
+	{
+		unsigned len = LLVMGetVectorSize(type);
+		if (!is_power_of_two(len) && alignment > llvm_store_size(c, type))
+		{
+			unsigned npot = next_highest_power_of_2(len);
+			LLVMTypeRef t = LLVMVectorType(LLVMGetElementType(type), npot);
+			LLVMValueRef value = LLVMBuildLoad2(c->builder, t, pointer, name);
+			LLVMValueRef poison = LLVMGetPoison(t);
+			static LLVMValueRef vec[MAX_VECTOR_WIDTH];
+			for (int i = 0; i < len; i++)
+			{
+				vec[i] = llvm_const_int(c, type_uint, i);
+			}
+			value = LLVMBuildShuffleVector(c->builder, value, poison, LLVMConstVector(vec, len), "extractvec");
+			llvm_set_alignment(value, alignment);
+			return value;
+		}
+	}
 	LLVMValueRef value = LLVMBuildLoad2(c->builder, type, pointer, name);
 	llvm_set_alignment(value, alignment);
 	return value;
@@ -121,13 +164,22 @@ LLVMValueRef llvm_store_zero(GenContext *c, BEValue *ref)
 {
 	llvm_value_addr(c, ref);
 	Type *type = ref->type;
-	if (!type_is_abi_aggregate(type) || type_is_builtin(type->type_kind))
+	if (!type_is_aggregate(type) || type_is_builtin(type->type_kind))
 	{
+		if (type->type_kind == TYPE_VECTOR)
+		{
+			unsigned len = type->array.len;
+			if (!is_power_of_two(len))
+			{
+				return llvm_store_raw(c, ref, llvm_emit_const_vector_pot(llvm_get_zero(c, type->array.base), len));
+			}
+		}
+
 		return llvm_store_raw(c, ref, llvm_get_zero(c, type));
 	}
-	Type *single_type = type_abi_find_single_struct_element(type);
+	Type *single_type = type_abi_find_single_struct_element(type, false);
 
-	if (single_type && !type_is_abi_aggregate(single_type))
+	if (single_type && !type_is_aggregate(single_type))
 	{
 		BEValue element = *ref;
 		llvm_value_bitcast(c, &element, single_type);

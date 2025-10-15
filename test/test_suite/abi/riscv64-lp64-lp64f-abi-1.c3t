@@ -6,19 +6,20 @@ struct Large {
 }
 // Scalars passed on the stack should not have signext/zeroext attributes
 // (they are anyext).
+typedef Char32V = char[<32>] @simd;
 
-fn int f_scalar_stack_1(int a, int128 b, double c, float128 d, char[<32>] e,
-                     char f, ichar g, char h) {
-  return g + h;
+fn int f_scalar_stack_1(int a, int128 b, double c, float128 d, Char32V e, char f, ichar g, char h)
+{
+	return g + h;
 }
 
 // Ensure that scalars passed on the stack are still determined correctly in
 // the presence of large return values that consume a register due to the need
 // to pass a pointer.
 
-fn Large f_scalar_stack_2(double a, int128 b, float128 c, char[<32>] d,
-                              char e, ichar f, char g) {
-  return {(long)a, e, f, g};
+fn Large f_scalar_stack_2(double a, int128 b, float128 c, Char32V d, char e, ichar f, char g)
+{
+	return {(long)a, e, f, g};
 }
 
 /* #expect: test.ll

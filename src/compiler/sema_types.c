@@ -87,10 +87,7 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 		{
 			RETURN_VAL_SEMA_ERROR(type_info_poison(type_info), len_expr, "A vector may not exceed %d in bit width.", compiler.build.max_vector_size);
 		}
-		else
-		{
-			RETURN_VAL_SEMA_ERROR(type_info_poison(type_info), len_expr, "The array length may not exceed %lld.", MAX_ARRAY_SIZE);
-		}
+		RETURN_VAL_SEMA_ERROR(type_info_poison(type_info), len_expr, "The array length may not exceed %lld.", MAX_ARRAY_SIZE);
 	}
 	// We're done, return the size and mark it as a success.
 	*len_ref = (ArraySize)len.i.low;
@@ -662,7 +659,9 @@ static Type *flatten_raw_function_type(Type *type)
 static uint32_t hash_function(Signature *sig)
 {
 	uintptr_t hash = sig->variadic == VARIADIC_RAW ? 0 : 1;
-	hash = hash * 31 + (uintptr_t)flatten_raw_function_type(type_infoptr(sig->rtype)->type);
+	Type *rtype = typeget(sig->rtype);
+	hash = hash * 31 + (uintptr_t)flatten_raw_function_type(rtype);
+	if (sig->attrs.is_simd && type_flat_is_vector(rtype)) hash++;
 	Decl **params = sig->params;
 	FOREACH(Decl *, param, params)
 	{
@@ -675,28 +674,11 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 {
 	unsigned param_count = vec_size(sig->params);
 	FunctionPrototype *proto = CALLOCS(FunctionPrototype);
-	proto->raw_variadic = sig->variadic == VARIADIC_RAW;
-	proto->vararg_index = sig->vararg_index;
 	Type *rtype = type_infoptr(sig->rtype)->type;
-	proto->rtype = rtype;
-	if (type_is_optional(rtype))
-	{
-		proto->is_optional = true;
-		Type *real_return_type = rtype->optional;
-		proto->ret_by_ref_type = rtype->optional;
-		proto->ret_by_ref = !type_is_void(real_return_type);
-		proto->abi_ret_type = type_fault;
-	}
-	else
-	{
-		proto->ret_by_ref_type = proto->abi_ret_type = rtype;
-	}
-	proto->call_abi = abi;
-
+	Decl **param_copy = NULL;
 	if (param_count)
 	{
-		Type **param_types = VECNEW(Type*, param_count);
-		Decl **param_copy = VECNEW(Decl*, param_count);
+		param_copy = VECNEW(Decl*, param_count);
 		for (unsigned i = 0; i < param_count; i++)
 		{
 			Decl *decl = decl_copy(sig->params[i]);
@@ -704,28 +686,25 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 			decl->var.type_info = 0;
 			decl->var.init_expr = NULL;
 			decl->name = NULL;
-			vec_add(param_types, decl->type);
 			vec_add(param_copy, decl);
 		}
-		proto->param_types = param_types;
-		proto->param_copy = param_copy;
 	}
 
 	scratch_buffer_clear();
 	scratch_buffer_append("fn ");
-	type_append_name_to_scratch(proto->rtype);
+	type_append_name_to_scratch(rtype->canonical);
 	scratch_buffer_append_char('(');
-	FOREACH_IDX(idx, Type *, val, proto->param_types)
+	FOREACH_IDX(idx, Decl *, val, sig->params)
 	{
 		if (idx != 0) scratch_buffer_append(", ");
-		type_append_name_to_scratch(val);
+		type_append_name_to_scratch(val->type->canonical);
 	}
 	scratch_buffer_append_char(')');
 	Type *type = type_new(TYPE_FUNC_RAW, scratch_buffer_interned());
 	Signature *copy_sig = CALLOCS(Signature);
 	*copy_sig = *sig;
 	copy_sig->attrs = (CalleeAttributes) { .nodiscard = false };
-	copy_sig->params = proto->param_copy;
+	copy_sig->params = param_copy;
 	proto->raw_type = type;
 	type->function.prototype = proto;
 	type->function.decl = NULL;
@@ -798,14 +777,15 @@ static int compare_function(Signature *sig, FunctionPrototype *proto)
 	bool is_raw_variadic = sig->variadic == VARIADIC_RAW;
 	if (is_raw_variadic != proto->raw_variadic) return -1;
 	Decl **params = sig->params;
-	Type **other_params = proto->param_types;
+	Signature *raw_sig = proto->raw_type->function.signature;
+	Decl **other_params = raw_sig->params;
 	unsigned param_count = vec_size(params);
 	if (param_count != vec_size(other_params)) return -1;
-	if (!compare_func_param(type_infoptr(sig->rtype)->type, proto->rtype)) return -1;
+	if (!compare_func_param(typeget(sig->rtype), typeget(proto->raw_type->function.signature->rtype))) return -1;
 	FOREACH_IDX(i, Decl *, param, params)
 	{
-		Type *other_param = other_params[i];
-		if (!compare_func_param(param->type, other_param->canonical)) return -1;
+		Type *other_param = other_params[i]->type;
+		if (!compare_func_param(param->type->canonical, other_param->canonical)) return -1;
 	}
 	return 0;
 }

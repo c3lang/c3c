@@ -2,10 +2,11 @@
 // #opt: --x86cpu=avx512
 module test;
 
-alias Mm256 = float[<8>];
-alias Mm512 = float[<16>];
-struct St512 {
-  Mm512 m;
+typedef Mm256 = float[<8>] @simd;
+typedef Mm512 = float[<16>] @simd;
+struct St512
+{
+	Mm512 m;
 }
 
 St512 x55;
@@ -16,27 +17,32 @@ extern fn void f55(St512 x);
 extern fn void f56(Mm512 x);
 fn void f57() { f55(x55); f56(x56); }
 
-struct Two256 {
-  Mm256 m;
-  Mm256 n;
+struct Two256
+{
+	Mm256 m;
+	Mm256 n;
 }
 
 extern fn void f58(Two256 s);
-fn void f59(Two256 s) {
-  f58(s);
+fn void f59(Two256 s)
+{
+	f58(s);
 }
 
-struct Atwo256 {
-  Mm256[2] array;
+struct Atwo256
+{
+	Mm256[2] array;
 }
 
-struct SAtwo256 {
-  Atwo256 x;
+struct SAtwo256
+{
+	Atwo256 x;
 }
 
 extern fn void f60(SAtwo256 s);
-fn void f61(SAtwo256 s) {
-  f60(s);
+fn void f61(SAtwo256 s)
+{
+	f60(s);
 }
 
 struct Complex { double i; double c; }
@@ -44,15 +50,17 @@ struct Complex { double i; double c; }
 // AVX512: @f62_helper(i32 0, <16 x float> {{%[a-zA-Z0-9]+}}, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double {{%[a-zA-Z0-9]+}}, double {{%[a-zA-Z0-9]+}})
 extern fn void f62_helper(int, ...);
 Mm512 x62;
-fn void f62() {
-  f62_helper(0, x62, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 1.0, 1.0 });
+fn void f62()
+{
+	f62_helper(0, x62, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 1.0, 1.0 });
 }
 
 extern fn void f64_helper(Mm512, ...);
 Mm512 x64;
-fn void f64() {
-  f64_helper(x64, x64, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 1.0, 1.0 });
-  f64_helper(x64, x64, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 1.0, 1.0 });
+fn void f64()
+{
+	f64_helper(x64, x64, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 1.0, 1.0 });
+	f64_helper(x64, x64, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 1.0, 1.0 });
 }
 
 

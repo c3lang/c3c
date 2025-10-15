@@ -8,7 +8,7 @@ const char * const test_names_var_name = "__$C3_TEST_NAMES_LIST";
 /**
  * Based on isSingleElementStruct in Clang
  */
-Type *type_abi_find_single_struct_element(Type *type)
+Type *type_abi_find_single_struct_element(Type *type, bool in_abi)
 {
 	if (!type_is_union_or_strukt(type)) return NULL;
 
@@ -32,7 +32,7 @@ Type *type_abi_find_single_struct_element(Type *type)
 
 		if (type_is_union_or_strukt(field_type))
 		{
-			field_type = type_abi_find_single_struct_element(field_type);
+			field_type = type_abi_find_single_struct_element(field_type, in_abi);
 			if (!field_type) return NULL;
 		}
 		found = field_type;
@@ -166,10 +166,9 @@ bool type_homogenous_aggregate_small_enough(Type *type, unsigned members)
  * @param elements the elements found
  * @return true if it is an aggregate, false otherwise.
  */
-bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
+bool type_is_homogenous_aggregate(LoweredType *type, Type **base, unsigned *elements)
 {
 	ASSERT(base && type && elements);
-	ASSERT(type_lowering(type) == type);
 	*elements = 0;
 	switch (type->type_kind)
 	{
@@ -192,7 +191,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 				{
 					unsigned member_mult = 1;
 					// Flatten the type.
-					Type *member_type = type_lowering(member->type);
+					LoweredType *member_type = lowered_member_type(member);
 					// Go down deep into  a nester array.
 					while (member_type->type_kind == TYPE_ARRAY)
 					{
@@ -203,7 +202,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 					unsigned member_members = 0;
 
 					// Check recursively if the field member is homogenous
-					if (!type_is_homogenous_aggregate(type_lowering(member_type), base, &member_members)) return false;
+					if (!type_is_homogenous_aggregate(member_type, base, &member_members)) return false;
 					member_members *= member_mult;
 					// In the case of a union, grab the bigger set of elements.
 					if (type->type_kind == TYPE_UNION)
@@ -229,7 +228,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			// Empty arrays? Not homogenous.
 			if (type->array.len == 0) return false;
 			// Check the underlying type and multiply by length.
-			if (!type_is_homogenous_aggregate(type_lowering(type->array.base), base, elements)) return false;
+			if (!type_is_homogenous_aggregate(lowered_array_element_type(type), base, elements)) return false;
 			*elements *= type->array.len;
 			goto TYPECHECK;
 		case TYPE_BOOL:

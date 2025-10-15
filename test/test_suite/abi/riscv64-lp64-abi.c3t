@@ -1,20 +1,21 @@
 // #target: linux-riscv64
 module test;
 
-struct Large {
-  long a, b, c, d;
+struct Large
+{
+	long a, b, c, d;
 }
 
-alias V32i8 = char[<32>];
+typedef V32i8 = char[<32>] @simd;
 
-fn int f_scalar_stack_1(int a, int128 b, float c, float128 d, V32i8 e,
-                     char f, char g, char h) {
-  return g + h;
+fn int f_scalar_stack_1(int a, int128 b, float c, float128 d, V32i8 e, char f, char g, char h)
+{
+	return g + h;
 }
 
-fn Large f_scalar_stack_2(double a, int128 b, float128 c, V32i8 d,
-                              char e, ichar f, char g) {
-  return (Large) {(long)(a), e, f, g};
+fn Large f_scalar_stack_2(double a, int128 b, float128 c, V32i8 d, char e, ichar f, char g)
+{
+	return {(long)(a), e, f, g};
 }
 
 /* #expect: test.ll

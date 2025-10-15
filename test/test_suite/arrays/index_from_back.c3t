@@ -2,21 +2,21 @@
 
 module test;
 
-fn void test(int[10] x, int[<10>] y)
+typedef Int16 = int[<16>] @simd;
+fn void test(int[16] x, Int16 y)
 {
-    int a = x[4];
-    int b = x[^2];
-    int c = y[4];
-    int d = y[^2];
-    int j = 3;
-    int e = y[^j];
-    int f = x[^j];
+	int a = x[4];
+	int b = x[^2];
+	int c = y[4];
+	int d = y[^2];
+	int j = 3;
+	int e = y[^j];
+	int f = x[^j];
 }
 
 /* #expect: test.ll
 
-; Function Attrs:
-define void @test.test(ptr byval([10 x i32]) align 8 %0, ptr byval(<10 x i32>) align 64 %1) #0 {
+define void @test.test(ptr byval([16 x i32]) align 8 %0, ptr byval(<16 x i32>) align 64 %1) #0 {
 entry:
   %a = alloca i32, align 4
   %b = alloca i32, align 4
@@ -28,25 +28,25 @@ entry:
   %ptradd = getelementptr inbounds i8, ptr %0, i64 16
   %2 = load i32, ptr %ptradd, align 4
   store i32 %2, ptr %a, align 4
-  %ptradd1 = getelementptr inbounds i8, ptr %0, i64 32
+  %ptradd1 = getelementptr inbounds i8, ptr %0, i64 56
   %3 = load i32, ptr %ptradd1, align 4
   store i32 %3, ptr %b, align 4
-  %4 = load <10 x i32>, ptr %1, align 64
-  %5 = extractelement <10 x i32> %4, i64 4
+  %4 = load <16 x i32>, ptr %1, align 64
+  %5 = extractelement <16 x i32> %4, i64 4
   store i32 %5, ptr %c, align 4
-  %6 = load <10 x i32>, ptr %1, align 64
-  %7 = extractelement <10 x i32> %6, i64 8
+  %6 = load <16 x i32>, ptr %1, align 64
+  %7 = extractelement <16 x i32> %6, i64 14
   store i32 %7, ptr %d, align 4
   store i32 3, ptr %j, align 4
-  %8 = load <10 x i32>, ptr %1, align 64
+  %8 = load <16 x i32>, ptr %1, align 64
   %9 = load i32, ptr %j, align 4
   %sext = sext i32 %9 to i64
-  %10 = sub nuw i64 10, %sext
-  %11 = extractelement <10 x i32> %8, i64 %10
+  %10 = sub nuw i64 16, %sext
+  %11 = extractelement <16 x i32> %8, i64 %10
   store i32 %11, ptr %e, align 4
   %12 = load i32, ptr %j, align 4
   %sext2 = sext i32 %12 to i64
-  %13 = sub nuw i64 10, %sext2
+  %13 = sub nuw i64 16, %sext2
   %ptroffset = getelementptr inbounds [4 x i8], ptr %0, i64 %13
   %14 = load i32, ptr %ptroffset, align 4
   store i32 %14, ptr %f, align 4

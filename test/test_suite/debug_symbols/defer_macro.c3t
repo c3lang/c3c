@@ -86,7 +86,7 @@ macro Id unique()
 }
 
 
-typedef Color = float[<4>];
+typedef Color = float[<4>] @simd;
 
 const Color BLACK = {0, 0, 0, 1};
 const Color WHITE = {1, 1, 1, 1};

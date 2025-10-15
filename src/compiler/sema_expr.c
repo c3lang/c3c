@@ -1005,7 +1005,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 	{
 		case VARDECL_CONST:
 			if (decl->is_extern) return true;
-			if (type_is_abi_aggregate(decl->type)) return true;
+			if (type_is_aggregate(decl->type)) return true;
 			expr_replace(expr, copy_expr_single(decl->var.init_expr));
 			if (!sema_analyse_expr_rvalue(context, expr)) return false;
 			if (!sema_cast_const(expr) && !expr_is_runtime_const(expr))
@@ -2456,7 +2456,6 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 
 	if (!sema_call_evaluate_arguments(context, &callee, expr, &optional, no_match_ref)) return false;
 
-	Type *rtype = type->function.prototype->rtype;
 	if (expr->call_expr.is_dynamic_dispatch)
 	{
 		Expr *any_val = expr->call_expr.arguments[0];
@@ -2534,6 +2533,7 @@ END_CONTRACT:
 SKIP_CONTRACTS:
 	expr->call_expr.has_optional_arg = optional;
 
+	Type *rtype = typeget(type->function.signature->rtype);
 	if (!type_is_void(rtype))
 	{
 		bool is_optional_return = type_is_optional(rtype);
@@ -4878,7 +4878,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		expr->expr_kind = EXPR_CONST;
 		expr->resolve_status = RESOLVE_DONE;
 		AlignSize align;
-		if (!sema_set_abi_alignment(context, decl->type, &align)) return false;
+		if (!sema_set_abi_alignment(context, decl->type, &align, true)) return false;
 		expr->const_expr = (ExprConst) {
 			.member.decl = member,
 			.member.align = align,
@@ -5826,7 +5826,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_MEMBERSOF:
 		{
 			AlignSize align;
-			if (!sema_set_abi_alignment(context, parent_type, &align)) return false;
+			if (!sema_set_abi_alignment(context, parent_type, &align, true)) return false;
 			sema_create_const_membersof(expr, flat, align, 0);
 			return true;
 		}
@@ -5856,7 +5856,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_ALIGNOF:
 		{
 			AlignSize align;
-			if (!sema_set_abi_alignment(context, type, &align)) return false;
+			if (!sema_set_abi_alignment(context, type, &align, false)) return false;
 			expr_rewrite_const_int(expr, type_usz, align);
 			return true;
 		}
@@ -10042,7 +10042,7 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 	}
 	else
 	{
-		if (!sema_set_abi_alignment(context, type, &align)) return false;
+		if (!sema_set_abi_alignment(context, type, &align, false)) return false;
 	}
 	FOREACH_IDX(i, DesignatorElement *, element, path)
 	{

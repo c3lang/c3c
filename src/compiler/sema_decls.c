@@ -48,6 +48,29 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit);
 
+static inline bool sema_resolve_align_expr(SemaContext *context, Expr *expr, AlignSize *result)
+{
+	if (!sema_analyse_expr_rvalue(context, expr)) return false;
+	if (!expr_is_const_int(expr))
+	{
+		RETURN_SEMA_ERROR(expr, "Expected a constant integer value as argument.");
+	}
+	if (int_ucomp(expr->const_expr.ixx, MAX_ALIGNMENT, BINARYOP_GT))
+	{
+		RETURN_SEMA_ERROR(expr, "Alignment must be less or equal to %ull.", MAX_ALIGNMENT);
+	}
+	if (int_ucomp(expr->const_expr.ixx, 0, BINARYOP_LE))
+	{
+		RETURN_SEMA_ERROR(expr, "Alignment must be greater than zero.");
+	}
+	uint64_t align = int_to_u64(expr->const_expr.ixx);
+	if (!is_power_of_two(align))
+	{
+		RETURN_SEMA_ERROR(expr, "Alignment must be a power of two.");
+	}
+	*result = (AlignSize)align;
+	return true;
+}
 static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params, SourceSpan from_span);
 
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
@@ -259,7 +282,8 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 			// Set the nested type as export if this one is exported.
 			decl->is_export = is_export;
 			// Perform the analysis
-			return sema_analyse_decl(context, decl);
+			if (!sema_analyse_decl(context, decl)) return false;
+			return true;
 		default:
 			UNREACHABLE
 	}
@@ -289,6 +313,7 @@ static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Dec
 	}
 	return true;
 }
+
 
 /**
  * Analyse union members, calculating alignment.
@@ -335,7 +360,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 			RETURN_SEMA_ERROR(member, "Flexible array members not allowed in unions.");
 		}
 		AlignSize member_alignment;
-		if (!sema_set_abi_alignment(context, member->type, &member_alignment)) return false;
+		if (!sema_set_abi_alignment(context, member->type, &member_alignment, true)) return false;
 		if (!sema_check_struct_holes(context, decl, member)) return false;
 
 		ByteSize member_size = type_size(member->type);
@@ -402,17 +427,23 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 	return true;
 }
 
-AlignSize sema_get_max_natural_alignment(Type *type)
+AlignSize sema_get_max_natural_alignment_as_member(Type *type)
 {
 RETRY:;
-	type = type_flatten(type);
 	switch (type->type_kind)
 	{
-		case TYPE_TYPEDEF:
-		case TYPE_POISONED:
-		case TYPE_ALIAS:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_OPTIONAL:
+			type = type->optional;
+			goto RETRY;
+		case TYPE_TYPEDEF:
+			if (type->decl->attr_simd) return type_abi_alignment(type);
+			type = type->decl->distinct->type;
+			goto RETRY;
+		case TYPE_ALIAS:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_POISONED:
+		case TYPE_UNTYPED_LIST:
 		case TYPE_WILDCARD:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
@@ -443,7 +474,7 @@ RETRY:;
 			AlignSize max = 0;
 			FOREACH(Decl *, member, type->decl->strukt.members)
 			{
-				AlignSize member_max = sema_get_max_natural_alignment(member->type);
+				AlignSize member_max = sema_get_max_natural_alignment_as_member(member->type);
 				if (member_max > max) max = member_max;
 			}
 			return max;
@@ -454,11 +485,10 @@ RETRY:;
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
-			type = type->array.base;
-			goto RETRY;
 		case TYPE_VECTOR:
 		case TYPE_INFERRED_VECTOR:
-			return type_abi_alignment(type);
+			type = type->array.base;
+			goto RETRY;
 	}
 	UNREACHABLE
 }
@@ -544,9 +574,9 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 			SEMA_ERROR(member, "Recursive definition of %s.", type_quoted_error_string(member_type));
 			return decl_poison(decl);
 		}
-		if (!sema_set_abi_alignment(context, member->type, &member_type_alignment)) return decl_poison(decl);
+		if (!sema_set_abi_alignment(context, member->type, &member_type_alignment, true)) return decl_poison(decl);
 		// And get the natural alignment
-		AlignSize member_natural_alignment = sema_get_max_natural_alignment(member->type);
+		AlignSize member_natural_alignment = sema_get_max_natural_alignment_as_member(member->type);
 
 		// If packed, then the alignment is 1
 		AlignSize member_alignment = is_packed ? 1 : member_type_alignment;
@@ -1102,6 +1132,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 {
 	Variadic variadic_type = sig->variadic;
 	Decl **params = sig->params;
+
 	unsigned param_count = vec_size(params);
 	unsigned vararg_index = sig->vararg_index;
 	bool is_macro = sig->is_macro;
@@ -1406,7 +1437,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		{
 			if (!sema_deep_resolve_function_ptr(context, type_info)) return false;
 			param->type = type_info->type;
-			if (!sema_set_abi_alignment(context, param->type, &param->alignment)) return false;
+			if (!sema_set_abi_alignment(context, param->type, &param->alignment, true)) return false;
 		}
 
 		if (param->var.init_expr)
@@ -1524,10 +1555,11 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 	TypeInfo *info = decl->distinct;
 	info->in_def = true;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
-
+	if (!sema_resolve_type_decl(context, info->type)) return false;
+	Type *inner_type = info->type;
 	// Optional isn't allowed of course.
-	if (type_is_optional(info->type)) RETURN_SEMA_ERROR(decl, "You cannot create a distinct type from an optional.");
-	switch (sema_resolve_storage_type(context, info->type))
+	if (type_is_optional(inner_type)) RETURN_SEMA_ERROR(decl, "You cannot create a distinct type from an optional.");
+	switch (sema_resolve_storage_type(context, inner_type))
 	{
 		case STORAGE_ERROR:
 			return false;
@@ -1539,9 +1571,29 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 			RETURN_SEMA_ERROR(info, "You cannot create a distinct type from the wildcard type.");
 		case STORAGE_COMPILE_TIME:
 			RETURN_SEMA_ERROR(info, "You cannot create a distinct type for %s as it is a compile time type.",
-							  type_invalid_storage_type_name(info->type));
+							  type_invalid_storage_type_name(inner_type));
 	}
 
+	if (decl->distinct_align)
+	{
+		if (!sema_resolve_align_expr(context, decl->distinct_align, &decl->alignment)) return false;
+		AlignSize default_size = type_abi_alignment(inner_type);
+		// Remove "alignment"
+		if (default_size == decl->alignment) decl->distinct_align = NULL;
+	}
+	if (decl->attr_simd)
+	{
+		if (decl->distinct_align) RETURN_SEMA_ERROR(decl, "You cannot set both @simd and @align on a distinct type.");
+		inner_type = inner_type->canonical;
+		if (inner_type->type_kind != TYPE_VECTOR) RETURN_SEMA_ERROR(decl, "You cannot set @simd on a non-vector type.");
+		ArraySize len = inner_type->array.len;
+		if (!is_power_of_two(len)) RETURN_SEMA_ERROR(decl, "The length of a @simd vector must be a power of two.");
+		decl->alignment = type_simd_alignment(inner_type);
+	}
+	if (!decl->alignment)
+	{
+		decl->alignment = type_abi_alignment(inner_type);
+	}
 	// Distinct types drop the canonical part.
 	info->type = info->type->canonical;
 	return true;
@@ -1686,7 +1738,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 	for (unsigned i = 0; i < associated_value_count; i++)
 	{
 		Decl *param = associated_values[i];
-		if (!sema_set_abi_alignment(context, param->type, &param->alignment)) return false;
+		if (!sema_set_abi_alignment(context, param->type, &param->alignment, false)) return false;
 		param->resolve_status = RESOLVE_DONE;
 	}
 	for (unsigned i = 0; i < enums; i++)
@@ -3093,6 +3145,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_SAFEMACRO] = ATTR_MACRO,
 			[ATTRIBUTE_SAFEINFER] = ATTR_GLOBAL | ATTR_LOCAL,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
+			[ATTRIBUTE_SIMD] = 0,
 			[ATTRIBUTE_STRUCTLIKE] = ATTR_TYPEDEF,
 			[ATTRIBUTE_TAG] = ATTR_BITSTRUCT_MEMBER | ATTR_MEMBER | USER_DEFINED_TYPES | CALLABLE_TYPE,
 			[ATTRIBUTE_TEST] = ATTR_FUNC,
@@ -3251,28 +3304,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			{
 				RETURN_SEMA_ERROR(attr, "'align' requires an power-of-2 argument, e.g. align(8).");
 			}
-			if (!sema_analyse_expr_rvalue(context, expr)) return false;
-			if (!expr_is_const_int(expr))
-			{
-				RETURN_SEMA_ERROR(expr, "Expected a constant integer value as argument.");
-			}
-			{
-				if (int_ucomp(expr->const_expr.ixx, MAX_ALIGNMENT, BINARYOP_GT))
-				{
-					RETURN_SEMA_ERROR(expr, "Alignment must be less or equal to %ull.", MAX_ALIGNMENT);
-				}
-				if (int_ucomp(expr->const_expr.ixx, 0, BINARYOP_LE))
-				{
-					RETURN_SEMA_ERROR(expr, "Alignment must be greater than zero.");
-				}
-				uint64_t align = int_to_u64(expr->const_expr.ixx);
-				if (!is_power_of_two(align))
-				{
-					RETURN_SEMA_ERROR(expr, "Alignment must be a power of two.");
-				}
-				decl->alignment = (AlignSize)align;
-				return true;
-			}
+			return sema_resolve_align_expr(context, expr, &decl->alignment);
 		case ATTRIBUTE_WASM:
 			if (args > 2) RETURN_SEMA_ERROR(attr->exprs[2], "Too many arguments to '@wasm', expected 0, 1 or 2 arguments");
 			decl->is_export = true;
@@ -3418,6 +3450,8 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_STRUCTLIKE:
 			decl->attr_structlike = true;
 			return true;
+		case ATTRIBUTE_SIMD:
+			RETURN_SEMA_ERROR(attr, "'@simd' is only allowed on typedef types.");
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_EXTERN:
 			if (context->unit->module->is_generic)
@@ -4714,7 +4748,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 			return decl_poison(decl);
 		}
 		if (!sema_analyse_expr_rvalue(context, init_expr)) return decl_poison(decl);
-		if (check_defined || global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
+		if (check_defined || global_level_var || !type_is_aggregate(init_expr->type)) sema_cast_const(init_expr);
 		if (global_level_var && !expr_is_runtime_const(init_expr))
 		{
 			if (check_defined) return *check_defined = true, false;
@@ -4843,7 +4877,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 			}
 		}
 		if (!success) goto EXIT_OK;
-		if (global_level_var || !type_is_abi_aggregate(init->type)) sema_cast_const(init);
+		if (global_level_var || !type_is_aggregate(init->type)) sema_cast_const(init);
 		if (expr_is_const(init))
 		{
 			init->const_expr.is_hex = false;
