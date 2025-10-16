@@ -4,9 +4,9 @@
 
 #include "compiler/c_abi_internal.h"
 
-ABIArgInfo *win64_classify(Regs *regs, ParamInfo info, bool is_return, bool is_vector_call)
+ABIArgInfo *win64_classify(Regs *regs, ParamInfo param, bool is_return, bool is_vector_call)
 {
-	Type *type = info.type;
+	Type *type = param.type;
 	if (type_is_void(type)) return abi_arg_ignore();
 	
 	// Lower enums etc.
@@ -15,7 +15,7 @@ ABIArgInfo *win64_classify(Regs *regs, ParamInfo info, bool is_return, bool is_v
 	// Variable array has to be passed indirectly.
 	if (type_is_union_or_strukt(type) && type->decl->has_variable_array)
 	{
-		return abi_arg_new_indirect_not_by_val(type);
+		return abi_arg_new_indirect_not_by_val(type, param);
 	}
 
 	Type *base = NULL;
@@ -27,12 +27,12 @@ ABIArgInfo *win64_classify(Regs *regs, ParamInfo info, bool is_return, bool is_v
 			(is_return || type_is_builtin(type->type_kind) || type->type_kind == TYPE_VECTOR))
 		{
 			regs->float_regs -= elements;
-			return abi_arg_new_direct();
+			return abi_arg_new_direct(param);
 		}
 		// HVAs are handled later.
 		if (is_return || (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_VECTOR))
 		{
-			return abi_arg_new_indirect_not_by_val(type);
+			return abi_arg_new_indirect_not_by_val(type, param);
 		}
 		// => to main handling.
 	}
@@ -43,32 +43,32 @@ ABIArgInfo *win64_classify(Regs *regs, ParamInfo info, bool is_return, bool is_v
 		// Not 1, 2, 4, 8? Pass indirect.
 		if (size > 8 || !is_power_of_two(size))
 		{
-			return abi_arg_new_indirect_not_by_val(type);
+			return abi_arg_new_indirect_not_by_val(type, param);
 		}
 		// Coerce to integer.
-		return abi_arg_new_direct_coerce_type_bits(size * 8);
+		return abi_arg_new_direct_coerce_type_bits(size * 8, param);
 	}
 	if (type_is_builtin(type->type_kind))
 	{
 		switch (type->type_kind)
 		{
 			case TYPE_BOOL:
-				return abi_arg_new_direct_int_ext(type_bool);
+				return abi_arg_new_direct_int_ext(type_bool, param);
 			case TYPE_U128:
 			case TYPE_I128:
 				// Pass by val since greater than 8 bytes.
-				if (!is_return) return abi_arg_new_indirect_not_by_val(type);
+				if (!is_return) return abi_arg_new_indirect_not_by_val(type, param);
 				// Make i128 return in XMM0
-				return abi_arg_new_direct_coerce_type_spec(ABI_TYPE_LONG_VEC_2);
+				return abi_arg_new_direct_coerce_type_spec(ABI_TYPE_LONG_VEC_2, param);
 			default:
 				break;
 		}
 	}
 	if (size > 8)
 	{
-		return abi_arg_new_indirect_not_by_val(type);
+		return abi_arg_new_indirect_not_by_val(type, param);
 	}
-	return abi_arg_new_direct();
+	return abi_arg_new_direct(param);
 }
 
 ABIArgInfo *win64_reclassify_hva_arg(Regs *regs, ParamInfo param, ABIArgInfo *info)
@@ -82,7 +82,7 @@ ABIArgInfo *win64_reclassify_hva_arg(Regs *regs, ParamInfo param, ABIArgInfo *in
 		if (regs->float_regs >= elements)
 		{
 			regs->float_regs -= elements;
-			ABIArgInfo *new_info = abi_arg_new_direct_by_reg(true);
+			ABIArgInfo *new_info = abi_arg_new_direct_by_reg(true, param);
 			return new_info;
 		}
 	}
@@ -122,9 +122,8 @@ static void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, boo
 	}
 }
 
-ABIArgInfo **win64_create_params(ParamInfo *params, Regs *regs, bool is_vector_call)
+ABIArgInfo **win64_create_params(ParamInfo *params, unsigned param_count, Regs *regs,bool is_vector_call)
 {
-	unsigned param_count = vec_size(params);
 	if (!param_count) return NULL;
 	ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
 	for (unsigned i = 0; i < param_count; i++)
@@ -134,7 +133,7 @@ ABIArgInfo **win64_create_params(ParamInfo *params, Regs *regs, bool is_vector_c
 	return args;
 }
 
-void c_abi_func_create_win64(FunctionPrototype *prototype)
+void c_abi_func_create_win64(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count)
 {
 	// allow calling sysv?
 
@@ -171,6 +170,6 @@ void c_abi_func_create_win64(FunctionPrototype *prototype)
 		return;
 	}
 
-	prototype->abi_args = win64_create_params(prototype->param_infos, &regs, is_vector_call);
-	prototype->abi_varargs = win64_create_params(prototype->vararg_infos, &regs, is_vector_call);
+	prototype->abi_args = win64_create_params(prototype->param_infos, prototype->param_count, &regs, is_vector_call);
+	prototype->abi_varargs = win64_create_params(vaargs, vaarg_count, &regs, is_vector_call);
 }

@@ -43,6 +43,7 @@ typedef uint16_t FileId;
 #define INITIAL_GENERIC_SYMBOL_MAP 0x1000
 #define MAX_INCLUDE_DIRECTIVES 2048
 #define MAX_PARAMS 255
+#define MAX_VAARGS 512
 #define MAX_BITSTRUCT 0x1000
 #define MAX_MEMBERS ((StructIndex)1) << 15
 #define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
@@ -1887,7 +1888,8 @@ typedef struct ABIArgInfo_
 			Type *type;
 		} indirect;
 	};
-
+	Type *original_type;
+	ParamRewrite rewrite;
 } ABIArgInfo;
 
 typedef struct ParamInfo
@@ -1907,8 +1909,9 @@ typedef struct FunctionPrototype_
 	ParamInfo return_info;
 	Type *return_result;
 	ParamInfo *param_infos;
+	unsigned param_count;
+	unsigned short param_vacount;
 	Decl **param_copy;
-	ParamInfo *vararg_infos;
 	ABIArgInfo *ret_abi_info;
 	ABIArgInfo **abi_args;
 	ABIArgInfo **abi_varargs;
@@ -2577,7 +2580,7 @@ MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
 WindowsSDK *windows_get_sdk(void);
 const char *windows_cross_compile_library(void);
 
-void c_abi_func_create(FunctionPrototype *proto);
+void c_abi_func_create(FunctionPrototype *proto, ParamInfo *vaargs, unsigned vaarg_count);
 
 bool token_is_any_type(TokenType type);
 const char *token_type_to_string(TokenType type);

@@ -5195,9 +5195,9 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 }
 
 
-void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_ref, ABIArgInfo *info, BEValue *be_value, ParamInfo param)
+void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_ref, ABIArgInfo *info, BEValue *be_value)
 {
-	Type *type = type_lowering(param.type);
+	Type *type = type_lowering(info->original_type);
 	ASSERT(be_value->type->canonical == type);
 	switch (info->kind)
 	{
@@ -5407,12 +5407,12 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 		default:
 			break;
 	}
-	llvm_add_abi_call_attributes(c, call_value, vec_size(prototype->param_infos), prototype->abi_args);
+	llvm_add_abi_call_attributes(c, call_value, prototype->param_count, prototype->abi_args);
 	if (prototype->abi_varargs)
 	{
 		llvm_add_abi_call_attributes(c,
 									 call_value,
-									 vec_size(prototype->vararg_infos),
+									 prototype->param_vacount,
 									 prototype->abi_varargs);
 	}
 
@@ -5728,26 +5728,26 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 									  Expr **varargs)
 {
 	LLVMValueRef arg_values[512];
+	ParamInfo vaarg_params[512];
 	unsigned arg_count = 0;
-	ParamInfo *params = prototype->param_infos;
+	unsigned vaarg_count = 0;
 	ABIArgInfo **abi_args = prototype->abi_args;
-	unsigned param_count = vec_size(params);
+	unsigned param_count = prototype->param_count;
 	FunctionPrototype copy;
 	if (prototype->raw_variadic)
 	{
 		if (varargs)
 		{
 			copy = *prototype;
-			copy.vararg_infos = NULL;
-
 			FOREACH(Expr *, val, varargs)
 			{
-				vec_add(copy.vararg_infos, (ParamInfo) { .type = type_flatten(val->type) });
+				vaarg_params[vaarg_count++] = (ParamInfo) { .type = type_flatten(val->type) };
 			}
+			copy.param_vacount = vaarg_count;
 			copy.is_resolved = false;
 			copy.ret_abi_info = NULL;
 			copy.abi_args = NULL;
-			c_abi_func_create(&copy);
+			c_abi_func_create(&copy, vaarg_params, vaarg_count);
 			prototype = &copy;
 			LLVMTypeRef *params_type = NULL;
 			llvm_update_prototype_abi(c, prototype, &params_type);
@@ -5811,11 +5811,11 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 	if (prototype->ret_rewrite == RET_OPTIONAL_VALUE)
 	{
 		// 7b. Create the address to hold the return.
-		Type *actual_return_type_ptr = params[0].type;
+		Type *actual_return_type_ptr = abi_args[0]->original_type;
 		Type *actual_return_type = actual_return_type_ptr->pointer;
 		llvm_value_set(&synthetic_return_param, llvm_emit_alloca_aligned(c, actual_return_type, "retparam"), actual_return_type_ptr);
 		// 7c. Emit it as a parameter as a pointer (will implicitly add it to the value list)
-		llvm_emit_parameter(c, arg_values, &arg_count, abi_args[0], &synthetic_return_param, params[0]);
+		llvm_emit_parameter(c, arg_values, &arg_count, abi_args[0], &synthetic_return_param);
 		// 7d. Update the be_value to actually be an address.
 		llvm_value_set_address_abi_aligned(c, &synthetic_return_param, synthetic_return_param.value, actual_return_type);
 		start = 1;
@@ -5825,12 +5825,11 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 	for (unsigned i = start; i < param_count; i++)
 	{
 		// 8a. Evaluate the expression.
-		ParamInfo param = params[i];
 		ABIArgInfo *info = abi_args[i];
 
 		// 8b. Emit the parameter according to ABI rules.
 		BEValue value_copy = values[i - start];
-		llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy, param);
+		llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy);
 	}
 
 	// 9. Typed varargs
@@ -5847,7 +5846,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 			{
 				ABIArgInfo *info = abi_varargs[index];
 				BEValue value_copy = values[i + param_count];
-				llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy, prototype->vararg_infos[index]);
+				llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy);
 				index++;
 			}
 		}

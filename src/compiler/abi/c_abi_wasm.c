@@ -13,7 +13,7 @@ static ABIArgInfo *wasm_classify_argument_type(ParamInfo param)
 		// could do reasonable-size multiple-field structs too, using getExpand(),
 		// though watch out for things like bitfields.
 		Type *single_type = type_abi_find_single_struct_element(type);
-		if (single_type) return abi_arg_new_direct_coerce_type(abi_type_get(single_type));
+		if (single_type) return abi_arg_new_direct_coerce_type(abi_type_get(single_type), param);
 
 		// For the experimental multivalue ABI, fully expand all other aggregates
 		/*if (Kind == ABIKind::ExperimentalMV) {
@@ -41,7 +41,7 @@ static ABIArgInfo *wasm_classify_return(ParamInfo param)
 	if (type_is_abi_aggregate(type))
 	{
 		Type *single_type = type_abi_find_single_struct_element(type);
-		if (single_type) return abi_arg_new_direct_coerce_type(abi_type_get(single_type));
+		if (single_type) return abi_arg_new_direct_coerce_type(abi_type_get(single_type), param);
 		/*
 		 * 			// For the experimental multivalue ABI, return all other aggregates
 			if (Kind == ABIKind::ExperimentalMV)
@@ -52,9 +52,8 @@ static ABIArgInfo *wasm_classify_return(ParamInfo param)
 	return c_abi_classify_return_type_default(param);
 }
 
-ABIArgInfo **wasm_create_params(ParamInfo *params)
+ABIArgInfo **wasm_create_params(ParamInfo *params, unsigned param_count)
 {
-	unsigned param_count = vec_size(params);
 	if (!param_count) return NULL;
 	ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
 	for (unsigned i = 0; i < param_count; i++)
@@ -64,9 +63,9 @@ ABIArgInfo **wasm_create_params(ParamInfo *params)
 	return args;
 }
 
-void c_abi_func_create_wasm(FunctionPrototype *prototype)
+void c_abi_func_create_wasm(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count)
 {
 	prototype->ret_abi_info = wasm_classify_return(prototype->return_info);
-	prototype->abi_args = wasm_create_params(prototype->param_infos);
-	prototype->abi_varargs = wasm_create_params(prototype->vararg_infos);
+	prototype->abi_args = wasm_create_params(prototype->param_infos, prototype->param_count);
+	prototype->abi_varargs = wasm_create_params(vaargs, vaarg_count);
 }

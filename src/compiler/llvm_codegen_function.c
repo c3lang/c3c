@@ -9,7 +9,7 @@ static void llvm_append_xxlizer(GenContext *c, unsigned  priority, bool is_initi
 static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef value);
 static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment);
 static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index);
-static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo ***abi_info_ref, ParamInfo **parameters_ref, unsigned *index, unsigned real_index);
+static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo ***abi_info_ref, unsigned *index, unsigned real_index);
 static inline void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body, Decl *decl, bool is_naked);
 
 
@@ -257,12 +257,11 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 		}
 	}
 }
-static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo ***abi_info_ref, ParamInfo **params_ref, unsigned *index, unsigned real_index)
+static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo ***abi_info_ref, unsigned *index, unsigned real_index)
 {
 	ASSERT(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
 	ABIArgInfo *info = *((*abi_info_ref)++);
-	ParamInfo param = *((*params_ref)++);
 	// Allocate room on stack, but do not copy.
 	/*
 	switch (decl->var.rewrite)
@@ -535,12 +534,10 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 			c->return_out = llvm_get_next_param(c, &arg);
 		}
 	}
-	ParamInfo *types = prototype->param_infos;
 	ABIArgInfo **abi_args = prototype->abi_args;
 	if (prototype->ret_rewrite == RET_OPTIONAL_VALUE)
 	{
 		ASSERT(!c->return_out);
-		types++;
 		abi_args++;
 		c->return_out = llvm_get_next_param(c, &arg);
 	}
@@ -551,7 +548,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	{
 		FOREACH_IDX(i, Decl *, param, signature->params)
 		{
-			llvm_emit_func_parameter(c, param, &abi_args, &types, &arg, i);
+			llvm_emit_func_parameter(c, param, &abi_args, &arg, i);
 		}
 	}
 

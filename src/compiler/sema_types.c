@@ -733,6 +733,7 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 		proto->param_copy = param_copy;
 	}
 
+	proto->param_count = vec_size(proto->param_infos);
 	scratch_buffer_clear();
 	scratch_buffer_append("fn ");
 	type_append_name_to_scratch(rtype->canonical);

@@ -24,7 +24,7 @@ INLINE bool is_aarch64_illegal_vector(Type *type)
 	}
 }
 
-ABIArgInfo *aarch64_coerce_illegal_vector(Type *type)
+ABIArgInfo *aarch64_coerce_illegal_vector(Type *type, ParamInfo param)
 {
 	if (false /*type->type_kind == TYPE_SCALED_VECTOR*/)
 	{
@@ -63,27 +63,27 @@ ABIArgInfo *aarch64_coerce_illegal_vector(Type *type)
 	// CLANG: Android promotes char[<2>] to ushort, not uint
 	if ((compiler.platform.environment_type == ENV_TYPE_ANDROID || compiler.platform.os == OS_TYPE_ANDROID) && size <= 2)
 	{
-		return abi_arg_new_direct_coerce_type_bits(16);
+		return abi_arg_new_direct_coerce_type_bits(16, param);
 	}
 	// 32 bits or fewer? Put in int.
-	if (size <= 4) return abi_arg_new_direct_coerce_type_bits(32);
+	if (size <= 4) return abi_arg_new_direct_coerce_type_bits(32, param);
 
 	// 64 bits or less? Put in uint[<2>]
-	if (size <= 8) return abi_arg_new_direct_coerce_type((AbiType) { .abi_type = ABI_TYPE_INT_VEC_2 });
+	if (size <= 8) return abi_arg_new_direct_coerce_type(abi_type_spec(ABI_TYPE_INT_VEC_2), param);
 	// 128 bits in a single val? Put in uint[<4>]
-	if (size == 128) return abi_arg_new_direct_coerce_type((AbiType) { .abi_type = ABI_TYPE_INT_VEC_4 });
-	return abi_arg_new_indirect_not_by_val(type);
+	if (size == 128) return abi_arg_new_direct_coerce_type(abi_type_spec(ABI_TYPE_INT_VEC_4), param);
+	return abi_arg_new_indirect_not_by_val(type, param);
 }
 
-static ABIArgInfo *aarch64_classify_argument_type(ParamInfo param_info)
+static ABIArgInfo *aarch64_classify_argument_type(ParamInfo param)
 {
-	Type *type = type_lowering(param_info.type);
+	Type *type = type_lowering(param.type);
 
 	if (type_is_void(type)) return abi_arg_ignore();
 
 	if (is_aarch64_illegal_vector(type))
 	{
-		return aarch64_coerce_illegal_vector(type);
+		return aarch64_coerce_illegal_vector(type, param);
 	}
 
 	TypeSize size = type_size(type);
@@ -94,9 +94,9 @@ static ABIArgInfo *aarch64_classify_argument_type(ParamInfo param_info)
 		// we don't have that (yet?)
 		if (type_is_promotable_int_bool(type) && compiler.platform.aarch64.is_darwin_pcs)
 		{
-			return abi_arg_new_direct_int_ext(type);
+			return abi_arg_new_direct_int_ext(type, param);
 		}
-		return abi_arg_new_direct();
+		return abi_arg_new_direct(param);
 	}
 
 	// Is empty
@@ -110,9 +110,9 @@ static ABIArgInfo *aarch64_classify_argument_type(ParamInfo param_info)
 		ASSERT(members < 128);
 		if (members > 1)
 		{
-			return abi_arg_new_direct_coerce_type(abi_type_get(type_get_array(base, members)));
+			return abi_arg_new_direct_coerce_type(abi_type_get(type_get_array(base, members)), param);
 		}
-		return abi_arg_new_direct_coerce_type(abi_type_get(base));
+		return abi_arg_new_direct_coerce_type(abi_type_get(base), param);
 	}
 
 	// Aggregates <= in registers
@@ -136,25 +136,25 @@ static ABIArgInfo *aarch64_classify_argument_type(ParamInfo param_info)
 		// For aggregates with 16-byte alignment, we use i128.
 		ASSERT(alignment == 8 || alignment == 16);
 
-		if (alignment == 16) return abi_arg_new_direct_coerce_type_bits(128);
+		if (alignment == 16) return abi_arg_new_direct_coerce_type_bits(128, param);
 		ArraySize m = size / alignment;
-		if (m > 1) return abi_arg_new_direct_coerce_type(abi_type_get(type_get_array(type_ulong, m)));
-		return abi_arg_new_direct_coerce_type_bits(64);
+		if (m > 1) return abi_arg_new_direct_coerce_type(abi_type_get(type_get_array(type_ulong, m)), param);
+		return abi_arg_new_direct_coerce_type_bits(64, param);
 
 	}
 
-	return abi_arg_new_indirect_not_by_val(type);
+	return abi_arg_new_indirect_not_by_val(type, param);
 }
 
-ABIArgInfo *aarch64_classify_return_type(ParamInfo info, bool variadic)
+ABIArgInfo *aarch64_classify_return_type(ParamInfo param, bool variadic)
 {
-	Type *type = type_lowering(info.type);
+	Type *type = type_lowering(param.type);
 
 	if (type_is_void(type)) return abi_arg_ignore();
 
 	if (is_aarch64_illegal_vector(type))
 	{
-		return aarch64_coerce_illegal_vector(type);
+		return aarch64_coerce_illegal_vector(type, param);
 	}
 
 	TypeSize size = type_size(type);
@@ -162,16 +162,16 @@ ABIArgInfo *aarch64_classify_return_type(ParamInfo info, bool variadic)
 	// Large vectors by mem.
 	if (type->type_kind == TYPE_VECTOR && size > 16)
 	{
-		return abi_arg_new_direct_coerce_type(abi_type_get(type));
+		return abi_arg_new_direct_coerce_type(abi_type_get(type), param);
 	}
 
 	if (!type_is_abi_aggregate(type))
 	{
 		if (type_is_promotable_int_bool(type) && compiler.platform.aarch64.is_darwin_pcs)
 		{
-			return abi_arg_new_direct_int_ext(type);
+			return abi_arg_new_direct_int_ext(type, param);
 		}
-		return abi_arg_new_direct();
+		return abi_arg_new_direct(param);
 	}
 
 	// Abi aggregate:
@@ -184,7 +184,7 @@ ABIArgInfo *aarch64_classify_return_type(ParamInfo info, bool variadic)
 	if (type_is_homogenous_aggregate(type, &base, &members) &&
 		!(compiler.platform.arch == ARCH_TYPE_AARCH64_32 && variadic))
 	{
-		return abi_arg_new_direct();
+		return abi_arg_new_direct(param);
 	}
 
 	// Aggregates <= in registers
@@ -196,7 +196,7 @@ ABIArgInfo *aarch64_classify_return_type(ParamInfo info, bool variadic)
 
 		if (size <= 8 && !compiler.platform.big_endian)
 		{
-			return abi_arg_new_direct_coerce_int();
+			return abi_arg_new_direct_coerce_int(param);
 		}
 
 		unsigned alignment = type_abi_alignment(type);
@@ -204,16 +204,16 @@ ABIArgInfo *aarch64_classify_return_type(ParamInfo info, bool variadic)
 		size = aligned_offset(size, 8);
 		if (alignment < 16 && size == 16)
 		{
-			return abi_arg_new_direct_coerce_type(abi_type_get(type_get_array(type_ulong, size / 8)));
+			return abi_arg_new_direct_coerce_type(abi_type_get(type_get_array(type_ulong, size / 8)), param);
 		}
-		return abi_arg_new_direct_coerce_type_bits(size * 8);
+		return abi_arg_new_direct_coerce_type_bits(size * 8, param);
 	}
 
-	return abi_arg_new_indirect_by_val(type);
+	return abi_arg_new_indirect_by_val(type, param);
 }
 
 
-void c_abi_func_create_aarch64(FunctionPrototype *prototype)
+void c_abi_func_create_aarch64(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count)
 {
 
 	prototype->ret_abi_info = aarch64_classify_return_type(prototype->return_info, prototype->raw_variadic);
@@ -229,14 +229,12 @@ void c_abi_func_create_aarch64(FunctionPrototype *prototype)
 		}
 		prototype->abi_args = args;
 	}
-	ParamInfo *va_params = prototype->vararg_infos;
-	unsigned va_param_count = vec_size(va_params);
-	if (va_param_count)
+	if (vaarg_count)
 	{
-		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * va_param_count);
-		for (unsigned i = 0; i < va_param_count; i++)
+		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * vaarg_count);
+		for (unsigned i = 0; i < vaarg_count; i++)
 		{
-			args[i] = aarch64_classify_argument_type(va_params[i]);
+			args[i] = aarch64_classify_argument_type(vaargs[i]);
 		}
 		prototype->abi_varargs = args;
 	}

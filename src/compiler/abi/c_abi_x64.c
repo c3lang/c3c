@@ -35,22 +35,22 @@ typedef enum
 	CLASS_SSEUP,
 } X64Class;
 
-static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs, Registers *needed_registers, NamedArgument is_named);
+static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs, Registers *needed_registers, NamedArgument is_named, ParamInfo param);
 static bool x64_type_is_structure(Type *type);
 static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X64Class *hi_class, NamedArgument named);
 
-ABIArgInfo *x64_indirect_return_result(Type *type)
+ABIArgInfo *x64_indirect_return_result(Type *type, ParamInfo param)
 {
 	if (type_is_abi_aggregate(type))
 	{
-		return abi_arg_new_indirect_not_by_val(type);
+		return abi_arg_new_indirect_not_by_val(type, param);
 	}
 	type = type_lowering(type);
 	if (type_is_promotable_int_bool(type))
 	{
-		return abi_arg_new_direct_int_ext(type);
+		return abi_arg_new_direct_int_ext(type, param);
 	}
-	return abi_arg_new_direct();
+	return abi_arg_new_direct(param);
 }
 
 
@@ -72,7 +72,7 @@ static bool x64_type_is_illegal_vector(Type *type)
 	return false;
 }
 
-ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
+ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs, ParamInfo param)
 {
 	// If this is a scalar LLVM value then assume LLVM will pass it in the right
 	// place naturally.
@@ -87,10 +87,10 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
 	{
 		if (type_is_promotable_int_bool(type))
 		{
-			return abi_arg_new_direct_int_ext(type);
+			return abi_arg_new_direct_int_ext(type, param);
 		}
 		// No change, just put it on the stack
-		return abi_arg_new_direct();
+		return abi_arg_new_direct(param);
 	}
 
 	// The byval alignment
@@ -103,14 +103,14 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
 		ByteSize size = type_size(type);
 		if (align <= 8 && size <= 8)
 		{
-			return abi_arg_new_direct_coerce_int();
+			return abi_arg_new_direct_coerce_int(param);
 		}
 	}
 	if (align < 8)
 	{
-		return abi_arg_new_indirect_realigned(8, type);
+		return abi_arg_new_indirect_realigned(8, type, param);
 	}
-	return abi_arg_new_indirect_by_val(type);
+	return abi_arg_new_indirect_by_val(type, param);
 }
 
 
@@ -120,7 +120,7 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
  * @param needed_registers
  * @return
  */
-ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *needed_registers)
+ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *needed_registers, ParamInfo param)
 {
 	ASSERT(x64_type_is_structure(type));
 
@@ -128,14 +128,14 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 	if (type->type_kind == TYPE_SLICE || type->type_kind == TYPE_ANY)
 	{
 		needed_registers->int_registers += 2;
-		return abi_arg_new_direct();
+		return abi_arg_new_direct(param);
 	}
 
 	// Struct, err type handled =>
 	ASSERT(type->type_kind == TYPE_STRUCT);
 
 	// Variable array structs are always passed by pointer.
-	if (type->decl->has_variable_array) return x64_indirect_return_result(type);
+	if (type->decl->has_variable_array) return x64_indirect_return_result(type, param);
 
 	FOREACH(Decl *, member, type->decl->strukt.members)
 	{
@@ -145,23 +145,23 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 		if (x64_type_is_structure(member_type))
 		{
 			// Recursively check the structure.
-			member_info = x64_classify_reg_call_struct_type_check(member_type, &temp_needed_registers);
+			member_info = x64_classify_reg_call_struct_type_check(member_type, &temp_needed_registers, param);
 		}
 		else
 		{
 			// Pass as single argument.
-			member_info = x64_classify_argument_type(member_type, ~(0U), &temp_needed_registers, NAMED);
+			member_info = x64_classify_argument_type(member_type, ~(0U), &temp_needed_registers, NAMED, param);
 		}
 		if (abi_arg_is_indirect(member_info))
 		{
 			*needed_registers = (Registers) { 0, 0 };
-			return x64_indirect_return_result(type);
+			return x64_indirect_return_result(type, param);
 		}
 		needed_registers->sse_registers += temp_needed_registers.sse_registers;
 		needed_registers->int_registers += temp_needed_registers.int_registers;
 	}
 	// Send as direct.
-	return abi_arg_new_direct();
+	return abi_arg_new_direct(param);
 }
 
 
@@ -660,12 +660,12 @@ static AbiType x64_get_byte_vector_type(Type *type)
 	}
 }
 
-static ABIArgInfo *x64_get_argument_pair_return(AbiType low_type, AbiType high_type)
+static ABIArgInfo *x64_get_argument_pair_return(AbiType low_type, AbiType high_type, ParamInfo param)
 {
 	TypeSize low_size = abi_type_size(low_type);
 	unsigned hi_start = aligned_offset(low_size, abi_type_abi_alignment(high_type));
 	ASSERT(hi_start == 8 && "Expected aligned with C-style structs.");
-	return abi_arg_new_direct_pair(low_type, high_type);
+	return abi_arg_new_direct_pair(low_type, high_type, param);
 }
 
 
@@ -698,14 +698,14 @@ ABIArgInfo *x64_classify_return(ParamInfo param)
 		case CLASS_MEMORY:
 			// AMD64-ABI 3.2.3p4: Rule 2. Types of class memory are returned via
 			// hidden argument.
-			return x64_indirect_return_result(return_type);
+			return x64_indirect_return_result(return_type, param);
 		case CLASS_INTEGER:
 			// AMD64-ABI 3.2.3p4: Rule 3. If the class is INTEGER, the next
 			// available register of the sequence %rax, %rdx is used.
 			result_type = x64_get_int_type_at_offset(return_type, 0, return_type, 0);
 			if (hi_class == CLASS_NO_CLASS && type_is_promotable_int_bool(return_type))
 			{
-				return abi_arg_new_direct_coerce_int_ext(return_type);
+				return abi_arg_new_direct_coerce_int_ext(return_type, param);
 			}
 			break;
 		case CLASS_SSE:
@@ -744,13 +744,13 @@ ABIArgInfo *x64_classify_return(ParamInfo param)
 	// If a high part was specified, merge it together with the low part.  It is
 	// known to pass in the high eightbyte of the result.  We do this by forming a
 	// first class struct aggregate with the high and low part: {low, high}
-	if (abi_type_is_valid(high_part)) return x64_get_argument_pair_return(result_type, high_part);
+	if (abi_type_is_valid(high_part)) return x64_get_argument_pair_return(result_type, high_part, param);
 
 	if (abi_type_match(result_type, return_type))
 	{
-		return abi_arg_new_direct();
+		return abi_arg_new_direct(param);
 	}
-	return abi_arg_new_direct_coerce_type(result_type);
+	return abi_arg_new_direct_coerce_type(result_type, param);
 }
 
 /**
@@ -763,7 +763,7 @@ ABIArgInfo *x64_classify_return(ParamInfo param)
  * @param is_named
  * @return
  */
-static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs, Registers *needed_registers, NamedArgument is_named)
+static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs, Registers *needed_registers, NamedArgument is_named, ParamInfo param)
 {
 	ASSERT(type == type_lowering(type));
 	X64Class hi_class;
@@ -787,14 +787,14 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 		case CLASS_SSEUP:
 			UNREACHABLE
 		case CLASS_MEMORY:
-			return x64_indirect_result(type, free_int_regs);
+			return x64_indirect_result(type, free_int_regs, param);
 		case CLASS_INTEGER:
 			needed_registers->int_registers++;
 			result_type = x64_get_int_type_at_offset(type, 0, type, 0);
 			if (hi_class == CLASS_NO_CLASS && type_is_promotable_int_bool(type))
 			{
 				ASSERT(abi_type_is_type(result_type));
-				return abi_arg_new_direct_coerce_int_ext(result_type.type);
+				return abi_arg_new_direct_coerce_int_ext(result_type.type, param);
 			}
 			break;
 		case CLASS_SSE:
@@ -831,21 +831,21 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 	// If a high part was specified, merge it together with the low part.  It is
 	// known to pass in the high eightbyte of the result.  We do this by forming a
 	// first class struct aggregate with the high and low part: {low, high}
-	if (abi_type_is_valid(high_part)) return x64_get_argument_pair_return(result_type, high_part);
+	if (abi_type_is_valid(high_part)) return x64_get_argument_pair_return(result_type, high_part, param);
 
 	if (abi_type_match(result_type, type))
 	{
-		return abi_arg_new_direct();
+		return abi_arg_new_direct(param);
 	}
 	if (abi_type_is_type(result_type))
 	{
 		Type *result = result_type.type->canonical;
 		if (type_is_integer(type) && type_is_integer(result) && type->builtin.bytesize == result->builtin.bytesize)
 		{
-			return abi_arg_new_direct();
+			return abi_arg_new_direct(param);
 		}
 	}
-	return abi_arg_new_direct_coerce_type(result_type);
+	return abi_arg_new_direct_coerce_type(result_type, param);
 }
 
 bool x64_type_is_structure(Type *type)
@@ -872,21 +872,21 @@ static ABIArgInfo *x64_classify_parameter(ParamInfo param, Registers *available_
 {
 	Registers needed_registers = { 0, 0 };
 	Type *type = type_lowering(param.type);
-	ABIArgInfo *info = x64_classify_argument_type(type, available_registers->int_registers, &needed_registers, named);
+	ABIArgInfo *info = x64_classify_argument_type(type, available_registers->int_registers, &needed_registers, named, param);
 
 	// Check if we can fit in a register, we're golden.
 	if (try_use_registers(available_registers, &needed_registers)) return info;
 
 	// The rest needs to be passed indirectly.
-	return x64_indirect_result(type, available_registers->int_registers);
+	return x64_indirect_result(type, available_registers->int_registers, param);
 
 }
 
-void c_abi_func_create_x64(FunctionPrototype *prototype)
+void c_abi_func_create_x64(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count)
 {
 	if (prototype->use_win64)
 	{
-		c_abi_func_create_win64(prototype);
+		c_abi_func_create_win64(prototype, vaargs, vaarg_count);
 		return;
 	}
 
@@ -909,13 +909,12 @@ void c_abi_func_create_x64(FunctionPrototype *prototype)
 		}
 		prototype->abi_args = args;
 	}
-	unsigned vararg_count = vec_size(prototype->vararg_infos);
-	if (vararg_count)
+	if (vaarg_count)
 	{
-		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * vararg_count);
-		for (unsigned i = 0; i < vararg_count; i++)
+		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * vaarg_count);
+		for (unsigned i = 0; i < vaarg_count; i++)
 		{
-			args[i] = x64_classify_parameter(prototype->vararg_infos[i], &available_registers, UNNAMED);
+			args[i] = x64_classify_parameter(vaargs[i], &available_registers, UNNAMED);
 		}
 		prototype->abi_varargs = args;
 	}

@@ -5,10 +5,12 @@
 #include "compiler/c_abi_internal.h"
 
 
-static ABIArgInfo *abi_arg_new(ABIKind kind)
+static ABIArgInfo *abi_arg_new(ABIKind kind, ParamInfo param)
 {
 	ABIArgInfo *info = CALLOCS(ABIArgInfo);
 	info->kind = kind;
+	info->original_type = param.type;
+	info->rewrite = param.rewrite;
 	return info;
 }
 
@@ -97,10 +99,10 @@ bool abi_arg_is_indirect(ABIArgInfo *info)
 	UNREACHABLE
 }
 
-ABIArgInfo *abi_arg_new_indirect_realigned(AlignSize alignment, Type *by_val_type)
+ABIArgInfo *abi_arg_new_indirect_realigned(AlignSize alignment, Type *by_val_type, ParamInfo param)
 {
 	ASSERT(alignment > 0);
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_INDIRECT);
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_INDIRECT, param);
 	info->indirect.alignment = alignment;
 	ASSERT(info->indirect.alignment);
 	info->attributes.realign = true;
@@ -109,9 +111,9 @@ ABIArgInfo *abi_arg_new_indirect_realigned(AlignSize alignment, Type *by_val_typ
 	return info;
 }
 
-ABIArgInfo *abi_arg_new_indirect_by_val(Type *by_val_type)
+ABIArgInfo *abi_arg_new_indirect_by_val(Type *by_val_type, ParamInfo param)
 {
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_INDIRECT);
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_INDIRECT, param);
 	info->indirect.alignment = type_abi_alignment(by_val_type);
 	info->indirect.type = by_val_type;
 	info->attributes.by_val = true;
@@ -119,9 +121,9 @@ ABIArgInfo *abi_arg_new_indirect_by_val(Type *by_val_type)
 	return info;
 }
 
-ABIArgInfo *abi_arg_new_indirect_not_by_val(Type *type)
+ABIArgInfo *abi_arg_new_indirect_not_by_val(Type *type, ParamInfo param)
 {
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_INDIRECT);
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_INDIRECT, param);
 	info->indirect.alignment = type_abi_alignment(type);
 	ASSERT(info->indirect.alignment);
 	info->indirect.type = type;
@@ -129,19 +131,19 @@ ABIArgInfo *abi_arg_new_indirect_not_by_val(Type *type)
 	return info;
 }
 
-ABIArgInfo *abi_arg_new_direct_int_ext(Type *int_to_extend)
+ABIArgInfo *abi_arg_new_direct_int_ext(Type *int_to_extend, ParamInfo param)
 {
-	return abi_arg_new_direct_int_ext_by_reg(int_to_extend, false);
+	return abi_arg_new_direct_int_ext_by_reg(int_to_extend, false, param);
 }
 
-ABIArgInfo *abi_arg_new_direct_coerce_int_ext(Type *int_to_extend)
+ABIArgInfo *abi_arg_new_direct_coerce_int_ext(Type *int_to_extend, ParamInfo param)
 {
-	return abi_arg_new_direct_coerce_int_ext_by_reg(int_to_extend, false);
+	return abi_arg_new_direct_coerce_int_ext_by_reg(int_to_extend, false, param);
 }
 
-ABIArgInfo *abi_arg_new_direct_coerce_int_ext_by_reg(Type *int_to_extend, bool by_reg)
+ABIArgInfo *abi_arg_new_direct_coerce_int_ext_by_reg(Type *int_to_extend, bool by_reg, ParamInfo param)
 {
-	ABIArgInfo *info = abi_arg_new_direct_coerce_type(abi_type_get(int_to_extend));
+	ABIArgInfo *info = abi_arg_new_direct_coerce_type(abi_type_get(int_to_extend), param);
 	if (type_is_signed(int_to_extend))
 	{
 		info->attributes.signext = true;
@@ -154,9 +156,9 @@ ABIArgInfo *abi_arg_new_direct_coerce_int_ext_by_reg(Type *int_to_extend, bool b
 	return info;
 }
 
-ABIArgInfo *abi_arg_new_direct_int_ext_by_reg(Type *int_to_extend, bool by_reg)
+ABIArgInfo *abi_arg_new_direct_int_ext_by_reg(Type *int_to_extend, bool by_reg, ParamInfo param)
 {
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT);
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT, param);
 	if (type_is_signed(int_to_extend))
 	{
 		info->attributes.signext = true;
@@ -169,36 +171,36 @@ ABIArgInfo *abi_arg_new_direct_int_ext_by_reg(Type *int_to_extend, bool by_reg)
 	return info;
 }
 
-ABIArgInfo *abi_arg_new_direct_pair(AbiType low_type, AbiType high_type)
+ABIArgInfo *abi_arg_new_direct_pair(AbiType low_type, AbiType high_type, ParamInfo param)
 {
-	ABIArgInfo *arg_info = abi_arg_new(ABI_ARG_DIRECT_PAIR);
+	ABIArgInfo *arg_info = abi_arg_new(ABI_ARG_DIRECT_PAIR, param);
 	arg_info->direct_pair.hi = high_type;
 	arg_info->direct_pair.lo = low_type;
 	return arg_info;
 }
 
-ABIArgInfo *abi_arg_new_direct_by_reg(bool by_reg)
+ABIArgInfo *abi_arg_new_direct_by_reg(bool by_reg, ParamInfo param)
 {
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT);
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT, param);
 	info->attributes.by_reg = by_reg;
 	return info;
 }
 
-ABIArgInfo *abi_arg_new_direct(void)
+ABIArgInfo *abi_arg_new_direct(ParamInfo param)
 {
-	return abi_arg_new_direct_by_reg(false);
+	return abi_arg_new_direct_by_reg(false, param);
 }
 
 
-ABIArgInfo *abi_arg_new_expand(void)
+ABIArgInfo *abi_arg_new_expand(ParamInfo param)
 {
-	return abi_arg_new(ABI_ARG_EXPAND);
+	return abi_arg_new(ABI_ARG_EXPAND, param);
 }
 
 
-ABIArgInfo *abi_arg_new_expand_coerce_pair(Type *first_element, Type *second_element, unsigned hi_offset, bool packed)
+ABIArgInfo *abi_arg_new_expand_coerce_pair(Type *first_element, Type *second_element, unsigned hi_offset, bool packed, ParamInfo param)
 {
-	ABIArgInfo *arg = abi_arg_new(ABI_ARG_EXPAND_COERCE);
+	ABIArgInfo *arg = abi_arg_new(ABI_ARG_EXPAND_COERCE, param);
 	arg->coerce_expand.lo = first_element;
 	arg->coerce_expand.hi = second_element;
 	arg->coerce_expand.offset_hi = hi_offset;
@@ -206,66 +208,66 @@ ABIArgInfo *abi_arg_new_expand_coerce_pair(Type *first_element, Type *second_ele
 	return arg;
 }
 
-ABIArgInfo *abi_arg_new_direct_coerce_int(void)
+ABIArgInfo *abi_arg_new_direct_coerce_int(ParamInfo param)
 {
-	return abi_arg_new(ABI_ARG_DIRECT_COERCE_INT);
+	return abi_arg_new(ABI_ARG_DIRECT_COERCE_INT, param);
 }
 
-ABIArgInfo *abi_arg_new_direct_coerce_type_spec(AbiSpecType type)
+ABIArgInfo *abi_arg_new_direct_coerce_type_spec(AbiSpecType type, ParamInfo param)
 {
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE, param);
 	info->direct_coerce_type = (AbiType){ .abi_type = type };
 	return info;
 }
 
-ABIArgInfo *abi_arg_new_direct_coerce_type(AbiType type)
+ABIArgInfo *abi_arg_new_direct_coerce_type(AbiType type, ParamInfo param)
 {
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE, param);
 	info->direct_coerce_type = type;
 	return info;
 }
 
-ABIArgInfo *abi_arg_new_direct_coerce_type_bits(int bits)
+ABIArgInfo *abi_arg_new_direct_coerce_type_bits(int bits, ParamInfo param)
 {
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE, param);
 	info->direct_coerce_type = abi_type_get_int_bits(bits);
 	return info;
 }
 
-ABIArgInfo *abi_arg_new_direct_struct_expand_i32(uint8_t elements)
+ABIArgInfo *abi_arg_new_direct_struct_expand_i32(uint8_t elements, ParamInfo param)
 {
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_SPLIT_STRUCT_I32);
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_SPLIT_STRUCT_I32, param);
 	info->direct_struct_expand = elements;
 	return info;
 }
 
 
-void c_abi_func_create(FunctionPrototype *proto)
+void c_abi_func_create(FunctionPrototype *proto, ParamInfo *vaargs, unsigned vaarg_count)
 {
 	ASSERT(!proto->is_resolved);
 	proto->is_resolved = true;
 	switch (compiler.platform.abi)
 	{
 		case ABI_X64:
-			c_abi_func_create_x64(proto);
+			c_abi_func_create_x64(proto, vaargs, vaarg_count);
 			return;
 		case ABI_X86:
-			c_abi_func_create_x86(proto);
+			c_abi_func_create_x86(proto, vaargs, vaarg_count);
 			return;
 		case ABI_WIN64:
-			c_abi_func_create_win64(proto);
+			c_abi_func_create_win64(proto, vaargs, vaarg_count);
 			return;
 		case ABI_AARCH64:
-			c_abi_func_create_aarch64(proto);
+			c_abi_func_create_aarch64(proto, vaargs, vaarg_count);
 			return;
 		case ABI_RISCV:
-			c_abi_func_create_riscv(proto);
+			c_abi_func_create_riscv(proto, vaargs, vaarg_count);
 			return;
 		case ABI_WASM:
-			c_abi_func_create_wasm(proto);
+			c_abi_func_create_wasm(proto, vaargs, vaarg_count);
 			return;
 		case ABI_XTENSA:
-			c_abi_func_create_default(proto);
+			c_abi_func_create_default(proto, vaargs, vaarg_count);
 			return;
 		case ABI_UNKNOWN:
 		case ABI_ARM:
@@ -290,18 +292,18 @@ ABIArgInfo *c_abi_classify_argument_type_default(ParamInfo param)
 	Type *type = type_lowering(param.type);
 
 	// Struct-likes are returned by sret
-	if (type_is_abi_aggregate(type)) return abi_arg_new_indirect_by_val(type);
+	if (type_is_abi_aggregate(type)) return abi_arg_new_indirect_by_val(type, param);
 
-	if (type_is_int128(type) && !compiler.platform.int128) return abi_arg_new_indirect_by_val(type);
+	if (type_is_int128(type) && !compiler.platform.int128) return abi_arg_new_indirect_by_val(type, param);
 
 	// Otherwise do we have a type that needs promotion?
-	if (type_is_promotable_int_bool(type)) return abi_arg_new_direct_int_ext(type);
+	if (type_is_promotable_int_bool(type)) return abi_arg_new_direct_int_ext(type, param);
 
 	// No, then do a direct pass.
-	return abi_arg_new_direct();
+	return abi_arg_new_direct(param);
 }
 
-void c_abi_func_create_default(FunctionPrototype *prototype)
+void c_abi_func_create_default(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count)
 {
 	prototype->ret_abi_info = c_abi_classify_return_type_default(prototype->return_info);
 
@@ -316,14 +318,12 @@ void c_abi_func_create_default(FunctionPrototype *prototype)
 		}
 		prototype->abi_args = args;
 	}
-	ParamInfo *va_params = prototype->vararg_infos;
-	unsigned va_param_count = vec_size(va_params);
-	if (va_param_count)
+	if (vaarg_count)
 	{
-		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * va_param_count);
-		for (unsigned i = 0; i < va_param_count; i++)
+		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * vaarg_count);
+		for (unsigned i = 0; i < vaarg_count; i++)
 		{
-			args[i] = c_abi_classify_argument_type_default(va_params[i]);
+			args[i] = c_abi_classify_argument_type_default(vaargs[i]);
 		}
 		prototype->abi_varargs = args;
 	}
