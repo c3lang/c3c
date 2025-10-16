@@ -174,6 +174,8 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			if (prev) return false;
 			Type *base = type;
 			type = type->pointer;
+			TODO
+			/*
 			FunctionPrototype *proto = type->function.prototype;
 			c_emit_type_decl(c, proto->param_infos->type);
 			FOREACH (ParamInfo, t, proto->param_infos)
@@ -190,7 +192,7 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			PRINT(");\n");
 			scratch_buffer_clear();
 			scratch_buffer_printf("__c3_fn%d", id);
-			htable_set(&c->gen_decl, base, scratch_buffer_copy());
+			htable_set(&c->gen_decl, base, scratch_buffer_copy());*/
 			return true;
 		}
 		case TYPE_STRUCT:

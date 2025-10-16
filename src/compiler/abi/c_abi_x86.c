@@ -490,7 +490,7 @@ static ABIArgInfo **x86_create_params(CallABI abi, ParamInfo *params, unsigned p
 	return args;
 }
 
-void c_abi_func_create_x86(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count)
+void c_abi_func_create_x86(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
 {
 	// 1. Calculate the registers we have available
 	//    Normal: 0 / 0 (3 on win32 struct ABI)
@@ -528,7 +528,7 @@ void c_abi_func_create_x86(FunctionPrototype *prototype, ParamInfo *vaargs, unsi
 	runVectorCallFirstPass(FI, State);
 	 */
 
-	prototype->abi_args = x86_create_params(prototype->call_abi, prototype->param_infos, prototype->param_count, &regs);
+	prototype->abi_args = x86_create_params(prototype->call_abi, params, param_count, &regs);
 	prototype->abi_varargs = x86_create_params(prototype->call_abi, vaargs, vaarg_count, &regs);
 }
 

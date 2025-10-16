@@ -5725,29 +5725,22 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 									  bool no_return,
 									  LLVMValueRef func,
 									  LLVMTypeRef func_type,
-									  Expr **varargs)
+									  Expr **vaargs)
 {
 	LLVMValueRef arg_values[512];
-	ParamInfo vaarg_params[512];
 	unsigned arg_count = 0;
-	unsigned vaarg_count = 0;
 	ABIArgInfo **abi_args = prototype->abi_args;
 	unsigned param_count = prototype->param_count;
 	FunctionPrototype copy;
 	if (prototype->raw_variadic)
 	{
-		if (varargs)
+		if (vaargs)
 		{
 			copy = *prototype;
-			FOREACH(Expr *, val, varargs)
-			{
-				vaarg_params[vaarg_count++] = (ParamInfo) { .type = type_flatten(val->type) };
-			}
-			copy.param_vacount = vaarg_count;
 			copy.is_resolved = false;
 			copy.ret_abi_info = NULL;
 			copy.abi_args = NULL;
-			c_abi_func_create(&copy, vaarg_params, vaarg_count);
+			c_abi_func_create(prototype->raw_type->function.signature, &copy, vaargs);
 			prototype = &copy;
 			LLVMTypeRef *params_type = NULL;
 			llvm_update_prototype_abi(c, prototype, &params_type);
@@ -5832,14 +5825,14 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 		llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy);
 	}
 
-	// 9. Typed varargs
+	// 9. Typed vaargs
 
 	if (prototype->raw_variadic)
 	{
-		unsigned vararg_count = vec_size(varargs);
+		unsigned vararg_count = vec_size(vaargs);
 		if (prototype->abi_varargs)
 		{
-			// 9. Emit varargs.
+			// 9. Emit vaargs.
 			unsigned index = 0;
 			ABIArgInfo **abi_varargs = prototype->abi_varargs;
 			for (unsigned i = 0; i < vararg_count; i++)
@@ -5852,7 +5845,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 		}
 		else
 		{
-			// 9. Emit varargs.
+			// 9. Emit vaargs.
 			for (unsigned i = 0; i < vararg_count; i++)
 			{
 				REMINDER("Varargs should be expanded correctly");
@@ -6005,6 +5998,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		varargs = expr->call_expr.varargs;
 	}
 
+	Signature *sig = prototype->raw_type->function.signature;
 	for (unsigned i = 0; i < arg_count; i++)
 	{
 		BEValue *value_ref = &values[i];
@@ -6015,7 +6009,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 			llvm_value_fold_optional(c, value_ref);
 			continue;
 		}
-		Decl *decl = prototype->param_copy[i];
+		Decl *decl = sig->params[i];
 		Type *param = decl->type;
 		if (vararg_splat)
 		{

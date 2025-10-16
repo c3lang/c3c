@@ -1212,21 +1212,14 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	}
 	llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
 	llvm_attribute_add_string(c, function, "no-trapping-math", "true", -1);
-	unsigned index = prototype->ret_rewrite == RET_OPTIONAL_VALUE ? 1 : 0;
-	FOREACH(Decl *, param, prototype->param_copy)
+	int offset = prototype->ret_rewrite == RET_OPTIONAL_VALUE ? 1 : 0;
+
+	Signature *sig = prototype->raw_type->function.signature;
+	for (unsigned i = offset; i < prototype->param_count; i++)
 	{
-		ABIArgInfo *info;
-		switch (param->var.rewrite)
-		{
-			case PARAM_RW_EXPAND_ELEMENTS:
-				info = prototype->abi_args[index++];
-				llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end, param);
-				break;
-			default:
-				break;
-		}
-		info = prototype->abi_args[index++];
-		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end, param);
+		ABIArgInfo *info = prototype->abi_args[i];
+		Decl *decl = sig->params[i - offset];
+		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end, decl);
 	}
 	// We ignore decl->func_decl.attr_inline and place it in every call instead.
 	if (decl->func_decl.attr_noinline)

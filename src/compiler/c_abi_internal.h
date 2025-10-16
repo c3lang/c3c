@@ -49,13 +49,13 @@ typedef struct
 
 ABIArgInfo *c_abi_classify_return_type_default(ParamInfo param);
 ABIArgInfo *c_abi_classify_argument_type_default(ParamInfo param);
-void c_abi_func_create_win64(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count);
-void c_abi_func_create_x86(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count);
-void c_abi_func_create_x64(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count);
-void c_abi_func_create_aarch64(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count);
-void c_abi_func_create_riscv(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count);
-void c_abi_func_create_wasm(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count);
-void c_abi_func_create_default(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count);
+void c_abi_func_create_win64(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
+void c_abi_func_create_x86(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
+void c_abi_func_create_x64(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
+void c_abi_func_create_aarch64(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
+void c_abi_func_create_riscv(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
+void c_abi_func_create_wasm(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
+void c_abi_func_create_default(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
 
 static inline AbiType abi_type_get(Type *type)
 {

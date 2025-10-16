@@ -475,7 +475,10 @@ FunctionPrototype *type_get_resolved_prototype(Type *type)
 {
 	ASSERT(type->type_kind == TYPE_FUNC_RAW);
 	FunctionPrototype *prototype = type->function.prototype;
-	if (!prototype->is_resolved) c_abi_func_create(prototype, NULL, 0);
+	if (!prototype->is_resolved)
+	{
+		c_abi_func_create(type->function.signature, prototype, NULL /* no vaargs */);
+	}
 	return prototype;
 }
 

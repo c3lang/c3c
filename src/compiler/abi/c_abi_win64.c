@@ -89,12 +89,10 @@ ABIArgInfo *win64_reclassify_hva_arg(Regs *regs, ParamInfo param, ABIArgInfo *in
 	return info;
 }
 
-static void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, bool is_vector)
+static void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, bool is_vector)
 {
 	static const unsigned max_param_vector_calls_as_reg = 6;
 	unsigned count = 0;
-	ParamInfo *params = prototype->param_infos;
-	unsigned param_count = vec_size(prototype->param_infos);
 	if (param_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
@@ -133,7 +131,7 @@ ABIArgInfo **win64_create_params(ParamInfo *params, unsigned param_count, Regs *
 	return args;
 }
 
-void c_abi_func_create_win64(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count)
+void c_abi_func_create_win64(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
 {
 	// allow calling sysv?
 
@@ -166,10 +164,10 @@ void c_abi_func_create_win64(FunctionPrototype *prototype, ParamInfo *vaargs, un
 	}
 	if (is_vector_call)
 	{
-		win64_vector_call_args(&regs, prototype, is_vector_call);
+		win64_vector_call_args(&regs, prototype, params, param_count, is_vector_call);
 		return;
 	}
 
-	prototype->abi_args = win64_create_params(prototype->param_infos, prototype->param_count, &regs, is_vector_call);
+	prototype->abi_args = win64_create_params(params, param_count, &regs, is_vector_call);
 	prototype->abi_varargs = win64_create_params(vaargs, vaarg_count, &regs, is_vector_call);
 }

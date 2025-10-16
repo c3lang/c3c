@@ -882,11 +882,11 @@ static ABIArgInfo *x64_classify_parameter(ParamInfo param, Registers *available_
 
 }
 
-void c_abi_func_create_x64(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count)
+void c_abi_func_create_x64(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
 {
 	if (prototype->use_win64)
 	{
-		c_abi_func_create_win64(prototype, vaargs, vaarg_count);
+		c_abi_func_create_win64(prototype, params, param_count, vaargs, vaarg_count);
 		return;
 	}
 
@@ -898,8 +898,6 @@ void c_abi_func_create_x64(FunctionPrototype *prototype, ParamInfo *vaargs, unsi
 	prototype->ret_abi_info = x64_classify_return(prototype->return_info);
 	if (abi_arg_is_indirect(prototype->ret_abi_info)) available_registers.int_registers--;
 
-	ParamInfo *params = prototype->param_infos;
-	unsigned param_count = vec_size(prototype->param_infos);
 	if (param_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);

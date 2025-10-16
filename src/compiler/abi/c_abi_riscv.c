@@ -245,7 +245,7 @@ ABIArgInfo **riscv_create_params(ParamInfo* params, unsigned param_count, bool i
 	}
 	return args;
 }
-void c_abi_func_create_riscv(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count)
+void c_abi_func_create_riscv(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
 {
 	// Registers
 	unsigned gpr = 8;
@@ -274,6 +274,6 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype, ParamInfo *vaargs, un
 	unsigned arg_fprs_left = compiler.platform.riscv.flen ? fpr : 0;
 
 
-	prototype->abi_args = riscv_create_params(prototype->param_infos, prototype->param_count, true, &arg_gprs_left, &arg_fprs_left);
+	prototype->abi_args = riscv_create_params(params, param_count, true, &arg_gprs_left, &arg_fprs_left);
 	prototype->abi_varargs = riscv_create_params(vaargs, vaarg_count, false, &arg_gprs_left, &arg_fprs_left);
 }

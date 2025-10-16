@@ -87,10 +87,7 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 		{
 			RETURN_VAL_SEMA_ERROR(type_info_poison(type_info), len_expr, "A vector may not exceed %d in bit width.", compiler.build.max_vector_size);
 		}
-		else
-		{
-			RETURN_VAL_SEMA_ERROR(type_info_poison(type_info), len_expr, "The array length may not exceed %lld.", MAX_ARRAY_SIZE);
-		}
+		RETURN_VAL_SEMA_ERROR(type_info_poison(type_info), len_expr, "The array length may not exceed %lld.", MAX_ARRAY_SIZE);
 	}
 	// We're done, return the size and mark it as a success.
 	*len_ref = (ArraySize)len.i.low;
@@ -671,36 +668,11 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 {
 	unsigned param_count = vec_size(sig->params);
 	FunctionPrototype *proto = CALLOCS(FunctionPrototype);
-	proto->raw_variadic = sig->variadic == VARIADIC_RAW;
-	proto->vararg_index = sig->vararg_index;
 	Type *rtype = type_infoptr(sig->rtype)->type;
-	ParamInfo *param_infos = VECNEW(ParamInfo, param_count + 1);
-	Type *rtype_flat = type_flatten(rtype);
-	if (type_is_optional(rtype))
+	Decl **param_copy = NULL;
+	if (param_count)
 	{
-		proto->return_info = (ParamInfo){ .type = type_fault };
-		proto->return_result = type_no_optional(rtype);
-		if (type_is_void(rtype_flat))
-		{
-			proto->ret_rewrite = RET_OPTIONAL_VOID;
-		}
-		else
-		{
-			proto->ret_rewrite = RET_OPTIONAL_VALUE;
-			vec_add(param_infos, (ParamInfo){ .type = type_get_ptr(rtype_flat) });
-		}
-	}
-	else
-	{
-		proto->return_info = (ParamInfo){ .type = rtype_flat };
-		proto->return_result = rtype;
-		proto->ret_rewrite = RET_NORMAL;
-	}
-	proto->call_abi = abi;
-
-	if (param_count || proto->ret_rewrite == RET_OPTIONAL_VALUE)
-	{
-		Decl **param_copy = VECNEW(Decl*, param_count);
+		param_copy = VECNEW(Decl*, param_count);
 		for (unsigned i = 0; i < param_count; i++)
 		{
 			Decl *decl = decl_copy(sig->params[i]);
@@ -709,31 +681,9 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 			decl->var.init_expr = NULL;
 			decl->name = NULL;
 			vec_add(param_copy, decl);
-			Type *flat_type = type_flatten(decl->type);
-			switch (flat_type->type_kind)
-			{
-				/*
-				case TYPE_VECTOR:
-					if (decl->var.as_simd) break;
-					decl->var.rewrite = PARAM_RW_VEC_TO_ARRAY;
-					flat_type = type_get_array(flat_type->array.base, flat_type->array.len);
-					break;*/
-					/*
-				case TYPE_SLICE:
-					decl->var.rewrite = PARAM_RW_EXPAND_ELEMENTS;
-					vec_add(param_types, type_usz->canonical);
-					flat_type = type_get_ptr(flat_type->array.base);
-					break;*/
-				default:
-					break;
-			}
-			vec_add(param_infos, (ParamInfo) { .type = flat_type });
 		}
-		proto->param_infos = param_infos;
-		proto->param_copy = param_copy;
 	}
 
-	proto->param_count = vec_size(proto->param_infos);
 	scratch_buffer_clear();
 	scratch_buffer_append("fn ");
 	type_append_name_to_scratch(rtype->canonical);
@@ -748,7 +698,7 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 	Signature *copy_sig = CALLOCS(Signature);
 	*copy_sig = *sig;
 	copy_sig->attrs = (CalleeAttributes) { .nodiscard = false };
-	copy_sig->params = proto->param_copy;
+	copy_sig->params = param_copy;
 	proto->raw_type = type;
 	type->function.prototype = proto;
 	type->function.decl = NULL;

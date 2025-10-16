@@ -1908,7 +1908,6 @@ typedef struct FunctionPrototype_
 	RetValType ret_rewrite : 8;
 	ParamInfo return_info;
 	Type *return_result;
-	ParamInfo *param_infos;
 	unsigned param_count;
 	unsigned short param_vacount;
 	Decl **param_copy;
@@ -2580,7 +2579,7 @@ MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
 WindowsSDK *windows_get_sdk(void);
 const char *windows_cross_compile_library(void);
 
-void c_abi_func_create(FunctionPrototype *proto, ParamInfo *vaargs, unsigned vaarg_count);
+void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs);
 
 bool token_is_any_type(TokenType type);
 const char *token_type_to_string(TokenType type);

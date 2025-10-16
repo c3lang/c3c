@@ -63,9 +63,9 @@ ABIArgInfo **wasm_create_params(ParamInfo *params, unsigned param_count)
 	return args;
 }
 
-void c_abi_func_create_wasm(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count)
+void c_abi_func_create_wasm(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
 {
 	prototype->ret_abi_info = wasm_classify_return(prototype->return_info);
-	prototype->abi_args = wasm_create_params(prototype->param_infos, prototype->param_count);
+	prototype->abi_args = wasm_create_params(params, param_count);
 	prototype->abi_varargs = wasm_create_params(vaargs, vaarg_count);
 }

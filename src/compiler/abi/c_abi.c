@@ -241,33 +241,79 @@ ABIArgInfo *abi_arg_new_direct_struct_expand_i32(uint8_t elements, ParamInfo par
 	return info;
 }
 
-
-void c_abi_func_create(FunctionPrototype *proto, ParamInfo *vaargs, unsigned vaarg_count)
+// Fully set up the prototype correctly
+void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs)
 {
 	ASSERT(!proto->is_resolved);
+	ParamInfo vaarg_params[512];
+	ParamInfo params[512];
+	proto->raw_variadic = sig->variadic == VARIADIC_RAW;
+	proto->vararg_index = sig->vararg_index;
+	Type *rtype = type_infoptr(sig->rtype)->type;
+	Type *rtype_flat = type_flatten(rtype);
+	unsigned param_count = 0;
+	if (type_is_optional(rtype))
+	{
+		proto->return_info = (ParamInfo){ .type = type_fault };
+		proto->return_result = type_no_optional(rtype);
+		if (type_is_void(rtype_flat))
+		{
+			proto->ret_rewrite = RET_OPTIONAL_VOID;
+		}
+		else
+		{
+			proto->ret_rewrite = RET_OPTIONAL_VALUE;
+			params[param_count++] = (ParamInfo){ .type = type_get_ptr(rtype_flat) };
+		}
+	}
+	else
+	{
+		proto->return_info = (ParamInfo){ .type = rtype_flat };
+		proto->return_result = rtype;
+		proto->ret_rewrite = RET_NORMAL;
+	}
+	proto->call_abi = sig->abi;
+
+	unsigned param_decl_count = vec_size(sig->params);
+	if (param_decl_count || param_count)
+	{
+		for (unsigned i = 0; i < param_decl_count; i++)
+		{
+			Decl *decl = sig->params[i];
+			Type *flat_type = type_flatten(decl->type);
+			params[param_count++] = (ParamInfo) { .type = flat_type };
+		}
+	}
+	unsigned vaarg_count = 0;
+	FOREACH(Expr *, val, vaargs)
+	{
+		vaarg_params[vaarg_count++] = (ParamInfo) { .type = type_flatten(val->type) };
+	}
+	proto->param_vacount = vaarg_count;
+	proto->param_count = param_count;
 	proto->is_resolved = true;
 	switch (compiler.platform.abi)
 	{
 		case ABI_X64:
-			c_abi_func_create_x64(proto, vaargs, vaarg_count);
+			c_abi_func_create_x64(proto, params, param_count, vaarg_params, vaarg_count);
 			return;
 		case ABI_X86:
-			c_abi_func_create_x86(proto, vaargs, vaarg_count);
+			c_abi_func_create_x86(proto, params, param_count, vaarg_params, vaarg_count);
 			return;
 		case ABI_WIN64:
-			c_abi_func_create_win64(proto, vaargs, vaarg_count);
+			c_abi_func_create_win64(proto, params, param_count, vaarg_params, vaarg_count);
 			return;
 		case ABI_AARCH64:
-			c_abi_func_create_aarch64(proto, vaargs, vaarg_count);
+			c_abi_func_create_aarch64(proto, params, param_count, vaarg_params, vaarg_count);
 			return;
 		case ABI_RISCV:
-			c_abi_func_create_riscv(proto, vaargs, vaarg_count);
+			c_abi_func_create_riscv(proto, params, param_count, vaarg_params, vaarg_count);
 			return;
 		case ABI_WASM:
-			c_abi_func_create_wasm(proto, vaargs, vaarg_count);
+			c_abi_func_create_wasm(proto, params, param_count, vaarg_params, vaarg_count);
 			return;
 		case ABI_XTENSA:
-			c_abi_func_create_default(proto, vaargs, vaarg_count);
+			c_abi_func_create_default(proto, params, param_count, vaarg_params, vaarg_count);
 			return;
 		case ABI_UNKNOWN:
 		case ABI_ARM:
@@ -303,12 +349,10 @@ ABIArgInfo *c_abi_classify_argument_type_default(ParamInfo param)
 	return abi_arg_new_direct(param);
 }
 
-void c_abi_func_create_default(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count)
+void c_abi_func_create_default(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
 {
 	prototype->ret_abi_info = c_abi_classify_return_type_default(prototype->return_info);
 
-	ParamInfo *params = prototype->param_infos;
-	unsigned param_count = vec_size(prototype->param_infos);
 	if (param_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);

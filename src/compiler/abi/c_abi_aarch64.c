@@ -213,13 +213,11 @@ ABIArgInfo *aarch64_classify_return_type(ParamInfo param, bool variadic)
 }
 
 
-void c_abi_func_create_aarch64(FunctionPrototype *prototype, ParamInfo *vaargs, unsigned vaarg_count)
+void c_abi_func_create_aarch64(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
 {
 
 	prototype->ret_abi_info = aarch64_classify_return_type(prototype->return_info, prototype->raw_variadic);
 
-	ParamInfo *params = prototype->param_infos;
-	unsigned param_count = vec_size(prototype->param_infos);
 	if (param_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
