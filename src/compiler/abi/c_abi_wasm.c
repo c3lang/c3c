@@ -4,9 +4,9 @@
 
 #include "compiler/c_abi_internal.h"
 
-static ABIArgInfo *wasm_classify_argument_type(Type *type)
+static ABIArgInfo *wasm_classify_argument_type(ParamInfo param)
 {
-	type = type_lowering(type);
+	Type *type = type_lowering(param.type);
 	if (type_is_abi_aggregate(type))
 	{
 		// Clang: Lower single-field structs to just pass a regular value. TODO: We
@@ -32,11 +32,12 @@ static ABIArgInfo *wasm_classify_argument_type(Type *type)
 	}
 
 	// Otherwise just do the default thing.
-	return c_abi_classify_argument_type_default(type);
+	return c_abi_classify_argument_type_default(param);
 }
 
-static ABIArgInfo *wasm_classify_return(Type *type)
+static ABIArgInfo *wasm_classify_return(ParamInfo param)
 {
+	Type *type = type_lowering(param.type);
 	if (type_is_abi_aggregate(type))
 	{
 		Type *single_type = type_abi_find_single_struct_element(type);
@@ -48,24 +49,24 @@ static ABIArgInfo *wasm_classify_return(Type *type)
 		 */
 	}
 	// Use default classification
-	return c_abi_classify_return_type_default(type);
+	return c_abi_classify_return_type_default(param);
 }
 
-ABIArgInfo **wasm_create_params(Type **params)
+ABIArgInfo **wasm_create_params(ParamInfo *params)
 {
 	unsigned param_count = vec_size(params);
 	if (!param_count) return NULL;
 	ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
 	for (unsigned i = 0; i < param_count; i++)
 	{
-		args[i] = wasm_classify_argument_type(type_lowering(params[i]));
+		args[i] = wasm_classify_argument_type(params[i]);
 	}
 	return args;
 }
 
 void c_abi_func_create_wasm(FunctionPrototype *prototype)
 {
-	prototype->ret_abi_info = wasm_classify_return(type_lowering(prototype->return_type));
-	prototype->abi_args = wasm_create_params(prototype->param_types);
-	prototype->abi_varargs = wasm_create_params(prototype->varargs);
+	prototype->ret_abi_info = wasm_classify_return(prototype->return_info);
+	prototype->abi_args = wasm_create_params(prototype->param_infos);
+	prototype->abi_varargs = wasm_create_params(prototype->vararg_infos);
 }

@@ -248,7 +248,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 
 	LLVMBasicBlockRef error_return_block = NULL;
 	LLVMValueRef error_out = NULL;
-	if (c->cur_func.prototype && c->cur_func.prototype->ret_rewrite != PARAM_RW_NONE)
+	if (c->cur_func.prototype && c->cur_func.prototype->ret_rewrite != RET_NORMAL)
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
 		error_out = llvm_emit_alloca_aligned(c, type_fault, "reterr");
@@ -1543,12 +1543,12 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 	LLVMValueRef actual_args[16];
 	unsigned count = 0;
 	ABIArgInfo **abi_args = prototype->abi_args;
-	Type **types = prototype->param_types;
+	ParamInfo *params = prototype->param_infos;
 	for (unsigned i = 0; i < 4; i++)
 	{
-		Type *type = type_lowering(types[i]);
+		Type *type = type_lowering(params[i].type);
 		BEValue value = { .value = panic_args[i], .type = type };
-		llvm_emit_parameter(c, actual_args, &count, abi_args[i], &value, type);
+		llvm_emit_parameter(c, actual_args, &count, abi_args[i], &value, params[i]);
 	}
 
 	if (panicf)
@@ -1575,7 +1575,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 		llvm_value_aggregate_two(c, &value, any_slice, array_ref, llvm_const_int(c, type_usz, elements));
 		LLVMSetValueName2(value.value, temp_name, 6);
 
-		llvm_emit_parameter(c, actual_args, &count, abi_args[4], &value, any_slice);
+		llvm_emit_parameter(c, actual_args, &count, abi_args[4], &value, (ParamInfo) { .type = any_slice });
 
 		BEValue res;
 		if (c->debug.builder) llvm_emit_debug_location(c, loc);

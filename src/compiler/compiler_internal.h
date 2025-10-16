@@ -1890,6 +1890,12 @@ typedef struct ABIArgInfo_
 
 } ABIArgInfo;
 
+typedef struct ParamInfo
+{
+	Type *type;
+	ParamRewrite rewrite;
+} ParamInfo;
+
 typedef struct FunctionPrototype_
 {
 	CallABI call_abi : 4;
@@ -1897,11 +1903,12 @@ typedef struct FunctionPrototype_
 	bool use_win64 : 1;
 	bool is_resolved : 1;
 	unsigned short vararg_index;
-	ParamRewrite ret_rewrite : 8;
-	Type *return_type;
-	Type **param_types;
+	RetValType ret_rewrite : 8;
+	ParamInfo return_info;
+	Type *return_result;
+	ParamInfo *param_infos;
 	Decl **param_copy;
-	Type **varargs;
+	ParamInfo *vararg_infos;
 	ABIArgInfo *ret_abi_info;
 	ABIArgInfo **abi_args;
 	ABIArgInfo **abi_varargs;

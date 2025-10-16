@@ -8,7 +8,7 @@
 
 static bool x86_try_use_free_regs(Regs *regs, Type *type);
 
-static ABIArgInfo **x86_create_params(CallABI abi, Type **p_type, Regs *ptr);
+static ABIArgInfo **x86_create_params(CallABI abi, ParamInfo *params, Regs *ptr);
 
 static inline bool type_is_simd_vector(Type *type)
 {
@@ -153,13 +153,13 @@ static bool x86_should_return_type_in_reg(Type *type)
  * This code is based on X86_32ABIInfo::classifyReturnType in Clang.
  * @param call convention used.
  * @param regs registers available
- * @param type type of the return.
+ * @param ret_param type of the return.
  * @return
  */
-ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
+ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, ParamInfo ret_param)
 {
 	// 1. Lower any type like enum etc.
-	type = type_lowering(type);
+	Type *type = type_lowering(ret_param.type);
 
 	// 2. Void is ignored
 	if (type_is_void(type)) return abi_arg_ignore();
@@ -443,12 +443,12 @@ static ABIArgInfo *x86_classify_primitives(CallABI call, Regs *regs, Type *type)
 /**
  * Classify an argument to an x86 function.
  */
-static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
+static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, ParamInfo param)
 {
 	// FIXME: Set alignment on indirect arguments.
 
 	// We lower all types here first to avoid enums and typedefs.
-	type = type_lowering(type);
+	Type *type = type_lowering(param.type);
 
 	Type *base = NULL;
 	unsigned elements = 0;
@@ -479,7 +479,7 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 	UNREACHABLE
 }
 
-static ABIArgInfo **x86_create_params(CallABI abi, Type **params, Regs *regs)
+static ABIArgInfo **x86_create_params(CallABI abi, ParamInfo *params, Regs *regs)
 {
 	unsigned param_count = vec_size(params);
 	if (!param_count) return NULL;
@@ -516,7 +516,7 @@ void c_abi_func_create_x86(FunctionPrototype *prototype)
 
 	// 4. Classify the return type. In the case of optional, we need to classify the optional itself as the
 	//    return type.
-	prototype->ret_abi_info = x86_classify_return(prototype->call_abi, &regs, prototype->return_type);
+	prototype->ret_abi_info = x86_classify_return(prototype->call_abi, &regs, prototype->return_info);
 
 	/*
 	 * // The chain argument effectively gives us another free register.
@@ -529,8 +529,8 @@ void c_abi_func_create_x86(FunctionPrototype *prototype)
 	runVectorCallFirstPass(FI, State);
 	 */
 
-	prototype->abi_args = x86_create_params(prototype->call_abi, prototype->param_types, &regs);
-	prototype->abi_varargs = x86_create_params(prototype->call_abi, prototype->varargs, &regs);
+	prototype->abi_args = x86_create_params(prototype->call_abi, prototype->param_infos, &regs);
+	prototype->abi_varargs = x86_create_params(prototype->call_abi, prototype->vararg_infos, &regs);
 }
 
 

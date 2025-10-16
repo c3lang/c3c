@@ -1212,7 +1212,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	}
 	llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
 	llvm_attribute_add_string(c, function, "no-trapping-math", "true", -1);
-	unsigned index = prototype->ret_rewrite == PARAM_RW_RETURN_BY_REF ? 1 : 0;
+	unsigned index = prototype->ret_rewrite == RET_OPTIONAL_VALUE ? 1 : 0;
 	FOREACH(Decl *, param, prototype->param_copy)
 	{
 		ABIArgInfo *info;

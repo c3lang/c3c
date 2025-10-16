@@ -8,7 +8,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl);
 
 static inline LLVMTypeRef llvm_type_from_array(GenContext *context, Type *type);
 static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *type);
-static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgInfo *arg_info, LLVMTypeRef **params);
+static inline void add_func_type_param(GenContext *c, ParamInfo param, ABIArgInfo *arg_info, LLVMTypeRef **params);
 
 static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 {
@@ -147,8 +147,9 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 	UNREACHABLE_VOID
 }
 
-static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgInfo *arg_info, LLVMTypeRef **params)
+static inline void add_func_type_param(GenContext *c, ParamInfo param, ABIArgInfo *arg_info, LLVMTypeRef **params)
 {
+	Type *param_type = param.type;
 	arg_info->param_index_start = (ArrayIndex)vec_size(*params);
 	switch (arg_info->kind)
 	{
@@ -202,7 +203,7 @@ static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgIn
 LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototype, LLVMTypeRef **params)
 {
 	LLVMTypeRef retval = NULL;
-	Type *call_return_type = prototype->return_type;
+	Type *call_return_type = prototype->return_info.type;
 	ABIArgInfo *ret_arg_info = prototype->ret_abi_info;
 
 	ret_arg_info->param_index_end = 0;
@@ -247,14 +248,14 @@ LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototyp
 	}
 
 	// Add in all of the required arguments.
-	FOREACH_IDX(i, Type *, type, prototype->param_types)
+	FOREACH_IDX(i, ParamInfo, param, prototype->param_infos)
 	{
-		add_func_type_param(c, type, prototype->abi_args[i], params);
+		add_func_type_param(c, param, prototype->abi_args[i], params);
 	}
 
-	FOREACH_IDX(j, Type *, type, prototype->varargs)
+	FOREACH_IDX(j, ParamInfo, param, prototype->vararg_infos)
 	{
-		add_func_type_param(c, type, prototype->abi_varargs[j], params);
+		add_func_type_param(c, param, prototype->abi_varargs[j], params);
 	}
 	return retval;
 }

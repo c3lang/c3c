@@ -669,8 +669,9 @@ static ABIArgInfo *x64_get_argument_pair_return(AbiType low_type, AbiType high_t
 }
 
 
-ABIArgInfo *x64_classify_return(Type *return_type)
+ABIArgInfo *x64_classify_return(ParamInfo param)
 {
+	Type *return_type = type_lowering(param.type);
 	// AMD64-ABI 3.2.3p4: Rule 1. Classify the return type with the
 	// classification algorithm.
 	X64Class hi_class;
@@ -862,16 +863,15 @@ bool x64_type_is_structure(Type *type)
 
 /**
  * This code is based on the loop operations in X86_64ABIInfo::computeInfo in Clang
- * @param type
+ * @param param param info
  * @param available_registers to update
- * @param is_regcall true if this is a regcall
  * @param named whether this is a named (non-vararg) parameter or not.
  * @return the calculated ABI
  */
-static ABIArgInfo *x64_classify_parameter(Type *type, Registers *available_registers, NamedArgument named)
+static ABIArgInfo *x64_classify_parameter(ParamInfo param, Registers *available_registers, NamedArgument named)
 {
 	Registers needed_registers = { 0, 0 };
-	type = type_lowering(type);
+	Type *type = type_lowering(param.type);
 	ABIArgInfo *info = x64_classify_argument_type(type, available_registers->int_registers, &needed_registers, named);
 
 	// Check if we can fit in a register, we're golden.
@@ -895,11 +895,11 @@ void c_abi_func_create_x64(FunctionPrototype *prototype)
 			.sse_registers = 8
 	};
 
-	prototype->ret_abi_info = x64_classify_return(type_lowering(prototype->return_type));
+	prototype->ret_abi_info = x64_classify_return(prototype->return_info);
 	if (abi_arg_is_indirect(prototype->ret_abi_info)) available_registers.int_registers--;
 
-	Type **params = prototype->param_types;
-	unsigned param_count = vec_size(prototype->param_types);
+	ParamInfo *params = prototype->param_infos;
+	unsigned param_count = vec_size(prototype->param_infos);
 	if (param_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
@@ -909,13 +909,13 @@ void c_abi_func_create_x64(FunctionPrototype *prototype)
 		}
 		prototype->abi_args = args;
 	}
-	unsigned vararg_count = vec_size(prototype->varargs);
+	unsigned vararg_count = vec_size(prototype->vararg_infos);
 	if (vararg_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * vararg_count);
 		for (unsigned i = 0; i < vararg_count; i++)
 		{
-			args[i] = x64_classify_parameter(prototype->varargs[i], &available_registers, UNNAMED);
+			args[i] = x64_classify_parameter(prototype->vararg_infos[i], &available_registers, UNNAMED);
 		}
 		prototype->abi_varargs = args;
 	}

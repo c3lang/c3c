@@ -277,16 +277,17 @@ void c_abi_func_create(FunctionPrototype *proto)
 }
 
 
-ABIArgInfo *c_abi_classify_return_type_default(Type *type)
+ABIArgInfo *c_abi_classify_return_type_default(ParamInfo param)
 {
+	Type *type = type_lowering(param.type);
 	if (type_is_void(type)) return abi_arg_ignore();
-	return c_abi_classify_argument_type_default(type);
+	return c_abi_classify_argument_type_default(param);
 }
 
-ABIArgInfo *c_abi_classify_argument_type_default(Type *type)
+ABIArgInfo *c_abi_classify_argument_type_default(ParamInfo param)
 {
 	// Perform general lowering.
-	type = type_lowering(type);
+	Type *type = type_lowering(param.type);
 
 	// Struct-likes are returned by sret
 	if (type_is_abi_aggregate(type)) return abi_arg_new_indirect_by_val(type);
@@ -302,10 +303,10 @@ ABIArgInfo *c_abi_classify_argument_type_default(Type *type)
 
 void c_abi_func_create_default(FunctionPrototype *prototype)
 {
-	prototype->ret_abi_info = c_abi_classify_return_type_default(prototype->return_type);
+	prototype->ret_abi_info = c_abi_classify_return_type_default(prototype->return_info);
 
-	Type **params = prototype->param_types;
-	unsigned param_count = vec_size(prototype->param_types);
+	ParamInfo *params = prototype->param_infos;
+	unsigned param_count = vec_size(prototype->param_infos);
 	if (param_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
@@ -315,7 +316,7 @@ void c_abi_func_create_default(FunctionPrototype *prototype)
 		}
 		prototype->abi_args = args;
 	}
-	Type **va_params = prototype->varargs;
+	ParamInfo *va_params = prototype->vararg_infos;
 	unsigned va_param_count = vec_size(va_params);
 	if (va_param_count)
 	{

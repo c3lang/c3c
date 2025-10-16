@@ -674,29 +674,31 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 	proto->raw_variadic = sig->variadic == VARIADIC_RAW;
 	proto->vararg_index = sig->vararg_index;
 	Type *rtype = type_infoptr(sig->rtype)->type;
-	proto->ret_rewrite = PARAM_RW_NONE;
-	Type **param_types = VECNEW(Type*, param_count + 1);
+	ParamInfo *param_infos = VECNEW(ParamInfo, param_count + 1);
 	Type *rtype_flat = type_flatten(rtype);
 	if (type_is_optional(rtype))
 	{
-		proto->return_type = type_fault;
+		proto->return_info = (ParamInfo){ .type = type_fault };
+		proto->return_result = type_no_optional(rtype);
 		if (type_is_void(rtype_flat))
 		{
-			proto->ret_rewrite = PARAM_RW_RETURN_OPTIONAL;
+			proto->ret_rewrite = RET_OPTIONAL_VOID;
 		}
 		else
 		{
-			proto->ret_rewrite = PARAM_RW_RETURN_BY_REF;
-			vec_add(param_types, type_get_ptr(rtype_flat));
+			proto->ret_rewrite = RET_OPTIONAL_VALUE;
+			vec_add(param_infos, (ParamInfo){ .type = type_get_ptr(rtype_flat) });
 		}
 	}
 	else
 	{
-		proto->return_type = rtype;
+		proto->return_info = (ParamInfo){ .type = rtype_flat };
+		proto->return_result = rtype;
+		proto->ret_rewrite = RET_NORMAL;
 	}
 	proto->call_abi = abi;
 
-	if (param_count || proto->ret_rewrite == PARAM_RW_RETURN_BY_REF)
+	if (param_count || proto->ret_rewrite == RET_OPTIONAL_VALUE)
 	{
 		Decl **param_copy = VECNEW(Decl*, param_count);
 		for (unsigned i = 0; i < param_count; i++)
@@ -725,9 +727,9 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 				default:
 					break;
 			}
-			vec_add(param_types, flat_type);
+			vec_add(param_infos, (ParamInfo) { .type = flat_type });
 		}
-		proto->param_types = param_types;
+		proto->param_infos = param_infos;
 		proto->param_copy = param_copy;
 	}
 

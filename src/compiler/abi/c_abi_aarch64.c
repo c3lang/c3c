@@ -75,9 +75,9 @@ ABIArgInfo *aarch64_coerce_illegal_vector(Type *type)
 	return abi_arg_new_indirect_not_by_val(type);
 }
 
-ABIArgInfo *aarch64_classify_argument_type(Type *type)
+static ABIArgInfo *aarch64_classify_argument_type(ParamInfo param_info)
 {
-	type = type_lowering(type);
+	Type *type = type_lowering(param_info.type);
 
 	if (type_is_void(type)) return abi_arg_ignore();
 
@@ -146,9 +146,9 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 	return abi_arg_new_indirect_not_by_val(type);
 }
 
-ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
+ABIArgInfo *aarch64_classify_return_type(ParamInfo info, bool variadic)
 {
-	type = type_lowering(type);
+	Type *type = type_lowering(info.type);
 
 	if (type_is_void(type)) return abi_arg_ignore();
 
@@ -216,10 +216,10 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 void c_abi_func_create_aarch64(FunctionPrototype *prototype)
 {
 
-	prototype->ret_abi_info = aarch64_classify_return_type(prototype->return_type, prototype->raw_variadic);
+	prototype->ret_abi_info = aarch64_classify_return_type(prototype->return_info, prototype->raw_variadic);
 
-	Type **params = prototype->param_types;
-	unsigned param_count = vec_size(prototype->param_types);
+	ParamInfo *params = prototype->param_infos;
+	unsigned param_count = vec_size(prototype->param_infos);
 	if (param_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
@@ -229,7 +229,7 @@ void c_abi_func_create_aarch64(FunctionPrototype *prototype)
 		}
 		prototype->abi_args = args;
 	}
-	Type **va_params = prototype->varargs;
+	ParamInfo *va_params = prototype->vararg_infos;
 	unsigned va_param_count = vec_size(va_params);
 	if (va_param_count)
 	{

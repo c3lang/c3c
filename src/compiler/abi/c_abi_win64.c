@@ -4,8 +4,9 @@
 
 #include "compiler/c_abi_internal.h"
 
-ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vector_call)
+ABIArgInfo *win64_classify(Regs *regs, ParamInfo info, bool is_return, bool is_vector_call)
 {
+	Type *type = info.type;
 	if (type_is_void(type)) return abi_arg_ignore();
 	
 	// Lower enums etc.
@@ -70,12 +71,12 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 	return abi_arg_new_direct();
 }
 
-ABIArgInfo *win64_reclassify_hva_arg(Regs *regs, Type *type, ABIArgInfo *info)
+ABIArgInfo *win64_reclassify_hva_arg(Regs *regs, ParamInfo param, ABIArgInfo *info)
 {
 	// Assumes vectorCall calling convention.
 	Type *base = NULL;
 	unsigned elements = 0;
-	type = type_lowering(type);
+	Type *type = type_lowering(param.type);
 	if (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_VECTOR && type_is_homogenous_aggregate(type, &base, &elements))
 	{
 		if (regs->float_regs >= elements)
@@ -92,24 +93,23 @@ static void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, boo
 {
 	static const unsigned max_param_vector_calls_as_reg = 6;
 	unsigned count = 0;
-	Type **params = prototype->param_types;
-	unsigned param_count = vec_size(prototype->param_types);
+	ParamInfo *params = prototype->param_infos;
+	unsigned param_count = vec_size(prototype->param_infos);
 	if (param_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
 		for (unsigned i = 0; i < param_count; i++)
 		{
-			Type *type = params[i];
 			if (count < max_param_vector_calls_as_reg)
 			{
-				args[i] = win64_classify(regs, type, false, is_vector);
+				args[i] = win64_classify(regs, params[i], false, is_vector);
 			}
 			else
 			{
 				// Cannot be passed in registers pretend no registers.
 				unsigned float_regs = regs->float_regs;
 				regs->float_regs = 0;
-				args[i] = win64_classify(regs, type, false, is_vector);
+				args[i] = win64_classify(regs, params[i], false, is_vector);
 				regs->float_regs = float_regs;
 			}
 			count++;
@@ -122,7 +122,7 @@ static void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, boo
 	}
 }
 
-ABIArgInfo **win64_create_params(Type **params, Regs *regs, bool is_vector_call)
+ABIArgInfo **win64_create_params(ParamInfo *params, Regs *regs, bool is_vector_call)
 {
 	unsigned param_count = vec_size(params);
 	if (!param_count) return NULL;
@@ -152,7 +152,7 @@ void c_abi_func_create_win64(FunctionPrototype *prototype)
 			break;
 	}
 
-	prototype->ret_abi_info = win64_classify(&regs, prototype->return_type, true, is_vector_call);
+	prototype->ret_abi_info = win64_classify(&regs, prototype->return_info, true, is_vector_call);
 
 	// Set up parameter registers.
 	switch (prototype->call_abi)
@@ -171,6 +171,6 @@ void c_abi_func_create_win64(FunctionPrototype *prototype)
 		return;
 	}
 
-	prototype->abi_args = win64_create_params(prototype->param_types, &regs, is_vector_call);
-	prototype->abi_varargs = win64_create_params(prototype->varargs, &regs, is_vector_call);
+	prototype->abi_args = win64_create_params(prototype->param_infos, &regs, is_vector_call);
+	prototype->abi_varargs = win64_create_params(prototype->vararg_infos, &regs, is_vector_call);
 }

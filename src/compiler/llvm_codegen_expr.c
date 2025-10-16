@@ -5195,9 +5195,9 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 }
 
 
-void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_ref, ABIArgInfo *info, BEValue *be_value, Type *type)
+void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_ref, ABIArgInfo *info, BEValue *be_value, ParamInfo param)
 {
-	type = type_lowering(type);
+	Type *type = type_lowering(param.type);
 	ASSERT(be_value->type->canonical == type);
 	switch (info->kind)
 	{
@@ -5385,7 +5385,7 @@ void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int co
 void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype *prototype, LLVMTypeRef func_type, LLVMValueRef func, LLVMValueRef *args, unsigned arg_count, int inline_flag, LLVMValueRef error_var, bool sret_return, BEValue *synthetic_return_param, bool no_return)
 {
 	ABIArgInfo *ret_info = prototype->ret_abi_info;
-	Type *call_return_type = prototype->return_type;
+	Type *call_return_type = prototype->return_info.type;
 
 	LLVMValueRef call_value = LLVMBuildCall2(c->builder, func_type, func, args, arg_count, "");
 	if (prototype->call_abi)
@@ -5407,12 +5407,12 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 		default:
 			break;
 	}
-	llvm_add_abi_call_attributes(c, call_value, vec_size(prototype->param_types), prototype->abi_args);
+	llvm_add_abi_call_attributes(c, call_value, vec_size(prototype->param_infos), prototype->abi_args);
 	if (prototype->abi_varargs)
 	{
 		llvm_add_abi_call_attributes(c,
 									 call_value,
-									 vec_size(prototype->varargs),
+									 vec_size(prototype->vararg_infos),
 									 prototype->abi_varargs);
 	}
 
@@ -5425,7 +5425,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 		case ABI_ARG_IGNORE:
 			// 12. Basically void returns or empty structs.
 			//     Here we know we don't have an optional or any return value that can be used.
-			ASSERT(prototype->ret_rewrite == PARAM_RW_NONE && "Optional should have produced a return value.");
+			ASSERT(prototype->ret_rewrite == RET_NORMAL && "Optional should have produced a return value.");
 			*result_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
 			return;
 		case ABI_ARG_INDIRECT:
@@ -5526,7 +5526,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 		*result_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
 		return;
 	}
-	if (prototype->ret_rewrite != PARAM_RW_NONE)
+	if (prototype->ret_rewrite != RET_NORMAL)
 	{
 		// 17a. If we used the error var as the indirect recipient, then that will hold the error.
 		//      otherwise it's whatever value in be_value.
@@ -5551,7 +5551,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 
 
 		// 17g. If void, be_value contents should be skipped.
-		if (prototype->ret_rewrite != PARAM_RW_RETURN_BY_REF)
+		if (prototype->ret_rewrite != RET_OPTIONAL_VALUE)
 		{
 			*result_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
 			return;
@@ -5729,7 +5729,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 {
 	LLVMValueRef arg_values[512];
 	unsigned arg_count = 0;
-	Type **params = prototype->param_types;
+	ParamInfo *params = prototype->param_infos;
 	ABIArgInfo **abi_args = prototype->abi_args;
 	unsigned param_count = vec_size(params);
 	FunctionPrototype copy;
@@ -5738,11 +5738,11 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 		if (varargs)
 		{
 			copy = *prototype;
-			copy.varargs = NULL;
+			copy.vararg_infos = NULL;
 
 			FOREACH(Expr *, val, varargs)
 			{
-				vec_add(copy.varargs, type_flatten(val->type));
+				vec_add(copy.vararg_infos, (ParamInfo) { .type = type_flatten(val->type) });
 			}
 			copy.is_resolved = false;
 			copy.ret_abi_info = NULL;
@@ -5754,7 +5754,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 		}
 	}
 	ABIArgInfo *ret_info = prototype->ret_abi_info;
-	Type *call_return_type = prototype->return_type;
+	Type *call_return_type = prototype->return_info.type;
 
 	// 5. In the case of an optional, the error is replacing the regular return abi.
 	LLVMValueRef error_var = NULL;
@@ -5766,7 +5766,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 	{
 		case ABI_ARG_INDIRECT:
 			// 6a. We can use the stored error var if there is no redirect.
-			if (prototype->ret_rewrite != PARAM_RW_NONE && c->catch.fault && !ret_info->attributes.realign)
+			if (prototype->ret_rewrite != RET_NORMAL && c->catch.fault && !ret_info->attributes.realign)
 			{
 				error_var = c->catch.fault;
 				arg_values[arg_count++] = error_var;
@@ -5808,14 +5808,14 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 	//    In this case we need to add it by hand.
 	BEValue synthetic_return_param = { 0 };
 	int start = 0;
-	if (prototype->ret_rewrite == PARAM_RW_RETURN_BY_REF)
+	if (prototype->ret_rewrite == RET_OPTIONAL_VALUE)
 	{
 		// 7b. Create the address to hold the return.
-		Type *actual_return_type_ptr = params[0];
+		Type *actual_return_type_ptr = params[0].type;
 		Type *actual_return_type = actual_return_type_ptr->pointer;
 		llvm_value_set(&synthetic_return_param, llvm_emit_alloca_aligned(c, actual_return_type, "retparam"), actual_return_type_ptr);
 		// 7c. Emit it as a parameter as a pointer (will implicitly add it to the value list)
-		llvm_emit_parameter(c, arg_values, &arg_count, abi_args[0], &synthetic_return_param, synthetic_return_param.type);
+		llvm_emit_parameter(c, arg_values, &arg_count, abi_args[0], &synthetic_return_param, params[0]);
 		// 7d. Update the be_value to actually be an address.
 		llvm_value_set_address_abi_aligned(c, &synthetic_return_param, synthetic_return_param.value, actual_return_type);
 		start = 1;
@@ -5825,16 +5825,11 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 	for (unsigned i = start; i < param_count; i++)
 	{
 		// 8a. Evaluate the expression.
-		Type *param = params[i];
+		ParamInfo param = params[i];
 		ABIArgInfo *info = abi_args[i];
 
 		// 8b. Emit the parameter according to ABI rules.
 		BEValue value_copy = values[i - start];
-		Type *t = type_lowering(param);
-		if (value_copy.type->canonical != t)
-		{
-			ASSERT_AT(span, value_copy.type->canonical == t && "Type mismatch");
-		}
 		llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy, param);
 	}
 
@@ -5852,7 +5847,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 			{
 				ABIArgInfo *info = abi_varargs[index];
 				BEValue value_copy = values[i + param_count];
-				llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy, prototype->varargs[index]);
+				llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy, prototype->vararg_infos[index]);
 				index++;
 			}
 		}

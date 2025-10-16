@@ -47,8 +47,8 @@ typedef struct
 
 
 
-ABIArgInfo *c_abi_classify_return_type_default(Type *type);
-ABIArgInfo *c_abi_classify_argument_type_default(Type *type);
+ABIArgInfo *c_abi_classify_return_type_default(ParamInfo param);
+ABIArgInfo *c_abi_classify_argument_type_default(ParamInfo param);
 void c_abi_func_create_win64(FunctionPrototype *prototype);
 void c_abi_func_create_x86(FunctionPrototype *prototype);
 void c_abi_func_create_x64(FunctionPrototype *prototype);
