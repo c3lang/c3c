@@ -1,7 +1,7 @@
 // #target: macos-x64
 module foo;
 import std::math;
-fn int x(char[<8>] a, char[<8>] b)
+fn int x(char[<8>] a @simd, char[<8>] b @simd)
 {
 	bool[<8>] z = a.comp_eq(b);
 	return ((char[<8>]) { [0..7] = 255 } & (char[<8>])z + ~(char[<8>])z & (char[<8>]) { 0, 1, 2, 3, 4, 5, 6, 7 }).min();

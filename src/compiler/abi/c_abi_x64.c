@@ -139,7 +139,7 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 
 	FOREACH(Decl *, member, type->decl->strukt.members)
 	{
-		Type *member_type = type_lowering(member->type->canonical);
+		Type *member_type = lowered_member_type(member);
 		ABIArgInfo *member_info;
 		Registers temp_needed_registers = { 0, 0 };
 		if (x64_type_is_structure(member_type))
@@ -232,8 +232,9 @@ void x64_classify_struct_union(Type *type, ByteSize offset_base, X64Class *curre
 		// The only case a 256-bit or a 512-bit wide vector could be used is when
 		// the struct contains a single 256-bit or 512-bit field. Early check
 		// and fallback to memory.
+		Type *member_type = lowered_member_type(member);
 		if (size > 16 &&
-			((!is_union && size != type_size(member->type))
+			((!is_union && size != type_size(member_type))
 			|| size > compiler.platform.x64.native_vector_size_avx))
 		{
 			*lo_class = CLASS_MEMORY;
@@ -241,7 +242,7 @@ void x64_classify_struct_union(Type *type, ByteSize offset_base, X64Class *curre
 			return;
 		}
 		// Not aligned?
-		if (offset % type_abi_alignment(member->type))
+		if (offset % type_abi_alignment(member_type))
 		{
 			*lo_class = CLASS_MEMORY;
 			x64_classify_post_merge(size, lo_class, hi_class);
@@ -250,7 +251,7 @@ void x64_classify_struct_union(Type *type, ByteSize offset_base, X64Class *curre
 
 		X64Class field_lo;
 		X64Class field_hi;
-		x64_classify(member->type, offset, &field_lo, &field_hi, named_arg);
+		x64_classify(member_type, offset, &field_lo, &field_hi, named_arg);
 		*lo_class = x64_merge(*lo_class, field_lo);
 		*hi_class = x64_merge(*hi_class, field_hi);
 		if (*lo_class == CLASS_MEMORY || *hi_class == CLASS_MEMORY) break;
@@ -262,7 +263,7 @@ void x64_classify_struct_union(Type *type, ByteSize offset_base, X64Class *curre
 void x64_classify_array(Type *type, ByteSize offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class, NamedArgument named_arg)
 {
 	ByteSize size = type_size(type);
-	Type *element = type->array.base;
+	Type *element = lowered_array_element_type(type);
 	ByteSize element_size = type_size(element);
 	// Bigger than 64 bytes => MEM
 	if (size > 64) return;
@@ -432,14 +433,15 @@ bool x64_bits_contain_no_user_data(Type *type, unsigned start, unsigned end)
 	if (type->type_kind == TYPE_ARRAY)
 	{
 		// Check each field to see if the field overlaps with the queried range.
-		TypeSize element_size = type_size(type->array.base);
+		Type *element_type = lowered_array_element_type(type);
+		TypeSize element_size = type_size(element_type);
 		for (unsigned i = 0; i < type->array.len; i++)
 		{
 			// If the field is after the span we care about, then we're done..
 			TypeSize offset = i * element_size;
 			if (offset >= end) break;
 			unsigned element_start = offset < start ? start - offset : 0;
-			if (!x64_bits_contain_no_user_data(type->array.base, element_start, end - offset)) return false;
+			if (!x64_bits_contain_no_user_data(element_type, element_start, end - offset)) return false;
 		}
 		// No overlap
 		return true;
@@ -451,7 +453,7 @@ bool x64_bits_contain_no_user_data(Type *type, unsigned start, unsigned end)
 			unsigned offset = member->offset;
 			if (offset >= end) break;
 			unsigned field_start = offset < start ? start - offset : 0;
-			if (!x64_bits_contain_no_user_data(member->type, field_start, end - offset)) return false;
+			if (!x64_bits_contain_no_user_data(lowered_member_type(member), field_start, end - offset)) return false;
 		}
 		// No overlap
 		return true;
@@ -468,11 +470,11 @@ bool x64_contains_float_at_offset(Type *type, unsigned offset)
 	{
 		Decl *member = x64_get_member_at_offset(type->decl, offset);
 		offset -= member->offset;
-		return x64_contains_float_at_offset(member->type, offset);
+		return x64_contains_float_at_offset(lowered_member_type(member), offset);
 	}
 	if (type->type_kind == TYPE_ARRAY)
 	{
-		Type *element_type = type->array.base;
+		Type *element_type = lowered_array_element_type(type);
 		unsigned element_size = type_size(element_type);
 		offset -= (offset / element_size) * element_size;
 		return x64_contains_float_at_offset(element_type, offset);
@@ -490,7 +492,7 @@ static Type *x64_get_fp_type_at_offset(Type *type, unsigned ir_offset)
 	}
 	if (type->type_kind == TYPE_ARRAY)
 	{
-		Type *element_type = type_lowering(type->array.base);
+		Type *element_type = lowered_array_element_type(type);
 		ByteSize size = type_size(element_type);
 		return x64_get_fp_type_at_offset(element_type, ir_offset - size * (ir_offset / size));
 	}
@@ -584,7 +586,7 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 			Decl *member = x64_get_member_at_offset(type->decl, offset);
 			if (member)
 			{
-				return x64_get_int_type_at_offset(member->type, offset - member->offset, source_type, source_offset);
+				return x64_get_int_type_at_offset(lowered_member_type(member), offset - member->offset, source_type, source_offset);
 			}
 			break;
 		}
@@ -600,7 +602,7 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 			UNREACHABLE_VOID
 		case TYPE_ARRAY:
 		{
-			Type *element = type->array.base;
+			Type *element = lowered_array_element_type(type);
 			TypeSize element_size = type_size(element);
 			TypeSize element_offset = (offset / element_size) * element_size;
 			return x64_get_int_type_at_offset(element, offset - element_offset, source_type, source_offset);

@@ -1,6 +1,6 @@
 // #target: macos-x64
 module test;
-fn int[<2>] foo(int x)
+fn int[<2>] foo(int x) @simd
 {
   return x > 0 ? {0, 0} : {255, 255};
 }

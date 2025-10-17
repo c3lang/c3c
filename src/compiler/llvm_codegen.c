@@ -282,6 +282,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			unsigned alignment = 0;
 			LLVMValueRef *parts = NULL;
 			bool pack = false;
+			bool is_vec = type_flat_is_vector(array_type);
 			FOREACH(ConstInitializer *, element, elements)
 			{
 				ASSERT(element->kind == CONST_INIT_ARRAY_VALUE);
@@ -295,7 +296,17 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 				// Add zeroes
 				if (diff > 0)
 				{
-					vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, diff, &was_modified));
+					if (is_vec)
+					{
+						for (int i = 0; i < diff; i++)
+						{
+							vec_add(parts, llvm_get_zero_raw(element_type_llvm));
+						}
+					}
+					else
+					{
+						vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, diff, &was_modified));
+					}
 				}
 				LLVMValueRef value = llvm_emit_const_initializer(c, element->init_array_value.element);
 				if (LLVMTypeOf(value) != element_type_llvm) was_modified = true;
@@ -1218,8 +1229,8 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	for (unsigned i = offset; i < prototype->param_count; i++)
 	{
 		ABIArgInfo *info = prototype->abi_args[i];
-		Decl *decl = sig->params[i - offset];
-		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end, decl);
+		Decl *param_decl = sig->params[i - offset];
+		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end, param_decl);
 	}
 	// We ignore decl->func_decl.attr_inline and place it in every call instead.
 	if (decl->func_decl.attr_noinline)

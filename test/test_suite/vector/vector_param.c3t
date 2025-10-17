@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 
-fn void test(int[<4>] x)
+fn void test(int[<4>] x @simd)
 {
 	x[1] = 123;
 	int y = x[1];

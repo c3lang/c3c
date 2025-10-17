@@ -42,7 +42,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 				{
 					vec_add(types, llvm_const_padding_type(c, member->padding));
 				}
-				vec_add(types, llvm_get_type(c, member->type));
+				vec_add(types, llvm_get_type(c, lowered_member_type(member)));
 			}
 			if (decl->strukt.padding)
 			{
@@ -112,7 +112,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 		{
 			FOREACH(Decl *, member, type->decl->strukt.members)
 			{
-				param_expand(context, params_ref, member->type);
+				param_expand(context, params_ref, lowered_member_type(member));
 			}
 			return;
 		}
@@ -128,11 +128,11 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 			// after flattening. Thus we have to use the "largest" field.
 			FOREACH(Decl *, member, type->decl->strukt.members)
 			{
-				Type *member_type = member->type;
+				Type *member_type = lowered_member_type(member);
 				if (type_size(member_type) > largest)
 				{
 					largest = type_size(member_type);
-					largest_type = type_flatten(member_type);
+					largest_type = member_type;
 				}
 			}
 			if (!largest) return;

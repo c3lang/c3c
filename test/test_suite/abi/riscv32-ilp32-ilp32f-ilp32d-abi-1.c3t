@@ -45,20 +45,20 @@ fn Tiny f_agg_tiny_ret() {
   return {1, 2, 3, 4};
 }
 
-fn void f_vec_tiny_v4i8(char[<4>] x) {
+fn void f_vec_tiny_v4i8(char[<4>] x @simd) {
   x[0] = x[1];
   x[2] = x[3];
 }
 
-fn char[<4>] f_vec_tiny_v4i8_ret() {
+fn char[<4>] f_vec_tiny_v4i8_ret() @simd {
   return {1, 2, 3, 4};
 }
 
-fn void f_vec_tiny_v1i32(int[<1>] x) {
+fn void f_vec_tiny_v1i32(int[<1>] x @simd) {
   x[0] = 114;
 }
 
-fn int[<1>] f_vec_tiny_v1i32_ret() {
+fn int[<1>] f_vec_tiny_v1i32_ret() @simd {
   return {1};
 }
 
@@ -77,19 +77,19 @@ fn Small f_agg_small_ret() {
 }
 
 
-fn void f_vec_small_v8i8(char[<8>] x) {
+fn void f_vec_small_v8i8(char[<8>] x @simd) {
   x[0] = x[7];
 }
 
-fn char[<8>] f_vec_small_v8i8_ret() {
+fn char[<8>] f_vec_small_v8i8_ret() @simd {
   return {1, 2, 3, 4, 5, 6, 7, 8};
 }
 
-fn void f_vec_small_v1i64(long[<1>] x) {
+fn void f_vec_small_v1i64(long[<1>] x @simd) {
   x[0] = 114;
 }
 
-fn long[<1>] f_vec_small_v1i64_ret() {
+fn long[<1>] f_vec_small_v1i64_ret() @simd {
   return {1};
 }
 
@@ -124,11 +124,11 @@ fn Large f_agg_large_ret(int i, ichar j) {
   return {1, 2, 3, 4};
 }
 
-fn void f_vec_large_v16i8(char[<16>] x) {
+fn void f_vec_large_v16i8(char[<16>] x @simd) {
   x[0] = x[7];
 }
 
-fn char[<16>] f_vec_large_v16i8_ret() {
+fn char[<16>] f_vec_large_v16i8_ret() @simd {
   return {1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8};
 }
 

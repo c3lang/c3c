@@ -3,30 +3,36 @@ module test;
 alias Int8x16 = ichar[<16>];
 alias Float32x3 = float[<3>];
 
+struct Float32x3s
+{
+	Float32x3 a @simd;
+}
 struct HFAv3
 {
-    Float32x3[4] arr;
+    Float32x3s[4] arr @simd;
 }
 
 struct MixedHFAv3
 {
-    Float32x3[3] arr;
-    Int8x16 b;
+    Float32x3s[3] arr;
+    Int8x16 b @simd;
 }
 
-fn HFAv3 test(HFAv3 a0, HFAv3 a1, HFAv3 a2) {
-  return a2;
+fn HFAv3 test(HFAv3 a0, HFAv3 a1, HFAv3 a2)
+{
+	return a2;
 }
 
-fn MixedHFAv3 test_mixed(MixedHFAv3 a0, MixedHFAv3 a1, MixedHFAv3 a2) {
-  return a2;
+fn MixedHFAv3 test_mixed(MixedHFAv3 a0, MixedHFAv3 a1, MixedHFAv3 a2)
+{
+	return a2;
 }
 
 /* #expect: test.ll
 
-
-%HFAv3 = type { [4 x <3 x float>] }
-%MixedHFAv3 = type { [3 x <3 x float>], <16 x i8> }
+%HFAv3 = type { [4 x %Float32x3s] }
+%Float32x3s = type { <3 x float> }
+%MixedHFAv3 = type { [3 x %Float32x3s], <16 x i8> }
 
 define %HFAv3 @test.test([4 x <4 x float>] %0, [4 x <4 x float>] %1, [4 x <4 x float>] %2)
 define %MixedHFAv3 @test.test_mixed([4 x <4 x float>] %0, [4 x <4 x float>] %1, [4 x <4 x float>] %2) #0 {

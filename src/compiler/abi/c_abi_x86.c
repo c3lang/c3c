@@ -23,7 +23,7 @@ static bool type_is_union_struct_with_simd_vector(Type *type)
 	Decl **members = type->decl->strukt.members;
 	FOREACH(Decl *, member, members)
 	{
-		Type *member_type = type_lowering(member->type);
+		Type *member_type = lowered_member_type(member);
 		if (type_is_simd_vector(member_type)) return true;
 		if (type_is_union_struct_with_simd_vector(member_type)) return true;
 	}
@@ -132,7 +132,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 			return true;
 		case TYPE_ARRAY:
 			// Small arrays <= 8 bytes.
-			return x86_should_return_type_in_reg(type->array.base);
+			return x86_should_return_type_in_reg(lowered_array_element_type(type));
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			// Handle below
@@ -143,8 +143,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 	Decl** members = type->decl->strukt.members;
 	FOREACH(Decl *, member, members)
 	{
-		Type *member_type = member->type->canonical;
-		if (!x86_should_return_type_in_reg(member_type)) return false;
+		if (!x86_should_return_type_in_reg(lowered_member_type(member))) return false;
 	}
 	return true;
 }
@@ -219,8 +218,9 @@ static inline bool x86_is_mmxtype(Type *type)
 {
 	// Return true if the type is an MMX type <2 x i32>, <4 x i16>, or <8 x i8>.
 	if (type->type_kind != TYPE_VECTOR) return false;
-	if (type_size(type->array.base) >= 8) return false;
-	if (!type_is_integer(type->array.base)) return false;
+	Type *element = lowered_array_element_type(type);
+	if (type_size(element) >= 8) return false;
+	if (!type_is_integer(element)) return false;
 	return type_size(type) == 8;
 }
 
@@ -239,7 +239,7 @@ static inline bool x86_can_expand_indirect_aggregate_arg(Type *type)
 	Decl **members = type->decl->strukt.members;
 	FOREACH(Decl *, member, members)
 	{
-		Type *member_type = type_lowering(member->type);
+		Type *member_type = lowered_member_type(member);
 		switch (member_type->type_kind)
 		{
 			case TYPE_I32:

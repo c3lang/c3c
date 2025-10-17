@@ -259,7 +259,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	BEValue return_value = { 0 };
 	if (has_return_value)
 	{
-		llvm_emit_expr(c, &return_value, ast->return_stmt.expr);
+		llvm_emit_expr(c, &return_value, expr);
 		llvm_value_fold_optional(c, &return_value);
 		c->retval = return_value;
 	}

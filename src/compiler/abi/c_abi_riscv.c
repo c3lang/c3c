@@ -55,7 +55,7 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 	if (type->type_kind == TYPE_ARRAY)
 	{
 		ByteSize array_len = type->array.len;
-		Type *element_type = type->array.base;
+		Type *element_type = lowered_array_element_type(type);
 		ByteSize element_size = type_size(element_type);
 		for (ByteSize i = 0; i < array_len; i++)
 		{
@@ -76,7 +76,7 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 		if (type->type_kind == TYPE_UNION) return false;
 		FOREACH(Decl *, member, type->decl->strukt.members)
 		{
-			if (!riscv_detect_fpcc_struct_internal(member->type,
+			if (!riscv_detect_fpcc_struct_internal(lowered_member_type(member),
 												   (unsigned)(current_offset + member->offset),
 												   field1_ref,
 												   field1_offset,

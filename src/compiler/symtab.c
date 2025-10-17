@@ -378,6 +378,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_SAFEINFER] = KW_DEF("@safeinfer");
 	attribute_list[ATTRIBUTE_SAFEMACRO] = KW_DEF("@safemacro");
 	attribute_list[ATTRIBUTE_SECTION] = KW_DEF("@section");
+	attribute_list[ATTRIBUTE_SIMD] = KW_DEF("@simd");
 	attribute_list[ATTRIBUTE_STRUCTLIKE] = KW_DEF("@structlike");
 	attribute_list[ATTRIBUTE_TEST] = KW_DEF("@test");
 	attribute_list[ATTRIBUTE_TAG] = KW_DEF("@tag");

@@ -412,61 +412,69 @@ bool type_is_matching_int(CanonicalType *type1, CanonicalType *type2)
 
 TypeSize type_size(Type *type)
 {
-RETRY:
+	if (type->size != ~(ByteSize)0)
+	{
+		ASSERT(type->size != 0 || type_flatten(type)->type_kind == TYPE_FLEXIBLE_ARRAY);
+		return type->size;
+	}
 	switch (type->type_kind)
 	{
 		case TYPE_BITSTRUCT:
+			if (type->decl->resolve_status != RESOLVE_DONE)
+			{
+				TODO
+			}
 			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
-			type = type->decl->strukt.container_type->type;
-			goto RETRY;
+			return type->size = type_size(type->decl->strukt.container_type->type);
 		case TYPE_TYPEDEF:
 			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
-			type = type->decl->distinct->type;
-			goto RETRY;
+			return type->size = type_size(type->decl->distinct->type);
 		case TYPE_VECTOR:
 		{
 			TypeSize width = type_size(type->array.base) * type->array.len;
 			if (!is_power_of_two(width)) return next_highest_power_of_2(width);
-			return width;
+			return type->size = width;
 		}
 		case CT_TYPES:
 		case TYPE_FUNC_RAW:
 			UNREACHABLE;
 		case TYPE_FLEXIBLE_ARRAY:
-			return 0;
+			return type->size = 0;
 		case TYPE_OPTIONAL:
-			type = type->optional;
-			goto RETRY;
+			return type->size = type_size(type->optional);
 		case TYPE_ALIAS:
-			type = type->canonical;
-			goto RETRY;
+			return type->size = type_size(type->canonical);
 		case TYPE_ENUM:
 		case TYPE_CONST_ENUM:
 			ASSERT(type->decl->enums.type_info->resolve_status == RESOLVE_DONE);
-			type = enum_inner_type(type)->canonical;
-			goto RETRY;
+			return type->size = type_size(enum_inner_type(type)->canonical);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
-			return type->decl->strukt.size;
+			return type->size = type->decl->strukt.size;
 		case TYPE_VOID:
-			return 1;
+			return type->size = 1;
 		case TYPE_BOOL:
 		case TYPE_TYPEID:
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_ANYFAULT:
-			return type->builtin.bytesize;
+			// Always cached
+			UNREACHABLE
 		case TYPE_INTERFACE:
 		case TYPE_ANY:
-			return t.iptr.canonical->builtin.bytesize * 2;
+			return type->size = t.iptr.canonical->builtin.bytesize * 2;
 		case TYPE_FUNC_PTR:
 		case TYPE_POINTER:
-			return t.iptr.canonical->builtin.bytesize;
+			return type->size = t.iptr.canonical->builtin.bytesize;
 		case TYPE_ARRAY:
-			return type_size(type->array.base) * type->array.len;
+		{
+			Type *base = type_flatten(type->array.base);
+			TypeSize size = base->type_kind == TYPE_VECTOR ? type_size(base->array.base) * base->array.len : type_size(base);
+			return type->size = size * type->array.len;
+		}
 		case TYPE_SLICE:
-			return size_slice;
+			return type->size = size_slice;
 	}
 	UNREACHABLE
 }
@@ -835,7 +843,11 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
-			type = type->array.base;
+			type = type_flatten(type->array.base);
+			if (type->type_kind == TYPE_VECTOR)
+			{
+				type = type->array.base;
+			}
 			goto RETRY;
 		case TYPE_SLICE:
 			return alignment_slice;
@@ -1246,6 +1258,18 @@ static Type *type_create_array(Type *element_type, ArraySize len, bool vector, b
 	return vec_arr;
 }
 
+Type *type_array_from_vector(Type *vec_type)
+{
+	ASSERT(vec_type->type_kind == TYPE_VECTOR);
+	return type_get_array(vec_type->array.base, vec_type->array.len);
+}
+
+Type *type_vector_from_array(Type *vec_type)
+{
+	ASSERT(vec_type->type_kind == TYPE_ARRAY);
+	return type_get_vector(vec_type->array.base, vec_type->array.len);
+}
+
 Type *type_get_array(Type *arr_type, ArraySize len)
 {
 	ASSERT(len > 0 && "Created a zero length array");
@@ -1334,11 +1358,6 @@ Type *type_get_vector_bool(Type *original_type)
 	return type_get_vector(type_int_signed_by_bitsize((unsigned)size * 8), (unsigned)original_type->array.len);
 }
 
-Type *type_get_simd(Type *vector_type, unsigned len)
-{
-	return type_get_vector(vector_type, len);
-}
-
 Type *type_get_vector(Type *vector_type, unsigned len)
 {
 	ASSERT(type_is_valid_for_vector(vector_type));
@@ -1352,6 +1371,7 @@ static void type_create(const char *name, Type *location, TypeKind kind, unsigne
 	unsigned byte_size = (bitsize + 7) / 8;
 	*location = (Type) {
 		.type_kind = kind,
+		.size = byte_size,
 		.builtin.bytesize = byte_size,
 		.builtin.bitsize = bitsize,
 		.builtin.abi_alignment = align,
@@ -1370,6 +1390,7 @@ static void type_init(const char *name, Type *location, TypeKind kind, unsigned 
 	unsigned byte_size = (bitsize + 7) / 8;
 	*location = (Type) {
 		.type_kind = kind,
+		.size = byte_size,
 		.builtin.bytesize = byte_size,
 		.builtin.bitsize = bitsize,
 		.builtin.abi_alignment = align.align / 8,
@@ -1391,6 +1412,7 @@ static void type_create_alias(const char *name, Type *location, Type *canonical)
 	decl->is_export = true;
 	*location = (Type) {
 		.decl = decl,
+		.size = ~(ByteSize)0,
 		.type_kind = TYPE_ALIAS,
 		.name = name,
 		.canonical = canonical

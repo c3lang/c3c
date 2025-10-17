@@ -153,3 +153,23 @@ extern const char * const benchmark_fns_var_name;
 extern const char * const benchmark_names_var_name;
 extern const char * const test_fns_var_name;
 extern const char * const test_names_var_name;
+
+INLINE Type *lowered_member_type(Decl *member)
+{
+	Type *field_type = type_lowering(member->type);
+	if (member->decl_kind == DECL_VAR && member->var.vec_as_array)
+	{
+		return type_array_from_vector(field_type);
+	}
+	return field_type;
+}
+
+INLINE Type *lowered_array_element_type(Type *array_type)
+{
+	Type *type = type_lowering(array_type->array.base);
+	if (type->type_kind == TYPE_VECTOR)
+	{
+		return type_array_from_vector(type);
+	}
+	return type;
+}

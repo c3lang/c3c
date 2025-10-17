@@ -28,7 +28,7 @@ fn Tiny f_agg_tiny_ret() {
   return {1, 2, 3, 4};
 }
 
-fn void f_vec_tiny_v4i16(short[<4>] x) {
+fn void f_vec_tiny_v4i16(short[<4>] x @simd) {
   x[0] = x[1];
   x[2] = x[3];
 }
@@ -41,7 +41,7 @@ fn void f_vec_tiny_v1i64(long[<1>] x) {
   x[0] = 114;
 }
 
-fn long[<1>] f_vec_tiny_v1i64_ret() {
+fn long[<1>] f_vec_tiny_v1i64_ret() @simd {
   return {1};
 }
 
@@ -59,19 +59,19 @@ fn Small f_agg_small_ret() {
   return {1, null};
 }
 
-fn void f_vec_small_v8i16(short[<8>] x) {
+fn void f_vec_small_v8i16(short[<8>] x @simd) {
   x[0] = x[7];
 }
 
-fn short[<8>] f_vec_small_v8i16_ret() {
+fn short[<8>] f_vec_small_v8i16_ret() @simd {
   return {1, 2, 3, 4, 5, 6, 7, 8};
 }
 
-fn void f_vec_small_v1i128(int128[<1>] x) {
+fn void f_vec_small_v1i128(int128[<1>] x @simd) {
   x[0] = 114;
 }
 
-fn int128[<1>] f_vec_small_v1i128_ret() {
+fn int128[<1>] f_vec_small_v1i128_ret() @simd {
   return {1};
 }
 
@@ -106,11 +106,11 @@ fn Large f_agg_large_ret(int i, ichar j) {
   return {1, 2, 3, 4};
 }
 
-fn void f_vec_large_v32i8(char[<32>] x) {
+fn void f_vec_large_v32i8(char[<32>] x @simd) {
   x[0] = x[7];
 }
 
-fn char[<32>] f_vec_large_v32i8_ret() {
+fn char[<32>] f_vec_large_v32i8_ret() @simd {
   return { [1] = 1, [31] = 31 };
 }
 
@@ -122,7 +122,7 @@ fn int f_scalar_stack_1(Tiny a, Small b, Small_aligned c,
   return g + h;
 }
 
-fn int f_scalar_stack_2(int a, int128 b, long c, float128 d, char[<32>] e,
+fn int f_scalar_stack_2(int a, int128 b, long c, float128 d, char[<32>] e @simd,
                      char f, ichar g, char h) {
   return g + h;
 }
@@ -131,7 +131,7 @@ fn int f_scalar_stack_2(int a, int128 b, long c, float128 d, char[<32>] e,
 // the presence of large return values that consume a register due to the need
 // to pass a pointer.
 
-fn Large f_scalar_stack_3(uint a, int128 b, float128 c, char[<32>] d,
+fn Large f_scalar_stack_3(uint a, int128 b, float128 c, char[<32>] d @simd,
                               char e, ichar f, char g) {
   return {a, e, f, g};
 }

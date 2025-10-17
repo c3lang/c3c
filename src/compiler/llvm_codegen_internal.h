@@ -553,6 +553,8 @@ void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
 void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value);
 void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr);
 LLVMMetadataRef llvm_debug_create_macro(GenContext *c, Decl *macro);
+void llvm_emit_array_to_vector(GenContext *c, BEValue *value, Type *to);
+void llvm_emit_vec_to_array(GenContext *c, BEValue *value, Type *type);
 
 // -- Optional --
 LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value);

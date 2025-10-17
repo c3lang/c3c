@@ -243,6 +243,16 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 				case STORAGE_UNKNOWN:
 					RETURN_SEMA_ERROR(type_info, "%s has unknown size and cannot be used as a member.", type_quoted_error_string(type));
 			}
+			if (type_flat_is_vector(type) && !decl->attr_simd)
+			{
+				Type *flat = type_flatten(type);
+				AlignSize align = type_abi_alignment(flat->array.base);
+				if (align > decl->alignment)
+				{
+					decl->alignment = align;
+					decl->var.vec_as_array = true;
+				}
+			}
 			decl->type = type;
 			decl->resolve_status = RESOLVE_DONE;
 			return true;
@@ -259,7 +269,8 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 			// Set the nested type as export if this one is exported.
 			decl->is_export = is_export;
 			// Perform the analysis
-			return sema_analyse_decl(context, decl);
+			if (!sema_analyse_decl(context, decl)) return false;
+			return true;
 		default:
 			UNREACHABLE
 	}
@@ -288,6 +299,16 @@ static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Dec
 		return false;
 	}
 	return true;
+}
+
+INLINE ByteSize member_type_size(Decl *member)
+{
+	Type *field_type = type_flatten(member->type);
+	if (member->decl_kind == DECL_VAR && member->var.vec_as_array)
+	{
+		return type_size(field_type->array.base) * field_type->array.len;
+	}
+	return type_size(field_type);
 }
 
 /**
@@ -338,7 +359,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		if (!sema_set_abi_alignment(context, member->type, &member_alignment)) return false;
 		if (!sema_check_struct_holes(context, decl, member)) return false;
 
-		ByteSize member_size = type_size(member->type);
+		ByteSize member_size = member_type_size(member);
 		ASSERT(member_size <= MAX_TYPE_SIZE);
 		// Update max alignment
 		if (member->alignment > member_alignment) member_alignment = member->alignment;
@@ -608,7 +629,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 		offset = align_offset;
 		member->offset = offset;
-		offset += type_size(member->type);
+		offset += member_type_size(member);
 	}
 
 	// Set the alignment:
@@ -1102,6 +1123,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 {
 	Variadic variadic_type = sig->variadic;
 	Decl **params = sig->params;
+
 	unsigned param_count = vec_size(params);
 	unsigned vararg_index = sig->vararg_index;
 	bool is_macro = sig->is_macro;
@@ -1427,6 +1449,7 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Type
 {
 	// Get param count and variadic type
 	Decl **params = signature->params;
+	if (func_decl->attr_simd) signature->is_simd_return = true;
 
 	if (!sema_analyse_signature(context, signature, parent, func_decl)) return false;
 
@@ -3093,6 +3116,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_SAFEMACRO] = ATTR_MACRO,
 			[ATTRIBUTE_SAFEINFER] = ATTR_GLOBAL | ATTR_LOCAL,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
+			[ATTRIBUTE_SIMD] = ATTR_PARAM | ATTR_MEMBER | ATTR_FUNC | ATTR_INTERFACE,
 			[ATTRIBUTE_STRUCTLIKE] = ATTR_TYPEDEF,
 			[ATTRIBUTE_TAG] = ATTR_BITSTRUCT_MEMBER | ATTR_MEMBER | USER_DEFINED_TYPES | CALLABLE_TYPE,
 			[ATTRIBUTE_TEST] = ATTR_FUNC,
@@ -3417,6 +3441,9 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			return true;
 		case ATTRIBUTE_STRUCTLIKE:
 			decl->attr_structlike = true;
+			return true;
+		case ATTRIBUTE_SIMD:
+			decl->attr_simd = true;
 			return true;
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_EXTERN:

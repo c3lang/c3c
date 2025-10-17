@@ -7,7 +7,7 @@ struct Large {
 // Scalars passed on the stack should not have signext/zeroext attributes
 // (they are anyext).
 
-fn int f_scalar_stack_1(int a, int128 b, double c, float128 d, char[<32>] e,
+fn int f_scalar_stack_1(int a, int128 b, double c, float128 d, char[<32>] e @simd,
                      char f, ichar g, char h) {
   return g + h;
 }
@@ -16,7 +16,7 @@ fn int f_scalar_stack_1(int a, int128 b, double c, float128 d, char[<32>] e,
 // the presence of large return values that consume a register due to the need
 // to pass a pointer.
 
-fn Large f_scalar_stack_2(double a, int128 b, float128 c, char[<32>] d,
+fn Large f_scalar_stack_2(double a, int128 b, float128 c, char[<32>] d @simd,
                               char e, ichar f, char g) {
   return {(long)a, e, f, g};
 }

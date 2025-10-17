@@ -303,6 +303,7 @@ typedef struct
 	bool is_pure : 1;
 	bool noreturn : 1;
 	bool always_const : 1;
+	bool is_simd : 1;
 	uint8_t format : 8;
 } CalleeAttributes;
 
@@ -329,6 +330,7 @@ struct Type_
 			uint16_t tb_type;
 		};
 	};
+	ByteSize size;
 	void *backend_typeid;
 	void *backend_debug_type;
 	union
@@ -473,8 +475,7 @@ typedef struct VarDecl_
 	bool copy_const : 1;
 	bool defaulted : 1;
 	bool safe_infer : 1;
-	bool as_simd : 1;
-	ParamRewrite rewrite : 3;
+	bool vec_as_array : 1;
 	union
 	{
 		Expr *init_expr;
@@ -545,6 +546,7 @@ struct Signature_
 	bool is_macro : 1;
 	bool is_at_macro : 1;
 	bool is_safemacro : 1;
+	bool is_simd_return : 1;
 	Variadic variadic : 3;
 	CallABI abi : 8;
 	unsigned vararg_index;
@@ -687,6 +689,7 @@ typedef struct Decl_
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
 	bool attr_structlike : 1;
+	bool attr_simd : 1;
 	union
 	{
 		void *backend_ref;
@@ -1906,11 +1909,11 @@ typedef struct FunctionPrototype_
 	bool is_resolved : 1;
 	unsigned short vararg_index;
 	RetValType ret_rewrite : 8;
+	ParamRewrite return_rewrite : 3;
 	ParamInfo return_info;
 	Type *return_result;
 	unsigned param_count;
 	unsigned short param_vacount;
-	Decl **param_copy;
 	ABIArgInfo *ret_abi_info;
 	ABIArgInfo **abi_args;
 	ABIArgInfo **abi_varargs;
@@ -2600,6 +2603,8 @@ Module *type_base_module(Type *type);
 bool type_is_valid_for_vector(Type *type);
 bool type_is_valid_for_array(Type *type);
 Type *type_get_array(Type *arr_type, ArraySize len);
+Type *type_array_from_vector(Type *vec_type);
+Type *type_vector_from_array(Type *vec_type);
 Type *type_get_indexed_type(Type *type);
 Type *type_get_ptr(Type *ptr_type);
 Type *type_get_func_ptr(Type *func_type);
@@ -2611,7 +2616,6 @@ Type *type_get_flexible_array(Type *arr_type);
 AlignSize type_alloca_alignment(Type *type);
 Type *type_get_optional(Type *optional_type);
 Type *type_get_vector(Type *vector_type, unsigned len);
-Type *type_get_simd(Type *vector_type, unsigned len);
 Type *type_get_vector_bool(Type *original_type);
 Type *type_int_signed_by_bitsize(BitSize bitsize);
 Type *type_int_unsigned_by_bitsize(BitSize bit_size);
@@ -3067,6 +3071,7 @@ INLINE Type *type_new(TypeKind kind, const char *name)
 {
 	Type *type = CALLOCS(Type);
 	type->type_kind = kind;
+	type->size = ~(ByteSize)0;
 	ASSERT(name);
 	type->name = name;
 	global_context_add_type(type);

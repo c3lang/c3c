@@ -44,7 +44,7 @@ bitstruct Box_Flags : ulong
 	bool flag1;
 }
 
-fn Foo* test(Color color)
+fn Foo* test(Color color @simd)
 {
 	io::printn(color);
 	return null;

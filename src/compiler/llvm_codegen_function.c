@@ -94,7 +94,7 @@ static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, u
 			{
 				AlignSize element_align;
 				LLVMValueRef target = llvm_emit_struct_gep_raw(c, ref, struct_type, i, alignment, &element_align);
-				llvm_expand_from_args(c, member->type, target, index, element_align);
+				llvm_expand_from_args(c, lowered_member_type(member), target, index, element_align);
 			}
 			break;
 		}
@@ -117,7 +117,7 @@ LLVMValueRef llvm_get_next_param(GenContext *c, unsigned *index)
 }
 
 
-static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index)
+static inline void llvm_process_parameter_value_inner(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index)
 {
 	switch (info->kind)
 	{
@@ -257,51 +257,44 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 		}
 	}
 }
+
+static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index)
+{
+	switch (info->rewrite)
+	{
+		case PARAM_RW_NONE:
+			llvm_process_parameter_value_inner(c, decl, info, index);
+			break;
+		case PARAM_RW_VEC_TO_ARRAY:
+		{
+			Decl *temp = decl_new_generated_var(info->original_type, VARDECL_PARAM, decl->span);
+			llvm_process_parameter_value_inner(c, temp, info, index);
+			BEValue value;
+			llvm_value_set_decl(c, &value, temp);
+			llvm_emit_array_to_vector(c, &value, decl->type);
+			BEValue param;
+			if (decl->is_value)
+			{
+				llvm_value_rvalue(c, &value);
+				decl->backend_value = value.value;
+			}
+			else
+			{
+				llvm_emit_and_set_decl_alloca(c, decl);
+				llvm_value_set_decl(c, &param, decl);
+				llvm_store(c, &param, &value);
+			}
+			break;
+		}
+		case PARAM_RW_EXPAND_ELEMENTS:
+			TODO;
+	}
+}
 static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo ***abi_info_ref, unsigned *index, unsigned real_index)
 {
 	ASSERT(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
 	ABIArgInfo *info = *((*abi_info_ref)++);
-	// Allocate room on stack, but do not copy.
-	/*
-	switch (decl->var.rewrite)
-	{
-		case PARAM_RW_EXPAND_ELEMENTS:
-		{
-			ASSERT(type_flatten(decl->type)->type_kind == TYPE_SLICE);
-			llvm_emit_and_set_decl_alloca(context, decl);
-			LLVMTypeRef llvm_type = llvm_get_type(context, decl->type);
-			AlignSize align;
-			LLVMValueRef ptr_len = llvm_emit_struct_gep_raw(context, decl->backend_ref, llvm_type, 0, decl->alignment, &align);
-			LLVMValueRef ptr_ptr = llvm_emit_struct_gep_raw(context, decl->backend_ref, llvm_type, 1, decl->alignment, &align);
-			BEValue temp;
-			Decl *len = decl_new_generated_var(type, VARDECL_LOCAL, decl->span);
-			llvm_process_parameter_value(context, len, info, index);
-			llvm_value_set_decl(context, &temp, len);
-			llvm_store_to_ptr(context, ptr_len, &temp);
-			info = *((*abi_info_ref)++);
-			type = *((*types_ref)++);
-			Decl *ptr = decl_new_generated_var(type, VARDECL_LOCAL, decl->span);
-			llvm_process_parameter_value(context, ptr, info, index);
-			llvm_value_set_decl(context, &temp, ptr);
-			llvm_store_to_ptr(context, ptr_ptr, &temp);
-			break;
-		}
-		case PARAM_RW_VEC_TO_ARRAY:
-		{
-			llvm_emit_and_set_decl_alloca(context, decl);
-			Decl *arr = decl_new_generated_var(type, VARDECL_LOCAL, decl->span);
-			llvm_process_parameter_value(context, arr, info, index);
-			BEValue temp;
-			llvm_value_set_decl(context, &temp, arr);
-			llvm_value_addr(context, &temp);
-			temp.type = decl->type;
-			llvm_store_decl(context, decl, &temp);
-			break;
-		}
-		case PARAM_RW_NONE:
-			break;
-	}*/
 	llvm_process_parameter_value(context, decl, info, index);
 	if (llvm_use_debug(context))
 	{
@@ -344,6 +337,19 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 	BEValue no_fail;
 
 	// In this case we use the optional as the actual return.
+	switch (prototype->return_rewrite)
+	{
+		case PARAM_RW_NONE:
+			break;
+		case PARAM_RW_VEC_TO_ARRAY:
+			if (return_value)
+			{
+				llvm_emit_vec_to_array(c, return_value, type_array_from_vector(return_value->type));
+			}
+			break;
+		case PARAM_RW_EXPAND_ELEMENTS:
+			UNREACHABLE_VOID;
+	}
 	if (prototype->ret_rewrite != RET_NORMAL)
 	{
 		if (return_value && prototype->ret_rewrite == RET_OPTIONAL_VALUE)

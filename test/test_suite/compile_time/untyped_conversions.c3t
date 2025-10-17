@@ -5,7 +5,7 @@ struct Foo
 {
 	int a; int b;
 }
-fn void test(int[2] a, int[] b, int[<2>] c)
+fn void test(int[2] a, int[] b, int[<2>] c @simd)
 {
 	io::printfn("%s %s %s", a, b, c);
 }

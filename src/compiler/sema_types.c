@@ -655,7 +655,9 @@ static Type *flatten_raw_function_type(Type *type)
 static uint32_t hash_function(Signature *sig)
 {
 	uintptr_t hash = sig->variadic == VARIADIC_RAW ? 0 : 1;
-	hash = hash * 31 + (uintptr_t)flatten_raw_function_type(type_infoptr(sig->rtype)->type);
+	Type *rtype = typeget(sig->rtype);
+	hash = hash * 31 + (uintptr_t)flatten_raw_function_type(rtype);
+	if (sig->attrs.is_simd && type_flat_is_vector(rtype)) hash++;
 	Decl **params = sig->params;
 	FOREACH(Decl *, param, params)
 	{

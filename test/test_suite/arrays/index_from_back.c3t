@@ -2,7 +2,7 @@
 
 module test;
 
-fn void test(int[10] x, int[<10>] y)
+fn void test(int[10] x, int[<10>] y @simd)
 {
     int a = x[4];
     int b = x[^2];

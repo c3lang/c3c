@@ -1,10 +1,10 @@
 // #target: macos-x64
 module test;
 union Rect {
-  struct { float[<2>] min, max; }
+  struct { float[<2>] min, max @simd; }
 }
 
-fn Rect test_rect(float[<2>] max) {
+fn Rect test_rect(float[<2>] max @simd) {
   Rect rect = {.max = max};
   assert(rect.min == {});
   return rect;

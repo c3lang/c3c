@@ -57,6 +57,7 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype, ParamInfo *params, un
 void c_abi_func_create_wasm(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
 void c_abi_func_create_default(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
 
+
 static inline AbiType abi_type_get(Type *type)
 {
 	return (AbiType) { .type = type };
