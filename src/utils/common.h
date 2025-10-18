@@ -81,18 +81,35 @@
 #define UNUSED __attribute__((unused))
 #define NORETURN __attribute__((noreturn))
 #define INLINE __attribute__((always_inline)) static inline
+#define FORMAT_STR
+#define FORMAT(__X__, __Y__) __attribute__((format (printf, __X__, __Y__)))
 #elif defined(_MSC_VER)
 #define FALLTHROUGH ((void)0)
 #define INLINE static __forceinline
 #define NORETURN __declspec(noreturn)
 #define UNUSED
 #define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
+// On msvc when using /analyze flag it is possible to have printf-style format strings compiler warnings
+// by using the SAL annotations, but __attribute__((format (printf, x, y))) syntax is not supported.
+#define FORMAT(__X__, __Y__)
+#if _MSC_VER >= 1400
+	#include <sal.h>
+	#if _MSC_VER > 1400
+		#define FORMAT_STR _Printf_format_string_
+	#else
+		#define FORMAT_STR __format_string
+	#endif
+#else
+	#define FORMAT_STR
+#endif
 #else
 #define PACK(__Declaration__) __Declaration__
 #define INLINE static inline
 #define FALLTHROUGH ((void)0)
 #define UNUSED
 #define NORETURN
+#define FORMAT_STR
+#define FORMAT(__X__, __Y__)
 #endif
 
 #define INFO_LOG(_string, ...) \
@@ -136,4 +153,5 @@
 
 void evprintf(const char *format, va_list list);
 void eprintf(const char *format, ...);
-NORETURN  __attribute__((format (printf, 1, 2))) void error_exit(const char *format, ...);
+NORETURN FORMAT(1, 2) void error_exit(FORMAT_STR const char *format, ...);
+
