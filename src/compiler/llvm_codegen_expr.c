@@ -5538,6 +5538,31 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 			llvm_value_set_address_abi_aligned(c, &error_holder, c->catch.fault, type_fault);
 		}
 
+		// 17b. For scalar/pointer optional returns with ret_by_ref, set up BE_ADDRESS_OPTIONAL
+		//      so llvm_value_fold_optional() can check and propagate faults.
+		if (prototype->ret_by_ref)
+		{
+			LLVMValueRef fault_storage;
+			// Use c->catch.fault if available (from catch/rethrow operators),
+			// since error_var is only set for ABI_ARG_INDIRECT.
+			if (c->catch.fault)
+			{
+				fault_storage = c->catch.fault;
+				llvm_store_to_ptr_raw_aligned(c, fault_storage, llvm_load_value(c, &error_holder), type_abi_alignment(type_fault));
+			}
+			else
+			{
+				fault_storage = llvm_emit_alloca_aligned(c, type_fault, "optional.fault");
+				llvm_store_to_ptr_raw_aligned(c, fault_storage, llvm_load_value(c, &error_holder), type_abi_alignment(type_fault));
+			}
+
+			*result_value = *synthetic_return_param;
+			result_value->optional = fault_storage;
+			result_value->kind = BE_ADDRESS_OPTIONAL;
+			return;
+		}
+
+		// 17c. For non-scalar optionals (passed by reference), use existing logic
 		LLVMValueRef stored_error;
 
 		if (error_var)
