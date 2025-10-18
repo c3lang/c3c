@@ -164,7 +164,7 @@ NEXT:
 			case 0:
 				return arg_type;
 			default:
-				error_exit("Expected '/' or end: '%s'.", desc);
+				error_exit("Expected '/' or end: '%s'.", *desc);
 		}
 	}
 	return arg_type;

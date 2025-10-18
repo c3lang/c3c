@@ -116,7 +116,7 @@ static void compiler_lex(void)
 		bool loaded = false;
 		const char *error;
 		File *file = source_file_load(source, &loaded, &error);
-		if (!file) error_exit(error);
+		if (!file) error_exit("%s", error);
 		if (loaded) continue;
 		Lexer lexer = { .file = file };
 		lexer_init(&lexer);
@@ -401,7 +401,7 @@ void compiler_parse(void)
 		bool loaded = false;
 		const char *error;
 		File *file = source_file_load(source, &loaded, &error);
-		if (!file) error_exit(error);
+		if (!file) error_exit("%s", error);
 		if (loaded) continue;
 		if (!parse_file(file)) has_error = true;
 		if (compiler.build.print_input) puts(file->full_path);

@@ -89,13 +89,13 @@ void run_arena_allocator_tests(void)
 void *cmalloc(size_t size)
 {
 	void *ptr = malloc(size);
-	if (!ptr) error_exit("Failed to malloc %d bytes.", size);
+	if (!ptr) error_exit("Failed to malloc %zu bytes.", size);
 	return ptr;
 }
 
 void *ccalloc(size_t size, size_t elements)
 {
 	void *ptr = calloc(size, elements);
-	if (!ptr) error_exit("Failed to calloc %d bytes.", size * elements);
+	if (!ptr) error_exit("Failed to calloc %zu bytes.", size * elements);
 	return ptr;
 }

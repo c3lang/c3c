@@ -84,7 +84,7 @@ Type *type_int_signed_by_bitsize(BitSize bitsize)
 		case 32: return type_int;
 		case 64: return type_long;
 		case 128: return type_i128;
-		default: FATAL_ERROR("Illegal bitsize %d", bitsize);
+		default: FATAL_ERROR("Illegal bitsize %llu", (unsigned long long)bitsize);
 	}
 	UNREACHABLE
 }
