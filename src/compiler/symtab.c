@@ -280,6 +280,9 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_STR_UPPER] = KW_DEF("str_upper");
 	builtin_list[BUILTIN_STR_LOWER] = KW_DEF("str_lower");
 	builtin_list[BUILTIN_STR_FIND] = KW_DEF("str_find");
+	builtin_list[BUILTIN_STR_PASCALCASE] = KW_DEF("str_pascalcase");
+	builtin_list[BUILTIN_STR_SNAKECASE] = KW_DEF("str_snakecase");
+	builtin_list[BUILTIN_STR_REPLACE] = KW_DEF("str_replace");
 	builtin_list[BUILTIN_SWIZZLE] = KW_DEF("swizzle");
 	builtin_list[BUILTIN_SWIZZLE2] = KW_DEF("swizzle2");
 	builtin_list[BUILTIN_SPRINTF] = KW_DEF("sprintf");

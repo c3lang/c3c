@@ -2845,8 +2845,13 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 			}
 			else
 			{
-				llvm_emit_int_comp(c, &excess, &start_index, &end_index, BINARYOP_GT);
-				llvm_emit_panic_if_true(c, &excess, "Negative size", slice->span, "Negative size (start %d is less than end %d)", &start_index, &end_index);
+				llvm_value_rvalue(c, &start_index);
+				llvm_value_rvalue(c, &end_index);
+				LLVMValueRef val = llvm_emit_add_int(c, end_index.type, end_index.value, llvm_const_int(c, end_index.type, 1), slice->span);
+				BEValue plus_one_end_index;
+				llvm_value_set(&plus_one_end_index, val, end_index.type);
+				llvm_emit_int_comp(c, &excess, &start_index, &plus_one_end_index, BINARYOP_GT);
+				llvm_emit_panic_if_true(c, &excess, "Negative size", slice->span, "Negative size (slice was: [%d..%d])", &start_index, &end_index);
 
 				if (len.value)
 				{
@@ -5236,7 +5241,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 		}
 		case ABI_ARG_DIRECT_COERCE:
 		{
-			LLVMTypeRef coerce_type = llvm_get_type(c, info->direct_coerce_type);
+			LLVMTypeRef coerce_type = llvm_abi_type(c, info->direct_coerce_type);
 			if (coerce_type == llvm_get_type(c, type))
 			{
 				args[(*arg_count_ref)++] = llvm_load_value_store(c, be_value);
@@ -5502,7 +5507,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 			// 16. A direct coerce, this is basically "call result" bitcast return type.
 
 			// 16a. Get the type of the return.
-			LLVMTypeRef coerce = llvm_get_type(c, ret_info->direct_coerce_type);
+			LLVMTypeRef coerce = llvm_abi_type(c, ret_info->direct_coerce_type);
 
 			// 16b. If we don't have any coerce type, or the actual LLVM types are the same, we're done.
 			if (coerce == llvm_get_type(c, call_return_type))

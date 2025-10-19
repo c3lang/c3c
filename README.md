@@ -151,7 +151,7 @@ Follow the issues [here](https://github.com/c3lang/c3c/issues).
 If you have suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues) 
 or discuss C3 on its dedicated Discord: [https://discord.gg/qN76R87](https://discord.gg/qN76R87).
 
-The compiler is currently verified to compile on Linux, Windows and MacOS.
+The compiler is currently verified to compile on Linux, OpenBSD, Windows and MacOS.
 
 **Support matrix**
 

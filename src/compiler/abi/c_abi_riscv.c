@@ -7,21 +7,18 @@
 
 static ABIArgInfo *riscv_coerce_and_expand_fpcc_struct(AbiType field1, unsigned field1_offset, AbiType field2, unsigned field2_offset)
 {
-	ASSERT(abi_type_is_type(field1));
 	if (!abi_type_is_valid(field2))
 	{
-		return abi_arg_new_direct_coerce_type(field1.type);
+		return abi_arg_new_direct_coerce_type(field1);
 	}
 
-	ASSERT(abi_type_is_type(field2));
-	Type *type2 = field2.type;
-	ByteSize abi_type_size = type_size(type2);
+	ByteSize abi_size = abi_type_size(field2);
 	// Not on even offset, use packed semantics.
-	if (field2_offset % abi_type_size != 0)
+	if (field2_offset % abi_size != 0)
 	{
 		return abi_arg_new_expand_coerce_pair(field1.type, field2.type, field2_offset, true);
 	}
-	return abi_arg_new_expand_coerce_pair(field1.type, field2.type, field2_offset / abi_type_size, false);
+	return abi_arg_new_expand_coerce_pair(field1.type, field2.type, field2_offset / abi_size, false);
 }
 
 static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offset, AbiType *field1_ref, unsigned *field1_offset, AbiType *field2_ref, unsigned *field2_offset)
@@ -214,14 +211,14 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		// required, and a 2-field XLen array if only XLen alignment is required.
 		if (size <= xlen)
 		{
-			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(xlen * 8));
+			return abi_arg_new_direct_coerce_type_bits(xlen * 8);
 		}
 		if (alignment == 2 * compiler.platform.riscv.xlen)
 		{
-			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(xlen * 16));
+			return abi_arg_new_direct_coerce_type_bits(xlen * 16);
 		}
 		Type *ret_type = type_int_unsigned_by_bitsize(xlen * 8);
-		return abi_arg_new_direct_coerce_type(type_get_array(ret_type, 2));
+		return abi_arg_new_direct_coerce_type(abi_type_get(type_get_array(ret_type, 2)));
 	}
 	return abi_arg_new_indirect_not_by_val(type);
 }

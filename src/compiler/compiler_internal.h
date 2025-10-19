@@ -19,7 +19,6 @@ typedef int32_t IndexDiff;
 typedef int64_t ArrayIndex;
 typedef uint16_t StructIndex;
 typedef uint32_t AlignSize;
-typedef int32_t ScopeId;
 typedef uint64_t ArraySize;
 typedef uint64_t BitSize;
 typedef uint16_t FileId;
@@ -43,7 +42,6 @@ typedef uint16_t FileId;
 #define INITIAL_SYMBOL_MAP 0x10000
 #define INITIAL_GENERIC_SYMBOL_MAP 0x1000
 #define MAX_INCLUDE_DIRECTIVES 2048
-#define MAX_MACRO_ITERATIONS 0xFFFFFF
 #define MAX_PARAMS 255
 #define MAX_BITSTRUCT 0x1000
 #define MAX_MEMBERS ((StructIndex)1) << 15
@@ -1639,7 +1637,6 @@ typedef struct EndJump_
 
 typedef struct DynamicScope_
 {
-	ScopeId scope_id;
 	bool allow_dead_code : 1;
 	bool is_dead : 1;
 	bool is_poisoned : 1;
@@ -1789,7 +1786,6 @@ struct SemaContext_
 	CallEnv call_env;
 	Decl *current_macro;
 	InliningSpan *inlined_at;
-	ScopeId scope_id;
 	unsigned macro_call_depth;
 	// Jump tracking
 	JumpTarget break_jump;
@@ -1824,12 +1820,32 @@ struct SemaContext_
 	} generic;
 };
 
+typedef enum
+{
+	ABI_TYPE_INT_24 = 1,
+	ABI_TYPE_INT_40 = 3,
+	ABI_TYPE_INT_48 = 5,
+	ABI_TYPE_INT_56 = 7,
+	ABI_TYPE_INT_VEC_2 = 9,
+	ABI_TYPE_INT_VEC_4 = 11,
+	ABI_TYPE_FLOAT_VEC_2 = 13,
+	ABI_TYPE_FLOAT_VEC_4 = 15,
+	ABI_TYPE_LONG_VEC_2 = 17,
+	ABI_TYPE_FLOAT16_VEC_2 = 19,
+	ABI_TYPE_FLOAT16_VEC_4 = 21,
+	ABI_TYPE_BFLOAT16_VEC_2 = 23,
+	ABI_TYPE_BFLOAT16_VEC_4 = 25,
+	ABI_TYPE_DOUBLE_VEC_2 = 27,
+	ABI_TYPE_DOUBLE_VEC_4 = 29,
+	ABI_TYPE_DOUBLE_VEC_8 = 31,
+} AbiSpecType;
+
 typedef struct
 {
 	union
 	{
 		Type *type;
-		uintptr_t int_bits_plus_1;
+		AbiSpecType abi_type;
 	};
 } AbiType;
 
@@ -1860,7 +1876,7 @@ typedef struct ABIArgInfo_
 			Type *lo;
 			Type *hi;
 		} coerce_expand;
-		Type *direct_coerce_type;
+		AbiType direct_coerce_type;
 		uint8_t direct_struct_expand;
 		struct
 		{
@@ -2308,7 +2324,7 @@ const char *decl_safe_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
 const char *decl_to_a_name(Decl *decl);
 int decl_count_elements(Decl *structlike);
-void decl_append_links_to_global(Decl *decl);
+void decl_append_links_to_global_during_codegen(Decl *decl);
 
 INLINE bool decl_ok(Decl *decl);
 INLINE bool decl_poison(Decl *decl);
@@ -2319,6 +2335,7 @@ static inline Decl *decl_raw(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 static inline bool decl_is_var_local(Decl *decl);
 bool decl_is_ct_var(Decl *decl);
+bool decl_is_deprecated(Decl *decl);
 Decl *decl_find_enum_constant(Decl *decl, const char *name);
 bool decl_needs_prefix(Decl *decl);
 AlignSize decl_find_member_offset(Decl *decl, Decl *member);
@@ -2568,7 +2585,6 @@ unsigned type_get_introspection_kind(TypeKind kind);
 void type_mangle_introspect_name_to_buffer(Type *type);
 AlignSize type_abi_alignment(Type *type);
 bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...);
-AlignSize type_alloca_alignment(Type *type);
 Type *type_find_largest_union_element(Type *type);
 Type *type_find_max_type(Type *type, Type *other, Expr *first, Expr *second);
 Type *type_find_max_type_may_fail(Type *type, Type *other);
@@ -2585,9 +2601,10 @@ Type *type_get_slice(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
 Type *type_get_inferred_vector(Type *arr_type);
 Type *type_get_flexible_array(Type *arr_type);
-
+AlignSize type_alloca_alignment(Type *type);
 Type *type_get_optional(Type *optional_type);
 Type *type_get_vector(Type *vector_type, unsigned len);
+Type *type_get_simd(Type *vector_type, unsigned len);
 Type *type_get_vector_bool(Type *original_type);
 Type *type_int_signed_by_bitsize(BitSize bitsize);
 Type *type_int_unsigned_by_bitsize(BitSize bit_size);

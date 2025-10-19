@@ -63,15 +63,15 @@ ABIArgInfo *aarch64_coerce_illegal_vector(Type *type)
 	// CLANG: Android promotes char[<2>] to ushort, not uint
 	if ((compiler.platform.environment_type == ENV_TYPE_ANDROID || compiler.platform.os == OS_TYPE_ANDROID) && size <= 2)
 	{
-		return abi_arg_new_direct_coerce_type(type_ushort);
+		return abi_arg_new_direct_coerce_type_bits(16);
 	}
 	// 32 bits or fewer? Put in int.
-	if (size <= 4) return abi_arg_new_direct_coerce_type(type_uint);
+	if (size <= 4) return abi_arg_new_direct_coerce_type_bits(32);
 
 	// 64 bits or less? Put in uint[<2>]
-	if (size <= 8) return abi_arg_new_direct_coerce_type(type_get_vector(type_uint, 2));
+	if (size <= 8) return abi_arg_new_direct_coerce_type((AbiType) { .abi_type = ABI_TYPE_INT_VEC_2 });
 	// 128 bits in a single val? Put in uint[<4>]
-	if (size == 128) return abi_arg_new_direct_coerce_type(type_get_vector(type_uint, 4));
+	if (size == 128) return abi_arg_new_direct_coerce_type((AbiType) { .abi_type = ABI_TYPE_INT_VEC_4 });
 	return abi_arg_new_indirect_not_by_val(type);
 }
 
@@ -110,9 +110,9 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 		ASSERT(members < 128);
 		if (members > 1)
 		{
-			return abi_arg_new_direct_coerce_type(type_get_array(base, members));
+			return abi_arg_new_direct_coerce_type(abi_type_get(type_get_array(base, members)));
 		}
-		return abi_arg_new_direct_coerce_type(base);
+		return abi_arg_new_direct_coerce_type(abi_type_get(base));
 	}
 
 	// Aggregates <= in registers
@@ -136,10 +136,10 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 		// For aggregates with 16-byte alignment, we use i128.
 		ASSERT(alignment == 8 || alignment == 16);
 
-		if (alignment == 16) return abi_arg_new_direct_coerce_type(type_u128);
+		if (alignment == 16) return abi_arg_new_direct_coerce_type_bits(128);
 		ArraySize m = size / alignment;
-		if (m > 1) return abi_arg_new_direct_coerce_type(type_get_array(type_ulong, m));
-		return abi_arg_new_direct_coerce_type(type_ulong);
+		if (m > 1) return abi_arg_new_direct_coerce_type(abi_type_get(type_get_array(type_ulong, m)));
+		return abi_arg_new_direct_coerce_type_bits(64);
 
 	}
 
@@ -162,7 +162,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 	// Large vectors by mem.
 	if (type->type_kind == TYPE_VECTOR && size > 16)
 	{
-		return abi_arg_new_direct_coerce_type(type);
+		return abi_arg_new_direct_coerce_type(abi_type_get(type));
 	}
 
 	if (!type_is_abi_aggregate(type))
@@ -204,9 +204,9 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 		size = aligned_offset(size, 8);
 		if (alignment < 16 && size == 16)
 		{
-			return abi_arg_new_direct_coerce_type(type_get_array(type_ulong, size / 8));
+			return abi_arg_new_direct_coerce_type(abi_type_get(type_get_array(type_ulong, size / 8)));
 		}
-		return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(size * 8));
+		return abi_arg_new_direct_coerce_type_bits(size * 8);
 	}
 
 	return abi_arg_new_indirect_by_val(type);

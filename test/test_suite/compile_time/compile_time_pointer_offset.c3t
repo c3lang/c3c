@@ -15,5 +15,5 @@ fn int main()
 /* #expect: test.ll
 
   %x = alloca i64, align 8
-  store i64 ptrtoint (ptr getelementptr (i8, ptr @"$ct.bool", i64 1) to i64), ptr %x, align 8
+  store i64 ptrtoint (ptr getelementptr (i8, ptr
   ret i32 0

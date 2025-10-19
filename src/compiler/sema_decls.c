@@ -5302,6 +5302,11 @@ static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *er
 	}
 	decl->type = symbol->type;
 	decl->define_decl.alias = symbol;
+	if (symbol->visibility == VISIBLE_LOCAL && decl->visibility < VISIBLE_LOCAL)
+	{
+		RETURN_SEMA_ERROR(decl, "A local symbol like '%s' may not be aliased to 'private' or 'public' visibility, please change it to at least be '@private'", symbol->name);
+	}
+	// If the symbol is more hidden than the alias, then we must increase the visibility.
 	if (decl_is_externally_visible(decl) && !decl_is_externally_visible(symbol))
 	{
 		symbol->is_external_visible = true;

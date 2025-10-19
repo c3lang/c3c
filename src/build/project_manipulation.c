@@ -540,6 +540,7 @@ void view_project(BuildOptions *build_options)
 	VIEW_STRING_ARRAY("Source paths", "sources", ", ");
 	VIEW_STRING_ARRAY("C source paths", "c-sources", ", ");
 	VIEW_STRING("Output location", "output");
+	VIEW_STRING("Build location", "build-dir");
 	VIEW_STRING("Output extension", "extension");
 	VIEW_SETTING("Default optimization level", "opt", optimization_levels);
 

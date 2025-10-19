@@ -89,29 +89,57 @@ static inline Type *type_lowering(Type *type)
 	}
 }
 
+static inline bool abi_type_match(AbiType type, Type *other_type)
+{
+	other_type = other_type->canonical;
+	if (type.abi_type & 0x01)
+	{
+		switch (type.abi_type)
+		{
+			case ABI_TYPE_INT_24:
+			case ABI_TYPE_INT_40:
+			case ABI_TYPE_INT_48:
+			case ABI_TYPE_INT_56:
+				return false;
+			case ABI_TYPE_INT_VEC_2:
+				return other_type == type_get_vector(type_uint, 2);
+			case ABI_TYPE_INT_VEC_4:
+				return other_type == type_get_vector(type_uint, 4);
+			case ABI_TYPE_FLOAT_VEC_2:
+				return other_type == type_get_vector(type_float, 2);
+			case ABI_TYPE_FLOAT_VEC_4:
+				return other_type == type_get_vector(type_float, 4);
+			case ABI_TYPE_FLOAT16_VEC_2:
+				return other_type == type_get_vector(type_float16, 2);
+			case ABI_TYPE_FLOAT16_VEC_4:
+				return other_type == type_get_vector(type_float16, 4);
+			case ABI_TYPE_BFLOAT16_VEC_2:
+				return other_type == type_get_vector(type_bfloat, 2);
+			case ABI_TYPE_BFLOAT16_VEC_4:
+				return other_type == type_get_vector(type_bfloat, 4);
+			case ABI_TYPE_LONG_VEC_2:
+				return other_type == type_get_vector(type_ulong, 2);
+			case ABI_TYPE_DOUBLE_VEC_2:
+				return other_type == type_get_vector(type_double, 2);
+			case ABI_TYPE_DOUBLE_VEC_4:
+				return other_type == type_get_vector(type_double, 4);
+			case ABI_TYPE_DOUBLE_VEC_8:
+				return other_type == type_get_vector(type_double, 8);
+		}
+		UNREACHABLE
+	}
+	return type.type == other_type->canonical;
+}
 static inline bool abi_type_is_type(AbiType type)
 {
-	return !(type.int_bits_plus_1 & 0x01);
+	return !(type.abi_type & 0x01);
 }
 
 static inline bool abi_type_is_valid(AbiType type)
 {
-	return type.int_bits_plus_1 != 0;
+	return type.abi_type != 0;
 }
 
-
-UNUSED static inline bool abi_type_is_promotable_integer_or_bool(AbiType type)
-{
-	if (abi_type_is_type(type))
-	{
-		if (!type_is_integer_or_bool_kind(type.type)) return false;
-		if (type.type == type_bool) return true;
-		return type.type->builtin.bitsize < compiler.platform.width_c_int;
-	}
-	// We should only get npot or > big ints here.
-	ASSERT(!is_power_of_two(type.int_bits_plus_1 - 1) || type.int_bits_plus_1 < compiler.platform.width_c_int);
-	return false;
-}
 
 static inline bool expr_is_vector_index_or_swizzle(Expr *expr)
 {

@@ -358,7 +358,7 @@ static inline ABIArgInfo *x86_classify_vector(Regs *regs, Type *type)
 	// MMX passed as i64
 	if (x86_is_mmxtype(type))
 	{
-		return abi_arg_new_direct_coerce_type(type_ulong);
+		return abi_arg_new_direct_coerce_type_bits(64);
 	}
 
 	// Send as a normal parameter
@@ -398,7 +398,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 		}
 		else
 		{
-			info = abi_arg_new_direct_coerce_type(type_uint);
+			info = abi_arg_new_direct_coerce_type_bits(32);
 		}
 		// Not in reg on MCU
 		if (!compiler.platform.x86.is_mcu_api) info->attributes.by_reg = true;

@@ -277,16 +277,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 	return type_homogenous_aggregate_small_enough(type, *elements);
 }
 
-AlignSize type_alloca_alignment(Type *type)
-{
-	AlignSize align = type_abi_alignment(type);
-	if (align < 16 && (compiler.platform.abi == ABI_X64 || compiler.platform.abi == ABI_WIN64))
-	{
-		type = type_flatten(type);
-		if (type->type_kind == TYPE_ARRAY && type_size(type) >= 16) return 16;
-	}
-	return align;
-}
+
 
 bool codegen_single_obj_output()
 {

@@ -1,0 +1,137 @@
+// #target: macos-x64
+// #safe: yes
+module test;
+
+fn void main()
+{
+	int[2] x = { 1, 2 };
+	int[] z = x[0..-1];
+	int y = 1;
+	int yy = -1;
+	int[] w = x[y..yy];
+}
+
+/* #expect: test.ll
+
+
+define void @test.main() #0 {
+entry:
+  %x = alloca [2 x i32], align 4
+  %z = alloca %"int[]", align 8
+  %y = alloca i32, align 4
+  %yy = alloca i32, align 4
+  %w = alloca %"int[]", align 8
+  %taddr = alloca i64, align 8
+  %taddr1 = alloca i64, align 8
+  %varargslots = alloca [2 x %any], align 16
+  %indirectarg = alloca %"any[]", align 8
+  %taddr3 = alloca i64, align 8
+  %varargslots4 = alloca [1 x %any], align 16
+  %indirectarg6 = alloca %"any[]", align 8
+  %taddr11 = alloca i64, align 8
+  %taddr12 = alloca i64, align 8
+  %varargslots13 = alloca [2 x %any], align 16
+  %indirectarg16 = alloca %"any[]", align 8
+  %taddr19 = alloca i64, align 8
+  %taddr20 = alloca i64, align 8
+  %varargslots21 = alloca [2 x %any], align 16
+  %indirectarg24 = alloca %"any[]", align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 8, i1 false)
+  %0 = insertvalue %"int[]" undef, ptr %x, 0
+  %1 = insertvalue %"int[]" %0, i64 0, 1
+  store %"int[]" %1, ptr %z, align 8
+  store i32 1, ptr %y, align 4
+  store i32 -1, ptr %yy, align 4
+  %2 = load i32, ptr %y, align 4
+  %sext = sext i32 %2 to i64
+  %gt = icmp sgt i64 %sext, 2
+  %3 = call i1 @llvm.expect.i1(i1 %gt, i1 false)
+  br i1 %3, label %panic, label %checkok
+
+checkok:                                          ; preds = %entry
+  %underflow = icmp slt i64 %sext, 0
+  %4 = call i1 @llvm.expect.i1(i1 %underflow, i1 false)
+  br i1 %4, label %panic2, label %checkok7
+
+checkok7:                                         ; preds = %checkok
+  %5 = load i32, ptr %yy, align 4
+  %sext8 = sext i32 %5 to i64
+  %add = add i64 %sext8, 1
+  %gt9 = icmp sgt i64 %sext, %add
+  %6 = call i1 @llvm.expect.i1(i1 %gt9, i1 false)
+  br i1 %6, label %panic10, label %checkok17
+
+checkok17:                                        ; preds = %checkok7
+  %le = icmp sle i64 2, %sext8
+  %7 = call i1 @llvm.expect.i1(i1 %le, i1 false)
+  br i1 %7, label %panic18, label %checkok25
+
+checkok25:                                        ; preds = %checkok17
+  %8 = add i64 %sext8, 1
+  %size = sub i64 %8, %sext
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %x, i64 %sext
+  %9 = insertvalue %"int[]" undef, ptr %ptroffset, 0
+  %10 = insertvalue %"int[]" %9, i64 %size, 1
+  store %"int[]" %10, ptr %w, align 8
+  ret void
+
+panic:                                            ; preds = %entry
+  store i64 2, ptr %taddr, align 8
+  %11 = insertvalue %any undef, ptr %taddr, 0
+  %12 = insertvalue %any %11, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store i64 %sext, ptr %taddr1, align 8
+  %13 = insertvalue %any undef, ptr %taddr1, 0
+  %14 = insertvalue %any %13, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store %any %12, ptr %varargslots, align 16
+  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %any %14, ptr %ptradd, align 16
+  %15 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %15, i64 2, 1
+  store %"any[]" %"$$temp", ptr %indirectarg, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 61, ptr @.file, i64 17, ptr @.func, i64 4, i32 9, ptr byval(%"any[]") align 8 %indirectarg) #3
+  unreachable
+
+panic2:                                           ; preds = %checkok
+  store i64 %sext, ptr %taddr3, align 8
+  %16 = insertvalue %any undef, ptr %taddr3, 0
+  %17 = insertvalue %any %16, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store %any %17, ptr %varargslots4, align 16
+  %18 = insertvalue %"any[]" undef, ptr %varargslots4, 0
+  %"$$temp5" = insertvalue %"any[]" %18, i64 1, 1
+  store %"any[]" %"$$temp5", ptr %indirectarg6, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 22, ptr @.file, i64 17, ptr @.func, i64 4, i32 9, ptr byval(%"any[]") align 8 %indirectarg6) #3
+  unreachable
+
+panic10:                                          ; preds = %checkok7
+  store i64 %sext, ptr %taddr11, align 8
+  %19 = insertvalue %any undef, ptr %taddr11, 0
+  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store i64 %sext8, ptr %taddr12, align 8
+  %21 = insertvalue %any undef, ptr %taddr12, 0
+  %22 = insertvalue %any %21, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store %any %20, ptr %varargslots13, align 16
+  %ptradd14 = getelementptr inbounds i8, ptr %varargslots13, i64 16
+  store %any %22, ptr %ptradd14, align 16
+  %23 = insertvalue %"any[]" undef, ptr %varargslots13, 0
+  %"$$temp15" = insertvalue %"any[]" %23, i64 2, 1
+  store %"any[]" %"$$temp15", ptr %indirectarg16, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg.2, i64 35, ptr @.file, i64 17, ptr @.func, i64 4, i32 9, ptr byval(%"any[]") align 8 %indirectarg16) #3
+  unreachable
+
+panic18:                                          ; preds = %checkok17
+  store i64 %sext8, ptr %taddr19, align 8
+  %24 = insertvalue %any undef, ptr %taddr19, 0
+  %25 = insertvalue %any %24, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store i64 2, ptr %taddr20, align 8
+  %26 = insertvalue %any undef, ptr %taddr20, 0
+  %27 = insertvalue %any %26, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store %any %25, ptr %varargslots21, align 16
+  %ptradd22 = getelementptr inbounds i8, ptr %varargslots21, i64 16
+  store %any %27, ptr %ptradd22, align 16
+  %28 = insertvalue %"any[]" undef, ptr %varargslots21, 0
+  %"$$temp23" = insertvalue %"any[]" %28, i64 2, 1
+  store %"any[]" %"$$temp23", ptr %indirectarg24, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg.3, i64 60, ptr @.file, i64 17, ptr @.func, i64 4, i32 9, ptr byval(%"any[]") align 8 %indirectarg24) #3
+  unreachable
+}
+

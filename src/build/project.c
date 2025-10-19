@@ -9,6 +9,7 @@
 const char *project_default_keys[][2] = {
 		{"authors", "Authors, optionally with email."},
 		{"benchfn", "Override the benchmark function."},
+		{"build-dir", "Build location, where intermediate files are placed by default, relative to project file."},
 		{"c-include-dirs", "Set the include directories for C sources."},
 		{"c-sources", "Set the C sources to be compiled."},
 		{"cc", "Set C compiler (defaults to 'cc')."},
@@ -77,6 +78,7 @@ const int project_default_keys_count = ELEMENTLEN(project_default_keys);
 const char* project_deprecated_target_keys[] = { "xxxxxxxxxx" };
 const char* project_target_keys[][2] = {
 		{"benchfn", "Override the benchmark function."},
+		{"build-dir", "Build location, where intermediate files are placed by default, relative to project file."},
 		{"c-include-dirs", "C sources include directories for the target."},
 		{"c-include-dirs-override", "Additional C sources include directories for the target, overriding global settings."},
 		{"c-sources", "Additional C sources to be compiled for the target."},
@@ -182,6 +184,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	target->run_dir = get_string(context, json, "run-dir", target->run_dir);
 	// The output directory
 	target->output_dir = get_string(context, json, "output", target->output_dir);
+	target->build_dir = get_string(context, json, "build-dir", target->build_dir);
 
 	if (context.target)
 	{

@@ -142,6 +142,7 @@ bool context_is_macro(SemaContext *context)
 
 void unit_register_external_symbol(SemaContext *context, Decl *decl)
 {
+	decl = decl_flatten(decl);
 	if (decl->is_external_visible) return;
 	Module *active_module = context->current_macro ? context->original_module : context->compilation_unit->module;
 	if (decl->unit->module == active_module) return;

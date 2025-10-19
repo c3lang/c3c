@@ -659,7 +659,6 @@ void sema_analysis_pass_decls(Module *module)
 		context.active_scope = (DynamicScope)
 				{
 					.depth = 0,
-					.scope_id = 0,
 					.label_start = 0,
 					.current_local = 0,
 				};
