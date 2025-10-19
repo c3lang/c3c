@@ -22,6 +22,7 @@
 - Fix issues with linking when using symbol aliases. #2519
 - Splatting optional compile-time macro parameter from inside lambda expression does not work #2532.
 - Compiler segfault when getting a nonexistant member from an unnamed struct #2533.
+- Correctly mention aliased type when method is not implemented #2534.
 
 ### Stdlib changes
 - Sorting functions correctly took slices by value, but also other types by value. Now, only slices are accepted by value, other containers are always by ref.
