@@ -289,7 +289,7 @@ const char *type_to_error_string(Type *type)
 			if (!suffix && !type_is_inner_type(type)) return type->name;
 			scratch_buffer_clear();
 			type_add_parent_to_scratch(decl);
-			scratch_buffer_append(decl->name);
+			scratch_buffer_append(decl->name ? decl->name : "(anon)");
 			if (suffix) scratch_buffer_append(suffix);
 			return scratch_buffer_copy();
 		}
