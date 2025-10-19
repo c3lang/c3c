@@ -1778,9 +1778,9 @@ static inline ArrayIndex sema_len_from_expr(Expr *expr)
 	return range_const_len(&expr->slice_expr.range);
 }
 
-static Decl *sema_find_splat_arg(Decl *macro, const char *name)
+static Decl *sema_find_splat_arg(Decl **params, const char *name)
 {
-	FOREACH(Decl *, decl, macro->func_decl.signature.params)
+	FOREACH(Decl *, decl, params)
 	{
 		if (decl && decl->name == name) return decl;
 	}
@@ -1797,19 +1797,31 @@ typedef enum
 static SplatResult sema_splat_optional_argument(SemaContext *context, Expr *expr)
 {
 	Decl *macro = context->current_macro;
-	if (!macro) return SPLAT_NONE;
+	Decl **macro_params;
+	if (macro)
+	{
+		macro_params = macro->func_decl.signature.params;
+	}
+	else
+	{
+		if (context->call_env.kind != CALL_ENV_FUNCTION || !context->call_env.current_function->func_decl.in_macro)
+		{
+			return SPLAT_NONE;
+		}
+		macro_params = context->call_env.current_function->func_decl.lambda_ct_parameters;
+	}
 	Decl *candidate = NULL;
 	switch (expr->expr_kind)
 	{
 		case EXPR_UNRESOLVED_IDENTIFIER:
 			if (expr->unresolved_ident_expr.path) break;
-			candidate = sema_find_splat_arg(macro, expr->unresolved_ident_expr.ident);
+			candidate = sema_find_splat_arg(macro_params, expr->unresolved_ident_expr.ident);
 			break;
 		case EXPR_HASH_IDENT:
-			candidate = sema_find_splat_arg(macro, expr->hash_ident_expr.identifier);
+			candidate = sema_find_splat_arg(macro_params, expr->hash_ident_expr.identifier);
 			break;
 		case EXPR_CT_IDENT:
-			candidate = sema_find_splat_arg(macro, expr->ct_ident_expr.identifier);
+			candidate = sema_find_splat_arg(macro_params, expr->ct_ident_expr.identifier);
 			break;
 		default:
 			return SPLAT_NONE;

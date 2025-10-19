@@ -1,0 +1,31 @@
+// #target: macos-x64
+module test;
+import std;
+fn int main()
+{
+	bool x = test1a(true)();
+	return 0;
+}
+
+macro test1a(bool $a = ...) => fn bool()
+{
+	return test1b(...$a);
+};
+macro test1b(bool $a = ...) => $defined($a) ??? $a : false;
+
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %x = alloca i8, align 1
+  %0 = call i8 @"test.test1a$lambda1"()
+  store i8 %0, ptr %x, align 1
+  ret i32 0
+}
+
+define internal zeroext i8 @"test.test1a$lambda1"() #0 {
+entry:
+  ret i8 1
+}
+

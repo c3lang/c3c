@@ -20,6 +20,7 @@
 - Compiler assert when getting a member of a `bitstruct : char @bigendian` #2517.
 - Add ??? and +++= to list-precedence.
 - Fix issues with linking when using symbol aliases. #2519
+- Splatting optional compile-time macro parameter from inside lambda expression does not work #2532.
 
 ### Stdlib changes
 - Sorting functions correctly took slices by value, but also other types by value. Now, only slices are accepted by value, other containers are always by ref.
