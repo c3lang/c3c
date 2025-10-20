@@ -10,7 +10,6 @@
 - Allow `..` ranges to use "a..a-1" in order to express zero length.
 - Disallow aliasing of `@local` symbols with a higher visibility in the alias.
 - Add `--max-macro-iterations` to set macro iteration limit.
-- Add `TcpSocketPair` to create a pair of local tcp sockets.
 
 ### Fixes
 - Bug in `io::write_using_write_byte`.
@@ -25,6 +24,7 @@
 ### Stdlib changes
 - Sorting functions correctly took slices by value, but also other types by value. Now, only slices are accepted by value, other containers are always by ref.
 - Added `@str_snakecase`, `@str_replace` and `@str_pascalcase` builtin compile time macros based on the `$$` builtins.
+- Add `TcpSocketPair` to create a pair of local tcp sockets.
 
 ## 0.7.6 Change list
 
