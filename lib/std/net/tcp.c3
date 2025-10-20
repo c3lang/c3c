@@ -63,8 +63,8 @@ fn TcpServerSocket? listen_to(AddrInfo* ai, uint backlog, SocketOption... option
 
 struct TcpSocketPair
 {
-    TcpSocket send;
-    TcpSocket recv;
+	TcpSocket send;
+	TcpSocket recv;
 }
 
 fn TcpSocketPair*? TcpSocketPair.init(&self)
@@ -91,7 +91,7 @@ fn TcpSocketPair*? TcpSocketPair.init(&self)
 		TcpSocket tcp_send_sock = tcp::connect_async("127.0.0.1", listen_port)!;
 		TcpSocket tcp_recv_sock = tcp::accept(&listen_sock)!;
 
-        listen_sock.close()!;
+		listen_sock.close()!;
 	$else
 		NativeSocket[2] sockets;
 		isz sockpair_result = os::socketpair(os::AF_UNIX, os::SOCK_STREAM, 0, &sockets);
@@ -104,16 +104,16 @@ fn TcpSocketPair*? TcpSocketPair.init(&self)
 		TcpSocket tcp_recv_sock = (TcpSocket) recv_sock;
 	$endif
 
-    *self = { .send = tcp_send_sock,  .recv = tcp_recv_sock };
-    return self;
+	*self = { .send = tcp_send_sock,  .recv = tcp_recv_sock };
+	return self;
 }
 
 fn void? TcpSocketPair.free(&self)
 {
-    self.send.close()!;
-    self.recv.close()!;
+	self.send.close()!;
+	self.recv.close()!;
 
-    $if env::WIN32:
-        win32::wsaCleanup();
-    $endif
+	$if env::WIN32:
+		win32::wsaCleanup();
+	$endif
 }
