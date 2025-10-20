@@ -50,7 +50,7 @@ fn QuaternionNumber QuaternionNumber.invert(self)
 	return { self.v[0] * -inv_length, self.v[1] * -inv_length, self.v[2] * -inv_length, self.v[3] * inv_length };
 }
 
-fn QuaternionNumber QuaternionNumber.conjugate(&self) => {-self.v.x, -self.v.y, -self.v.z, self.v.w};
+fn QuaternionNumber QuaternionNumber.conjugate(&self) => { -self.v.x, -self.v.y, -self.v.z, self.v.w };
 
 fn QuaternionNumber QuaternionNumber.slerp(self, QuaternionNumber q2, Real amount)
 {
@@ -83,34 +83,30 @@ fn QuaternionNumber QuaternionNumber.slerp(self, QuaternionNumber q2, Real amoun
 
 fn QuaternionNumber QuaternionNumber.mul(self, QuaternionNumber b) @operator(*)
 {  
-	Real[<3>] q1_axis = {self.v.x, self.v.y, self.v.z};
-	Real[<3>] q2_axis = {b.v.x, b.v.y, b.v.z};
+	Real[<3>] q1_axis = { self.v.x, self.v.y, self.v.z };
+	Real[<3>] q2_axis = { b.v.x, b.v.y, b.v.z };
 
 	Real scalar = (self.v.w * b.v.w - q1_axis.dot(q2_axis));
 	Real[<3>] axis = self.v.w * q2_axis + b.v.w * q1_axis + q1_axis.cross(q2_axis);
 
-	return {...axis, scalar};
+	return { ...axis, scalar };
 }
 
 
-fn QuaternionNumber from_axis_angle(Real[<3>] axis, Real angle) {
+fn QuaternionNumber from_axis_angle(Real[<3>] axis, Real angle)
+{
 	Real[<3>] normal_axis = axis.normalize();
 	Real half_angle = angle * 0.5;
 	Real sin_half = math::sin(half_angle);
 
-	return {
-		normal_axis.x * sin_half,
-		normal_axis.y * sin_half,
-		normal_axis.z * sin_half,
-		math::cos(half_angle)
-	};
+	return { ...(normal_axis * sin_half), math::cos(half_angle) };
 }
 
 fn Real[<3>] QuaternionNumber.rotate_vec3(self, Real[<3>] vector) @operator(*)
 {
-	QuaternionNumber p = {vector.x, vector.y, vector.z, 0};
+	QuaternionNumber p = { ...vector, 0 };
 	QuaternionNumber result = self * p * self.conjugate();
-	return {result.v.x, result.v.y, result.v.z};
+	return result.v.xyz;
 }
 
 
@@ -124,9 +120,9 @@ macro into_matrix(QuaternionNumber* q, $Type) @private
     var w = rotation.l;
 
     return ($Type) {
-        1 - 2*y*y - 2*z*z, 2*x*y - 2*z*w, 2*x*z + 2*y*w, 0,
-        2*x*y + 2*z*w, 1 - 2*x*x - 2*z*z, 2*y*z - 2*x*w, 0,
-        2*x*z - 2*y*w, 2*y*z + 2*x*w , 1 - 2*x*x - 2*y*y, 0,
-        0.0, 0.0, 0.0, 1.0,
+        1 - 2*y*y - 2*z*z,     2*x*y - 2*z*w,     2*x*z + 2*y*w,   0,
+            2*x*y + 2*z*w, 1 - 2*x*x - 2*z*z,     2*y*z - 2*x*w,   0,
+            2*x*z - 2*y*w,     2*y*z + 2*x*w, 1 - 2*x*x - 2*y*y,   0,
+                      0.0,               0.0,               0.0, 1.0,
     };
 }
