@@ -76,6 +76,11 @@ macro deg_to_rad(x) => x * PI / 180;
 <*
  @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
 *>
+macro rad_to_deg(x) => x * 180 / PI;
+
+<*
+ @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
+*>
 macro abs(x) => $$abs(x);
 
 <*
