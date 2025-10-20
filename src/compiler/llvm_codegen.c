@@ -26,7 +26,7 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 	switch (severity)
 	{
 		case LLVMDSError:
-			error_exit("LLVM error generating code for %s: %s", ((GenContext *)context)->code_module->name, message);
+			error_exit("LLVM error generating code for %s: %s", ((GenContext *)context)->code_module->name->module, message);
 		case LLVMDSWarning:
 			severity_name = "warning";
 			break;
