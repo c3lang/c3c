@@ -2324,6 +2324,7 @@ const char *decl_safe_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
 const char *decl_to_a_name(Decl *decl);
 int decl_count_elements(Decl *structlike);
+bool decl_is_defaulted_var(Decl *decl);
 void decl_append_links_to_global_during_codegen(Decl *decl);
 
 INLINE bool decl_ok(Decl *decl);

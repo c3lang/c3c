@@ -1281,9 +1281,12 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 				default:
 					UNREACHABLE
 			}
-			SEMA_ERROR(expr, message);
-			return false;
+			RETURN_SEMA_ERROR(expr, message);
 		}
+	}
+	if (decl_is_defaulted_var(decl))
+	{
+		RETURN_SEMA_ERROR(expr, "The parameter '%s' was not provided by the caller.", decl->name);
 	}
 	if (decl->resolve_status != RESOLVE_DONE)
 	{
@@ -1348,6 +1351,10 @@ static inline bool sema_expr_resolve_ct_identifier(SemaContext *context, Expr *e
 		return expr_poison(expr);
 	}
 
+	if (decl_is_defaulted_var(decl))
+	{
+		RETURN_SEMA_ERROR(expr, "The parameter '%s' was not provided by the caller.", decl->name);
+	}
 	ASSERT_SPAN(expr, decl->decl_kind == DECL_VAR);
 	ASSERT_SPAN(expr, decl->resolve_status == RESOLVE_DONE);
 
@@ -1830,7 +1837,7 @@ static SplatResult sema_splat_optional_argument(SemaContext *context, Expr *expr
 	if (!candidate->var.no_init) return SPLAT_NONE;
 	// We found it, it's a valid variable.
 	Decl *local = sema_find_local(context, candidate->name);
-	if (local && local->var.kind == candidate->var.kind) return SPLAT_ONE;
+	if (local && local->var.kind == candidate->var.kind && !decl_is_defaulted_var(local)) return SPLAT_ONE;
 	// It's missing! Let's splat-zero
 	return SPLAT_ZERO;
 }
@@ -2923,8 +2930,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		// Skip raw vararg
 		if (!param) continue;
-		if (param->var.no_init && param->var.defaulted) continue;
 		if (!sema_add_local(&macro_context, param)) goto EXIT_FAIL;
+		if (param->var.no_init && param->var.defaulted) continue;
 		if (param->var.init_expr)
 		{
 			Type *param_type = param->type;
@@ -6854,6 +6861,10 @@ static bool sema_expr_fold_hash(SemaContext *context, Expr *expr)
 		ASSERT_SPAN(expr, decl->decl_kind == DECL_VAR);
 		DEBUG_LOG("Replacing expr (%p) with '%s' (%p) expression resolve: %d", expr, expr_kind_to_string(decl->var.init_expr->expr_kind), decl->var.init_expr, decl->var.init_expr->resolve_status);
 		bool is_ref = expr->hash_ident_expr.is_ref;
+		if (decl_is_defaulted_var(decl))
+		{
+			RETURN_SEMA_ERROR(expr, "The parameter '%s' was not provided by the caller.", decl->name);
+		}
 		expr_replace(expr, copy_expr_single(decl->var.init_expr));
 		if (is_ref) expr_set_to_ref(expr);
 		REMINDER("Handle inlining at");
@@ -10756,7 +10767,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 		{
 			Decl *decl = sema_find_path_symbol(active_context, main_expr->unresolved_ident_expr.ident, main_expr->unresolved_ident_expr.path);
 			if (!decl_ok(decl)) goto FAIL;
-			success = decl != NULL;
+			success = decl != NULL && !decl_is_defaulted_var(decl);
 			break;
 		}
 		case EXPR_HASH_IDENT:
@@ -10765,6 +10776,11 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			{
 				Decl *decl = sema_resolve_symbol(active_context, main_expr->hash_ident_expr.identifier, NULL, main_expr->span);
 				if (!decl) goto FAIL;
+				if (decl_is_defaulted_var(decl))
+				{
+					success = false;
+					break;
+				}
 				bool is_ref = main_expr->hash_ident_expr.is_ref;
 				main_expr = copy_expr_single(decl->var.init_expr);
 				if (is_ref) expr_set_to_ref(main_expr);
@@ -10772,7 +10788,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			}
 			Decl *decl = sema_find_symbol(active_context, main_expr->hash_ident_expr.identifier);
 			if (!decl_ok(decl)) goto FAIL;
-			success = decl != NULL;
+			success = decl != NULL && !decl_is_defaulted_var(decl);
 			break;
 		}
 		case EXPR_COMPILER_CONST:
@@ -10837,7 +10853,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 		{
 			Decl *decl = sema_find_symbol(active_context, main_expr->ct_ident_expr.identifier);
 			if (!decl_ok(decl)) goto FAIL;
-			success = decl != NULL;
+			success = decl != NULL && !decl_is_defaulted_var(decl);
 			break;
 		}
 		case EXPR_CALL:

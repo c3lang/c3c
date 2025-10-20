@@ -1217,7 +1217,7 @@ static inline bool sema_analyse_ct_type_assign_stmt(SemaContext *context, Ast *s
 
 	Decl *decl = sema_find_symbol(context, statement->ct_type_assign_stmt.var_name);
 	if (!decl) RETURN_SEMA_ERROR(statement, "'%s' is not defined in this scope yet.", statement->ct_type_assign_stmt.var_name);
-
+	if (decl_is_defaulted_var(decl)) RETURN_SEMA_ERROR(statement, "The parameter '%s' was not provided by the caller.", decl->name);
 	decl->var.init_expr = right;
 	statement->ast_kind = AST_NOP_STMT;
 

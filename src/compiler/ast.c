@@ -315,6 +315,11 @@ void decl_append_links_to_global_during_codegen(Decl *decl)
 	}
 }
 
+bool decl_is_defaulted_var(Decl *decl)
+{
+	return decl->decl_kind == DECL_VAR && decl->var.no_init && decl->var.defaulted;
+}
+
 /*
  * Count the expected number of elements needed for an initializer
  * by folding any anonymous structs and unions.

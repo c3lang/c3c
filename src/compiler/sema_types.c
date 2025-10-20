@@ -258,6 +258,10 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 				Expr *init_expr = decl->var.init_expr;
 				if (!init_expr)
 				{
+					if (decl_is_defaulted_var(decl))
+					{
+						RETURN_SEMA_ERROR(type_info, "The parameter '%s' was not provided by the caller.", decl->name);
+					}
 					RETURN_SEMA_ERROR(type_info, "You need to assign a type to '%s' before using it.", decl->name);
 				}
 				ASSERT_SPAN(init_expr, expr_is_const_typeid(init_expr));
