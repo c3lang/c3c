@@ -10354,6 +10354,8 @@ INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 		if (!param->var.is_read) continue;
 		ASSERT(ct_param->resolve_status == RESOLVE_DONE || param->resolve_status == RESOLVE_DONE);
 		ASSERT(ct_param->var.kind == param->var.kind);
+		if ((ct_param->var.init_expr == NULL) != (param->var.init_expr == NULL)) return false;
+		if (!param->var.init_expr) continue;
 		switch (ct_param->var.kind)
 		{
 			case VARDECL_LOCAL_CT_TYPE:
