@@ -95,6 +95,8 @@ typedef struct Expr_ Expr;
 typedef struct Module_ Module;
 typedef struct Type_ Type;
 typedef Type CanonicalType;
+typedef Type FlatType;
+typedef Type LoweredType;
 typedef struct Signature_ Signature;
 typedef struct ConstInitializer_ ConstInitializer;
 typedef struct CompilationUnit_ CompilationUnit;
@@ -2681,7 +2683,7 @@ INLINE BitSize type_bit_size(Type *type);
 INLINE Type *type_vector_type(Type *type);
 
 static inline CanonicalType *type_pointer_type(Type *type);
-static inline CanonicalType *type_flatten(Type *type);
+static inline FlatType *type_flatten(Type *type);
 static inline Type *type_base(Type *type);
 
 INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span);
@@ -3366,7 +3368,7 @@ static inline CanonicalType *type_distinct_inline(Type *type)
 		}
 	}
 }
-static inline CanonicalType *type_flatten(Type *type)
+static inline FlatType *type_flatten(Type *type)
 {
 	while (1)
 	{

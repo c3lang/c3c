@@ -124,8 +124,7 @@ INLINE LLVMValueRef llvm_store_to_ptr_raw(GenContext *c, LLVMValueRef pointer, L
 INLINE void llvm_value_bitcast(GenContext *c UNUSED, BEValue *value, Type *type)
 {
 	ASSERT(llvm_value_is_addr(value));
-	type = type_lowering(type);
-	value->type = type;
+	value->type = type_lowering(type);
 }
 
 INLINE LLVMValueRef llvm_emit_shl(GenContext *c, LLVMValueRef value, LLVMValueRef shift)

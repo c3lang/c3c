@@ -302,7 +302,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		ASSERT(LLVMGetTypeContext(any_type->backend_type) == c->context && "Should have been purged");
 		return any_type->backend_type;
 	}
-	Type *type = type_lowering(any_type);
+	LoweredType *type = type_lowering(any_type);
 	if (type != any_type)
 	{
 		return any_type->backend_type = llvm_get_type(c, type);
@@ -436,7 +436,7 @@ static inline LLVMValueRef llvm_generate_temp_introspection_global(GenContext *c
 }
 
 static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLVMValueRef original_global, Type *type, IntrospectType introspect_type,
-															  Type *inner, size_t len, LLVMValueRef additional, bool is_external)
+	Type *inner, size_t len, LLVMValueRef additional, bool is_external)
 {
 	// Push the builder
 	void *builder = c->builder;

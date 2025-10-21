@@ -57,7 +57,7 @@ void llvm_value_set_address(GenContext *c, BEValue *value, LLVMValueRef llvm_val
 
 void llvm_value_set_address_abi_aligned(GenContext *c, BEValue *value, LLVMValueRef llvm_value, Type *type)
 {
-	llvm_value_set_address(c, value, llvm_value, type_lowering(type), type_abi_alignment(type));
+	llvm_value_set_address(c, value, llvm_value, type, type_abi_alignment(type));
 }
 
 void llvm_value_addr(GenContext *c, BEValue *value)

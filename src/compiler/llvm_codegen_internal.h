@@ -30,7 +30,7 @@ typedef struct
 {
 	BackendValueKind kind : 5;
 	AlignSize alignment;
-	Type *type; // Should never be a distinct or canonical type.
+	LoweredType *type; // Should never be a distinct or canonical type.
 	LLVMValueRef value;
 	LLVMValueRef optional;
 } BEValue;
@@ -486,6 +486,7 @@ LLVMValueRef llvm_emit_pointer_inbounds_gep_raw(GenContext *c, LLVMTypeRef point
 LLVMTypeRef llvm_coerce_expand_hi_offset(GenContext *c, LLVMValueRef *addr, ABIArgInfo *info, AlignSize *align);
 void llvm_emit_ptr_from_array(GenContext *c, BEValue *value);
 void llvm_emit_struct_member_ref(GenContext *c, BEValue *struct_ref, BEValue *member_ref, unsigned member_id);
+void llvm_emit_struct_gep_ref(GenContext *c, BEValue *ref, BEValue *member_ref, Type *element_type, unsigned member_id);
 INLINE LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, unsigned index);
 
 // -- Int operations ---
@@ -510,7 +511,7 @@ LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info);
 LLVMValueRef llvm_get_next_param(GenContext *c, unsigned *index);
 void llvm_emit_convert_value_from_coerced(GenContext *c, BEValue *result, LLVMTypeRef coerced, LLVMValueRef value, Type *original_type);
 void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignment, LLVMTypeRef coerced, LLVMValueRef value, LLVMTypeRef target_type);
-LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value, Type *original_type);
+LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value);
 
 static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi);
 void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype *prototype, LLVMTypeRef func_type, LLVMValueRef func, LLVMValueRef *args, unsigned arg_count, int inline_flag, LLVMValueRef error_var, bool sret_return, BEValue *synthetic_return_param, bool no_return);

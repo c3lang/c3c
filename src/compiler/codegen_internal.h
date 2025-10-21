@@ -1,6 +1,6 @@
 #include "compiler_internal.h"
 
-enum IntrospectIndex
+typedef enum IntrospectIndex
 {
 	INTROSPECT_INDEX_KIND = 0,
 	INTROSPECT_INDEX_PARENTOF = 1,
@@ -10,14 +10,14 @@ enum IntrospectIndex
 	INTROSPECT_INDEX_LEN = 5,
 	INTROSPECT_INDEX_ADDITIONAL = 6,
 	INTROSPECT_INDEX_TOTAL,
-};
+} IntrospectIndex;
 
 bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements);
 static inline bool abi_type_is_type(AbiType type);
 
 static inline bool abi_type_is_valid(AbiType type);
 
-static inline Type *type_lowering(Type *type)
+static inline LoweredType *type_lowering(Type *type)
 {
 	while (1)
 	{

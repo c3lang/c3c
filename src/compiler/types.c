@@ -1173,14 +1173,14 @@ Type *type_get_indexed_type(Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_POINTER:
-			return type->pointer->canonical;
+			return type->pointer;
 		case TYPE_ARRAY:
 		case TYPE_SLICE:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_VECTOR:
-			return type->array.base->canonical;
+			return type->array.base;
 		case TYPE_TYPEDEF:
 			type = type->decl->distinct->type;
 			goto RETRY;

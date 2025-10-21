@@ -486,7 +486,7 @@ LLVMValueRef llvm_coerce_int_ptr(GenContext *c, LLVMValueRef value, LLVMTypeRef 
 	return value;
 }
 
-LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value, Type *original_type)
+LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value)
 {
 	LLVMTypeRef llvm_source_type = llvm_get_type(c, value->type);
 
@@ -656,11 +656,11 @@ static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *re
 	switch (type->type_kind)
 	{
 		case TYPE_POINTER:
-			llvm_value_set_address_abi_aligned(c, result, llvm_emit_pointer_inbounds_gep_raw(
-				                                   c,
-				                                   llvm_get_pointee_type(c, parent->type),
-				                                   parent->value,
-				                                   index->value), type->pointer);
+			llvm_value_set_address_abi_aligned(
+				c,
+				result,
+				llvm_emit_pointer_inbounds_gep_raw(c, llvm_get_pointee_type(c, parent->type), parent->value, index->value),
+				type->pointer);
 			return;
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -4957,11 +4957,11 @@ static void llvm_expand_struct_to_args(GenContext *context, Type *param_type, LL
 		Type *member_type = member->type;
 		AlignSize load_align;
 		LLVMValueRef member_ptr = llvm_emit_struct_gep_raw(context,
-														   expand_ptr,
-														   llvm_get_type(context, param_type),
-														   i,
-														   alignment,
-														   &load_align);
+			expand_ptr,
+			llvm_get_type(context, param_type),
+			i,
+			alignment,
+			&load_align);
 		llvm_expand_type_to_args(context, member_type, member_ptr, args, arg_count_ref, load_align);
 	}
 }
@@ -5002,15 +5002,22 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 	}
 }
 
+void llvm_emit_struct_gep_ref(GenContext *c, BEValue *ref, BEValue *member_ref, Type *element_type, unsigned member_id)
+{
+	ASSERT(llvm_value_is_addr(ref));
+	llvm_value_fold_optional(c, ref);
+	AlignSize align;
+	LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, ref->value, llvm_get_type(c, ref->type), member_id, ref->alignment, &align);
+	llvm_value_set_address(c, member_ref, ptr, element_type, align);
+}
+
 void llvm_emit_struct_member_ref(GenContext *c, BEValue *struct_ref, BEValue *member_ref, unsigned member_id)
 {
-	ASSERT(llvm_value_is_addr(struct_ref));
-	llvm_value_fold_optional(c, struct_ref);
 	ASSERT(struct_ref->type->type_kind == TYPE_STRUCT);
-	AlignSize align;
-	LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, struct_ref->value, llvm_get_type(c, struct_ref->type), member_id, struct_ref->alignment, &align);
-	llvm_value_set_address(c, member_ref, ptr, struct_ref->type->decl->strukt.members[member_id]->type, align);
+	llvm_emit_struct_gep_ref(c, struct_ref, member_ref, struct_ref->type->decl->strukt.members[member_id]->type, member_id);
 }
+
+
 
 LLVMValueRef llvm_emit_struct_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index,
                                       unsigned struct_alignment, AlignSize *alignment)
@@ -5123,14 +5130,7 @@ void llvm_emit_slice_len(GenContext *c, BEValue *slice, BEValue *len)
 		llvm_value_set(len, llvm_emit_extract_value(c, slice->value, 1), type_usz);
 		return;
 	}
-	AlignSize alignment = 0;
-	LLVMValueRef len_addr = llvm_emit_struct_gep_raw(c,
-	                                                 slice->value,
-	                                                 llvm_get_type(c, slice->type),
-	                                                 1,
-	                                                 slice->alignment,
-	                                                 &alignment);
-	llvm_value_set_address(c, len, len_addr, type_usz, alignment);
+	llvm_emit_struct_gep_ref(c, slice, len, type_usz, 1);
 }
 
 void llvm_emit_slice_pointer(GenContext *c, BEValue *slice, BEValue *pointer)
@@ -5145,9 +5145,7 @@ void llvm_emit_slice_pointer(GenContext *c, BEValue *slice, BEValue *pointer)
 			llvm_value_set(slice, LLVMGetInitializer(slice->value), slice->type);
 			goto NEXT;
 		}
-		AlignSize alignment;
-		LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, slice->value, llvm_get_type(c, slice->type), 0, slice->alignment, &alignment);
-		llvm_value_set_address(c, pointer, ptr, ptr_type, alignment);
+		llvm_emit_struct_gep_ref(c, slice, pointer, ptr_type, 0);
 		return;
 	}
 NEXT:;
@@ -5160,9 +5158,7 @@ static void llvm_emit_any_pointer(GenContext *c, BEValue *value, BEValue *pointe
 	llvm_value_fold_optional(c, value);
 	if (value->kind == BE_ADDRESS)
 	{
-		AlignSize alignment;
-		LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, value->value, llvm_get_type(c, value->type), 0, value->alignment, &alignment);
-		llvm_value_set_address(c, pointer, ptr, type_voidptr, alignment);
+		llvm_emit_struct_gep_ref(c, value, pointer, type_voidptr, 0);
 		return;
 	}
 	LLVMValueRef ptr = llvm_emit_extract_value(c, value->value, 0);
@@ -5173,7 +5169,7 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 {
 	llvm_value_fold_optional(c, struct_pointer);
 	ArrayIndex actual_index = -1;
-	Decl *member;
+	Decl *member = NULL;
 	for (ArrayIndex i = 0; i <= index; i++)
 	{
 		member = struct_pointer->type->decl->strukt.members[i];
@@ -5183,15 +5179,8 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 		}
 		actual_index++;
 	}
-	AlignSize alignment;
-	LLVMValueRef ref = llvm_emit_struct_gep_raw(c,
-												struct_pointer->value,
-												llvm_get_type(c, struct_pointer->type),
-												(unsigned)actual_index,
-												struct_pointer->alignment,
-												&alignment);
-	llvm_value_set_address_abi_aligned(c, element, ref, member->type);
-	element->alignment = alignment;
+	assert(member);
+	llvm_emit_struct_gep_ref(c, struct_pointer, element, member->type, actual_index);
 }
 
 
@@ -5247,7 +5236,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 				args[(*arg_count_ref)++] = llvm_load_value_store(c, be_value);
 				return;
 			}
-			args[(*arg_count_ref)++] = llvm_emit_coerce(c, coerce_type, be_value, type);
+			args[(*arg_count_ref)++] = llvm_emit_coerce(c, coerce_type, be_value);
 			return;
 		}
 		case ABI_ARG_DIRECT_COERCE_INT:
@@ -5258,7 +5247,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 				args[(*arg_count_ref)++] = llvm_load_value_store(c, be_value);
 				return;
 			}
-			args[(*arg_count_ref)++] = llvm_emit_coerce(c, coerce_type, be_value, type);
+			args[(*arg_count_ref)++] = llvm_emit_coerce(c, coerce_type, be_value);
 			return;
 		}
 		case ABI_ARG_DIRECT_PAIR:
@@ -6567,7 +6556,12 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 	llvm_value_set(value, addr.value, type_fault);
 }
 
-
+static inline LLVMValueRef llvm_load_introspect(GenContext *c, LLVMValueRef ref, AlignSize align, IntrospectIndex index, const char *name, LLVMTypeRef type)
+{
+	AlignSize alignment;
+	LLVMValueRef parent = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, index, align, &alignment);
+	return llvm_load(c, type, parent, alignment, name);
+}
 static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *expr)
 {
 	llvm_emit_exprid(c, value, expr->typeid_info_expr.parent);
@@ -6580,8 +6574,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 	TypeIdInfoKind info_kind = expr->typeid_info_expr.kind;
 	if (info_kind == TYPEID_INFO_PARENTOF)
 	{
-		LLVMValueRef parent = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_PARENTOF, align, &alignment);
-		LLVMValueRef parent_value = llvm_load(c, c->typeid_type, parent, alignment, "typeid.parent");
+		LLVMValueRef parent_value = llvm_load_introspect(c, ref, align, INTROSPECT_INDEX_PARENTOF, "typeid.parent", c->typeid_type);
 		LLVMValueRef is_zero = LLVMBuildICmp(c->builder, LLVMIntEQ, parent_value, LLVMConstNull(c->typeid_type), "");
 		parent_value = LLVMBuildSelect(c->builder, is_zero, llvm_get_typeid(c, type_void), parent_value, "");
 		llvm_value_set(value, parent_value, expr->type);
@@ -6590,8 +6583,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 	bool safe_mode = safe_mode_enabled();
 	if (safe_mode || info_kind == TYPEID_INFO_KIND)
 	{
-		kind = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_KIND, align, &alignment);
-		kind = llvm_load(c, c->byte_type, kind, alignment, "typeid.kind");
+		kind = llvm_load_introspect(c, ref, align, INTROSPECT_INDEX_KIND, "typeid.kind", c->byte_type);
 	}
 	switch (info_kind)
 	{
@@ -6628,8 +6620,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				EMIT_EXPR_LOC(c, expr);
 			}
 			{
-				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_INNER, align, &alignment);
-				val = llvm_load(c, c->typeid_type, val, alignment, "typeid.inner");
+				LLVMValueRef val = llvm_load_introspect(c, ref, align, INTROSPECT_INDEX_INNER, "typeid.inner", c->typeid_type);
 				llvm_value_set(value, val, expr->type);
 				return;
 			}
@@ -6657,8 +6648,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				EMIT_EXPR_LOC(c, expr);
 			}
 			{
-				LLVMValueRef len = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_LEN, align, &alignment);
-				len = llvm_load(c, c->size_type, len, alignment, "namelen");
+				LLVMValueRef len = llvm_load_introspect(c, ref, align, INTROSPECT_INDEX_LEN, "namelen", c->size_type);
 				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_ADDITIONAL, align, &alignment);
 				Type *slice = type_get_slice(type_chars);
 				llvm_value_set(value, llvm_emit_aggregate_two(c, slice, val, len), slice);
@@ -6690,15 +6680,13 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				EMIT_EXPR_LOC(c, expr);
 			}
 			{
-				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_LEN, align, &alignment);
-				val = llvm_load(c, c->size_type, val, alignment, "typeid.len");
+				LLVMValueRef val = llvm_load_introspect(c, ref, align, INTROSPECT_INDEX_LEN, "typeid.len", c->size_type);
 				llvm_value_set(value, val, expr->type);
 				return;
 			}
 		case TYPEID_INFO_SIZEOF:
 			{
-				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_SIZEOF, align, &alignment);
-				val = llvm_load(c, c->size_type, val, alignment, "typeid.size");
+				LLVMValueRef val = llvm_load_introspect(c, ref, align, INTROSPECT_INDEX_SIZEOF, "typeid.size", c->size_type);
 				llvm_value_set(value, val, expr->type);
 				return;
 			}
@@ -6770,14 +6758,7 @@ static inline void llvm_emit_type_from_any(GenContext *c, BEValue *be_value)
 {
 	if (llvm_value_is_addr(be_value))
 	{
-		AlignSize alignment = 0;
-		LLVMValueRef pointer_addr = llvm_emit_struct_gep_raw(c,
-															 be_value->value,
-															 llvm_get_type(c, type_any),
-															 1,
-															 be_value->alignment,
-															 &alignment);
-		llvm_value_set_address(c, be_value, pointer_addr, type_typeid, alignment);
+		llvm_emit_struct_gep_ref(c, be_value, be_value, type_typeid, 1);
 	}
 	else
 	{
@@ -7025,9 +7006,7 @@ static void llvm_emit_ptr_access(GenContext *c, BEValue *value, Expr *expr)
 	llvm_value_fold_optional(c, value);
 	if (value->kind == BE_ADDRESS)
 	{
-		AlignSize alignment;
-		LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, value->value, llvm_get_type(c, value->type), 0, value->alignment, &alignment);
-		llvm_value_set_address(c, value, ptr, expr->type, alignment);
+		llvm_emit_struct_gep_ref(c, value, value, expr->type, 0);
 		return;
 	}
 	LLVMValueRef ptr = llvm_emit_extract_value(c, value->value, 0);
