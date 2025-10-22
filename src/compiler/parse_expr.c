@@ -1108,11 +1108,18 @@ static Expr *parse_generic_expr(ParseContext *c, Expr *left, SourceSpan lhs_star
 
 /**
  * access_expr ::= '.' primary_expr
+ * deref_subscript ::= '.' '[' expr ']'
  */
 static Expr *parse_access_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
 {
 	ASSERT(left && expr_ok(left));
 	advance_and_verify(c, TOKEN_DOT);
+	if (tok_is(c, TOKEN_LBRACKET))
+	{
+		Expr *deref = expr_new(EXPR_MAYBE_DEREF, left->span);
+		deref->inner_expr = left;
+		return parse_subscript_expr(c, deref, lhs_start);
+	}
 	Expr *access_expr = expr_new(EXPR_ACCESS_UNRESOLVED, lhs_start);
 	access_expr->access_unresolved_expr.parent = left;
 	ASSIGN_EXPR_OR_RET(access_expr->access_unresolved_expr.child, parse_precedence(c, PREC_PRIMARY), poisoned_expr);

@@ -355,6 +355,7 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_VECTOR_TO_ARRAY:
 		case EXPR_SLICE_TO_VEC_ARRAY:
 		case EXPR_SCALAR_TO_VECTOR:
+		case EXPR_MAYBE_DEREF:
 			return expr_is_runtime_const(expr->inner_expr);
 		case EXPR_MAKE_SLICE:
 			expr = expr->make_slice_expr.ptr;
@@ -819,6 +820,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
+		case EXPR_MAYBE_DEREF:
 			return expr_is_pure(expr->inner_expr);
 		case EXPR_INT_TO_BOOL:
 			return expr_is_pure(expr->int_to_bool_expr.inner);

@@ -1,0 +1,86 @@
+// #target: macos-x64
+module test;
+import std;
+alias MyChar = char;
+
+fn void main()
+{
+	MyChar[2] my = { '1', '2' };
+	MyChar[2]* ptr = &my;
+	var x1 @safeinfer = ptr.[0];
+	ptr.[0] = 2;
+	var x2 @safeinfer = ptr.[0];
+	MyChar* x = &ptr.[1];
+	var x3 @safeinfer = *x;
+	List{int} l;
+	l.push(42);
+	List{int}* lptr = &l;
+	var x4 @safeinfer = lptr.[0];
+	var x5 @safeinfer = l.[0];
+	assert($defined(lptr.[0]));
+	assert($defined(l.[0]));
+	int i = 0;
+	assert(!$defined(i.[0]));
+	assert(!$defined((&i).[0]));
+}
+
+/* #expect: test.ll
+
+entry:
+  %my = alloca [2 x i8], align 1
+  %ptr = alloca ptr, align 8
+  %x1 = alloca i8, align 1
+  %x2 = alloca i8, align 1
+  %x = alloca ptr, align 8
+  %x3 = alloca i8, align 1
+  %l = alloca %List, align 8
+  %lptr = alloca ptr, align 8
+  %x4 = alloca i32, align 4
+  %self = alloca ptr, align 8
+  %x5 = alloca i32, align 4
+  %i = alloca i32, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %my, ptr align 1 @.__const, i32 2, i1 false)
+  store ptr %my, ptr %ptr, align 8
+  %0 = load ptr, ptr %ptr, align 8
+  %1 = load i8, ptr %0, align 1
+  store i8 %1, ptr %x1, align 1
+  %2 = load ptr, ptr %ptr, align 8
+  store i8 2, ptr %2, align 1
+  %3 = load ptr, ptr %ptr, align 8
+  %4 = load i8, ptr %3, align 1
+  store i8 %4, ptr %x2, align 1
+  %5 = load ptr, ptr %ptr, align 8
+  %ptradd = getelementptr inbounds i8, ptr %5, i64 1
+  store ptr %ptradd, ptr %x, align 8
+  %6 = load ptr, ptr %x, align 8
+  %7 = load i8, ptr %6, align 1
+  store i8 %7, ptr %x3, align 1
+  call void @llvm.memset.p0.i64(ptr align 8 %l, i8 0, i64 40, i1 false)
+  call void @"std_collections_list$int$.List.push"(ptr %l, i32 42) #4
+  store ptr %l, ptr %lptr, align 8
+  %8 = load ptr, ptr %lptr, align 8
+  store ptr %8, ptr %self, align 8
+  %9 = load ptr, ptr %self, align 8
+  %neq = icmp ne ptr %9, null
+  call void @llvm.assume(i1 %neq)
+  %10 = load ptr, ptr %self, align 8
+  %11 = load i64, ptr %10, align 8
+  %lt = icmp ult i64 0, %11
+  call void @llvm.assume(i1 %lt)
+  %12 = load ptr, ptr %self, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %12, i64 32
+  %13 = load ptr, ptr %ptradd1, align 8
+  %14 = load i32, ptr %13, align 4
+  store i32 %14, ptr %x4, align 4
+  %neq2 = icmp ne ptr %l, null
+  call void @llvm.assume(i1 %neq2)
+  %15 = load i64, ptr %l, align 8
+  %lt3 = icmp ult i64 0, %15
+  call void @llvm.assume(i1 %lt3)
+  %ptradd4 = getelementptr inbounds i8, ptr %l, i64 32
+  %16 = load ptr, ptr %ptradd4, align 8
+  %17 = load i32, ptr %16, align 4
+  store i32 %17, ptr %x5, align 4
+  store i32 0, ptr %i, align 4
+  ret void
+}

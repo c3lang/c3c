@@ -11,6 +11,7 @@
 - Disallow aliasing of `@local` symbols with a higher visibility in the alias.
 - Add `--max-macro-iterations` to set macro iteration limit.
 - Improved generic inference in initializers #2541. 
+- "Maybe-deref" subscripting `foo.[i] += 1` #2540.
 
 ### Fixes
 - Bug in `io::write_using_write_byte`.

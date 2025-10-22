@@ -852,6 +852,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_ENUM_FROM_ORD:
+		case EXPR_MAYBE_DEREF:
 			return true;
 		case EXPR_TWO:
 			return sema_expr_valid_try_expression(expr->two_expr.last);
