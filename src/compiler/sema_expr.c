@@ -7427,12 +7427,12 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 		right_type = type_no_optional(right->type)->canonical;
 		if (type_is_pointer_like(left_type))
 		{
-			*operator_overload_ref = OVERLOAD_NONE;
+			*operator_overload_ref = OVERLOAD_NONE; // NOLINT
 			return sema_expr_analyse_ptr_add(context, parent, left, right, left_type, right_type, cast_to_iptr, failed_ref);
 		}
 		if (type_is_pointer_like(right_type))
 		{
-			*operator_overload_ref = OVERLOAD_NONE;
+			*operator_overload_ref = OVERLOAD_NONE; // NOLINT
 			return sema_expr_analyse_ptr_add(context, parent, right, left, right_type, left_type, cast_to_iptr, failed_ref);
 		}
 	}
@@ -11597,7 +11597,19 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 	}
 	else
 	{
-		if (!sema_analyse_inferred_expr(context, to, expr, no_match_ref)) return false;
+		Module *generic;
+		if (to && (generic = type_find_generic(to)) != NULL)
+		{
+			Module *generic_module = context->generic.infer;
+			context->generic.infer = generic;
+			bool success = sema_analyse_inferred_expr(context, to, expr, no_match_ref);
+			context->generic.infer = generic_module;
+			if (!success) return false;
+		}
+		else
+		{
+			if (!sema_analyse_inferred_expr(context, to, expr, no_match_ref)) return false;
+		}
 	}
 	if (!sema_cast_rvalue(context, expr, true)) return false;
 	if (to) to = type_no_optional(to);
