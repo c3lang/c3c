@@ -777,7 +777,7 @@ jobs:
         uses: vmactions/openbsd-vm@main
         with:
           prepare: |
-            pkg_add cmake llvm-19.1.7p3 ninja
+            pkg_add cmake llvm-20.1.8p1 ninja
 
           run: |
             echo "CMake"
