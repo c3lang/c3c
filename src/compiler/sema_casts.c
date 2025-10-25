@@ -1523,7 +1523,24 @@ static bool rule_int_to_bits(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *base_type = cc->to->decl->strukt.container_type->type;
 	Type *from_type = cc->from;
-	bool success = type_is_integer(base_type) && type_size(from_type) == type_size(base_type);
+	Expr *expr = cc->expr;
+	bool success = false;
+	do
+	{
+		if (!type_is_integer(base_type)) break;
+		if (type_size(base_type) == type_size(from_type))
+		{
+			success = true;
+			break;
+		}
+		if (!sema_cast_const(expr) || !expr_is_const_int(expr)) break;
+		if (!int_fits(cc->expr->const_expr.ixx, base_type->canonical->type_kind))
+		{
+			if (is_silent) return false;
+			RETURN_CAST_ERROR(expr, "The value '%s' does not fit in the container type of the bitstruct %s, which is %s.", int_to_str(cc->expr->const_expr.ixx, 10, false), type_quoted_error_string(cc->to), type_quoted_error_string(base_type));
+		}
+		success = true;
+	} while (0);
 	if (!is_explicit || !success) return sema_cast_error(cc, success, is_silent);
 	return true;
 }
@@ -1857,7 +1874,16 @@ static void cast_expand_to_vec(Expr *expr, Type *type)
 }
 
 static void cast_bitstruct_to_int_arr(Expr *expr, Type *type) { expr_rewrite_recast(expr, type); }
-static void cast_int_arr_to_bitstruct(Expr *expr, Type *type) { expr_rewrite_recast(expr, type); }
+static void cast_int_arr_to_bitstruct(Expr *expr, Type *type)
+{
+	if (expr_is_const_int(expr))
+	{
+		Type *widening_type = type_flatten(type)->decl->strukt.container_type->type->canonical;
+		expr->const_expr.ixx.type = widening_type->type_kind;
+		expr->type = widening_type;
+	}
+	expr_rewrite_recast(expr, type);
+}
 
 static void cast_bitstruct_to_bool(Expr *expr, Type *type)
 {
