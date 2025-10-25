@@ -64,8 +64,6 @@ fn void test_mat4_lookat()
 
 fn void test_mat4_perspective()
 {
-
-{
 	Matrix4 result = {
 		1.857087, 0.000000, 0.000000,
 		0.000000, 0.000000, 2.414214,
