@@ -1,22 +1,26 @@
+fn void print(String msg)
+{
+    $$syscall(1, 1, (uptr)msg.ptr, msg.len); // __NR_write, STDOUT
+}
+
+fn void printn(String msg)
+{
+    print(msg);
+    print("\n");
+}
+
+fn void exit(int exit_code)
+{
+    $$syscall(60, exit_code); // __NR_exit
+}
+
 fn int main()
 {
-    String msg = "Hello, C3 World!\n";
-	$$syscall(1, 1, (uptr)msg.ptr, msg.len); // __NR_write, STDOUT
-	return 0;
+    printn("Hello, C3 World!");
+    return 0;
 }
 
 fn void _start() @export("_start")
 {
-    int ret = main();
-    $$syscall(60, ret); // __NR_exit
-}
-
-module std::core::builtin;
-
-alias PanicFn = fn void(String message, String file, String function, uint line);
-
-PanicFn panic = &default_panic;
-
-fn void default_panic(String message, String file, String function, uint line)
-{
+    exit(main());
 }
