@@ -590,8 +590,7 @@ void expr_insert_addr(Expr *original)
 	Expr *inner = expr_copy(original);
 	original->expr_kind = EXPR_UNARY;
 	original->type = new_type;
-	original->unary_expr.operator = UNARYOP_ADDR;
-	original->unary_expr.expr = inner;
+	original->unary_expr = (ExprUnary) { .operator = UNARYOP_ADDR, .expr = inner };
 }
 
 Expr *expr_generated_local(Expr *assign, Decl **decl_ref)

@@ -3971,14 +3971,11 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 		{
 			Expr *inner = expr_copy(subscripted);
 			subscripted->expr_kind = EXPR_UNARY;
-			subscripted->unary_expr.operator = UNARYOP_ADDR;
-			subscripted->unary_expr.expr = inner;
+			subscripted->unary_expr = (ExprUnary) { .operator = UNARYOP_ADDR, .expr = inner };
 
 			inner = expr_copy(subscripted);
 			subscripted->expr_kind = EXPR_UNARY;
-			subscripted->unary_expr.operator = UNARYOP_DEREF;
-			subscripted->unary_expr.expr = inner;
-			subscripted->unary_expr.no_read = true;
+			subscripted->unary_expr = (ExprUnary) { .operator = UNARYOP_DEREF, .expr = inner, .no_read = true };
 			FALLTHROUGH;
 		}
 		default:
@@ -5923,8 +5920,7 @@ bool sema_expr_rewrite_insert_deref(SemaContext *context, Expr *original)
 	Expr *inner = expr_copy(original);
 	original->expr_kind = EXPR_UNARY;
 	original->type = NULL;
-	original->unary_expr.operator = UNARYOP_DEREF;
-	original->unary_expr.expr = inner;
+	original->unary_expr = (ExprUnary) { .operator = UNARYOP_DEREF, .expr = inner };
 
 	// In the case the original is already resolved, we want to resolve the deref as well.
 	if (original->resolve_status == RESOLVE_DONE)
