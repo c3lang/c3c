@@ -1437,7 +1437,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		{
 			if (!sema_deep_resolve_function_ptr(context, type_info)) return false;
 			param->type = type_info->type;
-			if (!sema_set_abi_alignment(context, param->type, &param->alignment, true)) return false;
+			if (!sema_set_abi_alignment(context, param->type, &param->alignment, false)) return false;
 		}
 
 		if (param->var.init_expr)

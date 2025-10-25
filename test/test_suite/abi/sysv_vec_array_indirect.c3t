@@ -1,0 +1,32 @@
+// #target: linux-x64
+module test;
+import std;
+fn void test(double[<3>] x)
+{
+	double[<3>]* y = &x;
+}
+
+fn int main()
+{
+	test({ 1, 2, 3 });
+	return 0;
+}
+/* #expect: test.ll
+
+define void @test.test(ptr byval([3 x double]) align 8 %0) #0 {
+entry:
+  %x = alloca <3 x double>, align 32
+  %y = alloca ptr, align 8
+  %1 = load <3 x double>, ptr %0, align 8
+  %expandvec = shufflevector <3 x double> %1, <3 x double> poison, <4 x i32> <i32 0, i32 1, i32 2, i32 poison>
+  store <4 x double> %expandvec, ptr %x, align 32
+  store ptr %x, ptr %y, align 8
+  ret void
+}
+
+entry:
+  %indirectarg = alloca [3 x double], align 8
+  store [3 x double] [double 1.000000e+00, double 2.000000e+00, double 3.000000e+00], ptr %indirectarg, align 8
+  call void @test.test(ptr byval([3 x double]) align 8 %indirectarg)
+  ret i32 0
+}

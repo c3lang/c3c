@@ -127,6 +127,7 @@ static inline void llvm_process_parameter_value_inner(GenContext *c, Decl *decl,
 		case ABI_ARG_INDIRECT:
 			// Indirect is caller copied.
 			decl->backend_ref = llvm_get_next_param(c, index);
+			decl->alignment = info->indirect.alignment;
 			return;
 		case ABI_ARG_EXPAND_COERCE:
 		{
