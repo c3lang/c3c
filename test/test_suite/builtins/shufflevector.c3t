@@ -3,6 +3,8 @@
 module test;
 import std::io;
 
+typedef Vc2 = float[<2>] @simd;
+typedef Vc4 = float[<4>] @simd;
 struct Matrix2x2
 {
 	union
@@ -14,34 +16,34 @@ struct Matrix2x2
 		}
 		struct
 		{
-			float[<2>] m0;
-			float[<2>] m1;
+			Vc2 m0;
+			Vc2 m1;
 		}
-		float[<4>] m;
+		Vc4 m;
 	}
 }
 
-fn float[<2>] apply1(Matrix2x2* mat, float[<2>] vec)
+fn Vc2 apply1(Matrix2x2* mat, Vc2 vec)
 {
-	return (float[<2>]) {
+	return (Vc2) {
 		mat.m00 * vec[0] + mat.m01 * vec[1],
 		mat.m10 * vec[0] + mat.m11 * vec[1],
 	};
 }
 
-fn float[<2>] apply2(Matrix2x2* mat, float[<2>] vec)
+fn Vc2 apply2(Matrix2x2* mat, Vc2 vec)
 {
-	return (float[<2>]) {
+	return (Vc2) {
 		mat.m0[0] * vec[0] + mat.m0[1] * vec[1],
 		mat.m1[0] * vec[0] + mat.m1[1] * vec[1],
 	};
 }
 
-fn float[<2>] apply3(Matrix2x2* mat, float[<2>] vec)
+fn Vc2 apply3(Matrix2x2* mat, Vc2 vec)
 {
-	float[<2>] a = $$swizzle2(mat.m0, mat.m1, 0, 3);
-	float[<2>] b = $$swizzle2(mat.m0, mat.m1, 1, 2);
-	float[<2>] flip = $$swizzle(vec, 1, 0);
+	Vc2 a = (Vc2)$$swizzle2(mat.m0, mat.m1, 0, 3);
+	Vc2 b = (Vc2)$$swizzle2(mat.m0, mat.m1, 1, 2);
+	Vc2 flip = (Vc2)$$swizzle(vec, 1, 0);
 	return a * vec + b * flip;
 }
 
@@ -49,9 +51,9 @@ fn float[<2>] apply3(Matrix2x2* mat, float[<2>] vec)
 fn void main()
 {
 	Matrix2x2 a = { 1, -3, 5, -7 };
-	io::printfn("1: %s", apply1(&a, (float[<2>]) { 11, 13 }));
-	io::printfn("2: %s", apply2(&a, (float[<2>]) { 11, 13 }));
-	io::printfn("3: %s", apply3(&a, (float[<2>]) { 11, 13 }));
+	io::printfn("1: %s", apply1(&a, (Vc2) { 11, 13 }));
+	io::printfn("2: %s", apply2(&a, (Vc2) { 11, 13 }));
+	io::printfn("3: %s", apply3(&a, (Vc2) { 11, 13 }));
 }
 
 /* #expect: test.ll

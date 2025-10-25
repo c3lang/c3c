@@ -17,7 +17,6 @@ static inline void llvm_emit_bitassign_array(GenContext *c, LLVMValueRef result,
 static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
 static void llvm_emit_swizzle_from_value(GenContext *c, LLVMValueRef vector_value, BEValue *value, Expr *expr);
-
 static inline void llvm_emit_optional(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_inc_dec_change(GenContext *c, BEValue *addr, BEValue *after, BEValue *before, Expr *expr, int diff,
                          bool allow_wrap);
@@ -4183,7 +4182,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 			if (type_is_pointer_vector(lhs_type))
 			{
 				Type *element_type = lhs_type->array.base->pointer;
-				unsigned len = lhs_type->array.len;
+				unsigned len = LLVMGetVectorSize(LLVMTypeOf(lhs_value));
 				LLVMTypeRef int_vec_type = llvm_get_type(c, type_get_vector(type_isz, len));
 				if (lhs_type == rhs_type)
 				{
@@ -5067,19 +5066,29 @@ LLVMValueRef llvm_emit_ptradd_inbounds_raw(GenContext *c, LLVMValueRef ptr, LLVM
 	return LLVMBuildInBoundsGEP2(c->builder, LLVMArrayType(c->byte_type, mult), ptr, &offset, 1, "ptroffset");
 }
 
-LLVMValueRef llvm_emit_const_vector(LLVMValueRef value, ArraySize len)
+static LLVMValueRef vec_slots[MAX_VECTOR_WIDTH];
+
+LLVMValueRef llvm_emit_const_vector_pot(LLVMValueRef value, ArraySize len)
 {
-	LLVMValueRef slots[256];
-	LLVMValueRef *ptr = slots;
-	if (len > 256)
-	{
-		ptr = MALLOC(len * sizeof(LLVMValueRef));
-	}
+	ArraySize npot = next_highest_power_of_2(len);
 	for (ArraySize i = 0; i < len; i++)
 	{
-		ptr[i] = value;
+		vec_slots[i] = value;
 	}
-	return LLVMConstVector(ptr, len);
+	for (ArraySize i = len; i < npot; i++)
+	{
+		vec_slots[i] = LLVMGetUndef(LLVMTypeOf(value));
+	}
+	return LLVMConstVector(vec_slots, npot);
+}
+
+LLVMValueRef llvm_emit_const_vector(LLVMValueRef value, ArraySize len)
+{
+	for (ArraySize i = 0; i < len; i++)
+	{
+		vec_slots[i] = value;
+	}
+	return LLVMConstVector(vec_slots, len);
 }
 
 
@@ -5184,9 +5193,19 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 }
 
 
-void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_ref, ABIArgInfo *info, BEValue *be_value, Type *type)
+void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_ref, ABIArgInfo *info, BEValue *be_value)
 {
-	type = type_lowering(type);
+	Type *type = type_lowering(info->original_type);
+	switch (info->rewrite)
+	{
+		case PARAM_RW_NONE:
+			break;
+		case PARAM_RW_VEC_TO_ARRAY:
+			llvm_emit_vec_to_array(c, be_value, type);
+			break;
+		case PARAM_RW_EXPAND_ELEMENTS:
+			TODO
+	}
 	ASSERT(be_value->type->canonical == type);
 	switch (info->kind)
 	{
@@ -5374,7 +5393,7 @@ void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int co
 void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype *prototype, LLVMTypeRef func_type, LLVMValueRef func, LLVMValueRef *args, unsigned arg_count, int inline_flag, LLVMValueRef error_var, bool sret_return, BEValue *synthetic_return_param, bool no_return)
 {
 	ABIArgInfo *ret_info = prototype->ret_abi_info;
-	Type *call_return_type = prototype->abi_ret_type;
+	Type *call_return_type = prototype->return_info.type;
 
 	LLVMValueRef call_value = LLVMBuildCall2(c->builder, func_type, func, args, arg_count, "");
 	if (prototype->call_abi)
@@ -5396,14 +5415,12 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 		default:
 			break;
 	}
-	ASSERT(!prototype->ret_by_ref || prototype->ret_by_ref_abi_info->kind != ABI_ARG_INDIRECT);
-
-	llvm_add_abi_call_attributes(c, call_value, vec_size(prototype->param_types), prototype->abi_args);
+	llvm_add_abi_call_attributes(c, call_value, prototype->param_count, prototype->abi_args);
 	if (prototype->abi_varargs)
 	{
 		llvm_add_abi_call_attributes(c,
 									 call_value,
-									 vec_size(prototype->varargs),
+									 prototype->param_vacount,
 									 prototype->abi_varargs);
 	}
 
@@ -5416,7 +5433,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 		case ABI_ARG_IGNORE:
 			// 12. Basically void returns or empty structs.
 			//     Here we know we don't have an optional or any return value that can be used.
-			ASSERT(!prototype->is_optional && "Optional should have produced a return value.");
+			ASSERT(prototype->ret_rewrite == RET_NORMAL && "Optional should have produced a return value.");
 			*result_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
 			return;
 		case ABI_ARG_INDIRECT:
@@ -5517,7 +5534,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 		*result_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
 		return;
 	}
-	if (prototype->is_optional)
+	if (prototype->ret_rewrite != RET_NORMAL)
 	{
 		// 17a. If we used the error var as the indirect recipient, then that will hold the error.
 		//      otherwise it's whatever value in be_value.
@@ -5542,7 +5559,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 
 
 		// 17g. If void, be_value contents should be skipped.
-		if (!prototype->ret_by_ref)
+		if (prototype->ret_rewrite != RET_OPTIONAL_VALUE)
 		{
 			*result_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
 			return;
@@ -5550,11 +5567,18 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 
 		// 17h. Assign the return param to be_value.
 		*result_value = *synthetic_return_param;
-		return;
 	}
 
-	// 17i. The simple case here is where there is a normal return.
-	//      In this case be_value already holds the result
+	switch (prototype->return_rewrite)
+	{
+		case RET_NORMAL:
+			break;
+		case PARAM_RW_VEC_TO_ARRAY:
+			if (result_value->value) llvm_emit_array_to_vector(c, result_value, type_vector_from_array(result_value->type));
+			break;
+		case PARAM_RW_EXPAND_ELEMENTS:
+			UNREACHABLE_VOID;
+	}
 }
 
 static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id_ptr, LLVMValueRef selector)
@@ -5707,46 +5731,37 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
  * We assume all optionals are already folded for the arguments.
  */
 INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
-									  BEValue *target,
-									  SourceSpan span,
-									  FunctionPrototype *prototype,
-									  Expr **args,
+                                      BEValue *target,
+                                      SourceSpan span,
+                                      FunctionPrototype *prototype,
 									  BEValue *values,
-									  int inline_flag,
-									  bool no_return,
-									  LLVMValueRef func,
-									  LLVMTypeRef func_type,
-									  Expr **varargs)
+                                      int inline_flag,
+                                      bool no_return,
+                                      LLVMValueRef func,
+                                      LLVMTypeRef func_type,
+                                      Expr **vaargs)
 {
 	LLVMValueRef arg_values[512];
 	unsigned arg_count = 0;
-	Type **params = prototype->param_types;
 	ABIArgInfo **abi_args = prototype->abi_args;
-	unsigned param_count = vec_size(params);
+	unsigned param_count = prototype->param_count;
 	FunctionPrototype copy;
 	if (prototype->raw_variadic)
 	{
-		if (varargs)
+		if (vaargs)
 		{
 			copy = *prototype;
-			copy.varargs = NULL;
-
-			FOREACH(Expr *, val, varargs)
-			{
-				vec_add(copy.varargs, type_flatten(val->type));
-			}
 			copy.is_resolved = false;
 			copy.ret_abi_info = NULL;
-			copy.ret_by_ref_abi_info = NULL;
 			copy.abi_args = NULL;
-			c_abi_func_create(&copy);
+			c_abi_func_create(prototype->raw_type->function.signature, &copy, vaargs);
 			prototype = &copy;
 			LLVMTypeRef *params_type = NULL;
 			llvm_update_prototype_abi(c, prototype, &params_type);
 		}
 	}
 	ABIArgInfo *ret_info = prototype->ret_abi_info;
-	Type *call_return_type = prototype->abi_ret_type;
+	Type *call_return_type = prototype->return_info.type;
 
 	// 5. In the case of an optional, the error is replacing the regular return abi.
 	LLVMValueRef error_var = NULL;
@@ -5758,7 +5773,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 	{
 		case ABI_ARG_INDIRECT:
 			// 6a. We can use the stored error var if there is no redirect.
-			if (prototype->is_optional && c->catch.fault && !ret_info->attributes.realign)
+			if (prototype->ret_rewrite != RET_NORMAL && c->catch.fault && !ret_info->attributes.realign)
 			{
 				error_var = c->catch.fault;
 				arg_values[arg_count++] = error_var;
@@ -5799,50 +5814,52 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 	// 7. We might have an optional indirect return and a normal return.
 	//    In this case we need to add it by hand.
 	BEValue synthetic_return_param = { 0 };
-	if (prototype->ret_by_ref)
+	int start = 0;
+	if (prototype->ret_rewrite == RET_OPTIONAL_VALUE)
 	{
 		// 7b. Create the address to hold the return.
-		Type *actual_return_type = type_lowering(prototype->ret_by_ref_type);
-		llvm_value_set(&synthetic_return_param, llvm_emit_alloca_aligned(c, actual_return_type, "retparam"), type_get_ptr(actual_return_type));
+		Type *actual_return_type_ptr = abi_args[0]->original_type;
+		Type *actual_return_type = actual_return_type_ptr->pointer;
+		llvm_value_set(&synthetic_return_param, llvm_emit_alloca_aligned(c, actual_return_type, "retparam"), actual_return_type_ptr);
 		// 7c. Emit it as a parameter as a pointer (will implicitly add it to the value list)
-		llvm_emit_parameter(c, arg_values, &arg_count, prototype->ret_by_ref_abi_info, &synthetic_return_param, synthetic_return_param.type);
+		llvm_emit_parameter(c, arg_values, &arg_count, abi_args[0], &synthetic_return_param);
 		// 7d. Update the be_value to actually be an address.
 		llvm_value_set_address_abi_aligned(c, &synthetic_return_param, synthetic_return_param.value, actual_return_type);
+		start = 1;
 	}
 
 	// 8. Add all other arguments.
-	for (unsigned i = 0; i < param_count; i++)
+	for (unsigned i = start; i < param_count; i++)
 	{
 		// 8a. Evaluate the expression.
-		Type *param = params[i];
 		ABIArgInfo *info = abi_args[i];
 
 		// 8b. Emit the parameter according to ABI rules.
-		BEValue value_copy = values[i];
-		llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy, param);
+		BEValue value_copy = values[i - start];
+		llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy);
 	}
 
-	// 9. Typed varargs
+	// 9. Typed vaargs
 
 	if (prototype->raw_variadic)
 	{
-		unsigned vararg_count = vec_size(varargs);
+		unsigned vararg_count = vec_size(vaargs);
 		if (prototype->abi_varargs)
 		{
-			// 9. Emit varargs.
+			// 9. Emit vaargs.
 			unsigned index = 0;
 			ABIArgInfo **abi_varargs = prototype->abi_varargs;
 			for (unsigned i = 0; i < vararg_count; i++)
 			{
 				ABIArgInfo *info = abi_varargs[index];
 				BEValue value_copy = values[i + param_count];
-				llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy, prototype->varargs[index]);
+				llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy);
 				index++;
 			}
 		}
 		else
 		{
-			// 9. Emit varargs.
+			// 9. Emit vaargs.
 			for (unsigned i = 0; i < vararg_count; i++)
 			{
 				REMINDER("Varargs should be expanded correctly");
@@ -5995,6 +6012,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		varargs = expr->call_expr.varargs;
 	}
 
+	Signature *sig = prototype->raw_type->function.signature;
 	for (unsigned i = 0; i < arg_count; i++)
 	{
 		BEValue *value_ref = &values[i];
@@ -6005,7 +6023,8 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 			llvm_value_fold_optional(c, value_ref);
 			continue;
 		}
-		Type *param = prototype->param_types[i];
+		Decl *decl = sig->params[i];
+		Type *param = decl->type;
 		if (vararg_splat)
 		{
 			llvm_emit_vasplat_expr(c, value_ref, vararg_splat, param);
@@ -6062,7 +6081,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 			LLVMBasicBlockRef after = llvm_basic_block_new(c, "after_call");
 			FunctionPrototype *default_prototype = type_get_resolved_prototype(default_method->type);
 			BEValue default_res;
-			llvm_emit_call_invocation(c, &default_res, target, expr->span, default_prototype, args, values, inline_flag, no_return,
+			llvm_emit_call_invocation(c, &default_res, target, expr->span, default_prototype, values, inline_flag, no_return,
 			                          llvm_get_ref(c, default_method),
 			                          llvm_get_type(c, default_method->type),
 			                          varargs);
@@ -6074,7 +6093,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 			func_type = llvm_get_type(c, dyn_fn->type);
 			BEValue normal_res;
 			values[0] = result;
-			llvm_emit_call_invocation(c, &normal_res, target, expr->span, prototype, args, values, inline_flag, no_return, func, func_type,
+			llvm_emit_call_invocation(c, &normal_res, target, expr->span, prototype, values, inline_flag, no_return, func, func_type,
 			                          varargs);
 			LLVMValueRef normal_val = llvm_load_value(c, &normal_res);
 			LLVMBasicBlockRef normal_block = c->current_block;
@@ -6099,7 +6118,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 
 	}
 
-	llvm_emit_call_invocation(c, result_value, target, expr->span, prototype, args, values, inline_flag, no_return, func, func_type,
+	llvm_emit_call_invocation(c, result_value, target, expr->span, prototype, values, inline_flag, no_return, func, func_type,
 							  varargs);
 }
 
@@ -6978,13 +6997,9 @@ static void llvm_emit_int_to_bool(GenContext *c, BEValue *value, Expr *expr)
 				   expr->type);
 }
 
-static void llvm_emit_vector_from_array(GenContext *c, BEValue *value, Expr *expr)
+void llvm_emit_array_to_vector(GenContext *c, BEValue *value, Type *to)
 {
-	Expr *inner = expr->inner_expr;
-	llvm_emit_expr(c, value, inner);
-	llvm_value_fold_optional(c, value);
-
-	Type *to_type = type_lowering(expr->type);
+	Type *to_type = type_lowering(to);
 	if (llvm_value_is_addr(value))
 	{
 		// Unaligned load
@@ -7000,6 +7015,15 @@ static void llvm_emit_vector_from_array(GenContext *c, BEValue *value, Expr *exp
 	}
 	llvm_value_set(value, vector, to_type);
 }
+
+static void llvm_emit_vector_from_array(GenContext *c, BEValue *value, Expr *expr)
+{
+	Expr *inner = expr->inner_expr;
+	llvm_emit_expr(c, value, inner);
+	llvm_value_fold_optional(c, value);
+	llvm_emit_array_to_vector(c, value, expr->type);
+}
+
 static void llvm_emit_ptr_access(GenContext *c, BEValue *value, Expr *expr)
 {
 	llvm_emit_expr(c, value, expr->inner_expr);
@@ -7095,18 +7119,23 @@ void llvm_emit_scalar_to_vector(GenContext *c, BEValue *value, Expr *expr)
 	llvm_value_set(value, res, expr->type);
 }
 
-static inline void llvm_emit_vector_to_array(GenContext *c, BEValue *value, Expr *expr)
+void llvm_emit_vec_to_array(GenContext *c, BEValue *value, Type *type)
 {
-	llvm_emit_expr(c, value, expr->inner_expr);
 	llvm_value_rvalue(c, value);
-	Type *to_type = type_lowering(expr->type);
+	Type *to_type = type_lowering(type);
 	LLVMValueRef array = llvm_get_undef(c, to_type);
+
 	for (unsigned i = 0; i < to_type->array.len; i++)
 	{
 		LLVMValueRef element = llvm_emit_extract_value(c, value->value, i);
 		array = llvm_emit_insert_value(c, array, element, i);
 	}
 	llvm_value_set(value, array, to_type);
+}
+static inline void llvm_emit_vector_to_array(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_emit_expr(c, value, expr->inner_expr);
+	llvm_emit_vec_to_array(c, value, expr->type);
 }
 
 void llvm_emit_slice_to_vec_array(GenContext *c, BEValue *value, Expr *expr)

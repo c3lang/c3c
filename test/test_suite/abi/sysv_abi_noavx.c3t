@@ -16,16 +16,18 @@ fn void callit()
 	take_stringref(s);
 }
 
-extern fn float[<8>] get_m256();
-extern fn void take_m256(float[<8>] x);
-extern fn float[<16>] get_m512();
-extern fn void take_m512(float[<16>] x);
+typedef Mv256 = float[<8>] @simd;
+typedef Mv512 = float[<16>] @simd;
+extern fn Mv256 get_m256();
+extern fn void take_m256(Mv256 x);
+extern fn Mv512 get_m512();
+extern fn void take_m512(Mv512 x);
 
 fn void use_vectors()
 {
-  float[<8>] v1 = get_m256();
+  Mv256 v1 = get_m256();
   take_m256(v1);
-  float[<16>] v2 = get_m512();
+  Mv512 v2 = get_m512();
   take_m512(v2);
 }
 

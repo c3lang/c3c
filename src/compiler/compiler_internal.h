@@ -43,6 +43,7 @@ typedef uint16_t FileId;
 #define INITIAL_GENERIC_SYMBOL_MAP 0x1000
 #define MAX_INCLUDE_DIRECTIVES 2048
 #define MAX_PARAMS 255
+#define MAX_VAARGS 512
 #define MAX_BITSTRUCT 0x1000
 #define MAX_MEMBERS ((StructIndex)1) << 15
 #define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
@@ -304,6 +305,7 @@ typedef struct
 	bool is_pure : 1;
 	bool noreturn : 1;
 	bool always_const : 1;
+	bool is_simd : 1;
 	uint8_t format : 8;
 } CalleeAttributes;
 
@@ -330,6 +332,7 @@ struct Type_
 			uint16_t tb_type;
 		};
 	};
+	ByteSize size;
 	void *backend_typeid;
 	void *backend_debug_type;
 	union
@@ -686,6 +689,7 @@ typedef struct Decl_
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
 	bool attr_structlike : 1;
+	bool attr_simd : 1;
 	union
 	{
 		void *backend_ref;
@@ -716,7 +720,11 @@ typedef struct Decl_
 			{
 				// Enums and Fault
 				EnumDecl enums;
-				TypeInfo *distinct;
+				struct
+				{
+					TypeInfo *distinct;
+					Expr *distinct_align;
+				};
 				// Unions, Struct, Bitstruct use strukt
 				StructDecl strukt;
 				Decl **interface_methods;
@@ -803,8 +811,8 @@ typedef struct
 {
 	Expr* expr;
 	UnaryOp operator : 8;
-	bool no_wrap;
-	bool no_read;
+	bool no_wrap : 1;
+	bool no_read : 1;
 } ExprUnary;
 
 
@@ -1887,26 +1895,30 @@ typedef struct ABIArgInfo_
 			Type *type;
 		} indirect;
 	};
-
+	Type *original_type;
+	ParamRewrite rewrite;
 } ABIArgInfo;
+
+typedef struct ParamInfo
+{
+	Type *type;
+	ParamRewrite rewrite;
+} ParamInfo;
 
 typedef struct FunctionPrototype_
 {
 	CallABI call_abi : 4;
 	bool raw_variadic : 1;
 	bool use_win64 : 1;
-	bool is_optional : 1;
-	bool ret_by_ref : 1;
 	bool is_resolved : 1;
 	unsigned short vararg_index;
-	Type *rtype;
-	Type **param_types;
-	Decl **param_copy;
-	Type **varargs;
-	Type *ret_by_ref_type;
-	Type *abi_ret_type;
+	RetValType ret_rewrite : 8;
+	ParamRewrite return_rewrite : 3;
+	ParamInfo return_info;
+	Type *return_result;
+	unsigned param_count;
+	unsigned short param_vacount;
 	ABIArgInfo *ret_abi_info;
-	ABIArgInfo *ret_by_ref_abi_info;
 	ABIArgInfo **abi_args;
 	ABIArgInfo **abi_varargs;
 	Type *raw_type;
@@ -2032,14 +2044,16 @@ extern const char *kw_typekind;
 extern const char *kw_FILE_NOT_FOUND;
 extern const char *kw_IoError;
 
+extern const char *kw_at_align;
 extern const char *kw_at_deprecated;
 extern const char *kw_at_ensure;
 extern const char *kw_at_enum_lookup;
+extern const char *kw_at_jump;
 extern const char *kw_at_param;
 extern const char *kw_at_pure;
 extern const char *kw_at_require;
 extern const char *kw_at_return;
-extern const char *kw_at_jump;
+extern const char *kw_at_simd;
 extern const char *kw_in;
 extern const char *kw_inout;
 extern const char *kw_len;
@@ -2575,7 +2589,7 @@ MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
 WindowsSDK *windows_get_sdk(void);
 const char *windows_cross_compile_library(void);
 
-void c_abi_func_create(FunctionPrototype *proto);
+void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs);
 
 bool token_is_any_type(TokenType type);
 const char *token_type_to_string(TokenType type);
@@ -2587,15 +2601,18 @@ bool type_is_ordered(Type *type);
 unsigned type_get_introspection_kind(TypeKind kind);
 void type_mangle_introspect_name_to_buffer(Type *type);
 AlignSize type_abi_alignment(Type *type);
+AlignSize type_simd_alignment(CanonicalType *type);
 bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...);
 Type *type_find_largest_union_element(Type *type);
 Type *type_find_max_type(Type *type, Type *other, Expr *first, Expr *second);
 Type *type_find_max_type_may_fail(Type *type, Type *other);
-Type *type_abi_find_single_struct_element(Type *type);
+Type *type_abi_find_single_struct_element(Type *type, bool in_abi);
 Module *type_base_module(Type *type);
 bool type_is_valid_for_vector(Type *type);
 bool type_is_valid_for_array(Type *type);
 Type *type_get_array(Type *arr_type, ArraySize len);
+Type *type_array_from_vector(Type *vec_type);
+Type *type_vector_from_array(Type *vec_type);
 Type *type_get_indexed_type(Type *type);
 Type *type_get_ptr(Type *ptr_type);
 Type *type_get_func_ptr(Type *func_type);
@@ -2607,7 +2624,6 @@ Type *type_get_flexible_array(Type *arr_type);
 AlignSize type_alloca_alignment(Type *type);
 Type *type_get_optional(Type *optional_type);
 Type *type_get_vector(Type *vector_type, unsigned len);
-Type *type_get_simd(Type *vector_type, unsigned len);
 Type *type_get_vector_bool(Type *original_type);
 Type *type_int_signed_by_bitsize(BitSize bitsize);
 Type *type_int_unsigned_by_bitsize(BitSize bit_size);
@@ -2619,6 +2635,8 @@ void type_func_prototype_init(uint32_t capacity);
 Type *type_find_parent_type(Type *type);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_abi_aggregate(Type *type);
+bool type_is_simd(Type *type);
+bool type_is_aggregate(Type *type);
 bool type_is_int128(Type *type);
 
 Type *type_from_token(TokenType type);
@@ -3063,6 +3081,7 @@ INLINE Type *type_new(TypeKind kind, const char *name)
 {
 	Type *type = CALLOCS(Type);
 	type->type_kind = kind;
+	type->size = ~(ByteSize)0;
 	ASSERT(name);
 	type->name = name;
 	global_context_add_type(type);

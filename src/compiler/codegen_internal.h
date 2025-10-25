@@ -17,6 +17,7 @@ static inline bool abi_type_is_type(AbiType type);
 
 static inline bool abi_type_is_valid(AbiType type);
 
+
 static inline LoweredType *type_lowering(Type *type)
 {
 	while (1)
@@ -77,6 +78,80 @@ static inline LoweredType *type_lowering(Type *type)
 						return type_get_array(flat, type->array.len);
 					case TYPE_VECTOR:
 						return type_get_vector(flat, type->array.len);
+					case TYPE_FLEXIBLE_ARRAY:
+						return type_get_flexible_array(flat);
+					default:
+						UNREACHABLE
+				}
+			}
+			default:
+				return type;
+		}
+	}
+}
+
+static inline LoweredType *type_lowering_abi(Type *type)
+{
+	while (1)
+	{
+		type = type->canonical;
+		switch (type->type_kind)
+		{
+			case TYPE_ALIAS:
+				UNREACHABLE
+			case TYPE_OPTIONAL:
+				type = type->optional;
+				continue;
+			case TYPE_TYPEDEF:
+				if (type->decl->attr_simd)
+				{
+					type = type->decl->distinct->type;
+					return type_get_vector(type_lowering(type->array.base), type->array.len);
+				}
+				type = type->decl->distinct->type;
+				continue;
+			case TYPE_CONST_ENUM:
+			case TYPE_ENUM:
+				type = enum_inner_type(type);
+				continue;
+			case TYPE_FUNC_PTR:
+			{
+				Type *raw_func = type->pointer;
+				if (raw_func->function.prototype && raw_func->function.prototype->raw_type == raw_func) return type;
+				FunctionPrototype *proto = type_get_resolved_prototype(raw_func);
+				return type_get_func_ptr(proto->raw_type);
+			}
+			case TYPE_INTERFACE:
+				return type_any;
+			case TYPE_ANYFAULT:
+			case TYPE_TYPEID:
+				return type_iptr->canonical;
+			case TYPE_BITSTRUCT:
+				type = type->decl->strukt.container_type->type;
+				continue;
+			case TYPE_WILDCARD:
+				type = type_void;
+				break;
+			case TYPE_POINTER:
+			{
+				Type *pointer = type->pointer;
+				Type *flat = type_lowering_abi(pointer);
+				if (flat == pointer) return type;
+				return type_get_ptr(flat);
+			}
+			case TYPE_SLICE:
+			case TYPE_ARRAY:
+			case TYPE_VECTOR:
+			case TYPE_FLEXIBLE_ARRAY:
+			{
+				Type *flat = type_lowering_abi(type->array.base);
+				switch (type->type_kind)
+				{
+					case TYPE_SLICE:
+						return type_get_slice(flat);
+					case TYPE_ARRAY:
+					case TYPE_VECTOR:
+						return type_get_array(flat, type->array.len);
 					case TYPE_FLEXIBLE_ARRAY:
 						return type_get_flexible_array(flat);
 					default:
@@ -153,3 +228,13 @@ extern const char * const benchmark_fns_var_name;
 extern const char * const benchmark_names_var_name;
 extern const char * const test_fns_var_name;
 extern const char * const test_names_var_name;
+
+INLINE Type *lowered_member_type(Decl *member)
+{
+	return type_lowering_abi(member->type);
+}
+
+INLINE Type *lowered_array_element_type(Type *array_type)
+{
+	return type_lowering_abi(array_type->array.base);
+}

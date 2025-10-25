@@ -2,7 +2,7 @@
 // #opt: --x86cpu=avx1
 module test;
 
-alias Mm256 = float[<8>];
+typedef Mm256 = float[<8>] @simd;
 struct St256
 {
     Mm256 m;
@@ -20,7 +20,7 @@ fn void f39() { f38(x38); f37(x37); }
 
 // CHECK: declare void @func40(%struct.t128* byval(%struct.t128) align 16)
 
-alias Mm128 = float[<4>];
+typedef Mm128 = float[<4>] @simd;
 struct Two128
 {
 	Mm128 m;
@@ -32,24 +32,25 @@ fn void func41(Two128 s)
 {
     func40(s);
 }
-
 struct Atwo128
 {
 	Mm128[2] array;
 }
 
-struct Sa {
-  Atwo128 x;
+struct Sa
+{
+	Atwo128 x;
 }
 
 extern fn void func42(Sa s);
-fn void func43(Sa s) {
-  func42(s);
+fn void func43(Sa s)
+{
+	func42(s);
 }
 
 
-alias Vec46 = float[<2>];
-extern fn void f46(Vec46,Vec46,Vec46,Vec46,Vec46,Vec46,Vec46,Vec46,Vec46,Vec46);
+typedef Vec46 = float[<2>] @simd;
+extern fn void f46(Vec46 a, Vec46 b, Vec46 c, Vec46 d, Vec46 e, Vec46 f, Vec46 g, Vec46 h, Vec46 i, Vec46 j);
 fn void test46() { Vec46 x = {1,2}; f46(x,x,x,x,x,x,x,x,x,x); }
 
 struct Vec47 { uint a; }
@@ -62,20 +63,23 @@ fn void test49(double d, double e) { test49_helper(d, e); }
 struct Complex { double i; double c; }
 extern fn void test52_helper(int, ...);
 Mm256 x52;
-fn void test52() {
-  test52_helper(0, x52, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 0, 1.0 });
+fn void test52()
+{
+	test52_helper(0, x52, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 0, 1.0 });
 }
 
 extern fn void test54_helper(Mm256, ...);
 Mm256 x54;
-fn void test54() {
-  test54_helper(x54, x54, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 0, 1.0 });
-  test54_helper(x54, x54, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 0, 1.0 });
+fn void test54()
+{
+	test54_helper(x54, x54, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 0, 1.0 });
+	test54_helper(x54, x54, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 0, 1.0 });
 }
 
-alias Mm512 = float[<16>];
-struct St512 {
-  Mm512 m;
+typedef Mm512 = float[<16>] @simd;
+struct St512
+{
+	Mm512 m;
 }
 
 St512 x55;
@@ -86,27 +90,32 @@ extern fn void f55(St512 x);
 extern fn void f56(Mm512 x);
 fn void f57() { f55(x55); f56(x56); }
 
-struct Two256 {
-  Mm256 m;
-  Mm256 n;
+struct Two256
+{
+	Mm256 m;
+	Mm256 n;
 }
 
 extern fn void f58(Two256 s);
-fn void f59(Two256 s) {
-  f58(s);
+fn void f59(Two256 s)
+{
+	f58(s);
 }
 
-struct Atwo256 {
-  Mm256[2] array;
+struct Atwo256
+{
+	Mm256[2] array;
 }
 
-struct SAtwo256 {
-  Atwo256 x;
+struct SAtwo256
+{
+	Atwo256 x;
 }
 
 extern fn void f60(SAtwo256 s);
-fn void f61(SAtwo256 s) {
-  f60(s);
+fn void f61(SAtwo256 s)
+{
+	f60(s);
 }
 
 

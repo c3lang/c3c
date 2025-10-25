@@ -1924,6 +1924,26 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 
 	ASSERT(!tok_is(c, TOKEN_LBRACE));
 
+	while (tok_is(c, TOKEN_AT_IDENT))
+	{
+		const char *name = symstr(c);
+		if (name == kw_at_align)
+		{
+			advance_and_verify(c, TOKEN_AT_IDENT);
+			CONSUME_OR_RET(TOKEN_LPAREN, poisoned_decl);
+			ASSIGN_EXPR_OR_RET(decl->distinct_align, parse_expr(c), poisoned_decl);
+			CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
+		}
+		else if (name == kw_at_simd)
+		{
+			advance_and_verify(c, TOKEN_AT_IDENT);
+			decl->attr_simd = true;
+		}
+		else
+		{
+			RETURN_PRINT_ERROR_HERE("Expected only attributes '@align' and '@simd'.");
+		}
+	}
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;

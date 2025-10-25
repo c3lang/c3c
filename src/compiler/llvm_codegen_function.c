@@ -9,7 +9,7 @@ static void llvm_append_xxlizer(GenContext *c, unsigned  priority, bool is_initi
 static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef value);
 static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment);
 static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index);
-static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index);
+static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo ***abi_info_ref, unsigned *index, unsigned real_index);
 static inline void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body, Decl *decl, bool is_naked);
 
 
@@ -77,6 +77,7 @@ static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, u
 	switch (type->type_kind)
 	{
 		case TYPE_ARRAY:
+		case TYPE_VECTOR:
 		{
 			LLVMTypeRef array_type = llvm_get_type(c, type);
 			for (unsigned i = 0; i < type->array.len; i++)
@@ -94,7 +95,7 @@ static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, u
 			{
 				AlignSize element_align;
 				LLVMValueRef target = llvm_emit_struct_gep_raw(c, ref, struct_type, i, alignment, &element_align);
-				llvm_expand_from_args(c, member->type, target, index, element_align);
+				llvm_expand_from_args(c, type_lowering(member->type), target, index, element_align);
 			}
 			break;
 		}
@@ -117,7 +118,7 @@ LLVMValueRef llvm_get_next_param(GenContext *c, unsigned *index)
 }
 
 
-static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index)
+static inline void llvm_process_parameter_value_inner(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index)
 {
 	switch (info->kind)
 	{
@@ -126,6 +127,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 		case ABI_ARG_INDIRECT:
 			// Indirect is caller copied.
 			decl->backend_ref = llvm_get_next_param(c, index);
+			decl->alignment = info->indirect.alignment;
 			return;
 		case ABI_ARG_EXPAND_COERCE:
 		{
@@ -257,12 +259,45 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 		}
 	}
 }
-static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index)
+
+static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index)
+{
+	switch (info->rewrite)
+	{
+		case PARAM_RW_NONE:
+			llvm_process_parameter_value_inner(c, decl, info, index);
+			break;
+		case PARAM_RW_VEC_TO_ARRAY:
+		{
+			Decl *temp = decl_new_generated_var(info->original_type, VARDECL_PARAM, decl->span);
+			llvm_process_parameter_value_inner(c, temp, info, index);
+			BEValue value;
+			llvm_value_set_decl(c, &value, temp);
+			llvm_emit_array_to_vector(c, &value, decl->type);
+			BEValue param;
+			if (decl->is_value)
+			{
+				llvm_value_rvalue(c, &value);
+				decl->backend_value = value.value;
+			}
+			else
+			{
+				llvm_emit_and_set_decl_alloca(c, decl);
+				llvm_value_set_decl(c, &param, decl);
+				llvm_store(c, &param, &value);
+			}
+			break;
+		}
+		case PARAM_RW_EXPAND_ELEMENTS:
+			TODO;
+	}
+}
+static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo ***abi_info_ref, unsigned *index, unsigned real_index)
 {
 	ASSERT(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
-	// Allocate room on stack, but do not copy.
-	llvm_process_parameter_value(context, decl, abi_info, index);
+	ABIArgInfo *info = *((*abi_info_ref)++);
+	llvm_process_parameter_value(context, decl, info, index);
 	if (llvm_use_debug(context))
 	{
 		llvm_emit_debug_parameter(context, decl, real_index);
@@ -299,14 +334,27 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 	// If we have an optional it's always the return argument, so we need to copy
 	// the return value into the return value holder.
 	LLVMValueRef return_out = c->return_out;
-	Type *call_return_type = prototype->abi_ret_type;
+	Type *call_return_type = prototype->return_info.type;
 
 	BEValue no_fail;
 
 	// In this case we use the optional as the actual return.
-	if (prototype->is_optional)
+	switch (prototype->return_rewrite)
 	{
-		if (return_value && return_value->type != type_void)
+		case PARAM_RW_NONE:
+			break;
+		case PARAM_RW_VEC_TO_ARRAY:
+			if (return_value)
+			{
+				llvm_emit_vec_to_array(c, return_value, type_array_from_vector(return_value->type));
+			}
+			break;
+		case PARAM_RW_EXPAND_ELEMENTS:
+			UNREACHABLE_VOID;
+	}
+	if (prototype->ret_rewrite != RET_NORMAL)
+	{
+		if (return_value && prototype->ret_rewrite == RET_OPTIONAL_VALUE)
 		{
 			ASSERT(return_value->value);
 			llvm_store_to_ptr_aligned(c, c->return_out, return_value, type_alloca_alignment(return_value->type));
@@ -388,17 +436,23 @@ DIRECT_RETURN:
 
 void llvm_emit_return_implicit(GenContext *c)
 {
-	Type *rtype_real = c->cur_func.prototype ? c->cur_func.prototype->rtype : type_void;
-	if (type_lowering(type_no_optional(rtype_real)) != type_void)
+	if (!c->cur_func.prototype) goto VOID;
+	Type *rtype_real = c->cur_func.prototype->return_info.type;
+	switch (c->cur_func.prototype->ret_rewrite)
 	{
-		LLVMBuildUnreachable(c->builder);
-		return;
+		case RET_NORMAL:
+			if (type_is_void(type_flatten(rtype_real))) goto VOID;
+			FALLTHROUGH;
+		case RET_OPTIONAL_VALUE:
+			LLVMBuildUnreachable(c->builder);
+			return;
+		case RET_OPTIONAL_VOID:
+			llvm_emit_return_abi(c, NULL, NULL);
+			return;
+		default:
+			UNREACHABLE_VOID;
 	}
-	if (type_is_optional(rtype_real))
-	{
-		llvm_emit_return_abi(c, NULL, NULL);
-		return;
-	}
+VOID:;
 	BEValue value;
 	llvm_value_set(&value, llvm_get_zero(c, type_fault), type_fault);
 	llvm_emit_return_abi(c, NULL, &value);
@@ -479,7 +533,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	c->return_out = NULL;
 	if (prototype->ret_abi_info->kind == ABI_ARG_INDIRECT)
 	{
-		if (prototype->is_optional)
+		if (prototype->ret_rewrite != RET_NORMAL)
 		{
 			c->optional_out = llvm_get_next_param(c, &arg);
 		}
@@ -488,9 +542,11 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 			c->return_out = llvm_get_next_param(c, &arg);
 		}
 	}
-	if (prototype->ret_by_ref_abi_info)
+	ABIArgInfo **abi_args = prototype->abi_args;
+	if (prototype->ret_rewrite == RET_OPTIONAL_VALUE)
 	{
 		ASSERT(!c->return_out);
+		abi_args++;
 		c->return_out = llvm_get_next_param(c, &arg);
 	}
 
@@ -500,7 +556,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	{
 		FOREACH_IDX(i, Decl *, param, signature->params)
 		{
-			llvm_emit_func_parameter(c, param, prototype->abi_args[i], &arg, i);
+			llvm_emit_func_parameter(c, param, &abi_args, &arg, i);
 		}
 	}
 

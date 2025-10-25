@@ -67,7 +67,7 @@ static AlignSize max_alignment_vector;
 #define OPTIONAL_OFFSET 5
 #define ARRAY_OFFSET 6
 
-static void type_append_func_to_scratch(FunctionPrototype *prototype);
+static void type_append_func_to_scratch(Signature *signature);
 
 void type_init_cint(void)
 {
@@ -194,7 +194,7 @@ void type_append_name_to_scratch(Type *type)
 			type = type->pointer;
 			FALLTHROUGH;
 		case TYPE_FUNC_RAW:
-			type_append_func_to_scratch(type->function.prototype);
+			type_append_func_to_scratch(type->function.signature);
 			break;
 		case TYPE_ARRAY:
 			type_append_name_to_scratch(type->array.base);
@@ -205,22 +205,23 @@ void type_append_name_to_scratch(Type *type)
 	}
 }
 
-static void type_append_func_to_scratch(FunctionPrototype *prototype)
+static void type_append_func_to_scratch(Signature *signature)
 {
-	type_append_name_to_scratch(prototype->rtype);
+	type_append_name_to_scratch(typeget(signature->rtype));
 	scratch_buffer_append_char('(');
-	unsigned elements = vec_size(prototype->param_types);
+	unsigned elements = vec_size(signature->params);
 	for (unsigned i = 0; i < elements; i++)
 	{
 		if (i > 0)
 		{
 			scratch_buffer_append_char(',');
 		}
-		type_append_name_to_scratch(prototype->param_types[i]);
+		type_append_name_to_scratch(signature->params[i]->type);
 	}
-	if (prototype->raw_variadic && elements > 0)
+	if (signature->variadic == VARIADIC_RAW)
 	{
-		scratch_buffer_append_char(',');
+		if (elements > 0) scratch_buffer_append_char(',');
+		scratch_buffer_append("...");
 	}
 	scratch_buffer_append_char(')');
 }
@@ -300,7 +301,7 @@ const char *type_to_error_string(Type *type)
 			if (!type->function.prototype) return type->name;
 			scratch_buffer_clear();
 			scratch_buffer_append("fn ");
-			type_append_func_to_scratch(type->function.prototype);
+			type_append_func_to_scratch(type->function.signature);
 			return scratch_buffer_copy();
 		case TYPE_INFERRED_VECTOR:
 			return str_printf("%s[<*>]", type_to_error_string(type->array.base));
@@ -371,7 +372,7 @@ static const char *type_to_error_string_with_path(Type *type)
 			if (!type->function.prototype) return type->name;
 			scratch_buffer_clear();
 			scratch_buffer_append("fn ");
-			type_append_func_to_scratch(type->function.prototype);
+			type_append_func_to_scratch(type->function.signature);
 			return scratch_buffer_copy();
 		case TYPE_INFERRED_VECTOR:
 			return str_printf("%s[<*>]", type_to_error_string_with_path(type->array.base));
@@ -411,61 +412,56 @@ bool type_is_matching_int(CanonicalType *type1, CanonicalType *type2)
 
 TypeSize type_size(Type *type)
 {
-RETRY:
+	if (type->size != ~(ByteSize)0)
+	{
+		ASSERT(type->size != 0 || type_flatten(type)->type_kind == TYPE_FLEXIBLE_ARRAY);
+		return type->size;
+	}
 	switch (type->type_kind)
 	{
 		case TYPE_BITSTRUCT:
 			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
-			type = type->decl->strukt.container_type->type;
-			goto RETRY;
+			return type->size = type_size(type->decl->strukt.container_type->type);
 		case TYPE_TYPEDEF:
 			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
-			type = type->decl->distinct->type;
-			goto RETRY;
-		case TYPE_VECTOR:
-		{
-			TypeSize width = type_size(type->array.base) * type->array.len;
-			if (!is_power_of_two(width)) return next_highest_power_of_2(width);
-			return width;
-		}
+			return type->size = type_size(type->decl->distinct->type);
 		case CT_TYPES:
 		case TYPE_FUNC_RAW:
 			UNREACHABLE;
 		case TYPE_FLEXIBLE_ARRAY:
-			return 0;
+			return type->size = 0;
 		case TYPE_OPTIONAL:
-			type = type->optional;
-			goto RETRY;
+			return type->size = type_size(type->optional);
 		case TYPE_ALIAS:
-			type = type->canonical;
-			goto RETRY;
+			return type->size = type_size(type->canonical);
 		case TYPE_ENUM:
 		case TYPE_CONST_ENUM:
 			ASSERT(type->decl->enums.type_info->resolve_status == RESOLVE_DONE);
-			type = enum_inner_type(type)->canonical;
-			goto RETRY;
+			return type->size = type_size(enum_inner_type(type)->canonical);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
-			return type->decl->strukt.size;
+			return type->size = type->decl->strukt.size;
 		case TYPE_VOID:
-			return 1;
+			return type->size = 1;
 		case TYPE_BOOL:
 		case TYPE_TYPEID:
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_ANYFAULT:
-			return type->builtin.bytesize;
+			// Always cached
+			UNREACHABLE
 		case TYPE_INTERFACE:
 		case TYPE_ANY:
-			return t.iptr.canonical->builtin.bytesize * 2;
+			return type->size = t.iptr.canonical->builtin.bytesize * 2;
 		case TYPE_FUNC_PTR:
 		case TYPE_POINTER:
-			return t.iptr.canonical->builtin.bytesize;
+			return type->size = t.iptr.canonical->builtin.bytesize;
 		case TYPE_ARRAY:
-			return type_size(type->array.base) * type->array.len;
+		case TYPE_VECTOR:
+			return type->size = type_size(type->array.base) * type->array.len;
 		case TYPE_SLICE:
-			return size_slice;
+			return type->size = size_slice;
 	}
 	UNREACHABLE
 }
@@ -474,7 +470,10 @@ FunctionPrototype *type_get_resolved_prototype(Type *type)
 {
 	ASSERT(type->type_kind == TYPE_FUNC_RAW);
 	FunctionPrototype *prototype = type->function.prototype;
-	if (!prototype->is_resolved) c_abi_func_create(prototype);
+	if (!prototype->is_resolved)
+	{
+		c_abi_func_create(type->function.signature, prototype, NULL /* no vaargs */);
+	}
 	return prototype;
 }
 
@@ -519,6 +518,18 @@ bool type_is_int128(Type *type)
 
 bool type_is_abi_aggregate(Type *type)
 {
+	return type_is_aggregate(type);
+}
+
+bool type_is_simd(Type *type)
+{
+	type = type->canonical;
+	if (type->type_kind != TYPE_TYPEDEF) return false;
+	return type->decl->attr_simd;
+}
+
+bool type_is_aggregate(Type *type)
+{
 	RETRY:
 	switch (type->type_kind)
 	{
@@ -558,6 +569,7 @@ bool type_is_abi_aggregate(Type *type)
 	}
 	UNREACHABLE
 }
+
 
 Type *type_find_largest_union_element(Type *type)
 {
@@ -767,6 +779,16 @@ bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...)
 	return true;
 }
 
+AlignSize type_simd_alignment(CanonicalType *type)
+{
+	ASSERT(type->type_kind == TYPE_VECTOR);
+	ByteSize width = type_size(type->array.base) * type->array.len;
+	AlignSize alignment = (AlignSize)(int32_t)width;
+	if (max_alignment_vector && alignment > max_alignment_vector) return max_alignment_vector;
+	ASSERT(is_power_of_two(alignment));
+	return alignment;
+}
+
 AlignSize type_abi_alignment(Type *type)
 {
 	RETRY:
@@ -802,8 +824,8 @@ AlignSize type_abi_alignment(Type *type)
 			type = type->optional;
 			goto RETRY;
 		case TYPE_TYPEDEF:
-			type = type->decl->distinct->type;
-			goto RETRY;
+			ASSERT(type->decl->alignment);
+			return type->decl->alignment;
 		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
@@ -831,7 +853,11 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
-			type = type->array.base;
+			type = type->array.base->canonical;
+			if (type->type_kind == TYPE_VECTOR)
+			{
+				type = type->array.base;
+			}
 			goto RETRY;
 		case TYPE_SLICE:
 			return alignment_slice;
@@ -1195,7 +1221,7 @@ Type *type_get_indexed_type(Type *type)
 	}
 }
 
-static Type *type_create_array(Type *element_type, ArraySize len, bool vector, bool canonical)
+static Type *type_create_array(Type *element_type, ArraySize len, TypeKind kind, bool canonical)
 {
 	if (canonical) element_type = element_type->canonical;
 	if (!element_type->type_cache)
@@ -1206,27 +1232,19 @@ static Type *type_create_array(Type *element_type, ArraySize len, bool vector, b
 	for (int i = ARRAY_OFFSET; i < entries; i++)
 	{
 		Type *ptr_vec = element_type->type_cache[i];
-		if (vector)
-		{
-			if (ptr_vec->type_kind != TYPE_VECTOR) continue;
-			if (ptr_vec->array.len == len) return ptr_vec;
-		}
-		else
-		{
-			if (ptr_vec->type_kind == TYPE_VECTOR) continue;
-			if (ptr_vec->array.len == len) return ptr_vec;
-		}
+		if (ptr_vec->type_kind != kind) continue;
+		if (ptr_vec->array.len == len) return ptr_vec;
 	}
 	Type *vec_arr;
-	if (vector)
+	if (kind == TYPE_ARRAY)
 	{
-		vec_arr = type_new(TYPE_VECTOR, str_printf("%s[<%llu>]", element_type->name, (unsigned long long)len));
+		vec_arr = type_new(TYPE_ARRAY, str_printf("%s[%llu]", element_type->name, (unsigned long long)len));
 		vec_arr->array.base = element_type;
 		vec_arr->array.len = len;
 	}
 	else
 	{
-		vec_arr = type_new(TYPE_ARRAY, str_printf("%s[%llu]", element_type->name, (unsigned long long)len));
+		vec_arr = type_new(kind, str_printf("%s[<%llu>]", element_type->name, (unsigned long long)len));
 		vec_arr->array.base = element_type;
 		vec_arr->array.len = len;
 	}
@@ -1236,17 +1254,29 @@ static Type *type_create_array(Type *element_type, ArraySize len, bool vector, b
 	}
 	else
 	{
-		vec_arr->canonical = type_create_array(element_type, len, vector, true);
+		vec_arr->canonical = type_create_array(element_type, len, kind, true);
 	}
 	vec_add(element_type->type_cache, vec_arr);
 	return vec_arr;
+}
+
+Type *type_array_from_vector(Type *vec_type)
+{
+	ASSERT(vec_type->type_kind == TYPE_VECTOR);
+	return type_get_array(vec_type->array.base, vec_type->array.len);
+}
+
+Type *type_vector_from_array(Type *vec_type)
+{
+	ASSERT(vec_type->type_kind == TYPE_ARRAY);
+	return type_get_vector(vec_type->array.base, vec_type->array.len);
 }
 
 Type *type_get_array(Type *arr_type, ArraySize len)
 {
 	ASSERT(len > 0 && "Created a zero length array");
 	ASSERT(type_is_valid_for_array(arr_type));
-	return type_create_array(arr_type, len, false, false);
+	return type_create_array(arr_type, len, TYPE_ARRAY, false);
 }
 
 bool type_is_valid_for_vector(Type *type)
@@ -1330,16 +1360,12 @@ Type *type_get_vector_bool(Type *original_type)
 	return type_get_vector(type_int_signed_by_bitsize((unsigned)size * 8), (unsigned)original_type->array.len);
 }
 
-Type *type_get_simd(Type *vector_type, unsigned len)
-{
-	return type_get_vector(vector_type, len);
-}
-
 Type *type_get_vector(Type *vector_type, unsigned len)
 {
 	ASSERT(type_is_valid_for_vector(vector_type));
-	return type_create_array(vector_type, len, true, false);
+	return type_create_array(vector_type, len, TYPE_VECTOR, false);
 }
+
 
 static void type_create(const char *name, Type *location, TypeKind kind, unsigned bitsize,
 						unsigned align, unsigned pref_align)
@@ -1348,6 +1374,7 @@ static void type_create(const char *name, Type *location, TypeKind kind, unsigne
 	unsigned byte_size = (bitsize + 7) / 8;
 	*location = (Type) {
 		.type_kind = kind,
+		.size = byte_size,
 		.builtin.bytesize = byte_size,
 		.builtin.bitsize = bitsize,
 		.builtin.abi_alignment = align,
@@ -1366,6 +1393,7 @@ static void type_init(const char *name, Type *location, TypeKind kind, unsigned 
 	unsigned byte_size = (bitsize + 7) / 8;
 	*location = (Type) {
 		.type_kind = kind,
+		.size = byte_size,
 		.builtin.bytesize = byte_size,
 		.builtin.bitsize = bitsize,
 		.builtin.abi_alignment = align.align / 8,
@@ -1387,6 +1415,7 @@ static void type_create_alias(const char *name, Type *location, Type *canonical)
 	decl->is_export = true;
 	*location = (Type) {
 		.decl = decl,
+		.size = ~(ByteSize)0,
 		.type_kind = TYPE_ALIAS,
 		.name = name,
 		.canonical = canonical
@@ -1497,6 +1526,7 @@ void type_setup(PlatformTarget *target)
 	string_decl->extname = string_decl->name;
 	string_decl->is_substruct = true;
 	string_decl->distinct = type_info_new_base(type_chars, INVALID_SPAN);
+	string_decl->alignment = target->align_pointer.align / 8;
 	string_decl->resolve_status = RESOLVE_DONE;
 	type_string = string_decl->type;
 

@@ -95,24 +95,27 @@ entry:
   %b = alloca [4 x <4 x float>], align 16
   %.anon = alloca i64, align 8
   %v = alloca <4 x float>, align 16
-  %.anon90 = alloca i64, align 8
-  %v94 = alloca <4 x float>, align 16
+  %.anon92 = alloca i64, align 8
+  %v96 = alloca <4 x float>, align 16
   store float 0x3FE921CAC0000000, ptr %radians, align 4
-  store <3 x float> <float 0.000000e+00, float 0.000000e+00, float 1.000000e+00>, ptr %axis, align 16
+  store <4 x float> <float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float undef>, ptr %axis, align 16
   %0 = load float, ptr %radians, align 4
   %1 = call reassoc arcp contract float @llvm.cos.f32(float %0)
   store float %1, ptr %cosr, align 4
   %2 = load float, ptr %radians, align 4
   %3 = call reassoc arcp contract float @llvm.sin.f32(float %2)
   store float %3, ptr %sinr, align 4
-  %4 = load <3 x float>, ptr %axis, align 16
-  %5 = extractelement <3 x float> %4, i64 0
+  %4 = load <4 x float>, ptr %axis, align 16
+  %extractvec = shufflevector <4 x float> %4, <4 x float> poison, <3 x i32> <i32 0, i32 1, i32 2>
+  %5 = extractelement <3 x float> %extractvec, i64 0
   store float %5, ptr %x, align 4
-  %6 = load <3 x float>, ptr %axis, align 16
-  %7 = extractelement <3 x float> %6, i64 1
+  %6 = load <4 x float>, ptr %axis, align 16
+  %extractvec1 = shufflevector <4 x float> %6, <4 x float> poison, <3 x i32> <i32 0, i32 1, i32 2>
+  %7 = extractelement <3 x float> %extractvec1, i64 1
   store float %7, ptr %y, align 4
-  %8 = load <3 x float>, ptr %axis, align 16
-  %9 = extractelement <3 x float> %8, i64 2
+  %8 = load <4 x float>, ptr %axis, align 16
+  %extractvec2 = shufflevector <4 x float> %8, <4 x float> poison, <3 x i32> <i32 0, i32 1, i32 2>
+  %9 = extractelement <3 x float> %extractvec2, i64 2
   store float %9, ptr %z, align 4
   call void @llvm.memset.p0.i64(ptr align 16 %a, i8 0, i64 64, i1 false)
   %10 = load float, ptr %cosr, align 4
@@ -127,224 +130,224 @@ entry:
   %15 = insertelement <4 x float> undef, float %14, i64 0
   %16 = load float, ptr %x, align 4
   %17 = load float, ptr %y, align 4
-  %fmul1 = fmul reassoc arcp contract float %16, %17
+  %fmul3 = fmul reassoc arcp contract float %16, %17
   %18 = load float, ptr %cosr, align 4
-  %fpfpext2 = fpext
-  %fsub3 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext2
-  %fpfptrunc4 = fptrunc
+  %fpfpext4 = fpext
+  %fsub5 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext4
+  %fpfptrunc6 = fptrunc
   %19 = load float, ptr %z, align 4
   %20 = load float, ptr %sinr, align 4
-  %fmul5 = fmul reassoc arcp contract float %19, %20
-  %21 = fneg reassoc arcp contract float %fmul5
-  %22 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul1, float %fpfptrunc4, float %21)
+  %fmul7 = fmul reassoc arcp contract float %19, %20
+  %21 = fneg reassoc arcp contract float %fmul7
+  %22 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul3, float %fpfptrunc6, float %21)
   %23 = insertelement <4 x float> %15, float %22, i64 1
   %24 = load float, ptr %x, align 4
   %25 = load float, ptr %z, align 4
-  %fmul6 = fmul reassoc arcp contract float %24, %25
+  %fmul8 = fmul reassoc arcp contract float %24, %25
   %26 = load float, ptr %cosr, align 4
-  %fpfpext7 = fpext
-  %fsub8 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext7
-  %fpfptrunc9 = fptrunc
+  %fpfpext9 = fpext
+  %fsub10 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext9
+  %fpfptrunc11 = fptrunc
   %27 = load float, ptr %y, align 4
   %28 = load float, ptr %sinr, align 4
-  %fmul10 = fmul reassoc arcp contract float %27, %28
-  %29 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul6, float %fpfptrunc9, float %fmul10)
+  %fmul12 = fmul reassoc arcp contract float %27, %28
+  %29 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul8, float %fpfptrunc11, float %fmul12)
   %30 = insertelement <4 x float> %23, float %29, i64 2
   %31 = insertelement <4 x float> %30, float 0.000000e+00, i64 3
   store <4 x float> %31, ptr %a, align 16
   %32 = load float, ptr %y, align 4
   %33 = load float, ptr %x, align 4
-  %fmul11 = fmul reassoc arcp contract float %32, %33
+  %fmul13 = fmul reassoc arcp contract float %32, %33
   %34 = load float, ptr %cosr, align 4
-  %fpfpext12 = fpext
-  %fsub13 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext12
-  %fpfptrunc14 = fptrunc
+  %fpfpext14 = fpext
+  %fsub15 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext14
+  %fpfptrunc16 = fptrunc
   %35 = load float, ptr %z, align 4
   %36 = load float, ptr %sinr, align 4
-  %fmul15 = fmul reassoc arcp contract float %35, %36
-  %37 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul11, float %fpfptrunc14, float %fmul15)
+  %fmul17 = fmul reassoc arcp contract float %35, %36
+  %37 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul13, float %fpfptrunc16, float %fmul17)
   %38 = insertelement <4 x float> undef, float %37, i64 0
   %39 = load float, ptr %cosr, align 4
   %40 = load float, ptr %y, align 4
   %41 = load float, ptr %y, align 4
-  %fmul16 = fmul reassoc arcp contract float %40, %41
+  %fmul18 = fmul reassoc arcp contract float %40, %41
   %42 = load float, ptr %cosr, align 4
-  %fpfpext17 = fpext
-  %fsub18 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext17
-  %fpfptrunc19 = fptrunc
-  %43 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul16, float %fpfptrunc19, float %39)
+  %fpfpext19 = fpext
+  %fsub20 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext19
+  %fpfptrunc21 = fptrunc
+  %43 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul18, float %fpfptrunc21, float %39)
   %44 = insertelement <4 x float> %38, float %43, i64 1
   %45 = load float, ptr %y, align 4
   %46 = load float, ptr %z, align 4
-  %fmul20 = fmul reassoc arcp contract float %45, %46
+  %fmul22 = fmul reassoc arcp contract float %45, %46
   %47 = load float, ptr %cosr, align 4
-  %fpfpext21 = fpext
-  %fsub22 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext21
-  %fpfptrunc23 = fptrunc
+  %fpfpext23 = fpext
+  %fsub24 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext23
+  %fpfptrunc25 = fptrunc
   %48 = load float, ptr %x, align 4
   %49 = load float, ptr %sinr, align 4
-  %fmul24 = fmul reassoc arcp contract float %48, %49
-  %50 = fneg reassoc arcp contract float %fmul24
-  %51 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul20, float %fpfptrunc23, float %50)
+  %fmul26 = fmul reassoc arcp contract float %48, %49
+  %50 = fneg reassoc arcp contract float %fmul26
+  %51 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul22, float %fpfptrunc25, float %50)
   %52 = insertelement <4 x float> %44, float %51, i64 2
   %53 = insertelement <4 x float> %52, float 0.000000e+00, i64 3
   %ptradd = getelementptr inbounds i8, ptr %a, i64 16
   store <4 x float> %53, ptr %ptradd, align 16
   %54 = load float, ptr %z, align 4
   %55 = load float, ptr %x, align 4
-  %fmul25 = fmul reassoc arcp contract float %54, %55
+  %fmul27 = fmul reassoc arcp contract float %54, %55
   %56 = load float, ptr %cosr, align 4
-  %fpfpext26 = fpext
-  %fsub27 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext26
-  %fpfptrunc28 = fptrunc
+  %fpfpext28 = fpext
+  %fsub29 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext28
+  %fpfptrunc30 = fptrunc
   %57 = load float, ptr %y, align 4
   %58 = load float, ptr %sinr, align 4
-  %fmul29 = fmul reassoc arcp contract float %57, %58
-  %59 = fneg reassoc arcp contract float %fmul29
-  %60 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul25, float %fpfptrunc28, float %59)
+  %fmul31 = fmul reassoc arcp contract float %57, %58
+  %59 = fneg reassoc arcp contract float %fmul31
+  %60 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul27, float %fpfptrunc30, float %59)
   %61 = insertelement <4 x float> undef, float %60, i64 0
   %62 = load float, ptr %z, align 4
   %63 = load float, ptr %y, align 4
-  %fmul30 = fmul reassoc arcp contract float %62, %63
+  %fmul32 = fmul reassoc arcp contract float %62, %63
   %64 = load float, ptr %cosr, align 4
-  %fpfpext31 = fpext
-  %fsub32 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext31
-  %fpfptrunc33 = fptrunc
+  %fpfpext33 = fpext
+  %fsub34 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext33
+  %fpfptrunc35 = fptrunc
   %65 = load float, ptr %x, align 4
   %66 = load float, ptr %sinr, align 4
-  %fmul34 = fmul reassoc arcp contract float %65, %66
-  %67 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul30, float %fpfptrunc33, float %fmul34)
+  %fmul36 = fmul reassoc arcp contract float %65, %66
+  %67 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul32, float %fpfptrunc35, float %fmul36)
   %68 = insertelement <4 x float> %61, float %67, i64 1
   %69 = load float, ptr %cosr, align 4
   %70 = load float, ptr %z, align 4
   %71 = load float, ptr %z, align 4
-  %fmul35 = fmul reassoc arcp contract float %70, %71
+  %fmul37 = fmul reassoc arcp contract float %70, %71
   %72 = load float, ptr %cosr, align 4
-  %fpfpext36 = fpext
-  %fsub37 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext36
-  %fpfptrunc38 = fptrunc
-  %73 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul35, float %fpfptrunc38, float %69)
+  %fpfpext38 = fpext
+  %fsub39 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext38
+  %fpfptrunc40 = fptrunc
+  %73 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul37, float %fpfptrunc40, float %69)
   %74 = insertelement <4 x float> %68, float %73, i64 2
   %75 = insertelement <4 x float> %74, float 0.000000e+00, i64 3
-  %ptradd39 = getelementptr inbounds i8, ptr %a, i64 32
-  store <4 x float> %75, ptr %ptradd39, align 16
-  %ptradd40 = getelementptr inbounds i8, ptr %a, i64 48
-  store <4 x float> <float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00>, ptr %ptradd40, align 16
+  %ptradd41 = getelementptr inbounds i8, ptr %a, i64 32
+  store <4 x float> %75, ptr %ptradd41, align 16
+  %ptradd42 = getelementptr inbounds i8, ptr %a, i64 48
+  store <4 x float> <float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00>, ptr %ptradd42, align 16
   %76 = load float, ptr %cosr, align 4
   %77 = load float, ptr %x, align 4
   %78 = load float, ptr %x, align 4
-  %fmul41 = fmul reassoc arcp contract float %77, %78
+  %fmul43 = fmul reassoc arcp contract float %77, %78
   %79 = load float, ptr %cosr, align 4
-  %fpfpext42 = fpext
-  %fsub43 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext42
-  %fpfptrunc44 = fptrunc
-  %80 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul41, float %fpfptrunc44, float %76)
+  %fpfpext44 = fpext
+  %fsub45 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext44
+  %fpfptrunc46 = fptrunc
+  %80 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul43, float %fpfptrunc46, float %76)
   %81 = insertelement <4 x float> undef, float %80, i64 0
   %82 = load float, ptr %x, align 4
   %83 = load float, ptr %y, align 4
-  %fmul45 = fmul reassoc arcp contract float %82, %83
+  %fmul47 = fmul reassoc arcp contract float %82, %83
   %84 = load float, ptr %cosr, align 4
-  %fpfpext46 = fpext
-  %fsub47 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext46
-  %fpfptrunc48 = fptrunc
+  %fpfpext48 = fpext
+  %fsub49 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext48
+  %fpfptrunc50 = fptrunc
   %85 = load float, ptr %z, align 4
   %86 = load float, ptr %sinr, align 4
-  %fmul49 = fmul reassoc arcp contract float %85, %86
-  %87 = fneg reassoc arcp contract float %fmul49
-  %88 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul45, float %fpfptrunc48, float %87)
+  %fmul51 = fmul reassoc arcp contract float %85, %86
+  %87 = fneg reassoc arcp contract float %fmul51
+  %88 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul47, float %fpfptrunc50, float %87)
   %89 = insertelement <4 x float> %81, float %88, i64 1
   %90 = load float, ptr %x, align 4
   %91 = load float, ptr %z, align 4
-  %fmul50 = fmul reassoc arcp contract float %90, %91
+  %fmul52 = fmul reassoc arcp contract float %90, %91
   %92 = load float, ptr %cosr, align 4
-  %fpfpext51 = fpext
-  %fsub52 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext51
-  %fpfptrunc53 = fptrunc
+  %fpfpext53 = fpext
+  %fsub54 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext53
+  %fpfptrunc55 = fptrunc
   %93 = load float, ptr %y, align 4
   %94 = load float, ptr %sinr, align 4
-  %fmul54 = fmul reassoc arcp contract float %93, %94
-  %95 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul50, float %fpfptrunc53, float %fmul54)
+  %fmul56 = fmul reassoc arcp contract float %93, %94
+  %95 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul52, float %fpfptrunc55, float %fmul56)
   %96 = insertelement <4 x float> %89, float %95, i64 2
   %97 = insertelement <4 x float> %96, float 0.000000e+00, i64 3
   store <4 x float> %97, ptr %b, align 16
-  %ptradd55 = getelementptr inbounds i8, ptr %b, i64 16
+  %ptradd57 = getelementptr inbounds i8, ptr %b, i64 16
   %98 = load float, ptr %y, align 4
   %99 = load float, ptr %x, align 4
-  %fmul56 = fmul reassoc arcp contract float %98, %99
+  %fmul58 = fmul reassoc arcp contract float %98, %99
   %100 = load float, ptr %cosr, align 4
-  %fpfpext57 = fpext
-  %fsub58 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext57
-  %fpfptrunc59 = fptrunc
+  %fpfpext59 = fpext
+  %fsub60 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext59
+  %fpfptrunc61 = fptrunc
   %101 = load float, ptr %z, align 4
   %102 = load float, ptr %sinr, align 4
-  %fmul60 = fmul reassoc arcp contract float %101, %102
-  %103 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul56, float %fpfptrunc59, float %fmul60)
+  %fmul62 = fmul reassoc arcp contract float %101, %102
+  %103 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul58, float %fpfptrunc61, float %fmul62)
   %104 = insertelement <4 x float> undef, float %103, i64 0
   %105 = load float, ptr %cosr, align 4
   %106 = load float, ptr %y, align 4
   %107 = load float, ptr %y, align 4
-  %fmul61 = fmul reassoc arcp contract float %106, %107
+  %fmul63 = fmul reassoc arcp contract float %106, %107
   %108 = load float, ptr %cosr, align 4
-  %fpfpext62 = fpext
-  %fsub63 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext62
-  %fpfptrunc64 = fptrunc
-  %109 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul61, float %fpfptrunc64, float %105)
+  %fpfpext64 = fpext
+  %fsub65 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext64
+  %fpfptrunc66 = fptrunc
+  %109 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul63, float %fpfptrunc66, float %105)
   %110 = insertelement <4 x float> %104, float %109, i64 1
   %111 = load float, ptr %y, align 4
   %112 = load float, ptr %z, align 4
-  %fmul65 = fmul reassoc arcp contract float %111, %112
+  %fmul67 = fmul reassoc arcp contract float %111, %112
   %113 = load float, ptr %cosr, align 4
-  %fpfpext66 = fpext
-  %fsub67 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext66
-  %fpfptrunc68 = fptrunc
+  %fpfpext68 = fpext
+  %fsub69 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext68
+  %fpfptrunc70 = fptrunc
   %114 = load float, ptr %x, align 4
   %115 = load float, ptr %sinr, align 4
-  %fmul69 = fmul reassoc arcp contract float %114, %115
-  %116 = fneg reassoc arcp contract float %fmul69
-  %117 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul65, float %fpfptrunc68, float %116)
+  %fmul71 = fmul reassoc arcp contract float %114, %115
+  %116 = fneg reassoc arcp contract float %fmul71
+  %117 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul67, float %fpfptrunc70, float %116)
   %118 = insertelement <4 x float> %110, float %117, i64 2
   %119 = insertelement <4 x float> %118, float 0.000000e+00, i64 3
-  store <4 x float> %119, ptr %ptradd55, align 16
-  %ptradd70 = getelementptr inbounds i8, ptr %b, i64 32
+  store <4 x float> %119, ptr %ptradd57, align 16
+  %ptradd72 = getelementptr inbounds i8, ptr %b, i64 32
   %120 = load float, ptr %z, align 4
   %121 = load float, ptr %x, align 4
-  %fmul71 = fmul reassoc arcp contract float %120, %121
+  %fmul73 = fmul reassoc arcp contract float %120, %121
   %122 = load float, ptr %cosr, align 4
-  %fpfpext72 = fpext
-  %fsub73 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext72
-  %fpfptrunc74 = fptrunc
+  %fpfpext74 = fpext
+  %fsub75 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext74
+  %fpfptrunc76 = fptrunc
   %123 = load float, ptr %y, align 4
   %124 = load float, ptr %sinr, align 4
-  %fmul75 = fmul reassoc arcp contract float %123, %124
-  %125 = fneg reassoc arcp contract float %fmul75
-  %126 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul71, float %fpfptrunc74, float %125)
+  %fmul77 = fmul reassoc arcp contract float %123, %124
+  %125 = fneg reassoc arcp contract float %fmul77
+  %126 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul73, float %fpfptrunc76, float %125)
   %127 = insertelement <4 x float> undef, float %126, i64 0
   %128 = load float, ptr %z, align 4
   %129 = load float, ptr %y, align 4
-  %fmul76 = fmul reassoc arcp contract float %128, %129
+  %fmul78 = fmul reassoc arcp contract float %128, %129
   %130 = load float, ptr %cosr, align 4
-  %fpfpext77 = fpext
-  %fsub78 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext77
-  %fpfptrunc79 = fptrunc
+  %fpfpext79 = fpext
+  %fsub80 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext79
+  %fpfptrunc81 = fptrunc
   %131 = load float, ptr %x, align 4
   %132 = load float, ptr %sinr, align 4
-  %fmul80 = fmul reassoc arcp contract float %131, %132
-  %133 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul76, float %fpfptrunc79, float %fmul80)
+  %fmul82 = fmul reassoc arcp contract float %131, %132
+  %133 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul78, float %fpfptrunc81, float %fmul82)
   %134 = insertelement <4 x float> %127, float %133, i64 1
   %135 = load float, ptr %cosr, align 4
   %136 = load float, ptr %z, align 4
   %137 = load float, ptr %z, align 4
-  %fmul81 = fmul reassoc arcp contract float %136, %137
+  %fmul83 = fmul reassoc arcp contract float %136, %137
   %138 = load float, ptr %cosr, align 4
-  %fpfpext82 = fpext
-  %fsub83 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext82
-  %fpfptrunc84 = fptrunc
-  %139 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul81, float %fpfptrunc84, float %135)
+  %fpfpext84 = fpext
+  %fsub85 = fsub reassoc arcp contract double 1.000000e+00, %fpfpext84
+  %fpfptrunc86 = fptrunc
+  %139 = call reassoc arcp contract float @llvm.fmuladd.f32(float %fmul83, float %fpfptrunc86, float %135)
   %140 = insertelement <4 x float> %134, float %139, i64 2
   %141 = insertelement <4 x float> %140, float 0.000000e+00, i64 3
-  store <4 x float> %141, ptr %ptradd70, align 16
-  %ptradd85 = getelementptr inbounds i8, ptr %b, i64 48
-  store <4 x float> <float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00>, ptr %ptradd85, align 16
+  store <4 x float> %141, ptr %ptradd72, align 16
+  %ptradd87 = getelementptr inbounds i8, ptr %b, i64 48
+  store <4 x float> <float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00>, ptr %ptradd87, align 16
   store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
@@ -360,17 +363,17 @@ loop.body:                                        ; preds = %loop.cond
   store <4 x float> %144, ptr %v, align 16
   %145 = load <4 x float>, ptr %v, align 16
   %146 = extractelement <4 x float> %145, i64 0
-  %fpfpext86 = fpext
+  %fpfpext88 = fpext
   %147 = load <4 x float>, ptr %v, align 16
   %148 = extractelement <4 x float> %147, i64 1
-  %fpfpext87 = fpext
+  %fpfpext89 = fpext
   %149 = load <4 x float>, ptr %v, align 16
   %150 = extractelement <4 x float> %149, i64 2
-  %fpfpext88 = fpext
+  %fpfpext90 = fpext
   %151 = load <4 x float>, ptr %v, align 16
   %152 = extractelement <4 x float> %151, i64 3
-  %fpfpext89 = fpext
-  %153 = call i32 (ptr, ...) @printf(ptr @.str, double %fpfpext86, double %fpfpext87, double %fpfpext88, double %fpfpext89)
+  %fpfpext91 = fpext
+  %153 = call i32 (ptr, ...) @printf(ptr @.str, double %fpfpext88, double %fpfpext89, double %fpfpext90, double %fpfpext91)
   %154 = load i64, ptr %.anon, align 8
   %addnuw = add nuw i64 %154, 1
   store i64 %addnuw, ptr %.anon, align 8
@@ -378,37 +381,37 @@ loop.body:                                        ; preds = %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
   %155 = call i32 (ptr, ...) @printf(ptr @.str.1)
-  store i64 0, ptr %.anon90, align 8
-  br label %loop.cond91
+  store i64 0, ptr %.anon92, align 8
+  br label %loop.cond93
 
-loop.cond91:                                      ; preds = %loop.body93, %loop.exit
-  %156 = load i64, ptr %.anon90, align 8
-  %gt92 = icmp ugt i64 4, %156
-  br i1 %gt92, label %loop.body93, label %loop.exit101
+loop.cond93:                                      ; preds = %loop.body95, %loop.exit
+  %156 = load i64, ptr %.anon92, align 8
+  %gt94 = icmp ugt i64 4, %156
+  br i1 %gt94, label %loop.body95, label %loop.exit103
 
-loop.body93:                                      ; preds = %loop.cond91
-  %157 = load i64, ptr %.anon90, align 8
-  %ptroffset95 = getelementptr inbounds [16 x i8], ptr %b, i64 %157
-  %158 = load <4 x float>, ptr %ptroffset95, align 16
-  store <4 x float> %158, ptr %v94, align 16
-  %159 = load <4 x float>, ptr %v94, align 16
+loop.body95:                                      ; preds = %loop.cond93
+  %157 = load i64, ptr %.anon92, align 8
+  %ptroffset97 = getelementptr inbounds [16 x i8], ptr %b, i64 %157
+  %158 = load <4 x float>, ptr %ptroffset97, align 16
+  store <4 x float> %158, ptr %v96, align 16
+  %159 = load <4 x float>, ptr %v96, align 16
   %160 = extractelement <4 x float> %159, i64 0
-  %fpfpext96 = fpext
-  %161 = load <4 x float>, ptr %v94, align 16
-  %162 = extractelement <4 x float> %161, i64 1
-  %fpfpext97 = fpext
-  %163 = load <4 x float>, ptr %v94, align 16
-  %164 = extractelement <4 x float> %163, i64 2
   %fpfpext98 = fpext
-  %165 = load <4 x float>, ptr %v94, align 16
-  %166 = extractelement <4 x float> %165, i64 3
+  %161 = load <4 x float>, ptr %v96, align 16
+  %162 = extractelement <4 x float> %161, i64 1
   %fpfpext99 = fpext
-  %167 = call i32 (ptr, ...) @printf(ptr @.str.2, double %fpfpext96, double %fpfpext97, double %fpfpext98, double %fpfpext99)
-  %168 = load i64, ptr %.anon90, align 8
-  %addnuw100 = add nuw i64 %168, 1
-  store i64 %addnuw100, ptr %.anon90, align 8
-  br label %loop.cond91
+  %163 = load <4 x float>, ptr %v96, align 16
+  %164 = extractelement <4 x float> %163, i64 2
+  %fpfpext100 = fpext
+  %165 = load <4 x float>, ptr %v96, align 16
+  %166 = extractelement <4 x float> %165, i64 3
+  %fpfpext101 = fpext
+  %167 = call i32 (ptr, ...) @printf(ptr @.str.2, double %fpfpext98, double %fpfpext99, double %fpfpext100, double %fpfpext101)
+  %168 = load i64, ptr %.anon92, align 8
+  %addnuw102 = add nuw i64 %168, 1
+  store i64 %addnuw102, ptr %.anon92, align 8
+  br label %loop.cond93
 
-loop.exit101:                                     ; preds = %loop.cond91
+loop.exit103:                                     ; preds = %loop.cond93
   ret void
 }

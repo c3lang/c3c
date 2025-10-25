@@ -6,6 +6,7 @@ macro int test(int[*][*]* y)
 	$typeof(*y) z = *y;
 	return z[1][1];
 }
+
 fn void main()
 {
 	int[2][*] x = { { 2, 3}, { 5, 6 }};
@@ -19,19 +20,19 @@ fn void main()
 /* #expect: test.ll
 
   %x = alloca [2 x [2 x i32]], align 16
-  %y = alloca [1 x <2 x i32>], align 8
-  %z = alloca [1 x <2 x i32>], align 8
-  %w = alloca [1 x <2 x i32>], align 8
+  %y = alloca [1 x <2 x i32>], align 4
+  %z = alloca [1 x <2 x i32>], align 4
+  %w = alloca [1 x <2 x i32>], align 4
   %aa = alloca %"int[<2>][]", align 8
-  %literal = alloca [1 x <2 x i32>], align 8
+  %literal = alloca [1 x <2 x i32>], align 4
   %bb = alloca [1 x %"int[]"], align 16
   %literal1 = alloca [2 x i32], align 4
   %z2 = alloca [2 x [2 x i32]], align 16
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x, ptr align 16 @.__const, i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %y, ptr align 8 @.__const.1, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %z, ptr align 8 %y, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %w, ptr align 8 %z, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.2, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const.1, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %z, ptr align 4 %y, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %w, ptr align 4 %z, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const.2, i32 8, i1 false)
   %0 = insertvalue %"int[<2>][]" undef, ptr %literal, 0
   %1 = insertvalue %"int[<2>][]" %0, i64 1, 1
   store %"int[<2>][]" %1, ptr %aa, align 8

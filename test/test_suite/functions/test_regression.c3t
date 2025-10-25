@@ -292,7 +292,7 @@ entry:
   %c = alloca %Bobo, align 4
   %indirectarg = alloca %Bobo, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %de, ptr align 4 @.__const, i32 12, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %c, ptr align 4 %1, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %c, ptr align 8 %1, i32 20, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg, ptr align 4 %c, i32 20, i1 false)
   %2 = call i32 @test.helo(double 1.000000e+00, ptr byval(%Bobo) align 8 %indirectarg)
   ret i32 1
@@ -452,9 +452,9 @@ loop.exit:                                        ; preds = %loop.cond
   store i32 3, ptr %elements, align 4
   %11 = call i32 (ptr, ...) @printf(ptr @.str.4)
   call void @llvm.memset.p0.i64(ptr align 8 %array, i8 0, i64 40, i1 false)
-  call void @"std_collections_list$int$.List.push"(ptr %array, i32 100)
-  call void @"std_collections_list$int$.List.push"(ptr %array, i32 200)
-  call void @"std_collections_list$int$.List.push"(ptr %array, i32 400)
+  call void @"std_collections_list$int$.List.push"(ptr %array, i32 100) #3
+  call void @"std_collections_list$int$.List.push"(ptr %array, i32 200) #3
+  call void @"std_collections_list$int$.List.push"(ptr %array, i32 400) #3
   call void @"std_collections_list$int$.List.push"(ptr %array, i32 600) #3
   call void @"std_collections_list$int$.List.insert_at"(ptr %array, i64 2, i32 300)
   store i32 0, ptr %i1, align 4

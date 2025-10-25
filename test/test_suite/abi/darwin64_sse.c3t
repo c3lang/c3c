@@ -2,9 +2,10 @@
 // #opt: --x86cpu=sse4
 module test;
 
-alias Mm256 = float[<8>];
-struct St256 {
-  Mm256 m;
+typedef Mm256 = float[<8>] @simd;
+struct St256
+{
+	Mm256 m;
 }
 
 St256 x38;
@@ -19,28 +20,33 @@ fn void f39() { f38(x38); f37(x37); }
 
 // CHECK: declare void @func40(%struct.t128* byval(%struct.t128) align 16)
 
-alias Mm128 = float[<4>];
-struct Two128 {
-  Mm128 m;
-  Mm128 n;
+typedef Mm128 = float[<4>] @simd;
+struct Two128
+{
+	Mm128 m;
+	Mm128 n;
 }
 
 extern fn void func40(Two128 s);
-fn void func41(Two128 s) {
-  func40(s);
+fn void func41(Two128 s)
+{
+	func40(s);
 }
 
-struct Atwo128 {
-  Mm128[2] array;
+struct Atwo128
+{
+	Mm128[2] array;
 }
 
-struct Sa {
-  Atwo128 x;
+struct Sa
+{
+	Atwo128 x;
 }
 
 extern fn void func42(Sa s);
-fn void func43(Sa s) {
-  func42(s);
+fn void func43(Sa s)
+{
+	func42(s);
 }
 
 

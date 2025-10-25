@@ -282,6 +282,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			unsigned alignment = 0;
 			LLVMValueRef *parts = NULL;
 			bool pack = false;
+			bool is_vec = type_flat_is_vector(array_type);
 			FOREACH(ConstInitializer *, element, elements)
 			{
 				ASSERT(element->kind == CONST_INIT_ARRAY_VALUE);
@@ -295,7 +296,17 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 				// Add zeroes
 				if (diff > 0)
 				{
-					vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, diff, &was_modified));
+					if (is_vec)
+					{
+						for (int i = 0; i < diff; i++)
+						{
+							vec_add(parts, llvm_get_zero_raw(element_type_llvm));
+						}
+					}
+					else
+					{
+						vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, diff, &was_modified));
+					}
 				}
 				LLVMValueRef value = llvm_emit_const_initializer(c, element->init_array_value.element);
 				if (LLVMTypeOf(value) != element_type_llvm) was_modified = true;
@@ -1205,7 +1216,6 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	LLVMValueRef function = decl->backend_ref;
 	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
 	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0, NULL);
-	unsigned params = vec_size(prototype->param_types);
 	if (c->debug.enable_stacktrace)
 	{
 		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
@@ -1213,17 +1223,14 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	}
 	llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
 	llvm_attribute_add_string(c, function, "no-trapping-math", "true", -1);
+	int offset = prototype->ret_rewrite == RET_OPTIONAL_VALUE ? 1 : 0;
 
-	if (prototype->ret_by_ref)
-	{
-		ABIArgInfo *info = prototype->ret_by_ref_abi_info;
-		llvm_emit_param_attributes(c, function, prototype->ret_by_ref_abi_info, false, info->param_index_start + 1,
-		                           info->param_index_end, NULL);
-	}
-	for (unsigned i = 0; i < params; i++)
+	Signature *sig = prototype->raw_type->function.signature;
+	for (unsigned i = offset; i < prototype->param_count; i++)
 	{
 		ABIArgInfo *info = prototype->abi_args[i];
-		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end, decl->func_decl.signature.params[i]);
+		Decl *param_decl = sig->params[i - offset];
+		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end, param_decl);
 	}
 	// We ignore decl->func_decl.attr_inline and place it in every call instead.
 	if (decl->func_decl.attr_noinline)

@@ -1,13 +1,16 @@
 // #target: macos-x64
 module test;
-union Rect {
-  struct { float[<2>] min, max; }
+typedef Float2 = float[<2>] @simd;
+union Rect
+{
+	struct { Float2 min, max; }
 }
 
-fn Rect test_rect(float[<2>] max) {
-  Rect rect = {.max = max};
-  assert(rect.min == {});
-  return rect;
+fn Rect test_rect(Float2 max)
+{
+	Rect rect = { .max = max };
+	assert(rect.min == {});
+	return rect;
 }
 
 /* #expect: test.ll
