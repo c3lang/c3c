@@ -109,6 +109,7 @@ LLVMValueRef llvm_load(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, Al
 			unsigned npot = next_highest_power_of_2(len);
 			LLVMTypeRef t = LLVMVectorType(LLVMGetElementType(type), npot);
 			LLVMValueRef value = LLVMBuildLoad2(c->builder, t, pointer, name);
+			llvm_set_alignment(value, alignment);
 			LLVMValueRef poison = LLVMGetPoison(t);
 			static LLVMValueRef vec[MAX_VECTOR_WIDTH];
 			for (int i = 0; i < len; i++)
@@ -116,7 +117,6 @@ LLVMValueRef llvm_load(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, Al
 				vec[i] = llvm_const_int(c, type_uint, i);
 			}
 			value = LLVMBuildShuffleVector(c->builder, value, poison, LLVMConstVector(vec, len), "extractvec");
-			llvm_set_alignment(value, alignment);
 			return value;
 		}
 	}
