@@ -321,6 +321,8 @@ fn void test_std_out_hijack()
 	io::printf("printf: aldsjalsdjlasjdlja\n");
 	io::eprint("eprint: aldsjalsdjlasjdlja\n");
 	io::eprintfn("eprintfn: aldsjalsdjlasjdlja\n");
+	log::error("log::error: aldsjalsdjlasjdlja\n");
+	log::verbose("log::verbose: aldsjalsdjlasjdlja\n");
 	io::fprint(io::stdout(), "fprint: stdout aldsjalsdjlasjdlja\n")!!;
 	io::fprint(io::stderr(), "fprint: stderr aldsjalsdjlasjdlja\n")!!;
 	io::fprintf(io::stderr(), "fprintf: stderr aldsjalsdjlasjdlja\n")!!;

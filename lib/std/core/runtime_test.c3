@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::runtime;
 import std::core::test @public;
+import std::core::log;
 import std::core::mem::allocator @public;
 import libc, std::time, std::io, std::sort;
 import std::os::env;
@@ -167,6 +168,7 @@ fn void unmute_output(bool has_error) @local
 
 fn bool run_tests(String[] args, TestUnit[] tests) @private
 {
+	log::set_priority_all(LogPriority.VERBOSE);
 	usz max_name;
 	bool sort_tests = true;
 	bool check_leaks = true;
