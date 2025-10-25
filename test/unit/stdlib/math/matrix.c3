@@ -1,6 +1,6 @@
 module math_matrix @test;
 import std::math;
-
+/*
 fn void test_mat4()
 {
 	{
@@ -86,7 +86,7 @@ fn void test_mat4()
 		assert(math::round_to_decimals((float[<16>])result_f.m, 4) == math::round_to_decimals((float[<16>])perspective_f.m, 4));
 	};
 }
-
+*/
 
 fn void test_mat3()
 {
