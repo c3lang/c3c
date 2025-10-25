@@ -32,7 +32,7 @@ fn double _r(double z) @local
 	return p / q;
 }
 
-fn double _acos(double x) @weak @extern("acos") @nostrip
+fn double _acos(double x) @weak @cname("acos") @nostrip
 {
 	uint hx = x.high_word();
 	uint ix = hx & 0x7fffffff;
@@ -100,7 +100,7 @@ fn float _r_f(float z) @local
 	return p / q;
 }
 
-fn float _acosf(float x) @weak @extern("acosf") @nostrip
+fn float _acosf(float x) @weak @cname("acosf") @nostrip
 {
 	uint hx = bitcast(x, uint);
 	uint ix = hx & 0x7fffffff;

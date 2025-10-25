@@ -42,7 +42,7 @@ macro @enum_lookup_new($Type, $name, value)
 module std::core::runtime @if(env::FREESTANDING_WASM);
 
 extern fn void __wasm_call_ctors();
-fn void wasm_initialize() @extern("_initialize") @wasm
+fn void wasm_initialize() @cname("_initialize") @wasm
 {
 	// The linker synthesizes this to call constructors.
 	__wasm_call_ctors();

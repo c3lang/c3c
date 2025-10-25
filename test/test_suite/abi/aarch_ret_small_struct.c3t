@@ -2,7 +2,7 @@
 module test;
 import std;
 
-extern fn Features query_features() @extern("sg_query_features");
+extern fn Features query_features() @cname("sg_query_features");
 extern fn void set_features(Features);
 
 struct Features

@@ -32,7 +32,7 @@ extern fn ZString getcwd(char* pwd, usz len);
 extern fn CInt pipe(CInt[2]* pipes);
 extern fn CFile fdopen(CInt fd, ZString mode);
 extern fn CInt access(ZString path, CInt mode);
-extern fn Posix_dirent* readdir(DIRPtr) @extern("readdir") @if(!USE_DARWIN_INODE64) ;
+extern fn Posix_dirent* readdir(DIRPtr) @cname("readdir") @if(!USE_DARWIN_INODE64) ;
 extern fn DIRPtr opendir(ZString);
 extern fn void closedir(DIRPtr);
 
@@ -47,4 +47,4 @@ const DT_SOCK    = 12;
 const DT_WHT     = 14;
 
 const USE_DARWIN_INODE64 = env::DARWIN && env::X86_64;
-extern fn Posix_dirent* readdir(DIRPtr) @extern("readdir$INODE64") @if(USE_DARWIN_INODE64);
+extern fn Posix_dirent* readdir(DIRPtr) @cname("readdir$INODE64") @if(USE_DARWIN_INODE64);

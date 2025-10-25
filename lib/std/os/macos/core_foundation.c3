@@ -13,12 +13,12 @@ struct CFRange
 	CFIndex length;
 }
 
-extern fn ZString CFString.getCStringPtr(&self, CFStringEncoding encoding) @extern("CFStringGetCStringPtr");
-extern fn ZString CFString.getCString(&self, char* buffer, usz len, CFStringEncoding encoding) @extern("CFStringGetCString");
+extern fn ZString CFString.getCStringPtr(&self, CFStringEncoding encoding) @cname("CFStringGetCStringPtr");
+extern fn ZString CFString.getCString(&self, char* buffer, usz len, CFStringEncoding encoding) @cname("CFStringGetCString");
 
-extern fn CFTypeRef CFType.retain(&self) @extern("CFRetain");
-extern fn void CFType.release(&self) @extern("CFRelease");
-extern fn CFIndex CFType.getRetainCount(&self) @extern("CFGetRetainCount");
+extern fn CFTypeRef CFType.retain(&self) @cname("CFRetain");
+extern fn void CFType.release(&self) @cname("CFRelease");
+extern fn CFIndex CFType.getRetainCount(&self) @cname("CFGetRetainCount");
 
 enum CFStringEncoding : const uint
 {

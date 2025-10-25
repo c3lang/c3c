@@ -40,7 +40,7 @@ const double[*] AT @private = {
   1.62858201153657823623e-02, /* 0x3F90AD3A, 0xE322DA11 */
 };
 
-fn double _atan(double x) @weak @extern("atan") @nostrip
+fn double _atan(double x) @weak @cname("atan") @nostrip
 {
 	int id @noinit;
 	uint ix = x.high_word();
@@ -138,7 +138,7 @@ const float[*] ATF @private = {
   6.1687607318e-02,
 };
 
-fn float _atanf(float x) @weak @extern("atanf") @nostrip
+fn float _atanf(float x) @weak @cname("atanf") @nostrip
 {
 	int id @noinit;
 	uint ix = x.word();
@@ -217,7 +217,7 @@ fn float _atanf(float x) @weak @extern("atanf") @nostrip
 
 const PI_LO @private = 1.2246467991473531772E-16; /* 0x3CA1A626, 0x33145C07 */
 
-fn double _atan2(double y, double x) @weak @extern("atan2") @nostrip
+fn double _atan2(double y, double x) @weak @cname("atan2") @nostrip
 {
 	if (math::is_nan(x) || math::is_nan(y)) return x + y;
 
@@ -301,7 +301,7 @@ fn double _atan2(double y, double x) @weak @extern("atan2") @nostrip
 const float PI_F @private = 3.1415927410e+00; /* 0x40490fdb */
 const float PI_LO_F @private = -8.7422776573e-08; /* 0xb3bbbd2e */
 
-fn float _atan2f(float y, float x) @weak @extern("atan2f") @nostrip
+fn float _atan2f(float y, float x) @weak @cname("atan2f") @nostrip
 {
 	if (math::is_nan(x) || math::is_nan(y)) return x + y;
 	uint ix = x.word();

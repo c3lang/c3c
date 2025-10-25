@@ -1,6 +1,6 @@
 module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 
-fn double _floor(double x) @weak @extern("floor") @nostrip
+fn double _floor(double x) @weak @cname("floor") @nostrip
 {
 	ulong ui = bitcast(x, ulong);
 	int e = (int)((ui >> 52) & 0x7ff);
@@ -17,7 +17,7 @@ fn double _floor(double x) @weak @extern("floor") @nostrip
 }
 
 
-fn float _floorf(float x) @weak @extern("floorf") @nostrip
+fn float _floorf(float x) @weak @cname("floorf") @nostrip
 {
 	uint u = bitcast(x, uint);
 	int e = (int)((u >> 23) & 0xff) - 0x7f;

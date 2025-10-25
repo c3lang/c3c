@@ -10,9 +10,9 @@ macro void* CFAllocatorRef.alloc(CFAllocatorRef allocator, usz size) => macos_CF
 macro usz CFAllocatorRef.get_preferred_size(CFAllocatorRef allocator, usz req_size) => macos_CFAllocatorGetPreferredSizeForSize(allocator, req_size, 0);
 macro void CFAllocatorRef.set_default(CFAllocatorRef allocator) => macos_CFAllocatorSetDefault(allocator);
 
-extern fn CFAllocatorRef macos_CFAllocatorCreate(CFAllocatorRef allocator, CFAllocatorContextRef context) @extern("CFAllocatorCreate") @builtin;
-extern fn void macos_CFAllocatorDeallocate(CFAllocatorRef allocator, void* ptr) @extern("CFAllocatorDeallocate") @builtin;
-extern fn CFAllocatorRef macos_CFAllocatorGetDefault() @extern("CFAllocatorGetDefault") @builtin;
-extern fn void macos_CFAllocatorSetDefault(CFAllocatorRef allocator) @extern("CFAllocatorSetDefault") @builtin;
-extern fn void* macos_CFAllocatorAllocate(CFAllocatorRef allocator, CFIndex size, CFOptionFlags hint) @extern("CFAllocatorAllocate") @builtin;
-extern fn CFIndex macos_CFAllocatorGetPreferredSizeForSize(CFAllocatorRef allocator, CFIndex size, CFOptionFlags hint) @extern("CFAllocatorGetPreferredSizeForSize") @builtin;
+extern fn CFAllocatorRef macos_CFAllocatorCreate(CFAllocatorRef allocator, CFAllocatorContextRef context) @cname("CFAllocatorCreate") @builtin;
+extern fn void macos_CFAllocatorDeallocate(CFAllocatorRef allocator, void* ptr) @cname("CFAllocatorDeallocate") @builtin;
+extern fn CFAllocatorRef macos_CFAllocatorGetDefault() @cname("CFAllocatorGetDefault") @builtin;
+extern fn void macos_CFAllocatorSetDefault(CFAllocatorRef allocator) @cname("CFAllocatorSetDefault") @builtin;
+extern fn void* macos_CFAllocatorAllocate(CFAllocatorRef allocator, CFIndex size, CFOptionFlags hint) @cname("CFAllocatorAllocate") @builtin;
+extern fn CFIndex macos_CFAllocatorGetPreferredSizeForSize(CFAllocatorRef allocator, CFIndex size, CFOptionFlags hint) @cname("CFAllocatorGetPreferredSizeForSize") @builtin;

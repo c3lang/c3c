@@ -2,7 +2,7 @@ module std::os::win32 @if(env::WIN32) @link("shell32");
 
 typedef Win32_REFKNOWNFOLDERID = Win32_KNOWNFOLDERID*;
 typedef Win32_KNOWNFOLDERID = Win32_GUID;
-extern fn Win32_HRESULT shGetKnownFolderPath(Win32_REFKNOWNFOLDERID rfid, Win32_DWORD dwFlags, Win32_HANDLE hToken, Win32_PWSTR* ppszPath) @extern("SHGetKnownFolderPath");
+extern fn Win32_HRESULT shGetKnownFolderPath(Win32_REFKNOWNFOLDERID rfid, Win32_DWORD dwFlags, Win32_HANDLE hToken, Win32_PWSTR* ppszPath) @cname("SHGetKnownFolderPath");
 
 const Win32_KNOWNFOLDERID FOLDERID_PROFILE     = { 0x5E6C858F, 0x0E22, 0x4760, x"9AFEEA3317B67173" };
 const Win32_KNOWNFOLDERID FOLDERID_DESKTOP     = { 0xB4BFCC3A, 0xDB2C, 0x424C, x"B0297FE99A87C641" };

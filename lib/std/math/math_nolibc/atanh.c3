@@ -12,7 +12,7 @@ module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
  * ====================================================
  */
 
-fn double _atanh(double x) @weak @extern("atanh") @nostrip
+fn double _atanh(double x) @weak @cname("atanh") @nostrip
 {
 	double t @noinit;
 	uint hx = x.high_word();
@@ -61,7 +61,7 @@ fn double _atanh(double x) @weak @extern("atanh") @nostrip
  * ====================================================
  */
 
-fn float _atanhf(float x) @weak @extern("atanhf") @nostrip
+fn float _atanhf(float x) @weak @cname("atanhf") @nostrip
 {
 	float t @noinit;
 	uint hx = bitcast(x, uint);

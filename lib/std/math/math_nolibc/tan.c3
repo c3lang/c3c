@@ -12,7 +12,7 @@ module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
  * ====================================================
  */
 
-fn double tan(double x) @extern("tan") @weak @nostrip
+fn double tan(double x) @cname("tan") @weak @nostrip
 {
 	uint ix = x.high_word();
 	ix &= 0x7fffffff;
@@ -57,7 +57,7 @@ fn double tan(double x) @extern("tan") @weak @nostrip
  * ====================================================
  */
 
-fn float tanf(float x) @extern("tanf") @weak @nostrip
+fn float tanf(float x) @cname("tanf") @weak @nostrip
 {
 	uint ix = x.word();
 	uint sign = ix >> 31;

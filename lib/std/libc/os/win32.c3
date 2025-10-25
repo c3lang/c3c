@@ -62,7 +62,7 @@ struct SystemInfo
 	ushort   wProcessorRevision;
 }
 
-extern fn CInt get_system_info(SystemInfo*) @extern("GetSystemInfo");
+extern fn CInt get_system_info(SystemInfo*) @cname("GetSystemInfo");
 
 // Aliases to simplify libc use
 macro Tm* localtime_r(Time_t* timer, Tm* buf) => _localtime64_s(buf, timer);

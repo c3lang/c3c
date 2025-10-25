@@ -40,30 +40,30 @@ struct LogMessage @packed
 	ZString message;
 }
 
-extern fn CInt log_write(LogPriority prio, ZString tag, ZString text) @extern("__android_log_write");
-extern fn CInt log_print(LogPriority prio, ZString tag, ZString fmt, ...) @extern("__android_log_print");
-extern fn void log_assert(ZString cond, ZString tag, ZString fmt, ...) @extern("__android_log_assert");
+extern fn CInt log_write(LogPriority prio, ZString tag, ZString text) @cname("__android_log_write");
+extern fn CInt log_print(LogPriority prio, ZString tag, ZString fmt, ...) @cname("__android_log_print");
+extern fn void log_assert(ZString cond, ZString tag, ZString fmt, ...) @cname("__android_log_assert");
 
 fn bool log_id_is_valid(LogId id)
 {
 	return id >= LOG_ID_MIN && id < LOG_ID_MAX;
 }
 
-extern fn CInt log_buf_write(CInt bufID, CInt prio, ZString tag, ZString text) @extern("__android_log_buf_write");
-extern fn CInt log_buf_print(CInt bufID, CInt prio, ZString tag, ZString fmt, ...) @extern("__android_log_buf_print");
+extern fn CInt log_buf_write(CInt bufID, CInt prio, ZString tag, ZString text) @cname("__android_log_buf_write");
+extern fn CInt log_buf_print(CInt bufID, CInt prio, ZString tag, ZString fmt, ...) @cname("__android_log_buf_print");
 
 alias LoggerFunction = fn void(LogMessage* log_message);
 alias AborterFunction = fn void(ZString abort_message);
 
-extern fn void log_write_log_message(LogMessage log_message) @extern("__android_log_write_log_message");
-extern fn void log_set_logger(LoggerFunction logger) @extern("__android_log_set_logger");
-extern fn void log_logd_logger(LogMessage log_message) @extern("__android_log_logd_logger");
-extern fn void log_stderr_logger(LogMessage log_message) @extern("__android_log_stderr_logger");
-extern fn void log_set_aborter(AborterFunction aborter) @extern("__android_log_set_aborter");
-extern fn void log_call_aborter(ZString abort_message) @extern("__android_log_call_aborter");
-extern fn void log_default_aborter(ZString abort_message) @extern("__android_log_default_aborter");
-extern fn CInt log_is_loggable(CInt prio, ZString tag, CInt default_prio) @extern("__android_log_is_loggable");
-extern fn CInt log_is_loggable_len(CInt prio, ZString tag, isz len, CInt default_prio) @extern("__android_log_is_loggable_len");
-extern fn CInt log_set_minimum_priority(CInt priority) @extern("__android_log_set_minimum_priority");
-extern fn CInt log_get_minimum_priority() @extern("__android_log_get_minimum_priority");
-extern fn void log_set_default_tag(ZString tag) @extern("__android_log_set_default_tag");
+extern fn void log_write_log_message(LogMessage log_message) @cname("__android_log_write_log_message");
+extern fn void log_set_logger(LoggerFunction logger) @cname("__android_log_set_logger");
+extern fn void log_logd_logger(LogMessage log_message) @cname("__android_log_logd_logger");
+extern fn void log_stderr_logger(LogMessage log_message) @cname("__android_log_stderr_logger");
+extern fn void log_set_aborter(AborterFunction aborter) @cname("__android_log_set_aborter");
+extern fn void log_call_aborter(ZString abort_message) @cname("__android_log_call_aborter");
+extern fn void log_default_aborter(ZString abort_message) @cname("__android_log_default_aborter");
+extern fn CInt log_is_loggable(CInt prio, ZString tag, CInt default_prio) @cname("__android_log_is_loggable");
+extern fn CInt log_is_loggable_len(CInt prio, ZString tag, isz len, CInt default_prio) @cname("__android_log_is_loggable_len");
+extern fn CInt log_set_minimum_priority(CInt priority) @cname("__android_log_set_minimum_priority");
+extern fn CInt log_get_minimum_priority() @cname("__android_log_get_minimum_priority");
+extern fn void log_set_default_tag(ZString tag) @cname("__android_log_set_default_tag");

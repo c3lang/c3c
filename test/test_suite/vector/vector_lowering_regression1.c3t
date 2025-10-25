@@ -5,7 +5,7 @@ union Vec4f @export @align(16) {
   float[<4>] v;
 }
 
-extern fn void foo(Vec4f) @extern("foo");
+extern fn void foo(Vec4f) @cname("foo");
 
 /* #expect: test.ll
 

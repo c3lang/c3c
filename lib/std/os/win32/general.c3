@@ -1,6 +1,6 @@
 module std::os::win32 @if(env::WIN32);
 
-extern fn Win32_DWORD getLastError() @extern("GetLastError");
+extern fn Win32_DWORD getLastError() @cname("GetLastError");
 
 const Win32_DWORD ERROR_INVALID_FUNCTION = 0x1;
 const Win32_DWORD ERROR_FILE_NOT_FOUND = 0x2;

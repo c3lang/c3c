@@ -37,7 +37,7 @@ const HW_L3CACHESIZE	= 22; /* int: L3 Cache Size in Bytes */
 const HW_MAXID			= 23; /* number of valid hw ids */
 
 extern fn CInt sysctl(CInt *name, CUInt namelen, void *oldp, usz *oldlenp, void *newp, usz newlen);
-extern fn CInt darwin_NSGetExecutablePath(char* buffer, uint *size) @extern("_NSGetExecutablePath") @builtin;
+extern fn CInt darwin_NSGetExecutablePath(char* buffer, uint *size) @cname("_NSGetExecutablePath") @builtin;
 extern fn Darwin_segment_command_64* getsegbyname(ZString segname);
 extern fn uint _dyld_image_count();
 extern fn ZString _dyld_get_image_name(uint image_index);

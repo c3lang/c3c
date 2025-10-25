@@ -110,26 +110,26 @@ const GWLP_HWNDPARENT = -8;
 const GWLP_USERDATA = -21;
 const GWLP_ID = -12;
 
-extern fn Win32_HDC beginPaint(Win32_HWND, Win32_LPPAINTSTRUCT) @extern("BeginPaint");
-extern fn Win32_LRESULT callWindowProcW(Win32_WNDPROC lpPrevWndFunc, Win32_HWND hWnd, Win32_UINT msg, Win32_WPARAM wParam, Win32_LPARAM lParam) @extern("CallWindowProcW");
-extern fn Win32_HWND createWindowExW(Win32_DWORD, Win32_LPCWSTR, Win32_LPCWSTR, Win32_DWORD, CInt, CInt, CInt, CInt, Win32_HWND, Win32_HMENU, Win32_HINSTANCE, Win32_LPVOID) @extern("CreateWindowExW");
-extern fn Win32_LRESULT defWindowProcW(Win32_HWND, Win32_UINT, Win32_WPARAM, Win32_LPARAM) @extern("DefWindowProcW");
-extern fn Win32_BOOL dispatchMessage(Win32_MSG* lpMsg) @extern("DispatchMessageW");
-extern fn Win32_BOOL endPaint(Win32_HWND, Win32_LPPAINTSTRUCT) @extern("EndPaint");
-extern fn Win32_BOOL getMessageW(Win32_LPMSG, Win32_HWND, Win32_UINT, Win32_UINT) @extern("GetMessageW");
-extern fn Win32_BOOL getUpdateRect(Win32_HWND hWnd, Win32_LPRECT lpRect, Win32_BOOL bErase) @extern("GetUpdateRect");
-extern fn Win32_LONG_PTR getWindowLongPtrW(Win32_HWND hWnd, CInt nIndex) @extern("GetWindowLongPtrW");
-extern fn Win32_LONG getWindowLongW(Win32_HWND hWnd, CInt nIndex) @extern("GetWindowLongW");
-extern fn Win32_HCURSOR loadCursorW(Win32_HINSTANCE instance, Win32_LPCWSTR cursorName) @extern("LoadCursorW");
-extern fn Win32_HICON loadIconW(Win32_HINSTANCE instance, Win32_LPCWSTR iconName) @extern("LoadIconW");
-extern fn int messageBoxW(Win32_HWND hWnd, Win32_LPCWSTR lpText, Win32_LPCWSTR lpCaption, Win32_UINT uType) @extern("MessageBoxW");
-extern fn void postQuitMessage(CInt) @extern("PostQuitMessage");
-extern fn Win32_ATOM registerClassExW(Win32_WNDCLASSEXW*) @extern("RegisterClassExW");
-extern fn Win32_LONG_PTR setWindowLongPtrW(Win32_HWND hWnd, CInt nIndex, Win32_LONG_PTR dwNewLong) @extern("SetWindowLongPtrW");
-extern fn Win32_LONG setWindowLongW(Win32_HWND hWnd, CInt nIndex, Win32_LONG dwNewLong) @extern("SetWindowLongW");
-extern fn Win32_BOOL showWindow(Win32_HWND, CInt) @extern("ShowWindow");
-extern fn Win32_BOOL translateMessage(Win32_MSG* lpMsg) @extern("TranslateMessage");
-extern fn Win32_BOOL updateWindow(Win32_HWND) @extern("UpdateWindow");
+extern fn Win32_HDC beginPaint(Win32_HWND, Win32_LPPAINTSTRUCT) @cname("BeginPaint");
+extern fn Win32_LRESULT callWindowProcW(Win32_WNDPROC lpPrevWndFunc, Win32_HWND hWnd, Win32_UINT msg, Win32_WPARAM wParam, Win32_LPARAM lParam) @cname("CallWindowProcW");
+extern fn Win32_HWND createWindowExW(Win32_DWORD, Win32_LPCWSTR, Win32_LPCWSTR, Win32_DWORD, CInt, CInt, CInt, CInt, Win32_HWND, Win32_HMENU, Win32_HINSTANCE, Win32_LPVOID) @cname("CreateWindowExW");
+extern fn Win32_LRESULT defWindowProcW(Win32_HWND, Win32_UINT, Win32_WPARAM, Win32_LPARAM) @cname("DefWindowProcW");
+extern fn Win32_BOOL dispatchMessage(Win32_MSG* lpMsg) @cname("DispatchMessageW");
+extern fn Win32_BOOL endPaint(Win32_HWND, Win32_LPPAINTSTRUCT) @cname("EndPaint");
+extern fn Win32_BOOL getMessageW(Win32_LPMSG, Win32_HWND, Win32_UINT, Win32_UINT) @cname("GetMessageW");
+extern fn Win32_BOOL getUpdateRect(Win32_HWND hWnd, Win32_LPRECT lpRect, Win32_BOOL bErase) @cname("GetUpdateRect");
+extern fn Win32_LONG_PTR getWindowLongPtrW(Win32_HWND hWnd, CInt nIndex) @cname("GetWindowLongPtrW");
+extern fn Win32_LONG getWindowLongW(Win32_HWND hWnd, CInt nIndex) @cname("GetWindowLongW");
+extern fn Win32_HCURSOR loadCursorW(Win32_HINSTANCE instance, Win32_LPCWSTR cursorName) @cname("LoadCursorW");
+extern fn Win32_HICON loadIconW(Win32_HINSTANCE instance, Win32_LPCWSTR iconName) @cname("LoadIconW");
+extern fn int messageBoxW(Win32_HWND hWnd, Win32_LPCWSTR lpText, Win32_LPCWSTR lpCaption, Win32_UINT uType) @cname("MessageBoxW");
+extern fn void postQuitMessage(CInt) @cname("PostQuitMessage");
+extern fn Win32_ATOM registerClassExW(Win32_WNDCLASSEXW*) @cname("RegisterClassExW");
+extern fn Win32_LONG_PTR setWindowLongPtrW(Win32_HWND hWnd, CInt nIndex, Win32_LONG_PTR dwNewLong) @cname("SetWindowLongPtrW");
+extern fn Win32_LONG setWindowLongW(Win32_HWND hWnd, CInt nIndex, Win32_LONG dwNewLong) @cname("SetWindowLongW");
+extern fn Win32_BOOL showWindow(Win32_HWND, CInt) @cname("ShowWindow");
+extern fn Win32_BOOL translateMessage(Win32_MSG* lpMsg) @cname("TranslateMessage");
+extern fn Win32_BOOL updateWindow(Win32_HWND) @cname("UpdateWindow");
 
 macro getWindowLongPtr(Win32_HWND hWnd, CInt nIndex)
 {

@@ -205,7 +205,7 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 	}
 }
 /**
- * module ::= MODULE module_path ('{' module_params '}')? (@public|@private|@local|@test|@export|@extern) EOS
+ * module ::= MODULE module_path ('{' module_params '}')? (@public|@private|@local|@test|@export|@cname) EOS
  */
 bool parse_module(ParseContext *c, AstId contracts)
 {
@@ -328,6 +328,24 @@ bool parse_module(ParseContext *c, AstId contracts)
 				{
 					RETURN_PRINT_ERROR_AT(false, attr,
 					                      "External name for the module may only be declared in one location.");
+				}
+				c->unit->module->extname = expr->const_expr.bytes.ptr;
+				SEMA_DEPRECATED(attr, "'@extern' is deprecated, use '@cname' instead.");
+				continue;
+			}
+			case ATTRIBUTE_CNAME:
+			{
+				if (vec_size(attr->exprs) != 1)
+				{
+					RETURN_PRINT_ERROR_AT(false, attr, "Expected 1 argument to '@cname(..), not %d'.",
+										  vec_size(attr->exprs));
+				}
+				Expr *expr = attr->exprs[0];
+				if (!expr_is_const_string(expr)) RETURN_PRINT_ERROR_AT(false, expr, "Expected a constant string.");
+				if (c->unit->module->extname)
+				{
+					RETURN_PRINT_ERROR_AT(false, attr,
+										  "External name for the module may only be declared in one location.");
 				}
 				c->unit->module->extname = expr->const_expr.bytes.ptr;
 				continue;

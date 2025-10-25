@@ -32,7 +32,7 @@ fn double _r(double z) @local
 	return p / q;
 }
 
-fn double _asin(double x) @weak @extern("asin") @nostrip
+fn double _asin(double x) @weak @cname("asin") @nostrip
 {
 	uint hx = x.high_word();
 	uint ix = hx & 0x7fffffff;
@@ -102,7 +102,7 @@ fn float _r_f(float z) @local
 	return p / q;
 }
 
-fn float _asinf(float x) @weak @extern("asinf") @nostrip
+fn float _asinf(float x) @weak @cname("asinf") @nostrip
 {
 	uint hx = bitcast(x, uint);
 	uint ix = hx & 0x7fffffff;

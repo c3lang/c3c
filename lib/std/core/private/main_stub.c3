@@ -64,7 +64,7 @@ macro int @main_to_void_main_args(#m, int argc, char** argv)
 
 module std::core::main_stub @if(env::WIN32);
 
-extern fn Char16** _win_command_line_to_argv_w(ushort* cmd_line, int* argc_ptr) @extern("CommandLineToArgvW");
+extern fn Char16** _win_command_line_to_argv_w(ushort* cmd_line, int* argc_ptr) @cname("CommandLineToArgvW");
 
 macro String[] win_command_line_to_strings(ushort* cmd_line) @private
 {

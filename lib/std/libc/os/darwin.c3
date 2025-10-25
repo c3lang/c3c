@@ -41,6 +41,6 @@ struct Stat
 	long[2] st_qspare;
 }
 
-extern fn int stat(ZString str, Stat* stat) @extern("stat64");
+extern fn int stat(ZString str, Stat* stat) @cname("stat64");
 
 extern fn CInt sysctl(CInt *name, CUInt namelen, void *oldp, usz *oldlenp, void *newp, usz newlen);

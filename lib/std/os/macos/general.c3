@@ -42,7 +42,7 @@ enum NSSearchPathDirectory : const NSUInteger
 }
 
 // real signature in Foundation
-extern fn CFArrayRef nsSearchPathForDirectoriesInDomains(NSSearchPathDirectory directory, NSSearchPathDomainMask domainMask, bool expandTilde) @extern("NSSearchPathForDirectoriesInDomains");
+extern fn CFArrayRef nsSearchPathForDirectoriesInDomains(NSSearchPathDirectory directory, NSSearchPathDomainMask domainMask, bool expandTilde) @cname("NSSearchPathForDirectoriesInDomains");
 
 
 

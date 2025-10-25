@@ -41,18 +41,18 @@ struct Win32_WIN32_FIND_DATAW
 
 alias Win32_LPWIN32_FIND_DATAW = Win32_WIN32_FIND_DATAW*;
 
-extern fn Win32_BOOL closeHandle(Win32_HANDLE) @extern("CloseHandle");
-extern fn Win32_BOOL createPipe(Win32_PHANDLE hReadPipe, Win32_PHANDLE hWritePipe, Win32_LPSECURITY_ATTRIBUTES lpPipeAttributes, Win32_DWORD nSize) @extern("CreatePipe");
-extern fn Win32_BOOL getFileAttributesExW(Win32_LPCWSTR, Win32_GET_FILEEX_INFO_LEVELS, Win32_LPVOID) @extern("GetFileAttributesExW");
-extern fn Win32_BOOL pathFileExistsW(Win32_LPCWSTR) @extern("PathFileExistsW");
-extern fn Win32_DWORD getTempPathW(Win32_DWORD nBufferLength, Win32_LPWSTR lpBuffer) @extern("GetTempPathW");
-extern fn Win32_BOOL setCurrentDirectoryW(Win32_LPCTSTR buffer) @extern("SetCurrentDirectoryW");
-extern fn Win32_BOOL removeDirectoryW(Win32_LPCWSTR lpPathName) @extern("RemoveDirectoryW");
-extern fn Win32_BOOL createDirectoryW(Win32_LPCWSTR lpPathName, Win32_LPSECURITY_ATTRIBUTES lpPipeAttributes) @extern("CreateDirectoryW");
-extern fn Win32_BOOL deleteFileW(Win32_LPCWSTR lpFileName) @extern("DeleteFileW");
-extern fn Win32_HANDLE findFirstFileW(Win32_LPCWSTR lpFileName, Win32_LPWIN32_FIND_DATAW lpFindFileData) @extern("FindFirstFileW");
-extern fn Win32_BOOL findNextFileW(Win32_HANDLE hFindFile, Win32_LPWIN32_FIND_DATAW lpFindFileData) @extern("FindNextFileW");
-extern fn Win32_BOOL findClose(Win32_HANDLE hFindFile) @extern("FindClose");
+extern fn Win32_BOOL closeHandle(Win32_HANDLE) @cname("CloseHandle");
+extern fn Win32_BOOL createPipe(Win32_PHANDLE hReadPipe, Win32_PHANDLE hWritePipe, Win32_LPSECURITY_ATTRIBUTES lpPipeAttributes, Win32_DWORD nSize) @cname("CreatePipe");
+extern fn Win32_BOOL getFileAttributesExW(Win32_LPCWSTR, Win32_GET_FILEEX_INFO_LEVELS, Win32_LPVOID) @cname("GetFileAttributesExW");
+extern fn Win32_BOOL pathFileExistsW(Win32_LPCWSTR) @cname("PathFileExistsW");
+extern fn Win32_DWORD getTempPathW(Win32_DWORD nBufferLength, Win32_LPWSTR lpBuffer) @cname("GetTempPathW");
+extern fn Win32_BOOL setCurrentDirectoryW(Win32_LPCTSTR buffer) @cname("SetCurrentDirectoryW");
+extern fn Win32_BOOL removeDirectoryW(Win32_LPCWSTR lpPathName) @cname("RemoveDirectoryW");
+extern fn Win32_BOOL createDirectoryW(Win32_LPCWSTR lpPathName, Win32_LPSECURITY_ATTRIBUTES lpPipeAttributes) @cname("CreateDirectoryW");
+extern fn Win32_BOOL deleteFileW(Win32_LPCWSTR lpFileName) @cname("DeleteFileW");
+extern fn Win32_HANDLE findFirstFileW(Win32_LPCWSTR lpFileName, Win32_LPWIN32_FIND_DATAW lpFindFileData) @cname("FindFirstFileW");
+extern fn Win32_BOOL findNextFileW(Win32_HANDLE hFindFile, Win32_LPWIN32_FIND_DATAW lpFindFileData) @cname("FindNextFileW");
+extern fn Win32_BOOL findClose(Win32_HANDLE hFindFile) @cname("FindClose");
 
 const Win32_DWORD GENERIC_WRITE = 0x40000000;
 const Win32_DWORD OPEN_EXISTING = 3;
@@ -87,10 +87,10 @@ extern fn Win32_HANDLE createFileA(
 	Win32_DWORD dwCreationDisposition,
 	Win32_DWORD dwFlagsAndAttributes,
 	Win32_HANDLE hTemplateFile
-) @extern("CreateFileA");
+) @cname("CreateFileA");
 extern fn Win32_BOOL readFile(Win32_HANDLE hFile, Win32_LPVOID lpBuffer, Win32_DWORD nNumberOfBytesToRead,
   Win32_LPDWORD lpNumberOfBytesRead, Win32_LPOVERLAPPED lpOverlapped
-) @extern("ReadFile");
+) @cname("ReadFile");
 
 extern fn WString _wgetcwd(Char16* buffer, int maxlen);
 extern fn usz wcslen(WString str);
@@ -104,8 +104,8 @@ extern fn CInt _waccess(WString path, CInt mode);
 extern fn WString _wfullpath(WString absPath, WString relPath, usz maxLength);
 
 /*
-extern ulong _win32_GetCurrentDirectoryW(ulong, Char16* buffer) @extern("GetCurrentDirectoryW");
-extern bool _win32_CreateSymbolicLinkW(WString symlink_file, WString target_file, ulong flags) @extern("CreateSymbolicLinkW");
-extern bool _win32_CopyFileW(WString from_file, WString to_file, bool no_overwrite) @extern("CopyFileW");
-extern ulong _win32_GetFullPathNameW(WString file_name, ulong buffer_len, Char16* buffer, WString* file_part) @extern("GetFullPathNameW");
+extern ulong _win32_GetCurrentDirectoryW(ulong, Char16* buffer) @cname("GetCurrentDirectoryW");
+extern bool _win32_CreateSymbolicLinkW(WString symlink_file, WString target_file, ulong flags) @cname("CreateSymbolicLinkW");
+extern bool _win32_CopyFileW(WString from_file, WString to_file, bool no_overwrite) @cname("CopyFileW");
+extern ulong _win32_GetFullPathNameW(WString file_name, ulong buffer_len, Char16* buffer, WString* file_part) @cname("GetFullPathNameW");
 */

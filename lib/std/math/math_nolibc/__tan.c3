@@ -27,7 +27,7 @@ const double[*] TAN_T = {
              2.59073051863633712884e-05, /* 3EFB2A70, 74BF7AD4 */
 };
 
-fn double __tan(double x, double y, int odd) @extern("__tan") @weak @nostrip
+fn double __tan(double x, double y, int odd) @cname("__tan") @weak @nostrip
 {
 	const double PIO4 = 7.85398163397448278999e-01; /* 3FE921FB, 54442D18 */
 	const double PIO4LO = 3.06161699786838301793e-17; /* 3C81A626, 33145C07 */

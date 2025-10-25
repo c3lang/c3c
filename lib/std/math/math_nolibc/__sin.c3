@@ -11,7 +11,7 @@ module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
  * is preserved.
  * ====================================================
  */
-fn double __sin(double x, double y, int iy) @extern("__sin") @weak @nostrip
+fn double __sin(double x, double y, int iy) @cname("__sin") @weak @nostrip
 {
 
 	const S1 = -1.66666666666666324348e-01; /* 0xBFC55555, 0x55555549 */

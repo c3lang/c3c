@@ -16,7 +16,7 @@ module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
  * ====================================================
  */
 // |sin(x)/x - s(x)| < 2**-37.5 (~[-4.89e-12, 4.824e-12]).
-fn float __sindf(double x) @extern("__sindf") @weak @nostrip
+fn float __sindf(double x) @cname("__sindf") @weak @nostrip
 {
 	const S1F = -0x15555554cbac77.0p-55; /* -0.166666666416265235595 */
 	const S2F =  0x111110896efbb2.0p-59; /*  0.0083333293858894631756 */

@@ -38,7 +38,7 @@ macro ObjcClass[] class_get_list(Allocator allocator)
 	return entries;
 }
 
-extern fn void msgSend(...) @extern("objc_msgSend") @builtin;
+extern fn void msgSend(...) @cname("objc_msgSend") @builtin;
 extern fn ObjcSelector sel_getUid(ZString);
 
 macro msg_send(id, $FunctionType, ZString $selector, ...)
@@ -55,9 +55,9 @@ macro void @autoreleasepool(;@body())
 
 extern fn void* objc_autoreleasePoolPush();
 extern fn void objc_autoreleasePoolPop(void* context);
-extern fn ObjcClass getClass(ZString name) @extern("objc_getClass");
-extern fn int getClassList(ObjcClass* buffer, int buffer_count) @extern("objc_getClassList");
-extern fn ObjcClass lookUpClass(ZString name) @extern("objc_lookUpClass") @builtin;
+extern fn ObjcClass getClass(ZString name) @cname("objc_getClass");
+extern fn int getClassList(ObjcClass* buffer, int buffer_count) @cname("objc_getClassList");
+extern fn ObjcClass lookUpClass(ZString name) @cname("objc_lookUpClass") @builtin;
 
 extern fn ZString class_getName(ObjcClass cls);
 extern fn ObjcClass class_getSuperclass(ObjcClass cls);
@@ -67,9 +67,9 @@ extern fn ObjcSelector sel_registerName(ZString str);
 extern fn bool class_addIvar(ObjcClass cls, ZString name, int size, double alignment, ZString types);
 extern fn bool class_addMethod(ObjcClass cls, ObjcSelector name, void* imp, ZString types);
 
-extern fn ObjcIvar getInstanceVariable(ObjcId id, ZString name, void* outValue) @extern("object_getInstanceVariable");
-extern fn ObjcIvar setInstanceVariable(ObjcId id, ZString name, void* value) @extern("object_setInstanceVariable");
-extern fn ObjcClass allocateClassPair(ObjcClass cls, ZString name, uint extraBytes) @extern("objc_allocateClassPair");
+extern fn ObjcIvar getInstanceVariable(ObjcId id, ZString name, void* outValue) @cname("object_getInstanceVariable");
+extern fn ObjcIvar setInstanceVariable(ObjcId id, ZString name, void* value) @cname("object_setInstanceVariable");
+extern fn ObjcClass allocateClassPair(ObjcClass cls, ZString name, uint extraBytes) @cname("objc_allocateClassPair");
 
 enum StatusItemLength : (double val)
 {
