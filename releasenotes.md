@@ -33,6 +33,7 @@
 ### Stdlib changes
 - Sorting functions correctly took slices by value, but also other types by value. Now, only slices are accepted by value, other containers are always by ref.
 - Added `@str_snakecase`, `@str_replace` and `@str_pascalcase` builtin compile time macros based on the `$$` builtins.
+- Add `TcpSocketPair` to create a pair of local tcp sockets.
 
 ## 0.7.6 Change list
 
