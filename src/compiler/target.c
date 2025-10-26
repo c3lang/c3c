@@ -1989,8 +1989,10 @@ static void target_setup_wasm_abi(BuildTarget *target)
 	compiler.platform.abi = ABI_WASM;
 	CpuFeatures features = cpu_feature_zero;
 	cpu_features_add_feature_single(&features, WASM_FEAT_BULK_MEMORY);
+#if LLVM_VERSION_MAJOR > 19
 	cpu_features_add_feature_single(&features, WASM_FEAT_BULK_MEMORY_OPT);
 	cpu_features_add_feature_single(&features, WASM_FEAT_CALL_INDIRECT_OVERLONG);
+#endif
 	cpu_features_add_feature_single(&features, WASM_FEAT_MULTIVALUE);
 	cpu_features_add_feature_single(&features, WASM_FEAT_MUTABLE_GLOBALS);
 	cpu_features_add_feature_single(&features, WASM_FEAT_NONTRAPPING_FPTORINT);
