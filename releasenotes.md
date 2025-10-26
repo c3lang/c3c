@@ -15,6 +15,7 @@
 - ABI change for vectors: store and pass them as arrays #2542.
 - Add @simd and @align attributes to typedef #2543.
 - Rename `@extern` to `@cname`, deprecating the old name #2493.
+- Allow `(Foo)0` bitstruct casts even if type sizes do not match.
 
 ### Fixes
 - Bug in `io::write_using_write_byte`.
