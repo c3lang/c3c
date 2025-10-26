@@ -13,6 +13,8 @@
   "version": "0.1.0",
   // Sources compiled for all targets.
   "sources": [ "./**" ],
+  // Test sources compiled for all targets.
+  "test-sources": [ "test/**" ],
   // C sources if the project also compiles C sources
   // relative to the project file.
   // "c-sources": [ "csource/**" ],
@@ -24,31 +26,21 @@
   // Targets.
   "targets": {
     "hello_world": {
+      // Executable or library.
       "type": "executable",
-      "debug-info": "none",
-      "link-libc": false,
-      "opt": "O0",
-      "safe": false,
-      "linker": "builtin",
-      "use-stdlib": false,
+      // Additional libraries, sources
+      // and overrides of global settings here.
     },
   },
   // Global settings.
-  // C compiler if the project also compiles C sources
-  // defaults to 'cc'.
-  "cc": "cc",
   // CPU name, used for optimizations in the LLVM backend.
   "cpu": "generic",
-  // Debug information, may be "none", "full" and "line-tables".
-  "debug-info": "full",
-  // FP math behaviour: "strict", "relaxed", "fast".
-  "fp-math": "strict",
   // Link libc other default libraries.
-  "link-libc": true,
+  "link-libc": false,
   // Memory environment: "normal", "small", "tiny", "none".
-  "memory-env": "normal",
+  "memory-env": "small",
   // Optimization: "O0", "O1", "O2", "O3", "O4", "O5", "Os", "Oz".
-  "opt": "O0",
+  "opt": "Os",
   // Code optimization level: "none", "less", "more", "max".
   "optlevel": "none",
   // Code size optimization: "none", "small", "tiny".
@@ -58,7 +50,7 @@
   // Trap on signed and unsigned integer wrapping for testing.
   "trap-on-wrap": false,
   // Turn safety (contracts, runtime bounds checking, null pointer checks etc).
-  "safe": true,
+  "safe": false,
   // Compile all modules together, enables more inlining.
   "single-module": true,
   // Use / don't use soft float, value is otherwise target default.
@@ -69,11 +61,7 @@
   // of symbols that can be used. Should usually not be changed.
   "symtab": 1048576,
   // Select linker.
-  "linker": "cc",
+  "linker": "builtin",
   // Include the standard library.
-  "use-stdlib": true,
-  // Set general level of x64 cpu: "baseline", "ssse3", "sse4", "avx1", "avx2-v1", "avx2-v2", "avx512", "native".
-  "x86cpu": "native",
-  // Set max type of vector use: "none", "mmx", "sse", "avx", "avx512", "native".
-  "x86vec": "sse",
+  "use-stdlib": false,
 }
