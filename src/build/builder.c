@@ -420,7 +420,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	set_if_updated(target->feature.fp_math, options->fp_math);
 	set_if_updated(target->feature.x86_vector_capability, options->x86_vector_capability);
 	set_if_updated(target->feature.x86_cpu_set, options->x86_cpu_set);
-	set_if_updated(target->feature.riscv_float_capability, options->riscv_float_capability);
+	set_if_updated(target->feature.riscv_abi, options->riscv_abi);
 	set_if_updated(target->feature.win_debug, options->win_debug);
 
 	set_if_updated(target->feature.pass_win64_simd_as_arrays, options->win_64_simd);
@@ -447,6 +447,19 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(android.ndk_path);
 	OVERRIDE_IF_SET(android.api_version);
 
+	if (options->cpu_features)
+	{
+		if (target->cpu_features)
+		{
+			scratch_buffer_clear();
+			scratch_buffer_printf("%s,%s", target->cpu_features, options->cpu_features);
+			target->cpu_features = scratch_buffer_copy();
+		}
+		else
+		{
+			target->cpu_features = options->cpu_features;
+		}
+	}
 	if (!target->max_vector_size) target->max_vector_size = DEFAULT_VECTOR_WIDTH;
 	if (!target->max_stack_object_size) target->max_stack_object_size = DEFAULT_STACK_OBJECT_SIZE;
 	if (!target->max_macro_iterations) target->max_macro_iterations = DEFAULT_MAX_MACRO_ITERATIONS;
@@ -617,7 +630,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->link_libc = libc_from_arch_os(target->arch_os_target);
 	}
-
 }
 
 void init_default_build_target(BuildTarget *target, BuildOptions *options)

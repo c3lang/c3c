@@ -174,7 +174,7 @@ static void usage(bool full)
 		print_opt("--reloc=<option>", "Relocation model: none, pic, PIC, pie, PIE.");
 		print_opt("--x86cpu=<option>", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.");
 		print_opt("--x86vec=<option>", "Set max type of vector use: none, mmx, sse, avx, avx512, default.");
-		print_opt("--riscvfloat=<option>", "Set type of RISC-V float support: none, float, double.");
+		print_opt("--riscv-abi=<option>", "Set type of RISC-V ABI: int-only, float, double.");
 		print_opt("--memory-env=<option>", "Set the memory environment: normal, small, tiny, none.");
 		print_opt("--strip-unused=<yes|no>", "Strip unused code and globals from the output. (default: yes)");
 		print_opt("--fp-math=<option>", "FP math behaviour: strict, relaxed, fast.");
@@ -966,7 +966,25 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("riscvfloat")))
 			{
-				options->riscv_float_capability = parse_opt_select(RiscvFloatCapability, argopt, riscv_capability);
+				options->riscv_abi = parse_opt_select(RiscvAbi, argopt, riscv_capability);
+				return;
+			}
+			if ((argopt = match_argopt("riscv-abi")))
+			{
+				options->riscv_abi = parse_opt_select(RiscvAbi, argopt, riscv_abi);
+				return;
+			}
+			if (match_longopt("cpu-features"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --cpu-features expected a comma-separated list, like '+a,-b,+x'.");
+				scratch_buffer_clear();
+				if (options->cpu_features)
+				{
+					scratch_buffer_append(options->cpu_features);
+					scratch_buffer_append_char(',');
+				}
+				scratch_buffer_append(next_arg());
+				options->cpu_features = scratch_buffer_copy();
 				return;
 			}
 			if (match_longopt("max-stack-object-size"))
@@ -1445,7 +1463,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.win_debug = WIN_DEBUG_DEFAULT,
 		.fp_math = FP_DEFAULT,
 		.x86_cpu_set = X86CPU_DEFAULT,
-		.riscv_float_capability = RISCVFLOAT_DEFAULT,
+		.riscv_abi = RISCV_ABI_DEFAULT,
 		.memory_environment = MEMORY_ENV_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,

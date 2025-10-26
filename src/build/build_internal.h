@@ -62,11 +62,17 @@ static const char *on_off[2] = {
 };
 
 
-
+// DEPRECATED
 static const char *riscv_capability[3] = {
-	[RISCVFLOAT_NONE] = "none",
-	[RISCVFLOAT_FLOAT] = "float",
-	[RISCVFLOAT_DOUBLE] = "double",
+	[RISCV_ABI_INT_ONLY] = "none",
+	[RISCV_ABI_FLOAT] = "float",
+	[RISCV_ABI_DOUBLE] = "double",
+};
+
+static const char *riscv_abi[3] = {
+	[RISCV_ABI_INT_ONLY] = "int-only",
+	[RISCV_ABI_FLOAT] = "float",
+	[RISCV_ABI_DOUBLE] = "double",
 };
 
 static const char *win64_simd_type[2] = {

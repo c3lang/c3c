@@ -29,9 +29,10 @@ static unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool 
 static void x86_features_from_host(CpuFeatures *cpu_features);
 static void x86_features_add_feature(CpuFeatures *cpu_features, X86Feature feature);
 static void cpu_features_add_feature_single(CpuFeatures *cpu_features, int feature);
-static void cpu_features_set_to_features(CpuFeatures enabled_features, CpuFeatures cpu_defaults, const bool *skip, int last, const char *list[]);
+static void cpu_features_set_to_features(CpuFeatures enabled_features, CpuFeatures cpu_defaults, const bool *skip, const char *list[], int last);
+static void update_cpu_features(const char *features, CpuFeatures *cpu_features, const char **feature_names, int feature_count);
 
-const CpuFeatures cpu_feature_zero = { { 0, 0}, NULL };
+const CpuFeatures cpu_feature_zero = { { 0, 0} };
 
 static const char *wasm_feature_name[] = {
 	[WASM_FEAT_BULK_MEMORY] = "bulk-memory",
@@ -77,7 +78,7 @@ static const char *aarch64_feature_name[] = {
 	[AARCH64_FEAT_NEON] = "neon"
 };
 
-static const char *risscv_feature_name[] = {
+static const char *riscv_feature_name[] = {
 	[RISCV_FEAT_64BIT] = "64bit",
 	[RISCV_FEAT_32BIT] = "32bit",
 	[RISCV_FEAT_A] = "a",
@@ -367,7 +368,8 @@ static inline void target_setup_aarch64_abi(void)
 	cpu_features_add_feature_single(&features, AARCH64_FEAT_RDM);
 	cpu_features_add_feature_single(&features, AARCH64_FEAT_FP_ARMV8);
 	cpu_features_add_feature_single(&features, AARCH64_FEAT_NEON);
-	cpu_features_set_to_features(features, cpu_feature_zero, NULL, AARCH64_FEATURE_LAST, aarch64_feature_name);
+	update_cpu_features(compiler.build.cpu_features, &features, aarch64_feature_name, AARCH64_FEATURE_LAST);
+	cpu_features_set_to_features(features, cpu_feature_zero, NULL, aarch64_feature_name, AARCH64_FEATURE_LAST);
 }
 
 static inline void target_setup_arm_abi(void)
@@ -391,7 +393,8 @@ static inline void target_setup_arm_abi(void)
 	cpu_features_add_feature_single(&features, ARM_FEAT_VFP2);
 	cpu_features_add_feature_single(&features, ARM_FEAT_VFP2SP);
 
-	cpu_features_set_to_features(features, cpu_feature_zero, NULL, ARM_FEAT_LAST, arm_feature_name);
+	update_cpu_features(compiler.build.cpu_features, &features, arm_feature_name, ARM_FEAT_LAST);
+	cpu_features_set_to_features(features, cpu_feature_zero, NULL, arm_feature_name, ARM_FEAT_LAST);
 	if (compiler.platform.object_format == OBJ_FORMAT_MACHO)
 	{
 		if (compiler.platform.environment_type == ENV_TYPE_EABI
@@ -507,7 +510,6 @@ static void cpu_features_add_feature_single(CpuFeatures *cpu_features, int featu
 	{
 		cpu_features->bits[1] |= 1ULL << (feature - 64);
 	}
-	cpu_features->as_string = NULL;
 }
 
 
@@ -584,7 +586,7 @@ static CpuFeatures x86_features_from_cpu(X86CpuSet set)
 	return features;
 }
 
-static void cpu_features_set_to_features(CpuFeatures enabled_features, CpuFeatures cpu_defaults, const bool *skip, int last, const char *list[])
+static void cpu_features_set_to_features(CpuFeatures enabled_features, CpuFeatures cpu_defaults, const bool *skip, const char *list[], int last)
 {
 	scratch_buffer_clear();
 	for (int i = 0; i <= last; i++)
@@ -611,7 +613,7 @@ static void cpu_features_set_to_features(CpuFeatures enabled_features, CpuFeatur
 static void x86features_as_diff_to_scratch(CpuFeatures enabled_features, X86CpuSet set)
 {
 	static bool x64features_skip[X86_FEATURE_LAST + 1] = { [X86_FEAT_AVX5124FMAPS] = true, [X86_FEAT_AVX5124VNNIW] = true};
-	cpu_features_set_to_features(enabled_features, x86_features_from_cpu(set), x64features_skip, X86_FEATURE_LAST, x86_feature_name);
+	cpu_features_set_to_features(enabled_features, x86_features_from_cpu(set), x64features_skip, x86_feature_name, X86_FEATURE_LAST);
 }
 
 static void x86_features_add_feature(CpuFeatures *cpu_features, X86Feature feature)
@@ -825,7 +827,6 @@ static void cpu_features_remove_feature(CpuFeatures *cpu_features, int feature)
 	{
 		cpu_features->bits[1] &= ~(1ULL << (feature - 64));
 	}
-	cpu_features->as_string = NULL;
 }
 
 static void x64features_limit_from_capability(CpuFeatures *cpu_features, X86VectorCapability capability)
@@ -1091,6 +1092,8 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	if (target->feature.soft_float == SOFT_FLOAT_YES) compiler.platform.x64.soft_float = true;
 	if (target->feature.pass_win64_simd_as_arrays == WIN64_SIMD_ARRAY) compiler.platform.x64.win64_simd_as_array = true;
 	if (compiler.platform.x64.soft_float) cpu_features_add_feature_single(&cpu_features, X86_FEAT_SOFT_FLOAT);
+
+	update_cpu_features(compiler.build.cpu_features, &cpu_features, x86_feature_name, X86_FEATURE_LAST);
 
 	x86features_as_diff_to_scratch(cpu_features, cpu_set);
 
@@ -1993,21 +1996,22 @@ static void target_setup_wasm_abi(BuildTarget *target)
 	cpu_features_add_feature_single(&features, WASM_FEAT_NONTRAPPING_FPTORINT);
 	cpu_features_add_feature_single(&features, WASM_FEAT_REFERENCE_TYPES);
 	cpu_features_add_feature_single(&features, WASM_FEAT_SIGN_EXT);
-	cpu_features_set_to_features(features, cpu_feature_zero, NULL, WASM_FEATURE_LAST, wasm_feature_name);
+	update_cpu_features(target->cpu_features, &features, wasm_feature_name, WASM_FEATURE_LAST);
+	cpu_features_set_to_features(features, cpu_feature_zero, NULL, wasm_feature_name, WASM_FEATURE_LAST);
 }
 
 static void target_setup_riscv_abi(BuildTarget *target)
 {
 	compiler.platform.riscv.xlen = arch_pointer_bit_width(compiler.platform.os, compiler.platform.arch) / 8; // pointer width
-	switch (target->feature.riscv_float_capability)
+	switch (target->feature.riscv_abi)
 	{
-		case RISCVFLOAT_DEFAULT:
+		case RISCV_ABI_DEFAULT:
 			compiler.platform.riscv.flen = 0;
 			break;
-		case RISCVFLOAT_NONE:
-		case RISCVFLOAT_FLOAT:
-		case RISCVFLOAT_DOUBLE:
-			compiler.platform.riscv.flen = 4 * target->feature.riscv_float_capability;
+		case RISCV_ABI_INT_ONLY:
+		case RISCV_ABI_FLOAT:
+		case RISCV_ABI_DOUBLE:
+			compiler.platform.riscv.flen = 4 * target->feature.riscv_abi;
 			break;
 	}
 	compiler.platform.abi = ABI_RISCV;
@@ -2015,40 +2019,63 @@ static void target_setup_riscv_abi(BuildTarget *target)
 	if (compiler.platform.arch == ARCH_TYPE_RISCV64)
 	{
 		cpu_features_add_feature_single(&features, RISCV_FEAT_64BIT);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_A);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_C);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_D);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_F);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_I);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_M);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_RELAX);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZAAMO);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZALRSC);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZCA);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZCD);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZICSR);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZIFENCEI);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZMMUL);
 	}
 	else
 	{
 		cpu_features_add_feature_single(&features, RISCV_FEAT_32BIT);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_A);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_C);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_D);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_F);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_M);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_RELAX);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZAAMO);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZALRSC);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZCA);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZCD);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZCF);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZICSR);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZMMUL);
 	}
-	cpu_features_set_to_features(features, cpu_feature_zero, NULL, RISCV_FEAT_LAST, risscv_feature_name);
+	update_cpu_features(target->cpu_features, &features, riscv_feature_name, RISCV_FEATURE_LAST);
+	cpu_features_set_to_features(features, cpu_feature_zero, NULL, riscv_feature_name, RISCV_FEATURE_LAST);
 }
+
+static void update_cpu_features(const char *features, CpuFeatures *cpu_features, const char **feature_names, int feature_count)
+{
+	if (!features) return;
+	StringSlice slice = slice_from_string(features);
+	if (!slice.len) return;
+	while (slice.len)
+	{
+		StringSlice next = slice_next_token(&slice, ',');
+		slice_trim(&next);
+		if (!next.len) continue;
+		bool add_feature = true;
+		if (next.len < 2) goto ERR_MALFORMED;
+		switch (*next.ptr)
+		{
+			case '+':
+				break;
+			case '-':
+				add_feature = false;
+				break;
+			default:
+				ERR_MALFORMED:
+				error_exit("Invalid feature flag: %.*s in '%s'", (int)next.len, next.ptr, features);
+		}
+		next.ptr++;
+		next.len--;
+		for (int i = 0; i < feature_count; i++)
+		{
+			const char *feat = feature_names[i];
+			size_t feat_len = strlen(feat);
+			if (feat_len != next.len) continue;
+			if (memcmp(next.ptr, feature_names[i], feat_len) == 0)
+			{
+				if (add_feature)
+				{
+					cpu_features_add_feature_single(cpu_features, i);
+				}
+				else
+				{
+					cpu_features_remove_feature(cpu_features, i);
+				}
+				goto FOUND;
+			}
+		}
+		OUTF("Unsupported feature flag: '%.*s', will be ignored.", (int)next.len, next.ptr);
+FOUND:;
+	}
+}
+
 
 void target_setup(BuildTarget *target)
 {

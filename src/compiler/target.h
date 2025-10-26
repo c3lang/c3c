@@ -32,7 +32,6 @@ typedef struct
 typedef struct CpuFeatures
 {
 	unsigned long long bits[2];
-	const char *as_string;
 } CpuFeatures;
 
 typedef struct
