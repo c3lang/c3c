@@ -32,16 +32,20 @@ int wsa_init @local;
 
 macro void? start_wsa()
 {
+	io::printn("Start WSA check");
 	if (mem::compare_exchange(&wsa_init, 0, 2) == 2)
 	{
 		Win32_WORD version = 0x0202;
+		io::printn("Start WSA");
 	    CInt wsa_error = win32::wsaStartup(version, &wsa_data);
 		if (wsa_error > 0)
 		{
+			io::printn("Start WSA failed");
 			mem::@atomic_store(wsa_init, 0);
 			return os::socket_error()?;
 		}
 		mem::@atomic_store(wsa_init, 1);
+		io::printn("Start WSA ok");
 	}
 }
 

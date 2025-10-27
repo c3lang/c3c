@@ -3,7 +3,7 @@ import std::net;
 
 fn void test_tcp_sock_pair()
 {
-	tcp::TcpSocketPair sockets;
+	TcpSocketPair sockets;
 	sockets.init()!!;
 	defer sockets.destroy()!!;
 
