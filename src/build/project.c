@@ -15,6 +15,7 @@ const char *project_default_keys[][2] = {
 		{"cc", "Set C compiler (defaults to 'cc')."},
 		{"cflags", "C compiler flags."},
 		{"cpu", "CPU name, used for optimizations in the compiler backend."},
+		{"cpu-flags", "Set the cpu flags to add or remove with the format '+avx,-sse'."},
 		{"debug-info", "Debug level: none, line-tables, full."},
 		{"dependencies", "C3 library dependencies for all targets."},
 		{"dependency-search-paths", "The C3 library search paths."},
@@ -44,6 +45,7 @@ const char *project_default_keys[][2] = {
 		{"panicfn", "Override the panic function."},
 		{"quiet", "Silence unnecessary output."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
+		{"riscv-abi", "RiscV ABI: int-only, float, double."},
 		{"run-dir", "Override run directory for 'run'."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
 		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
@@ -71,6 +73,7 @@ const char *project_default_keys[][2] = {
 		{"x86-stack-struct-return", "Return structs on the stack for x86."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
 		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
+
 };
 
 const int project_default_keys_count = ELEMENTLEN(project_default_keys);
@@ -87,6 +90,8 @@ const char* project_target_keys[][2] = {
 		{"cflags", "Additional C compiler flags for the target."},
 		{"cflags-override", "C compiler flags for the target, overriding global settings."},
 		{"cpu", "CPU name, used for optimizations in the compiler backend."},
+		{"cpu-flags", "Additional cpu flags to add or remove with the format '+avx,-sse'."},
+		{"cpu-flags-override", "Additional cpu flags to add or remove with the format '+avx,-sse', overriding global settings."},
 		{"debug-info", "Debug level: none, line-tables, full."},
 		{"dependencies", "Additional C3 library dependencies for the target."},
 		{"dependencies-override", "C3 library dependencies for this target, overriding global settings."},
@@ -124,6 +129,7 @@ const char* project_target_keys[][2] = {
 		{"panicfn", "Override the panic function."},
 		{"quiet", "Silence unnecessary output."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
+		{"riscv-abi", "RiscV ABI: int-only, float, double."},
 		{"run-dir", "Override run directory for 'run'."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
 		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
@@ -185,6 +191,33 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	// The output directory
 	target->output_dir = get_string(context, json, "output", target->output_dir);
 	target->build_dir = get_string(context, json, "build-dir", target->build_dir);
+
+	const char *cpu_flags = get_optional_string(context, json, "cpu-flags");
+	if (cpu_flags)
+	{
+		if (target->cpu_features)
+		{
+			scratch_buffer_clear();
+			scratch_buffer_printf("%s,%s", target->cpu_features, cpu_flags);
+			target->cpu_features = scratch_buffer_copy();
+		}
+		else
+		{
+			target->cpu_features = cpu_flags;
+		}
+	}
+	if (context.target)
+	{
+		const char *cpu_flags_override = get_optional_string(context, json, "cpu-flags-override");
+		if (cpu_flags_override)
+		{
+			if (cpu_flags)
+			{
+				error_exit("Error reading %s: 'cpu-flags' and 'cpu-flags-override' cannot be combined.", context.file);
+			}
+			target->cpu_features = cpu_flags_override;
+		}
+	}
 
 	if (context.target)
 	{
@@ -411,9 +444,9 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	X86CpuSet x86cpu = GET_SETTING(X86CpuSet, "x86cpu", x86_cpu_set, "`baseline`, `ssse3`, `sse4`, `avx1`, `avx2-v1`, `avx2-v2`, `avx512` or `native`.");
 	if (x86cpu > X86CPU_DEFAULT) target->feature.x86_cpu_set = x86cpu;
 
-	// riscvfloat
-	RiscvFloatCapability riscv_float = GET_SETTING(RiscvFloatCapability, "riscvfloat", riscv_capability, "`none`, `float` or `double`.");
-	if (riscv_float != RISCVFLOAT_DEFAULT) target->feature.riscv_float_capability = riscv_float;
+	// riscv-abi
+	RiscvAbi riscv_abi_val = GET_SETTING(RiscvAbi, "riscv-abi", riscv_abi, "`int-only`, `float` or `double`.");
+	if (riscv_abi_val != RISCV_ABI_DEFAULT) target->feature.riscv_abi = riscv_abi_val;
 
 	// win-debug
 	WinDebug win_debug = GET_SETTING(WinDebug , "win-debug", win_debug_type, "`codeview` or `dwarf`.");

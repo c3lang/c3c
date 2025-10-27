@@ -297,11 +297,11 @@ typedef enum
 
 typedef enum
 {
-	RISCVFLOAT_DEFAULT = -1,
-	RISCVFLOAT_NONE = 0,
-	RISCVFLOAT_FLOAT = 1,
-	RISCVFLOAT_DOUBLE = 2,
-} RiscvFloatCapability;
+	RISCV_ABI_DEFAULT = -1,
+	RISCV_ABI_INT_ONLY = 0,
+	RISCV_ABI_FLOAT = 1,
+	RISCV_ABI_DOUBLE = 2,
+} RiscvAbi;
 
 typedef enum
 {
@@ -581,11 +581,12 @@ typedef struct BuildOptions_
 	StripUnused strip_unused;
 	OptimizationLevel optlevel;
 	SizeOptimizationLevel optsize;
-	RiscvFloatCapability riscv_float_capability;
+	RiscvAbi riscv_abi;
 	MemoryEnvironment memory_environment;
 	SanitizeMode sanitize_mode;
 	uint32_t max_vector_size;
 	uint32_t max_stack_object_size;
+	const char *cpu_features;
 	uint32_t max_macro_iterations;
 	bool print_keywords;
 	bool print_attributes;
@@ -726,6 +727,7 @@ typedef struct
 	ArchOsTarget arch_os_target;
 	CompilerBackend backend;
 	LinkerType linker_type;
+	const char *cpu_features;
 	uint32_t symtab_size;
 	uint32_t max_vector_size;
 	uint32_t max_stack_object_size;
@@ -751,7 +753,7 @@ typedef struct
 		SoftFloat soft_float : 3;
 		StructReturn x86_struct_return : 3;
 		X86VectorCapability x86_vector_capability : 4;
-		RiscvFloatCapability riscv_float_capability : 4;
+		RiscvAbi riscv_abi : 4;
 		Win64Simd pass_win64_simd_as_arrays : 3;
 		bool trap_on_wrap : 1;
 		bool sanitize_address : 1;
@@ -832,7 +834,7 @@ static BuildTarget default_build_target = {
 		.feature.soft_float = SOFT_FLOAT_DEFAULT,
 		.feature.fp_math = FP_DEFAULT,
 		.feature.trap_on_wrap = false,
-		.feature.riscv_float_capability = RISCVFLOAT_DEFAULT,
+		.feature.riscv_abi = RISCV_ABI_DEFAULT,
 		.feature.x86_vector_capability = X86VECTOR_DEFAULT,
 		.feature.x86_cpu_set = X86CPU_DEFAULT,
 		.feature.win_debug = WIN_DEBUG_DEFAULT,
@@ -844,6 +846,7 @@ static BuildTarget default_build_target = {
 		.switchjump_max_size = DEFAULT_SWITCH_JUMP_MAX_SIZE,
 		.quiet = false,
 };
+
 
 extern const char *project_default_keys[][2];
 extern const int project_default_keys_count;

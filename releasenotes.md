@@ -16,6 +16,8 @@
 - Add @simd and @align attributes to typedef #2543.
 - Rename `@extern` to `@cname`, deprecating the old name #2493.
 - Allow `(Foo)0` bitstruct casts even if type sizes do not match.
+- The option `--riscvfloat` renamed `--riscv-abi`.
+- Add initial `--cpu-features` allowing fine grained control over CPU features.
 
 ### Fixes
 - Bug in `io::write_using_write_byte`.

@@ -10,7 +10,7 @@
 #include "utils/hostinfo.h"
 #endif
 
-static bool x64features_contains(X86Features *cpu_features, X86Feature feature);
+static bool cpu_features_contains(CpuFeatures *cpu_features, int feature);
 static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type);
 static unsigned arch_pointer_bit_width(OsType os, ArchType arch);
 static unsigned arch_int_register_bit_width(OsType os, ArchType arch);
@@ -26,11 +26,207 @@ static unsigned os_target_supports_int128(OsType os, ArchType arch);
 static unsigned os_target_supports_float16(OsType os, ArchType arch);
 static unsigned os_target_supports_float128(OsType os, ArchType arch);
 static unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int);
-static void x86_features_from_host(X86Features *cpu_features);
-static void x86_features_add_feature(X86Features *cpu_features, X86Feature feature);
-static const char *x86features_as_string(X86Features *cpu_features);
+static void x86_features_from_host(CpuFeatures *cpu_features);
+static void x86_features_add_feature(CpuFeatures *cpu_features, X86Feature feature);
+static void cpu_features_add_feature_single(CpuFeatures *cpu_features, int feature);
+static void cpu_features_set_to_features(CpuFeatures enabled_features, CpuFeatures cpu_defaults, const bool *skip, const char *list[], int last);
+static void update_cpu_features(const char *features, CpuFeatures *cpu_features, const char **feature_names, int feature_count);
 
-const X86Features x86_feature_zero = { { 0, 0}, NULL };
+const CpuFeatures cpu_feature_zero = { { 0, 0} };
+
+static const char *wasm_feature_name[] = {
+	[WASM_FEAT_BULK_MEMORY] = "bulk-memory",
+	[WASM_FEAT_BULK_MEMORY_OPT] = "bulk-memory-opt",
+	[WASM_FEAT_CALL_INDIRECT_OVERLONG] = "call-indirect-overlong",
+	[WASM_FEAT_MULTIVALUE] = "multivalue",
+	[WASM_FEAT_MUTABLE_GLOBALS] = "mutable-globals",
+	[WASM_FEAT_NONTRAPPING_FPTORINT] = "nontrapping-fptoint",
+	[WASM_FEAT_REFERENCE_TYPES] = "reference-types",
+	[WASM_FEAT_SIGN_EXT] = "sign-ext"
+};
+
+static const char *arm_feature_name[] = {
+	[ARM_FEAT_ARMV6KZ] = "armv6kz",
+	[ARM_FEAT_DSP] = "dsp",
+	[ARM_FEAT_FP64] = "fp64",
+	[ARM_FEAT_STRICT_ALIGN] = "strict-align",
+	[ARM_FEAT_VFP2] = "vfp2",
+	[ARM_FEAT_VFP2SP] = "vfp2sp",
+	[ARM_FEAT_AES] = "aes",
+	[ARM_FEAT_D32] = "d32",
+	[ARM_FEAT_FP_ARMV8] = "fp-armv8",
+	[ARM_FEAT_FP_ARMV8D16] = "fp-armv8d16",
+	[ARM_FEAT_FP_ARMV8D16SP] = "fp-armv8d16sp",
+	[ARM_FEAT_FP_ARMV8SP] = "fp-armv8sp",
+	[ARM_FEAT_FP_FP16] = "fp16",
+	[ARM_FEAT_FP_FP16FML] = "fp16fml",
+	[ARM_FEAT_FP_FULLFP16] = "fullfp16",
+	[ARM_FEAT_NEON] = "neon",
+	[ARM_FEAT_SHA2] = "sha2",
+	[ARM_FEAT_THUMB_MODE] = "thumb-mode",
+	[ARM_FEAT_VFP3] = "vfp3",
+	[ARM_FEAT_VFP3D16] = "vfp3d16",
+	[ARM_FEAT_VFP3D16SP] = "vfp3d16sp",
+	[ARM_FEAT_VFP3SP] = "vfp3sp"
+};
+
+static const char *aarch64_feature_name[] = {
+	[AARCH64_FEAT_CRC] = "crc",
+	[AARCH64_FEAT_LSE] = "lse",
+	[AARCH64_FEAT_RDM] = "rdm",
+	[AARCH64_FEAT_FP_ARMV8] = "fp-armv8",
+	[AARCH64_FEAT_NEON] = "neon"
+};
+
+static const char *riscv_feature_name[] = {
+	[RISCV_FEAT_64BIT] = "64bit",
+	[RISCV_FEAT_32BIT] = "32bit",
+	[RISCV_FEAT_A] = "a",
+	[RISCV_FEAT_B] = "b",
+	[RISCV_FEAT_C] = "c",
+	[RISCV_FEAT_D] = "d",
+	[RISCV_FEAT_E] = "e",
+	[RISCV_FEAT_F] = "f",
+	[RISCV_FEAT_I] = "i",
+	[RISCV_FEAT_M] = "m",
+	[RISCV_FEAT_RELAX] = "relax",
+	[RISCV_FEAT_ZAAMO] = "zaamo",
+	[RISCV_FEAT_ZALRSC] = "zalrsc",
+	[RISCV_FEAT_ZCA] = "zca",
+	[RISCV_FEAT_ZCD] = "zcd",
+	[RISCV_FEAT_ZCF] = "zcf",
+	[RISCV_FEAT_ZICSR] = "zicsr",
+	[RISCV_FEAT_ZIFENCEI] = "zifencei",
+	[RISCV_FEAT_ZMMUL] = "zmmul",
+};
+
+static const char *x86_feature_name[] = {
+	[X86_FEAT_CMOV] = "cmov",
+	[X86_FEAT_MMX] = "mmx",
+	[X86_FEAT_POPCNT] = "popcnt",
+	[X86_FEAT_SSE] = "sse",
+	[X86_FEAT_SSE2] = "sse2",
+	[X86_FEAT_SSE3] = "sse3",
+	[X86_FEAT_SSSE3] = "ssse3",
+	[X86_FEAT_SSE4_1] = "sse4.1",
+	[X86_FEAT_SSE4_2] = "sse4.2",
+	[X86_FEAT_APX_EGPR] = "egpr",
+	[X86_FEAT_APX_PUSH2POP2] = "push2pop2",
+	[X86_FEAT_APX_PPX] = "ppx",
+	[X86_FEAT_APX_NDD] = "ndd",
+	[X86_FEAT_APX_CCMP] = "ccmp",
+	[X86_FEAT_APX_NF] = "nf",
+	[X86_FEAT_APX_CF] = "cf",
+	[X86_FEAT_APX_ZU] = "zu",
+	[X86_FEAT_AVX] = "avx",
+	[X86_FEAT_AVX2] = "avx2",
+	[X86_FEAT_AVX10_1_512] = "avx10.1-512",
+	[X86_FEAT_AVX10_1_256] = "avx10.1-256",
+	[X86_FEAT_AVX10_2_512] = "avx10.2-512",
+	[X86_FEAT_AVX10_2_256] = "avx10.2-256",
+	[X86_FEAT_SSE4_A] = "sse4a",
+	[X86_FEAT_FMA4] = "fma4",
+	[X86_FEAT_XOP] = "xop",
+	[X86_FEAT_FMA] = "fma",
+	[X86_FEAT_AVX512F] = "avx512f",
+	[X86_FEAT_BMI] = "bmi",
+	[X86_FEAT_BMI2] = "bmi2",
+	[X86_FEAT_AES] = "aes",
+	[X86_FEAT_PCLMUL] = "pclmul",
+	[X86_FEAT_AVX512VL] = "avx512vl",
+	[X86_FEAT_AVX512BW] = "avx512bw",
+	[X86_FEAT_AVX512DQ] = "avx512dq",
+	[X86_FEAT_AVX512CD] = "avx512cd",
+	[X86_FEAT_AVX512ER] = "avx512er",
+	[X86_FEAT_AVX512PF] = "avx512pf",
+	[X86_FEAT_AVX512VBMI] = "avx512vbmi",
+	[X86_FEAT_AVX512IFMA] = "avx512ifma",
+	[X86_FEAT_AVX5124VNNIW] = "avx5124vnniw",
+	[X86_FEAT_AVX5124FMAPS] = "avx5124fmaps",
+	[X86_FEAT_AVX512VPOPCNTDQ] = "avx512vpopcntdq",
+	[X86_FEAT_AVX512VBMI2] = "avx512vbmi2",
+	[X86_FEAT_GFNI] = "gfni",
+	[X86_FEAT_VPCLMULQDQ] = "vpclmulqdq",
+	[X86_FEAT_AVX512VNNI] = "avx512vnni",
+	[X86_FEAT_AVX512BITALG] = "avx512bitalg",
+	[X86_FEAT_AVX512BF16] = "avx512bf16",
+	[X86_FEAT_AVX512VP2INTERSECT] = "avx512vp2intersect",
+	[X86_FEAT_ADX] = "adx",
+	[X86_FEAT_AMX_BF16] = "amx-bf16",
+	[X86_FEAT_AMX_INT8] = "amx-int8",
+	[X86_FEAT_AMX_TILE] = "amx-tile",
+	[X86_FEAT_AMX_AVX512] = "amx-avx512",
+	[X86_FEAT_AMX_FP8] = "amx-fp8",
+	[X86_FEAT_AMX_MOVRS] = "amx-movrs",
+	[X86_FEAT_AMX_TF32] = "amx-tf32",
+	[X86_FEAT_AMX_TRANSPOSE] = "amx-transpose",
+	[X86_FEAT_MOVRS] = "movrs",
+	[X86_FEAT_CLDEMOTE] = "cldemote",
+	[X86_FEAT_CLFLUSHOPT] = "clflushopt",
+	[X86_FEAT_CLWB] = "clwb",
+	[X86_FEAT_CLZERO] = "clzero",
+	[X86_FEAT_CMPXCHG16B] = "cx16",
+	[X86_FEAT_CMPXCHG8B] = "cx8",
+	[X86_FEAT_CRC32] = "crc32",
+	[X86_FEAT_ENQCMD] = "enqcmd",
+	[X86_FEAT_F16C] = "f16c",
+	[X86_FEAT_FSGSBASE] = "fsgsbase",
+	[X86_FEAT_FXSR] = "fxsr",
+	[X86_FEAT_INVPCID] = "invpcid",
+	[X86_FEAT_KL] = "kl",
+	[X86_FEAT_WIDEKL] = "widekl",
+	[X86_FEAT_LWP] = "lwp",
+	[X86_FEAT_LZCNT] = "lzcnt",
+	[X86_FEAT_MOVBE] = "movbe",
+	[X86_FEAT_MOVDIR64B] = "movdir64b",
+	[X86_FEAT_MOVDIRI] = "movdiri",
+	[X86_FEAT_MWAITX] = "mwaitx",
+	[X86_FEAT_PCONFIG] = "pconfig",
+	[X86_FEAT_PKU] = "pku",
+	[X86_FEAT_PREFETCHI] = "prefetchi",
+	[X86_FEAT_PREFETCHWT1] = "prefetchwt1",
+	[X86_FEAT_PRFCHW] = "prfchw",
+	[X86_FEAT_PTWRITE] = "ptwrite",
+	[X86_FEAT_RDPID] = "rdpid",
+	[X86_FEAT_RDPRU] = "rdpru",
+	[X86_FEAT_RDRND] = "rdrnd",
+	[X86_FEAT_RDSEED] = "rdseed",
+	[X86_FEAT_RTM] = "rtm",
+	[X86_FEAT_SAHF] = "sahf",
+	[X86_FEAT_SERIALIZE] = "serialize",
+	[X86_FEAT_SGX] = "sgx",
+	[X86_FEAT_SM3] = "sm3",
+	[X86_FEAT_SM4] = "sm4",
+	[X86_FEAT_SHA] = "sha",
+	[X86_FEAT_SHA512] = "sha512",
+	[X86_FEAT_SHSTK] = "shstk",
+	[X86_FEAT_TBM] = "tbm",
+	[X86_FEAT_TSXLDTRK] = "tsxldtrk",
+	[X86_FEAT_UINTR] = "uintr",
+	[X86_FEAT_USERMSR] = "usermsr",
+	[X86_FEAT_VAES] = "vaes",
+	[X86_FEAT_VZEROUPPER] = "vzeroupper",
+	[X86_FEAT_WAITPKG] = "waitpkg",
+	[X86_FEAT_WBNOINVD] = "wbnoinvd",
+	[X86_FEAT_X87] = "x87",
+	[X86_FEAT_XSAVE] = "xsave",
+	[X86_FEAT_XSAVEC] = "xsavec",
+	[X86_FEAT_XSAVEOPT] = "xsaveopt",
+	[X86_FEAT_XSAVES] = "xsaves",
+	[X86_FEAT_HRESET] = "hreset",
+	[X86_FEAT_RAOINT] = "raoint",
+	[X86_FEAT_AVX512FP16] = "avx512fp16",
+	[X86_FEAT_AMX_FP16] = "amx-fp16",
+	[X86_FEAT_AMX_COMPLEX] = "amx-complex",
+	[X86_FEAT_CMPCCXADD] = "cmpccxadd",
+	[X86_FEAT_AVXNECONVERT] = "avxneconvert",
+	[X86_FEAT_AVXVNNI] = "avxvnni",
+	[X86_FEAT_AVXIFMA] = "avxifma",
+	[X86_FEAT_AVXVNNIINT8] = "avxvnniint8",
+	[X86_FEAT_AVXVNNIINT16] = "avxvnniint16",
+	[X86_FEAT_EVEX512] = "evex512",
+	[X86_FEAT_SOFT_FLOAT] = "soft-float",
+};
 
 int target_alloca_addr_space()
 {
@@ -52,7 +248,7 @@ bool arch_is_wasm(ArchType type)
 	return type == ARCH_TYPE_WASM32 || type == ARCH_TYPE_WASM64;
 }
 
-static AlignSize os_arch_max_alignment_of_vector(OsType os, ArchType arch, EnvironmentType type, ARMVariant variant, X86Features* features)
+static AlignSize os_arch_max_alignment_of_vector(OsType os, ArchType arch, EnvironmentType type, ARMVariant variant, CpuFeatures* x64_features)
 {
 	switch (arch)
 	{
@@ -81,8 +277,8 @@ static AlignSize os_arch_max_alignment_of_vector(OsType os, ArchType arch, Envir
 			if (os_is_apple(os))
 			{
 				// With AVX512 - 512, AVX - 256 otherwise AVX - 128
-				if (x64features_contains(features, X86_FEAT_AVX512F)) return 512 / 8;
-				if (x64features_contains(features, X86_FEAT_AVX)) return 256 / 8;
+				if (cpu_features_contains(x64_features, X86_FEAT_AVX512F)) return 512 / 8;
+				if (cpu_features_contains(x64_features, X86_FEAT_AVX)) return 256 / 8;
 				return 128 / 8;
 			}
 			break;
@@ -166,10 +362,16 @@ static inline void target_setup_aarch64_abi(void)
 	compiler.platform.aarch.is_win32 = compiler.platform.os == OS_TYPE_WIN32;
 	compiler.platform.abi = ABI_AARCH64;
 	// TODO improve Aarch64 functionality support.
-	scratch_buffer_clear();
-	scratch_buffer_append("+crc,+lse,+rdm,+fp-armv8,+neon");
-	compiler.platform.features = scratch_buffer_copy();
+	CpuFeatures features = cpu_feature_zero;
+	cpu_features_add_feature_single(&features, AARCH64_FEAT_CRC);
+	cpu_features_add_feature_single(&features, AARCH64_FEAT_LSE);
+	cpu_features_add_feature_single(&features, AARCH64_FEAT_RDM);
+	cpu_features_add_feature_single(&features, AARCH64_FEAT_FP_ARMV8);
+	cpu_features_add_feature_single(&features, AARCH64_FEAT_NEON);
+	update_cpu_features(compiler.build.cpu_features, &features, aarch64_feature_name, AARCH64_FEATURE_LAST);
+	cpu_features_set_to_features(features, cpu_feature_zero, NULL, aarch64_feature_name, AARCH64_FEATURE_LAST);
 }
+
 static inline void target_setup_arm_abi(void)
 {
 	compiler.platform.abi = ABI_ARM;
@@ -180,6 +382,19 @@ static inline void target_setup_arm_abi(void)
 		compiler.platform.arm.abi_variant = ARM_ABI_AAPCS16_VFP;
 		return;
 	}
+
+	CpuFeatures features = cpu_feature_zero;
+
+	// Should be based on feature set. We start with this though.
+	cpu_features_add_feature_single(&features, ARM_FEAT_ARMV6KZ);
+	cpu_features_add_feature_single(&features, ARM_FEAT_DSP);
+	cpu_features_add_feature_single(&features, ARM_FEAT_FP64);
+	cpu_features_add_feature_single(&features, ARM_FEAT_STRICT_ALIGN);
+	cpu_features_add_feature_single(&features, ARM_FEAT_VFP2);
+	cpu_features_add_feature_single(&features, ARM_FEAT_VFP2SP);
+
+	update_cpu_features(compiler.build.cpu_features, &features, arm_feature_name, ARM_FEAT_LAST);
+	cpu_features_set_to_features(features, cpu_feature_zero, NULL, arm_feature_name, ARM_FEAT_LAST);
 	if (compiler.platform.object_format == OBJ_FORMAT_MACHO)
 	{
 		if (compiler.platform.environment_type == ENV_TYPE_EABI
@@ -285,7 +500,7 @@ static inline void target_setup_x86_abi(BuildTarget *target)
 }
 
 
-static void x64features_add_feature_single(X86Features *cpu_features, X86Feature feature)
+static void cpu_features_add_feature_single(CpuFeatures *cpu_features, int feature)
 {
 	if (feature < 64)
 	{
@@ -295,136 +510,8 @@ static void x64features_add_feature_single(X86Features *cpu_features, X86Feature
 	{
 		cpu_features->bits[1] |= 1ULL << (feature - 64);
 	}
-	cpu_features->as_string = NULL;
 }
 
-
-static char *x86_feature_name[] = {
-		[X86_FEAT_CMOV] = "cmov",
-		[X86_FEAT_MMX] = "mmx",
-		[X86_FEAT_POPCNT] = "popcnt",
-		[X86_FEAT_SSE] = "sse",
-		[X86_FEAT_SSE2] = "sse2",
-		[X86_FEAT_SSE3] = "sse3",
-		[X86_FEAT_SSSE3] = "ssse3",
-		[X86_FEAT_SSE4_1] = "sse4.1",
-		[X86_FEAT_SSE4_2] = "sse4.2",
-		[X86_FEAT_APX_EGPR] = "egpr",
-		[X86_FEAT_APX_PUSH2POP2] = "push2pop2",
-		[X86_FEAT_APX_PPX] = "ppx",
-		[X86_FEAT_APX_NDD] = "ndd",
-		[X86_FEAT_APX_CCMP] = "ccmp",
-		[X86_FEAT_APX_NF] = "nf",
-		[X86_FEAT_APX_CF] = "cf",
-		[X86_FEAT_APX_ZU] = "zu",
-		[X86_FEAT_AVX] = "avx",
-		[X86_FEAT_AVX2] = "avx2",
-		[X86_FEAT_AVX10_1_512] = "avx10.1-512",
-		[X86_FEAT_AVX10_1_256] = "avx10.1-256",
-		[X86_FEAT_AVX10_2_512] = "avx10.2-512",
-		[X86_FEAT_AVX10_2_256] = "avx10.2-256",
-		[X86_FEAT_SSE4_A] = "sse4a",
-		[X86_FEAT_FMA4] = "fma4",
-		[X86_FEAT_XOP] = "xop",
-		[X86_FEAT_FMA] = "fma",
-		[X86_FEAT_AVX512F] = "avx512f",
-		[X86_FEAT_BMI] = "bmi",
-		[X86_FEAT_BMI2] = "bmi2",
-		[X86_FEAT_AES] = "aes",
-		[X86_FEAT_PCLMUL] = "pclmul",
-		[X86_FEAT_AVX512VL] = "avx512vl",
-		[X86_FEAT_AVX512BW] = "avx512bw",
-		[X86_FEAT_AVX512DQ] = "avx512dq",
-		[X86_FEAT_AVX512CD] = "avx512cd",
-		[X86_FEAT_AVX512ER] = "avx512er",
-		[X86_FEAT_AVX512PF] = "avx512pf",
-		[X86_FEAT_AVX512VBMI] = "avx512vbmi",
-		[X86_FEAT_AVX512IFMA] = "avx512ifma",
-		[X86_FEAT_AVX5124VNNIW] = "avx5124vnniw",
-		[X86_FEAT_AVX5124FMAPS] = "avx5124fmaps",
-		[X86_FEAT_AVX512VPOPCNTDQ] = "avx512vpopcntdq",
-		[X86_FEAT_AVX512VBMI2] = "avx512vbmi2",
-		[X86_FEAT_GFNI] = "gfni",
-		[X86_FEAT_VPCLMULQDQ] = "vpclmulqdq",
-		[X86_FEAT_AVX512VNNI] = "avx512vnni",
-		[X86_FEAT_AVX512BITALG] = "avx512bitalg",
-		[X86_FEAT_AVX512BF16] = "avx512bf16",
-		[X86_FEAT_AVX512VP2INTERSECT] = "avx512vp2intersect",
-		[X86_FEAT_ADX] = "adx",
-		[X86_FEAT_AMX_BF16] = "amx-bf16",
-		[X86_FEAT_AMX_INT8] = "amx-int8",
-		[X86_FEAT_AMX_TILE] = "amx-tile",
-		[X86_FEAT_AMX_AVX512] = "amx-avx512",
-		[X86_FEAT_AMX_FP8] = "amx-fp8",
-		[X86_FEAT_AMX_MOVRS] = "amx-movrs",
-		[X86_FEAT_AMX_TF32] = "amx-tf32",
-		[X86_FEAT_AMX_TRANSPOSE] = "amx-transpose",
-		[X86_FEAT_MOVRS] = "movrs",
-		[X86_FEAT_CLDEMOTE] = "cldemote",
-		[X86_FEAT_CLFLUSHOPT] = "clflushopt",
-		[X86_FEAT_CLWB] = "clwb",
-		[X86_FEAT_CLZERO] = "clzero",
-		[X86_FEAT_CMPXCHG16B] = "cx16",
-		[X86_FEAT_CMPXCHG8B] = "cx8",
-		[X86_FEAT_CRC32] = "crc32",
-		[X86_FEAT_ENQCMD] = "enqcmd",
-		[X86_FEAT_F16C] = "f16c",
-		[X86_FEAT_FSGSBASE] = "fsgsbase",
-		[X86_FEAT_FXSR] = "fxsr",
-		[X86_FEAT_INVPCID] = "invpcid",
-		[X86_FEAT_KL] = "kl",
-		[X86_FEAT_WIDEKL] = "widekl",
-		[X86_FEAT_LWP] = "lwp",
-		[X86_FEAT_LZCNT] = "lzcnt",
-		[X86_FEAT_MOVBE] = "movbe",
-		[X86_FEAT_MOVDIR64B] = "movdir64b",
-		[X86_FEAT_MOVDIRI] = "movdiri",
-		[X86_FEAT_MWAITX] = "mwaitx",
-		[X86_FEAT_PCONFIG] = "pconfig",
-		[X86_FEAT_PKU] = "pku",
-		[X86_FEAT_PREFETCHI] = "prefetchi",
-		[X86_FEAT_PREFETCHWT1] = "prefetchwt1",
-		[X86_FEAT_PRFCHW] = "prfchw",
-		[X86_FEAT_PTWRITE] = "ptwrite",
-		[X86_FEAT_RDPID] = "rdpid",
-		[X86_FEAT_RDPRU] = "rdpru",
-		[X86_FEAT_RDRND] = "rdrnd",
-		[X86_FEAT_RDSEED] = "rdseed",
-		[X86_FEAT_RTM] = "rtm",
-		[X86_FEAT_SAHF] = "sahf",
-		[X86_FEAT_SERIALIZE] = "serialize",
-		[X86_FEAT_SGX] = "sgx",
-		[X86_FEAT_SM3] = "sm3",
-		[X86_FEAT_SM4] = "sm4",
-		[X86_FEAT_SHA] = "sha",
-		[X86_FEAT_SHA512] = "sha512",
-		[X86_FEAT_SHSTK] = "shstk",
-		[X86_FEAT_TBM] = "tbm",
-		[X86_FEAT_TSXLDTRK] = "tsxldtrk",
-		[X86_FEAT_UINTR] = "uintr",
-		[X86_FEAT_USERMSR] = "usermsr",
-		[X86_FEAT_VAES] = "vaes",
-		[X86_FEAT_VZEROUPPER] = "vzeroupper",
-		[X86_FEAT_WAITPKG] = "waitpkg",
-		[X86_FEAT_WBNOINVD] = "wbnoinvd",
-		[X86_FEAT_X87] = "x87",
-		[X86_FEAT_XSAVE] = "xsave",
-		[X86_FEAT_XSAVEC] = "xsavec",
-		[X86_FEAT_XSAVEOPT] = "xsaveopt",
-		[X86_FEAT_XSAVES] = "xsaves",
-		[X86_FEAT_HRESET] = "hreset",
-		[X86_FEAT_RAOINT] = "raoint",
-		[X86_FEAT_AVX512FP16] = "avx512fp16",
-		[X86_FEAT_AMX_FP16] = "amx-fp16",
-		[X86_FEAT_AMX_COMPLEX] = "amx-complex",
-		[X86_FEAT_CMPCCXADD] = "cmpccxadd",
-		[X86_FEAT_AVXNECONVERT] = "avxneconvert",
-		[X86_FEAT_AVXVNNI] = "avxvnni",
-		[X86_FEAT_AVXIFMA] = "avxifma",
-		[X86_FEAT_AVXVNNIINT8] = "avxvnniint8",
-		[X86_FEAT_AVXVNNIINT16] = "avxvnniint16",
-		[X86_FEAT_EVEX512] = "evex512",
-};
 
 static X86Feature x86feature_from_string(const char *str)
 {
@@ -442,7 +529,7 @@ static X86Feature x86feature_from_string(const char *str)
 	return -1;
 }
 
-static bool x64features_contains(X86Features *cpu_features, X86Feature feature)
+static bool cpu_features_contains(CpuFeatures *cpu_features, int feature)
 {
 	if (feature < 64)
 	{
@@ -451,56 +538,62 @@ static bool x64features_contains(X86Features *cpu_features, X86Feature feature)
 	return !!((cpu_features->bits[1]) & (1ULL << (feature - 64)));
 }
 
-static void x86features_as_diff_to_scratch(X86Features *cpu_features, X86CpuSet set)
+static CpuFeatures x86_features_from_cpu(X86CpuSet set)
 {
-	X86Features diff = { .bits[0] = 0 };
+	CpuFeatures features = cpu_feature_zero;
 	switch (set)
 	{
 		case X86CPU_NATIVE:
-			x86_features_from_host(&diff);
+			x86_features_from_host(&features);
 			break;
 		case X86CPU_AVX512:
-			x86_features_add_feature(&diff, X86_FEAT_AVX512BW);
-			x86_features_add_feature(&diff, X86_FEAT_AVX512CD);
-			x86_features_add_feature(&diff, X86_FEAT_AVX512DQ);
-			x86_features_add_feature(&diff, X86_FEAT_AVX512VL);
-					FALLTHROUGH;
+			x86_features_add_feature(&features, X86_FEAT_AVX512BW);
+			x86_features_add_feature(&features, X86_FEAT_AVX512CD);
+			x86_features_add_feature(&features, X86_FEAT_AVX512DQ);
+			x86_features_add_feature(&features, X86_FEAT_AVX512VL);
+			FALLTHROUGH;
 		case X86CPU_AVX2_V1:
 		case X86CPU_AVX2_V2:
-			x86_features_add_feature(&diff, X86_FEAT_AVX2);
-			x86_features_add_feature(&diff, X86_FEAT_BMI2);
-			x86_features_add_feature(&diff, X86_FEAT_BMI);
-			x86_features_add_feature(&diff, X86_FEAT_F16C);
-			x86_features_add_feature(&diff, X86_FEAT_FMA);
-			x86_features_add_feature(&diff, X86_FEAT_LZCNT);
-			x86_features_add_feature(&diff, X86_FEAT_MOVBE);
-			x86_features_add_feature(&diff, X86_FEAT_XSAVE);
+			x86_features_add_feature(&features, X86_FEAT_AVX2);
+			x86_features_add_feature(&features, X86_FEAT_BMI2);
+			x86_features_add_feature(&features, X86_FEAT_BMI);
+			x86_features_add_feature(&features, X86_FEAT_F16C);
+			x86_features_add_feature(&features, X86_FEAT_FMA);
+			x86_features_add_feature(&features, X86_FEAT_LZCNT);
+			x86_features_add_feature(&features, X86_FEAT_MOVBE);
+			x86_features_add_feature(&features, X86_FEAT_XSAVE);
 			FALLTHROUGH;
 		case X86CPU_SSE4:
 		case X86CPU_AVX1:
-			x86_features_add_feature(&diff, X86_FEAT_SAHF);
-			x86_features_add_feature(&diff, X86_FEAT_POPCNT);
-			x86_features_add_feature(&diff, X86_FEAT_CRC32);
-			x86_features_add_feature(&diff, X86_FEAT_SSE4_2);
-			x86_features_add_feature(&diff, X86_FEAT_CMPXCHG16B);
+			x86_features_add_feature(&features, X86_FEAT_SAHF);
+			x86_features_add_feature(&features, X86_FEAT_POPCNT);
+			x86_features_add_feature(&features, X86_FEAT_CRC32);
+			x86_features_add_feature(&features, X86_FEAT_SSE4_2);
+			x86_features_add_feature(&features, X86_FEAT_CMPXCHG16B);
 			FALLTHROUGH;
 		case X86CPU_SSSE3:
 		case X86CPU_DEFAULT:
 		case X86CPU_BASELINE:
-			x86_features_add_feature(&diff, X86_FEAT_MMX);
-			x86_features_add_feature(&diff, X86_FEAT_SSE3);
-			x86_features_add_feature(&diff, X86_FEAT_SSE2);
-			x86_features_add_feature(&diff, X86_FEAT_SSE);
-			x86_features_add_feature(&diff, X86_FEAT_CMOV);
-			x86_features_add_feature(&diff, X86_FEAT_FXSR);
-			x86_features_add_feature(&diff, X86_FEAT_CMPXCHG8B);
+			x86_features_add_feature(&features, X86_FEAT_MMX);
+			x86_features_add_feature(&features, X86_FEAT_SSE3);
+			x86_features_add_feature(&features, X86_FEAT_SSE2);
+			x86_features_add_feature(&features, X86_FEAT_SSE);
+			x86_features_add_feature(&features, X86_FEAT_CMOV);
+			x86_features_add_feature(&features, X86_FEAT_FXSR);
+			x86_features_add_feature(&features, X86_FEAT_CMPXCHG8B);
 			break;
 	}
-	for (X86Feature i = 0; i <= X86_FEATURE_LAST; i++)
+	return features;
+}
+
+static void cpu_features_set_to_features(CpuFeatures enabled_features, CpuFeatures cpu_defaults, const bool *skip, const char *list[], int last)
+{
+	scratch_buffer_clear();
+	for (int i = 0; i <= last; i++)
 	{
-		if (i == X86_FEAT_AVX5124FMAPS || i == X86_FEAT_AVX5124VNNIW) continue;
-		bool diff_has = x64features_contains(&diff, (X86Feature)i);
-		if (x64features_contains(cpu_features, (X86Feature)i))
+		if (skip && skip[i]) continue;
+		bool diff_has = cpu_features_contains(&cpu_defaults, i);
+		if (cpu_features_contains(&enabled_features, i))
 		{
 			if (diff_has) continue;
 			scratch_buffer_append_char('+');
@@ -510,35 +603,22 @@ static void x86features_as_diff_to_scratch(X86Features *cpu_features, X86CpuSet 
 			if (!diff_has) continue;
 			scratch_buffer_append_char('-');
 		}
-		scratch_buffer_append(x86_feature_name[i]);
+		scratch_buffer_append(list[i]);
 		scratch_buffer_append_char(',');
 	}
+	if (scratch_buffer.len > 0) scratch_buffer.len--;
+	compiler.platform.features = scratch_buffer_copy();
 }
 
-static const char *x86features_as_string(X86Features *cpu_features)
+static void x86features_as_diff_to_scratch(CpuFeatures enabled_features, X86CpuSet set)
 {
-	if (cpu_features->as_string != NULL) return cpu_features->as_string;
-	scratch_buffer_clear();
-	for (int i = 0; i <= X86_FEATURE_LAST; i++)
-	{
-		if (i == X86_FEAT_AVX5124FMAPS || i == X86_FEAT_AVX5124VNNIW) continue;
-		if (x64features_contains(cpu_features, (X86Feature)i))
-		{
-			scratch_buffer_append_char('+');
-		}
-		else
-		{
-			scratch_buffer_append_char('-');
-		}
-		scratch_buffer_append(x86_feature_name[i]);
-		scratch_buffer_append_char(',');
-	}
-	return cpu_features->as_string = scratch_buffer_interned();
+	static bool x64features_skip[X86_FEATURE_LAST + 1] = { [X86_FEAT_AVX5124FMAPS] = true, [X86_FEAT_AVX5124VNNIW] = true};
+	cpu_features_set_to_features(enabled_features, x86_features_from_cpu(set), x64features_skip, x86_feature_name, X86_FEATURE_LAST);
 }
 
-static void x86_features_add_feature(X86Features *cpu_features, X86Feature feature)
+static void x86_features_add_feature(CpuFeatures *cpu_features, X86Feature feature)
 {
-	x64features_add_feature_single(cpu_features, feature);
+	cpu_features_add_feature_single(cpu_features, feature);
 	switch (feature)
 	{
 		case X86_FEAT_SSE2:
@@ -730,12 +810,14 @@ static void x86_features_add_feature(X86Features *cpu_features, X86Feature featu
 			x86_features_add_feature(cpu_features, X86_FEAT_VPCLMULQDQ);
 			x86_features_add_feature(cpu_features, X86_FEAT_AVX512FP16);
 			return;
+		case X86_FEAT_SOFT_FLOAT:
+			return;
 	}
 	UNREACHABLE_VOID
 }
 
 
-static void x86features_remove_feature(X86Features *cpu_features, X86Feature feature)
+static void cpu_features_remove_feature(CpuFeatures *cpu_features, int feature)
 {
 	if (feature < 64)
 	{
@@ -745,70 +827,69 @@ static void x86features_remove_feature(X86Features *cpu_features, X86Feature fea
 	{
 		cpu_features->bits[1] &= ~(1ULL << (feature - 64));
 	}
-	cpu_features->as_string = NULL;
 }
 
-static void x64features_limit_from_capability(X86Features *cpu_features, X86VectorCapability capability)
+static void x64features_limit_from_capability(CpuFeatures *cpu_features, X86VectorCapability capability)
 {
 	switch (capability)
 	{
 		case X86VECTOR_NONE:
-			x86features_remove_feature(cpu_features, X86_FEAT_MMX);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_MMX);
 			FALLTHROUGH;
 		case X86VECTOR_MMX:
-			x86features_remove_feature(cpu_features, X86_FEAT_SSE);
-			x86features_remove_feature(cpu_features, X86_FEAT_SSE2);
-			x86features_remove_feature(cpu_features, X86_FEAT_SSE3);
-			x86features_remove_feature(cpu_features, X86_FEAT_SSSE3);
-			x86features_remove_feature(cpu_features, X86_FEAT_SSE4_1);
-			x86features_remove_feature(cpu_features, X86_FEAT_SSE4_2);
-			x86features_remove_feature(cpu_features, X86_FEAT_SSE4_A);
-			x86features_remove_feature(cpu_features, X86_FEAT_AES);
-			x86features_remove_feature(cpu_features, X86_FEAT_GFNI);
-			x86features_remove_feature(cpu_features, X86_FEAT_KL);
-			x86features_remove_feature(cpu_features, X86_FEAT_WIDEKL);
-			x86features_remove_feature(cpu_features, X86_FEAT_PCLMUL);
-			x86features_remove_feature(cpu_features, X86_FEAT_SHA);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_SSE);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_SSE2);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_SSE3);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_SSSE3);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_SSE4_1);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_SSE4_2);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_SSE4_A);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AES);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_GFNI);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_KL);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_WIDEKL);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_PCLMUL);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_SHA);
 			FALLTHROUGH;
 		case X86VECTOR_SSE:
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX2);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVXNECONVERT);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVXVNNI);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVXIFMA);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVXVNNIINT8);
-			x86features_remove_feature(cpu_features, X86_FEAT_F16C);
-			x86features_remove_feature(cpu_features, X86_FEAT_FMA);
-			x86features_remove_feature(cpu_features, X86_FEAT_FMA4);
-			x86features_remove_feature(cpu_features, X86_FEAT_VAES);
-			x86features_remove_feature(cpu_features, X86_FEAT_VPCLMULQDQ);
-			x86features_remove_feature(cpu_features, X86_FEAT_XOP);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX2);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVXNECONVERT);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVXVNNI);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVXIFMA);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVXVNNIINT8);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_F16C);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_FMA);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_FMA4);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_VAES);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_VPCLMULQDQ);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_XOP);
 			FALLTHROUGH;
 		case X86VECTOR_AVX:
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512DQ);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512BW);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512CD);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512VL);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512ER);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512F);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512FP16);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512BF16);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX5124FMAPS);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512BITALG);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX5124VNNIW);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512VNNI);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512IFMA);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512VBMI);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512VBMI2);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512PF);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512VP2INTERSECT);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX512VPOPCNTDQ);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512DQ);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512BW);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512CD);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512VL);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512ER);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512F);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512FP16);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512BF16);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX5124FMAPS);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512BITALG);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX5124VNNIW);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512VNNI);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512IFMA);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512VBMI);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512VBMI2);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512PF);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512VP2INTERSECT);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512VPOPCNTDQ);
 			FALLTHROUGH;
 		case X86VECTOR_AVX512:
-			x86features_remove_feature(cpu_features, X86_FEAT_EVEX512);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX10_1_512);
-			x86features_remove_feature(cpu_features, X86_FEAT_AVX10_1_256);
-			x86features_remove_feature(cpu_features, X86_FEAT_USERMSR);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_EVEX512);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX10_1_512);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX10_1_256);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_USERMSR);
 			break;
 		case X86VECTOR_CPU:
 		case X86VECTOR_DEFAULT:
@@ -842,7 +923,7 @@ static const char *x86_cpu_from_set(X86CpuSet set)
 	UNREACHABLE
 }
 
-static void x86_features_from_host(X86Features *cpu_features)
+static void x86_features_from_host(CpuFeatures *cpu_features)
 {
 #if LLVM_AVAILABLE
 	char *features = LLVMGetHostCPUFeatures();
@@ -850,7 +931,7 @@ static void x86_features_from_host(X86Features *cpu_features)
 	INFO_LOG("For %s", LLVMGetHostCPUName());
 
 	char *tok = strtok(features, ",");
-	*cpu_features = x86_feature_zero;
+	*cpu_features = cpu_feature_zero;
 	while (tok != NULL)
 	{
 		if (tok[0] == '-')
@@ -861,7 +942,7 @@ static void x86_features_from_host(X86Features *cpu_features)
 				if (debug_log || PRERELEASE) printf("WARNING, unknown feature %s - skipping\n", &tok[1]);
 				goto NEXT;
 			}
-			x86features_remove_feature(cpu_features, (X86Feature)i);
+			cpu_features_remove_feature(cpu_features, (X86Feature)i);
 		}
 		else if (tok[0] == '+')
 		{
@@ -884,9 +965,9 @@ static void x86_features_from_host(X86Features *cpu_features)
 #endif
 }
 
-static void x86features_from_cpu(X86Features *cpu_features, X86CpuSet cpu_set)
+static void x86features_from_cpu(CpuFeatures *cpu_features, X86CpuSet cpu_set)
 {
-	*cpu_features = x86_feature_zero;
+	*cpu_features = cpu_feature_zero;
 	switch (cpu_set)
 	{
 		case X86CPU_AVX512: // Knl, Skylake, Cascade and up, Amd Zen 4+
@@ -964,7 +1045,7 @@ static void x86features_from_cpu(X86Features *cpu_features, X86CpuSet cpu_set)
 	UNREACHABLE_VOID
 }
 
-static inline bool x86_has_all_features(X86Features *feature_to_test, X86Features *features_to_match)
+static inline bool cpu_has_all_features(CpuFeatures *feature_to_test, CpuFeatures *features_to_match)
 {
 	return (feature_to_test->bits[0] & features_to_match->bits[0]) == features_to_match->bits[0]
 		&& (feature_to_test->bits[1] & features_to_match->bits[1]) == features_to_match->bits[1];
@@ -972,17 +1053,17 @@ static inline bool x86_has_all_features(X86Features *feature_to_test, X86Feature
 
 static X86CpuSet x64_cpu_default(void)
 {
-	X86Features features;
+	CpuFeatures features;
 	x86_features_from_host(&features);
-	X86Features other_features;
+	CpuFeatures other_features;
 	x86features_from_cpu(&other_features, X86CPU_AVX2_V1);
-	if (x86_has_all_features(&features, &other_features)) return X86CPU_AVX2_V1;
+	if (cpu_has_all_features(&features, &other_features)) return X86CPU_AVX2_V1;
 	x86features_from_cpu(&other_features, X86CPU_AVX1);
-	if (x86_has_all_features(&features, &other_features)) return X86CPU_AVX1;
+	if (cpu_has_all_features(&features, &other_features)) return X86CPU_AVX1;
 	x86features_from_cpu(&other_features, X86CPU_SSE4);
-	if (x86_has_all_features(&features, &other_features)) return X86CPU_SSE4;
+	if (cpu_has_all_features(&features, &other_features)) return X86CPU_SSE4;
 	x86features_from_cpu(&other_features, X86CPU_SSSE3);
-	if (x86_has_all_features(&features, &other_features)) return X86CPU_SSSE3;
+	if (cpu_has_all_features(&features, &other_features)) return X86CPU_SSSE3;
 	return X86CPU_BASELINE;
 }
 
@@ -1005,16 +1086,16 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	}
 
 	compiler.platform.cpu = x86_cpu_from_set(cpu_set);
-	X86Features cpu_features;
+	CpuFeatures cpu_features;
 	x86features_from_cpu(&cpu_features, cpu_set);
 	x64features_limit_from_capability(&cpu_features, target->feature.x86_vector_capability);
 	if (target->feature.soft_float == SOFT_FLOAT_YES) compiler.platform.x64.soft_float = true;
 	if (target->feature.pass_win64_simd_as_arrays == WIN64_SIMD_ARRAY) compiler.platform.x64.win64_simd_as_array = true;
-	scratch_buffer_clear();
-	x86features_as_diff_to_scratch(&cpu_features, cpu_set);
-	if (compiler.platform.x64.soft_float) scratch_buffer_append("+soft-float,");
-	if (scratch_buffer.len > 0) scratch_buffer.len--;
-	compiler.platform.features = scratch_buffer_copy();
+	if (compiler.platform.x64.soft_float) cpu_features_add_feature_single(&cpu_features, X86_FEAT_SOFT_FLOAT);
+
+	update_cpu_features(compiler.build.cpu_features, &cpu_features, x86_feature_name, X86_FEATURE_LAST);
+
+	x86features_as_diff_to_scratch(cpu_features, cpu_set);
 
 	if (compiler.platform.environment_type == ENV_TYPE_GNU)
 	{
@@ -1026,17 +1107,17 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 		compiler.platform.x64.pass_int128_vector_in_mem = true;
 	}
 	compiler.platform.x64.features = cpu_features;
-	if (x64features_contains(&cpu_features, X86_FEAT_AVX512F))
+	if (cpu_features_contains(&cpu_features, X86_FEAT_AVX512F))
 	{
 		compiler.platform.x64.native_vector_size_avx = 64;
 		compiler.platform.x64.align_simd_default = 512;
 	}
-	else if (x64features_contains(&cpu_features, X86_FEAT_AVX))
+	else if (cpu_features_contains(&cpu_features, X86_FEAT_AVX))
 	{
 		compiler.platform.x64.native_vector_size_avx = 32;
 		compiler.platform.x64.align_simd_default = 256;
 	}
-	else if (x64features_contains(&cpu_features, X86_FEAT_SSE))
+	else if (cpu_features_contains(&cpu_features, X86_FEAT_SSE))
 	{
 		compiler.platform.x64.native_vector_size_avx = 16;
 		compiler.platform.x64.align_simd_default = 128;
@@ -1903,9 +1984,103 @@ void *llvm_target_machine_create(void)
 #endif
 
 
+static void target_setup_wasm_abi(BuildTarget *target)
+{
+	compiler.platform.abi = ABI_WASM;
+	CpuFeatures features = cpu_feature_zero;
+	cpu_features_add_feature_single(&features, WASM_FEAT_BULK_MEMORY);
+#if LLVM_VERSION_MAJOR > 19
+	cpu_features_add_feature_single(&features, WASM_FEAT_BULK_MEMORY_OPT);
+	cpu_features_add_feature_single(&features, WASM_FEAT_CALL_INDIRECT_OVERLONG);
+#endif
+	cpu_features_add_feature_single(&features, WASM_FEAT_MULTIVALUE);
+	cpu_features_add_feature_single(&features, WASM_FEAT_MUTABLE_GLOBALS);
+	cpu_features_add_feature_single(&features, WASM_FEAT_NONTRAPPING_FPTORINT);
+	cpu_features_add_feature_single(&features, WASM_FEAT_REFERENCE_TYPES);
+	cpu_features_add_feature_single(&features, WASM_FEAT_SIGN_EXT);
+	update_cpu_features(target->cpu_features, &features, wasm_feature_name, WASM_FEATURE_LAST);
+	cpu_features_set_to_features(features, cpu_feature_zero, NULL, wasm_feature_name, WASM_FEATURE_LAST);
+}
+
+static void target_setup_riscv_abi(BuildTarget *target)
+{
+	compiler.platform.riscv.xlen = arch_pointer_bit_width(compiler.platform.os, compiler.platform.arch) / 8; // pointer width
+	switch (target->feature.riscv_abi)
+	{
+		case RISCV_ABI_DEFAULT:
+			compiler.platform.riscv.flen = 0;
+			break;
+		case RISCV_ABI_INT_ONLY:
+		case RISCV_ABI_FLOAT:
+		case RISCV_ABI_DOUBLE:
+			compiler.platform.riscv.flen = 4 * target->feature.riscv_abi;
+			break;
+	}
+	compiler.platform.abi = ABI_RISCV;
+	CpuFeatures features = cpu_feature_zero;
+	if (compiler.platform.arch == ARCH_TYPE_RISCV64)
+	{
+		cpu_features_add_feature_single(&features, RISCV_FEAT_64BIT);
+	}
+	else
+	{
+		cpu_features_add_feature_single(&features, RISCV_FEAT_32BIT);
+	}
+	update_cpu_features(target->cpu_features, &features, riscv_feature_name, RISCV_FEATURE_LAST);
+	cpu_features_set_to_features(features, cpu_feature_zero, NULL, riscv_feature_name, RISCV_FEATURE_LAST);
+}
+
+static void update_cpu_features(const char *features, CpuFeatures *cpu_features, const char **feature_names, int feature_count)
+{
+	if (!features) return;
+	StringSlice slice = slice_from_string(features);
+	if (!slice.len) return;
+	while (slice.len)
+	{
+		StringSlice next = slice_next_token(&slice, ',');
+		slice_trim(&next);
+		if (!next.len) continue;
+		bool add_feature = true;
+		if (next.len < 2) goto ERR_MALFORMED;
+		switch (*next.ptr)
+		{
+			case '+':
+				break;
+			case '-':
+				add_feature = false;
+				break;
+			default:
+				ERR_MALFORMED:
+				error_exit("Invalid feature flag: %.*s in '%s'", (int)next.len, next.ptr, features);
+		}
+		next.ptr++;
+		next.len--;
+		for (int i = 0; i < feature_count; i++)
+		{
+			const char *feat = feature_names[i];
+			size_t feat_len = strlen(feat);
+			if (feat_len != next.len) continue;
+			if (memcmp(next.ptr, feature_names[i], feat_len) == 0)
+			{
+				if (add_feature)
+				{
+					cpu_features_add_feature_single(cpu_features, i);
+				}
+				else
+				{
+					cpu_features_remove_feature(cpu_features, i);
+				}
+				goto FOUND;
+			}
+		}
+		OUTF("Unsupported feature flag: '%.*s', will be ignored.", (int)next.len, next.ptr);
+FOUND:;
+	}
+}
+
+
 void target_setup(BuildTarget *target)
 {
-
 	if (target->win.def && !file_exists(target->win.def))
 	{
 		error_exit("Failed to find Windows def file: '%s' in path.", target->win.def);
@@ -2028,7 +2203,7 @@ void target_setup(BuildTarget *target)
 			break;
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
-			compiler.platform.abi = ABI_WASM;
+			target_setup_wasm_abi(target);
 			break;
 		case ARCH_TYPE_ARMB:
 		case ARCH_TYPE_ARM:
@@ -2058,19 +2233,7 @@ void target_setup(BuildTarget *target)
 			break;
 		case ARCH_TYPE_RISCV64:
 		case ARCH_TYPE_RISCV32:
-			compiler.platform.riscv.xlen = arch_pointer_bit_width(compiler.platform.os, compiler.platform.arch) / 8; // pointer width
-			switch (target->feature.riscv_float_capability)
-			{
-				case RISCVFLOAT_DEFAULT:
-					compiler.platform.riscv.flen = 0;
-					break;
-				case RISCVFLOAT_NONE:
-				case RISCVFLOAT_FLOAT:
-				case RISCVFLOAT_DOUBLE:
-					compiler.platform.riscv.flen = 4 * target->feature.riscv_float_capability;
-					break;
-			}
-			compiler.platform.abi = ABI_RISCV;
+			target_setup_riscv_abi(target);
 			break;
 		case ARCH_TYPE_X86:
 			target_setup_x86_abi(target);

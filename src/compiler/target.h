@@ -29,11 +29,10 @@ typedef struct
 	AsmArgBits vec_bits : 16;
 } AsmArgType;
 
-typedef struct X86Features
+typedef struct CpuFeatures
 {
 	unsigned long long bits[2];
-	const char *as_string;
-} X86Features;
+} CpuFeatures;
 
 typedef struct
 {
@@ -96,7 +95,7 @@ typedef struct
 		} x86;
 		struct
 		{
-			X86Features features;
+			CpuFeatures features;
 			unsigned align_simd_default : 16;
 			bool win64_simd_as_array : 1;
 			bool soft_float : 1;
