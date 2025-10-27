@@ -1,5 +1,9 @@
 module std::net @if(os::SUPPORTS_INET);
 import std::time, libc, std::os;
+import std::core::env;
+import std::net::os;
+
+
 
 macro void? apply_sockoptions(sockfd, options) @private
 {
@@ -9,6 +13,9 @@ macro void? apply_sockoptions(sockfd, options) @private
 
 fn Socket? connect_from_addrinfo(AddrInfo* addrinfo, SocketOption[] options) @private
 {
+	$if env::WIN32:
+		os::start_wsa()!;
+	$endif
 	@loop_over_ai(addrinfo; NativeSocket sockfd, AddrInfo* ai)
 	{
 		apply_sockoptions(sockfd, options)!;
@@ -37,6 +44,9 @@ fn bool last_error_is_delayed_connect()
 
 fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[] options, Duration timeout) @private
 {
+	$if env::WIN32:
+		os::start_wsa()!;
+	$endif
 	Clock c = 0;
 	@loop_over_ai(addrinfo; NativeSocket sockfd, AddrInfo* ai)
 	{
@@ -82,6 +92,9 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 
 fn Socket? connect_async_from_addrinfo(AddrInfo* addrinfo, SocketOption[] options) @private
 {
+	$if env::WIN32:
+		os::start_wsa()!;
+	$endif
 	@loop_over_ai(addrinfo; NativeSocket sockfd, AddrInfo* ai)
 	{
 		apply_sockoptions(sockfd, options)!;
@@ -98,6 +111,9 @@ fn Socket? connect_async_from_addrinfo(AddrInfo* addrinfo, SocketOption[] option
 
 macro void @network_loop_over_ai(network, host, port; @body(fd, ai)) @private
 {
+	$if env::WIN32:
+		os::start_wsa()!;
+	$endif
 	AddrInfo* ai = network.addrinfo(host, port)!;
 	AddrInfo* first = ai;
 	defer os::freeaddrinfo(first);

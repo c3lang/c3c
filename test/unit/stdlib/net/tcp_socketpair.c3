@@ -5,7 +5,7 @@ fn void test_tcp_sock_pair()
 {
 	tcp::TcpSocketPair sockets;
 	sockets.init()!!;
-	defer sockets.free()!!;
+	defer sockets.destroy()!!;
 
 	String expected = "hello, world!";
 	sockets.send.write(expected)!!;
