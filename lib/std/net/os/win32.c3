@@ -32,7 +32,7 @@ int wsa_init @local;
 
 macro void? start_wsa()
 {
-	if (mem::compare_exchange(&wsa_init, 0, 2) == 2)
+	if (mem::compare_exchange(&wsa_init, 0, 1) == 0)
 	{
 		Win32_WORD version = 0x0202;
 	    CInt wsa_error = win32::wsaStartup(version, &wsa_data);
@@ -41,13 +41,12 @@ macro void? start_wsa()
 			mem::@atomic_store(wsa_init, 0);
 			return os::socket_error()?;
 		}
-		mem::@atomic_store(wsa_init, 1);
 	}
 }
 
 fn void close_wsa() @local @finalizer
 {
-	if (mem::compare_exchange(&wsa_init, 1, 3) == 3)
+	if (mem::compare_exchange(&wsa_init, 1, 0) == 1)
 	{
 		win32::wsaCleanup();
 		mem::@atomic_store(wsa_init, 0);
