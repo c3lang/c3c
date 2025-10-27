@@ -1,5 +1,9 @@
 module std::net::os @if(env::WIN32);
-import std::os, std::io, libc;
+import std::os, std::io, libc, std::thread;
+import std::core::mem;
+import std::os::win32;
+
+
 
 const AIFamily PLATFORM_AF_IPX          = 6;
 const AIFamily PLATFORM_AF_APPLETALK    = 16;
@@ -21,6 +25,33 @@ extern fn int connect(NativeSocket, SockAddrPtr address, Socklen_t address_len);
 extern fn int bind(NativeSocket, SockAddrPtr address, Socklen_t address_len);
 extern fn int listen(NativeSocket, int backlog);
 extern fn NativeSocket accept(NativeSocket, SockAddrPtr address, Socklen_t* address_len);
+extern fn CInt getsockname(NativeSocket socket, SockAddrPtr address, Socklen_t* address_len);
+
+char[408] wsa_data @local;
+int wsa_init @local;
+
+macro void? start_wsa()
+{
+	if (mem::compare_exchange(&wsa_init, 0, 1) == 0)
+	{
+		Win32_WORD version = 0x0202;
+	    CInt wsa_error = win32::wsaStartup(version, &wsa_data);
+		if (wsa_error > 0)
+		{
+			mem::@atomic_store(wsa_init, 0);
+			return os::socket_error()?;
+		}
+	}
+}
+
+fn void close_wsa() @local @finalizer
+{
+	if (mem::compare_exchange(&wsa_init, 1, 0) == 1)
+	{
+		win32::wsaCleanup();
+		mem::@atomic_store(wsa_init, 0);
+	}
+}
 
 macro bool NativeSocket.is_valid(self)
 {
