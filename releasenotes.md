@@ -18,6 +18,7 @@
 - Allow `(Foo)0` bitstruct casts even if type sizes do not match.
 - The option `--riscvfloat` renamed `--riscv-abi`.
 - Add initial `--cpu-flags` allowing fine grained control over CPU features.
+- Add `--riscv-cpu` settings for RISC-V processors #2549.
 
 ### Fixes
 - Bug in `io::write_using_write_byte`.

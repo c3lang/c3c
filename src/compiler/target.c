@@ -90,11 +90,16 @@ static const char *riscv_feature_name[] = {
 	[RISCV_FEAT_I] = "i",
 	[RISCV_FEAT_M] = "m",
 	[RISCV_FEAT_RELAX] = "relax",
+	[RISCV_FEAT_V] = "v",
 	[RISCV_FEAT_ZAAMO] = "zaamo",
 	[RISCV_FEAT_ZALRSC] = "zalrsc",
+	[RISCV_FEAT_ZBA] = "zba",
+	[RISCV_FEAT_ZBB] = "zbb",
+	[RISCV_FEAT_ZBS] = "zbs",
 	[RISCV_FEAT_ZCA] = "zca",
 	[RISCV_FEAT_ZCD] = "zcd",
 	[RISCV_FEAT_ZCF] = "zcf",
+	[RISCV_FEAT_ZFA] = "zfa",
 	[RISCV_FEAT_ZICSR] = "zicsr",
 	[RISCV_FEAT_ZIFENCEI] = "zifencei",
 	[RISCV_FEAT_ZMMUL] = "zmmul",
@@ -2005,27 +2010,77 @@ static void target_setup_wasm_abi(BuildTarget *target)
 static void target_setup_riscv_abi(BuildTarget *target)
 {
 	compiler.platform.riscv.xlen = arch_pointer_bit_width(compiler.platform.os, compiler.platform.arch) / 8; // pointer width
+	RiscvCpuSet cpu = target->feature.riscv_cpu_set;
+	compiler.platform.abi = ABI_RISCV;
+	CpuFeatures features = cpu_feature_zero;
+	if (compiler.platform.arch == ARCH_TYPE_RISCV64)
+	{
+		cpu_features_add_feature_single(&features, RISCV_FEAT_64BIT);
+		if (cpu == RISCV_CPU_DEFAULT) cpu = RISCV_CPU_RVGC;
+	}
+	else
+	{
+		cpu_features_add_feature_single(&features, RISCV_FEAT_32BIT);
+		if (cpu == RISCV_CPU_DEFAULT) cpu = RISCV_CPU_RVI;
+	}
+	if (target->feature.riscv_abi == RISCV_ABI_DEFAULT)
+	{
+		switch (cpu)
+		{
+			case RISCV_CPU_DEFAULT:
+				UNREACHABLE_VOID
+			case RISCV_CPU_RVI:
+			case RISCV_CPU_RVIMAC:
+				target->feature.riscv_abi = RISCV_ABI_INT_ONLY;
+				break;
+			case RISCV_CPU_RVIMAFC:
+				target->feature.riscv_abi = RISCV_ABI_FLOAT;
+				break;
+			case RISCV_CPU_RVGC:
+			case RISCV_CPU_RVGCV:
+				target->feature.riscv_abi = RISCV_ABI_DOUBLE;
+				break;
+		}
+	}
 	switch (target->feature.riscv_abi)
 	{
 		case RISCV_ABI_DEFAULT:
-			compiler.platform.riscv.flen = 0;
-			break;
+			UNREACHABLE_VOID
 		case RISCV_ABI_INT_ONLY:
 		case RISCV_ABI_FLOAT:
 		case RISCV_ABI_DOUBLE:
 			compiler.platform.riscv.flen = 4 * target->feature.riscv_abi;
 			break;
 	}
-	compiler.platform.abi = ABI_RISCV;
-	CpuFeatures features = cpu_feature_zero;
-	if (compiler.platform.arch == ARCH_TYPE_RISCV64)
+	cpu_features_add_feature_single(&features, RISCV_FEAT_I);
+	switch (cpu)
 	{
-		cpu_features_add_feature_single(&features, RISCV_FEAT_64BIT);
+		case RISCV_CPU_DEFAULT:
+			UNREACHABLE_VOID
+		case RISCV_CPU_RVI:
+			break;
+		case RISCV_CPU_RVGCV:
+			cpu_features_add_feature_single(&features, RISCV_FEAT_V);
+			cpu_features_add_feature_single(&features, RISCV_FEAT_ZFA);
+			FALLTHROUGH;
+		case RISCV_CPU_RVGC:
+			cpu_features_add_feature_single(&features, RISCV_FEAT_D);
+			cpu_features_add_feature_single(&features, RISCV_FEAT_ZICSR);
+			cpu_features_add_feature_single(&features, RISCV_FEAT_ZIFENCEI);
+			cpu_features_add_feature_single(&features, RISCV_FEAT_ZBA);
+			cpu_features_add_feature_single(&features, RISCV_FEAT_ZBB);
+			cpu_features_add_feature_single(&features, RISCV_FEAT_ZBS);
+			FALLTHROUGH;
+		case RISCV_CPU_RVIMAFC:
+			cpu_features_add_feature_single(&features, RISCV_FEAT_F);
+			FALLTHROUGH;
+		case RISCV_CPU_RVIMAC:
+			cpu_features_add_feature_single(&features, RISCV_FEAT_M);
+			cpu_features_add_feature_single(&features, RISCV_FEAT_A);
+			cpu_features_add_feature_single(&features, RISCV_FEAT_C);
+			break;
 	}
-	else
-	{
-		cpu_features_add_feature_single(&features, RISCV_FEAT_32BIT);
-	}
+
 	update_cpu_features(target->cpu_flags, &features, riscv_feature_name, RISCV_FEATURE_LAST);
 	cpu_features_set_to_features(features, cpu_feature_zero, NULL, riscv_feature_name, RISCV_FEATURE_LAST);
 }

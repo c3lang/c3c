@@ -176,6 +176,7 @@ static void usage(bool full)
 		print_opt("--x86cpu=<option>", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.");
 		print_opt("--x86vec=<option>", "Set max type of vector use: none, mmx, sse, avx, avx512, default.");
 		print_opt("--riscv-abi=<option>", "Set type of RISC-V ABI: int-only, float, double.");
+		print_opt("--riscv-cpu=<option>", "Set the general level of RISC-V cpu: rvi (default 32-bit) , rvimac, rvimafc, rvgc (default 64-bit), rvgcv.");
 		print_opt("--memory-env=<option>", "Set the memory environment: normal, small, tiny, none.");
 		print_opt("--strip-unused=<yes|no>", "Strip unused code and globals from the output. (default: yes)");
 		print_opt("--fp-math=<option>", "FP math behaviour: strict, relaxed, fast.");
@@ -963,6 +964,11 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("x86cpu")))
 			{
 				options->x86_cpu_set = parse_opt_select(X86CpuSet, argopt, x86_cpu_set);
+				return;
+			}
+			if ((argopt = match_argopt("riscv-cpu")))
+			{
+				options->riscv_cpu_set = parse_opt_select(RiscvCpuSet, argopt, riscv_cpu_set);
 				return;
 			}
 			if ((argopt = match_argopt("riscvfloat")))

@@ -287,6 +287,17 @@ typedef enum
 	X86CPU_NATIVE = 7,
 } X86CpuSet;
 
+
+typedef enum
+{
+	RISCV_CPU_DEFAULT = -1,
+	RISCV_CPU_RVI = 0,
+	RISCV_CPU_RVIMAC = 1,
+	RISCV_CPU_RVIMAFC = 2,
+	RISCV_CPU_RVGC = 3,
+	RISCV_CPU_RVGCV = 4,
+} RiscvCpuSet;
+
 typedef enum
 {
 	FP_DEFAULT = -1,
@@ -572,6 +583,7 @@ typedef struct BuildOptions_
 	RelocModel reloc_model;
 	X86VectorCapability x86_vector_capability;
 	X86CpuSet x86_cpu_set;
+	RiscvCpuSet riscv_cpu_set;
 	Win64Simd win_64_simd;
 	WinDebug win_debug;
 	FpOpt fp_math;
@@ -754,6 +766,7 @@ typedef struct
 		StructReturn x86_struct_return : 3;
 		X86VectorCapability x86_vector_capability : 4;
 		RiscvAbi riscv_abi : 4;
+		RiscvCpuSet riscv_cpu_set : 4;
 		Win64Simd pass_win64_simd_as_arrays : 3;
 		bool trap_on_wrap : 1;
 		bool sanitize_address : 1;
@@ -802,6 +815,14 @@ static const char *x86_cpu_set[8] = {
 	[X86CPU_NATIVE] = "native"
 };
 
+static const char *riscv_cpu_set[5] = {
+	[RISCV_CPU_RVI] = "rvi", // NOLINT
+	[RISCV_CPU_RVIMAC] = "rvimac",
+	[RISCV_CPU_RVIMAFC] = "rvimafc",
+	[RISCV_CPU_RVGC] = "rvgc",
+	[RISCV_CPU_RVGCV] = "rvgcv",
+};
+
 static BuildTarget default_build_target = {
 		.is_non_project = true,
 		.optlevel = OPTIMIZATION_NOT_SET,
@@ -837,6 +858,7 @@ static BuildTarget default_build_target = {
 		.feature.riscv_abi = RISCV_ABI_DEFAULT,
 		.feature.x86_vector_capability = X86VECTOR_DEFAULT,
 		.feature.x86_cpu_set = X86CPU_DEFAULT,
+		.feature.riscv_cpu_set = RISCV_CPU_DEFAULT,
 		.feature.win_debug = WIN_DEBUG_DEFAULT,
 		.feature.safe_mode = SAFETY_NOT_SET,
 		.feature.panic_level = PANIC_NOT_SET,

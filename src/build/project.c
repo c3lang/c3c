@@ -46,6 +46,7 @@ const char *project_default_keys[][2] = {
 		{"quiet", "Silence unnecessary output."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
 		{"riscv-abi", "RiscV ABI: int-only, float, double."},
+		{"riscv-cpu", "Set general level of RISC-V cpu: `rvi`, `rvimac`, `rvimafc`, `rvgc` or `rvgcv`."},
 		{"run-dir", "Override run directory for 'run'."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
 		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
@@ -440,9 +441,13 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	X86VectorCapability x86vec = GET_SETTING(X86VectorCapability, "x86vec", x86_vector_capability, "`none`, `native`, `mmx`, `sse`, `avx` or `avx512`.");
 	if (x86vec > -1) target->feature.x86_vector_capability = x86vec;
 
-	// x86vec
+	// x86cpu
 	X86CpuSet x86cpu = GET_SETTING(X86CpuSet, "x86cpu", x86_cpu_set, "`baseline`, `ssse3`, `sse4`, `avx1`, `avx2-v1`, `avx2-v2`, `avx512` or `native`.");
 	if (x86cpu > X86CPU_DEFAULT) target->feature.x86_cpu_set = x86cpu;
+
+	// riscv-cpu
+	RiscvCpuSet riscv_cpu = GET_SETTING(RiscvCpuSet, "riscv-cpu", riscv_cpu_set, "`rvi`, `rvimac`, `rvimafc`, `rvgc` or `rvgcv`.");
+	if (riscv_cpu > RISCV_CPU_DEFAULT) target->feature.riscv_cpu_set = riscv_cpu;
 
 	// riscv-abi
 	RiscvAbi riscv_abi_val = GET_SETTING(RiscvAbi, "riscv-abi", riscv_abi, "`int-only`, `float` or `double`.");

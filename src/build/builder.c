@@ -420,6 +420,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	set_if_updated(target->feature.fp_math, options->fp_math);
 	set_if_updated(target->feature.x86_vector_capability, options->x86_vector_capability);
 	set_if_updated(target->feature.x86_cpu_set, options->x86_cpu_set);
+	set_if_updated(target->feature.riscv_cpu_set, options->riscv_cpu_set);
 	set_if_updated(target->feature.riscv_abi, options->riscv_abi);
 	set_if_updated(target->feature.win_debug, options->win_debug);
 
