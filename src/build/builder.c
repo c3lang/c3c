@@ -447,17 +447,17 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(android.ndk_path);
 	OVERRIDE_IF_SET(android.api_version);
 
-	if (options->cpu_features)
+	if (options->cpu_flags)
 	{
-		if (target->cpu_features)
+		if (target->cpu_flags)
 		{
 			scratch_buffer_clear();
-			scratch_buffer_printf("%s,%s", target->cpu_features, options->cpu_features);
-			target->cpu_features = scratch_buffer_copy();
+			scratch_buffer_printf("%s,%s", target->cpu_flags, options->cpu_flags);
+			target->cpu_flags = scratch_buffer_copy();
 		}
 		else
 		{
-			target->cpu_features = options->cpu_features;
+			target->cpu_flags = options->cpu_flags;
 		}
 	}
 	if (!target->max_vector_size) target->max_vector_size = DEFAULT_VECTOR_WIDTH;

@@ -368,7 +368,7 @@ static inline void target_setup_aarch64_abi(void)
 	cpu_features_add_feature_single(&features, AARCH64_FEAT_RDM);
 	cpu_features_add_feature_single(&features, AARCH64_FEAT_FP_ARMV8);
 	cpu_features_add_feature_single(&features, AARCH64_FEAT_NEON);
-	update_cpu_features(compiler.build.cpu_features, &features, aarch64_feature_name, AARCH64_FEATURE_LAST);
+	update_cpu_features(compiler.build.cpu_flags, &features, aarch64_feature_name, AARCH64_FEATURE_LAST);
 	cpu_features_set_to_features(features, cpu_feature_zero, NULL, aarch64_feature_name, AARCH64_FEATURE_LAST);
 }
 
@@ -393,7 +393,7 @@ static inline void target_setup_arm_abi(void)
 	cpu_features_add_feature_single(&features, ARM_FEAT_VFP2);
 	cpu_features_add_feature_single(&features, ARM_FEAT_VFP2SP);
 
-	update_cpu_features(compiler.build.cpu_features, &features, arm_feature_name, ARM_FEAT_LAST);
+	update_cpu_features(compiler.build.cpu_flags, &features, arm_feature_name, ARM_FEAT_LAST);
 	cpu_features_set_to_features(features, cpu_feature_zero, NULL, arm_feature_name, ARM_FEAT_LAST);
 	if (compiler.platform.object_format == OBJ_FORMAT_MACHO)
 	{
@@ -1093,7 +1093,7 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	if (target->feature.pass_win64_simd_as_arrays == WIN64_SIMD_ARRAY) compiler.platform.x64.win64_simd_as_array = true;
 	if (compiler.platform.x64.soft_float) cpu_features_add_feature_single(&cpu_features, X86_FEAT_SOFT_FLOAT);
 
-	update_cpu_features(compiler.build.cpu_features, &cpu_features, x86_feature_name, X86_FEATURE_LAST);
+	update_cpu_features(compiler.build.cpu_flags, &cpu_features, x86_feature_name, X86_FEATURE_LAST);
 
 	x86features_as_diff_to_scratch(cpu_features, cpu_set);
 
@@ -1998,7 +1998,7 @@ static void target_setup_wasm_abi(BuildTarget *target)
 	cpu_features_add_feature_single(&features, WASM_FEAT_NONTRAPPING_FPTORINT);
 	cpu_features_add_feature_single(&features, WASM_FEAT_REFERENCE_TYPES);
 	cpu_features_add_feature_single(&features, WASM_FEAT_SIGN_EXT);
-	update_cpu_features(target->cpu_features, &features, wasm_feature_name, WASM_FEATURE_LAST);
+	update_cpu_features(target->cpu_flags, &features, wasm_feature_name, WASM_FEATURE_LAST);
 	cpu_features_set_to_features(features, cpu_feature_zero, NULL, wasm_feature_name, WASM_FEATURE_LAST);
 }
 
@@ -2026,7 +2026,7 @@ static void target_setup_riscv_abi(BuildTarget *target)
 	{
 		cpu_features_add_feature_single(&features, RISCV_FEAT_32BIT);
 	}
-	update_cpu_features(target->cpu_features, &features, riscv_feature_name, RISCV_FEATURE_LAST);
+	update_cpu_features(target->cpu_flags, &features, riscv_feature_name, RISCV_FEATURE_LAST);
 	cpu_features_set_to_features(features, cpu_feature_zero, NULL, riscv_feature_name, RISCV_FEATURE_LAST);
 }
 

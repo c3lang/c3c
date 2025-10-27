@@ -974,17 +974,17 @@ static void parse_option(BuildOptions *options)
 				options->riscv_abi = parse_opt_select(RiscvAbi, argopt, riscv_abi);
 				return;
 			}
-			if (match_longopt("cpu-features"))
+			if (match_longopt("cpu-flags"))
 			{
-				if (at_end() || next_is_opt()) error_exit("error: --cpu-features expected a comma-separated list, like '+a,-b,+x'.");
+				if (at_end() || next_is_opt()) error_exit("error: --cpu-flags expected a comma-separated list, like '+a,-b,+x'.");
 				scratch_buffer_clear();
-				if (options->cpu_features)
+				if (options->cpu_flags)
 				{
-					scratch_buffer_append(options->cpu_features);
+					scratch_buffer_append(options->cpu_flags);
 					scratch_buffer_append_char(',');
 				}
 				scratch_buffer_append(next_arg());
-				options->cpu_features = scratch_buffer_copy();
+				options->cpu_flags = scratch_buffer_copy();
 				return;
 			}
 			if (match_longopt("max-stack-object-size"))

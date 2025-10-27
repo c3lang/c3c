@@ -586,7 +586,7 @@ typedef struct BuildOptions_
 	SanitizeMode sanitize_mode;
 	uint32_t max_vector_size;
 	uint32_t max_stack_object_size;
-	const char *cpu_features;
+	const char *cpu_flags;
 	uint32_t max_macro_iterations;
 	bool print_keywords;
 	bool print_attributes;
@@ -727,7 +727,7 @@ typedef struct
 	ArchOsTarget arch_os_target;
 	CompilerBackend backend;
 	LinkerType linker_type;
-	const char *cpu_features;
+	const char *cpu_flags;
 	uint32_t symtab_size;
 	uint32_t max_vector_size;
 	uint32_t max_stack_object_size;

@@ -195,15 +195,15 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	const char *cpu_flags = get_optional_string(context, json, "cpu-flags");
 	if (cpu_flags)
 	{
-		if (target->cpu_features)
+		if (target->cpu_flags)
 		{
 			scratch_buffer_clear();
-			scratch_buffer_printf("%s,%s", target->cpu_features, cpu_flags);
-			target->cpu_features = scratch_buffer_copy();
+			scratch_buffer_printf("%s,%s", target->cpu_flags, cpu_flags);
+			target->cpu_flags = scratch_buffer_copy();
 		}
 		else
 		{
-			target->cpu_features = cpu_flags;
+			target->cpu_flags = cpu_flags;
 		}
 	}
 	if (context.target)
@@ -215,7 +215,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 			{
 				error_exit("Error reading %s: 'cpu-flags' and 'cpu-flags-override' cannot be combined.", context.file);
 			}
-			target->cpu_features = cpu_flags_override;
+			target->cpu_flags = cpu_flags_override;
 		}
 	}
 
