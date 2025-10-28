@@ -2080,7 +2080,10 @@ static void target_setup_riscv_abi(BuildTarget *target)
 			cpu_features_add_feature_single(&features, RISCV_FEAT_C);
 			break;
 	}
-
+#if LLVM_VERSION_MAJOR < 18
+	// Not supported prior to LLVM 18
+	cpu_features_remove_feature(&features, RISCV_FEAT_I);
+#endif
 	update_cpu_features(target->cpu_flags, &features, riscv_feature_name, RISCV_FEATURE_LAST);
 	cpu_features_set_to_features(features, cpu_feature_zero, NULL, riscv_feature_name, RISCV_FEATURE_LAST);
 }
