@@ -44,7 +44,7 @@ macro void? start_wsa()
 	}
 }
 
-fn void close_wsa() @local @finalizer
+fn void close_wsa()
 {
 	if (mem::compare_exchange(&wsa_init, 1, 0) == 1)
 	{

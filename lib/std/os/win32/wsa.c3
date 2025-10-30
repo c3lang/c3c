@@ -1,4 +1,4 @@
-module std::os::win32 @if(env::WIN32);
+module std::os::win32 @if(env::WIN32) @link("ws2_32");
 
 // See https://github.com/wine-mirror/wine/blob/master/include/winsock2.h
 
