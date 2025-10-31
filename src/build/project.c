@@ -7,6 +7,7 @@
 
 
 const char *project_default_keys[][2] = {
+		{"$schema", "Json schema url"},
 		{"authors", "Authors, optionally with email."},
 		{"benchfn", "Override the benchmark function."},
 		{"build-dir", "Build location, where intermediate files are placed by default, relative to project file."},
