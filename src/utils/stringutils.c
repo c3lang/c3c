@@ -340,6 +340,15 @@ char *str_cat(const char *a, const char *b)
 	return buffer;
 }
 
+char *str_cat_len(const char *a, size_t a_len, const char *b, size_t b_len)
+{
+	char *buffer = malloc_string(a_len + b_len + 1);
+	memcpy(buffer, a, a_len);
+	memcpy(buffer + a_len, b, b_len);
+	buffer[a_len + b_len] = '\0';
+	return buffer;
+}
+
 char *str_dup(const char *str)
 {
 	return str_copy(str, strlen(str));
@@ -358,9 +367,14 @@ void scratch_buffer_clear(void)
 	scratch_buffer.len = 0;
 }
 
+bool scratch_buffer_may_append(size_t len)
+{
+	return len + scratch_buffer.len < MAX_STRING_BUFFER - 1;
+}
+
 void scratch_buffer_append_len(const char *string, size_t len)
 {
-	if (len + scratch_buffer.len > MAX_STRING_BUFFER - 1)
+	if (!scratch_buffer_may_append(len))
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
 	}

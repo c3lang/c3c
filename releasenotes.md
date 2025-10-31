@@ -1,7 +1,9 @@
 # C3C Release Notes
 
 ## 0.7.8 Change list
+
 ### Changes / improvements
+- Improve multiline string parser inside compiler #2552
 
 ### Fixes
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.

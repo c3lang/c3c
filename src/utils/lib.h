@@ -44,7 +44,8 @@ typedef struct {
 	char* cl_include_env;
 } WindowsSDK;
 
-#define MAX_STRING_BUFFER 0x10000
+// Keep a 4 MB text buffer
+#define MAX_STRING_BUFFER (1024 * 1024 * 4)
 #define COMPILER_SUCCESS_EXIT -1000
 NORETURN void exit_compiler(int exit_value);
 extern jmp_buf on_err_jump;
@@ -144,6 +145,7 @@ char *str_trim(char *str);
 const char *str_trim_start(const char *str);
 void str_trim_end(char *str);
 char *str_cat(const char *a, const char *b);
+char *str_cat_len(const char *a, size_t a_len, const char *b, size_t b_len);
 // Search a list of strings and return the matching element or -1 if none found.
 int str_findlist(const char *value, unsigned count, const char** elements);
 // Sprintf style, saved to an arena allocated string
@@ -172,6 +174,7 @@ void slice_trim(StringSlice *slice);
 void scratch_buffer_clear(void);
 void scratch_buffer_append(const char *string);
 void scratch_buffer_append_len(const char *string, size_t len);
+bool scratch_buffer_may_append(size_t len);
 void scratch_buffer_append_char(char c);
 void scratch_buffer_append_in_quote(const char *string);
 void scratch_buffer_append_char_repeat(char c, size_t count);

@@ -1347,7 +1347,7 @@ static Expr *parse_ct_arg(ParseContext *c, Expr *left, SourceSpan lhs_start)
  * identifier ::= CONST_IDENT | IDENT
  * Note: if the identifier is "return" (only possible in doc lexing "mode"), create an EXPR_RETVAL instead.
  */
-static Expr *parse_identifier(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_identifier(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	if (symstr(c) == kw_return)
@@ -1773,7 +1773,7 @@ EXIT:
 	return expr_int;
 }
 
-Expr *parse_integer(ParseContext *c, Expr *left, SourceSpan lhs_start)
+Expr *parse_integer(ParseContext *c, Expr *left UNUSED, SourceSpan lhs_start UNUSED)
 {
 	return parse_integer_expr(c, false);
 }
@@ -1984,37 +1984,61 @@ static Expr *parse_double(ParseContext *c, Expr *left, SourceSpan lhs_start)
 
 bool parse_joined_strings(ParseContext *c, const char **str_ref, size_t *len_ref)
 {
+	if (str_ref) *str_ref = NULL;
 	const char *str = symstr(c);
 	size_t len = c->data.strlen;
 	advance_and_verify(c, TOKEN_STRING);
-	if (!str_ref) scratch_buffer_append(str);
-	// This is wasteful for adding many tokens together
-	// and can be optimized.
+	// Simple string optimization.
+	if (str_ref && c->tok != TOKEN_STRING)
+	{
+		*str_ref = str;
+		*len_ref = len;
+		return true;
+	}
+	// Now handle multiple strings
+	if (str_ref)
+	{
+		scratch_buffer_clear();
+	}
+	scratch_buffer_append_len(str, len);
+
+	// Skip EOL for contracts
 	if (tok_is(c, TOKEN_DOCS_EOL) && peek(c) == TOKEN_STRING) advance(c);
 	while (tok_is(c, TOKEN_STRING))
 	{
 		// Grab the token.
 		size_t next_len = c->data.strlen;
+		len += next_len;
 		if (!next_len)
 		{
 			// Zero length so just continue.
 			advance_and_verify(c, TOKEN_STRING);
 			continue;
 		}
-		if (!str_ref)
+		str = symstr(c);
+		// We might overrun the buffer with this, so then we need to do a copy.
+		if (!scratch_buffer_may_append(next_len))
 		{
-			scratch_buffer_append(symstr(c));
+			// If it is not imperative we keep it, we skip here.
+			if (!str_ref) goto ADVANCE;
+			if (!*str_ref)
+			{
+				*str_ref = scratch_buffer_copy();
+			}
+			else
+			{
+				*str_ref = str_cat_len(*str_ref, len - scratch_buffer.len - next_len, scratch_buffer.str, scratch_buffer.len);
+			}
+			scratch_buffer_clear();
+			// It might still overrun if it's too big:
+			if (!scratch_buffer_may_append(next_len))
+			{
+				*str_ref = str_cat_len(*str_ref, len - next_len, str, next_len);
+				goto ADVANCE;
+			}
 		}
-		else
-		{
-			// Create new string and copy.
-			char *buffer = malloc_string(len + next_len + 1);
-			memcpy(buffer, str, len);
-			memcpy(buffer + len, symstr(c), next_len);
-			len += next_len;
-			buffer[len] = '\0';
-			str = buffer;
-		}
+		scratch_buffer_append_len(str, next_len);
+ADVANCE:;
 		advance_and_verify(c, TOKEN_STRING);
 		if (tok_is(c, TOKEN_DOCS_EOL) && peek(c) == TOKEN_STRING) advance(c);
 	}
@@ -2023,9 +2047,17 @@ bool parse_joined_strings(ParseContext *c, const char **str_ref, size_t *len_ref
 		PRINT_ERROR_HERE("String exceeded max size.");
 		return false;
 	}
+	// If we don't keep it, we're done.
 	if (!str_ref) return true;
-	ASSERT(str);
-	*str_ref = str;
+
+	if (*str_ref)
+	{
+		*str_ref = str_cat_len(*str_ref, len - scratch_buffer.len, scratch_buffer.str, scratch_buffer.len);
+	}
+	else
+	{
+		*str_ref = scratch_buffer_copy();
+	}
 	*len_ref = len;
 	return true;
 }
@@ -2064,7 +2096,7 @@ static Expr *parse_bool(ParseContext *c, Expr *left, SourceSpan lhs_start)
 /**
  * Parse 'null', creating a const void* with zero address.
  */
-static Expr *parse_null(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_null(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST);
