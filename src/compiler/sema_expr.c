@@ -5760,7 +5760,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr_rewrite_const_bool(expr, type_bool, type_is_ordered(flat));
 			return true;
 		case TYPE_PROPERTY_IS_EQ:
-			switch (sema_type_can_check_equality_with_overload(context, flat))
+			switch (sema_type_can_check_equality_with_overload(context, type))
 			{
 				case BOOL_ERR:
 					return false;
