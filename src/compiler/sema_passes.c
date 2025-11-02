@@ -59,7 +59,6 @@ void sema_analyse_pass_module_hierarchy(Module *module)
 	sema_analyze_stage(parent_module, ANALYSIS_MODULE_HIERARCHY);
 }
 
-
 void sema_analysis_pass_process_imports(Module *module)
 {
 	DEBUG_LOG("Pass: Importing dependencies for files in module '%s'.", module->name->module);
@@ -99,6 +98,12 @@ void sema_analysis_pass_process_imports(Module *module)
 			// 5. Do we find it?
 			if (!import_module)
 			{
+				if (unit->if_attr)
+				{
+					unit->error_import = import;
+					import_module = compiler_find_or_create_module(path, NULL);
+					goto FOUND_MODULE;
+				}
 				PRINT_ERROR_AT(import, "No module named '%s' could be found, did you type the name right?", path->module);
 				decl_poison(import);
 				continue;
@@ -112,6 +117,7 @@ void sema_analysis_pass_process_imports(Module *module)
 				continue;
 			}
 
+FOUND_MODULE:
 			// 7. Assign the module.
 			DEBUG_LOG("* Import of %s.", path->module);
 			import->import.module = import_module;
@@ -125,9 +131,16 @@ NEXT:;
 			// 5. Do we find it?
 			if (!import_module)
 			{
+				if (unit->if_attr)
+				{
+					unit->error_import = alias_module;
+					import_module = compiler_find_or_create_module(path, NULL);
+					goto FOUND_ALIAS;
+				}
 				PRINT_ERROR_AT(path, "No module named '%s' could be found, did you type the name right?", path->module);
 				continue;
 			}
+FOUND_ALIAS:
 			alias_module->module_alias_decl.module = import_module;
 			alias_module->resolve_status = RESOLVE_DONE;
 			for (unsigned i = 0; i < idx; i++)
@@ -515,6 +528,21 @@ CHECK_LINK:
 		}
 RELEASE_CONTEXT:
 		sema_context_destroy(&context);
+		if (unit->error_import)
+		{
+			Decl *import = unit->error_import;
+			switch (import->decl_kind)
+			{
+				case DECL_IMPORT:
+					PRINT_ERROR_AT(import, "No module named '%s' could be found, did you type the name right?", import->import.path->module);
+					continue;
+				case DECL_ALIAS_PATH:
+					PRINT_ERROR_AT(import->module_alias_decl.alias_path, "No module named '%s' could be found, did you type the name right?", import->module_alias_decl.alias_path->module);
+					continue;
+				default:
+					UNREACHABLE_VOID;
+			}
+		}
 		register_global_decls(unit, unit->global_decls);
 		// There may be includes, add those.
 		sema_process_includes(unit);

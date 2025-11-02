@@ -627,7 +627,7 @@ typedef struct
 	};
 } DefineDecl;
 
-typedef union
+typedef struct
 {
 	Path *alias_path;
 	Module *module;
@@ -1741,6 +1741,7 @@ struct CompilationUnit_
 	Decl **global_decls;
 	Decl **global_cond_decls;
 	Decl *main_function;
+	Decl *error_import;
 	HTable local_symbols;
 	int lambda_count;
 	TypeInfo **check_type_variable_array;

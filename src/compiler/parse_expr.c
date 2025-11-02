@@ -1065,7 +1065,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
 /**
  * subscript ::= '[' range_expr ']'
  */
-static Expr *parse_subscript_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_subscript_expr(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(left && expr_ok(left));
 	advance_and_verify(c, TOKEN_LBRACKET);
@@ -1644,7 +1644,7 @@ EXIT:
 			PRINT_ERROR_AT(expr_int, "Integer type suffix should be i8, i16, i32, i64 or i128.");
 			return poisoned_expr;
 		}
-		const char *suffix;
+		const char *suffix; // NOLINT
 		if (bit_suffix)
 		{
 			switch (type_bits)
