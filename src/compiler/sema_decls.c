@@ -1492,8 +1492,12 @@ static inline bool sema_analyse_fntype(SemaContext *context, Decl *decl, bool *e
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_FNTYPE, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
-	Signature *sig = &decl->fntype_decl;
-	return sema_analyse_function_signature(context, decl, NULL, sig->abi, sig);
+	Signature *sig = &decl->fntype_decl.signature;
+	if (!sema_analyse_function_signature(context, decl, NULL, sig->abi, sig)) return false;
+	bool pure = false;
+	if (!sema_analyse_doc_header(context, decl->fntype_decl.docs, sig->params, NULL, &pure)) return false;
+	sig->attrs.is_pure = pure;
+	return true;
 }
 
 static inline bool sema_analyse_type_alias(SemaContext *context, Decl *decl, bool *erase_decl)
@@ -1507,7 +1511,7 @@ static inline bool sema_analyse_type_alias(SemaContext *context, Decl *decl, boo
 		Decl *fn_decl = decl->type_alias_decl.decl;
 		fn_decl->is_export = is_export;
 		fn_decl->unit = decl->unit;
-		fn_decl->type = type_new_func(fn_decl, &fn_decl->fntype_decl);
+		fn_decl->type = type_new_func(fn_decl, &fn_decl->fntype_decl.signature);
 		decl->type->canonical = type_get_func_ptr(fn_decl->type);
 		return true;
 	}
@@ -3035,7 +3039,7 @@ INLINE bool update_abi(Decl *decl, CallABI abi)
 {
 	if (decl->decl_kind == DECL_FNTYPE)
 	{
-		decl->fntype_decl.abi = abi;
+		decl->fntype_decl.signature.abi = abi;
 		return true;
 	}
 	decl->func_decl.signature.abi = abi;
@@ -3403,8 +3407,8 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 						decl->func_decl.signature.attrs.format = val + 1;
 						return true;
 					case DECL_FNTYPE:
-						if (decl->fntype_decl.attrs.format) break;
-						decl->fntype_decl.attrs.format = val + 1;
+						if (decl->fntype_decl.signature.attrs.format) break;
+						decl->fntype_decl.signature.attrs.format = val + 1;
 						return true;
 					default:
 						UNREACHABLE
@@ -3764,8 +3768,72 @@ bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, Att
 	return true;
 }
 
+static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
+{
+	FOREACH(Ast *, ret, directive->contract_stmt.faults)
+	{
+		if (ret->contract_fault.expanding) continue;
+		if (ret->contract_fault.resolved)
+		{
+			continue;
+		}
+		Expr *expr = ret->contract_fault.expr;
+		if (expr->expr_kind == EXPR_RETHROW)
+		{
+			Expr *inner = expr->rethrow_expr.inner;
+			if (!sema_analyse_expr(context, inner)) return false;
+			Decl *decl;
+			switch (inner->expr_kind)
+			{
+				case EXPR_IDENTIFIER:
+					decl = inner->ident_expr;
+					break;
+				case EXPR_TYPEINFO:
+				{
+					Type *type = inner->type_expr->type;
+					if (type->type_kind != TYPE_ALIAS) goto IS_FAULT;
+					decl = type->decl;
+					ASSERT(decl->decl_kind == DECL_TYPE_ALIAS);
+					if (!decl->type_alias_decl.is_func) goto IS_FAULT;
+					decl = decl->type_alias_decl.decl;
+					break;
+				}
+				default:
+					goto IS_FAULT;;
+			}
+			decl = decl_flatten(decl);
+			if (decl->decl_kind != DECL_FNTYPE && decl->decl_kind != DECL_FUNC) goto IS_FAULT;
+			if (!sema_analyse_decl(context, decl)) return false;
+			AstId docs = decl->decl_kind == DECL_FNTYPE ? decl->fntype_decl.docs : decl->func_decl.docs;
+			while (docs)
+			{
+				Ast *doc = astptr(docs);
+				docs = doc->next;
+				if (doc->contract_stmt.kind != CONTRACT_OPTIONALS) continue;
+				ret->contract_fault.expanding = true;
+				bool success = sema_analyse_optional_returns(context, doc);
+				ret->contract_fault.expanding = false;
+				if (!success) false;
+			}
+			continue;
+		}
+IS_FAULT:;
+		if (!sema_analyse_expr_rvalue(context, expr)) return false;
+		if (expr->type->canonical != type_fault)
+		{
+			RETURN_SEMA_ERROR(expr, "Expected a fault here.");
+		}
+		if (!expr_is_const_fault(expr)) RETURN_SEMA_ERROR(expr, "A constant fault is required.");
+		Decl *decl = expr->const_expr.fault;
+		if (!decl) RETURN_SEMA_ERROR(expr, "A non-null fault is required.");
+		ret->contract_fault.decl = decl;
+		ret->contract_fault.resolved = true;
+	}
+	return true;
+}
+
 static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc,
-										   Decl **params, Decl **extra_params, bool *pure_ref)
+                                           Decl **params, Decl **extra_params, bool *pure_ref)
 {
 	while (doc)
 	{
@@ -3781,6 +3849,10 @@ static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc,
 			}
 			*pure_ref = true;
 			continue;
+		}
+		if (directive_kind == CONTRACT_OPTIONALS)
+		{
+			if (!sema_analyse_optional_returns(context, directive)) return false;
 		}
 		if (directive_kind != CONTRACT_PARAM) continue;
 		const char *param_name = directive->contract_stmt.param.name;
@@ -4258,6 +4330,7 @@ CHECK_DONE:
 								"'extern' or place it in an .c3i file.");
 	}
 	bool pure = false;
+
 	if (!sema_analyse_doc_header(context, decl->func_decl.docs, decl->func_decl.signature.params, NULL,
 	                             &pure)) return false;
 	decl->func_decl.signature.attrs.is_pure = pure;

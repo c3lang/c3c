@@ -1,5 +1,5 @@
 module contract_err_tests;
-
+import std;
 <*
 Hello world
  @param [in] a

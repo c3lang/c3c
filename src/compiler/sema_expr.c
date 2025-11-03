@@ -2463,7 +2463,16 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 		*any_val = *(any_val->inner_expr);
 	}
 	expr->call_expr.function_contracts = 0;
-	AstId docs = decl->func_decl.docs;
+	AstId docs;
+	if (decl->decl_kind == DECL_FNTYPE)
+	{
+		docs = decl->fntype_decl.docs;
+	}
+	else
+	{
+		docs = decl->func_decl.docs;
+	}
+
 	if (!safe_mode_enabled() || !sema_has_require(docs)) goto SKIP_CONTRACTS;
 	SemaContext temp_context;
 	bool success = false;

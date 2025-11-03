@@ -2181,13 +2181,15 @@ static inline void decl_add_type(Decl *decl, TypeKind kind)
 	type->decl = decl;
 	decl->type = type;
 }
+
+
 /**
  * typedef_declaration ::= ALIAS TYPE_IDENT attributes? '=' typedef_type ';'
  *
  * typedef_type ::= func_typedef | type generic_params?
  * func_typedef ::= 'fn' optional_type parameter_type_list
  */
-static inline Decl *parse_alias_type(ParseContext *c)
+static inline Decl *parse_alias_type(ParseContext *c, AstId contracts, bool has_real_contracts)
 {
 	advance_and_verify(c, TOKEN_ALIAS);
 
@@ -2198,7 +2200,7 @@ static inline Decl *parse_alias_type(ParseContext *c)
 		if (token_is_any_type(c->tok))
 		{
 			PRINT_ERROR_HERE("'%s' is the name of a built-in type and can't be used as an alias.",
-			                 token_type_to_string(c->tok));
+							 token_type_to_string(c->tok));
 			return poisoned_decl;
 		}
 		if (token_is_some_ident(c->tok))
@@ -2223,8 +2225,9 @@ static inline Decl *parse_alias_type(ParseContext *c)
 		Decl *decl_type = decl_new(DECL_FNTYPE, decl->name, c->prev_span);
 		decl->type_alias_decl.decl = decl_type;
 		ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_optional_type(c), poisoned_decl);
-		decl_type->fntype_decl.rtype = type_infoid(type_info);
-		if (!parse_fn_parameter_list(c, &(decl_type->fntype_decl)))
+		decl_type->fntype_decl.signature.rtype = type_infoid(type_info);
+		decl_type->fntype_decl.docs = contracts;
+		if (!parse_fn_parameter_list(c, &(decl_type->fntype_decl.signature)))
 		{
 			return poisoned_decl;
 		}
@@ -2233,6 +2236,11 @@ static inline Decl *parse_alias_type(ParseContext *c)
 		RANGE_EXTEND_PREV(decl);
 		CONSUME_EOS_OR_RET(poisoned_decl);
 		return decl;
+	}
+
+	if (has_real_contracts)
+	{
+		RETURN_PRINT_ERROR_AT(poisoned_decl, astptr(contracts), "Contracts are only used for modules, functions and macros.");
 	}
 
 	// 2. Now parse the type which we know is here.
@@ -2413,13 +2421,17 @@ static inline Decl *parse_attrdef(ParseContext *c)
 /**
  * define_decl ::= ALIAS define_type_body
  */
-static inline Decl *parse_alias(ParseContext *c)
+static inline Decl *parse_alias(ParseContext *c, AstId contracts, bool has_real_contracts)
 {
 	switch (peek(c))
 	{
 		case TOKEN_TYPE_IDENT:
-			return parse_alias_type(c);
+			return parse_alias_type(c, contracts, has_real_contracts);
 		default:
+			if (has_real_contracts)
+			{
+				RETURN_PRINT_ERROR_AT(poisoned_decl, astptr(contracts), "Contracts are only used for modules, functions and macros.");
+			}
 			return parse_alias_ident(c);
 	}
 }
@@ -3335,8 +3347,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			PRINT_ERROR_HERE("There are more than one doc comment in a row, that is not allowed.");
 			return poisoned_decl;
 		case TOKEN_ALIAS:
-			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_alias(c);
+			decl = parse_alias(c, contracts, has_real_contracts);
 			if (decl->decl_kind == DECL_ALIAS_PATH)
 			{
 				if (!context_out)

@@ -636,7 +636,7 @@ RETRY:
 		case DECL_MACRO:
 			UNREACHABLE_VOID
 		case DECL_FNTYPE:
-			sema_trace_func_liveness(&decl->fntype_decl);
+			sema_trace_func_liveness(&decl->fntype_decl.signature);
 			return;
 		case DECL_FUNC:
 			sema_trace_func_liveness(&decl->func_decl.signature);

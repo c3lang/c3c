@@ -686,7 +686,7 @@ RETRY:
 		case AST_CONTRACT_FAULT:
 			if (ast->contract_fault.resolved)
 			{
-				MACRO_COPY_DECL(ast->contract_fault.decl);
+				fixup_decl(c, &ast->contract_fault.decl);
 			}
 			else
 			{
@@ -1097,7 +1097,8 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_DECL_LIST(copy->enums.values);
 			break;
 		case DECL_FNTYPE:
-			copy_signature_deep(c, &copy->fntype_decl);
+			copy_signature_deep(c, &copy->fntype_decl.signature);
+			MACRO_COPY_ASTID(copy->fntype_decl.docs);
 			break;
 		case DECL_FUNC:
 			copy_decl_type(copy);

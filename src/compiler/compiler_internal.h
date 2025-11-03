@@ -600,6 +600,12 @@ typedef struct
 	};
 } FuncDecl;
 
+typedef struct
+{
+	Signature signature;
+	AstId docs;
+} FnTypeDecl;
+
 
 typedef struct
 {
@@ -740,7 +746,7 @@ typedef struct Decl_
 		EnumConstantDecl enum_constant;
 		ExecDecl exec_decl;
 		Expr* expand_decl;
-		Signature fntype_decl;
+		FnTypeDecl fntype_decl;
 		FuncDecl func_decl;
 		ImportDecl import;
 		IncludeDecl include;
@@ -1527,6 +1533,7 @@ typedef struct
 typedef struct
 {
 	bool resolved;
+	bool expanding;
 	union
 	{
 		Expr *expr;
@@ -2295,6 +2302,7 @@ INLINE bool cast_both_implicit(SemaContext *context, Expr *expr1, Expr *expr2, T
 bool may_cast(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool is_silent);
 
 void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
+
 
 bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len);
 

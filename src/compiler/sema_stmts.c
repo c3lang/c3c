@@ -494,6 +494,11 @@ static inline bool sema_check_return_matches_opt_returns(SemaContext *context, E
 		if (opt == fault) return true;
 	}
 	// No match
+	FOREACH(Decl *, opt, context->call_env.opt_returns)
+	{
+		assert(opt->decl_kind == DECL_FAULT);
+		if (opt == fault) return true;
+	}
 	RETURN_SEMA_ERROR(ret_expr, "This value does not match declared optional returns, it needs to be declared with the other optional returns.");
 }
 
@@ -3283,14 +3288,59 @@ static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
 {
 	FOREACH(Ast *, ret, directive->contract_stmt.faults)
 	{
-		if (ret->contract_fault.resolved) continue;
-		Expr *expr = ret->contract_fault.expr;
-		if (expr->expr_kind != EXPR_UNRESOLVED_IDENTIFIER && !expr->unresolved_ident_expr.is_const)
+		if (ret->contract_fault.expanding) continue;
+		if (ret->contract_fault.resolved)
 		{
-			RETURN_SEMA_ERROR(expr, "Expected a fault name here.");
+			vec_add(context->call_env.opt_returns, ret->contract_fault.decl);
+			continue;
 		}
+		Expr *expr = ret->contract_fault.expr;
+		if (expr->expr_kind == EXPR_RETHROW)
+		{
+			Expr *inner = expr->rethrow_expr.inner;
+			if (!sema_analyse_expr(context, inner)) return false;
+			Decl *decl;
+			switch (inner->expr_kind)
+			{
+				case EXPR_IDENTIFIER:
+					decl = inner->ident_expr;
+					break;
+				case EXPR_TYPEINFO:
+				{
+					Type *type = inner->type_expr->type;
+					if (type->type_kind != TYPE_ALIAS) goto IS_FAULT;
+					decl = type->decl;
+					ASSERT(decl->decl_kind == DECL_TYPE_ALIAS);
+					if (!decl->type_alias_decl.is_func) goto IS_FAULT;
+					decl = decl->type_alias_decl.decl;
+					break;
+				}
+				default:
+					goto IS_FAULT;;
+			}
+			decl = decl_flatten(decl);
+			if (decl->decl_kind != DECL_FNTYPE && decl->decl_kind != DECL_FUNC) goto IS_FAULT;
+			if (!sema_analyse_decl(context, decl)) return false;
+			AstId docs = decl->decl_kind == DECL_FNTYPE ? decl->fntype_decl.docs : decl->func_decl.docs;
+			while (docs)
+			{
+				Ast *doc = astptr(docs);
+				docs = doc->next;
+				if (doc->contract_stmt.kind != CONTRACT_OPTIONALS) continue;
+				ret->contract_fault.expanding = true;
+				bool success = sema_analyse_optional_returns(context, doc);
+				ret->contract_fault.expanding = false;
+				if (!success) false;
+			}
+			continue;
+		}
+IS_FAULT:;
 		if (!sema_analyse_expr_rvalue(context, expr)) return false;
-		if (!expr_is_const_fault(expr)) RETURN_SEMA_ERROR(expr, "A fault is required.");
+		if (expr->type->canonical != type_fault)
+		{
+			RETURN_SEMA_ERROR(expr, "Expected a fault here.");
+		}
+		if (!expr_is_const_fault(expr)) RETURN_SEMA_ERROR(expr, "A constant fault is required.");
 		Decl *decl = expr->const_expr.fault;
 		if (!decl) RETURN_SEMA_ERROR(expr, "A non-null fault is required.");
 		ret->contract_fault.decl = decl;
