@@ -37,19 +37,122 @@ entry:
   store <4 x float> %fadd, ptr %w, align 16
   %2 = load <4 x float>, ptr %y, align 16
   %3 = load <4 x float>, ptr %z, align 16
-  %4 = call <4 x float> @llvm.fabs.v4f32(<4 x float> %3)
-  %5 = call float @llvm.vector.reduce.fmin.v4f32(<4 x float> %4)
-  %zero = fcmp ueq float %5, 0.000000e+00
-  %6 = call i1 @llvm.expect.i1(i1 %zero, i1 false)
-  br i1 %6, label %panic, label %checkok
-
-checkok:                                          ; preds = %entry
   %fdiv = fdiv <4 x float> %2, %3
   store <4 x float> %fdiv, ptr %w, align 16
   ret void
+}
+
+define void @test.testi() #0 {
+entry:
+  %y = alloca <4 x i32>, align 16
+  %z = alloca <4 x i32>, align 16
+  %w = alloca <4 x i32>, align 16
+  %taddr = alloca <4 x i32>, align 16
+  %varargslots = alloca [1 x %any], align 16
+  %indirectarg = alloca %"any[]", align 8
+  %taddr4 = alloca <4 x i32>, align 16
+  %varargslots5 = alloca [1 x %any], align 16
+  %indirectarg7 = alloca %"any[]", align 8
+  %taddr11 = alloca <4 x i32>, align 16
+  %varargslots12 = alloca [1 x %any], align 16
+  %indirectarg14 = alloca %"any[]", align 8
+  %taddr18 = alloca <4 x i32>, align 16
+  %varargslots19 = alloca [1 x %any], align 16
+  %indirectarg21 = alloca %"any[]", align 8
+  store <4 x i32> <i32 1, i32 2, i32 3, i32 4>, ptr %y, align 16
+  store <4 x i32> <i32 2, i32 2, i32 2, i32 -100>, ptr %z, align 16
+  %0 = load <4 x i32>, ptr %y, align 16
+  %1 = load <4 x i32>, ptr %z, align 16
+  %2 = call i32 @llvm.vector.reduce.umin.v4i32(<4 x i32> %1)
+  %zero = icmp eq i32 %2, 0
+  %3 = call i1 @llvm.expect.i1(i1 %zero, i1 false)
+  br i1 %3, label %panic, label %checkok
+
+checkok:                                          ; preds = %entry
+  %sdiv = sdiv <4 x i32> %0, %1
+  store <4 x i32> %sdiv, ptr %w, align 16
+  %4 = load <4 x i32>, ptr %z, align 16
+  %5 = load <4 x i32>, ptr %y, align 16
+  %6 = call i32 @llvm.vector.reduce.smin.v4i32(<4 x i32> %5)
+  %shift_underflow = icmp slt i32 %6, 0
+  %7 = call i1 @llvm.expect.i1(i1 %shift_underflow, i1 false)
+  br i1 %7, label %panic1, label %checkok2
+
+checkok2:                                         ; preds = %checkok
+  %8 = call i32 @llvm.vector.reduce.smax.v4i32(<4 x i32> %5)
+  %shift_exceeds = icmp sge i32 %8, 32
+  %9 = call i1 @llvm.expect.i1(i1 %shift_exceeds, i1 false)
+  br i1 %9, label %panic3, label %checkok8
+
+checkok8:                                         ; preds = %checkok2
+  %ashr = ashr <4 x i32> %4, %5
+  %10 = freeze <4 x i32> %ashr
+  store <4 x i32> %10, ptr %w, align 16
+  %11 = load <4 x i32>, ptr %z, align 16
+  %12 = load <4 x i32>, ptr %y, align 16
+  %13 = call i32 @llvm.vector.reduce.smin.v4i32(<4 x i32> %12)
+  %shift_underflow9 = icmp slt i32 %13, 0
+  %14 = call i1 @llvm.expect.i1(i1 %shift_underflow9, i1 false)
+  br i1 %14, label %panic10, label %checkok15
+
+checkok15:                                        ; preds = %checkok8
+  %15 = call i32 @llvm.vector.reduce.smax.v4i32(<4 x i32> %12)
+  %shift_exceeds16 = icmp sge i32 %15, 32
+  %16 = call i1 @llvm.expect.i1(i1 %shift_exceeds16, i1 false)
+  br i1 %16, label %panic17, label %checkok22
+
+checkok22:                                        ; preds = %checkok15
+  %shl = shl <4 x i32> %11, %12
+  %17 = freeze <4 x i32> %shl
+  store <4 x i32> %17, ptr %w, align 16
+  ret void
 
 panic:                                            ; preds = %entry
-  %7 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %7(ptr @.panic_msg, i64 17, ptr @.file, i64 14, ptr @.func, i64 5, i32 9)
+  %18 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %18(ptr @.panic_msg, i64 17, ptr @.file, i64 14, ptr @.func, i64 5, i32 17) #3
+  unreachable
+
+panic1:                                           ; preds = %checkok
+  store <4 x i32> %5, ptr %taddr, align 16
+  %19 = insertvalue %any undef, ptr %taddr, 0
+  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.v4$int" to i64), 1
+  store %any %20, ptr %varargslots, align 16
+  %21 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %21, i64 1, 1
+  store %"any[]" %"$$temp", ptr %indirectarg, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 35, ptr @.file, i64 14, ptr @.func, i64 5, i32 18, ptr byval(%"any[]") align 8 %indirectarg) #3
+  unreachable
+
+panic3:                                           ; preds = %checkok2
+  store <4 x i32> %5, ptr %taddr4, align 16
+  %22 = insertvalue %any undef, ptr %taddr4, 0
+  %23 = insertvalue %any %22, i64 ptrtoint (ptr @"$ct.v4$int" to i64), 1
+  store %any %23, ptr %varargslots5, align 16
+  %24 = insertvalue %"any[]" undef, ptr %varargslots5, 0
+  %"$$temp6" = insertvalue %"any[]" %24, i64 1, 1
+  store %"any[]" %"$$temp6", ptr %indirectarg7, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 35, ptr @.file, i64 14, ptr @.func, i64 5, i32 18, ptr byval(%"any[]") align 8 %indirectarg7) #3
+  unreachable
+
+panic10:                                          ; preds = %checkok8
+  store <4 x i32> %12, ptr %taddr11, align 16
+  %25 = insertvalue %any undef, ptr %taddr11, 0
+  %26 = insertvalue %any %25, i64 ptrtoint (ptr @"$ct.v4$int" to i64), 1
+  store %any %26, ptr %varargslots12, align 16
+  %27 = insertvalue %"any[]" undef, ptr %varargslots12, 0
+  %"$$temp13" = insertvalue %"any[]" %27, i64 1, 1
+  store %"any[]" %"$$temp13", ptr %indirectarg14, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 35, ptr @.file, i64 14, ptr @.func, i64 5, i32 19, ptr byval(%"any[]") align 8 %indirectarg14) #3
+  unreachable
+
+panic17:                                          ; preds = %checkok15
+  store <4 x i32> %12, ptr %taddr18, align 16
+  %28 = insertvalue %any undef, ptr %taddr18, 0
+  %29 = insertvalue %any %28, i64 ptrtoint (ptr @"$ct.v4$int" to i64), 1
+  store %any %29, ptr %varargslots19, align 16
+  %30 = insertvalue %"any[]" undef, ptr %varargslots19, 0
+  %"$$temp20" = insertvalue %"any[]" %30, i64 1, 1
+  store %"any[]" %"$$temp20", ptr %indirectarg21, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 35, ptr @.file, i64 14, ptr @.func, i64 5, i32 19, ptr byval(%"any[]") align 8 %indirectarg21) #3
   unreachable
 }
