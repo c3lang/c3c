@@ -7166,6 +7166,7 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 	{
 		case BINARYOP_MULT_ASSIGN:
 		case BINARYOP_DIV_ASSIGN:
+		case BINARYOP_MOD_ASSIGN:
 			break;
 		case BINARYOP_BIT_AND_ASSIGN:
 		case BINARYOP_BIT_OR_ASSIGN:
@@ -7176,9 +7177,6 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 		case BINARYOP_ADD_ASSIGN:
 		case BINARYOP_SUB_ASSIGN:
 			is_add_sub = true;
-			break;
-		case BINARYOP_MOD_ASSIGN:
-			int_only = true;
 			break;
 		case BINARYOP_SHL_ASSIGN:
 		case BINARYOP_SHR_ASSIGN:

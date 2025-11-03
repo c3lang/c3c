@@ -12,6 +12,7 @@
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.
 - Remove division-by-zero checks for floating point in safe mode #2556.
 - Fix division-by-zero checks on `a /= 0` and `b /= 0f` #2558.
+- Fix fmod `a %= 0f`.
 
 ### Stdlib changes
 
