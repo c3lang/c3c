@@ -4238,23 +4238,23 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 			val = llvm_emit_add_int(c, lhs_type, lhs_value, rhs_value, expr->span);
 			break;
 		case BINARYOP_DIV:
-			llvm_emit_trap_zero(c, rhs_type, rhs_value, "Division by zero.", expr->span);
 			if (is_float)
 			{
 				val = LLVMBuildFDiv(c->builder, lhs_value, rhs_value, "fdiv");
 				break;
 			}
+			llvm_emit_trap_zero(c, rhs_type, rhs_value, "Division by zero.", expr->span);
 			val = type_is_unsigned(lhs_type)
 				  ? LLVMBuildUDiv(c->builder, lhs_value, rhs_value, "udiv")
 				  : LLVMBuildSDiv(c->builder, lhs_value, rhs_value, "sdiv");
 			break;
 		case BINARYOP_MOD:
-			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero.", expr->span);
 			if (type_is_float(lhs_type))
 			{
 				val = LLVMBuildFRem(c->builder, lhs_value, rhs_value, "fmod");
 				break;
 			}
+			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero.", expr->span);
 			val = type_is_unsigned(lhs_type)
 				  ? LLVMBuildURem(c->builder, lhs_value, rhs_value, "umod")
 				  : LLVMBuildSRem(c->builder, lhs_value, rhs_value, "smod");

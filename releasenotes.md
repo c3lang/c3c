@@ -8,6 +8,7 @@
 
 ### Fixes
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.
+- Remove division-by-zero checks for floating point in safe mode #2556.
 
 ### Stdlib changes
 
