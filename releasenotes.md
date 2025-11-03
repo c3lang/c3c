@@ -6,6 +6,7 @@
 - Improve multiline string parser inside compiler #2552.
 - Missing imports allowed if module `@if` evaluates to false #2251.
 - Add default exception handler to Win32 #2557.
+- Accept `"$schema"` as key in `project.json` #2554.
 
 ### Fixes
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.
