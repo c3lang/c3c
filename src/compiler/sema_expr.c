@@ -7326,10 +7326,9 @@ BITSTRUCT_OK:
 				switch (right->const_expr.const_kind)
 				{
 					case CONST_INTEGER:
-						if (int_is_zero(right->const_expr.ixx)) RETURN_SEMA_ERROR(right, operator == BINARYOP_MOD_ASSIGN ? "% by zero not allowed." : "Division by zero not allowed.");
+						if (int_is_zero(right->const_expr.ixx)) RETURN_SEMA_ERROR(right, operator == BINARYOP_MOD_ASSIGN ? "%% by zero not allowed." : "Division by zero not allowed.");
 						break;
 					case CONST_FLOAT:
-						if (right->const_expr.fxx.f == 0) RETURN_SEMA_ERROR(right, operator == BINARYOP_MOD_ASSIGN ? "% by zero not allowed." : "% by zero not allowed.");
 						break;
 					default:
 						break;
