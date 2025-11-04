@@ -15,6 +15,7 @@
 - Fix division-by-zero checks on `a /= 0` and `b /= 0f` #2558.
 - Fix fmod `a %= 0f`.
 - Regression vector ABI: initializing a struct containing a NPOT vector with a constant value would crash LLVM. #2559
+- Error message with hashmap shows "mangled" name instead of original #2562.
 
 ### Stdlib changes
 

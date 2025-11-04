@@ -355,7 +355,14 @@ static const char *type_to_error_string_with_path(Type *type)
 			Decl *decl = type->decl;
 			const char *suffix = decl->unit->module->generic_suffix;
 			scratch_buffer_clear();
-			scratch_buffer_append(decl->unit->module->name->module);
+			if (decl->unit->module->generic_module)
+			{
+				scratch_buffer_append(decl->unit->module->generic_module->name->module);
+			}
+			else
+			{
+				scratch_buffer_append(decl->unit->module->name->module);
+			}
 			scratch_buffer_append("::");
 			if (suffix || type_is_inner_type(type))
 			{
