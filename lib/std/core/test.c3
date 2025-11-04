@@ -26,6 +26,8 @@ fn void? test_div() @test
 	test::le(2, 3);
 	test::eq_approx(m::divide(1, 3)!, 0.333, places: 3);
 	test::@check(2 == 2, "divide: %d", divide(6, 3)!);
+	test::@ok(m::divide(3, 1));
+	test::@catch(m::divide(3, 0));
 	test::@error(m::divide(3, 0), MathError.DIVISION_BY_ZERO);
 }
 
@@ -74,6 +76,33 @@ macro @check(#condition, String format = "", args...)
 			s.appendf(format, ...args);
 			print_panicf(s.str_view());
 		};
+	}
+}
+
+<*
+ Check if function returns error
+
+ @param #funcresult : `result of function execution`
+ @require runtime::test_context != null : "Only allowed in @test functions"
+*>
+macro @catch(#funcresult)
+{
+	if (catch err = #funcresult) return;
+	print_panicf("`%s` unexpectedly did not return error.", $stringify(#funcresult));
+}
+
+<*
+ Check if function doesn't return error
+
+ @param #funcresult : `result of function execution`
+ @require runtime::test_context != null : "Only allowed in @test functions"
+*>
+macro @ok(#funcresult)
+{
+	if (catch err = #funcresult)
+	{
+		print_panicf("`%s` returned unexpected error [%s].",
+			$stringify(#funcresult), err);
 	}
 }
 

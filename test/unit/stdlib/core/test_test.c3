@@ -275,6 +275,76 @@ alias TestFailFn = fn void? (bool to_fail);
 
 faultdef FOO;
 
+fn void test_catch()
+{
+	TestFailFn ffail_void = fn void?(bool to_fail)
+	{
+		if (to_fail) return io::FILE_NOT_FOUND?;
+	};
+	TestIntFn ffail_int = fn int?(int a, int b)
+	{
+		if (b == 0) return io::FILE_NOT_FOUND?;
+		return a / b;
+	};
+	test::@setup(state.setup_fn, state.teardown_fn);
+
+	test::@catch(ffail_void(true));
+	test::@catch(ffail_int(1, 0));
+}
+
+fn void test_catch_fail()
+{
+	TestFailFn ffail_void = fn void?(bool to_fail)
+	{
+		if (to_fail) return io::FILE_NOT_FOUND?;
+	};
+	TestIntFn ffail_int = fn int?(int a, int b)
+	{
+		if (b == 0) return io::FILE_NOT_FOUND?;
+		return a / b;
+	};
+	test::@setup(state.setup_fn, state.teardown_fn);
+	state.expected_fail = true;
+
+	test::@catch(ffail_void(false));
+	test::@catch(ffail_int(1, 2));
+}
+
+fn void test_ok()
+{
+	TestFailFn ffail_void = fn void?(bool to_fail)
+	{
+		if (to_fail) return io::FILE_NOT_FOUND?;
+	};
+	TestIntFn ffail_int = fn int?(int a, int b)
+	{
+		if (b == 0) return io::FILE_NOT_FOUND?;
+		return a / b;
+	};
+	test::@setup(state.setup_fn, state.teardown_fn);
+
+	test::@ok(ffail_void(false));
+	test::@ok(ffail_int(1, 2));
+}
+
+fn void test_ok_fail()
+{
+	TestFailFn ffail_void = fn void?(bool to_fail)
+	{
+		if (to_fail) return io::FILE_NOT_FOUND?;
+	};
+	TestIntFn ffail_int = fn int?(int a, int b)
+	{
+		if (b == 0) return io::FILE_NOT_FOUND?;
+		return a / b;
+	};
+	test::@setup(state.setup_fn, state.teardown_fn);
+	state.expected_fail = true;
+
+	test::@ok(ffail_void(true));
+	test::@ok(ffail_int(1, 0));
+}
+
 fn void test_error()
 {
 	TestFailFn ffail_void = fn void?(bool to_fail)
