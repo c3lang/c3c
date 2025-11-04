@@ -400,7 +400,7 @@ INLINE void llvm_value_ext_trunc(GenContext *c, BEValue *value, Type *type);
 
 // -- Constants --
 void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type);
-LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init);
+LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init, bool in_aggregate);
 LLVMValueRef llvm_emit_const_padding(GenContext *c, AlignSize size);
 LLVMValueRef llvm_emit_string_const(GenContext *c, const char *str, const char *extname);
 LLVMValueRef llvm_emit_empty_string_const(GenContext *c);

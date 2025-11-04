@@ -143,6 +143,7 @@ typedef struct
 struct ConstInitializer_
 {
 	ConstInitType kind;
+	bool is_simd;
 	// Type, should always be flattened
 	Type *type;
 	union
@@ -4548,6 +4549,12 @@ INLINE bool check_module_name(Path *path)
 		RETURN_PRINT_ERROR_AT(false, path, "A module name may not have any uppercase characters, trailing, leading or double '_'");
 	}
 	return true;
+}
+
+INLINE void const_init_set_type(ConstInitializer *init, Type *type)
+{
+	init->is_simd = type_is_simd(type);
+	init->type = type_flatten(type);
 }
 
 INLINE bool expr_is_valid_index(Expr *expr)

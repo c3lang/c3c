@@ -14,6 +14,7 @@
 - Remove division-by-zero checks for floating point in safe mode #2556.
 - Fix division-by-zero checks on `a /= 0` and `b /= 0f` #2558.
 - Fix fmod `a %= 0f`.
+- Regression vector ABI: initializing a struct containing a NPOT vector with a constant value would crash LLVM. #2559
 
 ### Stdlib changes
 

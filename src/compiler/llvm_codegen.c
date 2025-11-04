@@ -229,7 +229,7 @@ static LLVMValueRef llvm_emit_const_array_padding(LLVMTypeRef element_type, Inde
 	return llvm_get_zero_raw(LLVMArrayType(element_type, (unsigned)diff));
 }
 
-LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init)
+LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init, bool in_aggregate)
 {
 	ASSERT(const_init->type == type_flatten(const_init->type));
 	switch (const_init->kind)
@@ -252,11 +252,11 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			LLVMValueRef *parts = VECNEW(LLVMValueRef, size);
 			for (ArrayIndex i = 0; i < (ArrayIndex)size; i++)
 			{
-				LLVMValueRef element = llvm_emit_const_initializer(c, elements[i]);
+				LLVMValueRef element = llvm_emit_const_initializer(c, elements[i], true);
 				if (element_type_llvm != LLVMTypeOf(element)) was_modified = true;
 				vec_add(parts, element);
 			}
-			if (array_type->type_kind == TYPE_VECTOR)
+			if ((!in_aggregate && array_type->type_kind == TYPE_VECTOR) || const_init->is_simd)
 			{
 				return LLVMConstVector(parts, vec_size(parts));
 			}
@@ -282,7 +282,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			unsigned alignment = 0;
 			LLVMValueRef *parts = NULL;
 			bool pack = false;
-			bool is_vec = type_flat_is_vector(array_type);
+			bool is_vec = const_init->is_simd || (!in_aggregate && array_type->type_kind == TYPE_VECTOR);
 			FOREACH(ConstInitializer *, element, elements)
 			{
 				ASSERT(element->kind == CONST_INIT_ARRAY_VALUE);
@@ -308,7 +308,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 						vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, diff, &was_modified));
 					}
 				}
-				LLVMValueRef value = llvm_emit_const_initializer(c, element->init_array_value.element);
+				LLVMValueRef value = llvm_emit_const_initializer(c, element->init_array_value.element, true);
 				if (LLVMTypeOf(value) != element_type_llvm) was_modified = true;
 				vec_add(parts, value);
 				current_index = element_index + 1;
@@ -334,7 +334,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			Decl *decl = const_init->type->decl;
 
 			// Emit our value.
-			LLVMValueRef result = llvm_emit_const_initializer(c, const_init->init_union.element);
+			LLVMValueRef result = llvm_emit_const_initializer(c, const_init->init_union.element, true);
 			LLVMTypeRef result_type = LLVMTypeOf(result);
 
 			// Get the union value
@@ -388,7 +388,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 				{
 					vec_add(entries, llvm_emit_const_padding(c, member->padding));
 				}
-				LLVMValueRef element = llvm_emit_const_initializer(c, const_init->init_struct[i]);
+				LLVMValueRef element = llvm_emit_const_initializer(c, const_init->init_struct[i], true);
 				LLVMTypeRef element_type = LLVMTypeOf(element);
 				//ASSERT(LLVMIsConstant(element));
 				if (llvm_get_type(c, member->type) != element_type)
@@ -573,7 +573,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		{
 			ASSERT(type_flatten(init_expr->type)->type_kind != TYPE_SLICE);
 			ConstInitializer *list = init_expr->const_expr.initializer;
-			init_value = llvm_emit_const_initializer(c, list);
+			init_value = llvm_emit_const_initializer(c, list, false);
 		}
 		else
 		{

@@ -524,8 +524,12 @@ bool type_is_abi_aggregate(Type *type)
 bool type_is_simd(Type *type)
 {
 	type = type->canonical;
-	if (type->type_kind != TYPE_TYPEDEF) return false;
-	return type->decl->attr_simd;
+	while (type->type_kind == TYPE_TYPEDEF)
+	{
+		if (type->decl->attr_simd) return true;
+		type = type->decl->distinct->type;
+	}
+	return false;
 }
 
 bool type_is_aggregate(Type *type)

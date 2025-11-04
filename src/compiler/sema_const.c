@@ -248,7 +248,7 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 		case CONST_INIT_ZERO:
 		{
 			init->kind = CONST_INIT_ARRAY;
-			init->type = new_inner_type;
+			const_init_set_type(init, new_inner_type);
 			ConstInitializer **inits = NULL;
 			vec_add(inits, const_init_new_array_value(element, len - 1));
 			init->init_array.elements = inits;
@@ -257,13 +257,13 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 			break;
 		}
 		case CONST_INIT_ARRAY:
-			init->type = new_inner_type;
+			const_init_set_type(init, new_inner_type);
 			vec_add(init->init_array.elements, const_init_new_array_value(element, len - 1));
 			expr_replace(expr, list);
 			expr->type = new_outer_type;
 			break;
 		case CONST_INIT_ARRAY_FULL:
-			init->type = new_inner_type;
+			const_init_set_type(init, new_inner_type);
 			vec_add(init->init_array_full, const_init_new_value(element));
 			expr_replace(expr, list);
 			expr->type = new_outer_type;
@@ -544,7 +544,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 						ASSERT_SPAN(right, element->kind == CONST_INIT_ARRAY_VALUE);
 						element->init_array_value.index += (ArrayIndex)len_lhs;
 					}
-					rhs_init->type = type;
+					const_init_set_type(rhs_init, type);
 					expr_rewrite_const_initializer(concat_expr, type, rhs_init);
 					return true;
 				}
@@ -629,7 +629,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 				case CONST_INIT_ZERO:
 				{
 					// { 1 => 3 } + { 0, 0, 0 }
-					lhs_init->type = type;
+					const_init_set_type(lhs_init, type);
 					expr_rewrite_const_initializer(concat_expr, type, lhs_init);
 					return true;
 				}

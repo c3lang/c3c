@@ -4481,7 +4481,7 @@ static inline bool sema_slice_initializer(SemaContext *context, Expr *expr, Expr
 	Type *inner_type = is_vec
 			? type_get_vector(new_type->array.base, range->len_index)
 			: type_get_array(new_type->array.base, range->len_index);
-	initializer->type = inner_type;
+	const_init_set_type(initializer, inner_type);
 	switch (initializer->kind)
 	{
 		case CONST_INIT_ZERO:

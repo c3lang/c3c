@@ -1419,7 +1419,7 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 {
 	// First create the constant value.
 
-	LLVMValueRef value = llvm_emit_const_initializer(c, initializer);
+	LLVMValueRef value = llvm_emit_const_initializer(c, initializer, false);
 
 	// Create a global const.
 	AlignSize alignment = type_alloca_alignment(initializer->type);
@@ -1471,7 +1471,7 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 {
 	if (const_init->type->type_kind == TYPE_VECTOR)
 	{
-		LLVMValueRef val = llvm_emit_const_initializer(c, const_init);
+		LLVMValueRef val = llvm_emit_const_initializer(c, const_init, !top);
 		llvm_store_raw(c, ref, val);
 		return;
 	}
@@ -4746,7 +4746,7 @@ static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue 
 	if (llvm_is_global_eval(c) || type_flat_is_vector(expr->type) || type_flatten(expr->type)->type_kind == TYPE_BITSTRUCT)
 	{
 		ASSERT(type_flatten(expr->type)->type_kind != TYPE_SLICE);
-		llvm_value_set(value, llvm_emit_const_initializer(c, expr->const_expr.initializer), expr->type);
+		llvm_value_set(value, llvm_emit_const_initializer(c, expr->const_expr.initializer, false), expr->type);
 		return;
 	}
 	llvm_value_set_address_abi_aligned(c, value, llvm_emit_alloca_aligned(c, expr->type, "literal"), expr->type);
@@ -4803,7 +4803,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 				ConstInitializer *init = expr->const_expr.slice_init;
 				if (llvm_is_global_eval(c) || type_flat_is_vector(expr->type) || type_flatten(expr->type)->type_kind == TYPE_BITSTRUCT)
 				{
-					LLVMValueRef value = llvm_emit_const_initializer(c, init);
+					LLVMValueRef value = llvm_emit_const_initializer(c, init, false);
 					AlignSize alignment = type_alloca_alignment(init->type);
 					LLVMTypeRef val_type = llvm_get_type(c, init->type);
 					LLVMValueRef global_copy = llvm_add_global_raw(c, ".__const_slice", val_type, alignment);

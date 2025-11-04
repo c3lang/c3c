@@ -1766,7 +1766,7 @@ static void vector_const_initializer_convert_to_type(ConstInitializer *initializ
 			vector_const_initializer_convert_to_type(initializer->init_array_value.element, to_type);
 			break;
 	}
-	initializer->type = type_flatten(to_type);
+	const_init_set_type(initializer, to_type);
 }
 
 /**
@@ -1987,7 +1987,7 @@ static void cast_vec_to_arr(Expr *expr, Type *to_type)
 
 	ASSERT(expr->const_expr.const_kind == CONST_INITIALIZER);
 	ConstInitializer *list = expr->const_expr.initializer;
-	list->type = type_flatten(to_type);
+	const_init_set_type(list, to_type);
 	expr->type = to_type;
 }
 
@@ -2398,6 +2398,7 @@ static void cast_arr_to_vec(Expr *expr, Type *to_type)
 		ASSERT(expr->const_expr.const_kind == CONST_INITIALIZER);
 		ConstInitializer *list = expr->const_expr.initializer;
 		list->type = type_flatten(to_temp);
+		list->is_simd = type_is_simd(to_temp);
 		expr->type = to_temp;
 	}
 	else
