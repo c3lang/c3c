@@ -499,6 +499,7 @@ typedef struct BuildOptions_
 	const char **libraries_to_fetch;
 	const char **files;
 	const char *test_filter;
+	const char *test_log_level;
 	const char **args;
 	const char **feature_names;
 	const char **removed_feature_names;

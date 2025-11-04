@@ -18,6 +18,8 @@ struct TestContext
 	String test_filter;
 	<* Triggers debugger breakpoint when assert or test:: checks failed *>
 	bool breakpoint_on_assert;
+	<* Controls level of printed logs *>
+	LogPriority log_level;
 
 	// internal state
 	bool assert_print_backtrace;
@@ -183,6 +185,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	{
 		.assert_print_backtrace = true,
 		.breakpoint_on_assert = false,
+		.log_level = LogPriority.ERROR,
 		.test_filter = "",
 		.has_ansi_codes = terminal_has_ansi_codes(),
 		.stored.allocator = mem,
@@ -215,11 +218,36 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 				}
 				context.test_filter = args[i + 1];
 				i++;
+			case "--test-log-level":
+				if (i == args.len - 1)
+				{
+					io::printn("Missing log level for argument `--test-log-level`.");
+					return false;
+				}
+				args[i + 1].convert_to_lower();
+				switch (args[i + 1])
+				{
+					case "verbose": context.log_level = LogPriority.VERBOSE;
+					case "debug": context.log_level = LogPriority.DEBUG;
+					case "info": context.log_level = LogPriority.INFO;
+					case "warn": context.log_level = LogPriority.WARN;
+					case "error": context.log_level = LogPriority.ERROR;
+					case "critical": context.log_level = LogPriority.CRITICAL;
+					default:
+						io::print("Log level given to `--test-log-level` is not one of: ");
+						$foreach $level : LogPriority.names[:^1]:
+						io::printf("%s, ", @str_lower($level));
+						$endforeach
+						io::printn(@str_lower(LogPriority.names[^1]));
+						return false;
+				}
+				i++;
 			default:
 				io::printfn("Unknown argument: %s", args[i]);
 		}
 	}
 	test_context = &context;
+	log::set_priority_all(test_context.log_level);
 
 	if (sort_tests)
 	{
