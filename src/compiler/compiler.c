@@ -1500,6 +1500,7 @@ void compile()
 	setup_int_define("ARCH_TYPE", (uint64_t)compiler.platform.arch, type_int);
 	setup_int_define("MEMORY_ENVIRONMENT", (uint64_t)compiler.build.memory_environment, type_int);
 	setup_bool_define("COMPILER_LIBC_AVAILABLE", link_libc());
+	setup_bool_define("IMPLEMENT_LIBC", implement_libc());
 	setup_int_define("COMPILER_OPT_LEVEL", (uint64_t)compiler.build.optlevel, type_int);
 	setup_int_define("OS_TYPE", (uint64_t)compiler.platform.os, type_int);
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)compiler.build.optsize, type_int);
