@@ -2123,7 +2123,7 @@ INLINE bool link_libc(void)
 
 INLINE bool implement_libc(void)
 {
-	return compiler.build.implement_libc != IMPLEMENT_LIBC_OFF;
+	return compiler.build.implement_libc == IMPLEMENT_LIBC_OFF;
 }
 
 INLINE bool strip_unused(void)
