@@ -234,7 +234,7 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_STRING_ARRAY("Additional linker arguments", "link-args", ", ");
 	TARGET_VIEW_STRING_ARRAY("Linker arguments (override)", "link-args-override", ", ");
 	TARGET_VIEW_BOOL("Link libc", "link-libc");
-	TARGET_VIEW_BOOL("Link libc", "link-libc");
+	TARGET_VIEW_BOOL("Implement libc", "implement-libc");
 	TARGET_VIEW_STRING("MacOS SDK directory", "macossdk");
 	TARGET_VIEW_SETTING("Memory environment", "memory-env", memory_environment);
 	TARGET_VIEW_BOOL("Don't generate/require main function", "no-entry");
