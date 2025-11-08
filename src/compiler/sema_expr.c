@@ -6103,11 +6103,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 				case CT_TYPES:
 					RETURN_SEMA_ERROR(parent, "You cannot take the typeid of a compile time type.");
 				default:
-					expr->type = type_typeid;
-					expr->expr_kind = EXPR_CONST;
-					expr->const_expr.const_kind = CONST_TYPEID;
-					expr->const_expr.typeid = parent->type_expr->type->canonical;
-					expr->resolve_status = RESOLVE_DONE;
+					expr_rewrite_const_typeid(expr, parent->type_expr->type->canonical);
 					return true;
 			}
 			UNREACHABLE
@@ -11737,8 +11733,15 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 			if (mutate) sema_expr_flatten_const_ident(expr->access_resolved_expr.parent);
 			return true;
 		case EXPR_TYPEINFO:
-			expr_rewrite_const_typeid(expr, expr->type_expr->type);
-			return true;
+			switch (expr->type_expr->type->type_kind)
+			{
+				case CT_TYPES:
+					RETURN_SEMA_ERROR(expr, "You cannot take the typeid of a compile time type.");
+				default:
+					expr_rewrite_const_typeid(expr, expr->type_expr->type);
+					return true;
+			}
+			UNREACHABLE
 		case EXPR_CT_IDENT:
 			if (mutate && !sema_cast_ct_ident_rvalue(context, expr)) return false;
 			break;

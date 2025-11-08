@@ -16,6 +16,7 @@
 - Fix fmod `a %= 0f`.
 - Regression vector ABI: initializing a struct containing a NPOT vector with a constant value would crash LLVM. #2559
 - Error message with hashmap shows "mangled" name instead of original #2562.
+- Passing a compile time type implicitly converted to a typeid would crash instead of producing an error. #2568
 
 ### Stdlib changes
 
