@@ -1218,6 +1218,9 @@ Type *type_get_indexed_type(Type *type)
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_VECTOR:
 			return type->array.base;
+		case TYPE_CONST_ENUM:
+			type = enum_inner_type(type);
+			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->decl->distinct->type;
 			goto RETRY;
