@@ -399,6 +399,19 @@ fn Path? Path.parent(self)
 	{
 		if (is_separator(c, self.env))
 		{
+			if (i == 0) return { self.path_string[..0], self.env, null };
+			if (self.env == WIN32 && i > 1)
+			{
+				if (try volume_len = volume_name_len(self.path_string, WIN32))
+				{
+					// Handle C:\foo
+					if (volume_len == i)
+					{
+						if (i + 1 == self.path_string.len) return NO_PARENT?;
+						return { self.path_string[:i + 1], WIN32, null };
+					}
+				}
+			}
 			return { self.path_string[:i], self.env, null };
 		}
 	}

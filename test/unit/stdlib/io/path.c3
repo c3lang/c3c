@@ -34,6 +34,13 @@ fn void test_parent()
 	p = path::new(mem, "/a/b/c", path_env: PathEnv.WIN32)!!;
 	assert(p.parent().str_view()!! == `\a\b`);
 	p.free();
+	p = path::new(mem, "/a/", path_env: PathEnv.POSIX)!!;
+	assert(p.parent().str_view()!! == "/");
+	p.free();
+	p = path::new(mem, `C:\foo`, path_env: WIN32)!!;
+    assert(p.parent().str_view()!! == `C:\`);
+    assert(@catch(p.parent().parent()));
+    p.free();
 }
 
 fn void test_path_normalized() => mem::@scoped(tmem)

@@ -18,6 +18,7 @@
 - Error message with hashmap shows "mangled" name instead of original #2562.
 - Passing a compile time type implicitly converted to a typeid would crash instead of producing an error. #2568
 - Compiler assert with const enum based on vector #2566
+- Fix to `Path` handling `c:\foo` and `\home` parent. #2569
 
 ### Stdlib changes
 
