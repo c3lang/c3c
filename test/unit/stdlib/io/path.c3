@@ -1,5 +1,18 @@
 module std::io::path @test;
 
+fn void test_append()
+{
+	Path p = path::new(mem, "/", POSIX)!!;
+	Path p2 = p.append(mem, "hello")!!;
+	test::eq(p2.str_view(), "/hello");
+	p.free();
+	p2.free();
+	p = path::new(mem, "c:\\", WIN32)!!;
+	p2 = p.append(mem, "hello")!!;
+	assert(p2.str_view() == "c:\\hello");
+	p.free();
+	p2.free();
+}
 fn void test_dot()
 {
 	Path p = path::new(mem, ".")!!;

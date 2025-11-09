@@ -19,6 +19,7 @@
 - Passing a compile time type implicitly converted to a typeid would crash instead of producing an error. #2568
 - Compiler assert with const enum based on vector #2566
 - Fix to `Path` handling `c:\foo` and `\home` parent. #2569
+- Fix appending to `c:\` or `\` #2569.
 
 ### Stdlib changes
 
