@@ -144,6 +144,17 @@ typedef enum
 
 typedef enum
 {
+	TESTLOGLEVEL_NOT_SET = -1,
+	TESTLOGLEVEL_VERBOSE = 0,
+	TESTLOGLEVEL_DEBUG = 1,
+	TESTLOGLEVEL_INFO = 2,
+	TESTLOGLEVEL_WARN = 3,
+	TESTLOGLEVEL_ERROR = 4,
+	TESTLOGLEVEL_CRITICAL = 5,
+} TestLogLevel;
+
+typedef enum
+{
 	PANIC_NOT_SET = -1,
 	PANIC_OFF = 0,
 	PANIC_ON = 1,
@@ -499,7 +510,6 @@ typedef struct BuildOptions_
 	const char **libraries_to_fetch;
 	const char **files;
 	const char *test_filter;
-	const char *test_log_level;
 	const char **args;
 	const char **feature_names;
 	const char **removed_feature_names;
@@ -512,6 +522,7 @@ typedef struct BuildOptions_
 	const char **unchecked_directories;
 	LinkerType linker_type;
 	ValidationLevel validation_level;
+	TestLogLevel test_log_level;
 	Ansi ansi;
 	bool test_breakpoint;
 	bool test_quiet;
@@ -726,6 +737,7 @@ typedef struct
 	SizeOptimizationLevel optsize;
 	SingleModule single_module;
 	ValidationLevel validation_level;
+	TestLogLevel test_log_level;
 	UseStdlib use_stdlib;
 	EmitStdlib emit_stdlib;
 	LinkLibc link_libc;

@@ -322,11 +322,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 				vec_add(target->args, "--test-filter");
 				vec_add(target->args, options->test_filter);
 			}
-			if (options->test_log_level)
-			{
-				vec_add(target->args, "--test-log-level");
-				vec_add(target->args, options->test_log_level);
-			}
+			set_if_updated(target->test_log_level, options->test_log_level);
 			if (options->test_breakpoint) vec_add(target->args, "--test-breakpoint");
 			if (options->test_nosort) vec_add(target->args, "--test-nosort");
 			if (options->test_quiet) vec_add(target->args, "--test-quiet");

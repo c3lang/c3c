@@ -785,12 +785,6 @@ static void parse_option(BuildOptions *options)
 				options->test_filter = next_arg();
 				return;
 			}
-			if (match_longopt("test-log-level"))
-			{
-				if (at_end() || next_is_opt()) FAIL_WITH_ERR_LONG("error: --test-log-level needs an argument.");
-				options->test_log_level = next_arg();
-				return;
-			}
 			if (match_longopt("test-breakpoint"))
 			{
 				options->test_breakpoint = true;
@@ -874,6 +868,11 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("optlevel")))
 			{
 				options->optlevel = parse_opt_select(OptimizationLevel, argopt, optlevels);
+				return;
+			}
+			if ((argopt = match_argopt("test-log-level")))
+			{
+				options->test_log_level = parse_opt_select(TestLogLevel, argopt, test_log_levels);
 				return;
 			}
 			if ((argopt = match_argopt("merge-functions")))
