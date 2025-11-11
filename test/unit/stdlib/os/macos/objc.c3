@@ -6,11 +6,9 @@ fn void test_application_activation_policy()
 	ApplicationActivationPolicy accessory = ApplicationActivationPolicy.ACCESSORY;
 	ApplicationActivationPolicy prohibited = ApplicationActivationPolicy.PROHIBITED;
 	
-	assert(regular.val == 0);
-	assert(accessory.val == 1);
-	assert(prohibited.val == 2);
-	
-	assert(@typeid(regular.val) == NSInteger.typeid);
+	assert(regular == 0);
+	assert(accessory == 1);
+	assert(prohibited == 2);
 }
 
 fn void test_backing_store()
@@ -19,11 +17,9 @@ fn void test_backing_store()
 	BackingStore nonretained = BackingStore.NONRETAINED;
 	BackingStore buffered = BackingStore.BUFFERED;
 	
-	assert(retained.val == 0);
-	assert(nonretained.val == 1);
-	assert(buffered.val == 2);
-	
-	assert(@typeid(retained.val) == NSUInteger.typeid);
+	assert(retained == 0);
+	assert(nonretained == 1);
+	assert(buffered == 2);
 }
 
 fn void test_event_type()
@@ -34,34 +30,36 @@ fn void test_event_type()
 	EventType smartMagnify = EventType.SMART_MAGNIFY;
 	EventType directTouch = EventType.DIRECT_TOUCH;
 	
-	assert(keyDown.val == 10);
-	assert(keyUp.val == 11);
-	assert(mouseDown.val == 1);
-	assert(smartMagnify.val == 32);
-	assert(directTouch.val == 37);
+	assert(keyDown == 10);
+	assert(keyUp == 11);
+	assert(mouseDown == 1);
+	assert(smartMagnify == 32);
+	assert(directTouch == 37);
 	
-	// Verify backing type is NSUInteger (unsigned)
-	assert(@typeid(keyDown.val) == NSUInteger.typeid);
+	NSUInteger raw = 10;
+	EventType converted = (EventType)raw;
+	assert(converted == EventType.KEY_DOWN);
+}
+
+fn void test_event_mask_from_type()
+{
+	EventMask maskMouseDown = event_mask_from_type(EventType.LEFT_MOUSE_DOWN);
+	EventMask maskKeyDown = event_mask_from_type(EventType.KEY_DOWN);
+	EventMask maskKeyUp = event_mask_from_type(EventType.KEY_UP);
+	EventMask maskSmartMagnify = event_mask_from_type(EventType.SMART_MAGNIFY);
+	EventMask maskDirectTouch = event_mask_from_type(EventType.DIRECT_TOUCH);
 	
-	// Test helper function found case
-	if (try found = event_type_from(10))
-	{
-		assert(found.val == EventType.KEY_DOWN.val);
-	}
-	else
-	{
-		unreachable("Should have found KEY_DOWN event type");
-	}
+	assert(maskMouseDown == EventMask.LEFT_MOUSE_DOWN);
+	assert(maskKeyDown == EventMask.KEY_DOWN);
+	assert(maskKeyUp == EventMask.KEY_UP);
+	assert(maskSmartMagnify == EventMask.SMART_MAGNIFY);
+	assert(maskDirectTouch == EventMask.DIRECT_TOUCH);
 	
-	// Test helper function not found case
-	if (catch event_type_from(9999))
-	{
-		// Expected - invalid event type
-	}
-	else
-	{
-		unreachable("Should not have found event type 9999");
-	}
+	assert(maskMouseDown == (1ul << 1));
+	assert(maskKeyDown == (1ul << 10));
+	assert(maskKeyUp == (1ul << 11));
+	assert(maskSmartMagnify == (1ul << 32));
+	assert(maskDirectTouch == (1ul << 37));
 }
 
 fn void test_event_mask()
@@ -72,16 +70,14 @@ fn void test_event_mask()
 	EventMask directTouchMask = EventMask.DIRECT_TOUCH;
 	EventMask anyMask = EventMask.ANY;
 	
-	assert(keyDownMask.val == (1ul << 10));
-	assert(keyUpMask.val == (1ul << 11));
-	assert(smartMagnifyMask.val == (1ul << 32));
-	assert(directTouchMask.val == (1ul << 37));
-	assert(anyMask.val == ulong.max);
+	assert(keyDownMask == (1ul << 10));
+	assert(keyUpMask == (1ul << 11));
+	assert(smartMagnifyMask == (1ul << 32));
+	assert(directTouchMask == (1ul << 37));
+	assert(anyMask == ulong.max);
 	
-	assert(@typeid(keyDownMask.val) == ulong.typeid);
-	
-	ulong combined = keyDownMask.val | keyUpMask.val;
-	assert(combined == ((1ul << 10) | (1ul << 11)));
+	EventMask combined = EventMask.KEY_DOWN | EventMask.FLAGS_CHANGED;
+	assert(combined == ((1ul << 10) | (1ul << 12)));
 }
 
 fn void test_event_modifier_flag()
@@ -91,14 +87,12 @@ fn void test_event_modifier_flag()
 	EventModifierFlag option = EventModifierFlag.OPTION;
 	EventModifierFlag control = EventModifierFlag.CONTROL;
 	
-	assert(shift.val == (1 << 17));
-	assert(command.val == (1 << 20));
-	assert(option.val == (1 << 19));
-	assert(control.val == (1 << 18));
+	assert(shift == (1 << 17));
+	assert(command == (1 << 20));
+	assert(option == (1 << 19));
+	assert(control == (1 << 18));
 	
-	assert(@typeid(shift.val) == NSUInteger.typeid);
-	
-	NSUInteger cmdShift = command.val | shift.val;
+	NSUInteger cmdShift = (NSUInteger)command | (NSUInteger)shift;
 	assert(cmdShift == ((1 << 20) | (1 << 17)));
 }
 
@@ -109,15 +103,13 @@ fn void test_window_style_mask()
 	WindowStyleMask resizable = WindowStyleMask.RESIZABLE;
 	WindowStyleMask borderless = WindowStyleMask.BORDERLESS;
 	
-	assert(titled.val == (1 << 0));
-	assert(closable.val == (1 << 1));
-	assert(resizable.val == (1 << 3));
-	assert(borderless.val == 0);
+	assert(titled == (1 << 0));
+	assert(closable == (1 << 1));
+	assert(resizable == (1 << 3));
+	assert(borderless == 0);
 	
-	assert(@typeid(titled.val) == NSUInteger.typeid);
-	
-	NSUInteger standard = titled.val | closable.val | resizable.val;
-	assert(standard == ((1 << 0) | (1 << 1) | (1 << 3)));
+	WindowStyleMask style = titled | closable | resizable;
+	assert(style == ((1 << 0) | (1 << 1) | (1 << 3)));
 }
 
 fn void test_window_collection_behavior()
@@ -128,16 +120,14 @@ fn void test_window_collection_behavior()
 	WindowCollectionBehavior fullscreen = WindowCollectionBehavior.FULL_SCREEN_PRIMARY;
 	WindowCollectionBehavior primary = WindowCollectionBehavior.PRIMARY;
 	
-	assert(def.val == 0);
-	assert(canJoin.val == (1 << 0));
-	assert(managed.val == (1 << 2));
-	assert(fullscreen.val == (1 << 7));
-	assert(primary.val == (1 << 16));
+	assert(def == 0);
+	assert(canJoin == (1 << 0));
+	assert(managed == (1 << 2));
+	assert(fullscreen == (1 << 7));
+	assert(primary == (1 << 16));
 	
-	assert(@typeid(canJoin.val) == NSUInteger.typeid);
-	
-	NSUInteger combo = managed.val | fullscreen.val;
-	assert(combo == ((1 << 2) | (1 << 7)));
+	WindowCollectionBehavior combined = managed | fullscreen;
+	assert(combined == ((1 << 2) | (1 << 7)));
 }
 
 fn void test_window_level()
@@ -147,12 +137,10 @@ fn void test_window_level()
 	WindowLevel modalPanel = WindowLevel.MODAL_PANEL;
 	WindowLevel screenSaver = WindowLevel.SCREEN_SAVER;
 	
-	assert(normal.val == 0);
-	assert(floating.val == 3);
-	assert(modalPanel.val == 8);
-	assert(screenSaver.val == 1000);
-	
-	assert(@typeid(normal.val) == NSInteger.typeid);
+	assert(normal == 0);
+	assert(floating == 3);
+	assert(modalPanel == 8);
+	assert(screenSaver == 1000);
 }
 
 fn void test_window_tabbing_mode()
@@ -161,11 +149,9 @@ fn void test_window_tabbing_mode()
 	WindowTabbingMode preferred = WindowTabbingMode.PREFERRED;
 	WindowTabbingMode disallowed = WindowTabbingMode.DISALLOWED;
 	
-	assert(automatic.val == 0);
-	assert(preferred.val == 1);
-	assert(disallowed.val == 2);
-	
-	assert(@typeid(automatic.val) == NSInteger.typeid);
+	assert(automatic == 0);
+	assert(preferred == 1);
+	assert(disallowed == 2);
 }
 
 fn void test_nsuinteger_nsinteger_architecture()
@@ -182,13 +168,14 @@ fn void test_nsuinteger_nsinteger_architecture()
 	}
 }
 
+// EventMask requires 64-bit values even on 32-bit systems
 fn void test_event_mask_64bit_values()
 {
 	EventMask smartMagnify = EventMask.SMART_MAGNIFY;
 	EventMask directTouch = EventMask.DIRECT_TOUCH;
 	
-	assert(smartMagnify.val == (1ul << 32));
-	assert(directTouch.val == (1ul << 37));
+	assert(smartMagnify == (1ul << 32));
+	assert(directTouch == (1ul << 37));
 
-	assert(@typeid(smartMagnify.val) == ulong.typeid);
+	assert(EventMask.sizeof == ulong.sizeof);
 }

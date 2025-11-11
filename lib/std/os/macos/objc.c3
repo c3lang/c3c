@@ -71,27 +71,27 @@ extern fn ObjcIvar getInstanceVariable(ObjcId id, ZString name, void* outValue) 
 extern fn ObjcIvar setInstanceVariable(ObjcId id, ZString name, void* value) @cname("object_setInstanceVariable");
 extern fn ObjcClass allocateClassPair(ObjcClass cls, ZString name, uint extraBytes) @cname("objc_allocateClassPair");
 
-enum StatusItemLength : (double val)
+enum StatusItemLength : const inline double
 {
     VARIABLE = -1.0,
     SQUARE   = -2.0,
 }
 
-enum ApplicationActivationPolicy : (NSInteger val)
+enum ApplicationActivationPolicy : const inline NSInteger
 {
 	REGULAR    = 0,
 	ACCESSORY  = 1,
 	PROHIBITED = 2,
 }
 
-enum BackingStore : (NSUInteger val)
+enum BackingStore : const inline NSUInteger
 {
 	RETAINED    = 0,
 	NONRETAINED = 1,
 	BUFFERED    = 2
 }
 
-enum EventType : (NSUInteger val)
+enum EventType : const inline NSUInteger
 {
 	LEFT_MOUSE_DOWN     = 1,
 	LEFT_MOUSE_UP       = 2,
@@ -129,85 +129,49 @@ enum EventType : (NSUInteger val)
 	CHANGE_MODE         = 38,
 }
 
-fn EventType? event_type_from(NSUInteger val)
+enum EventMask : const inline ulong
 {
-    switch(val)
-    {
-        case EventType.LEFT_MOUSE_DOWN.val:     return LEFT_MOUSE_DOWN;
-        case EventType.LEFT_MOUSE_UP.val:       return LEFT_MOUSE_UP;
-        case EventType.RIGHT_MOUSE_DOWN.val:    return RIGHT_MOUSE_DOWN;
-        case EventType.RIGHT_MOUSE_UP.val:      return RIGHT_MOUSE_UP;
-        case EventType.MOUSE_MOVED.val:         return MOUSE_MOVED;
-        case EventType.LEFT_MOUSE_DRAGGED.val:  return LEFT_MOUSE_DRAGGED;
-        case EventType.RIGHT_MOUSE_DRAGGED.val: return RIGHT_MOUSE_DRAGGED;
-        case EventType.MOUSE_ENTERED.val:       return MOUSE_ENTERED;
-        case EventType.MOUSE_EXITED.val:        return MOUSE_EXITED;
-        case EventType.KEY_DOWN.val:            return KEY_DOWN;
-        case EventType.KEY_UP.val:              return KEY_UP;
-        case EventType.FLAGS_CHANGED.val:       return FLAGS_CHANGED;
-        case EventType.APPKIT_DEFINED.val:      return APPKIT_DEFINED;
-        case EventType.SYSTEM_DEFINED.val:      return SYSTEM_DEFINED;
-        case EventType.APPLICATION_DEFINED.val: return APPLICATION_DEFINED;
-        case EventType.PERIODIC.val:            return PERIODIC;
-        case EventType.CURSOR_UPDATE.val:       return CURSOR_UPDATE;
-        case EventType.SCROLL_WHEEL.val:        return SCROLL_WHEEL;
-        case EventType.TABLET_POINT.val:        return TABLET_POINT;
-        case EventType.TABLET_PROXIMITY.val:    return TABLET_PROXIMITY;
-        case EventType.OTHER_MOUSE_DOWN.val:    return OTHER_MOUSE_DOWN;
-        case EventType.OTHER_MOUSE_UP.val:      return OTHER_MOUSE_UP;
-        case EventType.OTHER_MOUSE_DRAGGED.val: return OTHER_MOUSE_DRAGGED;
-        case EventType.GESTURE.val:             return GESTURE;
-        case EventType.MAGNIFY.val:             return MAGNIFY;
-        case EventType.SWIPE.val:               return SWIPE;
-        case EventType.ROTATE.val:              return ROTATE;
-        case EventType.BEGIN_GESTURE.val:       return BEGIN_GESTURE;
-        case EventType.END_GESTURE.val:         return END_GESTURE;
-        case EventType.SMART_MAGNIFY.val:       return SMART_MAGNIFY;
-        case EventType.QUICK_LOOK.val:          return QUICK_LOOK;
-        case EventType.PRESSURE.val:            return PRESSURE;
-        case EventType.DIRECT_TOUCH.val:        return DIRECT_TOUCH;
-        case EventType.CHANGE_MODE.val:         return CHANGE_MODE;
-        default: return UNKNOWN_EVENT?;
-    }
+	LEFT_MOUSE_DOWN     = 1ul << EventType.LEFT_MOUSE_DOWN,
+	LEFT_MOUSE_UP       = 1ul << EventType.LEFT_MOUSE_UP,
+	RIGHT_MOUSE_DOWN    = 1ul << EventType.RIGHT_MOUSE_DOWN,
+	RIGHT_MOUSE_UP      = 1ul << EventType.RIGHT_MOUSE_UP,
+	MOUSE_MOVED         = 1ul << EventType.MOUSE_MOVED,
+	LEFT_MOUSE_DRAGGED  = 1ul << EventType.LEFT_MOUSE_DRAGGED,
+	RIGHT_MOUSE_DRAGGED = 1ul << EventType.RIGHT_MOUSE_DRAGGED,
+	MOUSE_ENTERED       = 1ul << EventType.MOUSE_ENTERED,
+	MOUSE_EXITED        = 1ul << EventType.MOUSE_EXITED,
+	KEY_DOWN            = 1ul << EventType.KEY_DOWN,
+	KEY_UP              = 1ul << EventType.KEY_UP,
+	FLAGS_CHANGED       = 1ul << EventType.FLAGS_CHANGED,
+	APPKIT_DEFINED      = 1ul << EventType.APPKIT_DEFINED,
+	SYSTEM_DEFINED      = 1ul << EventType.SYSTEM_DEFINED,
+	APPLICATION_DEFINED = 1ul << EventType.APPLICATION_DEFINED,
+	PERIODIC            = 1ul << EventType.PERIODIC,
+	CURSOR_UPDATE       = 1ul << EventType.CURSOR_UPDATE,
+	ROTATE              = 1ul << EventType.ROTATE,
+	BEGIN_GESTURE       = 1ul << EventType.BEGIN_GESTURE,
+	END_GESTURE         = 1ul << EventType.END_GESTURE,
+	SCROLL_WHEEL        = 1ul << EventType.SCROLL_WHEEL,
+	TABLET_POINT        = 1ul << EventType.TABLET_POINT,
+	TABLET_PROXIMITY    = 1ul << EventType.TABLET_PROXIMITY,
+	OTHER_MOUSE_DOWN    = 1ul << EventType.OTHER_MOUSE_DOWN,
+	OTHER_MOUSE_UP      = 1ul << EventType.OTHER_MOUSE_UP,
+	OTHER_MOUSE_DRAGGED = 1ul << EventType.OTHER_MOUSE_DRAGGED,
+	GESTURE             = 1ul << EventType.GESTURE,
+	MAGNIFY             = 1ul << EventType.MAGNIFY,
+	SWIPE               = 1ul << EventType.SWIPE,
+	SMART_MAGNIFY       = 1ul << EventType.SMART_MAGNIFY,
+	QUICK_LOOK          = 1ul << EventType.QUICK_LOOK,
+	PRESSURE            = 1ul << EventType.PRESSURE,
+	DIRECT_TOUCH        = 1ul << EventType.DIRECT_TOUCH,
+	CHANGE_MODE         = 1ul << EventType.CHANGE_MODE,
+	ANY                 = ulong.max,
 }
 
-enum EventMask : (ulong val)
-{
-	LEFT_MOUSE_DOWN     = 1 << EventType.LEFT_MOUSE_DOWN.val,
-	LEFT_MOUSE_UP       = 1 << EventType.LEFT_MOUSE_UP.val,
-	RIGHT_MOUSE_DOWN    = 1 << EventType.RIGHT_MOUSE_DOWN.val,
-    RIGHT_MOUSE_UP      = 1 << EventType.RIGHT_MOUSE_UP.val,
-    MOUSE_MOVED         = 1 << EventType.MOUSE_MOVED.val,
-	LEFT_MOUSE_DRAGGED  = 1 << EventType.LEFT_MOUSE_DRAGGED.val,
-	RIGHT_MOUSE_DRAGGED = 1 << EventType.RIGHT_MOUSE_DRAGGED.val,
-	MOUSE_ENTERED       = 1 << EventType.MOUSE_ENTERED.val,
-	MOUSE_EXITED        = 1 << EventType.MOUSE_EXITED.val,
-	KEY_DOWN            = 1 << EventType.KEY_DOWN.val,
-	KEY_UP              = 1 << EventType.KEY_UP.val,
-	FLAGS_CHANGED       = 1 << EventType.FLAGS_CHANGED.val,
-	APPKIT_DEFINED      = 1 << EventType.APPKIT_DEFINED.val,
-	SYSTEM_DEFINED      = 1 << EventType.SYSTEM_DEFINED.val,
-	APPLICATION_DEFINED = 1 << EventType.APPLICATION_DEFINED.val,
-	PERIODIC            = 1 << EventType.PERIODIC.val,
-	CURSOR_UPDATE       = 1 << EventType.CURSOR_UPDATE.val,
-	SCROLL_WHEEL        = 1 << EventType.SCROLL_WHEEL.val,
-	TABLET_POINT        = 1 << EventType.TABLET_POINT.val,
-	TABLET_PROXIMITY    = 1 << EventType.TABLET_PROXIMITY.val,
-	OTHER_MOUSE_DOWN    = 1 << EventType.OTHER_MOUSE_DOWN.val,
-	OTHER_MOUSE_UP      = 1 << EventType.OTHER_MOUSE_UP.val,
-	OTHER_MOUSE_DRAGGED = 1 << EventType.OTHER_MOUSE_DRAGGED.val,
-    GESTURE             = 1 << EventType.GESTURE.val,
-    MAGNIFY             = 1 << EventType.MAGNIFY.val,
-    SWIPE               = 1 << EventType.SWIPE.val,
-    ROTATE              = 1 << EventType.ROTATE.val,
-    BEGIN_GESTURE       = 1 << EventType.BEGIN_GESTURE.val,
-    END_GESTURE         = 1 << EventType.END_GESTURE.val,
-    SMART_MAGNIFY       = 1ul << EventType.SMART_MAGNIFY.val,
-    DIRECT_TOUCH        = 1ul << EventType.DIRECT_TOUCH.val,
-    ANY                 = ulong.max,
-}
 
-enum EventModifierFlag : (NSUInteger val)
+fn EventMask event_mask_from_type(EventType type) => (EventMask)1ul << type;
+
+enum EventModifierFlag : const inline NSUInteger
 {
 	CAPS_LOCK   = 1 << 16,
 	SHIFT       = 1 << 17,
@@ -219,7 +183,7 @@ enum EventModifierFlag : (NSUInteger val)
 	HELP        = 1 << 22,
 }
 
-enum WindowCollectionBehavior : (NSUInteger val)
+enum WindowCollectionBehavior : const inline NSUInteger
 {
 	DEFAULT                       = 0,
 	CAN_JOIN_ALL_SPACES           = 1 << 0,
@@ -239,7 +203,7 @@ enum WindowCollectionBehavior : (NSUInteger val)
 	CAN_JOIN_ALL_APPLICATIONS     = 1 << 18,
 }
 
-enum WindowLevel : (NSInteger val)
+enum WindowLevel : const inline NSInteger
 {
 	NORMAL          = 0,
 	FLOATING        = 3,
@@ -252,7 +216,7 @@ enum WindowLevel : (NSInteger val)
 	SCREEN_SAVER    = 1000,
 }
 
-enum WindowStyleMask : (NSUInteger val)
+enum WindowStyleMask : const inline NSUInteger
 {
 	BORDERLESS                = 0,
 	TITLED                    = 1 << 0,
@@ -269,7 +233,7 @@ enum WindowStyleMask : (NSUInteger val)
 	HUD_WINDOW                = 1 << 13
 }
 
-enum WindowTabbingMode : (NSInteger val)
+enum WindowTabbingMode : const inline NSInteger
 {
 	AUTOMATIC   = 0,
 	DISALLOWED  = 2,
