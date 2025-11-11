@@ -1546,6 +1546,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		RETURN_SEMA_ERROR(var, "Add an explicit type to the variable if you want to iterate over an initializer list.");
 	}
 
+	Type *original_type = enumerator->type;
 	// In the case of a single `*`, then we will implicitly dereference that pointer.
 	if (canonical->type_kind == TYPE_POINTER)
 	{
@@ -1555,6 +1556,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			RETURN_SEMA_ERROR(enumerator, "It is not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
 		}
 		if (!sema_expr_rewrite_insert_deref(context, enumerator)) return false;
+		canonical = enumerator->type->canonical;
 	}
 
 	// At this point we should have dereferenced any pointer or bailed.
@@ -1600,7 +1602,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			if (value_type) goto SKIP_OVERLOAD;
 
 			// Otherwise this is an error.
-			RETURN_SEMA_ERROR(enumerator, "It's not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
+			RETURN_SEMA_ERROR(enumerator, "It's not possible to enumerate an expression of type %s.", type_quoted_error_string(original_type));
 		}
 		// If we want the value "by ref" and there isn't a &[], then this is an error.
 		if (!by_ref && value_by_ref)

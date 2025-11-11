@@ -20,6 +20,7 @@
 - Compiler assert with const enum based on vector #2566
 - Fix to `Path` handling `c:\foo` and `\home` parent. #2569
 - Fix appending to `c:\` or `\` #2569.
+- When encountering a foreach over a `ZString*` it would not properly emit a compilation error, but hit an assert #2573.
 
 ### Stdlib changes
 
