@@ -171,7 +171,7 @@ fn EventType? event_type_from(int val)
     }
 }
 
-enum EventMask : (long val)
+enum EventMask : (ulong val)
 {
 	LEFT_MOUSE_DOWN     = 1 << EventType.LEFT_MOUSE_DOWN.val,
 	LEFT_MOUSE_UP       = 1 << EventType.LEFT_MOUSE_UP.val,
@@ -202,9 +202,9 @@ enum EventMask : (long val)
     ROTATE              = 1 << EventType.ROTATE.val,
     BEGIN_GESTURE       = 1 << EventType.BEGIN_GESTURE.val,
     END_GESTURE         = 1 << EventType.END_GESTURE.val,
-    SMART_MAGNIFY       = 1L << EventType.SMART_MAGNIFY.val,
-    DIRECT_TOUCH        = 1L << EventType.DIRECT_TOUCH.val,
-    ANY                 = long.max,
+    SMART_MAGNIFY       = 1ul << EventType.SMART_MAGNIFY.val,
+    DIRECT_TOUCH        = 1ul << EventType.DIRECT_TOUCH.val,
+    ANY                 = ulong.max,
 }
 
 enum EventModifierFlag : (int val)
