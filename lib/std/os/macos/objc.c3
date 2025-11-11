@@ -77,21 +77,21 @@ enum StatusItemLength : (double val)
     SQUARE   = -2.0,
 }
 
-enum ApplicationActivationPolicy : (int val)
+enum ApplicationActivationPolicy : (NSInteger val)
 {
 	REGULAR    = 0,
 	ACCESSORY  = 1,
 	PROHIBITED = 2,
 }
 
-enum BackingStore : (int val)
+enum BackingStore : (NSUInteger val)
 {
 	RETAINED    = 0,
 	NONRETAINED = 1,
 	BUFFERED    = 2
 }
 
-enum EventType : (long val)
+enum EventType : (NSUInteger val)
 {
 	LEFT_MOUSE_DOWN     = 1,
 	LEFT_MOUSE_UP       = 2,
@@ -129,7 +129,7 @@ enum EventType : (long val)
 	CHANGE_MODE         = 38,
 }
 
-fn EventType? event_type_from(int val)
+fn EventType? event_type_from(NSUInteger val)
 {
     switch(val)
     {
@@ -207,7 +207,7 @@ enum EventMask : (ulong val)
     ANY                 = ulong.max,
 }
 
-enum EventModifierFlag : (int val)
+enum EventModifierFlag : (NSUInteger val)
 {
 	CAPS_LOCK   = 1 << 16,
 	SHIFT       = 1 << 17,
@@ -252,7 +252,7 @@ enum WindowLevel : (NSInteger val)
 	SCREEN_SAVER    = 1000,
 }
 
-enum WindowStyleMask : (int val)
+enum WindowStyleMask : (NSUInteger val)
 {
 	BORDERLESS                = 0,
 	TITLED                    = 1 << 0,
