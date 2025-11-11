@@ -84,23 +84,6 @@ enum ApplicationActivationPolicy : (int val)
 	PROHIBITED = 2,
 }
 
-enum WindowStyleMask : (int val)
-{
-    BORDERLESS                = 0,
-    TITLED                    = 1 << 0,
-    CLOSABLE                  = 1 << 1,
-	MINIATURIZABLE            = 1 << 2,
-	RESIZABLE                 = 1 << 3,
-	TEXTURED_BACKGROUND       = 1 << 8,
-	UNIFIED_TITLE_AND_TOOLBAR = 1 << 12,
-	FULL_SCREEN               = 1 << 14,
-	FULL_SIZE_CONTENT_VIEW    = 1 << 15,
-	UTILITY_WINDOW            = 1 << 4,
-	DOC_MODAL_WINDOW          = 1 << 6,
-	NONACTIVATING_PANEL       = 1 << 7,
-	HUD_WINDOW                = 1 << 13
-}
-
 enum BackingStore : (int val)
 {
 	RETAINED    = 0,
@@ -234,5 +217,62 @@ enum EventModifierFlag : (int val)
 	NUMERIC_PAD = 1 << 21,
     FUNCTION    = 1 << 23,
 	HELP        = 1 << 22,
+}
+
+enum WindowCollectionBehavior : (NSUInteger val)
+{
+	DEFAULT                       = 0,
+	CAN_JOIN_ALL_SPACES           = 1 << 0,
+	MOVE_TO_ACTIVE_SPACE          = 1 << 1,
+	MANAGED                       = 1 << 2,
+	TRANSIENT                     = 1 << 3,
+	STATIONARY                    = 1 << 4,
+	PARTICIPATES_IN_CYCLE         = 1 << 5,
+	IGNORES_CYCLE                 = 1 << 6,
+	FULL_SCREEN_PRIMARY           = 1 << 7,
+	FULL_SCREEN_AUXILIARY         = 1 << 8,
+	FULL_SCREEN_NONE              = 1 << 9,
+	FULL_SCREEN_ALLOWS_TILING     = 1 << 11,
+	FULL_SCREEN_DISALLOWS_TILING  = 1 << 12,
+	PRIMARY                       = 1 << 16,
+	AUXILIARY                     = 1 << 17,
+	CAN_JOIN_ALL_APPLICATIONS     = 1 << 18,
+}
+
+enum WindowLevel : (NSInteger val)
+{
+	NORMAL          = 0,
+	FLOATING        = 3,
+	SUBMENU         = 3,
+	TORN_OFF_MENU   = 3,
+	MODAL_PANEL     = 8,
+	MAIN_MENU       = 24,
+	STATUS          = 25,
+	POP_UP_MENU     = 101,
+	SCREEN_SAVER    = 1000,
+}
+
+enum WindowStyleMask : (int val)
+{
+	BORDERLESS                = 0,
+	TITLED                    = 1 << 0,
+	CLOSABLE                  = 1 << 1,
+	MINIATURIZABLE            = 1 << 2,
+	RESIZABLE                 = 1 << 3,
+	TEXTURED_BACKGROUND       = 1 << 8,
+	UNIFIED_TITLE_AND_TOOLBAR = 1 << 12,
+	FULL_SCREEN               = 1 << 14,
+	FULL_SIZE_CONTENT_VIEW    = 1 << 15,
+	UTILITY_WINDOW            = 1 << 4,
+	DOC_MODAL_WINDOW          = 1 << 6,
+	NONACTIVATING_PANEL       = 1 << 7,
+	HUD_WINDOW                = 1 << 13
+}
+
+enum WindowTabbingMode : (NSInteger val)
+{
+	AUTOMATIC   = 0,
+	DISALLOWED  = 2,
+	PREFERRED   = 1,
 }
 
