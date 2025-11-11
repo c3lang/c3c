@@ -22,6 +22,13 @@
 - Fix appending to `c:\` or `\` #2569.
 
 ### Stdlib changes
+- Add `CGFloat` `CGPoint` `CGSize` `CGRect` types to core_foundation (macOS).
+- Add `WindowCollectionBehavior` `WindowLevel` `WindowTabbingMode` to objc (macOS).
+- Change the backing type of `EventMask` to `ulong` to align with the objc api (macOS).
+- Change the backing type of objc enums to NS numerical types (macOS).
+- Breaking: Change objc enums from using associated values to `const inline`. Remove `.val` from existing usages to update (macOS).
+- Replaced function `event_type_from` with `event_mask_from_type` to align with the objc api (macOS).
+- Add unit tests for objc and core_foundation (macOS).
 
 ## 0.7.7 Change list
 
