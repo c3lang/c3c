@@ -1393,6 +1393,23 @@ static bool rule_not_applicable(UNUSED CastContext *cc, UNUSED bool is_explicit,
 	UNREACHABLE
 }
 
+static bool rule_from_explicit_flattened(CastContext *cc, bool is_silent)
+{
+	Type *flat = type_flatten(cc->from);
+	if (cc->to_group == CONV_ANY || cc->to_group == CONV_INTERFACE)
+	{
+		switch (flat->type_kind)
+		{
+			case TYPE_ANY:
+			case TYPE_INTERFACE:
+				break;
+			default:
+				return sema_cast_error(cc, false, is_silent);
+		}
+	}
+	cast_context_set_from(cc, flat);
+	return cast_is_allowed(cc, true, is_silent);
+}
 
 static bool rule_from_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 {
@@ -1402,8 +1419,7 @@ static bool rule_from_distinct(CastContext *cc, bool is_explicit, bool is_silent
 	// Explicit just flattens and tries again.
 	if (is_explicit)
 	{
-		cast_context_set_from(cc, type_flatten(from_type));
-		return cast_is_allowed(cc, is_explicit, is_silent);
+		return rule_from_explicit_flattened(cc, is_silent);
 	}
 	// No inline? Then it's an error.
 	if (!from_type->decl->is_substruct)
@@ -1601,9 +1617,7 @@ static bool rule_enum_to_value(CastContext *cc, bool is_explicit, bool is_silent
 		}
 		if (is_explicit)
 		{
-			cast_context_set_from(cc, type_flatten(inline_type));
-			// Explicit just flattens and tries again.
-			return cast_is_allowed(cc, is_explicit, is_silent);
+			return rule_from_explicit_flattened(cc, is_silent);
 		}
 		cast_context_set_from(cc, inline_type->canonical);
 		return cast_is_allowed(cc, is_explicit, is_silent);
@@ -1618,7 +1632,10 @@ static bool rule_enum_to_value(CastContext *cc, bool is_explicit, bool is_silent
 		}
 		// Use the inner type.
 		Type *inner = enum_decl->enums.type_info->type;
-		cast_context_set_from(cc, is_explicit ? type_flatten(inner) : inner);
+		if (is_explicit)
+		{
+			return rule_from_explicit_flattened(cc, is_silent);
+		}
 		return cast_is_allowed(cc, is_explicit, is_silent);
 	}
 
@@ -1695,6 +1712,7 @@ static void cast_ptr_to_any(Expr *expr, Type *type)
 {
 	Expr *inner = expr_copy(expr);
 	Expr *typeid = expr_copy(expr);
+	assert(type_no_optional(expr->type)->canonical->type_kind == TYPE_POINTER);
 	expr_rewrite_const_typeid(typeid, type_no_optional(expr->type)->canonical->pointer);
 	expr->expr_kind = EXPR_MAKE_ANY;
 	expr->make_any_expr = (ExprMakeAny) { .inner = inner, .typeid = typeid };
@@ -2543,7 +2561,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
 
 CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1] = {
 //void,  wildcd, bool,    int, float,   ptr, slice,  vec,  bitst,  dist, array,struct,union,   any,  infc,  enum,  renum, func, typeid, anyfa,  vptr,  aptr, infer, ulist (to)
- {0,          0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // VOID (from)
+ {0,          0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // VOID (from)
  {XX2XX,      0, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX,     0, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX,     0, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX,     0,     0     }, // WILDCARD
  {XX2VO,      0,     0, BO2IN, BO2FP,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BOOL
  {XX2VO,      0, IN2BO, IN2IN, IN2FP, IN2PT,     0, EX2VC, IA2BS,     0,     0,     0,     0,     0,     0, IN2EN,     0, IN2PT,     0,     0, IN2PT, IN2PT,     0,     0     }, // INT
