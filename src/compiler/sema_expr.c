@@ -3527,22 +3527,30 @@ INLINE bool sema_call_may_not_have_attributes(SemaContext *context, Expr *expr)
 	return true;
 }
 
-INLINE bool sema_analyse_member_get_set_common(SemaContext *context, Decl *decl, Expr *inner, bool *is_bitrstruct)
+INLINE bool sema_analyse_member_get_set_common(SemaContext *context, Decl *decl, Expr *inner, TypeKind *target_kind, ArrayIndex *index_ref)
 {
 	if (!sema_analyse_expr_rvalue(context, inner)) return false;
 	Type *type = type_flatten(inner->type);
-	bool type_is_bitstruct = type->type_kind == TYPE_BITSTRUCT;
-	if (!type_is_bitstruct && type->type_kind != TYPE_STRUCT && type->type_kind != TYPE_UNION)
+	Decl **members;
+	switch ((*target_kind = type->type_kind))
 	{
-		RETURN_SEMA_ERROR(inner, "The member does not belong to the type %s.", type_quoted_error_string(inner->type));
+		case TYPE_BITSTRUCT:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+			members = type->decl->strukt.members;
+			break;
+		case TYPE_ENUM:
+			members = type->decl->enums.parameters;
+			break;
+		default:
+			RETURN_SEMA_ERROR(inner, "The member does not belong to the type %s.", type_quoted_error_string(inner->type));
 	}
-	Decl **members = type->decl->strukt.members;
 	ArrayIndex index = -1;
 	FOREACH_IDX(i, Decl *, member, members)
 	{
 		if (member == decl)
 		{
-			index = (ArrayIndex)i;
+			*index_ref = index = (ArrayIndex)i;
 			break;
 		}
 	}
@@ -3550,7 +3558,6 @@ INLINE bool sema_analyse_member_get_set_common(SemaContext *context, Decl *decl,
 	{
 		RETURN_SEMA_ERROR(inner, "The member does not belong to the type %s.", type_quoted_error_string(inner->type));
 	}
-	*is_bitrstruct = type_is_bitstruct;
 	return true;
 }
 
@@ -3564,10 +3571,15 @@ static inline bool sema_call_analyse_member_set(SemaContext *context, Expr *expr
 	Expr *get = exprptr(expr->call_expr.function);
 	Decl *decl = get->member_get_expr;
 	Expr *inner = expr->call_expr.arguments[0];
-	bool is_bitstruct;
-	if (!sema_analyse_member_get_set_common(context, decl, inner, &is_bitstruct)) return false;
+	TypeKind target_kind;
+	ArrayIndex index;
+	if (!sema_analyse_member_get_set_common(context, decl, inner, &target_kind, &index)) return false;
 	Expr *arg = expr->call_expr.arguments[1];
-	Expr *access = expr_new_expr(is_bitstruct ? EXPR_BITACCESS : EXPR_ACCESS_RESOLVED, expr);
+	if (target_kind == TYPE_ENUM)
+	{
+		RETURN_SEMA_ERROR(arg, "Enum associated values cannot be set.");
+	}
+	Expr *access = expr_new_expr(target_kind == TYPE_BITSTRUCT ? EXPR_BITACCESS : EXPR_ACCESS_RESOLVED, expr);
 	access->access_resolved_expr = (ExprResolvedAccess) { .parent = inner, .ref = decl };
 	access->type = decl->type;
 	access->resolve_status = RESOLVE_DONE;
@@ -3586,9 +3598,16 @@ static inline bool sema_call_analyse_member_get(SemaContext *context, Expr *expr
 	Expr *get = exprptr(expr->call_expr.function);
 	Decl *decl = get->member_get_expr;
 	Expr *inner = expr->call_expr.arguments[0];
-	bool is_bitstruct;
-	if (!sema_analyse_member_get_set_common(context, decl, inner, &is_bitstruct)) return false;
-	expr->expr_kind = is_bitstruct ? EXPR_BITACCESS : EXPR_ACCESS_RESOLVED;
+	TypeKind target_kind;
+	ArrayIndex index;
+	if (!sema_analyse_member_get_set_common(context, decl, inner, &target_kind, &index)) return false;
+	// Constant fold the get
+	if (target_kind == TYPE_ENUM && sema_cast_const(inner) && expr_is_const_enum(inner))
+	{
+		expr_replace(expr, expr_copy(inner->const_expr.enum_val->enum_constant.associated[index]));
+		return true;
+	}
+	expr->expr_kind = target_kind == TYPE_BITSTRUCT ? EXPR_BITACCESS : EXPR_ACCESS_RESOLVED;
 	expr->access_resolved_expr = (ExprResolvedAccess) { .parent = inner, .ref = decl };
 	expr->type = decl->type;
 	return true;
@@ -4915,13 +4934,21 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		RETURN_SEMA_ERROR(expr, "There is no member '%s' for %s.", name, type_to_error_string(decl->type));
 	}
 
+	AlignSize offset = parent->const_expr.member.offset;
 	if (name == kw_offsetof)
 	{
-		expr_rewrite_const_int(expr, type_usz, parent->const_expr.member.offset);
-		return true;
+		if (offset != ~(AlignSize)0)
+		{
+			expr_rewrite_const_int(expr, type_usz, offset);
+			return true;
+		}
 	}
 	if (!sema_analyse_decl(context, decl)) return false;
-
+	if (name == kw_type)
+	{
+		expr_rewrite_const_typeid(expr, decl->type);
+		return true;
+	}
 	TypeProperty type_property = type_property_by_name(name);
 	switch (type_property)
 	{
@@ -5007,7 +5034,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 	expr->const_expr = (ExprConst) {
 		.member.decl = member,
 		.member.align = parent->const_expr.member.align,
-		.member.offset = parent->const_expr.member.offset + decl_find_member_offset(decl, member),
+		.member.offset = offset == ~(AlignSize)0 ? offset : offset + decl_find_member_offset(decl, member),
 		.const_kind = CONST_MEMBER
 	};
 	expr->type = type_member;
@@ -5244,6 +5271,7 @@ static inline bool sema_create_const_associated(SemaContext *context, Expr *expr
 {
 	ASSERT_SPAN(expr, type->type_kind == TYPE_ENUM);
 	if (!sema_analyse_decl(context, type->decl)) return false;
+	SEMA_DEPRECATED(expr, "'.associated' is deprecated, use %s.membersof instead.", type->name);
 	Decl **associated = type->decl->enums.parameters;
 	unsigned count = vec_size(associated);
 	Expr **associated_exprs = count ? VECNEW(Expr*, count) : NULL;
@@ -5261,12 +5289,17 @@ static inline void sema_create_const_membersof(Expr *expr, Type *type, AlignSize
 {
 	Decl **members = NULL;
 	assert(type->canonical == type);
+	bool no_offset = false;
 	switch (type->type_kind)
 	{
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_BITSTRUCT:
 			members = type->decl->strukt.members;
+			break;
+		case TYPE_ENUM:
+			members = type->decl->enums.parameters;
+			no_offset = true;
 			break;
 		default:
 			expr_rewrite_const_untyped_list(expr, NULL);
@@ -5283,7 +5316,7 @@ static inline void sema_create_const_membersof(Expr *expr, Type *type, AlignSize
 		expr_element->const_expr = (ExprConst) {
 			.const_kind = CONST_MEMBER,
 			.member.decl = decl,
-			.member.offset = offset + decl->offset,
+			.member.offset = no_offset ? ~(AlignSize)0 : offset + decl->offset,
 			.member.align = alignment
 		};
 		vec_add(member_exprs, expr_element);
@@ -5715,6 +5748,7 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 				case TYPE_STRUCT:
 				case TYPE_UNION:
 				case TYPE_BITSTRUCT:
+				case TYPE_ENUM:
 					return true;
 				default:
 					return false;

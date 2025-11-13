@@ -8,6 +8,8 @@
 - Add default exception handler to Win32 #2557.
 - Accept `"$schema"` as key in `project.json` #2554.
 - Function referencing in `@return?` for simplified fault declarations. Check `@return?` eagerly #2340.
+- Enums now work with `membersof` to return the associated values. #2571
+- Deprecated `SomeEnum.associated` in favour of `SomeEnum.membersof`
 
 ### Fixes
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.
