@@ -33,6 +33,9 @@ struct CGRect
 	CGSize size;
 }
 
+const CGFloat NS_VARIABLE_STATUS_ITEM_LENGTH = -1.0;
+const CGFloat NS_SQUARE_STATUS_ITEM_LENGTH = -2.0;
+
 extern fn ZString CFString.getCStringPtr(&self, CFStringEncoding encoding) @cname("CFStringGetCStringPtr");
 extern fn ZString CFString.getCString(&self, char* buffer, usz len, CFStringEncoding encoding) @cname("CFStringGetCString");
 

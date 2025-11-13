@@ -23,11 +23,11 @@
 
 ### Stdlib changes
 - Add `CGFloat` `CGPoint` `CGSize` `CGRect` types to core_foundation (macOS).
-- Add `WindowCollectionBehavior` `WindowLevel` `WindowTabbingMode` to objc (macOS).
-- Change the backing type of `EventMask` to `ulong` to align with the objc api (macOS).
-- Change the backing type of objc enums to NS numerical types (macOS).
-- Breaking: Change objc enums from using associated values to `const inline`. Remove `.val` from existing usages to update (macOS).
-- Replaced function `event_type_from` with `event_mask_from_type` to align with the objc api (macOS).
+- Add `NS_VARIABLE_STATUS_ITEM_LENGTH` and `NS_SQUARE_STATUS_ITEM_LENGTH` constants to core_foundation (macOS).
+- Add `NSWindowCollectionBehavior` `NSWindowLevel` `NSWindowTabbingMode` to objc (macOS).
+- Add `ns_eventMaskFromType` function to objc (macOS).
+- Deprecate objc enums in favour of const inline enums backed by NS numerical types, and with the NS prefix, to better align with the objc api (macOS).
+- Deprecate `event_type_from` function in favour of using NSEvent directly, to better align with the objc api (macOS).
 - Add unit tests for objc and core_foundation (macOS).
 
 ## 0.7.7 Change list
