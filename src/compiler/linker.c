@@ -452,7 +452,14 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 	}
 	add_concat_file_arg(crt_dir, "crtn.o");
 	add_concat_quote_arg("-L", crt_dir);
-	add_plain_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
+	switch (compiler.platform.environment_type) {
+		case ENV_TYPE_MUSL:
+		case ENV_TYPE_MUSLEABI:
+		case ENV_TYPE_MUSLEABIHF:
+			add_plain_arg("--dynamic-linker=/lib64/ld-musl-x86-64.so.2");
+		default:
+			add_plain_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
+	}
 	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 	linking_add_link(&compiler.linking, "pthread");
 	linking_add_link(&compiler.linking, "c");
