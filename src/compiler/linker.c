@@ -454,8 +454,6 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 	add_concat_quote_arg("-L", crt_dir);
 	switch (compiler.platform.environment_type) {
 		case ENV_TYPE_MUSL:
-		case ENV_TYPE_MUSLEABI:
-		case ENV_TYPE_MUSLEABIHF:
 			add_plain_arg("--dynamic-linker=/lib/ld-musl-x86-64.so.1");
 		default:
 			add_plain_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
