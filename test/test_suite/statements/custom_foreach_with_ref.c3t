@@ -111,8 +111,8 @@ define void @foo.getFields(ptr noalias sret([5 x i32]) align 4 %0) #0 {
 entry:
   %literal = alloca [5 x i32], align 16
   call void (ptr, ...) @printf(ptr @.str)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 16 @.__const, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal, ptr align 16 @.__const, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 16 %literal, i32 20, i1 false)
   ret void
 }
 

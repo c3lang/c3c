@@ -635,6 +635,16 @@ static inline TypeInfo *parse_vector_type_index(ParseContext *c, TypeInfo *type)
 		ASSIGN_EXPR_OR_RET(vector->array.len, parse_expr(c), poisoned_type_info);
 		CONSUME_OR_RET(TOKEN_RVEC, poisoned_type_info);
 	}
+	if (tok_is(c, TOKEN_AT_IDENT))
+	{
+		if (symstr(c) != kw_at_simd)
+		{
+			PRINT_ERROR_HERE("Only '@simd' is a valid attribute, found '%s'.", symstr(c));
+			return poisoned_type_info;
+		}
+		advance(c);
+		vector->is_simd = true;
+	}
 	RANGE_EXTEND_PREV(vector);
 	return vector;
 }
@@ -1952,14 +1962,9 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 			ASSIGN_EXPR_OR_RET(decl->distinct_align, parse_expr(c), poisoned_decl);
 			CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
 		}
-		else if (name == kw_at_simd)
-		{
-			advance_and_verify(c, TOKEN_AT_IDENT);
-			decl->attr_simd = true;
-		}
 		else
 		{
-			RETURN_PRINT_ERROR_HERE("Expected only attributes '@align' and '@simd'.");
+			RETURN_PRINT_ERROR_HERE("Expected only attribute '@align'.");
 		}
 	}
 	RANGE_EXTEND_PREV(decl);

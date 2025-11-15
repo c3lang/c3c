@@ -113,9 +113,8 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 
 	// Create a local alloca
 	ASSERT(!decl->backend_ref);
-	Type *type_low = type_lowering(decl->type);
 	if (decl->var.is_temp && !IS_OPTIONAL(decl) && !decl->var.is_addr && !decl->var.is_written && !type_is_user_defined(
-			type_low) && type_low->type_kind != TYPE_ARRAY)
+			var_type) && var_type->type_kind != TYPE_ARRAY)
 	{
 		ASSERT(decl->var.init_expr);
 		llvm_emit_expr(c, value, decl->var.init_expr);
@@ -133,7 +132,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		scratch_buffer_clear();
 		scratch_buffer_append(decl->name ? decl->name : "anon");
 		scratch_buffer_append(".f");
-		decl->var.optional_ref = llvm_emit_alloca_aligned(c, type_fault, scratch_buffer_to_string());
+		decl->var.optional_ref = llvm_emit_alloca_b(c, type_fault, scratch_buffer_to_string()).value;
 		// Only clear out the result if the assignment isn't an optional.
 	}
 
@@ -234,9 +233,9 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 		if (ast->return_stmt.cleanup_fail)
 		{
 			llvm_value_rvalue(c, &be_value);
-			LLVMValueRef error_out = llvm_emit_alloca_aligned(c, type_fault, "reterr");
-			llvm_store_to_ptr(c, error_out, &be_value);
-			PUSH_DEFER_ERROR(error_out);
+			BEValue error_out_ref = llvm_emit_alloca_b(c, type_fault, "reterr");
+			llvm_store(c, &error_out_ref, &be_value);
+			PUSH_DEFER_ERROR(error_out_ref.value);
 			llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
 			POP_DEFER_ERROR();
 		}
@@ -247,12 +246,12 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	PUSH_CATCH();
 
 	LLVMBasicBlockRef error_return_block = NULL;
-	LLVMValueRef error_out = NULL;
+	BEValue error_out_ref = { .value = NULL };
 	if (c->cur_func.prototype && c->cur_func.prototype->ret_rewrite != RET_NORMAL)
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
-		error_out = llvm_emit_alloca_aligned(c, type_fault, "reterr");
-		c->catch = (OptionalCatch) { error_out, error_return_block };
+		error_out_ref = llvm_emit_alloca_b(c, type_fault, "reterr");
+		c->catch = (OptionalCatch) { error_out_ref.value, error_return_block };
 	}
 
 	bool has_return_value = ast->return_stmt.expr != NULL;
@@ -272,9 +271,9 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 		{
 			if (llvm_temp_as_address(return_value.type))
 			{
-				LLVMValueRef temp = llvm_emit_alloca_aligned(c, return_value.type, "ret$temp");
-				llvm_store_to_ptr(c, temp, &return_value);
-				llvm_value_set_address_abi_aligned(c, &return_value, temp, return_value.type);
+				BEValue temp = llvm_emit_alloca_b(c, return_value.type, "ret$temp");
+				llvm_store(c, &temp, &return_value);
+				return_value = temp;
 			}
 			else
 			{
@@ -299,12 +298,10 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	if (error_return_block && LLVMGetFirstUse(LLVMBasicBlockAsValue(error_return_block)))
 	{
 		llvm_emit_block(c, error_return_block);
-		PUSH_DEFER_ERROR(error_out);
+		PUSH_DEFER_ERROR(error_out_ref.value);
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
 		POP_DEFER_ERROR();
-		BEValue value;
-		llvm_value_set_address_abi_aligned(c, &value, error_out, type_fault);
-		llvm_emit_return_abi(c, NULL, &value);
+		llvm_emit_return_abi(c, NULL, &error_out_ref);
 	}
 }
 
@@ -769,8 +766,7 @@ static LLVMValueRef llvm_emit_switch_jump_stmt(GenContext *c,
 	c->current_block = NULL;
 	llvm_emit_block(c, switch_block);
 	AlignSize align;
-	LLVMTypeRef type = LLVMArrayType(c->ptr_type, count);
-	LLVMValueRef index = llvm_emit_array_gep_raw_index(c, jump_table, type, switch_value, llvm_abi_alignment(c, type), &align);
+	LLVMValueRef index = llvm_emit_array_gep_raw_index(c, jump_table, type_voidptr, switch_value, type_abi_alignment(type_voidptr), &align);
 	LLVMValueRef addr = llvm_load(c, c->ptr_type, index, align, "target");
 	LLVMValueRef instr = LLVMBuildIndirectBr(c->builder, addr, case_count);
 	c->current_block = NULL;
@@ -984,7 +980,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 	}
 
 	BEValue switch_var;
-	llvm_value_set_address_abi_aligned(c, &switch_var, llvm_emit_alloca_aligned(c, switch_type, "switch"), switch_type);
+	llvm_value_set_alloca(c, &switch_var, switch_type, type_alloca_alignment(switch_type), "switch");
 	switch_ast->switch_stmt.codegen.retry.var = &switch_var;
 	llvm_store(c, &switch_var, switch_value);
 
@@ -1500,7 +1496,7 @@ LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char 
 	LLVMSetGlobalConstant(global_string, 1);
 	LLVMSetInitializer(global_string, llvm_get_zstring(c, str, len));
 	AlignSize alignment;
-	LLVMValueRef string = llvm_emit_array_gep_raw(c, global_string, char_array_type, 0, 1, &alignment);
+	LLVMValueRef string = llvm_emit_array_gep_raw(c, global_string, type_char, 0, 1, &alignment);
 	ReusableConstant reuse = { .string = str_copy(str, len), .name = str_copy(extname, strlen(extname)), .value = string };
 	vec_add(c->reusable_constants, reuse);
 	return string;
@@ -1555,23 +1551,15 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 		unsigned elements = vec_size(varargs);
 		Type *any_slice = type_get_slice(type_any);
 		Type *any_array = type_get_array(type_any, elements);
-		LLVMTypeRef llvm_array_type = llvm_get_type(c, any_array);
-		AlignSize alignment = type_alloca_alignment(any_array);
-		LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, varargslots_name);
+		BEValue array_ref = llvm_emit_alloca_b(c, any_array, varargslots_name);
 		unsigned vacount = vec_size(varargs);
 		for (unsigned i = 0; i < vacount; i++)
 		{
-			AlignSize store_alignment;
-			LLVMValueRef slot = llvm_emit_array_gep_raw(c,
-			                                            array_ref,
-			                                            llvm_array_type,
-			                                            i,
-			                                            alignment,
-			                                            &store_alignment);
-			llvm_store_to_ptr_aligned(c, slot, &varargs[i], store_alignment);
+			BEValue slot = llvm_emit_array_gep(c, &array_ref, i);
+			llvm_store(c, &slot, &varargs[i]);
 		}
 		BEValue value;
-		llvm_value_aggregate_two(c, &value, any_slice, array_ref, llvm_const_int(c, type_usz, elements));
+		llvm_value_aggregate_two(c, &value, any_slice, array_ref.value, llvm_const_int(c, type_usz, elements));
 		LLVMSetValueName2(value.value, temp_name, 6);
 
 		llvm_emit_parameter(c, actual_args, &count, abi_args[4], &value);

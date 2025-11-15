@@ -70,27 +70,27 @@ entry:
   %tc = alloca %"int[]", align 8
   %list = alloca %"int[]", align 8
   %len = alloca i64, align 8
-  store %"int[]" zeroinitializer, ptr %literal, align 8
+  store %"int[]" zeroinitializer, ptr %literal, align 16
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 16
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal1, ptr align 4 @.__const, i32 8, i1 false)
   %0 = insertvalue %"int[]" undef, ptr %literal1, 0
   %1 = insertvalue %"int[]" %0, i64 2, 1
-  store %"int[]" %1, ptr %ptradd, align 8
+  store %"int[]" %1, ptr %ptradd, align 16
   %ptradd2 = getelementptr inbounds i8, ptr %literal, i64 32
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal3, ptr align 4 @.__const.1, i32 12, i1 false)
   %2 = insertvalue %"int[]" undef, ptr %literal3, 0
   %3 = insertvalue %"int[]" %2, i64 3, 1
-  store %"int[]" %3, ptr %ptradd2, align 8
+  store %"int[]" %3, ptr %ptradd2, align 16
   %ptradd4 = getelementptr inbounds i8, ptr %literal, i64 48
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal5, ptr align 4 @.__const.2, i32 12, i1 false)
   %4 = insertvalue %"int[]" undef, ptr %literal5, 0
   %5 = insertvalue %"int[]" %4, i64 3, 1
-  store %"int[]" %5, ptr %ptradd4, align 8
+  store %"int[]" %5, ptr %ptradd4, align 16
   %ptradd6 = getelementptr inbounds i8, ptr %literal, i64 64
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal7, ptr align 4 @.__const.3, i32 12, i1 false)
   %6 = insertvalue %"int[]" undef, ptr %literal7, 0
   %7 = insertvalue %"int[]" %6, i64 3, 1
-  store %"int[]" %7, ptr %ptradd6, align 8
+  store %"int[]" %7, ptr %ptradd6, align 16
   %8 = insertvalue %"int[][]" undef, ptr %literal, 0
   %9 = insertvalue %"int[][]" %8, i64 5, 1
   store %"int[][]" %9, ptr %tcases, align 8
@@ -140,27 +140,27 @@ entry:
   %tc = alloca %"int[]", align 8
   %list = alloca %"int[]", align 8
   %len = alloca i64, align 8
-  store %"int[]" zeroinitializer, ptr %literal, align 8
+  store %"int[]" zeroinitializer, ptr %literal, align 16
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 16
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal1, ptr align 4 @.__const.4, i32 8, i1 false)
   %0 = insertvalue %"int[]" undef, ptr %literal1, 0
   %1 = insertvalue %"int[]" %0, i64 2, 1
-  store %"int[]" %1, ptr %ptradd, align 8
+  store %"int[]" %1, ptr %ptradd, align 16
   %ptradd2 = getelementptr inbounds i8, ptr %literal, i64 32
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal3, ptr align 4 @.__const.5, i32 12, i1 false)
   %2 = insertvalue %"int[]" undef, ptr %literal3, 0
   %3 = insertvalue %"int[]" %2, i64 3, 1
-  store %"int[]" %3, ptr %ptradd2, align 8
+  store %"int[]" %3, ptr %ptradd2, align 16
   %ptradd4 = getelementptr inbounds i8, ptr %literal, i64 48
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal5, ptr align 4 @.__const.6, i32 12, i1 false)
   %4 = insertvalue %"int[]" undef, ptr %literal5, 0
   %5 = insertvalue %"int[]" %4, i64 3, 1
-  store %"int[]" %5, ptr %ptradd4, align 8
+  store %"int[]" %5, ptr %ptradd4, align 16
   %ptradd6 = getelementptr inbounds i8, ptr %literal, i64 64
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal7, ptr align 4 @.__const.7, i32 12, i1 false)
   %6 = insertvalue %"int[]" undef, ptr %literal7, 0
   %7 = insertvalue %"int[]" %6, i64 3, 1
-  store %"int[]" %7, ptr %ptradd6, align 8
+  store %"int[]" %7, ptr %ptradd6, align 16
   %8 = insertvalue %"int[][]" undef, ptr %literal, 0
   %9 = insertvalue %"int[][]" %8, i64 5, 1
   store %"int[][]" %9, ptr %tcases, align 8

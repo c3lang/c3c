@@ -143,7 +143,6 @@ typedef struct
 struct ConstInitializer_
 {
 	ConstInitType kind;
-	bool is_simd;
 	// Type, should always be flattened
 	Type *type;
 	union
@@ -359,6 +358,7 @@ struct TypeInfo_
 	TypeInfoKind kind : 6;
 	bool optional : 1;
 	bool in_def : 1;
+	bool is_simd : 1;
 	TypeInfoCompressedKind subtype : 4;
 	Type *type;
 	SourceSpan span;
@@ -695,7 +695,6 @@ typedef struct Decl_
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
 	bool attr_structlike : 1;
-	bool attr_simd : 1;
 	union
 	{
 		void *backend_ref;
@@ -902,7 +901,6 @@ typedef struct
 
 typedef struct
 {
-	bool raw_offset : 1;
 	ExprId ptr;
 	ExprId offset;
 } ExprPointerOffset;
@@ -2609,8 +2607,8 @@ bool type_is_comparable(Type *type);
 bool type_is_ordered(Type *type);
 unsigned type_get_introspection_kind(TypeKind kind);
 void type_mangle_introspect_name_to_buffer(Type *type);
+AlignSize type_alloca_alignment(Type *type);
 AlignSize type_abi_alignment(Type *type);
-AlignSize type_simd_alignment(CanonicalType *type);
 bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...);
 Type *type_find_largest_union_element(Type *type);
 Type *type_find_max_type(Type *type, Type *other, Expr *first, Expr *second);
@@ -2630,10 +2628,12 @@ Type *type_get_slice(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
 Type *type_get_inferred_vector(Type *arr_type);
 Type *type_get_flexible_array(Type *arr_type);
-AlignSize type_alloca_alignment(Type *type);
 Type *type_get_optional(Type *optional_type);
-Type *type_get_vector(Type *vector_type, unsigned len);
-Type *type_get_vector_bool(Type *original_type);
+Type *type_get_vector(Type *vector_type, TypeKind kind, unsigned len);
+Type *type_get_vector_from_vector(Type *base_type, Type *orginal_vector);
+Type *type_get_simd_from_vector(Type *orginal_vector);
+Type *type_get_vector_bool(Type *original_type, TypeKind kind);
+
 Type *type_int_signed_by_bitsize(BitSize bitsize);
 Type *type_int_unsigned_by_bitsize(BitSize bit_size);
 bool type_is_matching_int(CanonicalType *type1, CanonicalType *type2);
@@ -2644,7 +2644,6 @@ void type_func_prototype_init(uint32_t capacity);
 Type *type_find_parent_type(Type *type);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_abi_aggregate(Type *type);
-bool type_is_simd(Type *type);
 bool type_is_aggregate(Type *type);
 bool type_is_int128(Type *type);
 
@@ -2723,6 +2722,7 @@ int type_kind_bitsize(TypeKind kind);
 INLINE bool type_kind_is_signed(TypeKind kind);
 INLINE bool type_kind_is_unsigned(TypeKind kind);
 INLINE bool type_kind_is_any_integer(TypeKind kind);
+INLINE bool type_kind_is_real_vector(TypeKind kind);
 
 void advance(ParseContext *c);
 INLINE void advance_and_verify(ParseContext *context, TokenType token_type);
@@ -2769,12 +2769,14 @@ INLINE Type *type_from_inferred(Type *flattened, Type *element_type, unsigned co
 		case TYPE_POINTER:
 			ASSERT(count == 0);
 			return type_get_ptr(element_type);
+		case TYPE_SIMD_VECTOR:
+			ASSERT(flattened->array.len == count);
+			return type_get_vector(element_type, TYPE_SIMD_VECTOR, count);
 		case TYPE_VECTOR:
 			ASSERT(flattened->array.len == count);
 			FALLTHROUGH;
 		case TYPE_INFERRED_VECTOR:
-			return type_get_vector(element_type, count);
-			break;
+			return type_get_vector(element_type, TYPE_VECTOR, count);
 		case TYPE_ARRAY:
 			ASSERT(flattened->array.len == count);
 			FALLTHROUGH;
@@ -2800,7 +2802,7 @@ INLINE bool type_len_is_inferred(Type *type)
 				continue;
 			case TYPE_ARRAY:
 			case TYPE_SLICE:
-			case TYPE_VECTOR:
+			case VECTORS:
 				type = type->array.base;
 				continue;
 			case TYPE_INFERRED_ARRAY:
@@ -2907,7 +2909,7 @@ INLINE bool type_info_poison(TypeInfo *type)
 INLINE bool type_is_arraylike(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_ARRAY || kind == TYPE_VECTOR || kind == TYPE_FLEXIBLE_ARRAY;
+	return kind == TYPE_ARRAY || kind == TYPE_VECTOR || kind == TYPE_FLEXIBLE_ARRAY || kind == TYPE_SIMD_VECTOR;
 }
 
 INLINE bool type_is_any_arraylike(Type *type)
@@ -2937,7 +2939,7 @@ static inline bool type_is_pointer_like(Type *type)
 	{
 		case TYPE_POINTER:
 			return true;
-		case TYPE_VECTOR:
+		case VECTORS:
 			return type_is_pointer_like(type->array.base->canonical);
 		default:
 			return false;
@@ -2946,7 +2948,7 @@ static inline bool type_is_pointer_like(Type *type)
 
 INLINE bool type_is_pointer_vector(Type *type)
 {
-	return type->type_kind == TYPE_VECTOR && type->array.base->canonical->type_kind == TYPE_POINTER;
+	return type_kind_is_real_vector(type->type_kind) && type->array.base->canonical->type_kind == TYPE_POINTER;
 }
 
 INLINE bool type_is_atomic(Type *type_flat)
@@ -2996,7 +2998,7 @@ INLINE bool type_may_negate(Type *type)
 	RETRY:
 	switch (type->type_kind)
 	{
-		case TYPE_VECTOR:
+		case VECTORS:
 			type = type->array.base;
 			goto RETRY;
 		case ALL_FLOATS:
@@ -3033,7 +3035,7 @@ INLINE bool type_is_floatlike(Type *type)
 {
 	type = type->canonical;
 	TypeKind kind = type->type_kind;
-	if (kind == TYPE_VECTOR && type_is_float(type->array.base)) return true;
+	if (type_kind_is_real_vector(kind) && type_is_float(type->array.base)) return true;
 	return kind >= TYPE_FLOAT_FIRST && kind <= TYPE_FLOAT_LAST;
 }
 
@@ -3237,7 +3239,7 @@ static inline Type *type_flat_distinct_inline(Type *type)
 
 static inline CanonicalType *type_vector_base(CanonicalType *type)
 {
-	return type->type_kind == TYPE_VECTOR ? type->array.base->canonical : type;
+	return type_kind_is_real_vector(type->type_kind) ? type->array.base->canonical : type;
 }
 
 static inline Type *type_flatten_and_inline(Type *type)
@@ -3358,7 +3360,7 @@ static inline Type *type_flatten_to_int(Type *type)
 				break;
 			case TYPE_ENUM:
 				return type;
-			case TYPE_VECTOR:
+			case VECTORS:
 				ASSERT(type_is_integer(type->array.base));
 				return type;
 			case TYPE_ALIAS:
@@ -3466,7 +3468,7 @@ static inline bool type_flat_is_valid_for_arg_h(Type *type)
 INLINE Type *type_vector_type(Type *type)
 {
 	Type *flatten = type_flatten(type);
-	return flatten->type_kind == TYPE_VECTOR ? flatten->array.base : NULL;
+	return type_kind_is_real_vector(flatten->type_kind) ? flatten->array.base : NULL;
 }
 
 INLINE bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_TYPEID; }
@@ -3483,7 +3485,7 @@ INLINE bool type_is_signed(Type *type)
 {
 	TypeKind kind = type->type_kind;
 	if (kind >= TYPE_I8 && kind < TYPE_U8) return true;
-	if (kind != TYPE_VECTOR) return false;
+	if (!type_kind_is_real_vector(kind)) return false;
 	kind = type->array.base->type_kind;
 	return kind >= TYPE_I8 && kind < TYPE_U8;
 }
@@ -3566,7 +3568,7 @@ INLINE bool type_is_numeric(Type *type)
 	RETRY:;
 	DECL_TYPE_KIND_REAL(kind, type);
 	if ((kind >= TYPE_I8) & (kind <= TYPE_FLOAT_LAST)) return true;
-	if (type->type_kind == TYPE_VECTOR)
+	if (type_kind_is_real_vector(type->type_kind))
 	{
 		type = type->array.base;
 		goto RETRY;
@@ -3584,26 +3586,43 @@ INLINE bool type_underlying_may_add_sub(CanonicalType *type)
 	return type->type_kind == TYPE_ENUM || type->type_kind == TYPE_POINTER || type_is_numeric(type);
 }
 
+INLINE bool type_is_vec(FlatType *type)
+{
+	ASSERT(type_flatten(type) == type);
+	TypeKind kind = type->type_kind;
+	return kind == TYPE_VECTOR || kind == TYPE_SIMD_VECTOR;
+}
+
+INLINE bool type_kind_is_real_vector(TypeKind kind)
+{
+	return kind == TYPE_VECTOR || kind == TYPE_SIMD_VECTOR;
+}
+
 INLINE bool type_flat_is_vector(Type *type)
 {
-	return type_flatten(type)->type_kind == TYPE_VECTOR;
+	return type_kind_is_real_vector(type_flatten(type)->type_kind);
 }
 
 INLINE bool type_flat_is_vector_bitstruct(Type *type)
 {
 	TypeKind kind = type_flatten(type)->type_kind;
-	return kind == TYPE_VECTOR || kind == TYPE_BITSTRUCT;
+	return kind == TYPE_VECTOR || kind == TYPE_BITSTRUCT || kind == TYPE_SIMD_VECTOR;
+}
+
+INLINE bool type_kind_is_any_non_simd_vector(TypeKind kind)
+{
+	return kind == TYPE_VECTOR || kind == TYPE_INFERRED_VECTOR;
 }
 
 INLINE bool type_kind_is_any_vector(TypeKind kind)
 {
-	return kind == TYPE_VECTOR || kind == TYPE_INFERRED_VECTOR;
+	return kind == TYPE_VECTOR || kind == TYPE_INFERRED_VECTOR || kind == TYPE_SIMD_VECTOR;
 }
 
 INLINE bool type_flat_is_bool_vector(Type *type)
 {
 	Type *flat = type_flatten(type);
-	return flat->type_kind == TYPE_VECTOR && type_flatten(flat->array.base) == type_bool;
+	return type_kind_is_real_vector(flat->type_kind) && type_flatten(flat->array.base) == type_bool;
 }
 
 INLINE bool type_is_union_or_strukt(Type *type)
@@ -4554,7 +4573,6 @@ INLINE bool check_module_name(Path *path)
 
 INLINE void const_init_set_type(ConstInitializer *init, Type *type)
 {
-	init->is_simd = type_is_simd(type);
 	init->type = type_flatten(type);
 }
 

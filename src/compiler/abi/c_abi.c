@@ -252,7 +252,7 @@ void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs)
 	Type *rtype = type_infoptr(sig->rtype)->type;
 	Type *rtype_flat = type_flatten(rtype);
 	unsigned param_count = 0;
-	if (rtype_flat->type_kind == TYPE_VECTOR && !type_is_simd(rtype))
+	if (rtype_flat->type_kind == TYPE_VECTOR)
 	{
 		rtype_flat = type_array_from_vector(rtype_flat);
 		proto->return_rewrite = PARAM_RW_VEC_TO_ARRAY;
@@ -285,7 +285,7 @@ void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs)
 		Decl *decl = sig->params[i];
 		Type *flat_type = type_flatten(decl->type);
 		ParamInfo param_info = (ParamInfo) { .type = flat_type };
-		if (flat_type->type_kind == TYPE_VECTOR && !type_is_simd(decl->type))
+		if (flat_type->type_kind == TYPE_VECTOR)
 		{
 			param_info.rewrite = PARAM_RW_VEC_TO_ARRAY;
 			param_info.type = type_array_from_vector(flat_type);

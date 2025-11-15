@@ -367,7 +367,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 			if (!sema_analyse_inferred_expr(context, inner_type, element, no_match_ref)) return false;
 			Type *element_type = element->type;
 			Type *element_flat = type_flatten(element_type);
-			if (element_flat->type_kind == TYPE_VECTOR
+			if (type_kind_is_real_vector(element_flat->type_kind)
 				&& type_flatten(type_get_indexed_type(element_type)) == type_flatten(inner_type))
 			{
 				unsigned len = element_flat->array.len;
@@ -666,10 +666,9 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 	if (flattened->type_kind == TYPE_UNTYPED_LIST ||
 		flattened->type_kind == TYPE_ARRAY ||
 		flattened->type_kind == TYPE_INFERRED_ARRAY ||
-		flattened->type_kind == TYPE_INFERRED_VECTOR ||
 		flattened->type_kind == TYPE_FLEXIBLE_ARRAY ||
 		flattened->type_kind == TYPE_SLICE ||
-		flattened->type_kind == TYPE_VECTOR)
+		type_kind_is_any_vector(flattened->type_kind))
 	{
 		return sema_expr_analyse_array_plain_initializer(context, assigned_type, flattened, expr, no_match_ref);
 	}
@@ -871,12 +870,8 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_UNTYPED_LIST:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_ARRAY:
 		case TYPE_BITSTRUCT:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
-		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_VECTOR:
+		case ALL_ARRAYLIKE:
 			return sema_expr_analyse_initializer(context, to, flattened, expr, no_match_ref);
 		case TYPE_SLICE:
 		{
@@ -1257,7 +1252,7 @@ static inline void sema_update_const_initializer_with_designator(
 			sema_update_const_initializer_with_designator_union(const_init, curr, end, value);
 			return;
 		case TYPE_ARRAY:
-		case TYPE_VECTOR:
+		case VECTORS:
 			sema_update_const_initializer_with_designator_array(const_init, curr, end, value);
 			return;
 		default:
@@ -1309,7 +1304,7 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 				base = type_flattened->array.base;
 				break;
 			case TYPE_ARRAY:
-			case TYPE_VECTOR:
+			case VECTORS:
 				len = type_flattened->array.len;
 				base = type_flattened->array.base;
 				break;

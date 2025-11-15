@@ -187,7 +187,7 @@ static ABIArgInfo *riscv_classify_argument_type(ParamInfo param, bool is_fixed, 
 
 	*gprs -= needed_gprs;
 
-	if (!type_is_abi_aggregate(type) && type->type_kind != TYPE_VECTOR)
+	if (!type_is_abi_aggregate(type) && type->type_kind != TYPE_SIMD_VECTOR)
 	{
 		// All integral types are promoted to XLen width, unless passed on the
 		// stack.

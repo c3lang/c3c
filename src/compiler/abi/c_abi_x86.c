@@ -13,7 +13,7 @@ static ABIArgInfo **x86_create_params(CallABI abi, ParamInfo *params, unsigned p
 static inline bool type_is_simd_vector(Type *type)
 {
 	type = type->canonical;
-	return type->type_kind == TYPE_VECTOR && type_size(type) == 16;
+	return type->type_kind == TYPE_SIMD_VECTOR && type_size(type) == 16;
 }
 
 static bool type_is_union_struct_with_simd_vector(Type *type)
@@ -99,7 +99,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 	// Require power of two for everything except mcu.
 	if (!compiler.platform.x86.is_mcu_api && !is_power_of_two(size)) return false;
 
-	if (type->type_kind == TYPE_VECTOR)
+	if (type->type_kind == TYPE_SIMD_VECTOR)
 	{
 		// 64 (and 128 bit) vectors are not returned as registers
 		return size < 8;
@@ -120,6 +120,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_ALIAS:
 		case TYPE_TYPEID:
 		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
 		case TYPE_VOID:
 			UNREACHABLE
 		case ALL_INTS:
@@ -168,7 +169,7 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, ParamInfo param)
 	Type *base = NULL;
 	unsigned elements = 0;
 
-	if (type->type_kind == TYPE_VECTOR) return abi_arg_new_direct(param);
+	if (type->type_kind == TYPE_SIMD_VECTOR) return abi_arg_new_direct(param);
 
 	if (type_is_abi_aggregate(type))
 	{
@@ -217,7 +218,7 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, ParamInfo param)
 static inline bool x86_is_mmxtype(Type *type)
 {
 	// Return true if the type is an MMX type <2 x i32>, <4 x i16>, or <8 x i8>.
-	if (type->type_kind != TYPE_VECTOR) return false;
+	if (type->type_kind != TYPE_SIMD_VECTOR) return false;
 	Type *element = lowered_array_element_type(type);
 	if (type_size(element) >= 8) return false;
 	if (!type_is_integer(element)) return false;
@@ -344,7 +345,7 @@ UNUSED static inline ABIArgInfo *x86_classify_homogenous_aggregate(Regs *regs, T
 	}
 
 	// If it is a builtin, then expansion is not needed.
-	if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_VECTOR)
+	if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_SIMD_VECTOR)
 	{
 		return abi_arg_new_direct(param);
 	}
@@ -453,6 +454,7 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, ParamInfo par
 		case TYPE_VOID:
 		case TYPE_FUNC_RAW:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_VECTOR:
 			UNREACHABLE
 		case ALL_FLOATS:
 		case ALL_INTS:
@@ -460,7 +462,7 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, ParamInfo par
 		case TYPE_FUNC_PTR:
 		case TYPE_POINTER:
 			return x86_classify_primitives(call, regs, type, param);
-		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
 			return x86_classify_vector(regs, type, param);
 		case TYPE_STRUCT:
 		case TYPE_UNION:

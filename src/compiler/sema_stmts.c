@@ -1738,7 +1738,7 @@ SKIP_OVERLOAD:;
 		switch (enumerator_type->type_kind)
 		{
 			case TYPE_ARRAY:
-			case TYPE_VECTOR:
+			case VECTORS:
 				array_len = enumerator_type->array.len;
 				len_call = NULL;
 				break;
@@ -2850,7 +2850,7 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		INITIALIZER:;
 			ConstInitType init_type = initializer->kind;
 			const_list_type = type_flatten(collection->type);
-			if (const_list_type->type_kind == TYPE_ARRAY || const_list_type->type_kind == TYPE_VECTOR)
+			if (const_list_type->type_kind == TYPE_ARRAY || type_kind_is_real_vector(const_list_type->type_kind))
 			{
 				count = const_list_type->array.len;
 			}

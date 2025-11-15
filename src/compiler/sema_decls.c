@@ -360,7 +360,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 			RETURN_SEMA_ERROR(member, "Flexible array members not allowed in unions.");
 		}
 		AlignSize member_alignment;
-		if (!sema_set_abi_alignment(context, member->type, &member_alignment, true)) return false;
+		if (!sema_set_alignment(context, member->type, &member_alignment, false)) return false;
 		if (!sema_check_struct_holes(context, decl, member)) return false;
 
 		ByteSize member_size = type_size(member->type);
@@ -427,7 +427,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 	return true;
 }
 
-AlignSize sema_get_max_natural_alignment_as_member(Type *type)
+AlignSize sema_get_max_natural_alignment(Type *type)
 {
 RETRY:;
 	switch (type->type_kind)
@@ -436,7 +436,6 @@ RETRY:;
 			type = type->optional;
 			goto RETRY;
 		case TYPE_TYPEDEF:
-			if (type->decl->attr_simd) return type_abi_alignment(type);
 			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_ALIAS:
@@ -474,7 +473,7 @@ RETRY:;
 			AlignSize max = 0;
 			FOREACH(Decl *, member, type->decl->strukt.members)
 			{
-				AlignSize member_max = sema_get_max_natural_alignment_as_member(member->type);
+				AlignSize member_max = sema_get_max_natural_alignment(member->type);
 				if (member_max > max) max = member_max;
 			}
 			return max;
@@ -482,6 +481,8 @@ RETRY:;
 		case TYPE_BITSTRUCT:
 			type = type->decl->strukt.container_type->type;
 			goto RETRY;
+		case TYPE_SIMD_VECTOR:
+			return type_abi_alignment(type);
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
@@ -574,9 +575,9 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 			SEMA_ERROR(member, "Recursive definition of %s.", type_quoted_error_string(member_type));
 			return decl_poison(decl);
 		}
-		if (!sema_set_abi_alignment(context, member->type, &member_type_alignment, true)) return decl_poison(decl);
+		if (!sema_set_alignment(context, member->type, &member_type_alignment, false)) return decl_poison(decl);
 		// And get the natural alignment
-		AlignSize member_natural_alignment = sema_get_max_natural_alignment_as_member(member->type);
+		AlignSize member_natural_alignment = sema_get_max_natural_alignment(member->type);
 
 		// If packed, then the alignment is 1
 		AlignSize member_alignment = is_packed ? 1 : member_type_alignment;
@@ -992,7 +993,7 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 		first->var.kind = VARDECL_PARAM;
 		first->unit = context->unit;
 		first->resolve_status = RESOLVE_DONE;
-		first->alignment = type_abi_alignment(type_voidptr);
+		first->alignment = type_alloca_alignment(type_voidptr);
 		vec_insert_first(method->func_decl.signature.params, first);
 		method->unit = context->unit;
 		method->func_decl.signature.vararg_index += 1;
@@ -1043,6 +1044,7 @@ RETRY:
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
+		case ALL_VECTORS:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
 		case TYPE_ANYFAULT:
@@ -1053,8 +1055,6 @@ RETRY:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
 		case TYPE_TYPEDEF:
-		case TYPE_VECTOR:
-		case TYPE_INFERRED_VECTOR:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_WILDCARD:
 		case TYPE_TYPEINFO:
@@ -1437,7 +1437,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		{
 			if (!sema_deep_resolve_function_ptr(context, type_info)) return false;
 			param->type = type_info->type;
-			if (!sema_set_abi_alignment(context, param->type, &param->alignment, false)) return false;
+			if (!sema_set_alignment(context, param->type, &param->alignment, true)) return false;
 		}
 
 		if (param->var.init_expr)
@@ -1584,15 +1584,6 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 		AlignSize default_size = type_abi_alignment(inner_type);
 		// Remove "alignment"
 		if (default_size == decl->alignment) decl->distinct_align = NULL;
-	}
-	if (decl->attr_simd)
-	{
-		if (decl->distinct_align) RETURN_SEMA_ERROR(decl, "You cannot set both @simd and @align on a distinct type.");
-		inner_type = inner_type->canonical;
-		if (inner_type->type_kind != TYPE_VECTOR) RETURN_SEMA_ERROR(decl, "You cannot set @simd on a non-vector type.");
-		ArraySize len = inner_type->array.len;
-		if (!is_power_of_two(len)) RETURN_SEMA_ERROR(decl, "The length of a @simd vector must be a power of two.");
-		decl->alignment = type_simd_alignment(inner_type);
 	}
 	if (!decl->alignment)
 	{
@@ -1742,7 +1733,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 	for (unsigned i = 0; i < associated_value_count; i++)
 	{
 		Decl *param = associated_values[i];
-		if (!sema_set_abi_alignment(context, param->type, &param->alignment, false)) return false;
+		if (!sema_set_alignment(context, param->type, &param->alignment, true)) return false;
 		param->resolve_status = RESOLVE_DONE;
 	}
 	for (unsigned i = 0; i < enums; i++)
@@ -2891,8 +2882,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 				goto NOT_VALID_NAME;
 			}
 			break;
-		case TYPE_VECTOR:
-		case TYPE_INFERRED_VECTOR:
+		case ALL_VECTORS:
 		{
 			unsigned len = strlen(decl->name);
 			if (len <= 4)
@@ -5465,8 +5455,7 @@ RETRY:
 		case TYPE_SLICE:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
-		case TYPE_VECTOR:
-		case TYPE_INFERRED_VECTOR:
+		case ALL_VECTORS:
 			type = type->array.base;
 			goto RETRY;
 		case TYPE_OPTIONAL:
