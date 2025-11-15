@@ -7,15 +7,18 @@ struct ThreadPool
 	QueueItem[SIZE] queue;
 	usz qindex;
 	usz num_threads;
+	usz thread_counter;
 	bitstruct : char
 	{
 		bool initialized;
 		bool stop;
 		bool stop_now;
+		bool joining;
 	}
 
 	Thread[SIZE] pool;
 	ConditionVariable notify;
+	ConditionVariable collect;
 }
 
 struct QueueItem @private
@@ -38,6 +41,31 @@ fn void? ThreadPool.init(&self)
 		thread.create(&process_work, self)!;
 		// The thread resources will be cleaned up when the thread exits.
 		thread.detach()!;
+	}
+}
+
+<*
+ Join all threads in the pool.
+*>
+fn void? ThreadPool.join(&self)
+{
+	if (self.initialized)
+	{
+		self.mu.lock()!;
+		self.thread_counter = 0;
+		self.joining = true;
+		self.notify.broadcast()!;
+		self.mu.unlock()!;
+		while(self.thread_counter != self.num_threads)
+		{
+			self.mu.lock()!;
+			self.notify.signal()!;
+			self.mu.unlock()!!;
+		}
+		self.mu.lock()!;
+		self.joining = false;
+		self.collect.broadcast()!;
+		self.mu.unlock()!;
 	}
 }
 
@@ -113,6 +141,12 @@ fn int process_work(void* arg) @private
 		// Wait for work.
 		while (self.qindex == 0)
 		{
+			if (self.joining)
+			{
+				// Join requested
+				self.thread_counter++;
+				self.collect.wait(&self.mu)!!;
+			}
 			if (self.stop)
 			{
 				// Shutdown requested.
