@@ -1964,7 +1964,8 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 		}
 		else
 		{
-			RETURN_PRINT_ERROR_HERE("Expected only attribute '@align'.");
+			PRINT_ERROR_HERE("Expected only attribute '@align' here, if you want to add an attribute to the typedef itself, place it before the '='.");
+			return poisoned_decl;
 		}
 	}
 	RANGE_EXTEND_PREV(decl);

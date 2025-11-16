@@ -28,6 +28,7 @@
 - `overflow_*` vector ops now correctly return a bool vector.
 - Regression vector ABI: npot vectors would load incorrectly from pointers and other things. #2576
 - Using `defer catch` with a (void), would cause an assertion. #2580
+- Fix decl attribute in the wrong place causing an assertion. #2581
 
 ### Stdlib changes
 
