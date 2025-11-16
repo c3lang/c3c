@@ -11,6 +11,7 @@
 - Enums now work with `membersof` to return the associated values. #2571
 - Deprecated `SomeEnum.associated` in favour of `SomeEnum.membersof`
 - Refactored `@simd` implementation.
+- Improve error message for `Foo{}` when `Foo` is not a generic type #2574.
 
 ### Fixes
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.

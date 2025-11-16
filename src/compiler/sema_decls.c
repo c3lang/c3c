@@ -5262,13 +5262,22 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 
 	unsigned parameter_count = vec_size(module->parameters);
 	ASSERT(parameter_count > 0);
-	if (parameter_count != vec_size(params))
+	unsigned count = vec_size(params);
+	if (parameter_count != count)
 	{
-		ASSERT_AT(span, vec_size(params));
-		sema_error_at(c, extend_span_with_token(params[0]->span, vectail(params)->span),
-					  "The generic module expected %d arguments, but you supplied %d, did you make a mistake?",
-					  parameter_count,
-					  vec_size(params));
+		if (!count)
+		{
+			sema_error_at(c, invocation_span,
+						  "'%s' must be instantiatied with generic module arguments inside the '{}', did you forget them?", name, (int)parameter_count);
+
+		}
+		else
+		{
+			sema_error_at(c, extend_span_with_token(params[0]->span, vectail(params)->span),
+						  "The generic module expected %d argument(s), but you supplied %d, did you make a mistake?",
+						  parameter_count,
+						  vec_size(params));
+		}
 		return poisoned_decl;
 	}
 	if (!sema_generate_parameterized_name_to_scratch(c, module, params, true, was_recursive_ref)) return poisoned_decl;
