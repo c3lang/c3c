@@ -307,8 +307,15 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 
 static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 {
-
 	BlockExit *exit = *ast->return_stmt.block_exit_ref;
+
+	// In the (void) case, we might not have a variable to handle the defer catch, if so we create it here.
+	BEValue error_out_ref = { .value = NULL };
+	if (!exit->block_error_var && ast->return_stmt.cleanup_catch)
+	{
+		error_out_ref = llvm_emit_alloca_b(c, type_fault, "defer_block_fault");
+		exit->block_error_var = error_out_ref.value;
+	}
 
 	PUSH_CATCH_VAR_BLOCK(exit->block_error_var, exit->block_optional_exit);
 
@@ -337,6 +344,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	{
 		llvm_store_to_ptr_aligned(c, exit->block_return_out, &return_value, type_alloca_alignment(return_value.type));
 	}
+
 	llvm_emit_statement_chain(c, cleanup);
 
 	if (err_cleanup_block)
@@ -351,6 +359,10 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	else
 	{
 		llvm_emit_jmp(c, exit->block_return_exit);
+	}
+	if (error_out_ref.value)
+	{
+		exit->block_error_var = NULL;
 	}
 }
 

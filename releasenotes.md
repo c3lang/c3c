@@ -27,6 +27,7 @@
 - Casting a distinct type based on a pointer to an `any` would accidentally be permitted. #2575
 - `overflow_*` vector ops now correctly return a bool vector.
 - Regression vector ABI: npot vectors would load incorrectly from pointers and other things. #2576
+- Using `defer catch` with a (void), would cause an assertion. #2580
 
 ### Stdlib changes
 

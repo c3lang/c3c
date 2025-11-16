@@ -1310,6 +1310,7 @@ typedef struct
 	Expr *expr; // May be NULL
 	AstId cleanup;
 	AstId cleanup_fail;
+	bool cleanup_catch;
 	BlockExit** block_exit_ref; // For block exits
 } AstReturnStmt;
 

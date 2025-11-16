@@ -24,7 +24,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement);
 
 static inline bool sema_check_return_matches_opt_returns(SemaContext *context, Expr *ret_expr);
-static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bottom);
+static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bottom, bool *has_catch_ref);
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref, bool *infinite);
@@ -440,16 +440,26 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 }
 
 // Check whether a defer chain contains a try or a catch.
-static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bottom)
+static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bottom, bool *has_catch_ref)
 {
+	bool has_try = false;
 	while (defer_bottom != defer_top)
 	{
 		Ast *defer = astptr(defer_top);
-		if (defer->defer_stmt.is_catch || defer->defer_stmt.is_try) return true;
+		if (defer->defer_stmt.is_catch)
+		{
+			if (has_catch_ref) *has_catch_ref = true;
+			return true;
+		}
+		if (defer->defer_stmt.is_try)
+		{
+			has_try = true;
+		}
 		defer_top = defer->defer_stmt.prev_defer;
 	}
-	return false;
+	return has_try;
 }
+
 
 // Print defers at return (from macro/block or from function)
 static inline void sema_inline_return_defers(SemaContext *context, Ast *stmt, AstId defer_bottom)
@@ -458,9 +468,11 @@ static inline void sema_inline_return_defers(SemaContext *context, Ast *stmt, As
 	stmt->return_stmt.cleanup = context_get_defers(context, defer_bottom, true);
 
 	// If we have an optional return, then we create a cleanup_fail
+	bool has_catch = false;
 	if (stmt->return_stmt.expr && IS_OPTIONAL(stmt->return_stmt.expr)
-		&& sema_defer_has_try_or_catch(context->active_scope.defer_last, context->block_return_defer))
+		&& sema_defer_has_try_or_catch(context->active_scope.defer_last, context->block_return_defer, &has_catch))
 	{
+		stmt->return_stmt.cleanup_catch = has_catch;
 		stmt->return_stmt.cleanup_fail = context_get_defers(context, context->block_return_defer, false);
 		return;
 	}
