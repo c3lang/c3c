@@ -430,13 +430,8 @@ jobs:
 
       - name: Install Clang ${{matrix.llvm_version}}
         run: |
-          if [[ "${{matrix.llvm_version}}" < "${{env.LLVM_DEV_VERSION}}" ]]; then
             apk add "llvm${{matrix.llvm_version}}-dev" "llvm${{matrix.llvm_version}}-static" \
             "lld${{matrix.llvm_version}}-dev" "clang${{matrix.llvm_version}}-dev"
-          else
-            apk add "llvm${{env.LLVM_DEV_VERSION}}-dev" "llvm${{matrix.llvm_version}}-static" \
-            "lld${{env.LLVM_DEV_VERSION}}-dev" "clang${{matrix.llvm_version}}-dev"
-          fi
       - name: CMake
         if: matrix.llvm_version == env.LLVM_DEV_VERSION
         run: |
