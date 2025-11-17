@@ -579,7 +579,7 @@ jobs:
           tar -czf c3-linux-${{matrix.build_type}}.tar.gz c3
 
       - name: upload artifacts
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_ALPINEv3_22
         uses: actions/upload-artifact@v4
         with:
           name: c3-musl-${{matrix.build_type}}
