@@ -568,7 +568,7 @@ jobs:
           ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/
 
       - name: bundle_output
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_ALPINEv3_22
         run: |
           mkdir c3
           cp -r lib c3
