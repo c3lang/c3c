@@ -431,7 +431,10 @@ jobs:
       - name: Install Clang ${{matrix.llvm_version}}
         run: |
             apk add "llvm${{matrix.llvm_version}}-dev" "llvm${{matrix.llvm_version}}-static" \
-            "lld${{matrix.llvm_version}}-dev" "clang${{matrix.llvm_version}}-dev"
+            "llvm${{matrix.llvm_version}}-gtest" "llvm${{matrix.llvm_version}}-linker-tools" \
+            "llvm${{matrix.llvm_version}}-test-utils" "llvm${{matrix.llvm_version}}-test-utils-pyc" \
+            "lld${{matrix.llvm_version}}-dev" "clang${{matrix.llvm_version}}-dev" \
+            "clang${{matrix.llvm_version}}-extra-tools" "clang${{matrix.llvm_version}}-static"
       - name: CMake
         if: matrix.llvm_version == env.LLVM_DEV_VERSION
         run: |
