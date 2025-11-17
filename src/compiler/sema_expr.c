@@ -1723,6 +1723,77 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 								  callee->macro, false);
 }
 
+INLINE Expr **sema_splat_struct_insert(SemaContext *context, Expr **args, Expr *arg, Decl *strukt, ArrayIndex index)
+{
+	unsigned len = vec_size(strukt->strukt.members);
+	args = sema_prepare_splat_insert(args, len, index);
+	if (sema_cast_const(arg))
+	{
+		ASSERT(expr_is_const_initializer(arg));
+		ConstInitializer *initializer = arg->const_expr.initializer;
+		if (initializer->kind == CONST_INIT_ZERO)
+		{
+			for (ArrayIndex i = 0; i < len; i++)
+			{
+				Expr *expr = expr_calloc();
+				expr->span = arg->span;
+				expr_rewrite_to_const_zero(expr, strukt->strukt.members[i]->type);
+				args[i + index] = expr;
+			}
+			return args;
+		}
+		ASSERT(initializer->kind == CONST_INIT_STRUCT);
+		for (ArrayIndex i = 0; i < len; i++)
+		{
+			ConstInitializer *c = initializer->init_struct[i];
+			Expr *expr;
+			switch (c->kind)
+			{
+				case CONST_INIT_ZERO:
+					expr = expr_calloc();
+					expr->span = arg->span;
+					expr_rewrite_to_const_zero(expr, strukt->strukt.members[i]->type);
+					args[i + index] = expr;
+					break;
+				case CONST_INIT_VALUE:
+					expr = expr_copy(c->init_value);
+					break;
+				default:
+					expr = expr_calloc();
+					expr->span = arg->span;
+					expr_rewrite_const_initializer(expr, strukt->strukt.members[i]->type, c);
+					break;
+			}
+			args[i + index] = expr;
+		}
+		return args;
+	}
+	if (context->call_env.kind != CALL_ENV_FUNCTION)
+	{
+		SEMA_ERROR(arg, "Cannot splat a non-constant value in a global context.");
+		return NULL;
+	}
+	Decl *temp = decl_new_generated_var(arg->type, VARDECL_LOCAL, arg->span);
+	Expr *decl_expr = expr_generate_decl(temp, arg);
+	Expr *two = expr_new_expr(EXPR_TWO, arg);
+	two->two_expr.first = decl_expr;
+	Expr *access = expr_new_expr(EXPR_ACCESS_RESOLVED, arg);
+	access->access_resolved_expr = (ExprResolvedAccess) { .parent = expr_variable(temp), .ref = strukt->strukt.members[0] };
+	access->resolve_status = RESOLVE_DONE;
+	access->type = strukt->strukt.members[0]->type;
+	two->two_expr.last = access;
+	if (!sema_analyse_expr_rvalue(context, two)) return NULL;
+	args[index] = two;
+	for (ArrayIndex i = 1; i < len; i++)
+	{
+		access = expr_new_expr(EXPR_ACCESS_RESOLVED, arg);
+		access->access_resolved_expr = (ExprResolvedAccess) { .parent = expr_variable(temp), .ref = strukt->strukt.members[i] };
+		access->resolve_status = RESOLVE_DONE;
+		access->type = strukt->strukt.members[i]->type;
+		args[index + i] = access;
+	}
+	return args;
+}
 
 INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Expr *arg, ArraySize len, ArrayIndex index)
 {
@@ -1965,6 +2036,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 				continue;
 			}
 SPLAT_NORMAL:;
+			Expr **new_args;
 			Type *flat = type_flatten(inner->type);
 			switch (flat->type_kind)
 			{
@@ -1972,7 +2044,10 @@ SPLAT_NORMAL:;
 				case TYPE_ARRAY:
 				case TYPE_SLICE:
 				case TYPE_UNTYPED_LIST:
-					// These may be splatted
+					break;
+				case TYPE_STRUCT:
+					new_args = sema_splat_struct_insert(context, args, inner, flat->decl, i);
+					goto AFTER_SPLAT;
 					break;
 				default:
 					RETURN_SEMA_ERROR(arg, "An argument of type %s cannot be splatted.",
@@ -1985,7 +2060,8 @@ SPLAT_NORMAL:;
 			{
 				RETURN_SEMA_ERROR(arg, "A non-constant zero size splat cannot be used with raw varargs.");
 			}
-			Expr **new_args = sema_splat_arraylike_insert(context, args, inner, len, i);
+			new_args = sema_splat_arraylike_insert(context, args, inner, len, i);
+		AFTER_SPLAT:;
 			if (!new_args) return false;
 			args = new_args;
 			i--;
@@ -6597,14 +6673,18 @@ Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs)
 				Expr *inner = arg->inner_expr;
 				if (!sema_analyse_expr_rvalue(context, inner)) return false;
 				Type *flat = type_flatten(inner->type);
+				Expr **new_args;
 				switch (flat->type_kind)
 				{
 					case VECTORS:
 					case TYPE_ARRAY:
 					case TYPE_SLICE:
 					case TYPE_UNTYPED_LIST:
-						// These may be splatted
+						// These may be splatted like arrays
 						break;
+					case TYPE_STRUCT:
+						new_args = sema_splat_struct_insert(context, exprs, inner, flat->decl, i);
+						goto SPLAT_DONE;
 					default:
 						SEMA_ERROR(arg, "An argument of type %s cannot be splatted.",
 						           type_quoted_error_string(inner->type));
@@ -6622,7 +6702,8 @@ Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs)
 					SEMA_ERROR(arg, "A non-constant zero size splat is not allowed.");
 					return NULL;
 				}
-				Expr **new_args = sema_splat_arraylike_insert(context, exprs, inner, len, i);
+				new_args = sema_splat_arraylike_insert(context, exprs, inner, len, i);
+SPLAT_DONE:
 				if (!new_args) return false;
 				exprs = new_args;
 				count = vec_size(exprs);

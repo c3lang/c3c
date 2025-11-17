@@ -13,6 +13,7 @@
 - Refactored `@simd` implementation.
 - Improve error message for `Foo{}` when `Foo` is not a generic type #2574.
 - Support `@param` directives for `...` parameters. #2578
+- Allow splatting of structs. #2555
 
 ### Fixes
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.
