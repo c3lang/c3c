@@ -425,16 +425,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install common deps
         run: |
-          sudo apk update
-          sudo apk add zlib-dev zlib-static python3 samurai cmake curl-dev curl-static openssl-dev
+          apk update
+          apk add zlib-dev zlib-static python3 samurai cmake curl-dev curl-static openssl-dev
 
       - name: Install Clang ${{matrix.llvm_version}}
         run: |
           if [[ "${{matrix.llvm_version}}" < "${{env.LLVM_DEV_VERSION}}" ]]; then
-            sudo apk add "llvm${{matrix.llvm_version}}-dev" "llvm${{matrix.llvm_version}}-static" \
+            apk add "llvm${{matrix.llvm_version}}-dev" "llvm${{matrix.llvm_version}}-static" \
             "lld${{matrix.llvm_version}}-dev" "clang${{matrix.llvm_version}}-dev"
           else
-            sudo apk add "llvm${{env.LLVM_DEV_VERSION}}-dev" "llvm${{matrix.llvm_version}}-static" \
+            apk add "llvm${{env.LLVM_DEV_VERSION}}-dev" "llvm${{matrix.llvm_version}}-static" \
             "lld${{env.LLVM_DEV_VERSION}}-dev" "clang${{matrix.llvm_version}}-dev"
           fi
       - name: CMake
