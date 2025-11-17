@@ -576,7 +576,7 @@ jobs:
           cp build/c3c c3
           cp README.md c3
           cp releasenotes.md c3
-          tar -czf c3-linux-${{matrix.build_type}}.tar.gz c3
+          tar -czf c3-musl-${{matrix.build_type}}.tar.gz c3
 
       - name: upload artifacts
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_ALPINEv3_22
