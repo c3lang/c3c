@@ -25,16 +25,19 @@ fn void main()
 define void @test.main() #0 {
 entry:
   %literal = alloca [3 x %Vector3], align 16
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 16 @.__const, i32 36, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal, ptr align 16 @.__const, i32 36, i1 false)
   %0 = insertvalue %"Vector3[]" undef, ptr %literal, 0
   %1 = insertvalue %"Vector3[]" %0, i64 3, 1
   br label %loop.cond
+
 loop.cond:                                        ; preds = %loop.inc, %entry
   %2 = extractvalue %"Vector3[]" %1, 1
   %lt = icmp ult i64 0, %2
   br i1 %lt, label %loop.inc, label %loop.exit
+
 loop.inc:                                         ; preds = %loop.cond
   br label %loop.cond
+
 loop.exit:                                        ; preds = %loop.cond
   ret void
 }

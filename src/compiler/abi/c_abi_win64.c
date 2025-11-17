@@ -24,20 +24,20 @@ ABIArgInfo *win64_classify(Regs *regs, ParamInfo param, bool is_return, bool is_
 	{
 		// Enough registers AND return / builtin / vector
 		if (regs->float_regs >= elements &&
-			(is_return || type_is_builtin(type->type_kind) || type->type_kind == TYPE_VECTOR))
+			(is_return || type_is_builtin(type->type_kind) || type->type_kind == TYPE_SIMD_VECTOR))
 		{
 			regs->float_regs -= elements;
 			return abi_arg_new_direct(param);
 		}
 		// HVAs are handled later.
-		if (is_return || (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_VECTOR))
+		if (is_return || (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_SIMD_VECTOR))
 		{
 			return abi_arg_new_indirect_not_by_val(type, param);
 		}
 		// => to main handling.
 	}
 	ByteSize size = type_size(type);
-	bool type_is_vector_to_pass_as_array = compiler.build.feature.pass_win64_simd_as_arrays && type->type_kind == TYPE_VECTOR;
+	bool type_is_vector_to_pass_as_array = compiler.build.feature.pass_win64_simd_as_arrays && type->type_kind == TYPE_SIMD_VECTOR;
 	if (type_is_vector_to_pass_as_array || type_is_abi_aggregate(type))
 	{
 		// Not 1, 2, 4, 8? Pass indirect.
@@ -77,7 +77,7 @@ ABIArgInfo *win64_reclassify_hva_arg(Regs *regs, ParamInfo param, ABIArgInfo *in
 	Type *base = NULL;
 	unsigned elements = 0;
 	Type *type = type_lowering(param.type);
-	if (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_VECTOR && type_is_homogenous_aggregate(type, &base, &elements))
+	if (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_SIMD_VECTOR && type_is_homogenous_aggregate(type, &base, &elements))
 	{
 		if (regs->float_regs >= elements)
 		{

@@ -246,7 +246,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			Type *element_type = array_type->array.base;
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			ConstInitializer **elements = const_init->init_array_full;
-			ASSERT(array_type->type_kind == TYPE_ARRAY || array_type->type_kind == TYPE_VECTOR);
+			ASSERT(type_is_arraylike(array_type));
 			ArraySize size = array_type->array.len;
 			ASSERT(size > 0);
 			LLVMValueRef *parts = VECNEW(LLVMValueRef, size);
@@ -256,7 +256,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 				if (element_type_llvm != LLVMTypeOf(element)) was_modified = true;
 				vec_add(parts, element);
 			}
-			if ((!in_aggregate && array_type->type_kind == TYPE_VECTOR) || const_init->is_simd)
+			if ((!in_aggregate && array_type->type_kind == TYPE_VECTOR) || array_type->type_kind == TYPE_SIMD_VECTOR)
 			{
 				return LLVMConstVector(parts, vec_size(parts));
 			}
@@ -282,7 +282,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			unsigned alignment = 0;
 			LLVMValueRef *parts = NULL;
 			bool pack = false;
-			bool is_vec = const_init->is_simd || (!in_aggregate && array_type->type_kind == TYPE_VECTOR);
+			bool is_vec = array_type->type_kind == TYPE_SIMD_VECTOR || (!in_aggregate && array_type->type_kind == TYPE_VECTOR);
 			FOREACH(ConstInitializer *, element, elements)
 			{
 				ASSERT(element->kind == CONST_INIT_ARRAY_VALUE);
@@ -444,7 +444,7 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 			value->kind = BE_ADDRESS;
 			return;
 		case TYPE_ARRAY:
-		case TYPE_VECTOR:
+		case VECTORS:
 		case TYPE_FLEXIBLE_ARRAY:
 			return;
 		case TYPE_SLICE:
@@ -736,8 +736,7 @@ void gencontext_print_llvm_ir(GenContext *context)
 	}
 }
 
-
-LLVMValueRef llvm_emit_alloca(GenContext *c, LLVMTypeRef type, unsigned alignment, const char *name)
+INLINE LLVMValueRef llvm_emit_alloca_internal(GenContext *c, LLVMTypeRef type, unsigned alignment, const char *name)
 {
 	ASSERT(LLVMGetTypeKind(type) != LLVMVoidTypeKind);
 	ASSERT(!llvm_is_global_eval(c));
@@ -751,9 +750,31 @@ LLVMValueRef llvm_emit_alloca(GenContext *c, LLVMTypeRef type, unsigned alignmen
 	return alloca;
 }
 
-LLVMValueRef llvm_emit_alloca_aligned(GenContext *c, Type *type, const char *name)
+BEValue llvm_emit_alloca_b(GenContext *c, Type *type, const char *name)
 {
-	return llvm_emit_alloca(c, llvm_get_type(c, type), type_alloca_alignment(type), name);
+	type = type_lowering(type);
+	if (type->type_kind == TYPE_VECTOR)
+	{
+		type = type_get_vector(type->array.base, TYPE_SIMD_VECTOR, type->array.len);
+	}
+	LLVMTypeRef llvm_type = llvm_get_type(c, type);
+	AlignSize alignment = type_alloca_alignment(type);
+	LLVMValueRef alloca = llvm_emit_alloca_internal(c, llvm_type, alignment, name);
+	return (BEValue){.value = alloca, .alignment = alignment, .kind = BE_ADDRESS, .type = type};
+}
+
+BEValue llvm_emit_alloca_b_realign(GenContext *c, Type *type, AlignSize alignment, const char *name)
+{
+	ASSERT(alignment != 0);
+	type = type_lowering(type);
+	LLVMTypeRef llvm_type = llvm_get_type(c, type);
+	LLVMValueRef alloca = llvm_emit_alloca_internal(c, llvm_type, alignment, name);
+	return (BEValue){.value = alloca, .alignment = alignment, .kind = BE_ADDRESS, .type = type};
+}
+
+LLVMValueRef llvm_emit_alloca(GenContext *c, LLVMTypeRef type, unsigned alignment, const char *name)
+{
+	return llvm_emit_alloca_internal(c, type, alignment, name);
 }
 
 void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl)
@@ -761,7 +782,7 @@ void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl)
 	Type *type = type_lowering(decl->type);
 	if (type == type_void) return;
 	ASSERT(!decl->backend_ref && !decl->is_value);
-	decl->backend_ref = llvm_emit_alloca(c, llvm_get_type(c, type), decl->alignment, decl->name ? decl->name : ".anon");
+	decl->backend_ref = llvm_emit_alloca_internal(c, llvm_get_type(c, type), decl->alignment, decl->name ? decl->name : ".anon");
 }
 
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl)

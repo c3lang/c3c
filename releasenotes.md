@@ -10,6 +10,9 @@
 - Function referencing in `@return?` for simplified fault declarations. Check `@return?` eagerly #2340.
 - Enums now work with `membersof` to return the associated values. #2571
 - Deprecated `SomeEnum.associated` in favour of `SomeEnum.membersof`
+- Refactored `@simd` implementation.
+- Improve error message for `Foo{}` when `Foo` is not a generic type #2574.
+- Support `@param` directives for `...` parameters. #2578
 
 ### Fixes
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.
@@ -24,6 +27,10 @@
 - Fix appending to `c:\` or `\` #2569.
 - When encountering a foreach over a `ZString*` it would not properly emit a compilation error, but hit an assert #2573.
 - Casting a distinct type based on a pointer to an `any` would accidentally be permitted. #2575
+- `overflow_*` vector ops now correctly return a bool vector.
+- Regression vector ABI: npot vectors would load incorrectly from pointers and other things. #2576
+- Using `defer catch` with a (void), would cause an assertion. #2580
+- Fix decl attribute in the wrong place causing an assertion. #2581
 
 ### Stdlib changes
 

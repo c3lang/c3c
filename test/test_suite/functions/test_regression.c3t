@@ -520,7 +520,7 @@ loop.exit8:                                       ; preds = %loop.cond2
   %hi = load i64, ptr %ptradd10, align 8
   %42 = call i32 @test.sum_us(ptr %lo, i64 %hi)
   %43 = call i32 (ptr, ...) @printf(ptr @.str.17, i32 %42)
-  store i32 1, ptr %varargslots, align 4
+  store i32 1, ptr %varargslots, align 16
   %ptradd11 = getelementptr inbounds i8, ptr %varargslots, i64 4
   store i32 2, ptr %ptradd11, align 4
   %ptradd12 = getelementptr inbounds i8, ptr %varargslots, i64 8

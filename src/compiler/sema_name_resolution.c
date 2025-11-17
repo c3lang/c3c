@@ -965,14 +965,13 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
+		case ALL_VECTORS:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_MEMBER:
-		case TYPE_INFERRED_VECTOR:
-		case TYPE_VECTOR:
 		case TYPE_SLICE:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
@@ -1014,7 +1013,7 @@ Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const 
 		{
 			case TYPE_ARRAY:
 				return declptrzero(methodtable_get(&compiler.context.method_extensions, type_get_inferred_array(type->array.base), method_name));
-			case TYPE_VECTOR:
+			case VECTORS:
 				return declptrzero(methodtable_get(&compiler.context.method_extensions, type_get_inferred_vector(type->array.base), method_name));
 			default:
 				return NULL;

@@ -22,7 +22,7 @@ entry:
   %e = alloca ptr, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x, ptr align 16 @.__const, i32 4000, i1 false)
   call void @llvm.memset.p0.i64(ptr align 16 %y, i8 0, i64 40, i1 false)
-  store i32 10, ptr %y, align 4
+  store i32 10, ptr %y, align 16
   %ptradd = getelementptr inbounds i8, ptr %y, i64 4
   store i32 10, ptr %ptradd, align 4
   %ptradd1 = getelementptr inbounds i8, ptr %y, i64 8

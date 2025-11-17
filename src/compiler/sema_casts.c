@@ -321,12 +321,12 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 			return type_add_optional(type_get_array(indexed, type_flatten(actual_type)->array.len), is_optional);
 		case TYPE_INFERRED_VECTOR:
 			if (!type_is_arraylike(type_flatten(actual_type))) return to_infer;
-			return type_add_optional(type_get_vector(indexed, type_flatten(actual_type)->array.len), is_optional);
+			return type_add_optional(type_get_vector(indexed, TYPE_VECTOR, type_flatten(actual_type)->array.len), is_optional);
 		case TYPE_SLICE:
 			return type_add_optional(type_get_slice(indexed), is_optional);
-		case TYPE_VECTOR:
+		case VECTORS:
 			// The case of int[*]*[<2>] x = ...
-			return type_add_optional(type_get_vector(indexed, to_infer->array.len), is_optional);
+			return type_add_optional(type_get_vector(indexed, to_infer->type_kind, to_infer->array.len), is_optional);
 		default:
 			UNREACHABLE
 	}
@@ -606,7 +606,7 @@ static void expr_recursively_rewrite_untyped_list(Expr *expr, Type *to_type)
 	}
 	switch (flat->type_kind)
 	{
-		case TYPE_VECTOR:
+		case VECTORS:
 		{
 			Type *indexed = type_get_indexed_type(to_type);
 			FOREACH(Expr *, e, values)
@@ -1105,7 +1105,7 @@ static bool rule_arr_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 		default:
 			return sema_cast_error(cc, false, is_silent);
 	}
-	cast_context_set_from(cc, type_get_vector(base, len));
+	cast_context_set_from(cc, type_get_vector(base, cc->to->type_kind, len));
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
 
@@ -1159,7 +1159,7 @@ static bool rule_slice_to_vecarr(CastContext *cc, bool is_explicit, bool is_sile
 		{
 			return report_cast_error(cc, false);
 		}
-		cast_context_set_from(cc, type_get_vector(cc->from->array.base, size));
+		cast_context_set_from(cc, type_get_vector(cc->from->array.base, cc->to->type_kind, size));
 	}
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
@@ -2409,14 +2409,13 @@ static void cast_arr_to_vec(Expr *expr, Type *to_type)
 {
 	Type *index_vec = type_flatten(type_get_indexed_type(to_type));
 	Type *index_arr = type_flatten(type_get_indexed_type(expr->type));
-	Type *to_temp = index_vec == index_arr ? to_type : type_get_vector(index_arr, type_flatten(expr->type)->array.len);
+	Type *to_temp = index_vec == index_arr ? to_type : type_get_vector(index_arr, to_type->canonical->type_kind, type_flatten(expr->type)->array.len);
 	if (sema_cast_const(expr))
 	{
 		// For the array -> vector this is always a simple rewrite of type.
 		ASSERT(expr->const_expr.const_kind == CONST_INITIALIZER);
 		ConstInitializer *list = expr->const_expr.initializer;
 		list->type = type_flatten(to_temp);
-		list->is_simd = type_is_simd(to_temp);
 		expr->type = to_temp;
 	}
 	else
@@ -2630,13 +2629,14 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_WILDCARD]         = CONV_WILDCARD,
 	[TYPE_TYPEINFO]         = CONV_NO,
 	[TYPE_MEMBER]           = CONV_NO,
+	[TYPE_SIMD_VECTOR]      = CONV_VECTOR,
 };
 
 INLINE ConvGroup type_to_group(Type *type)
 {
 	type = type->canonical;
 	if (type == type_voidptr) return CONV_VOIDPTR;
-	if (type->type_kind == TYPE_POINTER && (type->pointer->type_kind == TYPE_ARRAY || type->pointer->type_kind == TYPE_VECTOR)) return CONV_VAPTR;
+	if (type->type_kind == TYPE_POINTER && (type->pointer->type_kind == TYPE_ARRAY || type_kind_is_real_vector(type->pointer->canonical->type_kind))) return CONV_VAPTR;
 	if (type_len_is_inferred(type)) return CONV_INFERRED;
 	return group_from_type[type->type_kind];
 }

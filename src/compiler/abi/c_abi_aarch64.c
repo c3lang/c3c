@@ -6,7 +6,7 @@
 
 INLINE bool is_aarch64_illegal_vector(Type *type)
 {
-	if (type->type_kind != TYPE_VECTOR)
+	if (type->type_kind != TYPE_SIMD_VECTOR)
 	{
 		// Return true if scaled vector
 		return false;
@@ -57,7 +57,7 @@ ABIArgInfo *aarch64_coerce_illegal_vector(Type *type, ParamInfo param)
 				UNREACHABLE
 		}*/
 	}
-	ASSERT(type->type_kind == TYPE_VECTOR);
+	ASSERT(type->type_kind == TYPE_SIMD_VECTOR);
 	TypeSize size = type_size(type);
 
 	// CLANG: Android promotes char[<2>] to ushort, not uint
@@ -160,7 +160,7 @@ ABIArgInfo *aarch64_classify_return_type(ParamInfo param, bool variadic)
 	TypeSize size = type_size(type);
 
 	// Large vectors by mem.
-	if (type->type_kind == TYPE_VECTOR && size > 16)
+	if (type->type_kind == TYPE_SIMD_VECTOR && size > 16)
 	{
 		return abi_arg_new_direct_coerce_type(abi_type_get(type), param);
 	}

@@ -179,12 +179,11 @@ void type_append_name_to_scratch(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_ANYFAULT:
 		case TYPE_ANY:
-		case TYPE_VECTOR:
+		case ALL_VECTORS:
 			scratch_buffer_append(type->name);
 			break;
 		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 		case TYPE_WILDCARD:
@@ -307,6 +306,8 @@ const char *type_to_error_string(Type *type)
 			return str_printf("%s[<*>]", type_to_error_string(type->array.base));
 		case TYPE_VECTOR:
 			return str_printf("%s[<%llu>]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
+		case TYPE_SIMD_VECTOR:
+			return str_printf("%s[<%llu>] @simd", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 		case TYPE_TYPEINFO:
 			return "typeinfo";
 		case TYPE_TYPEID:
@@ -385,6 +386,8 @@ static const char *type_to_error_string_with_path(Type *type)
 			return str_printf("%s[<*>]", type_to_error_string_with_path(type->array.base));
 		case TYPE_VECTOR:
 			return str_printf("%s[<%llu>]", type_to_error_string_with_path(type->array.base), (unsigned long long)type->array.len);
+		case TYPE_SIMD_VECTOR:
+			return str_printf("%s[<%llu>] @simd", type_to_error_string_with_path(type->array.base), (unsigned long long)type->array.len);
 		case TYPE_TYPEINFO:
 			return "typeinfo";
 		case TYPE_TYPEID:
@@ -464,8 +467,8 @@ TypeSize type_size(Type *type)
 		case TYPE_FUNC_PTR:
 		case TYPE_POINTER:
 			return type->size = t.iptr.canonical->builtin.bytesize;
+		case VECTORS:
 		case TYPE_ARRAY:
-		case TYPE_VECTOR:
 			return type->size = type_size(type->array.base) * type->array.len;
 		case TYPE_SLICE:
 			return type->size = size_slice;
@@ -487,7 +490,7 @@ FunctionPrototype *type_get_resolved_prototype(Type *type)
 bool type_flat_is_numlike(Type *type)
 {
 	type = type_flatten(type);
-	if (type->type_kind == TYPE_VECTOR) type = type_flatten(type->array.base);
+	if (type_kind_is_real_vector(type->type_kind)) type = type_flatten(type->array.base);
 	TypeKind kind = type->type_kind;
 	return kind >= TYPE_NUM_FIRST && kind <= TYPE_NUM_LAST;
 }
@@ -495,7 +498,7 @@ bool type_flat_is_numlike(Type *type)
 bool type_flat_is_floatlike(Type *type)
 {
 	type = type_flatten(type);
-	if (type->type_kind == TYPE_VECTOR) type = type_flatten(type->array.base);
+	if (type_kind_is_real_vector(type->type_kind)) type = type_flatten(type->array.base);
 	TypeKind kind = type->type_kind;
 	return kind >= TYPE_FLOAT_FIRST && kind <= TYPE_FLOAT_LAST;
 }
@@ -503,7 +506,7 @@ bool type_flat_is_floatlike(Type *type)
 bool type_flat_is_intlike(Type *type)
 {
 	type = type_flatten(type);
-	if (type->type_kind == TYPE_VECTOR) type = type_flatten(type->array.base);
+	if (type_kind_is_real_vector(type->type_kind)) type = type_flatten(type->array.base);
 	TypeKind kind = type->type_kind;
 	return kind >= TYPE_INTEGER_FIRST && kind <= TYPE_INTEGER_LAST;
 }
@@ -511,7 +514,7 @@ bool type_flat_is_intlike(Type *type)
 bool type_flat_is_boolintlike(Type *type)
 {
 	type = type_flatten(type);
-	if (type->type_kind == TYPE_VECTOR) type = type_flatten(type->array.base);
+	if (type_kind_is_real_vector(type->type_kind)) type = type_flatten(type->array.base);
 	TypeKind kind = type->type_kind;
 	return kind == TYPE_BOOL || (kind >= TYPE_INTEGER_FIRST && kind <= TYPE_INTEGER_LAST);
 }
@@ -528,16 +531,6 @@ bool type_is_abi_aggregate(Type *type)
 	return type_is_aggregate(type);
 }
 
-bool type_is_simd(Type *type)
-{
-	type = type->canonical;
-	while (type->type_kind == TYPE_TYPEDEF)
-	{
-		if (type->decl->attr_simd) return true;
-		type = type->decl->distinct->type;
-	}
-	return false;
-}
 
 bool type_is_aggregate(Type *type)
 {
@@ -567,7 +560,7 @@ bool type_is_aggregate(Type *type)
 		case TYPE_CONST_ENUM:
 		case TYPE_FUNC_PTR:
 		case TYPE_FUNC_RAW:
-		case TYPE_VECTOR:
+		case VECTORS:
 		case TYPE_ANYFAULT:
 			return false;
 		case TYPE_STRUCT:
@@ -667,7 +660,7 @@ bool type_is_comparable(Type *type)
 		case TYPE_FUNC_PTR:
 		case TYPE_FUNC_RAW:
 		case TYPE_TYPEINFO:
-		case TYPE_VECTOR:
+		case VECTORS:
 		case TYPE_WILDCARD:
 			return true;
 	}
@@ -707,6 +700,9 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			scratch_buffer_append("f$");
 			type_mangle_introspect_name_to_buffer(type->optional);
 			return;
+		case TYPE_SIMD_VECTOR:
+			scratch_buffer_append("si");
+			FALLTHROUGH;
 		case TYPE_VECTOR:
 			scratch_buffer_append_char('v');
 			scratch_buffer_append_unsigned_int(type->array.len);
@@ -790,17 +786,8 @@ bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...)
 	return true;
 }
 
-AlignSize type_simd_alignment(CanonicalType *type)
-{
-	ASSERT(type->type_kind == TYPE_VECTOR);
-	ByteSize width = type_size(type->array.base) * type->array.len;
-	AlignSize alignment = (AlignSize)(int32_t)width;
-	if (max_alignment_vector && alignment > max_alignment_vector) return max_alignment_vector;
-	ASSERT(is_power_of_two(alignment));
-	return alignment;
-}
 
-AlignSize type_abi_alignment(Type *type)
+INLINE AlignSize type_alignment_(Type *type, bool alloca)
 {
 	RETRY:
 	switch (type->type_kind)
@@ -817,6 +804,13 @@ AlignSize type_abi_alignment(Type *type)
 			goto RETRY;
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_VECTOR:
+			if (!alloca)
+			{
+				type = type->array.base->canonical;
+				goto RETRY;
+			}
+			FALLTHROUGH;
+		case TYPE_SIMD_VECTOR:
 		{
 			ArraySize len = type->array.len;
 			if (!len) len = 1;
@@ -874,6 +868,11 @@ AlignSize type_abi_alignment(Type *type)
 			return alignment_slice;
 	}
 	UNREACHABLE
+}
+
+AlignSize type_abi_alignment(Type *type)
+{
+	return type_alignment_(type, false);
 }
 
 static inline void create_type_cache(Type *type)
@@ -1096,7 +1095,7 @@ Type *type_get_inferred_vector(Type *arr_type)
 
 AlignSize type_alloca_alignment(Type *type)
 {
-	AlignSize align = type_abi_alignment(type);
+	AlignSize align = type_alignment_(type, true);
 	if (align < 16 && (compiler.platform.abi == ABI_X64 || compiler.platform.abi == ABI_WIN64))
 	{
 		type = type_flatten(type);
@@ -1216,7 +1215,7 @@ Type *type_get_indexed_type(Type *type)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_VECTOR:
+		case VECTORS:
 			return type->array.base;
 		case TYPE_CONST_ENUM:
 			type = enum_inner_type(type);
@@ -1250,17 +1249,25 @@ static Type *type_create_array(Type *element_type, ArraySize len, TypeKind kind,
 		if (ptr_vec->array.len == len) return ptr_vec;
 	}
 	Type *vec_arr;
-	if (kind == TYPE_ARRAY)
+	switch (kind)
 	{
-		vec_arr = type_new(TYPE_ARRAY, str_printf("%s[%llu]", element_type->name, (unsigned long long)len));
-		vec_arr->array.base = element_type;
-		vec_arr->array.len = len;
-	}
-	else
-	{
-		vec_arr = type_new(kind, str_printf("%s[<%llu>]", element_type->name, (unsigned long long)len));
-		vec_arr->array.base = element_type;
-		vec_arr->array.len = len;
+		case TYPE_ARRAY:
+			vec_arr = type_new(TYPE_ARRAY, str_printf("%s[%llu]", element_type->name, (unsigned long long)len));
+			vec_arr->array.base = element_type;
+			vec_arr->array.len = len;
+			break;
+		case TYPE_VECTOR:
+			vec_arr = type_new(kind, str_printf("%s[<%llu>]", element_type->name, (unsigned long long)len));
+			vec_arr->array.base = element_type;
+			vec_arr->array.len = len;
+			break;
+		case TYPE_SIMD_VECTOR:
+			vec_arr = type_new(kind, str_printf("%s[<%llu>] @simd", element_type->name, (unsigned long long)len));
+			vec_arr->array.base = element_type;
+			vec_arr->array.len = len;
+			break;
+		default:
+			UNREACHABLE;
 	}
 	if (element_type->canonical == element_type)
 	{
@@ -1276,14 +1283,14 @@ static Type *type_create_array(Type *element_type, ArraySize len, TypeKind kind,
 
 Type *type_array_from_vector(Type *vec_type)
 {
-	ASSERT(vec_type->type_kind == TYPE_VECTOR);
+	ASSERT(type_kind_is_real_vector(vec_type->type_kind));
 	return type_get_array(vec_type->array.base, vec_type->array.len);
 }
 
 Type *type_vector_from_array(Type *vec_type)
 {
 	ASSERT(vec_type->type_kind == TYPE_ARRAY);
-	return type_get_vector(vec_type->array.base, vec_type->array.len);
+	return type_get_vector(vec_type->array.base, TYPE_VECTOR, vec_type->array.len);
 }
 
 Type *type_get_array(Type *arr_type, ArraySize len)
@@ -1344,7 +1351,7 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_BOOL:
 		case TYPE_ARRAY:
 		case TYPE_SLICE:
-		case TYPE_VECTOR:
+		case VECTORS:
 			return true;
 		case TYPE_ALIAS:
 			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
@@ -1367,19 +1374,30 @@ bool type_is_valid_for_array(Type *type)
 	UNREACHABLE
 }
 
-Type *type_get_vector_bool(Type *original_type)
+Type *type_get_vector_bool(Type *original_type, TypeKind kind)
 {
 	Type *type = type_flatten(original_type);
 	ByteSize size = type_size(type->array.base);
-	return type_get_vector(type_int_signed_by_bitsize((unsigned)size * 8), (unsigned)original_type->array.len);
+	return type_get_vector(type_int_signed_by_bitsize((unsigned)size * 8), kind, (unsigned)original_type->array.len);
 }
 
-Type *type_get_vector(Type *vector_type, unsigned len)
+Type *type_get_vector_from_vector(Type *base_type, Type *orginal_vector)
 {
-	ASSERT(type_is_valid_for_vector(vector_type));
-	return type_create_array(vector_type, len, TYPE_VECTOR, false);
+	ASSERT(type_kind_is_real_vector(orginal_vector->type_kind));
+	return type_get_vector(base_type, orginal_vector->type_kind, orginal_vector->array.len);
 }
 
+Type *type_get_simd_from_vector(Type *orginal_vector)
+{
+	ASSERT(orginal_vector->type_kind == TYPE_VECTOR);
+	return type_get_vector(orginal_vector->array.base, TYPE_SIMD_VECTOR, orginal_vector->array.len);
+}
+
+Type *type_get_vector(Type *vector_type, TypeKind kind, unsigned len)
+{
+	ASSERT(type_kind_is_real_vector(kind) && type_is_valid_for_vector(vector_type));
+	return type_create_array(vector_type, len, kind, false);
+}
 
 static void type_create(const char *name, Type *location, TypeKind kind, unsigned bitsize,
 						unsigned align, unsigned pref_align)
@@ -1593,7 +1611,7 @@ bool type_is_scalar(Type *type)
 		case TYPE_UNION:
 		case TYPE_ARRAY:
 		case TYPE_SLICE:
-		case TYPE_VECTOR:
+		case VECTORS:
 		case TYPE_INTERFACE:
 		case TYPE_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -1735,15 +1753,15 @@ static TypeCmpResult type_array_is_equivalent(SemaContext *context, Type *from, 
 			return type_array_element_is_equivalent(context, from->array.base, to->array.base, is_explicit);
 		case TYPE_ARRAY:
 			if (to_kind != TYPE_ARRAY && to_kind != TYPE_INFERRED_ARRAY) return TYPE_MISMATCH;
-			if (to->type_kind == TYPE_ARRAY && from->array.len != to->array.len) return TYPE_MISMATCH;
+			if (to_kind == TYPE_ARRAY && from->array.len != to->array.len) return TYPE_MISMATCH;
 			return type_array_element_is_equivalent(context, from->array.base, to->array.base, is_explicit);
 		case TYPE_INFERRED_VECTOR:
 			ASSERT(to_kind != TYPE_INFERRED_VECTOR);
-			if (to->type_kind != TYPE_VECTOR) return TYPE_MISMATCH;
+			if (type_kind_is_real_vector(to_kind)) return TYPE_MISMATCH;
 			return type_array_element_is_equivalent(context, from->array.base, to->array.base, is_explicit);
-		case TYPE_VECTOR:
-			if (to_kind != TYPE_VECTOR && to_kind != TYPE_INFERRED_VECTOR) return TYPE_MISMATCH;
-			if (to->type_kind == TYPE_VECTOR && from->array.len != to->array.len) return TYPE_MISMATCH;
+		case VECTORS:
+			if (!type_kind_is_any_vector(to_kind)) return TYPE_MISMATCH;
+			if (type_kind_is_real_vector(to_kind) && from->array.len != to->array.len) return TYPE_MISMATCH;
 			return type_array_element_is_equivalent(context, from->array.base, to->array.base, is_explicit);
 		default:
 			return TYPE_MISMATCH;
@@ -1782,7 +1800,7 @@ TypeCmpResult type_array_element_is_equivalent(SemaContext *context, Type *eleme
 		case TYPE_STRUCT:
 			if (is_explicit) return type_is_structurally_equivalent(element1, element2) ? TYPE_SAME : TYPE_MISMATCH;
 			return TYPE_MISMATCH;
-		case TYPE_VECTOR:
+		case VECTORS:
 		case TYPE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
@@ -1879,10 +1897,9 @@ bool type_may_have_method(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_ARRAY:
 		case TYPE_SLICE:
+		case ALL_VECTORS:
 		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_VECTOR:
 		case TYPE_BOOL:
 		case TYPE_INTERFACE:
 			return true;
@@ -1930,8 +1947,7 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 	ASSERT(kind != other_kind);
 
 	// If the other is a vector then we always set that one as the max.
-	if (other_kind == TYPE_VECTOR) return other_num;
-
+	if (type_kind_is_real_vector(other_kind)) return other_num;
 
 	// 1. The only conversions need to happen if the other type is a number.
 	if (other_kind < TYPE_INTEGER_FIRST || other_kind > TYPE_FLOAT_LAST) return NULL;
@@ -2040,7 +2056,7 @@ Type *type_decay_array_pointer(Type *type)
 	switch (ptr->type_kind)
 	{
 		case TYPE_ARRAY:
-		case TYPE_VECTOR:
+		case VECTORS:
 			return type_get_ptr(ptr->array.base->canonical);
 		default:
 			return type;
@@ -2187,7 +2203,7 @@ RETRY_DISTINCT:
 					}
 				}
 			}
-			if (type->pointer->type_kind == TYPE_VECTOR)
+			if (type_kind_is_real_vector(type->pointer->type_kind))
 			{
 				Type *vector_base = type->pointer->array.base->canonical;
 				if (other->type_kind == TYPE_SLICE && vector_base == other->array.base->canonical)
@@ -2252,7 +2268,7 @@ RETRY_DISTINCT:
 			UNREACHABLE // Should only handle canonical types
 		case TYPE_UNTYPED_LIST:
 			if (other->type_kind == TYPE_ARRAY) return other;
-			if (other->type_kind == TYPE_VECTOR) return other;
+			if (type_kind_is_real_vector(other->type_kind)) return other;
 			if (other->type_kind == TYPE_STRUCT) return other;
 			if (other->type_kind == TYPE_SLICE) return other;
 			return NULL;
@@ -2283,6 +2299,16 @@ RETRY_DISTINCT:
 			return NULL;
 			UNREACHABLE
 		case TYPE_VECTOR:
+			// VECTOR + SIMD -> SIMD if type and length matches.
+			if (other->type_kind == TYPE_SIMD_VECTOR)
+			{
+				if (other->array.base->canonical == type->array.base->canonical && other->array.len == type->array.len)
+				{
+					return other;
+				}
+			}
+			return NULL;
+		case TYPE_SIMD_VECTOR:
 			// No implicit conversion between vectors
 			return NULL;
 	}
@@ -2351,8 +2377,7 @@ unsigned type_get_introspection_kind(TypeKind kind)
 			return INTROSPECT_TYPE_ARRAY;
 		case TYPE_SLICE:
 			return INTROSPECT_TYPE_SLICE;
-		case TYPE_VECTOR:
-		case TYPE_INFERRED_VECTOR:
+		case ALL_VECTORS:
 			return INTROSPECT_TYPE_VECTOR;
 		case TYPE_OPTIONAL:
 			return INTROSPECT_TYPE_OPTIONAL;
@@ -2400,12 +2425,8 @@ Module *type_base_module(Type *type)
 		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
-		case TYPE_ARRAY:
 		case TYPE_SLICE:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_VECTOR:
-		case TYPE_INFERRED_VECTOR:
+		case ALL_ARRAYLIKE:
 			type = type->array.base;
 			goto RETRY;
 		case TYPE_OPTIONAL:

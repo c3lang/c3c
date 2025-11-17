@@ -31,8 +31,8 @@ fn void main()
 %any = type { ptr, i64 }
 
 @"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@"$ct.test.Int2V" = linkonce global %.introspect { i8 18, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.v2$int" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
-@"$ct.v2$int" = linkonce global %.introspect { i8 17, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.int" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Int2V" = linkonce global %.introspect { i8 18, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.siv2$int" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.siv2$int" = linkonce global %.introspect { i8 17, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.int" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
 @"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [9 x i8] c"%s %s %s\00", align 1
 @"$ct.a2$int" = linkonce global %.introspect { i8 15, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.int" to i64), i64 2, [0 x i64] zeroinitializer }, align 8

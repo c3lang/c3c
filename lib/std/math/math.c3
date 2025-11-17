@@ -1162,7 +1162,7 @@ macro bool overflow_sub(a, b, out) => $$overflow_sub(a, b, out);
  @require values::@is_flat_intlike(a) &&& values::@is_flat_intlike(b) : "a and b must both be integer or integer vector based"
  @require $defined(*out) &&& @typematch(*out, a) : "out must be a pointer of the same type as a and b"
 *>
-macro bool overflow_mul(a, b, out) => $$overflow_mul(a, b, out);
+macro overflow_mul(a, b, out) => $$overflow_mul(a, b, out);
 
 <*
  @require types::is_vector($Type) || ($Type.kindof == ARRAY &&& types::is_numerical($typefrom($Type.inner)))

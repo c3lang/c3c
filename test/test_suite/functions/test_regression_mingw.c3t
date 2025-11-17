@@ -564,7 +564,7 @@ loop.exit8:                                       ; preds = %loop.cond2
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg11, ptr align 8 %z, i32 16, i1 false)
   %42 = call i32 @test.sum_us(ptr align 8 %indirectarg11)
   %43 = call i32 (ptr, ...) @printf(ptr @.str.17, i32 %42)
-  store i32 1, ptr %varargslots, align 4
+  store i32 1, ptr %varargslots, align 16
   %ptradd12 = getelementptr inbounds i8, ptr %varargslots, i64 4
   store i32 2, ptr %ptradd12, align 4
   %ptradd13 = getelementptr inbounds i8, ptr %varargslots, i64 8

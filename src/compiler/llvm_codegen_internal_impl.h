@@ -48,7 +48,7 @@ INLINE bool type_is_intlike(Type *type)
 {
 	type = type_flatten(type);
 	if (type_is_integer_or_bool_kind(type)) return true;
-	if (type->type_kind != TYPE_VECTOR) return false;
+	if (!type_kind_is_real_vector(type->type_kind)) return false;
 	type = type->array.base;
 	return type_is_integer_or_bool_kind(type);
 }
@@ -108,7 +108,7 @@ INLINE AlignSize llvm_type_or_alloca_align(LLVMValueRef dest, Type *type)
 	{
 		return LLVMGetAlignment(dest);
 	}
-	return type_abi_alignment(type);
+	return type_alloca_alignment(type);
 }
 
 INLINE LLVMValueRef llvm_store_to_ptr(GenContext *c, LLVMValueRef destination, BEValue *value)

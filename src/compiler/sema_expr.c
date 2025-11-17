@@ -501,7 +501,7 @@ static inline bool expr_both_const_foldable(Expr *left, Expr *right, BinaryOp op
 		case CONST_INITIALIZER:
 			switch (type_flatten(left->type)->type_kind)
 			{
-				case TYPE_VECTOR:
+				case VECTORS:
 					if (a != b) return false;
 					return op == BINARYOP_EQ || op == BINARYOP_NE;
 				case TYPE_BITSTRUCT:
@@ -534,7 +534,7 @@ static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr
 	Type *flatten_right = type_flatten(right->type);
 	if (type_is_integer(flatten_left) && type_is_integer(flatten_right)) return true;
 
-	if (flatten_left->type_kind != TYPE_VECTOR || flatten_right->type_kind != TYPE_VECTOR) return false;
+	if (!type_kind_is_real_vector(flatten_left->type_kind) || !type_kind_is_real_vector(flatten_right->type_kind)) return false;
 
 	return type_is_integer_or_bool_kind(flatten_left->array.base) && type_is_integer_or_bool_kind(flatten_right->array.base);
 }
@@ -1769,7 +1769,7 @@ static inline ArrayIndex sema_len_from_expr(Expr *expr)
 	Type *type = type_flatten(expr->type);
 	switch (type->type_kind)
 	{
-		case TYPE_VECTOR:
+		case VECTORS:
 		case TYPE_ARRAY:
 			return (ArrayIndex)type->array.len;
 		case TYPE_UNTYPED_LIST:
@@ -1968,7 +1968,7 @@ SPLAT_NORMAL:;
 			Type *flat = type_flatten(inner->type);
 			switch (flat->type_kind)
 			{
-				case TYPE_VECTOR:
+				case VECTORS:
 				case TYPE_ARRAY:
 				case TYPE_SLICE:
 				case TYPE_UNTYPED_LIST:
@@ -3035,7 +3035,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 				}
 				else if (flattened->type_kind == TYPE_VECTOR && rtype->type_kind == TYPE_INFERRED_VECTOR)
 				{
-					rtype = type_get_vector(rtype->array.base, flattened->array.len);
+					rtype = type_get_vector(rtype->array.base, TYPE_VECTOR, flattened->array.len);
 					inferred_len = false;
 				}
 			}
@@ -3722,7 +3722,7 @@ RETRY:;
 			break;
 		case TYPE_UNTYPED_LIST:
 		case TYPE_ARRAY:
-		case TYPE_VECTOR:
+		case VECTORS:
 		{
 			ArrayIndex len = (ArrayIndex)type->array.len;
 			if (from_end)
@@ -4265,9 +4265,9 @@ static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *
 	Expr *offset = exprptr(expr->pointer_offset_expr.offset);
 	if (!sema_analyse_expr_rvalue(context, offset)) return false;
 	Type *flat = type_flatten(pointer->type);
-	unsigned vec_len = flat->type_kind == TYPE_VECTOR ? flat->array.len : 0;
+	unsigned vec_len = type_kind_is_real_vector(flat->type_kind) ? flat->array.len : 0;
 
-	if (!cast_implicit_binary(context, offset, vec_len ? type_get_vector(type_isz, vec_len) : type_isz, NULL)) return false;
+	if (!cast_implicit_binary(context, offset, vec_len ? type_get_vector(type_isz, flat->type_kind, vec_len) : type_isz, NULL)) return false;
 
 	// 3. Store optionality
 	bool is_optional = IS_OPTIONAL(pointer) || IS_OPTIONAL(offset);
@@ -4496,10 +4496,19 @@ static inline bool sema_slice_initializer(SemaContext *context, Expr *expr, Expr
 		expr_rewrite_const_empty_slice(expr, new_type);
 		return true;
 	}
-	bool is_vec = initializer->type->type_kind == TYPE_VECTOR;
-	Type *inner_type = is_vec
-			? type_get_vector(new_type->array.base, range->len_index)
-			: type_get_array(new_type->array.base, range->len_index);
+	Type *inner_type;
+	TypeKind kind = initializer->type->type_kind;
+	switch (kind)
+	{
+		case VECTORS:
+			inner_type = type_get_vector(new_type->array.base, kind, range->len_index);
+			break;
+		case TYPE_ARRAY:
+			inner_type = type_get_array(new_type->array.base, range->len_index);
+			break;
+		default:
+			UNREACHABLE
+	}
 	const_init_set_type(initializer, inner_type);
 	switch (initializer->kind)
 	{
@@ -4903,7 +4912,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		expr->expr_kind = EXPR_CONST;
 		expr->resolve_status = RESOLVE_DONE;
 		AlignSize align;
-		if (!sema_set_abi_alignment(context, decl->type, &align, true)) return false;
+		if (!sema_set_alignment(context, decl->type, &align, false)) return false;
 		expr->const_expr = (ExprConst) {
 			.member.decl = member,
 			.member.align = align,
@@ -5096,7 +5105,7 @@ static inline bool sema_create_const_len(Expr *expr, Type *type, Type *flat)
 	switch (flat->type_kind)
 	{
 		case TYPE_ARRAY:
-		case TYPE_VECTOR:
+		case VECTORS:
 			len = flat->array.len;
 			break;
 		case TYPE_ENUM:
@@ -5138,8 +5147,7 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_SLICE:
 		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
-		case TYPE_VECTOR:
+		case ALL_VECTORS:
 			inner = type->array.base;
 			break;
 		default:
@@ -5701,8 +5709,7 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 				case TYPE_FLEXIBLE_ARRAY:
 				case TYPE_SLICE:
 				case TYPE_INFERRED_ARRAY:
-				case TYPE_INFERRED_VECTOR:
-				case TYPE_VECTOR:
+				case ALL_VECTORS:
 					return true;
 				default:
 					return false;
@@ -5723,7 +5730,7 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 			switch (type->type_kind)
 			{
 				case TYPE_ARRAY:
-				case TYPE_VECTOR:
+				case VECTORS:
 				case TYPE_ENUM:
 					return true;
 				default:
@@ -5866,7 +5873,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_MEMBERSOF:
 		{
 			AlignSize align;
-			if (!sema_set_abi_alignment(context, parent_type, &align, true)) return false;
+			if (!sema_set_alignment(context, parent_type, &align, false)) return false;
 			sema_create_const_membersof(expr, flat, align, 0);
 			return true;
 		}
@@ -5896,7 +5903,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_ALIGNOF:
 		{
 			AlignSize align;
-			if (!sema_set_abi_alignment(context, type, &align, false)) return false;
+			if (!sema_set_alignment(context, type, &align, false)) return false;
 			expr_rewrite_const_int(expr, type_usz, align);
 			return true;
 		}
@@ -6042,7 +6049,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 		}
 		return true;
 	}
-	Type *result = type_get_vector(indexed_type, len);
+	Type *result = type_get_vector(indexed_type, flat_type->type_kind, len);
 	expr->expr_kind = EXPR_SWIZZLE;
 	expr->swizzle_expr = (ExprSwizzle) { .parent = exprid(parent), .swizzle = kw, .is_overlapping = is_overlapping };
 
@@ -6206,6 +6213,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 
 	Type *type = type_no_optional(parent->type)->canonical;
 	Type *flat_type = type_flatten(type);
+	TypeKind flat_kind = flat_type->type_kind;
 	if (kw_type == kw)
 	{
 		if (type_is_any_raw(flat_type))
@@ -6213,7 +6221,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 			expr_rewrite_to_builtin_access(expr, parent, ACCESS_TYPEOFANY, type_typeid);
 			return true;
 		}
-		if (flat_type->type_kind == TYPE_ANYFAULT)
+		if (flat_kind == TYPE_ANYFAULT)
 		{
 			expr_rewrite_to_builtin_access(expr, parent, ACCESS_TYPEOFANYFAULT, type_typeid);
 			return true;
@@ -6231,19 +6239,19 @@ CHECK_DEEPER:
 			expr_rewrite_const_int(expr, type_isz, index);
 			return true;
 		}
-		if (flat_type->type_kind == TYPE_SLICE)
+		if (flat_kind == TYPE_SLICE)
 		{
 			expr_rewrite_slice_len(expr, current_parent, type_usz);
 			return true;
 		}
-		assert(flat_type->type_kind != TYPE_ARRAY && flat_type->type_kind != TYPE_VECTOR);
+		assert(flat_kind != TYPE_ARRAY && !type_kind_is_real_vector(flat_kind));
 	}
-	if (flat_type->type_kind == TYPE_TYPEID)
+	if (flat_kind == TYPE_TYPEID)
 	{
 		bool was_error = false;
 		if (sema_expr_rewrite_to_typeid_property(context, expr, current_parent, kw, &was_error)) return !was_error;
 	}
-	if (flat_type->type_kind == TYPE_VECTOR)
+	if (type_kind_is_real_vector(flat_kind))
 	{
 		unsigned len = strlen(kw);
 		if (len <= 4)
@@ -6260,7 +6268,7 @@ CHECK_DEEPER:
 	// Hard coded ptr on slices and any
 	if (kw == kw_ptr)
 	{
-		if (flat_type->type_kind == TYPE_SLICE)
+		if (flat_kind == TYPE_SLICE)
 		{
 			expr_rewrite_ptr_access(expr, current_parent, type_get_ptr(flat_type->array.base));
 			return true;
@@ -6271,7 +6279,7 @@ CHECK_DEEPER:
 			return true;
 		}
 	}
-	if (kw == kw_ordinal && flat_type->type_kind == TYPE_ENUM)
+	if (kw == kw_ordinal && flat_kind == TYPE_ENUM)
 	{
 		sema_expr_convert_enum_to_int(current_parent);
 		expr_replace(expr, current_parent);
@@ -6287,7 +6295,7 @@ CHECK_DEEPER:
 				return true;
 			}
 		}
-		if (flat_type->type_kind == TYPE_ENUM)
+		if (flat_kind == TYPE_ENUM)
 		{
 			if (sema_cast_const(current_parent))
 			{
@@ -6379,6 +6387,7 @@ CHECK_DEEPER:
 			current_parent = substruct;
 			type = current_parent->type->canonical;
 			flat_type = type_flatten(type);
+			flat_kind = flat_type->type_kind;
 			goto CHECK_DEEPER;
 		}
 
@@ -6590,7 +6599,7 @@ Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs)
 				Type *flat = type_flatten(inner->type);
 				switch (flat->type_kind)
 				{
-					case TYPE_VECTOR:
+					case VECTORS:
 					case TYPE_ARRAY:
 					case TYPE_SLICE:
 					case TYPE_UNTYPED_LIST:
@@ -6694,11 +6703,8 @@ static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Typ
 			switch (flat->type_kind)
 			{
 				case TYPE_STRUCT:
-				case TYPE_ARRAY:
-				case TYPE_VECTOR:
+				case ALL_ARRAYLIKE:
 				case TYPE_UNION:
-				case TYPE_INFERRED_ARRAY:
-				case TYPE_INFERRED_VECTOR:
 				case TYPE_BITSTRUCT:
 				case TYPE_SLICE:
 					break;
@@ -7171,13 +7177,13 @@ static bool sema_expr_analyse_op_assign_enum_ptr(SemaContext *context, Expr *rhs
 	}
 	else
 	{
-		Type *real_type = type_get_vector(is_enum ? enum_inner_type(base) : type_isz, flat->array.len);
+		Type *real_type = type_get_vector_from_vector(is_enum ? enum_inner_type(base) : type_isz, flat);
 		if (flat_rhs == type_untypedlist)
 		{
 			if (!cast_implicit(context, rhs, real_type, true)) return false;
 			flat_rhs = type_flat_for_arithmethics(rhs->type);
 		}
-		if (!type_is_integer(flat_rhs) && (flat_rhs->type_kind != TYPE_VECTOR || !type_is_integer(flat_rhs->array.base)))
+		if (!type_is_integer(flat_rhs) && (!type_kind_is_real_vector(flat_rhs->type_kind) || !type_is_integer(flat_rhs->array.base)))
 		{
 			RETURN_SEMA_ERROR(rhs,
 							  "The right side was '%s' but only integers or integer vectors are valid on the right side of %s when the left side is %s.",
@@ -7289,7 +7295,7 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 SKIP_OVERLOAD_CHECK:;
 	// 3. If this is only defined for ints (^= |= &= %=) verify that this is an int.
 	Type *flat = type_flat_for_arithmethics(no_fail);
-	Type *base = flat->type_kind == TYPE_VECTOR ? type_flat_for_arithmethics(flat->array.base) : flat;
+	Type *base = type_kind_is_real_vector(flat->type_kind) ? type_flat_for_arithmethics(flat->array.base) : flat;
 
 	if (int_only && !type_is_integer(base))
 	{
@@ -7578,7 +7584,7 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 	bool right_is_pointer_vector = type_is_pointer_vector(right_type);
 	bool right_is_pointer = right_is_pointer_vector || right_type->type_kind == TYPE_POINTER;
 
-	Type *offset_type = vec_len ? type_get_vector(type_isz, vec_len) : type_isz;
+	Type *offset_type = vec_len ? type_get_vector_from_vector(type_isz, left_type) : type_isz;
 
 	// 3. ptr - other pointer
 	if (right_is_pointer)
@@ -7608,7 +7614,7 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 
 	right_type = right->type->canonical;
 
-	bool right_is_vector = right_type->type_kind == TYPE_VECTOR;
+	bool right_is_vector = type_kind_is_real_vector(right_type->type_kind);
 	// 4. Check that the right hand side is an integer.
 	if (!type_flat_is_intlike(right_type))
 	{
@@ -7651,7 +7657,6 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 		expr->expr_kind = EXPR_POINTER_OFFSET;
 		expr->pointer_offset_expr.ptr = exprid(left);
 		expr->pointer_offset_expr.offset = exprid(expr_negate_expr(right));
-		expr->pointer_offset_expr.raw_offset = false;
 	}
 
 	expr->resolve_status = RESOLVE_NOT_DONE;
@@ -7731,8 +7736,8 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 
 INLINE bool sema_expr_analyse_ptr_add(SemaContext *context, Expr *expr, Expr *left, Expr *right, CanonicalType *left_type, CanonicalType *right_type, Type *cast_to_iptr, bool *failed_ref)
 {
-	bool left_is_vec = left_type->type_kind == TYPE_VECTOR;
-	bool right_is_vec = right_type->type_kind == TYPE_VECTOR;
+	bool left_is_vec = type_kind_is_real_vector(left_type->type_kind);
+	bool right_is_vec = type_kind_is_real_vector(right_type->type_kind);
 	ArraySize vec_len = left_is_vec ? left_type->array.len : 0;
 
 	// 3a. Check that the other side is an integer of some sort.
@@ -7749,7 +7754,7 @@ INLINE bool sema_expr_analyse_ptr_add(SemaContext *context, Expr *expr, Expr *le
 
 	// 3b. Cast it to usz or isz depending on underlying type.
 	//     Either is fine, but it looks a bit nicer if we actually do this and keep the sign.
-	bool success = cast_explicit(context, right, left_is_vec ? type_get_vector(type_isz, vec_len) : type_isz);
+	bool success = cast_explicit(context, right, left_is_vec ? type_get_vector_from_vector(type_isz, left_type) : type_isz);
 
 	// No need to check the cast we just ensured it was an integer.
 	ASSERT_SPAN(expr, success && "This should always work");
@@ -7775,7 +7780,6 @@ INLINE bool sema_expr_analyse_ptr_add(SemaContext *context, Expr *expr, Expr *le
 	{
 		// Set the type and other properties.
 		expr->type = left->type;
-		expr->pointer_offset_expr.raw_offset = false;
 		expr->pointer_offset_expr.ptr = exprid(left);
 		expr->pointer_offset_expr.offset = exprid(right);
 		expr->expr_kind = EXPR_POINTER_OFFSET;
@@ -8069,8 +8073,6 @@ static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Expr *le
 	{
 		// Make sure the value does not exceed the bitsize of
 		// the left hand side. We ignore this check for lhs being a constant.
-
-
 		Type *base = type_vector_base(left_type_flat);
 		ASSERT_SPAN(expr, type_kind_is_any_integer(base->type_kind));
 		if (int_ucomp(right->const_expr.ixx, base->builtin.bitsize, BINARYOP_GE))
@@ -8086,15 +8088,15 @@ static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Expr *le
 	}
 
 	// If LHS is vector but RHS isn't? Promote.
-	bool lhs_is_vec = left_type_flat->type_kind == TYPE_VECTOR;
-	if (lhs_is_vec && right_type_flat->type_kind != TYPE_VECTOR)
+	bool lhs_is_vec = type_kind_is_real_vector(left_type_flat->type_kind);
+	if (lhs_is_vec && !type_kind_is_real_vector(right_type_flat->type_kind))
 	{
 		// Create a vector from the right hand side.
-		Type *right_vec = type_get_vector(right->type, left_type_flat->array.len);
+		Type *right_vec = type_get_vector_from_vector(right->type, left_type_flat);
 		if (!cast_explicit_checkable(context, right, right_vec, failed_ref)) return false;
 	}
 
-	bool rhs_is_vec = right_type_flat->type_kind == TYPE_VECTOR;
+	bool rhs_is_vec = type_kind_is_real_vector(right_type_flat->type_kind);
 	if (!lhs_is_vec && rhs_is_vec)
 	{
 		if (is_assign)
@@ -8103,7 +8105,7 @@ static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Expr *le
 			RETURN_SEMA_ERROR(right, "The shift cannot be a vector of type %s when shifting a variable of type %s.",
 				left->type, right->type);
 		}
-		Type *left_vec = type_get_vector(left->type, right_type_flat->array.len);
+		Type *left_vec = type_get_vector_from_vector(left->type, right_type_flat);
 		if (!cast_explicit_checkable(context, left, left_vec, failed_ref)) return false;
 
 	}
@@ -8112,11 +8114,11 @@ static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Expr *le
 	if (type_no_optional(left->type)->canonical == right_type) return true;
 
 	Type *base = right_type;
-	if (right_type->type_kind == TYPE_VECTOR)
+	if (type_kind_is_real_vector(right_type->type_kind))
 	{
 		base = right_type->array.base->canonical;
 		base = type_flat_distinct_enum_inline(base);
-		right_type = type_get_vector(base, right_type->array.len);
+		right_type = type_get_vector_from_vector(base, right_type);
 	}
 	else
 	{
@@ -8155,7 +8157,7 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 
 	Type *flat_left = type_flatten_and_inline(left->type);
 	Type *flat_right = type_flatten_and_inline(right->type);
-	if (flat_left->type_kind == TYPE_VECTOR)
+	if (type_kind_is_real_vector(flat_left->type_kind))
 	{
 		Type *left_base = type_flatten_and_inline(flat_left->array.base);
 		if (!type_is_integer(left_base)) goto FAIL;
@@ -8342,7 +8344,7 @@ BoolErr sema_type_can_check_equality_with_overload(SemaContext *context, Type *t
 		case TYPE_FUNC_PTR:
 		case TYPE_FUNC_RAW:
 		case TYPE_TYPEINFO:
-		case TYPE_VECTOR:
+		case VECTORS:
 		case TYPE_WILDCARD:
 			return true;
 	}
@@ -8559,7 +8561,7 @@ NEXT:
 
 	max = max->canonical;
 
-	if (max->type_kind == TYPE_VECTOR && !is_equality_type_op)
+	if (type_kind_is_real_vector(max->type_kind) && !is_equality_type_op)
 	{
 		RETURN_SEMA_ERROR(expr, "Vector types can only be tested for equality, for other comparison, use vector comparison functions.");
 	}
@@ -9061,8 +9063,8 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 		Type *canonical = type->canonical;
 		switch (canonical->type_kind)
 		{
-			case TYPE_VECTOR:
-				expr->type = type_get_vector(type_bool, canonical->array.len);
+			case VECTORS:
+				expr->type = type_get_vector_from_vector(type_bool, canonical);
 				return true;
 			case TYPE_INFERRED_VECTOR:
 				UNREACHABLE
@@ -9273,7 +9275,7 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 	Type *type = type_flatten(inner->type);
 
 	// 5. We can only inc/dec numbers or pointers.
-	if (!type_underlying_may_add_sub(type) && type->type_kind != TYPE_VECTOR)
+	if (!type_underlying_may_add_sub(type) && !type_kind_is_real_vector(type->type_kind))
 	{
 		RETURN_SEMA_ERROR(inner, "The expression must be a vector, enum, number or a pointer.");
 	}
@@ -10074,7 +10076,7 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 	}
 	else
 	{
-		if (!sema_set_abi_alignment(context, type, &align, false)) return false;
+		if (!sema_set_alignment(context, type, &align, false)) return false;
 	}
 	FOREACH_IDX(i, DesignatorElement *, element, path)
 	{
@@ -10265,7 +10267,7 @@ RETRY:
 						   type_quoted_error_string(type));
 				return poisoned_type;
 			}
-			return type_get_vector(type, size);
+			return type_get_vector(type, type_info->is_simd ? TYPE_SIMD_VECTOR : TYPE_VECTOR, size);
 		}
 		case TYPE_INFO_ARRAY:
 		{
@@ -10742,7 +10744,7 @@ static bool sema_expr_analyse_lenof(SemaContext *context, Expr *expr, bool *miss
 	switch (canonical->type_kind)
 	{
 		case TYPE_ARRAY:
-		case TYPE_VECTOR:
+		case VECTORS:
 			expr_rewrite_const_int(expr, type_isz, canonical->array.len);
 			return true;
 		case TYPE_SLICE:

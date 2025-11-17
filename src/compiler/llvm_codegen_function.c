@@ -77,13 +77,12 @@ static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, u
 	switch (type->type_kind)
 	{
 		case TYPE_ARRAY:
-		case TYPE_VECTOR:
+		case VECTORS:
 		{
-			LLVMTypeRef array_type = llvm_get_type(c, type);
 			for (unsigned i = 0; i < type->array.len; i++)
 			{
 				AlignSize element_align;
-				LLVMValueRef target = llvm_emit_array_gep_raw(c, ref, array_type, i, alignment, &element_align);
+				LLVMValueRef target = llvm_emit_array_gep_raw(c, ref, type->array.base, i, alignment, &element_align);
 				llvm_expand_from_args(c, type->array.base, target, index, element_align);
 			}
 			break;
@@ -164,7 +163,7 @@ static inline void llvm_process_parameter_value_inner(GenContext *c, Decl *decl,
 			llvm_store_to_ptr_raw_aligned(c, addr, llvm_get_next_param(c, index), decl_alignment);
 
 			// Calculate the address
-			addr = llvm_emit_pointer_inbounds_gep_raw(c, hi, addr, llvm_const_int(c, type_usz, hi_offset / hi_aligned_size));
+			addr = llvm_emit_pointer_inbounds_gep_raw(c, addr, llvm_const_int(c, type_usz, hi_offset / hi_aligned_size), llvm_abi_size(c, hi));
 
 			// Store it in the hi location
 			llvm_store_to_ptr_raw_aligned(c, addr, llvm_get_next_param(c, index), type_min_alignment(decl_alignment, hi_offset));

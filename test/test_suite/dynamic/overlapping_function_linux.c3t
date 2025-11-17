@@ -75,65 +75,65 @@ entry:
   %ptradd = getelementptr inbounds i8, ptr %z, i64 8
   %3 = load i64, ptr %ptradd, align 8
   %4 = inttoptr i64 %3 to ptr
-  %type = load ptr, ptr %.cachedtype, align 8
-  %5 = icmp eq ptr %4, %type
-  br i1 %5, label %cache_hit, label %cache_miss
+  %5 = load ptr, ptr %.cachedtype, align 8
+  %6 = icmp eq ptr %4, %5
+  br i1 %6, label %cache_hit, label %cache_miss
 
 cache_miss:                                       ; preds = %entry
-  %6 = call ptr @.dyn_search(ptr %4, ptr @"$sel.tesT")
-  store ptr %6, ptr %.inlinecache, align 8
+  %7 = call ptr @.dyn_search(ptr %4, ptr @"$sel.tesT")
+  store ptr %7, ptr %.inlinecache, align 8
   store ptr %4, ptr %.cachedtype, align 8
-  br label %7
+  br label %9
 
 cache_hit:                                        ; preds = %entry
-  %cache_hit_fn = load ptr, ptr %.inlinecache, align 8
-  br label %7
+  %8 = load ptr, ptr %.inlinecache, align 8
+  br label %9
 
-7:                                                ; preds = %cache_hit, %cache_miss
-  %fn_phi = phi ptr [ %cache_hit_fn, %cache_hit ], [ %6, %cache_miss ]
-  %8 = icmp eq ptr %fn_phi, null
-  br i1 %8, label %missing_function, label %match
+9:                                                ; preds = %cache_hit, %cache_miss
+  %fn_phi = phi ptr [ %8, %cache_hit ], [ %7, %cache_miss ]
+  %10 = icmp eq ptr %fn_phi, null
+  br i1 %10, label %missing_function, label %match
 
-missing_function:                                 ; preds = %7
-  %9 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %9(ptr @.panic_msg, i64 41, ptr @.file
+missing_function:                                 ; preds = %9
+  %11 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %11(ptr @.panic_msg, i64 41, ptr @.file
   unreachable
 
-match:                                            ; preds = %7
-  %10 = load ptr, ptr %z, align 8
-  call void %fn_phi(ptr %10)
-  %11 = load %any, ptr %z, align 8
-  store %any %11, ptr %w, align 8
+match:                                            ; preds = %9
+  %12 = load ptr, ptr %z, align 8
+  call void %fn_phi(ptr %12)
+  %13 = load %any, ptr %z, align 8
+  store %any %13, ptr %w, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %w, i64 8
-  %12 = load i64, ptr %ptradd1, align 8
-  %13 = inttoptr i64 %12 to ptr
-  %type4 = load ptr, ptr %.cachedtype3, align 8
-  %14 = icmp eq ptr %13, %type4
-  br i1 %14, label %cache_hit6, label %cache_miss5
+  %14 = load i64, ptr %ptradd1, align 8
+  %15 = inttoptr i64 %14 to ptr
+  %16 = load ptr, ptr %.cachedtype3, align 8
+  %17 = icmp eq ptr %15, %16
+  br i1 %17, label %cache_hit5, label %cache_miss4
 
-cache_miss5:                                      ; preds = %match
-  %15 = call ptr @.dyn_search(ptr %13, ptr @"$sel.tesT")
-  store ptr %15, ptr %.inlinecache2, align 8
-  store ptr %13, ptr %.cachedtype3, align 8
-  br label %16
+cache_miss4:                                      ; preds = %match
+  %18 = call ptr @.dyn_search(ptr %15, ptr @"$sel.tesT")
+  store ptr %18, ptr %.inlinecache2, align 8
+  store ptr %15, ptr %.cachedtype3, align 8
+  br label %20
 
-cache_hit6:                                       ; preds = %match
-  %cache_hit_fn7 = load ptr, ptr %.inlinecache2, align 8
-  br label %16
+cache_hit5:                                       ; preds = %match
+  %19 = load ptr, ptr %.inlinecache2, align 8
+  br label %20
 
-16:                                               ; preds = %cache_hit6, %cache_miss5
-  %fn_phi8 = phi ptr [ %cache_hit_fn7, %cache_hit6 ], [ %15, %cache_miss5 ]
-  %17 = icmp eq ptr %fn_phi8, null
-  br i1 %17, label %missing_function9, label %match10
+20:                                               ; preds = %cache_hit5, %cache_miss4
+  %fn_phi6 = phi ptr [ %19, %cache_hit5 ], [ %18, %cache_miss4 ]
+  %21 = icmp eq ptr %fn_phi6, null
+  br i1 %21, label %missing_function7, label %match8
 
-missing_function9:                                ; preds = %16
-  %18 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %18(ptr @.panic_msg, i64 41, ptr @.file
+missing_function7:                                ; preds = %20
+  %22 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %22(ptr @.panic_msg, i64 41, ptr @.file
   unreachable
 
-match10:                                          ; preds = %16
-  %19 = load ptr, ptr %w, align 8
-  call void %fn_phi8(ptr %19)
+match8:                                           ; preds = %20
+  %23 = load ptr, ptr %w, align 8
+  call void %fn_phi6(ptr %23)
   ret void
 }
 

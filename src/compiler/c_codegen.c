@@ -115,6 +115,7 @@ static const char *c_type_name(GenContext *c, Type *type)
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
 		{
 			void *prev = htable_get(&c->gen_decl, type);
 			if (!prev) return "NOT_REGISTERED";
@@ -265,6 +266,7 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			htable_set(&c->gen_decl, type, scratch_buffer_copy());
 			return true;
 		}
+		case TYPE_SIMD_VECTOR:
 		case TYPE_VECTOR:
 			error_exit("Vectors are not supported in the C backend yet.");
 	}
@@ -681,6 +683,7 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 		case TYPE_SLICE:
 		case TYPE_ARRAY:
 		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
 			PRINT("/* TODO ZERO INIT */\n");
 
 	}
