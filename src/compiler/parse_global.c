@@ -3078,13 +3078,16 @@ static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **do
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_CONST_IDENT:
 		case TOKEN_HASH_IDENT:
+			ast->contract_stmt.param.name = symstr(c);
+			break;
+		case TOKEN_ELLIPSIS:
+			ast->contract_stmt.param.name = NULL;
 			break;
 		default:
 			RETURN_PRINT_ERROR_HERE("Expected a parameter name here.");
 	}
-	ast->contract_stmt.param.name = symstr(c);
-	ast->contract_stmt.param.span = c->span;
 	ast->contract_stmt.param.modifier = mod;
+	ast->contract_stmt.param.span = c->span;
 	ast->contract_stmt.param.by_ref = is_ref;
 	advance(c);
 

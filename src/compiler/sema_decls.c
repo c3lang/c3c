@@ -31,7 +31,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Decl *member);
 static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *parent, Decl *member, unsigned index, bool allow_overlap, bool *erase_decl);
 
-static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc, Decl **params, Decl **extra_params, bool *pure_ref);
+static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc, Decl **params, Decl **extra_params, bool *pure_ref, bool is_raw_vaarg);
 
 static const char *attribute_domain_to_string(AttributeDomain domain);
 static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_data, Decl *decl, Attr *attr, AttributeDomain domain, bool *erase_decl);
@@ -1495,7 +1495,7 @@ static inline bool sema_analyse_fntype(SemaContext *context, Decl *decl, bool *e
 	Signature *sig = &decl->fntype_decl.signature;
 	if (!sema_analyse_function_signature(context, decl, NULL, sig->abi, sig)) return false;
 	bool pure = false;
-	if (!sema_analyse_doc_header(context, decl->fntype_decl.docs, sig->params, NULL, &pure)) return false;
+	if (!sema_analyse_doc_header(context, decl->fntype_decl.docs, sig->params, NULL, &pure, sig->variadic == VARIADIC_RAW)) return false;
 	sig->attrs.is_pure = pure;
 	return true;
 }
@@ -3823,8 +3823,9 @@ IS_FAULT:;
 }
 
 static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc,
-                                           Decl **params, Decl **extra_params, bool *pure_ref)
+                                           Decl **params, Decl **extra_params, bool *pure_ref, bool is_raw_vaarg)
 {
+	bool va_param_found = false;
 	while (doc)
 	{
 		Ast *directive = astptr(doc);
@@ -3846,6 +3847,23 @@ static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc,
 		}
 		if (directive_kind != CONTRACT_PARAM) continue;
 		const char *param_name = directive->contract_stmt.param.name;
+		if (!param_name)
+		{
+			if (va_param_found)
+			{
+				RETURN_SEMA_ERROR_AT(directive->contract_stmt.param.span, "The '...' @param may not be repeated.");
+			}
+			if (directive->contract_stmt.param.modifier != INOUT_ANY)
+			{
+				RETURN_SEMA_ERROR_AT(directive->contract_stmt.param.span, "'...' @params may not have any in-out modifiers.");
+			}
+			if (!is_raw_vaarg)
+			{
+				RETURN_SEMA_ERROR_AT(directive->contract_stmt.param.span, "'...' @params are only allowed macros and functions with a '...' parameter.");
+			}
+			va_param_found = true;
+			continue;
+		}
 		Decl *param = NULL;
 		FOREACH(Decl *, other_param, params)
 		{
@@ -4322,7 +4340,7 @@ CHECK_DONE:
 	bool pure = false;
 
 	if (!sema_analyse_doc_header(context, decl->func_decl.docs, decl->func_decl.signature.params, NULL,
-	                             &pure)) return false;
+	                             &pure, sig->variadic == VARIADIC_RAW)) return false;
 	decl->func_decl.signature.attrs.is_pure = pure;
 	if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
 	DEBUG_LOG("<<< Function analysis of [%s] successful.", decl_safe_name(decl));
@@ -4518,27 +4536,28 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 	if (!sema_analyse_func_macro(context, decl, ATTR_MACRO, erase_decl)) return false;
 	if (*erase_decl) return true;
 
-	if (!sema_analyse_signature(context, &decl->func_decl.signature, type_infoptrzero(decl->func_decl.type_parent), decl)) return false;
+	Signature *sig = &decl->func_decl.signature;
+	if (!sema_analyse_signature(context, sig, type_infoptrzero(decl->func_decl.type_parent), decl)) return false;
 
 	DeclId body_param = decl->func_decl.body_param;
-	if (!decl->func_decl.signature.is_at_macro && body_param && !decl->func_decl.signature.is_safemacro)
+	if (!decl->func_decl.signature.is_at_macro && body_param && !sig->is_safemacro)
 	{
 		RETURN_SEMA_ERROR(decl, "Names of macros with a trailing body must start with '@'.");
 	}
 	Decl **body_parameters = body_param ? declptr(body_param)->body_params : NULL;
 	if (!sema_analyse_macro_body(context, body_parameters)) return false;
 	bool pure = false;
-	if (!sema_analyse_doc_header(context, decl->func_decl.docs, decl->func_decl.signature.params, body_parameters,
-	                             &pure)) return false;
+	if (!sema_analyse_doc_header(context, decl->func_decl.docs, sig->params, body_parameters,
+	                             &pure, sig->variadic == VARIADIC_RAW)) return false;
 	if (decl->func_decl.type_parent)
 	{
 		if (!sema_analyse_macro_method(context, decl)) return false;
 	}
-	bool always_const = decl->func_decl.signature.attrs.always_const;
+	bool always_const = sig->attrs.always_const;
 	// Sanity check "always const"
 	if (always_const)
 	{
-		if (typeget(decl->func_decl.signature.rtype) == type_void) RETURN_SEMA_ERROR(decl, "'@const' macros may not return 'void', they should always return a constant value.");
+		if (typeget(sig->rtype) == type_void) RETURN_SEMA_ERROR(decl, "'@const' macros may not return 'void', they should always return a constant value.");
 		if (body_parameters) RETURN_SEMA_ERROR(decl, "'@const' macros cannot have body parameters.");
 		Ast *body = astptr(decl->func_decl.body);
 		ASSERT(body->ast_kind == AST_COMPOUND_STMT);
