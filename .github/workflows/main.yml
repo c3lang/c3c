@@ -612,8 +612,8 @@ jobs:
           sudo apt-get install -y clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
           sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools
           sudo apt-get install -y libpolly-${{matrix.llvm_version}}-dev
-      - name: CMake Dev
-        if: matrix.llvm_version == env.LLVM_DEV_VERSION
+      - name: CMake Old
+        if: matrix.llvm_version < 18 || matrix.llvm_version == env.LLVM_DEV_VERSION
         run: |
           cmake -B build \
                 -G Ninja \
