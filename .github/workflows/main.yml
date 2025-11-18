@@ -570,7 +570,7 @@ jobs:
         run: |
           export C3C="$(realpath ./build/c3c)"
           cd test
-          "$C3C" compile-run -O1 src/test_suite_runner.c3 -- "$C3C" test_suite/
+          "$C3C" compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c test_suite/
 
       - name: bundle_output
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_ALPINEv3_22
