@@ -470,69 +470,75 @@ jobs:
 
       - name: Compile and run some examples
         run: |
+          export C3C="$(realpath ./build/c3c)"
           cd resources
-          ../build/c3c compile examples/base64.c3
-          ../build/c3c compile examples/binarydigits.c3
-          ../build/c3c compile examples/brainfk.c3
-          ../build/c3c compile examples/factorial_macro.c3
-          ../build/c3c compile examples/fasta.c3
-          ../build/c3c compile examples/gameoflife.c3
-          ../build/c3c compile examples/hash.c3
-          ../build/c3c compile-only examples/levenshtein.c3
-          ../build/c3c compile examples/load_world.c3
-          ../build/c3c compile-only examples/map.c3
-          ../build/c3c compile examples/mandelbrot.c3
-          ../build/c3c compile examples/plus_minus.c3
-          ../build/c3c compile examples/nbodies.c3
-          ../build/c3c compile examples/spectralnorm.c3
-          ../build/c3c compile examples/swap.c3
-          ../build/c3c compile examples/contextfree/boolerr.c3
-          ../build/c3c compile examples/contextfree/dynscope.c3
-          ../build/c3c compile examples/contextfree/guess_number.c3
-          ../build/c3c compile examples/contextfree/multi.c3
-          ../build/c3c compile examples/contextfree/cleanup.c3
-          ../build/c3c compile-run examples/hello_world_many.c3
-          ../build/c3c compile-run examples/time.c3
-          ../build/c3c compile-run examples/fannkuch-redux.c3
-          ../build/c3c compile-run examples/contextfree/boolerr.c3
-          ../build/c3c compile-run examples/load_world.c3
-          ../build/c3c compile-run examples/process.c3
-          ../build/c3c compile-run examples/ls.c3
-          ../build/c3c compile-run linux_stack.c3
-          ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
+          "$C3C" compile examples/base64.c3
+          "$C3C" compile examples/binarydigits.c3
+          "$C3C" compile examples/brainfk.c3
+          "$C3C" compile examples/factorial_macro.c3
+          "$C3C" compile examples/fasta.c3
+          "$C3C" compile examples/gameoflife.c3
+          "$C3C" compile examples/hash.c3
+          "$C3C" compile-only examples/levenshtein.c3
+          "$C3C" compile examples/load_world.c3
+          "$C3C" compile-only examples/map.c3
+          "$C3C" compile examples/mandelbrot.c3
+          "$C3C" compile examples/plus_minus.c3
+          "$C3C" compile examples/nbodies.c3
+          "$C3C" compile examples/spectralnorm.c3
+          "$C3C" compile examples/swap.c3
+          "$C3C" compile examples/contextfree/boolerr.c3
+          "$C3C" compile examples/contextfree/dynscope.c3
+          "$C3C" compile examples/contextfree/guess_number.c3
+          "$C3C" compile examples/contextfree/multi.c3
+          "$C3C" compile examples/contextfree/cleanup.c3
+          "$C3C" compile-run examples/hello_world_many.c3
+          "$C3C" compile-run examples/time.c3
+          "$C3C" compile-run examples/fannkuch-redux.c3
+          "$C3C" compile-run examples/contextfree/boolerr.c3
+          "$C3C" compile-run examples/load_world.c3
+          "$C3C" compile-run examples/process.c3
+          "$C3C" compile-run examples/ls.c3
+          "$C3C" compile-run linux_stack.c3
+          "$C3C" compile-run examples/args.c3 -- foo -bar "baz baz"
 
       - name: Compile and run dynlib-test
         run: |
+          export C3C="$(realpath ./build/c3c)"
           cd resources/examples/dynlib-test
-          ../../../build/c3c -vv dynamic-lib add.c3
+          "$C3C" -vv dynamic-lib add.c3
           mv add.so libadd.so
           cc test.c -L. -ladd -Wl,-rpath=.         
           ./a.out
-          ../../../build/c3c compile-run test.c3 -L . -l add -z -Wl,-rpath=.           
+          "$C3C" compile-run test.c3 -L . -l add -z -Wl,-rpath=.           
 
       - name: Compile and run staticlib-test
         run: |
+          export C3C="$(realpath ./build/c3c)"
           cd resources/examples/staticlib-test
-          ../../../build/c3c -vv static-lib add.c3
+          "$C3C" -vv static-lib add.c3
           mv add.a libadd.a
           cc test.c -L. -ladd         
           ./a.out
-          ../../../build/c3c compile-run test.c3 -L . -l add           
+          "$C3C" compile-run test.c3 -L . -l add           
 
       - name: Compile run unit tests
         run: |
+          export C3C="$(realpath ./build/c3c)"
           cd test
-          ../build/c3c compile-test unit -D SLOW_TESTS
+          "$C3C" compile-test unit -D SLOW_TESTS
 
       - name: Build testproject
         run: |
+          export C3C="$(realpath ./build/c3c)"
           cd resources/testproject
-          ../../build/c3c run -vvv --trust=full
+          "$C3C" run -vvv --trust=full
 
       - name: Test WASM
         run: |
+          export C3C="$(realpath ./build/c3c)"
           cd resources/testfragments
-          ../../build/c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
+          "$C3C" compile --target wasm32 -g0 --no-entry -Os wasm4.c3
 
       - name: Install QEMU and Risc-V toolchain
         run: |
@@ -545,8 +551,9 @@ jobs:
 
       - name: Build testproject direct linker
         run: |
+          export C3C="$(realpath ./build/c3c)"
           cd resources/testproject
-          ../../build/c3c run -vvv --linker=builtin --trust=full
+          "$C3C" run -vvv --trust=full # Again, --linker=builtin won't work here
 
       - name: Init a library & a project
         run: |
@@ -557,12 +564,13 @@ jobs:
 
       - name: Vendor-fetch
         run: |
-          ./build/c3c vendor-fetch raylib55
+          "$(realpath ./build/c3c)" vendor-fetch raylib55
 
       - name: run compiler tests
         run: |
+          export C3C="$(realpath ./build/c3c)"
           cd test
-          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/
+          "$C3C" compile-run -O1 src/test_suite_runner.c3 -- "$C3C" test_suite/
 
       - name: bundle_output
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_ALPINEv3_22
