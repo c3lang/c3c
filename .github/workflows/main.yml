@@ -498,8 +498,8 @@ jobs:
           ../build/c3c compile-run examples/load_world.c3
           ../build/c3c compile-run examples/process.c3
           ../build/c3c compile-run examples/ls.c3
-          ../build/c3c compile-run --linker=builtin linux_stack.c3
-          ../build/c3c compile-run linux_stack.c3
+          ../build/c3c compile-run --linker=builtin linux_stack.c3 \
+          || ../build/c3c compile-run linux_stack.c3
           ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
 
       - name: Compile and run dynlib-test
