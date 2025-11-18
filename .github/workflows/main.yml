@@ -499,6 +499,7 @@ jobs:
           "$C3C" compile-run examples/load_world.c3
           "$C3C" compile-run examples/process.c3
           "$C3C" compile-run examples/ls.c3
+          # "$C3C" compile-run --linker=builtin linux_stack.c3  # Program will hang due to incorrect linking to `/lib64/ld-linux-x86-64.so.2` instead of `/lib/ld-musl-x86_64.so.1`
           "$C3C" compile-run linux_stack.c3
           "$C3C" compile-run examples/args.c3 -- foo -bar "baz baz"
 
@@ -553,7 +554,7 @@ jobs:
         run: |
           export C3C="$(realpath ./build/c3c)"
           cd resources/testproject
-          "$C3C" run -vvv --trust=full # Again, --linker=builtin won't work here
+          "$C3C" run -vvv --linker=builtin --trust=full # Again, --linker=builtin won't work here. 
 
       - name: Init a library & a project
         run: |
