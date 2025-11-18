@@ -536,7 +536,7 @@ jobs:
 
       - name: Install QEMU and Risc-V toolchain
         run: |
-          apk add qemu-dev qemu-system-riscv64 gcc-riscv-none-elf
+          apk add qemu-dev qemu-system-riscv64 gcc-riscv-none-elf make
 
       - name: Compile and run Baremetal Risc-V Example
         run: |
