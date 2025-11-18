@@ -536,7 +536,7 @@ jobs:
 
       - name: Install QEMU and Risc-V toolchain
         run: |
-          sudo apt-get install opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf
+          apk add qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf
 
       - name: Compile and run Baremetal Risc-V Example
         run: |
