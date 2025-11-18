@@ -1,0 +1,31 @@
+// #target: wasm32
+module test;
+
+fn int testexport(int num) @export("test_export")
+{
+	return num * 100;
+}
+
+fn int testwasm(int num) @wasm("test_wasm")
+{
+	return num * 100;
+}
+fn int main()
+{
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @test_export(i32 %0) #0 {
+entry:
+  %mul = mul i32 %0, 100
+  ret i32 %mul
+}
+
+define i32 @test_wasm(i32 %0) #1 {
+entry:
+  %mul = mul i32 %0, 100
+  ret i32 %mul
+}
+
