@@ -18,6 +18,8 @@ struct TestContext
 	String test_filter;
 	<* Triggers debugger breakpoint when assert or test:: checks failed *>
 	bool breakpoint_on_assert;
+	<* Controls level of printed logs *>
+	LogPriority log_level;
 
 	// internal state
 	bool assert_print_backtrace;
@@ -202,6 +204,7 @@ $endif
 	{
 		.assert_print_backtrace = true,
 		.breakpoint_on_assert = false,
+		.log_level = LogPriority.ERROR,
 		.test_filter = "",
 		.has_ansi_codes = terminal_has_ansi_codes(),
 		.stored.allocator = mem,
@@ -234,11 +237,28 @@ $endif
 				}
 				context.test_filter = args[i + 1];
 				i++;
+			case "--test-log-level":
+				if (i == args.len - 1)
+				{
+					io::printn("Missing log level for argument `--test-log-level`.");
+					return false;
+				}
+				@pool()
+				{
+					String upper = args[i + 1].to_upper_copy(tmem);
+					if (catch @try(context.log_level, enum_by_name(LogPriority, upper)))
+					{
+						io::printn("Log level given to `--test-log-level` is not one of verbose, debug, info, warn, error or critical.");
+						return false;
+					}
+				};
+				i++;
 			default:
 				io::printfn("Unknown argument: %s", args[i]);
 		}
 	}
 	test_context = &context;
+	log::set_priority_all(test_context.log_level);
 
 	if (sort_tests)
 	{

@@ -153,6 +153,7 @@ static void usage(bool full)
 		print_opt("--test-noleak", "Disable tracking allocator and memory leak detection for tests");
 		print_opt("--test-nocapture", "Disable test stdout capturing, all tests can print as they run");
 		print_opt("--test-quiet", "Run tests without printing full names, printing output only on failure");
+		print_opt("--test-log-level=<verbose|debug|info|warn|error|critical>", "Set log priority when running tests.");
 	}
 	PRINTF("");
 	print_opt("-l <library>", "Link with the static or dynamic library provided.");
@@ -869,6 +870,11 @@ static void parse_option(BuildOptions *options)
 				options->optlevel = parse_opt_select(OptimizationLevel, argopt, optlevels);
 				return;
 			}
+			if ((argopt = match_argopt("test-log-level")))
+			{
+				options->test_log_level = parse_opt_select(TestLogLevel, argopt, test_log_levels);
+				return;
+			}
 			if ((argopt = match_argopt("merge-functions")))
 			{
 				options->merge_functions = parse_opt_select(MergeFunctions, argopt, on_off);
@@ -1456,6 +1462,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.emit_llvm = false,
 		.optsetting = OPT_SETTING_NOT_SET,
 		.debug_info_override = DEBUG_INFO_NOT_SET,
+		.test_log_level = TESTLOGLEVEL_NOT_SET,
 		.safety_level = SAFETY_NOT_SET,
 		.panic_level = PANIC_NOT_SET,
 		.show_backtrace = SHOW_BACKTRACE_NOT_SET,
