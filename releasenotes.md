@@ -34,6 +34,7 @@
 - Fix decl attribute in the wrong place causing an assertion. #2581
 - Passing a single value to `@wasm` would ignore the renaming.
 - `*(int*)1` incorrectly yielded an assert in LLVM IR lowering #2584.
+- Fix issue when tests encounter a segmentation fault or similar.
 
 ### Stdlib changes
 

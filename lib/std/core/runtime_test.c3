@@ -86,6 +86,16 @@ fn bool terminal_has_ansi_codes() @local => @pool()
 	$endif
 }
 
+fn void sig_bus_error(CInt i) @local
+{
+	test_panic("Bus error", "Unknown", "Unknown", 0);
+}
+
+fn void sig_segmentation_fault(CInt i) @local
+{
+	test_panic("Segmentation fault", "Unknown", "Unknown", 0);
+}
+
 fn void test_panic(String message, String file, String function, uint line) @local
 {
 	if (test_context.is_in_panic) return;
@@ -165,6 +175,7 @@ fn void unmute_output(bool has_error) @local
 	(void)stdout.flush();
 }
 
+
 fn bool run_tests(String[] args, TestUnit[] tests) @private
 {
 	usz max_name;
@@ -175,6 +186,10 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		io::printn("There are no test units to run.");
 		return true;   // no tests == technically a pass
 	}
+$if !env::NO_LIBC:
+	libc::signal(libc::SIGBUS, &sig_bus_error);
+	libc::signal(libc::SIGSEGV, &sig_segmentation_fault);
+$endif
 	foreach (&unit : tests)
 	{
 		if (max_name < unit.name.len) max_name = unit.name.len;
