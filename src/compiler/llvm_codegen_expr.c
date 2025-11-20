@@ -2371,7 +2371,12 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 	llvm_emit_expr(c, value, inner);
 	llvm_value_rvalue(c, value);
 	AlignSize alignment = type_abi_alignment(type);
-	if (safe_mode_enabled() && !expr_is_const(inner))
+	bool is_const = expr_is_const(inner);
+	if (is_const)
+	{
+		alignment = type_min_alignment(inner->const_expr.ptr, alignment);
+	}
+	if (safe_mode_enabled() && !is_const)
 	{
 		LLVMValueRef check = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, llvm_get_zero(c, inner->type), "checknull");
 		scratch_buffer_clear();
