@@ -224,23 +224,15 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 					io::printn("Missing log level for argument `--test-log-level`.");
 					return false;
 				}
-				args[i + 1].convert_to_lower();
-				switch (args[i + 1])
+				@pool()
 				{
-					case "verbose": context.log_level = LogPriority.VERBOSE;
-					case "debug": context.log_level = LogPriority.DEBUG;
-					case "info": context.log_level = LogPriority.INFO;
-					case "warn": context.log_level = LogPriority.WARN;
-					case "error": context.log_level = LogPriority.ERROR;
-					case "critical": context.log_level = LogPriority.CRITICAL;
-					default:
-						io::print("Log level given to `--test-log-level` is not one of: ");
-						$foreach $level : LogPriority.names[:^1]:
-						io::printf("%s, ", @str_lower($level));
-						$endforeach
-						io::printn(@str_lower(LogPriority.names[^1]));
+					String upper = args[i + 1].to_upper_copy(tmem);
+					if (catch @try(context.log_level, enum_by_name(LogPriority, upper)))
+					{
+						io::printn("Log level given to `--test-log-level` is not one of verbose, debug, info, warn, error or critical.");
 						return false;
-				}
+					}
+				};
 				i++;
 			default:
 				io::printfn("Unknown argument: %s", args[i]);

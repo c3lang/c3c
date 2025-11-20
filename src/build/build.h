@@ -737,7 +737,6 @@ typedef struct
 	SizeOptimizationLevel optsize;
 	SingleModule single_module;
 	ValidationLevel validation_level;
-	TestLogLevel test_log_level;
 	UseStdlib use_stdlib;
 	EmitStdlib emit_stdlib;
 	LinkLibc link_libc;
