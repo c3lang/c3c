@@ -23,9 +23,9 @@
 
 ### Stdlib changes
 - Add `CGFloat` `CGPoint` `CGSize` `CGRect` types to core_foundation (macOS).
-- Add `NS_VARIABLE_STATUS_ITEM_LENGTH` and `NS_SQUARE_STATUS_ITEM_LENGTH` constants to core_foundation (macOS).
+- Add `NSStatusItem` const enum to ns module (macOS).
 - Add `NSWindowCollectionBehavior` `NSWindowLevel` `NSWindowTabbingMode` to objc (macOS).
-- Add `ns_eventMaskFromType` function to objc (macOS).
+- Add `ns::eventmask_from_type` function to objc (macOS).
 - Deprecate objc enums in favour of const inline enums backed by NS numerical types, and with the NS prefix, to better align with the objc api (macOS).
 - Deprecate `event_type_from` function in favour of using NSEvent directly, to better align with the objc api (macOS).
 - Add unit tests for objc and core_foundation (macOS).

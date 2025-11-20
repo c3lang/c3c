@@ -71,7 +71,10 @@ extern fn ObjcIvar getInstanceVariable(ObjcId id, ZString name, void* outValue) 
 extern fn ObjcIvar setInstanceVariable(ObjcId id, ZString name, void* value) @cname("object_setInstanceVariable");
 extern fn ObjcClass allocateClassPair(ObjcClass cls, ZString name, uint extraBytes) @cname("objc_allocateClassPair");
 
-enum StatusItemLength : (double val) @deprecated("Use NS_VARIABLE_STATUS_ITEM_LENGTH and NS_SQUARE_STATUS_ITEM_LENGTH from std::os::macos::cf.")
+module std::os::macos::objc::ns @if(env::DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
+import std::os::macos::cf;
+
+enum StatusItemLength : (double val) @deprecated("Use NSStatusItemLength.")
 {
     VARIABLE = -1.0,
     SQUARE   = -2.0,
@@ -236,7 +239,7 @@ fn EventType? event_type_from(int val) @deprecated("Use NSEventType directly.")
         case EventType.PRESSURE.val:            return PRESSURE;
         case EventType.DIRECT_TOUCH.val:        return DIRECT_TOUCH;
         case EventType.CHANGE_MODE.val:         return CHANGE_MODE;
-        default: return UNKNOWN_EVENT?;
+        default: return objc::UNKNOWN_EVENT?;
     }
 }
 
@@ -315,7 +318,7 @@ enum NSEventMask : const inline ulong
 	ANY                 = ulong.max,
 }
 
-fn NSEventMask ns_eventMaskFromType(NSEventType type) => (NSEventMask)1ul << type;
+fn NSEventMask event_mask_from_type(NSEventType type) => (NSEventMask)1ul << type;
 
 enum EventModifierFlag : (int val) @deprecated("Use NSEventModifierFlags.")
 {
@@ -397,3 +400,10 @@ enum NSWindowTabbingMode : const inline NSInteger
 	DISALLOWED  = 2,
 	PREFERRED   = 1,
 }
+
+enum NSStatusItemLength : const inline CGFloat
+{
+	VARIABLE = -1.0,
+	SQUARE = -2.0
+}
+

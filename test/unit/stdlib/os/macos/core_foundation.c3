@@ -58,11 +58,6 @@ fn void test_cgrect()
 	assert(rect2.size.width == 50.0);
 }
 
-fn void test_status_item_length()
-{
-	assert(NS_VARIABLE_STATUS_ITEM_LENGTH == -1.0);
-	assert(NS_SQUARE_STATUS_ITEM_LENGTH == -2.0);
-}
 
 fn void test_geometry_struct_sizes()
 {

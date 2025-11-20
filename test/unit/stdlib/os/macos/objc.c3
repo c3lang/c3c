@@ -43,11 +43,11 @@ fn void test_event_type()
 
 fn void test_event_mask_from_type()
 {
-	NSEventMask maskMouseDown = ns_eventMaskFromType(NSEventType.LEFT_MOUSE_DOWN);
-	NSEventMask maskKeyDown = ns_eventMaskFromType(NSEventType.KEY_DOWN);
-	NSEventMask maskKeyUp = ns_eventMaskFromType(NSEventType.KEY_UP);
-	NSEventMask maskSmartMagnify = ns_eventMaskFromType(NSEventType.SMART_MAGNIFY);
-	NSEventMask maskDirectTouch = ns_eventMaskFromType(NSEventType.DIRECT_TOUCH);
+	NSEventMask maskMouseDown = ns::event_mask_from_type(NSEventType.LEFT_MOUSE_DOWN);
+	NSEventMask maskKeyDown = ns::event_mask_from_type(NSEventType.KEY_DOWN);
+	NSEventMask maskKeyUp = ns::event_mask_from_type(NSEventType.KEY_UP);
+	NSEventMask maskSmartMagnify = ns::event_mask_from_type(NSEventType.SMART_MAGNIFY);
+	NSEventMask maskDirectTouch = ns::event_mask_from_type(NSEventType.DIRECT_TOUCH);
 
 	assert(maskMouseDown == NSEventMask.LEFT_MOUSE_DOWN);
 	assert(maskKeyDown == NSEventMask.KEY_DOWN);
@@ -78,6 +78,13 @@ fn void test_event_mask()
 
 	NSEventMask combined = NSEventMask.KEY_DOWN | NSEventMask.FLAGS_CHANGED;
 	assert(combined == ((1ul << 10) | (1ul << 12)));
+}
+
+
+fn void test_status_item_length()
+{
+	assert(NSStatusItemLength.VARIABLE == -1.0);
+	assert(NSStatusItemLength.SQUARE == -2.0);
 }
 
 fn void test_event_modifier_flags()
