@@ -36,6 +36,7 @@
 - `*(int*)1` incorrectly yielded an assert in LLVM IR lowering #2584.
 - Fix issue when tests encounter a segmentation fault or similar.
 - With project.json, when overriding with an empty list the base settings would still be used. #2583
+- Add sigsegv stacktrace in test and regular errors for Darwin Arm64. #1105
 
 ### Stdlib changes
 
