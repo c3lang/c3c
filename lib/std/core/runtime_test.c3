@@ -4,8 +4,8 @@
 module std::core::runtime;
 import std::core::test @public;
 import std::core::mem::allocator @public;
-import libc, std::time, std::io, std::sort;
-import std::os::env;
+import libc, std::time, std::io, std::sort, std::os;
+
 
 alias TestFn = fn void();
 
@@ -86,17 +86,21 @@ fn bool terminal_has_ansi_codes() @local => @pool()
 	$endif
 }
 
-fn void sig_bus_error(CInt i) @local
+fn void sig_bus_error(CInt i, void*, void* context) @local @if(env::POSIX)
 {
-	test_panic("Bus error", "Unknown", "Unknown", 0);
+	panic_test("Bus error", "Unknown", "Unknown", 1, posix::stack_instruction(context));
 }
 
-fn void sig_segmentation_fault(CInt i) @local
+fn void sig_segmentation_fault(CInt i, void*, void* context) @local @if(env::POSIX)
 {
-	test_panic("Segmentation fault", "Unknown", "Unknown", 0);
+	panic_test("Segmentation fault", "Unknown", "Unknown", 1, posix::stack_instruction(context));
 }
 
 fn void test_panic(String message, String file, String function, uint line) @local
+{
+	panic_test(message, file, function, line);
+}
+fn void panic_test(String message, String file, String function, uint line, void* extra_trace = null) @local
 {
 	if (test_context.is_in_panic) return;
 	test_context.is_in_panic = true;
@@ -106,7 +110,7 @@ fn void test_panic(String message, String file, String function, uint line) @loc
 	if (test_context.assert_print_backtrace)
 	{
 		$if env::NATIVE_STACKTRACE:
-    		builtin::print_backtrace(message, 0);
+    		builtin::print_backtrace(message, extra_trace ? 3 : 0, extra_trace);
 		$endif
 	}
 	io::printf("\nTest failed ^^^ ( %s:%s ) %s\n",  file, line, message);
@@ -186,9 +190,9 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		io::printn("There are no test units to run.");
 		return true;   // no tests == technically a pass
 	}
-$if !env::NO_LIBC:
-	libc::signal(libc::SIGBUS, &sig_bus_error);
-	libc::signal(libc::SIGSEGV, &sig_segmentation_fault);
+$if !env::NO_LIBC && env::POSIX:
+	posix::install_signal_handler(libc::SIGBUS, &sig_bus_error);
+	posix::install_signal_handler(libc::SIGSEGV, &sig_segmentation_fault);
 $endif
 	foreach (&unit : tests)
 	{

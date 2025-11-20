@@ -1,5 +1,5 @@
 module std::os::posix @if(env::POSIX);
-import libc;
+import libc, std::os::darwin;
 
 struct Posix_spawn_file_actions_t
 {
@@ -60,6 +60,15 @@ alias BacktraceFn = fn CInt(void** buffer, CInt size);
 
 extern fn CInt backtrace(void** buffer, CInt size) @if(env::OPENBSD);
 
+fn void install_signal_handler(CInt signal, SigActionFunction func)
+{
+	Sigaction action = {
+		.sa_sigaction = func,
+	};
+	Sigaction old;
+	libc::sigaction(signal, &action, &old);
+}
+
 fn CInt backtrace(void** buffer, CInt size) @if(!env::OPENBSD)
 {
 	if (size < 1) return 0;
@@ -75,12 +84,13 @@ fn CInt backtrace(void** buffer, CInt size) @if(!env::OPENBSD)
 	}
 	// Loop through the return addresses until we hit a signal.
 	// This avoids using the frame address.
-	SignalFunction restore_backtrace = fn void(CInt) {
-		libc::longjmp(&backtrace_jmpbuf, 1);
-	};
-	SignalFunction sig_bus = libc::signal(libc::SIGBUS, restore_backtrace);
-	SignalFunction sig_segv = libc::signal(libc::SIGSEGV, restore_backtrace);
-	SignalFunction sig_ill = libc::signal(libc::SIGILL, restore_backtrace);
+	Sigaction restore_backtrace = {
+    	.sa_sigaction = fn void(CInt, void*, void*) { libc::longjmp(&backtrace_jmpbuf, 1); },
+    };
+	Sigaction sig_bus, sig_segv, sig_ill;
+	libc::sigaction(libc::SIGBUS, &restore_backtrace, &sig_bus);
+	libc::sigaction(libc::SIGSEGV, &restore_backtrace, &sig_segv);
+	libc::sigaction(libc::SIGILL, &restore_backtrace, &sig_ill);
 
 	void*[128] buffer_first;
 	int i = 0;
@@ -90,8 +100,47 @@ fn CInt backtrace(void** buffer, CInt size) @if(!env::OPENBSD)
 		buffer[i] = builtin::get_returnaddress(i);
 		if (!buffer[i]) break;
 	}
-	libc::signal(libc::SIGBUS, sig_bus);
-	libc::signal(libc::SIGSEGV, sig_segv);
-	libc::signal(libc::SIGILL, sig_ill);
+
+	Sigaction old;
+	libc::sigaction(libc::SIGBUS, &sig_bus, &old);
+	libc::sigaction(libc::SIGSEGV, &sig_segv, &old);
+	libc::sigaction(libc::SIGILL, &sig_ill, &old);
+
 	return i;
+}
+
+struct PosixUContext_t @if(env::DARWIN)
+{
+	int                     uc_onstack;
+	__Darwin_sigset_t       uc_sigmask;     /* signal mask used by this context */
+	__Darwin_sigaltstack    uc_stack;       /* stack used by this context */
+	PosixUContext_t*        uc_link;        /* pointer to resuming context */
+	__Darwin_size_t         uc_mcsize;      /* size of the machine context passed in */
+	__Darwin_mcontext64*    uc_mcontext;   /* pointer to machine specific context */
+}
+
+alias PosixUContext_t @if(!env::DARWIN) = void;
+
+macro void* stack_instruction(PosixUContext_t* uc)
+{
+	$switch:
+		$case env::DARWIN && env::AARCH64:
+			return (void*)uc.uc_mcontext.__ss.__pc + 1;
+/*		$case env::DARWIN && env::X86_64:
+			return uc.uc_mcontext.__ss.__rip;
+		$case env::LINUX && env::X86:
+			return uc.uc_mcontext.gregs[REG_EIP];
+		$case env::LINUX && env::X86_64:
+			return uc.uc_mcontext.gregs[REG_RIP];
+		$case env::LINUX && env::AARCH64:
+			return uc.uc_mcontext.pc;
+		$case env::FREEBSD && env::X86_64:
+			return uc.uc_mcontext.mc_rip;
+		$case env::OPENBSD && env::X86_64:
+			return uc.sc_rip;
+		$case env::NETBSD:
+			uc.uc_mcontext.__gregs[_REG_RIP];*/
+		$default:
+			return null;
+	$endswitch
 }
