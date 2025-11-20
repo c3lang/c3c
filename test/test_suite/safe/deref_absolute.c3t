@@ -1,0 +1,6 @@
+module main;
+
+fn void main()
+{
+    int x = *(int*)1;
+}

@@ -33,6 +33,7 @@
 - Using `defer catch` with a (void), would cause an assertion. #2580
 - Fix decl attribute in the wrong place causing an assertion. #2581
 - Passing a single value to `@wasm` would ignore the renaming.
+- `*(int*)1` incorrectly yielded an assert in LLVM IR lowering #2584.
 
 ### Stdlib changes
 
