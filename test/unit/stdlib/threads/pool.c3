@@ -42,10 +42,35 @@ fn void push_stop() @test
 	}
 }
 
+fn void join() @test
+{
+	@atomic_store(x, 0);
+	Pool pool;
+	pool.init()!!;
+	defer pool.stop_and_destroy()!!;
+	for (usz i = 0; i < 10; i++)
+	{
+		pool.push(&do_wait, (void*)i)!!;
+	}
+	pool.join()!!;
+	test::eq(x, 45);
+}
+
 int x;
 
 fn int do_work(void* arg)
 {
 	@atomic_store(x, @atomic_load(*(int*)arg));
+	return 0;
+}
+
+fn int do_wait(void* arg)
+{
+	for (usz i = 0; i < (iptr)arg; i++)
+	{
+		thread::sleep(time::ms(10));
+	}
+	io::printfn("%s", arg);
+	x += (int)(iptr)arg;
 	return 0;
 }
