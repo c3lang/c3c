@@ -6,8 +6,8 @@ struct ThreadPool
 	Mutex mu;
 	QueueItem[SIZE] queue;
 	usz qindex;
+	usz qworking;
 	usz num_threads;
-	usz thread_counter;
 	bitstruct : char
 	{
 		bool initialized;
@@ -36,6 +36,7 @@ fn void? ThreadPool.init(&self)
 	*self = { .num_threads = SIZE, .initialized = true };
 	self.mu.init()!;
 	self.notify.init()!;
+	self.collect.init()!;
 	foreach (&thread : self.pool)
 	{
 		thread.create(&process_work, self)!;
@@ -52,19 +53,10 @@ fn void? ThreadPool.join(&self)
 	if (self.initialized)
 	{
 		self.mu.lock()!;
-		self.thread_counter = 0;
 		self.joining = true;
 		self.notify.broadcast()!;
-		self.mu.unlock()!;
-		while(self.thread_counter != self.num_threads)
-		{
-			self.mu.lock()!;
-			self.notify.signal()!;
-			self.mu.unlock()!!;
-		}
-		self.mu.lock()!;
+		self.collect.wait(&self.mu)!;
 		self.joining = false;
-		self.collect.broadcast()!;
 		self.mu.unlock()!;
 	}
 }
@@ -107,6 +99,8 @@ macro void? ThreadPool.@shutdown(&self, #stop) @private
 			self.notify.signal()!;
 		}
 		self.mu.destroy()!;
+		self.notify.destroy()!;
+		self.collect.destroy()!;
 		self.initialized = false;
 	}
 }
@@ -125,6 +119,7 @@ fn void? ThreadPool.push(&self, ThreadFn func, void* arg)
 		{
 			self.queue[self.qindex] = { .func = func, .arg = arg };
 			self.qindex++;
+			self.qworking++;
 			// Notify the threads that work is available.
 			self.notify.broadcast()!;
 			return;
@@ -141,12 +136,7 @@ fn int process_work(void* arg) @private
 		// Wait for work.
 		while (self.qindex == 0)
 		{
-			if (self.joining)
-			{
-				// Join requested
-				self.thread_counter++;
-				self.collect.wait(&self.mu)!!;
-			}
+			if (self.joining && self.qworking == 0) self.collect.broadcast()!!;
 			if (self.stop)
 			{
 				// Shutdown requested.
@@ -168,5 +158,8 @@ fn int process_work(void* arg) @private
 		QueueItem item = self.queue[self.qindex];
 		self.mu.unlock()!!;
 		item.func(item.arg);
+		self.mu.lock()!!;
+		self.qworking--;
+		self.mu.unlock()!!;
 	}
 }

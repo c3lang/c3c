@@ -13,8 +13,8 @@ struct FixedThreadPool
 	Mutex mu;
 	QueueItem[] queue;
 	usz qindex;
+	usz qworking;
 	usz num_threads;
-	usz thread_counter;
 	bitstruct : char {
 		bool initialized;
 		bool stop;
@@ -50,6 +50,7 @@ fn void? FixedThreadPool.init(&self, usz threads, usz queue_size = 0)
 	};
 	self.mu.init()!;
 	self.notify.init()!;
+	self.collect.init()!;
 	foreach (&thread : self.pool)
 	{
 		thread.create(&process_work, self)!;
@@ -66,19 +67,10 @@ fn void? FixedThreadPool.join(&self)
 	if (self.initialized)
 	{
 		self.mu.lock()!;
-		self.thread_counter = 0;
 		self.joining = true;
 		self.notify.broadcast()!;
-		self.mu.unlock()!;
-		while(self.thread_counter != self.num_threads)
-		{
-			self.mu.lock()!;
-			self.notify.signal()!;
-			self.mu.unlock()!!;
-		}
-		self.mu.lock()!;
+		self.collect.wait(&self.mu)!;
 		self.joining = false;
-		self.collect.broadcast()!;
 		self.mu.unlock()!;
 	}
 }
@@ -121,12 +113,15 @@ macro void? FixedThreadPool.@shutdown(&self, #stop) @private
 			self.notify.signal()!;
 		}
 		self.mu.destroy()!;
+		self.notify.destroy()!;
+		self.collect.destroy()!;
 		self.initialized = false;
 		while (self.qindex)
 		{
 			free_qitem(self.queue[--self.qindex]);
 		}
 		free(self.queue);
+		free(self.pool);
 		self.queue = {};
 	}
 }
@@ -148,6 +143,7 @@ fn void? FixedThreadPool.push(&self, ThreadPoolFn func, args...)
 	}
 	self.queue[self.qindex] = { .func = func, .args = data };
 	self.qindex++;
+	self.qworking++;
 	defer catch
 	{
 		free_qitem(self.queue[--self.qindex]);
@@ -172,12 +168,7 @@ fn int process_work(void* self_arg) @private
 		// Wait for work.
 		while (self.qindex == 0)
 		{
-			if (self.joining)
-			{
-				// Join requested
-				self.thread_counter++;
-				self.collect.wait(&self.mu)!!;
-			}
+			if (self.joining && self.qworking == 0) self.collect.signal()!!;
 			if (self.stop)
 			{
 				// Shutdown requested.
@@ -198,8 +189,11 @@ fn int process_work(void* self_arg) @private
 		self.qindex--;
 		QueueItem item = self.queue[self.qindex];
 		self.mu.unlock()!!;
-		defer free_qitem(item);
 		item.func(item.args);
+		defer free_qitem(item);
+		self.mu.lock()!!;
+		self.qworking--;
+		self.mu.unlock()!!;
 	}
 }
 
