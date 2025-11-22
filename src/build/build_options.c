@@ -599,7 +599,7 @@ static void parse_option(BuildOptions *options)
 			if (match_shortopt("o"))
 			{
 				if (at_end()) error_exit("error: -o needs a name.");
-				options->output_name = next_arg();
+				options->runner_output_name = options->output_name = next_arg();
 				return;
 			}
 			break;

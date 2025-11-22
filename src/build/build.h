@@ -514,6 +514,7 @@ typedef struct BuildOptions_
 	const char **feature_names;
 	const char **removed_feature_names;
 	const char *output_name;
+	const char *runner_output_name;
 	const char *project_name;
 	const char *target_select;
 	const char *path;
@@ -673,6 +674,7 @@ typedef struct
 	Library **library_list;
 	LibraryTarget **ccompiling_libraries;
 	const char *name;
+	const char *runner_output_name;
 	const char *output_name;
 	const char *extension;
 	const char *version;

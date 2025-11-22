@@ -80,6 +80,7 @@
 - Compiler segfault when getting a nonexistant member from an unnamed struct #2533.
 - Correctly mention aliased type when method is not implemented #2534.
 - Regression: Not printing backtrace when tests fail for MacOS #2536.
+- Name property would be used even under `c3c test` #2587.
 
 ### Stdlib changes
 - Sorting functions correctly took slices by value, but also other types by value. Now, only slices are accepted by value, other containers are always by ref.

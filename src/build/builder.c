@@ -644,6 +644,7 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 	target->source_dirs = NULL;
 	target->name = options->output_name;
 	target->output_name = options->output_name;
+	target->runner_output_name = options->runner_output_name;
 	update_build_target_from_options(target, options);
 }
 
