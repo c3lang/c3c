@@ -92,3 +92,8 @@ result
 /test/tmp/*
 /test/testrun
 /test/test_suite_runner
+
+# patches, originals and rejects
+*.patch
+*.rej
+*.orig
