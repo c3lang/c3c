@@ -172,6 +172,7 @@ The compiler is currently verified to compile on Linux, OpenBSD, Windows and Mac
 | ELF freestanding Aarch64 | No                            | Untested                | No          | No       | No       | Yes*       |
 | ELF freestanding Riscv64 | No                            | Untested                | No          | No       | No       | Untested   |
 | ELF freestanding Riscv32 | No                            | Untested                | No          | No       | No       | Untested   |
+| ELF freestanding Xtensa* | No                            | Untested                | No          | No       | No       | Untested   |
 | FreeBSD x86              | Untested                      | Untested                | No          | Yes      | Untested | Yes*       |
 | FreeBSD x64              | Untested                      | Untested                | No          | Yes      | Untested | Yes*       |
 | NetBSD x86               | Untested                      | Untested                | No          | Yes      | Untested | Yes*       |
@@ -184,7 +185,8 @@ The compiler is currently verified to compile on Linux, OpenBSD, Windows and Mac
 
 *\* Inline asm is still a work in progress*<br>
 *\* OpenBSD 7.7 is the only tested version*<br>
-*\* OpenBSD has limited stacktrace, needs to be tested further*
+*\* OpenBSD has limited stacktrace, needs to be tested further*<br>
+*\* Xtensa support is enabled by compiling with `-DXTENSA_ENABLE`. The [espressif llvm fork](https://github.com/espressif/llvm-project) is recommended for best compatibility*
 
 More platforms will be supported in the future.
 

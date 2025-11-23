@@ -14,6 +14,7 @@
 - Improve error message for `Foo{}` when `Foo` is not a generic type #2574.
 - Support `@param` directives for `...` parameters. #2578
 - Allow splatting of structs. #2555
+- Xtensa target no longer enabled by default on LLVM 22, Compile with `-DXTENSA_ENABLE` to enable it instead
 
 ### Fixes
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.
