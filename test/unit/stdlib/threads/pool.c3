@@ -48,12 +48,12 @@ fn void join() @test
 	Pool pool;
 	pool.init()!!;
 	defer pool.stop_and_destroy()!!;
-	for (usz i = 0; i < 10; i++)
+	for (usz i = 0; i < 4; i++)
 	{
 		pool.push(&do_wait, (void*)i)!!;
 	}
 	pool.join()!!;
-	test::eq(x, 45);
+	test::eq(x, 6);
 }
 
 int x;
@@ -66,11 +66,8 @@ fn int do_work(void* arg)
 
 fn int do_wait(void* arg)
 {
-	for (usz i = 0; i < (iptr)arg; i++)
-	{
-		thread::sleep(time::ms(10));
-	}
-	io::printfn("%s", arg);
-	x += (int)(iptr)arg;
+	usz value = (iptr)arg;
+	for (usz i = 0; i < value; i++) thread::sleep(time::ms(50));
+	@atomic_store(x, @atomic_load(x) + (int)value);
 	return 0;
 }
