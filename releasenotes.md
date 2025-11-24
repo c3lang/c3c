@@ -14,6 +14,7 @@
 - Improve error message for `Foo{}` when `Foo` is not a generic type #2574.
 - Support `@param` directives for `...` parameters. #2578
 - Allow splatting of structs. #2555
+- Deprecate `--test-nocapture` in favour of `--test-show-output` #2588.
 
 ### Fixes
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.
@@ -37,6 +38,7 @@
 - Fix issue when tests encounter a segmentation fault or similar.
 - With project.json, when overriding with an empty list the base settings would still be used. #2583
 - Add sigsegv stacktrace in test and regular errors for Darwin Arm64. #1105
+- Incorrect error message when using generic type that isn't imported #2589
 
 ### Stdlib changes
 - Add `CGFloat` `CGPoint` `CGSize` `CGRect` types to core_foundation (macOS).
@@ -66,7 +68,6 @@
 - The option `--riscvfloat` renamed `--riscv-abi`.
 - Add initial `--cpu-flags` allowing fine grained control over CPU features.
 - Add `--riscv-cpu` settings for RISC-V processors #2549.
-- Deprecate `--test-nocapture` in favour of `--test-show-output` #2588.
 
 ### Fixes
 - Bug in `io::write_using_write_byte`.
