@@ -49,6 +49,7 @@
 - Deprecate objc enums in favour of const inline enums backed by NS numerical types, and with the NS prefix, to better align with the objc api (macOS).
 - Deprecate `event_type_from` function in favour of using NSEvent directly, to better align with the objc api (macOS).
 - Add unit tests for objc and core_foundation (macOS).
+- Make printing typeids give some helpful typeid data.
 
 ## 0.7.7 Change list
 
