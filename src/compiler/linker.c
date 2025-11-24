@@ -439,8 +439,8 @@ static const char *find_linux_ld(void)
 				case ARCH_TYPE_RISCV32: return "-dynamic-linker=/lib/ld-linux-riscv32-ilp32.so.1";
 				case ARCH_TYPE_RISCV64: return "-dynamic-linker=/lib/ld-linux-riscv64-lp64.so.1";
 				case ARCH_TYPE_SPARCV9: return "--dynamic-linker=/lib/ld-linux.so.2";
-				case ARCH_TYPE_X86: return "--dynamic-linker=/lib/ld-linux.so.2";
-				case ARCH_TYPE_X86_64: return "--dynamic-linker=/lib/ld-linux-x86-64.so.2";
+				case ARCH_TYPE_X86: return "--dynamic-linker=/lib64/ld-linux.so.2";
+				case ARCH_TYPE_X86_64: return "--dynamic-linker=/lib64/ld-linux-x86-64.so.2";
 				default: return "--dynamic-linkrt=/lib/ld-linux-unknown.so.2"; // another placeholder until we have all of them
 			}
 			UNREACHABLE;
