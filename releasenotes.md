@@ -14,6 +14,7 @@
 - Improve error message for `Foo{}` when `Foo` is not a generic type #2574.
 - Support `@param` directives for `...` parameters. #2578
 - Allow splatting of structs. #2555
+- Deprecate `--test-nocapture` in favour of `--test-show-output` #2588.
 - Xtensa target no longer enabled by default on LLVM 22, Compile with `-DXTENSA_ENABLE` to enable it instead
 
 ### Fixes
@@ -38,6 +39,8 @@
 - Fix issue when tests encounter a segmentation fault or similar.
 - With project.json, when overriding with an empty list the base settings would still be used. #2583
 - Add sigsegv stacktrace in test and regular errors for Darwin Arm64. #1105
+- Incorrect error message when using generic type that isn't imported #2589
+- `String.to_integer` does not correctly return in some cases where it should #2590.
 
 ### Stdlib changes
 - Add `CGFloat` `CGPoint` `CGSize` `CGRect` types to core_foundation (macOS).
@@ -47,6 +50,7 @@
 - Deprecate objc enums in favour of const inline enums backed by NS numerical types, and with the NS prefix, to better align with the objc api (macOS).
 - Deprecate `event_type_from` function in favour of using NSEvent directly, to better align with the objc api (macOS).
 - Add unit tests for objc and core_foundation (macOS).
+- Make printing typeids give some helpful typeid data.
 
 ## 0.7.7 Change list
 
@@ -81,6 +85,7 @@
 - Compiler segfault when getting a nonexistant member from an unnamed struct #2533.
 - Correctly mention aliased type when method is not implemented #2534.
 - Regression: Not printing backtrace when tests fail for MacOS #2536.
+- Name property would be used even under `c3c test` #2587.
 
 ### Stdlib changes
 - Sorting functions correctly took slices by value, but also other types by value. Now, only slices are accepted by value, other containers are always by ref.

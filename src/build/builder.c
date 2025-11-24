@@ -331,7 +331,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			if (options->test_nosort) vec_add(target->args, "--test-nosort");
 			if (options->test_quiet) vec_add(target->args, "--test-quiet");
 			if (options->test_noleak) vec_add(target->args, "--test-noleak");
-			if (options->test_nocapture) vec_add(target->args, "--test-nocapture");
+			if (options->test_show_output) vec_add(target->args, "--test-show-output");
 			break;
 		case COMMAND_RUN:
 		case COMMAND_COMPILE_RUN:
@@ -644,6 +644,7 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 	target->source_dirs = NULL;
 	target->name = options->output_name;
 	target->output_name = options->output_name;
+	target->runner_output_name = options->runner_output_name;
 	update_build_target_from_options(target, options);
 }
 

@@ -141,8 +141,6 @@ fn usz? Formatter.out_str(&self, any arg) @private
 {
 	switch (arg.type.kindof)
 	{
-		case TYPEID:
-			return self.out_substr("typeid");
 		case VOID:
 			return self.out_substr("void");
 		case FAULT:
@@ -188,6 +186,8 @@ fn usz? Formatter.out_str(&self, any arg) @private
 	if (@catch(n) != NOT_FOUND) n!;
 	switch (arg.type.kindof)
 	{
+		case TYPEID:
+			return self.out_substr("typeid[")! + self.ntoa((iptr)*(typeid*)arg, false, 16)! + self.out_substr("]")!;
 		case ENUM:
 			usz i = types::any_to_enum_ordinal(arg, usz)!!;
 			assert(i < arg.type.names.len, "Illegal enum value found, numerical value was %d.", i);

@@ -222,6 +222,7 @@ $endif
 			case "--test-noleak":
 				check_leaks = false;
 			case "--test-nocapture":
+			case "--test-show-output":
 				context.is_no_capture = true;
 			case "--noansi":
 				context.has_ansi_codes = false;

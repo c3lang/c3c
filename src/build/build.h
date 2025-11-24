@@ -514,6 +514,7 @@ typedef struct BuildOptions_
 	const char **feature_names;
 	const char **removed_feature_names;
 	const char *output_name;
+	const char *runner_output_name;
 	const char *project_name;
 	const char *target_select;
 	const char *path;
@@ -528,7 +529,7 @@ typedef struct BuildOptions_
 	bool test_quiet;
 	bool test_nosort;
 	bool test_noleak;
-	bool test_nocapture;
+	bool test_show_output;
 	const char *custom_linker_path;
 	uint32_t symtab_size;
 	unsigned version;
@@ -673,6 +674,7 @@ typedef struct
 	Library **library_list;
 	LibraryTarget **ccompiling_libraries;
 	const char *name;
+	const char *runner_output_name;
 	const char *output_name;
 	const char *extension;
 	const char *version;
