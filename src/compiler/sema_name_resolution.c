@@ -658,15 +658,18 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 	}
 	if (!found && name_resolve->maybe_decl)
 	{
-		const char *maybe_name = decl_to_name(name_resolve->maybe_decl);
-		if (name_resolve->maybe_decl->unit->module->generic_module)
+		Decl *decl = name_resolve->maybe_decl;
+		Module *module = decl->unit->module;
+		const char *maybe_name = decl_to_name(decl);
+		Module *generic_module = module->generic_module;
+		if (!generic_module && module->is_generic) generic_module = module;
+		const char *module_name = generic_module ? generic_module->name->module : module->name->module;
+		if (generic_module && !name_resolve->is_parameterized)
 		{
-			const char *module_name = name_resolve->maybe_decl->unit->module->generic_module->name->module;
 			sema_error_at(context, span, "Did you mean the %s '%s' in the generic module %s? If so, use '%s{...}' instead.",
 			              maybe_name, symbol, module_name, symbol);
 			return;
 		}
-		const char *module_name = name_resolve->maybe_decl->unit->module->name->module;
 		if (path_name)
 		{
 			sema_error_at(context, span, "Did you mean the %s '%s::%s' in module %s? If so please add 'import %s'.",

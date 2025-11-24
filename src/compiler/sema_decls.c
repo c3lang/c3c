@@ -3326,14 +3326,15 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 					RETURN_SEMA_ERROR(module, "Expected a constant string value as argument.");
 				}
 				attr_data->wasm_module = module->const_expr.bytes.ptr;
-				if (!sema_analyse_expr_rvalue(context, expr)) return false;
-				if (!expr_is_const_string(expr))
-				{
-					RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
-				}
-				decl->extname = expr->const_expr.bytes.ptr;
-				decl->has_extname = true;
 			}
+
+			if (!sema_analyse_expr_rvalue(context, expr)) return false;
+			if (!expr_is_const_string(expr))
+			{
+				RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
+			}
+			decl->extname = expr->const_expr.bytes.ptr;
+			decl->has_extname = true;
 			return true;
 		case ATTRIBUTE_EXPORT:
 			if (context->unit->module->is_generic)

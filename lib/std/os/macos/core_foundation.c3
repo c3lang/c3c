@@ -13,6 +13,26 @@ struct CFRange
 	CFIndex length;
 }
 
+alias CGFloat = $typefrom(env::ARCH_64_BIT ??? double : float);
+
+struct CGPoint
+{
+	CGFloat x;
+	CGFloat y;
+}
+
+struct CGSize
+{
+	CGFloat width;
+	CGFloat height;
+}
+
+struct CGRect
+{
+	CGPoint origin;
+	CGSize size;
+}
+
 extern fn ZString CFString.getCStringPtr(&self, CFStringEncoding encoding) @cname("CFStringGetCStringPtr");
 extern fn ZString CFString.getCString(&self, char* buffer, usz len, CFStringEncoding encoding) @cname("CFStringGetCString");
 

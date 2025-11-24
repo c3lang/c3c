@@ -150,9 +150,11 @@ static void usage(bool full)
 		print_opt("--test-filter <arg>", "Set a filter when running tests, running only matching tests.");
 		print_opt("--test-breakpoint", "When running tests, trigger a breakpoint on failure.");
 		print_opt("--test-nosort", "Do not sort tests.");
-		print_opt("--test-noleak", "Disable tracking allocator and memory leak detection for tests");
-		print_opt("--test-nocapture", "Disable test stdout capturing, all tests can print as they run");
+		print_opt("--test-noleak", "Disable tracking allocator and memory leak detection for tests.");
+		print_opt("--test-show-output", "Disable test stdout capturing, all tests can print as they run.");
+		print_opt("--test-nocapture", "Disable test stdout capturing, all tests can print as they run, same as --test-show-output.");
 		print_opt("--test-quiet", "Run tests without printing full names, printing output only on failure");
+		print_opt("--test-log-level=<verbose|debug|info|warn|error|critical>", "Set log priority when running tests.");
 	}
 	PRINTF("");
 	print_opt("-l <library>", "Link with the static or dynamic library provided.");
@@ -598,7 +600,7 @@ static void parse_option(BuildOptions *options)
 			if (match_shortopt("o"))
 			{
 				if (at_end()) error_exit("error: -o needs a name.");
-				options->output_name = next_arg();
+				options->runner_output_name = options->output_name = next_arg();
 				return;
 			}
 			break;
@@ -794,9 +796,9 @@ static void parse_option(BuildOptions *options)
 				options->test_noleak = true;
 				return;
 			}
-			if (match_longopt("test-nocapture"))
+			if (match_longopt("test-nocapture") || match_longopt("test-show-output"))
 			{
-				options->test_nocapture = true;
+				options->test_show_output = true;
 				return;
 			}
 			if (match_longopt("test-quiet"))
@@ -867,6 +869,11 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("optlevel")))
 			{
 				options->optlevel = parse_opt_select(OptimizationLevel, argopt, optlevels);
+				return;
+			}
+			if ((argopt = match_argopt("test-log-level")))
+			{
+				options->test_log_level = parse_opt_select(TestLogLevel, argopt, test_log_levels);
 				return;
 			}
 			if ((argopt = match_argopt("merge-functions")))
@@ -1456,6 +1463,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.emit_llvm = false,
 		.optsetting = OPT_SETTING_NOT_SET,
 		.debug_info_override = DEBUG_INFO_NOT_SET,
+		.test_log_level = TESTLOGLEVEL_NOT_SET,
 		.safety_level = SAFETY_NOT_SET,
 		.panic_level = PANIC_NOT_SET,
 		.show_backtrace = SHOW_BACKTRACE_NOT_SET,

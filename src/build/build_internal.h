@@ -107,6 +107,15 @@ static const char *optlevels[4] = {
 	[OPTIMIZATION_AGGRESSIVE] = "max",
 };
 
+static const char *test_log_levels[6] = {
+	[TESTLOGLEVEL_VERBOSE] = "verbose",
+	[TESTLOGLEVEL_DEBUG] = "debug",
+	[TESTLOGLEVEL_INFO] = "info",
+	[TESTLOGLEVEL_WARN] = "warn",
+	[TESTLOGLEVEL_ERROR] = "error",
+	[TESTLOGLEVEL_CRITICAL] = "critical",
+};
+
 static const char *backends[3] = {
 		[BACKEND_LLVM] = "llvm",
 		[BACKEND_TB] = "tb",
