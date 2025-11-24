@@ -410,10 +410,10 @@ static const char *find_linux_ld(void)
 			{
 				case ARCH_TYPE_X86: return "--dynamic-linker=/lib/ld-musl-i386.so.1";
 				case ARCH_TYPE_X86_64: return "--dynamic-linker=/lib/ld-musl-x86_64.so.1";
-				// case ARCH_TYPE_MIPS: return "--dynamic-linker=/lib/ld-musl-mips.so.1";
-				// case ARCH_TYPE_MIPSEL: return "--dynamic-linker=/lib/ld-musl-mipsel.so.1";
-				// case ARCH_TYPE_MIPS64: return "--dynamic-linker=/lib/ld-musl-mips64.so.1";
-				// case ARCH_TYPE_MIPS64EL: return "--dynamic-linker=/lib/ld-musl-mips64el.so.1";
+				case ARCH_TYPE_MIPS: return "--dynamic-linker=/lib/ld-musl-mips.so.1";
+				case ARCH_TYPE_MIPSEL: return "--dynamic-linker=/lib/ld-musl-mipsel.so.1";
+				case ARCH_TYPE_MIPS64: return "--dynamic-linker=/lib/ld-musl-mips64.so.1";
+				case ARCH_TYPE_MIPS64EL: return "--dynamic-linker=/lib/ld-musl-mips64el.so.1";
 				case ARCH_TYPE_PPC: return "--dynamic-linker=/lib/ld-musl-powerpc.so.1";
 				case ARCH_TYPE_PPC64: return "--dynamic-linker=/lib/ld-musl-powerpc64.so.1";
 				case ARCH_TYPE_ARM: return "--dynamic-linker=/lib/ld-musl-arm.so.1";
@@ -427,8 +427,20 @@ static const char *find_linux_ld(void)
 		case ENV_TYPE_ANDROID:
 			return "--dynamic-linker=/system/ld-android.so";
 		default:
-		    return "--dynamic-linker=/lib64/ld-linux-x86-64.so.2";
+			switch (compiler.platform.arch) {
+				case ARCH_TYPE_X86: return "--dynamic-linker=/lib64/ld-linux.so.2";
+				case ARCH_TYPE_X86_64: return "--dynamic-linker=/lib64/ld-linux-x86-64.so.2";
+				case ARCH_TYPE_ARM: return "--dynamic-linker={{.*}}/lib/ld-linux.so.3";
+				case ARCH_TYPE_MIPS: return "--dynamic-linker={{.*}}/lib/ld-linux-mipsn8.so.1";
+				case ARCH_TYPE_MIPSEL: return "--dynamic-linker={{.*}}/lib/ld-linux-mipsn8.so.1";
+				case ARCH_TYPE_MIPS64: return "--dynamic-linker={{.*}}/lib/ld-linux-mipsn8.so.1";
+				case ARCH_TYPE_MIPS64EL: return "--dynamic-linker={{.*}}/lib/ld-linux-mipsn8.so.1";
+				case ARCH_TYPE_SPARCV9: return "--dynamic-linker={{(/usr/sparcv9-unknown-linux-gnu)?}}/lib{{(64)?}}/ld-linux.so.2";
+				default: return "--dynamic-linkrt=/lib/ld-linux-unknown.so.2";
+			}
+			UNREACHABLE;
 	}
+	UNREACHABLE;
 }
 
 static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool is_dylib)
