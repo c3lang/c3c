@@ -150,8 +150,9 @@ static void usage(bool full)
 		print_opt("--test-filter <arg>", "Set a filter when running tests, running only matching tests.");
 		print_opt("--test-breakpoint", "When running tests, trigger a breakpoint on failure.");
 		print_opt("--test-nosort", "Do not sort tests.");
-		print_opt("--test-noleak", "Disable tracking allocator and memory leak detection for tests");
-		print_opt("--test-nocapture", "Disable test stdout capturing, all tests can print as they run");
+		print_opt("--test-noleak", "Disable tracking allocator and memory leak detection for tests.");
+		print_opt("--test-show-output", "Disable test stdout capturing, all tests can print as they run.");
+		print_opt("--test-nocapture", "Disable test stdout capturing, all tests can print as they run, same as --test-show-output.");
 		print_opt("--test-quiet", "Run tests without printing full names, printing output only on failure");
 		print_opt("--test-log-level=<verbose|debug|info|warn|error|critical>", "Set log priority when running tests.");
 	}
@@ -795,9 +796,9 @@ static void parse_option(BuildOptions *options)
 				options->test_noleak = true;
 				return;
 			}
-			if (match_longopt("test-nocapture"))
+			if (match_longopt("test-nocapture") || match_longopt("test-show-output"))
 			{
-				options->test_nocapture = true;
+				options->test_show_output = true;
 				return;
 			}
 			if (match_longopt("test-quiet"))

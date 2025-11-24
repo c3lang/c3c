@@ -503,7 +503,7 @@ macro void? @try(#v, #expr) @builtin @maydiscard
   {
 	char[] data;
 	// Read until end of file
-	if (@try_catch(data, load_line(), io::EOF)) break;
+	if (@try_catch(data, load_line(), io::EOF)!) break;
 	.. use data ..
   }
 

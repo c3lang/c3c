@@ -66,6 +66,7 @@
 - The option `--riscvfloat` renamed `--riscv-abi`.
 - Add initial `--cpu-flags` allowing fine grained control over CPU features.
 - Add `--riscv-cpu` settings for RISC-V processors #2549.
+- Deprecate `--test-nocapture` in favour of `--test-show-output` #2588.
 
 ### Fixes
 - Bug in `io::write_using_write_byte`.
