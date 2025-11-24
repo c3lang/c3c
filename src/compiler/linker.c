@@ -333,14 +333,14 @@ static const char *get_linux_crt_arch_glob(void)
 {
 	switch (compiler.build.arch_os_target)
 	{
-		case LINUX_X64:
+		case LINUX_GNU_X64:
 			return "/usr/lib/x86_64*linux*/crt1.o";
-		case LINUX_X86:
+		case LINUX_GNU_X86:
 			return "/usr/lib/i686*linux*/crt1.o";
-		case LINUX_AARCH64:
+		case LINUX_GNU_AARCH64:
 			return "/usr/lib/aarch64*linux*/crt1.o";
-		case LINUX_RISCV32:
-		case LINUX_RISCV64:
+		case LINUX_GNU_RISCV32:
+		case LINUX_GNU_RISCV64:
 		default:
 			return "/usr/lib/*/crt1.o";
 	}
@@ -350,14 +350,14 @@ static const char *get_linux_crt_begin_arch_glob(void)
 {
 	switch (compiler.build.arch_os_target)
 	{
-		case LINUX_X64:
+		case LINUX_GNU_X64:
 			return "/usr/lib/gcc/x86_64*linux*/*/crtbegin.o";
-		case LINUX_X86:
+		case LINUX_GNU_X86:
 			return "/usr/lib/gcc/i686*linux*/*/crtbegin.o";
-		case LINUX_AARCH64:
+		case LINUX_GNU_AARCH64:
 			return "/usr/lib/gcc/aarch64*linux*/*/crtbegin.o";
-		case LINUX_RISCV32:
-		case LINUX_RISCV64:
+		case LINUX_GNU_RISCV32:
+		case LINUX_GNU_RISCV64:
 		default:
 			return "/usr/lib/gcc/*/*/crtbegin.o";
 	}
@@ -396,6 +396,39 @@ static const char *find_linux_crt_begin(void)
 	}
 	INFO_LOG("Found crtbegin at %s", path);
 	return path;
+}
+
+static const char *find_linux_ld(void)
+{
+	INFO_LOG("Environment Type ID: %d", compiler.platform.environment_type);
+	switch (compiler.platform.environment_type)
+	{
+		case ENV_TYPE_MUSL:
+		case ENV_TYPE_MUSLEABI:
+		case ENV_TYPE_MUSLEABIHF:
+			switch (compiler.platform.arch)
+			{
+				case ARCH_TYPE_X86: return "--dynamic-linker=/lib/ld-musl-i386.so.1";
+				case ARCH_TYPE_X86_64: return "--dynamic-linker=/lib/ld-musl-x86_64.so.1";
+				// case ARCH_TYPE_MIPS: return "--dynamic-linker=/lib/ld-musl-mips.so.1";
+				// case ARCH_TYPE_MIPSEL: return "--dynamic-linker=/lib/ld-musl-mipsel.so.1";
+				// case ARCH_TYPE_MIPS64: return "--dynamic-linker=/lib/ld-musl-mips64.so.1";
+				// case ARCH_TYPE_MIPS64EL: return "--dynamic-linker=/lib/ld-musl-mips64el.so.1";
+				case ARCH_TYPE_PPC: return "--dynamic-linker=/lib/ld-musl-powerpc.so.1";
+				case ARCH_TYPE_PPC64: return "--dynamic-linker=/lib/ld-musl-powerpc64.so.1";
+				case ARCH_TYPE_ARM: return "--dynamic-linker=/lib/ld-musl-arm.so.1";
+				case ARCH_TYPE_ARMB: return "--dynamic-linker=/lib/ld-musl-armeb.so.1";
+				case ARCH_TYPE_AARCH64: return "--dynamic-linker=/lib/ld-musl-aarch64.so.1";
+				case ARCH_TYPE_AARCH64_BE: return "--dynamic-linker=/lib/ld-musl-aarch64_be.so.1";
+				default: return "--dynamic-linker=/lib/ld-musl-unknown.so.1"; // a placeholder for now
+			}
+			UNREACHABLE;
+			break;
+		case ENV_TYPE_ANDROID:
+			return "--dynamic-linker=/system/ld-android.so";
+		default:
+		    return "--dynamic-linker=/lib64/ld-linux-x86-64.so.2";
+	}
 }
 
 static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool is_dylib)
@@ -452,12 +485,7 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 	}
 	add_concat_file_arg(crt_dir, "crtn.o");
 	add_concat_quote_arg("-L", crt_dir);
-	switch (compiler.platform.environment_type) {
-		case ENV_TYPE_MUSL:
-			add_plain_arg("--dynamic-linker=/lib/ld-musl-x86_64.so.1");
-		default:
-			add_plain_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
-	}
+	add_plain_arg(find_linux_ld());
 	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 	linking_add_link(&compiler.linking, "pthread");
 	linking_add_link(&compiler.linking, "c");

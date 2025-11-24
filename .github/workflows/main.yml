@@ -554,7 +554,7 @@ jobs:
         run: |
           export C3C="$(realpath ./build/c3c)"
           cd resources/testproject
-          "$C3C" run -vvv --linker=builtin --trust=full # Again, --linker=builtin won't work here. 
+          "$C3C" run -vvv --linker=builtin --trust=full
 
       - name: Init a library & a project
         run: |

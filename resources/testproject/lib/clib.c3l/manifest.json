@@ -1,15 +1,22 @@
-{ 
-  "provides" : "clib",
-  "c-sources" : ["hello2.c", "whitespace test.c"],
-  "targets" : {
-    "macos-x64" : {
-    },
-    "macos-aarch64" : {},
-    "linux-x64" : {
+{
+  "provides": "clib",
+  "c-sources": [
+    "hello2.c",
+    "whitespace test.c"
+  ],
+  "targets": {
+    "macos-x64": {},
+    "macos-aarch64": {},
+    "linux-x64": {
       "cflags": "-fPIE"
     },
-	"windows-x64" : {
-      "c-include-dirs": ["C:\\"]
+    "linux-musl-x64": {
+      "cflags": "-fPIE"
+    },
+    "windows-x64": {
+      "c-include-dirs": [
+        "C:\\"
+      ]
     }
   }
 }

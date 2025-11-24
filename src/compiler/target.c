@@ -1177,10 +1177,12 @@ static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 		[OPENBSD_X86] = "i386-unknown-openbsd",
 		[NETBSD_X86] = "i386-unknown-netbsd",
 		[MCU_X86] = "i386-pc-elfiamcu",
-		[LINUX_X86] = "i386-unknown-linux",
+		[LINUX_GNU_X86] = "i386-unknown-linux",
+		[LINUX_MUSL_X86] = "i386-unknown-linux-musl",
 		[ELF_X86] = "i386-unknown-elf",
 		[MACOS_X64] = "x86_64-apple-macosx",
-		[LINUX_X64] = "x86_64-pc-linux-gnu",
+		[LINUX_GNU_X64] = "x86_64-pc-linux-gnu",
+		[LINUX_MUSL_X64] = "x86_64-pc-linux-musl",
 		[WINDOWS_X64] = "x86_64-pc-windows-msvc",
 		[MINGW_X64] = "x86_64-w64-windows-gnu",
 		[NETBSD_X64] = "x86_64-pc-netbsd",
@@ -1189,14 +1191,17 @@ static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 		[ELF_X64] = "x86_64-unknown-elf",
 		[ANDROID_AARCH64] = "aarch64-linux-android",
 		[ANDROID_X86_64] = "x86_64-linux-android",
-		[LINUX_AARCH64] = "aarch64-unknown-linux-gnu",
+		[LINUX_GNU_AARCH64] = "aarch64-unknown-linux-gnu",
+		[LINUX_MUSL_AARCH64] = "aarch64-unknown-linux-musl",
 		[IOS_AARCH64] = "aarch64-apple-ios",
 		[MACOS_AARCH64] = "aarch64-apple-macosx",
 		[ELF_AARCH64] = "aarch64-unknown-elf",
 		[WINDOWS_AARCH64] = "aarch64-pc-windows-msvc",
-		[LINUX_RISCV32] = "riscv32-unknown-linux",
+		[LINUX_GNU_RISCV32] = "riscv32-unknown-linux",
+		[LINUX_MUSL_RISCV32] = "riscv32-unknown-linux-musl",
 		[ELF_RISCV32] = "riscv32-unknown-elf",
-		[LINUX_RISCV64] = "riscv64-unknown-linux",
+		[LINUX_GNU_RISCV64] = "riscv64-unknown-linux",
+		[LINUX_MUSL_RISCV64] = "riscv64-unknown-linux-musl",
 		[ELF_RISCV64] = "riscv64-unknown-elf",
 		[ELF_XTENSA] = "xtensa-unknown-elf",
 		[WASM32] = "wasm32-unknown-unknown",
@@ -1323,6 +1328,7 @@ static EnvironmentType environment_type_from_llvm_string(StringSlice env)
 		}
 	}
 
+	INFO_LOG("Platform Environment: %s", env.ptr);
 #define STRCASE(_str, _arch) if (slice_strcmp(env, _str)) return _arch;
 	STRCASE("gnu", ENV_TYPE_GNU)
 	STRCASE("gnuabin32", ENV_TYPE_GNUABIN32)
