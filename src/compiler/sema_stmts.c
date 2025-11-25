@@ -2828,6 +2828,7 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 {
 	unsigned ct_context = sema_context_push_ct_stack(context);
 	Expr *collection = exprptr(statement->ct_foreach_stmt.expr);
+	bool is_reverse = statement->ct_foreach_stmt.is_reverse;
 	if (!sema_analyse_ct_expr(context, collection)) return false;
 	if (!expr_is_const(collection)) goto FAILED_NO_LIST;
 	unsigned count = (unsigned)-1; // To fix invalid "maybe uninitialized" on GCC
@@ -2835,8 +2836,8 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 	Expr **expressions = NULL;
 	Type *const_list_type = NULL;
 	const char *bytes = NULL;
-    Type *bytes_type = NULL;
-    switch (collection->const_expr.const_kind)
+        Type *bytes_type = NULL;
+	switch (collection->const_expr.const_kind)
 	{
 		case CONST_FLOAT:
 		case CONST_INTEGER:
@@ -2908,23 +2909,26 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 	Ast *body = astptr(statement->ct_foreach_stmt.body);
 	AstId *current = &start;
 	unsigned loop_context = sema_context_push_ct_stack(context);
+	int inc = is_reverse ? -1 : 1;
+	unsigned pos = is_reverse ? count : -1;
 	for (unsigned i = 0; i < count; i++)
 	{
+		pos += inc;
 		sema_context_pop_ct_stack(context, loop_context);
 		Ast *compound_stmt = copy_ast_single(body);
 		if (expressions)
 		{
-			value->var.init_expr = expressions[i];
+			value->var.init_expr = expressions[pos];
 		}
 		else if (bytes)
 		{
 			value->var.init_expr = expr_new(EXPR_CONST, collection->span);
-			expr_rewrite_const_int(value->var.init_expr, bytes_type, bytes[i]);
+			expr_rewrite_const_int(value->var.init_expr, bytes_type, bytes[pos]);
 		}
 		else
 		{
 			Expr *expr = expr_new(EXPR_CONST, collection->span);
-			if (!expr_rewrite_to_const_initializer_index(const_list_type, initializer, expr, i, false))
+			if (!expr_rewrite_to_const_initializer_index(const_list_type, initializer, expr, pos, false))
 			{
 				SEMA_ERROR(collection, "Complex expressions are not allowed.");
 				goto FAILED;
@@ -2933,7 +2937,7 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		}
 		if (index)
 		{
-			index->var.init_expr = expr_new_const_int(index->span, type_int, i);
+			index->var.init_expr = expr_new_const_int(index->span, type_int, pos);
 			index->type = type_int;
 		}
 		if (!sema_analyse_statement(context, compound_stmt)) goto FAILED;

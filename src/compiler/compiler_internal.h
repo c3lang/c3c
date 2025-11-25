@@ -1455,6 +1455,7 @@ typedef struct
 {
 	DeclId index;
 	DeclId value;
+	bool is_reverse;
 	AstId body;
 	ExprId expr;
 } AstCtForeachStmt;

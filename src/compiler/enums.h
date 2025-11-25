@@ -1276,6 +1276,7 @@ typedef enum
 	TOKEN_CT_FEATURE,           // $feature
 	TOKEN_CT_FOR,               // $for
 	TOKEN_CT_FOREACH,           // $foreach
+	TOKEN_CT_FOREACH_R,         // $foreach_r
 	TOKEN_CT_IF,                // $if
 	TOKEN_CT_INCLUDE,           // $include
 	TOKEN_CT_IS_CONST,          // $is_const

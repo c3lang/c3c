@@ -7,6 +7,7 @@ fn void main()
 {
 
     var $foo = { 1, 10, 34 };
+
     $foreach $i : $foo:
        printf("Foo %d\n", $i);
     $endforeach;
@@ -27,6 +28,25 @@ fn void main()
     }
     $endforeach;
 
+    $foreach_r $i : $foo:
+       printf("Foo %d\n", $i);
+    $endforeach;
+
+    $foreach_r $i, $j : $foo:
+        printf("Bar %d %d\n", $i, $j);
+    $endforeach;
+
+    $foreach_r $x : { 123, "abc", 1177, "hello" }:
+    {
+        $typeof($x) z = $x;
+        $switch $typeof($x):
+        $case int:
+            printf("Bar %d\n", $x);
+        $default:
+            printf("Bar %s\n", $x);
+        $endswitch
+    }
+    $endforeach;
 }
 
 /* #expect: test.ll
@@ -37,6 +57,10 @@ entry:
   %z1 = alloca %"char[]", align 8
   %z2 = alloca i32, align 4
   %z3 = alloca %"char[]", align 8
+  %z4 = alloca %"char[]", align 8
+  %z5 = alloca i32, align 4
+  %z6 = alloca %"char[]", align 8
+  %z7 = alloca i32, align 4
   call void (ptr, ...) @printf(ptr @.str, i32 1)
   call void (ptr, ...) @printf(ptr @.str.1, i32 10)
   call void (ptr, ...) @printf(ptr @.str.2, i32 34)
@@ -51,5 +75,19 @@ entry:
   call void (ptr, ...) @printf(ptr @.str.10, i32 1177)
   store %"char[]" { ptr @.str.11, i64 5 }, ptr %z3, align 8
   call void (ptr, ...) @printf(ptr @.str.12, ptr @.str.13)
+  call void (ptr, ...) @printf(ptr @.str.14, i32 34)
+  call void (ptr, ...) @printf(ptr @.str.15, i32 10)
+  call void (ptr, ...) @printf(ptr @.str.16, i32 1)
+  call void (ptr, ...) @printf(ptr @.str.17, i32 2, i32 34)
+  call void (ptr, ...) @printf(ptr @.str.18, i32 1, i32 10)
+  call void (ptr, ...) @printf(ptr @.str.19, i32 0, i32 1)
+  store %"char[]" { ptr @.str.20, i64 5 }, ptr %z4, align 8
+  call void (ptr, ...) @printf(ptr @.str.21, ptr @.str.22)
+  store i32 1177, ptr %z5, align 4
+  call void (ptr, ...) @printf(ptr @.str.23, i32 1177)
+  store %"char[]" { ptr @.str.24, i64 3 }, ptr %z6, align 8
+  call void (ptr, ...) @printf(ptr @.str.25, ptr @.str.26)
+  store i32 123, ptr %z7, align 4
+  call void (ptr, ...) @printf(ptr @.str.27, i32 123)
   ret void
 }

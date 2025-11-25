@@ -363,6 +363,8 @@ const char *token_type_to_string(TokenType type)
 			return "$for";
 		case TOKEN_CT_FOREACH:
 			return "$foreach";
+		case TOKEN_CT_FOREACH_R:
+			return "$foreach_r";
 		case TOKEN_CT_IF:
 			return "$if";
 		case TOKEN_CT_IS_CONST:

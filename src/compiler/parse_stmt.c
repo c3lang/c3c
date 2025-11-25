@@ -1122,12 +1122,15 @@ static inline Ast *parse_return_stmt(ParseContext *c)
 }
 
 /**
- * ct_foreach_stmt ::= CT_FOREACH CT_IDENT (',' CT_IDENT)? ':' expr ':' statement* CT_ENDFOREACH
+ * ct_foreach_stmt ::= (CT_FOREACH | CT_FOREACH_R) CT_IDENT (',' CT_IDENT)? ':' expr ':' statement* CT_ENDFOREACH
  */
 static inline Ast* parse_ct_foreach_stmt(ParseContext *c)
 {
 	Ast *ast = ast_new_curr(c, AST_CT_FOREACH_STMT);
-	advance_and_verify(c, TOKEN_CT_FOREACH);
+	if (!((ast->ct_foreach_stmt.is_reverse = try_consume(c, TOKEN_CT_FOREACH_R))))
+	{
+		advance_and_verify(c, TOKEN_CT_FOREACH);
+	}
 	if (peek(c) == TOKEN_COMMA)
 	{
 		Decl *index = decl_new_var(symstr(c), c->span, NULL, VARDECL_LOCAL_CT);
@@ -1381,6 +1384,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_SWITCH:
 			return parse_ct_switch_stmt(c);
 		case TOKEN_CT_FOREACH:
+		case TOKEN_CT_FOREACH_R:
 			return parse_ct_foreach_stmt(c);
 		case TOKEN_CT_FOR:
 			return parse_ct_for_stmt(c);
