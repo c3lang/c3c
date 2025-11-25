@@ -14,10 +14,11 @@ ArchOsTarget default_target = MACOS_X64;
 	#elif defined(__ANDROID__)
 ArchOsTarget default_target = ANDROID_X86_64;
 	#elif defined(__linux__) && __linux__
+ArchOsTarget default_target = LINUX_X64;
 		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
-ArchOsTarget default_target = LINUX_GNU_X64;
+LinuxLibc default_libc = LINUX_LIBC_GNU;
 		#elif defined(__DEFINED_va_list)
-ArchOsTarget default_target = LINUX_MUSL_X64;
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
 		#endif
 	#elif defined(__NetBSD__)
 ArchOsTarget default_target = NETBSD_X64;
@@ -34,20 +35,22 @@ ArchOsTarget default_target = MACOS_AARCH64;
 	#elif defined(__ANDROID__)
 ArchOsTarget default_target = ANDROID_AARCH64;
 	#elif defined(__linux__) && __linux__
+ArchOsTarget default_target = LINUX_AARCH64;
 		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
-ArchOsTarget default_target = LINUX_GNU_AARCH64;
+LinuxLibc default_libc = LINUX_LIBC_GNU;
 		#elif defined(__DEFINED_va_list)
-ArchOsTarget default_target = LINUX_MUSL_AARCH64;
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
 		#endif
 	#else
 ArchOsTarget default_target = ELF_AARCH64;
 	#endif
 #elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
 	#if defined(__linux__) && __linux__
+ArchOsTarget default_target = LINUX_X86;
 		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
-ArchOsTarget default_target = LINUX_GNU_X86;
+LinuxLibc default_libc = LINUX_LIBC_GNU;
 		#elif defined(__DEFINED_va_list)
-ArchOsTarget default_target = LINUX_MUSL_X86;
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
 		#endif
 	#elif defined(__FreeBSD__)
 ArchOsTarget default_target = FREEBSD_X86;
@@ -62,26 +65,32 @@ ArchOsTarget default_target = ELF_X86;
 	#endif
 #elif defined(__riscv32)
 	#if defined(__linux__) && __linux__
+ArchOsTarget default_target = LINUX_RISCV32;
 		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
-ArchOsTarget default_target = LINUX_GNU_RISCV32;
+LinuxLibc default_libc = LINUX_LIBC_GNU;
 		#elif defined(__DEFINED_va_list)
-ArchOsTarget default_target = LINUX_MUSL_RISCV32;
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
 		#endif
 	#else
 ArchOsTarget default_target = ELF_RISCV32;
 	#endif
 #elif defined(__riscv64)
 	#if defined(__linux__) && __linux__
+ArchOsTarget default_target = LINUX_RISCV64;
 		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
-ArchOsTarget default_target = LINUX_GNU_RISCV64;
+LinuxLibc default_libc = LINUX_LIBC_GNU;
 		#elif defined(__DEFINED_va_list)
-ArchOsTarget default_target = LINUX_MUSL_RISCV64;
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
 		#endif
 	#else
 ArchOsTarget default_target = ELF_RISCV64;
 	#endif
 #else
 ArchOsTarget default_target = ARCH_OS_TARGET_DEFAULT;
+#endif
+
+#ifndef default_libc
+LinuxLibc default_libc = LINUX_LIBC_GNU;
 #endif
 
 bool command_accepts_files(CompilerCommand command)
@@ -259,16 +268,11 @@ static LinkLibc libc_from_arch_os(ArchOsTarget target)
 		case FREEBSD_X86:
 		case FREEBSD_X64:
 		case IOS_AARCH64:
-		case LINUX_GNU_AARCH64:
-		case LINUX_GNU_RISCV32:
-		case LINUX_GNU_RISCV64:
-		case LINUX_GNU_X86:
-		case LINUX_GNU_X64:
-		case LINUX_MUSL_AARCH64:
-		case LINUX_MUSL_RISCV32:
-		case LINUX_MUSL_RISCV64:
-		case LINUX_MUSL_X86:
-		case LINUX_MUSL_X64:
+		case LINUX_AARCH64:
+		case LINUX_RISCV32:
+		case LINUX_RISCV64:
+		case LINUX_X86:
+		case LINUX_X64:
 		case MACOS_AARCH64:
 		case MACOS_X64:
 		case MINGW_X64:
@@ -454,7 +458,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	set_if_updated(target->feature.riscv_cpu_set, options->riscv_cpu_set);
 	set_if_updated(target->feature.riscv_abi, options->riscv_abi);
 	set_if_updated(target->feature.win_debug, options->win_debug);
-
+	set_if_updated(target->linuxpaths.libc, options->linux_libc);
 	set_if_updated(target->feature.pass_win64_simd_as_arrays, options->win_64_simd);
 
 	OVERRIDE_IF_SET(output_dir);

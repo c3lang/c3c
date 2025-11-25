@@ -735,7 +735,6 @@ void compiler_compile(void)
 				use_system_linker = true;
 				break;
 			case LINKER_TYPE_BUILTIN:
-				INFO_LOG("HELLLLOOOOOOO!!!!!!!!!!!!!");
 				use_system_linker = false;
 				break;
 			default:
@@ -1187,16 +1186,14 @@ static int jump_buffer_size()
 		case ARCH_OS_TARGET_DEFAULT:
 			return 512;
 		case ELF_RISCV32:
-		case LINUX_GNU_RISCV32:
-		case LINUX_MUSL_RISCV32:
+		case LINUX_RISCV32:
 			// Godbolt test
 			return 76;
 		case ELF_XTENSA:
 			// Godbolt 68 => 17 with 32 bit pointers
 			return 17;
 		case ELF_RISCV64:
-		case LINUX_GNU_RISCV64:
-		case LINUX_MUSL_RISCV64:
+		case LINUX_RISCV64:
 			// Godbolt test
 			return 43;
 		case MACOS_X64:
@@ -1206,8 +1203,7 @@ static int jump_buffer_size()
 			// Godbolt test
 			return 32;
 		case ELF_X64:
-		case LINUX_GNU_X64:
-		case LINUX_MUSL_X64:
+		case LINUX_X64:
 		case ANDROID_X86_64:
 			// Godbolt test
 			return 25;
@@ -1217,8 +1213,7 @@ static int jump_buffer_size()
 			REMINDER("Guessing setjmp for platform.");
 			return 32;
 		case ANDROID_AARCH64:
-		case LINUX_GNU_AARCH64:
-		case LINUX_MUSL_AARCH64:
+		case LINUX_AARCH64:
 		case ELF_AARCH64:
 			return 39;
 		case WINDOWS_AARCH64:
@@ -1228,8 +1223,7 @@ static int jump_buffer_size()
 		case MACOS_AARCH64:
 			// Based on macOS headers
 			return 25;
-		case LINUX_GNU_X86:
-		case LINUX_MUSL_X86:
+		case LINUX_X86:
 		case MCU_X86:
 		case NETBSD_X86:
 		case OPENBSD_X86:
@@ -1314,10 +1308,8 @@ static void check_address_sanitizer_options(BuildTarget *target)
 			WARNING("Using address sanitizer on Windows requires the sanitizer option `detect_odr_violation=0`, either set by returning it from `__asan_default_options`, or via an environment variable `ASAN_OPTIONS=detect_odr_violation=0`");
 			break;
 		}
-		case LINUX_GNU_X86:
-		case LINUX_GNU_X64:
-		case LINUX_MUSL_X86:
-		case LINUX_MUSL_X64:
+		case LINUX_X86:
+		case LINUX_X64:
 		case MACOS_AARCH64:
 		case MACOS_X64:
 		case FREEBSD_X86:
@@ -1338,12 +1330,9 @@ static void check_memory_sanitizer_options(BuildTarget *target)
 	}
 	switch (target->arch_os_target)
 	{
-		case LINUX_GNU_AARCH64:
-		case LINUX_GNU_X86:
-		case LINUX_GNU_X64:
-		case LINUX_MUSL_AARCH64:
-		case LINUX_MUSL_X86:
-		case LINUX_MUSL_X64:
+		case LINUX_AARCH64:
+		case LINUX_X86:
+		case LINUX_X64:
 		case FREEBSD_X86:
 		case FREEBSD_X64:
 		case NETBSD_X86:
@@ -1362,10 +1351,8 @@ static void check_thread_sanitizer_options(BuildTarget *target)
 {
 	switch (target->arch_os_target)
 	{
-		case LINUX_GNU_AARCH64:
-		case LINUX_GNU_X64:
-		case LINUX_MUSL_AARCH64:
-		case LINUX_MUSL_X64:
+		case LINUX_AARCH64:
+		case LINUX_X64:
 		case MACOS_AARCH64:
 		case MACOS_X64:
 		case FREEBSD_X64:

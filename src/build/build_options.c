@@ -216,6 +216,7 @@ static void usage(bool full)
 		print_opt("--macos-min-version <ver>", "Set the minimum MacOS version to compile for.");
 		print_opt("--macos-sdk-version <ver>", "Set the MacOS SDK compiled for.");
 		PRINTF("");
+		print_opt("--linux-libc=<gnu|musl>", "Set the libc to use on Linux, defaults to gnu.");
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
 		PRINTF("");
@@ -861,6 +862,11 @@ static void parse_option(BuildOptions *options)
 				options->fp_math = parse_opt_select(FpOpt, argopt, fp_math);
 				return;
 			}
+			if ((argopt = match_argopt("linux-libc")))
+			{
+				options->linux_libc = parse_opt_select(LinuxLibc, argopt, linuxlibc);
+				return;
+			}
 			if ((argopt = match_argopt("optsize")))
 			{
 				options->optsize = parse_opt_select(SizeOptimizationLevel, argopt, optsizes);
@@ -1495,6 +1501,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,
 		.loop_vectorization = VECTORIZATION_NOT_SET,
+		.linux_libc = LINUX_LIBC_NOT_SET,
 		.files = NULL,
 		.build_dir = NULL,
 		.output_dir = NULL,
@@ -1756,16 +1763,11 @@ const char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 		[FREEBSD_X86] = "freebsd-x86",
 		[FREEBSD_X64] = "freebsd-x64",
 		[IOS_AARCH64] = "ios-aarch64",
-		[LINUX_GNU_AARCH64] = "linux-aarch64",
-		[LINUX_GNU_RISCV32] = "linux-riscv32",
-		[LINUX_GNU_RISCV64] = "linux-riscv64",
-		[LINUX_GNU_X86] = "linux-x86",
-		[LINUX_GNU_X64] = "linux-x64",
-		[LINUX_MUSL_AARCH64] = "linux-musl-aarch64",
-		[LINUX_MUSL_RISCV32] = "linux-musl-riscv32",
-		[LINUX_MUSL_RISCV64] = "linux-musl-riscv64",
-		[LINUX_MUSL_X86] = "linux-musl-x86",
-		[LINUX_MUSL_X64] = "linux-musl-x64",
+		[LINUX_AARCH64] = "linux-aarch64",
+		[LINUX_RISCV32] = "linux-riscv32",
+		[LINUX_RISCV64] = "linux-riscv64",
+		[LINUX_X86] = "linux-x86",
+		[LINUX_X64] = "linux-x64",
 		[MACOS_AARCH64] = "macos-aarch64",
 		[MACOS_X64] = "macos-x64",
 		[MCU_X86] = "mcu-x86",
