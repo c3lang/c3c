@@ -1411,7 +1411,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		}
 		if (param->var.vararg)
 		{
-			if (var_kind != VARDECL_PARAM)
+			if (var_kind != VARDECL_PARAM && var_kind != VARDECL_PARAM_CT)
 			{
 				SEMA_ERROR(param, "Only regular parameters may be vararg.");
 				return decl_poison(param);

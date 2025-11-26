@@ -2025,7 +2025,18 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 				if (type_is_arraylike(inner->type))
 				{
 					inner_new = expr_copy(inner);
-					expr_insert_addr(inner_new);
+					if (sema_cast_const(inner_new) && expr_is_const_initializer(inner_new))
+					{
+						ConstInitializer *initializer = inner_new->const_expr.initializer;
+						inner_new->const_expr.const_kind = CONST_SLICE;
+						inner_new->type = type_get_slice(inner_new->type->array.base);
+						inner_new->const_expr.slice_init = initializer;
+						initializer->type = inner_new->type;
+					}
+					else
+					{
+						expr_insert_addr(inner_new);
+					}
 				}
 				if (!cast_implicit_silent(context, inner_new, variadic_slot_type, false)) goto SPLAT_NORMAL;
 				if (inner != inner_new) expr_replace(inner, inner_new);
@@ -2217,6 +2228,33 @@ SPLAT_NORMAL:;
 		}
 		if (!sema_analyse_parameter(context, arg, params[i], callee->definition, optional, no_match_ref, callee->macro, callee->struct_var && i == 0)) return false;
 		actual_args[i] = arg;
+	}
+	if (call->call_expr.varargs && variadic != VARIADIC_RAW)
+	{
+		Decl *param = params[vaarg_index];
+		if (param->var.kind == VARDECL_PARAM_CT)
+		{
+			if (call->call_expr.va_is_splat)
+			{
+				if (!expr_is_runtime_const(call->call_expr.vasplat))
+				{
+					SEMA_ERROR(call->call_expr.vasplat, "The splat must be a compile time value.");
+					RETURN_NOTE_FUNC_DEFINITION;
+				}
+			}
+			else
+			{
+				FOREACH(Expr *, ct_param, call->call_expr.varargs)
+				{
+					if (!expr_is_runtime_const(ct_param))
+					{
+						SEMA_ERROR(ct_param, "All vaargs must be contant values.");
+						RETURN_NOTE_FUNC_DEFINITION;
+					}
+
+				}
+			}
+		}
 	}
 	if (num_args) last = args[num_args - 1];
 	call->call_expr.arguments = args;
