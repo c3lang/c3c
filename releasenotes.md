@@ -16,6 +16,7 @@
 - Allow splatting of structs. #2555
 - Deprecate `--test-nocapture` in favour of `--test-show-output` #2588.
 - Xtensa target no longer enabled by default on LLVM 22, Compile with `-DXTENSA_ENABLE` to enable it instead
+- Add `float[<3>] x = { .xy = 1.2, .z = 3.3 }` swizzle initialization for vectors. #2599
 
 ### Fixes
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.

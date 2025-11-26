@@ -2883,18 +2883,10 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 			}
 			break;
 		case ALL_VECTORS:
-		{
-			unsigned len = strlen(decl->name);
-			if (len <= 4)
+			if (sema_kw_is_swizzle(decl->name, strlen(decl->name)))
 			{
-				for (unsigned i = 0; i < len; i++)
-				{
-					if (!swizzle[(int) decl->name[i]]) goto NEXT;
-				}
 				RETURN_SEMA_ERROR(decl, "\"%s\" is not a valid method name for a vector, since it matches a swizzle combination.", kw);
 			}
-		}
-		NEXT:;
 			FALLTHROUGH;
 		case TYPE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
