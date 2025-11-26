@@ -46,12 +46,14 @@
 ### Stdlib changes
 - Add `CGFloat` `CGPoint` `CGSize` `CGRect` types to core_foundation (macOS).
 - Add `NSStatusItem` const enum to ns module (macOS).
-- Add `NSWindowCollectionBehavior` `NSWindowLevel` `NSWindowTabbingMode` to objc (macOS).
+- Add `NSWindowCollectionBehavior` `NSWindowLevel` `NSWindowTabbingMode` to ns module (macOS).
 - Add `ns::eventmask_from_type` function to objc (macOS).
 - Deprecate objc enums in favour of const inline enums backed by NS numerical types, and with the NS prefix, to better align with the objc api (macOS).
 - Deprecate `event_type_from` function in favour of using NSEvent directly, to better align with the objc api (macOS).
 - Add unit tests for objc and core_foundation (macOS).
 - Make printing typeids give some helpful typeid data.
+- Add `NSApplicationTerminateReply` to ns module (macOS).
+- Add `registerClassPair` function to objc module (macOS).
 
 ## 0.7.7 Change list
 
