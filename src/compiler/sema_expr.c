@@ -4106,6 +4106,22 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 		case EXPR_CT_IDENT:
 			if (!sema_analyse_expr_lvalue(context, subscripted, NULL)) return false;
 			break;
+		case EXPR_MAYBE_DEREF:
+		{
+			Expr *inner = subscripted->inner_expr;
+			if (!sema_analyse_expr_rvalue(context, inner)) return false;
+			if (type_is_pointer(inner->type))
+			{
+				subscripted->expr_kind = EXPR_UNARY;
+				subscripted->unary_expr = (ExprUnary) { .expr = inner, .operator = UNARYOP_DEREF, .no_read = true };
+				goto DEFAULT;
+			}
+			else
+			{
+				expr_replace(subscripted, inner);
+			}
+			break;
+		}
 		case EXPR_UNARY:
 			subscripted->unary_expr.no_read = true;
 			goto DEFAULT;
@@ -12164,7 +12180,7 @@ IDENT_CHECK:;
 		case EXPR_VASPLAT:
 		case EXPR_TRY_UNRESOLVED:
 		case EXPR_TWO:
-		case EXPR_MAYBE_DEREF:
+	case EXPR_MAYBE_DEREF:
 			break;
 		case EXPR_BITACCESS:
 		case EXPR_SUBSCRIPT_ASSIGN:
