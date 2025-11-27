@@ -57,6 +57,7 @@
 - Make printing typeids give some helpful typeid data.
 - Add `NSApplicationTerminateReply` to ns module (macOS).
 - Add `registerClassPair` function to objc module (macOS).
+- Somewhat faster BigInt output.
 
 ## 0.7.7 Change list
 
