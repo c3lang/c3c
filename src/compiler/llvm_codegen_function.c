@@ -353,6 +353,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 	}
 	if (prototype->ret_rewrite != RET_NORMAL)
 	{
+
 		if (return_value && prototype->ret_rewrite == RET_OPTIONAL_VALUE)
 		{
 			ASSERT(return_value->value);

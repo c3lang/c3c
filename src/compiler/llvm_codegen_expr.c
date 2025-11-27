@@ -4379,8 +4379,9 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 	// Restore.
 	POP_CATCH();
 
+
 	// Emit success and to end.
-	llvm_emit_br(c, no_err_block);
+	bool emit_no_err = llvm_emit_br(c, no_err_block);
 
 	// Emit else
 	llvm_emit_block(c, guard_block);
@@ -4406,7 +4407,7 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 		}
 	}
 
-	llvm_emit_block(c, no_err_block);
+	if (emit_no_err) llvm_emit_block(c, no_err_block);
 
 }
 

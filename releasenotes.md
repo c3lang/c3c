@@ -45,6 +45,7 @@
 - `String.to_integer` does not correctly return in some cases where it should #2590.
 - Resolving a missing property on a const enum with inline, reached an assert #2597.
 - Unexpected maybe-deref subscript error with out parameter #2600.
+- Bug on rethrow in return with defer #2603.
 
 ### Stdlib changes
 - Add `CGFloat` `CGPoint` `CGSize` `CGRect` types to core_foundation (macOS).
