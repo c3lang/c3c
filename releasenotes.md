@@ -46,6 +46,7 @@
 - Resolving a missing property on a const enum with inline, reached an assert #2597.
 - Unexpected maybe-deref subscript error with out parameter #2600.
 - Bug on rethrow in return with defer #2603.
+- Fix bug when converting from vector to distinct type of wider vector. #2604
 
 ### Stdlib changes
 - Add `CGFloat` `CGPoint` `CGSize` `CGRect` types to core_foundation (macOS).
