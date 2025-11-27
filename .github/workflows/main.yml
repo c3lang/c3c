@@ -78,15 +78,15 @@ jobs:
 
       - name: Vendor-fetch
         run: |
-          build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib55
+          build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib
 
       - name: Try raylib5
         run: |
           cd resources
-          ..\build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib55
-          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib55 --print-linking examples\raylib\raylib_arkanoid.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib55 --print-linking examples\raylib\raylib_snake.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib55 --print-linking examples\raylib\raylib_tetris.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib
+          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib --print-linking examples\raylib\raylib_arkanoid.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib --print-linking examples\raylib\raylib_snake.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib --print-linking examples\raylib\raylib_tetris.c3
 
       - name: run compiler tests
         run: |
@@ -159,7 +159,7 @@ jobs:
 
       - name: Vendor-fetch
         run: |
-          ./build/c3c vendor-fetch raylib55
+          ./build/c3c vendor-fetch raylib
 
       - name: Build testproject lib
         run: |
@@ -384,7 +384,7 @@ jobs:
 
       - name: Vendor-fetch
         run: |
-          ./build/c3c vendor-fetch raylib55
+          ./build/c3c vendor-fetch raylib
 
       - name: run compiler tests
         run: |
@@ -515,7 +515,7 @@ jobs:
 
       - name: Vendor-fetch
         run: |
-          ./build/c3c vendor-fetch raylib55
+          ./build/c3c vendor-fetch raylib
 
       - name: run compiler tests
         run: |
@@ -658,7 +658,7 @@ jobs:
 
       - name: Vendor-fetch
         run: |
-          ./build/c3c vendor-fetch raylib55
+          ./build/c3c vendor-fetch raylib
 
       - name: Compile and run some examples
         run: |
