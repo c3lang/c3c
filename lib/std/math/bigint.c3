@@ -522,16 +522,16 @@ fn usz? BigInt.to_format(&self, Formatter* format) @dynamic
 		len++;
 		a.negate();
 	}
-	uint[280] chunks;
+	uint[280] chunks @noinit;
 	int chunk_count;
 
 	const BASE10_9 = 1000000000;
-	foreach_r(d : self.data)
+	foreach_r(d : self.data[:self.len])
 	{
 		ulong carry = d;
 		for (int i = 0; i < chunk_count; i++)
 		{
-			ulong v = chunks[i] * 4294967296ULL + carry;
+			ulong v = (ulong)chunks[i] << 32 + carry;
 			carry = v / BASE10_9;
 			chunks[i] = (uint)(v - carry * BASE10_9);
 		}
@@ -549,11 +549,6 @@ fn usz? BigInt.to_format(&self, Formatter* format) @dynamic
 		len += format.printf("%09d", c)!;
 	}
 	return len;
-}
-
-fn String BigInt.to_string(&self, Allocator allocator) @dynamic
-{
-	return self.to_string_with_radix(10, allocator);
 }
 
 <*

@@ -526,6 +526,19 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 	return len;
 }
 
+const char[201] DIGIT_PAIRS @private =
+  "00102030405060708090"
+  "01112131415161718191"
+  "02122232425262728292"
+  "03132333435363738393"
+  "04142434445464748494"
+  "05152535455565758595"
+  "06162636465666768696"
+  "07172737475767778797"
+  "08182838485868788898"
+  "09192939495969798999";
+
+
 fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 {
 	char[PRINTF_NTOA_BUFFER_SIZE] buf @noinit;
@@ -538,14 +551,56 @@ fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 	if (!self.flags.precision || value)
 	{
 		char past_10 = (self.flags.uppercase ? 'A' : 'a') - 10;
-		do
+		switch (base)
 		{
-			if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED?;
-			char digit = (char)(value % base);
-			buf[len++] = digit + (digit < 10 ? '0' : past_10);
-			value /= base;
+			case 2:
+				do
+				{
+					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED?;
+					buf[len++] = '0' + (char)value & 1;
+					value >>= 1;
+				}
+				while (value);
+			case 10:
+				if (!value)
+				{
+					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED?;
+					buf[len++] = '0';
+					break;
+				}
+				while (value >= 10)
+				{
+					if (len + 1 >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED?;
+					char digit = (char)(value % 100);
+					buf[len:2] = DIGIT_PAIRS[2 * digit:2];
+					len += 2;
+					value /= 100;
+				}
+				if (value > 0)
+				{
+					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED?;
+					buf[len++] = '0' + (char)value;
+				}
+			case 16:
+				do
+				{
+					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED?;
+					char digit = (char)value & 0xF;
+					buf[len++] = digit + (digit < 10 ? '0' : past_10);
+					value >>= 4;
+				}
+				while (value);
+			case 8:
+				do
+				{
+					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED?;
+					buf[len++] = '0' + (char)value & 0x7;
+					value >>= 3;
+				}
+				while (value);
+			default:
+				unreachable();
 		}
-		while (value);
 	}
 	return self.ntoa_format((String)buf[:PRINTF_NTOA_BUFFER_SIZE], len, negative, base);
 }
