@@ -70,7 +70,7 @@ macro WString @wstring(String $string) @builtin
 }
 
 <*
- Create a slice of an UTF32 encoded string at compile time.
+ Create a slice of an UTF16 encoded string at compile time.
 
  @param $string : "The string to encode"
 *>
