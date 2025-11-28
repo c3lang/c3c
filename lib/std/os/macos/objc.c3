@@ -335,14 +335,15 @@ enum EventModifierFlag : (int val) @deprecated("Use NSEventModifierFlags.")
 
 enum NSEventModifierFlags : const inline NSUInteger
 {
-	CAPS_LOCK   = 1 << 16,
-	SHIFT       = 1 << 17,
-	CONTROL     = 1 << 18,
-	OPTION      = 1 << 19,
-	COMMAND     = 1 << 20,
-	NUMERIC_PAD = 1 << 21,
-	FUNCTION    = 1 << 23,
-	HELP        = 1 << 22,
+	CAPS_LOCK                     = 1 << 16,
+	SHIFT                         = 1 << 17,
+	CONTROL                       = 1 << 18,
+	OPTION                        = 1 << 19,
+	COMMAND                       = 1 << 20,
+	NUMERIC_PAD                   = 1 << 21,
+	HELP                          = 1 << 22,
+	FUNCTION                      = 1 << 23,
+	DEVICE_INDEPENDENT_FLAGS_MASK = 0xffff0000UL,
 }
 
 enum NSWindowCollectionBehavior : const inline NSUInteger
