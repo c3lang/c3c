@@ -506,6 +506,11 @@ fn BigInt BigInt.abs(&self)
 	return self.is_negative() ? self.unary_minus() : *self;
 }
 
+fn String BigInt.to_string(&self, Allocator allocator) @dynamic
+{
+	return self.to_string_with_radix(10, allocator);
+}
+
 fn usz? BigInt.to_format(&self, Formatter* format) @dynamic
 {
 	if (self.is_zero())
