@@ -60,6 +60,7 @@
 - Add `NSApplicationTerminateReply` to ns module (macOS).
 - Add `registerClassPair` function to objc module (macOS).
 - Somewhat faster BigInt output.
+- Cache printf output.
 
 ## 0.7.7 Change list
 
