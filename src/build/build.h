@@ -105,6 +105,13 @@ typedef enum
 
 typedef enum
 {
+	LINUX_LIBC_NOT_SET = -1,
+	LINUX_LIBC_GNU = 0,
+	LINUX_LIBC_MUSL = 1,
+} LinuxLibc;
+
+typedef enum
+{
 	TRUST_NONE,
 	TRUST_INCLUDE,
 	TRUST_FULL
@@ -607,6 +614,7 @@ typedef struct BuildOptions_
 	OptimizationLevel optlevel;
 	SizeOptimizationLevel optsize;
 	RiscvAbi riscv_abi;
+	LinuxLibc linux_libc;
 	MemoryEnvironment memory_environment;
 	SanitizeMode sanitize_mode;
 	uint32_t max_vector_size;
@@ -808,6 +816,7 @@ typedef struct
 	} win;
 	struct
 	{
+		LinuxLibc libc;
 		const char *crt;
 		const char *crtbegin;
 	} linuxpaths;
@@ -878,6 +887,7 @@ static BuildTarget default_build_target = {
 		.feature.panic_level = PANIC_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
 		.win.def = NULL,
+		.linuxpaths.libc = LINUX_LIBC_GNU,
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
 		.switchjump_max_size = DEFAULT_SWITCH_JUMP_MAX_SIZE,
 		.quiet = false,
