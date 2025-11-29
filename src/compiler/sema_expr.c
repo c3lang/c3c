@@ -3728,7 +3728,6 @@ static inline bool sema_call_analyse_member_get(SemaContext *context, Expr *expr
 }
 static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool *no_match_ref)
 {
-	if (no_match_ref) *no_match_ref = true;
 	Expr *func_expr = exprptr(expr->call_expr.function);
 	if (!sema_analyse_expr(context, func_expr)) return false;
 	bool optional = func_expr->type && IS_OPTIONAL(func_expr);
@@ -11042,7 +11041,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			}
 			case EXPR_CALL:
 			{
-				bool no_match;
+				bool no_match = false;
 				if (!sema_expr_analyse_call(active_context, main_expr, &no_match))
 				{
 					if (!no_match) goto FAIL;

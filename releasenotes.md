@@ -47,6 +47,7 @@
 - Unexpected maybe-deref subscript error with out parameter #2600.
 - Bug on rethrow in return with defer #2603.
 - Fix bug when converting from vector to distinct type of wider vector. #2604
+- `$defined(hashmap.init(mem))` causes compiler segfault #2611.
 
 ### Stdlib changes
 - Add `CGFloat` `CGPoint` `CGSize` `CGRect` types to core_foundation (macOS).
