@@ -313,77 +313,77 @@ if.exit:                                          ; preds = %entry
   %ptradd = getelementptr inbounds i8, ptr %allocator2, i64 8
   %1 = load i64, ptr %ptradd, align 8
   %2 = inttoptr i64 %1 to ptr
-  %type = load ptr, ptr %.cachedtype, align 8
-  %3 = icmp eq ptr %2, %type
-  br i1 %3, label %cache_hit, label %cache_miss
+  %3 = load ptr, ptr %.cachedtype, align 8
+  %4 = icmp eq ptr %2, %3
+  br i1 %4, label %cache_hit, label %cache_miss
 
 cache_miss:                                       ; preds = %if.exit
-  %4 = call ptr @.dyn_search(ptr %2, ptr @"$sel.acquire")
-  store ptr %4, ptr %.inlinecache, align 8
+  %5 = call ptr @.dyn_search(ptr %2, ptr @"$sel.acquire")
+  store ptr %5, ptr %.inlinecache, align 8
   store ptr %2, ptr %.cachedtype, align 8
-  br label %5
+  br label %7
 
 cache_hit:                                        ; preds = %if.exit
-  %cache_hit_fn = load ptr, ptr %.inlinecache, align 8
-  br label %5
+  %6 = load ptr, ptr %.inlinecache, align 8
+  br label %7
 
-5:                                                ; preds = %cache_hit, %cache_miss
-  %fn_phi = phi ptr [ %cache_hit_fn, %cache_hit ], [ %4, %cache_miss ]
-  %6 = icmp eq ptr %fn_phi, null
-  br i1 %6, label %missing_function, label %match
+7:                                                ; preds = %cache_hit, %cache_miss
+  %fn_phi = phi ptr [ %6, %cache_hit ], [ %5, %cache_miss ]
+  %8 = icmp eq ptr %fn_phi, null
+  br i1 %8, label %missing_function, label %match
 
-missing_function:                                 ; preds = %5
+missing_function:                                 ; preds = %7
   store %"char[]" { ptr @.panic_msg, i64 44 }, ptr %taddr, align 8
-  %7 = load [2 x i64], ptr %taddr, align 8
+  %9 = load [2 x i64], ptr %taddr, align 8
   store %"char[]" { ptr @.file, i64 16 }, ptr %taddr3, align 8
-  %8 = load [2 x i64], ptr %taddr3, align 8
+  %10 = load [2 x i64], ptr %taddr3, align 8
   store %"char[]" { ptr @.func, i64 4 }, ptr %taddr4, align 8
-  %9 = load [2 x i64], ptr %taddr4, align 8
-  %10 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %10([2 x i64] %7, [2 x i64] %8, [2 x i64] %9, i32 98) #4
+  %11 = load [2 x i64], ptr %taddr4, align 8
+  %12 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %12([2 x i64] %9, [2 x i64] %10, [2 x i64] %11, i32 98) #4
   unreachable
 
-match:                                            ; preds = %5
-  %11 = load ptr, ptr %allocator2, align 8
-  %12 = call i64 %fn_phi(ptr %retparam, ptr %11, i64 12, i32 1, i64 0)
-  %not_err = icmp eq i64 %12, 0
-  %13 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %13, label %after_check, label %assign_optional
+match:                                            ; preds = %7
+  %13 = load ptr, ptr %allocator2, align 8
+  %14 = call i64 %fn_phi(ptr %retparam, ptr %13, i64 12, i32 1, i64 0)
+  %not_err = icmp eq i64 %14, 0
+  %15 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %15, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %match
-  store i64 %12, ptr %error_var, align 8
+  store i64 %14, ptr %error_var, align 8
   br label %panic_block
 
 after_check:                                      ; preds = %match
-  %14 = load ptr, ptr %retparam, align 8
-  %15 = insertvalue %"char[]" undef, ptr %14, 0
-  %16 = insertvalue %"char[]" %15, i64 12, 1
+  %16 = load ptr, ptr %retparam, align 8
+  %17 = insertvalue %"char[]" undef, ptr %16, 0
+  %18 = insertvalue %"char[]" %17, i64 12, 1
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
-  %17 = insertvalue %any undef, ptr %error_var, 0
-  %18 = insertvalue %any %17, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
+  %19 = insertvalue %any undef, ptr %error_var, 0
+  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %"char[]" { ptr @.panic_msg.4, i64 36 }, ptr %taddr5, align 8
-  %19 = load [2 x i64], ptr %taddr5, align 8
+  %21 = load [2 x i64], ptr %taddr5, align 8
   store %"char[]" { ptr @.file, i64 16 }, ptr %taddr6, align 8
-  %20 = load [2 x i64], ptr %taddr6, align 8
+  %22 = load [2 x i64], ptr %taddr6, align 8
   store %"char[]" { ptr @.func, i64 4 }, ptr %taddr7, align 8
-  %21 = load [2 x i64], ptr %taddr7, align 8
-  store %any %18, ptr %varargslots, align 8
-  %22 = insertvalue %"any[]" undef, ptr %varargslots, 0
-  %"$$temp" = insertvalue %"any[]" %22, i64 1, 1
+  %23 = load [2 x i64], ptr %taddr7, align 8
+  store %any %20, ptr %varargslots, align 8
+  %24 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %24, i64 1, 1
   store %"any[]" %"$$temp", ptr %taddr8, align 8
-  %23 = load [2 x i64], ptr %taddr8, align 8
-  call void @std.core.builtin.panicf([2 x i64] %19, [2 x i64] %20, [2 x i64] %21, i32 262, [2 x i64] %23) #4
+  %25 = load [2 x i64], ptr %taddr8, align 8
+  call void @std.core.builtin.panicf([2 x i64] %21, [2 x i64] %22, [2 x i64] %23, i32 262, [2 x i64] %25) #4
   unreachable
 
 noerr_block:                                      ; preds = %after_check
-  store %"char[]" %16, ptr %buffer, align 8
+  store %"char[]" %18, ptr %buffer, align 8
   store i64 0, ptr %buffer.f, align 8
   %optval = load i64, ptr %buffer.f, align 8
   %not_err9 = icmp eq i64 %optval, 0
-  %24 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
-  br i1 %24, label %after_check11, label %assign_optional10
+  %26 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
+  br i1 %26, label %after_check11, label %assign_optional10
 
 assign_optional10:                                ; preds = %noerr_block
   store i64 %optval, ptr %buffer.f, align 8
@@ -391,15 +391,15 @@ assign_optional10:                                ; preds = %noerr_block
 
 after_check11:                                    ; preds = %noerr_block
   store %"char[]" { ptr @.str.5, i64 13 }, ptr %taddr13, align 8
-  %25 = load [2 x i64], ptr %taddr13, align 8
-  %26 = load [2 x i64], ptr %buffer, align 8
-  %27 = call i64 @test.fileReader(ptr %retparam12, [2 x i64] %25, [2 x i64] %26)
-  %not_err14 = icmp eq i64 %27, 0
-  %28 = call i1 @llvm.expect.i1(i1 %not_err14, i1 true)
-  br i1 %28, label %after_check16, label %assign_optional15
+  %27 = load [2 x i64], ptr %taddr13, align 8
+  %28 = load [2 x i64], ptr %buffer, align 8
+  %29 = call i64 @test.fileReader(ptr %retparam12, [2 x i64] %27, [2 x i64] %28)
+  %not_err14 = icmp eq i64 %29, 0
+  %30 = call i1 @llvm.expect.i1(i1 %not_err14, i1 true)
+  br i1 %30, label %after_check16, label %assign_optional15
 
 assign_optional15:                                ; preds = %after_check11
-  store i64 %27, ptr %buffer.f, align 8
+  store i64 %29, ptr %buffer.f, align 8
   br label %after_assign
 
 after_check16:                                    ; preds = %after_check11

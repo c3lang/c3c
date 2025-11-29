@@ -103,7 +103,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 		case TYPE_ALIAS:
 			UNREACHABLE_VOID
 		case TYPE_ARRAY:
-		case TYPE_VECTOR:
+		case VECTORS:
 			for (ArraySize i = type->array.len; i > 0; i--)
 			{
 				param_expand(context, params_ref, type->array.base);
@@ -274,7 +274,9 @@ LLVMTypeRef llvm_get_pointee_type(GenContext *c, Type *any_type)
 	any_type = type_lowering(any_type);
 	ASSERT(any_type->type_kind == TYPE_POINTER);
 	if (any_type == type_voidptr) return llvm_get_type(c, type_char);
-	return llvm_get_type(c, any_type->pointer);
+	Type *pointee = any_type->pointer;
+//	ASSERT(type_flatten(pointee)->type_kind != TYPE_VECTOR);
+	return llvm_get_type(c, pointee);
 }
 
 bool llvm_types_are_similar(LLVMTypeRef original, LLVMTypeRef coerce)
@@ -351,7 +353,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			LLVMStructSetBody(virtual_type, types, 2, false);
 			return any_type->backend_type = virtual_type;
 		}
-		case TYPE_VECTOR:
+		case VECTORS:
 			return any_type->backend_type = LLVMVectorType(llvm_get_type(c, any_type->array.base), any_type->array.len);
 	}
 	UNREACHABLE;
@@ -624,7 +626,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_OPTIONAL, type->optional, 0, NULL, false);
 		case TYPE_FLEXIBLE_ARRAY:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ARRAY, type->array.base, 0, NULL, false);
-		case TYPE_VECTOR:
+		case VECTORS:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_VECTOR, type->array.base, type->array.len, NULL, false);
 		case TYPE_ARRAY:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ARRAY, type->array.base, type->array.len, NULL, false);

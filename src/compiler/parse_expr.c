@@ -75,13 +75,8 @@ bool parse_range(ParseContext *c, Range *range)
 }
 bool parse_generic_expr_list(ParseContext *c, Expr ***exprs_ref)
 {
-	SourceSpan start = c->span;
 	advance_and_verify(c, TOKEN_LBRACE);
-	if (try_consume(c, TOKEN_RBRACE))
-	{
-		print_error_at(extend_span_with_token(start, c->prev_span), "At least one generic parameter was expected here.");
-		return false;
-	}
+	if (try_consume(c, TOKEN_RBRACE)) return true;
 	do
 	{
 		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
@@ -2064,7 +2059,7 @@ ADVANCE:;
 /**
  * string_literal ::= STRING+
  */
-static Expr *parse_string_literal(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_string_literal(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Had left hand side");
 	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST);
@@ -2082,7 +2077,7 @@ static Expr *parse_string_literal(ParseContext *c, Expr *left, SourceSpan lhs_st
 /*
  * bool ::= 'true' | 'false'
  */
-static Expr *parse_bool(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_bool(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
 {
 	ASSERT(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST);

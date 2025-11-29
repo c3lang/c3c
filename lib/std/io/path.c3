@@ -186,13 +186,11 @@ fn bool Path.equals(self, Path p2) @operator(==)
 fn Path? Path.append(self, Allocator allocator, String filename)
 {
 	if (!self.path_string.len) return new(allocator, filename, self.env)!;
-	assert(!is_separator(self.path_string[^1], self.env));
-
 	@pool()
 	{
 		DString dstr = dstring::temp_with_capacity(self.path_string.len + 1 + filename.len);
 		dstr.append(self.path_string);
-		dstr.append(PREFERRED_SEPARATOR);
+		if (!is_separator(self.path_string[^1], self.env)) dstr.append(PREFERRED_SEPARATOR);
 		dstr.append(filename);
 		return new(allocator, dstr.str_view(), self.env);
 	};
@@ -399,6 +397,19 @@ fn Path? Path.parent(self)
 	{
 		if (is_separator(c, self.env))
 		{
+			if (i == 0) return { self.path_string[..0], self.env, null };
+			if (self.env == WIN32 && i > 1)
+			{
+				if (try volume_len = volume_name_len(self.path_string, WIN32))
+				{
+					// Handle C:\foo
+					if (volume_len == i)
+					{
+						if (i + 1 == self.path_string.len) return NO_PARENT?;
+						return { self.path_string[:i + 1], WIN32, null };
+					}
+				}
+			}
 			return { self.path_string[:i], self.env, null };
 		}
 	}

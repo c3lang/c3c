@@ -53,7 +53,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal1, ptr align 4 @.__const, i32 4, i1 false)
   %0 = insertvalue %"int[]" undef, ptr %literal1, 0
   %1 = insertvalue %"int[]" %0, i64 1, 1
-  store %"int[]" %1, ptr %literal, align 8
+  store %"int[]" %1, ptr %literal, align 16
   %2 = insertvalue %"int[][]" undef, ptr %literal, 0
   %3 = insertvalue %"int[][]" %2, i64 1, 1
   store %"int[][]" %3, ptr %a, align 8

@@ -20,17 +20,15 @@ fn void main()
 
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 
-; Function Attrs:
 declare void @printf(ptr, ...) #0
 
-; Function Attrs:
 define void @test.main() #0 {
 entry:
   %x = alloca [8 x i32], align 16
   %.anon = alloca i64, align 8
   %i = alloca i32, align 4
   call void @llvm.memset.p0.i64(ptr align 16 %x, i8 0, i64 32, i1 false)
-  store i32 3, ptr %x, align 4
+  store i32 3, ptr %x, align 16
   %ptradd = getelementptr inbounds i8, ptr %x, i64 4
   store i32 3, ptr %ptradd, align 4
   %ptradd1 = getelementptr inbounds i8, ptr %x, i64 4
@@ -45,10 +43,12 @@ entry:
   store i32 52, ptr %ptradd5, align 4
   store i64 0, ptr %.anon, align 8
   br label %loop.cond
+
 loop.cond:                                        ; preds = %loop.body, %entry
   %0 = load i64, ptr %.anon, align 8
   %gt = icmp ugt i64 8, %0
   br i1 %gt, label %loop.body, label %loop.exit
+
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %.anon, align 8
   %ptroffset = getelementptr inbounds [4 x i8], ptr %x, i64 %1
@@ -60,22 +60,25 @@ loop.body:                                        ; preds = %loop.cond
   %addnuw = add nuw i64 %4, 1
   store i64 %addnuw, ptr %.anon, align 8
   br label %loop.cond
+
 loop.exit:                                        ; preds = %loop.cond
   br label %cond
+
 cond:                                             ; preds = %assign, %loop.exit
   %5 = phi i64 [ 0, %loop.exit ], [ %add, %assign ]
   %lt = icmp slt i64 %5, 8
   br i1 %lt, label %assign, label %exit
+
 assign:                                           ; preds = %cond
   %ptroffset6 = getelementptr inbounds [4 x i8], ptr %x, i64 %5
   store i32 123, ptr %ptroffset6, align 4
   %add = add i64 %5, 1
   br label %cond
+
 exit:                                             ; preds = %cond
   ret void
 }
 
-; Function Attrs:
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   call void @test.main()

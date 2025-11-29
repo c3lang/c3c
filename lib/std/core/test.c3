@@ -26,6 +26,7 @@ fn void? test_div() @test
 	test::le(2, 3);
 	test::eq_approx(m::divide(1, 3)!, 0.333, places: 3);
 	test::@check(2 == 2, "divide: %d", divide(6, 3)!);
+	test::@error(m::divide(3, 0));
 	test::@error(m::divide(3, 0), MathError.DIVISION_BY_ZERO);
 }
 
@@ -78,14 +79,15 @@ macro @check(#condition, String format = "", args...)
 }
 
 <*
- Check if function returns specific error
+ Check if function returns (specific) error
 
  @param #funcresult : `result of function execution`
  @param error_expected : `expected error of function execution`
  @require runtime::test_context != null : "Only allowed in @test functions"
 *>
-macro @error(#funcresult, fault error_expected)
+macro @error(#funcresult, fault error_expected = ...)
 {
+	$if $defined(error_expected):
 	if (catch err = #funcresult)
 	{
 		if (err != error_expected)
@@ -96,6 +98,10 @@ macro @error(#funcresult, fault error_expected)
 		return;
 	}
 	print_panicf("`%s` error [%s] was not returned.", $stringify(#funcresult), error_expected);
+	$else
+	if (catch err = #funcresult) return;
+	print_panicf("`%s` unexpectedly did not return error.", $stringify(#funcresult));
+	$endif
 }
 
 <*

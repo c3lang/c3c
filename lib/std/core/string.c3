@@ -70,7 +70,7 @@ macro WString @wstring(String $string) @builtin
 }
 
 <*
- Create a slice of an UTF32 encoded string at compile time.
+ Create a slice of an UTF16 encoded string at compile time.
 
  @param $string : "The string to encode"
 *>
@@ -1067,14 +1067,10 @@ macro String.to_integer(self, $Type, int base = 10)
 		{
 			if (is_negative)
 			{
-				$Type new_value = value * base_used - c;
-				if (new_value > value) return INTEGER_OVERFLOW?;
-				value = new_value;
+				value = value.overflow_mul(base_used).overflow_sub(c) ?? INTEGER_OVERFLOW?!;
 				break;
 			}
-			$Type new_value = value * base_used + c;
-			if (new_value < value) return INTEGER_OVERFLOW?;
-			value = new_value;
+			value = value.overflow_mul(base_used).overflow_add(c) ?? INTEGER_OVERFLOW?!;
 		};
 	}
 	return value;

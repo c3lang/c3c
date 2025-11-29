@@ -1,0 +1,22 @@
+// #target: macos-x64
+module test;
+import std;
+
+enum Color : const char[<4>]
+{
+	LIGHTGRAY   = { 200, 200, 200, 255 },
+}
+fn int main()
+{
+	Color c = LIGHTGRAY;
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %c = alloca <4 x i8>, align 4
+  store <4 x i8> <i8 -56, i8 -56, i8 -56, i8 -1>, ptr %c, align 4
+  ret i32 0
+}

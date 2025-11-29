@@ -1910,12 +1910,6 @@ INLINE const char *llvm_macos_target_triple(const char *triple)
   LLVMInitialize ## X ## TargetMC(); \
  } while(0)
 
-#if LLVM_VERSION_MAJOR > 21
-#define XTENSA_AVAILABLE 1
-#else
-#define XTENSA_AVAILABLE 0
-#endif
-
 void *llvm_target_machine_create(void)
 {
 	static bool llvm_initialized = false;
@@ -1923,10 +1917,8 @@ void *llvm_target_machine_create(void)
 	if (!llvm_initialized)
 	{
 		llvm_initialized = true;
-#if XTENSA_AVAILABLE
-#ifndef XTENSA_DISABLE
+#ifdef XTENSA_ENABLE
 		INITIALIZE_TARGET(Xtensa);
-#endif
 #endif
 #ifndef ARM_DISABLE
 		INITIALIZE_TARGET(ARM);
@@ -1981,10 +1973,6 @@ void *llvm_target_machine_create(void)
 	LLVMSetTargetMachineAsmVerbosity(result, 1);
 	return result;
 }
-
-#else
-
-#define XTENSA_AVAILABLE 1
 
 #endif
 
@@ -2144,10 +2132,12 @@ void target_setup(BuildTarget *target)
 		error_exit("Failed to find Windows def file: '%s' in path.", target->win.def);
 	}
 
-	if (target->arch_os_target == ELF_XTENSA && !XTENSA_AVAILABLE)
+#ifndef XTENSA_ENABLE
+	if (target->arch_os_target == ELF_XTENSA)
 	{
 		error_exit("Xtensa support is not available with this LLVM version.");
 	}
+#endif
 
 	compiler.platform.target_triple = arch_to_target_triple[target->arch_os_target];
 	ASSERT(compiler.platform.target_triple);

@@ -532,7 +532,8 @@ fn bool List.remove_first_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 fn usz List.remove_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	usz old_size = self.size;
-	defer {
+	defer
+	{
 		if (old_size != self.size) self._update_size_change(old_size, self.size);
 	}
 	return list_common::list_remove_item(self, value);

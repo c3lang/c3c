@@ -65,6 +65,7 @@ static inline LoweredType *type_lowering(Type *type)
 			case TYPE_SLICE:
 			case TYPE_ARRAY:
 			case TYPE_VECTOR:
+			case TYPE_SIMD_VECTOR:
 			case TYPE_FLEXIBLE_ARRAY:
 			{
 				Type *arr_type = type->array.base;
@@ -76,8 +77,8 @@ static inline LoweredType *type_lowering(Type *type)
 						return type_get_slice(flat);
 					case TYPE_ARRAY:
 						return type_get_array(flat, type->array.len);
-					case TYPE_VECTOR:
-						return type_get_vector(flat, type->array.len);
+					case VECTORS:
+						return type_get_vector_from_vector(flat, type);
 					case TYPE_FLEXIBLE_ARRAY:
 						return type_get_flexible_array(flat);
 					default:
@@ -103,11 +104,6 @@ static inline LoweredType *type_lowering_abi(Type *type)
 				type = type->optional;
 				continue;
 			case TYPE_TYPEDEF:
-				if (type->decl->attr_simd)
-				{
-					type = type->decl->distinct->type;
-					return type_get_vector(type_lowering(type->array.base), type->array.len);
-				}
 				type = type->decl->distinct->type;
 				continue;
 			case TYPE_CONST_ENUM:
@@ -143,12 +139,15 @@ static inline LoweredType *type_lowering_abi(Type *type)
 			case TYPE_ARRAY:
 			case TYPE_VECTOR:
 			case TYPE_FLEXIBLE_ARRAY:
+			case TYPE_SIMD_VECTOR:
 			{
 				Type *flat = type_lowering_abi(type->array.base);
 				switch (type->type_kind)
 				{
 					case TYPE_SLICE:
 						return type_get_slice(flat);
+					case TYPE_SIMD_VECTOR:
+						return type_get_vector(flat, TYPE_SIMD_VECTOR, type->array.len);
 					case TYPE_ARRAY:
 					case TYPE_VECTOR:
 						return type_get_array(flat, type->array.len);
@@ -177,29 +176,29 @@ static inline bool abi_type_match(AbiType type, Type *other_type)
 			case ABI_TYPE_INT_56:
 				return false;
 			case ABI_TYPE_INT_VEC_2:
-				return other_type == type_get_vector(type_uint, 2);
+				return other_type == type_get_vector(type_uint, TYPE_SIMD_VECTOR, 2);
 			case ABI_TYPE_INT_VEC_4:
-				return other_type == type_get_vector(type_uint, 4);
+				return other_type == type_get_vector(type_uint, TYPE_SIMD_VECTOR, 4);
 			case ABI_TYPE_FLOAT_VEC_2:
-				return other_type == type_get_vector(type_float, 2);
+				return other_type == type_get_vector(type_float, TYPE_SIMD_VECTOR, 2);
 			case ABI_TYPE_FLOAT_VEC_4:
-				return other_type == type_get_vector(type_float, 4);
+				return other_type == type_get_vector(type_float, TYPE_SIMD_VECTOR, 4);
 			case ABI_TYPE_FLOAT16_VEC_2:
-				return other_type == type_get_vector(type_float16, 2);
+				return other_type == type_get_vector(type_float16, TYPE_SIMD_VECTOR, 2);
 			case ABI_TYPE_FLOAT16_VEC_4:
-				return other_type == type_get_vector(type_float16, 4);
+				return other_type == type_get_vector(type_float16, TYPE_SIMD_VECTOR, 4);
 			case ABI_TYPE_BFLOAT16_VEC_2:
-				return other_type == type_get_vector(type_bfloat, 2);
+				return other_type == type_get_vector(type_bfloat, TYPE_SIMD_VECTOR, 2);
 			case ABI_TYPE_BFLOAT16_VEC_4:
-				return other_type == type_get_vector(type_bfloat, 4);
+				return other_type == type_get_vector(type_bfloat, TYPE_SIMD_VECTOR, 4);
 			case ABI_TYPE_LONG_VEC_2:
-				return other_type == type_get_vector(type_ulong, 2);
+				return other_type == type_get_vector(type_ulong, TYPE_SIMD_VECTOR, 2);
 			case ABI_TYPE_DOUBLE_VEC_2:
-				return other_type == type_get_vector(type_double, 2);
+				return other_type == type_get_vector(type_double, TYPE_SIMD_VECTOR, 2);
 			case ABI_TYPE_DOUBLE_VEC_4:
-				return other_type == type_get_vector(type_double, 4);
+				return other_type == type_get_vector(type_double, TYPE_SIMD_VECTOR, 4);
 			case ABI_TYPE_DOUBLE_VEC_8:
-				return other_type == type_get_vector(type_double, 8);
+				return other_type == type_get_vector(type_double, TYPE_SIMD_VECTOR, 8);
 		}
 		UNREACHABLE
 	}
@@ -218,8 +217,8 @@ static inline bool abi_type_is_valid(AbiType type)
 
 static inline bool expr_is_vector_index_or_swizzle(Expr *expr)
 {
-	return (expr->expr_kind == EXPR_SUBSCRIPT && type_lowering(exprtype(expr->subscript_expr.expr))->type_kind == TYPE_VECTOR)
-			|| (expr->expr_kind == EXPR_SWIZZLE && type_lowering(exprtype(expr->swizzle_expr.parent))->type_kind == TYPE_VECTOR);
+	return (expr->expr_kind == EXPR_SUBSCRIPT && type_kind_is_real_vector(type_lowering(exprtype(expr->subscript_expr.expr))->type_kind))
+			|| (expr->expr_kind == EXPR_SWIZZLE && type_kind_is_real_vector(type_lowering(exprtype(expr->swizzle_expr.parent))->type_kind));
 }
 
 const char *codegen_create_asm(Ast *ast);

@@ -360,7 +360,7 @@ INLINE unsigned llvm_intrinsic_by_type(Type *type, unsigned int_intrinsic, unsig
 			return uint_intrinsic;
 		case ALL_FLOATS:
 			return float_intrinsic;
-		case TYPE_VECTOR:
+		case VECTORS:
 			type = type->array.base;
 			goto RETRY;
 		default:
@@ -679,7 +679,7 @@ static void llvm_emit_wrap_builtin(GenContext *c, BEValue *result_value, Expr *e
 	LLVMValueRef arg_slots[2];
 	llvm_emit_intrinsic_args(c, args, arg_slots, func == BUILTIN_EXACT_NEG ? 1 : 2);
 	Type *base_type = type_lowering(args[0]->type);
-	if (base_type->type_kind == TYPE_VECTOR) base_type = base_type->array.base;
+	if (type_kind_is_real_vector(base_type->type_kind)) base_type = base_type->array.base;
 	ASSERT(type_is_integer(base_type));
 	LLVMValueRef res;
 	switch (func)

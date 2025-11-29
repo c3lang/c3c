@@ -144,6 +144,17 @@ typedef enum
 
 typedef enum
 {
+	TESTLOGLEVEL_NOT_SET = -1,
+	TESTLOGLEVEL_VERBOSE = 0,
+	TESTLOGLEVEL_DEBUG = 1,
+	TESTLOGLEVEL_INFO = 2,
+	TESTLOGLEVEL_WARN = 3,
+	TESTLOGLEVEL_ERROR = 4,
+	TESTLOGLEVEL_CRITICAL = 5,
+} TestLogLevel;
+
+typedef enum
+{
 	PANIC_NOT_SET = -1,
 	PANIC_OFF = 0,
 	PANIC_ON = 1,
@@ -510,6 +521,7 @@ typedef struct BuildOptions_
 	const char **feature_names;
 	const char **removed_feature_names;
 	const char *output_name;
+	const char *runner_output_name;
 	const char *project_name;
 	const char *target_select;
 	const char *path;
@@ -518,12 +530,13 @@ typedef struct BuildOptions_
 	const char **unchecked_directories;
 	LinkerType linker_type;
 	ValidationLevel validation_level;
+	TestLogLevel test_log_level;
 	Ansi ansi;
 	bool test_breakpoint;
 	bool test_quiet;
 	bool test_nosort;
 	bool test_noleak;
-	bool test_nocapture;
+	bool test_show_output;
 	const char *custom_linker_path;
 	uint32_t symtab_size;
 	unsigned version;
@@ -669,6 +682,7 @@ typedef struct
 	Library **library_list;
 	LibraryTarget **ccompiling_libraries;
 	const char *name;
+	const char *runner_output_name;
 	const char *output_name;
 	const char *extension;
 	const char *version;

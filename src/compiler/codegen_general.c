@@ -56,7 +56,7 @@ bool type_is_homogenous_base_type(Type *type)
 				case TYPE_F32:
 				case TYPE_F64:
 					return !compiler.platform.ppc64.is_softfp;
-				case TYPE_VECTOR:
+				case TYPE_SIMD_VECTOR:
 					return type_size(type) == 128 / 8;
 				default:
 					return false;
@@ -69,7 +69,7 @@ bool type_is_homogenous_base_type(Type *type)
 				case TYPE_F64:
 				case TYPE_F32:
 					return true;
-				case TYPE_VECTOR:
+				case TYPE_SIMD_VECTOR:
 					switch (type_size(type))
 					{
 						case 16:
@@ -88,7 +88,7 @@ bool type_is_homogenous_base_type(Type *type)
 			{
 				case ALL_FLOATS:
 					return true;
-				case TYPE_VECTOR:
+				case TYPE_SIMD_VECTOR:
 					switch (type_size(type))
 					{
 						case 8:
@@ -108,7 +108,7 @@ bool type_is_homogenous_base_type(Type *type)
 				case TYPE_F64:
 				case TYPE_F128:
 					return true;
-				case TYPE_VECTOR:
+				case TYPE_SIMD_VECTOR:
 					switch (type_size(type))
 					{
 						case 8:
@@ -138,7 +138,7 @@ bool type_homogenous_aggregate_small_enough(Type *type, unsigned members)
 	{
 		case ABI_PPC64_SVR4:
 			if (type->type_kind == TYPE_F128 && compiler.platform.float128) return members <= 8;
-			if (type->type_kind == TYPE_VECTOR) return members <= 8;
+			if (type->type_kind == TYPE_SIMD_VECTOR) return members <= 8;
 			// Use max 8 registers.
 			return ((type_size(type) + 7) / 8) * members <= 8;
 		case ABI_X64:
@@ -173,6 +173,9 @@ bool type_is_homogenous_aggregate(LoweredType *type, Type **base, unsigned *elem
 	switch (type->type_kind)
 	{
 		case LOWERED_TYPES:
+			UNREACHABLE
+		case TYPE_VECTOR:
+			// Converted in ABI
 			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_FUNC_RAW:
@@ -241,7 +244,7 @@ bool type_is_homogenous_aggregate(LoweredType *type, Type **base, unsigned *elem
 			break;
 		case ALL_UNSIGNED_INTS:
 		case ALL_FLOATS:
-		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
 			break;
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
@@ -258,15 +261,18 @@ bool type_is_homogenous_aggregate(LoweredType *type, Type **base, unsigned *elem
 	{
 		*base = type;
 		// Special handling of non-power-of-2 vectors
-		if (type->type_kind == TYPE_VECTOR)
+		// If we allowed it
+		/*
+		if (type->type_kind == TYPE_SIMD_VECTOR)
 		{
 			// Widen the type with elements.
 			unsigned vec_elements = type_size(type) / type_size(type->array.base);
 			*base = type_get_vector(type->array.base, vec_elements);
 		}
+		*/
 	}
 	// One is vector - other isn't => failure
-	if (((*base)->type_kind == TYPE_VECTOR) != (type->type_kind == TYPE_VECTOR)) return false;
+	if (((*base)->type_kind == TYPE_SIMD_VECTOR) != (type->type_kind == TYPE_SIMD_VECTOR)) return false;
 
 	// Size does not match => failure
 	if (type_size(*base) != type_size(type)) return false;
