@@ -232,6 +232,13 @@ typedef enum
 
 typedef enum
 {
+	CUSTOM_LIBC_NOT_SET = -1,
+	CUSTOM_LIBC_OFF = 0,
+	CUSTOM_LIBC_ON = 1
+} CustomLibc;
+
+typedef enum
+{
 	SHOW_BACKTRACE_NOT_SET = -1,
 	SHOW_BACKTRACE_OFF = 0,
 	SHOW_BACKTRACE_ON = 1
@@ -602,6 +609,7 @@ typedef struct BuildOptions_
 	FpOpt fp_math;
 	EmitStdlib emit_stdlib;
 	UseStdlib use_stdlib;
+	CustomLibc custom_libc;
 	LinkLibc link_libc;
 	StripUnused strip_unused;
 	OptimizationLevel optlevel;
@@ -742,6 +750,7 @@ typedef struct
 	UseStdlib use_stdlib;
 	EmitStdlib emit_stdlib;
 	LinkLibc link_libc;
+	CustomLibc custom_libc;
 	ShowBacktrace show_backtrace;
 	StripUnused strip_unused;
 	DebugInfo debug_info;
