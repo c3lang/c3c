@@ -1639,7 +1639,7 @@ CHECK_ELLIPSIS:
 				}
 				if (vec_size(params) > 0)
 				{
-					PRINT_ERROR_HERE("Only the first parameter may use '&'.");
+					PRINT_ERROR_HERE("Only the first parameter may be a self parameter using '&'.");
 					return false;
 				}
 				// This will catch Type... &foo and &foo..., neither is allowed.

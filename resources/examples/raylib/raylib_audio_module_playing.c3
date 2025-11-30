@@ -1,5 +1,3 @@
-module arkanoid;
-import raylib55;
 /*******************************************************************************************
 *
 *   raylib [audio] example - module playing
@@ -15,6 +13,8 @@ import raylib55;
 *   converted to C3 by Christoffer Lerno
 *
 ********************************************************************************************/
+module raylib_audio_module;
+import raylib55;
 
 const MAX_CIRCLES = 64;
 
