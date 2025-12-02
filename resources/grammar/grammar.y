@@ -40,6 +40,124 @@ void yyerror(YYLTYPE * yylloc_param , yyscan_t yyscanner, const char *yymsgp);
 %start translation_unit
 %%
 
+translation_unit
+	: module top_level_after_module
+	| top_level_no_module
+	| empty
+	;
+
+module
+	: opt_contract MODULE module_path opt_module_params opt_attributes ';'
+	;
+
+module_path
+	: IDENT
+	| module_path SCOPE IDENT
+	;
+
+opt_module_params
+	: '{' module_params '}'
+	| empty
+	;
+
+module_params
+	: CONST_IDENT
+	| TYPE_IDENT
+	| module_params ',' CONST_IDENT
+	| module_params ',' TYPE_IDENT
+	;
+
+opt_contract
+	: empty
+	;
+
+top_level_after_module
+	: top_level_decl
+	| module
+	| top_level_after_module top_level_decl
+	| top_level_after_module module
+	;
+
+top_level_no_module
+	: top_level_decl
+	| top_level_no_module top_level_decl
+	;
+
+top_level_decl
+	: opt_contract alias_declaration
+	| opt_contract attrdef_declaration
+	| opt_contract EXTERN func_definition
+	| opt_contract EXTERN const_declaration
+	| opt_contract EXTERN global_declaration
+	| opt_contract func_definition
+	| ct_assert_stmt
+	| ct_error_stmt
+	| ct_echo_stmt
+
+	| import_decl
+	| const_declaration
+	| global_declaration
+	| ct_include_stmt
+	| ct_exec_stmt
+	| struct_declaration
+	| faultdef_declaration
+	| enum_declaration
+	| macro_declaration
+	| bitstruct_declaration
+	| typedef_declaration
+	| interface_declaration
+	;
+
+alias_declaration
+	: ALIAS alias_ident ';'
+	| ALIAS TYPE_IDENT opt_attributes '=' type opt_attributes ';'
+	| ALIAS TYPE_IDENT opt_attributes '=' func_typedef opt_attributes ';'
+	;
+
+alias_ident
+	: IDENT opt_attributes '=' MODULE module_path
+	| IDENT opt_attributes '=' expr
+	| CONST_IDENT opt_attributes '=' expr
+	| AT_IDENT opt_attributes '=' expr
+	;
+
+attrdef_declaration
+	: ATTRDEF attrdef_def ';'
+	;
+
+attrdef_def
+	: AT_TYPE_IDENT '(' parameters ')' opt_attributes opt_attr_def_body
+	| AT_TYPE_IDENT opt_attributes opt_attr_def_body
+	;
+
+opt_attr_def_body
+	: '=' attr_comma_list opt_comma
+	| empty
+	;
+
+attr_comma_list
+	: attribute
+	| attr_comma_list ',' attribute
+	;
+
+ct_assert_stmt
+	: CT_ASSERT constant_expr ':' const_expr_list ';'
+	| CT_ASSERT constant_expr ';'
+	;
+
+const_expr_list
+	: constant_expr
+	| const_expr_list ',' constant_expr
+	;
+
+ct_error_stmt
+	: CT_ERROR const_expr_list ';'
+	;
+
+ct_include_stmt
+	: CT_INCLUDE constant_expr opt_attributes ';'
+	;
+
 path
 	: IDENT SCOPE
 	| path IDENT SCOPE
@@ -928,25 +1046,7 @@ optional_label
 	| empty
 	;
 
-ct_assert_expr_list
-	: ',' constant_expr
-	| ct_assert_expr_list ',' constant_expr
-	;
 
-ct_assert_stmt
-	: CT_ASSERT constant_expr ':' constant_expr ';'
-	| CT_ASSERT constant_expr ':' constant_expr ct_assert_expr_list ';'
-	| CT_ASSERT constant_expr ';'
-	;
-
-ct_error_stmt
-	: CT_ERROR constant_expr ';'
-	| CT_ERROR constant_expr ct_assert_expr_list ';'
-	;
-
-ct_include_stmt
-	: CT_INCLUDE constant_expr opt_attributes ';'
-	;
 
 ct_exec_list
 	: constant_expr
@@ -1185,10 +1285,6 @@ generic_parameters
 	| generic_parameters ',' type
 	;
 
-typedef_type
-	: func_typedef
-	| type
-	;
 
 multi_declaration
 	: ',' IDENT
@@ -1206,25 +1302,14 @@ global_declaration
 	| global_storage optional_type IDENT opt_attributes '=' expr ';'
 	;
 
-attribute_comma_list
-	: attribute
-	| attribute_comma_list ',' attribute
-	;
+
 
 opt_comma
 	: ','
 	| empty
 	;
 
-define_attribute_body
-	: empty
-	| '=' attribute_comma_list opt_comma
-	;
 
-define_attribute
-	: AT_TYPE_IDENT '(' parameters ')' opt_attributes define_attribute_body
-	| AT_TYPE_IDENT opt_attributes define_attribute_body
-	;
 
 generic_expr
 	: '{' generic_parameters '}'
@@ -1235,21 +1320,8 @@ opt_generic_parameters
 	| empty
 	;
 
-define_ident
-	: IDENT opt_attributes '=' path_ident opt_generic_parameters
-	| IDENT opt_attributes '=' MODULE path_ident opt_generic_parameters
-	| CONST_IDENT  opt_attributes '=' path_const opt_generic_parameters
-	| AT_IDENT opt_attributes '=' path_at_ident opt_generic_parameters
-	;
 
-attrdef_declaration
-	: ATTRDEF define_attribute ';'
-	;
 
-alias_declaration
-	: ALIAS define_ident ';'
-	| ALIAS TYPE_IDENT opt_attributes '=' typedef_type opt_attributes ';'
-	;
 
 interface_body
 	: func_definition_decl
@@ -1275,20 +1347,9 @@ typedef_declaration
 	: TYPEDEF TYPE_IDENT opt_interface_impl opt_attributes '=' opt_inline type ';'
 	;
 
-module_param
-	: CONST_IDENT
-	| TYPE_IDENT
-	;
 
-module_params
-	: module_param
-	| module_params ',' module_param
-	;
 
-module
-	: MODULE path_ident opt_attributes ';'
-	| MODULE path_ident '{' module_params '}' opt_attributes ';'
-	;
+
 
 import_paths
 	: path_ident
@@ -1299,44 +1360,7 @@ import_decl
 	: IMPORT import_paths opt_attributes ';'
 	;
 
-translation_unit
-	: module top_level_after_module
-	| top_level_no_module
-	| empty
-	;
 
-top_level_decl
-	: import_decl
-	| func_definition
-	| EXTERN func_definition
-	| const_declaration
-	| EXTERN const_declaration
-	| global_declaration
-	| EXTERN global_declaration
-	| ct_assert_stmt
-	| ct_echo_stmt
-	| ct_include_stmt
-	| ct_exec_stmt
-	| struct_declaration
-	| faultdef_declaration
-	| enum_declaration
-	| macro_declaration
-	| alias_declaration
-	| attrdef_declaration
-	| bitstruct_declaration
-	| typedef_declaration
-	| interface_declaration
-	;
-
-top_level_after_module
-	: top_level_decl
-	| top_level_after_module top_level_decl
-	;
-
-top_level_no_module
-	: top_level_decl
-	| top_level_after_module top_level_decl
-	;
 
 %%
 
