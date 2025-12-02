@@ -16,8 +16,10 @@ ArchOsTarget default_target = ANDROID_X86_64;
 	#elif defined(__linux__) && __linux__
 ArchOsTarget default_target = LINUX_X64;
 		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
 LinuxLibc default_libc = LINUX_LIBC_GNU;
 		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
 LinuxLibc default_libc = LINUX_LIBC_MUSL;
 		#endif
 	#elif defined(__NetBSD__)
@@ -37,8 +39,10 @@ ArchOsTarget default_target = ANDROID_AARCH64;
 	#elif defined(__linux__) && __linux__
 ArchOsTarget default_target = LINUX_AARCH64;
 		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
 LinuxLibc default_libc = LINUX_LIBC_GNU;
 		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
 LinuxLibc default_libc = LINUX_LIBC_MUSL;
 		#endif
 	#else
@@ -48,8 +52,10 @@ ArchOsTarget default_target = ELF_AARCH64;
 	#if defined(__linux__) && __linux__
 ArchOsTarget default_target = LINUX_X86;
 		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
 LinuxLibc default_libc = LINUX_LIBC_GNU;
 		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
 LinuxLibc default_libc = LINUX_LIBC_MUSL;
 		#endif
 	#elif defined(__FreeBSD__)
@@ -67,8 +73,10 @@ ArchOsTarget default_target = ELF_X86;
 	#if defined(__linux__) && __linux__
 ArchOsTarget default_target = LINUX_RISCV32;
 		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
 LinuxLibc default_libc = LINUX_LIBC_GNU;
 		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
 LinuxLibc default_libc = LINUX_LIBC_MUSL;
 		#endif
 	#else
@@ -78,8 +86,10 @@ ArchOsTarget default_target = ELF_RISCV32;
 	#if defined(__linux__) && __linux__
 ArchOsTarget default_target = LINUX_RISCV64;
 		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
 LinuxLibc default_libc = LINUX_LIBC_GNU;
 		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
 LinuxLibc default_libc = LINUX_LIBC_MUSL;
 		#endif
 	#else
@@ -89,7 +99,7 @@ ArchOsTarget default_target = ELF_RISCV64;
 ArchOsTarget default_target = ARCH_OS_TARGET_DEFAULT;
 #endif
 
-#ifndef default_libc
+#ifndef LINUX_LIBC
 LinuxLibc default_libc = LINUX_LIBC_GNU;
 #endif
 
