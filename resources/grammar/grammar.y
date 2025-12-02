@@ -131,13 +131,31 @@ attrdef_def
 	;
 
 opt_attr_def_body
-	: '=' attribute_comma_list opt_comma
+	: '=' attr_comma_list opt_comma
 	| empty
 	;
 
 attr_comma_list
 	: attribute
-	| attribute_comma_list ',' attribute
+	| attr_comma_list ',' attribute
+	;
+
+ct_assert_stmt
+	: CT_ASSERT constant_expr ':' const_expr_list ';'
+	| CT_ASSERT constant_expr ';'
+	;
+
+const_expr_list
+	: constant_expr
+	| const_expr_list ',' constant_expr
+	;
+
+ct_error_stmt
+	: CT_ERROR const_expr_list ';'
+	;
+
+ct_include_stmt
+	: CT_INCLUDE constant_expr opt_attributes ';'
 	;
 
 path
@@ -1029,23 +1047,6 @@ optional_label
 	;
 
 
-ct_assert_stmt
-	: CT_ASSERT constant_expr ':' const_expr_list ';'
-	| CT_ASSERT constant_expr ';'
-	;
-
-const_expr_list
-	: constant_expr
-	| const_expr_list ',' constant_expr
-	;
-
-ct_error_stmt
-	: CT_ERROR ct_assert_expr_list ';'
-	;
-
-ct_include_stmt
-	: CT_INCLUDE constant_expr opt_attributes ';'
-	;
 
 ct_exec_list
 	: constant_expr
@@ -1358,9 +1359,6 @@ import_paths
 import_decl
 	: IMPORT import_paths opt_attributes ';'
 	;
-
-
-
 
 
 
