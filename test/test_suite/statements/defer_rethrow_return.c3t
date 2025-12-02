@@ -1,0 +1,30 @@
+// #target: macos-aarch64
+module test;
+fn int main()
+{
+	foo()!!;
+	return 0;
+}
+
+fn int? foo()
+{
+	defer thing();
+	return NOT_FOUND?!;
+}
+
+fn void thing() {}
+
+/* #expect: test.ll
+
+define i64 @test.foo(ptr %0) #0 {
+entry:
+  %reterr = alloca i64, align 8
+  %error_var = alloca i64, align 8
+  store i64 ptrtoint (ptr @std.core.builtin.NOT_FOUND to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  call void @test.thing()
+  %1 = load i64, ptr %error_var, align 8
+  ret i64 %1
+}

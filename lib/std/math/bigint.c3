@@ -506,17 +506,54 @@ fn BigInt BigInt.abs(&self)
 	return self.is_negative() ? self.unary_minus() : *self;
 }
 
-fn usz? BigInt.to_format(&self, Formatter* format) @dynamic
-{
-	@stack_mem(4100; Allocator mem)
-	{
-	   return format.print(self.to_string_with_radix(10, mem));
-	};
-}
-
 fn String BigInt.to_string(&self, Allocator allocator) @dynamic
 {
 	return self.to_string_with_radix(10, allocator);
+}
+
+fn usz? BigInt.to_format(&self, Formatter* format) @dynamic
+{
+	if (self.is_zero())
+	{
+		format.print("0")!;
+		return 1;
+	}
+	BigInt a = *self;
+	bool negative = self.is_negative();
+	usz len;
+	if (negative)
+	{
+		format.out('-')!;
+		len++;
+		a.negate();
+	}
+	uint[280] chunks @noinit;
+	int chunk_count;
+
+	const BASE10_9 = 1000000000;
+	foreach_r(d : self.data[:self.len])
+	{
+		ulong carry = d;
+		for (int i = 0; i < chunk_count; i++)
+		{
+			ulong v = (ulong)chunks[i] << 32 + carry;
+			carry = v / BASE10_9;
+			chunks[i] = (uint)(v - carry * BASE10_9);
+		}
+		if (carry)
+		{
+			ulong new_carry = carry / BASE10_9;
+			chunks[chunk_count++] = (uint)(carry - new_carry * BASE10_9);
+			if (new_carry) chunks[chunk_count++] = (uint)new_carry;
+		}
+	}
+	int ms = chunk_count - 1;
+	len += format.printf("%d", chunks[ms])!;
+	foreach_r (c : chunks[:ms])
+	{
+		len += format.printf("%09d", c)!;
+	}
+	return len;
 }
 
 <*
@@ -527,7 +564,7 @@ fn String BigInt.to_string_with_radix(&self, int radix, Allocator allocator)
 	if (self.is_zero()) return "0".copy(allocator);
 
 	const char[*] CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	@stack_mem(4100; Allocator mem)
+	@stack_mem(4120; Allocator mem)
 	{
 		BigInt a = *self;
 		DString str;

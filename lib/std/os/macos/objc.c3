@@ -70,6 +70,7 @@ extern fn bool class_addMethod(ObjcClass cls, ObjcSelector name, void* imp, ZStr
 extern fn ObjcIvar getInstanceVariable(ObjcId id, ZString name, void* outValue) @cname("object_getInstanceVariable");
 extern fn ObjcIvar setInstanceVariable(ObjcId id, ZString name, void* value) @cname("object_setInstanceVariable");
 extern fn ObjcClass allocateClassPair(ObjcClass cls, ZString name, uint extraBytes) @cname("objc_allocateClassPair");
+extern fn void registerClassPair(ObjcClass cls) @cname("objc_registerClassPair");
 
 module std::os::macos::objc::ns @if(env::DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
 import std::os::macos::cf;
@@ -334,14 +335,15 @@ enum EventModifierFlag : (int val) @deprecated("Use NSEventModifierFlags.")
 
 enum NSEventModifierFlags : const inline NSUInteger
 {
-	CAPS_LOCK   = 1 << 16,
-	SHIFT       = 1 << 17,
-	CONTROL     = 1 << 18,
-	OPTION      = 1 << 19,
-	COMMAND     = 1 << 20,
-	NUMERIC_PAD = 1 << 21,
-	FUNCTION    = 1 << 23,
-	HELP        = 1 << 22,
+	CAPS_LOCK                     = 1 << 16,
+	SHIFT                         = 1 << 17,
+	CONTROL                       = 1 << 18,
+	OPTION                        = 1 << 19,
+	COMMAND                       = 1 << 20,
+	NUMERIC_PAD                   = 1 << 21,
+	HELP                          = 1 << 22,
+	FUNCTION                      = 1 << 23,
+	DEVICE_INDEPENDENT_FLAGS_MASK = 0xffff0000UL,
 }
 
 enum NSWindowCollectionBehavior : const inline NSUInteger
@@ -407,3 +409,9 @@ enum NSStatusItemLength : const inline CGFloat
 	SQUARE = -2.0
 }
 
+enum NSApplicationTerminateReply : const inline NSUInteger
+{
+	CANCEL = 0,
+	NOW = 1,
+	LATER = 2,
+}

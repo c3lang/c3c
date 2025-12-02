@@ -4379,8 +4379,9 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 	// Restore.
 	POP_CATCH();
 
+
 	// Emit success and to end.
-	llvm_emit_br(c, no_err_block);
+	bool emit_no_err = llvm_emit_br(c, no_err_block);
 
 	// Emit else
 	llvm_emit_block(c, guard_block);
@@ -4406,7 +4407,7 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 		}
 	}
 
-	llvm_emit_block(c, no_err_block);
+	if (emit_no_err) llvm_emit_block(c, no_err_block);
 
 }
 
@@ -4497,7 +4498,7 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 		LLVMValueRef result = be_value->value;
 		for (unsigned i = 0; i < vec_len; i++)
 		{
-			int index = (swizzle[(int)sw_ptr[i]] - 1) & 0xF;
+			int index = SWIZZLE_INDEX(sw_ptr[i]);
 			LLVMValueRef val = llvm_emit_extract_value(c, result, i);
 			vector_value = llvm_emit_insert_value(c, vector_value, val, index);
 		}
@@ -6860,7 +6861,7 @@ static void llvm_emit_swizzle_from_value(GenContext *c, LLVMValueRef vector_valu
 	const char *sw_ptr = expr->swizzle_expr.swizzle;
 	for (unsigned i = 0; i < vec_len; i++)
 	{
-		int index = (swizzle[(int)sw_ptr[i]] - 1) & 0xF;
+		int index = SWIZZLE_INDEX(sw_ptr[i]);
 		mask_val[i] = llvm_const_int(c, type_uint, index);
 	}
 	LLVMValueRef res = LLVMBuildShuffleVector(c->builder, vector_value, LLVMGetUndef(LLVMTypeOf(vector_value)), LLVMConstVector(mask_val, vec_len), sw_ptr);

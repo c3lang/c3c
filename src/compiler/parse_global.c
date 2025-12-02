@@ -1583,12 +1583,20 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 				// We reserve upper case constants for globals.
 				PRINT_ERROR_HERE("Parameter names may not be all uppercase.");
 				return false;
+			case TOKEN_CT_IDENT:
+				// ct_var $foo
+				name = symstr(c);
+				advance_and_verify(c, TOKEN_CT_IDENT);
+				param_kind = VARDECL_PARAM_CT;
+				goto CHECK_ELLIPSIS;
+				break;
 			case TOKEN_IDENT:
 				// normal "foo"
 				name = symstr(c);
 				param_kind = VARDECL_PARAM;
 				advance_and_verify(c, TOKEN_IDENT);
 				// Check for "foo..." which defines an implicit "any" vararg
+CHECK_ELLIPSIS:
 				if (try_consume(c, TOKEN_ELLIPSIS))
 				{
 					// Did we get Foo... foo...
@@ -1606,7 +1614,12 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 					// Did we get Foo foo...? If so then that's an error.
 					if (type)
 					{
-						PRINT_ERROR_LAST("For typed varargs '...', needs to appear after the type.");
+						PRINT_ERROR_LAST("For typed vaargs '...', needs to appear after the type.");
+						return false;
+					}
+					else if (param_kind == VARDECL_PARAM_CT)
+					{
+						PRINT_ERROR_LAST("Untyped constant vaargs are not supported. Use raw macro vaargs instead.");
 						return false;
 					}
 					// This is "foo..."
@@ -1614,18 +1627,6 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 					// We generate the type as type_any
 					type = type_info_new_base(type_any, c->span);
 				}
-				break;
-			case TOKEN_CT_IDENT:
-				// ct_var $foo
-				name = symstr(c);
-				advance_and_verify(c, TOKEN_CT_IDENT);
-				// This will catch Type... $foo and $foo..., neither is allowed.
-				if (ellipsis || tok_is(c, TOKEN_ELLIPSIS))
-				{
-					PRINT_ERROR_LAST("Compile time parameters may not be varargs, use untyped macro varargs '...' instead.");
-					return false;
-				}
-				param_kind = VARDECL_PARAM_CT;
 				break;
 			case TOKEN_AMP:
 				// reference &foo
@@ -1638,7 +1639,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 				}
 				if (vec_size(params) > 0)
 				{
-					PRINT_ERROR_HERE("Only the first parameter may use '&'.");
+					PRINT_ERROR_HERE("Only the first parameter may be a self parameter using '&'.");
 					return false;
 				}
 				// This will catch Type... &foo and &foo..., neither is allowed.
@@ -1659,7 +1660,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 				advance_and_verify(c, TOKEN_HASH_IDENT);
 				if (ellipsis || tok_is(c, TOKEN_ELLIPSIS))
 				{
-					PRINT_ERROR_LAST("Expression parameters may not be varargs, use untyped macro varargs '...' instead.");
+					PRINT_ERROR_LAST("Expression parameters may not be vaargs, use untyped macro vaargs '...' instead.");
 					return false;
 				}
 				param_kind = VARDECL_PARAM_EXPR;
@@ -1670,7 +1671,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 				advance_and_verify(c, TOKEN_CT_TYPE_IDENT);
 				if (ellipsis || tok_is(c, TOKEN_ELLIPSIS))
 				{
-					PRINT_ERROR_LAST("Expression parameters may not be varargs, use untyped macro varargs '...' instead.");
+					PRINT_ERROR_LAST("Expression parameters may not be vaargs, use untyped macro vaargs '...' instead.");
 					return false;
 				}
 				param_kind = VARDECL_PARAM_CT_TYPE;

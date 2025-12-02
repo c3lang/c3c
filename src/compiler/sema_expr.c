@@ -2025,7 +2025,18 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 				if (type_is_arraylike(inner->type))
 				{
 					inner_new = expr_copy(inner);
-					expr_insert_addr(inner_new);
+					if (sema_cast_const(inner_new) && expr_is_const_initializer(inner_new))
+					{
+						ConstInitializer *initializer = inner_new->const_expr.initializer;
+						inner_new->const_expr.const_kind = CONST_SLICE;
+						inner_new->type = type_get_slice(inner_new->type->array.base);
+						inner_new->const_expr.slice_init = initializer;
+						initializer->type = inner_new->type;
+					}
+					else
+					{
+						expr_insert_addr(inner_new);
+					}
 				}
 				if (!cast_implicit_silent(context, inner_new, variadic_slot_type, false)) goto SPLAT_NORMAL;
 				if (inner != inner_new) expr_replace(inner, inner_new);
@@ -2217,6 +2228,33 @@ SPLAT_NORMAL:;
 		}
 		if (!sema_analyse_parameter(context, arg, params[i], callee->definition, optional, no_match_ref, callee->macro, callee->struct_var && i == 0)) return false;
 		actual_args[i] = arg;
+	}
+	if (call->call_expr.varargs && variadic != VARIADIC_RAW)
+	{
+		Decl *param = params[vaarg_index];
+		if (param->var.kind == VARDECL_PARAM_CT)
+		{
+			if (call->call_expr.va_is_splat)
+			{
+				if (!expr_is_runtime_const(call->call_expr.vasplat))
+				{
+					SEMA_ERROR(call->call_expr.vasplat, "The splat must be a compile time value.");
+					RETURN_NOTE_FUNC_DEFINITION;
+				}
+			}
+			else
+			{
+				FOREACH(Expr *, ct_param, call->call_expr.varargs)
+				{
+					if (!expr_is_runtime_const(ct_param))
+					{
+						SEMA_ERROR(ct_param, "All vaargs must be contant values.");
+						RETURN_NOTE_FUNC_DEFINITION;
+					}
+
+				}
+			}
+		}
 	}
 	if (num_args) last = args[num_args - 1];
 	call->call_expr.arguments = args;
@@ -3690,7 +3728,6 @@ static inline bool sema_call_analyse_member_get(SemaContext *context, Expr *expr
 }
 static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool *no_match_ref)
 {
-	if (no_match_ref) *no_match_ref = true;
 	Expr *func_expr = exprptr(expr->call_expr.function);
 	if (!sema_analyse_expr(context, func_expr)) return false;
 	bool optional = func_expr->type && IS_OPTIONAL(func_expr);
@@ -4068,6 +4105,22 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 		case EXPR_CT_IDENT:
 			if (!sema_analyse_expr_lvalue(context, subscripted, NULL)) return false;
 			break;
+		case EXPR_MAYBE_DEREF:
+		{
+			Expr *inner = subscripted->inner_expr;
+			if (!sema_analyse_expr_rvalue(context, inner)) return false;
+			if (type_is_pointer(inner->type))
+			{
+				subscripted->expr_kind = EXPR_UNARY;
+				subscripted->unary_expr = (ExprUnary) { .expr = inner, .operator = UNARYOP_DEREF, .no_read = true };
+				goto DEFAULT;
+			}
+			else
+			{
+				expr_replace(subscripted, inner);
+			}
+			break;
+		}
 		case EXPR_UNARY:
 			subscripted->unary_expr.no_read = true;
 			goto DEFAULT;
@@ -6061,16 +6114,8 @@ bool sema_expr_rewrite_insert_deref(SemaContext *context, Expr *original)
 	return true;
 }
 
-static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, Expr *parent, Type *flat_type,
-                                             const char *kw, unsigned len)
+bool sema_check_swizzle_string(SemaContext *context, Expr *expr, const char *kw, unsigned len, unsigned vec_len, bool *is_overlapping_ref, int* index_ref)
 {
-	unsigned vec_len = flat_type->array.len;
-	Type *indexed_type = type_get_indexed_type(parent->type);
-	assert(indexed_type);
-	bool is_ref = expr->access_unresolved_expr.is_ref;
-	bool is_lvalue = expr->access_unresolved_expr.is_lvalue;
-	if (is_lvalue) is_ref = false;
-	ASSERT_SPAN(expr, len > 0);
 	int index = 0;
 	bool is_overlapping = false;
 	for (unsigned i = 0; i < len; i++)
@@ -6078,6 +6123,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 		char val = (char)(swizzle[(int)kw[i]] - 1);
 		if ((val & 0xF) >= vec_len)
 		{
+			if (!expr) return false;
 			RETURN_SEMA_ERROR(expr, "The '%c' component is not present in a vector of length %d, did you assume a longer vector?", kw[i], vec_len);
 		}
 		if (i == 0)
@@ -6086,6 +6132,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 		}
 		if ((index ^ val) & 0x10)
 		{
+			if (!expr) return false;
 			RETURN_SEMA_ERROR(expr, "Mixing [xyzw] and [rgba] is not permitted, you will need to select one of them.");
 		}
 		if (!is_overlapping)
@@ -6101,7 +6148,23 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 			}
 		}
 	}
-	index &= 0xF;
+	*index_ref = index & 0xF;
+	*is_overlapping_ref = is_overlapping;
+	return true;
+}
+static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, Expr *parent, Type *flat_type,
+                                             const char *kw, unsigned len)
+{
+	unsigned vec_len = flat_type->array.len;
+	Type *indexed_type = type_get_indexed_type(parent->type);
+	assert(indexed_type);
+	bool is_ref = expr->access_unresolved_expr.is_ref;
+	bool is_lvalue = expr->access_unresolved_expr.is_lvalue;
+	if (is_lvalue) is_ref = false;
+	ASSERT_SPAN(expr, len > 0);
+	bool is_overlapping = false;
+	int index;
+	if (!sema_check_swizzle_string(context, expr, kw, len, vec_len, &is_overlapping, &index)) return false;
 	if (len == 1)
 	{
 		expr->expr_kind = is_ref ? EXPR_SUBSCRIPT_ADDR : EXPR_SUBSCRIPT;
@@ -6128,7 +6191,6 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 	Type *result = type_get_vector(indexed_type, flat_type->type_kind, len);
 	expr->expr_kind = EXPR_SWIZZLE;
 	expr->swizzle_expr = (ExprSwizzle) { .parent = exprid(parent), .swizzle = kw, .is_overlapping = is_overlapping };
-
 	expr->type = result;
 	return true;
 }
@@ -6143,6 +6205,14 @@ static inline bool sema_analyse_maybe_dead_expr(SemaContext *context, Expr *expr
 	bool success = infer_type ? sema_analyse_inferred_expr(context, infer_type, expr, NULL) : sema_analyse_expr_rvalue(context, expr);
 	context->active_scope.is_dead = false;
 	return success;
+}
+bool sema_kw_is_swizzle(const char *kw, unsigned len)
+{
+	for (unsigned i = 0; i < len; i++)
+	{
+		if (!swizzle[(int)kw[i]]) return false;
+	}
+	return true;
 }
 
 static inline void sema_expr_flatten_const_ident(Expr *expr)
@@ -6330,15 +6400,9 @@ CHECK_DEEPER:
 	if (type_kind_is_real_vector(flat_kind))
 	{
 		unsigned len = strlen(kw);
-		if (len <= 4)
+		if (sema_kw_is_swizzle(kw, len))
 		{
-			for (unsigned i = 0; i < len; i++)
-			{
-				if (!swizzle[(int)kw[i]]) goto NOT_SWIZZLE;
-			}
-			// TODO should we do a missing for this as well?
 			return sema_expr_analyse_swizzle(context, expr, current_parent, flat_type, kw, len);
-			NOT_SWIZZLE:;
 		}
 	}
 	// Hard coded ptr on slices and any
@@ -10977,7 +11041,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			}
 			case EXPR_CALL:
 			{
-				bool no_match;
+				bool no_match = false;
 				if (!sema_expr_analyse_call(active_context, main_expr, &no_match))
 				{
 					if (!no_match) goto FAIL;
@@ -12115,7 +12179,7 @@ IDENT_CHECK:;
 		case EXPR_VASPLAT:
 		case EXPR_TRY_UNRESOLVED:
 		case EXPR_TWO:
-		case EXPR_MAYBE_DEREF:
+	case EXPR_MAYBE_DEREF:
 			break;
 		case EXPR_BITACCESS:
 		case EXPR_SUBSCRIPT_ASSIGN:

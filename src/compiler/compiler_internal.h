@@ -4018,7 +4018,7 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 const char *cc_compiler(const char *cc, const char *file, const char *flags, const char **include_dirs, const char *output_subdir);
 const char *arch_to_linker_arch(ArchType arch);
 extern char swizzle[256];
-
+#define SWIZZLE_INDEX(c) ((swizzle[(int)(c)] - 1) & 0xF)
 #define CAT(a,b) CAT2(a,b) // force expand
 #define CAT2(a,b) a##b // actually concatenate
 #define TEMP(X) CAT(X, __LINE__)

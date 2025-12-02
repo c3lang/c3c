@@ -1,0 +1,35 @@
+// #target: macos-x64
+module test;
+macro foo(int $a, int... $i)
+{
+	$foreach $ab : $i:
+	{
+		int x = $ab;
+	}
+	$endforeach
+}
+fn int main()
+{
+	foo(3, 1, 2);
+	int[3] $x = { 1, 2, 3 };
+	foo(3, ...$x);
+	return 0;
+}
+
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %x = alloca i32, align 4
+  %x1 = alloca i32, align 4
+  %x2 = alloca i32, align 4
+  %x3 = alloca i32, align 4
+  %x4 = alloca i32, align 4
+  store i32 1, ptr %x, align 4
+  store i32 2, ptr %x1, align 4
+  store i32 1, ptr %x2, align 4
+  store i32 2, ptr %x3, align 4
+  store i32 3, ptr %x4, align 4
+  ret i32 0
+}

@@ -186,3 +186,14 @@ fn void test_event_mask_64bit_values()
 
 	assert(NSEventMask.sizeof == ulong.sizeof);
 }
+
+fn void test_application_terminate_reply()
+{
+	NSApplicationTerminateReply cancel = NSApplicationTerminateReply.CANCEL;
+	NSApplicationTerminateReply now = NSApplicationTerminateReply.NOW;
+	NSApplicationTerminateReply later = NSApplicationTerminateReply.LATER;
+
+	assert(cancel == 0);
+	assert(now == 1);
+	assert(later == 2);
+}

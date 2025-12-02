@@ -2020,8 +2020,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 		// Extract indexed types.
 		Type *from_type = type_flatten(expr->type);
 		Type *from_element = from_type->array.base;
-		to_type = type_flatten(to_type);
-		Type *to_element = to_type->array.base;
+		Type *to_element = type_flatten(to_type)->array.base;
 
 		// float vec -> float/int/bool vec
 		if (type_is_float(from_element))

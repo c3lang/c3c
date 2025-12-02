@@ -1038,7 +1038,8 @@ Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const 
 			type = type_decl->distinct->type->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
-			type = type_decl->enums.type_info->type->canonical;
+		case TYPE_CONST_ENUM:
+			type = enum_inner_type(type);
 			goto RETRY;
 		default:
 			UNREACHABLE

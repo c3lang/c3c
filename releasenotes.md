@@ -15,6 +15,9 @@
 - Support `@param` directives for `...` parameters. #2578
 - Allow splatting of structs. #2555
 - Deprecate `--test-nocapture` in favour of `--test-show-output` #2588.
+- Xtensa target no longer enabled by default on LLVM 22, Compile with `-DXTENSA_ENABLE` to enable it instead
+- Add `float[<3>] x = { .xy = 1.2, .z = 3.3 }` swizzle initialization for vectors. #2599
+- Support `int $foo...` arguments. #2601
 
 ### Fixes
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.
@@ -40,16 +43,26 @@
 - Add sigsegv stacktrace in test and regular errors for Darwin Arm64. #1105
 - Incorrect error message when using generic type that isn't imported #2589
 - `String.to_integer` does not correctly return in some cases where it should #2590.
+- Resolving a missing property on a const enum with inline, reached an assert #2597.
+- Unexpected maybe-deref subscript error with out parameter #2600.
+- Bug on rethrow in return with defer #2603.
+- Fix bug when converting from vector to distinct type of wider vector. #2604
+- `$defined(hashmap.init(mem))` causes compiler segfault #2611.
+- Reference macro parameters syntax does not error in certain cases. #2612
 
 ### Stdlib changes
 - Add `CGFloat` `CGPoint` `CGSize` `CGRect` types to core_foundation (macOS).
 - Add `NSStatusItem` const enum to ns module (macOS).
-- Add `NSWindowCollectionBehavior` `NSWindowLevel` `NSWindowTabbingMode` to objc (macOS).
+- Add `NSWindowCollectionBehavior` `NSWindowLevel` `NSWindowTabbingMode` to ns module (macOS).
 - Add `ns::eventmask_from_type` function to objc (macOS).
 - Deprecate objc enums in favour of const inline enums backed by NS numerical types, and with the NS prefix, to better align with the objc api (macOS).
 - Deprecate `event_type_from` function in favour of using NSEvent directly, to better align with the objc api (macOS).
 - Add unit tests for objc and core_foundation (macOS).
 - Make printing typeids give some helpful typeid data.
+- Add `NSApplicationTerminateReply` to ns module (macOS).
+- Add `registerClassPair` function to objc module (macOS).
+- Somewhat faster BigInt output.
+- Cache printf output.
 
 ## 0.7.7 Change list
 
