@@ -18,6 +18,7 @@
 - Xtensa target no longer enabled by default on LLVM 22, Compile with `-DXTENSA_ENABLE` to enable it instead
 - Add `float[<3>] x = { .xy = 1.2, .z = 3.3 }` swizzle initialization for vectors. #2599
 - Support `int $foo...` arguments. #2601
+- Add musl support with `--linux-libc=musl`.
 
 ### Fixes
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.
