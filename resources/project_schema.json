@@ -199,6 +199,15 @@
       "description": "Include the standard library.",
       "default": true
     },
+    "linux-libc": {
+      "type": "string",
+      "description": "Set the libc to use for Linux.",
+      "enum": [
+        "gnu",
+        "musl"
+      ],
+      "default": "gnu"
+    },
     "x86cpu": {
       "type": "string",
       "description": "Set general level of x64 cpu.",

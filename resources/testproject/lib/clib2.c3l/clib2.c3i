@@ -1,0 +1,3 @@
+module clib2;
+
+extern fn void hello_from_c_zip();

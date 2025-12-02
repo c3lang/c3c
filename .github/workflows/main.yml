@@ -12,6 +12,7 @@ env:
   LLVM_RELEASE_VERSION_LINUX: 19
   LLVM_RELEASE_VERSION_OPENBSD: 19
   LLVM_RELEASE_VERSION_UBUNTU22: 19
+  LLVM_RELEASE_VERSION_ALPINEv3_22: 20
   LLVM_DEV_VERSION: 22
 jobs:
 
@@ -408,6 +409,187 @@ jobs:
         with:
           name: c3-linux-${{matrix.build_type}}
           path: c3-linux-${{matrix.build_type}}.tar.gz
+
+  build-linux-alpine:
+    runs-on: ubuntu-22.04
+    container:
+      image: alpine:3.22
+    strategy:
+      # Don't abort runners if a single one fails
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+        llvm_version: [18, 19, 20]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install common deps
+        run: |
+          apk update
+          apk add zlib-dev zlib-static python3 samurai cmake curl-dev curl-static openssl-dev
+
+      - name: Install Clang ${{matrix.llvm_version}}
+        run: |
+            apk add "llvm${{matrix.llvm_version}}-dev" "llvm${{matrix.llvm_version}}-static" \
+            "llvm${{matrix.llvm_version}}-gtest" "llvm${{matrix.llvm_version}}-linker-tools" \
+            "llvm${{matrix.llvm_version}}-test-utils" "llvm${{matrix.llvm_version}}-test-utils-pyc" \
+            "lld${{matrix.llvm_version}}-dev" "clang${{matrix.llvm_version}}-dev" \
+            "clang${{matrix.llvm_version}}-extra-tools" "clang${{matrix.llvm_version}}-static"
+      - name: CMake
+        if: matrix.llvm_version == env.LLVM_DEV_VERSION
+        run: |
+          cmake -B build \
+                -G Ninja \
+                -DCMAKE_BUILD_TYPE=${{matrix.build_type}}" \
+                -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
+                -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
+                -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
+                -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
+                -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
+                -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
+                -DLLVM_ENABLE_LIBXML2=OFF \
+                -DC3_LINK_DYNAMIC=ON \
+                -DC3_LLVM_VERSION=${{matrix.llvm_version}}
+          cmake --build build
+      - name: CMake_Stable
+        if: matrix.llvm_version >= 18 && matrix.llvm_version != env.LLVM_DEV_VERSION
+        run: |
+          cmake -B build \
+                -G Ninja \
+                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
+                -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
+                -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
+                -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
+                -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
+                -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
+                -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
+                -DLLVM_ENABLE_LIBXML2=OFF \
+                -DC3_LINK_DYNAMIC=ON \
+                -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
+          cmake --build build
+
+      - name: Compile and run some examples
+        run: |
+          export C3C="$(realpath ./build/c3c)"
+          cd resources
+          "$C3C" compile examples/base64.c3
+          "$C3C" compile examples/binarydigits.c3
+          "$C3C" compile examples/brainfk.c3
+          "$C3C" compile examples/factorial_macro.c3
+          "$C3C" compile examples/fasta.c3
+          "$C3C" compile examples/gameoflife.c3
+          "$C3C" compile examples/hash.c3
+          "$C3C" compile-only examples/levenshtein.c3
+          "$C3C" compile examples/load_world.c3
+          "$C3C" compile-only examples/map.c3
+          "$C3C" compile examples/mandelbrot.c3
+          "$C3C" compile examples/plus_minus.c3
+          "$C3C" compile examples/nbodies.c3
+          "$C3C" compile examples/spectralnorm.c3
+          "$C3C" compile examples/swap.c3
+          "$C3C" compile examples/contextfree/boolerr.c3
+          "$C3C" compile examples/contextfree/dynscope.c3
+          "$C3C" compile examples/contextfree/guess_number.c3
+          "$C3C" compile examples/contextfree/multi.c3
+          "$C3C" compile examples/contextfree/cleanup.c3
+          "$C3C" compile-run examples/hello_world_many.c3
+          "$C3C" compile-run examples/time.c3
+          "$C3C" compile-run examples/fannkuch-redux.c3
+          "$C3C" compile-run examples/contextfree/boolerr.c3
+          "$C3C" compile-run examples/load_world.c3
+          "$C3C" compile-run examples/process.c3
+          "$C3C" compile-run examples/ls.c3
+          # "$C3C" compile-run --linker=builtin linux_stack.c3  # Program will hang due to incorrect linking to `/lib64/ld-linux-x86-64.so.2` instead of `/lib/ld-musl-x86_64.so.1`
+          "$C3C" compile-run linux_stack.c3
+          "$C3C" compile-run examples/args.c3 -- foo -bar "baz baz"
+
+      - name: Compile and run dynlib-test
+        run: |
+          export C3C="$(realpath ./build/c3c)"
+          cd resources/examples/dynlib-test
+          "$C3C" -vv dynamic-lib add.c3
+          mv add.so libadd.so
+          cc test.c -L. -ladd -Wl,-rpath=.         
+          ./a.out
+          "$C3C" compile-run test.c3 -L . -l add -z -Wl,-rpath=.           
+
+      - name: Compile and run staticlib-test
+        run: |
+          export C3C="$(realpath ./build/c3c)"
+          cd resources/examples/staticlib-test
+          "$C3C" -vv static-lib add.c3
+          mv add.a libadd.a
+          cc test.c -L. -ladd         
+          ./a.out
+          "$C3C" compile-run test.c3 -L . -l add           
+
+      - name: Compile run unit tests
+        run: |
+          export C3C="$(realpath ./build/c3c)"
+          cd test
+          "$C3C" compile-test unit -D SLOW_TESTS
+
+      - name: Build testproject
+        run: |
+          export C3C="$(realpath ./build/c3c)"
+          cd resources/testproject
+          "$C3C" run -vvv --trust=full
+
+      - name: Test WASM
+        run: |
+          export C3C="$(realpath ./build/c3c)"
+          cd resources/testfragments
+          "$C3C" compile --target wasm32 -g0 --no-entry -Os wasm4.c3
+
+      - name: Install QEMU and Risc-V toolchain
+        run: |
+          apk add qemu-dev qemu-system-riscv32 gcc-riscv-none-elf make
+
+      - name: Compile and run Baremetal Risc-V Example
+        run: |
+          cd resources/examples/embedded/riscv-qemu
+          make C3C_PATH=../../../../build/ run
+
+      - name: Build testproject direct linker
+        run: |
+          export C3C="$(realpath ./build/c3c)"
+          cd resources/testproject
+          "$C3C" run -vvv --linker=builtin --trust=full --linux-libc=musl
+
+      - name: Init a library & a project
+        run: |
+          ./build/c3c init-lib mylib
+          ls mylib.c3l
+          ./build/c3c init myproject
+          ls myproject
+
+      - name: Vendor-fetch
+        run: |
+          "$(realpath ./build/c3c)" vendor-fetch raylib55
+
+      - name: run compiler tests
+        run: |
+          export C3C="$(realpath ./build/c3c)"
+          cd test
+          "$C3C" compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c test_suite/
+
+      - name: bundle_output
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_ALPINEv3_22
+        run: |
+          mkdir c3
+          cp -r lib c3
+          cp msvc_build_libraries.py c3
+          cp build/c3c c3
+          cp README.md c3
+          cp releasenotes.md c3
+          tar -czf c3-musl-${{matrix.build_type}}.tar.gz c3
+
+      - name: upload artifacts
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_ALPINEv3_22
+        uses: actions/upload-artifact@v4
+        with:
+          name: c3-musl-${{matrix.build_type}}
+          path: c3-musl-${{matrix.build_type}}.tar.gz
 
   build-linux-ubuntu22:
     runs-on: ubuntu-22.04

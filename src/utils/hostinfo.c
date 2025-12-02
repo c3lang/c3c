@@ -36,7 +36,7 @@ ArchType hostinfo_arch_type(void)
 #elif defined(__powerpc) || defined(__powerpc__) || defined(__POWERPC__) || defined(__ppc__) || defined(__PPC__) || defined(_ARCH_PPC)
     return ARCH_TYPE_PPC;
 #elif defined(__sparc__) || defined(__sparc)
-    return ARCH_UNSUPPORTED 
+    return ARCH_UNSUPPORTED;
 #else
     return ARCH_TYPE_UNKNOWN;
 #endif
