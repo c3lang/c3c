@@ -9,9 +9,6 @@
     "linux-x64": {
       "cflags-override": "-fPIE"
     },
-    "linux-musl-x64": {
-      "cflags": "-fPIE"
-    },
     "windows-x64": {}
   }
 }

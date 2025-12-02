@@ -10,9 +10,6 @@
     "linux-x64": {
       "cflags": "-fPIE"
     },
-    "linux-musl-x64": {
-      "cflags": "-fPIE"
-    },
     "windows-x64": {
       "c-include-dirs": [
         "C:\\"
