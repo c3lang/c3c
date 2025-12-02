@@ -9,6 +9,11 @@ LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *c, LLVMValueRef pointer, 
 	ASSERT(alignment > 0);
 	LLVMTypeRef type = LLVMTypeOf(value);
 	ASSERT(type != c->bool_type);
+	if (LLVMIsAAllocaInst(pointer) || LLVMIsAGlobalVariable(pointer))
+	{
+		ASSERT(alignment <= LLVMGetAlignment(pointer));
+		alignment = LLVMGetAlignment(pointer);
+	}
 	if (LLVMGetTypeKind(type) == LLVMVectorTypeKind)
 	{
 		unsigned len = LLVMGetVectorSize(LLVMTypeOf(value));
@@ -153,7 +158,7 @@ LLVMValueRef llvm_load_value_store(GenContext *c, BEValue *value)
 	LLVMValueRef val = llvm_load_value(c, value);
 	if (value->kind == BE_BOOLVECTOR)
 	{
-		return LLVMBuildSExt(c->builder, val, llvm_get_type(c, type_get_vector_bool(value->type)), "");
+		return LLVMBuildSExt(c->builder, val, llvm_get_type(c, type_get_vector_bool(value->type, TYPE_SIMD_VECTOR)), "");
 	}
 	if (value->kind != BE_BOOLEAN) return val;
 	return LLVMBuildZExt(c->builder, val, c->byte_type, "");
@@ -166,7 +171,7 @@ LLVMValueRef llvm_store_zero(GenContext *c, BEValue *ref)
 	Type *type = ref->type;
 	if (!type_is_aggregate(type) || type_is_builtin(type->type_kind))
 	{
-		if (type->type_kind == TYPE_VECTOR)
+		if (type_kind_is_real_vector(type->type_kind))
 		{
 			unsigned len = type->array.len;
 			if (!is_power_of_two(len))
@@ -201,13 +206,13 @@ LLVMValueRef llvm_store_zero(GenContext *c, BEValue *ref)
 		}
 		if (type->type_kind == TYPE_ARRAY)
 		{
-			LLVMTypeRef array_type = llvm_get_type(c, type);
+			Type *base = type->array.base;
 			for (unsigned i = 0; i < type->array.len; i++)
 			{
 				AlignSize align;
-				LLVMValueRef element_ptr = llvm_emit_array_gep_raw(c, ref->value, array_type, i, ref->alignment, &align);
+				LLVMValueRef element_ptr = llvm_emit_array_gep_raw(c, ref->value, base, i, ref->alignment, &align);
 				BEValue be_value;
-				llvm_value_set_address(c, &be_value, element_ptr, type->array.base, align);
+				llvm_value_set_address(c, &be_value, element_ptr, base, align);
 				llvm_store_zero(c, &be_value);
 			}
 			return NULL;

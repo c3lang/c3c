@@ -89,7 +89,7 @@ const char **get_string_array(BuildParseContext context, JSONObject *table, cons
 		return NULL;
 	}
 	if (value->type != J_ARRAY) goto NOT_ARRAY;
-	const char **values = NULL;
+	const char **values = VECNEW(const char *, 16);
 	FOREACH(JSONObject *, val, value->elements)
 	{
 		if (val->type != J_STRING) goto NOT_ARRAY;

@@ -267,7 +267,32 @@ fn void? out_putstream_fn(void* data, char c) @private
 	return (*stream).write_byte(c);
 }
 
-fn void? out_putchar_fn(void* data @unused, char c) @private
+macro usz putchar_buf_size() @const
+{
+	$switch env::MEMORY_ENV:
+		$case NORMAL: return 32 * 1024;
+		$case SMALL: return 1024;
+		$case TINY: return 256;
+		$case NONE: return 256;
+	$endswitch
+}
+
+struct PutcharBuffer
+{
+	char[putchar_buf_size()] data;
+	usz len;
+	bool should_flush;
+}
+
+fn void? write_putchar_buffer(PutcharBuffer* buff, bool flush) @private
+{
+	File* stdout = io::stdout();
+	libc::fwrite(&buff.data, 1, buff.len, stdout.file);
+	buff.len = 0;
+	if (flush) stdout.flush()!;
+}
+
+fn void? out_putchar_buffer_fn(void* data @unused, char c) @private
 {
 	$if env::TESTING:
 		// HACK: this is used for the purpose of unit test output hijacking
@@ -275,7 +300,10 @@ fn void? out_putchar_fn(void* data @unused, char c) @private
 		assert(stdout.file);
 		libc::fputc(c, stdout.file);
 	$else
-		libc::putchar(c);
+		PutcharBuffer* buff = data;
+		buff.data[buff.len++] = c;
+		if (c == '\n') buff.should_flush = true;
+		if (buff.len == buff.data.len) write_putchar_buffer(buff, false)!;
 	$endif
 }
 
@@ -296,8 +324,11 @@ fn void? out_putchar_fn(void* data @unused, char c) @private
 fn usz? printf(String format, args...) @format(0) @maydiscard
 {
 	Formatter formatter;
-	formatter.init(&out_putchar_fn);
-	return formatter.vprintf(format, args);
+	PutcharBuffer buff;
+	formatter.init(&out_putchar_buffer_fn, &buff);
+	usz? len = formatter.vprintf(format, args);
+	write_putchar_buffer(&buff, buff.should_flush)!;
+	return len;
 }
 
 <*
@@ -310,10 +341,11 @@ fn usz? printf(String format, args...) @format(0) @maydiscard
 fn usz? printfn(String format, args...) @format(0) @maydiscard
 {
 	Formatter formatter;
-	formatter.init(&out_putchar_fn);
+	PutcharBuffer buff;
+	formatter.init(&out_putchar_buffer_fn, &buff);
 	usz? len = formatter.vprintf(format, args);
-	out_putchar_fn(null, '\n')!;
-	io::stdout().flush()!;
+	formatter.out('\n')!;
+	write_putchar_buffer(&buff, true)!;
 	return len + 1;
 }
 

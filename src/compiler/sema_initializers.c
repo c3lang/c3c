@@ -36,7 +36,7 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 																	   Expr *value);
 
 
-bool const_init_local_init_may_be_global_inner(ConstInitializer *init, bool top)
+static bool const_init_local_init_may_be_global_inner(ConstInitializer *init, bool top)
 {
 	ConstInitializer **list = INVALID_PTR;
 	unsigned len = (unsigned)-1;
@@ -367,7 +367,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 			if (!sema_analyse_inferred_expr(context, inner_type, element, no_match_ref)) return false;
 			Type *element_type = element->type;
 			Type *element_flat = type_flatten(element_type);
-			if (element_flat->type_kind == TYPE_VECTOR
+			if (type_kind_is_real_vector(element_flat->type_kind)
 				&& type_flatten(type_get_indexed_type(element_type)) == type_flatten(inner_type))
 			{
 				unsigned len = element_flat->array.len;
@@ -666,10 +666,9 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 	if (flattened->type_kind == TYPE_UNTYPED_LIST ||
 		flattened->type_kind == TYPE_ARRAY ||
 		flattened->type_kind == TYPE_INFERRED_ARRAY ||
-		flattened->type_kind == TYPE_INFERRED_VECTOR ||
 		flattened->type_kind == TYPE_FLEXIBLE_ARRAY ||
 		flattened->type_kind == TYPE_SLICE ||
-		flattened->type_kind == TYPE_VECTOR)
+		type_kind_is_any_vector(flattened->type_kind))
 	{
 		return sema_expr_analyse_array_plain_initializer(context, assigned_type, flattened, expr, no_match_ref);
 	}
@@ -871,12 +870,8 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_UNTYPED_LIST:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_ARRAY:
 		case TYPE_BITSTRUCT:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
-		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_VECTOR:
+		case ALL_ARRAYLIKE:
 			return sema_expr_analyse_initializer(context, to, flattened, expr, no_match_ref);
 		case TYPE_SLICE:
 		{
@@ -1257,7 +1252,7 @@ static inline void sema_update_const_initializer_with_designator(
 			sema_update_const_initializer_with_designator_union(const_init, curr, end, value);
 			return;
 		case TYPE_ARRAY:
-		case TYPE_VECTOR:
+		case VECTORS:
 			sema_update_const_initializer_with_designator_array(const_init, curr, end, value);
 			return;
 		default:
@@ -1287,6 +1282,43 @@ static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, E
 	return current;
 }
 
+static Type *sema_resolve_vector_element_for_name(SemaContext *context, FlatType *type, DesignatorElement *element, bool *did_report_error)
+{
+	Expr *field = element->field_expr;
+	if (field->expr_kind != EXPR_UNRESOLVED_IDENTIFIER) return NULL;
+	const char *kw = field->unresolved_ident_expr.ident;
+	unsigned len = strlen(kw);
+	if (!sema_kw_is_swizzle(kw, len)) return NULL;
+	bool is_overlapping = false;
+	int index;
+	if (!sema_check_swizzle_string(context, field, kw, len, type->array.len, &is_overlapping, &index))
+	{
+		*did_report_error = true;
+		return NULL;
+	}
+	ArrayIndex first = SWIZZLE_INDEX(kw[0]);
+	ArrayIndex last = SWIZZLE_INDEX(kw[len - 1]);
+
+	if (is_overlapping || (first + len != last + 1))
+	{
+		*did_report_error = true;
+		SEMA_ERROR(field, "Designated initializers using swizzling must be a contiguous range, like '.xyz = 123'.");
+		return NULL;
+	}
+	ASSERT(last < type->array.len);
+	element->index = first;
+	if (len == 1)
+	{
+		element->kind = DESIGNATOR_ARRAY;
+	}
+	else
+	{
+		element->kind = DESIGNATOR_RANGE;
+		element->index_end = last;
+	}
+	return type->array.base;
+}
+
 INLINE bool sema_initializer_list_is_empty(Expr *value)
 {
 	return expr_is_const_initializer(value) && value->const_expr.initializer->kind == CONST_INIT_ZERO;
@@ -1309,7 +1341,7 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 				base = type_flattened->array.base;
 				break;
 			case TYPE_ARRAY:
-			case TYPE_VECTOR:
+			case VECTORS:
 				len = type_flattened->array.len;
 				base = type_flattened->array.base;
 				break;
@@ -1357,9 +1389,18 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 		return base;
 	}
 	ASSERT(element->kind == DESIGNATOR_FIELD);
-	if (!type_is_union_or_strukt(type_flattened) && type_flattened->type_kind != TYPE_BITSTRUCT)
+	switch (type_flattened->type_kind)
 	{
-		return NULL;
+		case TYPE_UNION:
+		case TYPE_STRUCT:
+		case TYPE_BITSTRUCT:
+			break;
+		case TYPE_SIMD_VECTOR:
+		case TYPE_VECTOR:
+			*member_ptr = NULL;
+			return sema_resolve_vector_element_for_name(context, type_flattened, element, did_report_error);
+		default:
+			return NULL;
 	}
 	Decl *member = sema_resolve_element_for_name(context,
 	                                             type_flattened->decl->strukt.members,
@@ -1369,6 +1410,7 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 	if (!member) return NULL;
 	return member->type;
 }
+
 
 static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *index)
 {
@@ -1400,7 +1442,6 @@ static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *inde
 	}
 	return (ArrayIndex)index_val;
 }
-
 
 static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, DesignatorElement ***elements_ref,
                                            unsigned *index, bool is_substruct)

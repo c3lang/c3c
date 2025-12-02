@@ -150,9 +150,11 @@ static void usage(bool full)
 		print_opt("--test-filter <arg>", "Set a filter when running tests, running only matching tests.");
 		print_opt("--test-breakpoint", "When running tests, trigger a breakpoint on failure.");
 		print_opt("--test-nosort", "Do not sort tests.");
-		print_opt("--test-noleak", "Disable tracking allocator and memory leak detection for tests");
-		print_opt("--test-nocapture", "Disable test stdout capturing, all tests can print as they run");
+		print_opt("--test-noleak", "Disable tracking allocator and memory leak detection for tests.");
+		print_opt("--test-show-output", "Disable test stdout capturing, all tests can print as they run.");
+		print_opt("--test-nocapture", "Disable test stdout capturing, all tests can print as they run, same as --test-show-output.");
 		print_opt("--test-quiet", "Run tests without printing full names, printing output only on failure");
+		print_opt("--test-log-level=<verbose|debug|info|warn|error|critical>", "Set log priority when running tests.");
 	}
 	PRINTF("");
 	print_opt("-l <library>", "Link with the static or dynamic library provided.");
@@ -214,6 +216,7 @@ static void usage(bool full)
 		print_opt("--macos-min-version <ver>", "Set the minimum MacOS version to compile for.");
 		print_opt("--macos-sdk-version <ver>", "Set the MacOS SDK compiled for.");
 		PRINTF("");
+		print_opt("--linux-libc=<gnu|musl>", "Set the libc to use on Linux, defaults to gnu.");
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
 		PRINTF("");
@@ -598,7 +601,7 @@ static void parse_option(BuildOptions *options)
 			if (match_shortopt("o"))
 			{
 				if (at_end()) error_exit("error: -o needs a name.");
-				options->output_name = next_arg();
+				options->runner_output_name = options->output_name = next_arg();
 				return;
 			}
 			break;
@@ -794,9 +797,9 @@ static void parse_option(BuildOptions *options)
 				options->test_noleak = true;
 				return;
 			}
-			if (match_longopt("test-nocapture"))
+			if (match_longopt("test-nocapture") || match_longopt("test-show-output"))
 			{
-				options->test_nocapture = true;
+				options->test_show_output = true;
 				return;
 			}
 			if (match_longopt("test-quiet"))
@@ -859,6 +862,11 @@ static void parse_option(BuildOptions *options)
 				options->fp_math = parse_opt_select(FpOpt, argopt, fp_math);
 				return;
 			}
+			if ((argopt = match_argopt("linux-libc")))
+			{
+				options->linux_libc = parse_opt_select(LinuxLibc, argopt, linuxlibc);
+				return;
+			}
 			if ((argopt = match_argopt("optsize")))
 			{
 				options->optsize = parse_opt_select(SizeOptimizationLevel, argopt, optsizes);
@@ -867,6 +875,11 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("optlevel")))
 			{
 				options->optlevel = parse_opt_select(OptimizationLevel, argopt, optlevels);
+				return;
+			}
+			if ((argopt = match_argopt("test-log-level")))
+			{
+				options->test_log_level = parse_opt_select(TestLogLevel, argopt, test_log_levels);
 				return;
 			}
 			if ((argopt = match_argopt("merge-functions")))
@@ -1456,6 +1469,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.emit_llvm = false,
 		.optsetting = OPT_SETTING_NOT_SET,
 		.debug_info_override = DEBUG_INFO_NOT_SET,
+		.test_log_level = TESTLOGLEVEL_NOT_SET,
 		.safety_level = SAFETY_NOT_SET,
 		.panic_level = PANIC_NOT_SET,
 		.show_backtrace = SHOW_BACKTRACE_NOT_SET,
@@ -1487,6 +1501,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,
 		.loop_vectorization = VECTORIZATION_NOT_SET,
+		.linux_libc = LINUX_LIBC_NOT_SET,
 		.files = NULL,
 		.build_dir = NULL,
 		.output_dir = NULL,

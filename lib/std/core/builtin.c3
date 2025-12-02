@@ -135,11 +135,14 @@ macro bool @typeis(#value, $Type) @const @builtin @deprecated("Use `$typeof(#val
 }
 
 
-fn bool print_backtrace(String message, int backtraces_to_ignore) @if (env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
+fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_backtrace = null) @if (env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
 {
 	void*[256] buffer;
 	void*[] backtraces = backtrace::capture_current(&buffer);
-	backtraces_to_ignore++;
+	if (added_backtrace)
+	{
+		backtraces[++backtraces_to_ignore] = added_backtrace;
+	}
 	@stack_mem(2048; Allocator mem)
 	{
 		BacktraceList? backtrace = backtrace::symbolize_backtrace(mem, backtraces);
@@ -500,7 +503,7 @@ macro void? @try(#v, #expr) @builtin @maydiscard
   {
 	char[] data;
 	// Read until end of file
-	if (@try_catch(data, load_line(), io::EOF)) break;
+	if (@try_catch(data, load_line(), io::EOF)!) break;
 	.. use data ..
   }
 
@@ -941,23 +944,20 @@ macro void* get_returnaddress(int n)
 }
 
 module std::core::builtin @if((env::LINUX || env::ANDROID || env::DARWIN) && env::COMPILER_SAFE_MODE && env::DEBUG_SYMBOLS);
-import libc, std::io;
+import libc, std::io, std::os::posix;
 
 fn void sig_panic(String message)
 {
 	default_panic(message, "???", "???", 0);
 }
 
-SignalFunction old_bus_error;
-SignalFunction old_segmentation_fault;
-
-fn void sig_bus_error(CInt i)
+fn void sig_bus_error(CInt i, void* info, void* context)
 {
 	$if !env::NATIVE_STACKTRACE:
 		sig_panic("Illegal memory access.");
 	$else
 		$if $defined(io::stderr):
-			if (!print_backtrace("Illegal memory access.", 1))
+			if (!print_backtrace("Illegal memory access.", 2, posix::stack_instruction(context)))
 			{
 				io::eprintn("\nERROR: 'Illegal memory access'.");
 			}
@@ -966,13 +966,13 @@ fn void sig_bus_error(CInt i)
 	$$trap();
 }
 
-fn void sig_segmentation_fault(CInt i)
+fn void sig_segmentation_fault(CInt i, void* p1, void* context)
 {
 	$if !env::NATIVE_STACKTRACE:
 		sig_panic("Out of bounds memory access.");
 	$else
 		$if $defined(io::stderr):
-			if (!print_backtrace("Out of bounds memory access.", 1))
+			if (!print_backtrace("Out of bounds memory access.", 2, posix::stack_instruction(context)))
 			{
 				io::eprintn("\nERROR: Memory error without backtrace, possible stack overflow.");
 			}
@@ -981,17 +981,12 @@ fn void sig_segmentation_fault(CInt i)
 	$$trap();
 }
 
-fn void install_signal_handler(CInt signal, SignalFunction func) @local
-{
-	SignalFunction old = libc::signal(signal, func);
-	// Restore
-	if ((iptr)old > 1024) libc::signal(signal, old);
-}
+
 
 // Clean this up
 fn void install_signal_handlers() @init(101) @local @if(env::BACKTRACE)
 {
-	install_signal_handler(libc::SIGBUS, &sig_bus_error);
-	install_signal_handler(libc::SIGSEGV, &sig_segmentation_fault);
+	posix::install_signal_handler(libc::SIGBUS, &sig_bus_error);
+	posix::install_signal_handler(libc::SIGSEGV, &sig_segmentation_fault);
 }
 

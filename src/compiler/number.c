@@ -283,7 +283,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			is_eq = !memcmp(left->bytes.ptr, right->bytes.ptr, left->bytes.len);
 			goto RETURN;
 		case CONST_INITIALIZER:
-			if (left->initializer->type->type_kind == TYPE_VECTOR)
+			if (type_kind_is_real_vector(left->initializer->type->type_kind))
 			{
 				ConstInitializer *lhs = left->initializer;
 				ConstInitializer *rhs = right->initializer;

@@ -50,6 +50,11 @@ static const char *optsizes[3] = {
 	[SIZE_OPTIMIZATION_TINY] = "tiny",
 };
 
+static const char *linuxlibc[2] = {
+	[LINUX_LIBC_GNU] = "gnu",
+	[LINUX_LIBC_MUSL] = "musl",
+};
+
 static const char *linker_kind[3] = {
 	[LINKER_TYPE_BUILTIN] = "builtin",
 	[LINKER_TYPE_CC] = "cc",
@@ -105,6 +110,15 @@ static const char *optlevels[4] = {
 	[OPTIMIZATION_LESS] = "less",
 	[OPTIMIZATION_MORE] = "more",
 	[OPTIMIZATION_AGGRESSIVE] = "max",
+};
+
+static const char *test_log_levels[6] = {
+	[TESTLOGLEVEL_VERBOSE] = "verbose",
+	[TESTLOGLEVEL_DEBUG] = "debug",
+	[TESTLOGLEVEL_INFO] = "info",
+	[TESTLOGLEVEL_WARN] = "warn",
+	[TESTLOGLEVEL_ERROR] = "error",
+	[TESTLOGLEVEL_CRITICAL] = "critical",
 };
 
 static const char *backends[3] = {

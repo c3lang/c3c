@@ -105,6 +105,13 @@ typedef enum
 
 typedef enum
 {
+	LINUX_LIBC_NOT_SET = -1,
+	LINUX_LIBC_GNU = 0,
+	LINUX_LIBC_MUSL = 1,
+} LinuxLibc;
+
+typedef enum
+{
 	TRUST_NONE,
 	TRUST_INCLUDE,
 	TRUST_FULL
@@ -141,6 +148,17 @@ typedef enum
 	OPTIMIZATION_MORE = 2,       // -O2
 	OPTIMIZATION_AGGRESSIVE = 3, // -O3
 } OptimizationLevel;
+
+typedef enum
+{
+	TESTLOGLEVEL_NOT_SET = -1,
+	TESTLOGLEVEL_VERBOSE = 0,
+	TESTLOGLEVEL_DEBUG = 1,
+	TESTLOGLEVEL_INFO = 2,
+	TESTLOGLEVEL_WARN = 3,
+	TESTLOGLEVEL_ERROR = 4,
+	TESTLOGLEVEL_CRITICAL = 5,
+} TestLogLevel;
 
 typedef enum
 {
@@ -503,6 +521,7 @@ typedef struct BuildOptions_
 	const char **feature_names;
 	const char **removed_feature_names;
 	const char *output_name;
+	const char *runner_output_name;
 	const char *project_name;
 	const char *target_select;
 	const char *path;
@@ -511,12 +530,13 @@ typedef struct BuildOptions_
 	const char **unchecked_directories;
 	LinkerType linker_type;
 	ValidationLevel validation_level;
+	TestLogLevel test_log_level;
 	Ansi ansi;
 	bool test_breakpoint;
 	bool test_quiet;
 	bool test_nosort;
 	bool test_noleak;
-	bool test_nocapture;
+	bool test_show_output;
 	const char *custom_linker_path;
 	uint32_t symtab_size;
 	unsigned version;
@@ -594,6 +614,7 @@ typedef struct BuildOptions_
 	OptimizationLevel optlevel;
 	SizeOptimizationLevel optsize;
 	RiscvAbi riscv_abi;
+	LinuxLibc linux_libc;
 	MemoryEnvironment memory_environment;
 	SanitizeMode sanitize_mode;
 	uint32_t max_vector_size;
@@ -661,6 +682,7 @@ typedef struct
 	Library **library_list;
 	LibraryTarget **ccompiling_libraries;
 	const char *name;
+	const char *runner_output_name;
 	const char *output_name;
 	const char *extension;
 	const char *version;
@@ -794,6 +816,7 @@ typedef struct
 	} win;
 	struct
 	{
+		LinuxLibc libc;
 		const char *crt;
 		const char *crtbegin;
 	} linuxpaths;
@@ -864,6 +887,7 @@ static BuildTarget default_build_target = {
 		.feature.panic_level = PANIC_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
 		.win.def = NULL,
+		.linuxpaths.libc = LINUX_LIBC_GNU,
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
 		.switchjump_max_size = DEFAULT_SWITCH_JUMP_MAX_SIZE,
 		.quiet = false,

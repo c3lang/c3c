@@ -57,7 +57,7 @@ ABIArgInfo *x64_indirect_return_result(Type *type, ParamInfo param)
 static bool x64_type_is_illegal_vector(Type *type)
 {
 	// Only check vectors.
-	if (type->type_kind != TYPE_VECTOR) return false;
+	if (type->type_kind != TYPE_SIMD_VECTOR) return false;
 	ByteSize size = type_size(type);
 	// Less than 64 bits or larger than the avx native size => not allowed.
 	if (size <= 8 || size > compiler.platform.x64.native_vector_size_avx) return true;
@@ -373,6 +373,7 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 	{
 		case LOWERED_TYPES:
 		case TYPE_FUNC_RAW:
+		case TYPE_VECTOR:
 			UNREACHABLE_VOID
 		case TYPE_VOID:
 			*current = CLASS_NO_CLASS;
@@ -417,7 +418,7 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 		case TYPE_ARRAY:
 			x64_classify_array(type, offset_base, current, lo_class, hi_class, named);
 			break;
-		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
 			x64_classify_vector(type, offset_base, current, lo_class, hi_class, named);
 			break;
 	}
@@ -559,6 +560,7 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 		case LOWERED_TYPES:
 		case TYPE_VOID:
 		case TYPE_FUNC_RAW:
+		case TYPE_VECTOR:
 			UNREACHABLE_VOID
 		case TYPE_U64:
 		case TYPE_I64:
@@ -611,7 +613,7 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 		case TYPE_U128:
 		case ALL_FLOATS:
 		case TYPE_UNION:
-		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
 			break;
 	}
 	ByteSize size = type_size(source_type);
@@ -633,7 +635,7 @@ static AbiType x64_get_byte_vector_type(Type *type)
 	type = type_lowering(type);
 
 	// If vector
-	if (type->type_kind == TYPE_VECTOR)
+	if (type->type_kind == TYPE_SIMD_VECTOR)
 	{
 		Type *element = type->array.base->canonical;
 		if (compiler.platform.x64.pass_int128_vector_in_mem && type_is_int128(element))

@@ -561,7 +561,7 @@ static LLVMMetadataRef llvm_debug_vector_type(GenContext *c, Type *type)
 {
 	LLVMMetadataRef *ranges = NULL;
 	Type *current_type = type;
-	while (current_type->canonical->type_kind == TYPE_VECTOR)
+	while (type_kind_is_any_vector(current_type->canonical->type_kind))
 	{
 		vec_add(ranges, LLVMDIBuilderGetOrCreateSubrange(c->debug.builder, 0, current_type->canonical->array.len));
 		current_type = current_type->canonical->array.base;
@@ -641,7 +641,7 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_F64:
 		case TYPE_F128:
 			return llvm_debug_simple_type(c, type, DW_ATE_float);
-		case TYPE_VECTOR:
+		case VECTORS:
 			return type->backend_debug_type = llvm_debug_vector_type(c, type);
 		case TYPE_VOID:
 			return NULL;

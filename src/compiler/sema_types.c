@@ -149,7 +149,8 @@ static inline bool sema_check_array_type(SemaContext *context, TypeInfo *origina
 			{
 				RETURN_SEMA_ERROR(original_info, "You cannot form a vector with elements of type %s.", type_quoted_error_string(base));
 			}
-			*result_ref = type_get_vector(base, len);
+			if (original_info->is_simd && !is_power_of_two(len)) RETURN_SEMA_ERROR(original_info, "The length of a @simd vector must be a power of two.");
+			*result_ref = type_get_vector(base, original_info->is_simd ? TYPE_SIMD_VECTOR : TYPE_VECTOR, len);
 			break;
 		case TYPE_INFO_ARRAY:
 			if (!type_is_valid_for_array(base))

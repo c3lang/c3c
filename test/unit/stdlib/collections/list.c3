@@ -8,6 +8,53 @@ struct Overalign
 {
 	float[<4>] x @align(128);
 }
+alias Vec3 = int[<3>];
+fn void veclist()
+{
+	List{Vec3} values;
+    List{Vec3} new_vertices;
+	values.init(mem, 200);
+	new_vertices.init(mem);
+	defer new_vertices.free();
+	defer values.free();
+	Vec3 x = {1,2,3};
+	for (int i = 0; i < 20; i++) new_vertices.push(x);
+    values.clear();
+    values.add_all(&new_vertices);
+    Vec3* entries = new_vertices.entries;
+    foreach (Vec3 entry : new_vertices)
+    {
+        assert(entry == x);
+    }
+    foreach (Vec3 entry : values)
+    {
+        assert(entry == x);
+    }
+}
+
+alias Vec4 = int[<4>] @simd;
+fn void veclist_simd()
+{
+	List{Vec4} values;
+    List{Vec4} new_vertices;
+	values.init(mem, 200);
+	new_vertices.init(mem);
+	defer new_vertices.free();
+	defer values.free();
+	Vec4 x = {1,2,3,5};
+	for (int i = 0; i < 20; i++) new_vertices.push(x);
+    values.clear();
+    values.add_all(&new_vertices);
+    Vec4* entries = new_vertices.entries;
+    foreach (Vec4 entry : new_vertices)
+    {
+        assert(entry == x);
+    }
+    foreach (Vec4 entry : values)
+    {
+        assert(entry == x);
+    }
+}
 
 alias OveralignList = List{Overalign};
 fn void overaligned_type()

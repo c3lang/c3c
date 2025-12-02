@@ -47,7 +47,7 @@ entry:
   %x1 = alloca float, align 4
   call void @llvm.memset.p0.i64(ptr align 4 %a, i8 0, i64 52, i1 false)
   call void @llvm.memset.p0.i64(ptr align 4 %b, i8 0, i64 52, i1 false)
-  %ptradd = getelementptr inbounds i8, ptr %b, i64 16
+  %ptradd = getelementptr inbounds i8, ptr %b, i64 12
   %0 = load <3 x float>, ptr %ptradd, align 4
   %1 = extractelement <3 x float> %0, i64 0
   %fincdec = fadd float %1, 1.000000e+00

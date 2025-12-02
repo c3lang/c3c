@@ -10,6 +10,15 @@
 - Function referencing in `@return?` for simplified fault declarations. Check `@return?` eagerly #2340.
 - Enums now work with `membersof` to return the associated values. #2571
 - Deprecated `SomeEnum.associated` in favour of `SomeEnum.membersof`
+- Refactored `@simd` implementation.
+- Improve error message for `Foo{}` when `Foo` is not a generic type #2574.
+- Support `@param` directives for `...` parameters. #2578
+- Allow splatting of structs. #2555
+- Deprecate `--test-nocapture` in favour of `--test-show-output` #2588.
+- Xtensa target no longer enabled by default on LLVM 22, Compile with `-DXTENSA_ENABLE` to enable it instead
+- Add `float[<3>] x = { .xy = 1.2, .z = 3.3 }` swizzle initialization for vectors. #2599
+- Support `int $foo...` arguments. #2601
+- Add musl support with `--linux-libc=musl`.
 
 ### Fixes
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.
@@ -24,8 +33,37 @@
 - Fix appending to `c:\` or `\` #2569.
 - When encountering a foreach over a `ZString*` it would not properly emit a compilation error, but hit an assert #2573.
 - Casting a distinct type based on a pointer to an `any` would accidentally be permitted. #2575
+- `overflow_*` vector ops now correctly return a bool vector.
+- Regression vector ABI: npot vectors would load incorrectly from pointers and other things. #2576
+- Using `defer catch` with a (void), would cause an assertion. #2580
+- Fix decl attribute in the wrong place causing an assertion. #2581
+- Passing a single value to `@wasm` would ignore the renaming.
+- `*(int*)1` incorrectly yielded an assert in LLVM IR lowering #2584.
+- Fix issue when tests encounter a segmentation fault or similar.
+- With project.json, when overriding with an empty list the base settings would still be used. #2583
+- Add sigsegv stacktrace in test and regular errors for Darwin Arm64. #1105
+- Incorrect error message when using generic type that isn't imported #2589
+- `String.to_integer` does not correctly return in some cases where it should #2590.
+- Resolving a missing property on a const enum with inline, reached an assert #2597.
+- Unexpected maybe-deref subscript error with out parameter #2600.
+- Bug on rethrow in return with defer #2603.
+- Fix bug when converting from vector to distinct type of wider vector. #2604
+- `$defined(hashmap.init(mem))` causes compiler segfault #2611.
+- Reference macro parameters syntax does not error in certain cases. #2612
 
 ### Stdlib changes
+- Add `CGFloat` `CGPoint` `CGSize` `CGRect` types to core_foundation (macOS).
+- Add `NSStatusItem` const enum to ns module (macOS).
+- Add `NSWindowCollectionBehavior` `NSWindowLevel` `NSWindowTabbingMode` to ns module (macOS).
+- Add `ns::eventmask_from_type` function to objc (macOS).
+- Deprecate objc enums in favour of const inline enums backed by NS numerical types, and with the NS prefix, to better align with the objc api (macOS).
+- Deprecate `event_type_from` function in favour of using NSEvent directly, to better align with the objc api (macOS).
+- Add unit tests for objc and core_foundation (macOS).
+- Make printing typeids give some helpful typeid data.
+- Add `NSApplicationTerminateReply` to ns module (macOS).
+- Add `registerClassPair` function to objc module (macOS).
+- Somewhat faster BigInt output.
+- Cache printf output.
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
 
 ## 0.7.7 Change list
@@ -61,6 +99,7 @@
 - Compiler segfault when getting a nonexistant member from an unnamed struct #2533.
 - Correctly mention aliased type when method is not implemented #2534.
 - Regression: Not printing backtrace when tests fail for MacOS #2536.
+- Name property would be used even under `c3c test` #2587.
 
 ### Stdlib changes
 - Sorting functions correctly took slices by value, but also other types by value. Now, only slices are accepted by value, other containers are always by ref.

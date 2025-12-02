@@ -565,10 +565,12 @@ void compiler_compile(void)
 		{
 			case TARGET_TYPE_BENCHMARK:
 				compiler.build.name = "benchmarkrun";
+				compiler.build.output_name = compiler.build.runner_output_name ? compiler.build.runner_output_name : compiler.build.name;
 				output_exe = exe_name();
 				break;
 			case TARGET_TYPE_TEST:
 				compiler.build.name = "testrun";
+				compiler.build.output_name = compiler.build.runner_output_name ? compiler.build.runner_output_name : compiler.build.name;
 				output_exe = exe_name();
 				break;
 			case TARGET_TYPE_EXECUTABLE:

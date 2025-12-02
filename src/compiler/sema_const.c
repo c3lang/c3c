@@ -231,17 +231,17 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 	}
 	bool is_slice = list->const_expr.const_kind == CONST_SLICE;
 	ASSERT(!type_is_inferred(array_type));
-	bool is_vector = array_type->type_kind == TYPE_VECTOR;
+	bool is_vector = type_kind_is_real_vector(array_type->type_kind);
 	ConstInitializer *init = is_slice ? list->const_expr.slice_init : list->const_expr.initializer;
 	unsigned len = sema_len_from_const(list) + 1;
 	Type *indexed = type_get_indexed_type(init->type);
 	if (!cast_implicit(context, element, indexed, false)) return false;
-	Type *new_inner_type = is_vector ? type_get_vector(indexed, len) : type_get_array(indexed, len);
+	Type *new_inner_type = is_vector ? type_get_vector(indexed, array_type->type_kind, len) : type_get_array(indexed, len);
 	Type *new_outer_type = list->type;
 	if (!is_slice)
 	{
 		Type *outer_indexed = type_get_indexed_type(init->type);
-		new_outer_type = is_vector ? type_get_vector(outer_indexed, len) : type_get_array(outer_indexed, len);
+		new_outer_type = is_vector ? type_get_vector(outer_indexed,  array_type->type_kind, len) : type_get_array(outer_indexed, len);
 	}
 	switch (init->kind)
 	{
@@ -307,7 +307,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 	ASSERT_SPAN(concat_expr, concat_expr->resolve_status == RESOLVE_RUNNING);
 	if (!sema_check_left_right_const(context, left, right)) return false;
 	ArraySize len = 0;
-	bool use_array = true;
+	TypeKind vec_type = TYPE_POISONED;
 	Type *indexed_type = NULL;
 	Type *element_type = left->type->canonical;
 	Type *right_type = right->type->canonical;
@@ -331,8 +331,11 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		case CONST_INITIALIZER:
 			switch (type_flatten(element_type)->type_kind)
 			{
+				case TYPE_SIMD_VECTOR:
+					vec_type = TYPE_SIMD_VECTOR;
+					break;
 				case TYPE_VECTOR:
-					use_array = false;
+					vec_type = TYPE_VECTOR;
 					break;
 				case TYPE_INFERRED_VECTOR:
 				case TYPE_INFERRED_ARRAY:
@@ -492,7 +495,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 	{
 		expr_rewrite_to_const_zero(concat_expr, type_get_slice(indexed_type));
 	}
-	Type *type = use_array ? type_get_array(indexed_type, len) : type_get_vector(indexed_type, len);
+	Type *type = vec_type == TYPE_POISONED ? type_get_array(indexed_type, len) : type_get_vector(indexed_type, vec_type, len);
 	ConstInitializer *lhs_init = expr_const_initializer_from_expr(left);
 	ConstInitializer *rhs_init = expr_const_initializer_from_expr(right);
 	if (!rhs_init)

@@ -42,6 +42,16 @@ void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type)
 	}
 }
 
+void llvm_value_set_alloca(GenContext *c, BEValue *value, Type *type, AlignSize align, const char *name)
+{
+	type = type_lowering(type);
+	*value = (BEValue) {
+		.value = llvm_emit_alloca(c, llvm_get_type(c, type), align, name),
+		.kind = BE_ADDRESS,
+		.type = type,
+		.alignment = align,
+	};
+}
 void llvm_value_set_address(GenContext *c, BEValue *value, LLVMValueRef llvm_value, Type *type, AlignSize alignment)
 {
 	ASSERT(alignment > 0);
@@ -74,9 +84,9 @@ void llvm_value_addr(GenContext *c, BEValue *value)
 	}
 	else
 	{
-		LLVMValueRef temp = llvm_emit_alloca_aligned(c, value->type, "taddr");
-		llvm_store_to_ptr(c, temp, value);
-		llvm_value_set_address_abi_aligned(c, value, temp, value->type);
+		BEValue temp = llvm_emit_alloca_b(c, value->type, "taddr");
+		llvm_store(c, &temp, value);
+		*value = temp;
 	}
 }
 

@@ -32,11 +32,11 @@ entry:
   %value = alloca <4 x float>, align 16
   store ptr null, ptr %foo, align 8
   %0 = load ptr, ptr %foo, align 8
-  %1 = load <4 x float>, ptr %0, align 16
+  %1 = load <4 x float>, ptr %0, align 4
   store <4 x float> %1, ptr %a, align 1
   %2 = load ptr, ptr %foo, align 8
   %3 = load <4 x float>, ptr %a, align 1
-  store <4 x float> %3, ptr %2, align 16
+  store <4 x float> %3, ptr %2, align 4
   %4 = load ptr, ptr %foo, align 8
   %5 = load <4 x float>, ptr %4, align 1
   store <4 x float> %5, ptr %a, align 1

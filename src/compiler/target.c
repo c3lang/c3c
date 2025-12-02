@@ -1172,35 +1172,41 @@ const char *arch_to_linker_arch(ArchType arch)
 	UNREACHABLE;
 }
 
-static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
-		[FREEBSD_X86] = "i386-unknown-freebsd",
-		[OPENBSD_X86] = "i386-unknown-openbsd",
-		[NETBSD_X86] = "i386-unknown-netbsd",
-		[MCU_X86] = "i386-pc-elfiamcu",
-		[LINUX_X86] = "i386-unknown-linux",
-		[ELF_X86] = "i386-unknown-elf",
-		[MACOS_X64] = "x86_64-apple-macosx",
-		[LINUX_X64] = "x86_64-pc-linux-gnu",
-		[WINDOWS_X64] = "x86_64-pc-windows-msvc",
-		[MINGW_X64] = "x86_64-w64-windows-gnu",
-		[NETBSD_X64] = "x86_64-pc-netbsd",
-		[FREEBSD_X64] = "x86_64-pc-freebsd",
-		[OPENBSD_X64] = "x86_64-pc-openbsd",
-		[ELF_X64] = "x86_64-unknown-elf",
-		[ANDROID_AARCH64] = "aarch64-linux-android",
-		[ANDROID_X86_64] = "x86_64-linux-android",
-		[LINUX_AARCH64] = "aarch64-unknown-linux-gnu",
-		[IOS_AARCH64] = "aarch64-apple-ios",
-		[MACOS_AARCH64] = "aarch64-apple-macosx",
-		[ELF_AARCH64] = "aarch64-unknown-elf",
-		[WINDOWS_AARCH64] = "aarch64-pc-windows-msvc",
-		[LINUX_RISCV32] = "riscv32-unknown-linux",
-		[ELF_RISCV32] = "riscv32-unknown-elf",
-		[LINUX_RISCV64] = "riscv64-unknown-linux",
-		[ELF_RISCV64] = "riscv64-unknown-elf",
-		[ELF_XTENSA] = "xtensa-unknown-elf",
-		[WASM32] = "wasm32-unknown-unknown",
-		[WASM64] = "wasm64-unknown-unknown",
+static char *arch_to_target_triple(ArchOsTarget target, LinuxLibc linux_libc)
+{
+	switch (target)
+	{
+		case FREEBSD_X86: return "i386-unknown-freebsd";
+		case OPENBSD_X86: return "i386-unknown-openbsd";
+		case NETBSD_X86: return "i386-unknown-netbsd";
+		case MCU_X86: return "i386-pc-elfiamcu";
+		case LINUX_X86: return linux_libc == LINUX_LIBC_MUSL ? "i386-unknown-linux-musl" : "i386-unknown-linux";
+		case ELF_X86: return "i386-unknown-elf";
+		case MACOS_X64: return "x86_64-apple-macosx";
+		case LINUX_X64: return linux_libc == LINUX_LIBC_MUSL ? "x86_64-pc-linux-musl" : "x86_64-pc-linux-gnu";
+		case WINDOWS_X64: return "x86_64-pc-windows-msvc";
+		case MINGW_X64: return "x86_64-w64-windows-gnu";
+		case NETBSD_X64: return "x86_64-pc-netbsd";
+		case FREEBSD_X64: return "x86_64-pc-freebsd";
+		case OPENBSD_X64: return "x86_64-pc-openbsd";
+		case ELF_X64: return "x86_64-unknown-elf";
+		case ANDROID_AARCH64: return "aarch64-linux-android";
+		case ANDROID_X86_64: return "x86_64-linux-android";
+		case LINUX_AARCH64: return linux_libc == LINUX_LIBC_MUSL ? "aarch64-unknown-linux-musl" : "aarch64-unknown-linux-gnu";
+		case IOS_AARCH64: return "aarch64-apple-ios";
+		case MACOS_AARCH64: return "aarch64-apple-macosx";
+		case ELF_AARCH64: return "aarch64-unknown-elf";
+		case WINDOWS_AARCH64: return "aarch64-pc-windows-msvc";
+		case LINUX_RISCV32: return linux_libc == LINUX_LIBC_MUSL ? "riscv32-unknown-linux-musl" : "riscv32-unknown-linux";
+		case ELF_RISCV32: return "riscv32-unknown-elf";
+		case LINUX_RISCV64: return linux_libc == LINUX_LIBC_MUSL ? "riscv64-unknown-linux-musl" : "riscv64-unknown-linux";
+		case ELF_RISCV64: return "riscv64-unknown-elf";
+		case ELF_XTENSA: return "xtensa-unknown-elf";
+		case WASM32: return "wasm32-unknown-unknown";
+		case WASM64: return "wasm64-unknown-unknown";
+		case ARCH_OS_TARGET_DEFAULT: UNREACHABLE;
+	}
+	UNREACHABLE;
 };
 
 static bool arch_is_supported(ArchType arch)
@@ -1323,6 +1329,7 @@ static EnvironmentType environment_type_from_llvm_string(StringSlice env)
 		}
 	}
 
+	INFO_LOG("Platform Environment: %s", env.ptr);
 #define STRCASE(_str, _arch) if (slice_strcmp(env, _str)) return _arch;
 	STRCASE("gnu", ENV_TYPE_GNU)
 	STRCASE("gnuabin32", ENV_TYPE_GNUABIN32)
@@ -1910,12 +1917,6 @@ INLINE const char *llvm_macos_target_triple(const char *triple)
   LLVMInitialize ## X ## TargetMC(); \
  } while(0)
 
-#if LLVM_VERSION_MAJOR > 21
-#define XTENSA_AVAILABLE 1
-#else
-#define XTENSA_AVAILABLE 0
-#endif
-
 void *llvm_target_machine_create(void)
 {
 	static bool llvm_initialized = false;
@@ -1923,10 +1924,8 @@ void *llvm_target_machine_create(void)
 	if (!llvm_initialized)
 	{
 		llvm_initialized = true;
-#if XTENSA_AVAILABLE
-#ifndef XTENSA_DISABLE
+#ifdef XTENSA_ENABLE
 		INITIALIZE_TARGET(Xtensa);
-#endif
 #endif
 #ifndef ARM_DISABLE
 		INITIALIZE_TARGET(ARM);
@@ -1981,10 +1980,6 @@ void *llvm_target_machine_create(void)
 	LLVMSetTargetMachineAsmVerbosity(result, 1);
 	return result;
 }
-
-#else
-
-#define XTENSA_AVAILABLE 1
 
 #endif
 
@@ -2144,12 +2139,14 @@ void target_setup(BuildTarget *target)
 		error_exit("Failed to find Windows def file: '%s' in path.", target->win.def);
 	}
 
-	if (target->arch_os_target == ELF_XTENSA && !XTENSA_AVAILABLE)
+#ifndef XTENSA_ENABLE
+	if (target->arch_os_target == ELF_XTENSA)
 	{
 		error_exit("Xtensa support is not available with this LLVM version.");
 	}
+#endif
 
-	compiler.platform.target_triple = arch_to_target_triple[target->arch_os_target];
+	compiler.platform.target_triple = arch_to_target_triple(target->arch_os_target, target->linuxpaths.libc);
 	ASSERT(compiler.platform.target_triple);
 
 	compiler.platform.alloca_address_space = 0;

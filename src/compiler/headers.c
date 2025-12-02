@@ -212,6 +212,8 @@ static void header_print_type(HeaderContext *c, Type *type)
 		case TYPE_SLICE:
 			PRINTF("c3slice_t");
 			return;
+		case TYPE_SIMD_VECTOR:
+			TODO
 		case TYPE_VECTOR:
 			switch (type_flatten(type->array.base)->type_kind)
 			{
@@ -568,6 +570,8 @@ RETRY:
 		case TYPE_FLEXIBLE_ARRAY:
 			type = type->array.base;
 			goto RETRY;
+		case TYPE_SIMD_VECTOR:
+			TODO
 		case TYPE_VECTOR:
 		{
 			if (!header_try_gen_both(c, type)) return;
