@@ -206,7 +206,7 @@
         "gnu",
         "musl"
       ],
-      "default": "musl"
+      "default": "gnu"
     },
     "x86cpu": {
       "type": "string",
