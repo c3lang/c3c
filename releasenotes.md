@@ -50,6 +50,7 @@
 - Fix bug when converting from vector to distinct type of wider vector. #2604
 - `$defined(hashmap.init(mem))` causes compiler segfault #2611.
 - Reference macro parameters syntax does not error in certain cases. #2612
+- @param name parsing too lenient #2614.
 
 ### Stdlib changes
 - Add `CGFloat` `CGPoint` `CGSize` `CGRect` types to core_foundation (macOS).
