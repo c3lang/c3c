@@ -18,6 +18,7 @@
 - Xtensa target no longer enabled by default on LLVM 22, Compile with `-DXTENSA_ENABLE` to enable it instead
 - Add `float[<3>] x = { .xy = 1.2, .z = 3.3 }` swizzle initialization for vectors. #2599
 - Support `int $foo...` arguments. #2601
+- Add musl support with `--linux-libc=musl`.
 
 ### Fixes
 - `Foo.is_eq` would return false if the type was a `typedef` and had an overload, but the underlying type was not comparable.
@@ -49,6 +50,7 @@
 - Fix bug when converting from vector to distinct type of wider vector. #2604
 - `$defined(hashmap.init(mem))` causes compiler segfault #2611.
 - Reference macro parameters syntax does not error in certain cases. #2612
+- @param name parsing too lenient #2614.
 
 ### Stdlib changes
 - Add `CGFloat` `CGPoint` `CGSize` `CGRect` types to core_foundation (macOS).
