@@ -719,6 +719,11 @@ static Expr *parse_unary_expr(ParseContext *c, Expr *left, SourceSpan lhs_start 
 static Expr *parse_raise_expr_suffix(ParseContext *c, Expr *left_side, SourceSpan lhs_start)
 {
 	ASSERT(expr_ok(left_side));
+	if (left_side->expr_kind == EXPR_TYPEINFO)
+	{
+		PRINT_ERROR_AT(left_side, "Expected a fault before '~'.");
+		return poisoned_expr;
+	}
 	advance_and_verify(c, TOKEN_BIT_NOT);
 	Expr *expr = expr_new(EXPR_OPTIONAL, lhs_start);
 	expr->inner_expr = left_side;
@@ -734,6 +739,11 @@ static Expr *parse_raise_expr(ParseContext *c, Expr *left, SourceSpan lhs_start 
 	advance(c);
 	Expr *right_side = parse_precedence(c, PREC_UNARY);
 	CHECK_EXPR_OR_RET(right_side);
+	if (right_side->expr_kind == EXPR_TYPEINFO)
+	{
+		PRINT_ERROR_AT(right_side, "Expected a fault after '^'.");
+		return poisoned_expr;
+	}
 	opt->inner_expr = right_side;
 	RANGE_EXTEND_PREV(opt);
 	return opt;
