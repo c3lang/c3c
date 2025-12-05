@@ -1485,11 +1485,12 @@ static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, 
 
 	Type *left_type = type_no_optional(left->type)->canonical;
 	Type *right_type = type_no_optional(right->type)->canonical;
+	Type *flat_left = type_flatten(left_type);
 
 	if (bool_and_bitstruct_is_allowed)
 	{
-		if (left_type->type_kind == TYPE_BITSTRUCT && left_type == right_type) return true;
-		if (left_type == type_bool && right_type == type_bool) return true;
+		if (flat_left->type_kind == TYPE_BITSTRUCT && left_type == right_type) return true;
+		if (flat_left == type_bool && left_type == right_type) return true;
 	}
 	// 2. Perform promotion to a common type.
 	return sema_binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, error,
@@ -7623,7 +7624,8 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 	}
 
 	Type *max = cast_numeric_arithmetic_promotion(type_find_max_type(left_type, right_type, left, right));
-	if (!max || (!type_underlying_is_numeric(max) && !(allow_bool_vec && type_flat_is_bool_vector(max))))
+	Type *flat_max = max ? type_flatten(max) : NULL;
+	if (!max || (!type_is_numeric(flat_max) && !(allow_bool_vec && (flat_max == type_bool || type_flat_is_bool_vector(flat_max)))))
 	{
 		CHECK_ON_DEFINED(failed_ref);
 		if (!error_message)
@@ -7632,7 +7634,6 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 		}
 		RETURN_SEMA_ERROR(parent, error_message, type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 	}
-	Type *flat_max = type_flatten(max);
 	if (type_is_signed(flat_max))
 	{
 		if (!sema_check_untyped_promotion(context, left, true, flat_max, max)) return false;
@@ -8146,8 +8147,9 @@ static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, 
 	if (!overload) return true;
 
 	// 2. Check that both are integers or bools.
-	bool is_bool = left->type->canonical == type_bool;
-	bool is_bitstruct = left->type->canonical->type_kind == TYPE_BITSTRUCT;
+	Type *flat_left = type_flatten(left->type);
+	bool is_bool = flat_left == type_bool;
+	bool is_bitstruct = flat_left->type_kind == TYPE_BITSTRUCT;
 
 	if (!is_bool && !is_bitstruct && !expr_both_any_integer_or_integer_bool_vector(left, right))
 	{
