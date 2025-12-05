@@ -1,0 +1,65 @@
+// #target: linux-x64
+module test;
+import std;
+
+fn int main()
+{
+    Vec3f eye = {{2.0f, 2.0f, 2.0f}};
+    Vec3fs eye2 = {{2.0f, 2.0f, 2.0f}};
+    look_at(eye);
+    look_at2(eye2);
+    return 0;
+}
+fn void look_at(Vec3f eye) {}
+fn void look_at2(Vec3fs eye) {}
+
+struct Vec3f
+{
+	float[<3>] inner;
+}
+
+struct Vec3fs
+{
+	float[3] inner;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %eye = alloca %Vec3f, align 4
+  %eye2 = alloca %Vec3fs, align 4
+  %coerce = alloca %Vec3f, align 8
+  %coerce1 = alloca %Vec3fs, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %eye, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %eye2, ptr align 4 @.__const.1, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce, ptr align 4 %eye, i32 12, i1 false)
+  %lo = load <2 x float>, ptr %coerce, align 8
+  %ptradd = getelementptr inbounds i8, ptr %coerce, i64 8
+  %hi = load float, ptr %ptradd, align 8
+  call void @test.look_at(<2 x float> %lo, float %hi)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce1, ptr align 4 %eye2, i32 12, i1 false)
+  %lo2 = load <2 x float>, ptr %coerce1, align 8
+  %ptradd3 = getelementptr inbounds i8, ptr %coerce1, i64 8
+  %hi4 = load float, ptr %ptradd3, align 8
+  call void @test.look_at2(<2 x float> %lo2, float %hi4)
+  ret i32 0
+}
+
+define void @test.look_at(<2 x float> %0, float %1) #0 {
+entry:
+  %eye = alloca %Vec3f, align 8
+  store <2 x float> %0, ptr %eye, align 8
+  %ptradd = getelementptr inbounds i8, ptr %eye, i64 8
+  store float %1, ptr %ptradd, align 8
+  ret void
+}
+
+define void @test.look_at2(<2 x float> %0, float %1) #0 {
+entry:
+  %eye = alloca %Vec3fs, align 8
+  store <2 x float> %0, ptr %eye, align 8
+  %ptradd = getelementptr inbounds i8, ptr %eye, i64 8
+  store float %1, ptr %ptradd, align 8
+  ret void
+}

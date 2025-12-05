@@ -2,8 +2,12 @@
 
 
 ## 0.7.9 Change list
+
 ### Changes / improvements
+
 ### Fixes
+- Regression with npot vector in struct triggering an assert #2219.
+
 ### Stdlib changes
 
 ## 0.7.8 Change list

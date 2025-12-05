@@ -9,4 +9,4 @@ extern fn void foo(Vec4f) @cname("foo");
 
 /* #expect: test.ll
 
-declare void @foo(double, double) #0
+declare void @foo(<2 x float>, <2 x float>) #0
