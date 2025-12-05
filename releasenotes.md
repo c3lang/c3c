@@ -7,6 +7,7 @@
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
+- Casting bitstruct to wider base type should be single step #2616.
 
 ### Stdlib changes
 
