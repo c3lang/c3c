@@ -86,7 +86,7 @@ top_level_no_module
 top_level_decl
 	: opt_contract alias_declaration
 	| opt_contract attrdef_declaration
-	| opt_contract EXTERN func_definition /* to fix */
+	| opt_contract EXTERN func_definition
 	| opt_contract EXTERN const_declaration
 	| opt_contract EXTERN global_declaration
 	| opt_contract func_definition
@@ -104,7 +104,7 @@ top_level_decl
 	| enum_declaration
 	| ct_exec_stmt /* to fix */
 	| interface_declaration
-	| macro_declaration /* to fix */
+	| macro_declaration
 	;
 
 alias_declaration
@@ -120,6 +120,10 @@ alias_ident
 	| AT_IDENT opt_attributes '=' expr
 	;
 
+func_typedef
+	: FN optional_type fn_parameter_list
+	;
+
 attrdef_declaration
 	: ATTRDEF attrdef_def ';'
 	;
@@ -130,13 +134,14 @@ attrdef_def
 	;
 
 opt_attr_def_body
-	: '=' attr_comma_list opt_comma
+	: '=' attr_comma_list
 	| empty
 	;
 
 attr_comma_list
 	: attribute
 	| attr_comma_list ',' attribute
+	| attr_comma_list ','
 	;
 
 ct_assert_stmt
@@ -209,6 +214,27 @@ opt_interface_impl
 	: '(' interfaces ')'
 	| '(' ')'
 	| empty
+	;
+
+interfaces
+	: TYPE_IDENT opt_generic_parameters
+	| interfaces ',' TYPE_IDENT opt_generic_parameters
+	;
+
+opt_generic_parameters
+	: generic_expr
+	| empty
+	;
+
+generic_expr
+	: '{' generic_parameters '}'
+	;
+
+generic_parameters
+	: expr
+	| type
+	| generic_parameters ',' expr
+	| generic_parameters ',' type
 	;
 
 opt_inline
@@ -322,8 +348,8 @@ interface_declaration_name
 	;
 
 interface_body
-	: opt_contract func_definition_decl
-	| interface_body opt_contract func_definition_decl
+	: opt_contract func_definition_decl ';'
+	| interface_body opt_contract func_definition_decl ';'
 	;
 
 interface_parents
@@ -331,10 +357,160 @@ interface_parents
 	| interface_parents ',' TYPE_IDENT
 	;
 
+macro_declaration
+	: MACRO macro_header '(' macro_params ')' opt_attributes macro_func_body
+	;
+
+macro_params
+	: parameters
+	| parameters ';' trailing_block_param
+	| ';' trailing_block_param
+	| empty
+	;
+
+trailing_block_param
+	: AT_IDENT
+	| AT_IDENT '(' ')'
+	| AT_IDENT '(' parameters ')'
+	;
+
+macro_header
+	: func_header
+	| type '.' func_macro_name
+	| func_macro_name
+	;
+
+func_header
+	: optional_type type '.' func_macro_name
+	| optional_type func_macro_name
+	;
+
+func_macro_name
+	: IDENT
+	| AT_IDENT
+	;
+
+macro_func_body
+	: implies_body ';'
+	| compound_statement
+	;
+
+implies_body
+	: IMPLIES expr
+	;
+
+func_definition
+	: func_definition_decl ';'
+	| func_definition_decl macro_func_body
+	;
+
+func_definition_decl
+	: FN func_header fn_parameter_list opt_attributes
+	;
+
+fn_parameter_list
+	: '(' parameters ')'
+	| '(' ')'
+	;
+
+parameters
+	: parameter_default
+	| parameters ',' parameter_default
+	| parameters ','
+	;
+
+parameter_default
+	: parameter
+	| parameter '=' expr
+	| parameter '=' type
+	;
+
+parameter
+	: type IDENT opt_attributes
+	| type ELLIPSIS IDENT opt_attributes
+	| type ELLIPSIS CT_IDENT
+	| type CT_IDENT
+	| type ELLIPSIS opt_attributes
+	| type HASH_IDENT opt_attributes
+	| type '&' IDENT opt_attributes
+	| type opt_attributes
+	| '&' IDENT opt_attributes
+	| HASH_IDENT opt_attributes
+	| ELLIPSIS
+	| IDENT opt_attributes
+	| IDENT ELLIPSIS opt_attributes
+	| CT_IDENT
+	| CT_IDENT ELLIPSIS
+	;
+
+opt_attributes
+	: attribute_list
+	| empty
+	;
+
+attribute_list
+	: attribute
+	| attribute_list attribute
+	;
+
+attribute
+	: attribute_name
+	| attribute_name '(' attribute_param_list ')'
+	;
+
+attribute_name
+	: AT_IDENT
+	| AT_TYPE_IDENT
+	| path AT_TYPE_IDENT
+	;
+
+attribute_param_list
+	: attr_param
+	| attribute_param_list ',' attr_param
+	;
+
+attr_param
+	: attribute_operator_expr
+	| constant_expr
+	;
+
+attribute_operator_expr
+	: '[' ']'
+ 	| '&' '[' ']'
+	| '[' ']' '='
+	| '-'
+	| '+'
+	| '*'
+	| '/'
+	| '%'
+	| bit_op
+	| SHL_OP
+	| SHR_OP
+	| EQ_OP
+	| NE_OP
+	| ADD_ASSIGN
+	| SUB_ASSIGN
+	| MUL_ASSIGN
+	| DIV_ASSIGN
+	| MOD_ASSIGN
+	| AND_ASSIGN
+	| OR_ASSIGN
+	| XOR_ASSIGN
+	| SHR_ASSIGN
+	| SHL_ASSIGN
+	;
+
 path
 	: IDENT SCOPE
 	| path IDENT SCOPE
 	;
+
+compound_statement
+	: '{' opt_stmt_list '}'
+	;
+
+
+/* TODO */
 
 ident_expr
 	: CONST_IDENT
@@ -685,9 +861,7 @@ assignment_stmt_expr
 	| unary_stmt_expr assignment_op assignment_expr
 	;
 
-implies_body
-	: IMPLIES expr
-	;
+
 
 lambda_decl
 	: FN maybe_optional_type fn_parameter_list opt_attributes
@@ -752,10 +926,6 @@ call_arg_list
 	| opt_arg_list ';' parameters
 	;
 
-interfaces
-	: TYPE_IDENT opt_generic_parameters
-	| interfaces ',' TYPE_IDENT opt_generic_parameters
-	;
 
 
 
@@ -1146,9 +1316,7 @@ statement
 	| ';'
 	;
 
-compound_statement
-	: '{' opt_stmt_list '}'
-	;
+
 
 statement_list
 	: statement
@@ -1177,191 +1345,18 @@ optional_label
 	| empty
 	;
 
-
-
 ct_exec_list
 	: constant_expr
 	| ct_exec_list ',' constant_expr
+	| ct_exec_list ','
 	;
 
 /* to fix */
 ct_exec_stmt
 	: CT_EXEC '(' string_expr ')' opt_attributes ';'
-	| CT_EXEC '(' string_expr ',' '{' ct_exec_list opt_comma '}' ')' opt_attributes ';'
-	| CT_EXEC '(' string_expr ',' '{' ct_exec_list opt_comma '}' ',' constant_expr ')' opt_attributes ';'
+	| CT_EXEC '(' string_expr ',' '{' ct_exec_list '}' ')' opt_attributes ';'
+	| CT_EXEC '(' string_expr ',' '{' ct_exec_list '}' ',' constant_expr ')' opt_attributes ';'
 	;
-
-
-
-attribute_name
-	: AT_IDENT
-	| AT_TYPE_IDENT
-	| path AT_TYPE_IDENT
-	;
-
-attribute_operator_expr
-	: '&' '[' ']'
-	| '[' ']' '='
-	| '[' ']'
-	;
-
-attr_param
-	: attribute_operator_expr
-	| constant_expr
-	;
-
-attribute_param_list
-	: attr_param
-	| attribute_param_list ',' attr_param
-	;
-
-attribute
-	: attribute_name
-	| attribute_name '(' attribute_param_list ')'
-	;
-
-attribute_list
-	: attribute
-	| attribute_list attribute
-	;
-
-opt_attributes
-	: attribute_list
-	| empty
-	;
-
-trailing_block_param
-	: AT_IDENT
-	| AT_IDENT '(' ')'
-	| AT_IDENT '(' parameters ')'
-	;
-
-macro_params
-	: parameters
-	| parameters ';' trailing_block_param
-	| ';' trailing_block_param
-	| empty
-	;
-
-macro_func_body
-	: implies_body ';'
-	| compound_statement
-	;
-
-macro_declaration
-	: MACRO macro_header '(' macro_params ')' opt_attributes macro_func_body
-	;
-
-
-
-
-
-
-
-
-
-func_macro_name
-	: IDENT
-	| AT_IDENT
-	;
-
-func_header
-	: optional_type type '.' func_macro_name
-	| optional_type func_macro_name
-	;
-
-macro_header
-	: func_header
-	| type '.' func_macro_name
-	| func_macro_name
-	;
-
-fn_parameter_list
-	: '(' parameters ')'
-	| '(' ')'
-	;
-
-parameter_default
-	: parameter
-	| parameter '=' expr
-	| parameter '=' type
-	;
-
-parameters
-	: parameter_default
-	| parameters ',' parameter_default
-	| parameters ','
-	;
-
-parameter
-	: type IDENT opt_attributes
-	| type ELLIPSIS IDENT opt_attributes
-	| type ELLIPSIS CT_IDENT
-	| type CT_IDENT
-	| type ELLIPSIS opt_attributes
-	| type HASH_IDENT opt_attributes
-	| type '&' IDENT opt_attributes
-	| type opt_attributes
-	| '&' IDENT opt_attributes
-	| HASH_IDENT opt_attributes
-	| ELLIPSIS
-	| IDENT opt_attributes
-	| IDENT ELLIPSIS opt_attributes
-	| CT_IDENT
-	| CT_IDENT ELLIPSIS
-	;
-
-func_definition_decl
-	: FN func_header fn_parameter_list opt_attributes ';'
-	;
-
-func_definition
-	: func_definition_decl
-	| FN func_header fn_parameter_list opt_attributes macro_func_body
-	;
-
-
-func_typedef
-	: FN optional_type fn_parameter_list
-	;
-
-
-generic_parameters
-	: expr
-	| type
-	| generic_parameters ',' expr
-	| generic_parameters ',' type
-	;
-
-
-
-
-
-opt_comma
-	: ','
-	| empty
-	;
-
-
-
-generic_expr
-	: '{' generic_parameters '}'
-	;
-
-opt_generic_parameters
-	: generic_expr
-	| empty
-	;
-
-
-
-
-
-
-
-
-
-
 
 
 %%
