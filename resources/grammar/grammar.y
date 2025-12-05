@@ -86,26 +86,25 @@ top_level_no_module
 top_level_decl
 	: opt_contract alias_declaration
 	| opt_contract attrdef_declaration
-	| opt_contract EXTERN func_definition
+	| opt_contract EXTERN func_definition /* to fix */
 	| opt_contract EXTERN const_declaration
 	| opt_contract EXTERN global_declaration
 	| opt_contract func_definition
 	| ct_assert_stmt
 	| ct_error_stmt
 	| ct_echo_stmt
-
+	| ct_include_stmt
 	| import_decl
 	| const_declaration
 	| global_declaration
-	| ct_include_stmt
-	| ct_exec_stmt
-	| struct_declaration
 	| faultdef_declaration
-	| enum_declaration
-	| macro_declaration
-	| bitstruct_declaration
 	| typedef_declaration
+	| struct_declaration
+	| bitstruct_declaration
+	| enum_declaration
+	| ct_exec_stmt /* to fix */
 	| interface_declaration
+	| macro_declaration /* to fix */
 	;
 
 alias_declaration
@@ -154,28 +153,187 @@ ct_error_stmt
 	: CT_ERROR const_expr_list ';'
 	;
 
+ct_echo_stmt
+	: CT_ECHO constant_expr ';'
+	;
+
 ct_include_stmt
 	: CT_INCLUDE constant_expr opt_attributes ';'
+	;
+
+import_decl
+	: IMPORT import_paths ';'
+	;
+
+import_paths
+	: module_path opt_attributes
+	| import_paths ',' module_path opt_attributes
+	;
+
+const_declaration
+	: CONST CONST_IDENT opt_attributes '=' expr ';'
+	| CONST optional_type CONST_IDENT opt_attributes '=' expr ';'
+	| CONST optional_type CONST_IDENT opt_attributes ';'
+	;
+
+multi_declaration
+	: ',' IDENT
+	| multi_declaration ',' IDENT
+	;
+
+global_storage
+	: TLOCAL
+	| empty
+	;
+
+global_declaration
+	: global_storage optional_type IDENT opt_attributes ';'
+	| global_storage optional_type IDENT multi_declaration opt_attributes ';'
+	| global_storage optional_type IDENT opt_attributes '=' expr ';'
+	;
+
+faultdef_declaration
+	: FAULTDEF faults ';'
+	;
+
+faults
+	: CONST_IDENT opt_attributes
+	| faults ',' CONST_IDENT opt_attributes
+	;
+
+typedef_declaration
+	: TYPEDEF TYPE_IDENT opt_interface_impl opt_attributes '=' opt_inline type ';'
+	;
+
+opt_interface_impl
+	: '(' interfaces ')'
+	| '(' ')'
+	| empty
+	;
+
+opt_inline
+	: INLINE
+	| empty
+	;
+
+struct_declaration
+	: struct_or_union TYPE_IDENT opt_interface_impl opt_attributes struct_body
+	;
+
+struct_or_union
+	: STRUCT
+	| UNION
+	;
+
+struct_body
+	: '{' struct_declaration_list '}'
+	;
+
+struct_declaration_list
+	: opt_contract struct_member_decl
+	| struct_declaration_list opt_contract struct_member_decl
+	;
+
+struct_member_decl
+	: type member_list ';'
+	| struct_or_union IDENT opt_attributes struct_body
+	| struct_or_union opt_attributes struct_body
+	| BITSTRUCT IDENT ':' type_no_generics opt_attributes bitstruct_body
+	| BITSTRUCT ':' type_no_generics opt_attributes bitstruct_body
+	| INLINE type IDENT opt_attributes ';'
+	;
+
+member_list
+	: IDENT opt_attributes
+	| member_list ',' IDENT opt_attributes
+	;
+
+bitstruct_declaration
+	: BITSTRUCT TYPE_IDENT opt_interface_impl ':' type_no_generics opt_attributes bitstruct_body
+	;
+
+bitstruct_body
+	: '{' '}'
+	| '{' bitstruct_defs '}'
+	| '{' bitstruct_simple_defs '}'
+	;
+
+bitstruct_defs
+	: bitstruct_def
+	| bitstruct_defs bitstruct_def
+	;
+
+bitstruct_simple_defs
+	: base_type IDENT opt_attributes ';'
+	| bitstruct_simple_defs base_type IDENT opt_attributes ';'
+	;
+
+bitstruct_def
+	: base_type IDENT ':' constant_expr DOTDOT constant_expr opt_attributes ';'
+	| base_type IDENT ':' constant_expr opt_attributes ';'
+	;
+
+enum_declaration
+	: ENUM TYPE_IDENT opt_interface_impl enum_spec opt_attributes '{' enum_list '}'
+	| ENUM TYPE_IDENT opt_interface_impl opt_attributes '{' enum_list '}'
+	;
+
+enum_spec
+	: ':' base_type_no_generics opt_enum_params
+	| ':' INLINE base_type_no_generics opt_enum_params
+        | ':' CONST base_type_no_generics
+        | ':' CONST INLINE base_type_no_generics
+        | ':' '(' enum_params ')'
+	;
+
+opt_enum_params
+	: '(' enum_params ')'
+	| empty
+	;
+
+enum_params
+	: enum_param_decl
+	| enum_params ',' enum_param_decl
+	;
+
+enum_param_decl
+	: type IDENT opt_attributes
+	;
+
+enum_list
+	: enum_constant
+	| enum_list ',' enum_constant
+	| enum_list ','
+	;
+
+enum_constant
+	: CONST_IDENT opt_attributes
+	| CONST_IDENT opt_attributes '=' constant_expr
+	;
+
+interface_declaration
+	: INTERFACE interface_declaration_name '{' '}'
+	| INTERFACE interface_declaration_name '{' interface_body '}'
+	;
+
+interface_declaration_name
+	: TYPE_IDENT
+	| TYPE_IDENT ':' interface_parents
+	;
+
+interface_body
+	: opt_contract func_definition_decl
+	| interface_body opt_contract func_definition_decl
+	;
+
+interface_parents
+	: TYPE_IDENT
+	| interface_parents ',' TYPE_IDENT
 	;
 
 path
 	: IDENT SCOPE
 	| path IDENT SCOPE
-	;
-
-path_const
-	: path CONST_IDENT
-	| CONST_IDENT
-	;
-
-path_ident
-	: path IDENT
-	| IDENT
-	;
-
-path_at_ident
-	: path AT_IDENT
-	| AT_IDENT
 	;
 
 ident_expr
@@ -599,36 +757,9 @@ interfaces
 	| interfaces ',' TYPE_IDENT opt_generic_parameters
 	;
 
-opt_interface_impl
-	: '(' interfaces ')'
-	| '(' ')'
-	| empty
-	;
 
-enum_constants
-	: enum_constant
-	| enum_constants ',' enum_constant
-	;
 
-enum_list
-	: enum_constants
-	| enum_constants ','
-	;
 
-enum_constant
-	: CONST_IDENT opt_attributes
-	| CONST_IDENT opt_attributes '=' constant_expr
-	;
-
-identifier_list
-	: IDENT
-	| identifier_list ',' IDENT
-	;
-
-enum_param_decl
-	: type IDENT
-	| INLINE type IDENT
-	;
 
 base_type_no_user_defined
 	: VOID
@@ -1053,40 +1184,14 @@ ct_exec_list
 	| ct_exec_list ',' constant_expr
 	;
 
+/* to fix */
 ct_exec_stmt
 	: CT_EXEC '(' string_expr ')' opt_attributes ';'
 	| CT_EXEC '(' string_expr ',' '{' ct_exec_list opt_comma '}' ')' opt_attributes ';'
 	| CT_EXEC '(' string_expr ',' '{' ct_exec_list opt_comma '}' ',' constant_expr ')' opt_attributes ';'
 	;
 
-ct_echo_stmt
-	: CT_ECHO constant_expr ';'
-	;
 
-bitstruct_declaration
-	: BITSTRUCT TYPE_IDENT opt_interface_impl ':' type_no_generics opt_attributes bitstruct_body
-	;
-
-bitstruct_body
-	: '{' '}'
-	| '{' bitstruct_defs '}'
-	| '{' bitstruct_simple_defs '}'
-	;
-
-bitstruct_defs
-	: bitstruct_def
-	| bitstruct_defs bitstruct_def
-	;
-
-bitstruct_simple_defs
-	: base_type IDENT ';'
-	| bitstruct_simple_defs base_type IDENT ';'
-	;
-
-bitstruct_def
-	: base_type IDENT ':' constant_expr DOTDOT constant_expr ';'
-	| base_type IDENT ':' constant_expr ';'
-	;
 
 attribute_name
 	: AT_IDENT
@@ -1147,61 +1252,13 @@ macro_declaration
 	: MACRO macro_header '(' macro_params ')' opt_attributes macro_func_body
 	;
 
-struct_or_union
-	: STRUCT
-	| UNION
-	;
-
-struct_declaration
-	: struct_or_union TYPE_IDENT opt_interface_impl opt_attributes struct_body
-	;
-
-struct_body
-	: '{' struct_declaration_list '}'
-	;
-
-struct_declaration_list
-	: struct_member_decl
-	| struct_declaration_list struct_member_decl
-	;
-
-enum_params
-	: enum_param_decl
-	| enum_params ',' enum_param_decl
-	;
-
-struct_member_decl
-	: type identifier_list opt_attributes ';'
-	| struct_or_union IDENT opt_attributes struct_body
-	| struct_or_union opt_attributes struct_body
-	| BITSTRUCT ':' type_no_generics opt_attributes bitstruct_body
-	| BITSTRUCT IDENT ':' type_no_generics opt_attributes bitstruct_body
-	| INLINE type IDENT opt_attributes ';'
-	| INLINE type opt_attributes ';'
-	;
 
 
-enum_spec
-	: ':' base_type_no_generics '(' enum_params ')'
-	| ':' INLINE base_type_no_generics '(' enum_params ')'
-        | ':' base_type_no_generics
-        | ':' INLINE base_type_no_generics
-        | ':' '(' enum_params ')'
-	;
 
-enum_declaration
-	: ENUM TYPE_IDENT opt_interface_impl enum_spec opt_attributes '{' enum_list '}'
-	| ENUM TYPE_IDENT opt_interface_impl opt_attributes '{' enum_list '}'
-	;
 
-faults
-	: CONST_IDENT opt_attributes
-	| faults ',' CONST_IDENT opt_attributes
-	;
 
-faultdef_declaration
-	: FAULTDEF faults ';'
-	;
+
+
 
 func_macro_name
 	: IDENT
@@ -1263,20 +1320,11 @@ func_definition
 	| FN func_header fn_parameter_list opt_attributes macro_func_body
 	;
 
-const_declaration
-	: CONST CONST_IDENT opt_attributes '=' expr ';'
-	| CONST optional_type CONST_IDENT opt_attributes '=' expr ';'
-	| CONST optional_type CONST_IDENT opt_attributes ';'
-	;
 
 func_typedef
 	: FN optional_type fn_parameter_list
 	;
 
-opt_inline
-	: INLINE
-	| empty
-	;
 
 generic_parameters
 	: expr
@@ -1286,21 +1334,6 @@ generic_parameters
 	;
 
 
-multi_declaration
-	: ',' IDENT
-	| multi_declaration ',' IDENT
-	;
-
-global_storage
-	: TLOCAL
-	| empty
-	;
-
-global_declaration
-	: global_storage optional_type IDENT opt_attributes ';'
-	| global_storage optional_type IDENT multi_declaration opt_attributes ';'
-	| global_storage optional_type IDENT opt_attributes '=' expr ';'
-	;
 
 
 
@@ -1323,42 +1356,11 @@ opt_generic_parameters
 
 
 
-interface_body
-	: func_definition_decl
-	| interface_body func_definition_decl
-	;
-
-interface_declaration
-	: INTERFACE interface_declaration_name '{' '}'
-	| INTERFACE interface_declaration_name '{' interface_body '}'
-	;
-
-interface_parents
-	: TYPE_IDENT
-	| interface_parents ',' TYPE_IDENT
-	;
-
-interface_declaration_name
-	: TYPE_IDENT
-	| TYPE_IDENT ':' interface_parents
-	;
-
-typedef_declaration
-	: TYPEDEF TYPE_IDENT opt_interface_impl opt_attributes '=' opt_inline type ';'
-	;
 
 
 
 
 
-import_paths
-	: path_ident
-	| import_paths ',' path_ident
-	;
-
-import_decl
-	: IMPORT import_paths opt_attributes ';'
-	;
 
 
 
