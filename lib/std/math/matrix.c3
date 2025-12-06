@@ -13,6 +13,8 @@ alias matrix4_ortho  @builtin = matrix::ortho {double};
 alias matrix4f_ortho @builtin = matrix::ortho {float};
 alias matrix4_perspective  @builtin = matrix::perspective {double};
 alias matrix4f_perspective @builtin = matrix::perspective {float};
+alias matrix4_look_at @builtin = matrix::look_at {double};
+alias matrix4f_look_at @builtin = matrix::look_at {float};
 
 alias MATRIX2_IDENTITY  @builtin = matrix::IDENTITY2 {double};
 alias MATRIX2F_IDENTITY @builtin = matrix::IDENTITY2 {float};
@@ -149,9 +151,9 @@ fn Matrix4x4 Matrix4x4.mul(Matrix4x4* self, Matrix4x4 b) @operator(*)
 	};
 }
 
-fn Matrix2x2 Matrix2x2.component_mul(&self, Real s) => matrix_component_mul(self, s);
-fn Matrix3x3 Matrix3x3.component_mul(&self, Real s) => matrix_component_mul(self, s);
-fn Matrix4x4 Matrix4x4.component_mul(&self, Real s) => matrix_component_mul(self, s);
+fn Matrix2x2 Matrix2x2.component_mul(&self, Real s) @operator(*) => matrix_component_mul(self, s);
+fn Matrix3x3 Matrix3x3.component_mul(&self, Real s) @operator(*) => matrix_component_mul(self, s);
+fn Matrix4x4 Matrix4x4.component_mul(&self, Real s) @operator(*) => matrix_component_mul(self, s);
 
 fn Matrix2x2 Matrix2x2.add(&self, Matrix2x2 mat2) @operator(+) => matrix_add(self, mat2);
 fn Matrix3x3 Matrix3x3.add(&self, Matrix3x3 mat2) @operator(+) => matrix_add(self, mat2);
@@ -384,9 +386,9 @@ fn Matrix4x4 Matrix4x4.rotate_z(&self, Real r)
 fn Matrix4x4 Matrix4x4.rotate_y(&self, Real r)
 {
 	return self.mul({
-		math::cos(r), 0, -math::sin(r), 0,
+		math::cos(r), 0, math::sin(r), 0,
 		0, 1, 0, 0,
-		math::sin(r), 0, math::cos(r), 0,
+		-math::sin(r), 0, math::cos(r), 0,
 		0, 0, 0, 1,
 	});
 }
@@ -432,10 +434,10 @@ fn Matrix4x4 ortho(Real left, Real right, Real top, Real bottom, Real near, Real
 	Real height = top - bottom;
 	Real depth = far - near;
 	return {
-		2 / width, 0, 0, 0,
-		0, 2 / height, 0, 0,
-		0, 0, -2 / depth, 0,
-		-(right + left) / width, -(top + bottom) / height, -(far + near) / depth, 1
+		2 / width, 0, 0, -(right + left) / width,
+		0, 2 / height, 0, -(top + bottom) / height,
+		0, 0, -2 / depth, -(far + near) / depth,
+		0, 0, 0, 1
 	};
 }
 

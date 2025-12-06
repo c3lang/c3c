@@ -13,6 +13,36 @@ fn void test_mat4_translate()
 	assert(translated.m == mat.m);
 }
 
+fn void test_mat4_translate_v()
+{
+	Matrix4 mat = MATRIX4_IDENTITY.translate({1.0, 2.0, 3.0});
+	assert(math::round_to_decimals(mat * (double[<4>]){ 10.0, 11.0, 12.0, 1.0}, 4) == {11.0, 13.0, 15.0, 1.0});
+}
+
+fn void test_mat4_rotate()
+{
+	Matrix4 rot_x = MATRIX4_IDENTITY.rotate_x(math::deg_to_rad(90));
+	assert(math::round_to_decimals(rot_x * (double[<4>]){ 0.0, 1.0, 0.0, 1.0}, 4) == {0.0, 0.0, 1.0, 1.0});
+	Matrix4f rot_xf = MATRIX4F_IDENTITY.rotate_x((float) math::deg_to_rad(90));
+	assert(math::round_to_decimals(rot_xf * (float[<4>]){ 0.0, 1.0, 0.0, 1.0}, 4) == {0.0, 0.0, 1.0, 1.0});
+
+	Matrix4 rot_y = MATRIX4_IDENTITY.rotate_y(math::deg_to_rad(90));
+	assert(math::round_to_decimals(rot_y * (double[<4>]){ 1.0, 0.0, 0.0, 1.0}, 4) == {0.0, 0.0, -1.0, 1.0});
+	Matrix4f rot_yf = MATRIX4F_IDENTITY.rotate_y((float) math::deg_to_rad(90));
+	assert(math::round_to_decimals(rot_yf * (float[<4>]){ 1.0, 0.0, 0.0, 1.0}, 4) == {0.0, 0.0, -1.0, 1.0});
+
+	Matrix4 rot_z = MATRIX4_IDENTITY.rotate_z(math::deg_to_rad(90));
+	assert(math::round_to_decimals(rot_z * (double[<4>]){ 0.0, 1.0, 0.0, 1.0}, 4) == {-1.0, 0.0, 0.0, 1.0});
+	Matrix4f rot_zf = MATRIX4F_IDENTITY.rotate_z((float) math::deg_to_rad(90));
+	assert(math::round_to_decimals(rot_zf * (float[<4>]){ 0.0, 1.0, 0.0, 1.0}, 4) == {-1.0, 0.0, 0.0, 1.0});
+}
+
+fn void test_mat4_scale()
+{
+	Matrix4 scale = MATRIX4_IDENTITY.scale({2.0, 3.0, 4.0});
+	assert(math::round_to_decimals(scale * (double[<4>]){ 10.0, 11.0, 12.0, 1.0}, 4) == {20.0, 33.0, 48.0, 1.0});
+}
+
 fn void test_mat4_mul()
 {
 	Matrix4 mat = { 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8 };
@@ -22,6 +52,7 @@ fn void test_mat4_mul()
 	assert(calc.m == value.m);
 	assert(mat * mat2 == value);
 }
+
 fn void test_mat4_lookat()
 {
 	Matrix4 result = {
@@ -85,6 +116,51 @@ fn void test_mat4_perspective()
 
 	assert(math::round_to_decimals((double[<16>])result.m, 4) == math::round_to_decimals((double[<16>])perspective.m, 4));
 	assert(math::round_to_decimals((float[<16>])result_f.m, 4) == math::round_to_decimals((float[<16>])perspective_f.m, 4));
+
+	// Test the corners of the view frustum
+	double top = math::tan(math::deg_to_rad(45) / 2);
+	double right = math::tan(math::deg_to_rad(45) / 2) * 1.3;
+	
+	assert(math::round_to_decimals(perspective * (double[<4>]) {-right * 0.1, -top * 0.1, -0.1, 1}, 4) == {-0.1, -0.1, -0.1, 0.1});
+	assert(math::round_to_decimals(perspective * (double[<4>]) { right * 0.1, -top * 0.1, -0.1, 1}, 4) == { 0.1, -0.1, -0.1, 0.1});
+	assert(math::round_to_decimals(perspective * (double[<4>]) {-right * 0.1,  top * 0.1, -0.1, 1}, 4) == {-0.1,  0.1, -0.1, 0.1});
+	assert(math::round_to_decimals(perspective * (double[<4>]) { right * 0.1,  top * 0.1, -0.1, 1}, 4) == { 0.1,  0.1, -0.1, 0.1});
+	assert(math::round_to_decimals(perspective * (double[<4>]) {-right * 1000, -top * 1000, -1000, 1}, 4) == {-1000, -1000, 1000, 1000});
+	assert(math::round_to_decimals(perspective * (double[<4>]) { right * 1000, -top * 1000, -1000, 1}, 4) == { 1000, -1000, 1000, 1000});
+	assert(math::round_to_decimals(perspective * (double[<4>]) {-right * 1000,  top * 1000, -1000, 1}, 4) == {-1000,  1000, 1000, 1000});
+	assert(math::round_to_decimals(perspective * (double[<4>]) { right * 1000,  top * 1000, -1000, 1}, 4) == { 1000,  1000, 1000, 1000});
+}
+
+fn void test_mat4_ortho()
+{
+	Matrix4 result = {
+		0.0025, 0, 0, -0.5,
+		0, 0.005, 0, 0,
+		0, 0, -0.05, -0.5,
+		0, 0, 0, 1
+	};
+	Matrix4f result_f = {
+		0.0025, 0, 0, -0.5,
+		0, 0.005, 0, 0,
+		0, 0, -0.05, -0.5,
+		0, 0, 0, 1
+	};
+
+	Matrix4 ortho = matrix4_ortho(-200, 600, 200, -200, -10, 30);
+	Matrix4f ortho_f = matrix4f_ortho(-200, 600, 200, -200, -10, 30);
+	
+	assert(math::round_to_decimals((double[<16>])result.m, 4) == math::round_to_decimals((double[<16>])ortho.m, 4));
+	assert(math::round_to_decimals((double[<16>])result_f.m, 4) == math::round_to_decimals((double[<16>])ortho_f.m, 4));
+
+	// Test the corners of the view space
+	assert(math::round_to_decimals(ortho * (double[<4>]) {-200, -200,  10, 1}, 4) == {-1.0, -1.0, -1.0, 1.0});
+	assert(math::round_to_decimals(ortho * (double[<4>]) { 600, -200,  10, 1}, 4) == { 1.0, -1.0, -1.0, 1.0});
+	assert(math::round_to_decimals(ortho * (double[<4>]) {-200,  200,  10, 1}, 4) == {-1.0,  1.0, -1.0, 1.0});
+	assert(math::round_to_decimals(ortho * (double[<4>]) { 600,  200,  10, 1}, 4) == { 1.0,  1.0, -1.0, 1.0});
+	assert(math::round_to_decimals(ortho * (double[<4>]) {-200, -200, -30, 1}, 4) == {-1.0, -1.0,  1.0, 1.0});
+	assert(math::round_to_decimals(ortho * (double[<4>]) { 600, -200, -30, 1}, 4) == { 1.0, -1.0,  1.0, 1.0});
+	assert(math::round_to_decimals(ortho * (double[<4>]) {-200,  200, -30, 1}, 4) == {-1.0,  1.0,  1.0, 1.0});
+	assert(math::round_to_decimals(ortho * (double[<4>]) { 600,  200, -30, 1}, 4) == { 1.0,  1.0,  1.0, 1.0});
 }
 
 fn void test_mat3()
