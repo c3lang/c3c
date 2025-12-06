@@ -1,5 +1,7 @@
 module std::thread::os @if(env::WIN32);
 import std::os::win32, std::time;
+import std::thread;
+
 
 typedef NativeThread = inline Win32_HANDLE;
 
@@ -61,7 +63,7 @@ fn void? NativeMutex.init(&mtx, MutexType type)
  @require mtx.owner_thread != win32::getCurrentThreadId() : "Mutex was not unlocked before destroying it"
  @ensure !mtx.initialized
 *>
-fn void? NativeMutex.destroy(&mtx)
+fn void NativeMutex.destroy(&mtx)
 {
 	*mtx = {};
 }
@@ -69,12 +71,12 @@ fn void? NativeMutex.destroy(&mtx)
 <*
  @require mtx.initialized : "Mutex was not initialized"
 *>
-fn void? NativeMutex.lock(&mtx)
+fn void NativeMutex.lock(&mtx)
 {
 	Win32_DWORD current_thread = win32::getCurrentThreadId();
 	if (mtx.owner_thread == current_thread)
 	{
-		if (!mtx.recursive) return thread::LOCK_FAILED?;
+		assert(mtx.recursive, "Recursive locking with non-recursive mutex");
 		mtx.locks++;
 		return;
 	}
@@ -106,12 +108,10 @@ fn bool NativeMutex.try_lock(&mtx)
 
 <*
  @require mtx.initialized : "Mutex was not initialized"
+ @require mtx.owner_thread == win32::getCurrentThreadId() : "Mutex was not locked by the current thread"
 *>
-fn void? NativeMutex.unlock(&mtx)
+fn void NativeMutex.unlock(&mtx)
 {
-	$if env::COMPILER_SAFE_MODE:
-		if (mtx.owner_thread != win32::getCurrentThreadId()) return thread::UNLOCK_FAILED?; // Mutex was not locked by the current thread
-	$endif
 	if (--mtx.locks == 0)
 	{
 		mtx.owner_thread = 0;
@@ -137,7 +137,7 @@ fn void? NativeTimedMutex.init(&mtx, MutexType type)
  @require mtx.owner_thread != win32::getCurrentThreadId() : "Mutex was not unlocked before destroying it"
  @ensure !mtx.initialized
 *>
-fn void? NativeTimedMutex.destroy(&mtx)
+fn void NativeTimedMutex.destroy(&mtx)
 {
 	*mtx = {};
 }
@@ -146,22 +146,20 @@ fn void? NativeTimedMutex.wait_cond_var(&mtx, uint ms) @local
 {
 	if (!win32::sleepConditionVariableSRW(&mtx.cond_var, &mtx.srw_lock, ms, 0))
 	{
-		if (win32::getLastError() != win32::ERROR_TIMEOUT)
-		{
-			return thread::WAIT_FAILED?;
-		}
+		Win32_DWORD err = win32::getLastError();
+		assert(err == win32::ERROR_TIMEOUT, "Unexpected error waiting for condvar %d", err);
 	}
 }
 
 <*
  @require mtx.initialized : "Mutex was not initialized"
 *>
-fn void? NativeTimedMutex.lock(&mtx)
+fn void NativeTimedMutex.lock(&mtx)
 {
 	Win32_DWORD current_thread = win32::getCurrentThreadId();
 	if (mtx.owner_thread == current_thread)
 	{
-		if (!mtx.recursive) return thread::LOCK_FAILED?;
+		assert(mtx.recursive, "Tried to lock a non-recursive mutex");
 		mtx.locks++;
 		return;
 	}
@@ -171,7 +169,7 @@ fn void? NativeTimedMutex.lock(&mtx)
 
 	while (mtx.locks)
 	{
-		mtx.wait_cond_var(win32::INFINITE)!;
+		mtx.wait_cond_var(win32::INFINITE)!!;
 	}
 	mtx.locks = 1;
 	mtx.owner_thread = current_thread;
@@ -179,13 +177,14 @@ fn void? NativeTimedMutex.lock(&mtx)
 
 <*
  @require mtx.initialized : "Mutex was not initialized"
+ @return? thread::WAIT_TIMEOUT
 *>
 fn void? NativeTimedMutex.lock_timeout(&mtx, ulong ms)
 {
 	Win32_DWORD current_thread = win32::getCurrentThreadId();
 	if (mtx.owner_thread == current_thread)
 	{
-		if (!mtx.recursive) return thread::LOCK_FAILED?;
+		assert(mtx.recursive, "The mutex was not recursive, but was locked in the same thread more than once.");
 		mtx.locks++;
 		return;
 	}
@@ -216,7 +215,7 @@ fn void? NativeTimedMutex.lock_timeout(&mtx, ulong ms)
 			return;
 		}
 	}
-	return thread::WAIT_FAILED?;
+	return thread::WAIT_TIMEOUT~;
 }
 
 <*
@@ -244,14 +243,14 @@ fn bool NativeTimedMutex.try_lock(&mtx)
 <*
  @require mtx.initialized : "Mutex was not initialized"
 *>
-fn void? NativeTimedMutex.unlock(&mtx)
+fn void NativeTimedMutex.unlock(&mtx)
 {
 	win32::acquireSRWLockExclusive(&mtx.srw_lock);
 	$if env::COMPILER_SAFE_MODE:
 		if (mtx.owner_thread != win32::getCurrentThreadId()) 
 		{
 			win32::releaseSRWLockExclusive(&mtx.srw_lock);
-			return thread::UNLOCK_FAILED?; // Mutex was not locked by the current thread
+			abort("Mutex was not locked by the current thread");
 		}
 	$endif
 
@@ -270,25 +269,29 @@ fn void? NativeConditionVariable.init(&cond)
 	cond.cond_var = {};
 }
 
-fn void? NativeConditionVariable.destroy(&cond) @maydiscard
+fn void NativeConditionVariable.destroy(&cond)
 {
 	// Nothing to do
 }
 
-fn void? NativeConditionVariable.signal(&cond)
+fn void NativeConditionVariable.signal(&cond)
 {
 	win32::wakeConditionVariable(&cond.cond_var);
 }
 
-fn void? NativeConditionVariable.broadcast(&cond)
+fn void NativeConditionVariable.broadcast(&cond)
 {
 	win32::wakeAllConditionVariable(&cond.cond_var);
 }
 
-fn void? timedwait(NativeConditionVariable* cond, NativeMutex* mtx, uint timeout) @private
+<*
+ @return "true if wait succeeded, false if it timed out"
+*>
+fn bool timedwait(NativeConditionVariable* cond, NativeMutex* mtx, uint timeout) @private
 {
 	Win32_DWORD owner_thread = mtx.owner_thread;
-	if (mtx.locks != 1 || owner_thread != win32::getCurrentThreadId()) return thread::WAIT_FAILED?;
+	assert(mtx.locks == 1, "Expected lock count = 1, was %d", mtx.locks);
+	assert(owner_thread == win32::getCurrentThreadId(), "Timed wait on other thread");
 	mtx.owner_thread = 0;
 	mtx.locks = 0;
 	defer
@@ -300,45 +303,47 @@ fn void? timedwait(NativeConditionVariable* cond, NativeMutex* mtx, uint timeout
 	{
 		if (win32::getLastError() == win32::ERROR_TIMEOUT)
 		{
-			return thread::WAIT_TIMEOUT?;
+			return false;
 		}
-		return thread::WAIT_FAILED?;
+		abort("Unexpected error sleepConditionVariableSRW: %d", win32::getLastError());
 	}
+	return true;
 }
 
 <*
  @require mtx.initialized : "Mutex was not initialized"
 *>
-fn void? NativeConditionVariable.wait(&cond, NativeMutex* mtx) @inline
+fn void NativeConditionVariable.wait(&cond, NativeMutex* mtx) @inline
 {
-	return timedwait(cond, mtx, win32::INFINITE) @inline;
+	bool res = timedwait(cond, mtx, win32::INFINITE) @inline;
+	assert(res, "Timed wait exited despite inifite time");
 }
 
 <*
  @require mtx.initialized : "Mutex was not initialized"
-  @return? thread::WAIT_TIMEOUT, thread::WAIT_FAILED
+  @return? thread::WAIT_TIMEOUT
 *>
 fn void? NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms) @inline
 {
 	if (ms > uint.max) ms = uint.max;
-	return timedwait(cond, mtx, (uint)ms) @inline;
+	if (!timedwait(cond, mtx, (uint)ms) @inline) return thread::WAIT_TIMEOUT~;
 }
 
 <*
  @require mtx.initialized : "Mutex was not initialized"
-  @return? thread::WAIT_TIMEOUT, thread::WAIT_FAILED
+  @return? thread::WAIT_TIMEOUT
 *>
 fn void? NativeConditionVariable.wait_timeout_duration(&cond, NativeMutex* mtx, Duration duration) @inline
 {
-	if (duration < time::DURATION_ZERO) return thread::WAIT_TIMEOUT?;
+	if (duration < time::DURATION_ZERO) return thread::WAIT_TIMEOUT~;
 	long ms = duration.to_ms();
 	if (ms > uint.max) ms = uint.max;
-	return timedwait(cond, mtx, (uint)ms) @inline;
+	if (!timedwait(cond, mtx, (uint)ms) @inline) return thread::WAIT_TIMEOUT~;
 }
 
 <*
  @require mtx.initialized : "Mutex was not initialized"
-  @return? thread::WAIT_TIMEOUT, thread::WAIT_FAILED
+ @return? thread::WAIT_TIMEOUT
 *>
 fn void? NativeConditionVariable.wait_until(&cond, NativeMutex* mtx, Time time) @inline
 {
@@ -351,10 +356,11 @@ fn void? NativeThread.create(&thread, ThreadFn func, void* args)
 	if (!(*thread = (NativeThread)win32::createThread(null, 0, func, args, 0, null))) return thread::INIT_FAILED?;
 }
 
-fn void? NativeThread.detach(thread) @inline
+fn void NativeThread.detach(thread) @inline
 {
-	if (!win32::closeHandle(thread)) return thread::DETACH_FAILED?;
+	if (!win32::closeHandle(thread)) abort("Detaching thread failed");
 }
+
 
 
 fn void native_thread_exit(int result) @inline
@@ -377,11 +383,14 @@ fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 	win32::initOnceExecuteOnce(&flag.init_once, callback, func, null);
 }
 
-fn int? NativeThread.join(thread)
+<*
+ @return "the exit value of the thread"
+*>
+fn int NativeThread.join(thread)
 {
 	uint res;
-	if (win32::waitForSingleObject(thread, win32::INFINITE) == win32::WAIT_FAILED) return thread::JOIN_FAILED?;
-	if (!win32::getExitCodeThread(thread, &res)) return thread::JOIN_FAILED?;
+	if (win32::waitForSingleObject(thread, win32::INFINITE) == win32::WAIT_FAILED) unreachable("Failed to join thread, received wait failed.");
+	if (!win32::getExitCodeThread(thread, &res)) unreachable("Failed to retrieve exit code when joining.");
 	defer win32::closeHandle(thread);
 	return res;
 }

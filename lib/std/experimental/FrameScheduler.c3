@@ -43,7 +43,7 @@ macro void FrameScheduler.@destroy(&self; @destruct(Event e))
 	self.events.free();
 	self.pending_events.free();
 	self.delayed_events.free();
-	(void)self.mtx.destroy();
+	self.mtx.destroy();
 }
 
 fn void FrameScheduler.queue_delayed_event(&self, Event event, Duration delay)

@@ -148,10 +148,11 @@ fn void call_log_internal(LogPriority prio, LogCategory category, String file, S
 	LogPriority priority = mem::@atomic_load(config_priorities[category], UNORDERED);
 	if (priority > prio) return;
 	init();
-	bool locked = logger_mutex.is_initialized() && @ok(logger_mutex.lock());
+	bool locked = logger_mutex.is_initialized();
+	if (locked) logger_mutex.lock();
 	Logger logger = current_logger;
 	LogFn logfn = current_logfn;
-	defer if (locked) (void)logger_mutex.unlock();
+	defer if (locked) logger_mutex.unlock();
 	logfn(logger.ptr, prio, category, current_tag, file, func, line, fmt, args);
 }
 

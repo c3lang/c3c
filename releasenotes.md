@@ -13,6 +13,14 @@
 - Hex escapes like `"\x80"` would be incorrectly lowered. #2623
 
 ### Stdlib changes
+- Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
+- Return of Thread/Mutex/CondVar `destroy()` is now "@maydiscard" and should be ignored. It will return void in 0.8.0.
+- Return of Mutex `unlock()` and `lock()` is now "@maydiscard" and should be ignored. They will return void in 0.8.0.
+- Return of ConditionVariable `signal()` `broadcast()` and `wait()` are now "@maydiscard". They will return void in 0.8.0.
+- Return of Thread `detatch()` is now "@maydiscard". It will return void in 0.8.0.
+- Buffered/UnbufferedChannel, and both ThreadPools have `@maydiscard` on a set of functions. They will retunr void in 0.8.0.
+- Pthread bindings correctly return Errno instead of CInt.
+- Return of Thread `join()` is now "@maydiscard".
 
 ## 0.7.8 Change list
 
@@ -90,7 +98,7 @@
 - Allow `..` ranges to use "a..a-1" in order to express zero length.
 - Disallow aliasing of `@local` symbols with a higher visibility in the alias.
 - Add `--max-macro-iterations` to set macro iteration limit.
-- Improved generic inference in initializers #2541. 
+- Improved generic inference in initializers #2541.
 - "Maybe-deref" subscripting `foo.[i] += 1` #2540.
 - ABI change for vectors: store and pass them as arrays #2542.
 - Add @simd and @align attributes to typedef #2543.
@@ -132,7 +140,7 @@
 - Unify generic and regular module namespace.
 - `env::PROJECT_VERSION` now returns the version in project.json.
 - Comparing slices and arrays of user-defined types that implement == operator now works #2486.
-- Add 'loop-vectorize', 'slp-vectorize', 'unroll-loops' and 'merge-functions' optimization flags #2491. 
+- Add 'loop-vectorize', 'slp-vectorize', 'unroll-loops' and 'merge-functions' optimization flags #2491.
 - Add exec timings to -vv output #2490.
 - Support #! as a comment on the first line only.
 - Add `+++=` operator.
@@ -206,7 +214,7 @@
 - `@assignable_to` is deprecated in favour of `$define`
 - Add `linklib-dir` to c3l-libraries to place their linked libraries in. Defaults to `linked-libs`
 - If the `os-arch` linked library doesn't exist, try with `os` for c3l libs.
-- A file with an inferred module may not contain additional other modules. 
+- A file with an inferred module may not contain additional other modules.
 - Update error message for missing body after if/for/etc #2289.
 - `@is_const` is deprecated in favour of directly using `$defined`.
 - `@is_lvalue(#value)` is deprecated in favour of directly using `$defined`.

@@ -70,9 +70,9 @@ fn void LinkedBlockingQueue.free(&self)
 		}
 	};
 
-	(void)self.lock.destroy();
-	(void)self.not_empty.destroy();
-	(void)self.not_full.destroy();
+	self.lock.destroy();
+	self.not_empty.destroy();
+	self.not_full.destroy();
 }
 
 fn void LinkedBlockingQueue.link_entry(&self, QueueEntry* entry) @private 
@@ -126,7 +126,7 @@ fn void LinkedBlockingQueue.push(&self, Value value)
 	{
 		while (self.capacity > 0 && self.count >= self.capacity)
 		{
-			self.not_full.wait(&self.lock)!!;
+			self.not_full.wait(&self.lock);
 		}
 
 		QueueEntry* entry = allocator::new(self.allocator, QueueEntry, {
@@ -137,7 +137,7 @@ fn void LinkedBlockingQueue.push(&self, Value value)
 		self.link_entry(entry);
 
 		// Signal that queue is no longer empty
-		self.not_empty.signal()!!;
+		self.not_empty.signal();
 	};
 }
 
@@ -153,7 +153,7 @@ fn Value LinkedBlockingQueue.poll(&self)
 	{
 		while (self.count == 0)
 		{
-			self.not_empty.wait(&self.lock)!!;
+			self.not_empty.wait(&self.lock);
 		}
 
 		QueueEntry* entry = self.unlink_head();
@@ -161,7 +161,7 @@ fn Value LinkedBlockingQueue.poll(&self)
 		allocator::free(self.allocator, entry);
 		if (self.capacity > 0)
 		{
-			self.not_full.signal()!!;
+			self.not_full.signal();
 		}
 		return value;
 	};
@@ -186,7 +186,7 @@ fn Value? LinkedBlockingQueue.pop(&self)
 
 		if (self.capacity > 0)
 		{
-			self.not_full.signal()!!;
+			self.not_full.signal();
 		}
 		return value;
 	};
@@ -224,7 +224,7 @@ fn Value? LinkedBlockingQueue.poll_timeout(&self, Duration timeout)
 		// Must signal not_full after removing an item
 		if (self.capacity > 0)
 		{
-			self.not_full.signal()!!;
+			self.not_full.signal();
 		}
 		return value;
 	};
@@ -274,7 +274,7 @@ fn void? LinkedBlockingQueue.try_push(&self, Value value)
 			.prev = null
 		});
 		self.link_entry(entry);
-		self.not_empty.signal()!!;
+		self.not_empty.signal();
 	};
 }
 
@@ -308,7 +308,7 @@ fn void? LinkedBlockingQueue.push_timeout(&self, Value value, Duration timeout)
 			.prev = null
 		});
 		self.link_entry(entry);
-		self.not_empty.signal()!!;
+		self.not_empty.signal();
 	};
 }
 
