@@ -224,11 +224,21 @@ fn bool NativeThread.equals(thread, NativeThread other)
 	return (bool)posix::pthread_equal(thread.pthread, other.pthread);
 }
 
-fn int? NativeThread.join(thread)
+<*
+ @return "the return value of the thread"
+ @return? thread::THREAD_NOT_FOUND : "If the thread was not running"
+*>
+fn int? NativeThread.join(thread) @maydiscard
 {
 	void *pres;
-	if (posix::pthread_join(thread.pthread, &pres)) return thread::JOIN_FAILED?;
-	return (int)(iptr)pres;
+	switch (posix::pthread_join(thread.pthread, &pres))
+	{
+		case errno::OK: return (int)(iptr)pres;
+		case errno::EINVAL: unreachable("Thread is not joinable.");
+		case errno::EDEADLK: unreachable("Thread join from current thread.");
+		case errno::ESRCH: return thread::THREAD_NOT_FOUND~;
+		default: unreachable("Thread join returned unexpected result");
+	}
 }
 
 fn void NativeOnceFlag.call_once(&flag, OnceFn func)

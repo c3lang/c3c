@@ -21,10 +21,9 @@ alias ThreadFn = fn int(void* arg);
 
 faultdef
 	INIT_FAILED,
-
 	LOCK_TIMEOUT,
 	WAIT_TIMEOUT,
-	JOIN_FAILED,
+	THREAD_NOT_FOUND,
 	INTERRUPTED,
 	CHANNEL_CLOSED;
 
@@ -33,6 +32,7 @@ faultdef
 	UNLOCK_FAILED @deprecated,
 	DESTROY_FAILED @deprecated,
 	SIGNAL_FAILED @deprecated,
+	JOIN_FAILED @deprecated,
 	LOCK_FAILED @deprecated,
 	WAIT_FAILED @deprecated;
 
@@ -104,7 +104,11 @@ macro void? Thread.create(&thread, ThreadFn thread_fn, void* arg)
 }
 
 macro void? Thread.detach(thread) @maydiscard => NativeThread.detach(thread);
-macro int? Thread.join(thread) => NativeThread.join(thread);
+
+<*
+	@return? THREAD_NOT_FOUND : "If the thread cannot be found."
+*>
+macro int? Thread.join(thread) @maydiscard => NativeThread.join(thread);
 macro bool Thread.equals(thread, Thread other) => NativeThread.equals(thread, other);
 
 macro void OnceFlag.call(&flag, OnceFn func) => NativeOnceFlag.call_once((NativeOnceFlag*)flag, func);

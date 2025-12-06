@@ -20,6 +20,7 @@
 - Return of Thread `detatch()` is now "@maydiscard". It will return void in 0.8.0.
 - Buffered/UnbufferedChannel, and both ThreadPools have `@maydiscard` on a set of functions. They will retunr void in 0.8.0.
 - Pthread bindings correctly return Errno instead of CInt.
+- Return of Thread `join()` is now "@maydiscard".
 
 ## 0.7.8 Change list
 

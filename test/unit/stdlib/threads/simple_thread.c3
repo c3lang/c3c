@@ -59,15 +59,30 @@ fn void testrun_mutex_try() @test
 	m.unlock();
 }
 
+
+int val_mutex = 0;
+
 fn void testrun_mutex_timeout() @test
 {
 	TimedMutex m;
 	m.init()!!;
-	m.lock()!!;
-	if (try m.lock_timeout(20))
-	{
-		unreachable("lock_timeout should fail");
-	}
+	m.lock();
+	Thread t;
+	val_mutex = 0;
+	t.create(fn int(void* arg) {
+		TimedMutex* m = arg;
+		if (try m.lock_timeout(20))
+        {
+            val_mutex = 1;
+		}
+		else
+		{
+			val_mutex = 2;
+		}
+		return 0;
+	}, &m)!!;
+	t.join();
+	assert(val_mutex == 2);
 	m.unlock();
 	m.lock_timeout(20)!!;
 	m.unlock();

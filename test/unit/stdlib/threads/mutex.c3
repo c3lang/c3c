@@ -25,10 +25,7 @@ fn void ensure_owner_checks() @test
         t.create((ThreadFn)&own_mutex, &m)!!;
     }
 
-    foreach(&t : threads)
-    {
-        t.join()!!;
-    }
+    foreach(&t : threads) t.join();
 
     own_mutex(&m);
 }
@@ -79,10 +76,7 @@ fn void shared_mutex() @test
     }
 
     m.unlock();
-    foreach(&t : threads)
-    {
-        t.join()!!;
-    }
+    foreach(&t : threads) t.join();
     assert(v == 0);
 }
 
@@ -115,10 +109,7 @@ fn void test_recursive_mutex() @test
         t.create((ThreadFn)&acquire_recursively, &m)!!;
     }
 
-    foreach(&t : threads)
-    {
-        t.join()!!;
-    }
+    foreach(&t : threads) t.join();
 
     return acquire_recursively(&m);
 }

@@ -52,7 +52,7 @@ fn void push_pop_unbuffered_with_locks() @test
 	defer c.destroy();
 
 	Thread thread;
-	defer thread.join()!!;
+	defer thread.join();
 
 	thread.create(fn int(void* arg)
 	{
@@ -168,7 +168,7 @@ fn void reading_from_empty_buffered_chan_aborted_by_close() @test
 	defer c.destroy();
 
 	Thread thread;
-	defer thread.join()!!;
+	defer thread.join();
 
 	thread.create(fn int(void* arg)
 	{
@@ -194,7 +194,7 @@ fn void reading_from_unbuffered_chan_aborted_by_close() @test
 	defer c.destroy();
 
 	Thread thread;
-	defer thread.join()!!;
+	defer thread.join();
 
 	thread.create(fn int(void* arg)
 	{
@@ -222,7 +222,7 @@ fn void sending_to_full_buffered_chan_aborted_by_close() @test
 	c.push(1)!!;
 
 	Thread thread;
-	defer thread.join()!!;
+	defer thread.join();
 
 	thread.create(fn int(void* arg)
 	{
@@ -248,7 +248,7 @@ fn void sending_to_unbuffered_chan_aborted_by_close() @test
 	defer c.destroy();
 
 	Thread thread;
-	defer thread.join()!!;
+	defer thread.join();
 
 	thread.create(fn int(void* arg)
 	{
@@ -274,7 +274,7 @@ fn void multiple_actions_unbuffered() @test
 	defer c.destroy();
 
 	Thread thread;
-	defer thread.join()!!;
+	defer thread.join();
 
 	thread.create(fn int(void* arg)
 	{
@@ -308,7 +308,7 @@ fn void multiple_actions_buffered() @test
 	defer c.destroy();
 
 	Thread thread;
-	defer thread.join()!!;
+	defer thread.join();
 
 	thread.create(fn int(void* arg)
 	{
