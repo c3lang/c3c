@@ -2120,6 +2120,11 @@ INLINE bool link_libc(void)
 	return compiler.build.link_libc != LINK_LIBC_OFF;
 }
 
+INLINE bool custom_libc(void)
+{
+	return compiler.build.custom_libc == CUSTOM_LIBC_ON;
+}
+
 INLINE bool strip_unused(void)
 {
 	return compiler.build.strip_unused != STRIP_UNUSED_OFF;

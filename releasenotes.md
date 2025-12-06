@@ -4,6 +4,7 @@
 ## 0.7.9 Change list
 
 ### Changes / improvements
+- Add `--custom-libc` option for custom libc implementations.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.

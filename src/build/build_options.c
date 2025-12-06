@@ -167,6 +167,7 @@ static void usage(bool full)
 		PRINTF("");
 		print_opt("--use-stdlib=<yes|no>", "Include the standard library (default: yes).");
 		print_opt("--link-libc=<yes|no>", "Link libc other default libraries (default: yes).");
+		print_opt("--custom-libc=<yes|no>", "Set to true if a custom libc implementation is provided (default: no).");
 		print_opt("--emit-stdlib=<yes|no>", "Output files for the standard library. (default: yes)");
 		print_opt("--emit-only <file>", "Output only the file matching <file>.");
 		print_opt("--panicfn <name>", "Override the panic function name.");
@@ -948,6 +949,11 @@ static void parse_option(BuildOptions *options)
 				options->emit_stdlib = parse_opt_select(EmitStdlib, argopt, on_off);
 				return;
 			}
+			if ((argopt = match_argopt("custom-libc")))
+			{
+				options->custom_libc = parse_opt_select(CustomLibc, argopt, on_off);
+				return;
+			}
 			if (match_longopt("emit-only"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --emit-only expects an output name, e.g. 'foo', to only output 'foo.o'.");
@@ -1489,6 +1495,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.win.crt_linking = WIN_CRT_DEFAULT,
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
+		.custom_libc = CUSTOM_LIBC_NOT_SET,
 		.use_stdlib = USE_STDLIB_NOT_SET,
 		.arch_os_target_override = ARCH_OS_TARGET_DEFAULT,
 		.linker_type = LINKER_TYPE_NOT_SET,

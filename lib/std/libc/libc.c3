@@ -258,7 +258,7 @@ macro CFile stdin() { return (CFile*)(uptr)STDIN_FD; }
 macro CFile stdout() { return (CFile*)(uptr)STDOUT_FD; }
 macro CFile stderr() { return (CFile*)(uptr)STDERR_FD; }
 
-module libc @if(!env::LIBC);
+module libc @if(env::NO_LIBC);
 import std::core::mem;
 
 
