@@ -290,7 +290,7 @@ fn void NativeConditionVariable.broadcast(&cond)
 fn bool timedwait(NativeConditionVariable* cond, NativeMutex* mtx, uint timeout) @private
 {
 	Win32_DWORD owner_thread = mtx.owner_thread;
-	assert(mtx.locks != 1, "Expected 1 lock, was %d", mtx.locks);
+	assert(mtx.locks == 1, "Expected lock count = 1, was %d", mtx.locks);
 	assert(owner_thread == win32::getCurrentThreadId(), "Timed wait on other thread");
 	mtx.owner_thread = 0;
 	mtx.locks = 0;
