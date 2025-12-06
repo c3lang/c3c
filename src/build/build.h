@@ -867,6 +867,7 @@ static BuildTarget default_build_target = {
 		.use_stdlib = USE_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
+		.custom_libc = CUSTOM_LIBC_NOT_SET,
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.validation_level = VALIDATION_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,

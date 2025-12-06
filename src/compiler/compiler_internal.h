@@ -2122,7 +2122,7 @@ INLINE bool link_libc(void)
 
 INLINE bool custom_libc(void)
 {
-	return compiler.build.custom_libc != CUSTOM_LIBC_OFF;
+	return compiler.build.custom_libc == CUSTOM_LIBC_ON;
 }
 
 INLINE bool strip_unused(void)
