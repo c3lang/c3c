@@ -9,6 +9,7 @@
 - Regression with npot vector in struct triggering an assert #2219.
 - Casting bitstruct to wider base type should be single step #2616.
 - Optional does not play well with bit ops #2618.
+- `Bytebuffer.grow` was broken #2622.
 
 ### Stdlib changes
 
