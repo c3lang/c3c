@@ -1,0 +1,12 @@
+// #target: macos-x64
+module test;
+import std;
+
+fn void main()
+{
+	char[] test = "\x80\x80\x79";
+    io::printfn("%s", test);
+}
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [4 x i8] c"\80\80y\00", align 1
