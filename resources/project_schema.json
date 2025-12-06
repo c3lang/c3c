@@ -203,10 +203,11 @@
       "type": "string",
       "description": "Set the libc to use for Linux.",
       "enum": [
+        "host",
         "gnu",
         "musl"
       ],
-      "default": "gnu"
+      "default": "host"
     },
     "x86cpu": {
       "type": "string",

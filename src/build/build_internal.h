@@ -7,6 +7,103 @@
 #include "utils/json.h"
 #include "build.h"
 
+#if defined(_M_X64) || defined(_M_AMD64)
+ArchOsTarget default_target = WINDOWS_X64;
+#elif defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64)
+	#if defined(__MACH__)
+ArchOsTarget default_target = MACOS_X64;
+	#elif defined(__ANDROID__)
+ArchOsTarget default_target = ANDROID_X86_64;
+	#elif defined(__linux__) && __linux__
+ArchOsTarget default_target = LINUX_X64;
+		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_GNU;
+		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
+		#endif
+	#elif defined(__NetBSD__)
+ArchOsTarget default_target = NETBSD_X64;
+	#elif defined(__FreeBSD__)
+ArchOsTarget default_target = FREEBSD_X64;
+	#elif defined(__OpenBSD__)
+ArchOsTarget default_target = OPENBSD_X64;
+	#else
+ArchOsTarget default_target = ELF_X64;
+	#endif
+#elif defined(__aarch64__) || defined(_M_ARM64)
+	#if defined(__MACH__)
+ArchOsTarget default_target = MACOS_AARCH64;
+	#elif defined(__ANDROID__)
+ArchOsTarget default_target = ANDROID_AARCH64;
+	#elif defined(__linux__) && __linux__
+ArchOsTarget default_target = LINUX_AARCH64;
+		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_GNU;
+		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
+		#endif
+	#else
+ArchOsTarget default_target = ELF_AARCH64;
+	#endif
+#elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
+	#if defined(__linux__) && __linux__
+ArchOsTarget default_target = LINUX_X86;
+		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_GNU;
+		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
+		#endif
+	#elif defined(__FreeBSD__)
+ArchOsTarget default_target = FREEBSD_X86;
+	#elif defined(__OpenBSD__)
+ArchOsTarget default_target = OPENBSD_X86;
+	#elif defined(__NetBSD__)
+ArchOsTarget default_target = NETBSD_X86;
+	#elif defined(_MSC_VER) && _MSC_VER
+ArchOsTarget default_target = WINDOWS_X86;
+	#else
+ArchOsTarget default_target = ELF_X86;
+	#endif
+#elif defined(__riscv32)
+	#if defined(__linux__) && __linux__
+ArchOsTarget default_target = LINUX_RISCV32;
+		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_GNU;
+		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
+		#endif
+	#else
+ArchOsTarget default_target = ELF_RISCV32;
+	#endif
+#elif defined(__riscv64)
+	#if defined(__linux__) && __linux__
+ArchOsTarget default_target = LINUX_RISCV64;
+		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_GNU;
+		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
+		#endif
+	#else
+ArchOsTarget default_target = ELF_RISCV64;
+	#endif
+#else
+ArchOsTarget default_target = ARCH_OS_TARGET_DEFAULT;
+#endif
+
+#ifndef LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_GNU;
+#endif
+
 typedef struct
 {
 	const char *file;

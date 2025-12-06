@@ -31,7 +31,7 @@ const char *project_default_keys[][2] = {
 		{"linker-search-paths", "Linker search paths."},
 		{"linux-crt", "Set the directory to use for finding crt1.o and related files."},
 		{"linux-crtbegin", "Set the directory to use for finding crtbegin.o and related files."},
-		{"linux-libc", "Set the libc to use for Linux. Valid options are 'gnu' and 'musl', default is 'gnu'"},
+		{"linux-libc", "Set the libc to use for Linux. Valid options are 'host', 'gnu' and 'musl', default is 'host'"},
 		{"loop-vectorize", "Force enable/disable loop auto-vectorization."},
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
@@ -116,7 +116,7 @@ const char* project_target_keys[][2] = {
 		{"linker-search-paths-override", "Linker search paths for this target, overriding global settings."},
 		{"linux-crt", "Set the directory to use for finding crt1.o and related files."},
 		{"linux-crtbegin", "Set the directory to use for finding crtbegin.o and related files."},
-		{"linux-libc", "Set the libc to use for Linux. Valid options are 'gnu' and 'musl', default is 'gnu'"},
+		{"linux-libc", "Set the libc to use for Linux. Valid options are 'host', 'gnu' and 'musl', default is 'host'"},
 		{"loop-vectorize", "Force enable/disable loop auto-vectorization."},
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
@@ -486,7 +486,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	target->linuxpaths.crtbegin = get_string(context, json, "linux-crtbegin", target->linuxpaths.crtbegin);
 
 	// linux-libc
-	LinuxLibc linux_libc = GET_SETTING(LinuxLibc, "linux-libc", linuxlibc, "`gnu` or `musl`.");
+	LinuxLibc linux_libc = GET_SETTING(LinuxLibc, "linux-libc", linuxlibc, "`host`, `gnu` or `musl`.");
 	if (linux_libc > -1) target->linuxpaths.libc = linux_libc;
 
 	// version
