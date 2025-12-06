@@ -13,6 +13,13 @@
 - Hex escapes like `"\x80"` would be incorrectly lowered. #2623
 
 ### Stdlib changes
+- Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
+- Return of Thread/Mutex/CondVar `destroy()` is now "@maydiscard" and should be ignored. It will return void in 0.8.0.
+- Return of Mutex `unlock()` and `lock()` is now "@maydiscard" and should be ignored. They will return void in 0.8.0.
+- Return of ConditionVariable `signal()` `broadcast()` and `wait()` are now "@maydiscard". They will return void in 0.8.0.
+- Return of Thread `detatch()` is now "@maydiscard". It will return void in 0.8.0.
+- Buffered/UnbufferedChannel, and both ThreadPools have `@maydiscard` on a set of functions. They will retunr void in 0.8.0.
+- Pthread bindings correctly return Errno instead of CInt.
 
 ## 0.7.8 Change list
 
@@ -79,7 +86,6 @@
 - Add `registerClassPair` function to objc module (macOS).
 - Somewhat faster BigInt output.
 - Cache printf output.
-- Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
 
 ## 0.7.7 Change list
 

@@ -9,7 +9,7 @@ fn void init_destroy() @test
 	{
 		Pool pool;
 		pool.init()!!;
-		pool.destroy()!!;
+		pool.destroy();
 	}
 }
 
@@ -21,8 +21,8 @@ fn void push_destroy() @test
 		int y = 20;
 		Pool pool;
 		pool.init()!!;
-		defer pool.destroy()!!;
-		pool.push(&do_work, &y)!!;
+		defer pool.destroy();
+		pool.push(&do_work, &y);
 		thread::sleep(time::ms(50));
 		test::eq(@atomic_load(x), @atomic_load(y));
 	}
@@ -36,8 +36,8 @@ fn void push_stop() @test
 		int y = 20;
 		Pool pool;
 		pool.init()!!;
-		pool.push(&do_work, &y)!!;
-		pool.stop_and_destroy()!!;
+		pool.push(&do_work, &y);
+		pool.stop_and_destroy();
 		test::eq(@atomic_load(x), @atomic_load(y));
 	}
 }
@@ -47,12 +47,12 @@ fn void join() @test
 	@atomic_store(x, 0);
 	Pool pool;
 	pool.init()!!;
-	defer pool.stop_and_destroy()!!;
+	defer pool.stop_and_destroy();
 	for (usz i = 0; i < 4; i++)
 	{
-		pool.push(&do_wait, (void*)i)!!;
+		pool.push(&do_wait, (void*)i);
 	}
-	pool.join()!!;
+	pool.join();
 	test::eq(x, 6);
 }
 

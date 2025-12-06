@@ -22,6 +22,6 @@ fn bool NativeMutex.is_initialized(&self)
 	return false;
 }
 
-macro void? NativeMutex.lock(&mutex) => NOT_IMPLEMENTED?;
-macro bool NativeMutex.try_lock(&mutex) => NOT_IMPLEMENTED?;
-macro void? NativeMutex.unlock(&mutex) => NOT_IMPLEMENTED?;
+macro void NativeMutex.lock(&mutex) => NOT_IMPLEMENTED?!!;
+macro bool NativeMutex.try_lock(&mutex) => NOT_IMPLEMENTED?!!;
+macro void NativeMutex.unlock(&mutex) => NOT_IMPLEMENTED?!!;

@@ -49,8 +49,11 @@ fn void? FixedThreadPool.init(&self, usz threads, usz queue_size = 0)
 		.pool = mem::new_array(Thread, threads)
 	};
 	self.mu.init()!;
+	defer catch self.mu.destroy();
 	self.notify.init()!;
+	defer catch self.notify.destroy();
 	self.collect.init()!;
+	defer catch self.collect.destroy();
 	foreach (&thread : self.pool)
 	{
 		thread.create(&process_work, self)!;
@@ -62,16 +65,16 @@ fn void? FixedThreadPool.init(&self, usz threads, usz queue_size = 0)
 <*
  Join all threads in the pool.
 *>
-fn void? FixedThreadPool.join(&self)
+fn void? FixedThreadPool.join(&self) @maydiscard // Remove optional in 0.8.0
 {
 	if (self.initialized)
 	{
-		self.mu.lock()!;
+		self.mu.lock();
+		defer self.mu.unlock();
 		self.joining = true;
-		self.notify.broadcast()!;
-		self.collect.wait(&self.mu)!;
+		self.notify.broadcast();
+		self.collect.wait(&self.mu);
 		self.joining = false;
-		self.mu.unlock()!;
 	}
 }
 
@@ -88,33 +91,30 @@ fn void? FixedThreadPool.destroy(&self)
  Stop all the threads and cleanup the pool.
  Any pending work will be processed.
 *>
-fn void? FixedThreadPool.stop_and_destroy(&self)
+fn void? FixedThreadPool.stop_and_destroy(&self) @maydiscard // Remove optional in 0.8.0
 {
-	return self.@shutdown(self.stop);
+	self.@shutdown(self.stop);
 }
 
-macro void? FixedThreadPool.@shutdown(&self, #stop) @private
+macro void FixedThreadPool.@shutdown(&self, #stop) @private
 {
 	if (self.initialized)
 	{
-		self.mu.lock()!;
+		self.mu.lock();
 		#stop = true;
-		self.notify.broadcast()!;
-		self.mu.unlock()!;
+		self.notify.broadcast();
+		self.mu.unlock();
 		// Wait for all threads to shutdown.
 		while (true)
 		{
-			self.mu.lock()!;
-			defer self.mu.unlock()!!;
-			if (self.num_threads == 0)
-			{
-				break;
-			}
-			self.notify.signal()!;
+			self.mu.lock();
+			defer self.mu.unlock();
+			if (self.num_threads == 0) break;
+			self.notify.signal();
 		}
-		self.mu.destroy()!;
-		self.notify.destroy()!;
-		self.collect.destroy()!;
+		self.collect.destroy();
+		self.notify.destroy();
+		self.mu.destroy();
 		self.initialized = false;
 		while (self.qindex)
 		{
@@ -132,8 +132,8 @@ macro void? FixedThreadPool.@shutdown(&self, #stop) @private
 *>
 fn void? FixedThreadPool.push(&self, ThreadPoolFn func, args...)
 {
-	self.mu.lock()!;
-	defer self.mu.unlock()!!;
+	self.mu.lock();
+	defer self.mu.unlock();
 	if (self.qindex == self.queue.len) return thread::THREAD_QUEUE_FULL?;
 	any[] data;
 	if (args.len)
@@ -149,7 +149,7 @@ fn void? FixedThreadPool.push(&self, ThreadPoolFn func, args...)
 		free_qitem(self.queue[--self.qindex]);
 	}
 	// Notify the threads that work is available.
-	self.notify.broadcast()!;
+	self.notify.broadcast();
 }
 
 fn int process_work(void* self_arg) @private
@@ -157,43 +157,43 @@ fn int process_work(void* self_arg) @private
 	FixedThreadPool* self = self_arg;
 	while (true)
 	{
-		self.mu.lock()!!;
+		self.mu.lock();
 		if (self.stop_now)
 		{
 			// Shutdown requested.
 			self.num_threads--;
-			self.mu.unlock()!!;
+			self.mu.unlock();
 			return 0;
 		}
 		// Wait for work.
 		while (self.qindex == 0)
 		{
-			if (self.joining && self.qworking == 0) self.collect.signal()!!;
+			if (self.joining && self.qworking == 0) self.collect.signal();
 			if (self.stop)
 			{
 				// Shutdown requested.
 				self.num_threads--;
-				self.mu.unlock()!!;
+				self.mu.unlock();
 				return 0;
 			}
-			self.notify.wait(&self.mu)!!;
+			self.notify.wait(&self.mu);
 			if (self.stop_now)
 			{
 				// Shutdown requested.
 				self.num_threads--;
-				self.mu.unlock()!!;
+				self.mu.unlock();
 				return 0;
 			}
 		}
 		// Process the job.
 		self.qindex--;
 		QueueItem item = self.queue[self.qindex];
-		self.mu.unlock()!!;
+		self.mu.unlock();
 		item.func(item.args);
 		defer free_qitem(item);
-		self.mu.lock()!!;
+		self.mu.lock();
 		self.qworking--;
-		self.mu.unlock()!!;
+		self.mu.unlock();
 	}
 }
 

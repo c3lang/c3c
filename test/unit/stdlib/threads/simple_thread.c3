@@ -26,8 +26,8 @@ fn void testrun_mutex()
 	foreach (&t : ts)
 	{
 		t.create(fn int(void* arg) {
-			m_global.lock()!!;
-			defer m_global.unlock()!!;
+			m_global.lock();
+			defer m_global.unlock();
 			a += 10;
 			thread::sleep_ms(5);
 			a *= 10;
@@ -45,18 +45,18 @@ fn void testrun_mutex()
         assert(t.join()!! == 0);
     }
 	assert(a == ts.len);
-	m_global.destroy()!!;
+	m_global.destroy();
 }
 
 fn void testrun_mutex_try() @test
 {
 	Mutex m;
 	m.init()!!;
-	m.lock()!!;
+	m.lock();
 	assert(m.try_lock() == false);
-	m.unlock()!!;
+	m.unlock();
 	assert(m.try_lock() == true);
-	m.unlock()!!;
+	m.unlock();
 }
 
 fn void testrun_mutex_timeout() @test
@@ -68,9 +68,9 @@ fn void testrun_mutex_timeout() @test
 	{
 		unreachable("lock_timeout should fail");
 	}
-	m.unlock()!!;
+	m.unlock();
 	m.lock_timeout(20)!!;
-	m.unlock()!!;
+	m.unlock();
 }
 
 int x_once = 100;

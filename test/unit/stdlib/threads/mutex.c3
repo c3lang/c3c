@@ -5,35 +5,12 @@ import std::os;
 
 const TEST_MAGNITUDE = 10;
 
-fn void lock_control_test() @test
-{
-    Mutex m;
-    m.init()!!;
-    m.lock()!!;
-    assert(@catch(m.lock()));
-}
 
-fn void unlock_control_test() @test
-{
-    Mutex m;
-    m.init()!!;
-    assert(@catch(m.unlock()));
-}
 
-fn void lock_with_double_unlock_test() @test
+fn void own_mutex(Mutex* m)
 {
-    Mutex m;
-    m.init()!!;
-
-    m.lock()!!;
-    m.unlock()!!;
-    assert(@catch(m.unlock()));
-}
-
-fn void? own_mutex(Mutex* m)
-{
-    m.lock()!;
-    m.unlock()!;
+    m.lock();
+    m.unlock();
 }
 
 fn void ensure_owner_checks() @test
@@ -53,7 +30,7 @@ fn void ensure_owner_checks() @test
         t.join()!!;
     }
 
-    own_mutex(&m)!!;
+    own_mutex(&m);
 }
 
 struct ArgsWrapper1
@@ -64,23 +41,23 @@ struct ArgsWrapper1
 
 fn void shared_mutex_increment(ArgsWrapper1* args)
 {
-    args.m.lock()!!;
+    args.m.lock();
     args.v++;
-    args.m.unlock()!!;
+    args.m.unlock();
 }
 
 fn void shared_mutex_decrement(ArgsWrapper1* args)
 {
-    args.m.lock()!!;
+    args.m.lock();
     args.v--;
-    args.m.unlock()!!;
+    args.m.unlock();
 }
 
 fn void shared_mutex() @test
 {
     Mutex m;
     m.init()!!;
-    m.lock()!!;
+    m.lock();
 
     ulong v;
 
@@ -101,7 +78,7 @@ fn void shared_mutex() @test
         (&threads[i]).create((ThreadFn)&shared_mutex_decrement, &args)!!;
     }
 
-    m.unlock()!!;
+    m.unlock();
     foreach(&t : threads)
     {
         t.join()!!;
@@ -117,12 +94,12 @@ fn void acquire_recursively(RecursiveMutex* m)
 
     for (usz i = 0; i < 5 * TEST_MAGNITUDE; i++)
     {
-        ((Mutex*)m).lock()!!;
+        ((Mutex*)m).lock();
     }
 
     for (usz i = 0; i < 5 * TEST_MAGNITUDE; i++)
     {
-        ((Mutex*)m).unlock()!!;
+        ((Mutex*)m).unlock();
     }
 }
 
@@ -130,7 +107,7 @@ fn void test_recursive_mutex() @test
 {
     RecursiveMutex m;
     m.init()!!;
-    defer m.destroy()!!;
+    defer m.destroy();
 
     Thread[3 * TEST_MAGNITUDE] threads;
     foreach(&t : threads)

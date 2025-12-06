@@ -35,41 +35,40 @@ fn void? BufferedChannel.init(&self, Allocator allocator, usz size = 1)
 	channel.read_waiting = 0;
 
 	channel.mu.init()!;
-	defer catch (void)channel.mu.destroy();
+	defer catch channel.mu.destroy();
 	channel.send_cond.init()!;
-	defer catch (void)channel.send_cond.destroy();
+	defer catch channel.send_cond.destroy();
 	channel.read_cond.init()!;
-	defer catch (void)channel.read_cond.destroy();
+	defer catch channel.read_cond.destroy();
 
 	*self = (BufferedChannel)channel;
 }
 
-fn void? BufferedChannel.destroy(&self)
+fn void? BufferedChannel.destroy(&self) @maydiscard // Remove optional in 0.8.0
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)(*self);
 
-	fault err = @catch(channel.mu.destroy());
-	err = @catch(channel.send_cond.destroy()) ?: err;
-	err = @catch(channel.read_cond.destroy()) ?: err;
+	channel.mu.destroy();
+	channel.send_cond.destroy();
+	channel.read_cond.destroy();
 	allocator::free(channel.allocator, channel);
 
 	*self = null;
 
-	if (err) return err?;
 }
 
 fn void? BufferedChannel.push(self, Type val)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 
-	channel.mu.lock()!;
-	defer catch (void)channel.mu.unlock();
+	channel.mu.lock();
+	defer catch channel.mu.unlock();
 
 	// if channel is full -> wait
 	while (channel.elems == channel.size && !channel.closed)
 	{
 		channel.send_waiting++;
-		channel.send_cond.wait(&channel.mu)!;
+		channel.send_cond.wait(&channel.mu);
 		channel.send_waiting--;
 	}
 
@@ -92,24 +91,24 @@ fn void? BufferedChannel.push(self, Type val)
 	// if someone is waiting -> awake him
 	if (channel.read_waiting > 0)
 	{
-		channel.read_cond.signal()!;
+		channel.read_cond.signal();
 	}
 
-	channel.mu.unlock()!;
+	channel.mu.unlock();
 }
 
 fn Type? BufferedChannel.pop(self)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 
-	channel.mu.lock()!;
-	defer catch (void)channel.mu.unlock();
+	channel.mu.lock();
+	defer catch channel.mu.unlock();
 
 	// if chan is empty -> wait for sender
 	while (channel.elems == 0 && !channel.closed)
 	{
 		channel.read_waiting++;
-		channel.read_cond.wait(&channel.mu)!;
+		channel.read_cond.wait(&channel.mu);
 		channel.read_waiting--;
 	}
 
@@ -135,26 +134,25 @@ fn Type? BufferedChannel.pop(self)
 	// if someone is waiting -> awake him
 	if (channel.send_waiting > 0)
 	{
-		channel.send_cond.signal()!;
+		channel.send_cond.signal();
 	}
 
-	channel.mu.unlock()!;
+	channel.mu.unlock();
 
 	return ret;
 }
 
-fn void? BufferedChannel.close(self)
+fn void? BufferedChannel.close(self) @maydiscard // Remove optional in 0.8.0
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 
-	fault err = @catch(channel.mu.lock());
+	channel.mu.lock();
 
 	channel.closed = true;
 
-	err = @catch(channel.read_cond.broadcast()) ?: err;
-	err = @catch(channel.send_cond.broadcast()) ?: err;
-	err = @catch(channel.mu.unlock()) ?: err;
+	channel.read_cond.broadcast();
+	channel.send_cond.broadcast();
+	channel.mu.unlock();
 
-	if (err) return err?;
 }
 
