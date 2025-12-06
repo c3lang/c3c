@@ -716,6 +716,39 @@ static Expr *parse_unary_expr(ParseContext *c, Expr *left, SourceSpan lhs_start 
 	return unary;
 }
 
+static Expr *parse_raise_expr_suffix(ParseContext *c, Expr *left_side, SourceSpan lhs_start)
+{
+	ASSERT(expr_ok(left_side));
+	if (left_side->expr_kind == EXPR_TYPEINFO)
+	{
+		PRINT_ERROR_AT(left_side, "Expected a fault before '~'.");
+		return poisoned_expr;
+	}
+	advance_and_verify(c, TOKEN_BIT_NOT);
+	Expr *expr = expr_new(EXPR_OPTIONAL, lhs_start);
+	expr->inner_expr = left_side;
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
+
+static Expr *parse_raise_expr(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+{
+	ASSERT(!left && "Did not expect a left hand side!");
+
+	Expr *opt = EXPR_NEW_TOKEN(EXPR_OPTIONAL);
+	advance(c);
+	Expr *right_side = parse_precedence(c, PREC_UNARY);
+	CHECK_EXPR_OR_RET(right_side);
+	if (right_side->expr_kind == EXPR_TYPEINFO)
+	{
+		PRINT_ERROR_AT(right_side, "Expected a fault after '^'.");
+		return poisoned_expr;
+	}
+	opt->inner_expr = right_side;
+	RANGE_EXTEND_PREV(opt);
+	return opt;
+}
+
 /**
  * post_unary_expr ::= <expr> unary_op
  */
@@ -2196,8 +2229,8 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_DOT] = { NULL, parse_access_expr, PREC_CALL },
 		[TOKEN_BANG] = { parse_unary_expr, parse_rethrow_expr, PREC_CALL },
 		[TOKEN_BYTES] = { parse_bytes_expr, NULL, PREC_NONE },
-		[TOKEN_BIT_NOT] = { parse_unary_expr, NULL, PREC_UNARY },
-		[TOKEN_BIT_XOR] = { NULL, parse_binary, PREC_BIT },
+		[TOKEN_BIT_NOT] = { parse_unary_expr, parse_raise_expr_suffix, PREC_CALL },
+		[TOKEN_BIT_XOR] = { parse_raise_expr, parse_binary, PREC_BIT },
 		[TOKEN_BIT_OR] = { NULL, parse_binary, PREC_BIT },
 		[TOKEN_AMP] = { parse_unary_expr, parse_binary, PREC_BIT },
 		[TOKEN_EQEQ] = { NULL, parse_binary, PREC_RELATIONAL },

@@ -1683,7 +1683,7 @@ RETRY:
 			base_type = base_type->decl->distinct->type->canonical;
 			goto RETRY;
 		}
-		if (!type_is_integer(base_type) || type_size(to) != type_size(base_type))
+		if (!type_is_integer(base_type) || type_size(to) < type_size(base_type))
 		{
 			return sema_cast_error(cc, false, is_silent);
 		}
@@ -1891,7 +1891,16 @@ static void cast_expand_to_vec(Expr *expr, Type *type)
 	expr->resolve_status = RESOLVE_DONE;
 }
 
-static void cast_bitstruct_to_int_arr(Expr *expr, Type *type) { expr_rewrite_recast(expr, type); }
+static void cast_bitstruct_to_int_arr(Expr *expr, Type *type)
+{
+	if (type_size(expr->type) < type_size(type))
+	{
+		expr_rewrite_recast(expr, type_flatten(expr->type)->decl->strukt.container_type->type);
+		cast_int_to_int(expr, type);
+		return;
+	}
+	expr_rewrite_recast(expr, type);
+}
 static void cast_int_arr_to_bitstruct(Expr *expr, Type *type)
 {
 	if (expr_is_const_int(expr))

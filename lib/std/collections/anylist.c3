@@ -70,7 +70,7 @@ fn any? AnyList.last_any(&self) @inline => InterfaceList {any}.last(self);
 *>
 macro AnyList.pop(&self, $Type)
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	defer self.free_element(self.entries[self.size]);
 	return *anycast(self.entries[--self.size], $Type);
 }
@@ -85,7 +85,7 @@ macro AnyList.pop(&self, $Type)
 *>
 macro AnyList.pop_first(&self, $Type)
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	defer self.remove_at(0);
 	return *anycast(self.entries[0], $Type);
 }

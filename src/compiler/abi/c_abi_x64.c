@@ -489,7 +489,7 @@ static Type *x64_get_fp_type_at_offset(Type *type, unsigned ir_offset)
 	if (type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_UNION)
 	{
 		Decl *element = x64_get_member_at_offset(type->decl, ir_offset);
-		return x64_get_fp_type_at_offset(element->type, ir_offset - element->offset);
+		return x64_get_fp_type_at_offset(lowered_member_type(element), ir_offset - element->offset);
 	}
 	if (type->type_kind == TYPE_ARRAY)
 	{
