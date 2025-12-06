@@ -167,7 +167,7 @@ static void usage(bool full)
 		PRINTF("");
 		print_opt("--use-stdlib=<yes|no>", "Include the standard library (default: yes).");
 		print_opt("--link-libc=<yes|no>", "Link libc other default libraries (default: yes).");
-		print_opt("--custom-libc=<yes|no>", "Enable your custom libc implementation (default: no).");
+		print_opt("--custom-libc=<yes|no>", "Set to true if a custom libc implementation is provided (default: no).");
 		print_opt("--emit-stdlib=<yes|no>", "Output files for the standard library. (default: yes)");
 		print_opt("--emit-only <file>", "Output only the file matching <file>.");
 		print_opt("--panicfn <name>", "Override the panic function name.");
