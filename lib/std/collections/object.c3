@@ -242,8 +242,7 @@ macro Object* Object.push(&self, value)
 <*
  @require self.is_keyable()
 *>
-fn Object*? Object.get(&self, String key) => self.is_empty() ? NOT_FOUND? : self.map.get(key);
-
+fn Object*? Object.get(&self, String key) => self.is_empty() ? NOT_FOUND~ : self.map.get(key);
 
 fn bool Object.has_key(&self, String key) => self.is_map() && self.map.has_key(key);
 
@@ -308,7 +307,7 @@ macro get_integer_value(Object* value, $Type)
 			return ($Type)value.s.to_uint128();
 		$endif
 	}
-	if (!value.is_int()) return string::MALFORMED_INTEGER?;
+	if (!value.is_int()) return string::MALFORMED_INTEGER~;
 	return ($Type)value.i;
 }
 
@@ -361,7 +360,7 @@ fn uint128? Object.get_uint128_at(&self, usz index) => self.get_integer_at(uint1
 fn String? Object.get_string(&self, String key)
 {
 	Object* value = self.get(key)!;
-	if (!value.is_string()) return TYPE_MISMATCH?;
+	if (!value.is_string()) return TYPE_MISMATCH~;
 	return value.s;
 }
 
@@ -371,7 +370,7 @@ fn String? Object.get_string(&self, String key)
 fn String? Object.get_string_at(&self, usz index)
 {
 	Object* value = self.get_at(index);
-	if (!value.is_string()) return TYPE_MISMATCH?;
+	if (!value.is_string()) return TYPE_MISMATCH~;
 	return value.s;
 }
 
@@ -381,7 +380,7 @@ fn String? Object.get_string_at(&self, usz index)
 macro String? Object.get_enum(&self, $EnumType, String key)
 {
 	Object value = self.get(key)!;
-	if ($EnumType.typeid != value.type) return TYPE_MISMATCH?;
+	if ($EnumType.typeid != value.type) return TYPE_MISMATCH~;
 	return ($EnumType)value.i;
 }
 
@@ -391,7 +390,7 @@ macro String? Object.get_enum(&self, $EnumType, String key)
 macro String? Object.get_enum_at(&self, $EnumType, usz index)
 {
 	Object value = self.get_at(index);
-	if ($EnumType.typeid != value.type) return TYPE_MISMATCH?;
+	if ($EnumType.typeid != value.type) return TYPE_MISMATCH~;
 	return ($EnumType)value.i;
 }
 

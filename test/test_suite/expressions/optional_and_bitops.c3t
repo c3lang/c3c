@@ -1,0 +1,23 @@
+module test;
+bitstruct Foo : int
+{
+	bool a;
+}
+
+typedef Bool = bool;
+typedef Foo2 = Foo;
+fn void main()
+{
+	Foo? a, b;
+
+	Foo? c = a | b;
+	(a | b)!!;
+	Foo? d = a & b;
+	Foo? e = a ^ b;
+	Bool? x;
+	bool zz;
+	x = x | x;
+	Bool? w = x | (Bool)zz;
+	Foo2? y, z;
+	y = y | z;
+}

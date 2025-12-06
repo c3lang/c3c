@@ -858,9 +858,8 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 			if (h < 0) return -1;
 			int l = char_hex_to_nibble(src[2]);
 			if (l < 0) return -1;
-			unicode_char = ((unsigned) h << 4U) + (unsigned)l;
-			scanned = 3;
-			break;
+			dest[(*pos)++] = (char)(((unsigned) h << 4U) + (unsigned)l);
+			return 3;
 		}
 		case 'u':
 		{

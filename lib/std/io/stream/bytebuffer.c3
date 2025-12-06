@@ -130,7 +130,7 @@ fn usz? ByteBuffer.available(&self) @inline @dynamic
 
 fn void ByteBuffer.grow(&self, usz n)
 {
-	n = math::next_power_of_2(n);
+	n = math::next_power_of_2(self.bytes.len + n);
 	char* p = allocator::realloc(self.allocator, self.bytes, n);
 	self.bytes = p[:n];
 }
