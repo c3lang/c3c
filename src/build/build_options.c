@@ -167,6 +167,7 @@ static void usage(bool full)
 		PRINTF("");
 		print_opt("--use-stdlib=<yes|no>", "Include the standard library (default: yes).");
 		print_opt("--link-libc=<yes|no>", "Link libc other default libraries (default: yes).");
+		print_opt("--custom-libc=<yes|no>", "Enable your custom libc implementation (default: no).");
 		print_opt("--emit-stdlib=<yes|no>", "Output files for the standard library. (default: yes)");
 		print_opt("--emit-only <file>", "Output only the file matching <file>.");
 		print_opt("--panicfn <name>", "Override the panic function name.");
@@ -946,6 +947,11 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("emit-stdlib")))
 			{
 				options->emit_stdlib = parse_opt_select(EmitStdlib, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("custom-libc")))
+			{
+				options->custom_libc = parse_opt_select(CustomLibc, argopt, on_off);
 				return;
 			}
 			if (match_longopt("emit-only"))

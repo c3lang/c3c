@@ -26,6 +26,7 @@ const char *project_default_keys[][2] = {
 		{"langrev", "Version of the C3 language used."},
 		{"link-args", "Linker arguments for all targets."},
 		{"link-libc", "Link libc (default: true)."},
+		{"custom-libc", "Implement your own libc (default: false)."},
 		{"linked-libraries", "Libraries linked by the linker for all targets."},
 		{"linker", "'builtin' for the builtin linker, 'cc' for the system linker or <path> to a custom compiler."},
 		{"linker-search-paths", "Linker search paths."},
@@ -109,6 +110,7 @@ const char* project_target_keys[][2] = {
 		{"link-args", "Additional linker arguments for the target."},
 		{"link-args-override", "Linker arguments for this target, overriding global settings."},
 		{"link-libc", "Link libc (default: true)."},
+		{"custom-libc", "Implement your own libc (default: false)."},
 		{"linked-libraries", "Additional libraries linked by the linker for the target."},
 		{"linked-libraries-override", "Libraries linked by the linker for this target, overriding global settings."},
 		{"linker", "'builtin' for the builtin linker, 'cc' for the system linker or <path> to a custom compiler."},
@@ -539,6 +541,9 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// emit-stdlib
 	target->emit_stdlib = (EmitStdlib) get_valid_bool(context, json, "emit-stdlib", target->emit_stdlib);
+
+	// implement-stdlib
+	target->custom_libc = (CustomLibc) get_valid_bool(context, json, "custom-libc", target->custom_libc);
 
 	// single-module
 	target->single_module = (SingleModule) get_valid_bool(context, json, "single-module", target->single_module);
