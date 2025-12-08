@@ -1761,8 +1761,9 @@ static inline bool parse_fn_parameter_list(ParseContext *c, Signature *signature
 		}
 		return false;
 	}
+	// Advance past the rparen
+	advance(c);
 
-	consume();
 	signature->vararg_index = vararg_index < 0 ? vec_size(decls) : vararg_index;
 	signature->params = decls;
 	signature->variadic = variadic;
