@@ -1759,6 +1759,10 @@ static inline bool parse_fn_parameter_list(ParseContext *c, Signature *signature
 		{
 			PRINT_ERROR_LAST("Expected typename here. (Following '%s' usually follows a type in a parameter list).",token_type_to_string(c->tok));
 		}
+		else
+		{
+			PRINT_ERROR_HERE("Expected ')' here.");
+		}
 		return false;
 	}
 	// Advance past the rparen
