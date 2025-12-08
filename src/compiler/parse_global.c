@@ -1755,7 +1755,7 @@ static inline bool parse_fn_parameter_list(ParseContext *c, Signature *signature
 	// Improve the error messages here
 	if (!tok_is(c,TOKEN_RPAREN))
 	{
-		if (tok_is(c, TOKEN_LBRACE) || tok_is(c, TOKEN_STAR) || tok_is(c, TOKEN_LBRACKET)))
+		if (tok_is(c, TOKEN_LBRACE) || tok_is(c, TOKEN_STAR) || tok_is(c, TOKEN_LBRACKET))
 		{
 			PRINT_ERROR_LAST("Expected typename here. (Following '%s' usually follows a type in a parameter list).",token_type_to_string(c->tok));
 		}
