@@ -1523,15 +1523,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 			// In the future maybe this
 			if (!is_end_of_param_list(c) && !tok_is(c, TOKEN_COMMA))
 			{
-				// If this seems like a type that wasn't capitalized
-				if (tok_is(c, TOKEN_LBRACE) || tok_is(c, TOKEN_STAR) || tok_is(c, TOKEN_LBRACKET) || tok_is(c, TOKEN_IDENT))
-				{
-					PRINT_ERROR_LAST("Expected typename here, did you forget to properly case the type?");
-				}
-				else 
-				{
-					PRINT_ERROR_HERE("Expected ')' here.");
-				}
+				PRINT_ERROR_HERE("Expected ')' here.");
 				return false;
 			}
 			// Variadics might not be allowed
@@ -1759,7 +1751,18 @@ static inline bool parse_fn_parameter_list(ParseContext *c, Signature *signature
 	Variadic variadic = VARIADIC_NONE;
 	int vararg_index = -1;
 	if (!parse_parameters(c, &decls, &variadic, &vararg_index, PARAM_PARSE_FUNC)) return false;
-	CONSUME_OR_RET(TOKEN_RPAREN, false);
+
+	// Improve the error messages here
+	if (!tok_is(c,TOKEN_RPAREN))
+	{
+		if (tok_is(c, TOKEN_LBRACE) || tok_is(c, TOKEN_STAR) || tok_is(c, TOKEN_LBRACKET)))
+		{
+			PRINT_ERROR_LAST("Expected typename here. (Following '%s' usually follows a type in a parameter list).",token_type_to_string(c->tok));
+		}
+		return false;
+	}
+
+	consume();
 	signature->vararg_index = vararg_index < 0 ? vec_size(decls) : vararg_index;
 	signature->params = decls;
 	signature->variadic = variadic;
