@@ -1523,7 +1523,15 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 			// In the future maybe this
 			if (!is_end_of_param_list(c) && !tok_is(c, TOKEN_COMMA))
 			{
-				PRINT_ERROR_HERE("Expected ')' here.");
+				// If this seems like a type that wasn't capitalized
+				if (tok_is(c, TOKEN_LBRACE) || tok_is(c, TOKEN_STAR) || tok_is(c, TOKEN_LBRACKET) || tok_is(c, TOKEN_IDENT))
+				{
+					PRINT_ERROR_LAST("Expected typename here, did you forget to properly case the type?");
+				}
+				else 
+				{
+					PRINT_ERROR_HERE("Expected ')' here.");
+				}
 				return false;
 			}
 			// Variadics might not be allowed
