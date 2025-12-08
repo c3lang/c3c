@@ -3,4 +3,4 @@ fn void foo2(... x;) {} // #error: Expected ')'
 fn void foo3(... x;) {} // #error: Expected ')'
 fn void foo4(;) {} // #error: Expected ')'
 fn void foo5(int x;) {} // #error: Expected ')'
-fn void foo6(string[] x) {} // #error: Expected typename here. (Following '[' usually follows a type in a parameter list)
+fn void foo6(string[] x) {} // #error: Expected typename here. ('[' in a parameter list must follow a type).
