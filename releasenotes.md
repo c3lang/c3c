@@ -12,6 +12,7 @@
 - Optional does not play well with bit ops #2618.
 - `Bytebuffer.grow` was broken #2622.
 - Hex escapes like `"\x80"` would be incorrectly lowered. #2623
+- Ignore const null check on deref in `$defined` and `$sizeof` #2633.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.

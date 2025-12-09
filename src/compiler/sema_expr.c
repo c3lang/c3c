@@ -6085,7 +6085,7 @@ TYPE_CALL:
 
 bool sema_expr_rewrite_insert_deref(SemaContext *context, Expr *original)
 {
-	if (expr_is_const_pointer(original) && !original->const_expr.ptr)
+	if (expr_is_const_pointer(original) && !original->const_expr.ptr && !context->call_env.in_no_eval)
 	{
 		RETURN_SEMA_ERROR(original, "This value is known to be null so you cannot dereference it.");
 	}
