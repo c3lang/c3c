@@ -204,9 +204,10 @@
       "description": "Set the libc to use for Linux.",
       "enum": [
         "gnu",
-        "musl"
+        "musl",
+        "host"
       ],
-      "default": "gnu"
+      "default": "host"
     },
     "x86cpu": {
       "type": "string",
