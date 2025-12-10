@@ -3037,10 +3037,9 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *message = statement->expr_stmt;
 	if (!sema_analyse_expr_rvalue(context, message)) return false;
-	if (message->expr_kind != EXPR_CONST)
+	if (!sema_cast_const(message))
 	{
-		SEMA_ERROR(message, "Expected a constant value.");
-		return false;
+		RETURN_SEMA_ERROR(message, "Expected a constant value.");
 	}
 	const char *prefix = compiler.build.echo_prefix ? compiler.build.echo_prefix : "c3c:";
 	while (prefix[0] != 0)

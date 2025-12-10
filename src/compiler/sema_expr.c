@@ -12321,8 +12321,8 @@ bool sema_cast_const(Expr *expr)
 			if (!expr_is_const(exprptr(expr->subscript_expr.index.expr))) return false;
 			Expr *parent = exprptr(expr->subscript_expr.expr);
 			Type *flat_type = type_flatten(parent->type);
-			if (!type_is_any_arraylike(flat_type) || flat_type->type_kind == TYPE_UNTYPED_LIST) return false;
 			if (!sema_cast_const(parent)) return false;
+			if (flat_type->type_kind != TYPE_SLICE && !type_is_any_arraylike(flat_type) && flat_type->type_kind != TYPE_UNTYPED_LIST) return false;
 			return sema_expr_fold_to_index(expr, parent, expr->subscript_expr.index);
 		}
 		case EXPR_IDENTIFIER:

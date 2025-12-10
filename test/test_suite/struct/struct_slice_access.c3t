@@ -1,0 +1,24 @@
+module test;
+import std;
+
+struct OfStruct
+{
+    int type;
+}
+
+struct IContainAnArrayOfStructs
+{
+    OfStruct[] array;
+}
+
+macro reproduce(OfStruct[] $self)
+{
+    var a = $self;
+    var b = $self[0];
+}
+
+fn int main(String[] args)
+{
+    reproduce({{1},{2},{3}});
+    return 0;
+}
