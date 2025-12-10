@@ -217,7 +217,7 @@ static void usage(bool full)
 		print_opt("--macos-min-version <ver>", "Set the minimum MacOS version to compile for.");
 		print_opt("--macos-sdk-version <ver>", "Set the MacOS SDK compiled for.");
 		PRINTF("");
-		print_opt("--linux-libc=<gnu|musl>", "Set the libc to use on Linux, defaults to gnu.");
+		print_opt("--linux-libc=<host|gnu|musl>", "Set the libc to use on Linux, defaults to host.");
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
 		PRINTF("");
@@ -865,7 +865,12 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("linux-libc")))
 			{
-				options->linux_libc = parse_opt_select(LinuxLibc, argopt, linuxlibc);
+				if (str_eq(argopt, "host"))
+				{
+					options->linux_libc = default_libc;
+				}
+				else
+					options->linux_libc = parse_opt_select(LinuxLibc, argopt, linuxlibc);
 				return;
 			}
 			if ((argopt = match_argopt("optsize")))
@@ -1508,7 +1513,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,
 		.loop_vectorization = VECTORIZATION_NOT_SET,
-		.linux_libc = LINUX_LIBC_NOT_SET,
+		.linux_libc = default_libc,
 		.files = NULL,
 		.build_dir = NULL,
 		.output_dir = NULL,
