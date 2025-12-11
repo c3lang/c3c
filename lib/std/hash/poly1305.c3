@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 //
-// Poly1305 code dedeicated from repo: https://github.com/NotsoanoNimus/chacha20_aead.c3l (but massively cleaned)
+// Poly1305 code dedicated from repo: https://github.com/NotsoanoNimus/chacha20_aead.c3l (but massively cleaned)
 module std::hash::poly1305;
 
 
@@ -29,14 +29,20 @@ struct Poly1305
 <* Constant-time carrying computation for block permutations. *>
 macro ulong constant_time_carry(ulong a, ulong b) @local
 {
-    return ((a ^ ((a ^ b) | ((a - b) ^ b))) >> (bitsizeof(ulong) - 1));
+    return (a ^ ((a ^ b) | ((a - b) ^ b))) >> (bitsizeof(ulong) - 1);
 }
 
 
+<*
+ Compute a Poly1305 message authentication code for the input with the given key (secret + nonce) value.
+ Note that this construct SHOULD NOT be used with the 'Hmac' module; it is its own MAC package.
+
+ @param[in] input
+ @param key
+*>
 fn char[TAG_SIZE] hash(char[] input, char[KEY_SIZE] key)
 {
-    // NOTE: While this appears to be the same construction as an HMAC, it does its own thing independently.
-    Poly1305 p;   // DO init this item, we want explicit 0 values
+    Poly1305 p @noinit;
     p.init(key);
     p.update(input);
     return p.final();

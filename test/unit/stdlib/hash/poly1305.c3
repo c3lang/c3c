@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 //
-// Poly1305 code dedeicated from repo: https://github.com/NotsoanoNimus/chacha20_aead.c3l (but massively cleaned)
+// Poly1305 code dedicated from repo: https://github.com/NotsoanoNimus/chacha20_aead.c3l (but massively cleaned)
 module std::hash::poly1305_test;
 import std::hash::poly1305;
 
@@ -155,7 +155,7 @@ fn void boringssl_misc_regressions_5() => @run(
 fn void boringssl_misc_regressions_1_streamed()
 {
     char[poly1305::KEY_SIZE] key = x'7f1b02640000000000000000000000000000000000000000cccccccccccccccc';
-    Poly1305 p;
+    Poly1305 p @noinit;
     p.init(key);
     p.update(x'cccccccccccccccccccccccccccccccccccccccccccccccccc');
     p.update(x'80ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccce');
@@ -171,7 +171,7 @@ fn void boringssl_misc_regressions_1_streamed()
 fn void boringssl_misc_regressions_5_streamed()
 {
     char[poly1305::KEY_SIZE] key = x'2d773be37adb1e4d683bf0075e79c4ee037918535a7f99ccb7040fb5f5f43aea';
-    Poly1305 p;
+    Poly1305 p @noinit;
     p.init(key);
     p.update(x'89dab80b7717c1db5db437860a3f70218e93e1b8');
     p.update(x'f461');
@@ -195,7 +195,7 @@ fn void equivalencies()
     usz j = 0;
     for (usz i = 2; i < TEST_ITERATIONS; ++i, j = 0)
     {
-        Poly1305 p;
+        Poly1305 p @noinit;
         p.init(key);
         while (j < i)
         {
