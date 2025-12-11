@@ -425,9 +425,20 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 					UNREACHABLE
 				case CONST_INIT_ARRAY_FULL:
 				{
+					Expr *el;
 					FOREACH(ConstInitializer *, val, init->init_array_full)
 					{
-						vec_add(untyped_exprs, val->init_value);
+						switch (val->kind)
+						{
+							case CONST_INIT_VALUE:
+								vec_add(untyped_exprs, val->init_value);
+								break;
+							default:
+								el = expr_new_expr(EXPR_CONST, single_expr);
+								expr_rewrite_const_initializer(el, val->type, val);
+								vec_add(untyped_exprs, el);
+								break;
+						}
 					}
 					continue;
 				}
