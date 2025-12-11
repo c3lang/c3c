@@ -1736,6 +1736,12 @@ CHECK_ELLIPSIS:
 		vec_add(params, param);
 		if (!try_consume(c, TOKEN_COMMA)) break;
 	}
+	if (tok_is(c, TOKEN_LBRACE) || tok_is(c, TOKEN_STAR) || tok_is(c, TOKEN_LBRACKET))
+	{
+		PRINT_ERROR_LAST("Expected the name of a type here. ('%s' in a parameter list must follow a type).", token_type_to_string(c->tok));
+		return false;
+	}
+
 	*params_ref = params;
 	return true;
 }
@@ -1751,23 +1757,7 @@ static inline bool parse_fn_parameter_list(ParseContext *c, Signature *signature
 	Variadic variadic = VARIADIC_NONE;
 	int vararg_index = -1;
 	if (!parse_parameters(c, &decls, &variadic, &vararg_index, PARAM_PARSE_FUNC)) return false;
-
-	// Improve the error messages here
-	if (!tok_is(c,TOKEN_RPAREN))
-	{
-		if (tok_is(c, TOKEN_LBRACE) || tok_is(c, TOKEN_STAR) || tok_is(c, TOKEN_LBRACKET))
-		{
-			PRINT_ERROR_LAST("Expected typename here. ('%s' in a parameter list must follow a type).",token_type_to_string(c->tok));
-		}
-		else
-		{
-			PRINT_ERROR_HERE("Expected ')' here.");
-		}
-		return false;
-	}
-	// Advance past the rparen
-	advance(c);
-
+	CONSUME_OR_RET(TOKEN_RPAREN, false);
 	signature->vararg_index = vararg_index < 0 ? vec_size(decls) : vararg_index;
 	signature->params = decls;
 	signature->variadic = variadic;
