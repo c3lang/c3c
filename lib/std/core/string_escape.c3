@@ -25,6 +25,7 @@ fn String String.escape(String s, Allocator allocator, bool strip_quotes = true)
     // Conservative allocation: most strings need minimal escaping
     usz initial_capacity = s.len + s.len / 5 + 2; // ~1.2x + quotes
     DString result = dstring::new_with_capacity(allocator, initial_capacity);
+    defer result.free();
 
     if (!strip_quotes) result.append_char('"');
 
@@ -130,6 +131,7 @@ fn String? String.unescape(String s, Allocator allocator, bool allow_unquoted = 
     }
 
     DString result = dstring::new_with_capacity(allocator, s.len);
+    defer result.free();
 
 	usz len = s.len;
 	for (usz i = 0; i < len; i++)
