@@ -15,6 +15,7 @@
 - Ignore const null check on deref in `$defined` and `$sizeof` #2633.
 - Subscripting of constant slices would sometimes be considered non-constant #2635.
 - Compiler crash when concatenating structs and arrays to an untyped list.
+- Strings assigned to longer arrays would crash codegen, e.g. `char[10] x = "abcd`.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
