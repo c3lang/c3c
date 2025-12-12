@@ -210,7 +210,7 @@ fn String? String.unescape(String s, Allocator allocator, bool allow_unquoted = 
  @return "The unescaped string without quotes"
  @return? UNTERMINATED_STRING, INVALID_ESCAPE_SEQUENCE, INVALID_HEX_ESCAPE, INVALID_UNICODE_ESCAPE
 *>
-fn String? String.tunescape(String s, bool allow_unquoted = false, bool lenient = false) => s.unescape(tmem, allow_unquoted, leninet);
+fn String? String.tunescape(String s, bool allow_unquoted = false, bool lenient = false) => s.unescape(tmem, allow_unquoted, lenient);
 
 <*
  Check if a character needs to be escaped in a string literal.
