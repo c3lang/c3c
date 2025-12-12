@@ -185,7 +185,6 @@ fn void boringssl_misc_regressions_5_streamed()
 const TEST_ITERATIONS = 2050;
 fn void equivalencies()
 {
-
     Lcg64Random rand;
     random::seed(&rand, 0x1337_aaa6_f4a0_1337);
 
