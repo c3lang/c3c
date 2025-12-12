@@ -402,6 +402,7 @@ static const char *find_linux_crt_begin(void)
 
 static const char *find_linux_ld(void)
 {
+	if (compiler.platform.environment_type == ENV_TYPE_ANDROID) return "--dynamic-linker=/system/ld-android.so";
 	switch (compiler.build.linuxpaths.libc)
 	{
 		case LINUX_LIBC_MUSL:
@@ -441,11 +442,10 @@ static const char *find_linux_ld(void)
 				case ARCH_TYPE_X86_64: return "--dynamic-linker=/lib64/ld-linux-x86-64.so.2";
 				default: return "--dynamic-linker=/lib/ld-linux-unknown.so.2"; // another placeholder until we have all of them
 			}
-			break;
+			FALLTHROUGH;
 		default:
-			if (compiler.platform.environment_type == ENV_TYPE_ANDROID) return "--dynamic-linker=/system/ld-android.so";
+			UNREACHABLE;
 	}
-	UNREACHABLE;
 }
 
 static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool is_dylib)

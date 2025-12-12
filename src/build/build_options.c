@@ -865,12 +865,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("linux-libc")))
 			{
-				if (str_eq(argopt, "host"))
-				{
-					options->linux_libc = default_libc;
-				}
-				else
-					options->linux_libc = parse_opt_select(LinuxLibc, argopt, linuxlibc);
+				options->linux_libc = parse_opt_select(LinuxLibc, argopt, linuxlibc);
 				return;
 			}
 			if ((argopt = match_argopt("optsize")))
@@ -1513,7 +1508,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,
 		.loop_vectorization = VECTORIZATION_NOT_SET,
-		.linux_libc = default_libc,
+		.linux_libc = LINUX_LIBC_NOT_SET,
 		.files = NULL,
 		.build_dir = NULL,
 		.output_dir = NULL,
