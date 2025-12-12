@@ -3855,7 +3855,7 @@ RETRY:;
 			{
 				if (len == 0)
 				{
-				if (missing_ref) return *missing_ref = true, false;
+					if (missing_ref) return *missing_ref = true, false;
 					RETURN_SEMA_ERROR(index_expr, "Cannot index into a zero size list.");
 				}
 				if (missing_ref) return *missing_ref = true, false;
@@ -10888,8 +10888,16 @@ static bool sema_expr_analyse_lenof(SemaContext *context, Expr *expr, bool *miss
 	{
 		return sema_insert_method_call(context, expr, len, inner, NULL, false);
 	}
+RETRY:
 	switch (canonical->type_kind)
 	{
+		case TYPE_UNTYPED_LIST:
+			ASSERT_SPAN(expr, expr_is_const_untyped_list(expr));
+			expr_rewrite_const_int(expr, type_isz, vec_size(expr->const_expr.untyped_list));
+			return true;
+		case TYPE_TYPEDEF:
+			canonical = canonical->decl->distinct->type;
+			goto RETRY;
 		case TYPE_ARRAY:
 		case VECTORS:
 			expr_rewrite_const_int(expr, type_isz, canonical->array.len);
@@ -10897,6 +10905,15 @@ static bool sema_expr_analyse_lenof(SemaContext *context, Expr *expr, bool *miss
 		case TYPE_SLICE:
 			expr_rewrite_slice_len(expr, inner, type_isz);
 			return true;
+		case TYPE_STRUCT:
+			if (canonical->decl->is_substruct)
+			{
+				Expr *expr_access = expr_access_inline_member(copy_expr_single(expr), canonical->decl);
+				*expr = *expr_access;
+				canonical = expr->type->canonical;
+				goto RETRY;
+			}
+			FALLTHROUGH;
 		default:
 			if (missing_ref)
 			{
