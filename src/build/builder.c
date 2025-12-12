@@ -540,6 +540,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->emit_asm = options->emit_asm;
 	target->print_stats = options->verbosity_level >= 2;
 
+	if (target->linuxpaths.libc == LINUX_LIBC_NOT_SET) target->linuxpaths.libc = default_libc;
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
 	target->silent = options->verbosity_level < 0;

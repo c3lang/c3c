@@ -402,12 +402,10 @@ static const char *find_linux_crt_begin(void)
 
 static const char *find_linux_ld(void)
 {
-	INFO_LOG("Environment Type ID: %d", compiler.platform.environment_type);
-	switch (compiler.platform.environment_type)
+	if (compiler.platform.environment_type == ENV_TYPE_ANDROID) return "--dynamic-linker=/system/ld-android.so";
+	switch (compiler.build.linuxpaths.libc)
 	{
-		case ENV_TYPE_MUSL:
-		case ENV_TYPE_MUSLEABI:
-		case ENV_TYPE_MUSLEABIHF:
+		case LINUX_LIBC_MUSL:
 			switch (compiler.platform.arch)
 			{
 				case ARCH_TYPE_ARM: return "--dynamic-linker=/lib/ld-musl-arm.so.1";
@@ -428,10 +426,9 @@ static const char *find_linux_ld(void)
 			}
 			UNREACHABLE;
 			break;
-		case ENV_TYPE_ANDROID:
-			return "--dynamic-linker=/system/ld-android.so";
-		default:
-			switch (compiler.platform.arch) {
+		case LINUX_LIBC_GNU:
+			switch (compiler.platform.arch)
+			{
 				case ARCH_TYPE_ARM: return "--dynamic-linker=/lib/ld-linux.so.3";
 				case ARCH_TYPE_AARCH64: return "--dynamic-linker=/lib/ld-linux-aarch64.so.1";
 				case ARCH_TYPE_MIPS: return "--dynamic-linker=/lib/ld-linux-mipsn8.so.1";
@@ -443,11 +440,12 @@ static const char *find_linux_ld(void)
 				case ARCH_TYPE_SPARCV9: return "--dynamic-linker=/lib/ld-linux.so.2";
 				case ARCH_TYPE_X86: return "--dynamic-linker=/lib64/ld-linux.so.2";
 				case ARCH_TYPE_X86_64: return "--dynamic-linker=/lib64/ld-linux-x86-64.so.2";
-				default: return "--dynamic-linkrt=/lib/ld-linux-unknown.so.2"; // another placeholder until we have all of them
+				default: return "--dynamic-linker=/lib/ld-linux-unknown.so.2"; // another placeholder until we have all of them
 			}
+			FALLTHROUGH;
+		default:
 			UNREACHABLE;
 	}
-	UNREACHABLE;
 }
 
 static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool is_dylib)
