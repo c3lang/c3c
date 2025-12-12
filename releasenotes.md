@@ -17,6 +17,8 @@
 - Compiler crash when concatenating structs and arrays to an untyped list.
 - Strings assigned to longer arrays would crash codegen, e.g. `char[10] x = "abcd`.
 - Typedefs and structs with inline types supporting lengthof would not work with lengthof #2641.
+- `$defined(foo())` now correctly errors if `foo()` would require a path.
+- `@if($defined((char*){}.foo()))` does not error if `foo` is missing.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
