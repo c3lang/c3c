@@ -27,6 +27,7 @@
 - Buffered/UnbufferedChannel, and both ThreadPools have `@maydiscard` on a set of functions. They will retunr void in 0.8.0.
 - Pthread bindings correctly return Errno instead of CInt.
 - Return of Thread `join()` is now "@maydiscard".
+- Add `poly1305` one-time Message Authentication Code and associated tests. #2639
 
 ## 0.7.8 Change list
 
