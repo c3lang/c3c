@@ -19,6 +19,7 @@ struct TestRunnerContext
 	Pool pool;
 	Atomic{bool} interrupted;
 	Mutex print_mutex;
+	Atomic{int} thread_id_counter;
 	usz total_test_files;
 }
 
@@ -380,7 +381,8 @@ fn bool test_file(Path file_path)
 	int current_test_count = g_ctx.test_count.add(1);
 	update_status(current_test_count, file_path.str_view());
 	bool single;
-	Path test_dir = g_ctx.start_cwd.tappend(string::tformat("_c3test_%s", (ulong)thread::current().pthread))!!;
+	int thread_id = g_ctx.thread_id_counter.add(1);
+	Path test_dir = g_ctx.start_cwd.tappend(string::tformat("_c3test_%s", thread_id))!!;
 	defer (void)path::rmtree(test_dir);
 	if (@catch(path::mkdir(test_dir)))
 	{
