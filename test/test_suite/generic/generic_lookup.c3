@@ -1,5 +1,5 @@
 module test;
-
+import std::collections::elastic_array;
 fn void a()
 {
 	List {int} x; // #error: Did you mean the struct 'List' in module std::collections::list? If so please add
@@ -17,12 +17,27 @@ fn void c()
 
 fn void d()
 {
-	list::type_is_overaligned(); // #error: Did you mean the macro 'type_is_overaligned' in the generic module std::collections::list? If so, use 'type_is_overaligned{...}' instead
+	list::type_is_overaligned(); // #error: Did you mean the macro 'std::collections::list::type_is_overaligned' in module std::collections::list? If so please add 'import std::collections::list'
+}
+
+fn void d2()
+{
+	elastic_array::type_is_overaligned(); // #error: 'type_is_overaligned' is defined in the generic module 'std::collections::elastic_array', did you forget the parameters '{ ... }'?
 }
 
 fn void e()
 {
-	List x; // #error: Did you mean the struct 'List' in the generic module std::collections::list? If so, use 'List{...}'
+	List x; // #error: Did you mean the struct 'List' in module std::collections::list? If so please add 'import std::collections::list'
+}
+
+fn void f()
+{
+	ElasticArray x; // #error: 'ElasticArray' is defined in the generic module 'std::collections::elastic_array', did you forget the parameters '{ ... }'?
+}
+
+fn void g()
+{
+	(ElasticArray){}; // #error: 'ElasticArray' is defined in the generic module 'std::collections::elastic_array', did you forget the parameters '{ ... }'
 }
 
 fn int main(String[] args)

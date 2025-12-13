@@ -849,7 +849,7 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 			if (symbol) return name_resolve->found = symbol, true;
 		}
 		if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
-		RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is defined in the generic module '%s', but no parameters where given.", found->name, found->unit->module->name->module);
+		RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is defined in the generic module '%s', did you forget the parameters '{ ... }'?", found->name, found->unit->module->name->module);
 	}
 	else
 	{
