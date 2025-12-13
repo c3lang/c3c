@@ -19,6 +19,7 @@
 - Typedefs and structs with inline types supporting lengthof would not work with lengthof #2641.
 - `$defined(foo())` now correctly errors if `foo()` would require a path.
 - `@if($defined((char*){}.foo()))` does not error if `foo` is missing.
+- Hard limit of 127 characters for identifiers.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
