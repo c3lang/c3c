@@ -664,7 +664,7 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 		Module *generic_module = module->generic_module;
 		if (!generic_module && module->is_generic) generic_module = module;
 		const char *module_name = generic_module ? generic_module->name->module : module->name->module;
-		if (generic_module && !name_resolve->is_parameterized)
+		if (decl_is_visible(context->unit, decl) && generic_module && !name_resolve->is_parameterized)
 		{
 			sema_error_at(context, span, "Did you mean the %s '%s' in the generic module %s? If so, use '%s{...}' instead.",
 			              maybe_name, symbol, module_name, symbol);
@@ -849,7 +849,7 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 			if (symbol) return name_resolve->found = symbol, true;
 		}
 		if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
-		RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is defined in the generic module '%s', but no parameters where given.", found->name, found->unit->module->name->module);
+		RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is defined in the generic module '%s', did you forget the parameters '{ ... }'?", found->name, found->unit->module->name->module);
 	}
 	else
 	{

@@ -1,0 +1,21 @@
+// #target: macos-x64
+
+module test;
+import std;
+
+fn int main()
+{
+	char[10] x = "abcd";
+	return 0;
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant <{ [5 x i8], [5 x i8] }> <{ [5 x i8] c"abcd\00", [5 x i8] zeroinitializer }>, align 1
+
+define i32 @main() #0 {
+entry:
+  %x = alloca [10 x i8], align 1
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %x, ptr align 1 @.str, i32 10, i1 false)
+  ret i32 0
+}

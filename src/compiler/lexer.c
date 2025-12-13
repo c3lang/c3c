@@ -349,6 +349,10 @@ EXIT:;
 		}
 		return add_error_token(lexer, "An identifier may not consist of only '_' characters.");
 	}
+	if (len > MAX_IDENTIFIER_LENGTH)
+	{
+		return add_error_token(lexer, "An identifier cannot be longer than %d characters, but this one was %u characters long.", MAX_IDENTIFIER_LENGTH, len);
+	}
 	const char* interned_string = symtab_add(lexer->lexing_start, len, hash, &type);
 	switch (type)
 	{

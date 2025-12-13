@@ -15,6 +15,11 @@
 - Ignore const null check on deref in `$defined` and `$sizeof` #2633.
 - Subscripting of constant slices would sometimes be considered non-constant #2635.
 - Compiler crash when concatenating structs and arrays to an untyped list.
+- Strings assigned to longer arrays would crash codegen, e.g. `char[10] x = "abcd`.
+- Typedefs and structs with inline types supporting lengthof would not work with lengthof #2641.
+- `$defined(foo())` now correctly errors if `foo()` would require a path.
+- `@if($defined((char*){}.foo()))` does not error if `foo` is missing.
+- Hard limit of 127 characters for identifiers.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
@@ -25,6 +30,7 @@
 - Buffered/UnbufferedChannel, and both ThreadPools have `@maydiscard` on a set of functions. They will retunr void in 0.8.0.
 - Pthread bindings correctly return Errno instead of CInt.
 - Return of Thread `join()` is now "@maydiscard".
+- Add `poly1305` one-time Message Authentication Code and associated tests. #2639
 
 ## 0.7.8 Change list
 

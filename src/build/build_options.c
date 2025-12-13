@@ -217,7 +217,7 @@ static void usage(bool full)
 		print_opt("--macos-min-version <ver>", "Set the minimum MacOS version to compile for.");
 		print_opt("--macos-sdk-version <ver>", "Set the MacOS SDK compiled for.");
 		PRINTF("");
-		print_opt("--linux-libc=<gnu|musl>", "Set the libc to use on Linux, defaults to gnu.");
+		print_opt("--linux-libc=<host|gnu|musl>", "Set the libc to use on Linux, defaults to host.");
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
 		PRINTF("");

@@ -1736,6 +1736,12 @@ CHECK_ELLIPSIS:
 		vec_add(params, param);
 		if (!try_consume(c, TOKEN_COMMA)) break;
 	}
+	if (tok_is(c, TOKEN_LBRACE) || tok_is(c, TOKEN_STAR) || tok_is(c, TOKEN_LBRACKET))
+	{
+		PRINT_ERROR_LAST("Expected the name of a type here. ('%s' in a parameter list must follow a type).", token_type_to_string(c->tok));
+		return false;
+	}
+
 	*params_ref = params;
 	return true;
 }
