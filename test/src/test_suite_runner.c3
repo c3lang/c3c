@@ -3,7 +3,7 @@ import std::io, std::math, std::os, std::collections;
 import libc;
 import std::thread, std::atomic;
 
-alias Pool = ThreadPool{8};
+alias Pool = FixedThreadPool;
 
 struct TestRunnerContext
 {
@@ -17,7 +17,6 @@ struct TestRunnerContext
 	bool only_skipped;
 	String stdlib;
 	Pool pool;
-	Atomic{bool} interrupted;
 	Mutex print_mutex;
 	Atomic{int} thread_id_counter;
 	usz total_test_files;
@@ -27,16 +26,19 @@ TestRunnerContext g_ctx;
 
 fn int main(String[] args)
 {
-	libc::signal(libc::SIGINT, fn void (CInt signal) => g_ctx.interrupted.store(true));
+	libc::signal(libc::SIGINT, fn void (CInt signal) {
+		foreach (f : path::ls(mem, g_ctx.start_cwd)!!)
+		{
+			if (f.str_view().starts_with("_c3test_")) (void)path::rmtree(g_ctx.start_cwd.tappend(f.str_view())!!);
+		}
+		os::exit(1);
+	});
 
 	String appname = args[0];
 	if (args.len < 3) usage(appname);
 
 	g_ctx.print_to_file = !io::stdout().isatty();
-
 	g_ctx.start_cwd = path::tcwd()!!;
-	g_ctx.pool.init()!!;
-	defer g_ctx.pool.stop_and_destroy();
 	g_ctx.print_mutex.init()!!;
 
 	Path? path = g_ctx.start_cwd.tappend(args[1]);
@@ -49,6 +51,9 @@ fn int main(String[] args)
 	g_ctx.compiler_path = path.absolute(tmem)!!;
 
 	g_ctx.only_skipped = false;
+
+	usz num_threads = os::num_cpu();
+
 	for (int i = 3; i < args.len; i++)
 	{
 		String arg = args[i];
@@ -71,6 +76,12 @@ fn int main(String[] args)
 					error_exit(appname, "Stdlib directory '%s' cannot be found.", g_ctx.stdlib);
 				}
 				g_ctx.stdlib = g_ctx.start_cwd.tappend(g_ctx.stdlib).str_view()!!;
+			case "--threads":
+				if (i == args.len - 1 || args[i + 1].starts_with("-")) {
+					arg_error_exit(appname, "Expected --threads to be followed by the number of threads.");
+				}
+				num_threads = args[i + 1].to_int()!!;
+				i++;
 			default:
 				arg_error_exit(appname, "Unknown option '%s'.", args[i]);
 		}
@@ -96,14 +107,12 @@ fn int main(String[] args)
 
 	g_ctx.total_test_files = files_to_test.len();
 
+
+	g_ctx.pool.init(num_threads, g_ctx.total_test_files)!!;
+	defer g_ctx.pool.stop_and_destroy();
 	foreach (&f : files_to_test)
 	{
-		if (g_ctx.interrupted.load())
-		{
-			io::printn("\nInterrupted, skipping remaining tests...");
-			break;
-		}
-		g_ctx.pool.push(&test_file_threaded, f);
+		g_ctx.pool.push(&test_file_threaded, *f)!!;
 	}
 	g_ctx.pool.join();
 
@@ -195,7 +204,7 @@ struct RunSettings
 <*
  Check a line from stderr returned by the compiler
 *>
-fn bool find_and_mark_error(RunSettings* settings, String type, String file, String line_str, String col, String message) => @pool()
+fn bool find_and_mark_error(RunSettings* settings, String type, String file, String line_str, String _col, String message) => @pool()
 {
 	int line_no = line_str.to_int()!!;
 
@@ -361,16 +370,16 @@ fn void parse_header_directive(int* line_no, String line, RunSettings* settings,
 	}
 }
 
-fn int test_file_threaded(void* data)
+fn void test_file_threaded(any[] data)
 {
-	@pool_init(mem, 1024 * 1024) {
-		Path file_path = *(Path*)data;
+	@pool_init(mem, 8 * 1024 * 1024) {
+		Path* file_path_ptr = anycast(data[0], Path)!!;
+		Path file_path = *file_path_ptr;
 		if (!test_file(file_path))
 		{
 			g_ctx.failure_count.add(1);
 		}
 	};
-	return 0;
 }
 
 <*
@@ -383,6 +392,7 @@ fn bool test_file(Path file_path)
 	bool single;
 	int thread_id = g_ctx.thread_id_counter.add(1);
 	Path test_dir = g_ctx.start_cwd.tappend(string::tformat("_c3test_%s", thread_id))!!;
+	(void)path::rmtree(test_dir);
 	defer (void)path::rmtree(test_dir);
 	if (@catch(path::mkdir(test_dir)))
 	{
@@ -588,6 +598,7 @@ fn void usage(String appname) @noreturn
     io::printn("  -s, --skipped       only run skipped tests");
     io::printn("  --no-terminal       disable color and dynamic status line");
     io::printn("  --stdlib <path>     override the path to stdlib");
+	io::printfn("  --threads [N]       run tests in N threads (default: %s)", os::num_cpu());
 	os::exit(0);
 }
 
