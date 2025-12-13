@@ -80,7 +80,7 @@ const CInt SIGCHLD = BSD_FLAVOR_SIG ? 20 : 17;
 const bool BSD_FLAVOR_SIG @local = env::DARWIN || env::BSD_FAMILY;
 
 alias Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
-alias Off_t = $typefrom(env::WIN32 ? int.typeid : usz.typeid);
+alias Off_t = $typefrom(env::WIN32 ? int.typeid : isz.typeid);
 
 module libc @if(env::LIBC);
 
