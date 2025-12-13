@@ -237,19 +237,21 @@ fn bool find_and_mark_error(RunSettings* settings, String type, String file, Str
 <*
  Parse all stderr output
 *>
-fn bool parse_result(DString out, RunSettings settings)
+fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline)
 {
 	List{String} unexpected_errors;
 
 	foreach (line : out.str_view().tsplit("\n"))
 	{
 		if (!line) continue;
-
 		String[] parts = line.tsplit("|", 5);
 
 		if (parts.len != 5)
 		{
-			io::printn("FAILED - Unexpected response from compiler:");
+			io::printn("\nFAILED - Unexpected response from compiler:");
+			io::print("Compiler command line: ");
+			foreach(arg : *cmdline) io::printf("%s ", arg);
+			io::printn();
 			io::printn("Output: ----------------------------------------------------------");
 			io::printn(out);
 			io::printn("------------------------------------------------------------------");
@@ -475,6 +477,8 @@ fn bool test_file(Path file_path)
 	}
 	cmdline.push("--llvm-out");
 	cmdline.push(test_dir.str_view());
+	cmdline.push("--build-dir");
+	cmdline.push(test_dir.tappend("build").str_view()!!);
 	foreach (file : settings.input_files)
 	{
 		cmdline.push(test_dir.tappend(file.name).str_view()!!);
@@ -504,7 +508,7 @@ fn bool test_file(Path file_path)
 		io::printfn("FAILED - Error(%s): %s", result, out);
 		return false;
 	}
-	if (!parse_result(out, settings)) return false;
+	if (!parse_result(out, settings, &cmdline)) return false;
 	foreach (file : settings.output_files)
 	{
 		Path expected_file = test_dir.tappend(file.name)!!;
