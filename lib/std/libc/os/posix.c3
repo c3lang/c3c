@@ -60,7 +60,8 @@ struct Stack_t
 }
 
 extern fn CInt sigaltstack(Stack_t* ss, Stack_t* old_ss);
-extern fn CInt sigaction(CInt signum, Sigaction *action, Sigaction *oldaction);
+extern fn CInt sigaction(CInt signum, Sigaction *action, Sigaction *oldaction) @if(!env::NETBSD);
+extern fn CInt sigaction(CInt signum, Sigaction *action, Sigaction *oldaction) @cname("__sigaction_siginfo") @if(env::NETBSD);
 
 module libc::termios @if(env::LIBC &&& env::POSIX);
 

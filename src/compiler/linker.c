@@ -295,9 +295,9 @@ static void linker_setup_macos(const char ***args_ref, Linker linker_type)
 }
 
 
-static const char *find_freebsd_crt(void)
+static const char *find_bsd_crt(void)
 {
-	if (file_exists("/usr/lib/crt1.o"))
+	if (file_exists("/usr/lib/crt1.o") || file_exists("/usr/lib/crt0.o"))
 	{
 		return "/usr/lib/";
 	}
@@ -583,7 +583,7 @@ static void linker_setup_android(const char ***args_ref, Linker linker_type, boo
 	add_plain_arg("-lc");
 }
 
-static void linker_setup_freebsd(const char ***args_ref, Linker linker_type, bool is_dylib)
+static void linker_setup_bsd(const char ***args_ref, Linker linker_type, bool is_dylib)
 {
 	if (linker_type == LINKER_CC)
 	{
@@ -602,7 +602,7 @@ static void linker_setup_freebsd(const char ***args_ref, Linker linker_type, boo
 
 	if (!link_libc()) return;
 
-	const char *crt_dir = find_freebsd_crt();
+	const char *crt_dir = find_bsd_crt();
 	if (!crt_dir)
 	{
 		error_exit("Failed to find the C runtime at link time.");
@@ -613,22 +613,33 @@ static void linker_setup_freebsd(const char ***args_ref, Linker linker_type, boo
 	}
 	if (is_pie_pic(compiler.platform.reloc_model))
 	{
-		add_plain_arg("-pie");
+		if (!is_dylib) add_plain_arg("-pie");
 		add_concat_file_arg(crt_dir, "crti.o");
-		if (!is_dylib) add_concat_file_arg(crt_dir, "Scrt1.o");
+		if (!is_dylib && compiler.platform.os != OS_TYPE_NETBSD)
+		{
+			add_concat_file_arg(crt_dir, "Scrt1.o");
+		}
 		add_concat_file_arg(crt_dir, "crtbeginS.o");
 		add_concat_file_arg(crt_dir, "crtendS.o");
 	}
 	else
 	{
+		const char *crt_o = compiler.platform.os == OS_TYPE_NETBSD ? "crt0.o" : "crt1.o";
 		add_concat_file_arg(crt_dir, "crti.o");
-		if (!is_dylib) add_concat_file_arg(crt_dir, "crt1.o");
+		if (!is_dylib) add_concat_file_arg(crt_dir, crt_o);
 		add_concat_file_arg(crt_dir, "crtbegin.o");
 		add_concat_file_arg(crt_dir, "crtend.o");
 	}
 	add_concat_file_arg(crt_dir, "crtn.o");
 	add_concat_quote_arg("-L", crt_dir);
 	add_plain_arg("--dynamic-linker=/libexec/ld-elf.so.1");
+	if (compiler.platform.os == OS_TYPE_NETBSD)
+	{
+		/* The following two flags are needed to work around ld-elf.so not being able
+		 * to handle more than two PT_LOAD segments. */
+		add_plain_arg("--no-rosegment");
+		add_plain_arg("-znorelro");
+	}
 	linking_add_link(&compiler.linking, "c");
 	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 	linking_add_link(&compiler.linking, "gcc");
@@ -735,7 +746,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_TYPE_FREEBSD:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_NETBSD:
-			linker_setup_freebsd(args_ref, linker_type, is_dylib);
+			linker_setup_bsd(args_ref, linker_type, is_dylib);
 			break;
 		case OS_TYPE_LINUX:
 			linker_setup_linux(args_ref, linker_type, is_dylib);
