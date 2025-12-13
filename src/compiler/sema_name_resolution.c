@@ -664,7 +664,7 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 		Module *generic_module = module->generic_module;
 		if (!generic_module && module->is_generic) generic_module = module;
 		const char *module_name = generic_module ? generic_module->name->module : module->name->module;
-		if (generic_module && !name_resolve->is_parameterized)
+		if (decl_is_visible(context->unit, decl) && generic_module && !name_resolve->is_parameterized)
 		{
 			sema_error_at(context, span, "Did you mean the %s '%s' in the generic module %s? If so, use '%s{...}' instead.",
 			              maybe_name, symbol, module_name, symbol);
