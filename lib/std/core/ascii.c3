@@ -132,7 +132,26 @@ fn AsciiCharset create_set(String string)
 
 macro bool AsciiCharset.contains(set, char c) => !!(c < 128) & !!(set & (AsciiCharset)(1ULL << c));
 
+macro AsciiCharset @combine_sets(AsciiCharset $initial, AsciiCharset... $additional)
+{
+	uint128 $as_num = (uint128)$initial;
+	$foreach $add : $additional:
+		$as_num |= (uint128)$add;
+	$endforeach
+	return (AsciiCharset)$as_num;
+}
+
+macro AsciiCharset combine_sets(AsciiCharset initial, AsciiCharset... additional)
+{
+	uint128 as_num = (uint128)initial;
+	foreach (add : additional) as_num |= (uint128)add;
+	return (AsciiCharset)as_num;
+}
+
 const AsciiCharset WHITESPACE_SET = @create_set("\t\n\v\f\r ");
 const AsciiCharset NUMBER_SET = @create_set("0123456789");
-
+const AsciiCharset LOWER_SET = @create_set("abcdefghijklmnopqrstuvwxyz");
+const AsciiCharset UPPER_SET = @create_set("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+const AsciiCharset LETTER_SET = @combine_sets(LOWER_SET, UPPER_SET);
+const AsciiCharset ALPHANUMERIC_SET = @combine_sets(LETTER_SET, NUMBER_SET);
 
