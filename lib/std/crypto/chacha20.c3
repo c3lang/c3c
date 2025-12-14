@@ -56,11 +56,9 @@ macro quarter_round(uint* x, int a, int b, int c, int d) @local
 <* Process the next (or final) chunk of ingested data. *>
 fn void ChaCha20.next_block(&self) @local
 {
-	int i;
-
 	self.key_stream[..] = self.state[..];
 
-	for (i = 0; i < 10; ++i) 
+	for (usz i = 0; i < 10; ++i) // unrolling this does not improve performance measurably
 	{
 		quarter_round(&self.key_stream[0],   0,  4,  8, 12);
 		quarter_round(&self.key_stream[0],   1,  5,  9, 13);
@@ -72,10 +70,11 @@ fn void ChaCha20.next_block(&self) @local
 		quarter_round(&self.key_stream[0],   3,  4,  9, 14);
 	}
 
+	// NOTE: This would 'feel' like a performance hit, but testing the benchmark doesn't show any noticeable
+	//   difference on -O5 between this and a for-loop, or even an unrolled loop with compile-time '$for'.
 	array::@zip_into(self.key_stream[..], self.state[..], fn (a, b) => a + b);
 
-	uint* counter = &self.state[12];
-	++counter[0];
+	self.state[12]++; // increment the block counter (rollovers are ok)
 }
 
 
@@ -83,26 +82,14 @@ fn void ChaCha20.next_block(&self) @local
 fn void ChaCha20.init(&self, char[] key, char[] nonce, uint counter = 1)
 {
 	// Init block.
-	self.key[..] = key[..];
-	self.nonce[..] = nonce[..];
-	self.state[0]  = @unaligned_load(*(uint*)&MAGIC[0 * 4], 1);
-	self.state[1]  = @unaligned_load(*(uint*)&MAGIC[1 * 4], 1);
-	self.state[2]  = @unaligned_load(*(uint*)&MAGIC[2 * 4], 1);
-	self.state[3]  = @unaligned_load(*(uint*)&MAGIC[3 * 4], 1);
-	self.state[4]  = @unaligned_load(*(uint*)&key[0 * 4], 1);
-	self.state[5]  = @unaligned_load(*(uint*)&key[1 * 4], 1);
-	self.state[6]  = @unaligned_load(*(uint*)&key[2 * 4], 1);
-	self.state[7]  = @unaligned_load(*(uint*)&key[3 * 4], 1);
-	self.state[8]  = @unaligned_load(*(uint*)&key[4 * 4], 1);
-	self.state[9]  = @unaligned_load(*(uint*)&key[5 * 4], 1);
-	self.state[10] = @unaligned_load(*(uint*)&key[6 * 4], 1);
-	self.state[11] = @unaligned_load(*(uint*)&key[7 * 4], 1);
-	self.state[12] = counter;
-	self.state[13] = @unaligned_load(*(uint*)&nonce[0 * 4], 1);
-	self.state[14] = @unaligned_load(*(uint*)&nonce[1 * 4], 1);
-	self.state[15] = @unaligned_load(*(uint*)&nonce[2 * 4], 1);
 	self.bytes_processed = 0;
 	self.position = 64;
+	self.key[..] = key[..];
+	self.nonce[..] = nonce[..];
+	((char*)&self.state[0])[:MAGIC.len] = MAGIC[..];
+	((char*)&self.state[4])[:KEY_SIZE] = key[..];
+	self.state[12] = counter;
+	((char*)&self.state[13])[:NONCE_SIZE] = nonce[..];
 }
 
 
