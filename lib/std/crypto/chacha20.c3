@@ -78,7 +78,16 @@ fn void ChaCha20.next_block(&self) @local
 }
 
 
-<* Initialize a ChaCha20 transformation context. *>
+<*
+ Initialize a ChaCha20 transformation context.
+
+ @param[in] key : `The secret key used for the transformation operation.`
+ @param[in] nonce : `The one-time nonce to use for the transformation operation.`
+ @param counter : `An optional counter value to adjust the stream's position.`
+
+ @require key.len == KEY_SIZE : `Input key slice is not the correct length (32 bytes).`
+ @require nonce.len ==  NONCE_SIZE : `Input nonce slice is not the correct length (12 bytes).`
+*>
 fn void ChaCha20.init(&self, char[] key, char[] nonce, uint counter = 1)
 {
 	// Init block.
@@ -93,9 +102,15 @@ fn void ChaCha20.init(&self, char[] key, char[] nonce, uint counter = 1)
 }
 
 
-<* Transform some input data using the current context structure. *>
+<*
+ Transform some input data using the current context structure.
+
+ @param[inout] data : `The data to transform (encrypt or decrypt).`
+*>
 fn void ChaCha20.transform(&self, char[] data)
 {
+	if (!data.len) return;
+
 	for (usz i = 0; i < data.len; ++i)
 	{
 		if (self.position >= 64) 
