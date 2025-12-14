@@ -58,7 +58,7 @@ fn void ChaCha20.next_block(&self) @local
 {
 	self.key_stream[..] = self.state[..];
 
-	for (usz i = 0; i < 10; ++i) // unrolling this does not improve performance measurably
+	for (usz i = 0; i < 10; i++) // unrolling this does not improve performance measurably
 	{
 		quarter_round(&self.key_stream[0],   0,  4,  8, 12);
 		quarter_round(&self.key_stream[0],   1,  5,  9, 13);
@@ -111,7 +111,7 @@ fn void ChaCha20.transform(&self, char[] data)
 {
 	if (!data.len) return;
 
-	for (usz i = 0; i < data.len; ++i)
+	for (usz i = 0; i < data.len; i++)
 	{
 		if (self.position >= 64) 
 		{
