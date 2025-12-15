@@ -18,10 +18,20 @@ const  NONCE_SIZE = 12;
 <* A required ChaCha20 "magic" value used for state initialization. *>
 const char[] MAGIC = "expand 32-byte k";
 
-<* Once a single ChaCha20 context has processed this many bytes, a new nonce MUST be used, unless the static `permit_overflow` runtime module variable is set to true. *>
+<*
+ Once a single ChaCha20 context has processed this many bytes, a new nonce MUST be used,
+ unless the static `permit_overflow` runtime module variable is set to true.
+*>
 const CHACHA20_NONCE_REUSE_LIMIT = 64 * (1ull << 32);
 
-<* SECURITY WARNING: This boolean should always remain 'false'. If set to 'true', you accept the security implications of nonce re-use in ChaCha20 encryption operations. *>
+<*
+ SECURITY WARNING:
+ This boolean should always remain 'false'. If set to 'true', you accept the security
+ implications of nonce re-use caused by an overflow in the cipher's  'counter' field.
+
+ This security warning is only applicable when a single ChaCha20 context is being used
+ to process more than about 256 GiB of data.
+*>
 bool permit_overflow = false;
 
 
