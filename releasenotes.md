@@ -31,6 +31,7 @@
 - Pthread bindings correctly return Errno instead of CInt.
 - Return of Thread `join()` is now "@maydiscard".
 - Add `poly1305` one-time Message Authentication Code and associated tests. #2639
+- Add `BLAKE2` (optionally keyed) cryptographic hashing with associated tests. #2648
 
 ## 0.7.8 Change list
 
