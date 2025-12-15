@@ -212,7 +212,7 @@ struct Blake2bParam @packed @local
 <*
  @require $defined(data[0]) &&& $typeof(data[0]) == char : "Input data must be a char slice, char array, or string value."
 *>
-macro blake2b_hash(data, $out_len, char[] key = {}, char[] salt = {})
+macro blake2b_hash($out_len, data, char[] key = {}, char[] salt = {})
 {
 	Blake2b b @noinit;
 	defer b.destroy();
@@ -223,13 +223,13 @@ macro blake2b_hash(data, $out_len, char[] key = {}, char[] salt = {})
 alias b = blake2b_hash;
 
 // See RFC 7693, Section 4 for common parameter sets.
-macro blake2b_224(data, char[] key = {}, char[] salt = {}) => blake2b_hash(data, SIZE_224, key, salt);
+macro blake2b_224(data, char[] key = {}, char[] salt = {}) => blake2b_hash(SIZE_224, data, key, salt);
 alias b_224 = blake2b_224;
-macro blake2b_256(data, char[] key = {}, char[] salt = {}) => blake2b_hash(data, SIZE_256, key, salt);
+macro blake2b_256(data, char[] key = {}, char[] salt = {}) => blake2b_hash(SIZE_256, data, key, salt);
 alias b_256 = blake2b_256;
-macro blake2b_384(data, char[] key = {}, char[] salt = {}) => blake2b_hash(data, SIZE_384, key, salt);
+macro blake2b_384(data, char[] key = {}, char[] salt = {}) => blake2b_hash(SIZE_384, data, key, salt);
 alias b_384 = blake2b_384;
-macro blake2b_512(data, char[] key = {}, char[] salt = {}) => blake2b_hash(data, SIZE_512, key, salt);
+macro blake2b_512(data, char[] key = {}, char[] salt = {}) => blake2b_hash(SIZE_512, data, key, salt);
 alias b_512 = blake2b_512;
 
 <*
@@ -334,7 +334,7 @@ struct Blake2sParam @packed @local
 <*
  @require $defined(data[0]) &&& $typeof(data[0]) == char : "Input data must be a char slice, char array, or string value."
 *>
-macro blake2s_hash(data, $out_len, char[] key = {}, char[] salt = {})
+macro blake2s_hash($out_len, data, char[] key = {}, char[] salt = {})
 {
 	Blake2s b @noinit;
 	defer b.destroy();
@@ -345,13 +345,13 @@ macro blake2s_hash(data, $out_len, char[] key = {}, char[] salt = {})
 alias s = blake2s_hash;
 
 // See RFC 7693, Section 4 for common parameter sets.
-macro blake2s_128(data, char[] key = {}, char[] salt = {}) => blake2s_hash(data, SIZE_128, key, salt);
+macro blake2s_128(data, char[] key = {}, char[] salt = {}) => blake2s_hash(SIZE_128, data, key, salt);
 alias s_128 = blake2s_128;
-macro blake2s_160(data, char[] key = {}, char[] salt = {}) => blake2s_hash(data, SIZE_160, key, salt);
+macro blake2s_160(data, char[] key = {}, char[] salt = {}) => blake2s_hash(SIZE_160, data, key, salt);
 alias s_160 = blake2s_160;
-macro blake2s_224(data, char[] key = {}, char[] salt = {}) => blake2s_hash(data, SIZE_224, key, salt);
+macro blake2s_224(data, char[] key = {}, char[] salt = {}) => blake2s_hash(SIZE_224, data, key, salt);
 alias s_224 = blake2s_224;
-macro blake2s_256(data, char[] key = {}, char[] salt = {}) => blake2s_hash(data, SIZE_256, key, salt);
+macro blake2s_256(data, char[] key = {}, char[] salt = {}) => blake2s_hash(SIZE_256, data, key, salt);
 alias s_256 = blake2s_256;
 
 <*
