@@ -643,7 +643,6 @@ const Pair{ char[], char[] }[] WALKING_LENGTHS = {
 	{ x'070e151c232a31383f464d545b626970777e858c939aa1a8afb6bdc4cbd2d9e0e7eef5fc030a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dce3eaf1f8ff060d141b222930373e454c535a61686f767d848b9299a0a7aeb5bcc3cad1d8dfe6edf4fb020910171e252c333a41484f565d646b727980878e959ca3aab1b8bfc6cdd4dbe2e9f0f7fe050c131a21282f363d444b525960676e757c838a91989fa6adb4bbc2c9d0d7dee5ecf3fa01080f161d242b323940474e555c636a71787f868d949ba2a9b0b7bec5ccd3dae1e8eff6fd040b121920272e353c434a51585f666d747b828990979ea5acb3bac1c8cfd6dde4ebf2', x'692895b8e56b3f68bf849c9dfb68d845f64936a2512d3a117afe87d505d47de914e83043c0813942d050a8e3de56a63fd229b5108334c5e062d00ee9996e6e4948e4d1e03a7257873d2acacdfafdd1f466000b79092a290d37c12acf6859a0ba330c77936c1a82ff361d1d5915c1af4aeb38814a3f52dfe6e06bf4e5937d5c1162501ca67d07103137ab991b1605584f96cf5bc61d4e97be2ae4ab0a74d8367cfbc3eda6cea389d34dc5758c4ac321a1a8915e234c0b9500dca249e4941beb5bc262f34ab2df9511269c96024191454757fc519269df65bfb4d3af325d8a25d99e38b227addc98cb29753925cecc4956060c95ea2cf038069d543fbb392f' },
 };
 
-import std::io;
 fn void scrolling_input()
 {
 	char[*] key = sha256::hash("dance with me");
@@ -654,7 +653,6 @@ fn void scrolling_input()
 		// Remember that 'encrypt' and 'decrypt' are superficial terms here. The 'first'
 		//   and 'second' elements of each pair are just mirrors of one another, derived
 		//   with the 'transform' operation in a fresh ChaCha20 context each time.
-		io::print("GOT - "); foreach (c : chacha20::tencrypt(pair.first, key, nonce, 0)) io::printf("%02x ", c); io::printn("");
 		test::@check(chacha20::tencrypt(pair.first, key, nonce, 0) == pair.second, "Mismatch (enc) on index %d", i);
 		test::@check(chacha20::tdecrypt(pair.second, key, nonce, 0) == pair.first, "Mismatch (dec) on index %d", i);
 	};
