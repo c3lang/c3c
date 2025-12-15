@@ -107,7 +107,7 @@ macro @common_init(#instance, $ParamType, $iv, usz out_len, char[] key = {}, cha
 	}
 }
 
-macro @common_update(#instance, $block_size, char[] data)
+macro @common_update(#instance, $block_size, char[] data) @local
 {
 	if (@unlikely(!data.len)) return;
 
@@ -132,7 +132,7 @@ macro @common_update(#instance, $block_size, char[] data)
 	#instance.buflen += data.len;
 }
 
-macro @common_final(#instance, $output_length)
+macro @common_final(#instance, $output_length) @local
 {
 	char[$output_length] result = {};
 	if ($output_length != #instance.outlen) return result;
@@ -220,6 +220,7 @@ macro blake2b_hash(data, $out_len, char[] key = {}, char[] salt = {})
 	b.update(data[..]);
 	return b.final($out_len);
 }
+alias b = blake2b_hash;
 
 // See RFC 7693, Section 4 for common parameter sets.
 macro blake2b_224(data, char[] key = {}, char[] salt = {}) => blake2b_hash(data, SIZE_224, key, salt);
@@ -341,6 +342,7 @@ macro blake2s_hash(data, $out_len, char[] key = {}, char[] salt = {})
 	b.update(data[..]);
 	return b.final($out_len);
 }
+alias s = blake2s_hash;
 
 // See RFC 7693, Section 4 for common parameter sets.
 macro blake2s_128(data, char[] key = {}, char[] salt = {}) => blake2s_hash(data, SIZE_128, key, salt);
