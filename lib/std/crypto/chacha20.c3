@@ -13,7 +13,7 @@ const BLOCK_SIZE = 64;
 const KEY_SIZE = 32;
 
 <* ChaCha20 "nonce" (initialization vector) size. *>
-const  NONCE_SIZE = 12;
+const NONCE_SIZE = 12;
 
 <* A required ChaCha20 "magic" value used for state initialization. *>
 const char[] MAGIC = "expand 32-byte k";
@@ -64,7 +64,7 @@ macro quarter_round(uint* x, int a, int b, int c, int d) @local
 
 
 <* Process the next (or final) chunk of ingested data. *>
-fn void ChaCha20.next_block(&self) @local
+fn void ChaCha20.mutate_keystream(&self) @local @inline
 {
 	self.key_stream[..] = self.state[..];
 
@@ -87,22 +87,21 @@ fn void ChaCha20.next_block(&self) @local
 	self.state[12]++; // increment the block counter (rollovers are ok)
 }
 
-
 <*
  Initialize a ChaCha20 transformation context.
 
- @param[in] key : `The secret key used for the transformation operation.`
- @param[in] nonce : `The one-time nonce to use for the transformation operation.`
+ @param key : `The secret key used for the transformation operation.`
+ @param nonce : `The one-time nonce to use for the transformation operation.`
  @param counter : `An optional counter value to adjust the stream's position.`
 
  @require key.len == KEY_SIZE : `Input key slice is not the correct length (32 bytes).`
  @require nonce.len ==  NONCE_SIZE : `Input nonce slice is not the correct length (12 bytes).`
 *>
-fn void ChaCha20.init(&self, char[] key, char[] nonce, uint counter = 1)
+fn void ChaCha20.init(&self, char[KEY_SIZE] key, char[NONCE_SIZE] nonce, uint counter = 0)
 {
 	// Init block.
+	self.position = BLOCK_SIZE; // start at the "end" of a block on init
 	self.bytes_processed = 0;
-	self.position = 64;
 	self.key[..] = key[..];
 	self.nonce[..] = nonce[..];
 	((char*)&self.state[0])[:MAGIC.len] = MAGIC[..];
@@ -110,7 +109,6 @@ fn void ChaCha20.init(&self, char[] key, char[] nonce, uint counter = 1)
 	self.state[12] = counter;
 	((char*)&self.state[13])[:NONCE_SIZE] = nonce[..];
 }
-
 
 <*
  Transform some input data using the current context structure.
@@ -123,9 +121,9 @@ fn void ChaCha20.transform(&self, char[] data)
 
 	for (usz i = 0; i < data.len; i++)
 	{
-		if (self.position >= 64) 
+		if (self.position >= BLOCK_SIZE) 
 		{
-			self.next_block();
+			self.mutate_keystream();
 			self.position = 0;
 		}
 		data[i] ^= @as_char_view(self.key_stream)[self.position++];
@@ -141,23 +139,22 @@ fn void ChaCha20.transform(&self, char[] data)
 	}
 }
 
-
 <* Destroy the current context structure by zeroing all fields. *>
-fn void ChaCha20.destroy(&self) => *self = {};
+fn void ChaCha20.destroy(&self) => mem::zero_volatile(@as_char_view(*self));
 
 
 <*
  Perform an in-place transformation of some data in a buffer, without cloning the data to a new buffer.
 
  @param[inout] data : `The data to transform (encrypt or decrypt).`
- @param[in] key : `The secret key used for the transformation operation.`
- @param[in] nonce : `The one-time nonce to use for the transformation operation.`
+ @param key : `The secret key used for the transformation operation.`
+ @param nonce : `The one-time nonce to use for the transformation operation.`
  @param counter : `An optional counter value to adjust the stream's position.`
 
  @require key.len == KEY_SIZE : `Input key slice is not the correct length (32 bytes).`
  @require nonce.len ==  NONCE_SIZE : `Input nonce slice is not the correct length (12 bytes).`
 *>
-fn void crypt(char[] data, char[] key, char[] nonce, uint counter = 1) @private
+fn void crypt(char[] data, char[KEY_SIZE] key, char[NONCE_SIZE] nonce, uint counter = 0) @private
 {
 	if (@unlikely(!data.len)) return;
 	ChaCha20 c @noinit;
@@ -168,20 +165,19 @@ fn void crypt(char[] data, char[] key, char[] nonce, uint counter = 1) @private
 alias encrypt_mut = crypt;
 alias decrypt_mut = crypt;
 
-
 <*
  Perform a transformation of some data cloned from a source buffer.
 
  @param[&inout] allocator : `The memory allocator which controls allocation of the cloned input data.`
  @param[inout] data : `The data to transform (encrypt or decrypt).`
- @param[in] key : `The secret key used for the transformation operation.`
- @param[in] nonce : `The one-time nonce to use for the transformation operation.`
+ @param key : `The secret key used for the transformation operation.`
+ @param nonce : `The one-time nonce to use for the transformation operation.`
  @param counter : `An optional counter value to adjust the stream's position.`
 
  @require key.len == KEY_SIZE : `Input key slice is not the correct length (32 bytes).`
  @require nonce.len ==  NONCE_SIZE : `Input nonce slice is not the correct length (12 bytes).`
 *>
-fn char[] crypt_clone(Allocator allocator, char[] data, char[] key, char[] nonce, uint counter = 1) @private
+fn char[] crypt_clone(Allocator allocator, char[] data, char[KEY_SIZE] key, char[NONCE_SIZE] nonce, uint counter = 0) @private
 {
 	if (@unlikely(!data.len)) return {};
 	char[] buff = allocator::clone_slice(allocator, data);
@@ -191,19 +187,18 @@ fn char[] crypt_clone(Allocator allocator, char[] data, char[] key, char[] nonce
 alias encrypt = crypt_clone;
 alias decrypt = crypt_clone;
 
-
 <*
  Perform a transformation of some data cloned from a source buffer by the temp allocator.
 
  @param[inout] data : `The data to transform (encrypt or decrypt).`
- @param[in] key : `The secret key used for the transformation operation.`
- @param[in] nonce : `The one-time nonce to use for the transformation operation.`
+ @param key : `The secret key used for the transformation operation.`
+ @param nonce : `The one-time nonce to use for the transformation operation.`
  @param counter : `An optional counter value to adjust the stream's position.`
 
  @require key.len == KEY_SIZE : `Input key slice is not the correct length (32 bytes).`
  @require nonce.len ==  NONCE_SIZE : `Input nonce slice is not the correct length (12 bytes).`
 *>
-fn char[] tcrypt_clone(char[] data, char[] key, char[] nonce, uint counter = 1) @private
+fn char[] tcrypt_clone(char[] data, char[KEY_SIZE] key, char[NONCE_SIZE] nonce, uint counter = 0) @private
 {
 	return crypt_clone(tmem, data, key, nonce, counter);
 }
