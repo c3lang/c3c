@@ -112,7 +112,7 @@ macro anycast(any v, $Type) @builtin
   @return "The value in the pointer"
   @return? TYPE_MISMATCH
 *>
-macro any.as(self, $Type)
+macro any.to(self, $Type)
 {
 	if (self.type != $Type.typeid) return TYPE_MISMATCH?;
 	return *($Type*)self.ptr;
@@ -122,7 +122,7 @@ macro any.as(self, $Type)
  @require self.type == $Type : "The 'any' contained an unexpected type."
  @return "The value in the pointer"
 *>
-macro any.to(self, $Type)
+macro any.as(self, $Type)
 {
 	return *($Type*)self.ptr;
 }
