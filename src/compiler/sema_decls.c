@@ -5241,6 +5241,7 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 		InliningSpan *old_span = c->inlined_at;
 		InliningSpan new_span = { .prev = old_span, .span = invocation_span };
 		SemaContext *new_context = context_transform_for_eval(c, &temp_context, module->units[0]);
+		InliningSpan *old_inlined_at = new_context->inlined_at;
 		new_context->inlined_at = &new_span;
 
 		FOREACH(Expr *, expr, ast->contract_stmt.contract.decl_exprs->expression_list)
@@ -5260,9 +5261,11 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 				              ast->contract_stmt.contract.expr_string);
 			}
 			FAIL:
+			new_context->inlined_at = old_inlined_at;
 			sema_context_destroy(&temp_context);
 			return false;
 		}
+		new_context->inlined_at = old_inlined_at;
 		sema_context_destroy(&temp_context);
 	}
 	return true;
