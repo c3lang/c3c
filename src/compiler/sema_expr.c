@@ -1691,11 +1691,13 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 		SemaContext *new_context = context_transform_for_eval(context, &default_context, param->unit);
 		bool success;
 		SCOPE_START
+			uint32_t line = new_context->original_inline_line;
 			new_context->original_inline_line = context->original_inline_line ? context->original_inline_line
 																			  : call->span.row;
 			new_context->original_module = context->original_module;
 			success = sema_analyse_parameter(new_context, arg, param, callee->definition, optional, no_match_ref,
 											 callee->macro, false);
+			new_context->original_inline_line = line;
 		SCOPE_END;
 		sema_context_destroy(&default_context);
 		if (no_match_ref && *no_match_ref) return true;
