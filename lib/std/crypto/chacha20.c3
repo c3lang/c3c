@@ -43,7 +43,7 @@ struct ChaCha20
 	<* Count of bytes processed. Useful to track an approach to the 256GiB limit of a single context. *>
 	ulong bytes_processed;
 	<* The key stream or state used during cipher block operations. *>
-	uint[16] key_stream;
+	uint[16] key_stream @align(ulong.sizeof);
 	<* The secret key for the context. *>
 	char[32] key;
 	<* The one-time nonce (or IV - initialization vector) used for the context. *>
@@ -62,6 +62,16 @@ macro quarter_round(uint* x, int a, int b, int c, int d) @local
 	x[c] += x[d]; x[b] = (x[b] ^ x[c]).rotl(7);
 }
 
+
+<* Check the position of the keystream/input buffer usage, and mutate it when necessary. *>
+macro ChaCha20.check_position(&self) @local
+{
+	if (self.position >= BLOCK_SIZE)
+	{
+		self.mutate_keystream();
+		self.position = 0;
+	}
+}
 
 <* Process the next (or final) chunk of ingested data. *>
 fn void ChaCha20.mutate_keystream(&self) @local @inline
@@ -119,17 +129,54 @@ fn void ChaCha20.transform(&self, char[] data)
 {
 	if (!data.len) return;
 
-	for (usz i = 0; i < data.len; i++)
+	usz original_length = data.len;
+	char[] key_stream = @as_char_view(self.key_stream); // shorthand
+	$typefrom(env::ARCH_64_BIT ??? ulong : uint) _a = 0; // try to use the ideal size for the current architecture
+
+	// Align the incoming data stream to an 8-byte boundary by scrolling along it byte-by-byte.
+	for (; data.len && ((usz)data.ptr % $sizeof(_a)); data = data[1..])
 	{
-		if (self.position >= BLOCK_SIZE) 
-		{
-			self.mutate_keystream();
-			self.position = 0;
-		}
-		data[i] ^= @as_char_view(self.key_stream)[self.position++];
+		self.check_position(); // be sure to watch for keystream mutations
+		data[0] ^= key_stream[self.position++];
 	}
 
-	self.bytes_processed += data.len;
+	// Now that we're aligned to a 64-bit address, we should be able to quickly apply the XORs on chunks at a time.
+	while (data.len >= $sizeof(_a))
+	{
+		self.check_position(); // mutate when required
+		*($typeof(_a)*)data.ptr ^= @unaligned_load(*($typeof(_a)*)&key_stream[self.position], 1); // aligned assignment
+		self.position += $sizeof(_a); // we've read the X bytes from the key_stream
+		data = data[$sizeof(_a)..]; // we've also mutated X bytes from the data buffer
+		// Annoyingly, there are times when 'position' might fall to something like '61', meaning +sizeof will run out of bounds on the next pass.
+		//   The 'position' variable cannot skip around; i.e., we can't +4 to 61, let it roll back to 0, and consider all ok.
+		//   In these cases, it's best to just consume byte-wise again up until the BLOCK_SIZE, then realign the data buffer pointer again.
+        //   Despite it seeming fruitless, this has almost double performance of the transform.
+		if (@unlikely(self.position + $sizeof(_a) > BLOCK_SIZE && self.position != BLOCK_SIZE))
+		{
+			for (; data.len && self.position < BLOCK_SIZE; data = data[1..])
+			{
+				// NOTE: no need to check_position here because we know we're creeping up to BLOCK_SIZE already, and not over it.
+				data[0] ^= key_stream[self.position++];
+			}
+			// Then, once again course-correct the data buffer's alignment, because now that's out of sync.
+			//   This time the position value DOES need to be checked (because we crawled up to BLOCK_SIZE, so >= 64 is always true here).
+			self.check_position();
+			for (; data.len && ((usz)data.ptr % $sizeof(_a)); data = data[1..])
+			{
+				data[0] ^= key_stream[self.position++];
+			}
+		}
+	}
+
+	// Walk up the final bytes, if there are any left.
+	for (; data.len; data = data[1..])
+	{
+		self.check_position();
+		data[0] ^= key_stream[self.position++];
+	}
+
+	// All done. Capture the transformed length of data and check limits.
+	self.bytes_processed += original_length;
 	if (@unlikely(self.bytes_processed >= CHACHA20_NONCE_REUSE_LIMIT && !permit_overflow))
 	{
 		abort(
