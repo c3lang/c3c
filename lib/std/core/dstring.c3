@@ -307,21 +307,21 @@ fn bool DString.less(self, DString other_string)
 
 fn void DString.append_chars(&self, String str) @deprecated("Use append_string")
 {
-	self.append_char_buffer(str);
+	self.append_bytes(str);
 }
 
-fn void DString.append_char_buffer(&self, char[] str)
+fn void DString.append_bytes(&self, char[] bytes)
 {
-	usz other_len = str.len;
+	usz other_len = bytes.len;
 	if (!other_len) return;
 	if (!*self)
 	{
-		*self = temp((String)str);
+		*self = temp((String)bytes);
 		return;
 	}
 	self.reserve(other_len);
 	StringData* data = self.data();
-	mem::copy(&data.chars[data.len], str.ptr, other_len);
+	mem::copy(&data.chars[data.len], bytes.ptr, other_len);
 	data.len += other_len;
 }
 
@@ -336,7 +336,7 @@ fn Char32[] DString.copy_utf32(&self, Allocator allocator)
 macro void DString.append_string(&self, str)
 {
 	$if $typeof(str) == String:
-		self.append_char_buffer(str);
+		self.append_bytes(str);
 	$else
 		self.append_string_deprecated(str);
 	$endif
@@ -362,7 +362,7 @@ fn void DString.clear(self)
 
 fn usz? DString.write(&self, char[] buffer) @dynamic
 {
-	self.append_char_buffer(buffer);
+	self.append_bytes(buffer);
 	return buffer.len;
 }
 

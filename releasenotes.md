@@ -37,7 +37,7 @@
 - Add `any.to` and `any.as`.
 - Deprecated `DString.append_chars`, use `DString.append_string`
 - Deprecated `DString.append_string` for DStrings, use `DString.append_dstring` instead.
-- Added `DString.append_char_buffer`.
+- Added `DString.append_bytes`.
 
 ## 0.7.8 Change list
 
