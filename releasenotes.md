@@ -36,6 +36,9 @@
 - Add `chacha20` stream cipher and associated tests. #2643
 - Add `Elf32_Shdr` and `Elf64_Shdr` to `std::os::linux`.
 - Add `any.to` and `any.as`.
+- Deprecated `DString.append_chars`, use `DString.append_string`
+- Deprecated `DString.append_string` for DStrings, use `DString.append_dstring` instead.
+- Added `DString.append_char_buffer`.
 
 ## 0.7.8 Change list
 
