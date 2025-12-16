@@ -384,11 +384,11 @@ fn void scrolling_input()
 	char[*] key = sha256::hash("dance with me");
 	char[*] nonce = "123456789abc";
 
-    for (usz i = 1; i < LARGE_INPUT.len; i++)
+    for (usz i = 1; i < LARGE_INPUT.len; i++) @pool()
     {
 		test::@check(chacha20::tencrypt(LARGE_INPUT[:i], key, nonce) == LARGE_EXPECTED[:i], "Mismatch (enc) on index %d", i);
 		test::@check(chacha20::tdecrypt(LARGE_EXPECTED[:i], key, nonce) == LARGE_INPUT[:i], "Mismatch (dec) on index %d", i);
-    }
+    };
 }
 
 fn void scrolling_input_randomly_unaligned()
