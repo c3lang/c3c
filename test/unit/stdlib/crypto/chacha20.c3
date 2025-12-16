@@ -8,6 +8,7 @@ module chacha20_tests @test;
 import std::crypto::chacha20;
 import std::hash::sha256;
 import std::collections;
+import std::math::random;
 
 
 <* Common encrypted content used for some basic tests. *>
@@ -653,8 +654,25 @@ fn void scrolling_input()
 		// Remember that 'encrypt' and 'decrypt' are superficial terms here. The 'first'
 		//   and 'second' elements of each pair are just mirrors of one another, derived
 		//   with the 'transform' operation in a fresh ChaCha20 context each time.
-		test::@check(chacha20::tencrypt(pair.first, key, nonce, 0) == pair.second, "Mismatch (enc) on index %d", i);
-		test::@check(chacha20::tdecrypt(pair.second, key, nonce, 0) == pair.first, "Mismatch (dec) on index %d", i);
+		test::@check(chacha20::tencrypt(pair.first, key, nonce) == pair.second, "Mismatch (enc) on index %d", i);
+		test::@check(chacha20::tdecrypt(pair.second, key, nonce) == pair.first, "Mismatch (dec) on index %d", i);
+	};
+}
+
+fn void scrolling_input_unaligned()
+{
+	Lcg64Random rand;
+    random::seed(&rand, 0x1337_83fb_c1ac_1a20);
+
+    char[*] key = sha256::hash("dance with me");
+	char[*] nonce = "123456789abc";
+
+	foreach (i, pair : WALKING_LENGTHS) @pool()
+	{
+		char[] unaligned @align(ulong.sizeof) = mem::talloc_array(char, pair.first.len + ulong.sizeof);
+		char[] encrypt_me = unaligned[((rand.next_byte() % (ulong.sizeof - 1)) + 1) : pair.first.len];
+		encrypt_me[..] = pair.first[..];
+		test::@check(chacha20::tencrypt(encrypt_me, key, nonce) == pair.second, "Mismatch (unaligned) on index %d", i);
 	};
 }
 
