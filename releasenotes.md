@@ -20,7 +20,7 @@
 - `$defined(foo())` now correctly errors if `foo()` would require a path.
 - `@if($defined((char*){}.foo()))` does not error if `foo` is missing.
 - Hard limit of 127 characters for identifiers.
-- `$$LINE` would sometimes incorrectly be constant.
+- `$$LINE` would sometimes yield the incorrect format.
 - Fix error message when a method has the wrong type for the first argument.
 
 ### Stdlib changes
