@@ -21,6 +21,7 @@
 - `@if($defined((char*){}.foo()))` does not error if `foo` is missing.
 - Hard limit of 127 characters for identifiers.
 - `$$LINE` would sometimes incorrectly be constant.
+- Fix error message when a method has the wrong type for the first argument.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
@@ -34,6 +35,7 @@
 - Add `poly1305` one-time Message Authentication Code and associated tests. #2639
 - Add `chacha20` stream cipher and associated tests. #2643
 - Add `Elf32_Shdr` and `Elf64_Shdr` to `std::os::linux`.
+- Add `any.to` and `any.as`.
 
 ## 0.7.8 Change list
 
