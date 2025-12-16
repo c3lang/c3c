@@ -657,3 +657,46 @@ fn void scrolling_input()
 		test::@check(chacha20::tdecrypt(pair.second, key, nonce, 0) == pair.first, "Mismatch (dec) on index %d", i);
 	};
 }
+
+
+fn void chacha20_chunked_transform() => @pool()
+{
+	char[*] key = "12345678901234567890123456789012";
+	char[*] nonce = "abcdefghijkl";
+
+	char[] original_text = "This is a test string that is longer than a single block.";
+	char[] encrypted_once = chacha20::tencrypt(original_text, key, nonce);
+
+	char[] text_to_transform = @tclone_slice(encrypted_once);
+
+	ChaCha20 c @noinit;
+	defer c.destroy();
+	c.init(key, nonce);
+
+	c.transform(text_to_transform[:3]);
+	c.transform(text_to_transform[3..]);
+
+	test::@check(original_text == text_to_transform, "Chunked decryption did not produce the original plaintext.");
+}
+
+fn void chacha20_chunked_unaligned_keystream() => @pool()
+{
+	char[*] key = "12345678901234567890123456789012";
+	char[*] nonce = "abcdefghijkl";
+
+	char[] original_text = "This is a test string that is longer than a single block and will be used for this test.";
+	char[] encrypted_once = chacha20::tencrypt(original_text, key, nonce);
+
+	char[] unaligned_buffer_storage @align(ulong.sizeof) = mem::talloc_array(char, original_text.len + 1);
+	char[] text_to_transform = unaligned_buffer_storage[1..];
+	text_to_transform[..] = original_text[..];
+
+	ChaCha20 c @noinit;
+	defer c.destroy();
+	c.init(key, nonce);
+
+	c.transform(text_to_transform[:3]);
+	c.transform(text_to_transform[3..]);
+
+	test::@check(text_to_transform == encrypted_once, "Chunked encryption with unaligned keystream failed.");
+}
