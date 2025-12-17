@@ -8122,7 +8122,7 @@ static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, 
 {
 	// 1. Analyse both sides and promote to a common type
 	OperatorOverload overload = OVERLOAD_REMINDER;
-	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "Cannot calculate the reminder %s %% %s",
+	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "Cannot calculate the remainder %s %% %s",
 		false, &overload, failed_ref)) return false;
 	if (!overload) return true;
 
