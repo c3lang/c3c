@@ -982,7 +982,7 @@ fn void sig_bus_error(CInt i, void* info, void* context)
 			}
 		$endif
 	$endif
-	$$trap();
+	libc::_exit(128 + i);
 }
 
 fn void sig_segmentation_fault(CInt i, void* p1, void* context)
@@ -997,15 +997,39 @@ fn void sig_segmentation_fault(CInt i, void* p1, void* context)
 			}
 		$endif
 	$endif
-	$$trap();
+	libc::_exit(128 + i);
 }
 
+fn void sig_illegal_instruction(CInt i, void* p1, void* context)
+{
+	$if !env::NATIVE_STACKTRACE:
+		sig_panic("Illegal instruction.");
+	$else
+		$if $defined(io::stderr):
+			if (!print_backtrace("Illegal instruction.", 2, posix::stack_instruction(context)))
+			{
+				io::eprintn("\nERROR: Illegal instruction.");
+			}
+		$endif
+	$endif
+	libc::_exit(128 + i);
+}
 
+char[64 * 1024] sig_stack @local @if(env::BACKTRACE && env::LINUX);
 
 // Clean this up
 fn void install_signal_handlers() @init(101) @local @if(env::BACKTRACE)
 {
+	$if env::LINUX:
+		Stack_t ss = {
+			.ss_sp = &sig_stack,
+			.ss_size = sig_stack.len
+		};
+		libc::sigaltstack(&ss, null);
+	$endif
+
 	posix::install_signal_handler(libc::SIGBUS, &sig_bus_error);
 	posix::install_signal_handler(libc::SIGSEGV, &sig_segmentation_fault);
+	posix::install_signal_handler(libc::SIGILL,  &sig_illegal_instruction);
 }
 
