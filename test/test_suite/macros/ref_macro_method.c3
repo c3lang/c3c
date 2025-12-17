@@ -20,7 +20,7 @@ fn void main()
       ms.dyn[i].tinit();
     }
 
-    ms.dyn[0].append_chars("sad");
+    ms.dyn[0].append_string("sad");
     ms.dyn[0].append("sad");
   };
 }

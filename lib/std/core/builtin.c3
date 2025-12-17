@@ -108,6 +108,25 @@ macro anycast(any v, $Type) @builtin
 	return ($Type*)v.ptr;
 }
 
+<*
+  @return "The value in the pointer"
+  @return? TYPE_MISMATCH
+*>
+macro any.to(self, $Type)
+{
+	if (self.type != $Type.typeid) return TYPE_MISMATCH?;
+	return *($Type*)self.ptr;
+}
+
+<*
+ @require self.type == $Type : "The 'any' contained an unexpected type."
+ @return "The value in the pointer"
+*>
+macro any.as(self, $Type)
+{
+	return *($Type*)self.ptr;
+}
+
 macro bool @assignable_to(#foo, $Type) @const @builtin @deprecated("use '$defined($Type x = #foo)'") => $defined(*&&($Type){} = #foo);
 
 macro @addr(#val) @builtin

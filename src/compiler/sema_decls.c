@@ -1235,7 +1235,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				inferred_type = method_parent->type;
 				break;
 			case VARDECL_PARAM_CT_TYPE:
-				RETURN_SEMA_ERROR(param, "Expected a parameter of type %s here.", method_parent->type);
+				RETURN_SEMA_ERROR(param, "Expected a parameter of type %s here.", type_quoted_error_string(method_parent->type));
 			default:
 				UNREACHABLE
 		}
@@ -5241,6 +5241,7 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 		InliningSpan *old_span = c->inlined_at;
 		InliningSpan new_span = { .prev = old_span, .span = invocation_span };
 		SemaContext *new_context = context_transform_for_eval(c, &temp_context, module->units[0]);
+		InliningSpan *old_inlined_at = new_context->inlined_at;
 		new_context->inlined_at = &new_span;
 
 		FOREACH(Expr *, expr, ast->contract_stmt.contract.decl_exprs->expression_list)
@@ -5260,9 +5261,11 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 				              ast->contract_stmt.contract.expr_string);
 			}
 			FAIL:
+			new_context->inlined_at = old_inlined_at;
 			sema_context_destroy(&temp_context);
 			return false;
 		}
+		new_context->inlined_at = old_inlined_at;
 		sema_context_destroy(&temp_context);
 	}
 	return true;
@@ -5507,12 +5510,10 @@ bool sema_analyse_method_register(SemaContext *context, Decl *method)
 bool sema_analyse_decl(SemaContext *context, Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
-
 	DEBUG_LOG(">>> Analyse declaration [%s] in %s.", decl_safe_name(decl), context_filename(context));
 
 	SemaContext temp_context;
 	context = context_transform_for_eval(context, &temp_context, decl->unit);
-
 	if (decl->resolve_status == RESOLVE_RUNNING)
 	{
 		SEMA_ERROR(decl, decl->name
@@ -5592,7 +5593,6 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 	sema_context_destroy(&temp_context);
 
 	DEBUG_LOG("<<< Analysis of [%s] successful.", decl_safe_name(decl));
-
 	return true;
 FAILED:
 	sema_context_destroy(&temp_context);

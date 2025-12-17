@@ -27,6 +27,8 @@ struct TestContext
 	bool is_in_panic;
 	bool is_quiet_mode;
 	bool is_no_capture;
+    bool sort;
+    bool check_leaks;
 	String current_test_name;
 	TestFn setup_fn;
 	TestFn teardown_fn;
@@ -185,8 +187,6 @@ fn void unmute_output(bool has_error) @local
 fn bool run_tests(String[] args, TestUnit[] tests) @private
 {
 	usz max_name;
-	bool sort_tests = true;
-	bool check_leaks = true;
 	if (!tests.len)
 	{
 		io::printn("There are no test units to run.");
@@ -204,6 +204,8 @@ $endif
 	{
 		.assert_print_backtrace = true,
 		.breakpoint_on_assert = false,
+        .sort = true,
+        .check_leaks = true,
 		.log_level = LogPriority.ERROR,
 		.test_filter = "",
 		.has_ansi_codes = terminal_has_ansi_codes(),
@@ -218,9 +220,9 @@ $endif
 			case "--test-breakpoint":
 				context.breakpoint_on_assert = true;
 			case "--test-nosort":
-				sort_tests = false;
+				context.sort = false;
 			case "--test-noleak":
-				check_leaks = false;
+				context.check_leaks = false;
 			case "--test-nocapture":
 			case "--test-show-output":
 				context.is_no_capture = true;
@@ -261,7 +263,7 @@ $endif
 	test_context = &context;
 	log::set_priority_all(test_context.log_level);
 
-	if (sort_tests)
+	if (context.sort)
 	{
 		quicksort(tests, &cmp_test_unit);
 	}
@@ -321,14 +323,17 @@ $endif
 		{
 			mute_output();
 			mem.clear();
-			if (check_leaks) allocator::thread_allocator = &mem;
-			unit.func();
+			if (context.check_leaks) allocator::thread_allocator = &mem;
+			@pool()
+            {
+                unit.func();
+            };
 			// track cleanup that may take place in teardown_fn
 			if (context.teardown_fn)
 			{
 				context.teardown_fn();
 			}
-			if (check_leaks) allocator::thread_allocator = context.stored.allocator;
+			if (context.check_leaks) allocator::thread_allocator = context.stored.allocator;
 
 			unmute_output(false); // all good, discard output
 			if (mem.has_leaks())

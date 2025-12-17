@@ -1689,14 +1689,20 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 	{
 		SemaContext default_context;
 		SemaContext *new_context = context_transform_for_eval(context, &default_context, param->unit);
+		ContextSwitchState switch_state = context_switch_state_push(context, new_context);
+		InliningSpan inlined_at;
+		if (!new_context->inlined_at)
+		{
+			inlined_at = (InliningSpan) { .span = call->span };
+			new_context->inlined_at = &inlined_at;
+		}
 		bool success;
 		SCOPE_START
-			new_context->original_inline_line = context->original_inline_line ? context->original_inline_line
-																			  : call->span.row;
 			new_context->original_module = context->original_module;
 			success = sema_analyse_parameter(new_context, arg, param, callee->definition, optional, no_match_ref,
 											 callee->macro, false);
 		SCOPE_END;
+		context_switch_stat_pop(new_context, switch_state);
 		sema_context_destroy(&default_context);
 		if (no_match_ref && *no_match_ref) return true;
 		if (!success) RETURN_NOTE_FUNC_DEFINITION;
@@ -2845,7 +2851,6 @@ static inline bool sema_expr_setup_call_analysis(SemaContext *context, CalledDec
 	}
 	macro_context->macro_has_vaargs = callee->macro && callee->signature->variadic == VARIADIC_RAW;
 	macro_context->macro_varargs = macro_context->macro_has_vaargs ? call_expr->call_expr.varargs : NULL;
-	macro_context->original_inline_line = context->original_inline_line ? context->original_inline_line : call_expr->span.row;
 	macro_context->original_module = context->original_module ? context->original_module : context->compilation_unit->module;
 	macro_context->macro_params = params;
 
@@ -9949,15 +9954,19 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			}
 			return true;
 		case BUILTIN_DEF_LINE:
-			if (context->original_inline_line)
+		{
+			InliningSpan *span = context->inlined_at;
+			if (span)
 			{
-				expr_rewrite_const_int(expr, type_isz, context->original_inline_line);
+				while (span->prev) span = span->prev;
+				expr_rewrite_const_int(expr, type_isz, span->span.row);
 			}
 			else
 			{
 				expr_rewrite_const_int(expr, type_isz, expr->span.row);
 			}
 			return true;
+		}
 		case BUILTIN_DEF_LINE_RAW:
 			expr_rewrite_const_int(expr, type_isz, expr->span.row);
 			return true;

@@ -326,6 +326,8 @@ macro clone(Allocator allocator, value) @nodiscard
 *>
 macro clone_slice(Allocator allocator, slice) @nodiscard
 {
+	if (!lengthof(slice)) return {};
+
 	var $Type = $typeof(slice[0]);
 
 	$Type[] new_arr = new_array(allocator, $Type, slice.len);

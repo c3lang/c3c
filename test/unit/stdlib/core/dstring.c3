@@ -96,7 +96,7 @@ fn void test_append()
 	assert(s == "éèà", "got '%s'; want 'éèà'", s);
 	str.clear();
 
-	str.append_chars("foo");
+	str.append_string("foo");
 	s = str.str_view();
 	assert(s == "foo", "got '%s'; want 'foo'", s);
 	str.clear();
@@ -113,7 +113,7 @@ fn void test_append()
 	assert(s == "xxxyyy", "got '%s'; want 'xxxyyy'", s);
 
 	str3.clear();
-	str3.append_string(str2);
+	str3.append_dstring(str2);
 	s = str3.str_view();
 	assert(s == "yyy", "got '%s'; want 'yyy'", s);
 }
