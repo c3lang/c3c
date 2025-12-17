@@ -150,7 +150,8 @@ fn void ChaCha20.transform(&self, char[] data)
 		self.mutate_keystream();
 		for (usz i = 0; i < BLOCK_SIZE / usz.sizeof; i++)
 		{
-			((usz*)data.ptr)[i] ^= ((usz*)&self.key_stream)[i];
+			usz* data_ref = (usz*)data.ptr + i;
+			@unaligned_store(*data_ref, @unaligned_load(*data_ref, 1) ^ ((usz*)&self.key_stream)[i], 1);
 		}
 	}
 
