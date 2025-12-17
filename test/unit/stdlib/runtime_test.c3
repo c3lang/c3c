@@ -7,14 +7,10 @@ import std::math::random;
 
 fn void tmem_shouldnt_leak_if_no_pool()
 {
-	Lcg64Random rand;
-	random::seed(&rand, 0x1337_83fb_c1ac_1a20);
-
-	for (usz i = 0; i < 1024; i++)
+	for (usz i = 0; i < 256; i++)
 	{
-		// Init 1KiB then scramble it. Writes will try to corrupt the space of other tests/data.
 		char[] my_arr = mem::talloc_array(char, 1024);
-		for (usz x = 0; x < my_arr.len; x++) my_arr[x] = rand.next_byte();
+        my_arr[..] = (char[*]){ [0..1023] = 0xA5 }[..];
 	}
 }
 

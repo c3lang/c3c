@@ -22,6 +22,7 @@
 - Hard limit of 127 characters for identifiers.
 - `$$LINE` would sometimes incorrectly be constant.
 - Fix error message when a method has the wrong type for the first argument.
+- Unit tests allocating too much `tmem` without `@pool` would cause errors in unrelated tests. #2654
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
