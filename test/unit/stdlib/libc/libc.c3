@@ -212,7 +212,7 @@ fn void clock() @test
 
 fn void close() @test @if(!env::WIN32)
 {
-	assert(libc::close(13) == -1);
+	assert(libc::close(1313) != 0);
 	// NOTE: errno is part of libc, and is thus recursively imported
 	assert(libc::errno() == errno::EBADF);
 }
