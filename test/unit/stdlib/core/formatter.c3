@@ -1,6 +1,7 @@
 module std::core::formatter_test;
 
 import std;
+import libc;
 
 struct Foo (Printable) { int a; }
 fn usz? Foo.to_format(&self, Formatter *f) @dynamic
@@ -31,7 +32,6 @@ fn void test_ref() @test
 	defer free(s2);
 	assert(s2 == "6.62607015e-34 0 -0 inf -inf -4.932096661796888e-226 3.439070283483335e+35 6.606854224493745e-17 6.079537928711555e+61");
 
-	//more double to string tests
 	double t1 = 12345.9d;
 	double t2 = 0.00087654d;
 	double t3 = 1234567.0d;
@@ -40,10 +40,6 @@ fn void test_ref() @test
 	double t6 = 0.9999999d;
 	double t7 = 3.141592653589793d;
 	String s3 = string::format(mem, "%.3e %.3e %.4g %.4g %#.4g %.3f %.15f", t1, t2, t3, t4, t5, t6, t7);
-
-	io::printn(s3); //debug
-	io::printn("1.235e+04 8.765e-04 1.235e+06 12.35 12.30 1.000 3.141592653589793"); //debug
-
 	defer free(s3);
 	assert(s3 == "1.235e+04 8.765e-04 1.235e+06 12.35 12.30 1.000 3.141592653589793");
 }
