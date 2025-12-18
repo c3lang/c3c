@@ -101,6 +101,7 @@ typedef Type LoweredType;
 typedef struct Signature_ Signature;
 typedef struct ConstInitializer_ ConstInitializer;
 typedef struct CompilationUnit_ CompilationUnit;
+typedef struct Generic_ Generic;
 typedef unsigned AstId;
 typedef unsigned ExprId;
 typedef unsigned DeclId;
@@ -696,6 +697,8 @@ typedef struct Decl_
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
 	bool attr_structlike : 1;
+	bool is_template : 1;
+	bool is_templated : 1;
 	union
 	{
 		void *backend_ref;
@@ -703,7 +706,11 @@ typedef struct Decl_
 		int tb_register;
 		void *backend_value;
 		void *tb_symbol;
-		bool in_init;
+		union
+		{
+			int32_t template_id;
+			bool in_init;
+		};
 	};
 	AlignSize offset;
 	AlignSize padding;
@@ -1622,7 +1629,7 @@ typedef struct Module_
 	const char *short_path;
 	// Extname in case a module is renamed externally
 	const char *extname;
-
+	Generic **generics;
 	const char **parameters;
 	bool is_external : 1;
 	bool is_c_library : 1;
@@ -1633,7 +1640,7 @@ typedef struct Module_
 
 	AstId contracts;
 	HTable symbols;
-	struct CompilationUnit_ **units;
+	CompilationUnit **units;
 	Module *generic_module;
 	Module *parent_module;
 	Module *top_module;
@@ -1730,6 +1737,7 @@ struct CompilationUnit_
 	const char **links;
 	Visibility default_visibility;
 	Attr *if_attr;
+	Expr **generic_attr;
 	bool export_by_default;
 	bool is_interface_file;
 	bool benchmark_by_default;
@@ -1793,7 +1801,11 @@ typedef struct JumpTarget_
 	AstId defer;
 } JumpTarget;
 
-
+struct Generic_
+{
+	Decl **args;
+	Decl **decls;
+};
 
 struct SemaContext_
 {
