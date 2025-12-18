@@ -84,8 +84,8 @@ fn CInt backtrace(void** buffer, CInt size) @if(!env::OPENBSD)
 	void* handle = libc::dlopen("libc.so.6", libc::RTLD_LAZY|libc::RTLD_NODELETE);
 	if (handle)
 	{
+		defer libc::dlclose(handle);
 		BacktraceFn backtrace_fn = libc::dlsym(handle, "backtrace");
-		libc::dlclose(handle);
 		if (backtrace_fn)
 		{
 			return backtrace_fn(buffer, size);
