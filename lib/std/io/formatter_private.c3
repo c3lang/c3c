@@ -364,7 +364,7 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 	}
 
 	// Perform rounding: j is precision after the radix (possibly neg)
-	int j = (int)(p - (isz)(formatting == FLOAT ? 0 : e - (int)(formatting == ADAPTIVE && p)));
+	int j = (formatting == FLOAT || formatting == EXPONENTIAL) ? (int)p : (int)(p - (isz)e - 1);
 	if (j < 9 * (z - r - 1))
 	{
 		uint x;
