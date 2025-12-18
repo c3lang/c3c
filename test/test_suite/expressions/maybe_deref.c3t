@@ -33,7 +33,7 @@ entry:
   %x2 = alloca i8, align 1
   %x = alloca ptr, align 8
   %x3 = alloca i8, align 1
-  %l = alloca %List, align 8
+  %l = alloca %"List{int}", align 8
   %lptr = alloca ptr, align 8
   %x4 = alloca i32, align 4
   %self = alloca ptr, align 8
@@ -56,7 +56,7 @@ entry:
   %7 = load i8, ptr %6, align 1
   store i8 %7, ptr %x3, align 1
   call void @llvm.memset.p0.i64(ptr align 8 %l, i8 0, i64 40, i1 false)
-  call void @"std_collections_list$int$.List.push"(ptr %l, i32 42) #4
+  call void @"std.collections.list.List$int$.push"(ptr %l, i32 42) #4
   store ptr %l, ptr %lptr, align 8
   %8 = load ptr, ptr %lptr, align 8
   store ptr %8, ptr %self, align 8

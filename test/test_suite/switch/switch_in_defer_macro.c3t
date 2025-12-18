@@ -674,9 +674,9 @@ fn void test()
 %"UintTest[]" = type { ptr, i64 }
 %UintTest = type { %"char[]", i64 }
 %ByteReader = type { %"char[]", i64 }
-%Lexer = type { %any, %any, %"char[]", %Trie, ptr, i8, i8, i32, i32, i32, %.anon }
-%Trie = type { %List }
-%List = type { i64, i64, %any, ptr }
+%"Lexer{Token, Comment}" = type { %any, %any, %"char[]", %"Trie{Token, ushort}", ptr, i8, i8, i32, i32, i32, %.anon }
+%"Trie{Token, ushort}" = type { %"List{TrieNode{Token, ushort}}" }
+%"List{TrieNode{Token, ushort}}" = type { i64, i64, %any, ptr }
 %.anon = type { %"char[]" }
 
 @"$ct.lexer_test.UintTest" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
@@ -750,7 +750,7 @@ entry:
   %.anon = alloca i64, align 8
   %tc = alloca %UintTest, align 8
   %br = alloca %ByteReader, align 8
-  %lex = alloca %Lexer, align 8
+  %lex = alloca %"Lexer{Token, Comment}", align 8
   %error_var = alloca i64, align 8
   %taddr = alloca %any, align 8
   %kind = alloca i8, align 1
@@ -788,7 +788,7 @@ loop.body:                                        ; preds = %loop.cond
   %lo5 = load i64, ptr %7, align 8
   %ptradd6 = getelementptr inbounds i8, ptr %7, i64 8
   %hi7 = load ptr, ptr %ptradd6, align 8
-  %8 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.init"(ptr %lex, i64 %lo2, ptr %hi4, ptr @lexer_test.is_ident_char, i64 %lo5, ptr %hi7)
+  %8 = call i64 @"lexer.Lexer$lexer_test.Token$lexer_test.Comment$.init"(ptr %lex, i64 %lo2, ptr %hi4, ptr @lexer_test.is_ident_char, i64 %lo5, ptr %hi7)
   %not_err = icmp eq i64 %8, 0
   %9 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %9, label %after_check, label %assign_optional
@@ -805,7 +805,7 @@ guard_block:                                      ; preds = %assign_optional
   ret i64 %10
 
 noerr_block:                                      ; preds = %after_check
-  %11 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.next"(ptr %retparam, ptr %lex)
+  %11 = call i64 @"lexer.Lexer$lexer_test.Token$lexer_test.Comment$.next"(ptr %retparam, ptr %lex)
   %not_err9 = icmp eq i64 %11, 0
   %12 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
   br i1 %12, label %after_check11, label %assign_optional10

@@ -11,6 +11,7 @@
 - Testing for the presence of methods at the top level is prohibited previous to method registration.
 - `$$MASK_TO_INT` and `$$INT_TO_MASK` to create bool masks from integers and back.
 - Better error messages when slicing a pointer to a slice or vector. #2681
+- Generics using `@generic` rather than module based.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.

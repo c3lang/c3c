@@ -452,7 +452,7 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 	update_status(index, file_path, output);
 	bool single;
 	int thread_id = context.thread_id_counter.add(1);
-	Path test_dir = context.start_cwd.tappend(string::tformat("_c3test_%s", thread_id))!!;
+	Path test_dir = path::temp_directory(tmem).tappend(string::tformat("_c3test_%s", thread_id))!!;
 	(void)path::rmtree(test_dir);
 	defer (void)path::rmtree(test_dir);
 	if (@catch(path::mkdir(test_dir)))

@@ -3410,6 +3410,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	// Stop if it's already poisoned.
 	if (!decl_ok(func)) return false;
 
+	context->generic_instance = func->is_templated ? declptr(func->instance_id) : NULL;
 	// Check the signature here we test for variadic raw, since we don't support it.
 	Signature *signature = &func->func_decl.signature;
 	if (signature->variadic == VARIADIC_RAW)
