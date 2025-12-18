@@ -62,17 +62,6 @@ macro quarter_round(uint* x, int a, int b, int c, int d) @local
 	x[c] += x[d]; x[b] = (x[b] ^ x[c]).rotl(7);
 }
 
-
-<* Check the position of the keystream/input buffer usage, and mutate it when necessary. *>
-macro ChaCha20.check_position(&self) @local
-{
-	if (self.position >= BLOCK_SIZE)
-	{
-		self.mutate_keystream();
-		self.position = 0;
-	}
-}
-
 <* Process the next (or final) chunk of ingested data. *>
 fn void ChaCha20.mutate_keystream(&self) @local @inline
 {
@@ -136,32 +125,33 @@ fn void ChaCha20.transform(&self, char[] data)
 	if (self.position < BLOCK_SIZE)
 	{
 		usz len = data.len < (BLOCK_SIZE - self.position) ? data.len : (BLOCK_SIZE - self.position);
-		for (usz i = 0; i < len; i++)
-		{
-			data[i] ^= key_stream[self.position + i];
-		}
+		for (usz i = 0; i < len; i++) data[i] ^= key_stream[self.position + i];
 		self.position += len;
 		data = data[len..];
 	}
 
-	// 2. Process full blocks at a time, word by word according to the system's architecture.
-	for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..])
+	// 2. Get the amount of bytes offset from the nearest alignment boundary.
+	//   Process full blocks at a time, word by word according to the system's architecture.
+	//   Any extra bytes on each side are dynamically processed byte-by-byte.
+    usz offset = usz.sizeof - (((usz)data.ptr % usz.sizeof) ?: usz.sizeof);
+
+	for (usz x = offset; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..], x = offset)
 	{
 		self.mutate_keystream();
-		for (usz i = 0; i < BLOCK_SIZE / usz.sizeof; i++)
+        if (offset) foreach (i, &b : data[:offset]) *b ^= key_stream[i];
+        char[] aligned_data = data[offset..];
+		for (; x <= (BLOCK_SIZE - usz.sizeof); x += usz.sizeof)
 		{
-			((usz*)data.ptr)[i] ^= ((usz*)&self.key_stream)[i];
+			((usz*)aligned_data.ptr)[x / usz.sizeof] ^= @unaligned_load(*(usz*)(&key_stream[x]), 1);
 		}
+        for (; x < BLOCK_SIZE; x++) data[x] ^= key_stream[x];
 	}
 
 	// 3. Process any remaining bytes.
 	if (data.len > 0)
 	{
 		self.mutate_keystream();
-		for (usz i = 0; i < data.len; i++)
-		{
-			data[i] ^= key_stream[i];
-		}
+		for (usz i = 0; i < data.len; i++) data[i] ^= key_stream[i];
 		self.position = data.len;
 	}
 

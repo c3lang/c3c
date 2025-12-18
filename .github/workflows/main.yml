@@ -947,6 +947,7 @@ jobs:
 
   build-openbsd:
     runs-on: ubuntu-latest
+
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
@@ -956,7 +957,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: OpenBSD VM
-        uses: vmactions/openbsd-vm@main
+        uses: vmactions/openbsd-vm@v1.2.5
         with:
           prepare: |
             pkg_add cmake llvm-20.1.8p1 ninja
