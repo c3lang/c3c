@@ -112,13 +112,7 @@ fn CInt backtrace(void** buffer, CInt size) @if(!env::OPENBSD)
 			buffer[i] = addr;
 		}
 	}
-/* 	for (i = 0; i < size; i++)
-	{
-		if (libc::setjmp(&backtrace_jmpbuf) == 1) break;
-		buffer[i] = builtin::get_returnaddress(i);
-		if (!buffer[i]) break;
-	}
- */
+
 	Sigaction old;
 	libc::sigaction(libc::SIGBUS, &sig_bus, &old);
 	libc::sigaction(libc::SIGSEGV, &sig_segv, &old);
@@ -138,18 +132,18 @@ struct PosixUContext_t @if(env::DARWIN)
 }
 
 /* taken from sys/ucontext.h */
-typedef Greg_t = long;
-const REG_RIP = 16; // Linux x86_64 ABI
-struct LibcFPState { char[512] __data; }
+typedef Greg_t     @if(env::LINUX && env::X86_64) = long;
+const REG_RIP      @if(env::LINUX && env::X86_64) = 16;
+struct LibcFPState @if(env::LINUX && env::X86_64) { char[512] __data; } 
 
-struct MContext_t @align(16)
+struct MContext_t @align(16) @if(env::LINUX && env::X86_64)
 {
 	Greg_t[23] gregs;
 	LibcFPState* fpregs;
 	ulong[8] __reserved1;
 }
 
-/* struct MContext_t @align(16) @if(env::AARCH64)
+struct MContext_t @align(16) @if(env::LINUX && env::AARCH64)
 {
 	ulong fault_address;
 	ulong[31] regs;
@@ -157,7 +151,7 @@ struct MContext_t @align(16)
 	ulong pc;
 	ulong pstate;
 	char[4096] __reserved;
-} */
+}
 
 struct PosixUContext_t @if(env::LINUX)
 {
