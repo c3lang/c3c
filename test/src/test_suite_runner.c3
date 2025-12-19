@@ -157,7 +157,7 @@ fn int main(String[] args)
 
 	String color = (!g_ctx.print_to_file) ? (all_ok ? (String)Ansi.GREEN : (String)Ansi.RED) : "";
 	String reset = (!g_ctx.print_to_file) ? (String)Ansi.RESET : "";
-	
+
     io::print(color);
 	io::printfn("\nFound %d tests: %.1f%% (%d / %d) passed (%d skipped, %d failed).",
         total, (100.0 * success) / math::max(1, to_run), success, to_run, skipped, failed);
@@ -434,7 +434,7 @@ fn void test_file_threaded(any[] data)
 fn bool test_file(Path file_path, TestOutput* output, usz index)
 {
 	g_ctx.test_count.add(1);
-	update_status(index, file_path.str_view(), output);
+	update_status(index, file_path, output);
 	bool single;
 	int thread_id = g_ctx.thread_id_counter.add(1);
 	Path test_dir = g_ctx.start_cwd.tappend(string::tformat("_c3test_%s", thread_id))!!;
@@ -584,19 +584,20 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
     	}
     }
 	g_ctx.success_count.add(1);
-	update_status(index, "", output);
+	update_status(index, {}, output);
 	return true;
 }
 
-fn void update_status(usz index, String filename, TestOutput* output)
+fn void update_status(usz index, Path filename, TestOutput* output)
 {
 	Mutex.@in_lock(&g_ctx.print_mutex) {
+		bool has_entry = filename.str_view().len != 0;
 		if (g_ctx.print_to_file)
 		{
 			output.has_output = true;
-			if (filename.len > 0) 
+			if (has_entry)
 			{
-				output.filename = filename.copy(mem);
+				output.filename = filename.str_view().copy(mem);
 			}
 			else
 			{
@@ -606,18 +607,21 @@ fn void update_status(usz index, String filename, TestOutput* output)
 		}
 		else
 		{
-            int progress_bar_width = 19;
-			double total = (double)g_ctx.total_test_files;
-			double current = (double)g_ctx.test_count.load();
-			double fraction = (total > 0.0) ? (current / total) : 1.0;
-			int filled = (int)(fraction * progress_bar_width);
-			if (filled > progress_bar_width) filled = progress_bar_width;
-			io::print("\r\x1b[?7l\x1b[0KTest progress: [");
-			for (int i = 0; i < filled; i++) io::print("X");
-			for (int i = filled; i < progress_bar_width; i++) io::print("-");
-			io::printf("]  %d%% complete (%d failed)", (int)(fraction * 100.0), g_ctx.failure_count.load());
-			if (filename.len > 0) io::printf(" - Testing: %s", filename);
-			io::print("\x1b[?7h");
+			const String[8] PARTS = { " ", "▏", "▎", "▍", "▌", "▋", "▊", "▉" };
+            int progress_bar_width = 25;
+			usz total = g_ctx.total_test_files;
+			usz finished = g_ctx.test_count.load();
+			if (!has_entry && total != finished) return;
+			double fraction = total > 0.0 ? finished / (double)total : 0;
+			int full_width = (int)math::floor(fraction * progress_bar_width);
+			int remainder = (int)math::floor(8 * (fraction * progress_bar_width % 1.0));
+			io::print("\r\e[?7l\e[0KTest progress: [");
+			for (int i = 0; i < full_width; i++) io::print("█");
+			if (full_width != progress_bar_width) io::print(PARTS[remainder]);
+			for (int i = full_width + 1; i < progress_bar_width; i++) io::print(" ");
+			io::printf("] %.1f%% complete (%d failed)", fraction * 100.0, g_ctx.failure_count.load());
+			if (has_entry) io::printf(" - Testing: %s", filename.basename());
+			io::print("\e[?7h");
 			(void)io::stdout().flush();
 		}
 	};
