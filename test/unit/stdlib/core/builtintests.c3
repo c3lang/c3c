@@ -230,6 +230,7 @@ fn void test_in()
 {
     $assert @in(384, ...MY_OK_VALUES);
     $assert !@in(123, ...MY_OK_VALUES);
+    $assert @in(384, 128, 256, 384, 512);
     $assert @in("love", "joy", "cheer", "love", "friend");
     $assert !@in("hate", "joy", "cheer", "love", "friend");
 }
