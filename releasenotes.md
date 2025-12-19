@@ -5,6 +5,8 @@
 
 ### Changes / improvements
 - Add `--custom-libc` option for custom libc implementations.
+- Remove use of LLVMGetGlobalContext for single module compilation.
+- Fixed bug where constants would get modified when slicing them. #2660
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -37,6 +39,7 @@
 - Return of Thread `join()` is now "@maydiscard".
 - Add `poly1305` one-time Message Authentication Code and associated tests. #2639
 - Add `chacha20` stream cipher and associated tests. #2643
+- Add `BLAKE2` (optionally keyed) cryptographic hashing with associated tests. #2648
 - Add `Elf32_Shdr` and `Elf64_Shdr` to `std::os::linux`.
 - Add `any.to` and `any.as`.
 - Deprecated `DString.append_chars`, use `DString.append_string`
