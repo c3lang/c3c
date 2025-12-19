@@ -1765,7 +1765,7 @@ INLINE Expr **sema_splat_struct_insert(SemaContext *context, Expr **args, Expr *
 					args[i + index] = expr;
 					break;
 				case CONST_INIT_VALUE:
-					expr = expr_copy(c->init_value);
+					expr = copy_expr_single(c->init_value);
 					break;
 				default:
 					expr = expr_calloc();
@@ -2033,7 +2033,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 				Expr *inner_new = inner;
 				if (type_is_arraylike(inner->type))
 				{
-					inner_new = expr_copy(inner);
+					inner_new = copy_expr_single(inner);
 					if (sema_cast_const(inner_new) && expr_is_const_initializer(inner_new))
 					{
 						ConstInitializer *initializer = inner_new->const_expr.initializer;
@@ -3621,7 +3621,7 @@ static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 		expr_rewrite_const_bool(expr, type_bool, true);
 		return true;
 	}
-	expr_replace(expr, expr_copy(value));
+	expr_replace(expr, copy_expr_single(value));
 	return true;
 NOT_FOUND:
 	if (is_has)
@@ -3726,7 +3726,7 @@ static inline bool sema_call_analyse_member_get(SemaContext *context, Expr *expr
 	// Constant fold the get
 	if (target_kind == TYPE_ENUM && sema_cast_const(inner) && expr_is_const_enum(inner))
 	{
-		expr_replace(expr, expr_copy(inner->const_expr.enum_val->enum_constant.associated[index]));
+		expr_replace(expr, copy_expr_single(inner->const_expr.enum_val->enum_constant.associated[index]));
 		return true;
 	}
 	expr->expr_kind = target_kind == TYPE_BITSTRUCT ? EXPR_BITACCESS : EXPR_ACCESS_RESOLVED;
@@ -6270,7 +6270,7 @@ static inline void sema_expr_flatten_const_ident(Expr *expr)
 	sema_expr_flatten_const_ident(init_expr);
 	if (expr_is_const(init_expr))
 	{
-		expr_replace(expr, expr_copy(init_expr));
+		expr_replace(expr, copy_expr_single(init_expr));
 	}
 }
 
@@ -8122,7 +8122,7 @@ static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, 
 {
 	// 1. Analyse both sides and promote to a common type
 	OperatorOverload overload = OVERLOAD_REMINDER;
-	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "Cannot calculate the reminder %s %% %s",
+	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "Cannot calculate the remainder %s %% %s",
 		false, &overload, failed_ref)) return false;
 	if (!overload) return true;
 
