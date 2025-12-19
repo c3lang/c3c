@@ -140,14 +140,14 @@ fn int main(String[] args)
 			if (output.has_output)
 			{
 				io::printf("- %d/%d %s: ", output.index, running_failure_count, output.filename)!!;
-				io::print(output.buffer.str_view());
-				if (output.buffer.str_view() != "Passed.\n") running_failure_count++;
+				io::printn(output.buffer.str_view());
+				if (output.buffer.str_view()[:7] != "Passed.") running_failure_count++;
 			}
 		}
 		io::printn();
 	}
 
-	if (!g_ctx.print_to_file) io::print("\r\x1b[K"); //Reset the status line
+	//if (!g_ctx.print_to_file) io::print("\r\x1b[K"); //Reset the status line
 	int total = g_ctx.test_count.load();
 	int success = g_ctx.success_count.load();
 	int skipped = g_ctx.skip_count.load();
@@ -155,11 +155,13 @@ fn int main(String[] args)
 	int to_run = total - skipped;
 	bool all_ok = (success == to_run) && (failed == 0);
 
-	String color = (!g_ctx.print_to_file) ? (all_ok ? "[32m" : "[31m") : "";
-	String reset = (!g_ctx.print_to_file) ? "[0m" : "";
+	String color = (!g_ctx.print_to_file) ? (all_ok ? (String)Ansi.GREEN : (String)Ansi.RED) : "";
+	String reset = (!g_ctx.print_to_file) ? (String)Ansi.RESET : "";
 	
-	io::printfn("%sFound %d tests: %.1f%% (%d / %d) passed (%d skipped, %d failed).%s",
-        color, total, (100.0 * success) / math::max(1, to_run), success, to_run, skipped, failed, reset);
+    io::print(color);
+	io::printfn("\nFound %d tests: %.1f%% (%d / %d) passed (%d skipped, %d failed).",
+        total, (100.0 * success) / math::max(1, to_run), success, to_run, skipped, failed);
+    io::print(reset);
 
     return all_ok ? 0 : 1;
 }
@@ -418,7 +420,7 @@ fn void test_file_threaded(any[] data)
 				{
 					io::printn();
 					io::printn("------------------------------------------------------------------");
-					io::printf("\r\x1b[K- %d/%d %s: %s", index, g_ctx.failure_count.load(), file_path, output.buffer)!!;
+					io::printf("- %d/%d %s: %s", index, g_ctx.failure_count.load(), file_path, output.buffer)!!;
 					io::printn("------------------------------------------------------------------");
 				};
 			}
@@ -598,14 +600,24 @@ fn void update_status(usz index, String filename, TestOutput* output)
 			}
 			else
 			{
-				io::fprintn((OutStream)&output.buffer, "Passed.")!!;
+				io::fprint((OutStream)&output.buffer, "Passed.")!!;
 			}
 			return;
 		}
 		else
 		{
-			io::printf("\r\x1b[K[Testing: %d/%d | Passed: %d | Failed: %d] ",
-				g_ctx.test_count.load(), g_ctx.total_test_files, g_ctx.success_count.load(), g_ctx.failure_count.load());
+            int progress_bar_width = 19;
+			double total = (double)g_ctx.total_test_files;
+			double current = (double)g_ctx.test_count.load();
+			double fraction = (total > 0.0) ? (current / total) : 1.0;
+			int filled = (int)(fraction * progress_bar_width);
+			if (filled > progress_bar_width) filled = progress_bar_width;
+			io::print("\r\x1b[?7l\x1b[0KTest progress: [");
+			for (int i = 0; i < filled; i++) io::print("X");
+			for (int i = filled; i < progress_bar_width; i++) io::print("-");
+			io::printf("]  %d%% complete (%d failed)", (int)(fraction * 100.0), g_ctx.failure_count.load());
+			if (filename.len > 0) io::printf(" - Testing: %s", filename);
+			io::print("\x1b[?7h");
 			(void)io::stdout().flush();
 		}
 	};
@@ -615,8 +627,6 @@ fn void? collect_files(Path file_path, List{Path}* files)
 {
 	foreach (f : path::ls(mem, file_path)!!)
 	{
-		@pool()
-		{
 			Path current_file = file_path.append(mem, f.str_view())!;
 			switch
 			{
@@ -633,7 +643,6 @@ fn void? collect_files(Path file_path, List{Path}* files)
                     io::printfn("Skip %s", current_file);
 					// Ignore
 			}
-		};
 	}
 }
 
