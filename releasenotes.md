@@ -23,9 +23,11 @@
 - `$$LINE` would sometimes yield the incorrect format.
 - Fix error message when a method has the wrong type for the first argument.
 - Unit tests allocating too much `tmem` without `@pool` would cause errors in unrelated tests. #2654
+- Incorrect rounding for decimals in formatter in some cases. #2657
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
+- Add `@in` compile-time macro to check for a value in a variable list of constants. #2662
 - Return of Thread/Mutex/CondVar `destroy()` is now "@maydiscard" and should be ignored. It will return void in 0.8.0.
 - Return of Mutex `unlock()` and `lock()` is now "@maydiscard" and should be ignored. They will return void in 0.8.0.
 - Return of ConditionVariable `signal()` `broadcast()` and `wait()` are now "@maydiscard". They will return void in 0.8.0.
