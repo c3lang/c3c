@@ -1059,6 +1059,117 @@ jobs:
           name: c3-openbsd-${{matrix.build_type}}
           path: c3-openbsd-${{matrix.build_type}}.tar.gz
 
+  build-netbsd:
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Don't abort runners if a single one fails
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: NetBSD VM
+        uses: vmactions/netbsd-vm@v1
+        with:
+          prepare: |
+            /usr/sbin/pkg_add cmake llvm-19.1.7 lld-19.1.7nb1 ninja
+
+          run: |
+            echo "CMake"
+            cmake -B build -S .
+            cmake --build build
+            echo "Compile and run some examples"
+            cd resources
+            ../build/c3c compile examples/base64.c3
+            ../build/c3c compile examples/binarydigits.c3
+            ../build/c3c compile examples/brainfk.c3
+            ../build/c3c compile examples/factorial_macro.c3
+            ../build/c3c compile examples/fasta.c3
+            ../build/c3c compile examples/gameoflife.c3
+            ../build/c3c compile examples/hash.c3
+            ../build/c3c compile-only examples/levenshtein.c3
+            ../build/c3c compile examples/load_world.c3
+            ../build/c3c compile-only examples/map.c3
+            ../build/c3c compile examples/mandelbrot.c3
+            ../build/c3c compile examples/plus_minus.c3
+            ../build/c3c compile examples/nbodies.c3
+            ../build/c3c compile examples/spectralnorm.c3
+            ../build/c3c compile examples/swap.c3
+            ../build/c3c compile examples/contextfree/boolerr.c3
+            ../build/c3c compile examples/contextfree/dynscope.c3
+            ../build/c3c compile examples/contextfree/guess_number.c3
+            ../build/c3c compile examples/contextfree/multi.c3
+            ../build/c3c compile examples/contextfree/cleanup.c3
+            ../build/c3c compile-run examples/hello_world_many.c3
+            ../build/c3c compile-run examples/time.c3
+            ../build/c3c compile-run examples/fannkuch-redux.c3
+            ../build/c3c compile-run examples/contextfree/boolerr.c3
+            ../build/c3c compile-run examples/load_world.c3
+            ../build/c3c compile-run examples/process.c3
+            ../build/c3c compile-run examples/ls.c3
+            ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
+            cd ..
+            echo "Compile and run dynlib-test"
+            cd resources/examples/dynlib-test
+            ../../../build/c3c -vv dynamic-lib add.c3
+            mv add.so libadd.so
+            cc test.c -L. -ladd -Wl,-rpath=.
+            ./a.out
+            ../../../build/c3c compile-run test.c3 -L . -l add -z -Wl,-rpath=.
+            cd ../../../
+            echo "Compile and run staticlib-test"
+            cd resources/examples/staticlib-test
+            ../../../build/c3c -vv static-lib add.c3
+            mv add.a libadd.a
+            ranlib libadd.a
+            cc test.c -L. -ladd
+            ./a.out
+            ../../../build/c3c compile-run test.c3 -L . -l add
+            cd ../../../
+            echo "Compile run unit tests"
+            cd test
+            ../build/c3c compile-test unit -D SLOW_TESTS
+            cd ..
+            echo "Build testproject"
+            cd resources/testproject
+            ../../build/c3c run -vvv --trust=full
+            cd ../../
+            echo "Test WASM"
+            cd resources/testfragments
+            ../../build/c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
+            cd ../../
+            echo "Build testproject direct linker"
+            cd resources/testproject
+            ../../build/c3c run -vvv --linker=builtin --trust=full
+            cd ../../
+            echo "Init a library & a project"
+            ./build/c3c init-lib mylib
+            ls mylib.c3l
+            ./build/c3c init myproject
+            ls myproject
+            echo "run compiler tests"
+            cd test
+            ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/
+            cd ..
+
+      - name: bundle_output
+        run: |
+          mkdir c3
+          cp -r lib c3
+          cp msvc_build_libraries.py c3
+          cp build/c3c c3
+          cp README.md c3
+          cp releasenotes.md c3
+          tar czf c3-netbsd-${{matrix.build_type}}.tar.gz c3
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: c3-netbsd-${{matrix.build_type}}
+          path: c3-netbsd-${{matrix.build_type}}.tar.gz
+
   release:
     runs-on: ubuntu-22.04
     needs: [build-msvc, build-linux, build-mac, build-linux-ubuntu22]
