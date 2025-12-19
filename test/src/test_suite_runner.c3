@@ -13,7 +13,7 @@ struct TestRunnerContext
 	Atomic{int} success_count;
 	Atomic{int} failure_count;
 	Path start_cwd;
-	bool print_to_file;
+	bool no_terminal;
 	bool only_skipped;
 	String stdlib;
 	Pool pool;
@@ -31,14 +31,14 @@ struct TestOutput
 }
 
 
-TestRunnerContext g_ctx;
+TestRunnerContext context;
 
 fn int main(String[] args)
 {
 	libc::signal(libc::SIGINT, fn void (CInt _signal) {
-		foreach (f : path::ls(mem, g_ctx.start_cwd)!!)
+		foreach (f : path::ls(mem, context.start_cwd)!!)
 		{
-			if (f.str_view().starts_with("_c3test_")) (void)path::rmtree(g_ctx.start_cwd.tappend(f.str_view())!!);
+			if (f.str_view().starts_with("_c3test_")) (void)path::rmtree(context.start_cwd.tappend(f.str_view())!!);
 		}
 		os::exit(1);
 	});
@@ -46,20 +46,20 @@ fn int main(String[] args)
 	String appname = args[0];
 	if (args.len < 3) usage(appname);
 
-	g_ctx.print_to_file = !io::stdout().isatty();
-	g_ctx.start_cwd = path::tcwd()!!;
-	g_ctx.print_mutex.init()!!;
+	context.no_terminal = !io::stdout().isatty();
+	context.start_cwd = path::tcwd()!!;
+	context.print_mutex.init()!!;
 
-	Path? path = g_ctx.start_cwd.tappend(args[1]);
+	Path? path = context.start_cwd.tappend(args[1]);
 	if (catch path) arg_error_exit(appname, "Invalid compiler path: %s", args[1]);
 	if (!path::is_file(path))
 	{
-		error_exit("Error: Invalid path to compiler: %s (%s relative to %s)", path.path_string, args[1], g_ctx.start_cwd);
+		error_exit("Error: Invalid path to compiler: %s (%s relative to %s)", path.path_string, args[1], context.start_cwd);
 	}
 	// Ok we're done.
-	g_ctx.compiler_path = path.absolute(tmem)!!;
+	context.compiler_path = path.absolute(tmem)!!;
 
-	g_ctx.only_skipped = false;
+	context.only_skipped = false;
 
 	usz num_threads = os::num_cpu();
 
@@ -69,22 +69,22 @@ fn int main(String[] args)
 		switch (arg)
 		{
 			case "--no-terminal":
-				g_ctx.print_to_file = true;
+				context.no_terminal = true;
 			case "-s":
 			case "--skipped":
-				g_ctx.only_skipped = true;
+				context.only_skipped = true;
 			case "--stdlib":
 				if (i == args.len - 1 || args[i + 1].starts_with("-"))
 				{
 					arg_error_exit(appname, "Expected --stdlib to be followed by the path to the alternative standard library.");
 				}
-				g_ctx.stdlib = args[i + 1];
+				context.stdlib = args[i + 1];
 				i++;
-				if (!os::native_is_dir(g_ctx.stdlib))
+				if (!os::native_is_dir(context.stdlib))
 				{
-					error_exit(appname, "Stdlib directory '%s' cannot be found.", g_ctx.stdlib);
+					error_exit(appname, "Stdlib directory '%s' cannot be found.", context.stdlib);
 				}
-				g_ctx.stdlib = g_ctx.start_cwd.tappend(g_ctx.stdlib).absolute(mem)!!.str_view();
+				context.stdlib = context.start_cwd.tappend(context.stdlib).absolute(mem)!!.str_view();
 			case "--threads":
 				if (i == args.len - 1 || args[i + 1].starts_with("-")) {
 					arg_error_exit(appname, "Expected --threads to be followed by the number of threads.");
@@ -95,7 +95,7 @@ fn int main(String[] args)
 				arg_error_exit(appname, "Unknown option '%s'.", args[i]);
 		}
 	}
-	if (g_ctx.only_skipped && args[3] != "-s" && args[3] != "--skipped") usage(appname);
+	if (context.only_skipped && args[3] != "-s" && args[3] != "--skipped") usage(appname);
 
 	Path? file = args[2].to_tpath().absolute(tmem);
 	if (catch file) arg_error_exit(appname, "Invalid path: '%s'.", args[2]);
@@ -114,25 +114,25 @@ fn int main(String[] args)
 			error_exit("Error: Path wasn't to directory or file: %s", file);
 	}
 
-	g_ctx.total_test_files = files_to_test.len();
+	context.total_test_files = files_to_test.len();
 
-	TestOutput[] test_outputs = mem::new_array(TestOutput, g_ctx.total_test_files);
+	TestOutput[] test_outputs = mem::new_array(TestOutput, context.total_test_files);
 	defer mem::free(test_outputs);
 	//Initialize all the DStrings
-	for (usz i = 0; i < g_ctx.total_test_files; i++)
+	for (usz i = 0; i < context.total_test_files; i++)
 	{
 		test_outputs[i].index = i;
 		test_outputs[i].buffer.tinit();
 	}
-	g_ctx.pool.init(num_threads, g_ctx.total_test_files)!!;
-	defer g_ctx.pool.stop_and_destroy();
-	for (usz i = 0; i < g_ctx.total_test_files; i++)
+	context.pool.init(num_threads, context.total_test_files)!!;
+	defer context.pool.stop_and_destroy();
+	for (usz i = 0; i < context.total_test_files; i++)
 	{
-		g_ctx.pool.push(&test_file_threaded, files_to_test[i], &test_outputs[i], i)!!;
+		context.pool.push(&test_file_threaded, files_to_test[i], &test_outputs[i], i)!!;
 	}
-	g_ctx.pool.join();
+	context.pool.join();
 
-	if (g_ctx.print_to_file)
+	if (context.no_terminal)
 	{
 		int running_failure_count = 0;
 		foreach(output : test_outputs)
@@ -147,21 +147,17 @@ fn int main(String[] args)
 		io::printn();
 	}
 
-	//if (!g_ctx.print_to_file) io::print("\r\x1b[K"); //Reset the status line
-	int total = g_ctx.test_count.load();
-	int success = g_ctx.success_count.load();
-	int skipped = g_ctx.skip_count.load();
-	int failed = g_ctx.failure_count.load();
+	int total = context.test_count.load();
+	int success = context.success_count.load();
+	int skipped = context.skip_count.load();
+	int failed = context.failure_count.load();
 	int to_run = total - skipped;
 	bool all_ok = (success == to_run) && (failed == 0);
 
-	String color = (!g_ctx.print_to_file) ? (all_ok ? (String)Ansi.GREEN : (String)Ansi.RED) : "";
-	String reset = (!g_ctx.print_to_file) ? (String)Ansi.RESET : "";
-
-    io::print(color);
+	if (!context.no_terminal) io::print(all_ok ? (String)Ansi.GREEN : (String)Ansi.RED);
 	io::printfn("\nFound %d tests: %.1f%% (%d / %d) passed (%d skipped, %d failed).",
         total, (100.0 * success) / math::max(1, to_run), success, to_run, skipped, failed);
-    io::print(reset);
+    if (!context.no_terminal) io::print(Ansi.RESET);
 
     return all_ok ? 0 : 1;
 }
@@ -400,7 +396,7 @@ fn void parse_header_directive(int* line_no, String line, RunSettings* settings,
 			settings.output_files.push(file);
 		default:
 			io::printfn("FAILED - Unknown header directive '%s'", line);
-			g_ctx.failure_count.add(1);
+			context.failure_count.add(1);
 			return;
 	}
 }
@@ -413,14 +409,14 @@ fn void test_file_threaded(any[] data)
 		usz index = *anycast(data[2], usz)!!;
 		if (!test_file(file_path, output, index))
 		{
-			g_ctx.failure_count.add(1);
-			if (!g_ctx.print_to_file)
+			context.failure_count.add(1);
+			if (!context.no_terminal)
 			{
-				Mutex.@in_lock(&g_ctx.print_mutex)
+				Mutex.@in_lock(&context.print_mutex)
 				{
 					io::printn();
 					io::printn("------------------------------------------------------------------");
-					io::printf("- %d/%d %s: %s", index, g_ctx.failure_count.load(), file_path, output.buffer)!!;
+					io::printf("- %d/%d %s: %s", index, context.failure_count.load(), file_path, output.buffer)!!;
 					io::printn("------------------------------------------------------------------");
 				};
 			}
@@ -433,11 +429,11 @@ fn void test_file_threaded(any[] data)
 *>
 fn bool test_file(Path file_path, TestOutput* output, usz index)
 {
-	g_ctx.test_count.add(1);
+	context.test_count.add(1);
 	update_status(index, file_path, output);
 	bool single;
-	int thread_id = g_ctx.thread_id_counter.add(1);
-	Path test_dir = g_ctx.start_cwd.tappend(string::tformat("_c3test_%s", thread_id))!!;
+	int thread_id = context.thread_id_counter.add(1);
+	Path test_dir = context.start_cwd.tappend(string::tformat("_c3test_%s", thread_id))!!;
 	(void)path::rmtree(test_dir);
 	defer (void)path::rmtree(test_dir);
 	if (@catch(path::mkdir(test_dir)))
@@ -453,19 +449,19 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 			single = false;
 		default:
 			io::fprintfn((OutStream)&output.buffer, "FAILED - Unexpected file name '%s', expected a file with a '.c3' or '.c3t' suffix.", file_path.str_view())!!;
-			g_ctx.failure_count.add(1);
+			context.failure_count.add(1);
 			return false;
 	}
 	File? f = file::open_path(file_path, "rb");
 	if (catch f)
 	{
 		io::fprintfn((OutStream)&output.buffer, "FAILED - Failed to open '%s'.", file_path)!!;
-		g_ctx.failure_count.add(1);
+		context.failure_count.add(1);
 		return false;
 	}
 	defer (void)f.close();
 
-	if (g_ctx.only_skipped)
+	if (context.only_skipped)
 	{
 		bool has_skip = false;
 		while (try line = io::treadline(&f))
@@ -474,7 +470,7 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 		}
 		if (!has_skip)
 		{
-			g_ctx.success_count.add(1);
+			context.success_count.add(1);
 			return true;
 		}
 		(void)f.seek(0);
@@ -490,7 +486,7 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 		{
 			if (line.contains("#skip"))
 			{
-				g_ctx.skip_count.add(1);
+				context.skip_count.add(1);
 				return true;
 			}
 			parse_header_directive(&line_no, line, &settings, single, test_dir);
@@ -507,17 +503,17 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 
 	// Construct the compile line
 	List{String} cmdline;
-	cmdline.push(g_ctx.compiler_path.str_view());
+	cmdline.push(context.compiler_path.str_view());
 	$if env::OPENBSD:
 		cmdline.push("--max-mem");
 		cmdline.push("128");
 	$endif
 	cmdline.push("compile-only");
 	cmdline.push("--test");
-	if (g_ctx.stdlib)
+	if (context.stdlib)
 	{
 		cmdline.push("--stdlib");
-		cmdline.push(g_ctx.stdlib);
+		cmdline.push(context.stdlib);
 	}
 	cmdline.push("--llvm-out");
 	cmdline.push(test_dir.str_view());
@@ -583,16 +579,16 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
     		return false;
     	}
     }
-	g_ctx.success_count.add(1);
+	context.success_count.add(1);
 	update_status(index, {}, output);
 	return true;
 }
 
 fn void update_status(usz index, Path filename, TestOutput* output)
 {
-	Mutex.@in_lock(&g_ctx.print_mutex) {
+	Mutex.@in_lock(&context.print_mutex) {
 		bool has_entry = filename.str_view().len != 0;
-		if (g_ctx.print_to_file)
+		if (context.no_terminal)
 		{
 			output.has_output = true;
 			if (has_entry)
@@ -609,14 +605,14 @@ fn void update_status(usz index, Path filename, TestOutput* output)
 		{
 			const String[8] PARTS = { " ", "▏", "▎", "▍", "▌", "▋", "▊", "▉" };
             int progress_bar_width = 25;
-			usz total = g_ctx.total_test_files;
-			usz finished = g_ctx.test_count.load();
+			usz total = context.total_test_files;
+			usz finished = context.test_count.load();
 			if (!has_entry && total != finished) return;
 			double fraction = total > 0.0 ? finished / (double)total : 0;
 			int full_width = (int)math::floor(fraction * progress_bar_width);
 			int remainder = (int)math::floor(8 * (fraction * progress_bar_width % 1.0));
 			io::print("\e[0m\e[2K\e[1GTest progress: [");
-			usz failed = g_ctx.failure_count.load();
+			usz failed = context.failure_count.load();
 			io::print(failed ? "\e[31m" : "\e[32m");
 			for (int i = 0; i < full_width; i++) io::print("█");
 			if (full_width != progress_bar_width) io::print(PARTS[remainder]);
