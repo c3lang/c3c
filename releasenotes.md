@@ -23,6 +23,7 @@
 - `$$LINE` would sometimes yield the incorrect format.
 - Fix error message when a method has the wrong type for the first argument.
 - Unit tests allocating too much `tmem` without `@pool` would cause errors in unrelated tests. #2654
+- Incorrect rounding for decimals in formatter in some cases. #2657
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
