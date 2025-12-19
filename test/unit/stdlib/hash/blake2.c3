@@ -11,7 +11,6 @@ fn void rfc7693__apx_a()
 {
     // "We compute the unkeyed hash of three ASCII bytes "abc" with BLAKE2b-512 and show internal values during computation."
     Blake2b b @noinit;
-    defer b.destroy();
     b.init(blake2::SIZE_512);
     b.update("abc");
 
@@ -33,7 +32,6 @@ Take my advice and learn from the wise
 There's no truth only legends and lies`;
 
     Blake2b b @noinit;
-    defer b.destroy();
     b.init(blake2::SIZE_224);
     b.update(phrase);
 
@@ -52,7 +50,6 @@ Tragic, insane or amusing at best
 It's like you're watching donkeys do ballet`;
 
     Blake2b b @noinit;
-    defer b.destroy();
     b.init(blake2::SIZE_384);
     b.update(phrase);
 
@@ -66,7 +63,6 @@ fn void blake2b__empties()
     {
         // Throw in this oddball length for full testing's sake.
         Blake2b b @noinit;
-        defer b.destroy();
         b.init(20);
         b.update("");
         test::@check(b.final(20)[..]    == x'3345524abf6bbe1809449224b5972c41790b6cf2', "Empty 160 hash mismatch.");
@@ -83,7 +79,6 @@ fn void blake2b__empties_keyed()
     {
         // Throw in this oddball length for full testing's sake.
         Blake2b b @noinit;
-        defer b.destroy();
         b.init(20, key);
         b.update("");
         test::@check(b.final(20)[..]    == x'783d4f68dbf0ff42518bdd8e63435aedd5b359a6', "Empty 160 hash mismatch.");
@@ -92,6 +87,31 @@ fn void blake2b__empties_keyed()
     test::@check(blake2::b_256("", key)[..]  == x'a05177465b012683d211f64f0e752f52ef52f4534c52a49f3e0e1d56402c6e6b', "Empty 384 hash mismatch.");
     test::@check(blake2::b_384("", key)[..]  == x'28f18704e56f97d3633c7c38b97a4d7d4acffa0dd514a793e683ab487100082451a591cb2a94ddda9f1b2afcea6b084c', "Empty 256 hash mismatch.");
     test::@check(blake2::b_512("", key)[..]  == x'2fa525e04d02a129f78d08a461d038b3080de62e8b068b3fc56602715a1ac447a14987dafe471e77bc7273fcfe9aa2d4fe6cbe7c1beaa65ad173afe2f00a1be6', "Empty 512 hash mismatch.");
+}
+
+
+fn void assert_finalization_b()
+{
+	static char[Blake2b.sizeof] empty = {};
+	Blake2b ctx @noinit;
+    ctx.init(20);
+	test::@check(@as_char_view(ctx) != empty[..], "Blake2b cryptographic context is not initialized.");
+
+	ctx.update("beep");
+	(void)ctx.final(20);
+	test::@check(@as_char_view(ctx) == empty[..], "Blake2b cryptographic context was not implicitly wiped upon finalization:\n\t%s.", @as_char_view(ctx));
+}
+
+fn void assert_finalization_s()
+{
+	static char[Blake2s.sizeof] empty = {};
+	Blake2s ctx @noinit;
+    ctx.init(20);
+	test::@check(@as_char_view(ctx) != empty[..], "Blake2s cryptographic context is not initialized.");
+
+	ctx.update("beep");
+	(void)ctx.final(20);
+	test::@check(@as_char_view(ctx) == empty[..], "Blake2s cryptographic context was not implicitly wiped upon finalization:\n\t%s.", @as_char_view(ctx));
 }
 
 
@@ -365,7 +385,6 @@ fn void b_256__pairs()
     foreach (i, p : BLAKE2B_SET)
     {
         Blake2b b @noinit;
-        defer b.destroy();
         b.init(blake2::SIZE_256);
         // streaming the data because we're cool like that
         b.update(p.first[                    : p.first.len/4 ]);
@@ -389,7 +408,6 @@ fn void rfc7693__apx_b()
 {
     // "We compute the unkeyed hash of three ASCII bytes "abc" with BLAKE2s-256 and show internal values during computation."
     Blake2s s @noinit;
-    defer s.destroy();
     s.init(blake2::SIZE_256);
     s.update("abc");
 
@@ -408,7 +426,6 @@ Or mutiny's waged,
 As we plead for something to believe in`;
 
     Blake2s s @noinit;
-    defer s.destroy();
     s.init(blake2::SIZE_128);
     s.update(phrase);
 
@@ -426,7 +443,6 @@ I can see right through you so I can ignore you
 The story changes but the ending won't bore you`;
 
     Blake2s s @noinit;
-    defer s.destroy();
     s.init(blake2::SIZE_160);
     s.update(phrase);
 
@@ -440,7 +456,6 @@ fn void blake2s__empties()
     {
         // Throw in this oddball length for full testing's sake.
         Blake2s s @noinit;
-        defer s.destroy();
         s.init(10);
         s.update("");
         test::@check(s.final(10)[..]    == x'1bf21a98c78a1c376ae9', "Empty 80 hash mismatch.");
@@ -457,7 +472,6 @@ fn void blake2s__empties_keyed()
     {
         // Throw in this oddball length for full testing's sake.
         Blake2s s @noinit;
-        defer s.destroy();
         s.init(10, key);
         s.update("");
         test::@check(s.final(10)[..]    == x'4b06d60d81201f7486ff', "Empty 80 hash mismatch.");
@@ -738,7 +752,6 @@ fn void s_256__pairs()
     foreach (i, p : BLAKE2S_SET)
     {
         Blake2s s @noinit;
-        defer s.destroy();
         s.init(blake2::SIZE_256);
         // streaming the data because we're cool like that
         s.update(p.first[                    : p.first.len/4 ]);
