@@ -23,7 +23,6 @@ char* input;
 char[] input_slice;
 const usz BUFSZ = 1024 * 1024;
 
-
 module ripemd_bench @benchmark;
 
 import std::hash;
