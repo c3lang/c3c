@@ -5,6 +5,8 @@
 
 ### Changes / improvements
 - Add `--custom-libc` option for custom libc implementations.
+- Remove use of LLVMGetGlobalContext for single module compilation.
+- Fixed bug where constants would get modified when slicing them. #2660
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
