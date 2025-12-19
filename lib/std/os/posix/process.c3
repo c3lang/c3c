@@ -153,7 +153,7 @@ struct MContext_t @align(16) @if(env::LINUX && env::AARCH64)
 	char[4096] __reserved;
 }
 
-struct PosixUContext_t @if(env::LINUX)
+struct PosixUContext_t @if(env::LINUX && env::X86_64)
 {
 	ulong            uc_flags;
 	PosixUContext_t* uc_link;
@@ -164,7 +164,7 @@ struct PosixUContext_t @if(env::LINUX)
 	ulong[4]		 __ssp;
 }
 
-alias PosixUContext_t @if(!env::DARWIN && !env::LINUX) = void;
+alias PosixUContext_t @if(!env::DARWIN && !(env::LINUX && env::X86_64) )= void;
 
 macro void* stack_instruction(PosixUContext_t* uc)
 {
