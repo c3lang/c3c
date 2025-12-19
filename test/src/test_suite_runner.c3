@@ -615,13 +615,14 @@ fn void update_status(usz index, Path filename, TestOutput* output)
 			double fraction = total > 0.0 ? finished / (double)total : 0;
 			int full_width = (int)math::floor(fraction * progress_bar_width);
 			int remainder = (int)math::floor(8 * (fraction * progress_bar_width % 1.0));
-			io::print("\r\e[?7l\e[0KTest progress: [");
+			io::print("\e[0m\e[2K\e[1GTest progress: [");
+			usz failed = g_ctx.failure_count.load();
+			io::print(failed ? "\e[31m" : "\e[32m");
 			for (int i = 0; i < full_width; i++) io::print("█");
 			if (full_width != progress_bar_width) io::print(PARTS[remainder]);
 			for (int i = full_width + 1; i < progress_bar_width; i++) io::print(" ");
-			io::printf("] %.1f%% complete (%d failed)", fraction * 100.0, g_ctx.failure_count.load());
+			io::printf("\e[0m] %.1f%% complete (%d failed)", fraction * 100.0, failed);
 			if (has_entry) io::printf(" - Testing: %s", filename.basename());
-			io::print("\e[?7h");
 			(void)io::stdout().flush();
 		}
 	};
