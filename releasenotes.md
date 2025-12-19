@@ -5,6 +5,8 @@
 
 ### Changes / improvements
 - Add `--custom-libc` option for custom libc implementations.
+- Remove use of LLVMGetGlobalContext for single module compilation.
+- Fixed bug where constants would get modified when slicing them. #2660
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -23,9 +25,11 @@
 - `$$LINE` would sometimes yield the incorrect format.
 - Fix error message when a method has the wrong type for the first argument.
 - Unit tests allocating too much `tmem` without `@pool` would cause errors in unrelated tests. #2654
+- Incorrect rounding for decimals in formatter in some cases. #2657
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
+- Add `@in` compile-time macro to check for a value in a variable list of constants. #2662
 - Return of Thread/Mutex/CondVar `destroy()` is now "@maydiscard" and should be ignored. It will return void in 0.8.0.
 - Return of Mutex `unlock()` and `lock()` is now "@maydiscard" and should be ignored. They will return void in 0.8.0.
 - Return of ConditionVariable `signal()` `broadcast()` and `wait()` are now "@maydiscard". They will return void in 0.8.0.
@@ -35,6 +39,7 @@
 - Return of Thread `join()` is now "@maydiscard".
 - Add `poly1305` one-time Message Authentication Code and associated tests. #2639
 - Add `chacha20` stream cipher and associated tests. #2643
+- Add `BLAKE2` (optionally keyed) cryptographic hashing with associated tests. #2648
 - Add `Elf32_Shdr` and `Elf64_Shdr` to `std::os::linux`.
 - Add `any.to` and `any.as`.
 - Deprecated `DString.append_chars`, use `DString.append_string`

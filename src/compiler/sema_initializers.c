@@ -951,7 +951,7 @@ void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value)
 		Decl *ident = decl_flatten(value->ident_expr);
 		ASSERT(ident->decl_kind == DECL_VAR);
 		ASSERT(ident->var.kind == VARDECL_CONST);
-		const_init_rewrite_to_value(const_init, expr_copy(ident->var.init_expr));
+		const_init_rewrite_to_value(const_init, copy_expr_single(ident->var.init_expr));
 		return;
 	}
 	const_init->init_value = value;
