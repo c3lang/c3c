@@ -1,9 +1,7 @@
 module std::os::posix @if(env::POSIX);
 import libc;
 
-extern fn CInt clock_gettime(int type, TimeSpec *time) @if(!env::NETBSD);
-
-extern fn CInt clock_gettime(int type, TimeSpec *time) @cname("__clock_gettime50") @if(env::NETBSD);
+extern fn CInt clock_gettime(int type, TimeSpec *time) @cname(env::NETBSD ??? "__clock_gettime50" : "clock_gettime");
 
 module std::os::posix @if(env::OPENBSD);
 const CLOCK_REALTIME = 0;
