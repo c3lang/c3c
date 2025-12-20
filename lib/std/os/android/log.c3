@@ -1,7 +1,7 @@
 module std::os::android @if(env::ANDROID);
 
 
-enum LogPriority : (CInt val)
+enum AndroidLogPriority : (CInt val)
 {
 	ANDROID_LOG_UNKNOWN = 0,
 	ANDROID_LOG_DEFAULT = 1,
@@ -14,7 +14,7 @@ enum LogPriority : (CInt val)
 	ANDROID_LOG_SILENT  = 8
 }
 
-enum LogId : (CInt val)
+enum AndroidLogId : (CInt val)
 {
 	LOG_ID_MIN      = 0,
 	LOG_ID_MAIN     = 0,
@@ -29,7 +29,7 @@ enum LogId : (CInt val)
 	LOG_ID_DEFAULT  = 0x7FFFFFFF
 }
 
-struct LogMessage @packed
+struct AndroidLogMessage @packed
 {
 	usz struct_size;
 	CInt buffer_id;
