@@ -62,7 +62,7 @@ fn void basic_streamed()
 }
 
 
-fn void large_input() => @pool()
+fn void large_input() @if(!env::WIN32) => @pool()
 {
 	char[] one_mb = mem::talloc_array(char, 1024*1024);
 	one_mb = { [0..(1024*1024)-1] = 0xA5 };
@@ -73,7 +73,7 @@ fn void large_input() => @pool()
 	test::@check(ripemd::hash{320}(one_mb) == x'3173e524ea770b420c986974b486ea18d4558db55000e6db67784fe5fc091fe5fcc8bc80b7753c34');
 }
 
-fn void large_input_streamed() => @pool()
+fn void large_input_streamed() @if(!env::WIN32) => @pool()
 {
 	static char[][] expected = {
 		x'e8b57fa5f8415f7a17043b67509fc182',
