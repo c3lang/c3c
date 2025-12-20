@@ -1210,52 +1210,52 @@ jobs:
         run: chown -R 1000:1000 .
 
       - name: setup
-        run: /entrypoint.sh pkg install -y llvm binutils binutils libgc build-essential cmake llvm git libedit zlib clang make mlir llvm-tools libpolly python libllvm-static gdb
+        run: /entrypoint.sh pkg install -y llvm binutils libgc build-essential cmake git libedit zlib clang make mlir llvm-tools libpolly python libllvm-static
       - name: build
         run: |
-          /entrypoint.sh cmake -Bbuild -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
-          /entrypoint.sh cmake --build build
+          cmake -Bbuild -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+          cmake --build build
 
       - name: Compile and run some examples
         run: |
           cd resources
-          /entrypoint.sh ../build/c3c compile examples/base64.c3
-          /entrypoint.sh ../build/c3c compile examples/binarydigits.c3
-          /entrypoint.sh ../build/c3c compile examples/brainfk.c3
-          /entrypoint.sh ../build/c3c compile examples/factorial_macro.c3
-          /entrypoint.sh ../build/c3c compile examples/fasta.c3
-          /entrypoint.sh ../build/c3c compile examples/gameoflife.c3
-          /entrypoint.sh ../build/c3c compile examples/hash.c3
-          /entrypoint.sh ../build/c3c compile-only examples/levenshtein.c3
-          /entrypoint.sh ../build/c3c compile examples/load_world.c3
-          /entrypoint.sh ../build/c3c compile-only examples/map.c3
-          /entrypoint.sh ../build/c3c compile examples/mandelbrot.c3
-          /entrypoint.sh ../build/c3c compile examples/plus_minus.c3
-          /entrypoint.sh ../build/c3c compile examples/nbodies.c3
-          /entrypoint.sh ../build/c3c compile examples/spectralnorm.c3
-          /entrypoint.sh ../build/c3c compile examples/swap.c3
-          /entrypoint.sh ../build/c3c compile examples/contextfree/boolerr.c3
-          /entrypoint.sh ../build/c3c compile examples/contextfree/dynscope.c3
-          /entrypoint.sh ../build/c3c compile examples/contextfree/guess_number.c3
-          /entrypoint.sh ../build/c3c compile examples/contextfree/multi.c3
-          /entrypoint.sh ../build/c3c compile examples/contextfree/cleanup.c3
-          /entrypoint.sh ../build/c3c compile-run examples/hello_world_many.c3
-          /entrypoint.sh ../build/c3c compile-run examples/time.c3
-          /entrypoint.sh ../build/c3c compile-run examples/fannkuch-redux.c3
-          /entrypoint.sh ../build/c3c compile-run examples/contextfree/boolerr.c3
-          /entrypoint.sh ../build/c3c compile-run examples/load_world.c3
-          /entrypoint.sh ../build/c3c compile-run examples/process.c3
-          /entrypoint.sh ../build/c3c compile-run examples/ls.c3
-          /entrypoint.sh ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
+          ../build/c3c compile examples/base64.c3
+          ../build/c3c compile examples/binarydigits.c3
+          ../build/c3c compile examples/brainfk.c3
+          ../build/c3c compile examples/factorial_macro.c3
+          ../build/c3c compile examples/fasta.c3
+          ../build/c3c compile examples/gameoflife.c3
+          ../build/c3c compile examples/hash.c3
+          ../build/c3c compile-only examples/levenshtein.c3
+          ../build/c3c compile examples/load_world.c3
+          ../build/c3c compile-only examples/map.c3
+          ../build/c3c compile examples/mandelbrot.c3
+          ../build/c3c compile examples/plus_minus.c3
+          ../build/c3c compile examples/nbodies.c3
+          ../build/c3c compile examples/spectralnorm.c3
+          ../build/c3c compile examples/swap.c3
+          ../build/c3c compile examples/contextfree/boolerr.c3
+          ../build/c3c compile examples/contextfree/dynscope.c3
+          ../build/c3c compile examples/contextfree/guess_number.c3
+          ../build/c3c compile examples/contextfree/multi.c3
+          ../build/c3c compile examples/contextfree/cleanup.c3
+          ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/time.c3
+          ../build/c3c compile-run examples/fannkuch-redux.c3
+          ../build/c3c compile-run examples/contextfree/boolerr.c3
+          ../build/c3c compile-run examples/load_world.c3
+          ../build/c3c compile-run examples/process.c3
+          ../build/c3c compile-run examples/ls.c3
+          ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
 
       - name: Compile and run staticlib-test
         run: |
           cd resources/examples/staticlib-test
-          /entrypoint.sh ../../../build/c3c -vv static-lib add.c3
+          ../../../build/c3c -vv static-lib add.c3
           mv add.a libadd.a
           cc test.c -L. -ladd
           ./a.out
-          /entrypoint.sh ../../../build/c3c compile-run test.c3 -L . -l add
+          ../../../build/c3c compile-run test.c3 -L . -l add
 
       - name: Compile run unit tests
         run: |
@@ -1265,22 +1265,22 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          /entrypoint.sh ../../build/c3c run -vvv --trust=full
+          ../../build/c3c run -vvv --trust=full
 
       - name: run compiler tests
         run: |
           cd test
-          /entrypoint.sh ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c test_suite/
+          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c test_suite/
 
       - name: bundle_output
         run: |
-          /entrypoint.sh mkdir c3
-          /entrypoint.sh cp -r lib c3
-          /entrypoint.sh cp msvc_build_libraries.py c3
-          /entrypoint.sh cp build/c3c c3
-          /entrypoint.sh cp README.md c3
-          /entrypoint.sh cp releasenotes.md c3
-          /entrypoint.sh tar czf c3-android-${{matrix.architecture}}-${{matrix.build_type}}.tar.gz c3
+          mkdir c3
+          cp -r lib c3
+          cp msvc_build_libraries.py c3
+          cp build/c3c c3
+          cp README.md c3
+          cp releasenotes.md c3
+          tar czf c3-android-${{matrix.architecture}}-${{matrix.build_type}}.tar.gz c3
 
       - name: upload artifacts
         uses: actions/upload-artifact@v4
