@@ -54,14 +54,18 @@ fn void blake_team_vectors()
 		for (; walk.len >= 251; walk = walk[251..]) walk[:251] = (char[251]){ ...math::iota(char[251]) }[..];
 		if (walk.len) foreach (i, &w : walk) *w = (char)i;
 	}
+
 	foreach (i, vector : BLAKE_TEAM_VECTORS)
 	{
 		char[] content = input_field[:vector.input_len];
 		io::eprintfn(">>> #%d:  %s", i + 1, vector);
-		test::@check(blake3::hash(content)[..] == vector.hash[:32], "Mismatched normative size hash on vector %d\n\t%s", i, blake3::hash(content)[..]);
+
+		test::@check(blake3::hash(content)[..] == vector.hash[:32], "Mismatched normative size hash on vector %d", i);
 		test::@check(blake3::hash(content, $out_size: BLAKE_TEAM_HASH_LEN)[..] == vector.hash[..], "Mismatched full hash on vector %d", i);
+
 		test::@check(blake3::hash(content, BLAKE_TEAM_KEY)[..] == vector.keyed_hash[:32], "Mismatched normative keyed hash on vector %d", i);
 		test::@check(blake3::hash(content, BLAKE_TEAM_KEY, $out_size: BLAKE_TEAM_HASH_LEN)[..] == vector.keyed_hash[..], "Mismatched full keyed hash on vector %d", i);
+
 		test::@check(blake3::ctx_hash(content, BLAKE_TEAM_CONTEXT_STRING)[..] == vector.derive_key[:32], "Mismatched normative derived key on vector %d", i);
 		test::@check(blake3::ctx_hash(content, BLAKE_TEAM_CONTEXT_STRING, $out_size: BLAKE_TEAM_HASH_LEN)[..] == vector.derive_key[..], "Mismatched full derived key on vector %d", i);
 	}
@@ -69,7 +73,59 @@ fn void blake_team_vectors()
 
 fn void blake_team_vectors_streamed()
 {
-	//
+	// NOTE: 102,400 is the longest length in the team's vectors set.
+    char[32] small_result;
+    char[BLAKE_TEAM_HASH_LEN] large_result;
+
+	char[] input_field = mem::talloc_array(char, 102_400);
+	mem::zero_volatile(input_field);
+	{
+		char[] walk = input_field;
+		for (; walk.len >= 251; walk = walk[251..]) walk[:251] = (char[251]){ ...math::iota(char[251]) }[..];
+		if (walk.len) foreach (i, &w : walk) *w = (char)i;
+	}
+
+	foreach (i, vector : BLAKE_TEAM_VECTORS)
+	{
+		char[] content = input_field[:vector.input_len];
+		io::eprintfn(">>> #%d:  %s", i + 1, vector);
+
+        {
+            Blake3 b @noinit;
+            b.init();
+			b.update(content[                   : content.len/4 ]);
+			b.update(content[ 1*(content.len/4) : content.len/4 ]);
+			b.update(content[ 2*(content.len/4) : content.len/4 ]);
+			b.update(content[ 3*(content.len/4) ..              ]);
+            b.final(small_result[..], 32);
+            b.final(large_result[..], BLAKE_TEAM_HASH_LEN);   // look at that output extension (XOF) ^_^
+            test::@check(small_result[..] == vector.hash[:32], "Mismatched normative size hash on vector %d", i);
+            test::@check(large_result[..] == vector.hash[..], "Mismatched full hash on vector %d", i);
+        }
+        {
+            Blake3 b @noinit;
+            b.init(BLAKE_TEAM_KEY);
+			b.update(content[                   : content.len/4 ]);
+			b.update(content[ 1*(content.len/4) : content.len/4 ]);
+			b.update(content[ 2*(content.len/4) : content.len/4 ]);
+			b.update(content[ 3*(content.len/4) ..              ]);
+            b.final(small_result[..], 32);
+            b.final(large_result[..], BLAKE_TEAM_HASH_LEN);
+            test::@check(small_result[..] == vector.keyed_hash[:32], "Mismatched normative keyed hash on vector %d", i);
+            test::@check(large_result[..] == vector.keyed_hash[..], "Mismatched full keyed hash on vector %d", i);
+        }
+        {
+            Blake3 b = blake3::new_from_context(BLAKE_TEAM_CONTEXT_STRING);
+			b.update(content[                   : content.len/4 ]);
+			b.update(content[ 1*(content.len/4) : content.len/4 ]);
+			b.update(content[ 2*(content.len/4) : content.len/4 ]);
+			b.update(content[ 3*(content.len/4) ..              ]);
+            b.final(small_result[..], 32);
+            b.final(large_result[..], BLAKE_TEAM_HASH_LEN);
+            test::@check(small_result[..] == vector.derive_key[:32], "Mismatched normative derived key on vector %d", i);
+            test::@check(large_result[..] == vector.derive_key[..], "Mismatched full derived key on vector %d", i);
+        }
+	}
 }
 
 struct BlakeTeamVector (Printable)
