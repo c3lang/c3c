@@ -22,17 +22,19 @@ alias Pid_t = int;
 alias Uid_t = uint;
 alias Gid_t = uint;
 
-const CUInt SA_ONSTACK       = env::LINUX ? 0x08000000 : 0x0001;
-const CUInt SA_RESTART       = env::LINUX ? 0x10000000 : 0x0002;
-const CUInt SA_RESETHAND     = env::LINUX ? 0x80000000 : 0x0004;
-const CUInt SA_SIGINFO       = env::LINUX ? 0x00000004 : 0x0040;
+const CUInt SA_ONSTACK       = env::LINUX || env::ANDROID ? 0x08000000 : 0x0001;
+const CUInt SA_RESTART       = env::LINUX || env::ANDROID ? 0x10000000 : 0x0002;
+const CUInt SA_RESETHAND     = env::LINUX || env::ANDROID ? 0x80000000 : 0x0004;
+const CUInt SA_SIGINFO       = env::LINUX || env::ANDROID ? 0x00000004 : 0x0040;
 
 alias Sigset_t @if(env::DARWIN || env::BSD_FAMILY) = uint;
 alias Sigset_t @if(env::LINUX) = ulong[16];
+alias Sigset_t @if(env::ANDROID) = ulong;
 alias SigActionFunction =  fn void(CInt, void*, void*);
 
 struct Sigaction
 {
+	CInt sa_flags @if(env::ANDROID);
 	union
 	{
 		SignalFunction      sa_handler;
@@ -42,20 +44,20 @@ struct Sigaction
     CInt       sa_flags @if(env::DARWIN || env::BSD_FAMILY );
     Sigset_t   sa_mask  @if(env::DARWIN || env::BSD_FAMILY);
 
-    Sigset_t   sa_mask     @if(env::LINUX);
+    Sigset_t   sa_mask     @if(env::LINUX || env::ANDROID);
     CInt       sa_flags    @if(env::LINUX);
-    void*      sa_restorer @if(env::LINUX);
+    void*      sa_restorer @if(env::LINUX || env::ANDROID);
 }
 
 struct Stack_t
 {
 	void*   ss_sp;
-	struct @if(!env::LINUX)
+	struct @if(!env::LINUX && !env::ANDROID)
 	{
 		usz     ss_size;
 		CInt    ss_flags;
 	}
-	struct @if(env::LINUX)
+	struct @if(env::LINUX || env::ANDROID)
 	{
 		CInt    ss_flags;
 		usz     ss_size;
