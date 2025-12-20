@@ -4821,9 +4821,6 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			ArraySize size = expr->const_expr.bytes.len;
 			size++;
 			if (is_array && type->array.len > size) size = type->array.len;
-			LLVMValueRef global_name = llvm_add_global_raw(c, is_bytes ? ".bytes" : ".str", LLVMArrayType(llvm_get_type(c, type_char), size), 1);
-			llvm_set_private_declaration(global_name);
-			LLVMSetGlobalConstant(global_name, 1);
 			LLVMValueRef data = llvm_get_zstring(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len);
 			LLVMValueRef trailing_zeros = NULL;
 			if (size > len + 1)
@@ -4835,6 +4832,10 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 				LLVMValueRef values[2] = { data, trailing_zeros };
 				data = llvm_get_packed_struct(c, values, 2);
 			}
+			LLVMValueRef global_name = llvm_add_global_raw(c, is_bytes ? ".bytes" : ".str", LLVMTypeOf(data), 1);
+			llvm_set_private_declaration(global_name);
+			LLVMSetGlobalConstant(global_name, 1);
+
 			LLVMSetInitializer(global_name, data);
 			if (is_array)
 			{

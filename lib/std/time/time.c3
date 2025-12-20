@@ -78,7 +78,7 @@ enum Month : char (String name, String abbrev, int days, bool leap)
 
 fn Time now()
 {
-	$if $defined(native_timestamp):
+	$if $defined(os::native_timestamp):
 		return os::native_timestamp();
 	$else
 		return (Time)0;

@@ -69,6 +69,20 @@ struct Elf32_Phdr
 	Elf32_Word	p_align;
 }
 
+struct Elf32_Shdr
+{
+	Elf32_Word	sh_name;
+	Elf32_Word	sh_type;
+	Elf32_Word	sh_flags;
+	Elf32_Addr	sh_addr;
+	Elf32_Off	sh_offset;
+	Elf32_Word	sh_size;
+	Elf32_Word	sh_link;
+	Elf32_Word	sh_info;
+	Elf32_Word	sh_addralign;
+	Elf32_Word	sh_entsize;
+}
+
 alias Elf64_Addr = ulong;
 alias Elf64_Half = ushort;
 alias Elf64_Off = ulong;
@@ -106,6 +120,20 @@ struct Elf64_Phdr
 	Elf64_Xword	p_filesz;
 	Elf64_Xword	p_memsz;
 	Elf64_Xword	p_align;
+}
+
+struct Elf64_Shdr
+{
+	Elf64_Word	sh_name;
+	Elf64_Word	sh_type;
+	Elf64_Xword	sh_flags;
+	Elf64_Addr	sh_addr;
+	Elf64_Off	sh_offset;
+	Elf64_Xword	sh_size;
+	Elf64_Word	sh_link;
+	Elf64_Word	sh_info;
+	Elf64_Xword	sh_addralign;
+	Elf64_Xword	sh_entsize;
 }
 
 extern fn CInt dladdr(void* addr, Linux_Dl_info* info);

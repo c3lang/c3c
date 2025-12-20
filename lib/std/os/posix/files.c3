@@ -32,9 +32,9 @@ extern fn ZString getcwd(char* pwd, usz len);
 extern fn CInt pipe(CInt[2]* pipes);
 extern fn CFile fdopen(CInt fd, ZString mode);
 extern fn CInt access(ZString path, CInt mode);
-extern fn Posix_dirent* readdir(DIRPtr) @cname("readdir") @if(!USE_DARWIN_INODE64) ;
-extern fn DIRPtr opendir(ZString);
 extern fn void closedir(DIRPtr);
+extern fn Posix_dirent* readdir(DIRPtr) @cname(readdir_cname());
+extern fn DIRPtr opendir(ZString) @cname(env::NETBSD ??? "__opendir30" : "opendir");
 
 const DT_UNKNOWN =  0;
 const DT_FIFO    =  1;
@@ -46,5 +46,12 @@ const DT_LNK     = 10;
 const DT_SOCK    = 12;
 const DT_WHT     = 14;
 
-const USE_DARWIN_INODE64 = env::DARWIN && env::X86_64;
-extern fn Posix_dirent* readdir(DIRPtr) @cname("readdir$INODE64") @if(USE_DARWIN_INODE64);
+
+macro String readdir_cname() @local @const
+{
+	$switch:
+		$case env::DARWIN && env::X86_64: return "readdir$INODE64";
+		$case env::NETBSD: return "__readdir30";
+		$default: return "readdir";
+	$endswitch
+}

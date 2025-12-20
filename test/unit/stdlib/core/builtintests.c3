@@ -224,3 +224,13 @@ fn void test_ct_min_max()
 	assert(@max(0, 0, 1.234, 1.2345, 0.2) == 1.2345);
 	assert(@max(127.9999999, 45 + 46, bitsizeof(uint128)) == 128);
 }
+
+const usz[] MY_OK_VALUES = { 128, 256, 384, 512 };
+fn void test_in()
+{
+    $assert @in(384, ...MY_OK_VALUES);
+    $assert !@in(123, ...MY_OK_VALUES);
+    $assert @in(384, 128, 256, 384, 512);
+    $assert @in("love", "joy", "cheer", "love", "friend");
+    $assert !@in("hate", "joy", "cheer", "love", "friend");
+}

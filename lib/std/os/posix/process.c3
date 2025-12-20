@@ -58,25 +58,34 @@ const CInt WUNTRACES = 2;
 JmpBuf backtrace_jmpbuf @local;
 alias BacktraceFn = fn CInt(void** buffer, CInt size);
 
-extern fn CInt backtrace(void** buffer, CInt size) @if(env::OPENBSD);
+extern fn CInt backtrace(void** buffer, CInt size) @if(env::OPENBSD || env::NETBSD);
 
 fn void install_signal_handler(CInt signal, SigActionFunction func)
 {
-	Sigaction action = {
-		.sa_sigaction = func,
-	};
-	Sigaction old;
-	libc::sigaction(signal, &action, &old);
+    CInt flags = libc::SA_SIGINFO;
+
+    $if env::LINUX:
+        flags |= libc::SA_ONSTACK;
+    $endif
+
+    Sigaction action = {
+        .sa_sigaction = func,
+        .sa_flags = flags
+    };
+    libc::sigemptyset(&action.sa_mask);
+
+    Sigaction old;
+    libc::sigaction(signal, &action, &old);
 }
 
-fn CInt backtrace(void** buffer, CInt size) @if(!env::OPENBSD)
+fn CInt backtrace(void** buffer, CInt size) @if(!env::OPENBSD && !env::NETBSD)
 {
 	if (size < 1) return 0;
 	void* handle = libc::dlopen("libc.so.6", libc::RTLD_LAZY|libc::RTLD_NODELETE);
 	if (handle)
 	{
+		defer libc::dlclose(handle);
 		BacktraceFn backtrace_fn = libc::dlsym(handle, "backtrace");
-		libc::dlclose(handle);
 		if (backtrace_fn)
 		{
 			return backtrace_fn(buffer, size);
@@ -85,20 +94,23 @@ fn CInt backtrace(void** buffer, CInt size) @if(!env::OPENBSD)
 	// Loop through the return addresses until we hit a signal.
 	// This avoids using the frame address.
 	Sigaction restore_backtrace = {
-    	.sa_sigaction = fn void(CInt, void*, void*) { libc::longjmp(&backtrace_jmpbuf, 1); },
-    };
+		.sa_sigaction = fn void(CInt, void*, void*) { libc::longjmp(&backtrace_jmpbuf, 1); },
+		.sa_flags = libc::SA_SIGINFO
+	};
 	Sigaction sig_bus, sig_segv, sig_ill;
 	libc::sigaction(libc::SIGBUS, &restore_backtrace, &sig_bus);
 	libc::sigaction(libc::SIGSEGV, &restore_backtrace, &sig_segv);
 	libc::sigaction(libc::SIGILL, &restore_backtrace, &sig_ill);
 
-	void*[128] buffer_first;
 	int i = 0;
-	for (i = 0; i < size; i++)
+	if (libc::setjmp(&backtrace_jmpbuf) == 0)
 	{
-		if (libc::setjmp(&backtrace_jmpbuf) == 1) break;
-		buffer[i] = builtin::get_returnaddress(i);
-		if (!buffer[i]) break;
+		for (i = 0; i < size; i++)
+		{
+			void* addr = builtin::get_returnaddress(i);
+			if (!addr) break;
+			buffer[i] = addr;
+		}
 	}
 
 	Sigaction old;
@@ -116,10 +128,43 @@ struct PosixUContext_t @if(env::DARWIN)
 	__Darwin_sigaltstack    uc_stack;       /* stack used by this context */
 	PosixUContext_t*        uc_link;        /* pointer to resuming context */
 	__Darwin_size_t         uc_mcsize;      /* size of the machine context passed in */
-	__Darwin_mcontext64*    uc_mcontext;   /* pointer to machine specific context */
+	__Darwin_mcontext64*    uc_mcontext;    /* pointer to machine specific context */
 }
 
-alias PosixUContext_t @if(!env::DARWIN) = void;
+/* taken from sys/ucontext.h */
+typedef Greg_t     @if(env::LINUX && env::X86_64) = long;
+const REG_RIP      @if(env::LINUX && env::X86_64) = 16;
+struct LibcFPState @if(env::LINUX && env::X86_64) { char[512] __data; } 
+
+struct MContext_t @align(16) @if(env::LINUX && env::X86_64)
+{
+	Greg_t[23] gregs;
+	LibcFPState* fpregs;
+	ulong[8] __reserved1;
+}
+
+struct MContext_t @align(16) @if(env::LINUX && env::AARCH64)
+{
+	ulong fault_address;
+	ulong[31] regs;
+	ulong sp;
+	ulong pc;
+	ulong pstate;
+	char[4096] __reserved;
+}
+
+struct PosixUContext_t @if(env::LINUX && env::X86_64)
+{
+	ulong            uc_flags;
+	PosixUContext_t* uc_link;
+	Stack_t          uc_stack;
+	MContext_t       uc_mcontext;
+	Sigset_t         uc_sigmask;
+	LibcFPState		 __fpregs_mem;
+	ulong[4]		 __ssp;
+}
+
+alias PosixUContext_t @if(!env::DARWIN && !(env::LINUX && env::X86_64) )= void;
 
 macro void* stack_instruction(PosixUContext_t* uc)
 {
@@ -127,13 +172,13 @@ macro void* stack_instruction(PosixUContext_t* uc)
 		$case env::DARWIN && env::AARCH64:
 			return (void*)uc.uc_mcontext.__ss.__pc + 1;
 /*		$case env::DARWIN && env::X86_64:
-			return uc.uc_mcontext.__ss.__rip;
+			return (void*)uc.uc_mcontext.__ss.__rip;
 		$case env::LINUX && env::X86:
-			return uc.uc_mcontext.gregs[REG_EIP];
+			return uc.uc_mcontext.gregs[REG_EIP];*/
 		$case env::LINUX && env::X86_64:
-			return uc.uc_mcontext.gregs[REG_RIP];
-		$case env::LINUX && env::AARCH64:
-			return uc.uc_mcontext.pc;
+			return (void*)uc.uc_mcontext.gregs[REG_RIP];
+/*		$case env::LINUX && env::AARCH64:
+			return (void*)uc.uc_mcontext.pc;
 		$case env::FREEBSD && env::X86_64:
 			return uc.uc_mcontext.mc_rip;
 		$case env::OPENBSD && env::X86_64:

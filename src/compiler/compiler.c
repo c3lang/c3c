@@ -1208,6 +1208,7 @@ static int jump_buffer_size()
 			// Godbolt test
 			return 25;
 		case FREEBSD_X64:
+		case NETBSD_AARCH64:
 		case NETBSD_X64:
 		case OPENBSD_X64:
 			REMINDER("Guessing setjmp for platform.");

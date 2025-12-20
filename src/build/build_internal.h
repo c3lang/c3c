@@ -50,9 +50,10 @@ static const char *optsizes[3] = {
 	[SIZE_OPTIMIZATION_TINY] = "tiny",
 };
 
-static const char *linuxlibc[2] = {
+static const char *linuxlibc[3] = {
 	[LINUX_LIBC_GNU] = "gnu",
 	[LINUX_LIBC_MUSL] = "musl",
+	[LINUX_LIBC_HOST] = "host",
 };
 
 static const char *linker_kind[3] = {

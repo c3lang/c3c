@@ -217,7 +217,7 @@ static void usage(bool full)
 		print_opt("--macos-min-version <ver>", "Set the minimum MacOS version to compile for.");
 		print_opt("--macos-sdk-version <ver>", "Set the MacOS SDK compiled for.");
 		PRINTF("");
-		print_opt("--linux-libc=<gnu|musl>", "Set the libc to use on Linux, defaults to gnu.");
+		print_opt("--linux-libc=<host|gnu|musl>", "Set the libc to use on Linux, defaults to host.");
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
 		PRINTF("");
@@ -1779,6 +1779,7 @@ const char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 		[MACOS_X64] = "macos-x64",
 		[MCU_X86] = "mcu-x86",
 		[MINGW_X64] = "mingw-x64",
+		[NETBSD_AARCH64] = "netbsd-aarch64",
 		[NETBSD_X86] = "netbsd-x86",
 		[NETBSD_X64] = "netbsd-x64",
 		[OPENBSD_X86] = "openbsd-x86",

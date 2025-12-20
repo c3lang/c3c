@@ -80,7 +80,7 @@ const CInt SIGCHLD = BSD_FLAVOR_SIG ? 20 : 17;
 const bool BSD_FLAVOR_SIG @local = env::DARWIN || env::BSD_FAMILY;
 
 alias Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
-alias Off_t = $typefrom(env::WIN32 ? int.typeid : usz.typeid);
+alias Off_t = $typefrom(env::WIN32 ? int.typeid : isz.typeid);
 
 module libc @if(env::LIBC);
 
@@ -108,7 +108,7 @@ extern fn CInt ferror(CFile stream);
 extern fn CInt fflush(CFile stream);
 extern fn CInt fgetc(CFile stream);
 extern fn ZString fgets(char* string, CInt n, CFile stream);
-extern fn CInt fgetpos(CFile stream, Fpos_t* pos);
+extern fn CInt fgetpos(CFile stream, Fpos_t* pos) @if(!env::NETBSD);
 extern fn Fd fileno(CFile stream) @if(!env::WIN32);
 extern fn CFile fopen(ZString filename, ZString mode);
 extern fn CInt fprintf(CFile stream, ZString format, ...);
@@ -119,7 +119,7 @@ extern fn void* free(void*);
 extern fn CFile freopen(ZString filename, ZString mode, CFile stream);
 extern fn CInt fscanf(CFile stream, ZString format, ...);
 extern fn CInt fseek(CFile stream, SeekIndex offset, CInt whence) @if(!env::WIN32);
-extern fn CInt fsetpos(CFile stream, Fpos_t* pos);
+extern fn CInt fsetpos(CFile stream, Fpos_t* pos) @if(!env::NETBSD);
 extern fn SeekIndex ftell(CFile stream) @if(!env::WIN32);
 extern fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream);
 extern fn CInt getc(CFile stream);
@@ -127,13 +127,13 @@ extern fn CInt getchar();
 extern fn ZString getenv(ZString name);
 extern fn ZString gets(char* buffer);
 extern fn Tm* gmtime(Time_t* timer);
-extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @if(!env::WIN32);
+extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @if(!env::WIN32 && !env::NETBSD);
 extern fn CInt ioctl(CInt fd, ulong request, ...);
 extern fn CInt isatty(Fd fd) @if(!env::WIN32);
 extern fn CLong labs(CLong x);
 extern fn LongDivResult ldiv(CLong number, CLong denom);
 extern fn Tm* localtime(Time_t* timer);
-extern fn Tm* localtime_r(Time_t* timer, Tm* result) @if(!env::WIN32);
+extern fn Tm* localtime_r(Time_t* timer, Tm* result) @if(!env::WIN32 && !env::NETBSD);
 extern fn void longjmp(JmpBuf* buffer, CInt value) @if(!env::NETBSD && !env::OPENBSD);
 extern fn void* malloc(usz size);
 extern fn void* memchr(void* str, CInt c, usz n);
@@ -192,17 +192,17 @@ extern fn CLong strtol(char* str, char** endptr, CInt base);
 extern fn CULong strtoul(char* str, char** endptr, CInt base);
 extern fn usz strxfrm(char* dest, ZString src, usz n);
 extern fn CInt system(ZString str);
-extern fn Time_t timegm(Tm* timeptr) @if(!env::WIN32);
+extern fn Time_t timegm(Tm* timeptr) @if(!env::WIN32 && !env::NETBSD);
 extern fn ZString tmpnam(ZString str);
 extern fn CFile tmpfile();
 extern fn CInt ungetc(CInt c, CFile stream);
-extern fn CInt unsetenv(ZString name);
+extern fn CInt unsetenv(ZString name) @if(!env::NETBSD);
 extern fn isz write(Fd fd, void* buffer, usz count) @if(!env::WIN32);
 
 extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
 extern fn isz getline(char** linep, usz* linecapp, CFile stream);
 extern fn CInt timespec_get(TimeSpec* ts, CInt base);
-extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining);
+extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining) @if(!env::NETBSD);
 extern fn ZString ctime(Time_t* timer);
 extern fn Time_t time(Time_t* timer);
 
@@ -229,6 +229,13 @@ extern fn int _longjmp(void*, int);
 macro usz longjmp(void* ptr, CInt i) => _longjmp(ptr, i);
 extern fn usz malloc_size(void* ptr);
 extern fn void* aligned_alloc(usz align, usz size);
+extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @cname("__gmtime_r50") @if(env::NETBSD);
+extern fn Tm* localtime_r(Time_t* timer, Tm* result) @cname("__localtime_r50") @if(env::NETBSD);
+extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining) @cname("__nanosleep50") @if(env::NETBSD);
+extern fn CInt fgetpos(CFile stream, Fpos_t* pos) @cname("__fgetpos50") @if(env::NETBSD);
+extern fn CInt fsetpos(CFile stream, Fpos_t* pos) @cname("__fsetpos50") @if(env::NETBSD);
+extern fn Time_t timegm(Tm* timeptr) @cname("__timegm50") @if(env::NETBSD);
+extern fn CInt unsetenv(ZString name) @cname("__unsetenv13") @if(env::NETBSD);
 macro CFile stdin() { return fdopen(0, "r"); }
 macro CFile stdout() { return fdopen(1, "w"); }
 macro CFile stderr() { return fdopen(2, "w"); }
@@ -469,8 +476,8 @@ const Errno EBADF                    = 9; // Bad file number
 const Errno ECHILD                   = 10; // No child processes
 
 
-const Errno EAGAIN @if(env::DARWIN)  = 35; // Try again Macos
-const Errno EAGAIN @if(!env::DARWIN) = 11; // Try again
+const Errno EAGAIN @if(env::DARWIN || env::NETBSD)  = 35; // Try again Macos
+const Errno EAGAIN @if(!env::DARWIN && !env::NETBSD) = 11; // Try again
 
 const Errno ENOMEM                   = 12; // Out of memory
 const Errno EACCES                   = 13; // Permission denied
@@ -566,6 +573,73 @@ const Errno EPROTO                   = 100; // Protocol error
 const Errno ETIME                    = 101; // STREAM ioctl() timeout
 const Errno EOPNOTSUPP               = 102; // Operation not supported on socket
 
+module libc::errno @if(env::NETBSD);
+const Errno EWOULDBLOCK     = EAGAIN;    // Operation would block
+const Errno EDEADLK         = 11;        // Resource deadlock avoided
+const Errno EINPROGRESS     = 36;        // Operation now in progress
+const Errno EALREADY        = 37;        // Operation already in progress
+const Errno ENOTSOCK        = 38;        // Socket operation on non-socket
+const Errno EDESTADDRREQ    = 39;        // Destination address required
+const Errno EMSGSIZE        = 40;        // Message too long
+const Errno EPROTOTYPE      = 41;        // Protocol wrong type for socket
+const Errno ENOPROTOOPT     = 42;        // Protocol option not available
+const Errno EPROTONOSUPPORT = 43;        // Protocol not supported
+const Errno ESOCKTNOSUPPORT = 44;        // Socket type not supported
+const Errno EOPNOTSUPP      = 45;        // Operation not supported
+const Errno EPFNOSUPPORT    = 46;        // Protocol family not supported
+const Errno EAFNOSUPPORT    = 47;        // Address family not supported by protocol family
+const Errno EADDRINUSE      = 48;        // Address already in use
+const Errno EADDRNOTAVAIL   = 49;        // Can't assign requested address
+const Errno ENETDOWN        = 50;        // Network is down
+const Errno ENETUNREACH     = 51;        // Network is unreachable
+const Errno ENETRESET       = 52;        // Network dropped connection on reset
+const Errno ECONNABORTED    = 53;        // Software caused connection abort
+const Errno ECONNRESET      = 54;        // Connection reset by peer
+const Errno ENOBUFS         = 55;        // No buffer space available
+const Errno EISCONN         = 56;        // Socket is already connected
+const Errno ENOTCONN        = 57;        // Socket is not connected
+const Errno ESHUTDOWN       = 58;        // Can't send after socket shutdown
+const Errno ETOOMANYREFS    = 59;        // Too many references: can't splice
+const Errno ETIMEDOUT       = 60;        // Operation timed out
+const Errno ECONNREFUSED    = 61;        // Connection refused
+const Errno ELOOP           = 62;        // Too many levels of symbolic links
+const Errno ENAMETOOLONG    = 63;        // File name too long
+const Errno EHOSTDOWN       = 64;        // Host is down
+const Errno EHOSTUNREACH    = 65;        // No route to host
+const Errno ENOTEMPTY       = 66;        // Directory not empty
+const Errno EPROCLIM        = 67;        // Too many processes
+const Errno EUSERS          = 68;        // Too many users
+const Errno EDQUOT          = 69;        // Disc quota exceeded
+const Errno ESTALE          = 70;        // Stale NFS file handle
+const Errno EREMOTE         = 71;        // Too many levels of remote in path
+const Errno EBADRPC         = 72;        // RPC struct is bad
+const Errno ERPCMISMATCH    = 73;        // RPC version wrong
+const Errno EPROGUNAVAIL    = 74;        // RPC prog. not avail
+const Errno EPROGMISMATCH   = 75;        // Program version wrong
+const Errno EPROCUNAVAIL    = 76;        // Bad procedure for program
+const Errno ENOLCK          = 77;        // No locks available
+const Errno ENOSYS          = 78;        // Function not implemented
+const Errno EFTYPE          = 79;        // Inappropriate file type or format
+const Errno EAUTH           = 80;        // Authentication error
+const Errno ENEEDAUTH       = 81;        // Need authenticator
+const Errno EIDRM           = 82;        // Identifier removed
+const Errno ENOMSG          = 83;        // No message of desired type
+const Errno EOVERFLOW       = 84;        // Value too large to be stored in data type
+const Errno EILSEQ          = 85;        // Illegal byte sequence
+const Errno ENOTSUP         = 86;        // Not supported
+const Errno ECANCELED       = 87;        // Operation canceled
+const Errno EBADMSG         = 88;        // Bad or Corrupt message
+const Errno ENODATA         = 89;        // No message available
+const Errno ENOSR           = 90;        // No STREAM resources
+const Errno ENOSTR          = 91;        // Not a STREAM
+const Errno ETIME           = 92;        // STREAM ioctl timeout
+const Errno ENOATTR         = 93;        // Attribute not found
+const Errno EMULTIHOP       = 94;        // Multihop attempted
+const Errno ENOLINK         = 95;        // Link has been severed
+const Errno EPROTO          = 96;        // Protocol error
+const Errno EOWNERDEAD      = 97;        // Previous owner died
+const Errno ENOTRECOVERABLE = 98;        // State not recoverable
+
 module libc::errno @if(env::WIN32);
 const Errno EDEADLK                  = 36; // Resource deadlock would occur Win32
 const Errno ENAMETOOLONG             = 38; // File name too long Win32
@@ -583,7 +657,7 @@ const Errno EINPROGRESS              = 112; // Operation now in progress Win32
 const Errno EDQUOT                   = -122; // Quota exceeded, not in Win32
 const Errno EWOULDBLOCK              = 140; // Operation would block
 
-module libc::errno @if(!env::WIN32 && !env::DARWIN);
+module libc::errno @if(!env::WIN32 && !env::DARWIN && !env::NETBSD);
 const Errno EDEADLK                  = 35; // Resource deadlock would occur Linux (others?)
 const Errno ENAMETOOLONG             = 36; // File name too long Linux (others?)
 const Errno ENOTEMPTY                = 39; // Directory not empty

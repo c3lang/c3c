@@ -1556,7 +1556,7 @@ void **llvm_gen(Module** modules, unsigned module_count)
 	llvm_codegen_setup();
 	if (compiler.build.single_module == SINGLE_MODULE_ON)
 	{
-		LLVMContextRef context = LLVMGetGlobalContext();
+		LLVMContextRef context = LLVMContextCreate();
 		for (int i = 0; i < module_count; i++)
 		{
 			GenContext *result = llvm_gen_module(modules[i], context);

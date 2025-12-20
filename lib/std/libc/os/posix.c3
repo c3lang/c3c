@@ -27,7 +27,7 @@ const CUInt SA_RESTART       = env::LINUX ? 0x10000000 : 0x0002;
 const CUInt SA_RESETHAND     = env::LINUX ? 0x80000000 : 0x0004;
 const CUInt SA_SIGINFO       = env::LINUX ? 0x00000004 : 0x0040;
 
-alias Sigset_t @if(!env::LINUX) = uint;
+alias Sigset_t @if(env::DARWIN || env::BSD_FAMILY) = uint;
 alias Sigset_t @if(env::LINUX) = ulong[16];
 alias SigActionFunction =  fn void(CInt, void*, void*);
 
@@ -38,10 +38,13 @@ struct Sigaction
 		SignalFunction      sa_handler;
 		SigActionFunction   sa_sigaction;
 	}
-	CInt                    sa_flags @if(env::BSD_FAMILY);
-	Sigset_t                sa_mask; // 128
-	CInt                    sa_flags @if(!env::BSD_FAMILY);
-	void*                   sa_restorer @if(env::LINUX);
+
+    CInt       sa_flags @if(env::DARWIN || env::BSD_FAMILY );
+    Sigset_t   sa_mask  @if(env::DARWIN || env::BSD_FAMILY);
+
+    Sigset_t   sa_mask     @if(env::LINUX);
+    CInt       sa_flags    @if(env::LINUX);
+    void*      sa_restorer @if(env::LINUX);
 }
 
 struct Stack_t
@@ -60,7 +63,9 @@ struct Stack_t
 }
 
 extern fn CInt sigaltstack(Stack_t* ss, Stack_t* old_ss);
-extern fn CInt sigaction(CInt signum, Sigaction *action, Sigaction *oldaction);
+extern fn CInt sigaction(CInt signum, Sigaction *action, Sigaction *oldaction) @if(!env::NETBSD);
+extern fn CInt sigaction(CInt signum, Sigaction *action, Sigaction *oldaction) @cname("__sigaction_siginfo") @if(env::NETBSD);
+extern fn CInt sigemptyset(Sigset_t* set);
 
 module libc::termios @if(env::LIBC &&& env::POSIX);
 

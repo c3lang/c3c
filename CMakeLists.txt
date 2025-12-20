@@ -572,6 +572,7 @@ else()
         -Wno-unused-function
         -Wno-unused-variable
         -Wno-unused-parameter
+        -Wno-char-subscripts
     )
     target_link_options(c3c PRIVATE -pthread)
 endif()

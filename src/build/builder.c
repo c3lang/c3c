@@ -34,6 +34,8 @@ ArchOsTarget default_target = ELF_X64;
 #elif defined(__aarch64__) || defined(_M_ARM64)
 	#if defined(__MACH__)
 ArchOsTarget default_target = MACOS_AARCH64;
+	#elif defined(__NetBSD__)
+ArchOsTarget default_target = NETBSD_AARCH64;
 	#elif defined(__ANDROID__)
 ArchOsTarget default_target = ANDROID_AARCH64;
 	#elif defined(__linux__) && __linux__
@@ -286,6 +288,7 @@ static LinkLibc libc_from_arch_os(ArchOsTarget target)
 		case MACOS_AARCH64:
 		case MACOS_X64:
 		case MINGW_X64:
+		case NETBSD_AARCH64:
 		case NETBSD_X86:
 		case NETBSD_X64:
 		case OPENBSD_X86:
@@ -540,6 +543,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->emit_asm = options->emit_asm;
 	target->print_stats = options->verbosity_level >= 2;
 
+	if (target->linuxpaths.libc == LINUX_LIBC_NOT_SET) target->linuxpaths.libc = default_libc;
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
 	target->silent = options->verbosity_level < 0;

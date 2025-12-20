@@ -212,7 +212,7 @@ fn void clock() @test
 
 fn void close() @test @if(!env::WIN32)
 {
-	assert(libc::close(13) == -1);
+	assert(libc::close(1313) != 0);
 	// NOTE: errno is part of libc, and is thus recursively imported
 	assert(libc::errno() == errno::EBADF);
 }
@@ -255,8 +255,8 @@ fn void fdopen() @test @if(!env::WIN32)
 
 fn void fflush() @test
 {
-	CFile stdin = libc::stdin();
-	assert(libc::fflush(stdin) == 0);
+	CFile stdout = libc::stdout();
+	assert(libc::fflush(stdout) == 0);
 }
 
 fn void fgets_fget() @test

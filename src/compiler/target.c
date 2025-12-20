@@ -1197,6 +1197,7 @@ static char *arch_to_target_triple(ArchOsTarget target, LinuxLibc linux_libc)
 		case MACOS_AARCH64: return "aarch64-apple-macosx";
 		case ELF_AARCH64: return "aarch64-unknown-elf";
 		case WINDOWS_AARCH64: return "aarch64-pc-windows-msvc";
+		case NETBSD_AARCH64: return "aarch64-unknown-netbsd";
 		case LINUX_RISCV32: return linux_libc == LINUX_LIBC_MUSL ? "riscv32-unknown-linux-musl" : "riscv32-unknown-linux";
 		case ELF_RISCV32: return "riscv32-unknown-elf";
 		case LINUX_RISCV64: return linux_libc == LINUX_LIBC_MUSL ? "riscv64-unknown-linux-musl" : "riscv64-unknown-linux";

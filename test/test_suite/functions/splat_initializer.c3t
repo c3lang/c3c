@@ -36,8 +36,8 @@ fn void main()
 
 @"$ct.test.ParentType" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 16, i64 0, i64 4, [0 x i64] zeroinitializer }, comdat, align 8
 @"$ct.test.ChildType" = linkonce global %.introspect { i8 10, i64 ptrtoint (ptr @"$ct.test.ParentType" to i64), ptr null, i64 36, i64 0, i64 4, [0 x i64] zeroinitializer }, comdat, align 8
-@test.ABC = local_unnamed_addr constant %ParentType { i32 1, i32 7, i32 12312, i32 -1 }, align 4
-@test.ABC2 = local_unnamed_addr constant %ChildType { %ParentType { i32 1, i32 7, i32 12, i32 0 }, i32 8, i32 0, [10 x i8] zeroinitializer }, align 4
+@test.ABC = local_unnamed_addr constant %ParentType { i32 1, i32 2, i32 12312, i32 -1 }, align 4
+@test.ABC2 = local_unnamed_addr constant %ChildType { %ParentType { i32 1, i32 1, i32 12, i32 0 }, i32 0, i32 0, [10 x i8] zeroinitializer }, align 4
 @test.gc = local_unnamed_addr global %ChildType { %ParentType { i32 1, i32 7, i32 12, i32 0 }, i32 8, i32 0, [10 x i8] zeroinitializer }, align 4
 @test.gc2 = local_unnamed_addr global %ChildType { %ParentType { i32 1, i32 7, i32 12312, i32 -1 }, i32 8, i32 0, [10 x i8] zeroinitializer }, align 4
 @.__const = private unnamed_addr constant %ParentType { i32 1, i32 2, i32 12312, i32 -1 }, align 4

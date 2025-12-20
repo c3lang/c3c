@@ -3424,7 +3424,6 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	ASSERT_SPAN(func, prototype);
 
 	// Set up the context for analysis
-	context->original_inline_line = 0;
 	context->original_module = NULL;
 	context->call_env = (CallEnv) {
 		.current_function = func,

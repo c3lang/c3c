@@ -1,0 +1,27 @@
+module my_module { GENNY };
+import std::io;
+
+const uint[5] H = { 1, 2, 3, 4, 5 };
+
+macro void get(String to_print)
+{
+    uint[3] slice_thing;
+    io::printfn(to_print, GENNY);
+    $if GENNY != 1:
+        io::printn("not");
+    $else
+        // !< PROBLEM LINES >!
+        slice_thing[:1] = H[:1];
+        slice_thing[1:2] = H[3:2];
+        // ===================
+        io::printn("is!");
+    $endif
+}
+
+module testing_branch;
+import my_module;
+
+fn void main()
+{
+    my_module::get{1}("The %d string");
+}

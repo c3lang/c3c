@@ -1,6 +1,19 @@
 module regression;
 import std;
 
+struct Foo
+{
+	inline int[2] a;
+}
+
+fn void lengthof_aggregates() @test
+{
+	Foo g;
+	g.len;
+	String foo = "abc";
+	test::eq(lengthof(g), 2);
+	test::eq(lengthof(foo), 3);
+}
 
 fn void lenof_test() @test
 {
