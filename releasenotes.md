@@ -39,6 +39,7 @@
 - Pthread bindings correctly return Errno instead of CInt.
 - Return of Thread `join()` is now "@maydiscard".
 - Add `poly1305` one-time Message Authentication Code and associated tests. #2639
+- Add `ripemd` hashing and associated tests. #2663
 - Add `chacha20` stream cipher and associated tests. #2643
 - Add `BLAKE2` (optionally keyed) cryptographic hashing with associated tests. #2648
 - Add `Elf32_Shdr` and `Elf64_Shdr` to `std::os::linux`.
