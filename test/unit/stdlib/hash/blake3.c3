@@ -44,7 +44,7 @@ const char[] BLAKE_TEAM_KEY = "whats the Elvish word for friend";
 const char[] BLAKE_TEAM_CONTEXT_STRING = "BLAKE3 2019-12-27 16:29:52 test vectors context";
 const usz BLAKE_TEAM_HASH_LEN = 131;
 
-fn void blake_team_vectors() => @pool()
+fn void blake_team_vectors()
 {
 	// NOTE: 102,400 is the longest length in the team's vectors set.
 	char[] input_field = mem::talloc_array(char, 102_400);
@@ -67,7 +67,7 @@ fn void blake_team_vectors() => @pool()
 	}
 }
 
-fn void blake_team_vectors_streamed() => @pool()
+fn void blake_team_vectors_streamed()
 {
 	//
 }
@@ -80,17 +80,8 @@ struct BlakeTeamVector (Printable)
 	char[BLAKE_TEAM_HASH_LEN] derive_key;
 }
 
-// TODO: Use proper C3 strings and functions here.
-import libc;
-macro @first_six(#x)
-{
-	char[13] res;
-	foreach (i, c : #x[:6]) libc::sprintf(&res[i*2], "%02x", c);
-	return (ZString)res[..];
-}
-
 fn usz? BlakeTeamVector.to_format(&self, Formatter* f) @dynamic
-	=> f.printf("VEC[%d, %s, %s, %s]", self.input_len, @first_six(self.hash), @first_six(self.keyed_hash), @first_six(self.derive_key));
+	=> f.printf("VEC[%d, %h, %h, %h]", self.input_len, self.hash[:6], self.keyed_hash[:6], self.derive_key[:6]);
 
 const BlakeTeamVector[] BLAKE_TEAM_VECTORS =
 {
