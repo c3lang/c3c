@@ -7,6 +7,7 @@
 - Add `--custom-libc` option for custom libc implementations.
 - Remove use of LLVMGetGlobalContext for single module compilation.
 - Fixed bug where constants would get modified when slicing them. #2660
+- Support for NetBSD.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -38,6 +39,7 @@
 - Pthread bindings correctly return Errno instead of CInt.
 - Return of Thread `join()` is now "@maydiscard".
 - Add `poly1305` one-time Message Authentication Code and associated tests. #2639
+- Add `ripemd` hashing and associated tests. #2663
 - Add `chacha20` stream cipher and associated tests. #2643
 - Add `BLAKE2` (optionally keyed) cryptographic hashing with associated tests. #2648
 - Add `Elf32_Shdr` and `Elf64_Shdr` to `std::os::linux`.
@@ -45,6 +47,7 @@
 - Deprecated `DString.append_chars`, use `DString.append_string`
 - Deprecated `DString.append_string` for DStrings, use `DString.append_dstring` instead.
 - Added `DString.append_bytes`.
+- Add `streebog` (aka "GOST-12") hashing with 256-bit and 512-bit outputs. #2659
 
 ## 0.7.8 Change list
 

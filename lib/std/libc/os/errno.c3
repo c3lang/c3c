@@ -11,10 +11,10 @@ extern fn int* __errno() @if(env::ANDROID);
 macro int errno() @if(env::ANDROID) => *__errno();
 macro void errno_set(int err) @if(env::ANDROID) => *(__errno()) = err;
 
-// OpenBSD
-extern fn int* __errno() @if(env::OPENBSD);
-macro int errno() @if(env::OPENBSD) => *__errno();
-macro void errno_set(int err) @if(env::OPENBSD) => *(__errno()) = err;
+// OpenBSD and NetBSD
+extern fn int* __errno() @if(env::OPENBSD || env::NETBSD);
+macro int errno() @if(env::OPENBSD || env::NETBSD) => *__errno();
+macro void errno_set(int err) @if(env::OPENBSD || env::NETBSD) => *(__errno()) = err;
 
 // Darwin
 extern fn int* __error() @if(env::DARWIN);
