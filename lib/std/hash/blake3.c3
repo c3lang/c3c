@@ -70,6 +70,41 @@ struct Blake3
 }
 
 
+macro char[*] hash(char[] data, char[] key = {}, ulong seek = 0, usz $out_size = 32)
+{
+	char[$out_size] result;
+	Blake3 b @noinit;
+	b.init(key);
+	b.update(data);
+	b.final(result[..], $out_size, seek);
+	return result;
+}
+
+macro char[*] ctx_hash(char[] data, char[] context, ulong seek = 0, usz $out_size = 32)
+{
+	char[$out_size] result;
+	Blake3 b = new_from_context(context);
+	b.update(data);
+	b.final(result[..], $out_size, seek);
+	return result;
+}
+
+macro Blake3 new_from_context(char[] context)
+{
+	char[KEY_SIZE] context_based_key;
+	Blake3 key_from_ctx @noinit;
+	key_from_ctx.init(explicit_flags: Blake3Flags.DERIVE_KEY_CONTEXT);
+	key_from_ctx.update(context);
+	key_from_ctx.final(context_based_key[..], KEY_SIZE);
+
+	Blake3 b @noinit;
+	b.init(key: context_based_key[..], explicit_flags: Blake3Flags.DERIVE_KEY_MATERIAL);
+
+	mem::zero_volatile(context_based_key[..]);
+	return b;
+}
+
+
 fn void Blake3.merge_cv_stack(&self, ulong total_len) @local @inline
 {
 	usz post_merge_stack_len = (usz)@popcnt(total_len);
@@ -93,22 +128,23 @@ fn void Blake3.push_cv(&self, char* new_cv, ulong chunk_counter) @local @inline
 
  @param[in] key : "An optional key initializer to use."
 
- @require !key.ptr || key.len == KEY_SIZE : "An explicit initialization key must be of KEY_SIZE (32 bytes)."
+ @require !key.len || key.len == KEY_SIZE : "An explicit initialization key must be of KEY_SIZE (32 bytes)."
 *>
-fn void Blake3.init(&self, char[] key = {})
+fn void Blake3.init(&self, char[] key = {}, char explicit_flags = 0)
 {
 	mem::zero_volatile(@as_char_view(*self));
 
-	if (key.ptr)
+	if (key.len)
 	{
-		foreach (i, &w : self.key) *w = @unaligned_load(*(uint*)&key[i], 1);
+		foreach (i, &w : self.key) *w = @unaligned_load(*(uint*)&key[i * $sizeof(self.key[0])], 1);
+		if (!explicit_flags) explicit_flags = Blake3Flags.KEYED_HASH;
 	}
 	else
 	{
 		self.key[..] = IV[..];
 	}
 
-	self.chunk.init(self.key[..], !!key.ptr ? Blake3Flags.KEYED_HASH : 0);
+	self.chunk.init(self.key[..], explicit_flags);
 }
 
 <*
