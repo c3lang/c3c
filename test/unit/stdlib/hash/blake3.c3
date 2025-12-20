@@ -27,6 +27,43 @@ fn void empty_simple()
 }
 
 
+fn void assert_no_finalization()
+{
+	static char[Blake3.sizeof] empty = {};
+    char[3] dummy_result = {};
+	Blake3 ctx @noinit;
+
+	ctx.init();
+	test::@check(@as_char_view(ctx) != empty[..], "BLAKE3 cryptographic context is not initialized.");
+
+	ctx.update("beep");
+	ctx.final(&dummy_result, 3);
+	test::@check(@as_char_view(ctx) != empty[..], "BLAKE3 cryptographic context was implicitly wiped upon finalization, but it shouldn't have been.");
+}
+
+
+fn void xof_seek()
+{
+    // Demonstrate that `seek` will let prospective users "seek" into the (theoretically limitless)
+    //   extensible output of the hash function. This makes the hash have more dimension and specificity for users.
+    char[] to_hash = "C3 programming";
+
+    char[] result_left = blake3::hash(to_hash, seek: 0)[..];
+    char[] result_right = blake3::hash(to_hash, seek: 12, $out_size: 723)[..]; // note that changing out_size doesn't affect hash results
+
+    test::@check(result_left.len == 32, "Left XOF/hash result should be exactly 32 bytes, but was %d", result_left.len);
+    test::@check(result_right.len == 723, "Right XOF/hash result should be exactly the arbitrary 723 bytes, but was %d", result_right.len);
+
+    // crop the same segments where the XOF results should match
+    test::@check(
+        result_left[12:10] == result_right[0:10],
+        "XOF's `seek` does not appear to do so properly:\n\tNoSeek:  %h\n\tWithSeek:  %h\n\t... (%h  vs. %h)",
+        result_left, result_right,
+        result_left[12:10], result_right[0:10]
+    );
+}
+
+
 // Vectors here sourced from https://github.com/BLAKE3-team/BLAKE3/blob/890050cb9b89448a25e067349aed9734a3b03d5e/test_vectors/test_vectors.json
 //
 // Comment from the BLAKE team:
