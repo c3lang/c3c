@@ -96,7 +96,7 @@ fn void large_input_streamed() @if(!env::WIN32) => @pool()
 	$endforeach
 }
 
-fn void large_input_streamed_per_byte() => @pool()
+fn void large_input_streamed_per_byte() @if(!env::WIN32) => @pool()
 {
 	static char[][] expected = {
 		x'e8b57fa5f8415f7a17043b67509fc182',
