@@ -440,7 +440,7 @@ jobs:
         run: |
           cmake -B build \
                 -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{matrix.build_type}}" \
+                -DCMAKE_BUILD_TYPE="${{matrix.build_type}}" \
                 -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
                 -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
                 -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
@@ -1170,9 +1170,127 @@ jobs:
           name: c3-netbsd-${{matrix.build_type}}
           path: c3-netbsd-${{matrix.build_type}}.tar.gz
 
+  build-android:
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [ Release, Debug ]
+        architecture: [ aarch64, x86_64 ]
+        include:
+          - architecture: aarch64
+            runner: ubuntu-24.04-arm
+          - architecture: x86_64
+            runner: ubuntu-24.04
+    runs-on: ${{matrix.runner}}
+    container:
+      image: termux/termux-docker:${{matrix.architecture}}
+      volumes:
+        - /tmp/node20:/__e/node20
+    env:
+      TERMUX_MAIN_PACKAGE_FORMAT: debian
+      ANDROID_ROOT: /system
+      ANDROID_DATA: /data
+      PREFIX: /data/data/com.termux/files/usr
+      HOME: /data/data/com.termux/files/home
+      PATH: /data/data/com.termux/files/usr/bin
+      TMPDIR: /data/data/com.termux/files/usr/tmp
+      LANG: en_US.UTF-8
+      TZ: UTC
+    steps:
+      - name: prepare termux
+        run: |
+          ln -sf ${PREFIX}/etc/termux/mirrors/default ${PREFIX}/etc/termux/chosen_mirrors
+          /entrypoint.sh pkg update
+          /entrypoint.sh bash -c "yes | pkg upgrade -y"
+          chmod -R o+x ${PREFIX}/bin
+          /entrypoint.sh pkg install -y nodejs-lts
+          ln -sf ${PREFIX}/bin /__e/node20/bin
+      - uses: actions/checkout@v4.2.2
+      - name: fix permissions after checkout (checkout runs as root and entrypoint.sh switches to user 1000)
+        run: chown -R 1000:1000 .
+
+      - name: setup
+        run: /entrypoint.sh pkg install -y llvm binutils libgc build-essential cmake git libedit zlib clang make mlir llvm-tools libpolly python libllvm-static
+      - name: build
+        run: |
+          cmake -Bbuild -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+          cmake --build build
+
+      - name: Compile and run some examples
+        run: |
+          cd resources
+          ../build/c3c compile examples/base64.c3
+          ../build/c3c compile examples/binarydigits.c3
+          ../build/c3c compile examples/brainfk.c3
+          ../build/c3c compile examples/factorial_macro.c3
+          ../build/c3c compile examples/fasta.c3
+          ../build/c3c compile examples/gameoflife.c3
+          ../build/c3c compile examples/hash.c3
+          ../build/c3c compile-only examples/levenshtein.c3
+          ../build/c3c compile examples/load_world.c3
+          ../build/c3c compile-only examples/map.c3
+          ../build/c3c compile examples/mandelbrot.c3
+          ../build/c3c compile examples/plus_minus.c3
+          ../build/c3c compile examples/nbodies.c3
+          ../build/c3c compile examples/spectralnorm.c3
+          ../build/c3c compile examples/swap.c3
+          ../build/c3c compile examples/contextfree/boolerr.c3
+          ../build/c3c compile examples/contextfree/dynscope.c3
+          ../build/c3c compile examples/contextfree/guess_number.c3
+          ../build/c3c compile examples/contextfree/multi.c3
+          ../build/c3c compile examples/contextfree/cleanup.c3
+          ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/time.c3
+          ../build/c3c compile-run examples/fannkuch-redux.c3
+          ../build/c3c compile-run examples/contextfree/boolerr.c3
+          ../build/c3c compile-run examples/load_world.c3
+          ../build/c3c compile-run examples/process.c3
+          ../build/c3c compile-run examples/ls.c3
+          ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
+
+      - name: Compile and run staticlib-test
+        run: |
+          cd resources/examples/staticlib-test
+          ../../../build/c3c -vv static-lib add.c3
+          mv add.a libadd.a
+          cc test.c -L. -ladd
+          ./a.out
+          ../../../build/c3c compile-run test.c3 -L . -l add
+
+      - name: Compile run unit tests
+        run: |
+          cd test
+          ../build/c3c compile-test unit -D SLOW_TESTS
+
+      - name: Build testproject
+        run: |
+          cd resources/testproject
+          ../../build/c3c run -vvv --trust=full
+
+      - name: run compiler tests
+        run: |
+          cd test
+          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c test_suite/
+
+      - name: bundle_output
+        run: |
+          mkdir c3
+          cp -r lib c3
+          cp msvc_build_libraries.py c3
+          cp build/c3c c3
+          cp README.md c3
+          cp releasenotes.md c3
+          tar czf c3-android-${{matrix.architecture}}-${{matrix.build_type}}.tar.gz c3
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: c3-android-${{matrix.architecture}}-${{matrix.build_type}}
+          path: c3-android-${{matrix.architecture}}-${{matrix.build_type}}.tar.gz
+
   release:
     runs-on: ubuntu-22.04
-    needs: [build-msvc, build-linux, build-mac, build-linux-ubuntu22]
+    needs: [build-msvc, build-linux, build-mac, build-linux-ubuntu22, build-android]
     if: github.ref == 'refs/heads/master'
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -1198,6 +1316,10 @@ jobs:
       - run: mv c3-ubuntu-22-Debug/c3-ubuntu-22-Debug.tar.gz c3-ubuntu-22-Debug/c3-ubuntu-22-debug.tar.gz
       - run: mv c3-macos-Release/c3-macos-Release.zip c3-macos-Release/c3-macos.zip
       - run: mv c3-macos-Debug/c3-macos-Debug.zip c3-macos-Debug/c3-macos-debug.zip
+      - run: mv c3-android-aarch64-Release/c3-android-aarch64-Release.tar.gz c3-android-aarch64-Release/c3-android-aarch64.tar.gz
+      - run: mv c3-android-aarch64-Debug/c3-android-aarch64-Debug.tar.gz c3-android-aarch64-Debug/c3-android-aarch64-debug.tar.gz
+      - run: mv c3-android-x86_64-Release/c3-android-x86_64-Release.tar.gz c3-android-x86_64-Release/c3-android-x86_64.tar.gz
+      - run: mv c3-android-x86_64-Debug/c3-android-x86_64-Debug.tar.gz c3-android-x86_64-Debug/c3-android-x86_64-debug.tar.gz
       - run: gh release delete latest-prerelease-tag --cleanup-tag -y || true
       - run: echo "RELEASE_NAME=latest-prerelease-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
 
@@ -1221,3 +1343,7 @@ jobs:
             c3-ubuntu-22-Debug/c3-ubuntu-22-debug.tar.gz
             c3-macos-Release/c3-macos.zip
             c3-macos-Debug/c3-macos-debug.zip
+            c3-android-aarch64-Release/c3-android-aarch64.tar.gz
+            c3-android-aarch64-Debug/c3-android-aarch64-debug.tar.gz
+            c3-android-x86_64-Release/c3-android-x86_64.tar.gz
+            c3-android-x86_64-Debug/c3-android-x86_64-debug.tar.gz
