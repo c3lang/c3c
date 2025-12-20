@@ -14,6 +14,8 @@
       "c-include-dirs": [
         "C:\\"
       ]
-    }
+    },
+    "android-aarch64": {},
+    "android-x86_64": {}
   }
 }
