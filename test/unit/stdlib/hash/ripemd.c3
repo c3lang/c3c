@@ -62,10 +62,10 @@ fn void basic_streamed()
 }
 
 
-fn void large_input() @if(!env::WIN32) => @pool()
+fn void large_input()
 {
 	char[] one_mb = mem::talloc_array(char, 1024*1024);
-	one_mb = { [0..(1024*1024)-1] = 0xA5 };
+	one_mb[..] = 0xA5;
 
 	test::@check(ripemd::hash{128}(one_mb) == x'e8b57fa5f8415f7a17043b67509fc182');
 	test::@check(ripemd::hash{160}(one_mb) == x'edac5dd2281c86b49b362269636ef1680283d291');
@@ -73,7 +73,7 @@ fn void large_input() @if(!env::WIN32) => @pool()
 	test::@check(ripemd::hash{320}(one_mb) == x'3173e524ea770b420c986974b486ea18d4558db55000e6db67784fe5fc091fe5fcc8bc80b7753c34');
 }
 
-fn void large_input_streamed() @if(!env::WIN32) => @pool()
+fn void large_input_streamed()
 {
 	static char[][] expected = {
 		x'e8b57fa5f8415f7a17043b67509fc182',
@@ -82,7 +82,7 @@ fn void large_input_streamed() @if(!env::WIN32) => @pool()
 		x'3173e524ea770b420c986974b486ea18d4558db55000e6db67784fe5fc091fe5fcc8bc80b7753c34'
 	};
 	char[] one_mb = mem::talloc_array(char, 1024*1024);
-	one_mb = { [0..(1024*1024)-1] = 0xA5 };
+	one_mb[..] = 0xA5;
 	$foreach $i, $bits : ripemd::PERMISSIBLE_SIZES_BITS{128}:
 	{
 		RipeMd{$bits} r @noinit;
@@ -96,7 +96,7 @@ fn void large_input_streamed() @if(!env::WIN32) => @pool()
 	$endforeach
 }
 
-fn void large_input_streamed_per_byte() @if(!env::WIN32) => @pool()
+fn void large_input_streamed_per_byte()
 {
 	static char[][] expected = {
 		x'e8b57fa5f8415f7a17043b67509fc182',
@@ -105,7 +105,7 @@ fn void large_input_streamed_per_byte() @if(!env::WIN32) => @pool()
 		x'3173e524ea770b420c986974b486ea18d4558db55000e6db67784fe5fc091fe5fcc8bc80b7753c34'
 	};
 	char[] one_mb = mem::talloc_array(char, 1024*1024);
-	one_mb = { [0..(1024*1024)-1] = 0xA5 };
+	one_mb[..] = 0xA5;
 	$foreach $i, $bits : ripemd::PERMISSIBLE_SIZES_BITS{128}:
 	{
 		RipeMd{$bits} r @noinit;
