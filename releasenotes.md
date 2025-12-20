@@ -8,6 +8,7 @@
 - Remove use of LLVMGetGlobalContext for single module compilation.
 - Fixed bug where constants would get modified when slicing them. #2660
 - Support for NetBSD.
+- Improve support for Android with Termux.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
