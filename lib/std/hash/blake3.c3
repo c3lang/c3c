@@ -156,7 +156,7 @@ struct Blake3
  @require !key.len || key.len == KEY_SIZE : "Key value must be empty or exactly 32 bytes."
  @require $out_size > 0 : "You cannot use a zero $out_size."
 *>
-macro char[*] hash(char[] data, char[] key = {}, ulong seek = 0, usz $out_size = 32)
+macro char[*] hash(char[] data, char[] key = {}, usz seek = 0, usz $out_size = 32)
 {
 	char[$out_size] result;
 	Blake3 b @noinit;
@@ -182,7 +182,7 @@ macro char[*] hash(char[] data, char[] key = {}, ulong seek = 0, usz $out_size =
 
  @require $out_size > 0 : "You cannot use a zero $out_size."
 *>
-macro char[*] ctx_hash(char[] data, char[] context, ulong seek = 0, usz $out_size = 32)
+macro char[*] ctx_hash(char[] data, char[] context, usz seek = 0, usz $out_size = 32)
 {
 	char[$out_size] result;
 	Blake3 b = new_from_context(context);
@@ -346,7 +346,7 @@ fn void Blake3.update(&self, char[] input, bool use_tbb = false)
 
  @require into.len >= into_len : "The requested output size must be equal to or less than the size of the output slice."
 *>
-fn void Blake3.final(&self, char[] into, usz into_len, ulong seek = 0)
+fn void Blake3.final(&self, char[] into, usz into_len, usz seek = 0)
 {
 	if (!into_len) return;
 
@@ -522,7 +522,7 @@ macro void Blake3Output.chaining_value(&self, char* cv) @local
  @param seek
  @param[inout] into
 *>
-fn void Blake3Output.root_bytes(&self, ulong seek, char[] into) @local
+fn void Blake3Output.root_bytes(&self, usz seek, char[] into) @local
 {
 	if (!into.len) return;
 
@@ -563,9 +563,9 @@ fn void Blake3Output.root_bytes(&self, ulong seek, char[] into) @local
 //        ༼ ºل͟º ༼ ºل͟º ༼ ºل͟º ༽ ºل͟º ༽ ºل͟º ༽
 //
 //
-macro uint @popcnt(ulong #x) @local => (uint)#x.popcount();
-macro uint @highest_one(ulong #x) @local => 63 ^ (uint)#x.clz();
-macro ulong @round_down_to_power_of_2(ulong #x) @local => 1ul << @highest_one(#x | 1);
+macro uint @popcnt(#x) @local => (uint)#x.popcount();
+macro uint @highest_one(#x) @local => 63 ^ (uint)#x.clz();
+macro usz @round_down_to_power_of_2(#x) @local => (usz)1 << @highest_one(#x | 1);
 
 macro left_subtree_len(usz input_len) @local
 	=> @round_down_to_power_of_2((input_len - 1) / CHUNK_SIZE) * CHUNK_SIZE;
