@@ -441,14 +441,6 @@ static bool sema_resolve_path_symbol(SemaContext *context, NameResolve *name_res
 	}
 
 	const char *symbol = name_resolve->symbol;
-	// 0. std module special handling.
-	if (path->module == compiler.context.std_module_path.module)
-	{
-		name_resolve->path_found = &compiler.context.std_module;
-		name_resolve->found = module_find_symbol(&compiler.context.std_module, symbol);
-		return true;
-	}
-
 	CompilationUnit *unit = context->unit;
 
 	// 1. Do we match our own path?
