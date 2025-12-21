@@ -537,7 +537,7 @@ macro hash_one(char* input, usz blocks, uint[] key, ulong counter, char flags, c
 
 macro hash_many(char*[] inputs, usz num_inputs, usz blocks, uint[] key, ulong counter, bool $increment_counter, char flags, char flags_start, char flags_end, char* out) @local
 {
-	for(; num_inputs > 0; num_inputs--, inputs = inputs[1..], out += OUT_SIZE)
+    for (; num_inputs > 0; num_inputs--, inputs = inputs[1..], out += OUT_SIZE)
 	{
 		hash_one(inputs[0], blocks, key, counter, flags, flags_start, flags_end, out[:OUT_SIZE]);
         $if $increment_counter: counter++; $endif
