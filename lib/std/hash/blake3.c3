@@ -34,15 +34,27 @@ const char[16][7] MESSAGE_SCHEDULE = {
 // Get feature-based optimization options.
 //   For now, none of these are used until there's a chance to explore BLAKE3's (necessary) vectorization optimizations.
 //
-const FORCE_PORTABLE = true; //$feature(BLAKE3_FORCE_PORTABLE); // set this flag at compile-time for a universal (but slower) BLAKE3
+<* When true, force the use of slow-but-portable BLAKE3 functions. Do not vectorize the hash function. *>
+const FORCE_PORTABLE = true; //$feature(BLAKE3_FORCE_PORTABLE); // this is statically set to TRUE for now
+<* AARCH64: When not big-endian, use Neon. *>
 const USE_NEON = !FORCE_PORTABLE &&& (env::AARCH64 &&& !env::BIG_ENDIAN);
+<* Bundling some architecture booleans into one. *>
 const IS_X86 = !FORCE_PORTABLE &&& (env::X86_64 ||| env::X86);
+<*
+ The maximum possible degree of parallelization based on the current architecture.
+ This doesn't represent the ACTUAL degree available.
+*>
 const MAX_SIMD_DEGREE = IS_X86 ??? 16 : (USE_NEON ??? 4 : 1);
+<* There are cases in BLAKE3 where, at compile-time, it's necessary to easily get the max degree, or a minimum of 2. *>
 const MAX_SIMD_DEGREE_OR_2 = @max(MAX_SIMD_DEGREE, 2);
 
 
+<* Always set to true once BLAKE3 caches some initial CPU details. *>
 bool cpuinfo_initd @local = false;
 
+<*
+ Cache some information at runtime about the current processor and platform, as needed for optimizations.
+*>
 fn void init_blake3() @local @init
 {
 	$if IS_X86:
@@ -51,9 +63,13 @@ fn void init_blake3() @local @init
 	cpuinfo_initd = true;
 }
 
+<* Check whether a given CPU flag is set (x86/x86_64 only). *>
 macro bool @check_cpu_flag(X86Feature f) @local @if(IS_X86)
 	=> !!(cpudetect::x86_features & f.ordinal);
 
+<*
+ Return the actual SIMD degree of the processor at runtime.
+*>
 macro @simd_degree() @local
 {
 	if (!cpuinfo_initd) init_blake3();
@@ -71,7 +87,7 @@ macro @simd_degree() @local
 	return 1;
 }
 
-
+<* Flags used during hash computation based on its state. *>
 enum Blake3Flags : const inline char
 {
 	CHUNK_START			= 1 << 0,
@@ -111,6 +127,35 @@ struct Blake3
 }
 
 
+<*
+ Generate an XOF hash based on the given inputs.
+
+ Consider the output hash w/ `seek = 0` and `$out_size = 41`:
+ ```
+ 2cc39783c223154fea8dfb7c1b1660f2ac2dcbd1c1de8277b0b0dd39b7e50d7d905630c8be290dfcf3
+ ```
+
+ Computing with the same input `key` and input `data`, but with a `seek = 3` and `$out_size = 8` yields:
+ ```
+ 83c223154fea8dfb
+
+ which is a slice cut out from the above hash:
+   2cc397  [83c223154fea8dfb]  7c1b1660f2ac2dcbd1c1de8277b0b0dd39b7e50d7d905630c8be290dfcf3
+ ```
+
+ In this way, the XOF primitive that BLAKE3 is built from allows the hash output to be a potentially
+ limitless result that one may slice to their liking using the right parameters.
+
+ @param[in] data : "The data to hash."
+ @param[in] key : "An optional 32-byte key to turn the result into a keyed hash."
+ @param seek : "An optional value specifying the offset into the XOF's yield where the resultant hash should begin."
+ @param $out_size : "An optional value specifying the desired length to slice from the XOF's yield."
+
+ @return "The hash as a character array of `$out_size` bytes."
+
+ @require !key.len || key.len == KEY_SIZE : "Key value must be empty or exactly 32 bytes."
+ @require $out_size > 0 : "You cannot use a zero $out_size."
+*>
 macro char[*] hash(char[] data, char[] key = {}, ulong seek = 0, usz $out_size = 32)
 {
 	char[$out_size] result;
@@ -122,6 +167,21 @@ macro char[*] hash(char[] data, char[] key = {}, ulong seek = 0, usz $out_size =
 	return result;
 }
 
+<*
+ Generate a hash from a context string. This call allows one to use the "context" to
+ auto-generate keying material for the resultant hash value. Effectively, this allows for
+ hashes made from data with completely variable-length keys, rather than having a key fixed
+ to 32 bytes. The 'context' nomenclature is from BLAKE3 itself, not my naming.
+
+ @param[in] data : "The data to hash."
+ @param[in] context : "An optional key to turn the result into a keyed hash."
+ @param seek : "An optional value specifying the offset into the XOF's yield where the resultant hash should begin."
+ @param $out_size : "An optional value specifying the desired length to slice from the XOF's yield."
+
+ @return "The context-based hash as a character array of `$out_size` bytes."
+
+ @require $out_size > 0 : "You cannot use a zero $out_size."
+*>
 macro char[*] ctx_hash(char[] data, char[] context, ulong seek = 0, usz $out_size = 32)
 {
 	char[$out_size] result;
@@ -132,6 +192,13 @@ macro char[*] ctx_hash(char[] data, char[] context, ulong seek = 0, usz $out_siz
 	return result;
 }
 
+<*
+ Generate a new Blake3 hashing structure from the given context string. The context string
+ acts as a variable-length key to seed the new hash structure, and makes it ready to ingest
+ incoming data with `update`.
+
+ @param[in] context : "The context byte array used to seed the returned Blake3 context."
+*>
 macro Blake3 new_from_context(char[] context)
 {
 	char[KEY_SIZE] context_based_key;
@@ -182,6 +249,9 @@ fn void Blake3.reset(&self) @local @inline
 	self.cv_stack_len = 0;
 }
 
+<*
+ Private function to merge tree results.
+*>
 fn void Blake3.merge_cv_stack(&self, ulong total_len) @local @inline
 {
 	usz post_merge_stack_len = (usz)@popcnt(total_len);
@@ -193,6 +263,9 @@ fn void Blake3.merge_cv_stack(&self, ulong total_len) @local @inline
 	}
 }
 
+<*
+ Private function to add a new tree onto the stack.
+*>
 fn void Blake3.push_cv(&self, char* new_cv, ulong chunk_counter) @local @inline
 {
 	self.merge_cv_stack(chunk_counter);
@@ -201,6 +274,10 @@ fn void Blake3.push_cv(&self, char* new_cv, ulong chunk_counter) @local @inline
 }
 
 <*
+ Update the hash context by consuming incoming data.
+
+ @param[in] input : "The slice of new data to digest."
+ @param use_tbb : "Should remain `false` until other BLAKE3 optimizations are set up."
 *>
 fn void Blake3.update(&self, char[] input, bool use_tbb = false)
 {
@@ -260,6 +337,12 @@ fn void Blake3.update(&self, char[] input, bool use_tbb = false)
 
 <*
  Yield the results of the hash into a specified output buffer, at the specified length.
+ Note that the `into` slice does not need to be properly cut to receive hash results; it
+ just needs to be wide enough to accommodate `into_len` yielded bytes from the XOF.
+
+ @param[in] into : "The storage buffer for the output hash value. Must be >= `into_len` bytes."
+ @param into_len : "How many bytes to receive from the XOF/hash output."
+ @param seek : "How far into the XOF's yield to begin the stored byte sequence."
 
  @require into.len >= into_len : "The requested output size must be equal to or less than the size of the output slice."
 *>
@@ -274,7 +357,7 @@ fn void Blake3.final(&self, char[] into, usz into_len, ulong seek = 0)
 		return;
 	}
 
-	Blake3Output o;
+	Blake3Output o @noinit;
 	usz cvs_remaining;
 	if (self.chunk.len() > 0)
 	{
@@ -311,7 +394,7 @@ fn void Blake3.destroy(&self) @inline
 <*
  Initialize a BLAKE3 chunk state.
 
- @param key
+ @param[in] key
  @param flags
 *>
 fn void Blake3ChunkState.init(&self, uint[] key, char flags) @local @inline
@@ -324,7 +407,7 @@ fn void Blake3ChunkState.init(&self, uint[] key, char flags) @local @inline
 <*
  Reset a BLAKE3 chunk state.
 
- @param key
+ @param[in] key
  @param chunk_counter
 *>
 fn void Blake3ChunkState.reset(&self, uint[] key, ulong chunk_counter) @local @inline
@@ -359,6 +442,9 @@ fn char Blake3ChunkState.maybe_start_flag(&self) @local @inline
 	=> !self.blocks_compressed ? Blake3Flags.CHUNK_START : 0;
 
 <*
+ Update the chunk with the provided input bytes.
+
+ @param[in] input : "Incoming bytes to update with."
 *>
 fn void Blake3ChunkState.update(&self, char[] input) @local
 {
@@ -384,10 +470,18 @@ fn void Blake3ChunkState.update(&self, char[] input) @local
 <*
  Convert the chunk state to an "output" type with the right flags.
 *>
-fn Blake3Output Blake3ChunkState.output(&self) @inline
+fn Blake3Output Blake3ChunkState.output(&self) @local @inline
 	=> make_output(self.cv[..], &self.buf, self.buf_len, self.chunk_counter, self.flags | self.maybe_start_flag() | Blake3Flags.CHUNK_END);
 
+<*
+ Generate and initialize an output structure with the provided parameters.
 
+ @param[in] key
+ @param[&in] in_block
+ @param block_len
+ @param counter
+ @param flags
+*>
 fn Blake3Output make_output(uint[] key, char* in_block, usz block_len, ulong counter, char flags) @local @noinline
 {
 	Blake3Output o;
@@ -399,9 +493,22 @@ fn Blake3Output make_output(uint[] key, char* in_block, usz block_len, ulong cou
 	return o;
 }
 
-macro Blake3Output parent_output(char* block, uint[] key, char flags) => make_output(key, block, BLOCK_SIZE, 0, flags | Blake3Flags.PARENT);
+<*
+ Auto-generate a parent output structure, pre-initialized with some constant identifiers.
 
-macro void Blake3Output.chaining_value(&self, char* cv)
+ @param[&in] block
+ @param[in] key
+ @param flags
+*>
+macro Blake3Output parent_output(char* block, uint[] key, char flags) @local
+	=> make_output(key, block, BLOCK_SIZE, 0, flags | Blake3Flags.PARENT);
+
+<*
+ Compress then store the chaining value of the output structure.
+
+ @param[&inout] cv
+*>
+macro void Blake3Output.chaining_value(&self, char* cv) @local
 {
 	uint[KEY_SIZE_WORDS] cv_words;
 	cv_words[..] = self.input_cv[..];
@@ -409,7 +516,13 @@ macro void Blake3Output.chaining_value(&self, char* cv)
 	cv[:KEY_SIZE] = @as_char_view(cv_words)[:KEY_SIZE];
 }
 
-fn void Blake3Output.root_bytes(&self, ulong seek, char[] into)
+<*
+ Store the result of the output into the designated slice.
+
+ @param seek
+ @param[inout] into
+*>
+fn void Blake3Output.root_bytes(&self, ulong seek, char[] into) @local
 {
 	if (!into.len) return;
 
