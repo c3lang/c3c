@@ -101,8 +101,8 @@ fn int main(String[] args)
 	if (catch file) arg_error_exit(appname, "Invalid path: '%s'.", args[2]);
 	
 	PathList files_to_test;
-	files_to_test.init(mem);
-	defer files_to_test.free();
+	files_to_test.init(tmem);
+	//defer files_to_test.free();
 
 	switch
 	{
@@ -117,13 +117,22 @@ fn int main(String[] args)
 	context.total_test_files = files_to_test.len();
 
 	TestOutput[] test_outputs = mem::new_array(TestOutput, context.total_test_files);
-	defer mem::free(test_outputs);
+	//defer mem::free(test_outputs);
 	//Initialize all the DStrings
 	for (usz i = 0; i < context.total_test_files; i++)
 	{
 		test_outputs[i].index = i;
-		test_outputs[i].buffer.tinit();
+		test_outputs[i].buffer.init(mem);
 	}
+	defer {
+	foreach (o : test_outputs)
+	{
+		o.buffer.free();
+		o.filename.free(mem);
+	}
+	mem::free(test_outputs);
+	}
+
 	context.pool.init(num_threads, context.total_test_files)!!;
 	defer context.pool.stop_and_destroy();
 	for (usz i = 0; i < context.total_test_files; i++)
@@ -177,6 +186,7 @@ struct RunFile
 {
 	String name;
 	bool is_output;
+	bool closed;
 	union
 	{
 		struct
@@ -204,19 +214,34 @@ fn void RunFile.add_line(&self, String line)
 	}
 }
 
-fn RunFile*? create_run_file(Path test_dir, String filename, bool is_output)
+fn void RunFile.dealloc(&self)
+{
+	self.close();
+	if (self.is_output)
+	{
+		self.expected_lines.free();
+	}
+	else
+	{
+		self.warnings.free();
+		self.errors.free();
+	}
+}
+
+fn Ref{RunFile}? create_run_file(Path test_dir, String filename, bool is_output)
 {
 	if (is_output)
 	{
-		return mem::tnew(RunFile, { .name = filename, .is_output = true });
+		return ref::new{RunFile}({ .name = filename, .is_output = true });
 	}
 	File file = file::open_path(test_dir.tappend(filename), "wb")!;
-	return mem::tnew(RunFile, { .name = filename, .file = file, .is_output = false });
+	return ref::new{RunFile}({ .name = filename, .file = file, .is_output = false });
 }
 
 fn void RunFile.close(&self)
 {
-	if (!self.is_output) (void)self.file.close();
+	if (!self.is_output && !self.closed) (void)self.file.close();
+	self.closed = true;
 }
 
 struct RunSettings
@@ -226,8 +251,8 @@ struct RunSettings
 	bool no_deprecation;
 	List{String} opts;
 	String arch;
-	List{RunFile*} input_files;
-	List{RunFile*} output_files;
+	List{Ref{RunFile}} input_files;
+	List{Ref{RunFile}} output_files;
 	RunFile* current_file;
 }
 <*
@@ -241,14 +266,14 @@ fn bool find_and_mark_error(RunSettings* settings, String type, String file, Str
 
 	foreach (f : settings.input_files)
 	{
-		if (f.name != basename) continue;
+		if (f.ptr.name != basename) continue;
 		List {Error}* list;
 		switch (type)
 		{
 			case "Error":
-				list = &f.errors;
+				list = &f.ptr.errors;
 			case "Warning":
-				list = &f.warnings;
+				list = &f.ptr.warnings;
 			default:
 				io::printfn("FAILED - Unknown error type '%s'", type);
 				return false;
@@ -298,8 +323,8 @@ fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, O
 
 	foreach (file : settings.input_files)
 	{
-		foreach (&err : file.errors) if (!err.found) missed_errors.push(string::tformat("  - %s:%d expected: \"%s\"", file.name, err.line, err.text));
-		foreach (&warn : file.warnings) if (!warn.found) missed_warnings.push(string::tformat("  - %s:%d expected: \"%s\"", file.name, warn.line, warn.text));
+		foreach (&err : file.ptr.errors) if (!err.found) missed_errors.push(string::tformat("  - %s:%d expected: \"%s\"", file.ptr.name, err.line, err.text));
+		foreach (&warn : file.ptr.warnings) if (!warn.found) missed_warnings.push(string::tformat("  - %s:%d expected: \"%s\"", file.ptr.name, warn.line, warn.text));
 	}
 
 	bool is_ok = unexpected_errors.is_empty() && missed_errors.is_empty() && missed_warnings.is_empty();
@@ -384,15 +409,16 @@ fn void parse_header_directive(int* line_no, String line, RunSettings* settings,
 			if (is_single) error_exit("FAILED - 'file' directive only allowed with .c3t");
 			settings.current_file.close();
 			line = line[5..].trim();
-			RunFile* file = settings.current_file = create_run_file(test_dir, line, false)!!;
+			Ref{RunFile} file = create_run_file(test_dir, line, false)!!;
+			settings.current_file = file.ptr;
 			*line_no = 1;
 			settings.input_files.push(file);
-			settings.current_file = file;
 		case line.starts_with("expect:"):
 			if (is_single) error_exit("FAILED - 'expect' directive only allowed with .c3t");
 			line = line[7..].trim();
 			if (settings.current_file) settings.current_file.close();
-			RunFile* file = settings.current_file = create_run_file(test_dir, line, true)!!;
+			Ref{RunFile} file = create_run_file(test_dir, line, true)!!;
+			settings.current_file = file.ptr;
 			settings.output_files.push(file);
 		default:
 			io::printfn("FAILED - Unknown header directive '%s'", line);
@@ -477,8 +503,9 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 	}
 
 	RunSettings settings;
-	settings.current_file = create_run_file(test_dir, file_path.basename()[..^(single ? 4 : 5)].tconcat(".c3"), false)!!;
-	settings.input_files.push(settings.current_file);
+	Ref{RunFile} rf = create_run_file(test_dir, file_path.basename()[..^(single ? 4 : 5)].tconcat(".c3"), false)!!;
+	settings.current_file = rf.ptr;
+	settings.input_files.push(rf);
 	int line_no = 1;
 	while (try line = io::treadline(&f))
 	{
@@ -500,6 +527,10 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 		line_no++;
 	}
 	settings.current_file.close();
+	defer {
+		foreach (&r : settings.input_files) r.release();
+		foreach (&r : settings.output_files) r.release();
+	}
 
 	// Construct the compile line
 	List{String} cmdline;
@@ -521,7 +552,7 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 	cmdline.push(test_dir.tappend("build").str_view()!!);
 	foreach (file : settings.input_files)
 	{
-		cmdline.push(test_dir.tappend(file.name).str_view()!!);
+		cmdline.push(test_dir.tappend(file.ptr.name).str_view()!!);
 	}
 	if (!single) cmdline.push("--emit-llvm");
 	cmdline.push(settings.debuginfo ? "-g" : "-g0");
@@ -551,28 +582,28 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 	if (!parse_result(out, settings, &cmdline, (OutStream)&output.buffer)) return false;
 	foreach (file : settings.output_files)
 	{
-		Path expected_file = test_dir.tappend(file.name)!!;
+		Path expected_file = test_dir.tappend(file.ptr.name)!!;
 		if (!file::exists(expected_file.str_view()))
 		{
-    		io::fprintfn((OutStream)&output.buffer, "FAILED - Did not compile file %s.", file.name)!!;
+    		io::fprintfn((OutStream)&output.buffer, "FAILED - Did not compile file %s.", file.ptr.name)!!;
     		return false;
 		}
 		File file_ll = file::open(expected_file.str_view(), "rb")!!;
 		defer (void)file_ll.close();
-		String? next = file.expected_lines.pop_first();
+		String? next = file.ptr.expected_lines.pop_first();
 		while (try line = io::treadline(&file_ll) && try next_value = next)
 		{
 			line = line.trim();
 			if (line == "") continue;
 			if (line.contains(next_value))
 			{
-				next = file.expected_lines.pop_first();
+				next = file.ptr.expected_lines.pop_first();
 			}
 		}
 		if (try next)
 		{
-    		io::fprintfn((OutStream)&output.buffer, `FAILED - %s did not contain: "%s"`, file.name, next)!!;
-    		io::fprintfn((OutStream)&output.buffer, "\n\n\n---------------------------------------------------> %s\n\n", file.name)!!;
+    		io::fprintfn((OutStream)&output.buffer, `FAILED - %s did not contain: "%s"`, file.ptr.name, next)!!;
+    		io::fprintfn((OutStream)&output.buffer, "\n\n\n---------------------------------------------------> %s\n\n", file.ptr.name)!!;
     		(void)file_ll.seek(0);
     		io::fprintn((OutStream)&output.buffer, (String)io::read_fully(tmem, &file_ll))!!;
     		io::fprintfn((OutStream)&output.buffer, "<---------------------------------------------------- %s\n", file_path)!!;
@@ -626,24 +657,26 @@ fn void update_status(usz index, Path filename, TestOutput* output)
 
 fn void? collect_files(Path file_path, List{Path}* files)
 {
-	foreach (f : path::ls(mem, file_path)!!)
+	PathList entries = path::ls(tmem, file_path)!!;
+
+	foreach (f : entries)
 	{
-			Path current_file = file_path.append(mem, f.str_view())!;
-			switch
-			{
-				case path::is_dir(current_file):
-					collect_files(current_file, files)!;
-				case path::is_file(current_file):
-					switch (current_file.extension() ?? "")
-                	{
-                		case "c3":
-                		case "c3t":
-                		    files.push(current_file);
-                	}
-                default:
-                    io::printfn("Skip %s", current_file);
-					// Ignore
-			}
+        Path current_file = file_path.append(tmem, f.str_view())!;
+        switch
+        {
+            case path::is_dir(current_file):
+                collect_files(current_file, files)!;
+            case path::is_file(current_file):
+                switch (current_file.extension() ?? "")
+                {
+                    case "c3":
+                    case "c3t":
+                        files.push(current_file);
+                }
+            default:
+                io::printfn("Skip %s", current_file);
+                // Ignore
+        }
 	}
 }
 
