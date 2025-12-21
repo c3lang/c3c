@@ -31,6 +31,47 @@ const char[16][7] MESSAGE_SCHEDULE = {
 };
 
 
+// Get feature-based optimization options.
+//   For now, none of these are used until there's a chance to explore BLAKE3's (necessary) vectorization optimizations.
+//
+const FORCE_PORTABLE = true; //$feature(BLAKE3_FORCE_PORTABLE); // set this flag at compile-time for a universal (but slower) BLAKE3
+const USE_NEON = !FORCE_PORTABLE &&& (env::AARCH64 &&& !env::BIG_ENDIAN);
+const IS_X86 = !FORCE_PORTABLE &&& (env::X86_64 ||| env::X86);
+const MAX_SIMD_DEGREE = IS_X86 ??? 16 : (USE_NEON ??? 4 : 1);
+const MAX_SIMD_DEGREE_OR_2 = @max(MAX_SIMD_DEGREE, 2);
+
+
+bool cpuinfo_initd @local = false;
+
+fn void init_blake3() @local @init
+{
+    $if IS_X86:
+        cpudetect::x86_initialize_cpu_features(); // query all x86 feature flags, one time
+    $endif
+    cpuinfo_initd = true;
+}
+
+macro bool @check_cpu_flag(X86Feature f) @local @if(IS_X86)
+    => !!(cpudetect::x86_features & f.ordinal);
+
+macro @simd_degree() @local
+{
+    if (!cpuinfo_initd) init_blake3();
+    assert(cpuinfo_initd == true, "Failed to run required BLAKE3 initializations.");
+
+    $switch:
+        $case IS_X86:
+            if (@check_cpu_flag(AVX512F) && @check_cpu_flag(AVX512VL)) return 16;
+            if (@check_cpu_flag(AVX2)) return 8;
+            if (@check_cpu_flag(SSE4_1) || @check_cpu_flag(SSE2)) return 4;
+        $case USE_NEON:
+            return 4;
+    $endswitch
+
+    return 1;
+}
+
+
 enum Blake3Flags : const inline char
 {
 	CHUNK_START			= 1 << 0,
@@ -74,6 +115,7 @@ macro char[*] hash(char[] data, char[] key = {}, ulong seek = 0, usz $out_size =
 {
 	char[$out_size] result;
 	Blake3 b @noinit;
+    defer b.destroy();
 	b.init(key);
 	b.update(data);
 	b.final(result[..], $out_size, seek);
@@ -84,6 +126,7 @@ macro char[*] ctx_hash(char[] data, char[] context, ulong seek = 0, usz $out_siz
 {
 	char[$out_size] result;
 	Blake3 b = new_from_context(context);
+    defer b.destroy();
 	b.update(data);
 	b.final(result[..], $out_size, seek);
 	return result;
@@ -92,15 +135,16 @@ macro char[*] ctx_hash(char[] data, char[] context, ulong seek = 0, usz $out_siz
 macro Blake3 new_from_context(char[] context)
 {
 	char[KEY_SIZE] context_based_key;
+	defer mem::zero_volatile(context_based_key[..]);
+
 	Blake3 key_from_ctx @noinit;
+    defer key_from_ctx.destroy();
 	key_from_ctx.init(explicit_flags: Blake3Flags.DERIVE_KEY_CONTEXT);
 	key_from_ctx.update(context);
 	key_from_ctx.final(context_based_key[..], KEY_SIZE);
 
 	Blake3 b @noinit;
 	b.init(key: context_based_key[..], explicit_flags: Blake3Flags.DERIVE_KEY_MATERIAL);
-
-	mem::zero_volatile(context_based_key[..]);
 	return b;
 }
 
@@ -132,7 +176,7 @@ fn void Blake3.init(&self, char[] key = {}, char explicit_flags = 0)
 <*
  Reset the state of the hashing context, in case it should be reused without reloading the key value.
 *>
-fn void Blake3.reset(&self)
+fn void Blake3.reset(&self) @local @inline
 {
 	self.chunk.reset(self.key[..], 0);
 	self.cv_stack_len = 0;
@@ -222,7 +266,6 @@ fn void Blake3.update(&self, char[] input, bool use_tbb = false)
 fn void Blake3.final(&self, char[] into, usz into_len, ulong seek = 0)
 {
 	if (!into_len) return;
-	// defer self.reset(); // implicitly reset the hash context when finalizing
 
 	if (!self.cv_stack_len)
 	{
@@ -256,6 +299,14 @@ fn void Blake3.final(&self, char[] into, usz into_len, ulong seek = 0)
 	o.root_bytes(seek, into[:into_len]);
 }
 
+<*
+ Destroy a BLAKE3 hashing context.
+*>
+fn void Blake3.destroy(&self) @inline
+{
+    mem::zero_volatile(@as_char_view(*self));
+}
+
 
 <*
  Initialize a BLAKE3 chunk state.
@@ -263,7 +314,7 @@ fn void Blake3.final(&self, char[] into, usz into_len, ulong seek = 0)
  @param key
  @param flags
 *>
-fn void Blake3ChunkState.init(&self, uint[] key, char flags) @inline
+fn void Blake3ChunkState.init(&self, uint[] key, char flags) @local @inline
 {
 	mem::zero_volatile(@as_char_view(*self));
 	self.cv[..] = key[..];
@@ -276,7 +327,7 @@ fn void Blake3ChunkState.init(&self, uint[] key, char flags) @inline
  @param key
  @param chunk_counter
 *>
-fn void Blake3ChunkState.reset(&self, uint[] key, ulong chunk_counter) @inline
+fn void Blake3ChunkState.reset(&self, uint[] key, ulong chunk_counter) @local @inline
 {
 	self.init(key, self.flags); // maintain its own flags
 	self.chunk_counter = chunk_counter; // update chunk counter
@@ -285,14 +336,15 @@ fn void Blake3ChunkState.reset(&self, uint[] key, ulong chunk_counter) @inline
 <*
  Get bytes length of consumed data.
 *>
-fn usz Blake3ChunkState.len(&self) @operator(len) @inline => (BLOCK_SIZE * (usz)self.blocks_compressed) + (usz)self.buf_len;
+fn usz Blake3ChunkState.len(&self) @operator(len) @local @inline
+    => (BLOCK_SIZE * (usz)self.blocks_compressed) + (usz)self.buf_len;
 
 <*
  Ingest an amount of bytes into the chunk's buffer. NOTE: Doesn't check for underflow.
 
  @param[in] data : "Data to ingest."
 *>
-fn usz Blake3ChunkState.fill_buf(&self, char[] data) @inline
+fn usz Blake3ChunkState.fill_buf(&self, char[] data) @local @inline
 {
 	usz take = min(BLOCK_SIZE - (usz)self.buf_len, data.len);
 	self.buf[self.buf_len:take] = data[:take];
@@ -303,11 +355,12 @@ fn usz Blake3ChunkState.fill_buf(&self, char[] data) @inline
 <*
  Determine whether to set the CHUNK_START flag.
 *>
-fn char Blake3ChunkState.maybe_start_flag(&self) @inline => !self.blocks_compressed ? Blake3Flags.CHUNK_START : 0;
+fn char Blake3ChunkState.maybe_start_flag(&self) @local @inline
+    => !self.blocks_compressed ? Blake3Flags.CHUNK_START : 0;
 
 <*
 *>
-fn void Blake3ChunkState.update(&self, char[] input)
+fn void Blake3ChunkState.update(&self, char[] input) @local
 {
 	if (self.buf_len)
 	{
@@ -315,7 +368,7 @@ fn void Blake3ChunkState.update(&self, char[] input)
 		input = input[take..];
 		if (input.len)
 		{
-			@compress_in_place(self.cv[..], self.buf[..], BLOCK_SIZE, self.chunk_counter, self.flags | self.maybe_start_flag());
+			compress_in_place(self.cv[..], self.buf[..], BLOCK_SIZE, self.chunk_counter, self.flags | self.maybe_start_flag());
 			self.blocks_compressed++;
 			self.buf_len = 0;
 			self.buf[..] = {};
@@ -323,7 +376,7 @@ fn void Blake3ChunkState.update(&self, char[] input)
 	}
 	for (; input.len > BLOCK_SIZE; self.blocks_compressed++, input = input[BLOCK_SIZE..])
 	{
-		@compress_in_place(self.cv[..], input[:BLOCK_SIZE], BLOCK_SIZE, self.chunk_counter, self.flags | self.maybe_start_flag());
+		compress_in_place(self.cv[..], input[:BLOCK_SIZE], BLOCK_SIZE, self.chunk_counter, self.flags | self.maybe_start_flag());
 	}
 	self.fill_buf(input);
 }
@@ -352,7 +405,7 @@ macro void Blake3Output.chaining_value(&self, char* cv)
 {
 	uint[KEY_SIZE_WORDS] cv_words;
     cv_words[..] = self.input_cv[..];
-	@compress_in_place(cv_words[..], self.block, self.block_len, self.counter, self.flags);
+	compress_in_place(cv_words[..], self.block, self.block_len, self.counter, self.flags);
 	cv[:KEY_SIZE] = @as_char_view(cv_words)[:KEY_SIZE];
 }
 
@@ -366,7 +419,7 @@ fn void Blake3Output.root_bytes(&self, ulong seek, char[] into)
 
 	if (offset_within_block)
 	{
-		@compress_xof(self.input_cv[..], self.block, self.block_len, output_block_counter, self.flags | Blake3Flags.ROOT, wide_buf[..]);
+		compress_xof(self.input_cv[..], self.block, self.block_len, output_block_counter, self.flags | Blake3Flags.ROOT, wide_buf[..]);
 		usz avail = BLOCK_SIZE - offset_within_block;
 		usz bytes = min(into.len, avail);
 		into[:bytes] = wide_buf[offset_within_block:bytes];
@@ -381,7 +434,7 @@ fn void Blake3Output.root_bytes(&self, ulong seek, char[] into)
 	into = into[(usz)(into.len & -64ll) ..];
 	if (into.len)
 	{
-		@compress_xof(self.input_cv[..], self.block, self.block_len, output_block_counter, self.flags | Blake3Flags.ROOT, wide_buf[..]);
+		compress_xof(self.input_cv[..], self.block, self.block_len, output_block_counter, self.flags | Blake3Flags.ROOT, wide_buf[..]);
 		into[..] = wide_buf[:into.len];
 	}
 }
@@ -397,14 +450,15 @@ fn void Blake3Output.root_bytes(&self, ulong seek, char[] into)
 //        ༼ ºل͟º ༼ ºل͟º ༼ ºل͟º ༽ ºل͟º ༽ ºل͟º ༽
 //
 //
-macro uint @popcnt(ulong #x) => (uint)#x.popcount();
-macro uint @highest_one(ulong #x) => 63 ^ (uint)#x.clz();
-macro ulong @round_down_to_power_of_2(ulong #x) => 1ul << @highest_one(#x | 1);
+macro uint @popcnt(ulong #x) @local => (uint)#x.popcount();
+macro uint @highest_one(ulong #x) @local => 63 ^ (uint)#x.clz();
+macro ulong @round_down_to_power_of_2(ulong #x) @local => 1ul << @highest_one(#x | 1);
 
-macro left_subtree_len(usz input_len) => @round_down_to_power_of_2((input_len - 1) / CHUNK_SIZE) * CHUNK_SIZE;
+macro left_subtree_len(usz input_len) @local
+    => @round_down_to_power_of_2((input_len - 1) / CHUNK_SIZE) * CHUNK_SIZE;
 
 
-macro @g(#state, a, b, c, d, x, y)
+macro @g(#state, a, b, c, d, x, y) @local
 {
 	#state[a] += #state[b] + x;
 	#state[d] = (#state[d] ^ #state[a]).rotr(16);
@@ -416,7 +470,7 @@ macro @g(#state, a, b, c, d, x, y)
 	#state[b] = (#state[b] ^ #state[c]).rotr(7);
 }
 
-macro @round(uint[] state, uint* msg, usz round)
+macro @round(uint[] state, uint* msg, usz round) @local
 {
 	char* schedule = &MESSAGE_SCHEDULE[round];
 	@g(state, 0, 4,  8, 12, msg[schedule[0] ], msg[schedule[1] ]);
@@ -448,14 +502,14 @@ fn void compress_pre(uint[] state, uint[] cv, char[BLOCK_SIZE] block, usz block_
 	@round(state, &block_words[0], 6);
 }
 
-macro @compress_in_place(uint[] cv, char[BLOCK_SIZE] block, usz block_len, ulong counter, char flags)
+macro compress_in_place(uint[] cv, char[BLOCK_SIZE] block, usz block_len, ulong counter, char flags) @local
 {
 	uint[16] state @noinit;
 	compress_pre(state[..], cv, block, block_len, counter, flags);
 	for (usz i = 0; i < 8; i++) cv[i] = state[i] ^ state[i + 8];
 }
 
-macro @compress_xof(uint[] cv, char[BLOCK_SIZE] block, usz block_len, ulong counter, char flags, char[] out)
+macro compress_xof(uint[] cv, char[BLOCK_SIZE] block, usz block_len, ulong counter, char flags, char[] out) @local
 {
 	uint[16] state @noinit;
 	compress_pre(state[..], cv, block, block_len, counter, flags);
@@ -463,12 +517,12 @@ macro @compress_xof(uint[] cv, char[BLOCK_SIZE] block, usz block_len, ulong coun
 	$for usz $i = 0; $i < 8; $i++: @unaligned_store(*(uint*)&out[4 * (8 + $i)], state[$i + 8] ^ cv[$i], 1); $endfor
 }
 
-macro @xof_many(uint[] cv, char[BLOCK_SIZE] block, usz block_len, ulong counter, char flags, char[] out, usz out_blocks)
+macro @xof_many(uint[] cv, char[BLOCK_SIZE] block, usz block_len, ulong counter, char flags, char[] out, usz out_blocks) @local
 {
-	for (usz i = 0; i < out_blocks; i++, out = out[BLOCK_SIZE..]) @compress_xof(cv, block, block_len, counter + i, flags, out);
+	for (usz i = 0; i < out_blocks; i++, out = out[BLOCK_SIZE..]) compress_xof(cv, block, block_len, counter + i, flags, out);
 }
 
-macro hash_one(char* input, usz blocks, uint[] key, ulong counter, char flags, char flags_start, char flags_end, char[] out)
+macro hash_one(char* input, usz blocks, uint[] key, ulong counter, char flags, char flags_start, char flags_end, char[] out) @local
 {
 	uint[8] cv;
 	cv[..] = key[..];
@@ -476,41 +530,47 @@ macro hash_one(char* input, usz blocks, uint[] key, ulong counter, char flags, c
 	for (; blocks > 0; input += BLOCK_SIZE, blocks--, block_flags = flags)
 	{
 		if (blocks == 1) block_flags |= flags_end;
-		@compress_in_place(cv[..], input[:BLOCK_SIZE], BLOCK_SIZE, counter, block_flags);
+		compress_in_place(cv[..], input[:BLOCK_SIZE], BLOCK_SIZE, counter, block_flags);
 	}
 	foreach (i, c : cv) @unaligned_store(*(uint*)&out[i * 4], c, 1);
 }
 
-macro hash_many(char*[] inputs, usz num_inputs, usz blocks, uint[] key, ulong counter, bool increment_counter, char flags, char flags_start, char flags_end, char* out)
+macro hash_many(char*[] inputs, usz num_inputs, usz blocks, uint[] key, ulong counter, bool $increment_counter, char flags, char flags_start, char flags_end, char* out) @local
 {
 	for(; num_inputs > 0; num_inputs--, inputs = inputs[1..], out += OUT_SIZE)
 	{
 		hash_one(inputs[0], blocks, key, counter, flags, flags_start, flags_end, out[:OUT_SIZE]);
-		if (increment_counter) counter++;
+        $if $increment_counter: counter++; $endif
 	}
 }
 
 
 fn void compress_subtree_to_parent_node(char[] input, uint[] key, ulong chunk_counter, char flags, char[] out, bool use_tbb) @local @noinline
 {
-	char[2 * OUT_SIZE] cv_array;
+	char[MAX_SIMD_DEGREE_OR_2 * OUT_SIZE] cv_array;
+
 	usz num_cvs = compress_subtree_wide(input, key, chunk_counter, flags, cv_array[..], use_tbb);
 	assert(num_cvs <= 2);
+
+    $if MAX_SIMD_DEGREE_OR_2 > 2:
+        char[MAX_SIMD_DEGREE_OR_2 * OUT_SIZE / 2] out_array;
+        while (num_cvs > 2) num_cvs = compress_parents_parallel(cv_array[..], num_cvs, key, flags, &out_array);
+    $endif
+
 	out[..] = cv_array[:2 * OUT_SIZE];
 }
 
 fn usz compress_subtree_wide(char[] input, uint[] key, ulong chunk_counter, char flags, char* out, bool use_tbb) @local @noinline
 {
-	// TODO: Currently using a static '1' for the SIMD degree.
-	if (input.len <= 1 * CHUNK_SIZE) return compress_chunks_parallel(input, key, chunk_counter, flags, out);
+	if (input.len <= @simd_degree() * CHUNK_SIZE) return compress_chunks_parallel(input, key, chunk_counter, flags, out);
 
 	usz left_input_len = left_subtree_len(input.len);
 	usz right_input_len = input.len - left_input_len;
 	char* right_input = &input[left_input_len];
 	ulong right_chunk_counter = chunk_counter + (ulong)(left_input_len / CHUNK_SIZE);
 
-	char[2 * 2 * OUT_SIZE] cv_array;
-	usz degree = 1;
+	char[2 * MAX_SIMD_DEGREE_OR_2 * OUT_SIZE] cv_array;
+	usz degree = @simd_degree();
 	if (left_input_len > CHUNK_SIZE && degree == 1) degree = 2;
 	char* right_cvs = &cv_array[degree * OUT_SIZE];
 
@@ -528,7 +588,7 @@ fn usz compress_subtree_wide(char[] input, uint[] key, ulong chunk_counter, char
 
 fn usz compress_parents_parallel(char[] child_chaining_values, usz num_chaining_values, uint[] key, char flags, char* out) @local @noinline
 {
-	char*[2] parents_array;
+	char*[MAX_SIMD_DEGREE_OR_2] parents_array;
 	usz parents_array_len = 0;
 
 	while (num_chaining_values - (2 * parents_array_len) >= 2)
@@ -549,7 +609,7 @@ fn usz compress_parents_parallel(char[] child_chaining_values, usz num_chaining_
 
 fn usz compress_chunks_parallel(char[] input, uint[] key, ulong chunk_counter, char flags, char* out) @local @noinline
 {
-	char*[1] chunks_array;
+	char*[MAX_SIMD_DEGREE] chunks_array;
 	usz input_position = 0;
 	usz chunks_array_len = 0;
 
