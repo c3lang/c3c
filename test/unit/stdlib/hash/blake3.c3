@@ -27,18 +27,21 @@ fn void empty_simple()
 }
 
 
-fn void assert_no_finalization()
+fn void assert_finalization_state()
 {
 	static char[Blake3.sizeof] empty = {};
     char[3] dummy_result = {};
 	Blake3 ctx @noinit;
 
 	ctx.init();
-	test::@check(@as_char_view(ctx) != empty[..], "BLAKE3 cryptographic context is not initialized.");
+	test::@check(@as_char_view(ctx) != empty[..], "BLAKE3 hash context is not initialized.");
 
 	ctx.update("beep");
 	ctx.final(&dummy_result, 3);
-	test::@check(@as_char_view(ctx) != empty[..], "BLAKE3 cryptographic context was implicitly wiped upon finalization, but it shouldn't have been.");
+	test::@check(@as_char_view(ctx) != empty[..], "BLAKE3 hash context was implicitly wiped upon finalization, but it should NOT have been.");
+
+    ctx.destroy();
+    test::@check(@as_char_view(ctx) == empty[..], "BLAKE3 hash context was not implicitly wiped upon finalization");
 }
 
 
