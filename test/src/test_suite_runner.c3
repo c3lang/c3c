@@ -141,21 +141,6 @@ fn int main(String[] args)
 	}
 	context.pool.join();
 
-	if (context.no_terminal)
-	{
-		int running_failure_count = 0;
-		foreach(output : test_outputs)
-		{
-			if (output.has_output)
-			{
-				io::printf("- %d/%d %s: ", output.index, running_failure_count, output.filename)!!;
-				io::printn(output.buffer.str_view());
-				if (output.buffer.str_view()[:7] != "Passed.") running_failure_count++;
-			}
-		}
-		io::printn();
-	}
-
 	int total = context.test_count.load();
 	int success = context.success_count.load();
 	int skipped = context.skip_count.load();
@@ -447,6 +432,14 @@ fn void test_file_threaded(any[] data)
 				};
 			}
 		}
+		if (context.no_terminal)
+		{
+			Mutex.@in_lock(&context.print_mutex)
+			{
+				io::printf("- %d/%d %s: ", context.test_count.load(), context.failure_count.load(), file_path)!!;
+				io::printn(output.buffer.str_view());
+			};
+		}
 	};
 }
 
@@ -475,14 +468,12 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 			single = false;
 		default:
 			io::fprintfn((OutStream)&output.buffer, "FAILED - Unexpected file name '%s', expected a file with a '.c3' or '.c3t' suffix.", file_path.str_view())!!;
-			context.failure_count.add(1);
 			return false;
 	}
 	File? f = file::open_path(file_path, "rb");
 	if (catch f)
 	{
 		io::fprintfn((OutStream)&output.buffer, "FAILED - Failed to open '%s'.", file_path)!!;
-		context.failure_count.add(1);
 		return false;
 	}
 	defer (void)f.close();
@@ -617,41 +608,32 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 
 fn void update_status(usz index, Path filename, TestOutput* output)
 {
+	if (context.no_terminal)
+	{
+		output.has_output = true;
+		if (filename.str_view().len == 0) io::fprint((OutStream)&output.buffer, "Passed.")!!;
+		return;
+	}
+
 	Mutex.@in_lock(&context.print_mutex) {
 		bool has_entry = filename.str_view().len != 0;
-		if (context.no_terminal)
-		{
-			output.has_output = true;
-			if (has_entry)
-			{
-				output.filename = filename.str_view().copy(mem);
-			}
-			else
-			{
-				io::fprint((OutStream)&output.buffer, "Passed.")!!;
-			}
-			return;
-		}
-		else
-		{
-			const String[8] PARTS = { " ", "▏", "▎", "▍", "▌", "▋", "▊", "▉" };
-            int progress_bar_width = 25;
-			usz total = context.total_test_files;
-			usz finished = context.test_count.load();
-			if (!has_entry && total != finished) return;
-			double fraction = total > 0.0 ? finished / (double)total : 0;
-			int full_width = (int)math::floor(fraction * progress_bar_width);
-			int remainder = (int)math::floor(8 * (fraction * progress_bar_width % 1.0));
-			io::print("\e[0m\e[2K\e[1GTest progress: [");
-			usz failed = context.failure_count.load();
-			io::print(failed ? "\e[31m" : "\e[32m");
-			for (int i = 0; i < full_width; i++) io::print("█");
-			if (full_width != progress_bar_width) io::print(PARTS[remainder]);
-			for (int i = full_width + 1; i < progress_bar_width; i++) io::print(" ");
-			io::printf("\e[0m] %.1f%% complete (%d failed)", fraction * 100.0, failed);
-			if (has_entry) io::printf(" - Testing: %s", filename.basename());
-			(void)io::stdout().flush();
-		}
+		const String[8] PARTS = { " ", "▏", "▎", "▍", "▌", "▋", "▊", "▉" };
+		int progress_bar_width = 25;
+		usz total = context.total_test_files;
+		usz finished = context.test_count.load();
+		if (!has_entry && total != finished) return;
+		double fraction = total > 0.0 ? finished / (double)total : 0;
+		int full_width = (int)math::floor(fraction * progress_bar_width);
+		int remainder = (int)math::floor(8 * (fraction * progress_bar_width % 1.0));
+		io::print("\e[0m\e[2K\e[1GTest progress: [");
+		usz failed = context.failure_count.load();
+		io::print(failed ? "\e[31m" : "\e[32m");
+		for (int i = 0; i < full_width; i++) io::print("█");
+		if (full_width != progress_bar_width) io::print(PARTS[remainder]);
+		for (int i = full_width + 1; i < progress_bar_width; i++) io::print(" ");
+		io::printf("\e[0m] %.1f%% complete (%d failed)", fraction * 100.0, failed);
+		if (has_entry) io::printf(" - Testing: %s", filename.basename());
+		(void)io::stdout().flush();
 	};
 }
 
