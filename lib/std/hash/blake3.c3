@@ -45,30 +45,30 @@ bool cpuinfo_initd @local = false;
 
 fn void init_blake3() @local @init
 {
-    $if IS_X86:
-        cpudetect::x86_initialize_cpu_features(); // query all x86 feature flags, one time
-    $endif
-    cpuinfo_initd = true;
+	$if IS_X86:
+		cpudetect::x86_initialize_cpu_features(); // query all x86 feature flags, one time
+	$endif
+	cpuinfo_initd = true;
 }
 
 macro bool @check_cpu_flag(X86Feature f) @local @if(IS_X86)
-    => !!(cpudetect::x86_features & f.ordinal);
+	=> !!(cpudetect::x86_features & f.ordinal);
 
 macro @simd_degree() @local
 {
-    if (!cpuinfo_initd) init_blake3();
-    assert(cpuinfo_initd == true, "Failed to run required BLAKE3 initializations.");
+	if (!cpuinfo_initd) init_blake3();
+	assert(cpuinfo_initd == true, "Failed to run required BLAKE3 initializations.");
 
-    $switch:
-        $case IS_X86:
-            if (@check_cpu_flag(AVX512F) && @check_cpu_flag(AVX512VL)) return 16;
-            if (@check_cpu_flag(AVX2)) return 8;
-            if (@check_cpu_flag(SSE4_1) || @check_cpu_flag(SSE2)) return 4;
-        $case USE_NEON:
-            return 4;
-    $endswitch
+	$switch:
+		$case IS_X86:
+			if (@check_cpu_flag(AVX512F) && @check_cpu_flag(AVX512VL)) return 16;
+			if (@check_cpu_flag(AVX2)) return 8;
+			if (@check_cpu_flag(SSE4_1) || @check_cpu_flag(SSE2)) return 4;
+		$case USE_NEON:
+			return 4;
+	$endswitch
 
-    return 1;
+	return 1;
 }
 
 
@@ -115,7 +115,7 @@ macro char[*] hash(char[] data, char[] key = {}, ulong seek = 0, usz $out_size =
 {
 	char[$out_size] result;
 	Blake3 b @noinit;
-    defer b.destroy();
+	defer b.destroy();
 	b.init(key);
 	b.update(data);
 	b.final(result[..], $out_size, seek);
@@ -126,7 +126,7 @@ macro char[*] ctx_hash(char[] data, char[] context, ulong seek = 0, usz $out_siz
 {
 	char[$out_size] result;
 	Blake3 b = new_from_context(context);
-    defer b.destroy();
+	defer b.destroy();
 	b.update(data);
 	b.final(result[..], $out_size, seek);
 	return result;
@@ -304,7 +304,7 @@ fn void Blake3.final(&self, char[] into, usz into_len, ulong seek = 0)
 *>
 fn void Blake3.destroy(&self) @inline
 {
-    mem::zero_volatile(@as_char_view(*self));
+	mem::zero_volatile(@as_char_view(*self));
 }
 
 
@@ -337,7 +337,7 @@ fn void Blake3ChunkState.reset(&self, uint[] key, ulong chunk_counter) @local @i
  Get bytes length of consumed data.
 *>
 fn usz Blake3ChunkState.len(&self) @operator(len) @local @inline
-    => (BLOCK_SIZE * (usz)self.blocks_compressed) + (usz)self.buf_len;
+	=> (BLOCK_SIZE * (usz)self.blocks_compressed) + (usz)self.buf_len;
 
 <*
  Ingest an amount of bytes into the chunk's buffer. NOTE: Doesn't check for underflow.
@@ -404,7 +404,7 @@ macro Blake3Output parent_output(char* block, uint[] key, char flags) => make_ou
 macro void Blake3Output.chaining_value(&self, char* cv)
 {
 	uint[KEY_SIZE_WORDS] cv_words;
-    cv_words[..] = self.input_cv[..];
+	cv_words[..] = self.input_cv[..];
 	compress_in_place(cv_words[..], self.block, self.block_len, self.counter, self.flags);
 	cv[:KEY_SIZE] = @as_char_view(cv_words)[:KEY_SIZE];
 }
@@ -455,7 +455,7 @@ macro uint @highest_one(ulong #x) @local => 63 ^ (uint)#x.clz();
 macro ulong @round_down_to_power_of_2(ulong #x) @local => 1ul << @highest_one(#x | 1);
 
 macro left_subtree_len(usz input_len) @local
-    => @round_down_to_power_of_2((input_len - 1) / CHUNK_SIZE) * CHUNK_SIZE;
+	=> @round_down_to_power_of_2((input_len - 1) / CHUNK_SIZE) * CHUNK_SIZE;
 
 
 macro @g(#state, a, b, c, d, x, y) @local
@@ -537,10 +537,10 @@ macro hash_one(char* input, usz blocks, uint[] key, ulong counter, char flags, c
 
 macro hash_many(char*[] inputs, usz num_inputs, usz blocks, uint[] key, ulong counter, bool $increment_counter, char flags, char flags_start, char flags_end, char* out) @local
 {
-    for (; num_inputs > 0; num_inputs--, inputs = inputs[1..], out += OUT_SIZE)
+	for (; num_inputs > 0; num_inputs--, inputs = inputs[1..], out += OUT_SIZE)
 	{
 		hash_one(inputs[0], blocks, key, counter, flags, flags_start, flags_end, out[:OUT_SIZE]);
-        $if $increment_counter: counter++; $endif
+		$if $increment_counter: counter++; $endif
 	}
 }
 
@@ -552,10 +552,10 @@ fn void compress_subtree_to_parent_node(char[] input, uint[] key, ulong chunk_co
 	usz num_cvs = compress_subtree_wide(input, key, chunk_counter, flags, cv_array[..], use_tbb);
 	assert(num_cvs <= 2);
 
-    $if MAX_SIMD_DEGREE_OR_2 > 2:
-        char[MAX_SIMD_DEGREE_OR_2 * OUT_SIZE / 2] out_array;
-        while (num_cvs > 2) num_cvs = compress_parents_parallel(cv_array[..], num_cvs, key, flags, &out_array);
-    $endif
+	$if MAX_SIMD_DEGREE_OR_2 > 2:
+		char[MAX_SIMD_DEGREE_OR_2 * OUT_SIZE / 2] out_array;
+		while (num_cvs > 2) num_cvs = compress_parents_parallel(cv_array[..], num_cvs, key, flags, &out_array);
+	$endif
 
 	out[..] = cv_array[:2 * OUT_SIZE];
 }
