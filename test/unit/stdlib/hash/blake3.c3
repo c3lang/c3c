@@ -39,6 +39,7 @@ fn void assert_finalization_state()
 	ctx.update("beep");
 	ctx.final(&dummy_result, 3);
 	test::@check(@as_char_view(ctx) != empty[..], "BLAKE3 hash context was implicitly wiped upon finalization, but it should NOT have been.");
+	// ^ you may wonder why this is... See around line 141 of this file for why this is useful NOT to clear
 
 	ctx.destroy();
 	test::@check(@as_char_view(ctx) == empty[..], "BLAKE3 hash context was not implicitly wiped upon finalization");
