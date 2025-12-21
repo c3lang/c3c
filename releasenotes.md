@@ -28,6 +28,7 @@
 - Unit tests allocating too much `tmem` without `@pool` would cause errors in unrelated tests. #2654
 - Incorrect rounding for decimals in formatter in some cases. #2657
 - Incorrectly using LLVMStructType when emitting dynamic functions on MachO #2666  
+- FixedThreadPool join did not work correctly.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
