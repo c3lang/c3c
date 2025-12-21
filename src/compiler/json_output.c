@@ -109,6 +109,7 @@ static inline const char *decl_type_to_string(Decl *type)
 		case DECL_LABEL:
 		case DECL_POISONED:
 		case DECL_VAR:
+		case DECL_GENERIC:
 			UNREACHABLE
 	}
 	UNREACHABLE

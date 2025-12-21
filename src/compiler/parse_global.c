@@ -169,13 +169,13 @@ static inline Path *parse_module_path(ParseContext *c)
  *
  * module_params ::= '{' module_param (',' module_param)* '}'
  */
-static inline bool parse_optional_module_params(ParseContext *c, const char ***tokens_ref)
+static inline bool parse_optional_module_params(ParseContext *c, Decl **decl_ref)
 {
-
-	*tokens_ref = NULL;
-
+	SourceSpan start = c->span;
 	if (!try_consume(c, TOKEN_LBRACE)) return true;
 	if (try_consume(c, TOKEN_RBRACE)) RETURN_PRINT_ERROR_HERE("The generic parameter list cannot be empty, it needs at least one element.");
+
+	const char **tokens = NULL;
 
 	// No params
 	while (1)
@@ -195,11 +195,14 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 			default:
 				RETURN_PRINT_ERROR_HERE("Only generic parameters are allowed here as parameters to the module.");
 		}
-		vec_add(*tokens_ref, symstr(c));
+		vec_add(tokens, symstr(c));
 		advance(c);
 		if (!try_consume(c, TOKEN_COMMA))
 		{
 			if (!consume(c, TOKEN_RBRACE, "Expected '}'.")) return false;
+			Decl *decl = decl_new(DECL_GENERIC, "", extend_span_with_token(start, c->prev_span));
+			decl->generic_decl.parameters = tokens;
+			*decl_ref = decl;
 			return true;
 		}
 	}
@@ -242,15 +245,15 @@ bool parse_module(ParseContext *c, AstId contracts)
 	}
 
 	// Is this a generic module?
-	const char **generic_parameters = NULL;
-	if (!parse_optional_module_params(c, &generic_parameters))
+	Decl *generic_decl = NULL;
+	if (!parse_optional_module_params(c, &generic_decl))
 	{
 		if (!context_set_module(c, path, NULL)) return false;
 		recover_top_level(c);
 		if (contracts) RETURN_PRINT_ERROR_AT(false, astptr(contracts), "Contracts cannot be use with non-generic modules.");
 		return true;
 	}
-	if (!context_set_module(c, path, generic_parameters)) return false;
+	if (!context_set_module(c, path, generic_decl)) return false;
 	if (contracts)
 	{
 		AstId old_contracts = c->unit->module->contracts;

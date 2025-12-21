@@ -5019,10 +5019,10 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 {
 	unsigned decls = 0;
 	Decl* params_decls[MAX_PARAMS];
-	unsigned count = vec_size(module->parameters);
+	unsigned count = vec_size(module->generics[0]->generic_decl.parameters);
 	for (unsigned i = 0; i < count; i++)
 	{
-		const char *param_name = module->parameters[i];
+		const char *param_name = module->generics[0]->generic_decl.parameters[i];
 		bool is_value = str_is_valid_constant(param_name);
 		Expr *param = params[i];
 		if (param->expr_kind != EXPR_TYPEINFO)
@@ -5050,6 +5050,8 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 	Module *new_module = compiler_find_or_create_module(path, NULL);
 	new_module->is_generic = false;
 	new_module->generic_module = module;
+	ASSERT(module->stage == ANALYSIS_IMPORTS);
+	new_module->stage = module->stage;
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
 		vec_add(new_module->units, unit_copy(new_module, unit));
@@ -5281,7 +5283,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	if (!alias) return poisoned_decl;
 	Module *module = alias->unit->module;
 
-	unsigned parameter_count = vec_size(module->parameters);
+	unsigned parameter_count = module->generics ? vec_size(module->generics[0]->generic_decl.parameters) : 0;
 	ASSERT(parameter_count > 0);
 	unsigned count = vec_size(params);
 	if (parameter_count != count)
@@ -5586,6 +5588,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_IMPORT:
 		case DECL_LABEL:
 		case DECL_POISONED:
+		case DECL_GENERIC:
 			UNREACHABLE
 	}
 	if (erase_decl)

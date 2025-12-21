@@ -258,6 +258,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_ENUM_CONSTANT:
 			case DECL_ERASED:
 			case DECL_GROUP:
+			case DECL_GENERIC:
 			case DECL_LABEL:
 				UNREACHABLE_VOID
 			case DECL_ALIAS:
@@ -287,7 +288,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 
 static void analyze_generic_module(Module *module)
 {
-	ASSERT(module->parameters && module->is_generic);
+	ASSERT(module->is_generic);
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
 		register_generic_decls(unit, unit->global_decls);
@@ -297,7 +298,7 @@ static void analyze_generic_module(Module *module)
 
 static void sema_analyze_to_stage(AnalysisStage stage)
 {
-	if (stage <= ANALYSIS_MODULE_TOP)
+	if (stage <= ANALYSIS_IMPORTS)
 	{
 		FOREACH(Module *, module, compiler.context.generic_module_list)
 		{

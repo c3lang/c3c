@@ -634,6 +634,7 @@ RETRY:
 		case DECL_IMPORT:
 		case DECL_LABEL:
 		case DECL_MACRO:
+		case DECL_GENERIC:
 			UNREACHABLE_VOID
 		case DECL_FNTYPE:
 			sema_trace_func_liveness(&decl->fntype_decl.signature);

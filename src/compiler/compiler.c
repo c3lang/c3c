@@ -1613,7 +1613,7 @@ Module *global_context_find_module(const char *name)
 	return htable_get(&compiler.context.modules, (void *)name);
 }
 
-Module *compiler_find_or_create_module(Path *module_name, const char **parameters)
+Module *compiler_find_or_create_module(Path *module_name, Decl *generic_decl)
 {
 	Module *module = global_context_find_module(module_name->module);
 	if (module) return module;
@@ -1644,11 +1644,14 @@ Module *compiler_find_or_create_module(Path *module_name, const char **parameter
 		module->short_path = symtab_add(name, len, fnv1a(name, len), &type);
 	}
 	module->stage = ANALYSIS_NOT_BEGUN;
-	module->parameters = parameters;
-	module->is_generic = vec_size(parameters) > 0;
+	if (generic_decl)
+	{
+		vec_add(module->generics, generic_decl);
+	}
+	module->is_generic = generic_decl != NULL;
 	htable_init(&module->symbols, 0x1000);
 	htable_set(&compiler.context.modules, (void *)module_name->module, module);
-	if (parameters)
+	if (generic_decl)
 	{
 		vec_add(compiler.context.generic_module_list, module);
 	}

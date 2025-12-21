@@ -101,7 +101,6 @@ typedef Type LoweredType;
 typedef struct Signature_ Signature;
 typedef struct ConstInitializer_ ConstInitializer;
 typedef struct CompilationUnit_ CompilationUnit;
-typedef struct Generic_ Generic;
 typedef unsigned AstId;
 typedef unsigned ExprId;
 typedef unsigned DeclId;
@@ -618,6 +617,11 @@ typedef struct
 
 typedef struct
 {
+	const char **parameters;
+} GenericDecl;
+
+typedef struct
+{
 	bool is_func : 1;
 	bool is_redef : 1;
 	union
@@ -761,6 +765,7 @@ typedef struct Decl_
 		LabelDecl label;
 		TypeAliasDecl type_alias_decl;
 		VarDecl var;
+		GenericDecl generic_decl;
 	};
 } Decl;
 
@@ -1629,8 +1634,7 @@ typedef struct Module_
 	const char *short_path;
 	// Extname in case a module is renamed externally
 	const char *extname;
-	Generic **generics;
-	const char **parameters;
+	Decl **generics;
 	bool is_external : 1;
 	bool is_c_library : 1;
 	bool is_exported : 1;
@@ -1800,12 +1804,6 @@ typedef struct JumpTarget_
 	Ast *target;
 	AstId defer;
 } JumpTarget;
-
-struct Generic_
-{
-	Decl **args;
-	Decl **decls;
-};
 
 struct SemaContext_
 {
@@ -2339,7 +2337,7 @@ void global_context_add_decl(Decl *type_decl);
 
 void linking_add_link(Linking *linker, const char *link);
 
-Module *compiler_find_or_create_module(Path *module_name, const char **parameters);
+Module *compiler_find_or_create_module(Path *module_name, Decl *generic_decl);
 Module *global_context_find_module(const char *name);
 const char *get_object_extension(void);
 const char *get_exe_extension(void);
@@ -2351,7 +2349,7 @@ void unit_register_external_symbol(SemaContext *context, Decl *decl);
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
 bool unit_add_alias(CompilationUnit *unit, Decl *decl);
 bool context_set_module_from_filename(ParseContext *context);
-bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters);
+bool context_set_module(ParseContext *context, Path *path, Decl *generic_decl);
 bool context_is_macro(SemaContext *context);
 
 // --- Decl functions

@@ -14,30 +14,30 @@ CompilationUnit *unit_create(File *file)
 }
 
 
-static inline bool create_module_or_check_name(CompilationUnit *unit, Path *module_name, const char **parameters)
+static inline bool create_module_or_check_name(CompilationUnit *unit, Path *module_name, Decl *generic_decl)
 {
 	Module *module = unit->module;
 	if (!module)
 	{
-		module = unit->module = compiler_find_or_create_module(module_name, parameters);
-		if (module->is_generic != (parameters != NULL))
+		module = unit->module = compiler_find_or_create_module(module_name, generic_decl);
+		if (module->is_generic != (generic_decl != NULL))
 		{
 			print_error_at(module_name->span, "'%s' is both used as regular and generic module, it can't be both.",
 			               module_name->module);
 			SEMA_NOTE(module->name, "The definition here is different.");
 			return false;
 		}
-		if (!module->is_generic) goto DONE;
-		if (vec_size(parameters) != vec_size(module->parameters))
+		if (!generic_decl) goto DONE;
+		if (vec_size(generic_decl->generic_decl.parameters) != vec_size(module->generics[0]->generic_decl.parameters))
 		{
 			PRINT_ERROR_AT(module_name, "The parameter declarations of the generic module '%s' don't match.", module_name->module);
 			SEMA_NOTE(module->name, "A different definition can be found here.");
 			return false;
 		}
-		FOREACH_IDX(idx, const char *, name, parameters)
+		FOREACH_IDX(idx, const char *, name, generic_decl->generic_decl.parameters)
 		{
 			bool is_type = str_is_type(name);
-			if (is_type != str_is_type(module->parameters[idx]))
+			if (is_type != str_is_type(module->generics[0]->generic_decl.parameters[idx]))
 			{
 				PRINT_ERROR_AT(module_name, "The parameter declarations of the generic module '%s' don't match.", module_name->module);
 				SEMA_NOTE(module->name, "The other definition is here.");
@@ -127,11 +127,11 @@ bool context_set_module_from_filename(ParseContext *context)
 	return create_module_or_check_name(context->unit, path, NULL);
 }
 
-bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters)
+bool context_set_module(ParseContext *context, Path *path, Decl *generic_decl)
 {
 
 	if (!check_module_name(path)) return false;
-	return create_module_or_check_name(context->unit, path, generic_parameters);
+	return create_module_or_check_name(context->unit, path, generic_decl);
 }
 
 bool context_is_macro(SemaContext *context)
@@ -168,6 +168,7 @@ void decl_register(CompilationUnit *unit, Decl *decl)
 			case DECL_DECLARRAY:
 			case DECL_ENUM_CONSTANT:
 			case DECL_GROUP:
+			case DECL_GENERIC:
 			case DECL_IMPORT:
 			case DECL_LABEL:
 			case DECL_POISONED:
@@ -299,6 +300,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_ENUM_CONSTANT:
 		case DECL_FNTYPE:
 		case DECL_GROUP:
+		case DECL_GENERIC:
 		case DECL_IMPORT:
 		case DECL_LABEL:
 			UNREACHABLE_VOID
