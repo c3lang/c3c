@@ -117,20 +117,20 @@ fn int main(String[] args)
 	context.total_test_files = files_to_test.len();
 
 	TestOutput[] test_outputs = mem::new_array(TestOutput, context.total_test_files);
-	//defer mem::free(test_outputs);
 	//Initialize all the DStrings
 	for (usz i = 0; i < context.total_test_files; i++)
 	{
 		test_outputs[i].index = i;
 		test_outputs[i].buffer.init(mem);
 	}
-	defer {
-	foreach (o : test_outputs)
+	defer
 	{
-		o.buffer.free();
-		o.filename.free(mem);
-	}
-	mem::free(test_outputs);
+		foreach (o : test_outputs)
+		{
+			o.buffer.free();
+			o.filename.free(mem);
+		}
+		mem::free(test_outputs);
 	}
 
 	context.pool.init(num_threads, context.total_test_files)!!;
@@ -150,10 +150,10 @@ fn int main(String[] args)
 
 	if (!context.no_terminal) io::print(all_ok ? (String)Ansi.GREEN : (String)Ansi.RED);
 	io::printfn("\nFound %d tests: %.1f%% (%d / %d) passed (%d skipped, %d failed).",
-        total, (100.0 * success) / math::max(1, to_run), success, to_run, skipped, failed);
-    if (!context.no_terminal) io::print(Ansi.RESET);
+		total, (100.0 * success) / math::max(1, to_run), success, to_run, skipped, failed);
+	if (!context.no_terminal) io::print(Ansi.RESET);
 
-    return all_ok ? 0 : 1;
+	return all_ok ? 0 : 1;
 }
 
 
@@ -338,8 +338,8 @@ fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, O
 		foreach(w : missed_warnings) io::fprintn(buffer_stream, w)!!;
 	}
 
-    io::fprintn(buffer_stream)!!;
-    return false;
+	io::fprintn(buffer_stream)!!;
+	return false;
 }
 
 <*
@@ -518,7 +518,8 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 		line_no++;
 	}
 	settings.current_file.close();
-	defer {
+	defer
+	{
 		foreach (&r : settings.input_files) r.release();
 		foreach (&r : settings.output_files) r.release();
 	}
@@ -561,7 +562,7 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 	}
 	SubProcess compilation = process::create(cmdline.array_view(), { .search_user_path, .no_window, .inherit_environment })!!;
 	defer compilation.destroy();
-    CInt result = compilation.join() ?? 1;
+	CInt result = compilation.join() ?? 1;
 	DString out;
 	io::copy_to(&&compilation.stderr(), &out)!!;
 	if (result != 0 && result != 1)
@@ -576,8 +577,8 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 		Path expected_file = test_dir.tappend(file.ptr.name)!!;
 		if (!file::exists(expected_file.str_view()))
 		{
-    		io::fprintfn((OutStream)&output.buffer, "FAILED - Did not compile file %s.", file.ptr.name)!!;
-    		return false;
+			io::fprintfn((OutStream)&output.buffer, "FAILED - Did not compile file %s.", file.ptr.name)!!;
+			return false;
 		}
 		File file_ll = file::open(expected_file.str_view(), "rb")!!;
 		defer (void)file_ll.close();
@@ -593,14 +594,14 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 		}
 		if (try next)
 		{
-    		io::fprintfn((OutStream)&output.buffer, `FAILED - %s did not contain: "%s"`, file.ptr.name, next)!!;
-    		io::fprintfn((OutStream)&output.buffer, "\n\n\n---------------------------------------------------> %s\n\n", file.ptr.name)!!;
-    		(void)file_ll.seek(0);
-    		io::fprintn((OutStream)&output.buffer, (String)io::read_fully(tmem, &file_ll))!!;
-    		io::fprintfn((OutStream)&output.buffer, "<---------------------------------------------------- %s\n", file_path)!!;
-    		return false;
-    	}
-    }
+			io::fprintfn((OutStream)&output.buffer, `FAILED - %s did not contain: "%s"`, file.ptr.name, next)!!;
+			io::fprintfn((OutStream)&output.buffer, "\n\n\n---------------------------------------------------> %s\n\n", file.ptr.name)!!;
+			(void)file_ll.seek(0);
+			io::fprintn((OutStream)&output.buffer, (String)io::read_fully(tmem, &file_ll))!!;
+			io::fprintfn((OutStream)&output.buffer, "<---------------------------------------------------- %s\n", file_path)!!;
+			return false;
+		}
+	}
 	context.success_count.add(1);
 	update_status(index, {}, output);
 	return true;
@@ -643,33 +644,33 @@ fn void? collect_files(Path file_path, List{Path}* files)
 
 	foreach (f : entries)
 	{
-        Path current_file = file_path.append(tmem, f.str_view())!;
-        switch
-        {
-            case path::is_dir(current_file):
-                collect_files(current_file, files)!;
-            case path::is_file(current_file):
-                switch (current_file.extension() ?? "")
-                {
-                    case "c3":
-                    case "c3t":
-                        files.push(current_file);
-                }
-            default:
-                io::printfn("Skip %s", current_file);
-                // Ignore
-        }
+		Path current_file = file_path.append(tmem, f.str_view())!;
+		switch
+		{
+			case path::is_dir(current_file):
+				collect_files(current_file, files)!;
+			case path::is_file(current_file):
+				switch (current_file.extension() ?? "")
+				{
+					case "c3":
+					case "c3t":
+						files.push(current_file);
+				}
+			default:
+				io::printfn("Skip %s", current_file);
+				// Ignore
+		}
 	}
 }
 
 fn void usage(String appname) @noreturn
 {
-    io::printfn("Usage: %s <compiler path> <file/dir> [options]", appname);
-    io::printn();
-    io::printn("Options:");
-    io::printn("  -s, --skipped       only run skipped tests");
-    io::printn("  --no-terminal       disable color and dynamic status line");
-    io::printn("  --stdlib <path>     override the path to stdlib");
+	io::printfn("Usage: %s <compiler path> <file/dir> [options]", appname);
+	io::printn();
+	io::printn("Options:");
+	io::printn("  -s, --skipped       only run skipped tests");
+	io::printn("  --no-terminal       disable color and dynamic status line");
+	io::printn("  --stdlib <path>     override the path to stdlib");
 	io::printfn("  --threads [N]       run tests in N threads (default: %s)", os::num_cpu());
 	os::exit(0);
 }

@@ -90,7 +90,6 @@ jobs:
           ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib --print-linking examples\raylib\raylib_tetris.c3
 
       - name: run compiler tests
-        if: matrix.build_type == 'Release'
         run: |
           cd test
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run -O1 src/test_suite_runner.c3 -- ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
