@@ -138,7 +138,7 @@ macro Blake3 new_from_context(char[] context)
 	defer mem::zero_volatile(context_based_key[..]);
 
 	Blake3 key_from_ctx @noinit;
-    defer key_from_ctx.destroy();
+	defer key_from_ctx.destroy();
 	key_from_ctx.init(explicit_flags: Blake3Flags.DERIVE_KEY_CONTEXT);
 	key_from_ctx.update(context);
 	key_from_ctx.final(context_based_key[..], KEY_SIZE);
@@ -356,7 +356,7 @@ fn usz Blake3ChunkState.fill_buf(&self, char[] data) @local @inline
  Determine whether to set the CHUNK_START flag.
 *>
 fn char Blake3ChunkState.maybe_start_flag(&self) @local @inline
-    => !self.blocks_compressed ? Blake3Flags.CHUNK_START : 0;
+	=> !self.blocks_compressed ? Blake3Flags.CHUNK_START : 0;
 
 <*
 *>
