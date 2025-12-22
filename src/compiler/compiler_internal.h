@@ -618,6 +618,7 @@ typedef struct
 typedef struct
 {
 	const char **parameters;
+	AstId contracts;
 } GenericDecl;
 
 typedef struct
@@ -1642,7 +1643,6 @@ typedef struct Module_
 	bool no_extprefix : 1;
 	AnalysisStage stage : 6;
 
-	AstId contracts;
 	HTable symbols;
 	CompilationUnit **units;
 	Module *generic_module;

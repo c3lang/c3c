@@ -5062,12 +5062,6 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 		vec_add(first_context->global_decls, params_decls[i]);
 	}
 
-	if (module->contracts)
-	{
-		copy_begin();
-		new_module->contracts = astid(copy_ast_macro(astptr(module->contracts)));
-		copy_end();
-	}
 	new_module->inlined_at = (InliningSpan) { .span = from_span, .prev = copy_inlining_span(context->inlined_at) };
 
 	return new_module;
@@ -5231,10 +5225,10 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 	return true;
 }
 
-static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module, SourceSpan param_span, SourceSpan invocation_span)
+static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module, Decl *generic_decl, SourceSpan param_span, SourceSpan invocation_span)
 {
-	ASSERT(module->contracts);
-	AstId contract = module->contracts;
+	AstId contract = generic_decl->generic_decl.contracts;
+	ASSERT(contract);
 	while (contract)
 	{
 		Ast *ast = astptr(contract);
@@ -5333,10 +5327,15 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	}
 	if (instantiation)
 	{
-		if (instantiated_module->contracts)
+		Decl *decl = instantiated_module->generic_module->generics[0];
+		AstId contracts = module->generics[0]->generic_decl.contracts;
+		if (contracts)
 		{
+			copy_begin();
+			contracts = astid(copy_ast_macro(astptr(contracts)));
+			copy_end();
 			SourceSpan param_span = extend_span_with_token(params[0]->span, params[parameter_count - 1]->span);
-			if (!sema_analyse_generic_module_contracts(c, instantiated_module, param_span, invocation_span))
+			if (!sema_analyse_generic_module_contracts(c, instantiated_module, decl, param_span, invocation_span))
 			{
 				return poisoned_decl;
 			}

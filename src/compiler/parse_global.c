@@ -207,6 +207,52 @@ static inline bool parse_optional_module_params(ParseContext *c, Decl **decl_ref
 		}
 	}
 }
+
+static inline Ast *sema_contract_find_first_non_comment(AstId contracts)
+{
+	while (contracts)
+	{
+		Ast *current = astptr(contracts);
+		contracts = current->next;
+		ASSERT(current->ast_kind == AST_CONTRACT);
+		switch (current->contract_stmt.kind)
+		{
+			case CONTRACT_UNKNOWN:
+			case CONTRACT_PURE:
+			case CONTRACT_PARAM:
+			case CONTRACT_OPTIONALS:
+			case CONTRACT_ENSURE:
+			case CONTRACT_REQUIRE:
+				return current;
+			case CONTRACT_COMMENT:
+				continue;
+		}
+	}
+	return NULL;
+}
+
+static inline Ast *sema_contract_first_non_comment_require(AstId contracts)
+{
+	while (contracts)
+	{
+		Ast *current = astptr(contracts);
+		contracts = current->next;
+		ASSERT(current->ast_kind == AST_CONTRACT);
+		switch (current->contract_stmt.kind)
+		{
+			case CONTRACT_UNKNOWN:
+			case CONTRACT_PURE:
+			case CONTRACT_PARAM:
+			case CONTRACT_OPTIONALS:
+			case CONTRACT_ENSURE:
+				return current;
+			case CONTRACT_REQUIRE:
+			case CONTRACT_COMMENT:
+				continue;
+		}
+	}
+	return NULL;
+}
 /**
  * module ::= MODULE module_path ('{' module_params '}')? (@public|@private|@local|@test|@export|@cname) EOS
  */
@@ -250,40 +296,28 @@ bool parse_module(ParseContext *c, AstId contracts)
 	{
 		if (!context_set_module(c, path, NULL)) return false;
 		recover_top_level(c);
-		if (contracts) RETURN_PRINT_ERROR_AT(false, astptr(contracts), "Contracts cannot be use with non-generic modules.");
+		if (contracts)
+		{
+			Ast *first_contract = sema_contract_find_first_non_comment(contracts);
+			if (first_contract) RETURN_PRINT_ERROR_AT(false, first_contract, "Contracts cannot be use with non-generic modules.");
+		}
 		return true;
 	}
 	if (!context_set_module(c, path, generic_decl)) return false;
 	if (contracts)
 	{
-		AstId old_contracts = c->unit->module->contracts;
-		if (old_contracts)
+		if (!generic_decl)
 		{
-			Ast *last = ast_last(astptr(old_contracts));
-			last->next = contracts;
+			Ast *first_contract = sema_contract_find_first_non_comment(contracts);
+			if (first_contract) RETURN_PRINT_ERROR_AT(false, first_contract, "Contracts can only be used with '@generic' modules.");
 		}
 		else
 		{
-			c->unit->module->contracts = contracts;
-		}
-		while (contracts)
-		{
-			Ast *current = astptr(contracts);
-			contracts = current->next;
-			ASSERT(current->ast_kind == AST_CONTRACT);
-			switch (current->contract_stmt.kind)
+			Ast *first_invalid_contract = sema_contract_first_non_comment_require(contracts);
+			if (first_invalid_contract)
 			{
-				case CONTRACT_UNKNOWN:
-				case CONTRACT_PURE:
-				case CONTRACT_PARAM:
-				case CONTRACT_OPTIONALS:
-				case CONTRACT_ENSURE:
-					break;
-				case CONTRACT_REQUIRE:
-				case CONTRACT_COMMENT:
-					continue;
+				RETURN_PRINT_ERROR_AT(false, first_invalid_contract, "Invalid constraint - only '@require' is valid for '@generic'.");
 			}
-			RETURN_PRINT_ERROR_AT(false, current, "Invalid constraint - only '@require' is valid for modules.");
 		}
 	}
 	Visibility visibility = VISIBLE_PUBLIC;
