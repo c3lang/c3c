@@ -1,21 +1,7 @@
 ---
 # Configure clang-tidy for this project.
 
-IndentWidth: 4
-UseCRLF: false
-IndentCaseLabels: true
-UseTab: UT_ForIndentation
-TabWidth: 4
-BreakBeforeBraces: Allman
-AllowShortBlocksOnASingleLine: SBS_Empty
-AllowShortIfStatementsOnASingleLine: SIS_WithoutElse
-SpaceBeforeAssignmentOperators: true
-SpaceBeforeCaseColon: false
-SpaceBeforeParens: SBPO_ControlStatementsExceptControlMacros
-SpacesInCStyleCastParentheses: false
-SpacesInConditionalStatement: false
-SpacesInParentheses: false
-SpacesInSquareBrackets: false
+
 
 # Disabled:
 #  -google-readability-namespace-comments the *_CLIENT_NS is a macro, and
