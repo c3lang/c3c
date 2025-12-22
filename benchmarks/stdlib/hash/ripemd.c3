@@ -6,7 +6,8 @@ module ripemd_bench;
 fn void initialize_bench() @init
 {
 	set_benchmark_warmup_iterations(3);
-	set_benchmark_max_iterations(256);
+	set_benchmark_max_iterations(1024);
+    set_benchmark_report_median(true);
 
     input = mem::alloc_array(char, BUFSZ);
     input[:BUFSZ] = (char[]){ [0..BUFSZ-1] = 0xA5 }[..];

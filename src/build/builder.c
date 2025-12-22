@@ -344,6 +344,29 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case COMMAND_BENCHMARK:
 			target->run_after_compile = !options->suppress_run;
 			target->type = TARGET_TYPE_BENCHMARK;
+			if (options->benchmark_csv_report) vec_add(target->args, "--benchmark-csv-report");
+			switch (options->benchmark_median)
+			{
+				case BENCHMARK_MEDIAN_OFF:
+					vec_add(target->args, "--benchmark-no-median");
+					break;
+				case BENCHMARK_MEDIAN_ON:
+					vec_add(target->args, "--benchmark-median");
+					break;
+				default:
+					break;
+			}
+			switch (options->ansi)
+			{
+				case ANSI_ON:
+					vec_add(target->args, "--useansi");
+					break;
+				case ANSI_OFF:
+					vec_add(target->args, "--noansi");
+					break;
+				default:
+					break;
+			}
 			break;
 		case COMMAND_COMPILE_TEST:
 		case COMMAND_TEST:

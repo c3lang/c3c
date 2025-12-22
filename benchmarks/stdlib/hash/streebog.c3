@@ -7,6 +7,7 @@ fn void initialize_bench() @init
 {
 	set_benchmark_warmup_iterations(3);
 	set_benchmark_max_iterations(256);
+    set_benchmark_report_median(true);
 }
 
 const char[] INPUT = { [0..1024*1024] = 0xA5 };

@@ -185,6 +185,13 @@ typedef enum
 
 typedef enum
 {
+	BENCHMARK_MEDIAN_NOT_SET = -1,
+	BENCHMARK_MEDIAN_OFF = 0,
+	BENCHMARK_MEDIAN_ON = 1,
+} BenchmarkMedian;
+
+typedef enum
+{
 	SINGLE_MODULE_NOT_SET = -1,
 	SINGLE_MODULE_OFF = 0, // NOLINT
 	SINGLE_MODULE_ON = 1
@@ -546,6 +553,8 @@ typedef struct BuildOptions_
 	bool test_nosort;
 	bool test_noleak;
 	bool test_show_output;
+	bool benchmark_csv_report;
+	BenchmarkMedian benchmark_median;
 	const char *custom_linker_path;
 	uint32_t symtab_size;
 	unsigned version;

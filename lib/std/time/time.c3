@@ -1,5 +1,5 @@
 module std::time;
-import std::io, std::time::os;
+import std::io, std::time::os, std::math;
 
 typedef Time @structlike = long;
 typedef Duration @structlike = long;
@@ -113,6 +113,28 @@ fn Duration NanoDuration.to_duration(nd) => (Duration)nd / 1_000;
 fn NanoDuration Duration.to_nano(td) => (NanoDuration)td * 1_000;
 fn long Duration.to_ms(td) => (long)td / 1_000;
 macro Duration Duration.mult(#td, long #val) @operator_s(*) @safemacro => (Duration)((long)#td * #val);
+
+fn String NanoDuration.unit_str(&self, Allocator allocator, bool use_short_units = true)
+{
+	static String[] units = { "nanoseconds", "microseconds", "milliseconds", "seconds" };
+	static String[] short_units = { "ns", "us", "ms", "s" }; // using Mu here causes spacing oddities, just using 'us'
+
+	double reduced_value = (double)*self;
+	while (reduced_value > 1_000) reduced_value /= 1_000;
+
+	DString out_str;
+	out_str.appendf(
+		use_short_units ? "%.2f%s" : "%.2f %s",
+		reduced_value,
+		(use_short_units ? short_units : units)[math::min(3, (int)math::floor(math::log((double)*self, 1_000)))]
+	);
+	return out_str.str_view();
+}
+
+fn String NanoDuration.tunit_str(&self, bool use_short_units = true)
+{
+	return self.unit_str(tmem, use_short_units);
+}
 
 fn usz? NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 {

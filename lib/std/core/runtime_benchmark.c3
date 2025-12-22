@@ -1,9 +1,27 @@
 module std::core::runtime;
-import libc, std::time, std::io, std::sort, std::math, std::collections::map;
+import libc, std::time, std::io, std::sort, std::math, std::collections;
 
 alias BenchmarkFn = fn void ();
 
-HashMap { String, uint } bench_fn_iters @local;
+BenchContext bench_context @local;
+
+struct BenchContext
+{
+	uint warmup_iterations;
+	uint max_iterations;
+	HashMap { String, uint } fn_iters;
+	Clock clock;
+	NanoDuration nano_seconds;
+	long cycle_start;
+	long cycle_stop;
+	DString log;
+	bool is_warming;
+	uint this_iteration;
+	bool stop;
+	bool report_median;
+	bool has_ansi_codes;
+	bool generate_csv;
+}
 
 struct BenchmarkUnit
 {
@@ -19,7 +37,7 @@ fn BenchmarkUnit[] benchmark_collection_create(Allocator allocator)
 	foreach (i, benchmark : fns)
 	{
 		benchmarks[i] = { names[i], fns[i] };
-		if (!bench_fn_iters.has_key(names[i])) bench_fn_iters[names[i]] = benchmark_max_iterations;
+		if (!bench_context.fn_iters.has_key(names[i])) bench_context.fn_iters[names[i]] = bench_context.max_iterations;
 	}
 	return benchmarks;
 }
@@ -27,72 +45,101 @@ fn BenchmarkUnit[] benchmark_collection_create(Allocator allocator)
 const DEFAULT_BENCHMARK_WARMUP_ITERATIONS = 3;
 const DEFAULT_BENCHMARK_MAX_ITERATIONS = 10000;
 
-uint benchmark_warmup_iterations @private = DEFAULT_BENCHMARK_WARMUP_ITERATIONS;
-uint benchmark_max_iterations @private = DEFAULT_BENCHMARK_MAX_ITERATIONS;
+<*
+ @require $defined((double)set[0])
+ @require lengthof(set) > 0
+*>
+macro get_median(set) @local
+	=> lengthof(set) % 2 != 0
+		? (double)set[lengthof(set) >> 1]
+		: ((double)(set[lengthof(set) >> 1 - 1] + set[lengthof(set) >> 1]) / 2.0);
 
 fn void set_benchmark_warmup_iterations(uint value) @builtin
 {
-    benchmark_warmup_iterations = value;
+	bench_context.warmup_iterations = value;
 }
 
 fn void set_benchmark_max_iterations(uint value) @builtin
 {
-    assert(value > 0);
-    benchmark_max_iterations = value;
-	foreach (k : bench_fn_iters.key_iter()) bench_fn_iters[k] = value;
+	assert(value > 0);
+	bench_context.max_iterations = value;
+	foreach (k : bench_context.fn_iters.key_iter()) bench_context.fn_iters[k] = value;
 }
 
 fn void set_benchmark_func_iterations(String func, uint value) @builtin
 {
 	assert(value > 0);
-	bench_fn_iters[func] = value;
+	bench_context.fn_iters[func] = value;
+}
+
+fn void set_benchmark_report_median(bool does) @builtin
+{
+	bench_context.report_median = does;
 }
 
 
-Clock benchmark_clock @local;
-NanoDuration benchmark_nano_seconds @local;
-long cycle_start @local;
-long cycle_stop @local;
-DString benchmark_log @local;
-bool benchmark_warming @local;
-uint this_iteration @local;
-bool benchmark_stop @local;
-
 macro void @start_benchmark()
 {
-	benchmark_clock = clock::now();
-	cycle_start = $$sysclock();
+	bench_context.clock = clock::now();
+	bench_context.cycle_start = $$sysclock();
 }
 
 macro void @end_benchmark()
 {
-	benchmark_nano_seconds = benchmark_clock.mark();
-	cycle_stop = $$sysclock();
+	bench_context.nano_seconds = bench_context.clock.mark();
+	bench_context.cycle_stop = $$sysclock();
 }
 
 macro void @kill_benchmark(String format, ...)
 {
 	@log_benchmark(format, $vasplat);
-	benchmark_stop = true;
+	bench_context.stop = true;
 }
 
 macro void @log_benchmark(msg, args...) => @pool()
 {
-	if (benchmark_warming) return;
+	if (bench_context.is_warming) return;
 
-	benchmark_log.appendf("%s [%d]:  ", $$FUNC, this_iteration);
-	benchmark_log.appendfn(msg, ...args);
+	bench_context.log.appendf("%s [%d]:  ", $$FUNC, bench_context.this_iteration);
+	bench_context.log.appendfn(msg, ...args);
 }
 
-fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
-{
-	usz max_name;
 
-	foreach (&unit : benchmarks)
+fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
+{
+	if (!benchmarks.len)
 	{
-		if (max_name < unit.name.len) max_name = unit.name.len;
+		io::printn("There are no test units to run.");
+		return true;
 	}
 
+	BenchContext* ctx = &bench_context;
+	ctx.has_ansi_codes = terminal_has_ansi_codes();
+
+	if (!ctx.warmup_iterations) ctx.warmup_iterations = DEFAULT_BENCHMARK_WARMUP_ITERATIONS;
+	if (!ctx.max_iterations) ctx.max_iterations = DEFAULT_BENCHMARK_MAX_ITERATIONS;
+
+	for (usz i = 1; i < args.len; i++)
+	{
+		switch (args[i])
+		{
+			case "--noansi":
+				ctx.has_ansi_codes = false;
+			case "--useansi":
+				ctx.has_ansi_codes = true;
+			case "--benchmark-no-median":
+				ctx.report_median = false;
+			case "--benchmark-median":
+				ctx.report_median = true;
+			case "--benchmark-csv-report":
+				ctx.generate_csv = true;
+			default:
+				io::printfn("Invalid argument: %s", args[i]);
+		}
+	}
+
+	usz max_name;
+	foreach (&unit : benchmarks) max_name = max(max_name, unit.name.len);
 	usz len = max_name + 9;
 
 	DString name = dstring::temp_with_capacity(64);
@@ -101,86 +148,133 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 	name.append_repeat('-', len - len / 2);
 
 	io::printn(name);
-
 	name.clear();
 
-	foreach (unit : benchmarks)
+	DString csv_report;
+	csv_report.init(mem);
+	defer csv_report.free();
+
+	csv_report.append("Function Name,Iterations,Clock Cycles,Average,Average Nanoseconds");
+	if (ctx.report_median) csv_report.append(",Median,Median Nanoseconds");
+	csv_report.append("\r\n");
+
+	foreach (unit : benchmarks) @pool()
 	{
+		List {NanoDuration} captured_times;
+		captured_times.tinit();
+
 		defer name.clear();
 		name.appendf("Benchmarking %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
 		io::printf("%s ", name.str_view());
 
-		benchmark_warming = true;
-		for (uint i = 0; i < benchmark_warmup_iterations; i++)
+		ctx.is_warming = true;
+		for (uint i = 0; i < ctx.warmup_iterations; i++)
 		{
 			unit.func() @inline;
 		}
-		benchmark_warming = false;
+		ctx.is_warming = false;
 
 		NanoDuration running_timer;
 		long total_clocks;
 
-		uint current_benchmark_iterations = bench_fn_iters[unit.name] ?? benchmark_max_iterations;
+		uint current_unit_iterations = ctx.fn_iters[unit.name] ?? ctx.max_iterations;
 		char[] perc_str = { [0..19] = ' ', [20] = 0 };
 		int perc = 0;
-		uint print_step = current_benchmark_iterations / 100;
+		uint print_step = current_unit_iterations / 100;
 
-		for (this_iteration = 0; this_iteration < current_benchmark_iterations; ++this_iteration, benchmark_nano_seconds = {})
+		for (ctx.this_iteration = 0; ctx.this_iteration < current_unit_iterations; ++ctx.this_iteration, ctx.nano_seconds = {})
 		{
-			if (0 == this_iteration % print_step)   // only print right about when the % will update
+			if (print_step && 0 == ctx.this_iteration % print_step)   // only print right about when the % will update
 			{
-				perc_str[0..(uint)math::floor((this_iteration / (float)current_benchmark_iterations) * 20)] = '#';
-				perc = (uint)math::ceil(100 * (this_iteration / (float)current_benchmark_iterations));
+				perc_str[0..(uint)math::floor((ctx.this_iteration / (float)current_unit_iterations) * 20)] = '#';
+				perc = (uint)math::ceil(100 * (ctx.this_iteration / (float)current_unit_iterations));
 
-				io::printf("\r%s [%s] %d / %d (%d%%)", name.str_view(), (ZString)perc_str, this_iteration, current_benchmark_iterations, perc);
+				io::printf(
+					ctx.has_ansi_codes
+						? "\r\e[97m%s\e[0m [\e[0;32m%s\e[0m] %d / %d (\e[0;96m%d%%\e[0m) "
+						: "\r%s [%s] %d / %d (%d%%) ",
+					name.str_view(), (ZString)perc_str, ctx.this_iteration, current_unit_iterations, perc
+				);
 				io::stdout().flush()!!;
 			}
 
 			@start_benchmark();   // can be overridden by calls inside the unit's func
 
 			unit.func() @inline;
-			if (benchmark_stop) return false;
+			if (ctx.stop) return false;
 
-			if (benchmark_nano_seconds == (NanoDuration){}) @end_benchmark();   // only mark when it wasn't already by the unit.func
+			if (ctx.nano_seconds == (NanoDuration){}) @end_benchmark();   // only mark when it wasn't already by the unit.func
 
-			total_clocks += cycle_stop - cycle_start;
-			running_timer += benchmark_nano_seconds;
+			total_clocks += ctx.cycle_stop - ctx.cycle_start;
+			running_timer += ctx.nano_seconds;
+			captured_times.push(ctx.nano_seconds);
 		}
 
-		float clock_cycles = (float)total_clocks / current_benchmark_iterations;
-		float measurement = (float)running_timer / current_benchmark_iterations;
-		String[] units = { "nanoseconds", "microseconds", "milliseconds", "seconds" };
+		float clock_cycles = (float)total_clocks / current_unit_iterations;
+		float measurement = (float)running_timer / current_unit_iterations;
 
-		float adjusted_measurement = measurement;
-		while (adjusted_measurement > 1_000) adjusted_measurement /= 1_000;
-		float adjusted_runtime_total = (float)running_timer;
-		while (adjusted_runtime_total > 1_000) adjusted_runtime_total /= 1_000;
+		DString median_report = dstring::temp_with_capacity(48);
+		defer median_report.clear();
+		if (ctx.report_median)
+		{
+			io::printf(ctx.has_ansi_codes ? "  [\e[0;31msorting results...\e[0m]  " : "  [sorting results...]  "); io::stdout().flush()!!;
+			quicksort(&captured_times, fn int (NanoDuration a, NanoDuration b) => (int)(a - b));
+			median_report.appendf(ctx.has_ansi_codes ? " avg, \e[0;95m%8s\e[0m med" : " avg, %8s med", ((NanoDuration)get_median(captured_times)).tunit_str());
+		}
 
 		io::printf("\r%s ", name.str_view());
 		io::printfn(
-			"[COMPLETE] %.2f %s, %.2f CPU clocks, %d iterations (runtime %.2f %s)",
-			adjusted_measurement,
-			units[math::min(3, (int)math::floor(math::log(measurement, 1_000)))],
+			ctx.has_ansi_codes
+				? " \e[0;94m%8s\e[0m%s, %10.2f CPU clocks, %d iters in \e[0;93m%s\e[0m"
+				: " %8s%s, %10.2f CPU clocks, %d iters in %s",
+			((NanoDuration)measurement).tunit_str(),
+			median_report.str_view(),
 			clock_cycles,
-			current_benchmark_iterations,
-			adjusted_runtime_total,
-			units[math::min(3, (int)math::floor(math::log((float)running_timer, 1_000)))],
+			current_unit_iterations,
+			running_timer.tunit_str()
 		);
-	}
+
+		if (ctx.generate_csv)
+		{
+			// Function Name,Iterations,Clock Cycles,Average,Average Nanoseconds[,Median,Median Nanoseconds]
+			csv_report.appendf(
+				"%s,%d,%d,%s,%d",
+				unit.name,
+				current_unit_iterations,
+				clock_cycles,
+				((NanoDuration)measurement).tunit_str(),
+				(long)measurement,
+			);
+			if (ctx.report_median) csv_report.appendf(",%s,%d", ((NanoDuration)get_median(captured_times)).tunit_str(), (long)get_median(captured_times));
+			csv_report.append("\r\n");
+		}
+	};
 
 	io::printfn("\n%d benchmark%s run.\n", benchmarks.len, benchmarks.len > 1 ? "s" : "");
+
+	if (ctx.generate_csv)
+	{
+		name.append_repeat('-', len / 2);
+		name.append(" CSV REPORT ");
+		name.append_repeat('-', len - len / 2);
+		io::printn(name);
+		name.clear();
+		io::print(csv_report);
+		io::print("\n");
+	}
+
 	return true;
 }
 
-fn bool default_benchmark_runner(String[] args) => @pool()
+fn bool default_benchmark_runner(String[] args)
 {
-	benchmark_log.init(mem);
+	bench_context.log.init(mem);
 	defer
 	{
-		if (benchmark_log.len()) io::printfn("\n---------- BENCHMARK LOG ----------\n%s\n", benchmark_log.str_view());
-		benchmark_log.free();
+		if (bench_context.log.len()) io::printfn("\n---------- BENCHMARK LOG ----------\n%s\n", bench_context.log.str_view());
+		bench_context.log.free();
 	}
 
-	return run_benchmarks(benchmark_collection_create(tmem));
+	return run_benchmarks(args, benchmark_collection_create(tmem));
 }
