@@ -109,7 +109,7 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 {
 	if (!benchmarks.len)
 	{
-		io::printn("There are no test units to run.");
+		io::printn("There are no benchmark units to run.");
 		return true;
 	}
 
