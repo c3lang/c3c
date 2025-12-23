@@ -182,7 +182,7 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 
 	csv_report.append("Function Name,Iterations,Clock Cycles,Average,Average Nanoseconds");
 	if (ctx.report_median) csv_report.append(",Median,Median Nanoseconds");
-	csv_report.append("\r\n");
+	csv_report.append("\n");
 
 	foreach (unit : benchmarks) @pool()
 	{
