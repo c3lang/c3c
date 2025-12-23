@@ -16,7 +16,13 @@ macro int @main_to_err_main(#m, int, char**)
 	if (catch #m()) return 1;
 	return 0;
 }
-macro int @main_to_int_main(#m, int, char**) => #m();
+macro int @main_to_int_main(#m, int, char**)
+{
+	$if env::WIN32:
+		win32::setConsoleOutputCP(UTF8);
+	$endif
+	return #m();
+}
 macro int @main_to_void_main(#m, int, char**)
 {
 	$if env::WIN32:
