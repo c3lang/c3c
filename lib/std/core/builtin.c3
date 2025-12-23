@@ -452,10 +452,10 @@ macro @prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write =
 }
 
 <*
- Shuffle a vector by it's index
+ Shuffle a vector by its index
  
  int[<4>] a = { 1, 2, 3, 4 };
- assert($$swizzle(a, 0, 1, 1, 3) == (int[<4>]) { 1, 2, 2, 4 });
+ assert(swizzle(a, 0, 1, 1, 3) == (int[<4>]) { 1, 2, 2, 4 });
 *>
 macro swizzle(v, ...) @builtin
 {
@@ -467,7 +467,7 @@ macro swizzle(v, ...) @builtin
 
  int[<4>] a = { 1, 2, 3, 4 };
  int[<4>] b = { 100, 1000, 10000, 100000 };
- assert($$swizzle2(a, b, 0, 1, 4, 6, 2) == (int[<5>]) { 1, 2, 100, 10000, 3 });
+ assert(swizzle2(a, b, 0, 1, 4, 6, 2) == (int[<5>]) { 1, 2, 100, 10000, 3 });
 *>
 macro swizzle2(v, v2, ...) @builtin
 {
