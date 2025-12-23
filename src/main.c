@@ -7,6 +7,9 @@
 #ifdef __OpenBSD__
 #include <sys/resource.h>
 #endif
+#if PLATFORM_WINDOWS
+#include <windows.h>
+#endif
 
 bool debug_log = false;
 
@@ -36,6 +39,10 @@ int main_real(int argc, const char *argv[])
 	getrlimit(RLIMIT_DATA, &l);
 	l.rlim_cur = l.rlim_max;
 	setrlimit(RLIMIT_DATA, &l);
+#endif
+#if PLATFORM_WINDOWS
+	// Set the console output mode to utf8 to correctly print utf8 text in error messages
+	SetConsoleOutputCP(65001);
 #endif
 	bench_begin();
 
