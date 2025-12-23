@@ -7,17 +7,17 @@ fn void initialize_bench() @init
 {
 	set_benchmark_warmup_iterations(3);
 	set_benchmark_max_iterations(1024);
-    set_benchmark_report_median(true);
+	set_benchmark_report_median(true);
 
-    input = mem::alloc_array(char, BUFSZ);
-    input[:BUFSZ] = (char[]){ [0..BUFSZ-1] = 0xA5 }[..];
-    input_slice = input[:BUFSZ];
+	input = mem::alloc_array(char, BUFSZ);
+	input[:BUFSZ] = (char[]){ [0..BUFSZ-1] = 0xA5 }[..];
+	input_slice = input[:BUFSZ];
 }
 
 fn void teardown_bench() @finalizer
 {
-    mem::free(input);
-    input = null;
+	mem::free(input);
+	input = null;
 }
 
 char* input;
@@ -30,48 +30,48 @@ import std::hash;
 
 fn void ripemd_128()
 {
-    runtime::@start_benchmark();
-    char[*] myset = ripemd::hash{128}(input_slice);
-    runtime::@end_benchmark();
-    mem::zero_volatile(myset[..]);
+	runtime::@start_benchmark();
+	char[*] myset = ripemd::hash{128}(input_slice);
+	runtime::@end_benchmark();
+	mem::zero_volatile(myset[..]);
 }
 
 fn void ripemd_160()
 {
-    runtime::@start_benchmark();
-    char[*] myset = ripemd::hash{160}(input_slice);
-    runtime::@end_benchmark();
-    mem::zero_volatile(myset[..]);
+	runtime::@start_benchmark();
+	char[*] myset = ripemd::hash{160}(input_slice);
+	runtime::@end_benchmark();
+	mem::zero_volatile(myset[..]);
 }
 
 fn void ripemd_256()
 {
-    runtime::@start_benchmark();
-    char[*] myset = ripemd::hash{256}(input_slice);
-    runtime::@end_benchmark();
-    mem::zero_volatile(myset[..]);
+	runtime::@start_benchmark();
+	char[*] myset = ripemd::hash{256}(input_slice);
+	runtime::@end_benchmark();
+	mem::zero_volatile(myset[..]);
 }
 
 fn void ripemd_320()
 {
-    runtime::@start_benchmark();
-    char[*] myset = ripemd::hash{320}(input_slice);
-    runtime::@end_benchmark();
-    mem::zero_volatile(myset[..]);
+	runtime::@start_benchmark();
+	char[*] myset = ripemd::hash{320}(input_slice);
+	runtime::@end_benchmark();
+	mem::zero_volatile(myset[..]);
 }
 
 fn void compared_with_sha256()
 {
-    runtime::@start_benchmark();
-    char[*] myset = sha256::hash(input_slice);
-    runtime::@end_benchmark();
-    mem::zero_volatile(myset[..]);
+	runtime::@start_benchmark();
+	char[*] myset = sha256::hash(input_slice);
+	runtime::@end_benchmark();
+	mem::zero_volatile(myset[..]);
 }
 
 fn void compared_with_whirlpool()
 {
-    runtime::@start_benchmark();
-    char[*] myset = whirlpool::hash(input_slice);
-    runtime::@end_benchmark();
-    mem::zero_volatile(myset[..]);
+	runtime::@start_benchmark();
+	char[*] myset = whirlpool::hash(input_slice);
+	runtime::@end_benchmark();
+	mem::zero_volatile(myset[..]);
 }

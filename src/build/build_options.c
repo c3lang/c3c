@@ -1514,6 +1514,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.validation_level = VALIDATION_NOT_SET,
 		.ansi = ANSI_DETECT,
+		.benchmark_median = BENCHMARK_MEDIAN_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.sanitize_mode = SANITIZE_NOT_SET,

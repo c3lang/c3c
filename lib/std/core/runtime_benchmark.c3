@@ -1,9 +1,17 @@
 module std::core::runtime;
 import libc, std::time, std::io, std::sort, std::math, std::collections;
 
+const DEFAULT_WARMUP_ITERS @local = 3;
+const DEFAULT_MAX_ITERS @local = 10000;
+
+faultdef MISSING_CHOICE, INVALID_CHOICE @local;
+
 alias BenchmarkFn = fn void ();
 
-BenchContext bench_context @local;
+BenchContext bench_context @local = {
+	.warmup_iterations = DEFAULT_WARMUP_ITERS,
+	.max_iterations = DEFAULT_MAX_ITERS,
+};
 
 struct BenchContext
 {
@@ -34,16 +42,17 @@ fn BenchmarkUnit[] benchmark_collection_create(Allocator allocator)
 	BenchmarkFn[] fns = $$BENCHMARK_FNS;
 	String[] names = $$BENCHMARK_NAMES;
 	BenchmarkUnit[] benchmarks = allocator::alloc_array(allocator, BenchmarkUnit, names.len);
+
 	foreach (i, benchmark : fns)
 	{
 		benchmarks[i] = { names[i], fns[i] };
-		if (!bench_context.fn_iters.has_key(names[i])) bench_context.fn_iters[names[i]] = bench_context.max_iterations;
+		if (!bench_context.fn_iters.has_key(names[i]))
+		{
+			bench_context.fn_iters[names[i]] = bench_context.max_iterations;
+		}
 	}
 	return benchmarks;
 }
-
-const DEFAULT_BENCHMARK_WARMUP_ITERATIONS = 3;
-const DEFAULT_BENCHMARK_MAX_ITERATIONS = 10000;
 
 <*
  @require $defined((double)set[0])
@@ -51,8 +60,8 @@ const DEFAULT_BENCHMARK_MAX_ITERATIONS = 10000;
 *>
 macro get_median(set) @local
 	=> lengthof(set) % 2 != 0
-		? (double)set[lengthof(set) >> 1]
-		: ((double)(set[lengthof(set) >> 1 - 1] + set[lengthof(set) >> 1]) / 2.0);
+		? (double)set[lengthof(set) / 2]
+		: ((double)(set[lengthof(set) / 2 - 1] + set[lengthof(set) / 2]) / 2.0);
 
 fn void set_benchmark_warmup_iterations(uint value) @builtin
 {
@@ -105,6 +114,27 @@ macro void @log_benchmark(msg, args...) => @pool()
 }
 
 
+fn bool? get_yes_no(String[] args_at)
+{
+	if (args_at.len < 2)
+	{
+		io::printfn("Missing argument for `%s` - expected 'yes' or 'no'.", args_at[0]);
+		return MISSING_CHOICE?;
+	}
+	switch (args_at[1].to_lower_copy(tmem))
+	{
+		case "on":
+		case "yes":
+			return true;
+		case "off":
+		case "no":
+			return false;
+		default:
+			io::printfn("Missing argument for `%s` - expected 'yes' or 'no'.", args_at[0]);
+			return INVALID_CHOICE?;
+	}
+}
+
 fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 {
 	if (!benchmarks.len)
@@ -116,25 +146,21 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 	BenchContext* ctx = &bench_context;
 	ctx.has_ansi_codes = terminal_has_ansi_codes();
 
-	if (!ctx.warmup_iterations) ctx.warmup_iterations = DEFAULT_BENCHMARK_WARMUP_ITERATIONS;
-	if (!ctx.max_iterations) ctx.max_iterations = DEFAULT_BENCHMARK_MAX_ITERATIONS;
-
 	for (usz i = 1; i < args.len; i++)
 	{
 		switch (args[i])
 		{
-			case "--noansi":
-				ctx.has_ansi_codes = false;
-			case "--useansi":
-				ctx.has_ansi_codes = true;
-			case "--benchmark-no-median":
-				ctx.report_median = false;
-			case "--benchmark-median":
-				ctx.report_median = true;
-			case "--benchmark-csv-report":
+			case "--ansi":
+				if (catch @try(ctx.has_ansi_codes, get_yes_no(args[i..]))) return false;
+				i++;
+			case "--median":
+				if (catch @try(ctx.report_median, get_yes_no(args[i..]))) return false;
+				i++;
+			case "--csv-report":
 				ctx.generate_csv = true;
 			default:
 				io::printfn("Invalid argument: %s", args[i]);
+				return false;
 		}
 	}
 
@@ -160,6 +186,13 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 
 	foreach (unit : benchmarks) @pool()
 	{
+		uint current_unit_iterations = ctx.fn_iters[unit.name] ?? ctx.max_iterations;
+		if (current_unit_iterations == 0)
+		{
+			io::printfn("~~~ Skipping unit `%s` (0 iterations count)...", unit.name);
+			continue;
+		}
+
 		List {NanoDuration} captured_times;
 		captured_times.tinit();
 
@@ -178,7 +211,6 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 		NanoDuration running_timer;
 		long total_clocks;
 
-		uint current_unit_iterations = ctx.fn_iters[unit.name] ?? ctx.max_iterations;
 		char[] perc_str = { [0..19] = ' ', [20] = 0 };
 		int perc = 0;
 		uint print_step = current_unit_iterations / 100;
@@ -237,7 +269,6 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 
 		if (ctx.generate_csv)
 		{
-			// Function Name,Iterations,Clock Cycles,Average,Average Nanoseconds[,Median,Median Nanoseconds]
 			csv_report.appendf(
 				"%s,%d,%d,%s,%d",
 				unit.name,
@@ -247,7 +278,7 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 				(long)measurement,
 			);
 			if (ctx.report_median) csv_report.appendf(",%s,%d", ((NanoDuration)get_median(captured_times)).tunit_str(), (long)get_median(captured_times));
-			csv_report.append("\r\n");
+			csv_report.append("\n");
 		}
 	};
 

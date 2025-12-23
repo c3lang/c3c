@@ -7,7 +7,7 @@ fn void initialize_bench() @init
 {
 	set_benchmark_warmup_iterations(3);
 	set_benchmark_max_iterations(256);
-    set_benchmark_report_median(true);
+	set_benchmark_report_median(true);
 }
 
 const char[] INPUT = { [0..1024*1024] = 0xA5 };
@@ -21,32 +21,32 @@ import std::hash;
 
 fn void get_in_the_bog_256()
 {
-    runtime::@start_benchmark();
-    char[*] myset = streebog::hash_256(INPUT);
-    runtime::@end_benchmark();
-    mem::zero_volatile(myset[..]);
+	runtime::@start_benchmark();
+	char[*] myset = streebog::hash_256(INPUT);
+	runtime::@end_benchmark();
+	mem::zero_volatile(myset[..]);
 }
 
 fn void get_in_the_bog_512()
 {
-    runtime::@start_benchmark();
-    char[*] myset = streebog::hash_512(INPUT);
-    runtime::@end_benchmark();
-    mem::zero_volatile(myset[..]);
+	runtime::@start_benchmark();
+	char[*] myset = streebog::hash_512(INPUT);
+	runtime::@end_benchmark();
+	mem::zero_volatile(myset[..]);
 }
 
 fn void compared_with_sha256()
 {
-    runtime::@start_benchmark();
-    char[*] myset = sha256::hash(INPUT);
-    runtime::@end_benchmark();
-    mem::zero_volatile(myset[..]);
+	runtime::@start_benchmark();
+	char[*] myset = sha256::hash(INPUT);
+	runtime::@end_benchmark();
+	mem::zero_volatile(myset[..]);
 }
 
 fn void compared_with_whirlpool()
 {
-    runtime::@start_benchmark();
-    char[*] myset = whirlpool::hash(INPUT);
-    runtime::@end_benchmark();
-    mem::zero_volatile(myset[..]);
+	runtime::@start_benchmark();
+	char[*] myset = whirlpool::hash(INPUT);
+	runtime::@end_benchmark();
+	mem::zero_volatile(myset[..]);
 }

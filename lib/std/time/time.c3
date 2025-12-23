@@ -118,15 +118,16 @@ fn String NanoDuration.unit_str(&self, Allocator allocator, bool use_short_units
 {
 	static String[] units = { "nanoseconds", "microseconds", "milliseconds", "seconds" };
 	static String[] short_units = { "ns", "us", "ms", "s" }; // using Mu here causes spacing oddities, just using 'us'
+	usz units_idx = 0;
 
 	double reduced_value = (double)*self;
-	while (reduced_value > 1_000) reduced_value /= 1_000;
+	for (; reduced_value > 1_000 && units_idx < units.len - 1; reduced_value /= 1_000, units_idx++);
 
-	DString out_str;
+	DString out_str = dstring::new_with_capacity(allocator, 32);
 	out_str.appendf(
 		use_short_units ? "%.2f%s" : "%.2f %s",
 		reduced_value,
-		(use_short_units ? short_units : units)[math::min(3, (int)math::floor(math::log((double)*self, 1_000)))]
+		(use_short_units ? short_units : units)[units_idx]
 	);
 	return out_str.str_view();
 }
