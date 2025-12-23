@@ -1639,7 +1639,6 @@ typedef struct Module_
 	bool is_external : 1;
 	bool is_c_library : 1;
 	bool is_exported : 1;
-	bool is_generic : 1;
 	bool no_extprefix : 1;
 	AnalysisStage stage : 6;
 
@@ -1724,6 +1723,13 @@ typedef struct
 	LexMode mode;
 } Lexer;
 
+typedef struct GenericSection_
+{
+	Decl *owner;
+	Decl **decls;
+	Decl **conditional_decls;
+} GenericSection;
+
 struct CompilationUnit_
 {
 	Module *module;
@@ -1736,11 +1742,12 @@ struct CompilationUnit_
 	Decl **lambdas;
 	Decl **enums;
 	Decl **attributes;
-	Decl **faulttypes;
 	Decl **faults;
 	const char **links;
 	Visibility default_visibility;
 	Attr *if_attr;
+	GenericSection *default_generic_section;
+	GenericSection **generic_sections;
 	Expr **generic_attr;
 	bool export_by_default;
 	bool is_interface_file;

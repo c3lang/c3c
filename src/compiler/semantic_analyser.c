@@ -288,11 +288,14 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 
 static void analyze_generic_module(Module *module)
 {
-	ASSERT(module->is_generic);
+	ASSERT(module->generics);
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		register_generic_decls(unit, unit->global_decls);
-		register_generic_decls(unit, unit->global_cond_decls);
+		FOREACH(GenericSection *, section, unit->generic_sections)
+		{
+			register_generic_decls(unit, section->decls);
+			register_generic_decls(unit, section->conditional_decls);
+		}
 	}
 }
 

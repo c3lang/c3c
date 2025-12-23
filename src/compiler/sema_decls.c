@@ -46,7 +46,7 @@ static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceS
 static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
 
-static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit);
+static CompilationUnit *unit_copy_for_generic(Module *module, CompilationUnit *unit);
 
 static inline bool sema_resolve_align_expr(SemaContext *context, Expr *expr, AlignSize *result)
 {
@@ -192,7 +192,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 	if (decl->resolve_status == RESOLVE_RUNNING) RETURN_SEMA_ERROR(decl, "Circular dependency resolving member.");
 
 	// Mark the unit, it should not have been assigned at this point.
-	ASSERT_SPAN(decl, !decl->unit || decl->unit->module->is_generic || decl->unit == parent->unit);
+	ASSERT_SPAN(decl, !decl->unit || decl->unit->module->generics || decl->unit == parent->unit);
 	decl->unit = parent->unit;
 
 	// Pick the domain for attribute analysis.
@@ -3299,7 +3299,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_WASM:
 			if (args > 2) RETURN_SEMA_ERROR(attr->exprs[2], "Too many arguments to '@wasm', expected 0, 1 or 2 arguments");
 			decl->is_export = true;
-			if (context->unit->module->is_generic)
+			if (context->unit->module->generics)
 			{
 				RETURN_SEMA_ERROR(attr, "'@wasm' is not allowed in generic modules.");
 			}
@@ -3333,7 +3333,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->has_extname = true;
 			return true;
 		case ATTRIBUTE_EXPORT:
-			if (context->unit->module->is_generic)
+			if (context->unit->module->generics)
 			{
 				RETURN_SEMA_ERROR(attr, "'@export' is not allowed in generic modules.");
 			}
@@ -3449,7 +3449,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_CNAME:
 		case ATTRIBUTE_EXTERN:
-			if (context->unit->module->is_generic)
+			if (context->unit->module->generics)
 			{
 				RETURN_SEMA_ERROR(attr, "'%s' attributes are not allowed in generic modules.", attr->name);
 			}
@@ -4995,7 +4995,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 }
 
 
-static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
+static CompilationUnit *unit_copy_for_generic(Module *module, CompilationUnit *unit)
 {
 	CompilationUnit *copy = unit_create(unit->file);
 	copy->imports = copy_decl_list_single(unit->imports);
@@ -5008,8 +5008,16 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 			if (import->import.import_private_as_public) vec_add(copy->public_imports, import);
 		}
 	}
-	copy->global_decls = copy_decl_list_single_for_unit(unit->global_decls);
-	copy->global_cond_decls = copy_decl_list_single_for_unit(unit->global_cond_decls);
+
+	ASSERT(unit->global_decls == NULL);
+	ASSERT(unit->global_cond_decls == NULL);
+
+	FOREACH(GenericSection *, section, unit->generic_sections)
+	{
+		copy->global_decls = copy_decl_list_single_for_unit(section->decls);
+		copy->global_cond_decls = copy_decl_list_single_for_unit(section->conditional_decls);
+	}
+
 	copy->module = module;
 	ASSERT(!unit->functions && !unit->macro_methods && !unit->methods && !unit->enums && !unit->ct_includes && !unit->types);
 	return copy;
@@ -5048,13 +5056,13 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 	}
 
 	Module *new_module = compiler_find_or_create_module(path, NULL);
-	new_module->is_generic = false;
+	new_module->generics = NULL;
 	new_module->generic_module = module;
 	ASSERT(module->stage == ANALYSIS_IMPORTS);
 	new_module->stage = module->stage;
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		vec_add(new_module->units, unit_copy(new_module, unit));
+		vec_add(new_module->units, unit_copy_for_generic(new_module, unit));
 	}
 	CompilationUnit *first_context = new_module->units[0];
 	for (unsigned  i = 0; i < decls; i++)

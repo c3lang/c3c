@@ -324,6 +324,13 @@ bool parse_module(ParseContext *c, AstId contracts)
 	Attr** attrs = NULL;
 	bool is_cond = false;
 	if (!parse_attributes(c, &attrs, &visibility, NULL, &is_cond, &c->unit->generic_attr)) return false;
+	if (generic_decl)
+	{
+		GenericSection *section = CALLOCS(GenericSection);
+		section->owner = generic_decl;
+		vec_add(c->unit->generic_sections, section);
+		c->unit->default_generic_section = section;
+	}
 	FOREACH(Attr *, attr, attrs)
 	{
 		if (attr->is_custom) RETURN_PRINT_ERROR_AT(false, attr, "Custom attributes cannot be used with 'module'.");

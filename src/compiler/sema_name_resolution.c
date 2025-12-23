@@ -654,7 +654,7 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 		Module *module = decl->unit->module;
 		const char *maybe_name = decl_to_name(decl);
 		Module *generic_module = module->generic_module;
-		if (!generic_module && module->is_generic) generic_module = module;
+		if (!generic_module && module->generics) generic_module = module;
 		const char *module_name = generic_module ? generic_module->name->module : module->name->module;
 		if (decl_is_visible(context->unit, decl) && generic_module && !name_resolve->is_parameterized)
 		{
@@ -826,7 +826,7 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		return false;
 	}
 	if (found->decl_kind != DECL_ALIAS) unit_register_external_symbol(context, found);
-	if (found->unit->module->is_generic)
+	if (found->unit->module->generics)
 	{
 		if (name_resolve->is_parameterized) return true;
 		if (context->generic.infer)

@@ -20,15 +20,17 @@ static inline bool create_module_or_check_name(CompilationUnit *unit, Path *modu
 	if (!module)
 	{
 		module = unit->module = compiler_find_or_create_module(module_name, generic_decl != NULL);
-		if (module->is_generic != (generic_decl != NULL))
+		/* TODO
+		if ((module->generics == NULL) != (generic_decl != NULL))
 		{
 			print_error_at(module_name->span, "'%s' is both used as regular and generic module, it can't be both.",
 			               module_name->module);
 			SEMA_NOTE(module->name, "The definition here is different.");
 			return false;
-		}
+		}*/
 		if (!generic_decl) goto DONE;
 		vec_add(module->generics, generic_decl);
+		/* TODO
 		if (vec_size(generic_decl->generic_decl.parameters) != vec_size(module->generics[0]->generic_decl.parameters))
 		{
 			PRINT_ERROR_AT(module_name, "The parameter declarations of the generic module '%s' don't match.", module_name->module);
@@ -45,6 +47,7 @@ static inline bool create_module_or_check_name(CompilationUnit *unit, Path *modu
 				return false;
 			}
 		}
+		*/
 		goto DONE;
 	}
 	if (unit->module->name->module != module_name->module)
@@ -222,7 +225,7 @@ void decl_register(CompilationUnit *unit, Decl *decl)
 
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 {
-	ASSERT(!decl->unit || decl->unit->module->is_generic);
+	ASSERT_SPAN(decl, !decl->unit || decl->unit->module->generics);
 	decl->unit = unit;
 	switch (decl->decl_kind)
 	{

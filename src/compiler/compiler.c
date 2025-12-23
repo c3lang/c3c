@@ -1644,7 +1644,6 @@ Module *compiler_find_or_create_module(Path *module_name, bool is_generic)
 		module->short_path = symtab_add(name, len, fnv1a(name, len), &type);
 	}
 	module->stage = ANALYSIS_NOT_BEGUN;
-	module->is_generic = is_generic;
 	htable_init(&module->symbols, 0x1000);
 	htable_set(&compiler.context.modules, (void *)module_name->module, module);
 	if (is_generic)
