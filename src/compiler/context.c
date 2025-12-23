@@ -19,7 +19,7 @@ static inline bool create_module_or_check_name(CompilationUnit *unit, Path *modu
 	Module *module = unit->module;
 	if (!module)
 	{
-		module = unit->module = compiler_find_or_create_module(module_name, generic_decl);
+		module = unit->module = compiler_find_or_create_module(module_name, generic_decl != NULL);
 		if (module->is_generic != (generic_decl != NULL))
 		{
 			print_error_at(module_name->span, "'%s' is both used as regular and generic module, it can't be both.",
@@ -28,6 +28,7 @@ static inline bool create_module_or_check_name(CompilationUnit *unit, Path *modu
 			return false;
 		}
 		if (!generic_decl) goto DONE;
+		vec_add(module->generics, generic_decl);
 		if (vec_size(generic_decl->generic_decl.parameters) != vec_size(module->generics[0]->generic_decl.parameters))
 		{
 			PRINT_ERROR_AT(module_name, "The parameter declarations of the generic module '%s' don't match.", module_name->module);

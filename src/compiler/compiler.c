@@ -1459,7 +1459,7 @@ void compile()
 	core_path->module = kw_std__core;
 	core_path->span = INVALID_SPAN;
 	core_path->len = strlen(kw_std__core);
-	compiler.context.core_module = compiler_find_or_create_module(core_path, NULL);
+	compiler.context.core_module = compiler_find_or_create_module(core_path, false);
 	CompilationUnit *unit = CALLOCS(CompilationUnit);
 	unit->file = source_file_generate("core_internal.c3");
 	unit->module = compiler.context.core_module;
@@ -1613,7 +1613,7 @@ Module *global_context_find_module(const char *name)
 	return htable_get(&compiler.context.modules, (void *)name);
 }
 
-Module *compiler_find_or_create_module(Path *module_name, Decl *generic_decl)
+Module *compiler_find_or_create_module(Path *module_name, bool is_generic)
 {
 	Module *module = global_context_find_module(module_name->module);
 	if (module) return module;
@@ -1644,14 +1644,10 @@ Module *compiler_find_or_create_module(Path *module_name, Decl *generic_decl)
 		module->short_path = symtab_add(name, len, fnv1a(name, len), &type);
 	}
 	module->stage = ANALYSIS_NOT_BEGUN;
-	if (generic_decl)
-	{
-		vec_add(module->generics, generic_decl);
-	}
-	module->is_generic = generic_decl != NULL;
+	module->is_generic = is_generic;
 	htable_init(&module->symbols, 0x1000);
 	htable_set(&compiler.context.modules, (void *)module_name->module, module);
-	if (generic_decl)
+	if (is_generic)
 	{
 		vec_add(compiler.context.generic_module_list, module);
 	}

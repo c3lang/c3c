@@ -1417,7 +1417,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMContextRef shared_context)
 {
 	Path *test_path = path_create_from_string("_$test", 5, INVALID_SPAN);
-	Module *test_module = compiler_find_or_create_module(test_path, NULL);
+	Module *test_module = compiler_find_or_create_module(test_path, false);
 
 	DebugInfo actual_debug_info = compiler.build.debug_info;
 	compiler.build.debug_info = DEBUG_INFO_NONE;

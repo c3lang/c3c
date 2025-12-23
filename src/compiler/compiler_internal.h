@@ -2337,7 +2337,7 @@ void global_context_add_decl(Decl *type_decl);
 
 void linking_add_link(Linking *linker, const char *link);
 
-Module *compiler_find_or_create_module(Path *module_name, Decl *generic_decl);
+Module *compiler_find_or_create_module(Path *module_name, bool is_generic);
 Module *global_context_find_module(const char *name);
 const char *get_object_extension(void);
 const char *get_exe_extension(void);
