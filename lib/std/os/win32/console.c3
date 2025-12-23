@@ -157,8 +157,3 @@ enum Win32_CODEPAGE : const Win32_UINT
 }
 
 extern fn Win32_BOOL setConsoleOutputCP(Win32_CODEPAGE wCodePageId) @cname("SetConsoleOutputCP");
-
-fn void enable_utf8_output() @init
-{
-	setConsoleOutputCP(UTF8);
-}
