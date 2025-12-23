@@ -81,7 +81,7 @@ fn void Sha256.update(&self, char[] data)
 	}
 	else
 	{
-		for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..]) self.transform((uint*)data.ptr, $aligned: false);
+		for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..]) self.transform_unaligned((uint*)data.ptr);
 	}
 
 	// Leftover data just gets stored away for the next update or final.
@@ -121,7 +121,12 @@ fn char[HASH_SIZE] Sha256.final(&self)
 	return hash;
 }
 
-macro Sha256.transform(&self, uint* incoming = null, bool $aligned = true) @local
+// These wrappers are necessary to significantly reduce code generation from macro expansions.
+//   Note that transformations on `self.buffer` (when incoming == null) should always be aligned.
+fn void Sha256.transform(&self, uint* incoming = null) @local @noinline => self.do_transform(incoming, true);
+fn void Sha256.transform_unaligned(&self, uint* incoming = null) @local @noinline => self.do_transform(incoming, false);
+
+macro Sha256.do_transform(&self, uint* incoming = null, bool $aligned = true) @local
 {
 	uint a, b, c, d, e, f, g, h, t1, t2 @noinit;
 	uint[64] m @noinit;
@@ -136,9 +141,7 @@ macro Sha256.transform(&self, uint* incoming = null, bool $aligned = true) @loca
 		for (i = 0; i < 16; ++i) m[i] = bswap($aligned ??? incoming[i] : @unaligned_load(incoming[i], 1));
 	$endif
 
-	$for usz $i = 16; $i < 64; $i++:
-		m[$i] = @sigma1(m[$i - 2]) + m[$i - 7] + @sigma0(m[$i - 15]) + m[$i - 16];
-	$endfor
+	for (i = 16; i < 64; i++) m[i] = @sigma1(m[i - 2]) + m[i - 7] + @sigma0(m[i - 15]) + m[i - 16];
 
 	a = self.state[0];
 	b = self.state[1];
