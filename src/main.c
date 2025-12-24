@@ -41,8 +41,9 @@ int main_real(int argc, const char *argv[])
 	setrlimit(RLIMIT_DATA, &l);
 #endif
 #if PLATFORM_WINDOWS
-	// Set the console output mode to utf8 to correctly print utf8 text in error messages
-	SetConsoleOutputCP(65001);
+	// Set the console input and output codepage to utf8 to handle utf8 text correctly
+	SetConsoleCP(CP_UTF8);
+	SetConsoleOutputCP(CP_UTF8);
 #endif
 	bench_begin();
 
