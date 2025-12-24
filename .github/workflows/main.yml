@@ -952,146 +952,128 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: OpenBSD VM
-        uses: vmactions/openbsd-vm@v1.2.5
+      - name: NetBSD VM
+        uses: vmactions/openbsd-vm@v1
         with:
           prepare: |
-            pkg_add cmake llvm-20.1.8p1 ninja
+            pkg_add ninja cmake llvm-20.1.8p1
 
-          run: |
-            set -e
-            handle_error() {
-                echo "::endgroup::"
-                echo "::error::Group '$1' failed"
-                exit 1
-            }
+      - name: CMake
+        shell: openbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
 
-            echo "::group::CMake configuration"
-            (
-              set -e
-              cmake -B build \
-                -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-                -DLLVM_ENABLE_LIBXML2=OFF \
-                -DC3_LLVM_VERSION=${LLVM_RELEASE_VERSION_OPENBSD}
-            ) || handle_error "CMake configuration"
-            echo "::endgroup::"
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
+            -DLLVM_ENABLE_LIBXML2=OFF \
+            -DC3_LLVM_VERSION=20.1.8
+          cmake --build build
 
-            echo "::group::Build"
-            ( set -e; cmake --build build ) || handle_error "Build"
-            echo "::endgroup::"
+      - name: Compile and run some examples
+        shell: openbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd resources
+          ../build/c3c compile examples/base64.c3
+          ../build/c3c compile examples/binarydigits.c3
+          ../build/c3c compile examples/brainfk.c3
+          ../build/c3c compile examples/factorial_macro.c3
+          ../build/c3c compile examples/fasta.c3
+          ../build/c3c compile examples/gameoflife.c3
+          ../build/c3c compile examples/hash.c3
+          ../build/c3c compile-only examples/levenshtein.c3
+          ../build/c3c compile examples/load_world.c3
+          ../build/c3c compile-only examples/map.c3
+          ../build/c3c compile examples/mandelbrot.c3
+          ../build/c3c compile examples/plus_minus.c3
+          ../build/c3c compile examples/nbodies.c3
+          ../build/c3c compile examples/spectralnorm.c3
+          ../build/c3c compile examples/swap.c3
+          ../build/c3c compile examples/contextfree/boolerr.c3
+          ../build/c3c compile examples/contextfree/dynscope.c3
+          ../build/c3c compile examples/contextfree/guess_number.c3
+          ../build/c3c compile examples/contextfree/multi.c3
+          ../build/c3c compile examples/contextfree/cleanup.c3
+          ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/time.c3
+          ../build/c3c compile-run examples/fannkuch-redux.c3
+          ../build/c3c compile-run examples/contextfree/boolerr.c3
+          ../build/c3c compile-run examples/load_world.c3
+          ../build/c3c compile-run examples/process.c3
+          ../build/c3c compile-run examples/ls.c3
+          ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
 
-            echo "::group::Compile and run some examples"
-            (
-              set -e
-              cd resources
-              ../build/c3c compile examples/base64.c3
-              ../build/c3c compile examples/binarydigits.c3
-              ../build/c3c compile examples/brainfk.c3
-              ../build/c3c compile examples/factorial_macro.c3
-              ../build/c3c compile examples/fasta.c3
-              ../build/c3c compile examples/gameoflife.c3
-              ../build/c3c compile examples/hash.c3
-              ../build/c3c compile-only examples/levenshtein.c3
-              ../build/c3c compile examples/load_world.c3
-              ../build/c3c compile-only examples/map.c3
-              ../build/c3c compile examples/mandelbrot.c3
-              ../build/c3c compile examples/plus_minus.c3
-              ../build/c3c compile examples/nbodies.c3
-              ../build/c3c compile examples/spectralnorm.c3
-              ../build/c3c compile examples/swap.c3
-              ../build/c3c compile examples/contextfree/boolerr.c3
-              ../build/c3c compile examples/contextfree/dynscope.c3
-              ../build/c3c compile examples/contextfree/guess_number.c3
-              ../build/c3c compile examples/contextfree/multi.c3
-              ../build/c3c compile examples/contextfree/cleanup.c3
-              ../build/c3c compile-run examples/hello_world_many.c3
-              ../build/c3c compile-run examples/time.c3
-              ../build/c3c compile-run examples/fannkuch-redux.c3
-              ../build/c3c compile-run examples/contextfree/boolerr.c3
-              ../build/c3c compile-run examples/load_world.c3
-              ../build/c3c compile-run examples/process.c3
-              ../build/c3c compile-run examples/ls.c3
-              ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
-            ) || handle_error "Compile and run some examples"
-            echo "::endgroup::"
+      - name: Compile and run dynlib-test
+        shell: openbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd resources/examples/dynlib-test
+          ../../../build/c3c --cc clang -vv dynamic-lib add.c3
+          mv add.so libadd.so
+          cc test.c -L. -ladd -Wl,-rpath=.
+          ./a.out
+          ../../../build/c3c compile-run --cc clang test.c3 -L . -l add -z -Wl,-rpath=.
 
-            echo "::group::Compile and run dynlib-test"
-            (
-              set -e
-              cd resources/examples/dynlib-test
-              ../../../build/c3c -vv dynamic-lib add.c3
-              mv add.so libadd.so
-              cc test.c -L. -ladd -Wl,-rpath=.
-              ./a.out
-              ../../../build/c3c compile-run test.c3 -L . -l add -z -Wl,-rpath=.
-            ) || handle_error "Compile and run dynlib-test"
-            echo "::endgroup::"
+      - name: Compile and run staticlib-test
+        shell: openbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd resources/examples/staticlib-test
+          ../../../build/c3c --cc clang -vv static-lib add.c3
+          mv add.a libadd.a
+          cc test.c -L. -ladd
+          ./a.out
+          ../../../build/c3c compile-run --cc clang test.c3 -L . -l add
 
-            echo "::group::Compile and run staticlib-test"
-            (
-              set -e
-              cd resources/examples/staticlib-test
-              ../../../build/c3c -vv static-lib add.c3
-              mv add.a libadd.a
-              cc test.c -L. -ladd
-              ./a.out
-              ../../../build/c3c compile-run test.c3 -L . -l add
-            ) || handle_error "Compile and run staticlib-test"
-            echo "::endgroup::"
+      - name: Compile run unit tests
+        shell: openbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd test
+          ../build/c3c --max-mem 1152 compile-test unit -O1 -D SLOW_TESTS
 
-            echo "::group::Compile run unit tests"
-            (
-              set -e
-              cd test
-              ../build/c3c --max-mem 128 compile-test unit -D SLOW_TESTS
-            ) || handle_error "Compile run unit tests"
-            echo "::endgroup::"
+      - name: Build testproject
+        shell: openbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd resources/testproject
+          ../../build/c3c run -vvv --trust=full
 
-            echo "::group::Build testproject"
-            (
-              set -e
-              cd resources/testproject
-              ../../build/c3c run -vvv --trust=full
-            ) || handle_error "Build testproject"
-            echo "::endgroup::"
+      - name: Test WASM
+        shell: openbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd resources/testfragments
+          ../../build/c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
 
-            echo "::group::Test WASM"
-            (
-              set -e
-              cd resources/testfragments
-              ../../build/c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
-            ) || handle_error "Test WASM"
-            echo "::endgroup::"
+      - name: Build testproject direct linker
+        shell: openbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd resources/testproject
+          ../../build/c3c run -vvv --linker=builtin --trust=full
 
-            echo "::group::Build testproject direct linker"
-            (
-              set -e
-              cd resources/testproject
-              ../../build/c3c run -vvv --linker=builtin --trust=full
-            ) || handle_error "Build testproject direct linker"
-            echo "::endgroup::"
+      - name: Init a library & a project
+        shell: openbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          ./build/c3c init-lib mylib
+          ls mylib.c3l
+          ./build/c3c init myproject
+          ls myproject
 
-            echo "::group::Init a library & a project"
-            (
-              set -e
-              ./build/c3c init-lib mylib
-              ls mylib.c3l
-              ./build/c3c init myproject
-              ls myproject
-            ) || handle_error "Init a library & a project"
-            echo "::endgroup::"
-
-            echo "::group::run compiler tests"
-            (
-              set -e
-              cd test
-              ../build/c3c --max-mem 128 compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/ --no-terminal
-            ) || handle_error "run compiler tests"
-            echo "::endgroup::"
+      - name: run compiler tests
+        shell: openbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd test
+          ../build/c3c --max-mem 128 compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/ --no-terminal
 
       - name: bundle_output
+        shell: openbsd {0}
         run: |
+          cd "$GITHUB_WORKSPACE"
           mkdir c3
           cp -r lib c3
           cp msvc_build_libraries.py c3
@@ -1120,138 +1102,121 @@ jobs:
       - name: NetBSD VM
         uses: vmactions/netbsd-vm@v1
         with:
-          usesh: true
           prepare: |
-            /usr/sbin/pkg_add cmake llvm-19.1.7 lld-19.1.7nb1 ninja
+            /usr/sbin/pkg_add cmake ninja llvm-19.1.7 lld-19.1.7nb1
 
-          run: |
-            set -e
-            handle_error() {
-                echo "::endgroup::"
-                echo "::error::Group '$1' failed"
-                exit 1
-            }
+      - name: CMake
+        shell: netbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cmake -B build -S .
+          cmake --build build
 
-            echo "::group::CMake configuration"
-            ( set -e; cmake -B build -S . ) || handle_error "CMake configuration"
-            echo "::endgroup::"
+      - name: Compile and run some examples
+        shell: netbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd resources
+          ../build/c3c compile examples/base64.c3
+          ../build/c3c compile examples/binarydigits.c3
+          ../build/c3c compile examples/brainfk.c3
+          ../build/c3c compile examples/factorial_macro.c3
+          ../build/c3c compile examples/fasta.c3
+          ../build/c3c compile examples/gameoflife.c3
+          ../build/c3c compile examples/hash.c3
+          ../build/c3c compile-only examples/levenshtein.c3
+          ../build/c3c compile examples/load_world.c3
+          ../build/c3c compile-only examples/map.c3
+          ../build/c3c compile examples/mandelbrot.c3
+          ../build/c3c compile examples/plus_minus.c3
+          ../build/c3c compile examples/nbodies.c3
+          ../build/c3c compile examples/spectralnorm.c3
+          ../build/c3c compile examples/swap.c3
+          ../build/c3c compile examples/contextfree/boolerr.c3
+          ../build/c3c compile examples/contextfree/dynscope.c3
+          ../build/c3c compile examples/contextfree/guess_number.c3
+          ../build/c3c compile examples/contextfree/multi.c3
+          ../build/c3c compile examples/contextfree/cleanup.c3
+          ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/time.c3
+          ../build/c3c compile-run examples/fannkuch-redux.c3
+          ../build/c3c compile-run examples/contextfree/boolerr.c3
+          ../build/c3c compile-run examples/load_world.c3
+          ../build/c3c compile-run examples/process.c3
+          ../build/c3c compile-run examples/ls.c3
+          ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
 
-            echo "::group::Build"
-            ( set -e; cmake --build build ) || handle_error "Build"
-            echo "::endgroup::"
+      - name: Compile and run dynlib-test
+        shell: netbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd resources/examples/dynlib-test
+          ../../../build/c3c -vv dynamic-lib add.c3
+          mv add.so libadd.so
+          cc test.c -L. -ladd -Wl,-rpath=.
+          ./a.out
+          ../../../build/c3c compile-run test.c3 -L . -l add -z -Wl,-rpath=.
 
-            echo "::group::Compile and run some examples"
-            (
-              set -e
-              cd resources
-              ../build/c3c compile examples/base64.c3
-              ../build/c3c compile examples/binarydigits.c3
-              ../build/c3c compile examples/brainfk.c3
-              ../build/c3c compile examples/factorial_macro.c3
-              ../build/c3c compile examples/fasta.c3
-              ../build/c3c compile examples/gameoflife.c3
-              ../build/c3c compile examples/hash.c3
-              ../build/c3c compile-only examples/levenshtein.c3
-              ../build/c3c compile examples/load_world.c3
-              ../build/c3c compile-only examples/map.c3
-              ../build/c3c compile examples/mandelbrot.c3
-              ../build/c3c compile examples/plus_minus.c3
-              ../build/c3c compile examples/nbodies.c3
-              ../build/c3c compile examples/spectralnorm.c3
-              ../build/c3c compile examples/swap.c3
-              ../build/c3c compile examples/contextfree/boolerr.c3
-              ../build/c3c compile examples/contextfree/dynscope.c3
-              ../build/c3c compile examples/contextfree/guess_number.c3
-              ../build/c3c compile examples/contextfree/multi.c3
-              ../build/c3c compile examples/contextfree/cleanup.c3
-              ../build/c3c compile-run examples/hello_world_many.c3
-              ../build/c3c compile-run examples/time.c3
-              ../build/c3c compile-run examples/fannkuch-redux.c3
-              ../build/c3c compile-run examples/contextfree/boolerr.c3
-              ../build/c3c compile-run examples/load_world.c3
-              ../build/c3c compile-run examples/process.c3
-              ../build/c3c compile-run examples/ls.c3
-              ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
-            ) || handle_error "Compile and run some examples"
-            echo "::endgroup::"
+      - name: Compile and run staticlib-test
+        shell: netbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd resources/examples/staticlib-test
+          ../../../build/c3c -vv static-lib add.c3
+          mv add.a libadd.a
+          ranlib libadd.a      # NOTE: the linker can’t read symbols if we don't `ranlib`
+          cc test.c -L. -ladd
+          ./a.out
+          ../../../build/c3c compile-run test.c3 -L . -l add
 
-            echo "::group::Compile and run dynlib-test"
-            (
-              set -e
-              cd resources/examples/dynlib-test
-              ../../../build/c3c -vv dynamic-lib add.c3
-              mv add.so libadd.so
-              cc test.c -L. -ladd -Wl,-rpath=.
-              ./a.out
-              ../../../build/c3c compile-run test.c3 -L . -l add -z -Wl,-rpath=.
-            ) || handle_error "Compile and run dynlib-test"
-            echo "::endgroup::"
+      - name: Compile run unit tests
+        shell: netbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd test
+          ../build/c3c --max-mem 1152 compile-test unit -O1 -D SLOW_TESTS
 
-            echo "::group::Compile and run staticlib-test"
-            (
-              set -e
-              cd resources/examples/staticlib-test
-              ../../../build/c3c -vv static-lib add.c3
-              mv add.a libadd.a
-              ranlib libadd.a
-              cc test.c -L. -ladd
-              ./a.out
-              ../../../build/c3c compile-run test.c3 -L . -l add
-            ) || handle_error "Compile and run staticlib-test"
-            echo "::endgroup::"
+      - name: Build testproject
+        shell: netbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd resources/testproject
+          ../../build/c3c run -vvv --trust=full
 
-            echo "::group::Compile run unit tests"
-            (
-              set -e
-              cd test
-              ../build/c3c compile-test unit -D SLOW_TESTS
-            ) || handle_error "Compile run unit tests"
-            echo "::endgroup::"
+      - name: Test WASM
+        shell: netbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd resources/testfragments
+          ../../build/c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
 
-            echo "::group::Build testproject"
-            (
-              set -e
-              cd resources/testproject
-              ../../build/c3c run -vvv --trust=full
-            ) || handle_error "Build testproject"
-            echo "::endgroup::"
+      - name: Build testproject direct linker
+        shell: netbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd resources/testproject
+          ../../build/c3c run -vvv --linker=builtin --trust=full
 
-            echo "::group::Test WASM"
-            (
-              set -e
-              cd resources/testfragments
-              ../../build/c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
-            ) || handle_error "Test WASM"
-            echo "::endgroup::"
+      - name: Init a library & a project
+        shell: netbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          ./build/c3c init-lib mylib
+          ls mylib.c3l
+          ./build/c3c init myproject
+          ls myproject
 
-            echo "::group::Build testproject direct linker"
-            (
-              set -e
-              cd resources/testproject
-              ../../build/c3c run -vvv --linker=builtin --trust=full
-            ) || handle_error "Build testproject direct linker"
-            echo "::endgroup::"
-
-            echo "::group::Init a library & a project"
-            (
-              set -e
-              ./build/c3c init-lib mylib
-              ls mylib.c3l
-              ./build/c3c init myproject
-              ls myproject
-            ) || handle_error "Init a library & a project"
-            echo "::endgroup::"
-
-            echo "::group::run compiler tests"
-            (
-              set -e
-              cd test
-              ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/ --no-terminal
-            ) || handle_error "run compiler tests"
-            echo "::endgroup::"
+      - name: run compiler tests
+        shell: netbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cd test
+          ../build/c3c --max-mem 128 compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/ --no-terminal
 
       - name: bundle_output
+        shell: netbsd {0}
         run: |
+          cd "$GITHUB_WORKSPACE"
           mkdir c3
           cp -r lib c3
           cp msvc_build_libraries.py c3
