@@ -8,6 +8,7 @@
 - Remove use of LLVMGetGlobalContext for single module compilation.
 - Fixed bug where constants would get modified when slicing them. #2660
 - Support for NetBSD.
+- On win32 utf-8 console output is now enabled by default in compiled programs
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -27,7 +28,7 @@
 - Fix error message when a method has the wrong type for the first argument.
 - Unit tests allocating too much `tmem` without `@pool` would cause errors in unrelated tests. #2654
 - Incorrect rounding for decimals in formatter in some cases. #2657
-- Incorrectly using LLVMStructType when emitting dynamic functions on MachO #2666  
+- Incorrectly using LLVMStructType when emitting dynamic functions on MachO #2666
 - FixedThreadPool join did not work correctly.
 
 ### Stdlib changes
@@ -37,7 +38,7 @@
 - Return of Mutex `unlock()` and `lock()` is now "@maydiscard" and should be ignored. They will return void in 0.8.0.
 - Return of ConditionVariable `signal()` `broadcast()` and `wait()` are now "@maydiscard". They will return void in 0.8.0.
 - Return of Thread `detatch()` is now "@maydiscard". It will return void in 0.8.0.
-- Buffered/UnbufferedChannel, and both ThreadPools have `@maydiscard` on a set of functions. They will retunr void in 0.8.0.
+- Buffered/UnbufferedChannel, and both ThreadPools have `@maydiscard` on a set of functions. They will return void in 0.8.0.
 - Pthread bindings correctly return Errno instead of CInt.
 - Return of Thread `join()` is now "@maydiscard".
 - Add `poly1305` one-time Message Authentication Code and associated tests. #2639
