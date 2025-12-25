@@ -1100,7 +1100,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: NetBSD VM
-        uses: vmactions/netbsd-vm@v1
+        uses: vmactions/netbsd-vm@v1.2.6
         with:
           prepare: |
             /usr/sbin/pkg_add cmake ninja llvm-19.1.7 lld-19.1.7nb1

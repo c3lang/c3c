@@ -178,7 +178,7 @@ static inline bool sema_create_const_min(Expr *expr, Type *type, Type *flat);
 static inline bool sema_create_const_max(Expr *expr, Type *type, Type *flat);
 static inline bool sema_create_const_params(Expr *expr, Type *type);
 static inline void sema_create_const_membersof(Expr *expr, Type *type, AlignSize alignment, AlignSize offset);
-static inline void sema_create_const_methodsof(Expr *expr, Type *type);
+static inline bool sema_create_const_methodsof(SemaContext *context, Expr *expr, Type *type);
 
 static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr *right);
 static inline bool expr_both_const_foldable(Expr *left, Expr *right, BinaryOp op);
@@ -4450,7 +4450,7 @@ typedef enum RangeEnv
 	RANGE_FLEXIBLE,
 } RangeEnv;
 
-INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range, ArrayIndex len, RangeEnv env)
+INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range, ArrayIndex len, RangeEnv env, FlatType *indexed_type)
 {
 	Expr *start = exprptr(range->start);
 	ASSERT(start);
@@ -4482,14 +4482,26 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 	{
 		if (range->start_from_end)
 		{
+			if (indexed_type->type_kind == TYPE_POINTER && type_is_any_arraylike(indexed_type->pointer))
+			{
+				RETURN_SEMA_ERROR(start, "Indexing from the end is not allowed for pointers, did you perhaps forget to dereference the pointer before []?");
+			}
 			RETURN_SEMA_ERROR(start, "Indexing from the end is not allowed for pointers or flexible array members.");
 		}
 		if (!end)
 		{
+			if (indexed_type->type_kind == TYPE_POINTER && type_is_any_arraylike(indexed_type->pointer))
+			{
+				RETURN_SEMA_ERROR(start, "Omitting the end index is not allowed for pointers, did you perhaps forget to dereference the pointer before slicing wih []?");
+			}
 			RETURN_SEMA_ERROR(start, "Omitting end index is not allowed for pointers or flexible array members.");
 		}
 		if (end && range->end_from_end)
 		{
+			if (indexed_type->type_kind == TYPE_POINTER && type_is_any_arraylike(indexed_type->pointer))
+			{
+				RETURN_SEMA_ERROR(start, "Indexing from the end is not allowed for pointers, did you perhaps forget to dereference the pointer before []?");
+			}
 			RETURN_SEMA_ERROR(end, "Indexing from the end is not allowed for pointers or flexible array members.");
 		}
 	}
@@ -4609,7 +4621,7 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 }
 
 
-static inline bool sema_expr_analyse_range(SemaContext *context, Range *range, ArrayIndex len, RangeEnv env)
+static inline bool sema_expr_analyse_range(SemaContext *context, Range *range, ArrayIndex len, RangeEnv env, FlatType *indexed_type)
 {
 	switch (range->status)
 	{
@@ -4617,7 +4629,7 @@ static inline bool sema_expr_analyse_range(SemaContext *context, Range *range, A
 			return true;
 		case RESOLVE_NOT_DONE:
 			range->status = RESOLVE_RUNNING;
-			if (!sema_expr_analyse_range_internal(context, range, len, env))
+			if (!sema_expr_analyse_range_internal(context, range, len, env, indexed_type))
 			{
 				range->status = RESOLVE_NOT_DONE;
 				return false;
@@ -4733,7 +4745,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	}
 	ArrayIndex length = sema_len_from_expr(subscripted);
 	Range *range = &expr->slice_expr.range;
-	if (!sema_expr_analyse_range(context, range, length, env)) return false;
+	if (!sema_expr_analyse_range(context, range, length, env, type)) return false;
 	if (range->is_optional) optional = true;
 	if (sema_cast_const(subscripted) && range->range_type == RANGE_CONST_RANGE)
 	{
@@ -5055,7 +5067,14 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	}
 	if (!member)
 	{
-		if (missing_ref) goto MISSING_REF;
+		if (missing_ref)
+		{
+			if (decl->unit->module->stage < ANALYSIS_POST_REGISTER)
+			{
+				RETURN_SEMA_ERROR(expr, "There might be a method '%s' for %s, but methods for the type have not yet been completely registered, so this yields an error.", name, type_quoted_error_string(parent_type));
+			}
+			goto MISSING_REF;
+		}
 		RETURN_SEMA_ERROR(expr, "No method or inner struct/union '%s.%s' found.", type_to_error_string(decl->type), name);
 	}
 	if (!member->unit)
@@ -5532,13 +5551,17 @@ static inline void append_extension_methods(Type *type, Decl **extensions, Expr 
 	}
 }
 
-static inline void sema_create_const_methodsof(Expr *expr, Type *type)
+static inline bool sema_create_const_methodsof(SemaContext *context, Expr *expr, Type *type)
 {
 	Expr **method_exprs = NULL;
 CONTINUE:
 	if (type_is_user_defined(type))
 	{
 		Decl *decl = type->decl;
+		if (!decl->unit || decl->unit->module->stage < ANALYSIS_POST_REGISTER)
+		{
+			RETURN_SEMA_ERROR(expr, "Methods are not fully determined for %s at this point.", decl->name);
+		}
 		// Interface, prefer interface methods.
 		if (decl->decl_kind == DECL_INTERFACE)
 		{
@@ -5555,6 +5578,7 @@ CONTINUE:
 	type = type_find_parent_type(type);
 	if (type) goto CONTINUE;
 	expr_rewrite_const_untyped_list(expr, method_exprs);
+	return true;
 }
 
 
@@ -6033,8 +6057,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return true;
 		}
 		case TYPE_PROPERTY_METHODSOF:
-			sema_create_const_methodsof(expr, type);
-			return true;
+			return sema_create_const_methodsof(context, expr, type);
 		case TYPE_PROPERTY_PARAMSOF:
 			return sema_create_const_paramsof(expr, flat);
 		case TYPE_PROPERTY_PARAMS:
@@ -6563,10 +6586,16 @@ CHECK_DEEPER:
 			if (missing_ref) goto MISSING_REF;
 			RETURN_SEMA_ERROR(expr, "The method '%s' has private visibility.", kw);
 		}
-		if (parent->type->canonical->type_kind == TYPE_INTERFACE)
+		Type *parent_type = parent->type->canonical;
+		ASSERT(type_is_user_defined(parent_type));
+		if (missing_ref && parent_type->decl->unit->module->stage < ANALYSIS_POST_REGISTER)
+		{
+			RETURN_SEMA_ERROR(expr, "There might be a method '%s' for %s, but methods have not yet been completely registered, so analysis fails.", kw, type_quoted_error_string(parent->type));
+		}
+		if (parent_type->type_kind == TYPE_INTERFACE)
 		{
 			if (missing_ref) goto MISSING_REF;
-			RETURN_SEMA_ERROR(expr, "The '%s' interface has no method '%s', did you spell it correctly?", parent->type->canonical->name, kw);
+			RETURN_SEMA_ERROR(expr, "The '%s' interface has no method '%s', did you spell it correctly?", parent_type->name, kw);
 		}
 		if (missing_ref) goto MISSING_REF;
 		RETURN_SEMA_ERROR(expr, "There is no field or method '%s.%s'.", type_to_error_string(parent->type), kw);
