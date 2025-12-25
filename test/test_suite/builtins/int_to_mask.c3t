@@ -19,10 +19,8 @@ define void @test.test() #0 {
 entry:
   %x = alloca <8 x i8>, align 8
   %y = alloca <32 x i8>, align 32
-  %0 = sext <8 x i1> bitcast (<1 x i8>
-  store <8 x i8> %0, ptr %x, align 8
-  %1 = sext <32 x i1> bitcast (<1 x i32>
-  store <32 x i8> %1, ptr %y, align 32
+  store <8 x i8>
+  store <32 x i8>
   ret void
 }
 
@@ -30,9 +28,9 @@ define void @test.test2() #0 {
 entry:
   %x = alloca i8, align 1
   %x2 = alloca i16, align 2
-  %y = alloca i128, align 16
+  %y = alloca i128,
   store i8 bitcast (<8 x i1> <i1 false, i1 false, i1 false, i1 false, i1 true, i1 true, i1 true, i1 false> to i8), ptr %x, align 1
   store i16 0, ptr %x2, align 2
-  store i128 0, ptr %y, align 16
+  store i128 0, ptr %y
   ret void
 }
