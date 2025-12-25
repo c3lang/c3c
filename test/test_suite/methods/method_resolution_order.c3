@@ -1,6 +1,6 @@
 module test2;
 import test3;
-struct Bar @if($defined(Foo.b)) // #error: "There might be a method 'b' for 'Foo', but methods for the type have not yet been completely registered, so this yields an error.
+struct Bar @if($defined(Foo.b)) // #error: There might be a method 'b' for 'Foo', but methods for the type have not yet been completely registered, so this yields an error
 {
 	int a;
 }

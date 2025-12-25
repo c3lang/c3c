@@ -462,6 +462,7 @@ macro swizzle(v, ...) @builtin
 	return $$swizzle(v, $vasplat);
 }
 
+
 <*
  Shuffle two vectors by a common index from arranging the vectors sequentially in memory
 

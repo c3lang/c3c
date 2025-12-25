@@ -9,6 +9,7 @@
 - Fixed bug where constants would get modified when slicing them. #2660
 - Support for NetBSD.
 - Testing for the presence of methods at the top level is prohibited previous to method registration.
+- `$$MASK_TO_INT` and `$$INT_TO_MASK` to create bool masks from integers and back.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -30,6 +31,7 @@
 - Incorrect rounding for decimals in formatter in some cases. #2657
 - Incorrectly using LLVMStructType when emitting dynamic functions on MachO #2666  
 - FixedThreadPool join did not work correctly.
+- Fix bug when creating bool vectors in certain cases.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
