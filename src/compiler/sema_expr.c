@@ -4450,7 +4450,7 @@ typedef enum RangeEnv
 	RANGE_FLEXIBLE,
 } RangeEnv;
 
-INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range, ArrayIndex len, RangeEnv env)
+INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range, ArrayIndex len, RangeEnv env, FlatType *indexed_type)
 {
 	Expr *start = exprptr(range->start);
 	ASSERT(start);
@@ -4482,14 +4482,26 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 	{
 		if (range->start_from_end)
 		{
+			if (indexed_type->type_kind == TYPE_POINTER && type_is_any_arraylike(indexed_type->pointer))
+			{
+				RETURN_SEMA_ERROR(start, "Indexing from the end is not allowed for pointers, did you perhaps forget to dereference the pointer before []?");
+			}
 			RETURN_SEMA_ERROR(start, "Indexing from the end is not allowed for pointers or flexible array members.");
 		}
 		if (!end)
 		{
+			if (indexed_type->type_kind == TYPE_POINTER && type_is_any_arraylike(indexed_type->pointer))
+			{
+				RETURN_SEMA_ERROR(start, "Omitting the end index is not allowed for pointers, did you perhaps forget to dereference the pointer before slicing wih []?");
+			}
 			RETURN_SEMA_ERROR(start, "Omitting end index is not allowed for pointers or flexible array members.");
 		}
 		if (end && range->end_from_end)
 		{
+			if (indexed_type->type_kind == TYPE_POINTER && type_is_any_arraylike(indexed_type->pointer))
+			{
+				RETURN_SEMA_ERROR(start, "Indexing from the end is not allowed for pointers, did you perhaps forget to dereference the pointer before []?");
+			}
 			RETURN_SEMA_ERROR(end, "Indexing from the end is not allowed for pointers or flexible array members.");
 		}
 	}
@@ -4609,7 +4621,7 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 }
 
 
-static inline bool sema_expr_analyse_range(SemaContext *context, Range *range, ArrayIndex len, RangeEnv env)
+static inline bool sema_expr_analyse_range(SemaContext *context, Range *range, ArrayIndex len, RangeEnv env, FlatType *indexed_type)
 {
 	switch (range->status)
 	{
@@ -4617,7 +4629,7 @@ static inline bool sema_expr_analyse_range(SemaContext *context, Range *range, A
 			return true;
 		case RESOLVE_NOT_DONE:
 			range->status = RESOLVE_RUNNING;
-			if (!sema_expr_analyse_range_internal(context, range, len, env))
+			if (!sema_expr_analyse_range_internal(context, range, len, env, indexed_type))
 			{
 				range->status = RESOLVE_NOT_DONE;
 				return false;
@@ -4733,7 +4745,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	}
 	ArrayIndex length = sema_len_from_expr(subscripted);
 	Range *range = &expr->slice_expr.range;
-	if (!sema_expr_analyse_range(context, range, length, env)) return false;
+	if (!sema_expr_analyse_range(context, range, length, env, type)) return false;
 	if (range->is_optional) optional = true;
 	if (sema_cast_const(subscripted) && range->range_type == RANGE_CONST_RANGE)
 	{
