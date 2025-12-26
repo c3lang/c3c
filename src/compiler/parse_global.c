@@ -253,6 +253,29 @@ static inline Ast *sema_contract_first_non_comment_require(AstId contracts)
 	}
 	return NULL;
 }
+
+static int generic_id = 1;
+static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
+{
+	unsigned params = vec_size(decl->generic_decl.parameters);
+	FOREACH(Decl *, d, unit->module->generics)
+	{
+		unsigned candidate_params = vec_size(d->generic_decl.parameters);
+		if (candidate_params != params) continue;
+		for (unsigned i = 0; i < params; i++)
+		{
+			if (d->generic_decl.parameters[i] != decl->generic_decl.parameters[i])
+			{
+				goto NEXT;
+			}
+		}
+		decl->generic_decl.id = d->generic_decl.id;
+		return;
+NEXT:;
+	}
+	decl->generic_decl.id = generic_id++;
+}
+
 /**
  * module ::= MODULE module_path ('{' module_params '}')? (@public|@private|@local|@test|@export|@cname) EOS
  */
@@ -285,7 +308,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 		path->len = (unsigned)strlen("#invalid");
 		path->module = "#invalid";
 		path->span = INVALID_SPAN;
-		context_set_module(c, path, NULL);
+		context_set_module(c, path);
 		recover_top_level(c);
 		return false;
 	}
@@ -294,7 +317,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 	Decl *generic_decl = NULL;
 	if (!parse_optional_module_params(c, &generic_decl))
 	{
-		if (!context_set_module(c, path, NULL)) return false;
+		if (!context_set_module(c, path)) return false;
 		recover_top_level(c);
 		if (contracts)
 		{
@@ -303,7 +326,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 		}
 		return true;
 	}
-	if (!context_set_module(c, path, generic_decl)) return false;
+	if (!context_set_module(c, path)) return false;
 	if (contracts)
 	{
 		if (!generic_decl)
@@ -326,10 +349,11 @@ bool parse_module(ParseContext *c, AstId contracts)
 	if (!parse_attributes(c, &attrs, &visibility, NULL, &is_cond, &c->unit->generic_attr)) return false;
 	if (generic_decl)
 	{
-		GenericSection *section = CALLOCS(GenericSection);
-		section->owner = generic_decl;
-		vec_add(c->unit->generic_sections, section);
-		c->unit->default_generic_section = section;
+
+		vec_add(c->unit->generic_decls, generic_decl);
+		c->unit->default_generic_section = generic_decl;
+		unify_generic_decl(c->unit, generic_decl);
+		vec_add(c->unit->module->generics, generic_decl);
 	}
 	FOREACH(Attr *, attr, attrs)
 	{

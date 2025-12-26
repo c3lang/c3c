@@ -138,6 +138,8 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl);
 bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain, bool *erase_decl);
 
+void unit_register_optional_global_decl(CompilationUnit *unit, Decl *decl);
+
 INLINE bool sema_analyse_stmt_chain(SemaContext *context, Ast *statement)
 {
 	if (!ast_ok(statement)) return false;

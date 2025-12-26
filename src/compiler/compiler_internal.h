@@ -619,8 +619,21 @@ typedef struct
 {
 	const char **parameters;
 	AstId contracts;
+	unsigned id;
+	Decl **instances;
+	Decl *owner;
+	Decl **decls;
+	Decl **conditional_decls;
 } GenericDecl;
 
+typedef struct
+{
+	unsigned id;
+	Decl **templates;
+	Expr **params;
+	const char *name_suffix;
+	HTable symbols;
+} GenericInstanceDecl;
 typedef struct
 {
 	bool is_func : 1;
@@ -771,6 +784,7 @@ typedef struct Decl_
 		TypeAliasDecl type_alias_decl;
 		VarDecl var;
 		GenericDecl generic_decl;
+		GenericInstanceDecl instance_decl;
 	};
 } Decl;
 
@@ -1727,12 +1741,6 @@ typedef struct
 	LexMode mode;
 } Lexer;
 
-typedef struct GenericSection_
-{
-	Decl *owner;
-	Decl **decls;
-	Decl **conditional_decls;
-} GenericSection;
 
 struct CompilationUnit_
 {
@@ -1750,8 +1758,8 @@ struct CompilationUnit_
 	const char **links;
 	Visibility default_visibility;
 	Attr *if_attr;
-	GenericSection *default_generic_section;
-	GenericSection **generic_sections;
+	Decl *default_generic_section;
+	Decl **generic_decls;
 	Expr **generic_attr;
 	bool export_by_default;
 	bool is_interface_file;
@@ -1857,6 +1865,7 @@ struct SemaContext_
 	{
 		Module *infer;
 	} generic;
+	Decl *generic_instance;
 };
 
 typedef enum
@@ -1997,7 +2006,6 @@ typedef struct
 	Module *core_module;
 	CompilationUnit *core_unit;
 	Module **module_list;
-	Module **generic_module_list;
 	Type **type;
 	const char *lib_dir;
 	const char **sources;
@@ -2292,7 +2300,7 @@ void copy_begin(void);
 void copy_end(void);
 Expr *copy_expr_single(Expr *source_expr);
 Decl **copy_decl_list_single(Decl **decl_list);
-Decl **copy_decl_list_single_for_unit(Decl **decl_list);
+Decl **copy_decl_list_single_for_generic(Decl **decl_list, Decl *generic_instance);
 Attr **copy_attributes_single(Attr** attr_list);
 Decl *copy_lambda_deep(Decl *decl);
 Ast *copy_ast_single(Ast *source_ast);
@@ -2348,7 +2356,7 @@ void global_context_add_decl(Decl *type_decl);
 
 void linking_add_link(Linking *linker, const char *link);
 
-Module *compiler_find_or_create_module(Path *module_name, bool is_generic);
+Module *compiler_find_or_create_module(Path *module_name);
 Module *global_context_find_module(const char *name);
 const char *get_object_extension(void);
 const char *get_exe_extension(void);
@@ -2360,7 +2368,7 @@ void unit_register_external_symbol(SemaContext *context, Decl *decl);
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
 bool unit_add_alias(CompilationUnit *unit, Decl *decl);
 bool context_set_module_from_filename(ParseContext *context);
-bool context_set_module(ParseContext *context, Path *path, Decl *generic_decl);
+bool context_set_module(ParseContext *context, Path *path);
 bool context_is_macro(SemaContext *context);
 
 // --- Decl functions

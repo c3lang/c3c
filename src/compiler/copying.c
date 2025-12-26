@@ -913,12 +913,22 @@ Attr **copy_attributes_single(Attr** attr_list)
 	return attrs;
 }
 
-Decl **copy_decl_list_single_for_unit(Decl **decl_list)
+Decl **copy_decl_list_single_for_generic(Decl **decl_list, Decl *generic_instance)
 {
+	const char *name_suffix = generic_instance->instance_decl.name_suffix;
 	bool old_is_template = copy_struct.is_template;
 	copy_struct.is_template = true;
 	copy_begin();
 	Decl **result = copy_decl_list_macro(decl_list);
+	FOREACH(Decl *, decl, result)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(decl->name);
+		scratch_buffer_append(name_suffix);
+		decl->name = scratch_buffer_interned();
+		decl->is_templated = true;
+		decl->generic_instance = declid(generic_instance);
+	}
 	copy_end();
 	copy_struct.is_template = old_is_template;
 	return result;

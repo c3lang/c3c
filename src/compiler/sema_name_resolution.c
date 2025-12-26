@@ -762,28 +762,12 @@ INLINE Module *sema_module_matches_path(SemaContext *context, Module *module, Pa
 	return NULL;
 }
 
-INLINE Module *sema_find_module_for_path(SemaContext *context, Path *path, bool prefer_generic)
+INLINE Module *sema_find_module_for_path(SemaContext *context, Path *path)
 {
-	if (prefer_generic)
-	{
-		FOREACH(Module *, module, compiler.context.generic_module_list)
-		{
-			Module *module_match = sema_module_matches_path(context, module, path);
-			if (module_match) return module_match;
-		}
-	}
 	FOREACH(Module *, module, compiler.context.module_list)
 	{
 		Module *module_match = sema_module_matches_path(context, module, path);
 		if (module_match) return module_match;
-	}
-	if (!prefer_generic)
-	{
-		FOREACH(Module *, module, compiler.context.generic_module_list)
-		{
-			Module *module_match = sema_module_matches_path(context, module, path);
-			if (module_match) return module_match;
-		}
 	}
 	return NULL;
 }
@@ -799,7 +783,7 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		if (!name_resolve->found && !name_resolve->maybe_decl && !name_resolve->private_decl && !name_resolve->path_found)
 		{
 			if (name_resolve->suppress_error) return true;
-			Module *module_with_path = sema_find_module_for_path(context, name_resolve->path, name_resolve->is_parameterized);
+			Module *module_with_path = sema_find_module_for_path(context, name_resolve->path);
 			if (module_with_path)
 			{
 				RETURN_SEMA_ERROR(name_resolve, "'%s' could not be found in %s.", name_resolve->symbol, module_with_path->name->module);
@@ -830,7 +814,16 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 	if (found->is_template)
 	{
 		if (name_resolve->is_parameterized) return true;
-		if (context->generic.infer)
+		if (context->generic_instance)
+		{
+			Decl *generic = declptr(found->generic_id);
+			if (generic->generic_decl.id == context->generic_instance->instance_decl.id)
+			{
+				Decl *candidate = htable_get(&context->generic_instance->instance_decl.symbols, (void*)name_resolve->symbol);
+				if (candidate) return name_resolve->found = candidate, true;
+			}
+		}
+		else if (context->generic.infer)
 		{
 			if (context->generic.infer->generic_module != found->unit->module)
 			{

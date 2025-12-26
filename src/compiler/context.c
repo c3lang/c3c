@@ -14,42 +14,10 @@ CompilationUnit *unit_create(File *file)
 }
 
 
-static inline bool create_module_or_check_name(CompilationUnit *unit, Path *module_name, Decl *generic_decl)
+static inline bool create_module_or_check_name(CompilationUnit *unit, Path *module_name)
 {
 	Module *module = unit->module;
-	if (!module)
-	{
-		module = unit->module = compiler_find_or_create_module(module_name, generic_decl != NULL);
-		/* TODO
-		if ((module->generics == NULL) != (generic_decl != NULL))
-		{
-			print_error_at(module_name->span, "'%s' is both used as regular and generic module, it can't be both.",
-			               module_name->module);
-			SEMA_NOTE(module->name, "The definition here is different.");
-			return false;
-		}*/
-		if (!generic_decl) goto DONE;
-		vec_add(module->generics, generic_decl);
-		/* TODO
-		if (vec_size(generic_decl->generic_decl.parameters) != vec_size(module->generics[0]->generic_decl.parameters))
-		{
-			PRINT_ERROR_AT(module_name, "The parameter declarations of the generic module '%s' don't match.", module_name->module);
-			SEMA_NOTE(module->name, "A different definition can be found here.");
-			return false;
-		}
-		FOREACH_IDX(idx, const char *, name, generic_decl->generic_decl.parameters)
-		{
-			bool is_type = str_is_type(name);
-			if (is_type != str_is_type(module->generics[0]->generic_decl.parameters[idx]))
-			{
-				PRINT_ERROR_AT(module_name, "The parameter declarations of the generic module '%s' don't match.", module_name->module);
-				SEMA_NOTE(module->name, "The other definition is here.");
-				return false;
-			}
-		}
-		*/
-		goto DONE;
-	}
+	if (!module) module = unit->module = compiler_find_or_create_module(module_name);
 	if (unit->module->name->module != module_name->module)
 	{
 		RETURN_PRINT_ERROR_AT(false,
@@ -58,8 +26,6 @@ static inline bool create_module_or_check_name(CompilationUnit *unit, Path *modu
 		                      module_name->module,
 		                      module->name->module);
 	}
-
-DONE:;
 	vec_add(module->units, unit);
 	return true;
 }
@@ -128,14 +94,14 @@ bool context_set_module_from_filename(ParseContext *context)
 	path->span = context->span;
 	path->module = module_name;
 	path->len = scratch_buffer.len;
-	return create_module_or_check_name(context->unit, path, NULL);
+	return create_module_or_check_name(context->unit, path);
 }
 
-bool context_set_module(ParseContext *context, Path *path, Decl *generic_decl)
+bool context_set_module(ParseContext *context, Path *path)
 {
 
 	if (!check_module_name(path)) return false;
-	return create_module_or_check_name(context->unit, path, generic_decl);
+	return create_module_or_check_name(context->unit, path);
 }
 
 bool context_is_macro(SemaContext *context)
@@ -223,6 +189,7 @@ void decl_register(CompilationUnit *unit, Decl *decl)
 	}
 
 }
+
 
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 {

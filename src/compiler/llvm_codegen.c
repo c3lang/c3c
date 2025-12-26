@@ -1418,7 +1418,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMContextRef shared_context)
 {
 	Path *test_path = path_create_from_string("_$test", 5, INVALID_SPAN);
-	Module *test_module = compiler_find_or_create_module(test_path, false);
+	Module *test_module = compiler_find_or_create_module(test_path);
 
 	DebugInfo actual_debug_info = compiler.build.debug_info;
 	compiler.build.debug_info = DEBUG_INFO_NONE;
@@ -1487,7 +1487,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, LLVMContextRef shared_context)
 {
 	Path *benchmark_path = path_create_from_string("$benchmark", 10, INVALID_SPAN);
-	Module *benchmark_module = compiler_find_or_create_module(benchmark_path, NULL);
+	Module *benchmark_module = compiler_find_or_create_module(benchmark_path);
 
 	DebugInfo actual_debug_info = compiler.build.debug_info;
 	compiler.build.debug_info = DEBUG_INFO_NONE;

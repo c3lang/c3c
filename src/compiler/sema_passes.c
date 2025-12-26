@@ -53,7 +53,7 @@ void sema_analyse_pass_module_hierarchy(Module *module)
 	// No match, so we create a synthetic module.
 	Path *path = path_create_from_string(slice.ptr, slice.len, module->name->span);
 	DEBUG_LOG("Creating parent module for %s: %s", module->name->module, path->module);
-	Module *parent_module = compiler_find_or_create_module(path, NULL);
+	Module *parent_module = compiler_find_or_create_module(path);
 	module->parent_module = parent_module;
 	vec_add(parent_module->sub_modules, module);
 	sema_analyze_stage(parent_module, ANALYSIS_MODULE_HIERARCHY);
@@ -101,7 +101,7 @@ void sema_analysis_pass_process_imports(Module *module)
 				if (unit->if_attr)
 				{
 					unit->error_import = import;
-					import_module = compiler_find_or_create_module(path, NULL);
+					import_module = compiler_find_or_create_module(path);
 					goto FOUND_MODULE;
 				}
 				PRINT_ERROR_AT(import, "No module named '%s' could be found, did you type the name right?", path->module);
@@ -134,7 +134,7 @@ NEXT:;
 				if (unit->if_attr)
 				{
 					unit->error_import = alias_module;
-					import_module = compiler_find_or_create_module(path, NULL);
+					import_module = compiler_find_or_create_module(path);
 					goto FOUND_ALIAS;
 				}
 				PRINT_ERROR_AT(path, "No module named '%s' could be found, did you type the name right?", path->module);
@@ -163,6 +163,18 @@ FOUND_ALIAS:
 	DEBUG_LOG("Pass finished processing %d import(s) with %d error(s).", total_import_count, compiler.context.errors_found);
 }
 
+void unit_register_optional_global_decl(CompilationUnit *unit, Decl *decl)
+{
+	SemaContext context;
+	sema_context_init(&context, unit);
+	if (decl->is_templated) context.generic_instance = declptr(decl->generic_instance);
+	if (sema_decl_if_cond(&context, decl))
+	{
+		unit_register_global_decl(unit, decl);
+	}
+	sema_context_destroy(&context);
+
+}
 INLINE void register_global_decls(CompilationUnit *unit, Decl **decls)
 {
 	FOREACH(Decl *, decl, decls)
@@ -498,11 +510,15 @@ void sema_analysis_pass_register_conditional_units(Module *module)
 		{
 			vec_resize(unit->global_decls, 0);
 			vec_resize(unit->global_cond_decls, 0);
-			FOREACH(GenericSection *, section, unit->generic_sections)
+			FOREACH(Decl *, decl, module->generics)
 			{
-				vec_resize(section->conditional_decls, 0);
-				vec_resize(section->decls, 0);
+				if (decl->unit == unit)
+				{
+					vec_resize(decl->generic_decl.conditional_decls, 0);
+					vec_resize(decl->generic_decl.decls, 0);
+				}
 			}
+			vec_resize(unit->ct_includes, 0);
 			continue;
 		}
 CHECK_LINK:
@@ -571,13 +587,7 @@ RETRY:;
 		Decl **decls = unit->global_cond_decls;
 		FOREACH(Decl *, decl, decls)
 		{
-			SemaContext context;
-			sema_context_init(&context, unit);
-			if (sema_decl_if_cond(&context, decl))
-			{
-				unit_register_global_decl(unit, decl);
-			}
-			sema_context_destroy(&context);
+			unit_register_optional_global_decl(unit, decl);
 		}
 		vec_resize(decls, 0);
 RETRY_INCLUDES:

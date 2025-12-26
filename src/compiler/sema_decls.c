@@ -5012,11 +5012,13 @@ static CompilationUnit *unit_copy_for_generic(Module *module, CompilationUnit *u
 	ASSERT(unit->global_decls == NULL);
 	ASSERT(unit->global_cond_decls == NULL);
 
+	TODO
+	/*
 	FOREACH(GenericSection *, section, unit->generic_sections)
 	{
 		copy->global_decls = copy_decl_list_single_for_unit(section->decls);
 		copy->global_cond_decls = copy_decl_list_single_for_unit(section->conditional_decls);
-	}
+	}*/
 
 	copy->module = module;
 	ASSERT(!unit->functions && !unit->macro_methods && !unit->methods && !unit->enums && !unit->ct_includes && !unit->types);
@@ -5054,15 +5056,17 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 		decl->type->canonical = type_info->type->canonical;
 		params_decls[decls++] = decl;
 	}
+	Decl *generic_instance = decl_new(DECL_GENERIC_INSTANCE, path->module, from_span);
 
-	Module *new_module = compiler_find_or_create_module(path, NULL);
+	Module *new_module = compiler_find_or_create_module(path);
 	new_module->generics = NULL;
 	new_module->generic_module = module;
 	ASSERT(module->stage == ANALYSIS_IMPORTS);
 	new_module->stage = module->stage;
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		vec_add(new_module->units, unit_copy_for_generic(new_module, unit));
+		(void)unit;
+		//vec_add(new_module->units, unit_copy_for_generic(new_module, unit));
 	}
 	CompilationUnit *first_context = new_module->units[0];
 	for (unsigned  i = 0; i < decls; i++)
@@ -5233,6 +5237,138 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 	return true;
 }
 
+static bool sema_generate_parameter_suffix_to_scratch(SemaContext *context, Expr **params, bool mangled, bool *was_recursive_ref)
+{
+	// First resolve
+	FOREACH_IDX(i, Expr *, param, params)
+	{
+		if (param->expr_kind == EXPR_TYPEINFO)
+		{
+			TypeInfo *type_info = param->type_expr;
+			if (was_recursive_ref && type_info->kind == TYPE_INFO_GENERIC) *was_recursive_ref = true;
+			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
+			Type *type = type_info->type->canonical;
+			if (type->type_kind == TYPE_OPTIONAL) RETURN_SEMA_ERROR(type_info, "Expected a non-optional type.");
+			switch (sema_resolve_storage_type(context, type))
+			{
+				case STORAGE_ERROR:
+					return false;
+				case STORAGE_NORMAL:
+				case STORAGE_VOID:
+					break;
+				case STORAGE_WILDCARD:
+					RETURN_SEMA_ERROR(type_info, "The type is undefined and cannot be used as a parameter type.");
+				case STORAGE_COMPILE_TIME:
+					RETURN_SEMA_ERROR(type_info, "Expected a runtime type but it was %s.", type_invalid_storage_type_name(type));
+				case STORAGE_UNKNOWN:
+					RETURN_SEMA_ERROR(type_info,
+					                  "%s doesn't have a well defined size and cannot be used as a parameter type.",
+					                  type_quoted_error_string(type));
+			}
+			if (type_is_func_ptr(type))
+			{
+				if (!sema_resolve_type_decl(context, type->pointer)) return false;
+			}
+		}
+		else
+		{
+			if (!sema_analyse_ct_expr(context, param)) return false;
+			Type *type = param->type->canonical;
+			if (type->type_kind == TYPE_TYPEDEF) type = type_flatten(type);
+
+			bool is_enum_or_fault = type_kind_is_enum_or_fault(type->type_kind);
+			if (!type_is_integer_or_bool_kind(type) && !is_enum_or_fault)
+			{
+				RETURN_SEMA_ERROR(param, "Only integer, bool, fault and enum values may be generic arguments.");
+			}
+			ASSERT(expr_is_const(param));
+		}
+	}
+
+	scratch_buffer_clear();
+	scratch_buffer_append(mangled ? "$" : "{");
+	FOREACH_IDX(j, Expr *, param, params)
+	{
+		if (j != 0)
+		{
+			scratch_buffer_append(mangled ? "$" : ", ");
+		}
+		if (param->expr_kind == EXPR_TYPEINFO)
+		{
+			mangle_type_param(param->type_expr->type, mangled);
+		}
+		else
+		{
+			Type *type = param->type->canonical;
+			if (type->type_kind == TYPE_TYPEDEF)
+			{
+				mangle_type_param(type, mangled);
+				scratch_buffer_append(mangled ? "$" : ", ");
+				type = type_flatten(type);
+			}
+			if (type == type_bool)
+			{
+				if (mangled)
+				{
+					scratch_buffer_append_char(param->const_expr.b ? 't' : 'f');
+				}
+				else
+				{
+					scratch_buffer_append(param->const_expr.b ? "true" : "false");
+				}
+			}
+			else if (type->type_kind == TYPE_ENUM)
+			{
+				Decl *enumm = param->const_expr.enum_val;
+				type_mangle_introspect_name_to_buffer(enumm->type->canonical);
+				scratch_buffer_append(mangled ? "_" : ":");
+				scratch_buffer_append(enumm->name);
+			}
+			else if (type->type_kind == TYPE_ANYFAULT)
+			{
+				Decl *fault = param->const_expr.fault;
+				if (fault)
+				{
+					type_mangle_introspect_name_to_buffer(fault->type->canonical);
+					scratch_buffer_append(mangled ? "_" : ":");
+					scratch_buffer_append(fault->name);
+				}
+				else
+				{
+					scratch_buffer_append("null");
+				}
+			}
+			else
+			{
+				char *maybe_neg = &scratch_buffer.str[scratch_buffer.len];
+				if (type->type_kind == TYPE_I128 || type->type_kind == TYPE_U128)
+				{
+					char *str = int_to_str(param->const_expr.ixx, 10, false);
+					scratch_buffer_append(str);
+				}
+				else
+				{
+					if (type_is_signed(type))
+					{
+						scratch_buffer_append_signed_int((int64_t)param->const_expr.ixx.i.low);
+					}
+					else
+					{
+						scratch_buffer_append_unsigned_int(param->const_expr.ixx.i.low);
+					}
+				}
+				if (mangled)
+				{
+					// Replace - with _
+					if (maybe_neg[0] == '-') maybe_neg[0] = '_';
+				}
+			}
+		}
+	}
+	scratch_buffer_append(mangled ? "$" : "}");
+	return true;
+}
+
 static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module, Decl *generic_decl, SourceSpan param_span, SourceSpan invocation_span)
 {
 	AstId contract = generic_decl->generic_decl.contracts;
@@ -5283,9 +5419,9 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 {
 	Decl *alias = sema_resolve_parameterized_symbol(c, name, decl_path, span);
 	if (!alias) return poisoned_decl;
-	Module *module = alias->unit->module;
-
-	unsigned parameter_count = module->generics ? vec_size(module->generics[0]->generic_decl.parameters) : 0;
+	ASSERT_AT(invocation_span, alias->is_template && alias->generic_id);
+	Decl *generic = declptr(alias->generic_id);
+	unsigned parameter_count = vec_size(generic->generic_decl.parameters);
 	ASSERT(parameter_count > 0);
 	unsigned count = vec_size(params);
 	if (parameter_count != count)
@@ -5305,29 +5441,122 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		}
 		return poisoned_decl;
 	}
-	if (!sema_generate_parameterized_name_to_scratch(c, module, params, true, was_recursive_ref)) return poisoned_decl;
-	const char *path_string = scratch_buffer_interned();
-	Module *instantiated_module = global_context_find_module(path_string);
-
-	AnalysisStage stage = c->unit->module->generic_module
-			? c->unit->module->stage
-			: c->unit->module->stage - 1;
-	bool instantiation = false;
-	if (!instantiated_module)
+	Module *module = alias->unit->module;
+	if (!sema_generate_parameter_suffix_to_scratch(c, params, true, was_recursive_ref)) return poisoned_decl;
+	const char *suffix = scratch_buffer_interned();
+	Decl *instance = NULL;
+	FOREACH (Decl *, candidate, generic->generic_decl.instances)
 	{
-		instantiation = true;
-		Path *path = CALLOCS(Path);
-		path->module = path_string;
-		path->span = module->name->span;
-		path->len = scratch_buffer.len;
-		instantiated_module = module_instantiate_generic(c, module, path, params, invocation_span);
-		if (!instantiated_module) return poisoned_decl;
-		if (!sema_generate_parameterized_name_to_scratch(c, module, params, false, NULL)) return poisoned_decl;
-		instantiated_module->generic_suffix = scratch_buffer_copy();
-		sema_analyze_stage(instantiated_module, stage > ANALYSIS_POST_REGISTER ? ANALYSIS_POST_REGISTER : stage);
+		if (instance->name == suffix)
+		{
+			instance = candidate;
+			break;
+		}
 	}
-	if (compiler.context.errors_found) return poisoned_decl;
-	Decl *symbol = module_find_symbol(instantiated_module, name);
+	unsigned id = generic->generic_decl.id;
+	bool instantiation = instance == NULL;
+	if (!instance)
+	{
+		instance = decl_new(DECL_GENERIC_INSTANCE, suffix, generic->span);
+		instance->instance_decl.params = params;
+		instance->unit = alias->unit;
+		Decl **copied = NULL;
+		Decl **copied_cond = NULL;
+		if (!sema_generate_parameter_suffix_to_scratch(c, params, false, was_recursive_ref)) return poisoned_decl;
+		instance->instance_decl.name_suffix = scratch_buffer_copy();
+		instance->instance_decl.id = id;
+		FOREACH(Decl *, g, module->generics)
+		{
+			if (g->generic_decl.id == generic->generic_decl.id)
+			{
+				vec_add(instance->instance_decl.templates, g);
+				Decl **decls = g->generic_decl.decls;
+				Decl **cond_decls = g->generic_decl.conditional_decls;
+				decls = decls ? copy_decl_list_single_for_generic(decls, instance) : NULL;
+				cond_decls = cond_decls ? copy_decl_list_single_for_generic(cond_decls, instance) : NULL;
+				FOREACH(Decl *, d, decls) vec_add(copied, d);
+				FOREACH(Decl *, d, cond_decls) vec_add(copied_cond, d);
+			}
+		}
+		htable_init(&instance->instance_decl.symbols, vec_size(copied) + vec_size(copied_cond) + 1);
+		vec_add(generic->generic_decl.instances, instance);
+		AnalysisStage stage = module->stage;
+		ASSERT(stage > ANALYSIS_IMPORTS);
+		switch (stage)
+		{
+			case ANALYSIS_NOT_BEGUN:
+			case ANALYSIS_MODULE_HIERARCHY:
+			case ANALYSIS_MODULE_TOP:
+			case ANALYSIS_IMPORTS:
+				UNREACHABLE;
+			case ANALYSIS_REGISTER_GLOBAL_DECLARATIONS:
+			case ANALYSIS_REGISTER_CONDITIONAL_UNITS:
+			case ANALYSIS_INCLUDES:
+			{
+				FOREACH(Decl *, decl, copied) unit_register_global_decl(decl->unit, decl);
+				break;
+			}
+			case ANALYSIS_REGISTER_CONDITIONAL_DECLARATIONS:
+			{
+				FOREACH(Decl *, decl, copied) unit_register_global_decl(decl->unit, decl);
+				FOREACH(Decl *, decl, copied_cond) unit_register_optional_global_decl(decl->unit, decl);
+				break;
+			}
+			case ANALYSIS_METHODS_REGISTER:
+				TODO
+				break;
+			case ANALYSIS_METHODS_REGISTER_GENERIC:
+				TODO
+				break;
+			case ANALYSIS_METHODS_INCLUDES:
+				TODO
+				break;
+			case ANALYSIS_METHODS_INCLUDES_GENERIC:
+				TODO
+				break;
+			case ANALYSIS_METHODS_CONDITIONAL:
+				TODO
+				break;
+			case ANALYSIS_METHODS_CONDITIONAL_GENERIC:
+				TODO
+				break;
+			case ANALYSIS_POST_REGISTER:
+			{
+				FOREACH(Decl *, decl, copied) unit_register_global_decl(decl->unit, decl);
+				FOREACH(Decl *, decl, copied_cond) unit_register_optional_global_decl(decl->unit, decl);
+				break;
+			}
+			case ANALYSIS_DECLS:
+				TODO
+				break;
+			case ANALYSIS_CT_ECHO:
+				TODO
+				break;
+			case ANALYSIS_CT_ASSERT:
+				TODO
+				break;
+			case ANALYSIS_FUNCTIONS:
+				TODO
+				break;
+			case ANALYSIS_INTERFACE:
+				TODO
+				break;
+			case ANALYSIS_FINALIZE:
+				TODO
+				break;
+		}
+		if (stage <= ANALYSIS_IMPORTS)
+		{
+		}
+		TODO // generate decls
+/*		AnalysisStage stage = c->unit->module->generic_module
+				? c->unit->module->stage
+				: c->unit->module->stage - 1; */
+
+		if (compiler.context.errors_found) return poisoned_decl;
+	}
+	Decl *symbol = htable_get(&instance->instance_decl.symbols, (void*)name);
+	if (symbol->visibility == VISIBLE_LOCAL) symbol = NULL;
 	if (!symbol)
 	{
 		sema_error_at(c, span, "The generic module '%s' does not have '%s' for this parameterization.", module->name->module, name);
@@ -5335,23 +5564,17 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	}
 	if (instantiation)
 	{
-		Decl *decl = instantiated_module->generic_module->generics[0];
-		AstId contracts = module->generics[0]->generic_decl.contracts;
+		AstId contracts = generic->generic_decl.contracts;
 		if (contracts)
 		{
 			copy_begin();
 			contracts = astid(copy_ast_macro(astptr(contracts)));
 			copy_end();
 			SourceSpan param_span = extend_span_with_token(params[0]->span, params[parameter_count - 1]->span);
-			if (!sema_analyse_generic_module_contracts(c, instantiated_module, decl, param_span, invocation_span))
+			if (!sema_analyse_generic_module_contracts(c, symbol->unit->module, symbol, param_span, invocation_span))
 			{
 				return poisoned_decl;
 			}
-		}
-		if (stage > ANALYSIS_POST_REGISTER)
-		{
-			sema_analyze_stage(instantiated_module, stage);
-			if (compiler.context.errors_found) return poisoned_decl;
 		}
 	}
 
