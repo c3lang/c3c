@@ -5596,6 +5596,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_LABEL:
 		case DECL_POISONED:
 		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
 			UNREACHABLE
 	}
 	if (erase_decl)

@@ -1028,6 +1028,12 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 	if (!decl) return NULL;
 	if (c->single_static && decl_is_resolved_static_var(decl)) return decl;
 	Decl *copy = decl_copy(decl);
+	if (copy->is_template)
+	{
+		copy->is_template = false;
+		copy->is_templated = true;
+		copy->generic_id = 0;
+	}
 	copy_reg_ref(c, decl, copy);
 	if (decl->resolved_attributes)
 	{
@@ -1044,6 +1050,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_ERASED:
 			break;
 		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
 			UNREACHABLE;
 		case DECL_INTERFACE:
 			copy_decl_type(copy);

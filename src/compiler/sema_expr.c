@@ -964,6 +964,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_IMPORT:
 		case DECL_TYPE_ALIAS:
 		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
 			UNREACHABLE
 		case DECL_POISONED:
 			return expr_poison(expr);
@@ -10403,6 +10404,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr,
 			case DECL_MACRO:
 			case DECL_POISONED:
 			case DECL_GENERIC:
+			case DECL_GENERIC_INSTANCE:
 				RETURN_SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
 			case DECL_FAULT:
 				goto RETURN_CT;

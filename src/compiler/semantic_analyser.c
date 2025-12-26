@@ -238,6 +238,8 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 	FOREACH(Decl *, decl, decls)
 	{
 		decl->unit = unit;
+		decl->is_template = true;
+		decl->generic_id = declid(unit->default_generic_section->owner);
 		switch (decl->decl_kind)
 		{
 			case DECL_ALIAS_PATH:
@@ -259,6 +261,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_ERASED:
 			case DECL_GROUP:
 			case DECL_GENERIC:
+			case DECL_GENERIC_INSTANCE:
 			case DECL_LABEL:
 				UNREACHABLE_VOID
 			case DECL_ALIAS:

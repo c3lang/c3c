@@ -711,15 +711,19 @@ typedef struct Decl_
 		int tb_register;
 		void *backend_value;
 		void *tb_symbol;
-		union
+		struct
 		{
-			int32_t template_id;
 			bool in_init;
 		};
 	};
 	AlignSize offset;
 	AlignSize padding;
 	AlignSize alignment;
+	union
+	{
+		DeclId generic_id;
+		DeclId generic_instance;
+	};
 	struct CompilationUnit_ *unit;
 	union
 	{

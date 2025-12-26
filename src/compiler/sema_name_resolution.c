@@ -826,7 +826,8 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		return false;
 	}
 	if (found->decl_kind != DECL_ALIAS) unit_register_external_symbol(context, found);
-	if (found->unit->module->generics)
+	ASSERT_SPAN(found, (found->is_template) == (found->unit->module->generics != NULL));
+	if (found->is_template)
 	{
 		if (name_resolve->is_parameterized) return true;
 		if (context->generic.infer)

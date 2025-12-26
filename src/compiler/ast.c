@@ -130,6 +130,7 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_FUNC: return "a function";
 		case DECL_GROUP: return "group";
 		case DECL_GENERIC: return "a generic declaration";
+		case DECL_GENERIC_INSTANCE: return "a generic instance";
 		case DECL_IMPORT: return "an import";
 		case DECL_LABEL: return "a label";
 		case DECL_MACRO: return "a macro";

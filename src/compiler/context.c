@@ -173,6 +173,7 @@ void decl_register(CompilationUnit *unit, Decl *decl)
 			case DECL_ENUM_CONSTANT:
 			case DECL_GROUP:
 			case DECL_GENERIC:
+			case DECL_GENERIC_INSTANCE:
 			case DECL_IMPORT:
 			case DECL_LABEL:
 			case DECL_POISONED:
@@ -305,6 +306,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_FNTYPE:
 		case DECL_GROUP:
 		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
 		case DECL_IMPORT:
 		case DECL_LABEL:
 			UNREACHABLE_VOID
