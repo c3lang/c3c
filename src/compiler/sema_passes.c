@@ -163,6 +163,14 @@ FOUND_ALIAS:
 	DEBUG_LOG("Pass finished processing %d import(s) with %d error(s).", total_import_count, compiler.context.errors_found);
 }
 
+INLINE void register_global_decls(CompilationUnit *unit, Decl **decls)
+{
+	FOREACH(Decl *, decl, decls)
+	{
+		unit_register_global_decl(unit, decl);
+	}
+	vec_resize(decls, 0);
+}
 
 INLINE File *sema_load_file(CompilationUnit *unit, Expr *filename)
 {
