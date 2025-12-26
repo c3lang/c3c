@@ -54,6 +54,7 @@
 - Deprecated `DString.append_string` for DStrings, use `DString.append_dstring` instead.
 - Added `DString.append_bytes`.
 - Add `streebog` (aka "GOST-12") hashing with 256-bit and 512-bit outputs. #2659
+- Add extra `AsciiCharset` constants and combine its related compile-time/runtime macros. #2688
 
 ## 0.7.8 Change list
 
