@@ -33,6 +33,7 @@
 - Incorrectly using LLVMStructType when emitting dynamic functions on MachO #2666  
 - FixedThreadPool join did not work correctly.
 - Fix bug when creating bool vectors in certain cases.
+- Compiler assert when passing returning CT failure immediately rethrown #2689.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.

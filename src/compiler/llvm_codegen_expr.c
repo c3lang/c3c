@@ -2369,6 +2369,12 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 			break;
 	}
 	llvm_emit_expr(c, value, inner);
+	if (!c->current_block)
+	{
+		value->type = type_void;
+		*value = (BEValue) { .type = type_void, .kind = BE_VALUE, .value = NULL };
+		return;
+	}
 	llvm_value_rvalue(c, value);
 	AlignSize alignment = type_abi_alignment(type);
 	bool is_const = expr_is_const(inner);
