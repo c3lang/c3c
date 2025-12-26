@@ -114,25 +114,45 @@ const char[256] TO_LOWER @private  = { ['A'..'Z'] = 'a' - 'A' };
 
 typedef AsciiCharset = uint128;
 
-macro AsciiCharset @create_set(String $string) @const
+macro AsciiCharset @create_set(String #string) @const
 {
-	AsciiCharset $set;
-	$foreach $c : $string:
-		$set |= 1ULL << $c;
-	$endforeach
-	return $set;
+	$if $defined(var $string = #string):
+		var $string = #string;
+		AsciiCharset $set;
+		$foreach $c : $string: $set |= 1ULL << $c; $endforeach
+		return $set;
+	$else
+		AsciiCharset set;
+		foreach (c : string) set |= (AsciiCharset)1ULL << c;
+		return set;
+	$endif
 }
 
-fn AsciiCharset create_set(String string)
+macro AsciiCharset @combine_sets(AsciiCharset #left, ...)
 {
-	AsciiCharset set;
-	foreach (c : string) set |= (AsciiCharset)1ULL << c;
-	return set;
+	$if $defined(var $left = #left, var $others = { $vasplat }):
+		var $left = #left; var $others = { $vasplat };
+		$foreach $s : $others: $left |= (uint128)$s; $endforeach
+		return $left;
+	$else
+		foreach (c : { $vasplat }) #left |= (uint128)c;
+		return #left;
+	$endif
 }
 
-macro bool AsciiCharset.contains(set, char c) => !!(c < 128) & !!(set & (AsciiCharset)(1ULL << c));
+macro bool AsciiCharset.@contains(#set, char #c)
+{
+	$if $defined(var $set = #set, var $c = #c):
+		var $set = #set; var $c = #c;
+		return !!($c < 128) & !!($set & (AsciiCharset)(1ULL << $c));
+	$else
+		return !!(#c < 128) & !!(#set & (AsciiCharset)(1ULL << #c));
+	$endif
+}
 
 const AsciiCharset WHITESPACE_SET = @create_set("\t\n\v\f\r ");
 const AsciiCharset NUMBER_SET = @create_set("0123456789");
-
-
+const AsciiCharset ALPHA_UPPER_SET = @create_set("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+const AsciiCharset ALPHA_LOWER_SET = @create_set("abcdefghijklmnopqrstuvwxyz");
+const AsciiCharset ALPHA_SET = @combine_sets(ALPHA_UPPER_SET, ALPHA_LOWER_SET);
+const AsciiCharset ALPHANUMERIC_SET = @combine_sets(ALPHA_SET, NUMBER_SET);
