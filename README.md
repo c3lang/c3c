@@ -256,10 +256,13 @@ curl -fsSL https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/instal
 
 #### Installing on MacOS with precompiled binaries
 1. Make sure you have XCode with command line tools installed.
-2. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-macos.zip](https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-macos.zip)
+2. Install [Homebrew](https://brew.sh/)
+3. Install LLVM 17+: `brew install llvm@19` and add it to your PATH in ~/.zshrc
+4. Install lld: `brew install lld@19`
+5. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-macos.zip](https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-macos.zip)
    (debug version [here](https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-macos-debug.zip))
-3. Unzip executable and standard lib.
-4. Run `./c3c`.
+6. Unzip executable and standard lib.
+7. Run `./c3c`.
 
 (*Note that there is a known issue with debug symbol generation on MacOS 13, see [issue #1086](https://github.com/c3lang/c3c/issues/1086))
 
@@ -361,17 +364,17 @@ UBUNTU_VERSION=20.04 ./build-with-docker.sh
 
 See the `build-with-docker.sh` script for more information on other configurable environment variables.
 
-#### Installing on OS X using Homebrew
+#### Installing on MacOS using Homebrew
 
-1. Install [Homebrew](https://brew.sh/)
-2. Install LLVM 17+: `brew install llvm`
-3. Install lld: `brew install lld`
-4. Install CMake: `brew install cmake`
-5. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-6. Enter the C3C directory `cd c3c`.
-7. Set up CMake build for debug: `cmake -B build -S .`
-8. Build: `cmake --build build`
-9. Change directory to the build directory `cd build`
+1. Install [Determinate Nix](https://docs.determinate.systems/)
+2. Install [CMake](https://cmake.org/download/)
+3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c`
+4. Enter the C3C directory: `cd c3c`
+5. Install dependencies: `nix develop`
+6. Set up CMake build: `cmake -B build -S . $C3_CMAKE_FLAGS`
+7. Build: `cmake --build build`
+8. Change directory to the build directory: `cd build`
+9. Add c3c to your PATH
 
 #### Installing on Windows using Scoop
 
