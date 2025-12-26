@@ -239,8 +239,8 @@ fn String String.trim_charset(self, AsciiCharset to_trim = ascii::WHITESPACE_SET
 {
 	usz start = 0;
 	usz len = self.len;
-	while (start < len && to_trim.contains(self[start])) start++;
-	while (len > start && to_trim.contains(self[len - 1])) len--;
+	while (start < len && to_trim.@contains(self[start])) start++;
+	while (len > start && to_trim.@contains(self[len - 1])) len--;
     return self[start..len - 1];
 }
 
