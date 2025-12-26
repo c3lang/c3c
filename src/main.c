@@ -8,6 +8,10 @@
 #include <sys/resource.h>
 #endif
 
+#ifdef __ANDROID__
+#include <execinfo.h>
+#endif
+
 bool debug_log = false;
 
 jmp_buf on_error_jump;
@@ -26,10 +30,26 @@ static void cleanup()
 
 const char *compiler_exe_name;
 
+#ifdef __ANDROID__
+void print_backtrace(int sig)
+{
+	void* buf[20];
+	size_t len;
+
+	len = backtrace(buf, 20);
+	fprintf(stderr, "Printing backtrace\n");
+	backtrace_symbols_fd(buf, len, STDERR_FILENO);
+	exit(1);
+}
+#endif
+
 int main_real(int argc, const char *argv[])
 {
 	srand((unsigned int)time(NULL));
 	compiler_exe_name = argv[0];
+#ifdef __ANDROID__
+	signal(SIGSEGV, print_backtrace);
+#endif
 #ifdef __OpenBSD__
 	// override data size constrain set up by the system */
 	struct rlimit l;
