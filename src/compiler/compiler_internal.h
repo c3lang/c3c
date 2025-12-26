@@ -630,7 +630,7 @@ typedef struct
 {
 	unsigned id;
 	Decl **templates;
-	Expr **params;
+	Decl **params;
 	const char *name_suffix;
 	HTable symbols;
 } GenericInstanceDecl;

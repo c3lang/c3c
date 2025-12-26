@@ -793,6 +793,14 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 	}
 	else
 	{
+		// In a generic context, match parameters first of all.
+		if (context->generic_instance)
+		{
+			FOREACH(Decl *, param, context->generic_instance->instance_decl.params)
+			{
+				if (param->name == name_resolve->symbol) return name_resolve->found = param, true;
+			}
+		}
 		if (!sema_resolve_no_path_symbol(context, name_resolve)) return false;
 	}
 

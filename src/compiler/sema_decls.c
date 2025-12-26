@@ -5242,6 +5242,8 @@ static bool sema_generate_parameter_suffix_to_scratch(SemaContext *context, Expr
 	// First resolve
 	FOREACH_IDX(i, Expr *, param, params)
 	{
+		if (!sema_analyse_expr_rvalue(context, param)) return false;
+RETRY:
 		if (param->expr_kind == EXPR_TYPEINFO)
 		{
 			TypeInfo *type_info = param->type_expr;
@@ -5273,6 +5275,14 @@ static bool sema_generate_parameter_suffix_to_scratch(SemaContext *context, Expr
 		else
 		{
 			if (!sema_analyse_ct_expr(context, param)) return false;
+			if (expr_is_const_typeid(param))
+			{
+				param->type = type_typeinfo;
+				Type *type = param->const_expr.typeid;
+				param->expr_kind = EXPR_TYPEINFO;
+				param->type_expr = type_info_new_base(type, param->span);
+				goto RETRY;
+			}
 			Type *type = param->type->canonical;
 			if (type->type_kind == TYPE_TYPEDEF) type = type_flatten(type);
 
@@ -5458,7 +5468,24 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	if (!instance)
 	{
 		instance = decl_new(DECL_GENERIC_INSTANCE, suffix, generic->span);
-		instance->instance_decl.params = params;
+		FOREACH_IDX(i, const char *, param_name, generic->generic_decl.parameters)
+		{
+			Decl *decl;
+			Expr *param = params[i];
+			if (param->expr_kind == EXPR_TYPEINFO)
+			{
+				decl = decl_new_var(param_name, param->span, NULL, VARDECL_PARAM_CT_TYPE);
+			}
+			else
+			{
+				ASSERT(param->expr_kind == EXPR_CONST);
+				decl = decl_new_var(param_name, param->span, NULL, VARDECL_PARAM_CT);
+			}
+			decl->unit = c->unit;
+			decl->var.init_expr = param;
+			if (!sema_analyse_decl(c, decl)) return false;
+			vec_add(instance->instance_decl.params, decl);
+		}
 		instance->unit = alias->unit;
 		Decl **copied = NULL;
 		Decl **copied_cond = NULL;
