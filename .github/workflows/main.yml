@@ -952,7 +952,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: NetBSD VM
+      - name: OpenBSD VM
         uses: vmactions/openbsd-vm@v1
         with:
           prepare: |
