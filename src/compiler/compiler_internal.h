@@ -632,7 +632,6 @@ typedef struct
 	Decl **templates;
 	Decl **params;
 	const char *name_suffix;
-	HTable symbols;
 } GenericInstanceDecl;
 typedef struct
 {
@@ -735,7 +734,7 @@ typedef struct Decl_
 	union
 	{
 		DeclId generic_id;
-		DeclId generic_instance;
+		DeclId instance_id;
 	};
 	struct CompilationUnit_ *unit;
 	union
@@ -1653,7 +1652,7 @@ typedef struct Module_
 	const char *short_path;
 	// Extname in case a module is renamed externally
 	const char *extname;
-	Decl **generics;
+	Decl **generic_sections;
 	bool is_external : 1;
 	bool is_c_library : 1;
 	bool is_exported : 1;
@@ -2489,6 +2488,7 @@ bool lexer_next_token(Lexer *lexer);
 void scratch_buffer_append_module(Module *module, bool is_export);
 Decl *module_find_symbol(Module *module, const char *symbol);
 const char *module_create_object_file_name(Module *module);
+Decl *module_find_symbol_in_unit(Module *module, CompilationUnit *unit, const char *symbol);
 
 bool parse_file(File *file);
 Decl **parse_include_file(File *file, CompilationUnit *unit);

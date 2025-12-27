@@ -927,7 +927,7 @@ Decl **copy_decl_list_single_for_generic(Decl **decl_list, Decl *generic_instanc
 		scratch_buffer_append(name_suffix);
 		decl->name = scratch_buffer_interned();
 		decl->is_templated = true;
-		decl->generic_instance = declid(generic_instance);
+		decl->instance_id = declid(generic_instance);
 	}
 	copy_end();
 	copy_struct.is_template = old_is_template;

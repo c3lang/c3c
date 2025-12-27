@@ -10,6 +10,13 @@ Decl *module_find_symbol(Module *module, const char *symbol)
 	return decl && decl->visibility != VISIBLE_LOCAL ? decl : NULL;
 }
 
+Decl *module_find_symbol_in_unit(Module *module, CompilationUnit *unit, const char *symbol)
+{
+	Decl *decl = htable_get(&unit->local_symbols, (void*)symbol);
+	if (decl) return decl;
+	return module_find_symbol(module, symbol);
+}
+
 void scratch_buffer_append_but_mangle_underscore_dot(const char *name)
 {
 	char c;

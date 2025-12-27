@@ -167,10 +167,14 @@ void unit_register_optional_global_decl(CompilationUnit *unit, Decl *decl)
 {
 	SemaContext context;
 	sema_context_init(&context, unit);
-	if (decl->is_templated) context.generic_instance = declptr(decl->generic_instance);
+	if (decl->is_templated) context.generic_instance = declptr(decl->instance_id);
 	if (sema_decl_if_cond(&context, decl))
 	{
 		unit_register_global_decl(unit, decl);
+	}
+	else
+	{
+		decl->decl_kind = DECL_ERASED;
 	}
 	sema_context_destroy(&context);
 
@@ -510,7 +514,7 @@ void sema_analysis_pass_register_conditional_units(Module *module)
 		{
 			vec_resize(unit->global_decls, 0);
 			vec_resize(unit->global_cond_decls, 0);
-			FOREACH(Decl *, decl, module->generics)
+			FOREACH(Decl *, decl, module->generic_sections)
 			{
 				if (decl->unit == unit)
 				{
@@ -646,7 +650,7 @@ void sema_analysis_pass_ct_echo(Module *module)
 	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 
-static inline bool analyse_func_body(SemaContext *context, Decl *decl)
+bool analyse_func_body(SemaContext *context, Decl *decl)
 {
 	if (!decl->func_decl.body) return true;
 	if (decl->is_extern)
@@ -792,7 +796,7 @@ static bool sema_check_interface(SemaContext *context, Decl *decl, TypeInfo *int
 	}
 	return true;
 }
-static inline bool sema_check_interfaces(SemaContext *context, Decl *decl)
+bool sema_check_interfaces(SemaContext *context, Decl *decl)
 {
 	Decl **store = sema_decl_stack_store();
 	sema_add_methods_to_decl_stack(context, decl);

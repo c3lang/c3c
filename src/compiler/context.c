@@ -193,7 +193,7 @@ void decl_register(CompilationUnit *unit, Decl *decl)
 
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 {
-	ASSERT_SPAN(decl, !decl->unit || decl->unit->module->generics);
+	ASSERT_SPAN(decl, !decl->unit || decl->unit->module->generic_sections);
 	decl->unit = unit;
 	switch (decl->decl_kind)
 	{

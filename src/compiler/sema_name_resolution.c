@@ -519,7 +519,7 @@ static bool sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_
 	CompilationUnit *unit = context->unit;
 
 	// Search in file scope.
-	if ((decl = htable_get(&unit->local_symbols, (void *) symbol)))
+	if ((decl = htable_get(&unit->local_symbols, (void *)symbol)))
 	{
 		name_resolve->found = decl;
 		return true;
@@ -654,7 +654,7 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 		Module *module = decl->unit->module;
 		const char *maybe_name = decl_to_name(decl);
 		Module *generic_module = module->generic_module;
-		if (!generic_module && module->generics) generic_module = module;
+		if (!generic_module && module->generic_sections) generic_module = module;
 		const char *module_name = generic_module ? generic_module->name->module : module->name->module;
 		if (decl_is_visible(context->unit, decl) && generic_module && !name_resolve->is_parameterized)
 		{
@@ -818,7 +818,6 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		return false;
 	}
 	if (found->decl_kind != DECL_ALIAS) unit_register_external_symbol(context, found);
-	ASSERT_SPAN(found, (found->is_template) == (found->unit->module->generics != NULL));
 	if (found->is_template)
 	{
 		if (name_resolve->is_parameterized) return true;
@@ -827,7 +826,11 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 			Decl *generic = declptr(found->generic_id);
 			if (generic->generic_decl.id == context->generic_instance->instance_decl.id)
 			{
-				Decl *candidate = htable_get(&context->generic_instance->instance_decl.symbols, (void*)name_resolve->symbol);
+				scratch_buffer_clear();
+				scratch_buffer_append(found->name);
+				scratch_buffer_append(context->generic_instance->instance_decl.name_suffix);
+				const char *mangled_name = scratch_buffer_interned();
+				Decl *candidate = module_find_symbol_in_unit(found->unit->module, context->unit, mangled_name);
 				if (candidate) return name_resolve->found = candidate, true;
 			}
 		}

@@ -258,7 +258,7 @@ static int generic_id = 1;
 static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
 {
 	unsigned params = vec_size(decl->generic_decl.parameters);
-	FOREACH(Decl *, d, unit->module->generics)
+	FOREACH(Decl *, d, unit->module->generic_sections)
 	{
 		unsigned candidate_params = vec_size(d->generic_decl.parameters);
 		if (candidate_params != params) continue;
@@ -353,7 +353,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 		vec_add(c->unit->generic_decls, generic_decl);
 		c->unit->default_generic_section = generic_decl;
 		unify_generic_decl(c->unit, generic_decl);
-		vec_add(c->unit->module->generics, generic_decl);
+		vec_add(c->unit->module->generic_sections, generic_decl);
 	}
 	FOREACH(Attr *, attr, attrs)
 	{
