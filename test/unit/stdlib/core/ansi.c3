@@ -18,8 +18,8 @@ fn void test_color()
 	test::eq("\u001B[48;2;255;204;255m", ansi::color(0xFFCCFF, true));
 }
 
-fn void test_make_color()
+fn void test_fmt_color()
 {
-	test::eq("\u001B[38;2;255;204;255m", ansi::make_color(tmem, 0xFFCCFF));
-	test::eq("\u001B[48;2;255;204;255m", ansi::make_color(tmem, 0xFFCCFF, true));
+	test::eq("\u001B[38;2;255;204;255m", string::tformat("%s", ansi::fmt_color(0xFFCCFF)));
+	test::eq("\u001B[48;2;255;204;255m", string::tformat("%s", ansi::fmt_color(0xFFCCFF, true)));
 }
