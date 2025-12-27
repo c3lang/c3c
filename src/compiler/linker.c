@@ -615,7 +615,11 @@ static void linker_setup_bsd(const char ***args_ref, Linker linker_type, bool is
 	{
 		if (!is_dylib) add_plain_arg("-pie");
 		add_concat_file_arg(crt_dir, "crti.o");
-		if (!is_dylib && compiler.platform.os != OS_TYPE_NETBSD)
+		if (!is_dylib && compiler.platform.os == OS_TYPE_NETBSD)
+		{
+			add_concat_file_arg(crt_dir, "crt0.o");
+		}
+		else if (!is_dylib)
 		{
 			add_concat_file_arg(crt_dir, "Scrt1.o");
 		}
@@ -632,13 +636,21 @@ static void linker_setup_bsd(const char ***args_ref, Linker linker_type, bool is
 	}
 	add_concat_file_arg(crt_dir, "crtn.o");
 	add_concat_quote_arg("-L", crt_dir);
-	add_plain_arg("--dynamic-linker=/libexec/ld-elf.so.1");
-	if (compiler.platform.os == OS_TYPE_NETBSD)
+	switch (compiler.platform.os)
 	{
-		/* The following two flags are needed to work around ld-elf.so not being able
-		 * to handle more than two PT_LOAD segments. */
-		add_plain_arg("--no-rosegment");
-		add_plain_arg("-znorelro");
+		case OS_TYPE_NETBSD:
+			add_plain_arg("--dynamic-linker=/usr/libexec/ld.elf_so");
+			/* The following two flags are needed to work around ld-elf.so not being
+			 * able to handle more than two PT_LOAD segments. */
+			if (is_dylib) add_plain_arg("--no-rosegment");
+			if (is_dylib) add_plain_arg("-znorelro");
+			break;
+		case OS_TYPE_OPENBSD:
+			add_plain_arg("--dynamic-linker=/usr/libexec/ld.so");
+			break;
+		case OS_TYPE_FREEBSD:
+		default:
+			add_plain_arg("--dynamic-linker=/libexec/ld-elf.so.1");
 	}
 	linking_add_link(&compiler.linking, "c");
 	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");

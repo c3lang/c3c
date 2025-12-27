@@ -32,3 +32,20 @@ fn uint num_cpu()
 	win32::getSystemInfo(&info);
 	return info.dwNumberOfProcessors;
 }
+
+module std::os @if(env::NETBSD);
+import std::os::netbsd;
+import libc;
+
+fn uint num_cpu()
+{
+	int[2] nm;
+	usz len = 4;
+	uint count;
+
+	nm = { netbsd::CTL_HW, netbsd::HW_NCPU };
+	libc::sysctl(&nm, 2, &count, &len, null, 0);
+	if (count < 1) count = 1;
+	return count;
+}
+

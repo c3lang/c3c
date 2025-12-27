@@ -7,6 +7,8 @@
   "targets": {
     "macos-x64": {},
     "macos-aarch64": {},
+    "netbsd-x64": {},
+    "netbsd-aarch64": {},
     "linux-x64": {
       "cflags": "-fPIE"
     },
