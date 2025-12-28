@@ -32,25 +32,33 @@ const AsciiCharset ALPHANUMERIC_WHITESPACE
 
 fn void asciicharset_contains()
 {
-	$assert !ALPHANUMERIC_WHITESPACE.@contains('.');
-	$assert ALPHANUMERIC_WHITESPACE.@contains('T');
-	$assert ALPHANUMERIC_WHITESPACE.@contains('t');
-	$assert ALPHANUMERIC_WHITESPACE.@contains('8');
-	$assert ALPHANUMERIC_WHITESPACE.@contains(' ');
+	$assert !ALPHANUMERIC_WHITESPACE.contains('.');
+	$assert ALPHANUMERIC_WHITESPACE.contains('T');
+	$assert ALPHANUMERIC_WHITESPACE.contains('t');
+	$assert ALPHANUMERIC_WHITESPACE.contains('8');
+	$assert ALPHANUMERIC_WHITESPACE.contains(' ');
 
-	test::@check(!ALPHANUMERIC_WHITESPACE.@contains('.'));
-
-	test::@check(ALPHANUMERIC_WHITESPACE.@contains('T'));
-	test::@check(ALPHANUMERIC_WHITESPACE.@contains('t'));
-	test::@check(ALPHANUMERIC_WHITESPACE.@contains('8'));
-	test::@check(ALPHANUMERIC_WHITESPACE.@contains(' '));
+	test::@check(!ALPHANUMERIC_WHITESPACE.contains('.'));
+	test::@check(ALPHANUMERIC_WHITESPACE.contains('T'));
+	test::@check(ALPHANUMERIC_WHITESPACE.contains('t'));
+	test::@check(ALPHANUMERIC_WHITESPACE.contains('8'));
+	test::@check(ALPHANUMERIC_WHITESPACE.contains(' '));
 }
 
 fn void asciicharset_create_set()
 {
-	AsciiCharset xyz = @create_set("xyz");
-	foreach (c : "xyz") test::@check(xyz.@contains(c));
+	var $s = create_set("abc");
+	$foreach $c : "abc": $assert $s.contains($c); $endforeach
 
-	var $s = @create_set("abc");
-	$foreach $c : "abc": $assert $s.@contains($c); $endforeach
+	AsciiCharset xyz = create_set("xyz");
+	foreach (c : "xyz") test::@check(xyz.contains(c));
+}
+
+fn void asciicharset_combine_sets()
+{
+	var $a_set = @combine_sets(create_set("123"), create_set("89"), create_set("!@#$"), create_set("something"));
+	$foreach $c : "something@123!": $assert $a_set.contains($c); $endforeach
+
+	AsciiCharset a_set = @combine_sets(create_set("123"), create_set("89"), create_set("!@#$"), create_set("something"));
+	foreach (c : "something@123!") test::@check(a_set.contains(c));
 }
