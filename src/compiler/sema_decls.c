@@ -637,7 +637,9 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 		offset = align_offset;
 		member->offset = offset;
+		AlignSize sz = offset;
 		offset += type_size(member->type);
+		if (offset < sz || offset > MAX_STRUCT_SIZE) RETURN_SEMA_ERROR(member, "Struct member '%s' would cause the struct to become too large (exceeding 2 GB).", member->name);
 	}
 
 	// Set the alignment:
