@@ -2070,6 +2070,11 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 				expr_rewrite_to_int_to_float(expr, to_type);
 				return;
 			}
+			if (to_element == type_bool)
+			{
+				expr_rewrite_recast(expr, to_type);
+				return;
+			}
 			UNREACHABLE_VOID;
 		}
 
