@@ -1209,7 +1209,7 @@ static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceSpan lhs_start 
 		vec_add(defined->expression_list, expr);
 		if (!try_consume(c, TOKEN_COMMA))
 		{
-			CONSUME_OR_RET(TOKEN_RPAREN, false);
+			CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 			break;
 		}
 	}
