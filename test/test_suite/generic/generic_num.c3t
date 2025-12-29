@@ -24,7 +24,7 @@ entry:
   %varargslots = alloca [1 x %any], align 16
   %taddr = alloca i32, align 4
   %retparam = alloca i64, align 8
-  %0 = call i32 @"hello$int$_123$.x"(i32 4)
+  %0 = call i32 @"hello.x$int$_123$"(i32 4)
   store i32 %0, ptr %taddr, align 4
   %1 = insertvalue %any undef, ptr %taddr, 0
   %2 = insertvalue %any %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1

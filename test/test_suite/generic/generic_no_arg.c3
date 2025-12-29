@@ -8,7 +8,7 @@ fn void foo(Foo f) {}
 
 fn void a()
 {
-	List{} a; // #error: must be instantiatied with generic module arguments
+	List{} a; // #error: 'List' requires generic arguments inside the '{}', did you forget them
 }
 fn void b()
 {
@@ -16,7 +16,7 @@ fn void b()
 }
 fn void c()
 {
-	bar::test{}(); // #error: must be instantiatied with generic module arguments
+	bar::test{}(); // #error: 'test' requires generic arguments inside the '{}', did you forget them
 }
 
 fn int main()

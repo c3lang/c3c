@@ -25,6 +25,6 @@ fn void test(Foo x) {}
 
 define void @testing.main() #0 {
 entry:
-  call void @blurb.test(ptr @"foo$int$.hello")
+  call void @blurb.test(ptr @"foo.hello$int$")
   ret void
 }
