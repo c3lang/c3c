@@ -36,6 +36,7 @@
 - Fix bug when creating bool vectors in certain cases.
 - Compiler assert when passing returning CT failure immediately rethrown #2689.
 - Converting between simd/non-simd bool vector would hit a compiler assert. #2691
+- `i<n>` suffixes were not caught when n < 8, causing an assert.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
