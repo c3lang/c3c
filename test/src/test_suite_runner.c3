@@ -598,7 +598,7 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 		}
 		if (try next)
 		{
-			io::fprintfn((OutStream)&output.buffer, `FAILED - %s did not contain: "%s"`, file.ptr.name, next)!!;
+			io::fprintfn((OutStream)&output.buffer, `FAILED - %s did not contain: %s`, file.ptr.name, next)!!;
 			io::fprintfn((OutStream)&output.buffer, "\n\n\n---------------------------------------------------> %s\n\n", file.ptr.name)!!;
 			(void)file_ll.seek(0);
 			io::fprintn((OutStream)&output.buffer, (String)io::read_fully(tmem, &file_ll))!!;

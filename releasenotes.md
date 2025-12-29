@@ -39,6 +39,7 @@
 - `i<n>` suffixes were not caught when n < 8, causing an assert.
 - Parse error in `$defined` was not handled correctly, leading to an assertion.
 - Assert when struct size would exceed 4 GB.
+- Assert when encountering a malformed module alias.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
