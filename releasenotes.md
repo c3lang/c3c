@@ -37,6 +37,7 @@
 - Compiler assert when passing returning CT failure immediately rethrown #2689.
 - Converting between simd/non-simd bool vector would hit a compiler assert. #2691
 - `i<n>` suffixes were not caught when n < 8, causing an assert.
+- Parse error in `$defined` was not handled correctly, leading to an assertion.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
