@@ -1068,6 +1068,44 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			rtype = type_void;
 			break;
 		}
+		case BUILTIN_INT_TO_MASK:
+		{
+			ASSERT(arg_count == 2);
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTEGER, BA_INTEGER }, 2)) return false;
+			Expr *len = args[1];
+			if (!sema_cast_const(len) || !expr_is_const_int(len))
+			{
+				RETURN_SEMA_ERROR(len, "Expected constant integer for the vector length.");
+			}
+			Type *type = type_flatten(args[0]->type);
+			int size = (int)type_bit_size(type);
+			if (int_icomp(len->const_expr.ixx, size, BINARYOP_GT))
+			{
+				RETURN_SEMA_ERROR(args[1], "The vector length (%s) cannot be greater than the bit width of the integer (%d).",
+					int_to_str(len->const_expr.ixx, 10, false), size);
+			}
+			int bits = (int)len->const_expr.ixx.i.low;
+			if (!bits)
+			{
+				RETURN_SEMA_ERROR(args[1], "The vector length cannot be zero");
+			}
+			rtype = type_get_vector(type_bool, TYPE_VECTOR, bits);
+			break;
+		}
+		case BUILTIN_MASK_TO_INT:
+		{
+			ASSERT(arg_count == 1);
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_BOOLVEC }, 1)) return false;
+			Type *vec = type_flatten(args[0]->type);
+			ArraySize len = vec->array.len;
+			if (len > 128)
+			{
+				RETURN_SEMA_ERROR(args[0], "Masks must be 128 or fewer bits to convert them to an integer.");
+			}
+			if (len < 8) len = 8;
+			rtype = type_int_unsigned_by_bitsize(next_highest_power_of_2(len));
+			break;
+		}
 		case BUILTIN_MASKED_LOAD:
 		{
 			ASSERT(arg_count == 4);
@@ -1376,6 +1414,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_LOG:
 		case BUILTIN_LRINT:
 		case BUILTIN_LROUND:
+		case BUILTIN_MASK_TO_INT:
 		case BUILTIN_NEARBYINT:
 		case BUILTIN_POPCOUNT:
 		case BUILTIN_REDUCE_ADD:
@@ -1394,15 +1433,16 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SIN:
 		case BUILTIN_SQRT:
 		case BUILTIN_STR_HASH:
-		case BUILTIN_STR_UPPER:
 		case BUILTIN_STR_LOWER:
-		case BUILTIN_STR_SNAKECASE:
 		case BUILTIN_STR_PASCALCASE:
+		case BUILTIN_STR_SNAKECASE:
+		case BUILTIN_STR_UPPER:
 		case BUILTIN_TRUNC:
 		case BUILTIN_VOLATILE_LOAD:
 		case BUILTIN_WASM_MEMORY_SIZE:
 			return 1;
-		case BUILTIN_STR_FIND:
+		case BUILTIN_VOLATILE_STORE:
+		case BUILTIN_ANY_MAKE:
 		case BUILTIN_COPYSIGN:
 		case BUILTIN_EXACT_ADD:
 		case BUILTIN_EXACT_DIV:
@@ -1410,6 +1450,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_EXACT_MUL:
 		case BUILTIN_EXACT_SUB:
 		case BUILTIN_EXPECT:
+		case BUILTIN_INT_TO_MASK:
 		case BUILTIN_MAX:
 		case BUILTIN_MIN:
 		case BUILTIN_POW:
@@ -1417,19 +1458,18 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_REDUCE_FADD:
 		case BUILTIN_REDUCE_FMUL:
 		case BUILTIN_SAT_ADD:
+		case BUILTIN_SAT_MUL:
 		case BUILTIN_SAT_SHL:
 		case BUILTIN_SAT_SUB:
-		case BUILTIN_SAT_MUL:
-		case BUILTIN_VOLATILE_STORE:
-		case BUILTIN_VECCOMPNE:
-		case BUILTIN_VECCOMPLT:
-		case BUILTIN_VECCOMPLE:
+		case BUILTIN_STR_FIND:
+		case BUILTIN_UNALIGNED_LOAD:
+		case BUILTIN_VECCOMPEQ:
 		case BUILTIN_VECCOMPGE:
 		case BUILTIN_VECCOMPGT:
-		case BUILTIN_VECCOMPEQ:
+		case BUILTIN_VECCOMPLE:
+		case BUILTIN_VECCOMPLT:
+		case BUILTIN_VECCOMPNE:
 		case BUILTIN_WASM_MEMORY_GROW:
-		case BUILTIN_ANY_MAKE:
-		case BUILTIN_UNALIGNED_LOAD:
 			return 2;
 		case BUILTIN_EXPECT_WITH_PROBABILITY:
 		case BUILTIN_FMA:

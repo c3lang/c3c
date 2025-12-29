@@ -9,6 +9,10 @@
 - Fixed bug where constants would get modified when slicing them. #2660
 - Support for NetBSD.
 - Improve support for Android with Termux.
+- Testing for the presence of methods at the top level is prohibited previous to method registration.
+- `$$MASK_TO_INT` and `$$INT_TO_MASK` to create bool masks from integers and back.
+- Better error messages when slicing a pointer to a slice or vector. #2681
+- Generics using `@generic` rather than module based.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -28,6 +32,15 @@
 - Fix error message when a method has the wrong type for the first argument.
 - Unit tests allocating too much `tmem` without `@pool` would cause errors in unrelated tests. #2654
 - Incorrect rounding for decimals in formatter in some cases. #2657
+- Incorrectly using LLVMStructType when emitting dynamic functions on MachO #2666  
+- FixedThreadPool join did not work correctly.
+- Fix bug when creating bool vectors in certain cases.
+- Compiler assert when passing returning CT failure immediately rethrown #2689.
+- Converting between simd/non-simd bool vector would hit a compiler assert. #2691
+- `i<n>` suffixes were not caught when n < 8, causing an assert.
+- Parse error in `$defined` was not handled correctly, leading to an assertion.
+- Assert when struct size would exceed 4 GB.
+- Assert when encountering a malformed module alias.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
@@ -40,6 +53,7 @@
 - Pthread bindings correctly return Errno instead of CInt.
 - Return of Thread `join()` is now "@maydiscard".
 - Add `poly1305` one-time Message Authentication Code and associated tests. #2639
+- Add `ripemd` hashing and associated tests. #2663
 - Add `chacha20` stream cipher and associated tests. #2643
 - Add `BLAKE2` (optionally keyed) cryptographic hashing with associated tests. #2648
 - Add `Elf32_Shdr` and `Elf64_Shdr` to `std::os::linux`.
@@ -47,6 +61,7 @@
 - Deprecated `DString.append_chars`, use `DString.append_string`
 - Deprecated `DString.append_string` for DStrings, use `DString.append_dstring` instead.
 - Added `DString.append_bytes`.
+- Add `streebog` (aka "GOST-12") hashing with 256-bit and 512-bit outputs. #2659
 
 ## 0.7.8 Change list
 

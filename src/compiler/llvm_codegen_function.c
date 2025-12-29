@@ -629,7 +629,7 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 	if (compiler.platform.object_format == OBJ_FORMAT_MACHO)
 	{
 		LLVMTypeRef types[3] = { c->ptr_type, c->ptr_type, c->typeid_type };
-		LLVMTypeRef entry_type = LLVMStructType(types, 3, false);
+		LLVMTypeRef entry_type = LLVMStructTypeInContext(c->context, types, 3, false);
 		LLVMValueRef *entries = VECNEW(LLVMValueRef, len);
 		FOREACH(Decl *, func, funcs)
 		{

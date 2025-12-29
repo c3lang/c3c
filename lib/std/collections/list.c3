@@ -461,7 +461,7 @@ macro void List.post_alloc(&self) @private
 // Functions for equatable types
 
 
-fn usz? List.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
+fn usz? List.index_of(&self, Type type) @if (ELEMENT_IS_EQUATABLE)
 {
 	foreach (i, v : self)
 	{
@@ -470,7 +470,7 @@ fn usz? List.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 	return NOT_FOUND?;
 }
 
-fn usz? List.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
+fn usz? List.rindex_of(&self, Type type) @if (ELEMENT_IS_EQUATABLE)
 {
 	foreach_r (i, v : self)
 	{

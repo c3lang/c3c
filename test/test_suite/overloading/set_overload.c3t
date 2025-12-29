@@ -16,9 +16,9 @@ fn void main()
 
 define void @test.main() #0 {
 entry:
-  %map = alloca %HashMap, align 8
+  %map = alloca %"HashMap{char[], int}", align 8
   call void @llvm.memset.p0.i64(ptr align 8 %map, i8 0, i64 48, i1 false)
-  %0 = call i8 @"std_collections_map$sa$char$int$.HashMap.set"(ptr %map, ptr @.str, i64 5, i32 4)
-  %1 = call i8 @"std_collections_map$sa$char$int$.HashMap.set"(ptr %map, ptr @.str.1, i64 3, i32 5)
+  %0 = call i8 @"std.collections.map.HashMap$sa$char$int$.set"(ptr %map, ptr @.str, i64 5, i32 4)
+  %1 = call i8 @"std.collections.map.HashMap$sa$char$int$.set"(ptr %map, ptr @.str.1, i64 3, i32 5)
   ret void
 }

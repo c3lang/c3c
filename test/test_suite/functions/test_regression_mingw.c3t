@@ -230,13 +230,13 @@ fn Type getValue(Blob blob)
 
 /* #expect: test.ll
 
-%Blob = type { i32 }
-%Blob.0 = type { double }
+%"Blob{int}" = type { i32 }
+%"Blob{double}" = type { double }
 %Bobo = type { i16, float, i16, i16, float, i16 }
 %"int[]" = type { ptr, i64 }
-%LinkedList = type { %any, i64, ptr, ptr }
+%"LinkedList{int}" = type { %any, i64, ptr, ptr }
 %any = type { ptr, i64 }
-%List = type { i64, i64, %any, ptr }
+%"List{int}" = type { i64, i64, %any, ptr }
 %Foo = type { i32, i32 }
 
 $"$ct.test.Bobo" = comdat any
@@ -271,8 +271,8 @@ $"$ct.test.MyEnum" = comdat any
 @.str.3 = private unnamed_addr constant [14 x i8] c"Elements: %d\0A\00", align 1
 @.str.4 = private unnamed_addr constant [7 x i8] c"Hello\0A\00", align 1
 @.str.5 = private unnamed_addr constant [17 x i8] c"Element[%d]: %d\0A\00", align 1
-@.__const.6 = private unnamed_addr constant %Blob { i32 42 }, align 4
-@.__const.7 = private unnamed_addr constant %Blob.0 { double 3.330000e+01 }, align 8
+@.__const.6 = private unnamed_addr constant %"Blob{int}" { i32 42 }, align 4
+@.__const.7 = private unnamed_addr constant %"Blob{double}" { double 3.330000e+01 }, align 8
 @.str.8 = private unnamed_addr constant [10 x i8] c"a was %d\0A\00", align 1
 @.str.9 = private unnamed_addr constant [10 x i8] c"b was %f\0A\00", align 1
 @.str.10 = private unnamed_addr constant [17 x i8] c"Mult int was %d\0A\00", align 1
@@ -307,17 +307,14 @@ entry:
   ret i32 %add
 }
 
-; Function Attrs:
 declare i32 @printf(ptr, ...) #0
 
-; Function Attrs:
 define void @test.helloWorld() #0 {
 entry:
   %0 = call i32 (ptr, ...) @printf(ptr @.str)
   ret void
 }
 
-; Function Attrs:
 define i32 @test.test_static() #0 {
 entry:
   %0 = load i32, ptr @test_static.x, align 4
@@ -329,7 +326,6 @@ entry:
   ret i32 %3
 }
 
-; Function Attrs:
 define i32 @test.helo(double %0, ptr align 4 %1) #0 {
 entry:
   %de = alloca [3 x i32], align 4
@@ -342,7 +338,6 @@ entry:
   ret i32 1
 }
 
-; Function Attrs:
 define i32 @test.test1(i32 %0, i32 %1) #0 {
 entry:
   %a = alloca i32, align 4
@@ -362,7 +357,6 @@ if.exit:                                          ; preds = %entry
   ret i32 %4
 }
 
-; Function Attrs:
 define i32 @test.sum_us(ptr align 8 %0) #0 {
 entry:
   %sum = alloca i32, align 4
@@ -398,7 +392,6 @@ if.exit:                                          ; preds = %entry
   ret i32 %12
 }
 
-; Function Attrs:
 define i32 @test.sumd(ptr align 8 %0) #0 {
 entry:
   %sum = alloca i32, align 4
@@ -436,16 +429,15 @@ loop.exit:                                        ; preds = %loop.cond
   ret i32 %8
 }
 
-; Function Attrs:
 define void @test.main() #0 {
 entry:
-  %list = alloca %LinkedList, align 8
+  %list = alloca %"LinkedList{int}", align 8
   %i = alloca i32, align 4
   %elements = alloca i32, align 4
-  %array = alloca %List, align 8
+  %array = alloca %"List{int}", align 8
   %i1 = alloca i32, align 4
-  %a = alloca %Blob, align 4
-  %b = alloca %Blob.0, align 8
+  %a = alloca %"Blob{int}", align 4
+  %b = alloca %"Blob{double}", align 8
   %ddx = alloca %Foo, align 4
   %fro = alloca i32, align 4
   %x = alloca [4 x i32], align 16
@@ -466,15 +458,15 @@ entry:
   %2 = call i32 @test.test_static()
   call void @hello_world.hello()
   call void @llvm.memset.p0.i64(ptr align 8 %list, i8 0, i64 40, i1 false)
-  call void @"std_collections_linkedlist$int$.LinkedList.push"(ptr %list, i32 10)
-  call void @"std_collections_linkedlist$int$.LinkedList.push"(ptr %list, i32 15)
-  call void @"std_collections_linkedlist$int$.LinkedList.push"(ptr %list, i32 30)
+  call void @"std.collections.linkedlist.LinkedList$int$.push"(ptr %list, i32 10)
+  call void @"std.collections.linkedlist.LinkedList$int$.push"(ptr %list, i32 15)
+  call void @"std.collections.linkedlist.LinkedList$int$.push"(ptr %list, i32 30)
   store i32 0, ptr %i, align 4
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %3 = load i32, ptr %i, align 4
-  %4 = call i64 @"std_collections_linkedlist$int$.LinkedList.len"(ptr %list) #3
+  %4 = call i64 @"std.collections.linkedlist.LinkedList$int$.len"(ptr %list) #3
   %trunc = trunc i64 %4 to i32
   %lt = icmp slt i32 %3, %trunc
   br i1 %lt, label %loop.body, label %loop.exit
@@ -482,7 +474,7 @@ loop.cond:                                        ; preds = %loop.body, %entry
 loop.body:                                        ; preds = %loop.cond
   %5 = load i32, ptr %i, align 4
   %sext = sext i32 %5 to i64
-  %6 = call i32 @"std_collections_linkedlist$int$.LinkedList.get"(ptr %list, i64 %sext)
+  %6 = call i32 @"std.collections.linkedlist.LinkedList$int$.get"(ptr %list, i64 %sext)
   %7 = load i32, ptr %i, align 4
   %8 = call i32 (ptr, ...) @printf(ptr @.str.2, i32 %7, i32 %6)
   %9 = load i32, ptr %i, align 4
@@ -491,22 +483,22 @@ loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  call void @"std_collections_linkedlist$int$.LinkedList.free"(ptr %list)
+  call void @"std.collections.linkedlist.LinkedList$int$.free"(ptr %list)
   %10 = call i32 (ptr, ...) @printf(ptr @.str.3, i32 3)
   store i32 3, ptr %elements, align 4
   %11 = call i32 (ptr, ...) @printf(ptr @.str.4)
   call void @llvm.memset.p0.i64(ptr align 8 %array, i8 0, i64 40, i1 false)
-  call void @"std_collections_list$int$.List.push"(ptr %array, i32 100)
-  call void @"std_collections_list$int$.List.push"(ptr %array, i32 200)
-  call void @"std_collections_list$int$.List.push"(ptr %array, i32 400)
-  call void @"std_collections_list$int$.List.push"(ptr %array, i32 600) #3
-  call void @"std_collections_list$int$.List.insert_at"(ptr %array, i64 2, i32 300)
+  call void @"std.collections.list.List$int$.push"(ptr %array, i32 100) #3
+  call void @"std.collections.list.List$int$.push"(ptr %array, i32 200) #3
+  call void @"std.collections.list.List$int$.push"(ptr %array, i32 400) #3
+  call void @"std.collections.list.List$int$.push"(ptr %array, i32 600) #3
+  call void @"std.collections.list.List$int$.insert_at"(ptr %array, i64 2, i32 300)
   store i32 0, ptr %i1, align 4
   br label %loop.cond2
 
 loop.cond2:                                       ; preds = %loop.body5, %loop.exit
   %12 = load i32, ptr %i1, align 4
-  %13 = call i64 @"std_collections_list$int$.List.len"(ptr %array) #3
+  %13 = call i64 @"std.collections.list.List$int$.len"(ptr %array) #3
   %trunc3 = trunc i64 %13 to i32
   %lt4 = icmp slt i32 %12, %trunc3
   br i1 %lt4, label %loop.body5, label %loop.exit8
@@ -514,7 +506,7 @@ loop.cond2:                                       ; preds = %loop.body5, %loop.e
 loop.body5:                                       ; preds = %loop.cond2
   %14 = load i32, ptr %i1, align 4
   %sext6 = sext i32 %14 to i64
-  %15 = call i32 @"std_collections_list$int$.List.get"(ptr %array, i64 %sext6) #3
+  %15 = call i32 @"std.collections.list.List$int$.get"(ptr %array, i64 %sext6) #3
   %16 = load i32, ptr %i1, align 4
   %17 = call i32 (ptr, ...) @printf(ptr @.str.5, i32 %16, i32 %15)
   %18 = load i32, ptr %i1, align 4
@@ -523,18 +515,18 @@ loop.body5:                                       ; preds = %loop.cond2
   br label %loop.cond2
 
 loop.exit8:                                       ; preds = %loop.cond2
-  call void @"std_collections_list$int$.List.free"(ptr %array)
+  call void @"std.collections.list.List$int$.free"(ptr %array)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a, ptr align 4 @.__const.6, i32 4, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %b, ptr align 8 @.__const.7, i32 8, i1 false)
   %19 = load i32, ptr %a, align 4
-  %20 = call i32 @"test2$int$.getValue"(i32 %19)
+  %20 = call i32 @"test2.getValue$int$"(i32 %19)
   %21 = call i32 (ptr, ...) @printf(ptr @.str.8, i32 %20)
   %22 = load i64, ptr %b, align 8
-  %23 = call double @"test2$double$.getValue"(i64 %22)
+  %23 = call double @"test2.getValue$double$"(i64 %22)
   %24 = call i32 (ptr, ...) @printf(ptr @.str.9, double %23)
-  %25 = call i32 @"test2$int$.getMult"(i32 25)
+  %25 = call i32 @"test2.getMult$int$"(i32 25)
   %26 = call i32 (ptr, ...) @printf(ptr @.str.10, i32 %25)
-  %27 = call double @"test2$double$.getMult"(double 3.300000e+00)
+  %27 = call double @"test2.getMult$double$"(double 3.300000e+00)
   %28 = call i32 (ptr, ...) @printf(ptr @.str.11, double %27)
   call void @test.helloWorld()
   store i32 0, ptr %ddx, align 4
@@ -589,50 +581,62 @@ loop.exit8:                                       ; preds = %loop.cond2
   store ptr null, ptr %b2, align 8
   ret void
 }
+
 declare void @llvm.memcpy.p0.p0.i32(ptr noalias
 declare void @hello_world.hello() #0
 declare void @llvm.memset.p0.i64(ptr
-declare void @"std_collections_linkedlist$int$.LinkedList.push"(ptr, i32) #0
-declare i64 @"std_collections_linkedlist$int$.LinkedList.len"(ptr) #0
-declare i32 @"std_collections_linkedlist$int$.LinkedList.get"(ptr, i64) #0
-declare void @"std_collections_linkedlist$int$.LinkedList.free"(ptr) #0
-declare void @"std_collections_list$int$.List.push"(ptr, i32) #0
-declare void @"std_collections_list$int$.List.insert_at"(ptr, i64, i32) #0
-declare i64 @"std_collections_list$int$.List.len"(ptr) #0
-declare i32 @"std_collections_list$int$.List.get"(ptr, i64) #0
-declare void @"std_collections_list$int$.List.free"(ptr) #0
-declare i32 @"test2$int$.getValue"(i32) #0
-declare double @"test2$double$.getValue"(i64) #0
-declare i32 @"test2$int$.getMult"(i32) #0
-declare double @"test2$double$.getMult"(double) #0
+declare void @"std.collections.linkedlist.LinkedList$int$.push"(ptr, i32) #0
+declare i64 @"std.collections.linkedlist.LinkedList$int$.len"(ptr) #0
+declare i32 @"std.collections.linkedlist.LinkedList$int$.get"(ptr, i64) #0
+declare void @"std.collections.linkedlist.LinkedList$int$.free"(ptr) #0
+declare void @"std.collections.list.List$int$.push"(ptr, i32) #0
+declare void @"std.collections.list.List$int$.insert_at"(ptr, i64, i32) #0
+declare i64 @"std.collections.list.List$int$.len"(ptr) #0
+declare i32 @"std.collections.list.List$int$.get"(ptr, i64) #0
+declare void @"std.collections.list.List$int$.free"(ptr) #0
+declare i32 @"test2.getValue$int$"(i32) #0
+declare double @"test2.getValue$double$"(i64) #0
+declare i32 @"test2.getMult$int$"(i32) #0
+declare double @"test2.getMult$double$"(double) #0
 
-// #expect: hello_world.ll
+// #expect: foo.ll
 
-define void @hello_world.hello() #0 {
-entry:
-  %0 = call i32 (ptr, ...) @printf(ptr @.str)
-  %1 = call double @"foo$double$.check"(double 1.110000e+01)
-  %2 = call i32 (ptr, ...) @printf(ptr @.str.1, double %1)
-  ret void
-}
 
-// #expect: foo.double.ll
-
-define weak_odr double @"foo$double$.check"(double %0)
+define weak_odr double @"foo.check$double$"(double %0) #0 comdat {
 entry:
   %fmul = fmul double %0, %0
   ret double %fmul
+}
 
 
-// #expect: test2.int.ll
+// #expect: test2.ll
 
-%Blob = type { i32 }
-@"test2$int$.argh" = weak_odr local_unnamed_addr global i32 234, comdat, align 4
-
-define weak_odr i32 @"test2$int$.getMult"(i32 %0)
+define weak_odr i32 @"test2.getValue$int$"(i32 %0) #0 comdat {
 entry:
-  %mul = mul i32 %0, %0
-  ret i32 %mul
+  %blob = alloca %"Blob{int}", align 4
+  store i32 %0, ptr %blob, align 4
+  %1 = load i32, ptr %blob, align 4
+  ret i32 %1
+}
+
+define weak_odr double @"test2.getMult$double$"(double %0)
+entry:
+  %fmul = fmul double %0, %0
+  ret double %fmul
+}
+
+define weak_odr i32 @"test2.hello$double$"() #0
+entry:
+  ret i32 1
+}
+
+define weak_odr double @"test2.getValue$double$"(i64 %0) #0 comdat {
+entry:
+  %blob = alloca %"Blob{double}", align 8
+  store i64 %0, ptr %blob, align 8
+  %1 = load double, ptr %blob, align 8
+  ret double %1
+}
 
 !llvm.module.flags = !{!0, !1, !2, !3, !4, !5}
 

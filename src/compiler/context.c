@@ -14,38 +14,10 @@ CompilationUnit *unit_create(File *file)
 }
 
 
-static inline bool create_module_or_check_name(CompilationUnit *unit, Path *module_name, const char **parameters)
+static inline bool create_module_or_check_name(CompilationUnit *unit, Path *module_name)
 {
 	Module *module = unit->module;
-	if (!module)
-	{
-		module = unit->module = compiler_find_or_create_module(module_name, parameters);
-		if (module->is_generic != (parameters != NULL))
-		{
-			print_error_at(module_name->span, "'%s' is both used as regular and generic module, it can't be both.",
-			               module_name->module);
-			SEMA_NOTE(module->name, "The definition here is different.");
-			return false;
-		}
-		if (!module->is_generic) goto DONE;
-		if (vec_size(parameters) != vec_size(module->parameters))
-		{
-			PRINT_ERROR_AT(module_name, "The parameter declarations of the generic module '%s' don't match.", module_name->module);
-			SEMA_NOTE(module->name, "A different definition can be found here.");
-			return false;
-		}
-		FOREACH_IDX(idx, const char *, name, parameters)
-		{
-			bool is_type = str_is_type(name);
-			if (is_type != str_is_type(module->parameters[idx]))
-			{
-				PRINT_ERROR_AT(module_name, "The parameter declarations of the generic module '%s' don't match.", module_name->module);
-				SEMA_NOTE(module->name, "The other definition is here.");
-				return false;
-			}
-		}
-		goto DONE;
-	}
+	if (!module) module = unit->module = compiler_find_or_create_module(module_name);
 	if (unit->module->name->module != module_name->module)
 	{
 		RETURN_PRINT_ERROR_AT(false,
@@ -54,8 +26,6 @@ static inline bool create_module_or_check_name(CompilationUnit *unit, Path *modu
 		                      module_name->module,
 		                      module->name->module);
 	}
-
-DONE:;
 	vec_add(module->units, unit);
 	return true;
 }
@@ -124,14 +94,14 @@ bool context_set_module_from_filename(ParseContext *context)
 	path->span = context->span;
 	path->module = module_name;
 	path->len = scratch_buffer.len;
-	return create_module_or_check_name(context->unit, path, NULL);
+	return create_module_or_check_name(context->unit, path);
 }
 
-bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters)
+bool context_set_module(ParseContext *context, Path *path)
 {
 
 	if (!check_module_name(path)) return false;
-	return create_module_or_check_name(context->unit, path, generic_parameters);
+	return create_module_or_check_name(context->unit, path);
 }
 
 bool context_is_macro(SemaContext *context)
@@ -150,143 +120,55 @@ void unit_register_external_symbol(SemaContext *context, Decl *decl)
 }
 
 
-void decl_register(Decl *decl)
+void decl_register(CompilationUnit *unit, Decl *decl)
 {
-	if (decl->visibility >= VISIBLE_LOCAL) return;
-	switch (decl->decl_kind)
+	if (decl->is_templated)
 	{
-		case DECL_ERASED:
-			return;
-		case DECL_ALIAS_PATH:
-		case DECL_BODYPARAM:
-		case DECL_CT_ASSERT:
-		case DECL_CT_ECHO:
-		case DECL_CT_EXEC:
-		case DECL_CT_INCLUDE:
-		case DECL_DECLARRAY:
-		case DECL_ENUM_CONSTANT:
-		case DECL_GROUP:
-		case DECL_IMPORT:
-		case DECL_LABEL:
-		case DECL_POISONED:
-			UNREACHABLE_VOID
-		case DECL_ATTRIBUTE:
-		case DECL_BITSTRUCT:
-		case DECL_TYPEDEF:
-		case DECL_ENUM:
-		case DECL_CONST_ENUM:
-		case DECL_STRUCT:
-		case DECL_TYPE_ALIAS:
-		case DECL_UNION:
-		case DECL_ALIAS:
-		case DECL_FUNC:
-		case DECL_MACRO:
-		case DECL_VAR:
-		case DECL_FNTYPE:
-		case DECL_INTERFACE:
-		case DECL_FAULT:
-			global_context_add_decl(decl);
-			break;
-	}
-}
-
-void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
-{
-	ASSERT(!decl->unit || decl->unit->module->is_generic);
-	decl->unit = unit;
-
-	switch (decl->decl_kind)
-	{
-		case DECL_ERASED:
-			return;
-		case DECL_POISONED:
-			break;
-		case DECL_MACRO:
-			ASSERT(decl->name);
-			if (decl->func_decl.type_parent)
-			{
-				if (type_infoptr(decl->func_decl.type_parent)->kind == TYPE_INFO_GENERIC)
-				{
-					vec_add(unit->generic_methods_to_register, decl);
-					return;
-				}
-				vec_add(unit->methods_to_register, decl);
-				return;
-			}
-			vec_add(unit->macros, decl);
-			decl_register(decl);
-			break;
-		case DECL_FUNC:
-			ASSERT(decl->name);
-			if (decl->func_decl.type_parent)
-			{
-				if (type_infoptr(decl->func_decl.type_parent)->kind == TYPE_INFO_GENERIC)
-				{
-					vec_add(unit->generic_methods_to_register, decl);
-					return;
-				}
-				vec_add(unit->methods_to_register, decl);
-				return;
-			}
-			vec_add(unit->functions, decl);
-			decl_register(decl);
-			break;
-		case DECL_VAR:
-			ASSERT(decl->name);
-			vec_add(unit->vars, decl);
-			decl_register(decl);
-			break;
-		case DECL_INTERFACE:
-		case DECL_TYPEDEF:
-		case DECL_STRUCT:
-		case DECL_UNION:
-		case DECL_TYPE_ALIAS:
-		case DECL_BITSTRUCT:
-			ASSERT(decl->name);
-			vec_add(unit->types, decl);
-			decl_register(decl);
-			break;
-		case DECL_FAULT:
-			ASSERT(decl->name);
-			vec_add(unit->faults, decl);
-			decl_register(decl);
-			break;
-		case DECL_ALIAS:
-			ASSERT(decl->name);
-			vec_add(unit->generic_defines, decl);
-			decl_register(decl);
-			break;
-		case DECL_CONST_ENUM:
-		case DECL_ENUM:
-			ASSERT(decl->name);
-			vec_add(unit->enums, decl);
-			decl_register(decl);
-			break;
-		case DECL_ATTRIBUTE:
-			vec_add(unit->attributes, decl);
-			decl_register(decl);
-			break;
-		case DECL_ALIAS_PATH:
-		case DECL_BODYPARAM:
-		case DECL_DECLARRAY:
-		case DECL_ENUM_CONSTANT:
-		case DECL_FNTYPE:
-		case DECL_GROUP:
-		case DECL_IMPORT:
-		case DECL_LABEL:
-			UNREACHABLE_VOID
-		case DECL_CT_EXEC:
-		case DECL_CT_INCLUDE:
-			vec_add(unit->ct_includes, decl);
-			return;
-		case DECL_CT_ECHO:
-			vec_add(unit->ct_echos, decl);
-			return;
-		case DECL_CT_ASSERT:
-			vec_add(unit->ct_asserts, decl);
-			return;
+		DEBUG_LOG("Registering generic symbol '%s' in %s.", decl->name, unit->module->name->module);
+		vec_add(declptr(decl->instance_id)->instance_decl.generated_decls, decl);
+		return;
 	}
 	DEBUG_LOG("Registering symbol '%s' in %s.", decl->name, unit->module->name->module);
+
+	if (decl->visibility < VISIBLE_LOCAL)
+	{
+		switch (decl->decl_kind)
+		{
+			case DECL_ERASED:
+			case DECL_ALIAS_PATH:
+			case DECL_BODYPARAM:
+			case DECL_CT_ASSERT:
+			case DECL_CT_ECHO:
+			case DECL_CT_EXEC:
+			case DECL_CT_INCLUDE:
+			case DECL_DECLARRAY:
+			case DECL_ENUM_CONSTANT:
+			case DECL_GROUP:
+			case DECL_GENERIC:
+			case DECL_GENERIC_INSTANCE:
+			case DECL_IMPORT:
+			case DECL_LABEL:
+			case DECL_POISONED:
+				UNREACHABLE_VOID
+			case DECL_ATTRIBUTE:
+			case DECL_BITSTRUCT:
+			case DECL_TYPEDEF:
+			case DECL_ENUM:
+			case DECL_CONST_ENUM:
+			case DECL_STRUCT:
+			case DECL_TYPE_ALIAS:
+			case DECL_UNION:
+			case DECL_ALIAS:
+			case DECL_FUNC:
+			case DECL_MACRO:
+			case DECL_VAR:
+			case DECL_FNTYPE:
+			case DECL_INTERFACE:
+			case DECL_FAULT:
+				global_context_add_decl(decl);
+				break;
+		}
+	}
 
 	Decl *old;
 	if ((old = htable_set(&unit->local_symbols, (void*)decl->name, decl)))
@@ -311,6 +193,109 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		decl_poison(decl);
 		decl_poison(old);
 	}
+
+}
+
+
+void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
+{
+	ASSERT_SPAN(decl, !decl->is_template);
+	ASSERT_SPAN(decl, !decl->unit || decl->is_templated);
+	decl->unit = unit;
+	switch (decl->decl_kind)
+	{
+		case DECL_ERASED:
+			return;
+		case DECL_POISONED:
+			break;
+		case DECL_MACRO:
+			ASSERT(decl->name);
+			if (decl->func_decl.type_parent)
+			{
+				if (type_infoptr(decl->func_decl.type_parent)->kind == TYPE_INFO_GENERIC)
+				{
+					vec_add(unit->generic_methods_to_register, decl);
+					return;
+				}
+				vec_add(unit->methods_to_register, decl);
+				return;
+			}
+			vec_add(unit->macros, decl);
+			decl_register(unit, decl);
+			return;
+		case DECL_FUNC:
+			ASSERT(decl->name);
+			if (decl->func_decl.type_parent)
+			{
+				if (type_infoptr(decl->func_decl.type_parent)->kind == TYPE_INFO_GENERIC)
+				{
+					vec_add(unit->generic_methods_to_register, decl);
+					return;
+				}
+				vec_add(unit->methods_to_register, decl);
+				return;
+			}
+			vec_add(unit->functions, decl);
+			decl_register(unit, decl);
+			return;
+		case DECL_VAR:
+			ASSERT(decl->name);
+			vec_add(unit->vars, decl);
+			decl_register(unit, decl);
+			return;
+		case DECL_INTERFACE:
+		case DECL_TYPEDEF:
+		case DECL_STRUCT:
+		case DECL_UNION:
+		case DECL_TYPE_ALIAS:
+		case DECL_BITSTRUCT:
+			ASSERT(decl->name);
+			vec_add(unit->types, decl);
+			decl_register(unit, decl);
+			return;
+		case DECL_FAULT:
+			ASSERT(decl->name);
+			vec_add(unit->faults, decl);
+			decl_register(unit, decl);
+			return;
+		case DECL_ALIAS:
+			ASSERT(decl->name);
+			vec_add(unit->generic_defines, decl);
+			decl_register(unit, decl);
+			return;
+		case DECL_CONST_ENUM:
+		case DECL_ENUM:
+			ASSERT(decl->name);
+			vec_add(unit->enums, decl);
+			decl_register(unit, decl);
+			return;
+		case DECL_ATTRIBUTE:
+			vec_add(unit->attributes, decl);
+			decl_register(unit, decl);
+			return;
+		case DECL_ALIAS_PATH:
+		case DECL_BODYPARAM:
+		case DECL_DECLARRAY:
+		case DECL_ENUM_CONSTANT:
+		case DECL_FNTYPE:
+		case DECL_GROUP:
+		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
+		case DECL_IMPORT:
+		case DECL_LABEL:
+			UNREACHABLE_VOID
+		case DECL_CT_EXEC:
+		case DECL_CT_INCLUDE:
+			vec_add(unit->ct_includes, decl);
+			return;
+		case DECL_CT_ECHO:
+			vec_add(unit->ct_echos, decl);
+			return;
+		case DECL_CT_ASSERT:
+			vec_add(unit->ct_asserts, decl);
+			return;
+	}
+	UNREACHABLE_VOID;
 }
 
 

@@ -16,8 +16,8 @@ fn void foo() {}
 
 define void @test.main() #0 {
 entry:
-  call void @"test1$test.Foo$1$.foo"()
+  call void @"test1.foo$test.Foo$1$"()
   ret void
 }
 
-declare extern_weak void @"test1$test.Foo$1$.foo"() #0
+declare extern_weak void @"test1.foo$test.Foo$1$"() #0

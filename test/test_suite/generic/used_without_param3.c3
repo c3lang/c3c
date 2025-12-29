@@ -4,5 +4,5 @@ import std::collections::maybe;
 
 fn void test()
 {
-    (Maybe) {.value=6.6, .has_value=true}; // #error: is defined in the generic module
+    (Maybe) {.value=6.6, .has_value=true}; // #error: 'Maybe' is a generic struct, did you forget the parameters '{ ... }'
 }
