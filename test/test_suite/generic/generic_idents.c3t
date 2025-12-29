@@ -27,44 +27,46 @@ fn double getIt2(double i)
     return doubleAddMult(i, 2, 3);
 }
 
-/* #expect: gen.int.ll
-
-define weak i32 @"gen$int$.mult"(i32 %0) #0 {
-entry:
-  %mul = mul i32 %0, %0
-  ret i32 %mul
-}
-
-define weak i32 @"gen$int$.addMult"(i32 %0, i32 %1, i32 %2) #0 {
-entry:
-  %mul = mul i32 %0, %1
-  %add = add i32 %mul, %2
-  ret i32 %add
-}
-
-// #expect: test.ll
+/* #expect: test.ll
 
 define i32 @test.getIt(i32 %0) #0 {
 entry:
-  %1 = call i32 @"gen$int$.mult"(i32 %0)
+  %1 = call i32 @"gen.mult$int$"(i32 %0)
   %add = add i32 %1, 1
   ret i32 %add
 }
 
 define double @test.getIt2(double %0) #0 {
 entry:
-  %1 = call double @"gen$double$.addMult"(double %0, double 2.000000e+00, double 3.000000e+00)
+  %1 = call double @"gen.addMult$double$"(double %0, double 2.000000e+00, double 3.000000e+00)
   ret double %1
 }
 
-declare extern_weak i32 @"gen$int$.mult"(i32)
+declare extern_weak i32 @"gen.mult$int$"(i32) #0
+declare extern_weak double @"gen.addMult$double$"(double, double, double) #0
 
-declare extern_weak double @"gen$double$.addMult"(double, double, double)
+// #expect: gen.ll
 
-// #expect: gen.double.ll
+define weak i32 @"gen.mult$int$"(i32 %0) #0 {
+entry:
+  %mul = mul i32 %0, %0
+  ret i32 %mul
+}
 
+define weak i32 @"gen.addMult$int$"(i32 %0, i32 %1, i32 %2) #0 {
+entry:
+  %mul = mul i32 %0, %1
+  %add = add i32 %mul, %2
+  ret i32 %add
+}
 
-define weak double @"gen$double$.addMult"(double %0, double %1, double %2)
+define weak double @"gen.mult$double$"(double %0) #0 {
+entry:
+  %fmul = fmul double %0, %0
+  ret double %fmul
+}
+
+define weak double @"gen.addMult$double$"(double %0, double %1, double %2) #0 {
 entry:
   %fmul = fmul double %0, %1
   %fadd = fadd double %fmul, %2

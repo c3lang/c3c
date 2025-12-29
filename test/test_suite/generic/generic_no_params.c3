@@ -17,12 +17,12 @@ import std::collections::list;
 
 fn void test1()
 {
-	int x = values::test{}(); // #error: must be instantiatied with generic
+	int x = values::test{}(); // #error: requires generic arguments inside
 }
 
 fn void test2()
 {
-	List{Values{ }} v1s; // #error: must be instantiatied with generic
+	List{Values{ }} v1s; // #error: 'Values' requires generic arguments inside the '{}', did you forget them
 }
 
 fn void main()
