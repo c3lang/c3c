@@ -23,9 +23,9 @@ entry:
   %.anon = alloca i32, align 4
   %i = alloca i32, align 4
   %v = alloca i32, align 4
-  call void @"std_collections_enummap$test.Foo$int$.EnumMap.set"(ptr @test.map, i32 0, i32 123) #1
-  call void @"std_collections_enummap$test.Foo$int$.EnumMap.set"(ptr @test.map, i32 1, i32 -1) #1
-  %0 = call i64 @"std_collections_enummap$test.Foo$int$.EnumMap.len"(ptr @test.map) #1
+  call void @"std.collections.enummap.EnumMap$test.Foo$int$.set"(ptr @test.map, i32 0, i32 123) #1
+  call void @"std.collections.enummap.EnumMap$test.Foo$int$.set"(ptr @test.map, i32 1, i32 -1) #1
+  %0 = call i64 @"std.collections.enummap.EnumMap$test.Foo$int$.len"(ptr @test.map) #1
   %trunc = trunc i64 %0 to i32
   store i32 0, ptr %.anon, align 4
   br label %loop.cond
@@ -39,7 +39,7 @@ loop.body:                                        ; preds = %loop.cond
   %2 = load i32, ptr %.anon, align 4
   store i32 %2, ptr %i, align 4
   %3 = load i32, ptr %.anon, align 4
-  %4 = call i32 @"std_collections_enummap$test.Foo$int$.EnumMap.get"(ptr @test.map, i32 %3) #1
+  %4 = call i32 @"std.collections.enummap.EnumMap$test.Foo$int$.get"(ptr @test.map, i32 %3) #1
   store i32 %4, ptr %v, align 4
   %5 = load i32, ptr %.anon, align 4
   %addnsw = add nsw i32 %5, 1

@@ -211,12 +211,13 @@ typedef struct
 {
 	bool in_no_eval;
 	InliningSpan *old_inlining;
+	Decl *generic_instance;
 } ContextSwitchState;
 
 static inline ContextSwitchState context_switch_state_push(SemaContext *context, SemaContext *new_context)
 {
 
-	ContextSwitchState state = { .in_no_eval = new_context->call_env.in_no_eval, .old_inlining = new_context->inlined_at };
+	ContextSwitchState state = { .in_no_eval = new_context->call_env.in_no_eval, .old_inlining = new_context->inlined_at, .generic_instance = new_context->generic_instance };
 	new_context->call_env.in_no_eval = context->call_env.in_no_eval;
 	new_context->inlined_at = context->inlined_at;
 	return state;
@@ -226,6 +227,7 @@ static inline void context_switch_stat_pop(SemaContext *swapped, ContextSwitchSt
 {
 	swapped->call_env.in_no_eval = state.in_no_eval;
 	swapped->inlined_at = state.old_inlining;
+	swapped->generic_instance = state.generic_instance;
 }
 
 Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
@@ -963,6 +965,8 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_GROUP:
 		case DECL_IMPORT:
 		case DECL_TYPE_ALIAS:
+		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
 			UNREACHABLE
 		case DECL_POISONED:
 			return expr_poison(expr);
@@ -1690,6 +1694,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 		SemaContext default_context;
 		SemaContext *new_context = context_transform_for_eval(context, &default_context, param->unit);
 		ContextSwitchState switch_state = context_switch_state_push(context, new_context);
+		new_context->generic_instance = declptrzero(param->generic_id);
 		InliningSpan inlined_at;
 		if (!new_context->inlined_at)
 		{
@@ -2824,6 +2829,7 @@ static inline bool sema_expr_setup_call_analysis(SemaContext *context, CalledDec
 
 	Decl *decl = callee->definition;
 	sema_context_init(macro_context, decl->unit);
+	macro_context->generic_instance = declptrzero(decl->instance_id);
 	macro_context->compilation_unit = context->unit;
 	macro_context->macro_call_depth = context->macro_call_depth + 1;
 	macro_context->call_env = context->call_env;
@@ -7110,7 +7116,6 @@ static bool sema_expr_fold_hash(SemaContext *context, Expr *expr)
 		}
 		expr_replace(expr, copy_expr_single(decl->var.init_expr));
 		if (is_ref) expr_set_to_ref(expr);
-		REMINDER("Handle inlining at");
 	}
 	return expr_ok(expr);
 }
@@ -7141,20 +7146,20 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 
 	bool is_unwrapped_var = expr_is_unwrapped_ident(left);
 
-	Module *generic = type_find_generic(left->type);
+	Decl *generic = declptrzero(type_find_generic(left->type));
 	if (generic)
 	{
-		Module *temp = context->generic.infer;
-		context->generic.infer = generic;
+		Decl *temp = context->generic_infer;
+		context->generic_infer = generic;
 		generic = temp;
 	}
 	// 3. Evaluate right side to required type.
 	if (!sema_expr_analyse_assign_right_side(context, expr, left->type, right, is_unwrapped_var, false, failed_ref))
 	{
-		context->generic.infer = generic;
+		context->generic_infer = generic;
 		return false;
 	}
-	context->generic.infer = generic;
+	context->generic_infer = generic;
 	if (is_unwrapped_var && IS_OPTIONAL(right))
 	{
 		sema_rewrap_var(context, left->ident_expr);
@@ -10401,6 +10406,8 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr,
 			case DECL_LABEL:
 			case DECL_MACRO:
 			case DECL_POISONED:
+			case DECL_GENERIC:
+			case DECL_GENERIC_INSTANCE:
 				RETURN_SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
 			case DECL_FAULT:
 				goto RETURN_CT;
@@ -11856,10 +11863,10 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr, CondResult *result
 
 static inline bool sema_analyse_expr_rhs_param(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref)
 {
-	Module *generic_module = context->generic.infer;
-	context->generic.infer = to ? type_find_generic(to) : NULL;
+	Decl *generic = context->generic_infer;
+	context->generic_infer = declptrzero(to ? type_find_generic(to) : 0);
 	bool success = sema_analyse_expr_rhs(context, to, expr, true, no_match_ref, false);
-	context->generic.infer = generic_module;
+	context->generic_infer = generic;
 	return success;
 }
 
@@ -11872,13 +11879,13 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 	}
 	else
 	{
-		Module *generic;
-		if (to && (generic = type_find_generic(to)) != NULL)
+		Decl *generic;
+		if (to && (generic = declptrzero(type_find_generic(to))) != NULL)
 		{
-			Module *generic_module = context->generic.infer;
-			context->generic.infer = generic;
+			Decl *generic_prev = context->generic_infer;
+			context->generic_infer = generic;
 			bool success = sema_analyse_inferred_expr(context, to, expr, no_match_ref);
-			context->generic.infer = generic_module;
+			context->generic_infer = generic_prev;
 			if (!success) return false;
 		}
 		else
