@@ -55,6 +55,7 @@
 - Deprecated `DString.append_string` for DStrings, use `DString.append_dstring` instead.
 - Added `DString.append_bytes`.
 - Add `streebog` (aka "GOST-12") hashing with 256-bit and 512-bit outputs. #2659
+- Use a `Printable` struct for ansi RGB formatting instead of explicit allocation and deprecate the old method.
 
 ## 0.7.8 Change list
 
