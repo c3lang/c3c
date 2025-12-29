@@ -57,17 +57,13 @@ fn int main()
 /* #expect: the_generic.ll
 
 @"the_generic.foo$5$double$" = weak local_unnamed_addr global double 5.000000e+00, align 8
-@"the_generic.bar$5$double$.31595" = internal global double 0.000000e+00, align 8
-@"the_generic.baz$5$double$" = weak local_unnamed_addr global ptr @"the_generic.bar$5$double$.31595", align 8
+@"the_generic.baz$5$double$" = weak local_unnamed_addr global ptr @"the_generic.bar$5$double$
 @"the_generic.foo$5$int$" = weak local_unnamed_addr global i32 5, align 4
-@"the_generic.bar$5$int$.31615" = internal global i32 0, align 4
-@"the_generic.baz$5$int$" = weak local_unnamed_addr global ptr @"the_generic.bar$5$int$.31615", align 8
+@"the_generic.baz$5$int$" = weak local_unnamed_addr global ptr @"the_generic.bar$5$int$
 @"the_generic.foo$4$int$" = weak local_unnamed_addr global i32 4, align 4
-@"the_generic.bar$4$int$.31635" = internal global i32 0, align 4
-@"the_generic.baz$4$int$" = weak local_unnamed_addr global ptr @"the_generic.bar$4$int$.31635", align 8
+@"the_generic.baz$4$int$" = weak local_unnamed_addr global ptr @"the_generic.bar$4$int$
 @"the_generic.foo$3$int$" = weak local_unnamed_addr global i32 3, align 4
-@"the_generic.bar$3$int$.31655" = internal global i32 0, align 4
-@"the_generic.baz$3$int$" = weak local_unnamed_addr global ptr @"the_generic.bar$3$int$.31655", align 8
+@"the_generic.baz$3$int$" = weak local_unnamed_addr global ptr @"the_generic.bar$3$int$
 
 define weak double @"the_generic.TheStruct$5$double$.foo2"(ptr %0) #0 {
 entry:
