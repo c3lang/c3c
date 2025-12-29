@@ -68,13 +68,6 @@ static inline void emit_modules(FILE *file)
 		PRINTF("\t\t\"%s\"", module->name->module);
 	}
 	PRINT("\n\t],\n");
-	PRINT("\t\"generic_modules\": [\n");
-	FOREACH_IDX(j, Module *, module, compiler.context.generic_module_list)
-	{
-		if (j != 0) fputs(",\n", file);
-		PRINTF("\t\t\"%s\"", module->name->module);
-	}
-	fputs("\n\t],\n", file);
 }
 
 static inline const char *decl_type_to_string(Decl *type)
@@ -109,6 +102,8 @@ static inline const char *decl_type_to_string(Decl *type)
 		case DECL_LABEL:
 		case DECL_POISONED:
 		case DECL_VAR:
+		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -410,17 +405,6 @@ static inline void emit_types(FILE *file)
 	}
 
 	fputs("\n\t],\n", file);
-	fputs("\t\"generic_types\": [\n", file);
-	{
-		bool first = true;
-		FOREACH_DECL(Decl *type, compiler.context.generic_module_list)
-					if (!decl_is_user_defined_type(type) && type->decl_kind != DECL_TYPE_ALIAS) continue;
-					if (decl_is_hidden(type)) continue;
-					INSERT_COMMA;
-					emit_type_data(file, module, type);
-		FOREACH_DECL_END;
-	}
-	fputs("\n\t],\n", file);
 }
 
 static inline void emit_globals(FILE *file)
@@ -505,29 +489,6 @@ static inline void emit_functions(FILE *file)
 	}
 	fputs("\n\t],\n", file);
 
-	fputs("\t\"generic_functions\": [\n", file);
-	{
-		bool first = true;
-		FOREACH_DECL(Decl *func, compiler.context.generic_module_list)
-					if (func->decl_kind != DECL_FUNC) continue;
-					if (decl_is_hidden(func)) continue;
-					INSERT_COMMA;
-					emit_func_data(file, module, func);
-		FOREACH_DECL_END;
-	}
-	fputs("\n\t],\n", file);
-
-	fputs("\t\"generic_macros\": [\n", file);
-	{
-		bool first = true;
-		FOREACH_DECL(Decl *func, compiler.context.generic_module_list)
-					if (func->decl_kind != DECL_MACRO) continue;
-					if (decl_is_hidden(func)) continue;
-					INSERT_COMMA;
-					emit_macro_data(file, module, func);
-		FOREACH_DECL_END;
-	}
-	fputs("\n\t],\n", file);
 
 }
 

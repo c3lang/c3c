@@ -1,7 +1,11 @@
 module test;
-fn void main() {}
+fn void main()
+{
+	test{int}();
+}
 
-module test{Type}; // #error: generic
-fn void test() {
+module test{Type};
+fn void test()
+{
 	Type a;
 }

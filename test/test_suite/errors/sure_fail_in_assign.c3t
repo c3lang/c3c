@@ -1,0 +1,48 @@
+// #target: macos-x64
+module test;
+import std::io;
+
+faultdef OH_NO;
+const int C = 1;
+
+fn void main()
+{
+	(void)do_thing();
+}
+
+fn void? do_thing()
+{
+    int* a_value;
+    // Change 'C' below to any integer value and the assert goes away.
+    *a_value = may_fault(C)!;
+    io::printfn("Value: %d", *a_value);
+}
+
+macro may_fault($incoming)
+{
+    $switch $incoming:
+        $case 1: return OH_NO?;
+        $default: return 0;
+    $endswitch
+}
+
+/* #expect: test.ll
+
+%"char[]" = type { ptr, i64 }
+
+@test.C = local_unnamed_addr constant i32 1, align 4
+@test.OH_NO = linkonce constant %"char[]" { ptr @test.OH_NO.nameof, i64 11 }, align 8
+@test.OH_NO.nameof = internal constant [12 x i8] c"test::OH_NO\00", align 1
+
+define i64 @test.do_thing() #0 {
+entry:
+  %a_value = alloca ptr, align 8
+  %error_var = alloca i64, align 8
+  store ptr null, ptr %a_value, align 8
+  store i64 ptrtoint (ptr @test.OH_NO to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %0 = load i64, ptr %error_var, align 8
+  ret i64 %0
+}

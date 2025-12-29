@@ -595,6 +595,35 @@ static void llvm_emit_gather(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_value_set(be_value, result, expr->type);
 }
 
+static void llvm_emit_mask_to_int(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	Expr **args = expr->call_expr.arguments;
+	ASSERT(vec_size(args) == 1);
+	LLVMValueRef val = llvm_emit_expr_to_rvalue(c, args[0]);
+	LLVMTypeRef mask_type = LLVMTypeOf(val);
+	unsigned bits = LLVMGetVectorSize(mask_type);
+	val = LLVMBuildBitCast(c->builder, val, LLVMIntTypeInContext(c->context, bits), "");
+	unsigned target_bits = next_highest_power_of_2(bits);
+	if (target_bits < 8) target_bits = 8;
+	if (target_bits < bits) val = LLVMBuildZExt(c->builder, val, llvm_get_type(c, expr->type), "");
+	llvm_value_set(be_value, val, expr->type);
+}
+
+static void llvm_emit_int_to_mask(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	Expr **args = expr->call_expr.arguments;
+	ASSERT(vec_size(args) == 2);
+	LLVMValueRef val = llvm_emit_expr_to_rvalue(c, args[0]);
+	unsigned bits = (unsigned)args[1]->const_expr.ixx.i.low;
+	unsigned int_len = type_bit_size(args[0]->type);
+	if (int_len > bits)
+	{
+		val = LLVMBuildTrunc(c->builder, val, LLVMIntTypeInContext(c->context, bits), "");
+	}
+	val = LLVMBuildBitCast(c->builder, val, LLVMVectorType(c->bool_type, bits), "");
+	llvm_value_set(be_value, val, expr->type);
+}
+
 static void llvm_emit_masked_store(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr **args = expr->call_expr.arguments;
@@ -914,6 +943,12 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			return;
 		case BUILTIN_SCATTER:
 			llvm_emit_scatter(c, result_value, expr);
+			return;
+		case BUILTIN_MASK_TO_INT:
+			llvm_emit_mask_to_int(c, result_value, expr);
+			return;
+		case BUILTIN_INT_TO_MASK:
+			llvm_emit_int_to_mask(c, result_value, expr);
 			return;
 		case BUILTIN_MASKED_STORE:
 			llvm_emit_masked_store(c, result_value, expr);

@@ -169,13 +169,13 @@ static inline Path *parse_module_path(ParseContext *c)
  *
  * module_params ::= '{' module_param (',' module_param)* '}'
  */
-static inline bool parse_optional_module_params(ParseContext *c, const char ***tokens_ref)
+static inline bool parse_optional_module_params(ParseContext *c, Decl **decl_ref)
 {
-
-	*tokens_ref = NULL;
-
+	SourceSpan start = c->span;
 	if (!try_consume(c, TOKEN_LBRACE)) return true;
 	if (try_consume(c, TOKEN_RBRACE)) RETURN_PRINT_ERROR_HERE("The generic parameter list cannot be empty, it needs at least one element.");
+
+	const char **tokens = NULL;
 
 	// No params
 	while (1)
@@ -195,15 +195,94 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 			default:
 				RETURN_PRINT_ERROR_HERE("Only generic parameters are allowed here as parameters to the module.");
 		}
-		vec_add(*tokens_ref, symstr(c));
+		vec_add(tokens, symstr(c));
 		advance(c);
 		if (!try_consume(c, TOKEN_COMMA))
 		{
 			if (!consume(c, TOKEN_RBRACE, "Expected '}'.")) return false;
+			Decl *decl = decl_new(DECL_GENERIC, "", extend_span_with_token(start, c->prev_span));
+			decl->generic_decl.parameters = tokens;
+			*decl_ref = decl;
 			return true;
 		}
 	}
 }
+
+static inline Ast *sema_contract_find_first_non_comment(AstId contracts)
+{
+	while (contracts)
+	{
+		Ast *current = astptr(contracts);
+		contracts = current->next;
+		ASSERT(current->ast_kind == AST_CONTRACT);
+		switch (current->contract_stmt.kind)
+		{
+			case CONTRACT_UNKNOWN:
+			case CONTRACT_PURE:
+			case CONTRACT_PARAM:
+			case CONTRACT_OPTIONALS:
+			case CONTRACT_ENSURE:
+			case CONTRACT_REQUIRE:
+				return current;
+			case CONTRACT_COMMENT:
+				continue;
+		}
+	}
+	return NULL;
+}
+
+static inline Ast *sema_contract_first_non_comment_require(AstId contracts)
+{
+	while (contracts)
+	{
+		Ast *current = astptr(contracts);
+		contracts = current->next;
+		ASSERT(current->ast_kind == AST_CONTRACT);
+		switch (current->contract_stmt.kind)
+		{
+			case CONTRACT_UNKNOWN:
+			case CONTRACT_PURE:
+			case CONTRACT_PARAM:
+			case CONTRACT_OPTIONALS:
+			case CONTRACT_ENSURE:
+				return current;
+			case CONTRACT_REQUIRE:
+			case CONTRACT_COMMENT:
+				continue;
+		}
+	}
+	return NULL;
+}
+
+static int generic_id = 1;
+static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
+{
+	unsigned params = vec_size(decl->generic_decl.parameters);
+	FOREACH(Decl *, d, unit->module->generic_sections)
+	{
+		unsigned candidate_params = vec_size(d->generic_decl.parameters);
+		if (candidate_params != params) continue;
+		for (unsigned i = 0; i < params; i++)
+		{
+			if (d->generic_decl.parameters[i] != decl->generic_decl.parameters[i])
+			{
+				goto NEXT;
+			}
+		}
+		decl->generic_decl.id = d->generic_decl.id;
+		return;
+NEXT:;
+	}
+	decl->generic_decl.id = generic_id++;
+}
+
+void parse_attach_generics(ParseContext *c, Decl *generic_decl)
+{
+	vec_add(c->unit->generic_decls, generic_decl);
+	unify_generic_decl(c->unit, generic_decl);
+	vec_add(c->unit->module->generic_sections, generic_decl);
+}
+
 /**
  * module ::= MODULE module_path ('{' module_params '}')? (@public|@private|@local|@test|@export|@cname) EOS
  */
@@ -236,57 +315,64 @@ bool parse_module(ParseContext *c, AstId contracts)
 		path->len = (unsigned)strlen("#invalid");
 		path->module = "#invalid";
 		path->span = INVALID_SPAN;
-		context_set_module(c, path, NULL);
+		context_set_module(c, path);
 		recover_top_level(c);
 		return false;
 	}
 
 	// Is this a generic module?
-	const char **generic_parameters = NULL;
-	if (!parse_optional_module_params(c, &generic_parameters))
+	Decl *generic_decl_old = NULL;
+	if (!parse_optional_module_params(c, &generic_decl_old))
 	{
-		if (!context_set_module(c, path, NULL)) return false;
+		if (!context_set_module(c, path)) return false;
 		recover_top_level(c);
-		if (contracts) RETURN_PRINT_ERROR_AT(false, astptr(contracts), "Contracts cannot be use with non-generic modules.");
+		if (contracts)
+		{
+			Ast *first_contract = sema_contract_find_first_non_comment(contracts);
+			if (first_contract) RETURN_PRINT_ERROR_AT(false, first_contract, "Contracts cannot be use with non-generic modules.");
+		}
 		return true;
 	}
-	if (!context_set_module(c, path, generic_parameters)) return false;
-	if (contracts)
+	if (!context_set_module(c, path)) return false;
+	Visibility visibility = VISIBLE_PUBLIC;
+	Attr** attrs = NULL;
+	bool is_cond = false;
+	Decl *generic_decl = NULL;
+	if (!parse_attributes(c, &attrs, &visibility, NULL, &is_cond, &generic_decl)) return false;
+	if (generic_decl_old)
 	{
-		AstId old_contracts = c->unit->module->contracts;
-		if (old_contracts)
+		//SEMA_DEPRECATED(generic_decl, "Module-based generics is deprecated, use `@generic` instead.");
+		if (generic_decl)
 		{
-			Ast *last = ast_last(astptr(old_contracts));
-			last->next = contracts;
+			SEMA_NOTE(generic_decl_old, "Old generics combined with new will ignore the former.");
 		}
 		else
 		{
-			c->unit->module->contracts = contracts;
-		}
-		while (contracts)
-		{
-			Ast *current = astptr(contracts);
-			contracts = current->next;
-			ASSERT(current->ast_kind == AST_CONTRACT);
-			switch (current->contract_stmt.kind)
-			{
-				case CONTRACT_UNKNOWN:
-				case CONTRACT_PURE:
-				case CONTRACT_PARAM:
-				case CONTRACT_OPTIONALS:
-				case CONTRACT_ENSURE:
-					break;
-				case CONTRACT_REQUIRE:
-				case CONTRACT_COMMENT:
-					continue;
-			}
-			RETURN_PRINT_ERROR_AT(false, current, "Invalid constraint - only '@require' is valid for modules.");
+			generic_decl = generic_decl_old;
 		}
 	}
-	Visibility visibility = VISIBLE_PUBLIC;
-	Attr** attrs = NULL;
-	bool is_cond;
-	if (!parse_attributes(c, &attrs, &visibility, NULL, &is_cond)) return false;
+	if (contracts)
+	{
+		if (!generic_decl)
+		{
+			Ast *first_contract = sema_contract_find_first_non_comment(contracts);
+			if (first_contract) RETURN_PRINT_ERROR_AT(false, first_contract, "Contracts can only be used with '@generic' modules.");
+		}
+		else
+		{
+			Ast *first_invalid_contract = sema_contract_first_non_comment_require(contracts);
+			if (first_invalid_contract)
+			{
+				RETURN_PRINT_ERROR_AT(false, first_invalid_contract, "Invalid constraint - only '@require' is valid for '@generic'.");
+			}
+		}
+	}
+	if (generic_decl)
+	{
+		if (contracts) generic_decl->generic_decl.contracts = contracts;
+		parse_attach_generics(c, generic_decl);
+		c->unit->default_generic_section = generic_decl;
+	}
 	FOREACH(Attr *, attr, attrs)
 	{
 		if (attr->is_custom) RETURN_PRINT_ERROR_AT(false, attr, "Custom attributes cannot be used with 'module'.");
@@ -884,7 +970,7 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 	advance(c);
 
 	bool is_cond;
-	if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
+	if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond, NULL)) return poisoned_decl;
 	decl->is_cond = is_cond;
 	if (tok_is(c, TOKEN_EQ))
 	{
@@ -965,7 +1051,7 @@ Decl *parse_const_declaration(ParseContext *c, bool is_global, bool is_extern)
 	else
 	{
 		bool is_cond;
-		if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
+		if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond, NULL)) return poisoned_decl;
 		decl->is_cond = is_cond;
 	}
 
@@ -997,7 +1083,7 @@ Decl *parse_var_decl(ParseContext *c)
 		case TOKEN_IDENT:
 			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL);
 			advance(c);
-			if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
+			if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond, NULL)) return poisoned_decl;
 			decl->is_cond = is_cond;
 			if (!tok_is(c, TOKEN_EQ))
 			{
@@ -1012,7 +1098,7 @@ Decl *parse_var_decl(ParseContext *c)
 			decl = decl_new_var_current(c, NULL, c->tok == TOKEN_CT_IDENT ? VARDECL_LOCAL_CT : VARDECL_LOCAL_CT_TYPE);
 			advance(c);
 			span = c->span;
-			if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
+			if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond, NULL)) return poisoned_decl;
 			if (is_cond || decl->attributes)
 			{
 				print_error_at(span, "Attributes are not allowed on compile time variables.");
@@ -1172,6 +1258,22 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 	advance(c);
 	Expr **list = NULL;
 
+	// Special handling of generic attributes
+	if (!attr->is_custom && attr->attr_kind == ATTRIBUTE_GENERIC)
+	{
+		CONSUME_OR_RET(TOKEN_LPAREN, false);
+		while (1)
+		{
+			Expr *expr = parse_decl_or_expr(c);
+			vec_add(list, expr);
+			if (try_consume(c, TOKEN_RPAREN)) break;
+			CONSUME_OR_RET(TOKEN_COMMA, false);
+		}
+		attr->exprs = list;
+		*attribute_ref = attr;
+		return true;
+	}
+
 	// Consume the optional (expr | attr_param, ...)
 	if (try_consume(c, TOKEN_LPAREN))
 	{
@@ -1262,14 +1364,29 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 	decl->is_export = c->unit->export_by_default;
 	bool is_builtin = false;
 	bool is_cond;
-	if (!parse_attributes(c, &decl->attributes, &visibility, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond)) return false;
+	Decl *generics = NULL;
+	if (!parse_attributes(c, &decl->attributes, &visibility, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, &generics)) return false;
+	if (generics)
+	{
+		parse_attach_generics(c, generics);
+	}
+	if (!generics && c->unit->default_generic_section)
+	{
+		generics = c->unit->default_generic_section;
+	}
+	if (generics)
+	{
+		decl->generic_id = declid(generics);
+		decl->is_template = true;
+	}
 	decl->is_cond = is_cond;
 	decl->is_autoimport = is_builtin;
 	decl->visibility = visibility;
 	return true;
 }
 
-static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *builtin_ref, bool *cond_ref, bool use_comma)
+static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *builtin_ref, bool *cond_ref, Decl **
+                                        generic_ref, bool use_comma)
 {
 	Visibility visibility = -1; // NOLINT
 	if (cond_ref) *cond_ref = false;
@@ -1287,6 +1404,39 @@ static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref,
 			bool parsed_builtin = false;
 			switch (attr->attr_kind)
 			{
+				case ATTRIBUTE_GENERIC:
+				{
+					if (!generic_ref) RETURN_PRINT_ERROR_AT(false, attr, "'%s' cannot be used here.", attr->name);
+					if (*generic_ref) RETURN_PRINT_ERROR_AT(false, attr, "Only a single '%s' attribute may be added.", attr->name);
+					if (vec_size(attr->exprs) < 1) RETURN_PRINT_ERROR_AT(false, attr, "'%s' must have at least one parameter.", attr->name);
+					*generic_ref = decl_new(DECL_GENERIC, "", attr->span);
+					const char **names = NULL;
+					FOREACH(Expr *, expr, attr->exprs)
+					{
+						switch (expr->expr_kind)
+						{
+							case EXPR_TYPEINFO:
+							{
+								TypeInfo *type_info = expr->type_expr;
+								if (type_info->kind != TYPE_INFO_IDENTIFIER || type_info->subtype != TYPE_COMPRESSED_NONE) break;
+								if (type_info->unresolved.path) break;
+								vec_add(names, type_info->unresolved.name);
+								continue;
+							}
+							case EXPR_UNRESOLVED_IDENTIFIER:
+							{
+								if (!expr->unresolved_ident_expr.is_const || expr->unresolved_ident_expr.path) break;
+								vec_add(names, expr->unresolved_ident_expr.ident);
+								continue;
+							}
+							default:
+								break;
+						}
+						RETURN_PRINT_ERROR_AT(false, expr, "Generic parameters must be type or constant identifiers.");
+					}
+					(*generic_ref)->generic_decl.parameters = names;
+					break;
+				}
 				case ATTRIBUTE_PUBLIC:
 					parsed_visibility = VISIBLE_PUBLIC;
 					break;
@@ -1327,7 +1477,7 @@ static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref,
 			if (other_attr->name == name) RETURN_PRINT_ERROR_AT(false, attr, "Repeat of attribute '%s' here.", name);
 		}
 ADD:
-		vec_add(*attributes_ref, attr);
+		if (attr->attr_kind != ATTRIBUTE_GENERIC) vec_add(*attributes_ref, attr);
 		if (use_comma && !try_consume(c, TOKEN_COMMA)) break;
 	}
 	return true;
@@ -1340,9 +1490,10 @@ ADD:
  *
  * @return true if parsing succeeded, false if recovery is needed
  */
-bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *builtin_ref, bool *cond_ref)
+bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *builtin_ref, bool *cond_ref, Decl **
+                      generic_ref)
 {
-	return parse_attribute_list(c, attributes_ref, visibility_ref, builtin_ref, cond_ref, false);
+	return parse_attribute_list(c, attributes_ref, visibility_ref, builtin_ref, cond_ref, generic_ref, false);
 }
 
 /**
@@ -1460,7 +1611,7 @@ static inline bool parse_enum_param_decl(ParseContext *c, Decl*** parameters)
 		if (token_is_some_ident(c->tok)) RETURN_PRINT_ERROR_HERE("Expected a name starting with a lower-case letter.");
 		RETURN_PRINT_ERROR_HERE("Expected a member name here.");
 	}
-	if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL)) return false;
+	if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL, NULL)) return false;
 	vec_add(*parameters, param);
 	RANGE_EXTEND_PREV(param);
 	return true;
@@ -1707,7 +1858,7 @@ CHECK_ELLIPSIS:
 		Decl *param = decl_new_var(name, span, type, param_kind);
 		param->var.type_info = type ? type_infoid(type) : 0;
 		param->var.self_addr = ref;
-		if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL)) return false;
+		if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL, NULL)) return false;
 		if (!no_name)
 		{
 			if (try_consume(c, TOKEN_EQ))
@@ -1847,7 +1998,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			else
 			{
 				bool is_cond;
-				if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond)) return false;
+				if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond, NULL)) return false;
 				member->is_cond = true;
 				if (!parse_struct_body(c, member)) return decl_poison(parent);
 			}
@@ -1890,7 +2041,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			}
 			advance(c);
 			bool is_cond;
-			if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond)) return false;
+			if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond, NULL)) return false;
 			member->is_cond = true;
 			if (!try_consume(c, TOKEN_COMMA)) break;
 			if (was_inline)
@@ -2040,7 +2191,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 				is_consecutive = true;
 			}
 			bool is_cond = false;
-			if (!parse_attributes(c, &member_decl->attributes, NULL, NULL, &is_cond)) return false;
+			if (!parse_attributes(c, &member_decl->attributes, NULL, NULL, &is_cond, NULL)) return false;
 			member_decl->is_cond = is_cond;
 			CONSUME_OR_RET(TOKEN_EOS, false);
 			unsigned index = vec_size(decl->strukt.members);
@@ -2061,7 +2212,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 			member_decl->var.end = NULL;
 		}
 		bool is_cond = false;
-		if (!parse_attributes(c, &member_decl->attributes, NULL, NULL, &is_cond)) return false;
+		if (!parse_attributes(c, &member_decl->attributes, NULL, NULL, &is_cond, NULL)) return false;
 		member_decl->is_cond = is_cond;
 		CONSUME_EOS_OR_RET(false);
 		if (is_consecutive)
@@ -2110,6 +2261,9 @@ static inline Decl *parse_interface_declaration(ParseContext *c)
 		} while (try_consume(c, TOKEN_COMMA));
 	}
 	decl->interfaces = parents;
+
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+
 	if (!parse_interface_body(c, decl)) return poisoned_decl;
 	return decl;
 }
@@ -2244,7 +2398,7 @@ static inline Decl *parse_alias_type(ParseContext *c, AstId contracts, bool has_
 		{
 			return poisoned_decl;
 		}
-		if (!parse_attributes(c, &decl_type->attributes, NULL, NULL, NULL)) return poisoned_decl;
+		if (!parse_attributes(c, &decl_type->attributes, NULL, NULL, NULL, NULL)) return poisoned_decl;
 		RANGE_EXTEND_PREV(decl_type);
 		RANGE_EXTEND_PREV(decl);
 		CONSUME_EOS_OR_RET(poisoned_decl);
@@ -2425,7 +2579,7 @@ static inline Decl *parse_attrdef(ParseContext *c)
 
 	bool is_cond;
 	bool is_builtin = false;
-	if (!parse_attribute_list(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, true)) return poisoned_decl;
+	if (!parse_attribute_list(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, NULL,true)) return poisoned_decl;
 	decl->attr_decl.attrs = attributes;
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;

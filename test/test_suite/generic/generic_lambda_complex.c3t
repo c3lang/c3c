@@ -170,7 +170,7 @@ fn void main()
 define void @text_test.main() #0 {
 entry:
   %foo_tmpl = alloca %"char[]", align 8
-  %ft = alloca %TextTemplate, align 8
+  %ft = alloca %"TextTemplate{Foo}", align 8
   %error_var = alloca i64, align 8
   %indirectarg = alloca %"char[]", align 8
   %varargslots = alloca [1 x %any], align 16
@@ -185,7 +185,7 @@ entry:
   %ptradd = getelementptr inbounds i8, ptr %foo_tmpl, i64 8
   %hi = load i64, ptr %ptradd, align 8
   store %"char[]" { ptr @.str.2, i64 2 }, ptr %indirectarg, align 8
-  %1 = call i64 @"abc$text_test.Foo$.TextTemplate.init"(ptr %ft, ptr %lo, i64 %hi, ptr @.str.1, i64 2, ptr byval(%"char[]") align 8 %indirectarg, ptr byval(%any) align 8 %0)
+  %1 = call i64 @"abc.TextTemplate$text_test.Foo$.init"(ptr %ft, ptr %lo, i64 %hi, ptr @.str.1, i64 2, ptr byval(%"char[]") align 8 %indirectarg, ptr byval(%any) align 8 %0)
   %not_err = icmp eq i64 %1, 0
   %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %2, label %after_check, label %assign_optional
@@ -208,7 +208,7 @@ panic_block:                                      ; preds = %assign_optional
   unreachable
 
 noerr_block:                                      ; preds = %after_check
-  %6 = call i64 @"abc$text_test.Foo$.TextTemplate.free"(ptr %ft)
+  %6 = call i64 @"abc.TextTemplate$text_test.Foo$.free"(ptr %ft)
   %not_err3 = icmp eq i64 %6, 0
   %7 = call i1 @llvm.expect.i1(i1 %not_err3, i1 true)
   br i1 %7, label %after_check5, label %assign_optional4

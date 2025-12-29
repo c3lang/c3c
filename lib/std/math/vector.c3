@@ -3,6 +3,20 @@
 module std::math::vector;
 import std::math;
 
+<*
+ @require $Type.kindof == VECTOR &&& $kindof(($Type){}[0]) == BOOL : "Expected a bool vector"
+ @require $kindof(mask).is_int() : "Expected an integer mask"
+*>
+macro bool[<*>] mask_from_int($Type, mask)
+{
+	return $$int_to_mask(mask, $Type.len);
+}
+
+macro bool[<*>].mask_to_int(self)
+{
+	return $$mask_to_int(self);
+}
+
 macro double double[<*>].sq_magnitude(self) => self.dot(self);
 macro float float[<*>].sq_magnitude(self) => self.dot(self);
 
