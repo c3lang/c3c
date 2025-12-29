@@ -1,0 +1,36 @@
+// #target: macos-x64
+module test;
+fn void test()
+{
+	bool[<8>] x = $$int_to_mask(0b1111000, 8);
+	bool[<32>] y = $$int_to_mask(0b1111000, 32);
+}
+
+fn void test2()
+{
+	char x = $$mask_to_int((bool[<8>]){ false, false, false, false, true, true, true, false });
+	short x2 = $$mask_to_int((bool[<15>]){});
+	uint128 y = $$mask_to_int((bool[<128>]){});
+}
+
+/* #expect: test.ll
+
+define void @test.test() #0 {
+entry:
+  %x = alloca <8 x i8>, align 8
+  %y = alloca <32 x i8>, align 32
+  store <8 x i8>
+  store <32 x i8>
+  ret void
+}
+
+define void @test.test2() #0 {
+entry:
+  %x = alloca i8, align 1
+  %x2 = alloca i16, align 2
+  %y = alloca i128,
+  store i8 bitcast (<8 x i1> <i1 false, i1 false, i1 false, i1 false, i1 true, i1 true, i1 true, i1 false> to i8), ptr %x, align 1
+  store i16 0, ptr %x2, align 2
+  store i128 0, ptr %y
+  ret void
+}

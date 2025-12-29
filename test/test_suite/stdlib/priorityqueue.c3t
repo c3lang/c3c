@@ -28,4 +28,4 @@ fn bool Foo.less(Foo* x, Foo y) @inline
 
 /* #expect: test.ll
 
-%PrivatePriorityQueue = type { %List }
+%"PrivatePriorityQueue{Foo, true}" = type { %"List{Foo}" }

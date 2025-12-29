@@ -22,7 +22,7 @@ fn void d()
 
 fn void d2()
 {
-	elastic_array::type_is_overaligned(); // #error: 'type_is_overaligned' is defined in the generic module 'std::collections::elastic_array', did you forget the parameters '{ ... }'?
+	elastic_array::type_is_overaligned(); // #error: 'type_is_overaligned' is a generic macro, did you forget the parameters '{ ... }'
 }
 
 fn void e()
@@ -32,12 +32,12 @@ fn void e()
 
 fn void f()
 {
-	ElasticArray x; // #error: 'ElasticArray' is defined in the generic module 'std::collections::elastic_array', did you forget the parameters '{ ... }'?
+	ElasticArray x; // #error: 'ElasticArray' is a generic struct, did you forget the parameters '{ ... }'?
 }
 
 fn void g()
 {
-	(ElasticArray){}; // #error: 'ElasticArray' is defined in the generic module 'std::collections::elastic_array', did you forget the parameters '{ ... }'
+	(ElasticArray){}; // #error: 'ElasticArray' is a generic struct, did you forget the parameters '{ ... }'?
 }
 
 fn int main(String[] args)

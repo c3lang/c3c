@@ -235,9 +235,11 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_FSHR] = KW_DEF("fshr");
 	builtin_list[BUILTIN_GATHER] = KW_DEF("gather");
 	builtin_list[BUILTIN_GET_ROUNDING_MODE] = KW_DEF("get_rounding_mode");
+	builtin_list[BUILTIN_INT_TO_MASK] = KW_DEF("int_to_mask");
 	builtin_list[BUILTIN_LOG] = KW_DEF("log");
 	builtin_list[BUILTIN_LOG2] = KW_DEF("log2");
 	builtin_list[BUILTIN_LOG10] = KW_DEF("log10");
+	builtin_list[BUILTIN_MASK_TO_INT] = KW_DEF("mask_to_int");
 	builtin_list[BUILTIN_MASKED_LOAD] = KW_DEF("masked_load");
 	builtin_list[BUILTIN_MASKED_STORE] = KW_DEF("masked_store");
 	builtin_list[BUILTIN_MATRIX_MUL] = KW_DEF("matrix_mul");
@@ -351,6 +353,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_EXTERN] = KW_DEF("@extern");
 	attribute_list[ATTRIBUTE_FINALIZER] = KW_DEF("@finalizer");
 	attribute_list[ATTRIBUTE_FORMAT] = KW_DEF("@format");
+	attribute_list[ATTRIBUTE_GENERIC] = KW_DEF("@generic");
 	attribute_list[ATTRIBUTE_IF] = KW_DEF("@if");
 	attribute_list[ATTRIBUTE_INIT] = KW_DEF("@init");
 	attribute_list[ATTRIBUTE_INLINE] = KW_DEF("@inline");

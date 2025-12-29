@@ -8,6 +8,10 @@
 - Remove use of LLVMGetGlobalContext for single module compilation.
 - Fixed bug where constants would get modified when slicing them. #2660
 - Support for NetBSD.
+- Testing for the presence of methods at the top level is prohibited previous to method registration.
+- `$$MASK_TO_INT` and `$$INT_TO_MASK` to create bool masks from integers and back.
+- Better error messages when slicing a pointer to a slice or vector. #2681
+- Generics using `@generic` rather than module based.
 - On win32 utf-8 console output is now enabled by default in compiled programs
 
 ### Fixes
@@ -30,6 +34,9 @@
 - Incorrect rounding for decimals in formatter in some cases. #2657
 - Incorrectly using LLVMStructType when emitting dynamic functions on MachO #2666
 - FixedThreadPool join did not work correctly.
+- Fix bug when creating bool vectors in certain cases.
+- Compiler assert when passing returning CT failure immediately rethrown #2689.
+- Converting between simd/non-simd bool vector would hit a compiler assert. #2691
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.

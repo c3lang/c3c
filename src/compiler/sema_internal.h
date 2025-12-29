@@ -127,7 +127,7 @@ void cast_promote_vararg(Expr *arg);
 Type *cast_numeric_arithmetic_promotion(Type *type);
 void cast_to_int_to_max_bit_size(Expr *lhs, Expr *rhs, Type *left_type, Type *right_type);
 bool sema_decl_if_cond(SemaContext *context, Decl *decl);
-Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span,
+Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_path, const char *name, SourceSpan span,
                                             Expr **params, bool *was_recursive_ref, SourceSpan invocation_span);
 bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, const char *name, SourceSpan span);
 Type *sema_resolve_type_get_func(Signature *signature, CallABI abi);
@@ -137,6 +137,9 @@ INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *d
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right, bool *failed_ref);
 bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl);
 bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain, bool *erase_decl);
+
+void unit_register_optional_global_decl(CompilationUnit *unit, Decl *decl);
+bool analyse_func_body(SemaContext *context, Decl *decl);
 
 INLINE bool sema_analyse_stmt_chain(SemaContext *context, Ast *statement)
 {
