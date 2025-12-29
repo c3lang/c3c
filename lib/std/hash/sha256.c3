@@ -1,7 +1,5 @@
 module std::hash::sha256;
-
-import std::bits;
-import std::hash::hmac;
+import std::bits, std::hash::hmac;
 
 const BLOCK_SIZE = 64;
 const HASH_SIZE = 32;
@@ -38,7 +36,7 @@ struct Sha256
 <*
  Compute and return a hash value.
 
- @param[in] data : "The input data to hash."
+ @param [in] data : "The input data to hash."
 *>
 fn char[HASH_SIZE] hash(char[] data)
 {
@@ -56,7 +54,7 @@ fn void Sha256.init(&self) => *self = {
 };
 
 <*
- @param[in] data
+ @param [in] data
  @require data.len <= uint.max
 *>
 fn void Sha256.update(&self, char[] data)
