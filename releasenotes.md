@@ -11,6 +11,7 @@
 - Testing for the presence of methods at the top level is prohibited previous to method registration.
 - `$$MASK_TO_INT` and `$$INT_TO_MASK` to create bool masks from integers and back.
 - Better error messages when slicing a pointer to a slice or vector. #2681
+- Generics using `@generic` rather than module based.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -33,6 +34,8 @@
 - Incorrectly using LLVMStructType when emitting dynamic functions on MachO #2666  
 - FixedThreadPool join did not work correctly.
 - Fix bug when creating bool vectors in certain cases.
+- Compiler assert when passing returning CT failure immediately rethrown #2689.
+- Converting between simd/non-simd bool vector would hit a compiler assert. #2691
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
