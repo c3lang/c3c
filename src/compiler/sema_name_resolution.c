@@ -9,6 +9,26 @@
 typedef long long int ssize_t;
 #endif
 
+Decl *sema_find_generic_instance(SemaContext *context, Module *module, Decl *generic, Decl *instance, const char *name)
+{
+	scratch_buffer_clear();
+	scratch_buffer_append(name);
+	scratch_buffer_append(instance->instance_decl.name_suffix);
+	const char *full_name = scratch_buffer_interned();
+	FOREACH(Decl *, g, module->generic_sections)
+	{
+		if (g->generic_decl.id == generic->generic_decl.id)
+		{
+			FOREACH(Decl *, decl, instance->instance_decl.generated_decls)
+			{
+				if (decl->name != full_name) continue;
+				if (decl->visibility == VISIBLE_LOCAL && decl->unit != context->unit) continue;
+				return decl;
+			}
+		}
+	}
+	return NULL;
+}
 INLINE bool sema_resolve_ambiguity(SemaContext *context, Decl **current, Decl *candidate, Decl **ambiguous);
 static inline bool matches_subpath(Path *path_to_check, Path *path_to_find)
 {
@@ -209,8 +229,6 @@ Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *in
 INLINE bool module_inclusion_match(Module *a, Module *b)
 {
 	Module *temp;
-	while ((temp = a->generic_module)) a = temp;
-	while ((temp = b->generic_module)) b = temp;
 
 	// Quick check
 	if (a->top_module != b->top_module) return false;
@@ -229,9 +247,6 @@ static bool decl_is_visible(CompilationUnit *unit, Decl *decl)
 	Module *module = decl->unit->module;
 	// 1. Same module as unit -> ok
 	if (module == unit->module) return true;
-
-	// This never matches a generic module.
-	if (module->generic_module) return false;
 
 	// 2. Skip to imports for private decls
 	bool is_public = decl->visibility == VISIBLE_PUBLIC;
@@ -290,7 +305,7 @@ static BoolErr sema_first_is_preferred(SemaContext *context, Decl *decl, Decl *d
 {
 	// (1) and (2)
 	if ((decl->is_autoimport && !decl2->is_autoimport)
-		|| (decl2->unit->module->generic_module && !decl->unit->module->generic_module)) return BOOL_TRUE;
+		|| (decl2->is_template && !decl->is_template)) return BOOL_TRUE;
 	// Now analyse common parents, we only check if this is a redef.
 	if (decl2->decl_kind != DECL_TYPE_ALIAS || !decl2->is_weak) return BOOL_FALSE;
 
@@ -441,14 +456,6 @@ static bool sema_resolve_path_symbol(SemaContext *context, NameResolve *name_res
 	}
 
 	const char *symbol = name_resolve->symbol;
-	// 0. std module special handling.
-	if (path->module == compiler.context.std_module_path.module)
-	{
-		name_resolve->path_found = &compiler.context.std_module;
-		name_resolve->found = module_find_symbol(&compiler.context.std_module, symbol);
-		return true;
-	}
-
 	CompilationUnit *unit = context->unit;
 
 	// 1. Do we match our own path?
@@ -527,7 +534,7 @@ static bool sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_
 	CompilationUnit *unit = context->unit;
 
 	// Search in file scope.
-	if ((decl = htable_get(&unit->local_symbols, (void *) symbol)))
+	if ((decl = htable_get(&unit->local_symbols, (void *)symbol)))
 	{
 		name_resolve->found = decl;
 		return true;
@@ -661,12 +668,10 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 		Decl *decl = name_resolve->maybe_decl;
 		Module *module = decl->unit->module;
 		const char *maybe_name = decl_to_name(decl);
-		Module *generic_module = module->generic_module;
-		if (!generic_module && module->is_generic) generic_module = module;
-		const char *module_name = generic_module ? generic_module->name->module : module->name->module;
-		if (decl_is_visible(context->unit, decl) && generic_module && !name_resolve->is_parameterized)
+		const char *module_name = module->name->module;
+		if (decl_is_visible(context->unit, decl) && decl->is_template && !name_resolve->is_parameterized)
 		{
-			sema_error_at(context, span, "Did you mean the %s '%s' in the generic module %s? If so, use '%s{...}' instead.",
+			sema_error_at(context, span, "Did you mean the %s generic '%s' in module %s? If so, use '%s{...}' instead.",
 			              maybe_name, symbol, module_name, symbol);
 			return;
 		}
@@ -770,28 +775,12 @@ INLINE Module *sema_module_matches_path(SemaContext *context, Module *module, Pa
 	return NULL;
 }
 
-INLINE Module *sema_find_module_for_path(SemaContext *context, Path *path, bool prefer_generic)
+INLINE Module *sema_find_module_for_path(SemaContext *context, Path *path)
 {
-	if (prefer_generic)
-	{
-		FOREACH(Module *, module, compiler.context.generic_module_list)
-		{
-			Module *module_match = sema_module_matches_path(context, module, path);
-			if (module_match) return module_match;
-		}
-	}
 	FOREACH(Module *, module, compiler.context.module_list)
 	{
 		Module *module_match = sema_module_matches_path(context, module, path);
 		if (module_match) return module_match;
-	}
-	if (!prefer_generic)
-	{
-		FOREACH(Module *, module, compiler.context.generic_module_list)
-		{
-			Module *module_match = sema_module_matches_path(context, module, path);
-			if (module_match) return module_match;
-		}
 	}
 	return NULL;
 }
@@ -807,7 +796,7 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		if (!name_resolve->found && !name_resolve->maybe_decl && !name_resolve->private_decl && !name_resolve->path_found)
 		{
 			if (name_resolve->suppress_error) return true;
-			Module *module_with_path = sema_find_module_for_path(context, name_resolve->path, name_resolve->is_parameterized);
+			Module *module_with_path = sema_find_module_for_path(context, name_resolve->path);
 			if (module_with_path)
 			{
 				RETURN_SEMA_ERROR(name_resolve, "'%s' could not be found in %s.", name_resolve->symbol, module_with_path->name->module);
@@ -817,6 +806,14 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 	}
 	else
 	{
+		// In a generic context, match parameters first of all.
+		if (context->generic_instance)
+		{
+			FOREACH(Decl *, param, context->generic_instance->instance_decl.params)
+			{
+				if (param->name == name_resolve->symbol) return name_resolve->found = param, true;
+			}
+		}
 		if (!sema_resolve_no_path_symbol(context, name_resolve)) return false;
 	}
 
@@ -834,22 +831,31 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		return false;
 	}
 	if (found->decl_kind != DECL_ALIAS) unit_register_external_symbol(context, found);
-	if (found->unit->module->is_generic)
+	if (found->is_template)
 	{
 		if (name_resolve->is_parameterized) return true;
-		if (context->generic.infer)
+		Decl *generic = declptr(found->generic_id);
+		if (context->generic_instance)
 		{
-			if (context->generic.infer->generic_module != found->unit->module)
+			if (generic->generic_decl.id == context->generic_instance->instance_decl.id)
+			{
+				Decl *candidate = sema_find_generic_instance(context, found->unit->module, generic, context->generic_instance, found->name);
+				if (candidate) return name_resolve->found = candidate, true;
+			}
+		}
+		else if (context->generic_infer)
+		{
+			if (context->generic_infer->instance_decl.id != generic->generic_decl.id)
 			{
 				if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
-				RETURN_SEMA_ERROR_AT(name_resolve->span, "Found '%s' in the generic module '%s', but it doesn't match the inferred module '%s'.", found->name, found->unit->module->name->module,
-					context->generic.infer->generic_module->name->module);
+				RETURN_SEMA_ERROR_AT(name_resolve->span, "Found '%s' in the module '%s', but it doesn't match the inferred generic '%s'.", found->name, found->unit->module->name->module,
+					context->generic_infer->unit->module->name->module);
 			}
-			Decl *symbol = module_find_symbol(context->generic.infer, found->name);
-			if (symbol) return name_resolve->found = symbol, true;
+			Decl *candidate = sema_find_generic_instance(context, found->unit->module, generic, context->generic_infer, found->name);
+			if (candidate) return name_resolve->found = candidate, true;
 		}
 		if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
-		RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is defined in the generic module '%s', did you forget the parameters '{ ... }'?", found->name, found->unit->module->name->module);
+		RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is a generic %s, did you forget the parameters '{ ... }'?", found->name, decl_to_name(found));
 	}
 	else
 	{
@@ -857,17 +863,6 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
 		bool is_type = decl_is_user_defined_type(name_resolve->found);
 		const char *str = is_type ? "type" : "symbol";
-		if (found->unit->module->generic_suffix)
-		{
-			if (found->unit->module->generic_module == context->unit->module->generic_module)
-			{
-				Decl *decl = module_find_symbol(context->unit->module->generic_module, found->name);
-				ASSERT(decl);
-				name_resolve->found = decl;
-				return true;
-			}
-			RETURN_SEMA_ERROR_AT(name_resolve->span, "This %s was matched as '%s%s' in module '%s%s', so parameterizing it further doesn't work.", str, found->name, found->unit->module->generic_suffix, found->unit->module->generic_module->name->module, found->unit->module->generic_suffix);
-		}
 		if (is_type)
 		{
 			RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is not a generic type. Did you want an initializer "

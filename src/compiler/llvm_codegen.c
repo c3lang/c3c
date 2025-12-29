@@ -50,7 +50,6 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 
 bool module_should_weaken(Module *module)
 {
-	if (module->generic_module) return true;
 	Module *top = module->top_module;
 	return top && (top->name->module == kw_std || top->name->module == kw_libc);
 }
@@ -59,7 +58,6 @@ static void gencontext_init(GenContext *context, Module *module, LLVMContextRef 
 {
 	ASSERT(LLVMIsMultithreaded());
 	memset(context, 0, sizeof(GenContext));
-	context->weaken = module_should_weaken(module);
 
 	if (shared_context)
 	{
@@ -499,7 +497,7 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl)
 {
 	bool is_var = decl->decl_kind == DECL_VAR;
 	bool is_weak = decl->is_weak;
-	bool should_weaken = is_weak || (!decl->is_extern && module_should_weaken(decl->unit->module));
+	bool should_weaken = is_weak || (!decl->is_extern && (decl->is_templated || module_should_weaken(decl->unit->module)));
 	LLVMValueRef ref = decl->backend_ref;
 	LLVMValueRef opt_ref = is_var ? decl->var.optional_ref : NULL;
 	bool is_static = is_var && decl->var.is_static;
@@ -1407,6 +1405,8 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_CT_INCLUDE:
 		case DECL_GROUP:
 		case DECL_INTERFACE:
+		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
 			UNREACHABLE;
 	}
 	UNREACHABLE
@@ -1416,7 +1416,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMContextRef shared_context)
 {
 	Path *test_path = path_create_from_string("_$test", 5, INVALID_SPAN);
-	Module *test_module = compiler_find_or_create_module(test_path, NULL);
+	Module *test_module = compiler_find_or_create_module(test_path);
 
 	DebugInfo actual_debug_info = compiler.build.debug_info;
 	compiler.build.debug_info = DEBUG_INFO_NONE;
@@ -1485,7 +1485,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, LLVMContextRef shared_context)
 {
 	Path *benchmark_path = path_create_from_string("$benchmark", 10, INVALID_SPAN);
-	Module *benchmark_module = compiler_find_or_create_module(benchmark_path, NULL);
+	Module *benchmark_module = compiler_find_or_create_module(benchmark_path);
 
 	DebugInfo actual_debug_info = compiler.build.debug_info;
 	compiler.build.debug_info = DEBUG_INFO_NONE;

@@ -58,7 +58,7 @@ entry:
   %y = alloca [2 x %Abc], align 4
   %result = alloca %Abc, align 4
   %result1 = alloca %Abc, align 4
-  %l = alloca %List, align 8
+  %l = alloca %"List{Abc}", align 8
   %literal = alloca %Abc, align 4
   %result3 = alloca %Abc, align 4
   %result4 = alloca %Abc, align 4
@@ -97,14 +97,14 @@ entry:
   call void @llvm.memset.p0.i64(ptr align 8 %l, i8 0, i64 40, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const.2, i32 4, i1 false)
   %10 = load i32, ptr %literal, align 4
-  call void @"std_collections_list$test.Abc$.List.push"(ptr %l, i32 %10) #4
-  %11 = call ptr @"std_collections_list$test.Abc$.List.get_ref"(ptr %l, i64 0) #4
+  call void @"std.collections.list.List$test.Abc$.push"(ptr %l, i32 %10) #4
+  %11 = call ptr @"std.collections.list.List$test.Abc$.get_ref"(ptr %l, i64 0) #4
   %12 = load i32, ptr %11, align 4
   %13 = load i32, ptr %b, align 4
   %14 = call i32 @test.Abc.add(i32 %12, i32 %13)
   store i32 %14, ptr %result3, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %11, ptr align 4 %result3, i32 4, i1 false)
-  %15 = call ptr @"std_collections_list$test.Abc$.List.get_ref"(ptr %l, i64 0) #4
+  %15 = call ptr @"std.collections.list.List$test.Abc$.get_ref"(ptr %l, i64 0) #4
   %16 = load i32, ptr %b, align 4
   %17 = call i32 @test.Abc.sub_self(ptr %15, i32 %16)
   store i32 %17, ptr %result4, align 4

@@ -913,25 +913,48 @@ Attr **copy_attributes_single(Attr** attr_list)
 	return attrs;
 }
 
-Decl **copy_decl_list_single_for_unit(Decl **decl_list)
+Decl **copy_decl_list_single_for_generic(Decl **decl_list, Decl *generic_instance)
 {
+	const char *name_suffix = generic_instance->instance_decl.name_suffix;
 	bool old_is_template = copy_struct.is_template;
+	bool old_instance = copy_struct.instance_id;
 	copy_struct.is_template = true;
+	copy_struct.instance_id = declid(generic_instance);
 	copy_begin();
 	Decl **result = copy_decl_list_macro(decl_list);
+	FOREACH(Decl *, decl, result)
+	{
+		// Only change the name if it's not a macro or a function.
+		if ((decl->decl_kind != DECL_FUNC && decl->decl_kind != DECL_MACRO) || !decl->func_decl.type_parent)
+		{
+			scratch_buffer_clear();
+			scratch_buffer_append(decl->name);
+			scratch_buffer_append(name_suffix);
+			decl->name = scratch_buffer_interned();
+			if (decl_is_user_defined_type(decl))
+			{
+				decl->type->name = decl->name;
+			}
+		}
+		decl->is_templated = true;
+		decl->instance_id = declid(generic_instance);
+	}
 	copy_end();
 	copy_struct.is_template = old_is_template;
+	copy_struct.instance_id = old_instance;
 	return result;
 }
 
 Decl *copy_lambda_deep(Decl *decl)
 {
 	bool old_is_template = copy_struct.is_template;
+	DeclId old_instance = copy_struct.instance_id;
 	copy_struct.is_template = true;
 	copy_begin();
 	Decl *result = copy_decl(&copy_struct, decl);
 	copy_end();
 	copy_struct.is_template = old_is_template;
+	copy_struct.instance_id = old_instance;
 	return result;
 }
 
@@ -1028,6 +1051,16 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 	if (!decl) return NULL;
 	if (c->single_static && decl_is_resolved_static_var(decl)) return decl;
 	Decl *copy = decl_copy(decl);
+	ASSERT(!copy->is_template || c->instance_id);
+
+	if (c->instance_id)
+	{
+		copy->is_template = false;
+		copy->is_templated = true;
+		copy->instance_id = c->instance_id;
+
+	}
+
 	copy_reg_ref(c, decl, copy);
 	if (decl->resolved_attributes)
 	{
@@ -1043,6 +1076,9 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			break;
 		case DECL_ERASED:
 			break;
+		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
+			UNREACHABLE;
 		case DECL_INTERFACE:
 			copy_decl_type(copy);
 			MACRO_COPY_TYPE_LIST(copy->interfaces);

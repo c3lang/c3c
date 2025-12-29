@@ -24,11 +24,11 @@ fn void main()
 
 /* #expect: tester.ll
 
-%Foo = type { i32 }
+%"Foo{tester.Abc:ONE}" = type { i32 }
 
 define void @tester.main() #0 {
 entry:
-  %x = alloca %Foo, align 4
+  %x = alloca %"Foo{tester.Abc:ONE}", align 4
   %e = alloca i32, align 4
   store i32 0, ptr %x, align 4
   store i32 0, ptr %e, align 4

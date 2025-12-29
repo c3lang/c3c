@@ -33,14 +33,14 @@ entry:
   %z = alloca [20 x [20 x i8]], align 16
   %foo = alloca %Map, align 8
   %result = alloca %"char[]", align 8
-  %0 = call ptr @"std_collections_list$a3$int$.List.tinit"(ptr @test.x, i64 16)
+  %0 = call ptr @"std.collections.list.List$a3$int$.tinit"(ptr @test.x, i64 16)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const, i32 12, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce, ptr align 4 %y, i32 12, i1 false)
   %lo = load i64, ptr %coerce, align 8
   %ptradd = getelementptr inbounds i8, ptr %coerce, i64 8
   %hi = load i32, ptr %ptradd, align 8
-  call void @"std_collections_list$a3$int$.List.push"(ptr @test.x, i64 %lo, i32 %hi) #3
-  %1 = call ptr @"std_collections_list$a3$int$.List.get_ref"(ptr @test.x, i64 0) #3
+  call void @"std.collections.list.List$a3$int$.push"(ptr @test.x, i64 %lo, i32 %hi) #3
+  %1 = call ptr @"std.collections.list.List$a3$int$.get_ref"(ptr @test.x, i64 0) #3
   store i32 4, ptr %1, align 4
   call void @llvm.memset.p0.i64(ptr align 16 %z, i8 0, i64 400, i1 false)
   %2 = insertvalue %"char[20][]" undef, ptr %z, 0

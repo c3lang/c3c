@@ -286,6 +286,8 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_CT_INCLUDE:
 		case DECL_DECLARRAY:
 		case DECL_GROUP:
+		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -460,6 +462,7 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	compiler.generic_depth--;
 	if (!decl_ok(type)) return false;
 	if (!sema_analyse_decl(context, type)) return false;
+	ASSERT_SPAN(type_info, type != NULL);
 	type_info->type = type->type;
 	if (!was_recursive) return true;
 	if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)

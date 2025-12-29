@@ -37,16 +37,16 @@ fn int main(String[] args)
 define i32 @test.main(ptr %0, i64 %1) #0 {
 entry:
   %args = alloca %"char[][]", align 8
-  %sretparam = alloca %List, align 8
+  %sretparam = alloca %"List{int}", align 8
   %result = alloca [2 x i32], align 4
   store ptr %0, ptr %args, align 8
   %ptradd = getelementptr inbounds i8, ptr %args, i64 8
   store i64 %1, ptr %ptradd, align 8
   %2 = call i32 @test.abc()
-  call void @test.l(ptr sret(%List) align 8 %sretparam)
+  call void @test.l(ptr sret(%"List{int}") align 8 %sretparam)
   %3 = call i32 @test.idx()
   %sext = sext i32 %3 to i64
-  call void @"std_collections_list$int$.List.set"(ptr %sretparam, i64 %sext, i32 %2)
+  call void @"std.collections.list.List$int$.set"(ptr %sretparam, i64 %sext, i32 %2)
   %4 = call i32 @test.abc()
   %5 = call i64 @test.a()
   store i64 %5, ptr %result, align 4
