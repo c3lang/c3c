@@ -1667,7 +1667,7 @@ EXIT:
 	Type *type_base = NULL;
 	if (type_bits)
 	{
-		if (type_bits < 0 || !is_power_of_two((uint64_t)type_bits) || type_bits > 128)
+		if (type_bits < 8 || !is_power_of_two((uint64_t)type_bits) || type_bits > 128)
 		{
 			PRINT_ERROR_AT(expr_int, "Integer type suffix should be i8, i16, i32, i64 or i128.");
 			return poisoned_expr;
