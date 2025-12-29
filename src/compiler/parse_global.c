@@ -2471,6 +2471,12 @@ static inline Decl *parse_alias_module(ParseContext *c, Decl *decl, TokenType to
 
 	decl->decl_kind = DECL_ALIAS_PATH;
 
+	if (!tok_is(c, TOKEN_IDENT))
+	{
+		PRINT_ERROR_HERE("'module' should be followed by a module name.");
+		return poisoned_decl;
+	}
+
 	Path *path = parse_module_path(c);
 	if (!path) return poisoned_decl;
 
