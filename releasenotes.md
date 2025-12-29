@@ -34,6 +34,7 @@
 - FixedThreadPool join did not work correctly.
 - Fix bug when creating bool vectors in certain cases.
 - Compiler assert when passing returning CT failure immediately rethrown #2689.
+- Converting between simd/non-simd bool vector would hit a compiler assert. #2691
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
