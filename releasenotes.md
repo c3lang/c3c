@@ -43,6 +43,7 @@
 - Assert when encountering a test function with raw vaarg parameters.
 - `foo.x` was not always handled correctly when `foo` was optional.
 - `x'1234' +++ (ichar[1]) { 'A' }` would fail due to missing const folding.
+- Miscompilation: global struct with vector could generate an incorrect initializer.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
