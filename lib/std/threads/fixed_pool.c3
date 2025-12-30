@@ -69,13 +69,13 @@ fn void? FixedThreadPool.join(&self) @maydiscard // Remove optional in 0.8.0
 {
 	if (self.initialized)
 	{
-		self.mu.lock()!!;
+		self.mu.lock();
 		defer self.mu.unlock();
 		self.joining = true;
 		do
 		{
-			self.notify.broadcast()!!;
-			self.collect.wait(&self.mu)!!;
+			self.notify.broadcast();
+			self.collect.wait(&self.mu);
 		} while (self.qindex != 0 || self.qworking != 0);
 		self.joining = false;
 	}
@@ -171,7 +171,7 @@ fn int process_work(void* self_arg) @private
 		// Wait for work.
 		while (self.qindex == 0)
 		{
-			if (self.joining && self.qworking == 0) self.collect.signal()!!;
+			if (self.joining && self.qworking == 0) self.collect.signal();
 			if (self.stop)
 			{
 				// Shutdown requested.
@@ -179,7 +179,7 @@ fn int process_work(void* self_arg) @private
 				self.mu.unlock();
 				return 0;
 			}
-			self.notify.wait(&self.mu)!!;
+			self.notify.wait(&self.mu);
 			if (self.stop_now)
 			{
 				// Shutdown requested.
