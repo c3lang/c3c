@@ -41,6 +41,7 @@
 - Assert when struct size would exceed 4 GB.
 - Assert when encountering a malformed module alias.
 - Assert when encountering a test function with raw vaarg parameters.
+- `foo.x` was not always handled correctly when `foo` was optional.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
