@@ -38,7 +38,7 @@
 - Converting between simd/non-simd bool vector would hit a compiler assert. #2691
 - `i<n>` suffixes were not caught when n < 8, causing an assert.
 - Parse error in `$defined` was not handled correctly, leading to an assertion.
-- Assert when struct size would exceed 4 GB.
+- Assert when struct/array size would exceed 4 GB.
 - Assert when encountering a malformed module alias.
 - Assert when encountering a test function with raw vaarg parameters.
 - `foo.x` was not always handled correctly when `foo` was optional.

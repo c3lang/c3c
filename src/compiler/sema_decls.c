@@ -4586,7 +4586,63 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bo
 	if (!sema_analyse_attributes(context, decl, decl->attributes, domain, erase_decl)) return decl_poison(decl);
 	return true;
 }
-
+static bool sema_type_is_valid_size(SemaContext *context, Type *type, SourceSpan span)
+{
+	Int128 size = i128_from_unsigned(1);
+RETRY:
+	if (size.high || size.low > (uint64_t)MAX_TYPE_SIZE)
+	{
+		RETURN_SEMA_ERROR_AT(span, "This type would exceed max type size of %u GB.", MAX_TYPE_SIZE >> 30);
+	}
+	switch (type->type_kind)
+	{
+		case TYPE_BITSTRUCT:
+			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
+			type = type->decl->strukt.container_type->type;
+			goto RETRY;
+		case TYPE_TYPEDEF:
+			type = type->decl->distinct->type;
+			goto RETRY;
+		case TYPE_ALIAS:
+			type = type->canonical;
+			goto RETRY;
+		case CT_TYPES:
+		case TYPE_FUNC_RAW:
+		case TYPE_FLEXIBLE_ARRAY:
+			return true;
+		case TYPE_OPTIONAL:
+			type = type->optional;
+			goto RETRY;
+		case TYPE_VOID:
+			return true;
+		case TYPE_BOOL:
+		case TYPE_TYPEID:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_ANYFAULT:
+		case TYPE_INTERFACE:
+		case TYPE_ANY:
+		case TYPE_FUNC_PTR:
+		case TYPE_POINTER:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
+		case TYPE_SLICE:
+			size = i128_mult64(size, type_size(type));
+			break;
+		case VECTORS:
+		case TYPE_ARRAY:
+			size = i128_mult64(size, type->array.len);
+			type = type->array.base;
+			goto RETRY;
+	}
+	if (size.high || size.low > (uint64_t)MAX_TYPE_SIZE)
+	{
+		RETURN_SEMA_ERROR_AT(span, "This type would exceed max type size of %u GB.", MAX_TYPE_SIZE >> 30);
+	}
+	return true;
+}
 static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceSpan span)
 {
 	switch (sema_resolve_storage_type(context, type))
@@ -4975,6 +5031,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 	{
 		if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
 	}
+	if (decl->type && !sema_type_is_valid_size(context, decl->type, decl->var.type_info ? type_infoptr(decl->var.type_info)->span : decl->span)) return false;
 	if (decl->var.kind == VARDECL_LOCAL && !is_static && type_size(decl->type) > compiler.build.max_stack_object_size * 1024)
 	{
 		size_t size = type_size(decl->type);
