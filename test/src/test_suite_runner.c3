@@ -299,7 +299,7 @@ fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, O
 
 		if (!find_and_mark_error(&settings, ...parts[:5]))
 		{
-			unexpected_errors.push(string::tformat("  - %s at %s:%s: \"%s\"", parts[0], parts[1].file_tbasename()!!, parts[2], parts[4]));
+			unexpected_errors.push(string::tformat("  - %s at %s:%s: %s", parts[0], parts[1].file_tbasename()!!, parts[2], parts[4]));
 		}
 	}
 

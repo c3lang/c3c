@@ -4269,7 +4269,8 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 		unsigned params = vec_size(sig->params);
 		if (params)
 		{
-			RETURN_SEMA_ERROR(sig->params[0], "%s functions may not take any parameters.",
+			SourceSpan span = sig->params[0] ? sig->params[0]->span : decl->span;
+			RETURN_SEMA_ERROR_AT(span, "%s functions may not take any parameters.",
 							  is_init_finalizer ? "'@init' and '@finalizer'" : "'@test' and '@benchmark'");
 		}
 		TypeInfo *rtype_info = type_infoptr(sig->rtype);
