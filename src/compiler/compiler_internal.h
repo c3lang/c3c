@@ -2557,6 +2557,7 @@ Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const ch
 bool sema_resolve_type_decl(SemaContext *context, Type *type);
 bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type);
 Decl *sema_find_symbol(SemaContext *context, const char *symbol);
+Decl *sema_find_template_symbol(SemaContext *context, const char *symbol, Path *path);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);
 Decl *sema_find_label_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);

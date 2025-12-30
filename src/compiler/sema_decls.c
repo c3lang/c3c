@@ -5568,10 +5568,30 @@ RETRY:
 	UNREACHABLE
 }
 
+INLINE Decl *type_is_possible_template(SemaContext *context, TypeInfo *type_info)
+{
+	if (type_info->resolve_status == RESOLVE_DONE) return NULL;
+	if (type_info->kind != TYPE_INFO_IDENTIFIER) return NULL;
+	if (type_info->subtype != TYPE_COMPRESSED_NONE) return NULL;
+	Decl *candidate = sema_find_template_symbol(context, type_info->unresolved.name, type_info->unresolved.path);
+	return candidate && candidate->is_template ? candidate : NULL;
+}
 bool sema_analyse_method_register(SemaContext *context, Decl *method)
 {
 	TypeInfo *parent_type_info = type_infoptr(method->func_decl.type_parent);
-	if (!sema_resolve_type_info(context, parent_type_info, method->decl_kind == DECL_MACRO ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
+	Decl *decl = method->is_templated ? NULL : type_is_possible_template(context, parent_type_info);
+	if (decl)
+	{
+		Decl *generic_section = declptr(decl->generic_id);
+		vec_add(generic_section->generic_decl.decls, method);
+		method->is_template = true;
+		method->generic_id = decl->generic_id;
+		return false;
+	}
+	else
+	{
+		if (!sema_resolve_type_info(context, parent_type_info, method->decl_kind == DECL_MACRO ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
+	}
 
 	// Can the type have methods?
 	Type *parent_type = parent_type_info->type = parent_type_info->type->canonical;
