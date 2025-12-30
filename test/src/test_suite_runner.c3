@@ -38,7 +38,7 @@ fn int main(String[] args)
 	libc::signal(libc::SIGINT, fn void (CInt _signal) {
 		foreach (f : path::ls(mem, context.start_cwd)!!)
 		{
-			if (f.str_view().starts_with("_c3test_")) (void)path::rmtree(context.start_cwd.tappend(f.str_view())!!);
+			if (f.str_view().starts_with("_c3test_")) (void)path::rmtree(context.start_cwd.append(mem, f.str_view()));
 		}
 		os::exit(1);
 	});

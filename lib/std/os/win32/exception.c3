@@ -135,41 +135,37 @@ fn Win32_LONG exception_handler(ExceptionPointers* exception_info)
 {
 	if (!has_panicked)
 	{
-
-		@stack_mem(4096; Allocator allocator)
+		@stack_mem(2048; Allocator allocator)
 		{
-			@pool_init(allocator, 2048)
+			DString s;
+			s.init(allocator: allocator);
+			Win32_DWORD code = exception_info.exception_record.exception_code;
+			void* addr = exception_info.exception_record.exception_address;
+			switch (code)
 			{
-				DString s;
-				s.init(allocator: allocator);
-				Win32_DWORD code = exception_info.exception_record.exception_code;
-				void* addr = exception_info.exception_record.exception_address;
-				switch (code)
-				{
-					case 0x80000001: s.appendf("Guard page violation at address %p", addr);
-					case 0x80000002: s.appendf("Datatype misalignment at address %p", addr);
-					case 0xC0000005: s.appendf("Access Violation at address %p", addr);
-					case 0xC0000006: s.appendf("In page error at address %p", addr);
-					case 0xC000001D: s.appendf("Illegal instruction at address %p", addr);
-					case 0xC000008C: s.appendf("Array bounds exceeded at address %p", addr);
-					case 0xC000008D: s.appendf("Flt denormal operand at address %p", addr);
-					case 0xC000008E: s.appendf("Flt divide by zero at address %p", addr);
-					case 0xC0000090: s.appendf("Flt invalid operation at address %p", addr);
-					case 0xC0000094: s.appendf("Integer divide by zero at address %p", addr);
-					case 0xC00000FD: s.appendf("Stack overflow at address %p", addr);
-					case 0xC0000096: s.appendf("Privileged instruction at address %p", addr);
-					case 0xC0000374: s.appendf("Heap corruption detected at address %p", addr);
-					case 0xC0000409: s.appendf("Stack buffer overflow at address %p", addr);
-					case 0xC00004A2: s.appendf("Enclave violation at address %p", addr);
-					default:
-						s.appendf("Unhandled exception (%X) at %p", code, addr);
-				}
-				if (!builtin::print_backtrace(s.str_view(), 8))
-				{
-					io::eprintfn("\nERROR: %s", s.str_view());
-				}
-			};
-		};
+				case 0x80000001: s.appendf("Guard page violation at address %p", addr);
+				case 0x80000002: s.appendf("Datatype misalignment at address %p", addr);
+				case 0xC0000005: s.appendf("Access Violation at address %p", addr);
+				case 0xC0000006: s.appendf("In page error at address %p", addr);
+				case 0xC000001D: s.appendf("Illegal instruction at address %p", addr);
+				case 0xC000008C: s.appendf("Array bounds exceeded at address %p", addr);
+				case 0xC000008D: s.appendf("Flt denormal operand at address %p", addr);
+				case 0xC000008E: s.appendf("Flt divide by zero at address %p", addr);
+				case 0xC0000090: s.appendf("Flt invalid operation at address %p", addr);
+				case 0xC0000094: s.appendf("Integer divide by zero at address %p", addr);
+				case 0xC00000FD: s.appendf("Stack overflow at address %p", addr);
+				case 0xC0000096: s.appendf("Privileged instruction at address %p", addr);
+				case 0xC0000374: s.appendf("Heap corruption detected at address %p", addr);
+				case 0xC0000409: s.appendf("Stack buffer overflow at address %p", addr);
+				case 0xC00004A2: s.appendf("Enclave violation at address %p", addr);
+				default:
+					s.appendf("Unhandled exception (%X) at %p", code, addr);
+			}
+			if (!builtin::print_backtrace(s.str_view(), 8))
+			{
+				io::eprintfn("\nERROR: %s", s.str_view());
+			}
+	};
 	}
 	if (previous_filter)
 	{
