@@ -2172,6 +2172,8 @@ bool ast_is_not_empty(Ast *ast);
 
 bool ast_is_compile_time(Ast *ast);
 bool ast_supports_continue(Ast *stmt);
+Ast *ast_contract_has_any(AstId contracts);
+Ast *ast_contract_has_any_non_require(AstId contracts);
 INLINE void ast_append(AstId **succ, Ast *next);
 INLINE void ast_prepend(AstId *first, Ast *ast);
 INLINE bool ast_ok(Ast *ast);
@@ -2381,6 +2383,7 @@ const char *decl_to_a_name(Decl *decl);
 int decl_count_elements(Decl *structlike);
 bool decl_is_defaulted_var(Decl *decl);
 void decl_append_links_to_global_during_codegen(Decl *decl);
+Decl *decl_template_get_generic(Decl *decl);
 
 INLINE bool decl_ok(Decl *decl);
 INLINE bool decl_poison(Decl *decl);
