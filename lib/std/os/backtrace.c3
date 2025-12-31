@@ -17,6 +17,15 @@ struct Backtrace (Printable)
 	bool is_inline;
 }
 
+fn bool Backtrace.equals(self, Backtrace other) @operator(==)
+{
+	return self.offset == other.offset
+		&& self.function == other.function
+		&& self.object_file == other.object_file
+		&& self.file == other.file
+		&& self.line == other.line
+		&& self.is_inline == other.is_inline;
+}
 
 fn bool Backtrace.has_file(&self)
 {
