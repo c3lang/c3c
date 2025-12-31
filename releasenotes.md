@@ -12,6 +12,7 @@
 - `$$MASK_TO_INT` and `$$INT_TO_MASK` to create bool masks from integers and back.
 - Better error messages when slicing a pointer to a slice or vector. #2681
 - Generics using `@generic` rather than module based.
+- Reduced memory usage for backtraces on Linux.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -44,6 +45,8 @@
 - `foo.x` was not always handled correctly when `foo` was optional.
 - `x'1234' +++ (ichar[1]) { 'A' }` would fail due to missing const folding.
 - Miscompilation: global struct with vector could generate an incorrect initializer.
+- `String.tokenize_all` would yield one too many empty tokens at the end.
+- `String.replace` no longer depends on `String.split`.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
