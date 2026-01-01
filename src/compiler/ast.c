@@ -100,6 +100,11 @@ const char *decl_safe_name(Decl *decl)
 	return decl_to_name(decl);
 }
 
+Decl *decl_template_get_generic(Decl *decl)
+{
+	return decl->is_template ? declptr(decl->generic_id) : NULL;
+}
+
 const char *decl_to_name(Decl *decl)
 {
 	const char *name = decl_to_a_name(decl);
@@ -503,6 +508,53 @@ bool ast_supports_continue(Ast *stmt)
 	// We don't support `continue` in a `do { };` statement.
 	return stmt->for_stmt.cond || !stmt->flow.skip_first;
 }
+
+Ast *ast_contract_has_any(AstId contracts)
+{
+	while (contracts)
+	{
+		Ast *current = astptr(contracts);
+		contracts = current->next;
+		ASSERT(current->ast_kind == AST_CONTRACT);
+		switch (current->contract_stmt.kind)
+		{
+			case CONTRACT_UNKNOWN:
+			case CONTRACT_PURE:
+			case CONTRACT_PARAM:
+			case CONTRACT_OPTIONALS:
+			case CONTRACT_ENSURE:
+			case CONTRACT_REQUIRE:
+				return current;
+			case CONTRACT_COMMENT:
+				continue;
+		}
+	}
+	return NULL;
+}
+
+Ast *ast_contract_has_any_non_require(AstId contracts)
+{
+	while (contracts)
+	{
+		Ast *current = astptr(contracts);
+		contracts = current->next;
+		ASSERT(current->ast_kind == AST_CONTRACT);
+		switch (current->contract_stmt.kind)
+		{
+			case CONTRACT_UNKNOWN:
+			case CONTRACT_PURE:
+			case CONTRACT_PARAM:
+			case CONTRACT_OPTIONALS:
+			case CONTRACT_ENSURE:
+				return current;
+			case CONTRACT_REQUIRE:
+			case CONTRACT_COMMENT:
+				continue;
+		}
+	}
+	return NULL;
+}
+
 
 static void scratch_buffer_append_but_mangle_underscore_dot(const char *name, const char *end, const char *suffix)
 {

@@ -790,6 +790,7 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 	name_resolve->ambiguous_other_decl = NULL;
 	name_resolve->private_decl = NULL;
 	name_resolve->path_found = NULL;
+	Decl *found = NULL;
 	if (name_resolve->path)
 	{
 		if (!sema_resolve_path_symbol(context, name_resolve)) return false;
@@ -811,13 +812,18 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		{
 			FOREACH(Decl *, param, context->generic_instance->instance_decl.params)
 			{
-				if (param->name == name_resolve->symbol) return name_resolve->found = param, true;
+				if (param->name == name_resolve->symbol)
+				{
+					found = name_resolve->found = param;
+					if (name_resolve->is_parameterized) goto NOT_GENERIC;
+ 					return true;
+				}
 			}
 		}
 		if (!sema_resolve_no_path_symbol(context, name_resolve)) return false;
 	}
 
-	Decl *found = name_resolve->found;
+	found = name_resolve->found;
 	if (!found || name_resolve->ambiguous_other_decl)
 	{
 		if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
@@ -857,21 +863,18 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
 		RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is a generic %s, did you forget the parameters '{ ... }'?", found->name, decl_to_name(found));
 	}
-	else
+	if (!name_resolve->is_parameterized) return true;
+	if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
+NOT_GENERIC:;
+	if (decl_is_user_defined_type(found)
+		|| (found->decl_kind == DECL_VAR && (found->var.kind == VARDECL_PARAM_CT_TYPE || found->var.kind == VARDECL_LOCAL_CT_TYPE)))
 	{
-		if (!name_resolve->is_parameterized) return true;
-		if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
-		bool is_type = decl_is_user_defined_type(name_resolve->found);
-		const char *str = is_type ? "type" : "symbol";
-		if (is_type)
-		{
-			RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is not a generic type. Did you want an initializer "
-										   "but forgot () around the type? That is, you typed '%s { ... }' but intended '(%s) { ... }'?",
-										   name_resolve->symbol, name_resolve->symbol, name_resolve->symbol);
-		}
-		RETURN_SEMA_ERROR_AT(name_resolve->span, "Found '%s' in module '%s', but it is not a generic %s.", found->name, found->unit->module->name->module, str);
+		RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is not a generic type. Did you want an initializer "
+									   "but forgot () around the type? That is, you typed '%s { ... }' but intended '(%s) { ... }'?",
+									   name_resolve->symbol, name_resolve->symbol, name_resolve->symbol);
 	}
-	return true;
+	RETURN_SEMA_ERROR_AT(name_resolve->span, "Found '%s', but it is not generic so the { ... } after looks like a mistake?", found->name);
+
 }
 
 Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const char *method_name)
@@ -1041,6 +1044,16 @@ Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const 
 	}
 }
 
+Decl *sema_find_template_symbol(SemaContext *context, const char *symbol, Path *path)
+{
+	NameResolve resolve = {
+		.suppress_error = true,
+		.symbol = symbol,
+		.is_parameterized = true,
+	};
+	if (!sema_resolve_symbol_common(context, &resolve)) return poisoned_decl;
+	return resolve.found;
+}
 /**
  * Silently find a symbol, will return NULL, Poison or the value
  */

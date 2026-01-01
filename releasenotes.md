@@ -12,6 +12,7 @@
 - `$$MASK_TO_INT` and `$$INT_TO_MASK` to create bool masks from integers and back.
 - Better error messages when slicing a pointer to a slice or vector. #2681
 - Generics using `@generic` rather than module based.
+- Reduced memory usage for backtraces on Linux.
 - On win32 utf-8 console output is now enabled by default in compiled programs
 
 ### Fixes
@@ -37,6 +38,16 @@
 - Fix bug when creating bool vectors in certain cases.
 - Compiler assert when passing returning CT failure immediately rethrown #2689.
 - Converting between simd/non-simd bool vector would hit a compiler assert. #2691
+- `i<n>` suffixes were not caught when n < 8, causing an assert.
+- Parse error in `$defined` was not handled correctly, leading to an assertion.
+- Assert when struct/array size would exceed 4 GB.
+- Assert when encountering a malformed module alias.
+- Assert when encountering a test function with raw vaarg parameters.
+- `foo.x` was not always handled correctly when `foo` was optional.
+- `x'1234' +++ (ichar[1]) { 'A' }` would fail due to missing const folding.
+- Miscompilation: global struct with vector could generate an incorrect initializer.
+- `String.tokenize_all` would yield one too many empty tokens at the end.
+- `String.replace` no longer depends on `String.split`.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.

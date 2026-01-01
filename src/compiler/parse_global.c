@@ -22,6 +22,7 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
 INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl);
 INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind);
 static bool parse_contracts(ParseContext *c, AstId *contracts_ref);
+static Ast *contracts_first_real(AstId contracts);
 
 INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind)
 {
@@ -208,51 +209,6 @@ static inline bool parse_optional_module_params(ParseContext *c, Decl **decl_ref
 	}
 }
 
-static inline Ast *sema_contract_find_first_non_comment(AstId contracts)
-{
-	while (contracts)
-	{
-		Ast *current = astptr(contracts);
-		contracts = current->next;
-		ASSERT(current->ast_kind == AST_CONTRACT);
-		switch (current->contract_stmt.kind)
-		{
-			case CONTRACT_UNKNOWN:
-			case CONTRACT_PURE:
-			case CONTRACT_PARAM:
-			case CONTRACT_OPTIONALS:
-			case CONTRACT_ENSURE:
-			case CONTRACT_REQUIRE:
-				return current;
-			case CONTRACT_COMMENT:
-				continue;
-		}
-	}
-	return NULL;
-}
-
-static inline Ast *sema_contract_first_non_comment_require(AstId contracts)
-{
-	while (contracts)
-	{
-		Ast *current = astptr(contracts);
-		contracts = current->next;
-		ASSERT(current->ast_kind == AST_CONTRACT);
-		switch (current->contract_stmt.kind)
-		{
-			case CONTRACT_UNKNOWN:
-			case CONTRACT_PURE:
-			case CONTRACT_PARAM:
-			case CONTRACT_OPTIONALS:
-			case CONTRACT_ENSURE:
-				return current;
-			case CONTRACT_REQUIRE:
-			case CONTRACT_COMMENT:
-				continue;
-		}
-	}
-	return NULL;
-}
 
 static int generic_id = 1;
 static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
@@ -276,6 +232,30 @@ NEXT:;
 	decl->generic_decl.id = generic_id++;
 }
 
+bool parse_attach_contracts(Decl *generics, AstId contracts)
+{
+	if (!contracts) return true;
+	if (!generics)
+	{
+		Ast *first_contract = ast_contract_has_any(contracts);
+		if (first_contract) RETURN_PRINT_ERROR_AT(false, first_contract, "Contracts can only be used with '@generic' declarations and modules.");
+		return true;
+	}
+	Ast *first_invalid_contract = ast_contract_has_any_non_require(contracts);
+	if (first_invalid_contract)
+	{
+		RETURN_PRINT_ERROR_AT(false, first_invalid_contract, "Invalid constraint - only '@require' is valid for '@generic' declarations and modules.");
+	}
+	if (generics->generic_decl.contracts)
+	{
+		ast_last(astptrzero(generics->generic_decl.contracts))->next = contracts;
+	}
+	else
+	{
+		generics->generic_decl.contracts = contracts;
+	}
+	return true;
+}
 void parse_attach_generics(ParseContext *c, Decl *generic_decl)
 {
 	vec_add(c->unit->generic_decls, generic_decl);
@@ -326,11 +306,6 @@ bool parse_module(ParseContext *c, AstId contracts)
 	{
 		if (!context_set_module(c, path)) return false;
 		recover_top_level(c);
-		if (contracts)
-		{
-			Ast *first_contract = sema_contract_find_first_non_comment(contracts);
-			if (first_contract) RETURN_PRINT_ERROR_AT(false, first_contract, "Contracts cannot be use with non-generic modules.");
-		}
 		return true;
 	}
 	if (!context_set_module(c, path)) return false;
@@ -351,25 +326,9 @@ bool parse_module(ParseContext *c, AstId contracts)
 			generic_decl = generic_decl_old;
 		}
 	}
-	if (contracts)
-	{
-		if (!generic_decl)
-		{
-			Ast *first_contract = sema_contract_find_first_non_comment(contracts);
-			if (first_contract) RETURN_PRINT_ERROR_AT(false, first_contract, "Contracts can only be used with '@generic' modules.");
-		}
-		else
-		{
-			Ast *first_invalid_contract = sema_contract_first_non_comment_require(contracts);
-			if (first_invalid_contract)
-			{
-				RETURN_PRINT_ERROR_AT(false, first_invalid_contract, "Invalid constraint - only '@require' is valid for '@generic'.");
-			}
-		}
-	}
+	if (!parse_attach_contracts(generic_decl, contracts)) return false;
 	if (generic_decl)
 	{
-		if (contracts) generic_decl->generic_decl.contracts = contracts;
 		parse_attach_generics(c, generic_decl);
 		c->unit->default_generic_section = generic_decl;
 	}
@@ -1060,7 +1019,6 @@ Decl *parse_const_declaration(ParseContext *c, bool is_global, bool is_extern)
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 	if (!parse_decl_initializer(c, decl)) return poisoned_decl;
 	RANGE_EXTEND_PREV(decl);
-
 	return decl;
 }
 
@@ -2356,7 +2314,7 @@ static inline void decl_add_type(Decl *decl, TypeKind kind)
  * typedef_type ::= func_typedef | type generic_params?
  * func_typedef ::= 'fn' optional_type parameter_type_list
  */
-static inline Decl *parse_alias_type(ParseContext *c, AstId contracts, bool has_real_contracts)
+static inline Decl *parse_alias_type(ParseContext *c, AstId contracts)
 {
 	advance_and_verify(c, TOKEN_ALIAS);
 
@@ -2405,11 +2363,6 @@ static inline Decl *parse_alias_type(ParseContext *c, AstId contracts, bool has_
 		return decl;
 	}
 
-	if (has_real_contracts)
-	{
-		RETURN_PRINT_ERROR_AT(poisoned_decl, astptr(contracts), "Contracts are only used for modules, functions and macros.");
-	}
-
 	// 2. Now parse the type which we know is here.
 
 	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_decl);
@@ -2444,7 +2397,7 @@ static inline Decl *parse_alias_type(ParseContext *c, AstId contracts, bool has_
 	{
 		decl->type_alias_decl.is_redef = true;
 	}
-
+	if (!parse_attach_contracts(decl_template_get_generic(decl), contracts)) return poisoned_decl;
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
@@ -2471,6 +2424,12 @@ static inline Decl *parse_alias_module(ParseContext *c, Decl *decl, TokenType to
 
 	decl->decl_kind = DECL_ALIAS_PATH;
 
+	if (!tok_is(c, TOKEN_IDENT))
+	{
+		PRINT_ERROR_HERE("'module' should be followed by a module name.");
+		return poisoned_decl;
+	}
+
 	Path *path = parse_module_path(c);
 	if (!path) return poisoned_decl;
 
@@ -2485,7 +2444,7 @@ static inline Decl *parse_alias_module(ParseContext *c, Decl *decl, TokenType to
  *
  * identifier_alias ::= path? (IDENT | CONST_IDENT | AT_IDENT)
  */
-static inline Decl *parse_alias_ident(ParseContext *c)
+static inline Decl *parse_alias_ident(ParseContext *c, AstId contracts)
 {
 	// 1. Store the beginning of the "alias".
 	advance_and_verify(c, TOKEN_ALIAS);
@@ -2537,6 +2496,7 @@ static inline Decl *parse_alias_ident(ParseContext *c)
 	ASSIGN_EXPR_OR_RET(decl->define_decl.alias_expr, parse_expr(c), poisoned_decl);
 
 
+	if (!parse_attach_contracts(decl_template_get_generic(decl), contracts)) return poisoned_decl;
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
@@ -2588,18 +2548,14 @@ static inline Decl *parse_attrdef(ParseContext *c)
 /**
  * define_decl ::= ALIAS define_type_body
  */
-static inline Decl *parse_alias(ParseContext *c, AstId contracts, bool has_real_contracts)
+static inline Decl *parse_alias(ParseContext *c, AstId contracts)
 {
 	switch (peek(c))
 	{
 		case TOKEN_TYPE_IDENT:
-			return parse_alias_type(c, contracts, has_real_contracts);
+			return parse_alias_type(c, contracts);
 		default:
-			if (has_real_contracts)
-			{
-				RETURN_PRINT_ERROR_AT(poisoned_decl, astptr(contracts), "Contracts are only used for modules, functions and macros.");
-			}
-			return parse_alias_ident(c);
+			return parse_alias_ident(c, contracts);
 	}
 }
 
@@ -3429,6 +3385,7 @@ END:
 	return decl;
 }
 
+
 /**
  * top_level_statement ::= struct_declaration | enum_declaration | fault_declaration | const_declaration
  *                       | global_declaration | macro_declaration | func_definition | typedef_declaration
@@ -3444,15 +3401,6 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 	if (!parse_contracts(c, &contracts)) return poisoned_decl;
 	Decl *decl;
 
-	bool has_real_contracts = false;
-	if (contracts)
-	{
-		Ast *contract_start = astptr(contracts);
-		if (contract_start->contract_stmt.kind != CONTRACT_COMMENT || contract_start->next)
-		{
-			has_real_contracts = true;
-		}
-	}
 	TokenType tok = c->tok;
 	if (tok != TOKEN_MODULE && !c->unit->module)
 	{
@@ -3460,7 +3408,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 		c->unit->module_generated = true;
 		// Pass the docs to the next thing.
 	}
-
+	bool attach_contracts = false;
 	switch (tok)
 	{
 		case TOKEN_EXTERN:
@@ -3473,14 +3421,14 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 					decl = parse_func_definition(c, contracts, FUNC_PARSE_EXTERN);
 					break;
 				case TOKEN_CONST:
-					if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 					decl = parse_top_level_const_declaration(c, true);
+					attach_contracts = true;
 					break;
 				case TOKEN_IDENT:
 				case TOKEN_TLOCAL:
 				case TYPELIKE_TOKENS:
-					if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 					decl = parse_global_declaration(c);
+					attach_contracts = true;
 					break;
 				default:
 					PRINT_ERROR_HERE("Expected 'extern' to be followed by a function, constant or global variable.");
@@ -3518,7 +3466,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			PRINT_ERROR_HERE("There are more than one doc comment in a row, that is not allowed.");
 			return poisoned_decl;
 		case TOKEN_ALIAS:
-			decl = parse_alias(c, contracts, has_real_contracts);
+			decl = parse_alias(c, contracts);
 			if (decl->decl_kind == DECL_ALIAS_PATH)
 			{
 				if (!context_out)
@@ -3531,8 +3479,8 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			}
 			break;
 		case TOKEN_ATTRDEF:
-			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_attrdef(c);
+			attach_contracts = true;
 			break;
 		case TOKEN_FN:
 			decl = parse_func_definition(c, contracts, c->unit->is_interface_file ? FUNC_PARSE_C3I : FUNC_PARSE_REGULAR);
@@ -3579,40 +3527,40 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			decl = parse_exec(c);
 			break;
 		case TOKEN_BITSTRUCT:
-			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_bitstruct_declaration(c);
+			attach_contracts = true;
 			break;
 		case TOKEN_INTERFACE:
-			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_interface_declaration(c);
+			attach_contracts = true;
 			break;
 		case TOKEN_TYPEDEF:
-			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_typedef_declaration(c);
+			attach_contracts = true;
 			break;
 		case TOKEN_CONST:
-			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_top_level_const_declaration(c, false);
+			attach_contracts = true;
 			break;
 		case TOKEN_STRUCT:
 		case TOKEN_UNION:
-			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_struct_declaration(c);
+			attach_contracts = true;
 			break;
 		case TOKEN_MACRO:
 			decl = parse_macro_declaration(c, contracts);
 			break;
 		case TOKEN_ENUM:
-			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_enum_declaration(c);
+			attach_contracts = true;
 			break;
 		case TOKEN_FAULTDEF:
-			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_faultdef_declaration(c);
+			attach_contracts = true;
 			break;
 		case TOKEN_IDENT:
-			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_global_declaration(c);
+			attach_contracts = true;
 			break;
 		case TOKEN_EOF:
 			PRINT_ERROR_LAST("Expected a top level declaration.");
@@ -3632,8 +3580,8 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			return poisoned_decl;
 		case TOKEN_TLOCAL:
 		case TYPELIKE_TOKENS:
-			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_global_declaration(c);
+			attach_contracts = true;
 			break;
 		case TOKEN_EOS:
 			PRINT_ERROR_HERE("';' wasn't expected here, try removing it.");
@@ -3643,6 +3591,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			return poisoned_decl;
 	}
 	if (!decl_ok(decl)) return decl;
+	if (attach_contracts && contracts && !parse_attach_contracts(decl_template_get_generic(decl), contracts)) return poisoned_decl;
 	ASSERT(decl);
 	return decl;
 CONTRACT_NOT_ALLOWED:
