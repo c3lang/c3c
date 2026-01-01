@@ -2,6 +2,9 @@ module std::io;
 import std::collections::map;
 import libc;
 
+// It is vitally important that the formatter doesn't do any allocations,
+// or it ceases to be useful in constrained environments.
+
 const int PRINTF_NTOA_BUFFER_SIZE = 256;
 
 interface Printable
