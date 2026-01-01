@@ -48,7 +48,7 @@ typedef uint16_t FileId;
 #define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
 #define MAX_GENERIC_DEPTH 32
 #define MAX_PRIORITY 0xFFFF
-#define MAX_TYPE_SIZE UINT32_MAX
+#define MAX_TYPE_SIZE (2U << 30)
 #define MAX_GLOBAL_DECL_STACK (65536)
 #define MAX_MODULE_NAME 31
 #define MAX_MODULE_PATH 63
@@ -617,6 +617,26 @@ typedef struct
 
 typedef struct
 {
+	const char **parameters;
+	AstId contracts;
+	unsigned id;
+	Decl **instances;
+	Decl *owner;
+	Decl **decls;
+	Decl **conditional_decls;
+} GenericDecl;
+
+typedef struct
+{
+	unsigned id;
+	Decl **templates;
+	Decl **params;
+	const char *name_suffix;
+	const char *cname_suffix;
+	Decl **generated_decls;
+} GenericInstanceDecl;
+typedef struct
+{
 	bool is_func : 1;
 	bool is_redef : 1;
 	union
@@ -696,6 +716,8 @@ typedef struct Decl_
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
 	bool attr_structlike : 1;
+	bool is_template : 1;
+	bool is_templated : 1;
 	union
 	{
 		void *backend_ref;
@@ -703,11 +725,19 @@ typedef struct Decl_
 		int tb_register;
 		void *backend_value;
 		void *tb_symbol;
-		bool in_init;
+		struct
+		{
+			bool in_init;
+		};
 	};
 	AlignSize offset;
 	AlignSize padding;
 	AlignSize alignment;
+	union
+	{
+		DeclId generic_id;
+		DeclId instance_id;
+	};
 	struct CompilationUnit_ *unit;
 	union
 	{
@@ -754,6 +784,8 @@ typedef struct Decl_
 		LabelDecl label;
 		TypeAliasDecl type_alias_decl;
 		VarDecl var;
+		GenericDecl generic_decl;
+		GenericInstanceDecl instance_decl;
 	};
 } Decl;
 
@@ -1622,26 +1654,21 @@ typedef struct Module_
 	const char *short_path;
 	// Extname in case a module is renamed externally
 	const char *extname;
-
-	const char **parameters;
+	Decl **generic_sections;
 	bool is_external : 1;
 	bool is_c_library : 1;
 	bool is_exported : 1;
-	bool is_generic : 1;
 	bool no_extprefix : 1;
 	AnalysisStage stage : 6;
 
-	AstId contracts;
 	HTable symbols;
-	struct CompilationUnit_ **units;
-	Module *generic_module;
+	CompilationUnit **units;
 	Module *parent_module;
 	Module *top_module;
 	Module **sub_modules;
 	Decl **benchmarks;
 	Decl **tests;
 	Decl **lambdas_to_evaluate;
-	const char *generic_suffix;
 	InliningSpan inlined_at;
 } Module;
 
@@ -1713,6 +1740,7 @@ typedef struct
 	LexMode mode;
 } Lexer;
 
+
 struct CompilationUnit_
 {
 	Module *module;
@@ -1725,11 +1753,12 @@ struct CompilationUnit_
 	Decl **lambdas;
 	Decl **enums;
 	Decl **attributes;
-	Decl **faulttypes;
 	Decl **faults;
 	const char **links;
 	Visibility default_visibility;
 	Attr *if_attr;
+	Decl *default_generic_section;
+	Decl **generic_decls;
 	bool export_by_default;
 	bool is_interface_file;
 	bool benchmark_by_default;
@@ -1793,8 +1822,6 @@ typedef struct JumpTarget_
 	AstId defer;
 } JumpTarget;
 
-
-
 struct SemaContext_
 {
 	// Evaluated in this.
@@ -1832,10 +1859,8 @@ struct SemaContext_
 	DynamicScope active_scope;
 	Expr *return_expr;
 	bool is_temp;
-	struct
-	{
-		Module *infer;
-	} generic;
+	Decl *generic_infer;
+	Decl *generic_instance;
 };
 
 typedef enum
@@ -1959,6 +1984,7 @@ typedef struct CopyStruct_
 	bool single_static;
 	bool copy_in_use;
 	bool is_template;
+	DeclId instance_id;
 } CopyStruct;
 
 typedef struct
@@ -1976,7 +2002,6 @@ typedef struct
 	Module *core_module;
 	CompilationUnit *core_unit;
 	Module **module_list;
-	Module **generic_module_list;
 	Type **type;
 	const char *lib_dir;
 	const char **sources;
@@ -2147,6 +2172,8 @@ bool ast_is_not_empty(Ast *ast);
 
 bool ast_is_compile_time(Ast *ast);
 bool ast_supports_continue(Ast *stmt);
+Ast *ast_contract_has_any(AstId contracts);
+Ast *ast_contract_has_any_non_require(AstId contracts);
 INLINE void ast_append(AstId **succ, Ast *next);
 INLINE void ast_prepend(AstId *first, Ast *ast);
 INLINE bool ast_ok(Ast *ast);
@@ -2271,7 +2298,7 @@ void copy_begin(void);
 void copy_end(void);
 Expr *copy_expr_single(Expr *source_expr);
 Decl **copy_decl_list_single(Decl **decl_list);
-Decl **copy_decl_list_single_for_unit(Decl **decl_list);
+Decl **copy_decl_list_single_for_generic(Decl **decl_list, Decl *generic_instance);
 Attr **copy_attributes_single(Attr** attr_list);
 Decl *copy_lambda_deep(Decl *decl);
 Ast *copy_ast_single(Ast *source_ast);
@@ -2327,7 +2354,7 @@ void global_context_add_decl(Decl *type_decl);
 
 void linking_add_link(Linking *linker, const char *link);
 
-Module *compiler_find_or_create_module(Path *module_name, const char **parameters);
+Module *compiler_find_or_create_module(Path *module_name);
 Module *global_context_find_module(const char *name);
 const char *get_object_extension(void);
 const char *get_exe_extension(void);
@@ -2339,7 +2366,7 @@ void unit_register_external_symbol(SemaContext *context, Decl *decl);
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
 bool unit_add_alias(CompilationUnit *unit, Decl *decl);
 bool context_set_module_from_filename(ParseContext *context);
-bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters);
+bool context_set_module(ParseContext *context, Path *path);
 bool context_is_macro(SemaContext *context);
 
 // --- Decl functions
@@ -2356,6 +2383,7 @@ const char *decl_to_a_name(Decl *decl);
 int decl_count_elements(Decl *structlike);
 bool decl_is_defaulted_var(Decl *decl);
 void decl_append_links_to_global_during_codegen(Decl *decl);
+Decl *decl_template_get_generic(Decl *decl);
 
 INLINE bool decl_ok(Decl *decl);
 INLINE bool decl_poison(Decl *decl);
@@ -2460,6 +2488,7 @@ bool lexer_next_token(Lexer *lexer);
 void scratch_buffer_append_module(Module *module, bool is_export);
 Decl *module_find_symbol(Module *module, const char *symbol);
 const char *module_create_object_file_name(Module *module);
+Decl *module_find_symbol_in_unit(Module *module, CompilationUnit *unit, const char *symbol);
 
 bool parse_file(File *file);
 Decl **parse_include_file(File *file, CompilationUnit *unit);
@@ -2481,6 +2510,7 @@ Decl *sema_decl_stack_find_decl_member(SemaContext *context, Decl *decl_owner, c
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 void sema_decl_stack_restore(Decl **state);
 void sema_decl_stack_push(Decl *decl);
+Decl *sema_find_generic_instance(SemaContext *context, Module *module, Decl *generic, Decl *instance, const char *name);
 
 bool sema_error_failed_cast(SemaContext *context, Expr *expr, Type *from, Type *to);
 bool sema_add_local(SemaContext *context, Decl *decl);
@@ -2499,6 +2529,7 @@ bool sema_cast_const(Expr *expr);
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
+void sema_analyse_inner_func_ptr(SemaContext *c, Decl *decl);
 
 bool sema_analyse_method_register(SemaContext *context, Decl *method);
 bool sema_resolve_type_structure(SemaContext *context, Type *type);
@@ -2526,6 +2557,7 @@ Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const ch
 bool sema_resolve_type_decl(SemaContext *context, Type *type);
 bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type);
 Decl *sema_find_symbol(SemaContext *context, const char *symbol);
+Decl *sema_find_template_symbol(SemaContext *context, const char *symbol, Path *path);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);
 Decl *sema_find_label_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);
@@ -3333,19 +3365,19 @@ INLINE bool type_is_user_defined(Type *type)
 }
 
 
-static inline Module *type_find_generic(Type *type)
+static inline DeclId type_find_generic(Type *type)
 {
 	Type *canonical = type->canonical;
 	if (canonical != type && type_is_user_defined(canonical))
 	{
-		Module *module = canonical->decl->unit->module;
-		if (module->generic_module) return module;
+		Decl *decl = canonical->decl;
+		if (decl->is_templated) return decl->generic_id;
 	}
-	if (!type_is_user_defined(type)) return NULL;
-	Module *module = type->decl->unit->module;
-	if (module->generic_module) return module;
-	return module->generic_module ? module : NULL;
+	if (!type_is_user_defined(type)) return 0;
+	Decl *decl = type->decl;
+	return decl->is_templated ? decl->generic_id : 0;
 }
+
 static inline Type *type_flatten_to_int(Type *type)
 {
 	while (1)

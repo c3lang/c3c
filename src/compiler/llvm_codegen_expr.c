@@ -2369,6 +2369,12 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 			break;
 	}
 	llvm_emit_expr(c, value, inner);
+	if (!c->current_block)
+	{
+		value->type = type_void;
+		*value = (BEValue) { .type = type_void, .kind = BE_VALUE, .value = NULL };
+		return;
+	}
 	llvm_value_rvalue(c, value);
 	AlignSize alignment = type_abi_alignment(type);
 	bool is_const = expr_is_const(inner);
@@ -7064,13 +7070,13 @@ void llvm_emit_scalar_to_vector(GenContext *c, BEValue *value, Expr *expr)
 
 void llvm_emit_vec_to_array(GenContext *c, BEValue *value, Type *type)
 {
-	llvm_value_rvalue(c, value);
+	LLVMValueRef val = llvm_load_value_store(c, value);
 	Type *to_type = type_lowering(type);
 	LLVMValueRef array = llvm_get_undef(c, to_type);
 
 	for (unsigned i = 0; i < to_type->array.len; i++)
 	{
-		LLVMValueRef element = llvm_emit_extract_value(c, value->value, i);
+		LLVMValueRef element = llvm_emit_extract_value(c, val, i);
 		array = llvm_emit_insert_value(c, array, element, i);
 	}
 	llvm_value_set(value, array, to_type);

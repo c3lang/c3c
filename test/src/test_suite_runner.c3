@@ -38,7 +38,7 @@ fn int main(String[] args)
 	libc::signal(libc::SIGINT, fn void (CInt _signal) {
 		foreach (f : path::ls(mem, context.start_cwd)!!)
 		{
-			if (f.str_view().starts_with("_c3test_")) (void)path::rmtree(context.start_cwd.tappend(f.str_view())!!);
+			if (f.str_view().starts_with("_c3test_")) (void)path::rmtree(context.start_cwd.append(mem, f.str_view()));
 		}
 		os::exit(1);
 	});
@@ -299,7 +299,7 @@ fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, O
 
 		if (!find_and_mark_error(&settings, ...parts[:5]))
 		{
-			unexpected_errors.push(string::tformat("  - %s at %s:%s: \"%s\"", parts[0], parts[1].file_tbasename()!!, parts[2], parts[4]));
+			unexpected_errors.push(string::tformat("  - %s at %s:%s: %s", parts[0], parts[1].file_tbasename()!!, parts[2], parts[4]));
 		}
 	}
 
@@ -452,7 +452,11 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 	update_status(index, file_path, output);
 	bool single;
 	int thread_id = context.thread_id_counter.add(1);
+	$if env::WIN32:
 	Path test_dir = context.start_cwd.tappend(string::tformat("_c3test_%s", thread_id))!!;
+	$else
+	Path test_dir = path::temp_directory(tmem).tappend(string::tformat("_c3test_%s", thread_id))!!;
+	$endif
 	(void)path::rmtree(test_dir);
 	defer (void)path::rmtree(test_dir);
 	if (@catch(path::mkdir(test_dir)))
@@ -594,7 +598,7 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 		}
 		if (try next)
 		{
-			io::fprintfn((OutStream)&output.buffer, `FAILED - %s did not contain: "%s"`, file.ptr.name, next)!!;
+			io::fprintfn((OutStream)&output.buffer, `FAILED - %s did not contain: %s`, file.ptr.name, next)!!;
 			io::fprintfn((OutStream)&output.buffer, "\n\n\n---------------------------------------------------> %s\n\n", file.ptr.name)!!;
 			(void)file_ll.seek(0);
 			io::fprintn((OutStream)&output.buffer, (String)io::read_fully(tmem, &file_ll))!!;

@@ -50,7 +50,6 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 
 bool module_should_weaken(Module *module)
 {
-	if (module->generic_module) return true;
 	Module *top = module->top_module;
 	return top && (top->name->module == kw_std || top->name->module == kw_libc);
 }
@@ -59,7 +58,6 @@ static void gencontext_init(GenContext *context, Module *module, LLVMContextRef 
 {
 	ASSERT(LLVMIsMultithreaded());
 	memset(context, 0, sizeof(GenContext));
-	context->weaken = module_should_weaken(module);
 
 	if (shared_context)
 	{
@@ -232,22 +230,22 @@ static LLVMValueRef llvm_emit_const_array_padding(LLVMTypeRef element_type, Inde
 LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init, bool in_aggregate)
 {
 	ASSERT(const_init->type == type_flatten(const_init->type));
+	Type *type = in_aggregate && const_init->type->type_kind == TYPE_VECTOR ? type_array_from_vector(const_init->type) : const_init->type;
 	switch (const_init->kind)
 	{
 		case CONST_INIT_ZERO:
-			return llvm_get_zero(c, const_init->type);
+			return llvm_get_zero(c, type);
 		case CONST_INIT_ARRAY_VALUE:
 			UNREACHABLE
 		case CONST_INIT_ARRAY_FULL:
 		{
-			ASSERT(const_init->type->type_kind != TYPE_SLICE);
+			ASSERT(type->type_kind != TYPE_SLICE);
 			bool was_modified = false;
-			Type *array_type = const_init->type;
-			Type *element_type = array_type->array.base;
+			Type *element_type = type->array.base;
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			ConstInitializer **elements = const_init->init_array_full;
-			ASSERT(type_is_arraylike(array_type));
-			ArraySize size = array_type->array.len;
+			ASSERT(type_is_arraylike(type));
+			ArraySize size = type->array.len;
 			ASSERT(size > 0);
 			LLVMValueRef *parts = VECNEW(LLVMValueRef, size);
 			for (ArrayIndex i = 0; i < (ArrayIndex)size; i++)
@@ -256,7 +254,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 				if (element_type_llvm != LLVMTypeOf(element)) was_modified = true;
 				vec_add(parts, element);
 			}
-			if ((!in_aggregate && array_type->type_kind == TYPE_VECTOR) || array_type->type_kind == TYPE_SIMD_VECTOR)
+			if (type->type_kind == TYPE_VECTOR || type->type_kind == TYPE_SIMD_VECTOR)
 			{
 				return LLVMConstVector(parts, vec_size(parts));
 			}
@@ -269,20 +267,19 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 
 		case CONST_INIT_ARRAY:
 		{
-			ASSERT(const_init->type->type_kind != TYPE_SLICE);
+			ASSERT(type->type_kind != TYPE_SLICE);
 			bool was_modified = false;
-			Type *array_type = const_init->type;
-			Type *element_type = array_type->array.base;
+			Type *element_type = type->array.base;
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			AlignSize expected_align = llvm_abi_alignment(c, element_type_llvm);
 			ConstInitializer **elements = const_init->init_array.elements;
 			ASSERT(vec_size(elements) > 0 && "Array should always have gotten at least one element.");
-			if (elements > 0 && array_type->type_kind == TYPE_FLEXIBLE_ARRAY) was_modified = true;
+			if (elements > 0 && type->type_kind == TYPE_FLEXIBLE_ARRAY) was_modified = true;
 			ArrayIndex current_index = 0;
 			unsigned alignment = 0;
 			LLVMValueRef *parts = NULL;
 			bool pack = false;
-			bool is_vec = array_type->type_kind == TYPE_SIMD_VECTOR || (!in_aggregate && array_type->type_kind == TYPE_VECTOR);
+			bool is_vec = type->type_kind == TYPE_SIMD_VECTOR || type->type_kind == TYPE_VECTOR;
 			FOREACH(ConstInitializer *, element, elements)
 			{
 				ASSERT(element->kind == CONST_INIT_ARRAY_VALUE);
@@ -314,7 +311,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 				current_index = element_index + 1;
 			}
 
-			IndexDiff end_diff = (ArrayIndex)array_type->array.len - current_index;
+			IndexDiff end_diff = (ArrayIndex)type->array.len - current_index;
 			if (end_diff > 0)
 			{
 				vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, end_diff, &was_modified));
@@ -323,7 +320,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			{
 				return llvm_get_unnamed_struct(c, parts, pack);
 			}
-			if (type_flat_is_vector(array_type))
+			if (type_flat_is_vector(type))
 			{
 				return LLVMConstVector(parts, vec_size(parts));
 			}
@@ -499,7 +496,7 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl)
 {
 	bool is_var = decl->decl_kind == DECL_VAR;
 	bool is_weak = decl->is_weak;
-	bool should_weaken = is_weak || (!decl->is_extern && module_should_weaken(decl->unit->module));
+	bool should_weaken = is_weak || (!decl->is_extern && (decl->is_templated || module_should_weaken(decl->unit->module)));
 	LLVMValueRef ref = decl->backend_ref;
 	LLVMValueRef opt_ref = is_var ? decl->var.optional_ref : NULL;
 	bool is_static = is_var && decl->var.is_static;
@@ -1407,6 +1404,8 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_CT_INCLUDE:
 		case DECL_GROUP:
 		case DECL_INTERFACE:
+		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
 			UNREACHABLE;
 	}
 	UNREACHABLE
@@ -1416,7 +1415,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMContextRef shared_context)
 {
 	Path *test_path = path_create_from_string("_$test", 5, INVALID_SPAN);
-	Module *test_module = compiler_find_or_create_module(test_path, NULL);
+	Module *test_module = compiler_find_or_create_module(test_path);
 
 	DebugInfo actual_debug_info = compiler.build.debug_info;
 	compiler.build.debug_info = DEBUG_INFO_NONE;
@@ -1485,7 +1484,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, LLVMContextRef shared_context)
 {
 	Path *benchmark_path = path_create_from_string("$benchmark", 10, INVALID_SPAN);
-	Module *benchmark_module = compiler_find_or_create_module(benchmark_path, NULL);
+	Module *benchmark_module = compiler_find_or_create_module(benchmark_path);
 
 	DebugInfo actual_debug_info = compiler.build.debug_info;
 	compiler.build.debug_info = DEBUG_INFO_NONE;
