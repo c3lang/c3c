@@ -1209,7 +1209,7 @@ static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceSpan lhs_start 
 		vec_add(defined->expression_list, expr);
 		if (!try_consume(c, TOKEN_COMMA))
 		{
-			CONSUME_OR_RET(TOKEN_RPAREN, false);
+			CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 			break;
 		}
 	}
@@ -1667,7 +1667,7 @@ EXIT:
 	Type *type_base = NULL;
 	if (type_bits)
 	{
-		if (type_bits < 0 || !is_power_of_two((uint64_t)type_bits) || type_bits > 128)
+		if (type_bits < 8 || !is_power_of_two((uint64_t)type_bits) || type_bits > 128)
 		{
 			PRINT_ERROR_AT(expr_int, "Integer type suffix should be i8, i16, i32, i64 or i128.");
 			return poisoned_expr;
