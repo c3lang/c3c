@@ -116,16 +116,16 @@ typedef AsciiCharset = uint128;
 
 macro AsciiCharset create_set(String string)
 {
-    AsciiCharset set;
-    foreach (c : string) set |= (AsciiCharset)1ULL << c;
-    return set;
+	AsciiCharset set;
+	foreach (c : string) set |= (AsciiCharset)1ULL << c;
+	return set;
 }
 
 macro AsciiCharset @create_set(String $string) @const
 {
-    AsciiCharset $set;
-    $foreach $c : $string: $set |= 1ULL << $c; $endforeach
-    return $set;
+	AsciiCharset $set;
+	$foreach $c : $string: $set |= 1ULL << $c; $endforeach
+	return $set;
 }
 
 macro bool AsciiCharset.@contains($set, char $c) @const => !!($c < 128) & !!($set & (AsciiCharset)(1ULL << $c));

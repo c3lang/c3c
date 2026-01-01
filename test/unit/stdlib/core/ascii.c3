@@ -62,7 +62,7 @@ fn void asciicharset_combine_sets()
 	AsciiCharset a_set = combine_sets(create_set("123"), create_set("89"), create_set("!@#$"), create_set("something"));
 	foreach (c : "something@123!") test::@check(a_set.contains(c));
 
-    // Mixture of runtime and compile-time sets.
+	// Mixture of runtime and compile-time sets.
 	AsciiCharset mixed_set = combine_sets($a_set, a_set, @create_set("456"));
 	foreach (c : "something@123!456") test::@check(mixed_set.contains(c));
 }
