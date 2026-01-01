@@ -1,5 +1,8 @@
-module std::experimental::scheduler{Event};
-import std::collections, std::thread, std::time;
+module std::experimental::scheduler {Event};
+
+import std::collections;
+import std::thread;
+import std::time;
 
 struct DelayedSchedulerEvent @local
 {

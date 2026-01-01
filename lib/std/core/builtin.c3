@@ -2,8 +2,11 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::builtin;
-import libc, std::hash, std::io, std::os::backtrace;
 
+import std::hash;
+import std::io;
+import std::os::backtrace;
+import libc;
 
 <*
  EMPTY_MACRO_SLOT is a value used for implementing optional arguments for macros in an efficient
@@ -993,7 +996,10 @@ macro void* get_returnaddress(int n)
 }
 
 module std::core::builtin @if((env::LINUX || env::ANDROID || env::DARWIN) && env::COMPILER_SAFE_MODE && env::DEBUG_SYMBOLS);
-import libc, std::io, std::os::posix;
+
+import std::io;
+import std::os::posix;
+import libc;
 
 fn void sig_panic(String message)
 {

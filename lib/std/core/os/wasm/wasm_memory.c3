@@ -1,6 +1,5 @@
 module std::core::mem::allocator;
 
-
 const usz WASM_BLOCK_SIZE = 65536;
 
 WasmMemory wasm_memory;

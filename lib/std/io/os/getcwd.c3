@@ -1,5 +1,7 @@
 module std::io::os;
-import libc, std::os;
+
+import std::os;
+import libc;
 
 macro String? getcwd(Allocator allocator)
 {

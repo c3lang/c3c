@@ -1,5 +1,9 @@
 module std::core::log;
-import std::io, std::thread, std::time, std::math::random;
+
+import std::io;
+import std::math::random;
+import std::thread;
+import std::time;
 
 const FULL_LOG = env::COMPILER_SAFE_MODE || $feature(FULL_LOG);
 
@@ -190,7 +194,10 @@ fn void MultiLogger.log(&self, LogPriority priority, LogCategory category, LogTa
 
 
 module std::core::log @private;
-import std::io, std::thread, std::time;
+
+import std::io;
+import std::thread;
+import std::time;
 
 struct StderrLogger (Logger) @if(env::LIBC)
 {

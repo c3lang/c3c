@@ -1,5 +1,7 @@
 module std::core::array;
-import std::collections::pair, std::io;
+
+import std::collections::pair;
+import std::io;
 
 <*
  Returns true if the array contains at least one element, else false

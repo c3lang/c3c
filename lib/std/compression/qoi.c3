@@ -48,6 +48,7 @@ faultdef INVALID_PARAMETERS, FILE_OPEN_FAILED, FILE_WRITE_FAILED, INVALID_DATA, 
 
 // Let the user decide if they want to use std::io
 module std::compression::qoi @if(!$feature(QOI_NO_STDIO));
+
 import std::io;
 
 <*
@@ -109,6 +110,7 @@ fn char[]? read(Allocator allocator, String filename, QOIDesc* desc, QOIChannels
 
 // Back to basic non-stdio mode
 module std::compression::qoi;
+
 import std::bits;
 
 <*

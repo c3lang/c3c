@@ -7,7 +7,6 @@
 //
 module std::hash::blake3;
 
-
 const BLOCK_SIZE = 64;
 const CHUNK_SIZE = 1024;
 const KEY_SIZE = 32;

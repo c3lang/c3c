@@ -1,6 +1,6 @@
 module std::os::posix @if(env::POSIX);
-import libc;
 
+import libc;
 
 const PROT_NONE     = 0x00;    // no permissions
 const PROT_READ     = 0x01;    // pages can be read

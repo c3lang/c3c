@@ -1,4 +1,5 @@
 module std::crypto::dh;
+
 import std::math::bigint;
 
 fn BigInt generate_secret(BigInt p, BigInt x, BigInt y)

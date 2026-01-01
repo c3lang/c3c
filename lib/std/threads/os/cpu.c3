@@ -1,6 +1,7 @@
 // https://www.cprogramming.com/snippets/source-code/find-the-number-of-cpu-cores-for-windows-mac-or-linux
 
 module std::thread::cpu @if(env::DARWIN);
+
 import libc;
 
 const CTL_UNSPEC	= 0; /* unused */
@@ -51,6 +52,7 @@ fn uint native_cpu()
 }
 
 module std::thread::cpu @if(env::OPENBSD);
+
 import std::os::openbsd;
 import libc;
 
@@ -66,6 +68,7 @@ fn uint native_cpu()
 }
 
 module std::thread::cpu @if(env::LINUX);
+
 import libc;
 
 fn uint native_cpu()
@@ -74,6 +77,7 @@ fn uint native_cpu()
 }
 
 module std::thread::cpu @if(env::WIN32);
+
 import libc;
 
 fn uint native_cpu()

@@ -1,4 +1,5 @@
 module std::net::os;
+
 const bool SUPPORTS_INET = env::LIBC && (env::WIN32 || env::DARWIN || env::LINUX || env::ANDROID || env::OPENBSD || env::NETBSD);
 
 typedef AIFamily = CInt;

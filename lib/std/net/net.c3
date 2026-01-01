@@ -1,4 +1,5 @@
 module std::net;
+
 import std::io;
 
 faultdef

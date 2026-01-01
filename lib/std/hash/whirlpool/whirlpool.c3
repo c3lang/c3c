@@ -7,7 +7,6 @@ module std::hash::whirlpool;
 
 import std::hash::hmac;
 
-
 const BLOCK_SIZE = 64;
 const HASH_SIZE = 64;
 const BLOCK_128 = 64 / int128.sizeof;

@@ -1,4 +1,5 @@
 module std::io;
+
 import std::math;
 
 struct ByteWriter (OutStream)

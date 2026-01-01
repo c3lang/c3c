@@ -2,7 +2,10 @@
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::list{Type};
-import std::io, std::math, std::collections::list_common;
+
+import std::collections::list_common;
+import std::io;
+import std::math;
 
 alias ElementPredicate = fn bool(Type *type);
 alias ElementTest = fn bool(Type *type, any context);

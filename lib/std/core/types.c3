@@ -1,7 +1,7 @@
 
 module std::core::types;
-import libc;
 
+import libc;
 
 faultdef VALUE_OUT_OF_RANGE, VALUE_OUT_OF_UNSIGNED_RANGE;
 

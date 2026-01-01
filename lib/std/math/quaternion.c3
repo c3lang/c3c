@@ -14,7 +14,9 @@ alias QUATERNIONF_IDENTITY @builtin = quaternion::IDENTITY {float};
 *>
 
 module std::math::quaternion {Real};
+
 import std::math::vector;
+
 union QuaternionNumber
 {
 	struct

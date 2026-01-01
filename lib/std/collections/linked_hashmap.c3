@@ -4,9 +4,10 @@
 <*
  @require $defined((Key){}.hash()) : `No .hash function found on the key`
 *>
-module std::collections::map{Key, Value};
-import std::math;
+module std::collections::map {Key, Value};
+
 import std::io @norecurse;
+import std::math;
 
 const LinkedHashMap LINKEDONHEAP = { .allocator = MAP_HEAP_ALLOCATOR };
 

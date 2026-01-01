@@ -7,7 +7,9 @@
  See std::hash::siphash for more information.
 *>
 module std::hash::siphash24;
+
 import std::hash::siphash;
+
 alias SipHash24 = SipHash { ulong, 2, 4 };
 alias hash = siphash::hash { ulong, 2, 4 };
 
@@ -16,20 +18,26 @@ alias hash = siphash::hash { ulong, 2, 4 };
  See std::hash::siphash for more information.
 *>
 module std::hash::siphash48;
+
 import std::hash::siphash;
+
 alias SipHash48 = SipHash { ulong, 4, 8 };
 alias hash = siphash::hash { ulong, 4, 8 };
 
 
 <* Exact same as siphash24, but for 128-bit outputs. Algorithm internally changes slightly. *>
 module std::hash::siphash24_128;
+
 import std::hash::siphash;
+
 alias SipHash24_128 = SipHash { uint128, 2, 4 };
 alias hash = siphash::hash { uint128, 2, 4 };
 
 <* Exact same as siphash48, but for 128-bit outputs. Algorithm internally changes slightly. *>
 module std::hash::siphash48_128;
+
 import std::hash::siphash;
+
 alias SipHash48_128 = SipHash { uint128, 4, 8 };
 alias hash = siphash::hash { uint128, 4, 8 };
 
@@ -48,7 +56,7 @@ alias hash = siphash::hash { uint128, 4, 8 };
 
  @require OutType.typeid == uint128.typeid || OutType.typeid == ulong.typeid : "Module OutType must be either uint128 or ulong."
 *>
-module std::hash::siphash { OutType, BLOCK_ROUNDS, FINALIZE_ROUNDS };
+module std::hash::siphash {OutType, BLOCK_ROUNDS, FINALIZE_ROUNDS};
 
 
 struct SipHash

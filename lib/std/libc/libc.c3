@@ -211,6 +211,7 @@ const CInt STDOUT_FD = 1;
 const CInt STDERR_FD = 2;
 
 module libc @if(env::LINUX || env::ANDROID);
+
 extern CFile __stdin @cname("stdin");
 extern CFile __stdout @cname("stdout");
 extern CFile __stderr @cname("stderr");
@@ -222,6 +223,7 @@ macro CFile stdout() => __stdout;
 macro CFile stderr() => __stderr;
 
 module libc @if(env::NETBSD || env::OPENBSD);
+
 extern fn int fcntl(CInt socket, int cmd, ...);
 extern fn int _setjmp(void*);
 macro int setjmp(void* ptr) => _setjmp(ptr);
@@ -241,6 +243,7 @@ macro CFile stdout() { return fdopen(1, "w"); }
 macro CFile stderr() { return fdopen(2, "w"); }
 
 module libc @if(env::DARWIN || env::FREEBSD);
+
 extern CFile __stdinp;
 extern CFile __stdoutp;
 extern CFile __stderrp;
@@ -251,23 +254,26 @@ macro CFile stdout() => __stdoutp;
 macro CFile stderr() => __stderrp;
 
 module libc @if(env::FREEBSD);
+
 extern fn usz malloc_usable_size(void* ptr);
 macro usz malloc_size(void* ptr) => malloc_usable_size(ptr);
 
 module libc @if(env::WIN32);
+
 macro usz malloc_size(void* ptr) => _msize(ptr);
 macro CFile stdin() => __acrt_iob_func(STDIN_FD);
 macro CFile stdout() => __acrt_iob_func(STDOUT_FD);
 macro CFile stderr() => __acrt_iob_func(STDERR_FD);
 
 module libc @if(env::LIBC && !env::WIN32 && !env::LINUX && !env::ANDROID && !env::DARWIN && !env::BSD_FAMILY);
+
 macro CFile stdin() { return (CFile*)(uptr)STDIN_FD; }
 macro CFile stdout() { return (CFile*)(uptr)STDOUT_FD; }
 macro CFile stderr() { return (CFile*)(uptr)STDERR_FD; }
 
 module libc @if(env::NO_LIBC);
-import std::core::mem;
 
+import std::core::mem;
 
 fn void longjmp(JmpBuf* buffer, CInt value) @weak @cname("longjmp") @nostrip
 {
@@ -505,6 +511,7 @@ const Errno ERANGE                   = 34; // Math result not representable
 
 // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/intro.2.html
 module libc::errno @if(env::DARWIN);
+
 const Errno EWOULDBLOCK              = EAGAIN; // Operation would block
 const Errno EDEADLK                  = 11; // Resource deadlock would occur
 const Errno EINPROGRESS              = 36; // Operation now in progress
@@ -574,6 +581,7 @@ const Errno ETIME                    = 101; // STREAM ioctl() timeout
 const Errno EOPNOTSUPP               = 102; // Operation not supported on socket
 
 module libc::errno @if(env::NETBSD);
+
 const Errno EWOULDBLOCK     = EAGAIN;    // Operation would block
 const Errno EDEADLK         = 11;        // Resource deadlock avoided
 const Errno EINPROGRESS     = 36;        // Operation now in progress
@@ -641,6 +649,7 @@ const Errno EOWNERDEAD      = 97;        // Previous owner died
 const Errno ENOTRECOVERABLE = 98;        // State not recoverable
 
 module libc::errno @if(env::WIN32);
+
 const Errno EDEADLK                  = 36; // Resource deadlock would occur Win32
 const Errno ENAMETOOLONG             = 38; // File name too long Win32
 const Errno ENOTEMPTY                = 41; // Directory not empty
@@ -658,6 +667,7 @@ const Errno EDQUOT                   = -122; // Quota exceeded, not in Win32
 const Errno EWOULDBLOCK              = 140; // Operation would block
 
 module libc::errno @if(!env::WIN32 && !env::DARWIN && !env::NETBSD);
+
 const Errno EDEADLK                  = 35; // Resource deadlock would occur Linux (others?)
 const Errno ENAMETOOLONG             = 36; // File name too long Linux (others?)
 const Errno ENOTEMPTY                = 39; // Directory not empty

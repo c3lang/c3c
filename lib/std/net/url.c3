@@ -1,6 +1,8 @@
 module std::net::url;
 
-import std::io, std::collections::map, std::collections::list;
+import std::collections::list;
+import std::collections::map;
+import std::io;
 
 faultdef
 	EMPTY,

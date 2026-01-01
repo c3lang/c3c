@@ -3,7 +3,10 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 
 module std::core::mem::allocator;
-import std::collections, std::io, std::os::backtrace;
+
+import std::collections;
+import std::io;
+import std::os::backtrace;
 
 const MAX_BACKTRACE = 16;
 struct Allocation

@@ -2,7 +2,11 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::runtime;
-import libc, std::time, std::io, std::sort;
+
+import std::io;
+import std::sort;
+import std::time;
+import libc;
 
 struct ReflectedParam (Printable) @if(!$defined(ReflectedParam))
 {

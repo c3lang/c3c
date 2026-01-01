@@ -1,6 +1,6 @@
 module std::core::values;
-import std::core::types;
 
+import std::core::types;
 
 macro bool @typematch(#value1, #value2) @builtin @const => $typeof(#value1) == $typeof(#value2);
 <*

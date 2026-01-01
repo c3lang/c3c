@@ -1,9 +1,9 @@
 module std::io::os;
-import libc;
-import std::io::path;
-import std::os::win32;
-import std::os::posix;
 
+import std::io::path;
+import std::os::posix;
+import std::os::win32;
+import libc;
 
 macro bool? native_mkdir(Path path, MkdirPermissions permissions)
 {

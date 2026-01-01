@@ -15,7 +15,9 @@ enum NativeSystemDir
 }
 
 module std::io::os @if(env::LIBC);
-import std::io, std::os;
+
+import std::io;
+import std::os;
 
 fn String? win32_get_known_folder_temp(Win32_REFKNOWNFOLDERID rfid) @private @if(env::WIN32)
 {
@@ -128,6 +130,7 @@ fn Path? native_temp_directory(Allocator allocator) @if(env::WIN32) => @pool()
 }
 
 module std::io::os @if(env::NO_LIBC);
+
 import std::io::path;
 
 macro Path? native_home_directory(Allocator allocator) => io::PATH_COULD_NOT_BE_FOUND?;

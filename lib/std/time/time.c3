@@ -1,5 +1,7 @@
 module std::time;
-import std::io, std::time::os;
+
+import std::io;
+import std::time::os;
 
 typedef Time @structlike = long;
 typedef Duration @structlike = long;

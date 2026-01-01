@@ -1,5 +1,7 @@
 module std::hash::sha256;
-import std::bits, std::hash::hmac;
+
+import std::bits;
+import std::hash::hmac;
 
 const BLOCK_SIZE = 64;
 const HASH_SIZE = 32;

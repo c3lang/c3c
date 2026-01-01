@@ -6,6 +6,7 @@ This module provides a toolset of macros for running unit test checks
 Example:
 ```c3
 module sample::m;
+
 import std::io;
 
 faultdef DIVISION_BY_ZERO;
@@ -36,8 +37,11 @@ fn void? test_div() @test
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::test;
+
 import std::core::runtime @public;
-import std::math, std::io, libc;
+import std::io;
+import std::math;
+import libc;
 
 <*
  Initializes test case context.

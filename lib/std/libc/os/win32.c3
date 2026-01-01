@@ -1,4 +1,5 @@
 module libc @if(env::WIN32);
+
 import std::os::win32;
 
 alias fdopen = _fdopen;

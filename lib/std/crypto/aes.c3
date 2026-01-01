@@ -16,7 +16,10 @@ with an AES 128-bit key:
 
 ```
 module app;
-import std::crypto::aes, std::io;
+
+import std::crypto::aes;
+import std::io;
+
 fn void main()
 {
 	char[] key 	= x"2b7e151628aed2a6abf7158809cf4f3c";

@@ -1,5 +1,7 @@
 module std::os::darwin @if(env::DARWIN);
-import std::collections::list, std::os;
+
+import std::collections::list;
+import std::os;
 
 const CTL_UNSPEC	= 0; /* unused */
 const CTL_KERN		= 1; /* "high kernel": proc, limits */

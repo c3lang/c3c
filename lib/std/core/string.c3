@@ -1,6 +1,7 @@
 module std::core::string;
-import std::io, std::ascii;
 
+import std::ascii;
+import std::io;
 
 typedef String @if(!$defined(String)) = inline char[];
 <*

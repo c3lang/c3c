@@ -8,8 +8,10 @@
  @require !$defined(Type.dealloc) ||| $defined(Type.dealloc(&&(Type){})) : "'dealloc' must only take a pointer to the underlying type"
  @require !$defined(Type.dealloc) ||| $typeof((Type){}.dealloc()) ==  void : "'dealloc' must return 'void'"
 *>
-module std::core::mem::ref { Type };
-import std::thread, std::atomic;
+module std::core::mem::ref {Type};
+
+import std::atomic;
+import std::thread;
 
 const OVERALIGNED @private = Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
 
@@ -79,7 +81,9 @@ fn void Ref.release(&self)
 }
 
 module std::core::mem::rc;
-import std::thread, std::atomic;
+
+import std::atomic;
+import std::thread;
 
 <*
  A RefCounted struct should be an inline base of a struct.

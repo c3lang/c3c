@@ -2,8 +2,9 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::encoding::json;
-import std::io;
+
 import std::collections::object;
+import std::io;
 
 faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED;
 

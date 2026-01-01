@@ -1,5 +1,7 @@
 module std::net::os @if(env::POSIX && SUPPORTS_INET);
-import std::io, libc;
+
+import std::io;
+import libc;
 
 const int F_GETFL = 3;
 const int F_SETFL = 4;

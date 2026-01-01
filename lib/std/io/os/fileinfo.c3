@@ -1,5 +1,8 @@
 module std::io::os;
-import libc, std::os, std::io;
+
+import std::io;
+import std::os;
+import libc;
 
 fn void? native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY) => @pool()
 {

@@ -7,7 +7,6 @@
 //
 module std::hash::streebog @private;
 
-
 const usz BLOCK_SIZE = 64;
 
 const ulong[8] ZERO_512 @align(ulong.sizeof) = {};

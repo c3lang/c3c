@@ -1,5 +1,7 @@
 module std::os::posix @if(env::POSIX);
-import std::io, std::os::env;
+
+import std::io;
+import std::os::env;
 
 fn String? xdg_user_dir_lookup(Allocator allocator, String type) => @pool()
 {

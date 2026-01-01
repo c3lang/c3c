@@ -1,6 +1,7 @@
 module std::hash::md5;
-import std::hash::hmac;
+
 import std::bits;
+import std::hash::hmac;
 
 const BLOCK_BYTES = 64;
 const HASH_BYTES = 16;

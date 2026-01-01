@@ -1,4 +1,5 @@
 module std::io::os @if(env::NO_LIBC);
+
 import libc;
 
 alias FopenFn = fn void*?(String, String);

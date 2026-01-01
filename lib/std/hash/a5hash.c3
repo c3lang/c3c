@@ -32,7 +32,6 @@
 //
 module std::hash::a5hash;
 
-
 macro void @a5mul(#u, #v, #lo, #hi) @local
 {
 	uint128 imd = (uint128)#u * (uint128)#v;

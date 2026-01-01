@@ -1,4 +1,5 @@
-module std::collections::pair{Type1, Type2};
+module std::collections::pair {Type1, Type2};
+
 import std::io;
 
 struct Pair (Printable)
@@ -31,7 +32,8 @@ fn bool Pair.equal(self, Pair other) @operator(==) @if (types::has_equals(Type1)
 
 
 
-module std::collections::triple{Type1, Type2, Type3};
+module std::collections::triple {Type1, Type2, Type3};
+
 import std::io;
 
 struct Triple (Printable)
@@ -66,7 +68,7 @@ fn bool Triple.equal(self, Triple other) @operator(==) @if (types::has_equals(Ty
 }
 
 
-module std::collections::tuple{Type1, Type2};
+module std::collections::tuple {Type1, Type2};
 
 struct Tuple @deprecated("Use 'Pair' instead")
 {

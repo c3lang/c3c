@@ -1,5 +1,6 @@
 // Experimental implementation
 module std::crypto::aes128;
+
 import std::crypto::aes;
 
 fn char[] encrypt(Allocator allocator, char[16]* key, char[aes::BLOCKLEN] iv, char[] data)

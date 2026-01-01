@@ -1,4 +1,5 @@
 module std::time::clock;
+
 import std::time::os;
 
 fn Clock now()

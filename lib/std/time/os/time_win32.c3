@@ -1,6 +1,7 @@
 module std::time::os @if(env::WIN32);
-import std::os::win32;
+
 import std::math;
+import std::os::win32;
 
 const ulong WINDOWS_TICK_US @local = 10;
 const ulong WIN_TO_UNIX_EPOCH_US @local = 116444736000000000UL / WINDOWS_TICK_US;

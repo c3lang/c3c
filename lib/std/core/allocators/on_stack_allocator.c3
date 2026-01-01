@@ -1,5 +1,7 @@
 module std::core::mem::allocator;
+
 import std::math;
+
 <*
  The OnStackAllocator is similar to the ArenaAllocator: it allocates from a chunk of memory
  given to it.

@@ -1,5 +1,7 @@
 module std::time::os @if(env::POSIX);
-import libc, std::os::posix;
+
+import std::os::posix;
+import libc;
 
 fn Time native_timestamp()
 {

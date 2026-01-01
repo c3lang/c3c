@@ -1,4 +1,5 @@
 module std::encoding::base64;
+
 import std::core::bitorder;
 
 // The implementation is based on https://www.rfc-editor.org/rfc/rfc4648

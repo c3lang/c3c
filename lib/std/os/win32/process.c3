@@ -1,5 +1,7 @@
 module std::os::win32 @if(env::WIN32);
-import std::thread, std::os::backtrace;
+
+import std::os::backtrace;
+import std::thread;
 
 const Win32_DWORD STARTF_USESTDHANDLES = 0x00000100;
 const Win32_DWORD CREATE_NO_WINDOW = 0x08000000;

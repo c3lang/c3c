@@ -1,4 +1,5 @@
 module std::io;
+
 import libc;
 
 struct File (InStream, OutStream)
@@ -7,7 +8,10 @@ struct File (InStream, OutStream)
 }
 
 module std::io::file;
-import libc, std::io::path, std::io::os;
+
+import std::io::os;
+import std::io::path;
+import libc;
 
 fn File? open(String filename, String mode)
 {

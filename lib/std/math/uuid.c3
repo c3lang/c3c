@@ -1,6 +1,7 @@
 module std::math::uuid;
-import std::math::random @public;
+
 import std::io;
+import std::math::random @public;
 
 typedef Uuid (Printable) = char[16];
 

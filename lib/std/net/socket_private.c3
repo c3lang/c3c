@@ -1,9 +1,10 @@
 module std::net @if(os::SUPPORTS_INET);
-import std::time, libc, std::os;
+
 import std::core::env;
 import std::net::os;
-
-
+import std::os;
+import std::time;
+import libc;
 
 macro void? apply_sockoptions(sockfd, options) @private
 {

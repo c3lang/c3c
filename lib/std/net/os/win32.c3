@@ -1,9 +1,11 @@
 module std::net::os @if(env::WIN32);
-import std::os, std::io, libc, std::thread;
+
 import std::core::mem;
+import std::io;
+import std::os;
 import std::os::win32;
-
-
+import std::thread;
+import libc;
 
 const AIFamily PLATFORM_AF_IPX          = 6;
 const AIFamily PLATFORM_AF_APPLETALK    = 16;

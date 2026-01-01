@@ -1,6 +1,6 @@
 module std::encoding::csv;
-import std::io;
 
+import std::io;
 
 struct CsvReader
 {

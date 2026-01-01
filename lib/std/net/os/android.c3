@@ -1,4 +1,5 @@
 module std::net::os @if(env::ANDROID);
+
 import libc;
 
 const AIFamily PLATFORM_AF_AX25         = 3;

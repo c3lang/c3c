@@ -2,7 +2,11 @@
  The VM module holds code for working with virtual memory on supported platforms (currently Win32 and Posix)
 *>
 module std::core::mem::vm;
-import std::io, std::os::win32, std::os::posix, libc;
+
+import std::io;
+import std::os::posix;
+import std::os::win32;
+import libc;
 
 <*
  VirtualMemory is an abstraction for working with an allocated virtual memory area. It will invoke vm:: functions

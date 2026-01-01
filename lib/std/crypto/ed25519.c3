@@ -3,6 +3,7 @@
 */
 
 module std::crypto::ed25519;
+
 import std::hash::sha512;
 
 alias Ed25519PrivateKey = char[32];
@@ -599,6 +600,7 @@ fn F25519Int F25519Int.sqrt(&s)
 */
 
 module std::crypto::ed25519 @private;
+
 import std::math;
 
 typedef FBaseInt = inline char[32];

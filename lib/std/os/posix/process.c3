@@ -1,5 +1,7 @@
 module std::os::posix @if(env::POSIX);
-import libc, std::os::darwin;
+
+import std::os::darwin;
+import libc;
 
 struct Posix_spawn_file_actions_t
 {

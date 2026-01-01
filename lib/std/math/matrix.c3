@@ -29,6 +29,7 @@ alias MATRIX4F_IDENTITY @builtin = matrix::IDENTITY4 {float};
  @require Real.kindof == FLOAT : "A matrix must use a floating type"
 *>
 module std::math::matrix {Real};
+
 import std::math::vector;
 
 struct Matrix2x2

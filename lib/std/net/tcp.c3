@@ -1,11 +1,11 @@
 module std::net::tcp @if(os::SUPPORTS_INET);
-import std::net @public;
-import std::time, libc;
-import std::os::win32;
+
 import std::core::env;
+import std::net @public;
 import std::net::os;
-
-
+import std::os::win32;
+import std::time;
+import libc;
 
 typedef TcpSocket = inline Socket;
 typedef TcpServerSocket = inline Socket;

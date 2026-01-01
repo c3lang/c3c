@@ -1,5 +1,8 @@
 module std::os::backtrace;
-import std::collections::list, std::os, std::io;
+
+import std::collections::list;
+import std::io;
+import std::os;
 
 faultdef SEGMENT_NOT_FOUND, EXECUTABLE_PATH_NOT_FOUND, IMAGE_NOT_FOUND, NO_BACKTRACE_SYMBOLS,
          RESOLUTION_FAILED;

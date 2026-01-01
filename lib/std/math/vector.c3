@@ -1,6 +1,7 @@
 // Vector supplemental methods
 
 module std::math::vector;
+
 import std::math;
 
 <*

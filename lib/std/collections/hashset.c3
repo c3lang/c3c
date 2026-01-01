@@ -2,8 +2,9 @@
  @require $defined((Value){}.hash()) : `No .hash function found on the value`
 *>
 module std::collections::set {Value};
-import std::math;
+
 import std::io @norecurse;
+import std::math;
 
 const uint DEFAULT_INITIAL_CAPACITY = 16;
 const uint MAXIMUM_CAPACITY = 1u << 31;

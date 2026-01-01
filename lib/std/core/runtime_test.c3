@@ -2,10 +2,14 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::runtime;
-import std::core::test @public;
-import std::core::mem::allocator @public;
-import libc, std::time, std::io, std::sort, std::os;
 
+import std::core::mem::allocator @public;
+import std::core::test @public;
+import std::io;
+import std::os;
+import std::sort;
+import std::time;
+import libc;
 
 alias TestFn = fn void();
 

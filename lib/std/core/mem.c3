@@ -2,8 +2,10 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem;
+
 import std::core::mem::allocator @public;
-import std::os::posix, std::os::win32;
+import std::os::posix;
+import std::os::win32;
 import std::math;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
@@ -654,7 +656,9 @@ macro void @pool(usz reserve = 0; @body) @builtin
 }
 
 module std::core::mem @if(env::FREESTANDING_WASM);
+
 import std::core::mem::allocator @public;
+
 SimpleHeapAllocator wasm_allocator @private;
 extern int __heap_base;
 
@@ -670,7 +674,6 @@ fn void initialize_wasm_mem() @init(1024) @private
 }
 
 module std::core::mem;
-
 
 macro TrackingEnv* get_tracking_env()
 {
@@ -1029,7 +1032,7 @@ fn void* __memcpy(void* dst, void* src, usz n) @weak @export("memcpy")
 }
 
 
-module std::core::mem::volatile { Type };
+module std::core::mem::volatile {Type};
 
 typedef Volatile @structlike = Type;
 
@@ -1046,7 +1049,8 @@ macro Type Volatile.set(&self, Type val)
 <*
  @require mem::@constant_is_power_of_2(ALIGNMENT) : "The alignment must be a power of 2"
 *>
-module std::core::mem::alignment { Type, ALIGNMENT };
+module std::core::mem::alignment {Type, ALIGNMENT};
+
 import std::core::mem @public;
 
 <*

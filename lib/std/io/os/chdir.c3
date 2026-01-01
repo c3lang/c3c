@@ -1,5 +1,8 @@
 module std::io::os;
-import std::io::path, libc, std::os;
+
+import std::io::path;
+import std::os;
+import libc;
 
 macro void? native_chdir(Path path)
 {

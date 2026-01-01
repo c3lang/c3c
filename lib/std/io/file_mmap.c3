@@ -1,5 +1,7 @@
 module std::io::file::mmap @if(env::LIBC &&& env::POSIX);
-import std::core::mem::vm, std::io::file;
+
+import std::core::mem::vm;
+import std::io::file;
 
 struct FileMmap
 {

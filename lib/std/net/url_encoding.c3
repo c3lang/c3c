@@ -3,6 +3,7 @@
  components according to RFC 3986.
 *>
 module std::net::url;
+
 import std::encoding::hex;
 
 enum UrlEncodingMode : char (String allowed)

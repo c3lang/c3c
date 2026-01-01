@@ -1,4 +1,5 @@
 module std::io;
+
 import std::math;
 
 struct ByteBuffer (InStream, OutStream)

@@ -1,7 +1,8 @@
 <*
  @require Enum.kindof == TypeKind.ENUM : "Only enums may be used with an enummap"
 *>
-module std::collections::enummap{Enum, ValueType};
+module std::collections::enummap {Enum, ValueType};
+
 import std::io;
 
 struct EnumMap (Printable)

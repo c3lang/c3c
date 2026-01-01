@@ -5,7 +5,10 @@
  @require MAX_SIZE >= 1 : `The size must be at least 1 element big.`
 *>
 module std::collections::elastic_array {Type, MAX_SIZE};
-import std::io, std::math, std::collections::list_common;
+
+import std::collections::list_common;
+import std::io;
+import std::math;
 
 alias ElementPredicate = fn bool(Type *type);
 alias ElementTest = fn bool(Type *type, any context);

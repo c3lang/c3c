@@ -1,5 +1,10 @@
 module std::os::linux @if(env::LINUX);
-import libc, std::os, std::io, std::collections::list, std::net::os;
+
+import std::collections::list;
+import std::io;
+import std::net::os;
+import std::os;
+import libc;
 
 // https://man7.org/linux/man-pages/man3/inet_ntop.3.html
 extern fn char** inet_ntop(int, void*, char*, Socklen_t);

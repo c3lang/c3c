@@ -1,6 +1,7 @@
-module std::collections::blockingqueue { Value };
-import std::thread, std::time;
+module std::collections::blockingqueue {Value};
 
+import std::thread;
+import std::time;
 
 const INITIAL_CAPACITY = 16;
 

@@ -2,6 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem::allocator @if(env::LIBC);
+
 import std::io;
 import libc;
 
@@ -12,6 +13,7 @@ typedef LibcAllocator (Allocator) = uptr;
 const LibcAllocator LIBC_ALLOCATOR = {};
 
 module std::core::mem::allocator @if(env::POSIX);
+
 import std::os;
 import libc;
 
@@ -74,6 +76,7 @@ fn void LibcAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
 }
 
 module std::core::mem::allocator @if(env::WIN32);
+
 import std::os::win32;
 import libc;
 
@@ -115,6 +118,7 @@ fn void LibcAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
 }
 
 module std::core::mem::allocator @if(!env::WIN32 && !env::POSIX && env::LIBC);
+
 import libc;
 
 fn void*? LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic

@@ -1,4 +1,5 @@
 module std::core::string;
+
 import std::math;
 
 // Float parsing based on code in Musl floatscan.c by Rich Felker.

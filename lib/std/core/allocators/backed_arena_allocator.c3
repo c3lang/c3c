@@ -1,5 +1,7 @@
 module std::core::mem::allocator;
-import std::io, std::math;
+
+import std::io;
+import std::math;
 
 <*
  The backed arena allocator provides an allocator that will allocate from a pre-allocated chunk of memory

@@ -1,5 +1,8 @@
 module std::os::process @if(env::WIN32 || env::POSIX);
-import std::io, libc, std::os;
+
+import std::io;
+import std::os;
+import libc;
 
 // This code is based on https://github.com/sheredom/subprocess.h
 

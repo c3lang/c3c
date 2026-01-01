@@ -1,5 +1,7 @@
 module std::core::mem::allocator @if(!(env::POSIX || env::WIN32) || !$feature(VMEM_TEMP));
-import std::io, std::math;
+
+import std::io;
+import std::math;
 
 // This implements the temp allocator.
 // The temp allocator is a specialized allocator only intended for use where
@@ -327,6 +329,7 @@ fn void*? TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz al
 }
 
 module std::core::mem::allocator @if((env::POSIX || env::WIN32) && $feature(VMEM_TEMP));
+
 import std::math;
 
 tlocal VmemOptions temp_allocator_default_options = {

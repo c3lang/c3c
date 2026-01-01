@@ -2,6 +2,7 @@
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::anylist;
+
 import std::collections::interfacelist;
 
 alias AnyPredicate = InterfacePredicate {any};

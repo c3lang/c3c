@@ -2,8 +2,9 @@
 Untested new big int implementation, missing unit tests. Etc
 *>
 module std::math::bigint;
-import std::math::random;
+
 import std::io;
+import std::math::random;
 
 const MAX_LEN = 4096 * 2 / 32;
 
@@ -927,7 +928,6 @@ fn void BigInt.randomize_bits(&self, Random random, int bits)
 }
 
 module std::math::bigint @private;
-
 
 <*
  @param [&out] quotient

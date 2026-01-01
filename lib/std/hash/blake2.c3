@@ -13,7 +13,6 @@
 //
 module std::hash::blake2;
 
-
 // Common hash output sizes. The library is NOT limited to these six output sizes, but
 //   these instead stand in for what would have been "magic numbers" throughout the code.
 const SIZE_128 = 16;

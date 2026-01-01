@@ -7,7 +7,6 @@
 //
 module std::hash::streebog;
 
-
 enum StreebogLength : const inline uint
 {
 	SIZE_256 = 32,

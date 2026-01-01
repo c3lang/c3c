@@ -5,7 +5,6 @@
 // ChaCha20 code dedicated from repo: https://github.com/NotsoanoNimus/chacha20_aead.c3l (but massively cleaned)
 module std::crypto::chacha20;
 
-
 <* The typical cipher block size in bytes. *>
 const BLOCK_SIZE = 64;
 

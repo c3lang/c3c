@@ -1,5 +1,7 @@
 module std::io::path;
-import std::collections::list, std::io::os;
+
+import std::collections::list;
+import std::io::os;
 import std::os::win32;
 
 const PathEnv DEFAULT_ENV = env::WIN32 ? PathEnv.WIN32 : PathEnv.POSIX;

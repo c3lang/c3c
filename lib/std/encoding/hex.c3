@@ -1,4 +1,5 @@
 module std::encoding::hex;
+
 import std::encoding @norecurse;
 
 // The implementation is based on https://www.rfc-editor.org/rfc/rfc4648

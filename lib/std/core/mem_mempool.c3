@@ -1,6 +1,9 @@
 module std::core::mem::mempool;
-import std::core::mem, std::core::mem::allocator, std::math;
+
+import std::core::mem;
+import std::core::mem::allocator;
 import std::core::sanitizer::asan;
+import std::math;
 
 const INITIAL_CAPACITY = 0;
 

@@ -1,4 +1,5 @@
 module std::os::win32 @if(env::WIN32);
+
 import std::math;
 
 extern fn void getSystemTimeAsFileTime(Win32_FILETIME* time) @cname("GetSystemTimeAsFileTime");

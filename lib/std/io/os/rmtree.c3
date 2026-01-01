@@ -1,5 +1,8 @@
 module std::io::os @if(env::POSIX);
-import std::io, std::os, libc;
+
+import std::io;
+import std::os;
+import libc;
 
 <*
  @require dir.str_view().len > 0
@@ -36,7 +39,10 @@ fn void? native_rmtree(Path dir)
 }
 
 module std::io::os @if(env::WIN32);
-import std::io, std::time, std::os;
+
+import std::io;
+import std::os;
+import std::time;
 
 fn void? native_rmtree(Path path)
 {

@@ -1,9 +1,11 @@
 module std::core::mem::allocator @if(env::POSIX || env::WIN32);
-import std::math, std::os::posix, libc, std::bits;
+
+import std::bits;
 import std::core::mem;
 import std::core::env;
-
-
+import std::math;
+import std::os::posix;
+import libc;
 
 // Virtual Memory allocator
 

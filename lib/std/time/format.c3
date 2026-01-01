@@ -1,6 +1,5 @@
 module std::time::datetime @if(env::LIBC);
 
-
 enum DateTimeFormat
 {
 	ANSIC,	 	// "Mon Jan _2 15:04:05 2006"

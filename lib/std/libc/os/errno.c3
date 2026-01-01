@@ -1,4 +1,5 @@
 module libc::os @if(env::LIBC);
+
 import std::core::env;
 
 // Linux
@@ -34,6 +35,7 @@ extern fn void _set_errno(int err) @if(env::WIN32);
 
 // Default
 module libc::os @if(!env::LIBC || !env::HAS_NATIVE_ERRNO);
+
 tlocal int _errno_c3 = 0;
 fn void errno_set(int err) => _errno_c3 = err;
 fn int errno() => _errno_c3;

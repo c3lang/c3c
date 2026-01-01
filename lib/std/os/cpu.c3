@@ -1,6 +1,7 @@
 // https://www.cprogramming.com/snippets/source-code/find-the-number-of-cpu-cores-for-windows-mac-or-linux
 
 module std::os @if(env::DARWIN);
+
 import std::os::macos;
 
 fn uint num_cpu()
@@ -16,6 +17,7 @@ fn uint num_cpu()
 }
 
 module std::os @if(env::LINUX);
+
 import std::os::posix;
 
 fn uint num_cpu()
@@ -24,6 +26,7 @@ fn uint num_cpu()
 }
 
 module std::os @if(env::WIN32);
+
 import std::os::win32;
 
 fn uint num_cpu()

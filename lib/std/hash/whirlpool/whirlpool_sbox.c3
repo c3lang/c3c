@@ -5,7 +5,6 @@
 // Dedicated from repo: https://github.com/NotsoanoNimus/whirlpool.c3l
 module std::hash::whirlpool @private;
 
-
 // =========================================================================
 // WHIRLPOOL s-box data.
 const ulong[8 * 256] S_BOX = {

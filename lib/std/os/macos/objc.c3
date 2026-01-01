@@ -73,6 +73,7 @@ extern fn ObjcClass allocateClassPair(ObjcClass cls, ZString name, uint extraByt
 extern fn void registerClassPair(ObjcClass cls) @cname("objc_registerClassPair");
 
 module std::os::macos::objc::ns @if(env::DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
+
 import std::os::macos::cf;
 
 enum StatusItemLength : (double val) @deprecated("Use NSStatusItemLength.")

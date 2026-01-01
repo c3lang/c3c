@@ -1,5 +1,11 @@
 module std::core::runtime;
-import libc, std::time, std::io, std::sort, std::math, std::collections::map;
+
+import std::collections::map;
+import std::io;
+import std::math;
+import std::sort;
+import std::time;
+import libc;
 
 alias BenchmarkFn = fn void ();
 

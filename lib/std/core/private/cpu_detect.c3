@@ -4,6 +4,7 @@ struct CpuId
 {
 	uint eax, ebx, ecx, edx;
 }
+
 fn CpuId x86_cpuid(uint eax, uint ecx = 0)
 {
 	int edx;

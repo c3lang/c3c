@@ -1,4 +1,5 @@
 module std::core::dstring;
+
 import std::io;
 
 <*

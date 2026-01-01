@@ -2,7 +2,10 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::object;
-import std::collections::map, std::collections::list, std::io;
+
+import std::collections::list;
+import std::collections::map;
+import std::io;
 
 const Object TRUE_OBJECT = { .b = true, .type = bool.typeid };
 const Object FALSE_OBJECT = { .b = false, .type = bool.typeid };

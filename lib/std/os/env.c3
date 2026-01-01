@@ -2,7 +2,10 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::os::env;
-import std::io::path, libc, std::os;
+
+import std::io::path;
+import std::os;
+import libc;
 
 <*
  @param [in] name

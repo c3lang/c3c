@@ -2,8 +2,8 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::cinterop;
-import std::core::env;
 
+import std::core::env;
 
 const C_INT_SIZE = $$C_INT_SIZE;
 const C_LONG_SIZE = $$C_LONG_SIZE;
@@ -63,6 +63,7 @@ macro typeid unsigned_int_from_bitsize(usz $bitsize) @private
 }
 
 const USE_STACK_VALIST = env::ARCH_32_BIT || env::WIN32 || (env::DARWIN && env::AARCH64);
+
 module std::core::cinterop @if(USE_STACK_VALIST);
 
 typedef CVaList = void*;

@@ -11,7 +11,6 @@ module std::hash::sha512;
 
 import std::hash::hmac;
 
-
 const BLOCK_SIZE = 128;
 const HASH_SIZE = 64;
 

@@ -1,6 +1,8 @@
 module std::os::openbsd @if(env::OPENBSD);
-import libc, std::os, std::collections::list;
 
+import std::collections::list;
+import std::os;
+import libc;
 
 // Native `sysctl` identifiers from <sys/sysctl.h>
 const CTL_UNSPEC        =  0;   /* unused */
