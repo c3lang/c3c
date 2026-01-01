@@ -637,7 +637,9 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 		offset = align_offset;
 		member->offset = offset;
+		AlignSize sz = offset;
 		offset += type_size(member->type);
+		if (offset < sz || offset > MAX_STRUCT_SIZE) RETURN_SEMA_ERROR(member, "Struct member '%s' would cause the struct to become too large (exceeding 2 GB).", member->name);
 	}
 
 	// Set the alignment:
@@ -4267,7 +4269,8 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 		unsigned params = vec_size(sig->params);
 		if (params)
 		{
-			RETURN_SEMA_ERROR(sig->params[0], "%s functions may not take any parameters.",
+			SourceSpan span = sig->params[0] ? sig->params[0]->span : decl->span;
+			RETURN_SEMA_ERROR_AT(span, "%s functions may not take any parameters.",
 							  is_init_finalizer ? "'@init' and '@finalizer'" : "'@test' and '@benchmark'");
 		}
 		TypeInfo *rtype_info = type_infoptr(sig->rtype);
@@ -4583,7 +4586,63 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bo
 	if (!sema_analyse_attributes(context, decl, decl->attributes, domain, erase_decl)) return decl_poison(decl);
 	return true;
 }
-
+static bool sema_type_is_valid_size(SemaContext *context, Type *type, SourceSpan span)
+{
+	Int128 size = i128_from_unsigned(1);
+RETRY:
+	if (size.high || size.low > (uint64_t)MAX_TYPE_SIZE)
+	{
+		RETURN_SEMA_ERROR_AT(span, "This type would exceed max type size of %u GB.", MAX_TYPE_SIZE >> 30);
+	}
+	switch (type->type_kind)
+	{
+		case TYPE_BITSTRUCT:
+			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
+			type = type->decl->strukt.container_type->type;
+			goto RETRY;
+		case TYPE_TYPEDEF:
+			type = type->decl->distinct->type;
+			goto RETRY;
+		case TYPE_ALIAS:
+			type = type->canonical;
+			goto RETRY;
+		case CT_TYPES:
+		case TYPE_FUNC_RAW:
+		case TYPE_FLEXIBLE_ARRAY:
+			return true;
+		case TYPE_OPTIONAL:
+			type = type->optional;
+			goto RETRY;
+		case TYPE_VOID:
+			return true;
+		case TYPE_BOOL:
+		case TYPE_TYPEID:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_ANYFAULT:
+		case TYPE_INTERFACE:
+		case TYPE_ANY:
+		case TYPE_FUNC_PTR:
+		case TYPE_POINTER:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_ENUM:
+		case TYPE_CONST_ENUM:
+		case TYPE_SLICE:
+			size = i128_mult64(size, type_size(type));
+			break;
+		case VECTORS:
+		case TYPE_ARRAY:
+			size = i128_mult64(size, type->array.len);
+			type = type->array.base;
+			goto RETRY;
+	}
+	if (size.high || size.low > (uint64_t)MAX_TYPE_SIZE)
+	{
+		RETURN_SEMA_ERROR_AT(span, "This type would exceed max type size of %u GB.", MAX_TYPE_SIZE >> 30);
+	}
+	return true;
+}
 static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceSpan span)
 {
 	switch (sema_resolve_storage_type(context, type))
@@ -4972,6 +5031,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 	{
 		if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
 	}
+	if (decl->type && !sema_type_is_valid_size(context, decl->type, decl->var.type_info ? type_infoptr(decl->var.type_info)->span : decl->span)) return false;
 	if (decl->var.kind == VARDECL_LOCAL && !is_static && type_size(decl->type) > compiler.build.max_stack_object_size * 1024)
 	{
 		size_t size = type_size(decl->type);
@@ -5508,10 +5568,30 @@ RETRY:
 	UNREACHABLE
 }
 
+INLINE Decl *type_is_possible_template(SemaContext *context, TypeInfo *type_info)
+{
+	if (type_info->resolve_status == RESOLVE_DONE) return NULL;
+	if (type_info->kind != TYPE_INFO_IDENTIFIER) return NULL;
+	if (type_info->subtype != TYPE_COMPRESSED_NONE) return NULL;
+	Decl *candidate = sema_find_template_symbol(context, type_info->unresolved.name, type_info->unresolved.path);
+	return candidate && candidate->is_template ? candidate : NULL;
+}
 bool sema_analyse_method_register(SemaContext *context, Decl *method)
 {
 	TypeInfo *parent_type_info = type_infoptr(method->func_decl.type_parent);
-	if (!sema_resolve_type_info(context, parent_type_info, method->decl_kind == DECL_MACRO ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
+	Decl *decl = method->is_templated ? NULL : type_is_possible_template(context, parent_type_info);
+	if (decl)
+	{
+		Decl *generic_section = declptr(decl->generic_id);
+		vec_add(generic_section->generic_decl.decls, method);
+		method->is_template = true;
+		method->generic_id = decl->generic_id;
+		return false;
+	}
+	else
+	{
+		if (!sema_resolve_type_info(context, parent_type_info, method->decl_kind == DECL_MACRO ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
+	}
 
 	// Can the type have methods?
 	Type *parent_type = parent_type_info->type = parent_type_info->type->canonical;
