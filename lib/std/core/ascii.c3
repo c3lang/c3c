@@ -114,48 +114,40 @@ const char[256] TO_LOWER @private  = { ['A'..'Z'] = 'a' - 'A' };
 
 typedef AsciiCharset = uint128;
 
-macro AsciiCharset create_set(String #string) @safemacro
+macro AsciiCharset create_set(String string)
 {
-	$if $defined(var $string = #string):
-		var $string = #string;
-		AsciiCharset $set;
-		$foreach $c : $string: $set |= 1ULL << $c; $endforeach
-		return $set;
-	$else
-		var string = #string;
-		AsciiCharset set;
-		foreach (c : string) set |= (AsciiCharset)1ULL << c;
-		return set;
-	$endif
+    AsciiCharset set;
+    foreach (c : string) set |= (AsciiCharset)1ULL << c;
+    return set;
 }
 
-macro AsciiCharset @combine_sets(AsciiCharset #left, ...)
+macro AsciiCharset @create_set(String $string) @const
 {
-	$if $defined(var $left = #left, var $others = { $vasplat }):
+    AsciiCharset $set;
+    $foreach $c : $string: $set |= 1ULL << $c; $endforeach
+    return $set;
+}
+
+macro bool AsciiCharset.@contains($set, char $c) @const => !!($c < 128) & !!($set & (AsciiCharset)(1ULL << $c));
+
+macro AsciiCharset combine_sets(AsciiCharset #left, ...) @safemacro
+{
+	$if $defined(var $left = #left, AsciiCharset[] $others = { $vasplat }):
 		var $left = #left; var $others = { $vasplat };
 		$foreach $s : $others: $left |= (uint128)$s; $endforeach
 		return $left;
 	$else
-		var left = #left; var others = { $vasplat };
-		foreach (c : others) left |= (uint128)c;
+		var left = #left; AsciiCharset[] others = { $vasplat };
+		foreach (c : others) left |= (AsciiCharset)c;
 		return left;
 	$endif
 }
 
-macro bool AsciiCharset.contains(#set, char #c) @safemacro
-{
-	$if $defined(var $set = #set, var $c = #c):
-		var $set = #set; var $c = #c;
-		return !!($c < 128) & !!($set & (AsciiCharset)(1ULL << $c));
-	$else
-		var set = #set; var c = #c;
-		return !!(c < 128) & !!(set & (AsciiCharset)(1ULL << c));
-	$endif
-}
+macro bool AsciiCharset.contains(set, char c) => !!(c < 128) & !!(set & (AsciiCharset)(1ULL << c));
 
-const AsciiCharset WHITESPACE_SET = create_set("\t\n\v\f\r ");
-const AsciiCharset NUMBER_SET = create_set("0123456789");
-const AsciiCharset ALPHA_UPPER_SET = create_set("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-const AsciiCharset ALPHA_LOWER_SET = create_set("abcdefghijklmnopqrstuvwxyz");
-const AsciiCharset ALPHA_SET = @combine_sets(ALPHA_UPPER_SET, ALPHA_LOWER_SET);
-const AsciiCharset ALPHANUMERIC_SET = @combine_sets(ALPHA_SET, NUMBER_SET);
+const AsciiCharset WHITESPACE_SET = @create_set("\t\n\v\f\r ");
+const AsciiCharset NUMBER_SET = @create_set("0123456789");
+const AsciiCharset ALPHA_UPPER_SET = @create_set("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+const AsciiCharset ALPHA_LOWER_SET = @create_set("abcdefghijklmnopqrstuvwxyz");
+const AsciiCharset ALPHA_SET = combine_sets(ALPHA_UPPER_SET, ALPHA_LOWER_SET);
+const AsciiCharset ALPHANUMERIC_SET = combine_sets(ALPHA_SET, NUMBER_SET);
