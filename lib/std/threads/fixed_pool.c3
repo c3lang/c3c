@@ -69,7 +69,7 @@ fn void? FixedThreadPool.join(&self) @maydiscard // Remove optional in 0.8.0
 {
 	if (self.initialized)
 	{
-		self.mu.lock()!!;
+		self.mu.lock();
 		defer self.mu.unlock();
 		self.joining = true;
 		do

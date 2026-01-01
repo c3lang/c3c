@@ -192,11 +192,16 @@ fn String join(Allocator allocator, String[] s, String joiner)
 *>
 fn String String.replace(self, Allocator allocator, String needle, String new_str) @nodiscard
 {
-	@pool()
+	Splitter s = self.tokenize_all(needle);
+	DString d;
+	d.init(tmem, new_str.len * 2 + self.len + 16);
+	(void)d.append(s.next());
+	while (try element = s.next())
 	{
-		String[] split = self.tsplit(needle);
-		return dstring::join(tmem, split, new_str).copy_str(allocator);
-	};
+		d.append(new_str);
+		d.append(element);
+	}
+	return d.copy_str(allocator);
 }
 
 <*
@@ -209,8 +214,16 @@ fn String String.replace(self, Allocator allocator, String needle, String new_st
 *>
 fn String String.treplace(self, String needle, String new_str)
 {
-	String[] split = self.tsplit(needle);
-	return dstring::join(tmem, split, new_str).str_view();
+	Splitter s = self.tokenize_all(needle);
+	DString d;
+	d.init(tmem, new_str.len * 2 + self.len + 16);
+	(void)d.append(s.next());
+	while (try element = s.next())
+	{
+		d.append(new_str);
+		d.append(element);
+	}
+	return d.str_view();
 }
 
 
@@ -1184,6 +1197,11 @@ fn void Splitter.reset(&self)
 	self.current = 0;
 }
 
+fn bool Splitter.at_end(&self)
+{
+	return self.current > self.string.len;
+}
+
 fn String? Splitter.next(&self)
 {
 	while (true)
@@ -1205,7 +1223,7 @@ fn String? Splitter.next(&self)
 			if (!next && self.type == TOKENIZE) continue;
 			return remaining[:next];
 		}
-		self.current = len;
+		self.current = len + 1;
 		return remaining;
 	}
 }
