@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Zack Puhl <github@xmit.xyz>. All rights reserved.
+// Copyright (c) 2025-2026 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 //
@@ -146,8 +146,8 @@ struct Blake3
  In this way, the XOF primitive that BLAKE3 is built from allows the hash output to be a potentially
  limitless result that one may slice to their liking using the right parameters.
 
- @param[in] data : "The data to hash."
- @param[in] key : "An optional 32-byte key to turn the result into a keyed hash."
+ @param [in] data : "The data to hash."
+ @param [in] key : "An optional 32-byte key to turn the result into a keyed hash."
  @param seek : "An optional value specifying the offset into the XOF's yield where the resultant hash should begin."
  @param $out_size : "An optional value specifying the desired length to slice from the XOF's yield."
 
@@ -173,8 +173,8 @@ macro char[*] hash(char[] data, char[] key = {}, usz seek = 0, usz $out_size = 3
  hashes made from data with completely variable-length keys, rather than having a key fixed
  to 32 bytes. The 'context' nomenclature is from BLAKE3 itself, not my naming.
 
- @param[in] data : "The data to hash."
- @param[in] context : "An optional key to turn the result into a keyed hash."
+ @param [in] data : "The data to hash."
+ @param [in] context : "An optional key to turn the result into a keyed hash."
  @param seek : "An optional value specifying the offset into the XOF's yield where the resultant hash should begin."
  @param $out_size : "An optional value specifying the desired length to slice from the XOF's yield."
 
@@ -197,7 +197,7 @@ macro char[*] ctx_hash(char[] data, char[] context, usz seek = 0, usz $out_size 
  acts as a variable-length key to seed the new hash structure, and makes it ready to ingest
  incoming data with `update`.
 
- @param[in] context : "The context byte array used to seed the returned Blake3 context."
+ @param [in] context : "The context byte array used to seed the returned Blake3 context."
 *>
 macro Blake3 new_from_context(char[] context)
 {
@@ -219,7 +219,7 @@ macro Blake3 new_from_context(char[] context)
 <*
  Initialize a BLAKE3 context.
 
- @param[in] key : "An optional key initializer to use."
+ @param [in] key : "An optional key initializer to use."
 
  @require !key.len || key.len == KEY_SIZE : "An explicit initialization key must be of KEY_SIZE (32 bytes)."
 *>
@@ -276,7 +276,7 @@ fn void Blake3.push_cv(&self, char* new_cv, ulong chunk_counter) @local @inline
 <*
  Update the hash context by consuming incoming data.
 
- @param[in] input : "The slice of new data to digest."
+ @param [in] input : "The slice of new data to digest."
  @param use_tbb : "Should remain `false` until other BLAKE3 optimizations are set up."
 *>
 fn void Blake3.update(&self, char[] input, bool use_tbb = false)
@@ -340,7 +340,7 @@ fn void Blake3.update(&self, char[] input, bool use_tbb = false)
  Note that the `into` slice does not need to be properly cut to receive hash results; it
  just needs to be wide enough to accommodate `into_len` yielded bytes from the XOF.
 
- @param[in] into : "The storage buffer for the output hash value. Must be >= `into_len` bytes."
+ @param [in] into : "The storage buffer for the output hash value. Must be >= `into_len` bytes."
  @param into_len : "How many bytes to receive from the XOF/hash output."
  @param seek : "How far into the XOF's yield to begin the stored byte sequence."
 
@@ -394,7 +394,7 @@ fn void Blake3.destroy(&self) @inline
 <*
  Initialize a BLAKE3 chunk state.
 
- @param[in] key
+ @param [in] key
  @param flags
 *>
 fn void Blake3ChunkState.init(&self, uint[] key, char flags) @local @inline
@@ -407,7 +407,7 @@ fn void Blake3ChunkState.init(&self, uint[] key, char flags) @local @inline
 <*
  Reset a BLAKE3 chunk state.
 
- @param[in] key
+ @param [in] key
  @param chunk_counter
 *>
 fn void Blake3ChunkState.reset(&self, uint[] key, ulong chunk_counter) @local @inline
@@ -425,7 +425,7 @@ fn usz Blake3ChunkState.len(&self) @operator(len) @local @inline
 <*
  Ingest an amount of bytes into the chunk's buffer. NOTE: Doesn't check for underflow.
 
- @param[in] data : "Data to ingest."
+ @param [in] data : "Data to ingest."
 *>
 fn usz Blake3ChunkState.fill_buf(&self, char[] data) @local @inline
 {
@@ -444,7 +444,7 @@ fn char Blake3ChunkState.maybe_start_flag(&self) @local @inline
 <*
  Update the chunk with the provided input bytes.
 
- @param[in] input : "Incoming bytes to update with."
+ @param [in] input : "Incoming bytes to update with."
 *>
 fn void Blake3ChunkState.update(&self, char[] input) @local
 {
@@ -476,8 +476,8 @@ fn Blake3Output Blake3ChunkState.output(&self) @local @inline
 <*
  Generate and initialize an output structure with the provided parameters.
 
- @param[in] key
- @param[&in] in_block
+ @param [in] key
+ @param [&in] in_block
  @param block_len
  @param counter
  @param flags
@@ -496,8 +496,8 @@ fn Blake3Output make_output(uint[] key, char* in_block, usz block_len, ulong cou
 <*
  Auto-generate a parent output structure, pre-initialized with some constant identifiers.
 
- @param[&in] block
- @param[in] key
+ @param [&in] block
+ @param [in] key
  @param flags
 *>
 macro Blake3Output parent_output(char* block, uint[] key, char flags) @local
@@ -506,7 +506,7 @@ macro Blake3Output parent_output(char* block, uint[] key, char flags) @local
 <*
  Compress then store the chaining value of the output structure.
 
- @param[&inout] cv
+ @param [&inout] cv
 *>
 macro void Blake3Output.chaining_value(&self, char* cv) @local
 {
@@ -520,7 +520,7 @@ macro void Blake3Output.chaining_value(&self, char* cv) @local
  Store the result of the output into the designated slice.
 
  @param seek
- @param[inout] into
+ @param [inout] into
 *>
 fn void Blake3Output.root_bytes(&self, usz seek, char[] into) @local
 {
