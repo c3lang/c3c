@@ -236,56 +236,49 @@ fn void? backtrace_add_from_dlinfo(Allocator allocator, BacktraceList* list, voi
 
 fn Backtrace? backtrace_line_parse(Allocator allocator, String string, String obj_name, String func_name, bool is_inlined)
 {
-	@stack_mem(256; Allocator mem)
+	Splitter s = string.trim().tokenize(" at ");
+	String first = s.next() ?? NOT_FOUND~!;
+	String second = s.next() ?? NOT_FOUND~!;
+	uint line   = 0;
+	String source = "";
+	if (!second.contains("?") && second.contains(":"))
 	{
-		String[] parts = string.trim().split(mem, " at ");
-		if (parts.len != 2) return NOT_FOUND?;
-
-		uint line   = 0;
-		String source = "";
-		if (!parts[1].contains("?") && parts[1].contains(":"))
-		{
-			usz index = parts[1].rindex_of_char(':')!;
-			source = parts[1][:index];
-			line   = parts[1][index + 1..].to_uint()!;
-		}
-		return {
-			.function    = parts[0].copy(allocator),
-			.object_file = obj_name.copy(allocator),
-			.file        = source.copy(allocator),
-			.line        = line,
-			.allocator   = allocator,
-			.is_inline   = is_inlined
-		};
+		usz index = second.rindex_of_char(':')!;
+		source = second[:index];
+		line   = second[index + 1..].to_uint()!;
+	}
+	return {
+		.function    = first.copy(allocator),
+		.object_file = obj_name.copy(allocator),
+		.file        = source.copy(allocator),
+		.line        = line,
+		.allocator   = allocator,
+		.is_inline   = is_inlined
 	};
-
 }
+
 fn void? backtrace_add_addr2line(Allocator allocator, BacktraceList* list, void* addr, String addr2line, String obj_name, String func_name) @local
 {
-	@stack_mem(1024; Allocator mem)
+	Splitter splitter = addr2line.tokenize("(inlined by)");
+	while (try part = splitter.next())
 	{
-		String[] inline_parts = addr2line.split(mem, "(inlined by)");
-		usz last = inline_parts.len - 1;
-		foreach (i, part : inline_parts)
+		bool is_inline = splitter.at_end();
+		Backtrace? trace = backtrace_line_parse(allocator, part, obj_name, func_name, is_inline);
+		if (catch trace)
 		{
-			bool is_inline = i != last;
-			Backtrace? trace = backtrace_line_parse(allocator, part, obj_name, func_name, is_inline);
-			if (catch trace)
-			{
-				list.push({
-					.function    = func_name.copy(allocator),
-					.object_file = obj_name.copy(allocator),
-					.offset      = (uptr)addr,
-					.file        = "".copy(allocator),
-					.line        = 0,
-					.allocator   = allocator,
-					.is_inline   = is_inline
+			list.push({
+				.function    = func_name.copy(allocator),
+				.object_file = obj_name.copy(allocator),
+				.offset      = (uptr)addr,
+				.file        = "".copy(allocator),
+				.line        = 0,
+				.allocator   = allocator,
+				.is_inline   = is_inline
 				});
-				continue;
-			}
-			list.push(trace);
+			continue;
 		}
-	};
+		list.push(trace);
+	}
 }
 
 fn void? backtrace_add_element(Allocator allocator, BacktraceList *list, void* addr) @local

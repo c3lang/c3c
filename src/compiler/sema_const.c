@@ -187,6 +187,10 @@ static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *
 		case CONST_SLICE:
 		case CONST_INITIALIZER:
 			if (!cast_implicit(context, right, type_get_inferred_array(indexed), false)) return false;
+			if (!sema_cast_const(right))
+			{
+				RETURN_SEMA_ERROR(right, "Could not concatenate with the right hand side.");
+			}
 			expr_contract_array(&right->const_expr, left->const_expr.const_kind);
 			goto RETRY;
 	}

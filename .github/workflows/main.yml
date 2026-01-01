@@ -92,7 +92,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run -O1 src/test_suite_runner.c3 -- ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run -O0 src/test_suite_runner.c3 -- ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
 
       - name: Compile run unit tests
         run: |

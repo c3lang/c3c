@@ -461,7 +461,6 @@ void sema_analysis_pass_process_methods(Module *module, bool process_generic)
 			}
 			if (sema_analyse_method_register(&context, method))
 			{
-
 				if (method->decl_kind == DECL_MACRO)
 				{
 					vec_add(unit->macro_methods, method);

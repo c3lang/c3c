@@ -7070,13 +7070,13 @@ void llvm_emit_scalar_to_vector(GenContext *c, BEValue *value, Expr *expr)
 
 void llvm_emit_vec_to_array(GenContext *c, BEValue *value, Type *type)
 {
-	llvm_value_rvalue(c, value);
+	LLVMValueRef val = llvm_load_value_store(c, value);
 	Type *to_type = type_lowering(type);
 	LLVMValueRef array = llvm_get_undef(c, to_type);
 
 	for (unsigned i = 0; i < to_type->array.len; i++)
 	{
-		LLVMValueRef element = llvm_emit_extract_value(c, value->value, i);
+		LLVMValueRef element = llvm_emit_extract_value(c, val, i);
 		array = llvm_emit_insert_value(c, array, element, i);
 	}
 	llvm_value_set(value, array, to_type);

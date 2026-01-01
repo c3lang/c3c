@@ -182,14 +182,6 @@ fn void test_split_to_buffer()
 	free(strings);
 }
 
-fn void test_treplace()
-{
-	String test = "Befriend some dragons?";
-	assert(test.treplace("some", "all") == "Befriend all dragons?");
-	assert(test.treplace("?", "!") == "Befriend some dragons!");
-	assert(test.treplace("Never", "Always") == "Befriend some dragons?");
-}
-
 fn void test_zstring()
 {
 	String test = "hello";
@@ -211,10 +203,28 @@ fn void test_replace()
 	free(val);
 	val = test.replace(mem, "?", "!");
 	test::eq(val, "Befriend some dragons!");
-    free(val);
-    val = test.replace(mem, "Never", "Always");
-    test::eq(val, "Befriend some dragons?");
-    free(val);
+	free(val);
+	val = test.replace(mem, "Never", "Always");
+	test::eq(val, "Befriend some dragons?");
+	free(val);
+	test = "some dragonsomesome";
+	val = test.replace(mem, "some", "x");
+	test::eq(val, "x dragonxx");
+	free(val);
+}
+
+fn void test_treplace() => @pool()
+{
+	String test = "Befriend some dragons?";
+	String val = test.treplace("some", "all");
+	test::eq(val, "Befriend all dragons?");
+	val = test.treplace("?", "!");
+	test::eq(val, "Befriend some dragons!");
+	val = test.treplace("Never", "Always");
+	test::eq(val, "Befriend some dragons?");
+	test = "some dragonsomesome";
+	val = test.treplace("some", "x");
+	test::eq(val, "x dragonxx");
 }
 
 fn void test_index_of()

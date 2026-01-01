@@ -6592,7 +6592,7 @@ CHECK_DEEPER:
 			if (missing_ref) goto MISSING_REF;
 			RETURN_SEMA_ERROR(expr, "The method '%s' has private visibility.", kw);
 		}
-		Type *parent_type = parent->type->canonical;
+		Type *parent_type = type_no_optional(parent->type)->canonical;
 		ASSERT(type_is_user_defined(parent_type));
 		if (missing_ref && parent_type->decl->unit->module->stage < ANALYSIS_POST_REGISTER)
 		{

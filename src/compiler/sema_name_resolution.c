@@ -1044,6 +1044,16 @@ Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const 
 	}
 }
 
+Decl *sema_find_template_symbol(SemaContext *context, const char *symbol, Path *path)
+{
+	NameResolve resolve = {
+		.suppress_error = true,
+		.symbol = symbol,
+		.is_parameterized = true,
+	};
+	if (!sema_resolve_symbol_common(context, &resolve)) return poisoned_decl;
+	return resolve.found;
+}
 /**
  * Silently find a symbol, will return NULL, Poison or the value
  */

@@ -38,7 +38,7 @@ fn int main(String[] args)
 	libc::signal(libc::SIGINT, fn void (CInt _signal) {
 		foreach (f : path::ls(mem, context.start_cwd)!!)
 		{
-			if (f.str_view().starts_with("_c3test_")) (void)path::rmtree(context.start_cwd.tappend(f.str_view())!!);
+			if (f.str_view().starts_with("_c3test_")) (void)path::rmtree(context.start_cwd.append(mem, f.str_view()));
 		}
 		os::exit(1);
 	});
@@ -299,7 +299,7 @@ fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, O
 
 		if (!find_and_mark_error(&settings, ...parts[:5]))
 		{
-			unexpected_errors.push(string::tformat("  - %s at %s:%s: \"%s\"", parts[0], parts[1].file_tbasename()!!, parts[2], parts[4]));
+			unexpected_errors.push(string::tformat("  - %s at %s:%s: %s", parts[0], parts[1].file_tbasename()!!, parts[2], parts[4]));
 		}
 	}
 
