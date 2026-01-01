@@ -23,7 +23,7 @@ jobs:
       # Don't abort runners if a single one fails
       fail-fast: false
       matrix:
-        build_type: [ Release, RelWithDebInfo ]
+        build_type: [ Release ]
 
     defaults:
       run:
@@ -82,7 +82,7 @@ jobs:
         run: |
           build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib
 
-      - name: Try raylib5
+      - name: Try raylib
         run: |
           cd resources
           ..\build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib
@@ -441,7 +441,7 @@ jobs:
         run: |
           cmake -B build \
                 -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{matrix.build_type}}" \
+                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
                 -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
                 -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
                 -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
@@ -566,7 +566,7 @@ jobs:
 
       - name: Vendor-fetch
         run: |
-          "$(realpath ./build/c3c)" vendor-fetch raylib55
+          "$(realpath ./build/c3c)" vendor-fetch raylib
 
       - name: run compiler tests
         run: |
