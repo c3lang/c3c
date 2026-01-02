@@ -10,7 +10,6 @@ import std::crypto::keccak;
 import std::crypto::cshake;
 import std::crypto::keccak::nist @public;
 
-import std::io;   // TODO: REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME
 import std::math, std::thread;
 
 const MAX_BLOCK_SIZE = 128 * 1024 * 1024;   // 128 MiB
@@ -131,22 +130,9 @@ fn void ParallelHash.init(&self, Allocator allocator, usz block_size = MAX_BLOCK
 macro void ParallelHash.tinit(&self, usz block_size = MAX_BLOCK_SIZE >> 3, String optional_customization = "", bool is_xof_mode = false, usz thread_count = 0)
 	=> self.init(tmem, block_size, optional_customization, is_xof_mode, thread_count);
 
-// This is the more distinct feature of ParallelHash: inputs are domain-separated.
-//
-// So, calling `th.update("abc")` then `th.update("def")` produces a ***DIFFERENT HASH***
-//   than calling `th.update("ab")` then `th.update("cdef")`.
-//
 fn void ParallelHash.update(&self, char[] data, bool force_sequential = false)
 {
 	// note : TODO : ILLEGAL to call `update` after a first squeeze or `final`
-
-	// split incoming data into `thread_count` chunks based on the current block size.
-	//   Core/Thread 0 ALWAYS receives the uneven-sized block. This is because the first call
-	//   to `squeeze` or `final` will round off the `internal` buffer set by Thread 0 EXCLUSIVELY.
-	//
-	// The allocator is only ever used locally, and no memory will ever leak from this, since all XOF results
-	//   from each thread are collapsed and free for each call to `update`.
-
 	if (!data.len) return;
 	self.total_len += data.len;
 
