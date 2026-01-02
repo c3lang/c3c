@@ -4,37 +4,32 @@
 //
 // See: NIST SP 800-185: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-185.pdf
 //
-<*
- @require types::is_int($typeof(SECURITY_LEVEL)) &&& (SECURITY_LEVEL == 128 ||| SECURITY_LEVEL == 256) : "SECURITY_LEVEL must be a positive integer value of 128 or 256."
-*>
-module std::hash::sha3::parallel_hash_internal { SECURITY_LEVEL } @private @if(env::NATIVE_THREADING);
+module std::hash::sha3::parallel_hash @if (env::NATIVE_THREADING);
 
 import std::hash::sha3::keccak;
 import std::hash::sha3::cshake;
 import std::hash::sha3::nist @public;
 
-import std::io;   // REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME
-import std::math;
-import std::thread;
-
-const RATE = keccak::rate(SECURITY_LEVEL);
-const INTERMEDIATE_XOF_SIZE = SECURITY_LEVEL >> 2;   // 128 - 32 / 256 - 64
-
-const MAX_THREADS = 64;
-macro clamp_threads(amount) => math::clamp(amount, 1, MAX_THREADS);
+import std::io;   // TODO: REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME
+import std::math, std::thread;
 
 const MAX_BLOCK_SIZE = 128 * 1024 * 1024;   // 128 MiB
+const MAX_THREADS = 64;
+
+macro clamp_threads(amount) => math::clamp(amount, 1, MAX_THREADS);
 macro clamp_block_size(size) => math::clamp(size, 1, MAX_BLOCK_SIZE);
 
-macro char[*] apply_simple_cshake(char[] data) => cshake::xof(SECURITY_LEVEL, INTERMEDIATE_XOF_SIZE, data);
+macro char[*] apply_simple_cshake($security_level, char[] data) => cshake::xof($security_level, $security_level >> 2, data);
 
-struct ParallelHashContext
+struct ParallelHash @generic(SECURITY_LEVEL)
 {
 	inline CShake{SECURITY_LEVEL} c;
+	Allocator* allocator;
 	bool is_xof_mode;
 	bool is_padded;
 	usz block_size;
 	usz thread_count;
+	usz intermediate_xof_size;
 	char[] internal;   // handle leftovers; only ever updated by a single thread (ID 0)
 	usz offset;
 	uint128 total_len;
@@ -43,19 +38,76 @@ struct ParallelHashContext
 struct WorkerThreadContext @local
 {
 	usz thread_id;
-	ParallelHashContext* context;
+	void* context;
 	Allocator* allocator;
 	usz consume_len;
-    usz blocks;
+	usz blocks;
 	usz xof_count;
 	char[] data;
 	char[] out;
 }
 
+// Set to local scope because only 128 and 256 should ever be exposed.
+macro char[*] xof($security_level, $outlen_bytes, Allocator allocator, char[] data, usz block_size,
+	usz thread_count = 0, String optional_customization = "", bool $is_xof = true, bool sequential = false)
+{
+	char [$outlen_bytes] result;
+	xof_into($security_level, allocator, result[..], data, block_size, thread_count, optional_customization, $is_xof, sequential);
+	return result;
+}
+
+macro char[*] txof($security_level, $outlen_bytes, char[] data, usz block_size,
+	usz thread_count = 0, String optional_customization = "", bool $is_xof = true, bool sequential = false)
+	=> xof($security_level, $outlen_bytes, tmem, data, block_size, thread_count, optional_customization, $is_xof, sequential);
+
+macro hash($security_level, $outlen_bytes, Allocator allocator, char[] data, usz block_size,
+	usz thread_count = 0, String optional_customization = "", bool sequential = false)
+	=> xof($security_level, $outlen_bytes, allocator, data, block_size, thread_count, optional_customization, false, sequential);
+
+macro thash($security_level, $outlen_bytes, char[] data, usz block_size,
+	usz thread_count = 0, String optional_customization = "", bool sequential = false)
+	=> hash($security_level, $outlen_bytes, tmem, data, block_size, thread_count, optional_customization, sequential);
+
+macro void xof_into($security_level, Allocator allocator, char[] into, char[] data, usz block_size,
+	usz thread_count = 0, String optional_customization = "", bool $is_xof = true, bool sequential = false)
+{
+	ParallelHash{$security_level} c @noinit;
+	defer c.wipe();
+	c.init(allocator, block_size, optional_customization, $is_xof, thread_count);
+	c.update(data, force_sequential: sequential);
+	c.final(into);
+}
+
+macro void txof_into($security_level, char[] into, char[] data, usz block_size,
+	usz thread_count, String optional_customization = "", bool $is_xof = true, bool sequential = false)
+	=> xof_into($security_level, tmem, into, data, block_size, thread_count, optional_customization, $ix_xof, sequential);
+
+macro hash_into($security_level, Allocator allocator, char[] into, char[] data, usz block_size,
+	usz thread_count = 0, String optional_customization = "", bool sequential = false)
+	=> xof_into($security_level, allocator, into, data, block_size, thread_count, optional_customization, false, sequential);
+
+macro thash_into($security_level, char[] into, char[] data, usz block_size,
+	usz thread_count = 0, String optional_customization = "", bool sequential = false)
+	=> hash_into($security_level, tmem, into, data, block_size, thread_count, optional_customization, sequential);
+
+// The XOF variant of ParallelHash uses a `right_encode(0)` at the end of the input stream.
+//   This causes the output value to be completely different and not dependent on the length of the output buffer.
+//   To better understand this, or to see the reference, search for NIST SP 800-185.
+struct ParallelHashXOF @generic(SECURITY_LEVEL)
+{
+	inline ParallelHash{SECURITY_LEVEL} ph;
+}
+
+macro void ParallelHashXOF.init(&self, Allocator allocator, usz block_size = MAX_BLOCK_SIZE >> 3, String optional_customization = "", usz thread_count = 0)
+	=> self.ph.init(allocator, block_size, optional_customization, true, thread_count);
+
+macro void ParallelHashXOF.tinit(&self, usz block_size = MAX_BLOCK_SIZE >> 3, String optional_customization = "", usz thread_count = 0)
+	=> self.init(tmem, block_size, optional_customization, thread_count);
+
 <*
  @require block_size > 0 : "The requested block size cannot be zero"
 *>
-fn void ParallelHashContext.init(&self, Allocator allocator, usz block_size = MAX_BLOCK_SIZE >> 3, String optional_customization = "", bool is_xof_mode = false, usz thread_count = 0)
+fn void ParallelHash.init(&self, Allocator allocator, usz block_size = MAX_BLOCK_SIZE >> 3, String optional_customization = "", bool is_xof_mode = false, usz thread_count = 0)
 {
 	if (!thread_count)   // thread count not explicitly specified
 	{
@@ -63,9 +115,11 @@ fn void ParallelHashContext.init(&self, Allocator allocator, usz block_size = MA
 	}
 
 	*self = {
+		.allocator = &allocator,
 		.is_xof_mode = is_xof_mode,
 		.block_size = clamp_block_size(block_size),
 		.thread_count = clamp_threads(thread_count),
+		.intermediate_xof_size = SECURITY_LEVEL >> 2,
 	};
 	self.internal = allocator::new_array(allocator, char, self.block_size);
 
@@ -74,12 +128,15 @@ fn void ParallelHashContext.init(&self, Allocator allocator, usz block_size = MA
 	self.c.update(nist::encode_length(NistEncodingType.LEFT, self.block_size, true));
 }
 
+macro void ParallelHash.tinit(&self, usz block_size = MAX_BLOCK_SIZE >> 3, String optional_customization = "", bool is_xof_mode = false, usz thread_count = 0)
+	=> self.init(tmem, block_size, optional_customization, is_xof_mode, thread_count);
+
 // This is the more distinct feature of ParallelHash: inputs are domain-separated.
 //
 // So, calling `th.update("abc")` then `th.update("def")` produces a ***DIFFERENT HASH***
 //   than calling `th.update("ab")` then `th.update("cdef")`.
 //
-fn void ParallelHashContext.update(&self, Allocator allocator, char[] data, bool force_sequential = false)
+fn void ParallelHash.update(&self, char[] data, bool force_sequential = false)
 {
 	// note : TODO : ILLEGAL to call `update` after a first squeeze or `final`
 
@@ -104,7 +161,7 @@ fn void ParallelHashContext.update(&self, Allocator allocator, char[] data, bool
 
 			if (self.offset < self.block_size) return;   // waiting for more or 'final'
 
-			self.c.update(apply_simple_cshake(self.internal[..])[..]);
+			self.c.update(apply_simple_cshake(SECURITY_LEVEL, self.internal[..])[..]);
 			self.offset = 0;
 
 			if (!data.len) return;
@@ -115,24 +172,24 @@ fn void ParallelHashContext.update(&self, Allocator allocator, char[] data, bool
 	{
 		for (; data.len >= self.block_size; data = data[self.block_size..])
 		{
-			self.c.update(apply_simple_cshake(data[:self.block_size])[..]);
+			self.c.update(apply_simple_cshake(SECURITY_LEVEL, data[:self.block_size])[..]);
 		}
 
-		if (data.len > 0) self.c.update(apply_simple_cshake(data[..])[..]);
+		if (data.len > 0) self.c.update(apply_simple_cshake(SECURITY_LEVEL, data[..])[..]);
 
 		self.total_len += data.len;
 		return;
 	}
 
 	// start by allocating the necessary threading resources, even if they won't all be used
-	Thread[] workers = allocator::new_array(allocator, Thread, self.thread_count);
-	defer allocator::free(allocator, workers.ptr);
+	Thread[] workers = allocator::new_array(*self.allocator, Thread, self.thread_count);
+	defer allocator::free(*self.allocator, workers.ptr);
 
-	WorkerThreadContext[] contexts = allocator::new_array(allocator, WorkerThreadContext, self.thread_count);
+	WorkerThreadContext[] contexts = allocator::new_array(*self.allocator, WorkerThreadContext, self.thread_count);
 	defer
 	{
-		foreach (ctx : contexts) if (ctx.out.ptr) allocator::free(allocator, ctx.out.ptr);   // free the returned byte array
-		allocator::free(allocator, contexts.ptr);
+		foreach (ctx : contexts) if (ctx.out.ptr) allocator::free(*self.allocator, ctx.out.ptr);   // free the returned byte array
+		allocator::free(*self.allocator, contexts.ptr);
 	}
 
 	// round-robin distribute each thread block off the data length
@@ -164,18 +221,18 @@ io::eprintfn("BLOCKS %d", blocks);
 		contexts[i - 1] = (WorkerThreadContext){
 			.thread_id = i - 1,
 			.context = self,
-			.allocator = &allocator,
+			.allocator = self.allocator,
 			// .consume_len = 0,   DO NOT SET THIS HERE, IT WAS SET ABOVE
-            .blocks = blocks,
+			.blocks = blocks,
 			.xof_count = 0,
 			.data = passed_data,
-			.out = allocator::new_array(allocator, char, INTERMEDIATE_XOF_SIZE * blocks),
+			.out = allocator::new_array(*self.allocator, char, self.intermediate_xof_size * blocks),
 		};
 io::eprintfn("NEW CONTEXT: id %d, %d bytes, %d clen, %d blocks", contexts[i-1].thread_id, contexts[i-1].data.len, to_consume, blocks);
 
 		data_offset += to_consume;
 
-		workers[i - 1].create(&threaded_update, &contexts[i - 1])!!;   // go!
+		workers[i - 1].create(&threaded_update{SECURITY_LEVEL}, &contexts[i - 1])!!;   // go!
 		self.total_len += to_consume;
 	}
 	assert(data.len == data_offset, "Not all data was collected into the thread pool; cannot proceed");
@@ -186,7 +243,7 @@ io::eprintfn("NEW CONTEXT: id %d, %d bytes, %d clen, %d blocks", contexts[i-1].t
 	{
 // foreach (c : t.out) io::eprintf("%02x", c); io::eprintn("");
 		// fold all produced XOF chains into the main context's XOF chain
-        for (usz i = 0; i < t.blocks; i++) self.c.update(t.out[i * INTERMEDIATE_XOF_SIZE  : INTERMEDIATE_XOF_SIZE]);
+		for (usz i = 0; i < t.blocks; i++) self.c.update(t.out[i * self.intermediate_xof_size  : self.intermediate_xof_size]);
 	}
 
 	if (@unlikely(remainder > 0))
@@ -204,17 +261,18 @@ io::eprintfn("NEW CONTEXT: id %d, %d bytes, %d clen, %d blocks", contexts[i-1].t
 
  @param [&inout] arg : "The thread context to operate with"
 *>
-fn int threaded_update(void* arg) @local
+fn int threaded_update(void* arg) @local @generic(SECURITY_LEVEL)
 {
 	WorkerThreadContext* ctx = (WorkerThreadContext*)arg;
-	ParallelHashContext* hash_ctx = ctx.context;
+	ParallelHash{SECURITY_LEVEL}* hash_ctx = ctx.context;
 	char[] data = ctx.data;
 
 	if (!data.len) return 0;
 
 	for (; data.len >= hash_ctx.block_size; data = data[hash_ctx.block_size..])
 	{
-		ctx.out[(ctx.xof_count++ * INTERMEDIATE_XOF_SIZE):INTERMEDIATE_XOF_SIZE] = apply_simple_cshake(data[:hash_ctx.block_size])[..];
+		ctx.out[(ctx.xof_count++ * hash_ctx.intermediate_xof_size):hash_ctx.intermediate_xof_size]
+			= apply_simple_cshake(SECURITY_LEVEL, data[:hash_ctx.block_size])[..];
 	}
 
 	return 0;
@@ -223,24 +281,24 @@ fn int threaded_update(void* arg) @local
 <*
  @require out.len > 0
 *>
-macro void ParallelHashContext.final(&self, Allocator allocator, char[] out)
+macro void ParallelHash.final(&self, char[] out)
 {
 	defer self.wipe();
-	defer allocator::free(allocator, self.internal.ptr);
+	defer allocator::free(*self.allocator, self.internal.ptr);
 	self.squeeze(out);
 }
 
 <*
  @require out.len > 0
 *>
-macro void ParallelHashContext.squeeze(&self, char[] out)
+macro void ParallelHash.squeeze(&self, char[] out)
 {
 	if (!self.is_padded)
 	{
 		if (self.offset > 0)
 		{
 			// process remaining buffer from Thread ID 0 first
-			self.c.update(apply_simple_cshake(self.internal[:self.offset])[..]);
+			self.c.update(apply_simple_cshake(SECURITY_LEVEL, self.internal[:self.offset])[..]);
 			self.offset = 0;
 		}
 
@@ -262,63 +320,3 @@ macro void ParallelHashContext.squeeze(&self, char[] out)
 
 	self.c.final(out);
 }
-
-
-// Names for the KMAC structures are a bit
-module std::hash::sha3::parallel_hash @if(env::NATIVE_THREADING);
-
-import std::io;   // REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME REMOVE ME
-
-import std::hash::sha3::parallel_hash_internal @public;
-
-const MAX_BLOCK_SIZE = 128 * 1024 * 1024;   // 128 MiB
-
-macro typeid parallel_hash($security_level) @local @const
-{
-	return (ParallelHashContext { $security_level }).typeid;
-}
-
-// Set to local scope because only 128 and 256 should ever be exposed.
-macro char[*] xof($security_level, $outlen_bytes, char[] data, usz block_size, usz thread_count, String optional_customization, bool $is_xof = false, bool sequential = false) @local
-{
-	char [$outlen_bytes] result;
-
-	$typefrom(parallel_hash($security_level)) c;
-	defer c.wipe();
-
-	c.init(mem, block_size, optional_customization, $is_xof, thread_count);
-	c.update(mem, data, force_sequential: sequential);
-	c.final(mem, result[..]);
-
-	return result;
-}
-
-alias ParallelHash128 = $typefrom(parallel_hash(128));
-alias ParallelHash256 = $typefrom(parallel_hash(256));
-
-// The XOF variant of ParallelHash uses a `right_encode(0)` at the end of the input stream.
-//   This causes the output value to be completely different and not dependent on the length of the output buffer.
-//   To better understand this, or to see the reference, search for NIST SP 800-185.
-struct ParallelHashXOF128
-{
-	inline $typefrom(parallel_hash(128)) ph;
-}
-fn void ParallelHashXOF128.init(&self, usz block_size = MAX_BLOCK_SIZE >> 3, String optional_customization = "", bool is_xof_mode = false, usz thread_count = 0)
-	=> self.ph.init(mem, block_size, optional_customization, is_xof_mode, thread_count) @inline;
-
-struct ParallelHashXOF256
-{
-	inline $typefrom(parallel_hash(256)) ph;
-}
-fn void ParallelHashXOF256.init(&self, usz block_size = MAX_BLOCK_SIZE >> 3, String optional_customization = "", bool is_xof_mode = false, usz thread_count = 0)
-	=> self.ph.init(mem, block_size, optional_customization, is_xof_mode, thread_count) @inline;
-
-macro char[*] hash_128($outlen_bytes, char[] data, usz block_size = MAX_BLOCK_SIZE >> 3, usz thread_count = 0, String c = "", bool sequential = false)
-	=> xof(128, $outlen_bytes, data, block_size, thread_count, c, sequential: sequential) @inline;
-macro char[*] hash_256($outlen_bytes, char[] data, usz block_size = MAX_BLOCK_SIZE >> 3, usz thread_count = 0, String c = "", bool sequential = false)
-	=> xof(256, $outlen_bytes, data, block_size, thread_count, c, sequential: sequential) @inline;
-
-macro char[*] xof_128($outlen_bytes, char[] data, usz block_size = MAX_BLOCK_SIZE >> 3, usz thread_count = 0, String c = "", bool sequential = false)
-	=> xof(128, $outlen_bytes, data, block_size, thread_count, c, true, sequential: sequential) @inline;
-macro char[*] xof_256($outlen_bytes, char[] data, usz block_size = MAX_BLOCK_SIZE >> 3, usz thread_count = 0, String c = "", bool sequential = false)
-	=> xof(256, $outlen_bytes, data, block_size, thread_count, c, true, sequential: sequential) @inline;
