@@ -10,10 +10,10 @@
 @require F % 200 == 0 : `Keccak F must be a multiple of 200.`
 @require OUTPUT_BITS > 0 &&& OUTPUT_BITS * 2 < F &&& OUTPUT_BITS % 8 == 0 : `Invalid output bit length. Must be a multiple of 8, less than (F/2), and non-zero.`
 *>
-module std::hash::sha3::keccak_internal { F, OUTPUT_BITS } @private;
+module std::crypto::keccak_internal { F, OUTPUT_BITS } @private;
 
 import std::math;
-import std::hash::sha3::keccak @public;
+import std::crypto::keccak @public;
 
 const CAPACITY = OUTPUT_BITS * 2;
 const BLOCK_BYTES = F / 8;
@@ -214,9 +214,9 @@ fn void KeccakContext.round(&self, ulong rc) @local
 
 
 // Declare Keccak-specific hashing contexts and methods.
-module std::hash::sha3::keccak;
+module std::crypto::keccak;
 
-import std::hash::sha3::keccak_internal @public;
+import std::crypto::keccak_internal @public;
 
 const ulong[24] RC @private = {   // round constants
 	0x0000_0000_0000_0001,  0x0000_0000_0000_8082,  0x8000_0000_0000_808a,  0x8000_0000_8000_8000,

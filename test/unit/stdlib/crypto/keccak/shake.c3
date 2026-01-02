@@ -1,10 +1,9 @@
 // Copyright (c) 2025-2026 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module sha3::shake_tests @test;
+module keccak_test::shake @test;
 
-import sha3::tests_common;
-import std::hash::sha3::shake;
+import std::crypto::shake;
 
 
 // See: https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/shakebytetestvectors.zip
@@ -103,7 +102,7 @@ fn void shake_simple()
 		},
 	};
 
-	foreach (i, v : tests_common::SIMPLE_VECTORS)
+	foreach (i, v : keccak_test::SIMPLE_VECTORS)
 	{
 		test::@check(shake::xof(128, 16, v)[..]  == expected[i][0], `128(16): Failed on vector "%s".`, v);
 		test::@check(shake::xof(128, 256, v)[..] == expected[i][1], `128(256): Failed on vector "%s".`, v);
@@ -161,7 +160,7 @@ fn void shake_interval()
 
 fn void shake_streamed()
 {
-	String s = tests_common::STREAM_VECTOR;
+	String s = keccak_test::STREAM_VECTOR;
 
 	Shake{128} s1; s1.init();
 	Shake{128} s2; s2.init();
@@ -186,7 +185,7 @@ fn void shake_streamed()
 
 fn void shake_large() @if($feature(SLOW_TESTS)) => @pool()
 {
-	char[] bigboi = tests_common::get_bigboi();
+	char[] bigboi = keccak_test::get_bigboi();
 
 	String[] expected = {
 		x'9d222c79c4ff9d092cf6ca86143aa411',

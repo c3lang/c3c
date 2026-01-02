@@ -1,10 +1,9 @@
 // Copyright (c) 2025-2026 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module sha3::cshake_tests @test;
+module keccak_test::cshake @test;
 
-import sha3::tests_common;
-import std::hash::sha3::cshake;
+import std::crypto::cshake;
 
 
 // See: https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/cSHAKE-128-1.0
@@ -37,7 +36,7 @@ fn void cshake_empty()
 			x"6e9ab01895bcf881ad5930bf8c15a0e5b79f10e6177b981f42c09c9ad0b26d20c82f7cbffb01833e51774e3dade3c22602985717506c7ba2a98c4aa305014c2255749b000aa14df3903ffd2f1d72c3be7f0bb6549a1fec4f992f4eaaa56dda7f3ac6fc7320bd37b2837578bbafcea7fca2ae20dfffdeb4e61dce20b30c0e23f0eb9b2abded87378037968bd269550b523a2bb82a97544719feac3574ca1ea5406f51496f168ffc20f855e9a937878c7386f836ca2b889e56f5fa530fe2a7cc444ee165a34295439e44ffddf690b6637f977b608e02e7eef0933ce6f06bcbbdec933dcd7b69092c7787e8480606bb647bc3e5d747843f9133a3cb5ee90c53ee2a",
 		}
 	};
-	$foreach $j, $c : tests_common::CUSTOMIZATION_STRINGS:
+	$foreach $j, $c : keccak_test::CUSTOMIZATION_STRINGS:
 		test::@check(cshake::xof(128, 256, "", $c)[..] == expected[0][$j]);
 		test::@check(cshake::xof(256, 256, "", $c)[..] == expected[1][$j]);
 	$endforeach
@@ -94,9 +93,9 @@ fn void cshake_simple()
 		},
 	};
 
-	foreach (i, v : tests_common::SIMPLE_VECTORS)
+	foreach (i, v : keccak_test::SIMPLE_VECTORS)
 	{
-		foreach (j, w : tests_common::CUSTOMIZATION_STRINGS)
+		foreach (j, w : keccak_test::CUSTOMIZATION_STRINGS)
 		{
 			test::@check(cshake::xof(128, 64, v, w)[..] == expected[i][(j*2) + 0], `128(64): Failed on vector "%s" (c: "%s").`, v, w);
 			test::@check(cshake::xof(256, 64, v, w)[..] == expected[i][(j*2) + 1], `256(64): Failed on vector "%s" (c: "%s").`, v, w);
@@ -154,7 +153,7 @@ fn void cshake_interval()
 	// 'a'-array of lengths [1, 65, 129, 193, 257]
 	for (usz i = 1, usz j = 0; i <= 257; i += 64, ++j)
 	{
-		foreach (k, w : tests_common::CUSTOMIZATION_STRINGS)
+		foreach (k, w : keccak_test::CUSTOMIZATION_STRINGS)
 		{
 			test::@check(cshake::xof(128, 64, x[:i], w)[..]  == expected[j][(k*2) + 0], "128(16): Failed on length %d.", i);
 			test::@check(cshake::xof(256, 64, x[:i], w)[..]  == expected[j][(k*2) + 1], "256(16): Failed on length %d.", i);
@@ -164,12 +163,12 @@ fn void cshake_interval()
 
 fn void cshake_streamed()
 {
-	String s = tests_common::STREAM_VECTOR;
+	String s = keccak_test::STREAM_VECTOR;
 
-	CShake{128} s1; s1.init(NONE, tests_common::CUSTOMIZATION_STRINGS[2]);
-	CShake{128} s2; s2.init(NONE, tests_common::CUSTOMIZATION_STRINGS[2]);
-	CShake{256} s3; s3.init(NONE, tests_common::CUSTOMIZATION_STRINGS[2]);
-	CShake{256} s4; s4.init(NONE, tests_common::CUSTOMIZATION_STRINGS[2]);
+	CShake{128} s1; s1.init(NONE, keccak_test::CUSTOMIZATION_STRINGS[2]);
+	CShake{128} s2; s2.init(NONE, keccak_test::CUSTOMIZATION_STRINGS[2]);
+	CShake{256} s3; s3.init(NONE, keccak_test::CUSTOMIZATION_STRINGS[2]);
+	CShake{256} s4; s4.init(NONE, keccak_test::CUSTOMIZATION_STRINGS[2]);
 
 	s1.update(s[:20]); s1.update(s[20:10]); s1.update(s[30:1]); s1.update(s[31..]);
 	s2.update(s[:20]); s2.update(s[20:10]); s2.update(s[30:1]); s2.update(s[31..]);
@@ -209,8 +208,8 @@ fn void cshake_large() @if ($feature(SLOW_TESTS))
 			x"d69e9fab0fe8b6fc7c2bcf56cce5fc083db30767bc12d5ac482f5b4302068f2c1b2fa92327d30abdfec106af333fac39a05e219f7e8a8aa94dd2a7e1d146385a5b2e30caf16de636e616954b227a0e8306782b5f4ef1e001a1e7da4b00705f3d7577a239beb03ea53833bfcb6ff835634f92c5c4dac629e8048a09a6987eb3737a98285ac51d26b966f1966be9aab3fcfa83bde61aa03a5264019d7e9bd845056257b1e73ccd5a6058aa982d0ec5fec7b9ba0325a4a2b4670fa285e83abe2de9c86f92a072e688baa038e71c0c3a5ecfe21457eb52db08952468f1b91595de420a954062ea3c9b20cf9e689c6421cdc83a7096bdbd8cbde5e469c5618b91456b",
 		},
 	};
-	char[] bigboi = tests_common::get_bigboi();
-	foreach (i ,v : tests_common::CUSTOMIZATION_STRINGS)
+	char[] bigboi = keccak_test::get_bigboi();
+	foreach (i ,v : keccak_test::CUSTOMIZATION_STRINGS)
 	{
 		test::eq(cshake::xof(128, 16,  bigboi[..], v)[..], expected[i][0]);
 		test::eq(cshake::xof(128, 256, bigboi[..], v)[..], expected[i][1]);

@@ -1,10 +1,9 @@
 // Copyright (c) 2025-2026 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module sha3::sha3_tests @test;
+module keccak_test::sha3 @test;
 
-import sha3::tests_common;
-import std::hash::sha3::sha3;
+import std::crypto::sha3;
 
 
 // See: https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha-3bytetestvectors.zip
@@ -91,7 +90,7 @@ fn void sha3_simple()
 			x"ff4c4824e28345ba460b358514dd161dc9992b33e9e419035991bf25cd7b66b67d1acc5f28238c3f0e5a2bfd28c1133e46dfcc565cbcb95a5876c9fcdc65df64",
 		},
 	};
-	foreach (i, v : tests_common::SIMPLE_VECTORS)
+	foreach (i, v : keccak_test::SIMPLE_VECTORS)
 	{
 		$foreach $i, $sz : sha3::DIGEST_SIZES:
 			test::@check(sha3::hash{$sz}(v[..])[..] == expected[i][$i][..], @sprintf("%s: Hash mismatch.", $sz));
@@ -151,7 +150,7 @@ fn void sha3_streamed()
 		x'30a9e008d31e57658633ef85418081d0cd9b7f5b9bcad88ee4cb80e712184495fb944a2f9b6e42904e70b7085824b3f2',
 		x'f21389f669b658ddb19ef62c284aa67e4b079f25d16abc9355d2e62d1e1ffc8f2304390fd3ce0b0a0a6566db6db8d9e88897b4ffd25fa88de786bebdd88a3455',
 	};
-	static String s = tests_common::STREAM_VECTOR;
+	static String s = keccak_test::STREAM_VECTOR;
 	$foreach $i, $sz : sha3::DIGEST_SIZES:
 	{
 		char[$sz / 8] hash;
@@ -173,7 +172,7 @@ fn void sha3_large() @if($feature(SLOW_TESTS))
 		x'eee9e24d78c1855337983451df97c8ad9eedf256c6334f8e948d252d5e0e76847aa0774ddb90a842190d2c558b4b8340',
 		x'3c3a876da14034ab60627c077bb98f7e120a2a5370212dffb3385a18d4f38859ed311d0a9d5141ce9cc5c66ee689b266a8aa18ace8282a0e0db596c90b0a7b87',
 	};
-	char[] bigboi = tests_common::get_bigboi();
+	char[] bigboi = keccak_test::get_bigboi();
 	$foreach $i, $sz : sha3::DIGEST_SIZES:
 		test::@check(sha3::hash{$sz}(bigboi[..])[..] == expected[$i]);
 	$endforeach

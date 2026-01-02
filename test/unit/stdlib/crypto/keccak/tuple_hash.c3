@@ -1,10 +1,9 @@
 // Copyright (c) 2025-2026 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module sha3::tuple_hash_tests @test;
+module keccak_test::tuple_hash @test;
 
-import sha3::tests_common;
-import std::hash::sha3::tuple_hash;
+import std::crypto::tuple_hash;
 
 
 fn void output_length_changes_hash_but_not_xof()

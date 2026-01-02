@@ -10,9 +10,9 @@
 //   become very confusing to maintainers. It's not worth folding this into SHAKE to save a few
 //   extra lines.
 //
-module std::hash::sha3::turbo_shake;
+module std::crypto::turbo_shake;
 
-import std::hash::sha3::shake;
+import std::crypto::shake;
 
 const DEFAULT_DELIMITER = 0x1f;
 const DEFAULT_ROUNDS = 12;

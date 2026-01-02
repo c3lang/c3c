@@ -1,10 +1,9 @@
 // Copyright (c) 2025-2026 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module sha3::kmac_tests @test;
+module keccak_test::kmac @test;
 
-import sha3::tests_common;
-import std::hash::sha3::kmac;
+import std::crypto::kmac;
 
 
 // See: https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/KMAC-128-1.0
@@ -45,14 +44,14 @@ fn void kmac_empty()
 			x"2ac55a1c1d837c9a75db0a77c4902d49b62fb8d2fafd852956afc412f6be4fa6f609a9d8b07eca54808e81c5ad48337a276b3c34506a25fced52d0192e6a175bf89f794376feca58769dd5a279dbd214dae10a12868e17c075aa14b4d8344ec178bad90caee667086365696098df971cdfae08053497a47631a0e2cb6b510580",
 		},
 	};
-	foreach (j, w : tests_common::CUSTOMIZATION_STRINGS)
+	foreach (j, w : keccak_test::CUSTOMIZATION_STRINGS)
 	{
-		test::@check(kmac::hash(128, 32,  tests_common::KMAC_KEYS[0], "", w)[..] == expected[j][0], "Hash mismatch: customization '%s'.", w);
-		test::@check(kmac::hash(128, 64,  tests_common::KMAC_KEYS[0], "", w)[..] == expected[j][1], "Hash mismatch: customization '%s'.", w);
-		test::@check(kmac::hash(128, 128, tests_common::KMAC_KEYS[0], "", w)[..] == expected[j][2], "Hash mismatch: customization '%s'.", w);
-		test::@check(kmac::hash(256, 32,  tests_common::KMAC_KEYS[0], "", w)[..] == expected[j][3], "Hash mismatch: customization '%s'.", w);
-		test::@check(kmac::hash(256, 64,  tests_common::KMAC_KEYS[0], "", w)[..] == expected[j][4], "Hash mismatch: customization '%s'.", w);
-		test::@check(kmac::hash(256, 128, tests_common::KMAC_KEYS[0], "", w)[..] == expected[j][5], "Hash mismatch: customization '%s'.", w);
+		test::@check(kmac::hash(128, 32,  keccak_test::KMAC_KEYS[0], "", w)[..] == expected[j][0], "Hash mismatch: customization '%s'.", w);
+		test::@check(kmac::hash(128, 64,  keccak_test::KMAC_KEYS[0], "", w)[..] == expected[j][1], "Hash mismatch: customization '%s'.", w);
+		test::@check(kmac::hash(128, 128, keccak_test::KMAC_KEYS[0], "", w)[..] == expected[j][2], "Hash mismatch: customization '%s'.", w);
+		test::@check(kmac::hash(256, 32,  keccak_test::KMAC_KEYS[0], "", w)[..] == expected[j][3], "Hash mismatch: customization '%s'.", w);
+		test::@check(kmac::hash(256, 64,  keccak_test::KMAC_KEYS[0], "", w)[..] == expected[j][4], "Hash mismatch: customization '%s'.", w);
+		test::@check(kmac::hash(256, 128, keccak_test::KMAC_KEYS[0], "", w)[..] == expected[j][5], "Hash mismatch: customization '%s'.", w);
 	}
 }
 
@@ -153,11 +152,11 @@ fn void kmac_simple()
 			},
 		}
 	};
-	foreach (i, v : tests_common::SIMPLE_VECTORS[:2])   // only check the first 2 vectors
+	foreach (i, v : keccak_test::SIMPLE_VECTORS[:2])   // only check the first 2 vectors
 	{
-		foreach (k, u : tests_common::KMAC_KEYS)
+		foreach (k, u : keccak_test::KMAC_KEYS)
 		{
-			foreach (j, w : tests_common::CUSTOMIZATION_STRINGS)
+			foreach (j, w : keccak_test::CUSTOMIZATION_STRINGS)
 			{
 				test::@check(kmac::hash(128, 32,  u, v, w)[..] == expected[i][k][(j*6) + 0], `128(32): Failed on vector "%s" (c: "%s").`, v, w);
 				test::@check(kmac::hash(128, 64,  u, v, w)[..] == expected[i][k][(j*6) + 1], `128(64): Failed on vector "%s" (c: "%s").`, v, w);
@@ -178,14 +177,14 @@ fn void kmac_simple()
 
 fn void kmac_streamed()
 {
-	String s = tests_common::STREAM_VECTOR;
+	String s = keccak_test::STREAM_VECTOR;
 
-	Kmac{128} s1; s1.init(tests_common::KMAC_KEYS[0], tests_common::CUSTOMIZATION_STRINGS[2]);
-	Kmac{128} s2; s2.init(tests_common::KMAC_KEYS[0], tests_common::CUSTOMIZATION_STRINGS[2]);
-	Kmac{128} s3; s3.init(tests_common::KMAC_KEYS[0], tests_common::CUSTOMIZATION_STRINGS[2]);
-	Kmac{256} s4; s4.init(tests_common::KMAC_KEYS[0], tests_common::CUSTOMIZATION_STRINGS[2]);
-	Kmac{256} s5; s5.init(tests_common::KMAC_KEYS[0], tests_common::CUSTOMIZATION_STRINGS[2]);
-	Kmac{256} s6; s6.init(tests_common::KMAC_KEYS[0], tests_common::CUSTOMIZATION_STRINGS[2]);
+	Kmac{128} s1; s1.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
+	Kmac{128} s2; s2.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
+	Kmac{128} s3; s3.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
+	Kmac{256} s4; s4.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
+	Kmac{256} s5; s5.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
+	Kmac{256} s6; s6.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
 
 	s1.update(s[:20]); s1.update(s[20:10]); s1.update(s[30:1]); s1.update(s[31..]);
 	s2.update(s[:20]); s2.update(s[20:10]); s2.update(s[30:1]); s2.update(s[31..]);
@@ -237,15 +236,15 @@ fn void kmac_large() @if ($feature(SLOW_TESTS))
 			x"6ae4d5e3fa66e95385f2581afc5731c11ffc43dcf0d4c7bdcc6e0bc84524f1c4e3841154e8957a45c2f5aa864a25b3fb72a80f911131690cf6a9f0154493fe494ea0ade1f5f2f378fa57017a64cddfa91d7cce56a2ed790acce1d439d93d315de2632cd41affab3e4de69ee7bffda603b4d5c3b7ca3445659fe14647b839e850",
 		},
 	};
-	char[] bigboi = tests_common::get_bigboi();
-	foreach (i, v : tests_common::CUSTOMIZATION_STRINGS)
+	char[] bigboi = keccak_test::get_bigboi();
+	foreach (i, v : keccak_test::CUSTOMIZATION_STRINGS)
 	{
-		test::@check(kmac::hash(128, 32,  tests_common::KMAC_KEYS[1], bigboi, v)[..] == expected[i][0], "Large hash mismatch, customization '%s'", v);
-		test::@check(kmac::hash(128, 64,  tests_common::KMAC_KEYS[1], bigboi, v)[..] == expected[i][1], "Large hash mismatch, customization '%s'", v);
-		test::@check(kmac::hash(128, 128, tests_common::KMAC_KEYS[1], bigboi, v)[..] == expected[i][2], "Large hash mismatch, customization '%s'", v);
-		test::@check(kmac::hash(256, 32,  tests_common::KMAC_KEYS[1], bigboi, v)[..] == expected[i][3], "Large hash mismatch, customization '%s'", v);
-		test::@check(kmac::hash(256, 64,  tests_common::KMAC_KEYS[1], bigboi, v)[..] == expected[i][4], "Large hash mismatch, customization '%s'", v);
-		test::@check(kmac::hash(256, 128, tests_common::KMAC_KEYS[1], bigboi, v)[..] == expected[i][5], "Large hash mismatch, customization '%s'", v);
+		test::@check(kmac::hash(128, 32,  keccak_test::KMAC_KEYS[1], bigboi, v)[..] == expected[i][0], "Large hash mismatch, customization '%s'", v);
+		test::@check(kmac::hash(128, 64,  keccak_test::KMAC_KEYS[1], bigboi, v)[..] == expected[i][1], "Large hash mismatch, customization '%s'", v);
+		test::@check(kmac::hash(128, 128, keccak_test::KMAC_KEYS[1], bigboi, v)[..] == expected[i][2], "Large hash mismatch, customization '%s'", v);
+		test::@check(kmac::hash(256, 32,  keccak_test::KMAC_KEYS[1], bigboi, v)[..] == expected[i][3], "Large hash mismatch, customization '%s'", v);
+		test::@check(kmac::hash(256, 64,  keccak_test::KMAC_KEYS[1], bigboi, v)[..] == expected[i][4], "Large hash mismatch, customization '%s'", v);
+		test::@check(kmac::hash(256, 128, keccak_test::KMAC_KEYS[1], bigboi, v)[..] == expected[i][5], "Large hash mismatch, customization '%s'", v);
 	}
 }
 
@@ -253,13 +252,13 @@ fn void kmac_successive_xof_operations_128()
 {
 	char[] expected = x"38742f2e6a0edf501ba625afed22fb6879d2ec0f10ee9012ac410b9f8bce51a5";
 
-	test::eq(kmac::xof(128, 32, tests_common::KMAC_KEYS[1], "i want to be sure this message wasn't tampered with", "!!!!!@@@@@#####$$$$$")[..], expected[..]);
+	test::eq(kmac::xof(128, 32, keccak_test::KMAC_KEYS[1], "i want to be sure this message wasn't tampered with", "!!!!!@@@@@#####$$$$$")[..], expected[..]);
 
 	// Now use the cryptographic XOF functionality to squeeze variable-length data out of SHAKE in .
 	//   We "squeeze" 8 bytes at a time, and the resulting value of the XOF, when concatenated, will match the expected value.
 	char[32] buf;
 	KmacXOF{128} k;
-	k.init(tests_common::KMAC_KEYS[1], "!!!!!@@@@@#####$$$$$");
+	k.init(keccak_test::KMAC_KEYS[1], "!!!!!@@@@@#####$$$$$");
 	k.update("i want to be sure this message wasn't tampered with");
 	k.squeeze(buf[0:8]);
 	k.squeeze(buf[8:8]);
@@ -273,13 +272,13 @@ fn void kmac_successive_xof_operations_256()
 {
 	char[] expected = x"f0b8525e66f4d3845848f198a57bd615057f66becd1ede603f6110a3f5e91e504d288267907c58f5aeb63d301455c515ab184a";
 
-	test::eq(kmac::xof(256, 51, tests_common::KMAC_KEYS[1], "i want to be sure this message wasn't tampered with", "!!!!!@@@@@#####$$$$$")[..], expected[..]);
+	test::eq(kmac::xof(256, 51, keccak_test::KMAC_KEYS[1], "i want to be sure this message wasn't tampered with", "!!!!!@@@@@#####$$$$$")[..], expected[..]);
 
 	// This one shows the even though we squeeze at odd intervals, or beyond the length of the original expected value,
 	//   the prefix will still match.
 	char[128] buf;
 	KmacXOF{256} k;
-	k.init(tests_common::KMAC_KEYS[1], "!!!!!@@@@@#####$$$$$");
+	k.init(keccak_test::KMAC_KEYS[1], "!!!!!@@@@@#####$$$$$");
 	k.update("i want to be sure this message wasn't tampered with");
 	k.squeeze(buf[0:7]);
 	k.squeeze(buf[7:13]);

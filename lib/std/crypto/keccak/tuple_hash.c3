@@ -4,11 +4,11 @@
 //
 // See: NIST SP 800-185: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-185.pdf
 //
-module std::hash::sha3::tuple_hash;
+module std::crypto::tuple_hash;
 
-import std::hash::sha3::keccak;
-import std::hash::sha3::cshake;
-import std::hash::sha3::nist @public;
+import std::crypto::keccak;
+import std::crypto::cshake;
+import std::crypto::keccak::nist @public;
 
 macro hash($security_level, $outlen_bytes, char[] data, char[]... extras, String optional_customization = "")
 	=> xof($security_level, $outlen_bytes, data, ...extras, optional_customization: optional_customization, $is_xof: false);

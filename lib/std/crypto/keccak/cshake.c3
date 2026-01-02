@@ -4,11 +4,11 @@
 //
 // See: NIST SP 800-185: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-185.pdf
 //
-module std::hash::sha3::cshake;
+module std::crypto::cshake;
 
-import std::hash::sha3::keccak;
-import std::hash::sha3::nist @public;
-import std::hash::sha3::shake;
+import std::crypto::keccak;
+import std::crypto::keccak::nist @public;
+import std::crypto::shake;
 
 const DEFAULT_DELIMITER = 0x04;
 const DEFAULT_ROUNDS = shake::DEFAULT_ROUNDS;

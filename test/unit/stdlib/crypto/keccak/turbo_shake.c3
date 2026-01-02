@@ -1,10 +1,10 @@
 // Copyright (c) 2025-2026 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module sha3::turbo_shake_tests @test;
+module keccak_test::turbo_shake @test;
 
-import sha3::tests_common;
-import std::hash::sha3::turbo_shake;
+import std::crypto::turbo_shake;
+
 import std::math;
 
 
@@ -100,7 +100,7 @@ fn void turbo_shake_simple()
 		},
 	};
 
-	foreach (i, v : tests_common::SIMPLE_VECTORS)
+	foreach (i, v : keccak_test::SIMPLE_VECTORS)
 	{
 		test::@check(turbo_shake::hash(128, 16, v)[..]  == expected[i][0], `128(16): Failed on vector "%s".`, v);
 		test::@check(turbo_shake::hash(128, 256, v)[..] == expected[i][1], `128(256): Failed on vector "%s".`, v);
@@ -158,7 +158,7 @@ fn void turbo_shake_interval()
 
 fn void turbo_shake_streamed()
 {
-	String s = tests_common::STREAM_VECTOR;
+	String s = keccak_test::STREAM_VECTOR;
 
 	TurboShake{128} s1; s1.init();
 	TurboShake{128} s2; s2.init();
@@ -190,7 +190,7 @@ fn void turbo_shake_large() @if ($feature(SLOW_TESTS))
 		x'3c7ded415bd33e955359fb9e9cfc376cf76fd1331d926030ac6926cf29b04621a8817e285cf387327e5922ef630096eed8a5187c3126a10df443deff3b6d8f49f8f774c4a511f489962592b471aa52b7356496ddd12f6b28d68fc8f8f2085881c1db89aae039c493b8c1cd8f70b6c14cfd2382763bedb3b363cde5694907f100e6f8ad9817e78e2a69e76ab2a0b808f798588fd4f08136cf4fe0b3f00679e3778c8b09ad2ab9177a8e2f4bcd44a613a6af4a73041b3637baf344197d380931ee93fd01585a7538421bcad874aa2667d3fee28bcd3fa048a5fbd8faaaf3fe98f4f439fd38f58d372bfb755001a5d34302e661669eaba30381be9bd6d80c8b3436',
 	};
 
-	char[] bigboi = tests_common::get_bigboi();
+	char[] bigboi = keccak_test::get_bigboi();
 	test::eq(turbo_shake::xof(128, 16,  bigboi[..])[..], expected[0]);
 	test::eq(turbo_shake::xof(128, 256, bigboi[..])[..], expected[1]);
 	test::eq(turbo_shake::xof(256, 16,  bigboi[..])[..], expected[2]);

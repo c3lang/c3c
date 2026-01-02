@@ -2,9 +2,9 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 //
-module std::hash::sha3::sha3;
+module std::crypto::sha3;
 
-import std::hash::sha3::keccak;
+import std::crypto::keccak;
 
 const usz[] DIGEST_SIZES = keccak::SECURITY_LEVELS;
 const DEFAULT_DELIMITER = 0x06;
@@ -30,8 +30,4 @@ struct Sha3 @generic(HASH_BITS)
 	inline Keccak{HASH_BITS} k;
 }
 
-fn void Sha3.init(&self) @inline
-{
-	mem::zero_volatile(@as_char_view(*self));
-	self.k.init(runtime_delimiter: DEFAULT_DELIMITER);
-}
+fn void Sha3.init(&self) @inline => self.k.init(runtime_delimiter: DEFAULT_DELIMITER);

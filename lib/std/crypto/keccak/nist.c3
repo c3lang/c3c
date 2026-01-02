@@ -5,7 +5,7 @@
 // See: NIST SP 800-185: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-185.pdf
 //   Document Section 2.3.1.
 //
-module std::hash::sha3::nist @private;
+module std::crypto::keccak::nist @private;
 
 import std::math;
 

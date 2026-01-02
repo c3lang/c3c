@@ -2,9 +2,9 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 //
-module std::hash::sha3::shake;
+module std::crypto::shake;
 
-import std::hash::sha3::keccak;
+import std::crypto::keccak;
 
 const usz[] USABLE_LEVELS = { 128, 256 };
 

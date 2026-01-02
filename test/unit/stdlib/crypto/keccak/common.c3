@@ -1,7 +1,7 @@
 // Copyright (c) 2025-2026 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module sha3::tests_common;
+module keccak_test;
 
 // Should be common to every SHA-3 test module. See 'generator.py'
 const String[] SIMPLE_VECTORS =

@@ -1,10 +1,9 @@
 // Copyright (c) 2025-2026 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module sha3::keccak_tests @test;
+module keccak_test::keccak @test;
 
-import sha3::tests_common;
-import std::hash::sha3::keccak @public;
+import std::crypto::keccak @public;
 
 
 // There doesn't seem to be any widely available source of Keccak-specific standardized tests.
@@ -55,7 +54,7 @@ fn void keccak_simple()
 			x"93a294f9e80c2d0bf26d0e56d333dce9c0523effb8fdba078ef3a6faaa5481d8b86f0ef79af44b646164e8c9bda01fef01bac3a30f818dae3597b6faacabc78a",
 		},
 	};
-	foreach (i, v : tests_common::SIMPLE_VECTORS)
+	foreach (i, v : keccak_test::SIMPLE_VECTORS)
 	{
 		$foreach $i, $sz : keccak::SECURITY_LEVELS:
 			test::@check(keccak::hash($sz, 100, v[..])[:$sz/8] == expected[i][$i][..]);
@@ -115,7 +114,7 @@ fn void keccak_streamed()
 		x'b36318ba1ed978d9df23f615958967c0b91d35039f02831dee289055f9fe0a4f6aa1118942b073b1b81f43bc4f2fd4a5',
 		x'9ab3c2bd4f3d410e717f8f43ce0842ebb432a5d9bb9e669c95728694e25c3cf3e432a99717187c00ecc89a68dc77fd319c17d085bcc21a7a1104ce1c1e309eda',
 	};
-	static String s = tests_common::STREAM_VECTOR;
+	static String s = keccak_test::STREAM_VECTOR;
 	$foreach $i, $sz : keccak::SECURITY_LEVELS:
 	{
 		char[$sz / 8] result;
@@ -137,7 +136,7 @@ fn void keccak_large() @if ($feature(SLOW_TESTS))
 		x"0c8324e1ebc182822c5e2a086cac07c2fe00e3bce61d01ba8ad6b71780e2dec5fb89e5ae90cb593e57bc6258fdd94e17",
 		x"5cf53f2e556be5a624425ede23d0e8b2c7814b4ba0e4e09cbbf3c2fac7056f61e048fc341262875ebc58a5183fea651447124370c1ebf4d6c89bc9a7731063bb",
 	};
-	char[] bigboi = tests_common::get_bigboi();
+	char[] bigboi = keccak_test::get_bigboi();
 	$foreach $i, $sz : keccak::SECURITY_LEVELS:
 		test::@check(keccak::hash($sz, $sz / 8, bigboi[..])[..] == expected[$i]);
 	$endforeach
