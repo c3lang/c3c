@@ -148,15 +148,16 @@ fn void ParallelHash.update(&self, char[] data, bool force_sequential = false)
 	//   from each thread are collapsed and free for each call to `update`.
 
 	if (!data.len) return;
+	self.total_len += data.len;
 
-	if (@unlikely(self.offset > 0))
+	if (self.offset > 0)
 	{
 		usz left = min(self.block_size - self.offset, data.len);
 
 		if (left > 0)
 		{
-			self.offset += left;
 			self.internal[self.offset:left] = data[:left];
+			self.offset += left;
 			data = data[left..];
 
 			if (self.offset < self.block_size) return;   // waiting for more or 'final'
@@ -168,91 +169,69 @@ fn void ParallelHash.update(&self, char[] data, bool force_sequential = false)
 		}
 	}
 
-	if (force_sequential || data.len < self.block_size)   // less than a block was received? don't thread at all
+	if (force_sequential || data.len < self.block_size * 2)   // less than two blocks was received? don't thread at all
 	{
 		for (; data.len >= self.block_size; data = data[self.block_size..])
 		{
 			self.c.update(apply_simple_cshake(SECURITY_LEVEL, data[:self.block_size])[..]);
 		}
+	}
+	else
+	{
+		// start by allocating the necessary threading resources, even if they won't all be used
+		Thread[] workers = allocator::new_array(*self.allocator, Thread, self.thread_count);
+		defer allocator::free(*self.allocator, workers.ptr);
 
-		if (data.len > 0) self.c.update(apply_simple_cshake(SECURITY_LEVEL, data[..])[..]);
+		WorkerThreadContext[] contexts = allocator::new_array(*self.allocator, WorkerThreadContext, self.thread_count);
+		defer
+		{
+			foreach (ctx : contexts) if (ctx.out.ptr) allocator::free(*self.allocator, ctx.out.ptr);   // free the returned byte array
+			allocator::free(*self.allocator, contexts.ptr);
+		}
 
-		self.total_len += data.len;
-		return;
+		// round-robin distribute each thread block off the data length
+		//   if at any point the length is below the block size, punt it to thread 0
+		usz remainder = data.len;
+		for (usz i = 0; remainder >= self.block_size; i++, remainder -= self.block_size)
+		{
+			contexts[i % self.thread_count].consume_len += self.block_size;
+		}
+		// contexts[0].consume_len += remainder;
+
+		// start each worker. threads work TOP-DOWN, meaning the workers[self.thread_count - 1] thread is handling the
+		//   START of the incoming data and thread 0 is handling the tail end of it (as well as handling uneven inputs)
+		for (usz i = self.thread_count; i > 0; i--)
+		{
+			usz to_consume = contexts[i - 1].consume_len;
+			usz blocks = to_consume / self.block_size;
+
+			contexts[i - 1] = (WorkerThreadContext){
+				.thread_id = i - 1,
+				.context = self,
+				.allocator = self.allocator,
+				.blocks = blocks,
+				.xof_count = 0,
+				.data = data[:to_consume],
+				.out = blocks > 0 ? allocator::new_array(*self.allocator, char, self.intermediate_xof_size * blocks) : {},
+			};
+			workers[i - 1].create(&threaded_update{SECURITY_LEVEL}, &contexts[i - 1])!!;   // go!
+			data = data[to_consume..];
+		}
+		foreach_r (w : workers) w.join()!!;   // await all workers
+		foreach_r (&t : contexts[:self.thread_count])
+		{
+			// fold all produced XOF chains into the main context's XOF chain
+			for (usz i = 0; i < t.blocks; i++) self.c.update(t.out[i * self.intermediate_xof_size  : self.intermediate_xof_size]);
+		}
+
+		assert(data.len == remainder, "Not all input data was accounted for; cannot proceed");
 	}
 
-	// start by allocating the necessary threading resources, even if they won't all be used
-	Thread[] workers = allocator::new_array(*self.allocator, Thread, self.thread_count);
-	defer allocator::free(*self.allocator, workers.ptr);
-
-	WorkerThreadContext[] contexts = allocator::new_array(*self.allocator, WorkerThreadContext, self.thread_count);
-	defer
+	if (data.len > 0)
 	{
-		foreach (ctx : contexts) if (ctx.out.ptr) allocator::free(*self.allocator, ctx.out.ptr);   // free the returned byte array
-		allocator::free(*self.allocator, contexts.ptr);
-	}
-
-	// round-robin distribute each thread block off the data length
-	//   if at any point the length is below the block size, punt it to thread 0
-	usz remainder = data.len;
-	for (usz i = 0; remainder >= self.block_size; i++, remainder -= self.block_size)
-	{
-io::printfn("Add block to context #%d", i % self.thread_count);
-		contexts[i % self.thread_count].consume_len += self.block_size;
-	}
-io::printfn("REM %d", remainder);
-	contexts[0].consume_len += remainder;
-
-	// start each worker. threads work TOP-DOWN, meaning the workers[self.thread_count - 1] thread is handling the
-	//   START of the incoming data and thread 0 is handling the tail end of it (as well as handling uneven inputs)
-	usz data_offset = 0;
-	for (usz i = self.thread_count; i > 0; --i)
-	{
-		usz to_consume = contexts[i - 1].consume_len;
-io::printfn("DATA_OFFSET %d // TO_CONSUME %d", data_offset, to_consume);
-		char[] passed_data = data[data_offset:to_consume];
-// foreach (c : passed_data) io::eprintf("%02x", c); io::eprintn("");
-
-		usz blocks = (i - 1) == 0
-			? ((to_consume + self.offset) / self.block_size)
-			: (to_consume / self.block_size);
-io::eprintfn("BLOCKS %d", blocks);
-
-		contexts[i - 1] = (WorkerThreadContext){
-			.thread_id = i - 1,
-			.context = self,
-			.allocator = self.allocator,
-			// .consume_len = 0,   DO NOT SET THIS HERE, IT WAS SET ABOVE
-			.blocks = blocks,
-			.xof_count = 0,
-			.data = passed_data,
-			.out = allocator::new_array(*self.allocator, char, self.intermediate_xof_size * blocks),
-		};
-io::eprintfn("NEW CONTEXT: id %d, %d bytes, %d clen, %d blocks", contexts[i-1].thread_id, contexts[i-1].data.len, to_consume, blocks);
-
-		data_offset += to_consume;
-
-		workers[i - 1].create(&threaded_update{SECURITY_LEVEL}, &contexts[i - 1])!!;   // go!
-		self.total_len += to_consume;
-	}
-	assert(data.len == data_offset, "Not all data was collected into the thread pool; cannot proceed");
-
-	foreach_r (w : workers) w.join()!!;   // await all workers
-
-	foreach_r (&t : contexts[:self.thread_count])
-	{
-// foreach (c : t.out) io::eprintf("%02x", c); io::eprintn("");
-		// fold all produced XOF chains into the main context's XOF chain
-		for (usz i = 0; i < t.blocks; i++) self.c.update(t.out[i * self.intermediate_xof_size  : self.intermediate_xof_size]);
-	}
-
-	if (@unlikely(remainder > 0))
-	{
-		// assert(ctx.thread_id == 0, "Thread IDs above 0 should NEVER have leftover/uneven data blocks to digest");
-
 		// there's some leftover data; hold it for the next call to 'update' or 'final'
-		self.internal[:remainder] = data[^remainder..];
-		self.offset = remainder;
+		self.internal[:data.len] = data[..];
+		self.offset = data.len;
 	}
 }
 
