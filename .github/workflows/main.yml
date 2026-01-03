@@ -1151,6 +1151,11 @@ jobs:
         run: |
           cd "$GITHUB_WORKSPACE"
           cd resources/examples/dynlib-test
+
+          # Force system linker (ld.bfd) via clang
+          export CC=clang
+          export LDFLAGS="-fuse-ld=bfd"
+
           ../../../build/c3c -vv dynamic-lib add.c3
           mv add.so libadd.so
           cc test.c -L. -ladd -Wl,-rpath=.
@@ -1162,6 +1167,11 @@ jobs:
         run: |
           cd "$GITHUB_WORKSPACE"
           cd resources/examples/staticlib-test
+
+          # Force system linker (ld.bfd) via clang
+          export CC=clang
+          export LDFLAGS="-fuse-ld=bfd"
+
           ../../../build/c3c -vv static-lib add.c3
           mv add.a libadd.a
           ranlib libadd.a      # NOTE: the linker can’t read symbols if we don't `ranlib`
