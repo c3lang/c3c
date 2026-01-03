@@ -1222,7 +1222,7 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 		CONSUME_OR_RET(TOKEN_LPAREN, false);
 		while (1)
 		{
-			Expr *expr = parse_decl_or_expr(c);
+			ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
 			vec_add(list, expr);
 			if (try_consume(c, TOKEN_RPAREN)) break;
 			CONSUME_OR_RET(TOKEN_COMMA, false);
