@@ -1009,6 +1009,11 @@ jobs:
         run: |
           cd "$GITHUB_WORKSPACE"
           cd resources/examples/dynlib-test
+
+          # Force system linker (ld.bfd) via clang
+          export CC=clang
+          export LDFLAGS="-fuse-ld=bfd"
+
           ../../../build/c3c --cc clang -vv dynamic-lib add.c3
           mv add.so libadd.so
           cc test.c -L. -ladd -Wl,-rpath=.
@@ -1020,8 +1025,14 @@ jobs:
         run: |
           cd "$GITHUB_WORKSPACE"
           cd resources/examples/staticlib-test
+
+          # Force system linker (ld.bfd) via clang
+          export CC=clang
+          export LDFLAGS="-fuse-ld=bfd"
+
           ../../../build/c3c --cc clang -vv static-lib add.c3
           mv add.a libadd.a
+          ranlib libadd.a
           cc test.c -L. -ladd
           ./a.out
           ../../../build/c3c compile-run --cc clang test.c3 -L . -l add
@@ -1103,7 +1114,7 @@ jobs:
         uses: vmactions/netbsd-vm@v1.2.6
         with:
           prepare: |
-            /usr/sbin/pkg_add cmake ninja llvm-19.1.7 lld-19.1.7nb1
+            /usr/sbin/pkg_add cmake ninja llvm-19.1.7
 
       - name: CMake
         shell: netbsd {0}
