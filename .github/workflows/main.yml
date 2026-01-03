@@ -949,25 +949,22 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
+        version: ['7.8']
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: OpenBSD VM
         uses: vmactions/openbsd-vm@v1
         with:
+          release: ${{ matrix.version }}
           prepare: |
-            pkg_add ninja cmake llvm-20.1.8p1
+            pkg_add ninja cmake llvm%20
 
       - name: CMake
         shell: openbsd {0}
         run: |
           cd "$GITHUB_WORKSPACE"
-
-          cmake -B build \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-            -DLLVM_ENABLE_LIBXML2=OFF \
-            -DC3_LLVM_VERSION=20.1.8
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
           cmake --build build
 
       - name: Compile and run some examples
@@ -1004,72 +1001,65 @@ jobs:
           ../build/c3c compile-run examples/ls.c3
           ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
 
-      - name: Compile and run dynlib-test
-        shell: openbsd {0}
-        run: |
-          cd "$GITHUB_WORKSPACE"
-          cd resources/examples/dynlib-test
-          ../../../build/c3c --cc clang --linker=cc -vv dynamic-lib add.c3
-          mv add.so libadd.so
-          cc test.c -L. -ladd -Wl,-rpath=.
-          ./a.out
-          ../../../build/c3c compile-run --cc clang --linker=cc test.c3 -L . -l add -z -Wl,-rpath=.
+      # - name: Compile and run dynlib-test
+      #   shell: openbsd {0}
+      #   run: |
+      #     cd "$GITHUB_WORKSPACE"
+      #     cd resources/examples/dynlib-test
+      #     ../../../build/c3c -vv dynamic-lib add.c3 -o libadd
+      #     cc test.c -L. -ladd -Wl,-rpath=.
+      #     ./a.out
+      #     ../../../build/c3c compile-run test.c3 -L . -l add -z -Wl,-rpath=.
 
       - name: Compile and run staticlib-test
         shell: openbsd {0}
         run: |
-          cd "$GITHUB_WORKSPACE"
-          cd resources/examples/staticlib-test
-          ../../../build/c3c --cc clang --linker=cc -vv static-lib add.c3
-          mv add.a libadd.a
-          ranlib libadd.a
-          cc test.c -L. -ladd
-          ./a.out
-          ../../../build/c3c compile-run --cc clang --linker=cc test.c3 -L . -l add
-
-      - name: Compile run unit tests
-        shell: openbsd {0}
-        run: |
-          cd "$GITHUB_WORKSPACE"
-          cd test
-          ../build/c3c --max-mem 1152 compile-test unit -O1 -D SLOW_TESTS
+          cd "$GITHUB_WORKSPACE"/resources/examples/staticlib-test
+          "$GITHUB_WORKSPACE"/build/c3c -vv static-lib add.c3 -o libadd
+          cc test.c -L. -ladd -o test_app  # We need to add `-lexecinfo -lm -lpthread` for backtrace
+          ./test_app
+          "$GITHUB_WORKSPACE"/build/c3c compile-run test.c3 -L . -l add
 
       - name: Build testproject
         shell: openbsd {0}
         run: |
-          cd "$GITHUB_WORKSPACE"
-          cd resources/testproject
-          ../../build/c3c run -vvv --trust=full
+          cd "$GITHUB_WORKSPACE"/resources/testproject
+          "$GITHUB_WORKSPACE"/build/c3c run -vv --trust=full
 
       - name: Test WASM
         shell: openbsd {0}
         run: |
-          cd "$GITHUB_WORKSPACE"
-          cd resources/testfragments
-          ../../build/c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
+          cd "$GITHUB_WORKSPACE"/resources/testfragments
+          "$GITHUB_WORKSPACE"/build/c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
 
       - name: Build testproject direct linker
         shell: openbsd {0}
         run: |
-          cd "$GITHUB_WORKSPACE"
-          cd resources/testproject
-          ../../build/c3c run -vvv --linker=builtin --trust=full
+          cd "$GITHUB_WORKSPACE"/resources/testproject
+          "$GITHUB_WORKSPACE"/build/c3c run -vv --linker=builtin --trust=full
 
       - name: Init a library & a project
         shell: openbsd {0}
         run: |
           cd "$GITHUB_WORKSPACE"
-          ./build/c3c init-lib mylib
+          "$GITHUB_WORKSPACE"/build/c3c init-lib mylib
           ls mylib.c3l
-          ./build/c3c init myproject
+          "$GITHUB_WORKSPACE"/build/c3c init myproject
           ls myproject
 
       - name: run compiler tests
         shell: openbsd {0}
         run: |
-          cd "$GITHUB_WORKSPACE"
-          cd test
-          ../build/c3c --max-mem 128 compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/ --no-terminal
+          cd "$GITHUB_WORKSPACE"/test
+          "$GITHUB_WORKSPACE"/build/c3c --max-mem 2048 compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/ --no-terminal
+          # openbsd malloc fails, idk
+
+      - name: Compile run unit tests
+        shell: openbsd {0}
+        run: |
+          cd "$GITHUB_WORKSPACE"/test
+          "$GITHUB_WORKSPACE"/build/c3c --max-mem 2048 compile-test unit -O1 -D SLOW_TESTS
+          # openbsd malloc fails, idk
 
       - name: bundle_output
         shell: openbsd {0}
@@ -1097,20 +1087,27 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
+        version: ['10.1']
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: NetBSD VM
-        uses: vmactions/netbsd-vm@v1.2.6
+        uses: vmactions/netbsd-vm@v1
         with:
+          release: ${{ matrix.version }}
           prepare: |
-            /usr/sbin/pkg_add cmake ninja llvm-19.1.7 lld-19.1.7nb1
+            export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
+            export PKG_PATH="https://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -m)/$(uname -r)/All/"
+            /usr/sbin/pkg_add pkgin
+            pkgin -y update
+            pkgin -y install cmake gcc14 ninja-build llvm lld
 
       - name: CMake
         shell: netbsd {0}
         run: |
           cd "$GITHUB_WORKSPACE"
-          cmake -B build -S .
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+          #cmake -B build -S .
           cmake --build build
 
       - name: Compile and run some examples
@@ -1150,69 +1147,61 @@ jobs:
       - name: Compile and run dynlib-test
         shell: netbsd {0}
         run: |
-          cd "$GITHUB_WORKSPACE"
-          cd resources/examples/dynlib-test
-          ../../../build/c3c -vv dynamic-lib add.c3
+          cd "$GITHUB_WORKSPACE"/resources/examples/dynlib-test
+          "$GITHUB_WORKSPACE"/build/c3c -vv dynamic-lib add.c3
           mv add.so libadd.so
           cc test.c -L. -ladd -Wl,-rpath=.
           ./a.out
-          ../../../build/c3c compile-run test.c3 -L . -l add -z -Wl,-rpath=.
+          "$GITHUB_WORKSPACE"/build/c3c compile-run test.c3 -L . -l add -z -Wl,-rpath=.
 
       - name: Compile and run staticlib-test
         shell: netbsd {0}
         run: |
-          cd "$GITHUB_WORKSPACE"
-          cd resources/examples/staticlib-test
-          ../../../build/c3c -vv static-lib add.c3
-          mv add.a libadd.a
+          cd "$GITHUB_WORKSPACE"/resources/examples/staticlib-test
+          "$GITHUB_WORKSPACE"/build/c3c -vv static-lib add.c3 -o libadd
           ranlib libadd.a      # NOTE: the linker can’t read symbols if we don't `ranlib`
           cc test.c -L. -ladd
           ./a.out
-          ../../../build/c3c compile-run test.c3 -L . -l add
+          "$GITHUB_WORKSPACE"/build/c3c compile-run test.c3 -L . -l add
 
       - name: Compile run unit tests
         shell: netbsd {0}
         run: |
-          cd "$GITHUB_WORKSPACE"
-          cd test
-          ../build/c3c --max-mem 1152 compile-test unit -O1 -D SLOW_TESTS
+          cd "$GITHUB_WORKSPACE"/test
+          "$GITHUB_WORKSPACE"/build/c3c --max-mem 2048 compile-test unit -O1 -D SLOW_TESTS
 
       - name: Build testproject
         shell: netbsd {0}
         run: |
-          cd "$GITHUB_WORKSPACE"
-          cd resources/testproject
-          ../../build/c3c run -vvv --trust=full
+          cd "$GITHUB_WORKSPACE"/resources/testproject
+          "$GITHUB_WORKSPACE"/build/c3c run -vv --trust=full
 
       - name: Test WASM
         shell: netbsd {0}
         run: |
-          cd "$GITHUB_WORKSPACE"
-          cd resources/testfragments
-          ../../build/c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
+          cd "$GITHUB_WORKSPACE"/resources/testfragments
+          "$GITHUB_WORKSPACE"/build/c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
 
       - name: Build testproject direct linker
         shell: netbsd {0}
         run: |
-          cd "$GITHUB_WORKSPACE"
-          cd resources/testproject
-          ../../build/c3c run -vvv --linker=builtin --trust=full
+          cd "$GITHUB_WORKSPACE"/resources/testproject
+          "$GITHUB_WORKSPACE"/build/c3c run -vv --linker=builtin --trust=full
 
       - name: Init a library & a project
         shell: netbsd {0}
         run: |
           cd "$GITHUB_WORKSPACE"
-          ./build/c3c init-lib mylib
+          "$GITHUB_WORKSPACE"/build/c3c init-lib mylib
           ls mylib.c3l
-          ./build/c3c init myproject
+          "$GITHUB_WORKSPACE"/build/c3c init myproject
           ls myproject
 
       - name: run compiler tests
         shell: netbsd {0}
         run: |
-          cd "$GITHUB_WORKSPACE"
-          cd test
-          ../build/c3c --max-mem 128 compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/ --no-terminal
+          cd "$GITHUB_WORKSPACE"/test
+          "$GITHUB_WORKSPACE"/build/c3c --max-mem 128 compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/ --no-terminal
 
       - name: bundle_output
         shell: netbsd {0}

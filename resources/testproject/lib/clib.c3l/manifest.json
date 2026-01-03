@@ -9,6 +9,7 @@
     "macos-aarch64": {},
     "netbsd-x64": {},
     "netbsd-aarch64": {},
+    "openbsd-x64": {},
     "linux-x64": {
       "cflags": "-fPIE"
     },

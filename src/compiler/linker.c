@@ -315,8 +315,8 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 			const char *path = globbuf.gl_pathv[i];
 			// Avoid qemu problems
 			if (compiler.platform.arch != ARCH_TYPE_RISCV64
-			    && compiler.platform.arch != ARCH_TYPE_RISCV32
-			    && strstr(path, "riscv")) continue;
+				&& compiler.platform.arch != ARCH_TYPE_RISCV32
+				&& strstr(path, "riscv")) continue;
 			size_t len = strlen(path);
 			ASSERT(len > file_len);
 			const char *res = str_copy(path, len - file_len);
@@ -589,75 +589,63 @@ static void linker_setup_bsd(const char ***args_ref, Linker linker_type, bool is
 	{
 		if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 		linking_add_link(&compiler.linking, "pthread");
-		linking_add_link(&compiler.linking, "execinfo"); // for backtrace
-		if (compiler.build.debug_info == DEBUG_INFO_FULL)
-		{
-			add_plain_arg("-rdynamic");
-		}
+		linking_add_link(&compiler.linking, "execinfo");
+		if (compiler.build.debug_info == DEBUG_INFO_FULL) add_plain_arg("-rdynamic");
 		return;
 	}
 	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");
-	if (is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
 	add_plain_arg("--eh-frame-hdr");
-
 	if (!link_libc()) return;
-
 	const char *crt_dir = find_bsd_crt();
-	if (!crt_dir)
-	{
-		error_exit("Failed to find the C runtime at link time.");
-	}
-	if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE)
-	{
-		add_plain_arg("--gc-sections");
-	}
-	if (is_pie_pic(compiler.platform.reloc_model))
-	{
-		if (!is_dylib) add_plain_arg("-pie");
-		add_concat_file_arg(crt_dir, "crti.o");
-		if (!is_dylib && compiler.platform.os == OS_TYPE_NETBSD)
-		{
-			add_concat_file_arg(crt_dir, "crt0.o");
-		}
-		else if (!is_dylib)
-		{
-			add_concat_file_arg(crt_dir, "Scrt1.o");
-		}
-		add_concat_file_arg(crt_dir, "crtbeginS.o");
-		add_concat_file_arg(crt_dir, "crtendS.o");
-	}
-	else
-	{
-		const char *crt_o = compiler.platform.os == OS_TYPE_NETBSD ? "crt0.o" : "crt1.o";
-		add_concat_file_arg(crt_dir, "crti.o");
-		if (!is_dylib) add_concat_file_arg(crt_dir, crt_o);
+	if (!crt_dir) error_exit("Failed to find the C runtime at link time.");
+	if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE) add_plain_arg("--gc-sections");
+	bool is_openbsd = compiler.platform.os == OS_TYPE_OPENBSD;
+	bool is_netbsd = compiler.platform.os == OS_TYPE_NETBSD;
+	bool is_pie_pic_mode = is_pie_pic(compiler.platform.reloc_model);
+	if (is_openbsd) {
+		if (!is_dylib) add_concat_file_arg(crt_dir, "crt0.o");
 		add_concat_file_arg(crt_dir, "crtbegin.o");
 		add_concat_file_arg(crt_dir, "crtend.o");
+	} else {
+		if (!is_openbsd) add_concat_file_arg(crt_dir, "crti.o");
+		if (is_dylib || is_pie_pic_mode) {
+			if (!is_dylib && is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
+			if (!is_dylib) add_concat_file_arg(crt_dir, is_netbsd ? "crt0.o" : "Scrt1.o");
+			add_concat_file_arg(crt_dir, "crtbeginS.o");
+			add_concat_file_arg(crt_dir, "crtendS.o");
+		} else {
+			if (!is_dylib) add_concat_file_arg(crt_dir, is_netbsd ? "crt0.o" : "crt1.o");
+			add_concat_file_arg(crt_dir, "crtbegin.o");
+			add_concat_file_arg(crt_dir, "crtend.o");
+		}
+		if (!is_openbsd) add_concat_file_arg(crt_dir, "crtn.o");
 	}
-	add_concat_file_arg(crt_dir, "crtn.o");
 	add_concat_quote_arg("-L", crt_dir);
+	add_plain_arg("-L/usr/lib/");
 	switch (compiler.platform.os)
 	{
 		case OS_TYPE_NETBSD:
 			add_plain_arg("--dynamic-linker=/usr/libexec/ld.elf_so");
-			/* The following two flags are needed to work around ld-elf.so not being
-			 * able to handle more than two PT_LOAD segments. */
-			if (is_dylib) add_plain_arg("--no-rosegment");
-			if (is_dylib) add_plain_arg("-znorelro");
+			if (is_dylib)
+			{
+				add_plain_arg("--no-rosegment");
+				add_plain_arg("-znorelro");
+			}
 			break;
 		case OS_TYPE_OPENBSD:
 			add_plain_arg("--dynamic-linker=/usr/libexec/ld.so");
 			break;
-		case OS_TYPE_FREEBSD:
 		default:
 			add_plain_arg("--dynamic-linker=/libexec/ld-elf.so.1");
 	}
 	linking_add_link(&compiler.linking, "c");
+	if (is_openbsd) {
+		linking_add_link(&compiler.linking, "execinfo");
+	} else {
+		linking_add_link(&compiler.linking, "gcc");
+		linking_add_link(&compiler.linking, "gcc_s");
+	}
 	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
-	linking_add_link(&compiler.linking, "gcc");
-	linking_add_link(&compiler.linking, "gcc_s");
-
-	add_plain_arg("-L/usr/lib/");
 	add_plain_arg("-m");
 	add_plain_arg(ld_target(compiler.platform.arch));
 }
@@ -688,7 +676,7 @@ static void add_linked_libs(const char ***args_ref, const char **libs, bool is_w
 		else
 		{
 			if (str_has_suffix(lib, ".a") || str_has_suffix(lib, ".so") ||
-			    str_has_suffix(lib, ".dylib") || str_has_suffix(lib, ".tbd"))
+				str_has_suffix(lib, ".dylib") || str_has_suffix(lib, ".tbd"))
 			{
 				add_plain_arg(lib);
 			}
@@ -701,7 +689,7 @@ static void add_linked_libs(const char ***args_ref, const char **libs, bool is_w
 }
 
 static bool linker_setup(const char ***args_ref, const char **files_to_link, unsigned file_count,
-                         const char *output_file, Linker linker_type, Linking *linking)
+						 const char *output_file, Linker linker_type, Linking *linking)
 {
 	bool is_dylib = compiler.build.type == TARGET_TYPE_DYNAMIC_LIB;
 	bool use_win = linker_type == LINKER_LINK_EXE;
@@ -944,8 +932,8 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 			UNREACHABLE
 	}
 #else 
-    success = false;
-    error = "linking (.exe) is not implemented for C3C compiled without LLVM";
+	success = false;
+	error = "linking (.exe) is not implemented for C3C compiled without LLVM";
 #endif 
 	if (!success)
 	{
@@ -1098,8 +1086,8 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 		filename[len] = 0;
 	}
 	const char *out_name = dir
-	                      ? str_printf("%s/%s%s", dir, filename, get_object_extension())
-	                      : str_printf("%s%s", filename, get_object_extension());
+						  ? str_printf("%s/%s%s", dir, filename, get_object_extension())
+						  : str_printf("%s%s", filename, get_object_extension());
 	const char **parts = NULL;
 	const char ***args_ref = &parts;
 	add_quote_arg(cc);
@@ -1175,9 +1163,9 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 		return true;
 	}
 	bool success;
-    const char *error = NULL;
+	const char *error = NULL;
 #if LLVM_AVAILABLE
-    int count = assemble_link_arguments(args, vec_size(args));
+	int count = assemble_link_arguments(args, vec_size(args));
 	switch (compiler.platform.object_format)
 	{
 		case OBJ_FORMAT_COFF:
@@ -1196,8 +1184,8 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 			UNREACHABLE
 	}
 #else 
-    success = false;
-    error = "linking not implemented for c3c compiled without llvm";
+	success = false;
+	error = "linking not implemented for c3c compiled without llvm";
 #endif 
 	if (!success)
 	{
@@ -1231,7 +1219,7 @@ bool static_lib_linker(const char *output_file, const char **files, unsigned fil
 	}
 	return llvm_ar(output_file, files, file_count, format);
 #else 
-    return false;
+	return false;
 #endif 
 }
 
