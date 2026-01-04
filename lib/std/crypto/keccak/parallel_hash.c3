@@ -20,6 +20,11 @@ macro clamp_block_size(size) => math::clamp(size, 1, MAX_BLOCK_SIZE);
 
 macro char[*] apply_simple_cshake($security_level, char[] data) => cshake::xof($security_level, $security_level >> 2, data);
 
+macro void @free(#allocator, #ptr)
+{
+	if (&#allocator.release) allocator::free(#allocator, #ptr);
+}
+
 struct ParallelHash @generic(SECURITY_LEVEL)
 {
 	inline CShake{SECURITY_LEVEL} c;
@@ -167,13 +172,13 @@ fn void ParallelHash.update(&self, char[] data, bool force_sequential = false)
 $if env::NATIVE_THREADING:
 		// start by allocating the necessary threading resources, even if they won't all be used
 		Thread[] workers = allocator::new_array(*self.allocator, Thread, self.thread_count);
-		defer allocator::free(*self.allocator, workers.ptr);
+		defer @free(*self.allocator, workers.ptr);
 
 		WorkerThreadContext[] contexts = allocator::new_array(*self.allocator, WorkerThreadContext, self.thread_count);
 		defer
 		{
-			foreach (ctx : contexts) if (ctx.out.ptr) allocator::free(*self.allocator, ctx.out.ptr);   // free the returned byte array
-			allocator::free(*self.allocator, contexts.ptr);
+			foreach (ctx : contexts) if (ctx.out.ptr) @free(*self.allocator, ctx.out.ptr);   // free the returned byte array
+			@free(*self.allocator, contexts.ptr);
 		}
 
 		// round-robin distribute each thread block off the data length
@@ -213,7 +218,7 @@ $if env::NATIVE_THREADING:
 
 		assert(data.len == remainder, "Not all input data was accounted for; cannot proceed");
 $else
-        unreachable("NATIVE_THREADING not set, should not have entered this branch");
+		unreachable("NATIVE_THREADING not set, should not have entered this branch");
 $endif
 	}
 
@@ -252,8 +257,11 @@ fn int threaded_update(void* arg) @local @generic(SECURITY_LEVEL) @if (env::NATI
 *>
 macro void ParallelHash.final(&self, char[] out)
 {
-	defer self.wipe();
-	defer allocator::free(*self.allocator, self.internal.ptr);
+	defer
+	{
+		@free(*self.allocator, self.internal.ptr);
+		self.wipe();
+	}
 	self.squeeze(out);
 }
 
