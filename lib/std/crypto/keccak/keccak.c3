@@ -23,38 +23,48 @@ const SPONGE_WORDS = F / 8 / ulong.sizeof;
 
 struct KeccakContext
 {
-	union   // keccak state
+	union   // keccak sponge state
 	{
-		ulong[SPONGE_WORDS] state;
-		char[SPONGE_WORDS * ulong.sizeof] state_bytes;
+		ulong[SPONGE_WORDS] sponge;
+		char[SPONGE_WORDS * ulong.sizeof] sponge_bytes;
 	}
 	usz offset;   // tracking leftover bytes from absorption
 	char[RATE] buf;   // absorption buffer
 	char runtime_delimiter;
 	char runtime_rounds;
 	bool is_padded;
+	KeccakStateMachine state;
 }
 
 <*
  @require runtime_rounds <= MAX_ROUNDS : "Amount of rounds cannot exceed MAX_ROUNDS."
 *>
 fn void KeccakContext.init(&self, char runtime_rounds = keccak::DEFAULT_ROUNDS, char runtime_delimiter = keccak::DEFAULT_DELIMITER) @inline
-	=> *self = { .runtime_rounds = runtime_rounds, .runtime_delimiter = runtime_delimiter };
+	=> *self = {
+		.state = (KeccakStateMachine)KeccakState.INITIALIZED,
+		.runtime_rounds = runtime_rounds,
+		.runtime_delimiter = runtime_delimiter
+	};
 
 fn void KeccakContext.update(&self, char[] data) @inline => self.absorb(data);
 
 fn void KeccakContext.final(&self, char[] into)
 {
-	defer self.wipe();
+	defer
+	{
+		self.wipe();
+		self.state.transition(FINALIZED);
+	}
 	if (!self.is_padded) self.pad();
 	self.squeeze(into);
 }
 
 fn void KeccakContext.wipe(&self) @inline => mem::zero_volatile(@as_char_view(*self));
+macro void KeccakContext.reset(&self) => self.wipe();
 
 fn void KeccakContext.fill_block(&self) @inline
 {
-	foreach(j, c : self.buf[:self.offset]) self.state_bytes[j] ^= c;
+	foreach(j, c : self.buf[:self.offset]) self.sponge_bytes[j] ^= c;
 
 	self.permute_r();
 	self.offset = 0;
@@ -62,6 +72,7 @@ fn void KeccakContext.fill_block(&self) @inline
 
 fn void KeccakContext.absorb(&self, char[] input)
 {
+	self.state.transition(ABSORBING);
 	usz i;
 
 	if (self.offset > 0)   // handle any leftovers
@@ -75,7 +86,7 @@ fn void KeccakContext.absorb(&self, char[] input)
 
 		if (self.offset == RATE)
 		{
-			foreach (j, c : self.buf) self.state_bytes[j] ^= c;
+			foreach (j, c : self.buf) self.sponge_bytes[j] ^= c;
 
 			self.permute_r();
 			self.offset = 0;
@@ -86,7 +97,7 @@ fn void KeccakContext.absorb(&self, char[] input)
 
 	for (; i + RATE < input.len; i += RATE)
 	{
-		foreach (j, c : input[i:RATE]) self.state_bytes[j] ^= c;
+		foreach (j, c : input[i:RATE]) self.sponge_bytes[j] ^= c;
 
 		self.permute_r();
 	}
@@ -99,7 +110,7 @@ fn void KeccakContext.absorb(&self, char[] input)
 
 fn void KeccakContext.pad(&self) @private
 {
-	foreach (j, c : self.buf[:self.offset]) self.state_bytes[j] ^= c;
+	foreach (j, c : self.buf[:self.offset]) self.sponge_bytes[j] ^= c;
 
 	if (self.offset == RATE)
 	{
@@ -107,8 +118,8 @@ fn void KeccakContext.pad(&self) @private
 		self.offset = 0;
 	}
 
-	self.state_bytes[self.offset] ^= self.runtime_delimiter;
-	self.state_bytes[RATE - 1] ^= 0x80;
+	self.sponge_bytes[self.offset] ^= self.runtime_delimiter;
+	self.sponge_bytes[RATE - 1] ^= 0x80;
 
 	self.permute_r();
 	self.offset = 0;
@@ -119,6 +130,7 @@ fn void KeccakContext.pad(&self) @private
 
 fn void KeccakContext.squeeze(&self, char[] out)
 {
+	self.state.transition(SQUEEZING);
 	usz i;
 
 	if (self.offset == RATE)
@@ -148,12 +160,12 @@ fn void KeccakContext.squeeze(&self, char[] out)
 
 	for (; i + RATE < out.len; i += RATE)
 	{
-		out[i:RATE] = self.state_bytes[:RATE];
+		out[i:RATE] = self.sponge_bytes[:RATE];
 		self.permute_r();
 	}
 
 	usz left = out.len - i;
-	if (left > 0) out[i:left] = self.state_bytes[:left];
+	if (left > 0) out[i:left] = self.sponge_bytes[:left];
 
 	self.offset = left;
 }
@@ -181,44 +193,70 @@ fn void KeccakContext.round(&self, ulong rc) @local
 	$for var $x = 0; $x < 5; ++$x:
 		b[$x] = 0;
 		$for var $y = 0; $y < 25; $y += 5:
-			b[$x] ^= self.state[$x + $y];
+			b[$x] ^= self.sponge[$x + $y];
 		$endfor
 	$endfor
 	$for var $x = 0; $x < 5; ++$x:
 		$for var $y = 0; $y < 25; $y += 5:
-			self.state[$x + $y] ^= b[($x + 4) % 5] ^ b[($x + 1) % 5].rotl(1);
+			self.sponge[$x + $y] ^= b[($x + 4) % 5] ^ b[($x + 1) % 5].rotl(1);
 		$endfor
 	$endfor
 
 	// rho and pi
-	t = self.state[1];
+	t = self.sponge[1];
 	$for var $x = 0; $x < 24; ++$x:
-		b[0] = self.state[keccak::PI[$x]];
-		self.state[keccak::PI[$x]] = t.rotl(keccak::RHO[$x]);
+		b[0] = self.sponge[keccak::PI[$x]];
+		self.sponge[keccak::PI[$x]] = t.rotl(keccak::RHO[$x]);
 		t = b[0];
 	$endfor
 
 	// chi
 	$for var $y = 0; $y < 25; $y += 5:
 		$for var $x = 0; $x < 5; ++$x:
-			b[$x] = self.state[$y + $x];
+			b[$x] = self.sponge[$y + $x];
 		$endfor
 		$for var $x = 0; $x < 5; ++$x:
-			self.state[$y + $x] ^= (~b[($x + 1) % 5]) & b[($x + 2) % 5];
+			self.sponge[$y + $x] ^= (~b[($x + 1) % 5]) & b[($x + 2) % 5];
 		$endfor
 	$endfor
 
 	// iota
-	self.state[0] ^= rc;
+	self.sponge[0] ^= rc;
 }
 
 
 // Declare Keccak-specific hashing contexts and methods.
-module std::crypto::keccak;
+module std::crypto::keccak @private;
 
-import std::crypto::keccak_internal @public;
+enum KeccakState : const inline int
+{
+	UNINITIALIZED = 0,
+	INITIALIZED,
+	ABSORBING,
+	SQUEEZING,
+	FINALIZED,
+}
 
-const ulong[24] RC @private = {   // round constants
+typedef KeccakStateMachine @structlike = inline KeccakState;
+
+fn void KeccakStateMachine.transition(&self, KeccakState to_state)
+{
+	KeccakState from_state = *self;
+	if (from_state == FINALIZED) abort("Cannot switch from a finalized Keccak state - use `reset` or create a new context instead");
+	switch (to_state)
+	{
+		case UNINITIALIZED: abort("Cannot switch to an uninitialized Keccak state");
+		case INITIALIZED:
+			if (from_state != UNINITIALIZED) abort("Can only switch to an initialized state from an uninitialized Keccak state");
+		case ABSORBING: // TODO: separate absorbing and updating with `pad`
+		case SQUEEZING: // TODO
+		case FINALIZED: break;
+		default: unreachable("Not a valid KeccakState");
+	}
+	*self = (KeccakStateMachine)to_state;
+}
+
+const ulong[24] RC = {   // round constants
 	0x0000_0000_0000_0001,  0x0000_0000_0000_8082,  0x8000_0000_0000_808a,  0x8000_0000_8000_8000,
 	0x0000_0000_0000_808b,  0x0000_0000_8000_0001,  0x8000_0000_8000_8081,  0x8000_0000_0000_8009,
 	0x0000_0000_0000_008a,  0x0000_0000_0000_0088,  0x0000_0000_8000_8009,  0x0000_0000_8000_000a,
@@ -227,19 +265,24 @@ const ulong[24] RC @private = {   // round constants
 	0x8000_0000_8000_8081,  0x8000_0000_0000_8080,  0x0000_0000_8000_0001,  0x8000_0000_8000_8008,
 };
 
-const char[24] RHO @private = {
-	1,  3,   6, 10, 15, 21,
-	28, 36, 45, 55,  2, 14,
-	27, 41, 56,  8, 25, 43,
+const char[24] RHO = {
+	1,  3,  6,  10, 15, 21,
+	28, 36, 45, 55, 2,  14,
+	27, 41, 56, 8,  25, 43,
 	62, 18, 39, 61, 20, 44
 };
 
-const char[24] PI @private = {
-	10,  7, 11, 17, 18, 3,
-	 5, 16,  8, 21, 24, 4,
+const char[24] PI = {
+	10, 7,  11, 17, 18, 3,
+	5,  16, 8,  21, 24, 4,
 	15, 23, 19, 13, 12, 2,
-	20, 14, 22,  9,  6, 1
+	20, 14, 22, 9,  6,  1
 };
+
+
+module std::crypto::keccak;
+
+import std::crypto::keccak_internal @public;
 
 const DEFAULT_F = 1600;
 const DEFAULT_ROUNDS = 24;
