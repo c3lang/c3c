@@ -1,0 +1,20 @@
+// #target: linux-x64
+module testme;
+
+fn void main(String[] args)
+{
+    Configuration config;
+}
+
+struct Configuration
+{
+    LoadFn loadModuleFn;
+}
+
+alias LoadFn     = fn Result();
+alias CompleteFn = fn void (Result result);
+
+struct Result
+{
+    CompleteFn onComplete;
+}
