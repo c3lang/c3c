@@ -181,17 +181,12 @@ $if env::NATIVE_THREADING:
 			@free(*self.allocator, contexts.ptr);
 		}
 
-		// round-robin distribute each thread block off the data length
-		//   if at any point the length is below the block size, punt it to thread 0
 		usz remainder = data.len;
 		for (usz i = 0; remainder >= self.block_size; i++, remainder -= self.block_size)
 		{
 			contexts[i % self.thread_count].consume_len += self.block_size;
 		}
-		// contexts[0].consume_len += remainder;
 
-		// start each worker. threads work TOP-DOWN, meaning the workers[self.thread_count - 1] thread is handling the
-		//   START of the incoming data and thread 0 is handling the tail end of it (as well as handling uneven inputs)
 		for (usz i = self.thread_count; i > 0; i--)
 		{
 			usz to_consume = contexts[i - 1].consume_len;
