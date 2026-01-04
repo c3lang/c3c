@@ -1,4 +1,5 @@
 // #target: linux-x64
+// #debuginfo: yes
 module testme;
 
 fn void main(String[] args)
@@ -17,4 +18,17 @@ alias CompleteFn = fn void (Result result);
 struct Result
 {
     CompleteFn onComplete;
+}
+
+/* #expect: testme.ll
+
+define void @testme.main(ptr %0, i64 %1)
+entry:
+  %args = alloca %"char[][]", align 8
+  %config = alloca %Configuration, align 8
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  store ptr null, ptr %config, align 8
+  ret void
 }
