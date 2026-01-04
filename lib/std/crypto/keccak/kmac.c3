@@ -51,7 +51,7 @@ fn void Kmac.init(&self, char[] key, String optional_customization = "", bool is
 	self.is_xof_mode = is_xof_mode;
 	self.c.init(KMAC, optional_customization);
 
-	self.c.update(nist::@ct_encode_length(NistEncodingType.LEFT, keccak::rate(SECURITY_LEVEL) / 8));
+	self.c.update(nist::encoded_rate_bytes(SECURITY_LEVEL));
 
 	self.c.update(nist::encode_length(NistEncodingType.LEFT, key.len));
 	self.c.update(key);
@@ -77,7 +77,7 @@ macro void Kmac.squeeze(&self, char[] out)
 	{
 		if (self.is_xof_mode)
 		{
-			self.c.update(nist::@ct_encode_length(NistEncodingType.RIGHT, 0));
+			self.c.update(nist::ZERO_RIGHT);
 		}
 		else
 		{

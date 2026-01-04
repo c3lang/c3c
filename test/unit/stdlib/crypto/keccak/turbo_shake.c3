@@ -4,7 +4,6 @@
 module keccak_test::turbo_shake @test;
 
 import std::crypto::turbo_shake;
-
 import std::math;
 
 
@@ -48,6 +47,8 @@ fn void turbo_shake_known_vectors()
 
 fn void turbo_shake_empty()
 {
+	test::eq(turbo_shake::hash(128, 32, "", 0x1f), x'1e415f1c5983aff2169217277d17bb538cd945a397ddec541f1ce41af2c1b74c');
+
 	test::eq(turbo_shake::hash(128, 32, ""), x'1e415f1c5983aff2169217277d17bb538cd945a397ddec541f1ce41af2c1b74c');
 	test::eq(turbo_shake::hash(128, 64, ""), x'1e415f1c5983aff2169217277d17bb538cd945a397ddec541f1ce41af2c1b74c3e8ccae2a4dae56c84a04c2385c03c15e8193bdf58737363321691c05462c8df');
 	test::eq(turbo_shake::hash(128, 10032, "")[^32..], x'a3b9b0385900ce761f22aed548e754da10a5242d62e8c658e3f3a923a7555607'[..]);

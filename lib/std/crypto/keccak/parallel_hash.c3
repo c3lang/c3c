@@ -4,7 +4,7 @@
 //
 // See: NIST SP 800-185: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-185.pdf
 //
-module std::crypto::parallel_hash @if (env::NATIVE_THREADING);
+module std::crypto::parallel_hash;
 
 import std::crypto::keccak;
 import std::crypto::cshake;
@@ -155,7 +155,7 @@ fn void ParallelHash.update(&self, char[] data, bool force_sequential = false)
 		}
 	}
 
-	if (force_sequential || data.len < self.block_size * 2)   // less than two blocks was received? don't thread at all
+	if (force_sequential || data.len < self.block_size * 2 || !env::NATIVE_THREADING)   // less than two blocks was received? don't thread at all
 	{
 		for (; data.len >= self.block_size; data = data[self.block_size..])
 		{
@@ -164,6 +164,7 @@ fn void ParallelHash.update(&self, char[] data, bool force_sequential = false)
 	}
 	else
 	{
+$if env::NATIVE_THREADING:
 		// start by allocating the necessary threading resources, even if they won't all be used
 		Thread[] workers = allocator::new_array(*self.allocator, Thread, self.thread_count);
 		defer allocator::free(*self.allocator, workers.ptr);
@@ -211,6 +212,9 @@ fn void ParallelHash.update(&self, char[] data, bool force_sequential = false)
 		}
 
 		assert(data.len == remainder, "Not all input data was accounted for; cannot proceed");
+$else
+        unreachable("NATIVE_THREADING not set, should not have entered this branch");
+$endif
 	}
 
 	if (data.len > 0)
@@ -226,7 +230,7 @@ fn void ParallelHash.update(&self, char[] data, bool force_sequential = false)
 
  @param [&inout] arg : "The thread context to operate with"
 *>
-fn int threaded_update(void* arg) @local @generic(SECURITY_LEVEL)
+fn int threaded_update(void* arg) @local @generic(SECURITY_LEVEL) @if (env::NATIVE_THREADING)
 {
 	WorkerThreadContext* ctx = (WorkerThreadContext*)arg;
 	ParallelHash{SECURITY_LEVEL}* hash_ctx = ctx.context;
@@ -273,7 +277,7 @@ macro void ParallelHash.squeeze(&self, char[] out)
 		// then, pad based on XOF (0) or HASH (out.len)
 		if (self.is_xof_mode)
 		{
-			self.c.update(nist::@ct_encode_length(NistEncodingType.RIGHT, 0));
+			self.c.update(nist::ZERO_RIGHT);
 		}
 		else
 		{

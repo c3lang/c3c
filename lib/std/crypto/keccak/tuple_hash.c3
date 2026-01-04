@@ -78,7 +78,7 @@ macro void TupleHash.final(&self, char[] out)
 {
 	if (self.is_xof_mode)
 	{
-		self.c.update(nist::@ct_encode_length(NistEncodingType.RIGHT, 0));
+		self.c.update(nist::ZERO_RIGHT);
 	}
 	else
 	{

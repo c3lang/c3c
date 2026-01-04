@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 //
-// For KT and TurboSHAKE hashes, see: https://datatracker.ietf.org/doc/draft-irtf-cfrg-kangarootwelve/
+// For KT and TurboSHAKE hashes, see: https://www.rfc-editor.org/rfc/rfc9861.html
 //
 //   TurboSHAKE allows the user to specify their own DELIMITER value at runtime.
 //
@@ -61,6 +61,6 @@ struct TurboShake @generic(SECURITY_LEVEL)
 
 fn void TurboShake.init(&self, char delimiter_override = DEFAULT_DELIMITER) @inline
 {
-	*self = {};
+	mem::zero_volatile(@as_char_view(*self));
 	self.s.init(DEFAULT_ROUNDS, delimiter_override);
 }

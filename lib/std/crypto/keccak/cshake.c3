@@ -56,18 +56,18 @@ macro void CShake.init(&self, NistFunctionName $function = NONE, String optional
 	self.under.init(runtime_rounds, runtime_delimiter);
 
 	// Automatically encode and update the underlying SHAKE context with the rate length, N (func_name), and S (customization string) values.
-	self.under.update(nist::@ct_encode_length(NistEncodingType.LEFT, keccak::rate(SECURITY_LEVEL) / 8));
+	self.under.update(nist::encoded_rate_bytes(SECURITY_LEVEL));
 
 	$if $function_name == "":
-		self.under.update(nist::@ct_encode_length(NistEncodingType.LEFT, 0));   // encoded zero value (no/empty length)
+		self.under.update(nist::ZERO_LEFT);   // encoded zero value (no/empty length)
 	$else
-		self.under.update(nist::@ct_encode_length(NistEncodingType.LEFT, $function_name.len));
+		self.under.update(nist::encode_length(NistEncodingType.LEFT, $function_name.len));
 		self.under.update($function_name[..]);
 	$endif
 
 	if (optional_customization == "")
 	{
-		self.under.update(nist::@ct_encode_length(NistEncodingType.LEFT, 0));   // encoded zero value (no/empty length)
+		self.under.update(nist::ZERO_LEFT);   // encoded zero value (no/empty length)
 	}
 	else
 	{

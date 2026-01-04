@@ -7,8 +7,8 @@
 //
 module std::crypto::keccak::nist @private;
 
-import std::math;
-
+import std::math, std::bits;
+import std::crypto::shake;
 
 enum NistFunctionName : int (String customizer)
 {
@@ -18,77 +18,50 @@ enum NistFunctionName : int (String customizer)
 	PARALLEL_HASH = "ParallelHash",
 }
 
-
 enum NistEncodingType
 {
 	LEFT,
 	RIGHT,
 }
 
+const char[] ZERO_LEFT = { 0x01, 0x00 };
+const char[] ZERO_RIGHT = { 0x00, 0x01 };
 
-macro char[] @ct_encode_length(NistEncodingType $direction, usz $length) @const
+<*
+ Return a compile-time char array for the given Keccak security level. Whenever this is invoked from a Keccak-based
+ construct, it only ever demands LEFT-based encoding (i.e., `left_encode`) of the BYTE size from the security level.
+
+ @require @in($security_level, ...shake::USABLE_LEVELS) : "You must use a valid SHAKE security level."
+*>
+macro char[] encoded_rate_bytes($security_level) @const
 {
-	char[usz.sizeof + 1] $buf;
-
-	usz $bit_size = (usz.sizeof * 8) - @clz($length) + 3;
-	usz $byte_size = ($bit_size / 8) + ($bit_size % 8 ? 1 : 0);
-
-	usz $len = $byte_size + 1;
-
-	usz $end;
-	$if $direction == RIGHT:
-		$buf[$byte_size] = (char)$byte_size;
-		$end = $byte_size - 1;
-	$else
-		$end = $byte_size;
-	$endif
-
-	$buf[$end] = (char)($length << 3);
-
-	usz $len_sub = $length >> 5;
-
-	$for var $i = 1; $i < $byte_size; ++$i, $len_sub >>= 8:
-		$buf[$end - $i] = (char)$len_sub;
-	$endfor
-
-	$if $direction == LEFT:
-		$buf[0] = (char)$byte_size;
-	$endif
-
-	return $buf[:$len];
+	$switch $security_level:
+		$case 128: return { 0x01, 0xa8 }; // keccak rate 1344 / 8
+		$case 256: return { 0x01, 0x88 }; // keccak rate 1088 / 8
+		$default: unreachable("invalid SHAKE security level");
+	$endswitch
 }
 
-
-macro char[] encode_length(NistEncodingType $direction, usz length, bool $as_direct_bytes = false)
+macro char[] encode_length(NistEncodingType $direction, uint128 #length, bool $as_direct_bytes = false) @safemacro
 {
-	char[usz.sizeof + 1] buf;
-
-	usz bit_size = (usz.sizeof * 8) - length.clz() + 3;
-	usz byte_size = (usz)math::ceil(bit_size / 8.0);
-
-	usz len = byte_size + 1;
-
-	usz end;
-	$if $direction == RIGHT:
-		buf[byte_size] = (char)byte_size;
-		end = byte_size - 1;
-	$else
-		end = byte_size;
-	$endif
-
-	$if $as_direct_bytes:
-		buf[end] = (char)length;
-		usz len_sub = length >> 8;
-	$else
-		buf[end] = (char)(length << 3);
-		usz len_sub = length >> 5;
-	$endif
-
-	for (usz i = 1; i < byte_size; ++i, len_sub >>= 8) buf[end - i] = (char)len_sub;
-
-	$if $direction == LEFT:
-		buf[0] = (char)byte_size;
-	$endif
-
-	return buf[:len];
+	char[uint128.sizeof + 2] result;
+	uint128 length = $as_direct_bytes ??? #length : #length * 8ull;
+	// ensure, if length is converted to bits, that the top 3 bits of the input aren't set
+	$if !$as_direct_bytes: assert(length >> 125 == 0); $endif
+	int bits = 8;
+	for (; math::pow(2, bits) <= length; bits += 8);
+	char bytes = (char)bits / 8;
+	uint128 swapped_length = !env::BIG_ENDIAN ??? bswap(length) : length;
+	char[] sliced_length = @as_char_view(swapped_length);
+	result[1:bytes] = sliced_length[^bytes..];
+	switch
+	{
+		case $direction == LEFT:
+			result[0] = bytes;
+			return result[:bytes + 1];
+		case $direction == RIGHT:
+			result[1 + bytes] = bytes;
+			return result[1:bytes + 1];
+	}
+	unreachable();
 }
