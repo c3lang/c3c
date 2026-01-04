@@ -100,6 +100,11 @@ const char *decl_safe_name(Decl *decl)
 	return decl_to_name(decl);
 }
 
+Decl *decl_template_get_generic(Decl *decl)
+{
+	return decl->is_template ? declptr(decl->generic_id) : NULL;
+}
+
 const char *decl_to_name(Decl *decl)
 {
 	const char *name = decl_to_a_name(decl);
@@ -129,6 +134,8 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_FNTYPE: return "a function type";
 		case DECL_FUNC: return "a function";
 		case DECL_GROUP: return "group";
+		case DECL_GENERIC: return "a generic declaration";
+		case DECL_GENERIC_INSTANCE: return "a generic instance";
 		case DECL_IMPORT: return "an import";
 		case DECL_LABEL: return "a label";
 		case DECL_MACRO: return "a macro";
@@ -502,6 +509,76 @@ bool ast_supports_continue(Ast *stmt)
 	return stmt->for_stmt.cond || !stmt->flow.skip_first;
 }
 
+Ast *ast_contract_has_any(AstId contracts)
+{
+	while (contracts)
+	{
+		Ast *current = astptr(contracts);
+		contracts = current->next;
+		ASSERT(current->ast_kind == AST_CONTRACT);
+		switch (current->contract_stmt.kind)
+		{
+			case CONTRACT_UNKNOWN:
+			case CONTRACT_PURE:
+			case CONTRACT_PARAM:
+			case CONTRACT_OPTIONALS:
+			case CONTRACT_ENSURE:
+			case CONTRACT_REQUIRE:
+				return current;
+			case CONTRACT_COMMENT:
+				continue;
+		}
+	}
+	return NULL;
+}
+
+Ast *ast_contract_has_any_non_require(AstId contracts)
+{
+	while (contracts)
+	{
+		Ast *current = astptr(contracts);
+		contracts = current->next;
+		ASSERT(current->ast_kind == AST_CONTRACT);
+		switch (current->contract_stmt.kind)
+		{
+			case CONTRACT_UNKNOWN:
+			case CONTRACT_PURE:
+			case CONTRACT_PARAM:
+			case CONTRACT_OPTIONALS:
+			case CONTRACT_ENSURE:
+				return current;
+			case CONTRACT_REQUIRE:
+			case CONTRACT_COMMENT:
+				continue;
+		}
+	}
+	return NULL;
+}
+
+
+static void scratch_buffer_append_but_mangle_underscore_dot(const char *name, const char *end, const char *suffix)
+{
+	char c;
+	while (name != end && (c = *(name++)) != 0)
+	{
+		switch (c)
+		{
+			case ':':
+				ASSERT(name[0] == ':');
+				scratch_buffer_append_char('_');
+				name++;
+				break;
+			case '.':
+				scratch_buffer_append("__");
+				break;
+			default:
+				scratch_buffer_append_char(c);
+				break;
+		}
+	}
+	if (suffix) scratch_buffer_append(suffix);
+}
+
 void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 {
 	if (clear) scratch_buffer_clear();
@@ -536,14 +613,29 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 	if (module) scratch_buffer_append_module(module, decl->is_export);
 	scratch_buffer_append(decl->is_export ? "__" : ".");
 	const char *name = decl_is_user_defined_type(decl) ? decl->type->name : decl->name;
+	const char *template_end = NULL;
+	const char *suffix = NULL;
+	if (decl->is_templated)
+	{
+		template_end = strchr(name, '{');
+		suffix = declptr(decl->instance_id)->instance_decl.cname_suffix;
+	}
 	if (!name) name = "$anon";
 	if (decl->is_export)
 	{
-		scratch_buffer_append_but_mangle_underscore_dot(name);
+		scratch_buffer_append_but_mangle_underscore_dot(name, template_end, suffix);
 	}
 	else
 	{
-		scratch_buffer_append(name);
+		if (template_end)
+		{
+			scratch_buffer_append_len(name, template_end - name);
+		}
+		else
+		{
+			scratch_buffer_append(name);
+		}
+		if (suffix) scratch_buffer_append(suffix);
 	}
 	if (decl->visibility == VISIBLE_LOCAL)
 	{

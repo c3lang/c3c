@@ -35,9 +35,10 @@ fn void main()
 
 /* #expect: test.ll
 
-%Client = type <{ i32, %MsgHeader, i16, [2 x i8], %ElasticArray }>
+%Client = type <{ i32, %MsgHeader, i16, [2 x i8], %"ElasticArray{ulong, 1}" }>
 %MsgHeader = type { i64 }
-%ElasticArray = type { i64, [1 x i64] }
+%"ElasticArray{ulong, 1}" = type { i64, [1 x i64] }
+
 define void @test.main() #0 {
 entry:
   %a = alloca ptr, align 8

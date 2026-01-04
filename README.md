@@ -256,9 +256,8 @@ curl -fsSL https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/instal
 
 #### Installing on MacOS with precompiled binaries
 1. Make sure you have XCode with command line tools installed.
-2. Install [Homebrew](https://brew.sh/)
-3. Install LLVM 17+: `brew install llvm@19` and add it to your PATH in ~/.zshrc
-4. Install lld: `brew install lld@19`
+2. Install the [Devbox package manager](https://www.jetify.com/docs/devbox/installing-devbox)
+3. Install LLVM: `devbox add global llvm lld`. You may have to refresh the packages with `refresh-global`.
 5. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-macos.zip](https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-macos.zip)
    (debug version [here](https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-macos-debug.zip))
 6. Unzip executable and standard lib.
@@ -364,7 +363,7 @@ UBUNTU_VERSION=20.04 ./build-with-docker.sh
 
 See the `build-with-docker.sh` script for more information on other configurable environment variables.
 
-#### Installing on MacOS using Homebrew
+#### Installing on MacOS using Nix
 
 1. Install [Determinate Nix](https://docs.determinate.systems/)
 2. Install [CMake](https://cmake.org/download/)

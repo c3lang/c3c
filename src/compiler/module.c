@@ -10,27 +10,13 @@ Decl *module_find_symbol(Module *module, const char *symbol)
 	return decl && decl->visibility != VISIBLE_LOCAL ? decl : NULL;
 }
 
-void scratch_buffer_append_but_mangle_underscore_dot(const char *name)
+Decl *module_find_symbol_in_unit(Module *module, CompilationUnit *unit, const char *symbol)
 {
-	char c;
-	while ((c = *(name++)) != 0)
-	{
-		switch (c)
-		{
-			case ':':
-				ASSERT(name[0] == ':');
-				scratch_buffer_append_char('_');
-				name++;
-				break;
-			case '.':
-				scratch_buffer_append("__");
-				break;
-			default:
-				scratch_buffer_append_char(c);
-				break;
-		}
-	}
+	Decl *decl = htable_get(&unit->local_symbols, (void*)symbol);
+	if (decl) return decl;
+	return module_find_symbol(module, symbol);
 }
+
 void scratch_buffer_append_module(Module *module, bool is_export)
 {
 	if (module->extname)

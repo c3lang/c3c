@@ -177,7 +177,7 @@ fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_ba
 	{
 		backtraces[++backtraces_to_ignore] = added_backtrace;
 	}
-	@stack_mem(2048; Allocator mem)
+	@stack_mem(4096; Allocator mem)
 	{
 		BacktraceList? backtrace = backtrace::symbolize_backtrace(mem, backtraces);
 		if (catch backtrace) return false;
@@ -461,6 +461,7 @@ macro swizzle(v, ...) @builtin
 {
 	return $$swizzle(v, $vasplat);
 }
+
 
 <*
  Shuffle two vectors by a common index from arranging the vectors sequentially in memory
