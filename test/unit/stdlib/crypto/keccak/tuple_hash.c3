@@ -25,7 +25,7 @@ fn void output_length_changes_hash_but_not_xof()
 
 fn void xof_neq_hash()
 {
-    test::ne(
+	test::ne(
 		tuple_hash::hash(128, 496 / 8, x"abcd", x"efef", optional_customization: "bbb123123___A")[:32],
 		tuple_hash::xof (128, 496 / 8, x"abcd", x"efef", optional_customization: "bbb123123___A")[:32]
 	);

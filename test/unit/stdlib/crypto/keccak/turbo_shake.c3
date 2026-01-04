@@ -8,7 +8,7 @@ import std::math;
 
 
 // See: https://datatracker.ietf.org/doc/draft-irtf-cfrg-kangarootwelve/, section 5 (Test Vectors)
-fn void turbo_shake_known_vectors()
+fn void known_vectors()
 {
 	static char[0xfb] iota = math::iota(char[0xfb]);
 	char[] pattern = mem::talloc_array(char, (usz)math::pow(17, 6) + 1);
@@ -45,7 +45,7 @@ fn void turbo_shake_known_vectors()
 	test::eq(turbo_shake::xof (256, 64, x'ffffff', 0x7f), x'abe569c1f77ec340f02705e7d37c9ab7e155516e4a6a150021d70b6fac0bb40c069f9a9828a0d575cd99f9bae435ab1acf7ed9110ba97ce0388d074bac768776');
 }
 
-fn void turbo_shake_empty()
+fn void empty()
 {
 	test::eq(turbo_shake::hash(128, 32, "", 0x1f), x'1e415f1c5983aff2169217277d17bb538cd945a397ddec541f1ce41af2c1b74c');
 
@@ -57,7 +57,7 @@ fn void turbo_shake_empty()
 	test::eq(turbo_shake::hash(256, 10032, "")[^32..], x'abefa11630c661269249742685ec082f207265dccf2f43534e9c61ba0c9d1d75'[..]);
 }
 
-fn void turbo_shake_empty_into()
+fn void empty_into()
 {
 	char[64] result;
 	turbo_shake::hash_into(128, result[..], "");
@@ -66,7 +66,7 @@ fn void turbo_shake_empty_into()
 	test::eq(result, x'367a329dafea871c7802ec67f905ae13c57695dc2c6663c61035f59a18f8e7db11edc0e12e91ea60eb6b32df06dd7f002fbafabb6e13ec1cc20d995547600db0');
 }
 
-fn void turbo_shake_simple()
+fn void simple()
 {
 	String[][] expected = {
 		{
@@ -110,7 +110,7 @@ fn void turbo_shake_simple()
 	}
 }
 
-fn void turbo_shake_interval()
+fn void interval()
 {
 	char[257] x = { [0..256] = 'a' };
 
@@ -157,7 +157,7 @@ fn void turbo_shake_interval()
 	}
 }
 
-fn void turbo_shake_streamed()
+fn void streamed()
 {
 	String s = keccak_test::STREAM_VECTOR;
 
@@ -182,7 +182,7 @@ fn void turbo_shake_streamed()
 	test::eq(s4_hash, x'0026d33cebc52b84029441e9756e1fb7b1ff53268178f91f9b0e725b1517443a2d674eaf8b5be9b64bcc724eef6d365db378a078b1d99640afa4c4e2e24ee46506eb485f1dfc5c56827dd03b0ad9e2a36c2488143a92fc11c6b093982563471f6dbc0bd026e99ab61b7224331cad7aef307647b58dedaab83c461f78fc391e8b3e1921f5658d9afe962c385a9613aa04b94a68887a343a790a1e6b41be5c0772f5d6e82c6e458fe955dc7c724e57fcbb936cfd90e495b8588d9fa48d326c3ce535098370efdad46bf970a6c64511021d77e7def3f69db28d8763c95d85a2c0823a30c16d1fcd6efabd79422679dbca2382c2c7804142a46b110f3273db458428');
 }
 
-fn void turbo_shake_large() @if ($feature(SLOW_TESTS))
+fn void large() @if ($feature(SLOW_TESTS))
 {
 	static String[] expected = {
 		x'ccb9dbd9863c069261f541eb3fc838fe',

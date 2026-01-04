@@ -7,11 +7,11 @@ import std::crypto::keccak @public;
 
 
 // There doesn't seem to be any widely available source of Keccak-specific standardized tests.
-// fn void keccak_known_vectors()
+// fn void known_vectors()
 // {
 // }
 
-fn void keccak_empty()
+fn void empty()
 {
 	// NOTE: 100 out-length is chosen to demonstrate the XOF usability of keccak.
 	test::@check(keccak::hash(224, 100, "")[:28] == x"f71837502ba8e10837bdd8d365adb85591895602fc552b48b7390abd");
@@ -20,7 +20,7 @@ fn void keccak_empty()
 	test::@check(keccak::hash(512, 100, "")[:64] == x"0eab42de4c3ceb9235fc91acffe746b29c29a8c366b7c60e4e67c466f36a4304c00fa9caf9d87976ba469bcbe06713b435f091ef2769fb160cdab33d3670680e");
 }
 
-fn void keccak_simple()
+fn void simple()
 {
 	static String[][] expected = {
 		{
@@ -62,7 +62,7 @@ fn void keccak_simple()
 	}
 }
 
-fn void keccak_interval()
+fn void interval()
 {
 	static String[][] expected = {
 		{
@@ -106,7 +106,7 @@ fn void keccak_interval()
 	}
 }
 
-fn void keccak_streamed()
+fn void streamed()
 {
 	static String[] expected = {
 		x'c1db269e17762c0cb49f90e8c707a5a07bc8ef916a5be614b9025dcd',
@@ -128,7 +128,7 @@ fn void keccak_streamed()
 	$endforeach
 }
 
-fn void keccak_large() @if ($feature(SLOW_TESTS))
+fn void large() @if ($feature(SLOW_TESTS))
 {
 	static String[] expected = {
 		x"19f9167be2a04c43abd0ed554788101b9c339031acc8e1468531303f",

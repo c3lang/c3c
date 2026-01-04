@@ -11,12 +11,12 @@ import std::crypto::kmac;
 //
 //  "internalProjection.json" files.
 //
-// fn void kmac_known_vectors()
+// fn void known_vectors()
 // {
 // 	// the ACVP test vectors expect bit-oriented output, and since KMAC is sensitive to all three input lengths, we should skip these tests
 // }
 
-fn void kmac_empty()
+fn void empty()
 {
 	static String[][] expected = {
 		{
@@ -55,7 +55,7 @@ fn void kmac_empty()
 	}
 }
 
-fn void kmac_simple()
+fn void simple()
 {
 	static String[][][] expected =
 	{
@@ -171,11 +171,11 @@ fn void kmac_simple()
 }
 
 // Interval tests are skipped for the KMAC construction.
-// fn void kmac_interval()
+// fn void interval()
 // {
 // }
 
-fn void kmac_streamed()
+fn void streamed()
 {
 	String s = keccak_test::STREAM_VECTOR;
 
@@ -208,7 +208,7 @@ fn void kmac_streamed()
 	test::eq(s6_hash, x"0e465ce8ab9a0562e9fab2a0c1f1b429b2d88565d544bc5b7440439104c2f92db8703ca6ad041cd576a718bdc85dd45b16913e9e815bfc741a156c94c9ffd7b61aaed772de53b877000124bf9c667e4d06d6ebf911a55aaaa2f1d84af71280c86bce35a062f25d1c64458b7a94e4a51073651484da4b175c75eb9a23a5b8d92f");
 }
 
-fn void kmac_large() @if ($feature(SLOW_TESTS))
+fn void large() @if ($feature(SLOW_TESTS))
 {
 	static String[][] expected = {
 		{
@@ -248,7 +248,7 @@ fn void kmac_large() @if ($feature(SLOW_TESTS))
 	}
 }
 
-fn void kmac_successive_xof_operations_128()
+fn void successive_xof_operations_128()
 {
 	char[] expected = x"38742f2e6a0edf501ba625afed22fb6879d2ec0f10ee9012ac410b9f8bce51a5";
 
@@ -268,7 +268,7 @@ fn void kmac_successive_xof_operations_128()
 	test::eq(buf[..], expected[..]);
 }
 
-fn void kmac_successive_xof_operations_256()
+fn void successive_xof_operations_256()
 {
 	char[] expected = x"f0b8525e66f4d3845848f198a57bd615057f66becd1ede603f6110a3f5e91e504d288267907c58f5aeb63d301455c515ab184a";
 

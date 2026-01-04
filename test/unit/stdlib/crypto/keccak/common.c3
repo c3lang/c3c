@@ -3,7 +3,6 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module keccak_test;
 
-// Should be common to every SHA-3 test module. See 'generator.py'
 const String[] SIMPLE_VECTORS =
 {
 	"123",
@@ -49,7 +48,7 @@ const String STREAM_VECTOR =
 
 macro get_bigboi()
 {
-	// 100 million 'a' characters
+	// a million 'a' characters
 	char[] bigboi = mem::talloc_array(char, 1_000_000);
 	bigboi[..] = 'a';
 	return bigboi;
