@@ -40,11 +40,13 @@ struct KeccakContext
  @require runtime_rounds <= MAX_ROUNDS : "Amount of rounds cannot exceed MAX_ROUNDS."
 *>
 fn void KeccakContext.init(&self, char runtime_rounds = keccak::DEFAULT_ROUNDS, char runtime_delimiter = keccak::DEFAULT_DELIMITER) @inline
-	=> *self = {
-		.state = (KeccakStateMachine)KeccakState.INITIALIZED,
+{
+	*self = {
 		.runtime_rounds = runtime_rounds,
 		.runtime_delimiter = runtime_delimiter
 	};
+	self.state.transition(INITIALIZED);
+}
 
 fn void KeccakContext.update(&self, char[] data) @inline => self.absorb(data);
 
