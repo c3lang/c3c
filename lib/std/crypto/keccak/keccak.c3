@@ -242,14 +242,23 @@ typedef KeccakStateMachine @structlike = inline KeccakState;
 fn void KeccakStateMachine.transition(&self, KeccakState to_state)
 {
 	KeccakState from_state = *self;
-	if (from_state == FINALIZED) abort("Cannot switch from a finalized Keccak state - use `reset` or create a new context instead");
+	if (from_state == FINALIZED) abort("Cannot change from a finalized Keccak state - use `reset` or create a new context instead.");
 	switch (to_state)
 	{
-		case UNINITIALIZED: abort("Cannot switch to an uninitialized Keccak state");
+		case UNINITIALIZED: abort("Cannot change to an uninitialized Keccak state - use `reset` or create a new context instead.");
 		case INITIALIZED:
-			if (from_state != UNINITIALIZED) abort("Can only switch to an initialized state from an uninitialized Keccak state");
+			if (from_state != UNINITIALIZED) abort("Can only change to an initialized state from an uninitialized Keccak state.");
 		case ABSORBING: // TODO: separate absorbing and updating with `pad`
+			switch (from_state)
+			{
+				case UNINITIALIZED: abort("You must initialize a Keccak context before updating it.");
+			}
 		case SQUEEZING: // TODO
+			switch (from_state)
+			{
+				case UNINITIALIZED: abort("You must initialize and update a Keccak context before squeezing it.");
+				case INITIALIZED: abort("You must update a Keccak context before squeezing it.");
+			}
 		case FINALIZED: break;
 		default: unreachable("Not a valid KeccakState");
 	}
