@@ -49,6 +49,7 @@
 - `String.replace` no longer depends on `String.split`.
 - Fix the case where `\u<unicode char>` could crash the compiler on some platforms.
 - Designated initialization with ranges would not error on overflow by 1.
+- `io::read_fully` now handles unbounded streams properly.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
