@@ -234,6 +234,7 @@ struct RunSettings
 	bool safe;
 	bool debuginfo;
 	bool no_deprecation;
+	bool has_errors;
 	List{String} opts;
 	String arch;
 	List{Ref{RunFile}} input_files;
@@ -358,6 +359,7 @@ fn void parse_trailing_directive(int line_number, String line, RunSettings* sett
 		case line.starts_with("error:"):
 			line = line[6..].trim();
 			settings.current_file.errors.push({ line_number, line, false });
+			settings.has_errors = true;
 		default:
 			error_exit("FAILED - Unknown trailing directive '%s'", line);
 	}
@@ -375,6 +377,7 @@ fn void parse_header_directive(int* line_no, String line, RunSettings* settings,
 			line = line[6..].trim();
 			if (settings.current_file.is_output) return;
 			settings.current_file.errors.push({ *line_no, line, false });
+			settings.has_errors = true;
 		case line.starts_with("safe:"):
 			if (settings.current_file.is_output) return;
 			settings.safe = line[5..].trim() == "yes";
@@ -569,7 +572,7 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 	CInt result = compilation.join() ?? 1;
 	DString out;
 	io::copy_to(&&compilation.stderr(), &out)!!;
-	if (result != 0 && result != 1)
+	if (result != 0 && (result != 1 || !settings.has_errors))
 	{
 		(void)io::copy_to(&&compilation.stdout(), (OutStream)&out);
 		io::fprintfn((OutStream)&output.buffer, "FAILED - Error(%s): %s", result, out)!!;
