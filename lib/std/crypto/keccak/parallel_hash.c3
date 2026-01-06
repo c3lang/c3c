@@ -126,7 +126,7 @@ fn void ParallelHash.init(&self, Allocator allocator, usz block_size = MAX_BLOCK
 	keccak::@init_runtime_size(self, $sizeof(*self));
 	self.c.init(PARALLEL_HASH, optional_customization);
 
-	self.c.update(nist::encode_length(NistEncodingType.LEFT, self.block_size, true));
+	self.c.update(nist::encode_length(LEFT, self.block_size, true));
 }
 
 macro void ParallelHash.tinit(&self, usz block_size = MAX_BLOCK_SIZE >> 3, String optional_customization = "", bool is_xof_mode = false, usz thread_count = 0)
@@ -247,7 +247,7 @@ fn int threaded_update(void* arg) @local @generic(SECURITY_LEVEL) @if (env::NATI
 <*
  @require out.len > 0
 *>
-macro void ParallelHash.final(&self, char[] out)
+fn void ParallelHash.final(&self, char[] out)
 {
 	defer
 	{
@@ -260,7 +260,7 @@ macro void ParallelHash.final(&self, char[] out)
 <*
  @require out.len > 0
 *>
-macro void ParallelHash.squeeze(&self, char[] out)
+fn void ParallelHash.squeeze(&self, char[] out)
 {
 	if (!self.is_padded)
 	{
@@ -272,7 +272,7 @@ macro void ParallelHash.squeeze(&self, char[] out)
 		}
 
 		// first, pad with 'n' ceil(total_len / block_size)
-		self.c.update(nist::encode_length(NistEncodingType.RIGHT, (int)math::ceil(self.total_len / (float)self.block_size), true));
+		self.c.update(nist::encode_length(RIGHT, (int)math::ceil(self.total_len / (float)self.block_size), true));
 
 		// then, pad based on XOF (0) or HASH (out.len)
 		if (self.is_xof_mode)
@@ -281,7 +281,7 @@ macro void ParallelHash.squeeze(&self, char[] out)
 		}
 		else
 		{
-			self.c.update(nist::encode_length(NistEncodingType.RIGHT, out.len));
+			self.c.update(nist::encode_length(RIGHT, out.len));
 		}
 
 		self.is_padded = true;

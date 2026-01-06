@@ -81,13 +81,13 @@ struct CShake @generic(SECURITY_LEVEL)
 <*
  Initialize the cSHAKE context.
 *>
-macro void CShake.init(&self, NistFunctionName $function = NONE, String optional_customization = "",
+fn void CShake.init(&self, NistFunctionName function = NONE, String optional_customization = "",
 	char runtime_rounds = DEFAULT_ROUNDS, char runtime_delimiter = DEFAULT_DELIMITER)
 {
 	keccak::@init_runtime_size(self, $sizeof(*self));
-	String $function_name = $function.customizer;
+	String function_name = function.customizer;
 
-	if (optional_customization == "" && $function_name == "")
+	if (optional_customization == "" && function_name == "")
 	{
 		// override delimiter with default SHAKE delimiter (see NIST spec)
 		return self.under.init(runtime_rounds, shake::DEFAULT_DELIMITER);
@@ -98,12 +98,15 @@ macro void CShake.init(&self, NistFunctionName $function = NONE, String optional
 	// Automatically encode and update the underlying SHAKE context with the rate length, N (func_name), and S (customization string) values.
 	self.under.update(nist::encoded_rate_bytes(SECURITY_LEVEL));
 
-	$if $function_name == "":
+	if (function_name == "")
+	{
 		self.under.update(nist::ZERO_LEFT);   // encoded zero value (no/empty length)
-	$else
-		self.under.update(nist::encode_length(NistEncodingType.LEFT, $function_name.len));
-		self.under.update($function_name[..]);
-	$endif
+	}
+	else
+	{
+		self.under.update(nist::encode_length(LEFT, function_name.len));
+		self.under.update(function_name[..]);
+	}
 
 	if (optional_customization == "")
 	{
@@ -111,7 +114,7 @@ macro void CShake.init(&self, NistFunctionName $function = NONE, String optional
 	}
 	else
 	{
-		self.under.update(nist::encode_length(NistEncodingType.LEFT, optional_customization.len));
+		self.under.update(nist::encode_length(LEFT, optional_customization.len));
 		self.under.update(optional_customization);
 	}
 

@@ -176,7 +176,7 @@ fn void KeccakContext.squeeze(&self, char[] out)
 	self.offset = left;
 }
 
-macro void KeccakContext.permute_r(&self) @local
+fn void KeccakContext.permute_r(&self) @local
 {
 	usz i = keccak::RC.len - self.runtime_rounds;
 

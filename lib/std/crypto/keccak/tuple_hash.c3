@@ -63,12 +63,12 @@ fn void TupleHash.init(&self, String optional_customization = "", bool is_xof_mo
 //
 fn void TupleHash.update(&self, char[] data, char[]... extra)
 {
-	self.c.update(nist::encode_length(NistEncodingType.LEFT, data.len));
+	self.c.update(nist::encode_length(LEFT, data.len));
 	self.c.update(data);
 
 	foreach (v : extra)
 	{
-		self.c.update(nist::encode_length(NistEncodingType.LEFT, v.len));
+		self.c.update(nist::encode_length(LEFT, v.len));
 		self.c.update(v);
 	}
 }
@@ -76,7 +76,7 @@ fn void TupleHash.update(&self, char[] data, char[]... extra)
 <*
  @require out.len > 0
 *>
-macro void TupleHash.final(&self, char[] out)
+fn void TupleHash.final(&self, char[] out)
 {
 	if (self.is_xof_mode)
 	{
@@ -84,7 +84,7 @@ macro void TupleHash.final(&self, char[] out)
 	}
 	else
 	{
-		self.c.update(nist::encode_length(NistEncodingType.RIGHT, out.len));
+		self.c.update(nist::encode_length(RIGHT, out.len));
 	}
 
 	self.c.final(out);

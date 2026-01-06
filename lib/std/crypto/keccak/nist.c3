@@ -42,26 +42,30 @@ macro char[] encoded_rate_bytes($security_level) @const
 	$endswitch
 }
 
-macro char[] encode_length(NistEncodingType $direction, uint128 #length, bool $as_direct_bytes = false) @safemacro
+<*
+ @require into.len >= uint128.sizeof + 2 : "The storage buffer must have adequate space for all possible 16-byte integer values (>= 18 bytes)."
+*>
+fn usz encode_length_into(char[] into, NistEncodingType direction, uint128 length, bool as_direct_bytes = false)
 {
-	char[uint128.sizeof + 2] result;
-	uint128 length = $as_direct_bytes ??? #length : #length * 8ull;
-	// ensure, if length is converted to bits, that the top 3 bits of the input aren't set
-	$if !$as_direct_bytes: assert(length >> 125 == 0); $endif
+	if (!as_direct_bytes) length <<= 3;
 	int bits = 8;
 	for (; math::pow(2, bits) <= length; bits += 8);
 	char bytes = (char)bits / 8;
 	uint128 swapped_length = !env::BIG_ENDIAN ??? bswap(length) : length;
-	char[] sliced_length = @as_char_view(swapped_length);
-	result[1:bytes] = sliced_length[^bytes..];
-	switch
+	into[1:bytes] = @as_char_view(swapped_length)[^bytes..];
+	switch (direction)
 	{
-		case $direction == LEFT:
-			result[0] = bytes;
-			return result[:bytes + 1];
-		case $direction == RIGHT:
-			result[1 + bytes] = bytes;
-			return result[1:bytes + 1];
+		case LEFT:
+			into[0] = bytes;
+		case RIGHT:
+			into[1 + bytes] = bytes;
 	}
-	unreachable();
+	return bytes;
+}
+
+macro char[] encode_length(NistEncodingType direction, uint128 length, bool as_direct_bytes = false)
+{
+	char[uint128.sizeof + 2] result;
+	usz bytes = encode_length_into(result[..], direction, length, as_direct_bytes);
+	return direction == LEFT ? result[:bytes + 1] : result[1:bytes + 1];
 }

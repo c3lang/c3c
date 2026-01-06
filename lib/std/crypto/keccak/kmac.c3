@@ -80,7 +80,7 @@ fn void Kmac.init(&self, char[] key, String optional_customization = "", bool is
 
 	self.c.update(nist::encoded_rate_bytes(SECURITY_LEVEL));
 
-	self.c.update(nist::encode_length(NistEncodingType.LEFT, key.len));
+	self.c.update(nist::encode_length(LEFT, key.len));
 	self.c.update(key);
 
 	self.c.fill_block();
@@ -89,7 +89,7 @@ fn void Kmac.init(&self, char[] key, String optional_customization = "", bool is
 <*
  @require out.len > 0
 *>
-macro void Kmac.final(&self, char[] out)
+fn void Kmac.final(&self, char[] out)
 {
 	defer self.finalize();
 	self.squeeze(out);
@@ -98,7 +98,7 @@ macro void Kmac.final(&self, char[] out)
 <*
  @require out.len > 0
 *>
-macro void Kmac.squeeze(&self, char[] out)
+fn void Kmac.squeeze(&self, char[] out)
 {
 	if (!self.c.is_padded)   // becomes 'true' after the first 'squeeze' call below
 	{
@@ -108,7 +108,7 @@ macro void Kmac.squeeze(&self, char[] out)
 		}
 		else
 		{
-			self.c.update(nist::encode_length(NistEncodingType.RIGHT, out.len));
+			self.c.update(nist::encode_length(RIGHT, out.len));
 		}
 	}
 
