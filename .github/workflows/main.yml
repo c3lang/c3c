@@ -1051,13 +1051,15 @@ jobs:
         shell: openbsd {0}
         run: |
           cd "$GITHUB_WORKSPACE"/test
-          "$GITHUB_WORKSPACE"/build/c3c --max-mem 2048 compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/ --no-terminal
+          ulimit -d unlimited # required on OpenBSD to avoid premature OOM during tests
+          "$GITHUB_WORKSPACE"/build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/ --no-terminal
           # openbsd malloc fails, idk
 
       - name: Compile run unit tests
         shell: openbsd {0}
         run: |
           cd "$GITHUB_WORKSPACE"/test
+          ulimit -d unlimited # required on OpenBSD to avoid premature OOM during tests
           "$GITHUB_WORKSPACE"/build/c3c --max-mem 2048 compile-test unit -O1 -D SLOW_TESTS
           # openbsd malloc fails, idk
 
