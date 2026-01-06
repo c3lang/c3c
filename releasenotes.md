@@ -51,6 +51,7 @@
 - Designated initialization with ranges would not error on overflow by 1.
 - `io::read_fully` now handles unbounded streams properly.
 - Crash when doing a type property lookup for const inline enums in some cases #2717.
+- Incorrect alignment on typedef and local variable debug info.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
