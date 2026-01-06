@@ -1,9 +1,7 @@
 module game_of_life;
 import std::io;
+import std::thread;
 import libc;
-
-extern fn void usleep(int time);
-
 
 struct GameBoard
 {
@@ -80,7 +78,7 @@ fn int main(int c, char** v)
 	{
 		board.show();
 		board.evolve();
-		usleep(200000);
+		thread::sleep_ms(200);
 	}
 	return 1;
 }

@@ -203,27 +203,84 @@ jobs:
       - name: Compile and run some examples
         run: |
           cd resources
+          ../build/c3c compile examples/base64.c3
+          ../build/c3c compile examples/binarydigits.c3
+          ../build/c3c compile examples/brainfk.c3
+          ../build/c3c compile examples/factorial_macro.c3
+          ../build/c3c compile examples/fasta.c3
+          ../build/c3c compile examples/gameoflife.c3
+          ../build/c3c compile examples/hash.c3
+          ../build/c3c compile-only examples/levenshtein.c3
+          ../build/c3c compile examples/load_world.c3
+          ../build/c3c compile-only examples/map.c3
+          ../build/c3c compile examples/mandelbrot.c3
+          ../build/c3c compile examples/plus_minus.c3
+          ../build/c3c compile examples/nbodies.c3
+          ../build/c3c compile examples/spectralnorm.c3
+          ../build/c3c compile examples/swap.c3
+          ../build/c3c compile examples/contextfree/boolerr.c3
+          ../build/c3c compile examples/contextfree/dynscope.c3
+          ../build/c3c compile examples/contextfree/guess_number.c3
+          ../build/c3c compile examples/contextfree/multi.c3
+          ../build/c3c compile examples/contextfree/cleanup.c3
           ../build/c3c compile-run examples/hello_world_many.c3
           ../build/c3c compile-run examples/time.c3
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
           ../build/c3c compile-run examples/load_world.c3
+          ../build/c3c compile-run examples/process.c3
+          ../build/c3c compile-run examples/ls.c3
+          ../build/c3c compile-run --linker=builtin linux_stack.c3
+          ../build/c3c compile-run linux_stack.c3
           ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
           ../build/c3c compile --no-entry --test -g -O0 --threads 1 --target macos-x64 examples/constants.c3
+
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c run -vvv --trust=full
+          ../../build/c3c -vvv --emit-llvm run hello_world_win32 --trust=full
+          ls out/llvm/windows-x64
+          ../../build/c3c clean
+          ls out/llvm/windows-x64
 
       - name: Build testproject lib
         run: |
           cd resources/testproject
-          ../../build/c3c build hello_world_lib -vvv --trust=full
+          ../../build/c3c -vvv build hello_world_win32_lib --trust=full
+
+      - name: Compile and run dynlib-test
+        run: |
+          cd resources/examples/dynlib-test
+          ../../../build/c3c -vv dynamic-lib add.c3
+          ../../../build/c3c -vv compile-run test.c3 -l ./add.dll
+
+      - name: Compile and run staticlib-test
+        run: |
+          cd resources/examples/staticlib-test
+          ../../../build/c3c -vv static-lib add.c3
+          ../../../build/c3c -vv compile-run test.c3 -l ./add.a
+
+      - name: Vendor-fetch
+        run: |
+          build/c3c vendor-fetch raylib
+
+      - name: Try raylib
+        run: |
+          cd resources
+          ../build/c3c vendor-fetch raylib
+          ../build/c3c compile --lib raylib --print-linking examples/raylib/raylib_arkanoid.c3
+          ../build/c3c compile --lib raylib --print-linking examples/raylib/raylib_snake.c3
+          ../build/c3c compile --lib raylib --print-linking examples/raylib/raylib_tetris.c3
 
       - name: run compiler tests
         run: |
           cd test
-          ../build/c3c.exe compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c.exe test_suite/ --no-terminal
+          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c test_suite/ --no-terminal
+
+      - name: Compile run unit tests
+        run: |
+          cd test
+          ../build/c3c compile-test unit -O1 -D SLOW_TESTS
 
   build-linux:
     runs-on: ubuntu-22.04
