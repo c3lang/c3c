@@ -50,6 +50,7 @@
 - Fix the case where `\u<unicode char>` could crash the compiler on some platforms.
 - Designated initialization with ranges would not error on overflow by 1.
 - `io::read_fully` now handles unbounded streams properly.
+- Crash when doing a type property lookup for const inline enums in some cases #2717.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
