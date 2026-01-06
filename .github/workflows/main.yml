@@ -252,13 +252,13 @@ jobs:
         run: |
           cd resources/examples/dynlib-test
           ../../../build/c3c -vv dynamic-lib add.c3
-          ../../../build/c3c -vv compile-run test.c3 -l ./add.dll
+          ../../../build/c3c -vv compile-run test.c3 -l ./add
 
       - name: Compile and run staticlib-test
         run: |
           cd resources/examples/staticlib-test
           ../../../build/c3c -vv static-lib add.c3
-          ../../../build/c3c -vv compile-run test.c3 -l ./add.a
+          ../../../build/c3c -vv compile-run test.c3 -l ./add
 
       - name: Vendor-fetch
         run: |
@@ -275,7 +275,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c test_suite/ --no-terminal
+          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c.exe test_suite/ --no-terminal
 
       - name: Compile run unit tests
         run: |

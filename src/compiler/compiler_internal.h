@@ -2353,6 +2353,7 @@ void global_context_add_type(Type *type);
 void global_context_add_decl(Decl *type_decl);
 
 void linking_add_link(Linking *linker, const char *link);
+const char *static_lib_name(void);
 
 Module *compiler_find_or_create_module(Path *module_name);
 Module *global_context_find_module(const char *name);

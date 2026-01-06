@@ -237,7 +237,7 @@ static const char *dynamic_lib_name(void)
 	}
 }
 
-static const char *static_lib_name(void)
+const char *static_lib_name(void)
 {
 	const char *name = build_base_name();
 	

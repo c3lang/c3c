@@ -716,6 +716,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 			if (is_dylib)
 			{
 				add_plain_arg("/DLL");
+				add_concat_quote_arg("/IMPLIB:", static_lib_name());
 			}
 			else
 			{
