@@ -115,7 +115,7 @@ jobs:
 
   build-msys2-mingw:
     runs-on: windows-latest
-    if: ${{ false }}
+    if: ${{ true }}
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
@@ -131,48 +131,119 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          update: true
-          install: git binutils mingw-w64-x86_64-clang mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python
-      - shell: msys2 {0}
+          update: false
+          #install: git binutils mingw-w64-x86_64-clang mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python
+          install: >
+            git
+            binutils
+            mingw-w64-x86_64-clang
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-python
+            mingw-w64-x86_64-llvm
+            mingw-w64-x86_64-llvm-libs
+
+      - name: Configure MSYS2 mirror and install LLVM/LLD
         run: |
-            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-20.1.0-1-any.pkg.tar.zst
-            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-20.1.0-1-any.pkg.tar.zst
+          echo "Server = https://mirror.msys2.org/mingw/mingw64" > /etc/pacman.d/mirrorlist.mingw64
+          pacman -Sy --noconfirm --needed \
+            mingw-w64-x86_64-llvm \
+            mingw-w64-x86_64-llvm-libs \
+            mingw-w64-x86_64-lld \
+            mingw-w64-x86_64-clang
+
       - name: CMake
         run: |
-          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_LINKER=lld
+          ls /mingw64/lib/*.a
+
+          cmake -B build -G Ninja \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_LINKER=lld \
+            -DC3_LINK_DYNAMIC=OFF \
+            -DLLVM_DIR=/mingw64/lib/cmake/llvm \
+            -DC3_LLD_DIR=/mingw64/lib/
           cmake --build build
 
-      - name: Compile and run some examples
+      - name: Compile and run examples
         run: |
           cd resources
-          ../build/c3c compile-run --print-linking examples/hello_world_many.c3
-          ../build/c3c compile-run --print-linking examples/process.c3
-          ../build/c3c compile-run --print-linking examples/time.c3
-          ../build/c3c compile-run --print-linking examples/fannkuch-redux.c3
-          ../build/c3c compile-run --print-linking examples/contextfree/boolerr.c3
-          ../build/c3c compile-run --print-linking examples/load_world.c3
-          ../build/c3c compile-run --print-linking examples/args.c3 -- foo -bar "baz baz"
+          ../build/c3c compile examples/base64.c3
+          ../build/c3c compile examples/binarydigits.c3
+          ../build/c3c compile examples/brainfk.c3
+          ../build/c3c compile examples/factorial_macro.c3
+          ../build/c3c compile examples/fasta.c3
+          ../build/c3c compile examples/gameoflife.c3
+          ../build/c3c compile examples/hash.c3
+          ../build/c3c compile-only examples/levenshtein.c3
+          ../build/c3c compile examples/load_world.c3
+          ../build/c3c compile-only examples/map.c3
+          ../build/c3c compile examples/mandelbrot.c3
+          ../build/c3c compile examples/plus_minus.c3
+          ../build/c3c compile examples/nbodies.c3
+          ../build/c3c compile examples/spectralnorm.c3
+          ../build/c3c compile examples/swap.c3
+          ../build/c3c compile examples/contextfree/boolerr.c3
+          ../build/c3c compile examples/contextfree/dynscope.c3
+          ../build/c3c compile examples/contextfree/guess_number.c3
+          ../build/c3c compile examples/contextfree/multi.c3
+          ../build/c3c compile examples/contextfree/cleanup.c3
+          ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/time.c3
+          ../build/c3c compile-run examples/fannkuch-redux.c3
+          ../build/c3c compile-run examples/contextfree/boolerr.c3
+          ../build/c3c compile-run examples/load_world.c3
+          ../build/c3c compile-run examples/process.c3
+          ../build/c3c compile-run examples/ls.c3
+          ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
           ../build/c3c compile --no-entry --test -g -O0 --threads 1 --target macos-x64 examples/constants.c3
 
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c run -vvv --trust=full
-
-      - name: Vendor-fetch
-        run: |
-          ./build/c3c vendor-fetch raylib
+          ../../build/c3c -vvv --emit-llvm run hello_world_win32 --trust=full
+          ../../build/c3c clean
 
       - name: Build testproject lib
         run: |
           cd resources/testproject
-          ../../build/c3c build hello_world_lib --cc cc -vvv --trust=full
+          ../../build/c3c -vvv build hello_world_win32_lib --trust=full
 
-      - name: run compiler tests
+      - name: Compile and run dynlib-test
+        run: |
+          cd resources/examples/dynlib-test
+          ../../../build/c3c -vv dynamic-lib add.c3
+          ../../../build/c3c -vv compile-run test.c3 -l ./add
+
+      - name: Compile and run staticlib-test
+        run: |
+          cd resources/examples/staticlib-test
+          ../../../build/c3c -vv static-lib add.c3
+          ../../../build/c3c -vv compile-run test.c3 -l ./add
+
+      - name: Vendor-fetch
+        run: |
+          build/c3c vendor-fetch raylib
+
+      - name: Try raylib
+        run: |
+          cd resources
+          ../build/c3c vendor-fetch raylib
+          ../build/c3c compile --lib raylib --print-linking examples/raylib/raylib_arkanoid.c3
+          ../build/c3c compile --lib raylib --print-linking examples/raylib/raylib_snake.c3
+          ../build/c3c compile --lib raylib --print-linking examples/raylib/raylib_tetris.c3
+
+      - name: Run compiler tests
         run: |
           cd test
-          ../build/c3c.exe compile --target windows-x64 -O1 src/test_suite_runner.c3
-          ./test_suite_runner.exe ../build/c3c.exe test_suite/ --no-terminal
+          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c.exe test_suite/ --no-terminal
+
+      - name: Compile run unit tests
+        run: |
+          cd test
+          ../build/c3c compile-test unit -O1 -D SLOW_TESTS
 
   build-msys2-clang:
     runs-on: windows-latest

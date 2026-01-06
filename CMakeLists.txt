@@ -273,7 +273,12 @@ if(C3_WITH_LLVM)
     else()
         message(STATUS "Looking for shared lld libraries in ${LLVM_LIBRARY_DIRS}")
 
-        find_library(LLVM NAMES libLLVM.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        #find_library(LLVM NAMES libLLVM.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        if(UNIX AND NOT WIN32)
+            find_library(LLVM NAMES libLLVM.so PATHS ${LLVM_LIBRARY_DIRS} REQUIRED)
+        else()
+            find_library(LLVM NAMES libLLVM.a LLVM.lib PATHS ${LLVM_LIBRARY_DIRS} REQUIRED)
+        endif()        
         set(llvm_libs ${LLVM})
 
         # These don't seem to be reliable on windows.
