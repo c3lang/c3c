@@ -8,6 +8,7 @@
 - Remove use of LLVMGetGlobalContext for single module compilation.
 - Fixed bug where constants would get modified when slicing them. #2660
 - Support for NetBSD.
+- Improve support for Android with Termux.
 - Testing for the presence of methods at the top level is prohibited previous to method registration.
 - `$$MASK_TO_INT` and `$$INT_TO_MASK` to create bool masks from integers and back.
 - Better error messages when slicing a pointer to a slice or vector. #2681
