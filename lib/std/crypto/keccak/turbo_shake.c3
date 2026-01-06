@@ -12,7 +12,7 @@
 //
 module std::crypto::turbo_shake;
 
-import std::crypto::shake;
+import std::crypto @public;
 
 const DEFAULT_DELIMITER = 0x1f;
 const DEFAULT_ROUNDS = 12;
@@ -31,7 +31,7 @@ alias hash_into = xof_into;
 *>
 macro char[*] xof($security_level, $outlen_bytes, char[] data, char delimiter_override = DEFAULT_DELIMITER)
 {
-	char[$outlen_bytes] into;
+	char[$outlen_bytes] into @noinit;
 	xof_into($security_level, into[..], data, delimiter_override);
 	return into;
 }
@@ -47,8 +47,7 @@ macro char[*] xof($security_level, $outlen_bytes, char[] data, char delimiter_ov
 *>
 macro void xof_into($security_level, char[] into, char[] data, char delimiter_override = DEFAULT_DELIMITER)
 {
-	TurboShake{$security_level} s @noinit;
-	defer s.wipe();
+	TurboShake{$security_level} s;
 	s.init(delimiter_override);
 	s.update(data);
 	s.final(into[..]);
@@ -61,6 +60,6 @@ struct TurboShake @generic(SECURITY_LEVEL)
 
 fn void TurboShake.init(&self, char delimiter_override = DEFAULT_DELIMITER) @inline
 {
-	mem::zero_volatile(@as_char_view(*self));
+	keccak::@init_runtime_size(self, $sizeof(*self));
 	self.s.init(DEFAULT_ROUNDS, delimiter_override);
 }

@@ -46,7 +46,7 @@ fn void variably_streamed() @if ($feature(SLOW_TESTS))
 	foreach (i : math::iota(usz[2048]))
 	{
 		char[] scroll = input;
-		ParallelHash{256} p @noinit;
+		ParallelHash{256} p;
 		p.tinit(block_size, custom);
 		while (scroll.len > 0)
 		{

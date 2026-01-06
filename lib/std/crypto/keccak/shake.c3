@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::crypto::shake;
 
-import std::crypto::keccak;
+import std::crypto @public;
 
 const usz[] USABLE_LEVELS = { 128, 256 };
 
@@ -24,7 +24,7 @@ alias hash_into = xof_into;
 *>
 macro char[*] xof($security_level, $outlen_bytes, char[] data, char delimiter_override = DEFAULT_DELIMITER)
 {
-	char[$outlen_bytes] into;
+	char[$outlen_bytes] into @noinit;
 	xof_into($security_level, into[..], data, delimiter_override);
 	return into;
 }
@@ -40,8 +40,7 @@ macro char[*] xof($security_level, $outlen_bytes, char[] data, char delimiter_ov
 *>
 macro void xof_into($security_level, char[] into, char[] data, char delimiter_override = DEFAULT_DELIMITER)
 {
-	Shake{$security_level} s @noinit;
-	defer s.wipe();
+	Shake{$security_level} s;
 	s.init(DEFAULT_ROUNDS, delimiter_override);
 	s.update(data);
 	s.final(into[..]);
@@ -62,7 +61,7 @@ struct Shake @generic(SECURITY_LEVEL)
 
 fn void Shake.init(&self, char rounds_override = DEFAULT_ROUNDS, char delimiter_override = DEFAULT_DELIMITER) @inline
 {
-	*self = {};
+	keccak::@init_runtime_size(self, $sizeof(*self));
 	self.k.init(rounds_override, delimiter_override);
 }
 

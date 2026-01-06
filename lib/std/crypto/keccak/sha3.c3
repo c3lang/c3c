@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::crypto::sha3;
 
-import std::crypto::keccak;
+import std::crypto @public;
 
 <* Used for creating SHA-3 HMACs with the "legacy" (i.e., non-KMAC) construction. *>
 const char IPAD @local = 0x36;
@@ -44,7 +44,7 @@ macro char[*] hash($hash_bits, char[] data)
 *>
 macro void hash_into($hash_bits, char[] into, char[] data)
 {
-	Sha3{$hash_bits} s @noinit;
+	Sha3{$hash_bits} s;
 	s.init();
 	s.update(data);
 	s.final(into);
@@ -89,7 +89,7 @@ macro char[*] simple_hmac($hash_bits, char[] key, char[] data)
 *>
 macro void simple_hmac_into($hash_bits, char[] into, char[] key, char[] data)
 {
-	Sha3{$hash_bits} s @noinit;
+	Sha3{$hash_bits} s;
 	s.init();
 	s.update(key);
 	s.update(data);
@@ -152,4 +152,11 @@ struct Sha3 @generic(HASH_BITS)
 	inline Keccak{HASH_BITS} k;
 }
 
-fn void Sha3.init(&self) @inline => self.k.init(runtime_delimiter: DEFAULT_DELIMITER);
+<*
+ Initialize the inner Keccak context with the SHA-3 domain-separation delimiter.
+*>
+fn void Sha3.init(&self) @inline
+{
+	keccak::@init_runtime_size(self, $sizeof(*self));
+	self.k.init(runtime_delimiter: DEFAULT_DELIMITER);
+}

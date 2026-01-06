@@ -6,10 +6,11 @@
 //
 module std::crypto::kmac;
 
-import std::crypto::keccak;
-import std::crypto::cshake;
-import std::crypto::keccak::nist @public;
+import std::crypto @public;
 
+<*
+ Generate and return a non-XOF KMAC hash of the specified `$outlen_bytes` length.
+*>
 macro hash($security_level, $outlen_bytes, char[] key, char[] data, String optional_customization = "")
 	=> xof($security_level, $outlen_bytes, key, data, optional_customization, false);
 
@@ -18,38 +19,64 @@ macro hash_into($security_level, char[] into, char[] key, char[] data, String op
 
 macro char[*] xof($security_level, $outlen_bytes, char[] key, char[] data, String optional_customization = "", bool $is_xof = true)
 {
-	char [$outlen_bytes] result;
+	char [$outlen_bytes] result @noinit;
 	xof_into($security_level, result[..], key, data, optional_customization, $is_xof);
 	return result;
 }
 
 macro void xof_into($security_level, char[] into, char[] key, char[] data, String optional_customization = "", bool $is_xof = true)
 {
-	Kmac{$security_level} c @noinit;
-	defer c.wipe();
+	Kmac{$security_level} c;
 	c.init(key, optional_customization, $is_xof);
 	c.update(data);
 	c.final(into);
 }
 
+<*
+ A struct wrapping the vanilla KMAC construct. Maintained as its own full structure for member flexibility.
+
+ @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+*>
 struct KmacXOF @generic(SECURITY_LEVEL)
 {
 	inline Kmac{SECURITY_LEVEL} k;
 }
 
-fn void KmacXOF.init(&self, char[] key, String optional_customization = "") @inline
-	=> self.k.init(key, optional_customization, true);
+<*
+ A wrapper initialization for the KMAC XOF construct which transparently calls the Kmac initializer.
 
+ @param [in] key : "The key used to seed the KMAC cipher."
+ @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+*>
+fn void KmacXOF.init(&self, char[] key, String optional_customization = "") @inline
+{
+	keccak::@init_runtime_size(self, $sizeof(*self));
+	self.k.init(key, optional_customization, is_xof_mode: true);
+}
+
+<*
+ A struct wrapping the cSHAKE construct. Maintained as its own full structure for member flexibility.
+
+ @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+*>
 struct Kmac @generic(SECURITY_LEVEL)
 {
 	inline CShake{SECURITY_LEVEL} c;
 	bool is_xof_mode;
 }
 
+<*
+ Initialize the vanilla KMAC context.
+
+ @param [in] key : "The key used to seed the KMAC cipher."
+ @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+ @param is_xof_mode : "Controls whether the hash context will output an XOF-based hash value or a regular hash value."
+*>
 fn void Kmac.init(&self, char[] key, String optional_customization = "", bool is_xof_mode = false)
 {
-	self.is_xof_mode = is_xof_mode;
+	keccak::@init_runtime_size(self, $sizeof(*self));
 	self.c.init(KMAC, optional_customization);
+	self.is_xof_mode = is_xof_mode;
 
 	self.c.update(nist::encoded_rate_bytes(SECURITY_LEVEL));
 
@@ -64,7 +91,7 @@ fn void Kmac.init(&self, char[] key, String optional_customization = "", bool is
 *>
 macro void Kmac.final(&self, char[] out)
 {
-	defer self.wipe();
+	defer self.finalize();
 	self.squeeze(out);
 }
 

@@ -6,11 +6,8 @@
 //
 module std::crypto::parallel_hash;
 
-import std::crypto::keccak;
-import std::crypto::cshake;
-import std::crypto::keccak::nist @public;
-
 import std::math, std::thread;
+import std::crypto @public;
 
 const MAX_BLOCK_SIZE = 128 * 1024 * 1024;   // 128 MiB
 const MAX_THREADS = 64;
@@ -28,7 +25,7 @@ macro void @free(#allocator, #ptr)
 struct ParallelHash @generic(SECURITY_LEVEL)
 {
 	inline CShake{SECURITY_LEVEL} c;
-	Allocator* allocator;
+	Allocator allocator;
 	bool is_xof_mode;
 	bool is_padded;
 	usz block_size;
@@ -43,7 +40,7 @@ struct WorkerThreadContext @local
 {
 	usz thread_id;
 	void* context;
-	Allocator* allocator;
+	Allocator allocator;
 	usz consume_len;
 	usz blocks;
 	usz xof_count;
@@ -55,7 +52,7 @@ struct WorkerThreadContext @local
 macro char[*] xof($security_level, $outlen_bytes, Allocator allocator, char[] data, usz block_size,
 	usz thread_count = 0, String optional_customization = "", bool $is_xof = true, bool sequential = false)
 {
-	char [$outlen_bytes] result;
+	char [$outlen_bytes] result @noinit;
 	xof_into($security_level, allocator, result[..], data, block_size, thread_count, optional_customization, $is_xof, sequential);
 	return result;
 }
@@ -75,8 +72,7 @@ macro thash($security_level, $outlen_bytes, char[] data, usz block_size,
 macro void xof_into($security_level, Allocator allocator, char[] into, char[] data, usz block_size,
 	usz thread_count = 0, String optional_customization = "", bool $is_xof = true, bool sequential = false)
 {
-	ParallelHash{$security_level} c @noinit;
-	defer c.wipe();
+	ParallelHash{$security_level} c;
 	c.init(allocator, block_size, optional_customization, $is_xof, thread_count);
 	c.update(data, force_sequential: sequential);
 	c.final(into);
@@ -119,7 +115,7 @@ fn void ParallelHash.init(&self, Allocator allocator, usz block_size = MAX_BLOCK
 	}
 
 	*self = {
-		.allocator = &allocator,
+		.allocator = allocator,
 		.is_xof_mode = is_xof_mode,
 		.block_size = clamp_block_size(block_size),
 		.thread_count = clamp_threads(thread_count),
@@ -127,6 +123,7 @@ fn void ParallelHash.init(&self, Allocator allocator, usz block_size = MAX_BLOCK
 	};
 	self.internal = allocator::new_array(allocator, char, self.block_size);
 
+	keccak::@init_runtime_size(self, $sizeof(*self));
 	self.c.init(PARALLEL_HASH, optional_customization);
 
 	self.c.update(nist::encode_length(NistEncodingType.LEFT, self.block_size, true));
@@ -171,14 +168,14 @@ fn void ParallelHash.update(&self, char[] data, bool force_sequential = false)
 	{
 $if env::NATIVE_THREADING:
 		// start by allocating the necessary threading resources, even if they won't all be used
-		Thread[] workers = allocator::new_array(*self.allocator, Thread, self.thread_count);
-		defer @free(*self.allocator, workers.ptr);
+		Thread[] workers = allocator::new_array(self.allocator, Thread, self.thread_count);
+		defer @free(self.allocator, workers.ptr);
 
-		WorkerThreadContext[] contexts = allocator::new_array(*self.allocator, WorkerThreadContext, self.thread_count);
+		WorkerThreadContext[] contexts = allocator::new_array(self.allocator, WorkerThreadContext, self.thread_count);
 		defer
 		{
-			foreach (ctx : contexts) if (ctx.out.ptr) @free(*self.allocator, ctx.out.ptr);   // free the returned byte array
-			@free(*self.allocator, contexts.ptr);
+			foreach (ctx : contexts) if (ctx.out.ptr) @free(self.allocator, ctx.out.ptr);   // free the returned byte array
+			@free(self.allocator, contexts.ptr);
 		}
 
 		usz remainder = data.len;
@@ -199,7 +196,7 @@ $if env::NATIVE_THREADING:
 				.blocks = blocks,
 				.xof_count = 0,
 				.data = data[:to_consume],
-				.out = blocks > 0 ? allocator::new_array(*self.allocator, char, self.intermediate_xof_size * blocks) : {},
+				.out = blocks > 0 ? allocator::new_array(self.allocator, char, self.intermediate_xof_size * blocks) : {},
 			};
 			workers[i - 1].create(&threaded_update{SECURITY_LEVEL}, &contexts[i - 1])!!;   // go!
 			data = data[to_consume..];
@@ -254,8 +251,8 @@ macro void ParallelHash.final(&self, char[] out)
 {
 	defer
 	{
-		@free(*self.allocator, self.internal.ptr);
-		self.wipe();
+		@free(self.allocator, self.internal.ptr);
+		self.finalize();
 	}
 	self.squeeze(out);
 }
@@ -290,5 +287,5 @@ macro void ParallelHash.squeeze(&self, char[] out)
 		self.is_padded = true;
 	}
 
-	self.c.final(out);
+	self.c.squeeze(out);
 }

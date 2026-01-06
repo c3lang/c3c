@@ -3,8 +3,22 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module keccak_test::kmac @test;
 
-import std::crypto::kmac;
+import std::crypto @public;
 
+
+fn void assert_finalization()
+{
+	static Kmac{128} expected = { .c = { .under = { .k = { .state = (KeccakStateMachine)KeccakState.FINALIZED } } } };
+	char[] expected_view = @as_char_view(expected);
+	static char[32] result;
+	Kmac{128} c;
+	char[] c_byte_view = @as_char_view(c);
+	c.init("programming");
+	c.update("C3");
+	test::@check(c_byte_view != expected_view, "Hash context was cleared, but it should NOT have been.");
+	c.final(result[..]);
+	test::@check(c_byte_view == expected_view, "Hash context was not cleared, but it should have been.\n\t%h\n\t%h\n\n", c_byte_view, expected_view);
+}
 
 // See: https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/KMAC-128-1.0
 //   & https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/KMAC-256-1.0

@@ -3,15 +3,29 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module keccak_test::cshake @test;
 
-import std::crypto::cshake;
+import std::crypto @public;
 
+
+fn void assert_finalization()
+{
+	static CShake{128} expected = { .under = { .k = { .state = (KeccakStateMachine)KeccakState.FINALIZED } } };
+	char[] expected_view = @as_char_view(expected);
+	static char[32] result;
+	CShake{128} c;
+	char[] c_byte_view = @as_char_view(c);
+	c.init();
+	c.update("C3");
+	test::@check(c_byte_view != expected_view, "Hash context was cleared, but it should NOT have been.");
+	c.final(result[..]);
+	test::@check(c_byte_view == expected_view, "Hash context was not cleared, but it should have been.");
+}
 
 // See: https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/cSHAKE-128-1.0
 //   & https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/cSHAKE-256-1.0
 //
 //  "internalProjection.json" files.
 //
-fn void cshake_known_vectors()
+fn void known_vectors()
 {
 	/* tcId  5 */ test::@check(x"2eef41bd1680c16f36ae2b9c004805f7426ac9d4bb6bf7cfc78606a6e6f6f518eb6c0be7" == cshake::xof(128, 36, x"ea18", "fmkctMwhBB[<Kta&RJ5r5ToA9N9~Y-,kin8y]xB}kviaDk_kPI^{o#N1|JIF5x.67pR]]fGX)6'=j.{MnLN1M0zf@'|3OzirhSJS9#.i#&rXz1FnM{WgI|g'tk=Ui5*-L4T6cH4k?d.H<Bk/`.dRC#HklD_LeV~mz"));
 	/* tcId 69 */ test::@check(x"799964e28f9a75f9c7e87c0842790ce03fe7743347fceddf1245ab913fa9a45cac8c1ac74af58b8dd3c0f7" == cshake::xof(128, 43, x"643d5d", "9[4gjE(d=h}TRAp@m1% -|+zH7caKBkA7L3 K6=]=vP(D(Q3yOdK&vC<Q8?SbE9z{[=&/psWsGc5L#UAdOgz]@<@)vM3vhyv]T,hiL%)Z,V^4.nNb}"));
@@ -22,7 +36,7 @@ fn void cshake_known_vectors()
 	/* tcId 84 */ test::@check(x"6a43d4816ff231a8a0843622e8612bef824e844a7995d8aeb061767a54dd41de07" == cshake::xof(256, 33, x"7f9f1976b2a2d73ac24ebd2c53caa533a35b67b60c4f89b35df136577f77e5ef85b5b221e3b63e9fec5a9938eb8a1e28771a7be167354d31c0fc2cf041c4955c87a9b7", "3imMVe>MTz`|O 5mrZ}fQX%8E`IKM9b@(lTs?AQO/<#KkQ8p!7=]YkwXdT)u;q <8?"));
 }
 
-fn void cshake_empty()
+fn void empty()
 {
 	static String[][] expected = {
 		{
@@ -40,15 +54,14 @@ fn void cshake_empty()
 		test::@check(cshake::xof(128, 256, "", $c)[..] == expected[0][$j]);
 		test::@check(cshake::xof(256, 256, "", $c)[..] == expected[1][$j]);
 	$endforeach
-
 	// One final test on an empty customization string, but with a "streamed" context.
 	//   Non-empty customization strings are used in a separate test.
 	static char[256] result;
-	CShake{128} c1 @noinit; c1.init(NONE, ""); c1.update(""); c1.final(result[..]); test::@check(result[..] == expected[0][0]);
-	CShake{256} c2 @noinit; c2.init(NONE, ""); c2.update(""); c2.final(result[..]); test::@check(result[..] == expected[1][0]);
+	CShake{128} c1; c1.init(NONE, ""); c1.update(""); c1.final(result[..]); test::@check(result[..] == expected[0][0]);
+	CShake{256} c2; c2.init(NONE, ""); c2.update(""); c2.final(result[..]); test::@check(result[..] == expected[1][0]);
 }
 
-fn void cshake_simple()
+fn void simple()
 {
 	static String[][] expected = {
 		{
@@ -92,7 +105,6 @@ fn void cshake_simple()
 			x"4e3982f283a1e12ba97efd14c7bc84f0cefb62dd985aaaee0ca25a7b699979bc94e75ca19cc6f0cf6a2cf670c1ad02dcda0298451e01cec7adb960b687090e72",
 		},
 	};
-
 	foreach (i, v : keccak_test::SIMPLE_VECTORS)
 	{
 		foreach (j, w : keccak_test::CUSTOMIZATION_STRINGS)
@@ -103,11 +115,9 @@ fn void cshake_simple()
 	}
 }
 
-fn void cshake_interval()
+fn void interval()
 {
-	char[257] x = { [0..256] = 'a' };
-
-	String[][] expected = {
+	static String[][] expected = {
 		{
 			x"85c8de88d28866bf0868090b3961162bf82392f690d9e4730910f4af7c6ab3ee4354b49ca729eb356ee3f5b0fbd29b66769383e5e401b1f85e044c92bb5231aa", // c128 - custom0
 			x"867e2cb04f5a04dcbd592501a5e8fe9ceaafca50255626ca736c138042530ba436b7b1ec0e06a279bc790733bb0aee6fa802683c7b355063c434e91189b0c651", // c256 - custom0
@@ -149,7 +159,7 @@ fn void cshake_interval()
 			x"0cc0cb2fdf46aaa54a1b20e36d3d7749c7c7fc75af17cbbf0c128a1465176c1eb2ee4bbd75573e25a17b558a44ba0e88831e3956865e80eff064192269d28f60",
 		},
 	};
-
+	static char[257] x = { [0..256] = 'a' };
 	// 'a'-array of lengths [1, 65, 129, 193, 257]
 	for (usz i = 1, usz j = 0; i <= 257; i += 64, ++j)
 	{
@@ -161,9 +171,9 @@ fn void cshake_interval()
 	}
 }
 
-fn void cshake_streamed()
+fn void streamed()
 {
-	String s = keccak_test::STREAM_VECTOR;
+	static String s = keccak_test::STREAM_VECTOR;
 
 	CShake{128} s1; s1.init(NONE, keccak_test::CUSTOMIZATION_STRINGS[2]);
 	CShake{128} s2; s2.init(NONE, keccak_test::CUSTOMIZATION_STRINGS[2]);
@@ -186,7 +196,7 @@ fn void cshake_streamed()
 	test::eq(s4_hash, x"596fecda6eba0e003f959de0987c1675427319230b60528000ed0802c8ecf6896cc799c6188c98e718716f7756f0dbddbd451661ff48d54e93f41f926098aff433840a300867232829366fd2547e7875cf933f9dadb2632af1dd408b347fa3dd5f499a9e5c16fc8e413bc3b30ff547c6cb787cb293f46507b8822a6bb51e312e9d8265a98b8b00a8178a371739b3c5f1b0a582651f1bd9d27faa7517ca0eda2cfaf05103c8186a299d2a344ac844e1f94648a8859f7d6363f71ddd5eb7f6ede6831f2edd17ec23f8311caad8afa0528a0dc37425f6b91e53b70c73943c6740af5930a73389ec96b439516f5c539069a7a981d5224b8464ddbb8cf7923fd36dc9");
 }
 
-fn void cshake_large() @if ($feature(SLOW_TESTS))
+fn void large() @if ($feature(SLOW_TESTS))
 {
 	static String[][] expected = {
 		{
@@ -218,7 +228,7 @@ fn void cshake_large() @if ($feature(SLOW_TESTS))
 	}
 }
 
-fn void cshake_successive_xof_operations_128()
+fn void successive_xof_operations_128()
 {
 	static char[] expected = x"24b35841243321afa4362e8d6cd48acfc5955b1e15e7c8bf8b95d77d30ee1a2f";
 
@@ -238,7 +248,7 @@ fn void cshake_successive_xof_operations_128()
 	test::@check(buf[..] == expected);
 }
 
-fn void cshake_successive_xof_operations_256()
+fn void successive_xof_operations_256()
 {
 	static char[] expected = x"8e4625ac08758e52b27aa43bf630e78271d6e035f075bdfb8ef2677dd5929c3295a62d81cf2e0302d38612bf1f0810059dfc5f";
 

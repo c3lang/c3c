@@ -32,6 +32,7 @@ struct KeccakContext
 	char[RATE] buf;   // absorption buffer
 	char runtime_delimiter;
 	char runtime_rounds;
+	usz runtime_struct_size;
 	bool is_padded;
 	KeccakStateMachine state;
 }
@@ -41,9 +42,12 @@ struct KeccakContext
 *>
 fn void KeccakContext.init(&self, char runtime_rounds = keccak::DEFAULT_ROUNDS, char runtime_delimiter = keccak::DEFAULT_DELIMITER) @inline
 {
+	keccak::@init_runtime_size(self, $sizeof(*self));
+	usz struct_sz = self.runtime_struct_size;
 	*self = {
 		.runtime_rounds = runtime_rounds,
-		.runtime_delimiter = runtime_delimiter
+		.runtime_delimiter = runtime_delimiter,
+		.runtime_struct_size = struct_sz,
 	};
 	self.state.transition(INITIALIZED);
 }
@@ -52,17 +56,17 @@ fn void KeccakContext.update(&self, char[] data) @inline => self.absorb(data);
 
 fn void KeccakContext.final(&self, char[] into)
 {
-	defer
-	{
-		self.wipe();
-		self.state.transition(FINALIZED);
-	}
+	defer self.finalize();
 	if (!self.is_padded) self.pad();
 	self.squeeze(into);
 }
 
-fn void KeccakContext.wipe(&self) @inline => mem::zero_volatile(@as_char_view(*self));
-macro void KeccakContext.reset(&self) => self.wipe();
+fn void KeccakContext.finalize(&self) @inline
+{
+	self.wipe();
+	self.state.transition(FINALIZED);
+}
+fn void KeccakContext.wipe(&self) @local @inline => mem::zero_volatile(((char*)self)[:max($sizeof(*self), self.runtime_struct_size)]);
 
 fn void KeccakContext.fill_block(&self) @inline
 {
@@ -232,22 +236,28 @@ module std::crypto::keccak @private;
 
 enum KeccakState : const inline int
 {
-	UNINITIALIZED = 0,
-	INITIALIZED,
-	ABSORBING,
-	SQUEEZING,
-	FINALIZED,
+	UNINITIALIZED	= 0,
+	INITIALIZED		= 1,
+	ABSORBING		= 2,
+	SQUEEZING		= 3,
+	FINALIZED		= 4,
 }
 
 typedef KeccakStateMachine @structlike = inline KeccakState;
 
+macro void @init_runtime_size(#instance, usz runtime_size)
+{
+	if (!$defined(#instance.runtime_struct_size) ||| #instance.runtime_struct_size > 0) return;
+	#instance.runtime_struct_size = runtime_size;
+}
+
 fn void KeccakStateMachine.transition(&self, KeccakState to_state)
 {
 	KeccakState from_state = *self;
-	if (from_state == FINALIZED) abort("Cannot change from a finalized Keccak state - use `reset` or create a new context instead.");
+	if (from_state == FINALIZED) abort("Cannot change from a finalized Keccak state - use `wipe` or create a new context instead.");
 	switch (to_state)
 	{
-		case UNINITIALIZED: abort("Cannot change to an uninitialized Keccak state - use `reset` or create a new context instead.");
+		case UNINITIALIZED: abort("Cannot change to an uninitialized Keccak state - use `wipe` or create a new context instead.");
 		case INITIALIZED:
 			if (from_state != UNINITIALIZED) abort("Can only change to an initialized state from an uninitialized Keccak state.");
 		case ABSORBING: // TODO: separate absorbing and updating with `pad`
@@ -308,15 +318,14 @@ alias hash_into = xof_into;
 
 macro char[*] xof($security_level, $outlen_bytes, char[] data, $rounds = DEFAULT_ROUNDS, $delimiter = DEFAULT_DELIMITER, $f = DEFAULT_F)
 {
-	char[$outlen_bytes] result;
+	char[$outlen_bytes] result @noinit;
 	xof_into($security_level, result[..], data, $rounds, $delimiter, $f);
 	return result;
 }
 
 macro void xof_into($security_level, char[] into, char[] data, $rounds = DEFAULT_ROUNDS, $delimiter = DEFAULT_DELIMITER, $f = DEFAULT_F)
 {
-	KeccakContext{$f, $security_level} k @noinit;
-	defer k.wipe();
+	KeccakContext{$f, $security_level} k;
 	k.init($rounds, $delimiter);
 	k.update(data);
 	k.final(into);

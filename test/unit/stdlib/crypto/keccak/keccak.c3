@@ -6,6 +6,20 @@ module keccak_test::keccak @test;
 import std::crypto::keccak @public;
 
 
+fn void assert_finalization()
+{
+	static Keccak{128} expected = { .state = (KeccakStateMachine)KeccakState.FINALIZED };
+	char[] expected_view = @as_char_view(expected);
+	static char[32] result;
+	Keccak{128} c;
+	char[] c_byte_view = @as_char_view(c);
+	c.init();
+	c.update("C3");
+	test::@check(c_byte_view != expected_view, "Hash context was cleared, but it should NOT have been.");
+	c.final(result[..]);
+	test::@check(c_byte_view == expected_view, "Hash context was not cleared, but it should have been.");
+}
+
 // There doesn't seem to be any widely available source of Keccak-specific standardized tests.
 // fn void known_vectors()
 // {
@@ -118,7 +132,7 @@ fn void streamed()
 	$foreach $i, $sz : keccak::SECURITY_LEVELS:
 	{
 		char[$sz / 8] result;
-		Keccak{$sz} k @noinit;
+		Keccak{$sz} k;
 		@as_char_view(k)[..] = 0xff;
 		k.init();
 		k.update(s[:20]); k.update(s[20:10]); k.update(s[30:1]); k.update(s[31..]);

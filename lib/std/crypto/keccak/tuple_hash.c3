@@ -6,9 +6,7 @@
 //
 module std::crypto::tuple_hash;
 
-import std::crypto::keccak;
-import std::crypto::cshake;
-import std::crypto::keccak::nist @public;
+import std::crypto @public;
 
 macro hash($security_level, $outlen_bytes, char[] data, char[]... extras, String optional_customization = "")
 	=> xof($security_level, $outlen_bytes, data, ...extras, optional_customization: optional_customization, $is_xof: false);
@@ -25,8 +23,7 @@ macro char[*] xof($security_level, $outlen_bytes, char[] data, char[]... extras,
 
 macro void xof_into($security_level, char[] into, char[] data, char[]... extras, String optional_customization = "", bool $is_xof = true)
 {
-	TupleHash{$security_level} c @noinit;
-	defer c.wipe();
+	TupleHash{$security_level} c;
 	c.init(optional_customization, $is_xof);
 	c.update(data, ...extras);
 	c.final(into);
@@ -40,7 +37,11 @@ struct TupleHashXOF @generic(SECURITY_LEVEL)
 	inline TupleHash{SECURITY_LEVEL} t;
 }
 
-fn void TupleHashXOF.init(&self, String optional_customization = "") @inline => self.t.init(optional_customization, true);
+fn void TupleHashXOF.init(&self, String optional_customization = "") @inline
+{
+	keccak::@init_runtime_size(self, $sizeof(*self));
+	self.t.init(optional_customization, true);
+}
 
 struct TupleHash @generic(SECURITY_LEVEL)
 {
@@ -50,8 +51,9 @@ struct TupleHash @generic(SECURITY_LEVEL)
 
 fn void TupleHash.init(&self, String optional_customization = "", bool is_xof_mode = false)
 {
-	self.is_xof_mode = is_xof_mode;
+	keccak::@init_runtime_size(self, $sizeof(*self));
 	self.c.init(TUPLE_HASH, optional_customization);
+	self.is_xof_mode = is_xof_mode;
 }
 
 // This is the more distinct feature of TupleHash: inputs are domain-separated.
