@@ -10,13 +10,51 @@ import std::crypto @public;
 
 <*
  Generate and return a non-XOF KMAC hash of the specified `$outlen_bytes` length.
+
+ @param $security_level : "The security level of the XOF to use when hashing."
+ @param $outlen_bytes : "The length of the XOF hash to return,"
+ @param [in] key : "The key used to authenticate the data."
+ @param [in] data : "The data to hash."
+ @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+
+ @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require $outlen_bytes > 0 : "You must use an output length over zero bytes."
+
+ @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
 macro hash($security_level, $outlen_bytes, char[] key, char[] data, String optional_customization = "")
 	=> xof($security_level, $outlen_bytes, key, data, optional_customization, false);
 
+<*
+ Generate a non-XOF KMAC hash of `into.len` bytes and store the result in the `into` slice..
+
+ @param $security_level : "The security level of the XOF to use when hashing."
+ @param [out] into : "The storage destination for the KMAC result. Its length determines the amount of KMAC bytes yielded."
+ @param [in] key : "The key used to authenticate the data."
+ @param [in] data : "The data to hash."
+ @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+
+ @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require into.len > 0 : "You must use an output length over zero bytes."
+*>
 macro hash_into($security_level, char[] into, char[] key, char[] data, String optional_customization = "")
 	=> xof_into($security_level, into, key, data, optional_customization, false);
 
+<*
+ Generate and return an XOF KMAC hash of the specified `$outlen_bytes` length.
+
+ @param $security_level : "The security level of the XOF to use when hashing."
+ @param $outlen_bytes : "The length of the XOF hash to return,"
+ @param [in] key : "The key used to authenticate the data."
+ @param [in] data : "The data to hash."
+ @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+ @param $is_xof : "Used by the `hash` and `hash_into` macros to wrap what this function already does."
+
+ @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require $outlen_bytes > 0 : "You must use an output length over zero bytes."
+
+ @return "An array of `$outlen_bytes` bytes containing the hash."
+*>
 macro char[*] xof($security_level, $outlen_bytes, char[] key, char[] data, String optional_customization = "", bool $is_xof = true)
 {
 	char [$outlen_bytes] result @noinit;
@@ -24,6 +62,19 @@ macro char[*] xof($security_level, $outlen_bytes, char[] key, char[] data, Strin
 	return result;
 }
 
+<*
+ Generate an XOF KMAC hash of `into.len` bytes and store the result in the `into` slice..
+
+ @param $security_level : "The security level of the XOF to use when hashing."
+ @param [out] into : "The storage destination for the KMAC result. Its length determines the amount of KMAC bytes yielded."
+ @param [in] key : "The key used to authenticate the data."
+ @param [in] data : "The data to hash."
+ @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+ @param $is_xof : "Used by the `hash` and `hash_into` macros to wrap what this function already does."
+
+ @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require into.len > 0 : "You must use an output length over zero bytes."
+*>
 macro void xof_into($security_level, char[] into, char[] key, char[] data, String optional_customization = "", bool $is_xof = true)
 {
 	Kmac{$security_level} c;
@@ -48,7 +99,7 @@ struct KmacXOF @generic(SECURITY_LEVEL)
  @param [in] key : "The key used to seed the KMAC cipher."
  @param optional_customization : "An optional, variable-length customization string used for further domain separation."
 *>
-fn void KmacXOF.init(&self, char[] key, String optional_customization = "") @inline
+fn void KmacXOF.init(&self, char[] key, String optional_customization = "")
 {
 	keccak::@init_runtime_size(self, $sizeof(*self));
 	self.k.init(key, optional_customization, is_xof_mode: true);
@@ -87,7 +138,11 @@ fn void Kmac.init(&self, char[] key, String optional_customization = "", bool is
 }
 
 <*
- @require out.len > 0
+ Override the Keccak finalization process by just squeezing the "sponge" and crystallizing.
+
+ @param [out] out : "The destination slice for the KMAC result. The slice length determines the amount of XOF bytes yielded."
+
+ @require out.len > 0 : "You must use an output length over zero bytes."
 *>
 fn void Kmac.final(&self, char[] out)
 {
@@ -96,21 +151,17 @@ fn void Kmac.final(&self, char[] out)
 }
 
 <*
- @require out.len > 0
+ Override the Keccak squeeze process. Does NOT finalize the KMAC context being used.
+
+ @param [out] out : "The destination slice for the KMAC result. The slice length determines the amount of XOF bytes yielded."
+
+ @require out.len > 0 : "You must use an output length over zero bytes."
 *>
 fn void Kmac.squeeze(&self, char[] out)
 {
 	if (!self.c.is_padded)   // becomes 'true' after the first 'squeeze' call below
 	{
-		if (self.is_xof_mode)
-		{
-			self.c.update(nist::ZERO_RIGHT);
-		}
-		else
-		{
-			self.c.update(nist::encode_length(RIGHT, out.len));
-		}
+		self.c.update(self.is_xof_mode ? nist::ZERO_RIGHT : nist::encode_length(RIGHT, out.len));
 	}
-
 	self.c.squeeze(out);
 }

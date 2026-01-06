@@ -80,6 +80,11 @@ struct CShake @generic(SECURITY_LEVEL)
 
 <*
  Initialize the cSHAKE context.
+
+ @param function : "An input string representing the type of NIST hash function."
+ @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+ @param runtime_rounds : "An optional control of the round count used in the hash's computation."
+ @param runtime_delimiter : "An optional runtime override of the delimiter used in hash computation."
 *>
 fn void CShake.init(&self, NistFunctionName function = NONE, String optional_customization = "",
 	char runtime_rounds = DEFAULT_ROUNDS, char runtime_delimiter = DEFAULT_DELIMITER)
@@ -105,7 +110,7 @@ fn void CShake.init(&self, NistFunctionName function = NONE, String optional_cus
 	else
 	{
 		self.under.update(nist::encode_length(LEFT, function_name.len));
-		self.under.update(function_name[..]);
+		self.under.update(function_name);
 	}
 
 	if (optional_customization == "")

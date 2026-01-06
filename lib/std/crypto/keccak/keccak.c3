@@ -1,239 +1,85 @@
 // Copyright (c) 2025-2026 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-//
-<*
-@require values::@is_int(F) : `F must be an integer type.`
-@require values::@is_int(OUTPUT_BITS) : `OUTPUT_BITS must be an integer type.`
+module std::crypto::keccak;
 
-@require F >= 200 &&& F <= 1600 : `Invalid Keccak F; out of range.`
-@require F % 200 == 0 : `Keccak F must be a multiple of 200.`
-@require OUTPUT_BITS > 0 &&& OUTPUT_BITS * 2 < F &&& OUTPUT_BITS % 8 == 0 : `Invalid output bit length. Must be a multiple of 8, less than (F/2), and non-zero.`
-*>
-module std::crypto::keccak_internal { F, OUTPUT_BITS } @private;
+<* The default Keccak `F` value for this implementation, per specification documents. *>
+const DEFAULT_F = 1600;
+<* The default amount of rounds used in the base Keccak construct. *>
+const DEFAULT_ROUNDS = 24;
+<* The default domain separation delimiter used in the base Keccak construct. *>
+const DEFAULT_DELIMITER = 0x01;
 
-import std::math;
-import std::crypto::keccak @public;
-
-const CAPACITY = OUTPUT_BITS * 2;
-const BLOCK_BYTES = F / 8;
-const MAX_ROUNDS = 12 + 2 * math::@intlog2(F / 25);
-const RATE = BLOCK_BYTES - CAPACITY / 8;
-const SPONGE_WORDS = F / 8 / ulong.sizeof;
-
-struct KeccakContext
-{
-	union   // keccak sponge state
-	{
-		ulong[SPONGE_WORDS] sponge;
-		char[SPONGE_WORDS * ulong.sizeof] sponge_bytes;
-	}
-	usz offset;   // tracking leftover bytes from absorption
-	char[RATE] buf;   // absorption buffer
-	char runtime_delimiter;
-	char runtime_rounds;
-	usz runtime_struct_size;
-	bool is_padded;
-	KeccakStateMachine state;
-}
+<* The set of valid Keccak security levels supported by this implementation. *>
+const usz[] SECURITY_LEVELS = { 224, 256, 384, 512 };
 
 <*
- @require runtime_rounds <= MAX_ROUNDS : "Amount of rounds cannot exceed MAX_ROUNDS."
+ Get the constant Keccak `rate` value based on the given `F` and `SECURITY_LEVEL` attributes.
+
+ @param $security_level : "The Keccak security level being used."
+ @param $f : "The Keccak `F` parameter to use. Defaults to `1600`."
+
+ @return "The constant Keccak `rate` value."
 *>
-fn void KeccakContext.init(&self, char runtime_rounds = keccak::DEFAULT_ROUNDS, char runtime_delimiter = keccak::DEFAULT_DELIMITER) @inline
+macro rate($security_level, $f = DEFAULT_F) @const => ($f - ($security_level * 2)) / 8;
+
+<*
+ Generate and return an XOF result of the specified `$outlen_bytes`.
+
+ @param $security_level : "The security level of the XOF to use when hashing."
+ @param $outlen_bytes : "The length of the XOF hash to return,"
+ @param [in] data : "The data to hash."
+ @param $rounds : "An optional compile-time override of the rounds count used in hash computation."
+ @param $delimiter : "An optional compile-time override of the delimiter used in hash computation."
+
+ @require @in($security_level, ...SECURITY_LEVELS) : "Shake structures must use a valid security level."
+ @require $outlen_bytes > 0 : "You must use an output length over zero bytes."
+
+ @return "A character array of the specified `$outlen_bytes` size containing the XOF result."
+*>
+macro char[*] xof($security_level, $outlen_bytes, char[] data, $rounds = DEFAULT_ROUNDS, $delimiter = DEFAULT_DELIMITER)
 {
-	keccak::@init_runtime_size(self, $sizeof(*self));
-	usz struct_sz = self.runtime_struct_size;
-	*self = {
-		.runtime_rounds = runtime_rounds,
-		.runtime_delimiter = runtime_delimiter,
-		.runtime_struct_size = struct_sz,
-	};
-	self.state.transition(INITIALIZED);
+	char[$outlen_bytes] result @noinit;
+	xof_into($security_level, result[..], data, $rounds, $delimiter);
+	return result;
 }
 
-fn void KeccakContext.update(&self, char[] data) @inline => self.absorb(data);
+<* When hashing with the base Keccak context, it's the same thing as using the XOF construct. *>
+alias hash = xof;
 
-fn void KeccakContext.final(&self, char[] into)
+<*
+ Generate an XOF result of `into.len` bytes and store the result in the `into` slice.
+
+ @param $security_level : "The security level of the XOF to use when hashing."
+ @param [out] into : "The destination for the generated variable-length hash."
+ @param [in] data : "The data to hash."
+
+ @require @in($security_level, ...SECURITY_LEVELS) : "Shake structures must use a valid security level."
+ @require into.len > 0 : "The destination slice must have a length greater than zero."
+ @param $rounds : "An optional compile-time override of the rounds count used in hash computation."
+ @param $delimiter : "An optional compile-time override of the delimiter used in hash computation."
+*>
+macro void xof_into($security_level, char[] into, char[] data, $rounds = DEFAULT_ROUNDS, $delimiter = DEFAULT_DELIMITER)
 {
-	defer self.finalize();
-	if (!self.is_padded) self.pad();
-	self.squeeze(into);
+	Keccak{$security_level} k;
+	k.init($rounds, $delimiter);
+	k.update(data);
+	k.final(into);
 }
 
-fn void KeccakContext.finalize(&self) @inline
-{
-	self.wipe();
-	self.state.transition(FINALIZED);
-}
-fn void KeccakContext.wipe(&self) @local @inline => mem::zero_volatile(((char*)self)[:max($sizeof(*self), self.runtime_struct_size)]);
+<* When hashing with the base Keccak context, it's the same thing as using the XOF construct. *>
+alias hash_into = xof_into;
 
-fn void KeccakContext.fill_block(&self) @inline
-{
-	foreach(j, c : self.buf[:self.offset]) self.sponge_bytes[j] ^= c;
-
-	self.permute_r();
-	self.offset = 0;
-}
-
-fn void KeccakContext.absorb(&self, char[] input)
-{
-	self.state.transition(ABSORBING);
-	usz i;
-
-	if (self.offset > 0)   // handle any leftovers
-	{
-		usz left = min(RATE - self.offset, input.len);
-
-		self.buf[self.offset:left] = input[:left];
-		self.offset += left;
-
-		if (left == input.len) return;   // awaiting more input before running rounds
-
-		if (self.offset == RATE)
-		{
-			foreach (j, c : self.buf) self.sponge_bytes[j] ^= c;
-
-			self.permute_r();
-			self.offset = 0;
-		}
-
-		i = left;
-	}
-
-	for (; i + RATE < input.len; i += RATE)
-	{
-		foreach (j, c : input[i:RATE]) self.sponge_bytes[j] ^= c;
-
-		self.permute_r();
-	}
-
-	usz left = input.len - i;
-	if (left > 0) self.buf[:left] = input[i:left];
-
-	self.offset = left;
-}
-
-fn void KeccakContext.pad(&self) @private
-{
-	foreach (j, c : self.buf[:self.offset]) self.sponge_bytes[j] ^= c;
-
-	if (self.offset == RATE)
-	{
-		self.permute_r();
-		self.offset = 0;
-	}
-
-	self.sponge_bytes[self.offset] ^= self.runtime_delimiter;
-	self.sponge_bytes[RATE - 1] ^= 0x80;
-
-	self.permute_r();
-	self.offset = 0;
-
-	self.is_padded = true;
-}
+<* The default Keccak context always employs the default `F` value of `1600`. *>
+alias Keccak @generic(SECURITY_LEVEL) = KeccakContext { DEFAULT_F, SECURITY_LEVEL };
 
 
-fn void KeccakContext.squeeze(&self, char[] out)
-{
-	self.state.transition(SQUEEZING);
-	usz i;
-
-	if (self.offset == RATE)
-	{
-		self.permute_r();
-	}
-	else if (@unlikely(self.offset > 0))
-	{
-		char[RATE] localbuf;
-		localbuf[..] = self.buf[..];
-
-		usz left = min(RATE - self.offset, out.len);
-
-		out[:left] = localbuf[self.offset:left];
-		self.offset += left;
-
-		if (left == out.len) return;   // awaiting more data
-
-		if (self.offset == RATE)
-		{
-			self.offset = 0;
-			self.permute_r();
-		}
-
-		i = left;
-	}
-
-	for (; i + RATE < out.len; i += RATE)
-	{
-		out[i:RATE] = self.sponge_bytes[:RATE];
-		self.permute_r();
-	}
-
-	usz left = out.len - i;
-	if (left > 0) out[i:left] = self.sponge_bytes[:left];
-
-	self.offset = left;
-}
-
-fn void KeccakContext.permute_r(&self) @local
-{
-	usz i = keccak::RC.len - self.runtime_rounds;
-
-	for (; i < keccak::RC.len - (keccak::RC.len % 3); i += 3)
-	{
-		self.round(keccak::RC[i + 0]);
-		self.round(keccak::RC[i + 1]);
-		self.round(keccak::RC[i + 2]);
-	}
-
-	for (; i < keccak::RC.len; ++i) self.round(keccak::RC[i]);
-}
-
-fn void KeccakContext.round(&self, ulong rc) @local
-{
-	ulong[5] b;
-	ulong t;
-
-	// theta
-	$for var $x = 0; $x < 5; ++$x:
-		b[$x] = 0;
-		$for var $y = 0; $y < 25; $y += 5:
-			b[$x] ^= self.sponge[$x + $y];
-		$endfor
-	$endfor
-	$for var $x = 0; $x < 5; ++$x:
-		$for var $y = 0; $y < 25; $y += 5:
-			self.sponge[$x + $y] ^= b[($x + 4) % 5] ^ b[($x + 1) % 5].rotl(1);
-		$endfor
-	$endfor
-
-	// rho and pi
-	t = self.sponge[1];
-	$for var $x = 0; $x < 24; ++$x:
-		b[0] = self.sponge[keccak::PI[$x]];
-		self.sponge[keccak::PI[$x]] = t.rotl(keccak::RHO[$x]);
-		t = b[0];
-	$endfor
-
-	// chi
-	$for var $y = 0; $y < 25; $y += 5:
-		$for var $x = 0; $x < 5; ++$x:
-			b[$x] = self.sponge[$y + $x];
-		$endfor
-		$for var $x = 0; $x < 5; ++$x:
-			self.sponge[$y + $x] ^= (~b[($x + 1) % 5]) & b[($x + 2) % 5];
-		$endfor
-	$endfor
-
-	// iota
-	self.sponge[0] ^= rc;
-}
-
-
-// Declare Keccak-specific hashing contexts and methods.
+// ==========================================================================================
 module std::crypto::keccak @private;
 
+import std::math;
+
+<* A set of KeccakContext states used in its private state machine. *>
 enum KeccakState : const inline int
 {
 	UNINITIALIZED	= 0,
@@ -243,14 +89,30 @@ enum KeccakState : const inline int
 	FINALIZED		= 4,
 }
 
+<* The state machine is just the state, typedef'd to another type in case something else is added in the future. *>
 typedef KeccakStateMachine @structlike = inline KeccakState;
 
+<*
+ Initialize the runtime value of the Keccak context that indicates the _true_ size of the dependent/derived class.
+ This need sprang from the desire to delineate between `updated` and `finalized` states, where the latter implicitly
+ finalizes and zeros the entire struct. In cases when a child struct type is inlining the KeccakContext type, we need
+ to know the extent to zeroize, and the only way to do that at the time of writing is through runtime propagation.
+
+ @param #instance : "The `KeccakContext` instance to modify."
+ @param runtime_size : "The struct's size in bytes."
+*>
 macro void @init_runtime_size(#instance, usz runtime_size)
 {
 	if (!$defined(#instance.runtime_struct_size) ||| #instance.runtime_struct_size > 0) return;
 	#instance.runtime_struct_size = runtime_size;
 }
 
+<*
+ Transition the `KeccakStateMachine` the the specified state. This allows fine control over whether each
+ transition is permitted and why.
+
+ @param to_state : "The state to transition into."
+*>
 fn void KeccakStateMachine.transition(&self, KeccakState to_state)
 {
 	KeccakState from_state = *self;
@@ -277,6 +139,7 @@ fn void KeccakStateMachine.transition(&self, KeccakState to_state)
 	*self = (KeccakStateMachine)to_state;
 }
 
+<* Keccak private constant. *>
 const ulong[24] RC = {   // round constants
 	0x0000_0000_0000_0001,  0x0000_0000_0000_8082,  0x8000_0000_0000_808a,  0x8000_0000_8000_8000,
 	0x0000_0000_0000_808b,  0x0000_0000_8000_0001,  0x8000_0000_8000_8081,  0x8000_0000_0000_8009,
@@ -286,6 +149,7 @@ const ulong[24] RC = {   // round constants
 	0x8000_0000_8000_8081,  0x8000_0000_0000_8080,  0x0000_0000_8000_0001,  0x8000_0000_8000_8008,
 };
 
+<* Keccak private constant. *>
 const char[24] RHO = {
 	1,  3,  6,  10, 15, 21,
 	28, 36, 45, 55, 2,  14,
@@ -293,6 +157,7 @@ const char[24] RHO = {
 	62, 18, 39, 61, 20, 44
 };
 
+<* Keccak private constant. *>
 const char[24] PI = {
 	10, 7,  11, 17, 18, 3,
 	5,  16, 8,  21, 24, 4,
@@ -300,35 +165,252 @@ const char[24] PI = {
 	20, 14, 22, 9,  6,  1
 };
 
-
-module std::crypto::keccak;
-
-import std::crypto::keccak_internal @public;
-
-const DEFAULT_F = 1600;
-const DEFAULT_ROUNDS = 24;
-const DEFAULT_DELIMITER = 0x01;
-
-const usz[] SECURITY_LEVELS = { 224, 256, 384, 512 };
-
-macro rate($security_level, $f = DEFAULT_F) @const => ($f - ($security_level * 2)) / 8;
-
-alias hash = xof;
-alias hash_into = xof_into;
-
-macro char[*] xof($security_level, $outlen_bytes, char[] data, $rounds = DEFAULT_ROUNDS, $delimiter = DEFAULT_DELIMITER, $f = DEFAULT_F)
+<* The base Keccak context data structure used to generate XOF outputs. *>
+struct KeccakContext @generic(F, OUTPUT_BITS)
 {
-	char[$outlen_bytes] result @noinit;
-	xof_into($security_level, result[..], data, $rounds, $delimiter, $f);
-	return result;
+	union @align(ulong.sizeof)   // keccak sponge state
+	{
+		ulong[F / 8 / ulong.sizeof] sponge;
+		char[F / 8] sponge_bytes;
+	}
+	usz offset;   // tracking leftover bytes from absorption
+	char[rate(OUTPUT_BITS)] buf @align(ulong.sizeof);   // absorption buffer
+	char runtime_delimiter;
+	char runtime_rounds;
+	usz runtime_struct_size;
+	bool is_padded;
+	KeccakStateMachine state;
 }
 
-macro void xof_into($security_level, char[] into, char[] data, $rounds = DEFAULT_ROUNDS, $delimiter = DEFAULT_DELIMITER, $f = DEFAULT_F)
+<*
+ Initialize the base Keccak context.
+
+ @param runtime_rounds : "An optional runtime override of the rounds count used in hash computation."
+ @param runtime_delimiter : "An optional runtime override of the delimiter used in hash computation."
+
+ @require runtime_rounds <= (12 + 2 * math::@intlog2(F / 25)) : "Amount of rounds cannot exceed MAX_ROUNDS."
+*>
+fn void KeccakContext.init(&self, char runtime_rounds = DEFAULT_ROUNDS, char runtime_delimiter = DEFAULT_DELIMITER)
 {
-	KeccakContext{$f, $security_level} k;
-	k.init($rounds, $delimiter);
-	k.update(data);
-	k.final(into);
+	@init_runtime_size(self, $sizeof(*self));
+	usz struct_sz = self.runtime_struct_size;
+	*self = {
+		.runtime_rounds = runtime_rounds,
+		.runtime_delimiter = runtime_delimiter,
+		.runtime_struct_size = struct_sz,
+	};
+	self.state.transition(INITIALIZED);
 }
 
-alias Keccak @generic(SECURITY_LEVEL) = KeccakContext { DEFAULT_F, SECURITY_LEVEL };
+<*
+ Update the Keccak context.
+
+ @param [in] data : "The data to absorb."
+*>
+fn void KeccakContext.update(&self, char[] data) @inline => self.absorb(data);
+
+<*
+ Finalize the Keccak context, storing the XOF result into the output buffer (at the slice's length) and crystallizing.
+
+ @param [out] into : "The destination for the XOF output. This slice's length will be wholly filled with the resultant XOF."
+*>
+fn void KeccakContext.final(&self, char[] into)
+{
+	defer self.finalize();
+	if (!self.is_padded) self.pad();
+	self.squeeze(into);
+}
+
+<*
+ Finalizes the Keccak context. Unless `wipe` is called explicitly, or the state is reset to `UNINITIALIZED`, the
+ context can no longer be used. All context memory is cleared first, followed by a retention of the `FINALIZED` state.
+*>
+fn void KeccakContext.finalize(&self)
+{
+	self.wipe();
+	self.state.transition(FINALIZED);
+}
+
+<* Explicitly zeros the instance based on the runtime size. A minimum `$sizeof(KeccakContext)` is assumed. *>
+fn void KeccakContext.wipe(&self) @local @inline => mem::zero_volatile(((char*)self)[:max($sizeof(*self), self.runtime_struct_size)]);
+
+<* An internal function used to XOR the sponge with the partial "stomach" buffer (data awaiting digestion). *>
+fn void KeccakContext.fill_block(&self) @local
+{
+	foreach (j, c : self.buf[:self.offset]) self.sponge_bytes[j] ^= c;
+	self.permute_r();
+	self.offset = 0;
+}
+
+<*
+ Update the Keccak context.
+
+ @param [in] input : "The data to absorb."
+*>
+fn void KeccakContext.absorb(&self, char[] input)
+{
+	self.state.transition(ABSORBING);
+	usz i;
+
+	if (self.offset > 0)   // handle any leftovers
+	{
+		usz left = min(rate(OUTPUT_BITS) - self.offset, input.len);
+
+		self.buf[self.offset:left] = input[:left];
+		self.offset += left;
+
+		if (left == input.len) return;   // awaiting more input before running rounds
+
+		if (self.offset == rate(OUTPUT_BITS))
+		{
+			foreach (j, c : self.buf) self.sponge_bytes[j] ^= c;
+
+			self.permute_r();
+			self.offset = 0;
+		}
+
+		i = left;
+	}
+
+	for (; i + rate(OUTPUT_BITS) < input.len; i += rate(OUTPUT_BITS))
+	{
+		foreach (j, c : input[i:rate(OUTPUT_BITS)]) self.sponge_bytes[j] ^= c;
+
+		self.permute_r();
+	}
+
+	usz left = input.len - i;
+	if (left > 0) self.buf[:left] = input[i:left];
+
+	self.offset = left;
+}
+
+<*
+ Pad the remainder of the Keccak sponge and run a final permutation before squeezing.
+*>
+fn void KeccakContext.pad(&self) @private
+{
+	foreach (j, c : self.buf[:self.offset]) self.sponge_bytes[j] ^= c;
+
+	if (self.offset == rate(OUTPUT_BITS))
+	{
+		self.permute_r();
+		self.offset = 0;
+	}
+
+	self.sponge_bytes[self.offset] ^= self.runtime_delimiter;
+	self.sponge_bytes[rate(OUTPUT_BITS) - 1] ^= 0x80;
+
+	self.permute_r();
+	self.offset = 0;
+
+	self.is_padded = true;
+}
+
+<*
+ "Squeeze" data from the Keccak sponge construction into the `out` buffer.
+
+ @param [out] out : "The destination for the squeezed data. The length of this slice determines the output length produced."
+*>
+fn void KeccakContext.squeeze(&self, char[] out)
+{
+	self.state.transition(SQUEEZING);
+	usz i;
+
+	if (self.offset == rate(OUTPUT_BITS))
+	{
+		self.permute_r();
+	}
+	else if (@unlikely(self.offset > 0))
+	{
+		char[rate(OUTPUT_BITS)] localbuf;
+		localbuf[..] = self.buf[..];
+
+		usz left = min(rate(OUTPUT_BITS) - self.offset, out.len);
+
+		out[:left] = localbuf[self.offset:left];
+		self.offset += left;
+
+		if (left == out.len) return;   // awaiting more data
+
+		if (self.offset == rate(OUTPUT_BITS))
+		{
+			self.offset = 0;
+			self.permute_r();
+		}
+
+		i = left;
+	}
+
+	for (; i + rate(OUTPUT_BITS) < out.len; i += rate(OUTPUT_BITS))
+	{
+		out[i:rate(OUTPUT_BITS)] = self.sponge_bytes[:rate(OUTPUT_BITS)];
+		self.permute_r();
+	}
+
+	usz left = out.len - i;
+	if (left > 0) out[i:left] = self.sponge_bytes[:left];
+
+	self.offset = left;
+}
+
+<*
+ Execute a set of permutations on the sponge buffer.
+*>
+fn void KeccakContext.permute_r(&self) @local
+{
+	usz i = RC.len - self.runtime_rounds;
+
+	for (; i < RC.len - (RC.len % 3); i += 3)
+	{
+		self.round(RC[i + 0]);
+		self.round(RC[i + 1]);
+		self.round(RC[i + 2]);
+	}
+
+	for (; i < RC.len; ++i) self.round(RC[i]);
+}
+
+<*
+ An individual permutation "round" of Keccak as applied to the current sponge data.
+*>
+fn void KeccakContext.round(&self, ulong rc) @local
+{
+	ulong[5] b;
+	ulong t;
+
+	// theta
+	$for var $x = 0; $x < 5; ++$x:
+		b[$x] = 0;
+		$for var $y = 0; $y < 25; $y += 5:
+			b[$x] ^= self.sponge[$x + $y];
+		$endfor
+	$endfor
+	$for var $x = 0; $x < 5; ++$x:
+		$for var $y = 0; $y < 25; $y += 5:
+			self.sponge[$x + $y] ^= b[($x + 4) % 5] ^ b[($x + 1) % 5].rotl(1);
+		$endfor
+	$endfor
+
+	// rho and pi
+	t = self.sponge[1];
+	$for var $x = 0; $x < 24; ++$x:
+		b[0] = self.sponge[PI[$x]];
+		self.sponge[PI[$x]] = t.rotl(RHO[$x]);
+		t = b[0];
+	$endfor
+
+	// chi
+	$for var $y = 0; $y < 25; $y += 5:
+		$for var $x = 0; $x < 5; ++$x:
+			b[$x] = self.sponge[$y + $x];
+		$endfor
+		$for var $x = 0; $x < 5; ++$x:
+			self.sponge[$y + $x] ^= (~b[($x + 1) % 5]) & b[($x + 2) % 5];
+		$endfor
+	$endfor
+
+	// iota
+	self.sponge[0] ^= rc;
+}
+

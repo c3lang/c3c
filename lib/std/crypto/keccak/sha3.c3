@@ -23,6 +23,8 @@ const DEFAULT_DELIMITER = 0x06;
  @param [in] data : "The data to hash."
 
  @require @in($hash_bits, ...DIGEST_SIZES) : "You must use a valid SHA-3 digest size."
+
+ @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
 macro char[*] hash($hash_bits, char[] data)
 {
@@ -63,6 +65,8 @@ macro void hash_into($hash_bits, char[] into, char[] data)
  @param [in] data : "The data to authenticate."
 
  @require @in($hash_bits, ...DIGEST_SIZES) : "You must use a valid SHA-3 digest size."
+
+ @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
 macro char[*] simple_hmac($hash_bits, char[] key, char[] data)
 {
@@ -78,7 +82,7 @@ macro char[*] simple_hmac($hash_bits, char[] key, char[] data)
 
  **WARNING**: This is not an 'official' NIST HMAC, and it's not likely to be used widely. You should
  NOT use this if you want to form SHA-3 HMACs that will validate with non-C3 implementations of SHA-3.
- If that's your requirement, you should use the plain `hmac` construction instead.
+ If that's your requirement, you should use the plain `hmac_into` construction instead.
 
  @param $hash_bits : "The strength of the hash function to use. Also determines the fixed output size."
  @param [out] into : "The destination slice for the hash result."
@@ -86,6 +90,7 @@ macro char[*] simple_hmac($hash_bits, char[] key, char[] data)
  @param [in] data : "The data to authenticate."
 
  @require @in($hash_bits, ...DIGEST_SIZES) : "You must use a valid SHA-3 digest size."
+ @require into.len > 0 : "You must use an output length over zero bytes."
 *>
 macro void simple_hmac_into($hash_bits, char[] into, char[] key, char[] data)
 {
@@ -111,6 +116,11 @@ macro void simple_hmac_into($hash_bits, char[] into, char[] key, char[] data)
  @param $tag_size : "The size, in bytes, of the resulting MAC byte array."
  @param [in] key : "The secret key used to authenticate the data."
  @param [in] data : "The data to use when creating the HMAC."
+
+ @require @in($hash_bits, ...DIGEST_SIZES) : "You must use a valid SHA-3 digest size."
+ @require $tag_size > 0 : "You must use a tag size over zero bytes."
+
+ @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
 macro char[*] hmac($hash_bits, usz $tag_size, char[] key, char[] data)
 {
@@ -120,10 +130,23 @@ macro char[*] hmac($hash_bits, usz $tag_size, char[] key, char[] data)
 }
 
 <*
+ While SHA-3 is not vulnerable to length extension attacks, and `SHA-3(key || message)` works
+ just fine, many libraries will still use the old nested construction from SHA-2. This carries
+ that implementation over, but also allows one to specify a "tag size", which is the desired
+ length of the resulting hash (i.e., 'squeezed' at that length from the Keccak sponge).
+
+ The ordinary std::hash::hmac module is NOT used for this, because we can specify a "tag size"
+ with this macro to get a variable-length MAC.
+
+ Formula: `H((K' ^ opad) || H((K' ^ ipad) || m))`, where `K' = K.len > block_size ? H(K) : K`
+
  @param $hash_bits : "The strength of the hash function to use. Does NOT determine the output size."
  @param [out] into : "The destination slice for the hash result. The size of this slice determined the resultant tag length."
  @param [in] key : "The secret key used to authenticate the data."
  @param [in] data : "The data to use when creating the HMAC."
+
+ @require @in($hash_bits, ...DIGEST_SIZES) : "You must use a valid SHA-3 digest size."
+ @require into.len > 0 : "You must use an output length over zero bytes."
 *>
 macro void hmac_into($hash_bits, char[] into, char[] key, char[] data)
 {
@@ -145,6 +168,8 @@ macro void hmac_into($hash_bits, char[] into, char[] key, char[] data)
 }
 
 <*
+ A struct wrapping the base Keccak construct. Maintained as its own full structure for member flexibility.
+
  @require @in(HASH_BITS, ...DIGEST_SIZES) : "You must use a valid SHA-3 digest size."
 *>
 struct Sha3 @generic(HASH_BITS)
@@ -155,7 +180,7 @@ struct Sha3 @generic(HASH_BITS)
 <*
  Initialize the inner Keccak context with the SHA-3 domain-separation delimiter.
 *>
-fn void Sha3.init(&self) @inline
+fn void Sha3.init(&self)
 {
 	keccak::@init_runtime_size(self, $sizeof(*self));
 	self.k.init(runtime_delimiter: DEFAULT_DELIMITER);

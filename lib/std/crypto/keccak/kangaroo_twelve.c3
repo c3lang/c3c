@@ -56,7 +56,7 @@ macro void KTwelve.consume_s0_padding(&self)
 	self.consumed_block_s0 = true;
 }
 
-fn void KTwelve.init(&self, String optional_customization = "") @inline
+fn void KTwelve.init(&self, String optional_customization = "")
 {
 	*self = { .c = optional_customization, .lower_bound = BLOCK_SIZE - optional_customization.len - 3 };
 	keccak::@init_runtime_size(self, $sizeof(*self));

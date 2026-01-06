@@ -5,15 +5,17 @@ module std::crypto::shake;
 
 import std::crypto @public;
 
+<* The set of usable security levels that are valid for this implementation of SHAKE and Keccak. *>
 const usz[] USABLE_LEVELS = { 128, 256 };
 
+<* The Keccak domain-separation delimiter to use specifically for SHAKE. *>
 const DEFAULT_DELIMITER = 0x1f;
+<* The amount of Keccak rounds to use specifically for SHAKE. *>
 const DEFAULT_ROUNDS = keccak::DEFAULT_ROUNDS;
 
-alias hash = xof;
-alias hash_into = xof_into;
-
 <*
+ Generate and return an XOF result of the specified `$outlen_bytes`.
+
  @param $security_level : "The security level of the XOF to use when hashing."
  @param $outlen_bytes : "The length of the XOF hash to return,"
  @param [in] data : "The data to hash."
@@ -21,15 +23,22 @@ alias hash_into = xof_into;
 
  @require @in($security_level, ...USABLE_LEVELS) : "Shake structures must use a valid security level."
  @require $outlen_bytes > 0 : "You must use an output length over zero bytes."
+
+ @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
 macro char[*] xof($security_level, $outlen_bytes, char[] data, char delimiter_override = DEFAULT_DELIMITER)
 {
-	char[$outlen_bytes] into @noinit;
-	xof_into($security_level, into[..], data, delimiter_override);
-	return into;
+	char[$outlen_bytes] result @noinit;
+	xof_into($security_level, result[..], data, delimiter_override);
+	return result;
 }
 
+<* When hashing with SHAKE, it's the same thing as using the XOF construct. *>
+alias hash = xof;
+
 <*
+ Generate an XOF result of `into.len` bytes and store the result in the `into` slice.
+
  @param $security_level : "The security level of the XOF to use when hashing."
  @param [out] into : "The destination for the generated variable-length hash."
  @param [in] data : "The data to hash."
@@ -43,8 +52,11 @@ macro void xof_into($security_level, char[] into, char[] data, char delimiter_ov
 	Shake{$security_level} s;
 	s.init(DEFAULT_ROUNDS, delimiter_override);
 	s.update(data);
-	s.final(into[..]);
+	s.final(into);
 }
+
+<* When hashing with SHAKE, it's the same thing as using the XOF construct. *>
+alias hash_into = xof_into;
 
 <*
  A structure with a variable amount of rounds and a variable compile-time delimiter value.
@@ -59,15 +71,21 @@ struct Shake @generic(SECURITY_LEVEL)
 	char[keccak::rate(SECURITY_LEVEL)] buf;
 }
 
-fn void Shake.init(&self, char rounds_override = DEFAULT_ROUNDS, char delimiter_override = DEFAULT_DELIMITER) @inline
+<*
+ Initialize the SHAKE context.
+
+ @param rounds_override : "An optional control of the round count used in the hash's computation."
+ @param delimiter_override : "An optional runtime override of the delimiter used in hash computation."
+*>
+fn void Shake.init(&self, char rounds_override = DEFAULT_ROUNDS, char delimiter_override = DEFAULT_DELIMITER)
 {
 	keccak::@init_runtime_size(self, $sizeof(*self));
 	self.k.init(rounds_override, delimiter_override);
 }
 
-fn void Shake.pad(&self) => unreachable("Shake.pad() must never be accessed directly");
-
 <*
+ A SHAKE-specific override of the Keccak "squeeze" method.
+
  @param [out] into : "The destination for the generated variable-length hash."
 *>
 fn void Shake.squeeze(&self, char[] into)
