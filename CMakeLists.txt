@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 set(C3_LLVM_MIN_VERSION 17)
 set(C3_LLVM_MAX_VERSION 22)
-set(C3_LLVM_DEFAULT_VERSION 19)
+set(C3_LLVM_DEFAULT_VERSION 21)
 
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
     message(FATAL_ERROR "In-tree build detected, please build in a separate directory")
@@ -142,11 +142,11 @@ if(C3_WITH_LLVM)
         endif()
         FetchContent_Declare(
                 LLVM_Windows
-                URL https://github.com/c3lang/win-llvm/releases/download/llvm_19_1_5/llvm-19.1.5-windows-amd64-msvc17-libcmt.7z
+                URL https://github.com/ManuLinares/win-llvm/releases/download/llvm_21_1_8/llvm-21.1.8-windows-amd64-msvc17-libcmt.7z
         )
         FetchContent_Declare(
                 LLVM_Windows_debug
-                URL https://github.com/c3lang/win-llvm/releases/download/llvm_19_1_5/llvm-19.1.5-windows-amd64-msvc17-libcmt-dbg.7z
+                URL https://github.com/ManuLinares/win-llvm/releases/download/llvm_21_1_8/llvm-21.1.8-windows-amd64-msvc17-libcmt-dbg.7z
         )
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             message("Loading Windows LLVM debug libraries, this may take a while...")
