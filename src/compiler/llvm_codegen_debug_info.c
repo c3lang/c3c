@@ -576,32 +576,42 @@ static LLVMMetadataRef llvm_debug_vector_type(GenContext *c, Type *type)
 
 static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 {
+	if (type->backend_debug_type)
+	{
+		return type->backend_debug_type;
+	}
+
 	FunctionPrototype *prototype = type_get_resolved_prototype(type);
 	Signature *sig = prototype->raw_type->function.signature;
-	// 1. Generate all the parameter types, this may cause this function to be called again!
-	FOREACH(Decl *, param, sig->params)
-	{
-		llvm_get_debug_type(c, param->type);
-	}
-	// 2. We might be done!
-	if (type->backend_debug_type) return type->backend_debug_type;
 
-	// 3. Otherwise generate:
-	static LLVMMetadataRef *buffer = NULL;
-	vec_resize(buffer, 0);
-	vec_add(buffer, llvm_get_debug_type(c, typeget(sig->rtype)));
+	unsigned count = 1 + vec_size(sig->params) + (prototype->raw_variadic ? 1 : 0);
+
+	LLVMMetadataRef *params = malloc(sizeof(LLVMMetadataRef) * count);
+
+	unsigned i = 0;
+
+	params[i++] = llvm_get_debug_type(c, typeget(sig->rtype));
+
 	FOREACH(Decl *, param, sig->params)
 	{
-		vec_add(buffer, llvm_get_debug_type(c, param->type));
+		params[i++] = llvm_get_debug_type(c, param->type);
 	}
+
 	if (prototype->raw_variadic)
 	{
-		vec_add(buffer, LLVMDIBuilderCreateUnspecifiedType(c->debug.builder, "", 0));
+		params[i++] =LLVMDIBuilderCreateUnspecifiedType(c->debug.builder, "", 0);
 	}
-	return LLVMDIBuilderCreateSubroutineType(c->debug.builder,
-	                                         c->debug.file.debug_file,
-	                                         buffer,
-	                                         vec_size(buffer), 0);
+
+	LLVMMetadataRef sub =
+		LLVMDIBuilderCreateSubroutineType(
+			c->debug.builder,
+			c->debug.file.debug_file,
+			params,
+			count,
+			0);
+
+	type->backend_debug_type = sub;
+	return sub;
 }
 
 
