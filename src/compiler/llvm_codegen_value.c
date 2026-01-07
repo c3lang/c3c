@@ -129,6 +129,10 @@ void llvm_value_rvalue(GenContext *c, BEValue *value)
 
 void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef opt_value)
 {
+	if (!c->catch.block)
+	{
+		puts("foekf");
+	}
 	ASSERT_AT(c->last_emitted_loc, c->catch.block && "unexpected emit");
 	bool is_constant_opt = llvm_is_const(opt_value);
 

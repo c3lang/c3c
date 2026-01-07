@@ -1121,7 +1121,9 @@ static inline bool sema_analyse_cond_list(SemaContext *context, Expr *expr, Cond
 	// 2. Walk through each of our declarations / expressions as if they were regular expressions.
 	for (unsigned i = 0; i < entries - 1; i++)
 	{
-		if (!sema_analyse_expr_rvalue(context, dexprs[i])) return false;
+		Expr *dexpr = dexprs[i];
+		if (!sema_analyse_expr_rvalue(context, dexpr)) return false;
+		if (!sema_expr_check_discard(context, dexpr)) return false;
 	}
 
 	if (!sema_analyse_last_cond(context, dexprs[entries - 1], cond_type, result)) return false;
