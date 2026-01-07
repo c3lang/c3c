@@ -324,7 +324,7 @@ static LLVMMetadataRef llvm_debug_pointer_type(GenContext *c, Type *type)
 										  inner,
 										  type_size(type) * 8,
 										  type_abi_alignment(type) * 8, 0,
-										  NULL, 0);
+										  "", 0);
 }
 
 static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetadataRef scope)
@@ -587,21 +587,25 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 	if (type->backend_debug_type) return type->backend_debug_type;
 
 	// 3. Otherwise generate:
-	static LLVMMetadataRef *buffer = NULL;
-	vec_resize(buffer, 0);
-	vec_add(buffer, llvm_get_debug_type(c, typeget(sig->rtype)));
+	LLVMMetadataRef params[MAX_PARAMS + 1];
+	int index = 0;
+	params[index++] = llvm_get_debug_type(c, typeget(sig->rtype));
 	FOREACH(Decl *, param, sig->params)
 	{
-		vec_add(buffer, llvm_get_debug_type(c, param->type));
+		params[index++] = llvm_get_debug_type(c, param->type);
 	}
 	if (prototype->raw_variadic)
 	{
-		vec_add(buffer, LLVMDIBuilderCreateUnspecifiedType(c->debug.builder, "", 0));
+		params[index++] = LLVMDIBuilderCreateUnspecifiedType(c->debug.builder, "", 0);
 	}
+
+	// 4. We might be done again!
+	if (type->backend_debug_type) return type->backend_debug_type;
+
 	return LLVMDIBuilderCreateSubroutineType(c->debug.builder,
 	                                         c->debug.file.debug_file,
-	                                         buffer,
-	                                         vec_size(buffer), 0);
+	                                         params,
+	                                         index, 0);
 }
 
 
