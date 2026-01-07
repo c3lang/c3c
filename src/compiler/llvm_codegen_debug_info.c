@@ -324,7 +324,7 @@ static LLVMMetadataRef llvm_debug_pointer_type(GenContext *c, Type *type)
 										  inner,
 										  type_size(type) * 8,
 										  type_abi_alignment(type) * 8, 0,
-										  type->name, strlen(type->name));
+										  NULL, 0);
 }
 
 static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetadataRef scope)
