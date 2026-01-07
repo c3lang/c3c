@@ -327,6 +327,45 @@ bool decl_is_defaulted_var(Decl *decl)
 	return decl->decl_kind == DECL_VAR && decl->var.no_init && decl->var.defaulted;
 }
 
+bool decl_may_be_generic(Decl *decl)
+{
+	switch (decl->decl_kind)
+	{
+		case DECL_POISONED:
+		case DECL_BODYPARAM:
+		case DECL_CT_ASSERT:
+		case DECL_CT_ECHO:
+		case DECL_CT_EXEC:
+		case DECL_CT_INCLUDE:
+		case DECL_ALIAS_PATH:
+		case DECL_ENUM_CONSTANT:
+		case DECL_ERASED:
+		case DECL_FAULT:
+		case DECL_GROUP:
+		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
+		case DECL_IMPORT:
+		case DECL_LABEL:
+		case DECL_CONST_ENUM:
+			return false;
+		case DECL_ATTRIBUTE:
+		case DECL_BITSTRUCT:
+		case DECL_DECLARRAY:
+		case DECL_ALIAS:
+		case DECL_TYPEDEF:
+		case DECL_ENUM:
+		case DECL_FNTYPE:
+		case DECL_FUNC:
+		case DECL_MACRO:
+		case DECL_INTERFACE:
+		case DECL_STRUCT:
+		case DECL_TYPE_ALIAS:
+		case DECL_UNION:
+		case DECL_VAR:
+			return true;
+	}
+	UNREACHABLE
+}
 /*
  * Count the expected number of elements needed for an initializer
  * by folding any anonymous structs and unions.

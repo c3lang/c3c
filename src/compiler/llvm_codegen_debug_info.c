@@ -165,7 +165,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 			llvm_get_debug_type(c, decl->type),
 			compiler.build.optlevel != OPTIMIZATION_NONE,
 			LLVMDIFlagZero,
-			decl->alignment);
+			decl->alignment * 8);
 	decl->var.backend_debug_ref = var;
 
 	ASSERT(!decl->is_value);
@@ -324,7 +324,7 @@ static LLVMMetadataRef llvm_debug_pointer_type(GenContext *c, Type *type)
 										  inner,
 										  type_size(type) * 8,
 										  type_abi_alignment(type) * 8, 0,
-										  type->name, strlen(type->name));
+										  NULL, 0);
 }
 
 static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetadataRef scope)
@@ -548,7 +548,7 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 													  llvm_get_debug_type(c, original_type),
 													  decl->name, strlen(decl->name),
 													  c->debug.file.debug_file, row ? row : 1,
-													  c->debug.file.debug_file, type_abi_alignment(type));
+													  c->debug.file.debug_file, type_abi_alignment(type) * 8);
 	if (type->backend_debug_type)
 	{
 		LLVMMetadataReplaceAllUsesWith(type->backend_debug_type, real);
