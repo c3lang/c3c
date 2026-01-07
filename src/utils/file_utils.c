@@ -627,8 +627,7 @@ char *file_append_path(const char *path, const char *name)
 }
 
 #ifdef _MSC_VER
-extern int _getdrive(void);
-extern int _chdrive(int drive);
+#include <direct.h>
 #endif
 
 void file_copy_file(const char *src_path, const char *dst_path, bool overwrite)

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  LLVM_RELEASE_VERSION_WINDOWS: 21
+  LLVM_RELEASE_VERSION_WINDOWS: 21.1.8
   LLVM_RELEASE_VERSION_MAC: 18
   LLVM_RELEASE_VERSION_LINUX: 19
   LLVM_RELEASE_VERSION_OPENBSD: 19
@@ -23,7 +23,7 @@ jobs:
       # Don't abort runners if a single one fails
       fail-fast: false
       matrix:
-        build_type: [ Release ]
+        build_type: [ Release, Debug ]
 
     defaults:
       run:
@@ -31,12 +31,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache LLVM
+        id: cache-llvm
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: ${{ runner.os }}-llvm-${{ env.LLVM_RELEASE_VERSION_WINDOWS }}-${{ matrix.build_type }}-00001
+
       - name: CMake
+        timeout-minutes: 10
         run: |
           cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build build --config ${{ matrix.build_type }}
 
       - name: Compile and run some examples
+        timeout-minutes: 10
         run: |
           cd resources
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run -L C:\ --print-linking examples\hello_world_many.c3
@@ -51,6 +60,7 @@ jobs:
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run msvc_stack.c3
 
       - name: Build testproject
+        timeout-minutes: 10
         run: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
           cd resources/testproject
@@ -61,28 +71,33 @@ jobs:
 
 
       - name: Build testproject lib
+        timeout-minutes: 10
         run: |
           cd resources/testproject
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
           ..\..\build\${{ matrix.build_type }}\c3c.exe -vvv build hello_world_win32_lib --trust=full
 
       - name: Compile and run dynlib-test
+        timeout-minutes: 5
         run: |
           cd resources/examples/dynlib-test
           ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv dynamic-lib add.c3
           ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv compile-run test.c3 -l ./add.lib          
 
       - name: Compile and run staticlib-test
+        timeout-minutes: 5
         run: |
           cd resources/examples/staticlib-test
           ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv static-lib add.c3
           ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv compile-run test.c3 -l ./add.lib          
 
       - name: Vendor-fetch
+        timeout-minutes: 5
         run: |
           build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib
 
       - name: Try raylib
+        timeout-minutes: 5
         run: |
           cd resources
           ..\build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib
@@ -91,16 +106,19 @@ jobs:
           ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib --print-linking examples\raylib\raylib_tetris.c3
 
       - name: run compiler tests
+        timeout-minutes: 50
         run: |
           cd test
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run -O1 src/test_suite_runner.c3 -- ..\build\${{ matrix.build_type }}\c3c.exe test_suite/ --no-terminal
 
       - name: Compile run unit tests
+        timeout-minutes: 20
         run: |
           cd test
           ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -O1 -D SLOW_TESTS
 
       - name: Test python script
+        timeout-minutes: 5
         run: |
           py msvc_build_libraries.py --accept-license
           dir msvc_sdk

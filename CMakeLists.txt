@@ -56,12 +56,30 @@ set(CMAKE_FIND_PACKAGE_SORT_DIRECTION DEC)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
-# Use /MT or /MTd
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
-
 if(MSVC)
     message(STATUS "MSVC version ${MSVC_VERSION}")
     add_compile_options(/utf-8)
+
+    if(C3_WITH_LLVM)
+        FetchContent_GetProperties(LLVM_Windows)
+        if(NOT LLVM_Windows_URL MATCHES "msvcrt")
+            set(MSVC_CRT_SUFFIX "")
+            message(STATUS "Detected STATIC LLVM (libcmt)")
+        else()
+            set(MSVC_CRT_SUFFIX "DLL")
+            message(STATUS "Detected DYNAMIC LLVM (msvcrt)")
+        endif()
+    endif()
+
+    # Force the Runtime to Release (/MT or /MD) even in Debug
+    # This is required to match our RelWithDebInfo LLVM builds
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded${MSVC_CRT_SUFFIX}")
+    set_property(GLOBAL PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded${MSVC_CRT_SUFFIX}")
+
+    add_compile_definitions(_ITERATOR_DEBUG_LEVEL=0)
+
+    # Suppresses the LNK4098 mismatch warning in Debug builds
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:libcmtd /NODEFAULTLIB:msvcrtd")
 else()
     add_compile_options(-gdwarf-3 -fno-exceptions)
 
@@ -440,7 +458,13 @@ if(C3_WITH_LLVM)
     target_compile_definitions(c3c PUBLIC LLVM_AVAILABLE=1)
     add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
     if (MSVC)
-        target_compile_options(c3c PRIVATE "/EHsc")
+        # Use the same detected CRT for the wrapper
+        set_target_properties(c3c_wrappers PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded${MSVC_CRT_SUFFIX}")
+        set_target_properties(miniz PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded${MSVC_CRT_SUFFIX}")
+
+        target_compile_options(c3c PRIVATE
+                "$<$<CONFIG:Debug>:/EHa>"
+                "$<$<CONFIG:Release>:/EHsc>")
     endif()
 else()
     target_sources(c3c PRIVATE src/utils/hostinfo.c)
@@ -555,13 +579,22 @@ if(MSVC)
     endif()
 
     if(C3_WITH_LLVM)
-        set(clang_lib_dir ${llvm_dir}/lib/clang/${C3_LLVM_VERSION}/lib/windows)
-        set(sanitizer_runtime_libraries
-                ${clang_lib_dir}/clang_rt.asan-x86_64.lib
-                ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.lib
-                ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.dll
-                ${clang_lib_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
+        # Find where the sanitizer libs actually ended up in your custom build (maybe ill rebuild later)
+        file(GLOB_RECURSE FOUND_ASAN_LIB "${llvm_dir}/*clang_rt.asan-x86_64.lib")
+        if(FOUND_ASAN_LIB)
+            list(GET FOUND_ASAN_LIB 0 _asan_path)
+            get_filename_component(_asan_dir "${_asan_path}" DIRECTORY)
+            set(sanitizer_runtime_libraries
+                    ${_asan_dir}/clang_rt.asan-x86_64.lib
+                    ${_asan_dir}/clang_rt.asan_dynamic-x86_64.lib
+                    ${_asan_dir}/clang_rt.asan_dynamic-x86_64.dll
+                    ${_asan_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
+            message(STATUS "Found Sanitizer binaries at: ${_asan_dir}")
+        else()
+            message(WARNING "Could not find sanitizer runtime libraries in ${llvm_dir}")
+        endif()
     endif()
+
 else()
     if (C3_WITH_LLVM AND NOT LLVM_ENABLE_RTTI)
         target_compile_options(c3c_wrappers PRIVATE -fno-rtti)
