@@ -53,6 +53,7 @@
 - Crash when doing a type property lookup for const inline enums in some cases #2717.
 - Incorrect alignment on typedef and local variable debug info.
 - Assert on optional-returning-function in a comma expression. #2722
+- Creating recursive debug info for functions could cause assertions.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
