@@ -155,8 +155,9 @@ fn void streamed()
 	$foreach $i, $sz : sha3::DIGEST_SIZES:
 	{
 		char[$sz / 8] hash;
-		Sha3{$sz} h;
-		@as_char_view(h)[..] = 0xff; // purposefully non-zero struct init; ensures .init() does everything right
+		Sha3{$sz} h @noinit;
+		// Purposefully initialize with non-zero values to ensure .init() does everything right.
+		@as_char_view(h)[..] = 0xff; h.runtime_struct_size = 0;
 		h.init();
 		h.update(s[:20]); h.update(s[20:10]); h.update(s[30:1]); h.update(s[31..]);
 		h.final(hash[..]);

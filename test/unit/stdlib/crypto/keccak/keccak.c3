@@ -132,8 +132,9 @@ fn void streamed()
 	$foreach $i, $sz : keccak::SECURITY_LEVELS:
 	{
 		char[$sz / 8] result;
-		Keccak{$sz} k;
-		@as_char_view(k)[..] = 0xff;
+		Keccak{$sz} k @noinit;
+		// Purposefully initialize with non-zero values to ensure .init() does everything right.
+		@as_char_view(k)[..] = 0xff; k.runtime_struct_size = 0;
 		k.init();
 		k.update(s[:20]); k.update(s[20:10]); k.update(s[30:1]); k.update(s[31..]);
 		k.final(result[..]);
