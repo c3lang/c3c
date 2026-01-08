@@ -63,10 +63,6 @@ fn void init_blake3() @local @init
 	cpuinfo_initd = true;
 }
 
-<* Check whether a given CPU flag is set (x86/x86_64 only). *>
-macro bool check_cpu_flag(X86Feature f) @local @if(IS_X86)
-	=> (cpudetect::x86_features & (1ULL << f.ordinal)) != 0;
-
 <*
  Return the actual SIMD degree of the processor at runtime.
 *>
@@ -77,9 +73,9 @@ macro @simd_degree() @local
 
 	$switch:
 		$case IS_X86:
-			if (check_cpu_flag(AVX512F) && check_cpu_flag(AVX512VL)) return 16;
-			if (check_cpu_flag(AVX2)) return 8;
-			if (check_cpu_flag(SSE4_1) || check_cpu_flag(SSE2)) return 4;
+			if (cpudetect::has_cpu_flag(AVX512F) && cpudetect::has_cpu_flag(AVX512VL)) return 16;
+			if (cpudetect::has_cpu_flag(AVX2)) return 8;
+			if (cpudetect::has_cpu_flag(SSE4_1) || cpudetect::has_cpu_flag(SSE2)) return 4;
 		$case USE_NEON:
 			return 4;
 	$endswitch
