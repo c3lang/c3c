@@ -166,15 +166,19 @@ const char[24] PI = {
 };
 
 <* The base Keccak context data structure used to generate XOF outputs. *>
-struct KeccakContext @generic(F, OUTPUT_BITS)
+struct KeccakContext @generic(F, OUTPUT_BITS) @align(ulong.sizeof)
 {
 	union @align(ulong.sizeof)   // keccak sponge state
 	{
 		ulong[F / 8 / ulong.sizeof] sponge;
 		char[F / 8] sponge_bytes;
 	}
+	union @align(ulong.sizeof)
+	{
+		ulong[rate(OUTPUT_BITS) / ulong.sizeof] buf_words;
+		char[rate(OUTPUT_BITS)] buf;
+	}
 	usz offset;   // tracking leftover bytes from absorption
-	char[rate(OUTPUT_BITS)] buf @align(ulong.sizeof);   // absorption buffer
 	char runtime_delimiter;
 	char runtime_rounds;
 	usz runtime_struct_size;
@@ -237,7 +241,9 @@ fn void KeccakContext.wipe(&self) @local @inline => mem::zero_volatile(((char*)s
 <* An internal function used to XOR the sponge with the partial "stomach" buffer (data awaiting digestion). *>
 fn void KeccakContext.fill_block(&self) @local
 {
-	foreach (j, c : self.buf[:self.offset]) self.sponge_bytes[j] ^= c;
+	usz i = 0;
+	for (; i < (self.offset / ulong.sizeof); i++) self.sponge[i] ^= self.buf_words[i];
+	for (i = i * ulong.sizeof; i < self.offset; i++) self.sponge_bytes[i] ^= self.buf[i];
 	self.permute_r();
 	self.offset = 0;
 }
@@ -250,6 +256,8 @@ fn void KeccakContext.fill_block(&self) @local
 fn void KeccakContext.absorb(&self, char[] input)
 {
 	self.state.transition(ABSORBING);
+	if (!input.len) return;
+
 	usz i;
 
 	if (self.offset > 0)   // handle any leftovers
@@ -261,22 +269,27 @@ fn void KeccakContext.absorb(&self, char[] input)
 
 		if (left == input.len) return;   // awaiting more input before running rounds
 
-		if (self.offset == rate(OUTPUT_BITS))
-		{
-			foreach (j, c : self.buf) self.sponge_bytes[j] ^= c;
-
-			self.permute_r();
-			self.offset = 0;
-		}
+		if (self.offset == rate(OUTPUT_BITS)) self.fill_block();
 
 		i = left;
 	}
 
-	for (; i + rate(OUTPUT_BITS) < input.len; i += rate(OUTPUT_BITS))
+	bool is_aligned = 0 == (uptr)&input[i] % ulong.sizeof;
+	if (is_aligned)
 	{
-		foreach (j, c : input[i:rate(OUTPUT_BITS)]) self.sponge_bytes[j] ^= c;
-
-		self.permute_r();
+		for (; i + rate(OUTPUT_BITS) < input.len; i += rate(OUTPUT_BITS))
+		{
+			foreach (j, c : *(ulong[rate(OUTPUT_BITS) / ulong.sizeof]*)(&input[i])) self.sponge[j] ^= c;
+			self.permute_r();
+		}
+	}
+	else
+	{
+		for (; i + rate(OUTPUT_BITS) < input.len; i += rate(OUTPUT_BITS))
+		{
+			foreach (j, c : input[i:rate(OUTPUT_BITS)]) self.sponge_bytes[j] ^= c;
+			self.permute_r();
+		}
 	}
 
 	usz left = input.len - i;
@@ -290,7 +303,9 @@ fn void KeccakContext.absorb(&self, char[] input)
 *>
 fn void KeccakContext.pad(&self) @private
 {
-	foreach (j, c : self.buf[:self.offset]) self.sponge_bytes[j] ^= c;
+	usz i = 0;
+	for (; i < (self.offset / ulong.sizeof); i++) self.sponge[i] ^= self.buf_words[i];
+	for (i = i * ulong.sizeof; i < self.offset; i++) self.sponge_bytes[i] ^= self.buf[i];
 
 	if (self.offset == rate(OUTPUT_BITS))
 	{
@@ -315,13 +330,15 @@ fn void KeccakContext.pad(&self) @private
 fn void KeccakContext.squeeze(&self, char[] out)
 {
 	self.state.transition(SQUEEZING);
+	if (!out.len) return;
+
 	usz i;
 
 	if (self.offset == rate(OUTPUT_BITS))
 	{
 		self.permute_r();
 	}
-	else if (@unlikely(self.offset > 0))
+	else if (self.offset > 0)
 	{
 		char[rate(OUTPUT_BITS)] localbuf;
 		localbuf[..] = self.buf[..];
@@ -357,18 +374,9 @@ fn void KeccakContext.squeeze(&self, char[] out)
 <*
  Execute a set of permutations on the sponge buffer.
 *>
-fn void KeccakContext.permute_r(&self) @local
+fn void KeccakContext.permute_r(&self) @local @inline
 {
-	usz i = RC.len - self.runtime_rounds;
-
-	for (; i < RC.len - (RC.len % 3); i += 3)
-	{
-		self.round(RC[i + 0]);
-		self.round(RC[i + 1]);
-		self.round(RC[i + 2]);
-	}
-
-	for (; i < RC.len; ++i) self.round(RC[i]);
+	for (usz i = RC.len - self.runtime_rounds; i < RC.len; i++) self.round(RC[i]);
 }
 
 <*
@@ -376,12 +384,10 @@ fn void KeccakContext.permute_r(&self) @local
 *>
 fn void KeccakContext.round(&self, ulong rc) @local
 {
-	ulong[5] b;
-	ulong t;
+	ulong[6] b;
 
 	// theta
 	$for var $x = 0; $x < 5; ++$x:
-		b[$x] = 0;
 		$for var $y = 0; $y < 25; $y += 5:
 			b[$x] ^= self.sponge[$x + $y];
 		$endfor
@@ -393,11 +399,11 @@ fn void KeccakContext.round(&self, ulong rc) @local
 	$endfor
 
 	// rho and pi
-	t = self.sponge[1];
+	b[5] = self.sponge[1];
 	$for var $x = 0; $x < 24; ++$x:
 		b[0] = self.sponge[PI[$x]];
-		self.sponge[PI[$x]] = t.rotl(RHO[$x]);
-		t = b[0];
+		self.sponge[PI[$x]] = b[5].rotl(RHO[$x]);
+		b[5] = b[0];
 	$endfor
 
 	// chi
