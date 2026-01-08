@@ -1,0 +1,8 @@
+fn void main()
+{
+	int x = 5;
+	
+	if (x = 1) {}  // #error: An assignment in an 'if' condition must be parenthesized - did you mean to use '==' instead?
+	
+	if ((x = 1)) {}
+}
