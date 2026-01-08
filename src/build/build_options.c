@@ -20,6 +20,7 @@ extern const char *llvm_target;
 static const char *unchecked_dir(BuildOptions *options, const char *path);
 static inline bool at_end();
 static inline const char *next_arg();
+static inline const char *peek_next_arg();
 static inline bool next_is_opt();
 INLINE bool match_longopt(const char *name);
 static inline const char *match_argopt(const char *name);
@@ -600,6 +601,17 @@ static void parse_option(BuildOptions *options)
 			if (match_shortopt("z"))
 			{
 				if (at_end()) error_exit("error: -z needs a value.");
+				if (str_eq(peek_next_arg(), "["))
+				{
+					next_arg();
+					while(!str_eq(peek_next_arg(), "]")) 
+					{
+						if(at_end()) error_exit("error: ] expected at end of linker list");
+						add_linker_arg(options, next_arg());
+					}
+					next_arg();
+					return;
+				}
 				add_linker_arg(options, next_arg());
 				return;
 			}
@@ -1620,6 +1632,12 @@ const char *check_dir(const char *path)
 static inline bool at_end()
 {
 	return arg_index == arg_count - 1;
+}
+
+static inline const char *peek_next_arg()
+{
+	ASSERT(!at_end());
+	return args[arg_index + 1];
 }
 
 static inline const char *next_arg()
