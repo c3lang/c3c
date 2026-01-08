@@ -276,7 +276,7 @@ fn bool find_and_mark_error(RunSettings* settings, String type, String file, Str
 <*
  Parse all stderr output
 *>
-fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, OutStream buffer_stream)
+fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, OutStream buffer_stream, CInt result)
 {
 	List{String} unexpected_errors;
 
@@ -313,6 +313,19 @@ fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, O
 	}
 
 	bool is_ok = unexpected_errors.is_empty() && missed_errors.is_empty() && missed_warnings.is_empty();
+	if (is_ok && result != 0)
+	{
+		bool has_expected_errors;
+		foreach (file : settings.input_files)
+		{
+			if (!file.ptr.errors.is_empty()) { has_expected_errors = true; break; }
+		}
+		if (!has_expected_errors)
+		{
+			unexpected_errors.push(string::tformat("  - Compiler exited with error code %d but no errors were expected.", result));
+			is_ok = false;
+		}
+	}
 	if (is_ok) return true;
 
 	io::fprintn(buffer_stream, "FAILED")!!;
@@ -575,7 +588,7 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 		io::fprintfn((OutStream)&output.buffer, "FAILED - Error(%s): %s", result, out)!!;
 		return false;
 	}
-	if (!parse_result(out, settings, &cmdline, (OutStream)&output.buffer)) return false;
+	if (!parse_result(out, settings, &cmdline, (OutStream)&output.buffer, result)) return false;
 	foreach (file : settings.output_files)
 	{
 		Path expected_file = test_dir.tappend(file.ptr.name)!!;
