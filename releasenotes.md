@@ -49,6 +49,11 @@
 - `String.replace` no longer depends on `String.split`.
 - Fix the case where `\u<unicode char>` could crash the compiler on some platforms.
 - Designated initialization with ranges would not error on overflow by 1.
+- `io::read_fully` now handles unbounded streams properly.
+- Crash when doing a type property lookup for const inline enums in some cases #2717.
+- Incorrect alignment on typedef and local variable debug info.
+- Assert on optional-returning-function in a comma expression. #2722
+- Creating recursive debug info for functions could cause assertions.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.

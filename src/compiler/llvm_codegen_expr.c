@@ -1330,7 +1330,7 @@ static void llvm_prune_optional(GenContext *c, LLVMBasicBlockRef discard_fail)
 	// <insert point>
 
 	// Find the use of this block.
-	LLVMUseRef use = LLVMGetFirstUse(block_value);
+	LLVMUseRef use = LLVMHasUseList(block_value) ? LLVMGetFirstUse(block_value) : NULL;
 	if (!use) return;
 
 	LLVMValueRef maybe_br = LLVMGetUser(use);
@@ -1356,7 +1356,8 @@ static void llvm_prune_optional(GenContext *c, LLVMBasicBlockRef discard_fail)
 	LLVMInstructionEraseFromParent(maybe_br);
 
 	// Optionally remove the comparison
-	if (!LLVMGetFirstUse(compared))
+
+	if (LLVMHasUseList(compared) && !LLVMGetFirstUse(compared))
 	{
 		LLVMValueRef operand = NULL;
 		if (LLVMGetInstructionOpcode(compared) == LLVMCall)
@@ -5255,7 +5256,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 				}
 				LLVMValueRef val = be_value->value;
 				// Maybe it's just created? Let's optimize codegen.
-				if (!LLVMGetFirstUse(val) && LLVMIsAInsertValueInst(val) && LLVMIsAInsertValueInst(
+				if (LLVMHasUseList(val) && !LLVMGetFirstUse(val) && LLVMIsAInsertValueInst(val) && LLVMIsAInsertValueInst(
 						LLVMGetPreviousInstruction(val)))
 				{
 					LLVMValueRef prev = LLVMGetPreviousInstruction(val);

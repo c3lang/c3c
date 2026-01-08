@@ -251,9 +251,6 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_POISONED:
 				continue;
 			case DECL_FAULT:
-				PRINT_ERROR_AT(decl, "Generic modules cannot use 'faultdef', place the declaration in a separate sub module or parent module instead.");
-				decl_poison(decl);
-				break;
 			case DECL_BODYPARAM:
 			case DECL_DECLARRAY:
 			case DECL_ENUM_CONSTANT:

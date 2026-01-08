@@ -75,6 +75,7 @@ bool llvm_link_mingw(const char **args, int arg_count, const char **error_string
 bool llvm_ar(const char *out_name, const char **args, size_t count, int ArFormat);
 
 LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal);
+bool LLVMHasUseList(LLVMValueRef value);
 void LLVMBuilderSetFastMathFlags(LLVMBuilderRef Builder, FastMathOption option);
 void LLVMSetDSOLocal(LLVMValueRef Global, bool value);
 void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_array);
