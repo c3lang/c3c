@@ -1330,7 +1330,7 @@ static void llvm_prune_optional(GenContext *c, LLVMBasicBlockRef discard_fail)
 	// <insert point>
 
 	// Find the use of this block.
-	LLVMUseRef use = LLVMGetFirstUse(block_value);
+	LLVMUseRef use = LLVMHasUseList(block_value) ? LLVMGetFirstUse(block_value) : NULL;
 	if (!use) return;
 
 	LLVMValueRef maybe_br = LLVMGetUser(use);
@@ -1356,7 +1356,8 @@ static void llvm_prune_optional(GenContext *c, LLVMBasicBlockRef discard_fail)
 	LLVMInstructionEraseFromParent(maybe_br);
 
 	// Optionally remove the comparison
-	if (!LLVMGetFirstUse(compared))
+
+	if (LLVMHasUseList(compared) && !LLVMGetFirstUse(compared))
 	{
 		LLVMValueRef operand = NULL;
 		if (LLVMGetInstructionOpcode(compared) == LLVMCall)
@@ -2369,6 +2370,12 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 			break;
 	}
 	llvm_emit_expr(c, value, inner);
+	if (!c->current_block)
+	{
+		value->type = type_void;
+		*value = (BEValue) { .type = type_void, .kind = BE_VALUE, .value = NULL };
+		return;
+	}
 	llvm_value_rvalue(c, value);
 	AlignSize alignment = type_abi_alignment(type);
 	bool is_const = expr_is_const(inner);
@@ -5249,7 +5256,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 				}
 				LLVMValueRef val = be_value->value;
 				// Maybe it's just created? Let's optimize codegen.
-				if (!LLVMGetFirstUse(val) && LLVMIsAInsertValueInst(val) && LLVMIsAInsertValueInst(
+				if (LLVMHasUseList(val) && !LLVMGetFirstUse(val) && LLVMIsAInsertValueInst(val) && LLVMIsAInsertValueInst(
 						LLVMGetPreviousInstruction(val)))
 				{
 					LLVMValueRef prev = LLVMGetPreviousInstruction(val);
@@ -6357,8 +6364,7 @@ static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *val
 		FOREACH_IDX(i, Expr *, element, elements)
 		{
 			llvm_emit_expr(c, &val, element);
-			llvm_value_rvalue(c, &val);
-			vec_value = llvm_update_vector(c, vec_value, val.value, (ArrayIndex)i);
+			vec_value = llvm_update_vector(c, vec_value, llvm_load_value_store(c, &val), (ArrayIndex)i);
 		}
 	}
 	else
@@ -6382,18 +6388,18 @@ static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *val
 			ASSERT(vec_size(designator->designator_expr.path) == 1);
 			DesignatorElement *element = designator->designator_expr.path[0];
 			llvm_emit_expr(c, &val, designator->designator_expr.value);
-			llvm_value_rvalue(c, &val);
+			LLVMValueRef value = llvm_load_value_store(c, &val);
 			switch (element->kind)
 			{
 				case DESIGNATOR_ARRAY:
 				{
-					vec_value = llvm_update_vector(c, vec_value, val.value, element->index);
+					vec_value = llvm_update_vector(c, vec_value, value, element->index);
 					break;
 				}
 				case DESIGNATOR_RANGE:
 					for (ArrayIndex idx = element->index; idx <= element->index_end; idx++)
 					{
-						vec_value = llvm_update_vector(c, vec_value, val.value, idx);
+						vec_value = llvm_update_vector(c, vec_value, value, idx);
 					}
 					break;
 				case DESIGNATOR_FIELD:
@@ -7065,13 +7071,13 @@ void llvm_emit_scalar_to_vector(GenContext *c, BEValue *value, Expr *expr)
 
 void llvm_emit_vec_to_array(GenContext *c, BEValue *value, Type *type)
 {
-	llvm_value_rvalue(c, value);
+	LLVMValueRef val = llvm_load_value_store(c, value);
 	Type *to_type = type_lowering(type);
 	LLVMValueRef array = llvm_get_undef(c, to_type);
 
 	for (unsigned i = 0; i < to_type->array.len; i++)
 	{
-		LLVMValueRef element = llvm_emit_extract_value(c, value->value, i);
+		LLVMValueRef element = llvm_emit_extract_value(c, val, i);
 		array = llvm_emit_insert_value(c, array, element, i);
 	}
 	llvm_value_set(value, array, to_type);

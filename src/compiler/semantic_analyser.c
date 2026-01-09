@@ -238,6 +238,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 	FOREACH(Decl *, decl, decls)
 	{
 		decl->unit = unit;
+		ASSERT(decl->is_template && decl->generic_id);
 		switch (decl->decl_kind)
 		{
 			case DECL_ALIAS_PATH:
@@ -250,14 +251,13 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_POISONED:
 				continue;
 			case DECL_FAULT:
-				PRINT_ERROR_AT(decl, "Generic modules cannot use 'faultdef', place the declaration in a separate sub module or parent module instead.");
-				decl_poison(decl);
-				break;
 			case DECL_BODYPARAM:
 			case DECL_DECLARRAY:
 			case DECL_ENUM_CONSTANT:
 			case DECL_ERASED:
 			case DECL_GROUP:
+			case DECL_GENERIC:
+			case DECL_GENERIC_INSTANCE:
 			case DECL_LABEL:
 				UNREACHABLE_VOID
 			case DECL_ALIAS:
@@ -278,6 +278,8 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 				break;
 		}
 		htable_set(&unit->module->symbols, (void *)decl->name, decl);
+		htable_set(&unit->local_symbols, (void *)decl->name, decl);
+
 		if (decl->visibility == VISIBLE_PUBLIC)
 		{
 			global_context_add_decl(decl);
@@ -285,25 +287,20 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 	}
 }
 
-static void analyze_generic_module(Module *module)
+static void analyze_generics(Module *module)
 {
-	ASSERT(module->parameters && module->is_generic);
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		register_generic_decls(unit, unit->global_decls);
-		register_generic_decls(unit, unit->global_cond_decls);
+		FOREACH(Decl *, section, unit->generic_decls)
+		{
+			register_generic_decls(unit, section->generic_decl.decls);
+			register_generic_decls(unit, section->generic_decl.conditional_decls);
+		}
 	}
 }
 
 static void sema_analyze_to_stage(AnalysisStage stage)
 {
-	if (stage <= ANALYSIS_MODULE_TOP)
-	{
-		FOREACH(Module *, module, compiler.context.generic_module_list)
-		{
-			sema_analyze_stage(module, stage);
-		}
-	}
 	FOREACH(Module *, module, compiler.context.module_list)
 	{
 		sema_analyze_stage(module, stage);
@@ -485,9 +482,9 @@ void sema_analysis_run(void)
 
 
 	// We parse the generic modules, just by storing the decls.
-	FOREACH(Module *, module, compiler.context.generic_module_list)
+	FOREACH(Module *, module, compiler.context.module_list)
 	{
-		analyze_generic_module(module);
+		analyze_generics(module);
 	}
 
 	for (AnalysisStage stage = ANALYSIS_NOT_BEGUN + 1; stage <= ANALYSIS_LAST; stage++)

@@ -182,7 +182,6 @@ void scratch_buffer_append_remove_space(const char *start, int len);
 void scratch_buffer_append_signed_int(int64_t i);
 void scratch_buffer_append_double(double d);
 void scratch_buffer_append_shell_escaped(const char *string);
-void scratch_buffer_append_but_mangle_underscore_dot(const char *name);
 void scratch_buffer_append_cmd_argument(const char *string);
 UNUSED void scratch_buffer_append_unsigned_int(uint64_t i);
 void scratch_buffer_printf(const char *format, ...);
@@ -610,7 +609,7 @@ static char hex_conv[256] = {
 
 static inline int char_hex_to_nibble(char c)
 {
-	return hex_conv[(unsigned)c] - 1;
+	return hex_conv[(unsigned char)c] - 1;
 }
 
 static inline bool char_is_hex_or_(char c)

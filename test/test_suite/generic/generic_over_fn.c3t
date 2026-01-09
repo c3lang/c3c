@@ -118,7 +118,7 @@ loop.body:                                        ; preds = %loop.cond
   %lo = load ptr, ptr %list, align 8
   %ptradd10 = getelementptr inbounds i8, ptr %list, i64 8
   %hi = load i64, ptr %ptradd10, align 8
-  call void @"test_generic$sa$int$fn$int$int$$int$$.sort"(ptr %lo, i64 %hi, i64 0, i64 %sub, ptr @sort_test.cmp_int_value)
+  call void @"test_generic.sort$sa$int$fn$int$int$$int$$"(ptr %lo, i64 %hi, i64 0, i64 %sub, ptr @sort_test.cmp_int_value)
   %16 = load i64, ptr %.anon, align 8
   %addnuw = add nuw i64 %16, 1
   store i64 %addnuw, ptr %.anon, align 8
@@ -188,7 +188,7 @@ loop.body:                                        ; preds = %loop.cond
   %lo = load ptr, ptr %list, align 8
   %ptradd10 = getelementptr inbounds i8, ptr %list, i64 8
   %hi = load i64, ptr %ptradd10, align 8
-  call void @"test_generic$sa$int$fn$int$int$$int$$.sort"(ptr %lo, i64 %hi, i64 0, i64 %sub, ptr @sort_test.cmp_int_value2)
+  call void @"test_generic.sort$sa$int$fn$int$int$$int$$"(ptr %lo, i64 %hi, i64 0, i64 %sub, ptr @sort_test.cmp_int_value2)
   %16 = load i64, ptr %.anon, align 8
   %addnuw = add nuw i64 %16, 1
   store i64 %addnuw, ptr %.anon, align 8
@@ -198,5 +198,4 @@ loop.exit:                                        ; preds = %loop.cond
   ret void
 }
 
-declare extern_weak void @"test_generic$sa$int$fn$int$int$$int$$.sort"(ptr, i64, i64, i64, ptr) #0
-
+declare extern_weak void @"test_generic.sort$sa$int$fn$int$int$$int$$"(ptr, i64, i64, i64, ptr) #0

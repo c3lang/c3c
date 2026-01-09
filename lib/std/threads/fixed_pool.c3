@@ -72,8 +72,11 @@ fn void? FixedThreadPool.join(&self) @maydiscard // Remove optional in 0.8.0
 		self.mu.lock();
 		defer self.mu.unlock();
 		self.joining = true;
-		self.notify.broadcast();
-		self.collect.wait(&self.mu);
+		do
+		{
+			self.notify.broadcast();
+			self.collect.wait(&self.mu);
+		} while (self.qindex != 0 || self.qworking != 0);
 		self.joining = false;
 	}
 }

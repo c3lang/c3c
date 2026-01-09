@@ -197,8 +197,7 @@ static void llvm_emit_cond(GenContext *c, BEValue *be_value, Expr *expr, bool bo
 	ByteSize last_index = size - 1;
 	for (ByteSize i = 0; i < last_index; i++)
 	{
-		BEValue value;
-		llvm_emit_expr(c, &value, expr->cond_expr[i]);
+		llvm_emit_ignored_expr(c, expr->cond_expr[i]);
 	}
 
 	// Emit the last element.

@@ -1121,7 +1121,9 @@ static inline bool sema_analyse_cond_list(SemaContext *context, Expr *expr, Cond
 	// 2. Walk through each of our declarations / expressions as if they were regular expressions.
 	for (unsigned i = 0; i < entries - 1; i++)
 	{
-		if (!sema_analyse_expr_rvalue(context, dexprs[i])) return false;
+		Expr *dexpr = dexprs[i];
+		if (!sema_analyse_expr_rvalue(context, dexpr)) return false;
+		if (!sema_expr_check_discard(context, dexpr)) return false;
 	}
 
 	if (!sema_analyse_last_cond(context, dexprs[entries - 1], cond_type, result)) return false;
@@ -3410,6 +3412,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	// Stop if it's already poisoned.
 	if (!decl_ok(func)) return false;
 
+	context->generic_instance = func->is_templated ? declptr(func->instance_id) : NULL;
 	// Check the signature here we test for variadic raw, since we don't support it.
 	Signature *signature = &func->func_decl.signature;
 	if (signature->variadic == VARIADIC_RAW)
@@ -3424,7 +3427,6 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	ASSERT_SPAN(func, prototype);
 
 	// Set up the context for analysis
-	context->original_inline_line = 0;
 	context->original_module = NULL;
 	context->call_env = (CallEnv) {
 		.current_function = func,
