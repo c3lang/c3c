@@ -227,14 +227,34 @@ jobs:
       - uses: actions/checkout@v6
       - name: Download LLVM
         run: |
-          brew install llvm@${{ matrix.llvm_version }} ninja curl
-          echo "/opt/homebrew/opt/llvm@${{ matrix.llvm_version }}/bin" >> $GITHUB_PATH
+          if [[ "${{ matrix.llvm_version }}" == "21" ]]; then
+            brew install llvm lld ninja curl
+            echo "/opt/homebrew/opt/llvm/bin" >> $GITHUB_PATH
+            echo "/opt/homebrew/opt/lld/bin" >> $GITHUB_PATH
+          else
+            brew install llvm@${{ matrix.llvm_version }} ninja curl
+            echo "/opt/homebrew/opt/llvm@${{ matrix.llvm_version }}/bin" >> $GITHUB_PATH
+            if [[ "${{ matrix.llvm_version }}" -ge 19 ]]; then
+              brew install lld@${{ matrix.llvm_version }}
+              echo "/opt/homebrew/opt/lld@${{ matrix.llvm_version }}/bin" >> $GITHUB_PATH
+            fi
+          fi
           echo "CPATH=$(xcrun --show-sdk-path)/user/include" >> $GITHUB_ENV
       - name: CMake Build
         run: |
           C3_LLVM_VER=${{matrix.llvm_version}}
           if [[ "${{matrix.llvm_version}}" -ge 18 ]]; then C3_LLVM_VER="${{matrix.llvm_version}}.1"; fi
-          cmake -B build -G Ninja -DC3_LLVM_VERSION=$C3_LLVM_VER -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          if [[ "${{ matrix.llvm_version }}" == "21" ]]; then
+            C3_LLD_DIR="/opt/homebrew/opt/lld/lib"
+            C3_LLD_INCLUDE_DIR="/opt/homebrew/opt/lld/include"
+          elif [[ "${{ matrix.llvm_version }}" -ge 19 ]]; then
+            C3_LLD_DIR="/opt/homebrew/opt/lld@${{ matrix.llvm_version }}/lib"
+            C3_LLD_INCLUDE_DIR="/opt/homebrew/opt/lld@${{ matrix.llvm_version }}/include"
+          else
+            C3_LLD_DIR=""
+            C3_LLD_INCLUDE_DIR=""
+          fi
+          cmake -B build -G Ninja -DC3_LLVM_VERSION=$C3_LLVM_VER -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DC3_LLD_DIR=$C3_LLD_DIR -DC3_LLD_INCLUDE_DIR=$C3_LLD_INCLUDE_DIR
           cmake --build build
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build/c3c"

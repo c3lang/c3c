@@ -95,6 +95,7 @@ set(C3_USE_MIMALLOC         OFF                         CACHE BOOL   "Use built-
 set(C3_MIMALLOC_TAG         "v1.7.3"                    CACHE STRING "Used version of mimalloc")
 set(C3_USE_TB               OFF                         CACHE BOOL   "Use TB")
 set(C3_LLD_DIR              ""                          CACHE STRING "Use custom LLD directory")
+set(C3_LLD_INCLUDE_DIR      ""                          CACHE STRING "Use custom LLD include directory")
 set(C3_ENABLE_CLANGD_LSP    OFF                         CACHE BOOL   "Enable/Disable output of compile commands during generation")
 set(LLVM_CRT_LIBRARY_DIR    ""                          CACHE STRING "Use custom llvm's compiler-rt directory")
 set(TCC_LIB_PATH            "/usr/lib/tcc/libtcc1.a"    CACHE STRING "Use custom libtcc1.a path")
@@ -465,6 +466,10 @@ if(C3_WITH_LLVM)
         target_compile_options(c3c PRIVATE
                 "$<$<CONFIG:Debug>:/EHa>"
                 "$<$<CONFIG:Release>:/EHsc>")
+    endif()
+
+    if(C3_LLD_INCLUDE_DIR)
+        target_include_directories(c3c_wrappers PRIVATE ${C3_LLD_INCLUDE_DIR})
     endif()
 else()
     target_sources(c3c PRIVATE src/utils/hostinfo.c)
