@@ -601,15 +601,15 @@ static void parse_option(BuildOptions *options)
 			if (match_shortopt("z"))
 			{
 				if (at_end()) error_exit("error: -z needs a value.");
-				if (str_eq(peek_next_arg(), "[")) // If we match a ], we can parse the list of args
+				if (str_eq(peek_next_arg(), "["))
 				{
-					next_arg(); // Jump past [
-					while(!at_end() && !str_eq(peek_next_arg(), "]")) // Consume until we reach end or reach ]
+					next_arg();
+					while(!at_end() && !str_eq(peek_next_arg(), "]"))
 					{
 						add_linker_arg(options, next_arg());
 					}
-					if (at_end()) error_exit("error: ']' needed at the end of the linker arguments"); // One final bounds check
-					next_arg(); // Jump past ]
+					if (at_end()) error_exit("error: ']' needed at the end of the linker arguments");
+					next_arg();
 					return;
 				}
 				add_linker_arg(options, next_arg());
