@@ -50,15 +50,16 @@ fn int main(String[] args)
 	context.start_cwd = path::tcwd()!!;
 	context.print_mutex.init()!!;
 
-	Path? path = context.start_cwd.tappend(args[1]);
+	Path? path = args[1].to_tpath();
 	if (catch path) arg_error_exit(appname, "Invalid compiler path: %s", args[1]);
-	if (!path::is_file(path))
-	{
-		error_exit("Error: Invalid path to compiler: %s (%s relative to %s)", path.path_string, args[1], context.start_cwd);
-	}
-	// Ok we're done.
 	context.compiler_path = path.absolute(tmem)!!;
 
+	if (!path::is_file(context.compiler_path))
+	{
+		error_exit("Error: Invalid path to compiler: %s (%s relative to %s)", context.compiler_path, args[1], context.start_cwd);
+	}
+
+	// Ok we're done.
 	context.only_skipped = false;
 
 	usz num_threads = os::num_cpu();

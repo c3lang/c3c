@@ -1,0 +1,195 @@
+#!/usr/bin/env bash
+# Usage: ./ci_tests.sh <path_to_c3c_binary> [optional_os_mode_override]
+
+if [ $# -lt 1 ]; then
+    echo "Usage: ./ci_tests.sh <path_to_c3c_binary> [os_mode]"
+    exit 1
+fi
+
+set -ex
+
+# Detect Path
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+    C3C_BIN="$(cygpath -m "$(realpath "$1")")"
+else
+    C3C_BIN="$(realpath "$1")"
+fi
+
+# Detect OS
+SYSTEM_NAME="$(uname -s)"
+if [ -n "$2" ]; then
+    OS_MODE="$2"
+else
+    case "$SYSTEM_NAME" in
+        CYGWIN*|MINGW*|MSYS*) OS_MODE="windows" ;;
+        Darwin*)              OS_MODE="mac" ;;
+        Linux*)               OS_MODE="linux" ;;
+        *BSD)                 OS_MODE="bsd" ;;
+        *)                    OS_MODE="linux" ;;
+    esac
+fi
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+ROOT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+
+echo ">>> Running CI Tests using C3C at: $C3C_BIN"
+echo ">>> OS Mode: $OS_MODE (Detected System: $SYSTEM_NAME)"
+
+cd "$ROOT_DIR/resources"
+
+# --- Functions ---
+
+run_examples() {
+    echo "--- Running Standard Examples ---"
+    "$C3C_BIN" compile examples/base64.c3
+    "$C3C_BIN" compile examples/binarydigits.c3
+    "$C3C_BIN" compile examples/brainfk.c3
+    "$C3C_BIN" compile examples/factorial_macro.c3
+    "$C3C_BIN" compile examples/fasta.c3
+    "$C3C_BIN" compile examples/gameoflife.c3
+    "$C3C_BIN" compile examples/hash.c3
+    "$C3C_BIN" compile-only examples/levenshtein.c3
+    "$C3C_BIN" compile examples/load_world.c3
+    "$C3C_BIN" compile-only examples/map.c3
+    "$C3C_BIN" compile examples/mandelbrot.c3
+    "$C3C_BIN" compile examples/plus_minus.c3
+    "$C3C_BIN" compile examples/nbodies.c3
+    "$C3C_BIN" compile examples/spectralnorm.c3
+    "$C3C_BIN" compile examples/swap.c3
+    "$C3C_BIN" compile examples/contextfree/boolerr.c3
+    "$C3C_BIN" compile examples/contextfree/dynscope.c3
+    "$C3C_BIN" compile examples/contextfree/guess_number.c3
+    "$C3C_BIN" compile examples/contextfree/multi.c3
+    "$C3C_BIN" compile examples/contextfree/cleanup.c3
+    
+    "$C3C_BIN" compile-run examples/hello_world_many.c3
+    "$C3C_BIN" compile-run examples/time.c3
+    "$C3C_BIN" compile-run examples/fannkuch-redux.c3
+    "$C3C_BIN" compile-run examples/contextfree/boolerr.c3
+    "$C3C_BIN" compile-run examples/load_world.c3
+    "$C3C_BIN" compile-run examples/process.c3
+    "$C3C_BIN" compile-run examples/ls.c3
+    "$C3C_BIN" compile-run examples/args.c3 -- foo -bar "baz baz"
+
+    if [[ "$OS_MODE" == "linux" ]]; then
+        "$C3C_BIN" compile-run --linker=builtin linux_stack.c3 || echo "Warning: linux_stack builtin linker skipped"
+        "$C3C_BIN" compile-run linux_stack.c3
+    fi
+    
+    "$C3C_BIN" compile --no-entry --test -g --threads 1 --target macos-x64 examples/constants.c3
+}
+
+run_cli_tests() {
+    echo "--- Running CLI Tests (init/vendor) ---"
+    
+    # Test init
+    "$C3C_BIN" init-lib mylib
+    "$C3C_BIN" init myproject
+    rm -rf mylib.c3l myproject
+
+    # Test vendor-fetch
+    echo "Testing vendor-fetch..."
+    cd "$ROOT_DIR/resources"
+    "$C3C_BIN" vendor-fetch raylib
+
+    if [ -f "/etc/alpine-release" ]; then
+        echo "Skipping raylib_arkanoid (vendor raylib is compiled with glibc, so skip this step for alpine)"
+        return
+    fi
+    "$C3C_BIN" compile --lib raylib --print-linking examples/raylib/raylib_arkanoid.c3
+}
+
+run_dynlib_tests() {
+    echo "--- Running Dynamic Lib Tests ---"
+    # Skip openbsd, idk
+    if [[ "$SYSTEM_NAME" == *"OpenBSD"* ]]; then return; fi
+
+    cd "$ROOT_DIR/resources/examples/dynlib-test"
+    "$C3C_BIN" -vv dynamic-lib add.c3
+
+    if [[ "$OS_MODE" == "windows" ]]; then
+        "$C3C_BIN" -vv compile-run test.c3 -l ./add.lib
+    elif [[ "$OS_MODE" == "mac" ]]; then
+        "$C3C_BIN" -vv compile-run test.c3 -l ./add.dylib
+    else 
+        if [ -f add.so ]; then mv add.so libadd.so; fi
+        cc test.c -L. -ladd -Wl,-rpath=.
+        ./a.out
+        "$C3C_BIN" compile-run test.c3 -L . -l add -z -Wl,-rpath=.
+    fi
+}
+
+run_staticlib_tests() {
+    echo "--- Running Static Lib Tests ---"
+    cd "$ROOT_DIR/resources/examples/staticlib-test"
+    
+    if [[ "$OS_MODE" == "windows" ]]; then
+        "$C3C_BIN" -vv static-lib add.c3
+        "$C3C_BIN" -vv compile-run test.c3 -l ./add.lib
+    else
+        "$C3C_BIN" -vv static-lib add.c3 -o libadd
+        if [[ "$SYSTEM_NAME" == *"NetBSD"* ]]; then ranlib libadd.a; fi
+
+        OUTPUT_BIN="a.out"
+        if [[ "$SYSTEM_NAME" == *"OpenBSD"* ]]; then
+             cc test.c -L. -ladd -lexecinfo -lm -lpthread -o "$OUTPUT_BIN"
+        elif [[ "$SYSTEM_NAME" == "Linux" ]]; then
+             # Fix: Linux (and i mean specifically the docker container run) needs dl (for backtrace)
+             # math and pthread linked manually for static libs
+             cc test.c -L. -ladd -ldl -lm -lpthread -o "$OUTPUT_BIN"
+        else
+             # Mac / NetBSD
+             cc test.c -L. -ladd -o "$OUTPUT_BIN"
+        fi
+        ./"$OUTPUT_BIN"
+        "$C3C_BIN" compile-run test.c3 -L . -l add
+    fi
+}
+
+run_testproject() {
+    echo "--- Running Test Project ---"
+    cd "$ROOT_DIR/resources/testproject"
+
+    # MSVC is tricky with vcvarsall, we leave that to YAML.
+    # But we run it for MinGW/MSYS here.
+    if [[ "$OS_MODE" == "windows" && "$OSTYPE" != "msys" ]]; then
+        echo "Skipping testproject (Assuming MSVC, handled in YAML)"
+        return
+    fi
+
+    ARGS="--trust=full"
+    
+    if [[ "$OS_MODE" == "linux" || "$OS_MODE" == "mac" ]]; then
+        ARGS="$ARGS --linker=builtin"
+
+        if [ -f "/etc/alpine-release" ]; then
+            ARGS="$ARGS --linux-libc=musl"
+        fi
+    fi
+
+    "$C3C_BIN" run -vv $ARGS
+}
+
+run_wasm_compile() {
+    echo "--- Running WASM Compile Check ---"
+    cd "$ROOT_DIR/resources/testfragments"
+    "$C3C_BIN" compile --target wasm32 -g0 --no-entry -Os wasm4.c3
+}
+
+run_unit_tests() {
+    echo "--- Running Unit Tests ---"
+    cd "$ROOT_DIR/test"
+    "$C3C_BIN" compile-test unit -O1 -D SLOW_TESTS
+
+    echo "--- Running Test Suite Runner ---"
+    "$C3C_BIN" compile-run -O1 src/test_suite_runner.c3 -- "$C3C_BIN" test_suite/ --no-terminal
+}
+
+# --- Execution ---
+run_examples
+run_cli_tests
+run_dynlib_tests
+run_staticlib_tests
+run_testproject
+run_wasm_compile
+run_unit_tests

@@ -579,13 +579,12 @@ if(MSVC)
     endif()
 
     if(C3_WITH_LLVM)
-        # Find where the sanitizer libs actually ended up in your custom build (maybe ill rebuild later)
-        file(GLOB_RECURSE FOUND_ASAN_LIB "${llvm_dir}/*clang_rt.asan-x86_64.lib")
+        # The the sanitizer libs are in the folder "lib/clang/21/lib/windows/" but use the find anyway
+        file(GLOB_RECURSE FOUND_ASAN_LIB "${llvm_dir}/*clang_rt.asan_dynamic-x86_64.lib")
         if(FOUND_ASAN_LIB)
             list(GET FOUND_ASAN_LIB 0 _asan_path)
             get_filename_component(_asan_dir "${_asan_path}" DIRECTORY)
             set(sanitizer_runtime_libraries
-                    ${_asan_dir}/clang_rt.asan-x86_64.lib
                     ${_asan_dir}/clang_rt.asan_dynamic-x86_64.lib
                     ${_asan_dir}/clang_rt.asan_dynamic-x86_64.dll
                     ${_asan_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
