@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # Usage: ./package_build.sh <c3c_path> <output_name> <format: tar|zip>
 
+if [ $# -lt 2 ]; then
+    echo "Usage: ./package_build.sh <path_to_c3c_binary> <output_name> <format: tar|zip>"
+    exit 1
+fi
+
+set -ex
+
 C3C_BIN="$(realpath "$1")"
 OUT_NAME="$2"
 FORMAT="$3"
@@ -13,10 +20,19 @@ cd "$ROOT_DIR" || exit 1
 
 echo ">>> Packaging $OUT_NAME.$FORMAT from $C3C_BIN"
 
-# Prepare directory
-rm -rf temp_package
-mkdir -p temp_package/c3
-cd temp_package || exit 1
+# Create temp directory
+WORK_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t 'c3_package')
+echo ">>> Setting up packaging workspace in: $WORK_DIR"
+
+cleanup() {
+    echo ">>> Cleaning up..."
+    cd "$ROOT_DIR" || cd ..
+    rm -rf "$WORK_DIR"
+}
+trap cleanup EXIT
+
+mkdir -p "$WORK_DIR/c3"
+cd "$WORK_DIR" || exit 1
 
 # Copy common files
 cp -r "$ROOT_DIR/lib" c3/
@@ -49,11 +65,10 @@ if [[ "$FORMAT" == "zip" ]]; then
         exit 1
     fi
     
-    mv "$OUT_NAME.zip" ../
+    mv "$OUT_NAME.zip" "$ROOT_DIR/"
 else
     tar -czf "$OUT_NAME.tar.gz" c3
-    mv "$OUT_NAME.tar.gz" ../
+    mv "$OUT_NAME.tar.gz" "$ROOT_DIR/"
 fi
 
-rm -rf ../temp_package
 echo ">>> Package created: $OUT_NAME.$FORMAT"
