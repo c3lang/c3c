@@ -567,9 +567,9 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 	}
 	SubProcess compilation = process::create(cmdline.array_view(), { .search_user_path, .no_window, .inherit_environment })!!;
 	defer compilation.destroy();
-	CInt result = compilation.join() ?? 1;
 	DString out;
 	io::copy_to(&&compilation.stderr(), &out)!!;
+	CInt result = compilation.join() ?? 1;
 	if (result != 0 && result != 1)
 	{
 		(void)io::copy_to(&&compilation.stdout(), (OutStream)&out);
