@@ -173,13 +173,6 @@ run_testproject() {
     echo "--- Running Test Project ---"
     cd "$ROOT_DIR/resources/testproject"
 
-    # MSVC is tricky with vcvarsall, we leave that to YAML.
-    # But we run it for MinGW/MSYS here.
-    if [[ "$OS_MODE" == "windows" && "$OSTYPE" != "msys" ]]; then
-        echo "Skipping testproject (Assuming MSVC, handled in YAML)"
-        return
-    fi
-
     ARGS="--trust=full"
     
     if [[ "$OS_MODE" == "linux" || "$OS_MODE" == "mac" ]]; then
@@ -191,6 +184,14 @@ run_testproject() {
     fi
 
     "$C3C_BIN" run -vv $ARGS
+    "$C3C_BIN" clean
+
+    if [[ "$OS_MODE" == "windows" ]]; then
+        echo "Running Test Project (hello_world_win32)..."
+        "$C3C_BIN" -vv --emit-llvm run hello_world_win32 $ARGS
+        "$C3C_BIN" clean
+        "$C3C_BIN" -vv build hello_world_win32_lib $ARGS
+    fi
 }
 
 run_wasm_compile() {
