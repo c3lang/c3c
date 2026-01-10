@@ -111,15 +111,19 @@ run_cli_tests() {
     rm -rf mylib.c3l myproject
 
     # Test vendor-fetch
-    echo "Testing vendor-fetch..."
-    cd "$ROOT_DIR/resources"
-    "$C3C_BIN" vendor-fetch raylib
+    if [ -n "$SKIP_NETWORK_TESTS" ]; then
+        echo "Skipping vendor-fetch (network tests disabled)"
+    else
+        echo "Testing vendor-fetch..."
+        cd "$ROOT_DIR/resources"
+        "$C3C_BIN" vendor-fetch raylib
 
-    if [ -f "/etc/alpine-release" ] || [[ "$SYSTEM_NAME" == "OpenBSD" ]] || [[ "$SYSTEM_NAME" == "NetBSD" ]]; then
-        echo "Skipping raylib_arkanoid (vendor raylib doesn't support this platform)"
-        return
+        if [ -f "/etc/alpine-release" ] || [[ "$SYSTEM_NAME" == "OpenBSD" ]] || [[ "$SYSTEM_NAME" == "NetBSD" ]]; then
+            echo "Skipping raylib_arkanoid (vendor raylib doesn't support this platform)"
+            return
+        fi
+        "$C3C_BIN" compile --lib raylib --print-linking examples/raylib/raylib_arkanoid.c3
     fi
-    "$C3C_BIN" compile --lib raylib --print-linking examples/raylib/raylib_arkanoid.c3
 }
 
 run_dynlib_tests() {

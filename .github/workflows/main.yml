@@ -403,7 +403,7 @@ jobs:
     - name: Update flake
       if: matrix.nixpkgs == 'Latest'
       run: nix flake update
-    - name: Build and check 
+    - name: CMake build and run Unified Tests
       run: |
         CHECK_NAME=".#c3c-checks"
         if [[ ${{ matrix.build_type }} = "Debug" ]]; then CHECK_NAME=".#c3c-debug-checks"; fi
