@@ -8,7 +8,12 @@ fi
 
 set -ex
 
-# Detect Path
+# --- Setup Paths & Environment ---
+
+# Resolve Script and Real Root Directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+REAL_ROOT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     C3C_BIN="$(cygpath -m "$(realpath "$1")")"
 else
@@ -29,15 +34,33 @@ else
     esac
 fi
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-ROOT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-
 echo ">>> Running CI Tests using C3C at: $C3C_BIN"
 echo ">>> OS Mode: $OS_MODE (Detected System: $SYSTEM_NAME)"
 
+# --- Create Disposable Workspace ---
+
+# Create temp directory
+WORK_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t 'c3_ci_tests')
+echo ">>> Setting up workspace in: $WORK_DIR"
+
+cleanup() {
+    echo ">>> Cleaning up..."
+    cd "$REAL_ROOT_DIR" || cd ..
+    rm -rf "$WORK_DIR"
+}
+trap cleanup EXIT
+
+# Copy necessary test data to the temp directory
+cp -r "$REAL_ROOT_DIR/resources" "$WORK_DIR/resources"
+cp -r "$REAL_ROOT_DIR/test"      "$WORK_DIR/test"
+
+# ROOT_DIR points to the temp workspace.
+ROOT_DIR="$WORK_DIR"
+
+# Move to the temp resources dir to match original script behavior
 cd "$ROOT_DIR/resources"
 
-# --- Functions ---
+# --- Tests ---
 
 run_examples() {
     echo "--- Running Standard Examples ---"
@@ -92,8 +115,8 @@ run_cli_tests() {
     cd "$ROOT_DIR/resources"
     "$C3C_BIN" vendor-fetch raylib
 
-    if [ -f "/etc/alpine-release" ]; then
-        echo "Skipping raylib_arkanoid (vendor raylib is compiled with glibc, so skip this step for alpine)"
+    if [ -f "/etc/alpine-release" ] || [[ "$SYSTEM_NAME" == "OpenBSD" ]] || [[ "$SYSTEM_NAME" == "NetBSD" ]]; then
+        echo "Skipping raylib_arkanoid (vendor raylib doesn't support this platform)"
         return
     fi
     "$C3C_BIN" compile --lib raylib --print-linking examples/raylib/raylib_arkanoid.c3
