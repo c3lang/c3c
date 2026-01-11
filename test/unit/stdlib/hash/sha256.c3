@@ -99,3 +99,108 @@ fn void test_sha256_million_a()
     test::@check(sha.final() == x"CDC76E5C 9914FB92 81A1C7E2 84D73E67 F1809A48 A497200E 046D39CC C7112CD0");
 }
 
+fn void test_rfc_4231_4_2_test_case_1() @test {
+    char[20] key;
+    for (uint i = 0; i < key.len; i += 1) key[i] = 0x0b;
+    const char[] MSG = "Hi There";
+    const char[] EXPECTED =
+        x"b0344c61d8db38535ca8afceaf0bf12b"
+        x"881dc200c9833da726e9376c2e32cff7";
+    char[sha256::HASH_SIZE] mac = sha256::hmac(&key, MSG);
+    test::@check(
+        &mac == EXPECTED,
+        "Expected %h, got %h",
+        EXPECTED,
+        mac
+    );
+}
+
+fn void test_rfc_4231_4_3_test_case_2() @test {
+    const char[] KEY = "Jefe";
+    const char[] MSG = "what do ya want for nothing?";
+    const char[] EXPECTED =
+        x"5bdcc146bf60754e6a042426089575c7"
+        x"5a003f089d2739839dec58b964ec3843";
+    char[sha256::HASH_SIZE] mac = sha256::hmac(KEY, MSG);
+    test::@check(
+        &mac == EXPECTED,
+        "Expected %h, got %h",
+        EXPECTED,
+        mac
+    );
+}
+
+fn void test_rfc_4231_4_4_test_case_3() @test {
+    char[20] key;
+    for (uint i = 0; i < key.len; i += 1) key[i] = 0xaa;
+    char[50] msg;
+    for (uint i = 0; i < msg.len; i += 1) msg[i] = 0xdd;
+    const char[] EXPECTED =
+        x"773ea91e36800e46854db8ebd09181a7"
+        x"2959098b3ef8c122d9635514ced565fe";
+    char[sha256::HASH_SIZE] mac = sha256::hmac(&key, &msg);
+    test::@check(
+        &mac == EXPECTED,
+        "Expected %h, got %h",
+        EXPECTED,
+        mac
+    );
+}
+
+fn void test_rfc_4231_4_5_test_case_4() @test {
+    char[25] key;
+    for (uint i = 0; i < key.len; i += 1) key[i] = (char)(i + 1); // 0x01..0x19
+    char[50] msg;
+    for (uint i = 0; i < msg.len; i += 1) msg[i] = 0xcd;
+    const char[] EXPECTED =
+        x"82558a389a443c0ea4cc819899f2083a"
+        x"85f0faa3e578f8077a2e3ff46729665b";
+    char[sha256::HASH_SIZE] mac = sha256::hmac(&key, &msg);
+    test::@check(
+        &mac == EXPECTED,
+        "Expected %h, got %h",
+        EXPECTED,
+        mac
+    );
+}
+
+// RFC 4231 4.6 Test Case 5 ignored
+// hmac method from sha256 module does not support truncated output
+// please truncate it yourself
+
+fn void test_rfc_4231_4_7_test_case_6() @test {
+    char[131] key;
+    for (uint i = 0; i < key.len; i += 1) key[i] = 0xaa;
+    const char[] MSG =
+        "Test Using Larger Than Block-Size Key - Hash Key First";
+    const char[] EXPECTED =
+        x"60e431591ee0b67f0d8a26aacbf5b77f"
+        x"8e0bc6213728c5140546040f0ee37f54";
+    char[sha256::HASH_SIZE] mac = sha256::hmac(&key, MSG);
+    test::@check(
+        &mac == EXPECTED,
+        "Expected %h, got %h",
+        EXPECTED,
+        mac
+    );
+}
+
+fn void test_rfc_4231_4_8_test_case_7() @test {
+    char[131] key;
+    for (uint i = 0; i < key.len; i += 1) key[i] = 0xaa;
+    const char[] MSG =
+        "This is a test using a larger than block-size key and a larger "
+        "than block-size data. The key needs to be hashed before being "
+        "used by the HMAC algorithm.";
+    const char[] EXPECTED =
+        x"9b09ffa71b942fcb27635fbcd5b0e944"
+        x"bfdc63644f0713938a7f51535c3a35e2";
+    char[sha256::HASH_SIZE] mac = sha256::hmac(&key, MSG);
+    test::@check(
+        &mac == EXPECTED,
+        "Expected %h, got %h",
+        EXPECTED,
+        mac
+    );
+}
+
