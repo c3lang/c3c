@@ -290,31 +290,32 @@ jobs:
         build_type: [Release, Debug]
         version: ['7.8']
     steps:
-      - uses: actions/checkout@v4
-      - name: OpenBSD VM
+      - uses: actions/checkout@v6
+
+      - name: Build, Test and Package in OpenBSD
         uses: vmactions/openbsd-vm@v1
         with:
-          sync: nfs
+          sync: rsync
           usesh: true
           release: ${{ matrix.version }}
           prepare: pkg_add ninja cmake llvm%${{ env.LLVM_RELEASE_VERSION_OPENBSD }} bash
+          # Combine all logic here so rsync copyback triggers at the end
           run: |
             export MALLOC_OPTIONS=j # Disable junk filling (it's faster)
             cd "$GITHUB_WORKSPACE"
+
+            # Build
             cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
             cmake --build build
 
-      - name: Run Unified Tests
-        shell: openbsd {0}
-        run: |
-          export MALLOC_OPTIONS=j # Disable junk filling (it's faster)
-          cd "$GITHUB_WORKSPACE"
-          chmod +x scripts/tools/ci_tests.sh
-          ulimit -d unlimited
-          ./scripts/tools/ci_tests.sh "./build/c3c"
-          
-          chmod +x scripts/tools/package_build.sh
-          ./scripts/tools/package_build.sh "./build/c3c" "c3-openbsd-${{matrix.build_type}}" "tar"
+            # Run Unified Tests
+            chmod +x scripts/tools/ci_tests.sh
+            ulimit -d unlimited
+            ./scripts/tools/ci_tests.sh "./build/c3c"
+
+            # Package
+            chmod +x scripts/tools/package_build.sh
+            ./scripts/tools/package_build.sh "./build/c3c" "c3-openbsd-${{matrix.build_type}}" "tar"
 
       - uses: actions/upload-artifact@v6
         with:
@@ -329,11 +330,12 @@ jobs:
         build_type: [Release, Debug]
         version: ['10.1']
     steps:
-      - uses: actions/checkout@v4
-      - name: NetBSD VM
+      - uses: actions/checkout@v6
+
+      - name: Build, Test and Package in NetBSD
         uses: vmactions/netbsd-vm@v1
         with:
-          sync: nfs
+          sync: rsync
           usesh: true
           release: ${{ matrix.version }}
           prepare: |
@@ -350,18 +352,18 @@ jobs:
             export CC=clang
             export CXX=clang++
             cd "$GITHUB_WORKSPACE"
+
+            # Build
             cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
             cmake --build build
 
-      - name: Run Unified Tests
-        shell: netbsd {0}
-        run: |
-          cd "$GITHUB_WORKSPACE"
-          chmod +x scripts/tools/ci_tests.sh
-          ./scripts/tools/ci_tests.sh "./build/c3c"
-          
-          chmod +x scripts/tools/package_build.sh
-          ./scripts/tools/package_build.sh "./build/c3c" "c3-netbsd-${{matrix.build_type}}" "tar"
+            # Run Unified Tests
+            chmod +x scripts/tools/ci_tests.sh
+            ./scripts/tools/ci_tests.sh "./build/c3c"
+
+            # Package
+            chmod +x scripts/tools/package_build.sh
+            ./scripts/tools/package_build.sh "./build/c3c" "c3-netbsd-${{matrix.build_type}}" "tar"
 
       - uses: actions/upload-artifact@v6
         with:
