@@ -184,6 +184,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	{
 		if (crt_linking == WIN_CRT_STATIC)
 		{
+			// This path is now unreachable due to the check in compiler.c
 			add_concat_file_arg(compiler_path, "c3c_rt/clang_rt.asan-x86_64.lib");
 		}
 		else
