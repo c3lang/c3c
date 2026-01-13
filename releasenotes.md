@@ -55,6 +55,7 @@
 - Assert on optional-returning-function in a comma expression. #2722
 - Creating recursive debug info for functions could cause assertions.
 - bitorder::read and bitorder::write may fail because of unaligned access #2734.
+- Fix `LinkedList.to_format` to properly iterate linked list for printing.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
