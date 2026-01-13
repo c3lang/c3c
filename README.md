@@ -38,7 +38,7 @@ whole new language.
 
 The following code shows [generic modules](https://c3-lang.org/generic-programming/generics/) (more examples can be found at https://c3-lang.org/language-overview/examples/). 
 
-```cpp
+```c3
 module stack {Type};
 // Above: the parameterized type is applied to the entire module.
 
@@ -78,7 +78,7 @@ fn bool Stack.empty(Stack* this)
 
 Testing it out:
 
-```cpp
+```c3
 import stack;
 
 // Define our new types, the first will implicitly create 
@@ -384,7 +384,7 @@ scoop install c3
 #### Getting started with a "hello world"
 
 Create a `main.c3` file with:
-```c++
+```c3
 module hello_world;
 import std::io;
 
@@ -513,7 +513,7 @@ provide the link path to the LLVM CMake directories, e.g. `cmake -B build -S . -
 
 *A note on compiling for Linux/Unix/MacOS: to be able to fetch vendor libraries
 libcurl is needed. The CMake script should detect it if it is available. Note that
-this functionality is non-essential and it is perfectly fine to user the compiler without it.*
+this functionality is non-essential and it is perfectly fine to use the compiler without it.*
 
 #### Licensing
 
@@ -523,7 +523,7 @@ which is licensed under LGPL 3.0.
 
 This means you are free to use all parts of standard library, 
 tests, benchmarks, grammar, examples and so on under the MIT license, including 
-using those libraries and tests if your build your own C3 compiler.
+using those libraries and tests if you build your own C3 compiler.
 
 #### Editor plugins
 

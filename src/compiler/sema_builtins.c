@@ -1114,7 +1114,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!type_is_pointer(pointer_type)) RETURN_SEMA_ERROR(args[0], "Expected a direct pointer.");
 			if (pointer_type->pointer->canonical != args[2]->type->canonical)
 			{
-				RETURN_SEMA_ERROR(args[2], "Expected the value to be of type '%s'.", type_quoted_error_string(pointer_type->pointer));
+				RETURN_SEMA_ERROR(args[2], "Expected the value to be of type %s.", type_quoted_error_string(pointer_type->pointer));
 			}
 			if (!sema_check_alignment_expression(context, args[3])) return false;
 			if (!sema_expr_is_valid_mask_for_value(context, args[1], args[2])) return false;

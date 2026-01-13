@@ -609,7 +609,7 @@ static char hex_conv[256] = {
 
 static inline int char_hex_to_nibble(char c)
 {
-	return hex_conv[(unsigned)c] - 1;
+	return hex_conv[(unsigned char)c] - 1;
 }
 
 static inline bool char_is_hex_or_(char c)

@@ -48,6 +48,14 @@
 - Miscompilation: global struct with vector could generate an incorrect initializer.
 - `String.tokenize_all` would yield one too many empty tokens at the end.
 - `String.replace` no longer depends on `String.split`.
+- Fix the case where `\u<unicode char>` could crash the compiler on some platforms.
+- Designated initialization with ranges would not error on overflow by 1.
+- `io::read_fully` now handles unbounded streams properly.
+- Crash when doing a type property lookup for const inline enums in some cases #2717.
+- Incorrect alignment on typedef and local variable debug info.
+- Assert on optional-returning-function in a comma expression. #2722
+- Creating recursive debug info for functions could cause assertions.
+- bitorder::read and bitorder::write may fail because of unaligned access #2734.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
@@ -63,12 +71,14 @@
 - Add `ripemd` hashing and associated tests. #2663
 - Add `chacha20` stream cipher and associated tests. #2643
 - Add `BLAKE2` (optionally keyed) cryptographic hashing with associated tests. #2648
+- Add `BLAKE3` XOF and associated tests. #2667
 - Add `Elf32_Shdr` and `Elf64_Shdr` to `std::os::linux`.
 - Add `any.to` and `any.as`.
 - Deprecated `DString.append_chars`, use `DString.append_string`
 - Deprecated `DString.append_string` for DStrings, use `DString.append_dstring` instead.
 - Added `DString.append_bytes`.
 - Add `streebog` (aka "GOST-12") hashing with 256-bit and 512-bit outputs. #2659
+- Add unit tests for HMAC 256 based on RFC 4231. #2743
 
 ## 0.7.8 Change list
 
