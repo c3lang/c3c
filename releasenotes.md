@@ -13,6 +13,7 @@
 - Better error messages when slicing a pointer to a slice or vector. #2681
 - Generics using `@generic` rather than module based.
 - Reduced memory usage for backtraces on Linux.
+- On win32 utf-8 console output is now enabled by default in compiled programs
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -32,7 +33,7 @@
 - Fix error message when a method has the wrong type for the first argument.
 - Unit tests allocating too much `tmem` without `@pool` would cause errors in unrelated tests. #2654
 - Incorrect rounding for decimals in formatter in some cases. #2657
-- Incorrectly using LLVMStructType when emitting dynamic functions on MachO #2666  
+- Incorrectly using LLVMStructType when emitting dynamic functions on MachO #2666
 - FixedThreadPool join did not work correctly.
 - Fix bug when creating bool vectors in certain cases.
 - Compiler assert when passing returning CT failure immediately rethrown #2689.
@@ -63,7 +64,7 @@
 - Return of Mutex `unlock()` and `lock()` is now "@maydiscard" and should be ignored. They will return void in 0.8.0.
 - Return of ConditionVariable `signal()` `broadcast()` and `wait()` are now "@maydiscard". They will return void in 0.8.0.
 - Return of Thread `detatch()` is now "@maydiscard". It will return void in 0.8.0.
-- Buffered/UnbufferedChannel, and both ThreadPools have `@maydiscard` on a set of functions. They will retunr void in 0.8.0.
+- Buffered/UnbufferedChannel, and both ThreadPools have `@maydiscard` on a set of functions. They will return void in 0.8.0.
 - Pthread bindings correctly return Errno instead of CInt.
 - Return of Thread `join()` is now "@maydiscard".
 - Add `poly1305` one-time Message Authentication Code and associated tests. #2639
