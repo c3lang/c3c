@@ -1,17 +1,4 @@
 module std::core::main_stub;
-import std::os::win32;
-
-macro win32_set_utf8_codepage()
-{
-	// By default windows uses an OEM codepage that differs based on locale
-	// and does not support printing utf-8 characters. This allows both
-	// printing utf-8 characters from strings and reading them from stdin.
-	$if env::WIN32:
-		win32::setConsoleCP(UTF8);
-		win32::setConsoleOutputCP(UTF8);
-	$endif
-
-}
 
 macro usz _strlen(ptr) @private
 {
@@ -22,25 +9,21 @@ macro usz _strlen(ptr) @private
 
 macro int @main_to_err_main(#m, int, char**)
 {
-	win32_set_utf8_codepage();
 	if (catch #m()) return 1;
 	return 0;
 }
 macro int @main_to_int_main(#m, int, char**)
 {
-	win32_set_utf8_codepage();
 	return #m();
 }
 macro int @main_to_void_main(#m, int, char**)
 {
-	win32_set_utf8_codepage();
 	#m();
 	return 0;
 }
 
 macro String[] args_to_strings(int argc, char** argv) @private
 {
-	win32_set_utf8_codepage();
 	String[] list = mem::alloc_array(String, argc);
 	for (int i = 0; i < argc; i++)
 	{
@@ -54,7 +37,6 @@ macro String[] args_to_strings(int argc, char** argv) @private
 
 macro int @main_to_err_main_args(#m, int argc, char** argv)
 {
-	win32_set_utf8_codepage();
 	String[] list = args_to_strings(argc, argv);
 	defer free(list.ptr);
 	if (catch #m(list)) return 1;
@@ -63,7 +45,6 @@ macro int @main_to_err_main_args(#m, int argc, char** argv)
 
 macro int @main_to_int_main_args(#m, int argc, char** argv)
 {
-	win32_set_utf8_codepage();
 	String[] list = args_to_strings(argc, argv);
 	defer free(list.ptr);
 	return #m(list);
@@ -71,7 +52,6 @@ macro int @main_to_int_main_args(#m, int argc, char** argv)
 
 macro int @_main_runner(#m, int argc, char** argv)
 {
-	win32_set_utf8_codepage();
 	String[] list = args_to_strings(argc, argv);
 	defer free(list.ptr);
 	return #m(list) ? 0 : 1;
@@ -79,7 +59,6 @@ macro int @_main_runner(#m, int argc, char** argv)
 
 macro int @main_to_void_main_args(#m, int argc, char** argv)
 {
-	win32_set_utf8_codepage();
 	String[] list = args_to_strings(argc, argv);
 	defer free(list.ptr);
 	#m(list);
@@ -88,6 +67,16 @@ macro int @main_to_void_main_args(#m, int argc, char** argv)
 
 module std::core::main_stub @if(env::WIN32);
 import std::os::win32;
+
+macro win32_set_utf8_codepage() @local
+{
+	// By default windows uses an OEM codepage that differs based on locale
+	// and does not support printing utf-8 characters. This allows both
+	// printing utf-8 characters from strings and reading them from stdin.
+	win32::setConsoleCP(UTF8);
+	win32::setConsoleOutputCP(UTF8);
+}
+
 
 extern fn Char16** _win_command_line_to_argv_w(ushort* cmd_line, int* argc_ptr) @cname("CommandLineToArgvW");
 
@@ -122,7 +111,12 @@ macro int @win_to_err_main_noargs(#m, void* handle, void* prev_handle, Char16* c
 	if (catch #m()) return 1;
 	return 0;
 }
-macro int @win_to_int_main_noargs(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd) => #m();
+macro int @win_to_int_main_noargs(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
+{
+	win32_set_utf8_codepage();
+	return #m();
+}
+
 macro int @win_to_void_main_noargs(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
 {
 	win32_set_utf8_codepage();
