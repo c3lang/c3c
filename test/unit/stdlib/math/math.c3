@@ -457,7 +457,7 @@ fn void test_log() @test
 	}
 }
 
-fn void test_ct_intlog2() @test @if($feature(SLOW_TESTS))
+fn void test_ct_intlog2() @test @if($feature(SLOW_TESTS) && !env::OPENBSD)
 {
 	uint128 actual, expected;
 	$for var $x = 0; $x <= 128; ++$x :

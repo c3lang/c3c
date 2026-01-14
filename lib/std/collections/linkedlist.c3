@@ -24,9 +24,9 @@ struct LinkedList
 fn usz? LinkedList.to_format(&self, Formatter* f) @dynamic
 {
 	usz len = f.print("{ ")!;
-	for (Node* node = self._first; node != null; node.next)
+	for (Node* node = self._first; node != null; node = node.next)
 	{
-		len += f.printf(node.next ? "%s, " : "s", node.value)!;
+		len += f.printf(node.next ? "%s, " : "%s", node.value)!;
 	}
 	return len + f.print(" }");
 }
