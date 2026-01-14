@@ -146,8 +146,10 @@ fn bool find_and_mark_error(RunSettings* settings, String type, String file,
 		List {Error}* list;
 		switch (type)
 		{
-			case "Error": list = &f.errors;
-			case "Warning": list = &f.warnings;
+			case "Error":
+				list = &f.errors;
+			case "Warning":
+				list = &f.warnings;
 			default:
 				io::printfn("FAILED - Unknown error type '%s'", type);
 				return false;
@@ -298,13 +300,18 @@ fn void parse_header_directive(int* line_no, String line, RunSettings* settings,
 	
 	switch (key)
 	{
-		case "error":       if (!is_output) settings.current_file.errors.push({ *line_no, value, false });
-		case "safe":        if (!is_output) settings.safe = value == "yes";
-		case "debuginfo":   if (!is_output) settings.debuginfo = value == "yes";
-		case "opt":         if (!is_output) settings.opts.push(value);
-		case "target":      if (!is_output) settings.arch = value;
-		case "deprecation": if (!is_output) settings.no_deprecation = value == "no";
-
+		case "error":
+			if (!is_output) settings.current_file.errors.push({ *line_no, value, false });
+		case "safe":
+			if (!is_output) settings.safe = value == "yes";
+		case "debuginfo":
+			if (!is_output) settings.debuginfo = value == "yes";
+		case "opt":
+			if (!is_output) settings.opts.push(value);
+		case "target":
+			if (!is_output) settings.arch = value;
+		case "deprecation":
+			if (!is_output) settings.no_deprecation = value == "no";
 		case "file":
 			if (is_single) error_exit("FAILED - 'file' directive only allowed with .c3t");
 			settings.current_file.close();

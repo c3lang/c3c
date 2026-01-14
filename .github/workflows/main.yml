@@ -54,8 +54,6 @@ jobs:
         shell: bash
         run: ./scripts/tools/ci_tests.sh "./build/c3c.exe"
 
-      # Do we really need to run `msvc_build_libraries.py` on every push?
-      # I added cache so it runs this only when the file changes.
       - name: Cache MSVC SDK
         id: cache-msvc-sdk
         uses: actions/cache@v5

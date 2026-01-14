@@ -316,8 +316,8 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 			const char *path = globbuf.gl_pathv[i];
 			// Avoid qemu problems
 			if (compiler.platform.arch != ARCH_TYPE_RISCV64
-				&& compiler.platform.arch != ARCH_TYPE_RISCV32
-				&& strstr(path, "riscv")) continue;
+			    && compiler.platform.arch != ARCH_TYPE_RISCV32
+			    && strstr(path, "riscv")) continue;
 			size_t len = strlen(path);
 			ASSERT(len > file_len);
 			const char *res = str_copy(path, len - file_len);
@@ -603,18 +603,24 @@ static void linker_setup_bsd(const char ***args_ref, Linker linker_type, bool is
 	bool is_openbsd = compiler.platform.os == OS_TYPE_OPENBSD;
 	bool is_netbsd = compiler.platform.os == OS_TYPE_NETBSD;
 	bool is_pie_pic_mode = is_pie_pic(compiler.platform.reloc_model);
-	if (is_openbsd) {
+	if (is_openbsd)
+	{
 		if (!is_dylib) add_concat_file_arg(crt_dir, "crt0.o");
 		add_concat_file_arg(crt_dir, "crtbegin.o");
 		add_concat_file_arg(crt_dir, "crtend.o");
-	} else {
+	}
+	else
+	{
 		if (!is_openbsd) add_concat_file_arg(crt_dir, "crti.o");
-		if (is_dylib || is_pie_pic_mode) {
+		if (is_dylib || is_pie_pic_mode)
+		{
 			if (!is_dylib && is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
 			if (!is_dylib) add_concat_file_arg(crt_dir, is_netbsd ? "crt0.o" : "Scrt1.o");
 			add_concat_file_arg(crt_dir, "crtbeginS.o");
 			add_concat_file_arg(crt_dir, "crtendS.o");
-		} else {
+		}
+		else
+		{
 			if (!is_dylib) add_concat_file_arg(crt_dir, is_netbsd ? "crt0.o" : "crt1.o");
 			add_concat_file_arg(crt_dir, "crtbegin.o");
 			add_concat_file_arg(crt_dir, "crtend.o");
@@ -640,9 +646,12 @@ static void linker_setup_bsd(const char ***args_ref, Linker linker_type, bool is
 			add_plain_arg("--dynamic-linker=/libexec/ld-elf.so.1");
 	}
 	linking_add_link(&compiler.linking, "c");
-	if (is_openbsd) {
+	if (is_openbsd)
+	{
 		linking_add_link(&compiler.linking, "execinfo");
-	} else {
+	}
+	else
+	{
 		linking_add_link(&compiler.linking, "gcc");
 		linking_add_link(&compiler.linking, "gcc_s");
 	}
@@ -677,7 +686,7 @@ static void add_linked_libs(const char ***args_ref, const char **libs, bool is_w
 		else
 		{
 			if (str_has_suffix(lib, ".a") || str_has_suffix(lib, ".so") ||
-				str_has_suffix(lib, ".dylib") || str_has_suffix(lib, ".tbd"))
+			    str_has_suffix(lib, ".dylib") || str_has_suffix(lib, ".tbd"))
 			{
 				add_plain_arg(lib);
 			}
@@ -690,7 +699,7 @@ static void add_linked_libs(const char ***args_ref, const char **libs, bool is_w
 }
 
 static bool linker_setup(const char ***args_ref, const char **files_to_link, unsigned file_count,
-						 const char *output_file, Linker linker_type, Linking *linking)
+                         const char *output_file, Linker linker_type, Linking *linking)
 {
 	bool is_dylib = compiler.build.type == TARGET_TYPE_DYNAMIC_LIB;
 	bool use_win = linker_type == LINKER_LINK_EXE;
@@ -1088,8 +1097,8 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 		filename[len] = 0;
 	}
 	const char *out_name = dir
-						  ? str_printf("%s/%s%s", dir, filename, get_object_extension())
-						  : str_printf("%s%s", filename, get_object_extension());
+	                      ? str_printf("%s/%s%s", dir, filename, get_object_extension())
+	                      : str_printf("%s%s", filename, get_object_extension());
 	const char **parts = NULL;
 	const char ***args_ref = &parts;
 	add_quote_arg(cc);
