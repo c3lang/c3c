@@ -181,7 +181,7 @@ macro test_hash_vector_macro(...)
 	{
 		$foreach $vec_len : $lens:
 		{
-			$if $vec_len * $vatype[$i].sizeof * 8  <= 4096:
+			$if $vec_len * $vatype[$i].sizeof * 8  <= $$MAX_VECTOR_SIZE:
 			{
 				$vatype[$i][<$vec_len>] vec1, vec2;
 				for (int val = 0; val < $vec_len; val++)
