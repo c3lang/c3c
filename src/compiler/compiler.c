@@ -1522,6 +1522,9 @@ void compile()
     setup_int_define("LLVM_VERSION", 0, type_int);
 #endif
 
+	setup_string_define("VERSION", COMPILER_VERSION);
+	setup_bool_define("PRERELEASE", PRERELEASE);
+
     setup_bool_define("BENCHMARKING", compiler.build.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);
 	setup_bool_define("TESTING", compiler.build.testing);

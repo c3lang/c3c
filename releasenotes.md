@@ -14,6 +14,7 @@
 - Generics using `@generic` rather than module based.
 - Reduced memory usage for backtraces on Linux.
 - On win32 utf-8 console output is now enabled by default in compiled programs
+- Add `$$VERSION` and `$$PRERELEASE` compile time constants.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
