@@ -237,7 +237,7 @@ static const char *dynamic_lib_name(void)
 	}
 }
 
-static const char *static_lib_name(void)
+const char *static_lib_name(void)
 {
 	const char *name = build_base_name();
 	
@@ -1296,7 +1296,13 @@ static void check_address_sanitizer_options(BuildTarget *target)
 			WinCrtLinking crt_linking = target->win.crt_linking;
 			if (crt_linking == WIN_CRT_DEFAULT)
 			{
-				error_exit("Please specify `static` or `dynamic` for `wincrt` when using address sanitizer.");
+				// Default to dynamic, as static ASan is removed in LLVM 21+ for Windows
+				target->win.crt_linking = WIN_CRT_DYNAMIC;
+				crt_linking = WIN_CRT_DYNAMIC;
+			}
+			else if (crt_linking == WIN_CRT_STATIC)
+			{
+				error_exit("Address sanitizer on Windows no longer supports static CRT linking (`--wincrt=static`). Please use `dynamic`.");
 			}
 
 			if (crt_linking == WIN_CRT_STATIC_DEBUG || crt_linking == WIN_CRT_DYNAMIC_DEBUG)
