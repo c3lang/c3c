@@ -15,6 +15,7 @@
 - Reduced memory usage for backtraces on Linux.
 - On win32 utf-8 console output is now enabled by default in compiled programs
 - Add `$$VERSION` and `$$PRERELEASE` compile time constants.
+- Require () around assignment in conditionals. #2716
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
