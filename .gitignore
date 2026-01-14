@@ -73,8 +73,12 @@ out/
 /cmake-build-debug/
 /cmake-build-release/
 
-# Emacs files
+# etags(Emacs), ctags, gtags
 TAGS
+GPATH
+GRTAGS
+GTAGS
+tags
 
 # Clangd LSP files
 /.cache/

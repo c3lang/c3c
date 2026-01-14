@@ -1,5 +1,12 @@
 module std::core::bitorder @test;
 
+fn void test_unaligned()
+{
+	usz file_size;
+	char[64] response;
+	bitorder::write(file_size, response[9..], ULongLE);
+}
+
 fn void test_read()
 {
     char[*] bytes = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
