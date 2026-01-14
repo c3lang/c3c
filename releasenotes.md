@@ -58,6 +58,7 @@
 - Creating recursive debug info for functions could cause assertions.
 - bitorder::read and bitorder::write may fail because of unaligned access #2734.
 - Fix `LinkedList.to_format` to properly iterate linked list for printing.
+- Hashing a vector would not use the entire vector in some cases.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
