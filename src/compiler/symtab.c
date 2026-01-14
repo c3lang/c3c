@@ -128,8 +128,6 @@ void symtab_init(uint32_t capacity)
 	builtin_defines[BUILTIN_DEF_BENCHMARK_FNS] = KW_DEF("BENCHMARK_FNS");
 	builtin_defines[BUILTIN_DEF_TEST_NAMES] = KW_DEF("TEST_NAMES");
 	builtin_defines[BUILTIN_DEF_TEST_FNS] = KW_DEF("TEST_FNS");
-	builtin_defines[BUILTIN_DEF_VERSION] = KW_DEF("VERSION");
-	builtin_defines[BUILTIN_DEF_PRERELEASE] = KW_DEF("PRERELEASE");
 	kw_FILE_NOT_FOUND = KW_DEF("FILE_NOT_FOUND");
 
 	type = TOKEN_TYPE_IDENT;

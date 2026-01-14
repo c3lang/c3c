@@ -10049,22 +10049,6 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 					return true;
 			}
 			UNREACHABLE
-		case BUILTIN_DEF_VERSION:
-			if (context->call_env.current_function)
-			{
-				expr_rewrite_const_string(expr, COMPILER_VERSION);
-				return true;
-			}
-			expr_rewrite_const_string(expr, context->compilation_unit->file->full_path);
-			return true;
-		case BUILTIN_DEF_PRERELEASE:
-			if (context->call_env.current_function)
-			{
-				expr_rewrite_const_bool(expr, type_bool, PRERELEASE);
-				return true;
-			}
-			expr_rewrite_const_string(expr, context->compilation_unit->file->full_path);
-			return true;
 		case BUILTIN_DEF_NONE:
 		{
 			Expr *value = htable_get(&compiler.context.compiler_defines, (void *)string);
