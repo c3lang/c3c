@@ -1192,14 +1192,25 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 			{
 				RETURN_SEMA_ERROR(last->decl_expr->var.init_expr, "The expression needs to be convertible to a boolean.");
 			}
+
 			cast_no_check(last, type_bool, false);
 		}
 		if (cast_to_bool && expr_is_const_bool(init))
 		{
 			*result = init->const_expr.b ? COND_TRUE : COND_FALSE;
 		}
-
 		return true;
+	}
+	if (cast_to_bool && last->expr_kind == EXPR_BINARY && last->binary_expr.operator >= BINARYOP_ASSIGN && !last->binary_expr.grouped)
+	{
+		if (vec_size(expr->cond_expr) > 1)
+		{
+			RETURN_SEMA_ERROR(last, "An assignment in the last conditional must be parenthesized - did you mean to use '==' instead?");
+		}
+		else
+		{
+			RETURN_SEMA_ERROR(last, "An assignment in a conditional must have an extra parenthesis - did you mean to use '==' instead?");
+		}
 	}
 
 	// 3a. Check for optional in case of an expression.

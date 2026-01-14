@@ -13,6 +13,7 @@
 - Better error messages when slicing a pointer to a slice or vector. #2681
 - Generics using `@generic` rather than module based.
 - Reduced memory usage for backtraces on Linux.
+- Require () around assignment in conditionals. #2716
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.

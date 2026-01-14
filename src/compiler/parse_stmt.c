@@ -638,22 +638,6 @@ static inline Ast* parse_if_stmt(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
 	ASSIGN_EXPRID_OR_RET(if_ast->if_stmt.cond, parse_cond(c), poisoned_ast);
 	unsigned row = c->span.row;
-
-	Expr* cond = exprptr(if_ast->if_stmt.cond);
-	ByteSize size = vec_size(cond->cond_expr);
-	for (ByteSize i = 0; i < size; i++)
-	{
-		Expr* current_cond = cond->cond_expr[i];
-		if (current_cond->expr_kind == EXPR_BINARY && current_cond->binary_expr.operator == BINARYOP_ASSIGN)
-		{
-			if (!current_cond->binary_expr.grouped)
-			{
-				PRINT_ERROR_HERE("An assignment in an 'if' condition must be parenthesized - did you mean to use '==' instead?");
-				return poisoned_ast;
-			}
-		}
-	}
-
 	if (!tok_is(c, TOKEN_RPAREN))
 	{
 		switch (c->tok)
