@@ -459,10 +459,10 @@ jobs:
             c3-linux-musl.tar.gz
             c3-openbsd.tar.gz
             c3-netbsd.tar.gz
-            # --- Debug Artifacts (Uncomment to include) ---
-            # c3-windows-debug.zip
-            # c3-macos-debug.zip
-            # c3-linux-debug.tar.gz
-            # c3-linux-musl-debug.tar.gz
-            # c3-openbsd-debug.tar.gz
-            # c3-netbsd-debug.tar.gz
+            # --- Debug Artifacts ---
+            c3-windows-debug.zip
+            c3-macos-debug.zip
+            c3-linux-debug.tar.gz
+            c3-linux-musl-debug.tar.gz
+            c3-openbsd-debug.tar.gz
+            c3-netbsd-debug.tar.gz
