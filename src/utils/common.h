@@ -75,6 +75,10 @@
 #define __unused
 #endif
 
+#ifndef static_assert
+#define static_assert _Static_assert
+#endif
+
 
 #if (defined(__GNUC__) && __GNUC__ >= 7) || defined(__clang__)
 #define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
