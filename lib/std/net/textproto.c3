@@ -1,8 +1,9 @@
-// Copyright (c) 2025 Zack Puhl <github@xmit.xyz>. All rights reserved.
+// Copyright (c) 2025-2026 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 //
 // Based on Golang's "textproto" package: https://pkg.go.dev/net/textproto
+//
 module std::net::textproto;
 
 import std::collections;
@@ -119,3 +120,9 @@ fn String MimeHeader.get(&self, String key)
 
 //     return list_common::list_to_array(String, self.map[canonical_mime_header_key(key)]!!, mem);
 // }
+
+
+
+
+faultdef
+	READER_MESSAGE_TOO_LARGE;

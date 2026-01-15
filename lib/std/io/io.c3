@@ -30,6 +30,7 @@ faultdef
 	INTERRUPTED,
 	INVALID_POSITION,
 	INVALID_PUSHBACK,
+	LIMIT_EXCEEDED,
 	NAME_TOO_LONG,
 	NOT_SEEKABLE,
 	NO_PERMISSION,
@@ -56,18 +57,18 @@ faultdef
  @param [inout] allocator : `the allocator to use.`
  @return `The string containing the data read.`
 *>
-macro String? readline(Allocator allocator, stream = io::stdin())
+macro String? readline(Allocator allocator, stream = io::stdin(), usz limit = 0)
 {
 	if (allocator == tmem)
 	{
 		DString str = dstring::temp_with_capacity(256);
-		readline_to_stream(&str, stream)!;
+		readline_to_stream(&str, stream, limit)!;
 		return str.str_view();
 	}
 	@pool()
 	{
 		DString str = dstring::temp_with_capacity(256);
-		readline_to_stream(&str, stream)!;
+		readline_to_stream(&str, stream, limit)!;
 		return str.copy_str(allocator);
 	};
 }
@@ -97,7 +98,7 @@ macro String? treadline(stream = io::stdin())
  @require @is_outstream(out_stream) : `The out_stream must implement OutStream.`
  @return `The number of bytes written`
 *>
-macro usz? readline_to_stream(out_stream, in_stream = io::stdin())
+macro usz? readline_to_stream(out_stream, in_stream = io::stdin(), usz limit = 0)
 {
 	bool $is_stream = $typeof(in_stream) == InStream;
 	$if $is_stream:
@@ -122,7 +123,7 @@ macro usz? readline_to_stream(out_stream, in_stream = io::stdin())
 		$endif
 		len++;
 	}
-	while (1)
+	while (!limit || len <= limit)
 	{
 		$if $is_stream:
 			char? c = func((void*)in_stream);
@@ -143,6 +144,7 @@ macro usz? readline_to_stream(out_stream, in_stream = io::stdin())
 		$endif
 		len++;
 	}
+	if (limit > 0 && len > limit) return LIMIT_EXCEEDED?;
 	return len;
 }
 <*
