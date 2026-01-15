@@ -1222,7 +1222,7 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 		CONSUME_OR_RET(TOKEN_LPAREN, false);
 		while (1)
 		{
-			Expr *expr = parse_decl_or_expr(c);
+			ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
 			vec_add(list, expr);
 			if (try_consume(c, TOKEN_RPAREN)) break;
 			CONSUME_OR_RET(TOKEN_COMMA, false);
@@ -1323,12 +1323,18 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 	bool is_builtin = false;
 	bool is_cond;
 	Decl *generics = NULL;
+	bool can_be_generic = decl_may_be_generic(decl);
 	if (!parse_attributes(c, &decl->attributes, &visibility, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, &generics)) return false;
 	if (generics)
 	{
+		if (!can_be_generic)
+		{
+			print_error_at(decl->span, "This declaration cannot be generic.");
+			return false;
+		}
 		parse_attach_generics(c, generics);
 	}
-	if (!generics && c->unit->default_generic_section)
+	if (!generics && c->unit->default_generic_section && can_be_generic)
 	{
 		generics = c->unit->default_generic_section;
 	}
@@ -2318,7 +2324,7 @@ static inline Decl *parse_alias_type(ParseContext *c, AstId contracts)
 {
 	advance_and_verify(c, TOKEN_ALIAS);
 
-	Decl *decl = decl_new(DECL_POISONED, symstr(c), c->span);
+	Decl *decl = decl_new(DECL_TYPE_ALIAS, symstr(c), c->span);
 	DEBUG_LOG("Parse def %s", decl->name);
 	if (!try_consume(c, TOKEN_TYPE_IDENT))
 	{

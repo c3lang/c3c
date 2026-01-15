@@ -2353,6 +2353,7 @@ void global_context_add_type(Type *type);
 void global_context_add_decl(Decl *type_decl);
 
 void linking_add_link(Linking *linker, const char *link);
+const char *static_lib_name(void);
 
 Module *compiler_find_or_create_module(Path *module_name);
 Module *global_context_find_module(const char *name);
@@ -2382,6 +2383,7 @@ const char *decl_to_name(Decl *decl);
 const char *decl_to_a_name(Decl *decl);
 int decl_count_elements(Decl *structlike);
 bool decl_is_defaulted_var(Decl *decl);
+bool decl_may_be_generic(Decl *decl);
 void decl_append_links_to_global_during_codegen(Decl *decl);
 Decl *decl_template_get_generic(Decl *decl);
 

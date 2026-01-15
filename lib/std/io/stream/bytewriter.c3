@@ -43,6 +43,11 @@ fn void? ByteWriter.destroy(&self) @dynamic
 	*self = { };
 }
 
+fn char[] ByteWriter.array_view(self) @inline
+{
+	return self.bytes[:self.index];
+}
+
 fn String ByteWriter.str_view(&self) @inline
 {
 	return (String)self.bytes[:self.index];
@@ -91,7 +96,7 @@ fn usz? ByteWriter.read_from(&self, InStream reader) @dynamic
 	}
 	if (self.bytes.len == 0)
 	{
-		self.ensure_capacity(16)!;
+		self.ensure_capacity(256)!;
 	}
 	while (true)
 	{

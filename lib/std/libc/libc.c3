@@ -57,27 +57,12 @@ alias Fd = CInt;
 alias Fpos_t @if(env::WIN32) = long;
 alias SignalFunction = fn void(CInt);
 
-const CInt SIGHUP = 1;
+// Common signals for all targets
 const CInt SIGINT = 2;
-const CInt SIGQUIT = 3;
 const CInt SIGILL = 4;
-const CInt SIGTRAP = 5;
-const CInt SIGABRT = 6;
-const CInt SIGBUS = BSD_FLAVOR_SIG ? 10 : 7; // Or Mips
 const CInt SIGFPE = 8;
-const CInt SIGKILL = 9;
 const CInt SIGSEGV = 11;
-const CInt SIGSYS = BSD_FLAVOR_SIG ? 12 : 31;
-const CInt SIGPIPE = 13;
-const CInt SIGALRM = 14;
 const CInt SIGTERM = 15;
-const CInt SIGURG = BSD_FLAVOR_SIG ? 16 : 23;
-const CInt SIGSTOP = BSD_FLAVOR_SIG ? 17 : 19;
-const CInt SIGTSTP = BSD_FLAVOR_SIG ? 18 : 20;
-const CInt SIGCONT = BSD_FLAVOR_SIG ? 19 : 18;
-const CInt SIGCHLD = BSD_FLAVOR_SIG ? 20 : 17;
-
-const bool BSD_FLAVOR_SIG @local = env::DARWIN || env::BSD_FAMILY;
 
 alias Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
 alias Off_t = $typefrom(env::WIN32 ? int.typeid : isz.typeid);

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 set(C3_LLVM_MIN_VERSION 17)
 set(C3_LLVM_MAX_VERSION 22)
-set(C3_LLVM_DEFAULT_VERSION 19)
+set(C3_LLVM_DEFAULT_VERSION 21)
 
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
     message(FATAL_ERROR "In-tree build detected, please build in a separate directory")
@@ -56,12 +56,30 @@ set(CMAKE_FIND_PACKAGE_SORT_DIRECTION DEC)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
-# Use /MT or /MTd
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-
 if(MSVC)
     message(STATUS "MSVC version ${MSVC_VERSION}")
     add_compile_options(/utf-8)
+
+    if(C3_WITH_LLVM)
+        FetchContent_GetProperties(LLVM_Windows)
+        if(NOT LLVM_Windows_URL MATCHES "msvcrt")
+            set(MSVC_CRT_SUFFIX "")
+            message(STATUS "Detected STATIC LLVM (libcmt)")
+        else()
+            set(MSVC_CRT_SUFFIX "DLL")
+            message(STATUS "Detected DYNAMIC LLVM (msvcrt)")
+        endif()
+    endif()
+
+    # Force the Runtime to Release (/MT or /MD) even in Debug
+    # This is required to match our RelWithDebInfo LLVM builds
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded${MSVC_CRT_SUFFIX}")
+    set_property(GLOBAL PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded${MSVC_CRT_SUFFIX}")
+
+    add_compile_definitions(_ITERATOR_DEBUG_LEVEL=0)
+
+    # Suppresses the LNK4098 mismatch warning in Debug builds
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:libcmtd /NODEFAULTLIB:msvcrtd")
 else()
     add_compile_options(-gdwarf-3 -fno-exceptions)
 
@@ -77,6 +95,7 @@ set(C3_USE_MIMALLOC         OFF                         CACHE BOOL   "Use built-
 set(C3_MIMALLOC_TAG         "v1.7.3"                    CACHE STRING "Used version of mimalloc")
 set(C3_USE_TB               OFF                         CACHE BOOL   "Use TB")
 set(C3_LLD_DIR              ""                          CACHE STRING "Use custom LLD directory")
+set(C3_LLD_INCLUDE_DIR      ""                          CACHE STRING "Use custom LLD include directory")
 set(C3_ENABLE_CLANGD_LSP    OFF                         CACHE BOOL   "Enable/Disable output of compile commands during generation")
 set(LLVM_CRT_LIBRARY_DIR    ""                          CACHE STRING "Use custom llvm's compiler-rt directory")
 set(TCC_LIB_PATH            "/usr/lib/tcc/libtcc1.a"    CACHE STRING "Use custom libtcc1.a path")
@@ -142,11 +161,11 @@ if(C3_WITH_LLVM)
         endif()
         FetchContent_Declare(
                 LLVM_Windows
-                URL https://github.com/c3lang/win-llvm/releases/download/llvm_19_1_5/llvm-19.1.5-windows-amd64-msvc17-libcmt.7z
+                URL https://github.com/c3lang/win-llvm/releases/download/llvm_21_1_8/llvm-21.1.8-windows-amd64-msvc17-libcmt.7z
         )
         FetchContent_Declare(
                 LLVM_Windows_debug
-                URL https://github.com/c3lang/win-llvm/releases/download/llvm_19_1_5/llvm-19.1.5-windows-amd64-msvc17-libcmt-dbg.7z
+                URL https://github.com/c3lang/win-llvm/releases/download/llvm_21_1_8/llvm-21.1.8-windows-amd64-msvc17-libcmt-dbg.7z
         )
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             message("Loading Windows LLVM debug libraries, this may take a while...")
@@ -273,7 +292,12 @@ if(C3_WITH_LLVM)
     else()
         message(STATUS "Looking for shared lld libraries in ${LLVM_LIBRARY_DIRS}")
 
-        find_library(LLVM NAMES libLLVM.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        #find_library(LLVM NAMES libLLVM.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        if(UNIX AND NOT WIN32)
+            find_library(LLVM NAMES libLLVM.so PATHS ${LLVM_LIBRARY_DIRS} REQUIRED)
+        else()
+            find_library(LLVM NAMES libLLVM.a LLVM.lib PATHS ${LLVM_LIBRARY_DIRS} REQUIRED)
+        endif()        
         set(llvm_libs ${LLVM})
 
         # These don't seem to be reliable on windows.
@@ -435,9 +459,17 @@ if(C3_WITH_LLVM)
     target_compile_definitions(c3c PUBLIC LLVM_AVAILABLE=1)
     add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
     if (MSVC)
+        # Use the same detected CRT for the wrapper
+        set_target_properties(c3c_wrappers PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded${MSVC_CRT_SUFFIX}")
+        set_target_properties(miniz PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded${MSVC_CRT_SUFFIX}")
+
         target_compile_options(c3c PRIVATE
                 "$<$<CONFIG:Debug>:/EHa>"
                 "$<$<CONFIG:Release>:/EHsc>")
+    endif()
+
+    if(C3_LLD_INCLUDE_DIR)
+        target_include_directories(c3c_wrappers PRIVATE ${C3_LLD_INCLUDE_DIR})
     endif()
 else()
     target_sources(c3c PRIVATE src/utils/hostinfo.c)
@@ -552,13 +584,21 @@ if(MSVC)
     endif()
 
     if(C3_WITH_LLVM)
-        set(clang_lib_dir ${llvm_dir}/lib/clang/${C3_LLVM_VERSION}/lib/windows)
-        set(sanitizer_runtime_libraries
-                ${clang_lib_dir}/clang_rt.asan-x86_64.lib
-                ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.lib
-                ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.dll
-                ${clang_lib_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
+        # The the sanitizer libs are in the folder "lib/clang/21/lib/windows/" but use the find anyway
+        file(GLOB_RECURSE FOUND_ASAN_LIB "${llvm_dir}/*clang_rt.asan_dynamic-x86_64.lib")
+        if(FOUND_ASAN_LIB)
+            list(GET FOUND_ASAN_LIB 0 _asan_path)
+            get_filename_component(_asan_dir "${_asan_path}" DIRECTORY)
+            set(sanitizer_runtime_libraries
+                    ${_asan_dir}/clang_rt.asan_dynamic-x86_64.lib
+                    ${_asan_dir}/clang_rt.asan_dynamic-x86_64.dll
+                    ${_asan_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
+            message(STATUS "Found Sanitizer binaries at: ${_asan_dir}")
+        else()
+            message(WARNING "Could not find sanitizer runtime libraries in ${llvm_dir}")
+        endif()
     endif()
+
 else()
     if (C3_WITH_LLVM AND NOT LLVM_ENABLE_RTTI)
         target_compile_options(c3c_wrappers PRIVATE -fno-rtti)

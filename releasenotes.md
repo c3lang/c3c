@@ -13,6 +13,9 @@
 - Better error messages when slicing a pointer to a slice or vector. #2681
 - Generics using `@generic` rather than module based.
 - Reduced memory usage for backtraces on Linux.
+- On win32 utf-8 console output is now enabled by default in compiled programs
+- Add `$$VERSION` and `$$PRERELEASE` compile time constants.
+- Require () around assignment in conditionals. #2716
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -32,7 +35,7 @@
 - Fix error message when a method has the wrong type for the first argument.
 - Unit tests allocating too much `tmem` without `@pool` would cause errors in unrelated tests. #2654
 - Incorrect rounding for decimals in formatter in some cases. #2657
-- Incorrectly using LLVMStructType when emitting dynamic functions on MachO #2666  
+- Incorrectly using LLVMStructType when emitting dynamic functions on MachO #2666
 - FixedThreadPool join did not work correctly.
 - Fix bug when creating bool vectors in certain cases.
 - Compiler assert when passing returning CT failure immediately rethrown #2689.
@@ -47,6 +50,17 @@
 - Miscompilation: global struct with vector could generate an incorrect initializer.
 - `String.tokenize_all` would yield one too many empty tokens at the end.
 - `String.replace` no longer depends on `String.split`.
+- Fix the case where `\u<unicode char>` could crash the compiler on some platforms.
+- Designated initialization with ranges would not error on overflow by 1.
+- `io::read_fully` now handles unbounded streams properly.
+- Crash when doing a type property lookup for const inline enums in some cases #2717.
+- Incorrect alignment on typedef and local variable debug info.
+- Assert on optional-returning-function in a comma expression. #2722
+- Creating recursive debug info for functions could cause assertions.
+- bitorder::read and bitorder::write may fail because of unaligned access #2734.
+- Fix `LinkedList.to_format` to properly iterate linked list for printing.
+- Hashing a vector would not use the entire vector in some cases.
+- Fix to `temp_directory` on Windows #2762.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
@@ -55,19 +69,22 @@
 - Return of Mutex `unlock()` and `lock()` is now "@maydiscard" and should be ignored. They will return void in 0.8.0.
 - Return of ConditionVariable `signal()` `broadcast()` and `wait()` are now "@maydiscard". They will return void in 0.8.0.
 - Return of Thread `detatch()` is now "@maydiscard". It will return void in 0.8.0.
-- Buffered/UnbufferedChannel, and both ThreadPools have `@maydiscard` on a set of functions. They will retunr void in 0.8.0.
+- Buffered/UnbufferedChannel, and both ThreadPools have `@maydiscard` on a set of functions. They will return void in 0.8.0.
 - Pthread bindings correctly return Errno instead of CInt.
 - Return of Thread `join()` is now "@maydiscard".
 - Add `poly1305` one-time Message Authentication Code and associated tests. #2639
 - Add `ripemd` hashing and associated tests. #2663
 - Add `chacha20` stream cipher and associated tests. #2643
 - Add `BLAKE2` (optionally keyed) cryptographic hashing with associated tests. #2648
+- Add `BLAKE3` XOF and associated tests. #2667
 - Add `Elf32_Shdr` and `Elf64_Shdr` to `std::os::linux`.
 - Add `any.to` and `any.as`.
 - Deprecated `DString.append_chars`, use `DString.append_string`
 - Deprecated `DString.append_string` for DStrings, use `DString.append_dstring` instead.
 - Added `DString.append_bytes`.
 - Add `streebog` (aka "GOST-12") hashing with 256-bit and 512-bit outputs. #2659
+- Add unit tests for HMAC 256 based on RFC 4231. #2743
+- Add extra `AsciiCharset` constants and combine its related compile-time/runtime macros. #2688
 - Use a `Printable` struct for ansi RGB formatting instead of explicit allocation and deprecate the old method.
 
 ## 0.7.8 Change list

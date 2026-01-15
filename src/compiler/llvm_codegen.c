@@ -605,7 +605,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 				decl_is_local(decl),
 				LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
 				NULL,
-				decl->alignment);
+				decl->alignment * 8);
 		LLVMGlobalSetMetadata(llvm_get_ref(c, decl), 0, decl->var.backend_debug_ref);
 	}
 
