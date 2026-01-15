@@ -60,3 +60,12 @@ extern fn CInt stat(ZString path, Stat* stat);
 
 extern fn CInt get_nprocs();
 extern fn CInt get_nprocs_conf();
+
+// Additional Linux signals
+const CInt SIGIOT = 6;
+const CInt SIGSTKFLT = 16;
+const CInt SIGPROF = 27;
+const CInt SIGIO = 29;
+const CInt SIGPOLL = 29;
+const CInt SIGPWR = 30;
+const CInt SIGUNUSED = 31;
