@@ -28,7 +28,7 @@ fn void test_all()
 }
 
 const AsciiCharset ALPHANUMERIC_WHITESPACE
-	= combine_sets(ALPHA_UPPER_SET, ALPHA_LOWER_SET, NUMBER_SET, WHITESPACE_SET);
+	= @combine_sets(ALPHA_UPPER_SET, ALPHA_LOWER_SET, NUMBER_SET, WHITESPACE_SET);
 
 fn void asciicharset_contains()
 {
@@ -56,7 +56,7 @@ fn void asciicharset_create_set()
 
 fn void asciicharset_combine_sets()
 {
-	var $a_set = combine_sets(@create_set("123"), @create_set("89"), @create_set("!@#$"), @create_set("something"));
+	var $a_set = @combine_sets(@create_set("123"), @create_set("89"), @create_set("!@#$"), @create_set("something"));
 	$foreach $c : "something@123!": $assert $a_set.@contains($c); $endforeach
 
 	AsciiCharset a_set = combine_sets(create_set("123"), create_set("89"), create_set("!@#$"), create_set("something"));

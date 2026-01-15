@@ -114,33 +114,36 @@ const char[256] TO_LOWER @private  = { ['A'..'Z'] = 'a' - 'A' };
 
 typedef AsciiCharset = uint128;
 
-macro AsciiCharset create_set(String string)
+macro AsciiCharset @create_set(String $string) @const
+{
+	AsciiCharset $set;
+	$foreach $c : $string:
+		$set |= 1ULL << $c;
+	$endforeach
+	return $set;
+}
+
+fn AsciiCharset create_set(String string)
 {
 	AsciiCharset set;
 	foreach (c : string) set |= (AsciiCharset)1ULL << c;
 	return set;
 }
 
-macro AsciiCharset @create_set(String $string) @const
-{
-	AsciiCharset $set;
-	$foreach $c : $string: $set |= 1ULL << $c; $endforeach
-	return $set;
-}
-
 macro bool AsciiCharset.@contains($set, char $c) @const => !!($c < 128) & !!($set & (AsciiCharset)(1ULL << $c));
 
-macro AsciiCharset combine_sets(AsciiCharset #left, ...) @safemacro
+macro AsciiCharset @combine_sets(AsciiCharset $first, AsciiCharset... $sets) @const
 {
-	$if $defined(var $left = #left, AsciiCharset[] $others = { $vasplat }):
-		var $left = #left; var $others = { $vasplat };
-		$foreach $s : $others: $left |= (uint128)$s; $endforeach
-		return $left;
-	$else
-		var left = #left; AsciiCharset[] others = { $vasplat };
-		foreach (c : others) left |= (AsciiCharset)c;
-		return left;
-	$endif
+	var $res = $first;
+	$foreach $c : $sets:
+		$res |= $c;
+	$endforeach
+	return $res;
+}
+fn AsciiCharset combine_sets(AsciiCharset first, AsciiCharset... sets)
+{
+	foreach (c : sets) first |= c;
+	return first;
 }
 
 macro bool AsciiCharset.contains(set, char c) => !!(c < 128) & !!(set & (AsciiCharset)(1ULL << c));
@@ -149,5 +152,5 @@ const AsciiCharset WHITESPACE_SET = @create_set("\t\n\v\f\r ");
 const AsciiCharset NUMBER_SET = @create_set("0123456789");
 const AsciiCharset ALPHA_UPPER_SET = @create_set("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
 const AsciiCharset ALPHA_LOWER_SET = @create_set("abcdefghijklmnopqrstuvwxyz");
-const AsciiCharset ALPHA_SET = combine_sets(ALPHA_UPPER_SET, ALPHA_LOWER_SET);
-const AsciiCharset ALPHANUMERIC_SET = combine_sets(ALPHA_SET, NUMBER_SET);
+const AsciiCharset ALPHA_SET = @combine_sets(ALPHA_UPPER_SET, ALPHA_LOWER_SET);
+const AsciiCharset ALPHANUMERIC_SET = @combine_sets(ALPHA_SET, NUMBER_SET);
