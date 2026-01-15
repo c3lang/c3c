@@ -57,6 +57,13 @@ alias Fd = CInt;
 alias Fpos_t @if(env::WIN32) = long;
 alias SignalFunction = fn void(CInt);
 
+// Common signals for all targets
+const CInt SIGINT = 2;
+const CInt SIGILL = 4;
+const CInt SIGFPE = 8;
+const CInt SIGSEGV = 11;
+const CInt SIGTERM = 15;
+
 alias Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
 alias Off_t = $typefrom(env::WIN32 ? int.typeid : isz.typeid);
 

@@ -68,19 +68,14 @@ extern fn CInt sigaction(CInt signum, Sigaction *action, Sigaction *oldaction) @
 extern fn CInt sigemptyset(Sigset_t* set);
 
 const CInt SIGHUP = 1;
-const CInt SIGINT = 2;
 const CInt SIGQUIT = 3;
-const CInt SIGILL = 4;
 const CInt SIGTRAP = 5;
 const CInt SIGABRT = 6;
-const CInt SIGFPE = 8;
 const CInt SIGKILL = 9;
 const CInt SIGBUS = BSD_FLAVOR_SIG ? 10 : 7; // Or Mips
-const CInt SIGSEGV = 11;
 const CInt SIGSYS = BSD_FLAVOR_SIG ? 12 : 31;
 const CInt SIGPIPE = 13;
 const CInt SIGALRM = 14;
-const CInt SIGTERM = 15;
 const CInt SIGURG = BSD_FLAVOR_SIG ? 16 : 23;
 const CInt SIGSTOP = BSD_FLAVOR_SIG ? 17 : 19;
 const CInt SIGTSTP = BSD_FLAVOR_SIG ? 18 : 20;

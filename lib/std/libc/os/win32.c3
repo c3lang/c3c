@@ -71,11 +71,6 @@ macro Tm* gmtime_r(Time_t* timer, Tm* buf) => _gmtime64_s(buf, timer);
 macro isz read(Fd fd, void* buffer, usz buffer_size) => _read(fd, buffer, (CUInt)buffer_size);
 macro isz write(Fd fd, void* buffer, usz count) => _write(fd, buffer, (CUInt)count);
 
-const CInt SIGINT = 2;
-const CInt SIGILL = 4;
 const CInt SIGABRT_COMPAT = 6;
-const CInt SIGFPE = 8;
-const CInt SIGSEGV = 11;
-const CInt SIGTERM = 15;
 const CInt SIGBREAK = 21;
 const CInt SIGABRT = 22;
