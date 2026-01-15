@@ -61,6 +61,7 @@
 - Fix `LinkedList.to_format` to properly iterate linked list for printing.
 - Hashing a vector would not use the entire vector in some cases.
 - Fix to `temp_directory` on Windows #2762.
+- Too little memory reserved when printing backtrace on Darwin #2698.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
