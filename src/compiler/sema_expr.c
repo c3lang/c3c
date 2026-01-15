@@ -6915,7 +6915,7 @@ static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Typ
 				case TYPE_SLICE:
 					break;
 				default:
-					RETURN_SEMA_ERROR(right, "You trying to assign this expression to each element in the slice, but the expression can't be cast to a value of type %s. Maybe you wanted to do a slice copy and forgot to add [..] at the end? Rather than 'a[..] = { ... }', try 'a[..] = { ... }[..]'.",
+					RETURN_SEMA_ERROR(right, "You are trying to assign this expression to each element in the slice, but the expression can't be cast to a value of type %s. Maybe you wanted to do a slice copy and forgot to add [..] at the end? Rather than 'a[..] = { ... }', try 'a[..] = { ... }[..]'.",
 						type_quoted_error_string(base));
 			}
 		}
