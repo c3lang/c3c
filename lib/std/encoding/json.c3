@@ -249,7 +249,7 @@ fn JsonTokenType? advance(JsonContext* context) @local
 {
 	char c;
 	// Skip whitespace
-	while WS: (c = read_next(context)!)
+	while WS: ((c = read_next(context)!))
 	{
 		switch (c)
 		{
@@ -272,12 +272,12 @@ fn JsonTokenType? advance(JsonContext* context) @local
 				while COMMENT: (true)
 				{
 					// Skip to */
-					while (c = read_next(context)!)
+					while ((c = read_next(context)!))
 					{
 						if (c == '\n') context.line++;
 						if (c != '*') continue;
 						// Skip through all the '*'
-						while (c = read_next(context)!)
+						while ((c = read_next(context)!))
 						{
 							if (c == '\n') context.line++;
 							if (c != '*') break;

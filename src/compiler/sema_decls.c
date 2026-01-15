@@ -5269,6 +5269,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 	unsigned id = generic->generic_decl.id;
 	FOREACH(Decl *, g, alias->unit->module->generic_sections)
 	{
+		if (g->generic_decl.id != id) continue;
 		FOREACH (Decl *, candidate, g->generic_decl.instances)
 		{
 			if (candidate->name == suffix)
@@ -5610,6 +5611,8 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 
 	SemaContext temp_context;
 	context = context_transform_for_eval(context, &temp_context, decl->unit);
+
+	Decl *old_generic_instance = context->generic_instance;
 	context->generic_instance = decl->is_templated ? declptr(decl->instance_id) : NULL;
 	if (decl->resolve_status == RESOLVE_RUNNING)
 	{
@@ -5689,11 +5692,13 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		decl->decl_kind = DECL_ERASED;
 	}
 	decl->resolve_status = RESOLVE_DONE;
+	context->generic_instance = old_generic_instance;
 	sema_context_destroy(&temp_context);
 
 	DEBUG_LOG("<<< Analysis of [%s] successful.", decl_safe_name(decl));
 	return true;
 FAILED:
+	context->generic_instance = old_generic_instance;
 	sema_context_destroy(&temp_context);
 	DEBUG_LOG("<<< Analysis of [%s] failed.", decl_safe_name(decl));
 	return decl_poison(decl);

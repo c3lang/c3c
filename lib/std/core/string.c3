@@ -190,7 +190,7 @@ fn String join(Allocator allocator, String[] s, String joiner)
  @param [&inout] allocator : `The allocator to use for the String`
  @return "The new string with the elements replaced"
 *>
-fn String String.replace(self, Allocator allocator, String needle, String new_str) @nodiscard
+fn String String.replace(self, Allocator allocator, String needle, String new_str) @nodiscard => @pool()
 {
 	Splitter s = self.tokenize_all(needle);
 	DString d;

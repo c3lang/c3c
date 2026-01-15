@@ -374,7 +374,13 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("init"))
 	{
 		options->command = COMMAND_INIT;
-		if (at_end() || next_is_opt()) error_exit("Expected a project name after init");
+		if (at_end() || next_is_opt())
+		{
+			error_exit("Error: Expected a project name after 'init'.\n\n"
+			           "Usage: c3c init <project-name>\n\n"
+			           "- Specify a project name (e.g., 'c3c init myproject') to create a new directory with that name containing the project structure.\n"
+			           "- Use '.' (e.g., 'c3c init .') to initialize the project in the current working directory.");
+		}
 		options->project_name = next_arg();
 		return;
 	}

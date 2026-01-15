@@ -181,7 +181,12 @@ fn void? NativeConditionVariable.wait_until(&cond, NativeMutex* mtx, Time time)
 		case errno::OK:
 			return;
 		default:
-			abort("pthread_cond_timedwait failed, invalid value");
+			$if(env::OPENBSD):
+				// TODO: Investigate why this doesn't work correctly on openbsd.
+				return thread::WAIT_TIMEOUT?;
+			$else
+				abort("pthread_cond_timedwait failed, invalid value");
+			$endif
 	}
 }
 

@@ -1,0 +1,14 @@
+import std;
+struct Result @generic(WithType2)
+{
+	fault error;
+}
+macro Result{WithType} err(fault error) @generic(WithType) => { .error = error };
+
+faultdef TESTIN;
+
+fn int main()
+{
+	Result{int} x = err{int}(TESTIN);
+	return 0;
+}
