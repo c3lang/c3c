@@ -5269,6 +5269,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 	unsigned id = generic->generic_decl.id;
 	FOREACH(Decl *, g, alias->unit->module->generic_sections)
 	{
+		if (g->generic_decl.id != id) continue;
 		FOREACH (Decl *, candidate, g->generic_decl.instances)
 		{
 			if (candidate->name == suffix)
