@@ -704,11 +704,7 @@ fn int main(String[] args)
 	context.start_cwd = path::tcwd()!!;
 	context.print_mutex.init()!!;
 
-	$if env::WIN32:
-		context.test_root = context.start_cwd;
-	$else
-		context.test_root = path::temp_directory(mem)!!;
-	$endif
+	context.test_root = path::temp_directory(mem)!!;
 
 	Path? path = args[1].to_tpath();
 	if (catch path) arg_error_exit(appname, "Invalid compiler path: %s", args[1]);
