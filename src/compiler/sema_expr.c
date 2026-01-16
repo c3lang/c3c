@@ -12431,6 +12431,7 @@ RETRY:
 			SEMA_ERROR(expr, "Recursive resolution of list.");
 			return expr_poison(expr);
 		case RESOLVE_DONE:
+			if (!sema_cast_rvalue(context, expr, true)) return false;
 			if (to && expr->type != to)
 			{
 				cast_implicit_silent(context, expr, to, false);
