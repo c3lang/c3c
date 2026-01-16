@@ -34,7 +34,7 @@ fn usz? available(InStream s)
 		s.seek(curr, Seek.SET)!;
 		return len - curr;
 	}
-	return ^io::UNSUPPORTED_OPERATION;
+	return io::UNSUPPORTED_OPERATION~;
 }
 
 macro bool @is_instream(#expr) @const

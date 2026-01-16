@@ -27,7 +27,8 @@ const CUInt SA_RESTART       = env::LINUX ? 0x10000000 : 0x0002;
 const CUInt SA_RESETHAND     = env::LINUX ? 0x80000000 : 0x0004;
 const CUInt SA_SIGINFO       = env::LINUX ? 0x00000004 : 0x0040;
 
-alias Sigset_t @if(env::DARWIN || env::BSD_FAMILY) = uint;
+alias Sigset_t @if((env::DARWIN || env::BSD_FAMILY) && !env::NETBSD) = uint;
+alias Sigset_t @if(env::NETBSD) = uint[4];
 alias Sigset_t @if(env::LINUX) = ulong[16];
 alias SigActionFunction =  fn void(CInt, void*, void*);
 
@@ -65,7 +66,34 @@ struct Stack_t
 extern fn CInt sigaltstack(Stack_t* ss, Stack_t* old_ss);
 extern fn CInt sigaction(CInt signum, Sigaction *action, Sigaction *oldaction) @if(!env::NETBSD);
 extern fn CInt sigaction(CInt signum, Sigaction *action, Sigaction *oldaction) @cname("__sigaction_siginfo") @if(env::NETBSD);
-extern fn CInt sigemptyset(Sigset_t* set);
+extern fn CInt sigemptyset(Sigset_t* set) @if(!env::NETBSD);
+extern fn CInt sigemptyset(Sigset_t* set) @cname("__sigemptyset14") @if(env::NETBSD);
+
+const CInt SIGHUP = 1;
+const CInt SIGQUIT = 3;
+const CInt SIGTRAP = 5;
+const CInt SIGABRT = 6;
+const CInt SIGKILL = 9;
+const CInt SIGBUS = BSD_FLAVOR_SIG ? 10 : 7; // Or Mips
+const CInt SIGSYS = BSD_FLAVOR_SIG ? 12 : 31;
+const CInt SIGPIPE = 13;
+const CInt SIGALRM = 14;
+const CInt SIGURG = BSD_FLAVOR_SIG ? 16 : 23;
+const CInt SIGSTOP = BSD_FLAVOR_SIG ? 17 : 19;
+const CInt SIGTSTP = BSD_FLAVOR_SIG ? 18 : 20;
+const CInt SIGCONT = BSD_FLAVOR_SIG ? 19 : 18;
+const CInt SIGCHLD = BSD_FLAVOR_SIG ? 20 : 17;
+const CInt SIGTTIN = 21;
+const CInt SIGTTOU = 22;
+const CInt SIGXCPU = 24;
+const CInt SIGXFSZ = 25;
+const CInt SIGVTALRM = 26;
+const CInt SIGWINCH = 28;
+const CInt SIGUSR1 = BSD_FLAVOR_SIG ? 30 : 10;
+const CInt SIGUSR2 = BSD_FLAVOR_SIG ? 31 : 12;
+
+const bool BSD_FLAVOR_SIG @local = env::DARWIN || env::BSD_FAMILY;
+
 
 module libc::termios @if(env::LIBC &&& env::POSIX);
 

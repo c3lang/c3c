@@ -88,7 +88,7 @@ extern fn void pthread_cleanup_push(PosixThreadFn routine, void* routine_arg);
 
 extern fn int sched_yield();
 
-module std::thread::os @if(env::POSIX && !env::LINUX);
+module std::thread::os @if(env::POSIX && !env::LINUX && !env::NETBSD);
 typedef Pthread_attr_t = ulong[8];
 typedef Pthread_cond_t = ulong[6];
 typedef Pthread_condattr_t = ulong[8];
@@ -111,3 +111,18 @@ typedef Pthread_once_t = int;
 typedef Pthread_rwlock_t = ulong[7]; // 32 on 3bit
 typedef Pthread_rwlockattr_t = uint;
 typedef Pthread_sched_param = uint;
+
+module std::thread::os @if(env::NETBSD);
+typedef Pthread_attr_t = ulong[2];
+typedef Pthread_cond_t = ulong[5];
+typedef Pthread_condattr_t = ulong[2];
+typedef Pthread_key_t = uint;
+typedef Pthread_mutexattr_t = ulong[2];
+typedef Pthread_rwlock_t = ulong[8];
+typedef Pthread_rwlockattr_t = ulong[2];
+typedef Pthread_sched_param = int;
+
+typedef Pthread_mutex_t @if(env::X86_64)= ulong[6];
+typedef Pthread_once_t @if(env::X86_64) = ulong[7];
+typedef Pthread_mutex_t @if(!env::X86_64) = ulong[5];
+typedef Pthread_once_t @if(!env::X86_64) = ulong[6];

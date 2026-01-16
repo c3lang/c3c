@@ -1,0 +1,23 @@
+module testing_branch;
+import std::io;
+
+faultdef OH_NO;
+const C = 1;
+
+fn void main() => do_thing()!!;
+
+fn void? do_thing()
+{
+    int* a_value = mem::alloc_array(int, 4);
+    // Change 'C' below to any integer value and the assert goes away.
+    *(int128*)a_value = may_fault(int128, "-123", C)!;
+    io::printfn("Value: %d", *a_value);
+}
+
+macro may_fault($ArgType, something, $incoming)
+{
+    $switch $incoming:
+        $case 1: return OH_NO?;
+        $default: return something.to_integer($ArgType);
+    $endswitch
+}

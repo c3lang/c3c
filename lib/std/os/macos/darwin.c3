@@ -120,7 +120,7 @@ fn Backtrace? backtrace_load_element(Allocator allocator, String execpath, void*
 				string::bformat(&&(char[64]){}, "%p", load_address),
 				string::bformat(&&(char[64]){}, "%p", buffer - 1),
 		        "-fullPath" })!;
-		@stack_mem(512; Allocator mem)
+		@stack_mem(2048; Allocator mem)
         {
 			String[] parts = s.split(mem, " ", 5);
 			if (parts.len == 4)
