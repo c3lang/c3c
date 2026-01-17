@@ -16,6 +16,7 @@
 - On win32 utf-8 console output is now enabled by default in compiled programs
 - Add `$$VERSION` and `$$PRERELEASE` compile time constants.
 - Require () around assignment in conditionals. #2716
+- $$unaligned_load and $$unaligned_store now also takes a "is_volatile" parameter.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -90,6 +91,7 @@
 - Add extra `AsciiCharset` constants and combine its related compile-time/runtime macros. #2688
 - Use a `Printable` struct for ansi RGB formatting instead of explicit allocation and deprecate the old method.
 - HashSet.len() now returns usz instead of int. #2740
+- Add `mem::store` and `mem::load` which may combine both aligned and volatile operations.
 
 ## 0.7.8 Change list
 

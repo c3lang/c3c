@@ -1204,21 +1204,23 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_UNALIGNED_LOAD:
 		{
-			ASSERT(arg_count == 2);
-			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER}, 2)) return false;
+			ASSERT(arg_count == 3);
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER, BA_BOOL}, 3)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (original == type_voidptr) RETURN_SEMA_ERROR(args[0], "Expected a typed pointer.");
 			if (!sema_check_alignment_expression(context, args[1])) return false;
+			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
 			rtype = original->pointer;
 			break;
 		}
 		case BUILTIN_UNALIGNED_STORE:
 		{
-			ASSERT(arg_count == 3);
+			ASSERT(arg_count == 4);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER}, 1)) return false;
-			if (!sema_check_builtin_args(context, &args[2], (BuiltinArg[]) {BA_INTEGER}, 1)) return false;
+			if (!sema_check_builtin_args(context, &args[2], (BuiltinArg[]) {BA_INTEGER, BA_BOOL}, 2)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (!sema_check_alignment_expression(context, args[2])) return false;
+			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "'is_volatile' must be a compile time constant.");
 			if (original != type_voidptr)
 			{
 				if (!cast_implicit(context, args[1], original->pointer, false)) return false;
@@ -1462,7 +1464,6 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SAT_SHL:
 		case BUILTIN_SAT_SUB:
 		case BUILTIN_STR_FIND:
-		case BUILTIN_UNALIGNED_LOAD:
 		case BUILTIN_VECCOMPEQ:
 		case BUILTIN_VECCOMPGE:
 		case BUILTIN_VECCOMPGT:
@@ -1481,7 +1482,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_OVERFLOW_SUB:
 		case BUILTIN_PREFETCH:
 		case BUILTIN_ATOMIC_LOAD:
-		case BUILTIN_UNALIGNED_STORE:
+		case BUILTIN_UNALIGNED_LOAD:
 		case BUILTIN_SELECT:
 		case BUILTIN_MATRIX_TRANSPOSE:
 			return 3;
@@ -1491,6 +1492,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_GATHER:
 		case BUILTIN_SCATTER:
 		case BUILTIN_STR_REPLACE:
+		case BUILTIN_UNALIGNED_STORE:
 			return 4;
 		case BUILTIN_ATOMIC_FETCH_EXCHANGE:
 		case BUILTIN_ATOMIC_FETCH_ADD:

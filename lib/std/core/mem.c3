@@ -200,7 +200,7 @@ macro @scatter_aligned(ptrvec, value, bool[<*>] mask, usz $alignment)
 *>
 macro @unaligned_load(#x, usz $alignment) @builtin
 {
-	return $$unaligned_load(&#x, $alignment);
+	return $$unaligned_load(&#x, $alignment, false);
 }
 
 <*
@@ -215,8 +215,9 @@ macro @unaligned_load(#x, usz $alignment) @builtin
 *>
 macro @unaligned_store(#x, value, usz $alignment) @builtin
 {
-	return $$unaligned_store(&#x, ($typeof(#x))value, $alignment);
+	return $$unaligned_store(&#x, ($typeof(#x))value, $alignment, false);
 }
+
 
 <*
  @param #x : "The variable or dereferenced pointer to load."
@@ -240,6 +241,36 @@ macro @volatile_load(#x) @builtin
 macro @volatile_store(#x, value) @builtin
 {
 	return $$volatile_store(&#x, ($typeof(#x))value);
+}
+
+<*
+ @param ptr : "The pointer to load from"
+ @param $align : "The alignment to assume for the load"
+ @param $volatile : "Whether the load is volatile or not, defaults to false"
+ @return "The value of the variable"
+
+ @require $defined(*ptr) : "This must be a typed pointer"
+ @require @constant_is_power_of_2($align) : "The alignment must be a power of two"
+*>
+macro load(ptr, usz $align, bool $volatile = false)
+{
+	return $$unaligned_load(ptr, $align, $volatile);
+}
+
+<*
+ @param ptr : "The pointer to store to."
+ @param value : "The value to store."
+ @param $align : "The alignment to assume for the store"
+ @param $volatile : "Whether the store is volatile, defaults to false"
+ @return "The value stored"
+
+ @require $defined(*ptr) : "This must be a typed pointer"
+ @require $defined(*ptr = value) : "The value doesn't match the variable"
+ @require @constant_is_power_of_2($align) : "The alignment must be a power of two"
+*>
+macro store(ptr, value, usz $align, bool $volatile = false)
+{
+	return $$unaligned_store(ptr, ($typeof(*ptr))value, $align, $volatile);
 }
 
 <*
@@ -1056,10 +1087,10 @@ typedef UnalignedRef = Type*;
 
 macro Type UnalignedRef.get(self)
 {
-	return @unaligned_load(*(Type*)self, ALIGNMENT);
+	return @unaligned_load(*(Type*)self, ALIGNMENT, false);
 }
 
 macro Type UnalignedRef.set(&self, Type val)
 {
-	return @unaligned_store(*(Type*)self, val, ALIGNMENT);
+	return @unaligned_store(*(Type*)self, val, ALIGNMENT, false);
 }

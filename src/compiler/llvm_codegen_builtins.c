@@ -171,7 +171,18 @@ INLINE void llvm_emit_unaligned_store(GenContext *c, BEValue *result_value, Expr
 	llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
 	llvm_value_rvalue(c, &value);
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
-	llvm_store_to_ptr_aligned(c, value.value, result_value, expr->call_expr.arguments[2]->const_expr.ixx.i.low);
+	LLVMValueRef store = llvm_store_to_ptr_aligned(c, value.value, result_value, expr->call_expr.arguments[2]->const_expr.ixx.i.low);
+	if (store && expr->call_expr.arguments[3]->const_expr.b)
+	{
+		if (LLVMIsAMemCpyInst(store))
+		{
+			LLVMSetOperand(store, 3, LLVMConstAllOnes(c->bool_type));
+		}
+		else
+		{
+			LLVMSetVolatile(store, true);
+		}
+	}
 	c->emitting_load_store_check = emit_check;
 }
 
@@ -253,9 +264,11 @@ INLINE void llvm_emit_unaligned_load(GenContext *c, BEValue *result_value, Expr 
 	bool emit_check = c->emitting_load_store_check;
 	c->emitting_load_store_check = true;
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
+	bool is_volatile = expr->call_expr.arguments[2]->const_expr.b;
 	llvm_value_deref(c, result_value);
 	result_value->alignment = expr->call_expr.arguments[1]->const_expr.ixx.i.low;
 	llvm_value_rvalue(c, result_value);
+	if (is_volatile && result_value->value) LLVMSetVolatile(result_value->value, is_volatile);
 	c->emitting_load_store_check = emit_check;
 }
 
