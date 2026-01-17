@@ -63,6 +63,7 @@
 - Fix to `temp_directory` on Windows #2762.
 - Too little memory reserved when printing backtrace on Darwin #2698.
 - In some cases, a type would not get implicitly converted to a typeid #2764.
+- Assert on defining a const fault enum with enumerator and fault of the same name. #2732
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.

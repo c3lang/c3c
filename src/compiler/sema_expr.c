@@ -19,7 +19,7 @@
 		expr_temp__->resolve_status = RESOLVE_DONE; \
 		return true; \
 	case RESOLVE_RUNNING: \
-		SEMA_ERROR(expr, "Recursive resolution of expression"); \
+		SEMA_ERROR(expr, "Recursive resolution of expression."); \
 		return expr_poison(expr_temp__); \
 	case RESOLVE_DONE: \
 		return expr_ok(expr_temp__); \
@@ -1177,7 +1177,7 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 	if (enum_constant->enum_constant.is_raw)
 	{
 		expr_replace(expr, copy_expr_single(enum_constant->enum_constant.value));
-		return true;
+		return sema_analyse_expr_rvalue(context, expr);
 	}
 	expr->expr_kind = EXPR_CONST;
 	expr->const_expr.const_kind = CONST_ENUM;
