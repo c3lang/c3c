@@ -98,7 +98,7 @@ macro @common_init(#instance, $ParamType, $iv, usz out_len, char[] key = {}, cha
 
 	array::@zip_into(((char*)&#instance.h)[:$sizeof(p)], ((char*)&p)[:$sizeof(p)], fn (a, b) => a ^ b); // bytes(self.h) ^= bytes(p)
 
-	if (key.len) 
+	if (key.len)
 	{
 		char[$sizeof($iv[0])*16] dummy = {};
 		dummy[:key.len] = key[..];
@@ -132,13 +132,15 @@ macro @common_update(#instance, $block_size, char[] data) @local
 	#instance.buflen += data.len;
 }
 
-macro @common_final(#instance, $output_length) @local
-{
-	char[$output_length] result = {};
-	if ($output_length != #instance.outlen) return result;
+<*
+ @param [out] into : "The destination for the resultant hash. Its length must be at least the size of the hash's initialized size."
 
+ @require into.len >= #instance.outlen : "The result slice must be large enough to accept the full hash digest."
+*>
+macro @common_final(#instance, char[] into) @local
+{
 	@add_ctr(#instance, #instance.buflen);
-	if (#instance.f[0]) return result; // technically an error return
+	// TODO:  if (#instance.f[0]) return result; // technically an error return
 
 	if (#instance.last_node) #instance.f[1] = $typeof(#instance.h[0]).max;
 	#instance.f[0] = $typeof(#instance.h[0]).max;
@@ -148,8 +150,7 @@ macro @common_final(#instance, $output_length) @local
 
     defer mem::zero_volatile(@as_char_view(*#instance)); // destroy the current context implicitly
 
-	result[:#instance.outlen] = @as_char_view(#instance.h)[:#instance.outlen];
-	return result;
+	into[:#instance.outlen] = @as_char_view(#instance.h)[:#instance.outlen];
 }
 
 
@@ -212,10 +213,12 @@ struct Blake2bParam @packed @local
 *>
 macro blake2b_hash($out_len, data, char[] key = {}, char[] salt = {})
 {
+	char[$out_len] result @noinit;
 	Blake2b b @noinit;
     b.init($out_len, key, salt);
 	b.update(data[..]);
-	return b.final($out_len);
+	b.final(result[..]);
+	return result;
 }
 alias b = blake2b_hash;
 
@@ -231,7 +234,7 @@ alias b_384 = blake2b_384;
 alias b_512 = blake2b_512;
 
 <*
- Blake2b initialization method. Presents various options 
+ Blake2b initialization method. Presents various options
 
  @param out_len : "The desired output length from the hash function."
  @param[in] key : "An optional key value to use (keys the entire hash value to give HMAC-like functionality)."
@@ -263,12 +266,12 @@ fn void Blake2b.update(&self, char[] data)
 <*
  Finalize the hash context and return the hash result at the given size.
 
- @param $output_length : "The length of the output array which is returned by value, instead of as a slice."
+ @param [out] into : "Storage buffer for the hash's result. Must have a length >= the size given to the hash context at init."
 
- @require $output_length == self.outlen : "The specified compile-time output size MUST be equal to the initialized output size."
+ @require into.len >= self.outlen : "The specified output slice length MUST be equal to or larger than the initialized output size."
 *>
-macro char[*] Blake2b.final(&self, $output_length)
-	=> @common_final(self, $output_length);
+macro void Blake2b.final(&self, char[] into)
+	=> @common_final(self, into);
 
 
 // ======================================================================================
@@ -324,10 +327,12 @@ struct Blake2sParam @packed @local
 *>
 macro blake2s_hash($out_len, data, char[] key = {}, char[] salt = {})
 {
+	char[$out_len] result @noinit;
 	Blake2s b @noinit;
     b.init($out_len, key, salt);
 	b.update(data[..]);
-	return b.final($out_len);
+	b.final(result[..]);
+	return result;
 }
 alias s = blake2s_hash;
 
@@ -343,7 +348,7 @@ alias s_224 = blake2s_224;
 alias s_256 = blake2s_256;
 
 <*
- Blake2s initialization method. Presents various options 
+ Blake2s initialization method. Presents various options
 
  @param out_len : "The desired output length from the hash function."
  @param[in] key : "An optional key value to use (keys the entire hash value to give HMAC-like functionality)."
@@ -375,9 +380,9 @@ fn void Blake2s.update(&self, char[] data)
 <*
  Finalize the hash context and return the hash result at the given size.
 
- @param $output_length : "The length of the output array which is returned by value, instead of as a slice."
+ @param [out] into : "Storage buffer for the hash's result. Must have a length >= the size given to the hash context at init."
 
- @require $output_length == self.outlen : "The specified compile-time output size MUST be equal to the initialized output size."
+ @require into.len >= self.outlen : "The specified output slice length MUST be equal to or larger than the initialized output size."
 *>
-macro char[*] Blake2s.final(&self, $output_length)
-	=> @common_final(self, $output_length);
+macro void Blake2s.final(&self, char[] into)
+	=> @common_final(self, into);
