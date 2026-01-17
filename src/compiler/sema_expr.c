@@ -4498,7 +4498,7 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 		{
 			if (indexed_type->type_kind == TYPE_POINTER && type_is_any_arraylike(indexed_type->pointer))
 			{
-				RETURN_SEMA_ERROR(start, "Omitting the end index is not allowed for pointers, did you perhaps forget to dereference the pointer before slicing wih []?");
+				RETURN_SEMA_ERROR(start, "Omitting the end index is not allowed for pointers, did you perhaps forget to dereference the pointer before slicing wih []? E.g. you wrote '*foo[..]' instead '(*foo)[..]'.");
 			}
 			RETURN_SEMA_ERROR(start, "Omitting end index is not allowed for pointers or flexible array members.");
 		}
