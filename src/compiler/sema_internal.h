@@ -127,6 +127,8 @@ void cast_promote_vararg(Expr *arg);
 Type *cast_numeric_arithmetic_promotion(Type *type);
 void cast_to_int_to_max_bit_size(Expr *lhs, Expr *rhs, Type *left_type, Type *right_type);
 bool sema_decl_if_cond(SemaContext *context, Decl *decl);
+Decl *sema_generate_parameterized_identifier(SemaContext *context, Decl *generic, Decl *alias, Expr **params,
+                                             Decl **param_decls, const char *suffix, const char *csuffix, SourceSpan invocation_span, SourceSpan span);
 Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_path, const char *name, SourceSpan span,
                                             Expr **params, bool *was_recursive_ref, SourceSpan invocation_span);
 bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, const char *name, SourceSpan span);

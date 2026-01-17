@@ -172,6 +172,7 @@ static inline StringSlice slice_from_string(const char *data);
 void slice_trim(StringSlice *slice);
 
 void scratch_buffer_clear(void);
+void scratch_buffer_delete(size_t len);
 void scratch_buffer_append(const char *string);
 void scratch_buffer_append_len(const char *string, size_t len);
 bool scratch_buffer_may_append(size_t len);

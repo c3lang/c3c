@@ -635,6 +635,7 @@ typedef struct
 	const char *cname_suffix;
 	Decl **generated_decls;
 } GenericInstanceDecl;
+
 typedef struct
 {
 	bool is_func : 1;

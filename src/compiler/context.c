@@ -66,7 +66,7 @@ static bool filename_to_module_in_buffer(const char *path)
 		}
 		scratch_buffer_append_char(c);
 	}
-	if (last_was_underscore && scratch_buffer.len) scratch_buffer.len--;
+	if (last_was_underscore && scratch_buffer.len) scratch_buffer_delete(1);
 	if (!scratch_buffer.len) return false;
 	return true;
 }

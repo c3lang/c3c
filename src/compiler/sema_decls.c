@@ -5192,6 +5192,179 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 	return true;
 }
 
+Decl *sema_generate_parameterized_identifier(SemaContext *context, Decl *generic, Decl *alias, Expr **params, Decl **param_decls, const char *suffix, const char *csuffix, SourceSpan invocation_span, SourceSpan span)
+{
+	Module *module = alias->unit->module;
+	Decl *instance = NULL;
+	unsigned id = generic->generic_decl.id;
+	FOREACH(Decl *, g, alias->unit->module->generic_sections)
+	{
+		if (g->generic_decl.id != id) continue;
+		FOREACH (Decl *, candidate, g->generic_decl.instances)
+		{
+			if (candidate->name == csuffix)
+			{
+				instance = candidate;
+				goto FOUND;
+			}
+		}
+	}
+FOUND:;
+	if (!instance)
+	{
+		DEBUG_LOG("Generate generic instance %s", csuffix);
+		if (compiler.context.errors_found) return poisoned_decl;
+		instance = decl_new(DECL_GENERIC_INSTANCE, csuffix, generic->span);
+		FOREACH_IDX(i, const char *, param_name, generic->generic_decl.parameters)
+		{
+			Decl *decl;
+			Expr *param = params ? params[i] : copy_expr_single(param_decls[i]->var.init_expr);
+			ASSERT_SPAN(param, param->expr_kind == EXPR_CONST);
+			if (expr_is_const_typeid(param))
+			{
+				decl = decl_new_var(param_name, param->span, NULL, VARDECL_PARAM_CT_TYPE);
+			}
+			else
+			{
+				ASSERT(param->expr_kind == EXPR_CONST);
+				decl = decl_new_var(param_name, param->span, NULL, VARDECL_CONST);
+			}
+			decl->var.init_expr = param;
+			decl->unit = alias->unit;
+			decl->resolve_status = RESOLVE_DONE;
+			decl->type = param->type;
+			vec_add(instance->instance_decl.params, decl);
+		}
+		instance->unit = alias->unit;
+		Decl **copied = NULL;
+		Decl **copied_cond = NULL;
+		if (!suffix)
+		{
+			if (!sema_generate_parameter_suffix_to_scratch(context, params, false, false)) return poisoned_decl;
+			suffix = scratch_buffer_interned();
+		}
+		instance->instance_decl.name_suffix = suffix;
+		instance->instance_decl.cname_suffix = csuffix;
+		instance->instance_decl.id = id;
+		FOREACH(Decl *, g, module->generic_sections)
+		{
+			if (g->generic_decl.id == generic->generic_decl.id)
+			{
+				vec_add(instance->instance_decl.templates, g);
+				Decl **decls = g->generic_decl.decls;
+				Decl **cond_decls = g->generic_decl.conditional_decls;
+				decls = decls ? copy_decl_list_single_for_generic(decls, instance) : NULL;
+				cond_decls = cond_decls ? copy_decl_list_single_for_generic(cond_decls, instance) : NULL;
+				FOREACH(Decl *, d, decls) vec_add(copied, d);
+				FOREACH(Decl *, d, cond_decls) vec_add(copied_cond, d);
+			}
+		}
+		vec_add(generic->generic_decl.instances, instance);
+		AnalysisStage stage = module->stage;
+		ASSERT(stage > ANALYSIS_IMPORTS);
+		// Add all the normal top level declarations
+		FOREACH(Decl *, decl, copied) unit_register_global_decl(decl->unit, decl);
+		// Add all the conditional declarations
+		FOREACH(Decl *, decl, copied_cond)
+		{
+			unit_register_optional_global_decl(decl->unit, decl);
+			if (decl->decl_kind != DECL_ERASED) vec_add(copied, decl);
+		}
+		if (compiler.context.errors_found) return poisoned_decl;
+
+		// Check contracts
+		FOREACH(Decl *, decl, module->generic_sections)
+		{
+			if (decl->generic_decl.id == generic->generic_decl.id)
+			{
+				AstId contracts = decl->generic_decl.contracts;
+				if (!contracts) continue;
+				copy_begin();
+				contracts = astid(copy_ast_macro(astptr(contracts)));
+				copy_end();
+				SourceSpan param_span = extend_span_with_token(params[0]->span, VECLAST(params)->span);
+				if (!sema_analyse_generic_module_contracts(context, module, instance, contracts, param_span, invocation_span))
+				{
+					return poisoned_decl;
+				}
+			}
+		}
+
+		if (stage < ANALYSIS_METHODS_REGISTER) goto EXIT;
+		FOREACH(Decl *, decl, copied)
+		{
+			if (decl->decl_kind != DECL_FUNC && decl->decl_kind != DECL_MACRO) continue;
+			if (!decl->func_decl.type_parent) continue;
+			SemaContext gen_context;
+			sema_context_init(&gen_context, decl->unit);
+			gen_context.generic_instance = instance;
+			if (sema_analyse_method_register(&gen_context, decl))
+			{
+				if (decl->decl_kind == DECL_MACRO)
+				{
+					vec_add(decl->unit->macro_methods, decl);
+				}
+				else
+				{
+					vec_add(decl->unit->methods, decl);
+				}
+			}
+		}
+		if (stage < ANALYSIS_DECLS) goto EXIT;
+		FOREACH(Decl *, decl, copied)
+		{
+			SemaContext context_gen;
+			sema_context_init(&context_gen, decl->unit);
+			context_gen.active_scope = (DynamicScope) { .depth = 0 };
+			sema_analyse_decl(&context_gen, decl);
+			context_gen.generic_instance = instance;
+			sema_analyse_inner_func_ptr(&context_gen, decl);
+			FOREACH(TypeInfo *, info, decl->unit->check_type_variable_array)
+			{
+				sema_check_type_variable_array(&context_gen, info);
+			}
+			sema_context_destroy(&context_gen);
+		}
+		if (stage < ANALYSIS_FUNCTIONS) goto EXIT;
+		if (compiler.context.errors_found) return poisoned_decl;
+		FOREACH(Decl *, decl, copied)
+		{
+			SemaContext context_gen;
+			switch (decl->decl_kind)
+			{
+				case DECL_FUNC:
+					sema_context_init(&context_gen, decl->unit);
+					analyse_func_body(&context_gen, decl);
+					sema_context_destroy(&context_gen);
+					break;
+				default:
+					break;
+			}
+		}
+		ASSERT(stage < ANALYSIS_INTERFACE);
+EXIT:;
+		if (compiler.context.errors_found) return poisoned_decl;
+	}
+	Decl *symbol = sema_find_generic_instance(context, module, generic, instance, alias->name);
+	if (!symbol)
+	{
+		sema_error_at(context, span, "The generic '%s' does not exist for this parameterization.", alias->name);
+		return poisoned_decl;
+	}
+
+	CompilationUnit *unit = symbol->unit;
+	if (unit->module->stage < ANALYSIS_POST_REGISTER)
+	{
+		vec_add(unit->global_decls, symbol);
+	}
+	else
+	{
+		if (!sema_analyse_decl(context, symbol)) return poisoned_decl;
+	}
+	unit_register_external_symbol(context, symbol);
+	return symbol;
+
+}
 Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_path, const char *name, SourceSpan span,
                                             Expr **params, bool *was_recursive_ref, SourceSpan invocation_span)
 {
@@ -5261,176 +5434,9 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 			ASSERT(expr_is_const(param));
 		}
 	}
-
-	Module *module = alias->unit->module;
 	if (!sema_generate_parameter_suffix_to_scratch(context, params, true, was_recursive_ref)) return poisoned_decl;
 	const char *suffix = scratch_buffer_interned();
-	Decl *instance = NULL;
-	unsigned id = generic->generic_decl.id;
-	FOREACH(Decl *, g, alias->unit->module->generic_sections)
-	{
-		if (g->generic_decl.id != id) continue;
-		FOREACH (Decl *, candidate, g->generic_decl.instances)
-		{
-			if (candidate->name == suffix)
-			{
-				instance = candidate;
-				goto FOUND;
-			}
-		}
-	}
-FOUND:;
-	bool instantiation = instance == NULL;
-	if (!instance)
-	{
-		DEBUG_LOG("Generate generic instance %s", suffix);
-		if (compiler.context.errors_found) return poisoned_decl;
-		instance = decl_new(DECL_GENERIC_INSTANCE, suffix, generic->span);
-		FOREACH_IDX(i, const char *, param_name, generic->generic_decl.parameters)
-		{
-			Decl *decl;
-			Expr *param = params[i];
-			ASSERT_SPAN(param, param->expr_kind == EXPR_CONST);
-			if (expr_is_const_typeid(param))
-			{
-				decl = decl_new_var(param_name, param->span, NULL, VARDECL_PARAM_CT_TYPE);
-			}
-			else
-			{
-				ASSERT(param->expr_kind == EXPR_CONST);
-				decl = decl_new_var(param_name, param->span, NULL, VARDECL_CONST);
-			}
-			decl->var.init_expr = param;
-			decl->unit = alias->unit;
-			decl->resolve_status = RESOLVE_DONE;
-			decl->type = param->type;
-			vec_add(instance->instance_decl.params, decl);
-		}
-		instance->unit = alias->unit;
-		Decl **copied = NULL;
-		Decl **copied_cond = NULL;
-		if (!sema_generate_parameter_suffix_to_scratch(context, params, false, was_recursive_ref)) return poisoned_decl;
-		instance->instance_decl.name_suffix = scratch_buffer_copy();
-		if (!sema_generate_parameter_suffix_to_scratch(context, params, true, was_recursive_ref)) return poisoned_decl;
-		instance->instance_decl.cname_suffix = scratch_buffer_copy();
-		instance->instance_decl.id = id;
-		FOREACH(Decl *, g, module->generic_sections)
-		{
-			if (g->generic_decl.id == generic->generic_decl.id)
-			{
-				vec_add(instance->instance_decl.templates, g);
-				Decl **decls = g->generic_decl.decls;
-				Decl **cond_decls = g->generic_decl.conditional_decls;
-				decls = decls ? copy_decl_list_single_for_generic(decls, instance) : NULL;
-				cond_decls = cond_decls ? copy_decl_list_single_for_generic(cond_decls, instance) : NULL;
-				FOREACH(Decl *, d, decls) vec_add(copied, d);
-				FOREACH(Decl *, d, cond_decls) vec_add(copied_cond, d);
-			}
-		}
-		vec_add(generic->generic_decl.instances, instance);
-		AnalysisStage stage = module->stage;
-		ASSERT(stage > ANALYSIS_IMPORTS);
-		// Add all the normal top level declarations
-		FOREACH(Decl *, decl, copied) unit_register_global_decl(decl->unit, decl);
-		// Add all the conditional declarations
-		FOREACH(Decl *, decl, copied_cond)
-		{
-			unit_register_optional_global_decl(decl->unit, decl);
-			if (decl->decl_kind != DECL_ERASED) vec_add(copied, decl);
-		}
-		if (compiler.context.errors_found) return poisoned_decl;
-
-		// Check contracts
-		FOREACH(Decl *, decl, module->generic_sections)
-		{
-			if (decl->generic_decl.id == generic->generic_decl.id)
-			{
-				AstId contracts = decl->generic_decl.contracts;
-				if (!contracts) continue;
-				copy_begin();
-				contracts = astid(copy_ast_macro(astptr(contracts)));
-				copy_end();
-				SourceSpan param_span = extend_span_with_token(params[0]->span, params[parameter_count - 1]->span);
-				if (!sema_analyse_generic_module_contracts(context, module, instance, contracts, param_span, invocation_span))
-				{
-					return poisoned_decl;
-				}
-			}
-		}
-
-		if (stage < ANALYSIS_METHODS_REGISTER) goto EXIT;
-		FOREACH(Decl *, decl, copied)
-		{
-			if (decl->decl_kind != DECL_FUNC && decl->decl_kind != DECL_MACRO) continue;
-			if (!decl->func_decl.type_parent) continue;
-			SemaContext gen_context;
-			sema_context_init(&gen_context, decl->unit);
-			gen_context.generic_instance = instance;
-			if (sema_analyse_method_register(&gen_context, decl))
-			{
-				if (decl->decl_kind == DECL_MACRO)
-				{
-					vec_add(decl->unit->macro_methods, decl);
-				}
-				else
-				{
-					vec_add(decl->unit->methods, decl);
-				}
-			}
-		}
-		if (stage < ANALYSIS_DECLS) goto EXIT;
-		FOREACH(Decl *, decl, copied)
-		{
-			SemaContext context_gen;
-			sema_context_init(&context_gen, decl->unit);
-			context_gen.active_scope = (DynamicScope) { .depth = 0 };
-			sema_analyse_decl(&context_gen, decl);
-			context_gen.generic_instance = instance;
-			sema_analyse_inner_func_ptr(&context_gen, decl);
-			FOREACH(TypeInfo *, info, decl->unit->check_type_variable_array)
-			{
-				sema_check_type_variable_array(&context_gen, info);
-			}
-			sema_context_destroy(&context_gen);
-		}
-		if (stage < ANALYSIS_FUNCTIONS) goto EXIT;
-		if (compiler.context.errors_found) return poisoned_decl;
-		FOREACH(Decl *, decl, copied)
-		{
-			SemaContext context_gen;
-			switch (decl->decl_kind)
-			{
-				case DECL_FUNC:
-					sema_context_init(&context_gen, decl->unit);
-					analyse_func_body(&context_gen, decl);
-					sema_context_destroy(&context_gen);
-					break;
-				default:
-					break;
-			}
-		}
-		ASSERT(stage < ANALYSIS_INTERFACE);
-EXIT:;
-		if (compiler.context.errors_found) return poisoned_decl;
-	}
-	Decl *symbol = sema_find_generic_instance(context, module, generic, instance, name);
-	if (!symbol)
-	{
-		sema_error_at(context, span, "The generic '%s' does not exist for this parameterization.", name);
-		return poisoned_decl;
-	}
-
-	CompilationUnit *unit = symbol->unit;
-	if (unit->module->stage < ANALYSIS_POST_REGISTER)
-	{
-		vec_add(unit->global_decls, symbol);
-	}
-	else
-	{
-		if (!sema_analyse_decl(context, symbol)) return poisoned_decl;
-	}
-	unit_register_external_symbol(context, symbol);
-	return symbol;
+	return sema_generate_parameterized_identifier(context, generic, alias, params, NULL, NULL, suffix, invocation_span, span);
 }
 
 static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext *c, Decl *decl, bool *erase_decl)

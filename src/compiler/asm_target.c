@@ -895,7 +895,7 @@ static void print_arch_asm(PlatformTarget *target)
 			default:
 				UNREACHABLE_VOID
 		}
-		if (scratch_buffer.len) scratch_buffer.len -= 2;
+		if (scratch_buffer.len) scratch_buffer_delete(2);
 		printf("%-30s | ", scratch_buffer_to_string());
 		int len = 0;
 		for (unsigned j = 0; j < instruction->param_count; j++)
