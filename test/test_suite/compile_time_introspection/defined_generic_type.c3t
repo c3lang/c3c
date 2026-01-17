@@ -14,7 +14,7 @@ fn int main()
 	return 0;
 }
 
-module foo {Type};
+module foo <Type>;
 
 struct Foo
 {

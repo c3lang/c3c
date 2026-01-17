@@ -1,4 +1,4 @@
-module std::hash::hmac{HashAlg, HASH_BYTES, BLOCK_BYTES};
+module std::hash::hmac <HashAlg, HASH_BYTES, BLOCK_BYTES>;
 import std::crypto;
 
 struct Hmac

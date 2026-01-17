@@ -1,4 +1,4 @@
-module std::collections::blockingqueue { Value };
+module std::collections::blockingqueue <Value>;
 import std::thread, std::time;
 
 

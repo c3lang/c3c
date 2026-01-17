@@ -1,5 +1,5 @@
 // #target: macos-x64
-module test{FOO};
+module test <FOO>;
 
 const Z = FOO;
 

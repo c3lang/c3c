@@ -3097,7 +3097,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_FINALIZER] = ATTR_FUNC,
 			[ATTRIBUTE_FORMAT] = ATTR_FUNC | ATTR_MACRO | ATTR_FNTYPE,
-			[ATTRIBUTE_GENERIC] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | ATTR_UNION | ATTR_STRUCT | ATTR_INTERFACE | ATTR_ALIAS,
 			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_PARAM),
 			[ATTRIBUTE_INIT] = ATTR_FUNC,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
@@ -3352,8 +3351,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_NOALIAS:
 			decl->var.no_alias = true;
 			return true;
-		case ATTRIBUTE_GENERIC:
-			UNREACHABLE;
 		case ATTRIBUTE_IF:
 			if (!expr) RETURN_SEMA_ERROR(attr, "'@if' requires a boolean argument.");
 			if (!sema_analyse_expr_rvalue(context, expr)) return false;

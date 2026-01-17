@@ -1,9 +1,9 @@
 import std;
-struct Result @generic(WithType2)
+struct Result <WithType2>
 {
 	fault error;
 }
-macro err(fault error) @generic(OfType, SOME_CONST) @builtin => (Result{OfType}){ .error = error };
+macro err(fault error) <OfType, SOME_CONST> @builtin => (Result{OfType}){ .error = error };
 
 faultdef TESTIN;
 

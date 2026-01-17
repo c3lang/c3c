@@ -1,4 +1,4 @@
-module my_module { GENNY };
+module my_module <GENNY>;
 import std::io;
 
 const uint[5] H = { 1, 2, 3, 4, 5 };

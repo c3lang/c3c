@@ -4,7 +4,7 @@
 <*
  @require @in(DIGEST_BITS, ...PERMISSIBLE_SIZES_BITS) : "Invalid DIGEST_BITS; must be one of {128, 160, 256, 320}."
 *>
-module std::hash::ripemd { DIGEST_BITS };
+module std::hash::ripemd <DIGEST_BITS>;
 
 
 <* Unchanging block size. *>

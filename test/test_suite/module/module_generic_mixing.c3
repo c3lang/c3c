@@ -4,7 +4,7 @@ fn void main()
 	test{int}();
 }
 
-module test{Type};
+module test <Type>;
 fn void test()
 {
 	Type a;

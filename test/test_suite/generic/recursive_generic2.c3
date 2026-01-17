@@ -1,4 +1,4 @@
-module foo { Type };
+module foo <Type>;
 
 import std::collections::list;
 

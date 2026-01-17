@@ -1060,7 +1060,7 @@ fn void* __memcpy(void* dst, void* src, usz n) @weak @export("memcpy")
 }
 
 
-module std::core::mem::volatile { Type };
+module std::core::mem::volatile <Type>;
 
 typedef Volatile @structlike = Type;
 
@@ -1077,7 +1077,7 @@ macro Type Volatile.set(&self, Type val)
 <*
  @require mem::@constant_is_power_of_2(ALIGNMENT) : "The alignment must be a power of 2"
 *>
-module std::core::mem::alignment { Type, ALIGNMENT };
+module std::core::mem::alignment <Type, ALIGNMENT>;
 import std::core::mem @public;
 
 <*

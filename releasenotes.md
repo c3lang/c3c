@@ -11,12 +11,13 @@
 - Testing for the presence of methods at the top level is prohibited previous to method registration.
 - `$$MASK_TO_INT` and `$$INT_TO_MASK` to create bool masks from integers and back.
 - Better error messages when slicing a pointer to a slice or vector. #2681
-- Generics using `@generic` rather than module based.
+- Generics using ad-hoc `<...>` rather than module based.
 - Reduced memory usage for backtraces on Linux.
 - On win32 utf-8 console output is now enabled by default in compiled programs
 - Add `$$VERSION` and `$$PRERELEASE` compile time constants.
 - Require () around assignment in conditionals. #2716
 - $$unaligned_load and $$unaligned_store now also takes a "is_volatile" parameter.
+- Module-based generics using {} is deprecated.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.

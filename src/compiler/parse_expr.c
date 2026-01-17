@@ -414,7 +414,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSE
 	sig->params = decls;
 	sig->rtype = return_type ? type_infoid(return_type) : 0;
 	sig->variadic = variadic;
-	if (!parse_attributes(c, &func->attributes, NULL, NULL, NULL, NULL)) return poisoned_expr;
+	if (!parse_attributes(c, &func->attributes, NULL, NULL, NULL)) return poisoned_expr;
 	RANGE_EXTEND_PREV(func);
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
