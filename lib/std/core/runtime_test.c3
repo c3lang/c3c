@@ -76,7 +76,7 @@ fn int cmp_test_unit(TestUnit a, TestUnit b)
 	return (int)(an - bn);
 }
 
-fn bool terminal_has_ansi_codes() @local => @pool()
+fn bool terminal_has_ansi_codes() @private => @pool()
 {
 
 	if (try v = env::tget_var("TERM"))
