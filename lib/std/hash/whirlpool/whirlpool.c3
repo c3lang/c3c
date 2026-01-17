@@ -161,7 +161,7 @@ fn void Whirlpool.process_block(&self, char* block) @local
 	// NOTE: These loops are unrolled with C3's Chad-tier compile-time evaluation.
 	$for var $round = 0; $round < 8; $round++:
 		k[$round] = self.hash[$round];
-		state[$round] = $$bswap(@unaligned_load(((ulong*)block)[$round], 1)) ^ self.hash[$round];
+		state[$round] = $$bswap(mem::load((ulong*)block + $round, 1)) ^ self.hash[$round];
 		self.hash[$round] = state[$round];
 	$endfor
 

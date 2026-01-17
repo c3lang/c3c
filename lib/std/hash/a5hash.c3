@@ -62,8 +62,8 @@ fn ulong hash(char[] data, ulong seed = 0)
 			for (; data.len > 16; data = data[16..])
 			{
 				@a5mul(
-					@unaligned_load(((ulong*)data.ptr)[0], 1) ^ seed1,
-					@unaligned_load(((ulong*)data.ptr)[1], 1) ^ seed2,
+					mem::load((ulong*)data.ptr, 1) ^ seed1,
+					mem::load((ulong*)data.ptr + 1, 1) ^ seed2,
 					seed1, seed2
 				);
 
@@ -71,16 +71,16 @@ fn ulong hash(char[] data, ulong seed = 0)
 				seed2 += val10;
 			}
 
-			a = @unaligned_load(*(ulong*)(data.ptr + (uptr)data.len - 16), 1);
-			b = @unaligned_load(*(ulong*)(data.ptr + (uptr)data.len - 8), 1);
+			a = mem::load((ulong*)(data.ptr + (uptr)data.len - 16), 1);
+			b = mem::load((ulong*)(data.ptr + (uptr)data.len - 8), 1);
 		}
 		else
 		{
-			a = ((ulong)@unaligned_load(*(uint*)&data[0], 1) << 32)
-				| @unaligned_load(*(uint*)&data[^4], 1);
+			a = ((ulong)mem::load((uint*)&data[0], 1) << 32)
+				| mem::load((uint*)&data[^4], 1);
 
-			b = ((ulong)@unaligned_load(*(uint*)&data[(data.len >> 3) * 4], 1) << 32)
-				| @unaligned_load(*(uint*)(data.ptr + data.len - 4 - (data.len >> 3) * 4), 1);
+			b = ((ulong)mem::load((uint*)&data[(data.len >> 3) * 4], 1) << 32)
+				| mem::load((uint*)(data.ptr + data.len - 4 - (data.len >> 3) * 4), 1);
 		}
 	}
 	else
