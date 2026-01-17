@@ -34,7 +34,7 @@ struct LinkedHashSet (Printable)
 	LinkedEntry* tail;
 }
 
-fn int LinkedHashSet.len(&self) @operator(len) => (int) self.count;
+fn usz LinkedHashSet.len(&self) @operator(len) => self.count;
 
 <*
  @param [&inout] allocator : "The allocator to use"

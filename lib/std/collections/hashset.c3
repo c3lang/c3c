@@ -32,7 +32,7 @@ struct HashSet (Printable)
 	float load_factor;
 }
 
-fn int HashSet.len(&self) @operator(len) => (int) self.count;
+fn usz HashSet.len(&self) @operator(len) => self.count;
 
 <*
  @param [&inout] allocator : "The allocator to use"

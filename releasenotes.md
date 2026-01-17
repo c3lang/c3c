@@ -89,6 +89,7 @@
 - Add unit tests for HMAC 256 based on RFC 4231. #2743
 - Add extra `AsciiCharset` constants and combine its related compile-time/runtime macros. #2688
 - Use a `Printable` struct for ansi RGB formatting instead of explicit allocation and deprecate the old method.
+- HashSet.len() now returns usz instead of int. #2740
 
 ## 0.7.8 Change list
 
