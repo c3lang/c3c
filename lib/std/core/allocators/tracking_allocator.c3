@@ -28,6 +28,8 @@ struct TrackingAllocator (Allocator)
 	AllocMap map;
 	usz mem_total;
 	usz allocs_total;
+	usz usage;
+	usz max_usage;
 }
 
 <*
@@ -70,6 +72,11 @@ fn usz TrackingAllocator.total_allocated(&self) => self.mem_total;
 *>
 fn usz TrackingAllocator.total_allocation_count(&self) => self.allocs_total;
 
+<*
+ @return "the maximum amount of memory allocated"
+*>
+fn usz TrackingAllocator.max_allocated(&self) => self.max_usage;
+
 fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator allocator)
 {
 	return self.map.tvalues();
@@ -88,27 +95,34 @@ fn void*? TrackingAllocator.acquire(&self, usz size, AllocInitType init_type, us
 	backtrace::capture_current(&bt);
 	self.map.set((uptr)data, { data, size, bt });
 	self.mem_total += size;
+	self.usage += size;
+	if (self.usage > self.max_usage) self.max_usage = self.usage;
 	return data;
 }
 
 fn void*? TrackingAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
 {
 	void* data = self.inner_allocator.resize(old_pointer, size, alignment)!;
+	self.usage -= self.map[(uptr)old_pointer]!!.size;
 	self.map.remove((uptr)old_pointer);
 	void*[MAX_BACKTRACE] bt;
 	backtrace::capture_current(&bt);
 	self.map.set((uptr)data, { data, size, bt });
 	self.mem_total += size;
+	self.usage += size;
+	if (self.usage > self.max_usage) self.max_usage = self.usage;
 	self.allocs_total++;
 	return data;
 }
 
 fn void TrackingAllocator.release(&self, void* old_pointer, bool is_aligned) @dynamic
 {
+	usz? old_size = self.map[(uptr)old_pointer].size;
 	if (catch self.map.remove((uptr)old_pointer))
 	{
 		unreachable("Attempt to release untracked pointer %p, this is likely a bug.", old_pointer);
 	}
+	self.usage -= old_size!!;
 	self.inner_allocator.release(old_pointer, is_aligned);
 }
 
@@ -177,6 +191,7 @@ fn void? TrackingAllocator.fprint_report(&self, OutStream out) => @pool()
 	io::fprintfn(out, "- Total current allocations:                   %d", entries)!;
 	io::fprintfn(out, "- Total allocations (freed and retained):      %d", self.allocs_total)!;
 	io::fprintfn(out, "- Total allocated memory (freed and retained): %d", self.mem_total)!;
+	io::fprintfn(out, "- Maximum memory usage:                        %d", self.max_usage)!;
 	if (leaks)
 	{
 		io::fprintn(out)!;
