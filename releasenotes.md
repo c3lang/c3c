@@ -22,6 +22,7 @@
 - Deprecated use of `?` to create optional.
 - Make `foo.$abc` implicitly mean `foo.eval("$abc")`.
 - Deprecating multi-level array length inference. `int[*][*]` is deprecated and will be removed 0.8.0.
+- Add tracking of peak memory usage in the tracking allocator.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
