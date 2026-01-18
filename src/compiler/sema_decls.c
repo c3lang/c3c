@@ -362,6 +362,8 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		if (!sema_check_struct_holes(context, decl, member)) return false;
 
 		ByteSize member_size = type_size(member->type);
+		if (member_size > MAX_STRUCT_SIZE) RETURN_SEMA_ERROR(member, "Union member '%s' would cause the union to become too large (exceeding 2 GB).", member->name);
+
 		ASSERT(member_size <= MAX_TYPE_SIZE);
 		// Update max alignment
 		if (member->alignment > member_alignment) member_alignment = member->alignment;
@@ -4726,7 +4728,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 						goto FAIL;
 					}
 					decl->var.init_expr = init = expr_new(EXPR_POISONED, decl->span);
-					expr_rewrite_to_const_zero(init, decl->type);
+					expr_rewrite_to_const_zero(init, type_no_optional(decl->type));
 				}
 
 				// Analyse the expression.
@@ -4813,6 +4815,11 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 	TypeInfo *type_info = vartype(decl);
 	// We expect a constant to actually be parsed correctly so that it has a value, so
 	// this should always be true.
+	if (!type_info && decl->is_extern)
+	{
+		SEMA_ERROR(decl, "A type is needed for the extern %s '%s'.", decl_to_name(decl), decl->name);
+		return decl_poison(decl);
+	}
 	ASSERT(type_info || decl->var.init_expr);
 
 	bool erase_decl = false;

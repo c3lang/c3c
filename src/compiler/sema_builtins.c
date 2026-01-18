@@ -835,6 +835,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_VEC, BA_INTEGER, BA_INTEGER}, 3)) return false;
 			if (!sema_check_builtin_args_const(context, &args[1], 2)) return false;
 			ArraySize vec_len = type_flatten(args[0]->type)->array.len;
+			if (!cast_implicit(context, args[2], args[1]->type, false)) return false;
 			Int sum = int_mul(args[1]->const_expr.ixx, args[2]->const_expr.ixx);
 			if (!int_icomp(sum, vec_len, BINARYOP_EQ))
 			{

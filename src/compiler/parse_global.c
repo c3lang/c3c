@@ -370,7 +370,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 					                      vec_size(attr->exprs));
 				}
 				Expr *expr = attr->exprs[0];
-				if (!expr_is_const_string(expr)) RETURN_PRINT_ERROR_AT(false, expr, "Expected a constant string.");
+				if (expr->resolve_status != RESOLVE_DONE || !expr_is_const_string(expr)) RETURN_PRINT_ERROR_AT(false, expr, "Expected a constant string.");
 				if (c->unit->module->extname)
 				{
 					RETURN_PRINT_ERROR_AT(false, attr,
@@ -388,7 +388,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 										  vec_size(attr->exprs));
 				}
 				Expr *expr = attr->exprs[0];
-				if (!expr_is_const_string(expr)) RETURN_PRINT_ERROR_AT(false, expr, "Expected a constant string.");
+				if (expr->resolve_status != RESOLVE_DONE || !expr_is_const_string(expr)) RETURN_PRINT_ERROR_AT(false, expr, "Expected a constant string.");
 				if (c->unit->module->extname)
 				{
 					RETURN_PRINT_ERROR_AT(false, attr,
@@ -1533,6 +1533,7 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	Attr **attributes = decl->attributes;
 	// Copy the attributes to the other variables.
+
 	if (attributes)
 	{
 		FOREACH(Decl *, d, decls)
@@ -1541,12 +1542,27 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 			d->attributes = copy_attributes_single(attributes);
 		}
 	}
+	int generics_id = decl->is_template ? decl->generic_id : -1;
+	if (generics_id > -1)
+	{
+		FOREACH(Decl *, d, decls)
+		{
+			if (d == decl) continue;
+			d->generic_id = generics_id;
+			d->is_template = true;
+		}
+	}
 	// If we have multiple decls, then we return that as a bundled decl_globals
 	if (decls)
 	{
 		decl = decl_calloc();
 		decl->decl_kind = DECL_GROUP;
 		decl->decls = decls;
+		if (generics_id > -1)
+		{
+			decl->generic_id = generics_id;
+			decl->is_template = true;
+		}
 		return decl;
 	}
 	return decl;
@@ -2064,8 +2080,6 @@ static inline Decl *parse_typedef_declaration(ParseContext *c)
 	}
 	// 2. Now parse the type which we know is here.
 	ASSIGN_TYPE_OR_RET(decl->distinct, parse_optional_type(c), poisoned_decl);
-
-	ASSERT(!tok_is(c, TOKEN_LBRACE));
 
 	while (tok_is(c, TOKEN_AT_IDENT))
 	{

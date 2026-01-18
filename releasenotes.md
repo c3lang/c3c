@@ -66,6 +66,13 @@
 - Too little memory reserved when printing backtrace on Darwin #2698.
 - In some cases, a type would not get implicitly converted to a typeid #2764.
 - Assert on defining a const fault enum with enumerator and fault of the same name. #2732
+- Passing a non-conststring to module attributes like @cname would trigger an assert rather than printing an error. #2771
+- Passing different types to arg 1 and 2 for $$matrix_transpose would trigger an assert. #2771
+- Zero init of optional compile time variable would crash the compiler. #2771
+- Using multiple declaration for generics in generic module would fail. #2771
+- Defining an extern const without a type would crash rather than print an error. #2771
+- Typedef followed by brace would trigger an assert. #2771
+- Union with too big member would trigger an assert. #2771
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
