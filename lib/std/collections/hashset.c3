@@ -1,7 +1,7 @@
 <*
  @require $defined((Value){}.hash()) : `No .hash function found on the value`
 *>
-module std::collections::set {Value};
+module std::collections::set <Value>;
 import std::math;
 import std::io @norecurse;
 
@@ -32,7 +32,7 @@ struct HashSet (Printable)
 	float load_factor;
 }
 
-fn int HashSet.len(&self) @operator(len) => (int) self.count;
+fn usz HashSet.len(&self) @operator(len) => self.count;
 
 <*
  @param [&inout] allocator : "The allocator to use"

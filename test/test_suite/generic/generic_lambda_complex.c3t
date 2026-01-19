@@ -5,7 +5,7 @@ module abc_faults;
 faultdef UNTERMINATED_TAG, EMPTY_TAG, MISSING_TAG, UNSUPPORTED_TAG;
 
 <* @require Type.kindof == STRUCT *>
-module abc{Type};
+module abc <Type>;
 import std::io, abc_faults, std::collections::list;
 
 alias TextTagList = List{TextTag};

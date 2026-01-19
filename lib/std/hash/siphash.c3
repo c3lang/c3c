@@ -48,7 +48,7 @@ alias hash = siphash::hash { uint128, 4, 8 };
 
  @require OutType.typeid == uint128.typeid || OutType.typeid == ulong.typeid : "Module OutType must be either uint128 or ulong."
 *>
-module std::hash::siphash { OutType, BLOCK_ROUNDS, FINALIZE_ROUNDS };
+module std::hash::siphash <OutType, BLOCK_ROUNDS, FINALIZE_ROUNDS>;
 
 
 struct SipHash

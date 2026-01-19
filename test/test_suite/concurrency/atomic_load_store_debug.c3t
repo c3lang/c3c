@@ -130,6 +130,6 @@ declare i1 @llvm.expect.i1(i1, i1)
 !46 = !DILocation(line: 10, column: 9, scope: !39)
 !47 = !DILocalVariable(name: ".anon", arg: 2, scope: !39, file: !7, line: 10, type: !42)
 !48 = !DILocation(
-!49 = distinct !DISubprogram(name: "@main_to_void_main", linkageName: "@main_to_void_main", scope: !50, file: !50, line: 16, scopeLine: 16, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !6)
+!49 = distinct !DISubprogram(name: "@main_to_void_main", linkageName: "@main_to_void_main", scope: !50, file: !50
 !50 = !DIFile(filename: "main_stub.c3", directory:
 !51 = !DILocation(

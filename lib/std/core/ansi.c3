@@ -1,4 +1,5 @@
 module std::core::string::ansi;
+import std::io;
 
 enum Ansi : const inline String
 {
@@ -56,6 +57,37 @@ enum Ansi : const inline String
 	BG_BRIGHT_WHITE    = "\e[107m",
 }
 
+struct AnsiColor (Printable)
+{
+	char r, g, b;
+	bool bg;
+}
+
+fn usz? AnsiColor.to_format(&self, Formatter* fmt) @dynamic
+{
+	return fmt.printf("\e[%s8;2;%s;%s;%sm", self.bg ? 4 : 3, self.r, self.g, self.b);
+}
+
+<*
+ 24-bit color code
+
+ @return `A struct that, when formatted with '%s', sets the foreground or background colour to the specified rgb value`
+*>
+fn AnsiColor get_color_rgb(char r, char g, char b, bool bg = false)
+{
+	return {r, g, b, bg};
+}
+
+<*
+ 24-bit color code
+
+ @return `A struct that, when formatted with '%s', sets the foreground or background colour of printed text to the specified rgb value`
+*>
+fn AnsiColor get_color(uint rgb, bool bg = false)
+{
+	return {(char)(rgb >> 16), (char)((rgb & 0x00FF00) >> 8), (char)rgb, bg};
+}
+
 <*
  8-bit color code
 
@@ -96,7 +128,7 @@ macro String color(uint $rgb, bool $bg = false) @const
  @require rgb <= 0xFF_FF_FF : `Expected a 24 bit RGB value`
  @return `the string char for the given foreground color`
 *>
-fn String make_color(Allocator mem, uint rgb, bool bg = false)
+fn String make_color(Allocator mem, uint rgb, bool bg = false) @deprecated("use get_color instead")
 {
 	return make_color_rgb(mem, (char)(rgb >> 16), (char)((rgb & 0xFF00) >> 8), (char)rgb, bg);
 }
@@ -107,7 +139,7 @@ fn String make_color(Allocator mem, uint rgb, bool bg = false)
  @require rgb <= 0xFF_FF_FF : `Expected a 24 bit RGB value`
  @return `the string char for the given foreground color`
 *>
-fn String make_tcolor(uint rgb, bool bg = false)
+fn String make_tcolor(uint rgb, bool bg = false) @deprecated("use get_color instead")
 {
 	return make_color_rgb(tmem, (char)(rgb >> 16), (char)((rgb & 0xFF00) >> 8), (char)rgb, bg);
 }
@@ -117,7 +149,7 @@ fn String make_tcolor(uint rgb, bool bg = false)
 
  @return `the string char for the given foreground color`
 *>
-fn String make_color_rgb(Allocator mem, char r, char g, char b, bool bg = false)
+fn String make_color_rgb(Allocator mem, char r, char g, char b, bool bg = false) @deprecated("use get_color_rgb instead")
 {
 	return string::format(mem, "\e[%s8;2;%s;%s;%sm", bg ? 4 : 3, r, g, b);
 }
@@ -127,7 +159,7 @@ fn String make_color_rgb(Allocator mem, char r, char g, char b, bool bg = false)
 
  @return `the string char for the given foreground color`
 *>
-fn String make_tcolor_rgb(char r, char g, char b, bool bg = false)
+fn String make_tcolor_rgb(char r, char g, char b, bool bg = false) @deprecated("use get_color_rgb instead")
 {
 	return string::format(tmem, "\e[%s8;2;%s;%s;%sm", bg ? 4 : 3, r, g, b);
 }

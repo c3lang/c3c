@@ -10,7 +10,7 @@ faultdef TRIE_FULL;
  @require $defined((Token){}.token)
  @require $defined((Comment){}.start) && $defined((Comment){}.end)
  *>
-module lexer {Token, Comment};
+module lexer <Token, Comment>;
 import std::io;
 import trie;
 
@@ -456,7 +456,7 @@ fn int main(String[] args)
 <*
  @require Index.kindof == TypeKind.UNSIGNED_INT
  *>
-module trie{Value, Index};
+module trie <Value, Index>;
 import std::collections::list;
 import trie::bitmap;
 import lexer::faults;

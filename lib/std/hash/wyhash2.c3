@@ -34,8 +34,8 @@ fn ulong hash(char[] input, ulong seed = 0)
 	{
 		if (@likely(input.len >= 4))
 		{
-			a = (ulong)@unaligned_load(*(uint*)input.ptr, 1);   // first 4 bytes widened to a u64
-			b = (ulong)@unaligned_load(*(uint*)&input[^4], 1);   // a walking 4-byte window based on input.len
+			a = (ulong)mem::load((uint*)input.ptr, 1);   // first 4 bytes widened to a u64
+			b = (ulong)mem::load((uint*)&input[^4], 1);   // a walking 4-byte window based on input.len
 		}
 		else if (input.len > 0)
 		{
@@ -44,8 +44,8 @@ fn ulong hash(char[] input, ulong seed = 0)
 	}
 	else
 	{
-		a = @unaligned_load(*(ulong*)input.ptr, 1);   // first 8 bytes
-		b = @unaligned_load(*(ulong*)&input[^8], 1);   // a walking 8-byte window based on input.len
+		a = mem::load((ulong*)input.ptr, 1);   // first 8 bytes
+		b = mem::load((ulong*)&input[^8], 1);   // a walking 8-byte window based on input.len
 	}
 
 	uint128 r = ((uint128)a ^ 0xe703_7ed1_a0b4_28db) * ((uint128)b ^ seed);

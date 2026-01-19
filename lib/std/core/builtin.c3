@@ -700,7 +700,7 @@ macro uint hash_array(array_ptr) @local
 *>
 macro uint hash_vec(vec) @local
 {
-	var $len = $sizeof(vec.len * $typeof(vec).inner.sizeof);
+	var $len = $sizeof(vec);
 
 	$if $len > 16:
 		return (uint)komi::hash(((char*)&&vec)[:$len]);

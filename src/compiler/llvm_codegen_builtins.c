@@ -171,7 +171,18 @@ INLINE void llvm_emit_unaligned_store(GenContext *c, BEValue *result_value, Expr
 	llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
 	llvm_value_rvalue(c, &value);
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
-	llvm_store_to_ptr_aligned(c, value.value, result_value, expr->call_expr.arguments[2]->const_expr.ixx.i.low);
+	LLVMValueRef store = llvm_store_to_ptr_aligned(c, value.value, result_value, expr->call_expr.arguments[2]->const_expr.ixx.i.low);
+	if (store && expr->call_expr.arguments[3]->const_expr.b)
+	{
+		if (LLVMIsAMemCpyInst(store))
+		{
+			LLVMSetOperand(store, 3, LLVMConstAllOnes(c->bool_type));
+		}
+		else
+		{
+			LLVMSetVolatile(store, true);
+		}
+	}
 	c->emitting_load_store_check = emit_check;
 }
 
@@ -253,9 +264,11 @@ INLINE void llvm_emit_unaligned_load(GenContext *c, BEValue *result_value, Expr 
 	bool emit_check = c->emitting_load_store_check;
 	c->emitting_load_store_check = true;
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
+	bool is_volatile = expr->call_expr.arguments[2]->const_expr.b;
 	llvm_value_deref(c, result_value);
 	result_value->alignment = expr->call_expr.arguments[1]->const_expr.ixx.i.low;
 	llvm_value_rvalue(c, result_value);
+	if (is_volatile && result_value->value) LLVMSetVolatile(result_value->value, is_volatile);
 	c->emitting_load_store_check = emit_check;
 }
 
@@ -694,7 +707,7 @@ static void llvm_emit_overflow_builtin(GenContext *c, BEValue *be_value, Expr *e
 	// Note that we can make additional improvements here!
 	llvm_value_set_address(c, &ref, ref.value, ref.type->pointer, type_abi_alignment(ref.type->pointer));
 	LLVMTypeRef call_type[1] = { LLVMTypeOf(arg_slots[0]) };
-	unsigned intrinsic = type_is_signed(type_lowering(args[0]->type)) ? intrinsic_signed : intrinsic_unsigned;
+	unsigned intrinsic = type_is_signed_any(type_lowering(args[0]->type)) ? intrinsic_signed : intrinsic_unsigned;
 	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, call_type, 1, arg_slots, 2);
 	LLVMValueRef failed = llvm_emit_extract_value(c, result, 1);
 	LLVMValueRef value = llvm_emit_extract_value(c, result, 0);
@@ -726,7 +739,7 @@ static void llvm_emit_wrap_builtin(GenContext *c, BEValue *result_value, Expr *e
 			res = LLVMBuildMul(c->builder, arg_slots[0], arg_slots[1], "emul");
 			break;
 		case BUILTIN_EXACT_DIV:
-			if (type_is_signed(base_type))
+			if (type_is_signed_any(base_type))
 			{
 				res = LLVMBuildSDiv(c->builder, arg_slots[0], arg_slots[1], "esdiv");
 			}
@@ -736,7 +749,7 @@ static void llvm_emit_wrap_builtin(GenContext *c, BEValue *result_value, Expr *e
 			}
 			break;
 		case BUILTIN_EXACT_MOD:
-			if (type_is_signed(base_type))
+			if (type_is_signed_any(base_type))
 			{
 				res = LLVMBuildSRem(c->builder, arg_slots[0], arg_slots[1], "eumod");
 			}

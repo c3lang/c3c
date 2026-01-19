@@ -1,4 +1,4 @@
-module std::thread::channel {Type};
+module std::thread::channel <Type>;
 
 typedef UnbufferedChannel = void*;
 

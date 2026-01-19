@@ -1,7 +1,7 @@
 <*
  @require $defined((Value){}.hash()) : `No .hash function found on the value`
 *>
-module std::collections::set {Value};
+module std::collections::set <Value>;
 import std::math;
 import std::io @norecurse;
 
@@ -34,7 +34,7 @@ struct LinkedHashSet (Printable)
 	LinkedEntry* tail;
 }
 
-fn int LinkedHashSet.len(&self) @operator(len) => (int) self.count;
+fn usz LinkedHashSet.len(&self) @operator(len) => self.count;
 
 <*
  @param [&inout] allocator : "The allocator to use"

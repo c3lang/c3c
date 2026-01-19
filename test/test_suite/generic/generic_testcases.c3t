@@ -1,9 +1,9 @@
 // #target: macos-aarch64
-module the_generic @generic(THE_CONST, Type);
+module the_generic <THE_CONST, Type>;
 struct Abc
 { int a; }
 
-module the_generic @generic(THE_CONST, Type);
+module the_generic <THE_CONST, Type>;
 
 struct TheStruct
 {
@@ -37,8 +37,8 @@ module test;
 import the_generic;
 
 <* @require Type.sizeof < 5 *>
-fn Type square(Type t) @generic(Type) => t * 3;
-fn Type bob(Type2 t) @generic(Type2) => feok * 3;
+fn Type square(Type t) <Type> => t * 3;
+fn Type bob(Type2 t) <Type2> => feok * 3;
 
 fn int main()
 {

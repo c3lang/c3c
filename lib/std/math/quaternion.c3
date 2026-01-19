@@ -13,7 +13,7 @@ alias QUATERNIONF_IDENTITY @builtin = quaternion::IDENTITY {float};
  @require Real.kindof == FLOAT : "A quaternion must use a floating type"
 *>
 
-module std::math::quaternion {Real};
+module std::math::quaternion <Real>;
 import std::math::vector;
 union QuaternionNumber
 {

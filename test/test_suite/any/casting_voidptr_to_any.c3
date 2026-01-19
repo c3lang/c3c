@@ -3,7 +3,7 @@ interface IOp
 {
 	fn void op();
 }
-module mylib{Type};
+module mylib <Type>;
 import std::io;
 import mylib::ifaces;
 struct Op (IOp)

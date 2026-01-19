@@ -37,7 +37,7 @@ macro quickselect(list, isz k, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLO
 	$endif
 }
 
-module std::sort::qs{Type, CmpFn, Context};
+module std::sort::qs <Type, CmpFn, Context>;
 
 alias ElementType = $typeof(((Type){})[0]);
 const bool IS_SLICE = Type.kindof == SLICE;

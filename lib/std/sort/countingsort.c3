@@ -39,7 +39,7 @@ macro void quicksort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context =
 	$endif
 }
 
-module std::sort::cs{Type, KeyFn};
+module std::sort::cs <Type, KeyFn>;
 
 alias Counts @private = usz[256];
 alias Ranges @private = usz[257];

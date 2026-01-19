@@ -676,10 +676,10 @@ static void header_gen_global_var(HeaderContext *c, Decl *decl, bool fn_globals,
 		header_gen_maybe_generate_type(c, decl->type, false);
 		return;
 	}
-	header_print_type(c, decl->type);
 	ASSERT(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 	PRINTF("extern ");
 	if (decl->var.kind == VARDECL_CONST) PRINTF("const ");
+	header_print_type(c, decl->type);
 	PRINTF(" %s;\n", decl_get_extname(decl));
 }
 

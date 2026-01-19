@@ -5,7 +5,7 @@
 <*
  @require Enum.kindof == TypeKind.ENUM : "Only enums may be used with an enumset"
 *>
-module std::collections::enumset{Enum};
+module std::collections::enumset <Enum>;
 import std::io;
 
 const ENUM_COUNT @private = Enum.values.len;

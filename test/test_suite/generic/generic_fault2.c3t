@@ -1,4 +1,4 @@
-module g{T};
+module g <T>;
 
 faultdef F0, F1;
 

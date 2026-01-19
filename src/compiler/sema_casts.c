@@ -2426,10 +2426,17 @@ static void cast_arr_to_vec(Expr *expr, Type *to_type)
 	if (sema_cast_const(expr))
 	{
 		// For the array -> vector this is always a simple rewrite of type.
-		ASSERT(expr->const_expr.const_kind == CONST_INITIALIZER);
-		ConstInitializer *list = expr->const_expr.initializer;
-		list->type = type_flatten(to_temp);
-		expr->type = to_temp;
+		if (expr->const_expr.const_kind == CONST_BYTES || expr->const_expr.const_kind == CONST_STRING)
+		{
+			expr->type = to_temp;
+		}
+		else
+		{
+			ASSERT(expr->const_expr.const_kind == CONST_INITIALIZER);
+			ConstInitializer *list = expr->const_expr.initializer;
+			list->type = type_flatten(to_temp);
+			expr->type = to_temp;
+		}
 	}
 	else
 	{

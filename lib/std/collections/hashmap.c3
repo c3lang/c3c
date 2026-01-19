@@ -4,7 +4,7 @@
 <*
  @require $defined((Key){}.hash()) : `No .hash function found on the key`
 *>
-module std::collections::map{Key, Value};
+module std::collections::map <Key, Value>;
 import std::math;
 import std::io @norecurse;
 

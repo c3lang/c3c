@@ -206,7 +206,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *ref_expr, Expr 
 		else
 		{
 			llvm_emit_expr(c, &value, expr);
-			if (ref_expr) llvm_emit_expr(c, ref, ref_expr);
+			if (ref_expr && c->current_block) llvm_emit_expr(c, ref, ref_expr);
 		}
 		if (!c->current_block) goto AFTER_STORE;
 		if (value.type != type_void) llvm_store(c, ref, &value);
@@ -2094,7 +2094,7 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 			LLVMValueRef diff_value = LLVMConstInt(llvm_type, 1, false);
 			if (!allow_wrap)
 			{
-				if (type_is_signed(type))
+				if (type_is_signed_any(type))
 				{
 					return diff > 0
 					       ? LLVMBuildNSWAdd(c->builder, original->value, diff_value, "addnsw")
@@ -3119,8 +3119,8 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 	Type *vector_type = type_vector_type(lhs_type);
 	if (vector_type)
 	{
-		lhs_signed = type_is_signed(vector_type);
-		rhs_signed = type_is_signed(type_vector_type(rhs_type));
+		lhs_signed = type_is_signed_any(vector_type);
+		rhs_signed = type_is_signed_any(type_vector_type(rhs_type));
 	}
 	else
 	{
@@ -7167,7 +7167,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_FLOAT_TO_INT:
 			llvm_emit_expr(c, value, expr->inner_expr);
 			llvm_value_rvalue(c, value);
-			if (type_is_signed(type_lowering(expr->type)))
+			if (type_is_signed_any(type_lowering(expr->type)))
 			{
 				llvm_value_set(value, LLVMBuildFPToSI(c->builder, value->value, llvm_get_type(c, expr->type), "fpsi"), expr->type);
 				return;
@@ -7177,7 +7177,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_INT_TO_FLOAT:
 			llvm_emit_expr(c, value, expr->inner_expr);
 			llvm_value_rvalue(c, value);
-			if (type_is_signed(value->type))
+			if (type_is_signed_any(value->type))
 			{
 				llvm_value_set(value, LLVMBuildSIToFP(c->builder, value->value, llvm_get_type(c, expr->type), "sifp"), expr->type);
 			}

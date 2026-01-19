@@ -17,7 +17,7 @@ macro void insertionsort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLO
 	$endif
 }
 
-module std::sort::is{Type, CmpFn, Context};
+module std::sort::is <Type, CmpFn, Context>;
 
 alias ElementType = $typeof(((Type){})[0]);
 const bool IS_SLICE = Type.kindof == SLICE;

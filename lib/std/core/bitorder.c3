@@ -90,33 +90,35 @@ bitstruct UInt128LE : uint128 @littleendian
 <*
  @require @is_array_or_slice_of_char(bytes) : "argument must be an array, a pointer to an array or a slice of char"
  @require is_bitorder($Type) : "type must be a bitorder integer"
+ @require $defined(*bytes) ||| $defined(bytes[:$Type.sizeof]) : "Data is too short to contain value"
 *>
 macro read(bytes, $Type)
 {
-	char[] s;
+	char *ptr;
 	$switch $kindof(bytes):
 		$case POINTER:
-			s = (*bytes)[:$Type.sizeof];
+			ptr = bytes;
 		$default:
-			s = bytes[:$Type.sizeof];
+			ptr = bytes[..].ptr;
 	$endswitch
-	return bitcast(*(char[$Type.sizeof]*)s.ptr, $Type).val;
+	return bitcast(mem::load((char[$Type.sizeof]*)ptr, $align: 1), $Type).val;
 }
 
 <*
  @require @is_arrayptr_or_slice_of_char(bytes) : "argument must be a pointer to an array or a slice of char"
  @require is_bitorder($Type) : "type must be a bitorder integer"
+ @require $defined(*bytes) ||| $defined(bytes[:$Type.sizeof]) : "Data is not sufficent to hold value"
 *>
 macro write(x, bytes, $Type)
 {
-	char[] s;
+	char *ptr;
 	$switch $kindof(bytes):
 		$case POINTER:
-			s = (*bytes)[:$Type.sizeof];
+			ptr = bytes;
 		$default:
-			s = bytes[:$Type.sizeof];
+			ptr = bytes[..].ptr;
 	$endswitch
-	*($typeof(x)*)s.ptr = bitcast(x, $Type).val;
+	mem::store(($typeof(x)*)ptr, bitcast(x, $Type).val, 1);
 }
 
 macro bool is_bitorder($Type)

@@ -4,7 +4,7 @@
 <*
  @require Type.kindof == INTERFACE || Type.kindof == ANY : "The kind of an interfacelist must be an interface or `any`"
 *>
-module std::collections::interfacelist {Type};
+module std::collections::interfacelist <Type>;
 import std::io,std::math;
 
 alias InterfacePredicate = fn bool(Type value);
