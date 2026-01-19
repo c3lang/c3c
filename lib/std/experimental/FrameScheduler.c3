@@ -1,4 +1,4 @@
-module std::experimental::scheduler{Event};
+module std::experimental::scheduler <Event>;
 import std::collections, std::thread, std::time;
 
 struct DelayedSchedulerEvent @local

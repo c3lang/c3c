@@ -8,7 +8,7 @@ fn void main()
   Foo $f = 1;
   test1::foo{$f}();
 }
-module test1 {FOO};
+module test1 <FOO>;
 
 fn void foo() {}
 

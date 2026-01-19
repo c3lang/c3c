@@ -1,7 +1,7 @@
 // Copyright (c) 2023-2025 Eduardo José Gómez Hernández. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::atomic::types{Type};
+module std::atomic::types <Type>;
 
 struct Atomic
 {

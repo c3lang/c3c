@@ -1,4 +1,4 @@
-module custom_type @generic(Type, VALUE);
+module custom_type <Type, VALUE>;
 
 struct Example
 {

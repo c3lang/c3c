@@ -229,7 +229,7 @@ fn void Blake3.init(&self, char[] key = {}, char explicit_flags = 0)
 
 	if (key.len)
 	{
-		foreach (i, &w : self.key) *w = @unaligned_load(*(uint*)&key[i * $sizeof(self.key[0])], 1);
+		foreach (i, &w : self.key) *w = mem::load((uint*)&key[i * $sizeof(self.key[0])], 1);
 		if (!explicit_flags) explicit_flags = Blake3Flags.KEYED_HASH;
 	}
 	else
@@ -599,7 +599,7 @@ macro @round(uint[] state, uint* msg, usz round) @local
 fn void compress_pre(uint[] state, uint[] cv, char[BLOCK_SIZE] block, usz block_len, ulong counter, char flags) @local @noinline
 {
 	uint[16] block_words @noinit;
-	foreach (i, &b : block_words) *b = @unaligned_load(*(uint*)&block[i * 4], 1);
+	foreach (i, &b : block_words) *b = mem::load((uint*)&block[i * 4], 1);
 	state[0:8] = cv[0:8];
 	state[8:4] = IV[0:4];
 	state[12] = (uint)counter;
@@ -626,8 +626,8 @@ macro compress_xof(uint[] cv, char[BLOCK_SIZE] block, usz block_len, ulong count
 {
 	uint[16] state @noinit;
 	compress_pre(state[..], cv, block, block_len, counter, flags);
-	$for usz $i = 0; $i < 8; $i++: @unaligned_store(*(uint*)&out[4 * $i], state[$i] ^ state[$i + 8], 1); $endfor
-	$for usz $i = 0; $i < 8; $i++: @unaligned_store(*(uint*)&out[4 * (8 + $i)], state[$i + 8] ^ cv[$i], 1); $endfor
+	$for usz $i = 0; $i < 8; $i++: mem::store((uint*)&out[4 * $i], state[$i] ^ state[$i + 8], 1); $endfor
+	$for usz $i = 0; $i < 8; $i++: mem::store((uint*)&out[4 * (8 + $i)], state[$i + 8] ^ cv[$i], 1); $endfor
 }
 
 macro @xof_many(uint[] cv, char[BLOCK_SIZE] block, usz block_len, ulong counter, char flags, char[] out, usz out_blocks) @local
@@ -645,7 +645,7 @@ macro hash_one(char* input, usz blocks, uint[] key, ulong counter, char flags, c
 		if (blocks == 1) block_flags |= flags_end;
 		compress_in_place(cv[..], input[:BLOCK_SIZE], BLOCK_SIZE, counter, block_flags);
 	}
-	foreach (i, c : cv) @unaligned_store(*(uint*)&out[i * 4], c, 1);
+	foreach (i, c : cv) mem::store((uint*)&out[i * 4], c, 1);
 }
 
 macro hash_many(char*[] inputs, usz num_inputs, usz blocks, uint[] key, ulong counter, bool $increment_counter, char flags, char flags_start, char flags_end, char* out) @local

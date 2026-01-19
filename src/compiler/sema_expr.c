@@ -19,7 +19,7 @@
 		expr_temp__->resolve_status = RESOLVE_DONE; \
 		return true; \
 	case RESOLVE_RUNNING: \
-		SEMA_ERROR(expr, "Recursive resolution of expression"); \
+		SEMA_ERROR(expr, "Recursive resolution of expression."); \
 		return expr_poison(expr_temp__); \
 	case RESOLVE_DONE: \
 		return expr_ok(expr_temp__); \
@@ -1177,7 +1177,7 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 	if (enum_constant->enum_constant.is_raw)
 	{
 		expr_replace(expr, copy_expr_single(enum_constant->enum_constant.value));
-		return true;
+		return sema_analyse_expr_rvalue(context, expr);
 	}
 	expr->expr_kind = EXPR_CONST;
 	expr->const_expr.const_kind = CONST_ENUM;
@@ -2289,11 +2289,7 @@ SPLAT_NORMAL:;
 		Decl *param = params[i];
 		if (param->var.no_init) continue; // Macro empty args
 		// Argument missing, that's bad.
-		if (no_match_ref)
-		{
-			*no_match_ref = true;
-			return true;
-		}
+		if (no_match_ref) return *no_match_ref = true, false;
 		if (!has_named || !param->name)
 		{
 			int missing = 1;
@@ -2583,7 +2579,6 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 	if (sig->attrs.noreturn) expr->call_expr.no_return = true;
 
 	if (!sema_call_evaluate_arguments(context, &callee, expr, &optional, no_match_ref)) return false;
-
 	if (expr->call_expr.is_dynamic_dispatch)
 	{
 		Expr *any_val = expr->call_expr.arguments[0];
@@ -4498,7 +4493,7 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 		{
 			if (indexed_type->type_kind == TYPE_POINTER && type_is_any_arraylike(indexed_type->pointer))
 			{
-				RETURN_SEMA_ERROR(start, "Omitting the end index is not allowed for pointers, did you perhaps forget to dereference the pointer before slicing wih []?");
+				RETURN_SEMA_ERROR(start, "Omitting the end index is not allowed for pointers, did you perhaps forget to dereference the pointer before slicing wih []? E.g. you wrote '*foo[..]' instead '(*foo)[..]'.");
 			}
 			RETURN_SEMA_ERROR(start, "Omitting end index is not allowed for pointers or flexible array members.");
 		}
@@ -7693,7 +7688,7 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 		}
 		RETURN_SEMA_ERROR(parent, error_message, type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 	}
-	if (type_is_signed(flat_max))
+	if (type_is_signed_any(flat_max))
 	{
 		if (!sema_check_untyped_promotion(context, left, true, flat_max, max)) return false;
 		if (!sema_check_untyped_promotion(context, right, false, flat_max, max)) return false;

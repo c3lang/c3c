@@ -1,5 +1,5 @@
 // #target: macos-x64
-module test_generic{Type, Func};
+module test_generic<Type, Func>;
 
 fn void sort(Type list, isz, isz, Func cmp)
 {}

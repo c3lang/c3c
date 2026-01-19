@@ -1,4 +1,4 @@
-module abc {Type};
+module abc <Type>;
 
 attrdef @Hello = @inline;
 faultdef ABC;

@@ -8,7 +8,7 @@
  @require !$defined(Type.dealloc) ||| $defined(Type.dealloc(&&(Type){})) : "'dealloc' must only take a pointer to the underlying type"
  @require !$defined(Type.dealloc) ||| $typeof((Type){}.dealloc()) ==  void : "'dealloc' must return 'void'"
 *>
-module std::core::mem::ref { Type };
+module std::core::mem::ref <Type>;
 import std::thread, std::atomic;
 
 const OVERALIGNED @private = Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;

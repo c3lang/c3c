@@ -100,7 +100,7 @@ extern fn CInt fprintf(CFile stream, ZString format, ...);
 extern fn CInt fputc(CInt c, CFile stream);
 extern fn CInt fputs(ZString string, CFile stream);
 extern fn usz fread(void* ptr, usz size, usz nmemb, CFile stream);
-extern fn void* free(void*);
+extern fn void free(void*);
 extern fn CFile freopen(ZString filename, ZString mode, CFile stream);
 extern fn CInt fscanf(CFile stream, ZString format, ...);
 extern fn CInt fseek(CFile stream, SeekIndex offset, CInt whence) @if(!env::WIN32);

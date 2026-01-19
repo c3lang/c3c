@@ -15,7 +15,7 @@ fn int main() {
   return 0;
 }
 
-module test::generic{Type};
+module test::generic <Type>;
 
 struct Test
 {

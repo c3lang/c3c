@@ -10,7 +10,7 @@ fn void main()
 	blurb::test(&hello_int);
 }
 
-module foo{Type};
+module foo <Type>;
 
 fn void hello() {}
 

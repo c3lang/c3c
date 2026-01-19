@@ -47,14 +47,14 @@ fn usz? native_file_size(String path) @if(env::WIN32) => @pool()
 	return (usz)size.quadPart;
 }
 
-fn usz? native_file_size(String path) @if(!env::WIN32 && !env::DARWIN)
+fn usz? native_file_size(String path) @if(!env::WIN32 && !env::DARWIN && !env::LINUX && !env::ANDROID && !env::BSD_FAMILY)
 {
 	File f = file::open(path, "r")!;
 	defer (void)f.close();
 	return f.seek(0, Seek.END)!;
 }
 
-fn usz? native_file_size(String path) @if(env::DARWIN)
+fn usz? native_file_size(String path) @if(env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY)
 {
 	Stat stat;
 	native_stat(&stat, path)!;

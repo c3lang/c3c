@@ -1,4 +1,4 @@
-module std::thread::pool{SIZE};
+module std::thread::pool <SIZE>;
 import std::thread;
 
 struct ThreadPool

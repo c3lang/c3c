@@ -1527,7 +1527,15 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	// Check the type if needed
 	TypeInfo *variable_type_info = vartype(var);
 	if (variable_type_info && !sema_resolve_type_info(context, variable_type_info, RESOLVE_TYPE_DEFAULT)) return false;
-
+	if (variable_type_info)
+	{
+		switch (sema_resolve_storage_type(context, variable_type_info->type))
+		{
+			case STORAGE_ERROR: return false;
+			case STORAGE_NORMAL: break;
+			default: RETURN_SEMA_ERROR(var, "%s is not a valid type for '%s', only runtime types with a known size may be used.", type_quoted_error_string(variable_type_info->type), var->name);
+		}
+	}
 	// Conditional scope start
 	SCOPE_START
 

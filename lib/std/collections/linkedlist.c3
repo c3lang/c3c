@@ -1,7 +1,7 @@
 // Copyright (c) 2021-2024 Christoffer Lerno. All rights reserved.
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::collections::linkedlist{Type};
+module std::collections::linkedlist <Type>;
 import std::io;
 
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);

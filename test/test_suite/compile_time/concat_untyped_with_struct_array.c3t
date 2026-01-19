@@ -20,7 +20,7 @@ fn int main()
 <*
     This contains macros for working with arrays at compile time
 *>
-module assert_repro::macros { ValueT };
+module assert_repro::macros <ValueT>;
 alias SliceT = ValueT[];
 
 macro SliceT slice(SliceT $from, usz $start, usz $end = usz.max)
