@@ -123,6 +123,11 @@ macro void free(Allocator allocator, void* ptr)
 	allocator.release(ptr, false);
 }
 
+macro void free_all(Allocator allocator, void*... ptr)
+{
+	foreach (p : ptr) free(allocator, p);
+}
+
 macro void*? malloc_aligned(Allocator allocator, usz size, usz alignment) @nodiscard
 {
 	if (!size) return null;
