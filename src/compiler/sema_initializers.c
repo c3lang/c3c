@@ -1262,6 +1262,7 @@ static inline void sema_update_const_initializer_with_designator(
 
 static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr)
 {
+	ASSERT(expr->expr_kind == EXPR_DESIGNATOR);
 	DesignatorElement **path = expr->designator_expr.path;
 
 	// Walk down into this path

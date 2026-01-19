@@ -530,10 +530,12 @@ void sema_trace_liveness(void)
 		{
 			FOREACH(Decl *, function, unit->functions)
 			{
+				if (function->func_decl.attr_test && !keep_tests) continue;
+				if (function->func_decl.attr_benchmark && !keep_benchmarks) continue;
 				if (function->is_export || function->no_strip || function->func_decl.attr_finalizer ||
 				    function->func_decl.attr_init ||
-				    (function->func_decl.attr_test && keep_tests) ||
-				    (function->func_decl.attr_benchmark && keep_benchmarks))
+				    (function->func_decl.attr_test) ||
+				    (function->func_decl.attr_benchmark))
 					sema_trace_decl_liveness(function);
 			}
 			FOREACH(Decl *, method, unit->methods)

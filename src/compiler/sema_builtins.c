@@ -395,7 +395,7 @@ bool sema_expr_analyse_str_find(SemaContext *context, Expr *expr)
 bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunction func)
 {
 	Expr *inner = expr->call_expr.arguments[0];
-	if (!sema_analyse_expr_rvalue(context, inner)) return true;
+	if (!sema_analyse_expr_rvalue(context, inner)) return false;
 	if (!expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to take convert.");
@@ -550,7 +550,7 @@ bool sema_expr_analyse_str_wide(SemaContext *context, Expr *expr, BuiltinFunctio
 		zero_terminate = zero_term->const_expr.b;
 	}
 	if (!sema_analyse_expr_rvalue(context, inner)) return false;
-	if (!sema_cast_const(inner) && !expr_is_const_string(inner))
+	if (!sema_cast_const(inner) || !expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to convert to a wide string.");
 	}
@@ -638,6 +638,14 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		if (arg_count < expected_args) RETURN_SEMA_ERROR(args[arg_count - 1], "Expected more arguments after this one.");
 		RETURN_SEMA_ERROR(args[expected_args], "Too many arguments.");
+	}
+
+	for (unsigned i = 0; i < arg_count; i++)
+	{
+		if (args[i]->expr_kind == EXPR_NAMED_ARGUMENT)
+		{
+			RETURN_SEMA_ERROR(args[i], "Named arguments are not allowed in builtin calls.");
+		}
 	}
 
 	switch (func)

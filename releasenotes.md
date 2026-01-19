@@ -73,6 +73,14 @@
 - Defining an extern const without a type would crash rather than print an error. #2771
 - Typedef followed by brace would trigger an assert. #2771
 - Union with too big member would trigger an assert. #2771
+- Bitstruct with unevaluated user-defined type would cause a crash. #2771
+- Using named parameters with builtins would cause a crash. #2771
+- In some cases, using missing identifiers with builtins would cause a crash. #2771
+- Using `$defined` with function call missing arguments would cause a crash. #2771
+- Adding @nostrip to a test function would crash. #2771
+- Mixing struct splat, non-named params and named params would crash rather than to print an error. #2771
+- Creating a char vector from bytes would crash. #2771
+- Using $$wstr16 with an illegal argument would crash instead of printing an error. #2771
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.

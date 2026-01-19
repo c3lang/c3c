@@ -2289,11 +2289,7 @@ SPLAT_NORMAL:;
 		Decl *param = params[i];
 		if (param->var.no_init) continue; // Macro empty args
 		// Argument missing, that's bad.
-		if (no_match_ref)
-		{
-			*no_match_ref = true;
-			return true;
-		}
+		if (no_match_ref) return *no_match_ref = true, false;
 		if (!has_named || !param->name)
 		{
 			int missing = 1;
@@ -2583,7 +2579,6 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 	if (sig->attrs.noreturn) expr->call_expr.no_return = true;
 
 	if (!sema_call_evaluate_arguments(context, &callee, expr, &optional, no_match_ref)) return false;
-
 	if (expr->call_expr.is_dynamic_dispatch)
 	{
 		Expr *any_val = expr->call_expr.arguments[0];

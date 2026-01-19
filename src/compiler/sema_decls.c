@@ -1092,6 +1092,7 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	if (!sema_resolve_type_info(context, decl->strukt.container_type, RESOLVE_TYPE_DEFAULT)) return false;
 	Type *type = type_flatten(decl->strukt.container_type->type->canonical);
+	if (!sema_resolve_type_decl(context, type)) return false;
 	if (type_size(type) == 1)
 	{
 		decl->strukt.big_endian = false;
