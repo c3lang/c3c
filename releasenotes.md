@@ -84,6 +84,7 @@
 - Empty struct after `@if` processing was not detected, causing a crash instead of an error. #2771
 - Comparing an uint and int[<4>] was incorrectly assumed to be uint compared to int, causing a crash instead of an error. #2771
 - When an `int[*][6]` was given too few values, the compiler would assert instead of giving an error. #2771
+- Inferring length from a slice was accidentally not an error.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.

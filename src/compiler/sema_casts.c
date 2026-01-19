@@ -1193,6 +1193,10 @@ static bool rule_slice_to_infer(CastContext *cc, bool is_explicit, bool is_silen
 static bool rule_vecarr_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *new_type = type_infer_len_from_actual_type(cc->to, cc->from);
+	if (type_is_inferred(new_type))
+	{
+		return sema_cast_error(cc, false, is_silent);
+	}
 	cast_context_set_to(cc, new_type);
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
