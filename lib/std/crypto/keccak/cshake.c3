@@ -73,7 +73,7 @@ macro void xof_into($security_level, char[] into, char[] data, String optional_c
 
  @require @in(SECURITY_LEVEL, ...USABLE_LEVELS) : "Shake structures must use a valid security level."
 *>
-struct CShake @generic(SECURITY_LEVEL)
+struct CShake <SECURITY_LEVEL>
 {
 	inline Shake{SECURITY_LEVEL} under;
 }

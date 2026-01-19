@@ -22,7 +22,7 @@ macro void @free(#allocator, #ptr)
 	if (&#allocator.release) allocator::free(#allocator, #ptr);
 }
 
-struct ParallelHash @generic(SECURITY_LEVEL)
+struct ParallelHash <SECURITY_LEVEL>
 {
 	inline CShake{SECURITY_LEVEL} c;
 	Allocator allocator;
@@ -93,7 +93,7 @@ macro thash_into($security_level, char[] into, char[] data, usz block_size,
 // The XOF variant of ParallelHash uses a `right_encode(0)` at the end of the input stream.
 //   This causes the output value to be completely different and not dependent on the length of the output buffer.
 //   To better understand this, or to see the reference, search for NIST SP 800-185.
-struct ParallelHashXOF @generic(SECURITY_LEVEL)
+struct ParallelHashXOF <SECURITY_LEVEL>
 {
 	inline ParallelHash{SECURITY_LEVEL} ph;
 }
@@ -227,7 +227,7 @@ $endif
 
  @param [&inout] arg : "The thread context to operate with"
 *>
-fn int threaded_update(void* arg) @local @generic(SECURITY_LEVEL) @if (env::NATIVE_THREADING)
+fn int threaded_update(void* arg) <SECURITY_LEVEL> @local @if (env::NATIVE_THREADING)
 {
 	WorkerThreadContext* ctx = (WorkerThreadContext*)arg;
 	ParallelHash{SECURITY_LEVEL}* hash_ctx = ctx.context;

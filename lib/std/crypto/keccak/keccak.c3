@@ -71,7 +71,7 @@ macro void xof_into($security_level, char[] into, char[] data, $rounds = DEFAULT
 alias hash_into = xof_into;
 
 <* The default Keccak context always employs the default `F` value of `1600`. *>
-alias Keccak @generic(SECURITY_LEVEL) = KeccakContext { DEFAULT_F, SECURITY_LEVEL };
+alias Keccak <SECURITY_LEVEL> = KeccakContext { DEFAULT_F, SECURITY_LEVEL };
 
 
 // ==========================================================================================
@@ -166,7 +166,7 @@ const char[24] PI = {
 };
 
 <* The base Keccak context data structure used to generate XOF outputs. *>
-struct KeccakContext @generic(F, OUTPUT_BITS) @align(ulong.sizeof)
+struct KeccakContext <F, OUTPUT_BITS> @align(ulong.sizeof)
 {
 	union @align(ulong.sizeof)   // keccak sponge state
 	{

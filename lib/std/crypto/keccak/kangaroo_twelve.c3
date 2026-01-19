@@ -36,7 +36,7 @@ macro void xof_into($security_level, char[] into, char[] data, String optional_c
 	k.final(into);
 }
 
-struct KTwelve @generic(SECURITY_LEVEL)
+struct KTwelve <SECURITY_LEVEL>
 {
 	inline TurboShake{SECURITY_LEVEL} t;
 	char[BLOCK_SIZE] buffer;   // TODO: get this off the stack

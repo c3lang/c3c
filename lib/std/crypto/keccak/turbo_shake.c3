@@ -69,7 +69,7 @@ alias hash_into = xof_into;
 
  @require @in(SECURITY_LEVEL, ...shake::USABLE_LEVELS) : "Shake structures must use a valid security level."
 *>
-struct TurboShake @generic(SECURITY_LEVEL)
+struct TurboShake <SECURITY_LEVEL>
 {
 	inline Shake{SECURITY_LEVEL} s;
 }

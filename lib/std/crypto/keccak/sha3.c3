@@ -172,7 +172,7 @@ macro void hmac_into($hash_bits, char[] into, char[] key, char[] data)
 
  @require @in(HASH_BITS, ...DIGEST_SIZES) : "You must use a valid SHA-3 digest size."
 *>
-struct Sha3 @generic(HASH_BITS)
+struct Sha3 <HASH_BITS>
 {
 	inline Keccak{HASH_BITS} k;
 }

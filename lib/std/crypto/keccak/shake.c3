@@ -63,7 +63,7 @@ alias hash_into = xof_into;
 
  @require @in(SECURITY_LEVEL, ...USABLE_LEVELS) : "Shake structures must use a valid security level."
 *>
-struct Shake @generic(SECURITY_LEVEL)
+struct Shake <SECURITY_LEVEL>
 {
 	inline Keccak{SECURITY_LEVEL} k;
 	bool is_padded;
