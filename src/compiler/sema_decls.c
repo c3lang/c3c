@@ -387,7 +387,10 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		// Offset is always 0
 		member->offset = 0;
 	}
-
+	if (!member_count)
+	{
+		RETURN_SEMA_ERROR(decl, "No union members exist after processing attributes, this is not allowed. Please make sure it has at least one member.");
+	}
 	ASSERT(decl_ok(decl));
 
 	// 1. If packed, then the alignment is zero, unless previously given
@@ -642,6 +645,11 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		AlignSize sz = offset;
 		offset += type_size(member->type);
 		if (offset < sz || offset > MAX_STRUCT_SIZE) RETURN_SEMA_ERROR(member, "Struct member '%s' would cause the struct to become too large (exceeding 2 GB).", member->name);
+	}
+
+	if (!member_count)
+	{
+		RETURN_SEMA_ERROR(decl, "No members exist for this struct after processing attributes, creating an invalid empty struct. Please make sure every struct/inner struct has at least one member.");
 	}
 
 	// Set the alignment:

@@ -707,7 +707,7 @@ static void llvm_emit_overflow_builtin(GenContext *c, BEValue *be_value, Expr *e
 	// Note that we can make additional improvements here!
 	llvm_value_set_address(c, &ref, ref.value, ref.type->pointer, type_abi_alignment(ref.type->pointer));
 	LLVMTypeRef call_type[1] = { LLVMTypeOf(arg_slots[0]) };
-	unsigned intrinsic = type_is_signed(type_lowering(args[0]->type)) ? intrinsic_signed : intrinsic_unsigned;
+	unsigned intrinsic = type_is_signed_any(type_lowering(args[0]->type)) ? intrinsic_signed : intrinsic_unsigned;
 	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, call_type, 1, arg_slots, 2);
 	LLVMValueRef failed = llvm_emit_extract_value(c, result, 1);
 	LLVMValueRef value = llvm_emit_extract_value(c, result, 0);
@@ -739,7 +739,7 @@ static void llvm_emit_wrap_builtin(GenContext *c, BEValue *result_value, Expr *e
 			res = LLVMBuildMul(c->builder, arg_slots[0], arg_slots[1], "emul");
 			break;
 		case BUILTIN_EXACT_DIV:
-			if (type_is_signed(base_type))
+			if (type_is_signed_any(base_type))
 			{
 				res = LLVMBuildSDiv(c->builder, arg_slots[0], arg_slots[1], "esdiv");
 			}
@@ -749,7 +749,7 @@ static void llvm_emit_wrap_builtin(GenContext *c, BEValue *result_value, Expr *e
 			}
 			break;
 		case BUILTIN_EXACT_MOD:
-			if (type_is_signed(base_type))
+			if (type_is_signed_any(base_type))
 			{
 				res = LLVMBuildSRem(c->builder, arg_slots[0], arg_slots[1], "eumod");
 			}

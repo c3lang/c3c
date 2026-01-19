@@ -348,6 +348,10 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 		// Generate a nice error message for zero.
 		RETURN_SEMA_ERROR(elements[0], "Too many elements in initializer, it must be empty.");
 	}
+	if (expected_members > 0 && count > 0 && count != expected_members)
+	{
+		RETURN_SEMA_ERROR(elements[0], "Too %s elements in initializer, expected %u.", count > expected_members ? "many" : "few", expected_members);
+	}
 
 	bool optional = false;
 	bool is_vector = type_flat_is_vector(assigned);

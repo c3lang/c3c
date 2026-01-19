@@ -10,11 +10,6 @@ fn void main()
 
 /* #expect: test.ll
 
-; ModuleID = 'test'
-source_filename = "test"
-target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-apple-macosx10.13.0"
-
 @test.fooy = local_unnamed_addr global [2 x i8] c"\DE\AD", align 2
 @test.fooy2 = local_unnamed_addr global <2 x i8> <i8 -34, i8 -83>, align 2
 
