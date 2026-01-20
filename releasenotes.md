@@ -26,6 +26,7 @@
 - $typeof untyped list crashes when trying to create typeid from it. #2779
 - Recursive constant definition not properly detected, leading to assert #2780
 - Failed to reject void compile time variables, leading to crash. #2781
+- Inferring the size of a slice with an inner inferred array using {} isn't detected as error #2783
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
