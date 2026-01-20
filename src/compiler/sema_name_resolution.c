@@ -1190,6 +1190,21 @@ Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol
 	return resolve.found;
 }
 
+Decl *sema_resolve_maybe_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span)
+{
+	NameResolve resolve = {
+		.path = path,
+		.span = span,
+		.symbol = symbol,
+		.is_parameterized = true,
+		.suppress_error = true
+	};
+	if (!sema_resolve_symbol_common(context, &resolve)) return NULL;
+	Decl *found = resolve.found;
+	if (!decl_ok(found)) return NULL;
+	return resolve.found;
+}
+
 bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, const char *name, SourceSpan span)
 {
 	NameResolve name_resolve = {

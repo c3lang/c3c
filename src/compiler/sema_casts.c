@@ -1193,6 +1193,10 @@ static bool rule_slice_to_infer(CastContext *cc, bool is_explicit, bool is_silen
 static bool rule_vecarr_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *new_type = type_infer_len_from_actual_type(cc->to, cc->from);
+	if (type_is_inferred(new_type))
+	{
+		return sema_cast_error(cc, false, is_silent);
+	}
 	cast_context_set_to(cc, new_type);
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
@@ -2095,7 +2099,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 					return;
 				}
 				case ALL_INTS:
-					expr_rewrite_ext_trunc(expr, to_type, type_is_signed(type_flatten_to_int(expr->type)));
+					expr_rewrite_ext_trunc(expr, to_type, type_is_signed_any(type_flatten_to_int(expr->type)));
 					return;
 				case TYPE_POINTER:
 				case TYPE_FUNC_PTR:
