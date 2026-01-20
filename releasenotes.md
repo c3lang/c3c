@@ -27,6 +27,7 @@
 - Recursive constant definition not properly detected, leading to assert #2780
 - Failed to reject void compile time variables, leading to crash. #2781
 - Inferring the size of a slice with an inner inferred array using {} isn't detected as error #2783
+- Bug in sysv abi when passing union in with floats #2784
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
