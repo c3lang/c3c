@@ -20,7 +20,12 @@
 - Module-based generics using {} is deprecated.
 - Create optional with `~` instead of `?`. `return io::EOF?;` becomes `return io::EOF~`.
 - Deprecated use of `?` to create optional.
- 
+- Vectors not converted to arrays when passed as raw vaargs. #2776
+- Second value in switch range not checked properly, causing an error on non-const values. #2777
+- Broken cast from fault to array pointer #2778.
+- $typeof untyped list crashes when trying to create typeid from it. #2779
+- Recursive constant definition not properly detected, leading to assert #2780
+
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
 - Casting bitstruct to wider base type should be single step #2616.

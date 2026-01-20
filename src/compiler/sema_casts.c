@@ -259,6 +259,12 @@ void cast_promote_vararg(Expr *arg)
 		cast_no_check(arg, type_get_ptr(arg_type->array.base), IS_OPTIONAL(arg));
 	}
 
+	// We convert non-simd vectors to arrays
+	if (arg_type->type_kind == TYPE_VECTOR)
+	{
+		cast_no_check(arg, type_array_from_vector(arg_type), IS_OPTIONAL(arg));
+	}
+
 }
 
 /**
@@ -2603,7 +2609,7 @@ CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1] = {
  {    0,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // CONST ENUM
  {XX2VO,      0, PT2BO, PT2IN,     0,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0, PT2PT,     0,     0, PT2PT,     0,     0,     0     }, // FUNC
  {XX2VO,      0, TI2BO, TI2IN,     0, TI2PT,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, TI2PT, TI2PT,     0,     0     }, // TYPEID
- {XX2VO,      0, AF2BO, FA2IN,     0, FA2PT,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, FA2IN, FA2IN,     0,     0     }, // ANYFAULT
+ {XX2VO,      0, AF2BO, FA2IN,     0, FA2PT,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, FA2PT, FA2PT,     0,     0     }, // ANYFAULT
  {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT,     0, EX2VC,     0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0, PT2PT,     0,     0,     0, PT2PT,     0,     0     }, // VOIDPTR
  {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT, AP2SL, EX2VC,     0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0,     0,     0,     0, PT2PT, PT2PT, PT2FE,     0     }, // ARRAYPTR
  {    0,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // INFERRED
