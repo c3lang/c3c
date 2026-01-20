@@ -1312,6 +1312,10 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 			case VARDECL_CONST:
 				if (!decl->type)
 				{
+					if (decl->var.init_expr->resolve_status == RESOLVE_RUNNING)
+					{
+						RETURN_SEMA_ERROR(decl->var.init_expr, "The evaluation of this expression is recursive.");
+					}
 					Expr *copy = copy_expr_single(decl->var.init_expr);
 					if (!sema_analyse_expr_rvalue(context, copy)) return false;
 					if (!expr_is_runtime_const(copy))
