@@ -39,7 +39,7 @@ macro void? start_wsa()
 		if (wsa_error > 0)
 		{
 			mem::@atomic_store(wsa_init, 0);
-			return os::socket_error()?;
+			return os::socket_error()~;
 		}
 	}
 }
@@ -62,14 +62,14 @@ fn void? NativeSocket.set_non_blocking(self, bool non_blocking)
 {
 	if (ioctlsocket(self, win32::FIONBIO, &&(CULong)non_blocking))
 	{
-		return socket_error()?;
+		return socket_error()~;
 	}
 }
 
 macro void? NativeSocket.close(self)
 {
 	WSAError error = closesocket(self);
-	if (error) return convert_error(error)?;
+	if (error) return convert_error(error)~;
 }
 
 // https://github.com/wine-mirror/wine/blob/master/include/winsock.h

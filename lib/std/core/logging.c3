@@ -159,7 +159,7 @@ fn void call_log_internal(LogPriority prio, LogCategory category, String file, S
 fn String? get_category_name(LogCategory category)
 {
 	String val = category_names[category];
-	return val ?: NOT_FOUND?;
+	return val ?: NOT_FOUND~;
 }
 
 fn void set_category_name(LogCategory category, String name)

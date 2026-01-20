@@ -258,7 +258,7 @@ fn bool HashSet.contains(&set, Value value)
 *>
 fn void? HashSet.remove(&set, Value value) @maydiscard
 {
-	if (!set.remove_entry_for_value(value)) return NOT_FOUND?;
+	if (!set.remove_entry_for_value(value)) return NOT_FOUND~;
 }
 
 fn usz HashSet.remove_all(&set, Value[] values)
@@ -634,7 +634,7 @@ fn Value? HashSetIterator.next(&self)
 		}
 	}
 
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 fn usz HashSetIterator.len(&self) @operator(len)

@@ -18,7 +18,9 @@
 - Require () around assignment in conditionals. #2716
 - $$unaligned_load and $$unaligned_store now also takes a "is_volatile" parameter.
 - Module-based generics using {} is deprecated.
-
+- Create optional with `~` instead of `?`. `return io::EOF?;` becomes `return io::EOF~`.
+- Deprecated use of `?` to create optional.
+ 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
 - Casting bitstruct to wider base type should be single step #2616.

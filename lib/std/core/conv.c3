@@ -16,25 +16,25 @@ const uint UTF16_SURROGATE_HIGH_VALUE @private = 0xD800;
 *>
 fn usz? char32_to_utf8(Char32 c, char[] output)
 {
-	if (!output.len) return string::CONVERSION_FAILED?;
+	if (!output.len) return string::CONVERSION_FAILED~;
 	switch (true)
 	{
 		case c <= 0x7f:
 			output[0] = (char)c;
 			return 1;
 		case c <= 0x7ff:
-			if (output.len < 2) return string::CONVERSION_FAILED?;
+			if (output.len < 2) return string::CONVERSION_FAILED~;
 			output[0] = (char)(0xC0 | c >> 6);
 			output[1] = (char)(0x80 | (c & 0x3F));
 			return 2;
 		case c <= 0xffff:
-			if (output.len < 3) return string::CONVERSION_FAILED?;
+			if (output.len < 3) return string::CONVERSION_FAILED~;
 			output[0] = (char)(0xE0 | c >> 12);
 			output[1] = (char)(0x80 | (c >> 6 & 0x3F));
 			output[2] = (char)(0x80 | (c & 0x3F));
 			return 3;
 		case c <= 0x10ffff:
-			if (output.len < 4) return string::CONVERSION_FAILED?;
+			if (output.len < 4) return string::CONVERSION_FAILED~;
 			output[0] = (char)(0xF0 | c >> 18);
 			output[1] = (char)(0x80 | (c >> 12 & 0x3F));
 			output[2] = (char)(0x80 | (c >> 6 & 0x3F));
@@ -42,7 +42,7 @@ fn usz? char32_to_utf8(Char32 c, char[] output)
 			return 4;
 		default:
 			// 0x10FFFF and above is not defined.
-			return string::CONVERSION_FAILED?;
+			return string::CONVERSION_FAILED~;
 	}
 }
 
@@ -84,15 +84,15 @@ fn void? char16_to_utf8_unsafe(Char16 *ptr, usz *available, char** output)
 		return;
 	}
 	// Low surrogate first is an error
-	if (high & UTF16_SURROGATE_MASK != UTF16_SURROGATE_HIGH_VALUE) return string::INVALID_UTF16?;
+	if (high & UTF16_SURROGATE_MASK != UTF16_SURROGATE_HIGH_VALUE) return string::INVALID_UTF16~;
 
 	// Unmatched high surrogate is an error
-	if (*available == 1) return string::INVALID_UTF16?;
+	if (*available == 1) return string::INVALID_UTF16~;
 
 	Char16 low = ptr[1];
 
 	// Unmatched high surrogate, invalid
-	if (low & UTF16_SURROGATE_MASK != UTF16_SURROGATE_LOW_VALUE) return string::INVALID_UTF16?;
+	if (low & UTF16_SURROGATE_MASK != UTF16_SURROGATE_LOW_VALUE) return string::INVALID_UTF16~;
 
 	// The high bits of the codepoint are the value bits of the high surrogate
 	// The low bits of the codepoint are the value bits of the low surrogate
@@ -138,7 +138,7 @@ fn usz char32_to_utf8_unsafe(Char32 c, char** output)
 fn Char32? utf8_to_char32(char* ptr, usz* size)
 {
 	usz max_size = *size;
-	if (max_size < 1) return string::INVALID_UTF8?;
+	if (max_size < 1) return string::INVALID_UTF8~;
 	char c = (ptr++)[0];
 
 	if ((c & 0x80) == 0)
@@ -148,40 +148,40 @@ fn Char32? utf8_to_char32(char* ptr, usz* size)
 	}
 	if ((c & 0xE0) == 0xC0)
 	{
-		if (max_size < 2) return string::INVALID_UTF8?;
+		if (max_size < 2) return string::INVALID_UTF8~;
 		*size = 2;
 		Char32 uc = (c & 0x1F) << 6;
 		c = *ptr;
 		// Overlong sequence or invalid second.
-		if (!uc || c & 0xC0 != 0x80) return string::INVALID_UTF8?;
+		if (!uc || c & 0xC0 != 0x80) return string::INVALID_UTF8~;
 		return uc + c & 0x3F;
 	}
 	if ((c & 0xF0) == 0xE0)
 	{
-		if (max_size < 3) return string::INVALID_UTF8?;
+		if (max_size < 3) return string::INVALID_UTF8~;
 		*size = 3;
 		Char32 uc = (c & 0x0F) << 12;
 		c = ptr++[0];
-		if (c & 0xC0 != 0x80) return string::INVALID_UTF8?;
+		if (c & 0xC0 != 0x80) return string::INVALID_UTF8~;
 		uc += (c & 0x3F) << 6;
 		c = ptr++[0];
 		// Overlong sequence or invalid last
-		if (!uc || c & 0xC0 != 0x80) return string::INVALID_UTF8?;
+		if (!uc || c & 0xC0 != 0x80) return string::INVALID_UTF8~;
 		return uc + c & 0x3F;
 	}
-	if (max_size < 4) return string::INVALID_UTF8?;
-	if ((c & 0xF8) != 0xF0) return string::INVALID_UTF8?;
+	if (max_size < 4) return string::INVALID_UTF8~;
+	if ((c & 0xF8) != 0xF0) return string::INVALID_UTF8~;
 	*size = 4;
 	Char32 uc = (c & 0x07) << 18;
 	c = ptr++[0];
-	if (c & 0xC0 != 0x80) return string::INVALID_UTF8?;
+	if (c & 0xC0 != 0x80) return string::INVALID_UTF8~;
 	uc += (c & 0x3F) << 12;
 	c = ptr++[0];
-	if (c & 0xC0 != 0x80) return string::INVALID_UTF8?;
+	if (c & 0xC0 != 0x80) return string::INVALID_UTF8~;
 	uc += (c & 0x3F) << 6;
 	c = ptr++[0];
 	// Overlong sequence or invalid last
-	if (!uc || c & 0xC0 != 0x80) return string::INVALID_UTF8?;
+	if (!uc || c & 0xC0 != 0x80) return string::INVALID_UTF8~;
 	return uc + c & 0x3F;
 }
 
@@ -329,7 +329,7 @@ fn usz? utf8to32(String utf8, Char32[] utf32_buffer)
 	usz buf_len = utf32_buffer.len;
 	for (usz i = 0; i < len;)
 	{
-		if (len32 == buf_len) return string::CONVERSION_FAILED?;
+		if (len32 == buf_len) return string::CONVERSION_FAILED~;
 		usz width = len - i;
 		Char32 uc = utf8_to_char32(&utf8[i], &width) @inline!;
 		i += width;

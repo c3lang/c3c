@@ -4,7 +4,7 @@ fn int? abc()
 }
 macro test()
 {
-	return @catch(abc())?;
+	return @catch(abc())~;
 }
 
 fn void main()

@@ -68,11 +68,11 @@ fn String InetAddress.to_tstring(&self)
 fn InetAddress? ipv6_from_str(String s)
 {
 	uint sections = 0;
-	if (s.len < 2) return INVALID_IP_STRING?;
+	if (s.len < 2) return INVALID_IP_STRING~;
 	foreach (c : s) if (c == ':') sections++;
 	int zero_segment_len = s[0] == ':' || s[^1] == ':' ? 9 - sections : 8 - sections;
 	if (zero_segment_len == 7 && s.len == 2) return { .is_ipv6 = true };
-	if (zero_segment_len > 7) return INVALID_IP_STRING?;
+	if (zero_segment_len > 7) return INVALID_IP_STRING~;
 	usz index = 0;
 	bool last_was_colon, found_zero;
 	int current = -1;
@@ -88,7 +88,7 @@ fn InetAddress? ipv6_from_str(String s)
 					last_was_colon = true;
 					continue;
 				}
-				if (current < 0 || current > 65535) return INVALID_IP_STRING?;
+				if (current < 0 || current > 65535) return INVALID_IP_STRING~;
 				addr.ipv6arr[index++].val = (ushort)current;
 				current = -1;
 				last_was_colon = true;
@@ -96,9 +96,9 @@ fn InetAddress? ipv6_from_str(String s)
 			}
 			assert(current == -1);
 			// Check that this is the first ::
-			if (found_zero) return INVALID_IP_STRING?;
+			if (found_zero) return INVALID_IP_STRING~;
 			// Also check that the zeroed section is at least 2
-			if (zero_segment_len < 2) return INVALID_IP_STRING?;
+			if (zero_segment_len < 2) return INVALID_IP_STRING~;
 			// Skip (will be zero by default
 			index += zero_segment_len;
 			found_zero = true;
@@ -106,7 +106,7 @@ fn InetAddress? ipv6_from_str(String s)
 			continue;
 		}
 		last_was_colon = false;
-		if (index > 7 || !c.is_xdigit()) return INVALID_IP_STRING?;
+		if (index > 7 || !c.is_xdigit()) return INVALID_IP_STRING~;
 		if (current < 0) current = 0;
 		current = current * 16 + (c <= '9' ? c - '0' : (c | 32) - 'a' + 10);
 	}
@@ -114,7 +114,7 @@ fn InetAddress? ipv6_from_str(String s)
 	if (index == 8 && current == -1) return addr;
 
 	// Ends with number
-	if (index != 7 || current < 0 || current > 65535) return INVALID_IP_STRING?;
+	if (index != 7 || current < 0 || current > 65535) return INVALID_IP_STRING~;
 	addr.ipv6arr[7].val = (ushort)current;
 	return addr;
 }
@@ -128,20 +128,20 @@ fn InetAddress? ipv4_from_str(String s)
 	{
 		if (c == '.')
 		{
-			if (current < 0) return INVALID_IP_STRING?;
-			if (current > 255) return INVALID_IP_STRING?;
+			if (current < 0) return INVALID_IP_STRING~;
+			if (current > 255) return INVALID_IP_STRING~;
 			switch (element)
 			{
 				case 0: addr.ipv4.a = (char)current;
 				case 1: addr.ipv4.b = (char)current;
 				case 2: addr.ipv4.c = (char)current;
-				default: return INVALID_IP_STRING?;
+				default: return INVALID_IP_STRING~;
 			}
 			current = -1;
 			element++;
 			continue;
 		}
-		if (element > 3 || c < '0' || c > '9') return INVALID_IP_STRING?;
+		if (element > 3 || c < '0' || c > '9') return INVALID_IP_STRING~;
 		if (current < 0)
 		{
 			current = c - '0';
@@ -149,7 +149,7 @@ fn InetAddress? ipv4_from_str(String s)
 		}
 		current = current * 10 + c - '0';
 	}
-	if (element != 3 || current < 0 || current > 255) return INVALID_IP_STRING?;
+	if (element != 3 || current < 0 || current > 255) return INVALID_IP_STRING~;
 	addr.ipv4.d = (char)current;
 	return addr;
 }
@@ -258,6 +258,6 @@ fn AddrInfo*? addrinfo(String host, uint port, AIFamily ai_family, AISockType ai
 	str.appendf("%d", port);
 	AddrInfo hints = { .ai_family = ai_family, .ai_socktype = ai_socktype };
 	AddrInfo* ai;
-	if (os::getaddrinfo(zhost, str.zstr_view(), &hints, &ai)) return ADDRINFO_FAILED?;
+	if (os::getaddrinfo(zhost, str.zstr_view(), &hints, &ai)) return ADDRINFO_FAILED~;
 	return ai;
 }

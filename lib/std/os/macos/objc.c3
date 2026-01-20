@@ -26,7 +26,7 @@ alias NSInteger = $typefrom(env::ARCH_64_BIT ??? long : int);
 macro ObjcClass? class_by_name(ZString c)
 {
 	ObjcClass cls = objc::lookUpClass(c);
-	return cls ?: CLASS_NOT_FOUND?;
+	return cls ?: CLASS_NOT_FOUND~;
 }
 
 macro ObjcClass[] class_get_list(Allocator allocator)
@@ -240,7 +240,7 @@ fn EventType? event_type_from(int val) @deprecated("Use NSEventType directly.")
         case EventType.PRESSURE.val:            return PRESSURE;
         case EventType.DIRECT_TOUCH.val:        return DIRECT_TOUCH;
         case EventType.CHANGE_MODE.val:         return CHANGE_MODE;
-        default: return objc::UNKNOWN_EVENT?;
+        default: return objc::UNKNOWN_EVENT~;
     }
 }
 

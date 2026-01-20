@@ -368,7 +368,7 @@ fn usz? ElasticArray.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 	{
 		if (equals(v, type)) return i;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 fn usz? ElasticArray.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
@@ -377,7 +377,7 @@ fn usz? ElasticArray.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 	{
 		if (equals(v, type)) return i;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 fn bool ElasticArray.equals(&self, ElasticArray other_list) @if(ELEMENT_IS_EQUATABLE)

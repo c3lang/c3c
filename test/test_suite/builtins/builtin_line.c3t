@@ -16,7 +16,7 @@ fn void? UJsonReader.dict(&self, String file = $$FILE, String func = $$FUNC, int
     self.last_error_file = file;
     self.last_error_func = func;
     self.last_error_line = line;
-    return INVALID_KIND?;
+    return INVALID_KIND~;
 }
 
 fn int main()

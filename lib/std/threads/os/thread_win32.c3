@@ -353,7 +353,7 @@ fn void? NativeConditionVariable.wait_until(&cond, NativeMutex* mtx, Time time) 
 
 fn void? NativeThread.create(&thread, ThreadFn func, void* args)
 {
-	if (!(*thread = (NativeThread)win32::createThread(null, 0, func, args, 0, null))) return thread::INIT_FAILED?;
+	if (!(*thread = (NativeThread)win32::createThread(null, 0, func, args, 0, null))) return thread::INIT_FAILED~;
 }
 
 fn void NativeThread.detach(thread) @inline
@@ -410,5 +410,5 @@ fn void? native_sleep_nano(NanoDuration ns)
 	long ms = ns.to_ms();
 	if (ms <= 0) return;
 	if (ms > Win32_DWORD.max) ms = Win32_DWORD.max;
-	if (win32::sleepEx((Win32_DWORD)ms, (Win32_BOOL)true) == win32::WAIT_IO_COMPLETION) return thread::INTERRUPTED?;
+	if (win32::sleepEx((Win32_DWORD)ms, (Win32_BOOL)true) == win32::WAIT_IO_COMPLETION) return thread::INTERRUPTED~;
 }

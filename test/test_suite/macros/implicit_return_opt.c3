@@ -14,6 +14,6 @@ macro run()
 	{
 		i++;
 		if (i > 10) break;
-		if (i > 100) return io::EOF?;
+		if (i > 100) return io::EOF~;
 	}
 }

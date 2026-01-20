@@ -1119,21 +1119,21 @@ fn float _frexpf(float x, int* e)
 macro overflow_add_helper(x, y) @local
 {
 	$typeof(x) res @noinit;
-	if ($$overflow_add(x, y, &res)) return OVERFLOW?;
+	if ($$overflow_add(x, y, &res)) return OVERFLOW~;
 	return res;
 }
 
 macro overflow_sub_helper(x, y) @local
 {
 	$typeof(x) res @noinit;
-	if ($$overflow_sub(x, y, &res)) return OVERFLOW?;
+	if ($$overflow_sub(x, y, &res)) return OVERFLOW~;
 	return res;
 }
 
 macro overflow_mul_helper(x, y) @local
 {
 	$typeof(x) res @noinit;
-	if ($$overflow_mul(x, y, &res)) return OVERFLOW?;
+	if ($$overflow_mul(x, y, &res)) return OVERFLOW~;
 	return res;
 }
 

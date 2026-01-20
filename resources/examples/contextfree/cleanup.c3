@@ -36,7 +36,7 @@ fn Resource? prep_out(String out_name, String[] prep_names)
 		@open_with(name; Resource reader)
 		{
 	        io::printfn("use %s", reader.name);
-	        // if (true) return WELCOME_TO_YOUR_DOOM?;
+	        // if (true) return WELCOME_TO_YOUR_DOOM~;
 		}!;
 	}
 	return writer;

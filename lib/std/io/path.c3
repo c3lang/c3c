@@ -86,7 +86,7 @@ fn PathList? ls(Allocator allocator, Path dir, bool no_dirs = false, bool no_sym
 	$if $defined(os::native_ls):
 		return os::native_ls(dir, no_dirs, no_symlinks, mask, allocator);
 	$else
-		return io::UNSUPPORTED_OPERATION?;
+		return io::UNSUPPORTED_OPERATION~;
 	$endif
 }
 
@@ -137,11 +137,11 @@ macro bool? rmdir(path)
 *>
 fn void? rmtree(Path path)
 {
-	if (!path.path_string.len) return INVALID_PATH?;
+	if (!path.path_string.len) return INVALID_PATH~;
 	$if $defined(os::native_rmtree):
 		return os::native_rmtree(path);
 	$else
-		return io::UNSUPPORTED_OPERATION?;
+		return io::UNSUPPORTED_OPERATION~;
 	$endif
 }
 
@@ -212,7 +212,7 @@ fn usz? start_of_base_name(String str, PathEnv path_env) @local
 		// Find the \ before "foo"
 		usz last_index = 2 + str[2..].index_of_char('\\')!;
 		// If they don't match, we're done
-		if (last_index > index) return INVALID_PATH?;
+		if (last_index > index) return INVALID_PATH~;
 		if (last_index != index) return index + 1;
 		// Otherwise just default to the volume length.
 	}
@@ -246,7 +246,7 @@ fn Path? String.to_absolute_path(self, Allocator allocator) => @pool()
 fn Path? Path.absolute(self, Allocator allocator)
 {
 	String path_str = self.str_view();
-	if (!path_str.len) return INVALID_PATH?;
+	if (!path_str.len) return INVALID_PATH~;
 	if (self.is_absolute()!) return new(allocator, path_str, self.env);
 	if (path_str == ".")
 	{
@@ -262,7 +262,7 @@ fn Path? Path.absolute(self, Allocator allocator)
 			const usz BUFFER_LEN = 4096;
 			WString buffer = (WString)mem::talloc_array(Char16, BUFFER_LEN);
 			buffer = win32::_wfullpath(buffer, path_str.to_temp_wstring()!, BUFFER_LEN);
-			if (!buffer) return INVALID_PATH?;
+			if (!buffer) return INVALID_PATH~;
 			return { string::from_wstring(allocator, buffer), WIN32, allocator };
 		};
 	$else
@@ -371,10 +371,10 @@ fn usz? volume_name_len(String path, PathEnv path_env) @local
 					base_found = i;
 					continue;
 				}
-				if (is_reserved_win32_path_char(c)) return INVALID_PATH?;
+				if (is_reserved_win32_path_char(c)) return INVALID_PATH~;
 			}
 			if (base_found > 0 && base_found + 1 < len) return len;
-			return INVALID_PATH?;
+			return INVALID_PATH~;
 		case 'A'..'Z':
 		case 'a'..'z':
 			return path[1] == ':' ? 2 : 0;
@@ -392,7 +392,7 @@ fn usz? volume_name_len(String path, PathEnv path_env) @local
 *>
 fn Path? Path.parent(self)
 {
-	if (self.path_string.len == 1 && is_separator(self.path_string[0], self.env)) return NO_PARENT?;
+	if (self.path_string.len == 1 && is_separator(self.path_string[0], self.env)) return NO_PARENT~;
 	foreach_r(i, c : self.path_string)
 	{
 		if (is_separator(c, self.env))
@@ -405,7 +405,7 @@ fn Path? Path.parent(self)
 					// Handle C:\foo
 					if (volume_len == i)
 					{
-						if (i + 1 == self.path_string.len) return NO_PARENT?;
+						if (i + 1 == self.path_string.len) return NO_PARENT~;
 						return { self.path_string[:i + 1], WIN32, null };
 					}
 				}
@@ -413,7 +413,7 @@ fn Path? Path.parent(self)
 			return { self.path_string[:i], self.env, null };
 		}
 	}
-	return NO_PARENT?;
+	return NO_PARENT~;
 }
 
 fn String? normalize(String path_str, PathEnv path_env = DEFAULT_ENV)
@@ -455,7 +455,7 @@ fn String? normalize(String path_str, PathEnv path_env = DEFAULT_ENV)
 
 		// The rest are names of the path elements, so check that the
 		// characters are valid.
-		if (is_reserved_path_char(c, path_env)) return INVALID_PATH?;
+		if (is_reserved_path_char(c, path_env)) return INVALID_PATH~;
 
 		// If we have '.' after a separator
 		if (c == '.' && previous_was_separator)
@@ -488,7 +488,7 @@ fn String? normalize(String path_str, PathEnv path_env = DEFAULT_ENV)
 					continue;
 				case 2:
 					// This is an error: /a/../..
-					if (len == path_start && has_root) return INVALID_PATH?;
+					if (len == path_start && has_root) return INVALID_PATH~;
 
 					// If this .. at the start, or after ../? If so, we just copy ..
 					if (len == path_start ||
@@ -657,21 +657,21 @@ macro bool is_reserved_path_char(char c, PathEnv path_env = DEFAULT_ENV)
 }
 fn bool? _mkdir(Path path, bool recursive = false, MkdirPermissions permissions = NORMAL) @private
 {
-	if (!path.path_string.len) return INVALID_PATH?;
+	if (!path.path_string.len) return INVALID_PATH~;
 	if (is_dir(path)) return false;
-	if (exists(path)) return io::FILE_NOT_DIR?;
+	if (exists(path)) return io::FILE_NOT_DIR~;
 
 	if (recursive)
 	{
 		if (try parent = path.parent()) mkdir(parent, true, permissions)!;
 	}
-	if (!is_dir(path.parent()) ?? false) return io::CANNOT_READ_DIR?;
+	if (!is_dir(path.parent()) ?? false) return io::CANNOT_READ_DIR~;
 
 	return os::native_mkdir(path, permissions);
 }
 
 fn bool? _rmdir(Path path) @private
 {
-	if (!path.path_string.len) return INVALID_PATH?;
+	if (!path.path_string.len) return INVALID_PATH~;
 	return os::native_rmdir(path);
 }

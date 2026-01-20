@@ -49,7 +49,7 @@ fn usz? ReadBuffer.read(&self, char[] bytes) @dynamic
 fn char? ReadBuffer.read_byte(&self) @dynamic
 {
 	if (self.read_idx == self.write_idx) self.refill()!;
-	if (self.read_idx == self.write_idx) return io::EOF?;
+	if (self.read_idx == self.write_idx) return io::EOF~;
 	char c = self.bytes[self.read_idx];
 	self.read_idx++;
 	return c;
@@ -132,5 +132,5 @@ fn void? WriteBuffer.write_byte(&self, char c) @dynamic
 fn void? WriteBuffer.write_pending(&self) @local
 {
 	self.index -= self.wrapped_stream.write(self.bytes[:self.index])!;
-	if (self.index != 0) return INCOMPLETE_WRITE?;
+	if (self.index != 0) return INCOMPLETE_WRITE~;
 }

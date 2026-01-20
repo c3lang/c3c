@@ -87,11 +87,11 @@ fn usz? decode_len(usz n, char padding)
 	usz trailing = n % 4;
 	if (padding)
 	{
-		if (trailing != 0) return encoding::INVALID_PADDING?;
+		if (trailing != 0) return encoding::INVALID_PADDING~;
 		// source size is multiple of 4
 		return dn;
 	}
-	if (trailing == 1) return encoding::INVALID_PADDING?;
+	if (trailing == 1) return encoding::INVALID_PADDING~;
 	return dn + trailing * 3 / 4;
 }
 
@@ -196,7 +196,7 @@ fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 			case c1:
 			case c2:
 			case c3:
-				return encoding::INVALID_CHARACTER?;
+				return encoding::INVALID_CHARACTER~;
 		}
 		uint group = (uint)c0 << 18 | (uint)c1 << 12 | (uint)c2 << 6 | (uint)c3;
 		dst[0] = (char)(group >> 16);
@@ -211,7 +211,7 @@ fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 	src = src[^trailing..];
 	char c0 = alphabet.reverse[src[0]];
 	char c1 = alphabet.reverse[src[1]];
-	if (c0 == 0xFF || c1 == 0xFF) return encoding::INVALID_PADDING?;
+	if (c0 == 0xFF || c1 == 0xFF) return encoding::INVALID_PADDING~;
 	if (!padding)
 	{
 		switch (src.len)
@@ -221,7 +221,7 @@ fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 				dst[0] = (char)(group >> 16);
 			case 3:
 				char c2 = alphabet.reverse[src[2]];
-				if (c2 == 0xFF) return encoding::INVALID_CHARACTER?;
+				if (c2 == 0xFF) return encoding::INVALID_CHARACTER~;
 				uint group = (uint)c0 << 18 | (uint)c1 << 12 | (uint)c2 << 6;
 				dst[0] = (char)(group >> 16);
 				dst[1] = (char)(group >> 8);
@@ -235,13 +235,13 @@ fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 		switch (padding)
 		{
 			case src[2]:
-				if (src[3] != padding) return encoding::INVALID_PADDING?;
+				if (src[3] != padding) return encoding::INVALID_PADDING~;
 				uint group = (uint)c0 << 18 | (uint)c1 << 12;
 				dst[0] = (char)(group >> 16);
 				dn -= 2;
 			case src[3]:
 				char c2 = alphabet.reverse[src[2]];
-				if (c2 == 0xFF) return encoding::INVALID_CHARACTER?;
+				if (c2 == 0xFF) return encoding::INVALID_CHARACTER~;
 				uint group = (uint)c0 << 18 | (uint)c1 << 12 | (uint)c2 << 6;
 				dst[0] = (char)(group >> 16);
 				dst[1] = (char)(group >> 8);
