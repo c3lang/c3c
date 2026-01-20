@@ -6278,6 +6278,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		BEValue value;
 		c->debug.block_stack = old_inline_location;
 		llvm_emit_expr(c, &value, init_expr);
+		if (!val->alignment) val->alignment = type_abi_alignment(val->type);
 		if (llvm_value_is_addr(&value) || val->var.is_written || val->var.is_addr || llvm_use_accurate_debug_info(c))
 		{
 			c->debug.block_stack = inline_location;
