@@ -23,7 +23,11 @@ import std::crypto @public;
  @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
 macro hash($security_level, $outlen_bytes, char[] data, char[]... extras, String customizer = "")
-	=> xof($security_level, $outlen_bytes, data, ...extras, customizer: customizer, $is_xof: false);
+{
+	char [$outlen_bytes] result @noinit;
+	hash_into($security_level, result[..], data, ...extras, customizer: customizer);
+	return result;
+}
 
 <*
  Generate a non-XOF TupleHash result of `into.len` bytes and store the result in `into`.
@@ -38,7 +42,12 @@ macro hash($security_level, $outlen_bytes, char[] data, char[]... extras, String
  @require into.len > 0 : "You must use an output length over zero bytes."
 *>
 macro hash_into($security_level, char[] into, char[] data, char[]... extras, String customizer = "")
-	=> xof_into($security_level, into, data, ...extras, customizer: customizer, $is_xof: false);
+{
+	TupleHash{$security_level} c;
+	c.init(customizer: customizer);
+	c.update(data, ...extras);
+	c.final(into);
+}
 
 <*
  Generate and return an XOF TupleHash result of the specified `$outlen_bytes`.
@@ -48,17 +57,16 @@ macro hash_into($security_level, char[] into, char[] data, char[]... extras, Str
  @param [in] data : "The data to hash."
  @param [in] extras : "Extra, ordered byte sequences to digest for the hash."
  @param customizer : "An optional, variable-length customization string used for further domain separation."
- @param $is_xof : "Set to `true` when the hash context should produce the XOF-specific result from the computation."
 
  @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
  @require $outlen_bytes > 0 : "You must use an output length over zero bytes."
 
  @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
-macro char[*] xof($security_level, $outlen_bytes, char[] data, char[]... extras, String customizer = "", bool $is_xof = true)
+macro char[*] xof($security_level, $outlen_bytes, char[] data, char[]... extras, String customizer = "")
 {
 	char [$outlen_bytes] result @noinit;
-	xof_into($security_level, result[..], data, ...extras, customizer: customizer, $is_xof: $is_xof);
+	xof_into($security_level, result[..], data, ...extras, customizer: customizer);
 	return result;
 }
 
@@ -70,15 +78,14 @@ macro char[*] xof($security_level, $outlen_bytes, char[] data, char[]... extras,
  @param [in] data : "The data to hash."
  @param [in] extras : "Extra, ordered byte sequences to digest for the hash."
  @param customizer : "An optional, variable-length customization string used for further domain separation."
- @param $is_xof : "Set to `true` when the hash context should produce the XOF-specific result from the computation."
 
  @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
  @require into.len > 0 : "You must use an output length over zero bytes."
 *>
-macro void xof_into($security_level, char[] into, char[] data, char[]... extras, String customizer = "", bool $is_xof = true)
+macro void xof_into($security_level, char[] into, char[] data, char[]... extras, String customizer = "")
 {
-	TupleHash{$security_level} c;
-	c.init(customizer: customizer, is_xof_mode: $is_xof);
+	TupleHashXOF{$security_level} c;
+	c.init(customizer: customizer);
 	c.update(data, ...extras);
 	c.final(into);
 }
@@ -105,7 +112,8 @@ struct TupleHashXOF <SECURITY_LEVEL>
 fn void TupleHashXOF.init(&self, String customizer = "")
 {
 	keccak::@init_runtime_size(self, $sizeof(*self));
-	self.t.init(customizer, true);
+	self.t.is_xof_mode = true;
+	self.t.init(customizer);
 }
 
 <*
@@ -123,13 +131,11 @@ struct TupleHash <SECURITY_LEVEL>
  Initialize the TupleHash context.
 
  @param customizer : "An optional, variable-length customization string used for further domain separation."
- @param is_xof_mode : "Whether the output from the function should be the XOF variant."
 *>
-fn void TupleHash.init(&self, String customizer = "", bool is_xof_mode = false)
+fn void TupleHash.init(&self, String customizer = "")
 {
 	keccak::@init_runtime_size(self, $sizeof(*self));
 	self.c.init(TUPLE_HASH, customizer);
-	self.is_xof_mode = is_xof_mode;
 }
 
 <*

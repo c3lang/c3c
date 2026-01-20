@@ -23,7 +23,11 @@ import std::crypto @public;
  @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
 macro hash($security_level, $outlen_bytes, char[] key, char[] data, String customizer = "")
-	=> xof($security_level, $outlen_bytes, key, data, customizer: customizer, $is_xof: false);
+{
+	char [$outlen_bytes] result @noinit;
+	hash_into($security_level, result[..], key, data, customizer: customizer);
+	return result;
+}
 
 <*
  Generate a non-XOF KMAC hash of `into.len` bytes and store the result in the `into` slice..
@@ -38,7 +42,12 @@ macro hash($security_level, $outlen_bytes, char[] key, char[] data, String custo
  @require into.len > 0 : "You must use an output length over zero bytes."
 *>
 macro hash_into($security_level, char[] into, char[] key, char[] data, String customizer = "")
-	=> xof_into($security_level, into, key, data, customizer: customizer, $is_xof: false);
+{
+	Kmac{$security_level} c;
+	c.init(key, customizer: customizer);
+	c.update(data);
+	c.final(into);
+}
 
 <*
  Generate and return an XOF KMAC hash of the specified `$outlen_bytes` length.
@@ -48,17 +57,16 @@ macro hash_into($security_level, char[] into, char[] key, char[] data, String cu
  @param [in] key : "The key used to authenticate the data."
  @param [in] data : "The data to hash."
  @param customizer : "An optional, variable-length customization string used for further domain separation."
- @param $is_xof : "Used by the `hash` and `hash_into` macros to wrap what this function already does."
 
  @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
  @require $outlen_bytes > 0 : "You must use an output length over zero bytes."
 
  @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
-macro char[*] xof($security_level, $outlen_bytes, char[] key, char[] data, String customizer = "", bool $is_xof = true)
+macro char[*] xof($security_level, $outlen_bytes, char[] key, char[] data, String customizer = "")
 {
 	char [$outlen_bytes] result @noinit;
-	xof_into($security_level, result[..], key, data, customizer: customizer, $is_xof: $is_xof);
+	xof_into($security_level, result[..], key, data, customizer: customizer);
 	return result;
 }
 
@@ -70,15 +78,14 @@ macro char[*] xof($security_level, $outlen_bytes, char[] key, char[] data, Strin
  @param [in] key : "The key used to authenticate the data."
  @param [in] data : "The data to hash."
  @param customizer : "An optional, variable-length customization string used for further domain separation."
- @param $is_xof : "Used by the `hash` and `hash_into` macros to wrap what this function already does."
 
  @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
  @require into.len > 0 : "You must use an output length over zero bytes."
 *>
-macro void xof_into($security_level, char[] into, char[] key, char[] data, String customizer = "", bool $is_xof = true)
+macro void xof_into($security_level, char[] into, char[] key, char[] data, String customizer = "")
 {
-	Kmac{$security_level} c;
-	c.init(key, customizer: customizer, is_xof_mode: $is_xof);
+	KmacXOF{$security_level} c;
+	c.init(key, customizer: customizer);
 	c.update(data);
 	c.final(into);
 }
@@ -102,7 +109,8 @@ struct KmacXOF <SECURITY_LEVEL>
 fn void KmacXOF.init(&self, char[] key, String customizer = "")
 {
 	keccak::@init_runtime_size(self, $sizeof(*self));
-	self.k.init(key, customizer: customizer, is_xof_mode: true);
+	self.k.is_xof_mode = true;
+	self.k.init(key, customizer: customizer);
 }
 
 <*
@@ -121,13 +129,11 @@ struct Kmac <SECURITY_LEVEL>
 
  @param [in] key : "The key used to seed the KMAC cipher."
  @param customizer : "An optional, variable-length customization string used for further domain separation."
- @param is_xof_mode : "Controls whether the hash context will output an XOF-based hash value or a regular hash value."
 *>
-fn void Kmac.init(&self, char[] key, String customizer = "", bool is_xof_mode = false)
+fn void Kmac.init(&self, char[] key, String customizer = "")
 {
 	keccak::@init_runtime_size(self, $sizeof(*self));
 	self.c.init(KMAC, customizer);
-	self.is_xof_mode = is_xof_mode;
 
 	self.c.update(nist::encoded_rate_bytes(SECURITY_LEVEL));
 

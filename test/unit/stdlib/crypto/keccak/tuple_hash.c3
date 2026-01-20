@@ -3,10 +3,24 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module keccak_test::tuple_hash @test;
 
-import std::crypto::tuple_hash;
+import std::crypto @public;
 
 
-fn void output_length_changes_hash_but_not_xof()
+fn void assert_finalization()
+{
+	const TupleHash{128} EXPECTED = { .c = { .under = { .k = { .state = (KeccakStateMachine)KeccakState.FINALIZED } } } };
+	char[] expected_view = @as_char_view(EXPECTED);
+	static char[32] result;
+	TupleHash{128} t;
+	char[] t_as_bytes = @as_char_view(t);
+	t.init();
+	t.update("C3");
+	test::@check(t_as_bytes != expected_view, "Hash context was cleared, but it should NOT have been.");
+	t.final(result[..]);
+	test::@check(t_as_bytes == expected_view, "Hash context was not cleared, but it should have been.");
+}
+
+fn void outlen_change_hash_not_xof()
 {
 	// this doesn't appear in the test-suite, but notice that varying out-length values for the _hash_ subset of tuple_hash functions
 	//   will NOT produce substrings of an extensible output like the XOF variants do

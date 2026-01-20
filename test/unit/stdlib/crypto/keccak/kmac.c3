@@ -20,6 +20,26 @@ fn void assert_finalization()
 	test::@check(c_byte_view == expected_view, "Hash context was not cleared, but it should have been.\n\t%h\n\t%h\n\n", c_byte_view, expected_view);
 }
 
+fn void outlen_change_hash_not_xof()
+{
+	test::ne(
+		kmac::hash(128, 496 / 8, x"abcd", x"efef", customizer: "bbb123123___A")[:32],
+		kmac::hash(128, 472 / 8, x"abcd", x"efef", customizer: "bbb123123___A")[:32]
+	);
+	test::eq(
+		kmac::xof(128, 496 / 8, x"abcd", x"efef", customizer: "bbb123123___A")[:32],
+		kmac::xof(128, 472 / 8, x"abcd", x"efef", customizer: "bbb123123___A")[:32]
+	);
+}
+
+fn void xof_neq_hash()
+{
+	test::ne(
+		kmac::hash(128, 496 / 8, x"abcd", x"efef", customizer: "bbb123123___A")[:32],
+		kmac::xof (128, 496 / 8, x"abcd", x"efef", customizer: "bbb123123___A")[:32]
+	);
+}
+
 // See: https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/KMAC-128-1.0
 //   & https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/KMAC-256-1.0
 //
@@ -308,11 +328,10 @@ fn void successive_xof_operations_256()
 
 fn void xof_vs_non_xof()
 {
-	// iykyk ;)
 	char[50] buf;
 
 	KmacXOF{128} k;
-	k.init("A KMAC secret key", "");
+	k.init("A KMAC secret key");
 	k.update("hello123");
 
 	k.squeeze(buf[..]);
