@@ -9,19 +9,26 @@ module std::crypto::parallel_hash;
 import std::math, std::thread;
 import std::crypto @public;
 
+<* The maximum allowable block size for this implementation. *>
 const MAX_BLOCK_SIZE = 128 * 1024 * 1024;   // 128 MiB
+
+<* The maximum amount of usable processing threads for this implementation. *>
 const MAX_THREADS = 64;
 
-macro clamp_threads(amount) => math::clamp(amount, 1, MAX_THREADS);
-macro clamp_block_size(size) => math::clamp(size, 1, MAX_BLOCK_SIZE);
+<*
+ Generate and return a very simple csHAKE computation for the input at the given security level.
 
-macro char[*] apply_simple_cshake($security_level, char[] data) => cshake::xof($security_level, $security_level >> 2, data);
+ @param $security_level : "The security level to use when hashing."
+ @param [in] data : "The data to hash."
+*>
+macro char[*] apply_simple_cshake($security_level, char[] data) @local
+	=> cshake::xof($security_level, $security_level >> 2, data);
 
-macro void @free(#allocator, #ptr)
-{
-	if (&#allocator.release) allocator::free(#allocator, #ptr);
-}
+<*
+ Define all context items necessary to do a ParallelHash operation, wrapping the cSHAKE construct.
 
+ @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
+*>
 struct ParallelHash <SECURITY_LEVEL>
 {
 	inline CShake{SECURITY_LEVEL} c;
@@ -29,18 +36,18 @@ struct ParallelHash <SECURITY_LEVEL>
 	bool is_xof_mode;
 	bool is_padded;
 	usz block_size;
-	usz thread_count;
+	usz threads;
 	usz intermediate_xof_size;
 	char[] internal;   // handle leftovers; only ever updated by a single thread (ID 0)
 	usz offset;
 	uint128 total_len;
 }
 
+<* Define a worker context, passed to each independent processing thread for hashing operations. *>
 struct WorkerThreadContext @local
 {
 	usz thread_id;
 	void* context;
-	Allocator allocator;
 	usz consume_len;
 	usz blocks;
 	usz xof_count;
@@ -48,93 +55,194 @@ struct WorkerThreadContext @local
 	char[] out;
 }
 
-// Set to local scope because only 128 and 256 should ever be exposed.
+<*
+ Generate and return an XOF ParallelHash hash of the specified `$outlen_bytes` length.
+
+ @param $security_level : "The security level of the XOF to use when hashing."
+ @param $outlen_bytes : "The length of the XOF hash to return,"
+ @param [&inout] allocator : "The allocator to use for internal memory operations."
+ @param [in] data : "The data to hash."
+ @param block_size : "The block size in bytes to use for each processing thread."
+ @param threads : "How many lanes should be used for parallel processing. If set to 0, defaults to the amount of CPU cores available."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
+ @param sequential : "If `true`, force the sequential processing of all input blocks and ignore threading entirely."
+
+ @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
+ @require $outlen_bytes > 0 : "You must use an output length over zero bytes."
+
+ @return "An array of `$outlen_bytes` bytes containing the hash."
+*>
 macro char[*] xof($security_level, $outlen_bytes, Allocator allocator, char[] data, usz block_size,
-	usz thread_count = 0, String optional_customization = "", bool $is_xof = true, bool sequential = false)
+	usz threads = 0, String customizer = "", bool sequential = false)
 {
 	char [$outlen_bytes] result @noinit;
-	xof_into($security_level, allocator, result[..], data, block_size, thread_count, optional_customization, $is_xof, sequential);
+	xof_into($security_level, allocator, result[..], data, block_size, threads, customizer, sequential);
 	return result;
 }
 
+<* An alias for ParallelHash's `xof` that implicitly uses the temp allocator for internal memory management. *>
 macro char[*] txof($security_level, $outlen_bytes, char[] data, usz block_size,
-	usz thread_count = 0, String optional_customization = "", bool $is_xof = true, bool sequential = false)
-	=> xof($security_level, $outlen_bytes, tmem, data, block_size, thread_count, optional_customization, $is_xof, sequential);
+		usz threads = 0, String customizer = "", bool sequential = false)
+	=> xof($security_level, $outlen_bytes, tmem, data, block_size, threads, customizer, sequential);
 
-macro hash($security_level, $outlen_bytes, Allocator allocator, char[] data, usz block_size,
-	usz thread_count = 0, String optional_customization = "", bool sequential = false)
-	=> xof($security_level, $outlen_bytes, allocator, data, block_size, thread_count, optional_customization, false, sequential);
+<*
+ Generate an XOF ParallelHash hash of `into.len` bytes and store the result in the `into` slice.
 
-macro thash($security_level, $outlen_bytes, char[] data, usz block_size,
-	usz thread_count = 0, String optional_customization = "", bool sequential = false)
-	=> hash($security_level, $outlen_bytes, tmem, data, block_size, thread_count, optional_customization, sequential);
+ @param $security_level : "The security level of the XOF to use when hashing."
+ @param [&inout] allocator : "The allocator to use for internal memory operations."
+ @param [out] into : "The storage destination for the hash result. Its length determines the amount of hash bytes yielded."
+ @param [in] data : "The data to hash."
+ @param block_size : "The block size in bytes to use for each processing thread."
+ @param threads : "How many lanes should be used for parallel processing. If set to 0, defaults to the amount of CPU cores available."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
+ @param sequential : "If `true`, force the sequential processing of all input blocks and ignore threading entirely."
 
+ @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
+ @require into.len > 0 : "You must use an output length over zero bytes."
+*>
 macro void xof_into($security_level, Allocator allocator, char[] into, char[] data, usz block_size,
-	usz thread_count = 0, String optional_customization = "", bool $is_xof = true, bool sequential = false)
+	usz threads = 0, String customizer = "", bool sequential = false)
 {
-	ParallelHash{$security_level} c;
-	c.init(allocator, block_size, optional_customization, $is_xof, thread_count);
-	c.update(data, force_sequential: sequential);
+	ParallelHashXOF{$security_level} c;
+	c.init(allocator, block_size: block_size, threads: threads, customizer: customizer);
+	c.update(data, sequential: sequential);
 	c.final(into);
 }
 
+<* An alias for ParallelHash's `xof_into` that implicitly uses the temp allocator for internal memory management. *>
 macro void txof_into($security_level, char[] into, char[] data, usz block_size,
-	usz thread_count, String optional_customization = "", bool $is_xof = true, bool sequential = false)
-	=> xof_into($security_level, tmem, into, data, block_size, thread_count, optional_customization, $ix_xof, sequential);
+	usz threads, String customizer = "", bool sequential = false)
+	=> xof_into($security_level, tmem, into, data, block_size, threads, customizer, sequential);
 
+<*
+ Generate and return an non-XOF-variant ParallelHash hash of the specified `$outlen_bytes` length.
+
+ @param $security_level : "The security level of the XOF to use when hashing."
+ @param $outlen_bytes : "The length of the XOF hash to return,"
+ @param [&inout] allocator : "The allocator to use for internal memory operations."
+ @param [in] data : "The data to hash."
+ @param block_size : "The block size in bytes to use for each processing thread."
+ @param threads : "How many lanes should be used for parallel processing. If set to 0, defaults to the amount of CPU cores available."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
+ @param sequential : "If `true`, force the sequential processing of all input blocks and ignore threading entirely."
+
+ @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
+ @require $outlen_bytes > 0 : "You must use an output length over zero bytes."
+
+ @return "An array of `$outlen_bytes` bytes containing the hash."
+*>
+macro hash($security_level, $outlen_bytes, Allocator allocator, char[] data, usz block_size,
+	usz threads = 0, String customizer = "", bool sequential = false)
+{
+	char [$outlen_bytes] result @noinit;
+	hash_into($security_level, allocator, result[..], data, block_size, threads, customizer, sequential);
+	return result;
+}
+
+<* An alias for ParallelHash's `hash` that implicitly uses the temp allocator for internal memory management. *>
+macro thash($security_level, $outlen_bytes, char[] data, usz block_size,
+	usz threads = 0, String customizer = "", bool sequential = false)
+	=> hash($security_level, $outlen_bytes, tmem, data, block_size, threads, customizer, sequential);
+
+<*
+ Generate an non-XOF-variant ParallelHash hash of `into.len` bytes and store the result in the `into` slice.
+
+ @param $security_level : "The security level of the XOF to use when hashing."
+ @param [&inout] allocator : "The allocator to use for internal memory operations."
+ @param [out] into : "The storage destination for the hash result. Its length determines the amount of hash bytes yielded."
+ @param [in] data : "The data to hash."
+ @param block_size : "The block size in bytes to use for each processing thread."
+ @param threads : "How many lanes should be used for parallel processing. If set to 0, defaults to the amount of CPU cores available."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
+ @param sequential : "If `true`, force the sequential processing of all input blocks and ignore threading entirely."
+
+ @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
+ @require into.len > 0 : "You must use an output length over zero bytes."
+*>
 macro hash_into($security_level, Allocator allocator, char[] into, char[] data, usz block_size,
-	usz thread_count = 0, String optional_customization = "", bool sequential = false)
-	=> xof_into($security_level, allocator, into, data, block_size, thread_count, optional_customization, false, sequential);
+	usz threads = 0, String customizer = "", bool sequential = false)
+{
+	ParallelHash{$security_level} c;
+	c.init(allocator, block_size: block_size, threads: threads, customizer: customizer);
+	c.update(data, sequential: sequential);
+	c.final(into);
+}
 
+<* An alias for ParallelHash's `hash_into` that implicitly uses the temp allocator for internal memory management. *>
 macro thash_into($security_level, char[] into, char[] data, usz block_size,
-	usz thread_count = 0, String optional_customization = "", bool sequential = false)
-	=> hash_into($security_level, tmem, into, data, block_size, thread_count, optional_customization, sequential);
+	usz threads = 0, String customizer = "", bool sequential = false)
+	=> hash_into($security_level, tmem, into, data, block_size, threads, customizer, sequential);
 
-// The XOF variant of ParallelHash uses a `right_encode(0)` at the end of the input stream.
-//   This causes the output value to be completely different and not dependent on the length of the output buffer.
-//   To better understand this, or to see the reference, search for NIST SP 800-185.
+<*
+ The XOF variant of ParallelHash uses a `right_encode(0)` at the end of the input stream.
+ This causes the output value to be completely different and not dependent on the length of the output buffer.
+ To better understand this, or to see the reference, search for NIST SP 800-185.
+
+ @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
+*>
 struct ParallelHashXOF <SECURITY_LEVEL>
 {
 	inline ParallelHash{SECURITY_LEVEL} ph;
 }
 
-macro void ParallelHashXOF.init(&self, Allocator allocator, usz block_size = MAX_BLOCK_SIZE >> 3, String optional_customization = "", usz thread_count = 0)
-	=> self.ph.init(allocator, block_size, optional_customization, true, thread_count);
+<*
+ A wrapper initialization for the ParallelHash XOF construct which transparently calls the ParallelHash initializer.
 
-macro void ParallelHashXOF.tinit(&self, usz block_size = MAX_BLOCK_SIZE >> 3, String optional_customization = "", usz thread_count = 0)
-	=> self.init(tmem, block_size, optional_customization, thread_count);
+ @param [&inout] allocator : "The allocator to use for internal hash memory management."
+ @param block_size : "The block size in bytes to use for each processing thread."
+ @param threads : "How many lanes should be used for parallel processing. If set to 0, defaults to the amount of CPU cores available."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
+*>
+macro void ParallelHashXOF.init(&self, Allocator allocator, usz block_size = MAX_BLOCK_SIZE >> 3, usz threads = 0, String customizer = "")
+{
+	self.ph.init(allocator, block_size, threads, customizer);
+	self.is_xof_mode = true;
+}
+
+<* An alias to initialize an XOF-variant hash context with the temp allocator. *>
+macro void ParallelHashXOF.tinit(&self, usz block_size = MAX_BLOCK_SIZE >> 3, String customizer = "", usz threads = 0)
+	=> self.init(tmem, block_size, threads, customizer);
 
 <*
- @require block_size > 0 : "The requested block size cannot be zero"
+ Initialize the primary ParallelHash context object.
+
+ @param [&inout] allocator : "The allocator to use for internal hash memory management."
+ @param block_size : "The block size in bytes to use for each processing thread."
+ @param threads : "How many lanes should be used for parallel processing. If set to 0, defaults to the amount of CPU cores available."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
 *>
-fn void ParallelHash.init(&self, Allocator allocator, usz block_size = MAX_BLOCK_SIZE >> 3, String optional_customization = "", bool is_xof_mode = false, usz thread_count = 0)
+fn void ParallelHash.init(&self, Allocator allocator, usz block_size = MAX_BLOCK_SIZE >> 3, usz threads = 0, String customizer = "")
 {
-	if (!thread_count)   // thread count not explicitly specified
-	{
-		thread_count = (usz)cpu::native_cpu();
-	}
+	threads = threads ?: (usz)cpu::native_cpu();
+	bool use_xof = self.is_xof_mode;
 
 	*self = {
 		.allocator = allocator,
-		.is_xof_mode = is_xof_mode,
-		.block_size = clamp_block_size(block_size),
-		.thread_count = clamp_threads(thread_count),
+		.is_xof_mode = use_xof,
+		.block_size = math::clamp(block_size, 1, MAX_BLOCK_SIZE),
+		.threads = math::clamp(threads, 1, MAX_THREADS),
 		.intermediate_xof_size = SECURITY_LEVEL >> 2,
 	};
 	self.internal = allocator::new_array(allocator, char, self.block_size);
 
 	keccak::@init_runtime_size(self, $sizeof(*self));
-	self.c.init(PARALLEL_HASH, optional_customization);
+	self.c.init(PARALLEL_HASH, customizer);
 
 	self.c.update(nist::encode_length(LEFT, self.block_size, true));
 }
 
-macro void ParallelHash.tinit(&self, usz block_size = MAX_BLOCK_SIZE >> 3, String optional_customization = "", bool is_xof_mode = false, usz thread_count = 0)
-	=> self.init(tmem, block_size, optional_customization, is_xof_mode, thread_count);
+<* An alias to initialize a non-XOF-variant hash context with the temp allocator. *>
+macro void ParallelHash.tinit(&self, usz block_size = MAX_BLOCK_SIZE >> 3, String customizer = "", usz threads = 0)
+	=> self.init(tmem, block_size, threads, customizer);
 
-fn void ParallelHash.update(&self, char[] data, bool force_sequential = false)
+<*
+ Update the ParallelHash hash context with the given data.
+
+ @param [in] data : "The data to digest."
+ @param sequential : "Whether the data should be processed sequentially; i.e., when `true`, don't use threads."
+*>
+fn void ParallelHash.update(&self, char[] data, bool sequential = false)
 {
-	// note : TODO : ILLEGAL to call `update` after a first squeeze or `final`
 	if (!data.len) return;
 	self.total_len += data.len;
 
@@ -157,7 +265,9 @@ fn void ParallelHash.update(&self, char[] data, bool force_sequential = false)
 		}
 	}
 
-	if (force_sequential || data.len < self.block_size * 2 || !env::NATIVE_THREADING)   // less than two blocks was received? don't thread at all
+	// If fewer than two blocks were received, then don't thread at all. Same for disabled threading of course.
+	//   This is a very linear process: apply cSHAKE to each block and immediately push its result into the main cSHAKE context.
+	if (sequential || data.len < self.block_size * 2 || !env::NATIVE_THREADING)
 	{
 		for (; data.len >= self.block_size; data = data[self.block_size..])
 		{
@@ -166,25 +276,34 @@ fn void ParallelHash.update(&self, char[] data, bool force_sequential = false)
 	}
 	else
 	{
-$if env::NATIVE_THREADING:
-		// start by allocating the necessary threading resources, even if they won't all be used
-		Thread[] workers = allocator::new_array(self.allocator, Thread, self.thread_count);
-		defer @free(self.allocator, workers.ptr);
+		$if !env::NATIVE_THREADING:
+			unreachable("NATIVE_THREADING not set, should not have entered this branch");
+		$endif
 
-		WorkerThreadContext[] contexts = allocator::new_array(self.allocator, WorkerThreadContext, self.thread_count);
+		// Start by allocating the necessary threading resources, even if they won't all be used
+		Thread[] workers = allocator::new_array(self.allocator, Thread, self.threads);
+		defer allocator::free(self.allocator, workers);
+
+		WorkerThreadContext[] contexts = allocator::new_array(self.allocator, WorkerThreadContext, self.threads);
 		defer
 		{
-			foreach (ctx : contexts) if (ctx.out.ptr) @free(self.allocator, ctx.out.ptr);   // free the returned byte array
-			@free(self.allocator, contexts.ptr);
+			foreach (ctx : contexts) if (ctx.out.ptr) allocator::free(self.allocator, ctx.out);   // free each returned byte array
+			allocator::free(self.allocator, contexts);
 		}
 
+		// Round-robin distribute sizes between all thread indices.
+		//   This is a bit of flair. There's probably an easier way, but luckily this isn't the performance-critical section.
 		usz remainder = data.len;
 		for (usz i = 0; remainder >= self.block_size; i++, remainder -= self.block_size)
 		{
-			contexts[i % self.thread_count].consume_len += self.block_size;
+			contexts[i % self.threads].consume_len += self.block_size;
 		}
 
-		for (usz i = self.thread_count; i > 0; i--)
+		// Now distribute the actual work with a context for each thread.
+		//   Each thread has a pool of memory `.out`, where it can store an array of its sequential XOF results
+		//   This array is later folded into the main context's cSHAKE context. This needs to be done IN ORDER, which is
+		//   why these are preserved during parallel processing..
+		for (usz i = self.threads; i > 0; i--)
 		{
 			usz to_consume = contexts[i - 1].consume_len;
 			usz blocks = to_consume / self.block_size;
@@ -192,7 +311,6 @@ $if env::NATIVE_THREADING:
 			contexts[i - 1] = (WorkerThreadContext){
 				.thread_id = i - 1,
 				.context = self,
-				.allocator = self.allocator,
 				.blocks = blocks,
 				.xof_count = 0,
 				.data = data[:to_consume],
@@ -202,21 +320,21 @@ $if env::NATIVE_THREADING:
 			data = data[to_consume..];
 		}
 		foreach_r (w : workers) w.join()!!;   // await all workers
-		foreach_r (&t : contexts[:self.thread_count])
+		foreach_r (&t : contexts[:self.threads])
 		{
-			// fold all produced XOF chains into the main context's XOF chain
-			for (usz i = 0; i < t.blocks; i++) self.c.update(t.out[i * self.intermediate_xof_size  : self.intermediate_xof_size]);
+			// Gorge `self` with all produced XOF chains, absorbing them into the main context's cSHAKE context as described.
+			for (usz i = 0; i < t.blocks; i++)
+			{
+				self.c.update(t.out[i * self.intermediate_xof_size  : self.intermediate_xof_size]);
+			}
 		}
 
-		assert(data.len == remainder, "Not all input data was accounted for; cannot proceed");
-$else
-		unreachable("NATIVE_THREADING not set, should not have entered this branch");
-$endif
+		assert(data.len == remainder, "Not all input data was accounted for; cannot proceed.");
 	}
 
+		// If there's some leftover data, then hold it for either the next call to 'update' or 'final'.
 	if (data.len > 0)
 	{
-		// there's some leftover data; hold it for the next call to 'update' or 'final'
 		self.internal[:data.len] = data[..];
 		self.offset = data.len;
 	}
@@ -225,7 +343,7 @@ $endif
 <*
  Process the incoming data for each thread.
 
- @param [&inout] arg : "The thread context to operate with"
+ @param [&inout] arg : "The thread context to operate with."
 *>
 fn int threaded_update(void* arg) <SECURITY_LEVEL> @local @if (env::NATIVE_THREADING)
 {
@@ -245,20 +363,30 @@ fn int threaded_update(void* arg) <SECURITY_LEVEL> @local @if (env::NATIVE_THREA
 }
 
 <*
- @require out.len > 0
+ Override the default finalization process by squeezing the underlying sponge primitive into
+ the output buffer, then freeing the internal buffer and finalizing per normal.
+
+ @param [out] out : "The destination slice for the hash result. The slice length determines the amount of bytes yielded."
+
+ @require out.len > 0 : "You must use an output length over zero bytes."
 *>
 fn void ParallelHash.final(&self, char[] out)
 {
 	defer
 	{
-		@free(self.allocator, self.internal.ptr);
+		allocator::free(self.allocator, self.internal);
 		self.finalize();
 	}
 	self.squeeze(out);
 }
 
 <*
- @require out.len > 0
+ Override the default squeeze process for this particular hash function.
+ This ensures ParallelHash can pad itself appropriately.
+
+ @param [out] out : "The destination slice for the hash result. The slice length determines the amount of bytes yielded."
+
+ @require out.len > 0 : "You must use an output length over zero bytes."
 *>
 fn void ParallelHash.squeeze(&self, char[] out)
 {
@@ -270,22 +398,11 @@ fn void ParallelHash.squeeze(&self, char[] out)
 			self.c.update(apply_simple_cshake(SECURITY_LEVEL, self.internal[:self.offset])[..]);
 			self.offset = 0;
 		}
-
 		// first, pad with 'n' ceil(total_len / block_size)
 		self.c.update(nist::encode_length(RIGHT, (int)math::ceil(self.total_len / (float)self.block_size), true));
-
 		// then, pad based on XOF (0) or HASH (out.len)
-		if (self.is_xof_mode)
-		{
-			self.c.update(nist::ZERO_RIGHT);
-		}
-		else
-		{
-			self.c.update(nist::encode_length(RIGHT, out.len));
-		}
-
+		self.c.update(self.is_xof_mode ? nist::ZERO_RIGHT : nist::encode_length(RIGHT, out.len));
 		self.is_padded = true;
 	}
-
 	self.c.squeeze(out);
 }

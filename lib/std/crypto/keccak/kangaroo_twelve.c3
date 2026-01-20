@@ -21,17 +21,17 @@ const BLOCK_SIZE = 8192;
 alias hash = xof;
 alias hash_into = xof_into;
 
-macro char[*] xof($security_level, $outlen_bytes, char[] data, String optional_customization = "")
+macro char[*] xof($security_level, $outlen_bytes, char[] data, String customizer = "")
 {
 	char[$outlen_bytes] result @noinit;
-	xof_into($security_level, result[..], data, optional_customization);
+	xof_into($security_level, result[..], data, customizer);
 	return result;
 }
 
-macro void xof_into($security_level, char[] into, char[] data, String optional_customization = "")
+macro void xof_into($security_level, char[] into, char[] data, String customizer = "")
 {
 	KTwelve{$security_level} k;
-	k.init(optional_customization);
+	k.init(customizer);
 	k.update(data, force_sequential: true);   // TODO: disable forcing option
 	k.final(into);
 }
@@ -50,15 +50,15 @@ struct KTwelve <SECURITY_LEVEL>
 
 macro void KTwelve.consume_s0_padding(&self)
 {
-	self.t.init(delimiter_override: FINAL_NODE_LONG_DELIMITER);
+	self.t.init(delimiter: FINAL_NODE_LONG_DELIMITER);
 	self.t.update(self.buffer[..]);
 	self.t.update(x'03 00 00 00 00 00 00 00'[..]);
 	self.consumed_block_s0 = true;
 }
 
-fn void KTwelve.init(&self, String optional_customization = "")
+fn void KTwelve.init(&self, String customizer = "")
 {
-	*self = { .c = optional_customization, .lower_bound = BLOCK_SIZE - optional_customization.len - 3 };
+	*self = { .c = customizer, .lower_bound = BLOCK_SIZE - customizer.len - 3 };
 	keccak::@init_runtime_size(self, $sizeof(*self));
 }
 
@@ -97,7 +97,7 @@ fn void KTwelve.update(&self, char[] data, bool force_sequential = false, usz th
 			else
 			{
 				// Otherwise, we can form the chaining value and consume it with the finalizer context.
-				self.t.update(turbo_shake::xof(SECURITY_LEVEL, SECURITY_LEVEL >> 2, self.buffer[..], delimiter_override: CHAINING_DELIMITER)[..]);
+				self.t.update(turbo_shake::xof(SECURITY_LEVEL, SECURITY_LEVEL >> 2, self.buffer[..], delimiter: CHAINING_DELIMITER)[..]);
 			}
 
 			if (!data.len) return;
@@ -110,7 +110,7 @@ fn void KTwelve.update(&self, char[] data, bool force_sequential = false, usz th
 	{
 		for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..])
 		{
-			self.t.update(turbo_shake::xof(SECURITY_LEVEL, SECURITY_LEVEL >> 2, data[:BLOCK_SIZE], delimiter_override: CHAINING_DELIMITER)[..]);
+			self.t.update(turbo_shake::xof(SECURITY_LEVEL, SECURITY_LEVEL >> 2, data[:BLOCK_SIZE], delimiter: CHAINING_DELIMITER)[..]);
 		}
 	}
 	else
@@ -138,7 +138,7 @@ fn void KTwelve.final(&self, char[] into)
 		//   When <= a BLOCK_SIZE has been consumed, we just consume S_0 directly as FinalNode.
 		if (self.total_bytes <= self.lower_bound)
 		{
-			self.t.init(delimiter_override: FINAL_NODE_SHORT_DELIMITER);
+			self.t.init(delimiter: FINAL_NODE_SHORT_DELIMITER);
 			self.t.update(self.buffer[:self.total_bytes]);
 			self.t.update(self.c);
 			self.t.update(!self.c.len ? x'00' : nist::encode_length(RIGHT, self.c.len, true));
@@ -147,7 +147,7 @@ fn void KTwelve.final(&self, char[] into)
 		{
 			if (self.offset > 0)
 			{
-				self.t.update(turbo_shake::xof(SECURITY_LEVEL, SECURITY_LEVEL >> 2, self.buffer[:self.offset], delimiter_override: CHAINING_DELIMITER)[..]);
+				self.t.update(turbo_shake::xof(SECURITY_LEVEL, SECURITY_LEVEL >> 2, self.buffer[:self.offset], delimiter: CHAINING_DELIMITER)[..]);
 			}
 			self.t.update(nist::encode_length(RIGHT, self.total_bytes / BLOCK_SIZE, true));
 			self.t.update(x'ff ff');

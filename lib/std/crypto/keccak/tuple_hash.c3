@@ -15,15 +15,15 @@ import std::crypto @public;
  @param $outlen_bytes : "The length of the XOF hash to return,"
  @param [in] data : "The data to hash."
  @param [in] extras : "Extra, ordered byte sequences to digest for the hash."
- @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
 
- @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
  @require $outlen_bytes > 0 : "You must use an output length over zero bytes."
 
  @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
-macro hash($security_level, $outlen_bytes, char[] data, char[]... extras, String optional_customization = "")
-	=> xof($security_level, $outlen_bytes, data, ...extras, optional_customization: optional_customization, $is_xof: false);
+macro hash($security_level, $outlen_bytes, char[] data, char[]... extras, String customizer = "")
+	=> xof($security_level, $outlen_bytes, data, ...extras, customizer: customizer, $is_xof: false);
 
 <*
  Generate a non-XOF TupleHash result of `into.len` bytes and store the result in `into`.
@@ -32,13 +32,13 @@ macro hash($security_level, $outlen_bytes, char[] data, char[]... extras, String
  @param [out] into : "The storage destination for the hash result. Its length determines the amount of hash bytes yielded."
  @param [in] data : "The data to hash."
  @param [in] extras : "Extra, ordered byte sequences to digest for the hash."
- @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
 
- @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
  @require into.len > 0 : "You must use an output length over zero bytes."
 *>
-macro hash_into($security_level, char[] into, char[] data, char[]... extras, String optional_customization = "")
-	=> xof_into($security_level, into, data, ...extras, optional_customization: optional_customization, $is_xof: false);
+macro hash_into($security_level, char[] into, char[] data, char[]... extras, String customizer = "")
+	=> xof_into($security_level, into, data, ...extras, customizer: customizer, $is_xof: false);
 
 <*
  Generate and return an XOF TupleHash result of the specified `$outlen_bytes`.
@@ -47,18 +47,18 @@ macro hash_into($security_level, char[] into, char[] data, char[]... extras, Str
  @param $outlen_bytes : "The length of the XOF hash to return,"
  @param [in] data : "The data to hash."
  @param [in] extras : "Extra, ordered byte sequences to digest for the hash."
- @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
  @param $is_xof : "Set to `true` when the hash context should produce the XOF-specific result from the computation."
 
- @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
  @require $outlen_bytes > 0 : "You must use an output length over zero bytes."
 
  @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
-macro char[*] xof($security_level, $outlen_bytes, char[] data, char[]... extras, String optional_customization = "", bool $is_xof = true)
+macro char[*] xof($security_level, $outlen_bytes, char[] data, char[]... extras, String customizer = "", bool $is_xof = true)
 {
-	char [$outlen_bytes] result;
-	xof_into($security_level, result[..], data, ...extras, optional_customization: optional_customization, $is_xof: $is_xof);
+	char [$outlen_bytes] result @noinit;
+	xof_into($security_level, result[..], data, ...extras, customizer: customizer, $is_xof: $is_xof);
 	return result;
 }
 
@@ -69,16 +69,16 @@ macro char[*] xof($security_level, $outlen_bytes, char[] data, char[]... extras,
  @param [out] into : "The storage destination for the hash result. Its length determines the amount of hash bytes yielded."
  @param [in] data : "The data to hash."
  @param [in] extras : "Extra, ordered byte sequences to digest for the hash."
- @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
  @param $is_xof : "Set to `true` when the hash context should produce the XOF-specific result from the computation."
 
- @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
  @require into.len > 0 : "You must use an output length over zero bytes."
 *>
-macro void xof_into($security_level, char[] into, char[] data, char[]... extras, String optional_customization = "", bool $is_xof = true)
+macro void xof_into($security_level, char[] into, char[] data, char[]... extras, String customizer = "", bool $is_xof = true)
 {
 	TupleHash{$security_level} c;
-	c.init(optional_customization, $is_xof);
+	c.init(customizer: customizer, is_xof_mode: $is_xof);
 	c.update(data, ...extras);
 	c.final(into);
 }
@@ -90,7 +90,7 @@ macro void xof_into($security_level, char[] into, char[] data, char[]... extras,
  output value to be completely different and not dependent on the length of the output buffer. To better
  understand this, or to see the reference, search for NIST SP 800-185.
 
- @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
 struct TupleHashXOF <SECURITY_LEVEL>
 {
@@ -100,18 +100,18 @@ struct TupleHashXOF <SECURITY_LEVEL>
 <*
  Initialize the TupleHashXOF context. This is simply a wrapper around the TupleHash `init` method.
 
- @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
 *>
-fn void TupleHashXOF.init(&self, String optional_customization = "")
+fn void TupleHashXOF.init(&self, String customizer = "")
 {
 	keccak::@init_runtime_size(self, $sizeof(*self));
-	self.t.init(optional_customization, true);
+	self.t.init(customizer, true);
 }
 
 <*
  A struct wrapping the cSHAKE construct. Maintained as its own full structure for member flexibility.
 
- @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
 struct TupleHash <SECURITY_LEVEL>
 {
@@ -122,13 +122,13 @@ struct TupleHash <SECURITY_LEVEL>
 <*
  Initialize the TupleHash context.
 
- @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
  @param is_xof_mode : "Whether the output from the function should be the XOF variant."
 *>
-fn void TupleHash.init(&self, String optional_customization = "", bool is_xof_mode = false)
+fn void TupleHash.init(&self, String customizer = "", bool is_xof_mode = false)
 {
 	keccak::@init_runtime_size(self, $sizeof(*self));
-	self.c.init(TUPLE_HASH, optional_customization);
+	self.c.init(TUPLE_HASH, customizer);
 	self.is_xof_mode = is_xof_mode;
 }
 
@@ -137,14 +137,13 @@ fn void TupleHash.init(&self, String optional_customization = "", bool is_xof_mo
  and then `th.update("def")` produces a ***different hash*** than calling `th.update("ab")` then `th.update("cdef")`.
 
  @param [in] data : "The data to consume with the hash context."
- @param [in] extra : "Any extra byte sequences to consume, in the precise order they should be consumed."
+ @param [in] extras : "Any extra byte sequences to consume, in the precise order they should be consumed."
 *>
-fn void TupleHash.update(&self, char[] data, char[]... extra)
+fn void TupleHash.update(&self, char[] data, char[]... extras)
 {
 	self.c.update(nist::encode_length(LEFT, data.len));
 	self.c.update(data);
-
-	foreach (v : extra)
+	foreach (v : extras)
 	{
 		self.c.update(nist::encode_length(LEFT, v.len));
 		self.c.update(v);

@@ -22,21 +22,22 @@ const DEFAULT_ROUNDS = shake::DEFAULT_ROUNDS;
  @param $security_level : "The security level of the XOF to use when hashing."
  @param $outlen_bytes : "The length of the XOF hash to return,"
  @param [in] data : "The data to hash."
- @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
  @param $function : "A compile-time string representing the type of NIST hash function."
  @param $rounds : "An optional compile-time override of the rounds count used in hash computation."
  @param $delimiter : "An optional compile-time override of the delimiter used in hash computation."
 
- @require @in($security_level, ...USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require @in($security_level, ...USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
  @require $outlen_bytes > 0 : "You must use an output length over zero bytes."
 
  @return "A character array of the specified `$outlen_bytes` size containing the XOF result."
 *>
-macro char[*] xof($security_level, $outlen_bytes, char[] data, String optional_customization = "",
+macro char[*] xof($security_level, $outlen_bytes, char[] data, String customizer = "",
 	NistFunctionName $function = NONE, $rounds = DEFAULT_ROUNDS, $delimiter = DEFAULT_DELIMITER)
 {
 	char[$outlen_bytes] into @noinit;
-	xof_into($security_level, into[..], data, optional_customization, $function, $rounds, $delimiter);
+	xof_into($security_level, into[..], data, customizer: customizer,
+		$function: $function, $rounds: $rounds, $delimiter: $delimiter);
 	return into;
 }
 
@@ -46,24 +47,24 @@ macro char[*] xof($security_level, $outlen_bytes, char[] data, String optional_c
  @param $security_level : "The security level of the XOF to use when hashing."
  @param [out] into : "The storage destination for the XOF result. Its length determines the amount of XOF bytes yielded."
  @param [in] data : "The data to hash."
- @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
  @param $function : "A compile-time string representing the type of NIST hash function."
  @param $rounds : "An optional compile-time override of the rounds count used in hash computation."
  @param $delimiter : "An optional compile-time override of the delimiter used in hash computation."
 
- @require @in($security_level, ...USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require @in($security_level, ...USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
  @require into.len > 0 : "You must use an output length over zero bytes."
 *>
-macro void xof_into($security_level, char[] into, char[] data, String optional_customization = "",
+macro void xof_into($security_level, char[] into, char[] data, String customizer = "",
 	NistFunctionName $function = NONE, $rounds = DEFAULT_ROUNDS, $delimiter = DEFAULT_DELIMITER)
 {
-	if (optional_customization == "" && $function == NONE)
+	if (customizer == "" && $function == NONE)
 	{
 		shake::xof_into($security_level, into, data);   // use default SHAKE delimiter, NOT this function's (NIST spec)
 		return;
 	}
 	CShake{$security_level} c;
-	c.init($function, optional_customization, $rounds, $delimiter);
+	c.init(function: $function, customizer: customizer, runtime_rounds: $rounds, runtime_delimiter: $delimiter);
 	c.update(data);
 	c.final(into);
 }
@@ -71,7 +72,7 @@ macro void xof_into($security_level, char[] into, char[] data, String optional_c
 <*
  A struct wrapping the SHAKE construct. Maintained as its own full structure for member flexibility.
 
- @require @in(SECURITY_LEVEL, ...USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require @in(SECURITY_LEVEL, ...USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
 struct CShake <SECURITY_LEVEL>
 {
@@ -82,17 +83,17 @@ struct CShake <SECURITY_LEVEL>
  Initialize the cSHAKE context.
 
  @param function : "An input string representing the type of NIST hash function."
- @param optional_customization : "An optional, variable-length customization string used for further domain separation."
+ @param customizer : "An optional, variable-length customization string used for further domain separation."
  @param runtime_rounds : "An optional control of the round count used in the hash's computation."
  @param runtime_delimiter : "An optional runtime override of the delimiter used in hash computation."
 *>
-fn void CShake.init(&self, NistFunctionName function = NONE, String optional_customization = "",
+fn void CShake.init(&self, NistFunctionName function = NONE, String customizer = "",
 	char runtime_rounds = DEFAULT_ROUNDS, char runtime_delimiter = DEFAULT_DELIMITER)
 {
 	keccak::@init_runtime_size(self, $sizeof(*self));
 	String function_name = function.customizer;
 
-	if (optional_customization == "" && function_name == "")
+	if (customizer == "" && function_name == "")
 	{
 		// override delimiter with default SHAKE delimiter (see NIST spec)
 		return self.under.init(runtime_rounds, shake::DEFAULT_DELIMITER);
@@ -113,14 +114,14 @@ fn void CShake.init(&self, NistFunctionName function = NONE, String optional_cus
 		self.under.update(function_name);
 	}
 
-	if (optional_customization == "")
+	if (customizer == "")
 	{
 		self.under.update(nist::ZERO_LEFT);   // encoded zero value (no/empty length)
 	}
 	else
 	{
-		self.under.update(nist::encode_length(LEFT, optional_customization.len));
-		self.under.update(optional_customization);
+		self.under.update(nist::encode_length(LEFT, customizer.len));
+		self.under.update(customizer);
 	}
 
 	// Fill block and be done.

@@ -25,17 +25,17 @@ const DEFAULT_ROUNDS = 12;
  @param $security_level : "The security level of the XOF to use when hashing."
  @param $outlen_bytes : "The length of the XOF hash to return,"
  @param [in] data : "The data to hash."
- @param delimiter_override : "An optional runtime override of the delimiter used in hash computation."
+ @param delimiter : "An optional runtime override of the delimiter used in hash computation."
 
- @require @in($security_level, ...shake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require @in($security_level, ...shake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
  @require $outlen_bytes > 0 : "You must use an output length over zero bytes."
 
  @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
-macro char[*] xof($security_level, $outlen_bytes, char[] data, char delimiter_override = DEFAULT_DELIMITER)
+macro char[*] xof($security_level, $outlen_bytes, char[] data, char delimiter = DEFAULT_DELIMITER)
 {
 	char[$outlen_bytes] into @noinit;
-	xof_into($security_level, into[..], data, delimiter_override);
+	xof_into($security_level, into[..], data, delimiter: delimiter);
 	return into;
 }
 
@@ -48,15 +48,15 @@ alias hash = xof;
  @param $security_level : "The security level of the XOF to use when hashing."
  @param [out] into : "The destination for the generated variable-length hash."
  @param [in] data : "The data to hash."
- @param delimiter_override : "An optional runtime override of the delimiter used in hash computation."
+ @param delimiter : "An optional runtime override of the delimiter used in hash computation."
 
- @require @in($security_level, ...shake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require @in($security_level, ...shake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
  @require into.len > 0 : "The destination slice must have a length greater than zero."
 *>
-macro void xof_into($security_level, char[] into, char[] data, char delimiter_override = DEFAULT_DELIMITER)
+macro void xof_into($security_level, char[] into, char[] data, char delimiter = DEFAULT_DELIMITER)
 {
 	TurboShake{$security_level} s;
-	s.init(delimiter_override);
+	s.init(delimiter: delimiter);
 	s.update(data);
 	s.final(into);
 }
@@ -67,7 +67,7 @@ alias hash_into = xof_into;
 <*
  A struct wrapping the SHAKE construct. Maintained as its own full structure for member flexibility.
 
- @require @in(SECURITY_LEVEL, ...shake::USABLE_LEVELS) : "Shake structures must use a valid security level."
+ @require @in(SECURITY_LEVEL, ...shake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
 struct TurboShake <SECURITY_LEVEL>
 {
@@ -77,10 +77,10 @@ struct TurboShake <SECURITY_LEVEL>
 <*
  Initialize the TurboSHAKE context.
 
- @param delimiter_override : "An optional runtime override of the delimiter used in hash computation."
+ @param delimiter : "An optional runtime override of the delimiter used in hash computation."
 *>
-fn void TurboShake.init(&self, char delimiter_override = DEFAULT_DELIMITER)
+fn void TurboShake.init(&self, char delimiter = DEFAULT_DELIMITER)
 {
 	keccak::@init_runtime_size(self, $sizeof(*self));
-	self.s.init(DEFAULT_ROUNDS, delimiter_override);
+	self.s.init(DEFAULT_ROUNDS, delimiter);
 }

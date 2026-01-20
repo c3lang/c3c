@@ -11,23 +11,23 @@ fn void output_length_changes_hash_but_not_xof()
 	// this doesn't appear in the test-suite, but notice that varying out-length values for the _hash_ subset of tuple_hash functions
 	//   will NOT produce substrings of an extensible output like the XOF variants do
 	test::ne(
-		tuple_hash::hash(128, 496 / 8, x"abcd", x"efef", optional_customization: "bbb123123___A")[:32],
-		tuple_hash::hash(128, 472 / 8, x"abcd", x"efef", optional_customization: "bbb123123___A")[:32]
+		tuple_hash::hash(128, 496 / 8, x"abcd", x"efef", customizer: "bbb123123___A")[:32],
+		tuple_hash::hash(128, 472 / 8, x"abcd", x"efef", customizer: "bbb123123___A")[:32]
 	);
 
 	// this doesn't appear in the test suite, but proves that the _xof_ subset is just using an underlying
 	//   EXTENDED output primitive (keccak output is not affected by out-length)
 	test::eq(
-		tuple_hash::xof(128, 496 / 8, x"abcd", x"efef", optional_customization: "bbb123123___A")[:32],
-		tuple_hash::xof(128, 472 / 8, x"abcd", x"efef", optional_customization: "bbb123123___A")[:32]
+		tuple_hash::xof(128, 496 / 8, x"abcd", x"efef", customizer: "bbb123123___A")[:32],
+		tuple_hash::xof(128, 472 / 8, x"abcd", x"efef", customizer: "bbb123123___A")[:32]
 	);
 }
 
 fn void xof_neq_hash()
 {
 	test::ne(
-		tuple_hash::hash(128, 496 / 8, x"abcd", x"efef", optional_customization: "bbb123123___A")[:32],
-		tuple_hash::xof (128, 496 / 8, x"abcd", x"efef", optional_customization: "bbb123123___A")[:32]
+		tuple_hash::hash(128, 496 / 8, x"abcd", x"efef", customizer: "bbb123123___A")[:32],
+		tuple_hash::xof (128, 496 / 8, x"abcd", x"efef", customizer: "bbb123123___A")[:32]
 	);
 }
 
@@ -43,7 +43,7 @@ fn void known_vectors_xof()
 			x"dc246a7b5fe7dd2e63df4c1310fc30839c65995d2369141dff7af80481630b7b6f4b634c587ffd12f06503a5ee71c7ad150c08ba4bbaa24070c3fa5df9ce9366843b84d7a94590a51fe518c6aa85e0fad7f2d315ca90b7f4230d91e9241cf7082bad2acf6b9ea0e821d24a02aec54d02ac1f79f1d7bf14af0bf076492db27869",
 			"",
 			"",
-			optional_customization: "V{6?N|`G4bJ@:QG?.p^kO81h<]*xNxFk2I7QVhBzlkhf77tz01dG)iI?kM$qsfx;<^.o;uhEMc}cNJP%g.i=4}bH ve)eP('rMJW)&`9H?yEjeo@{}+e|Z'={eoC0`_|[wp! x{bMOtt%<]:(D-fEA*7"
+			customizer: "V{6?N|`G4bJ@:QG?.p^kO81h<]*xNxFk2I7QVhBzlkhf77tz01dG)iI?kM$qsfx;<^.o;uhEMc}cNJP%g.i=4}bH ve)eP('rMJW)&`9H?yEjeo@{}+e|Z'={eoC0`_|[wp! x{bMOtt%<]:(D-fEA*7"
 		)
 	);
 }
@@ -62,7 +62,7 @@ fn void known_vectors_non_xof()
 			x"3485dcd7",
 			x"64ba92",
 			x"0b",
-			optional_customization: "GWz1?q2c-wv$G;bK'o.XGDAb.K8=7MFfF$#Z3PnO8XcS|N]1#kug7B:#68$sXsK_P1[C9(9U ^Am`me_m(:KW_N$i~EzLzuC.%#kq:vzR?fX!LAGQD&PX~(qaWY9b=*&g|`[jxlS0?x8wu#=^|H)uEj."
+			customizer: "GWz1?q2c-wv$G;bK'o.XGDAb.K8=7MFfF$#Z3PnO8XcS|N]1#kug7B:#68$sXsK_P1[C9(9U ^Am`me_m(:KW_N$i~EzLzuC.%#kq:vzR?fX!LAGQD&PX~(qaWY9b=*&g|`[jxlS0?x8wu#=^|H)uEj."
 		)
 	);
 	/* --> tcId 104 */
@@ -73,14 +73,14 @@ fn void known_vectors_non_xof()
 			x"a17a080a10e94c14744d392008527db9e8c7",
 			x"d519bcc5ae31da14d38d53a7bb663a305e9dbe3b05243e684f559d41041cc0f1a54485b63890498b66b24b58b113a2bc31055c9d0226905acff556f7bc41c71fe605ba5d226c36ba3ac062957f0e5ea64d5a82cc3ba6f65fa1a7226f4b834cc948ca660fb9ef16b3d19843f9863202f264",
 			x"1a48c34c1ef0013fdd11814c",
-			optional_customization: "VH?>&R}D'b{T<hrT;8XGJvG/jn8[Pc,0f9<60.ZEQ>X@R`t.8m4)Ci _ 0R6:ArBUkm$L]E.]3t->(Z*y*CbN#l{8[5~YD+1J6ifrpaZH'K1sr@wSH<0}1rS~pkoGER8(db)>s7)Hg:HUZ(D<=J1)y29"
+			customizer: "VH?>&R}D'b{T<hrT;8XGJvG/jn8[Pc,0f9<60.ZEQ>X@R`t.8m4)Ci _ 0R6:ArBUkm$L]E.]3t->(Z*y*CbN#l{8[5~YD+1J6ifrpaZH'K1sr@wSH<0}1rS~pkoGER8(db)>s7)Hg:HUZ(D<=J1)y29"
 		)
 	);
 	/* --> tcId 110 */
 	test::eq(x"97bf23e6faf6367172fbe01693f1b0449448be0673b493a26a29e59d5caca92f71e8e113dbd9ce91c6a16e642ba0985cb2542711e7c1fd2fe2e2445a75",
 		tuple_hash::hash(128, 488 / 8,
 			x"63",
-			optional_customization: "yZkGfG]X&J8,N.}<:B|z.h?KPN_N/r.{JF^~wp|iDC-> -[DlZ4S=Q(2<?v7g.I3"
+			customizer: "yZkGfG]X&J8,N.}<:B|z.h?KPN_N/r.{JF^~wp|iDC-> -[DlZ4S=Q(2<?v7g.I3"
 		)
 	);
 	/* --> tcId 115 */
@@ -89,7 +89,7 @@ fn void known_vectors_non_xof()
 			x"fa2880a7028c8beb7456d83cc1503b076c87ce43",
 			x"e4fcaa9fe169bf2d409ac183c0270f9642afc0dff303a6843b9d0281d6a9460f4914e71aac10b8d9605da0f1b5fe47b049507054fbdce5cc1757b099431f8ae08c768108d858e7b204bbbcd8cfbddceb3745a1618ad385ca1dc07394c3bc951c3670af91ea7ef5eab2",
 			x"9c4b30c3a9aec879c70dec93d0",
-			optional_customization: "d[g_3M__n x[2>kp25)Un}9oSSKc018U^AkoLma(}(gK=?o[d{]SN-$eCw+^!{N^hC}oQ{CDS!Wg6mQ4dn}3Rc'P>'"
+			customizer: "d[g_3M__n x[2>kp25)Un}9oSSKc018U^AkoLma(}(gK=?o[d{]SN-$eCw+^!{N^hC}oQ{CDS!Wg6mQ4dn}3Rc'P>'"
 		)
 	);
 	/* --> tcId 134 */
@@ -105,7 +105,7 @@ fn void known_vectors_non_xof()
 			x"2da635b57706369913588dc93178b0aa",
 			x"c088ede1577b1a5e1f887753a4222c4abb94e1b1f37df85a8e101d8d56bf870e3276d543fb66e3c4e17912a007834418fa860c535009ce95cbe9483a40fcd732287ed6e83b26d1c7e731bbc113c443d74b5d8a2df2af8c095f1069cc2ecbf69d3b25644a5a8f7584b4fe03dc12",
 			x"56973c884255ebd73740487b58f839accdabf8860d723c360798ead88ae0ca5e6f27c0196ec7a0da9abd6f6cacb9a273f7a0fe96dfd1b216b1ab4fe3308694a7adf434fb6c304ccc41d758",
-			optional_customization: "+t[?aA)x+g//w$t&'PJ}LlQ%vRTvH.1UFo=t^c>v;{h]"
+			customizer: "+t[?aA)x+g//w$t&'PJ}LlQ%vRTvH.1UFo=t^c>v;{h]"
 		)
 	);
 }

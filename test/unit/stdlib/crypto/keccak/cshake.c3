@@ -27,13 +27,19 @@ fn void assert_finalization()
 //
 fn void known_vectors()
 {
-	/* tcId  5 */ test::@check(x"2eef41bd1680c16f36ae2b9c004805f7426ac9d4bb6bf7cfc78606a6e6f6f518eb6c0be7" == cshake::xof(128, 36, x"ea18", "fmkctMwhBB[<Kta&RJ5r5ToA9N9~Y-,kin8y]xB}kviaDk_kPI^{o#N1|JIF5x.67pR]]fGX)6'=j.{MnLN1M0zf@'|3OzirhSJS9#.i#&rXz1FnM{WgI|g'tk=Ui5*-L4T6cH4k?d.H<Bk/`.dRC#HklD_LeV~mz"));
-	/* tcId 69 */ test::@check(x"799964e28f9a75f9c7e87c0842790ce03fe7743347fceddf1245ab913fa9a45cac8c1ac74af58b8dd3c0f7" == cshake::xof(128, 43, x"643d5d", "9[4gjE(d=h}TRAp@m1% -|+zH7caKBkA7L3 K6=]=vP(D(Q3yOdK&vC<Q8?SbE9z{[=&/psWsGc5L#UAdOgz]@<@)vM3vhyv]T,hiL%)Z,V^4.nNb}"));
-	/* tcId 99 */ test::@check(x"8d6126c9e9cfe6acd2ce1e96a126038e1a7540e2f491d7e929d532480d961d800112307a09de39" == cshake::xof(128, 39, x"9d27db91871324c9d982419353a1b05ad4df57cdd074cf6eaa98063d63f71209ea", "D]uJi])MJ57z3e#h~b0#]wJekj^Em2f2>1#r`k/i%EH"));
+	/* tcId  5 */ test::@check(x"2eef41bd1680c16f36ae2b9c004805f7426ac9d4bb6bf7cfc78606a6e6f6f518eb6c0be7"
+		== cshake::xof(128, 36, x"ea18", customizer: "fmkctMwhBB[<Kta&RJ5r5ToA9N9~Y-,kin8y]xB}kviaDk_kPI^{o#N1|JIF5x.67pR]]fGX)6'=j.{MnLN1M0zf@'|3OzirhSJS9#.i#&rXz1FnM{WgI|g'tk=Ui5*-L4T6cH4k?d.H<Bk/`.dRC#HklD_LeV~mz"));
+	/* tcId 69 */ test::@check(x"799964e28f9a75f9c7e87c0842790ce03fe7743347fceddf1245ab913fa9a45cac8c1ac74af58b8dd3c0f7"
+		== cshake::xof(128, 43, x"643d5d", customizer: "9[4gjE(d=h}TRAp@m1% -|+zH7caKBkA7L3 K6=]=vP(D(Q3yOdK&vC<Q8?SbE9z{[=&/psWsGc5L#UAdOgz]@<@)vM3vhyv]T,hiL%)Z,V^4.nNb}"));
+	/* tcId 99 */ test::@check(x"8d6126c9e9cfe6acd2ce1e96a126038e1a7540e2f491d7e929d532480d961d800112307a09de39"
+		== cshake::xof(128, 39, x"9d27db91871324c9d982419353a1b05ad4df57cdd074cf6eaa98063d63f71209ea", customizer: "D]uJi])MJ57z3e#h~b0#]wJekj^Em2f2>1#r`k/i%EH"));
 
-	/* tcId  4 */ test::@check(x"e366bf084cf54999be6f1b30c928cb116892cdabc66f212865df60947521038ab2ef29e20c65eeb9f673e1" == cshake::xof(256, 43, "", "mr9dI%/rYePRx1ANU3uD7GpLM7,Ell%><H~dRw*v+w,e`[_aed*Rm8iF#l63wh'l`37P1]{])}9>;,kqVI`(cPO$^Xaebv~Bq>%MD/P(hKIo}K+u D[N)}*/b3qWz6z2~"));
-	/* tcId 54 */ test::@check(x"95c357e292d2220f44bca02d48a1a9f83e47a1a895ed55c0860a97bb62a2f2c363" == cshake::xof(256, 33, x"97ca560bc7a3dc8219b725797a581dd7c28b15ecd39d330785feb4b1228423fb98011ea41c5416da989720d622323d53be1c50f35b92beb56e7260dd7e751a3a8e47", "cv5E7 W~^WC1!ZJ; MAmo1'{`j6X/]2O"));
-	/* tcId 84 */ test::@check(x"6a43d4816ff231a8a0843622e8612bef824e844a7995d8aeb061767a54dd41de07" == cshake::xof(256, 33, x"7f9f1976b2a2d73ac24ebd2c53caa533a35b67b60c4f89b35df136577f77e5ef85b5b221e3b63e9fec5a9938eb8a1e28771a7be167354d31c0fc2cf041c4955c87a9b7", "3imMVe>MTz`|O 5mrZ}fQX%8E`IKM9b@(lTs?AQO/<#KkQ8p!7=]YkwXdT)u;q <8?"));
+	/* tcId  4 */ test::@check(x"e366bf084cf54999be6f1b30c928cb116892cdabc66f212865df60947521038ab2ef29e20c65eeb9f673e1"
+		== cshake::xof(256, 43, "", customizer: "mr9dI%/rYePRx1ANU3uD7GpLM7,Ell%><H~dRw*v+w,e`[_aed*Rm8iF#l63wh'l`37P1]{])}9>;,kqVI`(cPO$^Xaebv~Bq>%MD/P(hKIo}K+u D[N)}*/b3qWz6z2~"));
+	/* tcId 54 */ test::@check(x"95c357e292d2220f44bca02d48a1a9f83e47a1a895ed55c0860a97bb62a2f2c363"
+		== cshake::xof(256, 33, x"97ca560bc7a3dc8219b725797a581dd7c28b15ecd39d330785feb4b1228423fb98011ea41c5416da989720d622323d53be1c50f35b92beb56e7260dd7e751a3a8e47", customizer: "cv5E7 W~^WC1!ZJ; MAmo1'{`j6X/]2O"));
+	/* tcId 84 */ test::@check(x"6a43d4816ff231a8a0843622e8612bef824e844a7995d8aeb061767a54dd41de07"
+		== cshake::xof(256, 33, x"7f9f1976b2a2d73ac24ebd2c53caa533a35b67b60c4f89b35df136577f77e5ef85b5b221e3b63e9fec5a9938eb8a1e28771a7be167354d31c0fc2cf041c4955c87a9b7", customizer: "3imMVe>MTz`|O 5mrZ}fQX%8E`IKM9b@(lTs?AQO/<#KkQ8p!7=]YkwXdT)u;q <8?"));
 }
 
 fn void empty()
@@ -51,14 +57,14 @@ fn void empty()
 		}
 	};
 	$foreach $j, $c : keccak_test::CUSTOMIZATION_STRINGS:
-		test::@check(cshake::xof(128, 256, "", $c)[..] == expected[0][$j]);
-		test::@check(cshake::xof(256, 256, "", $c)[..] == expected[1][$j]);
+		test::@check(cshake::xof(128, 256, "", customizer: $c)[..] == expected[0][$j]);
+		test::@check(cshake::xof(256, 256, "", customizer: $c)[..] == expected[1][$j]);
 	$endforeach
 	// One final test on an empty customization string, but with a "streamed" context.
 	//   Non-empty customization strings are used in a separate test.
 	static char[256] result;
-	CShake{128} c1; c1.init(NONE, ""); c1.update(""); c1.final(result[..]); test::@check(result[..] == expected[0][0]);
-	CShake{256} c2; c2.init(NONE, ""); c2.update(""); c2.final(result[..]); test::@check(result[..] == expected[1][0]);
+	CShake{128} c1; c1.init(); c1.update(""); c1.final(result[..]); test::@check(result[..] == expected[0][0]);
+	CShake{256} c2; c2.init(); c2.update(""); c2.final(result[..]); test::@check(result[..] == expected[1][0]);
 }
 
 fn void simple()
@@ -109,8 +115,8 @@ fn void simple()
 	{
 		foreach (j, w : keccak_test::CUSTOMIZATION_STRINGS)
 		{
-			test::@check(cshake::xof(128, 64, v, w)[..] == expected[i][(j*2) + 0], `128(64): Failed on vector "%s" (c: "%s").`, v, w);
-			test::@check(cshake::xof(256, 64, v, w)[..] == expected[i][(j*2) + 1], `256(64): Failed on vector "%s" (c: "%s").`, v, w);
+			test::@check(cshake::xof(128, 64, v, customizer: w)[..] == expected[i][(j*2) + 0], `128(64): Failed on vector "%s" (c: "%s").`, v, w);
+			test::@check(cshake::xof(256, 64, v, customizer: w)[..] == expected[i][(j*2) + 1], `256(64): Failed on vector "%s" (c: "%s").`, v, w);
 		}
 	}
 }
@@ -165,8 +171,8 @@ fn void interval()
 	{
 		foreach (k, w : keccak_test::CUSTOMIZATION_STRINGS)
 		{
-			test::@check(cshake::xof(128, 64, x[:i], w)[..]  == expected[j][(k*2) + 0], "128(16): Failed on length %d.", i);
-			test::@check(cshake::xof(256, 64, x[:i], w)[..]  == expected[j][(k*2) + 1], "256(16): Failed on length %d.", i);
+			test::@check(cshake::xof(128, 64, x[:i], customizer: w)[..]  == expected[j][(k*2) + 0], "128(16): Failed on length %d.", i);
+			test::@check(cshake::xof(256, 64, x[:i], customizer: w)[..]  == expected[j][(k*2) + 1], "256(16): Failed on length %d.", i);
 		}
 	}
 }
@@ -175,10 +181,10 @@ fn void streamed()
 {
 	static String s = keccak_test::STREAM_VECTOR;
 
-	CShake{128} s1; s1.init(NONE, keccak_test::CUSTOMIZATION_STRINGS[2]);
-	CShake{128} s2; s2.init(NONE, keccak_test::CUSTOMIZATION_STRINGS[2]);
-	CShake{256} s3; s3.init(NONE, keccak_test::CUSTOMIZATION_STRINGS[2]);
-	CShake{256} s4; s4.init(NONE, keccak_test::CUSTOMIZATION_STRINGS[2]);
+	CShake{128} s1; s1.init(customizer: keccak_test::CUSTOMIZATION_STRINGS[2]);
+	CShake{128} s2; s2.init(customizer: keccak_test::CUSTOMIZATION_STRINGS[2]);
+	CShake{256} s3; s3.init(customizer: keccak_test::CUSTOMIZATION_STRINGS[2]);
+	CShake{256} s4; s4.init(customizer: keccak_test::CUSTOMIZATION_STRINGS[2]);
 
 	s1.update(s[:20]); s1.update(s[20:10]); s1.update(s[30:1]); s1.update(s[31..]);
 	s2.update(s[:20]); s2.update(s[20:10]); s2.update(s[30:1]); s2.update(s[31..]);
@@ -221,10 +227,10 @@ fn void large() @if ($feature(SLOW_TESTS))
 	char[] bigboi = keccak_test::get_bigboi();
 	foreach (i ,v : keccak_test::CUSTOMIZATION_STRINGS)
 	{
-		test::eq(cshake::xof(128, 16,  bigboi[..], v)[..], expected[i][0]);
-		test::eq(cshake::xof(128, 256, bigboi[..], v)[..], expected[i][1]);
-		test::eq(cshake::xof(256, 16,  bigboi[..], v)[..], expected[i][2]);
-		test::eq(cshake::xof(256, 256, bigboi[..], v)[..], expected[i][3]);
+		test::eq(cshake::xof(128, 16,  bigboi[..], customizer: v)[..], expected[i][0]);
+		test::eq(cshake::xof(128, 256, bigboi[..], customizer: v)[..], expected[i][1]);
+		test::eq(cshake::xof(256, 16,  bigboi[..], customizer: v)[..], expected[i][2]);
+		test::eq(cshake::xof(256, 256, bigboi[..], customizer: v)[..], expected[i][3]);
 	}
 }
 
@@ -232,13 +238,13 @@ fn void successive_xof_operations_128()
 {
 	static char[] expected = x"24b35841243321afa4362e8d6cd48acfc5955b1e15e7c8bf8b95d77d30ee1a2f";
 
-	test::@check(cshake::xof(128, 32, "", "beep")[..] == expected);
+	test::@check(cshake::xof(128, 32, "", customizer: "beep")[..] == expected);
 
 	// Now use the cryptographic XOF functionality to squeeze variable-length data out of SHAKE in .
 	//   We "squeeze" 8 bytes at a time, and the resulting value of the XOF, when concatenated, will match the expected value.
 	char[32] buf;
 	CShake{128} k;
-	k.init(NONE, "beep");
+	k.init(customizer: "beep");
 	k.update("");
 	k.squeeze(buf[0:8]);
 	k.squeeze(buf[8:8]);
@@ -252,13 +258,13 @@ fn void successive_xof_operations_256()
 {
 	static char[] expected = x"8e4625ac08758e52b27aa43bf630e78271d6e035f075bdfb8ef2677dd5929c3295a62d81cf2e0302d38612bf1f0810059dfc5f";
 
-	test::@check(cshake::xof(256, 51, "sugar", "beep")[..] == expected);
+	test::@check(cshake::xof(256, 51, "sugar", customizer: "beep")[..] == expected);
 
 	// This one shows the even though we squeeze at odd intervals, or beyond the length of the original expected value,
 	//   the prefix will still match.
 	char[128] buf;
 	CShake{256} k;
-	k.init(NONE, "beep");
+	k.init(customizer: "beep");
 	k.update("sugar");
 	k.squeeze(buf[0:7]);
 	k.squeeze(buf[7:13]);

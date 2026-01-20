@@ -93,6 +93,6 @@ fn usz encode_length_into(char[] into, NistEncodingType direction, uint128 lengt
 macro char[] encode_length(NistEncodingType direction, uint128 length, bool as_direct_bytes = false)
 {
 	char[uint128.sizeof + 2] result;
-	usz bytes = encode_length_into(result[..], direction, length, as_direct_bytes);
+	usz bytes = encode_length_into(result[..], direction, length, as_direct_bytes: as_direct_bytes);
 	return direction == LEFT ? result[:bytes + 1] : result[1:bytes + 1];
 }
