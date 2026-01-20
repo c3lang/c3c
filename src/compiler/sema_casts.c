@@ -2099,7 +2099,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 					return;
 				}
 				case ALL_INTS:
-					expr_rewrite_ext_trunc(expr, to_type, type_is_signed(type_flatten_to_int(expr->type)));
+					expr_rewrite_ext_trunc(expr, to_type, type_is_signed_any(type_flatten_to_int(expr->type)));
 					return;
 				case TYPE_POINTER:
 				case TYPE_FUNC_PTR:
