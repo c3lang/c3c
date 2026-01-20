@@ -170,10 +170,12 @@ macro bool @typeis(#value, $Type) @const @builtin @deprecated("Use `$typeof(#val
 
 <*
  Recursively compare two structs of the same type using each member's `==` overload.
+ A list of strings can be passed in vaargs to exclude certain fields, and nested fields can be referenced
+ with dot-notation.
 
  @require $kindof(#left) != POINTER && $kindof(#right) != POINTER : "You cannot compare structures by reference. Dereference them first."
 *>
-macro bool struct_eq(#left, #right) @builtin @safemacro
+macro bool struct_eq(#left, #right, ..., $member_prefix = "") @builtin @safemacro
 {
 	var left = #left;
 	var right = #right;
@@ -182,24 +184,27 @@ macro bool struct_eq(#left, #right) @builtin @safemacro
 	$else
 		$assert $typeof(left) == $typeof(right) : "The inner structure types of each parameter must be the same type.";
 		$foreach $member : $typeof(left).membersof:
-			$switch $member.kindof:
-				$case POINTER:
-					$if $kindof(*$member.get(left)) == STRUCT:
-						if (!struct_eq(*$member.get(left), *$member.get(right))) return false;
-					$else
-						$assert $defined(*$member.get(left) != *$member.get(right)) : "All pointer struct members must support the `==` operator.";
-						if (*$member.get(left) != *$member.get(right)) return false;
-					$endif
-				$case STRUCT:
-					$if $defined($member.get(left) != $member.get(right)):
+			var $member_path = $member_prefix +++ ($member_prefix.len ??? "." : "") +++ $member.nameof;
+			$if $vacount == 0 ||| !@in($member_path, $vasplat):
+				$switch $member.kindof:
+					$case POINTER:
+						$if $kindof(*$member.get(left)) == STRUCT:
+							if (!struct_eq(*$member.get(left), *$member.get(right), $vasplat, $member_prefix: $member_path)) return false;
+						$else
+							$assert $defined(*$member.get(left) != *$member.get(right)) : "All pointer struct members must support the `==` operator.";
+							if (*$member.get(left) != *$member.get(right)) return false;
+						$endif
+					$case STRUCT:
+						$if $defined($member.get(left) != $member.get(right)):
+							if ($member.get(left) != $member.get(right)) return false;
+						$else
+							if (!struct_eq($member.get(left), $member.get(right), $vasplat, $member_prefix: $member_path)) return false;
+						$endif
+					$default:
+						$assert $defined($member.get(left) != $member.get(right)) : "All struct members must support the `==` operator.";
 						if ($member.get(left) != $member.get(right)) return false;
-					$else
-						if (!struct_eq($member.get(left), $member.get(right))) return false;
-					$endif
-				$default:
-					$assert $defined($member.get(left) != $member.get(right)) : "All struct members must support the `==` operator.";
-					if ($member.get(left) != $member.get(right)) return false;
-			$endswitch
+				$endswitch
+			$endif
 		$endforeach
 	$endif
 	return true;

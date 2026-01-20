@@ -321,6 +321,7 @@ fn void test_struct_eq()
 	test::@check(struct_eq((CmpInnerType){ ...a }, *a1));
 	test::@check(struct_eq(*a1, *a2));
 	test::@check(!struct_eq(a, c));
+	test::@check(struct_eq(a, c, "baz"));   // they're equal if `baz` is not compared
 	test::@check(!struct_eq(b, c));
 	test::@check(!struct_eq(*a1, c));
 
@@ -333,6 +334,13 @@ fn void test_struct_eq()
 
 	y.ref.foo = -1;
 	test::@check(!struct_eq(x, y));
+
+	test::@check(struct_eq(x, z, "inner_values"));
+	test::@check(struct_eq(x, z, "inner_values.val"));
+	z.inner_values.bar = false;
+	test::@check(!struct_eq(x, z, "inner_values.val"));
+	test::@check(struct_eq(x, z, "inner_values.val", "inner_values.bar"));
+	z.inner_values.bar = true;
 
 	z.inner_values.val = &something;
 	test::@check(struct_eq(x, z));
