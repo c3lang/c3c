@@ -327,12 +327,12 @@ fn void large() @if ($feature(SLOW_TESTS))
 	char[] bigboi = keccak_test::get_bigboi();
 	foreach (i, v : keccak_test::CUSTOMIZATION_STRINGS)
 	{
-		test::@check(tuple_hash::hash(128, 32,  bigboi, customizer: v) == EXPECTED[i][0]);
-		test::@check(tuple_hash::hash(128, 64,  bigboi, customizer: v) == EXPECTED[i][1]);
-		test::@check(tuple_hash::hash(128, 128, bigboi, customizer: v) == EXPECTED[i][2]);
-		test::@check(tuple_hash::hash(256, 32,  bigboi, customizer: v) == EXPECTED[i][3]);
-		test::@check(tuple_hash::hash(256, 64,  bigboi, customizer: v) == EXPECTED[i][4]);
-		test::@check(tuple_hash::hash(256, 128, bigboi, customizer: v) == EXPECTED[i][5]);
+		test::@check(tuple_hash::hash(128, 32,  bigboi, customizer: v)[..] == EXPECTED[i][0]);
+		test::@check(tuple_hash::hash(128, 64,  bigboi, customizer: v)[..] == EXPECTED[i][1]);
+		test::@check(tuple_hash::hash(128, 128, bigboi, customizer: v)[..] == EXPECTED[i][2]);
+		test::@check(tuple_hash::hash(256, 32,  bigboi, customizer: v)[..] == EXPECTED[i][3]);
+		test::@check(tuple_hash::hash(256, 64,  bigboi, customizer: v)[..] == EXPECTED[i][4]);
+		test::@check(tuple_hash::hash(256, 128, bigboi, customizer: v)[..] == EXPECTED[i][5]);
 	}
 }
 
