@@ -151,3 +151,64 @@ fn void ordering()
 	test::ne(tuple_hash::hash(256, 34, "mind", "bending", "hash", "tricks!"), tuple_hash::hash(256, 34, "mindbending", "hashtricks!"));
 	test::ne(tuple_hash::hash(256, 32, "mind", "bending", "hash", "tricks!")[..], tuple_hash::hash(256, 64, "mind", "bending", "hash", "tricks!")[:32]);
 }
+
+fn void large() @if ($feature(SLOW_TESTS))
+{
+	const String[][] EXPECTED = {
+		{
+			x'c576bda1dea5e6f83478420f270aff954de221ccb11cb3f1f192e3aa93f80674',
+			x'cba8ae7826a9e53f921879e5321b4dc62ca214489f95c586127dec5a7b7586313e6bf48b23d0a8e5adf1b25cede87fd47e9ab5deea251acc56603dadbff9fde6',
+			x'10bf2ae2f4ffe4db4d7943c94ebfc9756f7df8d03fe40aa6e8a782a744406ea1d7e8ee6f612778f57fa54015aa973f1dfdb5df64f61d580314620c0c75dcde77c3a52448ff77342da65cc8cb6dc59e0bbea17359006b25b4940f3a6dd09b429c9c5155ed5f0f6ccc2651eb3ce57f6236f23a5579d38337087da993c645bc036a',
+			x'd94ad8fdb24d9e55599ecbb891f9d436f3910504db74317f9fe7b2e6a1179f03',
+			x'7885a4b5e911ff33623559f685e97f1388b800a8013c57e03d2292cc26cbd33e2f676a2dfbbbd14c67e6c23cf8eec1bd67030863989f6f7bf47ec75135263fc0',
+			x'7fc1f08647b12a64475c5855d10dc9664c9821b36d13086f1bd28f5ebf2d90a03f79488935fa732978edef8ae4ea827a5bb43859ff61ec1fc54cda280e15480de363e009f57c985b7b0c9b099b9af6f2d6c8f91774797b3e07fd73a4b67d309e6523849e9b87133da46be71e7c360751f14b63a3b2d6484de46b84f9df1dd531',
+		},
+		{
+			x'2c8b973d8183407c249fcb837a84b51da5f98acb951daab6c0e999c5a1731c88',
+			x'b869b8cf1e1df7db89d3c32a13012f12c3f18a31e96b77c8ab6900e435309b667097b23138cbd2ccbb2fb1a8008c5579d2a386e1309b4f7e294ac09672b8240b',
+			x'4ce3afaf34a7c96a6c5fee7dde60bdc4ac7cde5b01c04e333d60e2bf157d192dce4daa912160490f62a0aae7407fc1384f05c8e681b35aafc79ab3a2630354de7c5d3a9fca5f6633b27eed5d040516fc4f0b1493040d21d87d5e967e0db3790e9f25374c955211d249ca3bb9eb40ce2b381132ba2ba8baea7618d7e093a52012',
+			x'315dab3e4412729ee63270b7c3d4952bb7f41e4adddfd5a21887bab758226d73',
+			x'1cb154d4d249f44232e839c071d831db768c2a34af6e875c02fc1d76ea756e941c845d83d125b9c9110d84073c1ab8db8ccc8f4f973edec847162ae1b8e3353c',
+			x'd99d273ca0da7aeae0008d970a384a3cf96e115e4e43a1853701d67848c744efd0e030e2e012b682a9ccc98693185f8da84584569972f96a8b99a175f04f2331d3fe47a944be7a1877124763738c928a3b83c23c777d4e142da89069bae3cc328ffe435d7b21702d8a6d38c68dec5f4be41a5ffcc74b91a8f5c969c753f41f0b',
+		},
+		{
+			x'5bbc6c09f6d1784c88b446dc81146ecd65cc305c9acc82a3ec8444f81872ac9d',
+			x'e2fc5a77e0e93d75a59fbcb8ac91a74d4200fadd753f87f32a9e07f974983b66dc2658685aa3833465e4c17cf24a690520e4e1896d49df8075d23653e4292eda',
+			x'38ad9f0095e620a773ac7d1b061b44a85d857cf538908ee7132e2fcd90f1e9fe2aeda21c92d85b147c35bf45627c79f756a6725fd40b5518f616327b044feed45ac70fa06662b3422ab6844d47148e6721c7c65c40e8da3d8db629e28bd880a043ac51bdb41850471bcae51fa40825408c914a49f34a9836ce8afa9c15d6998f',
+			x'767cfb58c49ff58d2d554d436cfe834e5c469f6b2cd0915a9f528ca16d9deb6c',
+			x'd04e005f8cea54368cfd6b7147e0ee8933acf4ba97e2889d8ebebe488c73a861e2e9d71b3b2912f51b4ab6ccbf0f14087f43f478c8a5b8c5f3ceffa96c21ebd6',
+			x'113fd02be4d9b1b70074056bd4df006ed5815c6998ad267548f9d90f8ed7e7ba9e9ab4b20284971e96bd59cc43c5e0cd53a7ae00a6290eb1d2b186c0b367619626369e5d369bab88253b4e444dec471467c980a8362fd5dc13e7fb8096af3f5a8f5c2208deca48f2606d950a2f76d5e20f61008bc107149d5cc8134f8d9fa22a',
+		},
+	};
+	char[] bigboi = keccak_test::get_bigboi();
+	foreach (i, v : keccak_test::CUSTOMIZATION_STRINGS)
+	{
+		test::@check(tuple_hash::hash(128, 32,  bigboi, customizer: v) == EXPECTED[i][0]);
+		test::@check(tuple_hash::hash(128, 64,  bigboi, customizer: v) == EXPECTED[i][1]);
+		test::@check(tuple_hash::hash(128, 128, bigboi, customizer: v) == EXPECTED[i][2]);
+		test::@check(tuple_hash::hash(256, 32,  bigboi, customizer: v) == EXPECTED[i][3]);
+		test::@check(tuple_hash::hash(256, 64,  bigboi, customizer: v) == EXPECTED[i][4]);
+		test::@check(tuple_hash::hash(256, 128, bigboi, customizer: v) == EXPECTED[i][5]);
+	}
+}
+
+fn void successive_squeezes()
+{
+	const char[][] EXPECTED = {
+		x'3c0b1c55848bfa76d36ead1428366fd8ee78d80f8aa8b709e7d8d063e61fe098',
+		x'5387e05c322ad6a3be689b6c84cb3e1eb9ddca8d027e17525007d5d02707a9a5090d6b0d2a4bbb9d454b3c323dc0b45877aab958b05676f64387709add97968c',
+	};
+	$foreach $i, $sz : cshake::USABLE_LEVELS:
+	{
+		char[$sz >> 2] buf;
+		TupleHashXOF{$sz} t;
+		t.init();
+		t.update("C3");
+		t.squeeze(buf[0:1]);
+		t.squeeze(buf[1:5]);
+		t.squeeze(buf[6:16]);
+		t.squeeze(buf[22..]);
+		test::@check(buf[..] == EXPECTED[$i], "Test %d: Got '%h' but expected '%h'.", $i, buf[..], EXPECTED[$i]);
+	}
+	$endforeach
+}
