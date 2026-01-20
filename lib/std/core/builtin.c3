@@ -100,12 +100,12 @@ macro usz @bitsizeof(#expr) @builtin @const => $sizeof(#expr) * 8u;
 *>
 macro bool @in(#needle, ...) @builtin @const
 {
-    $for var $x = 0; $x < $vacount; $x++:
-        $assert $defined(#needle == $vaconst[$x])
-            : "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $typeof(#needle), $typeof($vaconst[$x]);
-        $if #needle == $vaconst[$x]: return true; $endif
-    $endfor
-    return false;
+	$for var $x = 0; $x < $vacount; $x++:
+		$assert $defined(#needle == $vaconst[$x])
+			: "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $typeof(#needle), $typeof($vaconst[$x]);
+		$if #needle == $vaconst[$x]: return true; $endif
+	$endfor
+	return false;
 }
 
 <*
@@ -166,6 +166,43 @@ macro TypeKind @typekind(#value) @const @builtin @deprecated("Use `$kindof(#valu
 macro bool @typeis(#value, $Type) @const @builtin @deprecated("Use `$typeof(#value) == $Type` instead.")
 {
 	return $typeof(#value).typeid == $Type.typeid;
+}
+
+<*
+ Recursively compare two structs of the same type using each member's `==` overload.
+
+ @require $kindof(#left) != POINTER && $kindof(#right) != POINTER : "You cannot compare structures by reference. Dereference them first."
+*>
+macro bool struct_eq(#left, #right) @builtin @safemacro
+{
+	var left = #left;
+	var right = #right;
+	$if $defined(left == right):
+		return left == right;
+	$else
+		$assert $typeof(left) == $typeof(right) : "The inner structure types of each parameter must be the same type.";
+		$foreach $member : $typeof(left).membersof:
+			$switch $member.kindof:
+				$case POINTER:
+					$if $kindof(*$member.get(left)) == STRUCT:
+						if (!struct_eq(*$member.get(left), *$member.get(right))) return false;
+					$else
+						$assert $defined(*$member.get(left) != *$member.get(right)) : "All pointer struct members must support the `==` operator.";
+						if (*$member.get(left) != *$member.get(right)) return false;
+					$endif
+				$case STRUCT:
+					$if $defined($member.get(left) != $member.get(right)):
+						if ($member.get(left) != $member.get(right)) return false;
+					$else
+						if (!struct_eq($member.get(left), $member.get(right))) return false;
+					$endif
+				$default:
+					$assert $defined($member.get(left) != $member.get(right)) : "All struct members must support the `==` operator.";
+					if ($member.get(left) != $member.get(right)) return false;
+			$endswitch
+		$endforeach
+	$endif
+	return true;
 }
 
 
@@ -453,7 +490,7 @@ macro @prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write =
 
 <*
  Shuffle a vector by its index
- 
+
  int[<4>] a = { 1, 2, 3, 4 };
  assert(swizzle(a, 0, 1, 1, 3) == (int[<4>]) { 1, 2, 2, 4 });
 *>
