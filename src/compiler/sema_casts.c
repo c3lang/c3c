@@ -259,6 +259,12 @@ void cast_promote_vararg(Expr *arg)
 		cast_no_check(arg, type_get_ptr(arg_type->array.base), IS_OPTIONAL(arg));
 	}
 
+	// We convert non-simd vectors to arrays
+	if (arg_type->type_kind == TYPE_VECTOR)
+	{
+		cast_no_check(arg, type_array_from_vector(arg_type), IS_OPTIONAL(arg));
+	}
+
 }
 
 /**

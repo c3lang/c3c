@@ -20,7 +20,8 @@
 - Module-based generics using {} is deprecated.
 - Create optional with `~` instead of `?`. `return io::EOF?;` becomes `return io::EOF~`.
 - Deprecated use of `?` to create optional.
- 
+- Vectors not converted to arrays when passed as raw vaargs. #2776
+
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
 - Casting bitstruct to wider base type should be single step #2616.
