@@ -22,6 +22,7 @@
 - Deprecated use of `?` to create optional.
 - Vectors not converted to arrays when passed as raw vaargs. #2776
 - Second value in switch range not checked properly, causing an error on non-const values. #2777
+- Broken cast from fault to array pointer #2778.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
