@@ -298,6 +298,7 @@ struct CmpInnerType
 	bool bar;
 	char[7] baz;
 	double* val;
+	char[] slice;
 }
 struct CmpOuterType
 {
@@ -307,6 +308,7 @@ struct CmpOuterType
 }
 fn void test_struct_eq()
 {
+	char[] a_slice = "slice of characters";
 	double something = 8.60;
 	double different = -123.22;
 	CmpInnerType  a  = { .foo = 1, .bar = true, .baz = "abcdefg", .val = &something };
@@ -344,4 +346,11 @@ fn void test_struct_eq()
 
 	z.inner_values.val = &something;
 	test::@check(struct_eq(x, z));
+
+	// Ensure slices work too.
+	CmpInnerType  s  = { ...a, .slice = a_slice[2:3] };
+	CmpInnerType  t  = { ...a, .slice = a_slice[2:3] };
+	test::@check(struct_eq(s, t));
+	s.foo = -1;
+	test::@check(!struct_eq(s, t));
 }
