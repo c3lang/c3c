@@ -29,6 +29,7 @@
 - Inferring the size of a slice with an inner inferred array using {} isn't detected as error #2783
 - Bug in sysv abi when passing union in with floats #2784
 - When a global const has invalid attributes, handling is incorrect, leading to a crash #2785.
+- `int? ?` was not correctly handled. #2786
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
