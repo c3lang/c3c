@@ -4739,6 +4739,19 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 						SEMA_ERROR(type_info, "No size could be inferred.");
 						goto FAIL;
 					}
+					switch (sema_resolve_storage_type(context, decl->type))
+					{
+						case STORAGE_NORMAL:
+						case STORAGE_COMPILE_TIME:
+							break;
+						case STORAGE_ERROR:
+							goto FAIL;
+						case STORAGE_VOID:
+						case STORAGE_WILDCARD:
+						case STORAGE_UNKNOWN:
+							SEMA_ERROR(type_info, "Expected a runtime or compile time type with a well-defined zero value.");
+							goto FAIL;
+					}
 					decl->var.init_expr = init = expr_new(EXPR_POISONED, decl->span);
 					expr_rewrite_to_const_zero(init, type_no_optional(decl->type));
 				}

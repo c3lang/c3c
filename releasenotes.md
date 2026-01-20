@@ -25,6 +25,7 @@
 - Broken cast from fault to array pointer #2778.
 - $typeof untyped list crashes when trying to create typeid from it. #2779
 - Recursive constant definition not properly detected, leading to assert #2780
+- Failed to reject void compile time variables, leading to crash. #2781
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
