@@ -1007,7 +1007,7 @@ Decl *parse_const_declaration(ParseContext *c, bool is_global, bool is_extern)
 	// Differentiate between global and local attributes, global have visibility
 	if (is_global)
 	{
-		if (!parse_attributes_for_global(c, decl)) return false;
+		if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	}
 	else
 	{
