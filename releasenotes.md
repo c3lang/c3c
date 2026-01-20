@@ -21,6 +21,7 @@
 - Create optional with `~` instead of `?`. `return io::EOF?;` becomes `return io::EOF~`.
 - Deprecated use of `?` to create optional.
 - Vectors not converted to arrays when passed as raw vaargs. #2776
+- Second value in switch range not checked properly, causing an error on non-const values. #2777
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
