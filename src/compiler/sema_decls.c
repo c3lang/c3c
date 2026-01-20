@@ -2631,8 +2631,11 @@ static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl
 	bool erase_decl = false;
 	if (!sema_analyse_attributes(context, method, method->attributes,
 		method->decl_kind == DECL_MACRO ? ATTR_MACRO : ATTR_FUNC, &erase_decl)) return decl_poison(method);
-	if (erase_decl) return true;
-
+	if (erase_decl)
+	{
+		method->decl_kind = DECL_ERASED;
+		return true;
+	}
 	// Is it a base extension?
 	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(context, method);
 
@@ -5608,10 +5611,7 @@ bool sema_analyse_method_register(SemaContext *context, Decl *method)
 		method->generic_id = decl->generic_id;
 		return false;
 	}
-	else
-	{
-		if (!sema_resolve_type_info(context, parent_type_info, method->decl_kind == DECL_MACRO ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
-	}
+	if (!sema_resolve_type_info(context, parent_type_info, method->decl_kind == DECL_MACRO ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
 
 	// Can the type have methods?
 	Type *parent_type = parent_type_info->type = parent_type_info->type->canonical;
