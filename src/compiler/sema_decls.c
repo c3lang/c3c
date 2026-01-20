@@ -5311,7 +5311,7 @@ FOUND:;
 			SemaContext gen_context;
 			sema_context_init(&gen_context, decl->unit);
 			gen_context.generic_instance = instance;
-			if (sema_analyse_method_register(&gen_context, decl))
+			if (sema_analyse_method_register(&gen_context, decl) && decl->decl_kind != DECL_ERASED)
 			{
 				if (decl->decl_kind == DECL_MACRO)
 				{
