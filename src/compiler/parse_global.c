@@ -689,6 +689,11 @@ static inline TypeInfo *parse_vector_type_index(ParseContext *c, TypeInfo *type)
 			PRINT_ERROR_HERE("Only '@simd' is a valid attribute, found '%s'.", symstr(c));
 			return poisoned_type_info;
 		}
+		if (vector->kind == TYPE_INFO_INFERRED_VECTOR)
+		{
+			PRINT_ERROR_HERE("The '@simd' attribute cannot be used on an inferred vector type.");
+			return poisoned_type_info;
+		}
 		advance(c);
 		vector->is_simd = true;
 	}

@@ -20,16 +20,6 @@
 - Module-based generics using {} is deprecated.
 - Create optional with `~` instead of `?`. `return io::EOF?;` becomes `return io::EOF~`.
 - Deprecated use of `?` to create optional.
-- Vectors not converted to arrays when passed as raw vaargs. #2776
-- Second value in switch range not checked properly, causing an error on non-const values. #2777
-- Broken cast from fault to array pointer #2778.
-- $typeof untyped list crashes when trying to create typeid from it. #2779
-- Recursive constant definition not properly detected, leading to assert #2780
-- Failed to reject void compile time variables, leading to crash. #2781
-- Inferring the size of a slice with an inner inferred array using {} isn't detected as error #2783
-- Bug in sysv abi when passing union in with floats #2784
-- When a global const has invalid attributes, handling is incorrect, leading to a crash #2785.
-- `int? ?` was not correctly handled. #2786
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -98,6 +88,17 @@
 - When an `int[*][6]` was given too few values, the compiler would assert instead of giving an error. #2771
 - Inferring length from a slice was accidentally not an error.
 - Eager evaluation of macro arguments would break inferred arrays on some platforms. #2771.
+- Vectors not converted to arrays when passed as raw vaargs. #2776
+- Second value in switch range not checked properly, causing an error on non-const values. #2777
+- Broken cast from fault to array pointer #2778.
+- $typeof untyped list crashes when trying to create typeid from it. #2779
+- Recursive constant definition not properly detected, leading to assert #2780
+- Failed to reject void compile time variables, leading to crash. #2781
+- Inferring the size of a slice with an inner inferred array using {} isn't detected as error #2783
+- Bug in sysv abi when passing union in with floats #2784
+- When a global const has invalid attributes, handling is incorrect, leading to a crash #2785.
+- `int? ?` was not correctly handled. #2786
+- Casting const bytes to vector with different element size was broken #2787
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
