@@ -266,7 +266,7 @@ fn bool LinkedHashSet.contains(&set, Value value)
 *>
 fn void? LinkedHashSet.remove(&set, Value value) @maydiscard
 {
-	if (!set.remove_entry_for_value(value)) return NOT_FOUND?;
+	if (!set.remove_entry_for_value(value)) return NOT_FOUND~;
 }
 
 fn usz LinkedHashSet.remove_all(&set, Value[] values)
@@ -713,7 +713,7 @@ fn bool LinkedHashSetIterator.next(&self)
 
 fn Value*? LinkedHashSetIterator.get(&self)
 {
-	return self.current ? &self.current.value : NOT_FOUND?;
+	return self.current ? &self.current.value : NOT_FOUND~;
 }
 
 fn bool LinkedHashSetIterator.has_next(&self)

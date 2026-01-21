@@ -9,7 +9,7 @@ faultdef INTEPRET_FAILED;
 fn void? print_error_type_at(usz pos, String err)
 {
 	io::printfn("Error at %s: %s", pos, err);
-	return INTEPRET_FAILED?;
+	return INTEPRET_FAILED~;
 }
 
 fn void? brainf(String program)

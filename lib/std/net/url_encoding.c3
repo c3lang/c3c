@@ -115,7 +115,7 @@ fn usz? decode_len(String s, UrlEncodingMode mode) @inline
 		if (c != '%') continue;
 		if (i + 2 >= s.len || !s[i+1].is_xdigit() || !s[i+2].is_xdigit())
 		{
-			return INVALID_HEX?;
+			return INVALID_HEX~;
 		}
 		n++;
 	}

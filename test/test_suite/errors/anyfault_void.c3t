@@ -2,7 +2,7 @@ faultdef FOO, BAR;
 
 fn void? errorThing()
 {
-    return BAR?;
+    return BAR~;
 }
 
 fn void? errorThing2()

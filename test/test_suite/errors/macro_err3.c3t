@@ -7,7 +7,7 @@ faultdef FOO;
 macro test()
 {
 	defer libc::printf("Test2\n");
-	return FOO?;
+	return FOO~;
 }
 
 fn void main()

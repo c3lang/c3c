@@ -3055,7 +3055,7 @@ static void llvm_emit_logical_and_or(GenContext *c, BEValue *be_value, Expr *exp
 
 	LLVMValueRef result_on_skip = LLVMConstInt(c->bool_type, op == BINARYOP_AND ? 0 : 1, 0);
 
-	// We might end this with a jump, eg (foo()? || bar()) where foo() is a macro and guaranteed not to exit.
+	// We might end this with a jump, eg (foo()~ || bar()) where foo() is a macro and guaranteed not to exit.
 	if (!lhs_end_block)
 	{
 		// Just set any value.
@@ -3846,7 +3846,7 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMBasicBlockRef success_end_block = llvm_get_current_block_if_in_use(c);
 
 	// Only jump to phi if we didn't have an immediate jump. That would
-	// for example happen on "{| defer foo(); return Foo.ERR?; |} ?? 123"
+	// for example happen on "{| defer foo(); return Foo.ERR~; |} ?? 123"
 	if (success_end_block)
 	{
 		if (!llvm_emit_br(c, phi_block)) success_end_block = NULL;
@@ -3883,7 +3883,7 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMBasicBlockRef else_block_exit = llvm_get_current_block_if_in_use(c);
 
 	// While the value may not be an optional, we may get a jump
-	// from this construction: foo() ?? (bar()?)
+	// from this construction: foo() ?? (bar()~)
 	// In this case the else block is empty.
 	if (!else_block_exit || !llvm_emit_br(c, phi_block))
 	{

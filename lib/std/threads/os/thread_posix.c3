@@ -31,20 +31,20 @@ alias NativeOnceFlag = Pthread_once_t;
 fn void? NativeMutex.init(&self, MutexType type)
 {
 	Pthread_mutexattr_t attr;
-	if (posix::pthread_mutexattr_init(&attr)) return thread::INIT_FAILED?;
+	if (posix::pthread_mutexattr_init(&attr)) return thread::INIT_FAILED~;
 	defer posix::pthread_mutexattr_destroy(&attr);
 	// TODO: make a fine grained error instead
 	if (type.recursive)
 	{
-		if (posix::pthread_mutexattr_settype(&attr, posix::PTHREAD_MUTEX_RECURSIVE)) return thread::INIT_FAILED?;
+		if (posix::pthread_mutexattr_settype(&attr, posix::PTHREAD_MUTEX_RECURSIVE)) return thread::INIT_FAILED~;
 	}
 	else
 	{
 		$if env::COMPILER_SAFE_MODE:
-			if (posix::pthread_mutexattr_settype(&attr, posix::PTHREAD_MUTEX_ERRORCHECK)) return thread::INIT_FAILED?;
+			if (posix::pthread_mutexattr_settype(&attr, posix::PTHREAD_MUTEX_ERRORCHECK)) return thread::INIT_FAILED~;
 		$endif
 	}
-	if (posix::pthread_mutex_init(&self.mutex, &attr)) return thread::INIT_FAILED?;
+	if (posix::pthread_mutex_init(&self.mutex, &attr)) return thread::INIT_FAILED~;
 	self.initialized = true;
 }
 
@@ -88,7 +88,7 @@ fn void? NativeMutex.lock_timeout(&self, ulong ms)
 	{
 		if (!ms) break;
 		ulong sleep = min(5, ms);
-		if (!libc::nanosleep(&&time::ms(ms).to_timespec(), null)) return thread::LOCK_TIMEOUT?;
+		if (!libc::nanosleep(&&time::ms(ms).to_timespec(), null)) return thread::LOCK_TIMEOUT~;
 		ms -= sleep;
 	}
 	switch (result)
@@ -97,7 +97,7 @@ fn void? NativeMutex.lock_timeout(&self, ulong ms)
 			return;
 		case errno::EBUSY:
 		case errno::ETIMEDOUT:
-			return thread::LOCK_TIMEOUT?;
+			return thread::LOCK_TIMEOUT~;
 		default:
 			return unreachable("Invalid lock %d", result);
 	}
@@ -121,7 +121,7 @@ fn void NativeMutex.unlock(&self)
 
 fn void? NativeConditionVariable.init(&cond)
 {
-	if (posix::pthread_cond_init(cond, null)) return thread::INIT_FAILED?;
+	if (posix::pthread_cond_init(cond, null)) return thread::INIT_FAILED~;
 }
 
 fn void NativeConditionVariable.destroy(&cond)
@@ -163,7 +163,7 @@ fn void? NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
 *>
 fn void? NativeConditionVariable.wait_timeout_duration(&cond, NativeMutex* mtx, Duration duration)
 {
-  if (duration < time::DURATION_ZERO) return thread::WAIT_TIMEOUT?;
+  if (duration < time::DURATION_ZERO) return thread::WAIT_TIMEOUT~;
 	Time time = time::now() + duration;
 	return cond.wait_until(mtx, time) @inline;
 }
@@ -177,13 +177,13 @@ fn void? NativeConditionVariable.wait_until(&cond, NativeMutex* mtx, Time time)
 	switch (posix::pthread_cond_timedwait(cond, &mtx.mutex, &&time.to_timespec()))
 	{
 		case errno::ETIMEDOUT:
-			return thread::WAIT_TIMEOUT?;
+			return thread::WAIT_TIMEOUT~;
 		case errno::OK:
 			return;
 		default:
 			$if(env::OPENBSD):
 				// TODO: Investigate why this doesn't work correctly on openbsd.
-				return thread::WAIT_TIMEOUT?;
+				return thread::WAIT_TIMEOUT~;
 			$else
 				abort("pthread_cond_timedwait failed, invalid value");
 			$endif
@@ -205,7 +205,7 @@ fn void? NativeThread.create(&thread, ThreadFn thread_fn, void* arg)
 	thread.arg = arg;
 	if (posix::pthread_create(&thread.pthread, null, &callback, thread) != 0)
 	{
-		return thread::INIT_FAILED?;
+		return thread::INIT_FAILED~;
 	}
 }
 
@@ -259,6 +259,6 @@ fn void native_thread_yield()
 fn void? native_sleep_nano(NanoDuration nano)
 {
 	if (nano <= time::NANO_DURATION_ZERO) return;
-	if (libc::nanosleep(&&nano.to_timespec(), null)) return thread::INTERRUPTED?;
+	if (libc::nanosleep(&&nano.to_timespec(), null)) return thread::INTERRUPTED~;
 }
 

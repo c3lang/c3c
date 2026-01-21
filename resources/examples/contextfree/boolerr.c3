@@ -29,7 +29,7 @@ fn void? Summary.print(Summary* s, OutStream out)
 
 fn Doc? read_doc(String url)
 {
-	if (url.contains("fail")) return BAD_READ?;
+	if (url.contains("fail")) return BAD_READ~;
 	if (url.contains("head-missing")) return { };
 	if (url.contains("title-missing")) return { .head = maybe::value{Head}({}) };
 	if (url.contains("title-empty")) return { .head = maybe::value{Head}({ .title = maybe::value{String}("")}) };
@@ -52,7 +52,7 @@ fn Summary read_and_build_summary(String url)
 fn bool? is_title_non_empty(Doc doc)
 {
 	String? title = doc.head.get().title.get();
-	if (catch title) return TITLE_MISSING?;
+	if (catch title) return TITLE_MISSING~;
 	return title.len > 0;
 }
 

@@ -881,6 +881,10 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		{
 			if (is_zero_init)
 			{
+				if (type_len_is_inferred(flattened->array.base))
+				{
+					RETURN_SEMA_ERROR(expr, "Inferring the slice inner type from an empty initializer is not possible.");
+				}
 				expr_rewrite_const_empty_slice(expr, to);
 				return true;
 			}

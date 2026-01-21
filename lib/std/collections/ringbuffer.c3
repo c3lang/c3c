@@ -48,7 +48,7 @@ fn Element? RingBuffer.pop(&self)
 	switch
 	{
 		case self.written == 0:
-			return NO_MORE_ELEMENT?;
+			return NO_MORE_ELEMENT~;
 		case self.written < self.buf.len:
 			self.written--;
 			return self.buf[self.written];

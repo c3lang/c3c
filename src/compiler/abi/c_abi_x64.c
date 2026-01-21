@@ -485,8 +485,13 @@ bool x64_contains_float_at_offset(LoweredType *type, unsigned offset)
 
 static Type *x64_get_fp_type_at_offset(Type *type, unsigned ir_offset)
 {
+	while (type->type_kind == TYPE_UNION)
+	{
+		Decl *decl = type->decl;
+		type = decl->strukt.members[decl->strukt.union_rep]->type;
+	}
 	if (!ir_offset && type_is_float(type)) return type;
-	if (type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_UNION)
+	if (type->type_kind == TYPE_STRUCT)
 	{
 		Decl *element = x64_get_member_at_offset(type->decl, ir_offset);
 		return x64_get_fp_type_at_offset(lowered_member_type(element), ir_offset - element->offset);

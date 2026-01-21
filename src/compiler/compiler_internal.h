@@ -4247,7 +4247,6 @@ INLINE void expr_rewrite_const_slice(Expr *expr, Type *type, ConstInitializer *i
 
 INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type)
 {
-	ASSERT(type->type_kind != TYPE_UNTYPED_LIST);
 	expr->expr_kind = EXPR_CONST;
 	expr->const_expr.const_kind = CONST_TYPEID;
 	expr->const_expr.typeid = type->canonical;

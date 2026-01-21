@@ -320,7 +320,7 @@ fn Matrix4x4 Matrix4x4.adjoint(&self)
 fn Matrix2x2? Matrix2x2.inverse(&self)
 {
 	Real det = self.determinant();
-	if (det == 0) return math::MATRIX_INVERSE_DOESNT_EXIST?;
+	if (det == 0) return math::MATRIX_INVERSE_DOESNT_EXIST~;
 	Matrix2x2 adj = self.adjoint();
 	return adj.component_mul(1 / det).transpose();
 }
@@ -328,7 +328,7 @@ fn Matrix2x2? Matrix2x2.inverse(&self)
 fn Matrix3x3? Matrix3x3.inverse(&self)
 {
 	Real det = self.determinant();
-	if (det == 0) return math::MATRIX_INVERSE_DOESNT_EXIST?;
+	if (det == 0) return math::MATRIX_INVERSE_DOESNT_EXIST~;
 	Matrix3x3 adj = self.adjoint();
 	return adj.component_mul(1 / det).transpose();
 }
@@ -336,7 +336,7 @@ fn Matrix3x3? Matrix3x3.inverse(&self)
 fn Matrix4x4? Matrix4x4.inverse(&self)
 {
 	Real det = self.determinant();
-	if (det == 0) return math::MATRIX_INVERSE_DOESNT_EXIST?;
+	if (det == 0) return math::MATRIX_INVERSE_DOESNT_EXIST~;
 	Matrix4x4 adj = self.adjoint();
 	return adj.component_mul(1 / det).transpose();
 }

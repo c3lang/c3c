@@ -120,7 +120,7 @@ fn ElementType? qselect(ListType list, isz low, isz high, isz k, CmpFn cmp, Cont
 			}
 		}
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 macro isz @partition(ListType list, isz l, isz h, CmpFn cmp, Context context)

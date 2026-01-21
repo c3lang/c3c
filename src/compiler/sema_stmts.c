@@ -2432,10 +2432,10 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 		*if_chained = true;
 		return true;
 	}
-	if (is_range && !first_is_const)
+	if (is_range)
 	{
-		sema_error_at(context, extend_span_with_token(expr->span, to_expr->span), "Ranges must be constant integers.");
-		return false;
+		bool second_is_const = sema_cast_const(to_expr) && (expr_is_const_int(to_expr) || expr_is_const_enum(to_expr));
+		if (!first_is_const || !second_is_const) RETURN_SEMA_ERROR(first_is_const ? to_expr : expr, "Ranges must be constant integers or enum values, but this is not an integer / enum constant.");
 	}
 	bool is_enum = expr_is_const_enum(expr);
 	ExprConst *const_expr = &expr->const_expr;

@@ -9,8 +9,7 @@ fn void main()
 }
 
 /* #expect: test.ll
-
-@test.fooy = local_unnamed_addr global [2 x i8] c"\DE\AD", align 2
+@test.fooy = local_unnamed_addr global <2 x i8> <i8 -34, i8 -83>, align 2
 @test.fooy2 = local_unnamed_addr global <2 x i8> <i8 -34, i8 -83>, align 2
 
 define void @test.main() #0 {
