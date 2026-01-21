@@ -251,6 +251,14 @@ Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
 			expr->type = type;
 			break;
 		}
+		case TYPE_CONST_ENUM:
+		{
+			Decl *decl = type->decl;
+			if (!decl->is_substruct) return NULL;
+			expr = expr_copy(parent);
+			expr->type = decl->enums.type_info->type;
+			return expr;
+		}
 		case TYPE_ENUM:
 		{
 			Decl *decl = type->decl;
