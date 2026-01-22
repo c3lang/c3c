@@ -108,6 +108,7 @@
 - Attrdef eval environment lacked rtype, causing error on invalid args #2797
 - $typeof(<type>) returns typeinfo, causing errors #2795.
 - Empty ichar slice + byte concatenation hit an assert. #2789
+- Remove dependency on test tmp library for stdlib compiler tests. #2800
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
