@@ -101,6 +101,7 @@
 - Casting const bytes to vector with different element size was broken #2787
 - Unable to access fields of a const inline enum with an aggregate underlying type. #2802
 - Using an optional type as generic parameter was not properly caught #2799
+- Instantiating an alias of a user-defined type was not properly caught #2798
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.

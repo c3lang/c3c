@@ -442,15 +442,15 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	{
 		RETURN_SEMA_ERROR(inner, "Parameterization required a concrete type name here.");
 	}
-	if (inner->resolve_status == RESOLVE_DONE)
+	switch (inner->resolve_status)
 	{
-		if (!type_is_user_defined(inner->type))
-		{
-			RETURN_SEMA_ERROR(inner, "A user defined type was expected here, not %s.", type_quoted_error_string(inner->type));
-		}
+		case RESOLVE_DONE:
+			RETURN_SEMA_ERROR(inner, "A user-defined generic type was expected here, but the type was %s.", type_quoted_error_string(inner->type));
+		case RESOLVE_RUNNING:
+			RETURN_SEMA_ERROR(inner, "Resolving the type %s entered a recursive loop.", type_quoted_error_string(inner->type));
+		default:
+			break;
 	}
-	ASSERT_SPAN(inner, inner->resolve_status == RESOLVE_NOT_DONE);
-
 	bool was_recursive = false;
 	if (compiler.generic_depth >= MAX_GENERIC_DEPTH)
 	{
