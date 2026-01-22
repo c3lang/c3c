@@ -5438,6 +5438,10 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 				return poisoned_decl;
 			}
 			Type *type = param->const_expr.typeid;
+			if (type_is_optional(type))
+			{
+				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "The generic type can never be an optional, please use only non-optional types.");
+			}
 			if (type_is_func_ptr(type))
 			{
 				if (!sema_resolve_type_decl(context, type->pointer)) return poisoned_decl;
@@ -5447,18 +5451,20 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 		{
 			if (is_type)
 			{
-				SEMA_ERROR(param, "Expected a type, not a value, for parameter '%s'.", param_name);
-				return poisoned_decl;
+				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "Expected a type, not a value, for parameter '%s'.", param_name);
 			}
 			if (!sema_analyse_ct_expr(context, param)) return poisoned_decl;
 			Type *type = param->type->canonical;
 			if (type->type_kind == TYPE_TYPEDEF) type = type_flatten(type);
+			if (IS_OPTIONAL(param))
+			{
+				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "The parameter may never be an optional value.");
+			}
 
 			bool is_enum_or_fault = type_kind_is_enum_or_fault(type->type_kind);
 			if (!type_is_integer_or_bool_kind(type) && !is_enum_or_fault)
 			{
-				SEMA_ERROR(param, "Only integer, bool, fault and enum values may be generic arguments.");
-				return poisoned_decl;
+				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "Only integer, bool, fault and enum values may be generic arguments.");
 			}
 			ASSERT(expr_is_const(param));
 		}
