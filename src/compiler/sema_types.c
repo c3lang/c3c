@@ -300,7 +300,7 @@ INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, Res
 {
 	SEMA_DEPRECATED(type_info, "$evaltype is deprecated, use $typefrom instead.");
 	Expr *expr = type_info->unresolved_type_expr;
-	Expr *inner = sema_ct_eval_expr(context, true, expr, true);
+	Expr *inner = sema_ct_eval_expr(context, CT_EVAL_TYPE, expr, true);
 	if (!inner || !expr_ok(inner)) return type_info_poison(type_info);
 	if (inner->expr_kind != EXPR_TYPEINFO)
 	{

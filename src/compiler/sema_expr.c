@@ -400,13 +400,22 @@ NO_PATH:
 	return NULL;
 }
 
-Expr *sema_ct_eval_expr(SemaContext *context, bool is_type_eval, Expr *inner, bool report_missing)
+Expr *sema_ct_eval_expr(SemaContext *context, CtEvalKind eval_kind, Expr *inner, bool report_missing)
 {
 	if (!sema_analyse_ct_expr(context, inner)) return NULL;
 	if (!expr_is_const_string(inner))
 	{
-		SEMA_ERROR(inner, "'%s' expects a constant string as the argument.", is_type_eval ? "$evaltype" : "$eval");
-		return poisoned_expr;
+		switch (eval_kind)
+		{
+			case CT_EVAL_TYPE:
+				RETURN_VAL_SEMA_ERROR(poisoned_expr, inner, "'$evaltype' expects a constant string as the argument.");
+			case CT_EVAL_IDENTIFIER:
+				RETURN_VAL_SEMA_ERROR(poisoned_expr, inner, "'$eval' expects a constant string as the argument.");
+			case CT_EVAL_IMPLICIT_IDENTIFIER:
+				RETURN_VAL_SEMA_ERROR(poisoned_expr, inner, "A constant string was expected as the argument.");
+			default:
+				UNREACHABLE
+		}
 	}
 	return sema_resolve_string_ident(context, inner, report_missing);
 }
@@ -4847,7 +4856,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
  * 3. .@foo -> It is a macro.
  * 4. .#bar -> It is an identifier to resolve as a member or a function
  * 5. .$eval(...) -> resolve the eval and retry.
- * 6. .$ident -> It is a child to resolve as CT param
+ * 6. .$ident -> resolve as `$eval($ident)`
  * 7. .$Type -> It is a child to resolve as CT type param
  */
  Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing)
@@ -4876,8 +4885,17 @@ RETRY:
 			if (child->unresolved_ident_expr.path) break;
 			return child;
 		case EXPR_CT_IDENT:
-			if (child->resolve_status == RESOLVE_DONE) goto ALREADY_RESOLVED;
-			return child;
+		{
+			Expr *result = sema_ct_eval_expr(context, CT_EVAL_IMPLICIT_IDENTIFIER, child, missing == NULL);
+			if (!expr_ok(result)) return NULL;
+			if (!result)
+			{
+				if (missing) *missing = true;
+				return NULL;
+			}
+			expr_replace(child, result);
+			goto RETRY;
+		}
 		case EXPR_TYPEINFO:
 			if (child->type_expr->kind == TYPE_INFO_CT_IDENTIFIER) return child;
 			break;
@@ -4885,7 +4903,7 @@ RETRY:
 		{
 			ASSERT_SPAN(child, child->resolve_status != RESOLVE_DONE);
 			// Only report missing if missing var is NULL
-			Expr *result = sema_ct_eval_expr(context, false, child->inner_expr, missing == NULL);
+			Expr *result = sema_ct_eval_expr(context, CT_EVAL_IDENTIFIER, child->inner_expr, missing == NULL);
 			if (!expr_ok(result)) return NULL;
 			if (!result)
 			{
@@ -10529,7 +10547,7 @@ RETRY:
 		case TYPE_INFO_EVALTYPE:
 		{
 			Expr *expr = type_info->unresolved_type_expr;
-			expr = sema_ct_eval_expr(context, true, expr, false);
+			expr = sema_ct_eval_expr(context, CT_EVAL_TYPE, expr, false);
 			if (!expr_ok(expr)) return poisoned_type;
 			if (!expr) return NULL;
 			if (expr->expr_kind != EXPR_TYPEINFO)
@@ -11088,7 +11106,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			}
 			case EXPR_CT_EVAL:
 			{
-				Expr *eval = sema_ct_eval_expr(active_context, "$eval", main_expr->inner_expr, false);
+				Expr *eval = sema_ct_eval_expr(active_context, CT_EVAL_IDENTIFIER, main_expr->inner_expr, false);
 				if (!expr_ok(eval)) return false;
 				if (eval)
 				{
@@ -11499,7 +11517,7 @@ static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *ex
 
 static inline bool sema_expr_resolve_ct_eval(SemaContext *context, Expr *expr)
 {
-	Expr *result = sema_ct_eval_expr(context, false, expr->inner_expr, true);
+	Expr *result = sema_ct_eval_expr(context, CT_EVAL_IDENTIFIER, expr->inner_expr, true);
 	if (!result) return false;
 	if (result->expr_kind == EXPR_TYPEINFO)
 	{
