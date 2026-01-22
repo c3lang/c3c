@@ -3604,6 +3604,8 @@ static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 {
 	Expr *tag = exprptr(expr->call_expr.function);
 	expr->call_expr.arguments = sema_expand_vasplat_exprs(context, expr->call_expr.arguments);
+	Decl *decl = tag->type_call_expr.type;
+	if (decl && !sema_analyse_decl(context, decl)) return false;
 	switch (tag->type_call_expr.property)
 	{
 		case TYPE_PROPERTY_FROM_ORDINAL:
@@ -3626,7 +3628,6 @@ static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 	{
 		RETURN_SEMA_ERROR(key, "The tag name should be a string constant.");
 	}
-	Decl *decl = tag->type_call_expr.type;
 	const char *tagname = key->const_expr.bytes.ptr;
 	if (!decl) goto NOT_FOUND;
 	ASSERT_SPAN(expr, decl->resolved_attributes);

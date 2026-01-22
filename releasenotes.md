@@ -104,6 +104,7 @@
 - Using an optional type as generic parameter was not properly caught #2799
 - Instantiating an alias of a user-defined type was not properly caught #2798
 - Too deeply nested scopes was a fatal crash and not a regular semantic error. #2796
+- Recursive definition of tag not detected with nested tag/tagof #2790
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
