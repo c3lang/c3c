@@ -533,7 +533,8 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		if (!result) return false;
 		bool is_bitmember = member && member->decl_kind == DECL_VAR && member->var.kind == VARDECL_BITMEMBER;
 		Expr *value = expr->designator_expr.value;
-		if (!value && is_bitmember && member->var.start_bit == member->var.end_bit && type_flatten(result) == type_bool) {
+		if (!value && is_bitmember && member->var.start_bit == member->var.end_bit && type_flatten(result) == type_bool)
+		{
 			ASSERT(is_bitstruct);
 			value = expr_new_const_bool(INVALID_SPAN, type_bool, true);
 			expr->designator_expr.value = value;

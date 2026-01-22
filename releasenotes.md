@@ -107,6 +107,7 @@
 - Recursive definition of tag not detected with nested tag/tagof #2790
 - Attrdef eval environment lacked rtype, causing error on invalid args #2797
 - $typeof(<type>) returns typeinfo, causing errors #2795.
+- Empty ichar slice + byte concatenation hit an assert. #2789
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.

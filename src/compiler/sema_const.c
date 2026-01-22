@@ -146,6 +146,8 @@ static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *
 	ArraySize len = left->const_expr.bytes.len;
 	bool is_bytes = left->const_expr.const_kind == CONST_BYTES;
 	Type *indexed = type_get_indexed_type(left->type);
+	bool const_cast = sema_cast_const(right);
+	ASSERT(const_cast);
 	const char *left_bytes = left->const_expr.bytes.ptr;
 	RETRY:;
 	switch (right->const_expr.const_kind)
