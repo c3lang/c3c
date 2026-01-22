@@ -23,11 +23,11 @@
 #define RETURN_VAL_SEMA_ERROR(val__, _node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return (val__); } while (0)
 #define RETURN_NULL_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return NULL; } while (0)
 #define RETURN_SEMA_ERROR_AT(span__, ...) do { sema_error_at(context, span__, __VA_ARGS__); return false; } while (0)
-#define SCOPE_OUTER_START do { DynamicScope stored_scope = context->active_scope; context_change_scope_with_flags(context, SCOPE_NONE);
+#define SCOPE_OUTER_START(span__) do { DynamicScope stored_scope = context->active_scope; context_change_scope_with_flags(context, SCOPE_NONE, span__);
 #define SCOPE_OUTER_END ASSERT(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = stored_scope; } while(0)
-#define SCOPE_START SCOPE_START_WITH_FLAGS(SCOPE_NONE)
-#define SCOPE_START_WITH_FLAGS(flags) do { DynamicScope old_scope = context->active_scope; context_change_scope_with_flags(context, flags);
-#define SCOPE_START_WITH_LABEL(label) do { DynamicScope old_scope = context->active_scope; context_change_scope_for_label(context, label);
+#define SCOPE_START(span__) SCOPE_START_WITH_FLAGS(SCOPE_NONE, span__)
+#define SCOPE_START_WITH_FLAGS(flags, span__) do { DynamicScope old_scope = context->active_scope; context_change_scope_with_flags(context, flags, span__);
+#define SCOPE_START_WITH_LABEL(label, span__) do { DynamicScope old_scope = context->active_scope; context_change_scope_for_label(context, label, span__);
 #define SCOPE_END ASSERT(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = old_scope; } while(0)
 #define SCOPE_POP_ERROR() ((bool)(context->active_scope = old_scope, false))
 #define SCOPE_ERROR_END_OUTER() do { context->active_scope = stored_scope; } while(0)
@@ -51,8 +51,8 @@ const char *context_filename(SemaContext *context);
 AstId context_get_defers(SemaContext *context, AstId defer_bottom, bool is_success);
 void context_pop_defers(SemaContext *context, AstId *next);
 void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast);
-void context_change_scope_for_label(SemaContext *context, DeclId label);
-void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags);
+void context_change_scope_for_label(SemaContext *context, DeclId label, SourceSpan span);
+void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, SourceSpan span);
 SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit);
 
 TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref);

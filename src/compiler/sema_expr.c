@@ -1714,7 +1714,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 			new_context->inlined_at = &inlined_at;
 		}
 		bool success;
-		SCOPE_START
+		SCOPE_START(arg->span)
 			new_context->original_module = context->original_module;
 			success = sema_analyse_parameter(new_context, arg, param, callee->definition, optional, no_match_ref,
 											 callee->macro, false);
@@ -2869,7 +2869,7 @@ static inline bool sema_expr_setup_call_analysis(SemaContext *context, CalledDec
 
 	macro_context->block_exit_ref = block_exit_ref;
 
-	context_change_scope_with_flags(macro_context, SCOPE_MACRO);
+	context_change_scope_with_flags(macro_context, SCOPE_MACRO, call_expr->span);
 	macro_context->block_return_defer = macro_context->active_scope.defer_last;
 
 	return true;
@@ -3051,7 +3051,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	DynamicScope old_scope = context->active_scope;
 	// Create a scope, since the macro itself will not.
-	context_change_scope_with_flags(context, SCOPE_NONE);
+	context_change_scope_with_flags(context, SCOPE_NONE, call_expr->span);
 	SemaContext macro_context;
 
 	Type *rtype = typeget(sig->rtype);
@@ -3371,7 +3371,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 	call->body_expansion_expr.values = args;
 	call->body_expansion_expr.declarations = macro_context->yield_params;
 	AstId last_defer = context->active_scope.defer_last;
-	SCOPE_START
+	SCOPE_START(call->span);
 		unsigned ct_context = sema_context_push_ct_stack(context);
 		if (macro_defer)
 		{
@@ -8586,7 +8586,7 @@ static inline bool sema_rewrite_expr_as_macro_block(SemaContext *context, Expr *
 	bool success;
 	Ast *compound_stmt = ast_new(AST_COMPOUND_STMT, expr->span);
 	compound_stmt->compound_stmt.first_stmt = start;
-	SCOPE_START_WITH_FLAGS(SCOPE_MACRO)
+	SCOPE_START_WITH_FLAGS(SCOPE_MACRO, compound_stmt->span)
 		success = sema_analyse_stmt_chain(context, compound_stmt);
 	SCOPE_END;
 	context->expected_block_type = old_expected_block;
