@@ -341,10 +341,12 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 	{
 		case STORAGE_ERROR:
 			return false;
+		case STORAGE_COMPILE_TIME:
+			if (expr_type->type_kind == TYPE_TYPEINFO) expr_type = type_typeid;
+			FALLTHROUGH;
 		case STORAGE_NORMAL:
 		case STORAGE_VOID:
 		case STORAGE_UNKNOWN:
-		case STORAGE_COMPILE_TIME:
 			type_info->type = expr_type;
 			return true;
 		case STORAGE_WILDCARD:

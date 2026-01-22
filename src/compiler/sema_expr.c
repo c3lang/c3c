@@ -6900,7 +6900,6 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool
 	{
 		RETURN_SEMA_ERROR(type_info, "Casting to an optional type is not allowed.");
 	}
-
 	if (invalid_cast_ref)
 	{
 		if (!cast_explicit_silent(context, inner, target_type))
