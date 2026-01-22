@@ -1,5 +1,5 @@
 import std;
-macro void test(int[*][6] a)
+macro void test(int[2][6] a)
 {
 }
 fn void main()

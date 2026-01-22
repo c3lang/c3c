@@ -13,6 +13,7 @@ INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info);
 INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
 INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
 INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info);
+static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info, Type *inner);
 static int compare_function(Signature *sig, FunctionPrototype *proto);
 
 static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
@@ -22,6 +23,8 @@ static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_in
 	{
 		return type_info_poison(type_info);
 	}
+	if (!sema_check_ptr_type(context, type_info, type_info->pointer->type)) return type_info_poison(type_info);
+
 	// Construct the type after resolving the underlying type.
 	type_info->type = type_get_ptr(type_info->pointer->type);
 	type_info->resolve_status = RESOLVE_DONE;
@@ -98,6 +101,10 @@ static inline bool sema_check_array_type(SemaContext *context, TypeInfo *origina
 {
 	Type *distinct_base = type_flatten(base);
 
+	if (type_is_infer_type(distinct_base))
+	{
+		SEMA_DEPRECATED(original_info, "Use of inferred inner types is not well supported and support will be removed in 0.8.0.");
+	}
 	// We don't want to allow arrays with flexible members
 	if (distinct_base->type_kind == TYPE_STRUCT)
 	{
@@ -475,6 +482,23 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	return true;
 }
 
+static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info, Type *inner)
+{
+	CanonicalType *type = inner->canonical;
+	switch (type->type_kind)
+	{
+		case CT_TYPES:
+			if (type_is_infer_type(type))
+			{
+				SEMA_DEPRECATED(type_info, "Using an inferred type as a pointer is not supported and will be removed in 0.8.0.");
+				return true;
+			}
+			RETURN_SEMA_ERROR(type_info, "Pointers to %s are not supported.", type_quoted_error_string(inner));
+		default:
+			return true;
+	}
+}
+
 static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
 	// Ok, already resolved.
@@ -567,6 +591,7 @@ APPEND_QUALIFIERS:
 		case TYPE_COMPRESSED_NONE:
 			break;
 		case TYPE_COMPRESSED_PTR:
+			if (!sema_check_ptr_type(context, type_info, type_info->type)) return type_info_poison(type_info);
 			type_info->type = type_get_ptr(type_info->type);
 			break;
 		case TYPE_COMPRESSED_SUB:
@@ -577,9 +602,11 @@ APPEND_QUALIFIERS:
 			type_info->type = type_get_ptr(type_info->type);
 			break;
 		case TYPE_COMPRESSED_PTRPTR:
+			if (!sema_check_ptr_type(context, type_info, type_info->type)) return type_info_poison(type_info);
 			type_info->type = type_get_ptr(type_get_ptr(type_info->type));
 			break;
 		case TYPE_COMPRESSED_PTRSUB:
+			if (!sema_check_ptr_type(context, type_info, type_info->type)) return type_info_poison(type_info);
 			type_info->type = type_get_slice(type_get_ptr(type_info->type));
 			break;
 		case TYPE_COMPRESSED_SUBSUB:
