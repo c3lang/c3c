@@ -30,6 +30,6 @@ fn void pointer_add_sub_diff()
 	assert(w == { -1, 2 });
 	int*[<2>] zz = y - (y - yy);
 	assert(zz[0] == &a[1] && zz[1] == &a[2]);
-	int[*]*[<2>] g = (int[2]*[<2>]) { null, null };
-	int[*]*[<*>] g2 = (int[2]*[<2>]) { null, null };
+	int[2]*[<2>] g = { null, null };
+	int[2]*[<2>] g2 = { null, null };
 }

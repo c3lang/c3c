@@ -20,6 +20,8 @@
 - Module-based generics using {} is deprecated.
 - Create optional with `~` instead of `?`. `return io::EOF?;` becomes `return io::EOF~`.
 - Deprecated use of `?` to create optional.
+- Make `foo.$abc` implicitly mean `foo.eval("$abc")`.
+- Deprecating multi-level array length inference. `int[*][*]` is deprecated and will be removed 0.8.0.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -100,6 +102,14 @@
 - `int? ?` was not correctly handled. #2786
 - Casting const bytes to vector with different element size was broken #2787
 - Unable to access fields of a const inline enum with an aggregate underlying type. #2802
+- Using an optional type as generic parameter was not properly caught #2799
+- Instantiating an alias of a user-defined type was not properly caught #2798
+- Too deeply nested scopes was a fatal crash and not a regular semantic error. #2796
+- Recursive definition of tag not detected with nested tag/tagof #2790
+- Attrdef eval environment lacked rtype, causing error on invalid args #2797
+- $typeof(<type>) returns typeinfo, causing errors #2795.
+- Empty ichar slice + byte concatenation hit an assert. #2789
+- Remove dependency on test tmp library for stdlib compiler tests. #2800
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
