@@ -21,6 +21,14 @@ fn void crypto_init_win32_random() @if(env::WIN32) @init
 fn void? crypto_secure_random(char[] buffer)
 {
     $switch:
+        $case env::LINUX && env::X86_64:
+            isz result = $$syscall(318, (uptr) buffer.ptr, buffer.len, 0);
+            if (result != buffer.len) {
+                return SECURE_RANDOM_UNAVAILABLE~;
+            }
+
+            return;
+
         $case env::ANDROID:
         $case env::BSD_FAMILY:
         $case env::DARWIN:
