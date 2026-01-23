@@ -14,7 +14,11 @@ macro void countingsort(list, key_fn = ...) @builtin
 {
 	var list_length = $kindof(list) == SLICE ??? list.len : lengthof(*list);
 	var $ListType = $kindof(list) == SLICE ??? $typeof(list) : $typeof(*list);
-	cs::_csort{$ListType, $defined(key_fn) ??? $typeof(key_fn) : void*}(list, 0, list_length, ~(uint)0, ...key_fn);
+	$if $defined(key_fn):
+		cs::csort{$ListType, $typeof(key_fn)}(list, 0, list_length, key_fn, ~(uint)0);
+	$else
+		cs::csort{$ListType, void*}(list, 0, list_length, ~(uint)0);
+	$endif
 }
 
 macro void insertionsort_indexed(list, start, end, cmp = ..., context = ...) @builtin
