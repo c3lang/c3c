@@ -1,8 +1,5 @@
 module std::sort;
 
-<* A `sort`-specific stand-in for the deprecated `EmptySlot` builtin type. *>
-typedef NoTypeAvailable = uint;
-
 macro bool @list_is_by_ref(#list) @const
 {
 	return $kindof(#list) == SLICE ||| ($kindof(#list) == POINTER &&& $kindof(*#list) != SLICE);

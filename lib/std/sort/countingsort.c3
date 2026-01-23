@@ -1,10 +1,9 @@
 module std::sort;
 import std::sort::is;
-import std::sort::cs;
+import std::sort::cs @public;
 import std::sort::qs;
 
 <*
-
  Sort list using the counting sort algorithm.
 
  @require @list_is_by_ref(list) : "Expected the list to be passed by reference"
@@ -15,11 +14,7 @@ macro void countingsort(list, key_fn = ...) @builtin
 {
 	var list_length = $kindof(list) == SLICE ??? list.len : lengthof(*list);
 	var $ListType = $kindof(list) == SLICE ??? $typeof(list) : $typeof(*list);
-	$if $defined(key_fn):
-		cs::csort{$ListType, $typeof(key_fn)}(list, 0, list_length, key_fn, ~((uint)0));
-	$else
-		cs::csort{$ListType, NoTypeAvailable}(list, 0, list_length, ~((uint)0));
-	$endif
+	cs::_csort{$ListType, $defined(key_fn) ??? $typeof(key_fn) : void*}(list, 0, list_length, ~(uint)0, ...key_fn);
 }
 
 macro void insertionsort_indexed(list, start, end, cmp = ..., context = ...) @builtin
@@ -54,7 +49,7 @@ alias Ranges @private = usz[257];
 alias Indexs @private = char[256];
 alias ElementType = $typeof((Type){}[0]);
 
-const bool NO_KEY_FN @private = KeyFn == std::sort::NoTypeAvailable;
+const bool NO_KEY_FN @private = KeyFn.kindof != FUNC;
 const bool KEY_BY_VALUE @private = NO_KEY_FN ||| $defined($typefrom(KeyFn.paramsof[0].type) x = (ElementType){});
 const bool LIST_HAS_REF @private = $defined(&(Type){}[0]);
 
@@ -91,7 +86,7 @@ fn void csort(ListType list, usz low, usz high, uint byte_idx) @if (NO_KEY_FN)
  In other words, `csort(a_list, low, high, key_fn: some_fn, byte_idx: index_val)` breaks the existing API
  since explicitly naming `byte_idx` becomes a requirement.
 *>
-macro void _csort(ListType list, usz low, usz high, uint byte_idx, KeyFn key_fn = ...) @local
+macro void _csort(ListType list, usz low, usz high, uint byte_idx, KeyFn key_fn = ...) @private
 {
 	if (high <= low) return;
 	$if NO_KEY_FN:
