@@ -24,11 +24,15 @@ macro foo(a, #b = EMPTY_MACRO_SLOT)
 	$endif
 }
 *>
-const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
+const EmptySlot EMPTY_MACRO_SLOT @builtin @deprecated("Use `#arg = ...` instead.") = null;
 
 typedef EmptySlot = void*;
-macro bool @is_empty_macro_slot(#arg) @const @builtin => $typeof(#arg) == EmptySlot;
-macro bool @is_valid_macro_slot(#arg) @const @builtin => $typeof(#arg) != EmptySlot;
+macro bool @is_empty_macro_slot(#arg) @const @builtin
+		@deprecated("Use `#arg = ...` to define an optional macro slot, and `$defined(#arg)` to detect whether the argument is set.")
+	=> $typeof(#arg) == EmptySlot;
+macro bool @is_valid_macro_slot(#arg) @const @builtin
+		@deprecated("Use `#arg = ...` to define an optional macro slot, and `$defined(#arg)` to detect whether the argument is set.")
+	=> $typeof(#arg) != EmptySlot;
 
 <*
  Returns a random value at compile time.
@@ -453,7 +457,7 @@ macro @prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write =
 
 <*
  Shuffle a vector by its index
- 
+
  int[<4>] a = { 1, 2, 3, 4 };
  assert(swizzle(a, 0, 1, 1, 3) == (int[<4>]) { 1, 2, 2, 4 });
 *>
