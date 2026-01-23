@@ -261,7 +261,10 @@ jobs:
             C3_LLD_DIR=""
             C3_LLD_INCLUDE_DIR=""
           fi
-          cmake -B build -G Ninja -DC3_LLVM_VERSION=$C3_LLVM_VER -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DC3_LLD_DIR=$C3_LLD_DIR -DC3_LLD_INCLUDE_DIR=$C3_LLD_INCLUDE_DIR
+          cmake -B build -G Ninja -DC3_LLVM_VERSION=$C3_LLVM_VER -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DC3_LLD_DIR=$C3_LLD_DIR -DC3_LLD_INCLUDE_DIR=$C3_LLD_INCLUDE_DIR \
+            -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
           cmake --build build
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
