@@ -65,7 +65,11 @@ static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 	{
 		size_t to_commit = blocks_to_allocate * COMMIT_PAGE_SIZE;
 		void *res = VirtualAlloc(((char*)vmem->ptr) + vmem->committed, to_commit, MEM_COMMIT, PAGE_READWRITE);
-		if (!res) FATAL_ERROR("Failed to allocate more memory.");
+		if (!res)
+		{
+			error_exit("⚠️Fatal Error! The compiler ran out of memory: more than %u MB was allocated from a single memory arena, "
+			"which was rejected. Perhaps you called some recursive macro?", (unsigned)(allocated_after / (1024 * 1024)));
+		}
 		vmem->committed += to_commit;
 	}
 #endif
