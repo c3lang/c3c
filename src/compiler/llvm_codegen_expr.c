@@ -780,7 +780,7 @@ static inline void llvm_emit_subscript(GenContext *c, BEValue *value, Expr *expr
 	}
 	llvm_emit_subscript_addr(c, value, expr);
 
-	if (safe_mode_enabled() && value->alignment > 1 && !c->emitting_load_store_check && parent_type->type_kind != TYPE_ARRAY)
+	if (!llvm_is_global_eval(c) && safe_mode_enabled() && value->alignment > 1 && !c->emitting_load_store_check && parent_type->type_kind != TYPE_ARRAY)
 	{
 		LLVMValueRef as_int = LLVMBuildPtrToInt(c->builder, value->value, llvm_get_type(c, type_usz), "");
 		LLVMValueRef align = llvm_const_int(c, type_usz, value->alignment);
