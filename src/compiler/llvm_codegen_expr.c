@@ -5817,7 +5817,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 			for (unsigned i = 0; i < vararg_count; i++)
 			{
 				ABIArgInfo *info = abi_varargs[index];
-				BEValue value_copy = values[i + param_count];
+				BEValue value_copy = values[i + param_count - start];
 				llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy);
 				index++;
 			}
@@ -5828,7 +5828,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 			for (unsigned i = 0; i < vararg_count; i++)
 			{
 				REMINDER("Varargs should be expanded correctly");
-				arg_values[arg_count++] = llvm_load_value_store(c, &values[i + param_count]);
+				arg_values[arg_count++] = llvm_load_value_store(c, &values[i + param_count - start]);
 			}
 		}
 	}

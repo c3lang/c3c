@@ -122,6 +122,7 @@
 - Slice overrun detected late hit codegen assert #2822
 - Compile time dereference of a constant slice was too generous #2821
 - Constant deref of subscript had inserted checks #2818
+- Raw vaargs with optional return not lowered correctly #2819
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
