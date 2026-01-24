@@ -1,5 +1,5 @@
 // #target: macos-aarch64
-module gen{Type};
+module gen <Type>;
 
 fn Type mult(Type x)
 {

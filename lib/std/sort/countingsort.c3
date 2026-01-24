@@ -1,52 +1,59 @@
 module std::sort;
 import std::sort::is;
-import std::sort::cs;
+import std::sort::cs @public;
 import std::sort::qs;
 
 <*
-
  Sort list using the counting sort algorithm.
 
  @require @list_is_by_ref(list) : "Expected the list to be passed by reference"
  @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
- @require @is_cmp_key_fn(key_fn, list) : "Expected a transformation function which returns an unsigned integer."
+ @require @is_cmp_key_fn(#key_fn: ...key_fn, #list: list) : "Expected a transformation function which returns an unsigned integer."
 *>
-macro void countingsort(list, key_fn = EMPTY_MACRO_SLOT) @builtin
+macro void countingsort(list, key_fn = ...) @builtin
 {
-	$if $kindof(list) == SLICE:
-		cs::csort{$typeof(list), $typeof(key_fn)}(list, 0, list.len, key_fn, ~((uint)0));
+	var list_length = $kindof(list) == SLICE ??? list.len : lengthof(*list);
+	var $ListType = $kindof(list) == SLICE ??? $typeof(list) : $typeof(*list);
+	$if $defined(key_fn):
+		cs::csort{$ListType, $typeof(key_fn)}(list, 0, list_length, key_fn, ~(uint)0);
 	$else
-		cs::csort{$typeof(*list), $typeof(key_fn)}(list, 0, lengthof(*list), key_fn, ~((uint)0));
+		cs::csort{$ListType, void*}(list, 0, list_length, ~(uint)0);
 	$endif
 }
 
-macro void insertionsort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
+macro void insertionsort_indexed(list, start, end, cmp = ..., context = ...) @builtin
 {
+	// When the context or cmp functions are not defined, we can simply use a dummy/default type.
+	var $CmpFnType = $defined(cmp) ??? $typeof(cmp) : uint;
+	var $ContextType = $defined(context) ??? $typeof(context) : uint;
 	$if $kindof(list) == SLICE:
-		is::isort{$typeof((list)), $typeof(cmp), $typeof(context)}(list, (usz)start, (usz)end, cmp, context);
+		is::isort{$typeof((list)), $CmpFnType, $ContextType}(list, (usz)start, (usz)end, ...cmp, ...context);
 	$else
-		is::isort{$typeof((*list)), $typeof(cmp), $typeof(context)}(list, (usz)start, (usz)end, cmp, context);
+		is::isort{$typeof((*list)), $CmpFnType, $ContextType}(list, (usz)start, (usz)end, ...cmp, ...context);
 	$endif
 
 }
 
-macro void quicksort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
+macro void quicksort_indexed(list, start, end, cmp = ..., context = ...) @builtin
 {
+	// When the context or cmp functions are not defined, we can simply use a dummy/default type.
+	var $CmpFnType = $defined(cmp) ??? $typeof(cmp) : uint;
+	var $ContextType = $defined(context) ??? $typeof(context) : uint;
 	$if $kindof(list) == SLICE:
-		qs::qsort{$typeof((list)), $typeof(cmp), $typeof(context)}(list, (isz)start, (isz)(end-1), cmp, context);
+		qs::qsort{$typeof((list)), $CmpFnType, $ContextType}(list, (isz)start, (isz)(end-1), ...cmp, ...context);
 	$else
-		qs::qsort{$typeof((*list)), $typeof(cmp), $typeof(context)}(list, (isz)start, (isz)(end-1), cmp, context);
+		qs::qsort{$typeof((*list)), $CmpFnType, $ContextType}(list, (isz)start, (isz)(end-1), ...cmp, ...context);
 	$endif
 }
 
-module std::sort::cs{Type, KeyFn};
+module std::sort::cs <Type, KeyFn>;
 
 alias Counts @private = usz[256];
 alias Ranges @private = usz[257];
 alias Indexs @private = char[256];
 alias ElementType = $typeof((Type){}[0]);
 
-const bool NO_KEY_FN @private = types::is_same(KeyFn, EmptySlot);
+const bool NO_KEY_FN @private = KeyFn.kindof != FUNC;
 const bool KEY_BY_VALUE @private = NO_KEY_FN ||| $defined($typefrom(KeyFn.paramsof[0].type) x = (ElementType){});
 const bool LIST_HAS_REF @private = $defined(&(Type){}[0]);
 
@@ -64,7 +71,26 @@ macro list_get(ListType l, i) @if(IS_SLICE) => l[i];
 macro list_get_ref(ListType l, i) @if(!IS_SLICE) => &(*l)[i];
 macro list_get_ref(ListType l, i) @if(IS_SLICE) => &l[i];
 
-fn void csort(ListType list, usz low, usz high, KeyFn key_fn, uint byte_idx)
+fn void csort(ListType list, usz low, usz high, KeyFn key_fn, uint byte_idx) @if (!NO_KEY_FN)
+{
+	_csort(list, low, high, byte_idx, key_fn);
+}
+
+fn void csort(ListType list, usz low, usz high, uint byte_idx) @if (NO_KEY_FN)
+{
+	_csort(list, low, high, byte_idx);
+}
+
+<*
+ COMPATIBILITY: With the deprecation of `EMPTY_MACRO_SLOT` in 0.7.9, this inner function was introduced
+ to prevent needing to further deprecate this module's downstream API. Since `key_fn` in `csort` appears
+ inline with other position-based parameters, it would be a hassle to require all callers of `csort` to
+ use named parameters when supplying `key_fn`.
+
+ In other words, `csort(a_list, low, high, key_fn: some_fn, byte_idx: index_val)` breaks the existing API
+ since explicitly naming `byte_idx` becomes a requirement.
+*>
+macro void _csort(ListType list, usz low, usz high, uint byte_idx, KeyFn key_fn = ...) @private
 {
 	if (high <= low) return;
 	$if NO_KEY_FN:
@@ -182,7 +208,7 @@ fn void csort(ListType list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 			usz	start_offset = ranges[i];
 			usz	end_offset   = ranges[i + 1];
 
-			insertionsort_indexed(list, low + start_offset, low + end_offset, compare_fn, key_fn);
+			insertionsort_indexed(list, low + start_offset, low + end_offset, compare_fn, ...key_fn);
 		}
 
 		for (usz p = 0; p < fallback1_count; p++) {
@@ -191,7 +217,7 @@ fn void csort(ListType list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 			usz	start_offset = ranges[i];
 			usz	end_offset   = ranges[i + 1];
 
-			quicksort_indexed(list, low + start_offset, low + end_offset, compare_fn, key_fn);
+			quicksort_indexed(list, low + start_offset, low + end_offset, compare_fn, ...key_fn);
 		}
 
 		for (usz p = 0; p < recursion_count; p++)
@@ -201,7 +227,11 @@ fn void csort(ListType list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 			usz	start_offset = ranges[i];
 			usz	end_offset   = ranges[i + 1];
 
-			csort(list, low + start_offset, low + end_offset, key_fn, byte_idx - 1);
+			$if $defined(key_fn):
+				csort(list, low + start_offset, low + end_offset, key_fn, byte_idx - 1);
+			$else
+				csort(list, low + start_offset, low + end_offset, byte_idx - 1);
+			$endif
 		}
 	}
 }

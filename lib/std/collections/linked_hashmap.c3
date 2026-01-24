@@ -4,7 +4,7 @@
 <*
  @require $defined((Key){}.hash()) : `No .hash function found on the key`
 *>
-module std::collections::map{Key, Value};
+module std::collections::map <Key, Value>;
 import std::math;
 import std::io @norecurse;
 
@@ -172,24 +172,24 @@ fn usz LinkedHashMap.len(&map) @inline => map.count;
 
 fn Value*? LinkedHashMap.get_ref(&map, Key key)
 {
-	if (!map.count) return NOT_FOUND?;
+	if (!map.count) return NOT_FOUND~;
 	uint hash = rehash(key.hash());
 	for (LinkedEntry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return &e.value;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 fn LinkedEntry*? LinkedHashMap.get_entry(&map, Key key)
 {
-	if (!map.count) return NOT_FOUND?;
+	if (!map.count) return NOT_FOUND~;
 	uint hash = rehash(key.hash());
 	for (LinkedEntry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return e;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 <*
@@ -248,7 +248,7 @@ fn bool LinkedHashMap.set(&map, Key key, Value value) @operator([]=)
 
 fn void? LinkedHashMap.remove(&map, Key key) @maydiscard
 {
-	if (!map.remove_entry_for_key(key)) return NOT_FOUND?;
+	if (!map.remove_entry_for_key(key)) return NOT_FOUND~;
 }
 
 fn void LinkedHashMap.clear(&map)
@@ -375,17 +375,17 @@ fn bool LinkedHashMapIterator.next(&self)
 
 fn LinkedEntry*? LinkedHashMapIterator.get(&self)
 {
-	return self.current ? self.current : NOT_FOUND?;
+	return self.current ? self.current : NOT_FOUND~;
 }
 
 fn Value*? LinkedHashMapValueIterator.get(&self)
 {
-	return self.current ? &self.current.value : NOT_FOUND?;
+	return self.current ? &self.current.value : NOT_FOUND~;
 }
 
 fn Key*? LinkedHashMapKeyIterator.get(&self)
 {
-	return self.current ? &self.current.key : NOT_FOUND?;
+	return self.current ? &self.current.key : NOT_FOUND~;
 }
 
 fn bool LinkedHashMapIterator.has_next(&self)

@@ -1,7 +1,7 @@
 // #target: macos-aarch64
 module base;
 
-module test{MyType};
+module test <MyType>;
 import base;
 interface Zzz
 {

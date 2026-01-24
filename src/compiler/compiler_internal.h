@@ -635,6 +635,7 @@ typedef struct
 	const char *cname_suffix;
 	Decl **generated_decls;
 } GenericInstanceDecl;
+
 typedef struct
 {
 	bool is_func : 1;
@@ -2566,6 +2567,7 @@ Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);
 Decl *sema_find_local(SemaContext *context, const char *symbol);
 Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
 Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
+Decl *sema_resolve_maybe_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
 BoolErr sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref);
@@ -2738,7 +2740,7 @@ INLINE bool type_is_arraylike(Type *type);
 INLINE bool type_is_any_arraylike(Type *type);
 INLINE bool type_is_promotable_float(Type *type);
 INLINE bool type_is_promotable_int_bool(Type *type);
-INLINE bool type_is_signed(Type *type);
+INLINE bool type_is_signed_any(Type *type);
 INLINE bool type_ok(Type *type);
 INLINE bool type_is_unsigned(Type *type);
 INLINE bool type_is_union_or_strukt(Type *type);
@@ -2819,6 +2821,7 @@ INLINE Type *type_from_inferred(Type *flattened, Type *element_type, unsigned co
 		case TYPE_INFERRED_VECTOR:
 			return type_get_vector(element_type, TYPE_VECTOR, count);
 		case TYPE_ARRAY:
+
 			ASSERT(flattened->array.len == count);
 			FALLTHROUGH;
 		case TYPE_INFERRED_ARRAY:
@@ -3518,11 +3521,12 @@ INLINE bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kin
 INLINE bool type_kind_is_any_integer(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_U128; }
 INLINE bool type_kind_is_enum_or_fault(TypeKind kind) { return kind == TYPE_ENUM || kind == TYPE_ANYFAULT; }
 INLINE bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U128; }
+INLINE bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_I128; }
 INLINE bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 INLINE bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
 bool type_is_scalar(Type *type);
 
-INLINE bool type_is_signed(Type *type)
+INLINE bool type_is_signed_any(Type *type)
 {
 	TypeKind kind = type->type_kind;
 	if (kind >= TYPE_I8 && kind < TYPE_U8) return true;
@@ -4243,7 +4247,6 @@ INLINE void expr_rewrite_const_slice(Expr *expr, Type *type, ConstInitializer *i
 
 INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type)
 {
-	ASSERT(type->type_kind != TYPE_UNTYPED_LIST);
 	expr->expr_kind = EXPR_CONST;
 	expr->const_expr.const_kind = CONST_TYPEID;
 	expr->const_expr.typeid = type->canonical;

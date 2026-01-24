@@ -348,6 +348,10 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 		// Generate a nice error message for zero.
 		RETURN_SEMA_ERROR(elements[0], "Too many elements in initializer, it must be empty.");
 	}
+	if (expected_members > 0 && count > 0 && count != expected_members)
+	{
+		RETURN_SEMA_ERROR(elements[0], "Too %s elements in initializer, expected %u.", count > expected_members ? "many" : "few", expected_members);
+	}
 
 	bool optional = false;
 	bool is_vector = type_flat_is_vector(assigned);
@@ -529,7 +533,8 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		if (!result) return false;
 		bool is_bitmember = member && member->decl_kind == DECL_VAR && member->var.kind == VARDECL_BITMEMBER;
 		Expr *value = expr->designator_expr.value;
-		if (!value && is_bitmember && member->var.start_bit == member->var.end_bit && type_flatten(result) == type_bool) {
+		if (!value && is_bitmember && member->var.start_bit == member->var.end_bit && type_flatten(result) == type_bool)
+		{
 			ASSERT(is_bitstruct);
 			value = expr_new_const_bool(INVALID_SPAN, type_bool, true);
 			expr->designator_expr.value = value;
@@ -877,6 +882,10 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		{
 			if (is_zero_init)
 			{
+				if (type_len_is_inferred(flattened->array.base))
+				{
+					RETURN_SEMA_ERROR(expr, "Inferring the slice inner type from an empty initializer is not possible.");
+				}
 				expr_rewrite_const_empty_slice(expr, to);
 				return true;
 			}
@@ -1262,6 +1271,7 @@ static inline void sema_update_const_initializer_with_designator(
 
 static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr)
 {
+	ASSERT(expr->expr_kind == EXPR_DESIGNATOR);
 	DesignatorElement **path = expr->designator_expr.path;
 
 	// Walk down into this path

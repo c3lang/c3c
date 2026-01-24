@@ -395,7 +395,7 @@ bool sema_expr_analyse_str_find(SemaContext *context, Expr *expr)
 bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunction func)
 {
 	Expr *inner = expr->call_expr.arguments[0];
-	if (!sema_analyse_expr_rvalue(context, inner)) return true;
+	if (!sema_analyse_expr_rvalue(context, inner)) return false;
 	if (!expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to take convert.");
@@ -550,7 +550,7 @@ bool sema_expr_analyse_str_wide(SemaContext *context, Expr *expr, BuiltinFunctio
 		zero_terminate = zero_term->const_expr.b;
 	}
 	if (!sema_analyse_expr_rvalue(context, inner)) return false;
-	if (!sema_cast_const(inner) && !expr_is_const_string(inner))
+	if (!sema_cast_const(inner) || !expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to convert to a wide string.");
 	}
@@ -638,6 +638,14 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		if (arg_count < expected_args) RETURN_SEMA_ERROR(args[arg_count - 1], "Expected more arguments after this one.");
 		RETURN_SEMA_ERROR(args[expected_args], "Too many arguments.");
+	}
+
+	for (unsigned i = 0; i < arg_count; i++)
+	{
+		if (args[i]->expr_kind == EXPR_NAMED_ARGUMENT)
+		{
+			RETURN_SEMA_ERROR(args[i], "Named arguments are not allowed in builtin calls.");
+		}
 	}
 
 	switch (func)
@@ -835,6 +843,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_VEC, BA_INTEGER, BA_INTEGER}, 3)) return false;
 			if (!sema_check_builtin_args_const(context, &args[1], 2)) return false;
 			ArraySize vec_len = type_flatten(args[0]->type)->array.len;
+			if (!cast_implicit(context, args[2], args[1]->type, false)) return false;
 			Int sum = int_mul(args[1]->const_expr.ixx, args[2]->const_expr.ixx);
 			if (!int_icomp(sum, vec_len, BINARYOP_EQ))
 			{
@@ -1204,21 +1213,23 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_UNALIGNED_LOAD:
 		{
-			ASSERT(arg_count == 2);
-			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER}, 2)) return false;
+			ASSERT(arg_count == 3);
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER, BA_BOOL}, 3)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (original == type_voidptr) RETURN_SEMA_ERROR(args[0], "Expected a typed pointer.");
 			if (!sema_check_alignment_expression(context, args[1])) return false;
+			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
 			rtype = original->pointer;
 			break;
 		}
 		case BUILTIN_UNALIGNED_STORE:
 		{
-			ASSERT(arg_count == 3);
+			ASSERT(arg_count == 4);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER}, 1)) return false;
-			if (!sema_check_builtin_args(context, &args[2], (BuiltinArg[]) {BA_INTEGER}, 1)) return false;
+			if (!sema_check_builtin_args(context, &args[2], (BuiltinArg[]) {BA_INTEGER, BA_BOOL}, 2)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (!sema_check_alignment_expression(context, args[2])) return false;
+			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "'is_volatile' must be a compile time constant.");
 			if (original != type_voidptr)
 			{
 				if (!cast_implicit(context, args[1], original->pointer, false)) return false;
@@ -1462,7 +1473,6 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SAT_SHL:
 		case BUILTIN_SAT_SUB:
 		case BUILTIN_STR_FIND:
-		case BUILTIN_UNALIGNED_LOAD:
 		case BUILTIN_VECCOMPEQ:
 		case BUILTIN_VECCOMPGE:
 		case BUILTIN_VECCOMPGT:
@@ -1481,7 +1491,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_OVERFLOW_SUB:
 		case BUILTIN_PREFETCH:
 		case BUILTIN_ATOMIC_LOAD:
-		case BUILTIN_UNALIGNED_STORE:
+		case BUILTIN_UNALIGNED_LOAD:
 		case BUILTIN_SELECT:
 		case BUILTIN_MATRIX_TRANSPOSE:
 			return 3;
@@ -1491,6 +1501,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_GATHER:
 		case BUILTIN_SCATTER:
 		case BUILTIN_STR_REPLACE:
+		case BUILTIN_UNALIGNED_STORE:
 			return 4;
 		case BUILTIN_ATOMIC_FETCH_EXCHANGE:
 		case BUILTIN_ATOMIC_FETCH_ADD:

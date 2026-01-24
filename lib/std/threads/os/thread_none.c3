@@ -15,13 +15,13 @@ fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 	}
 }
 
-fn void? NativeMutex.init(&mtx, MutexType type) => NOT_IMPLEMENTED?;
+fn void? NativeMutex.init(&mtx, MutexType type) => NOT_IMPLEMENTED~;
 
 fn bool NativeMutex.is_initialized(&self)
 {
 	return false;
 }
 
-macro void NativeMutex.lock(&mutex) => NOT_IMPLEMENTED?!!;
-macro bool NativeMutex.try_lock(&mutex) => NOT_IMPLEMENTED?!!;
-macro void NativeMutex.unlock(&mutex) => NOT_IMPLEMENTED?!!;
+macro void NativeMutex.lock(&mutex) => NOT_IMPLEMENTED~!!;
+macro bool NativeMutex.try_lock(&mutex) => NOT_IMPLEMENTED~!!;
+macro void NativeMutex.unlock(&mutex) => NOT_IMPLEMENTED~!!;

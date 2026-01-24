@@ -29,47 +29,47 @@ macro any_to_int(any v, $Type)
 	{
 		case ichar:
 			ichar c = *(char*)v.ptr;
-			if (is_mixed_signed && c < 0) return VALUE_OUT_OF_UNSIGNED_RANGE?;
+			if (is_mixed_signed && c < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
 			return ($Type)c;
 		case short:
 			short s = *(short*)v.ptr;
-			if (is_mixed_signed && s < 0) return VALUE_OUT_OF_UNSIGNED_RANGE?;
-			if (s > max || s < min) return VALUE_OUT_OF_RANGE?;
+			if (is_mixed_signed && s < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
+			if (s > max || s < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)s;
 		case int:
 			int i = *(int*)v.ptr;
-			if (is_mixed_signed && i < 0) return VALUE_OUT_OF_UNSIGNED_RANGE?;
-			if (i > max || i < min) return VALUE_OUT_OF_RANGE?;
+			if (is_mixed_signed && i < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
+			if (i > max || i < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)i;
 		case long:
 			long l = *(long*)v.ptr;
-			if (is_mixed_signed && l < 0) return VALUE_OUT_OF_UNSIGNED_RANGE?;
-			if (l > max || l < min) return VALUE_OUT_OF_RANGE?;
+			if (is_mixed_signed && l < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
+			if (l > max || l < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)l;
 		case int128:
 			int128 i = *(int128*)v.ptr;
-			if (is_mixed_signed && i < 0) return VALUE_OUT_OF_UNSIGNED_RANGE?;
-			if (i > max || i < min) return VALUE_OUT_OF_RANGE?;
+			if (is_mixed_signed && i < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
+			if (i > max || i < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)i;
 		case char:
 			char c = *(char*)v.ptr;
-			if (c > max) return VALUE_OUT_OF_RANGE?;
+			if (c > max) return VALUE_OUT_OF_RANGE~;
 			return ($Type)c;
 		case ushort:
 			ushort s = *(ushort*)v.ptr;
-			if (s > max || s < min) return VALUE_OUT_OF_RANGE?;
+			if (s > max || s < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)s;
 		case uint:
 			uint i = *(uint*)v.ptr;
-			if (i > max || i < min) return VALUE_OUT_OF_RANGE?;
+			if (i > max || i < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)i;
 		case ulong:
 			ulong l = *(ulong*)v.ptr;
-			if (l > max || l < min) return VALUE_OUT_OF_RANGE?;
+			if (l > max || l < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)l;
 		case uint128:
 			uint128 i = *(uint128*)v.ptr;
-			if (i > max || i < min) return VALUE_OUT_OF_RANGE?;
+			if (i > max || i < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)i;
 		default:
 			unreachable();

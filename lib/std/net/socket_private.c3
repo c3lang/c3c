@@ -23,7 +23,7 @@ fn Socket? connect_from_addrinfo(AddrInfo* addrinfo, SocketOption[] options) @pr
 		// Keep the first successful connection.
 		if (!errcode) return new_socket(sockfd, ai);
 	};
-	return os::socket_error()?;
+	return os::socket_error()~;
 }
 
 fn bool last_error_is_delayed_connect()
@@ -67,7 +67,7 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 				Duration to_remove = c.to_now().to_duration();
 				if (to_remove >= timeout_left)
 				{
-					return CONNECTION_TIMED_OUT?;
+					return CONNECTION_TIMED_OUT~;
 				}
 				timeout_left -= to_remove;
 			}
@@ -78,7 +78,7 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 			Poll poll_request = { sockfd, SUBSCRIBE_ANY_WRITE, 0 };
 			if (!poll((&poll_request)[:1], timeout_left)!)
 			{
-				return CONNECTION_TIMED_OUT?;
+				return CONNECTION_TIMED_OUT~;
 			}
 			if (poll_request.revents & POLL_EVENT_WRITE)
 			{
@@ -87,7 +87,7 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 			}
 		}
 	};
-	return os::socket_error()?;
+	return os::socket_error()~;
 }
 
 fn Socket? connect_async_from_addrinfo(AddrInfo* addrinfo, SocketOption[] options) @private
@@ -106,7 +106,7 @@ fn Socket? connect_async_from_addrinfo(AddrInfo* addrinfo, SocketOption[] option
 			return new_socket(sockfd, ai);
 		}
 	};
-	return os::socket_error()?;
+	return os::socket_error()~;
 }
 
 macro void @network_loop_over_ai(network, host, port; @body(fd, ai)) @private

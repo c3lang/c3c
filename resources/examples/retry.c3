@@ -6,7 +6,7 @@ faultdef NOPE;
 fn int? eventually_succeed()
 {
 	static int i = 0;
-	if (i++ < 3) return NOPE?;
+	if (i++ < 3) return NOPE~;
 	return i * 3;
 }
 
@@ -24,7 +24,7 @@ macro @retry(#function, int retries = 3)
         }
         return result;
     } while (retries-- > 0);
-    return e?;
+    return e~;
 }
 
 fn void main()

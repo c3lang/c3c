@@ -6,42 +6,42 @@ faultdef X;
 
 fn int? test(int i)
 {
-	return i ?: X?;
+	return i ?: X~;
 }
 
 fn int? test2(int i)
 {
-	return i ? X? : X?;
+	return i ? X~ : X~;
 }
 
 
 fn int? test3(int i)
 {
-	return i ? 2 : X?;
+	return i ? 2 : X~;
 }
 
 
 fn int? test4(int i)
 {
 	int? y = i;
-	return (y!) ?: X?;
+	return (y!) ?: X~;
 }
 fn int? test5(int i)
 {
 	int? y = i;
-	return (y!) ? X? : X?;
+	return (y!) ? X~ : X~;
 }
 
 fn int? test6(int i)
 {
 	int? y = i;
-	return (y!) ? 2 : X?;
+	return (y!) ? 2 : X~;
 }
 
 fn int? test7(int i)
 {
 	int? y = i;
-    return (y!) ? X? : 2;
+    return (y!) ? X~ : 2;
 }
 
 fn void main()

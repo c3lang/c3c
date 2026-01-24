@@ -4,7 +4,7 @@
 <*
  @require MAX_SIZE >= 1 : `The size must be at least 1 element big.`
 *>
-module std::collections::elastic_array {Type, MAX_SIZE};
+module std::collections::elastic_array <Type, MAX_SIZE>;
 import std::io, std::math, std::collections::list_common;
 
 alias ElementPredicate = fn bool(Type *type);
@@ -368,7 +368,7 @@ fn usz? ElasticArray.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 	{
 		if (equals(v, type)) return i;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 fn usz? ElasticArray.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
@@ -377,7 +377,7 @@ fn usz? ElasticArray.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 	{
 		if (equals(v, type)) return i;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 fn bool ElasticArray.equals(&self, ElasticArray other_list) @if(ELEMENT_IS_EQUATABLE)

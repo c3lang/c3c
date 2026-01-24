@@ -58,38 +58,38 @@ fn ulong hash(char[] data, ulong seed = 0)
 
 		if (@likely(data.len >= 8))
 		{
-			r1h ^= @unaligned_load(*(ulong*)data.ptr, 1);
+			r1h ^= mem::load((ulong*)data.ptr, 1);
 
 			r2h ^= (data.len < 12)
 				? ((data[data.len - 3] | ((ulong)data[data.len - 2] << 8) | ((ulong)data[data.len - 1] << 16) | ((ulong)1 << 24)) >> ((data.len * 8) ^ 88))
-				: (((@unaligned_load(*(uint*)&data[^4], 1) | ((ulong)1 << 32)) >> (128 - data.len * 8)) << 32 | @unaligned_load(*(uint*)&data[8], 1));
+				: (((mem::load((uint*)&data[^4], 1) | ((ulong)1 << 32)) >> (128 - data.len * 8)) << 32 | mem::load((uint*)&data[8], 1));
 		}
 		else if (data.len != 0)
 		{
 			r1h ^= (data.len < 4)
 				? (((ulong)1 << (data.len * 8)) ^ data[0] ^ (data.len > 1 ? (ulong)data[1] << 8 : 0) ^ (data.len > 2 ? (ulong)data[2] << 16 : 0))
-				: (((@unaligned_load(*(uint*)&data[^4], 1) | ((ulong)1 << 32)) >> (64 - data.len * 8)) << 32 | @unaligned_load(*(uint*)&data[0], 1));
+				: (((mem::load((uint*)&data[^4], 1) | ((ulong)1 << 32)) >> (64 - data.len * 8)) << 32 | mem::load((uint*)&data[0], 1));
 		}
 	}
 	else if (data.len < 32)
 	{
 		// HASH16
 		@komimul(
-			@unaligned_load(*(ulong*)&data[0], 1) ^ seed1,
-			@unaligned_load(*(ulong*)&data[8], 1) ^ seed5,
+			mem::load((ulong*)&data[0], 1) ^ seed1,
+			mem::load((ulong*)&data[8], 1) ^ seed5,
 			seed1, seed5
 		);
 		seed1 ^= seed5;
 
 		if (data.len < 24)
 		{
-			r1h = (((@unaligned_load(*(ulong*)&data[^8], 1) >> 8) | ((ulong)1 << 56)) >> (((int)(data.len * 8) ^ 184))) ^ seed1;
+			r1h = (((mem::load((ulong*)&data[^8], 1) >> 8) | ((ulong)1 << 56)) >> (((int)(data.len * 8) ^ 184))) ^ seed1;
 			r2h = seed5;
 		}
 		else
 		{
-			r1h = @unaligned_load(*(ulong*)&data[16], 1) ^ seed1;
-			r2h = (((@unaligned_load(*(ulong*)&data[^8], 1) >> 8) | ((ulong)1 << 56)) >> (((int)(data.len * 8) ^ 248))) ^ seed5;
+			r1h = mem::load((ulong*)&data[16], 1) ^ seed1;
+			r2h = (((mem::load((ulong*)&data[^8], 1) >> 8) | ((ulong)1 << 56)) >> (((int)(data.len * 8) ^ 248))) ^ seed5;
 		}
 	}
 	else
@@ -106,8 +106,8 @@ fn ulong hash(char[] data, ulong seed = 0)
 			{
 				$for var $x = 0; $x < 4; ++$x :
 					@komimul(
-						@unaligned_load(*(ulong*)&data[0 + ($x * 8)], 1) ^ seeds[$x],
-						@unaligned_load(*(ulong*)&data[32 + ($x * 8)], 1) ^ seeds[4 + $x],
+						mem::load((ulong*)&data[0 + ($x * 8)], 1) ^ seeds[$x],
+						mem::load((ulong*)&data[32 + ($x * 8)], 1) ^ seeds[4 + $x],
 						seeds[$x], seeds[4 + $x]
 					);
 				$endfor
@@ -125,8 +125,8 @@ fn ulong hash(char[] data, ulong seed = 0)
 		for (; data.len >= 16; data = data[16:^16])
 		{
 			@komimul(
-				@unaligned_load(*(ulong*)&data[0], 1) ^ seed1,
-				@unaligned_load(*(ulong*)&data[8], 1) ^ seed5,
+				mem::load((ulong*)&data[0], 1) ^ seed1,
+				mem::load((ulong*)&data[8], 1) ^ seed5,
 				seed1, seed5
 			);
 			seed1 ^= seed5;
@@ -137,13 +137,13 @@ fn ulong hash(char[] data, ulong seed = 0)
 			// NOTE: This is translated from the original code. It grabs the last ulong off the buffer even though the
 			//        data slice is less than 8 bytes. This is possible because this branch only occurs in a loop where
 			//        the original data slice length is >= 32.
-			r1h = (((@unaligned_load(*(ulong*)(data.ptr + data.len - 8), 1) >> 8) | ((ulong)1 << 56)) >> ((data.len * 8) ^ 0x38)) ^ seed1;
+			r1h = (((mem::load((ulong*)(data.ptr + data.len - 8), 1) >> 8) | ((ulong)1 << 56)) >> ((data.len * 8) ^ 0x38)) ^ seed1;
 			r2h = seed5;
 		}
 		else
 		{
-			r1h = @unaligned_load(*(ulong*)data.ptr, 1) ^ seed1;
-			r2h = (((@unaligned_load(*(ulong*)&data[^8], 1) >> 8) | ((ulong)1 << 56)) >> ((data.len * 8) ^ 0x78)) ^ seed5;
+			r1h = mem::load((ulong*)data.ptr, 1) ^ seed1;
+			r2h = (((mem::load((ulong*)&data[^8], 1) >> 8) | ((ulong)1 << 56)) >> ((data.len * 8) ^ 0x78)) ^ seed5;
 		}
 	}
 

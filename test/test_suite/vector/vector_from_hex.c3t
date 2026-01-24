@@ -1,0 +1,27 @@
+// #target: macos-x64
+module test;
+char[<*>] fooy = x'dead';
+char[<*>] fooy2 = { 0xde, 0xad };
+fn void main()
+{
+	char x = fooy[0];
+	char x2 = fooy2[0];
+}
+
+/* #expect: test.ll
+@test.fooy = local_unnamed_addr global <2 x i8> <i8 -34, i8 -83>, align 2
+@test.fooy2 = local_unnamed_addr global <2 x i8> <i8 -34, i8 -83>, align 2
+
+define void @test.main() #0 {
+entry:
+  %x = alloca i8, align 1
+  %x2 = alloca i8, align 1
+  %0 = load <2 x i8>, ptr @test.fooy, align 2
+  %1 = extractelement <2 x i8> %0, i64 0
+  store i8 %1, ptr %x, align 1
+  %2 = load <2 x i8>, ptr @test.fooy2, align 2
+  %3 = extractelement <2 x i8> %2, i64 0
+  store i8 %3, ptr %x2, align 1
+  ret void
+}
+

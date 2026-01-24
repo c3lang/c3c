@@ -12,22 +12,22 @@ fn void main()
 macro works()
 {
 	defer (catch err) io::printfn("got error when using something: %s", err);
-	return "hi".to_int() ?? NOT_FOUND?!;
+	return "hi".to_int() ?? NOT_FOUND~!;
 }
 macro also_works()
 {
 	defer (catch err) io::printfn("got error when using something: %s", err);
-	return NOT_FOUND?!;
+	return NOT_FOUND~!;
 }
 macro doesnt_work()
 {
 	defer (catch err) io::printfn("got error when using something: %s", err);
-	return "hi".to_int() ?? NOT_FOUND?;
+	return "hi".to_int() ?? NOT_FOUND~;
 }
 macro also_doesnt_work()
 {
 	defer (catch err) io::printfn("got error when using something: %s", err);
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 /* #expect: test.ll

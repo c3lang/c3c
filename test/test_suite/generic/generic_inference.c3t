@@ -14,7 +14,7 @@ fn void main()
 	hello(test2::get_foo{int}());
 }
 
-module test2 {Type};
+module test2 <Type>;
 
 fn Foo get_foo() => {};
 

@@ -1,4 +1,4 @@
-module generic_module_enum{N};
+module generic_module_enum <N>;
 
 enum Foo : char (String s)
 {

@@ -54,7 +54,7 @@ fn Backtrace? backtrace_line_parse(Allocator allocator, String obj, String addr2
 	@stack_mem(256; Allocator mem)
 	{
 		String[] parts = addr2line.trim().split(mem, " at ");
-		if (parts.len != 2) return NOT_FOUND?;
+		if (parts.len != 2) return NOT_FOUND~;
 
 		uint line   = 0;
 		String source = "";

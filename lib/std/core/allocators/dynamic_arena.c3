@@ -153,7 +153,7 @@ fn void*? DynamicArenaAllocator._alloc_new(&self, usz size, usz alignment) @loca
 	if (catch err = page)
 	{
 		allocator::free(self.backing_allocator, mem);
-		return err?;
+		return err~;
 	}
 	page.memory = mem;
 	void* mem_start = mem::aligned_pointer(mem + DynamicArenaChunk.sizeof, alignment);

@@ -400,7 +400,7 @@ macro String? Object.get_enum_at(&self, $EnumType, usz index)
 fn bool? Object.get_bool(&self, String key)
 {
 	Object* value = self.get(key)!;
-	if (!value.is_bool()) return TYPE_MISMATCH?;
+	if (!value.is_bool()) return TYPE_MISMATCH~;
 	return value.b;
 }
 
@@ -411,7 +411,7 @@ fn bool? Object.get_bool(&self, String key)
 fn bool? Object.get_bool_at(&self, usz index)
 {
 	Object* value = self.get_at(index);
-	if (!value.is_bool()) return TYPE_MISMATCH?;
+	if (!value.is_bool()) return TYPE_MISMATCH~;
 	return value.b;
 }
 
@@ -430,7 +430,7 @@ fn double? Object.get_float(&self, String key)
 		case FLOAT:
 			return value.f;
 		default:
-			return TYPE_MISMATCH?;
+			return TYPE_MISMATCH~;
 	}
 }
 
@@ -449,7 +449,7 @@ fn double? Object.get_float_at(&self, usz index)
 		case FLOAT:
 			return value.f;
 		default:
-			return TYPE_MISMATCH?;
+			return TYPE_MISMATCH~;
 	}
 }
 

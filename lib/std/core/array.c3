@@ -35,7 +35,7 @@ macro usz? index_of(array, element)
 	{
 		if (*e == element) return i;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 
@@ -75,7 +75,7 @@ macro usz? rindex_of(array, element)
 	{
 		if (*e == element) return i;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 

@@ -130,9 +130,9 @@ fn Win32_DWORD? load_modules()
 	Win32_HMODULE[1024] mod_buffer;
 	if (!enumProcessModules(process, &mod_buffer, mod_buffer.len, &needed))
 	{
-		return backtrace::RESOLUTION_FAILED?;
+		return backtrace::RESOLUTION_FAILED~;
 	}
-	if (needed > mod_buffer.len) return backtrace::RESOLUTION_FAILED?;
+	if (needed > mod_buffer.len) return backtrace::RESOLUTION_FAILED~;
 	Win32_HMODULE[] modules = mod_buffer[:needed];
 	void* base = null;
 	foreach (mod : modules)
@@ -140,7 +140,7 @@ fn Win32_DWORD? load_modules()
 		Win32_MODULEINFO info;
 		if (!getModuleInformation(process, mod, &info, $sizeof(info)))
 		{
-			return backtrace::RESOLUTION_FAILED?;
+			return backtrace::RESOLUTION_FAILED~;
 		}
 		if (!base) base = info.lpBaseOfDll;
 		Win32_DWORD load_size = info.sizeOfImage;
@@ -152,7 +152,7 @@ fn Win32_DWORD? load_modules()
 		if (len2 < 1) continue;
 		Win32_DWORD64 base_addr = symLoadModuleEx(process, null, (Win32_PCSTR)&char_buf, (Win32_PCSTR)&module_name, (Win32_DWORD64)info.lpBaseOfDll, load_size, null, 0);
 	}
-	if (!base) return backtrace::IMAGE_NOT_FOUND?;
+	if (!base) return backtrace::IMAGE_NOT_FOUND~;
 	Win32_IMAGE_NT_HEADERS* h = imageNtHeader(base);
 	return h.fileHeader.machine;
 }
@@ -187,13 +187,13 @@ fn Backtrace? resolve_backtrace(Allocator allocator, void* addr, Win32_HANDLE pr
 	symbol.maxNameLen = 255;
 	if (!symFromAddr(process, (Win32_DWORD64)addr - 1, &displacement, &symbol))
 	{
-		return backtrace::NO_BACKTRACE_SYMBOLS?;
+		return backtrace::NO_BACKTRACE_SYMBOLS~;
 	}
 	Win32_IMAGEHLP_MODULE64 module_info;
 	module_info.sizeOfStruct = Win32_IMAGEHLP_MODULE64.sizeof;
 	if (!symGetModuleInfo64(process, (Win32_DWORD64)addr - 1, &module_info))
 	{
-		return backtrace::NO_BACKTRACE_SYMBOLS?;
+		return backtrace::NO_BACKTRACE_SYMBOLS~;
 	}
 	ZString module_name = (ZString)&module_info.imageName;
 	char[256] name;

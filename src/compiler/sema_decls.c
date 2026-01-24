@@ -362,6 +362,8 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		if (!sema_check_struct_holes(context, decl, member)) return false;
 
 		ByteSize member_size = type_size(member->type);
+		if (member_size > MAX_STRUCT_SIZE) RETURN_SEMA_ERROR(member, "Union member '%s' would cause the union to become too large (exceeding 2 GB).", member->name);
+
 		ASSERT(member_size <= MAX_TYPE_SIZE);
 		// Update max alignment
 		if (member->alignment > member_alignment) member_alignment = member->alignment;
@@ -385,7 +387,10 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		// Offset is always 0
 		member->offset = 0;
 	}
-
+	if (!member_count)
+	{
+		RETURN_SEMA_ERROR(decl, "No union members exist after processing attributes, this is not allowed. Please make sure it has at least one member.");
+	}
 	ASSERT(decl_ok(decl));
 
 	// 1. If packed, then the alignment is zero, unless previously given
@@ -640,6 +645,11 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		AlignSize sz = offset;
 		offset += type_size(member->type);
 		if (offset < sz || offset > MAX_STRUCT_SIZE) RETURN_SEMA_ERROR(member, "Struct member '%s' would cause the struct to become too large (exceeding 2 GB).", member->name);
+	}
+
+	if (!member_count)
+	{
+		RETURN_SEMA_ERROR(decl, "No members exist for this struct after processing attributes, creating an invalid empty struct. Please make sure every struct/inner struct has at least one member.");
 	}
 
 	// Set the alignment:
@@ -1090,6 +1100,7 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
 	if (!sema_resolve_type_info(context, decl->strukt.container_type, RESOLVE_TYPE_DEFAULT)) return false;
 	Type *type = type_flatten(decl->strukt.container_type->type->canonical);
+	if (!sema_resolve_type_decl(context, type)) return false;
 	if (type_size(type) == 1)
 	{
 		decl->strukt.big_endian = false;
@@ -1440,7 +1451,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		{
 			if (!sema_deep_resolve_function_ptr(context, type_info)) return false;
 			param->type = type_info->type;
-			if (!sema_set_alignment(context, param->type, &param->alignment, true)) return false;
+			if (!is_macro && !sema_set_alignment(context, param->type, &param->alignment, true)) return false;
 		}
 
 		if (param->var.init_expr)
@@ -1777,7 +1788,7 @@ ERR:
 bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl)
 {
 	Expr *value = decl->enum_constant.value;
-	if (!sema_analyse_inferred_expr(context, decl->type, value,NULL)) return decl_poison(decl);
+	if (!sema_analyse_inferred_expr(context, decl->type, value, NULL)) return decl_poison(decl);
 	if (!expr_is_runtime_const(value))
 	{
 		SEMA_ERROR(value, "Expected an constant enum value.");
@@ -2620,8 +2631,11 @@ static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl
 	bool erase_decl = false;
 	if (!sema_analyse_attributes(context, method, method->attributes,
 		method->decl_kind == DECL_MACRO ? ATTR_MACRO : ATTR_FUNC, &erase_decl)) return decl_poison(method);
-	if (erase_decl) return true;
-
+	if (erase_decl)
+	{
+		method->decl_kind = DECL_ERASED;
+		return true;
+	}
 	// Is it a base extension?
 	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(context, method);
 
@@ -3097,7 +3111,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_FINALIZER] = ATTR_FUNC,
 			[ATTRIBUTE_FORMAT] = ATTR_FUNC | ATTR_MACRO | ATTR_FNTYPE,
-			[ATTRIBUTE_GENERIC] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | ATTR_UNION | ATTR_STRUCT | ATTR_INTERFACE | ATTR_ALIAS,
 			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_PARAM),
 			[ATTRIBUTE_INIT] = ATTR_FUNC,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
@@ -3352,8 +3365,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_NOALIAS:
 			decl->var.no_alias = true;
 			return true;
-		case ATTRIBUTE_GENERIC:
-			UNREACHABLE;
 		case ATTRIBUTE_IF:
 			if (!expr) RETURN_SEMA_ERROR(attr, "'@if' requires a boolean argument.");
 			if (!sema_analyse_expr_rvalue(context, expr)) return false;
@@ -3657,8 +3668,7 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 	SemaContext eval_context;
 	sema_context_init(&eval_context, attr_decl->unit);
 	eval_context.macro_call_depth = context->macro_call_depth + 1;
-	eval_context.call_env = (CallEnv) { .kind = CALL_ENV_ATTR, .attr_declaration = decl };
-
+	eval_context.call_env = (CallEnv) { .kind = CALL_ENV_ATTR, .attr_declaration = decl,  };
 	// We copy the compilation unit.
 	eval_context.compilation_unit = context->unit;
 
@@ -3672,6 +3682,7 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 			if (!sema_resolve_type_info(context, type_infoptr(param->var.type_info), RESOLVE_TYPE_DEFAULT)) return false;
 			Type *type = typeget(param->var.type_info);
 			ASSERT_SPAN(decl, type);
+			eval_context.rtype = type;
 			if (!sema_analyse_inferred_expr(context, type, expr, NULL)) goto ERR;
 			if (!cast_implicit(context, expr, type, false)) goto ERR;
 			if (!sema_cast_const(expr))
@@ -3682,6 +3693,7 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 		}
 		else
 		{
+			eval_context.rtype = type_void;
 			if (!sema_analyse_ct_expr(context, args[j])) goto ERR;
 		}
 		params[j]->var.init_expr = expr;
@@ -3690,6 +3702,7 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 		// (Yes this is messy)
 		sema_add_local(&eval_context, params[j]);
 	}
+	eval_context.rtype = type_void;
 	// Now we've added everything to the evaluation context, so we can (recursively)
 	// apply it to the contained attributes, which in turn may be derived attributes.
 	if (!sema_analyse_attributes_inner(&eval_context, attr_data_ref, decl, attributes, domain, top ? top : attr_decl, erase_decl)) goto ERR;
@@ -4728,8 +4741,21 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 						SEMA_ERROR(type_info, "No size could be inferred.");
 						goto FAIL;
 					}
+					switch (sema_resolve_storage_type(context, decl->type))
+					{
+						case STORAGE_NORMAL:
+						case STORAGE_COMPILE_TIME:
+							break;
+						case STORAGE_ERROR:
+							goto FAIL;
+						case STORAGE_VOID:
+						case STORAGE_WILDCARD:
+						case STORAGE_UNKNOWN:
+							SEMA_ERROR(type_info, "Expected a runtime or compile time type with a well-defined zero value.");
+							goto FAIL;
+					}
 					decl->var.init_expr = init = expr_new(EXPR_POISONED, decl->span);
-					expr_rewrite_to_const_zero(init, decl->type);
+					expr_rewrite_to_const_zero(init, type_no_optional(decl->type));
 				}
 
 				// Analyse the expression.
@@ -4816,6 +4842,11 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *c
 	TypeInfo *type_info = vartype(decl);
 	// We expect a constant to actually be parsed correctly so that it has a value, so
 	// this should always be true.
+	if (!type_info && decl->is_extern)
+	{
+		SEMA_ERROR(decl, "A type is needed for the extern %s '%s'.", decl_to_name(decl), decl->name);
+		return decl_poison(decl);
+	}
 	ASSERT(type_info || decl->var.init_expr);
 
 	bool erase_decl = false;
@@ -5192,79 +5223,9 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 	return true;
 }
 
-Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_path, const char *name, SourceSpan span,
-                                            Expr **params, bool *was_recursive_ref, SourceSpan invocation_span)
+Decl *sema_generate_parameterized_identifier(SemaContext *context, Decl *generic, Decl *alias, Expr **params, Decl **param_decls, const char *suffix, const char *csuffix, SourceSpan invocation_span, SourceSpan span)
 {
-	Decl *alias = sema_resolve_parameterized_symbol(context, name, decl_path, span);
-	if (!alias) return poisoned_decl;
-	ASSERT_AT(invocation_span, alias->is_template && alias->generic_id);
-	Decl *generic = declptr(alias->generic_id);
-	unsigned parameter_count = vec_size(generic->generic_decl.parameters);
-	ASSERT(parameter_count > 0);
-	unsigned count = vec_size(params);
-	if (parameter_count != count)
-	{
-		if (!count)
-		{
-			sema_error_at(context, invocation_span,
-						  "'%s' requires generic arguments inside the '{}', did you forget them?", name, (int)parameter_count);
-
-		}
-		else
-		{
-			// 'Foo' expects 2 generic arguments, but you supplied 1, did you make a mistake?
-			sema_error_at(context, extend_span_with_token(params[0]->span, vectail(params)->span),
-						  "'%s' expects %d %s, but you supplied %d, did you make a mistake?",
-						  name,
-						  parameter_count,
-						  parameter_count == 1 ? "argument" : "arguments",
-						  vec_size(params));
-		}
-		return poisoned_decl;
-	}
-	// First resolve
-	FOREACH_IDX(i, Expr *, param, params)
-	{
-		if (!sema_analyse_expr_rvalue(context, param)) return poisoned_decl;
-		const char *param_name = generic->generic_decl.parameters[i];
-		bool is_type = str_is_type(param_name);
-		if (expr_is_const_typeid(param))
-		{
-			if (!is_type)
-			{
-				SEMA_ERROR(param, "Expected a value, not a type, for parameter '%s'.", param_name);
-				return poisoned_decl;
-			}
-			Type *type = param->const_expr.typeid;
-			if (type_is_func_ptr(type))
-			{
-				if (!sema_resolve_type_decl(context, type->pointer)) return poisoned_decl;
-			}
-		}
-		else
-		{
-			if (is_type)
-			{
-				SEMA_ERROR(param, "Expected a type, not a value, for parameter '%s'.", param_name);
-				return poisoned_decl;
-			}
-			if (!sema_analyse_ct_expr(context, param)) return poisoned_decl;
-			Type *type = param->type->canonical;
-			if (type->type_kind == TYPE_TYPEDEF) type = type_flatten(type);
-
-			bool is_enum_or_fault = type_kind_is_enum_or_fault(type->type_kind);
-			if (!type_is_integer_or_bool_kind(type) && !is_enum_or_fault)
-			{
-				SEMA_ERROR(param, "Only integer, bool, fault and enum values may be generic arguments.");
-				return poisoned_decl;
-			}
-			ASSERT(expr_is_const(param));
-		}
-	}
-
 	Module *module = alias->unit->module;
-	if (!sema_generate_parameter_suffix_to_scratch(context, params, true, was_recursive_ref)) return poisoned_decl;
-	const char *suffix = scratch_buffer_interned();
 	Decl *instance = NULL;
 	unsigned id = generic->generic_decl.id;
 	FOREACH(Decl *, g, alias->unit->module->generic_sections)
@@ -5272,7 +5233,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 		if (g->generic_decl.id != id) continue;
 		FOREACH (Decl *, candidate, g->generic_decl.instances)
 		{
-			if (candidate->name == suffix)
+			if (candidate->name == csuffix)
 			{
 				instance = candidate;
 				goto FOUND;
@@ -5280,16 +5241,15 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 		}
 	}
 FOUND:;
-	bool instantiation = instance == NULL;
 	if (!instance)
 	{
-		DEBUG_LOG("Generate generic instance %s", suffix);
+		DEBUG_LOG("Generate generic instance %s", csuffix);
 		if (compiler.context.errors_found) return poisoned_decl;
-		instance = decl_new(DECL_GENERIC_INSTANCE, suffix, generic->span);
+		instance = decl_new(DECL_GENERIC_INSTANCE, csuffix, generic->span);
 		FOREACH_IDX(i, const char *, param_name, generic->generic_decl.parameters)
 		{
 			Decl *decl;
-			Expr *param = params[i];
+			Expr *param = params ? params[i] : copy_expr_single(param_decls[i]->var.init_expr);
 			ASSERT_SPAN(param, param->expr_kind == EXPR_CONST);
 			if (expr_is_const_typeid(param))
 			{
@@ -5309,10 +5269,13 @@ FOUND:;
 		instance->unit = alias->unit;
 		Decl **copied = NULL;
 		Decl **copied_cond = NULL;
-		if (!sema_generate_parameter_suffix_to_scratch(context, params, false, was_recursive_ref)) return poisoned_decl;
-		instance->instance_decl.name_suffix = scratch_buffer_copy();
-		if (!sema_generate_parameter_suffix_to_scratch(context, params, true, was_recursive_ref)) return poisoned_decl;
-		instance->instance_decl.cname_suffix = scratch_buffer_copy();
+		if (!suffix)
+		{
+			if (!sema_generate_parameter_suffix_to_scratch(context, params, false, false)) return poisoned_decl;
+			suffix = scratch_buffer_interned();
+		}
+		instance->instance_decl.name_suffix = suffix;
+		instance->instance_decl.cname_suffix = csuffix;
 		instance->instance_decl.id = id;
 		FOREACH(Decl *, g, module->generic_sections)
 		{
@@ -5350,7 +5313,7 @@ FOUND:;
 				copy_begin();
 				contracts = astid(copy_ast_macro(astptr(contracts)));
 				copy_end();
-				SourceSpan param_span = extend_span_with_token(params[0]->span, params[parameter_count - 1]->span);
+				SourceSpan param_span = extend_span_with_token(params[0]->span, VECLAST(params)->span);
 				if (!sema_analyse_generic_module_contracts(context, module, instance, contracts, param_span, invocation_span))
 				{
 					return poisoned_decl;
@@ -5366,7 +5329,7 @@ FOUND:;
 			SemaContext gen_context;
 			sema_context_init(&gen_context, decl->unit);
 			gen_context.generic_instance = instance;
-			if (sema_analyse_method_register(&gen_context, decl))
+			if (sema_analyse_method_register(&gen_context, decl) && decl->decl_kind != DECL_ERASED)
 			{
 				if (decl->decl_kind == DECL_MACRO)
 				{
@@ -5413,10 +5376,10 @@ FOUND:;
 EXIT:;
 		if (compiler.context.errors_found) return poisoned_decl;
 	}
-	Decl *symbol = sema_find_generic_instance(context, module, generic, instance, name);
+	Decl *symbol = sema_find_generic_instance(context, module, generic, instance, alias->name);
 	if (!symbol)
 	{
-		sema_error_at(context, span, "The generic '%s' does not exist for this parameterization.", name);
+		sema_error_at(context, span, "The generic '%s' does not exist for this parameterization.", alias->name);
 		return poisoned_decl;
 	}
 
@@ -5431,6 +5394,86 @@ EXIT:;
 	}
 	unit_register_external_symbol(context, symbol);
 	return symbol;
+
+}
+Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_path, const char *name, SourceSpan span,
+                                            Expr **params, bool *was_recursive_ref, SourceSpan invocation_span)
+{
+	Decl *alias = sema_resolve_parameterized_symbol(context, name, decl_path, span);
+	if (!alias) return poisoned_decl;
+	ASSERT_AT(invocation_span, alias->is_template && alias->generic_id);
+	Decl *generic = declptr(alias->generic_id);
+	unsigned parameter_count = vec_size(generic->generic_decl.parameters);
+	ASSERT(parameter_count > 0);
+	unsigned count = vec_size(params);
+	if (parameter_count != count)
+	{
+		if (!count)
+		{
+			sema_error_at(context, invocation_span,
+						  "'%s' requires generic arguments inside the '{}', did you forget them?", name, (int)parameter_count);
+
+		}
+		else
+		{
+			// 'Foo' expects 2 generic arguments, but you supplied 1, did you make a mistake?
+			sema_error_at(context, extend_span_with_token(params[0]->span, vectail(params)->span),
+						  "'%s' expects %d %s, but you supplied %d, did you make a mistake?",
+						  name,
+						  parameter_count,
+						  parameter_count == 1 ? "argument" : "arguments",
+						  vec_size(params));
+		}
+		return poisoned_decl;
+	}
+	// First resolve
+	FOREACH_IDX(i, Expr *, param, params)
+	{
+		if (!sema_analyse_expr_rvalue(context, param)) return poisoned_decl;
+		const char *param_name = generic->generic_decl.parameters[i];
+		bool is_type = str_is_type(param_name);
+		if (expr_is_const_typeid(param))
+		{
+			if (!is_type)
+			{
+				SEMA_ERROR(param, "Expected a value, not a type, for parameter '%s'.", param_name);
+				return poisoned_decl;
+			}
+			Type *type = param->const_expr.typeid;
+			if (type_is_optional(type))
+			{
+				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "The generic type can never be an optional, please use only non-optional types.");
+			}
+			if (type_is_func_ptr(type))
+			{
+				if (!sema_resolve_type_decl(context, type->pointer)) return poisoned_decl;
+			}
+		}
+		else
+		{
+			if (is_type)
+			{
+				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "Expected a type, not a value, for parameter '%s'.", param_name);
+			}
+			if (!sema_analyse_ct_expr(context, param)) return poisoned_decl;
+			Type *type = param->type->canonical;
+			if (type->type_kind == TYPE_TYPEDEF) type = type_flatten(type);
+			if (IS_OPTIONAL(param))
+			{
+				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "The parameter may never be an optional value.");
+			}
+
+			bool is_enum_or_fault = type_kind_is_enum_or_fault(type->type_kind);
+			if (!type_is_integer_or_bool_kind(type) && !is_enum_or_fault)
+			{
+				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "Only integer, bool, fault and enum values may be generic arguments.");
+			}
+			ASSERT(expr_is_const(param));
+		}
+	}
+	if (!sema_generate_parameter_suffix_to_scratch(context, params, true, was_recursive_ref)) return poisoned_decl;
+	const char *suffix = scratch_buffer_interned();
+	return sema_generate_parameterized_identifier(context, generic, alias, params, NULL, NULL, suffix, invocation_span, span);
 }
 
 static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext *c, Decl *decl, bool *erase_decl)
@@ -5589,10 +5632,7 @@ bool sema_analyse_method_register(SemaContext *context, Decl *method)
 		method->generic_id = decl->generic_id;
 		return false;
 	}
-	else
-	{
-		if (!sema_resolve_type_info(context, parent_type_info, method->decl_kind == DECL_MACRO ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
-	}
+	if (!sema_resolve_type_info(context, parent_type_info, method->decl_kind == DECL_MACRO ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
 
 	// Can the type have methods?
 	Type *parent_type = parent_type_info->type = parent_type_info->type->canonical;

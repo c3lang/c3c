@@ -414,7 +414,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSE
 	sig->params = decls;
 	sig->rtype = return_type ? type_infoid(return_type) : 0;
 	sig->variadic = variadic;
-	if (!parse_attributes(c, &func->attributes, NULL, NULL, NULL, NULL)) return poisoned_expr;
+	if (!parse_attributes(c, &func->attributes, NULL, NULL, NULL)) return poisoned_expr;
 	RANGE_EXTEND_PREV(func);
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
@@ -786,6 +786,7 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side, SourceSpan lhs
 		expr->expr_kind = EXPR_OPTIONAL;
 		expr->inner_expr = left_side;
 		RANGE_EXTEND_PREV(expr);
+		SEMA_DEPRECATED(expr, "Using '?' to create an optional is deprecated, use '~' instead.");
 		return expr;
 	}
 
@@ -884,6 +885,7 @@ static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_
 			if (i == 0 && expr->expr_kind == EXPR_SPLAT)
 			{
 				splat = expr;
+				continue;
 			}
 			if (expr->expr_kind == EXPR_DESIGNATOR)
 			{
@@ -892,12 +894,10 @@ static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_
 					designated = expr->designator_expr.path[0]->kind == DESIGNATOR_FIELD ? 1 : 2;
 					goto ERROR;
 				}
-
 				designated = expr->designator_expr.path[0]->kind == DESIGNATOR_FIELD ? 1 : 2;
 				continue;
 			}
 			if (designated > 0) goto ERROR;
-			if (designated == -1 && splat) continue;
 			designated = 0;
 			continue;
 ERROR:;

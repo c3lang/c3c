@@ -9,7 +9,7 @@ fn int main()
 fn int? foo()
 {
 	defer thing();
-	return NOT_FOUND?!;
+	return NOT_FOUND~!;
 }
 
 fn void thing() {}

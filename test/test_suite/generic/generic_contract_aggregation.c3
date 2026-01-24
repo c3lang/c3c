@@ -1,7 +1,7 @@
 import std::io;
 
 <* @require Type.kindof == SIGNED_INT *>
-struct Foo @generic(Type)
+struct Foo <Type>
 {
 	Type a;
 }

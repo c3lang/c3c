@@ -4,7 +4,7 @@
 <*
  @require SIZE > 0 : "The size of the bitset in bits must be at least 1"
 *>
-module std::collections::bitset {SIZE};
+module std::collections::bitset <SIZE>;
 
 const BITS = uint.sizeof * 8;
 const SZ = (SIZE + BITS - 1) / BITS;
@@ -172,7 +172,7 @@ fn void BitSet.set_bool(&self, usz i, bool value) @operator([]=) @inline
 <*
  @require Type.kindof == UNSIGNED_INT
 *>
-module std::collections::growablebitset{Type};
+module std::collections::growablebitset <Type>;
 import std::collections::list;
 
 const BITS = Type.sizeof * 8;

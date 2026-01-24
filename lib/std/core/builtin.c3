@@ -24,11 +24,15 @@ macro foo(a, #b = EMPTY_MACRO_SLOT)
 	$endif
 }
 *>
-const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
+const EmptySlot EMPTY_MACRO_SLOT @builtin @deprecated("Use `#arg = ...` instead.") = null;
 
 typedef EmptySlot = void*;
-macro bool @is_empty_macro_slot(#arg) @const @builtin => $typeof(#arg) == EmptySlot;
-macro bool @is_valid_macro_slot(#arg) @const @builtin => $typeof(#arg) != EmptySlot;
+macro bool @is_empty_macro_slot(#arg) @const @builtin
+		@deprecated("Use `#arg = ...` to define an optional macro slot, and `$defined(#arg)` to detect whether the argument is set.")
+	=> $typeof(#arg) == EmptySlot;
+macro bool @is_valid_macro_slot(#arg) @const @builtin
+		@deprecated("Use `#arg = ...` to define an optional macro slot, and `$defined(#arg)` to detect whether the argument is set.")
+	=> $typeof(#arg) != EmptySlot;
 
 <*
  Returns a random value at compile time.
@@ -119,7 +123,7 @@ macro bool @in(#needle, ...) @builtin @const
 *>
 macro anycast(any v, $Type) @builtin
 {
-	if (v.type != $Type.typeid) return TYPE_MISMATCH?;
+	if (v.type != $Type.typeid) return TYPE_MISMATCH~;
 	return ($Type*)v.ptr;
 }
 
@@ -129,7 +133,7 @@ macro anycast(any v, $Type) @builtin
 *>
 macro any.to(self, $Type)
 {
-	if (self.type != $Type.typeid) return TYPE_MISMATCH?;
+	if (self.type != $Type.typeid) return TYPE_MISMATCH~;
 	return *($Type*)self.ptr;
 }
 
@@ -350,7 +354,7 @@ macro enum_by_name($Type, String enum_name) @builtin
 	{
 		if (name == enum_name) return $Type.from_ordinal(i);
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 <*
@@ -367,7 +371,7 @@ macro @enum_from_value($Type, #value, value) @builtin @deprecated("Use Enum.look
 	{
 		if (e.#value == value) return e;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 <*
@@ -453,7 +457,7 @@ macro @prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write =
 
 <*
  Shuffle a vector by its index
- 
+
  int[<4>] a = { 1, 2, 3, 4 };
  assert(swizzle(a, 0, 1, 1, 3) == (int[<4>]) { 1, 2, 2, 4 });
 *>
@@ -537,7 +541,7 @@ macro bool @ok(#expr) @builtin
 macro void? @try(#v, #expr) @builtin @maydiscard
 {
 	var res = #expr;
-	if (catch err = res) return err?;
+	if (catch err = res) return err~;
 	#v = res;
 }
 
@@ -581,7 +585,7 @@ macro bool? @try_catch(#v, #expr, fault expected_fault) @builtin
 	var res = #expr;
 	if (catch err = res)
 	{
-		return err == expected_fault ? true : err?;
+		return err == expected_fault ? true : err~;
 	}
 	#v = res;
 	return false;

@@ -1,4 +1,4 @@
-module gui::widget {Type};
+module gui::widget <Type>;
 import gui::widget_types;
 import std::collections::list;
 import std::io;

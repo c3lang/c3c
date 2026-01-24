@@ -49,5 +49,5 @@ fn String? xdg_user_dir_lookup(Allocator allocator, String type) => @pool()
 		}
 		return line.copy(allocator);
 	}
-	return io::PATH_COULD_NOT_BE_FOUND?;
+	return io::PATH_COULD_NOT_BE_FOUND~;
 }

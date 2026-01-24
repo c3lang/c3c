@@ -16,7 +16,7 @@ faultdef ABC;
 macro test()
 {
   if (false) return;
-  return ABC?;
+  return ABC~;
   unreachable();
 }
 

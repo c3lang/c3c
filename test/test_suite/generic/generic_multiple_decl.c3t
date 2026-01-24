@@ -1,0 +1,11 @@
+module elastic_array <Type, MAX_SIZE>;
+int a, b, c;
+module bar;
+import elastic_array;
+fn int main()
+{
+	int g = elastic_array::a{int, 2};
+	int g2 = elastic_array::b{int, 2};
+	elastic_array::b{int, 2} = 3;
+	return 0;
+}

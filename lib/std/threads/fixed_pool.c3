@@ -137,7 +137,7 @@ fn void? FixedThreadPool.push(&self, ThreadPoolFn func, args...)
 {
 	self.mu.lock();
 	defer self.mu.unlock();
-	if (self.qindex == self.queue.len) return thread::THREAD_QUEUE_FULL?;
+	if (self.qindex == self.queue.len) return thread::THREAD_QUEUE_FULL~;
 	any[] data;
 	if (args.len)
 	{

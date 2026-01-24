@@ -46,8 +46,8 @@ Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool is_regular_f
 
 bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos);
 
-bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *builtin_ref, bool *cond_ref, Decl **
-                      generic_ref);
+bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *builtin_ref, bool *cond_ref);
+Decl *parse_generic_decl(ParseContext *c);
 
 bool parse_switch_body(ParseContext *c, Ast ***cases, TokenType case_type, TokenType default_type);
 Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl);

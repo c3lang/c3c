@@ -1,9 +1,9 @@
 <* @require THE_CONST < 5 *>
-module the_generic @generic(THE_CONST, Type);
+module the_generic <THE_CONST, Type>;
 struct Abc
 { int a; }
 
-module the_generic @generic(THE_CONST, Type);
+module the_generic <THE_CONST, Type>;
 
 struct TheStruct
 {

@@ -16,7 +16,7 @@ alias I_F @builtin = complex::IMAGINARY { float };
 
  @require Real.kindof == FLOAT : "A complex number must use a floating type"
 *>
-module std::math::complex {Real};
+module std::math::complex <Real>;
 import std::io;
 
 union ComplexNumber (Printable)

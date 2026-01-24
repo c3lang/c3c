@@ -62,8 +62,8 @@ alias tag = hash;
 fn void Poly1305.init(&self, char[KEY_SIZE] key)
 {
     *self = { // implicitly clears state as well
-        .r      = @unaligned_load(*(uint128*)&key[ 0], 1) & 0x0ffffffc_0ffffffc_0ffffffc_0fffffff, // clamped per spec
-        .nonce  = @unaligned_load(*(uint128*)&key[16], 1)
+        .r      = mem::load((uint128*)&key[ 0], 1) & 0x0ffffffc_0ffffffc_0ffffffc_0fffffff, // clamped per spec
+        .nonce  = mem::load((uint128*)&key[16], 1)
     };
 
     self.r0 = @unaligned_load(((ulong*)&self.r)[0], 1);
@@ -139,8 +139,8 @@ fn void Poly1305.blocks(&self, char[] input, ulong pad_bit = 1) @local
 {
     for (; input.len >= BLOCK_SIZE; input = input[BLOCK_SIZE..])
     {
-        ulong i0 = @unaligned_load(*(ulong*)&input[0], 1);
-        ulong i1 = @unaligned_load(*(ulong*)&input[8], 1);
+        ulong i0 = mem::load((ulong*)&input[0], 1);
+        ulong i1 = mem::load((ulong*)&input[8], 1);
 
         uint128 d0 = (uint128)self.h[0] + i0;
         self.h[0] = (ulong)d0;

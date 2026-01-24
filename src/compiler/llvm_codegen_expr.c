@@ -2094,7 +2094,7 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 			LLVMValueRef diff_value = LLVMConstInt(llvm_type, 1, false);
 			if (!allow_wrap)
 			{
-				if (type_is_signed(type))
+				if (type_is_signed_any(type))
 				{
 					return diff > 0
 					       ? LLVMBuildNSWAdd(c->builder, original->value, diff_value, "addnsw")
@@ -3055,7 +3055,7 @@ static void llvm_emit_logical_and_or(GenContext *c, BEValue *be_value, Expr *exp
 
 	LLVMValueRef result_on_skip = LLVMConstInt(c->bool_type, op == BINARYOP_AND ? 0 : 1, 0);
 
-	// We might end this with a jump, eg (foo()? || bar()) where foo() is a macro and guaranteed not to exit.
+	// We might end this with a jump, eg (foo()~ || bar()) where foo() is a macro and guaranteed not to exit.
 	if (!lhs_end_block)
 	{
 		// Just set any value.
@@ -3119,8 +3119,8 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 	Type *vector_type = type_vector_type(lhs_type);
 	if (vector_type)
 	{
-		lhs_signed = type_is_signed(vector_type);
-		rhs_signed = type_is_signed(type_vector_type(rhs_type));
+		lhs_signed = type_is_signed_any(vector_type);
+		rhs_signed = type_is_signed_any(type_vector_type(rhs_type));
 	}
 	else
 	{
@@ -3846,7 +3846,7 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMBasicBlockRef success_end_block = llvm_get_current_block_if_in_use(c);
 
 	// Only jump to phi if we didn't have an immediate jump. That would
-	// for example happen on "{| defer foo(); return Foo.ERR?; |} ?? 123"
+	// for example happen on "{| defer foo(); return Foo.ERR~; |} ?? 123"
 	if (success_end_block)
 	{
 		if (!llvm_emit_br(c, phi_block)) success_end_block = NULL;
@@ -3883,7 +3883,7 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMBasicBlockRef else_block_exit = llvm_get_current_block_if_in_use(c);
 
 	// While the value may not be an optional, we may get a jump
-	// from this construction: foo() ?? (bar()?)
+	// from this construction: foo() ?? (bar()~)
 	// In this case the else block is empty.
 	if (!else_block_exit || !llvm_emit_br(c, phi_block))
 	{
@@ -6278,6 +6278,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		BEValue value;
 		c->debug.block_stack = old_inline_location;
 		llvm_emit_expr(c, &value, init_expr);
+		if (!val->alignment) val->alignment = type_abi_alignment(val->type);
 		if (llvm_value_is_addr(&value) || val->var.is_written || val->var.is_addr || llvm_use_accurate_debug_info(c))
 		{
 			c->debug.block_stack = inline_location;
@@ -7167,7 +7168,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_FLOAT_TO_INT:
 			llvm_emit_expr(c, value, expr->inner_expr);
 			llvm_value_rvalue(c, value);
-			if (type_is_signed(type_lowering(expr->type)))
+			if (type_is_signed_any(type_lowering(expr->type)))
 			{
 				llvm_value_set(value, LLVMBuildFPToSI(c->builder, value->value, llvm_get_type(c, expr->type), "fpsi"), expr->type);
 				return;
@@ -7177,7 +7178,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_INT_TO_FLOAT:
 			llvm_emit_expr(c, value, expr->inner_expr);
 			llvm_value_rvalue(c, value);
-			if (type_is_signed(value->type))
+			if (type_is_signed_any(value->type))
 			{
 				llvm_value_set(value, LLVMBuildSIToFP(c->builder, value->value, llvm_get_type(c, expr->type), "sifp"), expr->type);
 			}

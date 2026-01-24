@@ -21,10 +21,9 @@ fn void c()
 
 fn int main()
 {
-
 	return 0;
 }
 
-module bar{Type};
+module bar <Type>;
 fn void test()
 {}

@@ -86,7 +86,7 @@ fn uint128? int_from_any(any arg, bool *is_neg) @private
 			double d = *(double*)arg;
 			return (uint128)((*is_neg = d < 0) ? -d : d);
 		default:
-			return BAD_FORMAT?;
+			return BAD_FORMAT~;
 	}
 }
 
@@ -128,7 +128,7 @@ fn FloatType? float_from_any(any arg) @private
 		case double:
 			return (FloatType)*(double*)arg;
 		default:
-			return BAD_FORMAT?;
+			return BAD_FORMAT~;
 	}
 }
 
@@ -283,7 +283,7 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 		} while (y);
 		isz outlen = s - buf;
 		isz explen = ebuf - estr;
-		if (p > int.max - 2 - explen - pl) return INTERNAL_BUFFER_EXCEEDED?;
+		if (p > int.max - 2 - explen - pl) return INTERNAL_BUFFER_EXCEEDED~;
 		usz len;
 		usz l = p && outlen - 2 < p
 				? p + 2 + explen
@@ -454,12 +454,12 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 			}
 		}
 	}
-	if (p > int.max - 1 - (isz)(p || self.flags.hash)) return INTERNAL_BUFFER_EXCEEDED?;
+	if (p > int.max - 1 - (isz)(p || self.flags.hash)) return INTERNAL_BUFFER_EXCEEDED~;
 	int l = (int)(1 + p + (isz)(p || self.flags.hash));
 	char* estr @noinit;
 	if (formatting == FLOAT)
 	{
-		if (e > int.max - l) return INTERNAL_BUFFER_EXCEEDED?;
+		if (e > int.max - l) return INTERNAL_BUFFER_EXCEEDED~;
 		if (e > 0) l += e;
 	}
 	else
@@ -468,10 +468,10 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 		while (ebuf - estr < 2) (--estr)[0] = '0';
 		*--estr = (e < 0 ? '-' : '+');
 		*--estr = self.flags.uppercase ? 'E' : 'e';
-		if (ebuf - estr > (isz)int.max - l) return INTERNAL_BUFFER_EXCEEDED?;
+		if (ebuf - estr > (isz)int.max - l) return INTERNAL_BUFFER_EXCEEDED~;
 		l += (int)(ebuf - estr);
 	}
-	if (l > int.max - pl) return INTERNAL_BUFFER_EXCEEDED?;
+	if (l > int.max - pl) return INTERNAL_BUFFER_EXCEEDED~;
 	usz len;
 	if (!self.flags.left && !self.flags.zeropad) len += self.pad(' ', self.width, pl + l)!;
 	if (is_neg || self.flags.plus) len += self.out(is_neg ? '-' : '+')!;
@@ -559,7 +559,7 @@ fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 			case 2:
 				do
 				{
-					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED?;
+					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
 					buf[len++] = '0' + (char)value & 1;
 					value >>= 1;
 				}
@@ -567,13 +567,13 @@ fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 			case 10:
 				if (!value)
 				{
-					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED?;
+					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
 					buf[len++] = '0';
 					break;
 				}
 				while (value >= 10)
 				{
-					if (len + 1 >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED?;
+					if (len + 1 >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
 					char digit = (char)(value % 100);
 					buf[len:2] = DIGIT_PAIRS[2 * digit:2];
 					len += 2;
@@ -581,13 +581,13 @@ fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 				}
 				if (value > 0)
 				{
-					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED?;
+					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
 					buf[len++] = '0' + (char)value;
 				}
 			case 16:
 				do
 				{
-					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED?;
+					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
 					char digit = (char)value & 0xF;
 					buf[len++] = digit + (digit < 10 ? '0' : past_10);
 					value >>= 4;
@@ -596,7 +596,7 @@ fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 			case 8:
 				do
 				{
-					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED?;
+					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
 					buf[len++] = '0' + (char)value & 0x7;
 					value >>= 3;
 				}
@@ -616,12 +616,12 @@ fn usz? Formatter.ntoa_format(&self, String buf, usz len, bool negative, uint ba
 		if (self.width && self.flags.zeropad && (negative || self.flags.plus || self.flags.space)) self.width--;
 		while (len < self.prec)
 		{
-			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED?;
+			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED~;
 			buf[len++] = '0';
 		}
 		while (self.flags.zeropad && len < self.width)
 		{
-			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED?;
+			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED~;
 			buf[len++] = '0';
 		}
 	}
@@ -636,7 +636,7 @@ fn usz? Formatter.ntoa_format(&self, String buf, usz len, bool negative, uint ba
 		}
 		if (base != 10)
 		{
-			if (len + 1 >= buf.len) return INTERNAL_BUFFER_EXCEEDED?;
+			if (len + 1 >= buf.len) return INTERNAL_BUFFER_EXCEEDED~;
 			switch (base)
 			{
 				case 16:
@@ -655,13 +655,13 @@ fn usz? Formatter.ntoa_format(&self, String buf, usz len, bool negative, uint ba
 	switch (true)
 	{
 		case negative:
-			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED?;
+			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED~;
 			buf[len++] = '-';
 		case self.flags.plus:
-			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED?;
+			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED~;
 			buf[len++] = '+';
 		case self.flags.space:
-			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED?;
+			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED~;
 			buf[len++] = ' ';
 	}
 	if (len) self.out_reverse(buf[:len])!;
@@ -741,10 +741,10 @@ fn int? printf_parse_format_field(
 	if (c.is_digit()) return simple_atoi(format_ptr, format_len, index_ptr);
 	if (c != '*') return 0;
 	usz len = ++(*index_ptr);
-	if (len >= format_len) return BAD_FORMAT?;
-	if (*args_index_ptr >= args_len) return BAD_FORMAT?;
+	if (len >= format_len) return BAD_FORMAT~;
+	if (*args_index_ptr >= args_len) return BAD_FORMAT~;
 	any val = args_ptr[(*args_index_ptr)++];
-	if (!val.type.kindof.is_int()) return BAD_FORMAT?;
+	if (!val.type.kindof.is_int()) return BAD_FORMAT~;
 	uint? intval = types::any_to_int(val, int);
-	return intval ?? BAD_FORMAT?;
+	return intval ?? BAD_FORMAT~;
 }

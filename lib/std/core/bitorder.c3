@@ -101,7 +101,7 @@ macro read(bytes, $Type)
 		$default:
 			ptr = bytes[..].ptr;
 	$endswitch
-	return bitcast(@unaligned_load(*(char[$Type.sizeof]*)ptr, 1), $Type).val;
+	return bitcast(mem::load((char[$Type.sizeof]*)ptr, $align: 1), $Type).val;
 }
 
 <*
@@ -118,7 +118,7 @@ macro write(x, bytes, $Type)
 		$default:
 			ptr = bytes[..].ptr;
 	$endswitch
-	@unaligned_store(*($typeof(x)*)ptr, bitcast(x, $Type).val, 1);
+	mem::store(($typeof(x)*)ptr, bitcast(x, $Type).val, 1);
 }
 
 macro bool is_bitorder($Type)
