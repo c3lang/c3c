@@ -110,6 +110,7 @@
 - $typeof(<type>) returns typeinfo, causing errors #2795.
 - Empty ichar slice + byte concatenation hit an assert. #2789
 - Remove dependency on test tmp library for stdlib compiler tests. #2800
+- Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.

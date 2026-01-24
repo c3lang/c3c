@@ -11,13 +11,12 @@ import std::sort::qs;
 *>
 macro void quicksort(list, cmp = ..., context = ...) @builtin
 {
-	// When the context or cmp functions are not defined, we can simply use a dummy/default type.
-	var $CmpFnType = $defined(cmp) ??? $typeof(cmp) : uint;
-	var $ContextType = $defined(context) ??? $typeof(context) : uint;
+	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
+	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if $kindof(list) == SLICE:
-		qs::qsort{$typeof(list), $CmpFnType, $ContextType}(list, 0, (isz)list.len - 1, ...cmp, ...context);
+		qs::qsort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)list.len - 1, used_cmp, used_ctx);
 	$else
-		qs::qsort{$typeof(*list), $CmpFnType, $ContextType}(list, 0, (isz)lengthof(*list) - 1, ...cmp, ...context);
+		qs::qsort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)lengthof(*list) - 1, used_cmp, used_ctx);
 	$endif
 }
 
@@ -33,17 +32,19 @@ macro void quicksort(list, cmp = ..., context = ...) @builtin
 *>
 macro quickselect(list, isz k, cmp = ..., context = ...) @builtin
 {
-	// When the context or cmp functions are not defined, we can simply use a dummy/default type.
-	var $CmpFnType = $defined(cmp) ??? $typeof(cmp) : uint;
-	var $ContextType = $defined(context) ??? $typeof(context) : uint;
+	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
+	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if $kindof(list) == SLICE:
-		return qs::qselect{$typeof(list), $CmpFnType, $ContextType}(list, 0, (isz)list.len - 1, k, ...cmp, ...context);
+		return qs::qselect{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)list.len - 1, k, used_cmp, used_ctx);
 	$else
-		return qs::qselect{$typeof(*list), $CmpFnType, $ContextType}(list, 0, (isz)lengthof(*list) - 1, k, ...cmp, ...context);
+		return qs::qselect{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)lengthof(*list) - 1, k, used_cmp, used_ctx);
 	$endif
 }
 
+
 module std::sort::qs <Type, CmpFn, Context>;
+
+import std::sort @public;
 
 alias ElementType = $typeof(((Type){})[0]);
 const bool IS_SLICE = Type.kindof == SLICE;
@@ -65,7 +66,7 @@ alias Stack @private = StackElementItem[64];
 
 // Based on https://alienryderflex.com/quicksort by Darel Rex Finley, Public Domain.
 
-macro void qsort(ListType list, isz low, isz high, CmpFn cmp = ..., Context context = ...)
+fn void qsort(ListType list, isz low, isz high, CmpFn cmp, Context context) @noinline
 {
 	if (low >= 0 && high >= 0 && low < high)
 	{
@@ -82,7 +83,7 @@ macro void qsort(ListType list, isz low, isz high, CmpFn cmp = ..., Context cont
 
 			if (l < h)
 			{
-				l = @partition(list, l, h, ...cmp, ...context);
+				l = @partition(list, l, h, cmp, context);
 				stack[i + 1].low = l + 1;
 				stack[i + 1].high = stack[i].high;
 				stack[i++].high = l;
@@ -103,7 +104,7 @@ macro void qsort(ListType list, isz low, isz high, CmpFn cmp = ..., Context cont
 @require low <= k : "kth smallest element is smaller than lower bounds"
 @require k <= high : "kth smallest element is larger than upper bounds"
 *>
-macro ElementType? qselect(ListType list, isz low, isz high, isz k, CmpFn cmp = ..., Context context = ...)
+fn ElementType? qselect(ListType list, isz low, isz high, isz k, CmpFn cmp, Context context) @noinline
 {
 	if (low >= 0 && high >= 0 && low < high)
 	{
@@ -114,7 +115,7 @@ macro ElementType? qselect(ListType list, isz low, isz high, isz k, CmpFn cmp = 
 		usz max_retries = 64;
 		while (l <= h && max_retries--)
 		{
-			pivot = @partition(list, l, h, ...cmp, ...context);
+			pivot = @partition(list, l, h, cmp, context);
 			if (k == pivot) return list_get(list, k);
 			if (k < pivot)
 			{
@@ -129,10 +130,10 @@ macro ElementType? qselect(ListType list, isz low, isz high, isz k, CmpFn cmp = 
 	return NOT_FOUND~;
 }
 
-macro isz @partition(ListType list, isz l, isz h, CmpFn cmp = ..., Context context = ...)
+macro isz @partition(ListType list, isz l, isz h, CmpFn cmp, Context context)
 {
-	var $has_cmp = $defined(cmp);
-	var $has_context = $defined(context);
+	var $has_cmp = $typeof(cmp) != sort::TypeNotSet;
+	var $has_context = $typeof(context) != sort::TypeNotSet;
 	var $cmp_by_value = $has_cmp &&& $defined($typefrom(CmpFn.paramsof[0].type) v = list_get(list, 0));
 
 	ElementType pivot = list_get(list, l);

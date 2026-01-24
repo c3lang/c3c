@@ -1,5 +1,8 @@
 module std::sort;
 
+<* Essentially `EmptySlot` but specifically for sorting macro expansions. *>
+typedef TypeNotSet @private = void*;
+
 macro bool @list_is_by_ref(#list) @const
 {
 	return $kindof(#list) == SLICE ||| ($kindof(#list) == POINTER &&& $kindof(*#list) != SLICE);

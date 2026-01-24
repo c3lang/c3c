@@ -11,9 +11,16 @@ in [0, array.len) where x would be inserted or cmp(i) is true and cmp(j) is true
 *>
 macro usz binarysearch(list, x, cmp = ..., context = ...) @builtin
 {
+	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
+	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
+	return _binarysearch{$typeof(list), $typeof(x), $typeof(used_cmp), $typeof(used_ctx)}(list, x, used_cmp, used_ctx);
+}
+
+fn usz _binarysearch(ListType list, XType x, CmpFnType cmp, ContextType context) <ListType, XType, CmpFnType, ContextType> @noinline @local
+{
 	usz i;
-	var $no_cmp = !$defined(cmp);
-	var $has_context = $defined(context);
+	var $no_cmp = $typeof(cmp) == TypeNotSet;
+	var $has_context = $typeof(context) != TypeNotSet;
 
 	$if $kindof(list) == SLICE:
 		usz len = lengthof(list);
@@ -64,7 +71,6 @@ macro usz binarysearch(list, x, cmp = ..., context = ...) @builtin
 					default: return half;
 				}
 			$else
-
 				$switch:
 					$case $defined(cmp((*list)[0], (*list)[0], context)):
 						int res = cmp(list[half], x, context);
