@@ -6326,7 +6326,7 @@ static inline void sema_expr_flatten_const_ident(Expr *expr)
 			return;
 	}
 	Expr *init_expr = ident->var.init_expr;
-	if (!init_expr) return;
+	if (!init_expr || init_expr->resolve_status != RESOLVE_DONE) return;
 	sema_expr_flatten_const_ident(init_expr);
 	if (expr_is_const(init_expr))
 	{
@@ -6364,7 +6364,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 			expr->type = type_typeid;
 			expr->expr_kind = EXPR_CONST;
 			expr->const_expr.const_kind = CONST_TYPEID;
-			expr->const_expr.typeid = parent->type;
+			expr->const_expr.typeid = type_get_func_ptr(parent->type);
 			expr->resolve_status = RESOLVE_DONE;
 			return true;
 		}
@@ -7723,7 +7723,7 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 		}
 		RETURN_SEMA_ERROR(parent, error_message, type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 	}
-	if (type_is_signed_any(flat_max))
+	if (type_is_signed(flat_max))
 	{
 		if (!sema_check_untyped_promotion(context, left, true, flat_max, max)) return false;
 		if (!sema_check_untyped_promotion(context, right, false, flat_max, max)) return false;
@@ -12046,7 +12046,11 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 				RETURN_SEMA_ERROR(expr, "A macro name must be followed by '('.");
 			}
 			// We may have kept FOO.x.y as a reference, fold it now if y is not an aggregate.
-			if (mutate) sema_expr_flatten_const_ident(expr->access_resolved_expr.parent);
+			if (mutate)
+			{
+				sema_expr_flatten_const_ident(expr->access_resolved_expr.parent);
+				if (!sema_cast_rvalue(context, expr->access_resolved_expr.parent, mutate)) return false;
+			}
 			return true;
 		case EXPR_TYPEINFO:
 			switch (expr->type_expr->type->type_kind)

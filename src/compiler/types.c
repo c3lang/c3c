@@ -1066,10 +1066,6 @@ Type *type_get_optional(Type *optional_type)
 
 Type *type_get_slice(Type *arr_type)
 {
-	if (!type_is_valid_for_array(arr_type))
-	{
-		puts("ofek");
-	}
 	ASSERT(type_is_valid_for_array(arr_type));
 	return type_generate_slice(arr_type, false);
 }

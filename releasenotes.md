@@ -116,7 +116,11 @@
 - Constant shifting incorrectly doesn't flatten the underlying vector base #2825
 - String not set as attributes resolved breaking has_tagof #2824
 - Self referencing forward resolved const enum fails to be properly detected #2823
-
+- Incorrectly try compile time int check on vector #2815
+- Generating typeid from function gives incorrect typeid #2816
+- Recursive definitions not discovered when initializer is access on other const #2817
+- Slice overrun detected late hit codegen assert #2822
+ 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
 - Add `@in` compile-time macro to check for a value in a variable list of constants. #2662
