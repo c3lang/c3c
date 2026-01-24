@@ -77,6 +77,23 @@ macro win32_set_utf8_codepage() @local
 	win32::setConsoleOutputCP(UTF8);
 }
 
+macro int @wmain_to_err_main(#m, int, Char16**)
+{
+	win32_set_utf8_codepage();
+	if (catch #m()) return 1;
+	return 0;
+}
+macro int @wmain_to_int_main(#m, int, Char16**)
+{
+	win32_set_utf8_codepage();
+	return #m();
+}
+macro int @wmain_to_void_main(#m, int, Char16**)
+{
+	win32_set_utf8_codepage();
+	#m();
+	return 0;
+}
 
 extern fn Char16** _win_command_line_to_argv_w(ushort* cmd_line, int* argc_ptr) @cname("CommandLineToArgvW");
 
