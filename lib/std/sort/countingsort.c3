@@ -23,26 +23,24 @@ macro void countingsort(list, key_fn = ...) @builtin
 
 macro void insertionsort_indexed(list, start, end, cmp = ..., context = ...) @builtin
 {
-	// When the context or cmp functions are not defined, we can simply use a dummy/default type.
-	var $CmpFnType = $defined(cmp) ??? $typeof(cmp) : uint;
-	var $ContextType = $defined(context) ??? $typeof(context) : uint;
+	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
+	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if $kindof(list) == SLICE:
-		is::isort{$typeof((list)), $CmpFnType, $ContextType}(list, (usz)start, (usz)end, ...cmp, ...context);
+		is::isort{$typeof((list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (usz)start, (usz)end, used_cmp, used_ctx);
 	$else
-		is::isort{$typeof((*list)), $CmpFnType, $ContextType}(list, (usz)start, (usz)end, ...cmp, ...context);
+		is::isort{$typeof((*list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (usz)start, (usz)end, used_cmp, used_ctx);
 	$endif
 
 }
 
 macro void quicksort_indexed(list, start, end, cmp = ..., context = ...) @builtin
 {
-	// When the context or cmp functions are not defined, we can simply use a dummy/default type.
-	var $CmpFnType = $defined(cmp) ??? $typeof(cmp) : uint;
-	var $ContextType = $defined(context) ??? $typeof(context) : uint;
+	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
+	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if $kindof(list) == SLICE:
-		qs::qsort{$typeof((list)), $CmpFnType, $ContextType}(list, (isz)start, (isz)(end-1), ...cmp, ...context);
+		qs::qsort{$typeof((list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (isz)start, (isz)(end-1), used_cmp, used_ctx);
 	$else
-		qs::qsort{$typeof((*list)), $CmpFnType, $ContextType}(list, (isz)start, (isz)(end-1), ...cmp, ...context);
+		qs::qsort{$typeof((*list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (isz)start, (isz)(end-1), used_cmp, used_ctx);
 	$endif
 }
 
