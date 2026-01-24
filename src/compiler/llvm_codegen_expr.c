@@ -1383,7 +1383,7 @@ void llvm_emit_ignored_expr(GenContext *c, Expr *expr)
 		llvm_emit_expr(c, &value, expr);
 		EMIT_EXPR_LOC(c, expr);
 		// We only optimize if there is no instruction the current block
-		if (!LLVMGetFirstInstruction(c->current_block))
+		if (c->current_block && !LLVMGetFirstInstruction(c->current_block))
 		{
 			llvm_prune_optional(c, discard_fail);
 		}
@@ -6011,6 +6011,11 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		llvm_emit_statement_chain(c, expr->call_expr.function_contracts);
 	}
 
+	if (!llvm_get_current_block_if_in_use(c))
+	{
+		llvm_value_set(result_value, NULL, type_void);
+		return;
+	}
 	// 1. Dynamic dispatch.
 	if (expr->call_expr.is_dynamic_dispatch)
 	{
@@ -6278,6 +6283,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		BEValue value;
 		c->debug.block_stack = old_inline_location;
 		llvm_emit_expr(c, &value, init_expr);
+		if (!c->current_block) goto EARLY_EXIT;
 		if (!val->alignment) val->alignment = type_abi_alignment(val->type);
 		if (llvm_value_is_addr(&value) || val->var.is_written || val->var.is_addr || llvm_use_accurate_debug_info(c))
 		{
@@ -6297,6 +6303,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 	{
 		llvm_emit_unreachable(c);
 	}
+EARLY_EXIT:
 	if (!c->current_block)
 	{
 		llvm_emit_block(c, llvm_basic_block_new(c, "after_macro"));
