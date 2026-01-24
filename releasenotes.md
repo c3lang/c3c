@@ -110,6 +110,17 @@
 - $typeof(<type>) returns typeinfo, causing errors #2795.
 - Empty ichar slice + byte concatenation hit an assert. #2789
 - Remove dependency on test tmp library for stdlib compiler tests. #2800
+- Comparing a flexible array member to another type would hit an assert. #2830
+- Underlying slice type not checked correctly in $defined #2829
+- Checking for exhaustive cases is done even in if-chain switch if all is enum #2828
+- Constant shifting incorrectly doesn't flatten the underlying vector base #2825
+- String not set as attributes resolved breaking has_tagof #2824
+- Self referencing forward resolved const enum fails to be properly detected #2823
+- Incorrectly try compile time int check on vector #2815
+- Generating typeid from function gives incorrect typeid #2816
+- Recursive definitions not discovered when initializer is access on other const #2817
+- Slice overrun detected late hit codegen assert #2822
+- Compile time dereference of a constant slice was too generous #2821
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
