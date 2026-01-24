@@ -10564,6 +10564,13 @@ RETRY:
 			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
 			if (!type) return NULL;
 			if (!type_ok(type)) return type;
+			if (!type_is_valid_for_array(type))
+			{
+				SEMA_ERROR(type_info->array.base,
+						   "You cannot form a slice with elements of type %s.",
+						   type_quoted_error_string(type));
+				return poisoned_type;
+			}
 			return type_get_slice(type);
 		}
 		case TYPE_INFO_INFERRED_ARRAY:
@@ -10572,6 +10579,13 @@ RETRY:
 			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
 			if (!type) return NULL;
 			if (!type_ok(type)) return type;
+			if (!type_is_valid_for_array(type))
+			{
+				SEMA_ERROR(type_info->array.base,
+						   "You cannot form an array with elements of type %s.",
+						   type_quoted_error_string(type));
+				return poisoned_type;
+			}
 			return type_get_inferred_array(type);
 		}
 		case TYPE_INFO_INFERRED_VECTOR:
@@ -10580,6 +10594,13 @@ RETRY:
 			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
 			if (!type) return NULL;
 			if (!type_ok(type)) return type;
+			if (!type_is_valid_for_vector(type))
+			{
+				SEMA_ERROR(type_info->array.base,
+						   "%s is not of a vectorizable type.",
+						   type_quoted_error_string(type));
+				return poisoned_type;
+			}
 			return type_get_inferred_vector(type);
 		}
 		case TYPE_INFO_POINTER:

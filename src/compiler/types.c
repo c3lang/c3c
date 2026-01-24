@@ -1066,6 +1066,10 @@ Type *type_get_optional(Type *optional_type)
 
 Type *type_get_slice(Type *arr_type)
 {
+	if (!type_is_valid_for_array(arr_type))
+	{
+		puts("ofek");
+	}
 	ASSERT(type_is_valid_for_array(arr_type));
 	return type_generate_slice(arr_type, false);
 }
@@ -2273,6 +2277,7 @@ RETRY_DISTINCT:
 			// array + [other array, vector] => no
 			return NULL;
 		case TYPE_FLEXIBLE_ARRAY:
+			return NULL;
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 			// Already handled
