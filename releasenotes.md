@@ -138,6 +138,7 @@
 - HashSet.len() now returns usz instead of int. #2740
 - Add `mem::store` and `mem::load` which may combine both aligned and volatile operations.
 - Deprecated `EMPTY_MACRO_SLOT` and its related uses, in favor of `optional_param = ...` named macro arguments. #2805
+- Added `realloc_array`, `realloc_array_aligned`, and `realloc_array_try` to `allocator::`. #2760
 
 ## 0.7.8 Change list
 
