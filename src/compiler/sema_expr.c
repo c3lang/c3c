@@ -8921,8 +8921,18 @@ static inline bool sema_expr_analyse_deref(SemaContext *context, Expr *expr, boo
 				break;
 			case CONST_BYTES:
 			case CONST_STRING:
-				expr_rewrite_const_int(expr, type_get_indexed_type(inner->type), inner->const_expr.bytes.len ? inner->const_expr.bytes.ptr[0] : 0);
+			{
+				if (inner->type->type_kind != TYPE_POINTER) break;
+				Type *inner_type = type_get_indexed_type(inner->type);
+				if (!type_kind_is_any_integer(type_flatten(inner_type)->type_kind)) break;
+				if (!inner->const_expr.bytes.len)
+				{
+					RETURN_SEMA_ERROR(inner, "You cannot dereference an empty constant array or slice.");
+				}
+				expr_rewrite_const_int(expr, inner_type, inner->const_expr.bytes.ptr[0]);
 				return true;
+
+			}
 			default:
 				UNREACHABLE
 		}

@@ -120,7 +120,8 @@
 - Generating typeid from function gives incorrect typeid #2816
 - Recursive definitions not discovered when initializer is access on other const #2817
 - Slice overrun detected late hit codegen assert #2822
- 
+- Compile time dereference of a constant slice was too generous #2821
+
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
 - Add `@in` compile-time macro to check for a value in a variable list of constants. #2662
