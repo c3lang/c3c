@@ -127,6 +127,7 @@
 - Empty enums would return the values as zero sized arrays #2838
 - Store of zero in lowering did not properly handle optionals in some cases #2837
 - Bitstruct accidentally allowed other arrays than char arrays #2836
+- Bitstruct as substruct fails to properly work with designated initializers. #2827
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
