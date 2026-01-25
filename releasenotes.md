@@ -23,6 +23,7 @@
 - Make `foo.$abc` implicitly mean `foo.eval("$abc")`.
 - Deprecating multi-level array length inference. `int[*][*]` is deprecated and will be removed 0.8.0.
 - Combining argument-less initialization with argument init for bitstructs is now allowed e.g. `{ .b, .c = 123 }`.
+- Bug when initializing an inferred array with deep structure using designated init #2826
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
