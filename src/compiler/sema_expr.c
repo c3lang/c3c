@@ -4962,7 +4962,7 @@ static inline bool sema_expr_replace_with_enum_array(SemaContext *context, Expr 
 	initializer->initializer_list = element_values;
 	enum_array_expr->expr_kind = EXPR_COMPOUND_LITERAL;
 	enum_array_expr->expr_compound_literal.initializer = initializer;
-	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_array(kind, elements), span);
+	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_slice(kind), span);
 	enum_array_expr->resolve_status = RESOLVE_NOT_DONE;
 	return sema_analyse_expr_rvalue(context, enum_array_expr);
 }
@@ -4985,7 +4985,7 @@ static inline bool sema_expr_replace_with_const_enum_array(SemaContext *context,
 	initializer->initializer_list = element_values;
 	enum_array_expr->expr_kind = EXPR_COMPOUND_LITERAL;
 	enum_array_expr->expr_compound_literal.initializer = initializer;
-	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_array(kind, elements), span);
+	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_slice(kind), span);
 	enum_array_expr->resolve_status = RESOLVE_NOT_DONE;
 	return sema_analyse_expr_rvalue(context, enum_array_expr);
 }

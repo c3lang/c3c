@@ -5293,14 +5293,6 @@ FOUND:;
 		vec_add(generic->generic_decl.instances, instance);
 		AnalysisStage stage = module->stage;
 		ASSERT(stage > ANALYSIS_IMPORTS);
-		// Add all the normal top level declarations
-		FOREACH(Decl *, decl, copied) unit_register_global_decl(decl->unit, decl);
-		// Add all the conditional declarations
-		FOREACH(Decl *, decl, copied_cond)
-		{
-			unit_register_optional_global_decl(decl->unit, decl);
-			if (decl->decl_kind != DECL_ERASED) vec_add(copied, decl);
-		}
 		if (compiler.context.errors_found) return poisoned_decl;
 
 		// Check contracts
@@ -5316,9 +5308,20 @@ FOUND:;
 				SourceSpan param_span = extend_span_with_token(params[0]->span, VECLAST(params)->span);
 				if (!sema_analyse_generic_module_contracts(context, module, instance, contracts, param_span, invocation_span))
 				{
-					return poisoned_decl;
+					decl_poison(instance);
+					decl_poison(alias);
+					return alias;
 				}
 			}
+		}
+
+		// Add all the normal top level declarations
+		FOREACH(Decl *, decl, copied) unit_register_global_decl(decl->unit, decl);
+		// Add all the conditional declarations
+		FOREACH(Decl *, decl, copied_cond)
+		{
+			unit_register_optional_global_decl(decl->unit, decl);
+			if (decl->decl_kind != DECL_ERASED) vec_add(copied, decl);
 		}
 
 		if (stage < ANALYSIS_METHODS_REGISTER) goto EXIT;
