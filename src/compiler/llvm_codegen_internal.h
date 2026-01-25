@@ -459,6 +459,7 @@ LLVMValueRef llvm_load_value_store(GenContext *c, BEValue *value);
 // -- Store ---
 LLVMValueRef llvm_store(GenContext *c, BEValue *destination, BEValue *value);
 LLVMValueRef llvm_store_zero(GenContext *c, BEValue *ref);
+void llvm_store_no_fault(GenContext *c, BEValue *ref);
 INLINE LLVMValueRef llvm_store_raw(GenContext *c, BEValue *destination, LLVMValueRef raw_value);
 INLINE LLVMValueRef llvm_store_decl(GenContext *c, Decl *decl, BEValue *value);
 INLINE LLVMValueRef llvm_store_decl_raw(GenContext *context, Decl *decl, LLVMValueRef value);

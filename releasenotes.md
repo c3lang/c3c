@@ -125,6 +125,7 @@
 - Raw vaargs with optional return not lowered correctly #2819
 - Early exit in macro call crashes codegen #2820
 - Empty enums would return the values as zero sized arrays #2838
+- Store of zero in lowering did not properly handle optionals in some cases #2837
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.

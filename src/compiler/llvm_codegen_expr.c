@@ -1430,6 +1430,7 @@ static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEVal
 		return;
 	}
 	ASSERT(initializer->kind == CONST_INIT_STRUCT);
+	llvm_store_no_fault(c, ref);
 	llvm_store_raw(c, ref, llvm_emit_const_bitstruct(c, initializer));
 }
 
