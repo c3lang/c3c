@@ -134,6 +134,9 @@
 - Lowering of optional in && was incorrect #2843
 - Resolving &X.b when X is a const incorrectly checked for runtime constness #2842
 - Alignment param on $$unaligned_* not checked for zero #2844
+- Fix alignment for uint128 to 16 with WASM targets.
+- Incorrect assert in struct alignment checking #2841
+- Packed structs sometimes not lowered as such.
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.

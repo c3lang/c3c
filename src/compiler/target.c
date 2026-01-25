@@ -1683,9 +1683,7 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 		case ARCH_TYPE_PPC64:
 		case ARCH_TYPE_PPC:
 		case ARCH_TYPE_PPC64LE:
-		case ARCH_TYPE_WASM64:
 		case ARCH_TYPE_RISCV32:
-		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_XTENSA:
 			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
 		case ARCH_TYPE_X86_64:
@@ -1694,6 +1692,8 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 #else
 			FALLTHROUGH;
 #endif
+		case ARCH_TYPE_WASM64:
+		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_RISCV64:
 			return (AlignData) { bits, bits };
 		case ARCH_TYPE_AARCH64:
