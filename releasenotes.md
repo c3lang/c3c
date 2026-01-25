@@ -131,6 +131,7 @@
 - Bitstruct as substruct fails to properly work with designated initializers. #2827
 - Bug when initializing an inferred array with deep structure using designated init #2826
 - Packed .c3l files without compressions weren't unpacked correctly.
+- Lowering of optional in && was incorrect #2843
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.

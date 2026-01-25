@@ -189,6 +189,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *ref_expr, Expr 
 		else
 		{
 			Type *type = ref_expr ? type_lowering(ref_expr->type) : ref->type;
+
 			BEValue val = llvm_emit_alloca_b(c, type, ".assign_list");
 			llvm_emit_initialize_reference(c, &val, expr);
 			if (ref_expr) llvm_emit_expr(c, ref, ref_expr);
@@ -5855,6 +5856,7 @@ INLINE void llvm_emit_varargs_expr(GenContext *c, BEValue *value_ref, Expr **var
 	FOREACH_IDX(foreach_index, Expr *, val, varargs)
 	{
 		llvm_emit_expr(c, &inner_temp, val);
+		RETURN_ON_EMPTY_BLOCK(value_ref);
 		llvm_value_fold_optional(c, &inner_temp);
 		BEValue slot = llvm_emit_array_gep(c, &array_ref, foreach_index);
 		llvm_store(c, &slot, &inner_temp);
@@ -6751,6 +6753,7 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 	Expr *inner = exprptr(expr->builtin_access_expr.inner);
 	llvm_emit_expr(c, be_value, inner);
 	llvm_value_fold_optional(c, be_value);
+	RETURN_ON_EMPTY_BLOCK(be_value);
 	switch (expr->builtin_access_expr.kind)
 	{
 		case ACCESS_FAULTNAME:
@@ -6930,6 +6933,7 @@ void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr)
 static void llvm_emit_int_to_bool(GenContext *c, BEValue *value, Expr *expr)
 {
 	llvm_emit_expr(c, value, expr->int_to_bool_expr.inner);
+	RETURN_ON_EMPTY_BLOCK(value);
 	Type *inner_type = value->type;
 	if (inner_type->type_kind == TYPE_ARRAY)
 	{
@@ -7100,6 +7104,7 @@ static inline void llvm_emit_vector_to_array(GenContext *c, BEValue *value, Expr
 void llvm_emit_slice_to_vec_array(GenContext *c, BEValue *value, Expr *expr)
 {
 	llvm_emit_expr(c, value, expr->inner_expr);
+	RETURN_ON_EMPTY_BLOCK(value);
 	llvm_value_rvalue(c, value);
 	BEValue pointer;
 	Type *base = value->type->array.base;

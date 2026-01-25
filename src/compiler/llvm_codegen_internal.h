@@ -332,6 +332,7 @@ bool llvm_value_is_const(BEValue *value);
 void llvm_value_rvalue(GenContext *c, BEValue *value);
 void llvm_value_deref(GenContext *c, BEValue *value);
 void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type);
+void llvm_value_set_empty(BEValue *value);
 void llvm_value_set_int(GenContext *c, BEValue *value, Type *type, uint64_t i);
 void llvm_value_set_address(GenContext *c, BEValue *value, LLVMValueRef llvm_value, Type *type, AlignSize alignment);
 void llvm_value_set_alloca(GenContext *c, BEValue *value, Type *type, AlignSize align, const char *name);
@@ -593,6 +594,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 #define EMIT_SPAN(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x); } while (0)
 #define PUSH_DEFER_ERROR(val__) LLVMValueRef def_err__ = c->defer_error_var; c->defer_error_var = val__
 #define POP_DEFER_ERROR() c->defer_error_var = def_err__
+#define RETURN_ON_EMPTY_BLOCK(value__) do { if (!c->current_block) { llvm_value_set_empty(value__); return; }} while(0)
 
 LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity);
 

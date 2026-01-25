@@ -229,6 +229,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	{
 		BEValue be_value;
 		llvm_emit_expr(c, &be_value, expr->inner_expr);
+		RETURN_ON_EMPTY_BLOCK(&be_value);
 		if (ast->return_stmt.cleanup_fail)
 		{
 			llvm_value_rvalue(c, &be_value);
