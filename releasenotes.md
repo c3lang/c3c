@@ -23,7 +23,6 @@
 - Make `foo.$abc` implicitly mean `foo.eval("$abc")`.
 - Deprecating multi-level array length inference. `int[*][*]` is deprecated and will be removed 0.8.0.
 - Combining argument-less initialization with argument init for bitstructs is now allowed e.g. `{ .b, .c = 123 }`.
-- Bug when initializing an inferred array with deep structure using designated init #2826
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -130,6 +129,7 @@
 - Store of zero in lowering did not properly handle optionals in some cases #2837
 - Bitstruct accidentally allowed other arrays than char arrays #2836
 - Bitstruct as substruct fails to properly work with designated initializers. #2827
+- Bug when initializing an inferred array with deep structure using designated init #2826
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
@@ -158,6 +158,7 @@
 - HashSet.len() now returns usz instead of int. #2740
 - Add `mem::store` and `mem::load` which may combine both aligned and volatile operations.
 - Deprecated `EMPTY_MACRO_SLOT` and its related uses, in favor of `optional_param = ...` named macro arguments. #2805
+- Add tracking of peak memory usage in the tracking allocator.
 
 ## 0.7.8 Change list
 
