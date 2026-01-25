@@ -22,6 +22,7 @@
 - Deprecated use of `?` to create optional.
 - Make `foo.$abc` implicitly mean `foo.eval("$abc")`.
 - Deprecating multi-level array length inference. `int[*][*]` is deprecated and will be removed 0.8.0.
+- Combining argument-less initialization with argument init for bitstructs is now allowed e.g. `{ .b, .c = 123 }`.
 
 ### Fixes
 - Regression with npot vector in struct triggering an assert #2219.
@@ -110,6 +111,25 @@
 - $typeof(<type>) returns typeinfo, causing errors #2795.
 - Empty ichar slice + byte concatenation hit an assert. #2789
 - Remove dependency on test tmp library for stdlib compiler tests. #2800
+- Comparing a flexible array member to another type would hit an assert. #2830
+- Underlying slice type not checked correctly in $defined #2829
+- Checking for exhaustive cases is done even in if-chain switch if all is enum #2828
+- Constant shifting incorrectly doesn't flatten the underlying vector base #2825
+- String not set as attributes resolved breaking has_tagof #2824
+- Self referencing forward resolved const enum fails to be properly detected #2823
+- Incorrectly try compile time int check on vector #2815
+- Generating typeid from function gives incorrect typeid #2816
+- Recursive definitions not discovered when initializer is access on other const #2817
+- Slice overrun detected late hit codegen assert #2822
+- Compile time dereference of a constant slice was too generous #2821
+- Constant deref of subscript had inserted checks #2818
+- Raw vaargs with optional return not lowered correctly #2819
+- Early exit in macro call crashes codegen #2820
+- Empty enums would return the values as zero sized arrays #2838
+- Store of zero in lowering did not properly handle optionals in some cases #2837
+- Bitstruct accidentally allowed other arrays than char arrays #2836
+- Bitstruct as substruct fails to properly work with designated initializers. #2827
+- Bug when initializing an inferred array with deep structure using designated init #2826
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
@@ -138,6 +158,7 @@
 - HashSet.len() now returns usz instead of int. #2740
 - Add `mem::store` and `mem::load` which may combine both aligned and volatile operations.
 - Deprecated `EMPTY_MACRO_SLOT` and its related uses, in favor of `optional_param = ...` named macro arguments. #2805
+- Add tracking of peak memory usage in the tracking allocator.
 - Added `realloc_array`, `realloc_array_aligned`, and `realloc_array_try` to `allocator::`. #2760
 
 ## 0.7.8 Change list

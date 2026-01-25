@@ -519,13 +519,11 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		}
 	}
 	Type *original = flattened->canonical;
-	bool is_bitstruct = original->type_kind == TYPE_BITSTRUCT;
-	bool is_structlike = type_is_union_or_strukt(original) || is_bitstruct;
+	bool is_structlike = type_is_union_or_strukt(original) || original->type_kind == TYPE_BITSTRUCT;
 	ArrayIndex max_index = -1;
 	bool optional = false;
 	Type *inner_type = NULL;
-	bool is_inferred = type_is_inferred(flattened);
-	int bitmember_count_without_value = 0;
+	bool is_inferred = type_is_infer_type(flattened);
 	FOREACH(Expr *, expr, init_expressions)
 	{
 		Decl *member;
@@ -535,10 +533,8 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		Expr *value = expr->designator_expr.value;
 		if (!value && is_bitmember && member->var.start_bit == member->var.end_bit && type_flatten(result) == type_bool)
 		{
-			ASSERT(is_bitstruct);
 			value = expr_new_const_bool(INVALID_SPAN, type_bool, true);
 			expr->designator_expr.value = value;
-			bitmember_count_without_value += 1;
 		}
 		if (!value) RETURN_SEMA_ERROR(expr, "This initializer needs a value.");
 		if (!sema_analyse_expr_rhs(context, result, value, true, no_match_ref, false)) return false;
@@ -553,24 +549,17 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 			inner_type = type_no_optional(value->type);
 		}
 	}
-	if (bitmember_count_without_value != 0 && bitmember_count_without_value != vec_size(init_expressions))
-	{
-		RETURN_SEMA_ERROR(initializer, "Mixing the omission of initializers is not permitted.");
-	}
 	Type *type;
 	if (!is_structlike && is_inferred)
 	{
-		if (type_is_infer_type(flattened))
-		{
-			type = type_from_inferred(flattened, inner_type, (ArraySize)(max_index + 1));
-		}
-		else
-		{
-			type = type_from_inferred(flattened, inner_type, flattened->array.len);
-		}
+		type = type_from_inferred(flattened, flattened->array.base, (ArraySize)(max_index + 1));
 	}
 	else
 	{
+		if (!is_structlike && type_is_inferred(flattened))
+		{
+			RETURN_SEMA_ERROR(initializer, "Inferring size when having non-top inferrence is not supported.");
+		}
 		type = assigned;
 	}
 	if (splat && type->canonical != splat->type->canonical)

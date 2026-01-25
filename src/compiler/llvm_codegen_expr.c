@@ -780,7 +780,7 @@ static inline void llvm_emit_subscript(GenContext *c, BEValue *value, Expr *expr
 	}
 	llvm_emit_subscript_addr(c, value, expr);
 
-	if (safe_mode_enabled() && value->alignment > 1 && !c->emitting_load_store_check && parent_type->type_kind != TYPE_ARRAY)
+	if (!llvm_is_global_eval(c) && safe_mode_enabled() && value->alignment > 1 && !c->emitting_load_store_check && parent_type->type_kind != TYPE_ARRAY)
 	{
 		LLVMValueRef as_int = LLVMBuildPtrToInt(c->builder, value->value, llvm_get_type(c, type_usz), "");
 		LLVMValueRef align = llvm_const_int(c, type_usz, value->alignment);
@@ -1383,7 +1383,7 @@ void llvm_emit_ignored_expr(GenContext *c, Expr *expr)
 		llvm_emit_expr(c, &value, expr);
 		EMIT_EXPR_LOC(c, expr);
 		// We only optimize if there is no instruction the current block
-		if (!LLVMGetFirstInstruction(c->current_block))
+		if (c->current_block && !LLVMGetFirstInstruction(c->current_block))
 		{
 			llvm_prune_optional(c, discard_fail);
 		}
@@ -1430,6 +1430,7 @@ static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEVal
 		return;
 	}
 	ASSERT(initializer->kind == CONST_INIT_STRUCT);
+	llvm_store_no_fault(c, ref);
 	llvm_store_raw(c, ref, llvm_emit_const_bitstruct(c, initializer));
 }
 
@@ -5817,7 +5818,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 			for (unsigned i = 0; i < vararg_count; i++)
 			{
 				ABIArgInfo *info = abi_varargs[index];
-				BEValue value_copy = values[i + param_count];
+				BEValue value_copy = values[i + param_count - start];
 				llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy);
 				index++;
 			}
@@ -5828,7 +5829,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 			for (unsigned i = 0; i < vararg_count; i++)
 			{
 				REMINDER("Varargs should be expanded correctly");
-				arg_values[arg_count++] = llvm_load_value_store(c, &values[i + param_count]);
+				arg_values[arg_count++] = llvm_load_value_store(c, &values[i + param_count - start]);
 			}
 		}
 	}
@@ -6011,6 +6012,11 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		llvm_emit_statement_chain(c, expr->call_expr.function_contracts);
 	}
 
+	if (!llvm_get_current_block_if_in_use(c))
+	{
+		llvm_value_set(result_value, NULL, type_void);
+		return;
+	}
 	// 1. Dynamic dispatch.
 	if (expr->call_expr.is_dynamic_dispatch)
 	{
@@ -6278,6 +6284,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		BEValue value;
 		c->debug.block_stack = old_inline_location;
 		llvm_emit_expr(c, &value, init_expr);
+		if (!c->current_block) goto EARLY_EXIT;
 		if (!val->alignment) val->alignment = type_abi_alignment(val->type);
 		if (llvm_value_is_addr(&value) || val->var.is_written || val->var.is_addr || llvm_use_accurate_debug_info(c))
 		{
@@ -6297,6 +6304,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 	{
 		llvm_emit_unreachable(c);
 	}
+EARLY_EXIT:
 	if (!c->current_block)
 	{
 		llvm_emit_block(c, llvm_basic_block_new(c, "after_macro"));

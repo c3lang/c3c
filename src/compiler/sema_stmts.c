@@ -2648,7 +2648,7 @@ FOUND:;
 			all_jump_end &= context->active_scope.end_jump.active;
 		SCOPE_END;
 	}
-	if (is_enum_switch && !exhaustive && success)
+	if (is_enum_switch && !exhaustive && success && !if_chain)
 	{
 		RETURN_SEMA_ERROR(statement, create_missing_enums_in_switch_error(cases, actual_enum_cases, enum_values));
 	}
