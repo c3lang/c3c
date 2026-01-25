@@ -997,11 +997,19 @@ macro bool is_power_of_2(x)
 	return x != 0 && (x & (x - 1)) == 0;
 }
 
+<*
+ Returns the next power of two that is greater than or equal to x.
+ Uses hardware instructions (CLZ) for O(1) performance.
+
+ @require types::is_int($typeof(x)) : "Input must be an integer"
+*>
 macro next_power_of_2(x)
 {
-	$typeof(x) y = 1;
-	while (y < x) y += y;
-	return y;
+	if (x <= 1) return 1;
+	var val = x - 1;
+	usz width = $sizeof(x) * 8;
+	usz leading_zeros = val.clz();
+	return ($typeof(x))1 << (width - leading_zeros);
 }
 
 macro equals_vec(v1, v2) @private
