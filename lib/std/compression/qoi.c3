@@ -292,17 +292,17 @@ fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels c
 	if (bswap(header.be_magic) != 'qoif') return INVALID_DATA~;
 
 	// copy header data to desc
-	desc.width = bswap(header.be_width);
-	desc.height = bswap(header.be_height);
-	desc.channels = header.channels;
+	uint width = desc.width = bswap(header.be_width);
+	uint height = desc.height = bswap(header.be_height);
+	QOIChannels desc_channels = desc.channels = header.channels;
 	desc.colorspace = header.colorspace;
-	if (desc.channels == AUTO) return INVALID_DATA~; // Channels must be specified in the header
+	if (desc_channels == AUTO) return INVALID_DATA~; // Channels must be specified in the header
 
 	// check width and height
-	if (desc.width == 0 || desc.height == 0) return INVALID_DATA~;
+	if (width == 0 || height == 0) return INVALID_DATA~;
 
 	// check pixel count
-	ulong pixels = (ulong)desc.width * (ulong)desc.height;
+	ulong pixels = (ulong)width * (ulong)height;
 	if (pixels > PIXELS_MAX) return TOO_MANY_PIXELS~;
 
 	uint pos = Header.sizeof; 	// Current position in data
@@ -313,7 +313,7 @@ fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels c
 	Pixel[64] palette; // Zero-initialized by default
 	Pixel p = { 0, 0, 0, 255 };
 
-	if (channels == AUTO) channels = desc.channels;
+	if (channels == AUTO) channels = desc_channels;
 	
 	// allocate memory for image data
 	usz image_size = (usz)pixels * channels;

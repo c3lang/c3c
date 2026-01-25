@@ -1,5 +1,6 @@
 <*
  @require Enum.kindof == TypeKind.ENUM : "Only enums may be used with an enummap"
+ @require Enum.values.len > 0 : "Only non-empty enums may be used with enummap"
 *>
 module std::collections::enummap <Enum, ValueType>;
 import std::io;
