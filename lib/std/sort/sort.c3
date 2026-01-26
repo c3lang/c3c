@@ -39,94 +39,102 @@ macro bool @is_any_sortable(#list) @const
 	$endswitch
 }
 
-macro bool @is_valid_context(#cmp, #context)
+macro bool @is_valid_context(#cmp = ..., #context = ...)
 {
-	return @is_valid_macro_slot(#cmp) || @is_empty_macro_slot(#context);
+	return $defined(#cmp) || !$defined(#context);
 }
 
 
 <*
  @require @list_is_by_ref(#list) : "Expected the list to be passed by ref or be a slice"
 *>
-macro bool @is_valid_cmp_fn(#cmp, #list, #context) @const
+macro bool @is_valid_cmp_fn(#cmp = ..., #list = ..., #context = ...) @const
 {
-	var $Type = $typeof(#cmp);
-	var $no_context = @is_empty_macro_slot(#context);
-	$switch:
-		$case @is_empty_macro_slot(#cmp): return true;
-		$case $Type.kindof != FUNC ||| $Type.returns.kindof != SIGNED_INT: return false;
-		$default:
-			$if $kindof(#list) == SLICE:
-				$switch:
-					$case $defined(#cmp((#list)[0], (#list)[0], #context)): return true;
-					$case $defined(#cmp((#list)[0], (#list)[0])): return $no_context;
-					$case $defined(#cmp(&(#list)[0], &(#list)[0], #context)): return true;
-					$case $defined(#cmp(&(#list)[0], &(#list)[0])): return  $no_context;
-					$default: return false;
-				$endswitch
-			$else
-				$switch:
-					$case $defined(#cmp((*#list)[0], (*#list)[0], #context)): return true;
-					$case $defined(#cmp((*#list)[0], (*#list)[0])): return $no_context;
-					$case $defined(#cmp(&(*#list)[0], &(*#list)[0], #context)): return true;
-					$case $defined(#cmp(&(*#list)[0], &(*#list)[0])): return  $no_context;
-					$default: return false;
-				$endswitch
-			$endif
-	$endswitch
+	$if !$defined(#cmp):
+		return true;
+	$else
+		var $Type = $typeof(#cmp);
+		var $no_context = !$defined(#context);
+		$switch:
+			$case $Type.kindof != FUNC ||| $Type.returns.kindof != SIGNED_INT: return false;
+			$default:
+				$if $kindof(#list) == SLICE:
+					$switch:
+						$case $defined(#cmp((#list)[0], (#list)[0], #context)): return true;
+						$case $defined(#cmp((#list)[0], (#list)[0])): return $no_context;
+						$case $defined(#cmp(&(#list)[0], &(#list)[0], #context)): return true;
+						$case $defined(#cmp(&(#list)[0], &(#list)[0])): return  $no_context;
+						$default: return false;
+					$endswitch
+				$else
+					$switch:
+						$case $defined(#cmp((*#list)[0], (*#list)[0], #context)): return true;
+						$case $defined(#cmp((*#list)[0], (*#list)[0])): return $no_context;
+						$case $defined(#cmp(&(*#list)[0], &(*#list)[0], #context)): return true;
+						$case $defined(#cmp(&(*#list)[0], &(*#list)[0])): return  $no_context;
+						$default: return false;
+					$endswitch
+				$endif
+		$endswitch
+	$endif
 }
 
-macro bool @is_any_valid_cmp_fn(#cmp, #list, #context) @const
+macro bool @is_any_valid_cmp_fn(#cmp = ..., #list = ..., #context = ...) @const
 {
-	var $Type = $typeof(#cmp);
-	var $no_context = @is_empty_macro_slot(#context);
-	$switch:
-		$case @is_empty_macro_slot(#cmp): return true;
-		$case $Type.kindof != FUNC ||| $Type.returns.kindof != SIGNED_INT: return false;
-		$default:
-			$if $kindof(#list) != POINTER:
-				$switch:
-					$case $defined(#cmp((#list)[0], (#list)[0], #context)): return true;
-					$case $defined(#cmp((#list)[0], (#list)[0])): return $no_context;
-					$case $defined(#cmp(&(#list)[0], &(#list)[0], #context)): return true;
-					$case $defined(#cmp(&(#list)[0], &(#list)[0])): return  $no_context;
-					$default: return false;
-				$endswitch
-			$else
-				$switch:
-					$case $defined(#cmp((*#list)[0], (*#list)[0], #context)): return true;
-					$case $defined(#cmp((*#list)[0], (*#list)[0])): return $no_context;
-					$case $defined(#cmp(&(*#list)[0], &(*#list)[0], #context)): return true;
-					$case $defined(#cmp(&(*#list)[0], &(*#list)[0])): return  $no_context;
-					$default: return false;
-				$endswitch
-			$endif
-	$endswitch
+	$if !$defined(#cmp):
+		return true;
+	$else
+		var $Type = $typeof(#cmp);
+		var $no_context = !$defined(#context);
+		$switch:
+			$case $Type.kindof != FUNC ||| $Type.returns.kindof != SIGNED_INT: return false;
+			$default:
+				$if $kindof(#list) != POINTER:
+					$switch:
+						$case $defined(#cmp((#list)[0], (#list)[0], #context)): return true;
+						$case $defined(#cmp((#list)[0], (#list)[0])): return $no_context;
+						$case $defined(#cmp(&(#list)[0], &(#list)[0], #context)): return true;
+						$case $defined(#cmp(&(#list)[0], &(#list)[0])): return  $no_context;
+						$default: return false;
+					$endswitch
+				$else
+					$switch:
+						$case $defined(#cmp((*#list)[0], (*#list)[0], #context)): return true;
+						$case $defined(#cmp((*#list)[0], (*#list)[0])): return $no_context;
+						$case $defined(#cmp(&(*#list)[0], &(*#list)[0], #context)): return true;
+						$case $defined(#cmp(&(*#list)[0], &(*#list)[0])): return  $no_context;
+						$default: return false;
+					$endswitch
+				$endif
+		$endswitch
+	$endif
 }
 
 <*
  @require @list_is_by_ref(#list) : "Expected the list to be passed by ref or be a slice"
 *>
-macro bool @is_cmp_key_fn(#key_fn, #list) @const
+macro bool @is_cmp_key_fn(#key_fn = ..., #list = ...) @const
 {
-	$switch:
-		$case @is_empty_macro_slot(#key_fn): return true;
-		$case $kindof(#key_fn) != FUNC: return false;
-		$case $typeof(#key_fn).returns.kindof != UNSIGNED_INT: return false;
-		$default:
-			$if $kindof(#list) == SLICE:
-				$switch:
-					$case $defined(#key_fn((#list)[0])): return true;
-					$case $defined(#key_fn(&&((#list)[0]))): return true;
-					$default: return false;
-				$endswitch
-			$else
-				$switch:
-					$case $defined(#key_fn((*#list)[0])): return true;
-					$case $defined(#key_fn(&&((*#list)[0]))): return true;
-					$default: return false;
-				$endswitch
-			$endif
-	$endswitch
-
+	$if !$defined(#key_fn):
+		return true;
+	$else
+		$switch:
+			$case $kindof(#key_fn) != FUNC: return false;
+			$case $typeof(#key_fn).returns.kindof != UNSIGNED_INT: return false;
+			$default:
+				$if $kindof(#list) == SLICE:
+					$switch:
+						$case $defined(#key_fn((#list)[0])): return true;
+						$case $defined(#key_fn(&&((#list)[0]))): return true;
+						$default: return false;
+					$endswitch
+				$else
+					$switch:
+						$case $defined(#key_fn((*#list)[0])): return true;
+						$case $defined(#key_fn(&&((*#list)[0]))): return true;
+						$default: return false;
+					$endswitch
+				$endif
+		$endswitch
+	$endif
 }

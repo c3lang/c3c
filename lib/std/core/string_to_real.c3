@@ -64,7 +64,7 @@ macro double? decfloat(char[] chars, int $bits, int $emin, int sign)
 		got_rad = true;
 		if (index == last_char)
 		{
-			if (!got_digit) return MALFORMED_FLOAT?;
+			if (!got_digit) return MALFORMED_FLOAT~;
 			return sign * 0.0;
 		}
 		if (index != last_char && (c = chars[++index]) == '0')
@@ -83,7 +83,7 @@ macro double? decfloat(char[] chars, int $bits, int $emin, int sign)
 		switch
 		{
 			case c == '.':
-				if (got_rad) return MALFORMED_FLOAT?;
+				if (got_rad) return MALFORMED_FLOAT~;
 				got_rad = true;
 				lrp = dc;
 			case k < KMAX - 3:
@@ -113,24 +113,24 @@ macro double? decfloat(char[] chars, int $bits, int $emin, int sign)
 		c = chars[++index];
 	}
 	if (!got_rad) lrp = dc;
-	if (!got_digit) return MALFORMED_FLOAT?;
+	if (!got_digit) return MALFORMED_FLOAT~;
 	if ((c | 32) == 'e')
 	{
-		if (last_char == index) return MALFORMED_FLOAT?;
-		long e10 = String.to_long((String)chars[index + 1..]) ?? MALFORMED_FLOAT?!;
+		if (last_char == index) return MALFORMED_FLOAT~;
+		long e10 = String.to_long((String)chars[index + 1..]) ?? MALFORMED_FLOAT~!;
 		lrp += e10;
 	}
 	else if (index != last_char)
 	{
-		return MALFORMED_FLOAT?;
+		return MALFORMED_FLOAT~;
 	}
 	// Handle zero specially to avoid nasty special cases later
 	if (!x[0]) return sign * 0.0;
 
 	// Optimize small integers (w/no exponent) and over/under-flow
 	if (lrp == dc && dc < 10 && ($bits > 30 || (ulong)x[0] >> $bits == 0)) return sign * (double)x[0];
-	if (lrp > - $emin / 2) return FLOAT_OUT_OF_RANGE?;
-	if (lrp < $emin - 2 * math::DOUBLE_MANT_DIG) return FLOAT_OUT_OF_RANGE?;
+	if (lrp > - $emin / 2) return FLOAT_OUT_OF_RANGE~;
+	if (lrp < $emin - 2 * math::DOUBLE_MANT_DIG) return FLOAT_OUT_OF_RANGE~;
 
 	// Align incomplete final B1B digit
 	if (j)
@@ -320,7 +320,7 @@ macro double? decfloat(char[] chars, int $bits, int $emin, int sign)
 			y *= 0.5;
 			e2++;
 		}
-		if (e2 + math::DOUBLE_MANT_DIG > emax || (denormal && frac)) return MALFORMED_FLOAT?;
+		if (e2 + math::DOUBLE_MANT_DIG > emax || (denormal && frac)) return MALFORMED_FLOAT~;
 	}
 	return math::scalbn(y, e2);
 }
@@ -351,7 +351,7 @@ macro double? hexfloat(char[] chars, int $bits, int $emin, int sign)
 		got_rad = true;
 		if (index == last_char)
 		{
-			if (!got_digit) return MALFORMED_FLOAT?;
+			if (!got_digit) return MALFORMED_FLOAT~;
 			return sign * 0.0;
 		}
 		if (index != last_char && (c = chars[++index]) == '0')
@@ -369,7 +369,7 @@ macro double? hexfloat(char[] chars, int $bits, int $emin, int sign)
 	{
 		if (c == '.')
 		{
-			if (got_rad) return MALFORMED_FLOAT?;
+			if (got_rad) return MALFORMED_FLOAT~;
 			got_rad = true;
 			rp = dc;
 		}
@@ -393,20 +393,20 @@ macro double? hexfloat(char[] chars, int $bits, int $emin, int sign)
 		if (index == last_char) break;
 		c = chars[++index];
 	}
-	if (!got_digit) return MALFORMED_FLOAT?;
+	if (!got_digit) return MALFORMED_FLOAT~;
 	if (!got_rad) rp = dc;
 	for (; dc < 8; dc++) x *= 16;
 
 	long e2;
 	if ((c | 32) == 'p')
 	{
-		long e2val = String.to_long((String)chars[index + 1..]) ?? (MALFORMED_FLOAT?)!;
+		long e2val = String.to_long((String)chars[index + 1..]) ?? MALFORMED_FLOAT~!;
 		e2 = e2val;
 	}
 	e2 += 4 * rp - 32;
 	if (!x) return sign * 0.0;
-	if (e2 > -$emin) return FLOAT_OUT_OF_RANGE?;
-	if (e2 < $emin - 2 * math::DOUBLE_MANT_DIG) return FLOAT_OUT_OF_RANGE?;
+	if (e2 > -$emin) return FLOAT_OUT_OF_RANGE~;
+	if (e2 < $emin - 2 * math::DOUBLE_MANT_DIG) return FLOAT_OUT_OF_RANGE~;
 
 	while (x < 0x80000000)
 	{
@@ -441,7 +441,7 @@ macro double? hexfloat(char[] chars, int $bits, int $emin, int sign)
 	}
 	y = bias + sign * (double)x + sign * y;
 	y -= bias;
-	if (!y) return FLOAT_OUT_OF_RANGE?;
+	if (!y) return FLOAT_OUT_OF_RANGE~;
 
 	return math::scalbn(y, (int)e2);
 }
@@ -463,7 +463,7 @@ macro String.to_real(chars, $Type) @private
 	$endswitch
 
 	chars = chars.trim();
-	if (!chars.len) return MALFORMED_FLOAT?;
+	if (!chars.len) return MALFORMED_FLOAT~;
 
 	if (chars.len != 1)
 	{
@@ -477,7 +477,7 @@ macro String.to_real(chars, $Type) @private
 		}
 	}
 	chars = chars.trim();
-	if (!chars.len) return MALFORMED_FLOAT?;
+	if (!chars.len) return MALFORMED_FLOAT~;
 
 	if (chars == "infinity" || chars == "INFINITY") return sign * $Type.inf;
 	if (chars == "NAN" || chars == "nan") return $Type.nan;

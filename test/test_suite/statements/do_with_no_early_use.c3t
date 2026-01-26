@@ -21,7 +21,7 @@ faultdef WAS_ZERO;
 
 fn int? nonzero(int x)
 {
-	if (x == 0) return WAS_ZERO?;
+	if (x == 0) return WAS_ZERO~;
 	return x;
 }
 

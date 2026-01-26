@@ -786,6 +786,7 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side, SourceSpan lhs
 		expr->expr_kind = EXPR_OPTIONAL;
 		expr->inner_expr = left_side;
 		RANGE_EXTEND_PREV(expr);
+		SEMA_DEPRECATED(expr, "Using '?' to create an optional is deprecated, use '~' instead.");
 		return expr;
 	}
 

@@ -120,7 +120,7 @@ fn String bformat(char[] buffer, String fmt, args...) @format(1)
 	OutputFn format_fn = fn void?(void* buf, char c) {
 		char[]* buffer_ref = buf;
 		char[] buffer = *buffer_ref;
-		if (buffer.len == 0) return io::BUFFER_EXCEEDED?;
+		if (buffer.len == 0) return io::BUFFER_EXCEEDED~;
 		buffer[0] = c;
 		*buffer_ref = buffer[1..];
 	};
@@ -368,7 +368,7 @@ fn String[] String.split(self, Allocator allocator, String delimiter, usz max = 
 	bool no_more = false;
 	while (!no_more)
 	{
-		usz? index = i == max - 1 ? NOT_FOUND? : self.index_of(delimiter);
+		usz? index = i == max - 1 ? NOT_FOUND~ : self.index_of(delimiter);
 		String res @noinit;
 		if (try index)
 		{
@@ -427,7 +427,7 @@ fn String[]? String.split_to_buffer(s, String delimiter, String[] buffer, usz ma
 	bool no_more = false;
 	while (!no_more)
 	{
-		usz? index = i == max - 1 ? NOT_FOUND? : s.index_of(delimiter);
+		usz? index = i == max - 1 ? NOT_FOUND~ : s.index_of(delimiter);
 		String res @noinit;
 		if (try index)
 		{
@@ -445,7 +445,7 @@ fn String[]? String.split_to_buffer(s, String delimiter, String[] buffer, usz ma
 		}
 		if (i == max_capacity)
 		{
-			return BUFFER_EXCEEDED?;
+			return BUFFER_EXCEEDED~;
 		}
 		buffer[i++] = res;
 	}
@@ -526,7 +526,7 @@ fn usz? String.index_of_char(self, char character)
 	{
 		if (c == character) return i;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 <*
@@ -549,7 +549,7 @@ fn usz? String.index_of_chars(String self, char[] characters)
         }
     }
 
-    return NOT_FOUND?;
+    return NOT_FOUND~;
 }
 
 <*
@@ -566,12 +566,12 @@ fn usz? String.index_of_chars(String self, char[] characters)
 fn usz? String.index_of_char_from(self, char character, usz start_index)
 {
 	usz len = self.len;
-	if (len <= start_index) return NOT_FOUND?;
+	if (len <= start_index) return NOT_FOUND~;
 	for (usz i = start_index; i < len; i++)
 	{
 		if (self[i] == character) return i;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 <*
@@ -590,7 +590,7 @@ fn usz? String.rindex_of_char(self, char character)
 	{
 		if (c == character) return i;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 <*
@@ -615,7 +615,7 @@ fn usz? String.index_of(self, String substr)
 			if (c == first && self[i : needed] == substr) return i;
 		}
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 <*
@@ -640,7 +640,7 @@ fn usz? String.rindex_of(self, String substr)
 			if (c == first && self[i : needed] == substr) return i;
 		}
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 fn bool ZString.eq(self, ZString other) @operator(==)
@@ -1026,12 +1026,12 @@ macro String.to_integer(self, $Type, int base = 10)
 	usz index = 0;
 	char* ptr = self.ptr;
 	while (index < len && ptr[index].is_blank()) index++;
-	if (len == index) return EMPTY_STRING?;
+	if (len == index) return EMPTY_STRING~;
 	bool is_negative;
 	switch (self[index])
 	{
 		case '-':
-			if ($Type.min == 0) return NEGATIVE_VALUE?;
+			if ($Type.min == 0) return NEGATIVE_VALUE~;
 			is_negative = true;
 			index++;
 		case '+':
@@ -1039,7 +1039,7 @@ macro String.to_integer(self, $Type, int base = 10)
 		default:
 			break;
 	}
-	if (len == index) return MALFORMED_INTEGER?;
+	if (len == index) return MALFORMED_INTEGER~;
 	$Type base_used = ($Type)base;
 	if (self[index] == '0' && base == 10)
 	{
@@ -1062,7 +1062,7 @@ macro String.to_integer(self, $Type, int base = 10)
 			default:
 				break;
 		}
-		if (len == index) return MALFORMED_INTEGER?;
+		if (len == index) return MALFORMED_INTEGER~;
 	}
 	$Type value = 0;
 	while (index != len)
@@ -1072,18 +1072,18 @@ macro String.to_integer(self, $Type, int base = 10)
 		{
 			case base_used < 10 || c < 'A':   c -= '0';
 			case c <= 'F':                    c -= 'A' - 10;
-			case c < 'a' || c > 'f':          return MALFORMED_INTEGER?;
+			case c < 'a' || c > 'f':          return MALFORMED_INTEGER~;
 			default:                          c -= 'a' - 10;
 		}
-		if (c >= base_used) return MALFORMED_INTEGER?;
+		if (c >= base_used) return MALFORMED_INTEGER~;
 		do
 		{
 			if (is_negative)
 			{
-				value = value.overflow_mul(base_used).overflow_sub(c) ?? INTEGER_OVERFLOW?!;
+				value = value.overflow_mul(base_used).overflow_sub(c) ?? INTEGER_OVERFLOW~!;
 				break;
 			}
-			value = value.overflow_mul(base_used).overflow_add(c) ?? INTEGER_OVERFLOW?!;
+			value = value.overflow_mul(base_used).overflow_add(c) ?? INTEGER_OVERFLOW~!;
 		};
 	}
 	return value;
@@ -1208,10 +1208,10 @@ fn String? Splitter.next(&self)
 	{
 		usz len = self.string.len;
 		usz current = self.current;
-		if (current > len) return NO_MORE_ELEMENT?;
+		if (current > len) return NO_MORE_ELEMENT~;
 		if (current == len)
 		{
-			if (self.type != TOKENIZE_ALL) return NO_MORE_ELEMENT?;
+			if (self.type != TOKENIZE_ALL) return NO_MORE_ELEMENT~;
 			self.current++;
 			return self.string[current - 1:0];
 		}

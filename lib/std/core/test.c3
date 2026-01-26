@@ -12,7 +12,7 @@ faultdef DIVISION_BY_ZERO;
 
 fn double? divide(int a, int b)
 {
-	if (b == 0) return MathError.DIVISION_BY_ZERO?;
+	if (b == 0) return MathError.DIVISION_BY_ZERO~;
 	return (double)(a) / (double)(b);
 }
 

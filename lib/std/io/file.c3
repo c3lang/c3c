@@ -102,8 +102,8 @@ fn void? File.close(&self) @inline @dynamic
 		switch (libc::errno())
 		{
 			case errno::ECONNRESET:
-			case errno::EBADF: return io::FILE_NOT_VALID?;
-			case errno::EINTR: return io::INTERRUPTED?;
+			case errno::EBADF: return io::FILE_NOT_VALID~;
+			case errno::EINTR: return io::INTERRUPTED~;
 			case errno::EDQUOT:
 			case errno::EFAULT:
 			case errno::EAGAIN:
@@ -111,8 +111,8 @@ fn void? File.close(&self) @inline @dynamic
 			case errno::ENETDOWN:
 			case errno::ENETUNREACH:
 			case errno::ENOSPC:
-			case errno::EIO: return io::INCOMPLETE_WRITE?;
-			default: return io::UNKNOWN_ERROR?;
+			case errno::EIO: return io::INCOMPLETE_WRITE~;
+			default: return io::UNKNOWN_ERROR~;
 		}
 	}
 	self.file = null;
@@ -156,7 +156,7 @@ fn bool File.isatty(self) @if(env::LIBC)
 fn char? File.read_byte(&self) @dynamic
 {
 	int c = libc::fgetc(self.file);
-	if (c == -1) return io::EOF?;
+	if (c == -1) return io::EOF~;
 	return (char)c;
 }
 
@@ -172,7 +172,7 @@ fn char[]? load_buffer(String filename, char[] buffer)
 	File file = open(filename, "rb")!;
 	defer (void)file.close();
 	usz len = file.seek(0, END)!;
-	if (len > buffer.len) return io::OVERFLOW?;
+	if (len > buffer.len) return io::OVERFLOW~;
 	file.seek(0, SET)!;
 	usz read = 0;
 	while (read < len)

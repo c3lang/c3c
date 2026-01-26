@@ -90,12 +90,12 @@ fn void*? ArenaAllocator.acquire(&self, usz size, AllocInitType init_type, usz a
 {
 	alignment = alignment_for_allocation(alignment);
 	usz total_len = self.data.len;
-	if (size > total_len) return mem::INVALID_ALLOC_SIZE?;
+	if (size > total_len) return mem::INVALID_ALLOC_SIZE~;
 	void* start_mem = self.data.ptr;
 	void* unaligned_pointer_to_offset = start_mem + self.used + ArenaAllocatorHeader.sizeof;
 	void* mem = mem::aligned_pointer(unaligned_pointer_to_offset, alignment);
 	usz end = (usz)(mem - self.data.ptr) + size;
-	if (end > total_len) return mem::OUT_OF_MEMORY?;
+	if (end > total_len) return mem::OUT_OF_MEMORY~;
 	self.used = end;
 	ArenaAllocatorHeader* header = mem - ArenaAllocatorHeader.sizeof;
 	header.size = size;
@@ -117,7 +117,7 @@ fn void*? ArenaAllocator.resize(&self, void *old_pointer, usz size, usz alignmen
 	alignment = alignment_for_allocation(alignment);
 	assert(old_pointer >= self.data.ptr, "Pointer originates from a different allocator.");
 	usz total_len = self.data.len;
-	if (size > total_len) return mem::INVALID_ALLOC_SIZE?;
+	if (size > total_len) return mem::INVALID_ALLOC_SIZE~;
 	ArenaAllocatorHeader* header = old_pointer - ArenaAllocatorHeader.sizeof;
 	usz old_size = header.size;
 	// Do last allocation and alignment match?
@@ -130,7 +130,7 @@ fn void*? ArenaAllocator.resize(&self, void *old_pointer, usz size, usz alignmen
 		else
 		{
 			usz new_used = self.used + size - old_size;
-			if (new_used > total_len) return mem::OUT_OF_MEMORY?;
+			if (new_used > total_len) return mem::OUT_OF_MEMORY~;
 			self.used = new_used;
 		}
 		header.size = size;

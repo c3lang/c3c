@@ -10,7 +10,7 @@ fn void? example_fn()
     defer (catch err) {
         fault f = err;
     }
-    return io::FILE_NOT_FOUND?;
+    return io::FILE_NOT_FOUND~;
 }
 
 /* #expect: test.ll

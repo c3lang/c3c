@@ -26,8 +26,8 @@ fn void? FileMmap.destroy(&self) @maydiscard
 {
 	fault err1 = @catch(self.file.close());
 	fault err2 = @catch(self.vm.destroy());
-	if (err1) return err1?;
-	if (err2) return err2?;
+	if (err1) return err1~;
+	if (err2) return err2~;
 }
 
 module std::io::file @if(env::LIBC &&& env::POSIX);

@@ -11,7 +11,7 @@ fn PathList? native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 		directory = posix::opendir(dir.str_view() ? dir.str_view().zstr_tcopy() : (ZString)".");
 	};
 	defer if (directory) posix::closedir(directory);
-	if (!directory) return (path::is_dir(dir) ? io::CANNOT_READ_DIR : io::FILE_NOT_DIR)?;
+	if (!directory) return (path::is_dir(dir) ? io::CANNOT_READ_DIR : io::FILE_NOT_DIR)~;
 	Posix_dirent* entry;
 	while ((entry = posix::readdir(directory)))
 	{
@@ -38,7 +38,7 @@ fn PathList? native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 		WString result = dir.str_view().tconcat(`\*`).to_temp_wstring()!!;
 		Win32_WIN32_FIND_DATAW find_data;
 		Win32_HANDLE find = win32::findFirstFileW(result, &find_data);
-		if (find == win32::INVALID_HANDLE_VALUE) return io::CANNOT_READ_DIR?;
+		if (find == win32::INVALID_HANDLE_VALUE) return io::CANNOT_READ_DIR~;
 		defer win32::findClose(find);
 		do
 		{

@@ -96,7 +96,7 @@ fn ulong? poll_ms(Poll[] polls, long timeout_ms)
 	$else
 		CInt result = os::poll((Posix_pollfd*)polls.ptr, (Posix_nfds_t)polls.len, (CInt)timeout_ms);
 	$endif
-	return result < 0 ? os::socket_error()? : (ulong)result;
+	return result < 0 ? os::socket_error()~ : (ulong)result;
 }
 
 macro Socket new_socket(fd, ai)
@@ -133,7 +133,7 @@ fn void? Socket.set_option(&self, SocketOption option, bool value)
 {
 	CInt flag = (CInt)value;
 	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
-	if (errcode != 0) return SOCKOPT_FAILED?;
+	if (errcode != 0) return SOCKOPT_FAILED~;
 }
 
 fn bool? Socket.get_option(&self, SocketOption option)
@@ -141,7 +141,7 @@ fn bool? Socket.get_option(&self, SocketOption option)
 	CInt flag;
 	Socklen_t socklen = CInt.sizeof;
 	int errcode = os::getsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, &socklen);
-	if (errcode != 0) return SOCKOPT_FAILED?;
+	if (errcode != 0) return SOCKOPT_FAILED~;
 	return (bool)flag;
 }
 
@@ -152,7 +152,7 @@ $if env::WIN32:
 $else
 	isz n = libc::recv(self.sock, bytes.ptr, bytes.len, 0);
 $endif
-	if (n < 0) return os::socket_error()?;
+	if (n < 0) return os::socket_error()~;
 	return (usz)n;
 }
 
@@ -165,7 +165,7 @@ $if env::WIN32:
 $else
 	isz n = libc::send(self.sock, bytes.ptr, bytes.len, 0);
 $endif
-	if (n < 0) return os::socket_error()?;
+	if (n < 0) return os::socket_error()~;
 	return (usz)n;
 }
 
@@ -187,7 +187,7 @@ fn usz? Socket.peek(&self, char[] bytes) @dynamic
   $else
 	  isz n = libc::recv(self.sock, bytes.ptr, bytes.len, os::MSG_PEEK);
   $endif
-	if (n < 0) return os::socket_error()?;
+	if (n < 0) return os::socket_error()~;
 	return (usz)n;
 }
 
@@ -202,6 +202,6 @@ fn void? Socket.shutdown(&self, SocketShutdownHow how)
 {
 	if (libc::shutdown(self.sock, how.native_value) < 0)
 	{
-		return os::socket_error()?;
+		return os::socket_error()~;
 	}
 }

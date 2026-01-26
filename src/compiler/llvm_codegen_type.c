@@ -49,6 +49,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 				vec_add(types, llvm_const_padding_type(c, decl->strukt.padding));
 			}
 			LLVMStructSetBody(type, types, vec_size(types), decl->is_packed);
+			ASSERT_SPAN(decl, llvm_abi_size(c, type) == type_size(decl->type));
 			return type;
 		}
 		case DECL_UNION:

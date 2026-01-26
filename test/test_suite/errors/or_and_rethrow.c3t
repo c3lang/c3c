@@ -9,7 +9,7 @@ fn void blurb() { io::printn("Blurb");}
 macro int? tester()
 {
 	defer blurb();
-	return ABC?;
+	return ABC~;
 }
 fn void? test(int x)
 {

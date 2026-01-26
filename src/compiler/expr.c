@@ -513,12 +513,14 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr)
 	// An address is never a constant value.
 	Expr *inner = expr->unary_expr.expr;
 	if (IS_OPTIONAL(inner)) return false;
+RETRY:;
 	switch (inner->expr_kind)
 	{
 		case UNRESOLVED_EXPRS:
 			UNREACHABLE
 		case EXPR_ACCESS_RESOLVED:
-			return expr_is_runtime_const(inner);
+			inner = inner->access_resolved_expr.parent;
+			goto RETRY;
 		case EXPR_CONST:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:

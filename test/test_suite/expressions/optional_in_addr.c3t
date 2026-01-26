@@ -1,0 +1,72 @@
+// #target: macos-x64
+module test;
+faultdef ABC;
+macro int? tester()
+{
+	return ABC~;
+}
+fn void? test2(int )
+{
+	if (&&(tester()!));
+}
+
+fn int main()
+{
+	fault d = @catch(test2(1));
+ 	return 0;
+}
+
+/* #expect: test.ll
+
+define i64 @test.test2(i32 %0) #0 {
+entry:
+  %error_var = alloca i64, align 8
+  store i64 ptrtoint (ptr @test.ABC to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %1 = load i64, ptr %error_var, align 8
+  ret i64 %1
+}
+
+define i32 @main() #0 {
+entry:
+  %d = alloca i64, align 8
+  %blockret = alloca i64, align 8
+  %f = alloca i64, align 8
+  br label %testblock
+
+testblock:                                        ; preds = %entry
+  %0 = call i64 @test.test2(i32 1)
+  %not_err = icmp eq i64 %0, 0
+  %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %1, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %testblock
+  store i64 %0, ptr %f, align 8
+  br label %end_block
+
+after_check:                                      ; preds = %testblock
+  store i64 0, ptr %f, align 8
+  br label %end_block
+
+end_block:                                        ; preds = %after_check, %assign_optional
+  %2 = load i64, ptr %f, align 8
+  %i2b = icmp ne i64 %2, 0
+  br i1 %i2b, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %end_block
+  %3 = load i64, ptr %f, align 8
+  store i64 %3, ptr %blockret, align 8
+  br label %expr_block.exit
+
+if.exit:                                          ; preds = %end_block
+  store i64 0, ptr %blockret, align 8
+  br label %expr_block.exit
+
+expr_block.exit:                                  ; preds = %if.exit, %if.then
+  %4 = load i64, ptr %blockret, align 8
+  store i64 %4, ptr %d, align 8
+  ret i32 0
+}
+

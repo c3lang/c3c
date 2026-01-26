@@ -189,6 +189,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *ref_expr, Expr 
 		else
 		{
 			Type *type = ref_expr ? type_lowering(ref_expr->type) : ref->type;
+
 			BEValue val = llvm_emit_alloca_b(c, type, ".assign_list");
 			llvm_emit_initialize_reference(c, &val, expr);
 			if (ref_expr) llvm_emit_expr(c, ref, ref_expr);
@@ -780,7 +781,7 @@ static inline void llvm_emit_subscript(GenContext *c, BEValue *value, Expr *expr
 	}
 	llvm_emit_subscript_addr(c, value, expr);
 
-	if (safe_mode_enabled() && value->alignment > 1 && !c->emitting_load_store_check && parent_type->type_kind != TYPE_ARRAY)
+	if (!llvm_is_global_eval(c) && safe_mode_enabled() && value->alignment > 1 && !c->emitting_load_store_check && parent_type->type_kind != TYPE_ARRAY)
 	{
 		LLVMValueRef as_int = LLVMBuildPtrToInt(c->builder, value->value, llvm_get_type(c, type_usz), "");
 		LLVMValueRef align = llvm_const_int(c, type_usz, value->alignment);
@@ -1383,7 +1384,7 @@ void llvm_emit_ignored_expr(GenContext *c, Expr *expr)
 		llvm_emit_expr(c, &value, expr);
 		EMIT_EXPR_LOC(c, expr);
 		// We only optimize if there is no instruction the current block
-		if (!LLVMGetFirstInstruction(c->current_block))
+		if (c->current_block && !LLVMGetFirstInstruction(c->current_block))
 		{
 			llvm_prune_optional(c, discard_fail);
 		}
@@ -1430,6 +1431,7 @@ static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEVal
 		return;
 	}
 	ASSERT(initializer->kind == CONST_INIT_STRUCT);
+	llvm_store_no_fault(c, ref);
 	llvm_store_raw(c, ref, llvm_emit_const_bitstruct(c, initializer));
 }
 
@@ -3055,7 +3057,7 @@ static void llvm_emit_logical_and_or(GenContext *c, BEValue *be_value, Expr *exp
 
 	LLVMValueRef result_on_skip = LLVMConstInt(c->bool_type, op == BINARYOP_AND ? 0 : 1, 0);
 
-	// We might end this with a jump, eg (foo()? || bar()) where foo() is a macro and guaranteed not to exit.
+	// We might end this with a jump, eg (foo()~ || bar()) where foo() is a macro and guaranteed not to exit.
 	if (!lhs_end_block)
 	{
 		// Just set any value.
@@ -3315,6 +3317,7 @@ static void llvm_emit_ptr_comparison(GenContext *c, BEValue *result, BEValue *lh
 {
 	llvm_value_rvalue(c, lhs);
 	llvm_value_rvalue(c, rhs);
+	RETURN_ON_EMPTY_BLOCK(result);
 	LLVMValueRef lhs_value = lhs->value;
 	LLVMValueRef rhs_value = rhs->value;
 	LLVMValueRef val;
@@ -3543,7 +3546,7 @@ static inline void llvm_emit_fp_vector_compare(GenContext *c, BEValue *be_value,
 	llvm_value_set(be_value, cmp, type_bool);
 }
 
-static inline void llvm_emit_bool_vector_compare(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op, unsigned len)
+static inline void llvm_emit_bool_vector_compare(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op, unsigned len)
 {
 	LLVMTypeRef bool_vec = LLVMVectorType(c->bool_type, len);
 	LLVMTypeRef load_vec = LLVMVectorType(c->byte_type, len);
@@ -3562,10 +3565,10 @@ static inline void llvm_emit_bool_vector_compare(GenContext *c, BEValue *be_valu
 	{
 		cmp = llvm_emit_call_intrinsic(c, intrinsic_id.vector_reduce_or, &bool_vec, 1, &cmp, 1);
 	}
-	llvm_value_set(be_value, cmp, type_bool);
+	llvm_value_set(result, cmp, type_bool);
 }
 
-static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
+static void llvm_emit_array_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
 {
 	Type *array_base = type_flatten(lhs->type->array.base);
 	switch (array_base->type_kind)
@@ -3583,8 +3586,9 @@ static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 MEMCMP:
 			llvm_value_addr(c, lhs);
 			llvm_value_addr(c, rhs);
-			llvm_emit_memcmp(c, be_value, lhs->value, rhs->value, llvm_const_int(c, type_usz, type_size(lhs->type)));
-			llvm_emit_int_comp_zero(c, be_value, be_value, binary_op);
+			RETURN_ON_EMPTY_BLOCK(result);
+			llvm_emit_memcmp(c, result, lhs->value, rhs->value, llvm_const_int(c, type_usz, type_size(lhs->type)));
+			llvm_emit_int_comp_zero(c, result, result, binary_op);
 			return;
 		case VECTORS:
 			if (is_power_of_two(array_base->array.len) && !type_flat_is_floatlike(array_base->array.base)) goto MEMCMP;
@@ -3623,12 +3627,12 @@ MEMCMP:
 	{
 		if (array_base_type == type_bool)
 		{
-			llvm_emit_bool_vector_compare(c, be_value, lhs, rhs, binary_op, len);
+			llvm_emit_bool_vector_compare(c, result, lhs, rhs, binary_op, len);
 			return;
 		}
 		if (type_is_float(array_base_type))
 		{
-			llvm_emit_fp_vector_compare(c, be_value, lhs, rhs, binary_op, array_base_type, len);
+			llvm_emit_fp_vector_compare(c, result, lhs, rhs, binary_op, array_base_type, len);
 			return;
 		}
 		LLVMBasicBlockRef blocks[17];
@@ -3659,7 +3663,7 @@ MEMCMP:
 		blocks[len] = ok_block;
 		LLVMValueRef phi = LLVMBuildPhi(c->builder, c->bool_type, "array_cmp_phi");
 		LLVMAddIncoming(phi, value_block, blocks, len + 1);
-		llvm_value_set(be_value, phi, type_bool);
+		llvm_value_set(result, phi, type_bool);
 		return;
 	}
 
@@ -3693,13 +3697,14 @@ MEMCMP:
 	llvm_emit_block(c, exit);
 	LLVMValueRef success = LLVMConstInt(c->bool_type, want_match ? 1 : 0, false);
 	LLVMValueRef failure = LLVMConstInt(c->bool_type, want_match ? 0 : 1, false);
-	llvm_new_phi(c, be_value, "array_cmp_phi", type_bool, success, comparison_phi, failure, loop_begin_phi);
+	llvm_new_phi(c, result, "array_cmp_phi", type_bool, success, comparison_phi, failure, loop_begin_phi);
 }
 
-static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op, Type *vector_type)
+static void llvm_emit_float_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op, Type *vector_type)
 {
 	llvm_value_rvalue(c, lhs);
 	llvm_value_rvalue(c, rhs);
+	RETURN_ON_EMPTY_BLOCK(result);
 	LLVMValueRef lhs_value = lhs->value;
 	LLVMValueRef rhs_value = rhs->value;
 	LLVMValueRef val;
@@ -3730,10 +3735,10 @@ static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	}
 	if (vector_type)
 	{
-		llvm_convert_vector_comparison(c, be_value, val, vector_type, BINARYOP_EQ == binary_op);
+		llvm_convert_vector_comparison(c, result, val, vector_type, BINARYOP_EQ == binary_op);
 		return;
 	}
-	llvm_value_set(be_value, val, type_bool);
+	llvm_value_set(result, val, type_bool);
 }
 
 void llvm_emit_lhs_is_subtype(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs)
@@ -3777,6 +3782,7 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 		case ALL_INTS:
 			llvm_value_rvalue(c, lhs);
 			llvm_value_rvalue(c, rhs);
+			RETURN_ON_EMPTY_BLOCK(result);
 			llvm_emit_int_comp_raw(c, result, lhs->type, rhs->type, lhs->value, rhs->value, binary_op);
 			return;
 		case ALL_FLOATS:
@@ -3846,7 +3852,7 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMBasicBlockRef success_end_block = llvm_get_current_block_if_in_use(c);
 
 	// Only jump to phi if we didn't have an immediate jump. That would
-	// for example happen on "{| defer foo(); return Foo.ERR?; |} ?? 123"
+	// for example happen on "{| defer foo(); return Foo.ERR~; |} ?? 123"
 	if (success_end_block)
 	{
 		if (!llvm_emit_br(c, phi_block)) success_end_block = NULL;
@@ -3883,7 +3889,7 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMBasicBlockRef else_block_exit = llvm_get_current_block_if_in_use(c);
 
 	// While the value may not be an optional, we may get a jump
-	// from this construction: foo() ?? (bar()?)
+	// from this construction: foo() ?? (bar()~)
 	// In this case the else block is empty.
 	if (!else_block_exit || !llvm_emit_br(c, phi_block))
 	{
@@ -4090,13 +4096,20 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 		}
 		llvm_emit_expr(c, &lhs, exprptr(expr->binary_expr.left));
 	}
+	RETURN_ON_EMPTY_BLOCK(be_value);
+
 	// We need the rvalue.
 	llvm_fold_for_compare(c, &lhs);
+	RETURN_ON_EMPTY_BLOCK(be_value);
 
 	// Evaluate rhs
 	BEValue rhs;
 	llvm_emit_expr(c, &rhs, exprptr(expr->binary_expr.right));
+	RETURN_ON_EMPTY_BLOCK(be_value);
+
 	llvm_fold_for_compare(c, &rhs);
+	RETURN_ON_EMPTY_BLOCK(be_value);
+
 	EMIT_EXPR_LOC(c, expr);
 	// Comparison <=>
 	if (binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ)
@@ -5817,7 +5830,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 			for (unsigned i = 0; i < vararg_count; i++)
 			{
 				ABIArgInfo *info = abi_varargs[index];
-				BEValue value_copy = values[i + param_count];
+				BEValue value_copy = values[i + param_count - start];
 				llvm_emit_parameter(c, arg_values, &arg_count, info, &value_copy);
 				index++;
 			}
@@ -5828,7 +5841,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 			for (unsigned i = 0; i < vararg_count; i++)
 			{
 				REMINDER("Varargs should be expanded correctly");
-				arg_values[arg_count++] = llvm_load_value_store(c, &values[i + param_count]);
+				arg_values[arg_count++] = llvm_load_value_store(c, &values[i + param_count - start]);
 			}
 		}
 	}
@@ -5854,6 +5867,7 @@ INLINE void llvm_emit_varargs_expr(GenContext *c, BEValue *value_ref, Expr **var
 	FOREACH_IDX(foreach_index, Expr *, val, varargs)
 	{
 		llvm_emit_expr(c, &inner_temp, val);
+		RETURN_ON_EMPTY_BLOCK(value_ref);
 		llvm_value_fold_optional(c, &inner_temp);
 		BEValue slot = llvm_emit_array_gep(c, &array_ref, foreach_index);
 		llvm_store(c, &slot, &inner_temp);
@@ -6011,6 +6025,11 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		llvm_emit_statement_chain(c, expr->call_expr.function_contracts);
 	}
 
+	if (!llvm_get_current_block_if_in_use(c))
+	{
+		llvm_value_set(result_value, NULL, type_void);
+		return;
+	}
 	// 1. Dynamic dispatch.
 	if (expr->call_expr.is_dynamic_dispatch)
 	{
@@ -6278,6 +6297,8 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		BEValue value;
 		c->debug.block_stack = old_inline_location;
 		llvm_emit_expr(c, &value, init_expr);
+		if (!c->current_block) goto EARLY_EXIT;
+		if (!val->alignment) val->alignment = type_abi_alignment(val->type);
 		if (llvm_value_is_addr(&value) || val->var.is_written || val->var.is_addr || llvm_use_accurate_debug_info(c))
 		{
 			c->debug.block_stack = inline_location;
@@ -6296,6 +6317,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 	{
 		llvm_emit_unreachable(c);
 	}
+EARLY_EXIT:
 	if (!c->current_block)
 	{
 		llvm_emit_block(c, llvm_basic_block_new(c, "after_macro"));
@@ -6742,6 +6764,7 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 	Expr *inner = exprptr(expr->builtin_access_expr.inner);
 	llvm_emit_expr(c, be_value, inner);
 	llvm_value_fold_optional(c, be_value);
+	RETURN_ON_EMPTY_BLOCK(be_value);
 	switch (expr->builtin_access_expr.kind)
 	{
 		case ACCESS_FAULTNAME:
@@ -6921,6 +6944,7 @@ void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr)
 static void llvm_emit_int_to_bool(GenContext *c, BEValue *value, Expr *expr)
 {
 	llvm_emit_expr(c, value, expr->int_to_bool_expr.inner);
+	RETURN_ON_EMPTY_BLOCK(value);
 	Type *inner_type = value->type;
 	if (inner_type->type_kind == TYPE_ARRAY)
 	{
@@ -7091,6 +7115,7 @@ static inline void llvm_emit_vector_to_array(GenContext *c, BEValue *value, Expr
 void llvm_emit_slice_to_vec_array(GenContext *c, BEValue *value, Expr *expr)
 {
 	llvm_emit_expr(c, value, expr->inner_expr);
+	RETURN_ON_EMPTY_BLOCK(value);
 	llvm_value_rvalue(c, value);
 	BEValue pointer;
 	Type *base = value->type->array.base;

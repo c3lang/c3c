@@ -45,7 +45,7 @@ fn void? Vmem.init(&self, usz preferred_size, usz reserve_page_size = 0, VmemOpt
 	if (page_size < reserve_page_size) page_size = reserve_page_size;
 	preferred_size = mem::aligned_offset(preferred_size, page_size);
 	if (!min_size) min_size = max(preferred_size / 1024, 1);
-	VirtualMemory? memory = mem::OUT_OF_MEMORY?;
+	VirtualMemory? memory = mem::OUT_OF_MEMORY~;
 	while (preferred_size >= min_size)
 	{
 		memory = vm::virtual_alloc(preferred_size, PROTECTED);
@@ -62,7 +62,7 @@ fn void? Vmem.init(&self, usz preferred_size, usz reserve_page_size = 0, VmemOpt
 				break;
 		}
 	}
-	if (catch memory) return VMEM_RESERVE_FAILED?;
+	if (catch memory) return VMEM_RESERVE_FAILED~;
 	if (page_size > preferred_size) page_size = preferred_size;
 	$if env::ADDRESS_SANITIZER:
 		asan::poison_memory_region(memory.ptr, memory.size);
@@ -87,12 +87,12 @@ fn void*? Vmem.acquire(&self, usz size, AllocInitType init_type, usz alignment) 
 {
 	alignment = alignment_for_allocation(alignment);
 	usz total_len = self.memory.size;
-	if (size > total_len) return mem::INVALID_ALLOC_SIZE?;
+	if (size > total_len) return mem::INVALID_ALLOC_SIZE~;
 	void* start_mem = self.memory.ptr;
 	void* unaligned_pointer_to_offset = start_mem + self.allocated + VmemHeader.sizeof;
 	void* mem = mem::aligned_pointer(unaligned_pointer_to_offset, alignment);
 	usz after = (usz)(mem - start_mem) + size;
-	if (after > total_len) return mem::OUT_OF_MEMORY?;
+	if (after > total_len) return mem::OUT_OF_MEMORY~;
 	if (init_type == ZERO && self.high_water <= self.allocated)
 	{
 		init_type = NO_ZERO;
@@ -119,7 +119,7 @@ fn bool Vmem.owns_pointer(&self, void* ptr) @inline
 *>
 fn void*? Vmem.resize(&self, void *old_pointer, usz size, usz alignment) @dynamic
 {
-	if (size > self.memory.size) return mem::INVALID_ALLOC_SIZE?;
+	if (size > self.memory.size) return mem::INVALID_ALLOC_SIZE~;
 	alignment = alignment_for_allocation(alignment);
 	assert(self.owns_pointer(old_pointer), "Pointer originates from a different allocator: %p, not in %p - %p", old_pointer, self.memory.ptr, self.memory.ptr + self.allocated);
 	VmemHeader* header = old_pointer - VmemHeader.sizeof;
@@ -135,7 +135,7 @@ fn void*? Vmem.resize(&self, void *old_pointer, usz size, usz alignment) @dynami
     	else
     	{
     		usz allocated = self.allocated + size - old_size;
-    		if (allocated > self.memory.size) return mem::OUT_OF_MEMORY?;
+    		if (allocated > self.memory.size) return mem::OUT_OF_MEMORY~;
     		protect(self, allocated)!;
     	}
     	header.size = size;

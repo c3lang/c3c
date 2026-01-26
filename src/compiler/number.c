@@ -53,7 +53,7 @@ void expr_contract_array(ExprConst *expr_const, ConstKind contract_type)
 {
 	if (expr_const->const_kind == CONST_SLICE && !expr_const->slice_init)
 	{
-		*expr_const = (ExprConst) { .const_kind = contract_type };
+		*expr_const = (ExprConst) { .const_kind = contract_type, .bytes.ptr = NULL, .bytes.len = 0 };
 		return;
 	}
 	ASSERT(expr_const->const_kind == CONST_INITIALIZER || expr_const->const_kind == CONST_SLICE);

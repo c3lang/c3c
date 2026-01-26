@@ -64,11 +64,11 @@ fn void? create_named_pipe_helper(void** rd, void **wr) @local @if(env::WIN32)
 		win32::PIPE_ACCESS_INBOUND | win32::FILE_FLAG_OVERLAPPED,
 		win32::PIPE_TYPE_BYTE | win32::PIPE_WAIT,
 		1, 4096, 4096, 0, &sa_attr);
-	if (win32::INVALID_HANDLE_VALUE == *rd) return FAILED_TO_CREATE_PIPE?;
+	if (win32::INVALID_HANDLE_VALUE == *rd) return FAILED_TO_CREATE_PIPE~;
 	*wr = win32::createFileA(
 		str, win32::GENERIC_WRITE, 0, &sa_attr,
 		win32::OPEN_EXISTING, win32::FILE_ATTRIBUTE_NORMAL, null);
-	if (win32::INVALID_HANDLE_VALUE == *wr) return FAILED_TO_CREATE_PIPE?;
+	if (win32::INVALID_HANDLE_VALUE == *wr) return FAILED_TO_CREATE_PIPE~;
 }
 
 fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WIN32) @local
@@ -137,9 +137,9 @@ fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, Str
 	// Only create pipes if not inheriting stdio
 	if (!options.inherit_stdio)
 	{
-		if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return FAILED_TO_CREATE_PIPE?;
+		if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return FAILED_TO_CREATE_PIPE~;
 		// TODO defer catch
-		if (!win32::setHandleInformation(wr, win32::HANDLE_FLAG_INHERIT, 0)) return FAILED_TO_CREATE_PIPE?;
+		if (!win32::setHandleInformation(wr, win32::HANDLE_FLAG_INHERIT, 0)) return FAILED_TO_CREATE_PIPE~;
 	}
 
 	@stack_mem(2048; Allocator mem)
@@ -168,7 +168,7 @@ fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, Str
 			if (fd != -1)
 			{
 				stdin = win32::_fdopen(fd, "wb");
-				if (!stdin) return FAILED_TO_OPEN_STDIN?;
+				if (!stdin) return FAILED_TO_OPEN_STDIN~;
 			}
 			start_info.hStdInput = rd;
 
@@ -179,15 +179,15 @@ fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, Str
 			}
 			else
 			{
-				if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return FAILED_TO_CREATE_PIPE?;
+				if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return FAILED_TO_CREATE_PIPE~;
 			}
-			if (!win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0)) return FAILED_TO_CREATE_PIPE?;
+			if (!win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0)) return FAILED_TO_CREATE_PIPE~;
 
 			fd = win32::_open_osfhandle((iptr)rd, 0);
 			if (fd != -1)
 			{
 				stdout = win32::_fdopen(fd, "rb");
-				if (!stdout) return FAILED_TO_OPEN_STDOUT?;
+				if (!stdout) return FAILED_TO_OPEN_STDOUT~;
 			}
 
 			start_info.hStdOutput = wr;
@@ -207,15 +207,15 @@ fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, Str
 				}
 				else
 				{
-					if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return FAILED_TO_CREATE_PIPE?;
+					if (!win32::createPipe(&rd, &wr, &sa_attr, 0)) return FAILED_TO_CREATE_PIPE~;
 				}
-				if (!win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0)) return FAILED_TO_CREATE_PIPE?;
+				if (!win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0)) return FAILED_TO_CREATE_PIPE~;
 
 				fd = win32::_open_osfhandle((iptr)rd, 0);
 				if (fd != -1)
 				{
 					stderr = win32::_fdopen(fd, "rb");
-					if (!stderr) return FAILED_TO_OPEN_STDERR?;
+					if (!stderr) return FAILED_TO_OPEN_STDERR~;
 				}
 				start_info.hStdError = wr;
 			};
@@ -239,7 +239,7 @@ fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, Str
 			used_environment,       // environment
 			null,                   // use parent dir
 			&start_info,            // startup info ptr
-			&process_info)) return FAILED_TO_START_PROCESS?;
+			&process_info)) return FAILED_TO_START_PROCESS~;
 	};
 
 	// We don't need the handle of the primary thread in the called process.
@@ -311,29 +311,29 @@ fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, Str
 	CFile stderr = null;
 
 	Posix_spawn_file_actions_t actions;
-	if (posix::spawn_file_actions_init(&actions)) return FAILED_TO_INITIALIZE_ACTIONS?;
+	if (posix::spawn_file_actions_init(&actions)) return FAILED_TO_INITIALIZE_ACTIONS~;
 	defer posix::spawn_file_actions_destroy(&actions);
 
 	// Only set up pipes if not inheriting stdio
 	if (!options.inherit_stdio)
 	{
-		if (posix::pipe(&stdinfd)) return FAILED_TO_OPEN_STDIN?;
-		if (posix::pipe(&stdoutfd)) return FAILED_TO_OPEN_STDOUT?;
-		if (!options.combined_stdout_stderr && posix::pipe(&stderrfd)) return FAILED_TO_OPEN_STDERR?;
+		if (posix::pipe(&stdinfd)) return FAILED_TO_OPEN_STDIN~;
+		if (posix::pipe(&stdoutfd)) return FAILED_TO_OPEN_STDOUT~;
+		if (!options.combined_stdout_stderr && posix::pipe(&stderrfd)) return FAILED_TO_OPEN_STDERR~;
 
-		if (posix::spawn_file_actions_addclose(&actions, stdinfd[1])) return FAILED_TO_OPEN_STDIN?;
-		if (posix::spawn_file_actions_adddup2(&actions, stdinfd[0], libc::STDIN_FD)) return FAILED_TO_OPEN_STDIN?;
-		if (posix::spawn_file_actions_addclose(&actions, stdoutfd[0])) return FAILED_TO_OPEN_STDOUT?;
-		if (posix::spawn_file_actions_adddup2(&actions, stdoutfd[1], libc::STDOUT_FD)) return FAILED_TO_OPEN_STDOUT?;
+		if (posix::spawn_file_actions_addclose(&actions, stdinfd[1])) return FAILED_TO_OPEN_STDIN~;
+		if (posix::spawn_file_actions_adddup2(&actions, stdinfd[0], libc::STDIN_FD)) return FAILED_TO_OPEN_STDIN~;
+		if (posix::spawn_file_actions_addclose(&actions, stdoutfd[0])) return FAILED_TO_OPEN_STDOUT~;
+		if (posix::spawn_file_actions_adddup2(&actions, stdoutfd[1], libc::STDOUT_FD)) return FAILED_TO_OPEN_STDOUT~;
 
 		if (options.combined_stdout_stderr)
 		{
-			if (posix::spawn_file_actions_adddup2(&actions, libc::STDOUT_FD, libc::STDERR_FD)) return FAILED_TO_OPEN_STDERR?;
+			if (posix::spawn_file_actions_adddup2(&actions, libc::STDOUT_FD, libc::STDERR_FD)) return FAILED_TO_OPEN_STDERR~;
 		}
 		else
 		{
-			if (posix::spawn_file_actions_addclose(&actions, stderrfd[0])) return FAILED_TO_OPEN_STDERR?;
-			if (posix::spawn_file_actions_adddup2(&actions, stderrfd[1], libc::STDERR_FD)) return FAILED_TO_OPEN_STDERR?;
+			if (posix::spawn_file_actions_addclose(&actions, stderrfd[0])) return FAILED_TO_OPEN_STDERR~;
+			if (posix::spawn_file_actions_adddup2(&actions, stderrfd[1], libc::STDERR_FD)) return FAILED_TO_OPEN_STDERR~;
 		}
 	}
 
@@ -344,11 +344,11 @@ fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, Str
 		ZString* used_environment = options.inherit_environment ? posix::environ : copy_env(mem, environment);
 		if (options.search_user_path)
 		{
-			if (posix::spawnp(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS?;
+			if (posix::spawnp(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS~;
 		}
 		else
 		{
-			if (posix::spawnp(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS?;
+			if (posix::spawnp(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS~;
 		}
 	};
 
@@ -389,7 +389,7 @@ fn CInt? SubProcess.join(&self) @if(env::POSIX)
 		self.stdin_file = null;
 	}
 	CInt status;
-	if (self.child && self.child != posix::waitpid(self.child, &status, 0)) return PROCESS_JOIN_FAILED?;
+	if (self.child && self.child != posix::waitpid(self.child, &status, 0)) return PROCESS_JOIN_FAILED~;
 
 	self.child = 0;
 	self.is_alive = false;
@@ -423,7 +423,7 @@ fn CInt? SubProcess.join(&self) @if(env::WIN32)
 	}
 	win32::waitForSingleObject(self.hProcess, win32::INFINITE);
 	Win32_DWORD return_code @noinit;
-	if (!win32::getExitCodeProcess(self.hProcess, &return_code)) return PROCESS_JOIN_FAILED?;
+	if (!win32::getExitCodeProcess(self.hProcess, &return_code)) return PROCESS_JOIN_FAILED~;
 	self.is_alive = false;
 	return return_code;
 }
@@ -450,9 +450,9 @@ fn bool SubProcess.destroy(&self)
 fn void? SubProcess.terminate(&self)
 {
 	$if env::WIN32:
-		if (!win32::terminateProcess(self.hProcess, 99)) return PROCESS_TERMINATION_FAILED?;
+		if (!win32::terminateProcess(self.hProcess, 99)) return PROCESS_TERMINATION_FAILED~;
 	$else
-		if (posix::kill(self.child, 9)) return PROCESS_TERMINATION_FAILED?;
+		if (posix::kill(self.child, 9)) return PROCESS_TERMINATION_FAILED~;
 	$endif
 }
 
@@ -478,7 +478,7 @@ fn usz? read_from_file_win32(CFile file, Win32_HANDLE event_handle, char* buffer
 					case win32::ERROR_HANDLE_EOF:
 						break;
 					default:
-						return READ_FAILED?;
+						return READ_FAILED~;
 				}
 			}
 		}
@@ -488,7 +488,7 @@ fn usz? read_from_file_win32(CFile file, Win32_HANDLE event_handle, char* buffer
 fn usz? read_from_file_posix(CFile file, char* buffer, usz size) @if(env::POSIX) @local
 {
 	isz bytes_read = libc::read(libc::fileno(file), buffer, size);
-	if (bytes_read < 0) return READ_FAILED?;
+	if (bytes_read < 0) return READ_FAILED~;
 	return bytes_read;
 }
 
@@ -536,6 +536,6 @@ fn bool? SubProcess.is_running(&self)
 
 fn usz? SubProcess.write_to_stdin(&self, char[] buffer)
 {
-	if (!self.stdin_file) return FAILED_TO_OPEN_STDIN?;
+	if (!self.stdin_file) return FAILED_TO_OPEN_STDIN~;
 	return os::native_fwrite(self.stdin_file, buffer);
 }

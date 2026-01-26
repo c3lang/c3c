@@ -34,11 +34,11 @@ faultdef SOME_FAULT, ABC_FAULT;
 fn void test_try_catch()
 {
 	int val;
-	int? x = ABC_FAULT?;
+	int? x = ABC_FAULT~;
 	assert(@try_catch(val, x, ABC_FAULT)!!);
 	assert(val == 0);
 	assert(!@catch(@try_catch(val, x, ABC_FAULT)));
-	x = SOME_FAULT?;
+	x = SOME_FAULT~;
 	assert(@catch(@try_catch(val, x, ABC_FAULT)) == SOME_FAULT);
 	x = 3;
 	assert(!@try_catch(val, x, ABC_FAULT)!!);

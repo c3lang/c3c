@@ -3,7 +3,7 @@ module test;
 import std;
 fn int main()
 {
-	if (try x = (false ? io::EOF? : 3))
+	if (try x = (false ? io::EOF~ : 3))
 	{}
 	return 0;
 }
