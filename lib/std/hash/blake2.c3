@@ -140,7 +140,6 @@ macro @common_update(#instance, $block_size, char[] data) @local
 macro @common_final(#instance, char[] into) @local
 {
 	@add_ctr(#instance, #instance.buflen);
-	// TODO:  if (#instance.f[0]) return result; // technically an error return
 
 	if (#instance.last_node) #instance.f[1] = $typeof(#instance.h[0]).max;
 	#instance.f[0] = $typeof(#instance.h[0]).max;
