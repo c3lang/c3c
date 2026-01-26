@@ -724,10 +724,11 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 			else
 			{
 				llvm_emit_comp(c, &equals, &be_value, switch_value, BINARYOP_EQ);
+				RETURN_ON_EMPTY_BLOCK_VOID();
 			}
 		}
 		next = llvm_basic_block_new(c, "next_if");
-		llvm_emit_cond_br(c, &equals, block, next);
+		if (c->current_block) llvm_emit_cond_br(c, &equals, block, next);
 		if (case_stmt->case_stmt.body)
 		{
 			llvm_emit_block(c, block);
@@ -748,7 +749,6 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 		llvm_emit_br(c, exit_block);
 	}
 	llvm_emit_block(c, exit_block);
-	return;
 }
 
 static LLVMValueRef llvm_emit_switch_jump_stmt(GenContext *c,
@@ -1069,6 +1069,7 @@ void llvm_emit_switch(GenContext *c, Ast *ast)
 	{
 		// Regular switch
 		llvm_emit_cond(c, &switch_value, expr, false);
+		RETURN_ON_EMPTY_BLOCK_VOID();
 	}
 	else
 	{

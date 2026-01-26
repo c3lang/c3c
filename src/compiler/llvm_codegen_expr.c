@@ -3317,6 +3317,7 @@ static void llvm_emit_ptr_comparison(GenContext *c, BEValue *result, BEValue *lh
 {
 	llvm_value_rvalue(c, lhs);
 	llvm_value_rvalue(c, rhs);
+	RETURN_ON_EMPTY_BLOCK(result);
 	LLVMValueRef lhs_value = lhs->value;
 	LLVMValueRef rhs_value = rhs->value;
 	LLVMValueRef val;
@@ -3545,7 +3546,7 @@ static inline void llvm_emit_fp_vector_compare(GenContext *c, BEValue *be_value,
 	llvm_value_set(be_value, cmp, type_bool);
 }
 
-static inline void llvm_emit_bool_vector_compare(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op, unsigned len)
+static inline void llvm_emit_bool_vector_compare(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op, unsigned len)
 {
 	LLVMTypeRef bool_vec = LLVMVectorType(c->bool_type, len);
 	LLVMTypeRef load_vec = LLVMVectorType(c->byte_type, len);
@@ -3564,10 +3565,10 @@ static inline void llvm_emit_bool_vector_compare(GenContext *c, BEValue *be_valu
 	{
 		cmp = llvm_emit_call_intrinsic(c, intrinsic_id.vector_reduce_or, &bool_vec, 1, &cmp, 1);
 	}
-	llvm_value_set(be_value, cmp, type_bool);
+	llvm_value_set(result, cmp, type_bool);
 }
 
-static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
+static void llvm_emit_array_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
 {
 	Type *array_base = type_flatten(lhs->type->array.base);
 	switch (array_base->type_kind)
@@ -3585,8 +3586,9 @@ static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 MEMCMP:
 			llvm_value_addr(c, lhs);
 			llvm_value_addr(c, rhs);
-			llvm_emit_memcmp(c, be_value, lhs->value, rhs->value, llvm_const_int(c, type_usz, type_size(lhs->type)));
-			llvm_emit_int_comp_zero(c, be_value, be_value, binary_op);
+			RETURN_ON_EMPTY_BLOCK(result);
+			llvm_emit_memcmp(c, result, lhs->value, rhs->value, llvm_const_int(c, type_usz, type_size(lhs->type)));
+			llvm_emit_int_comp_zero(c, result, result, binary_op);
 			return;
 		case VECTORS:
 			if (is_power_of_two(array_base->array.len) && !type_flat_is_floatlike(array_base->array.base)) goto MEMCMP;
@@ -3625,12 +3627,12 @@ MEMCMP:
 	{
 		if (array_base_type == type_bool)
 		{
-			llvm_emit_bool_vector_compare(c, be_value, lhs, rhs, binary_op, len);
+			llvm_emit_bool_vector_compare(c, result, lhs, rhs, binary_op, len);
 			return;
 		}
 		if (type_is_float(array_base_type))
 		{
-			llvm_emit_fp_vector_compare(c, be_value, lhs, rhs, binary_op, array_base_type, len);
+			llvm_emit_fp_vector_compare(c, result, lhs, rhs, binary_op, array_base_type, len);
 			return;
 		}
 		LLVMBasicBlockRef blocks[17];
@@ -3661,7 +3663,7 @@ MEMCMP:
 		blocks[len] = ok_block;
 		LLVMValueRef phi = LLVMBuildPhi(c->builder, c->bool_type, "array_cmp_phi");
 		LLVMAddIncoming(phi, value_block, blocks, len + 1);
-		llvm_value_set(be_value, phi, type_bool);
+		llvm_value_set(result, phi, type_bool);
 		return;
 	}
 
@@ -3695,13 +3697,14 @@ MEMCMP:
 	llvm_emit_block(c, exit);
 	LLVMValueRef success = LLVMConstInt(c->bool_type, want_match ? 1 : 0, false);
 	LLVMValueRef failure = LLVMConstInt(c->bool_type, want_match ? 0 : 1, false);
-	llvm_new_phi(c, be_value, "array_cmp_phi", type_bool, success, comparison_phi, failure, loop_begin_phi);
+	llvm_new_phi(c, result, "array_cmp_phi", type_bool, success, comparison_phi, failure, loop_begin_phi);
 }
 
-static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op, Type *vector_type)
+static void llvm_emit_float_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op, Type *vector_type)
 {
 	llvm_value_rvalue(c, lhs);
 	llvm_value_rvalue(c, rhs);
+	RETURN_ON_EMPTY_BLOCK(result);
 	LLVMValueRef lhs_value = lhs->value;
 	LLVMValueRef rhs_value = rhs->value;
 	LLVMValueRef val;
@@ -3732,10 +3735,10 @@ static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	}
 	if (vector_type)
 	{
-		llvm_convert_vector_comparison(c, be_value, val, vector_type, BINARYOP_EQ == binary_op);
+		llvm_convert_vector_comparison(c, result, val, vector_type, BINARYOP_EQ == binary_op);
 		return;
 	}
-	llvm_value_set(be_value, val, type_bool);
+	llvm_value_set(result, val, type_bool);
 }
 
 void llvm_emit_lhs_is_subtype(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs)
@@ -3779,6 +3782,7 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 		case ALL_INTS:
 			llvm_value_rvalue(c, lhs);
 			llvm_value_rvalue(c, rhs);
+			RETURN_ON_EMPTY_BLOCK(result);
 			llvm_emit_int_comp_raw(c, result, lhs->type, rhs->type, lhs->value, rhs->value, binary_op);
 			return;
 		case ALL_FLOATS:
@@ -4092,13 +4096,20 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 		}
 		llvm_emit_expr(c, &lhs, exprptr(expr->binary_expr.left));
 	}
+	RETURN_ON_EMPTY_BLOCK(be_value);
+
 	// We need the rvalue.
 	llvm_fold_for_compare(c, &lhs);
+	RETURN_ON_EMPTY_BLOCK(be_value);
 
 	// Evaluate rhs
 	BEValue rhs;
 	llvm_emit_expr(c, &rhs, exprptr(expr->binary_expr.right));
+	RETURN_ON_EMPTY_BLOCK(be_value);
+
 	llvm_fold_for_compare(c, &rhs);
+	RETURN_ON_EMPTY_BLOCK(be_value);
+
 	EMIT_EXPR_LOC(c, expr);
 	// Comparison <=>
 	if (binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ)
