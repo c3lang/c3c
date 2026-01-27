@@ -123,15 +123,14 @@ macro Pem Pem.tcopy(&self) => self.copy(tmem);
 *>
 fn void Pem.free(&self)
 {
-	defer   // safe zeroize: the PEM body might hold secret cryptographic data
+	mem::zero_volatile(self.data);
+	if (self.allocator != tmem)
 	{
-		mem::zero_volatile(self.data);
-		mem::zero_volatile(@as_char_view(*self));
+		self.headers.free();
+		self.tag.free(self.allocator);
+		allocator::free(self.allocator, self.data);
 	}
-	if (self.allocator == tmem) return;
-	self.headers.free();
-	self.tag.free(self.allocator);
-	allocator::free(self.allocator, self.data);
+	mem::zero_volatile(@as_char_view(*self));
 }
 
 <*
