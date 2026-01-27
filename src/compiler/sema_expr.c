@@ -3731,7 +3731,7 @@ static inline bool sema_call_analyse_member_set(SemaContext *context, Expr *expr
 	}
 	Expr *access = expr_new_expr(target_kind == TYPE_BITSTRUCT ? EXPR_BITACCESS : EXPR_ACCESS_RESOLVED, expr);
 	access->access_resolved_expr = (ExprResolvedAccess) { .parent = inner, .ref = decl };
-	access->type = decl->type;
+	access->type = type_add_optional(decl->type, IS_OPTIONAL(inner));
 	access->resolve_status = RESOLVE_DONE;
 	expr->expr_kind = EXPR_BINARY;
 	expr->binary_expr = (ExprBinary) { .left =  exprid(access), .right = exprid(arg), .operator = BINARYOP_ASSIGN };
@@ -3759,7 +3759,7 @@ static inline bool sema_call_analyse_member_get(SemaContext *context, Expr *expr
 	}
 	expr->expr_kind = target_kind == TYPE_BITSTRUCT ? EXPR_BITACCESS : EXPR_ACCESS_RESOLVED;
 	expr->access_resolved_expr = (ExprResolvedAccess) { .parent = inner, .ref = decl };
-	expr->type = decl->type;
+	expr->type = type_add_optional(decl->type, IS_OPTIONAL(inner));
 	return true;
 }
 
@@ -4191,7 +4191,7 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 		}
 		default:
 DEFAULT:
-			if (!sema_analyse_expr_rvalue(context, subscripted)) return false;
+			if (!sema_analyse_expr(context, subscripted)) return false;
 			break;
 	}
 
@@ -4225,8 +4225,6 @@ DEFAULT:
 		expr->type = NULL;
 		return true;
 	}
-
-	if (!sema_cast_rvalue(context, subscripted, true)) return false;
 
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
 	if (overload)
@@ -10949,6 +10947,11 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 			decl->var.is_read = true;
 		}
 		decl_flatten(decl)->is_external_visible = true;
+		if (context->generic_instance)
+		{
+			decl->is_templated = true;
+			decl->instance_id = declid(context->generic_instance);
+		}
 		vec_add(unit->module->lambdas_to_evaluate, decl);
 	}
 	else

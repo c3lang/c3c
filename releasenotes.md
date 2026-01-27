@@ -137,6 +137,8 @@
 - Fix alignment for uint128 to 16 with WASM targets.
 - Incorrect assert in struct alignment checking #2841
 - Packed structs sometimes not lowered as such.
+- Crash when creating `$Type*` where `$Type` is an optional type #2848
+- Crashes when using `io::EOF~!` in various unhandled places. #2848
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
