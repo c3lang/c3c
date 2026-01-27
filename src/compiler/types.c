@@ -1544,6 +1544,7 @@ void type_setup(PlatformTarget *target)
 	type_wildcard_optional = type_get_optional(type_wildcard);
 	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_TYPEDEF);
 	string_decl->unit = compiler.context.core_unit;
+	string_decl->resolved_attributes = true;
 	string_decl->extname = string_decl->name;
 	string_decl->is_substruct = true;
 	string_decl->distinct = type_info_new_base(type_chars, INVALID_SPAN);
@@ -2273,6 +2274,7 @@ RETRY_DISTINCT:
 			// array + [other array, vector] => no
 			return NULL;
 		case TYPE_FLEXIBLE_ARRAY:
+			return NULL;
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 			// Already handled

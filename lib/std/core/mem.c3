@@ -7,7 +7,7 @@ import std::os::posix, std::os::win32;
 import std::math;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
-const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
+const DEFAULT_MEM_ALIGNMENT = env::WASM ? 16 : (void*.alignof) * 2;
 const ulong KB = 1024;
 const ulong MB = KB * 1024;
 const ulong GB = MB * 1024;
@@ -838,6 +838,7 @@ macro new_aligned($Type, #init = ...) @nodiscard @safemacro
 <*
  @param $Type : "The type to allocate"
 
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
  @return "A pointer to uninitialized data for the type $Type"
 *>
@@ -850,7 +851,8 @@ macro alloc($Type) @nodiscard
  @param $Type : "The type to allocate"
  @param padding : "The padding to add after the allocation"
 
- @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
  @return "A pointer to uninitialized data for the type $Type"
 *>
 macro alloc_with_padding($Type, usz padding) @nodiscard
@@ -864,6 +866,7 @@ macro alloc_with_padding($Type, usz padding) @nodiscard
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
  @param $Type : "The type to allocate"
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @return "A pointer to uninitialized data for the type $Type with the proper alignment"
 *>
 macro alloc_aligned($Type) @nodiscard
@@ -875,6 +878,7 @@ macro alloc_aligned($Type) @nodiscard
  @param $Type : "The type to allocate"
  @param #init : "The optional initializer"
 
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
  @return "A pointer to temporary data of type $Type."
 *>
@@ -894,6 +898,7 @@ macro tnew($Type, #init = ...) @nodiscard @safemacro
  @param padding : "The padding to add after the allocation"
  @param #init : "The optional initializer"
 
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
  @return "A pointer to temporary data of type $Type with added padding at the end."
 *>
@@ -908,17 +913,24 @@ macro temp_with_padding($Type, usz padding, #init = ...) @nodiscard @safemacro
 	$endif
 }
 
+<*
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+*>
 macro talloc($Type) @nodiscard
 {
 	return tmalloc($Type.sizeof, $Type.alignof);
 }
 
+<*
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+*>
 macro talloc_with_padding($Type, usz padding) @nodiscard
 {
 	return tmalloc($Type.sizeof + padding, $Type.alignof);
 }
 
 <*
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
 *>
 macro new_array($Type, usz elements) @nodiscard
@@ -929,6 +941,8 @@ macro new_array($Type, usz elements) @nodiscard
 <*
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
 *>
 macro new_array_aligned($Type, usz elements) @nodiscard
 {
@@ -936,6 +950,7 @@ macro new_array_aligned($Type, usz elements) @nodiscard
 }
 
 <*
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
 *>
 macro alloc_array($Type, usz elements) @nodiscard
@@ -946,6 +961,8 @@ macro alloc_array($Type, usz elements) @nodiscard
 <*
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
 *>
 macro alloc_array_aligned($Type, usz elements) @nodiscard
 {

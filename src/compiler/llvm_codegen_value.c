@@ -12,6 +12,13 @@ void llvm_value_deref(GenContext *c, BEValue *value)
 	value->alignment = type_abi_alignment(type);
 }
 
+void llvm_value_set_empty(BEValue *value)
+{
+	value->value = NULL;
+	value->type = type_void;
+	value->kind = BE_VALUE;
+}
+
 void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type)
 {
 	type = type_lowering(type);
@@ -84,6 +91,7 @@ void llvm_value_addr(GenContext *c, BEValue *value)
 	}
 	else
 	{
+		RETURN_ON_EMPTY_BLOCK(value);
 		BEValue temp = llvm_emit_alloca_b(c, value->type, "taddr");
 		llvm_store(c, &temp, value);
 		*value = temp;
@@ -129,10 +137,6 @@ void llvm_value_rvalue(GenContext *c, BEValue *value)
 
 void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef opt_value)
 {
-	if (!c->catch.block)
-	{
-		puts("foekf");
-	}
 	ASSERT_AT(c->last_emitted_loc, c->catch.block && "unexpected emit");
 	bool is_constant_opt = llvm_is_const(opt_value);
 

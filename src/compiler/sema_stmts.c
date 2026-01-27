@@ -122,7 +122,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 				case STORAGE_NORMAL:
 					break;
 				case STORAGE_WILDCARD:
-					UNREACHABLE
+					RETURN_SEMA_ERROR(e, "This value is always rethrown and doesn't have a definite type. This is not valid.");
 				case STORAGE_VOID:
 					RETURN_SEMA_ERROR(e, "This expression is of type 'void', did you make a mistake?");
 				case STORAGE_COMPILE_TIME:
@@ -247,7 +247,7 @@ static inline bool sema_analyse_compound_stmt(SemaContext *context, Ast *stateme
 {
 	bool success;
 	EndJump ends_with_jump;
-	SCOPE_START
+	SCOPE_START(statement->span)
 		success = sema_analyse_compound_statement_no_scope(context, statement);
 		ends_with_jump = context->active_scope.end_jump;
 	SCOPE_END;
@@ -532,7 +532,7 @@ static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_
 	// And set our new one.
 	context->return_expr = ret_expr;
 	bool success = true;
-	SCOPE_START_WITH_FLAGS(SCOPE_ENSURE_MACRO);
+	SCOPE_START_WITH_FLAGS(SCOPE_ENSURE_MACRO, ret_expr->span);
 		while (doc_directive)
 		{
 			Ast *directive = astptr(doc_directive);
@@ -757,7 +757,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 			if (directive->contract_stmt.kind == CONTRACT_ENSURE)
 			{
 				bool success;
-				SCOPE_START_WITH_FLAGS(SCOPE_ENSURE);
+				SCOPE_START_WITH_FLAGS(SCOPE_ENSURE, statement->span);
 					success = assert_create_from_contract(context, directive, &append_id, statement->span);
 				SCOPE_END;
 				if (!success) return false;
@@ -1347,7 +1347,7 @@ bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement)
 	}
 	body->compound_stmt.parent_defer = astid(statement);
 	bool success = true;
-	SCOPE_START
+	SCOPE_START(statement->span)
 
 	context->active_scope.defer_last = 0;
 	context->active_scope.defer_start = 0;
@@ -1434,7 +1434,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 		RETURN_SEMA_ERROR(body, "A do loop must use { } around its body.");
 	}
 	// Enter for scope
-	SCOPE_OUTER_START
+	SCOPE_OUTER_START(statement->span)
 
 		if (statement->for_stmt.init)
 		{
@@ -1442,7 +1442,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 		}
 
 		// Conditional scope start
-		SCOPE_START_WITH_LABEL(statement->for_stmt.flow.label)
+		SCOPE_START_WITH_LABEL(statement->for_stmt.flow.label, statement->span)
 
 			if (!do_loop)
 			{
@@ -1466,7 +1466,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 
 		if (statement->for_stmt.flow.skip_first)
 		{
-			SCOPE_START
+			SCOPE_START(statement->span)
 				if (!sema_analyse_for_cond(context, &statement->for_stmt.cond, &is_infinite) || !success)
 				{
 					SCOPE_ERROR_END_OUTER();
@@ -1484,7 +1484,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 		if (success && statement->for_stmt.incr)
 		{
 			// Incr scope start
-			SCOPE_START
+			SCOPE_START(statement->span)
 				success = sema_analyse_expr_rvalue(context, exprptr(statement->for_stmt.incr));
 				// Incr scope end
 			SCOPE_END;
@@ -1537,7 +1537,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		}
 	}
 	// Conditional scope start
-	SCOPE_START
+	SCOPE_START(statement->span)
 
 		// In the case of foreach (int x : { 1, 2, 3 }) we will infer the int[] type, so pick out the number of elements.
 		Type *inferred_type = variable_type_info ? type_get_inferred_array(type_no_optional(variable_type_info->type)) : NULL;
@@ -1984,7 +1984,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	CondResult result = COND_MISSING;
 	bool is_invalid = false;
 	bool reverse = false;
-	SCOPE_OUTER_START
+	SCOPE_OUTER_START(statement->span)
 
 		success = sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL, &result);
 		if (success && cond->expr_kind == EXPR_COND)
@@ -2027,7 +2027,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 			}
 		}
 
-		SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
+		SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label, then->span);
 			if (result == COND_FALSE) context->active_scope.is_dead = true;
 			success = success && sema_analyse_statement(context, then);
 			then_jump = context->active_scope.end_jump.active && !(statement->if_stmt.flow.label && statement->if_stmt.flow.has_break);
@@ -2039,11 +2039,11 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 		{
 			bool store_break = statement->if_stmt.flow.has_break;
 			statement->if_stmt.flow.has_break = false;
-			SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
+			SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label, statement->span);
 				if (result == COND_TRUE) context->active_scope.is_dead = true;
 				sema_remove_unwraps_from_try(context, cond);
 				sema_unwrappable_from_catch_in_else(context, cond);
-				success = success && sema_analyse_statement(context, else_body);
+				success = sema_analyse_statement(context, else_body);
 				else_jump = context->active_scope.end_jump.active && !(statement->if_stmt.flow.label && statement->if_stmt.flow.has_break);
 			SCOPE_END;
 			statement->if_stmt.flow.has_break |= store_break;
@@ -2636,7 +2636,7 @@ FOUND:;
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		Ast *stmt = cases[i];
-		SCOPE_START
+		SCOPE_START(statement->span)
 			PUSH_BREAK(statement);
 			Ast *next = (i < case_count - 1) ? cases[i + 1] : NULL;
 			PUSH_NEXT(next, statement);
@@ -2648,7 +2648,7 @@ FOUND:;
 			all_jump_end &= context->active_scope.end_jump.active;
 		SCOPE_END;
 	}
-	if (is_enum_switch && !exhaustive && success)
+	if (is_enum_switch && !exhaustive && success && !if_chain)
 	{
 		RETURN_SEMA_ERROR(statement, create_missing_enums_in_switch_error(cases, actual_enum_cases, enum_values));
 	}
@@ -2984,7 +2984,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 {
 	statement->switch_stmt.scope_defer = context->active_scope.in_defer;
 
-	SCOPE_START_WITH_LABEL(statement->switch_stmt.flow.label);
+	SCOPE_START_WITH_LABEL(statement->switch_stmt.flow.label, statement->span);
 
 		Expr *cond = exprptrzero(statement->switch_stmt.cond);
 		Type *switch_type;
@@ -3471,7 +3471,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 
 	Ast *body = astptr(func->func_decl.body);
 	Decl **lambda_params = NULL;
-	SCOPE_START
+	SCOPE_START(func->span)
 		ASSERT(context->active_scope.depth == 1);
 		FOREACH(Decl *, param, signature->params)
 		{

@@ -8,12 +8,13 @@
 char swizzle[256] = { ['x'] = 0x01, ['y'] = 0x02, ['z'] = 0x03, ['w'] = 0x04,
 					  ['r'] = 0x11, ['g'] = 0x12, ['b'] = 0x13, ['a'] = 0x14 };
 
-void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
+void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, SourceSpan span)
 {
 	unsigned depth = context->active_scope.depth + 1;
 	if (depth > MAX_SCOPE_DEPTH)
 	{
-		FATAL_ERROR("Too deeply nested scopes.");
+		sema_error_at(context, span, "Resolution failed due to too deeply nested scopes (%u).", depth);
+		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 
 	bool scope_is_dead = context->active_scope.is_dead;
@@ -57,9 +58,9 @@ const char *context_filename(SemaContext *context)
 	return file->full_path;
 }
 
-void context_change_scope_for_label(SemaContext *context, DeclId label_id)
+void context_change_scope_for_label(SemaContext *context, DeclId label_id, SourceSpan span)
 {
-	context_change_scope_with_flags(context, SCOPE_NONE);
+	context_change_scope_with_flags(context, SCOPE_NONE, span);
 
 	if (label_id)
 	{

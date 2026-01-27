@@ -229,6 +229,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	{
 		BEValue be_value;
 		llvm_emit_expr(c, &be_value, expr->inner_expr);
+		RETURN_ON_EMPTY_BLOCK(&be_value);
 		if (ast->return_stmt.cleanup_fail)
 		{
 			llvm_value_rvalue(c, &be_value);
@@ -723,10 +724,11 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 			else
 			{
 				llvm_emit_comp(c, &equals, &be_value, switch_value, BINARYOP_EQ);
+				RETURN_ON_EMPTY_BLOCK_VOID();
 			}
 		}
 		next = llvm_basic_block_new(c, "next_if");
-		llvm_emit_cond_br(c, &equals, block, next);
+		if (c->current_block) llvm_emit_cond_br(c, &equals, block, next);
 		if (case_stmt->case_stmt.body)
 		{
 			llvm_emit_block(c, block);
@@ -747,7 +749,6 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 		llvm_emit_br(c, exit_block);
 	}
 	llvm_emit_block(c, exit_block);
-	return;
 }
 
 static LLVMValueRef llvm_emit_switch_jump_stmt(GenContext *c,
@@ -1068,6 +1069,7 @@ void llvm_emit_switch(GenContext *c, Ast *ast)
 	{
 		// Regular switch
 		llvm_emit_cond(c, &switch_value, expr, false);
+		RETURN_ON_EMPTY_BLOCK_VOID();
 	}
 	else
 	{
@@ -1597,16 +1599,27 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc, const char *fmt, BEValue *value_1,
 							 BEValue *value_2)
 {
+	bool always_panic = false;
 	if (LLVMIsAConstantInt(value->value))
 	{
-		ASSERT_AT(loc, !LLVMConstIntGetZExtValue(value->value) && "Unexpected bounds check failed.");
-		return;
+		if (!LLVMConstIntGetZExtValue(value->value))
+		{
+			return;
+		}
+		sema_warning_at(loc, "The code here was detected to always panic at runtime.");
+		always_panic = true;
 	}
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
 	LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "checkok");
-	value->value = llvm_emit_expect_false(c, value);
-	llvm_emit_cond_br(c, value, panic_block, ok_block);
-
+	if (always_panic)
+	{
+		llvm_emit_br(c, panic_block);
+	}
+	else
+	{
+		value->value = llvm_emit_expect_false(c, value);
+		llvm_emit_cond_br(c, value, panic_block, ok_block);
+	}
 	llvm_emit_block(c, panic_block);
 	vec_add(c->panic_blocks, panic_block);
 	BEValue *values = NULL;

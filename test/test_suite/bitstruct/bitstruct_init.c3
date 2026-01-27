@@ -91,12 +91,10 @@ fn void test4()
     Flags1 flags1 = {.a, .b, .c};
     flags1 = {.a};
     flags1 = {.a = true, .b = true, .c = false};
-    flags1 = {.a, .b = true, .c = true}; // #error: Mixing the omission
     Foo foo = { .x = 0, .z }; // #error: needs a value
 
     Flags2 flags2 = {.b, .d};
     flags2 = {.b, .c, .d}; // #error: needs a value
-    flags2 = {.a, .c = 1, .d}; // #error: Mixing the omission
 
     Flags2_Struct flags2s;
     flags2s = {.b, .c, .d}; // #error: needs a value

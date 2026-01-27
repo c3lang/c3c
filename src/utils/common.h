@@ -141,7 +141,6 @@
   ##__VA_ARGS__, __func__, __FILE__, __LINE__); } while(0)
 
 
-#define ASSERT(_condition) do { if (!(_condition)) { FATAL_ERROR("Violated assert: " #_condition); } } while (0)
 #define WARNING(_string, ...) do { eprintf("WARNING: "); eprintf(_string, ##__VA_ARGS__); eprintf("\n"); } while(0)
 #define UNREACHABLE_VOID FATAL_ERROR("Should be unreachable");
 #define UNREACHABLE UNREACHABLE_VOID; return 0;
@@ -149,12 +148,12 @@
 #define TODO FATAL_ERROR("TODO reached");
 #define UNSUPPORTED do { error_exit("Unsupported functionality"); } while (0)
 
-#define TEST_ASSERT(condition_, string_) while (!(condition_)) { FATAL_ERROR(string_); }
-#define TEST_ASSERTF(condition_, format_, ...) while (!(condition_)) { FATAL_ERROR(format_, __VA_ARGS__); }
+#if NDEBUG && NOASSERTS
+#define ASSERT(_condition) do {  } while (0)
+#else
+#define ASSERT(_condition) do { if (!(_condition)) { FATAL_ERROR("Violated assert: " #_condition); } } while (0)
+#endif
 
-#define EXPECT(_string, _value, _expected) \
- do { long long __tempval1 = _value; long long __tempval2 = _expected; \
-	TEST_ASSERT(__tempval1 == __tempval2, "Checking " _string ": expected %lld but was %lld.", __tempval2, __tempval1); } while(0)
 
 void evprintf(const char *format, va_list list);
 void eprintf(const char *format, ...);

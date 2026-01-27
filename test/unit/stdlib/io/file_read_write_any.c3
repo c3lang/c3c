@@ -1,6 +1,5 @@
 module std::io::file @test;
-
-import std::io;
+import std::io, libc;
 
 struct Data
 {
@@ -38,6 +37,7 @@ struct Data
 	}
 }
 
+
 fn void read_write_any()
 {
 	Data data;
@@ -57,13 +57,15 @@ fn void read_write_any()
 	data.total = 0xA55A;
 	data.hello = 0xCC;
 
-    File file = file::open("tmp/__file_read_write_any_test_file", "wb")!!;
+	char[1024] buf;
+	String name = libc::tmpnam(&buf).str_view();
+    File file = file::open(name, "wb")!!;
 
 	io::write_any(&file, &data)!!;
 	file.flush()!!;
 	file.close()!!;
 
-    file = file::open("tmp/__file_read_write_any_test_file", "rb")!!;
+    file = file::open(name, "rb")!!;
     Data rdata;
     io::read_any(&file, &rdata)!!;
 

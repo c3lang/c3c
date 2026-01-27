@@ -36,7 +36,7 @@ fn void main()
 /* #expect: test.ll
 
 %Client = type <{ i32, %MsgHeader, i16, [2 x i8], %"ElasticArray{ulong, 1}" }>
-%MsgHeader = type { i64 }
+%MsgHeader = type <{ i64 }>
 %"ElasticArray{ulong, 1}" = type { i64, [1 x i64] }
 
 define void @test.main() #0 {

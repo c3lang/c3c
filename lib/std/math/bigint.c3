@@ -930,9 +930,9 @@ module std::math::bigint @private;
 
 
 <*
- @param [&out] quotient
+ @param [&inout] quotient
  @param [&in] bi2
- @param [&out] remainder
+ @param [&inout] remainder
 *>
 fn void BigInt.single_byte_divide(&self, BigInt* bi2, BigInt* quotient, BigInt* remainder)
 {
@@ -982,9 +982,9 @@ fn void BigInt.single_byte_divide(&self, BigInt* bi2, BigInt* quotient, BigInt* 
 }
 
 <*
- @param [&out] quotient
+ @param [&inout] quotient
  @param [&in] other
- @param [&out] remainder
+ @param [&inout] remainder
 *>
 fn void BigInt.multi_byte_divide(&self, BigInt* other, BigInt* quotient, BigInt* remainder)
 {
