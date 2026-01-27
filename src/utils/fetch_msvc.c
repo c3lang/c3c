@@ -1,7 +1,9 @@
-#include "../compiler/compiler_internal.h"
-#include "json.h"
 #include <ctype.h>
 #include <sys/stat.h>
+#include <limits.h>
+
+#include "../compiler/compiler_internal.h"
+#include "json.h"
 
 #if PLATFORM_WINDOWS
 	#include <windows.h>
@@ -15,7 +17,13 @@
 #endif
 
 #ifndef MAX_PATH
-	#define MAX_PATH PATH_MAX
+	#if defined(PATH_MAX)
+		#define MAX_PATH PATH_MAX
+	#elif defined(_MAX_PATH)
+		#define MAX_PATH _MAX_PATH
+	#else
+		#define MAX_PATH 260
+	#endif
 #endif
 #define MAX_PATH_ZIP_FILENAME 512
 
