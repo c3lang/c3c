@@ -22,7 +22,16 @@ const char *download_file(const char *url, const char *resource, const char *fil
 	HINTERNET hSession = NULL, hConnect = NULL, hRequest = NULL;
 
 	bool is_https = memcmp("https://", url, 8) == 0;
-	const char *hostname = url + (is_https ? 8 : 7);
+	const char *hostname_and_path = url + (is_https ? 8 : 7);
+	const char *slash = strchr(hostname_and_path, '/');
+	const char *hostname = hostname_and_path;
+	const char *url_path = "";
+
+	if (slash)
+	{
+		hostname = str_copy(hostname_and_path, slash - hostname_and_path);
+		url_path = slash;
+	}
 
 	// Use WinHttpOpen to obtain a session handle.
 	hSession = WinHttpOpen(L"C3C/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
@@ -42,7 +51,8 @@ const char *download_file(const char *url, const char *resource, const char *fil
 	free(wurl);
 
 	// Create an HTTP request handle.
-	wchar_t *wresource = char_to_wchar(resource);
+	char *full_resource = str_cat(url_path, resource);
+	wchar_t *wresource = char_to_wchar(full_resource);
 	hRequest = WinHttpOpenRequest(hConnect, L"GET", wresource, NULL,
                                   WINHTTP_NO_REFERER,
                                   WINHTTP_DEFAULT_ACCEPT_TYPES, is_https ? WINHTTP_FLAG_SECURE : 0);
