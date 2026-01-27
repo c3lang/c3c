@@ -1692,10 +1692,15 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 #else
 			FALLTHROUGH;
 #endif
-		case ARCH_TYPE_WASM64:
-		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_RISCV64:
 			return (AlignData) { bits, bits };
+		case ARCH_TYPE_WASM64:
+		case ARCH_TYPE_WASM32:
+#if LLVM_AVAILABLE && LLVM_VERSION_MAJOR < 20
+			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
+#else
+			return (AlignData) { bits, bits };
+#endif
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
 			if (bits < 32) return (AlignData){ bits, 32 };
