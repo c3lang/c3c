@@ -19,58 +19,56 @@ static inline wchar_t *char_to_wchar(const char *str)
 
 const char *download_file(const char *url, const char *resource, const char *file_path)
 {
-
-	LPSTR pszOutBuffer;
-	bool results = false;
-	HINTERNET hSession = NULL,
-			hConnect = NULL,
-			hRequest = NULL;
-
+	HINTERNET hSession = NULL, hConnect = NULL, hRequest = NULL;
 
 	bool is_https = memcmp("https://", url, 8) == 0;
-	url = url + (is_https ? 8 : 7);
+	const char *hostname = url + (is_https ? 8 : 7);
 
 	// Use WinHttpOpen to obtain a session handle.
-	HINTERNET session = WinHttpOpen(L"C3C/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-									WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+	hSession = WinHttpOpen(L"C3C/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+						   WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
 
-	if (!session) error_exit("Failed to create http session.");
-	// Specify an HTTP server.
+	if (!hSession) error_exit("Failed to create http session.");
 
-	wchar_t *wurl = char_to_wchar(url);
-	HINTERNET connect = WinHttpConnect(session, wurl, is_https ? INTERNET_DEFAULT_HTTPS_PORT : INTERNET_DEFAULT_HTTP_PORT,
-									   0);
-	if (!connect) error_exit("Failed to connect to '%s'", url);
+	DWORD redirect_policy = WINHTTP_OPTION_REDIRECT_POLICY_ALWAYS;
+	WinHttpSetOption(hSession, WINHTTP_OPTION_REDIRECT_POLICY, &redirect_policy,
+					 sizeof(redirect_policy));
+
+	wchar_t *wurl = char_to_wchar(hostname);
+	hConnect = WinHttpConnect(
+		hSession, wurl,
+		is_https ? INTERNET_DEFAULT_HTTPS_PORT : INTERNET_DEFAULT_HTTP_PORT, 0);
+	if (!hConnect) error_exit("Failed to connect to '%s'", url);
 	free(wurl);
 
 	// Create an HTTP request handle.
 	wchar_t *wresource = char_to_wchar(resource);
-	HINTERNET request = WinHttpOpenRequest(connect, L"GET", wresource, NULL,
-										   WINHTTP_NO_REFERER,
-										   WINHTTP_DEFAULT_ACCEPT_TYPES, is_https ? WINHTTP_FLAG_SECURE : 0);
+	hRequest = WinHttpOpenRequest(hConnect, L"GET", wresource, NULL,
+                                  WINHTTP_NO_REFERER,
+                                  WINHTTP_DEFAULT_ACCEPT_TYPES, is_https ? WINHTTP_FLAG_SECURE : 0);
 
-	if (!connect) error_exit("Failed to connect to '%s'.", url);
+	if (!hRequest) error_exit("Failed to create request for '%s'.", url);
 	free(wresource);
 
-	FILE* file = fopen(file_path, "w+b");
+	FILE *file = fopen(file_path, "w+b");
 	if (!file) return str_printf("Failed to open file '%s' for output", file_path);
 
-
 	// Send a request.
-	bool result = WinHttpSendRequest(request, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+	bool result = WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
 									 WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
 	bool success = false;
-	if (!result || !WinHttpReceiveResponse(request, NULL)) goto END;
-
 	DWORD dwStatusCode = 0;
+
+	if (!result || !WinHttpReceiveResponse(hRequest, NULL)) goto END;
+
 	DWORD dwSize = sizeof(dwStatusCode);
-	if (!WinHttpQueryHeaders(request,
-							 WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
-							 WINHTTP_HEADER_NAME_BY_INDEX,
-							 &dwStatusCode, &dwSize, WINHTTP_NO_HEADER_INDEX))
+	if (!WinHttpQueryHeaders(hRequest,
+                             WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                             WINHTTP_HEADER_NAME_BY_INDEX,
+                             &dwStatusCode, &dwSize, WINHTTP_NO_HEADER_INDEX))
 	{
 		error_exit("Failed to get status code when requesting 'http%s://%s%s'\n",
-				   (is_https ? "s": ""), url, resource);
+			(is_https ? "s": ""), url, resource);
 	}
 
 	if (dwStatusCode != 200) goto END;
@@ -79,17 +77,16 @@ const char *download_file(const char *url, const char *resource, const char *fil
 	while (1)
 	{
 		DWORD dw_size = 0;
-		if (!WinHttpReadData(request, (LPVOID)buffer, sizeof(buffer), &dw_size)) goto END;
+		if (!WinHttpReadData(hRequest, (LPVOID)buffer, sizeof(buffer), &dw_size)) goto END;
+		if (dw_size == 0) break;
 		fwrite(buffer, (size_t)dw_size, (size_t)1, file);
-		if (!WinHttpQueryDataAvailable(request, &dw_size)) goto END;
-		if (!dw_size) break;
 	}
 	success = true;
 END:
 	fclose(file);
-	WinHttpCloseHandle(request);
-	WinHttpCloseHandle(connect);
-	WinHttpCloseHandle(session);
+	WinHttpCloseHandle(hRequest);
+	WinHttpCloseHandle(hConnect);
+	WinHttpCloseHandle(hSession);
 	if (!success)
 	{
 		remove(file_path);
@@ -110,8 +107,13 @@ const char *download_file(const char *url, const char *resource, const char *fil
 {
 	CURL *curl_handle = curl_easy_init();
 	if (!curl_handle) error_exit("Could not initialize cURL subsystem.");
-	FILE* file = fopen(file_path, "w+b");
-	if (!file) return str_printf("Failed to open file '%s' for output", file_path);
+	FILE *file = fopen(file_path, "w+b");
+	if (!file)
+	{
+		curl_easy_cleanup(curl_handle);
+		return str_printf("Failed to open file '%s' for output", file_path);
+	}
+
 	const char *total_url = str_printf("%s%s", url, resource);
 	curl_easy_setopt(curl_handle, CURLOPT_URL, total_url);
 	curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
@@ -122,14 +124,16 @@ const char *download_file(const char *url, const char *resource, const char *fil
 	curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
 	curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, file);
 	CURLcode result = curl_easy_perform(curl_handle);
-	if (curl_easy_perform(curl_handle) != CURLE_OK)
+	if (result != CURLE_OK)
 	{
-
 		fclose(file);
 		remove(file_path);
-		return curl_easy_strerror(result);
+		const char *err_msg = str_dup(curl_easy_strerror(result));
+		curl_easy_cleanup(curl_handle);
+		return err_msg;
 	}
 	fclose(file);
+	curl_easy_cleanup(curl_handle);
 	return NULL;
 }
 
