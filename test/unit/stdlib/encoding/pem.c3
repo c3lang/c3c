@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module pem_test @test;
 
-import std::collections::pair, std::encoding::pem;
+import std::collections::pair, std::encoding::pem, std::io;
 
 
 fn void decode_single()
@@ -68,15 +68,16 @@ fn void leak_check_decode()
 	test::@check(res.len == 2);
 
 	// don't optimize it away >:I
-	Pem throwaway = @volatile_load(res[0]);
-	throwaway = @volatile_load(res[1]);
+	io::printfn(res[0].tag);
+	io::printfn(res[1].tag);
 
 	foreach (r : res) r.free();
 	mem::free(res);
 
+	// ==========================================
 	res = pem::decode(mem, SINGLE)!!;
 	test::@check(res.len == 1);
-	throwaway = @volatile_load(res[0]);
+	io::printfn(res[0].tag);
 
 	foreach (r : res) r.free();
 	mem::free(res);
@@ -86,12 +87,12 @@ fn void leak_check_encode()
 {
 	String encoded = pem::encode(mem, SINGLE_DATA, "SOMETHING", "Key", "Value", "KeyX", "ValueX")!!;
 	test::@check(encoded.len > 0);
-	String no_optim = @volatile_load(encoded);
+	io::printfn("ENCODED_SINGLE:\n%s\n", encoded);
 	encoded.free(mem);
 
 	encoded = pem::encode_many(mem, { SINGLE_DATA, MULTI_DATA }, { "CERTIFICATE", "THING" }, (String[]){ "Key1", "Value1", "KeyX", "ValueX"}, (String[]){ "more", "more" })!!;
 	test::@check(encoded.len > 0);
-	no_optim = @volatile_load(encoded);
+	io::printfn("ENCODED_MULTI:\n%s\n", encoded);
 	encoded.free(mem);
 }
 
