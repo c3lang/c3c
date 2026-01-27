@@ -2,11 +2,13 @@
 #include <sys/stat.h>
 #include <limits.h>
 
-#include "../compiler/compiler_internal.h"
-#include "json.h"
-
-#if PLATFORM_WINDOWS
+#if defined(_WIN32) || defined(_WIN64)
+	#define WIN32_LEAN_AND_MEAN
+	#define TokenType WindowsTokenType
+	#define MAX_PRIORITY WindowsMAX_PRIORITY
 	#include <windows.h>
+	#undef TokenType
+	#undef MAX_PRIORITY
 	#define STRCASECMP _stricmp
 	#define STRNCASECMP _strnicmp
 #else
@@ -15,6 +17,9 @@
 	#define STRCASECMP strcasecmp
 	#define STRNCASECMP strncasecmp
 #endif
+
+#include "../compiler/compiler_internal.h"
+#include "json.h"
 
 #ifndef MAX_PATH
 	#if defined(PATH_MAX)
@@ -238,7 +243,6 @@ static void get_msi_cab_list(const char *msi_path, const char ***cabs)
 	const size_t ext_len = 4;
 	const size_t guid_len = 32;
 	const size_t filename_len = guid_len + ext_len;
-	const size_t buffer_size = filename_len + 1;
 
 	size_t size = (size_t)-1;
 	unsigned char *buf = (unsigned char *)file_read_binary(msi_path, &size);
@@ -247,11 +251,11 @@ static void get_msi_cab_list(const char *msi_path, const char ***cabs)
 	{
 		if (STRNCASECMP((char *)buf + i, ".cab", ext_len) == 0 && i >= guid_len)
 		{
-			char cab[buffer_size];
+			char cab[128];
 			memcpy(cab, buf + i - guid_len, filename_len);
 			cab[filename_len] = 0;
 			bool valid = true;
-			for (int j = 0; j < guid_len; j++)
+			for (int j = 0; j < (int)guid_len; j++)
 				if (!char_is_hex(cab[j]))
 				{
 					valid = false;
