@@ -702,10 +702,14 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE_VOID
+		case TYPE_UNTYPED_LIST:
+			expr->const_expr.const_kind = CONST_UNTYPED_LIST;
+			expr->const_expr.untyped_list = NULL;
+			expr->resolve_status = RESOLVE_DONE;
+			break;
 		case TYPE_SLICE:
 			expr_rewrite_const_empty_slice(expr, type);
 			return;
