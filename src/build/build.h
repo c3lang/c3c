@@ -48,6 +48,7 @@ typedef enum
 	COMMAND_UNIT_TEST,
 	COMMAND_PRINT_SYNTAX,
 	COMMAND_PROJECT,
+	COMMAND_FETCH_MSVC,
 } CompilerCommand;
 
 typedef enum
@@ -593,6 +594,10 @@ typedef struct BuildOptions_
 	bool print_input;
 	bool run_once;
 	bool suppress_run;
+	bool msvc_accept_license;
+	bool msvc_show_versions;
+	const char *msvc_version_override;
+	const char *msvc_sdk_version_override;
 	bool old_slice_copy;
 	bool old_enums;
 	bool old_compact_eq;
@@ -645,6 +650,8 @@ typedef struct BuildOptions_
 	bool benchmarking;
 	bool testing;
 } BuildOptions;
+
+void fetch_msvc(BuildOptions *options);
 
 typedef struct
 {

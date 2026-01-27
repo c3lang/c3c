@@ -417,6 +417,7 @@ add_executable(c3c
         src/compiler/decltable.c
         src/compiler/methodtable.c
         src/compiler/mac_support.c
+        src/utils/fetch_msvc.c
         src/compiler/windows_support.c
         src/compiler/codegen_asm.c
         src/compiler/asm_target.c
