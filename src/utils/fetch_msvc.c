@@ -20,6 +20,7 @@
 
 #include "../compiler/compiler_internal.h"
 #include "json.h"
+#include "msi.h"
 
 #ifndef MAX_PATH
 	#if defined(PATH_MAX)
@@ -154,21 +155,26 @@ static char *find_folder_inf(const char *root, const char *pattern, bool exact)
 static bool download_with_verification(const char *url, const char *name,
                                        const char *dst)
 {
-	if (verbose_level >= 1)
-		printf("%s ... downloading\n", name);
-	else if (verbose_level == 0)
-	{
-		printf(".");
-		fflush(stdout);
-	}
-	const char *err = download_file(url, "", dst);
-	if (err)
-	{
-		if (verbose_level >= 0)
-			eprintf("\nWarning: Download failed for %s: %s\n", name, err);
-		return false;
-	}
-	return true;
+    if (verbose_level >= 1)
+    {
+        printf("%s ... downloading", name);
+        fflush(stdout);
+    }
+    else if (verbose_level == 0)
+    {
+        printf(".");
+        fflush(stdout);
+    }
+    const char *err = download_file(url, "", dst);
+    if (err)
+    {
+        if (verbose_level >= 1) printf(" ... failed.\n");
+        if (verbose_level >= 0)
+            eprintf("\nWarning: Download failed for %s: %s\n", name, err);
+        return false;
+    }
+    if (verbose_level >= 1) printf(" ... done.\n");
+    return true;
 }
 
 static void copy_to_msvc_sdk(const char *src, const char *dst)
@@ -299,14 +305,15 @@ static void print_msvc_version(JSONObject *pkg, char out[128])
 static void extract_msi(const char *mpath, const char *out_root,
                         const char *dl_root)
 {
-#if PLATFORM_WINDOWS
-	char *cmd = str_printf("msiexec /a \"%s\" /qn TARGETDIR=\"%s\"", mpath, out_root);
-	execute_cmd(cmd, true, NULL, 0);
-#else
-	char *cmd = str_printf("cd '%s' && msiextract '%s' -C '%s' > /dev/null",
-	                       dl_root, mpath, out_root);
-	execute_cmd(cmd, true, NULL, 2048);
-#endif
+	if (verbose_level >= 1)
+	{
+		printf("Extracting MSI: %s\n", mpath);
+		fflush(stdout);
+	}
+	if (!msi_extract(mpath, out_root, dl_root, verbose_level >= 1))
+	{
+		fprintf(stderr, "Failed to extract MSI: %s\n", mpath);
+	}
 }
 
 static bool is_english_package(JSONObject *pkg)
@@ -364,34 +371,112 @@ static void collect_versions(JSONObject *pkgs, JSONObject **msvc_vers_out,
 	*sdk_paths_out = sdk_paths;
 }
 
+static JSONObject *load_manifest(const char *url, const char *path, const char *description)
+{
+	if (verbose_level > 0)
+	{
+		printf("Downloading %s manifest\n", description);
+	}
+	else
+	{
+		printf("Downloading %s manifest...", description);
+		fflush(stdout);
+	}
+
+	const char *err = download_file(url, "", path);
+	if (err) error_exit("Failed to download %s manifest: %s", description, err);
+	if (verbose_level == 0)
+	{
+		printf(" Done.\n");
+		fflush(stdout);
+	}
+
+	size_t size;
+	char *json_str = file_read_all(path, &size);
+	JsonParser parser;
+	json_init_string(&parser, json_str);
+	JSONObject *obj = json_parse(&parser);
+	if (!obj || obj->type == J_ERROR) error_exit("Failed to parse %s manifest", description);
+	return obj;
+}
+
+static void select_versions(BuildOptions *options, JSONObject *msvc_vers, JSONObject *sdk_paths,
+                            char **msvc_key_out, char **sdk_key_out)
+{
+	char *msvc_key = (char *)options->msvc_version_override;
+	if (!msvc_key)
+	{
+		msvc_key = pick_max_version(msvc_vers);
+	}
+	else if (!json_map_get(msvc_vers, msvc_key))
+	{
+		bool found = false;
+		FOREACH(const char *, key, msvc_vers->keys)
+		{
+			char full_v[128];
+			print_msvc_version(json_map_get(msvc_vers, key), full_v);
+			if (str_eq(full_v, msvc_key))
+			{
+				msvc_key = (char *)key;
+				found = true;
+				break;
+			}
+		}
+		if (!found) error_exit("Could not find MSVC version '%s'", options->msvc_version_override);
+	}
+
+	char *sdk_key = (char *)options->msvc_sdk_version_override;
+	if (!sdk_key) sdk_key = pick_max_version(sdk_paths);
+	if (!json_map_get(sdk_paths, sdk_key)) error_exit("Could not find SDK version '%s'", sdk_key);
+
+	*msvc_key_out = msvc_key;
+	*sdk_key_out = sdk_key;
+}
+
+static bool check_license(JSONObject *rj1_channel_items, bool accept_all)
+{
+	if (accept_all) return true;
+
+	JSONObject *tools = NULL;
+	FOREACH(JSONObject *, item, rj1_channel_items->elements)
+	{
+		JSONObject *id = json_map_get(item, "id");
+		if (id && str_eq(id->str, BUILD_TOOLS_ID))
+		{
+			tools = item;
+			break;
+		}
+	}
+
+	const char *lic = "";
+	if (tools)
+	{
+		JSONObject *res = json_map_get(tools, "localizedResources");
+		FOREACH(JSONObject *, r, res->elements)
+		{
+			JSONObject *lang = json_map_get(r, "language");
+			if (lang && (STRCASECMP(lang->str, "en-us") == 0 || STRCASECMP(lang->str, "en-US") == 0))
+			{
+				lic = json_map_get(r, "license")->str;
+				break;
+			}
+		}
+	}
+
+	printf("License: %s\nAccept? [y/N]: ", lic);
+	char c = (char)getchar();
+	return (c == 'y' || c == 'Y');
+}
+
 void fetch_msvc(BuildOptions *options)
 {
 	verbose_level = options->verbosity_level;
-	bool accept_license = options->msvc_accept_license;
-
-	if (verbose_level >= 0)
-	{
-		printf("Fetching manifests");
-		fflush(stdout);
-	}
-	size_t m1_size;
 	const char *tmp_dir_base = dir_make_temp_dir();
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
-	const char *m1_path = file_append_path(tmp_dir_base, "vschannel.json");
-	const char *err = download_file(MANIFEST_URL, "", m1_path);
-	if (err) error_exit("Failed to download channel manifest: %s", err);
-	if (verbose_level == 0)
-	{
-		printf(".");
-		fflush(stdout);
-	}
+	if (verbose_level >= 1) printf("Temp dir: %s\n", tmp_dir_base);
 
-	char *m1_json = file_read_all(m1_path, &m1_size);
-	JsonParser parser;
-	json_init_string(&parser, m1_json);
-	JSONObject *rj1 = json_parse(&parser);
-	if (!rj1 || rj1->type == J_ERROR)
-		error_exit("Failed to parse channel manifest");
+	const char *m1_path = file_append_path(tmp_dir_base, "vschannel.json");
+	JSONObject *rj1 = load_manifest(MANIFEST_URL, m1_path, "channel");
 
 	JSONObject *vsm = NULL;
 	JSONObject *rj1_channel_items = json_map_get(rj1, "channelItems");
@@ -404,25 +489,16 @@ void fetch_msvc(BuildOptions *options)
 			break;
 		}
 	}
+	if (!vsm) error_exit("Could not find VS manifest entry in channel file");
 
 	JSONObject *payloads = json_map_get(vsm, "payloads");
 	const char *vsu = json_map_get(payloads->elements[0], "url")->str;
+	const char *vs_path_manifest = file_append_path(tmp_dir_base, "vs_manifest.json");
+	JSONObject *vsroot = load_manifest(vsu, vs_path_manifest, "VS packages");
 
-	const char *vs_path_manifest =
-	    file_append_path(tmp_dir_base, "vs_manifest.json");
-	err = download_file(vsu, "", vs_path_manifest);
-	if (err) error_exit("Failed to download VS manifest");
-	if (verbose_level == 0)
-	{
-		printf(". Done.\n");
-		fflush(stdout);
-	}
 
-	char *vs_json = file_read_all(vs_path_manifest, &m1_size);
-	json_init_string(&parser, vs_json);
-	JSONObject *vsroot = json_parse(&parser);
+
 	JSONObject *pkgs = json_map_get(vsroot, "packages");
-
 	JSONObject *msvc_vers, *sdk_paths;
 	collect_versions(pkgs, &msvc_vers, &sdk_paths);
 
@@ -440,67 +516,18 @@ void fetch_msvc(BuildOptions *options)
 		return;
 	}
 
-	char *msvc_key = (char *)options->msvc_version_override;
-	if (!msvc_key)
-		msvc_key = pick_max_version(msvc_vers);
-	else if (!json_map_get(msvc_vers, msvc_key))
-	{
-		bool found = false;
-		FOREACH(const char *, key, msvc_vers->keys)
-		{
-			char full_v[128];
-			print_msvc_version(json_map_get(msvc_vers, key), full_v);
-			if (str_eq(full_v, msvc_key))
-			{
-				msvc_key = (char *)key;
-				found = true;
-				break;
-			}
-		}
-		if (!found)
-			error_exit("Could not find MSVC version '%s'",
-			           options->msvc_version_override);
-	}
-
-	char *sdk_key = (char *)options->msvc_sdk_version_override;
-	if (!sdk_key) sdk_key = pick_max_version(sdk_paths);
-	if (!json_map_get(sdk_paths, sdk_key))
-		error_exit("Could not find SDK version '%s'", sdk_key);
+	char *msvc_key, *sdk_key;
+	select_versions(options, msvc_vers, sdk_paths, &msvc_key, &sdk_key);
 
 	JSONObject *msvc_pkg_obj = json_map_get(msvc_vers, msvc_key);
 	char full_msvc_v[128];
 	print_msvc_version(msvc_pkg_obj, full_msvc_v);
 
-	if (verbose_level >= 0)
-		printf("Selected: MSVC %s, SDK %s\n", full_msvc_v, sdk_key);
+	if (verbose_level >= 0) printf("Selected: MSVC %s, SDK %s\n", full_msvc_v, sdk_key);
 
-	if (!accept_license)
+	if (!check_license(rj1_channel_items, options->msvc_accept_license))
 	{
-		JSONObject *tools = NULL;
-		FOREACH(JSONObject *, item, rj1_channel_items->elements)
-		{
-			JSONObject *id = json_map_get(item, "id");
-			if (id && str_eq(id->str, BUILD_TOOLS_ID))
-			{
-				tools = item;
-				break;
-			}
-		}
-		JSONObject *res = json_map_get(tools, "localizedResources");
-		const char *lic = "";
-		FOREACH(JSONObject *, r, res->elements)
-		{
-			JSONObject *lang = json_map_get(r, "language");
-			if (lang && (STRCASECMP(lang->str, "en-us") == 0 ||
-			             STRCASECMP(lang->str, "en-US") == 0))
-			{
-				lic = json_map_get(r, "license")->str;
-				break;
-			}
-		}
-		printf("License: %s\nAccept? [y/N]: ", lic);
-		char c = (char)getchar();
-		if (c != 'y' && c != 'Y') exit_compiler(EXIT_FAILURE);
+		exit_compiler(EXIT_FAILURE);
 	}
 
 	char *out_root = (char *)file_append_path(tmp_dir_base, "OUTPUT");
@@ -514,23 +541,18 @@ void fetch_msvc(BuildOptions *options)
 		fflush(stdout);
 	}
 
-	const char *suffixes[] = {"asan.headers.base", "crt.x64.desktop.base",
-	                          "crt.x64.store.base", "asan.x64.base"};
+	const char *suffixes[] = {"asan.headers.base", "crt.x64.desktop.base", "crt.x64.store.base", "asan.x64.base"};
 	for (int i = 0; i < ELEMENTLEN(suffixes); i++)
 	{
-		char *pid_part =
-		    str_printf("microsoft.vc.%s.%s", full_msvc_v, suffixes[i]);
-
+		char *pid_part = str_printf("microsoft.vc.%s.%s", full_msvc_v, suffixes[i]);
 		JSONObject *best_pkg = find_package_by_id(pkgs, pid_part);
 		if (best_pkg)
 		{
 			JSONObject *payloads_arr = json_map_get(best_pkg, "payloads");
 			FOREACH_IDX(j, JSONObject *, payload, payloads_arr->elements)
 			{
-				char *zpath = (char *)file_append_path(
-				    dl_root, str_printf("p%d_%lu.zip", i, (unsigned long)j));
-				if (download_with_verification(
-				        json_map_get(payload, "url")->str, pid_part, zpath))
+				char *zpath = (char *)file_append_path(dl_root, str_printf("p%d_%lu.zip", i, (unsigned long)j));
+				if (download_with_verification(json_map_get(payload, "url")->str, pid_part, zpath))
 				{
 					extract_msvc_zip(zpath, out_root);
 				}
@@ -548,10 +570,7 @@ void fetch_msvc(BuildOptions *options)
 	JSONObject *deps_obj = json_map_get(sdk_comp, "dependencies");
 	if (deps_obj && deps_obj->type == J_OBJECT)
 	{
-		FOREACH(const char *, dep, deps_obj->keys)
-		{
-			vec_add(sdk_pkg_ids, dep);
-		}
+		FOREACH(const char *, dep, deps_obj->keys) vec_add(sdk_pkg_ids, dep);
 	}
 
 	const char *msi_names[] = {
@@ -590,10 +609,8 @@ void fetch_msvc(BuildOptions *options)
 				const char *f_name = json_map_get(pl, "fileName")->str;
 				if (STRCASECMP(filename(f_name), msi_names[i]) == 0)
 				{
-					char *mpath =
-					    (char *)file_append_path(dl_root, msi_names[i]);
-					if (download_with_verification(json_map_get(pl, "url")->str,
-					                               msi_names[i], mpath))
+					char *mpath = (char *)file_append_path(dl_root, msi_names[i]);
+					if (download_with_verification(json_map_get(pl, "url")->str, msi_names[i], mpath))
 					{
 						get_msi_cab_list(mpath, &cab_list);
 					}
@@ -615,9 +632,7 @@ void fetch_msvc(BuildOptions *options)
 				const char *p_fname = json_map_get(pl, "fileName")->str;
 				if (STRCASECMP(filename(p_fname), cab) == 0)
 				{
-					download_with_verification(
-					    json_map_get(pl, "url")->str, cab,
-					    (char *)file_append_path(dl_root, cab));
+					download_with_verification(json_map_get(pl, "url")->str, cab, (char *)file_append_path(dl_root, cab));
 					goto NEXT_CAB;
 				}
 			}
@@ -647,10 +662,8 @@ void fetch_msvc(BuildOptions *options)
 
 	if (verbose_level >= 0) printf("Finalizing SDK\n");
 	char *s_vc_root = find_folder_inf(out_root, "vc", false);
-	char *s_msvc_base =
-	    s_vc_root ? find_folder_inf(s_vc_root, "msvc", false) : NULL;
-	char *s_msvc =
-	    s_msvc_base ? find_folder_inf(s_msvc_base, "lib", true) : NULL;
+	char *s_msvc_base = s_vc_root ? find_folder_inf(s_vc_root, "msvc", false) : NULL;
+	char *s_msvc = s_msvc_base ? find_folder_inf(s_msvc_base, "lib", true) : NULL;
 
 	char *s_kits = find_folder_inf(out_root, "windows kits", false);
 	char *s_lib = s_kits ? find_folder_inf(s_kits, "lib", true) : NULL;
@@ -661,8 +674,7 @@ void fetch_msvc(BuildOptions *options)
 	if (!s_ucrt || !s_um || !s_msvc)
 	{
 		if (verbose_level >= 0)
-			eprintf("UCRT: %s, UM: %s, MSVC: %s\n", s_ucrt ? "OK" : "MISSING",
-			        s_um ? "OK" : "MISSING", s_msvc ? "OK" : "MISSING");
+			eprintf("UCRT: %s, UM: %s, MSVC: %s\n", s_ucrt ? "OK" : "MISSING", s_um ? "OK" : "MISSING", s_msvc ? "OK" : "MISSING");
 		error_exit("Missing library components");
 	}
 
@@ -672,9 +684,7 @@ void fetch_msvc(BuildOptions *options)
 	copy_to_msvc_sdk(file_append_path(s_um, "x64"), sdk_x64);
 	copy_to_msvc_sdk(file_append_path(s_msvc, "x64"), sdk_x64);
 
-	if (verbose_level >= 0)
-	{
-		printf("The 'msvc_sdk' directory was successfully generated.\n");
-	}
-	file_delete_dir(tmp_dir_base);
+	if (verbose_level >= 0) printf("The 'msvc_sdk' directory was successfully generated.\n");
+
+	if (!debug_log) file_delete_dir(tmp_dir_base);
 }
