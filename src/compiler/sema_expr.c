@@ -4191,7 +4191,7 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 		}
 		default:
 DEFAULT:
-			if (!sema_analyse_expr_rvalue(context, subscripted)) return false;
+			if (!sema_analyse_expr(context, subscripted)) return false;
 			break;
 	}
 
@@ -4225,8 +4225,6 @@ DEFAULT:
 		expr->type = NULL;
 		return true;
 	}
-
-	if (!sema_cast_rvalue(context, subscripted, true)) return false;
 
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
 	if (overload)
