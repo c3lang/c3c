@@ -676,4 +676,5 @@ void fetch_msvc(BuildOptions *options)
 	{
 		printf("The 'msvc_sdk' directory was successfully generated.\n");
 	}
+	file_delete_dir(tmp_dir_base);
 }
