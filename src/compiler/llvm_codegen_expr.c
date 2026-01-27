@@ -4452,7 +4452,7 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 	POP_CATCH();
 
 	// Emit success and to end.
-	llvm_emit_br(c, no_err_block);
+	bool emit_no_err = llvm_emit_br(c, no_err_block);
 
 	POP_CATCH();
 
@@ -4469,8 +4469,11 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 		vec_add(varargs, error_var_ref);
 		llvm_emit_panic(c, "Force unwrap failed!", loc, "Unexpected fault '%s' was unwrapped!", varargs);
 	}
-	llvm_emit_block(c, no_err_block);
-	EMIT_EXPR_LOC(c, expr);
+	if (emit_no_err)
+	{
+		llvm_emit_block(c, no_err_block);
+		EMIT_EXPR_LOC(c, expr);
+	}
 }
 
 
@@ -4614,6 +4617,7 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 	Expr *cond = exprptr(expr->ternary_expr.cond);
 	llvm_emit_expr(c, value, cond);
 	llvm_value_rvalue(c, value);
+	RETURN_ON_EMPTY_BLOCK(value);
 
 	Expr *else_expr = exprptr(expr->ternary_expr.else_expr);
 	Expr *then_expr = exprptr(expr->ternary_expr.then_expr);
@@ -5992,6 +5996,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		{
 			llvm_emit_expr(c, value_ref, arg);
 			llvm_value_fold_optional(c, value_ref);
+			RETURN_ON_EMPTY_BLOCK(result_value);
 			continue;
 		}
 		Decl *decl = sig->params[i];
@@ -5999,11 +6004,13 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		if (vararg_splat)
 		{
 			llvm_emit_vasplat_expr(c, value_ref, vararg_splat, param);
+			RETURN_ON_EMPTY_BLOCK(result_value);
 			continue;
 		}
 		if (varargs)
 		{
 			llvm_emit_varargs_expr(c, value_ref, varargs, param);
+			RETURN_ON_EMPTY_BLOCK(result_value);
 			continue;
 		}
 		// Just set the size to zero.
@@ -6017,6 +6024,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 			BEValue *value_ref = &values[arg_count + i];
 			llvm_emit_expr(c, value_ref, vararg);
 			llvm_value_fold_optional(c, value_ref);
+			RETURN_ON_EMPTY_BLOCK(result_value);
 		}
 	}
 
@@ -7016,10 +7024,12 @@ static void llvm_emit_make_any(GenContext *c, BEValue *value, Expr *expr)
 
 	llvm_emit_expr(c, value, expr->make_any_expr.inner);
 	llvm_value_rvalue(c, value);
+	RETURN_ON_EMPTY_BLOCK(value);
 	BEValue typeid_val;
 	Expr *typeid = expr->make_any_expr.typeid;
 	llvm_emit_expr(c, &typeid_val, typeid);
 	llvm_value_rvalue(c, &typeid_val);
+	RETURN_ON_EMPTY_BLOCK(value);
 	llvm_value_aggregate_two(c, value, expr->type, value->value, typeid_val.value);
 }
 

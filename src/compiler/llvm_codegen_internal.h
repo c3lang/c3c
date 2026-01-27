@@ -594,8 +594,8 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 #define EMIT_SPAN(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x); } while (0)
 #define PUSH_DEFER_ERROR(val__) LLVMValueRef def_err__ = c->defer_error_var; c->defer_error_var = val__
 #define POP_DEFER_ERROR() c->defer_error_var = def_err__
-#define RETURN_ON_EMPTY_BLOCK(value__) do { if (!c->current_block) { llvm_value_set_empty(value__); return; }} while(0)
-#define RETURN_ON_EMPTY_BLOCK_VOID() do { if (!c->current_block) { return; }} while(0)
+#define RETURN_ON_EMPTY_BLOCK(value__) do { if (!llvm_is_global_eval(c) && !c->current_block) { llvm_value_set_empty(value__); return; }} while(0)
+#define RETURN_ON_EMPTY_BLOCK_VOID() do { if (!llvm_is_global_eval(c) && !c->current_block) { return; }} while(0)
 
 LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity);
 
