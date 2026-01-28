@@ -9,15 +9,24 @@ macro usz _strlen(ptr) @private
 
 macro int @main_to_err_main(#m, int, char**)
 {
+	$if env::WIN32:
+		win32_set_utf8_codepage();
+	$endif
 	if (catch #m()) return 1;
 	return 0;
 }
 macro int @main_to_int_main(#m, int, char**)
 {
+	$if env::WIN32:
+		win32_set_utf8_codepage();
+	$endif
 	return #m();
 }
 macro int @main_to_void_main(#m, int, char**)
 {
+	$if env::WIN32:
+		win32_set_utf8_codepage();
+	$endif
 	#m();
 	return 0;
 }
@@ -68,7 +77,7 @@ macro int @main_to_void_main_args(#m, int argc, char** argv)
 module std::core::main_stub @if(env::WIN32);
 import std::os::win32;
 
-macro win32_set_utf8_codepage() @local
+macro win32_set_utf8_codepage() @private
 {
 	// By default windows uses an OEM codepage that differs based on locale
 	// and does not support printing utf-8 characters. This allows both
