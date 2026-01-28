@@ -193,6 +193,12 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *ref_expr, Expr 
 			BEValue val = llvm_emit_alloca_b(c, type, ".assign_list");
 			llvm_emit_initialize_reference(c, &val, expr);
 			if (ref_expr) llvm_emit_expr(c, ref, ref_expr);
+			ASSERT(!llvm_is_global_eval(c));
+			if (!c->current_block)
+			{
+				llvm_value_set_empty(ref);
+				return *ref;
+			}
 			llvm_store(c, ref, &val);
 		}
 		value = *ref;

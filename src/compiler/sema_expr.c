@@ -6010,6 +6010,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 	ASSERT_SPAN(expr, type == type->canonical);
 	ASSERT_SPAN(expr, sema_type_property_is_valid_for_type(type, property));
 	Type *flat = type_flatten(type);
+	if (type->type_kind == TYPE_FUNC_RAW) type = type_get_func_ptr(type);
 	switch (property)
 	{
 		case TYPE_PROPERTY_INF:

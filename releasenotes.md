@@ -141,6 +141,11 @@
 - Crashes when using `io::EOF~!` in various unhandled places. #2848
 - Crash when trying to create a const zero untyped list #2847
 - Incorrect handling when reporting fn with optional compile time type #2862
+- Optional in initializer cause a crash #2864
+- Negating a global address with offset was a counted as a global runtime constant #2865
+- Converting static "make_slice" to array failed to be handled #2866
+- Narrowing a not expression was incorrectly handled #2867
+- Vector shift by optional scalar failed #2868
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
