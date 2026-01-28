@@ -198,14 +198,12 @@ static void copy_to_msvc_sdk(const char *src, const char *dst)
 		}
 		else
 		{
-			file_copy_file(s_path, d_path, true);
 			if (str_eq(low_name, "msvcrt.lib"))
-				file_copy_file(
-				    s_path, (char *)file_append_path(dst, "MSVCRT.lib"), true);
+				file_copy_file(s_path, (char *)file_append_path(dst, "MSVCRT.lib"), true);
 			else if (str_eq(low_name, "oldnames.lib"))
-				file_copy_file(s_path,
-				               (char *)file_append_path(dst, "OLDNAMES.lib"),
-				               true);
+				file_copy_file(s_path, (char *)file_append_path(dst, "OLDNAMES.lib"), true);
+
+			file_copy_file(s_path, d_path, true);
 		}
 	}
 	closedir(d);
@@ -686,5 +684,5 @@ void fetch_msvc(BuildOptions *options)
 
 	if (verbose_level >= 0) printf("The 'msvc_sdk' directory was successfully generated.\n");
 
-	if (!debug_log) file_delete_dir(tmp_dir_base);
+	if (verbose_level == 0) file_delete_dir(tmp_dir_base);
 }

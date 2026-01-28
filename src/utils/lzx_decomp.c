@@ -1,6 +1,8 @@
 /*
- * LZX decompression implementation.
- * Adapted from Wine/gcab.
+ * LZX Decompression implementation.
+ * NOTE: This implementation has been synchronized with libgcab/msitools but is currently
+ * UNTESTED with actual LZX-compressed Cabinets in this project's context, as the
+ * current Windows SDK MSIs primarily use MSZIP.
  */
 #include "lib.h"
 #include "lzx_decomp.h"
@@ -364,7 +366,13 @@ int lzx_decomp_run(lzx_decomp_state *state, uint8_t *in, int inlen, uint8_t *out
 	{
 		uint32_t intel;
 		READ_BITS(intel, 1);
-		if (intel) READ_BITS(state->lzx.intel_filesize, 31);
+		if (intel)
+		{
+			uint32_t i, j;
+			READ_BITS(i, 16);
+			READ_BITS(j, 16);
+			state->lzx.intel_filesize = (int32_t)((i << 16) | j);
+		}
 		state->lzx.header_read = 1;
 	}
 
@@ -372,6 +380,12 @@ int lzx_decomp_run(lzx_decomp_state *state, uint8_t *in, int inlen, uint8_t *out
 	{
 		if (state->lzx.block_remaining == 0)
 		{
+			if (state->lzx.block_type == LZX_BLOCKTYPE_UNCOMPRESSED)
+			{
+				if (state->lzx.block_length & 1) inpos++;
+				INIT_BITSTREAM;
+			}
+
 			if (state->lzx.block_type == LZX_BLOCKTYPE_ALIGNED)
 			{
 				state->lzx.intel_curpos += (int32_t)state->lzx.block_length;
@@ -396,30 +410,22 @@ int lzx_decomp_run(lzx_decomp_state *state, uint8_t *in, int inlen, uint8_t *out
 					lb.limit = in_limit;
 					READ_LENGTHS(MAINTREE, 0, 256, lzx_read_lens);
 					READ_LENGTHS(MAINTREE, 256, state->lzx.main_elements, lzx_read_lens);
+					if (state->lzx.MAINTREE_len[0xE8] != 0) state->lzx.intel_started = 1;
 					BUILD_TABLE(MAINTREE);
 					READ_LENGTHS(LENGTH, 0, LZX_NUM_SECONDARY_LENGTHS, lzx_read_lens);
 					BUILD_TABLE(LENGTH);
 				}
 				break;
 				case LZX_BLOCKTYPE_UNCOMPRESSED:
-					state->lzx.block_type = LZX_BLOCKTYPE_VERBATIM;
+					state->lzx.intel_started = 1;
+					state->lzx.block_type = LZX_BLOCKTYPE_UNCOMPRESSED;
+					ENSURE_BITS(16);
+					if (bitsleft > 16) inpos -= 2;
 					bitsleft = 0;
 					bitbuf = 0;
-					for (i = 0; i < 3; i++)
-					{
-						READ_BITS(j, 8);
-						((uint8_t *)&state->lzx.R0)[i] = (uint8_t)j;
-					}
-					for (i = 0; i < 3; i++)
-					{
-						READ_BITS(j, 8);
-						((uint8_t *)&state->lzx.R1)[i] = (uint8_t)j;
-					}
-					for (i = 0; i < 3; i++)
-					{
-						READ_BITS(j, 8);
-						((uint8_t *)&state->lzx.R2)[i] = (uint8_t)j;
-					}
+					state->lzx.R0 = inpos[0]|(inpos[1]<<8)|(inpos[2]<<16)|(inpos[3]<<24); inpos += 4;
+					state->lzx.R1 = inpos[0]|(inpos[1]<<8)|(inpos[2]<<16)|(inpos[3]<<24); inpos += 4;
+					state->lzx.R2 = inpos[0]|(inpos[1]<<8)|(inpos[2]<<16)|(inpos[3]<<24); inpos += 4;
 					break;
 				default:
 					return DECR_ILLEGALDATA;
@@ -427,119 +433,146 @@ int lzx_decomp_run(lzx_decomp_state *state, uint8_t *in, int inlen, uint8_t *out
 		}
 
 		z = (int)state->lzx.block_remaining;
-		while (z > 0 && outpos < endpos)
+		if (z > (int)(endpos - outpos)) z = (int)(endpos - outpos);
+
+		switch (state->lzx.block_type)
 		{
-			READ_HUFFSYM(MAINTREE, i);
-			if (i < LZX_NUM_CHARS)
-			{
-				state->lzx.window[state->lzx.window_posn++] = (uint8_t)i;
-				*outpos++ = (uint8_t)i;
-				z--;
-			}
-			else
-			{
-				uint32_t match_len, match_offset, window_posn;
-				uint8_t extra;
-
-				i -= LZX_NUM_CHARS;
-				match_len = i & 7;
-				if (match_len == 7)
+			case LZX_BLOCKTYPE_VERBATIM:
+			case LZX_BLOCKTYPE_ALIGNED:
+				while (z > 0)
 				{
-					int temp;
-					READ_HUFFSYM(LENGTH, temp);
-					match_len += (uint32_t)temp;
-				}
-				match_len += LZX_MIN_MATCH;
-
-				match_offset = i >> 3;
-				if (match_offset > 2)
-				{
-					extra = state->extra_bits[match_offset];
-					if (state->lzx.block_type == LZX_BLOCKTYPE_ALIGNED && extra >= 3)
+					READ_HUFFSYM(MAINTREE, i);
+					if (i < LZX_NUM_CHARS)
 					{
-						READ_BITS(j, extra - 3);
-						match_offset = state->lzx_position_base[match_offset] + (j << 3);
-						int temp;
-						READ_HUFFSYM(ALIGNED, temp);
-						match_offset += (uint32_t)temp;
+						state->lzx.window[state->lzx.window_posn++ & (state->lzx.window_size - 1)] = (uint8_t)i;
+						*outpos++ = (uint8_t)i;
+						z--;
 					}
 					else
 					{
-						READ_BITS(j, extra);
-						match_offset = state->lzx_position_base[match_offset] + j;
+						uint32_t match_len, match_offset;
+						i -= LZX_NUM_CHARS;
+						match_len = i & 7;
+						if (match_len == 7)
+						{
+							int temp;
+							READ_HUFFSYM(LENGTH, temp);
+							match_len += (uint32_t)temp;
+						}
+						match_len += LZX_MIN_MATCH;
+
+						match_offset = i >> 3;
+						if (match_offset > 2)
+						{
+							if (match_offset != 3)
+							{
+								uint8_t extra = state->extra_bits[match_offset];
+								uint32_t verbatim_bits;
+								if (state->lzx.block_type == LZX_BLOCKTYPE_ALIGNED && extra >= 3)
+								{
+									READ_BITS(verbatim_bits, extra - 3);
+									match_offset = state->lzx_position_base[match_offset] - 2 + (verbatim_bits << 3);
+									int temp;
+									READ_HUFFSYM(ALIGNED, temp);
+									match_offset += (uint32_t)temp;
+								}
+								else
+								{
+									READ_BITS(verbatim_bits, extra);
+									match_offset = state->lzx_position_base[match_offset] - 2 + verbatim_bits;
+								}
+							}
+							else
+							{
+								match_offset = 1;
+							}
+							state->lzx.R2 = state->lzx.R1;
+							state->lzx.R1 = state->lzx.R0;
+							state->lzx.R0 = match_offset;
+						}
+						else if (match_offset == 0)
+							match_offset = state->lzx.R0;
+						else if (match_offset == 1)
+						{
+							match_offset = state->lzx.R1;
+							state->lzx.R1 = state->lzx.R0;
+							state->lzx.R0 = match_offset;
+						}
+						else
+						{
+							match_offset = state->lzx.R2;
+							state->lzx.R2 = state->lzx.R0;
+							state->lzx.R0 = match_offset;
+						}
+
+						if (match_len > (uint32_t)z) match_len = (uint32_t)z;
+						z -= (int)match_len;
+
+						uint32_t window_posn = state->lzx.window_posn;
+						uint32_t window_size = state->lzx.window_size;
+						while (match_len--)
+						{
+							uint8_t byte = state->lzx.window[(window_posn - match_offset) & (window_size - 1)];
+							state->lzx.window[window_posn++ & (window_size - 1)] = byte;
+							*outpos++ = byte;
+						}
+						state->lzx.window_posn = window_posn;
 					}
-					state->lzx.R2 = state->lzx.R1;
-					state->lzx.R1 = state->lzx.R0;
-					state->lzx.R0 = match_offset;
 				}
-				else if (match_offset == 0)
-					match_offset = state->lzx.R0;
-				else if (match_offset == 1)
-				{
-					match_offset = state->lzx.R1;
-					state->lzx.R1 = state->lzx.R0;
-					state->lzx.R0 = match_offset;
-				}
-				else
-				{
-					match_offset = state->lzx.R2;
-					state->lzx.R2 = state->lzx.R0;
-					state->lzx.R0 = match_offset;
-				}
-
-				window_posn = state->lzx.window_posn;
-				if (match_len > (uint32_t)z) match_len = (uint32_t)z;
-				if (match_len > (uint32_t)(endpos - outpos)) match_len = (uint32_t)(endpos - outpos);
-
-				z -= (int)match_len;
-				state->lzx.window_posn += match_len;
-
-				while (match_len--)
-				{
-					i = (window_posn - match_offset) & (state->lzx.window_size - 1);
-					state->lzx.window[window_posn++ & (state->lzx.window_size - 1)] = state->lzx.window[i];
-					*outpos++ = state->lzx.window[i];
-				}
-			}
+				break;
+			case LZX_BLOCKTYPE_UNCOMPRESSED:
+				if (inpos + z > in_limit) return DECR_ILLEGALDATA;
+				memcpy(state->lzx.window + (state->lzx.window_posn & (state->lzx.window_size - 1)), inpos, z);
+				memcpy(outpos, inpos, z);
+				inpos += z;
+				outpos += z;
+				state->lzx.window_posn += z;
+				z = 0;
+				break;
 		}
+		state->lzx.block_remaining -= (uint32_t)(state->lzx.block_length - (uint32_t)z);
 		state->lzx.block_remaining = (uint32_t)z;
 	}
 
 	state->lzx.frames_read++;
-	if (state->lzx.frames_read == 32768) state->lzx.intel_started = 1;
 
-	if (state->lzx.intel_started && state->lzx.intel_filesize)
+	if (state->lzx.intel_filesize != 0)
 	{
-		if (outlen > 10)
+		if (outlen <= 6 || !state->lzx.intel_started)
 		{
-			uint8_t *p = state->outbuf;
-			uint8_t *e = p + outlen - 10;
+			state->lzx.intel_curpos += outlen;
+		}
+		else
+		{
+			uint8_t *data = out;
+			uint8_t *dataend = out + outlen - 10;
 			int32_t curpos = state->lzx.intel_curpos;
 			int32_t filesize = state->lzx.intel_filesize;
+			int32_t abs_off, rel_off;
 
-			while (p < e)
+			state->lzx.intel_curpos += outlen;
+
+			while (data < dataend)
 			{
-				if (*p++ == 0xE8)
+				if (*data++ != 0xE8)
 				{
-					int32_t abs_off = (int32_t)((p[3] << 24) | (p[2] << 16) | (p[1] << 8) | p[0]);
-					if (abs_off >= -curpos && abs_off < filesize)
-					{
-						int32_t rel_off = (abs_off >= 0) ? abs_off - curpos : abs_off + filesize;
-						p[0] = (uint8_t)rel_off;
-						p[1] = (uint8_t)(rel_off >> 8);
-						p[2] = (uint8_t)(rel_off >> 16);
-						p[3] = (uint8_t)(rel_off >> 24);
-					}
-					p += 4;
-					curpos += 5;
-				}
-				else
 					curpos++;
+					continue;
+				}
+				abs_off = (int32_t)(data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24));
+				if ((abs_off >= -curpos) && (abs_off < filesize))
+				{
+					rel_off = (abs_off >= 0) ? abs_off - curpos : abs_off + filesize;
+					data[0] = (uint8_t)rel_off;
+					data[1] = (uint8_t)(rel_off >> 8);
+					data[2] = (uint8_t)(rel_off >> 16);
+					data[3] = (uint8_t)(rel_off >> 24);
+				}
+				data += 4;
+				curpos += 5;
 			}
 		}
 	}
-	state->lzx.intel_curpos += (int32_t)outlen;
-	memcpy(out, state->outbuf, outlen);
 	return DECR_OK;
 }
 

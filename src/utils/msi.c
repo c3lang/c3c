@@ -300,27 +300,33 @@ static bool cab_extract_buffer(uint8_t *data, size_t size, const char *out_root,
 {
 	if (size < 36 || memcmp(data, "MSCF", 4) != 0) return false;
 
-	uint16_t num_folders = read2(data + 26);
-	uint16_t num_files = read2(data + 28);
+	uint16_t num_folders = (uint16_t)read2(data + 26);
+	uint16_t num_files = (uint16_t)read2(data + 28);
 	uint32_t file_offset = read4(data + 16);
 	uint32_t header_ptr = 36;
 
-	uint16_t flags = read2(data + 30);
+	uint16_t cbCFData = 0;
+	uint8_t cbCFFolder = 0;
+
+	uint16_t flags = (uint16_t)read2(data + 30);
 	if (flags & 4)
 	{
 		if (header_ptr + 4 > size) return false;
-		header_ptr += 4 + data[header_ptr] + data[header_ptr + 1];
+		uint16_t cbCFHeader = (uint16_t)read2(data + header_ptr);
+		cbCFFolder = data[header_ptr + 2];
+		cbCFData = data[header_ptr + 3];
+		header_ptr += 4 + cbCFHeader;
 	}
 
-	if (num_folders > 0x1000 || (size_t)header_ptr + num_folders * 8 > size) return false;
+	if (num_folders > 0x1000 || (size_t)header_ptr + num_folders * (8 + cbCFFolder) > size) return false;
 	CabFolderInfo *folders = cmalloc(num_folders * sizeof(CabFolderInfo));
 	if (!folders) return false;
 	for (int i = 0; i < num_folders; i++)
 	{
 		folders[i].data_offset = read4(data + header_ptr);
-		folders[i].data_blocks = read2(data + header_ptr + 4);
-		folders[i].comp_type = read2(data + header_ptr + 6);
-		header_ptr += 8;
+		folders[i].data_blocks = (uint16_t)read2(data + header_ptr + 4);
+		folders[i].comp_type = (uint16_t)read2(data + header_ptr + 6);
+		header_ptr += 8 + cbCFFolder;
 	}
 
 	const char *main_algo = "unknown";
@@ -354,12 +360,11 @@ static bool cab_extract_buffer(uint8_t *data, size_t size, const char *out_root,
 		}
 		files[i].usize = read4(data + f_ptr);
 		files[i].uoffset = read4(data + f_ptr + 4);
-		files[i].folder_idx = read2(data + f_ptr + 8);
+		files[i].folder_idx = (uint16_t)read2(data + f_ptr + 8);
 		files[i].name = str_dup((char *)data + f_ptr + 16);
 		f_ptr += 16 + (uint32_t)strlen(files[i].name) + 1;
 	}
 
-	lzx_decomp_state *lzx = NULL;
 	for (int i = 0; i < num_folders; i++)
 	{
 		uint32_t total_usize = 0;
@@ -378,30 +383,56 @@ static bool cab_extract_buffer(uint8_t *data, size_t size, const char *out_root,
 		uint32_t d_ptr = folders[i].data_offset;
 		int comp_type = folders[i].comp_type & 0x0F;
 
+		lzx_decomp_state *lzx = NULL;
+		if (comp_type == 3)
+		{
+			lzx = lzx_decomp_create((folders[i].comp_type >> 8) & 0x1F);
+		}
+
 		for (int b = 0; b < folders[i].data_blocks; b++)
 		{
 			if (d_ptr + 8 > size) break;
-			uint16_t csize = read2(data + d_ptr + 4);
-			uint16_t usize = read2(data + d_ptr + 6);
-			if ((size_t)d_ptr + 8 + csize > size || uptr + usize > total_usize) break;
+			uint16_t csize = (uint16_t)read2(data + d_ptr + 4);
+			uint16_t usize = (uint16_t)read2(data + d_ptr + 6);
+			if ((size_t)d_ptr + 8 + cbCFData + csize > size || uptr + usize > total_usize) break;
 
 			if (comp_type == 1)
 			{ // MSZIP
-				mz_ulong destLen = usize;
-				mz_uncompress(ubuf + uptr, &destLen, data + d_ptr + 10, csize - 2);
+				if (csize < 2) break;
+				tinfl_decompressor inflator;
+				tinfl_init(&inflator);
+				size_t in_sz = csize - 2;
+				size_t out_sz = usize;
+				tinfl_status status = tinfl_decompress(&inflator,
+				                                       data + d_ptr + 8 + cbCFData + 2, &in_sz,
+				                                       ubuf, ubuf + uptr, &out_sz,
+				                                       TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF);
+				if (status < 0)
+				{
+					if (verbose) printf("    MSZIP decompression failed at folder %d block %d, error %d\n", i, b, (int)status);
+					break;
+				}
 			}
 			else if (comp_type == 3)
 			{ // LZX
-				if (!lzx) lzx = lzx_decomp_create((folders[i].comp_type >> 8) & 0x1F);
-				if (lzx) lzx_decomp_run(lzx, data + d_ptr + 8, (int)csize, ubuf + uptr, (int)usize);
+				if (lzx)
+				{
+					if (lzx_decomp_run(lzx, data + d_ptr + 8 + cbCFData, (int)csize, ubuf + uptr, (int)usize) != 1)
+					{
+						if (verbose) printf("    LZX decompression failed at block %d\n", b);
+						break;
+					}
+				}
 			}
 			else if (comp_type == 0)
 			{ // NO COMP
-				memcpy(ubuf + uptr, data + d_ptr + 8, usize);
+				memcpy(ubuf + uptr, data + d_ptr + 8 + cbCFData, usize);
 			}
 			uptr += usize;
-			d_ptr += 8 + csize;
+			d_ptr += 8 + cbCFData + csize;
 		}
+
+		if (lzx) lzx_decomp_free(lzx);
 
 		for (int j = 0; j < num_files; j++)
 		{
@@ -425,8 +456,6 @@ static bool cab_extract_buffer(uint8_t *data, size_t size, const char *out_root,
 		}
 		free(ubuf);
 	}
-
-	if (lzx) lzx_decomp_free(lzx);
 	free(files);
 	free(folders);
 	return true;
