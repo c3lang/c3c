@@ -2970,6 +2970,7 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 										  : (uint64_t)LLVMConstIntGetZExtValue(start.value);
 		uint64_t end_val = signed_end ? (uint64_t)LLVMConstIntGetSExtValue(end.value)
 									  : (uint64_t)LLVMConstIntGetZExtValue(end.value);
+		if (start_val >= INT64_MAX || end_val >= INT64_MAX) return;
 		ASSERT(start_val <= INT64_MAX);
 		ASSERT(end_val <= INT64_MAX);
 		if (start_val > end_val) return;
