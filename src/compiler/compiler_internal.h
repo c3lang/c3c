@@ -3095,6 +3095,8 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 			return "a typeinfo";
 		case TYPE_WILDCARD:
 			return "an empty value";
+		case TYPE_OPTIONAL:
+			return "an optional with a compile time type";
 		default:
 			UNREACHABLE;
 	}

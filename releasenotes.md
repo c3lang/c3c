@@ -140,6 +140,7 @@
 - Crash when creating `$Type*` where `$Type` is an optional type #2848
 - Crashes when using `io::EOF~!` in various unhandled places. #2848
 - Crash when trying to create a const zero untyped list #2847
+- Incorrect handling when reporting fn with optional compile time type #2862
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
