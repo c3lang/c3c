@@ -148,6 +148,8 @@
 - Vector shift by optional scalar failed #2868
 - Initializer did not correctly handle second rethrow #2870
 - Crash encountering panic in if-else style switch #2871
+- Crash in slice expression when it contains a rethrow #2872
+- Multiple issues when rethrowing inside of expressions #2873
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
