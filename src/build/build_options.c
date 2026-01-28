@@ -45,6 +45,7 @@ const char *arch_os_target[ARCH_OS_TARGET_LAST + 1];
 #define FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(false); exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
 #define FAIL_WITH_ERR_LONG(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(true); exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
 #define PROJECT_FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); project_usage(); exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
+#define FETCH_MSVC_FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__);	fetch_msvc_usage();	exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
 
 static void usage(bool full)
 {
@@ -70,6 +71,7 @@ static void usage(bool full)
 	print_cmd("dynamic-lib <file1> [<file2> ...]", "Compile files without a project into a dynamic library.");
 	print_cmd("vendor-fetch <library> ...", "Fetches one or more libraries from the vendor collection.");
 	print_cmd("project <subcommand> ...", "Manipulate or view project files.");
+	print_cmd("fetch-msvc [<subcommand>]", "Fetches the MSVC SDK required for cross-compiling.");
 	PRINTF("");
 	full ? PRINTF("Options:") : PRINTF("Common options:");
 	print_opt("-h -hh --help", "Print the help, -h for the normal options, -hh for the full help.");
@@ -231,6 +233,23 @@ static void usage(bool full)
 		PRINTF("");
 		PRINTF("Use --help or -hh to view the full list of options.");
 	}
+}
+
+static void fetch_msvc_usage()
+{
+	PRINTF("Usage: %s fetch-msvc [<options>]", args[0]);
+	PRINTF("");
+	PRINTF("Fetches the MSVC SDK required for cross-compiling to Windows.");
+	PRINTF("");
+	PRINTF("Options:");
+	print_opt("--accept-license", "Automatically accept the MSVC license.");
+	print_opt("--show-versions",
+	          "Show available MSVC and Windows SDK versions.");
+	print_opt("--msvc-version <ver>",
+	          "Specify a particular MSVC version to fetch.");
+	print_opt("--sdk-version <ver>",
+	          "Specify a particular Windows SDK version to fetch.");
+	PRINTF("");
 }
 
 static void project_usage()
@@ -493,6 +512,62 @@ static void parse_command(BuildOptions *options)
 	{
 		options->command = COMMAND_PROJECT;
 		parse_project_options(options);
+		return;
+	}
+	if (arg_match("fetch-msvc"))
+	{
+		options->command = COMMAND_FETCH_MSVC;
+		while (!at_end() && next_is_opt())
+		{
+			next_arg();
+			if (match_longopt("accept-license"))
+			{
+				options->msvc_accept_license = true;
+				continue;
+			}
+			if (match_longopt("show-versions"))
+			{
+				options->msvc_show_versions = true;
+				continue;
+			}
+			if (match_longopt("msvc-version"))
+			{
+				if (at_end() || next_is_opt())
+					error_exit("error: msvc-version needs a version.");
+				options->msvc_version_override = next_arg();
+				continue;
+			}
+			if (match_longopt("sdk-version"))
+			{
+				if (at_end() || next_is_opt())
+					error_exit("error: sdk-version needs a version.");
+				options->msvc_sdk_version_override = next_arg();
+				continue;
+			}
+			if (current_arg[0] == '-' && current_arg[1] == 'v')
+			{
+				options->verbosity_level = 1;
+				continue;
+			}
+			if (match_shortopt("q"))
+			{
+				options->verbosity_level = -1;
+				continue;
+			}
+			if (match_longopt("help") || match_shortopt("h"))
+			{
+				fetch_msvc_usage();
+				exit_compiler(COMPILER_SUCCESS_EXIT);
+			}
+			FETCH_MSVC_FAIL_WITH_ERR("Unknown option '%s' for fetch-msvc", current_arg);
+		}
+		if (!at_end())
+		{
+			next_arg();
+			FETCH_MSVC_FAIL_WITH_ERR("fetch-msvc does not accept arguments, "
+			                         "only flags. Failed on: %s.",
+			                         current_arg);
+		}
 		return;
 	}
 	FAIL_WITH_ERR("Cannot process the unknown command \"%s\".", current_arg);
