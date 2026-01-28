@@ -529,6 +529,8 @@ LLVMValueRef llvm_get_selector(GenContext *c, const char *name);
 // -- C3 Lowering --
 void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr);
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
+bool llvm_emit_rvalue_in_block(GenContext *c, BEValue *value, Expr *expr);
+bool llvm_emit_folded_in_block(GenContext *c, BEValue *value, Expr *expr);
 LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr);
 LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id);
 void llvm_emit_ignored_expr(GenContext *c, Expr *expr);
@@ -596,6 +598,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 #define POP_DEFER_ERROR() c->defer_error_var = def_err__
 #define RETURN_ON_EMPTY_BLOCK(value__) do { if (!llvm_is_global_eval(c) && !c->current_block) { llvm_value_set_empty(value__); return; }} while(0)
 #define RETURN_ON_EMPTY_BLOCK_VOID() do { if (!llvm_is_global_eval(c) && !c->current_block) { return; }} while(0)
+#define RETURN_EMPTY_BLOCK(value__) do { llvm_value_set_empty(value__); return; } while(0)
 
 LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity);
 

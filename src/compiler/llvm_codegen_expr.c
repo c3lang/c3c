@@ -1727,7 +1727,9 @@ static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref,
 			return;
 		}
 		BEValue val;
+		RETURN_ON_EMPTY_BLOCK(ref);
 		llvm_emit_expr(c, &val, expr);
+		RETURN_ON_EMPTY_BLOCK(ref);
 		llvm_store(c, ref, &val);
 		return;
 	}
@@ -1884,6 +1886,7 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 	{
 		BEValue splat_value;
 		llvm_emit_expr(c, &splat_value, splat);
+		RETURN_ON_EMPTY_BLOCK(ref);
 		llvm_store(c, ref, &splat_value);
 	}
 	else
@@ -1897,6 +1900,7 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 		DesignatorElement **last_element = designator->designator_expr.path + vec_size(designator->designator_expr.path) - 1;
 		llvm_emit_initialize_designated_element(c, ref, 0, designator->designator_expr.path, last_element,
 		                                        designator->designator_expr.value, NULL);
+		RETURN_ON_EMPTY_BLOCK(ref);
 	}
 }
 
@@ -4622,9 +4626,11 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 
 	// Generate condition and conditional branch
 	Expr *cond = exprptr(expr->ternary_expr.cond);
-	llvm_emit_expr(c, value, cond);
-	llvm_value_rvalue(c, value);
-	RETURN_ON_EMPTY_BLOCK(value);
+	if (!llvm_emit_rvalue_in_block(c, value, cond))
+	{
+		llvm_value_set_empty(value);
+		return;
+	}
 
 	Expr *else_expr = exprptr(expr->ternary_expr.else_expr);
 	Expr *then_expr = exprptr(expr->ternary_expr.then_expr);
@@ -5877,9 +5883,7 @@ INLINE void llvm_emit_varargs_expr(GenContext *c, BEValue *value_ref, Expr **var
 	BEValue array_ref = llvm_emit_alloca_b(c, array, varargslots_name);
 	FOREACH_IDX(foreach_index, Expr *, val, varargs)
 	{
-		llvm_emit_expr(c, &inner_temp, val);
-		RETURN_ON_EMPTY_BLOCK(value_ref);
-		llvm_value_fold_optional(c, &inner_temp);
+		if (!llvm_emit_folded_in_block(c, &inner_temp, val)) RETURN_EMPTY_BLOCK(value_ref);
 		BEValue slot = llvm_emit_array_gep(c, &array_ref, foreach_index);
 		llvm_store(c, &slot, &inner_temp);
 	}
@@ -6001,9 +6005,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		Expr *arg = args[i];
 		if (arg)
 		{
-			llvm_emit_expr(c, value_ref, arg);
-			llvm_value_fold_optional(c, value_ref);
-			RETURN_ON_EMPTY_BLOCK(result_value);
+			if (!llvm_emit_folded_in_block(c, value_ref, arg)) RETURN_EMPTY_BLOCK(result_value);
 			continue;
 		}
 		Decl *decl = sig->params[i];
@@ -6029,9 +6031,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		FOREACH_IDX(i, Expr *, vararg, varargs)
 		{
 			BEValue *value_ref = &values[arg_count + i];
-			llvm_emit_expr(c, value_ref, vararg);
-			llvm_value_fold_optional(c, value_ref);
-			RETURN_ON_EMPTY_BLOCK(result_value);
+			if (!llvm_emit_folded_in_block(c, value_ref, vararg)) RETURN_EMPTY_BLOCK(result_value);
 		}
 	}
 
@@ -6777,9 +6777,7 @@ static inline void llvm_emit_type_from_any(GenContext *c, BEValue *be_value)
 static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr *inner = exprptr(expr->builtin_access_expr.inner);
-	llvm_emit_expr(c, be_value, inner);
-	llvm_value_fold_optional(c, be_value);
-	RETURN_ON_EMPTY_BLOCK(be_value);
+	if (!llvm_emit_folded_in_block(c, be_value, inner)) RETURN_EMPTY_BLOCK(be_value);
 	switch (expr->builtin_access_expr.kind)
 	{
 		case ACCESS_FAULTNAME:
@@ -7028,22 +7026,16 @@ static void llvm_emit_ptr_access(GenContext *c, BEValue *value, Expr *expr)
 
 static void llvm_emit_make_any(GenContext *c, BEValue *value, Expr *expr)
 {
-
-	llvm_emit_expr(c, value, expr->make_any_expr.inner);
-	llvm_value_rvalue(c, value);
-	RETURN_ON_EMPTY_BLOCK(value);
+	if (!llvm_emit_rvalue_in_block(c, value, expr->make_any_expr.inner)) RETURN_EMPTY_BLOCK(value);
 	BEValue typeid_val;
 	Expr *typeid = expr->make_any_expr.typeid;
-	llvm_emit_expr(c, &typeid_val, typeid);
-	llvm_value_rvalue(c, &typeid_val);
-	RETURN_ON_EMPTY_BLOCK(value);
+	if (!llvm_emit_rvalue_in_block(c, &typeid_val, typeid)) RETURN_EMPTY_BLOCK(value);
 	llvm_value_aggregate_two(c, value, expr->type, value->value, typeid_val.value);
 }
 
 static void llvm_emit_ext_trunc(GenContext *c, BEValue *value, Expr *expr)
 {
-	llvm_emit_expr(c, value, expr->ext_trunc_expr.inner);
-	llvm_value_rvalue(c, value);
+	if (!llvm_emit_rvalue_in_block(c, value, expr->ext_trunc_expr.inner)) RETURN_EMPTY_BLOCK(value);
 	Type *to_type = type_lowering(expr->type);
 	LLVMTypeRef to = llvm_get_type(c, to_type);
 	LLVMValueRef val;
@@ -7131,9 +7123,7 @@ static inline void llvm_emit_vector_to_array(GenContext *c, BEValue *value, Expr
 
 void llvm_emit_slice_to_vec_array(GenContext *c, BEValue *value, Expr *expr)
 {
-	llvm_emit_expr(c, value, expr->inner_expr);
-	RETURN_ON_EMPTY_BLOCK(value);
-	llvm_value_rvalue(c, value);
+	if (!llvm_emit_rvalue_in_block(c, value, expr->inner_expr)) RETURN_EMPTY_BLOCK(value);
 	BEValue pointer;
 	Type *base = value->type->array.base;
 	AlignSize element_alignment = type_abi_alignment(base);
@@ -7162,6 +7152,36 @@ static inline void llvm_emit_make_slice(GenContext *c, BEValue *value, Expr *exp
 		pointer = llvm_get_zero(c, type_voidptr);
 	}
 	llvm_value_aggregate_two(c, value, expr->type, pointer, llvm_const_int(c, type_usz, size));
+}
+
+bool llvm_emit_folded_in_block(GenContext *c, BEValue *value, Expr *expr)
+{
+	if (llvm_is_global_eval(c))
+	{
+		llvm_emit_expr(c, value, expr);
+		llvm_value_fold_optional(c, value);
+		return true;
+	}
+	llvm_emit_expr(c, value, expr);
+	if (!c->current_block) return false;
+	llvm_value_fold_optional(c, value);
+	if (!c->current_block) return false;
+	return true;
+}
+
+bool llvm_emit_rvalue_in_block(GenContext *c, BEValue *value, Expr *expr)
+{
+	if (llvm_is_global_eval(c))
+	{
+		llvm_emit_expr(c, value, expr);
+		llvm_value_rvalue(c, value);
+		return true;
+	}
+	llvm_emit_expr(c, value, expr);
+	if (!c->current_block) return false;
+	llvm_value_rvalue(c, value);
+	if (!c->current_block) return false;
+	return true;
 }
 
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)

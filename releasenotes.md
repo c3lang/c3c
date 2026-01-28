@@ -146,6 +146,8 @@
 - Converting static "make_slice" to array failed to be handled #2866
 - Narrowing a not expression was incorrectly handled #2867
 - Vector shift by optional scalar failed #2868
+- Initializer did not correctly handle second rethrow #2870
+- Crash encountering panic in if-else style switch #2871
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
