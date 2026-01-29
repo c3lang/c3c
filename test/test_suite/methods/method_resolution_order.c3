@@ -22,6 +22,6 @@ import test3;
 
 fn int main()
 {
-	Bar b;
+	Bar b; // #error: 'Bar' could not be found, did you spell it right
 	return 0;
 }
