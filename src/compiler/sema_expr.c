@@ -6370,10 +6370,11 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 		if (parent->expr_kind == EXPR_TYPEINFO)
 		{
 			Type *type = parent->type_expr->type->canonical;
-			switch (type->type_kind)
+			switch (type_no_optional(type)->type_kind)
 			{
 				case CT_TYPES:
 					RETURN_SEMA_ERROR(parent, "You cannot take the typeid of a compile time type.");
+
 				default:
 					expr_rewrite_const_typeid(expr, parent->type_expr->type->canonical);
 					return true;
@@ -12068,7 +12069,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 			}
 			return true;
 		case EXPR_TYPEINFO:
-			switch (expr->type_expr->type->type_kind)
+			switch (type_no_optional(expr->type_expr->type)->type_kind)
 			{
 				case CT_TYPES:
 					RETURN_SEMA_ERROR(expr, "You cannot take the typeid of a compile time type.");
