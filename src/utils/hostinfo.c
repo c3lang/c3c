@@ -68,7 +68,7 @@ static const char *llvm_arch_name(ArchType ty)
 	UNREACHABLE
 }
 
-void hostinfo_x86_features(X86Features *cpu_features)
+void hostinfo_x86_features(CpuFeatures *cpu_features)
 {
 #if defined(__x86_64__) || defined(_M_X64)
     // TODO
