@@ -6627,7 +6627,7 @@ CHECK_DEEPER:
 		ASSERT(type_is_user_defined(parent_type));
 		if (missing_ref && parent_type->decl->unit->module->stage < ANALYSIS_POST_REGISTER)
 		{
-			RETURN_SEMA_ERROR(expr, "There might be a method '%s' for %s, but methods have not yet been completely registered, so analysis fails.", kw, type_quoted_error_string(parent->type));
+			SEMA_WARN(expr, "There might be a method '%s' for %s, but methods have not yet been completely registered, so analysis fails.", kw, type_quoted_error_string(parent->type));
 		}
 		if (parent_type->type_kind == TYPE_INTERFACE)
 		{
