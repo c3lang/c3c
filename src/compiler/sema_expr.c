@@ -5106,7 +5106,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		{
 			if (decl->unit->module->stage < ANALYSIS_POST_REGISTER)
 			{
-				RETURN_SEMA_ERROR(expr, "There might be a method '%s' for %s, but methods for the type have not yet been completely registered, so this yields an error.", name, type_quoted_error_string(parent_type));
+				SEMA_WARN(expr, "There might be a method '%s' for %s, but methods for the type have not yet been completely registered, so a warning is issued.", name, type_quoted_error_string(parent_type));
 			}
 			goto MISSING_REF;
 		}

@@ -5,11 +5,9 @@
 
 ### Changes / improvements
 - Add `--custom-libc` option for custom libc implementations.
-- Remove use of LLVMGetGlobalContext for single module compilation.
-- Fixed bug where constants would get modified when slicing them. #2660
 - Support for NetBSD.
 - Testing for the presence of methods at the top level is prohibited previous to method registration.
-- `$$MASK_TO_INT` and `$$INT_TO_MASK` to create bool masks from integers and back.
+- `$$mask_to_int` and `$$int_to_mask` to create bool masks from integers and back.
 - Better error messages when slicing a pointer to a slice or vector. #2681
 - Generics using ad-hoc `<...>` rather than module based.
 - Reduced memory usage for backtraces on Linux.
@@ -25,6 +23,8 @@
 - Combining argument-less initialization with argument init for bitstructs is now allowed e.g. `{ .b, .c = 123 }`.
 
 ### Fixes
+- Remove use of LLVMGetGlobalContext for single module compilation.
+- Fixed bug where constants would get modified when slicing them. #2660
 - Regression with npot vector in struct triggering an assert #2219.
 - Casting bitstruct to wider base type should be single step #2616.
 - Optional does not play well with bit ops #2618.
