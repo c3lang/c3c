@@ -69,9 +69,9 @@ typedef uint16_t FileId;
 #define RETURN_PRINT_ERROR_LAST(...) do { print_error_at(c->prev_span, __VA_ARGS__); return false; } while (0)
 #define SEMA_NOTE(_node, ...) sema_note_prev_at((_node)->span, __VA_ARGS__)
 #define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output && !compiler.build.silence_deprecation) print_error_at((_node)->span, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
- sema_note_prev_at((_node)->span, __VA_ARGS__); } while (0)
+ print_deprecation_at((_node)->span, __VA_ARGS__); } while (0)
 #define PRINT_DEPRECATED_AT(span__, ...) do { if (compiler.build.test_output && !compiler.build.silence_deprecation) print_error_at(span__, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
-sema_note_prev_at(span__, __VA_ARGS__); } while (0)
+print_deprecation_at(span__, __VA_ARGS__); } while (0)
 
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
@@ -2577,6 +2577,7 @@ bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info);
 
 bool use_ansi(void);
 void print_error_at(SourceSpan loc, const char *message, ...);
+void print_deprecation_at(SourceSpan loc, const char *message, ...);
 void print_error_after(SourceSpan loc, const char *message, ...);
 void sema_note_prev_at(SourceSpan loc, const char *message, ...);
 void sema_verror_range(SourceSpan location, const char *message, va_list args);
