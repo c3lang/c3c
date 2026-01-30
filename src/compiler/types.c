@@ -1373,7 +1373,11 @@ Type *type_get_vector_bool(Type *original_type, TypeKind kind)
 Type *type_get_vector_from_vector(Type *base_type, Type *orginal_vector)
 {
 	ASSERT(type_kind_is_real_vector(orginal_vector->type_kind));
-	return type_get_vector(base_type, orginal_vector->type_kind, orginal_vector->array.len);
+	bool opt = type_is_optional(base_type);
+	if (opt) base_type = type_no_optional(base_type);
+	Type *res = type_get_vector(base_type, orginal_vector->type_kind, orginal_vector->array.len);
+	if (opt) res = type_get_optional(res);
+	return res;
 }
 
 Type *type_get_simd_from_vector(Type *orginal_vector)

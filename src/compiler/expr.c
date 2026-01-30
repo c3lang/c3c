@@ -379,7 +379,7 @@ bool expr_is_runtime_const(Expr *expr)
 			}
 			return exprid_is_runtime_const(expr->builtin_access_expr.inner);
 		case EXPR_INT_TO_BOOL:
-			return expr_is_runtime_const(expr->int_to_bool_expr.inner);
+			return expr_is_const(expr->int_to_bool_expr.inner);
 		case EXPR_EXT_TRUNC:
 			return expr_is_runtime_const(expr->ext_trunc_expr.inner);
 		case EXPR_CONST:
@@ -513,12 +513,14 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr)
 	// An address is never a constant value.
 	Expr *inner = expr->unary_expr.expr;
 	if (IS_OPTIONAL(inner)) return false;
+RETRY:;
 	switch (inner->expr_kind)
 	{
 		case UNRESOLVED_EXPRS:
 			UNREACHABLE
 		case EXPR_ACCESS_RESOLVED:
-			return expr_is_runtime_const(inner);
+			inner = inner->access_resolved_expr.parent;
+			goto RETRY;
 		case EXPR_CONST:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
@@ -700,10 +702,14 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE_VOID
+		case TYPE_UNTYPED_LIST:
+			expr->const_expr.const_kind = CONST_UNTYPED_LIST;
+			expr->const_expr.untyped_list = NULL;
+			expr->resolve_status = RESOLVE_DONE;
+			break;
 		case TYPE_SLICE:
 			expr_rewrite_const_empty_slice(expr, type);
 			return;

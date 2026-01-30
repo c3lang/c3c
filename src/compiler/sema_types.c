@@ -99,6 +99,10 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 
 static inline bool sema_check_array_type(SemaContext *context, TypeInfo *original_info, Type *base, TypeInfoKind kind, ArraySize len, Type **result_ref)
 {
+	if (base->type_kind == TYPE_OPTIONAL)
+	{
+		RETURN_SEMA_ERROR(original_info, "You cannot form an array with an optional element type.");
+	}
 	Type *distinct_base = type_flatten(base);
 
 	if (type_is_infer_type(distinct_base))
@@ -585,40 +589,37 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 			if (!sema_resolve_ptr_type(context, type_info, resolve_kind)) return type_info_poison(type_info);
 			break;
 	}
-APPEND_QUALIFIERS:
+APPEND_QUALIFIERS:;
+	Type *type = type_no_optional(type_info->type);
 	switch (kind)
 	{
 		case TYPE_COMPRESSED_NONE:
 			break;
 		case TYPE_COMPRESSED_PTR:
-			if (!sema_check_ptr_type(context, type_info, type_info->type)) return type_info_poison(type_info);
-			type_info->type = type_get_ptr(type_info->type);
+			if (!sema_check_ptr_type(context, type_info, type)) return type_info_poison(type_info);
+			type = type_get_ptr(type);
 			break;
 		case TYPE_COMPRESSED_SUB:
-			if (!sema_check_array_type(context, type_info, type_info->type, TYPE_INFO_SLICE, 0, &type_info->type)) return type_info_poison(type_info);
+			if (!sema_check_array_type(context, type_info, type, TYPE_INFO_SLICE, 0, &type)) return type_info_poison(type_info);
 			break;
 		case TYPE_COMPRESSED_SUBPTR:
-			if (!sema_check_array_type(context, type_info, type_info->type, TYPE_INFO_SLICE, 0, &type_info->type)) return type_info_poison(type_info);
-			type_info->type = type_get_ptr(type_info->type);
+			if (!sema_check_array_type(context, type_info, type, TYPE_INFO_SLICE, 0, &type)) return type_info_poison(type_info);
+			type = type_get_ptr(type);
 			break;
 		case TYPE_COMPRESSED_PTRPTR:
-			if (!sema_check_ptr_type(context, type_info, type_info->type)) return type_info_poison(type_info);
-			type_info->type = type_get_ptr(type_get_ptr(type_info->type));
+			if (!sema_check_ptr_type(context, type_info, type)) return type_info_poison(type_info);
+			type = type_get_ptr(type_get_ptr(type));
 			break;
 		case TYPE_COMPRESSED_PTRSUB:
-			if (!sema_check_ptr_type(context, type_info, type_info->type)) return type_info_poison(type_info);
-			type_info->type = type_get_slice(type_get_ptr(type_info->type));
+			if (!sema_check_ptr_type(context, type_info, type)) return type_info_poison(type_info);
+			type = type_get_slice(type_get_ptr(type));
 			break;
 		case TYPE_COMPRESSED_SUBSUB:
-			if (!sema_check_array_type(context, type_info, type_info->type, TYPE_INFO_SLICE, 0, &type_info->type)) return type_info_poison(type_info);
-			type_info->type = type_get_slice(type_info->type);
+			if (!sema_check_array_type(context, type_info, type, TYPE_INFO_SLICE, 0, &type)) return type_info_poison(type_info);
+			type = type_get_slice(type);
 			break;
 	}
-	if (type_info->optional)
-	{
-		Type *type = type_info->type;
-		if (!type_is_optional(type)) type_info->type = type_get_optional(type);
-	}
+	type_info->type = type_add_optional(type, type_info->optional || type_is_optional(type_info->type));
 	type_info->resolve_status = RESOLVE_DONE;
 	return true;
 }
