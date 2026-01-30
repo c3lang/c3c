@@ -1270,22 +1270,3 @@ bool linker(const char *output_file, const char **files, unsigned file_count)
 		  .Case("elf64_sparc", {ELF64BEKind, EM_SPARCV9})
 		  .Case("msp430elf", {ELF32LEKind, EM_MSP430})
  */
-
-bool output_file_exists(const char *output_file)
-{
-#ifdef _WIN32
-	DWORD attrib = GetFileAttributesA(output_file);
-	if (attrib == INVALID_FILE_ATTRIBUTES)
-	{
-		return false;
-	}
-	return (attrib & FILE_ATTRIBUTE_DIRECTORY);
-#else
-	struct stat path_stat;
-	if (stat(output_file, &path_stat) != 0)
-	{
-		return false;
-	}
-	return S_ISDIR(path_stat.st_mode);
-#endif
-}
