@@ -180,7 +180,7 @@
 - Deprecated `EMPTY_MACRO_SLOT` and its related uses, in favor of `optional_param = ...` named macro arguments. #2805
 - Add tracking of peak memory usage in the tracking allocator.
 - Added `realloc_array`, `realloc_array_aligned`, and `realloc_array_try` to `allocator::`. #2760
-- Add `io::readline_limit` and `io::treadline_limit`. #2879
+- Add `io::readline_limit` and `io::treadline_limit` and allow line-length limits in `io::readline_to_stream`. #2879
 
 ## 0.7.8 Change list
 
