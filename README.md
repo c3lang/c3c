@@ -36,10 +36,10 @@ whole new language.
 
 ### Example code
 
-The following code shows [generic modules](https://c3-lang.org/generic-programming/generics/) (more examples can be found at https://c3-lang.org/language-overview/examples/). 
+The following code shows [generics](https://c3-lang.org/generic-programming/generics/) (more examples can be found at https://c3-lang.org/language-overview/examples/). 
 
 ```c3
-module stack {Type};
+module stack <Type>;
 // Above: the parameterized type is applied to the entire module.
 
 struct Stack
@@ -142,7 +142,7 @@ fn void main()
 
 ### Current status
 
-The current stable version of the compiler is **version 0.7.8**.
+The current stable version of the compiler is **version 0.7.9**.
 
 The upcoming 0.7.x releases will focus on expanding the standard library,
 fixing bugs and improving compile time analysis. 

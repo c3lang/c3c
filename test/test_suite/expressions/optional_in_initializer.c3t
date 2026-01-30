@@ -1,0 +1,75 @@
+// #target: macos-x64
+module abc <Type>;
+import std::io, std::collections::list;
+struct TextTemplate
+{
+    Allocator allocator;
+    String template;
+}
+fn void? TextTemplate.init(&self, String , String tag_start = "", String tag_end = "", Allocator using )
+{
+    *self = { .allocator = using, .template = io::EOF~!, };
+}
+module text_test;
+import abc;
+alias FooTmpl = TextTemplate{Foo};
+alias BarTmpl = TextTemplate{Bar};
+struct Foo { BarTmpl bar; }
+struct Bar { String bar; }
+fn void main()
+{
+	String foo_tmpl = "";
+	FooTmpl ft;
+	ft.init(foo_tmpl, using: tmem)!!;
+}
+
+/* #expect: abc.ll
+
+@std.io.EOF = linkonce constant %"char[]" { ptr @std.io.EOF.nameof, i64 7 }, align 8
+@std.io.EOF.nameof = internal constant [8 x i8] c"io::EOF\00", align 1
+
+define weak i64 @"abc.TextTemplate$text_test.Foo$.init"(ptr %0, ptr %1, i64 %2, ptr %3, i64 %4, ptr byval(%"char[]") align 8 %5, ptr byval(%any) align 8 %6) #0 {
+entry:
+  %.anon = alloca %"char[]", align 8
+  %tag_start = alloca %"char[]", align 8
+  %.assign_list = alloca %"TextTemplate{Foo}", align 8
+  %error_var = alloca i64, align 8
+  store ptr %1, ptr %.anon, align 8
+  %ptradd = getelementptr inbounds i8, ptr %.anon, i64 8
+  store i64 %2, ptr %ptradd, align 8
+  store ptr %3, ptr %tag_start, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %tag_start, i64 8
+  store i64 %4, ptr %ptradd1, align 8
+  call void @llvm.memset.p0.i64(ptr align 8 %.assign_list, i8 0, i64 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.assign_list, ptr align 8 %6, i32 16, i1 false)
+  %ptradd2 = getelementptr inbounds i8, ptr %.assign_list, i64 16
+  store i64 ptrtoint (ptr @std.io.EOF to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %7 = load i64, ptr %error_var, align 8
+  ret i64 %7
+}
+
+define weak i64 @"abc.TextTemplate$text_test.Bar$.init"(ptr %0, ptr %1, i64 %2, ptr %3, i64 %4, ptr byval(%"char[]") align 8 %5, ptr byval(%any) align 8 %6) #0 {
+entry:
+  %.anon = alloca %"char[]", align 8
+  %tag_start = alloca %"char[]", align 8
+  %.assign_list = alloca %"TextTemplate{Bar}", align 8
+  %error_var = alloca i64, align 8
+  store ptr %1, ptr %.anon, align 8
+  %ptradd = getelementptr inbounds i8, ptr %.anon, i64 8
+  store i64 %2, ptr %ptradd, align 8
+  store ptr %3, ptr %tag_start, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %tag_start, i64 8
+  store i64 %4, ptr %ptradd1, align 8
+  call void @llvm.memset.p0.i64(ptr align 8 %.assign_list, i8 0, i64 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.assign_list, ptr align 8 %6, i32 16, i1 false)
+  %ptradd2 = getelementptr inbounds i8, ptr %.assign_list, i64 16
+  store i64 ptrtoint (ptr @std.io.EOF to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %7 = load i64, ptr %error_var, align 8
+  ret i64 %7
+}
