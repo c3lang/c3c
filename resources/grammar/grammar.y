@@ -35,7 +35,7 @@ void yyerror(YYLTYPE * yylloc_param , yyscan_t yyscanner, const char *yymsgp);
 %token CT_SIZEOF CT_STRINGIFY CT_QNAMEOF CT_OFFSETOF CT_VAEXPR CT_FEATURE
 %token CT_EXTNAMEOF CT_EVAL CT_DEFINED CT_ALIGNOF ASSERT
 %token ASM CHAR_LITERAL REAL TRUE FALSE CT_CONST_IDENT
-%token HASH_CONST_IDENT CT_ASSIGNABLE CT_AND CT_IS_CONST
+%token HASH_CONST_IDENT CT_ASSIGNABLE CT_AND CT_IS_CONST AT_INLINE AT_PURE AT_NOINLINE
 
 %start translation_unit
 %%
@@ -443,6 +443,11 @@ parameter
 	| CT_IDENT ELLIPSIS
 	;
 
+opt_call_attributes
+	: call_inline_attributes
+	| empty
+	;
+
 opt_attributes
 	: attribute_list
 	| empty
@@ -623,13 +628,18 @@ range_expr
 	;
 
 call_inline_attributes
-	: AT_IDENT
-	| call_inline_attributes AT_IDENT
+	: call_attribute
+	| call_inline_attributes call_attribute
+	;
+
+call_attribute
+	: AT_INLINE
+	| AT_PURE
+	| AT_NOINLINE
 	;
 
 call_invocation
-	: '(' call_arg_list ')'
-	| '(' call_arg_list ')' call_inline_attributes
+	: '(' call_arg_list ')' opt_call_attributes
 	;
 
 access_ident
@@ -652,6 +662,7 @@ call_trailing
 	| '.' access_ident
 	| INC_OP
 	| DEC_OP
+	| '~'
 	| '!'
 	| BANGBANG
 	;
@@ -805,31 +816,19 @@ or_stmt_expr
 	| or_stmt_expr CT_OR_OP and_expr
 	;
 
-suffix_expr
-	: or_expr
-	| or_expr '?'
-	| or_expr '?' '!'
-	;
-
-suffix_stmt_expr
-	: or_stmt_expr
-	| or_stmt_expr '?'
-	| or_stmt_expr '?' '!'
-	;
-
 ternary_expr
-	: suffix_expr
+	: or_expr
 	| or_expr '?' expr ':' ternary_expr
-	| suffix_expr ELVIS ternary_expr
-	| suffix_expr OPTELSE ternary_expr
+	| or_expr ELVIS ternary_expr
+	| or_expr OPTELSE ternary_expr
 	| lambda_decl implies_body
 	;
 
 ternary_stmt_expr
-	: suffix_stmt_expr
+	: or_stmt_expr
 	| or_stmt_expr '?' expr ':' ternary_expr
-	| suffix_stmt_expr ELVIS ternary_expr
-	| suffix_stmt_expr OPTELSE ternary_expr
+	| or_stmt_expr ELVIS ternary_expr
+	| or_stmt_expr OPTELSE ternary_expr
 	| lambda_decl implies_body
 	;
 

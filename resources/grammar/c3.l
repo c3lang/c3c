@@ -96,6 +96,10 @@ typedef struct {
 "$varef"        { return(CT_VAREF); }
 "$vasplat"      { return(CT_VASPLAT); }
 "$vatype"       { return(CT_VATYPE); }
+"@pure"         { return(AT_PURE); }
+"@inline"       { return(AT_INLINE); }
+"@noinline"     { return(AT_NOINLINE); }
+
 "/*"			{ BEGIN(COMMENT); }
 <COMMENT>{
 	"/*"        { yyg->yyextra_r.comment_level++; }
