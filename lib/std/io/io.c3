@@ -59,10 +59,10 @@ faultdef
 *>
 macro String? readline(Allocator allocator, stream = io::stdin(), usz limit = 0)
 {
-	return readline_impl{$typeof(stream)}(allocator, stream);
+	return readline_impl{$typeof(stream)}(allocator, stream, limit);
 }
 
-fn String? readline_impl(Allocator allocator, Stream stream) <Stream> @private
+fn String? readline_impl(Allocator allocator, Stream stream, usz limit = 0) <Stream> @private
 {
 	if (allocator == tmem)
 	{
@@ -105,10 +105,10 @@ macro String? treadline(stream = io::stdin())
 *>
 macro usz? readline_to_stream(out_stream, in_stream = io::stdin(), usz limit = 0)
 {
-	return readline_to_stream_impl{$typeof(in_stream), $typeof(out_stream)}(out_stream, in_stream);
+	return readline_to_stream_impl{$typeof(in_stream), $typeof(out_stream)}(out_stream, in_stream, limit);
 }
 
-fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream) <IStream, OStream> @private
+fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream, usz limit = 0) <IStream, OStream> @private
 {
 	bool $is_stream = IStream == InStream;
 	$if $is_stream:
