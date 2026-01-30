@@ -7,10 +7,6 @@
 ### Stdlib changes
 
 ### Fixes
-
-## 0.7.10 Change list
-
-### Changes / improvements
 - Add error message if directory with output file name already exists
 
 ## 0.7.9 Change list

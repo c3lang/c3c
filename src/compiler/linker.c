@@ -8,8 +8,6 @@
 #include <glob.h>
 #endif
 
-#include <sys/stat.h>
-
 const char *quote_arg = "\"";
 const char *concat_arg = ":";
 const char *concat_quote_arg = "+";
@@ -22,8 +20,6 @@ const char *concat_file_arg = "/";
 
 static char *assemble_linker_command(const char **args, bool extra_quote);
 static int assemble_link_arguments(const char **arguments, unsigned len);
-
-bool file_is_dir(const char *file);
 
 static inline bool is_no_pie(RelocModel reloc)
 {
@@ -1057,7 +1053,7 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 
 	if (file_is_dir(output_file))
 	{
-		error_exit("Failed to link executable '%s', a directory with that already exists.", output_file);
+		error_exit("Failed to link executable '%s', a directory with that name already exists.", output_file);
 	}
 
 	linker_setup(&parts, files, file_count, output_file, linker_type, &compiler.linking);
