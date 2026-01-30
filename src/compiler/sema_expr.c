@@ -5106,7 +5106,8 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		{
 			if (decl->unit->module->stage < ANALYSIS_POST_REGISTER)
 			{
-				SEMA_WARN(expr, "There might be a method '%s' for %s, but methods for the type have not yet been completely registered, so a warning is issued.", name, type_quoted_error_string(parent_type));
+				bool err = SEMA_WARN_STRICT(expr, "There might be a method '%s' for %s, but methods for the type have not yet been completely registered, so a warning is issued.", name, type_quoted_error_string(parent_type));
+				if (err) return false;
 			}
 			goto MISSING_REF;
 		}
@@ -5595,7 +5596,8 @@ CONTINUE:
 		Decl *decl = type->decl;
 		if (!decl->unit || decl->unit->module->stage < ANALYSIS_POST_REGISTER)
 		{
-			SEMA_WARN(expr, "Methods are not fully determined for %s at this point.", decl->name);
+			bool err = SEMA_WARN(expr, "Methods are not fully determined for %s at this point.", decl->name);
+			if (err) return false;
 		}
 		// Interface, prefer interface methods.
 		if (decl->decl_kind == DECL_INTERFACE)
@@ -6627,7 +6629,8 @@ CHECK_DEEPER:
 		ASSERT(type_is_user_defined(parent_type));
 		if (missing_ref && parent_type->decl->unit->module->stage < ANALYSIS_POST_REGISTER)
 		{
-			SEMA_WARN(expr, "There might be a method '%s' for %s, but methods have not yet been completely registered, so analysis fails.", kw, type_quoted_error_string(parent->type));
+			bool err = SEMA_WARN_STRICT(expr, "There might be a method '%s' for %s, but methods have not yet been completely registered, so analysis fails.", kw, type_quoted_error_string(parent->type));
+			if (err) return false;
 		}
 		if (parent_type->type_kind == TYPE_INTERFACE)
 		{
