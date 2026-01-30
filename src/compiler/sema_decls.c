@@ -679,7 +679,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	}
 	if (is_unaligned && size > offset)
 	{
-		ASSERT(!decl->strukt.padding);
+		ASSERT(!decl->strukt.padding || decl->strukt.padding == size - offset);
 		decl->strukt.padding = size - offset;
 	}
 
@@ -703,7 +703,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		}
 	}
 
-	decl->is_packed = is_unaligned;
+	decl->is_packed |= is_unaligned;
 	// Strip padding if we are aligned.
 	if (!decl->is_packed && is_naturally_aligned)
 	{
@@ -5374,7 +5374,29 @@ FOUND:;
 					break;
 			}
 		}
-		ASSERT(stage < ANALYSIS_INTERFACE);
+		if (stage < ANALYSIS_INTERFACE) goto EXIT;
+		if (compiler.context.errors_found) return poisoned_decl;
+		FOREACH(Decl *, decl, copied)
+		{
+			SemaContext context_gen;
+			switch (decl->decl_kind)
+			{
+				case DECL_TYPEDEF:
+				case DECL_STRUCT:
+				case DECL_UNION:
+				case DECL_ENUM:
+				case DECL_BITSTRUCT:
+					break;
+				default:
+					continue;
+			}
+			if (decl->interfaces)
+			{
+				sema_context_init(&context_gen, decl->unit);
+				sema_check_interfaces(&context_gen, decl);
+				sema_context_destroy(&context_gen);
+			}
+		}
 EXIT:;
 		if (compiler.context.errors_found) return poisoned_decl;
 	}

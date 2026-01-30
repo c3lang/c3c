@@ -1,11 +1,11 @@
 module test2;
 import test3;
-struct Bar @if($defined(Foo.b)) // #error: There might be a method 'b' for 'Foo', but methods for the type have not yet been completely registered, so this yields an error
+struct Bar @if($defined(Foo.b)) // warning: There might be a method 'b' for 'Foo', but methods for the type have not yet been
 {
 	int a;
 }
 
-struct Bar2 @if($defined((Foo){}.b)) // #error: There might be a method 'b' for 'Foo', but methods have not yet been completely registered, so analysis fails.
+struct Bar2 @if($defined((Foo){}.b)) // warning: There might be a method 'b' for 'Foo', but methods have not yet been completely
 {
 	int a;
 }
@@ -22,6 +22,6 @@ import test3;
 
 fn int main()
 {
-	Bar b;
+	Bar b; // #error: 'Bar' could not be found, did you spell it right
 	return 0;
 }

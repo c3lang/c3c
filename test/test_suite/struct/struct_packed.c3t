@@ -1,0 +1,35 @@
+// #target: macos-x64
+module test;
+struct Foo3 @align(8)
+{
+	char foo;
+	Foo6 bar;
+}
+struct Foo6 @packed
+{
+	short c;
+}
+
+fn int main()
+{
+	Foo3 x;
+	return 0;
+}
+
+/* #expect: test.ll
+
+%Foo3 = type <{ i8, %Foo6, [5 x i8] }>
+%Foo6 = type <{ i16 }>
+
+@"$ct.test.Foo3" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo6" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 2, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+
+define i32 @main() #0 {
+entry:
+  %x = alloca %Foo3, align 8
+  store i8 0, ptr %x, align 8
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 1
+  store i16 0, ptr %ptradd, align 1
+  ret i32 0
+}
+

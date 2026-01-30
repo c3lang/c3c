@@ -1,15 +1,20 @@
 # C3C Release Notes
 
+## 0.7.10 Change list
+
+### Changes / improvements
+
+### Stdlib changes
+
+### Fixes
 
 ## 0.7.9 Change list
 
 ### Changes / improvements
 - Add `--custom-libc` option for custom libc implementations.
-- Remove use of LLVMGetGlobalContext for single module compilation.
-- Fixed bug where constants would get modified when slicing them. #2660
 - Support for NetBSD.
 - Testing for the presence of methods at the top level is prohibited previous to method registration.
-- `$$MASK_TO_INT` and `$$INT_TO_MASK` to create bool masks from integers and back.
+- `$$mask_to_int` and `$$int_to_mask` to create bool masks from integers and back.
 - Better error messages when slicing a pointer to a slice or vector. #2681
 - Generics using ad-hoc `<...>` rather than module based.
 - Reduced memory usage for backtraces on Linux.
@@ -25,6 +30,8 @@
 - Combining argument-less initialization with argument init for bitstructs is now allowed e.g. `{ .b, .c = 123 }`.
 
 ### Fixes
+- Remove use of LLVMGetGlobalContext for single module compilation.
+- Fixed bug where constants would get modified when slicing them. #2660
 - Regression with npot vector in struct triggering an assert #2219.
 - Casting bitstruct to wider base type should be single step #2616.
 - Optional does not play well with bit ops #2618.
@@ -130,6 +137,26 @@
 - Bitstruct accidentally allowed other arrays than char arrays #2836
 - Bitstruct as substruct fails to properly work with designated initializers. #2827
 - Bug when initializing an inferred array with deep structure using designated init #2826
+- Packed .c3l files without compressions weren't unpacked correctly.
+- Lowering of optional in && was incorrect #2843
+- Resolving &X.b when X is a const incorrectly checked for runtime constness #2842
+- Alignment param on $$unaligned_* not checked for zero #2844
+- Fix alignment for uint128 to 16 with WASM targets.
+- Incorrect assert in struct alignment checking #2841
+- Packed structs sometimes not lowered as such.
+- Crash when creating `$Type*` where `$Type` is an optional type #2848
+- Crashes when using `io::EOF~!` in various unhandled places. #2848
+- Crash when trying to create a const zero untyped list #2847
+- Incorrect handling when reporting fn with optional compile time type #2862
+- Optional in initializer cause a crash #2864
+- Negating a global address with offset was a counted as a global runtime constant #2865
+- Converting static "make_slice" to array failed to be handled #2866
+- Narrowing a not expression was incorrectly handled #2867
+- Vector shift by optional scalar failed #2868
+- Initializer did not correctly handle second rethrow #2870
+- Crash encountering panic in if-else style switch #2871
+- Crash in slice expression when it contains a rethrow #2872
+- Multiple issues when rethrowing inside of expressions #2873
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
