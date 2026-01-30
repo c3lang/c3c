@@ -52,6 +52,7 @@ faultdef
  "\r" will be filtered from the String.
 
  @param stream : `The stream to read from.`
+ @param limit : `Optionally limits the byte-length of the allocated output string.`
  @require @is_not_instream_if_ptr(stream) : "The value for 'stream' should have been passed as a pointer and not as a value, please add '&'."
  @require @is_instream(stream) : `Make sure that the stream is actually an InStream.`
  @param [inout] allocator : `the allocator to use.`
@@ -83,13 +84,14 @@ fn String? readline_impl(Allocator allocator, Stream stream, usz limit = 0) <Str
  on the temporary allocator and does not need to be freed.
 
  @param stream : `The stream to read from.`
+ @param limit : `Optionally limits the byte-length of the allocated output string.`
  @require @is_not_instream_if_ptr(stream) : "The value for 'stream' should have been passed as a pointer and not as a value, please add '&'."
  @require @is_instream(stream) : `The stream must implement InStream.`
  @return `The temporary string containing the data read.`
 *>
-macro String? treadline(stream = io::stdin())
+macro String? treadline(stream = io::stdin(), usz limit = 0)
 {
-	return readline(tmem, stream) @inline;
+	return readline(tmem, stream, limit) @inline;
 }
 
 <*
@@ -97,6 +99,7 @@ macro String? treadline(stream = io::stdin())
 
  @param out_stream : `The stream to write to`
  @param in_stream : `The stream to read from.`
+ @param limit : `Optionally limits the byte-length of the allocated output string.`
  @require @is_not_instream_if_ptr(in_stream) : "The value for 'in_stream' should have been passed as a pointer and not as a value, please add '&'."
  @require @is_not_outstream_if_ptr(out_stream) : "The value for 'out_stream' should have been passed as a pointer and not as a value, please add '&'."
  @require @is_instream(in_stream) : `The in_stream must implement InStream.`
