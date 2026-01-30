@@ -8,11 +8,7 @@
 #include <glob.h>
 #endif
 
-#ifdef _WIN32
-	#include <windows.h>
-#else
-	#include <sys/stat.h>
-#endif
+#include <sys/stat.h>
 
 const char *quote_arg = "\"";
 const char *concat_arg = ":";
@@ -27,7 +23,7 @@ const char *concat_file_arg = "/";
 static char *assemble_linker_command(const char **args, bool extra_quote);
 static int assemble_link_arguments(const char **arguments, unsigned len);
 
-bool output_file_exists(const char *output_file);
+bool file_is_dir(const char *file);
 
 static inline bool is_no_pie(RelocModel reloc)
 {
@@ -1059,7 +1055,7 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 		vec_add(parts, compiler.build.cc ? compiler.build.cc : default_c_compiler());
 	}
 
-	if (output_file_exists(output_file))
+	if (file_is_dir(output_file))
 	{
 		error_exit("Failed to link executable '%s', a directory with that already exists.", output_file);
 	}
