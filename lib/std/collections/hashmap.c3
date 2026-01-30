@@ -4,7 +4,7 @@
 <*
  @require $defined((Key){}.hash()) : `No .hash function found on the key`
 *>
-module std::collections::map{Key, Value};
+module std::collections::map <Key, Value>;
 import std::math;
 import std::io @norecurse;
 
@@ -175,13 +175,13 @@ fn usz HashMap.len(&map) @inline
 
 fn Value*? HashMap.get_ref(&map, Key key)
 {
-	if (!map.count) return NOT_FOUND?;
+	if (!map.count) return NOT_FOUND~;
 	uint hash = rehash(key.hash());
 	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return &e.value;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 fn Value* HashMap.get_or_create_ref(&map, Key key) @operator(&[])
@@ -204,13 +204,13 @@ fn Value* HashMap.get_or_create_ref(&map, Key key) @operator(&[])
 
 fn Entry*? HashMap.get_entry(&map, Key key)
 {
-	if (!map.count) return NOT_FOUND?;
+	if (!map.count) return NOT_FOUND~;
 	uint hash = rehash(key.hash());
 	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return e;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 <*
@@ -275,7 +275,7 @@ fn bool HashMap.set(&map, Key key, Value value) @operator([]=)
 
 fn void? HashMap.remove(&map, Key key) @maydiscard
 {
-	if (!map.remove_entry_for_key(key)) return NOT_FOUND?;
+	if (!map.remove_entry_for_key(key)) return NOT_FOUND~;
 }
 
 fn void HashMap.clear(&map)

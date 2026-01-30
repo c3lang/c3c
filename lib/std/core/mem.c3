@@ -7,7 +7,7 @@ import std::os::posix, std::os::win32;
 import std::math;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
-const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
+const DEFAULT_MEM_ALIGNMENT = env::WASM ? 16 : (void*.alignof) * 2;
 const ulong KB = 1024;
 const ulong MB = KB * 1024;
 const ulong GB = MB * 1024;
@@ -200,7 +200,7 @@ macro @scatter_aligned(ptrvec, value, bool[<*>] mask, usz $alignment)
 *>
 macro @unaligned_load(#x, usz $alignment) @builtin
 {
-	return $$unaligned_load(&#x, $alignment);
+	return $$unaligned_load(&#x, $alignment, false);
 }
 
 <*
@@ -215,8 +215,9 @@ macro @unaligned_load(#x, usz $alignment) @builtin
 *>
 macro @unaligned_store(#x, value, usz $alignment) @builtin
 {
-	return $$unaligned_store(&#x, ($typeof(#x))value, $alignment);
+	return $$unaligned_store(&#x, ($typeof(#x))value, $alignment, false);
 }
+
 
 <*
  @param #x : "The variable or dereferenced pointer to load."
@@ -240,6 +241,36 @@ macro @volatile_load(#x) @builtin
 macro @volatile_store(#x, value) @builtin
 {
 	return $$volatile_store(&#x, ($typeof(#x))value);
+}
+
+<*
+ @param ptr : "The pointer to load from"
+ @param $align : "The alignment to assume for the load"
+ @param $volatile : "Whether the load is volatile or not, defaults to false"
+ @return "The value of the variable"
+
+ @require $defined(*ptr) : "This must be a typed pointer"
+ @require @constant_is_power_of_2($align) : "The alignment must be a power of two"
+*>
+macro load(ptr, usz $align, bool $volatile = false)
+{
+	return $$unaligned_load(ptr, $align, $volatile);
+}
+
+<*
+ @param ptr : "The pointer to store to."
+ @param value : "The value to store."
+ @param $align : "The alignment to assume for the store"
+ @param $volatile : "Whether the store is volatile, defaults to false"
+ @return "The value stored"
+
+ @require $defined(*ptr) : "This must be a typed pointer"
+ @require $defined(*ptr = value) : "The value doesn't match the variable"
+ @require @constant_is_power_of_2($align) : "The alignment must be a power of two"
+*>
+macro store(ptr, value, usz $align, bool $volatile = false)
+{
+	return $$unaligned_store(ptr, ($typeof(*ptr))value, $align, $volatile);
 }
 
 <*
@@ -807,6 +838,7 @@ macro new_aligned($Type, #init = ...) @nodiscard @safemacro
 <*
  @param $Type : "The type to allocate"
 
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
  @return "A pointer to uninitialized data for the type $Type"
 *>
@@ -819,7 +851,8 @@ macro alloc($Type) @nodiscard
  @param $Type : "The type to allocate"
  @param padding : "The padding to add after the allocation"
 
- @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
  @return "A pointer to uninitialized data for the type $Type"
 *>
 macro alloc_with_padding($Type, usz padding) @nodiscard
@@ -833,6 +866,7 @@ macro alloc_with_padding($Type, usz padding) @nodiscard
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
  @param $Type : "The type to allocate"
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @return "A pointer to uninitialized data for the type $Type with the proper alignment"
 *>
 macro alloc_aligned($Type) @nodiscard
@@ -844,6 +878,7 @@ macro alloc_aligned($Type) @nodiscard
  @param $Type : "The type to allocate"
  @param #init : "The optional initializer"
 
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
  @return "A pointer to temporary data of type $Type."
 *>
@@ -863,6 +898,7 @@ macro tnew($Type, #init = ...) @nodiscard @safemacro
  @param padding : "The padding to add after the allocation"
  @param #init : "The optional initializer"
 
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
  @return "A pointer to temporary data of type $Type with added padding at the end."
 *>
@@ -877,17 +913,24 @@ macro temp_with_padding($Type, usz padding, #init = ...) @nodiscard @safemacro
 	$endif
 }
 
+<*
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+*>
 macro talloc($Type) @nodiscard
 {
 	return tmalloc($Type.sizeof, $Type.alignof);
 }
 
+<*
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+*>
 macro talloc_with_padding($Type, usz padding) @nodiscard
 {
 	return tmalloc($Type.sizeof + padding, $Type.alignof);
 }
 
 <*
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
 *>
 macro new_array($Type, usz elements) @nodiscard
@@ -898,6 +941,8 @@ macro new_array($Type, usz elements) @nodiscard
 <*
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
 *>
 macro new_array_aligned($Type, usz elements) @nodiscard
 {
@@ -905,6 +950,7 @@ macro new_array_aligned($Type, usz elements) @nodiscard
 }
 
 <*
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
 *>
 macro alloc_array($Type, usz elements) @nodiscard
@@ -915,6 +961,8 @@ macro alloc_array($Type, usz elements) @nodiscard
 <*
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+
+ @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
 *>
 macro alloc_array_aligned($Type, usz elements) @nodiscard
 {
@@ -1029,7 +1077,7 @@ fn void* __memcpy(void* dst, void* src, usz n) @weak @export("memcpy")
 }
 
 
-module std::core::mem::volatile { Type };
+module std::core::mem::volatile <Type>;
 
 typedef Volatile @structlike = Type;
 
@@ -1046,7 +1094,7 @@ macro Type Volatile.set(&self, Type val)
 <*
  @require mem::@constant_is_power_of_2(ALIGNMENT) : "The alignment must be a power of 2"
 *>
-module std::core::mem::alignment { Type, ALIGNMENT };
+module std::core::mem::alignment <Type, ALIGNMENT>;
 import std::core::mem @public;
 
 <*
@@ -1056,10 +1104,10 @@ typedef UnalignedRef = Type*;
 
 macro Type UnalignedRef.get(self)
 {
-	return @unaligned_load(*(Type*)self, ALIGNMENT);
+	return @unaligned_load(*(Type*)self, ALIGNMENT, false);
 }
 
 macro Type UnalignedRef.set(&self, Type val)
 {
-	return @unaligned_store(*(Type*)self, val, ALIGNMENT);
+	return @unaligned_store(*(Type*)self, val, ALIGNMENT, false);
 }

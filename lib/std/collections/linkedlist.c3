@@ -1,7 +1,7 @@
 // Copyright (c) 2021-2024 Christoffer Lerno. All rights reserved.
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::collections::linkedlist{Type};
+module std::collections::linkedlist <Type>;
 import std::io;
 
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
@@ -24,9 +24,9 @@ struct LinkedList
 fn usz? LinkedList.to_format(&self, Formatter* f) @dynamic
 {
 	usz len = f.print("{ ")!;
-	for (Node* node = self._first; node != null; node.next)
+	for (Node* node = self._first; node != null; node = node.next)
 	{
-		len += f.printf(node.next ? "%s, " : "s", node.value)!;
+		len += f.printf(node.next ? "%s, " : "%s", node.value)!;
 	}
 	return len + f.print(" }");
 }
@@ -124,13 +124,13 @@ fn Type? LinkedList.peek_last(&self) => self.last() @inline;
 
 fn Type? LinkedList.first(&self)
 {
-	if (!self._first) return NO_MORE_ELEMENT?;
+	if (!self._first) return NO_MORE_ELEMENT~;
 	return self._first.value;
 }
 
 fn Type? LinkedList.last(&self)
 {
-	if (!self._last) return NO_MORE_ELEMENT?;
+	if (!self._last) return NO_MORE_ELEMENT~;
 	return self._last.value;
 }
 
@@ -198,7 +198,7 @@ fn usz? LinkedList.index_of(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
 	{
 		if (node.value == t) return i;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 fn usz? LinkedList.rindex_of(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
@@ -208,7 +208,7 @@ fn usz? LinkedList.rindex_of(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
 		if (node.value == t) return i;
 		if (i == 0) break;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 
@@ -296,7 +296,7 @@ fn usz LinkedList.remove(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
 
 fn Type? LinkedList.pop(&self)
 {
-	if (!self._last) return NO_MORE_ELEMENT?;
+	if (!self._last) return NO_MORE_ELEMENT~;
 	defer self.unlink_last();
 	return self._last.value;
 }
@@ -308,20 +308,20 @@ fn bool LinkedList.is_empty(&self)
 
 fn Type? LinkedList.pop_front(&self)
 {
-	if (!self._first) return NO_MORE_ELEMENT?;
+	if (!self._first) return NO_MORE_ELEMENT~;
 	defer self.unlink_first();
 	return self._first.value;
 }
 
 fn void? LinkedList.remove_last(&self) @maydiscard
 {
-	if (!self._first) return NO_MORE_ELEMENT?;
+	if (!self._first) return NO_MORE_ELEMENT~;
 	self.unlink_last();
 }
 
 fn void? LinkedList.remove_first(&self) @maydiscard
 {
-	if (!self._first) return NO_MORE_ELEMENT?;
+	if (!self._first) return NO_MORE_ELEMENT~;
 	self.unlink_first();
 }
 

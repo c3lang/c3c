@@ -4,8 +4,8 @@ module test;
 fn void main()
 {
 	fault x = NOT_FOUND;
-	int? a = x?;
-	int? b = a = x?;
+	int? a = x~;
+	int? b = a = x~;
 	int? c = b = a;
 }
 

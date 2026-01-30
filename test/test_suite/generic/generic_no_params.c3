@@ -1,4 +1,4 @@
-module values {Type};
+module values <Type>;
 
 struct Values
 {

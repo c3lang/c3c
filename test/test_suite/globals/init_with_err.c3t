@@ -3,8 +3,8 @@ module test;
 import std::io;
 
 faultdef FOO;
-const String? ABC = FOO?;
-String? abc = FOO?;
+const String? ABC = FOO~;
+String? abc = FOO~;
 const String? DEF = ABC;
 String? bcd = ABC;
 

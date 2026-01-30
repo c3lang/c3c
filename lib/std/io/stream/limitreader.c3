@@ -24,7 +24,7 @@ fn void? LimitReader.close(&self) @dynamic
 
 fn usz? LimitReader.read(&self, char[] bytes) @dynamic
 {
-	if (self.limit == 0) return io::EOF?;
+	if (self.limit == 0) return io::EOF~;
 	usz m = min(bytes.len, self.limit);
 	usz n = self.wrapped_stream.read(bytes[:m])!;
 	self.limit -= n;
@@ -33,7 +33,7 @@ fn usz? LimitReader.read(&self, char[] bytes) @dynamic
 
 fn char? LimitReader.read_byte(&self) @dynamic
 {
-	if (self.limit == 0) return io::EOF?;
+	if (self.limit == 0) return io::EOF~;
 	defer try self.limit--;
 	return self.wrapped_stream.read_byte();
 }

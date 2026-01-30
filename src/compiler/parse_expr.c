@@ -414,7 +414,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSE
 	sig->params = decls;
 	sig->rtype = return_type ? type_infoid(return_type) : 0;
 	sig->variadic = variadic;
-	if (!parse_attributes(c, &func->attributes, NULL, NULL, NULL, NULL)) return poisoned_expr;
+	if (!parse_attributes(c, &func->attributes, NULL, NULL, NULL)) return poisoned_expr;
 	RANGE_EXTEND_PREV(func);
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
@@ -731,23 +731,6 @@ static Expr *parse_raise_expr_suffix(ParseContext *c, Expr *left_side, SourceSpa
 	return expr;
 }
 
-static Expr *parse_raise_expr(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
-{
-	ASSERT(!left && "Did not expect a left hand side!");
-
-	Expr *opt = EXPR_NEW_TOKEN(EXPR_OPTIONAL);
-	advance(c);
-	Expr *right_side = parse_precedence(c, PREC_UNARY);
-	CHECK_EXPR_OR_RET(right_side);
-	if (right_side->expr_kind == EXPR_TYPEINFO)
-	{
-		PRINT_ERROR_AT(right_side, "Expected a fault after '^'.");
-		return poisoned_expr;
-	}
-	opt->inner_expr = right_side;
-	RANGE_EXTEND_PREV(opt);
-	return opt;
-}
 
 /**
  * post_unary_expr ::= <expr> unary_op
@@ -803,6 +786,7 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side, SourceSpan lhs
 		expr->expr_kind = EXPR_OPTIONAL;
 		expr->inner_expr = left_side;
 		RANGE_EXTEND_PREV(expr);
+		SEMA_DEPRECATED(expr, "Using '?' to create an optional is deprecated, use '~' instead.");
 		return expr;
 	}
 
@@ -901,6 +885,7 @@ static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_
 			if (i == 0 && expr->expr_kind == EXPR_SPLAT)
 			{
 				splat = expr;
+				continue;
 			}
 			if (expr->expr_kind == EXPR_DESIGNATOR)
 			{
@@ -909,12 +894,10 @@ static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_
 					designated = expr->designator_expr.path[0]->kind == DESIGNATOR_FIELD ? 1 : 2;
 					goto ERROR;
 				}
-
 				designated = expr->designator_expr.path[0]->kind == DESIGNATOR_FIELD ? 1 : 2;
 				continue;
 			}
 			if (designated > 0) goto ERROR;
-			if (designated == -1 && splat) continue;
 			designated = 0;
 			continue;
 ERROR:;
@@ -2230,7 +2213,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_BANG] = { parse_unary_expr, parse_rethrow_expr, PREC_CALL },
 		[TOKEN_BYTES] = { parse_bytes_expr, NULL, PREC_NONE },
 		[TOKEN_BIT_NOT] = { parse_unary_expr, parse_raise_expr_suffix, PREC_CALL },
-		[TOKEN_BIT_XOR] = { parse_raise_expr, parse_binary, PREC_BIT },
+		[TOKEN_BIT_XOR] = { NULL, parse_binary, PREC_BIT },
 		[TOKEN_BIT_OR] = { NULL, parse_binary, PREC_BIT },
 		[TOKEN_AMP] = { parse_unary_expr, parse_binary, PREC_BIT },
 		[TOKEN_EQEQ] = { NULL, parse_binary, PREC_RELATIONAL },

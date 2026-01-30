@@ -177,7 +177,7 @@ void gencontext_begin_module(GenContext *c)
 		}
 		c->debug.emit_expr_loc = !is_win;
 	}
-	c->global_builder = LLVMCreateBuilder();
+	c->global_builder = LLVMCreateBuilderInContext(c->context);
 	c->builder = c->global_builder;
 }
 

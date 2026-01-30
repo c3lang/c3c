@@ -49,11 +49,11 @@ fn usz? MultiReader.read(&self, char[] bytes) @dynamic
 	usz? n = r.read(bytes);
 	if (catch err = n)
 	{
-		if (err != io::EOF) return err?;
+		if (err != io::EOF) return err~;
 		self.index++;
 		if (self.index >= self.readers.len)
 		{
-				return io::EOF?;
+				return io::EOF~;
 		}
 		return self.read(bytes);
 	}

@@ -6,6 +6,16 @@ struct Foo
   float[4] a;
 }
 
+fn void test()
+{
+	int b = 123;
+	int[100] g;
+	mem::store(&b, 342, $align: 2, $volatile: true);
+	int z = mem::load(&b, $align: 2, $volatile: true);
+	int[100] gg = mem::load(&g, $align: 4, $volatile: true);
+	mem::store(&g, gg, $align: 4, $volatile: true);
+}
+
 fn void main()
 {
   Foo* foo;
@@ -15,14 +25,33 @@ fn void main()
   a = *(float[<4>]*)&foo.a;
   *(float[<4>]*)&foo.a = a;
 
-  a = $$unaligned_load((float[<4>]*)&foo.a, 1);
-  $$unaligned_store((float[<4>]*)&foo.a, a, 1);
+  a = $$unaligned_load((float[<4>]*)&foo.a, 1, false);
+  $$unaligned_store((float[<4>]*)&foo.a, a, 1, false);
 
   b = @unaligned_load(*(float[<4>]*)&foo.a, 1);
   @unaligned_store(*(float[<4>]*)&foo.a, b, 1);
 }
 
 /* #expect: test.ll
+
+define void @test.test() #0 {
+entry:
+  %b = alloca i32, align 4
+  %g = alloca [100 x i32], align 16
+  %z = alloca i32, align 4
+  %gg = alloca [100 x i32], align 16
+  %value = alloca [100 x i32], align 16
+  store i32 123, ptr %b, align 4
+  call void @llvm.memset.p0.i64(ptr align 16 %g, i8 0, i64 400, i1 false)
+  store volatile i32 342, ptr %b, align 4
+  %0 = load volatile i32, ptr %b, align 2
+  store i32 %0, ptr %z, align 4
+  %1 = load volatile [100 x i32], ptr %g, align 4
+  store [100 x i32] %1, ptr %gg, align 16
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %value, ptr align 16 %gg, i32 400, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %g, ptr align 16 %value, i32 400, i1 true)
+  ret void
+}
 
 define void @test.main() #0 {
 entry:

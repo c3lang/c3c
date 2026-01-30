@@ -136,7 +136,7 @@ fn String? String.unescape(String s, Allocator allocator, bool allow_unquoted = 
 		// Remove quotes.
 		s = s[1:^2];
 	}
-	else if (!allow_unquoted) return UNTERMINATED_STRING?;
+	else if (!allow_unquoted) return UNTERMINATED_STRING~;
 
 	// Handle empty string case
 	if (!s.len)
@@ -170,7 +170,7 @@ fn void? unescape_dstring(String s, DString result, bool allow_unquoted = false,
 		}
 
 		// Handle escape sequence
-		if (i + 1 >= len) return INVALID_ESCAPE_SEQUENCE?;
+		if (i + 1 >= len) return INVALID_ESCAPE_SEQUENCE~;
 
 		char escape_char = s[++i];
 		switch (escape_char)
@@ -187,38 +187,38 @@ fn void? unescape_dstring(String s, DString result, bool allow_unquoted = false,
 			case '0':  result.append_char('\0');
 			case 'x':
 				// Hex escape \xHH
-				if (i + 2 >= len) return INVALID_HEX_ESCAPE?;
+				if (i + 2 >= len) return INVALID_HEX_ESCAPE~;
 				char h1 = s[++i];
 				char h2 = s[++i];
-				if (!h1.is_xdigit() || !h2.is_xdigit()) return INVALID_HEX_ESCAPE?;
+				if (!h1.is_xdigit() || !h2.is_xdigit()) return INVALID_HEX_ESCAPE~;
 				uint val = h1 > '9' ? (h1 | 32) - 'a' + 10 : h1 - '0';
 				val = val << 4;
 				val += h2 > '9' ? (h2 | 32) - 'a' + 10 : h2 - '0';
 				result.append_char((char)val);
 			case 'u':
 				// Unicode escape \uHHHH
-				if (i + 4 >= len) return INVALID_UNICODE_ESCAPE?;
+				if (i + 4 >= len) return INVALID_UNICODE_ESCAPE~;
 				uint val;
 				for (int j = 0; j < 4; j++)
 				{
 					char hex_char = s[++i];
-					if (!hex_char.is_xdigit()) return INVALID_UNICODE_ESCAPE?;
+					if (!hex_char.is_xdigit()) return INVALID_UNICODE_ESCAPE~;
 					val = val << 4 + (hex_char > '9' ? (hex_char | 32) - 'a' + 10 : hex_char - '0');
 				}
 				result.append_char32(val);
 			case 'U':
 				// Unicode escape \UHHHHHHHH
-				if (i + 8 >= len) return INVALID_UNICODE_ESCAPE?;
+				if (i + 8 >= len) return INVALID_UNICODE_ESCAPE~;
 				uint val;
 				for (int j = 0; j < 8; j++)
 				{
 					char hex_char = s[++i];
-					if (!hex_char.is_xdigit()) return INVALID_UNICODE_ESCAPE?;
+					if (!hex_char.is_xdigit()) return INVALID_UNICODE_ESCAPE~;
 					val = val << 4 + (hex_char > '9' ? (hex_char | 32) - 'a' + 10 : hex_char - '0');
 				}
 				result.append_char32(val);
 			default:
-				if (!lenient) return INVALID_ESCAPE_SEQUENCE?;
+				if (!lenient) return INVALID_ESCAPE_SEQUENCE~;
 				result.append_char(escape_char);
 		}
 	}

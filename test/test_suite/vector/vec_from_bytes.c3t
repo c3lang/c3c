@@ -1,0 +1,11 @@
+// #target: linux-x64
+module test;
+long[<*>] a = x'dead';
+long[<*>] a2 = "hello world blah";
+
+/* #expect: test.ll
+
+@test.a = local_unnamed_addr global <2 x i64> <i64 222, i64 173>, align 16
+@test.a2 = local_unnamed_addr global <16 x i64> <i64 104, i64 101, i64 108, i64 108, i64 111, i64 32, i64 119, i64 111, i64 114, i64 108, i64 100, i64 32, i64 98, i64 108, i64 97, i64 104>, align 128
+
+

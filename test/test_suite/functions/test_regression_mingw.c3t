@@ -183,14 +183,14 @@ fn void hello()
     printf("Mult %f\n", doubleMult(11.1));
 }
 
-module foo{Type};
+module foo <Type>;
 
 fn Type check(Type i)
 {
     return i * i;
 }
 
-module test2{Type};
+module test2 <Type>;
 
 struct Blob
 {

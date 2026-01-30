@@ -40,7 +40,7 @@ fn bool contains(char[] haystack, char[] needle)
 macro dupe(value)
 {
 	$typeof(&value) temp = malloc($sizeof(value));
-	if (!temp) return OUT_OF_MEMORY?;
+	if (!temp) return OUT_OF_MEMORY~;
 	*temp = value;
 	return temp;
 }
@@ -49,14 +49,14 @@ faultdef BAD_READ, OUT_OF_MEMORY;
 
 fn Doc? readDoc(char[] url)
 {
-	if (contains(url, "fail")) return BAD_READ?;
+	if (contains(url, "fail")) return BAD_READ~;
 	if (contains(url, "head-missing")) return { .head = null };
 	if (contains(url, "title-missing")) return { dupe((Head) { .title = null })! };
 	if (contains(url, "title-empty")) return { dupe((Head) { .title = dupe((char[])"")! })! };
 	// Not particularly elegant due to missing string functions.
 	isz len = libc::snprintf(null, 0, "Title of %.*s", (int)url.len, url.ptr);
 	char* str = malloc(len + 1);
-	if (!str) return OUT_OF_MEMORY?;
+	if (!str) return OUT_OF_MEMORY~;
 	libc::snprintf(str, len + 1, "Title of %.*s", (int)url.len, url.ptr);
 	return { dupe((Head) { .title = dupe(str[..len - 1])! })! };
 }
@@ -89,9 +89,9 @@ faultdef  TITLE_MISSING;
 
 fn bool? isTitleNonEmpty(Doc doc)
 {
-	if (!doc.head) return TITLE_MISSING?;
+	if (!doc.head) return TITLE_MISSING~;
 	char[]* head = doc.head.title;
-	if (!head) return TITLE_MISSING?;
+	if (!head) return TITLE_MISSING~;
 	return (*head).len > 0;
 }
 

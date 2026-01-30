@@ -1,10 +1,10 @@
-module std::core::array::slice {Type};
+module std::core::array;
 
 <*
  A slice2d allows slicing an array like int[10][10] into an arbitrary "int[][]"-like counterpart
  Typically you'd use array::slice2d(...) to create one.
 *>
-struct Slice2d
+struct Slice2d <Type>
 {
 	Type* ptr;
 	usz inner_len;

@@ -1,0 +1,4 @@
+fn void main()
+{
+	char? a, $b;
+}

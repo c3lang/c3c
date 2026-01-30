@@ -48,7 +48,7 @@ fn void basic_streamed()
 		x'e7660e67549435c62141e51c9ab1dcc3b1ee9f65c0b3e561ae8f58c5dba3d21997781cd1cc6fbc34'
 	};
 	char[] phrase = "The quick brown fox jumps over the lazy dog";
-	$foreach $i, $bits : ripemd::PERMISSIBLE_SIZES_BITS{128}:
+	$foreach $i, $bits : ripemd::PERMISSIBLE_SIZES_BITS:
 	{ // le scope
 		RipeMd{$bits} r @noinit;
 		r.init();
@@ -83,7 +83,7 @@ fn void large_input_streamed()
 	};
 	char[] one_mb = mem::talloc_array(char, 1024*1024);
 	one_mb[..] = 0xA5;
-	$foreach $i, $bits : ripemd::PERMISSIBLE_SIZES_BITS{128}:
+	$foreach $i, $bits : ripemd::PERMISSIBLE_SIZES_BITS:
 	{
 		RipeMd{$bits} r @noinit;
 		r.init();
@@ -106,7 +106,7 @@ fn void large_input_streamed_per_byte()
 	};
 	char[] one_mb = mem::talloc_array(char, 1024*1024);
 	one_mb[..] = 0xA5;
-	$foreach $i, $bits : ripemd::PERMISSIBLE_SIZES_BITS{128}:
+	$foreach $i, $bits : ripemd::PERMISSIBLE_SIZES_BITS:
 	{
 		RipeMd{$bits} r @noinit;
 		r.init();
@@ -132,7 +132,7 @@ fn void walk_lengths_streamed()
 {
 	foreach (arr : CALCULATED_HASHES)
 	{
-		$foreach $i, $bits : ripemd::PERMISSIBLE_SIZES_BITS{128}:
+		$foreach $i, $bits : ripemd::PERMISSIBLE_SIZES_BITS:
 		{
 			RipeMd{$bits} r @noinit;
 			r.init();

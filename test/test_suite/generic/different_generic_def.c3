@@ -6,14 +6,14 @@ fn int main()
   return 0;
 }
 
-module test2{Type};
+module test2 <Type>;
 
 struct Foo
 {
    Type f;
 }
 
-module test2{Type, FOO};
+module test2 <Type, FOO>;
 
 struct Foo1
 {

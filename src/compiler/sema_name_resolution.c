@@ -785,6 +785,22 @@ INLINE Module *sema_find_module_for_path(SemaContext *context, Path *path)
 	return NULL;
 }
 
+static inline bool sema_has_matching_generic_params(Decl *generic_instance, Decl *generic)
+{
+	ASSERT(generic_instance->instance_decl.id != generic->generic_decl.id);
+	GenericInstanceDecl *gen_instance_decl = &generic_instance->instance_decl;
+	GenericDecl *gen_decl = &generic->generic_decl;
+	if (vec_size(gen_instance_decl->params) != vec_size(gen_decl->parameters)) return false;
+	FOREACH_IDX(i, Decl *, param, gen_instance_decl->params)
+	{
+		const char *param_name = gen_decl->parameters[i];
+		const char *param_name_other = param->name;
+		bool is_constant_a = str_is_valid_constant(param_name);
+		bool is_constant_b = str_is_valid_constant(param_name_other);
+		if (is_constant_a != is_constant_b) return false;
+	}
+	return true;
+}
 INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_resolve)
 {
 	name_resolve->ambiguous_other_decl = NULL;
@@ -853,9 +869,22 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		{
 			if (context->generic_infer->instance_decl.id != generic->generic_decl.id)
 			{
-				if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
-				RETURN_SEMA_ERROR_AT(name_resolve->span, "Found '%s' in the module '%s', but it doesn't match the inferred generic '%s'.", found->name, found->unit->module->name->module,
-					context->generic_infer->unit->module->name->module);
+				if (!sema_has_matching_generic_params(context->generic_infer, generic))
+				{
+					if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
+					scratch_buffer_clear();
+					FOREACH (const char *, name, generic->generic_decl.parameters)
+					{
+						scratch_buffer_printf("%s, ", name);
+					}
+					scratch_buffer_delete(2);
+					RETURN_SEMA_ERROR_AT(name_resolve->span, "Found '%s' in the module '%s', but it lacks parameters. Inferring parameter values does not work, since the inferred parameter list '%s' doesn't match parameter list '%s' which %s expects.", found->name, found->unit->module->name->module, context->generic_infer->instance_decl.name_suffix, scratch_buffer_to_string(), found->name);
+				}
+				Decl *decl = sema_generate_parameterized_identifier(context, generic, found, NULL, context->generic_infer->instance_decl.params,
+					context->generic_infer->instance_decl.name_suffix, context->generic_infer->instance_decl.cname_suffix, name_resolve->span, name_resolve->span);
+				if (!decl_ok(decl)) return false;
+				ASSERT(decl);
+				return name_resolve->found = decl, true;
 			}
 			Decl *candidate = sema_find_generic_instance(context, found->unit->module, generic, context->generic_infer, found->name);
 			if (candidate) return name_resolve->found = candidate, true;
@@ -1157,6 +1186,21 @@ Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol
 	if (!sema_resolve_symbol_common(context, &resolve)) return NULL;
 	Decl *found = resolve.found;
 	ASSERT(found);
+	if (!decl_ok(found)) return NULL;
+	return resolve.found;
+}
+
+Decl *sema_resolve_maybe_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span)
+{
+	NameResolve resolve = {
+		.path = path,
+		.span = span,
+		.symbol = symbol,
+		.is_parameterized = true,
+		.suppress_error = true
+	};
+	if (!sema_resolve_symbol_common(context, &resolve)) return NULL;
+	Decl *found = resolve.found;
 	if (!decl_ok(found)) return NULL;
 	return resolve.found;
 }

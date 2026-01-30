@@ -1015,12 +1015,6 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 		return parse_ct_type_assign_stmt(c);
 	}
 	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_ast);
-	// We might be parsing "int!"
-	// If so we need to unwrap this.
-	if (expr->expr_kind == EXPR_OPTIONAL && expr->inner_expr->expr_kind == EXPR_TYPEINFO)
-	{
-		UNREACHABLE
-	}
 	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
 		ASSIGN_AST_OR_RET(Ast *ast, parse_decl_stmt_after_type(c, expr->type_expr), poisoned_ast);

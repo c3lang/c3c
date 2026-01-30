@@ -163,11 +163,38 @@ FOUND_ALIAS:
 	DEBUG_LOG("Pass finished processing %d import(s) with %d error(s).", total_import_count, compiler.context.errors_found);
 }
 
+static bool sema_check_if_implicit_generic(SemaContext *context, Decl *decl)
+{
+	if (!decl->func_decl.type_parent) return false;
+	TypeInfo *typedecl = type_infoptr(decl->func_decl.type_parent);
+	Decl *d = NULL;
+	if (typedecl->resolve_status == RESOLVE_DONE)
+	{
+		CanonicalType *type = typedecl->type->canonical;
+		if (!type_is_user_defined(type)) return false;
+		d = type->decl;
+	}
+	else if (typedecl->kind == TYPE_INFO_IDENTIFIER && typedecl->subtype == TYPE_COMPRESSED_NONE)
+	{
+		d = sema_resolve_maybe_parameterized_symbol(context, typedecl->unresolved.name, typedecl->unresolved.path, typedecl->span);
+	}
+	return d && d->is_template;
+}
+
 void unit_register_optional_global_decl(CompilationUnit *unit, Decl *decl)
 {
 	SemaContext context;
 	sema_context_init(&context, unit);
 	if (decl->is_templated) context.generic_instance = declptr(decl->instance_id);
+	if (!decl->is_templated && (decl->decl_kind == DECL_MACRO || decl->decl_kind == DECL_FUNC))
+	{
+		if (sema_check_if_implicit_generic(&context, decl))
+		{
+			unit_register_global_decl(unit, decl);
+			sema_context_destroy(&context);
+			return;
+		}
+	}
 	if (sema_decl_if_cond(&context, decl))
 	{
 		unit_register_global_decl(unit, decl);

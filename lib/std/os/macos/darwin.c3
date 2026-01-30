@@ -87,7 +87,7 @@ fn String? executable_path()
 	{
 		char[4096] buf;
 		uint temp_len = buf.len;
-    	if (darwin_NSGetExecutablePath(&buf, &temp_len) < 0) return NOT_FOUND?;
+    	if (darwin_NSGetExecutablePath(&buf, &temp_len) < 0) return NOT_FOUND~;
     	len = (int)((ZString)&buf).len();
     	path[:len] = buf[:len];
     }
@@ -97,8 +97,8 @@ fn String? executable_path()
 fn uptr? load_address() @local
 {
 	Darwin_segment_command_64* cmd = darwin::getsegbyname("__TEXT");
-	if (!cmd) return backtrace::SEGMENT_NOT_FOUND?;
-	String path = env::executable_path() ?? backtrace::EXECUTABLE_PATH_NOT_FOUND?!;
+	if (!cmd) return backtrace::SEGMENT_NOT_FOUND~;
+	String path = env::executable_path() ?? backtrace::EXECUTABLE_PATH_NOT_FOUND~!;
 	uint dyld_count = darwin::_dyld_image_count();
 	for (uint i = 0; i < dyld_count; i++)
 	{
@@ -107,7 +107,7 @@ fn uptr? load_address() @local
 		if (image_name.str_view() != path) continue;
 		return cmd.vmaddr + darwin::_dyld_get_image_vmaddr_slide(i);
 	}
-	return backtrace::IMAGE_NOT_FOUND?;
+	return backtrace::IMAGE_NOT_FOUND~;
 }
 
 fn Backtrace? backtrace_load_element(Allocator allocator, String execpath, void* buffer, void* load_address) @local
@@ -120,7 +120,7 @@ fn Backtrace? backtrace_load_element(Allocator allocator, String execpath, void*
 				string::bformat(&&(char[64]){}, "%p", load_address),
 				string::bformat(&&(char[64]){}, "%p", buffer - 1),
 		        "-fullPath" })!;
-		@stack_mem(512; Allocator mem)
+		@stack_mem(2048; Allocator mem)
         {
 			String[] parts = s.split(mem, " ", 5);
 			if (parts.len == 4)

@@ -5,7 +5,7 @@ fn void test()
 	fault a;
 	int? z = fn int?(fault* a) {
 		const ABC = 4;
-		int? x = NOT_FOUND?;
+		int? x = NOT_FOUND~;
 		defer (catch err) *a = err;
 		return x;
 	}(&a);

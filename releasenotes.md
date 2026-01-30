@@ -5,16 +5,26 @@
 
 ### Changes / improvements
 - Add `--custom-libc` option for custom libc implementations.
-- Remove use of LLVMGetGlobalContext for single module compilation.
-- Fixed bug where constants would get modified when slicing them. #2660
 - Support for NetBSD.
 - Testing for the presence of methods at the top level is prohibited previous to method registration.
-- `$$MASK_TO_INT` and `$$INT_TO_MASK` to create bool masks from integers and back.
+- `$$mask_to_int` and `$$int_to_mask` to create bool masks from integers and back.
 - Better error messages when slicing a pointer to a slice or vector. #2681
-- Generics using `@generic` rather than module based.
+- Generics using ad-hoc `<...>` rather than module based.
 - Reduced memory usage for backtraces on Linux.
+- On win32 utf-8 console output is now enabled by default in compiled programs
+- Add `$$VERSION` and `$$PRERELEASE` compile time constants.
+- Require () around assignment in conditionals. #2716
+- $$unaligned_load and $$unaligned_store now also takes a "is_volatile" parameter.
+- Module-based generics using {} is deprecated.
+- Create optional with `~` instead of `?`. `return io::EOF?;` becomes `return io::EOF~`.
+- Deprecated use of `?` to create optional.
+- Make `foo.$abc` implicitly mean `foo.eval("$abc")`.
+- Deprecating multi-level array length inference. `int[*][*]` is deprecated and will be removed 0.8.0.
+- Combining argument-less initialization with argument init for bitstructs is now allowed e.g. `{ .b, .c = 123 }`.
 
 ### Fixes
+- Remove use of LLVMGetGlobalContext for single module compilation.
+- Fixed bug where constants would get modified when slicing them. #2660
 - Regression with npot vector in struct triggering an assert #2219.
 - Casting bitstruct to wider base type should be single step #2616.
 - Optional does not play well with bit ops #2618.
@@ -32,7 +42,7 @@
 - Fix error message when a method has the wrong type for the first argument.
 - Unit tests allocating too much `tmem` without `@pool` would cause errors in unrelated tests. #2654
 - Incorrect rounding for decimals in formatter in some cases. #2657
-- Incorrectly using LLVMStructType when emitting dynamic functions on MachO #2666  
+- Incorrectly using LLVMStructType when emitting dynamic functions on MachO #2666
 - FixedThreadPool join did not work correctly.
 - Fix bug when creating bool vectors in certain cases.
 - Compiler assert when passing returning CT failure immediately rethrown #2689.
@@ -54,6 +64,92 @@
 - Incorrect alignment on typedef and local variable debug info.
 - Assert on optional-returning-function in a comma expression. #2722
 - Creating recursive debug info for functions could cause assertions.
+- bitorder::read and bitorder::write may fail because of unaligned access #2734.
+- Fix `LinkedList.to_format` to properly iterate linked list for printing.
+- Hashing a vector would not use the entire vector in some cases.
+- Fix to `temp_directory` on Windows #2762.
+- Too little memory reserved when printing backtrace on Darwin #2698.
+- In some cases, a type would not get implicitly converted to a typeid #2764.
+- Assert on defining a const fault enum with enumerator and fault of the same name. #2732
+- Passing a non-conststring to module attributes like @cname would trigger an assert rather than printing an error. #2771
+- Passing different types to arg 1 and 2 for $$matrix_transpose would trigger an assert. #2771
+- Zero init of optional compile time variable would crash the compiler. #2771
+- Using multiple declaration for generics in generic module would fail. #2771
+- Defining an extern const without a type would crash rather than print an error. #2771
+- Typedef followed by brace would trigger an assert. #2771
+- Union with too big member would trigger an assert. #2771
+- Bitstruct with unevaluated user-defined type would cause a crash. #2771
+- Using named parameters with builtins would cause a crash. #2771
+- In some cases, using missing identifiers with builtins would cause a crash. #2771
+- Using `$defined` with function call missing arguments would cause a crash. #2771
+- Adding @nostrip to a test function would crash. #2771
+- Mixing struct splat, non-named params and named params would crash rather than to print an error. #2771
+- Creating a char vector from bytes would crash. #2771
+- Using $$wstr16 with an illegal argument would crash instead of printing an error. #2771
+- Empty struct after `@if` processing was not detected, causing a crash instead of an error. #2771
+- Comparing an uint and int[<4>] was incorrectly assumed to be uint compared to int, causing a crash instead of an error. #2771
+- When an `int[*][6]` was given too few values, the compiler would assert instead of giving an error. #2771
+- Inferring length from a slice was accidentally not an error.
+- Eager evaluation of macro arguments would break inferred arrays on some platforms. #2771.
+- Vectors not converted to arrays when passed as raw vaargs. #2776
+- Second value in switch range not checked properly, causing an error on non-const values. #2777
+- Broken cast from fault to array pointer #2778.
+- $typeof untyped list crashes when trying to create typeid from it. #2779
+- Recursive constant definition not properly detected, leading to assert #2780
+- Failed to reject void compile time variables, leading to crash. #2781
+- Inferring the size of a slice with an inner inferred array using {} isn't detected as error #2783
+- Bug in sysv abi when passing union in with floats #2784
+- When a global const has invalid attributes, handling is incorrect, leading to a crash #2785.
+- `int? ?` was not correctly handled. #2786
+- Casting const bytes to vector with different element size was broken #2787
+- Unable to access fields of a const inline enum with an aggregate underlying type. #2802
+- Using an optional type as generic parameter was not properly caught #2799
+- Instantiating an alias of a user-defined type was not properly caught #2798
+- Too deeply nested scopes was a fatal crash and not a regular semantic error. #2796
+- Recursive definition of tag not detected with nested tag/tagof #2790
+- Attrdef eval environment lacked rtype, causing error on invalid args #2797
+- $typeof(<type>) returns typeinfo, causing errors #2795.
+- Empty ichar slice + byte concatenation hit an assert. #2789
+- Remove dependency on test tmp library for stdlib compiler tests. #2800
+- Comparing a flexible array member to another type would hit an assert. #2830
+- Underlying slice type not checked correctly in $defined #2829
+- Checking for exhaustive cases is done even in if-chain switch if all is enum #2828
+- Constant shifting incorrectly doesn't flatten the underlying vector base #2825
+- String not set as attributes resolved breaking has_tagof #2824
+- Self referencing forward resolved const enum fails to be properly detected #2823
+- Incorrectly try compile time int check on vector #2815
+- Generating typeid from function gives incorrect typeid #2816
+- Recursive definitions not discovered when initializer is access on other const #2817
+- Slice overrun detected late hit codegen assert #2822
+- Compile time dereference of a constant slice was too generous #2821
+- Constant deref of subscript had inserted checks #2818
+- Raw vaargs with optional return not lowered correctly #2819
+- Early exit in macro call crashes codegen #2820
+- Empty enums would return the values as zero sized arrays #2838
+- Store of zero in lowering did not properly handle optionals in some cases #2837
+- Bitstruct accidentally allowed other arrays than char arrays #2836
+- Bitstruct as substruct fails to properly work with designated initializers. #2827
+- Bug when initializing an inferred array with deep structure using designated init #2826
+- Packed .c3l files without compressions weren't unpacked correctly.
+- Lowering of optional in && was incorrect #2843
+- Resolving &X.b when X is a const incorrectly checked for runtime constness #2842
+- Alignment param on $$unaligned_* not checked for zero #2844
+- Fix alignment for uint128 to 16 with WASM targets.
+- Incorrect assert in struct alignment checking #2841
+- Packed structs sometimes not lowered as such.
+- Crash when creating `$Type*` where `$Type` is an optional type #2848
+- Crashes when using `io::EOF~!` in various unhandled places. #2848
+- Crash when trying to create a const zero untyped list #2847
+- Incorrect handling when reporting fn with optional compile time type #2862
+- Optional in initializer cause a crash #2864
+- Negating a global address with offset was a counted as a global runtime constant #2865
+- Converting static "make_slice" to array failed to be handled #2866
+- Narrowing a not expression was incorrectly handled #2867
+- Vector shift by optional scalar failed #2868
+- Initializer did not correctly handle second rethrow #2870
+- Crash encountering panic in if-else style switch #2871
+- Crash in slice expression when it contains a rethrow #2872
+- Multiple issues when rethrowing inside of expressions #2873
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
@@ -62,7 +158,7 @@
 - Return of Mutex `unlock()` and `lock()` is now "@maydiscard" and should be ignored. They will return void in 0.8.0.
 - Return of ConditionVariable `signal()` `broadcast()` and `wait()` are now "@maydiscard". They will return void in 0.8.0.
 - Return of Thread `detatch()` is now "@maydiscard". It will return void in 0.8.0.
-- Buffered/UnbufferedChannel, and both ThreadPools have `@maydiscard` on a set of functions. They will retunr void in 0.8.0.
+- Buffered/UnbufferedChannel, and both ThreadPools have `@maydiscard` on a set of functions. They will return void in 0.8.0.
 - Pthread bindings correctly return Errno instead of CInt.
 - Return of Thread `join()` is now "@maydiscard".
 - Add `poly1305` one-time Message Authentication Code and associated tests. #2639
@@ -76,6 +172,14 @@
 - Deprecated `DString.append_string` for DStrings, use `DString.append_dstring` instead.
 - Added `DString.append_bytes`.
 - Add `streebog` (aka "GOST-12") hashing with 256-bit and 512-bit outputs. #2659
+- Add unit tests for HMAC 256 based on RFC 4231. #2743
+- Add extra `AsciiCharset` constants and combine its related compile-time/runtime macros. #2688
+- Use a `Printable` struct for ansi RGB formatting instead of explicit allocation and deprecate the old method.
+- HashSet.len() now returns usz instead of int. #2740
+- Add `mem::store` and `mem::load` which may combine both aligned and volatile operations.
+- Deprecated `EMPTY_MACRO_SLOT` and its related uses, in favor of `optional_param = ...` named macro arguments. #2805
+- Add tracking of peak memory usage in the tracking allocator.
+- Added `realloc_array`, `realloc_array_aligned`, and `realloc_array_try` to `allocator::`. #2760
 
 ## 0.7.8 Change list
 

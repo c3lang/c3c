@@ -735,6 +735,7 @@ void gencontext_print_llvm_ir(GenContext *context)
 
 INLINE LLVMValueRef llvm_emit_alloca_internal(GenContext *c, LLVMTypeRef type, unsigned alignment, const char *name)
 {
+	ASSERT(c->current_block);
 	ASSERT(LLVMGetTypeKind(type) != LLVMVoidTypeKind);
 	ASSERT(!llvm_is_global_eval(c));
 	ASSERT(alignment > 0);

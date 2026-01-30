@@ -5,7 +5,7 @@ module abc_faults;
 faultdef UNTERMINATED_TAG, EMPTY_TAG, MISSING_TAG, UNSUPPORTED_TAG;
 
 <* @require Type.kindof == STRUCT *>
-module abc{Type};
+module abc <Type>;
 import std::io, abc_faults, std::collections::list;
 
 alias TextTagList = List{TextTag};
@@ -52,9 +52,9 @@ fn void? TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 		tmpl = tmpl[start + tag_start.len..];
 
 		usz? end = tmpl.index_of(tag_end);
-		if (catch end) return abc_faults::UNTERMINATED_TAG?;
+		if (catch end) return abc_faults::UNTERMINATED_TAG~;
 		String name = tmpl[:end].trim();
-		if (name == "") return abc_faults::EMPTY_TAG?;
+		if (name == "") return abc_faults::EMPTY_TAG~;
 		// Check that the tag exists in the data struct.
 
 		TextTag tag @noinit;
@@ -79,10 +79,10 @@ fn void? TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 								break;
 							$endif
 					$endswitch
-					//return UNSUPPORTED_TAG?;
+					//return UNSUPPORTED_TAG~;
 				}
 			$endforeach
-			return abc_faults::MISSING_TAG?;
+			return abc_faults::MISSING_TAG~;
 		};
 		tmpl = tmpl[end + tag_end.len..];
 

@@ -21,7 +21,7 @@ fn void? do_thing()
 macro may_fault($incoming)
 {
     $switch $incoming:
-        $case 1: return OH_NO?;
+        $case 1: return OH_NO~;
         $default: return 0;
     $endswitch
 }

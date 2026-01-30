@@ -65,7 +65,18 @@ static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 	{
 		size_t to_commit = blocks_to_allocate * COMMIT_PAGE_SIZE;
 		void *res = VirtualAlloc(((char*)vmem->ptr) + vmem->committed, to_commit, MEM_COMMIT, PAGE_READWRITE);
-		if (!res) FATAL_ERROR("Failed to allocate more memory.");
+		if (!res)
+		{
+			if (to_allocate < 0x1000)
+			{
+				error_exit("⚠️Fatal Error! The compiler ran out of memory: more than %u MB was allocated from a single memory arena, "
+					"exceeding the current maximum limit. Perhaps you called some recursive macro?",
+					(unsigned)(allocated_after / (1024 * 1024)));
+			}
+			error_exit("⚠️Fatal Error! The compiler ran out of memory: more than %u MB was allocated from a single memory arena, "
+				"exceeding the current maximum limit. The last allocation was for %llu bytes.",
+				(unsigned)(allocated_after / (1024 * 1024)), (unsigned long long)to_allocate);
+		}
 		vmem->committed += to_commit;
 	}
 #endif
@@ -73,9 +84,15 @@ static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 	vmem->allocated = allocated_after;
 	if (vmem->size < allocated_after)
 	{
+		if (to_allocate < 0x1000)
+		{
+			error_exit("⚠️Fatal Error! The compiler ran out of memory: more than %u MB was allocated from a single memory arena, "
+				"exceeding the current maximum limit. Perhaps you called some recursive macro?",
+				(unsigned)(vmem->size / (1024 * 1024)));
+		}
 		error_exit("⚠️Fatal Error! The compiler ran out of memory: more than %u MB was allocated from a single memory arena, "
-			"exceeding the current maximum limit. Perhaps you called some recursive macro?",
-			(unsigned)(vmem->size / (1024 * 1024)));
+			"exceeding the current maximum limit. The last allocation was for %llu bytes.",
+			(unsigned)(vmem->size / (1024 * 1024)), (unsigned long long)to_allocate);
 	}
 	return ptr;
 }

@@ -1,16 +1,13 @@
 // Copyright (c) 2025 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-<*
- @require @in(DIGEST_BITS, ...PERMISSIBLE_SIZES_BITS) : "Invalid DIGEST_BITS; must be one of {128, 160, 256, 320}."
-*>
-module std::hash::ripemd { DIGEST_BITS };
 
+module std::hash::ripemd;
+const usz[4] PERMISSIBLE_SIZES_BITS = { 128, 160, 256, 320 };
 
 <* Unchanging block size. *>
 const BLOCK_SIZE = 64;
 
-const usz[4] PERMISSIBLE_SIZES_BITS = { 128, 160, 256, 320 };
 
 <* RIPE-MD initial values. *>
 const uint[10] H = {
@@ -23,6 +20,11 @@ const uint[9] K = {
 	0x00000000, 0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xa953fd4e,
 	0x50a28be6, 0x5c4dd124, 0x6d703ef3, 0x7a6d76e9
 };
+
+<*
+ @require @in(DIGEST_BITS, ...PERMISSIBLE_SIZES_BITS) : "Invalid DIGEST_BITS; must be one of {128, 160, 256, 320}."
+*>
+module std::hash::ripemd <DIGEST_BITS>;
 
 <* Ultimate digest's size in bytes. *>
 const DIGEST_BYTES = DIGEST_BITS / 8;

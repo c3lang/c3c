@@ -34,11 +34,11 @@ faultdef SOME_FAULT, ABC_FAULT;
 fn void test_try_catch()
 {
 	int val;
-	int? x = ABC_FAULT?;
+	int? x = ABC_FAULT~;
 	assert(@try_catch(val, x, ABC_FAULT)!!);
 	assert(val == 0);
 	assert(!@catch(@try_catch(val, x, ABC_FAULT)));
-	x = SOME_FAULT?;
+	x = SOME_FAULT~;
 	assert(@catch(@try_catch(val, x, ABC_FAULT)) == SOME_FAULT);
 	x = 3;
 	assert(!@try_catch(val, x, ABC_FAULT)!!);
@@ -172,6 +172,63 @@ fn void test_hash_repeat()
 	assert((bool[<100>]){}.hash() == (bool[<100>]){}.hash());
 	assert((bool[100]){}.hash() == (bool[100]){}.hash());
 	assert(int.typeid.hash() == int.typeid.hash());
+}
+
+macro test_hash_vector_macro(...)
+{
+	int[] $lens = {1, 2, 4, 7, 8, 13, 16, 23, 32, 43, 64, 103};
+	$for var $i = 0; $i < $vacount ; $i++:
+	{
+		$foreach $vec_len : $lens:
+		{
+			$if $vec_len * $vatype[$i].sizeof * 8  <= $$MAX_VECTOR_SIZE:
+			{
+				$vatype[$i][<$vec_len>] vec1, vec2;
+				for (int val = 0; val < $vec_len; val++)
+				{
+					$vatype[$i] tval = ($vatype[$i])val;
+					vec1[val] = (tval | (tval << (($vatype[$i].sizeof - 1) * 8)));
+				}
+				vec2 = vec1;
+				assert(vec1.hash() == vec2.hash(), "hashes don't match for %s and %s", vec1, vec2);
+				for (int val = 0; val < $vec_len; val++)
+				{
+					vec2[val] ^= (($vatype[$i])0b0010_0000 << (($vatype[$i].sizeof - 1) * 8));
+					assert(vec1.hash() != vec2.hash(), "hashes match for %s and %s", vec1, vec2);
+					vec2[val] ^= (($vatype[$i])0b0010_0000 << (($vatype[$i].sizeof - 1) * 8));
+				}
+			}
+			$endif
+		}
+		$endforeach
+	}
+	$endfor
+}
+macro test_hash_vector_macro_bool()
+{
+	int[] $lens = {1, 2, 4, 7, 8, 13, 16, 23, 32, 43, 64, 103};
+	$foreach $vec_len : $lens:
+	{
+		bool[<$vec_len>] vec1, vec2;
+		for (int val = 0; val < $vec_len; val++)
+		{
+			vec1[val] = ((val & 0x3) == 0);
+		}
+		vec2 = vec1;
+		assert(vec1.hash() == vec2.hash(), "hashes don't match for %s and %s", vec1, vec2);
+		for (int val = 0; val < $vec_len; val++)
+		{
+			vec2[val] = !vec2[val];
+			assert(vec1.hash() != vec2.hash(), "hashes match for %s and %s", vec1, vec2);
+			vec2[val] = !vec2[val];
+		}
+	}
+	$endforeach
+}
+fn void test_hash_vector()
+{
+	test_hash_vector_macro(char, ichar, short, ushort, int, uint, long, ulong, int128, uint128);
+	test_hash_vector_macro_bool();
 }
 
 fn void test_builtin_string_hashing() => @pool()

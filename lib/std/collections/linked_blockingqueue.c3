@@ -1,4 +1,4 @@
-module std::collections::blockingqueue { Value };
+module std::collections::blockingqueue <Value>;
 import std::thread, std::time;
 
 
@@ -178,7 +178,7 @@ fn Value? LinkedBlockingQueue.pop(&self)
 {
 	self.lock.@in_lock()
 	{
-		if (self.count == 0) return NO_MORE_ELEMENT?;
+		if (self.count == 0) return NO_MORE_ELEMENT~;
 
 		QueueEntry* entry = self.unlink_head();
 		Value value = entry.value;
@@ -214,7 +214,7 @@ fn Value? LinkedBlockingQueue.poll_timeout(&self, Duration timeout)
         		if (end <= time::now()) break;
         		if (catch self.not_empty.wait_until(&self.lock, end)) break;
 			}
-			if (!self.count) return NO_MORE_ELEMENT?;
+			if (!self.count) return NO_MORE_ELEMENT~;
 		}
 
 		QueueEntry* entry = self.unlink_head();
@@ -266,7 +266,7 @@ fn void? LinkedBlockingQueue.try_push(&self, Value value)
 {
 	self.lock.@in_lock()
 	{
-		if (self.capacity > 0 && self.count >= self.capacity) return CAPACITY_EXCEEDED?;
+		if (self.capacity > 0 && self.count >= self.capacity) return CAPACITY_EXCEEDED~;
 
 		QueueEntry* entry = allocator::new(self.allocator, QueueEntry, {
 			.value = value,
@@ -299,7 +299,7 @@ fn void? LinkedBlockingQueue.push_timeout(&self, Value value, Duration timeout)
         		if (end <= time::now()) break;
 				if (catch self.not_empty.wait_until(&self.lock, end)) break;
 			}
-			if (self.capacity > 0 && self.count >= self.capacity) return CAPACITY_EXCEEDED?;
+			if (self.capacity > 0 && self.count >= self.capacity) return CAPACITY_EXCEEDED~;
 		}
 
 		QueueEntry* entry = allocator::new(self.allocator, QueueEntry, {
@@ -314,13 +314,13 @@ fn void? LinkedBlockingQueue.push_timeout(&self, Value value, Duration timeout)
 
 <*
  @require self.is_initialized() : "Queue must be initialized"
- @return "The head value or NO_MORE_ELEMENT? if queue is empty"
+ @return "The head value or NO_MORE_ELEMENT~ if queue is empty"
 *>
 fn Value? LinkedBlockingQueue.peek(&self)
 {
 	self.lock.@in_lock()
 	{
-		return (self.head != null) ? self.head.value : NO_MORE_ELEMENT?;
+		return (self.head != null) ? self.head.value : NO_MORE_ELEMENT~;
 	};
 }
 

@@ -13,7 +13,7 @@ import std::io;
 fn int main(String[] args)
 {
 
-	int? foo = faults::EXAMPLE?;
+	int? foo = faults::EXAMPLE~;
 
 	if (catch foo)
 	{

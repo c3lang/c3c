@@ -1,7 +1,7 @@
 <*
  @require $defined((Value){}.hash()) : `No .hash function found on the value`
 *>
-module std::collections::set {Value};
+module std::collections::set <Value>;
 import std::math;
 import std::io @norecurse;
 
@@ -34,7 +34,7 @@ struct LinkedHashSet (Printable)
 	LinkedEntry* tail;
 }
 
-fn int LinkedHashSet.len(&self) @operator(len) => (int) self.count;
+fn usz LinkedHashSet.len(&self) @operator(len) => self.count;
 
 <*
  @param [&inout] allocator : "The allocator to use"
@@ -266,7 +266,7 @@ fn bool LinkedHashSet.contains(&set, Value value)
 *>
 fn void? LinkedHashSet.remove(&set, Value value) @maydiscard
 {
-	if (!set.remove_entry_for_value(value)) return NOT_FOUND?;
+	if (!set.remove_entry_for_value(value)) return NOT_FOUND~;
 }
 
 fn usz LinkedHashSet.remove_all(&set, Value[] values)
@@ -713,7 +713,7 @@ fn bool LinkedHashSetIterator.next(&self)
 
 fn Value*? LinkedHashSetIterator.get(&self)
 {
-	return self.current ? &self.current.value : NOT_FOUND?;
+	return self.current ? &self.current.value : NOT_FOUND~;
 }
 
 fn bool LinkedHashSetIterator.has_next(&self)

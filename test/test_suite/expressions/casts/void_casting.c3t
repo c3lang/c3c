@@ -8,7 +8,7 @@ faultdef AAA;
 
 macro int? bar()
 {
-	return AAA?;
+	return AAA~;
 }
 
 fn int? baz()
