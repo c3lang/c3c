@@ -157,7 +157,7 @@ fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream, usz limit
 		$endif
 		len++;
 	}
-	if (limit > 0 && len > limit) return LIMIT_EXCEEDED?;
+	if (limit > 0 && len > limit) return LIMIT_EXCEEDED~;
 	return len;
 }
 <*
