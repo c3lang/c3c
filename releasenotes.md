@@ -3,6 +3,7 @@
 ## 0.7.10 Change list
 
 ### Changes / improvements
+- Improve support for Android with Termux.
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831

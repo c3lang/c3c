@@ -79,6 +79,7 @@ bool LLVMHasUseList(LLVMValueRef value);
 void LLVMBuilderSetFastMathFlags(LLVMBuilderRef Builder, FastMathOption option);
 void LLVMSetDSOLocal(LLVMValueRef Global, bool value);
 void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_array);
+void LLVMSetTargetMachineEmulatedTLS(LLVMTargetMachineRef ref, bool emulated_tls);
 void LLVMSetNoSanitizeAddress(LLVMValueRef Global);
 
 #ifdef __cplusplus

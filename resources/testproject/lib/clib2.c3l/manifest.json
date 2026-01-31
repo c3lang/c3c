@@ -12,6 +12,8 @@
     "linux-x64": {
       "cflags-override": "-fPIE"
     },
-    "windows-x64": {}
+    "windows-x64": {},
+    "android-aarch64": {},
+    "android-x86_64": {},
   }
 }

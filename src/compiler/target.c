@@ -1982,6 +1982,8 @@ void *llvm_target_machine_create(void)
 										   (LLVMCodeGenOptLevel)compiler.platform.llvm_opt_level,
 										   reloc_mode, model);
 	LLVMSetTargetMachineUseInitArray(result, true);
+	if (compiler.platform.emulated_tls) LLVMSetTargetMachineEmulatedTLS(result, true);
+
 	if (!result) error_exit("Failed to create target machine.");
 	LLVMSetTargetMachineAsmVerbosity(result, 1);
 	return result;
@@ -2213,6 +2215,7 @@ void target_setup(BuildTarget *target)
 	// ARM Cygwin
 	// NVPTX
 	compiler.platform.tls_supported = os_target_use_thread_local(compiler.platform.os);
+	compiler.platform.emulated_tls = compiler.platform.os == OS_TYPE_ANDROID;
 	compiler.platform.big_endian = arch_big_endian(compiler.platform.arch);
 	compiler.platform.width_pointer = arch_pointer_bit_width(compiler.platform.os, compiler.platform.arch);
 	compiler.platform.width_register = arch_int_register_bit_width(compiler.platform.os, compiler.platform.arch);
