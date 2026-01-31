@@ -9,14 +9,14 @@ in [0, array.len) where x would be inserted or cmp(i) is true and cmp(j) is true
  @require @is_valid_cmp_fn(#cmp: ...cmp, #list: list, #context: ...context) : "Expected a comparison function which compares values"
  @require @is_valid_context(...cmp, ...context) : "Expected a valid context"
 *>
-macro usz binarysearch(list, x, cmp = ..., context = ...) @builtin
+macro usz binarysearch(list, element, cmp = ..., context = ...) @builtin
 {
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
-	return _binarysearch{$typeof(list), $typeof(x), $typeof(used_cmp), $typeof(used_ctx)}(list, x, used_cmp, used_ctx);
+	return _binarysearch{$typeof(list), $typeof(element), $typeof(used_cmp), $typeof(used_ctx)}(list, element, used_cmp, used_ctx);
 }
 
-fn usz _binarysearch(ListType list, XType x, CmpFnType cmp, ContextType context) <ListType, XType, CmpFnType, ContextType> @noinline @local
+fn usz _binarysearch(ListType list, ElementType element, CmpFnType cmp, ContextType context) <ListType, ElementType, CmpFnType, ContextType> @noinline @local
 {
 	usz i;
 	var $no_cmp = $typeof(cmp) == TypeNotSet;
@@ -30,23 +30,23 @@ fn usz _binarysearch(ListType list, XType x, CmpFnType cmp, ContextType context)
 			$if $no_cmp:
 				switch
 				{
-					case greater(list[half], x): j = half;
-					case less(list[half], x): i = half + 1;
+					case greater(list[half], element): j = half;
+					case less(list[half], element): i = half + 1;
 					default: return half;
 				}
 			$else
 
 				$switch:
 					$case $defined(cmp(list[0], list[0], context)):
-						int res = cmp(list[half], x, context);
+						int res = cmp(list[half], element, context);
 					$case $defined(cmp(list[0], list[0])):
 						assert(!$has_context);
-						int res = cmp(list[half], x);
+						int res = cmp(list[half], element);
 					$case $defined(cmp(&list[0], &list[0], context)):
-						int res = cmp(&list[half], &x, context);
+						int res = cmp(&list[half], &element, context);
 					$case $defined(cmp(&list[0], &list[0])):
 						assert(!$has_context);
-						int res = cmp(&list[half], &x);
+						int res = cmp(&list[half], &element);
 					$default:
 						assert(false, "Invalid comparison function");
 				$endswitch
@@ -66,22 +66,22 @@ fn usz _binarysearch(ListType list, XType x, CmpFnType cmp, ContextType context)
 			$if $no_cmp:
 				switch
 				{
-					case greater((*list)[half], x): j = half;
-					case less((*list)[half], x): i = half + 1;
+					case greater((*list)[half], element): j = half;
+					case less((*list)[half], element): i = half + 1;
 					default: return half;
 				}
 			$else
 				$switch:
 					$case $defined(cmp((*list)[0], (*list)[0], context)):
-						int res = cmp(list[half], x, context);
+						int res = cmp(list[half], element, context);
 					$case $defined(cmp((*list)[0], (*list)[0])):
 						assert(!$has_context);
-						int res = cmp((*list)[half], x);
+						int res = cmp((*list)[half], element);
 					$case $defined(cmp(&(*list)[0], &(*list)[0], context)):
-						int res = cmp(&(*list)[half], &x, context);
+						int res = cmp(&(*list)[half], &element, context);
 					$case $defined(cmp(&(*list)[0], &(*list)[0])):
 						assert(!$has_context);
-						int res = cmp(&(*list)[half], &x);
+						int res = cmp(&(*list)[half], &element);
 					$default:
 						assert(false, "Invalid comparison function");
 				$endswitch

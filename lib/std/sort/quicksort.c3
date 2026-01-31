@@ -1,5 +1,4 @@
 module std::sort;
-import std::sort::qs;
 
 <*
  Sort list using the quick sort algorithm.
@@ -14,9 +13,9 @@ macro void quicksort(list, cmp = ..., context = ...) @builtin
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if $kindof(list) == SLICE:
-		qs::qsort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)list.len - 1, used_cmp, used_ctx);
+		qsort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)list.len - 1, used_cmp, used_ctx);
 	$else
-		qs::qsort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)lengthof(*list) - 1, used_cmp, used_ctx);
+		qsort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)lengthof(*list) - 1, used_cmp, used_ctx);
 	$endif
 }
 
@@ -35,16 +34,14 @@ macro quickselect(list, isz k, cmp = ..., context = ...) @builtin
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if $kindof(list) == SLICE:
-		return qs::qselect{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)list.len - 1, k, used_cmp, used_ctx);
+		return qselect{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)list.len - 1, k, used_cmp, used_ctx);
 	$else
-		return qs::qselect{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)lengthof(*list) - 1, k, used_cmp, used_ctx);
+		return qselect{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)lengthof(*list) - 1, k, used_cmp, used_ctx);
 	$endif
 }
 
 
-module std::sort::qs <Type, CmpFn, Context>;
-
-import std::sort @public;
+module std::sort <Type, CmpFn, Context> @private;
 
 alias ElementType = $typeof(((Type){})[0]);
 const bool IS_SLICE = Type.kindof == SLICE;

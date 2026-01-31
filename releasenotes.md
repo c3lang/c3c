@@ -9,6 +9,7 @@
 
 ### Fixes
 - Add error message if directory with output file name already exists
+- Regression where nested lambdas would be evaluated twice.
 
 ## 0.7.9 Change list
 
