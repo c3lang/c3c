@@ -460,61 +460,8 @@ jobs:
           cmake -Bbuild -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
           cmake --build build
 
-      - name: Compile and run some examples
-        run: |
-          cd resources
-          ../build/c3c compile examples/base64.c3
-          ../build/c3c compile examples/binarydigits.c3
-          ../build/c3c compile examples/brainfk.c3
-          ../build/c3c compile examples/factorial_macro.c3
-          ../build/c3c compile examples/fasta.c3
-          ../build/c3c compile examples/gameoflife.c3
-          ../build/c3c compile examples/hash.c3
-          ../build/c3c compile-only examples/levenshtein.c3
-          ../build/c3c compile examples/load_world.c3
-          ../build/c3c compile-only examples/map.c3
-          ../build/c3c compile examples/mandelbrot.c3
-          ../build/c3c compile examples/plus_minus.c3
-          ../build/c3c compile examples/nbodies.c3
-          ../build/c3c compile examples/spectralnorm.c3
-          ../build/c3c compile examples/swap.c3
-          ../build/c3c compile examples/contextfree/boolerr.c3
-          ../build/c3c compile examples/contextfree/dynscope.c3
-          ../build/c3c compile examples/contextfree/guess_number.c3
-          ../build/c3c compile examples/contextfree/multi.c3
-          ../build/c3c compile examples/contextfree/cleanup.c3
-          ../build/c3c compile-run examples/hello_world_many.c3
-          ../build/c3c compile-run examples/time.c3
-          ../build/c3c compile-run examples/fannkuch-redux.c3
-          ../build/c3c compile-run examples/contextfree/boolerr.c3
-          ../build/c3c compile-run examples/load_world.c3
-          ../build/c3c compile-run examples/process.c3
-          ../build/c3c compile-run examples/ls.c3
-          ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
-
-      - name: Compile and run staticlib-test
-        run: |
-          cd resources/examples/staticlib-test
-          ../../../build/c3c -vv static-lib add.c3
-          mv add.a libadd.a
-          cc test.c -L. -ladd
-          ./a.out
-          ../../../build/c3c compile-run test.c3 -L . -l add
-
-      - name: Compile run unit tests
-        run: |
-          cd test
-          ../build/c3c compile-test unit -D SLOW_TESTS
-
-      - name: Build testproject
-        run: |
-          cd resources/testproject
-          ../../build/c3c run -vvv --trust=full
-
-      - name: run compiler tests
-        run: |
-          cd test
-          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c test_suite/
+      - name: Run Unified Tests
+        run: ./scripts/tools/ci_tests.sh "./build/c3c" "android"
 
       - name: bundle_output
         run: |
