@@ -542,6 +542,15 @@ static void linker_setup_android(const char ***args_ref, Linker linker_type, boo
 	scratch_buffer_append(ANDROID_HOST_TAG);
 	scratch_buffer_append("/sysroot/usr/lib/");
 	scratch_buffer_append(compiler.platform.target_triple);
+	add_plain_arg(scratch_buffer_copy());
+
+	scratch_buffer_clear();
+	scratch_buffer_append("-L");
+	scratch_buffer_append(compiler.build.android.ndk_path);
+	scratch_buffer_append("/toolchains/llvm/prebuilt/");
+	scratch_buffer_append(ANDROID_HOST_TAG);
+	scratch_buffer_append("/sysroot/usr/lib/");
+	scratch_buffer_append(compiler.platform.target_triple);
 	scratch_buffer_append_char('/');
 	scratch_buffer_append_signed_int(compiler.build.android.api_version);
 	add_plain_arg(scratch_buffer_copy());
