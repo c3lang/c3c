@@ -5,6 +5,7 @@
 ### Changes / improvements
 
 ### Stdlib changes
+- Added PEM encoding/decoding. #2858
 
 ### Fixes
 - Add error message if directory with output file name already exists
