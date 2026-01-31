@@ -1,4 +1,4 @@
-module std::thread::os @if (!env::POSIX && !env::WIN32);
+module std::thread::os @if (!env::NATIVE_THREADING);
 
 typedef NativeMutex = int;
 typedef NativeTimedMutex = int;
