@@ -1051,6 +1051,11 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 		vec_add(parts, compiler.build.cc ? compiler.build.cc : default_c_compiler());
 	}
 
+	if (file_is_dir(output_file))
+	{
+		error_exit("Failed to link executable '%s', a directory with that name already exists.", output_file);
+	}
+
 	linker_setup(&parts, files, file_count, output_file, linker_type, &compiler.linking);
 	const char *output = assemble_linker_command(parts, PLATFORM_WINDOWS);
 	if (compiler.build.print_linking) puts(output);

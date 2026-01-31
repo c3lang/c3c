@@ -679,7 +679,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	}
 	if (is_unaligned && size > offset)
 	{
-		ASSERT(!decl->strukt.padding);
+		ASSERT(!decl->strukt.padding || decl->strukt.padding == size - offset);
 		decl->strukt.padding = size - offset;
 	}
 
@@ -703,7 +703,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		}
 	}
 
-	decl->is_packed = is_unaligned;
+	decl->is_packed |= is_unaligned;
 	// Strip padding if we are aligned.
 	if (!decl->is_packed && is_naturally_aligned)
 	{
@@ -1107,11 +1107,10 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 		decl->strukt.little_endian = false;
 	}
 	Type *base_type = type->type_kind == TYPE_ARRAY ? type_flatten(type->array.base) : type;
-	if (!type_is_integer(base_type))
+	if (!type_is_integer(base_type) || (type->type_kind == TYPE_ARRAY && type_size(type->array.base) > 1))
 	{
-		SEMA_ERROR(decl->strukt.container_type, "The type of the bitstruct cannot be %s but must be an integer or an array of integers.",
-		           type_quoted_error_string(decl->strukt.container_type->type));
-		return false;
+		RETURN_SEMA_ERROR(decl->strukt.container_type, "The type of the bitstruct cannot be %s but must be an integer or an array of chars.",
+				type_quoted_error_string(decl->strukt.container_type->type));
 	}
 	Decl **members = decl->strukt.members;
 	unsigned member_count = vec_size(members);
@@ -5293,14 +5292,6 @@ FOUND:;
 		vec_add(generic->generic_decl.instances, instance);
 		AnalysisStage stage = module->stage;
 		ASSERT(stage > ANALYSIS_IMPORTS);
-		// Add all the normal top level declarations
-		FOREACH(Decl *, decl, copied) unit_register_global_decl(decl->unit, decl);
-		// Add all the conditional declarations
-		FOREACH(Decl *, decl, copied_cond)
-		{
-			unit_register_optional_global_decl(decl->unit, decl);
-			if (decl->decl_kind != DECL_ERASED) vec_add(copied, decl);
-		}
 		if (compiler.context.errors_found) return poisoned_decl;
 
 		// Check contracts
@@ -5316,9 +5307,20 @@ FOUND:;
 				SourceSpan param_span = extend_span_with_token(params[0]->span, VECLAST(params)->span);
 				if (!sema_analyse_generic_module_contracts(context, module, instance, contracts, param_span, invocation_span))
 				{
-					return poisoned_decl;
+					decl_poison(instance);
+					decl_poison(alias);
+					return alias;
 				}
 			}
+		}
+
+		// Add all the normal top level declarations
+		FOREACH(Decl *, decl, copied) unit_register_global_decl(decl->unit, decl);
+		// Add all the conditional declarations
+		FOREACH(Decl *, decl, copied_cond)
+		{
+			unit_register_optional_global_decl(decl->unit, decl);
+			if (decl->decl_kind != DECL_ERASED) vec_add(copied, decl);
 		}
 
 		if (stage < ANALYSIS_METHODS_REGISTER) goto EXIT;
@@ -5372,7 +5374,29 @@ FOUND:;
 					break;
 			}
 		}
-		ASSERT(stage < ANALYSIS_INTERFACE);
+		if (stage < ANALYSIS_INTERFACE) goto EXIT;
+		if (compiler.context.errors_found) return poisoned_decl;
+		FOREACH(Decl *, decl, copied)
+		{
+			SemaContext context_gen;
+			switch (decl->decl_kind)
+			{
+				case DECL_TYPEDEF:
+				case DECL_STRUCT:
+				case DECL_UNION:
+				case DECL_ENUM:
+				case DECL_BITSTRUCT:
+					break;
+				default:
+					continue;
+			}
+			if (decl->interfaces)
+			{
+				sema_context_init(&context_gen, decl->unit);
+				sema_check_interfaces(&context_gen, decl);
+				sema_context_destroy(&context_gen);
+			}
+		}
 EXIT:;
 		if (compiler.context.errors_found) return poisoned_decl;
 	}

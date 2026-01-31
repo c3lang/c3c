@@ -1,0 +1,6 @@
+fn int main()
+{
+    $if String.has_tagof(""):
+    $endif
+    return 0;
+}

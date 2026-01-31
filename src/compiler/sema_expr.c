@@ -1187,14 +1187,19 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 	Decl *enum_constant = decl_find_enum_constant(decl, name);
 	if (!enum_constant) return false;
 
-	if (!sema_analyse_decl(context, decl)) return false;
+	if (!sema_analyse_decl(context, decl)) return expr_poison(expr), true;
 
-	ASSERT_SPAN(expr, enum_constant->resolve_status != RESOLVE_NOT_DONE);
+	if (enum_constant->resolve_status == RESOLVE_NOT_DONE)
+	{
+		SEMA_ERROR(expr, "Unable to properly resolve enum constant value, this can sometimes happen in recursive definitions.");
+		return expr_poison(expr), true;
+	}
 	expr->type = decl->type;
 	if (enum_constant->enum_constant.is_raw)
 	{
 		expr_replace(expr, copy_expr_single(enum_constant->enum_constant.value));
-		return sema_analyse_expr_rvalue(context, expr);
+		if (!sema_analyse_expr_rvalue(context, expr)) expr_poison(expr);
+		return true;
 	}
 	expr->expr_kind = EXPR_CONST;
 	expr->const_expr.const_kind = CONST_ENUM;
@@ -3726,7 +3731,7 @@ static inline bool sema_call_analyse_member_set(SemaContext *context, Expr *expr
 	}
 	Expr *access = expr_new_expr(target_kind == TYPE_BITSTRUCT ? EXPR_BITACCESS : EXPR_ACCESS_RESOLVED, expr);
 	access->access_resolved_expr = (ExprResolvedAccess) { .parent = inner, .ref = decl };
-	access->type = decl->type;
+	access->type = type_add_optional(decl->type, IS_OPTIONAL(inner));
 	access->resolve_status = RESOLVE_DONE;
 	expr->expr_kind = EXPR_BINARY;
 	expr->binary_expr = (ExprBinary) { .left =  exprid(access), .right = exprid(arg), .operator = BINARYOP_ASSIGN };
@@ -3754,7 +3759,7 @@ static inline bool sema_call_analyse_member_get(SemaContext *context, Expr *expr
 	}
 	expr->expr_kind = target_kind == TYPE_BITSTRUCT ? EXPR_BITACCESS : EXPR_ACCESS_RESOLVED;
 	expr->access_resolved_expr = (ExprResolvedAccess) { .parent = inner, .ref = decl };
-	expr->type = decl->type;
+	expr->type = type_add_optional(decl->type, IS_OPTIONAL(inner));
 	return true;
 }
 
@@ -4186,7 +4191,7 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 		}
 		default:
 DEFAULT:
-			if (!sema_analyse_expr_rvalue(context, subscripted)) return false;
+			if (!sema_analyse_expr(context, subscripted)) return false;
 			break;
 	}
 
@@ -4220,8 +4225,6 @@ DEFAULT:
 		expr->type = NULL;
 		return true;
 	}
-
-	if (!sema_cast_rvalue(context, subscripted, true)) return false;
 
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
 	if (overload)
@@ -4957,7 +4960,7 @@ static inline bool sema_expr_replace_with_enum_array(SemaContext *context, Expr 
 	initializer->initializer_list = element_values;
 	enum_array_expr->expr_kind = EXPR_COMPOUND_LITERAL;
 	enum_array_expr->expr_compound_literal.initializer = initializer;
-	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_array(kind, elements), span);
+	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_slice(kind), span);
 	enum_array_expr->resolve_status = RESOLVE_NOT_DONE;
 	return sema_analyse_expr_rvalue(context, enum_array_expr);
 }
@@ -4980,7 +4983,7 @@ static inline bool sema_expr_replace_with_const_enum_array(SemaContext *context,
 	initializer->initializer_list = element_values;
 	enum_array_expr->expr_kind = EXPR_COMPOUND_LITERAL;
 	enum_array_expr->expr_compound_literal.initializer = initializer;
-	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_array(kind, elements), span);
+	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_slice(kind), span);
 	enum_array_expr->resolve_status = RESOLVE_NOT_DONE;
 	return sema_analyse_expr_rvalue(context, enum_array_expr);
 }
@@ -5077,7 +5080,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 					RETURN_SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, name);
 					return false;
 				}
-				return true;
+				return expr_ok(expr);
 			}
 			break;
 		case DECL_UNION:
@@ -5103,7 +5106,8 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		{
 			if (decl->unit->module->stage < ANALYSIS_POST_REGISTER)
 			{
-				RETURN_SEMA_ERROR(expr, "There might be a method '%s' for %s, but methods for the type have not yet been completely registered, so this yields an error.", name, type_quoted_error_string(parent_type));
+				bool err = SEMA_WARN_STRICT(expr, "There might be a method '%s' for %s, but methods for the type have not yet been completely registered, so a warning is issued.", name, type_quoted_error_string(parent_type));
+				if (err) return false;
 			}
 			goto MISSING_REF;
 		}
@@ -5592,7 +5596,8 @@ CONTINUE:
 		Decl *decl = type->decl;
 		if (!decl->unit || decl->unit->module->stage < ANALYSIS_POST_REGISTER)
 		{
-			RETURN_SEMA_ERROR(expr, "Methods are not fully determined for %s at this point.", decl->name);
+			bool err = SEMA_WARN(expr, "Methods are not fully determined for %s at this point.", decl->name);
+			if (err) return false;
 		}
 		// Interface, prefer interface methods.
 		if (decl->decl_kind == DECL_INTERFACE)
@@ -6007,6 +6012,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 	ASSERT_SPAN(expr, type == type->canonical);
 	ASSERT_SPAN(expr, sema_type_property_is_valid_for_type(type, property));
 	Type *flat = type_flatten(type);
+	if (type->type_kind == TYPE_FUNC_RAW) type = type_get_func_ptr(type);
 	switch (property)
 	{
 		case TYPE_PROPERTY_INF:
@@ -6321,7 +6327,7 @@ static inline void sema_expr_flatten_const_ident(Expr *expr)
 			return;
 	}
 	Expr *init_expr = ident->var.init_expr;
-	if (!init_expr) return;
+	if (!init_expr || init_expr->resolve_status != RESOLVE_DONE) return;
 	sema_expr_flatten_const_ident(init_expr);
 	if (expr_is_const(init_expr))
 	{
@@ -6359,17 +6365,18 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 			expr->type = type_typeid;
 			expr->expr_kind = EXPR_CONST;
 			expr->const_expr.const_kind = CONST_TYPEID;
-			expr->const_expr.typeid = parent->type;
+			expr->const_expr.typeid = type_get_func_ptr(parent->type);
 			expr->resolve_status = RESOLVE_DONE;
 			return true;
 		}
 		if (parent->expr_kind == EXPR_TYPEINFO)
 		{
 			Type *type = parent->type_expr->type->canonical;
-			switch (type->type_kind)
+			switch (type_no_optional(type)->type_kind)
 			{
 				case CT_TYPES:
 					RETURN_SEMA_ERROR(parent, "You cannot take the typeid of a compile time type.");
+
 				default:
 					expr_rewrite_const_typeid(expr, parent->type_expr->type->canonical);
 					return true;
@@ -6622,7 +6629,8 @@ CHECK_DEEPER:
 		ASSERT(type_is_user_defined(parent_type));
 		if (missing_ref && parent_type->decl->unit->module->stage < ANALYSIS_POST_REGISTER)
 		{
-			RETURN_SEMA_ERROR(expr, "There might be a method '%s' for %s, but methods have not yet been completely registered, so analysis fails.", kw, type_quoted_error_string(parent->type));
+			bool err = SEMA_WARN_STRICT(expr, "There might be a method '%s' for %s, but methods have not yet been completely registered, so analysis fails.", kw, type_quoted_error_string(parent->type));
+			if (err) return false;
 		}
 		if (parent_type->type_kind == TYPE_INTERFACE)
 		{
@@ -7718,7 +7726,7 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 		}
 		RETURN_SEMA_ERROR(parent, error_message, type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 	}
-	if (type_is_signed_any(flat_max))
+	if (type_is_signed(flat_max))
 	{
 		if (!sema_check_untyped_promotion(context, left, true, flat_max, max)) return false;
 		if (!sema_check_untyped_promotion(context, right, false, flat_max, max)) return false;
@@ -8304,7 +8312,7 @@ static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Expr *le
 	{
 		// Make sure the value does not exceed the bitsize of
 		// the left hand side. We ignore this check for lhs being a constant.
-		Type *base = type_vector_base(left_type_flat);
+		Type *base = type_flatten(type_vector_base(left_type_flat));
 		ASSERT_SPAN(expr, type_kind_is_any_integer(base->type_kind));
 		if (int_ucomp(right->const_expr.ixx, base->builtin.bitsize, BINARYOP_GE))
 		{
@@ -8916,8 +8924,18 @@ static inline bool sema_expr_analyse_deref(SemaContext *context, Expr *expr, boo
 				break;
 			case CONST_BYTES:
 			case CONST_STRING:
-				expr_rewrite_const_int(expr, type_get_indexed_type(inner->type), inner->const_expr.bytes.len ? inner->const_expr.bytes.ptr[0] : 0);
+			{
+				if (inner->type->type_kind != TYPE_POINTER) break;
+				Type *inner_type = type_get_indexed_type(inner->type);
+				if (!type_kind_is_any_integer(type_flatten(inner_type)->type_kind)) break;
+				if (!inner->const_expr.bytes.len)
+				{
+					RETURN_SEMA_ERROR(inner, "You cannot dereference an empty constant array or slice.");
+				}
+				expr_rewrite_const_int(expr, inner_type, inner->const_expr.bytes.ptr[0]);
 				return true;
+
+			}
 			default:
 				UNREACHABLE
 		}
@@ -10564,6 +10582,13 @@ RETRY:
 			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
 			if (!type) return NULL;
 			if (!type_ok(type)) return type;
+			if (!type_is_valid_for_array(type))
+			{
+				SEMA_ERROR(type_info->array.base,
+						   "You cannot form a slice with elements of type %s.",
+						   type_quoted_error_string(type));
+				return poisoned_type;
+			}
 			return type_get_slice(type);
 		}
 		case TYPE_INFO_INFERRED_ARRAY:
@@ -10572,6 +10597,13 @@ RETRY:
 			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
 			if (!type) return NULL;
 			if (!type_ok(type)) return type;
+			if (!type_is_valid_for_array(type))
+			{
+				SEMA_ERROR(type_info->array.base,
+						   "You cannot form an array with elements of type %s.",
+						   type_quoted_error_string(type));
+				return poisoned_type;
+			}
 			return type_get_inferred_array(type);
 		}
 		case TYPE_INFO_INFERRED_VECTOR:
@@ -10580,6 +10612,13 @@ RETRY:
 			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
 			if (!type) return NULL;
 			if (!type_ok(type)) return type;
+			if (!type_is_valid_for_vector(type))
+			{
+				SEMA_ERROR(type_info->array.base,
+						   "%s is not of a vectorizable type.",
+						   type_quoted_error_string(type));
+				return poisoned_type;
+			}
 			return type_get_inferred_vector(type);
 		}
 		case TYPE_INFO_POINTER:
@@ -10903,6 +10942,12 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	// We will actually compile this into any module using it (from a macro) by necessity,
 	// so we'll declare it as weak and externally visible.
 	unit_register_external_symbol(context, decl);
+
+	if (context->generic_instance)
+	{
+		decl->is_templated = true;
+		decl->instance_id = declid(context->generic_instance);
+	}
 
 	// Before function analysis, lambda evaluation is deferred
 	if (unit->module->stage < ANALYSIS_FUNCTIONS)
@@ -12020,10 +12065,14 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 				RETURN_SEMA_ERROR(expr, "A macro name must be followed by '('.");
 			}
 			// We may have kept FOO.x.y as a reference, fold it now if y is not an aggregate.
-			if (mutate) sema_expr_flatten_const_ident(expr->access_resolved_expr.parent);
+			if (mutate)
+			{
+				sema_expr_flatten_const_ident(expr->access_resolved_expr.parent);
+				if (!sema_cast_rvalue(context, expr->access_resolved_expr.parent, mutate)) return false;
+			}
 			return true;
 		case EXPR_TYPEINFO:
-			switch (expr->type_expr->type->type_kind)
+			switch (type_no_optional(expr->type_expr->type)->type_kind)
 			{
 				case CT_TYPES:
 					RETURN_SEMA_ERROR(expr, "You cannot take the typeid of a compile time type.");

@@ -18,6 +18,7 @@
 #define UINT20_MAX        1048575U
 
 #define SEMA_WARN(_node, ...) (sema_warn_at(context, (_node)->span, __VA_ARGS__))
+#define SEMA_WARN_STRICT(_node, ...) (sema_warn_very_strict(context, (_node)->span, __VA_ARGS__))
 #define SEMA_ERROR(_node, ...) sema_error_at(context, (_node)->span, __VA_ARGS__)
 #define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return false; } while (0)
 #define RETURN_VAL_SEMA_ERROR(val__, _node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return (val__); } while (0)
@@ -59,6 +60,7 @@ TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, 
 void sema_print_inline(SemaContext *context, SourceSpan span_original);
 void sema_error_at(SemaContext *context, SourceSpan span, const char *message, ...);
 bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ...);
+bool sema_warn_very_strict(SemaContext *context, SourceSpan span, const char *message, ...);
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);
@@ -143,6 +145,7 @@ bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, Att
 
 void unit_register_optional_global_decl(CompilationUnit *unit, Decl *decl);
 bool analyse_func_body(SemaContext *context, Decl *decl);
+bool sema_check_interfaces(SemaContext *context, Decl *decl);
 
 INLINE bool sema_analyse_stmt_chain(SemaContext *context, Ast *statement)
 {

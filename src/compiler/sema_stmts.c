@@ -122,7 +122,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 				case STORAGE_NORMAL:
 					break;
 				case STORAGE_WILDCARD:
-					UNREACHABLE
+					RETURN_SEMA_ERROR(e, "This value is always rethrown and doesn't have a definite type. This is not valid.");
 				case STORAGE_VOID:
 					RETURN_SEMA_ERROR(e, "This expression is of type 'void', did you make a mistake?");
 				case STORAGE_COMPILE_TIME:
@@ -2648,7 +2648,7 @@ FOUND:;
 			all_jump_end &= context->active_scope.end_jump.active;
 		SCOPE_END;
 	}
-	if (is_enum_switch && !exhaustive && success)
+	if (is_enum_switch && !exhaustive && success && !if_chain)
 	{
 		RETURN_SEMA_ERROR(statement, create_missing_enums_in_switch_error(cases, actual_enum_cases, enum_values));
 	}

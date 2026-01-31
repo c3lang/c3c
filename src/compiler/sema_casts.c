@@ -537,9 +537,8 @@ RETRY:
 			{
 				case UNARYOP_ERROR:
 				case UNARYOP_ADDR:
-				case UNARYOP_NOT:
 				case UNARYOP_TADDR:
-					UNREACHABLE
+					UNREACHABLE;
 				case UNARYOP_DEREF:
 					// Check sizes.
 					goto CHECK_SIZE;
@@ -550,6 +549,9 @@ RETRY:
 				case UNARYOP_DEC:
 					expr = expr->unary_expr.expr;
 					goto RETRY;
+				case UNARYOP_NOT:
+					goto CHECK_SIZE;
+
 			}
 		}
 		default:
@@ -2384,6 +2386,7 @@ static void cast_slice_to_arr(Expr *expr, Type *to_type)
 		switch (expr->expr_kind)
 		{
 			case EXPR_SLICE:
+			case EXPR_MAKE_SLICE:
 			{
 				expr->inner_expr = expr_copy(expr);
 				expr->expr_kind = EXPR_SLICE_TO_VEC_ARRAY;

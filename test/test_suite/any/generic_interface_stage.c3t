@@ -1,0 +1,8 @@
+import std;
+fn int foo() => 0;
+alias FooFn = fn int();
+enum Bar : const FooFn
+{
+  FOO = fn () => (int)(iptr)ExclusiveRange{int}.typeid,
+  BAR = &foo,
+}
