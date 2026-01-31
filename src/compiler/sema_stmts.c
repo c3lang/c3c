@@ -200,6 +200,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
  */
 static inline bool sema_analyse_break_stmt(SemaContext *context, Ast *statement)
 {
+	ASSERT(!statement->contbreak_stmt.is_resolved);
 	// If there is no break target and there is no label,
 	// we skip.
 	if (!context->break_jump.target && !statement->contbreak_stmt.is_label)
@@ -3430,7 +3431,8 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 {
 	// Stop if it's already poisoned.
 	if (!decl_ok(func)) return false;
-
+	if (func->is_body_checked) return true;
+	func->is_body_checked = true;
 	context->generic_instance = func->is_templated ? declptr(func->instance_id) : NULL;
 	// Check the signature here we test for variadic raw, since we don't support it.
 	Signature *signature = &func->func_decl.signature;

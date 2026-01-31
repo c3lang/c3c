@@ -1,5 +1,4 @@
 module std::sort;
-import std::sort::is;
 
 <*
  Sort list using the quick sort algorithm.
@@ -10,17 +9,16 @@ import std::sort::is;
 *>
 macro void insertionsort(list, cmp = ..., context = ...) @builtin @safemacro
 {
-	// When the context or cmp functions are not defined, we can simply use a dummy/default type.
-	var $CmpFnType = $defined(cmp) ??? $typeof(cmp) : uint;
-	var $ContextType = $defined(context) ??? $typeof(context) : uint;
+	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
+	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if $kindof(list) == SLICE:
-		is::isort{$typeof(list), $CmpFnType, $ContextType}(list, 0, lengthof(list), ...cmp, ...context);
+		isort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, lengthof(list), used_cmp, used_ctx);
 	$else
-		is::isort{$typeof(*list), $CmpFnType, $ContextType}(list, 0, lengthof(*list), ...cmp, ...context);
+		isort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, lengthof(*list), used_cmp, used_ctx);
 	$endif
 }
 
-module std::sort::is <Type, CmpFn, Context>;
+module std::sort <Type, CmpFn, Context> @private;
 
 alias ElementType = $typeof(((Type){})[0]);
 const bool IS_SLICE = Type.kindof == SLICE;
@@ -28,10 +26,10 @@ alias ListType = $typefrom(IS_SLICE ??? Type : Type*);
 macro ElementType list_get(ListType l, i) => IS_SLICE ??? l[i] : (*l)[i];
 macro ElementType* list_get_ref(ListType l, i) => IS_SLICE ??? &l[i] : &(*l)[i];
 
-macro void isort(ListType list, usz low, usz high, CmpFn comp = ..., Context context = ...)
+fn void isort(ListType list, usz low, usz high, CmpFn comp, Context context) @noinline @private
 {
-	var $has_cmp = $defined(comp);
-	var $has_context = $defined(context);
+	var $has_cmp = $typeof(comp) != TypeNotSet;
+	var $has_context = $typeof(context) != TypeNotSet;
 	var $cmp_by_value = $has_cmp &&& $defined($typefrom(CmpFn.paramsof[0].type) p = list_get(list, 0));
 	var $has_get_ref = IS_SLICE ||| $defined(&(*list)[0]);
 	for (usz i = low; i < high; ++i)

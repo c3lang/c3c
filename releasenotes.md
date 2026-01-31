@@ -5,9 +5,11 @@
 ### Changes / improvements
 
 ### Stdlib changes
+- Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
 
 ### Fixes
 - Add error message if directory with output file name already exists
+- Regression where nested lambdas would be evaluated twice.
 
 ## 0.7.9 Change list
 
