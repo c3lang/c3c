@@ -195,7 +195,7 @@ More platforms will be supported in the future.
 - If you wish to contribute with ideas, please file issues or discuss on Discord.
 - Interested in contributing to the stdlib? Please get in touch on Discord.
 - Compilation instructions for other Linux and Unix variants are appreciated.
-- Would you like to contribute bindings to some library? It would be nice to have support for SDL, Raylib and more.
+- Would you like to contribute bindings to some library? It would be nice to have support for SDL3 and more. If you have created some bindings, please submit them to https://github.com/c3lang/vendor.  
 - Build something with C3 and show it off and give feedback. The language is still open for significant tweaks.
 - Start work on the C -> C3 converter which takes C code and does a "best effort" to translate it to C3. The first version only needs to work on C headers.
 - Do you have some specific area you have deep knowledge of and could help make C3 even better at doing? File or comment on issues.
