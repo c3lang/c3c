@@ -51,10 +51,10 @@ fn String? find_first_directory_temp(NSSearchPathDirectory directory, NSSearchPa
 	objc::@autoreleasepool()
 	{
 		CFArrayRef arr = nsSearchPathForDirectoriesInDomains(directory, domainMask, true);
-		if (!arr.getCount()) return io::PATH_COULD_NOT_BE_FOUND?;
+		if (!arr.getCount()) return io::PATH_COULD_NOT_BE_FOUND~;
         CFStringRef str = (CFStringRef)arr.getValueAtIndex(0);
 		char* buffer = tmalloc(2048);
-        if (!str.getCString(buffer, 2048, UTF8)) return io::PATH_COULD_NOT_BE_FOUND?;
+        if (!str.getCString(buffer, 2048, UTF8)) return io::PATH_COULD_NOT_BE_FOUND~;
         return ((ZString)buffer).str_view();
 	};
 }

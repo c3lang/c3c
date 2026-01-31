@@ -1,8 +1,8 @@
-module foo { Type };
+module foo <Type>;
 
 import std::collections::list;
 
-struct Foo { // #error: Recursive definition of 'Foo'
+struct Foo { // #error: Recursive definition of 'Foo{int}'
     Type foo;
     Allocator allocator;
     List { Foo } children;

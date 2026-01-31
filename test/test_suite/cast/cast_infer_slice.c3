@@ -2,6 +2,6 @@ import std;
 fn int main()
 {
 	char[] a = "hello";
-	char[*] b = *(char[*]*)&a; // #error: cannot be used to infer the length
+	char[*] b = *(char[5]*)a.ptr;
 	return 0;
 }

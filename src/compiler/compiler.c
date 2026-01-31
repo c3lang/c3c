@@ -77,7 +77,6 @@ void compiler_init(BuildOptions *build_options)
 	htable_init(&compiler.context.compiler_defines, 16 * 1024);
 	methodtable_init(&compiler.context.method_extensions, 16 * 1024);
 	compiler.context.module_list = NULL;
-	compiler.context.generic_module_list = NULL;
 	compiler.context.method_extension_list = NULL;
 
 	vmem_init(&ast_arena, START_VMEM_SIZE);
@@ -238,7 +237,7 @@ static const char *dynamic_lib_name(void)
 	}
 }
 
-static const char *static_lib_name(void)
+const char *static_lib_name(void)
 {
 	const char *name = build_base_name();
 	
@@ -1297,7 +1296,13 @@ static void check_address_sanitizer_options(BuildTarget *target)
 			WinCrtLinking crt_linking = target->win.crt_linking;
 			if (crt_linking == WIN_CRT_DEFAULT)
 			{
-				error_exit("Please specify `static` or `dynamic` for `wincrt` when using address sanitizer.");
+				// Default to dynamic, as static ASan is removed in LLVM 21+ for Windows
+				target->win.crt_linking = WIN_CRT_DYNAMIC;
+				crt_linking = WIN_CRT_DYNAMIC;
+			}
+			else if (crt_linking == WIN_CRT_STATIC)
+			{
+				error_exit("Address sanitizer on Windows no longer supports static CRT linking (`--wincrt=static`). Please use `dynamic`.");
 			}
 
 			if (crt_linking == WIN_CRT_STATIC_DEBUG || crt_linking == WIN_CRT_DYNAMIC_DEBUG)
@@ -1459,7 +1464,7 @@ void compile()
 	core_path->module = kw_std__core;
 	core_path->span = INVALID_SPAN;
 	core_path->len = strlen(kw_std__core);
-	compiler.context.core_module = compiler_find_or_create_module(core_path, NULL);
+	compiler.context.core_module = compiler_find_or_create_module(core_path);
 	CompilationUnit *unit = CALLOCS(CompilationUnit);
 	unit->file = source_file_generate("core_internal.c3");
 	unit->module = compiler.context.core_module;
@@ -1516,6 +1521,9 @@ void compile()
 #else 
     setup_int_define("LLVM_VERSION", 0, type_int);
 #endif
+
+	setup_string_define("VERSION", COMPILER_VERSION);
+	setup_bool_define("PRERELEASE", PRERELEASE);
 
     setup_bool_define("BENCHMARKING", compiler.build.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);
@@ -1613,7 +1621,7 @@ Module *global_context_find_module(const char *name)
 	return htable_get(&compiler.context.modules, (void *)name);
 }
 
-Module *compiler_find_or_create_module(Path *module_name, const char **parameters)
+Module *compiler_find_or_create_module(Path *module_name)
 {
 	Module *module = global_context_find_module(module_name->module);
 	if (module) return module;
@@ -1644,19 +1652,9 @@ Module *compiler_find_or_create_module(Path *module_name, const char **parameter
 		module->short_path = symtab_add(name, len, fnv1a(name, len), &type);
 	}
 	module->stage = ANALYSIS_NOT_BEGUN;
-	module->parameters = parameters;
-	module->is_generic = vec_size(parameters) > 0;
 	htable_init(&module->symbols, 0x1000);
 	htable_set(&compiler.context.modules, (void *)module_name->module, module);
-	if (parameters)
-	{
-		vec_add(compiler.context.generic_module_list, module);
-	}
-	else
-	{
-		vec_add(compiler.context.module_list, module);
-	}
-
+	vec_add(compiler.context.module_list, module);
 	return module;
 }
 

@@ -8,6 +8,6 @@ fn int main(String[] args)
 	return 0;
 }
 
-module some_module { F };
+module some_module <F>;
 import std;
 const A_CONST = 12 + 2 * math::log2(F / 25); // #error: This expression cannot be evaluated at compile time

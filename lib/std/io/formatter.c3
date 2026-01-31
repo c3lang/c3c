@@ -2,6 +2,9 @@ module std::io;
 import std::collections::map;
 import libc;
 
+// It is vitally important that the formatter doesn't do any allocations,
+// or it ceases to be useful in constrained environments.
+
 const int PRINTF_NTOA_BUFFER_SIZE = 256;
 
 interface Printable
@@ -93,9 +96,9 @@ fn usz? Formatter.out(&self, char c) @private
 {
 	if (catch err = self.out_fn(self.data, c))
 	{
-		if (self.first_fault) return self.first_fault?;
+		if (self.first_fault) return self.first_fault~;
 		self.first_fault = err;
-		return err?;
+		return err~;
 	}
 	return 1;
 }
@@ -130,7 +133,7 @@ fn usz? Formatter.print_with_function(&self, Printable arg)
 		if (!arg) return self.out_substr("(null)");
 		return self.out_substr(arg.to_constant_string());
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 fn usz? Formatter.out_unknown(&self, String category, any arg) @private
@@ -337,7 +340,7 @@ fn void? out_null_fn(void* data @unused, char c @unused) @private
 macro usz? @report_fault(Formatter* f, $fault)
 {
 	(void)f.out_substr($fault);
-	return INVALID_FORMAT?;
+	return INVALID_FORMAT~;
 }
 
 macro usz? @wrap_bad(Formatter* f, #action)
@@ -349,11 +352,11 @@ macro usz? @wrap_bad(Formatter* f, #action)
 		{
 			case BUFFER_EXCEEDED:
         	case INTERNAL_BUFFER_EXCEEDED:
-        		return f.first_err(err)?;
+        		return f.first_err(err)~;
         	default:
 				err = f.first_err(INVALID_ARGUMENT);
         		f.out_substr("<INVALID>")!;
-        		return err?;
+        		return err~;
 		}
 	}
 	return len;
@@ -561,7 +564,7 @@ fn usz? Formatter.vprintf(&self, String format, any[] anys)
 	//	out((char)0, buffer, idx < maxlen ? idx : maxlen - 1U, maxlen);
 
 	// return written chars without terminating \0
-	if (self.first_fault) return self.first_fault?;
+	if (self.first_fault) return self.first_fault~;
 	return total_len;
 }
 

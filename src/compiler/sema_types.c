@@ -13,6 +13,7 @@ INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info);
 INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
 INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
 INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info);
+static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info, Type *inner);
 static int compare_function(Signature *sig, FunctionPrototype *proto);
 
 static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
@@ -22,6 +23,8 @@ static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_in
 	{
 		return type_info_poison(type_info);
 	}
+	if (!sema_check_ptr_type(context, type_info, type_info->pointer->type)) return type_info_poison(type_info);
+
 	// Construct the type after resolving the underlying type.
 	type_info->type = type_get_ptr(type_info->pointer->type);
 	type_info->resolve_status = RESOLVE_DONE;
@@ -87,7 +90,7 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 		{
 			RETURN_VAL_SEMA_ERROR(type_info_poison(type_info), len_expr, "A vector may not exceed %d in bit width.", compiler.build.max_vector_size);
 		}
-		RETURN_VAL_SEMA_ERROR(type_info_poison(type_info), len_expr, "The array length may not exceed %lld.", MAX_ARRAY_SIZE);
+		RETURN_VAL_SEMA_ERROR(type_info_poison(type_info), len_expr, "The array length may not exceed %lld.", (long long)MAX_ARRAY_SIZE);
 	}
 	// We're done, return the size and mark it as a success.
 	*len_ref = (ArraySize)len.i.low;
@@ -96,8 +99,16 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 
 static inline bool sema_check_array_type(SemaContext *context, TypeInfo *original_info, Type *base, TypeInfoKind kind, ArraySize len, Type **result_ref)
 {
+	if (base->type_kind == TYPE_OPTIONAL)
+	{
+		RETURN_SEMA_ERROR(original_info, "You cannot form an array with an optional element type.");
+	}
 	Type *distinct_base = type_flatten(base);
 
+	if (type_is_infer_type(distinct_base))
+	{
+		SEMA_DEPRECATED(original_info, "Use of inferred inner types is not well supported and support will be removed in 0.8.0.");
+	}
 	// We don't want to allow arrays with flexible members
 	if (distinct_base->type_kind == TYPE_STRUCT)
 	{
@@ -286,6 +297,8 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_CT_INCLUDE:
 		case DECL_DECLARRAY:
 		case DECL_GROUP:
+		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -298,7 +311,7 @@ INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, Res
 {
 	SEMA_DEPRECATED(type_info, "$evaltype is deprecated, use $typefrom instead.");
 	Expr *expr = type_info->unresolved_type_expr;
-	Expr *inner = sema_ct_eval_expr(context, true, expr, true);
+	Expr *inner = sema_ct_eval_expr(context, CT_EVAL_TYPE, expr, true);
 	if (!inner || !expr_ok(inner)) return type_info_poison(type_info);
 	if (inner->expr_kind != EXPR_TYPEINFO)
 	{
@@ -339,10 +352,12 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 	{
 		case STORAGE_ERROR:
 			return false;
+		case STORAGE_COMPILE_TIME:
+			if (expr_type->type_kind == TYPE_TYPEINFO) expr_type = type_typeid;
+			FALLTHROUGH;
 		case STORAGE_NORMAL:
 		case STORAGE_VOID:
 		case STORAGE_UNKNOWN:
-		case STORAGE_COMPILE_TIME:
 			type_info->type = expr_type;
 			return true;
 		case STORAGE_WILDCARD:
@@ -440,15 +455,15 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	{
 		RETURN_SEMA_ERROR(inner, "Parameterization required a concrete type name here.");
 	}
-	if (inner->resolve_status == RESOLVE_DONE)
+	switch (inner->resolve_status)
 	{
-		if (!type_is_user_defined(inner->type))
-		{
-			RETURN_SEMA_ERROR(inner, "A user defined type was expected here, not %s.", type_quoted_error_string(inner->type));
-		}
+		case RESOLVE_DONE:
+			RETURN_SEMA_ERROR(inner, "A user-defined generic type was expected here, but the type was %s.", type_quoted_error_string(inner->type));
+		case RESOLVE_RUNNING:
+			RETURN_SEMA_ERROR(inner, "Resolving the type %s entered a recursive loop.", type_quoted_error_string(inner->type));
+		default:
+			break;
 	}
-	ASSERT_SPAN(inner, inner->resolve_status == RESOLVE_NOT_DONE);
-
 	bool was_recursive = false;
 	if (compiler.generic_depth >= MAX_GENERIC_DEPTH)
 	{
@@ -460,6 +475,7 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	compiler.generic_depth--;
 	if (!decl_ok(type)) return false;
 	if (!sema_analyse_decl(context, type)) return false;
+	ASSERT_SPAN(type_info, type != NULL);
 	type_info->type = type->type;
 	if (!was_recursive) return true;
 	if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
@@ -468,6 +484,23 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 		RETURN_SEMA_ERROR(type_info, "Recursively generic type declarations are only allowed inside of macros. Use `alias` to define an alias for the type instead.");
 	}
 	return true;
+}
+
+static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info, Type *inner)
+{
+	CanonicalType *type = inner->canonical;
+	switch (type->type_kind)
+	{
+		case CT_TYPES:
+			if (type_is_infer_type(type))
+			{
+				SEMA_DEPRECATED(type_info, "Using an inferred type as a pointer is not supported and will be removed in 0.8.0.");
+				return true;
+			}
+			RETURN_SEMA_ERROR(type_info, "Pointers to %s are not supported.", type_quoted_error_string(inner));
+		default:
+			return true;
+	}
 }
 
 static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
@@ -556,37 +589,37 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 			if (!sema_resolve_ptr_type(context, type_info, resolve_kind)) return type_info_poison(type_info);
 			break;
 	}
-APPEND_QUALIFIERS:
+APPEND_QUALIFIERS:;
+	Type *type = type_no_optional(type_info->type);
 	switch (kind)
 	{
 		case TYPE_COMPRESSED_NONE:
 			break;
 		case TYPE_COMPRESSED_PTR:
-			type_info->type = type_get_ptr(type_info->type);
+			if (!sema_check_ptr_type(context, type_info, type)) return type_info_poison(type_info);
+			type = type_get_ptr(type);
 			break;
 		case TYPE_COMPRESSED_SUB:
-			if (!sema_check_array_type(context, type_info, type_info->type, TYPE_INFO_SLICE, 0, &type_info->type)) return type_info_poison(type_info);
+			if (!sema_check_array_type(context, type_info, type, TYPE_INFO_SLICE, 0, &type)) return type_info_poison(type_info);
 			break;
 		case TYPE_COMPRESSED_SUBPTR:
-			if (!sema_check_array_type(context, type_info, type_info->type, TYPE_INFO_SLICE, 0, &type_info->type)) return type_info_poison(type_info);
-			type_info->type = type_get_ptr(type_info->type);
+			if (!sema_check_array_type(context, type_info, type, TYPE_INFO_SLICE, 0, &type)) return type_info_poison(type_info);
+			type = type_get_ptr(type);
 			break;
 		case TYPE_COMPRESSED_PTRPTR:
-			type_info->type = type_get_ptr(type_get_ptr(type_info->type));
+			if (!sema_check_ptr_type(context, type_info, type)) return type_info_poison(type_info);
+			type = type_get_ptr(type_get_ptr(type));
 			break;
 		case TYPE_COMPRESSED_PTRSUB:
-			type_info->type = type_get_slice(type_get_ptr(type_info->type));
+			if (!sema_check_ptr_type(context, type_info, type)) return type_info_poison(type_info);
+			type = type_get_slice(type_get_ptr(type));
 			break;
 		case TYPE_COMPRESSED_SUBSUB:
-			if (!sema_check_array_type(context, type_info, type_info->type, TYPE_INFO_SLICE, 0, &type_info->type)) return type_info_poison(type_info);
-			type_info->type = type_get_slice(type_info->type);
+			if (!sema_check_array_type(context, type_info, type, TYPE_INFO_SLICE, 0, &type)) return type_info_poison(type_info);
+			type = type_get_slice(type);
 			break;
 	}
-	if (type_info->optional)
-	{
-		Type *type = type_info->type;
-		if (!type_is_optional(type)) type_info->type = type_get_optional(type);
-	}
+	type_info->type = type_add_optional(type, type_info->optional || type_is_optional(type_info->type));
 	type_info->resolve_status = RESOLVE_DONE;
 	return true;
 }

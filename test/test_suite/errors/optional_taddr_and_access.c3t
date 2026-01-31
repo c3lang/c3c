@@ -15,7 +15,7 @@ fn void main()
     int? z = 2;
     Foo*? w = &&(Foo){ z, 0 };
     (void)printf("%d\n", w.x);
-    z = FOO?;
+    z = FOO~;
     w = &&(Foo){ z, 0 };
     (void)printf("Not visible: %d\n", w.x);
 }

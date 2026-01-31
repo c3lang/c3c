@@ -1,0 +1,15 @@
+module custom_type <Type, VALUE>;
+
+struct Example
+{
+    Type[VALUE] arr;
+}
+
+module foo;
+import custom_type;
+
+fn int main()
+{
+	Example{int, 2} e;
+    return 0;
+}

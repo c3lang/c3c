@@ -10,7 +10,7 @@ faultdef TRIE_FULL;
  @require $defined((Token){}.token)
  @require $defined((Comment){}.start) && $defined((Comment){}.end)
  *>
-module lexer {Token, Comment};
+module lexer <Token, Comment>;
 import std::io;
 import trie;
 
@@ -140,7 +140,7 @@ fn Token? Lexer.expect(&self, fault err, Token... tokens)
 			if (tok == self.token) return tok;
 		}
 	}
-	return err?;
+	return err~;
 }
 
 fn void? Lexer.skip_whitespace(&self) @private
@@ -253,7 +253,7 @@ macro @parse_uint(self, $Type; @body(x, c, ok)) @private
 		if (catch err = c)
 		{
 			if (err == io::EOF) break;
-			return err?;
+			return err~;
 		}
 		else
 		{
@@ -262,7 +262,7 @@ macro @parse_uint(self, $Type; @body(x, c, ok)) @private
 			$Type xx = x;
 			bool ok;
 			@body(x, c, ok);
-			if (xx > x) return string::INTEGER_OVERFLOW?;
+			if (xx > x) return string::INTEGER_OVERFLOW~;
 			if (!ok)
 			{
 				self.column--;
@@ -320,7 +320,7 @@ fn char? Lexer.parse_rune(&self) @private
 {
 	char x = self.reader.read_byte()!;
 	char c = self.reader.read_byte()!;
-	if (c != '\'') return faults::UNTERMINATED_RUNE?;
+	if (c != '\'') return faults::UNTERMINATED_RUNE~;
 	return x;
 }
 
@@ -329,8 +329,8 @@ macro char? Lexer.read_char_for_string(&self) @private
 	char? c = self.reader.read_byte();
 	if (catch err = c)
 	{
-		if (err == io::EOF) return faults::UNTERMINATED_STRING?;
-		return err?;
+		if (err == io::EOF) return faults::UNTERMINATED_STRING~;
+		return err~;
 	}
 	return c;
 }
@@ -354,8 +354,8 @@ fn void? Lexer.parse_comment(&self, String end) @private
 	{
 		if (catch err = io::read_all(self.reader, buf))
 		{
-			if (err == io::UNEXPECTED_EOF || err == io::EOF) return faults::UNTERMINATED_COMMENT?;
-			return err?;
+			if (err == io::UNEXPECTED_EOF || err == io::EOF) return faults::UNTERMINATED_COMMENT~;
+			return err~;
 		}
 		if (end == (String)buf)
 		{
@@ -393,7 +393,7 @@ fn String? Lexer.parse_ident(&self) @private
 		if (catch err = c)
 		{
 			if (err == io::EOF) return str.str_view();
-			return err?;
+			return err~;
 		}
 		if (!self.ident(str.len(), c)) return str.str_view();
 		str.append_char(c);
@@ -456,7 +456,7 @@ fn int main(String[] args)
 <*
  @require Index.kindof == TypeKind.UNSIGNED_INT
  *>
-module trie{Value, Index};
+module trie <Value, Index>;
 import std::collections::list;
 import trie::bitmap;
 import lexer::faults;
@@ -498,7 +498,7 @@ fn Value? Trie.get(&self, char[] key)
 fn Value? Trie.get_best(&self, char[] key)
 {
 	TrieNode* root = &self.nodes[0];
-	if (key.len == 0) return root.valid ? root.value : NOT_FOUND?;
+	if (key.len == 0) return root.valid ? root.value : NOT_FOUND~;
 	return root.get_best(self, key, 0);
 }
 
@@ -530,10 +530,10 @@ fn void? Trie.del(&self, char[] key)
 
 fn Value? TrieNode.get(&self, Trie *t, char[] key) @private
 {
-	if (key.len == 0) return self.valid ? self.value : NOT_FOUND?;
+	if (key.len == 0) return self.valid ? self.value : NOT_FOUND~;
 	char c = key[0];
 	Index idx = self.children[c];
-	if (idx == 0) return NOT_FOUND?;
+	if (idx == 0) return NOT_FOUND~;
 	return t.nodes[idx].get(t, key[1..]);
 }
 
@@ -541,14 +541,14 @@ fn Value? TrieNode.get_best(&self, Trie *t, char[] key, Index result) @private
 {
 	if (key.len == 0)
 	{
-		if (result == 0) return NOT_FOUND?;
+		if (result == 0) return NOT_FOUND~;
 		return t.nodes[result].value;
 	}
 	char c = key[0];
 	Index idx = self.children[c];
 	if (idx == 0)
 	{
-		if (result == 0) return NOT_FOUND?;
+		if (result == 0) return NOT_FOUND~;
 		return t.nodes[result].value;
 	}
 	TrieNode* next = &t.nodes[idx];
@@ -570,7 +570,7 @@ fn void? TrieNode.set(&self, Trie *t, char[] key, Value value) @private
 	{
 		usz new_idx = t.nodes.len();
 		assert(new_idx != 0);
-		if (new_idx > Index.max) return faults::TRIE_FULL?;
+		if (new_idx > Index.max) return faults::TRIE_FULL~;
 		idx = (Index)new_idx;
 		self.children[c] = idx;
 		t.nodes.push((TrieNode){});
@@ -674,9 +674,9 @@ fn void test()
 %"UintTest[]" = type { ptr, i64 }
 %UintTest = type { %"char[]", i64 }
 %ByteReader = type { %"char[]", i64 }
-%Lexer = type { %any, %any, %"char[]", %Trie, ptr, i8, i8, i32, i32, i32, %.anon }
-%Trie = type { %List }
-%List = type { i64, i64, %any, ptr }
+%"Lexer{Token, Comment}" = type { %any, %any, %"char[]", %"Trie{Token, ushort}", ptr, i8, i8, i32, i32, i32, %.anon }
+%"Trie{Token, ushort}" = type { %"List{TrieNode{Token, ushort}}" }
+%"List{TrieNode{Token, ushort}}" = type { i64, i64, %any, ptr }
 %.anon = type { %"char[]" }
 
 @"$ct.lexer_test.UintTest" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
@@ -750,7 +750,7 @@ entry:
   %.anon = alloca i64, align 8
   %tc = alloca %UintTest, align 8
   %br = alloca %ByteReader, align 8
-  %lex = alloca %Lexer, align 8
+  %lex = alloca %"Lexer{Token, Comment}", align 8
   %error_var = alloca i64, align 8
   %taddr = alloca %any, align 8
   %kind = alloca i8, align 1
@@ -788,7 +788,7 @@ loop.body:                                        ; preds = %loop.cond
   %lo5 = load i64, ptr %7, align 8
   %ptradd6 = getelementptr inbounds i8, ptr %7, i64 8
   %hi7 = load ptr, ptr %ptradd6, align 8
-  %8 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.init"(ptr %lex, i64 %lo2, ptr %hi4, ptr @lexer_test.is_ident_char, i64 %lo5, ptr %hi7)
+  %8 = call i64 @"lexer.Lexer$lexer_test.Token$lexer_test.Comment$.init"(ptr %lex, i64 %lo2, ptr %hi4, ptr @lexer_test.is_ident_char, i64 %lo5, ptr %hi7)
   %not_err = icmp eq i64 %8, 0
   %9 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %9, label %after_check, label %assign_optional
@@ -805,7 +805,7 @@ guard_block:                                      ; preds = %assign_optional
   ret i64 %10
 
 noerr_block:                                      ; preds = %after_check
-  %11 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.next"(ptr %retparam, ptr %lex)
+  %11 = call i64 @"lexer.Lexer$lexer_test.Token$lexer_test.Comment$.next"(ptr %retparam, ptr %lex)
   %not_err9 = icmp eq i64 %11, 0
   %12 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
   br i1 %12, label %after_check11, label %assign_optional10

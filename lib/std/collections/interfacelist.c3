@@ -4,7 +4,7 @@
 <*
  @require Type.kindof == INTERFACE || Type.kindof == ANY : "The kind of an interfacelist must be an interface or `any`"
 *>
-module std::collections::interfacelist {Type};
+module std::collections::interfacelist <Type>;
 import std::io,std::math;
 
 alias InterfacePredicate = fn bool(Type value);
@@ -93,7 +93,7 @@ fn void InterfaceList.free_element(&self, Type element) @inline
 *>
 fn Type? InterfaceList.copy_pop(&self, Allocator allocator)
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	defer self.free_element(self.entries[self.size]);
 	return (Type)allocator::clone_any(allocator, self.entries[--self.size]);
 }
@@ -114,7 +114,7 @@ fn Type? InterfaceList.tcopy_pop(&self) => self.copy_pop(tmem);
 *>
 fn Type? InterfaceList.pop_retained(&self)
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	return self.entries[--self.size];
 }
 
@@ -138,7 +138,7 @@ fn void InterfaceList.clear(&self)
 *>
 fn Type? InterfaceList.pop_first_retained(&self)
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	defer self.remove_at(0);
 	return self.entries[0];
 }
@@ -152,7 +152,7 @@ fn Type? InterfaceList.pop_first_retained(&self)
 *>
 fn Type? InterfaceList.copy_pop_first(&self, Allocator allocator)
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	defer self.free_element(self.entries[self.size]);
 	defer self.remove_at(0);
 	return (Type)allocator::clone_any(allocator, self.entries[0]);
@@ -276,7 +276,7 @@ fn void InterfaceList.remove_first(&self)
 *>
 fn Type? InterfaceList.first(&self) @inline
 {
-	return self.size ? self.entries[0] : NO_MORE_ELEMENT?;
+	return self.size ? self.entries[0] : NO_MORE_ELEMENT~;
 }
 
 <*
@@ -287,7 +287,7 @@ fn Type? InterfaceList.first(&self) @inline
 *>
 fn Type? InterfaceList.last(&self) @inline
 {
-	return self.size ? self.entries[self.size - 1] : NO_MORE_ELEMENT?;
+	return self.size ? self.entries[self.size - 1] : NO_MORE_ELEMENT~;
 }
 
 <*

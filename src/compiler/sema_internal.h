@@ -18,16 +18,17 @@
 #define UINT20_MAX        1048575U
 
 #define SEMA_WARN(_node, ...) (sema_warn_at(context, (_node)->span, __VA_ARGS__))
+#define SEMA_WARN_STRICT(_node, ...) (sema_warn_very_strict(context, (_node)->span, __VA_ARGS__))
 #define SEMA_ERROR(_node, ...) sema_error_at(context, (_node)->span, __VA_ARGS__)
 #define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return false; } while (0)
 #define RETURN_VAL_SEMA_ERROR(val__, _node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return (val__); } while (0)
 #define RETURN_NULL_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return NULL; } while (0)
 #define RETURN_SEMA_ERROR_AT(span__, ...) do { sema_error_at(context, span__, __VA_ARGS__); return false; } while (0)
-#define SCOPE_OUTER_START do { DynamicScope stored_scope = context->active_scope; context_change_scope_with_flags(context, SCOPE_NONE);
+#define SCOPE_OUTER_START(span__) do { DynamicScope stored_scope = context->active_scope; context_change_scope_with_flags(context, SCOPE_NONE, span__);
 #define SCOPE_OUTER_END ASSERT(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = stored_scope; } while(0)
-#define SCOPE_START SCOPE_START_WITH_FLAGS(SCOPE_NONE)
-#define SCOPE_START_WITH_FLAGS(flags) do { DynamicScope old_scope = context->active_scope; context_change_scope_with_flags(context, flags);
-#define SCOPE_START_WITH_LABEL(label) do { DynamicScope old_scope = context->active_scope; context_change_scope_for_label(context, label);
+#define SCOPE_START(span__) SCOPE_START_WITH_FLAGS(SCOPE_NONE, span__)
+#define SCOPE_START_WITH_FLAGS(flags, span__) do { DynamicScope old_scope = context->active_scope; context_change_scope_with_flags(context, flags, span__);
+#define SCOPE_START_WITH_LABEL(label, span__) do { DynamicScope old_scope = context->active_scope; context_change_scope_for_label(context, label, span__);
 #define SCOPE_END ASSERT(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = old_scope; } while(0)
 #define SCOPE_POP_ERROR() ((bool)(context->active_scope = old_scope, false))
 #define SCOPE_ERROR_END_OUTER() do { context->active_scope = stored_scope; } while(0)
@@ -51,14 +52,15 @@ const char *context_filename(SemaContext *context);
 AstId context_get_defers(SemaContext *context, AstId defer_bottom, bool is_success);
 void context_pop_defers(SemaContext *context, AstId *next);
 void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast);
-void context_change_scope_for_label(SemaContext *context, DeclId label);
-void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags);
+void context_change_scope_for_label(SemaContext *context, DeclId label, SourceSpan span);
+void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, SourceSpan span);
 SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit);
 
 TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref);
 void sema_print_inline(SemaContext *context, SourceSpan span_original);
 void sema_error_at(SemaContext *context, SourceSpan span, const char *message, ...);
 bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ...);
+bool sema_warn_very_strict(SemaContext *context, SourceSpan span, const char *message, ...);
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);
@@ -108,7 +110,8 @@ void sema_add_methods_to_decl_stack(SemaContext *context, Decl *decl);
 
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool call_var_optional, bool *no_match_ref);
 Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref);
-Expr *sema_ct_eval_expr(SemaContext *context, bool is_type_eval, Expr *inner, bool report_missing);
+
+Expr *sema_ct_eval_expr(SemaContext *context, CtEvalKind eval_kind, Expr *inner, bool report_missing);
 Expr *sema_resolve_string_ident(SemaContext *context, Expr *inner, bool report_missing);
 bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt);
 bool sema_expr_analyse_sprintf(SemaContext *context, Expr *expr, Expr *format_string, Expr **args, unsigned num_args);
@@ -127,7 +130,9 @@ void cast_promote_vararg(Expr *arg);
 Type *cast_numeric_arithmetic_promotion(Type *type);
 void cast_to_int_to_max_bit_size(Expr *lhs, Expr *rhs, Type *left_type, Type *right_type);
 bool sema_decl_if_cond(SemaContext *context, Decl *decl);
-Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span,
+Decl *sema_generate_parameterized_identifier(SemaContext *context, Decl *generic, Decl *alias, Expr **params,
+                                             Decl **param_decls, const char *suffix, const char *csuffix, SourceSpan invocation_span, SourceSpan span);
+Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_path, const char *name, SourceSpan span,
                                             Expr **params, bool *was_recursive_ref, SourceSpan invocation_span);
 bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, const char *name, SourceSpan span);
 Type *sema_resolve_type_get_func(Signature *signature, CallABI abi);
@@ -137,6 +142,10 @@ INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *d
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right, bool *failed_ref);
 bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl);
 bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain, bool *erase_decl);
+
+void unit_register_optional_global_decl(CompilationUnit *unit, Decl *decl);
+bool analyse_func_body(SemaContext *context, Decl *decl);
+bool sema_check_interfaces(SemaContext *context, Decl *decl);
 
 INLINE bool sema_analyse_stmt_chain(SemaContext *context, Ast *statement)
 {

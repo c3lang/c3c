@@ -1,0 +1,31 @@
+// #target: macos-x64
+module test;
+
+const N = 16;
+fn bool[<N>] @simd get_simd_bool_vec() => {};
+fn bool[<N>] get_bool_vec() => {};
+
+fn int main()
+{
+    bool[<N>] bool_vec = get_simd_bool_vec();
+    bool[<N>] @simd simd_bool_vec = get_bool_vec();
+    return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %bool_vec = alloca <16 x i8>, align 16
+  %simd_bool_vec = alloca <16 x i8>, align 16
+  %result = alloca [16 x i8], align 16
+  %0 = call <16 x i8> @test.get_simd_bool_vec()
+  store <16 x i8> %0, ptr %bool_vec, align 16
+  %1 = call { i64, i64 } @test.get_bool_vec()
+  store { i64, i64 } %1, ptr %result, align 16
+  %2 = load <16 x i8>, ptr %result, align 1
+  %3 = trunc <16 x i8> %2 to <16 x i1>
+  %4 = sext <16 x i1> %3 to <16 x i8>
+  store <16 x i8> %4, ptr %simd_bool_vec, align 16
+  ret i32 0
+}

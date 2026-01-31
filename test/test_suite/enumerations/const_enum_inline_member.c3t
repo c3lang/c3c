@@ -1,0 +1,36 @@
+// #target: macos-x64
+module test;
+struct Bar
+{
+    uint x, y, z;
+}
+
+enum Foo : const inline Bar
+{
+    X = {1, 0, 0},
+    Y = {0, 1, 0},
+    Z = {0, 0, 1},
+}
+
+fn int main()
+{
+	uint a = Foo.X.x;
+	Foo b = X;
+	uint c = b.y;
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %a = alloca i32, align 4
+  %b = alloca %Bar, align 4
+  %c = alloca i32, align 4
+  store i32 1, ptr %a, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %b, ptr align 4 @.__const, i32 12, i1 false)
+  %ptradd = getelementptr inbounds i8, ptr %b, i64 4
+  %0 = load i32, ptr %ptradd, align 4
+  store i32 %0, ptr %c, align 4
+  ret i32 0
+}

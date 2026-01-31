@@ -1,7 +1,5 @@
 module std::io;
 import std::math;
-import std::core::env;
-
 
 interface InStream
 {
@@ -36,7 +34,7 @@ fn usz? available(InStream s)
 		s.seek(curr, Seek.SET)!;
 		return len - curr;
 	}
-	return 0;
+	return io::UNSUPPORTED_OPERATION~;
 }
 
 macro bool @is_instream(#expr) @const
@@ -85,25 +83,35 @@ macro usz? read_all(stream, char[] buffer)
 {
 	if (buffer.len == 0) return 0;
 	usz n = stream.read(buffer)!;
-	if (n != buffer.len) return UNEXPECTED_EOF?;
+	if (n != buffer.len) return UNEXPECTED_EOF~;
 	return n;
 }
 
 <*
+ This function will read to the end of the stream.
+
  @require @is_instream(stream)
 *>
 macro char[]? read_fully(Allocator allocator, stream)
 {
-	usz len = available(stream)!;
-	char* data = allocator::malloc_try(allocator, len)!;
-	defer catch allocator::free(allocator, data);
-	usz read = 0;
-	while (read < len)
+	// Efficient path if it is possible to pre-allocate
+	if (try len = available(stream))
 	{
-		read += stream.read(data[read:len - read])!;
+		char* data = allocator::malloc_try(allocator, len)!;
+		defer catch allocator::free(allocator, data);
+		usz read = 0;
+		while (read < len)
+		{
+			read += stream.read(data[read:len - read])!;
+		}
+		return data[:len];
 	}
-	return data[:len];
+	ByteWriter writer;
+	writer.init(allocator);
+	copy_to(stream, &writer)!;
+	return writer.array_view();
 }
+
 
 <*
  @require @is_outstream(stream)
@@ -112,7 +120,7 @@ macro usz? write_all(stream, char[] buffer)
 {
 	if (buffer.len == 0) return 0;
 	usz n = stream.write(buffer)!;
-	if (n != buffer.len) return INCOMPLETE_WRITE?;
+	if (n != buffer.len) return INCOMPLETE_WRITE~;
 	return n;
 }
 
@@ -128,7 +136,7 @@ macro usz? read_using_read_byte(s, char[] buffer)
 		if (catch err = c)
 		{
 			if (err == io::EOF) return len;
-			return err?;
+			return err~;
 		}
 		*cptr = c;
 		len++;
@@ -152,7 +160,7 @@ macro char? read_byte_using_read(s)
 {
 	char[1] buffer;
 	usz read = s.read(&buffer)!;
-	if (read != 1) return io::EOF?;
+	if (read != 1) return io::EOF~;
 	return buffer[0];
 }
 
@@ -197,12 +205,12 @@ macro usz? copy_through_buffer(InStream in, OutStream dst, char[] buffer) @local
 		if (catch err = len)
 		{
 			if (err == io::EOF) return total_copied;
-			return err?;
+			return err~;
 		}
 		if (!len) return total_copied;
 		usz written = dst.write(buffer[:len])!;
 		total_copied += len;
-		if (written != len) return INCOMPLETE_WRITE?;
+		if (written != len) return INCOMPLETE_WRITE~;
 	}
 }
 
@@ -224,8 +232,8 @@ macro usz? read_varint(stream, x_ptr)
 		char? c = stream.read_byte();
 		if (catch err = c)
 		{
-			if (err == io::EOF) return io::UNEXPECTED_EOF?;
-			return err?;
+			if (err == io::EOF) return io::UNEXPECTED_EOF~;
+			return err~;
 		}
 		n++;
 		if (c & 0x80 == 0)
@@ -241,7 +249,7 @@ macro usz? read_varint(stream, x_ptr)
 		x |= (c & 0x7F) << shift;
 		shift += 7;
 	}
-	return math::OVERFLOW?;
+	return math::OVERFLOW~;
 }
 <*
  @require @is_outstream(stream)

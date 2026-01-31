@@ -305,6 +305,31 @@ macro alloc_array_try(Allocator allocator, $Type, usz elements) @nodiscard
 }
 
 <*
+ @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+*>
+macro realloc_array(Allocator allocator, void* ptr, $Type, usz elements) @nodiscard
+{
+	return realloc_array_try(allocator, ptr, $Type, elements)!!;
+}
+
+<*
+ Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+*>
+macro realloc_array_aligned(Allocator allocator, void* ptr, $Type, usz elements) @nodiscard
+{
+	return (($Type*)realloc_aligned(allocator, ptr, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
+}
+
+<*
+ @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+*>
+macro realloc_array_try(Allocator allocator, void* ptr, $Type, usz elements) @nodiscard
+{
+	return (($Type*)realloc_try(allocator, ptr, $Type.sizeof * elements))[:elements];
+}
+
+<*
  Clone a value.
 
  @param [&inout] allocator : "The allocator to use to clone"
@@ -558,12 +583,12 @@ typedef NullAllocator (Allocator) = uptr;
 
 fn void*? NullAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
 {
-	return mem::OUT_OF_MEMORY?;
+	return mem::OUT_OF_MEMORY~;
 }
 
 fn void*? NullAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
 {
-	return mem::OUT_OF_MEMORY?;
+	return mem::OUT_OF_MEMORY~;
 }
 
 fn void NullAllocator.release(&self, void* old_ptr, bool aligned) @dynamic

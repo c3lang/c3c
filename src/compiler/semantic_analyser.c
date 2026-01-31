@@ -8,12 +8,13 @@
 char swizzle[256] = { ['x'] = 0x01, ['y'] = 0x02, ['z'] = 0x03, ['w'] = 0x04,
 					  ['r'] = 0x11, ['g'] = 0x12, ['b'] = 0x13, ['a'] = 0x14 };
 
-void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
+void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, SourceSpan span)
 {
 	unsigned depth = context->active_scope.depth + 1;
 	if (depth > MAX_SCOPE_DEPTH)
 	{
-		FATAL_ERROR("Too deeply nested scopes.");
+		sema_error_at(context, span, "Resolution failed due to too deeply nested scopes (%u).", depth);
+		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 
 	bool scope_is_dead = context->active_scope.is_dead;
@@ -57,9 +58,9 @@ const char *context_filename(SemaContext *context)
 	return file->full_path;
 }
 
-void context_change_scope_for_label(SemaContext *context, DeclId label_id)
+void context_change_scope_for_label(SemaContext *context, DeclId label_id, SourceSpan span)
 {
-	context_change_scope_with_flags(context, SCOPE_NONE);
+	context_change_scope_with_flags(context, SCOPE_NONE, span);
 
 	if (label_id)
 	{
@@ -238,6 +239,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 	FOREACH(Decl *, decl, decls)
 	{
 		decl->unit = unit;
+		ASSERT(decl->is_template && decl->generic_id);
 		switch (decl->decl_kind)
 		{
 			case DECL_ALIAS_PATH:
@@ -250,14 +252,13 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_POISONED:
 				continue;
 			case DECL_FAULT:
-				PRINT_ERROR_AT(decl, "Generic modules cannot use 'faultdef', place the declaration in a separate sub module or parent module instead.");
-				decl_poison(decl);
-				break;
 			case DECL_BODYPARAM:
 			case DECL_DECLARRAY:
 			case DECL_ENUM_CONSTANT:
 			case DECL_ERASED:
 			case DECL_GROUP:
+			case DECL_GENERIC:
+			case DECL_GENERIC_INSTANCE:
 			case DECL_LABEL:
 				UNREACHABLE_VOID
 			case DECL_ALIAS:
@@ -278,6 +279,8 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 				break;
 		}
 		htable_set(&unit->module->symbols, (void *)decl->name, decl);
+		htable_set(&unit->local_symbols, (void *)decl->name, decl);
+
 		if (decl->visibility == VISIBLE_PUBLIC)
 		{
 			global_context_add_decl(decl);
@@ -285,25 +288,20 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 	}
 }
 
-static void analyze_generic_module(Module *module)
+static void analyze_generics(Module *module)
 {
-	ASSERT(module->parameters && module->is_generic);
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		register_generic_decls(unit, unit->global_decls);
-		register_generic_decls(unit, unit->global_cond_decls);
+		FOREACH(Decl *, section, unit->generic_decls)
+		{
+			register_generic_decls(unit, section->generic_decl.decls);
+			register_generic_decls(unit, section->generic_decl.conditional_decls);
+		}
 	}
 }
 
 static void sema_analyze_to_stage(AnalysisStage stage)
 {
-	if (stage <= ANALYSIS_MODULE_TOP)
-	{
-		FOREACH(Module *, module, compiler.context.generic_module_list)
-		{
-			sema_analyze_stage(module, stage);
-		}
-	}
 	FOREACH(Module *, module, compiler.context.module_list)
 	{
 		sema_analyze_stage(module, stage);
@@ -485,9 +483,9 @@ void sema_analysis_run(void)
 
 
 	// We parse the generic modules, just by storing the decls.
-	FOREACH(Module *, module, compiler.context.generic_module_list)
+	FOREACH(Module *, module, compiler.context.module_list)
 	{
-		analyze_generic_module(module);
+		analyze_generics(module);
 	}
 
 	for (AnalysisStage stage = ANALYSIS_NOT_BEGUN + 1; stage <= ANALYSIS_LAST; stage++)
@@ -609,6 +607,17 @@ void sema_error_at(SemaContext *context, SourceSpan span, const char *message, .
 	sema_verror_range(span, message, list);
 	va_end(list);
 	sema_print_inline(context, span);
+}
+
+bool sema_warn_very_strict(SemaContext *context, SourceSpan span, const char *message, ...)
+{
+	if (compiler.build.validation_level < VALIDATION_OBNOXIOUS) return false;
+	va_list list;
+	va_start(list, message);
+	sema_verror_range(span, message, list);
+	va_end(list);
+	sema_print_inline(context, span);
+	return true;
 }
 
 bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ...)

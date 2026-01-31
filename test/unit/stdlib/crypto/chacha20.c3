@@ -408,7 +408,7 @@ fn void scrolling_input_randomly_unaligned()
 	};
 }
 
-fn void scrolling_input_unaligned_permutations_with_random_chunks()
+fn void scrolling_input_unaligned_permutations_with_random_chunks() @if($feature(SLOW_TESTS))
 {
 	// Paranoia, honestly... Use a known test vector a couple blocks long, and - no matter the alignment started from - ensure the same result.
 	Lcg64Random rand;
@@ -439,7 +439,6 @@ fn void scrolling_input_unaligned_permutations_with_random_chunks()
         }
 	}
 }
-
 
 fn void chacha20_chunked_transform() => @pool()
 {

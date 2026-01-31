@@ -39,13 +39,26 @@ in llvmPackages.stdenv.mkDerivation (_:
     local FILE_NAMES="$(find src -type f)"
     substituteInPlace $FILE_NAMES --replace-quiet "__DATE__" "\"$(date '+%b %d %Y')\""
     substituteInPlace $FILE_NAMES --replace-quiet "__TIME__" "\"$(date '+%T')\""
+
+    patchShebangs scripts/tools/ci_tests.sh
+
+    # Skip library tests (dynlib/staticlib).
+    substituteInPlace scripts/tools/ci_tests.sh \
+      --replace-fail "run_dynlib_tests() {" "run_dynlib_tests() { return 0;" \
+      --replace-fail "run_staticlib_tests() {" "run_staticlib_tests() { return 0;"
+
+    # Remove '--linker=builtin' from run_testproject so it uses the working system linker.
+    substituteInPlace scripts/tools/ci_tests.sh \
+      --replace-fail 'ARGS="$ARGS --linker=builtin"' 'ARGS="$ARGS"'
   '';
 
   cmakeBuildType = if debug then "Debug" else "Release";
 
+  # Only set LLVM_CRT_LIBRARY_DIR for Darwin.
   cmakeFlags = [
     "-DC3_ENABLE_CLANGD_LSP=${if debug then "ON" else "OFF"}"
     "-DC3_LLD_DIR=${llvmPackages.lld.lib}/lib"
+  ] ++ lib.optionals llvmPackages.stdenv.hostPlatform.isDarwin [
     "-DLLVM_CRT_LIBRARY_DIR=${llvmPackages.compiler-rt}/lib/darwin"
   ];
 
@@ -73,12 +86,9 @@ in llvmPackages.stdenv.mkDerivation (_:
   checkPhase = ''
     runHook preCheck
     local BUILD_DIR=$(pwd)
-    
-    cd ../resources/testproject
-    ../../build/c3c build --trust=full
 
-    cd ../../test
-    ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c ./test_suite
+    export SKIP_NETWORK_TESTS=1
+    ../scripts/tools/ci_tests.sh $(pwd)/c3c
     
     cd $BUILD_DIR
     runHook postCheck

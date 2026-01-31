@@ -21,7 +21,7 @@ fn String? win32_get_known_folder_temp(Win32_REFKNOWNFOLDERID rfid) @private @if
 {
 	Win32_PWSTR path;
 	Win32_HRESULT res = win32::shGetKnownFolderPath(rfid, 0x00008000 /* KF_FLAG_CREATE */, null, &path);
-	if (res) return io::PATH_COULD_NOT_BE_FOUND?;
+	if (res) return io::PATH_COULD_NOT_BE_FOUND~;
 	return string::from_wstring(tmem, (WString)path);
 }
 
@@ -38,11 +38,11 @@ fn Path? native_home_directory(Allocator allocator) => @pool()
         $case NETBSD:
 		$case OPENBSD:
 		$case HAIKU:
-			return path::new(allocator, env::tget_var("HOME")) ?? io::PATH_COULD_NOT_BE_FOUND?;
+			return path::new(allocator, env::tget_var("HOME")) ?? io::PATH_COULD_NOT_BE_FOUND~;
 		$case WIN32:
 			return path::new(allocator, win32_get_known_folder_temp(&win32::FOLDERID_PROFILE));
 		$default:
-			return io::PATH_COULD_NOT_BE_FOUND?;
+			return io::PATH_COULD_NOT_BE_FOUND~;
 	$endswitch
 }
 
@@ -67,7 +67,7 @@ fn Path? native_user_directory(Allocator allocator, NativeSystemDir dir) => @poo
 				case TEMPLATES: return path::new(allocator, posix::xdg_user_dir_lookup(tmem, "TEMPLATES"));
 				case SAVED_GAMES:
 				case SCREENSHOTS: nextcase;
-				default: return io::PATH_COULD_NOT_BE_FOUND?;
+				default: return io::PATH_COULD_NOT_BE_FOUND~;
 			}
 		$case IOS:
 		$case MACOS:
@@ -85,7 +85,7 @@ fn Path? native_user_directory(Allocator allocator, NativeSystemDir dir) => @poo
 				case SAVED_GAMES:
 				case SCREENSHOTS:
 				case TEMPLATES: nextcase;
-				default: return io::PATH_COULD_NOT_BE_FOUND?;
+				default: return io::PATH_COULD_NOT_BE_FOUND~;
 			}
 		$case WIN32:
 			switch (dir)
@@ -100,10 +100,10 @@ fn Path? native_user_directory(Allocator allocator, NativeSystemDir dir) => @poo
 				case SCREENSHOTS: return path::new(allocator, win32_get_known_folder_temp(&win32::FOLDERID_SCREENSHOTS));
 				case TEMPLATES: return path::new(allocator, win32_get_known_folder_temp(&win32::FOLDERID_TEMPLATES));
 				case PUBLIC_SHARE: nextcase;
-				default: return io::PATH_COULD_NOT_BE_FOUND?;
+				default: return io::PATH_COULD_NOT_BE_FOUND~;
 			}
 		$default:
-			return io::PATH_COULD_NOT_BE_FOUND?;
+			return io::PATH_COULD_NOT_BE_FOUND~;
 	$endswitch
 }
 
@@ -121,15 +121,16 @@ fn Path? native_temp_directory(Allocator allocator) @if(!env::WIN32)
 fn Path? native_temp_directory(Allocator allocator) @if(env::WIN32) => @pool()
 {
 	Win32_DWORD len = win32::getTempPathW(0, null);
-	if (!len) return io::GENERAL_ERROR?;
-	Char16[] buff = mem::talloc_array(Char16, len + (usz)1);
-	if (!win32::getTempPathW(len, buff)) return io::GENERAL_ERROR?;
-	return path::new(allocator, string::tfrom_utf16(buff[:len]));
+	if (!len) return io::GENERAL_ERROR~;
+	Char16[] buff = mem::talloc_array(Char16, len);
+	Win32_DWORD res = win32::getTempPathW(len, buff);
+	if (!res) return io::GENERAL_ERROR~;
+	return path::new(allocator, string::tfrom_utf16(buff[:res]));
 }
 
 module std::io::os @if(env::NO_LIBC);
 import std::io::path;
 
-macro Path? native_home_directory(Allocator allocator) => io::PATH_COULD_NOT_BE_FOUND?;
-macro Path? native_temp_directory(Allocator allocator) => io::PATH_COULD_NOT_BE_FOUND?;
-fn Path? native_user_directory(Allocator allocator, NativeSystemDir dir) => io::PATH_COULD_NOT_BE_FOUND?;
+macro Path? native_home_directory(Allocator allocator) => io::PATH_COULD_NOT_BE_FOUND~;
+macro Path? native_temp_directory(Allocator allocator) => io::PATH_COULD_NOT_BE_FOUND~;
+fn Path? native_user_directory(Allocator allocator, NativeSystemDir dir) => io::PATH_COULD_NOT_BE_FOUND~;

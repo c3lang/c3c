@@ -285,12 +285,10 @@ const char *type_to_error_string(Type *type)
 		case TYPE_INTERFACE:
 		{
 			Decl *decl = type->decl;
-			const char *suffix = decl->unit->module->generic_suffix;
-			if (!suffix && !type_is_inner_type(type)) return type->name;
+			if (!type_is_inner_type(type)) return type->name;
 			scratch_buffer_clear();
 			type_add_parent_to_scratch(decl);
 			scratch_buffer_append(decl->name ? decl->name : "(anon)");
-			if (suffix) scratch_buffer_append(suffix);
 			return scratch_buffer_copy();
 		}
 		case TYPE_FUNC_PTR:
@@ -354,23 +352,14 @@ static const char *type_to_error_string_with_path(Type *type)
 		case TYPE_INTERFACE:
 		{
 			Decl *decl = type->decl;
-			const char *suffix = decl->unit->module->generic_suffix;
 			scratch_buffer_clear();
-			if (decl->unit->module->generic_module)
-			{
-				scratch_buffer_append(decl->unit->module->generic_module->name->module);
-			}
-			else
-			{
-				scratch_buffer_append(decl->unit->module->name->module);
-			}
+			scratch_buffer_append(decl->unit->module->name->module);
 			scratch_buffer_append("::");
-			if (suffix || type_is_inner_type(type))
+			if (type_is_inner_type(type))
 			{
 				type_add_parent_to_scratch(decl);
 			}
 			scratch_buffer_append(decl->name);
-			if (suffix) scratch_buffer_append(suffix);
 			return scratch_buffer_copy();
 		}
 		case TYPE_FUNC_PTR:
@@ -1384,7 +1373,11 @@ Type *type_get_vector_bool(Type *original_type, TypeKind kind)
 Type *type_get_vector_from_vector(Type *base_type, Type *orginal_vector)
 {
 	ASSERT(type_kind_is_real_vector(orginal_vector->type_kind));
-	return type_get_vector(base_type, orginal_vector->type_kind, orginal_vector->array.len);
+	bool opt = type_is_optional(base_type);
+	if (opt) base_type = type_no_optional(base_type);
+	Type *res = type_get_vector(base_type, orginal_vector->type_kind, orginal_vector->array.len);
+	if (opt) res = type_get_optional(res);
+	return res;
 }
 
 Type *type_get_simd_from_vector(Type *orginal_vector)
@@ -1555,6 +1548,7 @@ void type_setup(PlatformTarget *target)
 	type_wildcard_optional = type_get_optional(type_wildcard);
 	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_TYPEDEF);
 	string_decl->unit = compiler.context.core_unit;
+	string_decl->resolved_attributes = true;
 	string_decl->extname = string_decl->name;
 	string_decl->is_substruct = true;
 	string_decl->distinct = type_info_new_base(type_chars, INVALID_SPAN);
@@ -2284,6 +2278,7 @@ RETRY_DISTINCT:
 			// array + [other array, vector] => no
 			return NULL;
 		case TYPE_FLEXIBLE_ARRAY:
+			return NULL;
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 			// Already handled

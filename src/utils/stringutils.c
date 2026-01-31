@@ -362,6 +362,12 @@ char *str_copy(const char *start, size_t str_len)
 	return dst;
 }
 
+void scratch_buffer_delete(size_t len)
+{
+	ASSERT(scratch_buffer.len >= len);
+	scratch_buffer.len -= len;
+}
+
 void scratch_buffer_clear(void)
 {
 	scratch_buffer.len = 0;
@@ -553,7 +559,7 @@ void scratch_buffer_append_remove_space(const char *start, int len)
 		clast = ch;
 		printed++;
 	}
-	if (clast == ' ' && printed > 0) scratch_buffer.len--;
+	if (clast == ' ' && printed > 0) scratch_buffer_delete(1);
 }
 
 void scratch_buffer_append_char(char c)

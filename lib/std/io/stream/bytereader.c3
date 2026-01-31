@@ -19,7 +19,7 @@ fn ByteReader* ByteReader.init(&self, char[] bytes)
 
 fn usz? ByteReader.read(&self, char[] bytes) @dynamic
 {
-	if (self.index >= self.bytes.len) return io::EOF?;
+	if (self.index >= self.bytes.len) return io::EOF~;
 	usz len = min(self.bytes.len - self.index, bytes.len);
 	if (len == 0) return 0;
 	mem::copy(bytes.ptr, &self.bytes[self.index], len);
@@ -29,13 +29,13 @@ fn usz? ByteReader.read(&self, char[] bytes) @dynamic
 
 fn char? ByteReader.read_byte(&self) @dynamic
 {
-	if (self.index >= self.bytes.len) return io::EOF?;
+	if (self.index >= self.bytes.len) return io::EOF~;
 	return self.bytes[self.index++];
 }
 
 fn void? ByteReader.pushback_byte(&self) @dynamic
 {
-	if (!self.index) return INVALID_PUSHBACK?;
+	if (!self.index) return INVALID_PUSHBACK~;
 	self.index--;
 }
 
@@ -48,7 +48,7 @@ fn usz? ByteReader.seek(&self, isz offset, Seek seek) @dynamic
 		case CURSOR: new_index = self.index + offset;
 		case END: new_index = self.bytes.len + offset;
 	}
-	if (new_index < 0) return INVALID_POSITION?;
+	if (new_index < 0) return INVALID_POSITION~;
 	self.index = new_index;
 	return new_index;
 }

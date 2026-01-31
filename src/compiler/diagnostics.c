@@ -277,6 +277,7 @@ void print_error_at(SourceSpan loc, const char *message, ...)
 	va_end(list);
 }
 
+
 void print_error_after(SourceSpan loc, const char *message, ...)
 {
 	loc.col += loc.length;
@@ -297,6 +298,26 @@ void sema_note_prev_at(SourceSpan loc, const char *message, ...)
 	if (written <= MAX_ERROR_LEN - 2)
 	{
 		print_error_type_at(loc, buffer, PRINT_TYPE_NOTE);
+	}
+	va_end(args);
+}
+
+void print_deprecation_at(SourceSpan loc, const char *message, ...)
+{
+	va_list args;
+	va_start(args, message);
+	char buffer[MAX_ERROR_LEN];
+	size_t written = vsnprintf(buffer, MAX_ERROR_LEN - 1, message, args);
+	// Ignore errors
+	if (written <= MAX_ERROR_LEN - 2)
+	{
+		print_error_type_at(loc, buffer, PRINT_TYPE_NOTE);
+	}
+	static bool deprecation_hint = false;
+	if (!compiler.build.lsp_output && !deprecation_hint)
+	{
+		deprecation_hint = true;
+		eprintf("HINT: You may use --silence-deprecation to silence deprecation warnings.\n\n");
 	}
 	va_end(args);
 }

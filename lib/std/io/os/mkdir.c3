@@ -17,17 +17,17 @@ macro bool? native_mkdir(Path path, MkdirPermissions permissions)
 				case errno::EACCES:
 				case errno::EPERM:
 				case errno::EROFS:
-				case errno::EFAULT: return io::NO_PERMISSION?;
-				case errno::ENAMETOOLONG: return io::NAME_TOO_LONG?;
+				case errno::EFAULT: return io::NO_PERMISSION~;
+				case errno::ENAMETOOLONG: return io::NAME_TOO_LONG~;
 				case errno::EDQUOT:
-				case errno::ENOSPC: return io::OUT_OF_SPACE?;
+				case errno::ENOSPC: return io::OUT_OF_SPACE~;
 				case errno::EISDIR:
 				case errno::EEXIST: return false;
-				case errno::ELOOP: return io::SYMLINK_FAILED?;
-				case errno::ENOTDIR: return io::FILE_NOT_FOUND?;
-				case errno::ENOENT: return io::PARENT_DIR_MISSING?;
+				case errno::ELOOP: return io::SYMLINK_FAILED~;
+				case errno::ENOTDIR: return io::FILE_NOT_FOUND~;
+				case errno::ENOENT: return io::PARENT_DIR_MISSING~;
 				default:
-					return io::GENERAL_ERROR?;
+					return io::GENERAL_ERROR~;
 			}
 		$case env::WIN32:
 				// TODO security attributes
@@ -35,18 +35,18 @@ macro bool? native_mkdir(Path path, MkdirPermissions permissions)
 				switch (win32::getLastError())
 				{
 					case win32::ERROR_ACCESS_DENIED:
-						return io::NO_PERMISSION?;
+						return io::NO_PERMISSION~;
 					case win32::ERROR_DISK_FULL:
-						return io::OUT_OF_SPACE?;
+						return io::OUT_OF_SPACE~;
 					case win32::ERROR_ALREADY_EXISTS:
 						return false;
 					case win32::ERROR_PATH_NOT_FOUND:
-						return io::FILE_NOT_FOUND?;
+						return io::FILE_NOT_FOUND~;
 					default:
-						return io::GENERAL_ERROR?;
+						return io::GENERAL_ERROR~;
 				}
 		$default:
-			return io::UNSUPPORTED_OPERATION?;
+			return io::UNSUPPORTED_OPERATION~;
 	$endswitch
 	};
 }

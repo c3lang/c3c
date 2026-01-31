@@ -13,6 +13,6 @@ module abc::foo;
 
 struct Def { int x; }
 
-module abc::cde{Type};
+module abc::cde <Type>;
 
 struct Abc { Type a, b; }

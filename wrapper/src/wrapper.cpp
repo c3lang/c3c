@@ -361,6 +361,12 @@ void LLVMBuilderSetFastMathFlags(LLVMBuilderRef Builder, FastMathOption option)
 	llvm::unwrap(Builder)->setFastMathFlags(math_flags);
 }
 
+bool LLVMHasUseList(LLVMValueRef value)
+{
+	llvm::Value *val = llvm::unwrap<llvm::Value>(value);
+	return !llvm::isa<llvm::ConstantData>(*val);
+}
+
 LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal)
 {
 	llvm::Constant *Val = llvm::unwrap<llvm::Constant>(ConstantVal);

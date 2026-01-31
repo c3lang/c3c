@@ -1,4 +1,4 @@
-module std::thread::channel {Type};
+module std::thread::channel <Type>;
 
 typedef UnbufferedChannel = void*;
 
@@ -65,7 +65,7 @@ fn void? UnbufferedChannel.push(self, Type val)
 
 	if (channel.closed)
 	{
-		return thread::CHANNEL_CLOSED?;
+		return thread::CHANNEL_CLOSED~;
 	}
 
 	// store value in the buffer
@@ -82,7 +82,7 @@ fn void? UnbufferedChannel.push(self, Type val)
 	// wait until reader takes value from buffer
 	channel.send_cond.wait(&channel.mu);
 
-	if (channel.closed) return thread::CHANNEL_CLOSED?;
+	if (channel.closed) return thread::CHANNEL_CLOSED~;
 
 	channel.mu.unlock();
 	channel.send_mu.unlock();
@@ -105,7 +105,7 @@ fn Type? UnbufferedChannel.pop(self)
 		channel.read_waiting--;
 	}
 
-	if (channel.closed) return thread::CHANNEL_CLOSED?;
+	if (channel.closed) return thread::CHANNEL_CLOSED~;
 
 	// take value from buffer
 	Type ret = channel.buf;

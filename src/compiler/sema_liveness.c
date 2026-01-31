@@ -108,7 +108,8 @@ static void sema_trace_stmt_liveness(Ast *ast)
 		case AST_CONTRACT:
 		case AST_FOREACH_STMT:
 		case AST_CONTRACT_FAULT:
-			UNREACHABLE_VOID
+			assert_print_line(ast->span);
+			error_exit("Unexpected liveness checking of AST node %d.", ast->ast_kind);
 		case AST_ASM_STMT:
 			sema_trace_expr_list_liveness(ast->asm_stmt.args);
 			return;
@@ -269,7 +270,9 @@ RETRY:
 		case EXPR_MEMBER_SET:
 		case EXPR_NAMED_ARGUMENT:
 		case UNRESOLVED_EXPRS:
-			UNREACHABLE_VOID
+		case EXPR_LAMBDA:
+			assert_print_line(expr->span);
+			error_exit("Unexpected liveness checking of expr node %d.", expr->expr_kind);
 		case EXPR_TWO:
 			sema_trace_expr_liveness(expr->two_expr.first);
 			sema_trace_expr_liveness(expr->two_expr.last);
@@ -412,8 +415,6 @@ RETRY:
 			FOREACH(Expr *, e, expr->initializer_list) sema_trace_expr_liveness(e);
 			return;
 		}
-		case EXPR_LAMBDA:
-			UNREACHABLE_VOID
 		case EXPR_MACRO_BLOCK:
 		{
 			FOREACH(Decl *, val, expr->macro_block.params) sema_trace_decl_liveness(val);
@@ -530,10 +531,12 @@ void sema_trace_liveness(void)
 		{
 			FOREACH(Decl *, function, unit->functions)
 			{
+				if (function->func_decl.attr_test && !keep_tests) continue;
+				if (function->func_decl.attr_benchmark && !keep_benchmarks) continue;
 				if (function->is_export || function->no_strip || function->func_decl.attr_finalizer ||
 				    function->func_decl.attr_init ||
-				    (function->func_decl.attr_test && keep_tests) ||
-				    (function->func_decl.attr_benchmark && keep_benchmarks))
+				    (function->func_decl.attr_test) ||
+				    (function->func_decl.attr_benchmark))
 					sema_trace_decl_liveness(function);
 			}
 			FOREACH(Decl *, method, unit->methods)
@@ -634,7 +637,11 @@ RETRY:
 		case DECL_IMPORT:
 		case DECL_LABEL:
 		case DECL_MACRO:
-			UNREACHABLE_VOID
+		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
+		case DECL_DECLARRAY:
+			assert_print_line(decl->span);
+			error_exit("Unexpected liveness checking of expr decl %d.", decl->decl_kind);
 		case DECL_FNTYPE:
 			sema_trace_func_liveness(&decl->fntype_decl.signature);
 			return;
@@ -667,7 +674,5 @@ RETRY:
 					break;
 			}
 			return;
-		case DECL_DECLARRAY:
-			UNREACHABLE_VOID
 	}
 }

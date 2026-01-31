@@ -12,7 +12,7 @@ fn void*? native_fopen(String filename, String mode) @inline => @pool()
 	$else
 		void* file = libc::fopen(filename.zstr_tcopy(), mode.zstr_tcopy());
 	$endif
-		return file ?: file_open_errno()?;
+		return file ?: file_open_errno()~;
 }
 
 fn void? native_remove(String filename) => @pool()
@@ -27,10 +27,10 @@ fn void? native_remove(String filename) => @pool()
 		switch (libc::errno())
 		{
 			case errno::ENOENT:
-				return io::FILE_NOT_FOUND?;
+				return io::FILE_NOT_FOUND~;
 			case errno::EACCES:
 			default:
-				return io::FILE_CANNOT_DELETE?;
+				return io::FILE_CANNOT_DELETE~;
 		}
 	}
 }
@@ -46,19 +46,19 @@ fn void*? native_freopen(void* file, String filename, String mode) @inline => @p
 	$else
 		file = libc::freopen(filename.zstr_tcopy(), mode.zstr_tcopy(), file);
 	$endif
-		return file ?: file_open_errno()?;
+		return file ?: file_open_errno()~;
 }
 
 fn void? native_fseek(void* file, isz offset, Seek seek_mode) @inline
 {
-	if (libc::fseek(file, (SeekIndex)offset, seek_mode.ordinal)) return file_seek_errno()?;
+	if (libc::fseek(file, (SeekIndex)offset, seek_mode.ordinal)) return file_seek_errno()~;
 }
 
 
 fn usz? native_ftell(CFile file) @inline
 {
 	long index = libc::ftell(file);
-	return index >= 0 ? (usz)index : file_seek_errno()?;
+	return index >= 0 ? (usz)index : file_seek_errno()~;
 }
 
 fn usz? native_fwrite(CFile file, char[] buffer) @inline
@@ -68,7 +68,7 @@ fn usz? native_fwrite(CFile file, char[] buffer) @inline
 
 fn void? native_fputc(CInt c, CFile stream) @inline
 {
-	if (libc::fputc(c, stream) == libc::EOF) return io::EOF?;
+	if (libc::fputc(c, stream) == libc::EOF) return io::EOF~;
 }
 
 fn usz? native_fread(CFile file, char[] buffer) @inline

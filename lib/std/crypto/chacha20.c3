@@ -142,7 +142,7 @@ fn void ChaCha20.transform(&self, char[] data)
         char[] aligned_data = data[offset..];
 		for (; x <= (BLOCK_SIZE - usz.sizeof); x += usz.sizeof)
 		{
-			((usz*)aligned_data.ptr)[x / usz.sizeof] ^= @unaligned_load(*(usz*)(&key_stream[x]), 1);
+			((usz*)aligned_data.ptr)[x / usz.sizeof] ^= mem::load((usz*)(&key_stream[x]), $align: 1);
 		}
         for (; x < BLOCK_SIZE; x++) data[x] ^= key_stream[x];
 	}

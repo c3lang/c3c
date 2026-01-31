@@ -1,7 +1,7 @@
 // Copyright (c) 2021-2024 Christoffer Lerno. All rights reserved.
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::collections::list{Type};
+module std::collections::list <Type>;
 import std::io, std::math, std::collections::list_common;
 
 alias ElementPredicate = fn bool(Type *type);
@@ -115,7 +115,7 @@ fn void List.push(&self, Type element) @inline
 
 fn Type? List.pop(&self)
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	defer self.set_size(self.size - 1);
 	return self.entries[self.size - 1];
 }
@@ -127,7 +127,7 @@ fn void List.clear(&self)
 
 fn Type? List.pop_first(&self)
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	defer self.remove_at(0);
 	return self.entries[0];
 }
@@ -250,25 +250,25 @@ fn void List.set_at(&self, usz index, Type type)
 
 fn void? List.remove_last(&self) @maydiscard
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	self.set_size(self.size - 1);
 }
 
 fn void? List.remove_first(&self) @maydiscard
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	self.remove_at(0);
 }
 
 fn Type? List.first(&self)
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	return self.entries[0];
 }
 
 fn Type? List.last(&self)
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	return self.entries[self.size - 1];
 }
 
@@ -461,22 +461,22 @@ macro void List.post_alloc(&self) @private
 // Functions for equatable types
 
 
-fn usz? List.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
+fn usz? List.index_of(&self, Type type) @if (ELEMENT_IS_EQUATABLE)
 {
 	foreach (i, v : self)
 	{
 		if (equals(v, type)) return i;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
-fn usz? List.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
+fn usz? List.rindex_of(&self, Type type) @if (ELEMENT_IS_EQUATABLE)
 {
 	foreach_r (i, v : self)
 	{
 		if (equals(v, type)) return i;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 fn bool List.equals(&self, List other_list) @if(ELEMENT_IS_EQUATABLE)

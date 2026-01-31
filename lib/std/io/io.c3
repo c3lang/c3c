@@ -58,6 +58,11 @@ faultdef
 *>
 macro String? readline(Allocator allocator, stream = io::stdin())
 {
+	return readline_impl{$typeof(stream)}(allocator, stream);
+}
+
+fn String? readline_impl(Allocator allocator, Stream stream) <Stream> @private
+{
 	if (allocator == tmem)
 	{
 		DString str = dstring::temp_with_capacity(256);
@@ -99,16 +104,21 @@ macro String? treadline(stream = io::stdin())
 *>
 macro usz? readline_to_stream(out_stream, in_stream = io::stdin())
 {
-	bool $is_stream = $typeof(in_stream) == InStream;
+	return readline_to_stream_impl{$typeof(in_stream), $typeof(out_stream)}(out_stream, in_stream);
+}
+
+fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream) <IStream, OStream> @private
+{
+	bool $is_stream = IStream == InStream;
 	$if $is_stream:
-		var func = &in_stream.read_byte;
+		var func @safeinfer = &in_stream.read_byte;
 		char val = func((void*)in_stream)!;
 	$else
 		char val = in_stream.read_byte()!;
 	$endif
-	bool $is_out_stream = $typeof(out_stream) == OutStream;
+	bool $is_out_stream = OStream == OutStream;
 	$if $is_out_stream:
-		var out_func = &out_stream.write_byte;
+		var out_func @safeinfer = &out_stream.write_byte;
 	$endif
 
 	if (val == '\n') return 0;
@@ -132,7 +142,7 @@ macro usz? readline_to_stream(out_stream, in_stream = io::stdin())
 		if (catch err = c)
 		{
 			if (err == io::EOF) break;
-			return err?;
+			return err~;
 		}
 		if (c == '\r') continue;
 		if (c == '\n') break;
@@ -404,7 +414,7 @@ fn char[]? bprintf(char[] buffer, String format, args...) @maydiscard
 fn void? out_buffer_fn(void *data, char c) @private
 {
 	BufferData *buffer_data = data;
-	if (buffer_data.written >= buffer_data.buffer.len) return BUFFER_EXCEEDED?;
+	if (buffer_data.written >= buffer_data.buffer.len) return BUFFER_EXCEEDED~;
 	buffer_data.buffer[buffer_data.written++] = c;
 }
 
