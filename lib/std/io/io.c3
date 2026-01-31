@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::io;
-import libc;
+import libc, std::collections::pair;
 
 enum Seek
 {
@@ -50,6 +50,7 @@ faultdef
  or to the end of the stream, whatever comes first.
  "\r" will be filtered from the String.
 
+ @param [&inout] allocator : "The allocator used to allocate the read string."
  @param stream : `The stream to read from.`
  @require @is_not_instream_if_ptr(stream) : "The value for 'stream' should have been passed as a pointer and not as a value, please add '&'."
  @require @is_instream(stream) : `Make sure that the stream is actually an InStream.`
@@ -59,22 +60,6 @@ faultdef
 macro String? readline(Allocator allocator, stream = io::stdin())
 {
 	return readline_impl{$typeof(stream)}(allocator, stream);
-}
-
-fn String? readline_impl(Allocator allocator, Stream stream) <Stream> @private
-{
-	if (allocator == tmem)
-	{
-		DString str = dstring::temp_with_capacity(256);
-		readline_to_stream(&str, stream)!;
-		return str.str_view();
-	}
-	@pool()
-	{
-		DString str = dstring::temp_with_capacity(256);
-		readline_to_stream(&str, stream)!;
-		return str.copy_str(allocator);
-	};
 }
 
 <*
@@ -92,22 +77,73 @@ macro String? treadline(stream = io::stdin())
 }
 
 <*
+ Read from a stream (default is stdin) to the next "\n"
+ or to the end of the stream, whatever comes first.
+ "\r" will be filtered from the String.
+
+ @param [&inout] allocator : "The allocator used to allocate the read string."
+ @param limit : `Limits the byte-length of the allocated output string.`
+ @param stream : `The stream to read from.`
+ @require @is_not_instream_if_ptr(stream) : "The value for 'stream' should have been passed as a pointer and not as a value, please add '&'."
+ @require @is_instream(stream) : `Make sure that the stream is actually an InStream.`
+ @return `The string containing the data read.`
+*>
+macro Pair{String, bool}? readline_limit(Allocator allocator, usz limit, stream = io::stdin())
+{
+	String ret = readline_impl{$typeof(stream)}(allocator, stream, limit)!;
+	return { ret, limit > 0 && ret.len >= limit };
+}
+
+<*
+ Read from a stream (default is stdin) to the next "\n"
+ or to the end of the stream, whatever comes first.
+ "\r" will be filtered from the String.
+
+ @param limit : `Limits the byte-length of the allocated output string.`
+ @param stream : `The stream to read from.`
+ @require @is_not_instream_if_ptr(stream) : "The value for 'stream' should have been passed as a pointer and not as a value, please add '&'."
+ @require @is_instream(stream) : `Make sure that the stream is actually an InStream.`
+ @return `A Pair containing the string of bytes read and whether the limit was exceeded.`
+*>
+macro Pair{String, bool}? treadline_limit(usz limit, stream = io::stdin())
+{
+	return readline_limit(tmem, limit, stream);
+}
+
+fn String? readline_impl(Allocator allocator, Stream stream, usz limit = 0) <Stream> @private
+{
+	if (allocator == tmem)
+	{
+		DString str = dstring::temp_with_capacity(256);
+		readline_to_stream(&str, stream, limit)!;
+		return str.str_view();
+	}
+	@pool()
+	{
+		DString str = dstring::temp_with_capacity(256);
+		readline_to_stream(&str, stream, limit)!;
+		return str.copy_str(allocator);
+	};
+}
+
+<*
  Reads a string, see `readline`, the data is passed to an outstream
 
  @param out_stream : `The stream to write to`
  @param in_stream : `The stream to read from.`
+ @param limit : `Optionally limits the byte-length of the allocated output string.`
  @require @is_not_instream_if_ptr(in_stream) : "The value for 'in_stream' should have been passed as a pointer and not as a value, please add '&'."
  @require @is_not_outstream_if_ptr(out_stream) : "The value for 'out_stream' should have been passed as a pointer and not as a value, please add '&'."
  @require @is_instream(in_stream) : `The in_stream must implement InStream.`
  @require @is_outstream(out_stream) : `The out_stream must implement OutStream.`
- @return `The number of bytes written`
+ @return `The number of bytes written. When a 'limit' is provided and the return value is equal to it, there may be more to read on the current line.`
 *>
-macro usz? readline_to_stream(out_stream, in_stream = io::stdin())
+macro usz? readline_to_stream(out_stream, in_stream = io::stdin(), usz limit = 0)
 {
-	return readline_to_stream_impl{$typeof(in_stream), $typeof(out_stream)}(out_stream, in_stream);
+	return readline_to_stream_impl{$typeof(in_stream), $typeof(out_stream)}(out_stream, in_stream, limit);
 }
 
-fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream) <IStream, OStream> @private
+fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream, usz limit = 0) <IStream, OStream> @private
 {
 	bool $is_stream = IStream == InStream;
 	$if $is_stream:
@@ -132,7 +168,7 @@ fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream) <IStream,
 		$endif
 		len++;
 	}
-	while (1)
+	while (!limit || len < limit)
 	{
 		$if $is_stream:
 			char? c = func((void*)in_stream);

@@ -5,6 +5,7 @@
 ### Changes / improvements
 
 ### Stdlib changes
+- Add `io::readline_limit` and `io::treadline_limit` and allow line-length limits in `io::readline_to_stream`. #2879
 
 ### Fixes
 - Add error message if directory with output file name already exists
