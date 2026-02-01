@@ -4133,7 +4133,6 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 				default: UNREACHABLE
 			}
 		case MAIN_TYPE_NO_ARGS:
-			ASSERT(!is_wmain);
 			if (is_winmain)
 			{
 				switch (type)
@@ -4141,6 +4140,16 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 					case 0 : main_invoker = "@win_to_void_main_noargs"; goto NEXT;
 					case 1 : main_invoker = "@win_to_int_main_noargs"; goto NEXT;
 					case 2 : main_invoker = "@win_to_err_main_noargs"; goto NEXT;
+					default: UNREACHABLE
+				}
+			}
+			if (is_wmain)
+			{
+				switch (type)
+				{
+					case 0 : main_invoker = "@wmain_to_void_main"; goto NEXT;
+					case 1 : main_invoker = "@wmain_to_int_main"; goto NEXT;
+					case 2 : main_invoker = "@wmain_to_err_main"; goto NEXT;
 					default: UNREACHABLE
 				}
 			}
@@ -4242,7 +4251,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		function = decl;
 		goto REGISTER_MAIN;
 	}
-	bool is_wmain = is_win32 && !is_winmain && type != MAIN_TYPE_NO_ARGS;
+	bool is_wmain = is_win32 && !is_winmain;
 	compiler.build.win.use_win_subsystem = is_winmain && is_win32;
 	function = sema_create_synthetic_main(context, decl, type, is_int_return, is_err_return, is_winmain, is_wmain);
 	if (!decl_ok(function)) return false;
