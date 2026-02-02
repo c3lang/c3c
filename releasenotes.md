@@ -6,6 +6,7 @@
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
+- Add single-byte code page support (DOS/OEM, Windows/ANSI, and ISO/IEC 8859).
 
 ### Fixes
 - Add error message if directory with output file name already exists
