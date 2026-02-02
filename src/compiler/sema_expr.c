@@ -9680,7 +9680,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 		CHECK_ON_DEFINED(failed_ref);
 		if (else_type == type_fault)
 		{
-			RETURN_SEMA_ERROR(right, "There is no common type for %s and %s, did you perhaps forget a '?' after the last expression?", type_quoted_error_string(type), type_quoted_error_string(else_type));
+			RETURN_SEMA_ERROR(right, "There is no common type for %s and %s, did you perhaps forget a '~' after the last expression?", type_quoted_error_string(type), type_quoted_error_string(else_type));
 		}
 		RETURN_SEMA_ERROR(right, "Cannot find a common type for %s and %s.", type_quoted_error_string(type), type_quoted_error_string(else_type));
 	}
@@ -9965,7 +9965,7 @@ static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr, 
 	if (inner->expr_kind == EXPR_OPTIONAL)
 	{
 		if (failed_ref) goto ON_FAILED;
-		RETURN_SEMA_ERROR(inner, "It looks like you added one too many '?' after the error.");
+		RETURN_SEMA_ERROR(inner, "It looks like you added one too many '~' after the error.");
 	}
 
 	Type *type = inner->type->canonical;
@@ -9973,7 +9973,7 @@ static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr, 
 	if (type != type_fault)
 	{
 		if (failed_ref) goto ON_FAILED;
-		RETURN_SEMA_ERROR(inner, "You cannot use the '?' operator on expressions of type %s",
+		RETURN_SEMA_ERROR(inner, "You cannot use the '~' operator on expressions of type %s",
 						  type_quoted_error_string(type));
 	}
 	ASSERT_SPAN(expr, type->type_kind == TYPE_ANYFAULT || type->decl->resolve_status == RESOLVE_DONE);
@@ -11696,7 +11696,7 @@ static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr
 	Type *type = type_info->type;
 	if (type_is_optional(type))
 	{
-		RETURN_SEMA_ERROR(type_info, "The type here should always be written as a plain type and not an optional, please remove the '?'.");
+		RETURN_SEMA_ERROR(type_info, "The type here should always be written as a plain type and not an optional, please remove the '~'.");
 	}
 	if (!sema_resolve_type_structure(context, type)) return false;
 	if (!sema_expr_analyse_initializer_list(context, type, expr->expr_compound_literal.initializer, no_match_ref)) return false;
@@ -11975,7 +11975,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 		if (flat != type_fault && sema_cast_const(expr))
 		{
 			if (no_match_ref) goto NO_MATCH_REF;
-			print_error_after(expr->span, "You need to add a trailing '?' here to make this an optional.");
+			print_error_after(expr->span, "You need to add a trailing '~' here to make this an optional.");
 			return false;
 		}
 	}

@@ -1667,7 +1667,6 @@ typedef struct Module_
 	CompilationUnit **units;
 	Module *parent_module;
 	Module *top_module;
-	Module **sub_modules;
 	Decl **benchmarks;
 	Decl **tests;
 	Decl **lambdas_to_evaluate;

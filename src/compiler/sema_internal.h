@@ -73,7 +73,6 @@ void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
 
 Decl *sema_create_runner_main(SemaContext *context, Decl *decl);
 
-void sema_analyse_pass_top(Module *module);
 void sema_analyse_pass_module_hierarchy(Module *module);
 void sema_analysis_pass_process_imports(Module *module);
 void sema_analysis_pass_register_global_declarations(Module *module);
