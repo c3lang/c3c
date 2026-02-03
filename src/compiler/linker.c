@@ -95,6 +95,15 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	if (!compiler.build.win.sdk && !compiler.build.win.vs_dirs)
 	{
 		const char *path = windows_cross_compile_library();
+		if (!path && !windows_get_sdk())
+		{
+			BuildOptions options;
+			memset(&options, 0, sizeof(BuildOptions));
+			options.verbosity_level = (compiler.build.silent || compiler.build.quiet) ? -1 : 0;
+			fetch_msvc(&options);
+			path = windows_cross_compile_library();
+		}
+
 		if (path)
 		{
 			switch (compiler.platform.arch)

@@ -24,7 +24,10 @@ WindowsSDK *windows_get_sdk(void)
 	if (!sdk)
 	{
 		loaded = get_windows_paths();
-		sdk = &loaded;
+		if (loaded.windows_sdk_path && loaded.vs_library_path)
+		{
+			sdk = &loaded;
+		}
 	}
 	return sdk;
 }
