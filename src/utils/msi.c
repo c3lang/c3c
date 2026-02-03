@@ -1,5 +1,4 @@
 #include "lib.h"
-#include "lzx_decomp.h"
 #include "json.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -335,7 +334,7 @@ static bool cab_extract_buffer(uint8_t *data, size_t size, const char *out_root,
 		int comp_type = folders[0].comp_type & 0x0F;
 		if (comp_type == 0) main_algo = "none";
 		else if (comp_type == 1) main_algo = "MSZIP";
-		else if (comp_type == 3) main_algo = "LZX";
+		else if (comp_type == 3) main_algo = "LZX (unsupported)";
 	}
 	if (verbose) printf("    CAB: %u folders, %u files, algo: %s\n", num_folders, num_files, main_algo);
 
@@ -383,10 +382,10 @@ static bool cab_extract_buffer(uint8_t *data, size_t size, const char *out_root,
 		uint32_t d_ptr = folders[i].data_offset;
 		int comp_type = folders[i].comp_type & 0x0F;
 
-		lzx_decomp_state *lzx = NULL;
+		// lzx_decomp_state *lzx = NULL;
 		if (comp_type == 3)
 		{
-			lzx = lzx_decomp_create((folders[i].comp_type >> 8) & 0x1F);
+			// LZX not supported anymore
 		}
 
 		for (int b = 0; b < folders[i].data_blocks; b++)
@@ -415,14 +414,8 @@ static bool cab_extract_buffer(uint8_t *data, size_t size, const char *out_root,
 			}
 			else if (comp_type == 3)
 			{ // LZX
-				if (lzx)
-				{
-					if (lzx_decomp_run(lzx, data + d_ptr + 8 + cbCFData, (int)csize, ubuf + uptr, (int)usize) != 1)
-					{
-						if (verbose) printf("    LZX decompression failed at block %d\n", b);
-						break;
-					}
-				}
+				if (verbose) printf("    LZX decompression (unsupported) at block %d\n", b);
+				break;
 			}
 			else if (comp_type == 0)
 			{ // NO COMP
@@ -431,8 +424,6 @@ static bool cab_extract_buffer(uint8_t *data, size_t size, const char *out_root,
 			uptr += usize;
 			d_ptr += 8 + cbCFData + csize;
 		}
-
-		if (lzx) lzx_decomp_free(lzx);
 
 		for (int j = 0; j < num_files; j++)
 		{
