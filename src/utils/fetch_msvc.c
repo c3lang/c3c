@@ -21,6 +21,7 @@
 #include "../compiler/compiler_internal.h"
 #include "json.h"
 #include "msi.h"
+#include "whereami.h"
 
 #ifndef MAX_PATH
 	#if defined(PATH_MAX)
@@ -36,7 +37,12 @@
 #define MANIFEST_URL "https://aka.ms/vs/17/release/channel"
 #define VS_MANIFEST_ID "Microsoft.VisualStudio.Manifests.VisualStudio"
 #define BUILD_TOOLS_ID "Microsoft.VisualStudio.Product.BuildTools"
-#define SDK_OUTPUT "msvc_sdk"
+
+static char *get_sdk_output_path(void)
+{
+	const char *path = find_executable_path();
+	return file_append_path(path, "msvc_sdk");
+}
 
 static int verbose_level = 0;
 
@@ -676,7 +682,8 @@ void fetch_msvc(BuildOptions *options)
 		error_exit("Missing library components");
 	}
 
-	char *sdk_x64 = (char *)file_append_path(SDK_OUTPUT, "x64");
+	char *sdk_output = get_sdk_output_path();
+	char *sdk_x64 = (char *)file_append_path(sdk_output, "x64");
 	dir_make_recursive(sdk_x64);
 	copy_to_msvc_sdk(file_append_path(s_ucrt, "x64"), sdk_x64);
 	copy_to_msvc_sdk(file_append_path(s_um, "x64"), sdk_x64);
