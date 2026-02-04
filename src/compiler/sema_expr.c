@@ -6349,10 +6349,13 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	Expr *parent = expr->access_unresolved_expr.parent;
 	if (missing_ref) *missing_ref = false;
 
+	int times_to_deref = 1;
 	if (expr->access_unresolved_expr.is_ref)
 	{
+		times_to_deref = 2;
 		expr_set_to_ref(parent);
 	}
+
 	// 1. Resolve the left hand
 	if (!sema_analyse_expr(context, parent)) return false;
 
@@ -6441,11 +6444,13 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 
 	// 7. Is this a pointer? If so we insert a deref.
 	Type *underlying_type = type_no_optional(parent->type)->canonical;
-	if (underlying_type->type_kind == TYPE_POINTER && underlying_type != type_voidptr)
+	while (times_to_deref > 0 && underlying_type->type_kind == TYPE_POINTER && underlying_type != type_voidptr)
 	{
+		times_to_deref--;
 		if (!sema_cast_rvalue(context, parent, true)) return false;
 		if (!sema_expr_rewrite_insert_deref(context, expr->access_unresolved_expr.parent)) return false;
 		parent = expr->access_unresolved_expr.parent;
+		underlying_type = type_no_optional(parent->type)->canonical;
 	}
 
 	// 8. Depending on parent type, we have some hard coded types
