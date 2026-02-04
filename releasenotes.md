@@ -3,6 +3,7 @@
 ## 0.7.10 Change list
 
 ### Changes / improvements
+- Method resolution and `$define` now works together well unless definitions are out of order for real.
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831

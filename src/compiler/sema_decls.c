@@ -13,7 +13,7 @@ static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, De
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl);
 static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type, bool is_dynamic);
 static inline bool sema_analyse_macro_method(SemaContext *context, Decl *decl);
-static inline bool unit_add_base_extension_method(SemaContext *context, Decl *method);
+static inline bool unit_add_base_extension_method(SemaContext *context, Type *type, Decl *method);
 static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl *method);
 static bool sema_analyse_operator_common(SemaContext *context, Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr, uint32_t parameters);
 static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method);
@@ -2295,7 +2295,7 @@ INLINE SourceSpan method_find_overload_span(Decl *method)
 	return method->attrs_resolved->overload;
 }
 
-static inline bool unit_add_base_extension_method(SemaContext *context, Decl *method)
+static inline bool unit_add_base_extension_method(SemaContext *context, Type *type, Decl *method)
 {
 	Decl *other = declptrzero(methodtable_set(&compiler.context.method_extensions, method));
 	if (other)
@@ -2303,6 +2303,13 @@ static inline bool unit_add_base_extension_method(SemaContext *context, Decl *me
 		SEMA_ERROR(method, "This %s is already defined.", method_name_by_decl(method));
 		SEMA_NOTE(other, "The previous definition was here.");
 		return false;
+	}
+	FOREACH(Type *, t, compiler.context.types_with_failed_methods)
+	{
+		if (t == type)
+		{
+			RETURN_SEMA_ERROR(method, "A method was added to %s which already was checked for method availability, declarations must be reordered.", type_quoted_error_string(type));
+		}
 	}
 	vec_add(compiler.context.method_extension_list, method);
 	DEBUG_LOG("Builtin type method '%s' analysed.", method->name);
@@ -2636,7 +2643,7 @@ static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl
 		return true;
 	}
 	// Is it a base extension?
-	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(context, method);
+	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(context, parent_type, method);
 
 	// Resolve it as a user-defined type extension.
 	Decl *parent = parent_type->decl;
@@ -2653,7 +2660,10 @@ static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl
 		SEMA_NOTE(other, "The previous definition was here.");
 		return decl_poison(method);
 	}
-
+	if (parent->is_method_checked)
+	{
+		RETURN_SEMA_ERROR(method, "A method was added to %s which already was checked for method availability, declarations must be reordered.", type_quoted_error_string(parent_type));
+	}
 	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method->name);
 
 	Methods *table = parent->method_table;

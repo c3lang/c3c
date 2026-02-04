@@ -5059,7 +5059,11 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		if (!decl_ok(member)) return false;
 		if (!member)
 		{
-			if (missing_ref) goto MISSING_REF;
+			if (missing_ref)
+			{
+				vec_add(compiler.context.types_with_failed_methods, parent_type);
+				goto MISSING_REF;
+			}
 			RETURN_SEMA_ERROR(expr, "'%s' does not have a property or method '%s'.", type_to_error_string(parent_type), name);
 		}
 		expr_resolve_ident(expr, member);
@@ -5106,8 +5110,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		{
 			if (decl->unit->module->stage < ANALYSIS_POST_REGISTER)
 			{
-				bool err = SEMA_WARN_STRICT(expr, "There might be a method '%s' for %s, but methods for the type have not yet been completely registered, so a warning is issued.", name, type_quoted_error_string(parent_type));
-				if (err) return false;
+				decl->is_method_checked = true;
 			}
 			goto MISSING_REF;
 		}
@@ -5205,6 +5208,8 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 			sema_create_const_membersof(expr, decl->type->canonical, parent->const_expr.member.align, parent->const_expr.member.offset);
 			return true;
 		case TYPE_PROPERTY_METHODSOF:
+			decl->is_method_checked = true;
+			FALLTHROUGH;
 		case TYPE_PROPERTY_KINDOF:
 		case TYPE_PROPERTY_SIZEOF:
 			return sema_expr_rewrite_to_type_property(context, expr, decl->type->canonical, type_property, decl->type->canonical);
@@ -5260,6 +5265,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 	return true;
 MISSING_REF:
 	*missing_ref = true;
+	decl->is_method_checked = true;
 	return false;
 }
 
@@ -6551,7 +6557,11 @@ CHECK_DEEPER:
 		Decl *method = sema_resolve_type_method(context, type, kw);
 		if (!method)
 		{
-			if (missing_ref) goto MISSING_REF;
+			if (missing_ref)
+			{
+				vec_add(compiler.context.types_with_failed_methods, type);
+				goto MISSING_REF;
+			}
 			RETURN_SEMA_ERROR(expr, "There is no member or method '%s' on %s", kw, type_quoted_error_string(parent->type));
 		}
 
@@ -6608,6 +6618,13 @@ CHECK_DEEPER:
 	// 11. If we didn't find a match...
 	if (!member)
 	{
+		Type *parent_type = type_no_optional(parent->type)->canonical;
+		ASSERT(type_is_user_defined(parent_type));
+		// Tag as maybe wrong.
+		if (!private && missing_ref && parent_type->decl->unit->module->stage < ANALYSIS_POST_REGISTER)
+		{
+			parent_type->decl->is_method_checked = true;
+		}
 		// 11a. We have a potential embedded struct check:
 		Expr *substruct = sema_enter_inline_member(current_parent, type);
 		if (substruct)
@@ -6625,13 +6642,7 @@ CHECK_DEEPER:
 			if (missing_ref) goto MISSING_REF;
 			RETURN_SEMA_ERROR(expr, "The method '%s' has private visibility.", kw);
 		}
-		Type *parent_type = type_no_optional(parent->type)->canonical;
-		ASSERT(type_is_user_defined(parent_type));
-		if (missing_ref && parent_type->decl->unit->module->stage < ANALYSIS_POST_REGISTER)
-		{
-			bool err = SEMA_WARN_STRICT(expr, "There might be a method '%s' for %s, but methods have not yet been completely registered, so analysis fails.", kw, type_quoted_error_string(parent->type));
-			if (err) return false;
-		}
+
 		if (parent_type->type_kind == TYPE_INTERFACE)
 		{
 			if (missing_ref) goto MISSING_REF;
@@ -6666,7 +6677,6 @@ CHECK_DEEPER:
 		}
 	}
 	// 13. Copy properties.
-
 	expr->access_resolved_expr = (ExprResolvedAccess) { .parent = current_parent, .ref = member };
 	if (expr->expr_kind == EXPR_ACCESS_UNRESOLVED) expr->expr_kind = EXPR_ACCESS_RESOLVED;
 	expr->type = type_add_optional(member->type, optional);
