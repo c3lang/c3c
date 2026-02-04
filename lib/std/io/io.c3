@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::io;
-import libc, std::collections::pair;
+import libc;
 
 enum Seek
 {
@@ -52,14 +52,15 @@ faultdef
 
  @param [&inout] allocator : "The allocator used to allocate the read string."
  @param stream : `The stream to read from.`
+ @param limit : `Optionally limits the amount of bytes to read in a single line. Will NOT discard the remaining line data.`
  @require @is_not_instream_if_ptr(stream) : "The value for 'stream' should have been passed as a pointer and not as a value, please add '&'."
  @require @is_instream(stream) : `Make sure that the stream is actually an InStream.`
  @param [inout] allocator : `the allocator to use.`
  @return `The string containing the data read.`
 *>
-macro String? readline(Allocator allocator, stream = io::stdin())
+macro String? readline(Allocator allocator, stream = io::stdin(), usz limit = 0)
 {
-	return readline_impl{$typeof(stream)}(allocator, stream);
+	return readline_impl{$typeof(stream)}(allocator, stream, limit);
 }
 
 <*
@@ -67,50 +68,17 @@ macro String? readline(Allocator allocator, stream = io::stdin())
  on the temporary allocator and does not need to be freed.
 
  @param stream : `The stream to read from.`
+ @param limit : `Optionally limits the amount of bytes to read in a single line. Will NOT discard the remaining line data.`
  @require @is_not_instream_if_ptr(stream) : "The value for 'stream' should have been passed as a pointer and not as a value, please add '&'."
  @require @is_instream(stream) : `The stream must implement InStream.`
  @return `The temporary string containing the data read.`
 *>
-macro String? treadline(stream = io::stdin())
+macro String? treadline(stream = io::stdin(), usz limit = 0)
 {
-	return readline(tmem, stream) @inline;
+	return readline(tmem, stream, limit) @inline;
 }
 
-<*
- Read from a stream (default is stdin) to the next "\n"
- or to the end of the stream, whatever comes first.
- "\r" will be filtered from the String.
-
- @param [&inout] allocator : "The allocator used to allocate the read string."
- @param limit : `Limits the byte-length of the allocated output string.`
- @param stream : `The stream to read from.`
- @require @is_not_instream_if_ptr(stream) : "The value for 'stream' should have been passed as a pointer and not as a value, please add '&'."
- @require @is_instream(stream) : `Make sure that the stream is actually an InStream.`
- @return `The string containing the data read.`
-*>
-macro Pair{String, bool}? readline_limit(Allocator allocator, usz limit, stream = io::stdin())
-{
-	String ret = readline_impl{$typeof(stream)}(allocator, stream, limit)!;
-	return { ret, limit > 0 && ret.len >= limit };
-}
-
-<*
- Read from a stream (default is stdin) to the next "\n"
- or to the end of the stream, whatever comes first.
- "\r" will be filtered from the String.
-
- @param limit : `Limits the byte-length of the allocated output string.`
- @param stream : `The stream to read from.`
- @require @is_not_instream_if_ptr(stream) : "The value for 'stream' should have been passed as a pointer and not as a value, please add '&'."
- @require @is_instream(stream) : `Make sure that the stream is actually an InStream.`
- @return `A Pair containing the string of bytes read and whether the limit was exceeded.`
-*>
-macro Pair{String, bool}? treadline_limit(usz limit, stream = io::stdin())
-{
-	return readline_limit(tmem, limit, stream);
-}
-
-fn String? readline_impl(Allocator allocator, Stream stream, usz limit = 0) <Stream> @private
+fn String? readline_impl(Allocator allocator, Stream stream, usz limit) <Stream> @private
 {
 	if (allocator == tmem)
 	{
@@ -143,7 +111,7 @@ macro usz? readline_to_stream(out_stream, in_stream = io::stdin(), usz limit = 0
 	return readline_to_stream_impl{$typeof(in_stream), $typeof(out_stream)}(out_stream, in_stream, limit);
 }
 
-fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream, usz limit = 0) <IStream, OStream> @private
+fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream, usz limit) <IStream, OStream> @private
 {
 	bool $is_stream = IStream == InStream;
 	$if $is_stream:

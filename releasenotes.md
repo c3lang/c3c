@@ -6,7 +6,7 @@
 - Method resolution and `$define` now works together well unless definitions are out of order for real.
 
 ### Stdlib changes
-- Add `io::readline_limit` and `io::treadline_limit` and allow line-length limits in `io::readline_to_stream`. #2879
+- Add optional line-length limitations to `io::readline` and `io::readline_to_stream`. #2879
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
 
 ### Fixes
