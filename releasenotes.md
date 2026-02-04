@@ -7,10 +7,13 @@
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
+- Remove dependency on temp allocator in String.join.
+- Remove dependency on temp allocator in File.open.
 
 ### Fixes
 - Add error message if directory with output file name already exists
 - Regression where nested lambdas would be evaluated twice.
+- Compiler crash when using arrays of vectors in lists. #2889
 
 ## 0.7.9 Change list
 
