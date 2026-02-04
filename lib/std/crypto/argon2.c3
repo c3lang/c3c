@@ -702,7 +702,7 @@ fn Argon2Decoded? decode(Allocator allocator, String hash_str)
 		case "argon2d":  result.opts.algorithm = ARGON2_D;
 		case "argon2i":  result.opts.algorithm = ARGON2_I;
 		case "argon2id": result.opts.algorithm = ARGON2_ID;
-		default: return INVALID_ALGORITHM?;
+		default: return INVALID_ALGORITHM~;
 	}
 
 	if (outer_tokens[1][:2] != "v=") return INVALID_VERSION~;
