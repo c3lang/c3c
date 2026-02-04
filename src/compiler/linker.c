@@ -106,29 +106,35 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 
 		if (path)
 		{
+			if (!compiler.build.quiet && !compiler.build.silent)
+			{
+				printf("Using MSVC SDK at: %s\n", path);
+			}
+
+			const char *suffix = NULL;
 			switch (compiler.platform.arch)
 			{
-				case ARCH_TYPE_ARM:
-					scratch_buffer_append("/arm");
-					break;
-				case ARCH_TYPE_AARCH64:
-					scratch_buffer_append("/arm64");
-					break;
-				case ARCH_TYPE_X86_64:
-					scratch_buffer_append("/x64");
-					break;
-				case ARCH_TYPE_X86:
-					scratch_buffer_append("/x86");
-					break;
-				default:
-					UNREACHABLE_VOID
+				case ARCH_TYPE_ARM: suffix = "arm"; break;
+				case ARCH_TYPE_AARCH64: suffix = "arm64"; break;
+				case ARCH_TYPE_X86_64: suffix = "x64"; break;
+				case ARCH_TYPE_X86: suffix = "x86"; break;
+				default: break;
 			}
-			if (file_exists(scratch_buffer_to_string()))
+
+			if (suffix)
 			{
-				compiler.build.win.sdk = scratch_buffer_copy();
-				// If we only use the msvc cross compile on windows, we
-				// avoid linking with dynamic debug dlls.
-				link_with_dynamic_debug_libc = false;
+				char *full_path = file_append_path(path, suffix);
+				if (file_exists(full_path))
+				{
+					compiler.build.win.sdk = full_path;
+					// If we only use the msvc cross compile on windows, we
+					// avoid linking with dynamic debug dlls.
+					link_with_dynamic_debug_libc = false;
+				}
+				else
+				{
+					free(full_path);
+				}
 			}
 		}
 	}

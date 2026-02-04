@@ -43,5 +43,27 @@ WindowsSDK *windows_get_sdk(void)
 
 const char *windows_cross_compile_library(void)
 {
-	return find_rel_exe_dir("msvc_sdk");
+	const char *local = find_rel_exe_dir("msvc_sdk");
+	if (local && file_is_dir((char *)local)) return local;
+
+#if !PLATFORM_WINDOWS
+	char *cache_home = getenv("XDG_CACHE_HOME");
+	if (cache_home)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_printf("%s/c3/msvc_sdk", cache_home);
+		const char *path = scratch_buffer_to_string();
+		if (file_is_dir((char *)path)) return path;
+	}
+
+	char *home = getenv("HOME");
+	if (home)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_printf("%s/.cache/c3/msvc_sdk", home);
+		const char *path = scratch_buffer_to_string();
+		if (file_is_dir((char *)path)) return path;
+	}
+#endif
+	return NULL;
 }

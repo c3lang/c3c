@@ -40,8 +40,19 @@
 
 static char *get_sdk_output_path(void)
 {
+#if PLATFORM_WINDOWS
 	const char *path = find_executable_path();
 	return file_append_path(path, "msvc_sdk");
+#else
+	char *cache_home = getenv("XDG_CACHE_HOME");
+	if (cache_home) return file_append_path(cache_home, "c3/msvc_sdk");
+
+	char *home = getenv("HOME");
+	if (home) return file_append_path(home, ".cache/c3/msvc_sdk");
+
+	const char *path = find_executable_path();
+	return file_append_path(path, "msvc_sdk");
+#endif
 }
 
 static int verbose_level = 0;
@@ -377,22 +388,16 @@ static void collect_versions(JSONObject *pkgs, JSONObject **msvc_vers_out,
 
 static JSONObject *load_manifest(const char *url, const char *path, const char *description)
 {
-	if (verbose_level > 0)
+	if (verbose_level >= 1)
 	{
-		printf("Downloading %s manifest\n", description);
-	}
-	else
-	{
-		printf("Downloading %s manifest...", description);
-		fflush(stdout);
+		printf("Downloading %s manifest...\n", description);
 	}
 
 	const char *err = download_file(url, "", path);
 	if (err) error_exit("Failed to download %s manifest: %s", description, err);
-	if (verbose_level == 0)
+	if (verbose_level >= 1)
 	{
 		printf(" Done.\n");
-		fflush(stdout);
 	}
 
 	size_t size;
@@ -467,7 +472,8 @@ static bool check_license(JSONObject *rj1_channel_items, bool accept_all)
 		}
 	}
 
-	printf("License: %s\nAccept? [y/N]: ", lic);
+	printf("Do you accept the license %s? [y/N]: ", lic);
+
 	char c = (char)getchar();
 	return (c == 'y' || c == 'Y');
 }
@@ -527,7 +533,19 @@ void fetch_msvc(BuildOptions *options)
 	char full_msvc_v[128];
 	print_msvc_version(msvc_pkg_obj, full_msvc_v);
 
-	if (verbose_level >= 0) printf("Selected: MSVC %s, SDK %s\n", full_msvc_v, sdk_key);
+	char *sdk_output = get_sdk_output_path();
+
+	if (verbose_level >= 1) printf("Selected: MSVC %s, SDK %s\n", full_msvc_v, sdk_key);
+
+	if (!options->msvc_accept_license)
+	{
+#if PLATFORM_WINDOWS
+		printf("To target windows-x64 you need the MSVC SDK.\n");
+#else
+		printf("To cross-compile to windows-x64 you need the MSVC SDK.\n");
+#endif
+		printf("Downloading version %s to %s.\n", full_msvc_v, sdk_output);
+	}
 
 	if (!check_license(rj1_channel_items, options->msvc_accept_license))
 	{
@@ -664,7 +682,7 @@ void fetch_msvc(BuildOptions *options)
 		fflush(stdout);
 	}
 
-	if (verbose_level >= 0) printf("Finalizing SDK\n");
+	if (verbose_level >= 1) printf("Finalizing SDK\n");
 	char *s_vc_root = find_folder_inf(out_root, "vc", false);
 	char *s_msvc_base = s_vc_root ? find_folder_inf(s_vc_root, "msvc", false) : NULL;
 	char *s_msvc = s_msvc_base ? find_folder_inf(s_msvc_base, "lib", true) : NULL;
@@ -682,14 +700,13 @@ void fetch_msvc(BuildOptions *options)
 		error_exit("Missing library components");
 	}
 
-	char *sdk_output = get_sdk_output_path();
 	char *sdk_x64 = (char *)file_append_path(sdk_output, "x64");
 	dir_make_recursive(sdk_x64);
 	copy_to_msvc_sdk(file_append_path(s_ucrt, "x64"), sdk_x64);
 	copy_to_msvc_sdk(file_append_path(s_um, "x64"), sdk_x64);
 	copy_to_msvc_sdk(file_append_path(s_msvc, "x64"), sdk_x64);
 
-	if (verbose_level >= 0) printf("The 'msvc_sdk' directory was successfully generated.\n");
+	if (verbose_level >= 0) printf("The 'msvc_sdk' directory was successfully generated at %s.\n", sdk_output);
 
 	if (verbose_level == 0) file_delete_dir(tmp_dir_base);
 }
