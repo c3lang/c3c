@@ -46,7 +46,16 @@ const char *windows_cross_compile_library(void)
 	const char *local = find_rel_exe_dir("msvc_sdk");
 	if (local && file_is_dir((char *)local)) return local;
 
-#if !PLATFORM_WINDOWS
+#if PLATFORM_WINDOWS
+	char *app_data = getenv("LOCALAPPDATA");
+	if (app_data)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_printf("%s/c3/msvc_sdk", app_data);
+		const char *path = scratch_buffer_to_string();
+		if (file_is_dir((char *)path)) return path;
+	}
+#else
 	char *cache_home = getenv("XDG_CACHE_HOME");
 	if (cache_home)
 	{

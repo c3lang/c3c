@@ -40,19 +40,25 @@
 
 static char *get_sdk_output_path(void)
 {
+	char *env_path = NULL;
 #if PLATFORM_WINDOWS
-	const char *path = find_executable_path();
-	return file_append_path(path, "msvc_sdk");
+	env_path = getenv("LOCALAPPDATA");
 #else
-	char *cache_home = getenv("XDG_CACHE_HOME");
-	if (cache_home) return file_append_path(cache_home, "c3/msvc_sdk");
+	env_path = getenv("XDG_CACHE_HOME");
+#endif
 
+	if (env_path)
+	{
+		return file_append_path(env_path, "c3/msvc_sdk");
+	}
+
+#if !PLATFORM_WINDOWS
 	char *home = getenv("HOME");
 	if (home) return file_append_path(home, ".cache/c3/msvc_sdk");
+#endif
 
 	const char *path = find_executable_path();
 	return file_append_path(path, "msvc_sdk");
-#endif
 }
 
 static int verbose_level = 0;
