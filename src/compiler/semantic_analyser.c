@@ -174,9 +174,6 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_MODULE_HIERARCHY:
 				sema_analyse_pass_module_hierarchy(module);
 				break;
-			case ANALYSIS_MODULE_TOP:
-				sema_analyse_pass_top(module);
-				break;
 			case ANALYSIS_IMPORTS:
 				sema_analysis_pass_process_imports(module);
 				break;
@@ -607,6 +604,17 @@ void sema_error_at(SemaContext *context, SourceSpan span, const char *message, .
 	sema_verror_range(span, message, list);
 	va_end(list);
 	sema_print_inline(context, span);
+}
+
+bool sema_warn_very_strict(SemaContext *context, SourceSpan span, const char *message, ...)
+{
+	if (compiler.build.validation_level < VALIDATION_OBNOXIOUS) return false;
+	va_list list;
+	va_start(list, message);
+	sema_verror_range(span, message, list);
+	va_end(list);
+	sema_print_inline(context, span);
+	return true;
 }
 
 bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ...)

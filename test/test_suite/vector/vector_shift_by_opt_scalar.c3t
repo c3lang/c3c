@@ -1,0 +1,42 @@
+// #target: macos-x64
+module test;
+typedef Foo = inline int;
+fn int main()
+{
+	Foo? u = 2;
+	int[<2>]? f4 = (int[<2>]) { 1, 2 } << u;
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %u = alloca i32, align 4
+  %u.f = alloca i64, align 8
+  %f4 = alloca <2 x i32>, align 8
+  %f4.f = alloca i64, align 8
+  store i32 2, ptr %u, align 4
+  store i64 0, ptr %u.f, align 8
+  %optval = load i64, ptr %u.f, align 8
+  %not_err = icmp eq i64 %optval, 0
+  %0 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %0, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %entry
+  store i64 %optval, ptr %f4.f, align 8
+  br label %after_assign
+
+after_check:                                      ; preds = %entry
+  %1 = load i32, ptr %u, align 4
+  %2 = insertelement <2 x i32> undef, i32 %1, i64 0
+  %3 = insertelement <2 x i32> %2, i32 %1, i64 1
+  %shl = shl <2 x i32> <i32 1, i32 2>, %3
+  %4 = freeze <2 x i32> %shl
+  store <2 x i32> %4, ptr %f4, align 8
+  store i64 0, ptr %f4.f, align 8
+  br label %after_assign
+
+after_assign:                                     ; preds = %after_check, %assign_optional
+  ret i32 0
+}

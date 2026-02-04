@@ -3731,7 +3731,7 @@ static inline bool sema_call_analyse_member_set(SemaContext *context, Expr *expr
 	}
 	Expr *access = expr_new_expr(target_kind == TYPE_BITSTRUCT ? EXPR_BITACCESS : EXPR_ACCESS_RESOLVED, expr);
 	access->access_resolved_expr = (ExprResolvedAccess) { .parent = inner, .ref = decl };
-	access->type = decl->type;
+	access->type = type_add_optional(decl->type, IS_OPTIONAL(inner));
 	access->resolve_status = RESOLVE_DONE;
 	expr->expr_kind = EXPR_BINARY;
 	expr->binary_expr = (ExprBinary) { .left =  exprid(access), .right = exprid(arg), .operator = BINARYOP_ASSIGN };
@@ -3759,7 +3759,7 @@ static inline bool sema_call_analyse_member_get(SemaContext *context, Expr *expr
 	}
 	expr->expr_kind = target_kind == TYPE_BITSTRUCT ? EXPR_BITACCESS : EXPR_ACCESS_RESOLVED;
 	expr->access_resolved_expr = (ExprResolvedAccess) { .parent = inner, .ref = decl };
-	expr->type = decl->type;
+	expr->type = type_add_optional(decl->type, IS_OPTIONAL(inner));
 	return true;
 }
 
@@ -4191,7 +4191,7 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 		}
 		default:
 DEFAULT:
-			if (!sema_analyse_expr_rvalue(context, subscripted)) return false;
+			if (!sema_analyse_expr(context, subscripted)) return false;
 			break;
 	}
 
@@ -4225,8 +4225,6 @@ DEFAULT:
 		expr->type = NULL;
 		return true;
 	}
-
-	if (!sema_cast_rvalue(context, subscripted, true)) return false;
 
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
 	if (overload)
@@ -5061,7 +5059,11 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		if (!decl_ok(member)) return false;
 		if (!member)
 		{
-			if (missing_ref) goto MISSING_REF;
+			if (missing_ref)
+			{
+				vec_add(compiler.context.types_with_failed_methods, parent_type);
+				goto MISSING_REF;
+			}
 			RETURN_SEMA_ERROR(expr, "'%s' does not have a property or method '%s'.", type_to_error_string(parent_type), name);
 		}
 		expr_resolve_ident(expr, member);
@@ -5108,7 +5110,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		{
 			if (decl->unit->module->stage < ANALYSIS_POST_REGISTER)
 			{
-				RETURN_SEMA_ERROR(expr, "There might be a method '%s' for %s, but methods for the type have not yet been completely registered, so this yields an error.", name, type_quoted_error_string(parent_type));
+				decl->is_method_checked = true;
 			}
 			goto MISSING_REF;
 		}
@@ -5206,6 +5208,8 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 			sema_create_const_membersof(expr, decl->type->canonical, parent->const_expr.member.align, parent->const_expr.member.offset);
 			return true;
 		case TYPE_PROPERTY_METHODSOF:
+			decl->is_method_checked = true;
+			FALLTHROUGH;
 		case TYPE_PROPERTY_KINDOF:
 		case TYPE_PROPERTY_SIZEOF:
 			return sema_expr_rewrite_to_type_property(context, expr, decl->type->canonical, type_property, decl->type->canonical);
@@ -5261,6 +5265,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 	return true;
 MISSING_REF:
 	*missing_ref = true;
+	decl->is_method_checked = true;
 	return false;
 }
 
@@ -5597,7 +5602,8 @@ CONTINUE:
 		Decl *decl = type->decl;
 		if (!decl->unit || decl->unit->module->stage < ANALYSIS_POST_REGISTER)
 		{
-			RETURN_SEMA_ERROR(expr, "Methods are not fully determined for %s at this point.", decl->name);
+			bool err = SEMA_WARN(expr, "Methods are not fully determined for %s at this point.", decl->name);
+			if (err) return false;
 		}
 		// Interface, prefer interface methods.
 		if (decl->decl_kind == DECL_INTERFACE)
@@ -6012,6 +6018,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 	ASSERT_SPAN(expr, type == type->canonical);
 	ASSERT_SPAN(expr, sema_type_property_is_valid_for_type(type, property));
 	Type *flat = type_flatten(type);
+	if (type->type_kind == TYPE_FUNC_RAW) type = type_get_func_ptr(type);
 	switch (property)
 	{
 		case TYPE_PROPERTY_INF:
@@ -6371,10 +6378,11 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 		if (parent->expr_kind == EXPR_TYPEINFO)
 		{
 			Type *type = parent->type_expr->type->canonical;
-			switch (type->type_kind)
+			switch (type_no_optional(type)->type_kind)
 			{
 				case CT_TYPES:
 					RETURN_SEMA_ERROR(parent, "You cannot take the typeid of a compile time type.");
+
 				default:
 					expr_rewrite_const_typeid(expr, parent->type_expr->type->canonical);
 					return true;
@@ -6549,7 +6557,11 @@ CHECK_DEEPER:
 		Decl *method = sema_resolve_type_method(context, type, kw);
 		if (!method)
 		{
-			if (missing_ref) goto MISSING_REF;
+			if (missing_ref)
+			{
+				vec_add(compiler.context.types_with_failed_methods, type);
+				goto MISSING_REF;
+			}
 			RETURN_SEMA_ERROR(expr, "There is no member or method '%s' on %s", kw, type_quoted_error_string(parent->type));
 		}
 
@@ -6606,6 +6618,13 @@ CHECK_DEEPER:
 	// 11. If we didn't find a match...
 	if (!member)
 	{
+		Type *parent_type = type_no_optional(parent->type)->canonical;
+		ASSERT(type_is_user_defined(parent_type));
+		// Tag as maybe wrong.
+		if (!private && missing_ref && parent_type->decl->unit->module->stage < ANALYSIS_POST_REGISTER)
+		{
+			parent_type->decl->is_method_checked = true;
+		}
 		// 11a. We have a potential embedded struct check:
 		Expr *substruct = sema_enter_inline_member(current_parent, type);
 		if (substruct)
@@ -6623,12 +6642,7 @@ CHECK_DEEPER:
 			if (missing_ref) goto MISSING_REF;
 			RETURN_SEMA_ERROR(expr, "The method '%s' has private visibility.", kw);
 		}
-		Type *parent_type = type_no_optional(parent->type)->canonical;
-		ASSERT(type_is_user_defined(parent_type));
-		if (missing_ref && parent_type->decl->unit->module->stage < ANALYSIS_POST_REGISTER)
-		{
-			RETURN_SEMA_ERROR(expr, "There might be a method '%s' for %s, but methods have not yet been completely registered, so analysis fails.", kw, type_quoted_error_string(parent->type));
-		}
+
 		if (parent_type->type_kind == TYPE_INTERFACE)
 		{
 			if (missing_ref) goto MISSING_REF;
@@ -6663,7 +6677,6 @@ CHECK_DEEPER:
 		}
 	}
 	// 13. Copy properties.
-
 	expr->access_resolved_expr = (ExprResolvedAccess) { .parent = current_parent, .ref = member };
 	if (expr->expr_kind == EXPR_ACCESS_UNRESOLVED) expr->expr_kind = EXPR_ACCESS_RESOLVED;
 	expr->type = type_add_optional(member->type, optional);
@@ -9677,7 +9690,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 		CHECK_ON_DEFINED(failed_ref);
 		if (else_type == type_fault)
 		{
-			RETURN_SEMA_ERROR(right, "There is no common type for %s and %s, did you perhaps forget a '?' after the last expression?", type_quoted_error_string(type), type_quoted_error_string(else_type));
+			RETURN_SEMA_ERROR(right, "There is no common type for %s and %s, did you perhaps forget a '~' after the last expression?", type_quoted_error_string(type), type_quoted_error_string(else_type));
 		}
 		RETURN_SEMA_ERROR(right, "Cannot find a common type for %s and %s.", type_quoted_error_string(type), type_quoted_error_string(else_type));
 	}
@@ -9962,7 +9975,7 @@ static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr, 
 	if (inner->expr_kind == EXPR_OPTIONAL)
 	{
 		if (failed_ref) goto ON_FAILED;
-		RETURN_SEMA_ERROR(inner, "It looks like you added one too many '?' after the error.");
+		RETURN_SEMA_ERROR(inner, "It looks like you added one too many '~' after the error.");
 	}
 
 	Type *type = inner->type->canonical;
@@ -9970,7 +9983,7 @@ static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr, 
 	if (type != type_fault)
 	{
 		if (failed_ref) goto ON_FAILED;
-		RETURN_SEMA_ERROR(inner, "You cannot use the '?' operator on expressions of type %s",
+		RETURN_SEMA_ERROR(inner, "You cannot use the '~' operator on expressions of type %s",
 						  type_quoted_error_string(type));
 	}
 	ASSERT_SPAN(expr, type->type_kind == TYPE_ANYFAULT || type->decl->resolve_status == RESOLVE_DONE);
@@ -10940,6 +10953,12 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	// so we'll declare it as weak and externally visible.
 	unit_register_external_symbol(context, decl);
 
+	if (context->generic_instance)
+	{
+		decl->is_templated = true;
+		decl->instance_id = declid(context->generic_instance);
+	}
+
 	// Before function analysis, lambda evaluation is deferred
 	if (unit->module->stage < ANALYSIS_FUNCTIONS)
 	{
@@ -11687,7 +11706,7 @@ static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr
 	Type *type = type_info->type;
 	if (type_is_optional(type))
 	{
-		RETURN_SEMA_ERROR(type_info, "The type here should always be written as a plain type and not an optional, please remove the '?'.");
+		RETURN_SEMA_ERROR(type_info, "The type here should always be written as a plain type and not an optional, please remove the '~'.");
 	}
 	if (!sema_resolve_type_structure(context, type)) return false;
 	if (!sema_expr_analyse_initializer_list(context, type, expr->expr_compound_literal.initializer, no_match_ref)) return false;
@@ -11966,7 +11985,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 		if (flat != type_fault && sema_cast_const(expr))
 		{
 			if (no_match_ref) goto NO_MATCH_REF;
-			print_error_after(expr->span, "You need to add a trailing '?' here to make this an optional.");
+			print_error_after(expr->span, "You need to add a trailing '~' here to make this an optional.");
 			return false;
 		}
 	}
@@ -12063,7 +12082,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 			}
 			return true;
 		case EXPR_TYPEINFO:
-			switch (expr->type_expr->type->type_kind)
+			switch (type_no_optional(expr->type_expr->type)->type_kind)
 			{
 				case CT_TYPES:
 					RETURN_SEMA_ERROR(expr, "You cannot take the typeid of a compile time type.");

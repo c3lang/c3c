@@ -69,9 +69,9 @@ typedef uint16_t FileId;
 #define RETURN_PRINT_ERROR_LAST(...) do { print_error_at(c->prev_span, __VA_ARGS__); return false; } while (0)
 #define SEMA_NOTE(_node, ...) sema_note_prev_at((_node)->span, __VA_ARGS__)
 #define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output && !compiler.build.silence_deprecation) print_error_at((_node)->span, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
- sema_note_prev_at((_node)->span, __VA_ARGS__); } while (0)
+ print_deprecation_at((_node)->span, __VA_ARGS__); } while (0)
 #define PRINT_DEPRECATED_AT(span__, ...) do { if (compiler.build.test_output && !compiler.build.silence_deprecation) print_error_at(span__, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
-sema_note_prev_at(span__, __VA_ARGS__); } while (0)
+print_deprecation_at(span__, __VA_ARGS__); } while (0)
 
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
@@ -712,6 +712,7 @@ typedef struct Decl_
 	bool no_strip : 1;
 	bool is_cond : 1;
 	bool is_if : 1;
+	bool is_body_checked : 1;
 	bool attr_nopadding : 1;
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
@@ -719,6 +720,7 @@ typedef struct Decl_
 	bool attr_structlike : 1;
 	bool is_template : 1;
 	bool is_templated : 1;
+	bool is_method_checked : 1;
 	union
 	{
 		void *backend_ref;
@@ -1666,7 +1668,6 @@ typedef struct Module_
 	CompilationUnit **units;
 	Module *parent_module;
 	Module *top_module;
-	Module **sub_modules;
 	Decl **benchmarks;
 	Decl **tests;
 	Decl **lambdas_to_evaluate;
@@ -2016,6 +2017,7 @@ typedef struct
 	HTable features;
 	Module std_module;
 	MethodTable method_extensions;
+	Type **types_with_failed_methods;
 	Decl **method_extension_list;
 	DeclTable symbols;
 	PathTable path_symbols;
@@ -2577,6 +2579,7 @@ bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info);
 
 bool use_ansi(void);
 void print_error_at(SourceSpan loc, const char *message, ...);
+void print_deprecation_at(SourceSpan loc, const char *message, ...);
 void print_error_after(SourceSpan loc, const char *message, ...);
 void sema_note_prev_at(SourceSpan loc, const char *message, ...);
 void sema_verror_range(SourceSpan location, const char *message, va_list args);
@@ -3095,6 +3098,8 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 			return "a typeinfo";
 		case TYPE_WILDCARD:
 			return "an empty value";
+		case TYPE_OPTIONAL:
+			return "an optional with a compile time type";
 		default:
 			UNREACHABLE;
 	}

@@ -59,6 +59,7 @@ TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, 
 void sema_print_inline(SemaContext *context, SourceSpan span_original);
 void sema_error_at(SemaContext *context, SourceSpan span, const char *message, ...);
 bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ...);
+bool sema_warn_very_strict(SemaContext *context, SourceSpan span, const char *message, ...);
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);
@@ -71,7 +72,6 @@ void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
 
 Decl *sema_create_runner_main(SemaContext *context, Decl *decl);
 
-void sema_analyse_pass_top(Module *module);
 void sema_analyse_pass_module_hierarchy(Module *module);
 void sema_analysis_pass_process_imports(Module *module);
 void sema_analysis_pass_register_global_declarations(Module *module);
