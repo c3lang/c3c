@@ -391,6 +391,44 @@ macro todd(array)
 	return odd(tmem, array);
 }
 
+<*
+ Unlace or partition an input list into its component parts such that `[a, b, c, d, e]` becomes
+ `[a, c, e]` and `[b, d]`. Returned arrays are allocated by the given allocator and are returned
+ via two `out` parameters, `left` and `right`.
+
+ @param [&inout] allocator : "The allocator used to create the returned arrays."
+ @param [in] array : "The input array to unlace."
+ @param [out] left : "Stores a copy of all even-index array elements."
+ @param [out] right : "Stores a copy of all odd-index array elements."
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $typeof(left) == $typeof(array[0])[]*
+ @require $typeof(right) == $typeof(array[0])[]*
+*>
+macro unlace(Allocator allocator, array, left, right)
+{
+	if (left) *left = even(allocator, array);
+	if (right) *right = odd(allocator, array);
+}
+
+<*
+ Unlace or partition an input list into its component parts such that `[a, b, c, d, e]` becomes
+ `[a, c, e]` and `[b, d]`. Returned arrays are allocated by the given allocator and are returned
+ via two `out` parameters, `left` and `right`.
+
+ @param [in] array : "The input array to unlace."
+ @param [out] left : "Stores a copy of all even-index array elements."
+ @param [out] right : "Stores a copy of all odd-index array elements."
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $kindof(left) == POINTER &&& $typeof(left) == $typeof(array[0])[]*
+ @require $kindof(right) == POINTER &&& $typeof(right) == $typeof(array[0])[]*
+*>
+macro tunlace(array, left, right)
+{
+	return unlace(tmem, array, left, right);
+}
+
 
 <*
  Zip together two separate arrays/slices into a single array of Pairs or return values. Values will
@@ -564,44 +602,6 @@ macro @zip_into(left, right, #operation)
 	$typefrom(@zip_into_fn(left, right)) $operation = #operation;
 
 	foreach (i, &v : left) *v = $operation(left[i], right[i]);
-}
-
-<*
- Unzip an input list into its component parts such that `[a, b, c, d, e]` becomes
- `[a, c, e]` and `[b, d]`. Returned arrays are allocated by the given allocator and are returned
- via two `out` parameters, `left` and `right`.
-
- @param [&inout] allocator : "The allocator used to create the returned arrays."
- @param [in] array : "The input array to unzip."
- @param [out] left : "Stores a copy of all even-index array elements."
- @param [out] right : "Stores a copy of all odd-index array elements."
-
- @require @is_valid_list(array) : "Expected a valid list"
- @require $typeof(left) == $typeof(array[0])[]*
- @require $typeof(right) == $typeof(array[0])[]*
-*>
-macro @unzip(Allocator allocator, array, left, right)
-{
-	if (left) *left = even(allocator, array);
-	if (right) *right = odd(allocator, array);
-}
-
-<*
- Unzip an input list into its component parts such that `[a, b, c, d, e]` becomes
- `[a, c, e]` and `[b, d]`. Returned arrays are allocated by the given allocator and are returned
- via two `out` parameters, `left` and `right`.
-
- @param [in] array : "The input array to unzip."
- @param [out] left : "Stores a copy of all even-index array elements."
- @param [out] right : "Stores a copy of all odd-index array elements."
-
- @require @is_valid_list(array) : "Expected a valid list"
- @require $kindof(left) == POINTER &&& $typeof(left) == $typeof(array[0])[]*
- @require $kindof(right) == POINTER &&& $typeof(right) == $typeof(array[0])[]*
-*>
-macro @tunzip(array, left, right)
-{
-	return @unzip(tmem, array, left, right);
 }
 
 
