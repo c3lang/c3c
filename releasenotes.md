@@ -11,6 +11,7 @@
 ### Fixes
 - Add error message if directory with output file name already exists
 - Regression where nested lambdas would be evaluated twice.
+- Compiler crash when using arrays of vectors in lists. #2889
 
 ## 0.7.9 Change list
 
