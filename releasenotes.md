@@ -7,6 +7,7 @@
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
+- Remove dependency on temp allocator in String.join.
 
 ### Fixes
 - Add error message if directory with output file name already exists
