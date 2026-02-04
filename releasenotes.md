@@ -6,6 +6,7 @@
 - Method resolution and `$define` now works together well unless definitions are out of order for real.
 
 ### Stdlib changes
+- Add `Argon2` memory-hard hashing with associated tests. #2773
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
 - Remove dependency on temp allocator in String.join.
 - Remove dependency on temp allocator in File.open.
@@ -180,7 +181,6 @@
 - Add `chacha20` stream cipher and associated tests. #2643
 - Add `BLAKE2` (optionally keyed) cryptographic hashing with associated tests. #2648
 - Add `BLAKE3` XOF and associated tests. #2667
-- Add `Argon2` memory-hard hashing with associated tests. #2773
 - Add `Elf32_Shdr` and `Elf64_Shdr` to `std::os::linux`.
 - Add `any.to` and `any.as`.
 - Deprecated `DString.append_chars`, use `DString.append_string`
