@@ -174,9 +174,6 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_MODULE_HIERARCHY:
 				sema_analyse_pass_module_hierarchy(module);
 				break;
-			case ANALYSIS_MODULE_TOP:
-				sema_analyse_pass_top(module);
-				break;
 			case ANALYSIS_IMPORTS:
 				sema_analysis_pass_process_imports(module);
 				break;

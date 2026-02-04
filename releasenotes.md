@@ -3,11 +3,15 @@
 ## 0.7.10 Change list
 
 ### Changes / improvements
+- Method resolution and `$define` now works together well unless definitions are out of order for real.
 
 ### Stdlib changes
 - Add `io::readline_limit` and `io::treadline_limit` and allow line-length limits in `io::readline_to_stream`. #2879
+- Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
 
 ### Fixes
+- Add error message if directory with output file name already exists
+- Regression where nested lambdas would be evaluated twice.
 
 ## 0.7.9 Change list
 

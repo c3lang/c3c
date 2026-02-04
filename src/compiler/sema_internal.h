@@ -18,7 +18,6 @@
 #define UINT20_MAX        1048575U
 
 #define SEMA_WARN(_node, ...) (sema_warn_at(context, (_node)->span, __VA_ARGS__))
-#define SEMA_WARN_STRICT(_node, ...) (sema_warn_very_strict(context, (_node)->span, __VA_ARGS__))
 #define SEMA_ERROR(_node, ...) sema_error_at(context, (_node)->span, __VA_ARGS__)
 #define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return false; } while (0)
 #define RETURN_VAL_SEMA_ERROR(val__, _node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return (val__); } while (0)
@@ -73,7 +72,6 @@ void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
 
 Decl *sema_create_runner_main(SemaContext *context, Decl *decl);
 
-void sema_analyse_pass_top(Module *module);
 void sema_analyse_pass_module_hierarchy(Module *module);
 void sema_analysis_pass_process_imports(Module *module);
 void sema_analysis_pass_register_global_declarations(Module *module);

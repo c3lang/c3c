@@ -228,13 +228,11 @@ Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *in
 
 INLINE bool module_inclusion_match(Module *a, Module *b)
 {
-	Module *temp;
-
 	// Quick check
 	if (a->top_module != b->top_module) return false;
 	if (a->name->len < b->name->len)
 	{
-		temp = a;
+		Module *temp = a;
 		a = b;
 		b = temp;
 	}

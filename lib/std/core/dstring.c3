@@ -1,5 +1,5 @@
 module std::core::dstring;
-import std::io;
+import std::io, std::math;
 
 <*
  The DString offers a dynamic string builder.
@@ -648,7 +648,7 @@ fn void DString.reserve(&self, usz addition)
 	if (data.capacity >= len) return;
 	usz new_capacity = data.capacity * 2;
 	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
-	while (new_capacity < len) new_capacity *= 2;
+	if (new_capacity < len) new_capacity = math::next_power_of_2(len);
 	data.capacity = new_capacity;
 	*self = (DString)allocator::realloc(data.allocator, data, StringData.sizeof + new_capacity);
 }

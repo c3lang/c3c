@@ -712,6 +712,7 @@ typedef struct Decl_
 	bool no_strip : 1;
 	bool is_cond : 1;
 	bool is_if : 1;
+	bool is_body_checked : 1;
 	bool attr_nopadding : 1;
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
@@ -719,6 +720,7 @@ typedef struct Decl_
 	bool attr_structlike : 1;
 	bool is_template : 1;
 	bool is_templated : 1;
+	bool is_method_checked : 1;
 	union
 	{
 		void *backend_ref;
@@ -1666,7 +1668,6 @@ typedef struct Module_
 	CompilationUnit **units;
 	Module *parent_module;
 	Module *top_module;
-	Module **sub_modules;
 	Decl **benchmarks;
 	Decl **tests;
 	Decl **lambdas_to_evaluate;
@@ -2016,6 +2017,7 @@ typedef struct
 	HTable features;
 	Module std_module;
 	MethodTable method_extensions;
+	Type **types_with_failed_methods;
 	Decl **method_extension_list;
 	DeclTable symbols;
 	PathTable path_symbols;
