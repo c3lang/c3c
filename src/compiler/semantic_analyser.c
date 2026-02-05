@@ -276,8 +276,30 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 				if (decl->func_decl.type_parent) continue;
 				break;
 		}
-		htable_set(&unit->module->symbols, (void *)decl->name, decl);
-		htable_set(&unit->local_symbols, (void *)decl->name, decl);
+		Decl *old;
+		if (decl->visibility < VISIBLE_LOCAL)
+		{
+			if ((old = htable_set(&unit->module->symbols, (void *)decl->name, decl)))
+			{
+				if (old->generic_id != decl->generic_id)
+				{
+					sema_shadow_error(NULL, decl, old);
+					decl_poison(decl);
+					decl_poison(old);
+					continue;
+				}
+			}
+		}
+		if ((old = htable_set(&unit->local_symbols, (void *)decl->name, decl)))
+		{
+			if (old->generic_id != decl->generic_id)
+			{
+				sema_shadow_error(NULL, decl, old);
+				decl_poison(decl);
+				decl_poison(old);
+				continue;
+			}
+		}
 
 		if (decl->visibility == VISIBLE_PUBLIC)
 		{
