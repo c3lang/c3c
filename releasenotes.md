@@ -15,6 +15,7 @@
 - Regression where nested lambdas would be evaluated twice.
 - Compiler crash when using arrays of vectors in lists. #2889
 - Fix `list[0].i = 5` when `list[0]` returns a pointer. #2888
+- Shadowing not detected for generic declarations #2876
 
 ## 0.7.9 Change list
 
