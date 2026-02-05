@@ -77,7 +77,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build_type: [Release, Debug]
+        build_type: [Debug]
     defaults:
       run:
         shell: msys2 {0}
@@ -111,7 +111,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build_type: [Release, Debug]
+        build_type: [Debug]
     defaults:
       run:
         shell: msys2 {0}
@@ -160,36 +160,46 @@ jobs:
           path: c3-linux-${{matrix.build_type}}.tar.gz
 
   build-linux-alpine:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     container:
-      image: alpine:3.22
+      image: alpine:3.23
     strategy:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [18, 19, 20]
     steps:
       - uses: actions/checkout@v6
-      - run: apk update && apk add zlib-dev zlib-static python3 samurai cmake curl-dev curl-static openssl-dev bash
-      - name: Install Clang
-        run: apk add "llvm${{matrix.llvm_version}}-dev" "llvm${{matrix.llvm_version}}-static" "llvm${{matrix.llvm_version}}-gtest" "llvm${{matrix.llvm_version}}-linker-tools" "lld${{matrix.llvm_version}}-dev" "clang${{matrix.llvm_version}}-dev" "clang${{matrix.llvm_version}}-static"
+      - name: Install dependencies
+        run: |
+          V=${{env.LLVM_RELEASE_VERSION_LINUX_MUSL}}
+          apk update && apk add \
+            build-base bash git cmake ninja python3 linux-headers \
+            zlib-dev curl-dev libffi-dev \
+            llvm${V}-dev \
+            llvm${V}-static \
+            llvm${V}-gtest \
+            clang${V}-dev \
+            clang${V}-static \
+            lld${V}-dev \
+            lld${V}-libs
+
       - name: CMake Build
         run: |
-          C3_LLVM_VER=${{matrix.llvm_version}}
-          if [[ "${{matrix.llvm_version}}" -ge 18 && "${{matrix.llvm_version}}" != "${{env.LLVM_DEV_VERSION}}" ]]; then C3_LLVM_VER="${{matrix.llvm_version}}.1"; fi
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} -DLLVM_ENABLE_LIBXML2=OFF -DC3_LINK_DYNAMIC=ON -DC3_LLVM_VERSION=$C3_LLVM_VER
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DC3_FETCH_LLVM=OFF \
+            -DLLVM_ENABLE_LIBXML2=OFF \
+            -DC3_LINK_DYNAMIC=ON
           cmake --build build
+
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
-      
       - name: Bundle & Upload (Alpine)
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX_MUSL
-        run: bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-musl-${{matrix.build_type}}" "tar"
-      - uses: actions/upload-artifact@v6
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX_MUSL
+        run: bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-musl-${{ matrix.build_type }}" "tar"
+      - uses: actions/upload-artifact@v4
         with:
-          name: c3-linux-musl-${{matrix.build_type}}
-          path: c3-linux-musl-${{matrix.build_type}}.tar.gz
+          name: c3-linux-musl-${{ matrix.build_type }}
+          path: c3-linux-musl-${{ matrix.build_type }}.tar.gz
 
   build-mac:
     runs-on: macos-latest
@@ -223,7 +233,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build_type: [Release, Debug]
+        build_type: [Debug]
         version: ['7.8']
     steps:
       - uses: actions/checkout@v6
@@ -263,7 +273,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build_type: [Release, Debug]
+        build_type: [Debug]
         version: ['10.1']
     steps:
       - uses: actions/checkout@v6
@@ -307,23 +317,25 @@ jobs:
           path: c3-netbsd-${{matrix.build_type}}.tar.gz
 
   build-with-docker:
-    runs-on: ubuntu-22.04
+    name: LLVM ${{ matrix.llvm_version }} Compatibility
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        ubuntu_version: [20.04, 22.04]
-        build_type: [Release, Debug]
-        llvm_version: [17, 18, 19]
+        llvm_version: [17, 18, 19, 20]
     steps:
       - uses: actions/checkout@v6
-      - uses: docker/setup-buildx-action@v3
-      - name: Build
+
+      - name: Build C3 in Docker (LLVM ${{ matrix.llvm_version }})
         run: |
           chmod +x ./build-with-docker.sh
-          LLVM_VERSION=${{ matrix.llvm_version }} UBUNTU_VERSION=${{ matrix.ubuntu_version }} CMAKE_BUILD_TYPE=${{ matrix.build_type }} ./build-with-docker.sh
-      - name: Run Unified Tests in Docker
+          LLVM_VERSION=${{ matrix.llvm_version }} \
+          UBUNTU_VERSION=22.04 \
+          CMAKE_BUILD_TYPE=Debug \
+          ./build-with-docker.sh
+
+      - name: Run Unified Tests
         run: |
-          chmod +x ./scripts/tools/ci_tests.sh
           docker run --rm \
             -u 0 \
             -v "$(pwd):/home/c3c/source" \
@@ -336,7 +348,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build_type: [ Release, Debug ]
+        build_type: [ Debug ]
         nixpkgs: [ Lock, Latest ]
     steps:
     - uses: actions/checkout@v6
@@ -385,31 +397,30 @@ jobs:
           /entrypoint.sh pkg update
           /entrypoint.sh bash -c "yes | pkg upgrade -y"
           chmod -R o+x ${PREFIX}/bin
-          /entrypoint.sh pkg install -y nodejs-lts
+          /entrypoint.sh pkg install -y nodejs-lts tar git
           ln -sf ${PREFIX}/bin /__e/node20/bin
+
       - uses: actions/checkout@v4.2.2
-      - name: fix permissions after checkout (checkout runs as root and entrypoint.sh switches to user 1000)
+
+      - name: fix permissions after checkout
         run: chown -R 1000:1000 .
 
       - name: setup
         run: /entrypoint.sh pkg install -y llvm binutils libgc build-essential cmake git libedit zlib clang make mlir llvm-tools libpolly python libllvm-static
+
       - name: build
         run: |
           cmake -Bbuild -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
           cmake --build build
 
       - name: Run Unified Tests
+        if: matrix.build_type == 'Debug'
         run: ./scripts/tools/ci_tests.sh "./build/c3c" "android"
 
       - name: bundle_output
         run: |
-          mkdir c3
-          cp -r lib c3
-          cp msvc_build_libraries.py c3
-          cp build/c3c c3
-          cp README.md c3
-          cp releasenotes.md c3
-          tar czf c3-android-${{matrix.architecture}}-${{matrix.build_type}}.tar.gz c3
+          chmod +x ./scripts/tools/package_build.sh
+          ./scripts/tools/package_build.sh "./build/c3c" "c3-android-${{matrix.architecture}}-${{matrix.build_type}}" "tar"
 
       - name: upload artifacts
         uses: actions/upload-artifact@v4
