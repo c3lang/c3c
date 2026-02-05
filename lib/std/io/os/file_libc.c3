@@ -5,22 +5,22 @@ import libc;
  @require mode.len > 0
  @require filename.len > 0
 *>
-fn void*? native_fopen(String filename, String mode) @inline => @pool()
+fn void*? native_fopen(String filename, String mode) @inline => @stack_mem(256; Allocator smem)
 {
 	$if env::WIN32:
-		void* file = libc::_wfopen(filename.to_temp_wstring(), mode.to_temp_wstring())!;
+		void* file = libc::_wfopen(filename.to_wstring(smem), mode.to_wstring(smem))!;
 	$else
-		void* file = libc::fopen(filename.zstr_tcopy(), mode.zstr_tcopy());
+		void* file = libc::fopen(filename.zstr_copy(smem), mode.zstr_copy(smem));
 	$endif
-		return file ?: file_open_errno()~;
+	return file ?: file_open_errno()~;
 }
 
-fn void? native_remove(String filename) => @pool()
+fn void? native_remove(String filename) => @stack_mem(256; Allocator smem)
 {
 	$if env::WIN32:
-		CInt result = libc::_wremove(filename.to_temp_wstring())!;
+		CInt result = libc::_wremove(filename.to_wstring(smem))!;
 	$else
-		CInt result = libc::remove(filename.zstr_tcopy());
+		CInt result = libc::remove(filename.zstr_copy(smem));
 	$endif
 	if (result)
 	{
@@ -39,12 +39,12 @@ fn void? native_remove(String filename) => @pool()
  @require mode.len > 0
  @require filename.len > 0
 *>
-fn void*? native_freopen(void* file, String filename, String mode) @inline => @pool()
+fn void*? native_freopen(void* file, String filename, String mode) @inline  => @stack_mem(256; Allocator smem)
 {
 	$if env::WIN32:
-		file = libc::_wfreopen(filename.to_temp_wstring(), mode.to_temp_wstring(), file)!;
+		file = libc::_wfreopen(filename.to_wstring(smem), mode.to_wstring(smem), file)!;
 	$else
-		file = libc::freopen(filename.zstr_tcopy(), mode.zstr_tcopy(), file);
+		file = libc::freopen(filename.zstr_copy(smem), mode.zstr_copy(smem), file);
 	$endif
 		return file ?: file_open_errno()~;
 }

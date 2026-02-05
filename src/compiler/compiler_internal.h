@@ -720,6 +720,7 @@ typedef struct Decl_
 	bool attr_structlike : 1;
 	bool is_template : 1;
 	bool is_templated : 1;
+	bool is_method_checked : 1;
 	union
 	{
 		void *backend_ref;
@@ -2016,6 +2017,7 @@ typedef struct
 	HTable features;
 	Module std_module;
 	MethodTable method_extensions;
+	Type **types_with_failed_methods;
 	Decl **method_extension_list;
 	DeclTable symbols;
 	PathTable path_symbols;
@@ -4551,7 +4553,7 @@ INLINE bool expr_is_const_ref(Expr *expr)
 
 INLINE bool expr_is_const_pointer(Expr *expr)
 {
-	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_POINTER;
 }
 

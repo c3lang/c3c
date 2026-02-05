@@ -13,7 +13,7 @@ static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, De
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl);
 static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type, bool is_dynamic);
 static inline bool sema_analyse_macro_method(SemaContext *context, Decl *decl);
-static inline bool unit_add_base_extension_method(SemaContext *context, Decl *method);
+static inline bool unit_add_base_extension_method(SemaContext *context, Type *type, Decl *method);
 static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl *method);
 static bool sema_analyse_operator_common(SemaContext *context, Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr, uint32_t parameters);
 static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method);
@@ -1633,6 +1633,18 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param)
 	return true;
 }
 
+static inline void sema_print_enum_to_cenum_error(SemaContext *context, Decl *decl, Expr *arg)
+{
+	TypeInfo *type_info = decl->enums.type_info;
+	if (type_info->type == type_int)
+	{
+		SEMA_ERROR(arg, "Assigning a value requires the declaration of associated values for the enum. Did you perhaps want C-style enums? In that case use const enums, defined like 'enum %s : const { ... }'", decl->name);
+	}
+	else
+	{
+		SEMA_ERROR(arg, "Assigning a value requires the declaration of associated values for the enum. Did you perhaps want C-style enums? In that case use const enums, defined like 'enum %s : const %s { ... }'", decl->name, type_to_error_string(type_info->type));
+	}
+}
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ENUM, erase_decl)) return decl_poison(decl);
@@ -1733,7 +1745,8 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (!associated_value_count)
 			{
-				RETURN_SEMA_ERROR(args[0], "There are no associated values defined for this enum. Did you perhaps want C style gap enums? In that case, try enums with inline associated values.");
+				sema_print_enum_to_cenum_error(context, decl, args[0]);
+				return false;
 			}
 			RETURN_SEMA_ERROR(args[associated_value_count], "You're adding too many values, only %d associated value%s are defined for '%s'.", associated_value_count, associated_value_count != 1 ? "s" : "", decl->name);
 		}
@@ -1758,7 +1771,8 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (!associated_value_count)
 			{
-				RETURN_SEMA_ERROR(args[0], "There are no associated values defined for this enum. Did you perhaps want C style gap enums? In that case, try enums with inline associated values.");
+				sema_print_enum_to_cenum_error(context, decl, args[0]);
+				return false;
 			}
 			RETURN_SEMA_ERROR(args[associated_value_count], "You're adding too many values, only %d associated value%s are defined for '%s'.", associated_value_count, associated_value_count != 1 ? "s" : "", decl->name);
 		}
@@ -2295,7 +2309,7 @@ INLINE SourceSpan method_find_overload_span(Decl *method)
 	return method->attrs_resolved->overload;
 }
 
-static inline bool unit_add_base_extension_method(SemaContext *context, Decl *method)
+static inline bool unit_add_base_extension_method(SemaContext *context, Type *type, Decl *method)
 {
 	Decl *other = declptrzero(methodtable_set(&compiler.context.method_extensions, method));
 	if (other)
@@ -2303,6 +2317,13 @@ static inline bool unit_add_base_extension_method(SemaContext *context, Decl *me
 		SEMA_ERROR(method, "This %s is already defined.", method_name_by_decl(method));
 		SEMA_NOTE(other, "The previous definition was here.");
 		return false;
+	}
+	FOREACH(Type *, t, compiler.context.types_with_failed_methods)
+	{
+		if (t == type)
+		{
+			RETURN_SEMA_ERROR(method, "A method was added to %s which already was checked for method availability, declarations must be reordered.", type_quoted_error_string(type));
+		}
 	}
 	vec_add(compiler.context.method_extension_list, method);
 	DEBUG_LOG("Builtin type method '%s' analysed.", method->name);
@@ -2636,7 +2657,7 @@ static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl
 		return true;
 	}
 	// Is it a base extension?
-	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(context, method);
+	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(context, parent_type, method);
 
 	// Resolve it as a user-defined type extension.
 	Decl *parent = parent_type->decl;
@@ -2653,7 +2674,10 @@ static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl
 		SEMA_NOTE(other, "The previous definition was here.");
 		return decl_poison(method);
 	}
-
+	if (parent->is_method_checked)
+	{
+		RETURN_SEMA_ERROR(method, "A method was added to %s which already was checked for method availability, declarations must be reordered.", type_quoted_error_string(parent_type));
+	}
 	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method->name);
 
 	Methods *table = parent->method_table;
@@ -3667,7 +3691,8 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 	SemaContext eval_context;
 	sema_context_init(&eval_context, attr_decl->unit);
 	eval_context.macro_call_depth = context->macro_call_depth + 1;
-	eval_context.call_env = (CallEnv) { .kind = CALL_ENV_ATTR, .attr_declaration = decl,  };
+	CallEnv eval_env = { .kind = CALL_ENV_ATTR, .attr_declaration = decl,  };
+	eval_context.call_env = eval_env;
 	// We copy the compilation unit.
 	eval_context.compilation_unit = context->unit;
 
@@ -5348,7 +5373,8 @@ FOUND:;
 		{
 			SemaContext context_gen;
 			sema_context_init(&context_gen, decl->unit);
-			context_gen.active_scope = (DynamicScope) { .depth = 0 };
+			DynamicScope empty = { .depth = 0 };
+			context_gen.active_scope = empty;
 			sema_analyse_decl(&context_gen, decl);
 			context_gen.generic_instance = instance;
 			sema_analyse_inner_func_ptr(&context_gen, decl);

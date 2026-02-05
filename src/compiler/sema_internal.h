@@ -18,7 +18,6 @@
 #define UINT20_MAX        1048575U
 
 #define SEMA_WARN(_node, ...) (sema_warn_at(context, (_node)->span, __VA_ARGS__))
-#define SEMA_WARN_STRICT(_node, ...) (sema_warn_very_strict(context, (_node)->span, __VA_ARGS__))
 #define SEMA_ERROR(_node, ...) sema_error_at(context, (_node)->span, __VA_ARGS__)
 #define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return false; } while (0)
 #define RETURN_VAL_SEMA_ERROR(val__, _node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return (val__); } while (0)
