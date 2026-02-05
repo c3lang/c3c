@@ -35,18 +35,19 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, Sou
 	if (is_macro) flags &= ~(SCOPE_ENSURE | SCOPE_ENSURE_MACRO);
 
 	unsigned label_start = new_label_scope ? last_local : context->active_scope.label_start;
-	context->active_scope = (DynamicScope) {
-			.allow_dead_code = false,
-			.is_dead = scope_is_dead,
-			.is_poisoned = scope_is_poisoned,
-			.depth = depth,
-			.current_local = last_local,
-			.label_start = label_start,
-			.in_defer = previous_defer,
-			.defer_last = parent_defer,
-			.defer_start = parent_defer,
-			.flags = flags,
+	DynamicScope new_scope = {
+		.allow_dead_code = false,
+		.is_dead = scope_is_dead,
+		.is_poisoned = scope_is_poisoned,
+		.depth = depth,
+		.current_local = last_local,
+		.label_start = label_start,
+		.in_defer = previous_defer,
+		.defer_last = parent_defer,
+		.defer_start = parent_defer,
+		.flags = flags,
 	};
+	context->active_scope = new_scope;
 }
 
 const char *context_filename(SemaContext *context)
@@ -144,7 +145,7 @@ void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast)
 	ASSERT(ast->ast_kind != AST_COMPOUND_STMT);
 	Ast *replacement = ast_copy(ast);
 	ast->ast_kind = AST_COMPOUND_STMT;
-	ast->compound_stmt = (AstCompoundStmt) { .first_stmt = astid(replacement) };
+	ast->compound_stmt = (AstCompoundStmt) { .first_stmt = astid(replacement), .parent_defer = 0 };
 	replacement->next = defer_first;
 }
 

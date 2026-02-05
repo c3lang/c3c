@@ -3691,7 +3691,8 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 	SemaContext eval_context;
 	sema_context_init(&eval_context, attr_decl->unit);
 	eval_context.macro_call_depth = context->macro_call_depth + 1;
-	eval_context.call_env = (CallEnv) { .kind = CALL_ENV_ATTR, .attr_declaration = decl,  };
+	CallEnv eval_env = { .kind = CALL_ENV_ATTR, .attr_declaration = decl,  };
+	eval_context.call_env = eval_env;
 	// We copy the compilation unit.
 	eval_context.compilation_unit = context->unit;
 
@@ -5372,7 +5373,8 @@ FOUND:;
 		{
 			SemaContext context_gen;
 			sema_context_init(&context_gen, decl->unit);
-			context_gen.active_scope = (DynamicScope) { .depth = 0 };
+			DynamicScope empty = { .depth = 0 };
+			context_gen.active_scope = empty;
 			sema_analyse_decl(&context_gen, decl);
 			context_gen.generic_instance = instance;
 			sema_analyse_inner_func_ptr(&context_gen, decl);
