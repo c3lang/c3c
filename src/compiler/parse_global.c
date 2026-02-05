@@ -213,18 +213,22 @@ static inline bool parse_optional_module_params(ParseContext *c, Decl **decl_ref
 static int generic_id = 1;
 static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
 {
+	eprintf("Unify decl %d %d %p\n", decl->generic_decl.id, vec_size(decl->generic_decl.parameters), decl);
 	unsigned params = vec_size(decl->generic_decl.parameters);
 	FOREACH(Decl *, d, unit->module->generic_sections)
 	{
+		eprintf("Comparing with %d %p\n", d->generic_decl.id, d);
 		unsigned candidate_params = vec_size(d->generic_decl.parameters);
 		if (candidate_params != params) continue;
 		for (unsigned i = 0; i < params; i++)
 		{
 			if (d->generic_decl.parameters[i] != decl->generic_decl.parameters[i])
 			{
+				eprintf("No param def match\n");
 				goto NEXT;
 			}
 		}
+		eprintf("MATCH!\n");
 		decl->generic_decl.id = d->generic_decl.id;
 		return;
 NEXT:;

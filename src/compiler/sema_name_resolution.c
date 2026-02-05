@@ -892,15 +892,8 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		{
 			eprintf("Generic instance %s\n", context->generic_instance->instance_decl.cname_suffix);
 			eprintf("Decl ids: %d %d\n", context->generic_instance->instance_decl.id, generic->generic_decl.id);
-			if (generic->generic_decl.id == context->generic_instance->instance_decl.id)
-			{
-				eprintf("Generated-----\n");
-				FOREACH(Decl *, decl, generic->instance_decl.generated_decls)
-				{
-					eprintf("%s\n", decl->name);
-				}
-				eprintf("---- end of list\n");
-			}
+			Decl *generic_a = declptr(context->generic_instance->instance_decl.id);
+			Decl *generic_b = declptr(generic->generic_decl.id);
 		}
 		else
 		{
