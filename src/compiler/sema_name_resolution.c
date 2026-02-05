@@ -228,13 +228,11 @@ Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *in
 
 INLINE bool module_inclusion_match(Module *a, Module *b)
 {
-	Module *temp;
-
 	// Quick check
 	if (a->top_module != b->top_module) return false;
 	if (a->name->len < b->name->len)
 	{
-		temp = a;
+		Module *temp = a;
 		a = b;
 		b = temp;
 	}
@@ -890,6 +888,10 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 			if (candidate) return name_resolve->found = candidate, true;
 		}
 		if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
+		if (context->generic_instance)
+		{
+			RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is a generic %s. It was initialized in a generic context that didn't match its definition, so explicit parameters are needed.", found->name, decl_to_name(found));
+		}
 		RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is a generic %s, did you forget the parameters '{ ... }'?", found->name, decl_to_name(found));
 	}
 	if (!name_resolve->is_parameterized) return true;
