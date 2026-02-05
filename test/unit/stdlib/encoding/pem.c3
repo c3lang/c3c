@@ -17,10 +17,8 @@ fn void decode_single()
 
 fn void encode_single()
 {
-	test::@check(
-		pem::tencode(SINGLE_DATA, "CERTIFICATE")!![..^(pem::ENDL.len + 1)]
-		== SINGLE.treplace("\n", pem::ENDL)
-	);
+	test::@check(pem::tencode(SINGLE_DATA, "CERTIFICATE")!![..^2] == SINGLE);
+	test::@check(pem::tencode(SINGLE_DATA, "CERTIFICATE", use_crlf: true)!![..^3] == SINGLE.treplace("\n", "\r\n"));
 }
 
 fn void decode_multi()
@@ -50,16 +48,14 @@ fn void decode_multi()
 
 fn void encode_multi()
 {
-	String result = pem::tencode_many({ SINGLE_DATA, MULTI_DATA }, { "CERTIFICATE", "THING" })!!;
-	String expected = SIMPLE_MULTI.treplace("\n", pem::ENDL);
-	test::@check(result == expected, "Got:\n%s\n\nExpected:\n%s\n\n", result, expected);
+	String result = pem::encode_many(tmem, { SINGLE_DATA, MULTI_DATA }, { "CERTIFICATE", "THING" })!!;
+	test::@check(result == SIMPLE_MULTI, "Got:\n%s\n\nExpected:\n%s\n\n", result, SIMPLE_MULTI);
 }
 
 fn void encode_single_with_headers()
 {
 	String result = pem::tencode(SINGLE_DATA, "CERTIFICATE", "My-Header", "Example", "This-is-a-longer-header", "with some extra content that will bleed over to the next line.", "Last", "Header is single-line.")!!;
-	String expected = SINGLE_WITH_HEADERS.treplace("\n", pem::ENDL);
-	test::@check(result == expected, "Got:\n%s\n\nExpected:\n%s\n\n", result, expected);
+	test::@check(result == SINGLE_WITH_HEADERS, "Got:\n%s\n\nExpected:\n%s\n\n", result, SINGLE_WITH_HEADERS);
 }
 
 fn void leak_check_decode()

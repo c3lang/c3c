@@ -24,9 +24,6 @@ const String PRE_EB_PREFIX @local = EB_DELIMITER +++ "BEGIN ";
 <* All PEM blobs will terminate with this Encapsulation Boundary prefix. *>
 const String POST_EB_PREFIX @local = EB_DELIMITER +++ "END ";
 
-<* When encoding new PEM blobs to string values, specifies which line-ending sequence to use. This is set at compile-time. *>
-const String ENDL = $feature(PEM_CRLF) ??? "\r\n" : "\n";
-
 <* Specify a set of possible PEM en/decoding faults. *>
 faultdef
 	BODY_REQUIRED,   // encoding: no body given (or too few of them)
@@ -134,16 +131,6 @@ fn void Pem._add_header(&self, String key, String value) @local
 	(void)self.headers[key].free(self.allocator);
 	self.headers[key] = value.copy(self.allocator);
 }
-
-
-<*
- A temporary-allocator alias for the `decode` function, which reads an input string and returns one or more decoded PEMs.
-
- @param [in] input : "The string to parse one or more PEM blobs from."
-
- @return "An array of decoded `Pem` objects, depending on how many were present in the input (separated optionally by whitespace)."
-*>
-macro Pem[]? tdecode(String input) => decode(tmem, input);
 
 <*
  Attempt to decode an input string into one or more `Pem` objects. If the input contains any non-PEM or otherwise
@@ -266,53 +253,51 @@ fn Pem? _decode_single(Allocator allocator, String[]* lines_io) @local
 <*
  Encodes a single `Pem` object into a new PEM-formatted string.
 
+ @param pem : "The pem object to encode"
  @param [&inout] allocator : "The allocator to use for allocating the final encoded string."
 *>
-fn String? Pem.encode(&self, Allocator allocator)
+fn String? encode_pem(Pem pem, Allocator allocator, bool use_crlf = false)
 {
-	if (!self.data.len) return BODY_REQUIRED~;
-	if (!self.tag.len) return TAG_REQUIRED~;
+	if (!pem.data.len) return BODY_REQUIRED~;
+	if (!pem.tag.len) return TAG_REQUIRED~;
 
 	DString out;
 	out.tinit();
-
+	String line_ending = use_crlf ? "\r\n" : "\n";
 	@pool()
 	{
-		out.appendf(PRE_EB_PREFIX +++ "%s" +++ EB_DELIMITER +++ ENDL, self.tag);
-		foreach KEY_ITER: (key : self.headers.tkeys())
+		out.appendf(PRE_EB_PREFIX +++ "%s" +++ EB_DELIMITER +++ "%s", pem.tag, line_ending);
+		foreach KEY_ITER: (key : pem.headers.tkeys())
 		{
 			if (!key.len) return HEADER_KEY_REQUIRED~;
-			String value = self.headers[key]!!;
+			String value = pem.headers[key]!!;
 			if (!value.len) return HEADER_VALUE_REQUIRED~;
 			usz first_line_length = 64 - 2 - key.len;
 			if (value.len <= first_line_length)
 			{
-				out.appendf("%s: %s" +++ ENDL, key, value);
+				out.appendf("%s: %s%s", key, value, line_ending);
 				continue KEY_ITER;
 			}
-			out.appendf("%s: %s" +++ ENDL, key, value[:first_line_length].trim());
+			out.appendf("%s: %s%s", key, value[:first_line_length].trim(), line_ending);
 			value = value[first_line_length..];
 			while (value.len > 0)
 			{
-				out.appendf(" %s" +++ ENDL, (value.len >= 63 ? value[:63] : value[..]).trim());
+				out.appendf(" %s%s", (value.len >= 63 ? value[:63] : value[..]).trim(), line_ending);
 				value = value.len >= 63 ? value[63..] : {};
 			}
 		}
-		if (self.headers.len() > 0) out.append(ENDL);
-		String body = base64::tencode(self.data);
+		if (pem.headers.len() > 0) out.append(line_ending);
+		String body = base64::tencode(pem.data);
 		while (body.len > 0)
 		{
-			out.appendf("%s" +++ ENDL, body.len >= 64 ? body[:64] : body[..]);
+			out.appendf("%s%s", body.len >= 64 ? body[:64] : body[..], line_ending);
 			body = body.len >= 64 ? body[64..] : {};
 		}
-		out.appendf(POST_EB_PREFIX +++ "%s" +++ EB_DELIMITER +++ ENDL, self.tag);
+		out.appendf(POST_EB_PREFIX +++ "%s" +++ EB_DELIMITER +++ "%s", pem.tag, line_ending);
 	};
 
 	return allocator == tmem ? out.str_view() : out.copy_str(allocator);
 }
-
-<* A temporary-allocator alias for `Pem.encode`, encoding the `Pem` object into a new string. *>
-macro String? Pem.tencode(&self) => self.encode(tmem, text_width: text_width);
 
 <*
  Encodes a set of input data into a `String` containing the PEM-encoded data.
@@ -321,23 +306,16 @@ macro String? Pem.tencode(&self) => self.encode(tmem, text_width: text_width);
  @param [in] data : "The body data for the output PEM."
  @param [in] tag : "The tag "
 *>
-fn String? encode(Allocator allocator, char[] data, String tag, String... args)
+fn String? encode(Allocator allocator, char[] data, String tag, String... args, bool use_crlf = false) => @pool()
 {
 	if (!data.len) return BODY_REQUIRED~;
-	Pem new = create(allocator, data, tag, ...args);
-	defer new.free();
-	return new.encode(allocator);
+	return encode_pem(create(tmem, data, tag, ...args), allocator, use_crlf);
 }
-
-<**>
-macro String? tencode(char[] data, String tag, String... args) => encode(tmem, data, tag, ...args);
 
 <*
  Encode many inputs to a single output string that represents chained/sequential PEM objects in the order they were provided.
  The length of the `bodies` and `tags` array must be equal.
  If headers are provided, they must be arrays of String objects, matching both the number of tags and the number of bodies.
-
- NOTE that this is ok to be left as a macro, as most implementors should only ever call this once.
 
  @param [&inout] allocator : "The allocator to use when creating the final output string."
  @param [in] bodies : "An ordered array of binary arrays, each representing the body of a single PEM."
@@ -345,7 +323,7 @@ macro String? tencode(char[] data, String tag, String... args) => encode(tmem, d
 
  @return "A new `String`, allocated with `allocator`, that contains all PEM objects in the order they were given."
 *>
-fn String? encode_many(Allocator allocator, char[][] bodies, String[] tags, String[]... keyvars)
+fn String? encode_many(Allocator allocator, char[][] bodies, String[] tags, String[]... keyvars, bool use_crlf = false)
 {
 	usz entries = max(bodies.len, tags.len, keyvars.len);
 	switch
@@ -362,25 +340,15 @@ fn String? encode_many(Allocator allocator, char[][] bodies, String[] tags, Stri
 	{
 		foreach (x, body : bodies) @pool()
 		{
-			out.append(tencode(body, tags[x])!);
+			out.append(tencode(body, tags[x], use_crlf: use_crlf)!);
 		};
 	}
 	else
 	{
 		foreach (i, headers : keyvars) @pool()
 		{
-			out.append(tencode(bodies[i], tags[i], ...headers)!);
+			out.append(tencode(bodies[i], tags[i], ...headers, use_crlf: use_crlf)!);
 		};
 	}
 	return allocator == tmem ? out.str_view() : out.copy_str(allocator);
 }
-
-<*
- A temporary-allocator alias for the `encode_many` function, encoding many PEM inputs to a single output string.
-
- @param [in] bodies : "An ordered array of binary arrays, each representing the body of a single PEM."
- @param [in] tags : "An ordered array of tag strings, each representing the tag of a single PEM."
-
- @return "A new `String`, allocated with `allocator`, that contains all PEM objects in the order they were given."
-*>
-macro String? tencode_many(char[][] bodies, String[] tags, ...) => encode_many(tmem, bodies, tags, $vasplat);
