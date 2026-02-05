@@ -24,6 +24,8 @@ const String PRE_EB_PREFIX @local = EB_DELIMITER +++ "BEGIN ";
 <* All PEM blobs will terminate with this Encapsulation Boundary prefix. *>
 const String POST_EB_PREFIX @local = EB_DELIMITER +++ "END ";
 
+alias PemHeader = String[2];
+
 <* Specify a set of possible PEM en/decoding faults. *>
 faultdef
 	BODY_REQUIRED,   // encoding: no body given (or too few of them)
@@ -73,10 +75,9 @@ struct Pem
  @param [in] data : "The body data of the PEM."
  @param [in] tag : "The tag value to use within the PEM's Encapsulation Boundary."
 
- @require args.len % 2 == 0 : "You must use an even amount of headers (key-value pairings) to initialize a PEM object."
  @return "A new PEM object."
 *>
-fn Pem create(Allocator allocator, char[] data, String tag, String... args)
+fn Pem create(Allocator allocator, char[] data, String tag, PemHeader... args)
 {
 	Pem result = {
 		.allocator = allocator,
@@ -84,9 +85,9 @@ fn Pem create(Allocator allocator, char[] data, String tag, String... args)
 		.data = allocator::clone_slice(allocator, data),
 	};
 	result.headers.init(allocator, capacity: max(args.len, 16));
-	for (usz i = 0; i < args.len; i += 2)
+	foreach (arg : args)
 	{
-		result._add_header(args[i], args[i + 1]);
+		result.add_header(arg[0], arg[1]);
 	}
 	return result;
 }
@@ -102,7 +103,7 @@ fn Pem Pem.copy(&self, Allocator allocator)
 	Pem result = create(allocator, self.data, self.tag);
 	self.headers.@each(;String key, String value)
 	{
-		result._add_header(key, value);
+		result.add_header(key, value);
 	};
 	return result;
 }
@@ -126,7 +127,7 @@ fn void Pem.free(&self)
 	mem::zero_volatile(@as_char_view(*self));
 }
 
-fn void Pem._add_header(&self, String key, String value) @local
+fn void Pem.add_header(&self, String key, String value)
 {
 	(void)self.headers[key].free(self.allocator);
 	self.headers[key] = value.copy(self.allocator);
@@ -226,7 +227,7 @@ fn Pem? _decode_single(Allocator allocator, String[]* lines_io) @local
 		if (!kv[1].len) return MISSING_HEADER_VALUE~;
 		foreach (c : kv[0]) if (!HEADER_KEY_SET.contains(c)) return INVALID_HEADER_KEY~;
 
-		result._add_header(kv[0], kv[1]);   // finally, push the values
+		result.add_header(kv[0], kv[1]);   // finally, push the values
 	}
 
 	// if any headers were present, the line after the headers MUST BE EMPTY
@@ -306,10 +307,10 @@ fn String? encode_pem(Pem pem, Allocator allocator, bool use_crlf = false)
  @param [in] data : "The body data for the output PEM."
  @param [in] tag : "The tag "
 *>
-fn String? encode(Allocator allocator, char[] data, String tag, String... args, bool use_crlf = false) => @pool()
+fn String? encode(Allocator allocator, char[] data, String tag, PemHeader... headers, bool use_crlf = false) => @pool()
 {
 	if (!data.len) return BODY_REQUIRED~;
-	return encode_pem(create(tmem, data, tag, ...args), allocator, use_crlf);
+	return encode_pem(create(tmem, data, tag, ...headers), allocator, use_crlf);
 }
 
 <*
@@ -323,31 +324,31 @@ fn String? encode(Allocator allocator, char[] data, String tag, String... args, 
 
  @return "A new `String`, allocated with `allocator`, that contains all PEM objects in the order they were given."
 *>
-fn String? encode_many(Allocator allocator, char[][] bodies, String[] tags, String[]... keyvars, bool use_crlf = false)
+fn String? encode_many(Allocator allocator, char[][] bodies, String[] tags, PemHeader[]... pem_headers, bool use_crlf = false)
 {
-	usz entries = max(bodies.len, tags.len, keyvars.len);
+	usz entries = max(bodies.len, tags.len, pem_headers.len);
 	switch
 	{
 		case bodies.len < entries: return BODY_REQUIRED~;
 		case tags.len < entries: return TAG_REQUIRED~;
-		case keyvars.len > 0 && keyvars.len < entries: return HEADERS_REQUIRED~;
+		case pem_headers.len > 0 && pem_headers.len < entries: return HEADERS_REQUIRED~;
 	}
 
 	DString out;
 	out.tinit();
 
-	if (!keyvars.len)
+	if (!pem_headers.len)
 	{
 		foreach (x, body : bodies) @pool()
 		{
-			out.append(tencode(body, tags[x], use_crlf: use_crlf)!);
+			out.append(encode(tmem, body, tags[x], use_crlf: use_crlf)!);
 		};
 	}
 	else
 	{
-		foreach (i, headers : keyvars) @pool()
+		foreach (i, headers : pem_headers) @pool()
 		{
-			out.append(tencode(bodies[i], tags[i], ...headers, use_crlf: use_crlf)!);
+			out.append(encode(tmem, bodies[i], tags[i], ...headers, use_crlf: use_crlf)!);
 		};
 	}
 	return allocator == tmem ? out.str_view() : out.copy_str(allocator);

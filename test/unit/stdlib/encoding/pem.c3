@@ -8,7 +8,7 @@ import std::collections::pair, std::encoding::pem, std::io;
 
 fn void decode_single()
 {
-	Pem[] res = pem::tdecode(SINGLE)!!;
+	Pem[] res = pem::decode(tmem, SINGLE)!!;
 	test::@check(res.len == 1);
 	test::@check(res[0].tag == "CERTIFICATE");
 	test::@check(res[0].headers.len() == 0);
@@ -17,8 +17,8 @@ fn void decode_single()
 
 fn void encode_single()
 {
-	test::@check(pem::tencode(SINGLE_DATA, "CERTIFICATE")!![..^2] == SINGLE);
-	test::@check(pem::tencode(SINGLE_DATA, "CERTIFICATE", use_crlf: true)!![..^3] == SINGLE.treplace("\n", "\r\n"));
+	test::@check(pem::encode(tmem, SINGLE_DATA, "CERTIFICATE")!![..^2] == SINGLE);
+	test::@check(pem::encode(tmem, SINGLE_DATA, "CERTIFICATE", use_crlf: true)!![..^3] == SINGLE.treplace("\n", "\r\n"));
 }
 
 fn void decode_multi()
@@ -30,7 +30,7 @@ fn void decode_multi()
 		{ "I'm-trying", "to confuse things: when parsing the content of this file" },
 		{ "done", "now" },
 	};
-	Pem[] res = pem::tdecode(MULTI)!!;
+	Pem[] res = pem::decode(tmem, MULTI)!!;
 	test::@check(res.len == 2);
 	test::@check(res[0].tag == "THIS IS NOT A REAL PRIVATE KEY");
 	test::@check(res[0].data == MULTI_DATA);
@@ -54,7 +54,7 @@ fn void encode_multi()
 
 fn void encode_single_with_headers()
 {
-	String result = pem::tencode(SINGLE_DATA, "CERTIFICATE", "My-Header", "Example", "This-is-a-longer-header", "with some extra content that will bleed over to the next line.", "Last", "Header is single-line.")!!;
+	String result = pem::encode(tmem, SINGLE_DATA, "CERTIFICATE", {"My-Header", "Example"}, {"This-is-a-longer-header", "with some extra content that will bleed over to the next line."}, {"Last", "Header is single-line."})!!;
 	test::@check(result == SINGLE_WITH_HEADERS, "Got:\n%s\n\nExpected:\n%s\n\n", result, SINGLE_WITH_HEADERS);
 }
 
@@ -81,12 +81,12 @@ fn void leak_check_decode()
 
 fn void leak_check_encode()
 {
-	String encoded = pem::encode(mem, SINGLE_DATA, "SOMETHING", "Key", "Value", "KeyX", "ValueX")!!;
+	String encoded = pem::encode(mem, SINGLE_DATA, "SOMETHING", { "Key", "Value" }, {"KeyX", "ValueX" })!!;
 	test::@check(encoded.len > 0);
 	io::printfn("ENCODED_SINGLE:\n%s\n", encoded);
 	encoded.free(mem);
 
-	encoded = pem::encode_many(mem, { SINGLE_DATA, MULTI_DATA }, { "CERTIFICATE", "THING" }, (String[]){ "Key1", "Value1", "KeyX", "ValueX"}, (String[]){ "more", "more" })!!;
+	encoded = pem::encode_many(mem, { SINGLE_DATA, MULTI_DATA }, { "CERTIFICATE", "THING" }, (String[2][]) { {"Key1", "Value1"}, {"KeyX", "ValueX"} }, (String[2][]){ {"more", "more"} })!!;
 	test::@check(encoded.len > 0);
 	io::printfn("ENCODED_MULTI:\n%s\n", encoded);
 	encoded.free(mem);
@@ -94,7 +94,7 @@ fn void leak_check_encode()
 
 fn void decode_errors()
 {
-	foreach (i, pair : DECODE_ERRORS) test::@error(pem::tdecode(pair.first), pair.second);
+	foreach (i, pair : DECODE_ERRORS) test::@error(pem::decode(tmem, pair.first), pair.second);
 }
 
 
