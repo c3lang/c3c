@@ -18,7 +18,7 @@ fn int main(String[] args)
 	if (catch foo)
 	{
 		// This is issue 2036
-		foo = foo ?? faults::DISTRACTED_BY_CAT_PICTURES; // #error: did you perhaps forget a '?'
+		foo = foo ?? faults::DISTRACTED_BY_CAT_PICTURES; // #error: did you perhaps forget a '~'
 	}
 
 	return 0;

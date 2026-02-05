@@ -118,7 +118,7 @@ run_cli_tests() {
         cd "$ROOT_DIR/resources"
         "$C3C_BIN" vendor-fetch raylib
 
-        if [ -f "/etc/alpine-release" ] || [[ "$SYSTEM_NAME" == "OpenBSD" ]] || [[ "$SYSTEM_NAME" == "NetBSD" ]]; then
+        if [ -f "/etc/alpine-release" ] || [[ "$SYSTEM_NAME" == "OpenBSD" ]] || [[ "$SYSTEM_NAME" == "NetBSD" ]] || [[ "$OS_MODE" == "android" ]]; then
             echo "Skipping raylib_arkanoid (vendor raylib doesn't support this platform)"
             return
         fi
@@ -128,8 +128,8 @@ run_cli_tests() {
 
 run_dynlib_tests() {
     echo "--- Running Dynamic Lib Tests ---"
-    # Skip openbsd, idk
-    if [[ "$SYSTEM_NAME" == *"OpenBSD"* ]]; then return; fi
+    # Skip openbsd and android
+    if [[ "$SYSTEM_NAME" == *"OpenBSD"* ]] || [[ "$OS_MODE" == "android" ]]; then return; fi
 
     cd "$ROOT_DIR/resources/examples/dynlib-test"
     "$C3C_BIN" -vv dynamic-lib add.c3

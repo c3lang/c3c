@@ -1,7 +1,4 @@
 module std::sort;
-import std::sort::is;
-import std::sort::cs @public;
-import std::sort::qs;
 
 <*
  Sort list using the counting sort algorithm.
@@ -15,38 +12,36 @@ macro void countingsort(list, key_fn = ...) @builtin
 	var list_length = $kindof(list) == SLICE ??? list.len : lengthof(*list);
 	var $ListType = $kindof(list) == SLICE ??? $typeof(list) : $typeof(*list);
 	$if $defined(key_fn):
-		cs::csort{$ListType, $typeof(key_fn)}(list, 0, list_length, key_fn, ~(uint)0);
+		csort{$ListType, $typeof(key_fn)}(list, 0, list_length, key_fn, ~(uint)0);
 	$else
-		cs::csort{$ListType, void*}(list, 0, list_length, ~(uint)0);
+		csort{$ListType, void*}(list, 0, list_length, ~(uint)0);
 	$endif
 }
 
 macro void insertionsort_indexed(list, start, end, cmp = ..., context = ...) @builtin
 {
-	// When the context or cmp functions are not defined, we can simply use a dummy/default type.
-	var $CmpFnType = $defined(cmp) ??? $typeof(cmp) : uint;
-	var $ContextType = $defined(context) ??? $typeof(context) : uint;
+	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
+	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if $kindof(list) == SLICE:
-		is::isort{$typeof((list)), $CmpFnType, $ContextType}(list, (usz)start, (usz)end, ...cmp, ...context);
+		isort{$typeof((list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (usz)start, (usz)end, used_cmp, used_ctx);
 	$else
-		is::isort{$typeof((*list)), $CmpFnType, $ContextType}(list, (usz)start, (usz)end, ...cmp, ...context);
+		isort{$typeof((*list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (usz)start, (usz)end, used_cmp, used_ctx);
 	$endif
 
 }
 
 macro void quicksort_indexed(list, start, end, cmp = ..., context = ...) @builtin
 {
-	// When the context or cmp functions are not defined, we can simply use a dummy/default type.
-	var $CmpFnType = $defined(cmp) ??? $typeof(cmp) : uint;
-	var $ContextType = $defined(context) ??? $typeof(context) : uint;
+	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
+	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if $kindof(list) == SLICE:
-		qs::qsort{$typeof((list)), $CmpFnType, $ContextType}(list, (isz)start, (isz)(end-1), ...cmp, ...context);
+		qsort{$typeof((list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (isz)start, (isz)(end-1), used_cmp, used_ctx);
 	$else
-		qs::qsort{$typeof((*list)), $CmpFnType, $ContextType}(list, (isz)start, (isz)(end-1), ...cmp, ...context);
+		qsort{$typeof((*list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (isz)start, (isz)(end-1), used_cmp, used_ctx);
 	$endif
 }
 
-module std::sort::cs <Type, KeyFn>;
+module std::sort <Type, KeyFn> @local;
 
 alias Counts @private = usz[256];
 alias Ranges @private = usz[257];
@@ -71,12 +66,12 @@ macro list_get(ListType l, i) @if(IS_SLICE) => l[i];
 macro list_get_ref(ListType l, i) @if(!IS_SLICE) => &(*l)[i];
 macro list_get_ref(ListType l, i) @if(IS_SLICE) => &l[i];
 
-fn void csort(ListType list, usz low, usz high, KeyFn key_fn, uint byte_idx) @if (!NO_KEY_FN)
+fn void csort(ListType list, usz low, usz high, KeyFn key_fn, uint byte_idx) @if (!NO_KEY_FN) @private
 {
 	_csort(list, low, high, byte_idx, key_fn);
 }
 
-fn void csort(ListType list, usz low, usz high, uint byte_idx) @if (NO_KEY_FN)
+fn void csort(ListType list, usz low, usz high, uint byte_idx) @if (NO_KEY_FN) @private
 {
 	_csort(list, low, high, byte_idx);
 }
@@ -90,7 +85,7 @@ fn void csort(ListType list, usz low, usz high, uint byte_idx) @if (NO_KEY_FN)
  In other words, `csort(a_list, low, high, key_fn: some_fn, byte_idx: index_val)` breaks the existing API
  since explicitly naming `byte_idx` becomes a requirement.
 *>
-macro void _csort(ListType list, usz low, usz high, uint byte_idx, KeyFn key_fn = ...) @private
+macro void _csort(ListType list, usz low, usz high, uint byte_idx, KeyFn key_fn = ...)
 {
 	if (high <= low) return;
 	$if NO_KEY_FN:

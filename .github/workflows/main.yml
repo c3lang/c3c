@@ -8,9 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  LLVM_RELEASE_VERSION_WINDOWS: 21.1.8
-  LLVM_RELEASE_VERSION_MAC: 21
-  LLVM_RELEASE_VERSION_LINUX: 21
+  LLVM_RELEASE_VERSION: 21.x
   LLVM_RELEASE_VERSION_LINUX_MUSL: 20
   LLVM_RELEASE_VERSION_OPENBSD: 20
   LLVM_RELEASE_VERSION_NETBSD: 19
@@ -33,7 +31,7 @@ jobs:
       - uses: actions/cache@v5
         with:
           path: build/_deps
-          key: ${{ runner.os }}-llvm-${{ env.LLVM_RELEASE_VERSION_WINDOWS }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
+          key: ${{ runner.os }}-llvm-${{ env.LLVM_RELEASE_VERSION }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
 
       # set up the environment for Ninja
       - uses: ilammy/msvc-dev-cmd@v1
@@ -42,7 +40,7 @@ jobs:
 
       - name: CMake Build
         run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DC3_FETCH_LLVM=ON
           cmake --build build --config ${{ matrix.build_type }}
 
       # We remove the GNU link tool so C3C picks up the MSVC link.exe
@@ -132,40 +130,17 @@ jobs:
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
   build-linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 18, 19, 20, 21, 22]
     steps:
       - uses: actions/checkout@v6
       - run: sudo apt-get update && sudo apt-get install -y zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev
-      - name: Install Clang ${{matrix.llvm_version}}
-        run: |
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          REPO_URL="http://apt.llvm.org/focal/ llvm-toolchain-focal"
-          if [[ "${{matrix.llvm_version}}" != "${{env.LLVM_DEV_VERSION}}" ]]; then REPO_URL="$REPO_URL-${{matrix.llvm_version}}"; fi
-          sudo add-apt-repository "deb $REPO_URL main"
-          sudo apt-get update
-          PKGS="clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev libpolly-${{matrix.llvm_version}}-dev"
-          if [[ "${{matrix.llvm_version}}" < 18 ]]; then PKGS="$PKGS libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools"; fi
-          sudo apt-get install -y $PKGS
       - name: CMake Build
         run: |
-          C3_LLVM_VER=${{matrix.llvm_version}}
-          if [[ "${{matrix.llvm_version}}" -ge 18 && "${{matrix.llvm_version}}" != "${{env.LLVM_DEV_VERSION}}" ]]; then C3_LLVM_VER="${{matrix.llvm_version}}.1"; fi
-          
-          cmake -B build -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-                -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
-                -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
-                -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
-                -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
-                -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
-                -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
-                -DLLVM_ENABLE_LIBXML2=OFF \
-                -DC3_LLVM_VERSION=$C3_LLVM_VER
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -DC3_FETCH_LLVM=ON
           cmake --build build
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
@@ -177,11 +152,9 @@ jobs:
           make C3C_PATH=../../../../build/ run
 
       - name: Bundle & Upload (Linux)
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX
         run: |
           bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-${{matrix.build_type}}" "tar"
       - uses: actions/upload-artifact@v6
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX
         with:
           name: c3-linux-${{matrix.build_type}}
           path: c3-linux-${{matrix.build_type}}.tar.gz
@@ -224,44 +197,11 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 18, 19, 20, 21]
     steps:
       - uses: actions/checkout@v6
-      - name: Download LLVM
-        run: |
-          brew_install() {
-            for pkg in "$@"; do
-              brew list "$pkg" &>/dev/null || brew install "$pkg"
-            done
-          }
-          if [[ "${{ matrix.llvm_version }}" == "21" ]]; then
-            brew_install llvm lld ninja curl
-            echo "/opt/homebrew/opt/llvm/bin" >> $GITHUB_PATH
-            echo "/opt/homebrew/opt/lld/bin" >> $GITHUB_PATH
-          else
-            brew_install llvm@${{ matrix.llvm_version }} ninja curl
-            echo "/opt/homebrew/opt/llvm@${{ matrix.llvm_version }}/bin" >> $GITHUB_PATH
-            if [[ "${{ matrix.llvm_version }}" -ge 19 ]]; then
-              brew_install lld@${{ matrix.llvm_version }}
-              echo "/opt/homebrew/opt/lld@${{ matrix.llvm_version }}/bin" >> $GITHUB_PATH
-            fi
-          fi
-          echo "CPATH=$(xcrun --show-sdk-path)/user/include" >> $GITHUB_ENV
       - name: CMake Build
         run: |
-          C3_LLVM_VER=${{matrix.llvm_version}}
-          if [[ "${{matrix.llvm_version}}" -ge 18 ]]; then C3_LLVM_VER="${{matrix.llvm_version}}.1"; fi
-          if [[ "${{ matrix.llvm_version }}" == "21" ]]; then
-            C3_LLD_DIR="/opt/homebrew/opt/lld/lib"
-            C3_LLD_INCLUDE_DIR="/opt/homebrew/opt/lld/include"
-          elif [[ "${{ matrix.llvm_version }}" -ge 19 ]]; then
-            C3_LLD_DIR="/opt/homebrew/opt/lld@${{ matrix.llvm_version }}/lib"
-            C3_LLD_INCLUDE_DIR="/opt/homebrew/opt/lld@${{ matrix.llvm_version }}/include"
-          else
-            C3_LLD_DIR=""
-            C3_LLD_INCLUDE_DIR=""
-          fi
-          cmake -B build -G Ninja -DC3_LLVM_VERSION=$C3_LLVM_VER -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DC3_LLD_DIR=$C3_LLD_DIR -DC3_LLD_INCLUDE_DIR=$C3_LLD_INCLUDE_DIR
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DC3_FETCH_LLVM=ON
           cmake --build build
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
@@ -272,10 +212,8 @@ jobs:
           ../../build/c3c build hello_world_lib -vv --trust=full
 
       - name: Bundle & Upload (Mac)
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_MAC
         run: bash ./scripts/tools/package_build.sh "./build/c3c" "c3-macos-${{matrix.build_type}}" "zip"
       - uses: actions/upload-artifact@v6
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_MAC
         with:
           name: c3-macos-${{matrix.build_type}}
           path: c3-macos-${{matrix.build_type}}.zip
@@ -414,9 +352,74 @@ jobs:
         if [[ ${{ matrix.build_type }} = "Debug" ]]; then CHECK_NAME=".#c3c-debug-checks"; fi
         nix build -L "$CHECK_NAME"
 
+  build-android:
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [ Release, Debug ]
+        architecture: [ aarch64, x86_64 ]
+        include:
+          - architecture: aarch64
+            runner: ubuntu-24.04-arm
+          - architecture: x86_64
+            runner: ubuntu-24.04
+    runs-on: ${{matrix.runner}}
+    container:
+      image: termux/termux-docker:${{matrix.architecture}}
+      volumes:
+        - /tmp/node20:/__e/node20
+    env:
+      TERMUX_MAIN_PACKAGE_FORMAT: debian
+      ANDROID_ROOT: /system
+      ANDROID_DATA: /data
+      PREFIX: /data/data/com.termux/files/usr
+      HOME: /data/data/com.termux/files/home
+      PATH: /data/data/com.termux/files/usr/bin
+      TMPDIR: /data/data/com.termux/files/usr/tmp
+      LANG: en_US.UTF-8
+      TZ: UTC
+    steps:
+      - name: prepare termux
+        run: |
+          ln -sf ${PREFIX}/etc/termux/mirrors/default ${PREFIX}/etc/termux/chosen_mirrors
+          /entrypoint.sh pkg update
+          /entrypoint.sh bash -c "yes | pkg upgrade -y"
+          chmod -R o+x ${PREFIX}/bin
+          /entrypoint.sh pkg install -y nodejs-lts
+          ln -sf ${PREFIX}/bin /__e/node20/bin
+      - uses: actions/checkout@v4.2.2
+      - name: fix permissions after checkout (checkout runs as root and entrypoint.sh switches to user 1000)
+        run: chown -R 1000:1000 .
+
+      - name: setup
+        run: /entrypoint.sh pkg install -y llvm binutils libgc build-essential cmake git libedit zlib clang make mlir llvm-tools libpolly python libllvm-static
+      - name: build
+        run: |
+          cmake -Bbuild -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+          cmake --build build
+
+      - name: Run Unified Tests
+        run: ./scripts/tools/ci_tests.sh "./build/c3c" "android"
+
+      - name: bundle_output
+        run: |
+          mkdir c3
+          cp -r lib c3
+          cp msvc_build_libraries.py c3
+          cp build/c3c c3
+          cp README.md c3
+          cp releasenotes.md c3
+          tar czf c3-android-${{matrix.architecture}}-${{matrix.build_type}}.tar.gz c3
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: c3-android-${{matrix.architecture}}-${{matrix.build_type}}
+          path: c3-android-${{matrix.architecture}}-${{matrix.build_type}}.tar.gz
+
   release:
     runs-on: ubuntu-22.04
-    needs: [build-msvc, build-linux, build-mac, build-linux-alpine, build-openbsd, build-netbsd]
+    needs: [build-msvc, build-linux, build-mac, build-linux-alpine, build-openbsd, build-netbsd, build-android]
     if: github.ref == 'refs/heads/master'
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -434,6 +437,8 @@ jobs:
           mv c3-linux-musl-Release/c3-linux-musl-Release.tar.gz c3-linux-musl.tar.gz
           mv c3-openbsd-Release/c3-openbsd-Release.tar.gz c3-openbsd.tar.gz || true
           mv c3-netbsd-Release/c3-netbsd-Release.tar.gz c3-netbsd.tar.gz || true
+          mv c3-android-aarch64-Release/c3-android-aarch64-Release.tar.gz c3-android-aarch64.tar.gz
+          mv c3-android-x86_64-Release/c3-android-x86_64-Release.tar.gz c3-android-x86_64.tar.gz
 
           # --- Debug Assets ---
           mv c3-windows-Debug/c3-windows-Debug.zip c3-windows-debug.zip
@@ -443,6 +448,8 @@ jobs:
           mv c3-linux-musl-Debug/c3-linux-musl-Debug.tar.gz c3-linux-musl-debug.tar.gz
           mv c3-openbsd-Debug/c3-openbsd-Debug.tar.gz c3-openbsd-debug.tar.gz || true
           mv c3-netbsd-Debug/c3-netbsd-Debug.tar.gz c3-netbsd-debug.tar.gz || true
+          mv c3-android-aarch64-Debug/c3-android-aarch64-Debug.tar.gz c3-android-aarch64-debug.tar.gz
+          mv c3-android-x86_64-Debug/c3-android-x86_64-Debug.tar.gz c3-android-x86_64-debug.tar.gz
 
       - run: gh release delete latest-prerelease-tag --cleanup-tag -y || true
       - run: echo "RELEASE_NAME=latest-prerelease-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
@@ -459,6 +466,8 @@ jobs:
             c3-linux-musl.tar.gz
             c3-openbsd.tar.gz
             c3-netbsd.tar.gz
+            c3-android-aarch64.tar.gz
+            c3-android-x86_64.tar.gz
             # --- Debug Artifacts ---
             c3-windows-debug.zip
             c3-macos-debug.zip
@@ -466,3 +475,5 @@ jobs:
             c3-linux-musl-debug.tar.gz
             c3-openbsd-debug.tar.gz
             c3-netbsd-debug.tar.gz
+            c3-android-aarch64-debug.tar.gz
+            c3-android-x86_64-debug.tar.gz
