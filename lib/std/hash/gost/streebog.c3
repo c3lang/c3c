@@ -159,7 +159,7 @@ fn void Streebog._final_private(&self) @local
 	usz index = self.index >> 3;
 	usz shift = (self.index & 0b111) * 8;
 
-	unprocessed_bits_count[0] = self.index * 8;
+	unprocessed_bits_count[0] = self.index * 8ul;
 	self.message[index]   &= ~(ulong.max << shift);
 	self.message[index++] ^= 1ul << shift;
 	if (index < 8) self.message[index..] = {};
