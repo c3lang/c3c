@@ -20,12 +20,6 @@ macro void insertionsort(list, cmp = ..., context = ...) @builtin @safemacro
 
 module std::sort <Type, CmpFn, Context> @private;
 
-alias ElementType = $typeof(((Type){})[0]);
-const bool IS_SLICE = Type.kindof == SLICE;
-alias ListType = $typefrom(IS_SLICE ??? Type : Type*);
-macro ElementType list_get(ListType l, i) => IS_SLICE ??? l[i] : (*l)[i];
-macro ElementType* list_get_ref(ListType l, i) => IS_SLICE ??? &l[i] : &(*l)[i];
-
 fn void isort(ListType list, usz low, usz high, CmpFn comp, Context context) @noinline @private
 {
 	var $has_cmp = $typeof(comp) != TypeNotSet;
