@@ -1733,7 +1733,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (!associated_value_count)
 			{
-				RETURN_SEMA_ERROR(args[0], "There are no associated values defined for this enum. Did you perhaps want C style gap enums? In that case, try enums with inline associated values.");
+				RETURN_SEMA_ERROR(args[0], "There are no associated values defined for this enum. Did you perhaps want C style gap enums? In that case, try using a const enum.");
 			}
 			RETURN_SEMA_ERROR(args[associated_value_count], "You're adding too many values, only %d associated value%s are defined for '%s'.", associated_value_count, associated_value_count != 1 ? "s" : "", decl->name);
 		}
@@ -1758,7 +1758,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (!associated_value_count)
 			{
-				RETURN_SEMA_ERROR(args[0], "There are no associated values defined for this enum. Did you perhaps want C style gap enums? In that case, try enums with inline associated values.");
+				RETURN_SEMA_ERROR(args[0], "There are no associated values defined for this enum. Did you perhaps want C style gap enums? In that case, try using a const enum.");
 			}
 			RETURN_SEMA_ERROR(args[associated_value_count], "You're adding too many values, only %d associated value%s are defined for '%s'.", associated_value_count, associated_value_count != 1 ? "s" : "", decl->name);
 		}

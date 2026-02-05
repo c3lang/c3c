@@ -4,6 +4,7 @@
 
 ### Changes / improvements
 - Method resolution and `$define` now works together well unless definitions are out of order for real.
+- Improve error message when assigning a value to an enum with no associated values
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
