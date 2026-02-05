@@ -1281,6 +1281,16 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 					expr->overload_expr = try_consume(c, TOKEN_EQ) ? OVERLOAD_ELEMENT_SET : OVERLOAD_ELEMENT_AT;
 					RANGE_EXTEND_PREV(expr);
 					break;
+				case TOKEN_LESS:
+				case TOKEN_LESS_EQ:
+				case TOKEN_GREATER:
+				case TOKEN_GREATER_EQ:
+					RETURN_PRINT_ERROR_HERE("Comparisons '<', '<=', '>', '>=' cannot be overloaded, only '==' and '!=' are supported.");
+				case TOKEN_PLUSPLUS:
+				case TOKEN_MINUSMINUS:
+					RETURN_PRINT_ERROR_HERE("Increment and decrement operators '++' and '--' cannot be directly overloaded, use '+=' and '-=' instead.");
+				case TOKEN_DOT:
+					RETURN_PRINT_ERROR_HERE("You cannot overload '.'.");
 				default:
 PARSE_EXPR:
 					expr = parse_constant_expr(c);
