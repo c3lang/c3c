@@ -147,6 +147,14 @@ fn void Streebog.update(&self, char[] data)
 macro char[*] Streebog.final(&self, StreebogLength $hash_size)
 {
 	char[$hash_size] result;
+	self._final_private();
+	defer mem::zero_volatile(@as_char_view(*self)); // implicitly clear the structure when finalized
+	result[..] = @as_char_view(self.h)[(BLOCK_SIZE - $hash_size)..];
+	return result;
+}
+
+fn void Streebog._final_private(&self) @local
+{
 	ulong[8] unprocessed_bits_count;
 	usz index = self.index >> 3;
 	usz shift = (self.index & 0b111) * 8;
@@ -161,9 +169,4 @@ macro char[*] Streebog.final(&self, StreebogLength $hash_size)
 	@add_512(self.s, self.message);
 	@g_n(ZERO_512, self.h, self.n);
 	@g_n(ZERO_512, self.h, self.s);
-
-	defer mem::zero_volatile(@as_char_view(*self)); // implicitly clear the structure when finalized
-
-	result[..] = @as_char_view(self.h)[(BLOCK_SIZE - $hash_size)..];
-	return result;
 }
