@@ -352,9 +352,74 @@ jobs:
         if [[ ${{ matrix.build_type }} = "Debug" ]]; then CHECK_NAME=".#c3c-debug-checks"; fi
         nix build -L "$CHECK_NAME"
 
+  build-android:
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [ Release, Debug ]
+        architecture: [ aarch64, x86_64 ]
+        include:
+          - architecture: aarch64
+            runner: ubuntu-24.04-arm
+          - architecture: x86_64
+            runner: ubuntu-24.04
+    runs-on: ${{matrix.runner}}
+    container:
+      image: termux/termux-docker:${{matrix.architecture}}
+      volumes:
+        - /tmp/node20:/__e/node20
+    env:
+      TERMUX_MAIN_PACKAGE_FORMAT: debian
+      ANDROID_ROOT: /system
+      ANDROID_DATA: /data
+      PREFIX: /data/data/com.termux/files/usr
+      HOME: /data/data/com.termux/files/home
+      PATH: /data/data/com.termux/files/usr/bin
+      TMPDIR: /data/data/com.termux/files/usr/tmp
+      LANG: en_US.UTF-8
+      TZ: UTC
+    steps:
+      - name: prepare termux
+        run: |
+          ln -sf ${PREFIX}/etc/termux/mirrors/default ${PREFIX}/etc/termux/chosen_mirrors
+          /entrypoint.sh pkg update
+          /entrypoint.sh bash -c "yes | pkg upgrade -y"
+          chmod -R o+x ${PREFIX}/bin
+          /entrypoint.sh pkg install -y nodejs-lts
+          ln -sf ${PREFIX}/bin /__e/node20/bin
+      - uses: actions/checkout@v4.2.2
+      - name: fix permissions after checkout (checkout runs as root and entrypoint.sh switches to user 1000)
+        run: chown -R 1000:1000 .
+
+      - name: setup
+        run: /entrypoint.sh pkg install -y llvm binutils libgc build-essential cmake git libedit zlib clang make mlir llvm-tools libpolly python libllvm-static
+      - name: build
+        run: |
+          cmake -Bbuild -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+          cmake --build build
+
+      - name: Run Unified Tests
+        run: ./scripts/tools/ci_tests.sh "./build/c3c" "android"
+
+      - name: bundle_output
+        run: |
+          mkdir c3
+          cp -r lib c3
+          cp msvc_build_libraries.py c3
+          cp build/c3c c3
+          cp README.md c3
+          cp releasenotes.md c3
+          tar czf c3-android-${{matrix.architecture}}-${{matrix.build_type}}.tar.gz c3
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: c3-android-${{matrix.architecture}}-${{matrix.build_type}}
+          path: c3-android-${{matrix.architecture}}-${{matrix.build_type}}.tar.gz
+
   release:
     runs-on: ubuntu-22.04
-    needs: [build-msvc, build-linux, build-mac, build-linux-alpine, build-openbsd, build-netbsd]
+    needs: [build-msvc, build-linux, build-mac, build-linux-alpine, build-openbsd, build-netbsd, build-android]
     if: github.ref == 'refs/heads/master'
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -372,6 +437,8 @@ jobs:
           mv c3-linux-musl-Release/c3-linux-musl-Release.tar.gz c3-linux-musl.tar.gz
           mv c3-openbsd-Release/c3-openbsd-Release.tar.gz c3-openbsd.tar.gz || true
           mv c3-netbsd-Release/c3-netbsd-Release.tar.gz c3-netbsd.tar.gz || true
+          mv c3-android-aarch64-Release/c3-android-aarch64-Release.tar.gz c3-android-aarch64.tar.gz
+          mv c3-android-x86_64-Release/c3-android-x86_64-Release.tar.gz c3-android-x86_64.tar.gz
 
           # --- Debug Assets ---
           mv c3-windows-Debug/c3-windows-Debug.zip c3-windows-debug.zip
@@ -381,6 +448,8 @@ jobs:
           mv c3-linux-musl-Debug/c3-linux-musl-Debug.tar.gz c3-linux-musl-debug.tar.gz
           mv c3-openbsd-Debug/c3-openbsd-Debug.tar.gz c3-openbsd-debug.tar.gz || true
           mv c3-netbsd-Debug/c3-netbsd-Debug.tar.gz c3-netbsd-debug.tar.gz || true
+          mv c3-android-aarch64-Debug/c3-android-aarch64-Debug.tar.gz c3-android-aarch64-debug.tar.gz
+          mv c3-android-x86_64-Debug/c3-android-x86_64-Debug.tar.gz c3-android-x86_64-debug.tar.gz
 
       - run: gh release delete latest-prerelease-tag --cleanup-tag -y || true
       - run: echo "RELEASE_NAME=latest-prerelease-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
@@ -397,6 +466,8 @@ jobs:
             c3-linux-musl.tar.gz
             c3-openbsd.tar.gz
             c3-netbsd.tar.gz
+            c3-android-aarch64.tar.gz
+            c3-android-x86_64.tar.gz
             # --- Debug Artifacts ---
             c3-windows-debug.zip
             c3-macos-debug.zip
@@ -404,3 +475,5 @@ jobs:
             c3-linux-musl-debug.tar.gz
             c3-openbsd-debug.tar.gz
             c3-netbsd-debug.tar.gz
+            c3-android-aarch64-debug.tar.gz
+            c3-android-x86_64-debug.tar.gz
