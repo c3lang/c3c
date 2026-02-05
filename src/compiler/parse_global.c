@@ -226,7 +226,7 @@ static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
 		if (candidate_params != params) continue;
 		for (unsigned i = 0; i < params; i++)
 		{
-			eprintf("test %s == %s: ", i, d->generic_decl.parameters[i], decl->generic_decl.parameters[i]);
+			eprintf("test %s == %s: ", d->generic_decl.parameters[i], decl->generic_decl.parameters[i]);
 			if (d->generic_decl.parameters[i] != decl->generic_decl.parameters[i])
 			{
 				eprintf("FALSE\n");
