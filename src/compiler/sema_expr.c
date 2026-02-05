@@ -953,9 +953,8 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 	decl = decl_flatten(decl);
 	switch (decl->decl_kind)
 	{
-		case DECL_FNTYPE:
 		case DECL_FUNC:
-			SEMA_ERROR(expr, "Expected function followed by (...) or prefixed by &.");
+			SEMA_ERROR(expr, "A function name cannot be used as a value, did you want to pass it by pointer? If so then you need to add '&', like '&%s'.", decl->span);
 			return expr_poison(expr);
 		case DECL_MACRO:
 			SEMA_ERROR(expr, "Expected a macro followed by (...).");
@@ -968,6 +967,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_FAULT:
 			expr_rewrite_const_fault(expr, decl);
 			return true;
+		case DECL_FNTYPE:
 		case DECL_ALIAS:
 		case DECL_ALIAS_PATH:
 		case DECL_ATTRIBUTE:
@@ -1647,7 +1647,8 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 			{
 				Expr *inner = expr_copy(arg);
 				arg->expr_kind = EXPR_OTHER_CONTEXT;
-				arg->expr_other_context = (ExprOtherContext) { .context = context, .inner = inner };
+				ExprOtherContext other = { .context = context, .inner = inner };
+				arg->expr_other_context = other;
 				arg->resolve_status = RESOLVE_NOT_DONE;
 			}
 			break;
@@ -3599,8 +3600,9 @@ FOUND:;
 	new_path->module = kw_std__core__runtime;
 	new_path->span = expr->span;
 	new_path->len = strlen(kw_std__core__runtime);
-	call->unresolved_ident_expr = (ExprUnresolvedIdentifier) { .ident = kw_at_enum_lookup, .path = new_path };
-	expr->call_expr = (ExprCall) { .arguments = args, .function = exprid(call) };
+	call->unresolved_ident_expr = (ExprUnresolvedIdentifier) { .ident = kw_at_enum_lookup, .path = new_path, .is_const = false };
+	ExprCall call_expr = { .arguments = args, .function = exprid(call) };
+	expr->call_expr = call_expr;
 	expr->resolve_status = RESOLVE_NOT_DONE;
 	return sema_analyse_expr_rvalue(context, expr);
 }
@@ -6349,10 +6351,13 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	Expr *parent = expr->access_unresolved_expr.parent;
 	if (missing_ref) *missing_ref = false;
 
+	int times_to_deref = 1;
 	if (expr->access_unresolved_expr.is_ref)
 	{
+		times_to_deref = 2;
 		expr_set_to_ref(parent);
 	}
+
 	// 1. Resolve the left hand
 	if (!sema_analyse_expr(context, parent)) return false;
 
@@ -6441,11 +6446,13 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 
 	// 7. Is this a pointer? If so we insert a deref.
 	Type *underlying_type = type_no_optional(parent->type)->canonical;
-	if (underlying_type->type_kind == TYPE_POINTER && underlying_type != type_voidptr)
+	while (times_to_deref > 0 && underlying_type->type_kind == TYPE_POINTER && underlying_type != type_voidptr)
 	{
+		times_to_deref--;
 		if (!sema_cast_rvalue(context, parent, true)) return false;
 		if (!sema_expr_rewrite_insert_deref(context, expr->access_unresolved_expr.parent)) return false;
 		parent = expr->access_unresolved_expr.parent;
+		underlying_type = type_no_optional(parent->type)->canonical;
 	}
 
 	// 8. Depending on parent type, we have some hard coded types
@@ -7400,8 +7407,8 @@ AFTER_ADDR:;
 	// init, expr -> lvalue = rvalue + a
 	expr->expr_kind = EXPR_BINARY;
 	left->expr_kind = EXPR_BINARY;
-	left->binary_expr = (ExprBinary) { .left = exprid(left_lvalue), .right = exprid(right), new_op };
-	expr->binary_expr = (ExprBinary) { .left = exprid(left_rvalue), .right = exprid(left), .operator = BINARYOP_ASSIGN, .grouped = false };
+	left->binary_expr = (ExprBinary) { exprid(left_lvalue), exprid(right), new_op, false };
+	expr->binary_expr = (ExprBinary) { exprid(left_rvalue), exprid(left), BINARYOP_ASSIGN, false };
 	expr->resolve_status = RESOLVE_NOT_DONE;
 	left->resolve_status = RESOLVE_NOT_DONE;
 	Expr *binary = expr_copy(expr);

@@ -3,8 +3,8 @@ import std::thread;
 import libc;
 
 const PTHREAD_MUTEX_NORMAL = 0;
-const PTHREAD_MUTEX_ERRORCHECK = env::LINUX ? 2 : 1;
-const PTHREAD_MUTEX_RECURSIVE = env::LINUX ? 1 : 2;
+const PTHREAD_MUTEX_ERRORCHECK = env::LINUX || env::ANDROID ? 2 : 1;
+const PTHREAD_MUTEX_RECURSIVE = env::LINUX || env::ANDROID ? 1 : 2;
 
 alias PosixThreadFn = fn void*(void*);
 typedef Pthread_t = void*;
