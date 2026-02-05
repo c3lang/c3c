@@ -4080,7 +4080,7 @@ Decl *sema_create_runner_main(SemaContext *context, Decl *decl)
 	return function;
 }
 
-static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl, MainType main, bool int_return, bool err_return, bool is_winmain, bool is_wmain)
+static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl, MainType main, bool int_return, bool is_winmain, bool is_wmain)
 {
 	Decl *function = decl_new(DECL_FUNC, NULL, decl->span);
 	function->is_export = true;
@@ -4125,70 +4125,34 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 	Ast *body = new_ast(AST_COMPOUND_STMT, decl->span);
 	AstId *next = &body->compound_stmt.first_stmt;
 	Ast *ret_stmt = new_ast(AST_RETURN_STMT, decl->span);
-	int type = int_return ? 1 : (err_return ? 2 : 0);
 	const char *main_invoker;
 	switch (main)
 	{
 		case MAIN_TYPE_ARGS:
 			if (is_winmain)
 			{
-				switch (type)
-				{
-					case 0 : main_invoker = "@win_to_void_main_args"; goto NEXT;
-					case 1 : main_invoker = "@win_to_int_main_args"; goto NEXT;
-					case 2 : main_invoker = "@win_to_err_main_args"; goto NEXT;
-					default: UNREACHABLE
-				}
+				main_invoker = "@win_main_args";
 			}
-			if (is_wmain)
+			else if (is_wmain)
 			{
-				switch (type)
-				{
-					case 0 : main_invoker = "@wmain_to_void_main_args"; goto NEXT;
-					case 1 : main_invoker = "@wmain_to_int_main_args"; goto NEXT;
-					case 2 : main_invoker = "@wmain_to_err_main_args"; goto NEXT;
-					default: UNREACHABLE
-				}
+				main_invoker = "@wmain_main";
 			}
-			switch (type)
+			else
 			{
-				case 0: main_invoker = "@main_to_void_main_args"; goto NEXT;
-				case 1: main_invoker = "@main_to_int_main_args"; goto NEXT;
-				case 2: main_invoker = "@main_to_err_main_args"; goto NEXT;
-				default: UNREACHABLE
+				main_invoker = "@main_args";
 			}
+			break;
 		case MAIN_TYPE_NO_ARGS:
 			ASSERT(!is_wmain);
-			if (is_winmain)
-			{
-				switch (type)
-				{
-					case 0 : main_invoker = "@win_to_void_main_noargs"; goto NEXT;
-					case 1 : main_invoker = "@win_to_int_main_noargs"; goto NEXT;
-					case 2 : main_invoker = "@win_to_err_main_noargs"; goto NEXT;
-					default: UNREACHABLE
-				}
-			}
-			switch (type)
-			{
-				case 0 : main_invoker = "@main_to_void_main"; goto NEXT;
-				case 1 : main_invoker = "@main_to_int_main"; goto NEXT;
-				case 2 : main_invoker = "@main_to_err_main"; goto NEXT;
-				default: UNREACHABLE
-			}
+			main_invoker = is_winmain ? "@win_main_no_args" : "@main_no_args";
+			break;
 		case MAIN_TYPE_WIN:
 			ASSERT(is_winmain);
-			switch (type)
-			{
-				case 0 : main_invoker = "@win_to_void_main"; goto NEXT;
-				case 1 : main_invoker = "@win_to_int_main"; goto NEXT;
-				case 2 : main_invoker = "@win_to_err_main"; goto NEXT;
-				default: UNREACHABLE
-			}
+			main_invoker = "@win_main";
+			break;
 		default:
 			UNREACHABLE
 	}
-	NEXT:;
 	const char *kw_main_invoker = symtab_preset(main_invoker, TOKEN_AT_IDENT);
 	Decl *d = sema_find_symbol(context, kw_main_invoker);
 	if (!d)
@@ -4222,15 +4186,13 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	bool is_win32 = compiler.platform.os == OS_TYPE_WIN32;
 	if (decl->visibility != VISIBLE_PUBLIC)
 	{
-		SEMA_ERROR(decl, "A main function must be public.");
-		return false;
+		RETURN_SEMA_ERROR(decl, "A main function must be public.");
 	}
 	Signature *signature = &decl->func_decl.signature;
 	TypeInfo *rtype_info = type_infoptr(signature->rtype);
 	Type *rtype = rtype_info->type;
 	bool is_int_return = true;
-	bool is_err_return = false;
-	if (!is_err_return && type_is_optional(rtype))
+	if (type_is_optional(rtype))
 	{
 		RETURN_SEMA_ERROR(rtype_info, "The return type of 'main' cannot be an optional.");
 	}
@@ -4269,7 +4231,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	}
 	bool is_wmain = is_win32 && !is_winmain && type != MAIN_TYPE_NO_ARGS;
 	compiler.build.win.use_win_subsystem = is_winmain && is_win32;
-	function = sema_create_synthetic_main(context, decl, type, is_int_return, is_err_return, is_winmain, is_wmain);
+	function = sema_create_synthetic_main(context, decl, type, is_int_return, is_winmain, is_wmain);
 	if (!decl_ok(function)) return false;
 REGISTER_MAIN:
 	context->unit->main_function = function;
