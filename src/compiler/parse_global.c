@@ -215,13 +215,18 @@ static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
 {
 	eprintf("Unify decl %d %d %p\n", decl->generic_decl.id, vec_size(decl->generic_decl.parameters), decl);
 	unsigned params = vec_size(decl->generic_decl.parameters);
+	for (unsigned i = 0; i < params; i++)
+	{
+		eprintf("Param %d %s\n", i, decl->generic_decl.parameters[i]);
+	}
 	FOREACH(Decl *, d, unit->module->generic_sections)
 	{
-		eprintf("Comparing with %d %p\n", d->generic_decl.id, d);
 		unsigned candidate_params = vec_size(d->generic_decl.parameters);
+		eprintf("Comparing with %d %p and params: %u\n", d->generic_decl.id, d, candidate_params);
 		if (candidate_params != params) continue;
 		for (unsigned i = 0; i < params; i++)
 		{
+			eprintf("test %s\n", i, d->generic_decl.parameters[i]);
 			if (d->generic_decl.parameters[i] != decl->generic_decl.parameters[i])
 			{
 				eprintf("No param def match\n");
