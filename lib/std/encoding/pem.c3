@@ -76,29 +76,23 @@ struct Pem
  @param [in] data : "The body data of the PEM."
  @param [in] tag : "The tag value to use within the PEM's Encapsulation Boundary."
 
+ @require args.len % 2 == 0 : "You must use an even amount of headers (key-value pairings) to initialize a PEM object."
  @return "A new PEM object."
 *>
-macro Pem create(Allocator allocator, char[] data, String tag, ...)
+fn Pem create(Allocator allocator, char[] data, String tag, String... args)
 {
-	$assert $vacount % 2 == 0 : "You must use an even amount of headers (key-value pairings) to initialize a PEM object.";
 	Pem result = {
 		.allocator = allocator,
 		.tag = tag.copy(allocator),
 		.data = allocator::clone_slice(allocator, data),
 	};
-	$if $vacount > 0: result.headers.init_with_key_values(allocator, $vasplat); $endif
+	result.headers.init(allocator, capacity: max(args.len, 16));
+	for (usz i = 0; i < args.len; i += 2)
+	{
+		result._add_header(args[i], args[i + 1]);
+	}
 	return result;
 }
-
-<*
- A temporary-allocator alias for `create`, used to create a new PEM container object.
-
- @param [in] data : "The body data of the PEM."
- @param [in] tag : "The tag value to use within the PEM's Encapsulation Boundary."
-
- @return "A new PEM object."
-*>
-macro Pem tcreate(char[] data, String tag, ...) => create(tmem, data, tag, $vasplat);
 
 
 <*
@@ -109,14 +103,12 @@ macro Pem tcreate(char[] data, String tag, ...) => create(tmem, data, tag, $vasp
 fn Pem Pem.copy(&self, Allocator allocator)
 {
 	Pem result = create(allocator, self.data, self.tag);
-	if (self.headers.len() > 0) result.headers.init_from_map(allocator, &self.headers);
+	self.headers.@each(;String key, String value)
+	{
+		result._add_header(key, value);
+	};
 	return result;
 }
-
-<*
- A temporary-allocator alias for `Pem.copy`, which duplicates a `Pem` container and allocates copies of its members.
-*>
-macro Pem Pem.tcopy(&self) => self.copy(tmem);
 
 <*
  Safely destroys a `Pem` and deallocate all of its members. This should always be explicitly called when not using `tmem`.
@@ -126,6 +118,10 @@ fn void Pem.free(&self)
 	mem::zero_volatile(self.data);
 	if (self.allocator != tmem)
 	{
+		self.headers.@each(;String key, String value)
+		{
+			allocator::free(self.allocator, value);
+		};
 		self.headers.free();
 		self.tag.free(self.allocator);
 		allocator::free(self.allocator, self.data);
@@ -133,26 +129,12 @@ fn void Pem.free(&self)
 	mem::zero_volatile(@as_char_view(*self));
 }
 
-<*
- Attempt to decode an input string into one or more `Pem` objects. If the input contains any non-PEM or otherwise
- invalid data, then this will throw an error. Ideally, this function is used to decode PEM files explicitly, lest
- the caller need to be sure they're only providing PEM data +/- some intermediate whitespace.
-
- @param [&inout] allocator : "The allocator to use when creating the `Pem` outputs and members."
- @param [in] input : "The string to parse one or more PEM blobs from."
-
- @return "An array of decoded `Pem` objects, depending on how many were present in the input (separated optionally by whitespace)."
-*>
-macro Pem[]? decode(Allocator allocator, String input)
+fn void Pem._add_header(&self, String key, String value) @local
 {
-	// If using the temp allocator, we don't want to lose any allocated HashMap structures on scope-exit
-	//   by wrapping w/ @pool. We'd rather just keep the mess around than try to lift it out.
-	if (allocator == tmem) return _decode_all(allocator, input);
-	@pool()
-	{
-		return _decode_all(allocator, input);
-	};
+	(void)self.headers[key].free(self.allocator);
+	self.headers[key] = value.copy(self.allocator);
 }
+
 
 <*
  A temporary-allocator alias for the `decode` function, which reads an input string and returns one or more decoded PEMs.
@@ -164,16 +146,19 @@ macro Pem[]? decode(Allocator allocator, String input)
 macro Pem[]? tdecode(String input) => decode(tmem, input);
 
 <*
- INTERNAL ONLY: Decodes one or more PEM objects from the input string.
+ Attempt to decode an input string into one or more `Pem` objects. If the input contains any non-PEM or otherwise
+ invalid data, then this will throw an error. Ideally, this function is used to decode PEM files explicitly, lest
+ the caller need to be sure they're only providing PEM data +/- some intermediate whitespace.
 
- @param [&inout] allocator : "The allocator to use during decoding to return the result."
- @param [in] input : "The string to decode."
+ @param [&inout] allocator : "The allocator to use when creating the `Pem` outputs and members."
+ @param [in] input : "The string to parse one or more PEM blobs from."
+
+ @return "An array of decoded `Pem` objects, depending on how many were present in the input (separated optionally by whitespace)."
 *>
-fn Pem[]? _decode_all(Allocator allocator, String input) @local
+fn Pem[]? decode(Allocator allocator, String input) => @pool()
 {
 	List{Pem} pem_list;
 	pem_list.tinit();
-	defer pem_list.free();
 
 	String[] lines = input.treplace("\r\n", "\n").tsplit("\n");
 	foreach (&line : lines) *line = (*line).trim_right();   // remove any trailing whitespace as this can disrupt parsing (but shouldn't)
@@ -182,7 +167,6 @@ fn Pem[]? _decode_all(Allocator allocator, String input) @local
 		pem_list.push(_decode_single(allocator, &lines)!);
 		while (lines.len > 0 && lines[0].trim().len == 0) lines = lines[1..];   // skip all empty lines in between or after PEM boundaries
 	}
-
 	return pem_list.to_array(allocator);
 }
 
@@ -255,7 +239,7 @@ fn Pem? _decode_single(Allocator allocator, String[]* lines_io) @local
 		if (!kv[1].len) return MISSING_HEADER_VALUE~;
 		foreach (c : kv[0]) if (!HEADER_KEY_SET.contains(c)) return INVALID_HEADER_KEY~;
 
-		result.headers.set(kv[0], kv[1]);   // finally, push the values
+		result._add_header(kv[0], kv[1]);   // finally, push the values
 	}
 
 	// if any headers were present, the line after the headers MUST BE EMPTY
@@ -337,16 +321,16 @@ macro String? Pem.tencode(&self) => self.encode(tmem, text_width: text_width);
  @param [in] data : "The body data for the output PEM."
  @param [in] tag : "The tag "
 *>
-macro String? encode(Allocator allocator, char[] data, String tag, ...)
+fn String? encode(Allocator allocator, char[] data, String tag, String... args)
 {
 	if (!data.len) return BODY_REQUIRED~;
-	Pem new = create(allocator, data, tag, $vasplat);
+	Pem new = create(allocator, data, tag, ...args);
 	defer new.free();
 	return new.encode(allocator);
 }
 
 <**>
-macro String? tencode(char[] data, String tag, ...) => encode(tmem, data, tag, $vasplat);
+macro String? tencode(char[] data, String tag, String... args) => encode(tmem, data, tag, ...args);
 
 <*
  Encode many inputs to a single output string that represents chained/sequential PEM objects in the order they were provided.
@@ -361,35 +345,33 @@ macro String? tencode(char[] data, String tag, ...) => encode(tmem, data, tag, $
 
  @return "A new `String`, allocated with `allocator`, that contains all PEM objects in the order they were given."
 *>
-macro String? encode_many(Allocator allocator, char[][] bodies, String[] tags, ...)
+fn String? encode_many(Allocator allocator, char[][] bodies, String[] tags, String[]... keyvars)
 {
-	$foreach $val : { $vasplat }:
-		$assert $typeof($val) == String[] &&& $defined($val.len) &&& ($val.len % 2) == 0
-			: `Each vararg must be an array of strings with an even length; i.e., { "key1", "val1", "key2", "val2", ... }`;
-	$endforeach
-
-	usz entries = max(bodies.len, tags.len, $vacount);
+	usz entries = max(bodies.len, tags.len, keyvars.len);
 	switch
 	{
 		case bodies.len < entries: return BODY_REQUIRED~;
 		case tags.len < entries: return TAG_REQUIRED~;
-		case $vacount > 0 && $vacount < entries: return HEADERS_REQUIRED~;
+		case keyvars.len > 0 && keyvars.len < entries: return HEADERS_REQUIRED~;
 	}
 
 	DString out;
 	out.tinit();
 
-	$if $vacount == 0:
+	if (!keyvars.len)
+	{
 		foreach (x, body : bodies) @pool()
 		{
 			out.append(tencode(body, tags[x])!);
 		};
-	$else
-		$foreach $x, $headers : { $vasplat }:
-			out.append(tencode(bodies[$x], tags[$x], ...$headers)!);
-		$endforeach
-	$endif
-
+	}
+	else
+	{
+		foreach (i, headers : keyvars) @pool()
+		{
+			out.append(tencode(bodies[i], tags[i], ...headers)!);
+		};
+	}
 	return allocator == tmem ? out.str_view() : out.copy_str(allocator);
 }
 
