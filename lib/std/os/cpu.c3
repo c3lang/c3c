@@ -15,7 +15,7 @@ fn uint num_cpu()
 	return count;
 }
 
-module std::os @if(env::LINUX);
+module std::os @if(env::LINUX || env::ANDROID);
 import std::os::posix;
 
 fn uint num_cpu()

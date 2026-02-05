@@ -15,7 +15,7 @@ fn double? divide(int a, int b)
 
 }
 
-// Rethrowing an error uses "?" suffix
+// Rethrowing an error uses "!" suffix
 fn void? testMayError()
 {
     divide(foo(), bar())!;
