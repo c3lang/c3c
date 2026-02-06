@@ -46,6 +46,9 @@ const char *windows_cross_compile_library(void)
 	const char *local = find_rel_exe_dir("msvc_sdk");
 	if (local && file_is_dir((char *)local)) return local;
 
+	char *msvc_sdk = getenv("C3_MSVC_SDK");
+	if (msvc_sdk && file_is_dir(msvc_sdk)) return msvc_sdk;
+
 #if PLATFORM_WINDOWS
 	char *app_data = getenv("LOCALAPPDATA");
 	if (app_data)
@@ -53,7 +56,7 @@ const char *windows_cross_compile_library(void)
 		scratch_buffer_clear();
 		scratch_buffer_printf("%s/c3/msvc_sdk", app_data);
 		const char *path = scratch_buffer_to_string();
-		if (file_is_dir((char *)path)) return path;
+		if (file_is_dir(path) return path;
 	}
 #else
 	char *cache_home = getenv("XDG_CACHE_HOME");
@@ -62,7 +65,7 @@ const char *windows_cross_compile_library(void)
 		scratch_buffer_clear();
 		scratch_buffer_printf("%s/c3/msvc_sdk", cache_home);
 		const char *path = scratch_buffer_to_string();
-		if (file_is_dir((char *)path)) return path;
+		if (file_is_dir(path)) return path;
 	}
 
 	char *home = getenv("HOME");
@@ -71,7 +74,7 @@ const char *windows_cross_compile_library(void)
 		scratch_buffer_clear();
 		scratch_buffer_printf("%s/.cache/c3/msvc_sdk", home);
 		const char *path = scratch_buffer_to_string();
-		if (file_is_dir((char *)path)) return path;
+		if (file_is_dir(path)) return path;
 	}
 #endif
 	return NULL;

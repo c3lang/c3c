@@ -97,18 +97,16 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 		const char *path = windows_cross_compile_library();
 		if (!path && !windows_get_sdk())
 		{
-			BuildOptions options;
-			memset(&options, 0, sizeof(BuildOptions));
-			options.verbosity_level = (compiler.build.silent || compiler.build.quiet) ? -1 : 0;
+			BuildOptions options = { .verbosity_level = (compiler.build.silent || compiler.build.quiet) ? -1 : 0 };
 			fetch_msvc(&options);
 			path = windows_cross_compile_library();
 		}
-
+		// Note that path here may be allocated on the string scratch buffer.
 		if (path)
 		{
 			if (!compiler.build.quiet && !compiler.build.silent)
 			{
-				printf("Using MSVC SDK at: %s\n", path);
+				OUTF("Using MSVC SDK at: %s\n", path);
 			}
 
 			const char *suffix = NULL;
