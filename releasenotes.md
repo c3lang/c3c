@@ -14,7 +14,8 @@
 - Remove dependency on temp allocator in File.open.
 - Added PEM encoding/decoding. #2858
 - Add Murmur3 hash.
-- Add Xorshiro128++ random generator.
+- Add optional line-length limitations to `io::readline` and `io::readline_to_stream`. #2879
+- Add Xorshiro128++.
 
 ### Fixes
 - Add error message if directory with output file name already exists
