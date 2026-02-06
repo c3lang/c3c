@@ -56,7 +56,7 @@ const char *windows_cross_compile_library(void)
 		scratch_buffer_clear();
 		scratch_buffer_printf("%s/c3/msvc_sdk", app_data);
 		const char *path = scratch_buffer_to_string();
-		if (file_is_dir(path) return path;
+		if (file_is_dir(path)) return path;
 	}
 #else
 	char *cache_home = getenv("XDG_CACHE_HOME");
