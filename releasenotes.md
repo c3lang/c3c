@@ -13,6 +13,7 @@
 - Remove dependency on temp allocator in String.join.
 - Remove dependency on temp allocator in File.open.
 - Added PEM encoding/decoding. #2858
+- Add Murmur3 hash.
 
 ### Fixes
 - Add error message if directory with output file name already exists
