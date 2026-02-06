@@ -2640,6 +2640,7 @@ bool arch_is_wasm(ArchType type);
 const char *macos_sysroot(void);
 MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
 WindowsSDK *windows_get_sdk(void);
+// This string may be in the scratch buffer
 const char *windows_cross_compile_library(void);
 
 void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs);
@@ -4553,7 +4554,7 @@ INLINE bool expr_is_const_ref(Expr *expr)
 
 INLINE bool expr_is_const_pointer(Expr *expr)
 {
-	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_POINTER;
 }
 

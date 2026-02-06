@@ -131,7 +131,7 @@ bool sema_decl_if_cond(SemaContext *context, Decl *decl);
 Decl *sema_generate_parameterized_identifier(SemaContext *context, Decl *generic, Decl *alias, Expr **params,
                                              Decl **param_decls, const char *suffix, const char *csuffix, SourceSpan invocation_span, SourceSpan span);
 Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_path, const char *name, SourceSpan span,
-                                            Expr **params, bool *was_recursive_ref, SourceSpan invocation_span);
+                                            Expr **params, SourceSpan invocation_span);
 bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, const char *name, SourceSpan span);
 Type *sema_resolve_type_get_func(Signature *signature, CallABI abi);
 INLINE bool sema_set_alignment(SemaContext *context, Type *type, AlignSize *result, bool is_alloca);

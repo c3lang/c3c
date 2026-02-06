@@ -131,6 +131,11 @@ int main_real(int argc, const char *argv[])
 					break;
 			}
 			break;
+		case COMMAND_FETCH_MSVC:
+		{
+			fetch_msvc(&build_options);
+			break;
+		}
 		case COMMAND_MISSING:
 			UNREACHABLE
 	}

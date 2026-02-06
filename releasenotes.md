@@ -4,14 +4,26 @@
 
 ### Changes / improvements
 - Method resolution and `$define` now works together well unless definitions are out of order for real.
+- Improve error message when using functions as values #2856
+- Improve support for Android with Termux.
+- Integrated download of the MSVC SDK when compiling for Windows.
 
 ### Stdlib changes
 - Add optional line-length limitations to `io::readline` and `io::readline_to_stream`. #2879
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
+- Remove dependency on temp allocator in String.join.
+- Remove dependency on temp allocator in File.open.
+- Added PEM encoding/decoding. #2858
+- Add Murmur3 hash.
 
 ### Fixes
 - Add error message if directory with output file name already exists
 - Regression where nested lambdas would be evaluated twice.
+- Compiler crash when using arrays of vectors in lists. #2889
+- Fix `list[0].i = 5` when `list[0]` returns a pointer. #2888
+- Shadowing not detected for generic declarations #2876
+- Const inline enums would not always implicitly get converted to the underlying type.
+- Update to dstring.append_string to take any type converting to String.
 
 ## 0.7.9 Change list
 
