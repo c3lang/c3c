@@ -2640,6 +2640,7 @@ bool arch_is_wasm(ArchType type);
 const char *macos_sysroot(void);
 MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
 WindowsSDK *windows_get_sdk(void);
+// This string may be in the scratch buffer
 const char *windows_cross_compile_library(void);
 
 void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs);

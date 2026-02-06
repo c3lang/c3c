@@ -160,7 +160,12 @@ macro bool char_in_set(char c, String set)
 }
 
 <*
- @return "a String which is safe to convert to a ZString"
+ Join together an array of strings via a "joiner" sequence, which is inserted between each element.
+
+ @param [&inout] allocator : "The allocator to use."
+ @param [in] s : "An array of strings to join in sequence."
+ @param [in] joiner : "The string used to join each element of `s`."
+ @return "A single string containing the result, allocated via `allocator`, safe to convert to a ZString."
 *>
 fn String join(Allocator allocator, String[] s, String joiner)
 {
@@ -188,6 +193,9 @@ fn String join(Allocator allocator, String[] s, String joiner)
 	data[offset] = 0;
 	return (String)data[:offset];
 }
+
+<* Alias for `string::join` using the temp allocator. *>
+macro String tjoin(String[] s, String joiner) => join(tmem, s, joiner);
 
 <*
  Replace all instances of one substring with a different string.

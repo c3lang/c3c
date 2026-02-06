@@ -6,12 +6,14 @@
 - Method resolution and `$define` now works together well unless definitions are out of order for real.
 - Improve error message when using functions as values #2856
 - Improve support for Android with Termux.
+- Integrated download of the MSVC SDK when compiling for Windows.
 
 ### Stdlib changes
 - Add `Argon2` memory-hard hashing with associated tests. #2773
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
 - Remove dependency on temp allocator in String.join.
 - Remove dependency on temp allocator in File.open.
+- Added PEM encoding/decoding. #2858
 
 ### Fixes
 - Add error message if directory with output file name already exists
