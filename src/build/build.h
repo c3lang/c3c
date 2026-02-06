@@ -48,6 +48,7 @@ typedef enum
 	COMMAND_UNIT_TEST,
 	COMMAND_PRINT_SYNTAX,
 	COMMAND_PROJECT,
+	COMMAND_FETCH_MSVC,
 } CompilerCommand;
 
 typedef enum
@@ -593,6 +594,10 @@ typedef struct BuildOptions_
 	bool print_input;
 	bool run_once;
 	bool suppress_run;
+	bool msvc_accept_license;
+	bool msvc_show_versions;
+	const char *msvc_version_override;
+	const char *msvc_sdk_version_override;
 	bool old_slice_copy;
 	bool old_enums;
 	bool old_compact_eq;
@@ -917,6 +922,7 @@ extern const int manifest_target_keys_count;
 extern const char *arch_os_target[ARCH_OS_TARGET_LAST + 1];
 extern LinuxLibc default_libc;
 
+void fetch_msvc(BuildOptions *options);
 BuildOptions parse_arguments(int argc, const char *argv[]);
 ArchOsTarget arch_os_target_from_string(const char *target);
 bool command_accepts_files(CompilerCommand command);
