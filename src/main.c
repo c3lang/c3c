@@ -1,6 +1,7 @@
 #include "build/build.h"
 #include "compiler/compiler.h"
 #include "compiler_tests/tests.h"
+#include "utils/common.h"
 #include "utils/lib.h"
 #include <compiler_tests/benchmark.h>
 
@@ -133,7 +134,11 @@ int main_real(int argc, const char *argv[])
 			break;
 		case COMMAND_FETCH_MSVC:
 		{
+			#if defined(_WIN32) || defined(_WIN64) || CURL_FOUND
 			fetch_msvc(&build_options);
+			#else
+			eprintf("your c3c was compiled without CURL support, fetch_msvc is not available\n");
+			#endif
 			break;
 		}
 		case COMMAND_MISSING:

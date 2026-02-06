@@ -1,3 +1,4 @@
+#if defined(_WIN32) || defined(_WIN64) || CURL_FOUND
 #include <ctype.h>
 #include <sys/stat.h>
 #include <limits.h>
@@ -716,3 +717,4 @@ void fetch_msvc(BuildOptions *options)
 
 	if (verbose_level == 0) file_delete_dir(tmp_dir_base);
 }
+#endif // defined(_WIN32) || defined(_WIN64) || CURL_FOUND

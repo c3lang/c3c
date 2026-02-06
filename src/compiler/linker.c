@@ -98,7 +98,11 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 		if (!path && !windows_get_sdk())
 		{
 			BuildOptions options = { .verbosity_level = (compiler.build.silent || compiler.build.quiet) ? -1 : 0 };
+			#if defined(_WIN32) || defined(_WIN64) || CURL_FOUND
 			fetch_msvc(&options);
+			#else
+			eprintf("your c3c was compiled without CURL, and can't fetch msvc\n");
+			#endif
 			path = windows_cross_compile_library();
 		}
 		// Note that path here may be allocated on the string scratch buffer.
@@ -955,10 +959,10 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 		default:
 			UNREACHABLE
 	}
-#else 
+#else
 	success = false;
 	error = "linking (.exe) is not implemented for C3C compiled without LLVM";
-#endif 
+#endif
 	if (!success)
 	{
 		error_exit("Failed to create an executable: %s", error);
@@ -1212,10 +1216,10 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 		default:
 			UNREACHABLE
 	}
-#else 
+#else
 	success = false;
 	error = "linking not implemented for c3c compiled without llvm";
-#endif 
+#endif
 	if (!success)
 	{
 		error_exit("Failed to create a dynamic library: %s", error);
@@ -1247,9 +1251,9 @@ bool static_lib_linker(const char *output_file, const char **files, unsigned fil
 			break;
 	}
 	return llvm_ar(output_file, files, file_count, format);
-#else 
+#else
 	return false;
-#endif 
+#endif
 }
 
 bool linker(const char *output_file, const char **files, unsigned file_count)
