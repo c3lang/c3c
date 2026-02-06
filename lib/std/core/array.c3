@@ -348,18 +348,6 @@ macro even(Allocator allocator, array)
 	return new_array;
 }
 
-<*
- Extract a copy of all even-index elements from an input array.
-
- @param [in] array : "The array from which to extract all even elements."
-
- @require @is_valid_list(array) : "Expected a valid list"
-*>
-macro teven(array)
-{
-	return even(tmem, array);
-}
-
 
 <*
  Extract a copy of all odd-index elements from an input array.
@@ -380,18 +368,6 @@ macro odd(Allocator allocator, array)
 }
 
 <*
- Extract a copy of all odd-index elements from an input array.
-
- @param [in] array : "The array from which to extract all odd elements."
-
- @require @is_valid_list(array) : "Expected a valid list"
-*>
-macro todd(array)
-{
-	return odd(tmem, array);
-}
-
-<*
  Unlace or partition an input list into its component parts such that `[a, b, c, d, e]` becomes
  `[a, c, e]` and `[b, d]`. Returned arrays are allocated by the given allocator and are returned
  via two `out` parameters, `left` and `right`.
@@ -409,24 +385,6 @@ macro unlace(Allocator allocator, array, left, right)
 {
 	if (left) *left = even(allocator, array);
 	if (right) *right = odd(allocator, array);
-}
-
-<*
- Unlace or partition an input list into its component parts such that `[a, b, c, d, e]` becomes
- `[a, c, e]` and `[b, d]`. Returned arrays are allocated by the given allocator and are returned
- via two `out` parameters, `left` and `right`.
-
- @param [in] array : "The input array to unlace."
- @param [out] left : "Stores a copy of all even-index array elements."
- @param [out] right : "Stores a copy of all odd-index array elements."
-
- @require @is_valid_list(array) : "Expected a valid list"
- @require $kindof(left) == POINTER &&& $typeof(left) == $typeof(array[0])[]*
- @require $kindof(right) == POINTER &&& $typeof(right) == $typeof(array[0])[]*
-*>
-macro tunlace(array, left, right)
-{
-	return unlace(tmem, array, left, right);
 }
 
 
