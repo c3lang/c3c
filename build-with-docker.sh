@@ -30,7 +30,8 @@ chmod -R 777 build bin
 exec $DOCKER run -i --rm \
     -v "$PWD":/home/c3c/source \
     -w /home/c3c/source $IMAGE bash -c \
-    "cmake -S . -B build \
+    "git config --global --add safe.directory /home/c3c/source && \
+    cmake -S . -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
             -DCMAKE_C_COMPILER=clang-$LLVM_VERSION \

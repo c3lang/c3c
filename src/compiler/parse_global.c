@@ -1832,6 +1832,12 @@ CHECK_ELLIPSIS:
 				span = c->prev_span;
 				param_kind = VARDECL_PARAM;
 				break;
+			case TOKEN_CONST:
+				if (token_is_any_type(peek(c)))
+				{
+					RETURN_PRINT_ERROR_HERE("'const' is not allowed here, did you try to make a C style const parameter? In that case, consider using contracts with '@param [in]' for the parameter.");
+				}
+				FALLTHROUGH;
 			default:
 				if (token_is_keyword(c->tok))
 				{
