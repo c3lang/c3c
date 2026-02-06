@@ -1,5 +1,7 @@
 module std::core::string;
 import std::io, std::ascii;
+import std::core::mem::allocator;
+
 
 
 typedef String @if(!$defined(String)) = inline char[];
@@ -96,7 +98,8 @@ fn ZString tformat_zstr(String fmt, args...) @format(0)
 }
 
 <*
- Return a new String created using the formatting function.
+ Return a new String created using the formatting function, this function will implicitly
+ use the temp allocator.
 
  @param [inout] allocator : `The allocator to use`
  @param [in] fmt : `The formatting string`
@@ -156,30 +159,43 @@ macro bool char_in_set(char c, String set)
 	return false;
 }
 
+<*
+ Join together an array of strings via a "joiner" sequence, which is inserted between each element.
+
+ @param [&inout] allocator : "The allocator to use."
+ @param [in] s : "An array of strings to join in sequence."
+ @param [in] joiner : "The string used to join each element of `s`."
+ @return "A single string containing the result, allocated via `allocator`, safe to convert to a ZString."
+*>
 fn String join(Allocator allocator, String[] s, String joiner)
 {
 	if (!s)
 	{
 		return (String)allocator::new_array(allocator, char, 2)[:0];
 	}
-
-	usz total_size = joiner.len * s.len;
+	usz joiner_len = joiner.len;
+	usz total_size = joiner_len * (s.len - 1) + 1;
 	foreach (String* &str : s)
 	{
 		total_size += str.len;
 	}
-	@pool()
+	char[] data = allocator::alloc_array(allocator, char, total_size);
+	usz offset = s[0].len;
+	data[:offset] = s[0][:offset];
+	foreach (String* &str : s[1..])
 	{
-		DString res = dstring::temp_with_capacity(total_size);
-		res.append(s[0]);
-		foreach (String* &str : s[1..])
-		{
-			res.append(joiner);
-			res.append(*str);
-		}
-		return res.copy_str(allocator);
+		data[offset:joiner_len] = joiner[:joiner_len];
+		offset += joiner_len;
+		usz len = str.len;
+		data[offset:len] = str.[:len];
+		offset += len;
 	};
+	data[offset] = 0;
+	return (String)data[:offset];
 }
+
+<* Alias for `string::join` using the temp allocator. *>
+macro String tjoin(String[] s, String joiner) => join(tmem, s, joiner);
 
 <*
  Replace all instances of one substring with a different string.

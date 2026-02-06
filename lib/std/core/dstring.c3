@@ -331,14 +331,14 @@ fn Char32[] DString.copy_utf32(&self, Allocator allocator)
 }
 
 <*
- @require $typeof(str) == String || $typeof(str) == DString : "Expected string or DString"
+ @require $defined(String s = str) ||| $typeof(str) == DString : "Expected string or DString"
 *>
 macro void DString.append_string(&self, str)
 {
-	$if $typeof(str) == String:
-		self.append_bytes(str);
-	$else
+	$if $typeof(str) == DString:
 		self.append_string_deprecated(str);
+	$else
+		self.append_bytes((String)str);
 	$endif
 }
 

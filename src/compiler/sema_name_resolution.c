@@ -888,6 +888,10 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 			if (candidate) return name_resolve->found = candidate, true;
 		}
 		if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
+		if (context->generic_instance)
+		{
+			RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is a generic %s. It was initialized in a generic context that didn't match its definition, so explicit parameters are needed.", found->name, decl_to_name(found));
+		}
 		RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is a generic %s, did you forget the parameters '{ ... }'?", found->name, decl_to_name(found));
 	}
 	if (!name_resolve->is_parameterized) return true;

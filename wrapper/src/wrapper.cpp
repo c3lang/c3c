@@ -323,6 +323,11 @@ void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_ar
 	auto machine = (llvm::TargetMachine*)ref;
 	machine->Options.UseInitArray = use_init_array;
 }
+void LLVMSetTargetMachineEmulatedTLS(LLVMTargetMachineRef ref, bool emulated_tls)
+{
+	auto machine = (llvm::TargetMachine*)ref;
+	machine->Options.EmulatedTLS = emulated_tls;
+}
 void LLVMSetDSOLocal(LLVMValueRef Global, bool value)
 {
 	llvm::unwrap<llvm::GlobalValue>(Global)->setDSOLocal(value);

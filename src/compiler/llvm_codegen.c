@@ -80,9 +80,9 @@ static void gencontext_destroy(GenContext *context)
 {
 	ASSERT(llvm_is_global_eval(context));
 	LLVMDisposeBuilder(context->global_builder);
-	if (!context->shared_context) LLVMContextDispose(context->context);
-	LLVMDisposeTargetData(context->target_data);
 	LLVMDisposeTargetMachine(context->machine);
+	LLVMDisposeTargetData(context->target_data);
+	if (!context->shared_context) LLVMContextDispose(context->context);
 	free(context);
 }
 

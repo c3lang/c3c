@@ -41,7 +41,7 @@ macro void quicksort_indexed(list, start, end, cmp = ..., context = ...) @builti
 	$endif
 }
 
-module std::sort <Type, KeyFn> @private;
+module std::sort <Type, KeyFn> @local;
 
 alias Counts @private = usz[256];
 alias Ranges @private = usz[257];
@@ -66,12 +66,12 @@ macro list_get(ListType l, i) @if(IS_SLICE) => l[i];
 macro list_get_ref(ListType l, i) @if(!IS_SLICE) => &(*l)[i];
 macro list_get_ref(ListType l, i) @if(IS_SLICE) => &l[i];
 
-fn void csort(ListType list, usz low, usz high, KeyFn key_fn, uint byte_idx) @if (!NO_KEY_FN)
+fn void csort(ListType list, usz low, usz high, KeyFn key_fn, uint byte_idx) @if (!NO_KEY_FN) @private
 {
 	_csort(list, low, high, byte_idx, key_fn);
 }
 
-fn void csort(ListType list, usz low, usz high, uint byte_idx) @if (NO_KEY_FN)
+fn void csort(ListType list, usz low, usz high, uint byte_idx) @if (NO_KEY_FN) @private
 {
 	_csort(list, low, high, byte_idx);
 }

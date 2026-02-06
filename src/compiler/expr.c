@@ -592,7 +592,7 @@ void expr_insert_addr(Expr *original)
 	Expr *inner = expr_copy(original);
 	original->expr_kind = EXPR_UNARY;
 	original->type = new_type;
-	original->unary_expr = (ExprUnary) { .operator = UNARYOP_ADDR, .expr = inner };
+	original->unary_expr = (ExprUnary) { .operator = UNARYOP_ADDR, .expr = inner, .no_wrap = false, .no_read = false };
 }
 
 Expr *expr_generated_local(Expr *assign, Decl **decl_ref)
@@ -1189,6 +1189,6 @@ void expr_rewrite_const_string(Expr *expr_to_rewrite, const char *string)
 
 void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, BinaryOp op)
 {
-	expr_to_rewrite->binary_expr = (ExprBinary) { .operator = op, .left = exprid(left), .right = exprid(right) };
+	expr_to_rewrite->binary_expr = (ExprBinary) { .operator = op, .left = exprid(left), .right = exprid(right), .grouped = false };
 	expr_to_rewrite->expr_kind = EXPR_BINARY;
 }

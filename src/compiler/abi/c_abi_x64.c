@@ -263,7 +263,7 @@ void x64_classify_struct_union(Type *type, ByteSize offset_base, X64Class *curre
 void x64_classify_array(Type *type, ByteSize offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class, NamedArgument named_arg)
 {
 	ByteSize size = type_size(type);
-	Type *element = type_lowering(type->array.base);
+	Type *element = lowered_array_element_type(type);
 	ByteSize element_size = type_size(element);
 	// Bigger than 64 bytes => MEM
 	if (size > 64) return;

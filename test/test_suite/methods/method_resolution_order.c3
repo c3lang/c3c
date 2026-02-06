@@ -1,11 +1,11 @@
 module test2;
 import test3;
-struct Bar @if($defined(Foo.b)) // warning: There might be a method 'b' for 'Foo', but methods for the type have not yet been
+struct Bar @if($defined(Foo.b))
 {
 	int a;
 }
 
-struct Bar2 @if($defined((Foo){}.b)) // warning: There might be a method 'b' for 'Foo', but methods have not yet been completely
+struct Bar2 @if($defined((Foo){}.b))
 {
 	int a;
 }
@@ -15,6 +15,8 @@ struct Foo
 {
 	int a;
 }
+fn void Foo.b(&self) {} // #error: A method was added to 'Foo' which already was checked for method availability
+
 module test;
 
 import test2;
@@ -22,6 +24,6 @@ import test3;
 
 fn int main()
 {
-	Bar b; // #error: 'Bar' could not be found, did you spell it right
+	Bar b;
 	return 0;
 }

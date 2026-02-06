@@ -1640,18 +1640,18 @@ bool type_is_scalar(Type *type)
 Type *type_find_parent_type(Type *type)
 {
 	ASSERT(type->canonical);
+	Decl *decl;
 	switch (type->type_kind)
 	{
+		case TYPE_CONST_ENUM:
+			decl = type->decl;
+			return decl->is_substruct ? decl->enums.type_info->type : NULL;
 		case TYPE_TYPEDEF:
-		{
-			Decl *decl = type->decl;
+			decl = type->decl;
 			return decl->is_substruct ? decl->distinct->type : NULL;
-		}
 		case TYPE_STRUCT:
-		{
-			Decl *decl = type->decl;
+			decl = type->decl;
 			return decl->is_substruct ? decl->strukt.members[0]->type : NULL;
-		}
 		default:
 			return NULL;
 	}

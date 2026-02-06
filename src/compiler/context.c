@@ -125,6 +125,16 @@ void decl_register(CompilationUnit *unit, Decl *decl)
 	if (decl->is_templated)
 	{
 		DEBUG_LOG("Registering generic symbol '%s' in %s.", decl->name, unit->module->name->module);
+		Decl *instance = declptr(decl->instance_id);
+		FOREACH (Decl *, other, instance->instance_decl.generated_decls)
+		{
+			if (other->name != decl->name) continue;
+			if (other->visibility == VISIBLE_LOCAL && decl->visibility == VISIBLE_LOCAL && decl->unit != other->unit) continue;
+			sema_shadow_error(NULL, decl, other);
+			decl_poison(decl);
+			decl_poison(other);
+			return;
+		}
 		vec_add(declptr(decl->instance_id)->instance_decl.generated_decls, decl);
 		return;
 	}

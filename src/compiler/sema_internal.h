@@ -18,7 +18,6 @@
 #define UINT20_MAX        1048575U
 
 #define SEMA_WARN(_node, ...) (sema_warn_at(context, (_node)->span, __VA_ARGS__))
-#define SEMA_WARN_STRICT(_node, ...) (sema_warn_very_strict(context, (_node)->span, __VA_ARGS__))
 #define SEMA_ERROR(_node, ...) sema_error_at(context, (_node)->span, __VA_ARGS__)
 #define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return false; } while (0)
 #define RETURN_VAL_SEMA_ERROR(val__, _node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return (val__); } while (0)
@@ -132,7 +131,7 @@ bool sema_decl_if_cond(SemaContext *context, Decl *decl);
 Decl *sema_generate_parameterized_identifier(SemaContext *context, Decl *generic, Decl *alias, Expr **params,
                                              Decl **param_decls, const char *suffix, const char *csuffix, SourceSpan invocation_span, SourceSpan span);
 Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_path, const char *name, SourceSpan span,
-                                            Expr **params, bool *was_recursive_ref, SourceSpan invocation_span);
+                                            Expr **params, SourceSpan invocation_span);
 bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, const char *name, SourceSpan span);
 Type *sema_resolve_type_get_func(Signature *signature, CallABI abi);
 INLINE bool sema_set_alignment(SemaContext *context, Type *type, AlignSize *result, bool is_alloca);

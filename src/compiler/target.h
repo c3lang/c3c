@@ -145,6 +145,7 @@ typedef struct
 		} systemz;
 	};
 	bool big_endian;
+	bool emulated_tls;
 	bool tls_supported;
 	bool asm_supported;
 	bool float128;

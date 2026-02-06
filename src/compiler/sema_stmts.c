@@ -915,7 +915,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 			RETURN_SEMA_ERROR(ident, "Expected this variable to be an optional, otherwise it can't be used for unwrap, maybe you didn't intend to use 'try'?");
 		}
 		expr->expr_kind = EXPR_TRY;
-		expr->try_expr = (ExprTry) { .decl = decl };
+		expr->try_expr = (ExprTry) { .decl = decl, .assign_existing = false };
 		expr->type = type_bool;
 		sema_unwrap_var(context, decl);
 		expr->resolve_status = RESOLVE_DONE;
@@ -977,7 +977,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
 
 	expr->expr_kind = EXPR_TRY;
-	expr->try_expr = (ExprTry) { .decl = decl, .optional = optional };
+	expr->try_expr = (ExprTry) { .decl = decl, .optional = optional, .assign_existing = false };
 	expr->type = type_bool;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
@@ -3449,21 +3449,24 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 
 	// Set up the context for analysis
 	context->original_module = NULL;
-	context->call_env = (CallEnv) {
+	CallEnv env = {
 		.current_function = func,
 		.is_naked_fn = func->func_decl.attr_naked,
 		.kind = CALL_ENV_FUNCTION,
 		.pure = func->func_decl.signature.attrs.is_pure,
 		.ignore_deprecation = func->allow_deprecated || decl_is_deprecated(func)
 	};
+	context->call_env = env;
 
 	Type *rtype = context->rtype = typeget(signature->rtype);
 	context->macro_call_depth = 0;
-	context->active_scope = (DynamicScope) {
-			.depth = 0,
-			.label_start = 0,
-			.current_local = 0
+	DynamicScope new_scope = {
+		.depth = 0,
+		.label_start = 0,
+		.current_local = 0
 	};
+
+	context->active_scope = new_scope;
 	vec_resize(context->ct_locals, 0);
 	// Clear returns
 	vec_resize(context->block_returns, 0);

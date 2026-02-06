@@ -1,0 +1,41 @@
+// #target: linux-x64
+module test;
+import std::collections;
+
+fn void main()
+{
+	List{int[<2>][2]} test_list;
+	test_list.tinit();
+
+	int[<2>][2] input;
+
+	input[0] = {1, 2};
+	input[1] = {3, 4};
+
+	test_list.push(input);
+
+	assert(test_list.contains(input));
+
+	return;
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %test_list = alloca %"List{int[<2>][2]}", align 8
+  %input = alloca [2 x <2 x i32>], align 16
+  call void @llvm.memset.p0.i64(ptr align 8 %test_list, i8 0, i64 40, i1 false)
+  %0 = call ptr @"std.collections.list.List$a2$v2$int$.tinit"(ptr %test_list, i64 16)
+  store <2 x i32> zeroinitializer, ptr %input, align 16
+  %ptradd = getelementptr inbounds i8, ptr %input, i64 8
+  store <2 x i32> zeroinitializer, ptr %ptradd, align 8
+  store <2 x i32> <i32 1, i32 2>, ptr %input, align 16
+  %ptradd1 = getelementptr inbounds i8, ptr %input, i64 8
+  store <2 x i32> <i32 3, i32 4>, ptr %ptradd1, align 8
+  %lo = load i64, ptr %input, align 16
+  %ptradd2 = getelementptr inbounds i8, ptr %input, i64 8
+  %hi = load i64, ptr %ptradd2, align 8
+  call void @"std.collections.list.List$a2$v2$int$.push"(ptr %test_list, i64 %lo, i64 %hi) #2
+  ret void
+}
