@@ -164,11 +164,19 @@ LLVMValueRef llvm_load_value_store(GenContext *c, BEValue *value)
 	return LLVMBuildZExt(c->builder, val, c->byte_type, "");
 }
 
+void llvm_store_no_fault(GenContext *c, BEValue *ref)
+{
+	if (ref->kind == BE_ADDRESS_OPTIONAL)
+	{
+		llvm_store_to_ptr_raw_aligned(c, ref->optional, llvm_get_zero(c, type_fault), type_abi_alignment(type_fault));
+	}
+}
 
 LLVMValueRef llvm_store_zero(GenContext *c, BEValue *ref)
 {
-	llvm_value_addr(c, ref);
+	if (!llvm_value_is_addr(ref)) llvm_value_addr(c, ref);
 	Type *type = ref->type;
+	llvm_store_no_fault(c, ref);
 	if (!type_is_aggregate(type) || type_is_builtin(type->type_kind))
 	{
 		if (type_kind_is_real_vector(type->type_kind))

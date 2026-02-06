@@ -1,20 +1,21 @@
 module std::sort;
-import std::sort::qs;
 
 <*
  Sort list using the quick sort algorithm.
 
  @require @list_is_by_ref(list) : "Expected a list passed by reference or be a slice"
  @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
- @require @is_valid_cmp_fn(cmp, list, context) : "Expected a comparison function which compares values"
- @require @is_valid_context(cmp, context) : "Expected a valid context"
+ @require @is_valid_cmp_fn(#cmp: ...cmp, #list: list, #context: ...context) : "Expected a comparison function which compares values"
+ @require @is_valid_context(...cmp, ...context) : "Expected a valid context"
 *>
-macro void quicksort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
+macro void quicksort(list, cmp = ..., context = ...) @builtin
 {
+	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
+	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if $kindof(list) == SLICE:
-		qs::qsort{$typeof(list), $typeof(cmp), $typeof(context)}(list, 0, (isz)list.len - 1, cmp, context);
+		qsort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)list.len - 1, used_cmp, used_ctx);
 	$else
-		qs::qsort{$typeof(*list), $typeof(cmp), $typeof(context)}(list, 0, (isz)lengthof(*list) - 1, cmp, context);
+		qsort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)lengthof(*list) - 1, used_cmp, used_ctx);
 	$endif
 }
 
@@ -25,29 +26,22 @@ macro void quicksort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @
 
  @require @list_is_by_ref(list) : "Expected a list passed by reference or be a slice"
  @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
- @require @is_valid_cmp_fn(cmp, list, context) : "expected a comparison function which compares values"
- @require @is_valid_context(cmp, context) : "Expected a valid context"
+ @require @is_valid_cmp_fn(#cmp: ...cmp, #list: list, #context: ...context) : "expected a comparison function which compares values"
+ @require @is_valid_context(...cmp, ...context) : "Expected a valid context"
 *>
-macro quickselect(list, isz k, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
+macro quickselect(list, isz k, cmp = ..., context = ...) @builtin
 {
+	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
+	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if $kindof(list) == SLICE:
-		return qs::qselect{$typeof(list), $typeof(cmp), $typeof(context)}(list, 0, (isz)list.len - 1, k, cmp, context);
+		return qselect{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)list.len - 1, k, used_cmp, used_ctx);
 	$else
-		return qs::qselect{$typeof(*list), $typeof(cmp), $typeof(context)}(list, 0, (isz)lengthof(*list) - 1, k, cmp, context);
+		return qselect{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)lengthof(*list) - 1, k, used_cmp, used_ctx);
 	$endif
 }
 
-module std::sort::qs <Type, CmpFn, Context>;
 
-alias ElementType = $typeof(((Type){})[0]);
-const bool IS_SLICE = Type.kindof == SLICE;
-alias ListType = $typefrom(IS_SLICE ??? Type : Type*);
-macro list_get(ListType l, i) @if(!IS_SLICE) => (*l)[i];
-macro list_get(ListType l, i) @if(IS_SLICE) => l[i];
-macro list_get_ref(ListType l, i) @if(!IS_SLICE) => &(*l)[i];
-macro list_get_ref(ListType l, i) @if(IS_SLICE) => &l[i];
-macro list_set(ListType l, i, v) @if(!IS_SLICE) => (*l)[i] = v;
-macro list_set(ListType l, i, v) @if(IS_SLICE) => l[i] = v;
+module std::sort <Type, CmpFn, Context> @private;
 
 struct StackElementItem @private
 {
@@ -59,7 +53,7 @@ alias Stack @private = StackElementItem[64];
 
 // Based on https://alienryderflex.com/quicksort by Darel Rex Finley, Public Domain.
 
-fn void qsort(ListType list, isz low, isz high, CmpFn cmp, Context context)
+fn void qsort(ListType list, isz low, isz high, CmpFn cmp, Context context) @noinline
 {
 	if (low >= 0 && high >= 0 && low < high)
 	{
@@ -97,7 +91,7 @@ fn void qsort(ListType list, isz low, isz high, CmpFn cmp, Context context)
 @require low <= k : "kth smallest element is smaller than lower bounds"
 @require k <= high : "kth smallest element is larger than upper bounds"
 *>
-fn ElementType? qselect(ListType list, isz low, isz high, isz k, CmpFn cmp, Context context)
+fn ElementType? qselect(ListType list, isz low, isz high, isz k, CmpFn cmp, Context context) @noinline
 {
 	if (low >= 0 && high >= 0 && low < high)
 	{
@@ -125,8 +119,8 @@ fn ElementType? qselect(ListType list, isz low, isz high, isz k, CmpFn cmp, Cont
 
 macro isz @partition(ListType list, isz l, isz h, CmpFn cmp, Context context)
 {
-	var $has_cmp = @is_valid_macro_slot(cmp);
-	var $has_context = @is_valid_macro_slot(context);
+	var $has_cmp = $typeof(cmp) != sort::TypeNotSet;
+	var $has_context = $typeof(context) != sort::TypeNotSet;
 	var $cmp_by_value = $has_cmp &&& $defined($typefrom(CmpFn.paramsof[0].type) v = list_get(list, 0));
 
 	ElementType pivot = list_get(list, l);

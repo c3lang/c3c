@@ -1683,9 +1683,7 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 		case ARCH_TYPE_PPC64:
 		case ARCH_TYPE_PPC:
 		case ARCH_TYPE_PPC64LE:
-		case ARCH_TYPE_WASM64:
 		case ARCH_TYPE_RISCV32:
-		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_XTENSA:
 			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
 		case ARCH_TYPE_X86_64:
@@ -1696,6 +1694,13 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 #endif
 		case ARCH_TYPE_RISCV64:
 			return (AlignData) { bits, bits };
+		case ARCH_TYPE_WASM64:
+		case ARCH_TYPE_WASM32:
+#if LLVM_AVAILABLE && LLVM_VERSION_MAJOR < 20
+			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
+#else
+			return (AlignData) { bits, bits };
+#endif
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
 			if (bits < 32) return (AlignData){ bits, 32 };
@@ -1977,6 +1982,8 @@ void *llvm_target_machine_create(void)
 										   (LLVMCodeGenOptLevel)compiler.platform.llvm_opt_level,
 										   reloc_mode, model);
 	LLVMSetTargetMachineUseInitArray(result, true);
+	if (compiler.platform.emulated_tls) LLVMSetTargetMachineEmulatedTLS(result, true);
+
 	if (!result) error_exit("Failed to create target machine.");
 	LLVMSetTargetMachineAsmVerbosity(result, 1);
 	return result;
@@ -2208,6 +2215,7 @@ void target_setup(BuildTarget *target)
 	// ARM Cygwin
 	// NVPTX
 	compiler.platform.tls_supported = os_target_use_thread_local(compiler.platform.os);
+	compiler.platform.emulated_tls = compiler.platform.os == OS_TYPE_ANDROID;
 	compiler.platform.big_endian = arch_big_endian(compiler.platform.arch);
 	compiler.platform.width_pointer = arch_pointer_bit_width(compiler.platform.os, compiler.platform.arch);
 	compiler.platform.width_register = arch_int_register_bit_width(compiler.platform.os, compiler.platform.arch);

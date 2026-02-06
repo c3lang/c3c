@@ -1,0 +1,26 @@
+// #target: macos-x64
+module main;
+import foo;
+
+fn void main()
+{
+	foo::test{int}();
+}
+
+module foo <Type>;
+
+macro void test()
+{
+	var func = fn Type* ()
+	{
+		return mem::new(Type);
+	};
+}
+
+/* #expect: foo.ll
+
+define weak ptr @"foo.test{int}$lambda1"() #0 {
+entry:
+  %0 = call ptr @std.core.mem.calloc(i64 4) #1
+  ret ptr %0
+}

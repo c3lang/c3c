@@ -6,14 +6,21 @@ in [0, array.len) where x would be inserted or cmp(i) is true and cmp(j) is true
 
  @require @list_is_by_ref(list) : "Expected a list passed by reference or a slice"
  @require @is_sortable(list) : "The list must be sortable"
- @require @is_valid_cmp_fn(cmp, list, context) : "Expected a comparison function which compares values"
- @require @is_valid_context(cmp, context) : "Expected a valid context"
+ @require @is_valid_cmp_fn(#cmp: ...cmp, #list: list, #context: ...context) : "Expected a comparison function which compares values"
+ @require @is_valid_context(...cmp, ...context) : "Expected a valid context"
 *>
-macro usz binarysearch(list, x, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
+macro usz binarysearch(list, element, cmp = ..., context = ...) @builtin
+{
+	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
+	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
+	return _binarysearch{$typeof(list), $typeof(element), $typeof(used_cmp), $typeof(used_ctx)}(list, element, used_cmp, used_ctx);
+}
+
+fn usz _binarysearch(ListType list, ElementType element, CmpFnType cmp, ContextType context) <ListType, ElementType, CmpFnType, ContextType> @noinline @local
 {
 	usz i;
-	var $no_cmp = @is_empty_macro_slot(cmp);
-	var $has_context = @is_valid_macro_slot(context);
+	var $no_cmp = $typeof(cmp) == TypeNotSet;
+	var $has_context = $typeof(context) != TypeNotSet;
 
 	$if $kindof(list) == SLICE:
 		usz len = lengthof(list);
@@ -23,23 +30,23 @@ macro usz binarysearch(list, x, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SL
 			$if $no_cmp:
 				switch
 				{
-					case greater(list[half], x): j = half;
-					case less(list[half], x): i = half + 1;
+					case greater(list[half], element): j = half;
+					case less(list[half], element): i = half + 1;
 					default: return half;
 				}
 			$else
 
 				$switch:
 					$case $defined(cmp(list[0], list[0], context)):
-						int res = cmp(list[half], x, context);
+						int res = cmp(list[half], element, context);
 					$case $defined(cmp(list[0], list[0])):
 						assert(!$has_context);
-						int res = cmp(list[half], x);
+						int res = cmp(list[half], element);
 					$case $defined(cmp(&list[0], &list[0], context)):
-						int res = cmp(&list[half], &x, context);
+						int res = cmp(&list[half], &element, context);
 					$case $defined(cmp(&list[0], &list[0])):
 						assert(!$has_context);
-						int res = cmp(&list[half], &x);
+						int res = cmp(&list[half], &element);
 					$default:
 						assert(false, "Invalid comparison function");
 				$endswitch
@@ -52,41 +59,40 @@ macro usz binarysearch(list, x, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SL
 			$endif
 		}
 	$else
-    	usz len = lengthof(*list);
-    	for (usz j = len; i < j;)
-    	{
-    		usz half = i + (j - i) / 2;
-    		$if $no_cmp:
-    			switch
-    			{
-    				case greater((*list)[half], x): j = half;
-    				case less((*list)[half], x): i = half + 1;
-    				default: return half;
-    			}
-    		$else
-
-    			$switch:
-    				$case $defined(cmp((*list)[0], (*list)[0], context)):
-    					int res = cmp(list[half], x, context);
-    				$case $defined(cmp((*list)[0], (*list)[0])):
-    					assert(!$has_context);
-    					int res = cmp((*list)[half], x);
-    				$case $defined(cmp(&(*list)[0], &(*list)[0], context)):
-    					int res = cmp(&(*list)[half], &x, context);
-    				$case $defined(cmp(&(*list)[0], &(*list)[0])):
-    					assert(!$has_context);
-    					int res = cmp(&(*list)[half], &x);
-    				$default:
-    					assert(false, "Invalid comparison function");
-    			$endswitch
-    			switch
-    			{
-    				case res > 0: j = half;
-    				case res < 0: i = half + 1;
-    				default: return half;
-    			}
-    		$endif
-    	}
+		usz len = lengthof(*list);
+		for (usz j = len; i < j;)
+		{
+			usz half = i + (j - i) / 2;
+			$if $no_cmp:
+				switch
+				{
+					case greater((*list)[half], element): j = half;
+					case less((*list)[half], element): i = half + 1;
+					default: return half;
+				}
+			$else
+				$switch:
+					$case $defined(cmp((*list)[0], (*list)[0], context)):
+						int res = cmp(list[half], element, context);
+					$case $defined(cmp((*list)[0], (*list)[0])):
+						assert(!$has_context);
+						int res = cmp((*list)[half], element);
+					$case $defined(cmp(&(*list)[0], &(*list)[0], context)):
+						int res = cmp(&(*list)[half], &element, context);
+					$case $defined(cmp(&(*list)[0], &(*list)[0])):
+						assert(!$has_context);
+						int res = cmp(&(*list)[half], &element);
+					$default:
+						assert(false, "Invalid comparison function");
+				$endswitch
+				switch
+				{
+					case res > 0: j = half;
+					case res < 0: i = half + 1;
+					default: return half;
+				}
+			$endif
+		}
 	$endif
-    return i;
+	return i;
 }

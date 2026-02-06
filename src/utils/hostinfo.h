@@ -1,7 +1,7 @@
 #if !defined(HOSTINFO_H) && !LLVM_AVAILABLE
 #define HOSTINFO_H 
 
-void hostinfo_x86_features(X86Features *cpu_features);
+void hostinfo_x86_features(CpuFeatures *cpu_features);
 ArchType hostinfo_arch_type(void);
 EnvironmentType hostinfo_env_type(void);
 OsType hostinfo_os_type(void);

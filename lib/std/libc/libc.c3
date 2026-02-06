@@ -178,7 +178,7 @@ extern fn CULong strtoul(char* str, char** endptr, CInt base);
 extern fn usz strxfrm(char* dest, ZString src, usz n);
 extern fn CInt system(ZString str);
 extern fn Time_t timegm(Tm* timeptr) @if(!env::WIN32 && !env::NETBSD);
-extern fn ZString tmpnam(ZString str);
+extern fn ZString tmpnam(char *buffer);
 extern fn CFile tmpfile();
 extern fn CInt ungetc(CInt c, CFile stream);
 extern fn CInt unsetenv(ZString name) @if(!env::NETBSD);

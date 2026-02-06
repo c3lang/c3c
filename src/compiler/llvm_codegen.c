@@ -80,9 +80,9 @@ static void gencontext_destroy(GenContext *context)
 {
 	ASSERT(llvm_is_global_eval(context));
 	LLVMDisposeBuilder(context->global_builder);
-	if (!context->shared_context) LLVMContextDispose(context->context);
-	LLVMDisposeTargetData(context->target_data);
 	LLVMDisposeTargetMachine(context->machine);
+	LLVMDisposeTargetData(context->target_data);
+	if (!context->shared_context) LLVMContextDispose(context->context);
 	free(context);
 }
 
@@ -735,6 +735,7 @@ void gencontext_print_llvm_ir(GenContext *context)
 
 INLINE LLVMValueRef llvm_emit_alloca_internal(GenContext *c, LLVMTypeRef type, unsigned alignment, const char *name)
 {
+	ASSERT(c->current_block);
 	ASSERT(LLVMGetTypeKind(type) != LLVMVoidTypeKind);
 	ASSERT(!llvm_is_global_eval(c));
 	ASSERT(alignment > 0);

@@ -95,31 +95,44 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	if (!compiler.build.win.sdk && !compiler.build.win.vs_dirs)
 	{
 		const char *path = windows_cross_compile_library();
+		if (!path && !windows_get_sdk())
+		{
+			BuildOptions options = { .verbosity_level = (compiler.build.silent || compiler.build.quiet) ? -1 : 0 };
+			fetch_msvc(&options);
+			path = windows_cross_compile_library();
+		}
+		// Note that path here may be allocated on the string scratch buffer.
 		if (path)
 		{
+			if (!compiler.build.quiet && !compiler.build.silent)
+			{
+				OUTF("Using MSVC SDK at: %s\n", path);
+			}
+
+			const char *suffix = NULL;
 			switch (compiler.platform.arch)
 			{
-				case ARCH_TYPE_ARM:
-					scratch_buffer_append("/arm");
-					break;
-				case ARCH_TYPE_AARCH64:
-					scratch_buffer_append("/arm64");
-					break;
-				case ARCH_TYPE_X86_64:
-					scratch_buffer_append("/x64");
-					break;
-				case ARCH_TYPE_X86:
-					scratch_buffer_append("/x86");
-					break;
-				default:
-					UNREACHABLE_VOID
+				case ARCH_TYPE_ARM: suffix = "arm"; break;
+				case ARCH_TYPE_AARCH64: suffix = "arm64"; break;
+				case ARCH_TYPE_X86_64: suffix = "x64"; break;
+				case ARCH_TYPE_X86: suffix = "x86"; break;
+				default: break;
 			}
-			if (file_exists(scratch_buffer_to_string()))
+
+			if (suffix)
 			{
-				compiler.build.win.sdk = scratch_buffer_copy();
-				// If we only use the msvc cross compile on windows, we
-				// avoid linking with dynamic debug dlls.
-				link_with_dynamic_debug_libc = false;
+				char *full_path = file_append_path(path, suffix);
+				if (file_exists(full_path))
+				{
+					compiler.build.win.sdk = full_path;
+					// If we only use the msvc cross compile on windows, we
+					// avoid linking with dynamic debug dlls.
+					link_with_dynamic_debug_libc = false;
+				}
+				else
+				{
+					free(full_path);
+				}
 			}
 		}
 	}
@@ -1049,6 +1062,11 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	{
 		INFO_LOG("Using cc linker.");
 		vec_add(parts, compiler.build.cc ? compiler.build.cc : default_c_compiler());
+	}
+
+	if (file_is_dir(output_file))
+	{
+		error_exit("Failed to link executable '%s', a directory with that name already exists.", output_file);
 	}
 
 	linker_setup(&parts, files, file_count, output_file, linker_type, &compiler.linking);

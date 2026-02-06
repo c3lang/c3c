@@ -13,7 +13,7 @@ static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, De
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl);
 static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type, bool is_dynamic);
 static inline bool sema_analyse_macro_method(SemaContext *context, Decl *decl);
-static inline bool unit_add_base_extension_method(SemaContext *context, Decl *method);
+static inline bool unit_add_base_extension_method(SemaContext *context, Type *type, Decl *method);
 static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl *method);
 static bool sema_analyse_operator_common(SemaContext *context, Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr, uint32_t parameters);
 static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method);
@@ -679,7 +679,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	}
 	if (is_unaligned && size > offset)
 	{
-		ASSERT(!decl->strukt.padding);
+		ASSERT(!decl->strukt.padding || decl->strukt.padding == size - offset);
 		decl->strukt.padding = size - offset;
 	}
 
@@ -703,7 +703,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		}
 	}
 
-	decl->is_packed = is_unaligned;
+	decl->is_packed |= is_unaligned;
 	// Strip padding if we are aligned.
 	if (!decl->is_packed && is_naturally_aligned)
 	{
@@ -1107,11 +1107,10 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 		decl->strukt.little_endian = false;
 	}
 	Type *base_type = type->type_kind == TYPE_ARRAY ? type_flatten(type->array.base) : type;
-	if (!type_is_integer(base_type))
+	if (!type_is_integer(base_type) || (type->type_kind == TYPE_ARRAY && type_size(type->array.base) > 1))
 	{
-		SEMA_ERROR(decl->strukt.container_type, "The type of the bitstruct cannot be %s but must be an integer or an array of integers.",
-		           type_quoted_error_string(decl->strukt.container_type->type));
-		return false;
+		RETURN_SEMA_ERROR(decl->strukt.container_type, "The type of the bitstruct cannot be %s but must be an integer or an array of chars.",
+				type_quoted_error_string(decl->strukt.container_type->type));
 	}
 	Decl **members = decl->strukt.members;
 	unsigned member_count = vec_size(members);
@@ -1634,6 +1633,18 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param)
 	return true;
 }
 
+static inline void sema_print_enum_to_cenum_error(SemaContext *context, Decl *decl, Expr *arg)
+{
+	TypeInfo *type_info = decl->enums.type_info;
+	if (type_info->type == type_int)
+	{
+		SEMA_ERROR(arg, "Assigning a value requires the declaration of associated values for the enum. Did you perhaps want C-style enums? In that case use const enums, defined like 'enum %s : const { ... }'", decl->name);
+	}
+	else
+	{
+		SEMA_ERROR(arg, "Assigning a value requires the declaration of associated values for the enum. Did you perhaps want C-style enums? In that case use const enums, defined like 'enum %s : const %s { ... }'", decl->name, type_to_error_string(type_info->type));
+	}
+}
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ENUM, erase_decl)) return decl_poison(decl);
@@ -1734,7 +1745,8 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (!associated_value_count)
 			{
-				RETURN_SEMA_ERROR(args[0], "There are no associated values defined for this enum. Did you perhaps want C style gap enums? In that case, try enums with inline associated values.");
+				sema_print_enum_to_cenum_error(context, decl, args[0]);
+				return false;
 			}
 			RETURN_SEMA_ERROR(args[associated_value_count], "You're adding too many values, only %d associated value%s are defined for '%s'.", associated_value_count, associated_value_count != 1 ? "s" : "", decl->name);
 		}
@@ -1759,7 +1771,8 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (!associated_value_count)
 			{
-				RETURN_SEMA_ERROR(args[0], "There are no associated values defined for this enum. Did you perhaps want C style gap enums? In that case, try enums with inline associated values.");
+				sema_print_enum_to_cenum_error(context, decl, args[0]);
+				return false;
 			}
 			RETURN_SEMA_ERROR(args[associated_value_count], "You're adding too many values, only %d associated value%s are defined for '%s'.", associated_value_count, associated_value_count != 1 ? "s" : "", decl->name);
 		}
@@ -2296,7 +2309,7 @@ INLINE SourceSpan method_find_overload_span(Decl *method)
 	return method->attrs_resolved->overload;
 }
 
-static inline bool unit_add_base_extension_method(SemaContext *context, Decl *method)
+static inline bool unit_add_base_extension_method(SemaContext *context, Type *type, Decl *method)
 {
 	Decl *other = declptrzero(methodtable_set(&compiler.context.method_extensions, method));
 	if (other)
@@ -2304,6 +2317,13 @@ static inline bool unit_add_base_extension_method(SemaContext *context, Decl *me
 		SEMA_ERROR(method, "This %s is already defined.", method_name_by_decl(method));
 		SEMA_NOTE(other, "The previous definition was here.");
 		return false;
+	}
+	FOREACH(Type *, t, compiler.context.types_with_failed_methods)
+	{
+		if (t == type)
+		{
+			RETURN_SEMA_ERROR(method, "A method was added to %s which already was checked for method availability, declarations must be reordered.", type_quoted_error_string(type));
+		}
 	}
 	vec_add(compiler.context.method_extension_list, method);
 	DEBUG_LOG("Builtin type method '%s' analysed.", method->name);
@@ -2637,7 +2657,7 @@ static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl
 		return true;
 	}
 	// Is it a base extension?
-	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(context, method);
+	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(context, parent_type, method);
 
 	// Resolve it as a user-defined type extension.
 	Decl *parent = parent_type->decl;
@@ -2654,7 +2674,10 @@ static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl
 		SEMA_NOTE(other, "The previous definition was here.");
 		return decl_poison(method);
 	}
-
+	if (parent->is_method_checked)
+	{
+		RETURN_SEMA_ERROR(method, "A method was added to %s which already was checked for method availability, declarations must be reordered.", type_quoted_error_string(parent_type));
+	}
 	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method->name);
 
 	Methods *table = parent->method_table;
@@ -3668,8 +3691,8 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 	SemaContext eval_context;
 	sema_context_init(&eval_context, attr_decl->unit);
 	eval_context.macro_call_depth = context->macro_call_depth + 1;
-	eval_context.call_env = (CallEnv) { .kind = CALL_ENV_ATTR, .attr_declaration = decl };
-
+	CallEnv eval_env = { .kind = CALL_ENV_ATTR, .attr_declaration = decl,  };
+	eval_context.call_env = eval_env;
 	// We copy the compilation unit.
 	eval_context.compilation_unit = context->unit;
 
@@ -3683,6 +3706,7 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 			if (!sema_resolve_type_info(context, type_infoptr(param->var.type_info), RESOLVE_TYPE_DEFAULT)) return false;
 			Type *type = typeget(param->var.type_info);
 			ASSERT_SPAN(decl, type);
+			eval_context.rtype = type;
 			if (!sema_analyse_inferred_expr(context, type, expr, NULL)) goto ERR;
 			if (!cast_implicit(context, expr, type, false)) goto ERR;
 			if (!sema_cast_const(expr))
@@ -3693,6 +3717,7 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 		}
 		else
 		{
+			eval_context.rtype = type_void;
 			if (!sema_analyse_ct_expr(context, args[j])) goto ERR;
 		}
 		params[j]->var.init_expr = expr;
@@ -3701,6 +3726,7 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 		// (Yes this is messy)
 		sema_add_local(&eval_context, params[j]);
 	}
+	eval_context.rtype = type_void;
 	// Now we've added everything to the evaluation context, so we can (recursively)
 	// apply it to the contained attributes, which in turn may be derived attributes.
 	if (!sema_analyse_attributes_inner(&eval_context, attr_data_ref, decl, attributes, domain, top ? top : attr_decl, erase_decl)) goto ERR;
@@ -4054,7 +4080,14 @@ Decl *sema_create_runner_main(SemaContext *context, Decl *decl)
 	return function;
 }
 
-static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl, MainType main, bool int_return, bool err_return, bool is_winmain, bool is_wmain)
+typedef enum
+{
+	MAIN_SUBTYPE_NORMAL,
+	MAIN_SUBTYPE_WINMAIN,
+	MAIN_SUBTYPE_WMAIN
+} MainSubType;
+
+static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl, MainType main, MainSubType sub_type)
 {
 	Decl *function = decl_new(DECL_FUNC, NULL, decl->span);
 	function->is_export = true;
@@ -4066,28 +4099,30 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 	// Pick wWinMain, main or wmain
 	Decl *params[4] = { NULL, NULL, NULL, NULL };
 	int param_count;
-	if (is_winmain)
+	switch (sub_type)
 	{
-		function->extname = kw_winmain;
-		params[0] = decl_new_generated_var(type_voidptr, VARDECL_PARAM, decl->span);
-		params[1]  = decl_new_generated_var(type_voidptr, VARDECL_PARAM, decl->span);
-		params[2]  = decl_new_generated_var(type_get_ptr(type_ushort), VARDECL_PARAM, decl->span);
-		params[3]  = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
-		param_count = 4;
-	}
-	else if (is_wmain)
-	{
-		function->extname = kw_wmain;
-		params[0] = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
-		params[1] = decl_new_generated_var(type_get_ptr(type_get_ptr(type_ushort)), VARDECL_PARAM, decl->span);
-		param_count = 2;
-	}
-	else
-	{
-		function->extname = kw_main;
-		params[0] = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
-		params[1] = decl_new_generated_var(type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
-		param_count = 2;
+		case MAIN_SUBTYPE_WINMAIN:
+			function->extname = kw_winmain;
+			params[0] = decl_new_generated_var(type_voidptr, VARDECL_PARAM, decl->span);
+			params[1]  = decl_new_generated_var(type_voidptr, VARDECL_PARAM, decl->span);
+			params[2]  = decl_new_generated_var(type_get_ptr(type_ushort), VARDECL_PARAM, decl->span);
+			params[3]  = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+			param_count = 4;
+			break;
+		case MAIN_SUBTYPE_WMAIN:
+			function->extname = kw_wmain;
+			params[0] = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+			params[1] = decl_new_generated_var(type_get_ptr(type_get_ptr(type_ushort)), VARDECL_PARAM, decl->span);
+			param_count = 2;
+			break;
+		case MAIN_SUBTYPE_NORMAL:
+			function->extname = kw_main;
+			params[0] = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+			params[1] = decl_new_generated_var(type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
+			param_count = 2;
+			break;
+		default:
+			UNREACHABLE;
 	}
 
 	function->has_extname = true;
@@ -4099,70 +4134,32 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 	Ast *body = new_ast(AST_COMPOUND_STMT, decl->span);
 	AstId *next = &body->compound_stmt.first_stmt;
 	Ast *ret_stmt = new_ast(AST_RETURN_STMT, decl->span);
-	int type = int_return ? 1 : (err_return ? 2 : 0);
 	const char *main_invoker;
 	switch (main)
 	{
 		case MAIN_TYPE_ARGS:
-			if (is_winmain)
+			switch (sub_type)
 			{
-				switch (type)
-				{
-					case 0 : main_invoker = "@win_to_void_main_args"; goto NEXT;
-					case 1 : main_invoker = "@win_to_int_main_args"; goto NEXT;
-					case 2 : main_invoker = "@win_to_err_main_args"; goto NEXT;
-					default: UNREACHABLE
-				}
+				case MAIN_SUBTYPE_WINMAIN: main_invoker = "@win_main_args"; break;
+				case MAIN_SUBTYPE_WMAIN: main_invoker = "@wmain_main"; break;
+				default: main_invoker = "@main_args"; break;
 			}
-			if (is_wmain)
-			{
-				switch (type)
-				{
-					case 0 : main_invoker = "@wmain_to_void_main_args"; goto NEXT;
-					case 1 : main_invoker = "@wmain_to_int_main_args"; goto NEXT;
-					case 2 : main_invoker = "@wmain_to_err_main_args"; goto NEXT;
-					default: UNREACHABLE
-				}
-			}
-			switch (type)
-			{
-				case 0: main_invoker = "@main_to_void_main_args"; goto NEXT;
-				case 1: main_invoker = "@main_to_int_main_args"; goto NEXT;
-				case 2: main_invoker = "@main_to_err_main_args"; goto NEXT;
-				default: UNREACHABLE
-			}
+			break;
 		case MAIN_TYPE_NO_ARGS:
-			ASSERT(!is_wmain);
-			if (is_winmain)
+			switch (sub_type)
 			{
-				switch (type)
-				{
-					case 0 : main_invoker = "@win_to_void_main_noargs"; goto NEXT;
-					case 1 : main_invoker = "@win_to_int_main_noargs"; goto NEXT;
-					case 2 : main_invoker = "@win_to_err_main_noargs"; goto NEXT;
-					default: UNREACHABLE
-				}
+				case MAIN_SUBTYPE_WINMAIN: main_invoker = "@win_main_no_args"; break;
+				case MAIN_SUBTYPE_WMAIN: main_invoker = "@wmain_main_no_args"; break;
+				default: main_invoker = "@main_no_args"; break;
 			}
-			switch (type)
-			{
-				case 0 : main_invoker = "@main_to_void_main"; goto NEXT;
-				case 1 : main_invoker = "@main_to_int_main"; goto NEXT;
-				case 2 : main_invoker = "@main_to_err_main"; goto NEXT;
-				default: UNREACHABLE
-			}
+			break;
 		case MAIN_TYPE_WIN:
-			ASSERT(is_winmain);
-			switch (type)
-			{
-				case 0 : main_invoker = "@win_to_void_main"; goto NEXT;
-				case 1 : main_invoker = "@win_to_int_main"; goto NEXT;
-				case 2 : main_invoker = "@win_to_err_main"; goto NEXT;
-				default: UNREACHABLE
-			}
+			ASSERT(sub_type == MAIN_SUBTYPE_WINMAIN);
+			main_invoker = "@win_main";
+			break;
 		default:
 			UNREACHABLE
 	}
-	NEXT:;
 	const char *kw_main_invoker = symtab_preset(main_invoker, TOKEN_AT_IDENT);
 	Decl *d = sema_find_symbol(context, kw_main_invoker);
 	if (!d)
@@ -4192,19 +4189,17 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 {
 	ASSERT(decl != context->unit->main_function);
-	bool is_winmain = decl->func_decl.attr_winmain;
 	bool is_win32 = compiler.platform.os == OS_TYPE_WIN32;
+	MainSubType sub_type = decl->func_decl.attr_winmain && is_win32 ? MAIN_SUBTYPE_WINMAIN : MAIN_SUBTYPE_NORMAL;
 	if (decl->visibility != VISIBLE_PUBLIC)
 	{
-		SEMA_ERROR(decl, "A main function must be public.");
-		return false;
+		RETURN_SEMA_ERROR(decl, "A main function must be public.");
 	}
 	Signature *signature = &decl->func_decl.signature;
 	TypeInfo *rtype_info = type_infoptr(signature->rtype);
 	Type *rtype = rtype_info->type;
 	bool is_int_return = true;
-	bool is_err_return = false;
-	if (!is_err_return && type_is_optional(rtype))
+	if (type_is_optional(rtype))
 	{
 		RETURN_SEMA_ERROR(rtype_info, "The return type of 'main' cannot be an optional.");
 	}
@@ -4215,8 +4210,8 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	{
 		RETURN_SEMA_ERROR(rtype_info, "Expected a return type of 'void' or %s.", type_quoted_error_string(type_cint));
 	}
-	// At this point the style is either MAIN_INT_VOID, MAIN_VOID_VOID or MAIN_ERR_VOID
-	MainType type = sema_find_main_type(context, signature, is_winmain);
+	// At this point the style is either MAIN_INT_VOID, MAIN_VOID_VOID
+	MainType type = sema_find_main_type(context, signature, sub_type == MAIN_SUBTYPE_WINMAIN);
 	if (type == MAIN_TYPE_ERROR) return false;
 	if (compiler.build.type == TARGET_TYPE_TEST || compiler.build.type == TARGET_TYPE_BENCHMARK) return true;
 	Decl *function;
@@ -4229,10 +4224,8 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	{
 		RETURN_SEMA_ERROR(rtype_info, "Int return is required for a C style main.");
 	}
-	// Suppress winmain on non-win32
-	if (compiler.platform.os != OS_TYPE_WIN32) is_winmain = false;
 
-	if ((type == MAIN_TYPE_RAW || type == MAIN_TYPE_NO_ARGS) && is_int_return && !is_winmain)
+	if ((type == MAIN_TYPE_RAW || type == MAIN_TYPE_NO_ARGS) && is_int_return && sub_type != MAIN_SUBTYPE_WINMAIN)
 	{
 		// Int return is pass-through at the moment.
 		decl->is_export = true;
@@ -4241,9 +4234,9 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		function = decl;
 		goto REGISTER_MAIN;
 	}
-	bool is_wmain = is_win32 && !is_winmain && type != MAIN_TYPE_NO_ARGS;
-	compiler.build.win.use_win_subsystem = is_winmain && is_win32;
-	function = sema_create_synthetic_main(context, decl, type, is_int_return, is_err_return, is_winmain, is_wmain);
+	if (is_win32 && type != MAIN_TYPE_NO_ARGS && sub_type != MAIN_SUBTYPE_WINMAIN) sub_type = MAIN_SUBTYPE_WMAIN;
+	compiler.build.win.use_win_subsystem = sub_type == MAIN_SUBTYPE_WINMAIN;
+	function = sema_create_synthetic_main(context, decl, type, sub_type);
 	if (!decl_ok(function)) return false;
 REGISTER_MAIN:
 	context->unit->main_function = function;
@@ -4739,6 +4732,19 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 						SEMA_ERROR(type_info, "No size could be inferred.");
 						goto FAIL;
 					}
+					switch (sema_resolve_storage_type(context, decl->type))
+					{
+						case STORAGE_NORMAL:
+						case STORAGE_COMPILE_TIME:
+							break;
+						case STORAGE_ERROR:
+							goto FAIL;
+						case STORAGE_VOID:
+						case STORAGE_WILDCARD:
+						case STORAGE_UNKNOWN:
+							SEMA_ERROR(type_info, "Expected a runtime or compile time type with a well-defined zero value.");
+							goto FAIL;
+					}
 					decl->var.init_expr = init = expr_new(EXPR_POISONED, decl->span);
 					expr_rewrite_to_const_zero(init, type_no_optional(decl->type));
 				}
@@ -5075,7 +5081,7 @@ static inline void mangle_type_param(Type *type, bool mangled)
 }
 
 
-static bool sema_generate_parameter_suffix_to_scratch(SemaContext *context, Expr **params, bool mangled, bool *was_recursive_ref)
+static bool sema_generate_parameter_suffix_to_scratch(Expr **params, bool mangled)
 {
 	scratch_buffer_clear();
 	scratch_buffer_append(mangled ? "$" : "{");
@@ -5256,7 +5262,7 @@ FOUND:;
 		Decl **copied_cond = NULL;
 		if (!suffix)
 		{
-			if (!sema_generate_parameter_suffix_to_scratch(context, params, false, false)) return poisoned_decl;
+			if (!sema_generate_parameter_suffix_to_scratch(params, false)) return poisoned_decl;
 			suffix = scratch_buffer_interned();
 		}
 		instance->instance_decl.name_suffix = suffix;
@@ -5278,14 +5284,6 @@ FOUND:;
 		vec_add(generic->generic_decl.instances, instance);
 		AnalysisStage stage = module->stage;
 		ASSERT(stage > ANALYSIS_IMPORTS);
-		// Add all the normal top level declarations
-		FOREACH(Decl *, decl, copied) unit_register_global_decl(decl->unit, decl);
-		// Add all the conditional declarations
-		FOREACH(Decl *, decl, copied_cond)
-		{
-			unit_register_optional_global_decl(decl->unit, decl);
-			if (decl->decl_kind != DECL_ERASED) vec_add(copied, decl);
-		}
 		if (compiler.context.errors_found) return poisoned_decl;
 
 		// Check contracts
@@ -5301,9 +5299,20 @@ FOUND:;
 				SourceSpan param_span = extend_span_with_token(params[0]->span, VECLAST(params)->span);
 				if (!sema_analyse_generic_module_contracts(context, module, instance, contracts, param_span, invocation_span))
 				{
-					return poisoned_decl;
+					decl_poison(instance);
+					decl_poison(alias);
+					return alias;
 				}
 			}
+		}
+
+		// Add all the normal top level declarations
+		FOREACH(Decl *, decl, copied) unit_register_global_decl(decl->unit, decl);
+		// Add all the conditional declarations
+		FOREACH(Decl *, decl, copied_cond)
+		{
+			unit_register_optional_global_decl(decl->unit, decl);
+			if (decl->decl_kind != DECL_ERASED) vec_add(copied, decl);
 		}
 
 		if (stage < ANALYSIS_METHODS_REGISTER) goto EXIT;
@@ -5331,7 +5340,8 @@ FOUND:;
 		{
 			SemaContext context_gen;
 			sema_context_init(&context_gen, decl->unit);
-			context_gen.active_scope = (DynamicScope) { .depth = 0 };
+			DynamicScope empty = { .depth = 0 };
+			context_gen.active_scope = empty;
 			sema_analyse_decl(&context_gen, decl);
 			context_gen.generic_instance = instance;
 			sema_analyse_inner_func_ptr(&context_gen, decl);
@@ -5357,7 +5367,29 @@ FOUND:;
 					break;
 			}
 		}
-		ASSERT(stage < ANALYSIS_INTERFACE);
+		if (stage < ANALYSIS_INTERFACE) goto EXIT;
+		if (compiler.context.errors_found) return poisoned_decl;
+		FOREACH(Decl *, decl, copied)
+		{
+			SemaContext context_gen;
+			switch (decl->decl_kind)
+			{
+				case DECL_TYPEDEF:
+				case DECL_STRUCT:
+				case DECL_UNION:
+				case DECL_ENUM:
+				case DECL_BITSTRUCT:
+					break;
+				default:
+					continue;
+			}
+			if (decl->interfaces)
+			{
+				sema_context_init(&context_gen, decl->unit);
+				sema_check_interfaces(&context_gen, decl);
+				sema_context_destroy(&context_gen);
+			}
+		}
 EXIT:;
 		if (compiler.context.errors_found) return poisoned_decl;
 	}
@@ -5382,7 +5414,7 @@ EXIT:;
 
 }
 Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_path, const char *name, SourceSpan span,
-                                            Expr **params, bool *was_recursive_ref, SourceSpan invocation_span)
+                                            Expr **params, SourceSpan invocation_span)
 {
 	Decl *alias = sema_resolve_parameterized_symbol(context, name, decl_path, span);
 	if (!alias) return poisoned_decl;
@@ -5425,6 +5457,10 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 				return poisoned_decl;
 			}
 			Type *type = param->const_expr.typeid;
+			if (type_is_optional(type))
+			{
+				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "The generic type can never be an optional, please use only non-optional types.");
+			}
 			if (type_is_func_ptr(type))
 			{
 				if (!sema_resolve_type_decl(context, type->pointer)) return poisoned_decl;
@@ -5434,23 +5470,25 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 		{
 			if (is_type)
 			{
-				SEMA_ERROR(param, "Expected a type, not a value, for parameter '%s'.", param_name);
-				return poisoned_decl;
+				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "Expected a type, not a value, for parameter '%s'.", param_name);
 			}
 			if (!sema_analyse_ct_expr(context, param)) return poisoned_decl;
 			Type *type = param->type->canonical;
 			if (type->type_kind == TYPE_TYPEDEF) type = type_flatten(type);
+			if (IS_OPTIONAL(param))
+			{
+				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "The parameter may never be an optional value.");
+			}
 
 			bool is_enum_or_fault = type_kind_is_enum_or_fault(type->type_kind);
 			if (!type_is_integer_or_bool_kind(type) && !is_enum_or_fault)
 			{
-				SEMA_ERROR(param, "Only integer, bool, fault and enum values may be generic arguments.");
-				return poisoned_decl;
+				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "Only integer, bool, fault and enum values may be generic arguments.");
 			}
 			ASSERT(expr_is_const(param));
 		}
 	}
-	if (!sema_generate_parameter_suffix_to_scratch(context, params, true, was_recursive_ref)) return poisoned_decl;
+	if (!sema_generate_parameter_suffix_to_scratch(params, true)) return poisoned_decl;
 	const char *suffix = scratch_buffer_interned();
 	return sema_generate_parameterized_identifier(context, generic, alias, params, NULL, NULL, suffix, invocation_span, span);
 }

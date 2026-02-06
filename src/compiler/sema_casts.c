@@ -25,9 +25,10 @@ typedef struct // NOLINT
 static bool sema_error_const_int_out_of_range(CastContext *cc, Expr *expr, Expr *problem, Type *to_type);
 static Expr *recursive_may_narrow(Expr *expr, Type *type);
 static void expr_recursively_rewrite_untyped_list(Expr *expr, Type *to_type);
+static void expr_rewrite_bytes_to_const_initializer(Expr *expr, Type *target_type);
 static void vector_const_initializer_convert_to_type(ConstInitializer *initializer, Type *to_type);
 static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent);
-
+static void cast_arr_to_vec(Expr *expr, Type *to_type);
 static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool is_silent,
                           bool is_binary_conversion);
 INLINE ConvGroup type_to_group(Type *type);
@@ -536,9 +537,8 @@ RETRY:
 			{
 				case UNARYOP_ERROR:
 				case UNARYOP_ADDR:
-				case UNARYOP_NOT:
 				case UNARYOP_TADDR:
-					UNREACHABLE
+					UNREACHABLE;
 				case UNARYOP_DEREF:
 					// Check sizes.
 					goto CHECK_SIZE;
@@ -549,6 +549,9 @@ RETRY:
 				case UNARYOP_DEC:
 					expr = expr->unary_expr.expr;
 					goto RETRY;
+				case UNARYOP_NOT:
+					goto CHECK_SIZE;
+
 			}
 		}
 		default:
@@ -2034,7 +2037,7 @@ static void cast_vec_to_arr(Expr *expr, Type *to_type)
  */
 static void cast_vec_to_vec(Expr *expr, Type *to_type)
 {
-	if (!sema_cast_const(expr))
+	if (!sema_cast_const(expr) || !expr_is_const_initializer(expr))
 	{
 		// Extract indexed types.
 		Type *from_type = type_flatten(expr->type);
@@ -2376,7 +2379,51 @@ static void cast_vecarr_to_slice(Expr *expr, Type *to_type)
 	}
 	UNREACHABLE_VOID
 }
-static void cast_slice_to_vecarr(Expr *expr, Type *to_type)
+static void cast_slice_to_arr(Expr *expr, Type *to_type)
+{
+	if (!sema_cast_const(expr))
+	{
+		switch (expr->expr_kind)
+		{
+			case EXPR_SLICE:
+			case EXPR_MAKE_SLICE:
+			{
+				expr->inner_expr = expr_copy(expr);
+				expr->expr_kind = EXPR_SLICE_TO_VEC_ARRAY;
+				expr->type = to_type;
+				expr->resolve_status = RESOLVE_DONE;
+				return;
+			}
+			default:
+				UNREACHABLE_VOID;
+		}
+	}
+	if (expr_is_const_slice(expr))
+	{
+		expr->const_expr.const_kind = CONST_INITIALIZER;
+	}
+	ASSERT(expr_is_const(expr));
+	expr->type = to_type;
+}
+
+static void expr_rewrite_bytes_to_const_initializer(Expr *expr, Type *target_type)
+{
+	Type *flat_vec = type_flatten(target_type);
+	Type *base = type_flatten(flat_vec->array.base);
+	ConstInitializer **inits = MALLOC(sizeof(ConstInitializer*) * expr->const_expr.bytes.len);
+	for (int i = 0; i < expr->const_expr.bytes.len; i++)
+	{
+		Expr *int_expr = expr_new_const_int(expr->span, base, (unsigned char)expr->const_expr.bytes.ptr[i]);
+		ConstInitializer *init = const_init_new_value(int_expr);
+		inits[i] = init;
+	}
+	ASSERT(inits);
+	Type *type = type_get_vector(base, flat_vec->type_kind, expr->const_expr.bytes.len);
+	ConstInitializer *slice = const_init_new_array_full(type, inits);
+	expr_rewrite_const_initializer(expr, type, slice);
+}
+
+static void cast_slice_to_vec(Expr *expr, Type *to_type)
 {
 	if (!sema_cast_const(expr))
 	{
@@ -2394,6 +2441,11 @@ static void cast_slice_to_vecarr(Expr *expr, Type *to_type)
 				UNREACHABLE_VOID;
 		}
 	}
+	if (expr_is_const_bytes(expr) || expr_is_const_string(expr))
+	{
+		expr_rewrite_bytes_to_const_initializer(expr, to_type);
+	}
+
 	if (expr_is_const_slice(expr))
 	{
 		expr->const_expr.const_kind = CONST_INITIALIZER;
@@ -2435,18 +2487,16 @@ static void cast_arr_to_vec(Expr *expr, Type *to_type)
 	Type *to_temp = index_vec == index_arr ? to_type : type_get_vector(index_arr, to_type->canonical->type_kind, type_flatten(expr->type)->array.len);
 	if (sema_cast_const(expr))
 	{
-		// For the array -> vector this is always a simple rewrite of type.
 		if (expr->const_expr.const_kind == CONST_BYTES || expr->const_expr.const_kind == CONST_STRING)
 		{
-			expr->type = to_temp;
+			expr_rewrite_bytes_to_const_initializer(expr, to_type);
+			expr->type = to_type;
+			return;
 		}
-		else
-		{
-			ASSERT(expr->const_expr.const_kind == CONST_INITIALIZER);
-			ConstInitializer *list = expr->const_expr.initializer;
-			list->type = type_flatten(to_temp);
-			expr->type = to_temp;
-		}
+		ASSERT(expr->const_expr.const_kind == CONST_INITIALIZER);
+		ConstInitializer *list = expr->const_expr.initializer;
+		list->type = type_flatten(to_temp);
+		expr->type = to_temp;
 	}
 	else
 	{
@@ -2511,7 +2561,8 @@ static void cast_typeid_to_bool(Expr *expr, Type *to_type) { expr_rewrite_int_to
 #define TI2IN &cast_typeid_to_int        
 #define TI2PT &cast_typeid_to_ptr        
 #define AF2BO &cast_anyfault_to_bool     
-#define SL2VA &cast_slice_to_vecarr
+#define SL2VC &cast_slice_to_vec
+#define SL2AR &cast_slice_to_arr
 #define VA2SL &cast_vecarr_to_slice
 #define XX2VO &cast_all_to_void          
 #define SL2FE &cast_slice_to_infer
@@ -2596,7 +2647,7 @@ CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1] = {
  {XX2VO,      0, IN2BO, IN2IN, IN2FP, IN2PT,     0, EX2VC, IA2BS,     0,     0,     0,     0,     0,     0, IN2EN,     0, IN2PT,     0,     0, IN2PT, IN2PT,     0,     0     }, // INT
  {XX2VO,      0, FP2BO, FP2IN, FP2FP,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // FLOAT
  {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT,     0, EX2VC,     0,     0,     0,     0,     0, PT2AY, PT2AY,     0,     0,     0,     0,     0, PT2PT, PT2PT, PT2FE,     0     }, // PTR
- {XX2VO,      0, SL2BO,     0,     0, SL2PT, SL2SL, SL2VA,     0,     0, SL2VA,     0,     0,     0,     0,     0,     0,     0,     0,     0, SL2PT, SL2PT, SL2FE,     0     }, // SLICE
+ {XX2VO,      0, SL2BO,     0,     0, SL2PT, SL2SL, SL2VC,     0,     0, SL2AR,     0,     0,     0,     0,     0,     0,     0,     0,     0, SL2PT, SL2PT, SL2FE,     0     }, // SLICE
  {XX2VO,      0,     0,     0,     0,     0, VA2SL, VC2VC,     0,     0, VC2AR,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, VA2FE,     0     }, // VECTOR
  {XX2VO,      0, BS2BO, BS2IA,     0,     0,     0,     0,     0,     0, BS2IA,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BITSTRUCT
  {    0,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // DISTINCT

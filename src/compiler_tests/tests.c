@@ -10,6 +10,12 @@
 #include "benchmark.h"
 #include "utils/json.h"
 
+#define TEST_ASSERT(condition_, string_) while (!(condition_)) { FATAL_ERROR(string_); }
+#define TEST_ASSERTF(condition_, format_, ...) while (!(condition_)) { FATAL_ERROR(format_, __VA_ARGS__); }
+#define EXPECT(_string, _value, _expected) \
+ do { long long __tempval1 = _value; long long __tempval2 = _expected; \
+	TEST_ASSERT(__tempval1 == __tempval2, "Checking " _string ": expected %lld but was %lld.", __tempval2, __tempval1); } while(0)
+
 void test_file(void)
 {
 	File file;

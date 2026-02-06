@@ -263,7 +263,7 @@ void x64_classify_struct_union(Type *type, ByteSize offset_base, X64Class *curre
 void x64_classify_array(Type *type, ByteSize offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class, NamedArgument named_arg)
 {
 	ByteSize size = type_size(type);
-	Type *element = type_lowering(type->array.base);
+	Type *element = lowered_array_element_type(type);
 	ByteSize element_size = type_size(element);
 	// Bigger than 64 bytes => MEM
 	if (size > 64) return;
@@ -485,8 +485,13 @@ bool x64_contains_float_at_offset(LoweredType *type, unsigned offset)
 
 static Type *x64_get_fp_type_at_offset(Type *type, unsigned ir_offset)
 {
+	while (type->type_kind == TYPE_UNION)
+	{
+		Decl *decl = type->decl;
+		type = decl->strukt.members[decl->strukt.union_rep]->type;
+	}
 	if (!ir_offset && type_is_float(type)) return type;
-	if (type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_UNION)
+	if (type->type_kind == TYPE_STRUCT)
 	{
 		Decl *element = x64_get_member_at_offset(type->decl, ir_offset);
 		return x64_get_fp_type_at_offset(lowered_member_type(element), ir_offset - element->offset);

@@ -4,13 +4,11 @@ import std;
 
 const char *VOWS = "aeiou";
 const char *CONS = "bcdfghjklmnpqrstvwxyz";
-const char *TEST = "";
 
 fn int main (String[] args)
 {
 	char a = *VOWS;
 	char b = *CONS;
-	char c = *TEST;
 	return 0;
 }
 
@@ -18,12 +16,9 @@ fn int main (String[] args)
 
 @.str = private unnamed_addr constant [6 x i8] c"aeiou\00", align 1
 @test.VOWS = local_unnamed_addr constant ptr @.str, align 8
-@.str.3 = private unnamed_addr constant [22 x i8] c"bcdfghjklmnpqrstvwxyz\00", align 1
-@test.CONS = local_unnamed_addr constant ptr @.str.3, align 8
-@.str.4 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
-@test.TEST = local_unnamed_addr constant ptr @.str.4, align 8
+@.str.2 = private unnamed_addr constant [22 x i8] c"bcdfghjklmnpqrstvwxyz\00", align 1
+@test.CONS = local_unnamed_addr constant ptr @.str.2, align 8
 
   store i8 97, ptr %a, align 1
   store i8 98, ptr %b, align 1
-  store i8 0, ptr %c, align 1
   ret i32 0

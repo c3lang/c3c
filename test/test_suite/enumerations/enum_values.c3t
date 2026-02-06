@@ -9,7 +9,7 @@ enum Foo
 }
 
 Foo zfok = Foo.values[0];
-Foo[] zw = &&Foo.values;
+Foo[] zw = Foo.values;
 
 fn void test(int x)
 {
@@ -19,17 +19,21 @@ fn void test(int x)
 /* #expect: test.ll
 
 @test.zfok = local_unnamed_addr global i32 0, align 4
-@.taddr = private unnamed_addr global [2 x i32] [i32 0, i32 1], align 4
-@test.zw = local_unnamed_addr global %"int[]" { ptr @.taddr, i64 2 }, align 8
+@.__const_slice = private unnamed_addr global [2 x i32] [i32 0, i32 1], align 4
+@test.zw = local_unnamed_addr global %"int[]" { ptr @.__const_slice, i64 2 }, align 8
+@.__const = private unnamed_addr constant [2 x i32] [i32 0, i32 1], align 4
 
 define void @test.test(i32 %0) #0 {
 entry:
   %zonk = alloca i32, align 4
   %literal = alloca [2 x i32], align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 8, i1 false)
+  %1 = insertvalue %"int[]" undef, ptr %literal, 0
+  %2 = insertvalue %"int[]" %1, i64 2, 1
+  %3 = extractvalue %"int[]" %2, 0
   %sext = sext i32 %0 to i64
-  %ptroffset = getelementptr inbounds [4 x i8], ptr %literal, i64 %sext
-  %1 = load i32, ptr %ptroffset, align 4
-  store i32 %1, ptr %zonk, align 4
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %3, i64 %sext
+  %4 = load i32, ptr %ptroffset, align 4
+  store i32 %4, ptr %zonk, align 4
   ret void
 }

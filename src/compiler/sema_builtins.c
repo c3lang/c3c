@@ -37,7 +37,7 @@ static bool sema_expr_analyse_syscall(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, bool swizzle_two);
 static inline int builtin_expected_args(BuiltinFunction func);
 static inline bool is_valid_atomicity(SemaContext *context, Expr *expr);
-static bool sema_check_alignment_expression(SemaContext *context, Expr *align);
+static bool sema_check_alignment_expression(SemaContext *context, Expr *align, bool may_be_zero);
 
 static bool sema_expr_is_valid_mask_for_value(SemaContext *context, Expr *expr, Expr *value)
 {
@@ -78,15 +78,16 @@ static bool sema_check_builtin_args_const(SemaContext *context, Expr **args, siz
 	return true;
 }
 
-static bool sema_check_alignment_expression(SemaContext *context, Expr *align)
+static bool sema_check_alignment_expression(SemaContext *context, Expr *align, bool may_be_zero)
 {
 	if (!sema_analyse_expr_rhs(context, type_usz, align, false, NULL, false)) return false;
 	if (!expr_is_const_int(align)
 	    || !int_fits(align->const_expr.ixx, TYPE_U64)
 	    || (!is_power_of_two(align->const_expr.ixx.i.low) && align->const_expr.ixx.i.low))
 	{
-		RETURN_SEMA_ERROR(align, "Expected a constant power-of-two alignment or zero.");
+		RETURN_SEMA_ERROR(align, may_be_zero ? "Expected a constant power-of-two alignment or zero." : "Expected a constant power-of-two alignment.");
 	}
+	if (!may_be_zero && align->const_expr.ixx.i.low == 0) RETURN_SEMA_ERROR(align, "Alignment must not be zero.");
 	return true;
 }
 
@@ -258,7 +259,7 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 		RETURN_SEMA_ERROR(args[6], "Failure ordering may not be RELEASE / ACQUIRE_RELEASE.");
 	}
 	Expr *align = args[7];
-	if (!sema_check_alignment_expression(context, align)) return false;
+	if (!sema_check_alignment_expression(context, align, true)) return false;
 	expr->type = type_add_optional(args[1]->type, optional);
 	return true;
 }
@@ -1049,7 +1050,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 								  type_get_vector(pointer_type->pointer, flat_pointer_vec->type_kind, len)),
 						  type_quoted_error_string(args[2]->type));
 			}
-			if (!sema_check_alignment_expression(context, args[3])) return false;
+			if (!sema_check_alignment_expression(context, args[3], true)) return false;
 			if (!sema_expr_is_valid_mask_for_value(context, args[1], args[2])) return false;
 			rtype = type_get_vector(pointer_type->pointer, flat_pointer_vec->type_kind, len);
 			break;
@@ -1072,7 +1073,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 								  type_get_vector_from_vector(pointer_type->pointer, flat_pointer_vec)),
 						  type_quoted_error_string(args[2]->type));
 			}
-			if (!sema_check_alignment_expression(context, args[3])) return false;
+			if (!sema_check_alignment_expression(context, args[3], true)) return false;
 			if (!sema_expr_is_valid_mask_for_value(context, args[2], args[1])) return false;
 			rtype = type_void;
 			break;
@@ -1125,7 +1126,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			{
 				RETURN_SEMA_ERROR(args[2], "Expected the value to be of type %s.", type_quoted_error_string(pointer_type->pointer));
 			}
-			if (!sema_check_alignment_expression(context, args[3])) return false;
+			if (!sema_check_alignment_expression(context, args[3], true)) return false;
 			if (!sema_expr_is_valid_mask_for_value(context, args[1], args[2])) return false;
 			rtype = pointer_type->pointer;
 			break;
@@ -1140,7 +1141,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			{
 				RETURN_SEMA_ERROR(args[2], "Expected the value to be of type %s.", type_quoted_error_string(pointer_type->pointer));
 			}
-			if (!sema_check_alignment_expression(context, args[3])) return false;
+			if (!sema_check_alignment_expression(context, args[3], true)) return false;
 			if (!sema_expr_is_valid_mask_for_value(context, args[2], args[1])) return false;
 			rtype = type_void;
 			break;
@@ -1217,7 +1218,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER, BA_BOOL}, 3)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (original == type_voidptr) RETURN_SEMA_ERROR(args[0], "Expected a typed pointer.");
-			if (!sema_check_alignment_expression(context, args[1])) return false;
+			if (!sema_check_alignment_expression(context, args[1], false)) return false;
 			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
 			rtype = original->pointer;
 			break;
@@ -1228,7 +1229,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER}, 1)) return false;
 			if (!sema_check_builtin_args(context, &args[2], (BuiltinArg[]) {BA_INTEGER, BA_BOOL}, 2)) return false;
 			Type *original = type_flatten(args[0]->type);
-			if (!sema_check_alignment_expression(context, args[2])) return false;
+			if (!sema_check_alignment_expression(context, args[2], false)) return false;
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "'is_volatile' must be a compile time constant.");
 			if (original != type_voidptr)
 			{
@@ -1282,7 +1283,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
 			if (args[3]->const_expr.ixx.i.low == ATOMIC_UNORDERED) RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
-			if (!sema_check_alignment_expression(context, args[4])) return false;
+			if (!sema_check_alignment_expression(context, args[4], true)) return false;
 			rtype = args[1]->type;
 			break;
 		}
@@ -1302,7 +1303,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
 			if (args[3]->const_expr.ixx.i.low == ATOMIC_UNORDERED) RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
-			if (!sema_check_alignment_expression(context, args[4])) return false;
+			if (!sema_check_alignment_expression(context, args[4], true)) return false;
 			rtype = args[1]->type;
 			break;
 		}
@@ -1321,7 +1322,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
 			if (args[3]->const_expr.ixx.i.low == ATOMIC_UNORDERED) RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
-			if (!sema_check_alignment_expression(context, args[4])) return false;
+			if (!sema_check_alignment_expression(context, args[4], true)) return false;
 			rtype = args[1]->type;
 			break;
 		}
@@ -1341,7 +1342,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
 			if (args[3]->const_expr.ixx.i.low == ATOMIC_UNORDERED) RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
-			if (!sema_check_alignment_expression(context, args[4])) return false;
+			if (!sema_check_alignment_expression(context, args[4], true)) return false;
 			rtype = args[1]->type;
 			break;
 		}

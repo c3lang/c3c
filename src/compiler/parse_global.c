@@ -689,6 +689,11 @@ static inline TypeInfo *parse_vector_type_index(ParseContext *c, TypeInfo *type)
 			PRINT_ERROR_HERE("Only '@simd' is a valid attribute, found '%s'.", symstr(c));
 			return poisoned_type_info;
 		}
+		if (vector->kind == TYPE_INFO_INFERRED_VECTOR)
+		{
+			PRINT_ERROR_HERE("The '@simd' attribute cannot be used on an inferred vector type.");
+			return poisoned_type_info;
+		}
 		advance(c);
 		vector->is_simd = true;
 	}
@@ -1007,7 +1012,7 @@ Decl *parse_const_declaration(ParseContext *c, bool is_global, bool is_extern)
 	// Differentiate between global and local attributes, global have visibility
 	if (is_global)
 	{
-		if (!parse_attributes_for_global(c, decl)) return false;
+		if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	}
 	else
 	{
@@ -1276,6 +1281,16 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 					expr->overload_expr = try_consume(c, TOKEN_EQ) ? OVERLOAD_ELEMENT_SET : OVERLOAD_ELEMENT_AT;
 					RANGE_EXTEND_PREV(expr);
 					break;
+				case TOKEN_LESS:
+				case TOKEN_LESS_EQ:
+				case TOKEN_GREATER:
+				case TOKEN_GREATER_EQ:
+					RETURN_PRINT_ERROR_HERE("Comparisons '<', '<=', '>', '>=' cannot be overloaded, only '==' and '!=' are supported.");
+				case TOKEN_PLUSPLUS:
+				case TOKEN_MINUSMINUS:
+					RETURN_PRINT_ERROR_HERE("Increment and decrement operators '++' and '--' cannot be directly overloaded, use '+=' and '-=' instead.");
+				case TOKEN_DOT:
+					RETURN_PRINT_ERROR_HERE("You cannot overload '.'.");
 				default:
 PARSE_EXPR:
 					expr = parse_constant_expr(c);
@@ -1817,6 +1832,12 @@ CHECK_ELLIPSIS:
 				span = c->prev_span;
 				param_kind = VARDECL_PARAM;
 				break;
+			case TOKEN_CONST:
+				if (token_is_any_type(peek(c)))
+				{
+					RETURN_PRINT_ERROR_HERE("'const' is not allowed here, did you try to make a C style const parameter? In that case, consider using contracts with '@param [in]' for the parameter.");
+				}
+				FALLTHROUGH;
 			default:
 				if (token_is_keyword(c->tok))
 				{

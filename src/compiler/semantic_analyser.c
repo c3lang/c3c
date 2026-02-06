@@ -8,12 +8,13 @@
 char swizzle[256] = { ['x'] = 0x01, ['y'] = 0x02, ['z'] = 0x03, ['w'] = 0x04,
 					  ['r'] = 0x11, ['g'] = 0x12, ['b'] = 0x13, ['a'] = 0x14 };
 
-void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
+void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, SourceSpan span)
 {
 	unsigned depth = context->active_scope.depth + 1;
 	if (depth > MAX_SCOPE_DEPTH)
 	{
-		FATAL_ERROR("Too deeply nested scopes.");
+		sema_error_at(context, span, "Resolution failed due to too deeply nested scopes (%u).", depth);
+		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 
 	bool scope_is_dead = context->active_scope.is_dead;
@@ -34,18 +35,19 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 	if (is_macro) flags &= ~(SCOPE_ENSURE | SCOPE_ENSURE_MACRO);
 
 	unsigned label_start = new_label_scope ? last_local : context->active_scope.label_start;
-	context->active_scope = (DynamicScope) {
-			.allow_dead_code = false,
-			.is_dead = scope_is_dead,
-			.is_poisoned = scope_is_poisoned,
-			.depth = depth,
-			.current_local = last_local,
-			.label_start = label_start,
-			.in_defer = previous_defer,
-			.defer_last = parent_defer,
-			.defer_start = parent_defer,
-			.flags = flags,
+	DynamicScope new_scope = {
+		.allow_dead_code = false,
+		.is_dead = scope_is_dead,
+		.is_poisoned = scope_is_poisoned,
+		.depth = depth,
+		.current_local = last_local,
+		.label_start = label_start,
+		.in_defer = previous_defer,
+		.defer_last = parent_defer,
+		.defer_start = parent_defer,
+		.flags = flags,
 	};
+	context->active_scope = new_scope;
 }
 
 const char *context_filename(SemaContext *context)
@@ -57,9 +59,9 @@ const char *context_filename(SemaContext *context)
 	return file->full_path;
 }
 
-void context_change_scope_for_label(SemaContext *context, DeclId label_id)
+void context_change_scope_for_label(SemaContext *context, DeclId label_id, SourceSpan span)
 {
-	context_change_scope_with_flags(context, SCOPE_NONE);
+	context_change_scope_with_flags(context, SCOPE_NONE, span);
 
 	if (label_id)
 	{
@@ -143,7 +145,7 @@ void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast)
 	ASSERT(ast->ast_kind != AST_COMPOUND_STMT);
 	Ast *replacement = ast_copy(ast);
 	ast->ast_kind = AST_COMPOUND_STMT;
-	ast->compound_stmt = (AstCompoundStmt) { .first_stmt = astid(replacement) };
+	ast->compound_stmt = (AstCompoundStmt) { .first_stmt = astid(replacement), .parent_defer = 0 };
 	replacement->next = defer_first;
 }
 
@@ -172,9 +174,6 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 				UNREACHABLE_VOID
 			case ANALYSIS_MODULE_HIERARCHY:
 				sema_analyse_pass_module_hierarchy(module);
-				break;
-			case ANALYSIS_MODULE_TOP:
-				sema_analyse_pass_top(module);
 				break;
 			case ANALYSIS_IMPORTS:
 				sema_analysis_pass_process_imports(module);
@@ -277,8 +276,30 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 				if (decl->func_decl.type_parent) continue;
 				break;
 		}
-		htable_set(&unit->module->symbols, (void *)decl->name, decl);
-		htable_set(&unit->local_symbols, (void *)decl->name, decl);
+		Decl *old;
+		if (decl->visibility < VISIBLE_LOCAL)
+		{
+			if ((old = htable_set(&unit->module->symbols, (void *)decl->name, decl)))
+			{
+				if (old->generic_id != decl->generic_id)
+				{
+					sema_shadow_error(NULL, decl, old);
+					decl_poison(decl);
+					decl_poison(old);
+					continue;
+				}
+			}
+		}
+		if ((old = htable_set(&unit->local_symbols, (void *)decl->name, decl)))
+		{
+			if (old->generic_id != decl->generic_id)
+			{
+				sema_shadow_error(NULL, decl, old);
+				decl_poison(decl);
+				decl_poison(old);
+				continue;
+			}
+		}
 
 		if (decl->visibility == VISIBLE_PUBLIC)
 		{
@@ -606,6 +627,17 @@ void sema_error_at(SemaContext *context, SourceSpan span, const char *message, .
 	sema_verror_range(span, message, list);
 	va_end(list);
 	sema_print_inline(context, span);
+}
+
+bool sema_warn_very_strict(SemaContext *context, SourceSpan span, const char *message, ...)
+{
+	if (compiler.build.validation_level < VALIDATION_OBNOXIOUS) return false;
+	va_list list;
+	va_start(list, message);
+	sema_verror_range(span, message, list);
+	va_end(list);
+	sema_print_inline(context, span);
+	return true;
 }
 
 bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ...)

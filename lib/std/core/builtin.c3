@@ -24,11 +24,15 @@ macro foo(a, #b = EMPTY_MACRO_SLOT)
 	$endif
 }
 *>
-const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
+const EmptySlot EMPTY_MACRO_SLOT @builtin @deprecated("Use `#arg = ...` instead.") = null;
 
 typedef EmptySlot = void*;
-macro bool @is_empty_macro_slot(#arg) @const @builtin => $typeof(#arg) == EmptySlot;
-macro bool @is_valid_macro_slot(#arg) @const @builtin => $typeof(#arg) != EmptySlot;
+macro bool @is_empty_macro_slot(#arg) @const @builtin
+		@deprecated("Use `#arg = ...` to define an optional macro slot, and `$defined(#arg)` to detect whether the argument is set.")
+	=> $typeof(#arg) == EmptySlot;
+macro bool @is_valid_macro_slot(#arg) @const @builtin
+		@deprecated("Use `#arg = ...` to define an optional macro slot, and `$defined(#arg)` to detect whether the argument is set.")
+	=> $typeof(#arg) != EmptySlot;
 
 <*
  Returns a random value at compile time.
