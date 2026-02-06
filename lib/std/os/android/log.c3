@@ -1,7 +1,7 @@
 module std::os::android @if(env::ANDROID);
 
 
-enum LogPriority : (CInt val)
+enum AndroidLogPriority : (CInt val)
 {
 	ANDROID_LOG_UNKNOWN = 0,
 	ANDROID_LOG_DEFAULT = 1,
@@ -14,7 +14,7 @@ enum LogPriority : (CInt val)
 	ANDROID_LOG_SILENT  = 8
 }
 
-enum LogId : (CInt val)
+enum AndroidLogId : (CInt val)
 {
 	LOG_ID_MIN      = 0,
 	LOG_ID_MAIN     = 0,
@@ -29,7 +29,7 @@ enum LogId : (CInt val)
 	LOG_ID_DEFAULT  = 0x7FFFFFFF
 }
 
-struct LogMessage @packed
+struct AndroidLogMessage @packed
 {
 	usz struct_size;
 	CInt buffer_id;
@@ -40,11 +40,11 @@ struct LogMessage @packed
 	ZString message;
 }
 
-extern fn CInt log_write(LogPriority prio, ZString tag, ZString text) @cname("__android_log_write");
-extern fn CInt log_print(LogPriority prio, ZString tag, ZString fmt, ...) @cname("__android_log_print");
+extern fn CInt log_write(AndroidLogPriority prio, ZString tag, ZString text) @cname("__android_log_write");
+extern fn CInt log_print(AndroidLogPriority prio, ZString tag, ZString fmt, ...) @cname("__android_log_print");
 extern fn void log_assert(ZString cond, ZString tag, ZString fmt, ...) @cname("__android_log_assert");
 
-fn bool log_id_is_valid(LogId id)
+fn bool log_id_is_valid(AndroidLogId id)
 {
 	return id >= LOG_ID_MIN && id < LOG_ID_MAX;
 }
@@ -52,13 +52,13 @@ fn bool log_id_is_valid(LogId id)
 extern fn CInt log_buf_write(CInt bufID, CInt prio, ZString tag, ZString text) @cname("__android_log_buf_write");
 extern fn CInt log_buf_print(CInt bufID, CInt prio, ZString tag, ZString fmt, ...) @cname("__android_log_buf_print");
 
-alias LoggerFunction = fn void(LogMessage* log_message);
+alias LoggerFunction = fn void(AndroidLogMessage* log_message);
 alias AborterFunction = fn void(ZString abort_message);
 
-extern fn void log_write_log_message(LogMessage log_message) @cname("__android_log_write_log_message");
+extern fn void log_write_log_message(AndroidLogMessage log_message) @cname("__android_log_write_log_message");
 extern fn void log_set_logger(LoggerFunction logger) @cname("__android_log_set_logger");
-extern fn void log_logd_logger(LogMessage log_message) @cname("__android_log_logd_logger");
-extern fn void log_stderr_logger(LogMessage log_message) @cname("__android_log_stderr_logger");
+extern fn void log_logd_logger(AndroidLogMessage log_message) @cname("__android_log_logd_logger");
+extern fn void log_stderr_logger(AndroidLogMessage log_message) @cname("__android_log_stderr_logger");
 extern fn void log_set_aborter(AborterFunction aborter) @cname("__android_log_set_aborter");
 extern fn void log_call_aborter(ZString abort_message) @cname("__android_log_call_aborter");
 extern fn void log_default_aborter(ZString abort_message) @cname("__android_log_default_aborter");

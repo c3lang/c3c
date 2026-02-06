@@ -65,7 +65,8 @@ void compiler_init(BuildOptions *build_options)
 
 	INFO_LOG("Version: %s", COMPILER_VERSION);
 
-	compiler.context = (GlobalContext) { .in_panic_mode = false };
+	GlobalContext new_context = { .in_panic_mode = false };
+	compiler.context = new_context;
 	// Skip library detection.
 	//compiler.lib_dir = find_lib_dir();
 	//DEBUG_LOG("Found std library: %s", compiler.lib_dir);
