@@ -4080,7 +4080,14 @@ Decl *sema_create_runner_main(SemaContext *context, Decl *decl)
 	return function;
 }
 
-static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl, MainType main, bool int_return, bool is_winmain, bool is_wmain)
+typedef enum
+{
+	MAIN_SUBTYPE_NORMAL,
+	MAIN_SUBTYPE_WINMAIN,
+	MAIN_SUBTYPE_WMAIN
+} MainSubType;
+
+static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl, MainType main, MainSubType sub_type)
 {
 	Decl *function = decl_new(DECL_FUNC, NULL, decl->span);
 	function->is_export = true;
@@ -4092,28 +4099,30 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 	// Pick wWinMain, main or wmain
 	Decl *params[4] = { NULL, NULL, NULL, NULL };
 	int param_count;
-	if (is_winmain)
+	switch (sub_type)
 	{
-		function->extname = kw_winmain;
-		params[0] = decl_new_generated_var(type_voidptr, VARDECL_PARAM, decl->span);
-		params[1]  = decl_new_generated_var(type_voidptr, VARDECL_PARAM, decl->span);
-		params[2]  = decl_new_generated_var(type_get_ptr(type_ushort), VARDECL_PARAM, decl->span);
-		params[3]  = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
-		param_count = 4;
-	}
-	else if (is_wmain)
-	{
-		function->extname = kw_wmain;
-		params[0] = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
-		params[1] = decl_new_generated_var(type_get_ptr(type_get_ptr(type_ushort)), VARDECL_PARAM, decl->span);
-		param_count = 2;
-	}
-	else
-	{
-		function->extname = kw_main;
-		params[0] = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
-		params[1] = decl_new_generated_var(type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
-		param_count = 2;
+		case MAIN_SUBTYPE_WINMAIN:
+			function->extname = kw_winmain;
+			params[0] = decl_new_generated_var(type_voidptr, VARDECL_PARAM, decl->span);
+			params[1]  = decl_new_generated_var(type_voidptr, VARDECL_PARAM, decl->span);
+			params[2]  = decl_new_generated_var(type_get_ptr(type_ushort), VARDECL_PARAM, decl->span);
+			params[3]  = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+			param_count = 4;
+			break;
+		case MAIN_SUBTYPE_WMAIN:
+			function->extname = kw_wmain;
+			params[0] = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+			params[1] = decl_new_generated_var(type_get_ptr(type_get_ptr(type_ushort)), VARDECL_PARAM, decl->span);
+			param_count = 2;
+			break;
+		case MAIN_SUBTYPE_NORMAL:
+			function->extname = kw_main;
+			params[0] = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+			params[1] = decl_new_generated_var(type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
+			param_count = 2;
+			break;
+		default:
+			UNREACHABLE;
 	}
 
 	function->has_extname = true;
@@ -4129,25 +4138,23 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 	switch (main)
 	{
 		case MAIN_TYPE_ARGS:
-			if (is_winmain)
+			switch (sub_type)
 			{
-				main_invoker = "@win_main_args";
-			}
-			else if (is_wmain)
-			{
-				main_invoker = "@wmain_main";
-			}
-			else
-			{
-				main_invoker = "@main_args";
+				case MAIN_SUBTYPE_WINMAIN: main_invoker = "@win_main_args"; break;
+				case MAIN_SUBTYPE_WMAIN: main_invoker = "@wmain_main"; break;
+				default: main_invoker = "@main_args"; break;
 			}
 			break;
 		case MAIN_TYPE_NO_ARGS:
-			ASSERT(!is_wmain);
-			main_invoker = is_winmain ? "@win_main_no_args" : "@main_no_args";
+			switch (sub_type)
+			{
+				case MAIN_SUBTYPE_WINMAIN: main_invoker = "@win_main_no_args"; break;
+				case MAIN_SUBTYPE_WMAIN: main_invoker = "@wmain_main_no_args"; break;
+				default: main_invoker = "@main_no_args"; break;
+			}
 			break;
 		case MAIN_TYPE_WIN:
-			ASSERT(is_winmain);
+			ASSERT(sub_type == MAIN_SUBTYPE_WINMAIN);
 			main_invoker = "@win_main";
 			break;
 		default:
@@ -4182,8 +4189,8 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 {
 	ASSERT(decl != context->unit->main_function);
-	bool is_winmain = decl->func_decl.attr_winmain;
 	bool is_win32 = compiler.platform.os == OS_TYPE_WIN32;
+	MainSubType sub_type = decl->func_decl.attr_winmain && is_win32 ? MAIN_SUBTYPE_WINMAIN : MAIN_SUBTYPE_NORMAL;
 	if (decl->visibility != VISIBLE_PUBLIC)
 	{
 		RETURN_SEMA_ERROR(decl, "A main function must be public.");
@@ -4203,8 +4210,8 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	{
 		RETURN_SEMA_ERROR(rtype_info, "Expected a return type of 'void' or %s.", type_quoted_error_string(type_cint));
 	}
-	// At this point the style is either MAIN_INT_VOID, MAIN_VOID_VOID or MAIN_ERR_VOID
-	MainType type = sema_find_main_type(context, signature, is_winmain);
+	// At this point the style is either MAIN_INT_VOID, MAIN_VOID_VOID
+	MainType type = sema_find_main_type(context, signature, sub_type == MAIN_SUBTYPE_WINMAIN);
 	if (type == MAIN_TYPE_ERROR) return false;
 	if (compiler.build.type == TARGET_TYPE_TEST || compiler.build.type == TARGET_TYPE_BENCHMARK) return true;
 	Decl *function;
@@ -4217,10 +4224,8 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	{
 		RETURN_SEMA_ERROR(rtype_info, "Int return is required for a C style main.");
 	}
-	// Suppress winmain on non-win32
-	if (compiler.platform.os != OS_TYPE_WIN32) is_winmain = false;
 
-	if ((type == MAIN_TYPE_RAW || type == MAIN_TYPE_NO_ARGS) && is_int_return && !is_winmain)
+	if ((type == MAIN_TYPE_RAW || type == MAIN_TYPE_NO_ARGS) && is_int_return && sub_type != MAIN_SUBTYPE_WINMAIN)
 	{
 		// Int return is pass-through at the moment.
 		decl->is_export = true;
@@ -4229,9 +4234,9 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		function = decl;
 		goto REGISTER_MAIN;
 	}
-	bool is_wmain = is_win32 && !is_winmain && type != MAIN_TYPE_NO_ARGS;
-	compiler.build.win.use_win_subsystem = is_winmain && is_win32;
-	function = sema_create_synthetic_main(context, decl, type, is_int_return, is_winmain, is_wmain);
+	if (is_win32 && type != MAIN_TYPE_NO_ARGS && sub_type != MAIN_SUBTYPE_WINMAIN) sub_type = MAIN_SUBTYPE_WMAIN;
+	compiler.build.win.use_win_subsystem = sub_type == MAIN_SUBTYPE_WINMAIN;
+	function = sema_create_synthetic_main(context, decl, type, sub_type);
 	if (!decl_ok(function)) return false;
 REGISTER_MAIN:
 	context->unit->main_function = function;
@@ -5076,7 +5081,7 @@ static inline void mangle_type_param(Type *type, bool mangled)
 }
 
 
-static bool sema_generate_parameter_suffix_to_scratch(SemaContext *context, Expr **params, bool mangled, bool *was_recursive_ref)
+static bool sema_generate_parameter_suffix_to_scratch(Expr **params, bool mangled)
 {
 	scratch_buffer_clear();
 	scratch_buffer_append(mangled ? "$" : "{");
@@ -5257,7 +5262,7 @@ FOUND:;
 		Decl **copied_cond = NULL;
 		if (!suffix)
 		{
-			if (!sema_generate_parameter_suffix_to_scratch(context, params, false, false)) return poisoned_decl;
+			if (!sema_generate_parameter_suffix_to_scratch(params, false)) return poisoned_decl;
 			suffix = scratch_buffer_interned();
 		}
 		instance->instance_decl.name_suffix = suffix;
@@ -5409,7 +5414,7 @@ EXIT:;
 
 }
 Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_path, const char *name, SourceSpan span,
-                                            Expr **params, bool *was_recursive_ref, SourceSpan invocation_span)
+                                            Expr **params, SourceSpan invocation_span)
 {
 	Decl *alias = sema_resolve_parameterized_symbol(context, name, decl_path, span);
 	if (!alias) return poisoned_decl;
@@ -5483,7 +5488,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 			ASSERT(expr_is_const(param));
 		}
 	}
-	if (!sema_generate_parameter_suffix_to_scratch(context, params, true, was_recursive_ref)) return poisoned_decl;
+	if (!sema_generate_parameter_suffix_to_scratch(params, true)) return poisoned_decl;
 	const char *suffix = scratch_buffer_interned();
 	return sema_generate_parameterized_identifier(context, generic, alias, params, NULL, NULL, suffix, invocation_span, span);
 }

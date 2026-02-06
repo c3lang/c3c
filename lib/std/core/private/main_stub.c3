@@ -140,6 +140,17 @@ macro int @wmain_main(#m, int argc, Char16** argv)
 	$endif
 }
 
+macro int @wmain_main_no_args(#m, int argc, Char16** argv)
+{
+	win32_set_utf8_codepage();
+	$if $typeof(#m()) == void:
+		#m();
+		return 0;
+	$else
+		return #m();
+	$endif
+}
+
 macro int @_wmain_runner(#m, int argc, Char16** argv)
 {
 	win32_set_utf8_codepage();
