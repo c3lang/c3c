@@ -167,6 +167,18 @@ const char *MAIN_TEMPLATE =
 		"\treturn 0;\n"
 		"}\n";
 
+const char *LIB_TEMPLATE =
+		"module %s;\n"
+		"\n"
+		"fn int add(int a, int b) @export(\"add_something\")\n"
+		"{\n"
+		"\treturn a + b;\n"
+		"}\n\n\n"
+		"fn int sub(int a, int b) @export(\"sub_something\")\n"
+		"{\n"
+		"\treturn a - b;\n"
+		"}\n";
+
 const char *GITIGNORE_TEMPLATE =
 		"build/\n"
 		"out/\n";
@@ -259,17 +271,21 @@ void create_library(BuildOptions *build_options)
 void create_project(BuildOptions *build_options)
 {
 	const char *template;
+	const char *main_template;
 	if (!build_options->template || strcmp(build_options->template, "exe") == 0)
 	{
 		template = JSON_EXE;
+		main_template = MAIN_TEMPLATE;
 	}
 	else if (strcmp(build_options->template, "static-lib") == 0)
 	{
 		template = JSON_STATIC;
+		main_template = LIB_TEMPLATE;
 	}
 	else if (strcmp(build_options->template, "dynamic-lib") == 0)
 	{
 		template = JSON_DYNAMIC;
+		main_template = LIB_TEMPLATE;
 	}
 	else
 	{
@@ -327,7 +343,7 @@ CREATE:
 	mkdir_or_fail(build_options, "src");
 	chdir_or_fail(build_options, "src");
 
-	create_file_or_fail(build_options, "main.c3", MAIN_TEMPLATE, module_name(build_options));
+	create_file_or_fail(build_options, "main.c3", main_template, module_name(build_options));
 	chdir_or_fail(build_options, "..");
 	mkdir_or_fail(build_options, "test");
 
