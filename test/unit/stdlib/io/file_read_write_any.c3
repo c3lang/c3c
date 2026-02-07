@@ -58,7 +58,10 @@ fn void read_write_any()
 	data.hello = 0xCC;
 
 	char[1024] buf;
-	String name = libc::tmpnam(&buf).str_view();
+
+	ZString zname = libc::tempnam(null, "testfile_");
+	defer libc::free(zname);
+	String name = zname.str_view();
     File file = file::open(name, "wb")!!;
 
 	io::write_any(&file, &data)!!;
