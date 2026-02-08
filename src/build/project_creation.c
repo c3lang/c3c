@@ -290,6 +290,7 @@ void create_project(BuildOptions *build_options)
 	else
 	{
 		size_t len;
+		main_template = MAIN_TEMPLATE;
 		template = file_read_all(build_options->template, &len);
 	}
 
