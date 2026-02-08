@@ -330,6 +330,65 @@ macro bool @all(array, #predicate)
 
 
 <*
+ Extract a copy of all even-index elements from an input array.
+
+ @param [&inout] allocator : "The allocator used to create the return array."
+ @param [in] array : "The array from which to extract all even elements."
+
+ @require @is_valid_list(array) : "Expected a valid list"
+*>
+macro even(Allocator allocator, array)
+{
+	usz len = lengthof(array);
+	usz odd = len % 2 == 0 ? 0 : 1;
+	usz new_len = len / 2 + odd;
+	if (new_len == 0) return ($typeof(array[0])[]){};
+	$typefrom($typeof(array[0])[]) new_array = allocator::new_array(allocator, $typeof(array[0]), new_len);
+	foreach (x, &new : new_array) *new = array[x * 2];
+	return new_array;
+}
+
+
+<*
+ Extract a copy of all odd-index elements from an input array.
+
+ @param [&inout] allocator : "The allocator used to create the return array."
+ @param [in] array : "The array from which to extract all odd elements."
+
+ @require @is_valid_list(array) : "Expected a valid list"
+*>
+macro odd(Allocator allocator, array)
+{
+	usz len = lengthof(array);
+	usz new_len = len / 2;
+	if (new_len == 0) return ($typeof(array[0])[]){};
+	$typefrom($typeof(array[0])[]) new_array = allocator::new_array(allocator, $typeof(array[0]), new_len);
+	foreach (x, &new : new_array) *new = array[x * 2 + 1];
+	return new_array;
+}
+
+<*
+ Unlace or partition an input list into its component parts such that `[a, b, c, d, e]` becomes
+ `[a, c, e]` and `[b, d]`. Returned arrays are allocated by the given allocator and are returned
+ via two `out` parameters, `left` and `right`.
+
+ @param [&inout] allocator : "The allocator used to create the returned arrays."
+ @param [in] array : "The input array to unlace."
+ @param [out] left : "Stores a copy of all even-index array elements."
+ @param [out] right : "Stores a copy of all odd-index array elements."
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $typeof(left) == $typeof(array[0])[]*
+ @require $typeof(right) == $typeof(array[0])[]*
+*>
+macro unlace(Allocator allocator, array, left, right)
+{
+	if (left) *left = even(allocator, array);
+	if (right) *right = odd(allocator, array);
+}
+
+
+<*
  Zip together two separate arrays/slices into a single array of Pairs or return values. Values will
  be collected up to the length of the shorter array if `fill_with` is left undefined; otherwise, they
  will be collected up to the length of the LONGER array, with missing values in the shorter array being
