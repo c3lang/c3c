@@ -4224,7 +4224,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		RETURN_SEMA_ERROR(rtype_info, "Int return is required for a C style main.");
 	}
 
-	if ((type == MAIN_TYPE_RAW || type == MAIN_TYPE_NO_ARGS) && is_int_return && sub_type != MAIN_SUBTYPE_WINMAIN)
+	if ((type == MAIN_TYPE_RAW || type == MAIN_TYPE_NO_ARGS) && is_int_return && !is_win32)
 	{
 		// Int return is pass-through at the moment.
 		decl->is_export = true;
