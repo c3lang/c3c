@@ -954,7 +954,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 	switch (decl->decl_kind)
 	{
 		case DECL_FUNC:
-			SEMA_ERROR(expr, "A function name cannot be used as a value, did you want to pass it by pointer? If so then you need to add '&', like '&%s'.", decl->span);
+			SEMA_ERROR(expr, "A function name cannot be used as a value, did you want to pass it by pointer? If so then you need to add '&', like '&%s'.", decl->name);
 			return expr_poison(expr);
 		case DECL_MACRO:
 			SEMA_ERROR(expr, "Expected a macro followed by (...).");
