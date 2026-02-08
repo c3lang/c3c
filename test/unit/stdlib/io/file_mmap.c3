@@ -5,7 +5,11 @@ tlocal char[1024] buf;
 
 fn String random_name()
 {
-	return libc::tmpnam(&buf).str_view();
+	ZString str = libc::tempnam(null, "randfile_");
+	String s = str.str_view();
+	buf[:s.len] = s[..];
+	libc::free(str);
+	return (String)buf[:s.len];
 }
 
 fn void map_read_only() @test

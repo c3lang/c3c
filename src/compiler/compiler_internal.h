@@ -712,6 +712,7 @@ typedef struct Decl_
 	bool no_strip : 1;
 	bool is_cond : 1;
 	bool is_if : 1;
+	bool is_body_checked : 1;
 	bool attr_nopadding : 1;
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
@@ -719,6 +720,7 @@ typedef struct Decl_
 	bool attr_structlike : 1;
 	bool is_template : 1;
 	bool is_templated : 1;
+	bool is_method_checked : 1;
 	union
 	{
 		void *backend_ref;
@@ -1666,7 +1668,6 @@ typedef struct Module_
 	CompilationUnit **units;
 	Module *parent_module;
 	Module *top_module;
-	Module **sub_modules;
 	Decl **benchmarks;
 	Decl **tests;
 	Decl **lambdas_to_evaluate;
@@ -2016,6 +2017,7 @@ typedef struct
 	HTable features;
 	Module std_module;
 	MethodTable method_extensions;
+	Type **types_with_failed_methods;
 	Decl **method_extension_list;
 	DeclTable symbols;
 	PathTable path_symbols;
@@ -2638,6 +2640,7 @@ bool arch_is_wasm(ArchType type);
 const char *macos_sysroot(void);
 MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
 WindowsSDK *windows_get_sdk(void);
+// This string may be in the scratch buffer
 const char *windows_cross_compile_library(void);
 
 void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs);
@@ -4551,7 +4554,7 @@ INLINE bool expr_is_const_ref(Expr *expr)
 
 INLINE bool expr_is_const_pointer(Expr *expr)
 {
-	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_POINTER;
 }
 
