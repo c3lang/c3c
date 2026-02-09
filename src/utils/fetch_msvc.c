@@ -136,7 +136,7 @@ static void closedir(DIR *dir)
 }
 #endif
 
-#if FETCH_AVAILABLE
+
 
 static int version_compare(const char *v1, const char *v2)
 {
@@ -509,6 +509,13 @@ static bool check_license(JSONObject *rj1_channel_items, bool accept_all)
 
 void fetch_msvc(BuildOptions *options)
 {
+	if (!download_available())
+	{
+		error_exit("Failed to find Windows SDK.\n"
+				   "Windows applications cannot be cross-compiled without it.\n"
+				   "To download the SDK automatically, please ensure libcurl is installed.\n"
+				   "Alternatively, provide the SDK path manually using --winsdk.");
+	}
 	verbose_level = options->verbosity_level;
 	const char *tmp_dir_base = dir_make_temp_dir();
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
@@ -749,13 +756,5 @@ void fetch_msvc(BuildOptions *options)
 
 	if (verbose_level == 0) file_delete_dir(tmp_dir_base);
 }
-#else
-void fetch_msvc(BuildOptions *options)
-{
-	error_exit("Failed to find Windows SDK.\n"
-			   "Windows applications cannot be cross-compiled without it.\n"
-			   "This build of c3c lacks cURL support and cannot download the SDK automatically.\n"
-			   "Please provide the SDK path manually using --winsdk.");
-}
-#endif
+
 

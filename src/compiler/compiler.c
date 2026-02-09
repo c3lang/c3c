@@ -966,7 +966,7 @@ bool use_ansi(void)
 #endif
 }
 
-#if FETCH_AVAILABLE
+
 const char * vendor_fetch_single(const char* lib, const char* path) 
 {
 	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
@@ -993,6 +993,11 @@ void update_progress_bar(const char* lib, int current_step, int total_steps)
 
 void vendor_fetch(BuildOptions *options)
 {
+	if (!download_available())
+	{
+		error_exit("The 'vendor-fetch' command requires libcurl to download libraries.\n"
+				   "Please ensure libcurl is installed on your system.");
+	}
 	bool ansi = use_ansi();
 
 	if (str_eq(options->path, DEFAULT_PATH))
@@ -1061,12 +1066,7 @@ void vendor_fetch(BuildOptions *options)
 
 	if (ansi) printf("\033[32mFetching complete.\033[0m\t\t\n");
 }
-#else
-void vendor_fetch(BuildOptions *options)
-{
-	error_exit("Error: vendor-fetch only available when compiled with cURL.");
-}
-#endif
+
 
 void print_syntax(BuildOptions *options)
 {
