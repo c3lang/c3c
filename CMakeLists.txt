@@ -129,9 +129,6 @@ if(C3_USE_MIMALLOC)
     )
     FetchContent_MakeAvailable(mimalloc)
 endif()
-if (NOT WIN32)
-    find_package(CURL)
-endif()
 
 find_package(Git QUIET)
 if(C3_USE_TB AND GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
@@ -606,12 +603,11 @@ if(MINGW)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--stack,8388608")
 endif ()
 
-if (CURL_FOUND)
-    target_link_libraries(c3c ${CURL_LIBRARIES})
-    target_include_directories(c3c PRIVATE ${CURL_INCLUDE_DIRS})
-    target_compile_definitions(c3c PUBLIC CURL_FOUND=1)
-else()
-    target_compile_definitions(c3c PUBLIC CURL_FOUND=0)
+if (NOT WIN32)
+    # For dlopen support
+    if (CMAKE_DL_LIBS)
+        target_link_libraries(c3c ${CMAKE_DL_LIBS})
+    endif()
 endif()
 
 

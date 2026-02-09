@@ -259,9 +259,7 @@ static void project_usage()
 	PRINTF("Project Subcommands:");
 	print_cmd("view", "view the current projects structure.");
 	print_cmd("add-target <name>  <target_type>  [sources...]", "add a new target to the project.");
-	#if FETCH_AVAILABLE
-		print_cmd("fetch", "fetch missing project libraries.");
-	#endif
+	print_cmd("fetch", "fetch missing project libraries.");
 }
 
 static void project_view_usage()

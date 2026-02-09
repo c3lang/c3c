@@ -12,9 +12,8 @@
 #include "intrin.h"
 #endif
 
-#if FETCH_AVAILABLE
 const char *download_file(const char *url, const char *resource, const char *file_path);
-#endif
+bool download_available(void);
 
 #define ELEMENTLEN(x) (sizeof(x) / sizeof(x[0]))
 extern const char *compiler_exe_name;
