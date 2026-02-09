@@ -7,6 +7,7 @@
 - Improve error message when using functions as values #2856
 - Improve support for Android with Termux.
 - Integrated download of the MSVC SDK when compiling for Windows.
+- For `c3c init` with library templates, provide example exported functions. #2898
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
@@ -27,6 +28,7 @@
 - Shadowing not detected for generic declarations #2876
 - Const inline enums would not always implicitly get converted to the underlying type.
 - Update to dstring.append_string to take any type converting to String.
+- Flag `--cpu-flags` doesn't work if the first item is an exclusion. #2905
 
 ## 0.7.9 Change list
 

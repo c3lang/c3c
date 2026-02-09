@@ -1083,7 +1083,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("cpu-flags"))
 			{
-				if (at_end() || next_is_opt()) error_exit("error: --cpu-flags expected a comma-separated list, like '+a,-b,+x'.");
+				if (at_end()) error_exit("error: --cpu-flags expected a comma-separated list, like '+a,-b,+x'.");
 				scratch_buffer_clear();
 				if (options->cpu_flags)
 				{
