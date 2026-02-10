@@ -75,7 +75,7 @@ fn void*? LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignmen
 		return mem::OUT_OF_MEMORY~;
 	}
 	// Now it is safe to copy the full range of data.
-	mem::copy(aligned_ptr, old_ptr, new_bytes, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
+	mem::copy(aligned_ptr, new_ptr, new_bytes, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	return aligned_ptr;
 
 }
