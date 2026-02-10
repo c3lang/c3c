@@ -400,7 +400,7 @@ static const char *find_linux_crt(void)
 	const char *path = find_arch_glob_path(arch_glob_path, 6);
 	if (!path)
 	{
-		INFO_LOG("No crt in /usr/lib/*/");
+		INFO_LOG("No crt in /usr/{lib,lib64}/*/");
 		return NULL;
 	}
 	INFO_LOG("Found crt at %s", path);
