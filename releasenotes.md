@@ -19,7 +19,6 @@
 - Add Xorshiro128++.
 - Add single-byte code page support (DOS/OEM, Windows/ANSI, and ISO/IEC 8859).
 
-
 ### Fixes
 - Add error message if directory with output file name already exists
 - Regression where nested lambdas would be evaluated twice.

@@ -18,10 +18,10 @@ fn void test_cp437() @test
 
 	@pool()
 	{
-		String got = codepage::decode(tmem, bytes, codepage::charset("cp437"))!!;
+		String got = codepage::decode(tmem, bytes, codepage::by_name("cp437"))!!;
 		assert(got == want, "cp437 decoding failed: got=%s, want=%s", got, want);
 
-		got = (String)codepage::encode(tmem, got[..], codepage::charset("cp437"))!!;
+		got = (String)codepage::encode(tmem, got[..], codepage::by_name("cp437"))!!;
 		assert(got == (String)bytes, "cp437 encoding failed: got=%s, want=%s",
 			got, (String)bytes);
 
@@ -78,13 +78,13 @@ fn void test_iso8859_2_hungarian() @test
 
 fn void check_roundtrip(String utf8, String charset) => @pool()
 {
-	CodePageTable *table = codepage::charset(charset)!!;
+	CodePage code_page = codepage::by_name(charset)!!;
 
 	// Encode UTF‑8 to code page.
-	char[] bytes = codepage::encode(tmem, utf8[..], table)!!;
+	char[] bytes = codepage::encode(tmem, utf8[..], code_page)!!;
 
 	// Decode back to UTF‑8 and compare.
-	String got = codepage::decode(tmem, bytes, table)!!;
+	String got = codepage::decode(tmem, bytes, code_page)!!;
 
 	assert(got == utf8,
 		"roundtrip failed: got=%s, want=%s", got, utf8);

@@ -66,63 +66,74 @@ struct CodePageTable
     char[1024] from_codepoint;
 }
 
-<* Returns a CodePageTable for the given charset name. *>
-fn CodePageTable*? charset(String charset_name) => @pool()
+enum CodePage : (String name, CodePageTable* table)
+{
+	CP1250      = { "cp1250",      &codepage::CP1250 },
+	CP1251      = { "cp1251",      &codepage::CP1251 },
+	CP1252      = { "cp1252",      &codepage::CP1252 },
+	CP1253      = { "cp1253",      &codepage::CP1253 },
+	CP1254      = { "cp1254",      &codepage::CP1254 },
+	CP1255      = { "cp1255",      &codepage::CP1255 },
+	CP1256      = { "cp1256",      &codepage::CP1256 },
+	CP1257      = { "cp1257",      &codepage::CP1257 },
+	CP1258      = { "cp1258",      &codepage::CP1258 },
+	CP437       = { "cp437",       &codepage::CP437 },
+	CP737       = { "cp737",       &codepage::CP737 },
+	CP775       = { "cp775",       &codepage::CP775 },
+	CP850       = { "cp850",       &codepage::CP850 },
+	CP852       = { "cp852",       &codepage::CP852 },
+	CP855       = { "cp855",       &codepage::CP855 },
+	CP857       = { "cp857",       &codepage::CP857 },
+	CP860       = { "cp860",       &codepage::CP860 },
+	CP861       = { "cp861",       &codepage::CP861 },
+	CP862       = { "cp862",       &codepage::CP862 },
+	CP863       = { "cp863",       &codepage::CP863 },
+	CP864       = { "cp864",       &codepage::CP864 },
+	CP865       = { "cp865",       &codepage::CP865 },
+	CP866       = { "cp866",       &codepage::CP866 },
+	CP869       = { "cp869",       &codepage::CP869 },
+	CP874       = { "cp874",       &codepage::CP874 },
+	ISO_8859_1  = { "iso-8859-1",  &codepage::ISO_8859_1 },
+	ISO_8859_10 = { "iso-8859-10", &codepage::ISO_8859_10 },
+	ISO_8859_11 = { "iso-8859-11", &codepage::ISO_8859_11 },
+	ISO_8859_13 = { "iso-8859-13", &codepage::ISO_8859_13 },
+	ISO_8859_14 = { "iso-8859-14", &codepage::ISO_8859_14 },
+	ISO_8859_15 = { "iso-8859-15", &codepage::ISO_8859_15 },
+	ISO_8859_16 = { "iso-8859-16", &codepage::ISO_8859_16 },
+	ISO_8859_2  = { "iso-8859-2",  &codepage::ISO_8859_2 },
+	ISO_8859_3  = { "iso-8859-3",  &codepage::ISO_8859_3 },
+	ISO_8859_4  = { "iso-8859-4",  &codepage::ISO_8859_4 },
+	ISO_8859_5  = { "iso-8859-5",  &codepage::ISO_8859_5 },
+	ISO_8859_6  = { "iso-8859-6",  &codepage::ISO_8859_6 },
+	ISO_8859_7  = { "iso-8859-7",  &codepage::ISO_8859_7 },
+	ISO_8859_8  = { "iso-8859-8",  &codepage::ISO_8859_8 },
+	ISO_8859_9  = { "iso-8859-9",  &codepage::ISO_8859_9 },
+	US_ASCII    = { "us-ascii",    &codepage::US_ASCII },
+}
+
+<*
+ Returns a CodePage for the given charset name.
+
+ @param [in] charset_name   :  "A name, case insensitive, using _ or - for separator"
+ @return "The CodePage for the name"
+
+ @return? NOT_FOUND : "If the charset is unknown or unsupported"
+*>
+fn CodePage? by_name(String charset_name) => @pool()
 {
 	String name = charset_name.treplace("_","-");
 	name.convert_to_lower();
-	switch (name)
+	foreach (page : CodePage.values)
 	{
-		case "cp1250": return &CP1250;
-		case "cp1251": return &CP1251;
-		case "cp1252": return &CP1252;
-		case "cp1253": return &CP1253;
-		case "cp1254": return &CP1254;
-		case "cp1255": return &CP1255;
-		case "cp1256": return &CP1256;
-		case "cp1257": return &CP1257;
-		case "cp1258": return &CP1258;
-		case "cp437": return &CP437;
-		case "cp737": return &CP737;
-		case "cp775": return &CP775;
-		case "cp850": return &CP850;
-		case "cp852": return &CP852;
-		case "cp855": return &CP855;
-		case "cp857": return &CP857;
-		case "cp860": return &CP860;
-		case "cp861": return &CP861;
-		case "cp862": return &CP862;
-		case "cp863": return &CP863;
-		case "cp864": return &CP864;
-		case "cp865": return &CP865;
-		case "cp866": return &CP866;
-		case "cp869": return &CP869;
-		case "cp874": return &CP874;
-		case "iso-8859-1": return &ISO_8859_1;
-		case "iso-8859-10": return &ISO_8859_10;
-		case "iso-8859-11": return &ISO_8859_11;
-		case "iso-8859-13": return &ISO_8859_13;
-		case "iso-8859-14": return &ISO_8859_14;
-		case "iso-8859-15": return &ISO_8859_15;
-		case "iso-8859-16": return &ISO_8859_16;
-		case "iso-8859-2": return &ISO_8859_2;
-		case "iso-8859-3": return &ISO_8859_3;
-		case "iso-8859-4": return &ISO_8859_4;
-		case "iso-8859-5": return &ISO_8859_5;
-		case "iso-8859-6": return &ISO_8859_6;
-		case "iso-8859-7": return &ISO_8859_7;
-		case "iso-8859-8": return &ISO_8859_8;
-		case "iso-8859-9": return &ISO_8859_9;
-		case "us-ascii": return &US_ASCII;
-		default: return NOT_FOUND~;
+		if (page.name == charset_name) return page;
 	}
+	return NOT_FOUND~;
 }
 
-
-fn String? decode(Allocator allocator, char[] src, CodePageTable *table)
+fn String? decode(Allocator allocator, char[] src, CodePage code_page)
 {
-	char[] dst = allocator::alloc_array(allocator, char, decode_len(src, table));
-	return decode_buffer(src, dst, table);
+	char[] dst = allocator::alloc_array(allocator, char, decode_len(src, code_page));
+	return decode_buffer(src, dst, code_page);
 }
 
 <*
@@ -130,12 +141,13 @@ fn String? decode(Allocator allocator, char[] src, CodePageTable *table)
 
  @param src            : "Input byte array in the given code page."
  @param dst            : "Destination output string in UTF-8."
- @param [&inout] table : "Code page table describing the mapping for this encoding."
+ @param code_page      : "Code page for this encoding."
  @return "String in UTF-8."
 *>
-fn String? decode_buffer(char[] src, char[] dst, CodePageTable *table)
+fn String? decode_buffer(char[] src, char[] dst, CodePage code_page)
 {
 	usz n = 0;
+	CodePageTable *table = code_page.table;
 	foreach (c: src)
 	{
 		usz pos = (usz)c * 4;
@@ -148,11 +160,10 @@ fn String? decode_buffer(char[] src, char[] dst, CodePageTable *table)
 	return (String)dst[:n];
 }
 
-fn char[]? encode(Allocator allocator, char[] src, CodePageTable *table,
-	char replacement = REPLACEMENT_CHAR)
+fn char[]? encode(Allocator allocator, char[] src, CodePage code_page, char replacement = REPLACEMENT_CHAR)
 {
 	char[] dst = allocator::alloc_array(allocator, char, encode_len(src));
-	return encode_buffer(src, dst, table, replacement);
+	return encode_buffer(src, dst, code_page, replacement);
 }
 
 const uint MASK @private = (1u << 24) - 1;
@@ -162,15 +173,15 @@ const uint MASK @private = (1u << 24) - 1;
 
  @param src            : "Input byte array in UTF-8"
  @param dst            : "Destination output byte array in the target code page"
- @param [&inout] table : "Code page table describing the mapping for this encoding."
+ @param code_page      : "Code page for this encoding."
  @param replacement    : "Byte to emit when Unicode scalar cannot be represented in the target code page."
  @return "Byte array in the given code page."
 *>
-fn char[]? encode_buffer(char[] src, char[] dst, CodePageTable *table,
-	char replacement = REPLACEMENT_CHAR)
+fn char[]? encode_buffer(char[] src, char[] dst, CodePage code_page, char replacement = REPLACEMENT_CHAR)
 {
 	// Unpack the packed reverse table once into a local uint[256] view.
 	uint[256] from_map;
+	CodePageTable *table = code_page.table;
 	for (usz i = 0; i < 256; i++)
 	{
 	    UIntLE *val = (UIntLE*)&table.from_codepoint[i * 4];
@@ -189,8 +200,7 @@ fn char[]? encode_buffer(char[] src, char[] dst, CodePageTable *table,
 
 		// Binary search for codepoint in low 24 bits of each entry.
 		// Returned index is between [0..from_map.len).
-		usz index = sort::binarysearch(from_map[..], (uint)codepoint,
-		    fn int(uint lhs, uint rhs) => (int)(lhs & MASK) - (int)(rhs & MASK));
+		usz index = sort::binarysearch(from_map[..], (uint)codepoint, fn int(uint lhs, uint rhs) => (int)(lhs & MASK) - (int)(rhs & MASK));
 
 		uint entry = from_map[index];
 		if ((entry & MASK) == (uint)codepoint)
@@ -211,12 +221,13 @@ fn char[]? encode_buffer(char[] src, char[] dst, CodePageTable *table,
  Compute the number of UTF‑8 bytes produced when decoding src with the given
  code page table.
  @param src                : "Input byte array in the given code page."
- @param [&inout] table     : "Code page table describing the mapping for this encoding."
+ @param code_page          : "Code page for this encoding."
 *>
-fn usz decode_len(char[] src, CodePageTable *table) @inline
+fn usz decode_len(char[] src, CodePage code_page) @inline
 {
 	usz n;
-	foreach (usz c: src) n += table.to_codepoint[c*4];
+	CodePageTable *table = code_page.table;
+	foreach (usz c: src) n += table.to_codepoint[c *4 ];
 	return n;
 }
 
