@@ -3182,7 +3182,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		RETURN_SEMA_ERROR(attr, "'%s' is not a valid %s attribute.", attr->name, attribute_domain_to_string(domain));
 	}
 
-	// No attribute has more than one argument right now.
 	unsigned args = vec_size(attr->exprs);
 	if (args > 1 && type != ATTRIBUTE_LINK && type != ATTRIBUTE_TAG && type != ATTRIBUTE_WASM)
 	{
@@ -3505,8 +3504,11 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			}
 			return true;
 		case ATTRIBUTE_NOINLINE:
+			if (decl->func_decl.attr_inline)
+			{
+				RETURN_SEMA_ERROR(attr, "@noinline cannot be combined with @inline.");
+			}
 			decl->func_decl.attr_noinline = true;
-			decl->func_decl.attr_inline = false;
 			break;
 		case ATTRIBUTE_NOPADDING:
 			decl->attr_nopadding = true;
@@ -3525,7 +3527,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->func_decl.signature.attrs.always_const = true;
 			break;
 		case ATTRIBUTE_NODISCARD:
-			if (decl->func_decl.signature.attrs.nodiscard)
+			if (decl->func_decl.signature.attrs.noreturn)
 			{
 				RETURN_SEMA_ERROR(attr, "@nodiscard cannot be combined with @noreturn.");
 			}
@@ -3535,8 +3537,11 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->func_decl.signature.attrs.maydiscard = true;
 			break;
 		case ATTRIBUTE_INLINE:
+			if (decl->func_decl.attr_noinline)
+			{
+				RETURN_SEMA_ERROR(attr, "@inline cannot be combined with @noinline.");
+			}
 			decl->func_decl.attr_inline = true;
-			decl->func_decl.attr_noinline = false;
 			break;
 		case ATTRIBUTE_NORETURN:
 			if (decl->func_decl.signature.attrs.nodiscard)
@@ -3614,9 +3619,17 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->is_packed = true;
 			break;
 		case ATTRIBUTE_UNUSED:
+			if(decl->is_must_use)
+			{
+				RETURN_SEMA_ERROR(attr, "@unused cannot be combined with @used.");
+			}
 			decl->is_maybe_unused = true;
 			break;
 		case ATTRIBUTE_USED:
+			if(decl->is_maybe_unused)
+			{
+				RETURN_SEMA_ERROR(attr, "@used cannot be combined with @unused.");
+			}
 			decl->is_must_use = true;
 			break;
 		case ATTRIBUTE_PURE:
