@@ -48,14 +48,7 @@ fn void*? LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz a
 
 fn void*? LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
 {
-	if (alignment <= mem::DEFAULT_MEM_ALIGNMENT) return libc::realloc(old_ptr, new_bytes) ?: mem::OUT_OF_MEMORY~;
-
-	// Easy case, it's 0
-	if (!new_bytes)
-	{
-		libc::free(old_ptr);
-		return null;
-	}
+ 	if (alignment <= mem::DEFAULT_MEM_ALIGNMENT) return libc::realloc(old_ptr, new_bytes) ?: mem::OUT_OF_MEMORY~;
 
 	// Try realloc, even though it might be unaligned.
 	void* new_ptr = libc::realloc(old_ptr, new_bytes) ?: mem::OUT_OF_MEMORY~!;
