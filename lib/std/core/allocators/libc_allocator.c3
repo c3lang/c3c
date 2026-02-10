@@ -15,7 +15,6 @@ module std::core::mem::allocator @if(env::POSIX);
 import std::os;
 import libc;
 
-
 fn void*? LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
 {
 	if (init_type == ZERO)
@@ -50,23 +49,37 @@ fn void*? LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz a
 fn void*? LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
 {
 	if (alignment <= mem::DEFAULT_MEM_ALIGNMENT) return libc::realloc(old_ptr, new_bytes) ?: mem::OUT_OF_MEMORY~;
-	void* new_ptr;
-	if (posix::posix_memalign(&new_ptr, alignment, new_bytes)) return mem::OUT_OF_MEMORY~;
 
-	$switch:
-	$case env::DARWIN:
-		usz old_usable_size = darwin::malloc_size(old_ptr);
-	$case env::LINUX:
-		usz old_usable_size = linux::malloc_usable_size(old_ptr);
-	$default:
-		usz old_usable_size = new_bytes;
-	$endswitch
+	// Easy case, it's 0
+	if (!new_bytes)
+	{
+		libc::free(old_ptr);
+		return null;
+	}
 
-	usz copy_size = new_bytes < old_usable_size ? new_bytes : old_usable_size;
-	mem::copy(new_ptr, old_ptr, copy_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
-	libc::free(old_ptr);
-	return new_ptr;
+	// Try realloc, even though it might be unaligned.
+	void* new_ptr = libc::realloc(old_ptr, new_bytes) ?: mem::OUT_OF_MEMORY~!;
+
+	// If it's aligned then we're done!
+	uptr ptr_val = (uptr)new_ptr;
+	if (ptr_val & (alignment - 1) == 0) return new_ptr;
+
+	// We failed, so we need to use memalign
+	// We will free new_ptr before we exit.
+	defer libc::free(new_ptr);
+
+	// Create a pointer which is sure to be aligned.
+	void* aligned_ptr;
+	if (posix::posix_memalign(&aligned_ptr, alignment, new_bytes))
+	{
+		return mem::OUT_OF_MEMORY~;
+	}
+	// Now it is safe to copy the full range of data.
+	mem::copy(aligned_ptr, old_ptr, new_bytes, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
+	return aligned_ptr;
+
 }
+
 
 fn void LibcAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
 {

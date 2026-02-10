@@ -27,6 +27,7 @@
 - Const inline enums would not always implicitly get converted to the underlying type.
 - Update to dstring.append_string to take any type converting to String.
 - Flag `--cpu-flags` doesn't work if the first item is an exclusion. #2905
+- Reallocating overaligned memory with the LibcAllocator was unsafe.
 
 ## 0.7.9 Change list
 
