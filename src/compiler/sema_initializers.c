@@ -350,7 +350,19 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	}
 	if (expected_members > 0 && count > 0 && count != expected_members)
 	{
-		RETURN_SEMA_ERROR(elements[0], "Too %s elements in initializer, expected %u.", count > expected_members ? "many" : "few", expected_members);
+		if(count > expected_members) {
+			RETURN_SEMA_ERROR(elements[0], "Too many elements in initializer, expected %u. Current count: %d", expected_members, count);	
+		}
+
+		Type *inner_type = type_get_indexed_type(flattened);
+        for (unsigned i = count; i < expected_members; i++)
+        {
+            Expr *zero_expr = expr_new(EXPR_CONST, initializer->span);
+            expr_rewrite_const_initializer(zero_expr, inner_type,
+                                           const_init_new_zero(inner_type));
+            vec_add(elements, zero_expr);
+        }
+        count = expected_members;
 	}
 
 	bool optional = false;
@@ -448,10 +460,10 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	ASSERT(initializer->type);
 	if (optional) initializer->type = type_get_optional(initializer->type);
 
-	if (!inferred_len && expected_members > count)
+	if (!inferred_len)
 	{
 		if (no_match_ref) goto NO_MATCH;
-		RETURN_SEMA_ERROR(elements[count - 1], "Too few elements in initializer, %d elements are needed.", expected_members);
+		ASSERT(count == expected_members);
 	}
 
 	initializer->resolve_status = RESOLVE_DONE;
