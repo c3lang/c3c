@@ -8161,6 +8161,7 @@ static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left,
 static inline bool sema_convert_denominator_to_unsigned_if_needed(SemaContext *context, Expr *left, Expr *right)
 {
 	if (!type_is_unsigned(left->type->canonical) || !type_is_signed(right->type->canonical)) return true;
+	if (type_size(left->type) < type_size(right->type)) return true;
 	if (sema_cast_const(right) && expr_is_const_int(right) && !int_is_neg(right->const_expr.ixx))
 	{
 		return cast_implicit(context, right, type_int_unsigned_by_bitsize(type_bit_size(right->type->canonical)), true);
