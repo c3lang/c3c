@@ -14,7 +14,7 @@ interface Printable
 }
 
 faultdef BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT,
-         NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT;
+		 NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT;
 
 alias OutputFn = fn void?(void* buffer, char c);
 alias FloatType = double;
@@ -34,14 +34,14 @@ macro bool is_struct_with_default_print($Type)
 *>
 macro usz? struct_to_format(value, Formatter* f, bool $force_dump)
 {
-    var $Type = $typeof(value);
-    usz total = f.print("{ ")!;
-    $foreach $i, $member : $Type.membersof:
-        $if $i > 0:
-            total += f.print(", ")!;
-        $endif
-        $if $member.nameof != "":
-            total += f.printf("%s: ", $member.nameof)!;
+	var $Type = $typeof(value);
+	usz total = f.print("{ ")!;
+	$foreach $i, $member : $Type.membersof:
+		$if $i > 0:
+	  total += f.print(", ")!;
+		$endif
+		$if $member.nameof != "":
+	  total += f.printf("%s: ", $member.nameof)!;
 		$endif
 		$if ($force_dump &&& ($member.typeid.kindof == STRUCT || $member.typeid.kindof == BITSTRUCT)) |||
 			is_struct_with_default_print($member.typeid):
@@ -351,12 +351,12 @@ macro usz? @wrap_bad(Formatter* f, #action)
 		switch (err)
 		{
 			case BUFFER_EXCEEDED:
-        	case INTERNAL_BUFFER_EXCEEDED:
-        		return f.first_err(err)~;
-        	default:
+			case INTERNAL_BUFFER_EXCEEDED:
+			return f.first_err(err)~;
+			default:
 				err = f.first_err(INVALID_ARGUMENT);
-        		f.out_substr("<INVALID>")!;
-        		return err~;
+				f.out_substr("<INVALID>")!;
+				return err~;
 		}
 	}
 	return len;
@@ -489,7 +489,7 @@ fn usz? Formatter.vprintf(&self, String format, any[] anys)
 				self.flags.uppercase = true;
 				nextcase;
 			case 'h':
-            	char[] out @noinit;
+				char[] out @noinit;
 				switch (current.type)
 				{
 					case char[]:
