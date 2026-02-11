@@ -377,13 +377,13 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 		j %= 9;
 		int i;
 		for (i = 10, j++; j < 9; i *= 10, j++);
-		x = *d % i;
+		x = *d % (uint)i;
 		// Are there any significant digits past j?
 		if (x || (d + 1) != z)
 		{
 			double round = 2 / math::DOUBLE_EPSILON;
 			double small;
-			if (((*d / i) & 1) || (i == 1000000000 && d > a && (d[-1] & 1)))
+			if (((*d / (uint)i) & 1) || (i == 1000000000 && d > a && (d[-1] & 1)))
 			{
 				round += 2;
 			}
@@ -437,7 +437,7 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 			// Count trailing zeros in last place
 			if (z > a && z[-1])
 			{
-				for (int i = 10, j = 0; z[-1] % i == 0; i *= 10, j++);
+				for (int i = 10, j = 0; z[-1] % (uint)i == 0; i *= 10, j++);
 			}
 			else
 			{

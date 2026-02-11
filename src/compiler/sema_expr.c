@@ -1524,6 +1524,7 @@ static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, 
 		if (flat_left->type_kind == TYPE_BITSTRUCT && left_type == right_type) return true;
 		if (flat_left == type_bool && left_type == right_type) return true;
 	}
+
 	// 2. Perform promotion to a common type.
 	return sema_binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, error,
 		bool_and_bitstruct_is_allowed, operator_overload_ref, failed_ref);
@@ -8157,6 +8158,17 @@ static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left,
 	return true;
 }
 
+static inline bool sema_convert_denominator_to_unsigned_if_needed(SemaContext *context, Expr *left, Expr *right)
+{
+	if (!type_is_unsigned(left->type->canonical) || !type_is_signed(right->type->canonical)) return true;
+	if (type_size(left->type) < type_size(right->type)) return true;
+	if (sema_cast_const(right) && expr_is_const_int(right) && !int_is_neg(right->const_expr.ixx))
+	{
+		return cast_implicit(context, right, type_int_unsigned_by_bitsize(type_bit_size(right->type->canonical)), true);
+	}
+	return false;
+}
+
 /**
  * Analyse a / b
  * @return true if analysis completed ok.
@@ -8165,6 +8177,11 @@ static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, 
 {
 	// 1. Analyse sub expressions and promote to a common type
 	OperatorOverload overload = OVERLOAD_DIVIDE;
+	if (!sema_convert_denominator_to_unsigned_if_needed(context, left, right))
+	{
+		if (failed_ref) return *failed_ref = true, false;
+		RETURN_SEMA_ERROR(expr, "Cannot implicitly divide an unsigned integer by an non-const signed integer, please use explicit casts.");
+	}
 	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "Cannot divide %s by %s.", false, &overload, failed_ref)) return false;
 	if (!overload) return true;
 
@@ -8221,6 +8238,12 @@ static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, 
 {
 	// 1. Analyse both sides and promote to a common type
 	OperatorOverload overload = OVERLOAD_REMINDER;
+	if (!sema_convert_denominator_to_unsigned_if_needed(context, left, right))
+	{
+		if (failed_ref) return *failed_ref = true, false;
+		RETURN_SEMA_ERROR(expr, "Cannot implicitly convert the values in a remainder operation with an unsigned nominator and non-const or negative signed denominator, please use explicit casts.");
+	}
+
 	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "Cannot calculate the remainder %s %% %s",
 		false, &overload, failed_ref)) return false;
 	if (!overload) return true;
