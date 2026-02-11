@@ -13,6 +13,8 @@ env:
   LLVM_RELEASE_VERSION_OPENBSD: 20
   LLVM_RELEASE_VERSION_NETBSD: 19
   LLVM_DEV_VERSION: 22
+  # CACHE_INVALIDATION_SEED: '%Y-%m-%d' # Daily
+  CACHE_INVALIDATION_SEED: '%G-%V'   # Weekly
 
 jobs:
 
@@ -87,16 +89,19 @@ jobs:
         with:
           msystem: MINGW64
           update: false
+          cache: true
           install: git binutils mingw-w64-x86_64-clang mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python mingw-w64-x86_64-llvm mingw-w64-x86_64-llvm-libs
-      
+
       - name: Install LLD
         run: |
           echo "Server = https://mirror.msys2.org/mingw/mingw64" > /etc/pacman.d/mirrorlist.mingw64
-          pacman -Sy --noconfirm --needed \
-            mingw-w64-x86_64-llvm \
-            mingw-w64-x86_64-llvm-libs \
-            mingw-w64-x86_64-lld \
-            mingw-w64-x86_64-clang
+          for i in 1 2; do \
+            pacman -Sy --noconfirm --needed \
+              mingw-w64-x86_64-llvm \
+              mingw-w64-x86_64-llvm-libs \
+              mingw-w64-x86_64-lld \
+              mingw-w64-x86_64-clang && break || sleep 5; \
+          done
 
       - name: CMake Build
         run: |
@@ -121,6 +126,7 @@ jobs:
         with:
           msystem: CLANG64
           update: false
+          cache: true
           install: git binutils mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-python
       - name: CMake Build
         run: |
@@ -137,7 +143,19 @@ jobs:
         build_type: [Release, Debug]
     steps:
       - uses: actions/checkout@v6
-      - run: sudo apt-get update && sudo apt-get install -y zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev
+      - name: Get current date context
+        id: date
+        run: echo "date=$(date +'${{ env.CACHE_INVALIDATION_SEED }}')" >> $GITHUB_OUTPUT
+      - name: Cache APT archives
+        uses: actions/cache@v5
+        with:
+          path: apt-cache
+          key: apt-cache-${{ runner.os }}-${{ steps.date.outputs.date }}
+      - run: |
+          mkdir -p apt-cache/partial
+          for i in 1 2 3; do sudo apt-get update && break || sleep 2; done
+          for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev && break || sleep 2; done
+          sudo chown -R $USER:$USER apt-cache
       - name: CMake Build
         run: |
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -DC3_FETCH_LLVM=ON
@@ -169,19 +187,42 @@ jobs:
         build_type: [Release, Debug]
     steps:
       - uses: actions/checkout@v6
+
+      - name: Get current date context
+        id: date
+        run: echo "date=$(date +'${{ env.CACHE_INVALIDATION_SEED }}')" >> $GITHUB_OUTPUT
+
+      #https://wiki.alpinelinux.org/wiki/Local_APK_cache
+      - name: Prepare real apk cache directory + symlink
+        run: |
+          mkdir -p /var/cache/apk
+          ln -sf /var/cache/apk /etc/apk/cache
+
+      - name: Cache APK downloaded packages (daily)
+        uses: actions/cache@v5
+        with:
+          path: /var/cache/apk
+          key: apk-pkgs-${{ runner.os }}-alpine-3.23-${{ steps.date.outputs.date }}
+          restore-keys: |
+            apk-pkgs-${{ runner.os }}-alpine-3.23-
+
       - name: Install dependencies
         run: |
           V=${{env.LLVM_RELEASE_VERSION_LINUX_MUSL}}
-          apk update && apk add \
-            build-base bash git cmake ninja python3 linux-headers \
-            zlib-dev curl-dev libffi-dev \
-            llvm${V}-dev \
-            llvm${V}-static \
-            llvm${V}-gtest \
-            clang${V}-dev \
-            clang${V}-static \
-            lld${V}-dev \
-            lld${V}-libs
+          for i in 1 2 3; do apk update && break || sleep 2; done
+          for i in 1 2 3; do \
+            apk add \
+              build-base bash git cmake ninja python3 linux-headers \
+              tar zstd \
+              zlib-dev curl-dev libffi-dev \
+              llvm${V}-dev \
+              llvm${V}-static \
+              llvm${V}-gtest \
+              clang${V}-dev \
+              clang${V}-static \
+              lld${V}-dev \
+              lld${V}-libs && break || sleep 2; \
+          done
 
       - name: CMake Build
         run: |
@@ -196,7 +237,7 @@ jobs:
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
       - name: Bundle & Upload (Alpine)
         run: bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-musl-${{ matrix.build_type }}" "tar"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: c3-linux-musl-${{ matrix.build_type }}
           path: c3-linux-musl-${{ matrix.build_type }}.tar.gz
@@ -215,7 +256,7 @@ jobs:
           cmake --build build
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
-      
+
       - name: Build Lib (Mac)
         run: |
           cd resources/testproject
@@ -239,29 +280,47 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Build, Test and Package in OpenBSD
-        uses: vmactions/openbsd-vm@v1
+        uses: cross-platform-actions/action@master
         with:
-          sync: rsync
-          usesh: true
-          release: ${{ matrix.version }}
-          prepare: pkg_add ninja cmake llvm%${{ env.LLVM_RELEASE_VERSION_OPENBSD }} bash
-          # Combine all logic here so rsync copyback triggers at the end
+          operating_system: openbsd
+          version: ${{ matrix.version }}
+          cpu_count: 4
+          memory: 6G
           run: |
-            export MALLOC_OPTIONS=j # Disable junk filling (it's faster)
-            cd "$GITHUB_WORKSPACE"
+            # Install dependencies
+            for i in 1 2 3; do
+              sudo pkg_add ninja cmake llvm%${{ env.LLVM_RELEASE_VERSION_OPENBSD }} bash && break || sleep 5
+            done
+
+            export MALLOC_OPTIONS=j
+
+            # Setup RAM Disk
+            sudo mkdir -p /mnt/ram
+            sudo mount_mfs -s $((2 * 1024 * 1024 * 2)) swap /mnt/ram
+            sudo chown -R $(id -u):$(id -g) /mnt/ram
+            export TMPDIR=/mnt/ram
+
+            # Copy source to RAM disk and switch to it
+            cp -rp . /mnt/ram/
+            cd /mnt/ram
 
             # Build
-            cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+            cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
             cmake --build build
 
             # Run Unified Tests
             chmod +x scripts/tools/ci_tests.sh
-            ulimit -d unlimited
+            ulimit -d $(ulimit -Hd) || true
             ./scripts/tools/ci_tests.sh "./build/c3c"
 
             # Package
             chmod +x scripts/tools/package_build.sh
             ./scripts/tools/package_build.sh "./build/c3c" "c3-openbsd-${{matrix.build_type}}" "tar"
+
+            # Move results back to workspace for GitHub rsync/upload
+            mkdir -p "$GITHUB_WORKSPACE"/build
+            cp build/c3c "$GITHUB_WORKSPACE"/build/
+            cp *.tar.gz "$GITHUB_WORKSPACE"/
 
       - uses: actions/upload-artifact@v6
         with:
@@ -279,28 +338,43 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Build, Test and Package in NetBSD
-        uses: vmactions/netbsd-vm@v1
+        uses: cross-platform-actions/action@master
         with:
-          sync: rsync
-          usesh: true
-          release: ${{ matrix.version }}
-          prepare: |
-             export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
-             export PKG_PATH="https://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -m)/$(uname -r)/All/"
-             /usr/sbin/pkg_add pkgin
-             pkgin -y update
-             pkgin -y install cmake gcc14 ninja-build bash \
-               'llvm>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}' \
-               'clang>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}' \
-               'lld>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}'
+          operating_system: netbsd
+          version: ${{ matrix.version }}
+          cpu_count: 4
+          memory: 6G
           run: |
+            # Install dependencies
             export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
+            export PKG_PATH="https://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -m)/$(uname -r)/All/"
+
+            # Ensure pkgin is available and updated
+            sudo /usr/sbin/pkg_add -U pkgin || true
+
+            for i in 1 2 3; do
+              sudo pkgin -y update && \
+              sudo pkgin -y install cmake gcc14 ninja-build bash \
+                'llvm>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}' \
+                'clang>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}' \
+                'lld>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}' && break || sleep 5
+            done
+
             export CC=clang
             export CXX=clang++
-            cd "$GITHUB_WORKSPACE"
+
+            # Setup RAM Disk
+            sudo mkdir -p /mnt/ram
+            sudo mount_tmpfs -s 2G tmpfs /mnt/ram
+            sudo chown -R $(id -u):$(id -g) /mnt/ram
+            export TMPDIR=/mnt/ram
+
+            # Copy source to RAM disk and switch to it
+            cp -rp . /mnt/ram/
+            cd /mnt/ram
 
             # Build
-            cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+            cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
             cmake --build build
 
             # Run Unified Tests
@@ -310,6 +384,11 @@ jobs:
             # Package
             chmod +x scripts/tools/package_build.sh
             ./scripts/tools/package_build.sh "./build/c3c" "c3-netbsd-${{matrix.build_type}}" "tar"
+
+            # Move results back to workspace for GitHub rsync/upload
+            mkdir -p "$GITHUB_WORKSPACE"/build
+            cp build/c3c "$GITHUB_WORKSPACE"/build/
+            cp *.tar.gz "$GITHUB_WORKSPACE"/
 
       - uses: actions/upload-artifact@v6
         with:
@@ -326,13 +405,49 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Build C3 in Docker (LLVM ${{ matrix.llvm_version }})
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and cache Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker
+          build-args: |
+            LLVM_VERSION=${{ matrix.llvm_version }}
+            UBUNTU_VERSION=22.04
+            CMAKE_VERSION=3.20.0
+          tags: c3c-builder:latest
+          outputs: type=docker,dest=/tmp/c3c-builder.tar
+          cache-from: type=gha,scope=build-with-docker-${{ matrix.llvm_version }}
+          cache-to: type=gha,mode=max,scope=build-with-docker-${{ matrix.llvm_version }}
+        env:
+          DOCKER_BUILD_SUMMARY: false
+
+      - name: Load Docker image
+        run: docker load -i /tmp/c3c-builder.tar
+
+      - name: Build C3 in Docker
         run: |
-          chmod +x ./build-with-docker.sh
-          LLVM_VERSION=${{ matrix.llvm_version }} \
-          UBUNTU_VERSION=22.04 \
-          CMAKE_BUILD_TYPE=Debug \
-          ./build-with-docker.sh
+          rm -rf build bin
+          mkdir -p build bin
+          chmod -R 777 build bin
+          docker run --rm \
+            -v "$(pwd):/home/c3c/source" \
+            -w /home/c3c/source \
+            c3c-builder:latest \
+            bash -c "git config --global --add safe.directory /home/c3c/source && \
+            cmake -S . -B build \
+                    -G Ninja \
+                    -DCMAKE_BUILD_TYPE=Debug \
+                    -DCMAKE_C_COMPILER=clang-${{ matrix.llvm_version }} \
+                    -DCMAKE_CXX_COMPILER=clang++-${{ matrix.llvm_version }} \
+                    -DCMAKE_LINKER=lld-${{ matrix.llvm_version }} \
+                    -DCMAKE_OBJCOPY=llvm-objcopy-${{ matrix.llvm_version }} \
+                    -DCMAKE_STRIP=llvm-strip-${{ matrix.llvm_version }} \
+                    -DCMAKE_DLLTOOL=llvm-dlltool-${{ matrix.llvm_version }} \
+                    -DC3_LLVM_VERSION=auto && \
+            cmake --build build && \
+            cp -r build/c3c build/lib bin"
 
       - name: Run Unified Tests
         run: |
@@ -353,7 +468,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - uses: cachix/install-nix-action@v31
-      with: 
+      with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
     - name: Update flake
       if: matrix.nixpkgs == 'Latest'
@@ -380,6 +495,7 @@ jobs:
       image: termux/termux-docker:${{matrix.architecture}}
       volumes:
         - /tmp/node20:/__e/node20
+        - /tmp/node24:/__e/node24
     env:
       TERMUX_MAIN_PACKAGE_FORMAT: debian
       ANDROID_ROOT: /system
@@ -394,19 +510,35 @@ jobs:
       - name: prepare termux
         run: |
           ln -sf ${PREFIX}/etc/termux/mirrors/default ${PREFIX}/etc/termux/chosen_mirrors
-          /entrypoint.sh pkg update
+          for i in 1 2; do /entrypoint.sh pkg update && break || sleep 5; done
           /entrypoint.sh bash -c "yes | pkg upgrade -y"
           chmod -R o+x ${PREFIX}/bin
-          /entrypoint.sh pkg install -y nodejs-lts tar git
-          ln -sf ${PREFIX}/bin /__e/node20/bin
+          for i in 1 2; do /entrypoint.sh pkg install -y nodejs-lts tar git && break || sleep 5; done
+          # Symlink Termux node to where GHA expects it
+          mkdir -p /__e/node20/bin /__e/node24/bin || true
+          ln -sf ${PREFIX}/bin/node /__e/node20/bin/node || true
+          ln -sf ${PREFIX}/bin/node /__e/node24/bin/node || true
 
-      - uses: actions/checkout@v4.2.2
+      - name: Get current date context
+        id: date
+        run: echo "date=$(date +'${{ env.CACHE_INVALIDATION_SEED }}')" >> $GITHUB_OUTPUT
+
+      - name: Cache Termux packages
+        uses: actions/cache@v5
+        with:
+          path: /data/data/com.termux/cache/apt/archives/
+          key: termux-cache-${{ matrix.architecture }}-${{ steps.date.outputs.date }}
+
+      - uses: actions/checkout@v6
 
       - name: fix permissions after checkout
         run: chown -R 1000:1000 .
 
       - name: setup
-        run: /entrypoint.sh pkg install -y llvm binutils libgc build-essential cmake git libedit zlib clang make mlir llvm-tools libpolly python libllvm-static
+        run: |
+          for i in 1 2; do \
+            /entrypoint.sh pkg install -y llvm binutils libgc build-essential cmake git libedit zlib clang make mlir llvm-tools libpolly python libllvm-static && break || sleep 10; \
+          done
 
       - name: build
         run: |
@@ -443,7 +575,7 @@ jobs:
           # --- Release Assets ---
           mv c3-windows-Release/c3-windows-Release.zip c3-windows.zip
           mv c3-macos-Release/c3-macos-Release.zip c3-macos.zip
-          
+
           mv c3-linux-Release/c3-linux-Release.tar.gz c3-linux.tar.gz
           mv c3-linux-musl-Release/c3-linux-musl-Release.tar.gz c3-linux-musl.tar.gz
           mv c3-openbsd-Release/c3-openbsd-Release.tar.gz c3-openbsd.tar.gz || true
@@ -454,7 +586,7 @@ jobs:
           # --- Debug Assets ---
           mv c3-windows-Debug/c3-windows-Debug.zip c3-windows-debug.zip
           mv c3-macos-Debug/c3-macos-Debug.zip c3-macos-debug.zip
-          
+
           mv c3-linux-Debug/c3-linux-Debug.tar.gz c3-linux-debug.tar.gz
           mv c3-linux-musl-Debug/c3-linux-musl-Debug.tar.gz c3-linux-musl-debug.tar.gz
           mv c3-openbsd-Debug/c3-openbsd-Debug.tar.gz c3-openbsd-debug.tar.gz || true
