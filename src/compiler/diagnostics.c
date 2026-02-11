@@ -141,14 +141,14 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 	unsigned space_to = col_location ? col_location : max_lines_for_display - 1;
 	for (unsigned i = 0; i < space_to - 1; i++)
 	{
-		switch (current[i])
+		unsigned char c = (unsigned char)current[i];
+		if (c == '\t')
 		{
-			case '\t':
-				eprintf("\t");
-				break;
-			default:
-				eprintf(" ");
-				break;
+			eprintf("\t");
+		}
+		else
+		{
+			if (c < 128 || (c & 0xC0) == 0xC0) eprintf(" ");
 		}
 	}
 	unsigned len = location.length;

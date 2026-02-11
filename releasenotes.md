@@ -30,6 +30,7 @@
 - Flag `--cpu-flags` doesn't work if the first item is an exclusion. #2905
 - Reallocating overaligned memory with the LibcAllocator was unsafe.
 - Using [] or .foo on $$ functions would not raise error but instead crash
+- Improved underlining errors/warnings when unicode is used. #2887 
 
 ## 0.7.9 Change list
 
