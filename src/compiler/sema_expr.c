@@ -4198,7 +4198,10 @@ DEFAULT:
 	}
 
 	if (!sema_expr_check_assign(context, expr, NULL)) return false;
-
+	if (subscripted->expr_kind == EXPR_BUILTIN)
+	{
+		RETURN_SEMA_ERROR(expr, "Builtins cannot be subscripted.");
+	}
 	Expr *index = exprptr(expr->subscript_expr.index.expr);
 
 	// 3. Check failability due to value.
@@ -4295,7 +4298,10 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	// Evaluate the expression to index.
 	Expr *subscripted = exprptr(expr->subscript_expr.expr);
 	if (!sema_analyse_expr(context, subscripted)) return false;
-
+	if (subscripted->expr_kind == EXPR_BUILTIN)
+	{
+		RETURN_SEMA_ERROR(expr, "Builtins cannot be subscripted.");
+	}
 	// 3. Check failability due to value.
 	bool optional = IS_OPTIONAL(subscripted);
 
@@ -4752,6 +4758,10 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	ASSERT_SPAN(expr, expr->expr_kind == EXPR_SLICE);
 	Expr *subscripted = exprptr(expr->slice_expr.expr);
 	if (!sema_analyse_expr(context, subscripted)) return false;
+	if (subscripted->expr_kind == EXPR_BUILTIN)
+	{
+		RETURN_SEMA_ERROR(expr, "A builtin cannot be sliced.");
+	}
 	bool optional = IS_OPTIONAL(subscripted);
 	Type *type = type_flatten(subscripted->type);
 	Type *original_type = type_no_optional(subscripted->type);
