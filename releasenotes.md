@@ -17,6 +17,7 @@
 - Add Murmur3 hash.
 - Add optional line-length limitations to `io::readline` and `io::readline_to_stream`. #2879
 - Add Xorshiro128++.
+- Add single-byte code page support (DOS/OEM, Windows/ANSI, and ISO/IEC 8859).
 
 ### Fixes
 - Add error message if directory with output file name already exists
