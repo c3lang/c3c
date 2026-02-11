@@ -8,6 +8,7 @@
 - Improve support for Android with Termux.
 - Integrated download of the MSVC SDK when compiling for Windows.
 - For `c3c init` with library templates, provide example exported functions. #2898
+- `unsigned % signed` and `unsigned / signed` is no longer allowed without explicit casts, except for const denominators. #2928
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831

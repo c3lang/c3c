@@ -272,7 +272,7 @@ macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
- @require $defined(*ptr * y) : "/ must be defined between the values."
+ @require $defined(*ptr / y) : "/ must be defined between the values."
  @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
