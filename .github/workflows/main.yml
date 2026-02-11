@@ -14,7 +14,7 @@ env:
   LLVM_RELEASE_VERSION_NETBSD: 19
   LLVM_DEV_VERSION: 22
   # CACHE_INVALIDATION_SEED: '%Y-%m-%d' # Daily
-  CACHE_INVALIDATION_SEED: '%G-%V'   # Weekly
+  CACHE_INVALIDATION_SEED: '%G-%V-1'   # Weekly
 
 jobs:
 
@@ -154,7 +154,7 @@ jobs:
       - run: |
           mkdir -p apt-cache/partial
           for i in 1 2 3; do sudo apt-get update && break || sleep 2; done
-          for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev && break || sleep 2; done
+          for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf && break || sleep 2; done
           sudo chown -R $USER:$USER apt-cache
       - name: CMake Build
         run: |
@@ -165,7 +165,7 @@ jobs:
 
       - name: Embedded/QEMU Tests
         run: |
-          sudo apt-get install -y opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf
+          # Added `opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf` to the apt-get install command above
           cd resources/examples/embedded/riscv-qemu
           make C3C_PATH=../../../../build/ run
 
