@@ -7,7 +7,8 @@ ARG CMAKE_VERSION=3.20.0
 # Prevent interactive prompts during apt install
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
+RUN for i in 1 2 3; do apt-get update && break || sleep 2; done && \
+    apt-get install -y --fix-missing \
     wget gnupg software-properties-common lsb-release \
     zlib1g zlib1g-dev python3 ninja-build curl g++ libcurl4-openssl-dev git && \
     CODENAME=$(lsb_release -cs) && \
@@ -19,14 +20,14 @@ RUN apt-get update && apt-get install -y \
     rm cmake-${CMAKE_VERSION}-linux-${ARCH}.sh
 
 RUN CODENAME=$(lsb_release -cs) && \
-    wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
+    for i in 1 2; do wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key && break || sleep 2; done | apt-key add - && \
     if [ "${LLVM_VERSION}" -ge 16 ]; then \
         add-apt-repository "deb http://apt.llvm.org/${CODENAME}/ llvm-toolchain-${CODENAME}-${LLVM_VERSION} main"; \
     else \
         add-apt-repository "deb http://apt.llvm.org/${CODENAME}/ llvm-toolchain-${CODENAME} main"; \
     fi && \
-    apt-get update && \
-    apt-get install -y \
+    for i in 1 2 3; do apt-get update && break || sleep 2; done && \
+    apt-get install -y --fix-missing \
       clang-${LLVM_VERSION} \
       clang++-${LLVM_VERSION} \
       llvm-${LLVM_VERSION} \
