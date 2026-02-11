@@ -13,8 +13,7 @@ interface Printable
 	fn usz? to_format(Formatter* formatter) @optional;
 }
 
-faultdef BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT,
-		 NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT;
+faultdef BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT;
 
 alias OutputFn = fn void?(void* buffer, char c);
 alias FloatType = double;
@@ -38,10 +37,10 @@ macro usz? struct_to_format(value, Formatter* f, bool $force_dump)
 	usz total = f.print("{ ")!;
 	$foreach $i, $member : $Type.membersof:
 		$if $i > 0:
-	  total += f.print(", ")!;
+			total += f.print(", ")!;
 		$endif
 		$if $member.nameof != "":
-	  total += f.printf("%s: ", $member.nameof)!;
+			total += f.printf("%s: ", $member.nameof)!;
 		$endif
 		$if ($force_dump &&& ($member.typeid.kindof == STRUCT || $member.typeid.kindof == BITSTRUCT)) |||
 			is_struct_with_default_print($member.typeid):
@@ -352,7 +351,7 @@ macro usz? @wrap_bad(Formatter* f, #action)
 		{
 			case BUFFER_EXCEEDED:
 			case INTERNAL_BUFFER_EXCEEDED:
-			return f.first_err(err)~;
+				return f.first_err(err)~;
 			default:
 				err = f.first_err(INVALID_ARGUMENT);
 				f.out_substr("<INVALID>")!;

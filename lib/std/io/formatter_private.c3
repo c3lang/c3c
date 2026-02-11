@@ -541,84 +541,6 @@ const char[201] DIGIT_PAIRS @private =
   "08182838485868788898"
   "09192939495969798999";
 
-
-fn usz? Formatter.ntoa_decimal_fast_pairs(&self, char[] buf, usz len, ulong value) @private
-{
-	while (value >= 10)
-	{
-		if (len + 1 >= buf.len) return INTERNAL_BUFFER_EXCEEDED~;
-		uint digit = (uint)(value % 100);
-		buf[len:2] = DIGIT_PAIRS[2 * digit:2];
-		len += 2;
-		value /= 100;
-	}
-	if (value > 0)
-	{
-		if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED~;
-		buf[len++] = '0' + (char)value;
-	}
-	return len;
-}
-
-fn usz? Formatter.ntoa_decimal_u128_safe(&self, char[] buf, usz len, uint128 value) @private
-{
-	char[39] digits @noinit;
-	usz digits_len = 1;
-	digits[0] = 0;
-
-	// Avoid uint128 division/remainder by 10/100 due compiler/runtime issues.
-	uint128 bit = (uint128)1 << 127;
-	while (!(value & bit) && bit > 1) bit >>= 1;
-
-	while (bit)
-	{
-		uint carry = value & bit ? 1 : 0;
-		for (usz i = 0; i < digits_len; i++)
-		{
-			uint d = (uint)digits[i] * 2 + carry;
-			if (d >= 10)
-			{
-				digits[i] = (char)(d - 10);
-				carry = 1;
-			} else {
-				digits[i] = (char)d;
-				carry = 0;
-			}
-		}
-		if (carry)
-		{
-			if (digits_len >= digits.len) return INTERNAL_BUFFER_EXCEEDED~;
-			digits[digits_len++] = 1;
-		}
-		bit >>= 1;
-	}
-
-	if (len + digits_len > buf.len) return INTERNAL_BUFFER_EXCEEDED~;
-	usz i;
-	while (i + 1 < digits_len)
-	{
-		uint digit = (uint)digits[i + 1] * 10 + (uint)digits[i];
-		buf[len:2] = DIGIT_PAIRS[2 * digit:2];
-		len += 2;
-		i += 2;
-	}
-	if (i < digits_len) buf[len++] = '0' + digits[i];
-	return len;
-}
-
-fn usz? Formatter.ntoa_decimal(&self, char[] buf, usz len, uint128 value) @private
-{
-	if (!value)
-	{
-		if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED~;
-		buf[len++] = '0';
-		return len;
-	}
-	if (value <= (uint128)long.max) return self.ntoa_decimal_fast_pairs(buf, len, (ulong)value);
-	return self.ntoa_decimal_u128_safe(buf, len, value);
-}
-
-
 fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 {
 	char[PRINTF_NTOA_BUFFER_SIZE] buf @noinit;
@@ -642,7 +564,25 @@ fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 				}
 				while (value);
 			case 10:
-				len = self.ntoa_decimal(buf[:PRINTF_NTOA_BUFFER_SIZE], len, value)!;
+				if (!value)
+				{
+					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
+					buf[len++] = '0';
+					break;
+				}
+				while (value >= 10)
+				{
+					if (len + 1 >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
+					char digit = (char)(value % 100U);
+					buf[len:2] = DIGIT_PAIRS[2 * digit:2];
+					len += 2;
+					value /= 100U;
+				}
+				if (value > 0)
+				{
+					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
+					buf[len++] = '0' + (char)value;
+				}
 			case 16:
 				do
 				{
@@ -652,7 +592,7 @@ fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 					value >>= 4;
 				}
 				while (value);
- 		case 8:
+		case 8:
 			do
 			{
 				if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
@@ -660,7 +600,7 @@ fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 				value >>= 3;
 			}
 			while (value);
- 		default:
+		default:
 			unreachable();
 		}
 	}
