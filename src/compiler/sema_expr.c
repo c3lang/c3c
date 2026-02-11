@@ -6454,6 +6454,11 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	ASSERT_SPAN(expr, expr->expr_kind == EXPR_ACCESS_UNRESOLVED);
 	ASSERT_SPAN(expr, parent->resolve_status == RESOLVE_DONE);
 
+	if (parent->expr_kind == EXPR_BUILTIN)
+	{
+		RETURN_SEMA_ERROR(expr, "A builtin has no support for properties.");
+	}
+
 	// 7. Is this a pointer? If so we insert a deref.
 	Type *underlying_type = type_no_optional(parent->type)->canonical;
 	while (times_to_deref > 0 && underlying_type->type_kind == TYPE_POINTER && underlying_type != type_voidptr)
