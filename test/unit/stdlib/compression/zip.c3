@@ -23,7 +23,7 @@ fn void test_zip_store()
 		assert(entry.method == zip::ZIP_METHOD_STORE, "Expected STORE method");
 		assert(entry.uncompressed_size == 13, "Expected 13 bytes");
 
-		char[] data = read_zip.read_file("test.txt")!!;
+		char[] data = read_zip.read_file_all("test.txt")!!;
 		defer free(data);
 		assert((String)data == "Hello, World!", "Data mismatch");
 
@@ -57,7 +57,7 @@ fn void test_zip_deflate()
 		assert(entry.method == zip::ZIP_METHOD_DEFLATE, "Expected DEFLATE method");
 		assert(entry.uncompressed_size == 1600, "Expected 1600 bytes");
 
-		char[] decompressed = read_zip.read_file("compressed.txt")!!;
+		char[] decompressed = read_zip.read_file_all("compressed.txt")!!;
 		defer free(decompressed);
 		assert(decompressed.len == 1600, "Decompressed size mismatch");
 
@@ -88,7 +88,7 @@ fn void test_zip_directory()
 		ZipEntry file_entry = read_zip.stat("docs/readme.txt")!!;
 		assert(!file_entry.is_directory, "Expected file");
 
-		char[] data = read_zip.read_file("docs/readme.txt")!!;
+		char[] data = read_zip.read_file_all("docs/readme.txt")!!;
 		defer free(data);
 		assert((String)data == "README", "Data mismatch");
 
@@ -108,7 +108,7 @@ fn void test_zip_crc32_verification()
 		ZipArchive read_zip = zip::open("unittest_crc.zip", "r")!!;
 		defer (void)read_zip.close();
 
-		char[] data = read_zip.read_file("data.txt")!!;
+		char[] data = read_zip.read_file_all("data.txt")!!;
 		defer free(data);
 		assert((String)data == "Test data for CRC32", "Data mismatch");
 
@@ -139,15 +139,15 @@ fn void test_zip_multiple_files()
 			assert(!entry.is_directory, "Expected files only");
 		}
 
-		char[] data1 = read_zip.read_file("file1.txt")!!;
+		char[] data1 = read_zip.read_file_all("file1.txt")!!;
 		defer free(data1);
 		assert((String)data1 == "First file", "File1 mismatch");
 
-		char[] data2 = read_zip.read_file("file2.txt")!!;
+		char[] data2 = read_zip.read_file_all("file2.txt")!!;
 		defer free(data2);
 		assert((String)data2 == "Second file", "File2 mismatch");
 
-		char[] data3 = read_zip.read_file("file3.txt")!!;
+		char[] data3 = read_zip.read_file_all("file3.txt")!!;
 		defer free(data3);
 		assert((String)data3 == "Third file", "File3 mismatch");
 
@@ -174,7 +174,7 @@ fn void test_zip_streaming()
 		ZipArchive read_zip = zip::open("unittest_stream.zip", "r")!!;
 		defer (void)read_zip.close();
 
-		char[] data = read_zip.read_file("stream.txt")!!;
+		char[] data = read_zip.read_file_all("stream.txt")!!;
 		defer free(data);
 		assert((String)data == "Part 1. Part 2. Part 3.", "Streaming write failed");
 
@@ -200,7 +200,8 @@ fn void test_zip_invalid_access()
 		ZipEntry? entry_opt = read_zip.stat("does_not_exist.txt");
 		assert(!@ok(entry_opt), "Expected ENTRY_NOT_FOUND");
 
-		char[]? data_opt = read_zip.read_file("does_not_exist.txt");
+		char[]? data_opt = read_zip.read_file_all("does_not_exist.txt");
+		assert(!@ok(data_opt), "Expected error when reading non-existent file");
 		assert(!@ok(data_opt), "Expected error when reading non-existent file");
 
 	};
@@ -220,6 +221,53 @@ fn void test_zip_empty_archive()
 		defer (void)read_zip.close();
 
 		assert(read_zip.count() == 0, "Expected 0 entries");
+	};
+}
 
+fn void test_zip_recovery()
+{
+	@pool()
+	{
+		String path = "unittest_embedded_broken.zip";
+		// Create a "broken" ZIP (LFH + Data, but no Central Directory)
+		// Filename: "a", Data: "bc"
+		char[] broken_zip = {0x50,0x4B,0x03,0x04,0x14,0x00,0x00,0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x38,0x2B,0xA9,0xC2,0x02,0x00,0x00,0x00,0x02,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x61,0x62,0x63};
+		file::save(path, broken_zip)!!;
+		defer (void)file::delete(path);
+
+		ZipArchive? normal = zip::open(path, "r");
+		assert(!@ok(normal), "Normal open should fail on broken ZIP");
+
+		ZipArchive recovered = zip::recover(path)!!;
+		defer (void)recovered.close();
+
+		assert(recovered.count() == 1, "Should have recovered 1 file");
+		char[] data = recovered.read_file_all("a")!!;
+		defer free(data);
+		assert((String)data == "bc", "Recovered data mismatch");
+	};
+}
+
+fn void test_zip_cp437()
+{
+	@pool()
+	{
+		String path = "unittest_embedded_cp437.zip";
+		// Create a ZIP with CP437 encoding (Bit 11 NOT set)
+		// Filename: 0x80 (Ç in CP437), Data: "x"
+		char[] cp437_zip = {0x50,0x4B,0x03,0x04,0x14,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x83,0x16,0xDC,0x8C,0x01,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x80,0x78};
+
+		file::save(path, cp437_zip)!!;
+		defer (void)file::delete(path);
+
+		ZipArchive recovered = zip::recover(path)!!;
+		defer (void)recovered.close();
+
+		ZipEntry entry = recovered.stat_at(0)!!;
+		assert(entry.name == "Ç", "CP437 decoding failed");
+
+		char[] data = recovered.read_file_all("Ç")!!;
+		defer free(data);
+		assert((String)data == "x", "Data mismatch in CP437 test");
 	};
 }

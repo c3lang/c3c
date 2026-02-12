@@ -123,3 +123,22 @@ macro fault file_seek_errno() @local
 	}
 }
 
+
+struct Utimbuf
+{
+	libc::Time_t actime;
+	libc::Time_t modtime;
+}
+
+extern fn int utime(char* filename, void* times) @if(!env::WIN32);
+extern fn int _wutime(WChar* filename, void* times) @if(env::WIN32);
+
+fn void? native_set_modified_time(String filename, libc::Time_t time) => @stack_mem(256; Allocator smem)
+{
+	Utimbuf times = { time, time };
+	$if env::WIN32:
+		if (_wutime(filename.to_wstring(smem)!, &times)) return io::GENERAL_ERROR~;
+	$else
+		if (utime(filename.zstr_copy(smem), &times)) return io::GENERAL_ERROR~;
+	$endif
+}

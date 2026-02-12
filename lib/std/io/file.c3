@@ -44,6 +44,11 @@ fn usz? get_size(String path)
 	return os::native_file_size(path);
 }
 
+fn void? set_modified_time(String path, libc::Time_t time)
+{
+	return os::native_set_modified_time(path, time);
+}
+
 fn void? delete(String filename)
 {
 	return os::native_remove(filename) @inline;
