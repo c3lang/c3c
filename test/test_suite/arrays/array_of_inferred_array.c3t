@@ -1,0 +1,83 @@
+import std;
+macro void test(int[2][6] a)
+{
+
+    int first0 = a[0][0];
+    int first1 = a[0][1];
+
+    int second0 = a[1][0];
+    int second1 = a[1][1];
+
+    int last0 = a[5][0];
+    int last1 = a[5][1]; 
+}
+fn void main()
+{
+	test({ { 1, 2 } });
+}
+
+/* #expect: array_of_inferred_array.ll
+
+; Function Attrs: nounwind uwtable(sync)
+define void @array_of_inferred_array.main() #0 {
+entry:
+  %literal = alloca [6 x [2 x i32]], align 4
+  %a = alloca [6 x [2 x i32]], align 4
+  %first0 = alloca i32, align 4
+  %first1 = alloca i32, align 4
+  %second0 = alloca i32, align 4
+  %second1 = alloca i32, align 4
+  %last0 = alloca i32, align 4
+  %last1 = alloca i32, align 4
+  store i32 1, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
+  store i32 2, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %literal, i64 8
+  store i32 0, ptr %ptradd1, align 4
+  %ptradd2 = getelementptr inbounds i8, ptr %ptradd1, i64 4
+  store i32 0, ptr %ptradd2, align 4
+  %ptradd3 = getelementptr inbounds i8, ptr %literal, i64 16
+  store i32 0, ptr %ptradd3, align 4
+  %ptradd4 = getelementptr inbounds i8, ptr %ptradd3, i64 4
+  store i32 0, ptr %ptradd4, align 4
+  %ptradd5 = getelementptr inbounds i8, ptr %literal, i64 24
+  store i32 0, ptr %ptradd5, align 4
+  %ptradd6 = getelementptr inbounds i8, ptr %ptradd5, i64 4
+  store i32 0, ptr %ptradd6, align 4
+  %ptradd7 = getelementptr inbounds i8, ptr %literal, i64 32
+  store i32 0, ptr %ptradd7, align 4
+  %ptradd8 = getelementptr inbounds i8, ptr %ptradd7, i64 4
+  store i32 0, ptr %ptradd8, align 4
+  %ptradd9 = getelementptr inbounds i8, ptr %literal, i64 40
+  store i32 0, ptr %ptradd9, align 4
+  %ptradd10 = getelementptr inbounds i8, ptr %ptradd9, i64 4
+  store i32 0, ptr %ptradd10, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a, ptr align 4 %literal, i32 48, i1 false)
+  %0 = load i32, ptr %a, align 4
+  store i32 %0, ptr %first0, align 4
+  %ptradd11 = getelementptr inbounds i8, ptr %a, i64 4
+  %1 = load i32, ptr %ptradd11, align 4
+  store i32 %1, ptr %first1, align 4
+  %ptradd12 = getelementptr inbounds i8, ptr %a, i64 8
+  %2 = load i32, ptr %ptradd12, align 4
+  store i32 %2, ptr %second0, align 4
+  %ptradd13 = getelementptr inbounds i8, ptr %a, i64 8
+  %ptradd14 = getelementptr inbounds i8, ptr %ptradd13, i64 4
+  %3 = load i32, ptr %ptradd14, align 4
+  store i32 %3, ptr %second1, align 4
+  %ptradd15 = getelementptr inbounds i8, ptr %a, i64 40
+  %4 = load i32, ptr %ptradd15, align 4
+  store i32 %4, ptr %last0, align 4
+  %ptradd16 = getelementptr inbounds i8, ptr %a, i64 40
+  %ptradd17 = getelementptr inbounds i8, ptr %ptradd16, i64 4
+  %5 = load i32, ptr %ptradd17, align 4
+  store i32 %5, ptr %last1, align 4
+  ret void
+}
+
+; Function Attrs: nounwind uwtable(sync)
+define i32 @main(i32 %0, ptr %1) #0 {
+entry:
+  call void @array_of_inferred_array.main()
+  ret i32 0
+}

@@ -1,0 +1,120 @@
+// #target: macos-x64
+module array_zero_fill;
+
+
+const int[5] X = { 1, 2, 3 };
+
+enum MyEnum {
+	SLOW,
+	FAST
+}
+
+struct Test {
+	int x;
+	int y;
+	MyEnum en;
+	Foo foo;
+}
+
+struct Foo {
+	bool on;
+}
+
+fn void test()
+{
+	int[5] y = { 1, 2 };
+
+    int lx = X.len;
+    int ly = y.len;
+
+    int x3 = X[3];
+    int x4 = X[4];
+
+    int y2 = y[2];
+    int y3 = y[3];
+    int y4 = y[4];
+}
+
+fn void test_struct() {
+	Test test = {1, 2, MyEnum.FAST, {true}};
+
+	Test[3] tests = {test};
+}
+
+/* #expect: array_zero_fill.ll
+
+%.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
+%"char[]" = type { ptr, i64 }
+%Test = type { i32, i32, i32, %Foo }
+%Foo = type { i8 }
+
+@"$ct.array_zero_fill.Test" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 16, i64 0, i64 4, [0 x i64] zeroinitializer }, align 8
+@"$ct.array_zero_fill.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 1, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@.enum.SLOW = internal constant [5 x i8] c"SLOW\00", align 1
+@.enum.FAST = internal constant [5 x i8] c"FAST\00", align 1
+@"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.array_zero_fill.MyEnum" = linkonce global { i8, i64, ptr, i64, i64, i64, [2 x %"char[]"] } { i8 8, i64 0, ptr null, i64 4, i64 ptrtoint (ptr @"$ct.int" to i64), i64 2, [2 x %"char[]"] [%"char[]" { ptr @.enum.SLOW, i64 4 }, %"char[]" { ptr @.enum.FAST, i64 4 }] }, align 8
+@array_zero_fill.X = local_unnamed_addr constant [5 x i32] [i32 1, i32 2, i32 3, i32 0, i32 0], align 16
+@.__const = private unnamed_addr constant %Test { i32 1, i32 2, i32 1, %Foo { i8 1 } }, align 4
+
+; Function Attrs: nounwind uwtable
+define void @array_zero_fill.test() #0 {
+entry:
+  %y = alloca [5 x i32], align 16
+  %lx = alloca i32, align 4
+  %ly = alloca i32, align 4
+  %x3 = alloca i32, align 4
+  %x4 = alloca i32, align 4
+  %y2 = alloca i32, align 4
+  %y3 = alloca i32, align 4
+  %y4 = alloca i32, align 4
+  store i32 1, ptr %y, align 16
+  %ptradd = getelementptr inbounds i8, ptr %y, i64 4
+  store i32 2, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %y, i64 8
+  store i32 0, ptr %ptradd1, align 4
+  %ptradd2 = getelementptr inbounds i8, ptr %y, i64 12
+  store i32 0, ptr %ptradd2, align 4
+  %ptradd3 = getelementptr inbounds i8, ptr %y, i64 16
+  store i32 0, ptr %ptradd3, align 4
+  store i32 5, ptr %lx, align 4
+  store i32 5, ptr %ly, align 4
+  store i32 0, ptr %x3, align 4
+  store i32 0, ptr %x4, align 4
+  %ptradd4 = getelementptr inbounds i8, ptr %y, i64 8
+  %0 = load i32, ptr %ptradd4, align 4
+  store i32 %0, ptr %y2, align 4
+  %ptradd5 = getelementptr inbounds i8, ptr %y, i64 12
+  %1 = load i32, ptr %ptradd5, align 4
+  store i32 %1, ptr %y3, align 4
+  %ptradd6 = getelementptr inbounds i8, ptr %y, i64 16
+  %2 = load i32, ptr %ptradd6, align 4
+  store i32 %2, ptr %y4, align 4
+  ret void
+}
+
+; Function Attrs: nounwind uwtable
+define void @array_zero_fill.test_struct() #0 {
+entry:
+  %test = alloca %Test, align 4
+  %tests = alloca [3 x %Test], align 16
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %test, ptr align 4 @.__const, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %tests, ptr align 4 %test, i32 16, i1 false)
+  %ptradd = getelementptr inbounds i8, ptr %tests, i64 16
+  store i32 0, ptr %ptradd, align 16
+  %ptradd1 = getelementptr inbounds i8, ptr %ptradd, i64 4
+  store i32 0, ptr %ptradd1, align 4
+  %ptradd2 = getelementptr inbounds i8, ptr %ptradd, i64 8
+  store i32 0, ptr %ptradd2, align 8
+  %ptradd3 = getelementptr inbounds i8, ptr %ptradd, i64 12
+  store i8 0, ptr %ptradd3, align 4
+  %ptradd4 = getelementptr inbounds i8, ptr %tests, i64 32
+  store i32 0, ptr %ptradd4, align 16
+  %ptradd5 = getelementptr inbounds i8, ptr %ptradd4, i64 4
+  store i32 0, ptr %ptradd5, align 4
+  %ptradd6 = getelementptr inbounds i8, ptr %ptradd4, i64 8
+  store i32 0, ptr %ptradd6, align 8
+  %ptradd7 = getelementptr inbounds i8, ptr %ptradd4, i64 12
+  store i8 0, ptr %ptradd7, align 4
+  ret void
+}
