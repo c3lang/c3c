@@ -718,6 +718,7 @@ typedef struct Decl_
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
 	bool attr_structlike : 1;
+	bool attr_constinit : 1;
 	bool is_template : 1;
 	bool is_templated : 1;
 	bool is_method_checked : 1;
