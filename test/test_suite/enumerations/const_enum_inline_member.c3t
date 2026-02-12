@@ -5,7 +5,7 @@ struct Bar
     uint x, y, z;
 }
 
-enum Foo : const inline Bar
+const enum Foo : inline Bar
 {
     X = {1, 0, 0},
     Y = {0, 1, 0},

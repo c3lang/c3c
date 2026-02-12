@@ -1,6 +1,6 @@
 module std::os::win32 @if(env::WIN32);
 
-enum Win32_AllocationType : const Win32_DWORD
+const enum Win32_AllocationType
 {
 	MEM_COMMIT      = 0x00001000,
 	MEM_RESERVE     = 0x00002000,
@@ -12,7 +12,7 @@ enum Win32_AllocationType : const Win32_DWORD
     MEM_WRITE_WATCH = 0x00200000
 }
 
-enum Win32_Protect : const Win32_DWORD
+const enum Win32_Protect : Win32_DWORD
 {
 	PAGE_EXECUTE           = 0x10,
 	PAGE_EXECUTE_READ      = 0x20,
@@ -29,7 +29,7 @@ enum Win32_Protect : const Win32_DWORD
 	PAGE_WRITECOMBINE      = 0x400,
 }
 
-enum Win32_FreeType : const Win32_DWORD
+const enum Win32_FreeType : Win32_DWORD
 {
 	MEM_DECOMMIT              = 0x00004000,
 	MEM_RELEASE               = 0x00008000,

@@ -168,13 +168,13 @@ bitstruct Tc_lflags : CUInt
 	bool extproc : 16;
 }
 
-enum T_nldly : const char
+const enum T_nldly : char
 {
 	NL0 = 0b0,
 	NL1 = 0b1,
 }
 
-enum T_crdly : const char
+const enum T_crdly : char
 {
 	CR0 = 0b00,
 	CR1 = 0b01,
@@ -182,7 +182,7 @@ enum T_crdly : const char
 	CR3 = 0b11,
 }
 
-enum T_tabdly : const char
+const enum T_tabdly : char
 {
 	TAB0 = 0b00,
 	TAB1 = 0b01,
@@ -191,25 +191,25 @@ enum T_tabdly : const char
 	XTABS = TAB3,
 }
 
-enum T_bsdly : const char
+const enum T_bsdly : char
 {
 	BS0 = 0b0,
 	BS1 = 0b1,
 }
 
-enum T_ffdly : const char
+const enum T_ffdly : char
 {
 	FF0 = 0b0,
 	FF1 = 0b1,
 }
 
-enum T_vtdly : const char
+const enum T_vtdly : char
 {
 	VT0 = 0b0,
 	VT1 = 0b1,
 }
 
-enum T_csize : const char
+const enum T_csize : char
 {
 	CS5 = 0b00,
 	CS6 = 0b01,
@@ -217,31 +217,31 @@ enum T_csize : const char
 	CS8 = 0b11,
 }
 
-enum Speed : const CUInt
+const enum Speed : CUInt
 {
-	B0 = 0o0000000,
-	B50 = 0o0000001,
-	B75 = 0o0000002,
-	B110 = 0o0000003,
-	B134 = 0o0000004,
-	B150 = 0o0000005,
-	B200 = 0o0000006,
-	B300 = 0o0000007,
-	B600 = 0o0000010,
-	B1200 = 0o0000011,
-	B1800 = 0o0000012,
-	B2400 = 0o0000013,
-	B4800 = 0o0000014,
-	B9600 = 0o0000015,
-	B19200 = 0o0000016,
-	B38400 = 0o0000017,
-	B57600 = 0o0010001,
-	B115200 = 0o0010002,
-	B230400 = 0o0010003,
-	B460800 = 0o0010004,
-	B500000 = 0o0010005,
-	B576000 = 0o0010006,
-	B921600 = 0o0010007,
+	B0       = 0o0000000,
+	B50      = 0o0000001,
+	B75      = 0o0000002,
+	B110     = 0o0000003,
+	B134     = 0o0000004,
+	B150     = 0o0000005,
+	B200     = 0o0000006,
+	B300     = 0o0000007,
+	B600     = 0o0000010,
+	B1200    = 0o0000011,
+	B1800    = 0o0000012,
+	B2400    = 0o0000013,
+	B4800    = 0o0000014,
+	B9600    = 0o0000015,
+	B19200   = 0o0000016,
+	B38400   = 0o0000017,
+	B57600   = 0o0010001,
+	B115200  = 0o0010002,
+	B230400  = 0o0010003,
+	B460800  = 0o0010004,
+	B500000  = 0o0010005,
+	B576000  = 0o0010006,
+	B921600  = 0o0010007,
 	B1000000 = 0o0010010,
 	B1152000 = 0o0010011,
 	B1500000 = 0o0010012,
@@ -253,37 +253,37 @@ enum Speed : const CUInt
 	MAX_BAUD = B4000000,
 }
 
-enum Cc : const inline char
+const enum Cc : inline char
 {
-	VINTR = 0,
-	VQUIT = 1,
-	VERASE = 2,
-	VKILL = 3,
-	VEOF = 4,
-	VTIME = 5,
-	VMIN = 6,
-	VSWTC = 7,
-	VSTART = 8,
-	VSTOP = 9,
-	VSUSP = 10,
-	VEOL = 11,
+	VINTR    = 0,
+	VQUIT    = 1,
+	VERASE   = 2,
+	VKILL    = 3,
+	VEOF     = 4,
+	VTIME    = 5,
+	VMIN     = 6,
+	VSWTC    = 7,
+	VSTART   = 8,
+	VSTOP    = 9,
+	VSUSP    = 10,
+	VEOL     = 11,
 	VREPRINT = 12,
 	VDISCARD = 13,
-	VWERASE = 14,
-	VLNEXT = 15,
-	VEOL2 = 16,
+	VWERASE  = 14,
+	VLNEXT   = 15,
+	VEOL2    = 16,
 }
 
-enum Tcactions : const CInt
+const enum Tcactions : CInt
 {
-	TCOOFF = 0,
-	TCOON = 1,
-	TCIOFF = 2,
-	TCION = 3,
-	TCIFLUSH = 0,
-	TCOFLUSH = 1,
+	TCOOFF    = 0,
+	TCOON     = 1,
+	TCIOFF    = 2,
+	TCION     = 3,
+	TCIFLUSH  = 0,
+	TCOFLUSH  = 1,
 	TCIOFLUSH = 2,
-	TCSANOW = 0,
+	TCSANOW   = 0,
 	TCSADRAIN = 1,
 	TCSAFLUSH = 2,
 }

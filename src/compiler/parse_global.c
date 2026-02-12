@@ -13,6 +13,7 @@ typedef enum FunctionParse_
 	FUNC_PARSE_INTERFACE,
 } FunctionParse;
 
+static inline Decl *parse_enum_declaration(ParseContext *c, bool is_const);
 static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, FunctionParse parse_kind);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref, ArrayIndex *inline_index);
@@ -2288,6 +2289,10 @@ static inline Decl *parse_bitstruct_declaration(ParseContext *c)
 
 static inline Decl *parse_top_level_const_declaration(ParseContext *c, bool is_extern)
 {
+	if (!is_extern && peek(c) == TOKEN_ENUM)
+	{
+		return parse_enum_declaration(c, true);
+	}
 	ASSIGN_DECL_OR_RET(Decl *decl, parse_const_declaration(c, true, is_extern), poisoned_decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
@@ -2789,6 +2794,7 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility visibility, bool is_single_value, bool is_const_enum)
 {
 	Decl **values = NULL;
+	bool deprecate_warn = true;
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		if (!parse_element_contract(c, "enum values")) return false;
@@ -2810,6 +2816,11 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 		if (try_consume(c, TOKEN_EQ))
 		{
 			Expr **args = NULL;
+			if (!is_const_enum && deprecate_warn)
+			{
+				deprecate_warn = false;
+				print_deprecation_at(c->prev_span, "Use () declaration of associated values instead.");
+			}
 			if (is_single_value || !tok_is(c, TOKEN_LBRACE))
 			{
 				ASSIGN_EXPR_OR_RET(Expr *single, parse_constant_expr(c), false);
@@ -2839,11 +2850,37 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 					{
 						if (!try_consume(c, TOKEN_RBRACE))
 						{
-							PRINT_ERROR_HERE("A comma or a closing brace was expected here.");
-							return false;
+							RETURN_PRINT_ERROR_HERE("A comma or a closing brace was expected here.");
 						}
 						break;
 					}
+				}
+			}
+			enum_const->enum_constant.associated = args;
+		}
+		else if (!is_const_enum && try_consume(c, TOKEN_LBRACE))
+		{
+			Expr **args = NULL;
+			while (1)
+			{
+				if (try_consume(c, TOKEN_RBRACE)) break;
+				ASSIGN_EXPR_OR_RET(Expr *arg, parse_expr(c), false);
+				vec_add(args, arg);
+				if (tok_is(c, TOKEN_COLON) && arg->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
+				{
+					print_error_at(extend_span_with_token(arg->span, c->span),
+						"This looks like a named param call, but that style of declaration "
+						"is not supported for declaring enum associated values.");
+						return false;
+				}
+
+				if (!try_consume(c, TOKEN_COMMA))
+				{
+					if (!try_consume(c, TOKEN_RBRACE))
+					{
+						RETURN_PRINT_ERROR_HERE("A comma or a closing brace was expected here.");
+					}
+					break;
 				}
 			}
 			enum_const->enum_constant.associated = args;
@@ -2872,9 +2909,18 @@ NEXT:
  * enum_body ::= enum_def (',' enum_def)* ','?
  * enum_def ::= CONST_IDENT ('(' arg_list ')')?
  */
-static inline Decl *parse_enum_declaration(ParseContext *c)
+static inline Decl *parse_enum_declaration(ParseContext *c, bool is_const)
 {
-	advance_and_verify(c, TOKEN_ENUM);
+	if (is_const) advance_and_verify(c, TOKEN_CONST);
+	if (tok_is(c, TOKEN_CENUM))
+	{
+		advance_and_verify(c, TOKEN_CENUM);
+		is_const = true;
+	}
+	else
+	{
+		advance_and_verify(c, TOKEN_ENUM);
+	}
 
 	const char *name = symstr(c);
 	SourceSpan span = c->span;
@@ -2885,11 +2931,18 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 
 	bool val_is_inline = false;
 	ArrayIndex inline_index = -1;
-	bool is_const_enum = false;
+	bool is_const_enum = is_const;
 	Decl **param_list = NULL;
 	if (try_consume(c, TOKEN_COLON))
 	{
-		is_const_enum = try_consume(c, TOKEN_CONST);
+		if (!is_const)
+		{
+			is_const_enum = try_consume(c, TOKEN_CONST);
+			if (is_const_enum)
+			{
+				print_deprecation_at(c->prev_span, "Declare const enums using 'const enum' instead.");
+			}
+		}
 		if (!tok_is(c, TOKEN_LPAREN) && !tok_is(c, TOKEN_LBRACE))
 		{
 			val_is_inline = try_consume(c, TOKEN_INLINE);
@@ -3585,7 +3638,8 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			decl = parse_macro_declaration(c, contracts);
 			break;
 		case TOKEN_ENUM:
-			decl = parse_enum_declaration(c);
+		case TOKEN_CENUM:
+			decl = parse_enum_declaration(c, false);
 			attach_contracts = true;
 			break;
 		case TOKEN_FAULTDEF:

@@ -51,29 +51,29 @@ struct TzDateTime
 
 enum Weekday : char (String name, String abbrev)
 {
-	MONDAY    = { "Monday",    "Mon" },
-	TUESDAY   = { "Tuesday",   "Tue" },
-	WEDNESDAY = { "Wednesday", "Wed" },
-	THURSDAY  = { "Thursday",  "Thu" },
-	FRIDAY    = { "Friday",    "Fri" },
-	SATURDAY  = { "Saturday",  "Sat" },
-	SUNDAY    = { "Sunday",    "Sun" },
+	MONDAY    { "Monday",    "Mon" },
+	TUESDAY   { "Tuesday",   "Tue" },
+	WEDNESDAY { "Wednesday", "Wed" },
+	THURSDAY  { "Thursday",  "Thu" },
+	FRIDAY    { "Friday",    "Fri" },
+	SATURDAY  { "Saturday",  "Sat" },
+	SUNDAY    { "Sunday",    "Sun" },
 }
 
 enum Month : char (String name, String abbrev, int days, bool leap)
 {
-	JANUARY    = { "January",   "Jan", 31, false },
-	FEBRUARY   = { "February",  "Feb", 28, true  },
-	MARCH      = { "March",     "Mar", 31, false },
-	APRIL      = { "April",     "Apr", 30, false },
-	MAY        = { "May",       "May", 31, false },
-	JUNE       = { "June",      "Jun", 30, false },
-	JULY       = { "July",      "Jul", 31, false },
-	AUGUST     = { "August",    "Aug", 31, false },
-	SEPTEMBER  = { "September", "Sep", 30, false },
-	OCTOBER    = { "October",   "Oct", 31, false },
-	NOVEMBER   = { "November",  "Nov", 30, false },
-	DECEMBER   = { "December",  "Dec", 31, false }
+	JANUARY    { "January",   "Jan", 31, false },
+	FEBRUARY   { "February",  "Feb", 28, true  },
+	MARCH      { "March",     "Mar", 31, false },
+	APRIL      { "April",     "Apr", 30, false },
+	MAY        { "May",       "May", 31, false },
+	JUNE       { "June",      "Jun", 30, false },
+	JULY       { "July",      "Jul", 31, false },
+	AUGUST     { "August",    "Aug", 31, false },
+	SEPTEMBER  { "September", "Sep", 30, false },
+	OCTOBER    { "October",   "Oct", 31, false },
+	NOVEMBER   { "November",  "Nov", 30, false },
+	DECEMBER   { "December",  "Dec", 31, false }
 }
 
 fn Time now()
