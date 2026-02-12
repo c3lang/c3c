@@ -148,7 +148,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	{
 		if (compiler.build.win.vs_dirs)
 		{
-			char *c = strstr(compiler.build.win.vs_dirs, ";");
+			const char *c = strstr(compiler.build.win.vs_dirs, ";");
 			int len = (int)(c - compiler.build.win.vs_dirs);
 			if (!c || !len) error_exit("''win-vs-dirs' override was invalid.");
 			char *um = str_printf("%.*s\\um\\x64", len, compiler.build.win.vs_dirs);
