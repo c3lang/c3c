@@ -271,3 +271,69 @@ fn void test_zip_cp437()
 		assert((String)data == "x", "Data mismatch in CP437 test");
 	};
 }
+
+fn void test_zip_with_comment()
+{
+	@pool()
+	{
+		// Create a ZIP file with a comment
+		ZipArchive zip = zip::open("unittest_comment.zip", "w")!!;
+		zip.write_file("test.txt", "Hello, World!")!!;
+		(void)zip.close();
+		defer (void)file::delete("unittest_comment.zip");
+
+		char[] zip_data = file::load(mem, "unittest_comment.zip")!!;
+		defer free(zip_data);
+
+		isz eocd_pos = -1;
+		for (isz i = (isz)zip_data.len - 22; i >= 0; i--)
+		{
+			uint sig = mem::load((uint*)&zip_data[i], 1);
+			if (sig == 0x06054b50)
+			{
+				eocd_pos = i;
+				break;
+			}
+		}
+		assert(eocd_pos >= 0, "EOCD not found");
+
+		String comment = "This is a test comment!";
+		mem::store((ushort*)&zip_data[eocd_pos + 20], (ushort)comment.len, 1);
+
+		char[] new_zip = mem::new_array(char, zip_data.len + comment.len);
+		defer free(new_zip);
+		mem::copy(new_zip.ptr, zip_data.ptr, zip_data.len);
+		mem::copy(new_zip.ptr + zip_data.len, comment.ptr, comment.len);
+
+		file::save("unittest_comment.zip", new_zip[:zip_data.len + comment.len])!!;
+
+		// Try to open it
+		ZipArchive read_zip = zip::open("unittest_comment.zip", "r")!!;
+		defer (void)read_zip.close();
+
+		assert(read_zip.count() == 1, "Expected 1 entry");
+		assert(read_zip.comment == comment, "Comment mismatch");
+
+		char[] data = read_zip.read_file_all("test.txt")!!;
+		defer free(data);
+		assert((String)data == "Hello, World!", "Data mismatch with comment");
+	};
+}
+
+fn void test_zip_write_comment()
+{
+	@pool()
+	{
+		ZipArchive zip = zip::open("unittest_write_comment.zip", "w")!!;
+		zip.comment = String.copy("Created by C3 ZIP library", zip.allocator);
+		zip.write_file("test.txt", "Hello!")!!;
+		(void)zip.close();
+		defer (void)file::delete("unittest_write_comment.zip");
+
+		ZipArchive read_zip = zip::open("unittest_write_comment.zip", "r")!!;
+		defer (void)read_zip.close();
+
+		assert(read_zip.comment == "Created by C3 ZIP library", "Comment not preserved");
+		assert(read_zip.count() == 1, "Expected 1 entry");
+	};
+}

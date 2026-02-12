@@ -49,6 +49,7 @@ struct ZipArchive
 	ZipEntryList entries;
 	String mode;
 	String path;
+	String comment;
 }
 
 const ushort ZIP_METHOD_STORE = 0;
@@ -86,12 +87,35 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
 
 		if (file_size < ZipEOCD.sizeof) return CORRUPTED_DATA~;
 
-		f.seek((isz)(file_size - ZipEOCD.sizeof), Seek.SET)!;
+		usz search_start = file_size > (ZipEOCD.sizeof + 65535)
+			? file_size - (ZipEOCD.sizeof + 65535)
+			: 0;
+
 		ZipEOCD eocd;
-		if (f.read(((char*)&eocd)[:ZipEOCD.sizeof])! != ZipEOCD.sizeof || eocd.signature != ZIP_EOCD_SIG)
+		bool found = false;
+
+		for (isz pos = (isz)(file_size - ZipEOCD.sizeof); pos >= (isz)search_start; pos--)
 		{
-			return CORRUPTED_DATA~;
+			f.seek(pos, Seek.SET)!;
+			uint sig;
+			if (f.read(((char*)&sig)[:4])! != 4) break;
+
+			if (sig == ZIP_EOCD_SIG)
+			{
+				f.seek(pos, Seek.SET)!;
+				if (f.read(((char*)&eocd)[:ZipEOCD.sizeof])! == ZipEOCD.sizeof)
+				{
+					usz expected_end = (usz)pos + ZipEOCD.sizeof + eocd.comment_len;
+					if (expected_end == file_size)
+					{
+						found = true;
+						break;
+					}
+				}
+			}
 		}
+
+		if (!found) return CORRUPTED_DATA~;
 
 		ZipArchive archive;
 		archive.allocator = allocator;
@@ -99,6 +123,20 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
 		archive.entries.init(allocator);
 		archive.path = String.copy(path, allocator);
 		archive.mode = String.copy(mode, allocator);
+
+		if (eocd.comment_len > 0)
+		{
+			char[] comment_data = allocator::malloc(allocator, eocd.comment_len)[:eocd.comment_len];
+			if (archive.file.read(comment_data)! == eocd.comment_len)
+			{
+				archive.comment = (String)comment_data;
+			}
+			else
+			{
+				allocator::free(allocator, comment_data.ptr);
+			}
+		}
+
 		defer (catch err) (void)archive.close();
 
 		archive.file.seek((isz)eocd.cd_offset, Seek.SET)!;
@@ -316,6 +354,7 @@ fn void? ZipArchive.close(&self)
 		self.entries.free();
 		allocator::free(self.allocator, self.mode.ptr);
 		allocator::free(self.allocator, self.path.ptr);
+		if (self.comment.len > 0) allocator::free(self.allocator, self.comment.ptr);
 		if (self.file) allocator::free(self.allocator, self.file);
 	}
 
@@ -418,8 +457,14 @@ fn void? ZipArchive.close(&self)
 		eocd.num_entries = (ushort)(self.entries.len() >= 0xFFFF ? 0xFFFF : self.entries.len());
 		eocd.cd_size = (uint)(cd_size >= 0xFFFFFFFF ? 0xFFFFFFFF : cd_size);
 		eocd.cd_offset = (uint)(cd_offset >= 0xFFFFFFFF ? 0xFFFFFFFF : cd_offset);
+		eocd.comment_len = (ushort)self.comment.len;
 
 		self.file.write(((char*)&eocd)[:ZipEOCD.sizeof])!;
+
+		if (self.comment.len > 0)
+		{
+			self.file.write((char[])self.comment)!;
+		}
 	}
 }
 
