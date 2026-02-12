@@ -25,7 +25,7 @@ fn void initialize_bench() @init
 }
 
 // =======================================================================================
-module compression_benchmarks @benchmark;
+module deflate_benchmarks @benchmark;
 
 import std::compression::deflate;
 import std::core::mem;
