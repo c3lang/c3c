@@ -1027,7 +1027,6 @@ typedef struct
 	const char *identifier;
 	bool is_ref : 1;
 	bool is_rvalue : 1;
-	Decl *decl;
 } ExprIdentifierRaw;
 
 typedef struct
@@ -4598,6 +4597,34 @@ INLINE bool expr_is_const_float(Expr *expr)
 {
 	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_FLOAT;
+}
+
+INLINE bool expr_is_ct_ident(Expr *expr)
+{
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	if (expr->expr_kind != EXPR_IDENTIFIER) return false;
+	Decl *decl = expr->ident_expr;
+	if (decl->decl_kind != DECL_VAR) return false;
+	switch (decl->var.kind)
+	{
+		case VARDECL_CONST:
+		case VARDECL_GLOBAL:
+		case VARDECL_LOCAL:
+		case VARDECL_PARAM:
+		case VARDECL_MEMBER:
+		case VARDECL_BITMEMBER:
+		case VARDECL_PARAM_EXPR:
+		case VARDECL_UNWRAPPED:
+		case VARDECL_ERASE:
+		case VARDECL_REWRAPPED:
+			return false;
+		case VARDECL_PARAM_CT:
+		case VARDECL_PARAM_CT_TYPE:
+		case VARDECL_LOCAL_CT:
+		case VARDECL_LOCAL_CT_TYPE:
+			return true;
+	}
+	UNREACHABLE;
 }
 
 INLINE bool expr_is_const_typeid(Expr *expr)
