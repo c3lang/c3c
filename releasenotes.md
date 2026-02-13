@@ -14,6 +14,7 @@
 - Individual warning settings added.
 - Change typedef and const enums to not convert from literals by default.
 - Add `@constinit` to allow old typedef behaviour.
+- Include actual element count in the error message when the array initializer size does not match the expected size.
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
