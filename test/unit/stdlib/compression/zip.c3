@@ -337,3 +337,97 @@ fn void test_zip_write_comment()
 		assert(read_zip.count() == 1, "Expected 1 entry");
 	};
 }
+
+fn void test_zip64_headers()
+{
+	@pool()
+	{
+		String filename = "unittest_zip64.zip";
+		ZipArchive zip = zip::open(filename, "w")!!;
+
+		ZipEntryWriter writer = zip.open_writer("large.txt", zip::ZIP_METHOD_STORE)!!;
+		writer.write("data")!!;
+
+		// Manually set the size to > 4GB to trigger ZIP64 headers in the Central Directory.
+		// This tests the fix for ZIP64 extra field serialization (ensuring no byte truncation).
+		writer.entry.uncompressed_size = 0x100000001;
+		writer.entry.compressed_size = 0x100000001;
+
+		writer.close()!!;
+		(void)zip.close();
+		defer (void)file::delete(filename);
+
+		ZipArchive read_zip = zip::open(filename, "r")!!;
+		defer (void)read_zip.close();
+
+		ZipEntry entry = read_zip.stat("large.txt")!!;
+		assert(entry.uncompressed_size == 0x100000001, "Failed to read ZIP64 uncompressed size");
+		assert(entry.compressed_size == 0x100000001, "Failed to read ZIP64 compressed size");
+	};
+}
+
+fn void test_zip_utf8()
+{
+	@pool()
+	{
+		String filename = "unittest_utf8.zip";
+		String utf8_name = "测试_🚀.txt";
+		ZipArchive zip = zip::open(filename, "w")!!;
+		zip.write_file(utf8_name, "content")!!;
+		(void)zip.close();
+		defer (void)file::delete(filename);
+
+		ZipArchive read_zip = zip::open(filename, "r")!!;
+		defer (void)read_zip.close();
+
+		ZipEntry entry = read_zip.stat(utf8_name)!!;
+		assert(entry.name == utf8_name, "UTF-8 filename mismatch");
+	};
+}
+
+fn void test_zip_zero_length()
+{
+	@pool()
+	{
+		String filename = "unittest_zero.zip";
+		ZipArchive zip = zip::open(filename, "w")!!;
+		zip.write_file("empty.txt", "")!!;
+		(void)zip.close();
+		defer (void)file::delete(filename);
+
+		ZipArchive read_zip = zip::open(filename, "r")!!;
+		defer (void)read_zip.close();
+
+		ZipEntry entry = read_zip.stat("empty.txt")!!;
+		assert(entry.uncompressed_size == 0, "Size should be 0");
+
+		char[] data = read_zip.read_file_all("empty.txt")!!;
+		defer free(data);
+		assert(data.len == 0, "Read data should be empty");
+	};
+}
+
+fn void test_zip64_offset()
+{
+	@pool()
+	{
+		String filename = "unittest_zip64_offset.zip";
+		ZipArchive zip = zip::open(filename, "w")!!;
+
+		ZipEntryWriter writer = zip.open_writer("offset_test.txt", zip::ZIP_METHOD_STORE)!!;
+		writer.write("data")!!;
+
+		// Manually set offset to > 4GB to trigger ZIP64 headers in the Central Directory
+		writer.entry.offset = 0x100000005;
+
+		writer.close()!!;
+		(void)zip.close();
+		defer (void)file::delete(filename);
+
+		ZipArchive read_zip = zip::open(filename, "r")!!;
+		defer (void)read_zip.close();
+
+		ZipEntry entry = read_zip.stat("offset_test.txt")!!;
+		assert(entry.offset == 0x100000005, "Failed to read ZIP64 offset");
+	};
+}

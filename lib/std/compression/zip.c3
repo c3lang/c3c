@@ -387,34 +387,31 @@ fn void? ZipArchive.close(&self)
 			ZipEntry* entry = self.entries.get_ref(i);
 			ZipCDH cdh;
 			mem::set(&cdh, 0, ZipCDH.sizeof);
-			cdh = {
-				.signature = ZIP_CDH_SIG,
-				.version_made_by = 45, // 4.5 for ZIP64
-				.version_needed = 45,
-				.method = entry.method,
-				.crc32 = entry.crc32,
-				.filename_len = (ushort)entry.name.len
-			};
+
+			cdh.signature = ZIP_CDH_SIG;
+			cdh.version_made_by = 45; // 4.5 for ZIP64
+			cdh.version_needed = 45;
+			cdh.method = entry.method;
+			cdh.crc32 = entry.crc32;
+			cdh.filename_len = (ushort)entry.name.len;
 
 			bool is_zip64 = entry.uncompressed_size >= 0xFFFFFFFF || entry.compressed_size >= 0xFFFFFFFF || entry.offset >= 0xFFFFFFFF;
 
 			char[] extra_data;
 			if (is_zip64)
 			{
-				cdh = {
-					.compressed_size = 0xFFFFFFFF,
-					.uncompressed_size = 0xFFFFFFFF,
-					.relative_offset = 0xFFFFFFFF
-				};
+				cdh.compressed_size = 0xFFFFFFFF;
+				cdh.uncompressed_size = 0xFFFFFFFF;
+				cdh.relative_offset = 0xFFFFFFFF;
 
 				// Header(4) + Uncomp(8) + Comp(8) + Offset(8)
 				ushort extra_size = 28;
 				extra_data = allocator::malloc(self.allocator, extra_size)[:extra_size];
-				extra_data[0] = ZIP64_EXTRA_ID;
-				extra_data[2] = (char)(extra_size - 4);
-				extra_data[4] = (char)entry.uncompressed_size;
-				extra_data[12] = (char)entry.compressed_size;
-				extra_data[20] = (char)entry.offset;
+				bitorder::write(ZIP64_EXTRA_ID, extra_data[:2], UShortLE);
+				bitorder::write((ushort)(extra_size - 4), extra_data[2:2], UShortLE);
+				bitorder::write(entry.uncompressed_size, extra_data[4:8], ULongLE);
+				bitorder::write(entry.compressed_size, extra_data[12:8], ULongLE);
+				bitorder::write(entry.offset, extra_data[20:8], ULongLE);
 
 				cdh.extra_field_len = (ushort)extra_size;
 			}
@@ -812,6 +809,8 @@ struct ZipEntryWriter (OutStream)
 
 fn usz? ZipEntryWriter.write(&self, char[] bytes) @dynamic
 {
+	if (bytes.len == 0) return 0;
+
 	self.crc.update(bytes);
 	self.entry.uncompressed_size += (ulong)bytes.len;
 
