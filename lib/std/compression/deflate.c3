@@ -190,7 +190,7 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 	const uint WINDOW_SIZE = 32768;
 	const uint HASH_SIZE = 32768;
 	const uint HASH_MASK = HASH_SIZE - 1;
-	const uint MAX_CHAIN = 128;
+	const uint MAX_CHAIN = 16; //Fast = 16, Good = 32, Best = 128
 
 	uint[] head = allocator::alloc_array(tmem, uint, HASH_SIZE);
 	mem::set(head.ptr, 0xFF, HASH_SIZE * uint.sizeof);

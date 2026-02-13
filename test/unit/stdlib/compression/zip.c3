@@ -9,7 +9,7 @@ fn void test_zip_store()
 	{
 		// Create archive with uncompressed file
 		ZipArchive zip = zip::open("unittest_store.zip", "w")!!;
-		zip.write_file("test.txt", "Hello, World!")!!;
+		zip.write_file("test.txt", "Hello, World!", zip::ZIP_METHOD_STORE)!!;
 		(void)zip.close();
 		defer (void)file::delete("unittest_store.zip");
 
@@ -161,7 +161,7 @@ fn void test_zip_streaming()
 		// Test streaming write
 		ZipArchive zip = zip::open("unittest_stream.zip", "w")!!;
 
-		ZipEntryWriter writer = zip.open_writer("stream.txt", zip::ZIP_METHOD_STORE)!!;
+		ZipEntryWriter writer = zip.open_writer("stream.txt", zip::ZIP_METHOD_DEFLATE)!!;
 		writer.write("Part 1. ")!!;
 		writer.write("Part 2. ")!!;
 		writer.write("Part 3.")!!;

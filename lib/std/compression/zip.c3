@@ -184,7 +184,7 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
 
 			String name;
 			bool is_utf8 = (cdh.flags & 0x0800) != 0;
-			if (is_utf8)
+			if (is_utf8 || is_valid_utf8(raw_name))
 			{
 				name = (String)raw_name;
 			}
@@ -306,7 +306,7 @@ fn ZipArchive? recover(String path, Allocator allocator = mem)
 		}
 
 		String name;
-		if ((lfh.flags & 0x0800) != 0)
+		if ((lfh.flags & 0x0800) != 0 || is_valid_utf8(raw_name))
 		{
 			name = (String)raw_name;
 		}
@@ -645,7 +645,7 @@ fn void? ZipArchive.add_directory(&self, String dirname)
 *>
 fn void? ZipArchive.write_file(&self, String filename, char[] data, ushort method = ZIP_METHOD_DEFLATE)
 {
-	ZipEntryWriter? writer_opt = self.open_writer(filename);
+	ZipEntryWriter? writer_opt = self.open_writer(filename, method);
 	if (catch err = writer_opt) return err~;
 	ZipEntryWriter writer = writer_opt;
 
@@ -904,7 +904,6 @@ fn ZipEntryWriter? ZipArchive.open_writer(&self, String filename, ushort method 
 	return writer;
 }
 
-
 // -----------------------------------------------------------------------------
 // PRIVATE IMPLEMENTATION
 // -----------------------------------------------------------------------------
@@ -1115,4 +1114,41 @@ fn Time dos_date_time_to_time(ushort dos_date, ushort dos_time) @private
 	total_seconds += (long)sec;
 
 	return (Time)(total_seconds * 1_000_000);
+}
+
+fn bool is_valid_utf8(char[] bytes) @private
+{
+	usz i = 0;
+	while (i < bytes.len)
+	{
+		char lead = bytes[i];
+		switch (lead)
+		{
+			case 0x00..0x7F:
+				i++;
+			case 0xC2..0xDF:
+				if (i + 1 >= bytes.len || (bytes[i + 1] & 0xC0) != 0x80) return false;
+				i += 2;
+			case 0xE0..0xEF:
+				if (i + 2 >= bytes.len) return false;
+				char b1 = bytes[i + 1];
+				char b2 = bytes[i + 2];
+				if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80) return false;
+				if (lead == 0xE0 && b1 < 0xA0) return false;
+				if (lead == 0xED && b1 >= 0xA0) return false;
+				i += 3;
+			case 0xF0..0xF4:
+				if (i + 3 >= bytes.len) return false;
+				char b1 = bytes[i + 1];
+				char b2 = bytes[i + 2];
+				char b3 = bytes[i + 3];
+				if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (b3 & 0xC0) != 0x80) return false;
+				if (lead == 0xF0 && b1 < 0x90) return false;
+				if (lead == 0xF4 && b1 >= 0x90) return false;
+				i += 4;
+			default:
+				return false;
+		}
+	}
+	return true;
 }
