@@ -240,6 +240,20 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
 			}
 			if (extra_field.len > 0) allocator::free(allocator, extra_field.ptr);
 
+			bool is_directory = name.ends_with("/");
+			if (!is_directory)
+			{
+				ushort host_system = cdh.version_made_by >> 8;
+				if (host_system == 0 || host_system == 10) // MS-DOS or NTFS
+				{
+					if ((cdh.external_attr & 0x10) != 0) is_directory = true;
+				}
+				else if (host_system == 3) // Unix
+				{
+					if (((cdh.external_attr >> 16) & 0x4000) != 0) is_directory = true;
+				}
+			}
+
 			ZipEntry entry = {
 				.name = name,
 				.uncompressed_size = uncompressed_size,
@@ -249,7 +263,7 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
 				.method = cdh.method,
 				.last_mod_time = cdh.last_mod_time,
 				.last_mod_date = cdh.last_mod_date,
-				.is_directory = name.ends_with("/")
+				.is_directory = is_directory
 			};
 
 			archive.entries.push(entry);
