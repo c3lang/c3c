@@ -311,7 +311,7 @@ void print_deprecation_at(SourceSpan loc, const char *message, ...)
 	// Ignore errors
 	if (written <= MAX_ERROR_LEN - 2)
 	{
-		print_error_type_at(loc, buffer, PRINT_TYPE_NOTE);
+		print_error_type_at(loc, buffer, compiler.build.warnings.deprecation == WARNING_WARN ? PRINT_TYPE_NOTE : PRINT_TYPE_ERROR);
 	}
 	static bool deprecation_hint = false;
 	if (!compiler.build.lsp_output && !deprecation_hint)
