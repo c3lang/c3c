@@ -35,6 +35,7 @@
 - Using [] or .foo on $$ functions would not raise error but instead crash
 - Improved underlining errors/warnings when unicode is used. #2887 
 - Fix std::io::Formatter integer issue for large uint128 decimal values.
+- `--safe=no` disabled compile-time errors on compile-time known runtime @require checks #2936
 
 ## 0.7.9 Change list
 

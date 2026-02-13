@@ -2620,7 +2620,8 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 		docs = decl->func_decl.docs;
 	}
 
-	if (!safe_mode_enabled() || !sema_has_require(docs)) goto SKIP_CONTRACTS;
+	if (!sema_has_require(docs)) goto SKIP_CONTRACTS;
+	bool is_safe = safe_mode_enabled();
 	SemaContext temp_context;
 	bool success = false;
 	if (!sema_expr_setup_call_analysis(context, &callee, &temp_context,
@@ -2651,7 +2652,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 				compound_init->expr_compound_literal.type_info = type_info_new_base(param->type, param->span);
 				if (!sema_analyse_expr_rvalue(context, compound_init)) goto END_CONTRACT;
 				arg = compound_init;
-				expr->call_expr.va_is_splat = true;
+				if (is_safe) expr->call_expr.va_is_splat = true;
 			}
 		}
 		Decl *new_param = decl_new_generated_var(arg->type, VARDECL_LOCAL, expr->span);
@@ -2668,16 +2669,18 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 		}
 		if (i == sig->vararg_index)
 		{
-			expr->call_expr.vasplat = new_arg;
+			if (is_safe) expr->call_expr.vasplat = new_arg;
 			continue;
 		}
-		expr->call_expr.arguments[i] = new_arg;
+		if (is_safe) expr->call_expr.arguments[i] = new_arg;
 
 	}
 	AstId assert_first = 0;
 	AstId* next = &assert_first;
 
 	if (!sema_analyse_contracts(&temp_context, docs, &next, expr->span, NULL)) return false;
+
+	if (!is_safe) goto SKIP_CONTRACTS;
 
 	expr->call_expr.function_contracts = assert_first;
 
