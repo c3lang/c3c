@@ -20,7 +20,8 @@ faultdef
 	INVALID_ARGUMENT,
 	IO_ERROR,
 	CORRUPTED_DATA,
-	ENTRY_NOT_FOUND;
+	ENTRY_NOT_FOUND,
+	ENCRYPTED_FILE;
 
 <*
  Describes a single entry within a ZIP archive.
@@ -31,6 +32,7 @@ struct ZipEntry
 	ulong uncompressed_size;
 	ulong compressed_size;
 	bool is_directory;
+	bool is_encrypted;
 	uint crc32;
 	ulong offset;
 	ushort method;
@@ -240,7 +242,7 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
 			}
 			if (extra_field.len > 0) allocator::free(allocator, extra_field.ptr);
 
-			bool is_directory = name.ends_with("/");
+			bool is_directory = name.ends_with("/") || name.ends_with("\\");
 			if (!is_directory)
 			{
 				ushort host_system = cdh.version_made_by >> 8;
@@ -263,7 +265,8 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
 				.method = cdh.method,
 				.last_mod_time = cdh.last_mod_time,
 				.last_mod_date = cdh.last_mod_date,
-				.is_directory = is_directory
+				.is_directory = is_directory,
+				.is_encrypted = (cdh.flags & 1) != 0
 			};
 
 			archive.entries.push(entry);
@@ -341,7 +344,8 @@ fn ZipArchive? recover(String path, Allocator allocator = mem)
 			.method = lfh.method,
 			.last_mod_time = lfh.last_mod_time,
 			.last_mod_date = lfh.last_mod_date,
-			.is_directory = name.ends_with("/")
+			.is_directory = name.ends_with("/") || name.ends_with("\\"),
+			.is_encrypted = (lfh.flags & 1) != 0
 		};
 
 		archive.entries.push(entry);
@@ -768,6 +772,8 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename)
 	if (!@ok(opt)) return ENTRY_NOT_FOUND~;
 	ZipEntry entry = opt!;
 
+	if (entry.is_encrypted) return ENCRYPTED_FILE~;
+
 	self.file.flush()!;
 	self.file.seek((isz)entry.offset, Seek.SET)!;
 	ZipLFH lfh;
@@ -883,7 +889,7 @@ fn void? ZipEntryWriter.close(&self) @dynamic
  @return `A writer for the new entry.`
  @require method == ZIP_METHOD_STORE || method == ZIP_METHOD_DEFLATE
 *>
-fn ZipEntryWriter? ZipArchive.open_writer(&self, String filename, ushort method = ZIP_METHOD_STORE)
+fn ZipEntryWriter? ZipArchive.open_writer(&self, String filename, ushort method = ZIP_METHOD_DEFLATE)
 {
 	if (!self.mode.starts_with("w")) return IO_ERROR~;
 
