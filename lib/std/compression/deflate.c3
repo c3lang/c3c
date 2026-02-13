@@ -654,6 +654,13 @@ struct IndexMap @private
 }
 fn bool IndexMap.less(&self, IndexMap other) => self.freq < other.freq;
 
+<*
+ Compute length-limited prefix code lengths using the Larmore–Hirschberg
+ package-merge algorithm.
+ This is a port of the C3 implementation by @konimarti (https://github.com/konimarti),
+ which was based on the C implementation by Stephan Brumme
+ (https://create.stephan-brumme.com/length-limited-prefix-codes/).
+*>
 fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private => @pool()
 {
 	List{IndexMap} map;
