@@ -350,7 +350,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	}
 	if (expected_members > 0 && count > 0 && count != expected_members)
 	{
-		RETURN_SEMA_ERROR(elements[0], "Too %s elements in initializer, expected %u. Current count: %d.", count > expected_members ? "many" : "few", expected_members, count);
+		RETURN_SEMA_ERROR(elements[0], "Too %s (%u) elements in initializer, expected %u.", count > expected_members ? "many" : "few", count, expected_members);
 	}
 
 	bool optional = false;
