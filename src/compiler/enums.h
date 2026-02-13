@@ -13,6 +13,362 @@
 
 typedef enum
 {
+	DIAG_IGNORE = 0,
+	DIAG_WARN,
+	DIAG_ERROR,
+} DiagnosticsSeverity;
+
+typedef enum
+{
+	SAFETY_NOT_SET = -1,
+	SAFETY_OFF = 0,
+	SAFETY_ON = 1,
+} SafetyLevel;
+
+typedef enum
+{
+	LINKER_TYPE_NOT_SET = -1,
+	LINKER_TYPE_BUILTIN = 0,
+	LINKER_TYPE_CC = 1,
+	LINKER_TYPE_CUSTOM = 2,
+} LinkerType;
+
+typedef enum
+{
+	LINUX_LIBC_NOT_SET = -1,
+	LINUX_LIBC_GNU = 0,
+	LINUX_LIBC_MUSL = 1,
+	LINUX_LIBC_HOST = 2,
+} LinuxLibc;
+
+typedef enum
+{
+	TRUST_NONE,
+	TRUST_INCLUDE,
+	TRUST_FULL
+} TrustLevel;
+
+typedef enum
+{
+	COMPILE_NORMAL,
+	COMPILE_LEX_ONLY,
+	COMPILE_LEX_PARSE_ONLY,
+	COMPILE_LEX_PARSE_CHECK_ONLY,
+	COMPILE_OUTPUT_HEADERS,
+	COMPILE_OUTPUT_AST,
+} CompileOption;
+
+typedef enum
+{
+	OPT_SETTING_NOT_SET = -1,
+	OPT_SETTING_O0 = 0,
+	OPT_SETTING_O1,
+	OPT_SETTING_O2,
+	OPT_SETTING_O3,
+	OPT_SETTING_O4,
+	OPT_SETTING_O5,
+	OPT_SETTING_OSMALL,
+	OPT_SETTING_OTINY,
+} OptimizationSetting;
+
+typedef enum
+{
+	OPTIMIZATION_NOT_SET = -1,
+	OPTIMIZATION_NONE = 0,       // -O0
+	OPTIMIZATION_LESS = 1,       // -O1
+	OPTIMIZATION_MORE = 2,       // -O2
+	OPTIMIZATION_AGGRESSIVE = 3, // -O3
+} OptimizationLevel;
+
+typedef enum
+{
+	TESTLOGLEVEL_NOT_SET = -1,
+	TESTLOGLEVEL_VERBOSE = 0,
+	TESTLOGLEVEL_DEBUG = 1,
+	TESTLOGLEVEL_INFO = 2,
+	TESTLOGLEVEL_WARN = 3,
+	TESTLOGLEVEL_ERROR = 4,
+	TESTLOGLEVEL_CRITICAL = 5,
+} TestLogLevel;
+
+typedef enum
+{
+	PANIC_NOT_SET = -1,
+	PANIC_OFF = 0,
+	PANIC_ON = 1,
+} PanicLevel;
+
+typedef enum
+{
+	VALIDATION_NOT_SET = -1,
+	VALIDATION_LENIENT = 0,
+	VALIDATION_STRICT = 1,
+	VALIDATION_OBNOXIOUS = 2,
+} ValidationLevel;
+
+typedef enum
+{
+	ANSI_DETECT = -1,
+	ANSI_OFF = 0,
+	ANSI_ON = 1
+} Ansi;
+
+typedef enum
+{
+	SINGLE_MODULE_NOT_SET = -1,
+	SINGLE_MODULE_OFF = 0, // NOLINT
+	SINGLE_MODULE_ON = 1
+} SingleModule;
+
+typedef enum
+{
+	UNROLL_LOOPS_NOT_SET = -1,
+	UNROLL_LOOPS_OFF = 0,
+	UNROLL_LOOPS_ON = 1
+} UnrollLoops;
+
+typedef enum
+{
+	MERGE_FUNCTIONS_NOT_SET = -1,
+	MERGE_FUNCTIONS_OFF = 0,
+	MERGE_FUNCTIONS_ON = 1
+} MergeFunctions;
+
+typedef enum
+{
+	VECTORIZATION_NOT_SET = -1,
+	VECTORIZATION_OFF = 0,
+	VECTORIZATION_ON = 1
+} AutoVectorization;
+typedef enum
+{
+	STRIP_UNUSED_NOT_SET = -1,
+	STRIP_UNUSED_OFF = 0,
+	STRIP_UNUSED_ON = 1
+} StripUnused;
+
+typedef enum
+{
+	LINK_LIBC_NOT_SET = -1,
+	LINK_LIBC_OFF = 0,
+	LINK_LIBC_ON = 1
+} LinkLibc;
+
+typedef enum
+{
+	EMIT_STDLIB_NOT_SET = -1,
+	EMIT_STDLIB_OFF = 0,
+	EMIT_STDLIB_ON = 1
+} EmitStdlib;
+
+typedef enum
+{
+	USE_STDLIB_NOT_SET = -1,
+	USE_STDLIB_OFF = 0,
+	USE_STDLIB_ON = 1
+} UseStdlib;
+
+typedef enum
+{
+	CUSTOM_LIBC_NOT_SET = -1,
+	CUSTOM_LIBC_OFF = 0,
+	CUSTOM_LIBC_ON = 1
+} CustomLibc;
+
+typedef enum
+{
+	SHOW_BACKTRACE_NOT_SET = -1,
+	SHOW_BACKTRACE_OFF = 0,
+	SHOW_BACKTRACE_ON = 1
+} ShowBacktrace;
+
+
+typedef enum
+{
+	SIZE_OPTIMIZATION_NOT_SET = -1,
+	SIZE_OPTIMIZATION_NONE = 0,  // None
+	SIZE_OPTIMIZATION_SMALL = 1, // -Os
+	SIZE_OPTIMIZATION_TINY = 2,  // -Oz
+} SizeOptimizationLevel;
+
+typedef enum
+{
+	SOFT_FLOAT_DEFAULT = -1,
+	SOFT_FLOAT_NONE = 0,
+	SOFT_FLOAT_YES = 1
+} SoftFloat;
+
+typedef enum
+{
+	WIN_DEBUG_DEFAULT = -1,
+	WIN_DEBUG_CODEVIEW = 0,
+	WIN_DEBUG_DWARF = 1
+} WinDebug;
+
+typedef enum
+{
+	WIN64_SIMD_DEFAULT = -1,
+	WIN64_SIMD_FULL = 0,
+	WIN64_SIMD_ARRAY = 1
+} Win64Simd;
+
+typedef enum
+{
+	STRUCT_RETURN_DEFAULT = -1,
+	STRUCT_RETURN_STACK = 0, // NOLINT
+	STRUCT_RETURN_REG = 1
+} StructReturn;
+
+typedef enum
+{
+	X86VECTOR_DEFAULT = -1,
+	X86VECTOR_NONE = 0,
+	X86VECTOR_MMX = 1,
+	X86VECTOR_SSE = 2,
+	X86VECTOR_AVX = 3,
+	X86VECTOR_AVX512 = 4,
+	X86VECTOR_CPU = 5,
+} X86VectorCapability;
+
+typedef enum
+{
+	X86CPU_DEFAULT = -1,
+	X86CPU_BASELINE = 0,
+	X86CPU_SSSE3 = 1,
+	X86CPU_SSE4 = 2,
+	X86CPU_AVX1 = 3,
+	X86CPU_AVX2_V1 = 4,
+	X86CPU_AVX2_V2 = 5,
+	X86CPU_AVX512 = 6,
+	X86CPU_NATIVE = 7,
+} X86CpuSet;
+
+
+typedef enum
+{
+	RISCV_CPU_DEFAULT = -1,
+	RISCV_CPU_RVI = 0,
+	RISCV_CPU_RVIMAC = 1,
+	RISCV_CPU_RVIMAFC = 2,
+	RISCV_CPU_RVGC = 3,
+	RISCV_CPU_RVGCV = 4,
+} RiscvCpuSet;
+
+typedef enum
+{
+	FP_DEFAULT = -1,
+	FP_STRICT = 0,
+	FP_RELAXED,
+	FP_FAST,
+} FpOpt;
+
+typedef enum
+{
+	RISCV_ABI_DEFAULT = -1,
+	RISCV_ABI_INT_ONLY = 0,
+	RISCV_ABI_FLOAT = 1,
+	RISCV_ABI_DOUBLE = 2,
+} RiscvAbi;
+
+typedef enum
+{
+	MEMORY_ENV_NOT_SET = -1,
+	MEMORY_ENV_NORMAL = 0,
+	MEMORY_ENV_SMALL = 1,
+	MEMORY_ENV_TINY = 2,
+	MEMORY_ENV_NONE = 3,
+} MemoryEnvironment;
+
+typedef enum
+{
+	WIN_CRT_DEFAULT = -1,
+	WIN_CRT_NONE = 0,
+	WIN_CRT_DYNAMIC = 1,
+	WIN_CRT_DYNAMIC_DEBUG = 2,
+	WIN_CRT_STATIC = 3,
+	WIN_CRT_STATIC_DEBUG = 4,
+} WinCrtLinking;
+
+
+typedef enum
+{
+	RELOC_DEFAULT = -1,
+	RELOC_NONE = 0,
+	RELOC_SMALL_PIC = 1,
+	RELOC_BIG_PIC = 2,
+	RELOC_SMALL_PIE = 3,
+	RELOC_BIG_PIE = 4,
+} RelocModel;
+
+typedef enum
+{
+	DEBUG_INFO_NOT_SET = -1,
+	DEBUG_INFO_NONE,
+	DEBUG_INFO_LINE_TABLES,
+	DEBUG_INFO_FULL
+} DebugInfo;
+
+typedef enum
+{
+	ARCH_OS_TARGET_DEFAULT = -1,
+	ANDROID_AARCH64 = 0,
+	ANDROID_X86_64,
+	ELF_AARCH64,
+	ELF_RISCV32,
+	ELF_RISCV64,
+	ELF_X86,
+	ELF_X64,
+	ELF_XTENSA,
+	FREEBSD_X86,
+	FREEBSD_X64,
+	IOS_AARCH64,
+	LINUX_AARCH64,
+	LINUX_RISCV32,
+	LINUX_RISCV64,
+	LINUX_X86,
+	LINUX_X64,
+	MACOS_AARCH64,
+	MACOS_X64,
+	MCU_X86,
+	MINGW_X64,
+	NETBSD_AARCH64,
+	NETBSD_X86,
+	NETBSD_X64,
+	OPENBSD_X86,
+	OPENBSD_X64,
+	WASM32,
+	WASM64,
+	WINDOWS_AARCH64,
+	WINDOWS_X64,
+	ARCH_OS_TARGET_LAST = WINDOWS_X64
+} ArchOsTarget;
+
+typedef enum
+{
+	SANITIZE_NOT_SET = -1,
+	SANITIZE_NONE,
+	SANITIZE_ADDRESS,
+	SANITIZE_MEMORY,
+	SANITIZE_THREAD,
+} SanitizeMode;
+
+typedef enum
+{
+	BACKEND_LLVM = 0,
+	BACKEND_TB = 1,
+	BACKEND_C = 2,
+} CompilerBackend;
+
+typedef enum
+{
+	WARNING_NOT_SET,
+	WARNING_SILENT,
+	WARNING_WARN,
+	WARNING_ERROR
+} WarningLevel;
+
+typedef enum
+{
 	ABI_UNKNOWN,
 	ABI_X64,
 	ABI_WIN64,

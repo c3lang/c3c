@@ -140,6 +140,9 @@ static void usage(bool full)
 		print_opt("--use-old-slice-copy", "Use the old slice copy semantics.");
 		print_opt("--use-old-enums", "Use the old enum syntax and semantics.");
 		print_opt("--use-old-compact-eq", "Enable the old ability to use '@compact' to make a struct comparable.");
+		print_opt("--warn-deadcode=<yes|no|error>", "Print warning on dead-code: yes, no, error.");
+		print_opt("--warn-methodsnotresolved=<yes|no|error>", "Print warning on methods not resolved when accessed: yes, no, error.");
+		print_opt("--warn-deprecation=<yes|no|error>", "Print warning when using deprecated code and constructs: yes, no, error.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -892,9 +895,25 @@ static void parse_option(BuildOptions *options)
 				options->test_nosort = true;
 				return;
 			}
+			if ((argopt = match_argopt("warn-deadcode")))
+			{
+				options->warnings.dead_code = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-methodsnotresolved")))
+			{
+				options->warnings.methods_not_resolved = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-deprecation")))
+			{
+				options->warnings.deprecation = parse_opt_select(WarningLevel, argopt, warnings);
+				silence_deprecation = options->warnings.deprecation == WARNING_SILENT;
+				return;
+			}
 			if (match_longopt("silence-deprecation"))
 			{
-				options->silence_deprecation = true;
+				options->warnings.deprecation = WARNING_SILENT;
 				silence_deprecation = true;
 				return;
 			}

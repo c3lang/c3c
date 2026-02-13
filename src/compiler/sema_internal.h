@@ -17,7 +17,7 @@
 #define UINT12_MAX        4095
 #define UINT20_MAX        1048575U
 
-#define SEMA_WARN(_node, ...) (sema_warn_at(context, (_node)->span, __VA_ARGS__))
+#define SEMA_WARN(_node, level_, ...) (sema_warn_at(context, (_node)->span, compiler.build.warnings. level_  , __VA_ARGS__))
 #define SEMA_ERROR(_node, ...) sema_error_at(context, (_node)->span, __VA_ARGS__)
 #define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return false; } while (0)
 #define RETURN_VAL_SEMA_ERROR(val__, _node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return (val__); } while (0)
@@ -58,8 +58,7 @@ SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_
 TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref);
 void sema_print_inline(SemaContext *context, SourceSpan span_original);
 void sema_error_at(SemaContext *context, SourceSpan span, const char *message, ...);
-bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ...);
-bool sema_warn_very_strict(SemaContext *context, SourceSpan span, const char *message, ...);
+bool sema_warn_at(SemaContext *context, SourceSpan span, WarningLevel warning, const char *message, ...);
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);
@@ -217,13 +216,29 @@ INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *d
 	// Prevent multiple reports
 	decl->attrs_resolved->deprecated = NULL;
 
-	if (compiler.build.silence_deprecation) return;
-	if (msg[0])
+	switch (compiler.build.warnings.deprecation)
 	{
-		sema_warning_at(span, "'%s' is deprecated: %s.", decl->name, msg);
-		return;
+		case WARNING_NOT_SET:
+			UNREACHABLE_VOID
+		case WARNING_SILENT:
+			return;
+		case WARNING_WARN:
+			if (msg[0])
+			{
+				sema_warning_at(span, "'%s' is deprecated: %s.", decl->name, msg);
+				return;
+			}
+			sema_warning_at(span, "'%s' is deprecated.", decl->name);
+			return;
+		case WARNING_ERROR:
+			if (msg[0])
+			{
+				print_error_at(span, "'%s' is deprecated: %s.", decl->name, msg);
+				return;
+			}
+			print_error_at(span, "'%s' is deprecated.", decl->name);
+			return;
 	}
-	sema_warning_at(span, "'%s' is deprecated.", decl->name);
 }
 
 static inline IndexDiff range_const_len(Range *range)

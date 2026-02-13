@@ -629,20 +629,11 @@ void sema_error_at(SemaContext *context, SourceSpan span, const char *message, .
 	sema_print_inline(context, span);
 }
 
-bool sema_warn_very_strict(SemaContext *context, SourceSpan span, const char *message, ...)
-{
-	if (compiler.build.validation_level < VALIDATION_OBNOXIOUS) return false;
-	va_list list;
-	va_start(list, message);
-	sema_verror_range(span, message, list);
-	va_end(list);
-	sema_print_inline(context, span);
-	return true;
-}
 
-bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ...)
+bool sema_warn_at(SemaContext *context, SourceSpan span, WarningLevel level, const char *message, ...)
 {
-	bool is_warn = compiler.build.validation_level < VALIDATION_STRICT;
+	if (level == WARNING_SILENT) return true;
+	bool is_warn = level != WARNING_ERROR;
 	va_list list;
 	va_start(list, message);
 	if (is_warn)

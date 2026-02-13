@@ -69,6 +69,7 @@ typedef struct
 #endif
 	const char *cpu;
 	const char *features;
+	Warnings warning;
 	ArchType arch;
 	OsType os;
 	VendorType vendor;

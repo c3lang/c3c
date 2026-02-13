@@ -2018,8 +2018,8 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 		if (context->active_scope.end_jump.active && !context->active_scope.allow_dead_code)
 		{
 			context->active_scope.allow_dead_code = true;
-			bool warn = SEMA_WARN(statement, "This code will never execute.");
-			sema_note_prev_at(context->active_scope.end_jump.span, "This code is preventing it from exectuting");
+			bool warn = SEMA_WARN(statement, dead_code, "This code will never execute.");
+			if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(context->active_scope.end_jump.span, "This code is preventing it from exectuting");
 			if (!warn)
 			{
 				success = false;
@@ -3285,8 +3285,8 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 			if (statement->ast_kind != AST_ASSERT_STMT && statement->ast_kind != AST_NOP_STMT && !(context->active_scope.flags & SCOPE_MACRO))
 			{
 				context->active_scope.allow_dead_code = true;
-				bool warn = SEMA_WARN(statement, "This code will never execute.");
-				sema_note_prev_at(end_jump.span, "No code will execute after this statement.");
+				bool warn = SEMA_WARN(statement, dead_code, "This code will never execute.");
+				if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(end_jump.span, "No code will execute after this statement.");
 				if (!warn) return ast_poison(statement);
 			}
 			// Remove it

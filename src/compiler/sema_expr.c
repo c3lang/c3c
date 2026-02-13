@@ -5614,7 +5614,7 @@ CONTINUE:
 		Decl *decl = type->decl;
 		if (!decl->unit || decl->unit->module->stage < ANALYSIS_POST_REGISTER)
 		{
-			bool err = SEMA_WARN(expr, "Methods are not fully determined for %s at this point.", decl->name);
+			bool err = SEMA_WARN(expr, methods_not_resolved, "Methods are not fully determined for %s at this point.", decl->name);
 			if (err) return false;
 		}
 		// Interface, prefer interface methods.
