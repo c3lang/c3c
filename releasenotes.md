@@ -12,6 +12,8 @@
 - New const enum declaration syntax.
 - New enum associated value syntax.
 - Individual warning settings added.
+- Change typedef and const enums to not convert from literals by default.
+- Add `@constinit` to allow old typedef behaviour.
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831

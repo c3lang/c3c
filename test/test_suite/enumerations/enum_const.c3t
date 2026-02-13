@@ -24,7 +24,7 @@ const enum Bde2 :  int
 	BAR = 100
 }
 
-typedef Bde3 = int;
+typedef Bde3 @constinit = int;
 const BDE3_FOO = 2;
 const BDE3_BAR = 100;
 
