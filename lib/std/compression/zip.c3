@@ -686,7 +686,10 @@ fn usz? ZipEntryReader.read(&self, char[] buffer) @dynamic
 {
 	if (self.method == ZIP_METHOD_STORE)
 	{
-		return self.adapter.read(buffer);
+		usz n = self.adapter.read(buffer)!;
+		if (n == 0) return io::EOF~;
+		self.pos += n;
+		return n;
 	}
 	else if (self.method == ZIP_METHOD_DEFLATE)
 	{

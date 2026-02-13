@@ -1,6 +1,6 @@
 module zip_test @test;
 
-import std::io::file;
+import std::io;
 import std::compression::zip;
 
 fn void test_zip_store()
@@ -429,5 +429,49 @@ fn void test_zip64_offset()
 
 		ZipEntry entry = read_zip.stat("offset_test.txt")!!;
 		assert(entry.offset == 0x100000005, "Failed to read ZIP64 offset");
+	};
+}
+
+fn void test_zip_reader_pos_and_seek()
+{
+	@pool()
+	{
+		String path = "unittest_reader.zip";
+		ZipArchive zip = zip::open(path, "w")!!;
+		zip.write_file("test.txt", "0123456789", zip::ZIP_METHOD_STORE)!!;
+		(void)zip.close();
+		defer (void)file::delete(path);
+
+		ZipArchive read_zip = zip::open(path, "r")!!;
+		defer (void)read_zip.close();
+
+		ZipEntryReader reader = read_zip.open_reader("test.txt")!!;
+		defer (void)reader.close();
+
+		assert(reader.len() == 10, "Expected length 10");
+		assert(reader.available()!! == 10, "Expected 10 bytes available");
+		assert(reader.pos == 0, "Expected pos 0");
+
+		char[3] buf;
+		assert(reader.read(buf[..])!! == 3);
+		assert((String)buf[..] == "012", "Expected '012'");
+		assert(reader.pos == 3, "Expected pos 3");
+		assert(reader.available()!! == 7, "Expected 7 bytes available");
+
+		assert(reader.seek(2, Seek.CURSOR)!! == 5, "Expected seek to 5");
+		assert(reader.pos == 5, "Expected pos 5 after seek");
+		assert(reader.available()!! == 5, "Expected 5 bytes available after seek");
+
+		assert(reader.read(buf[..])!! == 3);
+		assert((String)buf[..] == "567", "Expected '567'");
+
+		assert(reader.seek(1, Seek.SET)!! == 1, "Expected seek to 1");
+		assert(reader.read(buf[..])!! == 3);
+		assert((String)buf[..] == "123", "Expected '123'");
+
+		assert(reader.seek(-2, Seek.END)!! == 8, "Expected seek to 8");
+		assert(reader.read(buf[..])!! == 2);
+		assert((String)buf[:2] == "89", "Expected '89'");
+		assert(reader.available()!! == 0, "Expected 0 bytes available at end");
 	};
 }
