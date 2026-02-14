@@ -124,8 +124,13 @@ fn char[]? decompress(char[] input, Allocator allocator = mem)
 	{
 		if (out_len + 8192 > out_cap)
 		{
-			usz next_cap = out_cap * 2;
-			if (next_cap < out_len + 8192) next_cap = out_len + 8192;
+			usz next_cap = out_cap;
+			if (next_cap < 16384) next_cap = 16384;
+			while (next_cap < out_len + 8192)
+			{
+				if (next_cap > usz.max / 2) { next_cap = out_len + 8192; break; }
+				next_cap *= 2;
+			}
 			out = allocator::realloc_array(allocator, out, char, next_cap);
 			out_cap = next_cap;
 		}
@@ -223,7 +228,7 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 
 			uint chain_len = 0;
 			uint curr = match_head;
-			while (curr != 0xFFFFFFFF && pos - curr < WINDOW_SIZE && chain_len < MAX_CHAIN)
+			while (curr != 0xFFFFFFFF && (uint)pos - curr < WINDOW_SIZE && chain_len < MAX_CHAIN)
 			{
 				if (pos + best_len < input.len && input[curr + best_len] == input[pos + best_len])
 				{
@@ -238,7 +243,7 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 					if (match_len >= MIN_MATCH && match_len > best_len)
 					{
 						best_len = match_len;
-						best_dist = (uint)(pos - (usz)curr);
+						best_dist = (uint)pos - curr;
 						if (best_len == MAX_MATCH) break;
 					}
 				}
@@ -575,7 +580,13 @@ fn void BitWriter.write_bits(&self, uint value, uint count) @private
 	{
 		if (self.len >= self.data.len)
 		{
-			usz new_cap = self.data.len * 2;
+			usz new_cap = self.data.len;
+			if (new_cap < 1024) new_cap = 1024;
+			while (new_cap <= self.len)
+			{
+				if (new_cap > usz.max / 2) { new_cap = self.len + 1; break; }
+				new_cap *= 2;
+			}
 			self.data = allocator::realloc_array(self.allocator, self.data.ptr, char, new_cap);
 		}
 		self.data[self.len++] = (char)(self.buffer & 0xFF);
@@ -735,9 +746,9 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 		if (num_previous >= num_relevant)
 		{
 			bool keep_going = false;
-			for (isz i = (isz)num_relevant - 1; i > 0; i--)
+			for (usz i = num_relevant; i > 1; i--)
 			{
-				if (previous[i] != current[i])
+				if (previous[i - 1] != current[i - 1])
 				{
 					keep_going = true;
 					break;

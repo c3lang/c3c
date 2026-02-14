@@ -126,7 +126,7 @@ fn void test_deflate_stream()
 		// Use a temporary file on disk to test the streaming interface
 		File f = file::open("unittest_stream_deflate.bin", "wb+")!!;
 		defer { (void)f.close(); (void)file::delete("unittest_stream_deflate.bin"); }
-		
+
 		f.write(compressed)!!;
 		f.seek(0, Seek.SET)!!;
 
@@ -135,7 +135,7 @@ fn void test_deflate_stream()
 		defer { (void)out_f.close(); (void)file::delete("unittest_stream_out.bin"); }
 
 		deflate::decompress_stream(&f, &out_f)!!;
-		
+
 		usz out_size = out_f.seek(0, Seek.CURSOR)!!;
 		assert(out_size == original.len, "Length mismatch in streaming decompression");
 
@@ -145,5 +145,42 @@ fn void test_deflate_stream()
 		out_f.read(result)!!;
 
 		assert((String)result == original, "Data mismatch in streaming decompression");
+	};
+}
+
+fn void test_deflate_incremental()
+{
+	@pool()
+	{
+		String original = "This is a test of incremental decompression. We will read it byte by byte.";
+		char[] compressed = deflate::compress((char[])original)!!;
+		defer free(compressed.ptr);
+
+		// Use a ByteReader for the compressed data
+		io::ByteReader in_stream;
+		in_stream.init(compressed);
+
+		Inflater* inflater = mem::new(Inflater);
+		char[] bit_buf = mem::malloc(8192)[:8192];
+		inflater.init(&in_stream, bit_buf);
+		defer free(bit_buf.ptr);
+		defer free(inflater);
+
+		char[] decompressed = mem::malloc(original.len)[:original.len];
+		defer free(decompressed.ptr);
+
+		for (usz i = 0; i < original.len; i++)
+		{
+			char[1] one_byte;
+			usz n = inflater.read(one_byte[..])!!;
+			assert(n == 1, "Expected 1 byte");
+			decompressed[i] = one_byte[0];
+		}
+
+		// One more read should return 0 (or EOF)
+		char[1] extra;
+		assert(inflater.read(extra[..])!! == 0, "Expected EOF");
+
+		assert((String)original == (String)decompressed, "Incremental decompression failed");
 	};
 }

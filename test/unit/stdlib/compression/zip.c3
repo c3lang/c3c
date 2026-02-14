@@ -473,5 +473,77 @@ fn void test_zip_reader_pos_and_seek()
 		assert(reader.read(buf[..])!! == 2);
 		assert((String)buf[:2] == "89", "Expected '89'");
 		assert(reader.available()!! == 0, "Expected 0 bytes available at end");
+
+		// Edge case: Negative seek SET
+		assert(!@ok(reader.seek(-1, Seek.SET)), "Negative seek SET should fail");
+
+		// Edge case: Seek past end
+		assert(reader.seek(100, Seek.SET)!! == 10, "Seek past end should cap at size");
+		assert(reader.pos == 10, "Pos should be 10");
+	};
+}
+
+fn void test_zip_comment_boundary()
+{
+	@pool()
+	{
+		String filename = "unittest_comment_limit.zip";
+
+		// 1. Test exactly 65535 bytes (Should pass)
+		{
+			ZipArchive zip = zip::open(filename, "w")!!;
+			char[] huge_comment = allocator::malloc(tmem, 65535)[:65535];
+			mem::set(huge_comment.ptr, (char)'C', 65535);
+			zip.comment = String.copy((String)huge_comment, zip.allocator);
+			zip.write_file("t.txt", "d")!!;
+			(void)zip.close();
+
+			ZipArchive read_zip = zip::open(filename, "r")!!;
+			assert(read_zip.comment.len == 65535, "Comment length mismatch at 65535");
+			(void)read_zip.close();
+			(void)file::delete(filename);
+		}
+
+		// 2. Test 65536 bytes (Should fail with INVALID_ARGUMENT)
+		{
+			ZipArchive zip = zip::open(filename, "w")!!;
+			char[] too_huge = allocator::malloc(tmem, 65536)[:65536];
+			mem::set(too_huge.ptr, (char)'X', 65536);
+			zip.comment = String.copy((String)too_huge, zip.allocator);
+			zip.write_file("t.txt", "d")!!;
+
+			fault res = @catch(zip.close());
+			assert(res == zip::INVALID_ARGUMENT, "Expected INVALID_ARGUMENT for 64k+1 comment");
+			(void)file::delete(filename);
+		}
+	};
+}
+
+fn void test_zip_reader_available_capping()
+{
+	@pool()
+	{
+		// We manually construct a reader to test the capping logic for huge entry sizes
+		// that might exist on 32-bit systems (where usz < 64-bit).
+		ZipEntryReader reader;
+		mem::set(&reader, 0, ZipEntryReader.sizeof);
+		reader.size = 0xFFFFFFFFFFFFFFFF;
+		reader.pos = 0;
+
+		usz avail = reader.available()!!;
+		assert(avail == usz.max, "Expected available to be capped at usz.max");
+
+		reader.pos = 100;
+		avail = reader.available()!!;
+		if (usz.max < 0xFFFFFFFFFFFFFFFF)
+		{
+			// triggers on 32-bit
+			assert(avail == usz.max, "Expected available to still be capped at usz.max");
+		}
+		else
+		{
+			// on 64-bit
+			assert(avail == usz.max - (usz)100, "Expected available size to be correct on 64-bit");
+		}
 	};
 }
