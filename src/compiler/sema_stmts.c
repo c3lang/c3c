@@ -111,6 +111,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 	{
 		if (!sema_analyse_ct_expr(context, message_expr)) return false;
 		if (!expr_is_const_string(message_expr)) RETURN_SEMA_ERROR(message_expr, "Expected a constant string as the error message.");
+
 		FOREACH(Expr *, e, statement->assert_stmt.args)
 		{
 			if (!sema_analyse_expr_rvalue(context, e)) return false;
@@ -137,6 +138,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 		}
 	}
 
+	// We might have `assert(false)` or `assert(true)`
 	CondResult result_no_resolve = COND_MISSING;
 	if (expr->resolve_status == RESOLVE_DONE && expr_is_const_bool(expr))
 	{
@@ -170,7 +172,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 			// Otherwise we print an error.
 			if (!context->active_scope.end_jump.active && !context->active_scope.is_dead)
 			{
-				if (message_expr && sema_cast_const(message_expr) && vec_size(statement->assert_stmt.args))
+				if (message_expr && sema_cast_const(message_expr) && !vec_size(statement->assert_stmt.args))
 				{
 					RETURN_SEMA_ERROR(expr, "%.*s", EXPAND_EXPR_STRING(message_expr));
 				}

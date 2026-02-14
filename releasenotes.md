@@ -41,6 +41,7 @@
 - Improved underlining errors/warnings when unicode is used. #2887 
 - Fix std::io::Formatter integer issue for large uint128 decimal values.
 - `--safe=no` disabled compile-time errors on compile-time known runtime @require checks #2936
+- On assert known false, the message was not show for no-args.
 
 ## 0.7.9 Change list
 
