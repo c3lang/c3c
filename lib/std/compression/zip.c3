@@ -109,7 +109,7 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
 				f.seek((isz)pos, Seek.SET)!;
 				if (f.read(((char*)&eocd)[:ZipEOCD.sizeof])! == ZipEOCD.sizeof)
 				{
-					usz expected_end = pos + ZipEOCD.sizeof + eocd.comment_len.val;
+					ulong expected_end = pos + ZipEOCD.sizeof + eocd.comment_len.val;
 					if (expected_end == file_size)
 					{
 						found = true;
