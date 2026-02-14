@@ -1198,9 +1198,9 @@ static char *arch_to_target_triple(ArchOsTarget target, LinuxLibc linux_libc)
 		case ELF_AARCH64: return "aarch64-unknown-elf";
 		case WINDOWS_AARCH64: return "aarch64-pc-windows-msvc";
 		case NETBSD_AARCH64: return "aarch64-unknown-netbsd";
-		case LINUX_RISCV32: return linux_libc == LINUX_LIBC_MUSL ? "riscv32-unknown-linux-musl" : "riscv32-unknown-linux";
+		case LINUX_RISCV32: return linux_libc == LINUX_LIBC_MUSL ? "riscv32-unknown-linux-musl" : "riscv32-unknown-linux-gnu";
 		case ELF_RISCV32: return "riscv32-unknown-elf";
-		case LINUX_RISCV64: return linux_libc == LINUX_LIBC_MUSL ? "riscv64-unknown-linux-musl" : "riscv64-unknown-linux";
+		case LINUX_RISCV64: return linux_libc == LINUX_LIBC_MUSL ? "riscv64-unknown-linux-musl" : "riscv64-unknown-linux-gnu";
 		case ELF_RISCV64: return "riscv64-unknown-elf";
 		case ELF_XTENSA: return "xtensa-unknown-elf";
 		case WASM32: return "wasm32-unknown-unknown";
@@ -2026,6 +2026,7 @@ static void target_setup_riscv_abi(BuildTarget *target)
 		cpu_features_add_feature_single(&features, RISCV_FEAT_32BIT);
 		if (cpu == RISCV_CPU_DEFAULT) cpu = RISCV_CPU_RVI;
 	}
+	INFO_LOG("RISC-V Setup: cpu=%d, current_abi=%d", (int)cpu, (int)target->feature.riscv_abi);
 	if (target->feature.riscv_abi == RISCV_ABI_DEFAULT)
 	{
 		switch (cpu)
@@ -2082,6 +2083,16 @@ static void target_setup_riscv_abi(BuildTarget *target)
 			cpu_features_add_feature_single(&features, RISCV_FEAT_A);
 			cpu_features_add_feature_single(&features, RISCV_FEAT_C);
 			break;
+	}
+
+	if (target->feature.riscv_abi >= RISCV_ABI_FLOAT)
+	{
+		cpu_features_add_feature_single(&features, RISCV_FEAT_F);
+		cpu_features_add_feature_single(&features, RISCV_FEAT_ZICSR);
+	}
+	if (target->feature.riscv_abi >= RISCV_ABI_DOUBLE)
+	{
+		cpu_features_add_feature_single(&features, RISCV_FEAT_D);
 	}
 #if LLVM_VERSION_MAJOR < 18
 	// Not supported prior to LLVM 18
