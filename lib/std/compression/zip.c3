@@ -86,29 +86,30 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
 		defer (catch err) (void)f.close();
 
 		f.seek(0, Seek.END)!;
-		usz file_size = (usz)f.seek(0, Seek.CURSOR)!;
+		ulong file_size = (ulong)f.seek(0, Seek.CURSOR)!;
 
 		if (file_size < ZipEOCD.sizeof) return CORRUPTED_DATA~;
 
-		usz search_start = file_size > (ZipEOCD.sizeof + 65535)
-			? file_size - (ZipEOCD.sizeof + 65535)
+		ulong search_start = file_size > (ulong)(ZipEOCD.sizeof + 65535)
+			? file_size - (ulong)(ZipEOCD.sizeof + 65535)
 			: 0;
 
 		ZipEOCD eocd;
 		bool found = false;
 
-		for (isz pos = (isz)(file_size - ZipEOCD.sizeof); pos >= (isz)search_start; pos--)
+		for (ulong pos = file_size - (ulong)ZipEOCD.sizeof; pos >= search_start; pos--)
 		{
-			f.seek(pos, Seek.SET)!;
+			if (pos > (ulong)isz.max) return io::OVERFLOW~;
+			f.seek((isz)pos, Seek.SET)!;
 			UIntLE sig;
 			if (f.read(((char*)&sig)[:4])! != 4) break;
 
 			if (sig.val == ZIP_EOCD_SIG)
 			{
-				f.seek(pos, Seek.SET)!;
+				f.seek((isz)pos, Seek.SET)!;
 				if (f.read(((char*)&eocd)[:ZipEOCD.sizeof])! == ZipEOCD.sizeof)
 				{
-					usz expected_end = (usz)pos + ZipEOCD.sizeof + eocd.comment_len.val;
+					usz expected_end = pos + ZipEOCD.sizeof + eocd.comment_len.val;
 					if (expected_end == file_size)
 					{
 						found = true;
@@ -116,6 +117,7 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
 					}
 				}
 			}
+			if (pos == 0) break;
 		}
 
 		if (!found) return CORRUPTED_DATA~;
@@ -129,19 +131,17 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
 
 		if (eocd.comment_len.val > 0)
 		{
-			char[] comment_data = allocator::malloc(allocator, eocd.comment_len.val)[:eocd.comment_len.val];
-			if (archive.file.read(comment_data)! == eocd.comment_len.val)
+			char[] comment_data = allocator::malloc(allocator, (usz)eocd.comment_len.val)[:(usz)eocd.comment_len.val];
+			defer allocator::free(allocator, comment_data.ptr);
+			if (archive.file.read(comment_data)! == (usz)eocd.comment_len.val)
 			{
-				archive.comment = (String)comment_data;
-			}
-			else
-			{
-				allocator::free(allocator, comment_data.ptr);
+				archive.comment = codepage::decode(allocator, comment_data, CodePage.CP437)!!;
 			}
 		}
 
 		defer (catch err) (void)archive.close();
 
+		if (eocd.cd_offset.val > (uint)isz.max) return io::OVERFLOW~;
 		archive.file.seek((isz)eocd.cd_offset.val, Seek.SET)!;
 
 		usz num_entries = eocd.num_entries.val;
@@ -164,6 +164,7 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
 						archive.file.read(((char*)&eocd64)[:Zip64EOCD.sizeof])!;
 						if (eocd64.signature.val == ZIP64_EOCD_SIG)
 						{
+							if (eocd64.offset_cd.val > (ulong)isz.max) return io::OVERFLOW~;
 							archive.file.seek((isz)eocd64.offset_cd.val, Seek.SET)!;
 							num_entries = (usz)eocd64.count_total.val;
 						}
@@ -204,7 +205,7 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
 				archive.file.read(extra_field)!;
 			}
 
-			(void)archive.file.seek((isz)(cdh.comment_len.val), Seek.CURSOR);
+			archive.file.seek((isz)cdh.comment_len.val, Seek.CURSOR)!;
 
 			ulong uncompressed_size = cdh.uncompressed_size.val;
 			ulong compressed_size = cdh.compressed_size.val;
@@ -306,9 +307,9 @@ fn ZipArchive? recover(String path, Allocator allocator = mem)
 		usz n = archive.file.read(sig_buf[..])!;
 		if (n < 4) break;
 
-		if ((*(UIntLE*)&sig_buf).val != ZIP_LFH_SIG)
+		if (bitorder::read(sig_buf, UIntLE) != ZIP_LFH_SIG)
 		{
-			(void)archive.file.seek(-3, Seek.CURSOR);
+			archive.file.seek(-3, Seek.CURSOR)!;
 			continue;
 		}
 
@@ -351,6 +352,7 @@ fn ZipArchive? recover(String path, Allocator allocator = mem)
 
 		archive.entries.push(entry);
 
+		if (lfh.compressed_size.val > 0 && (ulong)lfh.compressed_size.val > (ulong)isz.max) return io::OVERFLOW~;
 		archive.file.seek((isz)lfh.compressed_size.val, Seek.CURSOR)!;
 	}
 
@@ -437,7 +439,9 @@ fn void? ZipArchive.close(&self)
 				allocator::free(self.allocator, extra_data.ptr);
 			}
 
-			cd_size += (ulong)(ZipCDH.sizeof + entry.name.len + cdh.extra_field_len.val);
+			ulong entry_record_size = (ulong)(ZipCDH.sizeof + entry.name.len + cdh.extra_field_len.val);
+			if (cd_size > (ulong.max - entry_record_size)) return io::OVERFLOW~;
+			cd_size += entry_record_size;
 		}
 
 		bool cd_zip64 = self.entries.len() >= 0xFFFF || cd_size >= 0xFFFFFFFF || cd_offset >= 0xFFFFFFFF;
@@ -468,20 +472,36 @@ fn void? ZipArchive.close(&self)
 			self.file.write(((char*)&locator)[:Zip64Locator.sizeof])!;
 		}
 
+		char[] encoded_comment;
+		if (self.comment.len > 0)
+		{
+			char[]? res = codepage::encode(self.allocator, self.comment, CodePage.CP437);
+			if (@ok(res))
+			{
+				encoded_comment = res!;
+				if (encoded_comment.len > 0xFFFF)
+				{
+					allocator::free(self.allocator, encoded_comment.ptr);
+					return INVALID_ARGUMENT~;
+				}
+			}
+		}
+		defer if (encoded_comment.ptr) allocator::free(self.allocator, encoded_comment.ptr);
+
 		ZipEOCD eocd;
 		mem::set(&eocd, 0, ZipEOCD.sizeof);
 		eocd.signature.val = ZIP_EOCD_SIG;
-		eocd.num_entries_this_disk.val = (ushort)(self.entries.len() >= 0xFFFF ? 0xFFFF : self.entries.len());
-		eocd.num_entries.val = (ushort)(self.entries.len() >= 0xFFFF ? 0xFFFF : self.entries.len());
-		eocd.cd_size.val = (uint)(cd_size >= 0xFFFFFFFF ? 0xFFFFFFFF : cd_size);
-		eocd.cd_offset.val = (uint)(cd_offset >= 0xFFFFFFFF ? 0xFFFFFFFF : cd_offset);
-		eocd.comment_len.val = (ushort)self.comment.len;
+		eocd.num_entries_this_disk.val = (ushort)(self.entries.len() >= 0xFFFF ? 0xFFFF : (ushort)self.entries.len());
+		eocd.num_entries.val = (ushort)(self.entries.len() >= 0xFFFF ? 0xFFFF : (ushort)self.entries.len());
+		eocd.cd_size.val = (uint)(cd_size >= 0xFFFFFFFF ? 0xFFFFFFFF : (uint)cd_size);
+		eocd.cd_offset.val = (uint)(cd_offset >= 0xFFFFFFFF ? 0xFFFFFFFF : (uint)cd_offset);
+		eocd.comment_len.val = (ushort)encoded_comment.len;
 
 		self.file.write(((char*)&eocd)[:ZipEOCD.sizeof])!;
 
-		if (self.comment.len > 0)
+		if (encoded_comment.len > 0)
 		{
-			self.file.write((char[])self.comment)!;
+			self.file.write(encoded_comment)!;
 		}
 	}
 }
@@ -500,7 +520,7 @@ fn void? ZipArchive.extract(&self, String output_dir)
 		{
 			if (try combined = tmp.tappend(entry.name))
 			{
-				out_path_str = (String)combined.str_view();
+				out_path_str = combined.str_view();
 			}
 			else
 			{
@@ -530,6 +550,7 @@ fn void? ZipArchive.extract(&self, String output_dir)
 			defer (void)reader.close();
 
 			File f = file::open(out_path_str, "wb")!;
+			defer (void)f.close();
 			char[65536] buf;
 			while (true)
 			{
@@ -543,17 +564,17 @@ fn void? ZipArchive.extract(&self, String output_dir)
 				if (n == 0) break;
 				f.write(buf[:n])!;
 			}
-			(void)f.close();
+			f.close()!;
 
-			(void)file::set_modified_time(out_path_str, (libc::Time_t)entry.time().to_seconds());
+			file::set_modified_time(out_path_str, (libc::Time_t)entry.time().to_seconds())!;
 		}
 	}
 
 	// Set directory timestamps (reverse order for subdirectories)
-	for (isz i = (isz)self.count() - 1; i >= 0; i--)
+	for (usz i = self.count(); i > 0; i--)
 	{
 		ZipEntry entry;
-		if (try res = self.stat_at((usz)i))
+		if (try res = self.stat_at(i - 1))
 		{
 			entry = res;
 		}
@@ -568,7 +589,7 @@ fn void? ZipArchive.extract(&self, String output_dir)
 			if (try combined = tmp.tappend(entry.name))
 			{
 				String out_path_str = (String)combined.str_view();
-				(void)file::set_modified_time(out_path_str, (libc::Time_t)entry.time().to_seconds());
+				file::set_modified_time(out_path_str, (libc::Time_t)entry.time().to_seconds())!;
 			}
 		}
 	}
@@ -609,23 +630,28 @@ fn ZipEntry? ZipArchive.stat(&self, String filename)
 fn char[]? ZipArchive.read_file_all(&self, String filename, Allocator allocator = mem)
 {
 	ZipEntryReader reader = self.open_reader(filename)!;
+	defer (void)reader.close();
 	ZipEntry entry = self.stat(filename)!;
 
 	char[] data;
+	defer (catch err) if (data.ptr) allocator::free(allocator, data.ptr);
+
 	if (reader.method == ZIP_METHOD_STORE)
 	{
+		if (reader.size > (ulong)usz.max) return io::OVERFLOW~;
 		data = allocator::malloc(allocator, (usz)reader.size)[:(usz)reader.size];
 		reader.read(data)!;
 	}
 	else
 	{
+		if (reader.adapter.start_offset > (ulong)isz.max) return io::OVERFLOW~;
 		self.file.seek((isz)reader.adapter.start_offset, Seek.SET)!;
+		if (entry.compressed_size > (ulong)usz.max) return io::OVERFLOW~;
 		char[] compressed = allocator::malloc(allocator, (usz)entry.compressed_size)[:(usz)entry.compressed_size];
 		defer allocator::free(allocator, compressed.ptr);
 		self.file.read(compressed)!;
 		data = deflate::decompress(compressed, allocator)!;
 	}
-	defer (catch err) allocator::free(allocator, data.ptr);
 
 	Crc32 crc;
 	crc.init();
@@ -736,12 +762,15 @@ fn char? ZipEntryReader.read_byte(&self) @dynamic
 
 fn usz ZipEntryReader.len(&self) @dynamic
 {
+	if (self.size > (ulong)usz.max) return usz.max;
 	return (usz)self.size;
 }
 
 fn usz? ZipEntryReader.available(&self) @dynamic
 {
-	return (usz)(self.size - self.pos);
+	ulong avail = self.size - self.pos;
+	if (avail > (ulong)usz.max) return usz.max;
+	return (usz)avail;
 }
 
 fn usz? ZipEntryReader.seek(&self, isz offset, Seek seek) @dynamic
@@ -752,6 +781,7 @@ fn usz? ZipEntryReader.seek(&self, isz offset, Seek seek) @dynamic
 	switch (seek)
 	{
 		case SET:
+			if (offset < 0) return io::INVALID_ARGUMENT~;
 			new_pos = (ulong)offset;
 		case CURSOR:
 			new_pos = (ulong)((isz)new_pos + offset);
@@ -761,6 +791,8 @@ fn usz? ZipEntryReader.seek(&self, isz offset, Seek seek) @dynamic
 	if (new_pos > self.size) new_pos = self.size;
 	self.pos = new_pos;
 	self.adapter.pos = new_pos;
+
+	if (self.pos > (ulong)usz.max) return usz.max;
 	return (usz)self.pos;
 }
 
@@ -778,6 +810,7 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename)
 	if (entry.is_encrypted) return ENCRYPTED_FILE~;
 
 	self.file.flush()!;
+	if (entry.offset > (ulong)isz.max) return io::OVERFLOW~;
 	self.file.seek((isz)entry.offset, Seek.SET)!;
 	ZipLFH lfh;
 	self.file.read(((char*)&lfh)[:ZipLFH.sizeof])!;
@@ -787,12 +820,14 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename)
 	mem::set(&reader, 0, ZipEntryReader.sizeof);
 
 	reader.adapter.archive = (ZipArchive*)self;
-	reader.adapter.start_offset = entry.offset + ZipLFH.sizeof + lfh.filename_len.val + lfh.extra_field_len.val;
+	ulong start_offset = entry.offset + ZipLFH.sizeof + lfh.filename_len.val + lfh.extra_field_len.val;
+	if (start_offset > (ulong)isz.max) return io::OVERFLOW~;
+	reader.adapter.start_offset = start_offset;
 	// For STORE: adapter.size is uncompressed size.
 	// For DEFLATE: adapter.size is compressed size.
 	reader.adapter.size = entry.method == ZIP_METHOD_STORE
 		? entry.uncompressed_size
-		: (entry.compressed_size == 0xFFFFFFFF ? 0xFFFFFFFFFFFFFFFF : entry.compressed_size);
+		: entry.compressed_size;
 	reader.adapter.pos = 0;
 
 	reader.size = entry.uncompressed_size;
@@ -831,9 +866,13 @@ fn usz? ZipEntryWriter.write(&self, char[] bytes) @dynamic
 		usz new_len = self.buffer.len + bytes.len;
 		if (new_len > self.capacity)
 		{
-			usz cap2 = self.capacity * 2;
-			usz new_cap = cap2 > new_len ? cap2 : new_len;
+			usz new_cap = self.capacity;
 			if (new_cap < 4096) new_cap = 4096;
+			while (new_cap < new_len)
+			{
+				if (new_cap > usz.max / 2) { new_cap = new_len; break; }
+				new_cap *= 2;
+			}
 
 			char* p = allocator::realloc_array(self.archive.allocator, self.buffer.ptr, char, new_cap);
 			self.buffer = p[:self.buffer.len]; // Keep length as used size
@@ -874,11 +913,14 @@ fn void? ZipEntryWriter.close(&self) @dynamic
 	self.entry.crc32 = ~self.crc.result;
 
 	self.lfh.crc32.val = self.entry.crc32;
-	self.lfh.compressed_size.val = (uint)self.entry.compressed_size;
-	self.lfh.uncompressed_size.val = (uint)self.entry.uncompressed_size;
+
+	// ZIP64 sentinel: readers typically fallback to Central Directory for actual sizes.
+	self.lfh.compressed_size.val = (uint)math::min(self.entry.compressed_size, (ulong)0xFFFFFFFF);
+	self.lfh.uncompressed_size.val = (uint)math::min(self.entry.uncompressed_size, (ulong)0xFFFFFFFF);
 
 	ulong end_pos = (ulong)self.archive.file.seek(0, Seek.CURSOR)!;
 
+	if (self.lfh_offset > (ulong)isz.max) return io::OVERFLOW~;
 	self.archive.file.seek((isz)self.lfh_offset, Seek.SET)!;
 	self.archive.file.write(((char*)&self.lfh)[:ZipLFH.sizeof])!;
 
@@ -950,8 +992,11 @@ fn usz? ArchiveStreamAdapter.read(&self, char[] buffer) @dynamic
 	usz to_read = (usz)math::min((ulong)buffer.len, self.size - self.pos);
 	if (to_read == 0) return 0;
 
+	ulong abs_pos = self.start_offset + self.pos;
+	if (abs_pos > (ulong)isz.max) return io::OVERFLOW~;
+
 	// Note: ZipArchive shared file handle access is not thread-safe.
-	self.archive.file.seek((isz)(self.start_offset + self.pos), Seek.SET)!;
+	self.archive.file.seek((isz)abs_pos, Seek.SET)!;
 	usz n = self.archive.file.read(buffer[:to_read])!;
 	self.pos += n;
 	return n;
@@ -1063,7 +1108,7 @@ fn ushort time_to_dos_time(Time t) @private
 	int s = (int)(seconds % 60);
 	int m = (int)((seconds / 60) % 60);
 	int h = (int)((seconds / 3600) % 24);
-	return (ushort)((h << 11) | (m << 5) | (s / 2));
+	return (ushort)(((h & 0x1F) << 11) | ((m & 0x3F) << 5) | ((s / 2) & 0x1F));
 }
 
 fn ushort time_to_dos_date(Time t) @private
@@ -1098,7 +1143,7 @@ fn ushort time_to_dos_date(Time t) @private
 
 	int day = (int)days + 1;
 	month++;
-	return (ushort)((year << 9) | (month << 5) | day);
+	return (ushort)(((year & 0x7F) << 9) | ((month & 0xF) << 5) | (day & 0x1F));
 }
 
 fn Time dos_date_time_to_time(ushort dos_date, ushort dos_time) @private
@@ -1136,8 +1181,8 @@ fn Time dos_date_time_to_time(ushort dos_date, ushort dos_time) @private
 	total_days += (long)(day - 1);
 
 	long total_seconds = total_days * 86400;
-	total_seconds += (long)(hour * 3600);
-	total_seconds += (long)(min * 60);
+	total_seconds += (long)hour * 3600;
+	total_seconds += (long)min * 60;
 	total_seconds += (long)sec;
 
 	return (Time)(total_seconds * 1_000_000);
