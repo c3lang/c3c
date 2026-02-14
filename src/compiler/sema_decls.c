@@ -1798,10 +1798,10 @@ ERR:
 	return false;
 }
 
-bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl)
+static bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl, Type *underlying_type)
 {
 	Expr *value = decl->enum_constant.value;
-	if (!sema_analyse_inferred_expr(context, decl->type, value, NULL)) return decl_poison(decl);
+	if (!sema_analyse_expr_rhs(context, decl->type, value, false, NULL, true)) return decl_poison(decl);
 	if (!expr_is_runtime_const(value))
 	{
 		SEMA_ERROR(value, "Expected an constant enum value.");
@@ -1809,8 +1809,8 @@ bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl)
 	}
 	if (value->type != decl->type)
 	{
-		if (!cast_implicit_binary(context, value, decl->type, NULL)) return decl_poison(decl);
-		cast_explicit_silent(context, value, decl->type);
+		SEMA_ERROR(value, "Expected an constant enum value of type %s, was %s", type_quoted_error_string(decl->type), type_quoted_error_string(value->type));
+		return decl_poison(decl);
 	}
 	return true;
 }
@@ -1901,7 +1901,7 @@ static inline bool sema_analyse_raw_enum(SemaContext *context, Decl *decl, bool 
 	{
 		Decl *enum_value = enum_values[i];
 		enum_value->resolve_status = RESOLVE_RUNNING;
-		if (!sema_analyse_const_enum_constant_val(context, enum_value)) return decl_poison(decl);
+		if (!sema_analyse_const_enum_constant_val(context, enum_value, type)) return decl_poison(decl);
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
 	return success;

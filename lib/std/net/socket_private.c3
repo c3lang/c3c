@@ -47,7 +47,7 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 	$if env::WIN32:
 		os::start_wsa()!;
 	$endif
-	Clock c = 0;
+	Clock c;
 	@loop_over_ai(addrinfo; NativeSocket sockfd, AddrInfo* ai)
 	{
 		apply_sockoptions(sockfd, options)!;

@@ -4,13 +4,13 @@ import std::core::mem::allocator;
 
 
 
-typedef String @if(!$defined(String)) = inline char[];
+typedef String @constinit @if(!$defined(String)) = inline char[];
 <*
  ZString is a pointer to a zero terminated array of chars.
 
  Use ZString when you need to interop with C zero terminated strings.
 *>
-typedef ZString = inline char*;
+typedef ZString @constinit = inline char*;
 
 <*
  WString is a pointer to a zero terminated array of Char16.

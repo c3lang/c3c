@@ -1466,7 +1466,18 @@ static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 		cc->to_group = flat_group;
 
 		// If it's silent or explicit, just run it:
-		if (is_silent || is_explicit) return cast_is_allowed(cc, is_explicit, is_silent);
+		if (is_silent || is_explicit)
+		{
+			if (!cast_is_allowed(cc, is_explicit, is_silent)) return false;
+			if (!is_explicit && !cc->is_binary_conversion && !to_type->decl->attr_constinit && !expr_is_const_untyped_list(cc->expr))
+			{
+				if (compiler.build.warnings.deprecation == WARNING_ERROR)
+				{
+					return sema_cast_error(cc, cast_is_allowed(cc, true, true), is_silent);
+				}
+			}
+			return true;
+		}
 		// Loud and implicit:
 		if (cast_is_allowed(cc, false, true))
 		{

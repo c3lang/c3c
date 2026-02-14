@@ -6,21 +6,21 @@ typedef Duration @structlike = long;
 typedef Clock @structlike = ulong;
 typedef NanoDuration (Printable) @structlike = long;
 
-const Time FAR_FUTURE = long.max;
-const Time FAR_PAST = long.min;
+const Time FAR_FUTURE = (Time)long.max;
+const Time FAR_PAST = (Time)long.min;
 
-const NanoDuration NANO_DURATION_ZERO = 0;
-const Duration US = 1;
-const Duration MS = 1_000;
-const Duration SEC = 1_000_000;
-const Duration MIN = 60 * SEC;
-const Duration HOUR = 60 * MIN;
-const Duration DAY = 24 * HOUR;
-const Duration WEEK = 7 * DAY;
-const Duration MONTH = 30 * DAY;
-const Duration YEAR = 36525 * DAY / 100;
-const Duration FOREVER = long.max;
-const Duration DURATION_ZERO = 0;
+const NanoDuration NANO_DURATION_ZERO = (NanoDuration)0;
+const Duration US            = (Duration)1;
+const Duration MS            = (Duration)1_000;
+const Duration SEC           = (Duration)1_000_000;
+const Duration MIN           = (Duration)60 * SEC;
+const Duration HOUR          = (Duration)60 * MIN;
+const Duration DAY           = (Duration)24 * HOUR;
+const Duration WEEK          = (Duration)7 * DAY;
+const Duration MONTH         = (Duration)30 * DAY;
+const Duration YEAR          = (Duration)36525 * DAY / 100;
+const Duration FOREVER       = (Duration)long.max;
+const Duration DURATION_ZERO = (Duration)0;
 
 fn Duration us(long l) @inline => l * US;
 fn Duration ms(long l) @inline => l * MS;

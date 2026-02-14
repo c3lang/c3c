@@ -7054,6 +7054,18 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 
 	// 1. Evaluate right side to required type.
 	bool to_optional = left_type && type_is_optional(left_type);
+	if (is_declaration && left_type)
+	{
+		switch (left_type->type_kind)
+		{
+			case TYPE_TYPEDEF:
+			case TYPE_CONST_ENUM:
+				is_declaration = false;
+				break;
+			default:
+				break;
+		}
+	}
 	if (!sema_analyse_expr_rhs(context, left_type, right, is_unwrapped_var || to_optional, failed_ref, is_declaration)) return false;
 	if (IS_OPTIONAL(right) && !to_optional)
 	{

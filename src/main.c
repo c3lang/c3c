@@ -8,7 +8,8 @@
 #include <sys/resource.h>
 #endif
 #if PLATFORM_WINDOWS
-#include <windows.h>
+extern bool SetConsoleCP(uint32_t codepage);
+extern bool SetConsoleOutputCP(uint32_t codepage);
 #endif
 
 bool debug_log = false;
