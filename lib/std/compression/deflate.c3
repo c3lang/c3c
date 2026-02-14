@@ -230,25 +230,40 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 			uint curr = match_head;
 			while (curr != 0xFFFFFFFF && (uint)pos - curr < WINDOW_SIZE && chain_len < MAX_CHAIN)
 			{
+				chain_len++;
 				if (pos + best_len < input.len && input[curr + best_len] == input[pos + best_len])
 				{
-					uint match_len = 0;
-					while (match_len < MAX_MATCH &&
-						   pos + match_len < input.len &&
-						   input[curr + match_len] == input[pos + match_len])
+					if (best_len < 3 || mem::load((ushort*)&input[pos + best_len - 1], 1) == mem::load((ushort*)&input[curr + best_len - 1], 1))
 					{
-						match_len++;
-					}
+						uint match_len = 0;
+						while (match_len + 8 <= MAX_MATCH && pos + match_len + 8 <= input.len)
+						{
+							if (mem::load((ulong*)&input[curr + match_len], 1) == mem::load((ulong*)&input[pos + match_len], 1))
+							{
+								match_len += 8;
+							}
+							else
+							{
+								break;
+							}
+						}
 
-					if (match_len >= MIN_MATCH && match_len > best_len)
-					{
-						best_len = match_len;
-						best_dist = (uint)pos - curr;
-						if (best_len == MAX_MATCH) break;
+						while (match_len < MAX_MATCH &&
+							   pos + match_len < input.len &&
+							   input[curr + match_len] == input[pos + match_len])
+						{
+							match_len++;
+						}
+
+						if (match_len >= MIN_MATCH && match_len > best_len)
+						{
+							best_len = match_len;
+							best_dist = (uint)pos - curr;
+							if (best_len == MAX_MATCH) break;
+						}
 					}
 				}
 				curr = prev[curr & 0x7FFF];
-				chain_len++;
 			}
 		}
 
