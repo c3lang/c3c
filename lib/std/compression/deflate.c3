@@ -195,7 +195,9 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 	const uint WINDOW_SIZE = 32768;
 	const uint HASH_SIZE = 32768;
 	const uint HASH_MASK = HASH_SIZE - 1;
-	const uint MAX_CHAIN = 16; //Fast = 16, Good = 32, Best = 128
+	const uint MAX_CHAIN = 16;
+	const uint GOOD_MATCH = 32;
+	const uint NICE_MATCH = 128;
 
 	uint[] head = allocator::alloc_array(tmem, uint, HASH_SIZE);
 	mem::set(head.ptr, 0xFF, HASH_SIZE * uint.sizeof);
@@ -204,8 +206,8 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 
 	uint[] lit_freqs = mem::temp_array(uint, 286);
 	uint[] dist_freqs = mem::temp_array(uint, 30);
-	List{Token} tokens;
-	tokens.tinit();
+	Token* tokens = allocator::malloc(tmem, Token.sizeof * (input.len + 1));
+	usz token_count = 0;
 
 	uint hash = 0;
 	if (input.len >= 2)
@@ -242,10 +244,7 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 							{
 								match_len += 8;
 							}
-							else
-							{
-								break;
-							}
+							else { break; }
 						}
 
 						while (match_len < MAX_MATCH &&
@@ -259,11 +258,12 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 						{
 							best_len = match_len;
 							best_dist = (uint)pos - curr;
-							if (best_len == MAX_MATCH) break;
+							if (best_len >= NICE_MATCH) break;
 						}
 					}
 				}
 				curr = prev[curr & 0x7FFF];
+				if (best_len >= GOOD_MATCH) chain_len++;
 			}
 		}
 
@@ -301,16 +301,30 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 				default:          dist_code = 28 + (best_dist - 16385) / 8192;
 			}
 			dist_freqs[dist_code]++;
-			tokens.push({ (ushort)best_len, (ushort)best_dist });
+			tokens[token_count++] = { (ushort)best_len, (ushort)best_dist };
 
-			for (uint k = 1; k < best_len; k++)
+			uint limit = best_len - 1;
+			if (pos + limit + 2 < input.len)
 			{
-				pos++;
-				if (pos + 2 < input.len)
+				for (uint k = 0; k < limit; k++)
 				{
+					pos++;
 					hash = ((hash << 5) ^ (uint)input[pos + 2]) & HASH_MASK;
 					prev[pos & 0x7FFF] = head[hash];
 					head[hash] = (uint)pos;
+				}
+			}
+			else
+			{
+				for (uint k = 0; k < limit; k++)
+				{
+					pos++;
+					if (pos + 2 < input.len)
+					{
+						hash = ((hash << 5) ^ (uint)input[pos + 2]) & HASH_MASK;
+						prev[pos & 0x7FFF] = head[hash];
+						head[hash] = (uint)pos;
+					}
 				}
 			}
 			pos++;
@@ -318,12 +332,12 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 		else
 		{
 			lit_freqs[(uint)input[pos]]++;
-			tokens.push({ (ushort)input[pos], 0 });
+			tokens[token_count++] = { (ushort)input[pos], 0 };
 			pos++;
 		}
 	}
 	lit_freqs[256] = 1;
-	tokens.push({ 256, 0 });
+	tokens[token_count++] = { 256, 0 };
 
 	Huffman lit_huff, dist_huff;
 	lit_huff.build_from_freqs(lit_freqs, 15);
@@ -429,8 +443,9 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 	Code[30] dist_codes;
 	gen_canonical_codes(&dist_codes, dist_lens[0:hdist_count]);
 
-	foreach (t : tokens)
+	for (usz i = 0; i < token_count; i++)
 	{
+		Token t = tokens[i];
 		if (t.dist == 0)
 		{
 			writer.write_huffman(lit_codes[t.val].code, lit_codes[t.val].len);
@@ -588,8 +603,7 @@ fn void BitWriter.init(&self, Allocator allocator, usz initial_cap) @private
 
 fn void BitWriter.write_bits(&self, uint value, uint count) @private
 {
-	value &= (1 << count) - 1;
-	self.buffer |= (ulong)value << self.nbits;
+	self.buffer |= (ulong)(value & ((1 << count) - 1)) << self.nbits;
 	self.nbits += count;
 	while (self.nbits >= 8)
 	{
