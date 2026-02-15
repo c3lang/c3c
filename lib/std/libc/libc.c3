@@ -49,7 +49,7 @@ fn void errno_set(Errno e)
 	os::errno_set((int)e);
 }
 
-typedef Errno = inline CInt;
+typedef Errno @constinit = inline CInt;
 alias TerminateFunction = fn void();
 alias CompareFunction = fn int(void*, void*);
 alias JmpBuf = uptr[$$JMP_BUF_SIZE];

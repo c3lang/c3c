@@ -1,4 +1,4 @@
-enum MyEnum : const
+const enum MyEnum
 {
     VAL1 = VAL3, // #error: Unable to properly resolve enum constant value, this can sometimes happen in recursive definitions
     VAL2 ,

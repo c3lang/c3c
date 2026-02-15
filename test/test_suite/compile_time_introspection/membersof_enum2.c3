@@ -3,8 +3,8 @@ import std;
 
 enum Foo : (String x, int val)
 {
-	ABC = { "Hello", 3 },
-	DEF = { "World", -100 },
+	ABC { "Hello", 3 },
+	DEF { "World", -100 },
 }
 
 fn int main()

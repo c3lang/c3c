@@ -2,13 +2,13 @@ module test;
 
 enum Bar : (Foo x)
 {
-	ABC = BAR
+	ABC {BAR}
 }
 
 enum Foo : (Bar b, Foo a)
 {
-	FOO = { ABC, BAR },
-	BAR = { ABC, BAR }
+	FOO { ABC, BAR },
+	BAR { ABC, BAR }
 }
 
 fn void main()

@@ -6,7 +6,6 @@
 #include "../utils/lib.h"
 #include "../build/build.h"
 #include "compiler.h"
-#include "enums.h"
 #include "target.h"
 #include "utils/malloc.h"
 #include "subprocess.h"
@@ -68,9 +67,9 @@ typedef uint16_t FileId;
 #define PRINT_ERROR_LAST(...) print_error_at(c->prev_span, __VA_ARGS__)
 #define RETURN_PRINT_ERROR_LAST(...) do { print_error_at(c->prev_span, __VA_ARGS__); return false; } while (0)
 #define SEMA_NOTE(_node, ...) sema_note_prev_at((_node)->span, __VA_ARGS__)
-#define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output && !compiler.build.silence_deprecation) print_error_at((_node)->span, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
+#define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output && compiler.build.warnings.deprecation > WARNING_SILENT) print_error_at((_node)->span, __VA_ARGS__); if (compiler.build.warnings.deprecation > WARNING_SILENT) \
  print_deprecation_at((_node)->span, __VA_ARGS__); } while (0)
-#define PRINT_DEPRECATED_AT(span__, ...) do { if (compiler.build.test_output && !compiler.build.silence_deprecation) print_error_at(span__, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
+#define PRINT_DEPRECATED_AT(span__, ...) do { if (compiler.build.test_output && compiler.build.warnings.deprecation > WARNING_SILENT) print_error_at(span__, __VA_ARGS__); if (compiler.build.warnings.deprecation > WARNING_SILENT) \
 print_deprecation_at(span__, __VA_ARGS__); } while (0)
 
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
@@ -718,6 +717,7 @@ typedef struct Decl_
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
 	bool attr_structlike : 1;
+	bool attr_constinit : 1;
 	bool is_template : 1;
 	bool is_templated : 1;
 	bool is_method_checked : 1;
@@ -1027,7 +1027,6 @@ typedef struct
 	const char *identifier;
 	bool is_ref : 1;
 	bool is_rvalue : 1;
-	Decl *decl;
 } ExprIdentifierRaw;
 
 typedef struct
@@ -4598,6 +4597,34 @@ INLINE bool expr_is_const_float(Expr *expr)
 {
 	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_FLOAT;
+}
+
+INLINE bool expr_is_ct_ident(Expr *expr)
+{
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	if (expr->expr_kind != EXPR_IDENTIFIER) return false;
+	Decl *decl = expr->ident_expr;
+	if (decl->decl_kind != DECL_VAR) return false;
+	switch (decl->var.kind)
+	{
+		case VARDECL_CONST:
+		case VARDECL_GLOBAL:
+		case VARDECL_LOCAL:
+		case VARDECL_PARAM:
+		case VARDECL_MEMBER:
+		case VARDECL_BITMEMBER:
+		case VARDECL_PARAM_EXPR:
+		case VARDECL_UNWRAPPED:
+		case VARDECL_ERASE:
+		case VARDECL_REWRAPPED:
+			return false;
+		case VARDECL_PARAM_CT:
+		case VARDECL_PARAM_CT_TYPE:
+		case VARDECL_LOCAL_CT:
+		case VARDECL_LOCAL_CT_TYPE:
+			return true;
+	}
+	UNREACHABLE;
 }
 
 INLINE bool expr_is_const_typeid(Expr *expr)

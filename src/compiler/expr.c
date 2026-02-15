@@ -200,8 +200,6 @@ bool expr_may_addr(Expr *expr)
 			decl = decl_raw(decl);
 			switch (decl->var.kind)
 			{
-				case VARDECL_LOCAL_CT:
-				case VARDECL_LOCAL_CT_TYPE:
 				case VARDECL_LOCAL:
 				case VARDECL_GLOBAL:
 				case VARDECL_PARAM:
@@ -211,6 +209,8 @@ bool expr_may_addr(Expr *expr)
 				case VARDECL_BITMEMBER:
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM_CT_TYPE:
+				case VARDECL_LOCAL_CT:
+				case VARDECL_LOCAL_CT_TYPE:
 				case VARDECL_PARAM_EXPR:
 					return false;
 				case VARDECL_UNWRAPPED:
@@ -485,7 +485,6 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_CT_CALL:
 		case EXPR_TYPEINFO:
 		case EXPR_HASH_IDENT:
-		case EXPR_CT_IDENT:
 		case EXPR_POISONED:
 		case EXPR_CT_ARG:
 		case EXPR_ASM:
@@ -846,7 +845,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_IS_CONST:
 		case EXPR_CT_EVAL:
-		case EXPR_CT_IDENT:
 		case EXPR_IDENTIFIER:
 		case EXPR_LAMBDA:
 		case EXPR_NOP:

@@ -1459,15 +1459,35 @@ static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 	{
 		is_const = true;
 	}
-	if (is_const && (cc->is_binary_conversion || !cc->to->decl->attr_structlike))
+	if (is_const && (cc->is_binary_conversion || cc->to->decl->attr_constinit || !cc->to->decl->attr_structlike))
 	{
+		Type *to_type = cc->to;
 		cc->to = flat;
 		cc->to_group = flat_group;
 
 		// If it's silent or explicit, just run it:
-		if (is_silent || is_explicit) return cast_is_allowed(cc, is_explicit, is_silent);
+		if (is_silent || is_explicit)
+		{
+			if (!cast_is_allowed(cc, is_explicit, is_silent)) return false;
+			if (!is_explicit && !cc->is_binary_conversion && !to_type->decl->attr_constinit && !expr_is_const_untyped_list(cc->expr))
+			{
+				if (compiler.build.warnings.deprecation == WARNING_ERROR)
+				{
+					return sema_cast_error(cc, cast_is_allowed(cc, true, true), is_silent);
+				}
+			}
+			return true;
+		}
 		// Loud and implicit:
-		if (cast_is_allowed(cc, false, true)) return true;
+		if (cast_is_allowed(cc, false, true))
+		{
+			if (!cc->is_binary_conversion && !to_type->decl->attr_constinit && !expr_is_const_untyped_list(cc->expr))
+			{
+				to_type->decl->attr_constinit = true;
+				SEMA_DEPRECATED(cc->expr, "Implicit conversion of constants to distinct types is deprecated, use @constinit if %s should cast constants to its own type.", type_quoted_error_string(to_type));
+			}
+			return true;
+		}
 		return sema_cast_error(cc, cast_is_allowed(cc, true, true), is_silent);
 	}
 

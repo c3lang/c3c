@@ -377,13 +377,13 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 		j %= 9;
 		int i;
 		for (i = 10, j++; j < 9; i *= 10, j++);
-		x = *d % i;
+		x = *d % (uint)i;
 		// Are there any significant digits past j?
 		if (x || (d + 1) != z)
 		{
 			double round = 2 / math::DOUBLE_EPSILON;
 			double small;
-			if (((*d / i) & 1) || (i == 1000000000 && d > a && (d[-1] & 1)))
+			if (((*d / (uint)i) & 1) || (i == 1000000000 && d > a && (d[-1] & 1)))
 			{
 				round += 2;
 			}
@@ -437,7 +437,7 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 			// Count trailing zeros in last place
 			if (z > a && z[-1])
 			{
-				for (int i = 10, j = 0; z[-1] % i == 0; i *= 10, j++);
+				for (int i = 10, j = 0; z[-1] % (uint)i == 0; i *= 10, j++);
 			}
 			else
 			{
@@ -541,7 +541,6 @@ const char[201] DIGIT_PAIRS @private =
   "08182838485868788898"
   "09192939495969798999";
 
-
 fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 {
 	char[PRINTF_NTOA_BUFFER_SIZE] buf @noinit;
@@ -574,10 +573,10 @@ fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 				while (value >= 10)
 				{
 					if (len + 1 >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
-					char digit = (char)(value % 100);
+					char digit = (char)(value % 100U);
 					buf[len:2] = DIGIT_PAIRS[2 * digit:2];
 					len += 2;
-					value /= 100;
+					value /= 100U;
 				}
 				if (value > 0)
 				{
@@ -593,16 +592,16 @@ fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 					value >>= 4;
 				}
 				while (value);
-			case 8:
-				do
-				{
-					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
-					buf[len++] = '0' + (char)value & 0x7;
-					value >>= 3;
-				}
-				while (value);
-			default:
-				unreachable();
+		case 8:
+			do
+			{
+				if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
+				buf[len++] = '0' + (char)value & 0x7;
+				value >>= 3;
+			}
+			while (value);
+		default:
+			unreachable();
 		}
 	}
 	return self.ntoa_format((String)buf[:PRINTF_NTOA_BUFFER_SIZE], len, negative, base);
@@ -684,9 +683,9 @@ fn usz? Formatter.out_char(&self, any arg) @private
 	usz len = 1;
 	// pre padding
 	if (!self.flags.left)
-    {
-    	len += self.pad(' ', self.width, len)!;
-    }
+	{
+		len += self.pad(' ', self.width, len)!;
+	}
 
 	// char output
 	Char32 c = types::any_to_int(arg, uint) ?? 0xFFFD;
@@ -708,8 +707,8 @@ fn usz? Formatter.out_char(&self, any arg) @private
 			self.out((char)(0x80 | (c & 0x3F)))!;
 	}
 	if (self.flags.left)
-    {
-        len += self.pad(' ', self.width, len)!;
+	{
+		len += self.pad(' ', self.width, len)!;
 	}
 	return len;
 }

@@ -46,8 +46,6 @@ static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceS
 static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
 
-static CompilationUnit *unit_copy_for_generic(Module *module, CompilationUnit *unit);
-
 static inline bool sema_resolve_align_expr(SemaContext *context, Expr *expr, AlignSize *result)
 {
 	if (!sema_analyse_expr_rvalue(context, expr)) return false;
@@ -1798,10 +1796,10 @@ ERR:
 	return false;
 }
 
-bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl)
+static bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl, Type *underlying_type)
 {
 	Expr *value = decl->enum_constant.value;
-	if (!sema_analyse_inferred_expr(context, decl->type, value, NULL)) return decl_poison(decl);
+	if (!sema_analyse_expr_rhs(context, decl->type, value, false, NULL, true)) return decl_poison(decl);
 	if (!expr_is_runtime_const(value))
 	{
 		SEMA_ERROR(value, "Expected an constant enum value.");
@@ -1809,8 +1807,8 @@ bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl)
 	}
 	if (value->type != decl->type)
 	{
-		if (!cast_implicit_binary(context, value, decl->type, NULL)) return decl_poison(decl);
-		cast_explicit_silent(context, value, decl->type);
+		SEMA_ERROR(value, "Expected an constant enum value of type %s, was %s", type_quoted_error_string(decl->type), type_quoted_error_string(value->type));
+		return decl_poison(decl);
 	}
 	return true;
 }
@@ -1901,7 +1899,7 @@ static inline bool sema_analyse_raw_enum(SemaContext *context, Decl *decl, bool 
 	{
 		Decl *enum_value = enum_values[i];
 		enum_value->resolve_status = RESOLVE_RUNNING;
-		if (!sema_analyse_const_enum_constant_val(context, enum_value)) return decl_poison(decl);
+		if (!sema_analyse_const_enum_constant_val(context, enum_value, type)) return decl_poison(decl);
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
 	return success;
@@ -3128,6 +3126,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_CNAME] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_COMPACT] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_CONST] = ATTR_MACRO,
+			[ATTRIBUTE_CONSTINIT] = ATTR_TYPEDEF | ATTR_ENUM,
 			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER | ATTR_INTERFACE | ATTR_ALIAS,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_ALIAS,
@@ -3469,6 +3468,9 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			return true;
 		case ATTRIBUTE_STRUCTLIKE:
 			decl->attr_structlike = true;
+			return true;
+		case ATTRIBUTE_CONSTINIT:
+			decl->attr_constinit = true;
 			return true;
 		case ATTRIBUTE_SIMD:
 			RETURN_SEMA_ERROR(attr, "'@simd' is only allowed on typedef types.");
@@ -4690,7 +4692,7 @@ static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceS
 /**
  * Analyse $foo and $Foo variables.
  */
-bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_failed)
+bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defined)
 {
 	Expr *init;
 	ASSERT(decl->decl_kind == DECL_VAR && "Should only be called on variables.");
@@ -4720,7 +4722,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 				// If this isn't a type, it's an error.
 				if (!expr_is_const_typeid(init))
 				{
-					if (check_failed) goto FAIL_CHECK;
+					if (check_defined) goto FAIL_CHECK;
 					SEMA_ERROR(decl->var.init_expr, "Expected a type assigned to %s.", decl->name);
 					goto FAIL;
 				}
@@ -4740,7 +4742,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 				{
 					if (type_is_inferred(decl->type))
 					{
-						if (check_failed) goto FAIL_CHECK;
+						if (check_defined) goto FAIL_CHECK;
 						SEMA_ERROR(type_info, "No size could be inferred.");
 						goto FAIL;
 					}
@@ -4771,7 +4773,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 				// Check that it is constant.
 				if (!expr_is_runtime_const(init))
 				{
-					if (check_failed) goto FAIL_CHECK;
+					if (check_defined) goto FAIL_CHECK;
 					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 					goto FAIL;
 				}
@@ -4782,7 +4784,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 			{
 				if (init->expr_kind == EXPR_TYPEINFO)
 				{
-					if (check_failed) goto FAIL_CHECK;
+					if (check_defined) goto FAIL_CHECK;
 					SEMA_ERROR(init, "You can't assign a type to a regular compile time variable like '%s', but it would be allowed if the variable was a compile time type variable. Such a variable needs to have a type-like name, e.g. '$MyType'.", decl->name);
 					goto FAIL;
 				}
@@ -4790,7 +4792,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 				// Check it is constant.
 				if (!expr_is_runtime_const(init))
 				{
-					if (check_failed) goto FAIL_CHECK;
+					if (check_defined) goto FAIL_CHECK;
 					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 					goto FAIL;
 				}
@@ -4804,12 +4806,12 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 		default:
 			UNREACHABLE
 	}
-	if (check_failed) return true;
+	if (check_defined) return true;
 	return sema_add_local(context, decl);
 FAIL_CHECK:
-	if (check_failed)
+	if (check_defined)
 	{
-		*check_failed = true;
+		*check_defined = true;
 		return false;
 	}
 FAIL:

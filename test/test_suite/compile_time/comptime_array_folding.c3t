@@ -25,7 +25,7 @@ struct ThisOtherStruct @TaggedAttr(VALUE_STRUCT)
 
 enum Example : int (String str) @TaggedAttr(VALUE_STRUCT)
 {
-   FOO = FOO_STR,
+   FOO {FOO_STR},
 }
 
 const int[2][1] BAR = { { 1, 2} };
