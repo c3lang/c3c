@@ -43,6 +43,7 @@
 - Fix std::io::Formatter integer issue for large uint128 decimal values.
 - `--safe=no` disabled compile-time errors on compile-time known runtime @require checks #2936
 - On assert known false, the message was not show for no-args.
+- Adding the incorrect sized vector to a pointer vector would cause a crash.
 
 ## 0.7.9 Change list
 

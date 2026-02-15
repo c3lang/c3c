@@ -5297,7 +5297,7 @@ FOUND:;
 				copy_begin();
 				contracts = astid(copy_ast_macro(astptr(contracts)));
 				copy_end();
-				SourceSpan param_span = extend_span_with_token(params[0]->span, VECLAST(params)->span);
+				SourceSpan param_span = extend_span_with_token(params[0]->span, VECLAST(params)->span); // NOLINT
 				if (!sema_analyse_generic_module_contracts(context, module, instance, contracts, param_span, invocation_span))
 				{
 					decl_poison(instance);
