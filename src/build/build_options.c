@@ -140,6 +140,7 @@ static void usage(bool full)
 		print_opt("--use-old-slice-copy", "Use the old slice copy semantics.");
 		print_opt("--use-old-enums", "Use the old enum syntax and semantics.");
 		print_opt("--use-old-compact-eq", "Enable the old ability to use '@compact' to make a struct comparable.");
+		print_opt("--print-large-functions", "Print functions with large compile size.");
 		print_opt("--warn-deadcode=<yes|no|error>", "Print warning on dead-code: yes, no, error.");
 		print_opt("--warn-methodsnotresolved=<yes|no|error>", "Print warning on methods not resolved when accessed: yes, no, error.");
 		print_opt("--warn-deprecation=<yes|no|error>", "Print warning when using deprecated code and constructs: yes, no, error.");
@@ -893,6 +894,11 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("test-nosort"))
 			{
 				options->test_nosort = true;
+				return;
+			}
+			if (match_longopt("print-large-functions"))
+			{
+				options->print_large_functions = true;
 				return;
 			}
 			if ((argopt = match_argopt("warn-deadcode")))

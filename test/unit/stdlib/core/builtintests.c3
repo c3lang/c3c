@@ -225,7 +225,7 @@ macro test_hash_vector_macro_bool()
 	}
 	$endforeach
 }
-fn void test_hash_vector()
+fn void test_hash_vector() @if($feature(SLOW_TESTS))
 {
 	test_hash_vector_macro(char, ichar, short, ushort, int, uint, long, ulong, int128, uint128);
 	test_hash_vector_macro_bool();
