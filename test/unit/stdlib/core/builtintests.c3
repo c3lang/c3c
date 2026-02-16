@@ -174,37 +174,34 @@ fn void test_hash_repeat()
 	assert(int.typeid.hash() == int.typeid.hash());
 }
 
-macro test_hash_vector_macro(...)
+macro test_hash_vector_logic($Type)
 {
 	int[] $lens = {1, 2, 4, 7, 8, 13, 16, 23, 32, 43, 64, 103};
-	$for var $i = 0; $i < $vacount ; $i++:
+	$foreach $vec_len : $lens:
 	{
-		$foreach $vec_len : $lens:
+		$if $vec_len * $Type.sizeof * 8  <= $$MAX_VECTOR_SIZE:
 		{
-			$if $vec_len * $vatype[$i].sizeof * 8  <= $$MAX_VECTOR_SIZE:
+			$Type[<$vec_len>] vec1, vec2;
+			for (int val = 0; val < $vec_len; val++)
 			{
-				$vatype[$i][<$vec_len>] vec1, vec2;
-				for (int val = 0; val < $vec_len; val++)
-				{
-					$vatype[$i] tval = ($vatype[$i])val;
-					vec1[val] = (tval | (tval << (($vatype[$i].sizeof - 1) * 8)));
-				}
-				vec2 = vec1;
-				assert(vec1.hash() == vec2.hash(), "hashes don't match for %s and %s", vec1, vec2);
-				for (int val = 0; val < $vec_len; val++)
-				{
-					vec2[val] ^= (($vatype[$i])0b0010_0000 << (($vatype[$i].sizeof - 1) * 8));
-					assert(vec1.hash() != vec2.hash(), "hashes match for %s and %s", vec1, vec2);
-					vec2[val] ^= (($vatype[$i])0b0010_0000 << (($vatype[$i].sizeof - 1) * 8));
-				}
+				$Type tval = ($Type)val;
+				vec1[val] = (tval | (tval << (($Type.sizeof - 1) * 8)));
 			}
-			$endif
+			vec2 = vec1;
+			assert(vec1.hash() == vec2.hash());
+			for (int val = 0; val < $vec_len; val++)
+			{
+				vec2[val] ^= (($Type)0b0010_0000 << (($Type.sizeof - 1) * 8));
+				assert(vec1.hash() != vec2.hash());
+				vec2[val] ^= (($Type)0b0010_0000 << (($Type.sizeof - 1) * 8));
+			}
 		}
-		$endforeach
+		$endif
 	}
-	$endfor
+	$endforeach
 }
-macro test_hash_vector_macro_bool()
+
+macro test_hash_vector_logic_bool()
 {
 	int[] $lens = {1, 2, 4, 7, 8, 13, 16, 23, 32, 43, 64, 103};
 	$foreach $vec_len : $lens:
@@ -215,21 +212,28 @@ macro test_hash_vector_macro_bool()
 			vec1[val] = ((val & 0x3) == 0);
 		}
 		vec2 = vec1;
-		assert(vec1.hash() == vec2.hash(), "hashes don't match for %s and %s", vec1, vec2);
+		assert(vec1.hash() == vec2.hash());
 		for (int val = 0; val < $vec_len; val++)
 		{
 			vec2[val] = !vec2[val];
-			assert(vec1.hash() != vec2.hash(), "hashes match for %s and %s", vec1, vec2);
+			assert(vec1.hash() != vec2.hash());
 			vec2[val] = !vec2[val];
 		}
 	}
 	$endforeach
 }
-fn void test_hash_vector() @if($feature(SLOW_TESTS))
-{
-	test_hash_vector_macro(char, ichar, short, ushort, int, uint, long, ulong, int128, uint128);
-	test_hash_vector_macro_bool();
-}
+
+fn void test_hash_vector_char()    @test { test_hash_vector_logic(char); }
+fn void test_hash_vector_ichar()   @test { test_hash_vector_logic(ichar); }
+fn void test_hash_vector_short()   @test { test_hash_vector_logic(short); }
+fn void test_hash_vector_ushort()  @test { test_hash_vector_logic(ushort); }
+fn void test_hash_vector_int()     @test { test_hash_vector_logic(int); }
+fn void test_hash_vector_uint()    @test { test_hash_vector_logic(uint); }
+fn void test_hash_vector_long()    @test { test_hash_vector_logic(long); }
+fn void test_hash_vector_ulong()   @test { test_hash_vector_logic(ulong); }
+fn void test_hash_vector_int128()  @test { test_hash_vector_logic(int128); }
+fn void test_hash_vector_uint128() @test { test_hash_vector_logic(uint128); }
+fn void test_hash_vector_bool()    @test { test_hash_vector_logic_bool(); }
 
 fn void test_builtin_string_hashing() => @pool()
 {
