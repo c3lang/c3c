@@ -162,7 +162,8 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
 				{
 					if (n == Zip64Locator.sizeof && locator.signature.val == ZIP64_LOCATOR_SIG)
 					{
-						archive.file.seek((isz)locator.offset_eocd, SET)!;
+						if (locator.offset_eocd.val > (ulong)isz.max) return io::OVERFLOW~;
+						archive.file.seek((isz)locator.offset_eocd.val, SET)!;
 						Zip64EOCD eocd64;
 						io::read_any(archive.file, &eocd64)!;
 						if (eocd64.signature.val == ZIP64_EOCD_SIG)
