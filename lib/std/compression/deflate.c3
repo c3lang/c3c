@@ -47,9 +47,9 @@ struct Inflater (InStream)
 
 fn void Inflater.init(&self, InStream input, char[] bit_reader_buf = {})
 {
-	mem::set(self, 0, Inflater.sizeof);
+	*self = {};
 	self.reader = { .stream = input, .buffer = bit_reader_buf };
-	self.state = InflaterState.START_BLOCK;
+	self.state = START_BLOCK;
 	ensure_fixed_built();
 }
 
@@ -67,13 +67,14 @@ fn usz? Inflater.read(&self, char[] buffer) @dynamic
 			usz start_idx = (usz)(self.read_pos & 0xFFFF);
 			usz len = (usz)math::min((ulong)to_copy, (ulong)(65536 - start_idx));
 
-			mem::copy(buffer.ptr + total_out, &self.window[start_idx], len);
+			buffer[total_out:len] = self.window[start_idx:len];
 			total_out += len;
 			self.read_pos += len;
 
 			if (len < to_copy)
 			{
-				mem::copy(buffer.ptr + total_out, &self.window[0], to_copy - len);
+				buffer[total_out:to_copy - len] = self.window[:to_copy - len];
+
 				total_out += to_copy - len;
 				self.read_pos += (ulong)(to_copy - len);
 			}
@@ -93,7 +94,7 @@ fn usz? Inflater.read(&self, char[] buffer) @dynamic
 fn char? Inflater.read_byte(&self) @dynamic
 {
 	char[1] b;
-	if (try n = self.read(b[..]))
+	if (try n = self.read(&b))
 	{
 		if (n == 0) return io::EOF~;
 		return b[0];
@@ -105,13 +106,13 @@ fn char[]? decompress(char[] input, Allocator allocator = mem)
 {
 	if (input.len == 0) return allocator::new_array(allocator, char, 0);
 
-	io::ByteReader mem_stream;
+	ByteReader mem_stream;
 	mem_stream.init(input);
 
 	Inflater* inflater = allocator::new(allocator, Inflater);
 	defer allocator::free(allocator, inflater);
 	char[4096] tmp_bit_buf;
-	inflater.init(&mem_stream, tmp_bit_buf[..]);
+	inflater.init(&mem_stream, &tmp_bit_buf);
 
 	usz out_cap = input.len * 2;
 	if (out_cap < 1024) out_cap = 1024;
@@ -120,6 +121,7 @@ fn char[]? decompress(char[] input, Allocator allocator = mem)
 	char* out = allocator::malloc(allocator, out_cap);
 	defer allocator::free(allocator, out);
 
+	// TODO: could this be a List {char} instead?
 	while (true)
 	{
 		if (out_len + 8192 > out_cap)
@@ -143,8 +145,8 @@ fn char[]? decompress(char[] input, Allocator allocator = mem)
 
 	if (out_len == 0) return allocator::new_array(allocator, char, 0);
 
-	char[] result = allocator::malloc(allocator, out_len)[:out_len];
-	mem::copy(result.ptr, out, out_len);
+	char[] result = allocator::alloc_array(allocator, char, out_len);
+	result[..] = out[:out_len];
 	return result;
 }
 
@@ -156,8 +158,8 @@ fn char[]? decompress(char[] input, Allocator allocator = mem)
 fn void? decompress_stream(InStream input, OutStream output, Allocator allocator = mem)
 {
 	Inflater* inflater = allocator::new(allocator, Inflater);
-	char* bit_buf = allocator::malloc(allocator, 8192);
-	inflater.init(input, bit_buf[:8192]);
+	char[] bit_buf = allocator::alloc_array(allocator, char, 8192);
+	inflater.init(input, bit_buf);
 	defer {
 		allocator::free(allocator, bit_buf);
 		allocator::free(allocator, inflater);
@@ -200,13 +202,13 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 	const uint NICE_MATCH = 128;
 
 	uint[] head = allocator::alloc_array(tmem, uint, HASH_SIZE);
-	mem::set(head.ptr, 0xFF, HASH_SIZE * uint.sizeof);
+	head[..] = 0xFFFFFFFF;
 
 	uint[] prev = allocator::alloc_array(tmem, uint, WINDOW_SIZE);
 
 	uint[] lit_freqs = mem::temp_array(uint, 286);
 	uint[] dist_freqs = mem::temp_array(uint, 30);
-	Token* tokens = allocator::malloc(tmem, Token.sizeof * (input.len + 1));
+	Token[] tokens = allocator::alloc_array(tmem, Token, input.len + 1);
 	usz token_count = 0;
 
 	uint hash = 0;
@@ -367,8 +369,8 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 	uint[] tree_freqs = mem::temp_array(uint, 19);
 
 	char[] all_lens = mem::temp_array(char, hlit_count + hdist_count);
-	mem::copy(all_lens.ptr, lit_lens.ptr, hlit_count);
-	mem::copy(all_lens.ptr + hlit_count, dist_lens.ptr, hdist_count);
+	all_lens[:hlit_count] = lit_lens[:hlit_count];
+	all_lens[hlit_count:hdist_count] = dist_lens[:hdist_count];
 
 	for (usz i = 0; i < all_lens.len;)
 	{
@@ -439,13 +441,12 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 	}
 
 	Code[286] lit_codes;
-	gen_canonical_codes(&lit_codes, lit_lens[0:hlit_count]);
+	gen_canonical_codes(&lit_codes, lit_lens[:hlit_count]);
 	Code[30] dist_codes;
-	gen_canonical_codes(&dist_codes, dist_lens[0:hdist_count]);
+	gen_canonical_codes(&dist_codes, dist_lens[:hdist_count]);
 
-	for (usz i = 0; i < token_count; i++)
+	foreach (t : tokens[:token_count])
 	{
-		Token t = tokens[i];
 		if (t.dist == 0)
 		{
 			writer.write_huffman(lit_codes[t.val].code, lit_codes[t.val].len);
@@ -595,7 +596,7 @@ struct BitWriter @private
 fn void BitWriter.init(&self, Allocator allocator, usz initial_cap) @private
 {
 	self.allocator = allocator;
-	self.data = allocator::malloc(allocator, initial_cap)[:initial_cap];
+	self.data = allocator::alloc_array(allocator, char, initial_cap);
 	self.len = 0;
 	self.buffer = 0;
 	self.nbits = 0;
@@ -655,7 +656,7 @@ struct Huffman @private
 fn void Huffman.build(&self, char[] lengths) @private
 {
 	ushort[16] offsets;
-	mem::set(&self.counts, 0, ushort.sizeof * 16);
+	self.counts = {};
 	foreach (len : lengths)
 	{
 		if (len > 0 && len < 16) self.counts[len]++;
@@ -703,7 +704,7 @@ fn bool IndexMap.less(&self, IndexMap other) => self.freq < other.freq;
 *>
 fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private => @pool()
 {
-	List{IndexMap} map;
+	List {IndexMap} map;
 	map.tinit();
 
 	usz n = 0;
@@ -720,8 +721,7 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 
 	if (n == 1)
 	{
-		char[] blen = allocator::alloc_array(allocator, char, freqs.len);
-		mem::set(blen.ptr, 0, freqs.len);
+		char[] blen = allocator::new_array(allocator, char, freqs.len);
 		blen[map[0].index] = 1;
 		return blen;
 	}
@@ -819,8 +819,7 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 
 	for (usz i = 0; i < num_analyze; i++) hist[i]++;
 
-	char[] blen = allocator::alloc_array(allocator, char, freqs.len);
-	mem::set(blen.ptr, 0, freqs.len);
+	char[] blen = allocator::new_array(allocator, char, freqs.len);
 	foreach (i, m : map)
 	{
 		blen[m.index] = (char)hist[i];
@@ -831,8 +830,7 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 
 fn char[] Huffman.get_lengths(&self, usz max_sym) @private
 {
-	char[] blen = allocator::alloc_array(tmem, char, max_sym + 1);
-	mem::set(blen.ptr, 0, max_sym + 1);
+	char[] blen = allocator::new_array(tmem, char, max_sym + 1);
 
 	ushort index = 0;
 	for (uint len = 1; len < 16; len++)
@@ -855,7 +853,6 @@ fn void Huffman.build_from_freqs(&self, uint[] freqs, uint max_bits) @private =>
 fn void gen_canonical_codes(Code* codes, char[] blen) @private
 {
 	ushort[16] bl_count;
-	mem::set(&bl_count, 0, ushort.sizeof * 16);
 	foreach (len : blen)
 	{
 		if (len > 0) bl_count[len]++;
@@ -897,7 +894,7 @@ fn void build_fixed_huffman(Huffman* lit, Huffman* dist) @private
 	lit.build(&lit_lens);
 
 	char[32] dist_lens;
-	mem::set(&dist_lens, 5, 32);
+	dist_lens[..] = 5;
 	dist.build(&dist_lens);
 }
 
@@ -916,7 +913,6 @@ fn void gen_fixed_codes(Code* codes) @private
 	for (uint i = 280; i <= 287; i++) lens[i] = 8;
 
 	ushort[16] bl_count;
-	mem::set(&bl_count, 0, ushort.sizeof * 16);
 	for (uint i = 0; i < 288; i++)
 	{
 		if (lens[i] > 0) bl_count[lens[i]]++;
@@ -978,13 +974,13 @@ fn void? Inflater.step(&self) @private
 			self.final = self.reader.read_bits(1)! != 0;
 			uint type = self.reader.read_bits(2)!;
 			if (type == 0) {
-				self.state = InflaterState.READ_STORED_LEN;
+				self.state = READ_STORED_LEN;
 			} else if (type == 1) {
 				self.lit_ptr = &lit_fixed_global;
 				self.dist_ptr = &dist_fixed_global;
-				self.state = InflaterState.DECODE_SYMBOL;
+				self.state = DECODE_SYMBOL;
 			} else if (type == 2) {
-				self.state = InflaterState.READ_DYN_COUNTS;
+				self.state = READ_DYN_COUNTS;
 			} else {
 				return CORRUPTED_DATA~;
 			}
@@ -995,17 +991,18 @@ fn void? Inflater.step(&self) @private
 			uint nlen = self.reader.read_bits(16)!;
 			if (self.stored_len != (~nlen & 0xFFFF)) return CORRUPTED_DATA~;
 			if (self.stored_len == 0) {
-				self.state = self.final ? InflaterState.DONE : InflaterState.START_BLOCK;
+				self.state = self.final ? DONE : START_BLOCK;
 			} else {
-				self.state = InflaterState.COPY_STORED;
+				self.state = COPY_STORED;
 			}
 
 		case COPY_STORED:
 			char c = (char)self.reader.read_bits(8)!;
 			self.write_byte(c);
 			self.stored_len--;
-			if (self.stored_len == 0) {
-				self.state = self.final ? InflaterState.DONE : InflaterState.START_BLOCK;
+			if (self.stored_len == 0)
+			{
+				self.state = self.final ? DONE : START_BLOCK;
 			}
 
 		case READ_DYN_COUNTS:
@@ -1013,8 +1010,8 @@ fn void? Inflater.step(&self) @private
 			self.hdist = self.reader.read_bits(5)! + 1;
 			self.hclen = self.reader.read_bits(4)! + 4;
 			self.dyn_i = 0;
-			mem::set(&self.code_lengths, 0, 19);
-			self.state = InflaterState.READ_DYN_CODELENS;
+			self.code_lengths = {};
+			self.state = READ_DYN_CODELENS;
 
 		case READ_DYN_CODELENS:
 			self.code_lengths[ORDER[self.dyn_i]] = (char)self.reader.read_bits(3)!;
@@ -1024,8 +1021,8 @@ fn void? Inflater.step(&self) @private
 				self.dyn_i = 0;
 				self.dyn_num_lengths = self.hlit + self.hdist;
 				if (self.dyn_num_lengths > 320) return CORRUPTED_DATA~;
-				mem::set(&self.lit_dist_lengths, 0, self.lit_dist_lengths.len);
-				self.state = InflaterState.READ_DYN_TREES;
+				self.lit_dist_lengths[..] = 0;
+				self.state = READ_DYN_TREES;
 			}
 
 		case READ_DYN_TREES:
@@ -1059,7 +1056,7 @@ fn void? Inflater.step(&self) @private
 				self.dyn_dist.build(self.lit_dist_lengths[hlit:hdist]);
 				self.lit_ptr = &self.dyn_lit;
 				self.dist_ptr = &self.dyn_dist;
-				self.state = InflaterState.DECODE_SYMBOL;
+				self.state = DECODE_SYMBOL;
 			}
 
 		case DECODE_SYMBOL:
@@ -1067,11 +1064,11 @@ fn void? Inflater.step(&self) @private
 			if (symbol < 256) {
 				self.write_byte((char)symbol);
 			} else if (symbol == 256) {
-				self.state = self.final ? InflaterState.DONE : InflaterState.START_BLOCK;
+				self.state = self.final ? DONE : START_BLOCK;
 			} else if (symbol <= 285) {
 				uint len_idx = symbol - 257;
 				self.match_len = LENGTH_BASE[len_idx] + self.reader.read_bits(LENGTH_EXTRA[len_idx])!;
-				self.state = InflaterState.READ_DIST_SYM;
+				self.state = READ_DIST_SYM;
 			} else {
 				return CORRUPTED_DATA~;
 			}
@@ -1079,7 +1076,7 @@ fn void? Inflater.step(&self) @private
 		case READ_DIST_SYM:
 			ushort dist_sym = self.dist_ptr.decode_stream(&self.reader)!;
 			self.match_dist = DIST_BASE[dist_sym] + self.reader.read_bits(DIST_EXTRA[dist_sym])!;
-			self.state = InflaterState.COPY_MATCH;
+			self.state = COPY_MATCH;
 
 		case COPY_MATCH:
 			if (self.match_dist > self.pos) return CORRUPTED_DATA~;
@@ -1087,7 +1084,7 @@ fn void? Inflater.step(&self) @private
 			self.write_byte(c);
 			self.match_len--;
 			if (self.match_len == 0) {
-				self.state = InflaterState.DECODE_SYMBOL;
+				self.state = DECODE_SYMBOL;
 			}
 
 		case DONE:

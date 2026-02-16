@@ -9,7 +9,7 @@ fn void test_zip_store()
 	{
 		// Create archive with uncompressed file
 		ZipArchive zip = zip::open("unittest_store.zip", "w")!!;
-		zip.write_file("test.txt", "Hello, World!", zip::ZIP_METHOD_STORE)!!;
+		zip.write_file("test.txt", "Hello, World!", STORE)!!;
 		(void)zip.close();
 		defer (void)file::delete("unittest_store.zip");
 
@@ -20,7 +20,7 @@ fn void test_zip_store()
 		assert(read_zip.count() == 1, "Expected 1 entry");
 
 		ZipEntry entry = read_zip.stat("test.txt")!!;
-		assert(entry.method == zip::ZIP_METHOD_STORE, "Expected STORE method");
+		assert(entry.method == STORE, "Expected STORE method");
 		assert(entry.uncompressed_size == 13, "Expected 13 bytes");
 
 		char[] data = read_zip.read_file_all("test.txt")!!;
@@ -37,7 +37,7 @@ fn void test_zip_deflate()
 		// Create archive with compressed file
 		ZipArchive zip = zip::open("unittest_deflate.zip", "w")!!;
 
-		ZipEntryWriter writer = zip.open_writer("compressed.txt", zip::ZIP_METHOD_DEFLATE)!!;
+		ZipEntryWriter writer = zip.open_writer("compressed.txt", DEFLATE)!!;
 		String data = "This is a test. ";
 		for (int i = 0; i < 100; i++)
 		{
@@ -54,7 +54,7 @@ fn void test_zip_deflate()
 		assert(read_zip.count() == 1, "Expected 1 entry");
 
 		ZipEntry entry = read_zip.stat("compressed.txt")!!;
-		assert(entry.method == zip::ZIP_METHOD_DEFLATE, "Expected DEFLATE method");
+		assert(entry.method == DEFLATE, "Expected DEFLATE method");
 		assert(entry.uncompressed_size == 1600, "Expected 1600 bytes");
 
 		char[] decompressed = read_zip.read_file_all("compressed.txt")!!;
@@ -161,7 +161,7 @@ fn void test_zip_streaming()
 		// Test streaming write
 		ZipArchive zip = zip::open("unittest_stream.zip", "w")!!;
 
-		ZipEntryWriter writer = zip.open_writer("stream.txt", zip::ZIP_METHOD_DEFLATE)!!;
+		ZipEntryWriter writer = zip.open_writer("stream.txt", DEFLATE)!!;
 		writer.write("Part 1. ")!!;
 		writer.write("Part 2. ")!!;
 		writer.write("Part 3.")!!;
@@ -345,7 +345,7 @@ fn void test_zip64_headers()
 		String filename = "unittest_zip64.zip";
 		ZipArchive zip = zip::open(filename, "w")!!;
 
-		ZipEntryWriter writer = zip.open_writer("large.txt", zip::ZIP_METHOD_STORE)!!;
+		ZipEntryWriter writer = zip.open_writer("large.txt", STORE)!!;
 		writer.write("data")!!;
 
 		// Manually set the size to > 4GB to trigger ZIP64 headers in the Central Directory.
@@ -414,7 +414,7 @@ fn void test_zip64_offset()
 		String filename = "unittest_zip64_offset.zip";
 		ZipArchive zip = zip::open(filename, "w")!!;
 
-		ZipEntryWriter writer = zip.open_writer("offset_test.txt", zip::ZIP_METHOD_STORE)!!;
+		ZipEntryWriter writer = zip.open_writer("offset_test.txt", STORE)!!;
 		writer.write("data")!!;
 
 		// Manually set offset to > 4GB to trigger ZIP64 headers in the Central Directory
@@ -438,7 +438,7 @@ fn void test_zip_reader_pos_and_seek()
 	{
 		String path = "unittest_reader.zip";
 		ZipArchive zip = zip::open(path, "w")!!;
-		zip.write_file("test.txt", "0123456789", zip::ZIP_METHOD_STORE)!!;
+		zip.write_file("test.txt", "0123456789", STORE)!!;
 		(void)zip.close();
 		defer (void)file::delete(path);
 
