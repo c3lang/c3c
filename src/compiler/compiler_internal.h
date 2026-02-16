@@ -2367,7 +2367,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
 void unit_register_external_symbol(SemaContext *context, Decl *decl);
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
-bool unit_add_alias(CompilationUnit *unit, Decl *decl);
+bool unit_add_alias(CompilationUnit *unit, Decl *alias);
 bool context_set_module_from_filename(ParseContext *context);
 bool context_set_module(ParseContext *context, Path *path);
 bool context_is_macro(SemaContext *context);
@@ -2559,7 +2559,7 @@ Decl *sema_resolve_method(Decl *type, const char *method_name);
 Decl *sema_resolve_method_only(Decl *type, const char *method_name);
 Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const char *method_name);
 bool sema_resolve_type_decl(SemaContext *context, Type *type);
-bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type);
+bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_info);
 Decl *sema_find_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_template_symbol(SemaContext *context, const char *symbol, Path *path);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);

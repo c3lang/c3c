@@ -14,8 +14,8 @@ static bool cpu_features_contains(CpuFeatures *cpu_features, int feature);
 static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type);
 static unsigned arch_pointer_bit_width(OsType os, ArchType arch);
 static unsigned arch_int_register_bit_width(OsType os, ArchType arch);
-static ArchType arch_from_llvm_string(StringSlice string);
-static EnvironmentType environment_type_from_llvm_string(StringSlice string);
+static ArchType arch_from_llvm_string(StringSlice slice);
+static EnvironmentType environment_type_from_llvm_string(StringSlice env);
 static bool arch_is_supported(ArchType arch);
 static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type);
 static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t bits);
@@ -2140,21 +2140,21 @@ FOUND:;
 }
 
 
-void target_setup(BuildTarget *target)
+void target_setup(BuildTarget *build_target)
 {
-	if (target->win.def && !file_exists(target->win.def))
+	if (build_target->win.def && !file_exists(build_target->win.def))
 	{
-		error_exit("Failed to find Windows def file: '%s' in path.", target->win.def);
+		error_exit("Failed to find Windows def file: '%s' in path.", build_target->win.def);
 	}
 
 #ifndef XTENSA_ENABLE
-	if (target->arch_os_target == ELF_XTENSA)
+	if (build_target->arch_os_target == ELF_XTENSA)
 	{
 		error_exit("Xtensa support is not available with this LLVM version.");
 	}
 #endif
 
-	compiler.platform.target_triple = arch_to_target_triple(target->arch_os_target, target->linuxpaths.libc);
+	compiler.platform.target_triple = arch_to_target_triple(build_target->arch_os_target, build_target->linuxpaths.libc);
 	ASSERT(compiler.platform.target_triple);
 
 	compiler.platform.alloca_address_space = 0;
@@ -2163,7 +2163,7 @@ void target_setup(BuildTarget *target)
 	// Create a specific target machine
 	LLVMCodeGenOptLevel level;
 
-	switch (target->optlevel)
+	switch (build_target->optlevel)
 	{
 		case OPTIMIZATION_NOT_SET:
 			UNREACHABLE_VOID;
@@ -2205,9 +2205,9 @@ void target_setup(BuildTarget *target)
 	compiler.platform.environment_type = environment_type_from_llvm_string(target_triple_string);
 	if (compiler.platform.environment_type == ENV_TYPE_ANDROID) compiler.platform.os = OS_TYPE_ANDROID;
 
-	if (target->debug_info == DEBUG_INFO_NOT_SET)
+	if (build_target->debug_info == DEBUG_INFO_NOT_SET)
 	{
-		target->debug_info = DEBUG_INFO_FULL;
+		build_target->debug_info = DEBUG_INFO_FULL;
 	}
 
 	compiler.platform.float_abi = false;
@@ -2267,7 +2267,7 @@ void target_setup(BuildTarget *target)
 			break;
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
-			target_setup_wasm_abi(target);
+			target_setup_wasm_abi(build_target);
 			break;
 		case ARCH_TYPE_ARMB:
 		case ARCH_TYPE_ARM:
@@ -2297,13 +2297,13 @@ void target_setup(BuildTarget *target)
 			break;
 		case ARCH_TYPE_RISCV64:
 		case ARCH_TYPE_RISCV32:
-			target_setup_riscv_abi(target);
+			target_setup_riscv_abi(build_target);
 			break;
 		case ARCH_TYPE_X86:
-			target_setup_x86_abi(target);
+			target_setup_x86_abi(build_target);
 			break;
 		case ARCH_TYPE_X86_64:
-			target_setup_x64_abi(target);
+			target_setup_x64_abi(build_target);
 			if (compiler.platform.os == OS_TYPE_WIN32)
 			{
 				compiler.platform.abi = ABI_WIN64;
@@ -2328,11 +2328,12 @@ void target_setup(BuildTarget *target)
 														  compiler.platform.environment_type,
 														  compiler.build.type != TARGET_TYPE_EXECUTABLE);
 	compiler.platform.pic_required = arch_os_pic_default_forced(compiler.platform.arch, compiler.platform.os);
+	compiler.platform.dylib_suffix = os_dynamic_library_suffix(compiler.platform.os);
 	// Override PIC, but only if the platform does not require PIC
-	if (target->reloc_model != RELOC_DEFAULT
-		&& (target->reloc_model != RELOC_NONE || !compiler.platform.pic_required))
+	if (build_target->reloc_model != RELOC_DEFAULT
+		&& (build_target->reloc_model != RELOC_NONE || !compiler.platform.pic_required))
 	{
-		compiler.platform.reloc_model = target->reloc_model;
+		compiler.platform.reloc_model = build_target->reloc_model;
 	}
 
 	if (compiler.platform.os == OS_TYPE_IOS)

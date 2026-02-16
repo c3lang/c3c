@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2020-2026 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
@@ -104,6 +104,7 @@ static inline bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *expr = exprptr(statement->assert_stmt.expr);
+	assert(expr != NULL);
 
 	// Verify that the message is a string if it exists.
 	Expr *message_expr = exprptrzero(statement->assert_stmt.message);
