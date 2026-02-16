@@ -464,7 +464,6 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 		default:
 			break;
 	}
-	bool was_recursive = false;
 	if (compiler.generic_depth >= MAX_GENERIC_DEPTH)
 	{
 		RETURN_SEMA_ERROR(type_info, "Generic resolution of this type has become deeply nested, it was aborted after reaching %d recursions.", compiler.generic_depth);
@@ -474,10 +473,10 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	                                                   inner->span, type_info->generic.params, type_info->span);
 	compiler.generic_depth--;
 	if (!decl_ok(type)) return false;
-	if (!sema_analyse_decl(context, type)) return false;
 	ASSERT_SPAN(type_info, type != NULL);
+	if (!sema_analyse_decl(context, type)) return false;
 	type_info->type = type->type;
-	if (!was_recursive) return true;
+	if (compiler.generic_depth == 0) return true;
 	if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
 	    && !context->call_env.current_function->func_decl.in_macro)
 	{

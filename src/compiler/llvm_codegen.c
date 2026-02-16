@@ -1775,9 +1775,9 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 	return gen_context;
 }
 
-void llvm_attribute_add_int(GenContext *context, LLVMValueRef value_to_add_attribute_to, unsigned attribute, uint64_t val, int index)
+void llvm_attribute_add_int(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, uint64_t val, int index)
 {
-	LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(context->context, attribute, val);
+	LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(c->context, attribute, val);
 	LLVMAddAttributeAtIndex(value_to_add_attribute_to, (LLVMAttributeIndex)index, llvm_attr);
 }
 

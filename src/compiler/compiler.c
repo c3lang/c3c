@@ -223,19 +223,8 @@ static const char *dynamic_lib_name(void)
 	{
 		return str_cat(name, compiler.build.extension);
 	}
-	
-	switch (compiler.build.arch_os_target)
-	{
-		case WINDOWS_AARCH64:
-		case WINDOWS_X64:
-		case MINGW_X64:
-			return str_cat(name, ".dll");
-		case MACOS_X64:
-		case MACOS_AARCH64:
-			return str_cat(name, ".dylib");
-		default:
-			return str_cat(name, ".so");
-	}
+
+	return str_cat(name, compiler.platform.dylib_suffix);
 }
 
 const char *static_lib_name(void)

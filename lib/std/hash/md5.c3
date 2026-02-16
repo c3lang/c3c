@@ -99,6 +99,32 @@ fn char[HASH_BYTES] Md5.final(&ctx)
 
 module std::hash::md5 @private;
 
+const uint[64] MD5_T @private = {
+	0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
+	0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+	0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
+	0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+	0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa,
+	0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+	0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed,
+	0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+	0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
+	0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+	0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05,
+	0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+	0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039,
+	0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+	0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
+	0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
+};
+
+const int[16] MD5_S @private = {
+	7, 12, 17, 22,
+	5,  9, 14, 20,
+	4, 11, 16, 23,
+	6, 10, 15, 21
+};
+
 // Implementation
 macro @f(x, y, z) => z ^ (x & (y ^ z));
 macro @g(x, y, z) => y ^ (z & (x ^ y));
@@ -116,93 +142,54 @@ macro void @step(#f, a, b, c, d, ptr, n, t, s)
 
 fn char* body(Md5* ctx, void* data, usz size)
 {
-	char* ptr;
-	uint a, b, c, d;
-	uint saved_a, saved_b, saved_c, saved_d;
-	ptr = data;
-	a = ctx.a;
-	b = ctx.b;
-	c = ctx.c;
-	d = ctx.d;
+	char* ptr = data;
+	uint a = ctx.a;
+	uint b = ctx.b;
+	uint c = ctx.c;
+	uint d = ctx.d;
 
 	do
 	{
-		saved_a = a;
-		saved_b = b;
-		saved_c = c;
-		saved_d = d;
+		uint saved_a = a;
+		uint saved_b = b;
+		uint saved_c = c;
+		uint saved_d = d;
 
-/* Round 1 */
-		@step(@f, &a, b, c, d, ptr, 0, 0xd76aa478, 7)  ;
-		@step(@f, &d, a, b, c, ptr, 1, 0xe8c7b756, 12) ;
-		@step(@f, &c, d, a, b, ptr, 2, 0x242070db, 17) ;
-		@step(@f, &b, c, d, a, ptr, 3, 0xc1bdceee, 22) ;
-		@step(@f, &a, b, c, d, ptr, 4, 0xf57c0faf, 7)  ;
-		@step(@f, &d, a, b, c, ptr, 5, 0x4787c62a, 12) ;
-		@step(@f, &c, d, a, b, ptr, 6, 0xa8304613, 17) ;
-		@step(@f, &b, c, d, a, ptr, 7, 0xfd469501, 22) ;
-		@step(@f, &a, b, c, d, ptr, 8, 0x698098d8, 7)  ;
-		@step(@f, &d, a, b, c, ptr, 9, 0x8b44f7af, 12) ;
-		@step(@f, &c, d, a, b, ptr, 10, 0xffff5bb1, 17);
-		@step(@f, &b, c, d, a, ptr, 11, 0x895cd7be, 22);
-		@step(@f, &a, b, c, d, ptr, 12, 0x6b901122, 7) ;
-		@step(@f, &d, a, b, c, ptr, 13, 0xfd987193, 12);
-		@step(@f, &c, d, a, b, ptr, 14, 0xa679438e, 17);
-		@step(@f, &b, c, d, a, ptr, 15, 0x49b40821, 22);
+		/* Round 1 */
+		for (int i = 0; i < 16; i += 4)
+		{
+			@step(@f, &a, b, c, d, ptr, i + 0, MD5_T[i + 0], MD5_S[0]);
+			@step(@f, &d, a, b, c, ptr, i + 1, MD5_T[i + 1], MD5_S[1]);
+			@step(@f, &c, d, a, b, ptr, i + 2, MD5_T[i + 2], MD5_S[2]);
+			@step(@f, &b, c, d, a, ptr, i + 3, MD5_T[i + 3], MD5_S[3]);
+		}
 
-/* Round 2 */
-		@step(@g, &a, b, c, d, ptr, 1, 0xf61e2562, 5)  ;
-		@step(@g, &d, a, b, c, ptr, 6, 0xc040b340, 9)  ;
-		@step(@g, &c, d, a, b, ptr, 11, 0x265e5a51, 14);
-		@step(@g, &b, c, d, a, ptr, 0, 0xe9b6c7aa, 20) ;
-		@step(@g, &a, b, c, d, ptr, 5, 0xd62f105d, 5)  ;
-		@step(@g, &d, a, b, c, ptr, 10, 0x02441453, 9) ;
-		@step(@g, &c, d, a, b, ptr, 15, 0xd8a1e681, 14);
-		@step(@g, &b, c, d, a, ptr, 4, 0xe7d3fbc8, 20) ;
-		@step(@g, &a, b, c, d, ptr, 9, 0x21e1cde6, 5)  ;
-		@step(@g, &d, a, b, c, ptr, 14, 0xc33707d6, 9) ;
-		@step(@g, &c, d, a, b, ptr, 3, 0xf4d50d87, 14) ;
-		@step(@g, &b, c, d, a, ptr, 8, 0x455a14ed, 20) ;
-		@step(@g, &a, b, c, d, ptr, 13, 0xa9e3e905, 5) ;
-		@step(@g, &d, a, b, c, ptr, 2, 0xfcefa3f8, 9)  ;
-		@step(@g, &c, d, a, b, ptr, 7, 0x676f02d9, 14) ;
-		@step(@g, &b, c, d, a, ptr, 12, 0x8d2a4c8a, 20);
+		/* Round 2 */
+		for (int i = 0; i < 16; i += 4)
+		{
+			@step(@g, &a, b, c, d, ptr, (1 + 5 * (i + 0)) % 16, MD5_T[16 + i + 0], MD5_S[4]);
+			@step(@g, &d, a, b, c, ptr, (1 + 5 * (i + 1)) % 16, MD5_T[16 + i + 1], MD5_S[5]);
+			@step(@g, &c, d, a, b, ptr, (1 + 5 * (i + 2)) % 16, MD5_T[16 + i + 2], MD5_S[6]);
+			@step(@g, &b, c, d, a, ptr, (1 + 5 * (i + 3)) % 16, MD5_T[16 + i + 3], MD5_S[7]);
+		}
 
-/* Round 3 */
-		@step(@h,  &a, b, c, d, ptr, 5, 0xfffa3942, 4);
-		@step(@h2, &d, a, b, c, ptr, 8, 0x8771f681, 11);
-		@step(@h,  &c, d, a, b, ptr, 11, 0x6d9d6122, 16);
-		@step(@h2, &b, c, d, a, ptr, 14, 0xfde5380c, 23);
-		@step(@h,  &a, b, c, d, ptr, 1, 0xa4beea44, 4);
-		@step(@h2, &d, a, b, c, ptr, 4, 0x4bdecfa9, 11);
-		@step(@h,  &c, d, a, b, ptr, 7, 0xf6bb4b60, 16);
-		@step(@h2, &b, c, d, a, ptr, 10, 0xbebfbc70, 23);
-		@step(@h,  &a, b, c, d, ptr, 13, 0x289b7ec6, 4)   ;
-		@step(@h2, &d, a, b, c, ptr, 0, 0xeaa127fa, 11)  ;
-		@step(@h,  &c, d, a, b, ptr, 3, 0xd4ef3085, 16)   ;
-		@step(@h2, &b, c, d, a, ptr, 6, 0x04881d05, 23)  ;
-		@step(@h,  &a, b, c, d, ptr, 9, 0xd9d4d039, 4)   ;
-		@step(@h2, &d, a, b, c, ptr, 12, 0xe6db99e5, 11) ;
-		@step(@h,  &c, d, a, b, ptr, 15, 0x1fa27cf8, 16)  ;
-		@step(@h2, &b, c, d, a, ptr, 2, 0xc4ac5665, 23)  ;
+		/* Round 3 */
+		for (int i = 0; i < 16; i += 4)
+		{
+			@step(@h, &a, b, c, d,  ptr, (5 + 3 * (i + 0)) % 16, MD5_T[32 + i + 0], MD5_S[8]);
+			@step(@h, &d, a, b, c,  ptr, (5 + 3 * (i + 1)) % 16, MD5_T[32 + i + 1], MD5_S[9]);
+			@step(@h, &c, d, a, b,  ptr, (5 + 3 * (i + 2)) % 16, MD5_T[32 + i + 2], MD5_S[10]);
+			@step(@h, &b, c, d, a,  ptr, (5 + 3 * (i + 3)) % 16, MD5_T[32 + i + 3], MD5_S[11]);
+		}
 
-/* Round 4 */
-		@step(@i, &a, b, c, d, ptr, 0, 0xf4292244, 6)   ;
-		@step(@i, &d, a, b, c, ptr, 7, 0x432aff97, 10)  ;
-		@step(@i, &c, d, a, b, ptr, 14, 0xab9423a7, 15) ;
-		@step(@i, &b, c, d, a, ptr, 5, 0xfc93a039, 21)  ;
-		@step(@i, &a, b, c, d, ptr, 12, 0x655b59c3, 6)  ;
-		@step(@i, &d, a, b, c, ptr, 3, 0x8f0ccc92, 10)  ;
-		@step(@i, &c, d, a, b, ptr, 10, 0xffeff47d, 15) ;
-		@step(@i, &b, c, d, a, ptr, 1, 0x85845dd1, 21)  ;
-		@step(@i, &a, b, c, d, ptr, 8, 0x6fa87e4f, 6)   ;
-		@step(@i, &d, a, b, c, ptr, 15, 0xfe2ce6e0, 10) ;
-		@step(@i, &c, d, a, b, ptr, 6, 0xa3014314, 15)  ;
-		@step(@i, &b, c, d, a, ptr, 13, 0x4e0811a1, 21) ;
-		@step(@i, &a, b, c, d, ptr, 4, 0xf7537e82, 6)   ;
-		@step(@i, &d, a, b, c, ptr, 11, 0xbd3af235, 10) ;
-		@step(@i, &c, d, a, b, ptr, 2, 0x2ad7d2bb, 15)  ;
-		@step(@i, &b, c, d, a, ptr, 9, 0xeb86d391, 21)  ;
+		/* Round 4 */
+		for (int i = 0; i < 16; i += 4)
+		{
+			@step(@i, &a, b, c, d, ptr, (7 * (i + 0)) % 16, MD5_T[48 + i + 0], MD5_S[12]);
+			@step(@i, &d, a, b, c, ptr, (7 * (i + 1)) % 16, MD5_T[48 + i + 1], MD5_S[13]);
+			@step(@i, &c, d, a, b, ptr, (7 * (i + 2)) % 16, MD5_T[48 + i + 2], MD5_S[14]);
+			@step(@i, &b, c, d, a, ptr, (7 * (i + 3)) % 16, MD5_T[48 + i + 3], MD5_S[15]);
+		}
 
 		a += saved_a;
 		b += saved_b;

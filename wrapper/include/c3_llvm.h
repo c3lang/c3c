@@ -81,6 +81,7 @@ void LLVMSetDSOLocal(LLVMValueRef Global, bool value);
 void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_array);
 void LLVMSetTargetMachineEmulatedTLS(LLVMTargetMachineRef ref, bool emulated_tls);
 void LLVMSetNoSanitizeAddress(LLVMValueRef Global);
+unsigned LLVMGetFunctionInstructionCount(LLVMValueRef function);
 
 #ifdef __cplusplus
 }
