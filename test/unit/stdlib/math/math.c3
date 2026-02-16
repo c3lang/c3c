@@ -466,12 +466,18 @@ fn void test_ct_intlog2() @test @if($feature(SLOW_TESTS) && !env::OPENBSD)
 		assert(expected == actual, "input %d: floor(log2($x)) -> %d is not equal to @intlog2($x) -> %d", $x, expected, actual);
 	$endfor
 
-	var $logme = (uint128)1;
-	$for var $x = 0; $x < 8192; ++$x :
-		$logme *= 13;
-		expected = (uint128)math::floor(math::log2((uint128)$logme));
-		actual = (uint128)math::@intlog2((uint128)$logme);
-		assert(expected == actual, "input %d (idx %d): floor(log2(|$logme|)) -> %d is not equal to @intlog2(|$logme|) -> %d", $logme, $x, expected, actual);
+	$for var $i = 0; $i < 128; ++$i :
+		uint128 $val = (uint128)1 << $i;
+		expected = (uint128)math::floor(math::log2($val));
+		actual = (uint128)math::@intlog2($val);
+		assert(expected == actual, "input %d (2^%d): expected %d, got %d", $val, $i, expected, actual);
+
+		$if $i > 0:
+			$val = ((uint128)1 << $i) | ((uint128)1 << ($i - 1));
+			expected = (uint128)math::floor(math::log2($val));
+			actual = (uint128)math::@intlog2($val);
+			assert(expected == actual, "input %d (2^%d + ...): expected %d, got %d", $val, $i, expected, actual);
+		$endif
 	$endfor
 }
 
