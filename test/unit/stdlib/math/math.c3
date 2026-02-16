@@ -459,26 +459,33 @@ fn void test_log() @test
 
 fn void test_ct_intlog2() @test @if($feature(SLOW_TESTS) && !env::OPENBSD)
 {
-	uint128 actual, expected;
+	usz[129] actual;
 	$for var $x = 0; $x <= 128; ++$x :
-		expected = (uint128)math::floor(math::log2($x));
-		actual = (uint128)math::@intlog2($x);
-		assert(expected == actual, "input %d: floor(log2($x)) -> %d is not equal to @intlog2($x) -> %d", $x, expected, actual);
+		actual[$x] = (usz)math::@intlog2($x);
 	$endfor
+	for (usz i = 0; i <= 128; i++)
+	{
+		usz expected = (i <= 1) ? 0 : (usz)math::floor(math::log2(i));
+		assert(actual[i] == expected, "input %d: expected %d, got %d", i, expected, actual[i]);
+	}
 
+	usz[128] powers;
 	$for var $i = 0; $i < 128; ++$i :
-		uint128 $val = (uint128)1 << $i;
-		expected = (uint128)math::floor(math::log2($val));
-		actual = (uint128)math::@intlog2($val);
-		assert(expected == actual, "input %d (2^%d): expected %d, got %d", $val, $i, expected, actual);
-
-		$if $i > 0:
-			$val = ((uint128)1 << $i) | ((uint128)1 << ($i - 1));
-			expected = (uint128)math::floor(math::log2($val));
-			actual = (uint128)math::@intlog2($val);
-			assert(expected == actual, "input %d (2^%d + ...): expected %d, got %d", $val, $i, expected, actual);
-		$endif
+		powers[$i] = (usz)math::@intlog2((uint128)1 << $i);
 	$endfor
+	for (usz i = 0; i < 128; i++)
+	{
+		assert(powers[i] == i, "input 2^%d: expected %d, got %d", i, i, powers[i]);
+	}
+
+	usz[127] complex_vals;
+	$for var $i = 1; $i < 128; ++$i :
+		complex_vals[$i - 1] = (usz)math::@intlog2(((uint128)1 << $i) | ((uint128)1 << ($i - 1)));
+	$endfor
+	for (usz i = 1; i < 128; i++)
+	{
+		assert(complex_vals[i - 1] == (usz)i, "input 2^%d + 2^%d: expected %d, got %d", i, i - 1, i, complex_vals[i - 1]);
+	}
 }
 
 fn void test_pow() @test
