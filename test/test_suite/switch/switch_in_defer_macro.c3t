@@ -409,16 +409,16 @@ alias Kind = lexer::Kind{Token, Comment};
 
 enum Token : char (String token)
 {
-	KEYWORD1 = "keyword1",
-	KEYWORD2 = "keyword2",
-	SINGLE   = "//",
-	MULTI    = "/*",
+	KEYWORD1 { "keyword1" },
+	KEYWORD2 { "keyword2" },
+	SINGLE   { "//"       },
+	MULTI    { "/*"       },
 }
 
 enum Comment : char (Token start, String end)
 {
-	SINGLE = { SINGLE, "\n" },
-	MULTI  = { MULTI, "*/" },
+	SINGLE { SINGLE, "\n" },
+	MULTI  { MULTI, "*/" },
 }
 
 fn bool is_ident_char(usz i, char c)

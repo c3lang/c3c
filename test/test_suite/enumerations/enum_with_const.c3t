@@ -6,10 +6,10 @@ const FG_GREEN  = "\e[0;38;2;192;255;192m";
 const FG_RED    = "\e[0;38;2;255;40;40m";
 
 enum SeverityTag : int (String fg, String label) {
-   INFO  = { FG_GREEN,  "info"  },
-   WARN  = { FG_YELLOW, "warn"  },
-   FATAL = { FG_RED,    "fatal" },
-   FATAL2 = { FG_RED,    "fatal2" },
+   INFO   { FG_GREEN,  "info"  },
+   WARN   { FG_YELLOW, "warn"  },
+   FATAL  { FG_RED,    "fatal" },
+   FATAL2 { FG_RED,    "fatal2" },
 }
 
 fn void main()

@@ -128,15 +128,15 @@ fn char[HASH_SIZE] Whirlpool.final(&self)
 }
 
 
-macro ulong @w_op(#src, $shift) @private
-	=>    S_BOX[(0 * 256) + (int)(#src[($shift + 0) & 7] >> 56)       ]
-		^ S_BOX[(1 * 256) + (int)(#src[($shift + 7) & 7] >> 48) & 0xFF]
-		^ S_BOX[(2 * 256) + (int)(#src[($shift + 6) & 7] >> 40) & 0xFF]
-		^ S_BOX[(3 * 256) + (int)(#src[($shift + 5) & 7] >> 32) & 0xFF]
-		^ S_BOX[(4 * 256) + (int)(#src[($shift + 4) & 7] >> 24) & 0xFF]
-		^ S_BOX[(5 * 256) + (int)(#src[($shift + 3) & 7] >> 16) & 0xFF]
-		^ S_BOX[(6 * 256) + (int)(#src[($shift + 2) & 7] >>  8) & 0xFF]
-		^ S_BOX[(7 * 256) + (int)(#src[($shift + 1) & 7] >>  0) & 0xFF];
+macro ulong @w_op(#src, shift) @private
+	=>    S_BOX[(0 * 256) + (int)(#src[(shift + 0) & 7] >> 56)       ]
+		^ S_BOX[(1 * 256) + (int)(#src[(shift + 7) & 7] >> 48) & 0xFF]
+		^ S_BOX[(2 * 256) + (int)(#src[(shift + 6) & 7] >> 40) & 0xFF]
+		^ S_BOX[(3 * 256) + (int)(#src[(shift + 5) & 7] >> 32) & 0xFF]
+		^ S_BOX[(4 * 256) + (int)(#src[(shift + 4) & 7] >> 24) & 0xFF]
+		^ S_BOX[(5 * 256) + (int)(#src[(shift + 3) & 7] >> 16) & 0xFF]
+		^ S_BOX[(6 * 256) + (int)(#src[(shift + 2) & 7] >>  8) & 0xFF]
+		^ S_BOX[(7 * 256) + (int)(#src[(shift + 1) & 7] >>  0) & 0xFF];
 
 
 const ulong[10] RC @private = {
@@ -158,26 +158,33 @@ fn void Whirlpool.process_block(&self, char* block) @local
 	ulong[2 * 8] k;   // key
 	ulong[2 * 8] state;   // state
 
-	// NOTE: These loops are unrolled with C3's Chad-tier compile-time evaluation.
-	$for var $round = 0; $round < 8; $round++:
-		k[$round] = self.hash[$round];
-		state[$round] = $$bswap(mem::load((ulong*)block + $round, 1)) ^ self.hash[$round];
-		self.hash[$round] = state[$round];
+	// NOTE: These loops are kept as $for to ensure initial setup is unrolled.
+	$for var $i = 0; $i < 8; $i++:
+		k[$i] = self.hash[$i];
+		state[$i] = $$bswap(mem::load((ulong*)block + $i, 1)) ^ self.hash[$i];
+		self.hash[$i] = state[$i];
 	$endfor
 
-	$for var $round = 0; $round < ROUNDS; ++$round :
-		var $m = $round % 2;
+	// Use regular for loops for the rounds to avoid massive code bloat. 80K less instructions.
+	for (int round = 0; round < ROUNDS; ++round)
+	{
+		int m = round % 2;
+		int next_m = m ^ 1;
+		ulong* pk = &k[m * 8];
+		ulong* nk = &k[next_m * 8];
+		ulong* ps = &state[m * 8];
+		ulong* ns = &state[next_m * 8];
 
-		k[(($m ^ 1) * 8) + 0] = @w_op((&k[$m * 8]), 0) ^ RC[$round];
+		nk[0] = @w_op(pk, 0) ^ RC[round];
 
 		$for var $i = 1; $i < 8; $i++ :
-			k[(($m ^ 1) * 8) + $i] = @w_op((&k[$m * 8]), $i);
+			nk[$i] = @w_op(pk, $i);
 		$endfor
 
 		$for var $i = 0; $i < 8; $i++ :
-			state[(($m ^ 1) * 8) + $i] = @w_op(&(state[$m * 8]), $i) ^ k[(($m ^ 1) * 8) + $i];
+			ns[$i] = @w_op(ps, $i) ^ nk[$i];
 		$endfor
-	$endfor
+	}
 
 	$for var $x = 0; $x < 8; $x++:
 		self.hash[$x] ^= state[$x];

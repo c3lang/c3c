@@ -148,7 +148,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	{
 		if (compiler.build.win.vs_dirs)
 		{
-			char *c = strstr(compiler.build.win.vs_dirs, ";");
+			const char *c = strstr(compiler.build.win.vs_dirs, ";");
 			int len = (int)(c - compiler.build.win.vs_dirs);
 			if (!c || !len) error_exit("''win-vs-dirs' override was invalid.");
 			char *um = str_printf("%.*s\\um\\x64", len, compiler.build.win.vs_dirs);
@@ -383,9 +383,16 @@ static const char *find_linux_crt(void)
 {
 	if (compiler.build.linuxpaths.crt) return compiler.build.linuxpaths.crt;
 	const char *arch_linux_crt1_path = "/usr/lib/crt1.o";
+	const char *arch_linux_64_crt1_path = "/usr/lib64/crt1.o";
 	if (file_exists(arch_linux_crt1_path))
 	{
 		const char *arch_linux_path = "/usr/lib";
+		INFO_LOG("Found crt at %s", arch_linux_path);
+		return arch_linux_path;
+	}
+	if (file_exists(arch_linux_64_crt1_path))
+	{
+		const char* arch_linux_path = "/usr/lib64";
 		INFO_LOG("Found crt at %s", arch_linux_path);
 		return arch_linux_path;
 	}
@@ -393,7 +400,7 @@ static const char *find_linux_crt(void)
 	const char *path = find_arch_glob_path(arch_glob_path, 6);
 	if (!path)
 	{
-		INFO_LOG("No crt in /usr/lib/*/");
+		INFO_LOG("No crt in /usr/{lib,lib64}/*/");
 		return NULL;
 	}
 	INFO_LOG("Found crt at %s", path);
@@ -557,6 +564,15 @@ static void linker_setup_android(const char ***args_ref, Linker linker_type, boo
 	scratch_buffer_append(compiler.platform.target_triple);
 	scratch_buffer_append_char('/');
 	scratch_buffer_append_signed_int(compiler.build.android.api_version);
+	add_plain_arg(scratch_buffer_copy());
+
+	scratch_buffer_clear();
+	scratch_buffer_append("-L");
+	scratch_buffer_append(compiler.build.android.ndk_path);
+	scratch_buffer_append("/toolchains/llvm/prebuilt/");
+	scratch_buffer_append(ANDROID_HOST_TAG);
+	scratch_buffer_append("/sysroot/usr/lib/");
+	scratch_buffer_append(compiler.platform.target_triple);
 	add_plain_arg(scratch_buffer_copy());
 
 	scratch_buffer_clear();
@@ -955,10 +971,10 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 		default:
 			UNREACHABLE
 	}
-#else 
+#else
 	success = false;
 	error = "linking (.exe) is not implemented for C3C compiled without LLVM";
-#endif 
+#endif
 	if (!success)
 	{
 		error_exit("Failed to create an executable: %s", error);
@@ -1212,10 +1228,10 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 		default:
 			UNREACHABLE
 	}
-#else 
+#else
 	success = false;
 	error = "linking not implemented for c3c compiled without llvm";
-#endif 
+#endif
 	if (!success)
 	{
 		error_exit("Failed to create a dynamic library: %s", error);
@@ -1247,9 +1263,9 @@ bool static_lib_linker(const char *output_file, const char **files, unsigned fil
 			break;
 	}
 	return llvm_ar(output_file, files, file_count, format);
-#else 
+#else
 	return false;
-#endif 
+#endif
 }
 
 bool linker(const char *output_file, const char **files, unsigned file_count)

@@ -1,7 +1,7 @@
 module std::os::darwin @if(env::DARWIN) @link("Foundation.framework");
 import std::os::macos::cf, std::os::macos::objc, std::io;
 
-enum NSSearchPathDomainMask : const NSUInteger
+const enum NSSearchPathDomainMask : NSUInteger
 {
 	USER = 1,
 	LOCAL = 2,
@@ -10,7 +10,7 @@ enum NSSearchPathDomainMask : const NSUInteger
 	ALL = 0x0ffff
 }
 
-enum NSSearchPathDirectory : const NSUInteger
+const enum NSSearchPathDirectory : NSUInteger
 {
 	APPLICATION = 1,
 	DEMO_APPLICATION,
@@ -43,8 +43,6 @@ enum NSSearchPathDirectory : const NSUInteger
 
 // real signature in Foundation
 extern fn CFArrayRef nsSearchPathForDirectoriesInDomains(NSSearchPathDirectory directory, NSSearchPathDomainMask domainMask, bool expandTilde) @cname("NSSearchPathForDirectoriesInDomains");
-
-
 
 fn String? find_first_directory_temp(NSSearchPathDirectory directory, NSSearchPathDomainMask domainMask)
 {

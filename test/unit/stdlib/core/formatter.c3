@@ -8,6 +8,13 @@ fn usz? Foo.to_format(&self, Formatter *f) @dynamic
 	return f.printf("Foo[%d]", self.a);
 }
 
+enum FormatterEnum
+{
+	ABC,
+	BCD,
+	EFG,
+}
+
 fn void test_ref() @test
 {
 	Foo* f = &&(Foo){ 8 };
@@ -41,4 +48,26 @@ fn void test_ref() @test
 	String s3 = string::format(mem, "%.3e %.3e %.4g %.4g %#.4g %.3f %.15f", t1, t2, t3, t4, t5, t6, t7);
 	defer free(s3);
 	assert(s3 == "1.235e+04 8.765e-04 1.235e+06 12.35 12.30 1.000 3.141592653589793");
+}
+
+fn void test_uint128_decimal_formatting() @test
+{
+	uint128 v = 0xFFEEDDCC_BBAA9988_77665544_33221100;
+	String s = string::format(mem, "%d", v);
+	defer free(s);
+	test::eq(s, "340193404210632335760508365704335069440");
+
+	String s2 = string::format(mem, "%d", uint128.max);
+	defer free(s2);
+	test::eq(s2, "340282366920938463463374607431768211455");
+}
+
+fn void test_mixed_format_with_uint128() @test
+{
+	int a = 1234;
+	uint128 b = 0xFFEEDDCC_BBAA9988_77665544_33221100;
+	FormatterEnum e = BCD;
+	String s = string::format(mem, "a: %s, b: %d, foo: %s", a, b, e);
+	defer free(s);
+	test::eq(s, "a: 1234, b: 340193404210632335760508365704335069440, foo: BCD");
 }

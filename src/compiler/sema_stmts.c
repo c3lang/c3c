@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2020-2026 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
@@ -104,6 +104,7 @@ static inline bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *expr = exprptr(statement->assert_stmt.expr);
+	assert(expr != NULL);
 
 	// Verify that the message is a string if it exists.
 	Expr *message_expr = exprptrzero(statement->assert_stmt.message);
@@ -111,6 +112,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 	{
 		if (!sema_analyse_ct_expr(context, message_expr)) return false;
 		if (!expr_is_const_string(message_expr)) RETURN_SEMA_ERROR(message_expr, "Expected a constant string as the error message.");
+
 		FOREACH(Expr *, e, statement->assert_stmt.args)
 		{
 			if (!sema_analyse_expr_rvalue(context, e)) return false;
@@ -137,6 +139,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 		}
 	}
 
+	// We might have `assert(false)` or `assert(true)`
 	CondResult result_no_resolve = COND_MISSING;
 	if (expr->resolve_status == RESOLVE_DONE && expr_is_const_bool(expr))
 	{
@@ -170,7 +173,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 			// Otherwise we print an error.
 			if (!context->active_scope.end_jump.active && !context->active_scope.is_dead)
 			{
-				if (message_expr && sema_cast_const(message_expr) && vec_size(statement->assert_stmt.args))
+				if (message_expr && sema_cast_const(message_expr) && !vec_size(statement->assert_stmt.args))
 				{
 					RETURN_SEMA_ERROR(expr, "%.*s", EXPAND_EXPR_STRING(message_expr));
 				}
@@ -798,7 +801,6 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_CT_IS_CONST:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
-		case EXPR_CT_IDENT:
 		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
 		case EXPR_BINARY:
@@ -2019,8 +2021,8 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 		if (context->active_scope.end_jump.active && !context->active_scope.allow_dead_code)
 		{
 			context->active_scope.allow_dead_code = true;
-			bool warn = SEMA_WARN(statement, "This code will never execute.");
-			sema_note_prev_at(context->active_scope.end_jump.span, "This code is preventing it from exectuting");
+			bool warn = SEMA_WARN(statement, dead_code, "This code will never execute.");
+			if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(context->active_scope.end_jump.span, "This code is preventing it from exectuting");
 			if (!warn)
 			{
 				success = false;
@@ -3286,8 +3288,8 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 			if (statement->ast_kind != AST_ASSERT_STMT && statement->ast_kind != AST_NOP_STMT && !(context->active_scope.flags & SCOPE_MACRO))
 			{
 				context->active_scope.allow_dead_code = true;
-				bool warn = SEMA_WARN(statement, "This code will never execute.");
-				sema_note_prev_at(end_jump.span, "No code will execute after this statement.");
+				bool warn = SEMA_WARN(statement, dead_code, "This code will never execute.");
+				if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(end_jump.span, "No code will execute after this statement.");
 				if (!warn) return ast_poison(statement);
 			}
 			// Remove it

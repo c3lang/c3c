@@ -1,11 +1,13 @@
 module std::io::file @if(env::LIBC &&& env::POSIX);
-import libc;
+import std::math, libc, std::io::path;
 
 tlocal char[1024] buf;
 
 fn String random_name()
 {
-	return libc::tmpnam(&buf).str_view();
+	String filename = string::tformat("c3_test_file_%x", rand(0xFFFFFFF));
+	Path temp_dir = path::temp_directory(tmem).tappend(filename)!!;
+	return temp_dir.str_view();
 }
 
 fn void map_read_only() @test

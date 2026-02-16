@@ -1022,13 +1022,12 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 		LLVMBasicBlockRef block = case_stmt->case_stmt.backend_block;
 		if (case_stmt != default_case)
 		{
-			LLVMValueRef case_value;
 			BEValue be_value;
 			Expr *from = exprptr(case_stmt->case_stmt.expr);
 			ASSERT(expr_is_const(from));
 			llvm_emit_expr(c, &be_value, from);
 			llvm_value_rvalue(c, &be_value);
-			case_value = be_value.value;
+			LLVMValueRef case_value = be_value.value;
 			LLVMAddCase(switch_stmt, case_value, block);
 			Expr *to_expr = exprptrzero(case_stmt->case_stmt.to_expr);
 			if (to_expr)
@@ -1495,9 +1494,9 @@ LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char 
 {
 	FOREACH(ReusableConstant, constant, c->reusable_constants)
 	{
-		if (str_eq(str, constant.string) && str_eq(extname, constant.name))
+		if (str_eq(str, constant.string) && str_eq(extname, constant.name)) // NOLINT
 		{
-			return constant.value;
+			return constant.value; // NOLINT
 		}
 	}
 

@@ -7,6 +7,15 @@
 - Improve error message when using functions as values #2856
 - Improve support for Android with Termux.
 - Integrated download of the MSVC SDK when compiling for Windows.
+- For `c3c init` with library templates, provide example exported functions. #2898
+- `unsigned % signed` and `unsigned / signed` is no longer allowed without explicit casts, except for const denominators. #2928
+- New const enum declaration syntax.
+- New enum associated value syntax.
+- Individual warning settings added.
+- Change typedef and const enums to not convert from literals by default.
+- Add `@constinit` to allow old typedef behaviour.
+- Include actual element count in the error message when the array initializer size does not match the expected size.
+- Add `--print-large-functions` for checking which functions likely dominate the compile time.
 
 ### Stdlib changes
 - Add `Argon2` memory-hard hashing with associated tests. #2773
@@ -14,6 +23,11 @@
 - Remove dependency on temp allocator in String.join.
 - Remove dependency on temp allocator in File.open.
 - Added PEM encoding/decoding. #2858
+- Add Murmur3 hash.
+- Add optional line-length limitations to `io::readline` and `io::readline_to_stream`. #2879
+- Add Xorshiro128++.
+- Add single-byte code page support (DOS/OEM, Windows/ANSI, and ISO/IEC 8859).
+- Add `array::even`, `array::odd`, and `array::unlace` macros. #2892
 
 ### Fixes
 - Add error message if directory with output file name already exists
@@ -23,6 +37,14 @@
 - Shadowing not detected for generic declarations #2876
 - Const inline enums would not always implicitly get converted to the underlying type.
 - Update to dstring.append_string to take any type converting to String.
+- Flag `--cpu-flags` doesn't work if the first item is an exclusion. #2905
+- Reallocating overaligned memory with the LibcAllocator was unsafe.
+- Using [] or .foo on $$ functions would not raise error but instead crash
+- Improved underlining errors/warnings when unicode is used. #2887 
+- Fix std::io::Formatter integer issue for large uint128 decimal values.
+- `--safe=no` disabled compile-time errors on compile-time known runtime @require checks #2936
+- On assert known false, the message was not show for no-args.
+- Adding the incorrect sized vector to a pointer vector would cause a crash.
 
 ## 0.7.9 Change list
 

@@ -168,13 +168,13 @@ bitstruct Tc_lflags : CUInt
 	bool extproc : 16;
 }
 
-enum T_nldly : const char
+const enum T_nldly : char
 {
 	NL0 = 0b0,
 	NL1 = 0b1,
 }
 
-enum T_crdly : const char
+const enum T_crdly : char
 {
 	CR0 = 0b00,
 	CR1 = 0b01,
@@ -182,7 +182,7 @@ enum T_crdly : const char
 	CR3 = 0b11,
 }
 
-enum T_tabdly : const char
+const enum T_tabdly : char
 {
 	TAB0 = 0b00,
 	TAB1 = 0b01,
@@ -191,25 +191,25 @@ enum T_tabdly : const char
 	XTABS = TAB3,
 }
 
-enum T_bsdly : const char
+const enum T_bsdly : char
 {
 	BS0 = 0b0,
 	BS1 = 0b1,
 }
 
-enum T_ffdly : const char
+const enum T_ffdly : char
 {
 	FF0 = 0b0,
 	FF1 = 0b1,
 }
 
-enum T_vtdly : const char
+const enum T_vtdly : char
 {
 	VT0 = 0b0,
 	VT1 = 0b1,
 }
 
-enum T_csize : const char
+const enum T_csize : char
 {
 	CS5 = 0b00,
 	CS6 = 0b01,
@@ -217,31 +217,31 @@ enum T_csize : const char
 	CS8 = 0b11,
 }
 
-enum Speed : const CUInt
+const enum Speed : CUInt
 {
-	B0 = 0o0000000,
-	B50 = 0o0000001,
-	B75 = 0o0000002,
-	B110 = 0o0000003,
-	B134 = 0o0000004,
-	B150 = 0o0000005,
-	B200 = 0o0000006,
-	B300 = 0o0000007,
-	B600 = 0o0000010,
-	B1200 = 0o0000011,
-	B1800 = 0o0000012,
-	B2400 = 0o0000013,
-	B4800 = 0o0000014,
-	B9600 = 0o0000015,
-	B19200 = 0o0000016,
-	B38400 = 0o0000017,
-	B57600 = 0o0010001,
-	B115200 = 0o0010002,
-	B230400 = 0o0010003,
-	B460800 = 0o0010004,
-	B500000 = 0o0010005,
-	B576000 = 0o0010006,
-	B921600 = 0o0010007,
+	B0       = 0o0000000,
+	B50      = 0o0000001,
+	B75      = 0o0000002,
+	B110     = 0o0000003,
+	B134     = 0o0000004,
+	B150     = 0o0000005,
+	B200     = 0o0000006,
+	B300     = 0o0000007,
+	B600     = 0o0000010,
+	B1200    = 0o0000011,
+	B1800    = 0o0000012,
+	B2400    = 0o0000013,
+	B4800    = 0o0000014,
+	B9600    = 0o0000015,
+	B19200   = 0o0000016,
+	B38400   = 0o0000017,
+	B57600   = 0o0010001,
+	B115200  = 0o0010002,
+	B230400  = 0o0010003,
+	B460800  = 0o0010004,
+	B500000  = 0o0010005,
+	B576000  = 0o0010006,
+	B921600  = 0o0010007,
 	B1000000 = 0o0010010,
 	B1152000 = 0o0010011,
 	B1500000 = 0o0010012,
@@ -253,37 +253,37 @@ enum Speed : const CUInt
 	MAX_BAUD = B4000000,
 }
 
-enum Cc : const inline char
+const enum Cc : inline char
 {
-	VINTR = 0,
-	VQUIT = 1,
-	VERASE = 2,
-	VKILL = 3,
-	VEOF = 4,
-	VTIME = 5,
-	VMIN = 6,
-	VSWTC = 7,
-	VSTART = 8,
-	VSTOP = 9,
-	VSUSP = 10,
-	VEOL = 11,
+	VINTR    = 0,
+	VQUIT    = 1,
+	VERASE   = 2,
+	VKILL    = 3,
+	VEOF     = 4,
+	VTIME    = 5,
+	VMIN     = 6,
+	VSWTC    = 7,
+	VSTART   = 8,
+	VSTOP    = 9,
+	VSUSP    = 10,
+	VEOL     = 11,
 	VREPRINT = 12,
 	VDISCARD = 13,
-	VWERASE = 14,
-	VLNEXT = 15,
-	VEOL2 = 16,
+	VWERASE  = 14,
+	VLNEXT   = 15,
+	VEOL2    = 16,
 }
 
-enum Tcactions : const CInt
+const enum Tcactions : CInt
 {
-	TCOOFF = 0,
-	TCOON = 1,
-	TCIOFF = 2,
-	TCION = 3,
-	TCIFLUSH = 0,
-	TCOFLUSH = 1,
+	TCOOFF    = 0,
+	TCOON     = 1,
+	TCIOFF    = 2,
+	TCION     = 3,
+	TCIFLUSH  = 0,
+	TCOFLUSH  = 1,
 	TCIOFLUSH = 2,
-	TCSANOW = 0,
+	TCSANOW   = 0,
 	TCSADRAIN = 1,
 	TCSAFLUSH = 2,
 }
@@ -312,65 +312,65 @@ struct Termios
 	Speed c_ospeed;
 }
 
-const Tcactions TCOOFF @deprecated = 0;
-const Tcactions TCOON @deprecated = 1;
-const Tcactions TCIOFF @deprecated = 2;
-const Tcactions TCION @deprecated = 3;
-const Tcactions TCIFLUSH @deprecated = 0;
-const Tcactions TCOFLUSH @deprecated = 1;
-const Tcactions TCIOFLUSH @deprecated = 2;
-const Tcactions TCSANOW @deprecated = 0;
-const Tcactions TCSADRAIN @deprecated = 1;
-const Tcactions TCSAFLUSH @deprecated = 2;
-const Speed B0 @deprecated = 0o0000000;
-const Speed B50 @deprecated = 0o0000001;
-const Speed B75 @deprecated = 0o0000002;
-const Speed B110 @deprecated = 0o0000003;
-const Speed B134 @deprecated = 0o0000004;
-const Speed B150 @deprecated = 0o0000005;
-const Speed B200 @deprecated = 0o0000006;
-const Speed B300 @deprecated = 0o0000007;
-const Speed B600 @deprecated = 0o0000010;
-const Speed B1200 @deprecated = 0o0000011;
-const Speed B1800 @deprecated = 0o0000012;
-const Speed B2400 @deprecated = 0o0000013;
-const Speed B4800 @deprecated = 0o0000014;
-const Speed B9600 @deprecated = 0o0000015;
-const Speed B19200 @deprecated = 0o0000016;
-const Speed B38400 @deprecated = 0o0000017;
-const Speed B57600 @deprecated = 0o0010001;
-const Speed B115200 @deprecated = 0o0010002;
-const Speed B230400 @deprecated = 0o0010003;
-const Speed B460800 @deprecated = 0o0010004;
-const Speed B500000 @deprecated = 0o0010005;
-const Speed B576000 @deprecated = 0o0010006;
-const Speed B921600 @deprecated = 0o0010007;
-const Speed B1000000 @deprecated = 0o0010010;
-const Speed B1152000 @deprecated = 0o0010011;
-const Speed B1500000 @deprecated = 0o0010012;
-const Speed B2000000 @deprecated = 0o0010013;
-const Speed B2500000 @deprecated = 0o0010014;
-const Speed B3000000 @deprecated = 0o0010015;
-const Speed B3500000 @deprecated = 0o0010016;
-const Speed B4000000 @deprecated = 0o0010017;
-const Speed MAX_BAUD @deprecated = B4000000;
-const Cc VINTR @deprecated = 0;
-const Cc VQUIT @deprecated = 1;
-const Cc VERASE @deprecated = 2;
-const Cc VKILL @deprecated = 3;
-const Cc VEOF @deprecated = 4;
-const Cc VTIME @deprecated = 5;
-const Cc VMIN @deprecated = 6;
-const Cc VSWTC @deprecated = 7;
-const Cc VSTART @deprecated = 8;
-const Cc VSTOP @deprecated = 9;
-const Cc VSUSP @deprecated = 10;
-const Cc VEOL @deprecated = 11;
-const Cc VREPRINT @deprecated = 12;
-const Cc VDISCARD @deprecated = 13;
-const Cc VWERASE @deprecated = 14;
-const Cc VLNEXT @deprecated = 15;
-const Cc VEOL2 @deprecated = 16;
+const Tcactions TCOOFF @deprecated = (Tcactions)0;
+const Tcactions TCOON @deprecated = (Tcactions)1;
+const Tcactions TCIOFF @deprecated = (Tcactions)2;
+const Tcactions TCION @deprecated = (Tcactions)3;
+const Tcactions TCIFLUSH @deprecated = (Tcactions)0;
+const Tcactions TCOFLUSH @deprecated = (Tcactions)1;
+const Tcactions TCIOFLUSH @deprecated = (Tcactions)2;
+const Tcactions TCSANOW @deprecated = (Tcactions)0;
+const Tcactions TCSADRAIN @deprecated = (Tcactions)1;
+const Tcactions TCSAFLUSH @deprecated = (Tcactions)2;
+const Speed B0 @deprecated = (Speed)0o0000000;
+const Speed B50 @deprecated = (Speed)0o0000001;
+const Speed B75 @deprecated = (Speed)0o0000002;
+const Speed B110 @deprecated = (Speed)0o0000003;
+const Speed B134 @deprecated = (Speed)0o0000004;
+const Speed B150 @deprecated = (Speed)0o0000005;
+const Speed B200 @deprecated = (Speed)0o0000006;
+const Speed B300 @deprecated = (Speed)0o0000007;
+const Speed B600 @deprecated = (Speed)0o0000010;
+const Speed B1200 @deprecated = (Speed)0o0000011;
+const Speed B1800 @deprecated = (Speed)0o0000012;
+const Speed B2400 @deprecated = (Speed)0o0000013;
+const Speed B4800 @deprecated = (Speed)0o0000014;
+const Speed B9600 @deprecated = (Speed)0o0000015;
+const Speed B19200 @deprecated = (Speed)0o0000016;
+const Speed B38400 @deprecated = (Speed)0o0000017;
+const Speed B57600 @deprecated = (Speed)0o0010001;
+const Speed B115200 @deprecated = (Speed)0o0010002;
+const Speed B230400 @deprecated = (Speed)0o0010003;
+const Speed B460800 @deprecated = (Speed)0o0010004;
+const Speed B500000 @deprecated = (Speed)0o0010005;
+const Speed B576000 @deprecated = (Speed)0o0010006;
+const Speed B921600 @deprecated = (Speed)0o0010007;
+const Speed B1000000 @deprecated = (Speed)0o0010010;
+const Speed B1152000 @deprecated = (Speed)0o0010011;
+const Speed B1500000 @deprecated = (Speed)0o0010012;
+const Speed B2000000 @deprecated = (Speed)0o0010013;
+const Speed B2500000 @deprecated = (Speed)0o0010014;
+const Speed B3000000 @deprecated = (Speed)0o0010015;
+const Speed B3500000 @deprecated = (Speed)0o0010016;
+const Speed B4000000 @deprecated = (Speed)0o0010017;
+const Speed MAX_BAUD @deprecated = (Speed)0o0010017;
+const Cc VINTR @deprecated = (Cc)0;
+const Cc VQUIT @deprecated = (Cc)1;
+const Cc VERASE @deprecated = (Cc)2;
+const Cc VKILL @deprecated = (Cc)3;
+const Cc VEOF @deprecated = (Cc)4;
+const Cc VTIME @deprecated = (Cc)5;
+const Cc VMIN @deprecated = (Cc)6;
+const Cc VSWTC @deprecated = (Cc)7;
+const Cc VSTART @deprecated = (Cc)8;
+const Cc VSTOP @deprecated = (Cc)9;
+const Cc VSUSP @deprecated = (Cc)10;
+const Cc VEOL @deprecated = (Cc)11;
+const Cc VREPRINT @deprecated = (Cc)12;
+const Cc VDISCARD @deprecated = (Cc)13;
+const Cc VWERASE @deprecated = (Cc)14;
+const Cc VLNEXT @deprecated = (Cc)15;
+const Cc VEOL2 @deprecated = (Cc)16;
 const Tc_lflags ISIG @deprecated = {.isig};
 const Tc_lflags ICANON @deprecated = {.icanon};
 const Tc_lflags ECHO @deprecated = {.echo};

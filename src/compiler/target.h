@@ -69,6 +69,8 @@ typedef struct
 #endif
 	const char *cpu;
 	const char *features;
+	const char *dylib_suffix;
+	Warnings warning;
 	ArchType arch;
 	OsType os;
 	VendorType vendor;

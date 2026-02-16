@@ -63,6 +63,32 @@ static char *get_sdk_output_path(void)
 
 static int verbose_level = 0;
 
+
+static void print_progress(int percent)
+{
+	if (verbose_level > 0) return;
+	int width = 40;
+	if (percent > 100) percent = 100;
+
+	printf("\rDownloading and extracting packages [");
+
+	const char *parts[] = { " ", "▏", "▎", "▍", "▌", "▋", "▊", "▉" };
+	int total_blocks = width * 8;
+	int filled_blocks = (percent * total_blocks) / 100;
+	int full_blocks = filled_blocks / 8;
+	int partial_block = filled_blocks % 8;
+
+	for (int i = 0; i < full_blocks; i++) printf("█");
+	if (full_blocks < width)
+	{
+		printf("%s", parts[partial_block]);
+		for (int i = full_blocks + 1; i < width; i++) printf(" ");
+	}
+
+	printf("] %3d%%", percent);
+	fflush(stdout);
+}
+
 // Minimal dirent-like structure for Windows
 #if PLATFORM_WINDOWS
 struct dirent
@@ -109,6 +135,8 @@ static void closedir(DIR *dir)
 	free(dir);
 }
 #endif
+
+
 
 static int version_compare(const char *v1, const char *v2)
 {
@@ -161,7 +189,7 @@ static char *find_folder_inf(const char *root, const char *pattern, bool exact)
 		if (file_is_dir(path))
 		{
 			bool match = exact ? (STRCASECMP(de->d_name, pattern) == 0)
-			                   : (my_strcasestr(de->d_name, pattern));
+							   : (my_strcasestr(de->d_name, pattern));
 			if (match)
 			{
 				found = path;
@@ -176,28 +204,23 @@ static char *find_folder_inf(const char *root, const char *pattern, bool exact)
 }
 
 static bool download_with_verification(const char *url, const char *name,
-                                       const char *dst)
+									   const char *dst)
 {
-    if (verbose_level >= 1)
-    {
-        printf("%s ... downloading", name);
-        fflush(stdout);
-    }
-    else if (verbose_level == 0)
-    {
-        printf(".");
-        fflush(stdout);
-    }
-    const char *err = download_file(url, "", dst);
-    if (err)
-    {
-        if (verbose_level >= 1) printf(" ... failed.\n");
-        if (verbose_level >= 0)
-            eprintf("\nWarning: Download failed for %s: %s\n", name, err);
-        return false;
-    }
-    if (verbose_level >= 1) printf(" ... done.\n");
-    return true;
+	if (verbose_level >= 1)
+	{
+		printf("%s ... downloading", name);
+		fflush(stdout);
+	}
+	const char *err = download_file(url, "", dst);
+	if (err)
+	{
+		if (verbose_level >= 1) printf(" ... failed.\n");
+		if (verbose_level >= 0)
+			eprintf("\nWarning: Download failed for %s: %s\n", name, err);
+		return false;
+	}
+	if (verbose_level >= 1) printf(" ... done.\n");
+	return true;
 }
 
 static void copy_to_msvc_sdk(const char *src, const char *dst)
@@ -324,7 +347,7 @@ static void print_msvc_version(JSONObject *pkg, char out[128])
 }
 
 static void extract_msi(const char *mpath, const char *out_root,
-                        const char *dl_root)
+						const char *dl_root)
 {
 	if (verbose_level >= 1)
 	{
@@ -356,7 +379,7 @@ static JSONObject *find_package_by_id(JSONObject *pkgs, const char *id)
 }
 
 static void collect_versions(JSONObject *pkgs, JSONObject **msvc_vers_out,
-                             JSONObject **sdk_paths_out)
+							 JSONObject **sdk_paths_out)
 {
 	JSONObject *msvc_vers = json_new_object(J_OBJECT);
 	JSONObject *sdk_paths = json_new_object(J_OBJECT);
@@ -367,7 +390,7 @@ static void collect_versions(JSONObject *pkgs, JSONObject **msvc_vers_out,
 		if (!id_obj) continue;
 		const char *id = id_obj->str;
 		if (str_start_with(id, "Microsoft.VisualStudio.Component.VC.") &&
-		    strstr(id, ".x86.x64"))
+			strstr(id, ".x86.x64"))
 		{
 			StringSlice slice = slice_from_string(id);
 			const int id_prefix_segments = 4;
@@ -377,11 +400,11 @@ static void collect_versions(JSONObject *pkgs, JSONObject **msvc_vers_out,
 			if (!v4.len || !char_is_digit(v4.ptr[0])) continue;
 			StringSlice v5 = slice_next_token(&slice, '.');
 			char *vkey = str_printf("%.*s.%.*s", (int)v4.len, v4.ptr,
-			                        (int)v5.len, v5.ptr);
+									(int)v5.len, v5.ptr);
 			json_map_set(msvc_vers, vkey, pkg);
 		}
 		else if (str_start_with(id, "Microsoft.VisualStudio.Component.Windows10SDK.") ||
-		         str_start_with(id, "Microsoft.VisualStudio.Component.Windows11SDK."))
+				 str_start_with(id, "Microsoft.VisualStudio.Component.Windows11SDK."))
 		{
 			const char *last_dot = strrchr(id, '.');
 			if (last_dot && char_is_digit(last_dot[1]))
@@ -416,7 +439,7 @@ static JSONObject *load_manifest(const char *url, const char *path, const char *
 }
 
 static void select_versions(BuildOptions *options, JSONObject *msvc_vers, JSONObject *sdk_paths,
-                            char **msvc_key_out, char **sdk_key_out)
+							char **msvc_key_out, char **sdk_key_out)
 {
 	char *msvc_key = (char *)options->msvc_version_override;
 	if (!msvc_key)
@@ -486,6 +509,13 @@ static bool check_license(JSONObject *rj1_channel_items, bool accept_all)
 
 void fetch_msvc(BuildOptions *options)
 {
+	if (!download_available())
+	{
+		error_exit("Failed to find Windows SDK.\n"
+				   "Windows applications cannot be cross-compiled without it.\n"
+				   "To download the SDK automatically, please ensure libcurl is installed.\n"
+				   "Alternatively, provide the SDK path manually using --winsdk.");
+	}
 	verbose_level = options->verbosity_level;
 	const char *tmp_dir_base = dir_make_temp_dir();
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
@@ -563,11 +593,56 @@ void fetch_msvc(BuildOptions *options)
 	dir_make_recursive(out_root);
 	dir_make_recursive(dl_root);
 
-	if (verbose_level == 0)
+	JSONObject **checked_pkgs = NULL;
+	JSONObject *sdk_comp = json_map_get(sdk_paths, sdk_key);
+	JSONObject *deps_obj = json_map_get(sdk_comp, "dependencies");
+	if (deps_obj && deps_obj->type == J_OBJECT)
 	{
-		printf("Downloading and extracting packages");
-		fflush(stdout);
+		FOREACH(const char *, dep, deps_obj->keys)
+		{
+			JSONObject *pkg = find_package_by_id(pkgs, dep);
+			if (pkg)
+			{
+				vec_add(checked_pkgs, pkg);
+				JSONObject *p_deps = json_map_get(pkg, "dependencies");
+				if (p_deps && p_deps->type == J_OBJECT)
+				{
+					FOREACH(const char *, pd_id, p_deps->keys)
+					{
+						JSONObject *ppkg = find_package_by_id(pkgs, pd_id);
+						if (ppkg) vec_add(checked_pkgs, ppkg);
+					}
+				}
+			}
+		}
 	}
+
+	const char *msi_names[] = {
+		"Windows SDK for Windows Store Apps Libs-x86_en-us.msi",
+		"Windows SDK Desktop Libs x64-x86_en-us.msi",
+		"Universal CRT Headers Libraries and Sources-x86_en-us.msi"};
+
+	JSONObject *msi_packages[3] = {NULL};
+	for (int i = 0; i < ELEMENTLEN(msi_names); i++)
+	{
+		FOREACH(JSONObject *, pkg, checked_pkgs)
+		{
+			JSONObject *pls = json_map_get(pkg, "payloads");
+			if (!pls) continue;
+			FOREACH(JSONObject *, pl, pls->elements)
+			{
+				if (STRCASECMP(filename(json_map_get(pl, "fileName")->str), msi_names[i]) == 0)
+				{
+					msi_packages[i] = pkg;
+					break;
+				}
+			}
+			if (msi_packages[i]) break;
+		}
+	}
+
+	int progress = 0;
+	if (verbose_level == 0) print_progress(progress);
 
 	const char *suffixes[] = {"asan.headers.base", "crt.x64.desktop.base", "crt.x64.store.base", "asan.x64.base"};
 	for (int i = 0; i < ELEMENTLEN(suffixes); i++)
@@ -585,70 +660,36 @@ void fetch_msvc(BuildOptions *options)
 					extract_msvc_zip(zpath, out_root);
 				}
 			}
-			if (verbose_level == 0)
-			{
-				printf(".");
-				fflush(stdout);
-			}
 		}
+		progress += 10;
+		print_progress(progress);
 	}
 
-	JSONObject *sdk_comp = json_map_get(sdk_paths, sdk_key);
-	const char **sdk_pkg_ids = NULL;
-	JSONObject *deps_obj = json_map_get(sdk_comp, "dependencies");
-	if (deps_obj && deps_obj->type == J_OBJECT)
-	{
-		FOREACH(const char *, dep, deps_obj->keys) vec_add(sdk_pkg_ids, dep);
-	}
-
-	const char *msi_names[] = {
-	    "Windows SDK for Windows Store Apps Libs-x86_en-us.msi",
-	    "Windows SDK Desktop Libs x64-x86_en-us.msi",
-	    "Universal CRT Headers Libraries and Sources-x86_en-us.msi"};
 	const char **cab_list = NULL;
-	JSONObject **checked_pkgs = NULL;
-
-	FOREACH(const char *, sid, sdk_pkg_ids)
-	{
-		JSONObject *pkg = find_package_by_id(pkgs, sid);
-		if (pkg)
-		{
-			vec_add(checked_pkgs, pkg);
-			JSONObject *p_deps = json_map_get(pkg, "dependencies");
-			if (p_deps && p_deps->type == J_OBJECT)
-			{
-				FOREACH(const char *, pd_id, p_deps->keys)
-				{
-					JSONObject *ppkg = find_package_by_id(pkgs, pd_id);
-					if (ppkg) vec_add(checked_pkgs, ppkg);
-				}
-			}
-		}
-	}
-
 	for (int i = 0; i < ELEMENTLEN(msi_names); i++)
 	{
-		FOREACH(JSONObject *, pkg, checked_pkgs)
+		if (!msi_packages[i]) continue;
+		JSONObject *pls = json_map_get(msi_packages[i], "payloads");
+		FOREACH(JSONObject *, pl, pls->elements)
 		{
-			JSONObject *pls = json_map_get(pkg, "payloads");
-			if (!pls) continue;
-			FOREACH(JSONObject *, pl, pls->elements)
+			const char *f_name = json_map_get(pl, "fileName")->str;
+			if (STRCASECMP(filename(f_name), msi_names[i]) == 0)
 			{
-				const char *f_name = json_map_get(pl, "fileName")->str;
-				if (STRCASECMP(filename(f_name), msi_names[i]) == 0)
+				char *mpath = (char *)file_append_path(dl_root, msi_names[i]);
+				if (download_with_verification(json_map_get(pl, "url")->str, msi_names[i], mpath))
 				{
-					char *mpath = (char *)file_append_path(dl_root, msi_names[i]);
-					if (download_with_verification(json_map_get(pl, "url")->str, msi_names[i], mpath))
-					{
-						get_msi_cab_list(mpath, &cab_list);
-					}
-					goto NEXT_MSI;
+					get_msi_cab_list(mpath, &cab_list);
 				}
+				goto NEXT_MSI;
 			}
 		}
-	NEXT_MSI:;
+	NEXT_MSI:
+		progress += 10;
+		print_progress(progress);
 	}
 
+	int cabs_done = 0;
+	int cab_count = vec_size(cab_list);
 	FOREACH(const char *, cab, cab_list)
 	{
 		FOREACH(JSONObject *, pkg, checked_pkgs)
@@ -665,7 +706,9 @@ void fetch_msvc(BuildOptions *options)
 				}
 			}
 		}
-	NEXT_CAB:;
+	NEXT_CAB:
+		cabs_done++;
+		if (cab_count > 0) print_progress(70 + (20 * cabs_done) / cab_count);
 	}
 
 	for (int i = 0; i < ELEMENTLEN(msi_names); i++)
@@ -674,16 +717,13 @@ void fetch_msvc(BuildOptions *options)
 		if (file_exists(mpath))
 		{
 			extract_msi(mpath, out_root, dl_root);
-			if (verbose_level == 0)
-			{
-				printf(".");
-				fflush(stdout);
-			}
+			print_progress(90 + (10 * (i + 1)) / ELEMENTLEN(msi_names));
 		}
 	}
 
 	if (verbose_level == 0)
 	{
+		print_progress(100);
 		printf(" Done.\n");
 		fflush(stdout);
 	}
@@ -716,3 +756,5 @@ void fetch_msvc(BuildOptions *options)
 
 	if (verbose_level == 0) file_delete_dir(tmp_dir_base);
 }
+
+

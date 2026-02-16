@@ -88,7 +88,7 @@ macro @simd_degree() @local
 }
 
 <* Flags used during hash computation based on its state. *>
-enum Blake3Flags : const inline char
+const enum Blake3Flags : inline char
 {
 	CHUNK_START			= 1 << 0,
 	CHUNK_END			= 1 << 1,
@@ -606,13 +606,11 @@ fn void compress_pre(uint[] state, uint[] cv, char[BLOCK_SIZE] block, usz block_
 	state[13] = (uint)(counter >> 32);
 	state[14] = (uint)block_len;
 	state[15] = (uint)flags;
-	@round(state, &block_words[0], 0);
-	@round(state, &block_words[0], 1);
-	@round(state, &block_words[0], 2);
-	@round(state, &block_words[0], 3);
-	@round(state, &block_words[0], 4);
-	@round(state, &block_words[0], 5);
-	@round(state, &block_words[0], 6);
+
+	for (int i = 0; i < 7; i++)
+	{
+		@round(state, &block_words[0], (usz)i);
+	}
 }
 
 macro compress_in_place(uint[] cv, char[BLOCK_SIZE] block, usz block_len, ulong counter, char flags) @local
