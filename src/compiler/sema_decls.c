@@ -46,8 +46,6 @@ static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceS
 static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
 
-static CompilationUnit *unit_copy_for_generic(Module *module, CompilationUnit *unit);
-
 static inline bool sema_resolve_align_expr(SemaContext *context, Expr *expr, AlignSize *result)
 {
 	if (!sema_analyse_expr_rvalue(context, expr)) return false;
@@ -4681,7 +4679,7 @@ static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceS
 /**
  * Analyse $foo and $Foo variables.
  */
-bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_failed)
+bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defined)
 {
 	Expr *init;
 	ASSERT(decl->decl_kind == DECL_VAR && "Should only be called on variables.");
@@ -4711,7 +4709,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 				// If this isn't a type, it's an error.
 				if (!expr_is_const_typeid(init))
 				{
-					if (check_failed) goto FAIL_CHECK;
+					if (check_defined) goto FAIL_CHECK;
 					SEMA_ERROR(decl->var.init_expr, "Expected a type assigned to %s.", decl->name);
 					goto FAIL;
 				}
@@ -4731,7 +4729,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 				{
 					if (type_is_inferred(decl->type))
 					{
-						if (check_failed) goto FAIL_CHECK;
+						if (check_defined) goto FAIL_CHECK;
 						SEMA_ERROR(type_info, "No size could be inferred.");
 						goto FAIL;
 					}
@@ -4762,7 +4760,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 				// Check that it is constant.
 				if (!expr_is_runtime_const(init))
 				{
-					if (check_failed) goto FAIL_CHECK;
+					if (check_defined) goto FAIL_CHECK;
 					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 					goto FAIL;
 				}
@@ -4773,7 +4771,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 			{
 				if (init->expr_kind == EXPR_TYPEINFO)
 				{
-					if (check_failed) goto FAIL_CHECK;
+					if (check_defined) goto FAIL_CHECK;
 					SEMA_ERROR(init, "You can't assign a type to a regular compile time variable like '%s', but it would be allowed if the variable was a compile time type variable. Such a variable needs to have a type-like name, e.g. '$MyType'.", decl->name);
 					goto FAIL;
 				}
@@ -4781,7 +4779,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 				// Check it is constant.
 				if (!expr_is_runtime_const(init))
 				{
-					if (check_failed) goto FAIL_CHECK;
+					if (check_defined) goto FAIL_CHECK;
 					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 					goto FAIL;
 				}
@@ -4795,12 +4793,12 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_fail
 		default:
 			UNREACHABLE
 	}
-	if (check_failed) return true;
+	if (check_defined) return true;
 	return sema_add_local(context, decl);
 FAIL_CHECK:
-	if (check_failed)
+	if (check_defined)
 	{
-		*check_failed = true;
+		*check_defined = true;
 		return false;
 	}
 FAIL:
@@ -5299,7 +5297,7 @@ FOUND:;
 				copy_begin();
 				contracts = astid(copy_ast_macro(astptr(contracts)));
 				copy_end();
-				SourceSpan param_span = extend_span_with_token(params[0]->span, VECLAST(params)->span);
+				SourceSpan param_span = extend_span_with_token(params[0]->span, VECLAST(params)->span); // NOLINT
 				if (!sema_analyse_generic_module_contracts(context, module, instance, contracts, param_span, invocation_span))
 				{
 					decl_poison(instance);

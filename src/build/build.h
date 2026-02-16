@@ -210,6 +210,7 @@ typedef struct BuildOptions_
 	bool test_nosort;
 	bool test_noleak;
 	bool test_show_output;
+	bool print_large_functions;
 	const char *custom_linker_path;
 	uint32_t symtab_size;
 	unsigned version;
@@ -416,6 +417,7 @@ typedef struct
 	bool old_enums;
 	bool old_compact_eq;
 	bool single_threaded;
+	bool print_large_functions;
 	int build_threads;
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;

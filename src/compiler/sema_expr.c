@@ -8022,7 +8022,6 @@ INLINE bool sema_expr_analyse_ptr_add(SemaContext *context, Expr *expr, Expr *le
 {
 	bool left_is_vec = type_kind_is_real_vector(left_type->type_kind);
 	bool right_is_vec = type_kind_is_real_vector(right_type->type_kind);
-	ArraySize vec_len = left_is_vec ? left_type->array.len : 0;
 
 	// 3a. Check that the other side is an integer of some sort.
 	if (!type_is_integer(right_type))
@@ -8038,11 +8037,8 @@ INLINE bool sema_expr_analyse_ptr_add(SemaContext *context, Expr *expr, Expr *le
 
 	// 3b. Cast it to usz or isz depending on underlying type.
 	//     Either is fine, but it looks a bit nicer if we actually do this and keep the sign.
-	bool success = cast_explicit(context, right, left_is_vec ? type_get_vector_from_vector(type_isz, left_type) : type_isz);
-
-	// No need to check the cast we just ensured it was an integer.
-	ASSERT_SPAN(expr, success && "This should always work");
-	(void) success;
+	// This may fail if vectors are not the same size.
+	if (!cast_explicit(context, right, left_is_vec ? type_get_vector_from_vector(type_isz, left_type) : type_isz)) return false;
 
 	// Folding offset.
 	if (left->expr_kind == EXPR_POINTER_OFFSET)

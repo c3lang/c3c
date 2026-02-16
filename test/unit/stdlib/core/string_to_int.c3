@@ -4,18 +4,18 @@ import std::io, std::math;
 const N = 2560;
 macro String[] m() @const
 {
-    var $strings = {};
+    String[N] $strings = {};
     $foreach $i : math::iota(int[N]):
-        $strings +++= @sprintf("%s", $i);
+        $strings[$i] = @sprintf("%s", $i);
     $endforeach
-    return $strings;
+    return $strings[..];
 }
 
 macro String[] m2() @const
 {
-    var $strings = {};
+    String[N] $strings = {};
     $foreach $i : math::iota(int[N]):
-        $strings +++= @sprintf("%s", -$i);
+        $strings[$i] = @sprintf("%s", -$i);
     $endforeach
     return $strings;
 }

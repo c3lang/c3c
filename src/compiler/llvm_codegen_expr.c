@@ -6341,12 +6341,12 @@ EARLY_EXIT:
 }
 
 
-LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic, LLVMTypeRef *types, unsigned type_count,
+LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic, LLVMTypeRef *types, unsigned type_count,
 									  LLVMValueRef *values, unsigned arg_count)
 {
-	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(context->module, intrinsic, types, type_count);
-	LLVMTypeRef type = LLVMIntrinsicGetType(context->context, intrinsic, types, type_count);
-	return LLVMBuildCall2(context->builder, type, decl, values, arg_count, "");
+	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(c->module, intrinsic, types, type_count);
+	LLVMTypeRef type = LLVMIntrinsicGetType(c->context, intrinsic, types, type_count);
+	return LLVMBuildCall2(c->builder, type, decl, values, arg_count, "");
 }
 
 static inline void llvm_emit_optional(GenContext *c, BEValue *be_value, Expr *expr)

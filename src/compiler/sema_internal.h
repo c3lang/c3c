@@ -51,14 +51,14 @@ const char *context_filename(SemaContext *context);
 AstId context_get_defers(SemaContext *context, AstId defer_bottom, bool is_success);
 void context_pop_defers(SemaContext *context, AstId *next);
 void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast);
-void context_change_scope_for_label(SemaContext *context, DeclId label, SourceSpan span);
+void context_change_scope_for_label(SemaContext *context, DeclId label_id, SourceSpan span);
 void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, SourceSpan span);
 SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit);
 
 TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref);
-void sema_print_inline(SemaContext *context, SourceSpan span_original);
+void sema_print_inline(SemaContext *context, SourceSpan original);
 void sema_error_at(SemaContext *context, SourceSpan span, const char *message, ...);
-bool sema_warn_at(SemaContext *context, SourceSpan span, WarningLevel warning, const char *message, ...);
+bool sema_warn_at(SemaContext *context, SourceSpan span, WarningLevel level, const char *message, ...);
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);
@@ -66,7 +66,7 @@ unsigned sema_context_push_ct_stack(SemaContext *context);
 void sema_context_pop_ct_stack(SemaContext *context, unsigned old_state);
 
 bool sema_analyse_function_body(SemaContext *context, Decl *func);
-bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, SourceSpan span, bool *has_ensures);
+bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, SourceSpan call_span, bool *has_ensures);
 void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
 
 Decl *sema_create_runner_main(SemaContext *context, Decl *decl);

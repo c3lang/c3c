@@ -89,9 +89,12 @@ macro abs(x) => $$abs(x);
 *>
 macro bool is_approx(x, y, eps)
 {
-	if (x == y) return true;
-	if (is_nan(x) || is_nan(y)) return false;
-	return abs(x - y) <= eps;
+	return fn bool($typeof(x) a, $typeof(y) b, $typeof(eps) eps)
+	{
+		if (a == b) return true;
+		if (is_nan(a) || is_nan(b)) return false;
+		return abs(a - b) <= eps;
+	}(x, y, eps);
 }
 
 <*
@@ -100,9 +103,12 @@ macro bool is_approx(x, y, eps)
 *>
 macro bool is_approx_rel(x, y, eps)
 {
-	if (x == y) return true;
-	if (is_nan(x) || is_nan(y)) return false;
-	return abs(x - y) <= eps * max(abs(x), abs(y));
+	return fn bool($typeof(x) a, $typeof(y) b, $typeof(eps) eps)
+	{
+		if (a == b) return true;
+		if (is_nan(a) || is_nan(b)) return false;
+		return abs(a - b) <= eps * max(abs(a), abs(b));
+	}(x, y, eps);
 }
 
 <*
@@ -474,7 +480,7 @@ macro round(x) => $$round(x);
 macro round_to_decimals(x, int decimal_places)
 {
   var div = $$pow_int(($typeof(x))10, decimal_places);
-  return round(div * x) / div;
+  return $$round(div * x) / div;
 }
 
 <*

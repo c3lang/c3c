@@ -75,7 +75,7 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 			{
 				c = clock::now();
 			}
-			Poll poll_request = { sockfd, SUBSCRIBE_ANY_WRITE, 0 };
+			Poll poll_request = { sockfd, SUBSCRIBE_ANY_WRITE, (PollEvent)0 };
 			if (!poll((&poll_request)[:1], timeout_left)!)
 			{
 				return CONNECTION_TIMED_OUT~;

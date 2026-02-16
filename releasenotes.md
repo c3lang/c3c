@@ -15,6 +15,7 @@
 - Change typedef and const enums to not convert from literals by default.
 - Add `@constinit` to allow old typedef behaviour.
 - Include actual element count in the error message when the array initializer size does not match the expected size.
+- Add `--print-large-functions` for checking which functions likely dominate the compile time.
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
@@ -41,6 +42,8 @@
 - Improved underlining errors/warnings when unicode is used. #2887 
 - Fix std::io::Formatter integer issue for large uint128 decimal values.
 - `--safe=no` disabled compile-time errors on compile-time known runtime @require checks #2936
+- On assert known false, the message was not show for no-args.
+- Adding the incorrect sized vector to a pointer vector would cause a crash.
 
 ## 0.7.9 Change list
 
