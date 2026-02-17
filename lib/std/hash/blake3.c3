@@ -6,7 +6,7 @@
 //   https://github.com/BLAKE3-team/BLAKE3/blob/master
 //
 module std::hash::blake3;
-
+import std::thread;
 
 const BLOCK_SIZE = 64;
 const CHUNK_SIZE = 1024;
@@ -55,12 +55,15 @@ bool cpuinfo_initd @local = false;
 <*
  Cache some information at runtime about the current processor and platform, as needed for optimizations.
 *>
-fn void init_blake3() @local @init
+fn void init_blake3() @local
 {
-	$if IS_X86:
-		cpudetect::x86_initialize_cpu_features(); // query all x86 feature flags, one time
-	$endif
-	cpuinfo_initd = true;
+	static OnceFlag run_once;
+	run_once.call(fn() {
+		$if IS_X86:
+			cpudetect::x86_initialize_cpu_features(); // query all x86 feature flags, one time
+		$endif
+		cpuinfo_initd = true;
+	});
 }
 
 <* Check whether a given CPU flag is set (x86/x86_64 only). *>
