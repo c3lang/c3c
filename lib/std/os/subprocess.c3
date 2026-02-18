@@ -317,7 +317,7 @@ fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, Str
 	// Only set up pipes if not inheriting stdio
 	if (!options.inherit_stdio)
 	{
-		CInt pipe_flags = options.read_async ? os::PLATFORM_O_NONBLOCK : 0;
+		CInt pipe_flags = options.read_async ? os::O_NONBLOCK : 0;
 		if (posix::pipe(&stdinfd)) return FAILED_TO_OPEN_STDIN~;
 		if (posix::pipe2(&stdoutfd, pipe_flags)) return FAILED_TO_OPEN_STDOUT~;
 		if (!options.combined_stdout_stderr && posix::pipe2(&stderrfd, pipe_flags)) return FAILED_TO_OPEN_STDERR~;
