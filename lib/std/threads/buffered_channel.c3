@@ -22,7 +22,7 @@ struct BufferedChannelImpl @private
 }
 
 <*
-	@require size > 0: "channel size must be > 0"
+ @require size > 0: "channel size must be > 0"
 *>
 fn void? BufferedChannel.init(&self, Allocator allocator, usz size = 1)
 {
