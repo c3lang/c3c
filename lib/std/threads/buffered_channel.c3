@@ -21,6 +21,9 @@ struct BufferedChannelImpl @private
 	Type[*] buf;
 }
 
+<*
+	@require size > 0: "channel size must be > 0"
+*>
 fn void? BufferedChannel.init(&self, Allocator allocator, usz size = 1)
 {
 	BufferedChannelImpl* channel = allocator::new_with_padding(allocator, BufferedChannelImpl, Type.sizeof * size)!;
@@ -155,4 +158,3 @@ fn void? BufferedChannel.close(self) @maydiscard // Remove optional in 0.8.0
 	channel.mu.unlock();
 
 }
-
