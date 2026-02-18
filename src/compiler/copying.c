@@ -193,6 +193,13 @@ Expr *copy_expr_single(Expr *source_expr)
 	return expr;
 }
 
+Expr **copy_exprlist_macro(Expr **source_expr_list)
+{
+	ASSERT(copy_struct.copy_in_use);
+	Expr **list = copy_expr_list(&copy_struct, source_expr_list);
+	return list;
+}
+
 void copy_range(CopyStruct *c, Range *range)
 {
 	switch (range->range_type)
@@ -305,6 +312,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_TWO:
 			MACRO_COPY_EXPR(expr->two_expr.first);
 			MACRO_COPY_EXPR(expr->two_expr.last);
+			return expr;
+		case EXPR_CONTRACT:
+			MACRO_COPY_EXPR(expr->contract_expr.decl_exprs);
 			return expr;
 		case EXPR_TYPECALL:
 		case EXPR_CT_SUBSCRIPT:
@@ -607,24 +617,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 	UNREACHABLE
 }
 
-void doc_ast_copy(CopyStruct *c, AstContractStmt *doc)
-{
-	switch (doc->kind)
-	{
-		case CONTRACT_REQUIRE:
-		case CONTRACT_ENSURE:
-			MACRO_COPY_EXPR(doc->contract.decl_exprs);
-			break;
-		case CONTRACT_OPTIONALS:
-			MACRO_COPY_AST_LIST(doc->faults);
-			break;
-		case CONTRACT_PARAM:
-		case CONTRACT_PURE:
-		case CONTRACT_UNKNOWN:
-		case CONTRACT_COMMENT:
-			break;
-	}
-}
 
 static void copy_expr_asm_arg(CopyStruct *c, ExprAsmArg *arg)
 {
@@ -682,19 +674,6 @@ RETRY:
 			break;
 		case AST_DECLS_STMT:
 			MACRO_COPY_DECL_LIST(ast->decls_stmt);
-			break;
-		case AST_CONTRACT_FAULT:
-			if (ast->contract_fault.resolved)
-			{
-				fixup_decl(c, &ast->contract_fault.decl);
-			}
-			else
-			{
-				MACRO_COPY_EXPR(ast->contract_fault.expr);
-			}
-			break;
-		case AST_CONTRACT:
-			doc_ast_copy(c, &source->contract_stmt);
 			break;
 		case AST_ASM_BLOCK_STMT:
 			if (ast->asm_block_stmt.is_string)
@@ -1079,6 +1058,18 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_GENERIC:
 		case DECL_GENERIC_INSTANCE:
 			UNREACHABLE;
+		case DECL_CONTRACT:
+			MACRO_COPY_EXPR_LIST(copy->contracts_decl.requires);
+			MACRO_COPY_EXPR_LIST(copy->contracts_decl.ensures);
+			if (copy->resolve_status == RESOLVE_DONE)
+			{
+				MACRO_COPY_DECL_LIST(copy->contracts_decl.opt_returns_resolved);
+			}
+			else
+			{
+				MACRO_COPY_EXPR_LIST(copy->contracts_decl.opt_returns);
+			}
+			break;
 		case DECL_INTERFACE:
 			copy_decl_type(copy);
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
@@ -1139,7 +1130,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_FUNC:
 			copy_decl_type(copy);
 			MACRO_COPY_TYPEID(copy->func_decl.type_parent);
-			MACRO_COPY_ASTID(copy->func_decl.docs);
+			MACRO_COPY_DECLID(copy->func_decl.docs);
 			copy_signature_deep(c, &copy->func_decl.signature);
 			MACRO_COPY_ASTID(copy->func_decl.body);
 			break;
@@ -1204,7 +1195,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_ALIAS_PATH:
 			break;
 		case DECL_MACRO:
-			MACRO_COPY_ASTID(copy->func_decl.docs);
+			MACRO_COPY_DECLID(copy->func_decl.docs);
 			MACRO_COPY_TYPEID(decl->func_decl.type_parent);
 			copy_signature_deep(c, &copy->func_decl.signature);
 			MACRO_COPY_ASTID(decl->func_decl.body);

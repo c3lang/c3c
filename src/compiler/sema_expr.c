@@ -773,6 +773,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_TWO:
 		case EXPR_MAYBE_DEREF:
+		case EXPR_CONTRACT:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -819,6 +820,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_DISCARD:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_MAKE_SLICE:
+		case EXPR_CONTRACT:
 			return false;
 		case EXPR_SUBSCRIPT_ASSIGN:
 			return true;
@@ -981,6 +983,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_TYPE_ALIAS:
 		case DECL_GENERIC:
 		case DECL_GENERIC_INSTANCE:
+		case DECL_CONTRACT:
 			UNREACHABLE
 		case DECL_POISONED:
 			return expr_poison(expr);
@@ -1198,6 +1201,12 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 			SEMA_ERROR(expr, "Unable to properly resolve constdef value, this can sometimes happen in recursive definitions.");
 		}
 		return expr_poison(expr), true;
+	}
+	if (!sema_display_deprecated_warning_on_use(context, decl, expr->span)) return expr_poison(expr), true;
+	enum_constant->var.is_written = true;
+	if (enum_constant->resolve_status == RESOLVE_DONE)
+	{
+		if (!sema_display_deprecated_warning_on_use(context, enum_constant, expr->span)) return expr_poison(expr), true;
 	}
 	expr->type = decl->type;
 	if (enum_constant->enum_constant.is_raw)
@@ -2564,28 +2573,10 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 	return true;
 }
 
-static inline bool sema_has_require(AstId doc_id)
+static inline bool sema_has_require(DeclId doc_id)
 {
 	if (!doc_id) return false;
-	Ast *docs = astptr(doc_id);
-	while (docs)
-	{
-		switch (docs->contract_stmt.kind)
-		{
-			case CONTRACT_UNKNOWN:
-			case CONTRACT_COMMENT:
-			case CONTRACT_PURE:
-			case CONTRACT_PARAM:
-			case CONTRACT_OPTIONALS:
-			case CONTRACT_ENSURE:
-				docs = astptrzero(docs->next);
-				continue;
-			case CONTRACT_REQUIRE:
-				return true;
-		}
-		UNREACHABLE
-	}
-	return false;
+	return declptr(doc_id)->contracts_decl.requires != 0;
 }
 
 static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl *decl,
@@ -2619,17 +2610,17 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 		*any_val = *(any_val->inner_expr);
 	}
 	expr->call_expr.function_contracts = 0;
-	AstId docs;
+	DeclId contract_id;
 	if (decl->decl_kind == DECL_FNTYPE)
 	{
-		docs = decl->fntype_decl.docs;
+		contract_id = decl->fntype_decl.docs;
 	}
 	else
 	{
-		docs = decl->func_decl.docs;
+		contract_id = decl->func_decl.docs;
 	}
 
-	if (!sema_has_require(docs)) goto SKIP_CONTRACTS;
+	if (!sema_has_require(contract_id)) goto SKIP_CONTRACTS;
 	bool is_safe = safe_mode_enabled();
 	SemaContext temp_context;
 	bool success = false;
@@ -2686,8 +2677,12 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 	}
 	AstId assert_first = 0;
 	AstId* next = &assert_first;
-
-	if (!sema_analyse_contracts(&temp_context, docs, &next, expr->span, NULL)) return false;
+	Decl *contracts = declptr(contract_id);
+	copy_begin();
+	Expr **requires = copy_exprlist_macro(contracts->contracts_decl.requires);
+	Expr **ensures = copy_exprlist_macro(contracts->contracts_decl.ensures);
+	copy_end();
+	if (!sema_analyse_contracts(&temp_context, contracts, requires, ensures, &next, expr->span, NULL)) return false;
 
 	if (!is_safe) goto SKIP_CONTRACTS;
 
@@ -2938,8 +2933,11 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	copy_begin();
 	Decl **params = copy_decl_list_macro(decl->func_decl.signature.params);
 	Ast *body = copy_ast_macro(astptr(decl->func_decl.body));
-	AstId docs = decl->func_decl.docs;
-	if (docs) docs = astid(copy_ast_macro(astptr(docs)));
+	Decl *contracts = declptrzero(decl->func_decl.docs);
+	Expr **requires = contracts ? contracts->contracts_decl.requires : NULL;
+	Expr **ensures = contracts ? contracts->contracts_decl.ensures : NULL;
+	if (requires) requires = copy_exprlist_macro(requires);
+	if (ensures) ensures = copy_exprlist_macro(ensures);
 	Signature *sig = &decl->func_decl.signature;
 	copy_end();
 	CalledDecl callee = {
@@ -3140,7 +3138,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	}
 
 	bool has_ensures = false;
-	if (!sema_analyse_contracts(&macro_context, docs, &next, call_expr->span, &has_ensures)) return false;
+	if (!sema_analyse_contracts(&macro_context, contracts, requires, ensures, &next, call_expr->span, &has_ensures)) return false;
 	macro_context.macro_has_ensures = has_ensures;
 
 	sema_append_contract_asserts(assert_first, body);
@@ -10528,6 +10526,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr,
 			case DECL_POISONED:
 			case DECL_GENERIC:
 			case DECL_GENERIC_INSTANCE:
+			case DECL_CONTRACT:
 				RETURN_SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
 			case DECL_FAULT:
 				goto RETURN_CT;
@@ -11317,6 +11316,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_ACCESS_RESOLVED:
 			case EXPR_CT_SUBSCRIPT:
 			case EXPR_IOTA_DECL:
+			case EXPR_CONTRACT:
 					UNREACHABLE
 				case EXPR_DECL:
 					if (!sema_analyse_var_decl(context, main_expr->decl_expr, true, &failed))
@@ -11816,6 +11816,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_MAKE_SLICE:
 		case EXPR_CT_SUBSCRIPT:
+		case EXPR_CONTRACT:
 			UNREACHABLE
 		case EXPR_LENGTHOF:
 			return sema_expr_analyse_lenof(context, expr, NULL);
@@ -12413,12 +12414,13 @@ IDENT_CHECK:;
 		case EXPR_VASPLAT:
 		case EXPR_TRY_UNRESOLVED:
 		case EXPR_TWO:
-	case EXPR_MAYBE_DEREF:
+		case EXPR_MAYBE_DEREF:
 			break;
 		case EXPR_BITACCESS:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_ACCESS_RESOLVED:
 		case EXPR_CT_SUBSCRIPT:
+		case EXPR_CONTRACT:
 			UNREACHABLE
 	}
 	if (failed_ref) goto FAILED_REF;

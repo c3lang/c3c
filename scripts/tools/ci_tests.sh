@@ -64,36 +64,35 @@ cd "$ROOT_DIR/resources"
 
 run_examples() {
     echo "--- Running Standard Examples ---"
-    "$C3C_BIN" compile-only -vv examples/base64.c3 --target linux-x64
-    "$C3C_BIN" compile -vv examples/base64.c3
-    "$C3C_BIN" compile -vv examples/binarydigits.c3
-    "$C3C_BIN" compile -vv examples/brainfk.c3
-    "$C3C_BIN" compile -vv examples/factorial_macro.c3
-    "$C3C_BIN" compile -vv examples/fasta.c3
-    "$C3C_BIN" compile -vv examples/gameoflife.c3
-    "$C3C_BIN" compile -vv examples/hash.c3
-    "$C3C_BIN" compile-only -vv examples/levenshtein.c3
-    "$C3C_BIN" compile -vv examples/load_world.c3
-    "$C3C_BIN" compile-only -vv examples/map.c3
-    "$C3C_BIN" compile -vv examples/mandelbrot.c3
-    "$C3C_BIN" compile -vv examples/plus_minus.c3
-    "$C3C_BIN" compile -vv examples/nbodies.c3
-    "$C3C_BIN" compile -vv examples/spectralnorm.c3
-    "$C3C_BIN" compile -vv examples/swap.c3
-    "$C3C_BIN" compile -vv examples/contextfree/boolerr.c3
-    "$C3C_BIN" compile -vv examples/contextfree/dynscope.c3
-    "$C3C_BIN" compile -vv examples/contextfree/guess_number.c3
-    "$C3C_BIN" compile -vv examples/contextfree/multi.c3
-    "$C3C_BIN" compile -vv examples/contextfree/cleanup.c3
+    "$C3C_BIN" compile examples/base64.c3
+    "$C3C_BIN" compile examples/binarydigits.c3
+    "$C3C_BIN" compile examples/brainfk.c3
+    "$C3C_BIN" compile examples/factorial_macro.c3
+    "$C3C_BIN" compile examples/fasta.c3
+    "$C3C_BIN" compile examples/gameoflife.c3
+    "$C3C_BIN" compile examples/hash.c3
+    "$C3C_BIN" compile-only examples/levenshtein.c3
+    "$C3C_BIN" compile examples/load_world.c3
+    "$C3C_BIN" compile-only examples/map.c3
+    "$C3C_BIN" compile examples/mandelbrot.c3
+    "$C3C_BIN" compile examples/plus_minus.c3
+    "$C3C_BIN" compile examples/nbodies.c3
+    "$C3C_BIN" compile examples/spectralnorm.c3
+    "$C3C_BIN" compile examples/swap.c3
+    "$C3C_BIN" compile examples/contextfree/boolerr.c3
+    "$C3C_BIN" compile examples/contextfree/dynscope.c3
+    "$C3C_BIN" compile examples/contextfree/guess_number.c3
+    "$C3C_BIN" compile examples/contextfree/multi.c3
+    "$C3C_BIN" compile examples/contextfree/cleanup.c3
     
-    "$C3C_BIN" compile-run -vv examples/hello_world_many.c3
-    "$C3C_BIN" compile-run -vv examples/time.c3
-    "$C3C_BIN" compile-run -vv examples/fannkuch-redux.c3
-    "$C3C_BIN" compile-run -vv examples/contextfree/boolerr.c3
-    "$C3C_BIN" compile-run -vv examples/load_world.c3
-    "$C3C_BIN" compile-run -vv examples/process.c3
-    "$C3C_BIN" compile-run -vv examples/ls.c3
-    "$C3C_BIN" compile-run -vv examples/args.c3 -- foo -bar "baz baz"
+    "$C3C_BIN" compile-run examples/hello_world_many.c3
+    "$C3C_BIN" compile-run examples/time.c3
+    "$C3C_BIN" compile-run examples/fannkuch-redux.c3
+    "$C3C_BIN" compile-run examples/contextfree/boolerr.c3
+    "$C3C_BIN" compile-run examples/load_world.c3
+    "$C3C_BIN" compile-run examples/process.c3
+    "$C3C_BIN" compile-run examples/ls.c3
+    "$C3C_BIN" compile-run examples/args.c3 -- foo -bar "baz baz"
 
     if [[ "$OS_MODE" == "linux" ]]; then
         "$C3C_BIN" compile-run --linker=builtin linux_stack.c3 || echo "Warning: linux_stack builtin linker skipped"
