@@ -8,6 +8,7 @@ alias FseekFn = fn void?(void*, isz, Seek);
 alias FtellFn = fn usz?(void*);
 alias FwriteFn = fn usz?(void*, char[] buffer);
 alias FreadFn = fn usz?(void*, char[] buffer);
+alias FflushFn = fn void?(void*);
 alias RemoveFn = fn void?(String);
 alias FputcFn = fn void?(int, void*);
 
@@ -18,6 +19,7 @@ FseekFn native_fseek_fn @weak @if(!$defined(native_fseek_fn));
 FtellFn native_ftell_fn @weak @if(!$defined(native_ftell_fn));
 FwriteFn native_fwrite_fn @weak @if(!$defined(native_fwrite_fn));
 FreadFn native_fread_fn @weak @if(!$defined(native_fread_fn));
+FflushFn native_flush_fn @weak @if(!$defined(native_fflush_fn));
 RemoveFn native_remove_fn @weak @if(!$defined(native_remove_fn));
 FputcFn native_fputc_fn @weak @if(!$defined(native_fputc_fn));
 
@@ -73,6 +75,12 @@ fn usz? native_fwrite(CFile file, char[] buffer) @inline
 fn usz? native_fread(CFile file, char[] buffer) @inline
 {
 	if (native_fread_fn) return native_fread_fn(file, buffer);
+	return io::UNSUPPORTED_OPERATION~;
+}
+
+fn void? native_fflush(CFile file) @inline @maydiscard
+{
+	if (native_fflush_fn) return native_fflush_fn(file);
 	return io::UNSUPPORTED_OPERATION~;
 }
 
