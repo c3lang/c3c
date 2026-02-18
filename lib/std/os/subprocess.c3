@@ -317,10 +317,20 @@ fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, Str
 	// Only set up pipes if not inheriting stdio
 	if (!options.inherit_stdio)
 	{
-		CInt pipe_flags = options.read_async ? os::O_NONBLOCK : 0;
 		if (posix::pipe(&stdinfd)) return FAILED_TO_OPEN_STDIN~;
-		if (posix::pipe2(&stdoutfd, pipe_flags)) return FAILED_TO_OPEN_STDOUT~;
-		if (!options.combined_stdout_stderr && posix::pipe2(&stderrfd, pipe_flags)) return FAILED_TO_OPEN_STDERR~;
+		if (posix::pipe(&stdoutfd)) return FAILED_TO_OPEN_STDOUT~;
+		if (!options.combined_stdout_stderr && posix::pipe(&stderrfd)) return FAILED_TO_OPEN_STDERR~;
+
+		if (options.read_async)
+		{
+			((NativeSocket)stdoutfd[0]).set_non_blocking(true)!;
+			((NativeSocket)stdoutfd[1]).set_non_blocking(true)!;
+			if (!options.combined_stdout_stderr)
+			{
+				((NativeSocket)stderrfd[0]).set_non_blocking(true)!;
+				((NativeSocket)stderrfd[1]).set_non_blocking(true)!;
+			}
+		}
 
 		if (posix::spawn_file_actions_addclose(&actions, stdinfd[1])) return FAILED_TO_OPEN_STDIN~;
 		if (posix::spawn_file_actions_adddup2(&actions, stdinfd[0], libc::STDIN_FD)) return FAILED_TO_OPEN_STDIN~;

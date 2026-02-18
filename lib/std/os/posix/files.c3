@@ -30,7 +30,6 @@ extern fn int mkdir(ZString, ushort mode_t);
 extern fn int chdir(ZString);
 extern fn ZString getcwd(char* pwd, usz len);
 extern fn CInt pipe(CInt[2]* pipes);
-extern fn CInt pipe2(CInt[2]* pipes, int flags);
 extern fn CFile fdopen(CInt fd, ZString mode);
 extern fn CInt access(ZString path, CInt mode);
 extern fn void closedir(DIRPtr);
