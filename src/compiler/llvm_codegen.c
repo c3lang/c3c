@@ -1407,6 +1407,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_INTERFACE:
 		case DECL_GENERIC:
 		case DECL_GENERIC_INSTANCE:
+		case DECL_CONTRACT:
 			UNREACHABLE;
 	}
 	UNREACHABLE

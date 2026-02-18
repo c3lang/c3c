@@ -299,6 +299,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_GROUP:
 		case DECL_GENERIC:
 		case DECL_GENERIC_INSTANCE:
+		case DECL_CONTRACT:
 			UNREACHABLE
 	}
 	UNREACHABLE
