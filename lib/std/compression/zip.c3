@@ -2,20 +2,17 @@
  ZIP archive module (STORE and DEFLATE).
 
  API:
- - fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
- - fn ZipArchive? recover(String path, Allocator allocator = mem)
+ - fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
+ - fn ZipArchive? recover(Allocator allocator, String path, )
  - fn void?       ZipArchive.extract(&self, String output_dir)
  - fn ZipEntry?   ZipArchive.stat(&self, String filename)
- - fn char[]?     ZipArchive.read_file_all(&self, String filename, Allocator allocator = mem)
+ - fn char[]?     ZipArchive.read_file_all(&self, Allocator allocator, String filename)
  - fn void?       ZipArchive.close(&self)
 *>
 module std::compression::zip;
-import std::core::mem, std::io, std::collections::list, std::hash::crc32, std::time, std::math;
-import std::io::file, std::io::path;
-import std::encoding::codepage;
+import std::io, std::collections::list, std::hash::crc32, std::time, std::math;
+import std::encoding::codepage, std::compression::deflate;
 import libc;
-import std::core::bitorder;
-import std::compression::deflate;
 
 faultdef
 	INVALID_ARGUMENT,
@@ -63,13 +60,13 @@ const enum ZipMethod : UShortLE
 
 <*
  Opens a ZIP archive.
+ @param allocator : `The allocator to use.`
  @param path : `The path to the ZIP file.`
  @param mode : `Opening mode ("r", "w", "w+").`
- @param allocator : `The allocator to use.`
  @return `The opened archive.`
  @require mode == "r" || mode == "w" || mode == "w+"
 *>
-fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
+fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 {
 	if (mode == "w" || mode == "w+")
 	{
@@ -290,7 +287,7 @@ fn ZipArchive? open(String path, String mode = "r", Allocator allocator = mem)
  @param allocator : `The allocator to use.`
  @return `The recovered archive.`
 *>
-fn ZipArchive? recover(String path, Allocator allocator = mem)
+fn ZipArchive? recover(Allocator allocator, String path)
 {
 	File f = file::open(path, "rb")!;
 	defer (catch err) (void)f.close();
@@ -627,11 +624,11 @@ fn ZipEntry? ZipArchive.stat(&self, String filename)
 
 <*
  Reads an entire file from the archive.
- @param filename : `The name of the file to read.`
  @param allocator : `The allocator to use.`
+ @param filename : `The name of the file to read.`
  @return `The uncompressed file data.`
 *>
-fn char[]? ZipArchive.read_file_all(&self, String filename, Allocator allocator = mem)
+fn char[]? ZipArchive.read_file_all(&self, Allocator allocator, String filename, )
 {
 	ZipEntryReader reader = self.open_reader(filename)!;
 	defer (void)reader.close();
@@ -654,7 +651,7 @@ fn char[]? ZipArchive.read_file_all(&self, String filename, Allocator allocator 
 		char[] compressed = allocator::alloc_array(allocator, char, (usz)entry.compressed_size);
 		defer allocator::free(allocator, compressed);
 		self.file.read(compressed)!;
-		data = deflate::decompress(compressed, allocator)!;
+		data = deflate::decompress(allocator, compressed)!;
 	}
 
 	Crc32 crc;
@@ -890,7 +887,7 @@ fn void? ZipEntryWriter.close(&self) @dynamic
 	{
 		if (self.buffer.len > 0)
 		{
-			char[]? data = deflate::compress(self.buffer, self.archive.allocator);
+			char[]? data = deflate::compress(self.archive.allocator, self.buffer);
 			if (catch data) return IO_ERROR~;
 			self.archive.file.write(data)!;
 			self.entry.compressed_size = data.len;

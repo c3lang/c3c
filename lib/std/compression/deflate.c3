@@ -8,7 +8,8 @@
  - struct Inflater: InStream for pull-based decompression (use `init` then `read`).
 *>
 module std::compression::deflate;
-import std::core::mem, std::io, std::math, std::bits, std::sort, std::collections::list;
+import std::io, std::math, std::bits, std::sort, std::collections::list;
+import std::thread;
 
 faultdef
 	CORRUPTED_DATA;
@@ -50,7 +51,10 @@ fn void Inflater.init(&self, InStream input, char[] bit_reader_buf = {})
 	*self = {};
 	self.reader = { .stream = input, .buffer = bit_reader_buf };
 	self.state = START_BLOCK;
-	ensure_fixed_built();
+	static OnceFlag run_once;
+    run_once.call(fn void() {
+    	build_fixed_huffman(&lit_fixed_global, &dist_fixed_global);
+    });
 }
 
 fn usz? Inflater.read(&self, char[] buffer) @dynamic
@@ -62,13 +66,15 @@ fn usz? Inflater.read(&self, char[] buffer) @dynamic
 	{
 		if (self.read_pos < self.pos)
 		{
-			usz to_copy = (usz)math::min((ulong)(buffer.len - total_out), self.pos - self.read_pos);
+			ulong to_copy = math::min((ulong)(buffer.len - total_out), self.pos - self.read_pos);
 
-			usz start_idx = (usz)(self.read_pos & 0xFFFF);
-			usz len = (usz)math::min((ulong)to_copy, (ulong)(65536 - start_idx));
+			ulong start_idx = self.read_pos & 0xFFFF;
+			ulong len = math::min(to_copy, 65536U - start_idx);
 
 			buffer[total_out:len] = self.window[start_idx:len];
-			total_out += len;
+
+			if (len > usz.max) return CORRUPTED_DATA~;
+			total_out = total_out.overflow_add((usz)len) ?? CORRUPTED_DATA~!;
 			self.read_pos += len;
 
 			if (len < to_copy)
@@ -76,14 +82,14 @@ fn usz? Inflater.read(&self, char[] buffer) @dynamic
 				buffer[total_out:to_copy - len] = self.window[:to_copy - len];
 
 				total_out += to_copy - len;
-				self.read_pos += (ulong)(to_copy - len);
+				self.read_pos += to_copy - len;
 			}
 			continue;
 		}
 
 		if (self.done) break;
 
-		if (self.pos - self.read_pos >= 32768) break;
+		if (self.pos - self.read_pos >= 32768U) break;
 
 		self.step()!;
 	}
@@ -94,93 +100,59 @@ fn usz? Inflater.read(&self, char[] buffer) @dynamic
 fn char? Inflater.read_byte(&self) @dynamic
 {
 	char[1] b;
-	if (try n = self.read(&b))
+	if (try n = self.read(&b) && n > 0)
 	{
-		if (n == 0) return io::EOF~;
 		return b[0];
 	}
 	return io::EOF~;
 }
 
-fn char[]? decompress(char[] input, Allocator allocator = mem)
+fn char[]? decompress(Allocator allocator, char[] input) => @pool()
 {
-	if (input.len == 0) return allocator::new_array(allocator, char, 0);
+	if (!input.len) return allocator::new_array(allocator, char, 0);
 
 	ByteReader mem_stream;
 	mem_stream.init(input);
 
-	Inflater* inflater = allocator::new(allocator, Inflater);
-	defer allocator::free(allocator, inflater);
+	Inflater* inflater = allocator::new(tmem, Inflater);
 	char[4096] tmp_bit_buf;
 	inflater.init(&mem_stream, &tmp_bit_buf);
 
 	usz out_cap = input.len * 2;
 	if (out_cap < 1024) out_cap = 1024;
 
-	usz out_len = 0;
-	char* out = allocator::malloc(allocator, out_cap);
-	defer allocator::free(allocator, out);
+	ByteWriter writer;
+	writer.tinit();
+	writer.ensure_capacity(out_cap)!;
 
-	// TODO: could this be a List {char} instead?
-	while (true)
-	{
-		if (out_len + 8192 > out_cap)
-		{
-			usz next_cap = out_cap;
-			if (next_cap < 16384) next_cap = 16384;
-			while (next_cap < out_len + 8192)
-			{
-				if (next_cap > usz.max / 2) { next_cap = out_len + 8192; break; }
-				next_cap *= 2;
-			}
-			out = allocator::realloc_array(allocator, out, char, next_cap);
-			out_cap = next_cap;
-		}
-
-		char[] target = out[out_len : 8192];
-		usz n = inflater.read(target)!;
-		if (n == 0) break;
-		out_len += n;
-	}
-
+	usz out_len = io::copy_to(inflater, &writer)!;
 	if (out_len == 0) return allocator::new_array(allocator, char, 0);
 
 	char[] result = allocator::alloc_array(allocator, char, out_len);
-	result[..] = out[:out_len];
+	result[..] = writer.array_view()[:out_len];
 	return result;
 }
 
 <*
  Decompress stream using DEFLATE.
  Reads from `input`, writes to `output`.
- Uses blocking I/O.
+ Uses blocking I/O and the temp allocator
 *>
-fn void? decompress_stream(InStream input, OutStream output, Allocator allocator = mem)
+fn void? decompress_stream(InStream input, OutStream output) => @pool()
 {
-	Inflater* inflater = allocator::new(allocator, Inflater);
-	char[] bit_buf = allocator::alloc_array(allocator, char, 8192);
+	Inflater* inflater = mem::tnew(Inflater);
+	char[] bit_buf = mem::tnew(char[8192]);
 	inflater.init(input, bit_buf);
-	defer {
-		allocator::free(allocator, bit_buf);
-		allocator::free(allocator, inflater);
-	}
-
-	char[16384] out_buf;
-	while (true)
-	{
-		usz n = inflater.read(out_buf[..])!;
-		if (n == 0) break;
-		output.write(out_buf[:n])!;
-	}
+	io::copy_to(inflater, output)!;
 }
 
 <*
- Compress data using the DEFLATE algorithm.
+ Compress data using the DEFLATE algorithm, this uses the temp allocator
  @param input : `The data to compress.`
  @param allocator : `The allocator to use.`
  @return `The compressed data.`
 *>
-fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
+fn char[]? compress(Allocator allocator, char[] input) => @pool()
 {
 	if (input.len == 0)
 	{
@@ -504,14 +476,7 @@ fn char[]? compress(char[] input, Allocator allocator = mem) => @pool()
 
 Huffman lit_fixed_global @private;
 Huffman dist_fixed_global @private;
-bool fixed_built_global @private;
 
-fn void ensure_fixed_built() @private
-{
-	if (fixed_built_global) return;
-	build_fixed_huffman(&lit_fixed_global, &dist_fixed_global);
-	fixed_built_global = true;
-}
 
 struct StreamBitReader @private
 {

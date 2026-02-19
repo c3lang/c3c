@@ -126,8 +126,8 @@ macro fault file_seek_errno() @local
 
 struct Utimbuf
 {
-	libc::Time_t actime;
-	libc::Time_t modtime;
+	Time_t actime;
+	Time_t modtime;
 }
 
 extern fn int utime(char* filename, void* times) @if(!env::WIN32);

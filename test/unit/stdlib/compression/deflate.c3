@@ -1,17 +1,14 @@
 module deflate_test @test;
 
-import std::compression::deflate;
-import std::core::mem;
-import std::io, std::io::file;
-import std::math;
+import std::compression::deflate, std::io, std::math;
 
 fn void test_deflate_basic()
 {
 	String original = "Hello, world! This is a test of the DEFLATE compression algorithm.";
-	char[] compressed = deflate::compress((char[])original)!!;
+	char[] compressed = deflate::compress(mem, original)!!;
 	defer free(compressed.ptr);
 
-	char[] decompressed = deflate::decompress(compressed)!!;
+	char[] decompressed = deflate::decompress(mem, compressed)!!;
 	defer free(decompressed.ptr);
 
 	assert((String)decompressed == original, "Decompressed data does not match original");
@@ -29,13 +26,13 @@ fn void test_deflate_repetitive()
 		original[i] = (char)((i % 10) + '0');
 	}
 
-	char[] compressed = deflate::compress(original)!!;
+	char[] compressed = deflate::compress(mem, original)!!;
 	defer free(compressed.ptr);
 
 	// Check that we actually achieved some compression
 	assert(compressed.len < len / 10, "Repetitive data should compress well");
 
-	char[] decompressed = deflate::decompress(compressed)!!;
+	char[] decompressed = deflate::decompress(mem, compressed)!!;
 	defer free(decompressed.ptr);
 
 	assert(decompressed.len == original.len, "Length mismatch");
@@ -45,10 +42,10 @@ fn void test_deflate_repetitive()
 fn void test_deflate_empty()
 {
 	char[] original = {};
-	char[] compressed = deflate::compress(original)!!;
+	char[] compressed = deflate::compress(mem, original)!!;
 	defer free(compressed.ptr);
 
-	char[] decompressed = deflate::decompress(compressed)!!;
+	char[] decompressed = deflate::decompress(mem, compressed)!!;
 	defer free(decompressed.ptr);
 
 	assert(decompressed.len == 0, "Expected empty decompression");
@@ -85,10 +82,10 @@ fn void test_deflate_random_ish()
 		original[i] = (char)(i & 0xFF);
 	}
 
-	char[] compressed = deflate::compress(original)!!;
+	char[] compressed = deflate::compress(mem, original)!!;
 	defer free(compressed.ptr);
 
-	char[] decompressed = deflate::decompress(compressed)!!;
+	char[] decompressed = deflate::decompress(mem, compressed)!!;
 	defer free(decompressed.ptr);
 
 	assert((String)decompressed == (String)original, "Data mismatch");
@@ -96,13 +93,13 @@ fn void test_deflate_random_ish()
 
 fn void test_deflate_corrupted()
 {
-	char[] compressed = deflate::compress((char[])"Some data")!!;
+	char[] compressed = deflate::compress(mem, "Some data")!!;
 	defer free(compressed.ptr);
 
 	// Corrupt the block type (bits 1-2 of first byte) to 3 (reserved/invalid)
 	compressed[0] |= 0x06;
 
-	char[]? decompressed = deflate::decompress(compressed);
+	char[]? decompressed = deflate::decompress(mem, compressed);
 	assert(!@ok(decompressed), "Expected decompression to fail for corrupted data");
 }
 
@@ -120,7 +117,7 @@ fn void test_deflate_stream()
 		}
 		String original = (String)original_arr;
 
-		char[] compressed = deflate::compress(original_arr)!!;
+		char[] compressed = deflate::compress(mem, original_arr)!!;
 		defer free(compressed.ptr);
 
 		// Use a temporary file on disk to test the streaming interface
@@ -153,7 +150,7 @@ fn void test_deflate_incremental()
 	@pool()
 	{
 		String original = "This is a test of incremental decompression. We will read it byte by byte.";
-		char[] compressed = deflate::compress((char[])original)!!;
+		char[] compressed = deflate::compress(mem, original)!!;
 		defer free(compressed.ptr);
 
 		// Use a ByteReader for the compressed data
