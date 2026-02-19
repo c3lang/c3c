@@ -394,11 +394,19 @@ static const char *find_linux_crt(void)
 		const char *is_64 = compiler.platform.arch == ARCH_TYPE_RISCV64 ? "64" : "32";
 		char *p1 = str_printf("/usr/*riscv%s*linux*/usr/lib/crt1.o", is_64);
 		const char *path = find_arch_glob_path(p1, 6);
-		if (path) return path;
+		if (path)
+		{
+			INFO_LOG("Found crt at %s", path);
+			return path;
+		}
 
 		char *p2 = str_printf("/usr/lib/riscv%s*linux*/crt1.o", is_64);
 		path = find_arch_glob_path(p2, 6);
-		if (path) return path;
+		if (path)
+		{
+			INFO_LOG("Found crt at %s", path);
+			return path;
+		}
 	}
 	else
 	{
@@ -430,6 +438,7 @@ static const char *find_linux_crt(void)
 		}
 	}
 
+	INFO_LOG("No crt found in standard paths or via globs.");
 	return NULL;
 }
 
