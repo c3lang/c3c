@@ -28,6 +28,7 @@
 - Add Xorshiro128++.
 - Add single-byte code page support (DOS/OEM, Windows/ANSI, and ISO/IEC 8859).
 - Add `array::even`, `array::odd`, and `array::unlace` macros. #2892
+- Add discrete and continuous distributions in `std::math::distributions`.
 
 ### Fixes
 - Add error message if directory with output file name already exists
