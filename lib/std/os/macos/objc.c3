@@ -88,7 +88,7 @@ enum ApplicationActivationPolicy : (int val) @deprecated("Use NSApplicationActiv
 	PROHIBITED { 2 },
 }
 
-const enum NSApplicationActivationPolicy : inline NSInteger
+constdef NSApplicationActivationPolicy : inline NSInteger
 {
 	REGULAR    = 0,
 	ACCESSORY  = 1,
@@ -119,7 +119,7 @@ enum BackingStore : (int val) @deprecated("Use NSBackingStoreType.")
 	BUFFERED    { 2 }
 }
 
-const enum NSBackingStoreType : inline NSUInteger
+constdef NSBackingStoreType : inline NSUInteger
 {
 	RETAINED    = 0,
 	NONRETAINED = 1,
@@ -164,7 +164,7 @@ enum EventType : (long val) @deprecated("Use NSEventType.")
 	CHANGE_MODE         { 38 },
 }
 
-const enum NSEventType : inline NSUInteger
+constdef NSEventType : inline NSUInteger
 {
 	LEFT_MOUSE_DOWN     = 1,
 	LEFT_MOUSE_UP       = 2,
@@ -280,7 +280,7 @@ enum EventMask : (long val) @deprecated("Use NSEventMask.")
     ANY                 { long.max                               },
 }
 
-const enum NSEventMask : inline ulong
+constdef NSEventMask : inline ulong
 {
 	LEFT_MOUSE_DOWN     = 1ul << NSEventType.LEFT_MOUSE_DOWN,
 	LEFT_MOUSE_UP       = 1ul << NSEventType.LEFT_MOUSE_UP,
@@ -333,7 +333,7 @@ enum EventModifierFlag : (int val) @deprecated("Use NSEventModifierFlags.")
 	HELP        { 1 << 22 },
 }
 
-const enum NSEventModifierFlags : inline NSUInteger
+constdef NSEventModifierFlags : inline NSUInteger
 {
 	CAPS_LOCK                     = 1 << 16,
 	SHIFT                         = 1 << 17,
@@ -346,7 +346,7 @@ const enum NSEventModifierFlags : inline NSUInteger
 	DEVICE_INDEPENDENT_FLAGS_MASK = 0xffff0000UL,
 }
 
-const enum NSWindowCollectionBehavior : inline NSUInteger
+constdef NSWindowCollectionBehavior : inline NSUInteger
 {
 	DEFAULT                       = 0,
 	CAN_JOIN_ALL_SPACES           = 1 << 0,
@@ -366,7 +366,7 @@ const enum NSWindowCollectionBehavior : inline NSUInteger
 	CAN_JOIN_ALL_APPLICATIONS     = 1 << 18,
 }
 
-const enum NSWindowLevel : inline NSInteger
+constdef NSWindowLevel : inline NSInteger
 {
 	NORMAL          = 0,
 	FLOATING        = 3,
@@ -379,7 +379,7 @@ const enum NSWindowLevel : inline NSInteger
 	SCREEN_SAVER    = 1000,
 }
 
-const enum NSWindowStyleMask : inline NSUInteger
+constdef NSWindowStyleMask : inline NSUInteger
 {
 	BORDERLESS                = 0,
 	TITLED                    = 1 << 0,
@@ -396,20 +396,20 @@ const enum NSWindowStyleMask : inline NSUInteger
 	HUD_WINDOW                = 1 << 13
 }
 
-const enum NSWindowTabbingMode : inline NSInteger
+constdef NSWindowTabbingMode : inline NSInteger
 {
 	AUTOMATIC   = 0,
 	DISALLOWED  = 2,
 	PREFERRED   = 1,
 }
 
-const enum NSStatusItemLength : inline CGFloat
+constdef NSStatusItemLength : inline CGFloat
 {
 	VARIABLE = -1.0,
 	SQUARE   = -2.0
 }
 
-const enum NSApplicationTerminateReply : inline NSUInteger
+constdef NSApplicationTerminateReply : inline NSUInteger
 {
 	CANCEL = 0,
 	NOW    = 1,

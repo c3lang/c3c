@@ -10,7 +10,7 @@ enum Foo : (FooFn f)
   BAR { &foo }, // allowed
 }
 
-const enum Bar : FooFn
+constdef Bar : FooFn
 {
   FOO = fn int() => 0, // allowed
   BAR = &foo, // Error: Expected an constant enum value.

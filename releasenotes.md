@@ -9,7 +9,6 @@
 - Integrated download of the MSVC SDK when compiling for Windows.
 - For `c3c init` with library templates, provide example exported functions. #2898
 - `unsigned % signed` and `unsigned / signed` is no longer allowed without explicit casts, except for const denominators. #2928
-- New const enum declaration syntax.
 - New enum associated value syntax.
 - Individual warning settings added.
 - Change typedef and const enums to not convert from literals by default.
@@ -17,7 +16,10 @@
 - Include actual element count in the error message when the array initializer size does not match the expected size.
 - Add `--print-large-functions` for checking which functions likely dominate the compile time.
 - Improve error message when providing `alias` with a typeid expression where a type was expected. #2944
-  
+- Const enums removed.
+- Constdef declarations introduced.
+
+
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
 - Remove dependency on temp allocator in String.join.

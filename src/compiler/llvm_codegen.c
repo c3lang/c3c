@@ -1036,7 +1036,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 		case DECL_UNION:
 		case DECL_ENUM:
 		case DECL_BITSTRUCT:
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 			llvm_get_typeid(context, decl->type);
 			break;
 	}
@@ -1389,7 +1389,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_CT_ASSERT:
 		case DECL_TYPEDEF:
 		case DECL_ENUM:
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
 		case DECL_ALIAS_PATH:

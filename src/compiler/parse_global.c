@@ -13,7 +13,7 @@ typedef enum FunctionParse_
 	FUNC_PARSE_INTERFACE,
 } FunctionParse;
 
-static inline Decl *parse_enum_declaration(ParseContext *c, bool is_const);
+static inline Decl *parse_enum_declaration(ParseContext *c);
 static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, FunctionParse parse_kind);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref, ArrayIndex *inline_index);
@@ -23,7 +23,6 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
 INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl);
 INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind);
 static bool parse_contracts(ParseContext *c, AstId *contracts_ref);
-static Ast *contracts_first_real(AstId contracts);
 
 INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind)
 {
@@ -2289,10 +2288,6 @@ static inline Decl *parse_bitstruct_declaration(ParseContext *c)
 
 static inline Decl *parse_top_level_const_declaration(ParseContext *c, bool is_extern)
 {
-	if (!is_extern && peek(c) == TOKEN_ENUM)
-	{
-		return parse_enum_declaration(c, true);
-	}
 	ASSIGN_DECL_OR_RET(Decl *decl, parse_const_declaration(c, true, is_extern), poisoned_decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
@@ -2795,7 +2790,7 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 	return true;
 }
 
-static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility visibility, bool is_single_value, bool is_const_enum)
+static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility visibility, bool is_single_value, bool is_constdef)
 {
 	Decl **values = NULL;
 	bool deprecate_warn = true;
@@ -2803,7 +2798,7 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 	{
 		if (!parse_element_contract(c, "enum values")) return false;
 		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, symstr(c), c->span);
-		if (is_const_enum) enum_const->enum_constant.is_raw = is_const_enum;
+		if (is_constdef) enum_const->enum_constant.is_raw = is_constdef;
 		enum_const->visibility = visibility;
 		const char *name = enum_const->name;
 		if (!consume_const_name(c, "enum constant")) return false;
@@ -2820,7 +2815,7 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 		if (try_consume(c, TOKEN_EQ))
 		{
 			Expr **args = NULL;
-			if (!is_const_enum && deprecate_warn)
+			if (!is_constdef && deprecate_warn)
 			{
 				deprecate_warn = false;
 				print_deprecation_at(c->prev_span, "Use () declaration of associated values instead.");
@@ -2828,7 +2823,7 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 			if (is_single_value || !tok_is(c, TOKEN_LBRACE))
 			{
 				ASSIGN_EXPR_OR_RET(Expr *single, parse_constant_expr(c), false);
-				if (is_const_enum)
+				if (is_constdef)
 				{
 					enum_const->enum_constant.value = single;
 					goto NEXT;
@@ -2862,7 +2857,7 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 			}
 			enum_const->enum_constant.associated = args;
 		}
-		else if (!is_const_enum && try_consume(c, TOKEN_LBRACE))
+		else if (!is_constdef && try_consume(c, TOKEN_LBRACE))
 		{
 			Expr **args = NULL;
 			while (1)
@@ -2913,13 +2908,13 @@ NEXT:
  * enum_body ::= enum_def (',' enum_def)* ','?
  * enum_def ::= CONST_IDENT ('(' arg_list ')')?
  */
-static inline Decl *parse_enum_declaration(ParseContext *c, bool is_const)
+static inline Decl *parse_enum_declaration(ParseContext *c)
 {
-	if (is_const) advance_and_verify(c, TOKEN_CONST);
-	if (tok_is(c, TOKEN_CENUM))
+	bool is_constdef = false;
+	if (tok_is(c, TOKEN_CONSTDEF))
 	{
-		advance_and_verify(c, TOKEN_CENUM);
-		is_const = true;
+		advance_and_verify(c, TOKEN_CONSTDEF);
+		is_constdef = true;
 	}
 	else
 	{
@@ -2928,23 +2923,22 @@ static inline Decl *parse_enum_declaration(ParseContext *c, bool is_const)
 
 	const char *name = symstr(c);
 	SourceSpan span = c->span;
-	if (!consume_type_name(c, "enum")) return poisoned_decl;
+	if (!consume_type_name(c, is_constdef ? "constdef" : "enum" )) return poisoned_decl;
 	TypeInfo **interfaces = NULL;
 	if (!parse_interface_impls(c, &interfaces)) return poisoned_decl;
 	TypeInfo *type = NULL;
 
 	bool val_is_inline = false;
 	ArrayIndex inline_index = -1;
-	bool is_const_enum = is_const;
 	Decl **param_list = NULL;
 	if (try_consume(c, TOKEN_COLON))
 	{
-		if (!is_const)
+		if (!is_constdef)
 		{
-			is_const_enum = try_consume(c, TOKEN_CONST);
-			if (is_const_enum)
+			is_constdef = try_consume(c, TOKEN_CONST);
+			if (is_constdef)
 			{
-				print_deprecation_at(c->prev_span, "Declare const enums using 'const enum' instead.");
+				print_deprecation_at(c->prev_span, "Declare constdefs using 'constdef' instead.");
 			}
 		}
 		if (!tok_is(c, TOKEN_LPAREN) && !tok_is(c, TOKEN_LBRACE))
@@ -2953,14 +2947,14 @@ static inline Decl *parse_enum_declaration(ParseContext *c, bool is_const)
 			ASSIGN_TYPE_OR_RET(type, parse_optional_type_no_generic(c), poisoned_decl);
 			if (type->optional)
 			{
-				RETURN_PRINT_ERROR_AT(poisoned_decl, type, "An enum can't have an optional type.");
+				RETURN_PRINT_ERROR_AT(poisoned_decl, type, "An enum or constdef can't have an optional type.");
 			}
 		}
-		if (is_const_enum)
+		if (is_constdef)
 		{
 			if (tok_is(c, TOKEN_LPAREN))
 			{
-				PRINT_ERROR_HERE("Const enums cannot have associated values.");
+				PRINT_ERROR_HERE("Constdefs cannot have associated values.");
 				return poisoned_decl;
 			}
 		}
@@ -2970,7 +2964,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c, bool is_const)
 		}
 	}
 
-	Decl *decl = decl_new_with_type(name, span, is_const_enum ? DECL_CONST_ENUM : DECL_ENUM);
+	Decl *decl = decl_new_with_type(name, span, is_constdef ? DECL_CONSTDEF : DECL_ENUM);
 	decl->interfaces = interfaces;
 	if (param_list) decl->enums.parameters = param_list;
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
@@ -2980,9 +2974,9 @@ static inline Decl *parse_enum_declaration(ParseContext *c, bool is_const)
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->span);
 	decl->enums.inline_index = (int16_t)inline_index;
-	decl->enums.inline_value = is_const_enum ? false : val_is_inline;
-	if (is_const_enum && val_is_inline) decl->is_substruct = true;
-	if (!parse_enum_values(c, &decl->enums.values, visibility, is_const_enum || expected_parameters == 1, is_const_enum)) return poisoned_decl;
+	decl->enums.inline_value = is_constdef ? false : val_is_inline;
+	if (is_constdef && val_is_inline) decl->is_substruct = true;
+	if (!parse_enum_values(c, &decl->enums.values, visibility, is_constdef || expected_parameters == 1, is_constdef)) return poisoned_decl;
 	return decl;
 }
 
@@ -3642,8 +3636,8 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			decl = parse_macro_declaration(c, contracts);
 			break;
 		case TOKEN_ENUM:
-		case TOKEN_CENUM:
-			decl = parse_enum_declaration(c, false);
+		case TOKEN_CONSTDEF:
+			decl = parse_enum_declaration(c);
 			attach_contracts = true;
 			break;
 		case TOKEN_FAULTDEF:
