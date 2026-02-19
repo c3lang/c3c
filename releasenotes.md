@@ -16,7 +16,8 @@
 - Add `@constinit` to allow old typedef behaviour.
 - Include actual element count in the error message when the array initializer size does not match the expected size.
 - Add `--print-large-functions` for checking which functions likely dominate the compile time.
-
+- Improve error message when providing `alias` with a typeid expression where a type was expected. #2944
+  
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
 - Remove dependency on temp allocator in String.join.
