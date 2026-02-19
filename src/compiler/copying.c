@@ -1108,7 +1108,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			break;
 		case DECL_FAULT:
 			break;
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 			copy_decl_type(copy);
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_METHODS(copy->method_table);

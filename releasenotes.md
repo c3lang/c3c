@@ -9,7 +9,6 @@
 - Integrated download of the MSVC SDK when compiling for Windows.
 - For `c3c init` with library templates, provide example exported functions. #2898
 - `unsigned % signed` and `unsigned / signed` is no longer allowed without explicit casts, except for const denominators. #2928
-- New const enum declaration syntax.
 - New enum associated value syntax.
 - Individual warning settings added.
 - Change typedef and const enums to not convert from literals by default.
@@ -19,6 +18,9 @@
 - Improve error message when providing `alias` with a typeid expression where a type was expected. #2944
 - Properly support `@deprecated` as contract.
 - Support deprecating enum values.
+- Const enums removed.
+- Constdef declarations introduced.
+
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831

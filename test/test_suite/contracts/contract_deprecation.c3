@@ -1,4 +1,4 @@
-const enum Foo
+constdef Foo
 {
 	<* @deprecated *>
 	ABC

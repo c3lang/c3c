@@ -68,7 +68,7 @@ Decl *decl_new_with_type(const char *name, SourceSpan span, DeclKind decl_type)
 		case DECL_ENUM:
 			kind = TYPE_ENUM;
 			break;
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 			kind = TYPE_CONST_ENUM;
 			break;
 		case DECL_TYPEDEF:
@@ -127,7 +127,7 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_ALIAS: case DECL_ALIAS_PATH: case DECL_TYPE_ALIAS: return "an alias";
 		case DECL_TYPEDEF: return "a distinct type";
 		case DECL_ENUM: return "an enum";
-		case DECL_CONST_ENUM: return "a raw enum";
+		case DECL_CONSTDEF: return "a set of constants";
 		case DECL_ENUM_CONSTANT: return "an enum value";
 		case DECL_ERASED: return "an erased declaration";
 		case DECL_FAULT: return "a fault";
@@ -347,7 +347,7 @@ bool decl_may_be_generic(Decl *decl)
 		case DECL_GENERIC_INSTANCE:
 		case DECL_IMPORT:
 		case DECL_LABEL:
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 		case DECL_CONTRACT:
 			return false;
 		case DECL_ATTRIBUTE:

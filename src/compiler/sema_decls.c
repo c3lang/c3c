@@ -71,7 +71,7 @@ static inline bool sema_resolve_align_expr(SemaContext *context, Expr *expr, Ali
 }
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_raw_enum(SemaContext *context, Decl *decl, bool *erase_decl);
+static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool *erase_decl);
 
 static bool sema_check_section(SemaContext *context, Attr *attr)
 {
@@ -1648,11 +1648,11 @@ static inline void sema_print_enum_to_cenum_error(SemaContext *context, Decl *de
 	TypeInfo *type_info = decl->enums.type_info;
 	if (type_info->type == type_int)
 	{
-		SEMA_ERROR(arg, "Assigning a value requires the declaration of associated values for the enum. Did you perhaps want C-style enums? In that case use const enums, defined like 'enum %s : const { ... }'", decl->name);
+		SEMA_ERROR(arg, "Assigning a value requires the declaration of associated values for the enum. Did you perhaps want C-style enums? In that case use constdef, defined like 'constdef %s : { ... }'", decl->name);
 	}
 	else
 	{
-		SEMA_ERROR(arg, "Assigning a value requires the declaration of associated values for the enum. Did you perhaps want C-style enums? In that case use const enums, defined like 'enum %s : const %s { ... }'", decl->name, type_to_error_string(type_info->type));
+		SEMA_ERROR(arg, "Assigning a value requires the declaration of associated values for the enum. Did you perhaps want C-style enums? In that case use constdef, defined like 'constdef %s : %s { ... }'", decl->name, type_to_error_string(type_info->type));
 	}
 }
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl)
@@ -1826,7 +1826,7 @@ static bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *dec
 	}
 	return true;
 }
-static inline bool sema_analyse_raw_enum(SemaContext *context, Decl *decl, bool *erase_decl)
+static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ENUM, erase_decl)) return decl_poison(decl);
 	if (decl_is_deprecated(decl)) context->call_env.ignore_deprecation = true;
@@ -1852,18 +1852,18 @@ static inline bool sema_analyse_raw_enum(SemaContext *context, Decl *decl, bool 
 			SEMA_ERROR(decl->enums.type_info, "No type can be inferred from the optional result.");
 			return decl_poison(decl);
 		case STORAGE_VOID:
-			SEMA_ERROR(decl->enums.type_info, "An enum may not have a void type.");
+			SEMA_ERROR(decl->enums.type_info, "A constdef may not have a void type.");
 			return decl_poison(decl);
 		case STORAGE_COMPILE_TIME:
-			SEMA_ERROR(decl->enums.type_info, "An enum may not be %s.", type_invalid_storage_type_name(type));
+			SEMA_ERROR(decl->enums.type_info, "A constdef may not be %s.", type_invalid_storage_type_name(type));
 			return decl_poison(decl);
 		case STORAGE_UNKNOWN:
-			SEMA_ERROR(decl->enums.type_info, "An enum may not be %s, as it has an unknown size.",
+			SEMA_ERROR(decl->enums.type_info, "A constdef may not be %s, as it has an unknown size.",
 				type_quoted_error_string(type));
 			return decl_poison(decl);
 	}
 
-	DEBUG_LOG("* Raw enum type resolved to %s.", type->name);
+	DEBUG_LOG("* Constdef type resolved to %s.", type->name);
 
 	ASSERT_SPAN(decl, !decl->enums.parameters);
 
@@ -1881,7 +1881,7 @@ static inline bool sema_analyse_raw_enum(SemaContext *context, Decl *decl, bool 
 		{
 			if (enums == 1)
 			{
-				RETURN_SEMA_ERROR(decl, "No enum values left in enum after @if resolution, there must be at least one.");
+				RETURN_SEMA_ERROR(decl, "No constdef values left in constdef after @if resolution, there must be at least one.");
 			}
 			vec_erase_at(enum_values, i);
 			enums--;
@@ -1889,12 +1889,12 @@ static inline bool sema_analyse_raw_enum(SemaContext *context, Decl *decl, bool 
 			continue;
 		}
 		enum_value->type = decl->type;
-		DEBUG_LOG("* Checking enum constant %s.", enum_value->name);
+		DEBUG_LOG("* Checking constdef constant %s.", enum_value->name);
 		if (!enum_value->enum_constant.value)
 		{
 			if (!type_is_integer(flat))
 			{
-				RETURN_SEMA_ERROR(enum_value, "Enums with missing values must be an integer type.");
+				RETURN_SEMA_ERROR(enum_value, "Constdefs with missing values must be of integer type.");
 			}
 			if (i == 0)
 			{
@@ -5735,8 +5735,8 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_ENUM:
 			if (!sema_analyse_enum(context, decl, &erase_decl)) goto FAILED;
 			break;
-		case DECL_CONST_ENUM:
-			if (!sema_analyse_raw_enum(context, decl, &erase_decl)) goto FAILED;
+		case DECL_CONSTDEF:
+			if (!sema_analyse_constdef(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_FAULT:
 			if (!sema_analyse_fault(context, decl, &erase_decl)) goto FAILED;

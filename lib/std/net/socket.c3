@@ -25,7 +25,7 @@ macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
 
 const Duration POLL_FOREVER = (Duration)-1;
 
-const enum PollSubscribe
+constdef PollSubscribe
 {
 	ANY_READ     = os::POLLIN,
 	PRIO_READ    = os::POLLPRI,
@@ -44,7 +44,7 @@ const PollSubscribe SUBSCRIBE_ANY_WRITE    = (PollSubscribe)os::POLLOUT;
 const PollSubscribe SUBSCRIBE_OOB_WRITE    = (PollSubscribe)os::POLLWRBAND;
 const PollSubscribe SUBSCRIBE_WRITE        = (PollSubscribe)os::POLLWRNORM;
 
-const enum PollEvent : ushort
+constdef PollEvent : ushort
 {
 	READ_PRIO  = os::POLLPRI,
 	READ_OOB   = os::POLLRDBAND,

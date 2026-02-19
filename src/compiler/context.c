@@ -165,7 +165,7 @@ void decl_register(CompilationUnit *unit, Decl *decl)
 			case DECL_BITSTRUCT:
 			case DECL_TYPEDEF:
 			case DECL_ENUM:
-			case DECL_CONST_ENUM:
+			case DECL_CONSTDEF:
 			case DECL_STRUCT:
 			case DECL_TYPE_ALIAS:
 			case DECL_UNION:
@@ -274,7 +274,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			vec_add(unit->generic_defines, decl);
 			decl_register(unit, decl);
 			return;
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 		case DECL_ENUM:
 			ASSERT(decl->name);
 			vec_add(unit->enums, decl);

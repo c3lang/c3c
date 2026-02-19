@@ -1002,8 +1002,10 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_UNION:
 			SEMA_ERROR(expr, "Expected union followed by {...} or '.'.");
 			return expr_poison(expr);
+		case DECL_CONSTDEF:
+			SEMA_ERROR(expr, "Expected constdef name followed by '.' and a constdef value.");
+			return expr_poison(expr);
 		case DECL_ENUM:
-		case DECL_CONST_ENUM:
 			SEMA_ERROR(expr, "Expected enum name followed by '.' and an enum value.");
 			return expr_poison(expr);
 	}
@@ -1190,7 +1192,14 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 
 	if (enum_constant->resolve_status == RESOLVE_NOT_DONE)
 	{
-		SEMA_ERROR(expr, "Unable to properly resolve enum constant value, this can sometimes happen in recursive definitions.");
+		if (decl->decl_kind == DECL_ENUM)
+		{
+			SEMA_ERROR(expr, "Unable to properly resolve enum constant value, this can sometimes happen in recursive definitions.");
+		}
+		else
+		{
+			SEMA_ERROR(expr, "Unable to properly resolve constdef value, this can sometimes happen in recursive definitions.");
+		}
 		return expr_poison(expr), true;
 	}
 	if (!sema_display_deprecated_warning_on_use(context, decl, expr->span)) return expr_poison(expr), true;
@@ -3500,7 +3509,7 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 	{
 		RETURN_SEMA_ERROR(key, "The ordinal should be an integer.");
 	}
-	bool is_const_enum = decl->decl_kind == DECL_CONST_ENUM;
+	bool is_const_enum = decl->decl_kind == DECL_CONSTDEF;
 	if (sema_cast_const(key))
 	{
 		Int to_convert = key->const_expr.ixx;
@@ -3530,7 +3539,7 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 	}
 	if (is_const_enum)
 	{
-		RETURN_SEMA_ERROR(key, ".from_ordinal on const enums is only valid with compile time constant arguments, maybe you can try using regular enums?");
+		RETURN_SEMA_ERROR(key, ".from_ordinal on constdefs is only valid with compile time constant arguments, maybe you want to use enums instead?");
 	}
 	expr->expr_kind = EXPR_ENUM_FROM_ORD;
 	expr->inner_expr = key;
@@ -5084,15 +5093,18 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	switch (decl->decl_kind)
 	{
 		case DECL_ENUM:
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 			if (is_const)
 			{
 				if (!sema_expr_analyse_enum_constant(context, expr, name, decl))
 				{
 					if (missing_ref) goto MISSING_REF;
 					if (!decl_ok(decl)) return false;
+					if (decl->decl_kind != DECL_ENUM)
+					{
+						RETURN_SEMA_ERROR(expr, "'%s' has no value '%s'.", decl->name, name);
+					}
 					RETURN_SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, name);
-					return false;
 				}
 				return expr_ok(expr);
 			}
@@ -10521,7 +10533,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr,
 			case DECL_BITSTRUCT:
 			case DECL_TYPEDEF:
 			case DECL_ENUM:
-			case DECL_CONST_ENUM:
+			case DECL_CONSTDEF:
 			case DECL_ENUM_CONSTANT:
 			case DECL_FNTYPE:
 			case DECL_FUNC:

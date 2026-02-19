@@ -263,7 +263,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_ALIAS:
 			case DECL_ATTRIBUTE:
 			case DECL_BITSTRUCT:
-			case DECL_CONST_ENUM:
+			case DECL_CONSTDEF:
 			case DECL_TYPEDEF:
 			case DECL_ENUM:
 			case DECL_INTERFACE:
