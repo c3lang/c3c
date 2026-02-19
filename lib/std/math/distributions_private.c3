@@ -64,13 +64,13 @@ fn double incomplete_beta(double x, double a, double b, ConvergenceControl conv 
 	if (x == 0.0) return 0.0;
 	if (x == 1.0) return 1.0;
 
-	if (x > (a+1.0)/(a+b+2.0)) return 1.0 - incomplete_beta(1.0-x, b,a);
+	if (x > (a + 1.0)/(a + b + 2.0)) return 1.0 - incomplete_beta(1.0 - x, b,a);
 
 	const double TINY = 1e-30;
 
 	// Find the first part before the continued fraction.
-	double lbeta_ab = math::lgamma(a) + math::lgamma(b) - math::lgamma(a+b);
-	double front = math::exp(math::ln(x) * a + math::ln(1.0-x) * b - lbeta_ab) / a;
+	double lbeta_ab = math::lgamma(a) + math::lgamma(b) - math::lgamma(a + b);
+	double front = math::exp(math::ln(x) * a + math::ln(1.0 - x) * b - lbeta_ab) / a;
 
 	// Use Lentz's algorithm to evaluate the continued fraction.
 	double f = 1.0;
@@ -90,11 +90,11 @@ fn double incomplete_beta(double x, double a, double b, ConvergenceControl conv 
 		}
 		else if (i % 2 == 0)
 		{
-			numerator = (m*(b-m)*x)/((a+2.0*m-1.0)*(a+2.0*m));
+			numerator = (m * (b - m) * x) / ((a + 2.0 * m - 1.0) * (a + 2.0 * m));
 		}
 		else
 		{
-			numerator = -((a+m)*(a+b+m)*x)/((a+2.0*m)*(a+2.0*m+1));
+			numerator = -((a + m) * (a + b + m) * x) / ((a + 2.0 * m) * (a + 2.0 * m + 1));
 		}
 
 		d = 1.0 + numerator * d;
@@ -107,7 +107,7 @@ fn double incomplete_beta(double x, double a, double b, ConvergenceControl conv 
 		double cd = c*d;
 		f *= cd;
 
-		if (math::abs(1.0-cd) < conv.epsilon) return front * (f-1.0);
+		if (math::abs(1.0 - cd) < conv.epsilon) return front * (f - 1.0);
 	}
 
 	return double.nan; // Not convered.
@@ -284,29 +284,29 @@ fn double inverse_erf(double x)
 		sign = -1.0;
 	}
 
-         double ans;
+	double ans;
 	if (x <= 0.85)
 	{
 		double r = 0.180625 - 0.25 * x *x;
-		double z1 = ((((((A7*r+A6)*r+A5)*r+A4)*r+A3)*r+A2)*r+A1)*r + A0;
-		double z2 = ((((((B7*r+B6)*r+B5)*r+B4)*r+B3)*r+B2)*r+B1)*r + B0;
+		double z1 = ((((((A7 * r + A6) * r + A5) * r + A4) * r + A3) * r + A2) * r + A1) * r + A0;
+		double z2 = ((((((B7 * r + B6) * r + B5) * r + B4) * r + B3) * r + B2) * r + B1) * r + B0;
 		ans = (x * z1) / z2;
 	}
 	else
 	{
 		double z1, z2;
-		double r = math::sqrt(LN2 - math::ln(1.0-x));
+		double r = math::sqrt(LN2 - math::ln(1.0 - x));
 		if (r <= 5.0)
 		{
 			r -= 1.6;
-			z1 = ((((((C7*r+C6)*r+C5)*r+C4)*r+C3)*r+C2)*r+C1)*r + C0;
-			z2 = ((((((D7*r+D6)*r+D5)*r+D4)*r+D3)*r+D2)*r+D1)*r + D0;
+			z1 = ((((((C7 * r + C6) * r + C5) * r + C4) * r + C3) * r + C2) * r + C1) * r + C0;
+			z2 = ((((((D7 * r + D6) * r + D5) * r + D4) * r + D3) * r + D2) * r + D1) * r + D0;
 		}
 		else
 		{
 			r -= 5.0;
-			z1 = ((((((E7*r+E6)*r+E5)*r+E4)*r+E3)*r+E2)*r+E1)*r + E0;
-			z2 = ((((((F7*r+F6)*r+F5)*r+F4)*r+F3)*r+F2)*r+F1)*r + F0;
+			z1 = ((((((E7 * r + E6) * r + E5) * r + E4) * r + E3) * r + E2) * r + E1) * r + E0;
+			z2 = ((((((F7 * r + F6) * r + F5) * r + F4) * r + F3) * r + F2) * r + F1) * r + F0;
 		}
 		ans = z1 / z2;
 	}
