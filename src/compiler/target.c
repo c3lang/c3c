@@ -2385,3 +2385,41 @@ void target_setup(BuildTarget *build_target)
 
 
 }
+
+static bool host_is_le(void)
+{
+	unsigned int i = 1;
+	char *c = (char *)&i;
+	return (*c == 1);
+}
+
+ArchType target_host_arch(void)
+{
+#if defined(__x86_64__) || defined(_M_X64)
+	return ARCH_TYPE_X86_64;
+#elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
+	return ARCH_TYPE_X86;
+#elif (defined(__arm__) && !defined(__thumb__)) || (defined(__TARGET_ARCH_ARM) && !defined(__TARGET_ARCH_THUMB)) || defined(__ARM) || defined(_M_ARM) || defined(_M_ARM_T) || defined(__ARM_ARCH)
+	return host_is_le() ? ARCH_TYPE_ARM : ARCH_TYPE_ARMB;
+#elif defined(__thumb__) || defined(__TARGET_ARCH_THUMB) || defined(__ARM) || defined(_M_ARM) || defined(_M_ARM_T) || defined(__ARM_ARCH)
+	return host_is_le() ? ARCH_TYPE_THUMB : ARCH_TYPE_THUMBEB;
+#elif defined(__aarch64__) || defined(_M_ARM64)
+	return host_is_le() ? ARCH_TYPE_AARCH64 : ARCH_TYPE_AARCH64_BE;
+#elif defined(mips) || defined(__mips__) || defined(__mips)
+	return ARCH_UNSUPPORTED;
+#elif defined(__sh__)
+	return ARCH_UNSUPPORTED;
+#elif defined(__riscv) && defined(__riscv32)
+	return ARCH_TYPE_RISCV32;
+#elif defined(__riscv) && defined(__riscv64)
+	return ARCH_TYPE_RISCV64;
+#elif defined(__PPC64__) || defined(__ppc64__) || defined(_ARCH_PPC64) || defined(__powerpc64__)
+	return host_is_le() ? ARCH_TYPE_PPC64LE : ARCH_TYPE_PPC64;
+#elif defined(__powerpc) || defined(__powerpc__) || defined(__POWERPC__) || defined(__ppc__) || defined(__PPC__) || defined(_ARCH_PPC)
+	return ARCH_TYPE_PPC;
+#elif defined(__sparc__) || defined(__sparc)
+	return ARCH_UNSUPPORTED;
+#else
+	return ARCH_TYPE_UNKNOWN;
+#endif
+}

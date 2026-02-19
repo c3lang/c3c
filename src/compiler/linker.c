@@ -410,13 +410,7 @@ static const char *find_linux_crt(void)
 		}
 	}
 
-#if PLATFORM_X64
-	bool is_host_arch = compiler.platform.arch == ARCH_TYPE_X86_64;
-#elif PLATFORM_AARCH64
-	bool is_host_arch = compiler.platform.arch == ARCH_TYPE_AARCH64;
-#else
-	bool is_host_arch = false;
-#endif
+	bool is_host_arch = compiler.platform.arch == target_host_arch();
 
 	if (is_host_arch)
 	{
