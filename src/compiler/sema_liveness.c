@@ -604,7 +604,7 @@ RETRY:
 		case DECL_TYPEDEF:
 			sema_trace_type_liveness(decl->distinct->type);
 			FALLTHROUGH;
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 		case DECL_BITSTRUCT:
 		case DECL_INTERFACE:
 		case DECL_UNION:

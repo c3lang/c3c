@@ -565,7 +565,7 @@ typedef struct
 	AstId docs;
 	union
 	{
-		struct
+		struct // Function related
 		{
 			bool attr_inline : 1;
 			bool attr_noinline : 1;
@@ -593,7 +593,7 @@ typedef struct
 				Decl **lambda_ct_parameters;
 			};
 		};
-		struct
+		struct // Macro related
 		{
 			DeclId body_param;
 			CompilationUnit *unit;
@@ -4328,7 +4328,7 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
 	expr->type = type;
 	expr->resolve_status = RESOLVE_DONE;
 	TypeKind kind = type_flatten(type)->type_kind;
-	(&expr->const_expr)->ixx.i.high = 0;
+	expr->const_expr.ixx.i.high = 0;
 	if (type_kind_is_signed(kind))
 	{
 		if (v > (uint64_t)INT64_MAX) (&expr->const_expr)->ixx.i.high = UINT64_MAX;
@@ -4350,10 +4350,10 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
 				break;
 		}
 	}
-	(&expr->const_expr)->ixx.i.low = v;
-	(&expr->const_expr)->ixx.type = kind;
-	(&expr->const_expr)->is_character = false;
-	(&expr->const_expr)->const_kind = CONST_INTEGER;
+	expr->const_expr.ixx.i.low = v;
+	expr->const_expr.ixx.type = kind;
+	expr->const_expr.is_character = false;
+	expr->const_expr.const_kind = CONST_INTEGER;
 }
 
 INLINE void expr_rewrite_to_int_to_float(Expr *expr, Type *type)

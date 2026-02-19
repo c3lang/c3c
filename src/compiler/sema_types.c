@@ -243,7 +243,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			return true;
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 		case DECL_TYPEDEF:
 			if (resolve_type_kind & RESOLVE_TYPE_NO_CHECK_DISTINCT)
 			{
