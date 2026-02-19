@@ -2421,8 +2421,12 @@ static inline Decl *parse_alias_type(ParseContext *c, AstId contracts)
 				print_error_at(decl->span, "An identifier may not be aliased with type name, it must start with a lower case letter.");
 			}
 			return poisoned_decl;
+		case EXPR_TERNARY:
+		case EXPR_CALL:
+			PRINT_ERROR_AT(expr, "Expected a type to alias here, if you are providing a constant typeid-expression, e.g. 'FOO > 32 ??? long : int', then you need to wrap the expression in '$typefrom'");
+			return poisoned_decl;
 		default:
-			PRINT_ERROR_HERE("Expected a type to alias here.");
+			PRINT_ERROR_AT(expr, "Expected the name of the type to alias here.");
 			return poisoned_decl;
 	}
 	ASSERT(!tok_is(c, TOKEN_LBRACE));
