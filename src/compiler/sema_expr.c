@@ -4848,7 +4848,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 
 	if (!inner_type || !type_is_valid_for_array(inner_type))
 	{
-		RETURN_SEMA_ERROR(subscripted, "Cannot index %s.", type_quoted_error_string(subscripted->type));
+		RETURN_SEMA_ERROR(subscripted, "You cannot slice %s.", type_quoted_error_string(subscripted->type));
 	}
 	if (current_expr != subscripted)
 	{

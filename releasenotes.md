@@ -48,6 +48,7 @@
 - On assert known false, the message was not show for no-args.
 - Adding the incorrect sized vector to a pointer vector would cause a crash.
 - Member access on a struct returned by the assignment expression, cause crash #2947
+- Trying to slice an indexable type leads to misleading error message #2958
 
 ## 0.7.9 Change list
 
