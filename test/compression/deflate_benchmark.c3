@@ -2,7 +2,7 @@
 // 2. `build/c3c -O3 compile-run test/compression/deflate_benchmark.c3 build/miniz.o`
 
 module deflate_benchmark;
-import std, std::time::clock;
+import std, std::time::clock, libc;
 
 const int AMOUNT_OF_WORK = 10; // Increase this to scale test data sizes
 
@@ -12,111 +12,125 @@ fn int main(String[] args)
 	io::printfn(" Comparing C3 std::compression::deflate with miniz (in-process)\n");
 	io::printfn(" Work Scale: %dx\n", AMOUNT_OF_WORK);
 
-	io::printfn("%-26s | %7s | %7s | %7s | %7s | %-10s", "Test Case", "C3 Rat.", "Miz Rat.", "C3 MB/s", "Miz MB/s", "Winner");
-	io::printfn("---------------------------+---------+---------+---------+---------+-----------");
+	List{DataSetResult} all_results;
+	all_results.tinit();
 
 	// Test 1: Redundant data
 	usz redundant_size = 10_000_000 * (usz)AMOUNT_OF_WORK;
 	char[] redundant = allocator::alloc_array(tmem, char, redundant_size);
 	mem::set(redundant.ptr, 'A', redundant_size);
-	run_bench(string::tformat("Redundant (%dMB 'A')", (int)(redundant_size / 1_000_000)), redundant);
+	all_results.push(run_bench(string::tformat("Redundant (%dMB 'A')", (int)(redundant_size / 1_000_000)), redundant));
 
-	// Test 2: Large Source Project (All .c files in src/compiler)
+	// Test 2
 	DString project_src;
 	Path src_dir = path::new(tmem, "src/compiler")!!;
-	PathList? compiler_files = path::ls(tmem, src_dir);
-	if (try files = compiler_files) {
+	if (try files = path::ls(tmem, src_dir)) {
 		for (int i = 0; i < AMOUNT_OF_WORK; i++) {
 			foreach (p : files) {
 				if (p.basename().ends_with(".c")) {
-					Path full_p = src_dir.tappend(p.str_view())!!;
-					if (try data = file::load_path(tmem, full_p)) {
-						project_src.append(data);
-					}
+					if (try data = file::load_path(tmem, src_dir.tappend(p.str_view())!!)) project_src.append(data);
 				}
 			}
 		}
 	}
-	run_bench("Compiler Source (Bulk)", project_src.str_view());
+	all_results.push(run_bench("Compiler Source (Bulk)", project_src.str_view()));
 
-	// Test 3: Standard Library (All .c3 files in lib/std)
+	// Test 3
 	DString std_src;
-	for (int i = 0; i < AMOUNT_OF_WORK; i++) {
-		collect_files(path::new(tmem, "lib/std")!!, ".c3", &std_src);
-	}
-	run_bench("Stdlib Source (Bulk)", std_src.str_view());
+	for (int i = 0; i < AMOUNT_OF_WORK; i++) collect_files(path::new(tmem, "lib/std")!!, ".c3", &std_src);
+	all_results.push(run_bench("Stdlib Source (Bulk)", std_src.str_view()));
 
-	// Test 4: Log Files (Simulated)
+	// Test 4
 	DString log_data;
 	for (int i = 0; i < 50_000 * AMOUNT_OF_WORK; i++) {
 		log_data.appendf("2024-02-13 21:30:%02d.%03d [INFO] Connection established from 192.168.1.%d\n", i % 60, i % 1000, i % 255);
 		log_data.appendf("2024-02-13 21:30:%02d.%03d [DEBUG] Buffer size: %d bytes\n", i % 60, i % 1000, (i * 123) % 4096);
 	}
-	run_bench("Log Files (Simulated)", log_data.str_view());
+	all_results.push(run_bench("Log Files (Simulated)", log_data.str_view()));
 
-	// Test 5: Web Content (Simulated HTML/CSS)
+	// Test 5
 	DString web_data;
 	web_data.append("<!DOCTYPE html><html><head><style>.item { color: red; margin: 10px; }</style></head><body>");
 	for (int i = 0; i < 1000 * AMOUNT_OF_WORK; i++) {
 		web_data.appendf("<div class='item' id='obj%d'>", i);
 		web_data.append("<h1>Title of the item</h1><p>This is some repetitive descriptive text that might appear on a web page.</p>");
-		web_data.append("<ul><li>Feature 1</li><li>Feature 2</li><li>Feature 3</li></ul></div>");
+		web_data.append("<ul><li>Feature 1</li><li>Feature 2</li></ul></div>");
 	}
 	web_data.append("</body></html>");
-	run_bench("Web Content (Simulated)", web_data.str_view());
+	all_results.push(run_bench("Web Content (Simulated)", web_data.str_view()));
 
-	// Test 6: CSV Data (Simulated)
+	// Test 6
 	DString csv_data;
 	csv_data.append("id,name,value1,value2,status,category\n");
 	for (int i = 0; i < 20_000 * AMOUNT_OF_WORK; i++) {
-		csv_data.appendf("%d,Product_%d,%d.5,%d,\"%s\",\"%s\"\n", 
-			i, i % 100, i * 10, i % 500, 
-			i % 3 == 0 ? "Active" : "Inactive", 
-			i % 5 == 0 ? "Electronics" : "Home");
+		csv_data.appendf("%d,Product_%d,%d.5,%d,\"%s\",\"%s\"\n", i, i % 100, i * 10, i % 500, i % 3 == 0 ? "Active" : "Inactive", i % 5 == 0 ? "Electronics" : "Home");
 	}
-	run_bench("CSV Data (Simulated)", csv_data.str_view());
+	all_results.push(run_bench("CSV Data (Simulated)", csv_data.str_view()));
 
-	// Test 7: Binary Data (Structured)
+	// Test 7
 	usz binary_size = 2_000_000 * (usz)AMOUNT_OF_WORK;
 	char[] binary = allocator::alloc_array(tmem, char, binary_size);
-	for (usz i = 0; i < binary.len; i += 4) {
-		uint val = (uint)i ^ 0xDEADBEEF;
-		mem::copy(binary.ptr + i, &val, 4);
-	}
-	run_bench("Binary Data (Structured)", binary);
+	for (usz i = 0; i < binary.len; i += 4) { uint val = (uint)i ^ 0xDEADBEEF; mem::copy(binary.ptr + i, &val, 4); }
+	all_results.push(run_bench("Binary Data (Structured)", binary));
 
-	// Test 8: Random Noise (1MB)
+	// Test 8
 	usz noise_size = 1_000_000 * (usz)AMOUNT_OF_WORK;
 	DString noise;
-	for (usz i = 0; i < noise_size; i++) {
-		noise.append((char)rand('z' - 'a' + 1) + 'a');
-	}
-	run_bench("Random Noise (Scaled)", noise.str_view());
+	for (usz i = 0; i < noise_size; i++) noise.append((char)rand('z' - 'a' + 1) + 'a');
+	all_results.push(run_bench("Random Noise (Scaled)", noise.str_view()));
 
-	// Test 9: Tiny File (Check overhead)
-	run_bench("Tiny File (asd.c3)", "module asd; fn void main() {}\n");
+	// Test 9
+	all_results.push(run_bench("Tiny File (asd.c3)", "module asd; fn void main() {}\n"));
 
-	// Test 10: Natural Language (Repetitive)
-	String text = "The quick brown fox jumps over the lazy dog. ";
+	// Test 10
 	DString long_text;
-	for (int i = 0; i < 50_000 * AMOUNT_OF_WORK; i++) long_text.append(text);
-	run_bench("Natural Text (Scaled)", long_text.str_view());
+	for (int i = 0; i < 50_000 * AMOUNT_OF_WORK; i++) long_text.append("The quick brown fox jumps over the lazy dog. ");
+	all_results.push(run_bench("Natural Text (Scaled)", long_text.str_view()));
 
 	if (args.len > 1) {
-		Path custom_p = path::new(tmem, args[1])!!;
-		if (try custom_data = file::load_path(tmem, custom_p)) {
-			run_bench(string::tformat("Custom: %s", custom_p.basename()), custom_data);
+		if (try custom_data = file::load_path(tmem, path::new(tmem, args[1])!!)) {
+			all_results.push(run_bench(string::tformat("Custom: %s", path::new(tmem, args[1])!!.basename()), custom_data));
 		}
 	}
-	// Final Summary
+
+	// --- PRINT COMPRESSION TABLE ---
+	io::printfn("\n%s COMPRESSION PERFORMANCE %s", Ansi.BOLD, Ansi.RESET);
+	io::printfn("%-26s | %7s | %7s | %10s | %10s | %10s | %10s", "Test Case", "C3 Rat.", "Mz Rat.", "C3 Mem", "C3 Stream", "Mz Mem", "Mz Stream");
+	io::printfn("---------------------------+---------+---------+------------+------------+------------+------------");
+	foreach (res : all_results) {
+		io::printf("%-26s | %6.2f%% | %6.2f%% | %10.1f | %10.1f | %10.1f | %10.1f\n",
+			res.title[:(min(res.title.len, 26))],
+			res.c3c.ratio, res.mzc.ratio,
+			res.c3c.throughput_mbs, res.c3cs.throughput_mbs, res.mzc.throughput_mbs, res.mzcs.throughput_mbs);
+	}
+
+	// --- PRINT DECOMPRESSION TABLE ---
+	io::printfn("\n%s DECOMPRESSION PERFORMANCE %s", Ansi.BOLD, Ansi.RESET);
+	io::printfn("%-26s | %10s | %10s | %10s | %10s", "Test Case", "C3 Mem", "C3 Stream", "Mz Mem", "Mz Stream");
+	io::printfn("---------------------------+------------+------------+------------+------------");
+	foreach (res : all_results) {
+		io::printf("%-26s | %10.1f | %10.1f | %10.1f | %10.1f\n",
+			res.title[:(min(res.title.len, 26))],
+			res.c3d.throughput_mbs, res.c3ds.throughput_mbs, res.mzd.throughput_mbs, res.mzds.throughput_mbs);
+	}
 	double avg_c3 = totals.c3_speed_sum / totals.count;
-	double avg_miniz = totals.miniz_speed_sum / totals.count;
-	double total_factor = avg_c3 / avg_miniz;
+	double avg_c3s = totals.c3s_speed_sum / totals.count;
+	double avg_mz = totals.mz_speed_sum / totals.count;
+	double avg_mzs = totals.mzs_speed_sum / totals.count;
+	double avg_c3d = totals.c3d_speed_sum / totals.count;
+	double avg_c3ds = totals.c3ds_speed_sum / totals.count;
+	double avg_mzd = totals.mzd_speed_sum / totals.count;
+	double avg_mzds = totals.mzds_speed_sum / totals.count;
 
 	io::printfn("\n%sOVERALL SUMMARY%s", Ansi.BOLD, Ansi.RESET);
-	io::printfn("  Average Throughput C3:    %8.1f MB/s", avg_c3);
-	io::printfn("  Average Throughput Miniz: %8.1f MB/s", avg_miniz);
-	io::printfn("  %sC3 is %.1fx faster on average!%s\n", Ansi.BOLD, total_factor, Ansi.RESET);
+	io::printfn("  %-18s | %10s | %10s | %10s | %10s", "Mode", "C3 Mem", "C3 Stream", "Mz Mem", "Mz Stream");
+	io::printfn("  -------------------+------------+------------+------------+------------");
+	io::printfn("  %-18s | %8.1f   | %8.1f   | %8.1f   | %8.1f", "Compression (MB/s)", avg_c3, avg_c3s, avg_mz, avg_mzs);
+	io::printfn("  %-18s | %8.1f   | %8.1f   | %8.1f   | %8.1f", "Decompress (MB/s)", avg_c3d, avg_c3ds, avg_mzd, avg_mzds);
+	io::printfn("\n  %sComp Mem:    C3 is %.1fx vs Miniz%s", Ansi.BOLD, avg_c3 / avg_mz, Ansi.RESET);
+	io::printfn("  %sComp Stream: C3 is %.1fx vs Miniz%s", Ansi.BOLD, avg_c3s / avg_mzs, Ansi.RESET);
+	io::printfn("  %sDecomp Mem:  C3 is %.1fx vs Miniz%s", Ansi.BOLD, avg_c3d / avg_mzd, Ansi.RESET);
+	io::printfn("  %sDecomp Stream: C3 is %.1fx vs Miniz%s\n", Ansi.BOLD, avg_c3ds / avg_mzds, Ansi.RESET);
 
 	return 0;
 }
@@ -128,44 +142,173 @@ struct BenchResult {
 	double throughput_mbs;
 }
 
+struct DataSetResult {
+	String title;
+	BenchResult c3c;
+	BenchResult c3cs;
+	BenchResult mzc;
+	BenchResult mzcs;
+	BenchResult c3d;
+	BenchResult c3ds;
+	BenchResult mzd;
+	BenchResult mzds;
+}
+
 struct BenchTotal {
 	double c3_speed_sum;
-	double miniz_speed_sum;
+	double c3s_speed_sum;
+	double mz_speed_sum;
+	double mzs_speed_sum;
+	double c3d_speed_sum;
+	double c3ds_speed_sum;
+	double mzd_speed_sum;
+	double mzds_speed_sum;
 	int count;
 }
 BenchTotal totals;
 
-fn void run_bench(String title, char[] data)
+struct NullWriter (io::OutStream)
 {
-	// C3 Bench
-	Clock start = clock::now();
-	char[] c3_compressed = deflate::compress(data, tmem)!!;
-	Clock end = clock::now();
-	BenchResult c3 = calculate_metrics(data.len, (long)(end - start), c3_compressed.len);
+	usz* written;
+}
 
-	// Miniz Bench
+fn usz? NullWriter.write(&self, char[] bytes) @dynamic
+{
+	*self.written += bytes.len;
+	return bytes.len;
+}
+
+fn void? NullWriter.write_byte(&self, char byte) @dynamic
+{
+	*self.written += 1;
+}
+
+fn DataSetResult run_bench(String title, char[] data)
+{
+	DataSetResult out_res;
+	out_res.title = title;
+
+	// --- COMPRESSION ---
+
+	// C3 In-Memory Bench
+	Clock start = clock::now();
+	char[] c3_compressed = deflate::compress(tmem, data)!!;
+	Clock end = clock::now();
+	out_res.c3c = calculate_metrics(data.len, (long)(end - start), c3_compressed.len);
+
+	// C3 Streaming Bench
+	usz stream_written = 0;
+	NullWriter null_out = { .written = &stream_written };
+	start = clock::now();
+	{
+		deflate::Deflater def;
+		def.init(output: &null_out);
+		usz chunk = 32768;
+		usz off = 0;
+		while (off < data.len)
+		{
+			usz n = min(chunk, data.len - off);
+			def.write(data[off:n])!!;
+			off += n;
+		}
+		def.close()!!;
+	}
+	end = clock::now();
+	out_res.c3cs = calculate_metrics(data.len, (long)(end - start), stream_written);
+
+	// Miniz In-Memory Bench
 	usz miniz_size;
 	start = clock::now();
 	void* miniz_ptr = tdefl_compress_mem_to_heap(data.ptr, data.len, &miniz_size, MINIZ_FLAGS);
 	end = clock::now();
-	BenchResult miniz = calculate_metrics(data.len, (long)(end - start), miniz_size);
+	out_res.mzc = calculate_metrics(data.len, (long)(end - start), miniz_size);
+
+	// Miniz Streaming Bench
+	void* mz_comp = libc::malloc(TDEFL_COMPRESSOR_SIZE);
+	char[] mz_outbuf = mem::temp_array(char, 65536);
+	usz mzs_total_out = 0;
+	start = clock::now();
+	tdefl_init(mz_comp, null, null, MINIZ_FLAGS);
+	{
+		usz chunk = 32768;
+		usz off = 0;
+		while (off < data.len)
+		{
+			usz in_n = min(chunk, data.len - off);
+			usz out_n = mz_outbuf.len;
+			tdefl_compress(mz_comp, data.ptr + off, &in_n, mz_outbuf.ptr, &out_n, 0);
+			mzs_total_out += out_n;
+			off += in_n;
+		}
+		usz zero_in = 0;
+		usz out_n = mz_outbuf.len;
+		tdefl_compress(mz_comp, null, &zero_in, mz_outbuf.ptr, &out_n, 4);
+		mzs_total_out += out_n;
+	}
+	end = clock::now();
+	out_res.mzcs = calculate_metrics(data.len, (long)(end - start), mzs_total_out);
+	libc::free(mz_comp);
+
+	// --- DECOMPRESSION ---
+
+	// C3 Decompression
+	start = clock::now();
+	char[] c3_decompressed = deflate::decompress(tmem, c3_compressed)!!;
+	end = clock::now();
+	out_res.c3d = calculate_metrics(data.len, (long)(end - start), c3_decompressed.len);
+
+	// C3 Streaming Decompression
+	usz c3ds_written = 0;
+	NullWriter c3ds_out = { .written = &c3ds_written };
+	io::ByteReader c3ds_in = io::wrap_bytes(c3_compressed);
+	start = clock::now();
+	deflate::decompress_stream(&c3ds_in, &c3ds_out)!!;
+	end = clock::now();
+	out_res.c3ds = calculate_metrics(data.len, (long)(end - start), c3ds_written);
+
+	// Miniz Decompression
+	usz mzd_out_len;
+	start = clock::now();
+	void* mzd_ptr = tinfl_decompress_mem_to_heap(miniz_ptr, miniz_size, &mzd_out_len, 0);
+	end = clock::now();
+	out_res.mzd = calculate_metrics(data.len, (long)(end - start), mzd_out_len);
+	if (mzd_ptr) mz_free(mzd_ptr);
+
+	// Miniz Streaming Decompression
+	void* mzs_decomp = libc::malloc(TINFL_DECOMPRESSOR_SIZE);
+	char[] mzs_out_buf = mem::temp_array(char, 65536);
+	usz mzs_total_decomp = 0;
+	start = clock::now();
+	mem::set(mzs_decomp, 0, TINFL_DECOMPRESSOR_SIZE);
+	{
+		usz in_off = 0;
+		while (true)
+		{
+			usz in_n = miniz_size - in_off;
+			usz out_n = mzs_out_buf.len;
+			int status = tinfl_decompress(mzs_decomp, (char*)miniz_ptr + in_off, &in_n, mzs_out_buf.ptr, mzs_out_buf.ptr, &out_n, in_off + in_n < miniz_size ? 0x01 : 0);
+			mzs_total_decomp += out_n;
+			in_off += in_n;
+			if (status == 0) break;
+			if (status < 0) break;
+		}
+	}
+	end = clock::now();
+	out_res.mzds = calculate_metrics(data.len, (long)(end - start), mzs_total_decomp);
+	libc::free(mzs_decomp);
 	if (miniz_ptr) mz_free(miniz_ptr);
 
-	// Performance Delta
-	double speed_factor = c3.throughput_mbs / miniz.throughput_mbs;
-	
-	io::printf("%-26s | %6.2f%% | %6.2f%% | %7.1f | %7.1f | %s%s (%.1fx)%s\n",
-		title[:(min(title.len, 26))],
-		c3.ratio, miniz.ratio,
-		c3.throughput_mbs, miniz.throughput_mbs,
-		speed_factor > 1.0 ? Ansi.CYAN : Ansi.WHITE,
-		speed_factor > 1.0 ? "C3" : "Miniz",
-		speed_factor > 1.0 ? speed_factor : 1.0 / speed_factor,
-		Ansi.RESET);
-
-	totals.c3_speed_sum += c3.throughput_mbs;
-	totals.miniz_speed_sum += miniz.throughput_mbs;
+	totals.c3_speed_sum += out_res.c3c.throughput_mbs;
+	totals.c3s_speed_sum += out_res.c3cs.throughput_mbs;
+	totals.mz_speed_sum += out_res.mzc.throughput_mbs;
+	totals.mzs_speed_sum += out_res.mzcs.throughput_mbs;
+	totals.c3d_speed_sum += out_res.c3d.throughput_mbs;
+	totals.c3ds_speed_sum += out_res.c3ds.throughput_mbs;
+	totals.mzd_speed_sum += out_res.mzd.throughput_mbs;
+	totals.mzds_speed_sum += out_res.mzds.throughput_mbs;
 	totals.count++;
+
+	return out_res;
 }
 
 fn void collect_files(Path dir, String suffix, DString* out)
@@ -199,9 +342,16 @@ fn BenchResult calculate_metrics(usz original_len, long time_ns, usz compressed_
 // External Miniz bindings
 extern fn void* tdefl_compress_mem_to_heap(void* pSrc_buf, usz src_buf_len, usz* pOut_len, int flags);
 extern fn void mz_free(void* p);
+extern fn int tdefl_init(void* d, void* pPut_buf_func, void* pPut_buf_user, int flags);
+extern fn int tdefl_compress(void* d, void* pIn_buf, usz* pIn_buf_size, void* pOut_buf, usz* pOut_buf_size, int flush);
 
+extern fn void* tinfl_decompress_mem_to_heap(void* pSrc_buf, usz src_buf_len, usz* pOut_len, int flags);
+extern fn int tinfl_decompress(void* r, void* pIn_buf, usz* pIn_buf_size, void* pOut_buf_start, void* pOut_buf_next, usz* pOut_buf_size, int decomp_flags);
+
+const usz TDEFL_COMPRESSOR_SIZE = 320000; // sizeof(tdefl_compressor) ~ 319352
+const usz TINFL_DECOMPRESSOR_SIZE = 16384; // sizeof(tinfl_decompressor) ~ 12440
 const int TDEFL_GREEDY_PARSING_FLAG = 0x04000;
-const int TDEFL_NONDETERMINISTIC_PARSING_FLAG = 0x08000; // Fastest init for miniz for a fair comparisson
-const int C3_EQUIVALENT_PROBES = 16; // C3 uses MAX_CHAIN = 16 as default (this should be exposed)
+const int TDEFL_NONDETERMINISTIC_PARSING_FLAG = 0x08000;
+const int C3_EQUIVALENT_PROBES = 16;
 
 const int MINIZ_FLAGS = C3_EQUIVALENT_PROBES | TDEFL_GREEDY_PARSING_FLAG | TDEFL_NONDETERMINISTIC_PARSING_FLAG;

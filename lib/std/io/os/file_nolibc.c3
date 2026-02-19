@@ -10,7 +10,7 @@ alias FwriteFn = fn usz?(void*, char[] buffer);
 alias FreadFn = fn usz?(void*, char[] buffer);
 alias RemoveFn = fn void?(String);
 alias FputcFn = fn void?(int, void*);
-alias SetModifiedTimeFn = fn void?(String, libc::Time_t);
+alias SetModifiedTimeFn = fn void?(String, Time_t);
 
 FopenFn native_fopen_fn @weak @if(!$defined(native_fopen_fn));
 FcloseFn native_fclose_fn @weak @if(!$defined(native_fclose_fn));
@@ -84,7 +84,7 @@ fn void? native_fputc(CInt c, CFile stream) @inline
 	return io::UNSUPPORTED_OPERATION~;
 }
 
-fn void? native_set_modified_time(String filename, libc::Time_t time) @inline
+fn void? native_set_modified_time(String filename, Time_t time) @inline
 {
 	if (native_set_modified_time_fn) return native_set_modified_time_fn(filename, time);
 	return io::UNSUPPORTED_OPERATION~;

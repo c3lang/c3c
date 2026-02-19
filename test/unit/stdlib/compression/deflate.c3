@@ -103,7 +103,47 @@ fn void test_deflate_corrupted()
 	assert(!@ok(decompressed), "Expected decompression to fail for corrupted data");
 }
 
-fn void test_deflate_stream()
+fn void test_deflate_compress_stream()
+{
+	@pool()
+	{
+		// Test compression stream by writing to a pipe and reading the output
+		String original = "This data will be compressed via stream interface. ";
+		usz count = 100;
+		usz full_len = original.len * count;
+		char[] full_original = mem::malloc(full_len)[:full_len];
+		defer free(full_original.ptr);
+
+		for (usz i = 0; i < count; i++)
+		{
+			mem::copy(full_original.ptr + i * original.len, original.ptr, original.len);
+		}
+
+		io::ByteReader in_stream;
+		in_stream.init(full_original);
+
+		// Use a temporary file on disk for output
+		File out_f = file::open("unittest_compress_stream.bin", "wb+")!!;
+		defer { (void)out_f.close(); (void)file::delete("unittest_compress_stream.bin"); }
+
+		deflate::compress_stream(mem, &in_stream, &out_f)!!;
+
+		usz file_len = out_f.seek(0, Seek.CURSOR)!!;
+		out_f.seek(0, Seek.SET)!!;
+
+		char[] compressed = mem::malloc(file_len)[:file_len];
+		defer free(compressed.ptr);
+		out_f.read(compressed)!!;
+
+		// Decompress to verify
+		char[] decompressed = deflate::decompress(mem, compressed)!!;
+		defer free(decompressed.ptr);
+
+		assert((String)decompressed == (String)full_original, "Stream compression mismatch");
+	};
+}
+
+fn void test_deflate_decompress_stream()
 {
 	@pool()
 	{

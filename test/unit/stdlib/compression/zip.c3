@@ -547,3 +547,78 @@ fn void test_zip_reader_available_capping()
 		}
 	};
 }
+
+fn void test_zip_extract()
+{
+	@pool()
+	{
+		String zip_path = "unittest_extract.zip";
+		String out_dir = "unittest_extract_out";
+
+		ZipArchive zip = zip::open(mem, zip_path, "w")!!;
+		zip.add_directory("scripts")!!;
+		zip.write_file("scripts/hello.sh", "echo hello", STORE)!!;
+		zip.write_file("readme.txt", "extracted readme", DEFLATE)!!;
+		(void)zip.close();
+
+		defer {
+			(void)file::delete(zip_path);
+			if (file::exists(out_dir)) (void)path::rmtree(path::temp(out_dir)!!);
+		}
+
+		ZipArchive read_zip = zip::open(mem, zip_path, "r")!!;
+		read_zip.extract(out_dir)!!;
+		(void)read_zip.close();
+
+		// Verify
+		assert(file::exists("unittest_extract_out/scripts/hello.sh"));
+		assert(file::exists("unittest_extract_out/readme.txt"));
+
+		char[] data1 = file::load(mem, "unittest_extract_out/scripts/hello.sh")!!;
+		defer free(data1);
+		assert((String)data1 == "echo hello");
+
+		char[] data2 = file::load(mem, "unittest_extract_out/readme.txt")!!;
+		defer free(data2);
+		assert((String)data2 == "extracted readme");
+	};
+}
+
+fn void test_zip_encrypted_error()
+{
+	@pool()
+	{
+		String path = "unittest_encrypted.zip";
+		// 0x01,0x00 at offset 6 is the encrypted flag.
+		char[] encrypted_zip = {0x50,0x4B,0x03,0x04,0x14,0x00,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x38,0x2B,0xA9,0xC2,0x02,0x00,0x00,0x00,0x02,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x61,0x62,0x63};
+		file::save(path, encrypted_zip)!!;
+		defer (void)file::delete(path);
+
+		ZipArchive recovered = zip::recover(mem, path)!!;
+		defer (void)recovered.close();
+
+		ZipEntry entry = recovered.stat_at(0)!!;
+		assert(entry.is_encrypted, "Expected entry to be marked as encrypted");
+
+		fault res = @catch(recovered.open_reader("a"));
+		assert(res == zip::ENCRYPTED_FILE, "Expected ENCRYPTED_FILE error");
+	};
+}
+
+fn void test_zip_unsupported_algorithm()
+{
+	@pool()
+	{
+		String path = "unittest_unsupported.zip";
+		// 0x01,0x00 at offset 8 is the method (and Shrink is not supported).
+		char[] unsupported_zip = {0x50,0x4B,0x03,0x04,0x14,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x00,0x00,0x38,0x2B,0xA9,0xC2,0x02,0x00,0x00,0x00,0x02,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x61,0x62,0x63};
+		file::save(path, unsupported_zip)!!;
+		defer (void)file::delete(path);
+
+		ZipArchive recovered = zip::recover(mem, path)!!;
+		defer (void)recovered.close();
+
+		fault res = @catch(recovered.read_file_all(mem, "a"));
+		assert(res == zip::UNSUPPORTED_METHOD, "Expected UNSUPPORTED_METHOD error");
+	};
+}
