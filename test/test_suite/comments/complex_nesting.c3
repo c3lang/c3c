@@ -7,5 +7,5 @@
    #! this line would fail because it's "#!" isn't in the right place (the first two characters of a file).. but since we're already in a comment, it' fine!
 */
 
-#! this line should raise an error!
+#! this line should raise an error! // #error: a global
 // while this shouldn't!
