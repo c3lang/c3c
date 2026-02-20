@@ -60,10 +60,10 @@ fn void test_deflate_large_repetitive() @if($feature(SLOW_TESTS))
 
 	mem::set(original.ptr, (char)'A', len);
 
-	char[] compressed = deflate::compress(original)!!;
+	char[] compressed = deflate::compress(mem, original)!!;
 	defer free(compressed.ptr);
 
-	char[] decompressed = deflate::decompress(compressed)!!;
+	char[] decompressed = deflate::decompress(mem, compressed)!!;
 	defer free(decompressed.ptr);
 
 	assert(decompressed.len == len, "Length mismatch");
