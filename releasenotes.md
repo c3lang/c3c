@@ -18,7 +18,8 @@
 - Improve error message when providing `alias` with a typeid expression where a type was expected. #2944
 - Const enums removed.
 - Constdef declarations introduced.
-
+- Properly support `@deprecated` as contract.
+- Support deprecating enum values.
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831

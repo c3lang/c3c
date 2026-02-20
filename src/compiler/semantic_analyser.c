@@ -258,6 +258,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_GENERIC:
 			case DECL_GENERIC_INSTANCE:
 			case DECL_LABEL:
+			case DECL_CONTRACT:
 				UNREACHABLE_VOID
 			case DECL_ALIAS:
 			case DECL_ATTRIBUTE:

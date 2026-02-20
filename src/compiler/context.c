@@ -159,6 +159,7 @@ void decl_register(CompilationUnit *unit, Decl *decl)
 			case DECL_IMPORT:
 			case DECL_LABEL:
 			case DECL_POISONED:
+			case DECL_CONTRACT:
 				UNREACHABLE_VOID
 			case DECL_ATTRIBUTE:
 			case DECL_BITSTRUCT:
@@ -293,6 +294,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_GENERIC_INSTANCE:
 		case DECL_IMPORT:
 		case DECL_LABEL:
+		case DECL_CONTRACT:
 			UNREACHABLE_VOID
 		case DECL_CT_EXEC:
 		case DECL_CT_INCLUDE:
