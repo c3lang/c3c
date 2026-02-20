@@ -11,8 +11,7 @@ module std::compression::deflate;
 import std::io, std::math, std::bits, std::sort, std::collections::list;
 import std::thread;
 
-faultdef
-	CORRUPTED_DATA;
+faultdef CORRUPTED_DATA;
 
 <*
  Stateful DEFLATE inflater.
@@ -81,7 +80,7 @@ fn usz? Inflater.read(&self, char[] buffer) @dynamic
 			{
 				buffer[total_out:to_copy - len] = self.window[:to_copy - len];
 
-				total_out += to_copy - len;
+				total_out += (usz)(to_copy - len);
 				self.read_pos += to_copy - len;
 			}
 			continue;
