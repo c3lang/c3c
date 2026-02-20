@@ -513,11 +513,8 @@ fn void? Deflater.emit_block(&self, bool final) @private => @pool()
 {
 	if (self.token_count == 0 && !final) return;
 
-	if (final)
-	{
-		self.lit_freqs[256] = 1;
-		self.tokens[self.token_count++] = { 256, 0 };
-	}
+	self.lit_freqs[256] = 1;
+	self.tokens[self.token_count++] = { 256, 0 };
 
 	// Build dynamic Huffman trees from frequency tables
 	Huffman lit_huff, dist_huff;
@@ -683,6 +680,7 @@ fn void? Deflater.emit_block(&self, bool final) @private => @pool()
 	}
 
 	// Reset for next block
+	tree_tokens.free();
 	self.lit_freqs = {};
 	self.dist_freqs = {};
 	self.token_count = 0;
@@ -722,306 +720,18 @@ fn char[]? compress(Allocator allocator = mem, char[] input) => @pool()
 		return writer.finish();
 	}
 
-	const uint MIN_MATCH = 3;
-	const uint MAX_MATCH = 258;
-	const uint WINDOW_SIZE = 32768;
-	const uint HASH_SIZE = 32768;
-	const uint HASH_MASK = HASH_SIZE - 1;
-	const uint MAX_CHAIN = 16;
-	const uint GOOD_MATCH = 32;
-	const uint NICE_MATCH = 128;
+	Deflater* deflater = mem::tnew(Deflater);
+	deflater.init(allocator);
+	defer deflater.free();
 
-	uint[] head = allocator::alloc_array(tmem, uint, HASH_SIZE);
-	head[..] = 0xFFFFFFFF;
+	deflater.write(input)!;
+	deflater.scan_matches(true)!;
+	deflater.emit_block(true)!;
 
-	uint[] prev = allocator::alloc_array(tmem, uint, WINDOW_SIZE);
-
-	uint[] lit_freqs = mem::temp_array(uint, 286);
-	uint[] dist_freqs = mem::temp_array(uint, 30);
-	Token[] tokens = allocator::alloc_array(tmem, Token, input.len + 1);
-	usz token_count = 0;
-
-	uint hash = 0;
-	if (input.len >= 2)
-	{
-		hash = ((uint)input[0] << 5) ^ (uint)input[1];
-	}
-
-	usz pos = 0;
-	while (pos < input.len)
-	{
-		uint best_len = 0;
-		uint best_dist = 0;
-
-		if (pos + 2 < input.len)
-		{
-			hash = ((hash << 5) ^ (uint)input[pos + 2]) & HASH_MASK;
-			uint match_head = head[hash];
-			head[hash] = (uint)pos;
-			prev[pos & 0x7FFF] = match_head;
-
-			uint chain_len = 0;
-			uint curr = match_head;
-			while (curr != 0xFFFFFFFF && (uint)pos - curr < WINDOW_SIZE && chain_len < MAX_CHAIN)
-			{
-				chain_len++;
-				if (pos + best_len < input.len && input[curr + best_len] == input[pos + best_len])
-				{
-					if (best_len < 3 || mem::load((ushort*)&input[pos + best_len - 1], 1) == mem::load((ushort*)&input[curr + best_len - 1], 1))
-					{
-						uint match_l = 0;
-						while (match_l + 8 <= MAX_MATCH && pos + match_l + 8 <= input.len)
-						{
-							if (mem::load((ulong*)&input[curr + match_l], 1) == mem::load((ulong*)&input[pos + match_l], 1))
-							{
-								match_l += 8;
-							}
-							break;
-						}
-
-						while (match_l < MAX_MATCH &&
-							   pos + match_l < input.len &&
-							   input[curr + match_l] == input[pos + match_l])
-						{
-							match_l++;
-						}
-
-						if (match_l >= MIN_MATCH && match_l > best_len)
-						{
-							best_len = match_l;
-							best_dist = (uint)(pos - curr);
-							if (best_len >= NICE_MATCH) break;
-						}
-					}
-				}
-				curr = prev[curr & 0x7FFF];
-				if (best_len >= GOOD_MATCH) chain_len++;
-			}
-		}
-
-		if (best_len >= MIN_MATCH)
-		{
-			uint len_code;
-			switch (best_len)
-			{
-				case 3..10:   len_code = 257 + best_len - 3;
-				case 11..18:  len_code = 265 + (best_len - 11) / 2;
-				case 19..34:  len_code = 269 + (best_len - 19) / 4;
-				case 35..66:  len_code = 273 + (best_len - 35) / 8;
-				case 67..130: len_code = 277 + (best_len - 67) / 16;
-				case 131..257:len_code = 281 + (best_len - 131) / 32;
-				default:      len_code = 285;
-			}
-			lit_freqs[len_code]++;
-
-			uint dist_code;
-			switch (best_dist)
-			{
-				case 1..4:        dist_code = best_dist - 1;
-				case 5..8:        dist_code = 4 + (best_dist - 5) / 2;
-				case 9..16:       dist_code = 6 + (best_dist - 9) / 4;
-				case 17..32:      dist_code = 8 + (best_dist - 17) / 8;
-				case 33..64:      dist_code = 10 + (best_dist - 33) / 16;
-				case 65..128:     dist_code = 12 + (best_dist - 65) / 32;
-				case 129..256:    dist_code = 14 + (best_dist - 129) / 64;
-				case 257..512:    dist_code = 16 + (best_dist - 257) / 128;
-				case 513..1024:   dist_code = 18 + (best_dist - 513) / 256;
-				case 1025..2048:  dist_code = 20 + (best_dist - 1025) / 512;
-				case 2049..4096:  dist_code = 22 + (best_dist - 2049) / 1024;
-				case 4097..8192:  dist_code = 24 + (best_dist - 4097) / 2048;
-				case 8193..16384: dist_code = 26 + (best_dist - 8193) / 4096;
-				default:          dist_code = 28 + (best_dist - 16385) / 8192;
-			}
-			dist_freqs[dist_code]++;
-			tokens[token_count++] = { (ushort)best_len, (ushort)best_dist };
-
-			uint limit = best_len - 1;
-			for (uint k = 0; k < limit; k++)
-			{
-				pos++;
-				if (pos + 2 < input.len)
-				{
-					hash = ((hash << 5) ^ (uint)input[pos + 2]) & HASH_MASK;
-					uint m_h = head[hash];
-					head[hash] = (uint)pos;
-					prev[pos & 0x7FFF] = m_h;
-				}
-			}
-			pos++;
-		}
-		else
-		{
-			lit_freqs[(uint)input[pos]]++;
-			tokens[token_count++] = { (ushort)input[pos], 0 };
-			pos++;
-		}
-	}
-	lit_freqs[256] = 1;
-	tokens[token_count++] = { 256, 0 };
-
-	Huffman lit_huff, dist_huff;
-	lit_huff.build_from_freqs(lit_freqs, 15);
-
-	uint total_dist = 0;
-	foreach (f : dist_freqs) total_dist += f;
-	if (total_dist == 0) dist_freqs[0] = 1;
-	dist_huff.build_from_freqs(dist_freqs, 15);
-
-	BitWriter writer;
-	writer.init(allocator, math::max((usz)input.len / 2, (usz)1024));
-	writer.write_bits(1, 1);
-	writer.write_bits(2, 2);
-
-	char[] lit_lens = lit_huff.get_lengths(285);
-	char[] dist_lens = dist_huff.get_lengths(29);
-
-	usz hlit_count = 286;
-	while (hlit_count > 257 && lit_lens[hlit_count - 1] == 0) hlit_count--;
-	usz hdist_count = 30;
-	while (hdist_count > 1 && dist_lens[hdist_count - 1] == 0) hdist_count--;
-
-	writer.write_bits((uint)hlit_count - 257, 5);
-	writer.write_bits((uint)hdist_count - 1, 5);
-
-	List{Token} tree_tokens; tree_tokens.tinit();
-	uint[] tree_freqs = mem::temp_array(uint, 19);
-
-	char[] all_lens = mem::temp_array(char, hlit_count + hdist_count);
-	all_lens[:hlit_count] = lit_lens[:hlit_count];
-	all_lens[hlit_count:hdist_count] = dist_lens[:hdist_count];
-
-	for (usz i = 0; i < all_lens.len;)
-	{
-		char len = all_lens[i];
-		usz count = 1;
-		while (i + count < all_lens.len && all_lens[i + count] == len) count++;
-
-		if (len == 0)
-		{
-			while (count >= 11)
-			{
-				uint c = (uint)math::min(count, (usz)138);
-				tree_tokens.push({ 18, (ushort)(c - 11) });
-				tree_freqs[18]++;
-				i += c; count -= c;
-			}
-			while (count >= 3)
-			{
-				uint c = (uint)math::min(count, (usz)10);
-				tree_tokens.push({ 17, (ushort)(c - 3) });
-				tree_freqs[17]++;
-				i += c; count -= c;
-			}
-		}
-		else if (count >= 4)
-		{
-			tree_tokens.push({ (ushort)len, 0 });
-			tree_freqs[(uint)len]++;
-			i++; count--;
-			while (count >= 3)
-			{
-				uint c = (uint)math::min(count, (usz)6);
-				tree_tokens.push({ 16, (ushort)(c - 3) });
-				tree_freqs[16]++;
-				i += c; count -= c;
-			}
-		}
-
-		while (count--)
-		{
-			tree_tokens.push({ (ushort)len, 0 });
-			tree_freqs[(uint)len]++;
-			i++;
-		}
-	}
-
-	Huffman tree_huff;
-	tree_huff.build_from_freqs(tree_freqs, 7);
-	char[] tree_lens = tree_huff.get_lengths(18);
-
-	usz hclen_count = 19;
-	while (hclen_count > 4 && tree_lens[ORDER[hclen_count - 1]] == 0) hclen_count--;
-	writer.write_bits((uint)hclen_count - 4, 4);
-
-	for (usz i = 0; i < hclen_count; i++)
-	{
-		writer.write_bits(tree_lens[ORDER[i]], 3);
-	}
-
-	Code[19] tree_codes;
-	gen_canonical_codes(&tree_codes, tree_lens);
-	foreach (t : tree_tokens)
-	{
-		writer.write_huffman(tree_codes[t.val].code, tree_codes[t.val].len);
-		switch (t.val)
-		{
-			case 16:
-				writer.write_bits(t.dist, 2);
-			case 17:
-				writer.write_bits(t.dist, 3);
-			case 18:
-				writer.write_bits(t.dist, 7);
-		}
-	}
-
-	Code[286] lit_codes;
-	gen_canonical_codes(&lit_codes, lit_lens[:hlit_count]);
-	Code[30] dist_codes;
-	gen_canonical_codes(&dist_codes, dist_lens[:hdist_count]);
-
-	foreach (t : tokens[:token_count])
-	{
-		if (t.dist == 0)
-		{
-			writer.write_huffman(lit_codes[t.val].code, lit_codes[t.val].len);
-		}
-		else
-		{
-			uint best_len = t.val;
-			uint best_dist = t.dist;
-
-			uint len_code;
-			uint len_extra_bits = 0;
-			uint len_extra = 0;
-			switch (best_len)
-			{
-				case 3..10:   len_code = 257 + best_len - 3;
-				case 11..18:  len_code = 265 + (best_len - 11) / 2; len_extra_bits = 1; len_extra = (best_len - 11) % 2;
-				case 19..34:  len_code = 269 + (best_len - 19) / 4; len_extra_bits = 2; len_extra = (best_len - 19) % 4;
-				case 35..66:  len_code = 273 + (best_len - 35) / 8; len_extra_bits = 3; len_extra = (best_len - 35) % 8;
-				case 67..130: len_code = 277 + (best_len - 67) / 16; len_extra_bits = 4; len_extra = (best_len - 67) % 16;
-				case 131..257:len_code = 281 + (best_len - 131) / 32; len_extra_bits = 5; len_extra = (best_len - 131) % 32;
-				default:      len_code = 285;
-			}
-			writer.write_huffman(lit_codes[len_code].code, lit_codes[len_code].len);
-			if (len_extra_bits > 0) { writer.write_bits(len_extra, len_extra_bits); }
-
-			uint dist_code;
-			uint dist_extra_bits = 0;
-			uint dist_extra = 0;
-			switch (best_dist)
-			{
-				case 1..4:     dist_code = best_dist - 1;
-				case 5..8:     dist_code = 4 + (best_dist - 5) / 2; dist_extra_bits = 1; dist_extra = (best_dist - 5) % 2;
-				case 9..16:    dist_code = 6 + (best_dist - 9) / 4; dist_extra_bits = 2; dist_extra = (best_dist - 9) % 4;
-				case 17..32:   dist_code = 8 + (best_dist - 17) / 8; dist_extra_bits = 3; dist_extra = (best_dist - 17) % 8;
-				case 33..64:   dist_code = 10 + (best_dist - 33) / 16; dist_extra_bits = 4; dist_extra = (best_dist - 33) % 16;
-				case 65..128:  dist_code = 12 + (best_dist - 65) / 32; dist_extra_bits = 5; dist_extra = (best_dist - 65) % 32;
-				case 129..256: dist_code = 14 + (best_dist - 129) / 64; dist_extra_bits = 6; dist_extra = (best_dist - 129) % 64;
-				case 257..512: dist_code = 16 + (best_dist - 257) / 128; dist_extra_bits = 7; dist_extra = (best_dist - 257) % 128;
-				case 513..1024: dist_code = 18 + (best_dist - 513) / 256; dist_extra_bits = 8; dist_extra = (best_dist - 513) % 256;
-				case 1025..2048: dist_code = 20 + (best_dist - 1025) / 512; dist_extra_bits = 9; dist_extra = (best_dist - 1025) % 512;
-				case 2049..4096: dist_code = 22 + (best_dist - 2049) / 1024; dist_extra_bits = 10; dist_extra = (best_dist - 2049) % 1024;
-				case 4097..8192: dist_code = 24 + (best_dist - 4097) / 2048; dist_extra_bits = 11; dist_extra = (best_dist - 4097) % 2048;
-				case 8193..16384: dist_code = 26 + (best_dist - 8193) / 4096; dist_extra_bits = 12; dist_extra = (best_dist - 8193) % 4096;
-				default:          dist_code = 28 + (best_dist - 16385) / 8192; dist_extra_bits = 13; dist_extra = (best_dist - 16385) % 8192;
-			}
-			writer.write_huffman(dist_codes[dist_code].code, dist_codes[dist_code].len);
-			if (dist_extra_bits > 0) { writer.write_bits(dist_extra, dist_extra_bits); }
-		}
-	}
-
-	return writer.finish();
+	char[] finished = deflater.bwriter.finish();
+	char[] result = allocator::alloc_array(allocator, char, finished.len);
+	result[..] = finished[..];
+	return result;
 }
 
 /*-----------------------------------------------------------------------------*/
@@ -1263,8 +973,9 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 	if (n == 0) return {};
 	sort::quicksort(map.array_view());
 	if (n == 1) { char[] blen = allocator::new_array(allocator, char, freqs.len); blen[map[0].index] = 1; return blen; }
-	uint[] hist = mem::temp_array(uint, n); foreach (i, m : map) hist[i] = m.freq;
 	usz max_elements = 2 * n;
+	uint[] hist = mem::temp_array(uint, max_elements);
+	foreach (i, m : map) hist[i] = m.freq;
 	uint[] current = mem::temp_array(uint, max_elements);
 	uint[] previous = mem::temp_array(uint, max_elements);
 	ulong[] is_merged = mem::temp_array(ulong, max_elements);
