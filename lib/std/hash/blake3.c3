@@ -91,7 +91,7 @@ macro @simd_degree() @local
 }
 
 <* Flags used during hash computation based on its state. *>
-const enum Blake3Flags : inline char
+constdef Blake3Flags : inline char
 {
 	CHUNK_START			= 1 << 0,
 	CHUNK_END			= 1 << 1,
