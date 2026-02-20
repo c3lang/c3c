@@ -32,8 +32,8 @@ fn void initialize_bench() @init
 		$qnameof(sha1_16)[..^4],
 		$qnameof(sha2_256_16)[..^4],
 		$qnameof(sha2_512_16)[..^4],
-		$qnameof(blake2s_256_16)[..^4],
-		$qnameof(blake2b_256_16)[..^4],
+		//$qnameof(blake2s_256_16)[..^4],
+		//$qnameof(blake2b_256_16)[..^4],
 		$qnameof(blake3_16)[..^4],
 		$qnameof(ripemd_160_16)[..^4],
 		$qnameof(whirlpool_16)[..^4],
@@ -68,8 +68,8 @@ fn void md5_16() => md5::hash(common_16);
 fn void sha1_16() => sha1::hash(common_16);
 fn void sha2_256_16() => sha256::hash(common_16);
 fn void sha2_512_16() => sha512::hash(common_16);
-fn void blake2s_256_16() => blake2::s(256, common_16);
-fn void blake2b_256_16() => blake2::b(256, common_16);
+//fn void blake2s_256_16() => blake2::s(256, common_16);
+//fn void blake2b_256_16() => blake2::b(256, common_16);
 fn void blake3_16() => blake3::hash(common_16);
 fn void ripemd_160_16() => ripemd::hash{160}(common_16);
 fn void whirlpool_16() => whirlpool::hash(common_16);
@@ -80,8 +80,8 @@ fn void md5_256() => md5::hash(common_256);
 fn void sha1_256() => sha1::hash(common_256);
 fn void sha2_256_256() => sha256::hash(common_256);
 fn void sha2_512_256() => sha512::hash(common_256);
-fn void blake2s_256_256() => blake2::s(256, common_256);
-fn void blake2b_256_256() => blake2::b(256, common_256);
+//fn void blake2s_256_256() => blake2::s(256, common_256);
+//fn void blake2b_256_256() => blake2::b(256, common_256);
 fn void blake3_256() => blake3::hash(common_256);
 fn void ripemd_160_256() => ripemd::hash{160}(common_256);
 fn void whirlpool_256() => whirlpool::hash(common_256);
@@ -92,8 +92,8 @@ fn void md5_4kib() => md5::hash(common_4kib);
 fn void sha1_4kib() => sha1::hash(common_4kib);
 fn void sha2_256_4kib() => sha256::hash(common_4kib);
 fn void sha2_512_4kib() => sha512::hash(common_4kib);
-fn void blake2s_256_4kib() => blake2::s(256, common_4kib);
-fn void blake2b_256_4kib() => blake2::b(256, common_4kib);
+//fn void blake2s_256_4kib() => blake2::s(256, common_4kib);
+//fn void blake2b_256_4kib() => blake2::b(256, common_4kib);
 fn void blake3_4kib() => blake3::hash(common_4kib);
 fn void ripemd_160_4kib() => ripemd::hash{160}(common_4kib);
 fn void whirlpool_4kib() => whirlpool::hash(common_4kib);
@@ -104,8 +104,8 @@ fn void md5_1mib() => md5::hash(common_1mib);
 fn void sha1_1mib() => sha1::hash(common_1mib);
 fn void sha2_256_1mib() => sha256::hash(common_1mib);
 fn void sha2_512_1mib() => sha512::hash(common_1mib);
-fn void blake2s_256_1mib() => blake2::s(256, common_1mib);
-fn void blake2b_256_1mib() => blake2::b(256, common_1mib);
+//fn void blake2s_256_1mib() => blake2::s(256, common_1mib);
+//fn void blake2b_256_1mib() => blake2::b(256, common_1mib);
 fn void blake3_1mib() => blake3::hash(common_1mib);
 fn void ripemd_160_1mib() => ripemd::hash{160}(common_1mib);
 fn void whirlpool_1mib() => whirlpool::hash(common_1mib);

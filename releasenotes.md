@@ -33,6 +33,9 @@
 - Add `array::even`, `array::odd`, and `array::unlace` macros. #2892
 - Add discrete and continuous distributions in `std::math::distributions`.
 - Add bitorder functions `store_le`, `load_le`, `store_be`, `store_le`.
+- Stream functions now use long/ulong rather than isz/usz for seek/available. 
+- `instream.seek` is replaced by `set_cursor` and `cursor`.
+- `instream.available`, `cursor` etc are long/ulong rather than isz/usz to be correct on 32-bit.
 
 ### Fixes
 - Add error message if directory with output file name already exists
