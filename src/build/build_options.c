@@ -1667,7 +1667,8 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	{
 		FAIL_WITH_ERR("Missing a compiler command such as 'compile' or 'build'.");
 	}
-	if (build_options.arch_os_target_override == ANDROID_AARCH64)
+	if (build_options.arch_os_target_override == ANDROID_AARCH64 ||
+	    build_options.arch_os_target_override == ANDROID_X86_64)
 	{
 		if (!build_options.android.ndk_path)
 		{
