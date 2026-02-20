@@ -562,10 +562,10 @@ typedef struct
 	OperatorOverload operator : 6;
 	Signature signature;
 	AstId body;
-	AstId docs;
+	DeclId docs;
 	union
 	{
-		struct
+		struct // Function related
 		{
 			bool attr_inline : 1;
 			bool attr_noinline : 1;
@@ -593,7 +593,7 @@ typedef struct
 				Decl **lambda_ct_parameters;
 			};
 		};
-		struct
+		struct // Macro related
 		{
 			DeclId body_param;
 			CompilationUnit *unit;
@@ -604,7 +604,7 @@ typedef struct
 typedef struct
 {
 	Signature signature;
-	AstId docs;
+	DeclId docs;
 } FnTypeDecl;
 
 
@@ -617,8 +617,8 @@ typedef struct
 typedef struct
 {
 	const char **parameters;
-	AstId contracts;
 	unsigned id;
+	Expr **requires;
 	Decl **instances;
 	Decl *owner;
 	Decl **decls;
@@ -654,6 +654,34 @@ typedef struct
 		Decl *alias;
 	};
 } DefineDecl;
+
+typedef struct
+{
+	SourceSpan span;
+	const char *name;
+	InOutModifier modifier : 4;
+	bool by_ref : 1;
+} ContractParam;
+
+typedef struct
+{
+	Expr *decl_exprs;
+	const char *comment;
+	const char *expr_string;
+} ExprContract;
+
+typedef struct
+{
+	Expr **requires;
+	Expr **ensures;
+	ContractParam *params;
+	bool pure;
+	union
+	{
+		Expr **opt_returns;
+		Decl **opt_returns_resolved;
+	};
+} ContractsDecl;
 
 typedef struct
 {
@@ -775,6 +803,7 @@ typedef struct Decl_
 		Ast *ct_echo_decl;
 		Decl** ct_else_decl;
 		Decl** decls;
+		ContractsDecl contracts_decl;
 		DefineDecl define_decl;
 		ModuleAliasDecl module_alias_decl;
 		EnumConstantDecl enum_constant;
@@ -1272,6 +1301,7 @@ struct Expr_
 		ExprBuiltin builtin_expr;                   // 16
 		ExprCall call_expr;                         // 40
 		ExprCast cast_expr;                         // 12
+		ExprContract contract_expr;
 		ExprUnresolvedCatch unresolved_catch_expr;  // 24
 		ExprCatch catch_expr;                       // 24
 		Expr** cond_expr;                           // 8
@@ -1565,49 +1595,6 @@ typedef struct
 } AstAssertStmt;
 
 
-typedef struct
-{
-	bool resolved;
-	bool expanding;
-	union
-	{
-		Expr *expr;
-		Decl *decl;
-	};
-} AstDocFault;
-
-typedef struct AstDocDirective_
-{
-	ContractKind kind : 4;
-	union
-	{
-		struct
-		{
-			const char *name;
-			SourceSpan span;
-			InOutModifier modifier : 4;
-			bool by_ref : 1;
-		} param;
-		Ast **faults;
-		struct
-		{
-			Expr *decl_exprs;
-			const char *comment;
-			const char *expr_string;
-		} contract;
-		struct
-		{
-			const char *directive_name;
-			const char *rest_of_line;
-		} generic;
-		struct
-		{
-			const char *string;
-			size_t strlen;
-		};
-	};
-} AstContractStmt;
-
 typedef struct Ast_
 {
 	SourceSpan span;
@@ -1625,8 +1612,6 @@ typedef struct Ast_
 		AstCompoundStmt compound_stmt;      // 12
 		AstId ct_compound_stmt;
 		AstContinueBreakStmt contbreak_stmt;// 24
-		AstContractStmt contract_stmt;      // 32
-		AstDocFault contract_fault;         // 24
 		AstId ct_else_stmt;                 // 4
 		AstCtTypeAssignStmt ct_type_assign_stmt;
 		AstCtForeachStmt ct_foreach_stmt;   // 40
@@ -2174,8 +2159,6 @@ bool ast_is_not_empty(Ast *ast);
 
 bool ast_is_compile_time(Ast *ast);
 bool ast_supports_continue(Ast *stmt);
-Ast *ast_contract_has_any(AstId contracts);
-Ast *ast_contract_has_any_non_require(AstId contracts);
 INLINE void ast_append(AstId **succ, Ast *next);
 INLINE void ast_prepend(AstId *first, Ast *ast);
 INLINE bool ast_ok(Ast *ast);
@@ -2299,6 +2282,7 @@ UNUSED bool i128_get_bit(const Int128 *op, int bit);
 void copy_begin(void);
 void copy_end(void);
 Expr *copy_expr_single(Expr *source_expr);
+Expr **copy_exprlist_macro(Expr **source_expr_list);
 Decl **copy_decl_list_single(Decl **decl_list);
 Decl **copy_decl_list_single_for_generic(Decl **decl_list, Decl *generic_instance);
 Attr **copy_attributes_single(Attr** attr_list);
@@ -3978,6 +3962,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_RVALUE:
 		case EXPR_CT_SUBSCRIPT:
 		case EXPR_IOTA_DECL:
+		case EXPR_CONTRACT:
 			break;
 	}
 }
@@ -4328,7 +4313,7 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
 	expr->type = type;
 	expr->resolve_status = RESOLVE_DONE;
 	TypeKind kind = type_flatten(type)->type_kind;
-	(&expr->const_expr)->ixx.i.high = 0;
+	expr->const_expr.ixx.i.high = 0;
 	if (type_kind_is_signed(kind))
 	{
 		if (v > (uint64_t)INT64_MAX) (&expr->const_expr)->ixx.i.high = UINT64_MAX;
@@ -4350,10 +4335,10 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
 				break;
 		}
 	}
-	(&expr->const_expr)->ixx.i.low = v;
-	(&expr->const_expr)->ixx.type = kind;
-	(&expr->const_expr)->is_character = false;
-	(&expr->const_expr)->const_kind = CONST_INTEGER;
+	expr->const_expr.ixx.i.low = v;
+	expr->const_expr.ixx.type = kind;
+	expr->const_expr.is_character = false;
+	expr->const_expr.const_kind = CONST_INTEGER;
 }
 
 INLINE void expr_rewrite_to_int_to_float(Expr *expr, Type *type)

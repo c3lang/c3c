@@ -1594,6 +1594,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.win_debug = WIN_DEBUG_DEFAULT,
 		.fp_math = FP_DEFAULT,
 		.x86_cpu_set = X86CPU_DEFAULT,
+		.riscv_cpu_set = RISCV_CPU_DEFAULT,
 		.riscv_abi = RISCV_ABI_DEFAULT,
 		.memory_environment = MEMORY_ENV_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
@@ -1666,7 +1667,8 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	{
 		FAIL_WITH_ERR("Missing a compiler command such as 'compile' or 'build'.");
 	}
-	if (build_options.arch_os_target_override == ANDROID_AARCH64)
+	if (build_options.arch_os_target_override == ANDROID_AARCH64 ||
+	    build_options.arch_os_target_override == ANDROID_X86_64)
 	{
 		if (!build_options.android.ndk_path)
 		{

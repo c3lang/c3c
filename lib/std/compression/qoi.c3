@@ -7,7 +7,7 @@ const uint PIXELS_MAX = 400000000;
  Purely informative. It will be saved to the file header,
  but does not affect how chunks are en-/decoded.
 *>
-const enum QOIColorspace : char
+constdef QOIColorspace : char
 {
 	<* sRGB with linear alpha *>
 	SRGB = 0,
@@ -21,7 +21,7 @@ const enum QOIColorspace : char
  AUTO can be used when decoding to automatically determine
  the channels from the file's header.
 *>
-const enum QOIChannels : inline char
+constdef QOIChannels : inline char
 {
 	AUTO = 0,
 	RGB = 3,

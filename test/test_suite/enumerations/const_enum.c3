@@ -1,6 +1,6 @@
 import std::io;
 
-const enum MyEnum : inline CInt
+constdef MyEnum : inline CInt
 {
 	FOO = 1,
 	BAR = 5,

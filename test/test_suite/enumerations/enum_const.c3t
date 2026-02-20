@@ -2,13 +2,13 @@
 module test;
 import std;
 
-const enum Bar : String
+constdef Bar : String
 {
 	XABC = "foekf",
 	XDEF = "foekfokef"
 }
 
-const enum Foo : int
+constdef Foo : int
 {
 	ABC = 4,
 	DEF,
@@ -18,7 +18,7 @@ const enum Foo : int
 }
 
 
-const enum Bde2 :  int
+constdef Bde2 :  int
 {
 	FOO = 2,
 	BAR = 100
@@ -30,7 +30,7 @@ const BDE3_BAR = 100;
 
 
 
-const enum Abc2 : int
+constdef Abc2 : int
 {
 	UP,
 	DOWN,

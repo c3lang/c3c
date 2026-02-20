@@ -12,7 +12,7 @@ fn void Foo.x(&self) @dynamic
 	io::printn("Foo!");
 }
 
-const enum Tester : inline Foo
+constdef Tester : inline Foo
 {
 	ABC = 1
 }

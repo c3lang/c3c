@@ -11,6 +11,14 @@ enum Seek
 	END
 }
 
+enum SeekOrigin
+{
+	FROM_START,
+	FROM_CURSOR,
+	FROM_END
+}
+
+
 faultdef
 	ALREADY_EXISTS,
 	BUSY,

@@ -216,7 +216,14 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *ref_expr, Expr 
 			if (ref_expr && c->current_block) llvm_emit_expr(c, ref, ref_expr);
 		}
 		if (!c->current_block) goto AFTER_STORE;
-		if (value.type != type_void) llvm_store(c, ref, &value);
+		if (value.type == type_void)
+		{
+			value = *ref;
+		}
+		else
+		{
+			llvm_store(c, ref, &value);
+		}
 	}
 
 	if (optional)
