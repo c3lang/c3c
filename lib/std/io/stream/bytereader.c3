@@ -41,16 +41,26 @@ fn void? ByteReader.pushback_byte(&self) @dynamic
 
 fn usz? ByteReader.seek(&self, isz offset, Seek seek) @dynamic
 {
-	isz new_index;
-	switch (seek)
+	self.set_cursor((long)offset, (SeekOrigin)seek.ordinal)!;
+	return (usz)self.cursor();
+}
+
+fn long? ByteReader.cursor(&self) @dynamic
+{
+	return self.index;
+}
+
+fn void? ByteReader.set_cursor(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
+{
+	long new_index;
+	switch (whence)
 	{
-		case SET: new_index = offset;
-		case CURSOR: new_index = self.index + offset;
-		case END: new_index = self.bytes.len + offset;
+		case FROM_START: new_index = offset;
+		case FROM_CURSOR: new_index = self.index + offset;
+		case FROM_END: new_index = self.bytes.len + offset;
 	}
-	if (new_index < 0) return INVALID_POSITION~;
-	self.index = new_index;
-	return new_index;
+	if (new_index < 0 || new_index > self.bytes.len) return INVALID_POSITION~;
+	self.index = (usz)new_index;
 }
 
 fn usz? ByteReader.write_to(&self, OutStream writer) @dynamic
@@ -62,7 +72,7 @@ fn usz? ByteReader.write_to(&self, OutStream writer) @dynamic
 	return written;
 }
 
-fn usz? ByteReader.available(&self) @inline @dynamic
+fn ulong? ByteReader.available(&self) @inline @dynamic
 {
 	return max(0, self.bytes.len - self.index);
 }

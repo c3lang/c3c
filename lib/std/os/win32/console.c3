@@ -1,6 +1,6 @@
 module std::os::win32 @if(env::WIN32);
 
-const enum Win32_CODEPAGE : Win32_UINT
+constdef Win32_CODEPAGE : Win32_UINT
 {
 	IBM037                   = 037, // IBM EBCDIC US-Canada
 	IBM437                   = 437, // OEM United States

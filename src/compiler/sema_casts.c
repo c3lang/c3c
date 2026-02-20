@@ -1238,7 +1238,7 @@ RETRY:;
 			inner = decl->strukt.members[0]->type->canonical;
 			break;
 		case DECL_ENUM:
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 			// Could be made to work.
 			return false;
 		default:
@@ -1656,21 +1656,7 @@ static bool rule_enum_to_value(CastContext *cc, bool is_explicit, bool is_silent
 		return cast_is_allowed(cc, is_explicit, is_silent);
 	}
 
-	// First handle const enums, they behave much like distinct types
-	if (enum_decl->decl_kind == DECL_CONST_ENUM)
-	{
-		if (!is_explicit || !enum_decl->is_substruct)
-		{
-			return sema_cast_error(cc, false, is_silent);
-		}
-		// Use the inner type.
-		Type *inner = enum_decl->enums.type_info->type;
-		if (is_explicit)
-		{
-			return rule_from_explicit_flattened(cc, is_silent);
-		}
-		return cast_is_allowed(cc, is_explicit, is_silent);
-	}
+	ASSERT(enum_decl->decl_kind != DECL_CONSTDEF);
 
 	Type *inner = enum_decl->enums.type_info->type;
 	if (!type_is_integer_or_bool_kind(type_flatten(cc->to)))

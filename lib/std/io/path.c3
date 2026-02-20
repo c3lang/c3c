@@ -36,7 +36,7 @@ fn Path? cwd(Allocator allocator)
 
 fn bool is_dir(Path path) => os::native_is_dir(path.str_view());
 fn bool is_file(Path path) => os::native_is_file(path.str_view());
-fn usz? file_size(Path path) => os::native_file_size(path.str_view());
+fn ulong? file_size(Path path) => os::native_file_size(path.str_view());
 fn bool exists(Path path) => os::native_file_or_dir_exists(path.str_view());
 fn Path? tcwd() => cwd(tmem) @inline;
 

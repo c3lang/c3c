@@ -168,13 +168,13 @@ bitstruct Tc_lflags : CUInt
 	bool extproc : 16;
 }
 
-const enum T_nldly : char
+constdef T_nldly : char
 {
 	NL0 = 0b0,
 	NL1 = 0b1,
 }
 
-const enum T_crdly : char
+constdef T_crdly : char
 {
 	CR0 = 0b00,
 	CR1 = 0b01,
@@ -182,7 +182,7 @@ const enum T_crdly : char
 	CR3 = 0b11,
 }
 
-const enum T_tabdly : char
+constdef T_tabdly : char
 {
 	TAB0 = 0b00,
 	TAB1 = 0b01,
@@ -191,25 +191,25 @@ const enum T_tabdly : char
 	XTABS = TAB3,
 }
 
-const enum T_bsdly : char
+constdef T_bsdly : char
 {
 	BS0 = 0b0,
 	BS1 = 0b1,
 }
 
-const enum T_ffdly : char
+constdef T_ffdly : char
 {
 	FF0 = 0b0,
 	FF1 = 0b1,
 }
 
-const enum T_vtdly : char
+constdef T_vtdly : char
 {
 	VT0 = 0b0,
 	VT1 = 0b1,
 }
 
-const enum T_csize : char
+constdef T_csize : char
 {
 	CS5 = 0b00,
 	CS6 = 0b01,
@@ -217,7 +217,7 @@ const enum T_csize : char
 	CS8 = 0b11,
 }
 
-const enum Speed : CUInt
+constdef Speed : CUInt
 {
 	B0       = 0o0000000,
 	B50      = 0o0000001,
@@ -253,7 +253,7 @@ const enum Speed : CUInt
 	MAX_BAUD = B4000000,
 }
 
-const enum Cc : inline char
+constdef Cc : inline char
 {
 	VINTR    = 0,
 	VQUIT    = 1,
@@ -274,7 +274,7 @@ const enum Cc : inline char
 	VEOL2    = 16,
 }
 
-const enum Tcactions : CInt
+constdef Tcactions : CInt
 {
 	TCOOFF    = 0,
 	TCOON     = 1,

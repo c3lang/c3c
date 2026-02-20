@@ -89,9 +89,12 @@ macro abs(x) => $$abs(x);
 *>
 macro bool is_approx(x, y, eps)
 {
-	if (x == y) return true;
-	if (is_nan(x) || is_nan(y)) return false;
-	return abs(x - y) <= eps;
+	return fn bool($typeof(x) a, $typeof(y) b, $typeof(eps) eps)
+	{
+		if (a == b) return true;
+		if (is_nan(a) || is_nan(b)) return false;
+		return abs(a - b) <= eps;
+	}(x, y, eps);
 }
 
 <*
@@ -100,9 +103,12 @@ macro bool is_approx(x, y, eps)
 *>
 macro bool is_approx_rel(x, y, eps)
 {
-	if (x == y) return true;
-	if (is_nan(x) || is_nan(y)) return false;
-	return abs(x - y) <= eps * max(abs(x), abs(y));
+	return fn bool($typeof(x) a, $typeof(y) b, $typeof(eps) eps)
+	{
+		if (a == b) return true;
+		if (is_nan(a) || is_nan(b)) return false;
+		return abs(a - b) <= eps * max(abs(a), abs(b));
+	}(x, y, eps);
 }
 
 <*
@@ -115,6 +121,42 @@ macro sign(x)
 		return ($Type)(x > 0);
 	$else
 		return ($Type)(x > 0) - ($Type)(x < 0);
+	$endif
+}
+
+<*
+ @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
+*>
+macro erf(x)
+{
+	$if $typeof(x) == float:
+		return _erff(x);
+	$else
+		return _erf(x);
+	$endif
+}
+
+<*
+ @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
+*>
+macro tgamma(x)
+{
+	$if $typeof(x) == float:
+		return _tgammaf(x);
+	$else
+		return _tgamma(x);
+	$endif
+}
+
+<*
+ @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
+*>
+macro lgamma(x)
+{
+	$if $typeof(x) == float:
+		return _lgammaf(x);
+	$else
+		return _lgamma(x);
 	$endif
 }
 
@@ -474,7 +516,7 @@ macro round(x) => $$round(x);
 macro round_to_decimals(x, int decimal_places)
 {
   var div = $$pow_int(($typeof(x))10, decimal_places);
-  return round(div * x) / div;
+  return $$round(div * x) / div;
 }
 
 <*
@@ -1081,6 +1123,14 @@ extern fn float _asinf(float x) @MathLibc("asinf");
 extern fn float _acoshf(float x) @MathLibc("acoshf");
 extern fn float _asinhf(float x) @MathLibc("asinhf");
 extern fn float _atanhf(float x) @MathLibc("atanhf");
+
+extern fn double _erf(double x) @MathLibc("erf");
+extern fn double _lgamma(double x) @MathLibc("lgamma");
+extern fn double _tgamma(double x) @MathLibc("tgamma");
+
+extern fn float _erff(float x) @MathLibc("erf");
+extern fn float _lgammaf(float x) @MathLibc("lgammaf");
+extern fn float _tgammaf(float x) @MathLibc("tgammaf");
 
 
 fn double _frexp(double x, int* e)

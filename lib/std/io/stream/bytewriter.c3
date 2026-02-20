@@ -86,9 +86,10 @@ fn usz? ByteWriter.read_from(&self, InStream reader) @dynamic
 	usz start_index = self.index;
 	if (&reader.available)
 	{
-		while (usz available = reader.available()!)
+		while (ulong available = reader.available()!)
 		{
-			self.ensure_capacity(self.index + available)!;
+			if (available > usz.max) return OUT_OF_SPACE~;
+			self.ensure_capacity(self.index + (usz)available)!;
 			usz read = reader.read(self.bytes[self.index..])!;
 			self.index += read;
 		}

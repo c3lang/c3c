@@ -6,7 +6,7 @@
 //   https://github.com/BLAKE3-team/BLAKE3/blob/master
 //
 module std::hash::blake3;
-
+import std::thread;
 
 const BLOCK_SIZE = 64;
 const CHUNK_SIZE = 1024;
@@ -55,12 +55,15 @@ bool cpuinfo_initd @local = false;
 <*
  Cache some information at runtime about the current processor and platform, as needed for optimizations.
 *>
-fn void init_blake3() @local @init
+fn void init_blake3() @local
 {
-	$if IS_X86:
-		cpudetect::x86_initialize_cpu_features(); // query all x86 feature flags, one time
-	$endif
-	cpuinfo_initd = true;
+	static OnceFlag run_once;
+	run_once.call(fn() {
+		$if IS_X86:
+			cpudetect::x86_initialize_cpu_features(); // query all x86 feature flags, one time
+		$endif
+		cpuinfo_initd = true;
+	});
 }
 
 <* Check whether a given CPU flag is set (x86/x86_64 only). *>
@@ -88,7 +91,7 @@ macro @simd_degree() @local
 }
 
 <* Flags used during hash computation based on its state. *>
-const enum Blake3Flags : inline char
+constdef Blake3Flags : inline char
 {
 	CHUNK_START			= 1 << 0,
 	CHUNK_END			= 1 << 1,
@@ -606,13 +609,11 @@ fn void compress_pre(uint[] state, uint[] cv, char[BLOCK_SIZE] block, usz block_
 	state[13] = (uint)(counter >> 32);
 	state[14] = (uint)block_len;
 	state[15] = (uint)flags;
-	@round(state, &block_words[0], 0);
-	@round(state, &block_words[0], 1);
-	@round(state, &block_words[0], 2);
-	@round(state, &block_words[0], 3);
-	@round(state, &block_words[0], 4);
-	@round(state, &block_words[0], 5);
-	@round(state, &block_words[0], 6);
+
+	for (int i = 0; i < 7; i++)
+	{
+		@round(state, &block_words[0], (usz)i);
+	}
 }
 
 macro compress_in_place(uint[] cv, char[BLOCK_SIZE] block, usz block_len, ulong counter, char flags) @local

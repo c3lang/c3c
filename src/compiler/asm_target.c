@@ -635,13 +635,45 @@ static void init_asm_x86(PlatformTarget* target)
 	reg_instr(target, "vaddps", "w:v128/v256/v512, v128/v256/v512, v128/v256/v512/mem");
 	reg_instr(target, "vaddsd", "w:v128, v128, v128/mem");
 	reg_instr(target, "vaddss", "w:v128, v128, v128/mem");
-
+	reg_instr(target, "bswapl", "rw:r32");
+	reg_instr(target, "bswapq", "rw:r64");
 	reg_instr_clob(target, "cbtw", rax_mask, NULL);
 	reg_instr_clob(target, "cwtl", rax_mask, NULL);
 	reg_instr_clob(target, "cltq", rax_mask, NULL);
 	reg_instr_clob(target, "clc", rax_mask, NULL);
 	reg_instr_clob(target, "cld", rax_mask, NULL);
 	reg_instr(target, "clflush", "mem");
+	reg_instr(target, "cmovaw", "w:r16, r16/mem");
+	reg_instr(target, "cmoval", "w:r32, r32/mem");
+	reg_instr(target, "cmovaq", "w:r64, r64/mem");
+	reg_instr(target, "cmovaew", "w:r16, r16/mem");
+	reg_instr(target, "cmovael", "w:r32, r32/mem");
+	reg_instr(target, "cmovaeq", "w:r64, r64/mem");
+	reg_instr(target, "cmovbw", "w:r16, r16/mem");
+	reg_instr(target, "cmovbl", "w:r32, r32/mem");
+	reg_instr(target, "cmovbq", "w:r64, r64/mem");
+	reg_instr(target, "cmovbew", "w:r16, r16/mem");
+	reg_instr(target, "cmovbel", "w:r32, r32/mem");
+	reg_instr(target, "cmovbeq", "w:r64, r64/mem");
+	reg_instr_clob(target, "cmpxchgb", rax_cc_mask,   "rw:r8/mem, r8");
+	reg_instr_clob(target, "cmpxchgl", rax_cc_mask,   "rw:r16/mem, r16");
+	reg_instr_clob(target, "cmpxchgw", rax_cc_mask,   "rw:r32/mem, r32");
+	reg_instr_clob(target, "cmpxchgq", rax_cc_mask,   "rw:r64/mem, r64");
+	reg_instr_clob(target, "cmpxchg8b", rax_cc_mask,  "rw:r64/mem");
+	reg_instr_clob(target, "cmpxchg16b", rax_cc_mask, "rw:r64/mem");
+	reg_instr_clob(target, "decb", cc_flag_mask, "r8/mem");
+	reg_instr_clob(target, "decw", cc_flag_mask, "r16/mem");
+	reg_instr_clob(target, "decl", cc_flag_mask, "r32/mem");
+	reg_instr_clob(target, "decq", cc_flag_mask, "r64/mem");
+	reg_instr_clob(target, "divb",  rax_rdx_cc_mask, "r8/mem");
+	reg_instr_clob(target, "divw",  rax_rdx_cc_mask, "r16/mem");
+	reg_instr_clob(target, "divl",  rax_rdx_cc_mask, "r32/mem");
+	reg_instr_clob(target, "divq",  rax_rdx_cc_mask, "r64/mem");
+	reg_instr_clob(target, "idivb", rax_rdx_cc_mask, "r8/mem");
+	reg_instr_clob(target, "idivw", rax_rdx_cc_mask, "r16/mem");
+	reg_instr_clob(target, "idivl", rax_rdx_cc_mask, "r32/mem");
+	reg_instr_clob(target, "idivq", rax_rdx_cc_mask, "r64/mem");
+
 	reg_instr(target, "movb", "w:r8/mem, r8/mem/imm8");
 	reg_instr(target, "movsbw", "w:r16/mem, r8/mem");
 	reg_instr(target, "movzbw", "w:r16/mem, r8/mem");
@@ -724,7 +756,14 @@ static void init_asm_x86(PlatformTarget* target)
 	reg_instr(target, "senduipi", "r64");
 	reg_instr(target, "uiret", NULL);
 
-
+	reg_instr_clob(target, "xaddb", cc_flag_mask, "rw:r8/mem,  rw:r8");
+	reg_instr_clob(target, "xaddw", cc_flag_mask, "rw:r16/mem, rw:r16");
+	reg_instr_clob(target, "xaddl", cc_flag_mask, "rw:r32/mem, rw:r32");
+	reg_instr_clob(target, "xaddq", cc_flag_mask, "rw:r64/mem, rw:r64");
+	reg_instr(target, "xchgb", "rw:r8/mem, rw:r8/mem");
+	reg_instr(target, "xchgw", "rw:r16/mem, rw:r16/mem");
+	reg_instr(target, "xchgl", "rw:r32/mem, rw:r32/mem");
+	reg_instr(target, "xchgq", "rw:r64/mem, rw:r64/mem");
 
 	reg_instr_clob(target, "xgetbv", rax_rdx_cc_mask , NULL);
 
@@ -834,7 +873,6 @@ static void init_asm_x86(PlatformTarget* target)
 
 	// RDSEED
 	reg_instr_clob(target, "rdseed", cc_flag_mask, "w:r16/r32/r64");
-
 
 	target->clobber_name_list = X86ClobberNames;
 	target->extra_clobbers = "~{flags},~{dirflag},~{fspr}";

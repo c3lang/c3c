@@ -15,6 +15,24 @@ typedef enum
 	PARAM_PARSE_ATTR,
 } ParameterParseKind;
 
+typedef struct
+{
+	const char *comment;
+	SourceSpan comment_span;
+	unsigned comment_len;
+	Expr **requires;
+	Expr **ensures;
+	ContractParam *params;
+	bool pure;
+	bool has_contracts;
+	SourceSpan first;
+	SourceSpan first_non_require;
+	SourceSpan first_contract;
+	Expr **opt_returns;
+	Attr *deprecated;
+} ContractDescription;
+
+#define EMPTY_CONTRACT ((ContractDescription){ NULL })
 #define EXPECT_IDENT_FOR_OR(_name, _res) do { if (!expect_ident(c, _name)) return _res; } while(0)
 #define EXPECT_OR_RET(_tok, _res) do { if (!expect(c, _tok)) return _res; } while(0)
 #define CONSUME_OR_RET(_tok, _res) do { if (!expect(c, _tok)) return _res; advance(c); } while(0)
@@ -74,7 +92,7 @@ INLINE void add_decl_to_list(Decl ***list, Decl *decl)
 	vec_add(*list, decl);
 }
 
-bool parse_module(ParseContext *c, AstId contracts);
+bool parse_module(ParseContext *c, ContractDescription *contracts);
 
 bool try_consume(ParseContext *c, TokenType type);
 bool consume(ParseContext *c, TokenType type, const char *message, ...);
