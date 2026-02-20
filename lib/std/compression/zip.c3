@@ -52,7 +52,7 @@ struct ZipArchive
 	String comment;
 }
 
-const enum ZipMethod : UShortLE
+constdef ZipMethod : UShortLE
 {
 	STORE = {0},
 	DEFLATE = {8},
