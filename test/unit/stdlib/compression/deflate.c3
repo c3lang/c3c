@@ -145,6 +145,33 @@ fn void test_deflate_stream()
 	};
 }
 
+fn void test_deflate_embedded_stream()
+{
+	String base = "This is a streaming test for DEFLATE. ";
+
+	char[] compressed = deflate::compress(mem, base[..])!!;
+	defer free(compressed.ptr);
+
+	usz append_len = compressed.len + 1;
+	char[] append = mem::malloc(append_len)[:append_len];
+	defer free(append.ptr);
+
+	append[:compressed.len] = compressed[..];
+	append[compressed.len..] = 'c';
+
+	ByteReader reader;
+	reader.init(append);
+
+	ByteWriter writer;
+	writer.tinit();
+
+	deflate::decompress_stream(&reader, &writer)!!;
+
+	assert(writer.str_view() == base);
+
+	assert(reader.read_byte()!! == 'c');
+}
+
 fn void test_deflate_incremental()
 {
 	@pool()

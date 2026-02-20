@@ -1,6 +1,8 @@
 module std::io;
 import std::math;
 
+alias SeekFn = fn usz?(void*, isz offset, Seek seek);
+
 interface InStream
 {
 	fn void? close() @optional;

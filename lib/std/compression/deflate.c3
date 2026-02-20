@@ -2,9 +2,9 @@
  DEFLATE compression implementation (RFC 1951).
 
  API:
- - fn char[]? decompress(char[] input, Allocator allocator = mem)
- - fn void?   decompress_stream(InStream input, OutStream output, Allocator allocator = mem)
- - fn char[]? compress(char[] input, Allocator allocator = mem)
+ - fn char[]? decompress(Allocator allocator, char[] input)
+ - fn void?   decompress_stream(InStream input, OutStream output)
+ - fn char[]? compress(Allocator allocator, char[] input, )
  - struct Inflater: InStream for pull-based decompression (use `init` then `read`).
 *>
 module std::compression::deflate;
@@ -48,7 +48,7 @@ struct Inflater (InStream)
 fn void Inflater.init(&self, InStream input, char[] bit_reader_buf = {})
 {
 	*self = {};
-	self.reader = { .stream = input, .buffer = bit_reader_buf };
+	self.reader.init(input, bit_reader_buf);
 	self.state = START_BLOCK;
 	static OnceFlag run_once;
     run_once.call(fn void() {
@@ -216,8 +216,9 @@ fn char[]? compress(Allocator allocator, char[] input) => @pool()
 							if (mem::load((ulong*)&input[curr + match_len], 1) == mem::load((ulong*)&input[pos + match_len], 1))
 							{
 								match_len += 8;
+								continue;
 							}
-							else { break; }
+							break;
 						}
 
 						while (match_len < MAX_MATCH &&
@@ -258,18 +259,18 @@ fn char[]? compress(Allocator allocator, char[] input) => @pool()
 			uint dist_code;
 			switch (best_dist)
 			{
-				case 1..4:     dist_code = best_dist - 1;
-				case 5..8:     dist_code = 4 + (best_dist - 5) / 2;
-				case 9..16:    dist_code = 6 + (best_dist - 9) / 4;
-				case 17..32:   dist_code = 8 + (best_dist - 17) / 8;
-				case 33..64:   dist_code = 10 + (best_dist - 33) / 16;
-				case 65..128:  dist_code = 12 + (best_dist - 65) / 32;
-				case 129..256: dist_code = 14 + (best_dist - 129) / 64;
-				case 257..512: dist_code = 16 + (best_dist - 257) / 128;
-				case 513..1024: dist_code = 18 + (best_dist - 513) / 256;
-				case 1025..2048: dist_code = 20 + (best_dist - 1025) / 512;
-				case 2049..4096: dist_code = 22 + (best_dist - 2049) / 1024;
-				case 4097..8192: dist_code = 24 + (best_dist - 4097) / 2048;
+				case 1..4:        dist_code = best_dist - 1;
+				case 5..8:        dist_code = 4 + (best_dist - 5) / 2;
+				case 9..16:       dist_code = 6 + (best_dist - 9) / 4;
+				case 17..32:      dist_code = 8 + (best_dist - 17) / 8;
+				case 33..64:      dist_code = 10 + (best_dist - 33) / 16;
+				case 65..128:     dist_code = 12 + (best_dist - 65) / 32;
+				case 129..256:    dist_code = 14 + (best_dist - 129) / 64;
+				case 257..512:    dist_code = 16 + (best_dist - 257) / 128;
+				case 513..1024:   dist_code = 18 + (best_dist - 513) / 256;
+				case 1025..2048:  dist_code = 20 + (best_dist - 1025) / 512;
+				case 2049..4096:  dist_code = 22 + (best_dist - 2049) / 1024;
+				case 4097..8192:  dist_code = 24 + (best_dist - 4097) / 2048;
 				case 8193..16384: dist_code = 26 + (best_dist - 8193) / 4096;
 				default:          dist_code = 28 + (best_dist - 16385) / 8192;
 			}
@@ -406,9 +407,15 @@ fn char[]? compress(Allocator allocator, char[] input) => @pool()
 	foreach (t : tree_tokens)
 	{
 		writer.write_huffman(tree_codes[t.val].code, tree_codes[t.val].len);
-		if (t.val == 16) { writer.write_bits(t.dist, 2); }
-		else if (t.val == 17) { writer.write_bits(t.dist, 3); }
-		else if (t.val == 18) { writer.write_bits(t.dist, 7); }
+		switch (t.val)
+		{
+			case 16:
+				writer.write_bits(t.dist, 2);
+			case 17:
+				writer.write_bits(t.dist, 3);
+			case 18:
+				writer.write_bits(t.dist, 7);
+		}
 	}
 
 	Code[286] lit_codes;
@@ -485,6 +492,7 @@ struct StreamBitReader @private
 	usz buf_len;
 	ulong bit_buf;
 	uint nbits;
+	SeekFn seek_fn;
 }
 
 enum InflaterState @private
@@ -501,22 +509,27 @@ enum InflaterState @private
 	DONE
 }
 
-fn bool StreamBitReader.refill(&self) @private @inline
+fn void StreamBitReader.init(&self, InStream reader, char[] buffer)
+{
+	*self = { .stream = reader, .buffer = buffer, .seek_fn = &reader.seek };
+}
+fn void StreamBitReader.close(&self)
+{
+	if (self.buf_len && self.buf_pos != self.buf_len && self.seek_fn)
+	{
+		(void)self.seek_fn(self.stream, (isz)self.buf_pos - (isz)self.buf_len, CURSOR);
+	}
+}
+
+fn void? StreamBitReader.refill(&self) @private @inline
 {
 	if (self.buf_pos >= self.buf_len)
 	{
-		if (try n = self.stream.read(self.buffer))
-		{
-			if (n == 0) return false;
-			self.buf_len = n;
-			self.buf_pos = 0;
-		}
-		else
-		{
-			return false;
-		}
+		usz n = self.stream.read(self.buffer)!;
+		if (!n) return io::EOF~;
+		self.buf_len = n;
+		self.buf_pos = 0;
 	}
-	return true;
 }
 
 fn uint? StreamBitReader.read_bits(&self, uint count) @private @inline
@@ -528,7 +541,7 @@ fn uint? StreamBitReader.read_bits(&self, uint count) @private @inline
 		{
 			if (self.buf_pos >= self.buf_len)
 			{
-				if (!self.refill()) break;
+				if (@catch(self.refill())) break;
 			}
 			self.bit_buf |= (ulong)self.buffer[self.buf_pos++] << self.nbits;
 			self.nbits += 8;
@@ -936,30 +949,30 @@ fn void? Inflater.step(&self) @private
 	{
 		case START_BLOCK:
 			self.final = self.reader.read_bits(1)! != 0;
-			uint type = self.reader.read_bits(2)!;
-			if (type == 0) {
-				self.state = READ_STORED_LEN;
-			} else if (type == 1) {
-				self.lit_ptr = &lit_fixed_global;
-				self.dist_ptr = &dist_fixed_global;
-				self.state = DECODE_SYMBOL;
-			} else if (type == 2) {
-				self.state = READ_DYN_COUNTS;
-			} else {
-				return CORRUPTED_DATA~;
+			switch (self.reader.read_bits(2)!)
+			{
+				case 0:
+					self.state = READ_STORED_LEN;
+				case 1:
+					self.lit_ptr = &lit_fixed_global;
+					self.dist_ptr = &dist_fixed_global;
+					self.state = DECODE_SYMBOL;
+				case 2:
+					self.state = READ_DYN_COUNTS;
+				default:
+					return CORRUPTED_DATA~;
 			}
-
 		case READ_STORED_LEN:
 			self.reader.align();
 			self.stored_len = self.reader.read_bits(16)!;
 			uint nlen = self.reader.read_bits(16)!;
 			if (self.stored_len != (~nlen & 0xFFFF)) return CORRUPTED_DATA~;
-			if (self.stored_len == 0) {
+			if (self.stored_len == 0)
+			{
 				self.state = self.final ? DONE : START_BLOCK;
-			} else {
-				self.state = COPY_STORED;
+				break;
 			}
-
+			self.state = COPY_STORED;
 		case COPY_STORED:
 			char c = (char)self.reader.read_bits(8)!;
 			self.write_byte(c);
@@ -968,7 +981,6 @@ fn void? Inflater.step(&self) @private
 			{
 				self.state = self.final ? DONE : START_BLOCK;
 			}
-
 		case READ_DYN_COUNTS:
 			self.hlit = self.reader.read_bits(5)! + 257;
 			self.hdist = self.reader.read_bits(5)! + 1;
@@ -980,7 +992,8 @@ fn void? Inflater.step(&self) @private
 		case READ_DYN_CODELENS:
 			self.code_lengths[ORDER[self.dyn_i]] = (char)self.reader.read_bits(3)!;
 			self.dyn_i++;
-			if (self.dyn_i >= self.hclen) {
+			if (self.dyn_i >= self.hclen)
+			{
 				self.dyn_code_huff.build(&self.code_lengths);
 				self.dyn_i = 0;
 				self.dyn_num_lengths = self.hlit + self.hdist;
@@ -991,29 +1004,33 @@ fn void? Inflater.step(&self) @private
 
 		case READ_DYN_TREES:
 			ushort sym = self.dyn_code_huff.decode_stream(&self.reader)!;
-			if (sym < 16) {
-				if (self.dyn_i >= 320) return CORRUPTED_DATA~;
-				self.lit_dist_lengths[self.dyn_i++] = (char)sym;
-			} else if (sym == 16) {
-				if (self.dyn_i == 0) return CORRUPTED_DATA~;
-				uint repeat_count = self.reader.read_bits(2)! + 3;
-				char prev = self.lit_dist_lengths[self.dyn_i - 1];
-				if (self.dyn_i + repeat_count > self.dyn_num_lengths || self.dyn_i + repeat_count > 320) return CORRUPTED_DATA~;
-				for (uint k = 0; k < repeat_count; k++) self.lit_dist_lengths[self.dyn_i++] = prev;
-			} else if (sym == 17) {
-				uint zero_len = self.reader.read_bits(3)! + 3;
-				if (self.dyn_i + zero_len > self.dyn_num_lengths || self.dyn_i + zero_len > 320) return CORRUPTED_DATA~;
-				for (uint k = 0; k < zero_len; k++) self.lit_dist_lengths[self.dyn_i++] = 0;
-			} else if (sym == 18) {
-				uint zero_len = self.reader.read_bits(7)! + 11;
-				if (self.dyn_i + zero_len > self.dyn_num_lengths || self.dyn_i + zero_len > 320) return CORRUPTED_DATA~;
-				for (uint k = 0; k < zero_len; k++) self.lit_dist_lengths[self.dyn_i++] = 0;
+			switch (sym)
+			{
+				case 0..15:
+					if (self.dyn_i >= 320) return CORRUPTED_DATA~;
+					self.lit_dist_lengths[self.dyn_i++] = (char)sym;
+				case 16:
+					if (self.dyn_i == 0) return CORRUPTED_DATA~;
+					uint repeat_count = self.reader.read_bits(2)! + 3;
+					char prev = self.lit_dist_lengths[self.dyn_i - 1];
+					if (self.dyn_i + repeat_count > self.dyn_num_lengths || self.dyn_i + repeat_count > 320) return CORRUPTED_DATA~;
+					for (uint k = 0; k < repeat_count; k++) self.lit_dist_lengths[self.dyn_i++] = prev;
+				case 17:
+					uint zero_len = self.reader.read_bits(3)! + 3;
+					if (self.dyn_i + zero_len > self.dyn_num_lengths || self.dyn_i + zero_len > 320) return CORRUPTED_DATA~;
+					for (uint k = 0; k < zero_len; k++) self.lit_dist_lengths[self.dyn_i++] = 0;
+				case 18:
+					uint zero_len = self.reader.read_bits(7)! + 11;
+					if (self.dyn_i + zero_len > self.dyn_num_lengths || self.dyn_i + zero_len > 320) return CORRUPTED_DATA~;
+					for (uint k = 0; k < zero_len; k++) self.lit_dist_lengths[self.dyn_i++] = 0;
 			}
-			if (self.dyn_i >= self.dyn_num_lengths) {
+			if (self.dyn_i >= self.dyn_num_lengths)
+			{
 				uint hlit = self.hlit;
 				uint hdist = self.hdist;
 				uint total = hlit + hdist;
-				if (hlit > 286 || hdist > 32 || total > 320 || hlit > total) {
+				if (hlit > 286 || hdist > 32 || total > 320 || hlit > total)
+				{
 					return CORRUPTED_DATA~;
 				}
 				self.dyn_lit.build(self.lit_dist_lengths[0:hlit]);
@@ -1025,16 +1042,18 @@ fn void? Inflater.step(&self) @private
 
 		case DECODE_SYMBOL:
 			ushort symbol = self.lit_ptr.decode_stream(&self.reader)!;
-			if (symbol < 256) {
-				self.write_byte((char)symbol);
-			} else if (symbol == 256) {
-				self.state = self.final ? DONE : START_BLOCK;
-			} else if (symbol <= 285) {
-				uint len_idx = symbol - 257;
-				self.match_len = LENGTH_BASE[len_idx] + self.reader.read_bits(LENGTH_EXTRA[len_idx])!;
-				self.state = READ_DIST_SYM;
-			} else {
-				return CORRUPTED_DATA~;
+			switch
+			{
+				case symbol < 256:
+					self.write_byte((char)symbol);
+				case symbol == 256:
+					self.state = self.final ? DONE : START_BLOCK;
+				case symbol <= 285:
+					uint len_idx = symbol - 257;
+					self.match_len = LENGTH_BASE[len_idx] + self.reader.read_bits(LENGTH_EXTRA[len_idx])!;
+					self.state = READ_DIST_SYM;
+				default:
+					return CORRUPTED_DATA~;
 			}
 
 		case READ_DIST_SYM:
@@ -1047,12 +1066,14 @@ fn void? Inflater.step(&self) @private
 			char c = self.window[(usz)((self.pos - self.match_dist) & 0xFFFF)];
 			self.write_byte(c);
 			self.match_len--;
-			if (self.match_len == 0) {
+			if (self.match_len == 0)
+			{
 				self.state = DECODE_SYMBOL;
 			}
 
 		case DONE:
 			self.done = true;
+			self.reader.close();
 	}
 	return;
 }
