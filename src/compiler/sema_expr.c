@@ -1203,7 +1203,6 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 		return expr_poison(expr), true;
 	}
 	if (!sema_display_deprecated_warning_on_use(context, decl, expr->span)) return expr_poison(expr), true;
-	enum_constant->var.is_written = true;
 	if (enum_constant->resolve_status == RESOLVE_DONE)
 	{
 		if (!sema_display_deprecated_warning_on_use(context, enum_constant, expr->span)) return expr_poison(expr), true;

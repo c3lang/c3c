@@ -1160,7 +1160,10 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_ENUM_CONSTANT:
 			if (copy->enum_constant.is_raw)
 			{
-				MACRO_COPY_EXPR(copy->enum_constant.value);
+				if (copy->resolve_status != RESOLVE_DONE)
+				{
+					MACRO_COPY_EXPR(copy->enum_constant.value);
+				}
 			}
 			else
 			{
