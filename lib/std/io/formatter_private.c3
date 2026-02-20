@@ -208,6 +208,70 @@ fn usz? Formatter.ftoa(&self, double y) => self.floatformat(FLOAT, y);
 fn usz? Formatter.gtoa(&self, double y) => self.floatformat(ADAPTIVE, y);
 fn usz? Formatter.atoa(&self, double y) => self.floatformat(HEX, y);
 
+fn usz? Formatter.floatformat_hex(&self, double y, bool is_neg, isz pl, isz p) @private @inline
+{
+	double round = 8.0;
+	// 0x / 0X
+	pl += 2;
+	if (p > 0 && p < math::DOUBLE_MANT_DIG / 4 - 1)
+	{
+		int re = math::DOUBLE_MANT_DIG / 4 - 1 - (int)p;
+		round *= 1 << (math::DOUBLE_MANT_DIG % 4);
+		while (re--) round *= 16;
+		if (is_neg)
+		{
+			y = -y;
+			y -= round;
+			y += round;
+			y = -y;
+		}
+		else
+		{
+			y += round;
+			y -= round;
+		}
+	}
+	int e2;
+	y = math::frexp(y, &e2) * 2;
+	if (y) e2--;
+	char[12] ebuf0;
+	char* ebuf = &ebuf0[0] + 12;
+	char[9 + math::DOUBLE_MANT_DIG / 4] buf_array;
+	char* buf = &buf_array[0];
+
+	// Reverse print
+	char* estr = fmt_u(e2 < 0 ? (int128)-e2 : (int128)e2, ebuf);
+	if (estr == ebuf) *--estr = '0';
+	*--estr = (e2 < 0 ? '-' : '+');
+	*--estr = self.flags.uppercase ? 'P' : 'p';
+	char* s = buf;
+	char* xdigits = self.flags.uppercase ? &XDIGITS_H : &XDIGITS_L;
+	do
+	{
+		int x = (int)y;
+		*s++ = xdigits[x];
+		y = 16 * (y - x);
+		if (s - buf == 1 && (y || p > 0 || self.flags.hash)) *s++ = '.';
+		if (p >= 0 && (s - buf) >= (2 + p)) break;
+	} while (y);
+	isz outlen = s - buf;
+	isz explen = ebuf - estr;
+	if (p > int.max - 2 - explen - pl) return INTERNAL_BUFFER_EXCEEDED~;
+	usz len;
+	usz l = (usz)(p && outlen - 2 < p
+			? p + 2 + explen
+			: outlen + explen);
+	if (!self.flags.left && !self.flags.zeropad) len += self.pad(' ', self.width, pl + l)!;
+	if (is_neg || self.flags.plus) len += self.out(is_neg ? '-' : '+')!;
+	len += self.out_chars(self.flags.uppercase ? "0X" : "0x")!;
+	if (self.flags.zeropad) len += self.pad('0', self.width, pl + l)!;
+	len += self.out_chars(buf[:outlen])!;
+	len += self.pad('0', (isz)l - outlen - explen, 0)!;
+	len += self.out_chars(estr[:explen])!;
+	if (self.flags.left) len += self.pad(' ', self.width, pl + (isz)l)!;
+	return len;
+}
+
 fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @private
 {
 	// This code is heavily based on musl's printf code
@@ -234,70 +298,15 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 		if (self.flags.left) len += self.pad(' ', self.width, 3 + pl)!;
 		return len;
 	}
+
+	isz p = self.flags.precision ? self.prec : -1;
+	if (formatting == HEX) return self.floatformat_hex(y, is_neg, pl, p);
+
 	// Rescale
 	int e2;
-
 	y = math::frexp(y, &e2) * 2;
 	if (y) e2--;
-	char[12] ebuf0;
-	char* ebuf = 12 + (char*)&ebuf0;
-	char[9 + math::DOUBLE_MANT_DIG / 4] buf_array;
-	char* buf = &buf_array;
-	isz p = self.flags.precision ? self.prec : -1;
-	if (formatting == HEX)
-	{
-		double round = 8.0;
-		// 0x / 0X
-		pl += 2;
-		if (p > 0 && p < math::DOUBLE_MANT_DIG / 4 - 1)
-		{
-			int re = math::DOUBLE_MANT_DIG / 4 - 1 - (int)p;
-			round *= 1 << (math::DOUBLE_MANT_DIG % 4);
-			while (re--) round *= 16;
-			if (is_neg)
-			{
-				y = -y;
-				y -= round;
-				y += round;
-				y = -y;
-			}
-			else
-			{
-				y += round;
-				y -= round;
-			}
-		}
-		// Reverse print
-		char* estr = fmt_u(e2 < 0 ? (int128)-e2 : (int128)e2, ebuf);
-		if (estr == ebuf) *--estr = '0';
-		*--estr = (e2 < 0 ? '-' : '+');
-		*--estr = self.flags.uppercase ? 'P' : 'p';
-		char* s = buf;
-		char* xdigits = self.flags.uppercase ? &XDIGITS_H : &XDIGITS_L;
-		do
-		{
-			int x = (int)y;
-			*s++ = xdigits[x];
-			y = 16 * (y - x);
-			if (s - buf == 1 && (y || p > 0 || self.flags.hash)) *s++ = '.';
-		} while (y);
-		isz outlen = s - buf;
-		isz explen = ebuf - estr;
-		if (p > int.max - 2 - explen - pl) return INTERNAL_BUFFER_EXCEEDED~;
-		usz len;
-		usz l = p && outlen - 2 < p
-				? p + 2 + explen
-				: outlen + explen;
-		if (!self.flags.left && !self.flags.zeropad) len += self.pad(' ', self.width, pl + l)!;
-		if (is_neg || self.flags.plus) len += self.out(is_neg ? '-' : '+')!;
-		len += self.out_chars(self.flags.uppercase ? "0X" : "0x")!;
-		if (self.flags.zeropad) len += self.pad('0', self.width, pl + l)!;
-		len += self.out_chars(buf[:outlen])!;
-		len += self.pad('0', l - outlen - explen, 0)!;
-		len += self.out_chars(estr[:explen])!;
-		if (self.flags.left) len += self.pad(' ', self.width, pl + l)!;
-		return len;
-	}
+
 	if (p < 0) p = 6;
 	if (y)
 	{
@@ -344,7 +353,6 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 		int need = (int)(1 + (p + math::DOUBLE_MANT_DIG / 3u + 8) / 9);
 		for (uint* d = a; d < z; d++)
 		{
-			// CHECK THIS
 			uint rm = *d & ((1 << sh) - 1);
 			*d = (*d >> sh) + carry;
 			carry = (1000000000 >> sh) * rm;
@@ -377,13 +385,13 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 		j %= 9;
 		int i;
 		for (i = 10, j++; j < 9; i *= 10, j++);
-		x = *d % i;
+		x = *d % (uint)i;
 		// Are there any significant digits past j?
 		if (x || (d + 1) != z)
 		{
 			double round = 2 / math::DOUBLE_EPSILON;
 			double small;
-			if (((*d / i) & 1) || (i == 1000000000 && d > a && (d[-1] & 1)))
+			if (((*d / (uint)i) & 1) || (i == 1000000000 && d > a && (d[-1] & 1)))
 			{
 				round += 2;
 			}
@@ -437,7 +445,7 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 			// Count trailing zeros in last place
 			if (z > a && z[-1])
 			{
-				for (int i = 10, j = 0; z[-1] % i == 0; i *= 10, j++);
+				for (int i = 10, j = 0; z[-1] % (uint)i == 0; i *= 10, j++);
 			}
 			else
 			{
@@ -456,6 +464,8 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 	}
 	if (p > int.max - 1 - (isz)(p || self.flags.hash)) return INTERNAL_BUFFER_EXCEEDED~;
 	int l = (int)(1 + p + (isz)(p || self.flags.hash));
+	char[12] ebuf0;
+	char* ebuf = &ebuf0[0] + 12;
 	char* estr @noinit;
 	if (formatting == FLOAT)
 	{
@@ -476,6 +486,10 @@ fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 	if (!self.flags.left && !self.flags.zeropad) len += self.pad(' ', self.width, pl + l)!;
 	if (is_neg || self.flags.plus) len += self.out(is_neg ? '-' : '+')!;
 	if (self.flags.zeropad) len += self.pad('0', self.width, pl + l)!;
+
+	char[9] buf_array;
+	char* buf = &buf_array[0];
+
 	if (formatting == FLOAT)
 	{
 		if (a > r) a = r;
@@ -541,7 +555,6 @@ const char[201] DIGIT_PAIRS @private =
   "08182838485868788898"
   "09192939495969798999";
 
-
 fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 {
 	char[PRINTF_NTOA_BUFFER_SIZE] buf @noinit;
@@ -574,10 +587,10 @@ fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 				while (value >= 10)
 				{
 					if (len + 1 >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
-					char digit = (char)(value % 100);
+					char digit = (char)(value % 100U);
 					buf[len:2] = DIGIT_PAIRS[2 * digit:2];
 					len += 2;
-					value /= 100;
+					value /= 100U;
 				}
 				if (value > 0)
 				{
@@ -593,16 +606,16 @@ fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 					value >>= 4;
 				}
 				while (value);
-			case 8:
-				do
-				{
-					if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
-					buf[len++] = '0' + (char)value & 0x7;
-					value >>= 3;
-				}
-				while (value);
-			default:
-				unreachable();
+		case 8:
+			do
+			{
+				if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED~;
+				buf[len++] = '0' + (char)value & 0x7;
+				value >>= 3;
+			}
+			while (value);
+		default:
+			unreachable();
 		}
 	}
 	return self.ntoa_format((String)buf[:PRINTF_NTOA_BUFFER_SIZE], len, negative, base);
@@ -684,9 +697,9 @@ fn usz? Formatter.out_char(&self, any arg) @private
 	usz len = 1;
 	// pre padding
 	if (!self.flags.left)
-    {
-    	len += self.pad(' ', self.width, len)!;
-    }
+	{
+		len += self.pad(' ', self.width, len)!;
+	}
 
 	// char output
 	Char32 c = types::any_to_int(arg, uint) ?? 0xFFFD;
@@ -708,8 +721,8 @@ fn usz? Formatter.out_char(&self, any arg) @private
 			self.out((char)(0x80 | (c & 0x3F)))!;
 	}
 	if (self.flags.left)
-    {
-        len += self.pad(' ', self.width, len)!;
+	{
+		len += self.pad(' ', self.width, len)!;
 	}
 	return len;
 }

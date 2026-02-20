@@ -3,9 +3,9 @@ import std::io;
 
 enum IpProtocol : char (AIFamily ai_family)
 {
-	UNSPECIFIED = os::AF_UNSPEC,
-	IPV4        = os::AF_INET,
-	IPV6        = os::AF_INET6,
+	UNSPECIFIED { os::AF_UNSPEC },
+	IPV4        { os::AF_INET   },
+	IPV6        { os::AF_INET6  },
 }
 
 struct InetAddress (Printable)

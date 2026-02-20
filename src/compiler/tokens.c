@@ -203,6 +203,8 @@ const char *token_type_to_string(TokenType type)
 			return "catch";
 		case TOKEN_CONST:
 			return "const";
+		case TOKEN_CONSTDEF:
+			return "constdef";
 		case TOKEN_CONTINUE:
 			return "continue";
 		case TOKEN_DEFAULT:

@@ -45,10 +45,9 @@ fn FileMmap? mmap_file(File file, usz offset = 0, usz len = 0, VirtualMemoryAcce
 {
 	if (len == 0)
 	{
-		usz cur = file.seek(0, CURSOR)!;
-		defer file.seek(cur, SET)!!;
-		usz file_size = file.seek(0, END)!;
-		len = file_size - offset;
+		ulong new_len = file.size()! - offset;
+		if (new_len > (ulong)isz.max) return mem::OUT_OF_MEMORY~;
+		len = (usz)new_len;
 	}
 
 	// get the page size

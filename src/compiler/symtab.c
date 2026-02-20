@@ -347,6 +347,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_CNAME] = KW_DEF("@cname");
 	attribute_list[ATTRIBUTE_COMPACT] = KW_DEF("@compact");
 	attribute_list[ATTRIBUTE_CONST] = KW_DEF("@const");
+	attribute_list[ATTRIBUTE_CONSTINIT] = KW_DEF("@constinit");
 	attribute_list[ATTRIBUTE_DEPRECATED] = KW_DEF("@deprecated");
 	attribute_list[ATTRIBUTE_DYNAMIC] = KW_DEF("@dynamic");
 	attribute_list[ATTRIBUTE_EXPORT] = KW_DEF("@export");

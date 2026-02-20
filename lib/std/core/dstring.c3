@@ -658,9 +658,10 @@ fn usz? DString.read_from_stream(&self, InStream reader)
 	if (&reader.available)
 	{
 		usz total_read = 0;
-		while (usz available = reader.available()!)
+		while (ulong available = reader.available()!)
 		{
-			self.reserve(available);
+			if (available > isz.max) available = (ulong)isz.max;
+			self.reserve((usz)available);
 			StringData* data = self.data();
 			usz len = reader.read(data.chars[data.len..(data.capacity - 1)])!;
 			total_read += len;

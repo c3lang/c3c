@@ -13,8 +13,7 @@ interface Printable
 	fn usz? to_format(Formatter* formatter) @optional;
 }
 
-faultdef BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT,
-         NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT;
+faultdef BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT;
 
 alias OutputFn = fn void?(void* buffer, char c);
 alias FloatType = double;
@@ -34,14 +33,14 @@ macro bool is_struct_with_default_print($Type)
 *>
 macro usz? struct_to_format(value, Formatter* f, bool $force_dump)
 {
-    var $Type = $typeof(value);
-    usz total = f.print("{ ")!;
-    $foreach $i, $member : $Type.membersof:
-        $if $i > 0:
-            total += f.print(", ")!;
-        $endif
-        $if $member.nameof != "":
-            total += f.printf("%s: ", $member.nameof)!;
+	var $Type = $typeof(value);
+	usz total = f.print("{ ")!;
+	$foreach $i, $member : $Type.membersof:
+		$if $i > 0:
+			total += f.print(", ")!;
+		$endif
+		$if $member.nameof != "":
+			total += f.printf("%s: ", $member.nameof)!;
 		$endif
 		$if ($force_dump &&& ($member.typeid.kindof == STRUCT || $member.typeid.kindof == BITSTRUCT)) |||
 			is_struct_with_default_print($member.typeid):
@@ -140,6 +139,47 @@ fn usz? Formatter.out_unknown(&self, String category, any arg) @private
 {
 	return self.out_substr("<") + self.out_substr(category) + self.out_substr(" type:") + self.ntoa((iptr)arg.type, false, 16) + self.out_substr(", addr:") + self.ntoa((iptr)arg.ptr, false, 16) + self.out_substr(">");
 }
+fn usz? Formatter.out_collection(&self, any arg, String open, String close) @private
+{
+	typeid inner = arg.type.inner;
+	if (inner == void.typeid) inner = char.typeid;
+	usz size = inner.sizeof;
+
+	usz alen;
+	void* data_ptr;
+	if (arg.type.kindof == SLICE)
+	{
+		String* temp = arg.ptr;
+		data_ptr = temp.ptr;
+		alen = temp.len;
+	}
+	else
+	{
+		data_ptr = arg.ptr;
+		alen = arg.type.len;
+	}
+
+	PrintFlags flags = self.flags;
+	uint width = self.width;
+	defer
+	{
+		self.flags = flags;
+		self.width = width;
+	}
+	self.flags = {};
+	self.width = 0;
+
+	usz len = self.out_substr(open)!;
+	for (usz i = 0; i < alen; i++)
+	{
+		if (i != 0) len += self.out_substr(", ")!;
+		len += self.out_str(any_make(data_ptr, inner))!;
+		data_ptr += size;
+	}
+	len += self.out_substr(close)!;
+	return len;
+}
+
 fn usz? Formatter.out_str(&self, any arg) @private
 {
 	switch (arg.type.kindof)
@@ -159,17 +199,9 @@ fn usz? Formatter.out_str(&self, any arg) @private
 			unreachable();
 		case SIGNED_INT:
 		case UNSIGNED_INT:
-			PrintFlags flags = self.flags;
-			uint width = self.width;
-			defer
-			{
-				self.flags = flags;
-				self.width = width;
-			}
-			self.flags = {};
-			self.width = 0;
-			return self.ntoa_any(arg, 10) ?? self.out_substr("<INVALID>");
 		case FLOAT:
+		case FUNC:
+		case POINTER:
 			PrintFlags flags = self.flags;
 			uint width = self.width;
 			defer
@@ -179,7 +211,27 @@ fn usz? Formatter.out_str(&self, any arg) @private
 			}
 			self.flags = {};
 			self.width = 0;
-			return self.ftoa(float_from_any(arg)) ?? self.out_substr("ERR");
+			switch (arg.type.kindof)
+			{
+				case SIGNED_INT:
+				case UNSIGNED_INT:
+					return self.ntoa_any(arg, 10) ?? self.out_substr("<INVALID>");
+				case FLOAT:
+					return self.ftoa(float_from_any(arg)) ?? self.out_substr("ERR");
+				case FUNC:
+				case POINTER:
+					if (arg.type.kindof == POINTER && arg.type.inner != void.typeid)
+					{
+						void** pointer = arg.ptr;
+						any deref = any_make(*pointer, arg.type.inner);
+						usz? n = self.print_with_function((Printable)deref);
+						if (try n) return n;
+						if (@catch(n) != NOT_FOUND) n!;
+					}
+					return self.out_substr("0x")! + self.ntoa_any(arg, 16);
+				default:
+					unreachable();
+			}
 		case BOOL:
 			return self.out_substr(*(bool*)arg.ptr ? "true" : "false");
 		default:
@@ -201,16 +253,6 @@ fn usz? Formatter.out_str(&self, any arg) @private
 			return self.out_unknown("union", arg);
 		case BITSTRUCT:
 			return self.out_unknown("bitstruct", arg);
-		case FUNC:
-			PrintFlags flags = self.flags;
-			uint width = self.width;
-			defer
-			{
-				self.flags = flags;
-				self.width = width;
-			}
-			self.width = 0;
-			return self.out_substr("0x")! + self.ntoa_any(arg, 16);
 		case CONST_ENUM:
 		case DISTINCT:
 			if (arg.type == String.typeid)
@@ -226,102 +268,12 @@ fn usz? Formatter.out_str(&self, any arg) @private
 				return self.out_substr(*(DString*)arg ? ((DString*)arg).str_view() : "(null)");
 			}
 			return self.out_str(arg.as_inner());
-		case POINTER:
-			typeid inner = arg.type.inner;
-			void** pointer = arg.ptr;
-			if (arg.type.inner != void.typeid)
-			{
-				any deref = any_make(*pointer, inner);
-				n = self.print_with_function((Printable)deref);
-				if (try n) return n;
-				if (@catch(n) != NOT_FOUND) n!;
-			}
-			PrintFlags flags = self.flags;
-			uint width = self.width;
-			defer
-			{
-				self.flags = flags;
-				self.width = width;
-			}
-			self.width = 0;
-			return self.out_substr("0x")! + self.ntoa_any(arg, 16);
 		case ARRAY:
-			// this is SomeType[*] so grab the "SomeType"
-			PrintFlags flags = self.flags;
-			uint width = self.width;
-			defer
-			{
-				self.flags = flags;
-				self.width = width;
-			}
-			self.flags = {};
-			self.width = 0;
-			typeid inner = arg.type.inner;
-			usz size = inner.sizeof;
-			usz alen = arg.type.len;
-			// Pretend this is a String
-			void* ptr = (void*)arg.ptr;
-			usz len = self.out('[')!;
-			for (usz i = 0; i < alen; i++)
-			{
-				if (i != 0) len += self.out_substr(", ")!;
-				len += self.out_str(any_make(ptr, inner))!;
-				ptr += size;
-			}
-			len += self.out(']')!;
-			return len;
+			return self.out_collection(arg, "[", "]");
 		case VECTOR:
-			PrintFlags flags = self.flags;
-			uint width = self.width;
-			defer
-			{
-				self.flags = flags;
-				self.width = width;
-			}
-			self.flags = {};
-			self.width = 0;
-			// this is SomeType[*] so grab the "SomeType"
-			typeid inner = arg.type.inner;
-			usz size = inner.sizeof;
-			usz vlen = arg.type.len;
-			// Pretend this is a String
-			void* ptr = (void*)arg.ptr;
-			usz len = self.out_substr("[<")!;
-			for (usz i = 0; i < vlen; i++)
-			{
-				if (i != 0) len += self.out_substr(", ")!;
-				len += self.out_str(any_make(ptr, inner))!;
-				ptr += size;
-			}
-			len += self.out_substr(">]")!;
-			return len;
+			return self.out_collection(arg, "[<", ">]");
 		case SLICE:
-			// this is SomeType[] so grab the "SomeType"
-			typeid inner = arg.type.inner;
-			if (inner == void.typeid) inner = char.typeid;
-			PrintFlags flags = self.flags;
-			uint width = self.width;
-			defer
-			{
-				self.flags = flags;
-				self.width = width;
-			}
-			self.flags = {};
-			self.width = 0;
-			usz size = inner.sizeof;
-			// Pretend this is a String
-			String* temp = (void*)arg.ptr;
-			void* ptr = (void*)temp.ptr;
-			usz slen = temp.len;
-			usz len = self.out('[')!;
-			for (usz i = 0; i < slen; i++)
-			{
-				if (i != 0) len += self.out_substr(", ")!;
-				len += self.out_str(any_make(ptr, inner))!;
-				ptr += size;
-			}
-			len += self.out(']')!;
-			return len;
+			return self.out_collection(arg, "[", "]");
 		case ANY:
 		case INTERFACE:
 			unreachable("Already handled");
@@ -351,15 +303,72 @@ macro usz? @wrap_bad(Formatter* f, #action)
 		switch (err)
 		{
 			case BUFFER_EXCEEDED:
-        	case INTERNAL_BUFFER_EXCEEDED:
-        		return f.first_err(err)~;
-        	default:
+			case INTERNAL_BUFFER_EXCEEDED:
+				return f.first_err(err)~;
+			default:
 				err = f.first_err(INVALID_ARGUMENT);
-        		f.out_substr("<INVALID>")!;
-        		return err~;
+				f.out_substr("<INVALID>")!;
+				return err~;
 		}
 	}
 	return len;
+}
+
+fn usz? Formatter.out_hex_buffer(&self, any arg) @private @inline
+{
+	char[] out @noinit;
+	switch (arg.type)
+	{
+		case char[]:
+		case ichar[]:
+			out = *(char[]*)arg;
+		default:
+			if (arg.type.kindof == ARRAY && (arg.type.inner == char.typeid || arg.type.inner == ichar.typeid))
+			{
+				out = ((char*)arg.ptr)[:arg.type.sizeof];
+				break;
+			}
+			if (arg.type.kindof == POINTER)
+			{
+				// Maybe there is a more idiomatic way here
+				out = ((*(char**)arg.ptr))[:arg.type.inner.sizeof];
+				break;
+			}
+			return self.out_substr("<INVALID>");
+	}
+	usz len = out.len * 2;
+	usz total;
+	if (self.flags.left)
+	{
+		total += print_hex_chars(self, out, self.flags.uppercase)!;
+		total += self.pad(' ', self.width, (isz)total)!;
+	}
+	else
+	{
+		if (self.width) total += self.pad(' ', self.width, (isz)len)!;
+		total += print_hex_chars(self, out, self.flags.uppercase)!;
+	}
+	return total;
+}
+
+fn usz? Formatter.out_str_pad(&self, any arg) @private @inline
+{
+	usz total;
+	if (self.width && !self.flags.left)
+	{
+		OutputFn out_fn = self.out_fn;
+		self.out_fn = (OutputFn)&out_null_fn;
+		usz len = self.out_str(arg)!;
+		self.out_fn = out_fn;
+		total += self.pad(' ', self.width, (isz)len)!;
+	}
+	usz len = self.out_str(arg)!;
+	total += len;
+	if (self.flags.left)
+	{
+		total += self.pad(' ', self.width, (isz)len)!;
+	}
+	return total;
 }
 
 fn usz? Formatter.vprintf(&self, String format, any[] anys)
@@ -416,7 +425,7 @@ fn usz? Formatter.vprintf(&self, String format, any[] anys)
 			self.flags.left = true;
 			w = -w;
 		}
-		self.width = w;
+		self.width = (uint)w;
 		// evaluate precision field
 		self.prec = 0;
 		if (c == '.')
@@ -425,7 +434,7 @@ fn usz? Formatter.vprintf(&self, String format, any[] anys)
 			if (++i >= format_len) return @report_fault(self, "<BAD FORMAT>");
 			int? prec = printf_parse_format_field(anys.ptr, anys.len, &variant_index, format.ptr, format.len, &i);
 			if (catch prec) return @report_fault(self, "<BAD FORMAT>");
-			self.prec = prec < 0 ? 0 : prec;
+			self.prec = (uint)(prec < 0 ? 0 : prec);
 			c = format[i];
 		}
 
@@ -489,56 +498,10 @@ fn usz? Formatter.vprintf(&self, String format, any[] anys)
 				self.flags.uppercase = true;
 				nextcase;
 			case 'h':
-            	char[] out @noinit;
-				switch (current.type)
-				{
-					case char[]:
-					case ichar[]:
-						out = *(char[]*)current;
-					default:
-						if (current.type.kindof == ARRAY && (current.type.inner == char.typeid || current.type.inner == ichar.typeid))
-						{
-							out = ((char*)current.ptr)[:current.type.sizeof];
-							break;
-						}
-						if (current.type.kindof == POINTER)
-						{
-							out = ((*(char**)current.ptr))[:current.type.inner.sizeof];
-							break;
-						}
-						total_len += self.out_substr("<INVALID>")!;
-						continue;
-				}
-				if (self.flags.left)
-				{
-					usz len = print_hex_chars(self, out, self.flags.uppercase)!;
-					total_len += len;
-					total_len += self.pad(' ', self.width, len)!;
-					continue;
-				}
-				if (self.width)
-				{
-					total_len += self.pad(' ', self.width, out.len * 2)!;
-				}
-				total_len += print_hex_chars(self, out, self.flags.uppercase)!;
+				total_len += self.out_hex_buffer(current)!;
 				continue;
 			case 's':
-				if (self.flags.left)
-				{
-					usz len = self.out_str(current)!;
-					total_len += len;
-					total_len += self.pad(' ', self.width, len)!;
-					continue;
-				}
-				if (self.width)
-				{
-					OutputFn out_fn = self.out_fn;
-					self.out_fn = (OutputFn)&out_null_fn;
-					usz len = self.out_str(current)!;
-					self.out_fn = out_fn;
-					total_len += self.pad(' ', self.width, len)!;
-				}
-				total_len += self.out_str(current)!;
+				total_len += self.out_str_pad(current)!;
 				continue;
 			case 'p':
 				self.flags.zeropad = true;
@@ -560,10 +523,7 @@ fn usz? Formatter.vprintf(&self, String format, any[] anys)
 		bool is_neg;
 		total_len += @wrap_bad(self, self.ntoa(int_from_any(current, &is_neg), is_neg, base))!;
 	}
-	// termination
-	//	out((char)0, buffer, idx < maxlen ? idx : maxlen - 1U, maxlen);
 
-	// return written chars without terminating \0
 	if (self.first_fault) return self.first_fault~;
 	return total_len;
 }

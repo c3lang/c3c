@@ -158,7 +158,7 @@ macro double? decfloat(char[] chars, int $bits, int $emin, int sign)
 	if (rp % 9)
 	{
 		long rpm9 = rp >= 0 ? rp % 9 : rp % 9 + 9;
-		int p10 = P10S[8 - rpm9];
+		uint p10 = P10S[8 - rpm9];
 		uint carry = 0;
 		for (k = a; k != z; k++)
 		{

@@ -26,7 +26,7 @@ macro foo(a, #b = EMPTY_MACRO_SLOT)
 *>
 const EmptySlot EMPTY_MACRO_SLOT @builtin @deprecated("Use `#arg = ...` instead.") = null;
 
-typedef EmptySlot = void*;
+typedef EmptySlot @constinit = void*;
 macro bool @is_empty_macro_slot(#arg) @const @builtin
 		@deprecated("Use `#arg = ...` to define an optional macro slot, and `$defined(#arg)` to detect whether the argument is set.")
 	=> $typeof(#arg) == EmptySlot;

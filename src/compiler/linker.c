@@ -148,7 +148,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	{
 		if (compiler.build.win.vs_dirs)
 		{
-			char *c = strstr(compiler.build.win.vs_dirs, ";");
+			const char *c = strstr(compiler.build.win.vs_dirs, ";");
 			int len = (int)(c - compiler.build.win.vs_dirs);
 			if (!c || !len) error_exit("''win-vs-dirs' override was invalid.");
 			char *um = str_printf("%.*s\\um\\x64", len, compiler.build.win.vs_dirs);
@@ -355,7 +355,9 @@ static const char *get_linux_crt_arch_glob(void)
 		case LINUX_AARCH64:
 			return "/usr/lib/aarch64*linux*/crt1.o";
 		case LINUX_RISCV32:
+			return "/usr/lib/riscv32*linux*/crt1.o";
 		case LINUX_RISCV64:
+			return "/usr/lib/riscv64*linux*/crt1.o";
 		default:
 			return "/usr/lib/*/crt1.o";
 	}
@@ -373,7 +375,9 @@ static const char *get_linux_crt_begin_arch_glob(void)
 		case LINUX_AARCH64:
 			return "/usr/lib/gcc/aarch64*linux*/*/crtbegin.o";
 		case LINUX_RISCV32:
+			return "/usr/lib/gcc/riscv32*linux*/*/crtbegin.o";
 		case LINUX_RISCV64:
+			return "/usr/lib/gcc/riscv64*linux*/*/crtbegin.o";
 		default:
 			return "/usr/lib/gcc/*/*/crtbegin.o";
 	}
@@ -382,22 +386,60 @@ static const char *get_linux_crt_begin_arch_glob(void)
 static const char *find_linux_crt(void)
 {
 	if (compiler.build.linuxpaths.crt) return compiler.build.linuxpaths.crt;
-	const char *arch_linux_crt1_path = "/usr/lib/crt1.o";
-	if (file_exists(arch_linux_crt1_path))
-	{
-		const char *arch_linux_path = "/usr/lib";
-		INFO_LOG("Found crt at %s", arch_linux_path);
-		return arch_linux_path;
-	}
+
 	const char *arch_glob_path = get_linux_crt_arch_glob();
-	const char *path = find_arch_glob_path(arch_glob_path, 6);
-	if (!path)
+
+	if (compiler.platform.arch == ARCH_TYPE_RISCV64 || compiler.platform.arch == ARCH_TYPE_RISCV32)
 	{
-		INFO_LOG("No crt in /usr/lib/*/");
-		return NULL;
+		const char *is_64 = compiler.platform.arch == ARCH_TYPE_RISCV64 ? "64" : "32";
+		char *p1 = str_printf("/usr/*riscv%s*linux*/usr/lib/crt1.o", is_64);
+		const char *path = find_arch_glob_path(p1, 6);
+		if (path)
+		{
+			INFO_LOG("Found crt at %s", path);
+			return path;
+		}
+
+		char *p2 = str_printf("/usr/lib/riscv%s*linux*/crt1.o", is_64);
+		path = find_arch_glob_path(p2, 6);
+		if (path)
+		{
+			INFO_LOG("Found crt at %s", path);
+			return path;
+		}
 	}
-	INFO_LOG("Found crt at %s", path);
-	return path;
+	else
+	{
+		const char *path = find_arch_glob_path(arch_glob_path, 6);
+		if (path)
+		{
+			INFO_LOG("Found crt at %s", path);
+			return path;
+		}
+	}
+
+	bool is_host_arch = compiler.platform.arch == target_host_arch();
+
+	if (is_host_arch)
+	{
+		const char *arch_linux_crt1_path = "/usr/lib/crt1.o";
+		const char *arch_linux_64_crt1_path = "/usr/lib64/crt1.o";
+		if (file_exists(arch_linux_crt1_path))
+		{
+			const char *arch_linux_path = "/usr/lib";
+			INFO_LOG("Found crt at %s", arch_linux_path);
+			return arch_linux_path;
+		}
+		if (file_exists(arch_linux_64_crt1_path))
+		{
+			const char* arch_linux_path = "/usr/lib64";
+			INFO_LOG("Found crt at %s", arch_linux_path);
+			return arch_linux_path;
+		}
+	}
+
+	INFO_LOG("No crt found in standard paths or via globs.");
+	return NULL;
 }
 
 static const char *find_linux_crt_begin(void)
@@ -416,45 +458,57 @@ static const char *find_linux_crt_begin(void)
 
 static const char *find_linux_ld(void)
 {
-	if (compiler.platform.environment_type == ENV_TYPE_ANDROID) return "--dynamic-linker=/system/ld-android.so";
+	if (compiler.platform.environment_type == ENV_TYPE_ANDROID) return "/system/ld-android.so";
 	switch (compiler.build.linuxpaths.libc)
 	{
 		case LINUX_LIBC_MUSL:
 			switch (compiler.platform.arch)
 			{
-				case ARCH_TYPE_ARM: return "--dynamic-linker=/lib/ld-musl-arm.so.1";
-				case ARCH_TYPE_ARMB: return "--dynamic-linker=/lib/ld-musl-armeb.so.1";
-				case ARCH_TYPE_AARCH64: return "--dynamic-linker=/lib/ld-musl-aarch64.so.1";
-				case ARCH_TYPE_AARCH64_BE: return "--dynamic-linker=/lib/ld-musl-aarch64_be.so.1";
-				case ARCH_TYPE_MIPS: return "--dynamic-linker=/lib/ld-musl-mips.so.1";
-				case ARCH_TYPE_MIPSEL: return "--dynamic-linker=/lib/ld-musl-mipsel.so.1";
-				case ARCH_TYPE_MIPS64: return "--dynamic-linker=/lib/ld-musl-mips64.so.1";
-				case ARCH_TYPE_MIPS64EL: return "--dynamic-linker=/lib/ld-musl-mips64el.so.1";
-				case ARCH_TYPE_PPC: return "--dynamic-linker=/lib/ld-musl-powerpc.so.1";
-				case ARCH_TYPE_PPC64: return "--dynamic-linker=/lib/ld-musl-powerpc64.so.1";
-				case ARCH_TYPE_RISCV32: return "--dynamic-linker=/lib/ld-musl-riscv32.so.1";
-				case ARCH_TYPE_RISCV64: return "--dynamic-linker=/lib/ld-musl-riscv64.so.1";
-				case ARCH_TYPE_X86: return "--dynamic-linker=/lib/ld-musl-i386.so.1";
-				case ARCH_TYPE_X86_64: return "--dynamic-linker=/lib/ld-musl-x86_64.so.1";
-				default: return "--dynamic-linker=/lib/ld-musl-unknown.so.1"; // a placeholder for now
+				case ARCH_TYPE_ARM: return "/lib/ld-musl-arm.so.1";
+				case ARCH_TYPE_ARMB: return "/lib/ld-musl-armeb.so.1";
+				case ARCH_TYPE_AARCH64: return "/lib/ld-musl-aarch64.so.1";
+				case ARCH_TYPE_AARCH64_BE: return "/lib/ld-musl-aarch64_be.so.1";
+				case ARCH_TYPE_MIPS: return "/lib/ld-musl-mips.so.1";
+				case ARCH_TYPE_MIPSEL: return "/lib/ld-musl-mipsel.so.1";
+				case ARCH_TYPE_MIPS64: return "/lib/ld-musl-mips64.so.1";
+				case ARCH_TYPE_MIPS64EL: return "/lib/ld-musl-mips64el.so.1";
+				case ARCH_TYPE_PPC: return "/lib/ld-musl-powerpc.so.1";
+				case ARCH_TYPE_PPC64: return "/lib/ld-musl-powerpc64.so.1";
+				case ARCH_TYPE_RISCV32: return "/lib/ld-musl-riscv32.so.1";
+				case ARCH_TYPE_RISCV64: return "/lib/ld-musl-riscv64.so.1";
+				case ARCH_TYPE_X86: return "/lib/ld-musl-i386.so.1";
+				case ARCH_TYPE_X86_64: return "/lib/ld-musl-x86_64.so.1";
+				default: return "/lib/ld-musl-unknown.so.1"; // a placeholder for now
 			}
 			UNREACHABLE;
 			break;
 		case LINUX_LIBC_GNU:
 			switch (compiler.platform.arch)
 			{
-				case ARCH_TYPE_ARM: return "--dynamic-linker=/lib/ld-linux.so.3";
-				case ARCH_TYPE_AARCH64: return "--dynamic-linker=/lib/ld-linux-aarch64.so.1";
-				case ARCH_TYPE_MIPS: return "--dynamic-linker=/lib/ld-linux-mipsn8.so.1";
-				case ARCH_TYPE_MIPSEL: return "--dynamic-linker=/lib/ld-linux-mipsn8.so.1";
-				case ARCH_TYPE_MIPS64: return "--dynamic-linker=/lib/ld-linux-mipsn8.so.1";
-				case ARCH_TYPE_MIPS64EL: return "--dynamic-linker=/lib/ld-linux-mipsn8.so.1";
-				case ARCH_TYPE_RISCV32: return "-dynamic-linker=/lib/ld-linux-riscv32-ilp32.so.1";
-				case ARCH_TYPE_RISCV64: return "-dynamic-linker=/lib/ld-linux-riscv64-lp64.so.1";
-				case ARCH_TYPE_SPARCV9: return "--dynamic-linker=/lib/ld-linux.so.2";
-				case ARCH_TYPE_X86: return "--dynamic-linker=/lib64/ld-linux.so.2";
-				case ARCH_TYPE_X86_64: return "--dynamic-linker=/lib64/ld-linux-x86-64.so.2";
-				default: return "--dynamic-linker=/lib/ld-linux-unknown.so.2"; // another placeholder until we have all of them
+				case ARCH_TYPE_ARM: return "/lib/ld-linux.so.3";
+				case ARCH_TYPE_AARCH64: return "/lib/ld-linux-aarch64.so.1";
+				case ARCH_TYPE_MIPS: return "/lib/ld-linux-mipsn8.so.1";
+				case ARCH_TYPE_MIPSEL: return "/lib/ld-linux-mipsn8.so.1";
+				case ARCH_TYPE_MIPS64: return "/lib/ld-linux-mipsn8.so.1";
+				case ARCH_TYPE_MIPS64EL: return "/lib/ld-linux-mipsn8.so.1";
+				case ARCH_TYPE_RISCV32:
+				{
+					unsigned flen = compiler.platform.riscv.flen;
+					if (flen == 8) return "/lib/ld-linux-riscv32-ilp32d.so.1";
+					if (flen == 4) return "/lib/ld-linux-riscv32-ilp32f.so.1";
+					return "/lib/ld-linux-riscv32-ilp32.so.1";
+				}
+				case ARCH_TYPE_RISCV64:
+				{
+					unsigned flen = compiler.platform.riscv.flen;
+					if (flen == 8) return "/lib/ld-linux-riscv64-lp64d.so.1";
+					if (flen == 4) return "/lib/ld-linux-riscv64-lp64f.so.1";
+					return "/lib/ld-linux-riscv64-lp64.so.1";
+				}
+				case ARCH_TYPE_SPARCV9: return "/lib/ld-linux.so.2";
+				case ARCH_TYPE_X86: return "/lib64/ld-linux.so.2";
+				case ARCH_TYPE_X86_64: return "/lib64/ld-linux-x86-64.so.2";
+				default: return "/lib/ld-linux-unknown.so.2"; // another placeholder until we have all of them
 			}
 			FALLTHROUGH;
 		default:
@@ -500,6 +554,15 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 	{
 		error_exit("Failed to find the C runtime at link time.");
 	}
+
+	add_plain_arg("-m");
+	add_plain_arg(ld_target(compiler.platform.arch));
+	if (link_libc())
+	{
+		add_plain_arg("--dynamic-linker");
+		add_plain_arg(find_linux_ld());
+	}
+
 	if (is_pie_pic(compiler.platform.reloc_model))
 	{
 		add_concat_file_arg(crt_dir, "crti.o");
@@ -516,14 +579,29 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 	}
 	add_concat_file_arg(crt_dir, "crtn.o");
 	add_concat_quote_arg("-L", crt_dir);
-	add_plain_arg(find_linux_ld());
+	add_concat_quote_arg("-L", crt_begin_dir);
+
+	if (compiler.platform.arch == ARCH_TYPE_RISCV64 || compiler.platform.arch == ARCH_TYPE_RISCV32)
+	{
+		const char *is_64 = compiler.platform.arch == ARCH_TYPE_RISCV64 ? "64" : "32";
+		char *sysroot = str_printf("/usr/riscv%s-linux-gnu", is_64);
+		if (file_is_dir(sysroot))
+		{
+			add_plain_arg(str_printf("--sysroot=%s", sysroot));
+		}
+		char *p1 = str_printf("/usr/riscv%s-linux-gnu/lib", is_64);
+		if (file_is_dir(p1)) add_plain_arg(str_printf("-L%s", p1));
+		char *p2 = str_printf("/usr/riscv%s-linux-gnu/usr/lib", is_64);
+		if (file_is_dir(p2)) add_plain_arg(str_printf("-L%s", p2));
+	}
+
 	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 	linking_add_link(&compiler.linking, "pthread");
+	linking_add_link(&compiler.linking, "gcc");
+	linking_add_link(&compiler.linking, "gcc_s");
 	linking_add_link(&compiler.linking, "c");
 	add_plain_arg("-L/usr/lib/");
 	add_plain_arg("-L/lib/");
-	add_plain_arg("-m");
-	add_plain_arg(ld_target(compiler.platform.arch));
 }
 
 static void linker_setup_android(const char ***args_ref, Linker linker_type, bool is_dylib)
@@ -964,10 +1042,10 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 		default:
 			UNREACHABLE
 	}
-#else 
+#else
 	success = false;
 	error = "linking (.exe) is not implemented for C3C compiled without LLVM";
-#endif 
+#endif
 	if (!success)
 	{
 		error_exit("Failed to create an executable: %s", error);
@@ -1221,10 +1299,10 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 		default:
 			UNREACHABLE
 	}
-#else 
+#else
 	success = false;
 	error = "linking not implemented for c3c compiled without llvm";
-#endif 
+#endif
 	if (!success)
 	{
 		error_exit("Failed to create a dynamic library: %s", error);
@@ -1256,9 +1334,9 @@ bool static_lib_linker(const char *output_file, const char **files, unsigned fil
 			break;
 	}
 	return llvm_ar(output_file, files, file_count, format);
-#else 
+#else
 	return false;
-#endif 
+#endif
 }
 
 bool linker(const char *output_file, const char **files, unsigned file_count)

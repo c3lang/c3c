@@ -25,7 +25,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 			UNREACHABLE_VOID
 		case DECL_TYPE_ALIAS:
 			return llvm_get_type(c, decl->type);
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 			return llvm_get_type(c, decl->enums.type_info->type);
 		case DECL_TYPEDEF:
 			return llvm_get_type(c, decl->distinct->type);
