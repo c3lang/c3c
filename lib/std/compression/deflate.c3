@@ -492,7 +492,7 @@ struct StreamBitReader @private
 	usz buf_len;
 	ulong bit_buf;
 	uint nbits;
-	SeekFn seek_fn;
+	SetCursorFn set_cursor_fn;
 }
 
 enum InflaterState @private
@@ -511,13 +511,13 @@ enum InflaterState @private
 
 fn void StreamBitReader.init(&self, InStream reader, char[] buffer)
 {
-	*self = { .stream = reader, .buffer = buffer, .seek_fn = &reader.seek };
+	*self = { .stream = reader, .buffer = buffer, .set_cursor_fn = &reader.set_cursor };
 }
 fn void StreamBitReader.close(&self)
 {
-	if (self.buf_len && self.buf_pos != self.buf_len && self.seek_fn)
+	if (self.buf_len && self.buf_pos != self.buf_len && self.set_cursor_fn)
 	{
-		(void)self.seek_fn(self.stream, (isz)self.buf_pos - (isz)self.buf_len, CURSOR);
+		(void)self.set_cursor_fn(self.stream, (long)self.buf_pos - (long)self.buf_len, FROM_CURSOR);
 	}
 }
 

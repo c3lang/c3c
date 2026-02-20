@@ -4,8 +4,8 @@ import libc;
 alias FopenFn = fn void*?(String, String);
 alias FreopenFn = fn void*?(void*, String, String);
 alias FcloseFn = fn void?(void*);
-alias FseekFn = fn void?(void*, isz, Seek);
-alias FtellFn = fn usz?(void*);
+alias FseekFn = fn void?(void*, long, SeekOrigin);
+alias FtellFn = fn long?(void*);
 alias FwriteFn = fn usz?(void*, char[] buffer);
 alias FreadFn = fn usz?(void*, char[] buffer);
 alias RemoveFn = fn void?(String);
@@ -54,13 +54,13 @@ fn void*? native_freopen(void* file, String filename, String mode) @inline
 	return io::UNSUPPORTED_OPERATION~;
 }
 
-fn void? native_fseek(void* file, isz offset, Seek seek_mode) @inline
+fn void? native_fseek(void* file, long offset, SeekOrigin whence) @inline
 {
-	if (native_fseek_fn) return native_fseek_fn(file, offset, seek_mode);
+	if (native_fseek_fn) return native_fseek_fn(file, offset, whence);
 	return io::UNSUPPORTED_OPERATION~;
 }
 
-fn usz? native_ftell(CFile file) @inline
+fn ulong? native_ftell(CFile file) @inline
 {
 	if (native_ftell_fn) return native_ftell_fn(file);
 	return io::UNSUPPORTED_OPERATION~;

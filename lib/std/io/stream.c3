@@ -1,14 +1,20 @@
 module std::io;
 import std::math;
 
-alias SeekFn = fn usz?(void*, isz offset, Seek seek);
+
+
+alias SetCursorFn = fn void?(void*, long offset, SeekOrigin whence = START);
+
 
 interface InStream
 {
 	fn void? close() @optional;
+	fn long? cursor() @optional;
+	fn void? set_cursor(long offset, SeekOrigin whence = FROM_START) @optional;
 	fn usz? seek(isz offset, Seek seek) @optional;
 	fn usz len() @optional;
-	fn usz? available() @optional;
+	fn ulong? size() @optional;
+	fn ulong? available() @optional;
 	fn usz? read(char[] buffer);
 	fn char? read_byte();
 	fn usz? write_to(OutStream out) @optional;
@@ -26,15 +32,23 @@ interface OutStream
 	fn usz? read_to(InStream in) @optional;
 }
 
-fn usz? available(InStream s)
+fn ulong? available(InStream s)
 {
 	if (&s.available) return s.available();
+	if (&s.set_cursor && &s.cursor)
+	{
+		long curr = s.cursor()!;
+		s.set_cursor(0, FROM_END)!;
+		ulong len = s.cursor()!;
+		s.set_cursor(curr)!;
+		return len - curr;
+	}
 	if (&s.seek)
 	{
 		usz curr = s.seek(0, Seek.CURSOR)!;
 		usz len = s.seek(0, Seek.END)!;
 		s.seek(curr, Seek.SET)!;
-		return len - curr;
+		return (ulong)len - (ulong)curr;
 	}
 	return io::UNSUPPORTED_OPERATION~;
 }
@@ -179,6 +193,11 @@ macro usz? write_using_write_byte(s, char[] bytes)
 
 macro void? pushback_using_seek(s)
 {
+	if (&s.set_cursor)
+	{
+		s.set_cursor(-1, FROM_CURSOR)!;
+		return;
+	}
 	s.seek(-1, CURSOR)!;
 }
 
@@ -409,11 +428,11 @@ macro ulong? read_le_ulong(stream)
 {
 	ulong val = (ulong)stream.read_byte()!;
 	val += (ulong)stream.read_byte()! << 8;
-    val += (ulong)stream.read_byte()! << 16;
+	val += (ulong)stream.read_byte()! << 16;
 	val += (ulong)stream.read_byte()! << 24;
 	val += (ulong)stream.read_byte()! << 32;
 	val += (ulong)stream.read_byte()! << 40;
-    val += (ulong)stream.read_byte()! << 48;
+	val += (ulong)stream.read_byte()! << 48;
 	return val + (ulong)stream.read_byte()! << 56;
 }
 
@@ -623,24 +642,30 @@ macro void? skip(stream, usz bytes)
 {
 	if (!bytes) return;
 	$switch:
-		$case !$defined(stream.seek):
-	        for (usz i = 0; i < bytes; i++)
-	        {
-	            stream.read()!;
-	        }
-	        return;
 		$case $typeof(stream) == InStream:
-	        if (!&stream.seek)
-	        {
-	            for (usz i = 0; i < bytes; i++)
-	            {
-	                stream.read()!;
-	            }
-	            return;
-	        }
+			if (!&stream.seek && !&stream.set_cursor)
+			{
+				for (usz i = 0; i < bytes; i++)
+				{
+					stream.read()!;
+				}
+				return;
+			}
+			if (!&stream.set_cursor)
+			{
+				stream.seek(bytes, CURSOR)!;
+				return;
+			}
+			stream.set_cursor(bytes, FROM_CURSOR)!;
+		$case $defined(stream.set_cursor):
+			stream.set_cursor(bytes, FROM_CURSOR)!;
+		$case $defined(stream.seek):
 			stream.seek(bytes, CURSOR)!;
 		$default:
-			stream.seek(bytes, CURSOR)!;
+			for (usz i = 0; i < bytes; i++)
+			{
+				stream.read()!;
+			}
 	$endswitch
 }
 

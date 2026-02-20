@@ -28,6 +28,9 @@
 - Add Xorshiro128++.
 - Add single-byte code page support (DOS/OEM, Windows/ANSI, and ISO/IEC 8859).
 - Add `array::even`, `array::odd`, and `array::unlace` macros. #2892
+- Stream functions now use long/ulong rather than isz/usz for seek/available. 
+- `instream.seek` is replaced by `set_cursor` and `cursor`.
+- `instream.available`, `cursor` etc are long/ulong rather than isz/usz to be correct on 32-bit.
 
 ### Fixes
 - Add error message if directory with output file name already exists

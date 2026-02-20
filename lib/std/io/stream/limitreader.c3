@@ -38,7 +38,7 @@ fn char? LimitReader.read_byte(&self) @dynamic
 	return self.wrapped_stream.read_byte();
 }
 
-fn usz? LimitReader.available(&self) @inline @dynamic
+fn ulong? LimitReader.available(&self) @inline @dynamic
 {
 	return self.limit;
 }

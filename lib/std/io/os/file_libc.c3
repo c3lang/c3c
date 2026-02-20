@@ -49,16 +49,16 @@ fn void*? native_freopen(void* file, String filename, String mode) @inline  => @
 		return file ?: file_open_errno()~;
 }
 
-fn void? native_fseek(void* file, isz offset, Seek seek_mode) @inline
+fn void? native_fseek(void* file, long offset, SeekOrigin seek_mode) @inline
 {
 	if (libc::fseek(file, (SeekIndex)offset, seek_mode.ordinal)) return file_seek_errno()~;
 }
 
 
-fn usz? native_ftell(CFile file) @inline
+fn long? native_ftell(CFile file) @inline
 {
 	long index = libc::ftell(file);
-	return index >= 0 ? (usz)index : file_seek_errno()~;
+	return index >= 0 ? index : file_seek_errno()~;
 }
 
 fn usz? native_fwrite(CFile file, char[] buffer) @inline

@@ -39,7 +39,7 @@ fn bool is_dir(String path)
 	return os::native_is_dir(path);
 }
 
-fn usz? get_size(String path)
+fn ulong? get_size(String path)
 {
 	return os::native_file_size(path);
 }
@@ -68,10 +68,25 @@ fn void? File.reopen(&self, String filename, String mode)
 *>
 fn usz? File.seek(&self, isz offset, Seek seek_mode = Seek.SET) @dynamic
 {
-	os::native_fseek(self.file, offset, seek_mode)!;
-	return os::native_ftell(self.file);
+	os::native_fseek(self.file, offset, (SeekOrigin)seek_mode.ordinal)!;
+	return (usz)os::native_ftell(self.file);
 }
 
+<*
+ @require self.file != null
+*>
+fn void? File.set_cursor(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
+{
+	return os::native_fseek(self.file, offset, whence);
+}
+
+<*
+ @require self.file != null
+*>
+fn long? File.cursor(&self) @dynamic
+{
+	return os::native_ftell(self.file);
+}
 
 /*
 Implement later
@@ -121,6 +136,14 @@ fn void? File.close(&self) @inline @dynamic
 		}
 	}
 	self.file = null;
+}
+
+fn ulong? File.size(&self) @dynamic
+{
+	long curr = self.cursor()!;
+	defer (void)self.set_cursor(curr);
+	self.set_cursor(0, FROM_END)!;
+	return self.cursor()!;
 }
 
 <*
@@ -176,9 +199,8 @@ fn char[]? load_buffer(String filename, char[] buffer)
 {
 	File file = open(filename, "rb")!;
 	defer (void)file.close();
-	usz len = file.seek(0, END)!;
+	long len = file.size()!;
 	if (len > buffer.len) return io::OVERFLOW~;
-	file.seek(0, SET)!;
 	usz read = 0;
 	while (read < len)
 	{
@@ -192,16 +214,16 @@ fn char[]? load(Allocator allocator, String filename)
 {
 	File file = open(filename, "rb")!;
 	defer (void)file.close();
-	usz len = file.seek(0, END)!;
-	file.seek(0, SET)!;
-	char* data = allocator::malloc_try(allocator, len)!;
+	ulong len = file.size()!;
+	if (len > usz.max) return io::OUT_OF_SPACE~;
+	char* data = allocator::malloc_try(allocator, (usz)len)!;
 	defer catch allocator::free(allocator, data);
 	usz read = 0;
-	while (read < len)
+	while (read < (usz)len)
 	{
-		read += file.read(data[read:len - read])!;
+		read += file.read(data[read:(usz)len - read])!;
 	}
-	return data[:len];
+	return data[:(usz)len];
 }
 
 fn char[]? load_path(Allocator allocator, Path path) => load(allocator, path.str_view());
