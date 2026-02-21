@@ -133,7 +133,7 @@ struct Utimbuf
 extern fn int utime(char* filename, void* times) @if(!env::WIN32);
 extern fn int _wutime(WChar* filename, void* times) @if(env::WIN32);
 
-fn void? native_set_modified_time(String filename, libc::Time_t time) => @stack_mem(256; Allocator smem)
+fn void? native_set_modified_time(String filename, Time_t time) => @stack_mem(256; Allocator smem)
 {
 	Utimbuf times = { time, time };
 	$if env::WIN32:
