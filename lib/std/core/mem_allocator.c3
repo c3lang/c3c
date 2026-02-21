@@ -409,6 +409,28 @@ macro void*? @aligned_alloc(#alloc_fn, usz bytes, usz alignment)
 	return mem;
 }
 
+<*
+ @require bytes > 0
+ @require alignment > 0
+ @require bytes <= isz.max
+*>
+macro void*? @aligned_alloc_fn(context, #alloc_fn, usz bytes, usz alignment)
+{
+	if (alignment < void*.alignof) alignment = void*.alignof;
+	usz header = AlignedBlock.sizeof + alignment;
+	usz alignsize = bytes + header;
+	$if $kindof(#alloc_fn(context, bytes)) == OPTIONAL:
+		void* data = #alloc_fn(context, alignsize)!;
+	$else
+		void* data = #alloc_fn(context, alignsize);
+	$endif
+	void* mem = mem::aligned_pointer(data + AlignedBlock.sizeof, alignment);
+	AlignedBlock* desc = (AlignedBlock*)mem - 1;
+	assert(mem > data);
+	*desc = { bytes, data };
+	return mem;
+}
+
 struct AlignedBlock
 {
 	usz len;
@@ -422,6 +444,16 @@ macro void? @aligned_free(#free_fn, void* old_pointer)
 	#free_fn(desc.start)!;
 	$else
 	#free_fn(desc.start);
+	$endif
+}
+
+macro void? @aligned_free_fn(context, #free_fn, void* old_pointer)
+{
+	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
+	$if $kindof(#free_fn(context, desc.start)) == OPTIONAL:
+	#free_fn(context, desc.start)!;
+	$else
+	#free_fn(context, desc.start);
 	$endif
 }
 
@@ -443,6 +475,23 @@ macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 	return new_data;
 }
 
+<*
+ @require bytes > 0
+ @require alignment > 0
+*>
+macro void*? @aligned_realloc_fn(context, #calloc_fn, #free_fn, void* old_pointer, usz bytes, usz alignment)
+{
+	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
+	void* data_start = desc.start;
+	void* new_data = @aligned_alloc_fn(context, #calloc_fn, bytes, alignment)!;
+	mem::copy(new_data, old_pointer, desc.len < bytes ? desc.len : bytes, 1, 1);
+	$if $kindof(#free_fn(context, data_start)) == OPTIONAL:
+	#free_fn(context, data_start)!;
+	$else
+	#free_fn(context, data_start);
+	$endif
+	return new_data;
+}
 
 // All allocators
 alias mem @builtin = thread_allocator ;

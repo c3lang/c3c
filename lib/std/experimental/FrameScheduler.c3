@@ -7,7 +7,7 @@ struct DelayedSchedulerEvent @local
 	Clock execution_time;
 }
 
-fn int DelayedSchedulerEvent.compare_to(self, DelayedSchedulerEvent other) @local
+fn int DelayedSchedulerEvent.compare_to(self, DelayedSchedulerEvent other)
 {
 	switch
 	{

@@ -567,7 +567,7 @@ fn F25519Int F25519Int.inv(&s)
 
  @param [&in] s
 *>
-fn F25519Int F25519Int.pow_2523(&s) @local
+fn F25519Int pow_2523(F25519Int* s) @local
 {
 	F25519Int r = *s;
 
@@ -587,7 +587,7 @@ fn F25519Int F25519Int.pow_2523(&s) @local
 fn F25519Int F25519Int.sqrt(&s)
 {
 	F25519Int twice = s.mul_s(2);
-	F25519Int pow = twice.pow_2523();
+	F25519Int pow = pow_2523(&twice);
 
 	return (twice * pow * pow - ONE) * s * pow;
 }

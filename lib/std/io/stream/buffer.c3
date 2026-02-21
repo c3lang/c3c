@@ -38,7 +38,7 @@ fn usz? ReadBuffer.read(&self, char[] bytes) @dynamic
 			// Read directly into the input buffer.
 			return self.wrapped_stream.read(bytes)!;
 		}
-		self.refill()!;
+		readbuffer_refill(self)!;
 	}
 	usz n = min(self.write_idx - self.read_idx, bytes.len);
 	bytes[:n] = self.bytes[self.read_idx:n];
@@ -48,14 +48,14 @@ fn usz? ReadBuffer.read(&self, char[] bytes) @dynamic
 
 fn char? ReadBuffer.read_byte(&self) @dynamic
 {
-	if (self.read_idx == self.write_idx) self.refill()!;
+	if (self.read_idx == self.write_idx) readbuffer_refill(self)!;
 	if (self.read_idx == self.write_idx) return io::EOF~;
 	char c = self.bytes[self.read_idx];
 	self.read_idx++;
 	return c;
 }
 
-fn void? ReadBuffer.refill(&self) @local @inline
+fn void? readbuffer_refill(ReadBuffer* self) @local @inline
 {
 	self.read_idx = 0;
 	self.write_idx = self.wrapped_stream.read(self.bytes)!;
@@ -92,7 +92,7 @@ fn void? WriteBuffer.close(&self) @dynamic
 
 fn void? WriteBuffer.flush(&self) @dynamic
 {
-	self.write_pending()!;
+	write_buffer_write_pending(self)!;
 	if (&self.wrapped_stream.flush) self.wrapped_stream.flush()!;
 }
 
@@ -106,7 +106,7 @@ fn usz? WriteBuffer.write(&self, char[] bytes) @dynamic
 		self.index += bytes.len;
 		return bytes.len;
 	}
-	self.write_pending()!;
+	write_buffer_write_pending(self)!;
 	if (bytes.len >= self.bytes.len)
 	{
 		// Write directly to the stream.
@@ -123,13 +123,13 @@ fn void? WriteBuffer.write_byte(&self, char c) @dynamic
 	usz n = self.bytes.len - self.index;
 	if (n == 0)
 	{
-		self.write_pending()!;
+		write_buffer_write_pending(self)!;
 	}
 	self.bytes[self.index] = c;
 	self.index += 1;
 }
 
-fn void? WriteBuffer.write_pending(&self) @local
+fn void? write_buffer_write_pending(WriteBuffer* self) @local
 {
 	self.index -= self.wrapped_stream.write(self.bytes[:self.index])!;
 	if (self.index != 0) return INCOMPLETE_WRITE~;
