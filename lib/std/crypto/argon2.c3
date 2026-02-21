@@ -120,7 +120,7 @@ const Argon2Options DEFAULT_OPTIONS = {
 };
 
 <* Force a value to be little-endian where required. *>
-macro @le(val) @local => env::BIG_ENDIAN ??? bswap(val) : val;
+macro uint @le(val) @local => env::BIG_ENDIAN ??? bswap(val) : val;
 
 <* Force a value to be little-endian where required and return it as a char view. *>
 macro @le_c(val) @local => @as_char_view(env::BIG_ENDIAN ??? *&&bswap(val) : val);
