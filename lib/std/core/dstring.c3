@@ -631,7 +631,7 @@ fn void DString.reverse(self)
 	}
 }
 
-fn StringData* DString.data(self) @inline @private
+fn StringData* DString.data(self) @inline
 {
 	return (StringData*)self;
 }
