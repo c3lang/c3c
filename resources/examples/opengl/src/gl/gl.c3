@@ -1,15 +1,13 @@
 module gl;
 
-alias BitField = int;
-
-enum BufferBit : int (int value)
+constdef BufferBit : int
 {
     COLOR = 0x00004000,
     STENCIL = 0x00000400,
     DEPTH = 0x00000100,
 }
 
-enum Primitive : int (int value)
+constdef Primitive : int
 {
     POINTS = 0,
     LINES = 1,
@@ -23,9 +21,9 @@ enum Primitive : int (int value)
     POLYGON = 9,
 }
 
-extern fn void clear(BitField mask) @cname("glClear") @public;
+extern fn void clear(BufferBit mask) @cname("glClear") @public;
 
-extern fn void begin(BitField mask) @cname("glBegin") @public;
+extern fn void begin(BufferBit mask) @cname("glBegin") @public;
 
 extern fn void end() @cname("glEnd") @public;
 

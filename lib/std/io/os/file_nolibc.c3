@@ -4,13 +4,14 @@ import libc;
 alias FopenFn = fn void*?(String, String);
 alias FreopenFn = fn void*?(void*, String, String);
 alias FcloseFn = fn void?(void*);
-alias FseekFn = fn void?(void*, isz, Seek);
-alias FtellFn = fn usz?(void*);
+alias FseekFn = fn void?(void*, long, SeekOrigin);
+alias FtellFn = fn long?(void*);
 alias FwriteFn = fn usz?(void*, char[] buffer);
 alias FreadFn = fn usz?(void*, char[] buffer);
 alias FflushFn = fn void?(void*);
 alias RemoveFn = fn void?(String);
 alias FputcFn = fn void?(int, void*);
+alias SetModifiedTimeFn = fn void?(String, libc::Time_t);
 
 FopenFn native_fopen_fn @weak @if(!$defined(native_fopen_fn));
 FcloseFn native_fclose_fn @weak @if(!$defined(native_fclose_fn));
@@ -22,6 +23,7 @@ FreadFn native_fread_fn @weak @if(!$defined(native_fread_fn));
 FflushFn native_fflush_fn @weak @if(!$defined(native_fflush_fn));
 RemoveFn native_remove_fn @weak @if(!$defined(native_remove_fn));
 FputcFn native_fputc_fn @weak @if(!$defined(native_fputc_fn));
+SetModifiedTimeFn native_set_modified_time_fn @weak @if(!$defined(native_set_modified_time_fn));
 
 <*
  @require mode.len > 0
@@ -54,13 +56,13 @@ fn void*? native_freopen(void* file, String filename, String mode) @inline
 	return io::UNSUPPORTED_OPERATION~;
 }
 
-fn void? native_fseek(void* file, isz offset, Seek seek_mode) @inline
+fn void? native_fseek(void* file, long offset, SeekOrigin whence) @inline
 {
-	if (native_fseek_fn) return native_fseek_fn(file, offset, seek_mode);
+	if (native_fseek_fn) return native_fseek_fn(file, offset, whence);
 	return io::UNSUPPORTED_OPERATION~;
 }
 
-fn usz? native_ftell(CFile file) @inline
+fn ulong? native_ftell(CFile file) @inline
 {
 	if (native_ftell_fn) return native_ftell_fn(file);
 	return io::UNSUPPORTED_OPERATION~;
@@ -87,5 +89,11 @@ fn void? native_fflush(CFile file) @inline @maydiscard
 fn void? native_fputc(CInt c, CFile stream) @inline
 {
 	if (native_fputc_fn) return native_fputc_fn(c, stream);
+	return io::UNSUPPORTED_OPERATION~;
+}
+
+fn void? native_set_modified_time(String filename, libc::Time_t time) @inline
+{
+	if (native_set_modified_time_fn) return native_set_modified_time_fn(filename, time);
 	return io::UNSUPPORTED_OPERATION~;
 }

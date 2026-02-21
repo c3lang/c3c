@@ -142,6 +142,7 @@ static void usage(bool full)
 		print_opt("--use-old-compact-eq", "Enable the old ability to use '@compact' to make a struct comparable.");
 		print_opt("--print-large-functions", "Print functions with large compile size.");
 		print_opt("--warn-deadcode=<yes|no|error>", "Print warning on dead-code: yes, no, error.");
+		print_opt("--warn-methodvisibility=<yes|no|error>", "Print warning when methods have ignored visibility attributes.");
 		print_opt("--warn-methodsnotresolved=<yes|no|error>", "Print warning on methods not resolved when accessed: yes, no, error.");
 		print_opt("--warn-deprecation=<yes|no|error>", "Print warning when using deprecated code and constructs: yes, no, error.");
 	}
@@ -906,6 +907,11 @@ static void parse_option(BuildOptions *options)
 				options->warnings.dead_code = parse_opt_select(WarningLevel, argopt, warnings);
 				return;
 			}
+			if ((argopt = match_argopt("warn-methodvisibility")))
+			{
+				options->warnings.method_visibility = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
 			if ((argopt = match_argopt("warn-methodsnotresolved")))
 			{
 				options->warnings.methods_not_resolved = parse_opt_select(WarningLevel, argopt, warnings);
@@ -1594,6 +1600,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.win_debug = WIN_DEBUG_DEFAULT,
 		.fp_math = FP_DEFAULT,
 		.x86_cpu_set = X86CPU_DEFAULT,
+		.riscv_cpu_set = RISCV_CPU_DEFAULT,
 		.riscv_abi = RISCV_ABI_DEFAULT,
 		.memory_environment = MEMORY_ENV_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
@@ -1666,7 +1673,8 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	{
 		FAIL_WITH_ERR("Missing a compiler command such as 'compile' or 'build'.");
 	}
-	if (build_options.arch_os_target_override == ANDROID_AARCH64)
+	if (build_options.arch_os_target_override == ANDROID_AARCH64 ||
+	    build_options.arch_os_target_override == ANDROID_X86_64)
 	{
 		if (!build_options.android.ndk_path)
 		{

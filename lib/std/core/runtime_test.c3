@@ -142,7 +142,7 @@ fn void mute_output() @local
     File* stderr = io::stderr();
 	*stderr = test_context.fake_stdout;
 	*stdout = test_context.fake_stdout;
-	(void)test_context.fake_stdout.seek(0, Seek.SET)!!;
+	(void)test_context.fake_stdout.set_cursor(0)!!;
 }
 
 fn void unmute_output(bool has_error) @local
@@ -155,7 +155,7 @@ fn void unmute_output(bool has_error) @local
 	*stderr = test_context.stored.stderr;
 	*stdout = test_context.stored.stdout;
 
-	usz log_size = test_context.fake_stdout.seek(0, Seek.CURSOR)!!;
+	ulong log_size = test_context.fake_stdout.cursor()!!;
 	if (has_error)
 	{
 		io::printn(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
@@ -165,7 +165,7 @@ fn void unmute_output(bool has_error) @local
 	{
 		test_context.fake_stdout.write_byte('\n')!!;
 		test_context.fake_stdout.write_byte('\0')!!;
-		(void)test_context.fake_stdout.seek(0, Seek.SET)!!;
+		test_context.fake_stdout.set_cursor(0)!!;
 
 		io::printfn("\n========== TEST LOG ============");
 		io::printfn("%s\n", test_context.current_test_name);

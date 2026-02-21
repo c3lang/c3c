@@ -142,7 +142,7 @@ fn void NativeTimedMutex.destroy(&mtx)
 	*mtx = {};
 }
 
-fn void? NativeTimedMutex.wait_cond_var(&mtx, uint ms) @local
+fn void? _wait_cond_var(NativeTimedMutex *mtx, uint ms) @local
 {
 	if (!win32::sleepConditionVariableSRW(&mtx.cond_var, &mtx.srw_lock, ms, 0))
 	{
@@ -169,7 +169,7 @@ fn void NativeTimedMutex.lock(&mtx)
 
 	while (mtx.locks)
 	{
-		mtx.wait_cond_var(win32::INFINITE)!!;
+		_wait_cond_var(mtx, win32::INFINITE)!!;
 	}
 	mtx.locks = 1;
 	mtx.owner_thread = current_thread;
@@ -206,7 +206,7 @@ fn void? NativeTimedMutex.lock_timeout(&mtx, ulong ms)
 	{
 		ulong remaining_ms = remaining.to_ms();
 		if (remaining_ms > uint.max) remaining_ms = uint.max;
-		mtx.wait_cond_var((uint)remaining_ms)!;
+		_wait_cond_var(mtx, (uint)remaining_ms)!;
 		if (!mtx.locks)
 		{
 			// Got the lock
