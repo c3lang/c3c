@@ -90,7 +90,7 @@ fn usz? Inflater.read(&self, char[] buffer) @dynamic
 
 		if (self.pos - self.read_pos >= 32768U) break;
 
-		self.step()!;
+		inflater_step(self)!;
 	}
 
 	return total_out;
@@ -521,7 +521,7 @@ fn void StreamBitReader.close(&self)
 	}
 }
 
-fn void? StreamBitReader.refill(&self) @private @inline
+fn void? StreamBitReader.refill(&self) @inline
 {
 	if (self.buf_pos >= self.buf_len)
 	{
@@ -532,7 +532,7 @@ fn void? StreamBitReader.refill(&self) @private @inline
 	}
 }
 
-fn uint? StreamBitReader.read_bits(&self, uint count) @private @inline
+fn uint? StreamBitReader.read_bits(&self, uint count) @inline
 {
 	if (count == 0) return 0;
 	if (self.nbits < count)
@@ -554,7 +554,7 @@ fn uint? StreamBitReader.read_bits(&self, uint count) @private @inline
 	return value;
 }
 
-fn void StreamBitReader.align(&self) @private @inline
+fn void StreamBitReader.align(&self) @inline
 {
 	uint skip = self.nbits % 8;
 	self.bit_buf >>= skip;
@@ -570,7 +570,7 @@ struct BitWriter @private
 	Allocator allocator;
 }
 
-fn void BitWriter.init(&self, Allocator allocator, usz initial_cap) @private
+fn void BitWriter.init(&self, Allocator allocator, usz initial_cap)
 {
 	self.allocator = allocator;
 	self.data = allocator::alloc_array(allocator, char, initial_cap);
@@ -579,7 +579,7 @@ fn void BitWriter.init(&self, Allocator allocator, usz initial_cap) @private
 	self.nbits = 0;
 }
 
-fn void BitWriter.write_bits(&self, uint value, uint count) @private
+fn void BitWriter.write_bits(&self, uint value, uint count)
 {
 	self.buffer |= (ulong)(value & ((1 << count) - 1)) << self.nbits;
 	self.nbits += count;
@@ -602,13 +602,13 @@ fn void BitWriter.write_bits(&self, uint value, uint count) @private
 	}
 }
 
-fn void BitWriter.write_huffman(&self, uint code, uint len) @private
+fn void BitWriter.write_huffman(&self, uint code, uint len)
 {
 	uint rev = bits::reverse(code << (32 - len));
 	self.write_bits(rev, len);
 }
 
-fn char[] BitWriter.finish(&self) @private
+fn char[] BitWriter.finish(&self)
 {
 	if (self.nbits > 0)
 	{
@@ -630,7 +630,7 @@ struct Huffman @private
 	ushort[288] symbols;
 }
 
-fn void Huffman.build(&self, char[] lengths) @private
+fn void Huffman.build(&self, char[] lengths)
 {
 	ushort[16] offsets;
 	self.counts = {};
@@ -805,7 +805,7 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 	return blen;
 }
 
-fn char[] Huffman.get_lengths(&self, usz max_sym) @private
+fn char[] Huffman.get_lengths(&self, usz max_sym)
 {
 	char[] blen = allocator::new_array(tmem, char, max_sym + 1);
 
@@ -821,7 +821,7 @@ fn char[] Huffman.get_lengths(&self, usz max_sym) @private
 	return blen;
 }
 
-fn void Huffman.build_from_freqs(&self, uint[] freqs, uint max_bits) @private => @pool()
+fn void Huffman.build_from_freqs(&self, uint[] freqs, uint max_bits) => @pool()
 {
 	char[] blen = pkg_merge(tmem, freqs, max_bits);
 	self.build(blen);
@@ -922,7 +922,7 @@ fn void gen_fixed_codes(Code* codes) @private
 	}
 }
 
-fn ushort? Huffman.decode_stream(&self, StreamBitReader* reader) @private @inline
+fn ushort? Huffman.decode_stream(&self, StreamBitReader* reader) @inline
 {
 	uint code = 0;
 	uint first = 0;
@@ -943,7 +943,7 @@ fn ushort? Huffman.decode_stream(&self, StreamBitReader* reader) @private @inlin
 	return CORRUPTED_DATA~;
 }
 
-fn void? Inflater.step(&self) @private
+fn void? inflater_step(Inflater* self) @private
 {
 	switch (self.state)
 	{
@@ -975,7 +975,7 @@ fn void? Inflater.step(&self) @private
 			self.state = COPY_STORED;
 		case COPY_STORED:
 			char c = (char)self.reader.read_bits(8)!;
-			self.write_byte(c);
+			inflater_write_byte(self, c);
 			self.stored_len--;
 			if (self.stored_len == 0)
 			{
@@ -1045,7 +1045,7 @@ fn void? Inflater.step(&self) @private
 			switch
 			{
 				case symbol < 256:
-					self.write_byte((char)symbol);
+					inflater_write_byte(self, (char)symbol);
 				case symbol == 256:
 					self.state = self.final ? DONE : START_BLOCK;
 				case symbol <= 285:
@@ -1064,7 +1064,7 @@ fn void? Inflater.step(&self) @private
 		case COPY_MATCH:
 			if (self.match_dist > self.pos) return CORRUPTED_DATA~;
 			char c = self.window[(usz)((self.pos - self.match_dist) & 0xFFFF)];
-			self.write_byte(c);
+			inflater_write_byte(self, c);
 			self.match_len--;
 			if (self.match_len == 0)
 			{
@@ -1078,7 +1078,7 @@ fn void? Inflater.step(&self) @private
 	return;
 }
 
-fn void Inflater.write_byte(&self, char c) @private @inline
+fn void inflater_write_byte(Inflater* self, char c) @private @inline
 {
 	self.window[(usz)(self.pos & 0xFFFF)] = c;
 	self.pos++;
