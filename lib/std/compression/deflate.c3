@@ -351,7 +351,7 @@ fn void? Deflater.close(&self) @dynamic
 	self.free();
 }
 
-fn void? Deflater.scan_matches(&self, bool final) @private
+fn void? Deflater.scan_matches(&self, bool final)
 {
 	char* input = self.window;
 	uint wfill = self.window_fill;
@@ -509,7 +509,7 @@ fn void? Deflater.scan_matches(&self, bool final) @private
 	self.match_pos = (uint)pos;
 }
 
-fn void? Deflater.emit_block(&self, bool final) @private => @pool()
+fn void? Deflater.emit_block(&self, bool final)=> @pool()
 {
 	if (self.token_count == 0 && !final) return;
 
@@ -801,7 +801,7 @@ fn void? StreamBitReader.refill(&self) @inline
 	}
 }
 
-fn uint? StreamBitReader.peek_bits(&self, uint count) @private @inline
+fn uint? StreamBitReader.peek_bits(&self, uint count) @inline
 {
 	if (count == 0) return 0;
 	if (self.nbits < count)
@@ -820,13 +820,13 @@ fn uint? StreamBitReader.peek_bits(&self, uint count) @private @inline
 	return (uint)(self.bit_buf & ((1UL << count) - 1));
 }
 
-fn void StreamBitReader.consume_bits(&self, uint count) @private @inline
+fn void StreamBitReader.consume_bits(&self, uint count) @inline
 {
 	self.bit_buf >>= count;
 	self.nbits -= count;
 }
 
-fn uint? StreamBitReader.read_bits(&self, uint count) @private @inline
+fn uint? StreamBitReader.read_bits(&self, uint count) @inline
 {
 	uint val = self.peek_bits(count)!;
 	self.consume_bits(count);
@@ -1101,7 +1101,7 @@ fn ushort? Huffman.decode_stream(&self, StreamBitReader* reader) @inline
 	return CORRUPTED_DATA~;
 }
 
-fn void? inflater_step(Inflater* self) @private
+fn void? Inflater.step(&self)
 {
 	switch (self.state)
 	{
@@ -1134,7 +1134,7 @@ fn void? inflater_step(Inflater* self) @private
 
 		case COPY_STORED:
 			char c = (char)self.reader.read_bits(8)!;
-			inflater_write_byte(self, c);
+			self.write_byte(c);
 			self.stored_len--;
 			if (self.stored_len == 0)
 			{
@@ -1204,7 +1204,7 @@ fn void? inflater_step(Inflater* self) @private
 			switch
 			{
 				case symbol < 256:
-					inflater_write_byte(self, (char)symbol);
+					self.write_byte((char)symbol);
 				case symbol == 256:
 					self.state = self.final ? DONE : START_BLOCK;
 				case symbol <= 285:
@@ -1223,7 +1223,7 @@ fn void? inflater_step(Inflater* self) @private
 		case COPY_MATCH:
 			if (self.match_dist > self.pos) return CORRUPTED_DATA~;
 			char c = self.window[(usz)((self.pos - self.match_dist) & 0xFFFF)];
-			inflater_write_byte(self, c);
+			self.write_byte(c);
 			self.match_len--;
 			if (self.match_len == 0)
 			{
@@ -1237,7 +1237,7 @@ fn void? inflater_step(Inflater* self) @private
 	return;
 }
 
-fn void Inflater.write_byte(&self, char c) @private @inline { self.window[(usz)(self.pos & 0xFFFF)] = c; self.pos++; }
+fn void Inflater.write_byte(&self, char c) @inline { self.window[(usz)(self.pos & 0xFFFF)] = c; self.pos++; }
 
 const ushort[31] LENGTH_BASE @private = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0 };
 const char[31] LENGTH_EXTRA @private = { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 0, 0 };
