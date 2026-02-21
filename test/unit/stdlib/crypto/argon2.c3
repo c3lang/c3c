@@ -114,7 +114,7 @@ fn void phc_string_format__encode()
 
 fn void phc_string_format__decode()
 {
-	const char[] INPUT = "$argon2id$v=19$m=65536,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno";
+	const String INPUT = "$argon2id$v=19$m=65536,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno";
 
 	const Argon2Options EXPECTED_OPTS = {
 		.algorithm = ARGON2_ID,

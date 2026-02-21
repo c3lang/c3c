@@ -23,7 +23,7 @@ const bool USE_THREADING = !$feature(ARGON2_FORCE_SEQUENTIAL) && (env::POSIX || 
 typedef SimdVec @local = ulong[<4>] @simd;
 
 <* Values for this enumeration are sourced from the spec as variable `y` in the input configuration. *>
-enum Argon2Algorithm : const inline uint
+constdef Argon2Algorithm : inline uint
 {
 	ARGON2_D = 0,
 	ARGON2_I = 1,
