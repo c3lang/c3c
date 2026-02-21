@@ -590,7 +590,19 @@ static void init_asm_x86(PlatformTarget* target)
 	Clobbers rax_mask = clobbers_make(X86_RAX, -1);
 	Clobbers cc_flag_mask = clobbers_make(X86_CC, -1);
 	Clobbers rax_cc_mask = clobbers_make_from(cc_flag_mask, X86_RAX, -1);
+	Clobbers rcx_cc_mask = clobbers_make_from(cc_flag_mask, X86_RCX, -1); 
 	Clobbers rax_rdx_cc_mask = clobbers_make_from(cc_flag_mask, X86_RAX, X86_RDX, -1);
+	Clobbers xmm_0_7_cc_mask = clobbers_make_from(cc_flag_mask, X86_XMM0, X86_XMM1, X86_XMM2, X86_XMM3, X86_XMM4, X86_XMM5, X86_XMM6, X86_XMM7, -1);
+	Clobbers xmm_0_2_xmm_4_6_cc_mask = clobbers_make_from(cc_flag_mask, X86_XMM0, X86_XMM1, X86_XMM2, X86_XMM4, X86_XMM5, X86_XMM6, -1);
+	Clobbers xmm_0_6_cc_mask = clobbers_make_from(cc_flag_mask, X86_XMM0, X86_XMM1, X86_XMM2, X86_XMM3, X86_XMM4, X86_XMM5, X86_XMM6, -1);
+	Clobbers xmm0_mask = clobbers_make(X86_XMM0, -1);
+	Clobbers xmm0_cc_mask = clobbers_make_from(cc_flag_mask, X86_XMM0, -1);
+	Clobbers rax_xmm0_cc_mask = clobbers_make_from(cc_flag_mask, X86_RAX, X86_XMM0, -1);
+	Clobbers lo16_vec_mask = clobbers_make(X86_XMM0, X86_XMM1, X86_XMM2, X86_XMM3, X86_XMM4, X86_XMM5, X86_XMM6, X86_XMM7,
+			X86_XMM8, X86_XMM9, X86_XMM10, X86_XMM11, X86_XMM12, X86_XMM13, X86_XMM14, X86_XMM15, -1); 
+
+	
+	
 	bool is_x64 = target->arch == ARCH_TYPE_X86_64;
 	if (!is_x64)
 	{
@@ -609,9 +621,6 @@ static void init_asm_x86(PlatformTarget* target)
 	reg_instr_clob(target, "adcw", cc_flag_mask, "rw:r16/mem, r16/mem/imm16/immi8");
 	reg_instr_clob(target, "adcl", cc_flag_mask, "rw:r32/mem, r32/mem/imm32/immi8");
 	reg_instr_clob(target, "adcq", cc_flag_mask, "rw:r64/mem, r64/mem/immi32/immi8");
-
-	reg_instr_clob(target, "adcxl", cc_flag_mask, "r32, rw:r32/mem");
-	reg_instr_clob(target, "adcxq", cc_flag_mask, "r64, rw:r64/mem");
 
 	reg_instr_clob(target, "addb", cc_flag_mask, "rw:r8/mem, r8/mem/imm8");
 	reg_instr_clob(target, "addw", cc_flag_mask, "rw:r16/mem, r16/mem/imm16/immi8");
@@ -747,11 +756,6 @@ static void init_asm_x86(PlatformTarget* target)
 	reg_instr(target, "senduipi", "r64");
 	reg_instr(target, "uiret", NULL);
 
-
-	reg_instr_clob(target, "popcntw", cc_flag_mask, "w:r16, r16/mem");
-	reg_instr_clob(target, "popcntl", cc_flag_mask, "w:r32, r32/mem");
-	reg_instr_clob(target, "popcntq", cc_flag_mask , "w:r64, r64/mem");
-
 	reg_instr_clob(target, "xaddb", cc_flag_mask, "rw:r8/mem,  rw:r8");
 	reg_instr_clob(target, "xaddw", cc_flag_mask, "rw:r16/mem, rw:r16");
 	reg_instr_clob(target, "xaddl", cc_flag_mask, "rw:r32/mem, rw:r32");
@@ -760,6 +764,116 @@ static void init_asm_x86(PlatformTarget* target)
 	reg_instr(target, "xchgw", "rw:r16/mem, rw:r16/mem");
 	reg_instr(target, "xchgl", "rw:r32/mem, rw:r32/mem");
 	reg_instr(target, "xchgq", "rw:r64/mem, rw:r64/mem");
+
+	reg_instr_clob(target, "xgetbv", rax_rdx_cc_mask , NULL);
+
+	// BMI1
+	reg_instr_clob(target, "andn", cc_flag_mask, "w:r32/r64, r32/r64, r32/r64/mem");
+	reg_instr_clob(target, "bextr", cc_flag_mask, "w:r32/r64, r32/r64/mem, r32/r64");
+	reg_instr_clob(target, "blsi", cc_flag_mask, "w:r32/r64, r32/r64/mem");
+	reg_instr_clob(target, "blsmsk", cc_flag_mask, "w:r32/r64, r32/r64/mem");
+	reg_instr_clob(target, "blsr", cc_flag_mask, "w:r32/r64, r32/r64/mem");
+	reg_instr_clob(target, "tzcnt", cc_flag_mask, "w:r16/r32/r64, r16/r32/r64/mem");
+
+	// LZCNT
+	reg_instr_clob(target, "lzcnt", cc_flag_mask, "w:r16/r32/r64, r16/r32/r64/mem");
+
+	// BMI2
+	reg_instr(target, "bzhi", "w:r32/r64, r32/r64/mem, r32/r64");
+	reg_instr(target, "mulx", "w:r32/r64, r32/r64, r32/r64/mem");
+	reg_instr(target, "pdep", "w:r32/r64, r32/r64, r32/r64/mem");
+	reg_instr(target, "pext", "w:r32/r64, r32/r64, r32/r64/mem");
+	reg_instr(target, "rorx", "w:r32/r64, r32/r64/mem, imm8");
+	reg_instr(target, "sarx", "w:r32/r64, r32/r64/mem, r32/r64");
+	reg_instr(target, "shlx", "w:r32/r64, r32/r64/mem, r32/r64");
+	reg_instr(target, "shrx", "w:r32/r64, r32/r64/mem, r32/r64");
+
+	// ADX
+	reg_instr_clob(target, "adcx", cc_flag_mask, "rw:r32/r64, r32/r64/mem");
+	reg_instr_clob(target, "adox", cc_flag_mask, "rw:r32/r64, r32/r64/mem");
+
+	// PCLMULQDQ
+	reg_instr(target, "pclmulqdq", "rw:v128, v128/mem, imm8");
+	reg_instr(target, "vpclmulqdq", "w:v128/v256/v512, v128/v256/v512, v128/v256/v512/mem, imm8");
+
+	// SSE4.2 and VEX versions (no EVEX PCMPGTQ)
+	// Wish I could split crc32[l,q] here since it's got weird encodings, but AT&T does it's suffixes off of
+	// the source here, which I thought was worse. Ideally this has no suffixes anyway.
+	reg_instr_clob(target, "crc32", cc_flag_mask, "rw:r32/r64, r8/r16/r32/r64/mem"); 
+	reg_instr_clob(target, "pcmpestri", rcx_cc_mask, "v128, v128, imm8");
+	reg_instr_clob(target, "vpcmpestri", rcx_cc_mask, "v128, v128, imm8");
+	reg_instr_clob(target, "pcmpestrm", xmm0_cc_mask, "v128, v128, imm8");
+	reg_instr_clob(target, "vpcmpestrm", xmm0_cc_mask, "v128, v128, imm8");
+	reg_instr_clob(target, "pcmpistri", rcx_cc_mask, "v128, v128, imm8");
+	reg_instr_clob(target, "vpcmpistri", rcx_cc_mask, "v128, v128, imm8");
+	reg_instr_clob(target, "popcnt", cc_flag_mask, "w:r16/r32/r64, r16/r32/r64/mem");
+	reg_instr(target, "pcmpgtq", "rw:v128, v128/mem");
+	reg_instr(target, "vpcmpgtq", "w:v128/v256, v128/v256, v128/v256/mem");
+
+	// VZERO*
+	reg_instr_clob(target, "vzeroupper", lo16_vec_mask, NULL);
+	reg_instr_clob(target, "vzeroall", lo16_vec_mask, NULL);
+
+	// AES VAES
+	reg_instr(target, "aesdec", "rw:v128, v128/mem");
+	reg_instr(target, "vaesdec", "w:v128/v256/v512, v128/v256/v512, v128/v256/v512/mem");
+	reg_instr(target, "aesdeclast", "rw:v128, v128/mem");
+	reg_instr(target, "vaesdeclast", "w:v128/v256/v512, v128/v256/v512, v128/v256/v512/mem");
+	reg_instr(target, "aesenc", "rw:v128, v128/mem");
+	reg_instr(target, "vaesenc", "w:v128/v256/v512, v128/v256/v512, v128/v256/v512/mem");
+	reg_instr(target, "aesenclast", "rw:v128, v128/mem");
+	reg_instr(target, "vaesenclast", "w:v128/v256/v512, v128/v256/v512, v128/v256/v512/mem");
+	reg_instr(target, "aesimc", "w:v128, v128/mem");
+	reg_instr(target, "vaesimc", "w:v128, v128/mem");
+	reg_instr(target, "aeskeygenassist", "w:v128, v128/mem, imm8");
+	reg_instr(target, "vaeskeygenassist", "w:v128, v128/mem, imm8");
+
+	// AESKLE
+	reg_instr_clob(target, "aesdec128kl", cc_flag_mask, "rw:v128, mem"); // 384 bit mem load
+	reg_instr_clob(target, "aesdec256kl", cc_flag_mask, "rw:v128, mem"); // 512 bit mem load
+	reg_instr_clob(target, "aesenc128kl", cc_flag_mask, "rw:v128, mem"); // 384 bit mem load
+	reg_instr_clob(target, "aesenc256kl", cc_flag_mask, "rw:v128, mem"); // 512 bit mem load
+	reg_instr_clob(target, "encodekey128", xmm_0_2_xmm_4_6_cc_mask, "r32, r32");
+	reg_instr_clob(target, "encodekey256", xmm_0_6_cc_mask, "r32, r32");
+
+	// AES_WIDE
+	reg_instr_clob(target, "aesdecwide128kl", xmm_0_7_cc_mask, "mem"); // 384 bit mem load
+	reg_instr_clob(target, "aesdecwide256kl", xmm_0_7_cc_mask, "mem"); // 512 bit mem load
+	reg_instr_clob(target, "aesencwide128kl", xmm_0_7_cc_mask, "mem"); // 384 bit mem load
+	reg_instr_clob(target, "aesencwide256kl", xmm_0_7_cc_mask, "mem"); // 512 bit mem load
+
+	// KEY_LOCKER
+	reg_instr_clob(target, "loadiwkey", rax_xmm0_cc_mask, "v128, v128");
+
+	// SHA
+	reg_instr(target, "sha1msg1", "rw:v128, v128/mem");
+	reg_instr(target, "sha1msg2", "rw:v128, v128/mem");
+	reg_instr(target, "sha1nexte", "rw:v128, v128/mem");
+	reg_instr(target, "sha1rnds4", "rw:v128, v128/mem, imm8");
+	reg_instr(target, "sha256msg1", "rw:v128, v128/mem");
+	reg_instr(target, "sha256msg2", "rw:v128, v128/mem");
+	reg_instr_clob(target, "sha256rnds2", xmm0_mask, "rw:v128, v128/mem");
+
+	// SHA512
+	reg_instr(target, "vsha512msg1", "rw:v256, v128");
+	reg_instr(target, "vsha512msg2", "rw:v256, v256");
+	reg_instr(target, "vsha512rnds2", "rw:v256, v256, v128");
+
+	// SM3
+	reg_instr(target, "vsm3msg1", "rw:v128, v128, v128/mem");
+	reg_instr(target, "vsm3msg2", "rw:v128, v128, v128/mem");
+	reg_instr(target, "vsm3rnds2", "rw:v128, v128, v128/mem, imm8");
+
+	// SM4
+	reg_instr(target, "vsm4key4", "w:v128/v256, v128/v256, v128/v256/mem");
+	reg_instr(target, "vsm4rnds4", "w:v128/v256, v128/v256, v128/v256/mem");
+
+	// RDRAND
+	reg_instr_clob(target, "rdrand", cc_flag_mask, "w:r16/r32/r64");
+
+	// RDSEED
+	reg_instr_clob(target, "rdseed", cc_flag_mask, "w:r16/r32/r64");
+
 	target->clobber_name_list = X86ClobberNames;
 	target->extra_clobbers = "~{flags},~{dirflag},~{fspr}";
 	if (target->arch == ARCH_TYPE_X86)
