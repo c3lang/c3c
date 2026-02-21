@@ -132,48 +132,47 @@ macro @le_c(val) @local => @as_char_view(env::BIG_ENDIAN ??? *&&bswap(val) : val
 macro trunc(v) @local => v & ((1ul << 32) - 1);
 
 <* The internal round function of Argon2's BLAKE2-like compression function.  *>
-macro @g(#a, #b, #c, #d) @local
+fn void _g(ulong* a, ulong *b, ulong* c, ulong* d) @local @inline
 {
-	#a += #b + 2ul * trunc(#a) * trunc(#b);
-	#d ^= #a;
-	#d = #d.rotr(32);
-	#c += #d + 2ul * trunc(#c) * trunc(#d);
-	#b ^= #c;
-	#b = #b.rotr(24);
-	#a += #b + 2ul * trunc(#a) * trunc(#b);
-	#d ^= #a;
-	#d = #d.rotr(16);
-	#c += #d + 2ul * trunc(#c) * trunc(#d);
-	#b ^= #c;
-	#b = #b.rotr(63);
+	*a += *b + 2ul * (uint)*a * (uint)*b;
+	*d ^= *a;
+	*d = (*d).rotr(32);
+	*c += *d + 2ul * (uint)*c * (uint)*d;
+	*b ^= *c;
+	*b = (*b).rotr(24);
+	*a += *b + 2ul * (uint)*a * (uint)*b;
+	*d ^= *a;
+	*d = (*d).rotr(16);
+	*c += *d + 2ul * (uint)*c * (uint)*d;
+	*b ^= *c;
+	*b = (*b).rotr(63);
 }
 
 <* Apply a set of compression rounds to permute an `Argon2Block` in memory. *>
-macro @permute(#block, $v) @local
+fn void Argon2Block.permute(&self, ulong[16] v) @local @inline
 {
-	$assert $v.len == 16 : "Expected exactly 16 indices to use for ulong block offsets in `argon2::@permute`.";
-	@g(#block.q[$v[0]], #block.q[$v[4]], #block.q[$v[8]],  #block.q[$v[12]]);
-	@g(#block.q[$v[1]], #block.q[$v[5]], #block.q[$v[9]],  #block.q[$v[13]]);
-	@g(#block.q[$v[2]], #block.q[$v[6]], #block.q[$v[10]], #block.q[$v[14]]);
-	@g(#block.q[$v[3]], #block.q[$v[7]], #block.q[$v[11]], #block.q[$v[15]]);
-	@g(#block.q[$v[0]], #block.q[$v[5]], #block.q[$v[10]], #block.q[$v[15]]);
-	@g(#block.q[$v[1]], #block.q[$v[6]], #block.q[$v[11]], #block.q[$v[12]]);
-	@g(#block.q[$v[2]], #block.q[$v[7]], #block.q[$v[8]],  #block.q[$v[13]]);
-	@g(#block.q[$v[3]], #block.q[$v[4]], #block.q[$v[9]],  #block.q[$v[14]]);
+	_g(&self.q[v[0]], &self.q[v[4]], &self.q[v[8]],  &self.q[v[12]]);
+	_g(&self.q[v[1]], &self.q[v[5]], &self.q[v[9]],  &self.q[v[13]]);
+	_g(&self.q[v[2]], &self.q[v[6]], &self.q[v[10]], &self.q[v[14]]);
+	_g(&self.q[v[3]], &self.q[v[7]], &self.q[v[11]], &self.q[v[15]]);
+	_g(&self.q[v[0]], &self.q[v[5]], &self.q[v[10]], &self.q[v[15]]);
+	_g(&self.q[v[1]], &self.q[v[6]], &self.q[v[11]], &self.q[v[12]]);
+	_g(&self.q[v[2]], &self.q[v[7]], &self.q[v[8]],  &self.q[v[13]]);
+	_g(&self.q[v[3]], &self.q[v[4]], &self.q[v[9]],  &self.q[v[14]]);
 }
 
 <* The core compression function used by Argon2. *>
-fn Argon2Block* Argon2Block.compress(&self) @local @noinline   // noinline: reduce code-gen
+fn Argon2Block* Argon2Block.compress(&self) @local @noinline
 {
 	$for ulong $i = 0; $i < 128; $i += 16:
 		ulong[16] $indices = {};
 		$foreach $x, $c : $indices: $indices[$x] = $i + $x; $endforeach
-		@permute(self, $indices);
+		self.permute($indices);
 	$endfor
 	$for ulong $i = 0; $i < 16; $i += 2:
 		ulong[16] $indices = { 0, 1, 16, 17, 32, 33, 48, 49, 64, 65, 80, 81, 96, 97, 112, 113 };
 		$foreach $x, $c : $indices: $indices[$x] = $i + $c; $endforeach
-		@permute(self, $indices);
+		self.permute($indices);
 	$endfor
 	return self;
 }
@@ -636,10 +635,7 @@ fn void Argon2Decoded.link(&self, Allocator allocator, char[] hash = {}, char[] 
 fn void Argon2Decoded.free(&self)
 {
 	if (self.allocator == tmem) return;   // no need to do this with the temp allocator
-	allocator::free(self.allocator, self.hash.ptr);
-	allocator::free(self.allocator, self.salt.ptr);
-	allocator::free(self.allocator, self.key_id.ptr);
-	allocator::free(self.allocator, self.assoc.ptr);
+	allocator::free_all(self.allocator, self.hash.ptr, self.salt.ptr, self.key_id.ptr, self.assoc.ptr);
 	mem::zero_volatile(@as_char_view(*self));
 }
 
@@ -803,16 +799,26 @@ macro verify(Allocator allocator, String hash_str, char[] password, char[] key =
 		Argon2Decoded c;
 		if (catch @try(c, decode(allocator, hash_str))) return false;
 	$endif
-	defer c.free();
-
 	c.key = key;
-
-	String reconstructed = hash(allocator, password, c.opts, out_size: c.hash.len);
-	defer allocator::free(allocator, reconstructed.ptr);
-
-	return reconstructed == hash_str;
+	defer c.free();
+	return verify_impl(&c, hash_str, password);
 }
 
 <* A simple alias of `verify` implicitly using the temp allocator. *>
 macro tverify(String hash_str, char[] password, char[] key = {}, bool $rethrows = true)
 	=> verify(tmem, hash_str, password, key: key, $rethrows: $rethrows);
+
+<*
+ Given a hash string and a password, verify that the password is correct.
+
+ Note that this function SHOULD NOT use the `tmem` temp allocator if the `mem_size` of
+ the hash is expected to be larger than the maximum pool size.
+
+ @param [&in] decoded_ctx : "The decoded hash string's information"
+ @param [in] hash_str : "The PHC-SF hash string to decipher."
+ @param [in] password : "The password value to use when attempting to reconstruct `hash_str`."
+*>
+fn bool verify_impl(Argon2Decoded* decoded_ctx, String hash_str, char[] password) @local => @pool()
+{
+	return hash_str == thash(password, decoded_ctx.opts, out_size: decoded_ctx.hash.len);
+}
