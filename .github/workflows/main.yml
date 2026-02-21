@@ -177,6 +177,50 @@ jobs:
           name: c3-linux-${{matrix.build_type}}
           path: c3-linux-${{matrix.build_type}}.tar.gz
 
+  build-linux-musl-static:
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:3.23
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          V=${{env.LLVM_RELEASE_VERSION_LINUX_MUSL}}
+          apk update
+          apk add \
+            build-base bash git cmake ninja python3 linux-headers \
+            zlib-dev curl-dev libffi-dev
+
+      - name: CMake Build (static musl)
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DC3_FETCH_LLVM=ON \
+            -DC3_LINK_DYNAMIC=OFF \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DLLVM_ENABLE_LIBXML2=OFF \
+            -DCMAKE_EXE_LINKER_FLAGS="-static -static-libstdc++ -static-libgcc"
+          cmake --build build
+
+      - name: Verify Static
+        run: |
+          ldd build/c3c || true
+          file build/c3c
+          build/c3c --version
+
+      - name: Bundle
+        run: bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-static-${{ matrix.build_type }}" "tar"
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: c3-linux-static-${{ matrix.build_type }}
+          path: c3-linux-static-${{ matrix.build_type }}.tar.gz
+
   build-linux-alpine:
     runs-on: ubuntu-latest
     container:
