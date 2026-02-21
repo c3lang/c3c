@@ -383,8 +383,8 @@ fn void hash_raw(Allocator allocator, char[] outbuf, char[] input, Argon2Options
 	{
 		for (uint j = 0; j < 2; j++)
 		{
-			*(uint*)(&digest[64]) = @le(j);
-			*(uint*)(&digest[68]) = @le(lane);
+			@unaligned_store(*(uint*)(&digest[64]), @le(j), 1);
+			@unaligned_store(*(uint*)(&digest[68]), @le(lane), 1);
 			h_prime(blocks[lane * blocks_per_lane + j].b[..], digest[..]);
 		}
 	}
