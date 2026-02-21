@@ -2870,6 +2870,7 @@ static inline bool sema_compare_method_with_interface(SemaContext *context, Decl
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 {
 	ASSERT_SPAN(decl, decl->decl_kind == DECL_FUNC);
+
 	// Check for @init, @finalizer, @test and @benchmark
 	if (decl->func_decl.attr_init | decl->func_decl.attr_finalizer)
 	{
@@ -2884,6 +2885,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 
 	// Resolve the parent type.
 	TypeInfo *parent_type = type_infoptr(decl->func_decl.type_parent);
+
 	ASSERT(parent_type->resolve_status == RESOLVE_DONE);
 	Type *par_type = parent_type->type->canonical;
 

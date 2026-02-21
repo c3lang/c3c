@@ -49,43 +49,43 @@ macro @round(r, m, $s, #v) @local
 	@g(r, m, $s, 7, #v[ 3], #v[ 4], #v[ 9], #v[14]);
 }
 
-macro @common_compress(#instance, $rounds, $iv, $sigma, block) @local
+macro common_compress(instance, $rounds, $iv, $sigma, block) @local
 {
-	$typeof(#instance.h[0])[16] m, v;
+	$typeof(instance.h[0])[16] m, v;
 
 	((char*)&m)[:$sizeof(block)] = block[..];
 
-	v[:8] = #instance.h[..];
+	v[:8] = instance.h[..];
 	v[ 8] = $iv[0];
 	v[ 9] = $iv[1];
 	v[10] = $iv[2];
 	v[11] = $iv[3];
-	v[12] = $iv[4] ^ #instance.t[0];
-	v[13] = $iv[5] ^ #instance.t[1];
-	v[14] = $iv[6] ^ #instance.f[0];
-	v[15] = $iv[7] ^ #instance.f[1];
+	v[12] = $iv[4] ^ instance.t[0];
+	v[13] = $iv[5] ^ instance.t[1];
+	v[14] = $iv[6] ^ instance.f[0];
+	v[15] = $iv[7] ^ instance.f[1];
 
 	$for usz $i = 0; $i < $rounds; $i++:
 		@round($i, m, $sigma, v);
 	$endfor
 
 	$for usz $i = 0; $i < 8; $i++:
-		#instance.h[$i] ^= v[$i] ^ v[$i + 8];
+		instance.h[$i] ^= v[$i] ^ v[$i + 8];
 	$endfor
 }
 
-macro @add_ctr(#instance, usz amount) @local
+macro _add_ctr(instance, usz amount) @local
 {
-	#instance.t[0] += ($typeof(#instance.t[0]))amount;
-	#instance.t[1] += ($typeof(#instance.t[0]))(#instance.t[0] < amount); // adds 1 on overflow of [0]
+	instance.t[0] += ($typeof(instance.t[0]))amount;
+	instance.t[1] += ($typeof(instance.t[0]))(instance.t[0] < amount); // adds 1 on overflow of [0]
 }
 
-macro @common_init(#instance, $ParamType, $iv, usz out_len, char[] key = {}, char[] salt = {}, char[] personal = {}) @local
+macro common_init(instance, $ParamType, $iv, usz out_len, char[] key = {}, char[] salt = {}, char[] personal = {}) @local
 {
-	mem::zero_volatile(@as_char_view(*#instance)); // explicitly because habits around hash init usually involve @noinit
+	mem::zero_volatile(@as_char_view(*instance)); // explicitly because habits around hash init usually involve @noinit
 
-	#instance.h[..] = $iv[..];
-	#instance.outlen = out_len;
+	instance.h[..] = $iv[..];
+	instance.outlen = out_len;
 
 	$ParamType p = {
 		.digest_length = (char)out_len,
@@ -96,59 +96,60 @@ macro @common_init(#instance, $ParamType, $iv, usz out_len, char[] key = {}, cha
 	if (salt.len) p.salt[:salt.len] = salt[..];
 	if (personal.len) p.personal[:personal.len] = personal[..];
 
-	array::@zip_into(((char*)&#instance.h)[:$sizeof(p)], ((char*)&p)[:$sizeof(p)], fn (a, b) => a ^ b); // bytes(self.h) ^= bytes(p)
+	array::@zip_into(((char*)&instance.h)[:$sizeof(p)], ((char*)&p)[:$sizeof(p)], fn (a, b) => a ^ b); // bytes(self.h) ^= bytes(p)
 
 	if (key.len) 
 	{
 		char[$sizeof($iv[0])*16] dummy = {};
 		dummy[:key.len] = key[..];
-		#instance.update(dummy[..]); // consume a FULL block
+		instance.update(dummy[..]); // consume a FULL block
 		mem::zero_volatile(dummy[..]); // do not optimize clearing this from the stack
 	}
 }
 
-macro @common_update(#instance, $block_size, char[] data) @local
+macro common_update(instance, $block_size, char[] data) @local
 {
 	if (@unlikely(!data.len)) return;
 
-	usz fill = $block_size - #instance.buflen;
+	usz fill = $block_size - instance.buflen;
 	if (data.len > fill)
 	{
-		#instance.buf[#instance.buflen:fill] = data[:fill];
-		#instance.buflen = 0;
+		instance.buf[instance.buflen:fill] = data[:fill];
+		instance.buflen = 0;
 
-		@add_ctr(#instance, $block_size);
-		#instance.compress(#instance.buf);
+		_add_ctr(instance, $block_size);
+		instance._compress(instance.buf);
 
 		data = data[fill..];
 
 		for (; data.len > $block_size; data = data[$block_size..])
 		{
-			@add_ctr(#instance, $block_size);
-			#instance.compress(data[:$block_size]);
+			_add_ctr(instance, $block_size);
+			instance._compress(data[:$block_size]);
 		}
 	}
-	#instance.buf[#instance.buflen:data.len] = data[..];
-	#instance.buflen += data.len;
+	instance.buf[instance.buflen:data.len] = data[..];
+	instance.buflen += data.len;
 }
 
-macro @common_final(#instance, $output_length) @local
+macro common_final(instance, $output_length) @local
 {
 	char[$output_length] result = {};
-	if ($output_length != #instance.outlen) return result;
+	if ($output_length != instance.outlen) return result;
 
-	@add_ctr(#instance, #instance.buflen);
-	if (#instance.f[0]) return result; // technically an error return
+	_add_ctr(instance, instance.buflen);
+	if (instance.f[0]) return result; // technically an error return
 
-	if (#instance.last_node) #instance.f[1] = $typeof(#instance.h[0]).max;
-	#instance.f[0] = $typeof(#instance.h[0]).max;
+	var $max = $typeof(instance.h[0]).max;
+	if (instance.last_node) instance.f[1] = $max;
+	instance.f[0] = $max;
 
-	mem::zero_volatile(#instance.buf[#instance.buflen..]); // pad buffer with zeroes
-	#instance.compress(#instance.buf);
+	mem::zero_volatile(instance.buf[instance.buflen..]); // pad buffer with zeroes
+	instance._compress(instance.buf);
 
-    defer mem::zero_volatile(@as_char_view(*#instance)); // destroy the current context implicitly
+    defer mem::zero_volatile(@as_char_view(*instance)); // destroy the current context implicitly
 
-	result[:#instance.outlen] = @as_char_view(#instance.h)[:#instance.outlen];
+	result[:instance.outlen] = @as_char_view(instance.h)[:instance.outlen];
 	return result;
 }
 
@@ -244,13 +245,13 @@ alias b_512 = blake2b_512;
  @require !personal.ptr || (personal.len > 0 && personal.len <= BLAKE2B_PERSONALBYTES) : "A specified personalization's length must be within the proper range."
 *>
 fn void Blake2b.init(&self, usz out_len, char[] key = {}, char[] salt = {}, char[] personal = {})
-	=> @common_init(self, Blake2bParam, BLAKE2B_IV, out_len, key, salt, personal);
+	=> common_init(self, Blake2bParam, BLAKE2B_IV, out_len, key, salt, personal);
 
 <*
  Core compression inline function for Blake2b.
 *>
-fn void Blake2b.compress(&self, char[BLAKE2B_BLOCKBYTES] block) @local @inline
-	=> @common_compress(self, 12, BLAKE2B_IV, BLAKE2B_SIGMA, block);
+fn void Blake2b._compress(&self, char[BLAKE2B_BLOCKBYTES] block) @inline
+	=> common_compress(self, 12, BLAKE2B_IV, BLAKE2B_SIGMA, block);
 
 <*
  Add more data to the hash context or stream.
@@ -258,7 +259,7 @@ fn void Blake2b.compress(&self, char[BLAKE2B_BLOCKBYTES] block) @local @inline
  @param[in] data : "The data to ingest into the hash context."
 *>
 fn void Blake2b.update(&self, char[] data)
-	=> @common_update(self, BLAKE2B_BLOCKBYTES, data);
+	=> common_update(self, BLAKE2B_BLOCKBYTES, data);
 
 <*
  Finalize the hash context and return the hash result at the given size.
@@ -267,9 +268,12 @@ fn void Blake2b.update(&self, char[] data)
 
  @require $output_length == self.outlen : "The specified compile-time output size MUST be equal to the initialized output size."
 *>
-macro char[*] Blake2b.final(&self, $output_length)
-	=> @common_final(self, $output_length);
+macro char[*] Blake2b.final(&self, $output_length) => _blake2b_final{$output_length}(self);
 
+fn char[OUTPUT_LENGTH] _blake2b_final(Blake2b* self) <OUTPUT_LENGTH> @local
+{
+	return common_final(self, OUTPUT_LENGTH);
+}
 
 // ======================================================================================
 // BEGIN Blake2s contents. Do not separate this from Blake2b: there's not really a point.
@@ -356,13 +360,13 @@ alias s_256 = blake2s_256;
  @require !personal.ptr || (personal.len > 0 && personal.len <= BLAKE2B_PERSONALBYTES) : "A specified personalization's length must be within the proper range."
 *>
 fn void Blake2s.init(&self, usz out_len, char[] key = {}, char[] salt = {}, char[] personal = {})
-	=> @common_init(self, Blake2sParam, BLAKE2S_IV, out_len, key, salt, personal);
+	=> common_init(self, Blake2sParam, BLAKE2S_IV, out_len, key, salt, personal);
 
 <*
  Core compression inline function for Blake2s.
 *>
-fn void Blake2s.compress(&self, char[BLAKE2S_BLOCKBYTES] block) @local @inline
-	=> @common_compress(self, 10, BLAKE2S_IV, BLAKE2S_SIGMA, block);
+fn void Blake2s._compress(&self, char[BLAKE2S_BLOCKBYTES] block) @inline
+	=> common_compress(self, 10, BLAKE2S_IV, BLAKE2S_SIGMA, block);
 
 <*
  Add more data to the hash context or stream.
@@ -370,7 +374,7 @@ fn void Blake2s.compress(&self, char[BLAKE2S_BLOCKBYTES] block) @local @inline
  @param[in] data : "The data to ingest into the hash context."
 *>
 fn void Blake2s.update(&self, char[] data)
-	=> @common_update(self, BLAKE2S_BLOCKBYTES, data);
+	=> common_update(self, BLAKE2S_BLOCKBYTES, data);
 
 <*
  Finalize the hash context and return the hash result at the given size.
@@ -380,4 +384,4 @@ fn void Blake2s.update(&self, char[] data)
  @require $output_length == self.outlen : "The specified compile-time output size MUST be equal to the initialized output size."
 *>
 macro char[*] Blake2s.final(&self, $output_length)
-	=> @common_final(self, $output_length);
+	=> common_final(self, $output_length);

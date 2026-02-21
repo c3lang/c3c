@@ -63,7 +63,7 @@ macro quarter_round(uint* x, int a, int b, int c, int d) @local
 }
 
 <* Process the next (or final) chunk of ingested data. *>
-fn void ChaCha20.mutate_keystream(&self) @local @inline
+fn void chacha20_mutate_keystream(ChaCha20* self) @local @inline
 {
 	self.key_stream[..] = self.state[..];
 
@@ -137,7 +137,7 @@ fn void ChaCha20.transform(&self, char[] data)
 
 	for (usz x = offset; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..], x = offset)
 	{
-		self.mutate_keystream();
+		chacha20_mutate_keystream(self);
         if (offset) foreach (i, &b : data[:offset]) *b ^= key_stream[i];
         char[] aligned_data = data[offset..];
 		for (; x <= (BLOCK_SIZE - usz.sizeof); x += usz.sizeof)
@@ -150,7 +150,7 @@ fn void ChaCha20.transform(&self, char[] data)
 	// 3. Process any remaining bytes.
 	if (data.len > 0)
 	{
-		self.mutate_keystream();
+		chacha20_mutate_keystream(self);
 		for (usz i = 0; i < data.len; i++) data[i] ^= key_stream[i];
 		self.position = data.len;
 	}

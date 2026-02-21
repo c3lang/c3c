@@ -790,7 +790,7 @@ fn void StreamBitReader.close(&self)
 	}
 }
 
-fn void? StreamBitReader.refill(&self) @private @inline
+fn void? StreamBitReader.refill(&self) @inline
 {
 	if (self.buf_pos >= self.buf_len)
 	{
@@ -833,7 +833,7 @@ fn uint? StreamBitReader.read_bits(&self, uint count) @private @inline
 	return val;
 }
 
-fn void StreamBitReader.align(&self) @private @inline
+fn void StreamBitReader.align(&self) @inline
 {
 	uint skip = self.nbits % 8;
 	self.bit_buf >>= skip;
@@ -849,7 +849,7 @@ struct BitWriter @private
 	Allocator allocator;
 }
 
-fn void BitWriter.init(&self, Allocator allocator, usz initial_cap) @private
+fn void BitWriter.init(&self, Allocator allocator, usz initial_cap)
 {
 	self.allocator = allocator;
 	self.data = allocator::alloc_array(allocator, char, initial_cap);
@@ -858,7 +858,7 @@ fn void BitWriter.init(&self, Allocator allocator, usz initial_cap) @private
 	self.nbits = 0;
 }
 
-fn void BitWriter.write_bits(&self, uint value, uint count) @private
+fn void BitWriter.write_bits(&self, uint value, uint count)
 {
 	self.buffer |= (ulong)(value & ((1 << count) - 1)) << self.nbits;
 	self.nbits += count;
@@ -881,13 +881,13 @@ fn void BitWriter.write_bits(&self, uint value, uint count) @private
 	}
 }
 
-fn void BitWriter.write_huffman(&self, uint code, uint len) @private
+fn void BitWriter.write_huffman(&self, uint code, uint len)
 {
 	uint rev = bits::reverse(code << (32 - len));
 	self.write_bits(rev, len);
 }
 
-fn char[] BitWriter.finish(&self) @private
+fn char[] BitWriter.finish(&self)
 {
 	if (self.nbits > 0)
 	{
@@ -920,7 +920,7 @@ fn ushort reverse16(ushort x) @private @inline
 	return (ushort)res;
 }
 
-fn void Huffman.build(&self, char[] lengths) @private
+fn void Huffman.build(&self, char[] lengths)
 {
 	ushort[16] offsets;
 	self.counts = {};
@@ -1021,7 +1021,7 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 	return blen;
 }
 
-fn char[] Huffman.get_lengths(&self, usz max_sym) @private
+fn char[] Huffman.get_lengths(&self, usz max_sym)
 {
 	char[] blen = allocator::new_array(tmem, char, max_sym + 1);
 	ushort index = 0;
@@ -1029,7 +1029,7 @@ fn char[] Huffman.get_lengths(&self, usz max_sym) @private
 	return blen;
 }
 
-fn void Huffman.build_from_freqs(&self, uint[] freqs, uint max_bits) @private => @pool()
+fn void Huffman.build_from_freqs(&self, uint[] freqs, uint max_bits) => @pool()
 {
 	char[] blen = pkg_merge(tmem, freqs, max_bits);
 	self.build(blen);
@@ -1074,7 +1074,7 @@ fn void gen_fixed_codes(Code* codes) @private
 	for (uint n = 0; n < 288; n++) { uint len = lens[n]; if (len != 0) { uint c = next_code[len]; codes[n].code = (ushort)c; codes[n].len = (ushort)len; next_code[len]++; } else { codes[n].code = 0; codes[n].len = 0; } }
 }
 
-fn ushort? Huffman.decode_stream(&self, StreamBitReader* reader) @private @inline
+fn ushort? Huffman.decode_stream(&self, StreamBitReader* reader) @inline
 {
 	uint peek = reader.peek_bits(11)!;
 	uint entry = self.table[peek];
@@ -1101,7 +1101,7 @@ fn ushort? Huffman.decode_stream(&self, StreamBitReader* reader) @private @inlin
 	return CORRUPTED_DATA~;
 }
 
-fn void? Inflater.step(&self) @private
+fn void? inflater_step(Inflater* self) @private
 {
 	switch (self.state)
 	{
@@ -1134,7 +1134,7 @@ fn void? Inflater.step(&self) @private
 
 		case COPY_STORED:
 			char c = (char)self.reader.read_bits(8)!;
-			self.write_byte(c);
+			inflater_write_byte(self, c);
 			self.stored_len--;
 			if (self.stored_len == 0)
 			{
@@ -1204,7 +1204,7 @@ fn void? Inflater.step(&self) @private
 			switch
 			{
 				case symbol < 256:
-					self.write_byte((char)symbol);
+					inflater_write_byte(self, (char)symbol);
 				case symbol == 256:
 					self.state = self.final ? DONE : START_BLOCK;
 				case symbol <= 285:
@@ -1223,7 +1223,7 @@ fn void? Inflater.step(&self) @private
 		case COPY_MATCH:
 			if (self.match_dist > self.pos) return CORRUPTED_DATA~;
 			char c = self.window[(usz)((self.pos - self.match_dist) & 0xFFFF)];
-			self.write_byte(c);
+			inflater_write_byte(self, c);
 			self.match_len--;
 			if (self.match_len == 0)
 			{

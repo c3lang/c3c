@@ -246,7 +246,7 @@ fn void Blake3.init(&self, char[] key = {}, char explicit_flags = 0)
 <*
  Reset the state of the hashing context, in case it should be reused without reloading the key value.
 *>
-fn void Blake3.reset(&self) @local @inline
+fn void _reset(Blake3* self) @local @inline
 {
 	self.chunk.reset(self.key[..], 0);
 	self.cv_stack_len = 0;
@@ -255,7 +255,7 @@ fn void Blake3.reset(&self) @local @inline
 <*
  Private function to merge tree results.
 *>
-fn void Blake3.merge_cv_stack(&self, ulong total_len) @local @inline
+fn void _merge_cv_stack(Blake3* self, ulong total_len) @local @inline
 {
 	usz post_merge_stack_len = (usz)@popcnt(total_len);
 	for (; self.cv_stack_len > post_merge_stack_len; self.cv_stack_len--)
@@ -269,9 +269,9 @@ fn void Blake3.merge_cv_stack(&self, ulong total_len) @local @inline
 <*
  Private function to add a new tree onto the stack.
 *>
-fn void Blake3.push_cv(&self, char* new_cv, ulong chunk_counter) @local @inline
+fn void Blake3.push_cv(&self, char* new_cv, ulong chunk_counter) @inline
 {
-	self.merge_cv_stack(chunk_counter);
+	_merge_cv_stack(self, chunk_counter);
 	self.cv_stack[self.cv_stack_len * OUT_SIZE : OUT_SIZE] = new_cv[:OUT_SIZE];
 	self.cv_stack_len++;
 }
@@ -334,7 +334,7 @@ fn void Blake3.update(&self, char[] input, bool use_tbb = false)
 	if (input.len > 0)
 	{
 		self.chunk.update(input);
-		self.merge_cv_stack(self.chunk.chunk_counter);
+		_merge_cv_stack(self, self.chunk.chunk_counter);
 	}
 }
 
@@ -400,7 +400,7 @@ fn void Blake3.destroy(&self) @inline
  @param [in] key
  @param flags
 *>
-fn void Blake3ChunkState.init(&self, uint[] key, char flags) @local @inline
+fn void Blake3ChunkState.init(&self, uint[] key, char flags) @inline
 {
 	mem::zero_volatile(@as_char_view(*self));
 	self.cv[..] = key[..];
@@ -413,7 +413,7 @@ fn void Blake3ChunkState.init(&self, uint[] key, char flags) @local @inline
  @param [in] key
  @param chunk_counter
 *>
-fn void Blake3ChunkState.reset(&self, uint[] key, ulong chunk_counter) @local @inline
+fn void Blake3ChunkState.reset(&self, uint[] key, ulong chunk_counter) @inline
 {
 	self.init(key, self.flags); // maintain its own flags
 	self.chunk_counter = chunk_counter; // update chunk counter
@@ -422,7 +422,7 @@ fn void Blake3ChunkState.reset(&self, uint[] key, ulong chunk_counter) @local @i
 <*
  Get bytes length of consumed data.
 *>
-fn usz Blake3ChunkState.len(&self) @operator(len) @local @inline
+fn usz Blake3ChunkState.len(&self) @operator(len) @inline
 	=> (BLOCK_SIZE * (usz)self.blocks_compressed) + (usz)self.buf_len;
 
 <*
@@ -430,7 +430,7 @@ fn usz Blake3ChunkState.len(&self) @operator(len) @local @inline
 
  @param [in] data : "Data to ingest."
 *>
-fn usz Blake3ChunkState.fill_buf(&self, char[] data) @local @inline
+fn usz Blake3ChunkState.fill_buf(&self, char[] data) @inline
 {
 	usz take = min(BLOCK_SIZE - (usz)self.buf_len, data.len);
 	self.buf[self.buf_len:take] = data[:take];
@@ -441,7 +441,7 @@ fn usz Blake3ChunkState.fill_buf(&self, char[] data) @local @inline
 <*
  Determine whether to set the CHUNK_START flag.
 *>
-fn char Blake3ChunkState.maybe_start_flag(&self) @local @inline
+fn char Blake3ChunkState.maybe_start_flag(&self) @inline
 	=> !self.blocks_compressed ? Blake3Flags.CHUNK_START : 0;
 
 <*
@@ -449,7 +449,7 @@ fn char Blake3ChunkState.maybe_start_flag(&self) @local @inline
 
  @param [in] input : "Incoming bytes to update with."
 *>
-fn void Blake3ChunkState.update(&self, char[] input) @local
+fn void Blake3ChunkState.update(&self, char[] input)
 {
 	if (self.buf_len)
 	{
@@ -473,7 +473,7 @@ fn void Blake3ChunkState.update(&self, char[] input) @local
 <*
  Convert the chunk state to an "output" type with the right flags.
 *>
-fn Blake3Output Blake3ChunkState.output(&self) @local @inline
+fn Blake3Output Blake3ChunkState.output(&self) @inline
 	=> make_output(self.cv[..], &self.buf, self.buf_len, self.chunk_counter, self.flags | self.maybe_start_flag() | Blake3Flags.CHUNK_END);
 
 <*
@@ -511,7 +511,7 @@ macro Blake3Output parent_output(char* block, uint[] key, char flags) @local
 
  @param [&inout] cv
 *>
-macro void Blake3Output.chaining_value(&self, char* cv) @local
+macro void Blake3Output.chaining_value(&self, char* cv)
 {
 	uint[KEY_SIZE_WORDS] cv_words;
 	cv_words[..] = self.input_cv[..];
@@ -525,7 +525,7 @@ macro void Blake3Output.chaining_value(&self, char* cv) @local
  @param seek
  @param [inout] into
 *>
-fn void Blake3Output.root_bytes(&self, usz seek, char[] into) @local
+fn void Blake3Output.root_bytes(&self, usz seek, char[] into)
 {
 	if (!into.len) return;
 

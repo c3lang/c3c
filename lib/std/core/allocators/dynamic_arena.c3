@@ -137,12 +137,67 @@ fn void DynamicArenaAllocator.reset(&self)
 	self.page = page;
 }
 
+
+
+<*
+ @require size > 0 : `acquire expects size > 0`
+ @require !alignment || math::is_power_of_2(alignment)
+ @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
+*>
+fn void*? DynamicArenaAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
+{
+	alignment = alignment_for_allocation(alignment);
+	DynamicArenaPage* page = self.page;
+
+	void* ptr @noinit;
+	do SET_DONE:
+	{
+		if (!page && self.unused_page)
+		{
+			self.page = page = self.unused_page;
+			self.unused_page = page.prev_arena;
+			page.prev_arena = null;
+		}
+		if (!page)
+		{
+			ptr = _alloc_new(self, size, alignment)!;
+			break SET_DONE;
+		}
+		void* start = mem::aligned_pointer(page.memory + page.used + DynamicArenaChunk.sizeof, alignment);
+		usz new_used = start - page.memory + size;
+		if ALLOCATE_NEW: (new_used > page.total)
+		{
+			if ((page = self.unused_page))
+			{
+				start = mem::aligned_pointer(page.memory + page.used + DynamicArenaChunk.sizeof, alignment);
+				new_used = start + size - page.memory;
+				if (page.total >= new_used)
+				{
+					self.unused_page = page.prev_arena;
+					page.prev_arena = self.page;
+					self.page = page;
+					break ALLOCATE_NEW;
+				}
+			}
+			ptr = _alloc_new(self, size, alignment)!;
+			break SET_DONE;
+		}
+		page.used = new_used;
+		assert(start + size == page.memory + page.used);
+		ptr = start;
+		DynamicArenaChunk* chunk = (DynamicArenaChunk*)ptr - 1;
+		chunk.size = size;
+	};
+	if (init_type == ZERO) mem::clear(ptr, size, mem::DEFAULT_MEM_ALIGNMENT);
+	return ptr;
+}
+
 <*
  @require math::is_power_of_2(alignment)
  @require size > 0
  @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 *>
-fn void*? DynamicArenaAllocator._alloc_new(&self, usz size, usz alignment) @local
+fn void*? _alloc_new(DynamicArenaAllocator* self, usz size, usz alignment) @local
 {
 	// First, make sure that we can align it, extending the page size if needed.
 	usz page_size = max(self.page_size, mem::aligned_offset(size + DynamicArenaChunk.sizeof + alignment, alignment));
@@ -166,57 +221,4 @@ fn void*? DynamicArenaAllocator._alloc_new(&self, usz size, usz alignment) @loca
 	self.page = page;
 	page.current_stack_ptr = mem_start;
 	return mem_start;
-}
-
-<*
- @require size > 0 : `acquire expects size > 0`
- @require !alignment || math::is_power_of_2(alignment)
- @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
-*>
-fn void*? DynamicArenaAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
-{
-	alignment = alignment_for_allocation(alignment);
-	DynamicArenaPage* page = self.page;
-
-	void* ptr @noinit;
-	do SET_DONE:
-	{
-		if (!page && self.unused_page)
-		{
-			self.page = page = self.unused_page;
-			self.unused_page = page.prev_arena;
-			page.prev_arena = null;
-		}
-		if (!page)
-		{
-			ptr = self._alloc_new(size, alignment)!;
-			break SET_DONE;
-		}
-		void* start = mem::aligned_pointer(page.memory + page.used + DynamicArenaChunk.sizeof, alignment);
-		usz new_used = start - page.memory + size;
-		if ALLOCATE_NEW: (new_used > page.total)
-		{
-			if ((page = self.unused_page))
-			{
-				start = mem::aligned_pointer(page.memory + page.used + DynamicArenaChunk.sizeof, alignment);
-				new_used = start + size - page.memory;
-				if (page.total >= new_used)
-				{
-					self.unused_page = page.prev_arena;
-					page.prev_arena = self.page;
-					self.page = page;
-					break ALLOCATE_NEW;
-				}
-			}
-			ptr = self._alloc_new(size, alignment)!;
-			break SET_DONE;
-		}
-		page.used = new_used;
-		assert(start + size == page.memory + page.used);
-		ptr = start;
-		DynamicArenaChunk* chunk = (DynamicArenaChunk*)ptr - 1;
-		chunk.size = size;
-	};
-	if (init_type == ZERO) mem::clear(ptr, size, mem::DEFAULT_MEM_ALIGNMENT);
-	return ptr;
 }
