@@ -366,7 +366,7 @@ fn usz? printfn(String format, args...) @format(0) @maydiscard
 	PutcharBuffer buff;
 	formatter.init(&out_putchar_buffer_fn, &buff);
 	usz? len = formatter.vprintf(format, args);
-	formatter.out('\n')!;
+	formatter.print_char('\n')!;
 	write_putchar_buffer(&buff, true)!;
 	return len + 1;
 }

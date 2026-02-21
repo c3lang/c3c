@@ -321,7 +321,7 @@ fn void? VirtualMemory.destroy(&self)
 	return release(self.ptr, self.size);
 }
 
-fn CInt VirtualMemoryAccess.to_posix(self) @if(env::POSIX) @private
+fn CInt VirtualMemoryAccess.to_posix(self) @if(env::POSIX)
 {
 	switch (self)
 	{
@@ -336,7 +336,7 @@ fn CInt VirtualMemoryAccess.to_posix(self) @if(env::POSIX) @private
 	}
 }
 
-fn Win32_Protect VirtualMemoryAccess.to_win32(self) @if(env::WIN32) @private
+fn Win32_Protect VirtualMemoryAccess.to_win32(self) @if(env::WIN32)
 {
 	switch (self)
 	{
