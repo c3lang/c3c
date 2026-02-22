@@ -8,6 +8,7 @@ alias FseekFn = fn void?(void*, long, SeekOrigin);
 alias FtellFn = fn long?(void*);
 alias FwriteFn = fn usz?(void*, char[] buffer);
 alias FreadFn = fn usz?(void*, char[] buffer);
+alias FflushFn = fn void?(void*);
 alias RemoveFn = fn void?(String);
 alias FputcFn = fn void?(int, void*);
 alias SetModifiedTimeFn = fn void?(String, libc::Time_t);
@@ -19,6 +20,7 @@ FseekFn native_fseek_fn @weak @if(!$defined(native_fseek_fn));
 FtellFn native_ftell_fn @weak @if(!$defined(native_ftell_fn));
 FwriteFn native_fwrite_fn @weak @if(!$defined(native_fwrite_fn));
 FreadFn native_fread_fn @weak @if(!$defined(native_fread_fn));
+FflushFn native_fflush_fn @weak @if(!$defined(native_fflush_fn));
 RemoveFn native_remove_fn @weak @if(!$defined(native_remove_fn));
 FputcFn native_fputc_fn @weak @if(!$defined(native_fputc_fn));
 SetModifiedTimeFn native_set_modified_time_fn @weak @if(!$defined(native_set_modified_time_fn));
@@ -75,6 +77,12 @@ fn usz? native_fwrite(CFile file, char[] buffer) @inline
 fn usz? native_fread(CFile file, char[] buffer) @inline
 {
 	if (native_fread_fn) return native_fread_fn(file, buffer);
+	return io::UNSUPPORTED_OPERATION~;
+}
+
+fn void? native_fflush(CFile file) @inline @maydiscard
+{
+	if (native_fflush_fn) return native_fflush_fn(file);
 	return io::UNSUPPORTED_OPERATION~;
 }
 
