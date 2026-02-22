@@ -80,13 +80,13 @@ module std::crypto::keccak @private;
 import std::math;
 
 <* A set of KeccakContext states used in its private state machine. *>
-enum KeccakState : const inline int
+constdef KeccakState : inline int
 {
-	UNINITIALIZED	= 0,
-	INITIALIZED		= 1,
-	ABSORBING		= 2,
-	SQUEEZING		= 3,
-	FINALIZED		= 4,
+	UNINITIALIZED,
+	INITIALIZED,
+	ABSORBING,
+	SQUEEZING,
+	FINALIZED,
 }
 
 <* The state machine is just the state, typedef'd to another type in case something else is added in the future. *>
@@ -236,10 +236,10 @@ fn void KeccakContext.finalize(&self)
 }
 
 <* Explicitly zeros the instance based on the runtime size. A minimum `$sizeof(KeccakContext)` is assumed. *>
-fn void KeccakContext.wipe(&self) @local @inline => mem::zero_volatile(((char*)self)[:max($sizeof(*self), self.runtime_struct_size)]);
+fn void KeccakContext.wipe(&self) @inline => mem::zero_volatile(((char*)self)[:max($sizeof(*self), self.runtime_struct_size)]);
 
 <* An internal function used to XOR the sponge with the partial "stomach" buffer (data awaiting digestion). *>
-fn void KeccakContext.fill_block(&self) @local
+fn void KeccakContext.fill_block(&self)
 {
 	usz i = 0;
 	for (; i < (self.offset / ulong.sizeof); i++) self.sponge[i] ^= self.buf_words[i];
@@ -301,7 +301,7 @@ fn void KeccakContext.absorb(&self, char[] input)
 <*
  Pad the remainder of the Keccak sponge and run a final permutation before squeezing.
 *>
-fn void KeccakContext.pad(&self) @private
+fn void KeccakContext.pad(&self)
 {
 	usz i = 0;
 	for (; i < (self.offset / ulong.sizeof); i++) self.sponge[i] ^= self.buf_words[i];
@@ -374,7 +374,7 @@ fn void KeccakContext.squeeze(&self, char[] out)
 <*
  Execute a set of permutations on the sponge buffer.
 *>
-fn void KeccakContext.permute_r(&self) @local @inline
+fn void KeccakContext.permute_r(&self) @inline
 {
 	for (usz i = RC.len - self.runtime_rounds; i < RC.len; i++) self.round(RC[i]);
 }
@@ -382,7 +382,7 @@ fn void KeccakContext.permute_r(&self) @local @inline
 <*
  An individual permutation "round" of Keccak as applied to the current sponge data.
 *>
-fn void KeccakContext.round(&self, ulong rc) @local
+fn void KeccakContext.round(&self, ulong rc)
 {
 	ulong[6] b;
 
