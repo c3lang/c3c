@@ -547,3 +547,35 @@ fn void test_zip_reader_available_capping()
 		}
 	};
 }
+
+fn void test_zip_ae2_decryption()
+{
+	char[*] ae2 = x`504b0304330001006300d95d555c00000000260000000a00000009000b00
+		68656c6c6f2e747874019907000200414503000064566142d317c189266a
+		1d2c30e6da4e1da17c6b47dab1b39a04dbc52442e9e1a57147386575504b
+		01023f00330001006300d95d555c00000000260000000a00000009002f00
+		000000000000200000000000000068656c6c6f2e7478740a002000000000
+		000100180069cf9e611fa3dc010000000000000000000000000000000001
+		99070002004145030000504b050600000000010001006600000058000000
+		0000`;
+
+	// Create archive with encrypted data
+	String name = "ae2_encrypted.zip";
+	File f = file::open(name, "wb+")!!;
+	f.write(&ae2)!!;
+	f.close()!!;
+	defer (void)file::delete(name);
+
+	// Read and verify
+	ZipArchive read_zip = zip::open(mem, name, "r")!!;
+	defer (void)read_zip.close();
+
+	assert(read_zip.count() == 1, "Expected 1 entry");
+
+	ZipEntry entry = read_zip.stat("hello.txt")!!;
+
+	char[] decompressed = read_zip.read_file_all(mem, "hello.txt", "password")!!;
+	defer free(decompressed);
+
+	assert(decompressed == "HELLOWORLD", "Decompressed content mismatch; got='%s'", (String)decompressed[..]);
+}
