@@ -36,10 +36,10 @@ whole new language.
 
 ### Example code
 
-The following code shows [generic modules](https://c3-lang.org/generic-programming/generics/) (more examples can be found at https://c3-lang.org/language-overview/examples/). 
+The following code shows [generics](https://c3-lang.org/generic-programming/generics/) (more examples can be found at https://c3-lang.org/language-overview/examples/). 
 
 ```c3
-module stack {Type};
+module stack <Type>;
 // Above: the parameterized type is applied to the entire module.
 
 struct Stack
@@ -142,7 +142,7 @@ fn void main()
 
 ### Current status
 
-The current stable version of the compiler is **version 0.7.8**.
+The current stable version of the compiler is **version 0.7.9**.
 
 The upcoming 0.7.x releases will focus on expanding the standard library,
 fixing bugs and improving compile time analysis. 
@@ -162,6 +162,8 @@ The compiler is currently verified to compile on Linux, OpenBSD, Windows and Mac
 | MacOS x64                | Yes                           | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
 | MacOS Aarch64            | Yes                           | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
 | iOS Aarch64              | No                            | Untested                | Untested    | Yes      | Yes      | Yes*       |
+| Android Aarch64          | No                            | Untested                | Untested    | Untested | Untested | Yes*       |
+| Android x64              | No                            | Untested                | Untested    | Untested | Untested | Yes*       |
 | Linux x86                | Yes                           | Yes                     | Yes         | Yes      | Yes      | Yes*       |
 | Linux x64                | Yes                           | Yes                     | Yes         | Yes      | Yes      | Yes*       |
 | Linux Aarch64            | Yes                           | Yes                     | Yes         | Yes      | Yes      | Yes*       |
@@ -195,7 +197,7 @@ More platforms will be supported in the future.
 - If you wish to contribute with ideas, please file issues or discuss on Discord.
 - Interested in contributing to the stdlib? Please get in touch on Discord.
 - Compilation instructions for other Linux and Unix variants are appreciated.
-- Would you like to contribute bindings to some library? It would be nice to have support for SDL, Raylib and more.
+- Would you like to contribute bindings to some library? It would be nice to have support for SDL3 and more. If you have created some bindings, please submit them to https://github.com/c3lang/vendor.  
 - Build something with C3 and show it off and give feedback. The language is still open for significant tweaks.
 - Start work on the C -> C3 converter which takes C code and does a "best effort" to translate it to C3. The first version only needs to work on C headers.
 - Do you have some specific area you have deep knowledge of and could help make C3 even better at doing? File or comment on issues.

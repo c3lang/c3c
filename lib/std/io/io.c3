@@ -11,6 +11,14 @@ enum Seek
 	END
 }
 
+enum SeekOrigin
+{
+	FROM_START,
+	FROM_CURSOR,
+	FROM_END
+}
+
+
 faultdef
 	ALREADY_EXISTS,
 	BUSY,
@@ -50,31 +58,17 @@ faultdef
  or to the end of the stream, whatever comes first.
  "\r" will be filtered from the String.
 
+ @param [&inout] allocator : "The allocator used to allocate the read string."
  @param stream : `The stream to read from.`
+ @param limit : `Optionally limits the amount of bytes to read in a single line. Will NOT discard the remaining line data.`
  @require @is_not_instream_if_ptr(stream) : "The value for 'stream' should have been passed as a pointer and not as a value, please add '&'."
  @require @is_instream(stream) : `Make sure that the stream is actually an InStream.`
  @param [inout] allocator : `the allocator to use.`
  @return `The string containing the data read.`
 *>
-macro String? readline(Allocator allocator, stream = io::stdin())
+macro String? readline(Allocator allocator, stream = io::stdin(), usz limit = 0)
 {
-	return readline_impl{$typeof(stream)}(allocator, stream);
-}
-
-fn String? readline_impl(Allocator allocator, Stream stream) <Stream> @private
-{
-	if (allocator == tmem)
-	{
-		DString str = dstring::temp_with_capacity(256);
-		readline_to_stream(&str, stream)!;
-		return str.str_view();
-	}
-	@pool()
-	{
-		DString str = dstring::temp_with_capacity(256);
-		readline_to_stream(&str, stream)!;
-		return str.copy_str(allocator);
-	};
+	return readline_impl{$typeof(stream)}(allocator, stream, limit);
 }
 
 <*
@@ -82,13 +76,30 @@ fn String? readline_impl(Allocator allocator, Stream stream) <Stream> @private
  on the temporary allocator and does not need to be freed.
 
  @param stream : `The stream to read from.`
+ @param limit : `Optionally limits the amount of bytes to read in a single line. Will NOT discard the remaining line data.`
  @require @is_not_instream_if_ptr(stream) : "The value for 'stream' should have been passed as a pointer and not as a value, please add '&'."
  @require @is_instream(stream) : `The stream must implement InStream.`
  @return `The temporary string containing the data read.`
 *>
-macro String? treadline(stream = io::stdin())
+macro String? treadline(stream = io::stdin(), usz limit = 0)
 {
-	return readline(tmem, stream) @inline;
+	return readline(tmem, stream, limit) @inline;
+}
+
+fn String? readline_impl(Allocator allocator, Stream stream, usz limit) <Stream> @private
+{
+	if (allocator == tmem)
+	{
+		DString str = dstring::temp_with_capacity(256);
+		readline_to_stream(&str, stream, limit)!;
+		return str.str_view();
+	}
+	@pool()
+	{
+		DString str = dstring::temp_with_capacity(256);
+		readline_to_stream(&str, stream, limit)!;
+		return str.copy_str(allocator);
+	};
 }
 
 <*
@@ -96,18 +107,19 @@ macro String? treadline(stream = io::stdin())
 
  @param out_stream : `The stream to write to`
  @param in_stream : `The stream to read from.`
+ @param limit : `Optionally limits the byte-length of the allocated output string.`
  @require @is_not_instream_if_ptr(in_stream) : "The value for 'in_stream' should have been passed as a pointer and not as a value, please add '&'."
  @require @is_not_outstream_if_ptr(out_stream) : "The value for 'out_stream' should have been passed as a pointer and not as a value, please add '&'."
  @require @is_instream(in_stream) : `The in_stream must implement InStream.`
  @require @is_outstream(out_stream) : `The out_stream must implement OutStream.`
- @return `The number of bytes written`
+ @return `The number of bytes written. When a 'limit' is provided and the return value is equal to it, there may be more to read on the current line.`
 *>
-macro usz? readline_to_stream(out_stream, in_stream = io::stdin())
+macro usz? readline_to_stream(out_stream, in_stream = io::stdin(), usz limit = 0)
 {
-	return readline_to_stream_impl{$typeof(in_stream), $typeof(out_stream)}(out_stream, in_stream);
+	return readline_to_stream_impl{$typeof(in_stream), $typeof(out_stream)}(out_stream, in_stream, limit);
 }
 
-fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream) <IStream, OStream> @private
+fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream, usz limit) <IStream, OStream> @private
 {
 	bool $is_stream = IStream == InStream;
 	$if $is_stream:
@@ -132,7 +144,7 @@ fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream) <IStream,
 		$endif
 		len++;
 	}
-	while (1)
+	while (!limit || len < limit)
 	{
 		$if $is_stream:
 			char? c = func((void*)in_stream);
@@ -354,7 +366,7 @@ fn usz? printfn(String format, args...) @format(0) @maydiscard
 	PutcharBuffer buff;
 	formatter.init(&out_putchar_buffer_fn, &buff);
 	usz? len = formatter.vprintf(format, args);
-	formatter.out('\n')!;
+	formatter.print_char('\n')!;
 	write_putchar_buffer(&buff, true)!;
 	return len + 1;
 }

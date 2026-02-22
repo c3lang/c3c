@@ -14,8 +14,8 @@ static bool cpu_features_contains(CpuFeatures *cpu_features, int feature);
 static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type);
 static unsigned arch_pointer_bit_width(OsType os, ArchType arch);
 static unsigned arch_int_register_bit_width(OsType os, ArchType arch);
-static ArchType arch_from_llvm_string(StringSlice string);
-static EnvironmentType environment_type_from_llvm_string(StringSlice string);
+static ArchType arch_from_llvm_string(StringSlice slice);
+static EnvironmentType environment_type_from_llvm_string(StringSlice env);
 static bool arch_is_supported(ArchType arch);
 static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type);
 static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t bits);
@@ -1198,9 +1198,9 @@ static char *arch_to_target_triple(ArchOsTarget target, LinuxLibc linux_libc)
 		case ELF_AARCH64: return "aarch64-unknown-elf";
 		case WINDOWS_AARCH64: return "aarch64-pc-windows-msvc";
 		case NETBSD_AARCH64: return "aarch64-unknown-netbsd";
-		case LINUX_RISCV32: return linux_libc == LINUX_LIBC_MUSL ? "riscv32-unknown-linux-musl" : "riscv32-unknown-linux";
+		case LINUX_RISCV32: return linux_libc == LINUX_LIBC_MUSL ? "riscv32-unknown-linux-musl" : "riscv32-unknown-linux-gnu";
 		case ELF_RISCV32: return "riscv32-unknown-elf";
-		case LINUX_RISCV64: return linux_libc == LINUX_LIBC_MUSL ? "riscv64-unknown-linux-musl" : "riscv64-unknown-linux";
+		case LINUX_RISCV64: return linux_libc == LINUX_LIBC_MUSL ? "riscv64-unknown-linux-musl" : "riscv64-unknown-linux-gnu";
 		case ELF_RISCV64: return "riscv64-unknown-elf";
 		case ELF_XTENSA: return "xtensa-unknown-elf";
 		case WASM32: return "wasm32-unknown-unknown";
@@ -1218,6 +1218,8 @@ static bool arch_is_supported(ArchType arch)
 		case ARCH_TYPE_WASM64:
 		case ARCH_TYPE_X86_64:
 		case ARCH_TYPE_AARCH64:
+		case ARCH_TYPE_RISCV32:
+		case ARCH_TYPE_RISCV64:
 			return true;
 		default:
 			return false;
@@ -1982,6 +1984,8 @@ void *llvm_target_machine_create(void)
 										   (LLVMCodeGenOptLevel)compiler.platform.llvm_opt_level,
 										   reloc_mode, model);
 	LLVMSetTargetMachineUseInitArray(result, true);
+	if (compiler.platform.emulated_tls) LLVMSetTargetMachineEmulatedTLS(result, true);
+
 	if (!result) error_exit("Failed to create target machine.");
 	LLVMSetTargetMachineAsmVerbosity(result, 1);
 	return result;
@@ -2024,6 +2028,7 @@ static void target_setup_riscv_abi(BuildTarget *target)
 		cpu_features_add_feature_single(&features, RISCV_FEAT_32BIT);
 		if (cpu == RISCV_CPU_DEFAULT) cpu = RISCV_CPU_RVI;
 	}
+	INFO_LOG("RISC-V Setup: cpu=%d, current_abi=%d", (int)cpu, (int)target->feature.riscv_abi);
 	if (target->feature.riscv_abi == RISCV_ABI_DEFAULT)
 	{
 		switch (cpu)
@@ -2080,6 +2085,16 @@ static void target_setup_riscv_abi(BuildTarget *target)
 			cpu_features_add_feature_single(&features, RISCV_FEAT_A);
 			cpu_features_add_feature_single(&features, RISCV_FEAT_C);
 			break;
+	}
+
+	if (target->feature.riscv_abi >= RISCV_ABI_FLOAT)
+	{
+		cpu_features_add_feature_single(&features, RISCV_FEAT_F);
+		cpu_features_add_feature_single(&features, RISCV_FEAT_ZICSR);
+	}
+	if (target->feature.riscv_abi >= RISCV_ABI_DOUBLE)
+	{
+		cpu_features_add_feature_single(&features, RISCV_FEAT_D);
 	}
 #if LLVM_VERSION_MAJOR < 18
 	// Not supported prior to LLVM 18
@@ -2138,21 +2153,21 @@ FOUND:;
 }
 
 
-void target_setup(BuildTarget *target)
+void target_setup(BuildTarget *build_target)
 {
-	if (target->win.def && !file_exists(target->win.def))
+	if (build_target->win.def && !file_exists(build_target->win.def))
 	{
-		error_exit("Failed to find Windows def file: '%s' in path.", target->win.def);
+		error_exit("Failed to find Windows def file: '%s' in path.", build_target->win.def);
 	}
 
 #ifndef XTENSA_ENABLE
-	if (target->arch_os_target == ELF_XTENSA)
+	if (build_target->arch_os_target == ELF_XTENSA)
 	{
 		error_exit("Xtensa support is not available with this LLVM version.");
 	}
 #endif
 
-	compiler.platform.target_triple = arch_to_target_triple(target->arch_os_target, target->linuxpaths.libc);
+	compiler.platform.target_triple = arch_to_target_triple(build_target->arch_os_target, build_target->linuxpaths.libc);
 	ASSERT(compiler.platform.target_triple);
 
 	compiler.platform.alloca_address_space = 0;
@@ -2161,7 +2176,7 @@ void target_setup(BuildTarget *target)
 	// Create a specific target machine
 	LLVMCodeGenOptLevel level;
 
-	switch (target->optlevel)
+	switch (build_target->optlevel)
 	{
 		case OPTIMIZATION_NOT_SET:
 			UNREACHABLE_VOID;
@@ -2203,9 +2218,9 @@ void target_setup(BuildTarget *target)
 	compiler.platform.environment_type = environment_type_from_llvm_string(target_triple_string);
 	if (compiler.platform.environment_type == ENV_TYPE_ANDROID) compiler.platform.os = OS_TYPE_ANDROID;
 
-	if (target->debug_info == DEBUG_INFO_NOT_SET)
+	if (build_target->debug_info == DEBUG_INFO_NOT_SET)
 	{
-		target->debug_info = DEBUG_INFO_FULL;
+		build_target->debug_info = DEBUG_INFO_FULL;
 	}
 
 	compiler.platform.float_abi = false;
@@ -2213,6 +2228,7 @@ void target_setup(BuildTarget *target)
 	// ARM Cygwin
 	// NVPTX
 	compiler.platform.tls_supported = os_target_use_thread_local(compiler.platform.os);
+	compiler.platform.emulated_tls = compiler.platform.os == OS_TYPE_ANDROID;
 	compiler.platform.big_endian = arch_big_endian(compiler.platform.arch);
 	compiler.platform.width_pointer = arch_pointer_bit_width(compiler.platform.os, compiler.platform.arch);
 	compiler.platform.width_register = arch_int_register_bit_width(compiler.platform.os, compiler.platform.arch);
@@ -2264,7 +2280,7 @@ void target_setup(BuildTarget *target)
 			break;
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
-			target_setup_wasm_abi(target);
+			target_setup_wasm_abi(build_target);
 			break;
 		case ARCH_TYPE_ARMB:
 		case ARCH_TYPE_ARM:
@@ -2294,13 +2310,13 @@ void target_setup(BuildTarget *target)
 			break;
 		case ARCH_TYPE_RISCV64:
 		case ARCH_TYPE_RISCV32:
-			target_setup_riscv_abi(target);
+			target_setup_riscv_abi(build_target);
 			break;
 		case ARCH_TYPE_X86:
-			target_setup_x86_abi(target);
+			target_setup_x86_abi(build_target);
 			break;
 		case ARCH_TYPE_X86_64:
-			target_setup_x64_abi(target);
+			target_setup_x64_abi(build_target);
 			if (compiler.platform.os == OS_TYPE_WIN32)
 			{
 				compiler.platform.abi = ABI_WIN64;
@@ -2325,11 +2341,12 @@ void target_setup(BuildTarget *target)
 														  compiler.platform.environment_type,
 														  compiler.build.type != TARGET_TYPE_EXECUTABLE);
 	compiler.platform.pic_required = arch_os_pic_default_forced(compiler.platform.arch, compiler.platform.os);
+	compiler.platform.dylib_suffix = os_dynamic_library_suffix(compiler.platform.os);
 	// Override PIC, but only if the platform does not require PIC
-	if (target->reloc_model != RELOC_DEFAULT
-		&& (target->reloc_model != RELOC_NONE || !compiler.platform.pic_required))
+	if (build_target->reloc_model != RELOC_DEFAULT
+		&& (build_target->reloc_model != RELOC_NONE || !compiler.platform.pic_required))
 	{
-		compiler.platform.reloc_model = target->reloc_model;
+		compiler.platform.reloc_model = build_target->reloc_model;
 	}
 
 	if (compiler.platform.os == OS_TYPE_IOS)
@@ -2367,4 +2384,42 @@ void target_setup(BuildTarget *target)
 	type_setup(&compiler.platform);
 
 
+}
+
+static bool host_is_le(void)
+{
+	unsigned int i = 1;
+	char *c = (char *)&i;
+	return (*c == 1);
+}
+
+ArchType target_host_arch(void)
+{
+#if defined(__x86_64__) || defined(_M_X64)
+	return ARCH_TYPE_X86_64;
+#elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
+	return ARCH_TYPE_X86;
+#elif (defined(__arm__) && !defined(__thumb__)) || (defined(__TARGET_ARCH_ARM) && !defined(__TARGET_ARCH_THUMB)) || defined(__ARM) || defined(_M_ARM) || defined(_M_ARM_T) || defined(__ARM_ARCH)
+	return host_is_le() ? ARCH_TYPE_ARM : ARCH_TYPE_ARMB;
+#elif defined(__thumb__) || defined(__TARGET_ARCH_THUMB) || defined(__ARM) || defined(_M_ARM) || defined(_M_ARM_T) || defined(__ARM_ARCH)
+	return host_is_le() ? ARCH_TYPE_THUMB : ARCH_TYPE_THUMBEB;
+#elif defined(__aarch64__) || defined(_M_ARM64)
+	return host_is_le() ? ARCH_TYPE_AARCH64 : ARCH_TYPE_AARCH64_BE;
+#elif defined(mips) || defined(__mips__) || defined(__mips)
+	return ARCH_UNSUPPORTED;
+#elif defined(__sh__)
+	return ARCH_UNSUPPORTED;
+#elif defined(__riscv) && defined(__riscv32)
+	return ARCH_TYPE_RISCV32;
+#elif defined(__riscv) && defined(__riscv64)
+	return ARCH_TYPE_RISCV64;
+#elif defined(__PPC64__) || defined(__ppc64__) || defined(_ARCH_PPC64) || defined(__powerpc64__)
+	return host_is_le() ? ARCH_TYPE_PPC64LE : ARCH_TYPE_PPC64;
+#elif defined(__powerpc) || defined(__powerpc__) || defined(__POWERPC__) || defined(__ppc__) || defined(__PPC__) || defined(_ARCH_PPC)
+	return ARCH_TYPE_PPC;
+#elif defined(__sparc__) || defined(__sparc)
+	return ARCH_UNSUPPORTED;
+#else
+	return ARCH_TYPE_UNKNOWN;
+#endif
 }

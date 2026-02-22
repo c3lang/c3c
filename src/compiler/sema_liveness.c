@@ -105,10 +105,9 @@ static void sema_trace_stmt_liveness(Ast *ast)
 	{
 		case AST_POISONED:
 		case CT_AST:
-		case AST_CONTRACT:
 		case AST_FOREACH_STMT:
-		case AST_CONTRACT_FAULT:
-			UNREACHABLE_VOID
+			assert_print_line(ast->span);
+			error_exit("Unexpected liveness checking of AST node %d.", ast->ast_kind);
 		case AST_ASM_STMT:
 			sema_trace_expr_list_liveness(ast->asm_stmt.args);
 			return;
@@ -269,7 +268,9 @@ RETRY:
 		case EXPR_MEMBER_SET:
 		case EXPR_NAMED_ARGUMENT:
 		case UNRESOLVED_EXPRS:
-			UNREACHABLE_VOID
+		case EXPR_LAMBDA:
+			assert_print_line(expr->span);
+			error_exit("Unexpected liveness checking of expr node %d.", expr->expr_kind);
 		case EXPR_TWO:
 			sema_trace_expr_liveness(expr->two_expr.first);
 			sema_trace_expr_liveness(expr->two_expr.last);
@@ -412,8 +413,6 @@ RETRY:
 			FOREACH(Expr *, e, expr->initializer_list) sema_trace_expr_liveness(e);
 			return;
 		}
-		case EXPR_LAMBDA:
-			UNREACHABLE_VOID
 		case EXPR_MACRO_BLOCK:
 		{
 			FOREACH(Decl *, val, expr->macro_block.params) sema_trace_decl_liveness(val);
@@ -603,7 +602,7 @@ RETRY:
 		case DECL_TYPEDEF:
 			sema_trace_type_liveness(decl->distinct->type);
 			FALLTHROUGH;
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 		case DECL_BITSTRUCT:
 		case DECL_INTERFACE:
 		case DECL_UNION:
@@ -638,7 +637,10 @@ RETRY:
 		case DECL_MACRO:
 		case DECL_GENERIC:
 		case DECL_GENERIC_INSTANCE:
-			UNREACHABLE_VOID
+		case DECL_DECLARRAY:
+		case DECL_CONTRACT:
+			assert_print_line(decl->span);
+			error_exit("Unexpected liveness checking of expr decl %d.", decl->decl_kind);
 		case DECL_FNTYPE:
 			sema_trace_func_liveness(&decl->fntype_decl.signature);
 			return;
@@ -671,7 +673,5 @@ RETRY:
 					break;
 			}
 			return;
-		case DECL_DECLARRAY:
-			UNREACHABLE_VOID
 	}
 }

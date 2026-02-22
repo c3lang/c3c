@@ -1,7 +1,7 @@
 module std::core::string::ansi;
 import std::io;
 
-enum Ansi : const inline String
+constdef Ansi : inline String
 {
 	RESET              = "\e[0m",
 	BOLD               = "\e[1m",

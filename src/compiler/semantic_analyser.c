@@ -35,18 +35,19 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, Sou
 	if (is_macro) flags &= ~(SCOPE_ENSURE | SCOPE_ENSURE_MACRO);
 
 	unsigned label_start = new_label_scope ? last_local : context->active_scope.label_start;
-	context->active_scope = (DynamicScope) {
-			.allow_dead_code = false,
-			.is_dead = scope_is_dead,
-			.is_poisoned = scope_is_poisoned,
-			.depth = depth,
-			.current_local = last_local,
-			.label_start = label_start,
-			.in_defer = previous_defer,
-			.defer_last = parent_defer,
-			.defer_start = parent_defer,
-			.flags = flags,
+	DynamicScope new_scope = {
+		.allow_dead_code = false,
+		.is_dead = scope_is_dead,
+		.is_poisoned = scope_is_poisoned,
+		.depth = depth,
+		.current_local = last_local,
+		.label_start = label_start,
+		.in_defer = previous_defer,
+		.defer_last = parent_defer,
+		.defer_start = parent_defer,
+		.flags = flags,
 	};
+	context->active_scope = new_scope;
 }
 
 const char *context_filename(SemaContext *context)
@@ -144,7 +145,7 @@ void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast)
 	ASSERT(ast->ast_kind != AST_COMPOUND_STMT);
 	Ast *replacement = ast_copy(ast);
 	ast->ast_kind = AST_COMPOUND_STMT;
-	ast->compound_stmt = (AstCompoundStmt) { .first_stmt = astid(replacement) };
+	ast->compound_stmt = (AstCompoundStmt) { .first_stmt = astid(replacement), .parent_defer = 0 };
 	replacement->next = defer_first;
 }
 
@@ -173,9 +174,6 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 				UNREACHABLE_VOID
 			case ANALYSIS_MODULE_HIERARCHY:
 				sema_analyse_pass_module_hierarchy(module);
-				break;
-			case ANALYSIS_MODULE_TOP:
-				sema_analyse_pass_top(module);
 				break;
 			case ANALYSIS_IMPORTS:
 				sema_analysis_pass_process_imports(module);
@@ -260,11 +258,12 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_GENERIC:
 			case DECL_GENERIC_INSTANCE:
 			case DECL_LABEL:
+			case DECL_CONTRACT:
 				UNREACHABLE_VOID
 			case DECL_ALIAS:
 			case DECL_ATTRIBUTE:
 			case DECL_BITSTRUCT:
-			case DECL_CONST_ENUM:
+			case DECL_CONSTDEF:
 			case DECL_TYPEDEF:
 			case DECL_ENUM:
 			case DECL_INTERFACE:
@@ -278,8 +277,30 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 				if (decl->func_decl.type_parent) continue;
 				break;
 		}
-		htable_set(&unit->module->symbols, (void *)decl->name, decl);
-		htable_set(&unit->local_symbols, (void *)decl->name, decl);
+		Decl *old;
+		if (decl->visibility < VISIBLE_LOCAL)
+		{
+			if ((old = htable_set(&unit->module->symbols, (void *)decl->name, decl)))
+			{
+				if (old->generic_id != decl->generic_id)
+				{
+					sema_shadow_error(NULL, decl, old);
+					decl_poison(decl);
+					decl_poison(old);
+					continue;
+				}
+			}
+		}
+		if ((old = htable_set(&unit->local_symbols, (void *)decl->name, decl)))
+		{
+			if (old->generic_id != decl->generic_id)
+			{
+				sema_shadow_error(NULL, decl, old);
+				decl_poison(decl);
+				decl_poison(old);
+				continue;
+			}
+		}
 
 		if (decl->visibility == VISIBLE_PUBLIC)
 		{
@@ -609,9 +630,11 @@ void sema_error_at(SemaContext *context, SourceSpan span, const char *message, .
 	sema_print_inline(context, span);
 }
 
-bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ...)
+
+bool sema_warn_at(SemaContext *context, SourceSpan span, WarningLevel level, const char *message, ...)
 {
-	bool is_warn = compiler.build.validation_level < VALIDATION_STRICT;
+	if (level == WARNING_SILENT) return true;
+	bool is_warn = level != WARNING_ERROR;
 	va_list list;
 	va_start(list, message);
 	if (is_warn)

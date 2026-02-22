@@ -49,7 +49,7 @@ fn void errno_set(Errno e)
 	os::errno_set((int)e);
 }
 
-typedef Errno = inline CInt;
+typedef Errno @constinit = inline CInt;
 alias TerminateFunction = fn void();
 alias CompareFunction = fn int(void*, void*);
 alias JmpBuf = uptr[$$JMP_BUF_SIZE];
@@ -126,6 +126,7 @@ extern fn CInt memcmp(void* buf1, void* buf2, usz count);
 extern fn void* memcpy(void* dest, void* src, usz n);
 extern fn void* memmove(void* dest, void* src, usz n);
 extern fn void* memset(void* dest, CInt value, usz n);
+extern fn ZString mktemp(char* template) @cname(env::WIN32 ??? "_mktemp" : "mktemp");
 extern fn Time_t* mktime(Tm* time) @if(!env::WIN32);
 extern fn void perror(ZString string);
 extern fn CInt printf(ZString format, ...);
@@ -177,6 +178,7 @@ extern fn CLong strtol(char* str, char** endptr, CInt base);
 extern fn CULong strtoul(char* str, char** endptr, CInt base);
 extern fn usz strxfrm(char* dest, ZString src, usz n);
 extern fn CInt system(ZString str);
+extern fn ZString tempnam(ZString dir, ZString prefix) @cname(env::WIN32 ??? "_tempnam" : "tempnam") @nodiscard;
 extern fn Time_t timegm(Tm* timeptr) @if(!env::WIN32 && !env::NETBSD);
 extern fn ZString tmpnam(char *buffer);
 extern fn CFile tmpfile();

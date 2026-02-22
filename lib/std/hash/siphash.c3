@@ -100,7 +100,7 @@ fn void SipHash.update(&self, char[] data)
 		self.v[3] ^= self.m;
 
 		$for var $i = 0; $i < BLOCK_ROUNDS; ++$i :	// unrolled loop
-			self.round();
+			siphash_round(self);
 		$endfor
 
 		self.v[0] ^= self.m;
@@ -123,7 +123,7 @@ fn OutType SipHash.final(&self)
 	$endif
 
 	$for var $i = 0; $i < FINALIZE_ROUNDS; ++$i :	// unrolled loop
-		self.round();
+		siphash_round(self);
 	$endfor
 
 	$if OutType.typeid == ulong.typeid :
@@ -134,7 +134,7 @@ fn OutType SipHash.final(&self)
 		self.v[1] ^= 0xDD;
 
 		$for var $i = 0; $i < FINALIZE_ROUNDS; ++$i :	// unrolled loop
-			self.round();
+			siphash_round(self);
 		$endfor
 
 		return lo | ((uint128)(self.v[0] ^ self.v[1] ^ self.v[2] ^ self.v[3]) << 64);
@@ -142,7 +142,7 @@ fn OutType SipHash.final(&self)
 }
 
 
-fn void SipHash.round(&self) @local
+fn void siphash_round(SipHash* self) @local
 {
 	self.v[0] += self.v[1];
 	self.v[1] = self.v[1].rotl(13);

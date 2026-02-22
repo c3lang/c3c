@@ -65,7 +65,8 @@ void compiler_init(BuildOptions *build_options)
 
 	INFO_LOG("Version: %s", COMPILER_VERSION);
 
-	compiler.context = (GlobalContext) { .in_panic_mode = false };
+	GlobalContext new_context = { .in_panic_mode = false };
+	compiler.context = new_context;
 	// Skip library detection.
 	//compiler.lib_dir = find_lib_dir();
 	//DEBUG_LOG("Found std library: %s", compiler.lib_dir);
@@ -222,19 +223,8 @@ static const char *dynamic_lib_name(void)
 	{
 		return str_cat(name, compiler.build.extension);
 	}
-	
-	switch (compiler.build.arch_os_target)
-	{
-		case WINDOWS_AARCH64:
-		case WINDOWS_X64:
-		case MINGW_X64:
-			return str_cat(name, ".dll");
-		case MACOS_X64:
-		case MACOS_AARCH64:
-			return str_cat(name, ".dylib");
-		default:
-			return str_cat(name, ".so");
-	}
+
+	return str_cat(name, compiler.platform.dylib_suffix);
 }
 
 const char *static_lib_name(void)
@@ -965,7 +955,7 @@ bool use_ansi(void)
 #endif
 }
 
-#if FETCH_AVAILABLE
+
 const char * vendor_fetch_single(const char* lib, const char* path) 
 {
 	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
@@ -992,6 +982,11 @@ void update_progress_bar(const char* lib, int current_step, int total_steps)
 
 void vendor_fetch(BuildOptions *options)
 {
+	if (!download_available())
+	{
+		error_exit("The 'vendor-fetch' command requires libcurl to download libraries.\n"
+				   "Please ensure libcurl is installed on your system.");
+	}
 	bool ansi = use_ansi();
 
 	if (str_eq(options->path, DEFAULT_PATH))
@@ -1060,12 +1055,7 @@ void vendor_fetch(BuildOptions *options)
 
 	if (ansi) printf("\033[32mFetching complete.\033[0m\t\t\n");
 }
-#else
-void vendor_fetch(BuildOptions *options)
-{
-	error_exit("Error: vendor-fetch only available when compiled with cURL.");
-}
-#endif
+
 
 void print_syntax(BuildOptions *options)
 {
@@ -1794,6 +1784,7 @@ static bool is_posix(OsType os)
 		case OS_TYPE_FREEBSD:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_SOLARIS:
+		case OS_TYPE_ANDROID:
 			return true;
 		case OS_TYPE_WIN32:
 		case OS_TYPE_WASI:

@@ -36,9 +36,14 @@
 #if defined( _WIN32 ) || defined( __WIN32__ ) || defined( _WIN64 )
 #define PLATFORM_WINDOWS 1
 #define PLATFORM_POSIX 0
+#define STRCASECMP _stricmp
+#define STRNCASECMP _strnicmp
 #else
 #define PLATFORM_WINDOWS 0
 #define PLATFORM_POSIX 1
+#include <strings.h>
+#define STRCASECMP strcasecmp
+#define STRNCASECMP strncasecmp
 #endif
 
 #ifndef USE_PTHREAD
@@ -49,11 +54,6 @@
 #endif
 #endif
 
-#if CURL_FOUND || PLATFORM_WINDOWS
-#define FETCH_AVAILABLE 1
-#else
-#define FETCH_AVAILABLE 0
-#endif
 
 #define IS_GCC 0
 #define IS_CLANG 0

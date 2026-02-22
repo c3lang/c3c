@@ -365,7 +365,7 @@ bool llvm_types_are_similar(LLVMTypeRef original, LLVMTypeRef coerce);
 // -- Attributes ---
 void llvm_attribute_add_range(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, int index_start, int index_end);
 void llvm_attribute_add(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, int index);
-void llvm_attribute_add_call(GenContext *context, LLVMValueRef call, unsigned attribute, int index, int64_t value);
+void llvm_attribute_add_call(GenContext *c, LLVMValueRef call, unsigned attribute, int index, int64_t value);
 void llvm_attribute_add_call_type(GenContext *c, LLVMValueRef call, unsigned attribute, int index, LLVMTypeRef type);
 void llvm_attribute_add_string(GenContext *c, LLVMValueRef value_to_add_attribute_to, const char *attribute, const char *value, int index);
 void llvm_attribute_add_type(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, LLVMTypeRef type, int index);
@@ -529,6 +529,8 @@ LLVMValueRef llvm_get_selector(GenContext *c, const char *name);
 // -- C3 Lowering --
 void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr);
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
+bool llvm_emit_rvalue_in_block(GenContext *c, BEValue *value, Expr *expr);
+bool llvm_emit_folded_in_block(GenContext *c, BEValue *value, Expr *expr);
 LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr);
 LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id);
 void llvm_emit_ignored_expr(GenContext *c, Expr *expr);
@@ -537,7 +539,7 @@ void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *pani
 							 const char *fmt, BEValue *value_1, BEValue *value_2);
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc, const char *fmt, BEValue *value_1,
 							 BEValue *value_2);
-void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *args);
+void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *varargs);
 void llvm_emit_unreachable(GenContext *c);
 void llvm_emit_assume_true(GenContext *c, BEValue *assume_true);
 LLVMValueRef llvm_emit_expect_raw(GenContext *c, LLVMValueRef expect_true);
@@ -553,6 +555,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *ref_expr, Expr 
 INLINE void llvm_emit_exprid(GenContext *c, BEValue *value, ExprId expr);
 INLINE void llvm_emit_statement_chain(GenContext *c, AstId current);
 void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref, ConstInitializer *initializer);
+INLINE bool llvm_emit_rvalue_id_in_block(GenContext *c, BEValue *value, ExprId expr_id) { return llvm_emit_rvalue_in_block(c, value, exprptr(expr_id)); }
 
 LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl);
 LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic, LLVMTypeRef *types, unsigned type_count, LLVMValueRef *values, unsigned arg_count);
@@ -596,6 +599,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 #define POP_DEFER_ERROR() c->defer_error_var = def_err__
 #define RETURN_ON_EMPTY_BLOCK(value__) do { if (!llvm_is_global_eval(c) && !c->current_block) { llvm_value_set_empty(value__); return; }} while(0)
 #define RETURN_ON_EMPTY_BLOCK_VOID() do { if (!llvm_is_global_eval(c) && !c->current_block) { return; }} while(0)
+#define RETURN_EMPTY_BLOCK(value__) do { llvm_value_set_empty(value__); return; } while(0)
 
 LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity);
 

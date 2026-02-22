@@ -699,16 +699,14 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 		if (case_stmt == default_case) continue;
 		BEValue be_value;
 		Expr *expr = exprptr(case_stmt->case_stmt.expr);
-		llvm_emit_expr(c, &be_value, expr);
-		llvm_value_rvalue(c, &be_value);
+		if (!llvm_emit_rvalue_in_block(c, &be_value, expr)) goto DONE;
 		BEValue equals;
 		Expr *to_expr = exprptrzero(case_stmt->case_stmt.to_expr);
 		if (to_expr)
 		{
 			ASSERT(!is_type_switch);
 			BEValue to_value;
-			llvm_emit_expr(c, &to_value, to_expr);
-			llvm_value_rvalue(c, &to_value);
+			if (!llvm_emit_rvalue_in_block(c, &to_value, to_expr)) goto DONE;
 			BEValue le;
 			llvm_emit_comp(c, &le, &be_value, switch_value, BINARYOP_LE);
 			BEValue ge;
@@ -748,6 +746,7 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 	{
 		llvm_emit_br(c, exit_block);
 	}
+DONE:
 	llvm_emit_block(c, exit_block);
 }
 
@@ -1023,13 +1022,12 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 		LLVMBasicBlockRef block = case_stmt->case_stmt.backend_block;
 		if (case_stmt != default_case)
 		{
-			LLVMValueRef case_value;
 			BEValue be_value;
 			Expr *from = exprptr(case_stmt->case_stmt.expr);
 			ASSERT(expr_is_const(from));
 			llvm_emit_expr(c, &be_value, from);
 			llvm_value_rvalue(c, &be_value);
-			case_value = be_value.value;
+			LLVMValueRef case_value = be_value.value;
 			LLVMAddCase(switch_stmt, case_value, block);
 			Expr *to_expr = exprptrzero(case_stmt->case_stmt.to_expr);
 			if (to_expr)
@@ -1496,9 +1494,9 @@ LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char 
 {
 	FOREACH(ReusableConstant, constant, c->reusable_constants)
 	{
-		if (str_eq(str, constant.string) && str_eq(extname, constant.name))
+		if (str_eq(str, constant.string) && str_eq(extname, constant.name)) // NOLINT
 		{
-			return constant.value;
+			return constant.value; // NOLINT
 		}
 	}
 
@@ -1657,10 +1655,8 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 	{
 		case AST_POISONED:
 		case AST_FOREACH_STMT:
-		case AST_CONTRACT:
 		case AST_ASM_STMT:
 		case AST_ASM_LABEL:
-		case AST_CONTRACT_FAULT:
 		case AST_CASE_STMT:
 		case AST_DEFAULT_STMT:
 		case CT_AST:

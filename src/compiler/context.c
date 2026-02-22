@@ -125,6 +125,16 @@ void decl_register(CompilationUnit *unit, Decl *decl)
 	if (decl->is_templated)
 	{
 		DEBUG_LOG("Registering generic symbol '%s' in %s.", decl->name, unit->module->name->module);
+		Decl *instance = declptr(decl->instance_id);
+		FOREACH (Decl *, other, instance->instance_decl.generated_decls)
+		{
+			if (other->name != decl->name) continue;
+			if (other->visibility == VISIBLE_LOCAL && decl->visibility == VISIBLE_LOCAL && decl->unit != other->unit) continue;
+			sema_shadow_error(NULL, decl, other);
+			decl_poison(decl);
+			decl_poison(other);
+			return;
+		}
 		vec_add(declptr(decl->instance_id)->instance_decl.generated_decls, decl);
 		return;
 	}
@@ -149,12 +159,13 @@ void decl_register(CompilationUnit *unit, Decl *decl)
 			case DECL_IMPORT:
 			case DECL_LABEL:
 			case DECL_POISONED:
+			case DECL_CONTRACT:
 				UNREACHABLE_VOID
 			case DECL_ATTRIBUTE:
 			case DECL_BITSTRUCT:
 			case DECL_TYPEDEF:
 			case DECL_ENUM:
-			case DECL_CONST_ENUM:
+			case DECL_CONSTDEF:
 			case DECL_STRUCT:
 			case DECL_TYPE_ALIAS:
 			case DECL_UNION:
@@ -263,7 +274,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			vec_add(unit->generic_defines, decl);
 			decl_register(unit, decl);
 			return;
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 		case DECL_ENUM:
 			ASSERT(decl->name);
 			vec_add(unit->enums, decl);
@@ -283,6 +294,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_GENERIC_INSTANCE:
 		case DECL_IMPORT:
 		case DECL_LABEL:
+		case DECL_CONTRACT:
 			UNREACHABLE_VOID
 		case DECL_CT_EXEC:
 		case DECL_CT_INCLUDE:

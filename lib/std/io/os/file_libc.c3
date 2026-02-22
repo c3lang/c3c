@@ -5,22 +5,22 @@ import libc;
  @require mode.len > 0
  @require filename.len > 0
 *>
-fn void*? native_fopen(String filename, String mode) @inline => @pool()
+fn void*? native_fopen(String filename, String mode) @inline => @stack_mem(256; Allocator smem)
 {
 	$if env::WIN32:
-		void* file = libc::_wfopen(filename.to_temp_wstring(), mode.to_temp_wstring())!;
+		void* file = libc::_wfopen(filename.to_wstring(smem), mode.to_wstring(smem))!;
 	$else
-		void* file = libc::fopen(filename.zstr_tcopy(), mode.zstr_tcopy());
+		void* file = libc::fopen(filename.zstr_copy(smem), mode.zstr_copy(smem));
 	$endif
-		return file ?: file_open_errno()~;
+	return file ?: file_open_errno()~;
 }
 
-fn void? native_remove(String filename) => @pool()
+fn void? native_remove(String filename) => @stack_mem(256; Allocator smem)
 {
 	$if env::WIN32:
-		CInt result = libc::_wremove(filename.to_temp_wstring())!;
+		CInt result = libc::_wremove(filename.to_wstring(smem))!;
 	$else
-		CInt result = libc::remove(filename.zstr_tcopy());
+		CInt result = libc::remove(filename.zstr_copy(smem));
 	$endif
 	if (result)
 	{
@@ -39,26 +39,26 @@ fn void? native_remove(String filename) => @pool()
  @require mode.len > 0
  @require filename.len > 0
 *>
-fn void*? native_freopen(void* file, String filename, String mode) @inline => @pool()
+fn void*? native_freopen(void* file, String filename, String mode) @inline  => @stack_mem(256; Allocator smem)
 {
 	$if env::WIN32:
-		file = libc::_wfreopen(filename.to_temp_wstring(), mode.to_temp_wstring(), file)!;
+		file = libc::_wfreopen(filename.to_wstring(smem), mode.to_wstring(smem), file)!;
 	$else
-		file = libc::freopen(filename.zstr_tcopy(), mode.zstr_tcopy(), file);
+		file = libc::freopen(filename.zstr_copy(smem), mode.zstr_copy(smem), file);
 	$endif
 		return file ?: file_open_errno()~;
 }
 
-fn void? native_fseek(void* file, isz offset, Seek seek_mode) @inline
+fn void? native_fseek(void* file, long offset, SeekOrigin seek_mode) @inline
 {
 	if (libc::fseek(file, (SeekIndex)offset, seek_mode.ordinal)) return file_seek_errno()~;
 }
 
 
-fn usz? native_ftell(CFile file) @inline
+fn long? native_ftell(CFile file) @inline
 {
 	long index = libc::ftell(file);
-	return index >= 0 ? (usz)index : file_seek_errno()~;
+	return index >= 0 ? index : file_seek_errno()~;
 }
 
 fn usz? native_fwrite(CFile file, char[] buffer) @inline
@@ -74,6 +74,11 @@ fn void? native_fputc(CInt c, CFile stream) @inline
 fn usz? native_fread(CFile file, char[] buffer) @inline
 {
 	return libc::fread(buffer.ptr, 1, buffer.len, file);
+}
+
+fn void? native_fflush(CFile file) @inline @maydiscard
+{
+	if (libc::fflush(file) != 0) return io::GENERAL_ERROR~;
 }
 
 macro fault file_open_errno() @local
@@ -123,3 +128,22 @@ macro fault file_seek_errno() @local
 	}
 }
 
+
+struct Utimbuf
+{
+	Time_t actime;
+	Time_t modtime;
+}
+
+extern fn int utime(char* filename, void* times) @if(!env::WIN32);
+extern fn int _wutime(WChar* filename, void* times) @if(env::WIN32);
+
+fn void? native_set_modified_time(String filename, libc::Time_t time) => @stack_mem(256; Allocator smem)
+{
+	Utimbuf times = { time, time };
+	$if env::WIN32:
+		if (_wutime(filename.to_wstring(smem)!, &times)) return io::GENERAL_ERROR~;
+	$else
+		if (utime(filename.zstr_copy(smem), &times)) return io::GENERAL_ERROR~;
+	$endif
+}

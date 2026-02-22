@@ -112,7 +112,12 @@ macro bool is_numerical($Type)
 
 fn bool TypeKind.is_int(kind) @inline
 {
-	return kind == TypeKind.SIGNED_INT || kind == TypeKind.UNSIGNED_INT;
+	return kind == SIGNED_INT || kind == UNSIGNED_INT;
+}
+
+macro bool TypeKind.@is_int($kind) @const
+{
+	return $kind == SIGNED_INT ||| $kind == UNSIGNED_INT;
 }
 
 macro bool is_slice_convertable($Type) @deprecated("Use is_slice_convertible") => is_slice_convertible($Type);
@@ -329,8 +334,8 @@ macro lower_to_atomic_compatible_type($Type) @const
   $endswitch
 }
 
-macro bool is_promotable_to_floatlike($Type) @const  => types::is_floatlike($Type) || types::is_int($Type);
-macro bool is_promotable_to_float($Type) @const  => types::is_float($Type) || types::is_int($Type);
+macro bool is_promotable_to_floatlike($Type) @const  => types::is_floatlike($Type) ||| types::is_int($Type);
+macro bool is_promotable_to_float($Type) @const  => types::is_float($Type) ||| types::is_int($Type);
 
 macro bool is_same_vector_type($Type1, $Type2) @const
 {
@@ -345,7 +350,7 @@ macro bool has_equals($Type) @const => $defined(($Type){} == ($Type){});
 
 macro bool is_equatable_type($Type) @const
 {
-	$if $defined($Type.less) || $defined($Type.compare_to) || $defined($Type.equals):
+	$if $defined($Type.less) ||| $defined($Type.compare_to) ||| $defined($Type.equals):
 		return true;
 	$else
 		return $Type.is_eq;
@@ -357,7 +362,7 @@ macro bool is_equatable_type($Type) @const
 *>
 macro bool implements_copy($Type) @const
 {
-	return $defined($Type.copy) && $defined($Type.free);
+	return $defined($Type.copy) &&& $defined($Type.free);
 }
 
 macro bool @equatable_value(#value) @const
@@ -367,7 +372,7 @@ macro bool @equatable_value(#value) @const
 
 macro bool @comparable_value(#value) @const
 {
-	$if $defined(#value.less) || $defined(#value.compare_to):
+	$if $defined(#value.less) ||| $defined(#value.compare_to):
 		return true;
 	$else
 		return $typeof(#value).is_ordered;

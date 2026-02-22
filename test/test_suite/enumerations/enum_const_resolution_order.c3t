@@ -8,7 +8,7 @@ struct Foo
 
 module bar;
 
-enum MyEnum : const CInt
+constdef MyEnum : CInt
 {
 	VAL1 = 1,
 	VAL2 = 2,

@@ -5,8 +5,8 @@ module std::hash::fnv32a;
 
 typedef Fnv32a = uint;
 
-const FNV32A_START @private = 0x811c9dc5;
-const FNV32A_MUL @private = 0x01000193;
+const FNV32A_START @private = (Fnv32a)0x811c9dc5;
+const FNV32A_MUL @private = (Fnv32a)0x01000193;
 
 macro void update(h, char x) @private => *h = (*h ^ ($typeof(*h))x) * FNV32A_MUL;
 
@@ -32,10 +32,10 @@ macro void Fnv32a.update_char(&self, char c)
 
 fn uint hash(char[] data)
 {
-	uint h = FNV32A_START;
+	Fnv32a h = FNV32A_START;
 	foreach (char x : data)
 	{
 		update(&h, x);
 	}
-	return h;
+	return (uint)h;
 }

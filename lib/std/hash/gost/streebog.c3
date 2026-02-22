@@ -8,7 +8,7 @@
 module std::hash::streebog;
 
 
-enum StreebogLength : const inline uint
+constdef StreebogLength : inline uint
 {
 	SIZE_256 = 32,
 	SIZE_512 = 64,
@@ -147,11 +147,19 @@ fn void Streebog.update(&self, char[] data)
 macro char[*] Streebog.final(&self, StreebogLength $hash_size)
 {
 	char[$hash_size] result;
+	streebog_final_private(self);
+	defer mem::zero_volatile(@as_char_view(*self)); // implicitly clear the structure when finalized
+	result[..] = @as_char_view(self.h)[(BLOCK_SIZE - $hash_size)..];
+	return result;
+}
+
+fn void streebog_final_private(Streebog* self) @local
+{
 	ulong[8] unprocessed_bits_count;
 	usz index = self.index >> 3;
 	usz shift = (self.index & 0b111) * 8;
 
-	unprocessed_bits_count[0] = self.index * 8;
+	unprocessed_bits_count[0] = self.index * 8ul;
 	self.message[index]   &= ~(ulong.max << shift);
 	self.message[index++] ^= 1ul << shift;
 	if (index < 8) self.message[index..] = {};
@@ -161,9 +169,4 @@ macro char[*] Streebog.final(&self, StreebogLength $hash_size)
 	@add_512(self.s, self.message);
 	@g_n(ZERO_512, self.h, self.n);
 	@g_n(ZERO_512, self.h, self.s);
-
-	defer mem::zero_volatile(@as_char_view(*self)); // implicitly clear the structure when finalized
-
-	result[..] = @as_char_view(self.h)[(BLOCK_SIZE - $hash_size)..];
-	return result;
 }

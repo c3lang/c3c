@@ -1373,7 +1373,11 @@ Type *type_get_vector_bool(Type *original_type, TypeKind kind)
 Type *type_get_vector_from_vector(Type *base_type, Type *orginal_vector)
 {
 	ASSERT(type_kind_is_real_vector(orginal_vector->type_kind));
-	return type_get_vector(base_type, orginal_vector->type_kind, orginal_vector->array.len);
+	bool opt = type_is_optional(base_type);
+	if (opt) base_type = type_no_optional(base_type);
+	Type *res = type_get_vector(base_type, orginal_vector->type_kind, orginal_vector->array.len);
+	if (opt) res = type_get_optional(res);
+	return res;
 }
 
 Type *type_get_simd_from_vector(Type *orginal_vector)
@@ -1636,18 +1640,18 @@ bool type_is_scalar(Type *type)
 Type *type_find_parent_type(Type *type)
 {
 	ASSERT(type->canonical);
+	Decl *decl;
 	switch (type->type_kind)
 	{
+		case TYPE_CONST_ENUM:
+			decl = type->decl;
+			return decl->is_substruct ? decl->enums.type_info->type : NULL;
 		case TYPE_TYPEDEF:
-		{
-			Decl *decl = type->decl;
+			decl = type->decl;
 			return decl->is_substruct ? decl->distinct->type : NULL;
-		}
 		case TYPE_STRUCT:
-		{
-			Decl *decl = type->decl;
+			decl = type->decl;
 			return decl->is_substruct ? decl->strukt.members[0]->type : NULL;
-		}
 		default:
 			return NULL;
 	}
@@ -2127,7 +2131,7 @@ RETRY_DISTINCT:
 			return NULL;
 		case ALL_INTS:
 		{
-			// If Foo + 1, then we allow this if Foo is a distinct type or const enum that has
+			// If Foo + 1, then we allow this if Foo is a distinct type or constdef that has
 			// integer or float as the base type.
 			if (first && type_is_distinct_like(other) && type_underlying_is_numeric(other) && expr_is_const(first)) return other;
 			// See if we can flatten it.
@@ -2141,7 +2145,7 @@ RETRY_DISTINCT:
 		}
 		case ALL_FLOATS:
 		{
-			// If Foo + 1.0, then we allow this if Foo is a distinct type or const enum that has
+			// If Foo + 1.0, then we allow this if Foo is a distinct type or constdef that has
 			// float as the base type.
 			if (first && type_is_distinct_like(other) && type_underlying_is_numeric(other) && expr_is_const(first)) return other;
 			// See if we can flatten it.

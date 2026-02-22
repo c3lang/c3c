@@ -97,12 +97,16 @@ set(C3_USE_TB               OFF                         CACHE BOOL   "Use TB")
 set(C3_LLD_DIR              ""                          CACHE STRING "Use custom LLD directory")
 set(C3_LLD_INCLUDE_DIR      ""                          CACHE STRING "Use custom LLD include directory")
 set(C3_ENABLE_CLANGD_LSP    OFF                         CACHE BOOL   "Enable/Disable output of compile commands during generation")
+set(C3_FETCH_LLVM           OFF                         CACHE BOOL   "Automatically download LLVM artifacts")
+set(C3_LLVM_TAG             "llvm_21.x"                 CACHE STRING "Tag/Branch to download LLVM from")
 set(LLVM_CRT_LIBRARY_DIR    ""                          CACHE STRING "Use custom llvm's compiler-rt directory")
 set(TCC_LIB_PATH            "/usr/lib/tcc/libtcc1.a"    CACHE STRING "Use custom libtcc1.a path")
 
 set(C3_OPTIONS
         C3_LINK_DYNAMIC
         C3_WITH_LLVM
+        C3_FETCH_LLVM
+        C3_LLVM_TAG
         C3_LLVM_VERSION
         C3_USE_MIMALLOC
         C3_MIMALLOC_TAG
@@ -124,9 +128,6 @@ if(C3_USE_MIMALLOC)
             GIT_TAG ${C3_MIMALLOC_TAG}
     )
     FetchContent_MakeAvailable(mimalloc)
-endif()
-if (NOT WIN32)
-    find_package(CURL)
 endif()
 
 find_package(Git QUIET)
@@ -155,55 +156,83 @@ if(C3_ENABLE_CLANGD_LSP)
 endif(C3_ENABLE_CLANGD_LSP)
 
 if(C3_WITH_LLVM)
-    if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
-        if (C3_LLVM_VERSION STREQUAL "auto")
-            set(C3_LLVM_VERSION ${C3_LLVM_DEFAULT_VERSION})
+    if(C3_FETCH_LLVM)
+        # 1. Determine local platform ID
+        if (WIN32)
+            set(C3_LLVM_PLATFORM "windows-amd64")
+        elseif (APPLE)
+            if (CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64" OR CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
+                set(C3_LLVM_PLATFORM "darwin-aarch64")
+            else()
+                set(C3_LLVM_PLATFORM "darwin-amd64")
+            endif()
+        else() # Linux
+            if (CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64" OR CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "aarch64")
+                set(C3_LLVM_PLATFORM "linux-aarch64")
+            elseif (CMAKE_SYSTEM_PROCESSOR STREQUAL "riscv64" OR CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "riscv64")
+                set(C3_LLVM_PLATFORM "linux-riscv64")
+            else()
+                set(C3_LLVM_PLATFORM "linux-amd64")
+            endif()
         endif()
-        FetchContent_Declare(
-                LLVM_Windows
-                URL https://github.com/c3lang/win-llvm/releases/download/llvm_21_1_8/llvm-21.1.8-windows-amd64-msvc17-libcmt.7z
-        )
-        FetchContent_Declare(
-                LLVM_Windows_debug
-                URL https://github.com/c3lang/win-llvm/releases/download/llvm_21_1_8/llvm-21.1.8-windows-amd64-msvc17-libcmt-dbg.7z
-        )
-        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-            message("Loading Windows LLVM debug libraries, this may take a while...")
-            FetchContent_MakeAvailable(LLVM_Windows_debug)
-            set(llvm_dir ${llvm_windows_debug_SOURCE_DIR})
-        else()
-            message("Loading Windows LLVM libraries, this may take a while...")
-            FetchContent_MakeAvailable(LLVM_Windows)
-            set(llvm_dir ${llvm_windows_SOURCE_DIR})
-        endif()
-        message("Loaded Windows LLVM libraries into ${llvm_dir}")
-        set(CMAKE_SYSTEM_PREFIX_PATH ${llvm_dir} ${CMAKE_SYSTEM_PREFIX_PATH})
 
-        find_package(LLVM REQUIRED CONFIG)
-        find_package(LLD REQUIRED CONFIG)
+        # 2. Determine if we want Debug or Release
+        set(C3_LLVM_SUFFIX "")
+        set(C3_LLVM_TYPE "Release")
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            set(C3_LLVM_SUFFIX "-dbg")
+            set(C3_LLVM_TYPE "Debug")
+        endif()
+
+        # 3. Construct URL
+        set(C3_LLVM_ARTIFACT_NAME "llvm-${C3_LLVM_PLATFORM}${C3_LLVM_SUFFIX}")
+        #set(C3_LLVM_URL "https://github.com/c3lang/c3-llvm/releases/download/${C3_LLVM_TAG}/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
+        #set(C3_LLVM_URL "https://github.com//ManuLinares/llvm-custom-builds/releases/download/${C3_LLVM_TAG}/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
+
+        # We could also just set "latest" here to always fetch the latest release
+        set(C3_LLVM_URL "https://github.com/c3lang/llvm-for-c3/releases/latest/download/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
+
+        message(STATUS "Fetching ${C3_LLVM_TYPE} LLVM artifact for ${C3_LLVM_PLATFORM}...")
+        message(STATUS "URL: ${C3_LLVM_URL}")
+
+        FetchContent_Declare(
+                LLVM_Artifact
+                URL ${C3_LLVM_URL}
+        )
+        FetchContent_MakeAvailable(LLVM_Artifact)
+
+        # 4. Point CMake to the fetched location
+        set(llvm_dir ${llvm_artifact_SOURCE_DIR})
+        set(CMAKE_PREFIX_PATH ${llvm_dir} ${CMAKE_PREFIX_PATH})
+        set(LLVM_DIR "${llvm_dir}/lib/cmake/llvm")
+        set(LLD_DIR "${llvm_dir}/lib/cmake/lld")
+
+        # TEST: For Windows, we might need to add the bin dir to prefix path for find_package to work well
+        if (WIN32)
+            set(CMAKE_SYSTEM_PREFIX_PATH ${llvm_dir} ${CMAKE_SYSTEM_PREFIX_PATH})
+        endif()
+
+        find_package(LLVM REQUIRED CONFIG NO_DEFAULT_PATH)
+        find_package(LLD REQUIRED CONFIG NO_DEFAULT_PATH)
     else()
-        # Add paths for LLVM CMake files of version 19 and higher as they follow a new installation 
-        # layout and are now in /usr/lib/llvm/*/lib/cmake/llvm/ rather than /usr/lib/cmake/llvm/
-        # 
-        # Because of CMAKE_FIND_PACKAGE_SORT_ORDER CMAKE_FIND_PACKAGE_SORT_DIRECTION,
-        # the newest version will always be found first.
-        c3_print_variables(CMAKE_PREFIX_PATH)
-        if (DEFINED LLVM_DIR) 
-            message(STATUS "Looking for LLVM CMake files in user-specified directory ${LLVM_DIR}")
+        if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+            # Legacy MSVC path if someone explicitly disabled fetching but is on MSVC
+            find_package(LLVM REQUIRED CONFIG)
+            find_package(LLD REQUIRED CONFIG)
         else()
+            # Default system search
             file (GLOB LLVM_CMAKE_PATHS "/usr/lib/llvm/*/lib/cmake/llvm/")
             list (APPEND CMAKE_PREFIX_PATH ${LLVM_CMAKE_PATHS} "/usr/lib/")
-            message(STATUS "No LLVM_DIR specified, searching default directories ${CMAKE_PREFIX_PATH}")
-        endif()
 
-        if (NOT C3_LLVM_VERSION STREQUAL "auto")
-            find_package(LLVM ${C3_LLVM_VERSION} REQUIRED CONFIG)
-        else()
-            find_package(LLVM REQUIRED CONFIG)
+            if (NOT C3_LLVM_VERSION STREQUAL "auto")
+                find_package(LLVM ${C3_LLVM_VERSION} REQUIRED CONFIG)
+            else()
+                find_package(LLVM REQUIRED CONFIG)
+            endif()
         endif()
     endif()
 
-    if (EXISTS /opt/homebrew/lib)
+    if (NOT C3_FETCH_LLVM AND EXISTS /opt/homebrew/lib)
         list(APPEND LLVM_LIBRARY_DIRS /opt/homebrew/lib)
     endif()
 
@@ -279,16 +308,16 @@ if(C3_WITH_LLVM)
         message(STATUS "Looking for static lld libraries in ${LLVM_LIBRARY_DIRS}")
 
         # These don't seem to be reliable on windows.
-        find_library(LLD_COFF NAMES liblldCOFF.dylib lldCOFF.lib lldCOFF.a liblldCOFF.dll.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
-        find_library(LLD_COMMON NAMES liblldCommon.dylib lldCommon.lib lldCommon.a liblldCommon.dll.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
-        find_library(LLD_ELF NAMES liblldELF.dylib lldELF.lib lldELF.a liblldELF.dll.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_COFF NAMES lldCOFF.a liblldCOFF.a liblldCOFF.dylib lldCOFF.lib liblldCOFF.dll.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_COMMON NAMES lldCommon.a liblldCommon.a liblldCommon.dylib lldCommon.lib liblldCommon.dll.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_ELF NAMES lldELF.a liblldELF.a liblldELF.dylib lldELF.lib liblldELF.dll.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
         if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
-            find_library(LLD_MACHO NAMES liblldMachO.dylib lldMachO.lib lldMachO.a liblldMachO.dll.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+            find_library(LLD_MACHO NAMES lldMachO.a liblldMachO.a liblldMachO.dylib lldMachO.lib liblldMachO.dll.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
         else()
             set(LLD_MACHO "")
         endif()
-        find_library(LLD_MINGW NAMES liblldMinGW.dylib lldMinGW.lib lldMinGW.a liblldMinGW.dll.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
-        find_library(LLD_WASM NAMES liblldWasm.dylib lldWasm.lib lldWasm.a liblldWasm.dll.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_MINGW NAMES lldMinGW.a liblldMinGW.a liblldMinGW.dylib lldMinGW.lib liblldMinGW.dll.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        find_library(LLD_WASM NAMES lldWasm.a liblldWasm.a liblldWasm.dylib lldWasm.lib liblldWasm.dll.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
     else()
         message(STATUS "Looking for shared lld libraries in ${LLVM_LIBRARY_DIRS}")
 
@@ -297,7 +326,7 @@ if(C3_WITH_LLVM)
             find_library(LLVM NAMES libLLVM.so PATHS ${LLVM_LIBRARY_DIRS} REQUIRED)
         else()
             find_library(LLVM NAMES libLLVM.a LLVM.lib PATHS ${LLVM_LIBRARY_DIRS} REQUIRED)
-        endif()        
+        endif()
         set(llvm_libs ${LLVM})
 
         # These don't seem to be reliable on windows.
@@ -325,17 +354,36 @@ if(C3_WITH_LLVM)
 
     if (APPLE)
         set(lld_libs ${lld_libs} xar)
-        find_file(RT_ASAN_DYNAMIC NAMES libclang_rt.asan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIR}/clang/${LLVM_MAJOR_VERSION}/lib/darwin" ${LLVM_CRT_LIBRARY_DIR})
-        find_file(RT_TSAN_DYNAMIC NAMES libclang_rt.tsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIR}/clang/${LLVM_MAJOR_VERSION}/lib/darwin" ${LLVM_CRT_LIBRARY_DIR})
-        find_file(RT_UBSAN_DYNAMIC NAMES libclang_rt.ubsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIR}/clang/${LLVM_MAJOR_VERSION}/lib/darwin" ${LLVM_CRT_LIBRARY_DIR})
-        find_file(RT_LSAN_DYNAMIC NAMES libclang_rt.lsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIR}/clang/${LLVM_MAJOR_VERSION}/lib/darwin" ${LLVM_CRT_LIBRARY_DIR})
-        set(sanitizer_runtime_libraries
-                ${RT_ASAN_DYNAMIC}
-                ${RT_TSAN_DYNAMIC}
-                # Unused
-                # ${RT_UBSAN_DYNAMIC}
-                # ${RT_LSAN_DYNAMIC}
-        )
+        if (llvm_dir)
+            file(GLOB_RECURSE RT_ASAN_DYNAMIC "${llvm_dir}/*libclang_rt.asan_osx_dynamic.dylib")
+            file(GLOB_RECURSE RT_TSAN_DYNAMIC "${llvm_dir}/*libclang_rt.tsan_osx_dynamic.dylib")
+        endif()
+
+        if (NOT RT_ASAN_DYNAMIC OR NOT RT_TSAN_DYNAMIC)
+            # Fallback to searching in LLVM_LIBRARY_DIRS (for non-fetched LLVM)
+            find_file(RT_ASAN_DYNAMIC_PATH NAMES libclang_rt.asan_osx_dynamic.dylib PATHS ${LLVM_LIBRARY_DIRS} PATH_SUFFIXES "clang/${LLVM_MAJOR_VERSION}/lib/darwin" "clang/${LLVM_PACKAGE_VERSION}/lib/darwin")
+            find_file(RT_TSAN_DYNAMIC_PATH NAMES libclang_rt.tsan_osx_dynamic.dylib PATHS ${LLVM_LIBRARY_DIRS} PATH_SUFFIXES "clang/${LLVM_MAJOR_VERSION}/lib/darwin" "clang/${LLVM_PACKAGE_VERSION}/lib/darwin")
+            if (RT_ASAN_DYNAMIC_PATH)
+                set(RT_ASAN_DYNAMIC ${RT_ASAN_DYNAMIC_PATH})
+            endif()
+            if (RT_TSAN_DYNAMIC_PATH)
+                set(RT_TSAN_DYNAMIC ${RT_TSAN_DYNAMIC_PATH})
+            endif()
+        endif()
+
+        if (RT_ASAN_DYNAMIC)
+            list(GET RT_ASAN_DYNAMIC 0 RT_ASAN_DYNAMIC)
+        endif()
+        if (RT_TSAN_DYNAMIC)
+            list(GET RT_TSAN_DYNAMIC 0 RT_TSAN_DYNAMIC)
+        endif()
+
+        if (RT_ASAN_DYNAMIC AND RT_TSAN_DYNAMIC)
+            set(sanitizer_runtime_libraries
+                    ${RT_ASAN_DYNAMIC}
+                    ${RT_TSAN_DYNAMIC}
+            )
+        endif()
     endif()
 
     message(STATUS "Linking to llvm libs ${llvm_libs}")
@@ -413,10 +461,12 @@ add_executable(c3c
         src/utils/whereami.c
         src/utils/cpus.c
         src/utils/unzipper.c
+        src/utils/msi.c
         src/compiler/c_codegen.c
         src/compiler/decltable.c
         src/compiler/methodtable.c
         src/compiler/mac_support.c
+        src/utils/fetch_msvc.c
         src/compiler/windows_support.c
         src/compiler/codegen_asm.c
         src/compiler/asm_target.c
@@ -474,6 +524,7 @@ if(C3_WITH_LLVM)
 else()
     target_sources(c3c PRIVATE src/utils/hostinfo.c)
     target_compile_definitions(c3c PUBLIC LLVM_AVAILABLE=0)
+    target_link_libraries(c3c m)
 endif()
 
 target_include_directories(c3c PRIVATE
@@ -523,7 +574,7 @@ else()
 endif()
 
 if(C3_WITH_LLVM)
-    target_link_libraries(c3c ${llvm_libs} miniz c3c_wrappers ${lld_libs})
+    target_link_libraries(c3c miniz c3c_wrappers)
 
     target_include_directories(c3c PRIVATE
             "${CMAKE_SOURCE_DIR}/wrapper/include/")
@@ -531,11 +582,11 @@ if(C3_WITH_LLVM)
     target_include_directories(c3c_wrappers PRIVATE
             "${CMAKE_SOURCE_DIR}/wrapper/include/")
 
-    target_link_libraries(c3c_wrappers ${llvm_libs} ${lld_libs})
+    target_link_libraries(c3c_wrappers PUBLIC ${lld_libs} ${llvm_libs})
 
 else()
 
-    target_link_libraries(c3c ${llvm_libs} miniz ${lld_libs})
+    target_link_libraries(c3c miniz ${lld_libs} ${llvm_libs})
 
 endif()
 
@@ -552,12 +603,11 @@ if(MINGW)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--stack,8388608")
 endif ()
 
-if (CURL_FOUND)
-    target_link_libraries(c3c ${CURL_LIBRARIES})
-    target_include_directories(c3c PRIVATE ${CURL_INCLUDE_DIRS})
-    target_compile_definitions(c3c PUBLIC CURL_FOUND=1)
-else()
-    target_compile_definitions(c3c PUBLIC CURL_FOUND=0)
+if (NOT WIN32)
+    # For dlopen support
+    if (CMAKE_DL_LIBS)
+        target_link_libraries(c3c ${CMAKE_DL_LIBS})
+    endif()
 endif()
 
 
@@ -652,8 +702,10 @@ if (C3_WITH_LLVM AND DEFINED sanitizer_runtime_libraries)
 
     if (APPLE)
         # Change LC_ID_DYLIB to be rpath-based instead of having an absolute path
+        # We set DYLD_LIBRARY_PATH so the tools (which might be dynamic) can find libLLVM.dylib in the artifact
+        string(REPLACE ";" ":" _dyld_path "${LLVM_LIBRARY_DIRS}")
         add_custom_command(TARGET c3c POST_BUILD
-                COMMAND find $<TARGET_FILE_DIR:c3c>/c3c_rt -type f -name "*.dylib" -execdir ${LLVM_TOOLS_BINARY_DIR}/llvm-install-name-tool -id @rpath/{} {} $<SEMICOLON>
+                COMMAND ${CMAKE_COMMAND} -E env "DYLD_LIBRARY_PATH=${_dyld_path}:$ENV{DYLD_LIBRARY_PATH}" find $<TARGET_FILE_DIR:c3c>/c3c_rt -type f -name "*.dylib" -execdir ${LLVM_TOOLS_BINARY_DIR}/llvm-install-name-tool -id @rpath/{} {} $<SEMICOLON>
                 VERBATIM)
     endif()
 

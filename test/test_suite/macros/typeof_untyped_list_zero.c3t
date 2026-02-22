@@ -1,0 +1,4 @@
+fn void main()
+{
+	$typeof({1}) $untyped_list;
+}

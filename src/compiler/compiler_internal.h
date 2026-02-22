@@ -6,7 +6,6 @@
 #include "../utils/lib.h"
 #include "../build/build.h"
 #include "compiler.h"
-#include "enums.h"
 #include "target.h"
 #include "utils/malloc.h"
 #include "subprocess.h"
@@ -68,10 +67,10 @@ typedef uint16_t FileId;
 #define PRINT_ERROR_LAST(...) print_error_at(c->prev_span, __VA_ARGS__)
 #define RETURN_PRINT_ERROR_LAST(...) do { print_error_at(c->prev_span, __VA_ARGS__); return false; } while (0)
 #define SEMA_NOTE(_node, ...) sema_note_prev_at((_node)->span, __VA_ARGS__)
-#define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output && !compiler.build.silence_deprecation) print_error_at((_node)->span, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
- sema_note_prev_at((_node)->span, __VA_ARGS__); } while (0)
-#define PRINT_DEPRECATED_AT(span__, ...) do { if (compiler.build.test_output && !compiler.build.silence_deprecation) print_error_at(span__, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
-sema_note_prev_at(span__, __VA_ARGS__); } while (0)
+#define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output && compiler.build.warnings.deprecation > WARNING_SILENT) print_error_at((_node)->span, __VA_ARGS__); if (compiler.build.warnings.deprecation > WARNING_SILENT) \
+ print_deprecation_at((_node)->span, __VA_ARGS__); } while (0)
+#define PRINT_DEPRECATED_AT(span__, ...) do { if (compiler.build.test_output && compiler.build.warnings.deprecation > WARNING_SILENT) print_error_at(span__, __VA_ARGS__); if (compiler.build.warnings.deprecation > WARNING_SILENT) \
+print_deprecation_at(span__, __VA_ARGS__); } while (0)
 
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
@@ -563,10 +562,10 @@ typedef struct
 	OperatorOverload operator : 6;
 	Signature signature;
 	AstId body;
-	AstId docs;
+	DeclId docs;
 	union
 	{
-		struct
+		struct // Function related
 		{
 			bool attr_inline : 1;
 			bool attr_noinline : 1;
@@ -594,7 +593,7 @@ typedef struct
 				Decl **lambda_ct_parameters;
 			};
 		};
-		struct
+		struct // Macro related
 		{
 			DeclId body_param;
 			CompilationUnit *unit;
@@ -605,7 +604,7 @@ typedef struct
 typedef struct
 {
 	Signature signature;
-	AstId docs;
+	DeclId docs;
 } FnTypeDecl;
 
 
@@ -618,8 +617,8 @@ typedef struct
 typedef struct
 {
 	const char **parameters;
-	AstId contracts;
 	unsigned id;
+	Expr **requires;
 	Decl **instances;
 	Decl *owner;
 	Decl **decls;
@@ -655,6 +654,34 @@ typedef struct
 		Decl *alias;
 	};
 } DefineDecl;
+
+typedef struct
+{
+	SourceSpan span;
+	const char *name;
+	InOutModifier modifier : 4;
+	bool by_ref : 1;
+} ContractParam;
+
+typedef struct
+{
+	Expr *decl_exprs;
+	const char *comment;
+	const char *expr_string;
+} ExprContract;
+
+typedef struct
+{
+	Expr **requires;
+	Expr **ensures;
+	ContractParam *params;
+	bool pure;
+	union
+	{
+		Expr **opt_returns;
+		Decl **opt_returns_resolved;
+	};
+} ContractsDecl;
 
 typedef struct
 {
@@ -712,13 +739,16 @@ typedef struct Decl_
 	bool no_strip : 1;
 	bool is_cond : 1;
 	bool is_if : 1;
+	bool is_body_checked : 1;
 	bool attr_nopadding : 1;
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
 	bool attr_structlike : 1;
+	bool attr_constinit : 1;
 	bool is_template : 1;
 	bool is_templated : 1;
+	bool is_method_checked : 1;
 	union
 	{
 		void *backend_ref;
@@ -773,6 +803,7 @@ typedef struct Decl_
 		Ast *ct_echo_decl;
 		Decl** ct_else_decl;
 		Decl** decls;
+		ContractsDecl contracts_decl;
 		DefineDecl define_decl;
 		ModuleAliasDecl module_alias_decl;
 		EnumConstantDecl enum_constant;
@@ -1025,7 +1056,6 @@ typedef struct
 	const char *identifier;
 	bool is_ref : 1;
 	bool is_rvalue : 1;
-	Decl *decl;
 } ExprIdentifierRaw;
 
 typedef struct
@@ -1271,6 +1301,7 @@ struct Expr_
 		ExprBuiltin builtin_expr;                   // 16
 		ExprCall call_expr;                         // 40
 		ExprCast cast_expr;                         // 12
+		ExprContract contract_expr;
 		ExprUnresolvedCatch unresolved_catch_expr;  // 24
 		ExprCatch catch_expr;                       // 24
 		Expr** cond_expr;                           // 8
@@ -1564,49 +1595,6 @@ typedef struct
 } AstAssertStmt;
 
 
-typedef struct
-{
-	bool resolved;
-	bool expanding;
-	union
-	{
-		Expr *expr;
-		Decl *decl;
-	};
-} AstDocFault;
-
-typedef struct AstDocDirective_
-{
-	ContractKind kind : 4;
-	union
-	{
-		struct
-		{
-			const char *name;
-			SourceSpan span;
-			InOutModifier modifier : 4;
-			bool by_ref : 1;
-		} param;
-		Ast **faults;
-		struct
-		{
-			Expr *decl_exprs;
-			const char *comment;
-			const char *expr_string;
-		} contract;
-		struct
-		{
-			const char *directive_name;
-			const char *rest_of_line;
-		} generic;
-		struct
-		{
-			const char *string;
-			size_t strlen;
-		};
-	};
-} AstContractStmt;
-
 typedef struct Ast_
 {
 	SourceSpan span;
@@ -1624,8 +1612,6 @@ typedef struct Ast_
 		AstCompoundStmt compound_stmt;      // 12
 		AstId ct_compound_stmt;
 		AstContinueBreakStmt contbreak_stmt;// 24
-		AstContractStmt contract_stmt;      // 32
-		AstDocFault contract_fault;         // 24
 		AstId ct_else_stmt;                 // 4
 		AstCtTypeAssignStmt ct_type_assign_stmt;
 		AstCtForeachStmt ct_foreach_stmt;   // 40
@@ -1666,7 +1652,6 @@ typedef struct Module_
 	CompilationUnit **units;
 	Module *parent_module;
 	Module *top_module;
-	Module **sub_modules;
 	Decl **benchmarks;
 	Decl **tests;
 	Decl **lambdas_to_evaluate;
@@ -2016,6 +2001,7 @@ typedef struct
 	HTable features;
 	Module std_module;
 	MethodTable method_extensions;
+	Type **types_with_failed_methods;
 	Decl **method_extension_list;
 	DeclTable symbols;
 	PathTable path_symbols;
@@ -2173,8 +2159,6 @@ bool ast_is_not_empty(Ast *ast);
 
 bool ast_is_compile_time(Ast *ast);
 bool ast_supports_continue(Ast *stmt);
-Ast *ast_contract_has_any(AstId contracts);
-Ast *ast_contract_has_any_non_require(AstId contracts);
 INLINE void ast_append(AstId **succ, Ast *next);
 INLINE void ast_prepend(AstId *first, Ast *ast);
 INLINE bool ast_ok(Ast *ast);
@@ -2298,6 +2282,7 @@ UNUSED bool i128_get_bit(const Int128 *op, int bit);
 void copy_begin(void);
 void copy_end(void);
 Expr *copy_expr_single(Expr *source_expr);
+Expr **copy_exprlist_macro(Expr **source_expr_list);
 Decl **copy_decl_list_single(Decl **decl_list);
 Decl **copy_decl_list_single_for_generic(Decl **decl_list, Decl *generic_instance);
 Attr **copy_attributes_single(Attr** attr_list);
@@ -2366,7 +2351,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
 void unit_register_external_symbol(SemaContext *context, Decl *decl);
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
-bool unit_add_alias(CompilationUnit *unit, Decl *decl);
+bool unit_add_alias(CompilationUnit *unit, Decl *alias);
 bool context_set_module_from_filename(ParseContext *context);
 bool context_set_module(ParseContext *context, Path *path);
 bool context_is_macro(SemaContext *context);
@@ -2558,7 +2543,7 @@ Decl *sema_resolve_method(Decl *type, const char *method_name);
 Decl *sema_resolve_method_only(Decl *type, const char *method_name);
 Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const char *method_name);
 bool sema_resolve_type_decl(SemaContext *context, Type *type);
-bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type);
+bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_info);
 Decl *sema_find_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_template_symbol(SemaContext *context, const char *symbol, Path *path);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);
@@ -2577,6 +2562,7 @@ bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info);
 
 bool use_ansi(void);
 void print_error_at(SourceSpan loc, const char *message, ...);
+void print_deprecation_at(SourceSpan loc, const char *message, ...);
 void print_error_after(SourceSpan loc, const char *message, ...);
 void sema_note_prev_at(SourceSpan loc, const char *message, ...);
 void sema_verror_range(SourceSpan location, const char *message, va_list args);
@@ -2637,6 +2623,7 @@ bool arch_is_wasm(ArchType type);
 const char *macos_sysroot(void);
 MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
 WindowsSDK *windows_get_sdk(void);
+// This string may be in the scratch buffer
 const char *windows_cross_compile_library(void);
 
 void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs);
@@ -3095,6 +3082,8 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 			return "a typeinfo";
 		case TYPE_WILDCARD:
 			return "an empty value";
+		case TYPE_OPTIONAL:
+			return "an optional with a compile time type";
 		default:
 			UNREACHABLE;
 	}
@@ -3973,6 +3962,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_RVALUE:
 		case EXPR_CT_SUBSCRIPT:
 		case EXPR_IOTA_DECL:
+		case EXPR_CONTRACT:
 			break;
 	}
 }
@@ -4323,7 +4313,7 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
 	expr->type = type;
 	expr->resolve_status = RESOLVE_DONE;
 	TypeKind kind = type_flatten(type)->type_kind;
-	(&expr->const_expr)->ixx.i.high = 0;
+	expr->const_expr.ixx.i.high = 0;
 	if (type_kind_is_signed(kind))
 	{
 		if (v > (uint64_t)INT64_MAX) (&expr->const_expr)->ixx.i.high = UINT64_MAX;
@@ -4345,10 +4335,10 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
 				break;
 		}
 	}
-	(&expr->const_expr)->ixx.i.low = v;
-	(&expr->const_expr)->ixx.type = kind;
-	(&expr->const_expr)->is_character = false;
-	(&expr->const_expr)->const_kind = CONST_INTEGER;
+	expr->const_expr.ixx.i.low = v;
+	expr->const_expr.ixx.type = kind;
+	expr->const_expr.is_character = false;
+	expr->const_expr.const_kind = CONST_INTEGER;
 }
 
 INLINE void expr_rewrite_to_int_to_float(Expr *expr, Type *type)
@@ -4548,7 +4538,7 @@ INLINE bool expr_is_const_ref(Expr *expr)
 
 INLINE bool expr_is_const_pointer(Expr *expr)
 {
-	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_POINTER;
 }
 
@@ -4592,6 +4582,34 @@ INLINE bool expr_is_const_float(Expr *expr)
 {
 	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_FLOAT;
+}
+
+INLINE bool expr_is_ct_ident(Expr *expr)
+{
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	if (expr->expr_kind != EXPR_IDENTIFIER) return false;
+	Decl *decl = expr->ident_expr;
+	if (decl->decl_kind != DECL_VAR) return false;
+	switch (decl->var.kind)
+	{
+		case VARDECL_CONST:
+		case VARDECL_GLOBAL:
+		case VARDECL_LOCAL:
+		case VARDECL_PARAM:
+		case VARDECL_MEMBER:
+		case VARDECL_BITMEMBER:
+		case VARDECL_PARAM_EXPR:
+		case VARDECL_UNWRAPPED:
+		case VARDECL_ERASE:
+		case VARDECL_REWRAPPED:
+			return false;
+		case VARDECL_PARAM_CT:
+		case VARDECL_PARAM_CT_TYPE:
+		case VARDECL_LOCAL_CT:
+		case VARDECL_LOCAL_CT_TYPE:
+			return true;
+	}
+	UNREACHABLE;
 }
 
 INLINE bool expr_is_const_typeid(Expr *expr)

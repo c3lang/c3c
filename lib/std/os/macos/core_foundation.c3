@@ -40,7 +40,7 @@ extern fn CFTypeRef CFType.retain(&self) @cname("CFRetain");
 extern fn void CFType.release(&self) @cname("CFRelease");
 extern fn CFIndex CFType.getRetainCount(&self) @cname("CFGetRetainCount");
 
-enum CFStringEncoding : const uint
+constdef CFStringEncoding : uint
 {
 	INVALID_ID        = 0xffffffffU,
     MAC_ROMAN         = 0,

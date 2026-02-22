@@ -239,7 +239,7 @@ def copy(src, dst):
 	base = os.path.basename(low)
 	if base == "msvcrt.lib" or base == "oldnames.lib":
 		base = base[:-3].upper() + "lib"
-		path = os.path.join(os.path.dirname(low), base);
+		path = os.path.join(os.path.dirname(low), base)
 		shutil.copy(src, path)
 	shutil.copy(src, low)
 

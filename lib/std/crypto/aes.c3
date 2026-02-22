@@ -56,9 +56,9 @@ enum BlockMode
 <* AES type: 128, 192 or 256 bits *>
 enum AesType : (AesKey key)
 {
-	AES128 = { 128, 16, 176, 4, 10 },
-	AES192 = { 192, 24, 208, 6, 12 },
-	AES256 = { 256, 32, 240, 8, 14 }
+	AES128 {{ 128, 16, 176, 4, 10 }},
+	AES192 {{ 192, 24, 208, 6, 12 }},
+	AES256 {{ 256, 32, 240, 8, 14 }}
 }
 
 struct AesKey

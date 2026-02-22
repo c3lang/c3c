@@ -77,18 +77,18 @@ import std::os::macos::cf;
 
 enum StatusItemLength : (double val) @deprecated("Use NSStatusItemLength.")
 {
-    VARIABLE = -1.0,
-    SQUARE   = -2.0,
+    VARIABLE { -1.0 },
+    SQUARE   { -2.0 },
 }
 
 enum ApplicationActivationPolicy : (int val) @deprecated("Use NSApplicationActivationPolicy.")
 {
-	REGULAR    = 0,
-	ACCESSORY  = 1,
-	PROHIBITED = 2,
+	REGULAR    { 0 },
+	ACCESSORY  { 1 },
+	PROHIBITED { 2 },
 }
 
-enum NSApplicationActivationPolicy : const inline NSInteger
+constdef NSApplicationActivationPolicy : inline NSInteger
 {
 	REGULAR    = 0,
 	ACCESSORY  = 1,
@@ -97,29 +97,29 @@ enum NSApplicationActivationPolicy : const inline NSInteger
 
 enum WindowStyleMask : (int val) @deprecated("Use NSWindowStyleMask.")
 {
-    BORDERLESS                = 0,
-    TITLED                    = 1 << 0,
-    CLOSABLE                  = 1 << 1,
-	MINIATURIZABLE            = 1 << 2,
-	RESIZABLE                 = 1 << 3,
-	TEXTURED_BACKGROUND       = 1 << 8,
-	UNIFIED_TITLE_AND_TOOLBAR = 1 << 12,
-	FULL_SCREEN               = 1 << 14,
-	FULL_SIZE_CONTENT_VIEW    = 1 << 15,
-	UTILITY_WINDOW            = 1 << 4,
-	DOC_MODAL_WINDOW          = 1 << 6,
-	NONACTIVATING_PANEL       = 1 << 7,
-	HUD_WINDOW                = 1 << 13
+    BORDERLESS                { 0 },
+    TITLED                    { 1 << 0 },
+    CLOSABLE                  { 1 << 1 },
+	MINIATURIZABLE            { 1 << 2 },
+	RESIZABLE                 { 1 << 3 },
+	TEXTURED_BACKGROUND       { 1 << 8 },
+	UNIFIED_TITLE_AND_TOOLBAR { 1 << 12 },
+	FULL_SCREEN               { 1 << 14 },
+	FULL_SIZE_CONTENT_VIEW    { 1 << 15 },
+	UTILITY_WINDOW            { 1 << 4 },
+	DOC_MODAL_WINDOW          { 1 << 6 },
+	NONACTIVATING_PANEL       { 1 << 7 },
+	HUD_WINDOW                { 1 << 13 }
 }
 
 enum BackingStore : (int val) @deprecated("Use NSBackingStoreType.")
 {
-	RETAINED    = 0,
-	NONRETAINED = 1,
-	BUFFERED    = 2
+	RETAINED    { 0 },
+	NONRETAINED { 1 },
+	BUFFERED    { 2 }
 }
 
-enum NSBackingStoreType : const inline NSUInteger
+constdef NSBackingStoreType : inline NSUInteger
 {
 	RETAINED    = 0,
 	NONRETAINED = 1,
@@ -128,43 +128,43 @@ enum NSBackingStoreType : const inline NSUInteger
 
 enum EventType : (long val) @deprecated("Use NSEventType.")
 {
-	LEFT_MOUSE_DOWN     = 1,
-	LEFT_MOUSE_UP       = 2,
-	RIGHT_MOUSE_DOWN    = 3,
-	RIGHT_MOUSE_UP      = 4,
-	MOUSE_MOVED         = 5,
-	LEFT_MOUSE_DRAGGED  = 6,
-	RIGHT_MOUSE_DRAGGED = 7,
-	MOUSE_ENTERED       = 8,
-	MOUSE_EXITED        = 9,
-	KEY_DOWN            = 10,
-	KEY_UP              = 11,
-	FLAGS_CHANGED       = 12,
-	APPKIT_DEFINED      = 13,
-	SYSTEM_DEFINED      = 14,
-	APPLICATION_DEFINED = 15,
-	PERIODIC            = 16,
-	CURSOR_UPDATE       = 17,
-	SCROLL_WHEEL        = 22,
-	TABLET_POINT        = 23,
-	TABLET_PROXIMITY    = 24,
-	OTHER_MOUSE_DOWN    = 25,
-	OTHER_MOUSE_UP      = 26,
-	OTHER_MOUSE_DRAGGED = 27,
-	GESTURE             = 29,
-	MAGNIFY             = 30,
-	SWIPE               = 31,
-	ROTATE              = 18,
-	BEGIN_GESTURE       = 19,
-	END_GESTURE         = 20,
-	SMART_MAGNIFY       = 32,
-	QUICK_LOOK          = 33,
-	PRESSURE            = 34,
-	DIRECT_TOUCH        = 37,
-	CHANGE_MODE         = 38,
+	LEFT_MOUSE_DOWN     { 1 },
+	LEFT_MOUSE_UP       { 2 },
+	RIGHT_MOUSE_DOWN    { 3 },
+	RIGHT_MOUSE_UP      { 4 },
+	MOUSE_MOVED         { 5 },
+	LEFT_MOUSE_DRAGGED  { 6 },
+	RIGHT_MOUSE_DRAGGED { 7 },
+	MOUSE_ENTERED       { 8 },
+	MOUSE_EXITED        { 9 },
+	KEY_DOWN            { 10 },
+	KEY_UP              { 11 },
+	FLAGS_CHANGED       { 12 },
+	APPKIT_DEFINED      { 13 },
+	SYSTEM_DEFINED      { 14 },
+	APPLICATION_DEFINED { 15 },
+	PERIODIC            { 16 },
+	CURSOR_UPDATE       { 17 },
+	SCROLL_WHEEL        { 22 },
+	TABLET_POINT        { 23 },
+	TABLET_PROXIMITY    { 24 },
+	OTHER_MOUSE_DOWN    { 25 },
+	OTHER_MOUSE_UP      { 26 },
+	OTHER_MOUSE_DRAGGED { 27 },
+	GESTURE             { 29 },
+	MAGNIFY             { 30 },
+	SWIPE               { 31 },
+	ROTATE              { 18 },
+	BEGIN_GESTURE       { 19 },
+	END_GESTURE         { 20 },
+	SMART_MAGNIFY       { 32 },
+	QUICK_LOOK          { 33 },
+	PRESSURE            { 34 },
+	DIRECT_TOUCH        { 37 },
+	CHANGE_MODE         { 38 },
 }
 
-enum NSEventType : const inline NSUInteger
+constdef NSEventType : inline NSUInteger
 {
 	LEFT_MOUSE_DOWN     = 1,
 	LEFT_MOUSE_UP       = 2,
@@ -246,41 +246,41 @@ fn EventType? event_type_from(int val) @deprecated("Use NSEventType directly.")
 
 enum EventMask : (long val) @deprecated("Use NSEventMask.")
 {
-	LEFT_MOUSE_DOWN     = 1 << EventType.LEFT_MOUSE_DOWN.val,
-	LEFT_MOUSE_UP       = 1 << EventType.LEFT_MOUSE_UP.val,
-	RIGHT_MOUSE_DOWN    = 1 << EventType.RIGHT_MOUSE_DOWN.val,
-    RIGHT_MOUSE_UP      = 1 << EventType.RIGHT_MOUSE_UP.val,
-    MOUSE_MOVED         = 1 << EventType.MOUSE_MOVED.val,
-	LEFT_MOUSE_DRAGGED  = 1 << EventType.LEFT_MOUSE_DRAGGED.val,
-	RIGHT_MOUSE_DRAGGED = 1 << EventType.RIGHT_MOUSE_DRAGGED.val,
-	MOUSE_ENTERED       = 1 << EventType.MOUSE_ENTERED.val,
-	MOUSE_EXITED        = 1 << EventType.MOUSE_EXITED.val,
-	KEY_DOWN            = 1 << EventType.KEY_DOWN.val,
-	KEY_UP              = 1 << EventType.KEY_UP.val,
-	FLAGS_CHANGED       = 1 << EventType.FLAGS_CHANGED.val,
-	APPKIT_DEFINED      = 1 << EventType.APPKIT_DEFINED.val,
-	SYSTEM_DEFINED      = 1 << EventType.SYSTEM_DEFINED.val,
-	APPLICATION_DEFINED = 1 << EventType.APPLICATION_DEFINED.val,
-	PERIODIC            = 1 << EventType.PERIODIC.val,
-	CURSOR_UPDATE       = 1 << EventType.CURSOR_UPDATE.val,
-	SCROLL_WHEEL        = 1 << EventType.SCROLL_WHEEL.val,
-	TABLET_POINT        = 1 << EventType.TABLET_POINT.val,
-	TABLET_PROXIMITY    = 1 << EventType.TABLET_PROXIMITY.val,
-	OTHER_MOUSE_DOWN    = 1 << EventType.OTHER_MOUSE_DOWN.val,
-	OTHER_MOUSE_UP      = 1 << EventType.OTHER_MOUSE_UP.val,
-	OTHER_MOUSE_DRAGGED = 1 << EventType.OTHER_MOUSE_DRAGGED.val,
-    GESTURE             = 1 << EventType.GESTURE.val,
-    MAGNIFY             = 1 << EventType.MAGNIFY.val,
-    SWIPE               = 1 << EventType.SWIPE.val,
-    ROTATE              = 1 << EventType.ROTATE.val,
-    BEGIN_GESTURE       = 1 << EventType.BEGIN_GESTURE.val,
-    END_GESTURE         = 1 << EventType.END_GESTURE.val,
-    SMART_MAGNIFY       = 1L << EventType.SMART_MAGNIFY.val,
-    DIRECT_TOUCH        = 1L << EventType.DIRECT_TOUCH.val,
-    ANY                 = long.max,
+	LEFT_MOUSE_DOWN     { 1 << EventType.LEFT_MOUSE_DOWN.val     },
+	LEFT_MOUSE_UP       { 1 << EventType.LEFT_MOUSE_UP.val       },
+	RIGHT_MOUSE_DOWN    { 1 << EventType.RIGHT_MOUSE_DOWN.val    },
+    RIGHT_MOUSE_UP      { 1 << EventType.RIGHT_MOUSE_UP.val      },
+    MOUSE_MOVED         { 1 << EventType.MOUSE_MOVED.val         },
+	LEFT_MOUSE_DRAGGED  { 1 << EventType.LEFT_MOUSE_DRAGGED.val  },
+	RIGHT_MOUSE_DRAGGED { 1 << EventType.RIGHT_MOUSE_DRAGGED.val },
+	MOUSE_ENTERED       { 1 << EventType.MOUSE_ENTERED.val       },
+	MOUSE_EXITED        { 1 << EventType.MOUSE_EXITED.val        },
+	KEY_DOWN            { 1 << EventType.KEY_DOWN.val            },
+	KEY_UP              { 1 << EventType.KEY_UP.val              },
+	FLAGS_CHANGED       { 1 << EventType.FLAGS_CHANGED.val       },
+	APPKIT_DEFINED      { 1 << EventType.APPKIT_DEFINED.val      },
+	SYSTEM_DEFINED      { 1 << EventType.SYSTEM_DEFINED.val      },
+	APPLICATION_DEFINED { 1 << EventType.APPLICATION_DEFINED.val },
+	PERIODIC            { 1 << EventType.PERIODIC.val            },
+	CURSOR_UPDATE       { 1 << EventType.CURSOR_UPDATE.val       },
+	SCROLL_WHEEL        { 1 << EventType.SCROLL_WHEEL.val        },
+	TABLET_POINT        { 1 << EventType.TABLET_POINT.val        },
+	TABLET_PROXIMITY    { 1 << EventType.TABLET_PROXIMITY.val    },
+	OTHER_MOUSE_DOWN    { 1 << EventType.OTHER_MOUSE_DOWN.val    },
+	OTHER_MOUSE_UP      { 1 << EventType.OTHER_MOUSE_UP.val      },
+	OTHER_MOUSE_DRAGGED { 1 << EventType.OTHER_MOUSE_DRAGGED.val },
+    GESTURE             { 1 << EventType.GESTURE.val             },
+    MAGNIFY             { 1 << EventType.MAGNIFY.val             },
+    SWIPE               { 1 << EventType.SWIPE.val               },
+    ROTATE              { 1 << EventType.ROTATE.val              },
+    BEGIN_GESTURE       { 1 << EventType.BEGIN_GESTURE.val       },
+    END_GESTURE         { 1 << EventType.END_GESTURE.val         },
+    SMART_MAGNIFY       { 1L << EventType.SMART_MAGNIFY.val      },
+    DIRECT_TOUCH        { 1L << EventType.DIRECT_TOUCH.val       },
+    ANY                 { long.max                               },
 }
 
-enum NSEventMask : const inline ulong
+constdef NSEventMask : inline ulong
 {
 	LEFT_MOUSE_DOWN     = 1ul << NSEventType.LEFT_MOUSE_DOWN,
 	LEFT_MOUSE_UP       = 1ul << NSEventType.LEFT_MOUSE_UP,
@@ -323,17 +323,17 @@ fn NSEventMask event_mask_from_type(NSEventType type) => (NSEventMask)1ul << typ
 
 enum EventModifierFlag : (int val) @deprecated("Use NSEventModifierFlags.")
 {
-	CAPS_LOCK   = 1 << 16,
-	SHIFT       = 1 << 17,
-	CONTROL     = 1 << 18,
-	OPTION      = 1 << 19,
-	COMMAND     = 1 << 20,
-	NUMERIC_PAD = 1 << 21,
-    FUNCTION    = 1 << 23,
-	HELP        = 1 << 22,
+	CAPS_LOCK   { 1 << 16 },
+	SHIFT       { 1 << 17 },
+	CONTROL     { 1 << 18 },
+	OPTION      { 1 << 19 },
+	COMMAND     { 1 << 20 },
+	NUMERIC_PAD { 1 << 21 },
+    FUNCTION    { 1 << 23 },
+	HELP        { 1 << 22 },
 }
 
-enum NSEventModifierFlags : const inline NSUInteger
+constdef NSEventModifierFlags : inline NSUInteger
 {
 	CAPS_LOCK                     = 1 << 16,
 	SHIFT                         = 1 << 17,
@@ -346,7 +346,7 @@ enum NSEventModifierFlags : const inline NSUInteger
 	DEVICE_INDEPENDENT_FLAGS_MASK = 0xffff0000UL,
 }
 
-enum NSWindowCollectionBehavior : const inline NSUInteger
+constdef NSWindowCollectionBehavior : inline NSUInteger
 {
 	DEFAULT                       = 0,
 	CAN_JOIN_ALL_SPACES           = 1 << 0,
@@ -366,7 +366,7 @@ enum NSWindowCollectionBehavior : const inline NSUInteger
 	CAN_JOIN_ALL_APPLICATIONS     = 1 << 18,
 }
 
-enum NSWindowLevel : const inline NSInteger
+constdef NSWindowLevel : inline NSInteger
 {
 	NORMAL          = 0,
 	FLOATING        = 3,
@@ -379,7 +379,7 @@ enum NSWindowLevel : const inline NSInteger
 	SCREEN_SAVER    = 1000,
 }
 
-enum NSWindowStyleMask : const inline NSUInteger
+constdef NSWindowStyleMask : inline NSUInteger
 {
 	BORDERLESS                = 0,
 	TITLED                    = 1 << 0,
@@ -396,22 +396,22 @@ enum NSWindowStyleMask : const inline NSUInteger
 	HUD_WINDOW                = 1 << 13
 }
 
-enum NSWindowTabbingMode : const inline NSInteger
+constdef NSWindowTabbingMode : inline NSInteger
 {
 	AUTOMATIC   = 0,
 	DISALLOWED  = 2,
 	PREFERRED   = 1,
 }
 
-enum NSStatusItemLength : const inline CGFloat
+constdef NSStatusItemLength : inline CGFloat
 {
 	VARIABLE = -1.0,
-	SQUARE = -2.0
+	SQUARE   = -2.0
 }
 
-enum NSApplicationTerminateReply : const inline NSUInteger
+constdef NSApplicationTerminateReply : inline NSUInteger
 {
 	CANCEL = 0,
-	NOW = 1,
-	LATER = 2,
+	NOW    = 1,
+	LATER  = 2,
 }

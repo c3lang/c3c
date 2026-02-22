@@ -25,7 +25,7 @@ macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
 
 const Duration POLL_FOREVER = (Duration)-1;
 
-enum PollSubscribe : const ushort
+constdef PollSubscribe
 {
 	ANY_READ     = os::POLLIN,
 	PRIO_READ    = os::POLLPRI,
@@ -44,7 +44,7 @@ const PollSubscribe SUBSCRIBE_ANY_WRITE    = (PollSubscribe)os::POLLOUT;
 const PollSubscribe SUBSCRIBE_OOB_WRITE    = (PollSubscribe)os::POLLWRBAND;
 const PollSubscribe SUBSCRIBE_WRITE        = (PollSubscribe)os::POLLWRNORM;
 
-enum PollEvent : const ushort
+constdef PollEvent : ushort
 {
 	READ_PRIO  = os::POLLPRI,
 	READ_OOB   = os::POLLRDBAND,
@@ -109,12 +109,12 @@ macro Socket new_socket(fd, ai)
 
 enum SocketOption : char (CInt value)
 {
-	REUSEADDR                  = os::SO_REUSEADDR,
-	REUSEPORT @if(!env::WIN32) = os::SO_REUSEPORT,
-	KEEPALIVE                  = os::SO_KEEPALIVE,
-	BROADCAST                  = os::SO_BROADCAST,
-	OOBINLINE                  = os::SO_OOBINLINE,
-	DONTROUTE                  = os::SO_DONTROUTE,
+	REUSEADDR                  { os::SO_REUSEADDR },
+	REUSEPORT @if(!env::WIN32) { os::SO_REUSEPORT },
+	KEEPALIVE                  { os::SO_KEEPALIVE },
+	BROADCAST                  { os::SO_BROADCAST },
+	OOBINLINE                  { os::SO_OOBINLINE },
+	DONTROUTE                  { os::SO_DONTROUTE },
 }
 
 fn bool? Socket.get_broadcast(&self) => self.get_option(BROADCAST);
@@ -193,9 +193,9 @@ fn usz? Socket.peek(&self, char[] bytes) @dynamic
 
 enum SocketShutdownHow : (CInt native_value)
 {
-	RECEIVE = env::WIN32 ??? libc::SD_RECEIVE : libc::SHUT_RD,
-	SEND = env::WIN32 ??? libc::SD_SEND : libc::SHUT_WR,
-	BOTH = env::WIN32 ??? libc::SD_BOTH : libc::SHUT_RDWR,
+	RECEIVE { env::WIN32 ??? libc::SD_RECEIVE : libc::SHUT_RD },
+	SEND    { env::WIN32 ??? libc::SD_SEND : libc::SHUT_WR    },
+	BOTH    { env::WIN32 ??? libc::SD_BOTH : libc::SHUT_RDWR  },
 }
 
 fn void? Socket.shutdown(&self, SocketShutdownHow how)

@@ -200,8 +200,6 @@ bool expr_may_addr(Expr *expr)
 			decl = decl_raw(decl);
 			switch (decl->var.kind)
 			{
-				case VARDECL_LOCAL_CT:
-				case VARDECL_LOCAL_CT_TYPE:
 				case VARDECL_LOCAL:
 				case VARDECL_GLOBAL:
 				case VARDECL_PARAM:
@@ -211,6 +209,8 @@ bool expr_may_addr(Expr *expr)
 				case VARDECL_BITMEMBER:
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM_CT_TYPE:
+				case VARDECL_LOCAL_CT:
+				case VARDECL_LOCAL_CT_TYPE:
 				case VARDECL_PARAM_EXPR:
 					return false;
 				case VARDECL_UNWRAPPED:
@@ -379,7 +379,7 @@ bool expr_is_runtime_const(Expr *expr)
 			}
 			return exprid_is_runtime_const(expr->builtin_access_expr.inner);
 		case EXPR_INT_TO_BOOL:
-			return expr_is_runtime_const(expr->int_to_bool_expr.inner);
+			return expr_is_const(expr->int_to_bool_expr.inner);
 		case EXPR_EXT_TRUNC:
 			return expr_is_runtime_const(expr->ext_trunc_expr.inner);
 		case EXPR_CONST:
@@ -485,12 +485,12 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_CT_CALL:
 		case EXPR_TYPEINFO:
 		case EXPR_HASH_IDENT:
-		case EXPR_CT_IDENT:
 		case EXPR_POISONED:
 		case EXPR_CT_ARG:
 		case EXPR_ASM:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_CONTRACT:
 			UNREACHABLE
 		case EXPR_NOP:
 			return true;
@@ -592,7 +592,7 @@ void expr_insert_addr(Expr *original)
 	Expr *inner = expr_copy(original);
 	original->expr_kind = EXPR_UNARY;
 	original->type = new_type;
-	original->unary_expr = (ExprUnary) { .operator = UNARYOP_ADDR, .expr = inner };
+	original->unary_expr = (ExprUnary) { .operator = UNARYOP_ADDR, .expr = inner, .no_wrap = false, .no_read = false };
 }
 
 Expr *expr_generated_local(Expr *assign, Decl **decl_ref)
@@ -702,10 +702,14 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE_VOID
+		case TYPE_UNTYPED_LIST:
+			expr->const_expr.const_kind = CONST_UNTYPED_LIST;
+			expr->const_expr.untyped_list = NULL;
+			expr->resolve_status = RESOLVE_DONE;
+			break;
 		case TYPE_SLICE:
 			expr_rewrite_const_empty_slice(expr, type);
 			return;
@@ -797,6 +801,7 @@ bool expr_is_pure(Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case UNRESOLVED_EXPRS:
+		case EXPR_CONTRACT:
 			UNREACHABLE
 		case EXPR_BUILTIN:
 		case EXPR_BENCHMARK_HOOK:
@@ -842,7 +847,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_IS_CONST:
 		case EXPR_CT_EVAL:
-		case EXPR_CT_IDENT:
 		case EXPR_IDENTIFIER:
 		case EXPR_LAMBDA:
 		case EXPR_NOP:
@@ -1185,6 +1189,6 @@ void expr_rewrite_const_string(Expr *expr_to_rewrite, const char *string)
 
 void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, BinaryOp op)
 {
-	expr_to_rewrite->binary_expr = (ExprBinary) { .operator = op, .left = exprid(left), .right = exprid(right) };
+	expr_to_rewrite->binary_expr = (ExprBinary) { .operator = op, .left = exprid(left), .right = exprid(right), .grouped = false };
 	expr_to_rewrite->expr_kind = EXPR_BINARY;
 }

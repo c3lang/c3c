@@ -1,5 +1,5 @@
 module std::core::dstring;
-import std::io;
+import std::io, std::math;
 
 <*
  The DString offers a dynamic string builder.
@@ -331,14 +331,14 @@ fn Char32[] DString.copy_utf32(&self, Allocator allocator)
 }
 
 <*
- @require $typeof(str) == String || $typeof(str) == DString : "Expected string or DString"
+ @require $defined(String s = str) ||| $typeof(str) == DString : "Expected string or DString"
 *>
 macro void DString.append_string(&self, str)
 {
-	$if $typeof(str) == String:
-		self.append_bytes(str);
-	$else
+	$if $typeof(str) == DString:
 		self.append_string_deprecated(str);
+	$else
+		self.append_bytes((String)str);
 	$endif
 }
 
@@ -631,7 +631,7 @@ fn void DString.reverse(self)
 	}
 }
 
-fn StringData* DString.data(self) @inline @private
+fn StringData* DString.data(self) @inline
 {
 	return (StringData*)self;
 }
@@ -648,7 +648,7 @@ fn void DString.reserve(&self, usz addition)
 	if (data.capacity >= len) return;
 	usz new_capacity = data.capacity * 2;
 	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
-	while (new_capacity < len) new_capacity *= 2;
+	if (new_capacity < len) new_capacity = math::next_power_of_2(len);
 	data.capacity = new_capacity;
 	*self = (DString)allocator::realloc(data.allocator, data, StringData.sizeof + new_capacity);
 }
@@ -658,9 +658,10 @@ fn usz? DString.read_from_stream(&self, InStream reader)
 	if (&reader.available)
 	{
 		usz total_read = 0;
-		while (usz available = reader.available()!)
+		while (ulong available = reader.available()!)
 		{
-			self.reserve(available);
+			if (available > isz.max) available = (ulong)isz.max;
+			self.reserve((usz)available);
 			StringData* data = self.data();
 			usz len = reader.read(data.chars[data.len..(data.capacity - 1)])!;
 			total_read += len;

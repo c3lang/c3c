@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2020-2026 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
@@ -18,13 +18,6 @@ void parent_path(StringSlice *slice)
 	slice->len = 0;
 }
 
-void sema_analyse_pass_top(Module *module)
-{
-	Module *parent = module;
-	while (parent->parent_module) parent = parent->parent_module;
-	module->top_module = parent;
-}
-
 void sema_analyse_pass_module_hierarchy(Module *module)
 {
 	const char *name = module->name->module;
@@ -42,11 +35,9 @@ void sema_analyse_pass_module_hierarchy(Module *module)
 		Path *checked_name = checked->name;
 		if (checked_name->len != slice.len) continue;
 		// Found the parent! We're done, we add this parent
-		// and this as a child.
 		if (memcmp(checked_name->module, slice.ptr, slice.len) == 0)
 		{
 			module->parent_module = checked;
-			vec_add(checked->sub_modules, module);
 			return;
 		}
 	}
@@ -55,12 +46,17 @@ void sema_analyse_pass_module_hierarchy(Module *module)
 	DEBUG_LOG("Creating parent module for %s: %s", module->name->module, path->module);
 	Module *parent_module = compiler_find_or_create_module(path);
 	module->parent_module = parent_module;
-	vec_add(parent_module->sub_modules, module);
 	sema_analyze_stage(parent_module, ANALYSIS_MODULE_HIERARCHY);
 }
 
 void sema_analysis_pass_process_imports(Module *module)
 {
+	DEBUG_LOG("Pass: Set the top module '%s'.", module->name->module);
+
+	Module *parent = module;
+	while (parent->parent_module) parent = parent->parent_module;
+	module->top_module = parent;
+
 	DEBUG_LOG("Pass: Importing dependencies for files in module '%s'.", module->name->module);
 
 	unsigned total_import_count = 0;
@@ -167,18 +163,17 @@ static bool sema_check_if_implicit_generic(SemaContext *context, Decl *decl)
 {
 	if (!decl->func_decl.type_parent) return false;
 	TypeInfo *typedecl = type_infoptr(decl->func_decl.type_parent);
-	Decl *d = NULL;
 	if (typedecl->resolve_status == RESOLVE_DONE)
 	{
 		CanonicalType *type = typedecl->type->canonical;
-		if (!type_is_user_defined(type)) return false;
-		d = type->decl;
+		return type_is_user_defined(type) && type->decl->is_template;
 	}
-	else if (typedecl->kind == TYPE_INFO_IDENTIFIER && typedecl->subtype == TYPE_COMPRESSED_NONE)
+	if (typedecl->kind == TYPE_INFO_IDENTIFIER && typedecl->subtype == TYPE_COMPRESSED_NONE)
 	{
-		d = sema_resolve_maybe_parameterized_symbol(context, typedecl->unresolved.name, typedecl->unresolved.path, typedecl->span);
+		Decl *d = sema_resolve_maybe_parameterized_symbol(context, typedecl->unresolved.name, typedecl->unresolved.path, typedecl->span);
+		return d && d->is_template; // NOLINT because apparently this is not checking for NULL!?
 	}
-	return d && d->is_template;
+	return false;
 }
 
 void unit_register_optional_global_decl(CompilationUnit *unit, Decl *decl)

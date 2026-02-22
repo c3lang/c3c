@@ -69,6 +69,8 @@ typedef struct
 #endif
 	const char *cpu;
 	const char *features;
+	const char *dylib_suffix;
+	Warnings warning;
 	ArchType arch;
 	OsType os;
 	VendorType vendor;
@@ -145,6 +147,7 @@ typedef struct
 		} systemz;
 	};
 	bool big_endian;
+	bool emulated_tls;
 	bool tls_supported;
 	bool asm_supported;
 	bool float128;
@@ -183,6 +186,8 @@ typedef struct
 	unsigned register_count;
 
 } PlatformTarget;
+
+ArchType target_host_arch(void);
 
 static inline bool is_pie_pic(RelocModel reloc)
 {

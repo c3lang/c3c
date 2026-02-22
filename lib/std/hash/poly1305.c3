@@ -86,14 +86,14 @@ fn void Poly1305.update(&self, char[] input)
         }
         // ingest up to a block size to finish the partial, then advance the slice ptr
         self.temp[self.num:rem] = input[:rem];
-        self.blocks(self.temp[..]);
+        _blocks(self, self.temp[..]);
         input = input[rem..];
     }
 
     usz even_length = input.len - (input.len % BLOCK_SIZE);
     if (even_length >= BLOCK_SIZE)
     {
-        self.blocks(input[:even_length]); // consume blocks
+        _blocks(self, input[:even_length]); // consume blocks
         input = input[even_length..]; // scroll to end (remainder)
     }
 
@@ -109,7 +109,7 @@ fn char[TAG_SIZE] Poly1305.final(&self)
     {
         self.temp[self.num++] = 1; // partial blocks must end with 0x01
         self.temp[self.num..] = {}; // explicit zeros on the rest
-        self.blocks(self.temp[..], 0); // chomp
+        _blocks(self, self.temp[..], 0); // chomp
     }
 
     uint128 t = (uint128)self.h[0] + 5;
@@ -135,7 +135,7 @@ fn char[TAG_SIZE] Poly1305.final(&self)
 }
 
 
-fn void Poly1305.blocks(&self, char[] input, ulong pad_bit = 1) @local
+fn void _blocks(Poly1305* self, char[] input, ulong pad_bit = 1) @local
 {
     for (; input.len >= BLOCK_SIZE; input = input[BLOCK_SIZE..])
     {

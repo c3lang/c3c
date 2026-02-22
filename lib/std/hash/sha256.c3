@@ -68,18 +68,18 @@ fn void Sha256.update(&self, char[] data)
 		usz len = min(BLOCK_SIZE - buffer_pos, data.len);
 		self.buffer[buffer_pos:len] = data[:len];
 		data = data[len..];
-		if (buffer_pos + len == BLOCK_SIZE) self.transform();
+		if (buffer_pos + len == BLOCK_SIZE) _transform(self);
 	}
 
 	// When the data pointer is aligned, we can disregard unaligned loading in the `transform` macro.
 	//   We do this here from the outer call to reduce the expense of checking alignment on every single block.
 	if (0 == (usz)data.ptr % usz.sizeof)
 	{
-		for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..]) self.transform((uint*)data.ptr);
+		for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..]) _transform(self, (uint*)data.ptr);
 	}
 	else
 	{
-		for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..]) self.transform_unaligned((uint*)data.ptr);
+		for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..]) _transform_unaligned(self, (uint*)data.ptr);
 	}
 
 	// Leftover data just gets stored away for the next update or final.
@@ -102,7 +102,7 @@ fn char[HASH_SIZE] Sha256.final(&self)
 	if (i > BLOCK_SIZE - 8)
 	{
 		self.buffer[i..] = 0x00;
-		self.transform();
+		_transform(self);
 		i = 0;  // Reset buffer index after transformation
 	}
 
@@ -111,7 +111,7 @@ fn char[HASH_SIZE] Sha256.final(&self)
 	// Append the bitcount in big-endian format
 	*(ulong*)(&self.buffer[BLOCK_SIZE - 8]) = env::BIG_ENDIAN ??? self.bitcount : bswap(self.bitcount);
 
-	self.transform();
+	_transform(self);
 
 	// Convert state to the final hash
 	foreach (x, s : self.state) *(uint*)(&hash[x * uint.sizeof]) = env::BIG_ENDIAN ??? s : bswap(s);
@@ -121,10 +121,10 @@ fn char[HASH_SIZE] Sha256.final(&self)
 
 // These wrappers are necessary to significantly reduce code generation from macro expansions.
 //   Note that transformations on `self.buffer` (when incoming == null) should always be aligned.
-fn void Sha256.transform(&self, uint* incoming = null) @local @noinline => self.do_transform(incoming, true);
-fn void Sha256.transform_unaligned(&self, uint* incoming = null) @local @noinline => self.do_transform(incoming, false);
+fn void _transform(Sha256* self, uint* incoming = null) @local @noinline => _do_transform(self, incoming, true);
+fn void _transform_unaligned(Sha256* self, uint* incoming = null) @local @noinline => _do_transform(self, incoming, false);
 
-macro Sha256.do_transform(&self, uint* incoming = null, bool $aligned = true) @local
+macro _do_transform(Sha256* self, uint* incoming = null, bool $aligned = true) @local
 {
 	uint a, b, c, d, e, f, g, h, t1, t2 @noinit;
 	uint[64] m @noinit;

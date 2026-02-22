@@ -1,15 +1,70 @@
 # C3C Release Notes
 
+## 0.7.10 Change list
+
+### Changes / improvements
+- Method resolution and `$define` now works together well unless definitions are out of order for real.
+- Improve error message when using functions as values #2856
+- Improve support for Android with Termux.
+- Integrated download of the MSVC SDK when compiling for Windows.
+- For `c3c init` with library templates, provide example exported functions. #2898
+- `unsigned % signed` and `unsigned / signed` is no longer allowed without explicit casts, except for const denominators. #2928
+- New enum associated value syntax.
+- Individual warning settings added.
+- Change typedef and const enums to not convert from literals by default.
+- Add `@constinit` to allow old typedef behaviour.
+- Include actual element count in the error message when the array initializer size does not match the expected size.
+- Add `--print-large-functions` for checking which functions likely dominate the compile time.
+- Improve error message when providing `alias` with a typeid expression where a type was expected. #2944
+- Const enums removed.
+- Constdef declarations introduced.
+- Properly support `@deprecated` as contract.
+- Support deprecating enum values.
+
+### Stdlib changes
+- Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
+- Remove dependency on temp allocator in String.join.
+- Remove dependency on temp allocator in File.open.
+- Added PEM encoding/decoding. #2858
+- Add Murmur3 hash.
+- Add optional line-length limitations to `io::readline` and `io::readline_to_stream`. #2879
+- Add Xorshiro128++.
+- Add single-byte code page support (DOS/OEM, Windows/ANSI, and ISO/IEC 8859).
+- Add `array::even`, `array::odd`, and `array::unlace` macros. #2892
+- Add discrete and continuous distributions in `std::math::distributions`.
+- Add bitorder functions `store_le`, `load_le`, `store_be`, `store_le`.
+- Stream functions now use long/ulong rather than isz/usz for seek/available. 
+- `instream.seek` is replaced by `set_cursor` and `cursor`.
+- `instream.available`, `cursor` etc are long/ulong rather than isz/usz to be correct on 32-bit.
+- Enable asynchronous, non-blocking reads of subprocess STDOUT/STDERR pipes on POSIX systems.
+
+### Fixes
+- Add error message if directory with output file name already exists
+- Regression where nested lambdas would be evaluated twice.
+- Compiler crash when using arrays of vectors in lists. #2889
+- Fix `list[0].i = 5` when `list[0]` returns a pointer. #2888
+- Shadowing not detected for generic declarations #2876
+- Const inline enums would not always implicitly get converted to the underlying type.
+- Update to dstring.append_string to take any type converting to String.
+- Flag `--cpu-flags` doesn't work if the first item is an exclusion. #2905
+- Reallocating overaligned memory with the LibcAllocator was unsafe.
+- Using [] or .foo on $$ functions would not raise error but instead crash
+- Improved underlining errors/warnings when unicode is used. #2887 
+- Fix std::io::Formatter integer issue for large uint128 decimal values.
+- `--safe=no` disabled compile-time errors on compile-time known runtime @require checks #2936
+- On assert known false, the message was not show for no-args.
+- Adding the incorrect sized vector to a pointer vector would cause a crash.
+- Member access on a struct returned by the assignment expression, cause crash #2947
+- Trying to slice an indexable type leads to misleading error message #2958
+- Warn on use of visibility modifiers on methods. #2962
 
 ## 0.7.9 Change list
 
 ### Changes / improvements
 - Add `--custom-libc` option for custom libc implementations.
-- Remove use of LLVMGetGlobalContext for single module compilation.
-- Fixed bug where constants would get modified when slicing them. #2660
 - Support for NetBSD.
 - Testing for the presence of methods at the top level is prohibited previous to method registration.
-- `$$MASK_TO_INT` and `$$INT_TO_MASK` to create bool masks from integers and back.
+- `$$mask_to_int` and `$$int_to_mask` to create bool masks from integers and back.
 - Better error messages when slicing a pointer to a slice or vector. #2681
 - Generics using ad-hoc `<...>` rather than module based.
 - Reduced memory usage for backtraces on Linux.
@@ -25,6 +80,8 @@
 - Combining argument-less initialization with argument init for bitstructs is now allowed e.g. `{ .b, .c = 123 }`.
 
 ### Fixes
+- Remove use of LLVMGetGlobalContext for single module compilation.
+- Fixed bug where constants would get modified when slicing them. #2660
 - Regression with npot vector in struct triggering an assert #2219.
 - Casting bitstruct to wider base type should be single step #2616.
 - Optional does not play well with bit ops #2618.
@@ -139,6 +196,17 @@
 - Packed structs sometimes not lowered as such.
 - Crash when creating `$Type*` where `$Type` is an optional type #2848
 - Crashes when using `io::EOF~!` in various unhandled places. #2848
+- Crash when trying to create a const zero untyped list #2847
+- Incorrect handling when reporting fn with optional compile time type #2862
+- Optional in initializer cause a crash #2864
+- Negating a global address with offset was a counted as a global runtime constant #2865
+- Converting static "make_slice" to array failed to be handled #2866
+- Narrowing a not expression was incorrectly handled #2867
+- Vector shift by optional scalar failed #2868
+- Initializer did not correctly handle second rethrow #2870
+- Crash encountering panic in if-else style switch #2871
+- Crash in slice expression when it contains a rethrow #2872
+- Multiple issues when rethrowing inside of expressions #2873
 
 ### Stdlib changes
 - Add `ThreadPool` join function to wait for all threads to finish in the pool without destroying the threads.
