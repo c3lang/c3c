@@ -2355,10 +2355,10 @@ SPLAT_NORMAL:;
 			{
 				if (missing != needed)
 				{
-					RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d-%d parameters, but none was provided.",
+					RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d-%d parameters, but none were provided.",
 										   callee->name, missing, needed);
 				}
-				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d parameter(s), but none was provided.",
+				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d parameter(s), but none were provided.",
 									   callee->name, needed);
 			}
 			if (!last) last = args[0];

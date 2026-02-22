@@ -2870,7 +2870,7 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 			if (!is_constdef && deprecate_warn)
 			{
 				deprecate_warn = false;
-				print_deprecation_at(c->prev_span, "Use () declaration of associated values instead.");
+				print_deprecation_at(c->prev_span, "Use {} to declare associated values instead of '='.");
 			}
 			if (is_single_value || !tok_is(c, TOKEN_LBRACE))
 			{
