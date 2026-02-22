@@ -192,13 +192,13 @@ fn void test_hash_vector() @test @if($feature(SLOW_TESTS))
 fn void test_builtin_string_hashing() => @pool()
 {
 	var $x = "";
-    ulong l;
-    $for var $i = 0; $i < 65; ++$i:   // 65 is a good length to reliably test all branches w/o being excessive
-        l = string::tformat("%s%s", $x, $i).hash();
-        var $r = $$str_hash(@sprintf("%s%s", $x, $i));
-        assert((uint)l == (uint)$r, "Builtin $$str_hash mismatch against String.hash()");
-        $x = $x +++ "a";
-    $endfor
+	ulong l;
+	$for var $i = 0; $i < 65; ++$i:   // 65 is a good length to reliably test all branches w/o being excessive
+		l = string::tformat("%s%s", $x, $i).hash();
+		var $r = $$str_hash(@sprintf("%s%s", $x, $i));
+		assert((uint)l == (uint)$r, "Builtin $$str_hash mismatch against String.hash()");
+		$x = $x +++ "a";
+	$endfor
 }
 
 fn void test_ct_clz()
@@ -243,11 +243,74 @@ fn void test_ct_min_max()
 const usz[] MY_OK_VALUES = { 128, 256, 384, 512 };
 fn void test_in()
 {
-    $assert @in(384, ...MY_OK_VALUES);
-    $assert !@in(123, ...MY_OK_VALUES);
-    $assert @in(384, 128, 256, 384, 512);
-    $assert @in("love", "joy", "cheer", "love", "friend");
-    $assert !@in("hate", "joy", "cheer", "love", "friend");
+	$assert @in(384, ...MY_OK_VALUES);
+	$assert !@in(123, ...MY_OK_VALUES);
+	$assert @in(384, 128, 256, 384, 512);
+	$assert @in("love", "joy", "cheer", "love", "friend");
+	$assert !@in("hate", "joy", "cheer", "love", "friend");
+}
+
+struct CmpInnerType
+{
+	int foo;
+	bool bar;
+	char[7] baz;
+	double* val;
+	char[] slice;
+}
+struct CmpOuterType
+{
+	float a_value;
+	CmpInnerType inner_values;
+	CmpInnerType* ref;
+}
+fn void test_struct_eq()
+{
+	char[] a_slice = "slice of characters";
+	double something = 8.60;
+	double different = -123.22;
+	CmpInnerType  a  = { .foo = 1, .bar = true, .baz = "abcdefg", .val = &something };
+	CmpInnerType* a1 = mem::talloc(CmpInnerType); *a1 = { ...a };   // two different pointers, same contents
+	CmpInnerType* a2 = mem::talloc(CmpInnerType); *a2 = { ...a };
+	CmpInnerType  b  = { ...a };   // same as a
+	CmpInnerType  c  = { .foo = 1, .bar = true, .baz = "zyxwvut", .val = &something };
+
+	test::@check(struct_eq(a, a));
+	test::@check(struct_eq(a, b));
+	test::@check(struct_eq((CmpInnerType){ ...a }, b));
+	test::@check(struct_eq((CmpInnerType){ ...a }, *a1));
+	test::@check(struct_eq(*a1, *a2));
+	test::@check(!struct_eq(a, c));
+	test::@check(struct_eq(a, c, "baz"));   // they're equal if `baz` is not compared
+	test::@check(!struct_eq(b, c));
+	test::@check(!struct_eq(*a1, c));
+
+	CmpOuterType  x  = { .a_value = 1.23, .inner_values = { ...a }, .ref = a1 };
+	CmpOuterType  y  = { ...x, .ref = a2 };
+	CmpOuterType  z  = { ...x, .inner_values = { ...a, .val = &different } };
+	test::@check(struct_eq(x, x));
+	test::@check(struct_eq(x, y));
+	test::@check(!struct_eq(x, z));
+
+	y.ref.foo = -1;
+	test::@check(!struct_eq(x, y));
+
+	test::@check(struct_eq(x, z, "inner_values"));
+	test::@check(struct_eq(x, z, "inner_values.val"));
+	z.inner_values.bar = false;
+	test::@check(!struct_eq(x, z, "inner_values.val"));
+	test::@check(struct_eq(x, z, "inner_values.val", "inner_values.bar"));
+	z.inner_values.bar = true;
+
+	z.inner_values.val = &something;
+	test::@check(struct_eq(x, z));
+
+	// Ensure slices work too.
+	CmpInnerType  s  = { ...a, .slice = a_slice[2:3] };
+	CmpInnerType  t  = { ...a, .slice = a_slice[2:3] };
+	test::@check(struct_eq(s, t));
+	s.foo = -1;
+	test::@check(!struct_eq(s, t));
 }
 
 
