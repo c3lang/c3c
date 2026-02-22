@@ -24,29 +24,28 @@ const SIZE_384 = 48;
 const SIZE_512 = 64;
 
 
-macro @g(r, m, $s, i, #a, #b, #c, #d) @local
+fn void _g(usz r, NumType[] m, char[16][] s, usz i, NumType* a, NumType* b, NumType* c, NumType* d) <NumType> @local @inline
 {
-	// I really dislike using these conditional one-liners, but... it's the only difference between 2s and 2b besides buffer sizes (mainly).
-	#a += #b + m[$s[r][2*i+0]];
-	#d = (#d ^ #a).rotr($sizeof(#a) == ulong.sizeof ??? 32 : 16);
-	#c += #d;
-	#b = (#b ^ #c).rotr($sizeof(#a) == ulong.sizeof ??? 24 : 12);
-	#a += #b + m[$s[r][2*i+1]];
-	#d = (#d ^ #a).rotr($sizeof(#a) == ulong.sizeof ??? 16 : 8);
-	#c += #d;
-	#b = (#b ^ #c).rotr($sizeof(#a) == ulong.sizeof ??? 63 : 7);
+	*a += *b + m[s[r][2*i+0]];
+	*d = (*d ^ *a).rotr(NumType == ulong ??? 32 : 16);
+	*c += *d;
+	*b = (*b ^ *c).rotr(NumType == ulong ??? 24 : 12);
+	*a += *b + m[s[r][2*i+1]];
+	*d = (*d ^ *a).rotr(NumType == ulong ??? 16 : 8);
+	*c += *d;
+	*b = (*b ^ *c).rotr(NumType == ulong ??? 63 : 7);
 }
 
-macro @round(r, m, $s, #v) @local
+fn void _round(usz r, NumType[] m, char[16][] s, NumType[] v) <NumType> @local @inline
 {
-	@g(r, m, $s, 0, #v[ 0], #v[ 4], #v[ 8], #v[12]);
-	@g(r, m, $s, 1, #v[ 1], #v[ 5], #v[ 9], #v[13]);
-	@g(r, m, $s, 2, #v[ 2], #v[ 6], #v[10], #v[14]);
-	@g(r, m, $s, 3, #v[ 3], #v[ 7], #v[11], #v[15]);
-	@g(r, m, $s, 4, #v[ 0], #v[ 5], #v[10], #v[15]);
-	@g(r, m, $s, 5, #v[ 1], #v[ 6], #v[11], #v[12]);
-	@g(r, m, $s, 6, #v[ 2], #v[ 7], #v[ 8], #v[13]);
-	@g(r, m, $s, 7, #v[ 3], #v[ 4], #v[ 9], #v[14]);
+	_g(r, m, s, 0, &v[ 0], &v[ 4], &v[ 8], &v[12]);
+	_g(r, m, s, 1, &v[ 1], &v[ 5], &v[ 9], &v[13]);
+	_g(r, m, s, 2, &v[ 2], &v[ 6], &v[10], &v[14]);
+	_g(r, m, s, 3, &v[ 3], &v[ 7], &v[11], &v[15]);
+	_g(r, m, s, 4, &v[ 0], &v[ 5], &v[10], &v[15]);
+	_g(r, m, s, 5, &v[ 1], &v[ 6], &v[11], &v[12]);
+	_g(r, m, s, 6, &v[ 2], &v[ 7], &v[ 8], &v[13]);
+	_g(r, m, s, 7, &v[ 3], &v[ 4], &v[ 9], &v[14]);
 }
 
 macro common_compress(instance, $rounds, $iv, $sigma, block) @local
@@ -66,7 +65,7 @@ macro common_compress(instance, $rounds, $iv, $sigma, block) @local
 	v[15] = $iv[7] ^ instance.f[1];
 
 	$for usz $i = 0; $i < $rounds; $i++:
-		@round($i, m, $sigma, v);
+		_round{$typeof(instance.h[0])}($i, m[..], $sigma[..], v[..]);
 	$endfor
 
 	$for usz $i = 0; $i < 8; $i++:
@@ -98,7 +97,7 @@ macro common_init(instance, $ParamType, $iv, usz out_len, char[] key = {}, char[
 
 	array::@zip_into(((char*)&instance.h)[:$sizeof(p)], ((char*)&p)[:$sizeof(p)], fn (a, b) => a ^ b); // bytes(self.h) ^= bytes(p)
 
-	if (key.len) 
+	if (key.len)
 	{
 		char[$sizeof($iv[0])*16] dummy = {};
 		dummy[:key.len] = key[..];
@@ -132,13 +131,14 @@ macro common_update(instance, $block_size, char[] data) @local
 	instance.buflen += data.len;
 }
 
-macro common_final(instance, $output_length) @local
-{
-	char[$output_length] result = {};
-	if ($output_length != instance.outlen) return result;
+<*
+ @param [out] into : "The destination for the resultant hash. Its length must be at least the size of the hash's initialized size."
 
+ @require into.len >= instance.outlen : "The result slice must be large enough to accept the full hash digest."
+*>
+macro common_final(instance, char[] into) @local
+{
 	_add_ctr(instance, instance.buflen);
-	if (instance.f[0]) return result; // technically an error return
 
 	var $max = $typeof(instance.h[0]).max;
 	if (instance.last_node) instance.f[1] = $max;
@@ -149,8 +149,7 @@ macro common_final(instance, $output_length) @local
 
     defer mem::zero_volatile(@as_char_view(*instance)); // destroy the current context implicitly
 
-	result[:instance.outlen] = @as_char_view(instance.h)[:instance.outlen];
-	return result;
+	into[:instance.outlen] = @as_char_view(instance.h)[:instance.outlen];
 }
 
 
@@ -213,10 +212,12 @@ struct Blake2bParam @packed @local
 *>
 macro blake2b_hash($out_len, data, char[] key = {}, char[] salt = {})
 {
+	char[$out_len] result @noinit;
 	Blake2b b @noinit;
     b.init($out_len, key, salt);
 	b.update(data[..]);
-	return b.final($out_len);
+	b.final(result[..]);
+	return result;
 }
 alias b = blake2b_hash;
 
@@ -232,7 +233,7 @@ alias b_384 = blake2b_384;
 alias b_512 = blake2b_512;
 
 <*
- Blake2b initialization method. Presents various options 
+ Blake2b initialization method. Presents various options for customizing the hash output.
 
  @param out_len : "The desired output length from the hash function."
  @param[in] key : "An optional key value to use (keys the entire hash value to give HMAC-like functionality)."
@@ -264,16 +265,12 @@ fn void Blake2b.update(&self, char[] data)
 <*
  Finalize the hash context and return the hash result at the given size.
 
- @param $output_length : "The length of the output array which is returned by value, instead of as a slice."
+ @param [out] into : "Storage buffer for the hash's result. Must have a length >= the size given to the hash context at init."
 
- @require $output_length == self.outlen : "The specified compile-time output size MUST be equal to the initialized output size."
+ @require into.len >= self.outlen : "The specified output slice length MUST be equal to or larger than the initialized output size."
 *>
-macro char[*] Blake2b.final(&self, $output_length) => _blake2b_final{$output_length}(self);
+macro void Blake2b.final(&self, char[] into) => common_final(self, into);
 
-fn char[OUTPUT_LENGTH] _blake2b_final(Blake2b* self) <OUTPUT_LENGTH> @local
-{
-	return common_final(self, OUTPUT_LENGTH);
-}
 
 // ======================================================================================
 // BEGIN Blake2s contents. Do not separate this from Blake2b: there's not really a point.
@@ -328,10 +325,12 @@ struct Blake2sParam @packed @local
 *>
 macro blake2s_hash($out_len, data, char[] key = {}, char[] salt = {})
 {
+	char[$out_len] result @noinit;
 	Blake2s b @noinit;
     b.init($out_len, key, salt);
 	b.update(data[..]);
-	return b.final($out_len);
+	b.final(result[..]);
+	return result;
 }
 alias s = blake2s_hash;
 
@@ -347,7 +346,7 @@ alias s_224 = blake2s_224;
 alias s_256 = blake2s_256;
 
 <*
- Blake2s initialization method. Presents various options 
+ Blake2s initialization method. Presents various options
 
  @param out_len : "The desired output length from the hash function."
  @param[in] key : "An optional key value to use (keys the entire hash value to give HMAC-like functionality)."
@@ -379,9 +378,8 @@ fn void Blake2s.update(&self, char[] data)
 <*
  Finalize the hash context and return the hash result at the given size.
 
- @param $output_length : "The length of the output array which is returned by value, instead of as a slice."
+ @param [out] into : "Storage buffer for the hash's result. Must have a length >= the size given to the hash context at init."
 
- @require $output_length == self.outlen : "The specified compile-time output size MUST be equal to the initialized output size."
+ @require into.len >= self.outlen : "The specified output slice length MUST be equal to or larger than the initialized output size."
 *>
-macro char[*] Blake2s.final(&self, $output_length)
-	=> common_final(self, $output_length);
+macro void Blake2s.final(&self, char[] into) => common_final(self, into);
