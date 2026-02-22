@@ -140,6 +140,11 @@ static void usage(bool full)
 		print_opt("--use-old-slice-copy", "Use the old slice copy semantics.");
 		print_opt("--use-old-enums", "Use the old enum syntax and semantics.");
 		print_opt("--use-old-compact-eq", "Enable the old ability to use '@compact' to make a struct comparable.");
+		print_opt("--print-large-functions", "Print functions with large compile size.");
+		print_opt("--warn-deadcode=<yes|no|error>", "Print warning on dead-code: yes, no, error.");
+		print_opt("--warn-methodvisibility=<yes|no|error>", "Print warning when methods have ignored visibility attributes.");
+		print_opt("--warn-methodsnotresolved=<yes|no|error>", "Print warning on methods not resolved when accessed: yes, no, error.");
+		print_opt("--warn-deprecation=<yes|no|error>", "Print warning when using deprecated code and constructs: yes, no, error.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -259,9 +264,7 @@ static void project_usage()
 	PRINTF("Project Subcommands:");
 	print_cmd("view", "view the current projects structure.");
 	print_cmd("add-target <name>  <target_type>  [sources...]", "add a new target to the project.");
-	#if FETCH_AVAILABLE
-		print_cmd("fetch", "fetch missing project libraries.");
-	#endif
+	print_cmd("fetch", "fetch missing project libraries.");
 }
 
 static void project_view_usage()
@@ -894,9 +897,35 @@ static void parse_option(BuildOptions *options)
 				options->test_nosort = true;
 				return;
 			}
+			if (match_longopt("print-large-functions"))
+			{
+				options->print_large_functions = true;
+				return;
+			}
+			if ((argopt = match_argopt("warn-deadcode")))
+			{
+				options->warnings.dead_code = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-methodvisibility")))
+			{
+				options->warnings.method_visibility = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-methodsnotresolved")))
+			{
+				options->warnings.methods_not_resolved = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-deprecation")))
+			{
+				options->warnings.deprecation = parse_opt_select(WarningLevel, argopt, warnings);
+				silence_deprecation = options->warnings.deprecation == WARNING_SILENT;
+				return;
+			}
 			if (match_longopt("silence-deprecation"))
 			{
-				options->silence_deprecation = true;
+				options->warnings.deprecation = WARNING_SILENT;
 				silence_deprecation = true;
 				return;
 			}
@@ -1083,7 +1112,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("cpu-flags"))
 			{
-				if (at_end() || next_is_opt()) error_exit("error: --cpu-flags expected a comma-separated list, like '+a,-b,+x'.");
+				if (at_end()) error_exit("error: --cpu-flags expected a comma-separated list, like '+a,-b,+x'.");
 				scratch_buffer_clear();
 				if (options->cpu_flags)
 				{
@@ -1571,6 +1600,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.win_debug = WIN_DEBUG_DEFAULT,
 		.fp_math = FP_DEFAULT,
 		.x86_cpu_set = X86CPU_DEFAULT,
+		.riscv_cpu_set = RISCV_CPU_DEFAULT,
 		.riscv_abi = RISCV_ABI_DEFAULT,
 		.memory_environment = MEMORY_ENV_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
@@ -1643,7 +1673,8 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	{
 		FAIL_WITH_ERR("Missing a compiler command such as 'compile' or 'build'.");
 	}
-	if (build_options.arch_os_target_override == ANDROID_AARCH64)
+	if (build_options.arch_os_target_override == ANDROID_AARCH64 ||
+	    build_options.arch_os_target_override == ANDROID_X86_64)
 	{
 		if (!build_options.android.ndk_path)
 		{

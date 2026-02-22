@@ -136,6 +136,8 @@ static void closedir(DIR *dir)
 }
 #endif
 
+
+
 static int version_compare(const char *v1, const char *v2)
 {
 	while (*v1 && *v2)
@@ -187,7 +189,7 @@ static char *find_folder_inf(const char *root, const char *pattern, bool exact)
 		if (file_is_dir(path))
 		{
 			bool match = exact ? (STRCASECMP(de->d_name, pattern) == 0)
-			                   : (my_strcasestr(de->d_name, pattern));
+							   : (my_strcasestr(de->d_name, pattern));
 			if (match)
 			{
 				found = path;
@@ -202,23 +204,23 @@ static char *find_folder_inf(const char *root, const char *pattern, bool exact)
 }
 
 static bool download_with_verification(const char *url, const char *name,
-                                       const char *dst)
+									   const char *dst)
 {
-    if (verbose_level >= 1)
-    {
-        printf("%s ... downloading", name);
-        fflush(stdout);
-    }
-    const char *err = download_file(url, "", dst);
-    if (err)
-    {
-        if (verbose_level >= 1) printf(" ... failed.\n");
-        if (verbose_level >= 0)
-            eprintf("\nWarning: Download failed for %s: %s\n", name, err);
-        return false;
-    }
-    if (verbose_level >= 1) printf(" ... done.\n");
-    return true;
+	if (verbose_level >= 1)
+	{
+		printf("%s ... downloading", name);
+		fflush(stdout);
+	}
+	const char *err = download_file(url, "", dst);
+	if (err)
+	{
+		if (verbose_level >= 1) printf(" ... failed.\n");
+		if (verbose_level >= 0)
+			eprintf("\nWarning: Download failed for %s: %s\n", name, err);
+		return false;
+	}
+	if (verbose_level >= 1) printf(" ... done.\n");
+	return true;
 }
 
 static void copy_to_msvc_sdk(const char *src, const char *dst)
@@ -345,7 +347,7 @@ static void print_msvc_version(JSONObject *pkg, char out[128])
 }
 
 static void extract_msi(const char *mpath, const char *out_root,
-                        const char *dl_root)
+						const char *dl_root)
 {
 	if (verbose_level >= 1)
 	{
@@ -377,7 +379,7 @@ static JSONObject *find_package_by_id(JSONObject *pkgs, const char *id)
 }
 
 static void collect_versions(JSONObject *pkgs, JSONObject **msvc_vers_out,
-                             JSONObject **sdk_paths_out)
+							 JSONObject **sdk_paths_out)
 {
 	JSONObject *msvc_vers = json_new_object(J_OBJECT);
 	JSONObject *sdk_paths = json_new_object(J_OBJECT);
@@ -388,7 +390,7 @@ static void collect_versions(JSONObject *pkgs, JSONObject **msvc_vers_out,
 		if (!id_obj) continue;
 		const char *id = id_obj->str;
 		if (str_start_with(id, "Microsoft.VisualStudio.Component.VC.") &&
-		    strstr(id, ".x86.x64"))
+			strstr(id, ".x86.x64"))
 		{
 			StringSlice slice = slice_from_string(id);
 			const int id_prefix_segments = 4;
@@ -398,11 +400,11 @@ static void collect_versions(JSONObject *pkgs, JSONObject **msvc_vers_out,
 			if (!v4.len || !char_is_digit(v4.ptr[0])) continue;
 			StringSlice v5 = slice_next_token(&slice, '.');
 			char *vkey = str_printf("%.*s.%.*s", (int)v4.len, v4.ptr,
-			                        (int)v5.len, v5.ptr);
+									(int)v5.len, v5.ptr);
 			json_map_set(msvc_vers, vkey, pkg);
 		}
 		else if (str_start_with(id, "Microsoft.VisualStudio.Component.Windows10SDK.") ||
-		         str_start_with(id, "Microsoft.VisualStudio.Component.Windows11SDK."))
+				 str_start_with(id, "Microsoft.VisualStudio.Component.Windows11SDK."))
 		{
 			const char *last_dot = strrchr(id, '.');
 			if (last_dot && char_is_digit(last_dot[1]))
@@ -437,7 +439,7 @@ static JSONObject *load_manifest(const char *url, const char *path, const char *
 }
 
 static void select_versions(BuildOptions *options, JSONObject *msvc_vers, JSONObject *sdk_paths,
-                            char **msvc_key_out, char **sdk_key_out)
+							char **msvc_key_out, char **sdk_key_out)
 {
 	char *msvc_key = (char *)options->msvc_version_override;
 	if (!msvc_key)
@@ -507,6 +509,13 @@ static bool check_license(JSONObject *rj1_channel_items, bool accept_all)
 
 void fetch_msvc(BuildOptions *options)
 {
+	if (!download_available())
+	{
+		error_exit("Failed to find Windows SDK.\n"
+				   "Windows applications cannot be cross-compiled without it.\n"
+				   "To download the SDK automatically, please ensure libcurl is installed.\n"
+				   "Alternatively, provide the SDK path manually using --winsdk.");
+	}
 	verbose_level = options->verbosity_level;
 	const char *tmp_dir_base = dir_make_temp_dir();
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
@@ -609,9 +618,9 @@ void fetch_msvc(BuildOptions *options)
 	}
 
 	const char *msi_names[] = {
-	    "Windows SDK for Windows Store Apps Libs-x86_en-us.msi",
-	    "Windows SDK Desktop Libs x64-x86_en-us.msi",
-	    "Universal CRT Headers Libraries and Sources-x86_en-us.msi"};
+		"Windows SDK for Windows Store Apps Libs-x86_en-us.msi",
+		"Windows SDK Desktop Libs x64-x86_en-us.msi",
+		"Universal CRT Headers Libraries and Sources-x86_en-us.msi"};
 
 	JSONObject *msi_packages[3] = {NULL};
 	for (int i = 0; i < ELEMENTLEN(msi_names); i++)
@@ -747,3 +756,5 @@ void fetch_msvc(BuildOptions *options)
 
 	if (verbose_level == 0) file_delete_dir(tmp_dir_base);
 }
+
+

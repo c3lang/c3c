@@ -8,7 +8,8 @@
 #include <sys/resource.h>
 #endif
 #if PLATFORM_WINDOWS
-#include <windows.h>
+extern bool SetConsoleCP(uint32_t codepage);
+extern bool SetConsoleOutputCP(uint32_t codepage);
 #endif
 
 bool debug_log = false;
@@ -42,8 +43,8 @@ int main_real(int argc, const char *argv[])
 #endif
 #if PLATFORM_WINDOWS
 	// Set the console input and output codepage to utf8 to handle utf8 text correctly
-	SetConsoleCP(CP_UTF8);
-	SetConsoleOutputCP(CP_UTF8);
+	SetConsoleCP(65001);
+	SetConsoleOutputCP(65001);
 #endif
 	bench_begin();
 

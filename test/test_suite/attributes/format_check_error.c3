@@ -3,9 +3,9 @@ import std;
 const VERSION = "2.0";
 enum Subcommand : (String name, String desc, String[] args)
 {
-	FOO = {"oekfe", "foek", { "foke", "foekfe"}},
-	BAR = {"foek", "foek", { "foekf", "foekfe"}},
-	BAZ = {"Foekfef", "foek", { "foke", "foekfe" }}
+	FOO {"oekfe", "foek", { "foke", "foekfe"}},
+	BAR {"foek", "foek", { "foekf", "foekfe"}},
+	BAZ {"Foekfef", "foek", { "foke", "foekfe" }}
 }
 macro void help (String program_name, bool to_stderr = false)
 {

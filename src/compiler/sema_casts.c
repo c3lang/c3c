@@ -1238,7 +1238,7 @@ RETRY:;
 			inner = decl->strukt.members[0]->type->canonical;
 			break;
 		case DECL_ENUM:
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 			// Could be made to work.
 			return false;
 		default:
@@ -1459,15 +1459,35 @@ static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 	{
 		is_const = true;
 	}
-	if (is_const && (cc->is_binary_conversion || !cc->to->decl->attr_structlike))
+	if (is_const && (cc->is_binary_conversion || cc->to->decl->attr_constinit || !cc->to->decl->attr_structlike))
 	{
+		Type *to_type = cc->to;
 		cc->to = flat;
 		cc->to_group = flat_group;
 
 		// If it's silent or explicit, just run it:
-		if (is_silent || is_explicit) return cast_is_allowed(cc, is_explicit, is_silent);
+		if (is_silent || is_explicit)
+		{
+			if (!cast_is_allowed(cc, is_explicit, is_silent)) return false;
+			if (!is_explicit && !cc->is_binary_conversion && !to_type->decl->attr_constinit && !expr_is_const_untyped_list(cc->expr))
+			{
+				if (compiler.build.warnings.deprecation == WARNING_ERROR)
+				{
+					return sema_cast_error(cc, cast_is_allowed(cc, true, true), is_silent);
+				}
+			}
+			return true;
+		}
 		// Loud and implicit:
-		if (cast_is_allowed(cc, false, true)) return true;
+		if (cast_is_allowed(cc, false, true))
+		{
+			if (!cc->is_binary_conversion && !to_type->decl->attr_constinit && !expr_is_const_untyped_list(cc->expr))
+			{
+				to_type->decl->attr_constinit = true;
+				SEMA_DEPRECATED(cc->expr, "Implicit conversion of constants to distinct types is deprecated, use @constinit if %s should cast constants to its own type.", type_quoted_error_string(to_type));
+			}
+			return true;
+		}
 		return sema_cast_error(cc, cast_is_allowed(cc, true, true), is_silent);
 	}
 
@@ -1636,21 +1656,7 @@ static bool rule_enum_to_value(CastContext *cc, bool is_explicit, bool is_silent
 		return cast_is_allowed(cc, is_explicit, is_silent);
 	}
 
-	// First handle const enums, they behave much like distinct types
-	if (enum_decl->decl_kind == DECL_CONST_ENUM)
-	{
-		if (!is_explicit || !enum_decl->is_substruct)
-		{
-			return sema_cast_error(cc, false, is_silent);
-		}
-		// Use the inner type.
-		Type *inner = enum_decl->enums.type_info->type;
-		if (is_explicit)
-		{
-			return rule_from_explicit_flattened(cc, is_silent);
-		}
-		return cast_is_allowed(cc, is_explicit, is_silent);
-	}
+	ASSERT(enum_decl->decl_kind != DECL_CONSTDEF);
 
 	Type *inner = enum_decl->enums.type_info->type;
 	if (!type_is_integer_or_bool_kind(type_flatten(cc->to)))

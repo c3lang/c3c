@@ -858,10 +858,6 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 			break;
 		case AST_NEXTCASE_STMT:
 			break;
-		case AST_CONTRACT:
-			break;
-		case AST_CONTRACT_FAULT:
-			break;
 	}
 	PRINT("/* TODO */\n");
 }

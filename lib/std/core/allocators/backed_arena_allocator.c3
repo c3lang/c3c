@@ -56,7 +56,7 @@ fn BackedArenaAllocator*? new_backed_allocator(usz size, Allocator allocator)
 fn void BackedArenaAllocator.destroy(&self)
 {
 	self.reset(0);
-	if (self.last_page) (void)self._free_page(self.last_page);
+	if (self.last_page) (void)_free_page(self, self.last_page);
 	allocator::free(self.backing_allocator, self);
 }
 
@@ -79,7 +79,7 @@ fn void BackedArenaAllocator.reset(&self, usz mark)
 		self.used = last_page.mark;
 		ExtraPage *to_free = last_page;
 		last_page = last_page.prev_page;
-		self._free_page(to_free)!!;
+		_free_page(self, to_free)!!;
 	}
 	self.last_page = last_page;
 	$if env::COMPILER_SAFE_MODE || env::ADDRESS_SANITIZER:
@@ -98,13 +98,13 @@ fn void BackedArenaAllocator.reset(&self, usz mark)
 	self.used = mark;
 }
 
-fn void? BackedArenaAllocator._free_page(&self, ExtraPage* page) @inline @local
+fn void? _free_page(BackedArenaAllocator* self, ExtraPage* page) @inline @local
 {
 	void* mem = page.start;
 	return self.backing_allocator.release(mem, page.is_aligned());
 }
 
-fn void*? BackedArenaAllocator._realloc_page(&self, ExtraPage* page, usz size, usz alignment) @inline @local
+fn void*? _realloc_page(BackedArenaAllocator* self, ExtraPage* page, usz size, usz alignment) @inline @local
 {
 	// Then the actual start pointer:
 	void* real_pointer = page.start;
@@ -133,7 +133,7 @@ fn void*? BackedArenaAllocator.resize(&self, void* pointer, usz size, usz alignm
 		assert(self.last_page, "Realloc of unrelated pointer");
 		// First grab the page
 		ExtraPage *page = pointer - ExtraPage.sizeof;
-		return self._realloc_page(page, size, alignment);
+		return _realloc_page(self, page, size, alignment);
 	}
 
 	AllocChunk* data = self.acquire(size, NO_ZERO, alignment)!;

@@ -151,7 +151,7 @@ fn bool Object.is_indexable(&self) => self.is_empty() || self.is_array();
 <*
  @require self.is_keyable()
 *>
-fn void Object.init_map_if_needed(&self) @private
+fn void object_init_map_if_needed(Object* self) @private
 {
 	if (self.is_empty())
 	{
@@ -163,7 +163,7 @@ fn void Object.init_map_if_needed(&self) @private
 <*
  @require self.is_indexable()
 *>
-fn void Object.init_array_if_needed(&self) @private
+fn void object_init_array_if_needed(Object* self) @private
 {
 	if (self.is_empty())
 	{
@@ -175,9 +175,9 @@ fn void Object.init_array_if_needed(&self) @private
 <*
  @require self.is_keyable()
 *>
-fn void Object.set_object(&self, String key, Object* new_object) @private
+fn void object_set_object(Object* self, String key, Object* new_object) @private
 {
-	self.init_map_if_needed();
+	object_init_map_if_needed(self);
 	Object*? val = self.map.get_entry(key).value;
 	defer (void)val.free();
 	self.map.set(key, new_object);
@@ -214,7 +214,7 @@ macro Object* Object.object_from_value(&self, value) @private
 macro Object* Object.set(&self, String key, value)
 {
 	Object* val = self.object_from_value(value);
-	self.set_object(key, val);
+	object_set_object(self, key, val);
 	return val;
 }
 
@@ -267,7 +267,7 @@ fn usz Object.get_len(&self)
 *>
 fn void Object.push_object(&self, Object* to_append)
 {
-	self.init_array_if_needed();
+	object_init_array_if_needed(self);
 	self.array.push(to_append);
 }
 
@@ -276,7 +276,7 @@ fn void Object.push_object(&self, Object* to_append)
 *>
 fn void Object.set_object_at(&self, usz index, Object* to_set)
 {
-	self.init_array_if_needed();
+	object_init_array_if_needed(self);
 	while (self.array.len() < index)
 	{
 		self.array.push(&NULL_OBJECT);

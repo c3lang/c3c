@@ -34,22 +34,22 @@ struct AddrInfo
 
 const PLATFORM_O_NONBLOCK @if(!$defined(PLATFORM_O_NONBLOCK)) = 0;
 
-const AISockType SOCK_STREAM                    = 1; // Stream
-const AISockType SOCK_DGRAM                     = 2; // Datagram
-const AISockType SOCK_RAW                       = 3; // Raw
-const AISockType SOCK_RDM                       = 4; // Reliably delivered
-const AISockType SOCK_SEQPACKET                 = 5; // Sequential packet
+const AISockType SOCK_STREAM                    = (AISockType)1; // Stream
+const AISockType SOCK_DGRAM                     = (AISockType)2; // Datagram
+const AISockType SOCK_RAW                       = (AISockType)3; // Raw
+const AISockType SOCK_RDM                       = (AISockType)4; // Reliably delivered
+const AISockType SOCK_SEQPACKET                 = (AISockType)5; // Sequential packet
 
-const AIFlags AI_PASSIVE                        = 0x1;
-const AIFlags AI_CANONNAME                      = 0x2;
-const AIFlags AI_NUMERICHOST                    = 0x4;
+const AIFlags AI_PASSIVE                        = (AIFlags)0x1;
+const AIFlags AI_CANONNAME                      = (AIFlags)0x2;
+const AIFlags AI_NUMERICHOST                    = (AIFlags)0x4;
 
-const AIFamily AF_UNSPEC                        = 0;
-const AIFamily AF_UNIX                          = 1;
-const AIFamily AF_INET                          = 2;
-const AIFamily AF_INET6                         = PLATFORM_AF_INET6;
-const AIFamily AF_IPX                           = PLATFORM_AF_IPX;
-const AIFamily AF_APPLETALK                     = PLATFORM_AF_APPLETALK;
+const AIFamily AF_UNSPEC                        = (AIFamily)0;
+const AIFamily AF_UNIX                          = (AIFamily)1;
+const AIFamily AF_INET                          = (AIFamily)2;
+const AIFamily AF_INET6                         = (AIFamily)PLATFORM_AF_INET6;
+const AIFamily AF_IPX                           = (AIFamily)PLATFORM_AF_IPX;
+const AIFamily AF_APPLETALK                     = (AIFamily)PLATFORM_AF_APPLETALK;
 
 const O_NONBLOCK = PLATFORM_O_NONBLOCK;
 

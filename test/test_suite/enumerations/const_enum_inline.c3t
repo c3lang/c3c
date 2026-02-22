@@ -1,6 +1,6 @@
 // #target: macos-x64
 module test;
-enum Foo : const inline String
+constdef Foo : inline String
 {
 	HELO = "Helo"
 }

@@ -15,7 +15,7 @@ fn int Abc.mul_abc(Abc abc, int self) @operator_s(*) => self * abc.a;
 fn Abc Abc.negate(self) @operator(~) => { ~self.a };
 fn Abc Abc.negate2(self) @operator(-) => { -self.a };
 fn Abc Abc.shr2(self, int x) @operator(>>) => { self.a >> x };
-fn Abc Abc.shl2(self, int x) @operator(<<) @local  { b++; return { self.a << x }; }
+fn Abc Abc.shl2(self, int x) @operator(<<)  { b++; return { self.a << x }; }
 fn Abc Abc.shl(self, Abc x) @operator(<<) => { self.a << x.a };
 fn Abc Abc.div(self, Abc abc) @operator(/) => { self.a / abc.a };
 fn Abc Abc.rem(self, Abc abc) @operator(%) => { self.a % abc.a };

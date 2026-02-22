@@ -141,14 +141,14 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 	unsigned space_to = col_location ? col_location : max_lines_for_display - 1;
 	for (unsigned i = 0; i < space_to - 1; i++)
 	{
-		switch (current[i])
+		unsigned char c = (unsigned char)current[i];
+		if (c == '\t')
 		{
-			case '\t':
-				eprintf("\t");
-				break;
-			default:
-				eprintf(" ");
-				break;
+			eprintf("\t");
+		}
+		else
+		{
+			if (c < 128 || (c & 0xC0) == 0xC0) eprintf(" ");
 		}
 	}
 	unsigned len = location.length;
@@ -311,7 +311,7 @@ void print_deprecation_at(SourceSpan loc, const char *message, ...)
 	// Ignore errors
 	if (written <= MAX_ERROR_LEN - 2)
 	{
-		print_error_type_at(loc, buffer, PRINT_TYPE_NOTE);
+		print_error_type_at(loc, buffer, compiler.build.warnings.deprecation == WARNING_WARN ? PRINT_TYPE_NOTE : PRINT_TYPE_ERROR);
 	}
 	static bool deprecation_hint = false;
 	if (!compiler.build.lsp_output && !deprecation_hint)
