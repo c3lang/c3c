@@ -125,12 +125,6 @@ macro uint @le(val) @local => env::BIG_ENDIAN ??? bswap(val) : val;
 <* Force a value to be little-endian where required and return it as a char view. *>
 macro @le_c(val) @local => @as_char_view(env::BIG_ENDIAN ??? *&&bswap(val) : val);
 
-<*
- Truncate a value to a uint. This is part of the RFC's nomeclature, so it's kept around locally
- for clarity despite a cast being sufficient.
-*>
-macro trunc(v) @local => v & ((1ul << 32) - 1);
-
 <* The internal round function of Argon2's BLAKE2-like compression function.  *>
 fn void _g(ulong* a, ulong *b, ulong* c, ulong* d) @local @inline
 {
@@ -149,7 +143,7 @@ fn void _g(ulong* a, ulong *b, ulong* c, ulong* d) @local @inline
 }
 
 <* Apply a set of compression rounds to permute an `Argon2Block` in memory. *>
-fn void Argon2Block.permute(&self, ulong[16] v) @local @inline
+fn void Argon2Block.permute(&self, ulong[16] v) @inline
 {
 	_g(&self.q[v[0]], &self.q[v[4]], &self.q[v[8]],  &self.q[v[12]]);
 	_g(&self.q[v[1]], &self.q[v[5]], &self.q[v[9]],  &self.q[v[13]]);
@@ -162,7 +156,7 @@ fn void Argon2Block.permute(&self, ulong[16] v) @local @inline
 }
 
 <* The core compression function used by Argon2. *>
-fn Argon2Block* Argon2Block.compress(&self) @local @noinline
+fn Argon2Block* Argon2Block.compress(&self) @noinline
 {
 	$for ulong $i = 0; $i < 128; $i += 16:
 		ulong[16] $indices = {};
@@ -182,7 +176,7 @@ fn Argon2Block* Argon2Block.compress(&self) @local @noinline
 
  @param [&in] other : "The block is be XOR'd with this instance."
 *>
-macro Argon2Block* Argon2Block.xor_with(&self, Argon2Block* other) @local
+macro Argon2Block* Argon2Block.xor_with(&self, Argon2Block* other)
 {
 	array::@zip_into(self.z[..], other.z[..], fn (a, b) => a ^ b);
 	return self;
@@ -193,7 +187,7 @@ macro Argon2Block* Argon2Block.xor_with(&self, Argon2Block* other) @local
 
  @param [&in] other : "The block to be copied into this instance."
 *>
-macro Argon2Block* Argon2Block.copy(&self, Argon2Block* other) @local
+macro Argon2Block* Argon2Block.copy(&self, Argon2Block* other)
 {
 	self.z[..] = other.z[..];
 	return self;
@@ -298,8 +292,8 @@ fn int process_lane_slice(void* in_ctx) @local
 		uint nb_segments = !ctx.pass ? ctx.slice : 3;
 		uint window_size = nb_segments * ctx.blocks_per_segment + block - 1;
 		// Find reference block
-		ulong j1 = trunc(index_seed);   // block selector
-		ulong j2 = trunc(index_seed >> 32);   // lane selector
+		ulong j1 = (uint)index_seed;   // block selector
+		ulong j2 = (uint)(index_seed >> 32);   // lane selector
 		ulong x = (j1 * j1) >> 32;
 		ulong y = (ulong)(window_size * x) >> 32;
 		ulong z = (ulong)(window_size - 1) - y;
@@ -613,24 +607,6 @@ fn bool Argon2Decoded.eq(&self, Argon2Decoded other) @operator(==)
 	return self.opts == other.opts && self.hash == other.hash && self.key_id == other.key_id && self.version == other.version;
 }
 
-<*
- Link the allocator used when decoding to the instance, and populate copies of binary inputs into the proper fields.
-
- @param [&inout] allocator : "The memory allocator to use."
- @param [in] hash : "The hash value to duplicate, if any."
- @param [in] salt : "The salt value to duplicate, if any."
- @param [in] key_id : "The key-identifier value to duplicate, if any."
- @param [in] assoc : "The associated-data value to duplicate, if any."
-*>
-fn void Argon2Decoded.link(&self, Allocator allocator, char[] hash = {}, char[] salt = {}, char[] key_id = {}, char[] assoc = {}) @local
-{
-	self.allocator = allocator;
-	self.hash = allocator::clone_slice(allocator, hash);
-	self.salt = allocator::clone_slice(allocator, salt);
-	self.key_id = allocator::clone_slice(allocator, key_id);
-	self.assoc = allocator::clone_slice(allocator, assoc);
-}
-
 <* Release any memory acquired by duplicating Argon2 options into this decoded structure, then zeroize. *>
 fn void Argon2Decoded.free(&self)
 {
@@ -771,7 +747,14 @@ fn Argon2Decoded? decode(Allocator allocator, String hash_str)
 	decoded_hash = (base64::decode(allocator, outer_tokens[index], padding: base64::NO_PAD) ?? INVALID_HASH_ENCODING~)!;
 
 	// Link the passed allocator to the result object, so it can be freed correctly later with `.free()`.
-	result.link(allocator, hash: decoded_hash, salt: decoded_salt, key_id: decoded_key_id, assoc: decoded_assoc);
+	result = {
+		...result,
+		.allocator = allocator,
+		.hash = allocator::clone_slice(allocator, decoded_hash),
+		.salt = allocator::clone_slice(allocator, decoded_salt),
+		.key_id = allocator::clone_slice(allocator, decoded_key_id),
+		.assoc = allocator::clone_slice(allocator, decoded_assoc),
+	};
 	return result;
 }
 
