@@ -37,6 +37,7 @@
 - `instream.seek` is replaced by `set_cursor` and `cursor`.
 - `instream.available`, `cursor` etc are long/ulong rather than isz/usz to be correct on 32-bit.
 - Enable asynchronous, non-blocking reads of subprocess STDOUT/STDERR pipes on POSIX systems.
+- Add support for AES-encrypted Zip files (AE-1 and AE-2 formats).
 
 ### Fixes
 - Add error message if directory with output file name already exists

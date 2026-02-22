@@ -51,6 +51,7 @@ enum BlockMode
 	ECB,
 	CBC,
 	CTR,
+	CTRLE,
 }
 
 <* AES type: 128, 192 or 256 bits *>
@@ -124,6 +125,7 @@ macro bool is_valid_encryption_len(BlockMode mode, usz len)
 	switch (mode)
 	{
 		case CTR:
+		case CTRLE:
 			return true;
 		case ECB:
 		case CBC:
@@ -141,9 +143,10 @@ fn void Aes.encrypt_buffer(&self, char[] in, char[] out)
 {
 	switch (self.mode)
 	{
-		case CTR: ctr_xcrypt_buffer(self, in, out);
-		case ECB: ecb_encrypt_buffer(self, in, out);
-		case CBC: cbc_encrypt_buffer(self, in, out);
+		case CTR:   ctr_xcrypt_buffer(self, in, out);
+		case CTRLE: ctr_xcrypt_le_buffer(self, in, out);
+		case ECB:   ecb_encrypt_buffer(self, in, out);
+		case CBC:   cbc_encrypt_buffer(self, in, out);
 	}
 }
 
@@ -160,6 +163,7 @@ fn void Aes.decrypt_buffer(&self, char[] in, char[] out)
 		case ECB: ecb_decrypt_buffer(self, in, out);
 		case CBC: cbc_decrypt_buffer(self, in, out);
 		case CTR: ctr_xcrypt_buffer(self, in, out);
+		case CTRLE: ctr_xcrypt_le_buffer(self, in, out);
 	}
 }
 
@@ -357,6 +361,39 @@ fn void ctr_xcrypt_buffer(Aes *aes, char[] in, char[] out)
 			 ecb_encrypt_block(aes, &buffer, &buffer);
 
 			 for LOOP: (bi = (BLOCKLEN - 1); bi >= 0; bi--)
+			 {
+				 if (aes.iv[bi] == 255)
+				 {
+					 aes.iv[bi] = 0;
+					 continue;
+				 }
+				 aes.iv[bi]++;
+				 break LOOP;
+			 }
+			 bi = 0;
+		 }
+		 out[i] = in[i] ^ buffer[bi];
+		 bi++;
+	 }
+}
+
+<*
+ @param [&inout] aes : "AES context."
+ @param [in] in : "Plaintext/cipher input."
+ @param [out] out : "Cipher/plaintext output."
+*>
+fn void ctr_xcrypt_le_buffer(Aes *aes, char[] in, char[] out)
+{
+	 char[BLOCKLEN] buffer @noinit;
+	 usz len = in.len;
+	 for (int bi = BLOCKLEN, usz i = 0; i < len; i++)
+	 {
+		 if (bi == BLOCKLEN)
+		 {
+			 buffer = aes.iv;
+			 ecb_encrypt_block(aes, &buffer, &buffer);
+
+			 for LOOP: (bi = 0; bi < BLOCKLEN; bi++)
 			 {
 				 if (aes.iv[bi] == 255)
 				 {
