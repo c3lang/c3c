@@ -33,10 +33,11 @@
 - Add `array::even`, `array::odd`, and `array::unlace` macros. #2892
 - Add discrete and continuous distributions in `std::math::distributions`.
 - Add bitorder functions `store_le`, `load_le`, `store_be`, `store_le`.
-- Stream functions now use long/ulong rather than isz/usz for seek/available. 
+- Stream functions now use long/ulong rather than isz/usz for seek/available.
 - `instream.seek` is replaced by `set_cursor` and `cursor`.
 - `instream.available`, `cursor` etc are long/ulong rather than isz/usz to be correct on 32-bit.
 - Enable asynchronous, non-blocking reads of subprocess STDOUT/STDERR pipes on POSIX systems.
+- Add `keccak` and Keccak-based hash functions: `sha3`, `shake`, `cshake`, `kmac`, `turboshake`, `tuplehash`, and `parallelhash`. #2728
 
 ### Fixes
 - Add error message if directory with output file name already exists
@@ -49,7 +50,7 @@
 - Flag `--cpu-flags` doesn't work if the first item is an exclusion. #2905
 - Reallocating overaligned memory with the LibcAllocator was unsafe.
 - Using [] or .foo on $$ functions would not raise error but instead crash
-- Improved underlining errors/warnings when unicode is used. #2887 
+- Improved underlining errors/warnings when unicode is used. #2887
 - Fix std::io::Formatter integer issue for large uint128 decimal values.
 - `--safe=no` disabled compile-time errors on compile-time known runtime @require checks #2936
 - On assert known false, the message was not show for no-args.
