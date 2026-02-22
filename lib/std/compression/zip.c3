@@ -852,7 +852,7 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String passwor
 		ushort aex_version;
 
 		self.file.set_cursor(lfh.filename_len.val, FROM_CURSOR)!;
-		usz end = self.file.cursor()! + lfh.extra_field_len.val;
+		long end = self.file.cursor()! + lfh.extra_field_len.val;
 		while (self.file.cursor()! < end)
 		{
 			ushort id = io::read_le_ushort(self.file)!;
@@ -891,7 +891,7 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String passwor
 			char[] salt        = buf[0:salt_len];
 			char[] pv_stored   = buf[salt_len:2];
 
-			usz cipher_len = reader.adapter.size - salt_len - 2 - 10;
+			usz cipher_len = (usz)reader.adapter.size - salt_len - 2 - 10;
 			char[] cipher = mem::temp_array(char, cipher_len);
 			self.file.read(cipher)!;
 
@@ -915,8 +915,8 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String passwor
 		};
 
 		reader.aex = aex_version;
-		reader.adapter.start_offset += salt_len + 2;
-		reader.adapter.size -= salt_len + 2 + 10;
+		reader.adapter.start_offset += (ulong)salt_len + 2;
+		reader.adapter.size -= (ulong)salt_len + 2 + 10;
 		reader.method = (ZipMethod)aex_method;
 	}
 
