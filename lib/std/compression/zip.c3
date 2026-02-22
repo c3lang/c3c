@@ -890,7 +890,7 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String passwor
 			if (hmac_stored[:10] != hmac_calc[:10]) return CORRUPTED_DATA~;
 
 			char[16] iv = { [0] = 1 };
-			reader.adapter.aes.init(aes_type, aes_key, iv[..], CTRLE);
+			reader.adapter.aes.init(aes_type, aes_key, iv[..], CTR_LE);
 		};
 
 		reader.adapter.aex = aex_version;
