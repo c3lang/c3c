@@ -113,7 +113,7 @@ macro char[]? read_fully(Allocator allocator, stream)
 	// Efficient path if it is possible to pre-allocate
 	if (try len = available(stream))
 	{
-		char* data = allocator::malloc_try(allocator, len)!;
+		char* data = allocator::malloc_try(allocator, (usz)len)!;
 		defer catch allocator::free(allocator, data);
 		usz read = 0;
 		while (read < len)
