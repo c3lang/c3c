@@ -21,6 +21,7 @@ faultdef
 	CORRUPTED_DATA,
 	ENTRY_NOT_FOUND,
 	ENCRYPTED_FILE,
+	NO_PASSWORD_CALLBACK,
 	WRONG_PASSWORD;
 
 <*
@@ -43,6 +44,7 @@ struct ZipEntry
 fn Time ZipEntry.time(&self) => dos_date_time_to_time(self.last_mod_date, self.last_mod_time);
 
 alias ZipEntryList = List{ZipEntry};
+alias ZipPasswordFn = fn String?(ZipEntry* entry, void* ctx);
 
 struct ZipArchive
 {
@@ -52,6 +54,9 @@ struct ZipArchive
 	String mode;
 	String path;
 	String comment;
+
+	ZipPasswordFn get_password;
+	void* password_ctx;
 }
 
 constdef ZipMethod : UShortLE
@@ -510,9 +515,8 @@ fn void? ZipArchive.close(&self)
 <*
  Extracts the entire archive to the specified directory.
  @param output_dir : `The directory to extract to.`
- @param password : `The password if a file is encrypted.`
 *>
-fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @pool()
+fn void? ZipArchive.extract(&self, String output_dir) => @pool()
 {
 	for (usz i = 0; i < self.count(); i++)
 	{
@@ -548,7 +552,7 @@ fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @
 				}
 			}
 
-			ZipEntryReader reader = self.open_reader(entry.name, password)!;
+			ZipEntryReader reader = self.open_reader(entry.name)!;
 			defer (void)reader.close();
 
 			File f = file::open(out_path_str, "wb")!;
@@ -622,17 +626,24 @@ fn ZipEntry? ZipArchive.stat(&self, String filename)
 	return ENTRY_NOT_FOUND~;
 }
 
+<*
+ Set password callback function and context.
+*>
+fn void ZipArchive.set_password_cb(&self, ZipPasswordFn get_password, void* ctx = null)
+{
+	self.get_password = get_password;
+	self.password_ctx = ctx;
+}
 
 <*
  Reads an entire file from the archive.
  @param allocator : `The allocator to use.`
  @param filename : `The name of the file to read.`
- @param password : `The password if file is encrypted.`
  @return `The uncompressed file data.`
 *>
-fn char[]? ZipArchive.read_file_all(&self, Allocator allocator, String filename, String password = "")
+fn char[]? ZipArchive.read_file_all(&self, Allocator allocator, String filename)
 {
-	ZipEntryReader reader = self.open_reader(filename, password)!;
+	ZipEntryReader reader = self.open_reader(filename)!;
 	defer (void)reader.close();
 	ZipEntry entry = self.stat(filename)!;
 
@@ -790,10 +801,9 @@ fn void? ZipEntryReader.set_cursor(&self, long offset, SeekOrigin seek) @dynamic
 <*
  Opens a reader for an entry.
  @param filename : `The name of the file to read.`
- @param password : `The password if file is encrypted.`
  @return `A reader for the entry's data.`
 *>
-fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String password = "")
+fn ZipEntryReader? ZipArchive.open_reader(&self, String filename)
 {
 	ZipEntry? entry = self.stat(filename);
 	if (catch entry) return ENTRY_NOT_FOUND~;
@@ -824,6 +834,7 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String passwor
 	if (entry.is_encrypted)
 	{
 		if (entry.method != AEX) return ENCRYPTED_FILE~;
+		if (!self.get_password) return NO_PASSWORD_CALLBACK~;
 
 		char aex_strength;
 		ushort aex_method;
@@ -878,6 +889,7 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String passwor
 
 			usz dk_len = key_len * 2 + 2;
 			char[] dk = mem::temp_array(char, dk_len);
+			String password = self.get_password(&entry, self.password_ctx)!;
 			sha1::pbkdf2(password, salt, 1000, dk);
 
 			char[] aes_key = dk[0:key_len ];
