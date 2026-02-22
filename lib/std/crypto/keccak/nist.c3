@@ -13,10 +13,10 @@ import std::crypto @public;
 <* A set of available function names to use when customizing cSHAKE contexts. These are used independently in various Keccak derivatives. *>
 enum NistFunctionName : int (String customizer)
 {
-	NONE = "",
-	KMAC = "KMAC",
-	TUPLE_HASH = "TupleHash",
-	PARALLEL_HASH = "ParallelHash",
+	NONE {""},
+	KMAC {"KMAC"},
+	TUPLE_HASH {"TupleHash"},
+	PARALLEL_HASH {"ParallelHash"},
 }
 
 <* The direction to use when encoding. Determines the placement of the 'size' byte in the resultant array. *>
