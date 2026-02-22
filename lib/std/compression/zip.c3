@@ -869,7 +869,7 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String passwor
 			char[] salt        = buf[0:salt_len];
 			char[] pv_stored   = buf[salt_len:2];
 
-			usz cipher_len = (usz)reader.adapter.size - salt_len - 2 - 10;
+			usz cipher_len = (usz)entry.compressed_size - salt_len - 2 - 10;
 			char[] cipher = mem::temp_array(char, cipher_len);
 			self.file.read(cipher)!;
 
@@ -889,12 +889,13 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String passwor
 			char[*] hmac_calc = sha1::hmac(mac_key, cipher);
 			if (hmac_stored[:10] != hmac_calc[:10]) return CORRUPTED_DATA~;
 
-			reader.adapter.aes.init(aes_type, aes_key, {[0]=1}, CTR);
+			char[16] iv = { [0] = 1 };
+			reader.adapter.aes.init(aes_type, aes_key, iv[..], CTRLE);
 		};
 
 		reader.adapter.aex = aex_version;
 		reader.adapter.start_offset += (ulong)salt_len + 2;
-		reader.adapter.size = entry.compressed_size - ((ulong)salt_len + 2 + 10);
+		reader.adapter.size = entry.compressed_size - (ulong)salt_len - 2 - 10;
 		reader.method = (ZipMethod)aex_method;
 	}
 
