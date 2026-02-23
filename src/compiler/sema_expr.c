@@ -1679,7 +1679,15 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 				{
 					RETURN_SEMA_FUNC_ERROR(definition, arg, "This method is only valid on a compile time constant value.");
 				}
-				RETURN_SEMA_FUNC_ERROR(definition, arg, "A compile time parameter must always be a constant, did you mistake it for a normal parameter?");
+				if (arg->expr_kind == EXPR_IDENTIFIER)
+				{
+					Decl *decl = arg->ident_expr;
+					if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_CONST && decl->is_extern)
+					{
+						RETURN_SEMA_FUNC_ERROR(definition, arg, "A compile-time parameter requires a value known at compile time. Did you mistake if for a regular parameter? 'extern' constants are not compile-time constants.");
+					}
+				}
+				RETURN_SEMA_FUNC_ERROR(definition, arg, "A compile time parameter must always be a compile-time constant value, did you mistake it for a regular parameter?");
 			}
 			break;
 		case VARDECL_PARAM_CT_TYPE:

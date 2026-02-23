@@ -4707,6 +4707,20 @@ static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceS
 	UNREACHABLE
 }
 
+INLINE void sema_error_not_constant(SemaContext *context, Decl *target, Expr *init)
+{
+	if (init->expr_kind == EXPR_IDENTIFIER)
+	{
+		Decl *decl = init->ident_expr;
+		if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_CONST && decl->is_extern)
+		{
+			SEMA_ERROR(init, "%s must be assigned a compile-time constant. 'extern' constants are resolved at link time and therefore are not compile-time values.", target->name);
+			return;
+		}
+	}
+	SEMA_ERROR(init, "Expected a compile time constant value assigned to %s.", target->name);
+
+}
 /**
  * Analyse $foo and $Foo variables.
  */
@@ -4792,7 +4806,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defi
 				if (!expr_is_runtime_const(init))
 				{
 					if (check_defined) goto FAIL_CHECK;
-					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
+					sema_error_not_constant(context, decl, init);
 					goto FAIL;
 				}
 				break;
@@ -4811,7 +4825,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defi
 				if (!expr_is_runtime_const(init))
 				{
 					if (check_defined) goto FAIL_CHECK;
-					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
+					sema_error_not_constant(context, decl, init);
 					goto FAIL;
 				}
 				// Update the type.
