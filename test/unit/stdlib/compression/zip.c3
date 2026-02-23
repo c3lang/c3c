@@ -570,12 +570,11 @@ fn void test_zip_ae2_decryption()
 	ZipArchive read_zip = zip::open(mem, name, "r")!!;
 	defer (void)read_zip.close();
 
-	read_zip.set_password_cb(fn String?(e,c){return "password";});
 	assert(read_zip.count() == 1, "Expected 1 entry");
 
 	ZipEntry entry = read_zip.stat("hello.txt")!!;
 
-	char[] decompressed = read_zip.read_file_all(mem, "hello.txt")!!;
+	char[] decompressed = read_zip.read_file_all(mem, "hello.txt", "password")!!;
 	defer free(decompressed);
 
 	assert(decompressed == "HELLOWORLD", "Decompressed content mismatch; got='%s'", (String)decompressed[..]);
@@ -877,11 +876,10 @@ dba3dc010000000000000000000000000000000001990700020041450308
 	ZipArchive read_zip = zip::open(mem, name, "r")!!;
 	defer (void)read_zip.close();
 
-	read_zip.set_password_cb(fn String?(e,c){return "password";});
 	assert(read_zip.count() == 1, "Expected 1 entry");
 
 	ZipEntry entry = read_zip.stat("zip.c3")!!;
 
-	char[] decompressed = read_zip.read_file_all(mem, "zip.c3")!!;
+	char[] decompressed = read_zip.read_file_all(mem, "zip.c3", "password")!!;
 	defer free(decompressed);
 }
