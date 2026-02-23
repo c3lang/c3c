@@ -37,6 +37,7 @@
 - Stream functions now use long/ulong rather than isz/usz for seek/available. 
 - `instream.seek` is replaced by `set_cursor` and `cursor`.
 - `instream.available`, `cursor` etc are long/ulong rather than isz/usz to be correct on 32-bit.
+- Enable asynchronous, non-blocking reads of subprocess STDOUT/STDERR pipes on POSIX systems.
 
 ### Fixes
 - Add error message if directory with output file name already exists
@@ -52,7 +53,7 @@
 - Improved underlining errors/warnings when unicode is used. #2887 
 - Fix std::io::Formatter integer issue for large uint128 decimal values.
 - `--safe=no` disabled compile-time errors on compile-time known runtime @require checks #2936
-- On assert known false, the message was not show for no-args.
+- On assert known false, the message was not shown for no-args.
 - Adding the incorrect sized vector to a pointer vector would cause a crash.
 - Member access on a struct returned by the assignment expression, cause crash #2947
 - Trying to slice an indexable type leads to misleading error message #2958

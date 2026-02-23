@@ -1,5 +1,5 @@
 module std::os::process @if(env::WIN32 || env::POSIX);
-import std::io, libc, std::os;
+import std::io, libc, std::os, std::net::os;
 
 // This code is based on https://github.com/sheredom/subprocess.h
 
@@ -321,10 +321,24 @@ fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, Str
 		if (posix::pipe(&stdoutfd)) return FAILED_TO_OPEN_STDOUT~;
 		if (!options.combined_stdout_stderr && posix::pipe(&stderrfd)) return FAILED_TO_OPEN_STDERR~;
 
+		if (options.read_async)
+		{
+			((NativeSocket)stdoutfd[0]).set_non_blocking(true)!;
+			((NativeSocket)stdoutfd[1]).set_non_blocking(true)!;
+			if (!options.combined_stdout_stderr)
+			{
+				((NativeSocket)stderrfd[0]).set_non_blocking(true)!;
+				((NativeSocket)stderrfd[1]).set_non_blocking(true)!;
+			}
+		}
+
 		if (posix::spawn_file_actions_addclose(&actions, stdinfd[1])) return FAILED_TO_OPEN_STDIN~;
 		if (posix::spawn_file_actions_adddup2(&actions, stdinfd[0], libc::STDIN_FD)) return FAILED_TO_OPEN_STDIN~;
+		if (posix::spawn_file_actions_addclose(&actions, stdinfd[0])) return FAILED_TO_OPEN_STDIN~;
+
 		if (posix::spawn_file_actions_addclose(&actions, stdoutfd[0])) return FAILED_TO_OPEN_STDOUT~;
 		if (posix::spawn_file_actions_adddup2(&actions, stdoutfd[1], libc::STDOUT_FD)) return FAILED_TO_OPEN_STDOUT~;
+		if (posix::spawn_file_actions_addclose(&actions, stdoutfd[1])) return FAILED_TO_OPEN_STDERR~;
 
 		if (options.combined_stdout_stderr)
 		{
@@ -334,13 +348,14 @@ fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, Str
 		{
 			if (posix::spawn_file_actions_addclose(&actions, stderrfd[0])) return FAILED_TO_OPEN_STDERR~;
 			if (posix::spawn_file_actions_adddup2(&actions, stderrfd[1], libc::STDERR_FD)) return FAILED_TO_OPEN_STDERR~;
+			if (posix::spawn_file_actions_addclose(&actions, stderrfd[1])) return FAILED_TO_OPEN_STDERR~;
 		}
 	}
 
 	Pid_t child;
 	@stack_mem(2048; Allocator mem)
 	{
-    	ZString* command_line_copy = copy_command_line(mem, command_line);
+		ZString* command_line_copy = copy_command_line(mem, command_line);
 		ZString* used_environment = options.inherit_environment ? posix::environ : copy_env(mem, environment);
 		if (options.search_user_path)
 		{
@@ -485,10 +500,15 @@ fn usz? read_from_file_win32(CFile file, Win32_HANDLE event_handle, char* buffer
 	}
 	return bytes_read;
 }
+
 fn usz? read_from_file_posix(CFile file, char* buffer, usz size) @if(env::POSIX) @local
 {
 	isz bytes_read = libc::read(libc::fileno(file), buffer, size);
-	if (bytes_read < 0) return READ_FAILED~;
+	if (bytes_read < 0)
+	{
+		if (libc::errno() == errno::EAGAIN) return 0;   // nothing to read but O_NONBLOCK (async) is used
+		return READ_FAILED~;
+	}
 	return bytes_read;
 }
 
@@ -537,5 +557,6 @@ fn bool? SubProcess.is_running(&self)
 fn usz? SubProcess.write_to_stdin(&self, char[] buffer)
 {
 	if (!self.stdin_file) return FAILED_TO_OPEN_STDIN~;
+	defer try (void)os::native_fflush(self.stdin_file);
 	return os::native_fwrite(self.stdin_file, buffer);
 }

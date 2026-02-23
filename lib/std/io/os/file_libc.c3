@@ -76,6 +76,11 @@ fn usz? native_fread(CFile file, char[] buffer) @inline
 	return libc::fread(buffer.ptr, 1, buffer.len, file);
 }
 
+fn void? native_fflush(CFile file) @inline @maydiscard
+{
+	if (libc::fflush(file) != 0) return io::GENERAL_ERROR~;
+}
+
 macro fault file_open_errno() @local
 {
 	switch (libc::errno())
