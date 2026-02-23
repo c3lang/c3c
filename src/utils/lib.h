@@ -441,6 +441,11 @@ type__* CONCAT(foreach_vec_, __LINE__) = (vec__); type__* CONCAT(foreach_vecend_
 type__* CONCAT(foreach_it_, __LINE__) = CONCAT(foreach_vec_, __LINE__); \
 for (type__ name__ ; CONCAT(foreach_it_, __LINE__) < CONCAT(foreach_vecend_, __LINE__) ? (name__ = *CONCAT(foreach_it_, __LINE__), true) : false; CONCAT(foreach_it_, __LINE__)++)
 
+#define FOREACH_REF(type__, name__, vec__) \
+type__* CONCAT(foreach_vec_, __LINE__) = (vec__); type__* CONCAT(foreach_vecend_, __LINE__) = CONCAT(foreach_vec_, __LINE__) ? CONCAT(foreach_vec_, __LINE__) + vec_size(CONCAT(foreach_vec_, __LINE__)) : NULL; \
+type__* CONCAT(foreach_it_, __LINE__) = CONCAT(foreach_vec_, __LINE__); \
+for (type__* name__ ; CONCAT(foreach_it_, __LINE__) < CONCAT(foreach_vecend_, __LINE__) ? (name__ = CONCAT(foreach_it_, __LINE__), true) : false; CONCAT(foreach_it_, __LINE__)++)
+
 #define FOREACH_IDX(idx__, type__, name__, vec__) \
 type__* CONCAT(foreach_vec_, __LINE__) = (vec__); uint32_t CONCAT(foreach_vecsize_, __LINE__) = vec_size(CONCAT(foreach_vec_, __LINE__)); \
 uint32_t idx__ = 0; \

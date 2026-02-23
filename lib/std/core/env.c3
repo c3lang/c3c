@@ -126,6 +126,7 @@ const bool ARCH_64_BIT = $$REGISTER_SIZE == 64;
 const bool LIBC = $$COMPILER_LIBC_AVAILABLE;
 const bool NO_LIBC = !LIBC && !CUSTOM_LIBC;
 const bool CUSTOM_LIBC = $$CUSTOM_LIBC;
+const bool OLD_IO = $feature(OLD_IO);
 const CompilerOptLevel COMPILER_OPT_LEVEL = CompilerOptLevel.from_ordinal($$COMPILER_OPT_LEVEL);
 const bool BIG_ENDIAN = $$PLATFORM_BIG_ENDIAN;
 const bool I128_NATIVE_SUPPORT = $$PLATFORM_I128_SUPPORTED;

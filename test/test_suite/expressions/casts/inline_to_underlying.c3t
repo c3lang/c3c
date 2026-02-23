@@ -6,7 +6,7 @@ enum Foo : inline int
 {
 	ABC,
 }
-const enum Bar : inline int
+constdef Bar : inline int
 {
 	HELLO = 1
 }

@@ -6,8 +6,8 @@ fn void main(String[] args)
 	int foo;
 	asm
 	{
-		adcxl $eax, $ecx;
-		adcxq $rax, $rcx;
+		adcx $eax, $ecx;
+		adcx $rax, $rcx;
 		addpd $xmm1, $xmm2;
 		addps $xmm1, $xmm2;
 		addsd $xmm1, $xmm2;
@@ -27,4 +27,4 @@ fn void main(String[] args)
 
 /* #expect: test.ll
 
-"adcxl %ecx, %eax\0Aadcxq %rcx, %rax\0Aaddpd %xmm2, %xmm1\0Aaddps %xmm2, %xmm1\0Aaddsd %xmm2, %xmm1\0Aaddss %xmm2, %xmm1\0Avaddpd %xmm3, %xmm2, %xmm1\0Avaddpd %ymm3, %ymm2, %ymm1\0Avaddpd $0, %xmm2, %xmm1\0Avaddps %xmm3, %xmm2, %xmm1\0Avaddps %ymm3, %ymm2, %ymm1\0Avaddps $0, %xmm2, %xmm1\0Avaddsd %xmm3, %xmm2, %xmm1\0Avaddsd $0, %xmm2, %xmm1\0Avaddss %xmm3, %xmm2, %xmm1\0Avaddss $0, %xmm2, %xmm1\0A", "*m,~{cc},~{rcx},~{xmm1},~{flags},~{dirflag},~{fspr}"
+"adcx %ecx, %eax\0Aadcx %rcx, %rax\0Aaddpd %xmm2, %xmm1\0Aaddps %xmm2, %xmm1\0Aaddsd %xmm2, %xmm1\0Aaddss %xmm2, %xmm1\0Avaddpd %xmm3, %xmm2, %xmm1\0Avaddpd %ymm3, %ymm2, %ymm1\0Avaddpd $0, %xmm2, %xmm1\0Avaddps %xmm3, %xmm2, %xmm1\0Avaddps %ymm3, %ymm2, %ymm1\0Avaddps $0, %xmm2, %xmm1\0Avaddsd %xmm3, %xmm2, %xmm1\0Avaddsd $0, %xmm2, %xmm1\0Avaddss %xmm3, %xmm2, %xmm1\0Avaddss $0, %xmm2, %xmm1\0A", "*m,~{cc},~{rax},~{xmm1},~{flags},~{dirflag},~{fspr}"

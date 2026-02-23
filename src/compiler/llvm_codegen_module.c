@@ -165,6 +165,26 @@ void gencontext_begin_module(GenContext *c)
 	{
 		unsigned frame_pointer = compiler.platform.arch == ARCH_TYPE_AARCH64 ? 1 : 2;
 		llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "frame-pointer", frame_pointer, type_uint);
+		if (compiler.platform.arch == ARCH_TYPE_RISCV64 || compiler.platform.arch == ARCH_TYPE_RISCV32)
+		{
+			const char *abi_str = NULL;
+			if (compiler.platform.arch == ARCH_TYPE_RISCV64)
+			{
+				unsigned flen = compiler.platform.riscv.flen;
+				if (flen == 8) abi_str = "lp64d";
+				else if (flen == 4) abi_str = "lp64f";
+				else abi_str = "lp64";
+			}
+			else
+			{
+				unsigned flen = compiler.platform.riscv.flen;
+				if (flen == 8) abi_str = "ilp32d";
+				else if (flen == 4) abi_str = "ilp32f";
+				else abi_str = "ilp32";
+			}
+			LLVMMetadataRef val = LLVMValueAsMetadata(LLVMMDStringInContext(c->context, abi_str, strlen(abi_str)));
+			LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorError, "target-abi", 10, val);
+		}
 	}
 
 	if (compiler.build.debug_info != DEBUG_INFO_NONE)

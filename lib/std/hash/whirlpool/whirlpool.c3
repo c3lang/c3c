@@ -66,14 +66,14 @@ fn void Whirlpool.update(&self, char[] data)
 		//   If the algorithm is finalized during a 'partial' block, it has its own padding to fill the remaining gap.
 		if (data.len < to_pad) return;
 
-		self.process_block(&self.block);
+		_process_block(self, &self.block);
 		data = data[to_pad..];
 	}
 
 	// Digest blocks wholesale.
 	while (data.len >= BLOCK_SIZE)
 	{
-		self.process_block(data);
+		_process_block(self, data);
 
 		data = (data.len > BLOCK_SIZE) ? data[BLOCK_SIZE..] : {};
 	}
@@ -100,7 +100,7 @@ fn char[HASH_SIZE] Whirlpool.final(&self)
 	{
 		if (remainder < 64) self.block[remainder..63] = 0x00;
 
-		self.process_block(&self.block);
+		_process_block(self, &self.block);
 		remainder = 0;
 	}
 
@@ -113,7 +113,7 @@ fn char[HASH_SIZE] Whirlpool.final(&self)
 	self.block_128[3] = $$bswap(self.counter_low << 3);
 
 	// Process the final block.
-	self.process_block(&self.block);
+	_process_block(self, &self.block);
 
 	// Each ulong in the resultant hash should be bit-swapped before the final return.
 	char[HASH_SIZE] hash @align(ulong.alignof);
@@ -153,7 +153,7 @@ const ulong[10] RC @private = {
 };
 const ROUNDS = 10;
 
-fn void Whirlpool.process_block(&self, char* block) @local
+fn void _process_block(Whirlpool* self, char* block) @local
 {
 	ulong[2 * 8] k;   // key
 	ulong[2 * 8] state;   // state

@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::bitorder;
-
+import std::bits;
 // This module contains types of different endianness.
 // *BE types represent big-endian types
 // *LE types represent little-endian types.
@@ -85,6 +85,56 @@ bitstruct Int128LE : int128 @littleendian
 bitstruct UInt128LE : uint128 @littleendian
 {
 	uint128 val : 0..127;
+}
+
+<*
+ @require $defined(*bytes) : "Pointer must be possible to dereference"
+ @require types::is_intlike($typeof(*bytes)) : "Type must be an integer or int vector"
+*>
+macro load_be(bytes)
+{
+	$if env::BIG_ENDIAN:
+		return mem::load(bytes, $align: 1);
+	$else
+		return bswap(mem::load(bytes, $align: 1));
+	$endif
+}
+
+<*
+ @require $defined(*bytes) : "Pointer must be possible to dereference"
+ @require types::is_intlike($typeof(*bytes)) : "Type must be an integer or int vector"
+*>
+macro load_le(bytes)
+{
+	$if env::BIG_ENDIAN:
+		return bswap(mem::load(bytes, $align: 1));
+	$else
+		return mem::load(bytes, $align: 1);
+	$endif
+}
+
+<*
+ @require types::is_intlike($typeof(value)) : "Type must be an integer or int vector"
+*>
+macro void store_be(void* dst, value)
+{
+	$if env::BIG_ENDIAN:
+		mem::store(($typeof(value)*)dst, value, $align: 1);
+	$else
+		mem::store(($typeof(value)*)dst, bswap(value), $align: 1);
+	$endif
+}
+
+<*
+ @require types::is_intlike($typeof(value)) : "Type must be an integer or int vector"
+*>
+macro void store_le(void* dst, value)
+{
+	$if env::BIG_ENDIAN:
+		mem::store(($typeof(value)*)dst, bswap(value), $align: 1);
+	$else
+		mem::store(($typeof(value)*)dst, value, $align: 1);
+	$endif
 }
 
 <*

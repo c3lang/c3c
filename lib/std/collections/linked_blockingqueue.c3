@@ -75,7 +75,7 @@ fn void LinkedBlockingQueue.free(&self)
 	self.not_full.destroy();
 }
 
-fn void LinkedBlockingQueue.link_entry(&self, QueueEntry* entry) @private 
+fn void linkedblockingqueue_link_entry(LinkedBlockingQueue* self, QueueEntry* entry) @private
 {
 	entry.next = null;
 	entry.prev = self.tail;
@@ -95,7 +95,7 @@ fn void LinkedBlockingQueue.link_entry(&self, QueueEntry* entry) @private
 }
 
 
-fn QueueEntry* LinkedBlockingQueue.unlink_head(&self) @private 
+fn QueueEntry* linkedblockingqueue_unlink_head(LinkedBlockingQueue* self) @private
 {
 	if (self.head == null) return null;
 
@@ -134,7 +134,7 @@ fn void LinkedBlockingQueue.push(&self, Value value)
 			.next = null,
 			.prev = null
 		});
-		self.link_entry(entry);
+		linkedblockingqueue_link_entry(self, entry);
 
 		// Signal that queue is no longer empty
 		self.not_empty.signal();
@@ -156,7 +156,7 @@ fn Value LinkedBlockingQueue.poll(&self)
 			self.not_empty.wait(&self.lock);
 		}
 
-		QueueEntry* entry = self.unlink_head();
+		QueueEntry* entry = linkedblockingqueue_unlink_head(self);
 		Value value = entry.value;
 		allocator::free(self.allocator, entry);
 		if (self.capacity > 0)
@@ -180,7 +180,7 @@ fn Value? LinkedBlockingQueue.pop(&self)
 	{
 		if (self.count == 0) return NO_MORE_ELEMENT~;
 
-		QueueEntry* entry = self.unlink_head();
+		QueueEntry* entry = linkedblockingqueue_unlink_head(self);
 		Value value = entry.value;
 		allocator::free(self.allocator, entry);
 
@@ -217,7 +217,7 @@ fn Value? LinkedBlockingQueue.poll_timeout(&self, Duration timeout)
 			if (!self.count) return NO_MORE_ELEMENT~;
 		}
 
-		QueueEntry* entry = self.unlink_head();
+		QueueEntry* entry = linkedblockingqueue_unlink_head(self);
 		Value value = entry.value;
 		allocator::free(self.allocator, entry);
 
@@ -273,7 +273,7 @@ fn void? LinkedBlockingQueue.try_push(&self, Value value)
 			.next = null,
 			.prev = null
 		});
-		self.link_entry(entry);
+		linkedblockingqueue_link_entry(self, entry);
 		self.not_empty.signal();
 	};
 }
@@ -307,7 +307,7 @@ fn void? LinkedBlockingQueue.push_timeout(&self, Value value, Duration timeout)
 			.next = null,
 			.prev = null
 		});
-		self.link_entry(entry);
+		linkedblockingqueue_link_entry(self, entry);
 		self.not_empty.signal();
 	};
 }

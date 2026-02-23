@@ -1,7 +1,7 @@
 import std;
 fn int foo() => 0;
 alias FooFn = fn int();
-const enum Bar : FooFn
+constdef Bar : FooFn
 {
   FOO = fn () => (int)(iptr)ExclusiveRange{int}.typeid,
   BAR = &foo,

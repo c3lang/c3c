@@ -2,7 +2,7 @@ module main;
 
 faultdef F;
 
-const enum Foo : fault
+constdef Foo : fault
 {
     F = F // #error: Recursive resolution of expression
 }

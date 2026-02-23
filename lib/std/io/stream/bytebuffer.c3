@@ -104,28 +104,37 @@ fn void? ByteBuffer.pushback_byte(&self) @dynamic
 	self.has_last = false;
 }
 
-fn usz? ByteBuffer.seek(&self, isz offset, Seek seek) @dynamic
+fn long? ByteBuffer.cursor(&self) @dynamic
 {
-	switch (seek)
-	{
-		case SET:
-			if (offset < 0 || offset > self.write_idx) return INVALID_POSITION~;
-			self.read_idx = offset;
-			return offset;
-		case CURSOR:
-			if ((offset < 0 && self.read_idx < -offset) ||
-				(offset > 0 && self.read_idx + offset > self.write_idx)) return INVALID_POSITION~;
-			self.read_idx += offset;
-		case END:
-			if (offset < 0 || offset > self.write_idx) return INVALID_POSITION~;
-			self.read_idx = self.write_idx - offset;
-	}
 	return self.read_idx;
 }
 
-fn usz? ByteBuffer.available(&self) @inline @dynamic
+fn void? ByteBuffer.set_cursor(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
 {
-	return self.write_idx - self.read_idx;
+	switch (whence)
+	{
+		case FROM_START:
+			if (offset < 0 || offset > self.write_idx) return INVALID_POSITION~;
+			self.read_idx = (usz)offset;
+		case FROM_CURSOR:
+			if ((offset < 0 && self.read_idx < -offset) ||
+				(offset > 0 && self.read_idx + offset > self.write_idx)) return INVALID_POSITION~;
+			self.read_idx += (usz)offset;
+		case FROM_END:
+			if (offset < 0 || offset > self.write_idx) return INVALID_POSITION~;
+			self.read_idx = self.write_idx - (usz)offset;
+	}
+}
+
+fn usz? ByteBuffer.seek(&self, isz offset, Seek seek) @dynamic
+{
+	self.set_cursor(offset, (SeekOrigin)seek.ordinal)!;
+	return (usz)self.cursor();
+}
+
+fn ulong? ByteBuffer.available(&self) @inline @dynamic
+{
+	return (ulong)self.write_idx - self.read_idx;
 }
 
 fn void ByteBuffer.grow(&self, usz n)

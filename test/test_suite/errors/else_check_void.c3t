@@ -1,0 +1,17 @@
+module test;
+
+faultdef MALFORMED_RESPONSE;
+macro void? set_field(String[] tokens)
+{
+	if (tokens.len < 2) return MALFORMED_RESPONSE~;
+}
+
+fn void main()
+{
+	String[] tokens = { "a", "b" };
+	set_field(tokens) ?? (void)1;
+}
+
+/* #expect: test.ll
+
+fefe

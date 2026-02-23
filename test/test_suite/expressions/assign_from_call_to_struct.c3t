@@ -1,0 +1,28 @@
+// #target: macos-x64
+module test;
+struct Test
+{
+	long a;
+	long b;
+	char c;
+}
+
+fn Test f() => {};
+
+fn int main()
+{
+	Test t;
+	(t = f()).b;
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %t = alloca %Test, align 8
+  call void @llvm.memset.p0.i64(ptr align 8 %t, i8 0, i64 24, i1 false)
+  call void @test.f(ptr sret(%Test) align 8 %t)
+  %ptradd = getelementptr inbounds i8, ptr %t, i64 8
+  ret i32 0
+}

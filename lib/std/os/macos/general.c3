@@ -1,7 +1,7 @@
 module std::os::darwin @if(env::DARWIN) @link("Foundation.framework");
 import std::os::macos::cf, std::os::macos::objc, std::io;
 
-const enum NSSearchPathDomainMask : NSUInteger
+constdef NSSearchPathDomainMask : NSUInteger
 {
 	USER = 1,
 	LOCAL = 2,
@@ -10,7 +10,7 @@ const enum NSSearchPathDomainMask : NSUInteger
 	ALL = 0x0ffff
 }
 
-const enum NSSearchPathDirectory : NSUInteger
+constdef NSSearchPathDirectory : NSUInteger
 {
 	APPLICATION = 1,
 	DEMO_APPLICATION,

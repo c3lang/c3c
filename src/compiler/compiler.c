@@ -1784,6 +1784,7 @@ static bool is_posix(OsType os)
 		case OS_TYPE_FREEBSD:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_SOLARIS:
+		case OS_TYPE_ANDROID:
 			return true;
 		case OS_TYPE_WIN32:
 		case OS_TYPE_WASI:

@@ -2,7 +2,7 @@
 module test;
 import std;
 
-const enum Color : char[<4>]
+constdef Color : char[<4>]
 {
 	LIGHTGRAY   = { 200, 200, 200, 255 },
 }
