@@ -1679,7 +1679,15 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 				{
 					RETURN_SEMA_FUNC_ERROR(definition, arg, "This method is only valid on a compile time constant value.");
 				}
-				RETURN_SEMA_FUNC_ERROR(definition, arg, "A compile time parameter must always be a constant, did you mistake it for a normal parameter?");
+				if (arg->expr_kind == EXPR_IDENTIFIER)
+				{
+					Decl *decl = arg->ident_expr;
+					if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_CONST && decl->is_extern)
+					{
+						RETURN_SEMA_FUNC_ERROR(definition, arg, "A compile-time parameter requires a value known at compile time. Did you mistake if for a regular parameter? 'extern' constants are not compile-time constants.");
+					}
+				}
+				RETURN_SEMA_FUNC_ERROR(definition, arg, "A compile time parameter must always be a compile-time constant value, did you mistake it for a regular parameter?");
 			}
 			break;
 		case VARDECL_PARAM_CT_TYPE:
@@ -8198,7 +8206,7 @@ static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, 
 	if (!sema_convert_denominator_to_unsigned_if_needed(context, left, right))
 	{
 		if (failed_ref) return *failed_ref = true, false;
-		RETURN_SEMA_ERROR(expr, "Cannot implicitly divide an unsigned integer by an non-const signed integer, please use explicit casts.");
+		RETURN_SEMA_ERROR(expr, "Cannot implicitly divide an unsigned integer by a non-const or negative signed integer, please use explicit casts.");
 	}
 	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "Cannot divide %s by %s.", false, &overload, failed_ref)) return false;
 	if (!overload) return true;

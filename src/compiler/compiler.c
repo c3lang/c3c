@@ -4,6 +4,7 @@
 
 #include "compiler_internal.h"
 #include "../build/project.h"
+#include "../utils/json.h"
 #include <compiler_tests/benchmark.h>
 #include "../utils/whereami.h"
 #if LLVM_AVAILABLE
@@ -1004,6 +1005,50 @@ void vendor_fetch(BuildOptions *options)
 	const char** fetched_libraries = NULL;
 	int total_libraries = (int)vec_size(options->libraries_to_fetch);
 	
+	if (total_libraries == 0)
+	{
+		const char *tmp_dir = dir_make_temp_dir();
+		const char *tmp_file = file_append_path(tmp_dir, "vendor_list.json");
+		const char *error = download_file("https://api.github.com", "/repos/c3lang/vendor/contents/libraries/", tmp_file);
+		if (error)
+		{
+			error_exit("Failed to fetch library list: %s", error);
+		}
+
+		size_t size;
+		char *json_str = file_read_all(tmp_file, &size);
+		JsonParser parser;
+		json_init_string(&parser, json_str);
+		JSONObject *obj = json_parse(&parser);
+		if (!obj || obj->type != J_ARRAY)
+		{
+			error_exit("Failed to parse library list.");
+		}
+
+		printf("Available vendor libraries:\n");
+		FOREACH(JSONObject *, entry, obj->elements)
+		{
+			JSONObject *name = json_map_get(entry, "name");
+			JSONObject *type = json_map_get(entry, "type");
+			if (name && type && str_eq(type->str, "dir"))
+			{
+				const char *n = name->str;
+				if (n[0] == '.') continue;
+				if (str_has_suffix(n, ".c3l"))
+				{
+					printf("  %s\n", str_remove_suffix(n, ".c3l"));
+				}
+				else
+				{
+					printf("  %s\n", n);
+				}
+			}
+		}
+		file_delete_file(tmp_file);
+		file_delete_dir(tmp_dir);
+		return;
+	}
+
 	for(int i = 0; i < total_libraries; i++)
 	{
 		const char *lib = options->libraries_to_fetch[i];
