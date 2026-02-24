@@ -8206,7 +8206,7 @@ static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, 
 	if (!sema_convert_denominator_to_unsigned_if_needed(context, left, right))
 	{
 		if (failed_ref) return *failed_ref = true, false;
-		RETURN_SEMA_ERROR(expr, "Cannot implicitly divide an unsigned integer by an non-const signed integer, please use explicit casts.");
+		RETURN_SEMA_ERROR(expr, "Cannot implicitly divide an unsigned integer by a non-const or negative signed integer, please use explicit casts.");
 	}
 	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, "Cannot divide %s by %s.", false, &overload, failed_ref)) return false;
 	if (!overload) return true;

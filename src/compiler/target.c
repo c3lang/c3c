@@ -2228,7 +2228,8 @@ void target_setup(BuildTarget *build_target)
 	// ARM Cygwin
 	// NVPTX
 	compiler.platform.tls_supported = os_target_use_thread_local(compiler.platform.os);
-	compiler.platform.emulated_tls = compiler.platform.os == OS_TYPE_ANDROID;
+	// Compiling natively to Android in Termux requires emulated TLS
+	compiler.platform.emulated_tls = compiler.platform.os == OS_TYPE_ANDROID && !compiler.build.android.ndk_path;
 	compiler.platform.big_endian = arch_big_endian(compiler.platform.arch);
 	compiler.platform.width_pointer = arch_pointer_bit_width(compiler.platform.os, compiler.platform.arch);
 	compiler.platform.width_register = arch_int_register_bit_width(compiler.platform.os, compiler.platform.arch);

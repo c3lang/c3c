@@ -445,7 +445,6 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("vendor-fetch"))
 	{
 		options->command = COMMAND_VENDOR_FETCH;
-		if (at_end() || next_is_opt()) error_exit("error: vendor-fetch needs at least one library.");
 		while (!at_end() && !next_is_opt())
 		{
 			const char *lib = next_arg();

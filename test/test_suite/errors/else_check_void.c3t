@@ -1,0 +1,44 @@
+// #target: macos-aarch64
+module test;
+
+faultdef MALFORMED_RESPONSE;
+macro void? set_field(String[] tokens)
+{
+	if (tokens.len < 2) return MALFORMED_RESPONSE~;
+}
+
+fn void main()
+{
+	String[] tokens = { "a", "b" };
+	set_field(tokens) ?? (void)1;
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %tokens = alloca %"char[][]", align 8
+  %literal = alloca [2 x %"char[]"], align 8
+  %tokens1 = alloca %"char[][]", align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const, i32 32, i1 false)
+  %0 = insertvalue %"char[][]" undef, ptr %literal, 0
+  %1 = insertvalue %"char[][]" %0, i64 2, 1
+  store %"char[][]" %1, ptr %tokens, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tokens1, ptr align 8 %tokens, i32 16, i1 false)
+  %ptradd = getelementptr inbounds i8, ptr %tokens1, i64 8
+  %2 = load i64, ptr %ptradd, align 8
+  %gt = icmp ugt i64 2, %2
+  br i1 %gt, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  br label %else_block
+
+if.exit:                                          ; preds = %entry
+  br label %phi_block
+
+else_block:                                       ; preds = %if.then
+  br label %phi_block
+
+phi_block:                                        ; preds = %else_block, %if.exit
+  ret void
+}

@@ -3,7 +3,8 @@
 ## 0.7.10 Change list
 
 ### Changes / improvements
-- Method resolution and `$define` now works together well unless definitions are out of order for real.
+- C3 is now using its own LLVM libraries when building releases.
+- Method resolution and `$defined` now works together well unless definitions are out of order for real.
 - Improve error message when using functions as values #2856
 - Improve support for Android with Termux.
 - Integrated download of the MSVC SDK when compiling for Windows.
@@ -21,6 +22,7 @@
 - Properly support `@deprecated` as contract.
 - Support deprecating enum values.
 - Improve error when trying to use an extern const as a compile time constant. #2969
+- `vendor-fetch` command now lists all available packages by default. #2976
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
@@ -58,6 +60,7 @@
 - Member access on a struct returned by the assignment expression, cause crash #2947
 - Trying to slice an indexable type leads to misleading error message #2958
 - Warn on use of visibility modifiers on methods. #2962
+- Compiler crash using `??` with a `void?` macro #2973
 
 ## 0.7.9 Change list
 

@@ -12,5 +12,5 @@ fn void test()
 
 fn void test2()
 {
-	foo(FOO); // #error: $x must be assigned a compile-time constant. 'extern' constants are resolved
+	foo(FOO); // #error: A compile-time parameter requires a value known at compile time. Did
 }
