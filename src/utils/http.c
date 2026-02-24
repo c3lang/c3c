@@ -120,6 +120,7 @@ typedef int CURLoption;
 
 #define CURLE_OK 0
 #define CURLOPT_URL 10002
+#define CURLOPT_USERAGENT 10018
 #define CURLOPT_FOLLOWLOCATION 52
 #define CURLOPT_VERBOSE 41
 #define CURLOPT_NOPROGRESS 43
@@ -209,6 +210,7 @@ const char *download_file(const char *url, const char *resource, const char *fil
 
 	const char *total_url = str_printf("%s%s", url, resource);
 	ptr_curl_easy_setopt(curl_handle, CURLOPT_URL, total_url);
+	ptr_curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "C3C/1.0");
 	ptr_curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
 	ptr_curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 0L);
 	ptr_curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1L);
