@@ -3,7 +3,7 @@
 ## 0.7.10 Change list
 
 ### Changes / improvements
-- Method resolution and `$define` now works together well unless definitions are out of order for real.
+- Method resolution and `$defined` now works together well unless definitions are out of order for real.
 - Improve error message when using functions as values #2856
 - Improve support for Android with Termux.
 - Integrated download of the MSVC SDK when compiling for Windows.
