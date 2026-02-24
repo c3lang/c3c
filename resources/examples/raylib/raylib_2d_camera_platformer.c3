@@ -45,11 +45,11 @@ alias CameraUpdateFn = fn void(RLCamera2D* camera, Player* player, EnvItem[] env
 
 enum CameraUpdateType : (ZString text, CameraUpdateFn func)
 {
-	CENTER               = { "Follow player center", &update_camera_center },
-	CENTER_INSIDE_MAP    = { "Follow player center, but clamp to map edges", &update_camera_center_inside_map },
-	CENTER_SMOOTH_FOLLOW = { "Follow player center; smoothed", &update_camera_center_smooth_follow },
-	EVEN_OUT_ON_LANDING  = { "Follow player center horizontally; update player center vertically after landing", &update_camera_even_out_on_landing },
-	PLAYER_BOUNDS_PUSH   = { "Player push camera on getting too close to screen edge", &update_camera_player_bounds_push }
+	CENTER               { "Follow player center", &update_camera_center },
+	CENTER_INSIDE_MAP    { "Follow player center, but clamp to map edges", &update_camera_center_inside_map },
+	CENTER_SMOOTH_FOLLOW { "Follow player center; smoothed", &update_camera_center_smooth_follow },
+	EVEN_OUT_ON_LANDING  { "Follow player center horizontally; update player center vertically after landing", &update_camera_even_out_on_landing },
+	PLAYER_BOUNDS_PUSH   { "Player push camera on getting too close to screen edge", &update_camera_player_bounds_push }
 }
 
 //------------------------------------------------------------------------------------

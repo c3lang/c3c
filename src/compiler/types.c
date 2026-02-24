@@ -2131,7 +2131,7 @@ RETRY_DISTINCT:
 			return NULL;
 		case ALL_INTS:
 		{
-			// If Foo + 1, then we allow this if Foo is a distinct type or const enum that has
+			// If Foo + 1, then we allow this if Foo is a distinct type or constdef that has
 			// integer or float as the base type.
 			if (first && type_is_distinct_like(other) && type_underlying_is_numeric(other) && expr_is_const(first)) return other;
 			// See if we can flatten it.
@@ -2145,7 +2145,7 @@ RETRY_DISTINCT:
 		}
 		case ALL_FLOATS:
 		{
-			// If Foo + 1.0, then we allow this if Foo is a distinct type or const enum that has
+			// If Foo + 1.0, then we allow this if Foo is a distinct type or constdef that has
 			// float as the base type.
 			if (first && type_is_distinct_like(other) && type_underlying_is_numeric(other) && expr_is_const(first)) return other;
 			// See if we can flatten it.

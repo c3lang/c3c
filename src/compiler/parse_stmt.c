@@ -1444,7 +1444,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_BIT_AND_ASSIGN:
 		case TOKEN_BIT_OR_ASSIGN:
 		case TOKEN_BIT_XOR_ASSIGN:
-		case TOKEN_CENUM:
+		case TOKEN_CONSTDEF:
 		case TOKEN_COLON:
 		case TOKEN_COMMA:
 		case TOKEN_CT_CASE:

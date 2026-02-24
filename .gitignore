@@ -73,6 +73,9 @@ out/
 /cmake-build-debug/
 /cmake-build-release/
 
+CMakeFiles/cmake.check_cache
+CMakeCache.txt
+
 # etags(Emacs), ctags, gtags
 TAGS
 GPATH
@@ -94,8 +97,8 @@ result
 
 # tests
 /test/tmp/*
-/test/testrun
-/test/test_suite_runner
+testrun
+test_suite_runner
 
 # patches, originals and rejects
 *.patch

@@ -186,7 +186,7 @@ fn ulong? elf_module_image_base(String path) @local
 	bool is_little_endian = file.read_byte()! == 1;
 	// Actually, not supported.
 	if (!is_little_endian) return backtrace::IMAGE_NOT_FOUND~;
-	file.seek(0)!;
+	file.set_cursor(0)!;
 	if (is_64)
 	{
 		Elf64_Ehdr file_header;
@@ -195,7 +195,7 @@ fn ulong? elf_module_image_base(String path) @local
 		for (isz i = 0; i < file_header.e_phnum; i++)
 		{
 			Elf64_Phdr header;
-			file.seek((usz)file_header.e_phoff + (usz)file_header.e_phentsize * i)!;
+			file.set_cursor(file_header.e_phoff + (long)file_header.e_phentsize * i)!;
 			io::read_any(&file, &header)!;
 			if (header.p_type == PT_PHDR) return header.p_vaddr - header.p_offset;
 		}
@@ -207,7 +207,7 @@ fn ulong? elf_module_image_base(String path) @local
 	for (isz i = 0; i < file_header.e_phnum; i++)
 	{
 		Elf32_Phdr header;
-		file.seek(file_header.e_phoff + (usz)file_header.e_phentsize * i)!;
+		file.set_cursor(file_header.e_phoff + (long)file_header.e_phentsize * i)!;
 		io::read_any(&file, &header)!;
 		if (header.p_type == PT_PHDR) return (ulong)header.p_vaddr - header.p_offset;
 	}

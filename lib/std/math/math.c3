@@ -126,6 +126,42 @@ macro sign(x)
 
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
+*>
+macro erf(x)
+{
+	$if $typeof(x) == float:
+		return _erff(x);
+	$else
+		return _erf(x);
+	$endif
+}
+
+<*
+ @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
+*>
+macro tgamma(x)
+{
+	$if $typeof(x) == float:
+		return _tgammaf(x);
+	$else
+		return _tgamma(x);
+	$endif
+}
+
+<*
+ @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
+*>
+macro lgamma(x)
+{
+	$if $typeof(x) == float:
+		return _lgammaf(x);
+	$else
+		return _lgamma(x);
+	$endif
+}
+
+<*
+ @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
  @require values::@is_int(y) || values::@is_float(y) : "Expected an integer or floating point value"
 *>
 macro atan2(x, y)
@@ -1087,6 +1123,14 @@ extern fn float _asinf(float x) @MathLibc("asinf");
 extern fn float _acoshf(float x) @MathLibc("acoshf");
 extern fn float _asinhf(float x) @MathLibc("asinhf");
 extern fn float _atanhf(float x) @MathLibc("atanhf");
+
+extern fn double _erf(double x) @MathLibc("erf");
+extern fn double _lgamma(double x) @MathLibc("lgamma");
+extern fn double _tgamma(double x) @MathLibc("tgamma");
+
+extern fn float _erff(float x) @MathLibc("erf");
+extern fn float _lgammaf(float x) @MathLibc("lgammaf");
+extern fn float _tgammaf(float x) @MathLibc("tgammaf");
 
 
 fn double _frexp(double x, int* e)

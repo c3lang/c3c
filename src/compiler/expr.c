@@ -490,6 +490,7 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_ASM:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_CONTRACT:
 			UNREACHABLE
 		case EXPR_NOP:
 			return true;
@@ -800,6 +801,7 @@ bool expr_is_pure(Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case UNRESOLVED_EXPRS:
+		case EXPR_CONTRACT:
 			UNREACHABLE
 		case EXPR_BUILTIN:
 		case EXPR_BENCHMARK_HOOK:

@@ -17,17 +17,18 @@
 #define FOREACH_DECL_END } } }
 #define INSERT_COMMA do { if (first) { first = false; } else { fputs(",\n", file); } } while(0)
 
-static bool emit_docs(FILE *file, AstId contracts, int tabs)
+static bool emit_docs(FILE *file, DeclId contracts, int tabs)
 {
 	if (!contracts) return false;
-	Ast *ast = astptr(contracts);
-	if (ast->contract_stmt.kind != CONTRACT_COMMENT) return false;
+	return false;
+	/*
+	if (!contract->contracts_decl.comment) return false;
 	for (int i = 0; i < tabs; i++) PRINT("\t");
 	PRINT("\"comment\": \"");
 	bool last_is_whitespace = true;
-	for (size_t i = 0; i < ast->contract_stmt.strlen; i++)
+	for (size_t i = 0; i < contract->contracts_decl.comment_len; i++)
 	{
-		unsigned char c = ast->contract_stmt.string[i];
+		unsigned char c = contract->contracts_decl.comment[i];
 		if (char_is_whitespace(c) || c < 31)
 		{
 			if (last_is_whitespace) continue;
@@ -56,7 +57,7 @@ static bool emit_docs(FILE *file, AstId contracts, int tabs)
 		}
 	}
 	PRINT("\"");
-	return true;
+	return true;*/
 }
 static inline void emit_modules(FILE *file)
 {
@@ -95,7 +96,7 @@ static inline const char *decl_type_to_string(Decl *type)
 		case DECL_STRUCT: return "struct";
 		case DECL_UNION: return "union";
  		case DECL_TYPE_ALIAS: return "type_alias";
-		case DECL_CONST_ENUM: return "raw_enum";
+		case DECL_CONSTDEF: return "constdef";
 		case DECL_BODYPARAM:
 		case DECL_DECLARRAY:
 		case DECL_ERASED:
@@ -104,6 +105,7 @@ static inline const char *decl_type_to_string(Decl *type)
 		case DECL_VAR:
 		case DECL_GENERIC:
 		case DECL_GENERIC_INSTANCE:
+		case DECL_CONTRACT:
 			UNREACHABLE
 	}
 	UNREACHABLE

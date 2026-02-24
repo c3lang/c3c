@@ -68,7 +68,7 @@ Decl *decl_new_with_type(const char *name, SourceSpan span, DeclKind decl_type)
 		case DECL_ENUM:
 			kind = TYPE_ENUM;
 			break;
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 			kind = TYPE_CONST_ENUM;
 			break;
 		case DECL_TYPEDEF:
@@ -127,7 +127,7 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_ALIAS: case DECL_ALIAS_PATH: case DECL_TYPE_ALIAS: return "an alias";
 		case DECL_TYPEDEF: return "a distinct type";
 		case DECL_ENUM: return "an enum";
-		case DECL_CONST_ENUM: return "a raw enum";
+		case DECL_CONSTDEF: return "a set of constants";
 		case DECL_ENUM_CONSTANT: return "an enum value";
 		case DECL_ERASED: return "an erased declaration";
 		case DECL_FAULT: return "a fault";
@@ -143,6 +143,7 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_INTERFACE: return "an interface";
 		case DECL_STRUCT: return "a struct";
 		case DECL_UNION: return "a union";
+		case DECL_CONTRACT: return "a contract";
 		case DECL_VAR:
 			switch (decl->var.kind)
 			{
@@ -346,7 +347,8 @@ bool decl_may_be_generic(Decl *decl)
 		case DECL_GENERIC_INSTANCE:
 		case DECL_IMPORT:
 		case DECL_LABEL:
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
+		case DECL_CONTRACT:
 			return false;
 		case DECL_ATTRIBUTE:
 		case DECL_BITSTRUCT:
@@ -547,53 +549,6 @@ bool ast_supports_continue(Ast *stmt)
 	// We don't support `continue` in a `do { };` statement.
 	return stmt->for_stmt.cond || !stmt->flow.skip_first;
 }
-
-Ast *ast_contract_has_any(AstId contracts)
-{
-	while (contracts)
-	{
-		Ast *current = astptr(contracts);
-		contracts = current->next;
-		ASSERT(current->ast_kind == AST_CONTRACT);
-		switch (current->contract_stmt.kind)
-		{
-			case CONTRACT_UNKNOWN:
-			case CONTRACT_PURE:
-			case CONTRACT_PARAM:
-			case CONTRACT_OPTIONALS:
-			case CONTRACT_ENSURE:
-			case CONTRACT_REQUIRE:
-				return current;
-			case CONTRACT_COMMENT:
-				continue;
-		}
-	}
-	return NULL;
-}
-
-Ast *ast_contract_has_any_non_require(AstId contracts)
-{
-	while (contracts)
-	{
-		Ast *current = astptr(contracts);
-		contracts = current->next;
-		ASSERT(current->ast_kind == AST_CONTRACT);
-		switch (current->contract_stmt.kind)
-		{
-			case CONTRACT_UNKNOWN:
-			case CONTRACT_PURE:
-			case CONTRACT_PARAM:
-			case CONTRACT_OPTIONALS:
-			case CONTRACT_ENSURE:
-				return current;
-			case CONTRACT_REQUIRE:
-			case CONTRACT_COMMENT:
-				continue;
-		}
-	}
-	return NULL;
-}
-
 
 static void scratch_buffer_append_but_mangle_underscore_dot(const char *name, const char *end, const char *suffix)
 {

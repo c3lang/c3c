@@ -187,6 +187,8 @@ typedef struct
 
 } PlatformTarget;
 
+ArchType target_host_arch(void);
+
 static inline bool is_pie_pic(RelocModel reloc)
 {
 	switch (reloc)

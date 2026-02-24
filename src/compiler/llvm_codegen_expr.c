@@ -216,7 +216,14 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *ref_expr, Expr 
 			if (ref_expr && c->current_block) llvm_emit_expr(c, ref, ref_expr);
 		}
 		if (!c->current_block) goto AFTER_STORE;
-		if (value.type != type_void) llvm_store(c, ref, &value);
+		if (value.type == type_void)
+		{
+			value = *ref;
+		}
+		else
+		{
+			llvm_store(c, ref, &value);
+		}
 	}
 
 	if (optional)
@@ -3914,7 +3921,7 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 	assert(success_end_block && else_block_exit);
 
 	// We might have a void here
-	if (!real_value.value)
+	if (!real_value.value || LLVMIsUndef(real_value.value))
 	{
 		assert(type_flatten(expr->type) == type_void);
 		assert(!else_value.value);

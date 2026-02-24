@@ -3,13 +3,13 @@
 ## 0.7.10 Change list
 
 ### Changes / improvements
-- Method resolution and `$define` now works together well unless definitions are out of order for real.
+- C3 is now using its own LLVM libraries when building releases.
+- Method resolution and `$defined` now works together well unless definitions are out of order for real.
 - Improve error message when using functions as values #2856
 - Improve support for Android with Termux.
 - Integrated download of the MSVC SDK when compiling for Windows.
 - For `c3c init` with library templates, provide example exported functions. #2898
 - `unsigned % signed` and `unsigned / signed` is no longer allowed without explicit casts, except for const denominators. #2928
-- New const enum declaration syntax.
 - New enum associated value syntax.
 - Individual warning settings added.
 - Change typedef and const enums to not convert from literals by default.
@@ -17,7 +17,13 @@
 - Include actual element count in the error message when the array initializer size does not match the expected size.
 - Add `--print-large-functions` for checking which functions likely dominate the compile time.
 - Improve error message when providing `alias` with a typeid expression where a type was expected. #2944
-  
+- Const enums removed.
+- Constdef declarations introduced.
+- Properly support `@deprecated` as contract.
+- Support deprecating enum values.
+- Improve error when trying to use an extern const as a compile time constant. #2969
+- `vendor-fetch` command now lists all available packages by default. #2976
+
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
 - Remove dependency on temp allocator in String.join.
@@ -28,6 +34,12 @@
 - Add Xorshiro128++.
 - Add single-byte code page support (DOS/OEM, Windows/ANSI, and ISO/IEC 8859).
 - Add `array::even`, `array::odd`, and `array::unlace` macros. #2892
+- Add discrete and continuous distributions in `std::math::distributions`.
+- Add bitorder functions `store_le`, `load_le`, `store_be`, `store_le`.
+- Stream functions now use long/ulong rather than isz/usz for seek/available. 
+- `instream.seek` is replaced by `set_cursor` and `cursor`.
+- `instream.available`, `cursor` etc are long/ulong rather than isz/usz to be correct on 32-bit.
+- Enable asynchronous, non-blocking reads of subprocess STDOUT/STDERR pipes on POSIX systems.
 
 ### Fixes
 - Add error message if directory with output file name already exists
@@ -43,8 +55,12 @@
 - Improved underlining errors/warnings when unicode is used. #2887 
 - Fix std::io::Formatter integer issue for large uint128 decimal values.
 - `--safe=no` disabled compile-time errors on compile-time known runtime @require checks #2936
-- On assert known false, the message was not show for no-args.
+- On assert known false, the message was not shown for no-args.
 - Adding the incorrect sized vector to a pointer vector would cause a crash.
+- Member access on a struct returned by the assignment expression, cause crash #2947
+- Trying to slice an indexable type leads to misleading error message #2958
+- Warn on use of visibility modifiers on methods. #2962
+- Compiler crash using `??` with a `void?` macro #2973
 
 ## 0.7.9 Change list
 

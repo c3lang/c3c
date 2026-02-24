@@ -32,58 +32,58 @@ fn void*? SimpleHeapAllocator.acquire(&self, usz size, AllocInitType init_type, 
 {
 	if (init_type == ZERO)
 	{
-		return alignment > 0 ? @aligned_alloc(self._calloc, size, alignment) : self._calloc(size);
+		return alignment > 0 ? @aligned_alloc_fn(self, simple_alloc_calloc, size, alignment) : simple_alloc_calloc(self, size);
 	}
-	return alignment > 0 ? @aligned_alloc(self._alloc, size, alignment) : self._alloc(size);
+	return alignment > 0 ? @aligned_alloc_fn(self, simple_alloc_alloc, size, alignment) : simple_alloc_alloc(self, size);
 }
 
 fn void*? SimpleHeapAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
 {
 	return alignment > 0
-		? @aligned_realloc(self._calloc, self._free, old_pointer, size, alignment)
-		:  self._realloc(old_pointer, size);
+		? @aligned_realloc_fn(self, simple_alloc_calloc, simple_alloc_free, old_pointer, size, alignment)
+		:  simple_alloc_realloc(self, old_pointer, size);
 }
 
 fn void SimpleHeapAllocator.release(&self, void* old_pointer, bool aligned) @dynamic
 {
 	if (aligned)
 	{
-		@aligned_free(self._free, old_pointer)!!;
+		@aligned_free_fn(self, simple_alloc_free, old_pointer)!!;
 	}
 	else
 	{
-		self._free(old_pointer);
+		simple_alloc_free(self, old_pointer);
 	}
 }
 
 <*
  @require old_pointer && bytes > 0
 *>
-fn void*? SimpleHeapAllocator._realloc(&self, void* old_pointer, usz bytes) @local
+fn void*? simple_alloc_realloc(SimpleHeapAllocator* self, void* old_pointer, usz bytes) @local
 {
 	// Find the block header.
 	Header* block = (Header*)old_pointer - 1;
 	if (block.size >= bytes) return old_pointer;
-	void* new = self._alloc(bytes)!;
+	void* new = simple_alloc_alloc(self, bytes)!;
 	usz max_to_copy = math::min(block.size, bytes);
 	mem::copy(new, old_pointer, max_to_copy);
-	self._free(old_pointer);
+	simple_alloc_free(self, old_pointer);
 	return new;
 }
 
-fn void*? SimpleHeapAllocator._calloc(&self, usz bytes) @local
+fn void*? simple_alloc_calloc(SimpleHeapAllocator* self, usz bytes) @local
 {
-	void* data = self._alloc(bytes)!;
+	void* data = simple_alloc_alloc(self, bytes)!;
 	mem::clear(data, bytes, mem::DEFAULT_MEM_ALIGNMENT);
 	return data;
 }
 
-fn void*? SimpleHeapAllocator._alloc(&self, usz bytes) @local
+fn void*? simple_alloc_alloc(SimpleHeapAllocator* self, usz bytes) @local
 {
 	usz aligned_bytes = mem::aligned_offset(bytes, mem::DEFAULT_MEM_ALIGNMENT);
 	if (!self.free_list)
 	{
-		self.add_block(aligned_bytes)!;
+		simple_alloc_add_block(self, aligned_bytes)!;
 	}
 
 	Header* current = self.free_list;
@@ -123,22 +123,22 @@ fn void*? SimpleHeapAllocator._alloc(&self, usz bytes) @local
 				current = current.next;
 		}
 	}
-	self.add_block(aligned_bytes)!;
-	return self._alloc(aligned_bytes);
+	simple_alloc_add_block(self, aligned_bytes)!;
+	return simple_alloc_alloc(self, aligned_bytes);
 }
 
-fn void? SimpleHeapAllocator.add_block(&self, usz aligned_bytes) @local
+fn void? simple_alloc_add_block(SimpleHeapAllocator* self, usz aligned_bytes) @local
 {
 	assert(mem::aligned_offset(aligned_bytes, mem::DEFAULT_MEM_ALIGNMENT) == aligned_bytes);
 	char[] result = self.alloc_fn(aligned_bytes + Header.sizeof)!;
 	Header* new_block = (Header*)result.ptr;
 	new_block.size = result.len - Header.sizeof;
 	new_block.next = null;
-	self._free(new_block + 1);
+	simple_alloc_free(self, new_block + 1);
 }
 
 
-fn void SimpleHeapAllocator._free(&self, void* ptr) @local
+fn void simple_alloc_free(SimpleHeapAllocator* self, void* ptr) @local
 {
 	// Empty ptr -> do nothing.
 	if (!ptr) return;

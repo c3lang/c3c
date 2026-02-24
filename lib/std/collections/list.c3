@@ -82,7 +82,7 @@ fn void List.init_wrapping_array(&self, Allocator allocator, Type[] types)
 	self.allocator = allocator;
 	self.capacity = types.len;
 	self.entries = types.ptr;
-	self.set_size(types.len);
+	list_set_size(self, types.len);
 }
 
 fn bool List.is_initialized(&self) @inline => self.allocator != null && self.allocator != (Allocator)&dummy;
@@ -110,19 +110,19 @@ fn usz? List.to_format(&self, Formatter* formatter) @dynamic
 fn void List.push(&self, Type element) @inline
 {
 	self.reserve(1);
-	self.entries[self.set_size(self.size + 1)] = element;
+	self.entries[list_set_size(self, self.size + 1)] = element;
 }
 
 fn Type? List.pop(&self)
 {
 	if (!self.size) return NO_MORE_ELEMENT~;
-	defer self.set_size(self.size - 1);
+	defer list_set_size(self, self.size - 1);
 	return self.entries[self.size - 1];
 }
 
 fn void List.clear(&self)
 {
-	self.set_size(0);
+	list_set_size(self, 0);
 }
 
 fn Type? List.pop_first(&self)
@@ -138,7 +138,7 @@ fn Type? List.pop_first(&self)
 fn void List.remove_at(&self, usz index)
 {
 	usz new_size = self.size - 1;
-	defer self.set_size(new_size);
+	defer list_set_size(self, new_size);
 	if (!new_size || index == new_size) return;
 	self.entries[index .. new_size - 1] = self.entries[index + 1 .. new_size];
 }
@@ -147,7 +147,7 @@ fn void List.add_all(&self, List* other_list)
 {
 	if (!other_list.size) return;
 	self.reserve(other_list.size);
-	usz index = self.set_size(self.size + other_list.size);
+	usz index = list_set_size(self, self.size + other_list.size);
 	foreach (&value : other_list)
 	{
 		self.entries[index++] = *value;
@@ -203,7 +203,7 @@ fn void List.add_array(&self, Type[] array) @deprecated("Use push_all")
 {
 	if (!array.len) return;
 	self.reserve(array.len);
-	usz index = self.set_size(self.size + array.len);
+	usz index = list_set_size(self, self.size + array.len);
 	self.entries[index : array.len] = array[..];
 }
 
@@ -217,7 +217,7 @@ fn void List.push_all(&self, Type[] array)
 {
 	if (!array.len) return;
 	self.reserve(array.len);
-	usz index = self.set_size(self.size + array.len);
+	usz index = list_set_size(self, self.size + array.len);
 	self.entries[index : array.len] = array[..];
 }
 
@@ -232,7 +232,7 @@ fn void List.push_front(&self, Type type) @inline
 fn void List.insert_at(&self, usz index, Type type)
 {
 	self.reserve(1);
-	self.set_size(self.size + 1);
+	list_set_size(self, self.size + 1);
 	for (isz i = self.size - 1; i > index; i--)
 	{
 		self.entries[i] = self.entries[i - 1];
@@ -251,7 +251,7 @@ fn void List.set_at(&self, usz index, Type type)
 fn void? List.remove_last(&self) @maydiscard
 {
 	if (!self.size) return NO_MORE_ELEMENT~;
-	self.set_size(self.size - 1);
+	list_set_size(self, self.size - 1);
 }
 
 fn void? List.remove_first(&self) @maydiscard
@@ -299,7 +299,7 @@ fn void List.free(&self)
 {
 	if (!self.allocator || self.allocator.ptr == &dummy || !self.capacity) return;
 
-	self.pre_free(); // Remove sanitizer annotation
+	list_pre_free(self); // Remove sanitizer annotation
 
 	$if type_is_overaligned():
 		allocator::free_aligned(self.allocator, self.entries);
@@ -358,7 +358,7 @@ fn usz List.retain_using_test(&self, ElementTest filter, any context)
 	return list_common::list_remove_using_test(self, filter, true, context);
 }
 
-fn void List.ensure_capacity(&self, usz min_capacity) @local
+fn void list_ensure_capacity(List* self, usz min_capacity) @local
 {
 	if (!min_capacity) return;
 	if (self.capacity >= min_capacity) return;
@@ -374,7 +374,7 @@ fn void List.ensure_capacity(&self, usz min_capacity) @local
 			break;
 	}
 
-	self.pre_free(); // Remove sanitizer annotation
+	list_pre_free(self); // Remove sanitizer annotation
 
 	min_capacity = math::next_power_of_2(min_capacity);
 	$if type_is_overaligned():
@@ -384,7 +384,7 @@ fn void List.ensure_capacity(&self, usz min_capacity) @local
 	$endif;
 	self.capacity = min_capacity;
 
-	self.post_alloc(); // Add sanitizer annotation
+	list_post_alloc(self); // Add sanitizer annotation
 }
 
 <*
@@ -419,7 +419,7 @@ fn void List.reserve(&self, usz added)
 	assert(new_size < usz.max / 2U);
 	usz new_capacity = self.capacity ? 2U * self.capacity : 16U;
 	while (new_capacity < new_size) new_capacity *= 2U;
-	self.ensure_capacity(new_capacity);
+	list_ensure_capacity(self, new_capacity);
 }
 
 fn void List._update_size_change(&self,usz old_size, usz new_size)
@@ -436,7 +436,7 @@ fn void List._update_size_change(&self,usz old_size, usz new_size)
 <*
  @require new_size == 0 || self.capacity != 0
 *>
-fn usz List.set_size(&self, usz new_size) @inline @private
+fn usz list_set_size(List* self, usz new_size) @inline @private
 {
 	usz old_size = self.size;
 	self._update_size_change(old_size, new_size);
@@ -444,7 +444,7 @@ fn usz List.set_size(&self, usz new_size) @inline @private
 	return old_size;
 }
 
-macro void List.pre_free(&self) @private
+macro void list_pre_free(List* self) @private
 {
 	if (!self.capacity) return;
 	self._update_size_change(self.size, self.capacity);
@@ -453,7 +453,7 @@ macro void List.pre_free(&self) @private
 <*
  @require self.capacity > 0
 *>
-macro void List.post_alloc(&self) @private
+macro void list_post_alloc(List* self) @private
 {
 	self._update_size_change(self.capacity, self.size);
 }
