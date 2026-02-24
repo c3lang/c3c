@@ -1,10 +1,10 @@
 // #target: macos-x64
 module test;
 enum TokenType: char (char token) {
-  ERROR = 0,
-  INCP = '>',
-  DECP = '>',
-  LOOPS = '[',
+  ERROR { 0   },
+  INCP  { '>' },
+  DECP  { '>' },
+  LOOPS { '[' },
 }
 
 macro populate_token_table() {

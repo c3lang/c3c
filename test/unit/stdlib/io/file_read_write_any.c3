@@ -1,5 +1,5 @@
 module std::io::file @test;
-import std::io, libc;
+import std::io, libc, std::math;
 
 struct Data
 {
@@ -58,7 +58,11 @@ fn void read_write_any()
 	data.hello = 0xCC;
 
 	char[1024] buf;
-	String name = libc::tmpnam(&buf).str_view();
+
+	String filename = string::tformat("c3_test_file_%x", rand(0xFFFFFFF));
+	Path temp_dir = path::temp_directory(tmem).tappend(filename)!!;
+
+	String name = temp_dir.str_view();
     File file = file::open(name, "wb")!!;
 
 	io::write_any(&file, &data)!!;

@@ -125,10 +125,11 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 		char[] perc_str = { [0..19] = ' ', [20] = 0 };
 		int perc = 0;
 		uint print_step = current_benchmark_iterations / 100;
+		if (print_step == 0) print_step = 1;
 
 		for (this_iteration = 0; this_iteration < current_benchmark_iterations; ++this_iteration, benchmark_nano_seconds = {})
 		{
-			if (0 == this_iteration % print_step)   // only print right about when the % will update
+			if (this_iteration % print_step == 0)   // only print right about when the % will update
 			{
 				perc_str[0..(uint)math::floor((this_iteration / (float)current_benchmark_iterations) * 20)] = '#';
 				perc = (uint)math::ceil(100 * (this_iteration / (float)current_benchmark_iterations));

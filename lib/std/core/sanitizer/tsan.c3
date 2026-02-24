@@ -2,16 +2,16 @@ module std::core::sanitizer::tsan;
 
 typedef MutexFlags = inline CUInt;
 
-const MutexFlags MUTEX_LINKER_INIT      = 1 << 0;
-const MutexFlags MUTEX_WRITE_REENTRANT  = 1 << 1;
-const MutexFlags MUTEX_READ_REENTRANT   = 1 << 2;
-const MutexFlags MUTEX_NOT_STATIC       = 1 << 8;
-const MutexFlags MUTEX_READ_LOCK        = 1 << 3;
-const MutexFlags MUTEX_TRY_LOCK         = 1 << 4;
-const MutexFlags MUTEX_TRY_LOCK_FAILED  = 1 << 5;
-const MutexFlags MUTEX_RECURSIVE_LOCK   = 1 << 6;
-const MutexFlags MUTEX_RECURSIVE_UNLOCK = 1 << 7;
-const MutexFlags MUTEX_TRY_READ_LOCK = MUTEX_READ_LOCK | MUTEX_TRY_LOCK;
+const MutexFlags MUTEX_LINKER_INIT          = (MutexFlags)1 << 0;
+const MutexFlags MUTEX_WRITE_REENTRANT      = (MutexFlags)1 << 1;
+const MutexFlags MUTEX_READ_REENTRANT       = (MutexFlags)1 << 2;
+const MutexFlags MUTEX_NOT_STATIC           = (MutexFlags)1 << 8;
+const MutexFlags MUTEX_READ_LOCK            = (MutexFlags)1 << 3;
+const MutexFlags MUTEX_TRY_LOCK             = (MutexFlags)1 << 4;
+const MutexFlags MUTEX_TRY_LOCK_FAILED      = (MutexFlags)1 << 5;
+const MutexFlags MUTEX_RECURSIVE_LOCK       = (MutexFlags)1 << 6;
+const MutexFlags MUTEX_RECURSIVE_UNLOCK     = (MutexFlags)1 << 7;
+const MutexFlags MUTEX_TRY_READ_LOCK        = MUTEX_READ_LOCK | MUTEX_TRY_LOCK;
 const MutexFlags MUTEX_TRY_READ_LOCK_FAILED = MUTEX_TRY_READ_LOCK | MUTEX_TRY_LOCK_FAILED;
 
 macro void mutex_create(void* addr, MutexFlags flags) { $if env::THREAD_SANITIZER: __tsan_mutex_create(addr, flags); $endif }

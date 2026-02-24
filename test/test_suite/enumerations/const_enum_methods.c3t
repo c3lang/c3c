@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 
-enum Enum : const int
+constdef Enum : int
 {
     E0, E1
 }

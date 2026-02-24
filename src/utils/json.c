@@ -335,6 +335,7 @@ void json_map_set(JSONObject *obj, const char *key, JSONObject *value)
 		if (str_eq(a_key, key))
 		{
 			obj->members[i] = value;
+			return;
 		}
 	}
 	vec_add(obj->members, value);

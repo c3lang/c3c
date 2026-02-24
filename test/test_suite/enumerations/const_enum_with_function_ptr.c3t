@@ -6,11 +6,11 @@ alias FooFn = fn int();
 
 enum Foo : (FooFn f)
 {
-  FOO = fn int() => 0, // allowed
-  BAR = &foo, // allowed
+  FOO { fn int() => 0 }, // allowed
+  BAR { &foo }, // allowed
 }
 
-enum Bar : const FooFn
+constdef Bar : FooFn
 {
   FOO = fn int() => 0, // allowed
   BAR = &foo, // Error: Expected an constant enum value.

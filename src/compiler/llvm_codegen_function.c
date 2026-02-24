@@ -609,7 +609,15 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 		c->debug.block_stack = NULL;
 		LLVMDIBuilderFinalizeSubprogram(c->debug.builder, c->debug.function);
 	}
-
+	if (compiler.build.print_large_functions)
+	{
+		unsigned instruction_count = LLVMGetFunctionInstructionCount(function);
+		if (instruction_count > 5000)
+		{
+			eprintf("%8u instructions found in %s:%s (%s) - function is very long.\n", instruction_count, decl->unit->module->name->module,
+				decl->name, decl->unit->file->full_path);
+		}
+	}
 	c->builder = prev_builder;
 	c->cur_func.ref = prev_function;
 }

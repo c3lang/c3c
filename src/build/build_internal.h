@@ -128,6 +128,13 @@ static const char *backends[3] = {
 		[BACKEND_C] = "c",
 };
 
+static const char *warnings[4] = {
+	[WARNING_NOT_SET] = "%NOTSET%",
+	[WARNING_SILENT] = "no",
+	[WARNING_WARN] = "yes",
+	[WARNING_ERROR] = "error",
+};
+
 static const char *validation_levels[3] = {
 	[VALIDATION_LENIENT] = "lenient",
 	[VALIDATION_STRICT] = "strict",

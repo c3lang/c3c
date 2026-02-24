@@ -4,5 +4,5 @@ macro void test(int[2][6] a)
 }
 fn void main()
 {
-	test({ { 1, 2 } }); // #error: Too few elements in initializer
+	test({ { 1, 2 } }); // #error:  Too few (1) elements in initializer, expected 6
 }

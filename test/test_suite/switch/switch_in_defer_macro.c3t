@@ -143,7 +143,7 @@ fn Token? Lexer.expect(&self, fault err, Token... tokens)
 	return err~;
 }
 
-fn void? Lexer.skip_whitespace(&self) @private
+fn void? Lexer.skip_whitespace(&self)
 {
 	self.span = 0;
 	while (true)
@@ -166,7 +166,7 @@ fn void? Lexer.skip_whitespace(&self) @private
 	}
 }
 
-fn ulong? Lexer.parse_uint(&self) @private
+fn ulong? Lexer.parse_uint(&self)
 {
 	ulong x;
 	char c = self.reader.read_byte()!;
@@ -190,7 +190,7 @@ fn ulong? Lexer.parse_uint(&self) @private
 	return self.parse_decimal()!;
 }
 
-fn ulong? Lexer.parse_decimal(&self) @private
+fn ulong? Lexer.parse_decimal(&self)
 {
 	return @parse_uint(self, ulong; ulong x, char c, bool ok)
 	{
@@ -202,7 +202,7 @@ fn ulong? Lexer.parse_decimal(&self) @private
 	};
 }
 
-fn ulong? Lexer.parse_hexadecimal(&self) @private
+fn ulong? Lexer.parse_hexadecimal(&self)
 {
 	return @parse_uint(self, ulong; ulong x, char c, bool ok)
 	{
@@ -219,7 +219,7 @@ fn ulong? Lexer.parse_hexadecimal(&self) @private
 	};
 }
 
-fn ulong? Lexer.parse_binary(&self) @private
+fn ulong? Lexer.parse_binary(&self)
 {
 	return @parse_uint(self, ulong; ulong x, char c, bool ok)
 	{
@@ -231,7 +231,7 @@ fn ulong? Lexer.parse_binary(&self) @private
 	};
 }
 
-fn ulong? Lexer.parse_octal(&self) @private
+fn ulong? Lexer.parse_octal(&self)
 {
 	return @parse_uint(self, ulong; ulong x, char c, bool ok)
 	{
@@ -275,7 +275,7 @@ macro @parse_uint(self, $Type; @body(x, c, ok)) @private
 	return x;
 }
 
-fn String? Lexer.parse_string(&self, char quote) @private
+fn String? Lexer.parse_string(&self, char quote)
 {
 	char c = self.read_char_for_string()!;
 	if (c == quote) return "";
@@ -316,7 +316,7 @@ fn String? Lexer.parse_string(&self, char quote) @private
 	}
 }
 
-fn char? Lexer.parse_rune(&self) @private
+fn char? Lexer.parse_rune(&self)
 {
 	char x = self.reader.read_byte()!;
 	char c = self.reader.read_byte()!;
@@ -324,7 +324,7 @@ fn char? Lexer.parse_rune(&self) @private
 	return x;
 }
 
-macro char? Lexer.read_char_for_string(&self) @private
+macro char? Lexer.read_char_for_string(&self)
 {
 	char? c = self.reader.read_byte();
 	if (catch err = c)
@@ -335,7 +335,7 @@ macro char? Lexer.read_char_for_string(&self) @private
 	return c;
 }
 
-fn Token? Lexer.parse_token(&self) @private
+fn Token? Lexer.parse_token(&self)
 {
 	usz n = self.reader.read(self.buf)!;
 	defer self.unread(n);
@@ -344,7 +344,7 @@ fn Token? Lexer.parse_token(&self) @private
 	return tok;
 }
 
-fn void? Lexer.parse_comment(&self, String end) @private
+fn void? Lexer.parse_comment(&self, String end)
 {
 	// Find the end token and accumulate the data in between.
 	DString acc;
@@ -367,7 +367,7 @@ fn void? Lexer.parse_comment(&self, String end) @private
 	}
 }
 
-macro Lexer.unread(self, n) @private
+macro Lexer.unread(self, n)
 {
 	switch
 	{
@@ -383,7 +383,7 @@ macro Lexer.unread(self, n) @private
 	}
 }
 
-fn String? Lexer.parse_ident(&self) @private
+fn String? Lexer.parse_ident(&self)
 {
 	DString str;
 	str.init(self.allocator, 8);
@@ -409,16 +409,16 @@ alias Kind = lexer::Kind{Token, Comment};
 
 enum Token : char (String token)
 {
-	KEYWORD1 = "keyword1",
-	KEYWORD2 = "keyword2",
-	SINGLE   = "//",
-	MULTI    = "/*",
+	KEYWORD1 { "keyword1" },
+	KEYWORD2 { "keyword2" },
+	SINGLE   { "//"       },
+	MULTI    { "/*"       },
 }
 
 enum Comment : char (Token start, String end)
 {
-	SINGLE = { SINGLE, "\n" },
-	MULTI  = { MULTI, "*/" },
+	SINGLE { SINGLE, "\n" },
+	MULTI  { MULTI, "*/" },
 }
 
 fn bool is_ident_char(usz i, char c)
@@ -528,7 +528,7 @@ fn void? Trie.del(&self, char[] key)
 	self.nodes[0].del(self, key, path)!;
 }
 
-fn Value? TrieNode.get(&self, Trie *t, char[] key) @private
+fn Value? TrieNode.get(&self, Trie *t, char[] key)
 {
 	if (key.len == 0) return self.valid ? self.value : NOT_FOUND~;
 	char c = key[0];
@@ -537,7 +537,7 @@ fn Value? TrieNode.get(&self, Trie *t, char[] key) @private
 	return t.nodes[idx].get(t, key[1..]);
 }
 
-fn Value? TrieNode.get_best(&self, Trie *t, char[] key, Index result) @private
+fn Value? TrieNode.get_best(&self, Trie *t, char[] key, Index result)
 {
 	if (key.len == 0)
 	{
@@ -556,7 +556,7 @@ fn Value? TrieNode.get_best(&self, Trie *t, char[] key, Index result) @private
 	return next.get_best(t, key[1..], result);
 }
 
-fn void? TrieNode.set(&self, Trie *t, char[] key, Value value) @private
+fn void? TrieNode.set(&self, Trie *t, char[] key, Value value)
 {
 	if (key.len == 0)
 	{
@@ -578,7 +578,7 @@ fn void? TrieNode.set(&self, Trie *t, char[] key, Value value) @private
 	t.nodes[idx].set(t, key[1..], value)!;
 }
 
-fn void? TrieNode.del(&self, Trie* t, char[] key, TriePath path) @private
+fn void? TrieNode.del(&self, Trie* t, char[] key, TriePath path)
 {
 	if (key.len > 0)
 	{

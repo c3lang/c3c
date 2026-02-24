@@ -332,7 +332,7 @@ void resolve_libraries(BuildTarget *build_target)
 		else
 		{
 			// Fallback to the arch in case of a common one, e.g. "macos-x64" -> "macos"
-			char *c = strchr(arch_os, '-');
+			const char *c = strchr(arch_os, '-');
 			if (c)
 			{
 				size_t to_remove = strlen(arch_os) - (c - arch_os);

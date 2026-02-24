@@ -388,7 +388,7 @@ bool sema_expr_analyse_str_find(SemaContext *context, Expr *expr)
 	}
 	const char *inner_str = inner->const_expr.bytes.ptr;
 	const char *find_str = inner_find->const_expr.bytes.ptr;
-	char *ret = strstr(inner_str, find_str);
+	const char *ret = strstr(inner_str, find_str);
 	expr_rewrite_const_int(expr, type_isz, (uint64_t)(ret == NULL ? -1 : ret - inner_str));
 	return true;
 }

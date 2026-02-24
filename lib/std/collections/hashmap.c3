@@ -150,7 +150,7 @@ fn bool HashMap.is_initialized(&map)
 fn HashMap* HashMap.init_from_map(&self, Allocator allocator, HashMap* other_map)
 {
 	self.init(allocator, other_map.table.len, other_map.load_factor);
-	self.put_all_for_create(other_map);
+	hashmap_put_all_for_create(self, other_map);
 	return self;
 }
 
@@ -233,7 +233,7 @@ macro Value HashMap.@get_or_set(&map, Key key, Value #expr)
 		if (e.hash == hash && equals(key, e.key)) return e.value;
 	}
 	Value val = #expr;
-	map.add_entry(hash, key, val, index);
+	hashmap_add_entry(map, hash, key, val, index);
 	return val;
 }
 
@@ -269,13 +269,13 @@ fn bool HashMap.set(&map, Key key, Value value) @operator([]=)
 			return true;
 		}
 	}
-	map.add_entry(hash, key, value, index);
+	hashmap_add_entry(map, hash, key, value, index);
 	return false;
 }
 
 fn void? HashMap.remove(&map, Key key) @maydiscard
 {
-	if (!map.remove_entry_for_key(key)) return NOT_FOUND~;
+	if (!hashmap_remove_entry_for_key(map, key)) return NOT_FOUND~;
 }
 
 fn void HashMap.clear(&map)
@@ -290,9 +290,9 @@ fn void HashMap.clear(&map)
 		{
 			Entry *to_delete = next;
 			next = next.next;
-			map.free_entry(to_delete);
+			hashmap_free_entry(map, to_delete);
 		}
-		map.free_entry(entry);
+		hashmap_free_entry(map, entry);
 		*entry_ref = null;
 	}
 	map.count = 0;
@@ -302,7 +302,7 @@ fn void HashMap.free(&map)
 {
 	if (!map.is_initialized()) return;
 	map.clear();
-	map.free_internal(map.table.ptr);
+	hashmap_free_internal(map, map.table.ptr);
 	map.table = {};
 }
 
@@ -402,7 +402,7 @@ fn HashMapKeyIterator HashMap.key_iter(&self)
 
 // --- private methods
 
-fn void HashMap.add_entry(&map, uint hash, Key key, Value value, uint bucket_index) @private
+fn void hashmap_add_entry(HashMap* map, uint hash, Key key, Value value, uint bucket_index) @private
 {
 	$if COPY_KEYS:
 	key = key.copy(map.allocator);
@@ -411,11 +411,11 @@ fn void HashMap.add_entry(&map, uint hash, Key key, Value value, uint bucket_ind
 	map.table[bucket_index] = entry;
 	if (map.count++ >= map.threshold)
 	{
-		map.resize(map.table.len * 2);
+		hashmap_resize(map, map.table.len * 2);
 	}
 }
 
-fn void HashMap.resize(&map, uint new_capacity) @private
+fn void hashmap_resize(HashMap* map, uint new_capacity) @private
 {
 	Entry*[] old_table = map.table;
 	uint old_capacity = old_table.len;
@@ -425,9 +425,9 @@ fn void HashMap.resize(&map, uint new_capacity) @private
 		return;
 	}
 	Entry*[] new_table = allocator::new_array(map.allocator, Entry*, new_capacity);
-	map.transfer(new_table);
+	hashmap_transfer(map, new_table);
 	map.table = new_table;
-	map.free_internal(old_table.ptr);
+	hashmap_free_internal(map, old_table.ptr);
 	map.threshold = (uint)(new_capacity * map.load_factor);
 }
 
@@ -443,7 +443,7 @@ fn usz? HashMap.to_format(&self, Formatter* f) @dynamic
 	return len + f.print(" }");
 }
 
-fn void HashMap.transfer(&map, Entry*[] new_table) @private
+fn void hashmap_transfer(HashMap* map, Entry*[] new_table) @private
 {
 	Entry*[] src = map.table;
 	uint new_capacity = new_table.len;
@@ -462,20 +462,20 @@ fn void HashMap.transfer(&map, Entry*[] new_table) @private
 	}
 }
 
-fn void HashMap.put_all_for_create(&map, HashMap* other_map) @private
+fn void hashmap_put_all_for_create(HashMap* map, HashMap* other_map) @private
 {
 	if (!other_map.count) return;
 	foreach (Entry *e : other_map.table)
 	{
 		while (e)
 		{
-			map.put_for_create(e.key, e.value);
+			hashmap_put_for_create(map, e.key, e.value);
 			e = e.next;
 		}
 	}
 }
 
-fn void HashMap.put_for_create(&map, Key key, Value value) @private
+fn void hashmap_put_for_create(HashMap* map, Key key, Value value) @private
 {
 	uint hash = rehash(key.hash());
 	uint i = index_for(hash, map.table.len);
@@ -487,15 +487,15 @@ fn void HashMap.put_for_create(&map, Key key, Value value) @private
 			return;
 		}
 	}
-	map.create_entry(hash, key, value, i);
+	hashmap_create_entry(map, hash, key, value, i);
 }
 
-fn void HashMap.free_internal(&map, void* ptr) @inline @private
+fn void hashmap_free_internal(HashMap* map, void* ptr) @inline @private
 {
 	allocator::free(map.allocator, ptr);
 }
 
-fn bool HashMap.remove_entry_for_key(&map, Key key) @private
+fn bool hashmap_remove_entry_for_key(HashMap* map, Key key) @private
 {
 	if (!map.count) return false;
 	uint hash = rehash(key.hash());
@@ -516,7 +516,7 @@ fn bool HashMap.remove_entry_for_key(&map, Key key) @private
 			{
 				prev.next = next;
 			}
-			map.free_entry(e);
+			hashmap_free_entry(map, e);
 			return true;
 		}
 		prev = e;
@@ -525,7 +525,7 @@ fn bool HashMap.remove_entry_for_key(&map, Key key) @private
 	return false;
 }
 
-fn void HashMap.create_entry(&map, uint hash, Key key, Value value, int bucket_index) @private
+fn void hashmap_create_entry(HashMap* map, uint hash, Key key, Value value, int bucket_index) @private
 {
 	Entry *e = map.table[bucket_index];
 	$if COPY_KEYS:
@@ -536,12 +536,12 @@ fn void HashMap.create_entry(&map, uint hash, Key key, Value value, int bucket_i
 	map.count++;
 }
 
-fn void HashMap.free_entry(&self, Entry *entry) @local
+fn void hashmap_free_entry(HashMap* map, Entry *entry) @local
 {
 	$if COPY_KEYS:
-	allocator::free(self.allocator, entry.key);
+	allocator::free(map.allocator, entry.key);
 	$endif
-	self.free_internal(entry);
+	hashmap_free_internal(map, entry);
 }
 
 

@@ -13,7 +13,7 @@ void compile_clean(BuildOptions *options);
 void execute_scripts(void);
 void init_build_target(BuildTarget *build_target, BuildOptions *build_options);
 void init_default_build_target(BuildTarget *target, BuildOptions *options);
-void symtab_init(uint32_t max_size);
+void symtab_init(uint32_t capacity);
 void symtab_destroy();
 void print_syntax(BuildOptions *options);
 void vendor_fetch(BuildOptions *options);

@@ -637,8 +637,13 @@ void file_copy_file(const char *src_path, const char *dst_path, bool overwrite)
 #if (_MSC_VER)
 	CopyFileW(win_utf8to16(src_path), win_utf8to16(dst_path), !overwrite);
 #else
-	const char *cmd = "cp %s %s %s";
-	execute_cmd(str_printf(cmd, !overwrite ? "--update=none" : "--update=all", src_path, dst_path), true, NULL, 2048);
+	scratch_buffer_clear();
+	scratch_buffer_append("cp ");
+	if (!overwrite) scratch_buffer_append("-u ");
+	scratch_buffer_append_cmd_argument(src_path);
+	scratch_buffer_append_char(' ');
+	scratch_buffer_append_cmd_argument(dst_path);
+	execute_cmd(scratch_buffer_to_string(), true, NULL, 2048);
 #endif
 }
 

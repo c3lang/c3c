@@ -1,4 +1,4 @@
-typedef Foo = inline uint;
+typedef Foo @constinit = inline uint;
 
 macro @test($abc)
 {

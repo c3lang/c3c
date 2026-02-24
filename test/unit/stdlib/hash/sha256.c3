@@ -6,8 +6,7 @@ fn void test_sha256_empty()
 	Sha256 sha;
 	sha.init();
 	sha.update("");
-
-	test::@check(sha.final() == x"E3B0C442 98FC1C14 9AFBF4C8 996FB924 27AE41E4 649B934C A495991B 7852B855");
+	test::eq(sha.final(), x"E3B0C442 98FC1C14 9AFBF4C8 996FB924 27AE41E4 649B934C A495991B 7852B855");
 }
 
 fn void test_sha256_abc()
@@ -16,7 +15,7 @@ fn void test_sha256_abc()
 	sha.init();
 	sha.update("abc");
 
-	test::@check(sha.final() == x"BA7816BF 8F01CFEA 414140DE 5DAE2223 B00361A3 96177A9C B410FF61 F20015AD");
+	test::eq(sha.final(), x"BA7816BF 8F01CFEA 414140DE 5DAE2223 B00361A3 96177A9C B410FF61 F20015AD");
 }
 
 fn void test_sha256_longer()
@@ -24,7 +23,7 @@ fn void test_sha256_longer()
 	Sha256 sha;
 	sha.init();
 	sha.update("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopqabcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq");
-	test::@check(sha.final() == x"59F109D9 533B2B70 E7C3B814 A2BD218F 78EA5D37 14455BC6 7987CF0D 664399CF");
+	test::eq(sha.final(), x"59F109D9 533B2B70 E7C3B814 A2BD218F 78EA5D37 14455BC6 7987CF0D 664399CF");
 }
 
 fn void test_sha256_multi_update_permute()
@@ -37,7 +36,7 @@ fn void test_sha256_multi_update_permute()
 		usz i = 0;
 		for (; i < input.len / step; i++) sha.update(input[i * step : step]);
 		if (i * step < input.len) sha.update(input[i * step..]);
-		test::@check(sha.final() == x"b527293dfb70dcce37e593f4c43e1b81909615722bad041b90b8df22bebd00a0", "Mismatch for step %d", step);
+		test::eq(sha.final(), x"b527293dfb70dcce37e593f4c43e1b81909615722bad041b90b8df22bebd00a0");
 	}
 }
 

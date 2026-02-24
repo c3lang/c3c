@@ -8,9 +8,9 @@ typedef NativeThread = int;
 
 fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 {
-	if (*flag == 0)
+	if (*flag == (NativeOnceFlag)0)
 	{
-		*flag = 1;
+		*flag = (NativeOnceFlag)1;
 		func();
 	}
 }

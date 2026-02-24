@@ -431,7 +431,7 @@ fn void scrolling_input_unaligned_permutations_with_random_chunks() @if($feature
                 ChaCha20 c @noinit;
                 defer c.destroy();
                 c.init(key, nonce);
-                for (usz x = 1; encrypt_me.len; encrypt_me = encrypt_me[x..], x = (rand.next_byte() % min(k, encrypt_me.len ?: 1)) ?: 1) c.transform(encrypt_me[:x]);
+                for (usz x = 1; encrypt_me.len; encrypt_me = encrypt_me[x..], x = (rand.next_byte() % min(k, encrypt_me.len ?: 1U)) ?: 1U) c.transform(encrypt_me[:x]);
                 test::@check(unaligned[i:j] == LARGE_EXPECTED[:j], "Mismatched permutation of hash on index (%d, %d; %d).", i, j, k);
 
                 test::@check(chacha20::tencrypt(LARGE_INPUT[:j], key, nonce) == LARGE_EXPECTED[:j], "Mismatched permutation of hash on index (%d, %d).", i, j);

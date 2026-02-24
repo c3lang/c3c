@@ -143,7 +143,7 @@ fn LinkedHashSet* LinkedHashSet.init_from_set(&self, Allocator allocator, Linked
 	LinkedEntry* entry = other_set.head;
 	while (entry) // Save insertion order
 	{
-		self.put_for_create(entry.value);
+		linkedhashset_put_for_create(self, entry.value);
 		entry = entry.after;
 	}
 	return self;
@@ -223,7 +223,7 @@ fn bool LinkedHashSet.add(&set, Value value)
 	{
 		if (e.hash == hash && equals(value, e.value)) return false;
 	}
-	set.add_entry(hash, value, index);
+	linkedhashset_add_entry(set, hash, value, index);
 	return true;
 }
 
@@ -266,7 +266,7 @@ fn bool LinkedHashSet.contains(&set, Value value)
 *>
 fn void? LinkedHashSet.remove(&set, Value value) @maydiscard
 {
-	if (!set.remove_entry_for_value(value)) return NOT_FOUND~;
+	if (!linkedhashset_remove_entry_for_value(set, value)) return NOT_FOUND~;
 }
 
 fn usz LinkedHashSet.remove_all(&set, Value[] values)
@@ -274,7 +274,7 @@ fn usz LinkedHashSet.remove_all(&set, Value[] values)
 	usz total;
 	foreach (v : values)
 	{
-		if (set.remove_entry_for_value(v)) total++;
+		if (linkedhashset_remove_entry_for_value(set, v)) total++;
 	}
 	return total;
 }
@@ -287,7 +287,7 @@ fn usz LinkedHashSet.remove_all_from(&set, LinkedHashSet* other)
 	usz total;
 	other.@each(;Value val)
     {
-		if (set.remove_entry_for_value(val)) total++;
+		if (linkedhashset_remove_entry_for_value(set, val)) total++;
     };
     return total;
 }
@@ -299,7 +299,7 @@ fn void LinkedHashSet.free(&set)
 {
 	if (!set.is_initialized()) return;
 	set.clear();
-	set.free_internal(set.table.ptr);
+	linkedhashset_free_internal(set, set.table.ptr);
 	set.table = {};
 }
 
@@ -316,7 +316,7 @@ fn void LinkedHashSet.clear(&set)
 	while (entry)
 	{
 		LinkedEntry* next = entry.after;
-		set.free_entry(entry);
+		linkedhashset_free_entry(set, entry);
 		entry = next;
 	}
 
@@ -334,7 +334,7 @@ fn void LinkedHashSet.reserve(&set, usz capacity)
 {
 	if (capacity > set.threshold)
 	{
-		set.resize(math::next_power_of_2(capacity));
+		linkedhashset_resize(set, math::next_power_of_2(capacity));
 	}
 }
 
@@ -451,7 +451,7 @@ fn bool LinkedHashSet.is_subset(&self, LinkedHashSet* other)
 
 // --- private methods
 
-fn void LinkedHashSet.add_entry(&set, uint hash, Value value, uint bucket_index) @private
+fn void linkedhashset_add_entry(LinkedHashSet* set, uint hash, Value value, uint bucket_index) @private
 {
 	LinkedEntry* entry = allocator::new(set.allocator, LinkedEntry, {
 		.hash = hash,
@@ -478,11 +478,11 @@ fn void LinkedHashSet.add_entry(&set, uint hash, Value value, uint bucket_index)
 
 	if (set.count++ >= set.threshold)
 	{
-		set.resize(set.table.len * 2);
+		linkedhashset_resize(set, set.table.len * 2);
 	}
 }
 
-fn void LinkedHashSet.resize(&set, usz new_capacity) @private
+fn void linkedhashset_resize(LinkedHashSet* set, usz new_capacity) @private
 {
 	LinkedEntry*[] old_table = set.table;
 	usz old_capacity = old_table.len;
@@ -552,7 +552,7 @@ fn void LinkedHashSet.resize(&set, usz new_capacity) @private
 		}
 	}
 
-	set.free_internal(old_table.ptr);
+	linkedhashset_free_internal(set, old_table.ptr);
 }
 
 fn usz? LinkedHashSet.to_format(&self, Formatter* f) @dynamic
@@ -567,7 +567,7 @@ fn usz? LinkedHashSet.to_format(&self, Formatter* f) @dynamic
 	return len + f.print(" }");
 }
 
-fn void LinkedHashSet.transfer(&set, LinkedEntry*[] new_table) @private
+fn void linked_hashset_transfer(LinkedHashSet* set, LinkedEntry*[] new_table) @private
 {
 	LinkedEntry*[] src = set.table;
 	uint new_capacity = new_table.len;
@@ -586,7 +586,7 @@ fn void LinkedHashSet.transfer(&set, LinkedEntry*[] new_table) @private
 	}
 }
 
-fn void LinkedHashSet.put_for_create(&set, Value value) @private
+fn void linkedhashset_put_for_create(LinkedHashSet* set, Value value) @private
 {
 	uint hash = rehash(value.hash());
 	uint i = index_for(hash, set.table.len);
@@ -598,15 +598,15 @@ fn void LinkedHashSet.put_for_create(&set, Value value) @private
 			return;
 		}
 	}
-	set.create_entry(hash, value, i);
+	linkedhashset_create_entry(set, hash, value, i);
 }
 
-fn void LinkedHashSet.free_internal(&set, void* ptr) @inline @private
+fn void linkedhashset_free_internal(LinkedHashSet* set, void* ptr) @inline @private
 {
 	allocator::free(set.allocator, ptr);
 }
 
-fn void LinkedHashSet.create_entry(&set, uint hash, Value value, int bucket_index) @private
+fn void linkedhashset_create_entry(LinkedHashSet* set, uint hash, Value value, int bucket_index) @private
 {
 	LinkedEntry* entry = allocator::new(set.allocator, LinkedEntry, {
 		.hash = hash,
@@ -633,7 +633,7 @@ fn void LinkedHashSet.create_entry(&set, uint hash, Value value, int bucket_inde
 	set.count++;
 }
 
-fn bool LinkedHashSet.remove_entry_for_value(&set, Value value) @private
+fn bool linkedhashset_remove_entry_for_value(LinkedHashSet* set, Value value) @private
 {
 	if (!set.count) return false;
 
@@ -674,7 +674,7 @@ fn bool LinkedHashSet.remove_entry_for_value(&set, Value value) @private
 			}
 
 			set.count--;
-			set.free_entry(e);
+			linkedhashset_free_entry(set, e);
 			return true;
 		}
 		prev = e;
@@ -683,7 +683,7 @@ fn bool LinkedHashSet.remove_entry_for_value(&set, Value value) @private
 	return false;
 }
 
-fn void LinkedHashSet.free_entry(&set, LinkedEntry *entry) @private
+fn void linkedhashset_free_entry(LinkedHashSet* set, LinkedEntry *entry) @private
 {
 	allocator::free(set.allocator, entry);
 }

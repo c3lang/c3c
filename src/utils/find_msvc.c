@@ -20,7 +20,8 @@ WindowsSDK get_windows_paths()
 
 	if (!root)
 	{
-		error_exit("Failed to find windows kit root.");
+		DEBUG_LOG("Failed to find windows kit root.");
+		return out;
 	}
 
 	out.windows_sdk_path = find_best_version(root, "Lib");
@@ -28,7 +29,8 @@ WindowsSDK get_windows_paths()
 	if (!out.windows_sdk_path)
 	{	
 		free(root);
-		error_exit("Failed to find Lib dir in windows kit root.");
+		DEBUG_LOG("Failed to find Lib dir in windows kit root.");
+		return out;
 	}
 
 	char *windows_sdk_include_root = find_best_version(root, "Include");
@@ -36,10 +38,17 @@ WindowsSDK get_windows_paths()
 	if (!windows_sdk_include_root)
 	{
 		free(root);
-		error_exit("Failed to find Include dir in windows kit root.");
+		DEBUG_LOG("Failed to find Include dir in windows kit root.");
+		return out;
 	}
 
 	char *vs_path = find_visual_studio();
+	if (!vs_path)
+	{
+		free(root);
+		DEBUG_LOG("Failed to find Visual Studio installation.");
+		return out;
+	}
 
 	scratch_buffer_clear();
 	scratch_buffer_printf("%s\\lib\\x64", vs_path);
@@ -78,7 +87,8 @@ static char *find_visual_studio(void)
 	// Call vswhere.exe
 	if (!execute_cmd_failable(scratch_buffer_to_string(), &install_path, NULL, 0))
 	{
-		error_exit("Failed to find vswhere.exe to detect MSVC.");
+		DEBUG_LOG("Failed to find vswhere.exe to detect MSVC.");
+		return NULL;
 	}
 
 	// Find and read the version file.
@@ -91,7 +101,8 @@ static char *find_visual_studio(void)
 	if (version) version = str_trim(version);
 	if (!version || strlen(version) == 0)
 	{
-		error_exit("Failed to detect MSVC, could not read %s.", scratch_buffer_to_string());
+		DEBUG_LOG("Failed to detect MSVC, could not read %s.", scratch_buffer_to_string());
+		return NULL;
 	}
 
 	// We have the version, so we're done with the path:

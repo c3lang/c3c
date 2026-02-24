@@ -2,7 +2,7 @@ module generic_module_enum <N>;
 
 enum Foo : char (String s)
 {
-	BAR = "bar",
+	BAR {"bar"},
 }
 
 module generic_module_enum_test;

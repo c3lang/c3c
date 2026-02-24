@@ -135,7 +135,7 @@ fn bool HashSet.is_initialized(&set)
 fn HashSet* HashSet.init_from_set(&self, Allocator allocator, HashSet* other_set)
 {
 	self.init(allocator, other_set.table.len, other_set.load_factor);
-	self.put_all_for_create(other_set);
+	hashset_put_all_for_create(self, other_set);
 	return self;
 }
 
@@ -213,7 +213,7 @@ fn bool HashSet.add(&set, Value value)
 	{
 		if (e.hash == hash && equals(value, e.value)) return false;
 	}
-	set.add_entry(hash, value, index);
+	hashset_add_entry(set, hash, value, index);
 	return true;
 }
 
@@ -258,7 +258,7 @@ fn bool HashSet.contains(&set, Value value)
 *>
 fn void? HashSet.remove(&set, Value value) @maydiscard
 {
-	if (!set.remove_entry_for_value(value)) return NOT_FOUND~;
+	if (!hashset_remove_entry_for_value(set, value)) return NOT_FOUND~;
 }
 
 fn usz HashSet.remove_all(&set, Value[] values)
@@ -266,7 +266,7 @@ fn usz HashSet.remove_all(&set, Value[] values)
 	usz total;
 	foreach (v : values)
 	{
-		if (set.remove_entry_for_value(v)) total++;
+		if (hashset_remove_entry_for_value(set, v)) total++;
 	}
 	return total;
 }
@@ -279,7 +279,7 @@ fn usz HashSet.remove_all_from(&set, HashSet* other)
 	usz total;
 	other.@each(;Value val)
     {
-		if (set.remove_entry_for_value(val)) total++;
+		if (hashset_remove_entry_for_value(set, val)) total++;
     };
     return total;
 }
@@ -291,7 +291,7 @@ fn void HashSet.free(&set)
 {
 	if (!set.is_initialized()) return;
 	set.clear();
-	set.free_internal(set.table.ptr);
+	hashset_free_internal(set, set.table.ptr);
 	*set = {};
 }
 
@@ -314,10 +314,10 @@ fn void HashSet.clear(&set)
 		{
 			Entry *to_delete = next;
 			next = next.next;
-			set.free_entry(to_delete);
+			hashset_free_entry(set, to_delete);
 		}
 
-		set.free_entry(entry);
+		hashset_free_entry(set, entry);
 		*entry_ref = null;
 	}
 	set.count = 0;
@@ -327,7 +327,7 @@ fn void HashSet.reserve(&set, usz capacity)
 {
 	if (capacity > set.threshold)
 	{
-		set.resize(math::next_power_of_2(capacity));
+		hashset_resize(set, math::next_power_of_2(capacity));
 	}
 }
 
@@ -464,17 +464,17 @@ fn bool HashSet.is_subset(&self, HashSet* other)
 
 // --- private methods
 
-fn void HashSet.add_entry(&set, uint hash, Value value, uint bucket_index) @private
+fn void hashset_add_entry(HashSet* set, uint hash, Value value, uint bucket_index) @private
 {
 	Entry* entry = allocator::new(set.allocator, Entry, { .hash = hash, .value = value, .next = set.table[bucket_index] });
 	set.table[bucket_index] = entry;
 	if (set.count++ >= set.threshold)
 	{
-		set.resize(set.table.len * 2);
+		hashset_resize(set, set.table.len * 2);
 	}
 }
 
-fn void HashSet.resize(&self, usz new_capacity) @private
+fn void hashset_resize(HashSet* self, usz new_capacity) @private
 {
 	Entry*[] old_table = self.table;
 	usz old_capacity = old_table.len;
@@ -484,9 +484,9 @@ fn void HashSet.resize(&self, usz new_capacity) @private
 		return;
 	}
 	Entry*[] new_table = allocator::new_array(self.allocator, Entry*, new_capacity);
-	self.transfer(new_table);
+	hashset_transfer(self, new_table);
 	self.table = new_table;
-	self.free_internal(old_table.ptr);
+	hashset_free_internal(self, old_table.ptr);
 	self.threshold = (uint)(new_capacity * self.load_factor);
 }
 
@@ -502,7 +502,7 @@ fn usz? HashSet.to_format(&self, Formatter* f) @dynamic
 	return len + f.print(" }");
 }
 
-fn void HashSet.transfer(&self, Entry*[] new_table) @private
+fn void hashset_transfer(HashSet* self, Entry*[] new_table) @private
 {
 	Entry*[] src = self.table;
 	uint new_capacity = new_table.len;
@@ -521,20 +521,20 @@ fn void HashSet.transfer(&self, Entry*[] new_table) @private
 	}
 }
 
-fn void HashSet.put_all_for_create(&set, HashSet* other_set) @private
+fn void hashset_put_all_for_create(HashSet* set, HashSet* other_set) @private
 {
 	if (!other_set.count) return;
 	foreach (Entry *e : other_set.table)
 	{
 		while (e)
 		{
-			set.put_for_create(e.value);
+			hashset_put_for_create(set, e.value);
 			e = e.next;
 		}
 	}
 }
 
-fn void HashSet.put_for_create(&set, Value value) @private
+fn void hashset_put_for_create(HashSet* set, Value value) @private
 {
 	uint hash = rehash(value.hash());
 	uint i = index_for(hash, set.table.len);
@@ -546,15 +546,15 @@ fn void HashSet.put_for_create(&set, Value value) @private
 			return;
 		}
 	}
-	set.create_entry(hash, value, i);
+	hashset_create_entry(set, hash, value, i);
 }
 
-fn void HashSet.free_internal(&self, void* ptr) @inline @private
+fn void hashset_free_internal(HashSet* self, void* ptr) @inline @private
 {
 	allocator::free(self.allocator, ptr);
 }
 
-fn void HashSet.create_entry(&set, uint hash, Value value, int bucket_index) @private
+fn void hashset_create_entry(HashSet* set, uint hash, Value value, int bucket_index) @private
 {
 	Entry* entry = allocator::new(set.allocator, Entry, {
 		.hash = hash,
@@ -569,7 +569,7 @@ fn void HashSet.create_entry(&set, uint hash, Value value, int bucket_index) @pr
  Removes the entry for the specified value if present
  @return "true if found and removed, false otherwise"
 *>
-fn bool HashSet.remove_entry_for_value(&set, Value value) @private
+fn bool hashset_remove_entry_for_value(HashSet* set, Value value) @private
 {
 	if (!set.count) return false;
 	uint hash = rehash(value.hash());
@@ -590,7 +590,7 @@ fn bool HashSet.remove_entry_for_value(&set, Value value) @private
 			{
 				prev.next = next;
 			}
-			set.free_entry(e);
+			hashset_free_entry(set, e);
 			return true;
 		}
 		prev = e;
@@ -600,7 +600,7 @@ fn bool HashSet.remove_entry_for_value(&set, Value value) @private
 	return false;
 }
 
-fn void HashSet.free_entry(&set, Entry *entry) @private
+fn void hashset_free_entry(HashSet* set, Entry *entry) @private
 {
 	allocator::free(set.allocator, entry);
 }

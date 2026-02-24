@@ -31,7 +31,7 @@
 #define DW_TAG_common_block 0x1a
 #define DW_TAG_common_inclusion 0x1b
 #define DW_TAG_inheritance 0x1c
-#define DW_TAG_inlined_subroutine 01x1d
+#define DW_TAG_inlined_subroutine 0x1d
 #define DW_TAG_module 0x1e
 #define DW_TAG_ptr_to_member_type 0x1f
 #define DW_TAG_set_type 0x20

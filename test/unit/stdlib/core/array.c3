@@ -401,3 +401,28 @@ fn void zip_into_linked_list() => @pool()
 	test::eq(l.len(), 4);
 	foreach (i, c : l.array_view()) test::@check(c == expected[i], "Mismatch on index %d: %s (actual) != %s (expected)", i, c, expected[i]);
 }
+
+fn void unlace()
+{
+	int[] list = { 1, 2, 3, 4, 5 };
+	int[] outl, outr;
+	array::unlace(tmem, list, &outl, &outr);
+	test::@check(outl.len == 3 && outl == (int[]){ 1, 3, 5 });
+	test::@check(outr.len == 2 && outr == (int[]){ 2, 4 });
+
+	String list2 = "abcdef";
+	char[] outl2, outr2;
+	array::unlace(tmem, list2, &outl2, &outr2);
+	test::@check(outl2.len == 3 && outl2 == "ace");
+	test::@check(outr2.len == 3 && outr2 == "bdf");
+}
+
+fn void unlace_list()
+{
+	List{bool} list;
+	list.push_all({ false, false, true, false, false, false });
+	bool[] outl, outr;
+	array::unlace(tmem, list.array_view(), &outl, &outr);
+	test::@check(outl.len == 3 && outl == (bool[]){ false, true, false });
+	test::@check(outr.len == 3 && outr == (bool[]){ false, false, false });
+}

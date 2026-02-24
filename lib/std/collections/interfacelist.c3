@@ -73,7 +73,7 @@ fn bool InterfaceList.is_initialized(&self) @inline => self.allocator != null;
 macro void InterfaceList.push(&self, element)
 {
 	if (!self.allocator) self.allocator = tmem;
-	self._append(allocator::clone(self.allocator, element));
+	interfacelist_append(self, allocator::clone(self.allocator, element));
 }
 
 <*
@@ -381,7 +381,7 @@ fn usz? InterfaceList.to_format(&self, Formatter* formatter) @dynamic
 *>
 fn usz InterfaceList.remove_if(&self, InterfacePredicate filter)
 {
-	return self._remove_if(filter, false);
+	return interfacelist_remove_if(self, filter, false);
 }
 
 <*
@@ -392,7 +392,7 @@ fn usz InterfaceList.remove_if(&self, InterfacePredicate filter)
 *>
 fn usz InterfaceList.retain_if(&self, InterfacePredicate selection)
 {
-	return self._remove_if(selection, true);
+	return interfacelist_remove_if(self, selection, true);
 }
 
 <*
@@ -404,7 +404,7 @@ fn usz InterfaceList.retain_if(&self, InterfacePredicate selection)
 *>
 fn usz InterfaceList.remove_using_test(&self, InterfaceTest filter, Type context)
 {
-	return self._remove_using_test(filter, false, context);
+	return interfacelist_remove_using_test(self, filter, false, context);
 }
 
 <*
@@ -416,7 +416,7 @@ fn usz InterfaceList.remove_using_test(&self, InterfaceTest filter, Type context
 *>
 fn usz InterfaceList.retain_using_test(&self, InterfaceTest selection, Type context)
 {
-	return self._remove_using_test(selection, true, context);
+	return interfacelist_remove_using_test(self, selection, true, context);
 }
 
 <*
@@ -455,7 +455,7 @@ macro void InterfaceList.set(&self, usz index, value)
 
 // -- private
 
-fn void InterfaceList.ensure_capacity(&self, usz added = 1) @inline @private
+fn void interfacelist_ensure_capacity(InterfaceList* self, usz added = 1) @inline @private
 {
 	usz new_size = self.size + added;
 	if (self.capacity >= new_size) return;
@@ -466,18 +466,18 @@ fn void InterfaceList.ensure_capacity(&self, usz added = 1) @inline @private
 	self.reserve(new_capacity);
 }
 
-fn void InterfaceList._append(&self, Type element) @local
+fn void interfacelist_append(InterfaceList* self, Type element) @local
 {
-	self.ensure_capacity();
+	interfacelist_ensure_capacity(self);
 	self.entries[self.size++] = element;
 }
 
 <*
  @require index < self.size
 *>
-fn void InterfaceList._insert_at(&self, usz index, Type value) @local
+fn void interfacelist_insert_at(InterfaceList* self, usz index, Type value) @local
 {
-	self.ensure_capacity();
+	interfacelist_ensure_capacity(self);
 	for (usz i = self.size; i > index; i--)
 	{
 		self.entries[i] = self.entries[i - 1];
@@ -486,7 +486,7 @@ fn void InterfaceList._insert_at(&self, usz index, Type value) @local
 	self.entries[index] = value;
 }
 
-macro usz InterfaceList._remove_using_test(&self, InterfaceTest filter, bool $invert, ctx) @local
+macro usz interfacelist_remove_using_test(InterfaceList* self, InterfaceTest filter, bool $invert, ctx) @local
 {
 	usz size = self.size;
 	for (usz i = size, usz k = size; k > 0; k = i)
@@ -512,7 +512,7 @@ macro usz InterfaceList._remove_using_test(&self, InterfaceTest filter, bool $in
 	return size - self.size;
 }
 
-macro usz InterfaceList._remove_if(&self, InterfacePredicate filter, bool $invert) @local
+macro usz interfacelist_remove_if(InterfaceList* self, InterfacePredicate filter, bool $invert) @local
 {
 	usz size = self.size;
 	for (usz i = size, usz k = size; k > 0; k = i)

@@ -3,30 +3,30 @@ module std::os::android @if(env::ANDROID);
 
 enum AndroidLogPriority : (CInt val)
 {
-	ANDROID_LOG_UNKNOWN = 0,
-	ANDROID_LOG_DEFAULT = 1,
-	ANDROID_LOG_VERBOSE = 2,
-	ANDROID_LOG_DEBUG   = 3,
-	ANDROID_LOG_INFO    = 4,
-	ANDROID_LOG_WARN    = 5,
-	ANDROID_LOG_ERROR   = 6,
-	ANDROID_LOG_FATAL   = 7,
-	ANDROID_LOG_SILENT  = 8
+	ANDROID_LOG_UNKNOWN { 0 },
+	ANDROID_LOG_DEFAULT { 1 },
+	ANDROID_LOG_VERBOSE { 2 },
+	ANDROID_LOG_DEBUG   { 3 },
+	ANDROID_LOG_INFO    { 4 },
+	ANDROID_LOG_WARN    { 5 },
+	ANDROID_LOG_ERROR   { 6 },
+	ANDROID_LOG_FATAL   { 7 },
+	ANDROID_LOG_SILENT  { 8 }
 }
 
 enum AndroidLogId : (CInt val)
 {
-	LOG_ID_MIN      = 0,
-	LOG_ID_MAIN     = 0,
-	LOG_ID_RADIO    = 1,
-	LOG_ID_EVENTS   = 2,
-	LOG_ID_SYSTEM   = 3,
-	LOG_ID_CRASH    = 4,
-	LOG_ID_STATS    = 5,
-	LOG_ID_SECURITY = 6,
-	LOG_ID_KERNEL   = 7,
-	LOG_ID_MAX      = 7,
-	LOG_ID_DEFAULT  = 0x7FFFFFFF
+	LOG_ID_MIN      { 0 },
+	LOG_ID_MAIN     { 0 },
+	LOG_ID_RADIO    { 1 },
+	LOG_ID_EVENTS   { 2 },
+	LOG_ID_SYSTEM   { 3 },
+	LOG_ID_CRASH    { 4 },
+	LOG_ID_STATS    { 5 },
+	LOG_ID_SECURITY { 6 },
+	LOG_ID_KERNEL   { 7 },
+	LOG_ID_MAX      { 7 },
+	LOG_ID_DEFAULT  { 0x7FFFFFFF }
 }
 
 struct AndroidLogMessage @packed

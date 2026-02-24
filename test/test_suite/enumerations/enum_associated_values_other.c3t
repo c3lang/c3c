@@ -18,8 +18,8 @@ int dabc;
 struct Abc { int x; }
 enum Foo : int (String val)
 {
-	ABC = "hello" ,
-	DEF = "world"
+	ABC {"hello"},
+	DEF {"world"}
 }
 
 /* #expect: abc.ll

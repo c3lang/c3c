@@ -3,7 +3,7 @@ module test;
 alias SomethingFn = fn void();
 enum TestEnum : char (SomethingFn f)
 {
-	FOO = fn () {}
+	FOO {fn () {}}
 }
 
 /* #expect: test.ll

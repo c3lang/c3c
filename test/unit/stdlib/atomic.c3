@@ -87,7 +87,7 @@ fn void div() @test
 	{
 		t.create(fn int(void* arg) {
 			thread::sleep_ms(5);
-			atomic::fetch_div(&a, 8);
+			atomic::fetch_div(&a, 8U);
 				return 0;
 		}, null)!!;
 	}

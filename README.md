@@ -162,6 +162,8 @@ The compiler is currently verified to compile on Linux, OpenBSD, Windows and Mac
 | MacOS x64                | Yes                           | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
 | MacOS Aarch64            | Yes                           | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
 | iOS Aarch64              | No                            | Untested                | Untested    | Yes      | Yes      | Yes*       |
+| Android Aarch64          | No                            | Untested                | Untested    | Untested | Untested | Yes*       |
+| Android x64              | No                            | Untested                | Untested    | Untested | Untested | Yes*       |
 | Linux x86                | Yes                           | Yes                     | Yes         | Yes      | Yes      | Yes*       |
 | Linux x64                | Yes                           | Yes                     | Yes         | Yes      | Yes      | Yes*       |
 | Linux Aarch64            | Yes                           | Yes                     | Yes         | Yes      | Yes      | Yes*       |

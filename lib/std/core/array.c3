@@ -330,6 +330,72 @@ macro bool @all(array, #predicate)
 
 
 <*
+ Extract a copy of all even-index elements from an input array.
+
+ @param [&inout] allocator : "The allocator used to create the return array."
+ @param [in] array : "The array from which to extract all even elements."
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $defined(array[:lengthof(array)]) : "Expected a sliceable list"
+*>
+macro even(Allocator allocator, array)
+{
+	return unlace_impl{$typeof(array[0])}(allocator, array[:lengthof(array)]);
+}
+
+
+<*
+ Extract a copy of all odd-index elements from an input array.
+
+ @param [&inout] allocator : "The allocator used to create the return array."
+ @param [in] array : "The array from which to extract all odd elements."
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $defined(array[:lengthof(array)]) : "Expected a sliceable list"
+*>
+macro odd(Allocator allocator, array)
+{
+	return unlace_impl{$typeof(array[0])}(allocator, lengthof(array) > 1 ? array[1..] : ($typeof(array[0])[]){});
+}
+
+<*
+ Private implementation of `even` and `odd` macros, expecting a slice and returning one as well.
+ This function always extracts the even elements of the input slice.
+
+ @param [&inout] allocator : "The allocator used to create the return array."
+ @param [in] array : "The array from which to extract all odd elements."
+*>
+fn Type[] unlace_impl(Allocator allocator, Type[] array) <Type> @private
+{
+	usz new_len = array.len / 2 + (array.len % 2 == 0 ? 0 : 1);
+	if (new_len == 0) return (Type[]){};
+	Type[] new_array = allocator::new_array(allocator, Type, new_len);
+	foreach (x, &new : new_array) *new = types::implements_copy(Type) ??? array[x * 2].copy(allocator) : array[x * 2];
+	return new_array[:new_len];
+}
+
+<*
+ Unlace or partition an input list into its component parts such that `[a, b, c, d, e]` becomes
+ `[a, c, e]` and `[b, d]`. Returned arrays are allocated by the given allocator and are returned
+ via two `out` parameters, `left` and `right`.
+
+ @param [&inout] allocator : "The allocator used to create the returned arrays."
+ @param [in] array : "The input array to unlace."
+ @param [out] left : "Stores a copy of all even-index array elements."
+ @param [out] right : "Stores a copy of all odd-index array elements."
+
+ @require @is_valid_list(array) : "Expected a valid list"
+ @require $typeof(left) == $typeof(array[0])[]*
+ @require $typeof(right) == $typeof(array[0])[]*
+*>
+macro unlace(Allocator allocator, array, left, right)
+{
+	if (left) *left = even(allocator, array);
+	if (right) *right = odd(allocator, array);
+}
+
+
+<*
  Zip together two separate arrays/slices into a single array of Pairs or return values. Values will
  be collected up to the length of the shorter array if `fill_with` is left undefined; otherwise, they
  will be collected up to the length of the LONGER array, with missing values in the shorter array being

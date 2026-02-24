@@ -4,6 +4,7 @@
 
 #include "compiler_internal.h"
 #include "../build/project.h"
+#include "../utils/json.h"
 #include <compiler_tests/benchmark.h>
 #include "../utils/whereami.h"
 #if LLVM_AVAILABLE
@@ -223,19 +224,8 @@ static const char *dynamic_lib_name(void)
 	{
 		return str_cat(name, compiler.build.extension);
 	}
-	
-	switch (compiler.build.arch_os_target)
-	{
-		case WINDOWS_AARCH64:
-		case WINDOWS_X64:
-		case MINGW_X64:
-			return str_cat(name, ".dll");
-		case MACOS_X64:
-		case MACOS_AARCH64:
-			return str_cat(name, ".dylib");
-		default:
-			return str_cat(name, ".so");
-	}
+
+	return str_cat(name, compiler.platform.dylib_suffix);
 }
 
 const char *static_lib_name(void)
@@ -966,7 +956,7 @@ bool use_ansi(void)
 #endif
 }
 
-#if FETCH_AVAILABLE
+
 const char * vendor_fetch_single(const char* lib, const char* path) 
 {
 	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
@@ -993,6 +983,11 @@ void update_progress_bar(const char* lib, int current_step, int total_steps)
 
 void vendor_fetch(BuildOptions *options)
 {
+	if (!download_available())
+	{
+		error_exit("The 'vendor-fetch' command requires libcurl to download libraries.\n"
+				   "Please ensure libcurl is installed on your system.");
+	}
 	bool ansi = use_ansi();
 
 	if (str_eq(options->path, DEFAULT_PATH))
@@ -1010,6 +1005,50 @@ void vendor_fetch(BuildOptions *options)
 	const char** fetched_libraries = NULL;
 	int total_libraries = (int)vec_size(options->libraries_to_fetch);
 	
+	if (total_libraries == 0)
+	{
+		const char *tmp_dir = dir_make_temp_dir();
+		const char *tmp_file = file_append_path(tmp_dir, "vendor_list.json");
+		const char *error = download_file("https://api.github.com", "/repos/c3lang/vendor/contents/libraries/", tmp_file);
+		if (error)
+		{
+			error_exit("Failed to fetch library list: %s", error);
+		}
+
+		size_t size;
+		char *json_str = file_read_all(tmp_file, &size);
+		JsonParser parser;
+		json_init_string(&parser, json_str);
+		JSONObject *obj = json_parse(&parser);
+		if (!obj || obj->type != J_ARRAY)
+		{
+			error_exit("Failed to parse library list.");
+		}
+
+		printf("Available vendor libraries:\n");
+		FOREACH(JSONObject *, entry, obj->elements)
+		{
+			JSONObject *name = json_map_get(entry, "name");
+			JSONObject *type = json_map_get(entry, "type");
+			if (name && type && str_eq(type->str, "dir"))
+			{
+				const char *n = name->str;
+				if (n[0] == '.') continue;
+				if (str_has_suffix(n, ".c3l"))
+				{
+					printf("  %s\n", str_remove_suffix(n, ".c3l"));
+				}
+				else
+				{
+					printf("  %s\n", n);
+				}
+			}
+		}
+		file_delete_file(tmp_file);
+		file_delete_dir(tmp_dir);
+		return;
+	}
+
 	for(int i = 0; i < total_libraries; i++)
 	{
 		const char *lib = options->libraries_to_fetch[i];
@@ -1061,12 +1100,7 @@ void vendor_fetch(BuildOptions *options)
 
 	if (ansi) printf("\033[32mFetching complete.\033[0m\t\t\n");
 }
-#else
-void vendor_fetch(BuildOptions *options)
-{
-	error_exit("Error: vendor-fetch only available when compiled with cURL.");
-}
-#endif
+
 
 void print_syntax(BuildOptions *options)
 {
@@ -1795,6 +1829,7 @@ static bool is_posix(OsType os)
 		case OS_TYPE_FREEBSD:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_SOLARIS:
+		case OS_TYPE_ANDROID:
 			return true;
 		case OS_TYPE_WIN32:
 		case OS_TYPE_WASI:

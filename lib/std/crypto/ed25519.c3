@@ -332,7 +332,7 @@ fn Projection Projection.mul(&s, char[] n) @operator(*)
 
 module std::crypto::ed25519 @private;
 
-typedef F25519Int = inline char[32];
+typedef F25519Int @constinit = inline char[32];
 
 const F25519Int ZERO = {};
 const F25519Int ONE = {[0] = 1};
@@ -567,7 +567,7 @@ fn F25519Int F25519Int.inv(&s)
 
  @param [&in] s
 *>
-fn F25519Int F25519Int.pow_2523(&s) @local
+fn F25519Int pow_2523(F25519Int* s) @local
 {
 	F25519Int r = *s;
 
@@ -587,7 +587,7 @@ fn F25519Int F25519Int.pow_2523(&s) @local
 fn F25519Int F25519Int.sqrt(&s)
 {
 	F25519Int twice = s.mul_s(2);
-	F25519Int pow = twice.pow_2523();
+	F25519Int pow = pow_2523(&twice);
 
 	return (twice * pow * pow - ONE) * s * pow;
 }
@@ -601,7 +601,7 @@ fn F25519Int F25519Int.sqrt(&s)
 module std::crypto::ed25519 @private;
 import std::math;
 
-typedef FBaseInt = inline char[32];
+typedef FBaseInt @constinit = inline char[32];
 
 // Order of the field : 2^252+0x14def9dea2f79cd65812631a5cf5d3ed
 const FBaseInt ORDER = x"edd3f55c1a631258 d69cf7a2def9de14 0000000000000000 0000000000000010";

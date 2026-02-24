@@ -1036,7 +1036,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 		case DECL_UNION:
 		case DECL_ENUM:
 		case DECL_BITSTRUCT:
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 			llvm_get_typeid(context, decl->type);
 			break;
 	}
@@ -1389,7 +1389,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_CT_ASSERT:
 		case DECL_TYPEDEF:
 		case DECL_ENUM:
-		case DECL_CONST_ENUM:
+		case DECL_CONSTDEF:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
 		case DECL_ALIAS_PATH:
@@ -1407,6 +1407,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_INTERFACE:
 		case DECL_GENERIC:
 		case DECL_GENERIC_INSTANCE:
+		case DECL_CONTRACT:
 			UNREACHABLE;
 	}
 	UNREACHABLE
@@ -1775,9 +1776,9 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 	return gen_context;
 }
 
-void llvm_attribute_add_int(GenContext *context, LLVMValueRef value_to_add_attribute_to, unsigned attribute, uint64_t val, int index)
+void llvm_attribute_add_int(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, uint64_t val, int index)
 {
-	LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(context->context, attribute, val);
+	LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(c->context, attribute, val);
 	LLVMAddAttributeAtIndex(value_to_add_attribute_to, (LLVMAttributeIndex)index, llvm_attr);
 }
 

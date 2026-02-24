@@ -268,9 +268,14 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 
 
 
-#if FETCH_AVAILABLE
+
 void fetch_project(BuildOptions* options)
 {
+	if (!download_available())
+	{
+		error_exit("The 'project fetch' command requires libcurl to download dependencies.\n"
+				   "Please ensure libcurl is installed on your system.");
+	}
 	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON))
 	{
 		error_exit("Failed: no project file found.");
@@ -343,12 +348,7 @@ void fetch_project(BuildOptions* options)
 		}
 	}
 }
-#else
-void fetch_project(BuildOptions* options)
-{
-	error_exit("Error: project fetch only available when compiled with cURL.");
-}
-#endif
+
 
 
 void add_libraries_to_project_file(const char** libs, const char* target_name) {

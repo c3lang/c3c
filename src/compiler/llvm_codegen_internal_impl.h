@@ -1,5 +1,5 @@
 
-INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index)
+INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index) // NOLINT
 {
 	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
 	{

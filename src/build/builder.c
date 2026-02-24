@@ -132,6 +132,7 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_TEST:
 		case COMMAND_VENDOR_FETCH:
 		case COMMAND_PROJECT:
+		case COMMAND_FETCH_MSVC:
 			return false;
 	}
 	UNREACHABLE
@@ -164,6 +165,7 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_VENDOR_FETCH:
 		case COMMAND_PROJECT:
+		case COMMAND_FETCH_MSVC:
 			return false;
 	}
 	UNREACHABLE
@@ -269,6 +271,17 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	COPY_IF_DEFAULT(target->slp_vectorization, slp_vectorization);
 	COPY_IF_DEFAULT(target->loop_vectorization, vectorization);
 	COPY_IF_DEFAULT(target->single_module, single_module);
+}
+
+static inline void update_warning(WarningLevel *level, WarningLevel new_level)
+{
+	if (new_level != WARNING_NOT_SET) *level = new_level;
+}
+
+static inline void update_warning_if_not_set(WarningLevel *level, WarningLevel new_level)
+{
+	ASSERT(new_level != WARNING_NOT_SET);
+	if (*level == WARNING_NOT_SET) *level = new_level;
 }
 
 static LinkLibc libc_from_arch_os(ArchOsTarget target)
@@ -416,6 +429,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->old_slice_copy = options->old_slice_copy;
 	target->old_enums = options->old_enums;
 	target->old_compact_eq = options->old_compact_eq;
+
+	target->print_large_functions = options->print_large_functions;
 	// Remove feature flags
 	FOREACH(const char *, remove_feature, options->removed_feature_names)
 	{
@@ -515,7 +530,35 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (!target->max_macro_iterations) target->max_macro_iterations = DEFAULT_MAX_MACRO_ITERATIONS;
 	if (target->quiet && !options->verbosity_level) options->verbosity_level = -1;
 
-	if (options->silence_deprecation || options->verbosity_level < 0) target->silence_deprecation = true;
+	switch (target->validation_level)
+	{
+		case VALIDATION_LENIENT:
+			update_warning_if_not_set(&target->warnings.deprecation, WARNING_SILENT);
+			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_WARN);
+			update_warning_if_not_set(&target->warnings.dead_code, WARNING_SILENT);
+			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_WARN);
+			break;
+		case VALIDATION_NOT_SET:
+			target->validation_level = VALIDATION_STRICT;
+			FALLTHROUGH;
+		case VALIDATION_STRICT:
+			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_WARN);
+			update_warning_if_not_set(&target->warnings.deprecation, WARNING_WARN);
+			update_warning_if_not_set(&target->warnings.dead_code, WARNING_WARN);
+			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_WARN);
+			break;
+		case VALIDATION_OBNOXIOUS:
+			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_ERROR);
+			update_warning_if_not_set(&target->warnings.deprecation, WARNING_ERROR);
+			update_warning_if_not_set(&target->warnings.dead_code, WARNING_ERROR);
+			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_ERROR);
+			break;
+	}
+	update_warning(&target->warnings.deprecation, options->warnings.deprecation);
+	update_warning(&target->warnings.dead_code, options->warnings.dead_code);
+	update_warning(&target->warnings.methods_not_resolved, options->warnings.methods_not_resolved);
+	update_warning(&target->warnings.method_visibility, options->warnings.method_visibility);
+
 	target->print_linking = options->print_linking || options->verbosity_level > 1;
 
 	for (size_t i = 0; i < options->linker_arg_count; i++)

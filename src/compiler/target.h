@@ -69,6 +69,8 @@ typedef struct
 #endif
 	const char *cpu;
 	const char *features;
+	const char *dylib_suffix;
+	Warnings warning;
 	ArchType arch;
 	OsType os;
 	VendorType vendor;
@@ -184,6 +186,8 @@ typedef struct
 	unsigned register_count;
 
 } PlatformTarget;
+
+ArchType target_host_arch(void);
 
 static inline bool is_pie_pic(RelocModel reloc)
 {

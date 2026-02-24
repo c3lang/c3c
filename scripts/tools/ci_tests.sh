@@ -207,7 +207,12 @@ run_wasm_compile() {
 run_unit_tests() {
     echo "--- Running Unit Tests ---"
     cd "$ROOT_DIR/test"
-    "$C3C_BIN" compile-test unit -O1 -D SLOW_TESTS
+
+    UNIT_TEST_ARGS="-O1"
+    if [[ "$OS_MODE" != "bsd" ]]; then
+        UNIT_TEST_ARGS="$UNIT_TEST_ARGS -D SLOW_TESTS"
+    fi
+    "$C3C_BIN" compile-test unit $UNIT_TEST_ARGS
 
     echo "--- Running Test Suite Runner ---"
     "$C3C_BIN" compile-run -O1 src/test_suite_runner.c3 -- "$C3C_BIN" test_suite/ --no-terminal

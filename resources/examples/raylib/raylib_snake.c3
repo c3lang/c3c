@@ -18,10 +18,10 @@ const int SCREEN_HEIGHT = 450;
 
 enum SnakeDirection : (RLVector2 dir)
 {
-	RIGHT = {  SQUARE_SIZE,  0 },
-	DOWN  = {  0,  SQUARE_SIZE },
-	LEFT  = { -SQUARE_SIZE,  0 },
-	UP    = {  0, -SQUARE_SIZE }
+	RIGHT {{  SQUARE_SIZE,  0 }},
+	DOWN  {{  0,  SQUARE_SIZE }},
+	LEFT  {{ -SQUARE_SIZE,  0 }},
+	UP    {{  0, -SQUARE_SIZE }}
 }
 struct Snake
 {

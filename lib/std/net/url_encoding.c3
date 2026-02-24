@@ -7,12 +7,12 @@ import std::encoding::hex;
 
 enum UrlEncodingMode : char (String allowed)
 {
-	UNRESERVED = "-_.~",            // section 2.3
-	PATH 	   = "$&+,/:;=@",       // section 3.3
-	HOST 	   = "!$&'()*+,;=:[]",  // section 3.2.2 (also include ':', '[', ']' for ipv6 hosts)
-	USERPASS   = ";:&=+$,",         // section 3.2.1
-	QUERY 	   = "",                // section 3.4
-	FRAGMENT   = "$&+,/:;=?@!()*",	// section 4.1
+	UNRESERVED { "-_.~" },            // section 2.3
+	PATH 	   { "$&+,/:;=@" },       // section 3.3
+	HOST 	   { "!$&'()*+,;=:[]" },  // section 3.2.2 (also include ':', '[', ']' for ipv6 hosts)
+	USERPASS   { ";:&=+$," },         // section 3.2.1
+	QUERY 	   { "" },                // section 3.4
+	FRAGMENT   { "$&+,/:;=?@!()*" },  // section 4.1
 }
 
 faultdef INVALID_HEX;

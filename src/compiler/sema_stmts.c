@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2020-2026 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
@@ -28,7 +28,7 @@ static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bott
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref, bool *infinite);
-static inline bool assert_create_from_contract(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan evaluation_location);
+static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceSpan evaluation_location);
 static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt);
 static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond);
 static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr);
@@ -49,9 +49,8 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, CanonicalType *switch_type, Ast **cases);
 
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
-static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan span);
-static bool sema_analyse_ensure(SemaContext *context, Ast *directive);
-static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive);
+static bool sema_analyse_require(SemaContext *context, Expr *directive, AstId **asserts, SourceSpan span);
+static bool sema_analyse_ensure(SemaContext *context, Expr *directive);
 
 static inline bool sema_analyse_asm_label(SemaContext *context, AsmInlineBlock *block, Ast *label)
 {
@@ -104,6 +103,7 @@ static inline bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *expr = exprptr(statement->assert_stmt.expr);
+	assert(expr != NULL);
 
 	// Verify that the message is a string if it exists.
 	Expr *message_expr = exprptrzero(statement->assert_stmt.message);
@@ -111,6 +111,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 	{
 		if (!sema_analyse_ct_expr(context, message_expr)) return false;
 		if (!expr_is_const_string(message_expr)) RETURN_SEMA_ERROR(message_expr, "Expected a constant string as the error message.");
+
 		FOREACH(Expr *, e, statement->assert_stmt.args)
 		{
 			if (!sema_analyse_expr_rvalue(context, e)) return false;
@@ -137,6 +138,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 		}
 	}
 
+	// We might have `assert(false)` or `assert(true)`
 	CondResult result_no_resolve = COND_MISSING;
 	if (expr->resolve_status == RESOLVE_DONE && expr_is_const_bool(expr))
 	{
@@ -170,7 +172,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 			// Otherwise we print an error.
 			if (!context->active_scope.end_jump.active && !context->active_scope.is_dead)
 			{
-				if (message_expr && sema_cast_const(message_expr) && vec_size(statement->assert_stmt.args))
+				if (message_expr && sema_cast_const(message_expr) && !vec_size(statement->assert_stmt.args))
 				{
 					RETURN_SEMA_ERROR(expr, "%.*s", EXPAND_EXPR_STRING(message_expr));
 				}
@@ -408,10 +410,9 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 /**
  * Turn a "require" or "ensure" into a contract in the callee.
  */
-static inline bool assert_create_from_contract(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan evaluation_location)
+static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceSpan evaluation_location)
 {
-	directive = copy_ast_single(directive);
-	Expr *declexpr = directive->contract_stmt.contract.decl_exprs;
+	Expr *declexpr = directive->contract_expr.decl_exprs;
 	ASSERT(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
 
 	FOREACH(Expr *, expr, declexpr->expression_list)
@@ -421,8 +422,8 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 
 		if (evaluation_location.a) expr->span = evaluation_location;
 
-		const char *comment = directive->contract_stmt.contract.comment;
-		if (!comment) comment = directive->contract_stmt.contract.expr_string;
+		const char *comment = directive->contract_expr.comment;
+		if (!comment) comment = directive->contract_expr.expr_string;
 		if (expr_is_const_bool(expr))
 		{
 			if (expr->const_expr.b) continue;
@@ -527,19 +528,18 @@ static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_
 	// we won't be able to do any constant ensure checks anyway, so skip.
 	if (!sema_cast_const(ret_expr)) return true;
 
-	AstId doc_directive = context->current_macro->func_decl.docs;
+	Decl *contracts = declptrzero(context->current_macro->func_decl.docs);
+	Expr **ensures = contracts ? contracts->contracts_decl.ensures : NULL;
+
 	// We store the old return_expr for retval
 	Expr *return_expr_old = context->return_expr;
 	// And set our new one.
 	context->return_expr = ret_expr;
 	bool success = true;
 	SCOPE_START_WITH_FLAGS(SCOPE_ENSURE_MACRO, ret_expr->span);
-		while (doc_directive)
+		FOREACH(Expr *, directive, ensures)
 		{
-			Ast *directive = astptr(doc_directive);
-			doc_directive = directive->next;
-			if (directive->contract_stmt.kind != CONTRACT_ENSURE) continue;
-			Expr *checks = copy_expr_single(directive->contract_stmt.contract.decl_exprs);
+			Expr *checks = copy_expr_single(directive->contract_expr.decl_exprs);
 			ASSERT(checks->expr_kind == EXPR_EXPRESSION_LIST);
 			Expr **exprs = checks->expression_list;
 			FOREACH(Expr *, expr, exprs)
@@ -559,8 +559,8 @@ static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_
 				// Skipping non-const.
 				if (result == COND_MISSING) continue;
 				if (result == COND_TRUE) continue;
-				const char *comment = directive->contract_stmt.contract.comment;
-				if (!comment) comment = directive->contract_stmt.contract.expr_string;
+				const char *comment = directive->contract_expr.comment;
+				if (!comment) comment = directive->contract_expr.expr_string;
 				SEMA_ERROR(ret_expr, "%s", comment);
 				success = false;
 				goto END;
@@ -750,20 +750,16 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 		AstId first = 0;
 		AstId *append_id = &first;
 		// Creating an assign statement
-		AstId doc_directive = context->call_env.current_function->func_decl.docs;
+		Decl *contracts = declptrzero(context->call_env.current_function->func_decl.docs);
+		Expr **ensures = contracts ? contracts->contracts_decl.ensures : NULL;
 		context->return_expr = return_expr;
-		while (doc_directive)
+		FOREACH(Expr *, ensure, ensures)
 		{
-			Ast *directive = astptr(doc_directive);
-			if (directive->contract_stmt.kind == CONTRACT_ENSURE)
-			{
-				bool success;
-				SCOPE_START_WITH_FLAGS(SCOPE_ENSURE, statement->span);
-					success = assert_create_from_contract(context, directive, &append_id, statement->span);
-				SCOPE_END;
-				if (!success) return false;
-			}
-			doc_directive = directive->next;
+			bool success;
+			SCOPE_START_WITH_FLAGS(SCOPE_ENSURE, statement->span);
+				success = assert_create_from_contract(context, ensure, &append_id, statement->span);
+			SCOPE_END;
+			if (!success) return false;
 		}
 		if (!first) goto SKIP_ENSURE;
 		if (statement->return_stmt.cleanup)
@@ -798,7 +794,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_CT_IS_CONST:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
-		case EXPR_CT_IDENT:
+		case EXPR_CONTRACT:
 		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
 		case EXPR_BINARY:
@@ -2019,8 +2015,8 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 		if (context->active_scope.end_jump.active && !context->active_scope.allow_dead_code)
 		{
 			context->active_scope.allow_dead_code = true;
-			bool warn = SEMA_WARN(statement, "This code will never execute.");
-			sema_note_prev_at(context->active_scope.end_jump.span, "This code is preventing it from exectuting");
+			bool warn = SEMA_WARN(statement, dead_code, "This code will never execute.");
+			if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(context->active_scope.end_jump.span, "This code is preventing it from exectuting");
 			if (!warn)
 			{
 				success = false;
@@ -3204,10 +3200,8 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 	switch (statement->ast_kind)
 	{
 		case AST_POISONED:
-		case AST_CONTRACT:
 		case AST_ASM_STMT:
 		case AST_ASM_LABEL:
-		case AST_CONTRACT_FAULT:
 			UNREACHABLE
 		case AST_CT_TYPE_ASSIGN_STMT:
 			return sema_analyse_ct_type_assign_stmt(context, statement);
@@ -3286,8 +3280,8 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 			if (statement->ast_kind != AST_ASSERT_STMT && statement->ast_kind != AST_NOP_STMT && !(context->active_scope.flags & SCOPE_MACRO))
 			{
 				context->active_scope.allow_dead_code = true;
-				bool warn = SEMA_WARN(statement, "This code will never execute.");
-				sema_note_prev_at(end_jump.span, "No code will execute after this statement.");
+				bool warn = SEMA_WARN(statement, dead_code, "This code will never execute.");
+				if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(end_jump.span, "No code will execute after this statement.");
 				if (!warn) return ast_poison(statement);
 			}
 			// Remove it
@@ -3299,14 +3293,14 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 }
 
 
-static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan span)
+static bool sema_analyse_require(SemaContext *context, Expr *directive, AstId **asserts, SourceSpan span)
 {
 	return assert_create_from_contract(context, directive, asserts, span);
 }
 
-static bool sema_analyse_ensure(SemaContext *context, Ast *directive)
+static bool sema_analyse_ensure(SemaContext *context, Expr *directive)
 {
-	Expr *declexpr = directive->contract_stmt.contract.decl_exprs;
+	Expr *declexpr = directive->contract_expr.decl_exprs;
 	ASSERT(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
 
 	FOREACH(Expr *, expr, declexpr->expression_list)
@@ -3319,69 +3313,15 @@ static bool sema_analyse_ensure(SemaContext *context, Ast *directive)
 	return true;
 }
 
-static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
+static bool sema_analyse_call_optional_returns(SemaContext *context, Decl *contract)
 {
-	FOREACH(Ast *, ret, directive->contract_stmt.faults)
+	if (!contract || !contract->contracts_decl.opt_returns)
 	{
-		if (ret->contract_fault.expanding) continue;
-		if (ret->contract_fault.resolved)
-		{
-			vec_add(context->call_env.opt_returns, ret->contract_fault.decl);
-			continue;
-		}
-		Expr *expr = ret->contract_fault.expr;
-		if (expr->expr_kind == EXPR_RETHROW)
-		{
-			Expr *inner = expr->rethrow_expr.inner;
-			if (!sema_analyse_expr(context, inner)) return false;
-			Decl *decl;
-			switch (inner->expr_kind)
-			{
-				case EXPR_IDENTIFIER:
-					decl = inner->ident_expr;
-					break;
-				case EXPR_TYPEINFO:
-				{
-					Type *type = inner->type_expr->type;
-					if (type->type_kind != TYPE_ALIAS) goto IS_FAULT;
-					decl = type->decl;
-					ASSERT(decl->decl_kind == DECL_TYPE_ALIAS);
-					if (!decl->type_alias_decl.is_func) goto IS_FAULT;
-					decl = decl->type_alias_decl.decl;
-					break;
-				}
-				default:
-					goto IS_FAULT;;
-			}
-			decl = decl_flatten(decl);
-			if (decl->decl_kind != DECL_FNTYPE && decl->decl_kind != DECL_FUNC) goto IS_FAULT;
-			if (!sema_analyse_decl(context, decl)) return false;
-			AstId docs = decl->decl_kind == DECL_FNTYPE ? decl->fntype_decl.docs : decl->func_decl.docs;
-			while (docs)
-			{
-				Ast *doc = astptr(docs);
-				docs = doc->next;
-				if (doc->contract_stmt.kind != CONTRACT_OPTIONALS) continue;
-				ret->contract_fault.expanding = true;
-				bool success = sema_analyse_optional_returns(context, doc);
-				ret->contract_fault.expanding = false;
-				if (!success) false;
-			}
-			continue;
-		}
-IS_FAULT:;
-		if (!sema_analyse_expr_rvalue(context, expr)) return false;
-		if (expr->type->canonical != type_fault)
-		{
-			RETURN_SEMA_ERROR(expr, "Expected a fault here.");
-		}
-		if (!expr_is_const_fault(expr)) RETURN_SEMA_ERROR(expr, "A constant fault is required.");
-		Decl *decl = expr->const_expr.fault;
-		if (!decl) RETURN_SEMA_ERROR(expr, "A non-null fault is required.");
-		ret->contract_fault.decl = decl;
-		ret->contract_fault.resolved = true;
-		vec_add(context->call_env.opt_returns, decl);
+		context->call_env.opt_returns = NULL;
+		return true;
 	}
+	if (!sema_analyse_optional_returns(context, contract)) return false;
+	context->call_env.opt_returns = contract->contracts_decl.opt_returns_resolved;
 	return true;
 }
 
@@ -3395,34 +3335,23 @@ void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt)
 	ast_prepend(&compound_stmt->compound_stmt.first_stmt, ast);
 }
 
-bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, SourceSpan call_span, bool *has_ensures)
+bool sema_analyse_contracts(SemaContext *context, Decl *contract, Expr **requires, Expr **ensures, AstId **asserts, SourceSpan call_span, bool *has_ensures)
 {
 	context->call_env.opt_returns = NULL;
-	while (doc)
+	if (has_ensures)
 	{
-		Ast *directive = astptr(doc);
-		switch (directive->contract_stmt.kind)
-		{
-			case CONTRACT_UNKNOWN:
-			case CONTRACT_PURE:
-			case CONTRACT_COMMENT:
-				break;
-			case CONTRACT_REQUIRE:
-				if (!sema_analyse_require(context, directive, asserts, call_span)) return false;
-				break;
-			case CONTRACT_PARAM:
-				break;
-			case CONTRACT_OPTIONALS:
-				if (!has_ensures) break;
-				if (!sema_analyse_optional_returns(context, directive)) return false;
-				break;
-			case CONTRACT_ENSURE:
-				if (!has_ensures) break;
-				if (!sema_analyse_ensure(context, directive)) return false;
-				*has_ensures = true;
-				break;
-		}
-		doc = directive->next;
+		if (!sema_analyse_call_optional_returns(context, contract)) return false;
+	}
+
+	FOREACH(Expr *, require, requires)
+	{
+		if (!sema_analyse_require(context, require, asserts, call_span)) return false;
+	}
+	if (!has_ensures) return true;
+	FOREACH(Expr *, ensure, ensures)
+	{
+		if (!sema_analyse_ensure(context, ensure)) return false;
+		*has_ensures = true;
 	}
 	return true;
 }
@@ -3496,7 +3425,15 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		AstId assert_first = 0;
 		AstId *next = &assert_first;
 		bool has_ensures = false;
-		if (!sema_analyse_contracts(context, func->func_decl.docs, &next, INVALID_SPAN, &has_ensures)) return false;
+		Decl *contracts = declptrzero(func->func_decl.docs);
+		if (contracts)
+		{
+			copy_begin();
+			Expr **requires = copy_exprlist_macro(contracts->contracts_decl.requires);
+			Expr **ensures = copy_exprlist_macro(contracts->contracts_decl.ensures);
+			copy_end();
+			if (!sema_analyse_contracts(context, contracts, requires, ensures, &next, INVALID_SPAN, &has_ensures)) return false;
+		}
 		context->call_env.ensures = has_ensures;
 		bool is_naked = func->func_decl.attr_naked;
 		if (!is_naked) sema_append_contract_asserts(assert_first, body);

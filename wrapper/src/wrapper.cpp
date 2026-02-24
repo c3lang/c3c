@@ -341,6 +341,11 @@ void LLVMSetNoSanitizeAddress(LLVMValueRef Global)
 	global->setSanitizerMetadata(data);
 }
 
+unsigned LLVMGetFunctionInstructionCount(LLVMValueRef function)
+{
+	auto func = llvm::unwrap<llvm::Function>(function);
+	return func->getInstructionCount();
+}
 void LLVMBuilderSetFastMathFlags(LLVMBuilderRef Builder, FastMathOption option)
 {
 	llvm::FastMathFlags math_flags {};
