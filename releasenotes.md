@@ -6,7 +6,7 @@
 - Removed support for LLVM 17, 18.
 
 ### Stdlib changes
-None
+- Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
 
 ### Fixes
 None

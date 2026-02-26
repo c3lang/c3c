@@ -7,6 +7,7 @@ faultdef VALUE_OUT_OF_RANGE, VALUE_OUT_OF_UNSIGNED_RANGE;
 
 <*
  @require $Type.kindof.is_int() : "Type was not an integer"
+ @require (bool)v.type : "The value was empty"
  @require v.type.kindof == ENUM : "Value was not an enum"
 *>
 macro any_to_enum_ordinal(any v, $Type)
@@ -16,6 +17,7 @@ macro any_to_enum_ordinal(any v, $Type)
 
 <*
  @require $Type.kindof.is_int() : "Type was not an integer"
+ @require (bool)v.type : "The value was empty"
  @require v.type.kindof.is_int() : "Value was not an integer"
 *>
 macro any_to_int(any v, $Type)
