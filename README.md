@@ -366,7 +366,7 @@ See the `build-with-docker.sh` script for more information on other configurable
 #### Installing on OS X using Homebrew
 
 1. Install [Homebrew](https://brew.sh/)
-2. Install LLVM 17+: `brew install llvm`
+2. Install LLVM 19+: `brew install llvm`
 3. Install lld: `brew install lld`
 4. Install CMake: `brew install cmake`
 5. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
@@ -505,7 +505,7 @@ After compilation, the `c3c` binary will be located in the `build` directory. Yo
 #### Compiling on other Linux / Unix variants
 
 1. Install CMake.
-2. Install or compile LLVM and LLD *libraries* (version 17+ or higher)
+2. Install or compile LLVM and LLD *libraries* (version 19+ or higher)
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 4. Enter the C3C directory `cd c3c`.
 5. Set up CMake build for debug: `cmake -B build -S .`. At this point you may need to manually 

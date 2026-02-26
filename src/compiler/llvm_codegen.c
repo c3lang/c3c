@@ -835,11 +835,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.fshl = lookup_intrinsic("llvm.fshl");
 	intrinsic_id.fshr = lookup_intrinsic("llvm.fshr");
 	intrinsic_id.gather = lookup_intrinsic("llvm.masked.gather");
-#if LLVM_VERSION_MAJOR < 16
-	intrinsic_id.get_rounding = lookup_intrinsic("llvm.flt.rounds");
-#else
 	intrinsic_id.get_rounding = lookup_intrinsic("llvm.get.rounding");
-#endif
 	intrinsic_id.lifetime_end = lookup_intrinsic("llvm.lifetime.end");
 	intrinsic_id.lifetime_start = lookup_intrinsic("llvm.lifetime.start");
 	intrinsic_id.llrint = lookup_intrinsic("llvm.llrint");

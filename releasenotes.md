@@ -1,5 +1,16 @@
 # C3C Release Notes
 
+## 0.7.11 Change list
+
+### Changes / improvements
+- Removed support for LLVM 17, 18.
+
+### Stdlib changes
+None
+
+### Fixes
+None
+
 ## 0.7.10 Change list
 
 ### Changes / improvements
