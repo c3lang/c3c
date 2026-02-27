@@ -4,6 +4,7 @@
 
 ### Changes / improvements
 - Removed support for LLVM 17, 18.
+- Detect large temporaries when creating slices on the stack #2665
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
