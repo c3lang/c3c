@@ -1958,6 +1958,7 @@ static bool parse_element_contract(ParseContext *c, ContractDescription *contrac
 INLINE void attach_deprecation_from_contract(ParseContext *c, ContractDescription *contract, Decl *decl)
 {
 	if (contract->deprecated) vec_add(decl->attributes, contract->deprecated);
+	contract->deprecated = NULL;
 }
 
 /**
@@ -3649,6 +3650,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			break;
 		case TOKEN_FN:
 			decl = parse_func_definition(c, &contracts, c->unit->is_interface_file ? FUNC_PARSE_C3I : FUNC_PARSE_REGULAR);
+
 			break;
 		case TOKEN_CT_ASSERT:
 			{

@@ -10,7 +10,7 @@
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
 
 ### Fixes
-None
+- `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
 
 ## 0.7.10 Change list
 
