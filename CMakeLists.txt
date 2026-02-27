@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 
 set(C3_LLVM_MIN_VERSION 19)
-set(C3_LLVM_MAX_VERSION 22)
-set(C3_LLVM_DEFAULT_VERSION 21)
+set(C3_LLVM_MAX_VERSION 23)
+set(C3_LLVM_DEFAULT_VERSION 22)
 
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
     message(FATAL_ERROR "In-tree build detected, please build in a separate directory")
@@ -230,15 +230,17 @@ if(C3_WITH_LLVM)
         endif()
     endif()
 
-    if (NOT C3_FETCH_LLVM AND EXISTS /opt/homebrew/lib)
-        list(APPEND LLVM_LIBRARY_DIRS /opt/homebrew/lib)
-    endif()
+    if (NOT C3_FETCH_LLVM)
+        if (EXISTS /opt/homebrew/lib)
+            list(APPEND LLVM_LIBRARY_DIRS /opt/homebrew/lib)
+        endif()
 
-    if (EXISTS /usr/lib)
-        # Some systems (such as Alpine Linux) seem to put some of the relevant
-        # LLVM files in /usr/lib, but this doesn't seem to be included in the
-        # value of LLVM_LIBRARY_DIRS.
-        list(APPEND LLVM_LIBRARY_DIRS /usr/lib)
+        if (EXISTS /usr/lib)
+            # Some systems (such as Alpine Linux) seem to put some of the relevant
+            # LLVM files in /usr/lib, but this doesn't seem to be included in the
+            # value of LLVM_LIBRARY_DIRS.
+            list(APPEND LLVM_LIBRARY_DIRS /usr/lib)
+        endif()
     endif()
 
     list(REMOVE_DUPLICATES LLVM_LIBRARY_DIRS)
@@ -282,6 +284,11 @@ if(C3_WITH_LLVM)
                 LibDriver
                 Linker
                 LTO
+        )
+        if (LLVM_PACKAGE_VERSION VERSION_GREATER_EQUAL 21.0.0)
+            list(APPEND LLVM_LINK_COMPONENTS DTLTO)
+        endif()
+        list(APPEND LLVM_LINK_COMPONENTS
                 MC
                 MCDisassembler
                 native
