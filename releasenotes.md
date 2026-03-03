@@ -12,6 +12,8 @@
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
 - Name conflict with auto-imported std::core, but it should have lower priority #2902
+- Regression: missing generic nesting check on non-types.
+- Improved stringify.
 
 ## 0.7.10 Change list
 

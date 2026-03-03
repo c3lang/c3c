@@ -4,11 +4,6 @@
 
 #include "compiler_internal.h"
 
-static inline uint16_t check_col(intptr_t col)
-{
-	if (col > 255) return 0;
-	return (uint16_t)col;
-}
 
 static inline unsigned check_row(intptr_t line)
 {
@@ -96,17 +91,18 @@ static inline void set_generic_token(Lexer *lexer, TokenType type)
 	if (line == lexer->current_row)
 	{
 		// Col is simple difference.
-		col = check_col(lexer->lexing_start - lexer->line_start + 1);
+		col = lexer->lexing_start - lexer->line_start + 1;
 		// Length is diff between current and start.
 		length = check_row(lexer->current - lexer->lexing_start);
 	}
 	else
 	{
 		// For multiline, we grab the diff from the starting line.
-		col = check_col(lexer->lexing_start - lexer->start_row_start + 1);
+		col = lexer->lexing_start - lexer->start_row_start + 1;
 		// But always set a single token length.
 		length = 1;
 	}
+	lexer->tok_span.offset = lexer->lexing_start - lexer->file_begin;
 	lexer->tok_span.length = length;
 	lexer->tok_span.col = col;
 	lexer->tok_span.row = line;
@@ -118,7 +114,7 @@ static bool add_error_token(Lexer *lexer, const char *message, ...)
 	set_generic_token(lexer, TOKEN_INVALID_TOKEN);
 	va_list list;
 	va_start(list, message);
-	sema_verror_range(lexer->tok_span, message, list);
+	sema_verror_range(&lexer->tok_span, message, list);
 	va_end(list);
 	return false;
 }
@@ -128,13 +124,14 @@ static bool add_error_token_at_start(Lexer *lexer, const char *message, ...)
 {
 	va_list list;
 	va_start(list, message);
-	SourceSpan location = {
+	SourceLoc location = {
 			.file_id = lexer->file->file_id,
-			.row = lexer->start_row,
+			.col = (uint16_t)((lexer->lexing_start - lexer->start_row_start) + 1),
+			.offset = lexer->lexing_start - lexer->file_begin,
 			.length = 1,
-			.col = check_col((lexer->lexing_start - lexer->start_row_start) + 1),
+			.row = lexer->start_row,
 	};
-	sema_verror_range(location, message, list);
+	sema_verror_range(&location, message, list);
 	va_end(list);
 	set_generic_token(lexer, TOKEN_INVALID_TOKEN);
 	return false;
@@ -148,13 +145,14 @@ static bool add_error_token_at(Lexer *lexer, const char *loc, uint32_t len, cons
 	va_start(list, message);
 	uint32_t current_line = lexer->current_row;
 	if (len > MAX_SOURCE_LOCATION_LEN) len = 0;
-	SourceSpan location = {
+	SourceLoc location = {
 			.file_id = lexer->file->file_id,
 			.row = current_line,
 			.length = len,
-			.col = check_col((loc - lexer->line_start) + 1),
+			.offset = loc - lexer->file_begin,
+			.col = (loc - lexer->line_start) + 1,
 	};
-	sema_verror_range(location, message, list);
+	sema_verror_range(&location, message, list);
 	va_end(list);
 	set_generic_token(lexer, TOKEN_INVALID_TOKEN);
 	return false;
@@ -166,13 +164,14 @@ static bool add_error_token_at_current(Lexer *lexer, const char *message, ...)
 	va_list list;
 	va_start(list, message);
 	uint32_t current_line = lexer->current_row;
-	SourceSpan location = {
+	SourceLoc location = {
 			.file_id = lexer->file->file_id,
 			.row = current_line,
 			.length = 1,
-			.col = check_col((lexer->current - lexer->line_start) + 1),
+			.offset = lexer->current - lexer->file_begin,
+			.col = (lexer->current - lexer->line_start) + 1,
 	};
-	sema_verror_range(location, message, list);
+	sema_verror_range(&location, message, list);
 	va_end(list);
 	set_generic_token(lexer, TOKEN_INVALID_TOKEN);
 	return false;

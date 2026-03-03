@@ -652,7 +652,7 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 {
 	ASSERT(!name_resolve->suppress_error);
 	const char *symbol = name_resolve->symbol;
-	SourceSpan span = name_resolve->span;
+	SourceLocId loc = name_resolve->loc;
 	Decl *found = name_resolve->found;
 	const char *path_name = name_resolve->path ? name_resolve->path->module : NULL;
 	if (!found && name_resolve->private_decl)
@@ -660,12 +660,12 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 		const char *private_name = decl_to_name(name_resolve->private_decl);
 		if (path_name)
 		{
-			sema_error_at(context, span, "The %s '%s::%s' is '@private' and not visible from other modules.",
+			sema_error_at(context, loc, "The %s '%s::%s' is '@private' and not visible from other modules.",
 			              private_name, path_name,
 			              symbol);
 			return;
 		}
-		sema_error_at(context, span, "The %s '%s' is '@private' and not visible from other modules.",
+		sema_error_at(context, loc, "The %s '%s' is '@private' and not visible from other modules.",
 		              private_name, symbol);
 		return;
 	}
@@ -677,17 +677,17 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 		const char *module_name = module->name->module;
 		if (decl_is_visible(context->unit, decl) && decl->is_template && !name_resolve->is_parameterized)
 		{
-			sema_error_at(context, span, "Did you mean the %s generic '%s' in module %s? If so, use '%s{...}' instead.",
+			sema_error_at(context, loc, "Did you mean the %s generic '%s' in module %s? If so, use '%s{...}' instead.",
 			              maybe_name, symbol, module_name, symbol);
 			return;
 		}
 		if (path_name)
 		{
-			sema_error_at(context, span, "Did you mean the %s '%s::%s' in module %s? If so please add 'import %s'.",
+			sema_error_at(context, loc, "Did you mean the %s '%s::%s' in module %s? If so please add 'import %s'.",
 			              maybe_name, module_name, symbol, module_name, module_name);
 			return;
 		}
-		sema_error_at(context, span, "Did you mean the %s '%s' in module %s? If so please add 'import %s'.",
+		sema_error_at(context, loc, "Did you mean the %s '%s' in module %s? If so please add 'import %s'.",
 		              maybe_name, symbol, module_name, module_name);
 		return;
 	}
@@ -700,7 +700,7 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 		const char *other_path = name_resolve->ambiguous_other_decl->unit->module->name->module;
 		if (path_name)
 		{
-			sema_error_at(context, span,
+			sema_error_at(context, loc,
 			              "The %s '%s::%s' is defined in both '%s' and '%s', "
 			              "please use either %s::%s or %s::%s to resolve the ambiguity.",
 			              symbol_type, path_name, symbol, found_path, other_path,
@@ -710,11 +710,11 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 		{
 			if (decl_needs_prefix(found))
 			{
-				sema_error_at(context, span, "The %s needs a path prefix (e.g. '%s::%s').", symbol_type, found_path,
+				sema_error_at(context, loc, "The %s needs a path prefix (e.g. '%s::%s').", symbol_type, found_path,
 				              symbol);
 				return;
 			}
-			sema_error_at(context, span,
+			sema_error_at(context, loc,
 			              "The %s '%s' is defined in both '%s' and '%s', please use either "
 			              "%s::%s or %s::%s to resolve the ambiguity.",
 			              symbol_type, symbol, found_path, other_path,
@@ -733,15 +733,15 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 			switch (matches)
 			{
 				case 1:
-					sema_error_at(context, span, "'%s::%s' could not be found, did you perhaps want '%s::%s'?",
+					sema_error_at(context, loc, "'%s::%s' could not be found, did you perhaps want '%s::%s'?",
 					              path_name, symbol, path_name, closest[0]->name);
 					return;
 				case 2:
-					sema_error_at(context, span, "'%s::%s' could not be found, did you perhaps want '%s::%s' or '%s::%s'?",
+					sema_error_at(context, loc, "'%s::%s' could not be found, did you perhaps want '%s::%s' or '%s::%s'?",
 					              path_name, symbol, path_name, closest[0]->name, path_name, closest[1]->name);
 					return;
 				case 3:
-					sema_error_at(context, span, "'%s::%s' could not be found, did you perhaps want '%s::%s', '%s::%s' or '%s::%s'?",
+					sema_error_at(context, loc, "'%s::%s' could not be found, did you perhaps want '%s::%s', '%s::%s' or '%s::%s'?",
 					              path_name, symbol, path_name, closest[0]->name, path_name, closest[1]->name,
 					              path_name, closest[2]->name);
 					return;
@@ -753,11 +753,11 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 				return;
 			}
 		}
-		sema_error_at(context, span, "'%s::%s' could not be found, did you spell it right?", path_name, symbol);
+		sema_error_at(context, loc, "'%s::%s' could not be found, did you spell it right?", path_name, symbol);
 	}
 	else
 	{
-		sema_error_at(context, span, "'%s' could not be found, did you spell it right?", symbol);
+		sema_error_at(context, loc, "'%s' could not be found, did you spell it right?", symbol);
 	}
 }
 
@@ -852,7 +852,7 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		sema_report_error_on_decl(context, name_resolve);
 		return false;
 	}
-	if (found->is_if && context->call_env.in_if_resolution.a)
+	if (found->is_if && context->call_env.in_if_resolution)
 	{
 		sema_error_at(context, context->call_env.in_if_resolution, "This @if expression is dependent on '%s' which is also conditional.", found->name);
 		SEMA_NOTE(found, "'%s' is defined here.", found->name);
@@ -884,10 +884,10 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 						scratch_buffer_printf("%s, ", name);
 					}
 					scratch_buffer_delete(2);
-					RETURN_SEMA_ERROR_AT(name_resolve->span, "Found '%s' in the module '%s', but it lacks parameters. Inferring parameter values does not work, since the inferred parameter list '%s' doesn't match parameter list '%s' which %s expects.", found->name, found->unit->module->name->module, context->generic_infer->instance_decl.name_suffix, scratch_buffer_to_string(), found->name);
+					RETURN_SEMA_ERROR_AT(name_resolve->loc, "Found '%s' in the module '%s', but it lacks parameters. Inferring parameter values does not work, since the inferred parameter list '%s' doesn't match parameter list '%s' which %s expects.", found->name, found->unit->module->name->module, context->generic_infer->instance_decl.name_suffix, scratch_buffer_to_string(), found->name);
 				}
 				Decl *decl = sema_generate_parameterized_identifier(context, generic, found, NULL, context->generic_infer->instance_decl.params,
-					context->generic_infer->instance_decl.name_suffix, context->generic_infer->instance_decl.cname_suffix, name_resolve->span, name_resolve->span);
+					context->generic_infer->instance_decl.name_suffix, context->generic_infer->instance_decl.cname_suffix, name_resolve->loc, name_resolve->loc);
 				if (!decl_ok(decl)) return false;
 				ASSERT(decl);
 				return name_resolve->found = decl, true;
@@ -898,9 +898,9 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
 		if (context->generic_instance)
 		{
-			RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is a generic %s. It was initialized in a generic context that didn't match its definition, so explicit parameters are needed.", found->name, decl_to_name(found));
+			RETURN_SEMA_ERROR_AT(name_resolve->loc, "'%s' is a generic %s. It was initialized in a generic context that didn't match its definition, so explicit parameters are needed.", found->name, decl_to_name(found));
 		}
-		RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is a generic %s, did you forget the parameters '{ ... }'?", found->name, decl_to_name(found));
+		RETURN_SEMA_ERROR_AT(name_resolve->loc, "'%s' is a generic %s, did you forget the parameters '{ ... }'?", found->name, decl_to_name(found));
 	}
 	if (!name_resolve->is_parameterized) return true;
 	if (name_resolve->suppress_error) return name_resolve->found = NULL, true;
@@ -908,11 +908,11 @@ NOT_GENERIC:;
 	if (decl_is_user_defined_type(found)
 		|| (found->decl_kind == DECL_VAR && (found->var.kind == VARDECL_PARAM_CT_TYPE || found->var.kind == VARDECL_LOCAL_CT_TYPE)))
 	{
-		RETURN_SEMA_ERROR_AT(name_resolve->span, "'%s' is not a generic type. Did you want an initializer "
+		RETURN_SEMA_ERROR_AT(name_resolve->loc, "'%s' is not a generic type. Did you want an initializer "
 									   "but forgot () around the type? That is, you typed '%s { ... }' but intended '(%s) { ... }'?",
 									   name_resolve->symbol, name_resolve->symbol, name_resolve->symbol);
 	}
-	RETURN_SEMA_ERROR_AT(name_resolve->span, "Found '%s', but it is not generic so the { ... } after looks like a mistake?", found->name);
+	RETURN_SEMA_ERROR_AT(name_resolve->loc, "Found '%s', but it is not generic so the { ... } after looks like a mistake?", found->name);
 
 }
 
@@ -1167,12 +1167,12 @@ Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path
  * Resolves a symbol, return NULL if an error was found (and signalled),
  * otherwise the decl.
  */
-Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span)
+Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc)
 {
 	NameResolve resolve = {
 			.symbol = symbol,
 			.path = path,
-			.span = span
+			.loc = loc
 	};
 	if (!sema_resolve_symbol_common(context, &resolve)) return NULL;
 	Decl *found = resolve.found;
@@ -1185,11 +1185,11 @@ Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, 
  * Resolves a symbol, return NULL if an error was found (and signalled),
  * otherwise the decl.
  */
-Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span)
+Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc)
 {
 	NameResolve resolve = {
 		.path = path,
-		.span = span,
+		.loc = loc,
 		.symbol = symbol,
 		.is_parameterized = true
 	};
@@ -1200,11 +1200,11 @@ Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol
 	return resolve.found;
 }
 
-Decl *sema_resolve_maybe_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span)
+Decl *sema_resolve_maybe_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc)
 {
 	NameResolve resolve = {
 		.path = path,
-		.span = span,
+		.loc = loc,
 		.symbol = symbol,
 		.is_parameterized = true,
 		.suppress_error = true
@@ -1215,11 +1215,11 @@ Decl *sema_resolve_maybe_parameterized_symbol(SemaContext *context, const char *
 	return resolve.found;
 }
 
-bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, const char *name, SourceSpan span)
+bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, const char *name, SourceLocId loc)
 {
 	NameResolve name_resolve = {
 		.path = decl_path,
-		.span = span,
+		.loc = loc,
 		.symbol = name,
 		.suppress_error = true,
 		.is_parameterized = true

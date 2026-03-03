@@ -132,7 +132,7 @@ void print_type(FILE *file, TypeInfo *type)
 			break;
 		case TYPE_INFO_TYPEOF:
 			scratch_buffer_clear();
-			span_to_scratch(type->unresolved_type_expr->span);
+			loc_to_scratch(type->unresolved_type_expr->loc);
 			PRINTF("$typeof(%s)", scratch_buffer_to_string());
 			break;
 		case TYPE_INFO_VATYPE:
@@ -147,13 +147,13 @@ void print_type(FILE *file, TypeInfo *type)
 		case TYPE_INFO_ARRAY:
 			print_type(file, type->array.base);
 			scratch_buffer_clear();
-			span_to_scratch(type->array.len->span);
+			loc_to_scratch(type->array.len->loc);
 			PRINTF("[%s]", scratch_buffer_to_string());
 			break;
 		case TYPE_INFO_VECTOR:
 			print_type(file, type->array.base);
 			scratch_buffer_clear();
-			span_to_scratch(type->array.len->span);
+			loc_to_scratch(type->array.len->loc);
 			PRINTF("[<%s>]", scratch_buffer_to_string());
 			break;
 		case TYPE_INFO_INFERRED_ARRAY:
@@ -208,7 +208,7 @@ void print_var_expr(FILE *file, Expr *expr);
 void print_var_expr(FILE *file, Expr *expr)
 {
 	scratch_buffer_clear();
-	span_to_scratch(expr->span);
+	loc_to_scratch(expr->loc);
 	const char *str = scratch_buffer_to_string();
 	while (*str != 0)
 	{

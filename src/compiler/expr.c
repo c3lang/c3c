@@ -597,8 +597,8 @@ void expr_insert_addr(Expr *original)
 
 Expr *expr_generated_local(Expr *assign, Decl **decl_ref)
 {
-	Decl *decl = decl_new_generated_var(assign->type, VARDECL_LOCAL, assign->span);
-	Expr *expr_decl = expr_new(EXPR_DECL, decl->span);
+	Decl *decl = decl_new_generated_var(assign->type, VARDECL_LOCAL, assign->loc);
+	Expr *expr_decl = expr_new(EXPR_DECL, decl->loc);
 	expr_decl->decl_expr = decl;
 	decl->var.init_expr = assign;
 	*decl_ref = decl;
@@ -609,7 +609,7 @@ Expr *expr_generate_decl(Decl *decl, Expr *assign)
 {
 	ASSERT(decl->decl_kind == DECL_VAR);
 	ASSERT(decl->var.init_expr == NULL);
-	Expr *expr_decl = expr_new(EXPR_DECL, decl->span);
+	Expr *expr_decl = expr_new(EXPR_DECL, decl->loc);
 	expr_decl->decl_expr = decl;
 	if (!assign) decl->var.no_init = true;
 	decl->var.init_expr = assign;
@@ -747,7 +747,7 @@ Expr *expr_from_const_expr_at_index(Expr *expr, ArrayIndex index)
 		{
 			uint8_t c = expr_const->bytes.ptr[index];
 			Type *indexed = type_get_indexed_type(expr->type);
-			return expr_new_const_int(expr->span, indexed, c);
+			return expr_new_const_int(expr->loc, indexed, c);
 		}
 		case CONST_UNTYPED_LIST:
 			return copy_expr_single(expr_const->untyped_list[index]);
@@ -1024,11 +1024,11 @@ bool expr_is_simple(Expr *expr, bool to_float)
 	UNREACHABLE
 }
 
-Expr *expr_new_binary(SourceSpan span, Expr *left, Expr *right, BinaryOp op)
+Expr *expr_new_binary(SourceLocId loc, Expr *left, Expr *right, BinaryOp op)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_BINARY;
-	expr->span = span;
+	expr->loc = loc;
 	expr->binary_expr.operator = op;
 	expr->binary_expr.left = exprid(left);
 	expr->binary_expr.right = exprid(right);
@@ -1037,24 +1037,31 @@ Expr *expr_new_binary(SourceSpan span, Expr *left, Expr *right, BinaryOp op)
 
 Expr *expr_new_cond(Expr *expr)
 {
-	Expr *cond = expr_new(EXPR_COND, expr->span);
+	Expr *cond = expr_new(EXPR_COND, expr->loc);
 	vec_add(cond->cond_expr, expr);
 	return cond;
 }
 
-Expr *expr_new(ExprKind kind, SourceSpan start)
+Expr *expr_new_loc(ExprKind kind, SourceLoc *start)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = kind;
-	expr->span = start;
+	expr->loc = make_loc(*start);
+	return expr;
+}
+Expr *expr_new(ExprKind kind, SourceLocId start)
+{
+	Expr *expr = expr_calloc();
+	expr->expr_kind = kind;
+	expr->loc = start;
 	return expr;
 }
 
-Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v)
+Expr *expr_new_const_int(SourceLocId loc, Type *type, uint64_t v)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_CONST;
-	expr->span = span;
+	expr->loc = loc;
 	expr->type = type;
 	TypeKind kind = type_flatten(type)->type_kind;
 	expr->const_expr.ixx.i.high = 0;
@@ -1070,11 +1077,11 @@ Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v)
 	return expr;
 }
 
-Expr *expr_new_const_typeid(SourceSpan span, Type *type)
+Expr *expr_new_const_typeid(SourceLocId loc, Type *type)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_CONST;
-	expr->span = span;
+	expr->loc = loc;
 	expr->type = type_typeid;
 	expr->const_expr.const_kind = CONST_TYPEID;
 	expr->const_expr.typeid = type;
@@ -1082,21 +1089,21 @@ Expr *expr_new_const_typeid(SourceSpan span, Type *type)
 	return expr;
 }
 
-Expr *expr_new_expr_list_resolved(SourceSpan span, Type *type, Expr **expressions)
+Expr *expr_new_expr_list_resolved(SourceLocId loc, Type *type, Expr **expressions)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_EXPRESSION_LIST;
-	expr->span = span;
+	expr->loc = loc;
 	expr->type = type;
 	expr->resolve_status = RESOLVE_DONE;
 	expr->expression_list = expressions;
 	return expr;
 }
-Expr *expr_new_const_initializer(SourceSpan span, Type *type, ConstInitializer *initializer)
+Expr *expr_new_const_initializer(SourceLocId loc, Type *type, ConstInitializer *initializer)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_CONST;
-	expr->span = span;
+	expr->loc = loc;
 	expr->type = type;
 	expr->const_expr.initializer = initializer;
 	expr->const_expr.const_kind = CONST_INITIALIZER;
@@ -1104,11 +1111,11 @@ Expr *expr_new_const_initializer(SourceSpan span, Type *type, ConstInitializer *
 	return expr;
 }
 
-Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value)
+Expr *expr_new_const_bool(int loc, Type *type, bool value)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_CONST;
-	expr->span = span;
+	expr->loc = loc;
 	expr->type = type;
 	ASSERT(type_flatten(type)->type_kind == TYPE_BOOL);
 	expr->const_expr.b = value;
@@ -1117,11 +1124,11 @@ Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value)
 	return expr;
 }
 
-Expr *expr_new_const_null(SourceSpan span, Type *type)
+Expr *expr_new_const_null(SourceLocId loc, Type *type)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_CONST;
-	expr->span = span;
+	expr->loc = loc;
 	expr->type = type;
 	ASSERT(type_flatten(type)->type_kind == TYPE_POINTER);
 	expr->const_expr.ptr = 0;
@@ -1130,11 +1137,11 @@ Expr *expr_new_const_null(SourceSpan span, Type *type)
 	return expr;
 }
 
-Expr *expr_new_const_string(SourceSpan span, const char *string)
+Expr *expr_new_const_string(SourceLocId loc, const char *string)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_CONST;
-	expr->span = span;
+	expr->loc = loc;
 	expr->type = type_string;
 	expr->const_expr.const_kind = CONST_STRING;
 	expr->const_expr.bytes.ptr = string;
@@ -1157,11 +1164,11 @@ Expr *expr_variable(Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE)
 	{
-		Expr *expr = expr_new(EXPR_IDENTIFIER, decl->span);
+		Expr *expr = expr_new(EXPR_IDENTIFIER, decl->loc);
 		expr_resolve_ident(expr, decl);
 		return expr;
 	}
-	Expr *expr = expr_new(EXPR_UNRESOLVED_IDENTIFIER, decl->span);
+	Expr *expr = expr_new(EXPR_UNRESOLVED_IDENTIFIER, decl->loc);
 	expr->unresolved_ident_expr = (ExprUnresolvedIdentifier) { .ident = decl->name };
 	expr->resolve_status = RESOLVE_NOT_DONE;
 	return expr;
