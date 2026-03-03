@@ -843,7 +843,6 @@ ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs,
 
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref)
 {
-
 	if (!to) to = type_untypedlist;
 	ASSERT(to);
 	Type *flattened = type_flatten(to);
@@ -881,6 +880,16 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 			// Resolve this as an inferred array.
 			Type *type = type_get_inferred_array(flattened->array.base);
 			if (!sema_expr_analyse_initializer(context, type, type, expr, no_match_ref)) return false;
+			if (context->call_env.kind == CALL_ENV_FUNCTION && type_size(expr->type) > compiler.build.max_stack_object_size * 1024)
+			{
+				size_t size = type_size(expr->type);
+				RETURN_SEMA_ERROR(
+					expr, "The size of this stack allocated expression (%s%d Kb) exceeds the maximum allowed stack object size (%d Kb), "
+					"you can increase this limit with --max-stack-object-size, but be aware that too large objects "
+					"allocated on the stack may lead to the stack running out of memory.", size % 1024 == 0 ? "" : "over ",
+					size / 1024,
+					compiler.build.max_stack_object_size);
+			}
 			if (expr_is_const_initializer(expr))
 			{
 				ConstInitializer *init = expr->const_expr.initializer;
@@ -931,6 +940,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 NO_MATCH:
 	*no_match_ref = true;
 	return false;
+
 }
 
 void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value)

@@ -69,7 +69,7 @@ Decl *decl_new_with_type(const char *name, SourceSpan span, DeclKind decl_type)
 			kind = TYPE_ENUM;
 			break;
 		case DECL_CONSTDEF:
-			kind = TYPE_CONST_ENUM;
+			kind = TYPE_CONSTDEF;
 			break;
 		case DECL_TYPEDEF:
 			kind = TYPE_TYPEDEF;

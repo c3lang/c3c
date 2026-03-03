@@ -2693,7 +2693,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 			is_type = true;
 			FALLTHROUGH;
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_BOOL:
@@ -3360,6 +3360,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 {
 	// Stop if it's already poisoned.
 	if (!decl_ok(func)) return false;
+	ASSERT_SPAN(func, func->resolve_status == RESOLVE_DONE);
 	if (func->is_body_checked) return true;
 	func->is_body_checked = true;
 	context->generic_instance = func->is_templated ? declptr(func->instance_id) : NULL;

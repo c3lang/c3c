@@ -643,8 +643,8 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_DISTINCT, type_inline(type), 0, NULL, false);
 		case TYPE_ENUM:
 			return llvm_get_introspection_for_enum(c, type);
-		case TYPE_CONST_ENUM:
-			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_CONST_ENUM, type_inline(type), vec_size(type->decl->enums.values), NULL, false);
+		case TYPE_CONSTDEF:
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_CONSTDEF, type_inline(type), vec_size(type->decl->enums.values), NULL, false);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return llvm_get_introspection_for_struct_union(c, type);

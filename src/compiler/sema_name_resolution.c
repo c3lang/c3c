@@ -29,7 +29,7 @@ Decl *sema_find_generic_instance(SemaContext *context, Module *module, Decl *gen
 	}
 	return NULL;
 }
-INLINE bool sema_resolve_ambiguity(SemaContext *context, Decl **current, Decl *candidate, Decl **ambiguous);
+INLINE bool sema_resolve_ambiguity(SemaContext *context, Decl **current, Decl *candidate, Decl **ambiguous, bool has_path);
 static inline bool matches_subpath(Path *path_to_check, Path *path_to_find)
 {
 	// This checks the full match.
@@ -190,7 +190,7 @@ static bool sema_find_decl_in_imports(SemaContext *context, NameResolve *name_re
 		{
 			if (!path)
 			{
-				if (!sema_resolve_ambiguity(context, &decl, found, &name_resolve->ambiguous_other_decl)) return false;
+				if (!sema_resolve_ambiguity(context, &decl, found, &name_resolve->ambiguous_other_decl, false)) return false;
 				continue;
 			}
 			// 11. Then set an ambiguous match.
@@ -290,21 +290,29 @@ INLINE Type *sema_fold_weak(SemaContext *context, Decl *decl)
 
 /**
  * We want to prefer abc::Foo over bcd::Foo if:
- * (1) abc::Foo is autoimported and bcd::Foo isn't.
+ * (1) abc::Foo is builtin and there's no path
  * (2) abc::Foo is from a normal module and bcd::Foo is from a generic module.
  * (3) Folding bcd::Foo to it's @weak result gives the same as folding abc::Foo to its @weak type.
  *
  * @param context
  * @param decl
  * @param decl2
+ * @param has_path
  * @return
  */
-static BoolErr sema_first_is_preferred(SemaContext *context, Decl *decl, Decl *decl2)
+static BoolErr sema_first_is_preferred(SemaContext *context, Decl *decl, Decl *decl2, bool has_path)
 {
-	// (1) and (2)
-	if ((decl->is_autoimport && !decl2->is_autoimport)
-		|| (decl2->is_template && !decl->is_template)) return BOOL_TRUE;
+	if (has_path && !decl->is_autoimport && decl2->is_autoimport) return BOOL_TRUE;
+	if (!has_path && decl->is_autoimport && !decl2->is_autoimport) return BOOL_TRUE;
+	if ((decl2->is_template && !decl->is_template)) return BOOL_TRUE;
+	if (str_start_with(decl2->unit->module->name->module, kw_std__core))
+	{
+		if (!has_path && decl2->is_autoimport && !decl->is_autoimport) return BOOL_FALSE;
+		return BOOL_TRUE;
+	}
+
 	// Now analyse common parents, we only check if this is a redef.
+
 	if (decl2->decl_kind != DECL_TYPE_ALIAS || !decl2->is_weak) return BOOL_FALSE;
 
 	Type *weak2 = sema_fold_weak(context, decl2);
@@ -326,7 +334,7 @@ static BoolErr sema_first_is_preferred(SemaContext *context, Decl *decl, Decl *d
 	return BOOL_FALSE;
 }
 
-INLINE bool sema_resolve_ambiguity(SemaContext *context, Decl **current, Decl *candidate, Decl **ambiguous)
+INLINE bool sema_resolve_ambiguity(SemaContext *context, Decl **current, Decl *candidate, Decl **ambiguous, bool has_path)
 {
 	Decl *original = *current;
 	if (!original)
@@ -335,7 +343,7 @@ INLINE bool sema_resolve_ambiguity(SemaContext *context, Decl **current, Decl *c
 		return true;
 	}
 	// The candidate is preferred
-	BoolErr preferred = sema_first_is_preferred(context, candidate, original);
+	BoolErr preferred = sema_first_is_preferred(context, candidate, original, has_path);
 	if (preferred == BOOL_ERR) return false;
 	if (preferred == BOOL_TRUE)
 	{
@@ -348,7 +356,7 @@ INLINE bool sema_resolve_ambiguity(SemaContext *context, Decl **current, Decl *c
 	if (*ambiguous) return true;
 	// If the original is preferred over the candidate, then we just
 	// keep the original and there is no ambiguity:
-	switch (sema_first_is_preferred(context, original, candidate))
+	switch (sema_first_is_preferred(context, original, candidate, has_path))
 	{
 		case BOOL_FALSE:
 			// Otherwise we have an ambiguity
@@ -417,7 +425,7 @@ static bool sema_find_decl_in_global(SemaContext *context, DeclTable *table, Mod
 			maybe_decl = candidate;
 			continue;
 		}
-		if (!sema_resolve_ambiguity(context, &decl, candidate, &ambiguous)) return false;
+		if (!sema_resolve_ambiguity(context, &decl, candidate, &ambiguous, path != NULL)) return false;
 	}
 	name_resolve->ambiguous_other_decl = ambiguous;
 	name_resolve->found = decl;
@@ -1021,7 +1029,7 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 			if (!type->function.prototype && type->function.decl->decl_kind == DECL_FNTYPE) return sema_analyse_decl(context, type->function.decl);
 			return true;
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -1067,7 +1075,7 @@ Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const 
 			type = type_decl->distinct->type->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 			type = enum_inner_type(type)->canonical;
 			goto RETRY;
 		default:

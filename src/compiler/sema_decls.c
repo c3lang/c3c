@@ -465,7 +465,7 @@ RETRY:;
 		case TYPE_SLICE:
 			return compiler.platform.align_pointer.align / 8;
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 			type = enum_inner_type(type);
 			goto RETRY;
 		case TYPE_STRUCT:
@@ -1061,7 +1061,7 @@ RETRY:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -2902,7 +2902,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 				goto NOT_VALID_NAME;
 			}
 			FALLTHROUGH;
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		{
@@ -4663,7 +4663,7 @@ RETRY:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_SLICE:
 			size = i128_mult64(size, type_size(type));
 			break;
@@ -5356,9 +5356,9 @@ FOUND:;
 			if (decl->decl_kind != DECL_ERASED) vec_add(copied, decl);
 		}
 
-		if (stage < ANALYSIS_METHODS_REGISTER) goto EXIT;
 		FOREACH(Decl *, decl, copied)
 		{
+			if (decl->unit->module->stage < ANALYSIS_METHODS_REGISTER) continue;
 			if (decl->decl_kind != DECL_FUNC && decl->decl_kind != DECL_MACRO) continue;
 			if (!decl->func_decl.type_parent) continue;
 			SemaContext gen_context;
@@ -5376,9 +5376,9 @@ FOUND:;
 				}
 			}
 		}
-		if (stage < ANALYSIS_DECLS) goto EXIT;
 		FOREACH(Decl *, decl, copied)
 		{
+			if (decl->unit->module->stage < ANALYSIS_DECLS) continue;
 			SemaContext context_gen;
 			sema_context_init(&context_gen, decl->unit);
 			DynamicScope empty = { .depth = 0 };
@@ -5392,10 +5392,10 @@ FOUND:;
 			}
 			sema_context_destroy(&context_gen);
 		}
-		if (stage < ANALYSIS_FUNCTIONS) goto EXIT;
 		if (compiler.context.errors_found) return poisoned_decl;
 		FOREACH(Decl *, decl, copied)
 		{
+			if (decl->unit->module->stage < ANALYSIS_FUNCTIONS) continue;
 			SemaContext context_gen;
 			switch (decl->decl_kind)
 			{
@@ -5408,10 +5408,10 @@ FOUND:;
 					break;
 			}
 		}
-		if (stage < ANALYSIS_INTERFACE) goto EXIT;
 		if (compiler.context.errors_found) return poisoned_decl;
 		FOREACH(Decl *, decl, copied)
 		{
+			if (decl->unit->module->stage < ANALYSIS_INTERFACE) continue;
 			SemaContext context_gen;
 			switch (decl->decl_kind)
 			{
@@ -5431,7 +5431,6 @@ FOUND:;
 				sema_context_destroy(&context_gen);
 			}
 		}
-EXIT:;
 		if (compiler.context.errors_found) return poisoned_decl;
 	}
 	Decl *symbol = sema_find_generic_instance(context, module, generic, instance, alias->name);
@@ -5644,7 +5643,7 @@ RETRY:
 			return true;
 		case TYPE_FUNC_RAW:
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:

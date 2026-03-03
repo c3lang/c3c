@@ -113,35 +113,20 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 
 static void llvm_emit_debug_value(GenContext *c, LLVMValueRef value, LLVMMetadataRef debug_val, unsigned row, unsigned col, LLVMMetadataRef scope)
 {
-#if LLVM_VERSION_MAJOR < 19
-	LLVMDIBuilderInsertDbgValueAtEnd(c->debug.builder, value, debug_val,
-	                                 LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
-	                                 llvm_create_debug_location_with_inline(c, row, col, c->debug.function),
-	                                 LLVMGetInsertBlock(c->builder));
-#else
 	LLVMDIBuilderInsertDbgValueRecordAtEnd(c->debug.builder, value, debug_val,
 									 LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
 									 llvm_create_debug_location_with_inline(c, row, col, c->debug.function),
 									 LLVMGetInsertBlock(c->builder));
-#endif
 }
 
 
 static void llvm_emit_debug_declare(GenContext *c, LLVMValueRef var, LLVMMetadataRef debug_var, unsigned row, unsigned col, LLVMMetadataRef scope)
 {
-#if LLVM_VERSION_MAJOR < 19
-	LLVMDIBuilderInsertDeclareAtEnd(c->debug.builder,
-	                                var, debug_var,
-	                                LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
-	                                llvm_create_debug_location_with_inline(c, row, col, scope),
-	                                LLVMGetInsertBlock(c->builder));
-#else
 	LLVMDIBuilderInsertDeclareRecordAtEnd(c->debug.builder,
 	                                var, debug_var,
 	                                LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
 	                                llvm_create_debug_location_with_inline(c, row, col, scope),
 	                                LLVMGetInsertBlock(c->builder));
-#endif
 }
 
 void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
@@ -656,7 +641,7 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 			return type->backend_debug_type = llvm_debug_pointer_type(c, type);
 		case TYPE_ENUM:
 			return type->backend_debug_type = llvm_debug_enum_type(c, type, scope);
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 			return type->backend_debug_type = llvm_debug_raw_enum_type(c, type, scope);
 		case TYPE_FUNC_RAW:
 			return type->backend_debug_type = llvm_debug_func_type(c, type);

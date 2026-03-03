@@ -1958,6 +1958,7 @@ static bool parse_element_contract(ParseContext *c, ContractDescription *contrac
 INLINE void attach_deprecation_from_contract(ParseContext *c, ContractDescription *contract, Decl *decl)
 {
 	if (contract->deprecated) vec_add(decl->attributes, contract->deprecated);
+	contract->deprecated = NULL;
 }
 
 /**
@@ -2870,7 +2871,7 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 			if (!is_constdef && deprecate_warn)
 			{
 				deprecate_warn = false;
-				print_deprecation_at(c->prev_span, "Use {} to declare associated values instead of '='.");
+				PRINT_DEPRECATED_AT(c->prev_span, "Use {} to declare associated values instead of =.");
 			}
 			if (is_single_value || !tok_is(c, TOKEN_LBRACE))
 			{
@@ -2990,7 +2991,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 			is_constdef = try_consume(c, TOKEN_CONST);
 			if (is_constdef)
 			{
-				print_deprecation_at(c->prev_span, "Declare constdefs using 'constdef' instead.");
+				PRINT_DEPRECATED_AT(c->prev_span, "Declare constdefs using 'constdef' instead.");
 			}
 		}
 		if (!tok_is(c, TOKEN_LPAREN) && !tok_is(c, TOKEN_LBRACE))
@@ -3649,6 +3650,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			break;
 		case TOKEN_FN:
 			decl = parse_func_definition(c, &contracts, c->unit->is_interface_file ? FUNC_PARSE_C3I : FUNC_PARSE_REGULAR);
+
 			break;
 		case TOKEN_CT_ASSERT:
 			{

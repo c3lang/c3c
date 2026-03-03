@@ -317,7 +317,7 @@ void print_deprecation_at(SourceSpan loc, const char *message, ...)
 	if (!compiler.build.lsp_output && !deprecation_hint)
 	{
 		deprecation_hint = true;
-		eprintf("HINT: You may use --silence-deprecation to silence deprecation warnings.\n\n");
+		eprintf("HINT: You may use --warn-deprecation=no to silence deprecation warnings.\n\n");
 	}
 	va_end(args);
 }

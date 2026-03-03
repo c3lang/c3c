@@ -251,7 +251,7 @@ Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
 			expr->type = type;
 			break;
 		}
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		{
 			Decl *decl = type->decl;
 			if (!decl->is_substruct) return NULL;
@@ -1227,7 +1227,7 @@ static inline bool sema_identifier_find_possible_inferred(SemaContext *context, 
 	to = to->canonical;
 	switch (to->type_kind)
 	{
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_ENUM:
 			if (!decl_ok(to->decl)) return expr_poison(expr), true;
 			return sema_expr_analyse_enum_constant(context, expr, expr->unresolved_ident_expr.ident, to->decl);
@@ -1307,24 +1307,24 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 			switch (decl->decl_kind)
 			{
 				case DECL_VAR:
-					message = "Globals from other modules must be prefixed with the module name.";
+					message = "Globals";
 					break;
 				case DECL_FUNC:
-					message = "Functions from other modules must be prefixed with the module name.";
+					message = "Functions";
 					break;
 				case DECL_MACRO:
-					message = "Macros from other modules must be prefixed with the module name.";
+					message = "Macros";
 					break;
 				case DECL_ALIAS:
-					message = "Aliases from other modules must be prefixed with the module name.";
+					message = "Aliases";
 					break;
 				case DECL_FAULT:
-					message = "Faults from other modules must be prefixed with the module name.";
+					message = "Faults";
 					break;
 				default:
 					UNREACHABLE
 			}
-			RETURN_SEMA_ERROR(expr, message);
+			RETURN_SEMA_ERROR(expr, "%s from other modules must be prefixed with the module name, please use %s::%s instead.", message, decl->unit->module->short_path, decl->name);
 		}
 	}
 	if (decl_is_defaulted_var(decl))
@@ -1458,7 +1458,7 @@ static inline bool sema_binary_analyse_with_inference(SemaContext *context, Expr
 	switch (left->type->canonical->type_kind)
 	{
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 			return sema_analyse_inferred_expr(context, left->type, right, NULL);
 		default:
 			return sema_analyse_expr_rvalue(context, right);
@@ -1477,7 +1477,7 @@ static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *left,
 		switch (type_flatten(left->type)->type_kind)
 		{
 			case TYPE_ENUM:
-			case TYPE_CONST_ENUM:
+			case TYPE_CONSTDEF:
 				return sema_analyse_inferred_expr(context, left->type, right, NULL);
 			default:
 				break;
@@ -1490,7 +1490,7 @@ static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *left,
 		switch (type_flatten(right->type)->type_kind)
 		{
 			case TYPE_ENUM:
-			case TYPE_CONST_ENUM:
+			case TYPE_CONSTDEF:
 				return sema_analyse_inferred_expr(context, right->type, left, NULL);
 			default:
 				break;
@@ -5341,7 +5341,7 @@ static inline bool sema_create_const_len(Expr *expr, Type *type, Type *flat)
 	ASSERT_SPAN(expr, flat == type_flatten(flat) && "Should be flattened already.");
 
 	size_t len;
-	if (type->type_kind == TYPE_CONST_ENUM)
+	if (type->type_kind == TYPE_CONSTDEF)
 	{
 		len = vec_size(type->decl->enums.values);
 		expr_rewrite_const_int(expr, type_usz, len);
@@ -5381,7 +5381,7 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 		case TYPE_TYPEDEF:
 			inner = type->decl->distinct->type->canonical;
 			break;
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_ENUM:
 			inner = enum_inner_type(type)->canonical;
 			break;
@@ -5954,7 +5954,7 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 				case TYPE_OPTIONAL:
 				case TYPE_TYPEDEF:
 				case TYPE_ENUM:
-				case TYPE_CONST_ENUM:
+				case TYPE_CONSTDEF:
 				case TYPE_BITSTRUCT:
 				case TYPE_ARRAY:
 				case TYPE_FLEXIBLE_ARRAY:
@@ -5977,7 +5977,7 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 		case TYPE_PROPERTY_IS_SUBSTRUCT:
 			return type->type_kind == TYPE_STRUCT;
 		case TYPE_PROPERTY_LEN:
-			if (original_type->type_kind == TYPE_CONST_ENUM) return true;
+			if (original_type->type_kind == TYPE_CONSTDEF) return true;
 			switch (type->type_kind)
 			{
 				case TYPE_ARRAY:
@@ -5996,7 +5996,7 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 		case TYPE_PROPERTY_FROM_ORDINAL:
 		case TYPE_PROPERTY_NAMES:
 		case TYPE_PROPERTY_VALUES:
-			return type->type_kind == TYPE_ENUM || original_type->canonical->type_kind == TYPE_CONST_ENUM;
+			return type->type_kind == TYPE_ENUM || original_type->canonical->type_kind == TYPE_CONSTDEF;
 		case TYPE_PROPERTY_ELEMENTS:
 		case TYPE_PROPERTY_ASSOCIATED:
 			return type->type_kind == TYPE_ENUM;
@@ -6090,7 +6090,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_MAX:
 			return sema_create_const_max(expr, type, flat);
 		case TYPE_PROPERTY_NAMES:
-			if (type->type_kind == TYPE_CONST_ENUM)
+			if (type->type_kind == TYPE_CONSTDEF)
 			{
 				return sema_expr_replace_with_enum_name_array(context, expr, type->decl);
 			}
@@ -6105,7 +6105,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr_rewrite_const_int(expr, type_isz, vec_size(flat->decl->enums.values));
 			return true;
 		case TYPE_PROPERTY_VALUES:
-			if (type->type_kind == TYPE_CONST_ENUM)
+			if (type->type_kind == TYPE_CONSTDEF)
 			{
 				return sema_expr_replace_with_const_enum_array(context, expr, type->decl);
 			}
@@ -6560,7 +6560,7 @@ CHECK_DEEPER:
 	}
 	if (kw == kw_nameof)
 	{
-		if (flat_type->type_kind == TYPE_CONST_ENUM)
+		if (flat_type->type_kind == TYPE_CONSTDEF)
 		{
 			if (sema_cast_const(current_parent))
 			{
@@ -7076,7 +7076,7 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 		switch (left_type->type_kind)
 		{
 			case TYPE_TYPEDEF:
-			case TYPE_CONST_ENUM:
+			case TYPE_CONSTDEF:
 				is_declaration = false;
 				break;
 			default:
@@ -8648,7 +8648,7 @@ BoolErr sema_type_can_check_equality_with_overload(SemaContext *context, Type *t
 			type = type->array.base;
 			goto RETRY;
 		case TYPE_TYPEDEF:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 			if (sema_type_has_equality_overload(context, type)) return true;
 			type = type_inline(type);
 			goto RETRY;
@@ -11045,6 +11045,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	}
 	else
 	{
+		decl->resolve_status = RESOLVE_DONE;
 		SemaContext lambda_context;
 		sema_context_init(&lambda_context, context->unit);
 		if (sema_analyse_function_body(&lambda_context, decl))

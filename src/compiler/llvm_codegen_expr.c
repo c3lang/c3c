@@ -3595,7 +3595,7 @@ static void llvm_emit_array_comp(GenContext *c, BEValue *result, BEValue *lhs, B
 		case ALL_INTS:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_FUNC_PTR:
 		case TYPE_INTERFACE:
 		case TYPE_ANY:
@@ -6618,7 +6618,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_POINTER,
 					INTROSPECT_TYPE_VECTOR, INTROSPECT_TYPE_ENUM,
 					INTROSPECT_TYPE_SLICE, INTROSPECT_TYPE_DISTINCT,
-					INTROSPECT_TYPE_CONST_ENUM, INTROSPECT_TYPE_BITSTRUCT,
+					INTROSPECT_TYPE_CONSTDEF, INTROSPECT_TYPE_BITSTRUCT,
 					INTROSPECT_TYPE_OPTIONAL,
 				};
 				for (int i = 0; i < 8; i++)
