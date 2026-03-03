@@ -91,7 +91,7 @@ bool context_set_module_from_filename(ParseContext *context)
 		return false;
 	}
 	Path *path = CALLOCS(Path);
-	path->span = context->span;
+	path->loc = make_loc(context->span);
 	path->module = module_name;
 	path->len = scratch_buffer.len;
 	return create_module_or_check_name(context->unit, path);
@@ -318,7 +318,7 @@ bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, boo
 	if (!check_module_name(path)) return false;
 
 	Decl *import = decl_calloc();
-	import->span = path->span;
+	import->loc = path->loc;
 	import->decl_kind = DECL_IMPORT;
 	import->import.path = path;
 	import->import.import_private_as_public = private_import;

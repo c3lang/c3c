@@ -239,7 +239,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 				{
 					initializer->initializer_list[j] = initializer->initializer_list[j - 1];
 				}
-				Expr *new_initializer = expr_new(EXPR_CONST, initializer->span);
+				Expr *new_initializer = expr_new(EXPR_CONST, initializer->loc);
 				expr_rewrite_const_initializer(new_initializer, member->type, const_init_new_zero(type_flatten(member->type)));
 				initializer->initializer_list[i] = new_initializer;
 				size += 1;
@@ -251,7 +251,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 				sema_not_enough_elements_error(context, initializer, (int)i);
 				return false;
 			}
-			Expr *new_initializer = expr_new(EXPR_INITIALIZER_LIST, elements[i]->span);
+			Expr *new_initializer = expr_new(EXPR_INITIALIZER_LIST, elements[i]->loc);
 			int max_index_to_copy = i + sub_element_count < size ? i + sub_element_count : size;
 			for (int j = i; j < max_index_to_copy; j++)
 			{
@@ -311,9 +311,9 @@ NO_MATCH:;
 	return false;
 }
 
-Expr *sema_create_struct_from_expressions(Decl *struct_decl, SourceSpan span, Expr **exprs)
+Expr *sema_create_struct_from_expressions(Decl *struct_decl, SourceLocId loc, Expr **exprs)
 {
-	return expr_new_const_initializer(span, struct_decl->type,
+	return expr_new_const_initializer(loc, struct_decl->type,
 	                                  const_init_new_struct(struct_decl->type, exprs));
 }
 
@@ -380,12 +380,12 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 					RETURN_SEMA_ERROR(element, "Too many elements in initializer when expanding, expected only %d.", expected_members);
 				}
 				Expr *expr_two = expr_new_expr(EXPR_TWO, element);
-				Decl *decl = decl_new_generated_var(element_type, VARDECL_LOCAL, element->span);
+				Decl *decl = decl_new_generated_var(element_type, VARDECL_LOCAL, element->loc);
 				Expr *decl_expr = expr_generate_decl(decl, element);
 				expr_two->two_expr.first = decl_expr;
 				Expr *sub = expr_new_expr(EXPR_SUBSCRIPT, element);
 				sub->subscript_expr.expr = exprid(expr_variable(decl));
-				sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->span, type_usz, 0));
+				sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_usz, 0));
 				expr_two->two_expr.last = sub;
 				if (!sema_analyse_expr_rhs(context, inner_type, expr_two, true, NULL, false)) return false;
 				elements[i] = expr_two;
@@ -393,7 +393,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				{
 					sub = expr_new_expr(EXPR_SUBSCRIPT, element);
 					sub->subscript_expr.expr = exprid(expr_variable(decl));
-					sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->span, type_usz, 1));
+					sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_usz, 1));
 					vec_insert_at(elements, i + j, sub);
 					if (!sema_analyse_expr_rhs(context, inner_type, sub, true, NULL, false)) return false;
 				}
@@ -533,7 +533,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		Expr *value = expr->designator_expr.value;
 		if (!value && is_bitmember && member->var.start_bit == member->var.end_bit && type_flatten(result) == type_bool)
 		{
-			value = expr_new_const_bool(INVALID_SPAN, type_bool, true);
+			value = expr_new_const_bool(0, type_bool, true);
 			expr->designator_expr.value = value;
 		}
 		if (!value) RETURN_SEMA_ERROR(expr, "This initializer needs a value.");
@@ -567,7 +567,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		if (type_is_subtype(splat->type->canonical, type->canonical))
 		{
 			Decl *decl = original->decl;
-			Expr *designator = expr_new(EXPR_DESIGNATOR, initializer->span);
+			Expr *designator = expr_new(EXPR_DESIGNATOR, initializer->loc);
 			DesignatorElement **elements = NULL;
 			while (true)
 			{
@@ -726,7 +726,7 @@ void sema_invert_bitstruct_const_initializer(ConstInitializer *initializer)
 		{
 			if (init->kind == CONST_INIT_ZERO)
 			{
-				const_init_rewrite_to_value(init, expr_new_const_bool(INVALID_SPAN, init->type, true));
+				const_init_rewrite_to_value(init, expr_new_const_bool(0, init->type, true));
 				continue;
 			}
 			init->init_value->const_expr.b = !init->init_value->const_expr.b;
@@ -736,7 +736,7 @@ void sema_invert_bitstruct_const_initializer(ConstInitializer *initializer)
 		unsigned bits = member->var.end_bit - member->var.start_bit;
 		if (init->kind == CONST_INIT_ZERO)
 		{
-			const_init_rewrite_to_value(init, expr_new_const_int(INVALID_SPAN, init->type, 0));
+			const_init_rewrite_to_value(init, expr_new_const_int(0, init->type, 0));
 		}
 		Int res = init->init_value->const_expr.ixx;
 		res = int_not(res);

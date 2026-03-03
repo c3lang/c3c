@@ -2,12 +2,14 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
+#include <math.h>
+
 #include "compiler_internal.h"
 #include "parser_internal.h"
 
-typedef Expr *(*ParseFn)(ParseContext *context, Expr *, SourceSpan lhs_span);
-static Expr *parse_subscript_expr(ParseContext *c, Expr *left, SourceSpan lhs_span);
-static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_span);
+typedef Expr *(*ParseFn)(ParseContext *context, Expr *, SourceLoc *lhs_span);
+static Expr *parse_subscript_expr(ParseContext *c, Expr *left, SourceLoc *lhs_span);
+static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceLoc *lhs_span);
 static Expr *parse_integer_expr(ParseContext *c, bool negated);
 
 typedef struct
@@ -32,13 +34,13 @@ bool parse_current_is_expr(ParseContext *c)
  */
 bool parse_range(ParseContext *c, Range *range)
 {
-	SourceSpan start = c->span;
+	SourceLoc start = c->span;
 	// Insert zero if missing
 	if (tok_is(c, TOKEN_DOTDOT) || tok_is(c, TOKEN_COLON))
 	{
 		// ..123 and :123
 		range->start_from_end = false;
-		range->start = exprid(expr_new_const_int(c->span, type_uint, 0));
+		range->start = exprid(expr_new_const_int(make_loc(c->span), type_uint, 0));
 	}
 	else
 	{
@@ -65,7 +67,8 @@ bool parse_range(ParseContext *c, Range *range)
 	// Otherwise we have [1..] or [3:]
 	if (range->is_len)
 	{
-		print_error_at(extend_span_with_token(start, c->prev_span), "Length-ranges using ':' may not elide the length.");
+		SourceLoc loc = extend_loc_with_token(&start, &c->prev_span);
+		print_error_at_loc(&loc, "Length-ranges using ':' may not elide the length.");
 		return false;
 	}
 
@@ -94,11 +97,11 @@ bool parse_generic_expr_list(ParseContext *c, Expr ***exprs_ref)
 /**
  * rethrow_expr ::= call_expr '!'
  */
-static Expr *parse_rethrow_expr(ParseContext *c, Expr *left_side, SourceSpan lhs_start)
+static Expr *parse_rethrow_expr(ParseContext *c, Expr *left_side, SourceLoc *lhs_start)
 {
 	ASSERT(expr_ok(left_side));
 	advance_and_verify(c, TOKEN_BANG);
-	Expr *expr = expr_new(EXPR_RETHROW, lhs_start);
+	Expr *expr = expr_new_loc(EXPR_RETHROW, lhs_start);
 	expr->rethrow_expr.inner = left_side;
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -108,7 +111,7 @@ static Expr *parse_rethrow_expr(ParseContext *c, Expr *left_side, SourceSpan lhs
  * Parse lhs [op] [rhs]
  * This will return lhs if no candidate is found.
  */
-inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, SourceSpan lhs_start, Precedence precedence)
+inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, SourceLoc *lhs_start, Precedence precedence)
 {
 	while (1)
 	{
@@ -142,7 +145,7 @@ inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, S
  */
 static Expr *parse_precedence(ParseContext *c, Precedence precedence)
 {
-	SourceSpan lhs_start = c->span;
+	SourceLoc lhs_start = c->span;
 	// Get the rule for the previous token.
 	ParseFn prefix_rule = rules[c->tok].prefix;
 	// No prefix rule => either it's not an expression
@@ -153,11 +156,11 @@ static Expr *parse_precedence(ParseContext *c, Precedence precedence)
 		return poisoned_expr;
 	}
 	// Get the expression
-	Expr *left_side = prefix_rule(c, NULL, INVALID_SPAN);
+	Expr *left_side = prefix_rule(c, NULL, 0);
 	// Exit if it's an error.
 	if (!expr_ok(left_side)) return left_side;
 	// Now parse the (optional) right hand side.
-	return parse_precedence_with_left_side(c, left_side, lhs_start, precedence);
+	return parse_precedence_with_left_side(c, left_side, &lhs_start, precedence);
 }
 
 
@@ -175,7 +178,7 @@ static inline Expr *parse_try_chain_expr(ParseContext *c)
  */
 static inline Expr *parse_catch_unwrap(ParseContext *c)
 {
-	Expr *expr = expr_new(EXPR_CATCH_UNRESOLVED, c->span);
+	Expr *expr = expr_new(EXPR_CATCH_UNRESOLVED, make_loc(c->span));
 	advance_and_verify(c, TOKEN_CATCH);
 	Expr **exprs = NULL;
 
@@ -388,13 +391,13 @@ static bool parse_param_path(ParseContext *c, DesignatorElement ***path)
 	}
 }
 
-static Expr *parse_lambda(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSED)
+static Expr *parse_lambda(ParseContext *c, Expr *left, SourceLoc *lhs_span UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_LAMBDA);
 	advance_and_verify(c, TOKEN_FN);
 	Decl *func = decl_calloc();
-	func->span = c->prev_span;
+	func->loc = make_loc(c->prev_span);
 	func->decl_kind = DECL_FUNC;
 	func->visibility = VISIBLE_LOCAL;
 	func->func_decl.generated_lambda = NULL;
@@ -464,14 +467,14 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool v
 	while (1)
 	{
 		Expr *expr = NULL;
-		SourceSpan start_span = c->span;
+		SourceLoc start_span = c->span;
 
 		if (peek(c) == TOKEN_COLON && token_is_param_name(c->tok))
 		{
 			// Create the parameter expr
-			expr = expr_new(EXPR_NAMED_ARGUMENT, start_span);
+			expr = expr_new_loc(EXPR_NAMED_ARGUMENT, &start_span);
 			expr->named_argument_expr.name = symstr(c);
-			expr->named_argument_expr.name_span = c->span;
+			expr->named_argument_expr.name_span = make_loc(c->span);
 			advance(c);
 			advance(c);
 			ASSIGN_EXPR_OR_RET(expr->named_argument_expr.value, parse_expr(c), false);
@@ -507,13 +510,13 @@ bool parse_init_list(ParseContext *c, Expr ***result, TokenType param_end, bool 
 	{
 		Expr *expr = NULL;
 		DesignatorElement **path;
-		SourceSpan start_span = c->span;
+		SourceLoc start_span = c->span;
 
 		if (!parse_param_path(c, &path)) return false;
 		if (path != NULL)
 		{
 			// Create the parameter expr
-			expr = expr_new(EXPR_DESIGNATOR, start_span);
+			expr = expr_new_loc(EXPR_DESIGNATOR, &start_span);
 			expr->designator_expr.path = path;
 
 			if (try_consume(c, TOKEN_EQ))
@@ -585,7 +588,7 @@ Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl)
 				PRINT_ERROR_HERE("This looks like a declaration, which isn't allowed here.");
 				return poisoned_expr;
 			}
-			expr = expr_new(EXPR_DECL, decl->span);
+			expr = expr_new(EXPR_DECL, decl->loc);
 			expr->decl_expr = decl;
 		}
 		else
@@ -606,7 +609,7 @@ Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl)
  * @param lhs_start unused
  * @return Expr *
  */
-static Expr *parse_type_identifier(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_type_identifier(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	return parse_type_expression_with_path(c, NULL);
@@ -620,10 +623,10 @@ static Expr *parse_type_identifier(ParseContext *c, Expr *left, SourceSpan lhs_s
  * @param lhs_start unused
  * @return Expr *
  */
-static Expr *parse_splat(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_splat(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	Expr *expr = expr_new(EXPR_SPLAT, c->span);
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_SPLAT);
 	advance_and_verify(c, TOKEN_ELLIPSIS);
 	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
 	return expr;
@@ -632,12 +635,12 @@ static Expr *parse_splat(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSE
 /**
  * type_expr ::= type initializer_list?
  */
-static Expr *parse_type_expr(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_type_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEINFO);
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), poisoned_expr);
-	expr->span = type->span;
+	expr->loc = type->loc;
 	expr->type_expr = type;
 	expr->type = type_typeinfo;
 	if (type->resolve_status == RESOLVE_DONE) expr->resolve_status = RESOLVE_DONE;
@@ -657,10 +660,10 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left, SourceSpan lhs_start U
  * @param lhs_start unused
  * @return Expr *
  */
-static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	SourceSpan start_span = c->span;
+	SourceLocId start_span = make_loc(c->span);
 	const char *start = c->lexer.current;
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
@@ -680,7 +683,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceSpan lhs_star
 /**
  * unary_expr ::= unary_op unary_prec_expr
  */
-static Expr *parse_unary_expr(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_unary_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Did not expect a left hand side!");
 
@@ -716,7 +719,7 @@ static Expr *parse_unary_expr(ParseContext *c, Expr *left, SourceSpan lhs_start 
 	return unary;
 }
 
-static Expr *parse_raise_expr_suffix(ParseContext *c, Expr *left_side, SourceSpan lhs_start)
+static Expr *parse_raise_expr_suffix(ParseContext *c, Expr *left_side, SourceLoc *lhs_start)
 {
 	ASSERT(expr_ok(left_side));
 	if (left_side->expr_kind == EXPR_TYPEINFO)
@@ -725,7 +728,7 @@ static Expr *parse_raise_expr_suffix(ParseContext *c, Expr *left_side, SourceSpa
 		return poisoned_expr;
 	}
 	advance_and_verify(c, TOKEN_BIT_NOT);
-	Expr *expr = expr_new(EXPR_OPTIONAL, lhs_start);
+	Expr *expr = expr_new_loc(EXPR_OPTIONAL, lhs_start);
 	expr->inner_expr = left_side;
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -735,10 +738,10 @@ static Expr *parse_raise_expr_suffix(ParseContext *c, Expr *left_side, SourceSpa
 /**
  * post_unary_expr ::= <expr> unary_op
  */
-static Expr *parse_post_unary(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_post_unary(ParseContext *c, Expr *left, SourceLoc *lhs_start)
 {
 	ASSERT(expr_ok(left));
-	Expr *unary = expr_new(EXPR_POST_UNARY, lhs_start);
+	Expr *unary = expr_new_loc(EXPR_POST_UNARY, lhs_start);
 	unary->unary_expr.expr = left;
 	unary->unary_expr.operator = unaryop_from_token(c->tok);
 	advance(c);
@@ -749,11 +752,11 @@ static Expr *parse_post_unary(ParseContext *c, Expr *left, SourceSpan lhs_start)
 /**
  * elvis_expr := <left> ?: ternary_prec_expr
  */
-static Expr *parse_elvis_expr(ParseContext *c, Expr *left_side, SourceSpan lhs_start)
+static Expr *parse_elvis_expr(ParseContext *c, Expr *left_side, SourceLoc *lhs_start)
 {
 	ASSERT(expr_ok(left_side));
 
-	Expr *expr_ternary = expr_new(EXPR_TERNARY, lhs_start);
+	Expr *expr_ternary = expr_new_loc(EXPR_TERNARY, lhs_start);
 	expr_ternary->ternary_expr.cond = exprid(left_side);
 	advance_and_verify(c, TOKEN_ELVIS);
 	expr_ternary->ternary_expr.then_expr = 0;
@@ -767,11 +770,11 @@ static Expr *parse_elvis_expr(ParseContext *c, Expr *left_side, SourceSpan lhs_s
  * optional_expr ::= <left> '?' '!'?
  * ternary_expr ::= <left> '?' expr ':' ternary_prec_expr
  */
-static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side, SourceSpan lhs_start)
+static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side, SourceLoc *lhs_start)
 {
 	ASSERT(expr_ok(left_side));
 
-	Expr *expr = expr_new(EXPR_TERNARY, lhs_start);
+	Expr *expr = expr_new_loc(EXPR_TERNARY, lhs_start);
 	bool is_const = tok_is(c, TOKEN_CT_TERNARY);
 	advance(c);
 
@@ -812,10 +815,10 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side, SourceSpan lhs
  * When parsing we retain EXPR_GROUP in order to require explicit parentheses later
  * as needed.
  */
-static Expr *parse_grouping_expr(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSED)
+static Expr *parse_grouping_expr(ParseContext *c, Expr *left, SourceLoc *lhs_span UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	SourceSpan span = c->span;
+	SourceLoc span = c->span;
 	advance_and_verify(c, TOKEN_LPAREN);
 	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
@@ -828,7 +831,7 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left, SourceSpan lhs_spa
 			if (tok_is(c, TOKEN_LBRACE))
 			{
 				ASSIGN_EXPR_OR_RET(expr, parse_type_compound_literal_expr_after_type(c, info), poisoned_expr);
-				expr->span = extend_span_with_token(span, expr->span);
+				*sourcelocptr(expr->loc) = extend_loc_with_token(&span, sourcelocptr(expr->loc));
 				return expr;
 			}
 			// Create a cast expr
@@ -837,7 +840,7 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left, SourceSpan lhs_spa
 				Precedence prec = tok_is(c, TOKEN_LBRACE) ? PREC_PRIMARY : PREC_CALL;
 				ASSIGN_EXPRID_OR_RET(ExprId inner, parse_precedence(c, prec), poisoned_expr);
 				*expr = (Expr) {.expr_kind = EXPR_CAST,
-						.span = span,
+						.loc = make_loc(span),
 						.cast_expr.type_info = type_infoid(info),
 						.cast_expr.expr = inner};
 				RANGE_EXTEND_PREV(expr);
@@ -869,7 +872,7 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left, SourceSpan lhs_spa
  *	;
  *
  */
-static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSED)
+static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceLoc *lhs_span UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST);
@@ -931,7 +934,7 @@ ERROR:;
 	return initializer_list;
 }
 
-static Expr *parse_orelse(ParseContext *c, Expr *left_side, SourceSpan lhs_start)
+static Expr *parse_orelse(ParseContext *c, Expr *left_side, SourceLoc *lhs_start)
 {
 	ASSERT(left_side && expr_ok(left_side));
 
@@ -941,13 +944,13 @@ static Expr *parse_orelse(ParseContext *c, Expr *left_side, SourceSpan lhs_start
 	// Assignment operators have precedence right -> left.
 	ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, PREC_TERNARY), poisoned_expr);
 
-	Expr *expr = expr_new_binary(lhs_start, left_side, right_side, BINARYOP_ELSE);
+	Expr *expr = expr_new_binary(make_loc(*lhs_start), left_side, right_side, BINARYOP_ELSE);
 
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 
-static Expr *parse_binary(ParseContext *c, Expr *left_side, SourceSpan start)
+static Expr *parse_binary(ParseContext *c, Expr *left_side, SourceLoc *start)
 {
 	ASSERT(left_side && expr_ok(left_side));
 
@@ -967,13 +970,13 @@ static Expr *parse_binary(ParseContext *c, Expr *left_side, SourceSpan start)
 		ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, rules[operator_type].precedence + 1), poisoned_expr);
 	}
 
-	Expr *expr = expr_new_binary(start, left_side, right_side, binaryop_from_token(operator_type));
+	Expr *expr = expr_new_binary(make_loc(*start), left_side, right_side, binaryop_from_token(operator_type));
 
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 
-static Expr *parse_call_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_call_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start)
 {
 	ASSERT(left && expr_ok(left));
 
@@ -1002,7 +1005,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
 	}
 	advance(c);
 
-	Expr *call = expr_new(EXPR_CALL, lhs_start);
+	Expr *call = expr_new_loc(EXPR_CALL, lhs_start);
 	call->call_expr.function = exprid(left);
 	call->call_expr.arguments = params;
 	RANGE_EXTEND_PREV(call);
@@ -1064,7 +1067,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
 
 	if (body || body_args)
 	{
-		Expr *macro_body = expr_new(EXPR_MACRO_BODY, call->span);
+		Expr *macro_body = expr_new(EXPR_MACRO_BODY, call->loc);
 		macro_body->macro_body_expr.body = body;
 		macro_body->macro_body_expr.body_arguments = body_args;
 		call->call_expr.macro_body = exprid(macro_body);
@@ -1076,12 +1079,12 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
 /**
  * subscript ::= '[' range_expr ']'
  */
-static Expr *parse_subscript_expr(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_subscript_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(left && expr_ok(left));
 	advance_and_verify(c, TOKEN_LBRACKET);
 
-	Expr *subs_expr = expr_new(EXPR_SUBSCRIPT, lhs_start);
+	Expr *subs_expr = expr_new_loc(EXPR_SUBSCRIPT, lhs_start);
 	subs_expr->subscript_expr.expr = exprid(left);
 
 	Range range = { .range_type = RANGE_DYNAMIC };
@@ -1107,10 +1110,10 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left, SourceSpan lhs_st
 /**
  * generic_expr ::= IDENT generic_parameters
  */
-static Expr *parse_generic_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_generic_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start)
 {
 	ASSERT(left && expr_ok(left));
-	Expr *subs_expr = expr_new(EXPR_GENERIC_IDENT, lhs_start);
+	Expr *subs_expr = expr_new_loc(EXPR_GENERIC_IDENT, lhs_start);
 	subs_expr->generic_ident_expr.parent = exprid(left);
 	if (!parse_generic_expr_list(c, &subs_expr->generic_ident_expr.parameters)) return poisoned_expr;
 	RANGE_EXTEND_PREV(subs_expr);
@@ -1121,24 +1124,24 @@ static Expr *parse_generic_expr(ParseContext *c, Expr *left, SourceSpan lhs_star
  * access_expr ::= '.' primary_expr
  * deref_subscript ::= '.' '[' expr ']'
  */
-static Expr *parse_access_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_access_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start)
 {
 	ASSERT(left && expr_ok(left));
 	advance_and_verify(c, TOKEN_DOT);
 	if (tok_is(c, TOKEN_LBRACKET))
 	{
-		Expr *deref = expr_new(EXPR_MAYBE_DEREF, left->span);
+		Expr *deref = expr_new(EXPR_MAYBE_DEREF, left->loc);
 		deref->inner_expr = left;
 		return parse_subscript_expr(c, deref, lhs_start);
 	}
-	Expr *access_expr = expr_new(EXPR_ACCESS_UNRESOLVED, lhs_start);
+	Expr *access_expr = expr_new_loc(EXPR_ACCESS_UNRESOLVED, lhs_start);
 	access_expr->access_unresolved_expr.parent = left;
 	ASSIGN_EXPR_OR_RET(access_expr->access_unresolved_expr.child, parse_precedence(c, PREC_PRIMARY), poisoned_expr);
 	RANGE_EXTEND_PREV(access_expr);
 	return access_expr;
 }
 
-static Expr *parse_ct_ident(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSED)
+static Expr *parse_ct_ident(ParseContext *c, Expr *left, SourceLoc *lhs_span UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	if (try_consume(c, TOKEN_CT_CONST_IDENT))
@@ -1153,7 +1156,7 @@ static Expr *parse_ct_ident(ParseContext *c, Expr *left, SourceSpan lhs_span UNU
 }
 
 
-static Expr *parse_hash_ident(ParseContext *c, Expr *left, SourceSpan lhs_span UNUSED)
+static Expr *parse_hash_ident(ParseContext *c, Expr *left, SourceLoc *lhs_span UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_HASH_IDENT);
@@ -1166,7 +1169,7 @@ static Expr *parse_hash_ident(ParseContext *c, Expr *left, SourceSpan lhs_span U
 /**
  * ct_eval ::= CT_EVAL '(' expr ')'
  */
-static Expr *parse_ct_eval(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_ct_eval(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_EVAL);
@@ -1179,10 +1182,10 @@ static Expr *parse_ct_eval(ParseContext *c, Expr *left, SourceSpan lhs_start UNU
 }
 
 
-static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	Expr *defined = expr_new(EXPR_CT_DEFINED, c->span);
+	Expr *defined = expr_new_loc(EXPR_CT_DEFINED, &c->span);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	while (!try_consume(c, TOKEN_RPAREN))
@@ -1205,21 +1208,21 @@ static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceSpan lhs_start 
  *
  * Note that this is transformed to $typeof(expr).sizeof.
  */
-static Expr *parse_ct_sizeof(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_ct_sizeof(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	Expr *access = expr_new(EXPR_ACCESS_UNRESOLVED, c->span);
+	Expr *access = expr_new_loc(EXPR_ACCESS_UNRESOLVED, &c->span);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-	Expr *typeof_expr = expr_new(EXPR_TYPEINFO, inner->span);
-	TypeInfo *type_info = type_info_new(TYPE_INFO_TYPEOF, inner->span);
+	Expr *typeof_expr = expr_new(EXPR_TYPEINFO, inner->loc);
+	TypeInfo *type_info = type_info_new(TYPE_INFO_TYPEOF, inner->loc);
 	type_info->optional = try_consume(c, TOKEN_BANG);
 	type_info->unresolved_type_expr = inner;
 	typeof_expr->type_expr = type_info;
 	access->access_unresolved_expr.parent = typeof_expr;
-	Expr *ident = expr_new(EXPR_UNRESOLVED_IDENTIFIER, c->span);
+	Expr *ident = expr_new_loc(EXPR_UNRESOLVED_IDENTIFIER, &c->span);
 	ident->unresolved_ident_expr.ident = type_property_list[TYPE_PROPERTY_SIZEOF];
 	access->access_unresolved_expr.child = ident;
 	RANGE_EXTEND_PREV(access);
@@ -1230,10 +1233,10 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left, SourceSpan lhs_start U
 /**
  * ct_is_const ::= CT_IS_CONST '(' expr ')'
  */
-static Expr *parse_ct_is_const(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_ct_is_const(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	Expr *checks = expr_new(EXPR_CT_IS_CONST, c->span);
+	Expr *checks = expr_new_loc(EXPR_CT_IS_CONST, &c->span);
 	advance_and_verify(c, TOKEN_CT_IS_CONST);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	ASSIGN_EXPR_OR_RET(checks->inner_expr, parse_expr(c), poisoned_expr);
@@ -1245,10 +1248,10 @@ static Expr *parse_ct_is_const(ParseContext *c, Expr *left, SourceSpan lhs_start
 /**
  * ct_checks ::= CT_EMBED '(' constant_expr (',' constant_expr)? ')'
  */
-static Expr *parse_ct_embed(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_ct_embed(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	Expr *embed = expr_new(EXPR_EMBED, c->span);
+	Expr *embed = EXPR_NEW_TOKEN(EXPR_EMBED);
 	advance_and_verify(c, TOKEN_CT_EMBED);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	ASSIGN_EXPR_OR_RET(embed->embed_expr.filename, parse_constant_expr(c), poisoned_expr);
@@ -1265,7 +1268,7 @@ static Expr *parse_ct_embed(ParseContext *c, Expr *left, SourceSpan lhs_start UN
  * lengthof ::= LENGTHOF '(' expr ')'
  * flat_path ::= expr ('.' primary) | '[' expr ']')*
  */
-static Expr *parse_lengthof(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_lengthof(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_LENGTHOF);
@@ -1281,7 +1284,7 @@ static Expr *parse_lengthof(ParseContext *c, Expr *left, SourceSpan lhs_start UN
  * ct_call ::= (CT_ALIGNOF | CT_FEATURE | CT_EXTNAMEOF | CT_OFFSETOF | CT_NAMEOF | CT_QNAMEOF) '(' flat_path ')'
  * flat_path ::= expr ('.' primary) | '[' expr ']')*
  */
-static Expr *parse_ct_call(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_ct_call(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_CALL);
@@ -1298,7 +1301,7 @@ static Expr *parse_ct_call(ParseContext *c, Expr *left, SourceSpan lhs_start UNU
 	return expr;
 }
 
-static Expr *parse_ct_assignable(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_ct_assignable(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_ASSIGNABLE);
@@ -1313,21 +1316,21 @@ static Expr *parse_ct_assignable(ParseContext *c, Expr *left, SourceSpan lhs_sta
 	return expr;
 }
 
-static Expr *parse_ct_kindof(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_ct_kindof(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	Expr *access = expr_new(EXPR_ACCESS_UNRESOLVED, c->span);
+	Expr *access = expr_new_loc(EXPR_ACCESS_UNRESOLVED, &c->span);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-	Expr *typeof_expr = expr_new(EXPR_TYPEINFO, inner->span);
-	TypeInfo *type_info = type_info_new(TYPE_INFO_TYPEOF, inner->span);
+	Expr *typeof_expr = expr_new(EXPR_TYPEINFO, inner->loc);
+	TypeInfo *type_info = type_info_new(TYPE_INFO_TYPEOF, inner->loc);
 	type_info->optional = try_consume(c, TOKEN_BANG);
 	type_info->unresolved_type_expr = inner;
 	typeof_expr->type_expr = type_info;
 	access->access_unresolved_expr.parent = typeof_expr;
-	Expr *ident = expr_new(EXPR_UNRESOLVED_IDENTIFIER, c->span);
+	Expr *ident = expr_new_loc(EXPR_UNRESOLVED_IDENTIFIER, &c->span);
 	ident->unresolved_ident_expr.ident = type_property_list[TYPE_PROPERTY_KINDOF];
 	access->access_unresolved_expr.child = ident;
 	RANGE_EXTEND_PREV(access);
@@ -1337,7 +1340,7 @@ static Expr *parse_ct_kindof(ParseContext *c, Expr *left, SourceSpan lhs_start U
 /**
  * ct_arg ::= VACOUNT | (VAARG | VAREF | VAEXPR | VACONST) '(' expr ')'
  */
-static Expr *parse_ct_arg(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_ct_arg(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_ARG);
@@ -1358,7 +1361,7 @@ static Expr *parse_ct_arg(ParseContext *c, Expr *left, SourceSpan lhs_start)
  * identifier ::= CONST_IDENT | IDENT
  * Note: if the identifier is "return" (only possible in doc lexing "mode"), create an EXPR_RETVAL instead.
  */
-static Expr *parse_identifier(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_identifier(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	if (symstr(c) == kw_return)
@@ -1375,7 +1378,7 @@ static Expr *parse_identifier(ParseContext *c, Expr *left, SourceSpan lhs_start 
 }
 
 
-static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left, SourceLoc *lhs_start)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Path *path;
@@ -1390,7 +1393,7 @@ static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left, S
 			expr->unresolved_ident_expr.path = path;
 			if (path)
 			{
-				expr->span = extend_span_with_token(path->span, expr->span);
+				*sourcelocptr(expr->loc) = extend_loc_with_token(sourcelocptr(path->loc), sourcelocptr(expr->loc));
 			}
 			return expr;
 		}
@@ -1406,9 +1409,9 @@ static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left, S
 /**
  * force_unwrap ::= expr '!!'
  */
-static Expr *parse_force_unwrap_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_force_unwrap_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start)
 {
-	Expr *force_unwrap_expr = expr_new(EXPR_FORCE_UNWRAP, lhs_start);
+	Expr *force_unwrap_expr = expr_new_loc(EXPR_FORCE_UNWRAP, lhs_start);
 	advance(c);
 	force_unwrap_expr->inner_expr = left;
 	RANGE_EXTEND_PREV(force_unwrap_expr);
@@ -1422,7 +1425,7 @@ static Expr *parse_force_unwrap_expr(ParseContext *c, Expr *left, SourceSpan lhs
  *
  * Note this code accepts any ident as builtin, and relies on the lexer to prevent space between tokens.
  */
-static Expr *parse_builtin(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_builtin(ParseContext *c, Expr *left, SourceLoc *lhs_start)
 {
 	ASSERT(!left && "Had left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_BUILTIN);
@@ -1433,7 +1436,7 @@ static Expr *parse_builtin(ParseContext *c, Expr *left, SourceSpan lhs_start)
 	}
 	advance_and_verify(c, TOKEN_BUILTIN);
 	expr->builtin_expr.ident = symstr(c);
-	expr->span = extend_span_with_token(expr->span, c->span);
+	*sourcelocptr(expr->loc) = extend_loc_with_token(sourcelocptr(expr->loc), &c->span);
 	if (try_consume(c, TOKEN_CONST_IDENT))
 	{
 		expr->expr_kind = EXPR_COMPILER_CONST;
@@ -1487,7 +1490,7 @@ static int read_int_suffix(const char *string, size_t loc, size_t len, char c, b
 static Expr *parse_integer_expr(ParseContext *c, bool negated)
 {
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST);
-	if (negated) expr_int->span = extend_span_with_token(c->prev_span, c->span);
+	if (negated) *sourcelocptr(expr_int->loc) = extend_loc_with_token(&c->prev_span, &c->span);
 	expr_int->resolve_status = RESOLVE_DONE;
 	size_t len = c->data.lex_len;
 	const char *string = symstr(c);
@@ -1784,7 +1787,7 @@ EXIT:
 	return expr_int;
 }
 
-Expr *parse_integer(ParseContext *c, Expr *left UNUSED, SourceSpan lhs_start UNUSED)
+Expr *parse_integer(ParseContext *c, Expr *left UNUSED, SourceLoc *lhs_start UNUSED)
 {
 	return parse_integer_expr(c, false);
 }
@@ -1846,7 +1849,7 @@ static void parse_base64(char *result_pointer, char *result_pointer_end, const c
 	DONE:;
 }
 
-static Expr *parse_bytes_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_bytes_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Had left hand side");
 	ArraySize len = 0;
@@ -1900,7 +1903,7 @@ static Expr *parse_bytes_expr(ParseContext *c, Expr *left, SourceSpan lhs_start)
 /**
  * Char literals may be 1, 2, 4, 8 or 16 bytes. They are always unsigned.
  */
-static Expr *parse_char_lit(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_char_lit(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Had left hand side");
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST);
@@ -1942,7 +1945,7 @@ static Expr *parse_char_lit(ParseContext *c, Expr *left, SourceSpan lhs_start)
 /**
  * Parse a double from the underlying string into a constant.
  */
-static Expr *parse_double(ParseContext *c, Expr *left, SourceSpan lhs_start)
+static Expr *parse_double(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Had left hand side");
 	char *err;
@@ -2075,7 +2078,7 @@ ADVANCE:;
 /**
  * string_literal ::= STRING+
  */
-static Expr *parse_string_literal(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_string_literal(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Had left hand side");
 	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST);
@@ -2093,7 +2096,7 @@ static Expr *parse_string_literal(ParseContext *c, Expr *left, SourceSpan lhs_st
 /*
  * bool ::= 'true' | 'false'
  */
-static Expr *parse_bool(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_bool(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST);
@@ -2107,7 +2110,7 @@ static Expr *parse_bool(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED
 /**
  * Parse 'null', creating a const void* with zero address.
  */
-static Expr *parse_null(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED)
+static Expr *parse_null(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST);
@@ -2124,10 +2127,10 @@ static Expr *parse_null(ParseContext *c, Expr *left, SourceSpan lhs_start UNUSED
  */
 Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *type_info)
 {
-	Expr *expr = expr_new(EXPR_COMPOUND_LITERAL, type_info->span);
+	Expr *expr = expr_new(EXPR_COMPOUND_LITERAL, type_info->loc);
 	expr->expr_compound_literal.type_info = type_info;
 	EXPECT_OR_RET(TOKEN_LBRACE, poisoned_expr);
-	ASSIGN_EXPR_OR_RET(expr->expr_compound_literal.initializer, parse_initializer_list(c, NULL, INVALID_SPAN), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(expr->expr_compound_literal.initializer, parse_initializer_list(c, NULL, 0), poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
@@ -2140,7 +2143,7 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 	TypeInfo *type;
 	if (path)
 	{
-		type = type_info_new(TYPE_INFO_IDENTIFIER, path->span);
+		type = type_info_new(TYPE_INFO_IDENTIFIER, path->loc);
 		type->unresolved.path = path;
 		type->unresolved.name = symstr(c);
 		advance_and_verify(c, TOKEN_TYPE_IDENT);
@@ -2156,7 +2159,7 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 	{
 		return parse_type_compound_literal_expr_after_type(c, type);
 	}
-	Expr *expr = expr_new(EXPR_TYPEINFO, type->span);
+	Expr *expr = expr_new(EXPR_TYPEINFO, type->loc);
 	expr->type_expr = type;
 	expr->type = type_typeinfo;
 	if (type->resolve_status == RESOLVE_DONE) expr->resolve_status = RESOLVE_DONE;
