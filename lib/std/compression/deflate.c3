@@ -58,9 +58,9 @@ fn void Inflater.init(&self, InStream input, char[] bit_reader_buf = {})
 	self.reader.init(input, bit_reader_buf);
 	self.state = START_BLOCK;
 	static OnceFlag run_once;
-    run_once.call(fn void() {
-    	build_fixed_huffman(&lit_fixed_global, &dist_fixed_global);
-    });
+	run_once.call(fn void() {
+		build_fixed_huffman(&lit_fixed_global, &dist_fixed_global);
+	});
 }
 
 fn usz? Inflater.read(&self, char[] buffer) @dynamic
@@ -91,9 +91,10 @@ fn usz? Inflater.read(&self, char[] buffer) @dynamic
 							usz dst_idx = s_pos & 0xFFFF;
 							if (src_idx > 0xFFF0 || dst_idx > 0xFFF0) break;
 
-							char[<16>] val = *(char[<16>]*)(&self.window[src_idx]);
-							*(char[<16>]*)(&self.window[dst_idx]) = val;
-							*(char[<16>]*)(&buffer[total_out]) = val;
+							char[16] tmp;
+							mem::copy(&tmp[0], &self.window[src_idx], 16);
+							mem::copy(&self.window[dst_idx], &tmp[0], 16);
+							mem::copy(buffer.ptr + total_out, &tmp[0], 16);
 
 							s_pos += 16;
 							total_out += 16;
@@ -130,8 +131,14 @@ fn usz? Inflater.read(&self, char[] buffer) @dynamic
 
 					self.pos = s_pos;
 					self.match_len -= (uint)orig_to_copy;
-					if (self.match_len == 0) { self.state = DECODE_SYMBOL; }
-					else { return total_out; } // Buffer full
+					if (self.match_len == 0)
+					{
+						self.state = DECODE_SYMBOL;
+					}
+					else
+					{
+						return total_out; // Buffer full
+					}
 				}
 				else { self.state = DECODE_SYMBOL; }
 
@@ -194,7 +201,7 @@ fn void? Inflater.close(&self) @dynamic
 	self.reader.close();
 }
 
-fn char[]? decompress(Allocator allocator = mem, char[] input) => @pool()
+fn char[]? decompress(Allocator allocator, char[] input) => @pool()
 {
 	if (!input.len) return allocator::new_array(allocator, char, 0);
 
@@ -233,13 +240,18 @@ fn void? decompress_stream(InStream input, OutStream output) => @pool()
 	io::copy_to(inflater, output)!;
 }
 
-fn void? compress_stream(Allocator allocator = mem, InStream input, OutStream output)
+fn void? compress_stream(Allocator allocator, InStream input, OutStream output)
 {
-	Deflater deflater;
+	Deflater* deflater = allocator::new(allocator, Deflater);
 	deflater.init(allocator, output);
-	defer (void)deflater.close();
+	defer {
+		(void)deflater.close();
+		allocator::free(allocator, deflater);
+	}
 
-	char[32768] buf;
+	char[] buf = allocator::alloc_array(allocator, char, 32768);
+	defer allocator::free(allocator, buf);
+
 	while (true)
 	{
 		usz? n = input.read(buf[..]);
@@ -258,12 +270,12 @@ struct Deflater (OutStream)
 	OutStream output;
 	Allocator allocator;
 
-	uint* head;
-	uint* prev;
-	char* window;
+	uint[] head;
+	uint[] prev;
+	char[] window;
 	uint window_fill;
 
-	Token* tokens;
+	Token[] tokens;
 	usz token_count;
 	usz max_tokens;
 	uint[286] lit_freqs;
@@ -280,13 +292,13 @@ struct Deflater (OutStream)
 	bool closed;
 }
 
-fn void Deflater.init(&self, Allocator allocator = mem, OutStream output = null)
+fn void Deflater.init(&self, Allocator allocator, OutStream output = null)
 {
 	*self = {};
 	self.allocator = allocator;
 	self.output = output;
 	self.head = allocator::alloc_array(allocator, uint, HASH_SIZE);
-	self.head[..HASH_SIZE] = 0xFFFFFFFF;
+	self.head[..] = 0xFFFFFFFF;
 	self.prev = allocator::alloc_array(allocator, uint, WINDOW_SIZE);
 	self.window = allocator::alloc_array(allocator, char, WINDOW_SIZE * 2 + MAX_MATCH + 1);
 	self.window_fill = WINDOW_SIZE;
@@ -299,10 +311,10 @@ fn void Deflater.init(&self, Allocator allocator = mem, OutStream output = null)
 
 fn void Deflater.free(&self)
 {
-	allocator::free(self.allocator, self.head);
-	allocator::free(self.allocator, self.prev);
-	allocator::free(self.allocator, self.window);
-	allocator::free(self.allocator, self.tokens);
+	if (self.head.ptr) allocator::free(self.allocator, self.head);
+	if (self.prev.ptr) allocator::free(self.allocator, self.prev);
+	if (self.window.ptr) allocator::free(self.allocator, self.window);
+	if (self.tokens.ptr) allocator::free(self.allocator, self.tokens);
 	if (self.bwriter.data.ptr) allocator::free(self.allocator, self.bwriter.data.ptr);
 }
 
@@ -318,14 +330,14 @@ fn usz? Deflater.write(&self, char[] data) @dynamic
 		if (space == 0)
 		{
 			self.scan_matches(false)!;
-			mem::copy(self.window, self.window + WINDOW_SIZE, WINDOW_SIZE);
+			mem::copy(self.window, self.window[WINDOW_SIZE..], WINDOW_SIZE);
 			self.window_fill -= WINDOW_SIZE;
 			self.match_pos -= WINDOW_SIZE;
 			space = WINDOW_SIZE;
 		}
 
 		usz to_copy = math::min(remaining, space);
-		mem::copy(self.window + self.window_fill, data.ptr + offset, to_copy);
+		mem::copy(self.window[self.window_fill..], data[offset..], to_copy);
 		self.window_fill += (uint)to_copy;
 		remaining -= to_copy;
 		offset += to_copy;
@@ -353,7 +365,7 @@ fn void? Deflater.close(&self) @dynamic
 
 fn void? Deflater.scan_matches(&self, bool final)
 {
-	char* input = self.window;
+	char[] input = self.window;
 	uint wfill = self.window_fill;
 
 	if (!self.hash_ready && wfill > WINDOW_SIZE + 1)
@@ -363,11 +375,11 @@ fn void? Deflater.scan_matches(&self, bool final)
 	}
 
 	// Copy hot fields to locals for register allocation
-	uint* head = self.head;
-	uint* prev = self.prev;
-	uint* lfreqs = &self.lit_freqs[0];
-	uint* dfreqs = &self.dist_freqs[0];
-	Token* tokens = self.tokens;
+	uint[] head = self.head;
+	uint[] prev = self.prev;
+	uint[] lfreqs = self.lit_freqs[..];
+	uint[] dfreqs = self.dist_freqs[..];
+	Token[] tokens = self.tokens;
 	usz tcount = self.token_count;
 	usz max_t = self.max_tokens;
 
@@ -605,9 +617,12 @@ fn void? Deflater.emit_block(&self, bool final)=> @pool()
 	foreach (t : tree_tokens)
 	{
 		self.bwriter.write_huffman(tree_codes[t.val].code, tree_codes[t.val].len);
-		if (t.val == 16) { self.bwriter.write_bits(t.dist, 2); }
-		else if (t.val == 17) { self.bwriter.write_bits(t.dist, 3); }
-		else if (t.val == 18) { self.bwriter.write_bits(t.dist, 7); }
+		switch (t.val)
+		{
+			case 16: self.bwriter.write_bits(t.dist, 2);
+			case 17: self.bwriter.write_bits(t.dist, 3);
+			case 18: self.bwriter.write_bits(t.dist, 7);
+		}
 	}
 
 	// Generate canonical codes for lit/dist trees
@@ -665,9 +680,9 @@ fn void? Deflater.emit_block(&self, bool final)=> @pool()
 
 	if (final)
 	{
-		char[] compressed = self.bwriter.finish();
+			char[] compressed = self.bwriter.finish();
 		if (self.output) self.output.write(compressed)!;
-		self.total_out += compressed.len;
+			self.total_out += compressed.len;
 	}
 	else
 	{
@@ -692,7 +707,7 @@ fn void? Deflater.emit_block(&self, bool final)=> @pool()
  @param allocator : `The allocator to use.`
  @return `The compressed data.`
 *>
-fn char[]? compress(Allocator allocator = mem, char[] input) => @pool()
+fn char[]? compress(Allocator allocator, char[] input) => @pool()
 {
 	if (input.len == 0)
 	{
@@ -870,7 +885,11 @@ fn void BitWriter.write_bits(&self, uint value, uint count)
 			if (new_cap < 1024) new_cap = 1024;
 			while (new_cap <= self.len)
 			{
-				if (new_cap > usz.max / 2) { new_cap = self.len + 1; break; }
+				if (new_cap > usz.max / 2)
+				{
+					new_cap = self.len + 1;
+					break;
+				}
 				new_cap *= 2;
 			}
 			self.data = allocator::realloc_array(self.allocator, self.data.ptr, char, new_cap);
@@ -891,14 +910,7 @@ fn char[] BitWriter.finish(&self)
 {
 	if (self.nbits > 0)
 	{
-		if (self.len >= self.data.len)
-		{
-			usz n_cap = self.len + 1;
-			self.data = allocator::realloc_array(self.allocator, self.data.ptr, char, n_cap);
-		}
-		self.data[self.len++] = (char)(self.buffer & 0xFF);
-		self.buffer = 0;
-		self.nbits = 0;
+		self.write_bits(0, 8 - self.nbits);
 	}
 	return self.data[:self.len];
 }
@@ -972,7 +984,12 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 	foreach (i, freq : freqs) { if (freq == 0) continue; map.push({i, freq}); n++; }
 	if (n == 0) return {};
 	sort::quicksort(map.array_view());
-	if (n == 1) { char[] blen = allocator::new_array(allocator, char, freqs.len); blen[map[0].index] = 1; return blen; }
+	if (n == 1)
+	{
+		char[] blen = allocator::new_array(allocator, char, freqs.len);
+		blen[map[0].index] = 1;
+		return blen;
+	}
 	usz max_elements = 2 * n;
 	uint[] hist = mem::temp_array(uint, max_elements);
 	foreach (i, m : map) hist[i] = m.freq;
@@ -984,36 +1001,79 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 	is_merged[:max_elements] = 0;
 	usz num_relevant = 2 * n - 2;
 	ulong mask = 1;
+
 	for (uint bits = max_bits - 1; bits > 0; bits--)
 	{
 		num_previous &= (usz)~1;
-		current[0] = hist[0]; current[1] = hist[1];
+		current[0] = hist[0];
+		current[1] = hist[1];
 		uint sum = current[0] + current[1];
 		usz num_current = 2; usz num_hist = 2; usz num_merged = 0;
+
 		while (true)
 		{
-			if (num_hist < n && hist[num_hist] <= sum) { current[num_current++] = hist[num_hist++]; continue; }
-			is_merged[num_current] |= mask; current[num_current] = sum; num_current++; num_merged++;
+			if (num_hist < n && hist[num_hist] <= sum)
+			{
+				if (num_current < max_elements)
+				{
+					current[num_current++] = hist[num_hist++];
+					continue;
+				} else { break; }
+			}
+			if (num_current < max_elements)
+			{
+				is_merged[num_current] |= mask;
+				current[num_current] = sum;
+				num_current++;
+				num_merged++;
+			}
+			else
+			{
+				break;
+			}
+
 			if (num_merged * 2 >= num_previous) break;
 			sum = previous[num_merged * 2] + previous[num_merged * 2 + 1];
 		}
-		while (num_hist < n) current[num_current++] = hist[num_hist++];
+		while (num_hist < n && num_current < max_elements)
+		{
+			current[num_current++] = hist[num_hist++];
+		}
 		mask <<= 1;
 		if (num_previous >= num_relevant)
 		{
 			bool keep_going = false;
-			for (usz i = num_relevant; i > 1; i--) { if (previous[i - 1] != current[i - 1]) { keep_going = true; break; } }
+			for (usz i = num_relevant; i > 1; i--)
+			{
+				if (previous[i - 1] != current[i - 1])
+				{
+					keep_going = true;
+					break;
+				}
+			}
 			if (!keep_going) break;
 		}
 		@swap(previous, current); num_previous = num_current;
 	}
-	mask >>= 1; hist[..] = 0; usz num_analyze = num_relevant;
+
+	mask >>= 1; hist[..] = 0;
+	usz num_analyze = num_relevant;
 	while (mask != 0)
 	{
-		usz num_merged_loop = 0; hist[0]++; hist[1]++;
+		usz num_merged_loop = 0;
+		if (max_elements >= 2) { hist[0]++; hist[1]++; }
 		usz symbol = 2;
-		for (usz i = symbol; i < num_analyze; i++) { if ((is_merged[i] & mask) == 0) { hist[symbol]++; symbol++; } else { num_merged_loop++; } }
-		num_analyze = 2 * num_merged_loop; mask >>= 1;
+		for (usz i = symbol; i < num_analyze; i++)
+		{
+			if (i < max_elements && (is_merged[i] & mask) == 0)
+			{
+				if (symbol < max_elements) hist[symbol]++;
+				symbol++;
+			}
+			else { num_merged_loop++; }
+		}
+		num_analyze = 2 * num_merged_loop;
+		mask >>= 1;
 	}
 	for (usz i = 0; i < num_analyze; i++) hist[i]++;
 	char[] blen = allocator::new_array(allocator, char, freqs.len);
@@ -1025,7 +1085,14 @@ fn char[] Huffman.get_lengths(&self, usz max_sym)
 {
 	char[] blen = allocator::new_array(tmem, char, max_sym + 1);
 	ushort index = 0;
-	for (uint len = 1; len < 16; len++) { uint count = self.counts[len]; for (uint i = 0; i < count; i++) blen[self.symbols[index++]] = (char)len; }
+	for (uint len = 1; len < 16; len++)
+	{
+		uint count = self.counts[len];
+		for (uint i = 0; i < count; i++)
+		{
+			blen[self.symbols[index++]] = (char)len;
+		}
+	}
 	return blen;
 }
 

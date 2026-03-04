@@ -202,7 +202,7 @@ fn DataSetResult run_bench(String title, char[] data)
 	start = clock::now();
 	{
 		deflate::Deflater def;
-		def.init(output: &null_out);
+		def.init(mem, output: &null_out);
 		usz chunk = 32768;
 		usz off = 0;
 		while (off < data.len)
