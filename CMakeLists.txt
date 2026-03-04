@@ -285,7 +285,14 @@ if(C3_WITH_LLVM)
                 Linker
                 LTO
         )
-        if (LLVM_PACKAGE_VERSION VERSION_GREATER_EQUAL 21.0.0)
+        set(_dtlto_found FALSE)
+        foreach(_dir ${LLVM_LIBRARY_DIRS})
+            if (EXISTS "${_dir}/libLLVMDTLTO.a" OR EXISTS "${_dir}/LLVMDTLTO.lib")
+                set(_dtlto_found TRUE)
+                break()
+            endif()
+        endforeach()
+        if (_dtlto_found)
             list(APPEND LLVM_LINK_COMPONENTS DTLTO)
         endif()
         list(APPEND LLVM_LINK_COMPONENTS
