@@ -6,31 +6,6 @@
 
 INLINE void llvm_emit_intrinsic_args(GenContext *c, Expr **args, LLVMValueRef *slots, unsigned count);
 
-static LLVMValueRef llvm_emit_call_masked_intrinsic_v(GenContext *c, unsigned intrinsic_id, LLVMTypeRef *types, unsigned type_count, LLVMValueRef *args, int ptr_idx, uint64_t alignment)
-{
-	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(c->module, intrinsic_id, types, type_count);
-	LLVMTypeRef type = LLVMGlobalGetValueType(decl);
-	unsigned expected_params = LLVMCountParamTypes(type);
-	LLVMValueRef result;
-	if (expected_params == 3)
-	{
-		result = LLVMBuildCall2(c->builder, type, decl, args, 3, "");
-		if (alignment) llvm_attribute_add_call(c, result, attribute_id.align, ptr_idx + 1, (int64_t)alignment);
-	}
-	else
-	{
-		// LLVM 22+ compatibility
-		args[3] = args[2];
-		if (ptr_idx == 0)
-		{
-			args[2] = args[1];
-		}
-		args[ptr_idx + 1] = llvm_const_int(c, type_uint, alignment);
-		result = LLVMBuildCall2(c->builder, type, decl, args, 4, "");
-	}
-	return result;
-}
-
 INLINE void llvm_emit_reverse(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	Expr **args = expr->call_expr.arguments;
@@ -603,13 +578,25 @@ static void llvm_emit_masked_load(GenContext *c, BEValue *be_value, Expr *expr)
 	ASSERT(vec_size(args) == 4);
 	LLVMValueRef arg_slots[4];
 	llvm_emit_intrinsic_args(c, args, arg_slots, 3);
-	// Rearrange to match our builtin with the intrinsic which is ptr, align, mask, passthru
 	LLVMValueRef passthru = arg_slots[2];
 	LLVMValueRef mask = arg_slots[1];
+	LLVMValueRef ptr = arg_slots[0];
 	uint64_t alignment = args[3]->const_expr.ixx.i.low;
 	LLVMTypeRef call_type[2] = { LLVMTypeOf(passthru), c->ptr_type };
 	uint64_t align_val = alignment ? alignment : llvm_abi_alignment(c, call_type[0]);
-	LLVMValueRef result = llvm_emit_call_masked_intrinsic_v(c, intrinsic_id.masked_load, call_type, 2, arg_slots, 0, align_val);
+
+	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(c->module, intrinsic_id.masked_load, call_type, 2);
+	LLVMTypeRef type = LLVMGlobalGetValueType(decl);
+
+#if LLVM_VERSION_MAJOR >= 22
+	LLVMValueRef call_args[] = { ptr, mask, passthru };
+	LLVMValueRef result = LLVMBuildCall2(c->builder, type, decl, call_args, 3, "");
+	if (align_val) llvm_attribute_add_call(c, result, attribute_id.align, 1, (int64_t)align_val);
+#else
+	LLVMValueRef call_args[] = { ptr, llvm_const_int(c, type_uint, align_val), mask, passthru };
+	LLVMValueRef result = LLVMBuildCall2(c->builder, type, decl, call_args, 4, "");
+#endif
+
 	llvm_value_set(be_value, result, expr->type);
 }
 
@@ -619,13 +606,25 @@ static void llvm_emit_gather(GenContext *c, BEValue *be_value, Expr *expr)
 	ASSERT(vec_size(args) == 4);
 	LLVMValueRef arg_slots[4];
 	llvm_emit_intrinsic_args(c, args, arg_slots, 3);
-	// Rearrange to match our builtin with the intrinsic which is ptr, align, mask, passthru
 	LLVMValueRef passthru = arg_slots[2];
 	LLVMValueRef mask = arg_slots[1];
+	LLVMValueRef ptr = arg_slots[0];
 	uint64_t alignment = args[3]->const_expr.ixx.i.low;
-	LLVMTypeRef call_type[2] = { LLVMTypeOf(passthru), LLVMTypeOf(arg_slots[0]) };
+	LLVMTypeRef call_type[2] = { LLVMTypeOf(passthru), LLVMTypeOf(ptr) };
 	uint64_t align_val = alignment ? alignment : llvm_abi_alignment(c, LLVMGetElementType(call_type[0]));
-	LLVMValueRef result = llvm_emit_call_masked_intrinsic_v(c, intrinsic_id.gather, call_type, 2, arg_slots, 0, align_val);
+
+	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(c->module, intrinsic_id.gather, call_type, 2);
+	LLVMTypeRef type = LLVMGlobalGetValueType(decl);
+
+#if LLVM_VERSION_MAJOR >= 22
+	LLVMValueRef call_args[] = { ptr, mask, passthru };
+	LLVMValueRef result = LLVMBuildCall2(c->builder, type, decl, call_args, 3, "");
+	if (align_val) llvm_attribute_add_call(c, result, attribute_id.align, 1, (int64_t)align_val);
+#else
+	LLVMValueRef call_args[] = { ptr, llvm_const_int(c, type_uint, align_val), mask, passthru };
+	LLVMValueRef result = LLVMBuildCall2(c->builder, type, decl, call_args, 4, "");
+#endif
+
 	llvm_value_set(be_value, result, expr->type);
 }
 
@@ -664,16 +663,25 @@ static void llvm_emit_masked_store(GenContext *c, BEValue *be_value, Expr *expr)
 	ASSERT(vec_size(args) == 4);
 	LLVMValueRef arg_slots[4];
 	llvm_emit_intrinsic_args(c, args, arg_slots, 3);
-	// Rearrange to match our builtin with the intrinsic which is value, ptr, align, mask
 	LLVMValueRef ptr = arg_slots[0];
 	LLVMValueRef value = arg_slots[1];
 	LLVMValueRef mask = arg_slots[2];
-	arg_slots[0] = value;
-	arg_slots[1] = ptr;
 	uint64_t alignment = args[3]->const_expr.ixx.i.low;
 	LLVMTypeRef call_type[2] = { LLVMTypeOf(value), c->ptr_type };
 	uint64_t align_val = alignment ? alignment : llvm_abi_alignment(c, call_type[0]);
-	LLVMValueRef result = llvm_emit_call_masked_intrinsic_v(c, intrinsic_id.masked_store, call_type, 2, arg_slots, 1, align_val);
+
+	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(c->module, intrinsic_id.masked_store, call_type, 2);
+	LLVMTypeRef type = LLVMGlobalGetValueType(decl);
+
+#if LLVM_VERSION_MAJOR >= 22
+	LLVMValueRef call_args[] = { value, ptr, mask };
+	LLVMValueRef result = LLVMBuildCall2(c->builder, type, decl, call_args, 3, "");
+	if (align_val) llvm_attribute_add_call(c, result, attribute_id.align, 2, (int64_t)align_val);
+#else
+	LLVMValueRef call_args[] = { value, ptr, llvm_const_int(c, type_uint, align_val), mask };
+	LLVMValueRef result = LLVMBuildCall2(c->builder, type, decl, call_args, 4, "");
+#endif
+
 	llvm_value_set(be_value, result, expr->type);
 }
 
@@ -683,16 +691,25 @@ static void llvm_emit_scatter(GenContext *c, BEValue *be_value, Expr *expr)
 	ASSERT(vec_size(args) == 4);
 	LLVMValueRef arg_slots[4];
 	llvm_emit_intrinsic_args(c, args, arg_slots, 3);
-	// Rearrange to match our builtin with the intrinsic which is value, ptr, align, mask
 	LLVMValueRef ptr = arg_slots[0];
 	LLVMValueRef value = arg_slots[1];
 	LLVMValueRef mask = arg_slots[2];
-	arg_slots[0] = value;
-	arg_slots[1] = ptr;
 	uint64_t alignment = args[3]->const_expr.ixx.i.low;
-	LLVMTypeRef call_type[2] = { LLVMTypeOf(value),  LLVMTypeOf(ptr) };
+	LLVMTypeRef call_type[2] = { LLVMTypeOf(value), LLVMTypeOf(ptr) };
 	uint64_t align_val = alignment ? alignment : llvm_abi_alignment(c, LLVMGetElementType(call_type[0]));
-	LLVMValueRef result = llvm_emit_call_masked_intrinsic_v(c, intrinsic_id.scatter, call_type, 2, arg_slots, 1, align_val);
+
+	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(c->module, intrinsic_id.scatter, call_type, 2);
+	LLVMTypeRef type = LLVMGlobalGetValueType(decl);
+
+#if LLVM_VERSION_MAJOR >= 22
+	LLVMValueRef call_args[] = { value, ptr, mask };
+	LLVMValueRef result = LLVMBuildCall2(c->builder, type, decl, call_args, 3, "");
+	if (align_val) llvm_attribute_add_call(c, result, attribute_id.align, 2, (int64_t)align_val);
+#else
+	LLVMValueRef call_args[] = { value, ptr, llvm_const_int(c, type_uint, align_val), mask };
+	LLVMValueRef result = LLVMBuildCall2(c->builder, type, decl, call_args, 4, "");
+#endif
+
 	llvm_value_set(be_value, result, expr->type);
 }
 
