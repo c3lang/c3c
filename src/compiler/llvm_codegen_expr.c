@@ -6352,7 +6352,7 @@ LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic, LLVMTyp
 									  LLVMValueRef *values, unsigned arg_count)
 {
 	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(c->module, intrinsic, types, type_count);
-	LLVMTypeRef type = LLVMIntrinsicGetType(c->context, intrinsic, types, type_count);
+	LLVMTypeRef type = LLVMGlobalGetValueType(decl);
 	return LLVMBuildCall2(c->builder, type, decl, values, arg_count, "");
 }
 
