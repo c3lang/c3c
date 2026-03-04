@@ -90,7 +90,7 @@ struct Aes
 	<* Internal state *>
 	AesState state;
 }
-alias AesState = char[COLNUM][COLNUM];
+alias AesState = char[<16>];
 
 <*
  Initializes the AES crypto. The initialization vector should be securely random for each encryption
@@ -225,21 +225,9 @@ module std::crypto::aes @private;
 *>
 fn void ecb_encrypt_block(Aes *aes, char[BLOCKLEN]* in, char[BLOCKLEN]* out)
 {
-	for (usz i = 0; i < 4; i++)
-	{
-		for (usz j = 0; j < 4; j++)
-		{
-			aes.state[i][j] = (*in)[i * 4 + j];
-		}
-	}
+	mem::copy(&aes.state, in, 16);
 	aes_cipher(aes, &aes.round_key);
-	for (usz i = 0; i < 4; i++)
-	{
-		for (usz j = 0; j < 4; j++)
-		{
-			(*out)[i * 4 + j] = aes.state[i][j];
-		}
-	}
+	mem::copy(out, &aes.state, 16);
 }
 
 <*
@@ -249,21 +237,9 @@ fn void ecb_encrypt_block(Aes *aes, char[BLOCKLEN]* in, char[BLOCKLEN]* out)
 *>
 fn void ecb_decrypt_block(Aes *aes, char[BLOCKLEN]* in, char[BLOCKLEN]* out)
 {
-	for (usz i = 0; i < 4; i++)
-	{
-		for (usz j = 0; j < 4; j++)
-		{
-			aes.state[i][j] = (*in)[i * 4 + j];
-		}
-	}
+	mem::copy(&aes.state, in, 16);
 	inv_cipher(aes, &aes.round_key);
-	for (usz i = 0; i < 4; i++)
-	{
-		for (usz j = 0; j < 4; j++)
-		{
-			(*out)[i * 4 + j] = aes.state[i][j];
-		}
-	}
+	mem::copy(out, &aes.state, 16);
 }
 
 <*
@@ -277,7 +253,7 @@ fn void ecb_decrypt_buffer(Aes *aes, char[] in, char[] out)
 	usz len = in.len;
 	for (usz i = 0; i < len; i += BLOCKLEN)
 	{
-		ecb_decrypt_block(aes, in[i:BLOCKLEN], out[i:BLOCKLEN]) @inline;
+		ecb_decrypt_block(aes, (char[16]*)&in[i], (char[16]*)&out[i]) @inline;
 	}
 }
 
@@ -291,16 +267,18 @@ fn void ecb_encrypt_buffer(Aes *aes, char[] in, char[] out)
 	usz len = in.len;
 	for (usz i = 0; i < len; i += BLOCKLEN)
 	{
-		ecb_encrypt_block(aes, in[i:BLOCKLEN], out[i:BLOCKLEN]) @inline;
+		ecb_encrypt_block(aes, (char[16]*)&in[i], (char[16]*)&out[i]) @inline;
 	}
 }
 
 fn void xor_with_iv(char[] buf, char[BLOCKLEN]* iv) @local
 {
-	foreach (i, b : *iv)
-	{
-		buf[i] ^= b;
-	}
+	char[<16>] v;
+	char[<16>] vi;
+	mem::copy(&v, buf.ptr, 16);
+	mem::copy(&vi, iv, 16);
+	v ^= vi;
+	mem::copy(buf.ptr, &v, 16);
 }
 
 <*
@@ -310,17 +288,14 @@ fn void xor_with_iv(char[] buf, char[BLOCKLEN]* iv) @local
 *>
 fn void cbc_encrypt_buffer(Aes *aes, char[] in, char[] out)
 {
-	char[] iv = aes.iv[..];
+	char[BLOCKLEN] iv = aes.iv;
 	usz len = in.len;
-	char[BLOCKLEN] tmp;
-	char[BLOCKLEN] tmp2;
 	for (usz i = 0; i < len; i += BLOCKLEN)
 	{
-		tmp[:BLOCKLEN] = in[i:BLOCKLEN];
-		xor_with_iv(&tmp, iv);
-		ecb_encrypt_block(aes, &tmp, &tmp2);
-		out[i:BLOCKLEN] = tmp2[..];
-		iv = tmp2[..];
+		char[BLOCKLEN] tmp = in[i:BLOCKLEN];
+		xor_with_iv(tmp[..], (char[16]*)&iv);
+		ecb_encrypt_block(aes, (char[16]*)&tmp, (char[16]*)&out[i]);
+		iv = out[i:BLOCKLEN];
 	}
 }
 
@@ -331,13 +306,13 @@ fn void cbc_encrypt_buffer(Aes *aes, char[] in, char[] out)
 *>
 fn void cbc_decrypt_buffer(Aes *aes, char[] in, char[] out)
 {
-	char[BLOCKLEN] tmp;
 	usz len = in.len;
 	for (usz i = 0; i < len; i += BLOCKLEN)
 	{
-		ecb_decrypt_block(aes, in[i:BLOCKLEN], &tmp);
-		xor_with_iv(&tmp, aes.iv[..]);
-		aes.iv[:BLOCKLEN] = in[i:BLOCKLEN];
+		char[BLOCKLEN] tmp;
+		ecb_decrypt_block(aes, in[i:BLOCKLEN], (char[16]*)&tmp);
+		xor_with_iv(tmp[..], (char[16]*)&aes.iv);
+		aes.iv = in[i:BLOCKLEN];
 		out[i:BLOCKLEN] = tmp[..];
 	}
 }
@@ -549,39 +524,37 @@ const char[11] RCON = x`8d01020408102040801b36`;
 
 fn void add_round_key(Aes* aes, usz round, char[] round_key)
 {
-	usz i, j;
-	for (i = 0; i < 4; i++)
-	{
-		for (j = 0; j < 4; j++)
-		{
-			aes.state[i][j] ^= round_key[(round * COLNUM * 4) + (i * COLNUM) + j];
-		}
-	}
+	char[<16>] k;
+	mem::copy(&k, &round_key[round * 16], 16);
+	aes.state ^= k;
 }
 
 fn void shift_rows(Aes* aes)
 {
-	char temp;
+	char[<16>] s = aes.state;
+	aes.state = {
+		s[0],  s[5],  s[10], s[15],
+		s[4],  s[9],  s[14], s[3],
+		s[8],  s[13], s[2],  s[7],
+		s[12], s[1],  s[6],  s[11]
+	};
+}
 
-	temp             = aes.state[0][1];
-	aes.state[0][1]  = aes.state[1][1];
-	aes.state[1][1]  = aes.state[2][1];
-	aes.state[2][1]  = aes.state[3][1];
-	aes.state[3][1]  = temp;
+fn char[<16>] xtime_vec(char[<16>] x) @local @inline
+{
+	return (x << 1) ^ (((x >> 7) & 1) * 0x1b);
+}
 
-	temp	         = aes.state[0][2];
-	aes.state[0][2]  = aes.state[2][2];
-	aes.state[2][2]  = temp;
+fn void mix_columns(Aes* aes)
+{
+	char[<16>] s = aes.state;
+	char[<16>] s1 = {s[1], s[2], s[3], s[0], s[5], s[6], s[7], s[4], s[9], s[10], s[11], s[8], s[13], s[14], s[15], s[12]};
+	char[<16>] s2 = {s[2], s[3], s[0], s[1], s[6], s[7], s[4], s[5], s[10], s[11], s[8], s[9], s[14], s[15], s[12], s[13]};
+	char[<16>] s3 = {s[3], s[0], s[1], s[2], s[7], s[4], s[5], s[6], s[11], s[8], s[9], s[10], s[15], s[12], s[13], s[14]};
 
-	temp	         = aes.state[1][2];
-	aes.state[1][2]  = aes.state[3][2];
-	aes.state[3][2]  = temp;
+	char[<16>] tmp = s ^ s1 ^ s2 ^ s3;
 
-	temp	         = aes.state[0][3];
-	aes.state[0][3]  = aes.state[3][3];
-	aes.state[3][3]  = aes.state[2][3];
-	aes.state[2][3]  = aes.state[1][3];
-	aes.state[1][3]  = temp;
+	aes.state ^= xtime_vec(s ^ s1) ^ tmp;
 }
 
 fn char xtime(char x) @local
@@ -589,79 +562,40 @@ fn char xtime(char x) @local
 	return ((x << 1) ^ (((x >> 7) & 1) * 0x1b));
 }
 
-fn void mix_columns(Aes* aes)
-{
-	for (usz i = 0; i < 4; i++)
-	{
-		char t = aes.state[i][0];
-		char tmp = aes.state[i][0] ^ aes.state[i][1] ^ aes.state[i][2] ^ aes.state[i][3];
-
-		char tm = aes.state[i][0] ^ aes.state[i][1];
-		tm = xtime(tm);
-		aes.state[i][0] ^= tm ^ tmp;
-
-		tm = aes.state[i][1] ^ aes.state[i][2];
-		tm = xtime(tm);
-		aes.state[i][1] ^= tm ^ tmp;
-
-		tm = aes.state[i][2] ^ aes.state[i][3];
-		tm = xtime(tm);
-		aes.state[i][2] ^= tm ^ tmp;
-
-		tm = aes.state[i][3] ^ t;
-		tm = xtime(tm);
-		aes.state[i][3] ^= tm ^ tmp;
-	}
-}
-
 fn char multiply(char x, char y) @local
 {
 	return (((y & 1) * x) ^
-	       (((y>>1) & 1) * xtime(x)) ^
+		   (((y>>1) & 1) * xtime(x)) ^
 		   (((y>>2) & 1) * xtime(xtime(x))) ^
-	       (((y>>3) & 1) * xtime(xtime(xtime(x)))) ^
-	       (((y>>4) & 1) * xtime(xtime(xtime(xtime(x))))));
+		   (((y>>3) & 1) * xtime(xtime(xtime(x)))) ^
+		   (((y>>4) & 1) * xtime(xtime(xtime(xtime(x))))));
 }
 
 fn void inv_mix_columns(Aes* aes)
 {
 	for (int i = 0; i < 4; i++)
 	{
-		char a = aes.state[i][0];
-		char b = aes.state[i][1];
-		char c = aes.state[i][2];
-		char d = aes.state[i][3];
+		char a = aes.state[i * 4 + 0];
+		char b = aes.state[i * 4 + 1];
+		char c = aes.state[i * 4 + 2];
+		char d = aes.state[i * 4 + 3];
 
-		aes.state[i][0] = multiply(a, 0x0e) ^ multiply(b, 0x0b) ^ multiply(c, 0x0d) ^ multiply(d, 0x09);
-		aes.state[i][1] = multiply(a, 0x09) ^ multiply(b, 0x0e) ^ multiply(c, 0x0b) ^ multiply(d, 0x0d);
-		aes.state[i][2] = multiply(a, 0x0d) ^ multiply(b, 0x09) ^ multiply(c, 0x0e) ^ multiply(d, 0x0b);
-		aes.state[i][3] = multiply(a, 0x0b) ^ multiply(b, 0x0d) ^ multiply(c, 0x09) ^ multiply(d, 0x0e);
+		aes.state[i * 4 + 0] = multiply(a, 0x0e) ^ multiply(b, 0x0b) ^ multiply(c, 0x0d) ^ multiply(d, 0x09);
+		aes.state[i * 4 + 1] = multiply(a, 0x09) ^ multiply(b, 0x0e) ^ multiply(c, 0x0b) ^ multiply(d, 0x0d);
+		aes.state[i * 4 + 2] = multiply(a, 0x0d) ^ multiply(b, 0x09) ^ multiply(c, 0x0e) ^ multiply(d, 0x0b);
+		aes.state[i * 4 + 3] = multiply(a, 0x0b) ^ multiply(b, 0x0d) ^ multiply(c, 0x09) ^ multiply(d, 0x0e);
 	}
 }
 
 fn void inv_shift_rows(Aes* aes)
 {
-	char temp;
-
-	temp            = aes.state[3][1];
-	aes.state[3][1] = aes.state[2][1];
-	aes.state[2][1] = aes.state[1][1];
-	aes.state[1][1] = aes.state[0][1];
-	aes.state[0][1] = temp;
-
-	temp	        = aes.state[0][2];
-	aes.state[0][2] = aes.state[2][2];
-	aes.state[2][2] = temp;
-
-	temp	        = aes.state[1][2];
-	aes.state[1][2] = aes.state[3][2];
-	aes.state[3][2] = temp;
-
-	temp	        = aes.state[0][3];
-	aes.state[0][3] = aes.state[1][3];
-	aes.state[1][3] = aes.state[2][3];
-	aes.state[2][3] = aes.state[3][3];
-	aes.state[3][3] = temp;
+	char[<16>] s = aes.state;
+	aes.state = {
+		s[0],  s[13], s[10], s[7],
+		s[4],  s[1],  s[14], s[11],
+		s[8],  s[5],  s[2],  s[15],
+		s[12], s[9],  s[6],  s[3]
+	};
 }
 
 fn void aes_cipher(Aes* aes, char[] round_key)
