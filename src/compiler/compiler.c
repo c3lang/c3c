@@ -23,6 +23,7 @@ Vmem ast_arena;
 Vmem expr_arena;
 Vmem decl_arena;
 Vmem type_info_arena;
+Vmem sourceloc_arena;
 
 static double compiler_init_time;
 static double compiler_parsing_time;
@@ -89,6 +90,8 @@ void compiler_init(BuildOptions *build_options)
 	decl_calloc();
 	vmem_init(&type_info_arena, START_VMEM_SIZE);
 	type_info_calloc();
+	vmem_init(&sourceloc_arena, START_VMEM_SIZE);
+	sourceloc_calloc();
 	// Create zero index value.
 	if (build_options->std_lib_dir)
 	{
@@ -254,22 +257,30 @@ static void free_arenas(void)
 	if (compiler.build.print_stats)
 	{
 		printf("-- AST/EXPR/TYPE INFO -- \n");
-		printf(" * Ast size: %u bytes\n", (unsigned)sizeof(Ast));
-		printf(" * Decl size: %u bytes\n", (unsigned)sizeof(Decl));
-		printf(" * Expr size: %u bytes\n", (unsigned)sizeof(Expr));
-		printf(" * TypeInfo size: %u bytes\n", (unsigned)sizeof(TypeInfo));
-		printf(" * Ast memory use: %llukb (%u elements)\n",
+		printf(" * Ast size:       %u bytes\n", (unsigned)sizeof(Ast));
+		printf(" * Decl size:      %u bytes\n", (unsigned)sizeof(Decl));
+		printf(" * Expr size:      %u bytes\n", (unsigned)sizeof(Expr));
+		printf(" * TypeInfo size:  %u bytes\n", (unsigned)sizeof(TypeInfo));
+		printf(" * SourceLoc size: %u bytes\n", (unsigned)sizeof(SourceLoc));
+		printf(" - Memory use ----------- \n");
+
+		printf(" * Ast:       %llu kb (%u elements)\n",
 			   (unsigned long long)ast_arena.allocated / 1024,
 			   (unsigned)(ast_arena.allocated / sizeof(Ast)));
-		printf(" * Decl memory use: %llukb (%u elements)\n",
+		printf(" * Decl:      %llu kb (%u elements)\n",
 			   (unsigned long long)decl_arena.allocated / 1024,
 			   (unsigned)(decl_arena.allocated / sizeof(Decl)));
-		printf(" * Expr memory use: %llukb (%u elements)\n",
+		printf(" * Expr:      %llu kb (%u elements)\n",
 			   (unsigned long long)expr_arena.allocated / 1024,
 			   (unsigned)(expr_arena.allocated / sizeof(Expr)));
-		printf(" * TypeInfo memory use: %llukb (%u elements)\n",
+		printf(" * TypeInfo:  %llu kb (%u elements)\n",
 			   (unsigned long long)type_info_arena.allocated / 1024,
 			   (unsigned)(type_info_arena.allocated / sizeof(TypeInfo)));
+		printf(" * SourceLoc: %llu kb (%u elements)\n",
+			   (unsigned long long)sourceloc_arena.allocated / 1024,
+			   (unsigned)(sourceloc_arena.allocated / sizeof(SourceLoc)));
+		printf(" * Total:     %llu kb\n",
+			   (unsigned long long)(sourceloc_arena.allocated + decl_arena.allocated + expr_arena.allocated + type_info_arena.allocated + type_info_arena.allocated) / 1024);
 
 	}
 
@@ -277,6 +288,7 @@ static void free_arenas(void)
 	decl_arena_free();
 	expr_arena_free();
 	type_info_arena_free();
+	sourceloc_arena_free();
 
 	if (compiler.build.print_stats) print_arena_status();
 }
@@ -919,7 +931,7 @@ static void setup_int_define(const char *id, uint64_t i, Type *type)
 {
 	Type *flat = type_flatten(type);
 	ASSERT(type_is_integer(flat));
-	Expr *expr = expr_new_const_int(INVALID_SPAN, flat, i);
+	Expr *expr = expr_new_const_int(0, flat, i);
 	expr->type = type;
 	if (expr_const_will_overflow(&expr->const_expr, flat->type_kind))
 	{
@@ -930,12 +942,12 @@ static void setup_int_define(const char *id, uint64_t i, Type *type)
 
 static void setup_string_define(const char *id, const char *value)
 {
-	setup_define(id, expr_new_const_string(INVALID_SPAN, value));
+	setup_define(id, expr_new_const_string(0, value));
 }
 
 static void setup_bool_define(const char *id, bool value)
 {
-	setup_define(id, expr_new_const_bool(INVALID_SPAN, type_bool, value));
+	setup_define(id, expr_new_const_bool(0, type_bool, value));
 }
 
 bool use_ansi(void)
@@ -1497,7 +1509,7 @@ void compile()
 	// Create the core module if needed.
 	Path *core_path = MALLOCS(Path);
 	core_path->module = kw_std__core;
-	core_path->span = INVALID_SPAN;
+	core_path->loc = 0;
 	core_path->len = strlen(kw_std__core);
 	compiler.context.core_module = compiler_find_or_create_module(core_path);
 	CompilationUnit *unit = CALLOCS(CompilationUnit);
@@ -1569,8 +1581,8 @@ void compile()
 	setup_bool_define("THREAD_SANITIZER", compiler.build.feature.sanitize_thread);
 	setup_string_define("BUILD_HASH", GIT_HASH);
 	setup_string_define("BUILD_DATE", compiler_date_to_iso());
-	Expr *expr_names = expr_new(EXPR_CONST, INVALID_SPAN);
-	Expr *expr_emails = expr_new(EXPR_CONST, INVALID_SPAN);
+	Expr *expr_names = expr_new(EXPR_CONST, 0);
+	Expr *expr_emails = expr_new(EXPR_CONST, 0);
 	expr_names->const_expr.const_kind = CONST_UNTYPED_LIST;
 	expr_emails->const_expr.const_kind = CONST_UNTYPED_LIST;
 	expr_names->type = type_untypedlist;
@@ -1578,8 +1590,8 @@ void compile()
 	expr_names->resolve_status = expr_emails->resolve_status = RESOLVE_DONE;
 	FOREACH(AuthorEntry, entry, compiler.build.authors)
 	{
-		Expr *const_name = expr_new_const_string(INVALID_SPAN, entry.author); // NOLINT
-		Expr *const_email = expr_new_const_string(INVALID_SPAN, entry.email ? entry.email : ""); // NOLINT
+		Expr *const_name = expr_new_const_string(0, entry.author); // NOLINT
+		Expr *const_email = expr_new_const_string(0, entry.email ? entry.email : ""); // NOLINT
 		vec_add(expr_names->const_expr.untyped_list, const_name);
 		vec_add(expr_emails->const_expr.untyped_list, const_email);
 	}
@@ -1665,7 +1677,7 @@ Module *compiler_find_or_create_module(Path *module_name)
 	// Set up the module.
 	module = CALLOCS(Module);
 	module->name = module_name;
-	module->inlined_at = (InliningSpan) { INVALID_SPAN, NULL };
+	module->inlined_at = (InliningSpan) { 0, NULL };
 	size_t first = 0;
 	for (size_t i = module_name->len; i > 0; i--)
 	{
