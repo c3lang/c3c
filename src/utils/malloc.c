@@ -55,9 +55,9 @@ void *calloc_arena(size_t mem)
 void print_arena_status(void)
 {
 	printf("-- ARENA INFO -- \n");
-	printf(" * Memory used:  %zu Kb\n", arena.allocated / 1024);
-	printf(" * Allocations: %d\n", allocations_done);
-	printf(" * String memory used:  %zu Kb\n", char_arena.allocated / 1024);
+	printf(" * Memory used:         %zu kb\n", arena.allocated / 1024);
+	printf(" * Allocations:         %d\n", allocations_done);
+	printf(" * String memory used:  %zu kb\n", char_arena.allocated / 1024);
 }
 
 void free_arena(void)

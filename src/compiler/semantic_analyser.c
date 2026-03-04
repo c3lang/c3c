@@ -8,12 +8,12 @@
 char swizzle[256] = { ['x'] = 0x01, ['y'] = 0x02, ['z'] = 0x03, ['w'] = 0x04,
 					  ['r'] = 0x11, ['g'] = 0x12, ['b'] = 0x13, ['a'] = 0x14 };
 
-void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, SourceSpan span)
+void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, SourceLocId loc)
 {
 	unsigned depth = context->active_scope.depth + 1;
 	if (depth > MAX_SCOPE_DEPTH)
 	{
-		sema_error_at(context, span, "Resolution failed due to too deeply nested scopes (%u).", depth);
+		sema_error_at(context, loc, "Resolution failed due to too deeply nested scopes (%u).", depth);
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 
@@ -59,9 +59,9 @@ const char *context_filename(SemaContext *context)
 	return file->full_path;
 }
 
-void context_change_scope_for_label(SemaContext *context, DeclId label_id, SourceSpan span)
+void context_change_scope_for_label(SemaContext *context, DeclId label_id, SourceLocId loc)
 {
-	context_change_scope_with_flags(context, SCOPE_NONE, span);
+	context_change_scope_with_flags(context, SCOPE_NONE, loc);
 
 	if (label_id)
 	{
@@ -484,7 +484,7 @@ void sema_analysis_run(void)
 	compiler_parse();
 
 	// All global defines are added to the std module
-	compiler.context.std_module_path = (Path) { .module = kw_std, .span = INVALID_SPAN, .len = (uint32_t) strlen(kw_std) };
+	compiler.context.std_module_path = (Path) { .module = kw_std, .loc = 0, .len = (uint32_t) strlen(kw_std) };
 	compiler.context.std_module = (Module){ .name = &compiler.context.std_module_path, .short_path = compiler.context.std_module_path.module };
 	compiler.context.std_module.stage = ANALYSIS_LAST;
 	compiler.context.locals_list = NULL;
@@ -594,44 +594,44 @@ SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_
 	return temp_context;
 }
 
-void sema_print_inline(SemaContext *context, SourceSpan original)
+void sema_print_inline(SemaContext *context, SourceLocId original)
 {
 	if (!context) return;
 	InliningSpan *inlined_at = context->inlined_at;
-	SourceSpan last_span = INVALID_SPAN;
+	SourceLocId last_span = 0;
 	while (inlined_at)
 	{
-		if (inlined_at->span.a != original.a && inlined_at->span.a != last_span.a)
+		if (inlined_at->loc != original && inlined_at->loc != last_span)
 		{
-			sema_note_prev_at(inlined_at->span, "Inlined from here.");
-			last_span = inlined_at->span;
+			sema_note_prev_at(inlined_at->loc, "Inlined from here.");
+			last_span = inlined_at->loc;
 		}
 		inlined_at = inlined_at->prev;
 	}
 	InliningSpan span = context->compilation_unit->module->inlined_at;
-	if (span.span.a == INVALID_SPAN.a) return;
+	if (!span.loc) return;
 	inlined_at = &span;
 	while (inlined_at)
 	{
-		if (inlined_at->span.a != original.a)
+		if (inlined_at->loc != original)
 		{
-			sema_note_prev_at(inlined_at->span, "Inlined from here.");
+			sema_note_prev_at(inlined_at->loc, "Inlined from here.");
 		}
 		inlined_at = inlined_at->prev;
 	}
 }
 
-void sema_error_at(SemaContext *context, SourceSpan span, const char *message, ...)
+void sema_error_at(SemaContext *context, SourceLocId loc, const char *message, ...)
 {
 	va_list list;
 	va_start(list, message);
-	sema_verror_range(span, message, list);
+	sema_verror_range(sourcelocptrzero(loc), message, list);
 	va_end(list);
-	sema_print_inline(context, span);
+	sema_print_inline(context, loc);
 }
 
 
-bool sema_warn_at(SemaContext *context, SourceSpan span, WarningLevel level, const char *message, ...)
+bool sema_warn_at(SemaContext *context, SourceLocId loc, WarningLevel level, const char *message, ...)
 {
 	if (level == WARNING_SILENT) return true;
 	bool is_warn = level != WARNING_ERROR;
@@ -639,13 +639,13 @@ bool sema_warn_at(SemaContext *context, SourceSpan span, WarningLevel level, con
 	va_start(list, message);
 	if (is_warn)
 	{
-		sema_vwarn_range(span, message, list);
+		sema_vwarn_range(loc, message, list);
 	}
 	else
 	{
-		sema_verror_range(span, message, list);
+		sema_verror_range(sourcelocptrzero(loc), message, list);
 	}
 	va_end(list);
-	sema_print_inline(context, span);
+	sema_print_inline(context, loc);
 	return is_warn;
 }

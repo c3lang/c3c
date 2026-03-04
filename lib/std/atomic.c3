@@ -115,8 +115,8 @@ macro bool is_native_atomic_type($Type)
 			$case FLOAT:
 			$case BOOL:
 				return true;
-			$case DISTINCT:
-			$case CONST_ENUM:
+			$case TYPEDEF:
+			$case CONSTDEF:
 				return is_native_atomic_type($Type.inner);
 			$default:
 				return false;

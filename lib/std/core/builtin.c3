@@ -317,6 +317,9 @@ macro any.retype_to(&self, typeid type)
 	return $$any_make(self.ptr, type);
 }
 
+<*
+ @require (bool)self.type : "A typed any was expected"
+*>
 macro any.as_inner(&self)
 {
 	return $$any_make(self.ptr, self.type.inner);
