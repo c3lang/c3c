@@ -78,7 +78,7 @@ fn usz? Object.to_format(&self, Formatter* formatter) @dynamic
 
 fn Object* new_obj(Allocator allocator)
 {
-	return allocator::new(allocator, Object, { .allocator = allocator, .type = void.typeid });
+	return allocator::new_aligned(allocator, Object, { .allocator = allocator, .type = void.typeid })!!;
 }
 
 fn Object* new_null()
@@ -88,22 +88,22 @@ fn Object* new_null()
 
 fn Object* new_int(int128 i, Allocator allocator)
 {
-	return allocator::new(allocator, Object, { .i = i, .allocator = allocator, .type = int128.typeid });
+	return allocator::new_aligned(allocator, Object, { .i = i, .allocator = allocator, .type = int128.typeid })!!;
 }
 
 macro Object* new_enum(e, Allocator allocator)
 {
-	return allocator::new(allocator, Object, { .i = (int128)e, .allocator = allocator, .type = @typeid(e) });
+	return allocator::new_aligned(allocator, Object, { .i = (int128)e, .allocator = allocator, .type = @typeid(e) })!!;
 }
 
 fn Object* new_float(double f, Allocator allocator)
 {
-	return allocator::new(allocator, Object, { .f = f, .allocator = allocator, .type = double.typeid });
+	return allocator::new_aligned(allocator, Object, { .f = f, .allocator = allocator, .type = double.typeid })!!;
 }
 
 fn Object* new_string(String s, Allocator allocator)
 {
-	return allocator::new(allocator, Object, { .s = s.copy(allocator), .allocator = allocator, .type = String.typeid });
+	return allocator::new_aligned(allocator, Object, { .s = s.copy(allocator), .allocator = allocator, .type = String.typeid })!!;
 }
 
 
@@ -134,7 +134,7 @@ fn void Object.free(&self)
 		default:
 			break;
 	}
-	if (self.allocator) allocator::free(self.allocator, self);
+	if (self.allocator) allocator::free_aligned(self.allocator, self);
 }
 
 fn bool Object.is_null(&self) @inline => self == &NULL_OBJECT;
