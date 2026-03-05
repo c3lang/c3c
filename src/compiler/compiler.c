@@ -725,13 +725,21 @@ void compiler_compile(void)
 		;
 		file_create_folders(output_exe);
 		bool system_linker_available = link_libc() && compiler.platform.os != OS_TYPE_WIN32;
+		if (system_linker_available)
+		{
+			const char *cc = compiler.build.cc ? compiler.build.cc : default_c_compiler();
+			if (!file_executable_in_path(cc)) system_linker_available = false;
+		}
 		bool use_system_linker = system_linker_available && compiler.build.arch_os_target == default_target;
 		switch (compiler.build.linker_type)
 		{
 			case LINKER_TYPE_CC:
 				if (!system_linker_available)
 				{
-					eprintf("System linker is not supported, defaulting to built-in linker\n");
+					const char *cc = compiler.build.cc ? compiler.build.cc : default_c_compiler();
+					OUTF("C compiler '%s' not found or system linker is unsupported; using built-in linker instead.\n", cc);
+					compiler.build.linker_type = LINKER_TYPE_BUILTIN;
+					use_system_linker = false;
 					break;
 				}
 				use_system_linker = true;
@@ -740,6 +748,10 @@ void compiler_compile(void)
 				use_system_linker = false;
 				break;
 			default:
+				if (!use_system_linker && compiler.build.linker_type == LINKER_TYPE_NOT_SET)
+				{
+					compiler.build.linker_type = LINKER_TYPE_BUILTIN;
+				}
 				break;
 		}
 		if (use_system_linker || compiler.build.linker_type == LINKER_TYPE_CC)

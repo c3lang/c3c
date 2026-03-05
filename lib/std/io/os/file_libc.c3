@@ -129,21 +129,34 @@ macro fault file_seek_errno() @local
 }
 
 
-struct Utimbuf
+struct Utimbuf @if(!env::WIN32)
 {
 	Time_t actime;
 	Time_t modtime;
 }
-
 extern fn int utime(char* filename, void* times) @if(!env::WIN32);
-extern fn int _wutime(WChar* filename, void* times) @if(env::WIN32);
 
-fn void? native_set_modified_time(String filename, libc::Time_t time) => @stack_mem(256; Allocator smem)
+struct FileTime @if(env::WIN32) {
+	uint low;
+	uint high;
+}
+extern fn void* create_file_w(WChar* lpFileName, uint dwDesiredAccess, uint dwShareMode, void* lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, void* hTemplateFile) @cname("CreateFileW") @if(env::WIN32);
+extern fn int set_file_time(void* hFile, void* lpCreationTime, void* lpLastAccessTime, void* lpLastWriteTime) @cname("SetFileTime") @if(env::WIN32);
+extern fn int close_handle(void* hObject) @cname("CloseHandle") @if(env::WIN32);
+
+fn void? native_set_modified_time(String filename, Time_t time) => @stack_mem(256; Allocator smem)
 {
-	Utimbuf times = { time, time };
 	$if env::WIN32:
-		if (_wutime(filename.to_wstring(smem)!, &times)) return io::GENERAL_ERROR~;
+		void* h = create_file_w(filename.to_wstring(smem)!, 0x40000000, 1 | 2 | 4, null, 3, 0x02000000, null);
+		if (h == (void*)(uptr)-1) return io::GENERAL_ERROR~;
+		defer (void)close_handle(h);
+
+		ulong ticks = ((ulong)time + 11644473600UL) * 10_000_000UL;
+		FileTime ft = { (uint)(ticks & 0xFFFFFFFF), (uint)(ticks >> 32) };
+
+		if (!set_file_time(h, null, null, &ft)) return io::GENERAL_ERROR~;
 	$else
+		Utimbuf times = { time, time };
 		if (utime(filename.zstr_copy(smem), &times)) return io::GENERAL_ERROR~;
 	$endif
 }
