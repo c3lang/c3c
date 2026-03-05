@@ -116,7 +116,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_FUNC_RAW:
 		case TYPE_INTERFACE:
 		case TYPE_OPTIONAL:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_ALIAS:
 		case TYPE_TYPEID:
 		case TYPE_VECTOR:

@@ -445,7 +445,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm_version: [17, 18, 19, 20]
+        llvm_version: [19, 20]
     steps:
       - uses: actions/checkout@v6
 

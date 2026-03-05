@@ -189,7 +189,7 @@ static inline void llvm_process_parameter_value_inner(GenContext *c, Decl *decl,
 				llvm_emit_panic_on_true(c,
 										is_null,
 										scratch_buffer_to_string(),
-										decl->span,
+										decl->loc,
 										NULL, NULL, NULL);
 			}
 			if (!decl->var.is_written && !decl->var.is_addr && !llvm_use_accurate_debug_info(c))
@@ -268,7 +268,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 			break;
 		case PARAM_RW_VEC_TO_ARRAY:
 		{
-			Decl *temp = decl_new_generated_var(info->original_type, VARDECL_PARAM, decl->span);
+			Decl *temp = decl_new_generated_var(info->original_type, VARDECL_PARAM, decl->loc);
 			llvm_process_parameter_value_inner(c, temp, info, index);
 			BEValue value;
 			llvm_value_set_decl(c, &value, temp);

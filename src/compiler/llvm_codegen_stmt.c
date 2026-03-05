@@ -19,7 +19,7 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 		c->debug.block_stack = astptr(ast->compound_stmt.parent_defer)->defer_stmt.scope;
 	}
 	// Push the lexical scope if in debug.
-	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->span);
+	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->loc);
 
 	// Emit the statement chain
 	llvm_emit_statement_chain(c, ast->compound_stmt.first_stmt);
@@ -535,7 +535,7 @@ static void llmv_emit_for_cond(GenContext *c, Expr *cond, LLVMBasicBlockRef cond
 }
 void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 {
-	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->span);
+	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->loc);
 	// First, emit all inits.
 	if (ast->for_stmt.init)
 	{
@@ -601,9 +601,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 			// We might have an infinite loop
 			if (!loop_start_block)
 			{
-				SourceSpan loc = ast->span;
-
-				llvm_emit_panic(c, "Infinite loop found", loc, NULL, NULL);
+				llvm_emit_panic(c, "Infinite loop found", ast->loc, NULL, NULL);
 				llvm_emit_block(c, llvm_basic_block_new(c, "unreachable_block"));
 				DEBUG_POP_LEXICAL_SCOPE(c);
 				return;
@@ -1004,7 +1002,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 	if (is_if_chain)
 	{
 		llvm_emit_switch_body_if_chain(c, cases, default_case, &switch_current_val, exit_block, is_typeid);
-		return;
+		return; // NOLINT
 	}
 
 	if (switch_ast->switch_stmt.flow.jump)
@@ -1059,7 +1057,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 
 void llvm_emit_switch(GenContext *c, Ast *ast)
 {
-	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->span);
+	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->loc);
 	BEValue switch_value;
 	Expr *expr = exprptrzero(ast->switch_stmt.cond);
 	bool is_typeid = expr && expr->type->canonical == type_typeid;
@@ -1220,7 +1218,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 		ASSERT(value.kind == BE_BOOLEAN);
 		llvm_emit_cond_br(c, &value, on_ok, on_fail);
 		llvm_emit_block(c, on_fail);
-		SourceSpan loc = assert_expr->span;
+		SourceLocId loc = assert_expr->loc;
 		const char *error = "Assert violation";
 		const char *fmt = NULL;
 		Expr *message_expr = exprptrzero(ast->assert_stmt.message);
@@ -1519,7 +1517,7 @@ void llvm_emit_unreachable(GenContext *c)
 	c->current_block = NULL;
 }
 
-void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *varargs)
+void llvm_emit_panic(GenContext *c, const char *message, SourceLocId loc, const char *fmt, BEValue *varargs)
 {
 	if (c->debug.builder) llvm_emit_debug_location(c, loc);
 
@@ -1534,7 +1532,8 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 		return;
 	}
 
-	File *file = source_file_by_id(loc.file_id);
+	SourceLoc *location = sourcelocptrzero(loc);
+	File *file = source_file_by_id(location ? location->file_id : 0);
 
 	Decl *panicf = fmt ? c->panicf : NULL;
 
@@ -1542,7 +1541,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 			llvm_emit_string_const(c, panicf ? fmt : message, ".panic_msg"),
 			llvm_emit_string_const(c, file->name, ".file"),
 			llvm_emit_string_const(c, c->cur_func.name, ".func"),
-			llvm_const_int(c, type_uint, loc.row)
+			llvm_const_int(c, type_uint, location ? location->row : 0)
 	};
 	FunctionPrototype *prototype = panicf
 			? type_get_resolved_prototype(panicf->type)
@@ -1594,7 +1593,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 	llvm_emit_unreachable(c);
 }
 
-void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc, const char *fmt, BEValue *value_1,
+void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceLocId loc, const char *fmt, BEValue *value_1,
 							 BEValue *value_2)
 {
 	bool always_panic = false;
@@ -1638,7 +1637,7 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 	EMIT_SPAN(c, loc);
 }
 
-void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc,
+void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceLocId loc,
 							 const char *fmt, BEValue *value_1, BEValue *value_2)
 {
 	BEValue be_value;

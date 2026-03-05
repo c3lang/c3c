@@ -28,7 +28,7 @@ static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bott
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref, bool *infinite);
-static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceSpan evaluation_location);
+static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId evaluation_location);
 static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt);
 static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond);
 static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr);
@@ -46,10 +46,10 @@ static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, As
 static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases,
                                          unsigned index, bool *if_chained, bool *max_ranged, uint64_t *actual_cases_ref,
 										 Int *low, Int *high);
-static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, CanonicalType *switch_type, Ast **cases);
+static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceLocId expr_loc, CanonicalType *switch_type, Ast **cases);
 
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
-static bool sema_analyse_require(SemaContext *context, Expr *directive, AstId **asserts, SourceSpan span);
+static bool sema_analyse_require(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId loc);
 static bool sema_analyse_ensure(SemaContext *context, Expr *directive);
 
 static inline bool sema_analyse_asm_label(SemaContext *context, AsmInlineBlock *block, Ast *label)
@@ -187,9 +187,9 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 			{
 				scratch_buffer_clear();
 				scratch_buffer_append("Assert \"");
-				span_to_scratch(expr->span);
+				loc_to_scratch(expr->loc);
 				scratch_buffer_append("\" failed.");
-				message_expr = expr_new_const_string(expr->span, scratch_buffer_copy());
+				message_expr = expr_new_const_string(expr->loc, scratch_buffer_copy());
 				statement->assert_stmt.message = exprid(message_expr);
 			}
 			return true;
@@ -250,7 +250,7 @@ static inline bool sema_analyse_compound_stmt(SemaContext *context, Ast *stateme
 {
 	bool success;
 	EndJump ends_with_jump;
-	SCOPE_START(statement->span)
+	SCOPE_START(statement->loc)
 		success = sema_analyse_compound_statement_no_scope(context, statement);
 		ends_with_jump = context->active_scope.end_jump;
 	SCOPE_END;
@@ -410,7 +410,7 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 /**
  * Turn a "require" or "ensure" into a contract in the callee.
  */
-static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceSpan evaluation_location)
+static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId evaluation_location)
 {
 	Expr *declexpr = directive->contract_expr.decl_exprs;
 	ASSERT(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
@@ -420,21 +420,21 @@ static inline bool assert_create_from_contract(SemaContext *context, Expr *direc
 		if (expr->expr_kind == EXPR_DECL) RETURN_SEMA_ERROR(expr, "Only expressions are allowed in contracts.");
 		if (!sema_analyse_expr_rhs(context, type_bool, expr, false, NULL, false)) return false;
 
-		if (evaluation_location.a) expr->span = evaluation_location;
+		if (evaluation_location) expr->loc = evaluation_location;
 
 		const char *comment = directive->contract_expr.comment;
 		if (!comment) comment = directive->contract_expr.expr_string;
 		if (expr_is_const_bool(expr))
 		{
 			if (expr->const_expr.b) continue;
-			sema_error_at(context, expr->span, "%s", comment);
+			sema_error_at(context, expr->loc, "%s", comment);
 			return false;
 		}
 
-		Ast *assert = new_ast(AST_ASSERT_STMT, expr->span);
+		Ast *assert = new_ast(AST_ASSERT_STMT, expr->loc);
 		assert->assert_stmt.is_ensure = true;
 		assert->assert_stmt.expr = exprid(expr);
-		Expr *comment_expr = expr_new_const_string(assert->span, comment);
+		Expr *comment_expr = expr_new_const_string(assert->loc, comment);
 		assert->assert_stmt.message = exprid(comment_expr);
 		ast_append(asserts, assert);
 	}
@@ -536,7 +536,7 @@ static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_
 	// And set our new one.
 	context->return_expr = ret_expr;
 	bool success = true;
-	SCOPE_START_WITH_FLAGS(SCOPE_ENSURE_MACRO, ret_expr->span);
+	SCOPE_START_WITH_FLAGS(SCOPE_ENSURE_MACRO, ret_expr->loc);
 		FOREACH(Expr *, directive, ensures)
 		{
 			Expr *checks = copy_expr_single(directive->contract_expr.decl_exprs);
@@ -756,8 +756,8 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 		FOREACH(Expr *, ensure, ensures)
 		{
 			bool success;
-			SCOPE_START_WITH_FLAGS(SCOPE_ENSURE, statement->span);
-				success = assert_create_from_contract(context, ensure, &append_id, statement->span);
+			SCOPE_START_WITH_FLAGS(SCOPE_ENSURE, statement->loc);
+				success = assert_create_from_contract(context, ensure, &append_id, statement->loc);
 			SCOPE_END;
 			if (!success) return false;
 		}
@@ -963,11 +963,11 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	// 4c. Create a type_info if needed.
 	if (!var_type)
 	{
-		var_type = type_info_new_base(optional->type->optional, optional->span);
+		var_type = type_info_new_base(optional->type->optional, optional->loc);
 	}
 
 	// 4d. A new declaration is created.
-	Decl *decl = decl_new_var(ident->unresolved_ident_expr.ident, ident->span, var_type, VARDECL_LOCAL);
+	Decl *decl = decl_new_var(ident->unresolved_ident_expr.ident, ident->loc, var_type, VARDECL_LOCAL);
 
 	// 4e. Analyse it
 	if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
@@ -1007,7 +1007,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 
 	Decl *decl = NULL;
 	if (!type && !ident) goto RESOLVE_EXPRS;
-	type = type ? type : type_info_new_base(type_fault, expr->span);
+	type = type ? type : type_info_new_base(type_fault, expr->loc);
 
 	if (!sema_resolve_type_info(context, type, RESOLVE_TYPE_DEFAULT)) return false;
 
@@ -1025,7 +1025,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 	if (ident->unresolved_ident_expr.is_const) RETURN_SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
 
 	// 4d. A new declaration is created.
-	decl = decl_new_var(ident->unresolved_ident_expr.ident, ident->span, type, VARDECL_LOCAL);
+	decl = decl_new_var(ident->unresolved_ident_expr.ident, ident->loc, type, VARDECL_LOCAL);
 	decl->var.no_init = true;
 
 	// 4e. Analyse it
@@ -1337,14 +1337,14 @@ bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement)
 	}
 	if (body->ast_kind != AST_COMPOUND_STMT)
 	{
-		Ast *new_body = new_ast(AST_COMPOUND_STMT, body->span);
+		Ast *new_body = new_ast(AST_COMPOUND_STMT, body->loc);
 		new_body->compound_stmt.first_stmt = astid(body);
 		body = new_body;
 		statement->defer_stmt.body = astid(body);
 	}
 	body->compound_stmt.parent_defer = astid(statement);
 	bool success = true;
-	SCOPE_START(statement->span)
+	SCOPE_START(statement->loc)
 
 	context->active_scope.defer_last = 0;
 	context->active_scope.defer_start = 0;
@@ -1431,7 +1431,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 		RETURN_SEMA_ERROR(body, "A do loop must use { } around its body.");
 	}
 	// Enter for scope
-	SCOPE_OUTER_START(statement->span)
+	SCOPE_OUTER_START(statement->loc)
 
 		if (statement->for_stmt.init)
 		{
@@ -1439,7 +1439,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 		}
 
 		// Conditional scope start
-		SCOPE_START_WITH_LABEL(statement->for_stmt.flow.label, statement->span)
+		SCOPE_START_WITH_LABEL(statement->for_stmt.flow.label, statement->loc)
 
 			if (!do_loop)
 			{
@@ -1463,7 +1463,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 
 		if (statement->for_stmt.flow.skip_first)
 		{
-			SCOPE_START(statement->span)
+			SCOPE_START(statement->loc)
 				if (!sema_analyse_for_cond(context, &statement->for_stmt.cond, &is_infinite) || !success)
 				{
 					SCOPE_ERROR_END_OUTER();
@@ -1481,7 +1481,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 		if (success && statement->for_stmt.incr)
 		{
 			// Incr scope start
-			SCOPE_START(statement->span)
+			SCOPE_START(statement->loc)
 				success = sema_analyse_expr_rvalue(context, exprptr(statement->for_stmt.incr));
 				// Incr scope end
 			SCOPE_END;
@@ -1534,7 +1534,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		}
 	}
 	// Conditional scope start
-	SCOPE_START(statement->span)
+	SCOPE_START(statement->loc)
 
 		// In the case of foreach (int x : { 1, 2, 3 }) we will infer the int[] type, so pick out the number of elements.
 		Type *inferred_type = variable_type_info ? type_get_inferred_array(type_no_optional(variable_type_info->type)) : NULL;
@@ -1684,7 +1684,7 @@ SKIP_OVERLOAD:;
 	// Element *value @noinit
 	if (!type_info)
 	{
-		type_info = type_info_new_base(value_type, var->span);
+		type_info = type_info_new_base(value_type, var->loc);
 		var->var.type_info = type_infoid(type_info);
 	}
 	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
@@ -1697,7 +1697,7 @@ SKIP_OVERLOAD:;
 		TypeInfo *idx_type_info = vartype(index);
 		if (!idx_type_info)
 		{
-			idx_type_info = type_info_new_base(index_type, enumerator->span);
+			idx_type_info = type_info_new_base(index_type, enumerator->loc);
 			index->var.type_info = type_infoid(idx_type_info);
 		}
 		if (!sema_resolve_type_info(context, idx_type_info, RESOLVE_TYPE_DEFAULT)) return false;
@@ -1747,20 +1747,20 @@ SKIP_OVERLOAD:;
 			expr_insert_addr(enumerator);
 		}
 		// Store either "Foo* __enum$ = &some_var;" or "Foo __enum$ = some_call()"
-		temp = decl_new_generated_var(enumerator->type, VARDECL_LOCAL, enumerator->span);
+		temp = decl_new_generated_var(enumerator->type, VARDECL_LOCAL, enumerator->loc);
 		vec_add(expressions, expr_generate_decl(temp, enumerator));
 	}
 
 	// Create @__enum$.len() or @(*__enum$).len()
 	Expr *enum_val = expr_variable(temp);
-	enum_val->span = enumerator->span;
+	enum_val->loc = enumerator->loc;
 	if (is_addr && !sema_expr_rewrite_insert_deref(context, enum_val)) return false;
 	Type *enumerator_type = type_flatten(enum_val->type);
 	Expr *len_call;
 	ArraySize array_len = 0;
 	if (len)
 	{
-		len_call = expr_new(EXPR_CALL, enumerator->span);
+		len_call = expr_new(EXPR_CALL, enumerator->loc);
 		if (!sema_insert_method_call(context, len_call, len, enum_val, NULL, false)) return false;
 	}
 	else
@@ -1791,7 +1791,7 @@ SKIP_OVERLOAD:;
 	Type *actual_index_type = is_enum_iterator ? enum_inner_type(index_type->canonical) : index_type;
 
 	// Generate the index variable
-	Decl *idx_decl = decl_new_generated_var(actual_index_type, VARDECL_LOCAL, index ? index->span : enumerator->span);
+	Decl *idx_decl = decl_new_generated_var(actual_index_type, VARDECL_LOCAL, index ? index->loc : enumerator->loc);
 
 	// IndexType __len$ = (ActualIndexType)(@__enum$.len())
 	Decl *len_decl = NULL;
@@ -1801,7 +1801,7 @@ SKIP_OVERLOAD:;
 		if (!len_call)
 		{
 			// Create const len if missing.
-			len_call = expr_new_const_int(enumerator->span, type_isz, array_len);
+			len_call = expr_new_const_int(enumerator->loc, type_isz, array_len);
 		}
 		if (is_enum_iterator)
 		{
@@ -1818,7 +1818,7 @@ SKIP_OVERLOAD:;
 	{
 		if (len_call)
 		{
-			len_decl = decl_new_generated_var(actual_index_type, VARDECL_LOCAL, enumerator->span);
+			len_decl = decl_new_generated_var(actual_index_type, VARDECL_LOCAL, enumerator->loc);
 			bool success;
 			if (is_enum_iterator)
 			{
@@ -1849,12 +1849,12 @@ SKIP_OVERLOAD:;
 			}
 			vec_add(expressions, expr_generate_decl(len_decl, len_call));
 		}
-		Expr *idx_init = expr_new_const_int(idx_decl->span, actual_index_type, 0);
+		Expr *idx_init = expr_new_const_int(idx_decl->loc, actual_index_type, 0);
 		vec_add(expressions, expr_generate_decl(idx_decl, idx_init));
 	}
 
 	// Add all declarations to the init
-	Expr *init_expr = expr_new(EXPR_EXPRESSION_LIST, var->span);
+	Expr *init_expr = expr_new(EXPR_EXPRESSION_LIST, var->loc);
 	init_expr->expression_list = expressions;
 
 	Expr *update = NULL;
@@ -1862,26 +1862,26 @@ SKIP_OVERLOAD:;
 	if (is_reverse)
 	{
 		// Create __idx$ > 0
-		Expr *rhs = expr_new_const_int(enumerator->span, index_type, 0);
-		cond = expr_new_binary(idx_decl->span, expr_variable(idx_decl), rhs, BINARYOP_GT);
+		Expr *rhs = expr_new_const_int(enumerator->loc, index_type, 0);
+		cond = expr_new_binary(idx_decl->loc, expr_variable(idx_decl), rhs, BINARYOP_GT);
 
 		// Create --__idx$
-		Expr *dec = expr_new(EXPR_UNARY, idx_decl->span);
+		Expr *dec = expr_new(EXPR_UNARY, idx_decl->loc);
 		dec->unary_expr.expr = expr_variable(idx_decl);
 		dec->unary_expr.operator = UNARYOP_DEC;
 		dec->unary_expr.no_wrap = true;
-		Ast *update_stmt = new_ast(AST_EXPR_STMT, idx_decl->span);
+		Ast *update_stmt = new_ast(AST_EXPR_STMT, idx_decl->loc);
 		update_stmt->expr_stmt = dec;
 		ast_append(&succ, update_stmt);
 	}
 	else if (is_single_pass)
 	{
-		cond = expr_new_const_bool(idx_decl->span, type_bool, false);
+		cond = expr_new_const_bool(idx_decl->loc, type_bool, false);
 	}
 	else
 	{
 		// Create __idx$ < __len$
-		cond = expr_new(EXPR_BINARY, idx_decl->span);
+		cond = expr_new(EXPR_BINARY, idx_decl->loc);
 		cond->binary_expr.operator = BINARYOP_LT;
 		cond->binary_expr.left = exprid(expr_variable(idx_decl));
 		if (len_decl)
@@ -1890,12 +1890,12 @@ SKIP_OVERLOAD:;
 		}
 		else
 		{
-			Expr *rhs = expr_new_const_int(enumerator->span, type_isz, array_len);
+			Expr *rhs = expr_new_const_int(enumerator->loc, type_isz, array_len);
 			cond->binary_expr.right = exprid(rhs);
 		}
 
 		// Create ++__idx$
-		update = expr_new(EXPR_UNARY, idx_decl->span);
+		update = expr_new(EXPR_UNARY, idx_decl->loc);
 		update->unary_expr.expr = expr_variable(idx_decl);
 		update->unary_expr.operator = UNARYOP_INC;
 		update->unary_expr.no_wrap = true;
@@ -1904,7 +1904,7 @@ SKIP_OVERLOAD:;
 	// Create IndexType index = __idx$
 	if (index)
 	{
-		Ast *declare_ast = new_ast(AST_DECLARE_STMT, var->span);
+		Ast *declare_ast = new_ast(AST_DECLARE_STMT, var->loc);
 		declare_ast->declare_stmt = index;
 		Expr *load_idx = expr_variable(idx_decl);
 		if (is_enum_iterator)
@@ -1917,15 +1917,15 @@ SKIP_OVERLOAD:;
 	}
 
 	// Create value = (*__$enum)[__idx$]
-	Ast *value_declare_ast = new_ast(AST_DECLARE_STMT, var->span);
+	Ast *value_declare_ast = new_ast(AST_DECLARE_STMT, var->loc);
 	value_declare_ast->declare_stmt = var;
 
-	Expr *subscript = expr_new(EXPR_SUBSCRIPT, var->span);
+	Expr *subscript = expr_new(EXPR_SUBSCRIPT, var->loc);
 	enum_val = expr_variable(temp);
-	enum_val->span = enumerator->span;
+	enum_val->loc = enumerator->loc;
 	if (is_addr && !sema_expr_rewrite_insert_deref(context, enum_val)) return false;
 	subscript->subscript_expr.expr = exprid(enum_val);
-	Expr *index_expr = array_len == 1 ? expr_new_const_int(var->span, idx_decl->type, 0) : expr_variable(idx_decl);
+	Expr *index_expr = array_len == 1 ? expr_new_const_int(var->loc, idx_decl->type, 0) : expr_variable(idx_decl);
 	if (is_enum_iterator)
 	{
 		expr_rewrite_enum_from_ord(index_expr, index_type);
@@ -1933,14 +1933,14 @@ SKIP_OVERLOAD:;
 	subscript->subscript_expr.index.expr = exprid(index_expr);
 	if (value_by_ref || need_deref)
 	{
-		Expr *addr = expr_new(EXPR_UNARY, subscript->span);
+		Expr *addr = expr_new(EXPR_UNARY, subscript->loc);
 		addr->unary_expr.operator = UNARYOP_ADDR;
 		addr->unary_expr.expr = subscript;
 		subscript = addr;
 	}
 	if (need_deref)
 	{
-		Expr *deref = expr_new(EXPR_UNARY, subscript->span);
+		Expr *deref = expr_new(EXPR_UNARY, subscript->loc);
 		deref->unary_expr.operator = UNARYOP_DEREF;
 		deref->unary_expr.expr = subscript;
 		subscript = deref;
@@ -1949,7 +1949,7 @@ SKIP_OVERLOAD:;
 	ast_append(&succ, value_declare_ast);
 	Ast *body_ast = astptr(body);
 	ast_append(&succ, body_ast);
-	Ast *compound_stmt = new_ast(AST_COMPOUND_STMT, body_ast->span);
+	Ast *compound_stmt = new_ast(AST_COMPOUND_STMT, body_ast->loc);
 	compound_stmt->compound_stmt.first_stmt = first_stmt;
 	FlowCommon flow = statement->foreach_stmt.flow;
 	flow.skip_first = is_single_pass;
@@ -1981,7 +1981,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	CondResult result = COND_MISSING;
 	bool is_invalid = false;
 	bool reverse = false;
-	SCOPE_OUTER_START(statement->span)
+	SCOPE_OUTER_START(statement->loc)
 
 		success = sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL, &result);
 		if (success && cond->expr_kind == EXPR_COND)
@@ -2016,7 +2016,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 		{
 			context->active_scope.allow_dead_code = true;
 			bool warn = SEMA_WARN(statement, dead_code, "This code will never execute.");
-			if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(context->active_scope.end_jump.span, "This code is preventing it from exectuting");
+			if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(context->active_scope.end_jump.loc, "This code is preventing it from exectuting");
 			if (!warn)
 			{
 				success = false;
@@ -2024,7 +2024,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 			}
 		}
 
-		SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label, then->span);
+		SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label, then->loc);
 			if (result == COND_FALSE) context->active_scope.is_dead = true;
 			success = success && sema_analyse_statement(context, then);
 			then_jump = context->active_scope.end_jump.active && !(statement->if_stmt.flow.label && statement->if_stmt.flow.has_break);
@@ -2036,7 +2036,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 		{
 			bool store_break = statement->if_stmt.flow.has_break;
 			statement->if_stmt.flow.has_break = false;
-			SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label, statement->span);
+			SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label, statement->loc);
 				if (result == COND_TRUE) context->active_scope.is_dead = true;
 				sema_remove_unwraps_from_try(context, cond);
 				sema_unwrappable_from_catch_in_else(context, cond);
@@ -2451,11 +2451,11 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 			uint32_t ord2 = to_const_expr->enum_val->enum_constant.inner_ordinal;
 			if (ord1 > ord2)
 			{
-				sema_error_at(context, extend_span_with_token(expr->span, to_expr->span),
+				sema_error_at(context, make_loc(extend_loc_with_token(sourcelocptr(expr->loc), sourcelocptr(to_expr->loc))),
 				              "The range is not valid because the first enum (%s) has a lower ordinal than the second (%s). "
 				              "It would work if you swapped their order.",
 				              const_expr->enum_val->name,
-							  to_const_expr->enum_val->name);
+				              to_const_expr->enum_val->name);
 				return false;
 			}
 			(*actual_cases_ref) += ord2 - ord1;
@@ -2468,7 +2468,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 		{
 			if (int_comp(const_expr->ixx, to_const_expr->ixx, BINARYOP_GT))
 			{
-				sema_error_at(context, extend_span_with_token(expr->span, to_expr->span),
+				sema_error_at(context, make_loc(extend_loc_with_token(sourcelocptr(expr->loc), sourcelocptr(to_expr->loc))),
 				              "The range is not valid because the first value (%s) is greater than the second (%s). "
 				              "It would work if you swapped their order.",
 				              int_to_str(const_expr->ixx, 10, false),
@@ -2550,7 +2550,7 @@ DONE:;
 	scratch_buffer_append(" - either add them or use 'default'.");
 	return scratch_buffer_to_string();
 }
-static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, CanonicalType *switch_type, Ast **cases)
+static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceLocId expr_loc, CanonicalType *switch_type, Ast **cases)
 {
 	bool is_enum_switch = false;
 	bool if_chain = true;
@@ -2572,7 +2572,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	}
 	else
 	{
-		RETURN_SEMA_ERROR_AT(expr_span, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
+		RETURN_SEMA_ERROR_AT(expr_loc, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
 	}
 FOUND:;
 	Ast *default_case = NULL;
@@ -2633,7 +2633,7 @@ FOUND:;
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		Ast *stmt = cases[i];
-		SCOPE_START(statement->span)
+		SCOPE_START(statement->loc)
 			PUSH_BREAK(statement);
 			Ast *next = (i < case_count - 1) ? cases[i + 1] : NULL;
 			PUSH_NEXT(next, statement);
@@ -2693,7 +2693,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 			is_type = true;
 			FALLTHROUGH;
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_BOOL:
@@ -2936,12 +2936,12 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		}
 		else if (bytes)
 		{
-			value->var.init_expr = expr_new(EXPR_CONST, collection->span);
+			value->var.init_expr = expr_new(EXPR_CONST, collection->loc);
 			expr_rewrite_const_int(value->var.init_expr, bytes_type, bytes[i]);
 		}
 		else
 		{
-			Expr *expr = expr_new(EXPR_CONST, collection->span);
+			Expr *expr = expr_new(EXPR_CONST, collection->loc);
 			if (!expr_rewrite_to_const_initializer_index(const_list_type, initializer, expr, i, false))
 			{
 				SEMA_ERROR(collection, "Complex expressions are not allowed.");
@@ -2951,7 +2951,7 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		}
 		if (index)
 		{
-			index->var.init_expr = expr_new_const_int(index->span, type_int, i);
+			index->var.init_expr = expr_new_const_int(index->loc, type_int, i);
 			index->type = type_int;
 		}
 		if (!sema_analyse_statement(context, compound_stmt)) goto FAILED;
@@ -2981,7 +2981,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 {
 	statement->switch_stmt.scope_defer = context->active_scope.in_defer;
 
-	SCOPE_START_WITH_LABEL(statement->switch_stmt.flow.label, statement->span);
+	SCOPE_START_WITH_LABEL(statement->switch_stmt.flow.label, statement->loc);
 
 		Expr *cond = exprptrzero(statement->switch_stmt.cond);
 		Type *switch_type;
@@ -2999,7 +2999,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 		}
 
 		statement->switch_stmt.defer = context->active_scope.defer_last;
-		if (!sema_analyse_switch_body(context, statement, cond ? cond->span : statement->span,
+		if (!sema_analyse_switch_body(context, statement, cond ? cond->loc : statement->loc,
 									  switch_type->canonical,
 									  statement->switch_stmt.cases))
 		{
@@ -3031,7 +3031,7 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 	CondResult res = expr ? sema_check_comp_time_bool(context, expr) : COND_FALSE;
 
 	if (res == COND_MISSING) return false;
-	SourceSpan span = expr ? expr->span : statement->span;
+	SourceLocId span = expr ? expr->loc : statement->loc;
 	if (res == COND_FALSE)
 	{
 		if (message_expr)
@@ -3090,11 +3090,11 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 		prefix = next + 6;
 		if (next_line)
 		{
-			printf("%d", statement->span.row);
+			printf("%d", sourcelocptr(statement->loc)->row);
 		}
 		else
 		{
-			File *file = source_file_by_id(statement->span.file_id);
+			File *file = source_file_by_id(sourcelocptr(statement->loc)->file_id);
 			printf("%s", file->name);
 		}
 	}
@@ -3281,7 +3281,7 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 			{
 				context->active_scope.allow_dead_code = true;
 				bool warn = SEMA_WARN(statement, dead_code, "This code will never execute.");
-				if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(end_jump.span, "No code will execute after this statement.");
+				if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(end_jump.loc, "No code will execute after this statement.");
 				if (!warn) return ast_poison(statement);
 			}
 			// Remove it
@@ -3293,9 +3293,9 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 }
 
 
-static bool sema_analyse_require(SemaContext *context, Expr *directive, AstId **asserts, SourceSpan span)
+static bool sema_analyse_require(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId loc)
 {
-	return assert_create_from_contract(context, directive, asserts, span);
+	return assert_create_from_contract(context, directive, asserts, loc);
 }
 
 static bool sema_analyse_ensure(SemaContext *context, Expr *directive)
@@ -3330,12 +3330,12 @@ void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt)
 {
 	ASSERT(compound_stmt->ast_kind == AST_COMPOUND_STMT);
 	if (!assert_first) return;
-	Ast *ast = new_ast(AST_COMPOUND_STMT, compound_stmt->span);
+	Ast *ast = new_ast(AST_COMPOUND_STMT, compound_stmt->loc);
 	ast->compound_stmt.first_stmt = assert_first;
 	ast_prepend(&compound_stmt->compound_stmt.first_stmt, ast);
 }
 
-bool sema_analyse_contracts(SemaContext *context, Decl *contract, Expr **requires, Expr **ensures, AstId **asserts, SourceSpan call_span, bool *has_ensures)
+bool sema_analyse_contracts(SemaContext *context, Decl *contract, Expr **requires, Expr **ensures, AstId **asserts, SourceLocId call_loc, bool *has_ensures)
 {
 	context->call_env.opt_returns = NULL;
 	if (has_ensures)
@@ -3345,7 +3345,7 @@ bool sema_analyse_contracts(SemaContext *context, Decl *contract, Expr **require
 
 	FOREACH(Expr *, require, requires)
 	{
-		if (!sema_analyse_require(context, require, asserts, call_span)) return false;
+		if (!sema_analyse_require(context, require, asserts, call_loc)) return false;
 	}
 	if (!has_ensures) return true;
 	FOREACH(Expr *, ensure, ensures)
@@ -3360,6 +3360,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 {
 	// Stop if it's already poisoned.
 	if (!decl_ok(func)) return false;
+	ASSERT_SPAN(func, func->resolve_status == RESOLVE_DONE);
 	if (func->is_body_checked) return true;
 	func->is_body_checked = true;
 	context->generic_instance = func->is_templated ? declptr(func->instance_id) : NULL;
@@ -3405,7 +3406,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 
 	Ast *body = astptr(func->func_decl.body);
 	Decl **lambda_params = NULL;
-	SCOPE_START(func->span)
+	SCOPE_START(func->loc)
 		ASSERT(context->active_scope.depth == 1);
 		FOREACH(Decl *, param, signature->params)
 		{
@@ -3432,7 +3433,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 			Expr **requires = copy_exprlist_macro(contracts->contracts_decl.requires);
 			Expr **ensures = copy_exprlist_macro(contracts->contracts_decl.ensures);
 			copy_end();
-			if (!sema_analyse_contracts(context, contracts, requires, ensures, &next, INVALID_SPAN, &has_ensures)) return false;
+			if (!sema_analyse_contracts(context, contracts, requires, ensures, &next, 0, &has_ensures)) return false;
 		}
 		context->call_env.ensures = has_ensures;
 		bool is_naked = func->func_decl.attr_naked;
@@ -3449,7 +3450,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 			}
 			Ast *ret = ast_calloc();
 			ret->ast_kind = AST_RETURN_STMT;
-			ret->span = body->span;
+			ret->loc = body->loc;
 			*append_pos = astid(ret);
 		}
 NEXT:

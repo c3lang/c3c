@@ -141,7 +141,7 @@ void type_append_name_to_scratch(Type *type)
 		case TYPE_ALIAS:
 			UNREACHABLE_VOID;
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_TYPEDEF:
@@ -276,7 +276,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_WILDCARD:
 			return type->name;
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_ALIAS:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -343,7 +343,7 @@ static const char *type_to_error_string_with_path(Type *type)
 		case TYPE_WILDCARD:
 			return type->name;
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_ALIAS:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -434,7 +434,7 @@ TypeSize type_size(Type *type)
 		case TYPE_ALIAS:
 			return type->size = type_size(type->canonical);
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 			ASSERT(type->decl->enums.type_info->resolve_status == RESOLVE_DONE);
 			return type->size = type_size(enum_inner_type(type)->canonical);
 		case TYPE_STRUCT:
@@ -546,7 +546,7 @@ bool type_is_aggregate(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_FUNC_PTR:
 		case TYPE_FUNC_RAW:
 		case VECTORS:
@@ -591,7 +591,7 @@ bool type_is_ordered(Type *type)
 		case TYPE_POINTER:
 		case TYPE_BOOL:
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 			return true;
 		case TYPE_ALIAS:
 			type = type->canonical;
@@ -634,7 +634,7 @@ bool type_is_comparable(Type *type)
 			type = type->array.base;
 			goto RETRY;
 		case TYPE_TYPEDEF:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 			type = type_inline(type);
 			goto RETRY;
 		case TYPE_BOOL:
@@ -739,7 +739,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			}
 			return;
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -824,7 +824,7 @@ INLINE AlignSize type_alignment_(Type *type, bool alloca)
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 			type = enum_inner_type(type)->canonical;
 			goto RETRY;
 		case TYPE_STRUCT:
@@ -1206,7 +1206,7 @@ Type *type_get_indexed_type(Type *type)
 		case TYPE_FLEXIBLE_ARRAY:
 		case VECTORS:
 			return type->array.base;
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 			type = enum_inner_type(type);
 			goto RETRY;
 		case TYPE_TYPEDEF:
@@ -1329,7 +1329,7 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_FUNC_PTR:
 		case TYPE_FUNC_RAW:
 		case TYPE_STRUCT:
@@ -1433,9 +1433,9 @@ static void type_init(const char *name, Type *location, TypeKind kind, unsigned 
 
 static void type_create_alias(const char *name, Type *location, Type *canonical)
 {
-	Decl *decl = decl_new(DECL_TYPE_ALIAS, name, INVALID_SPAN);
+	Decl *decl = decl_new(DECL_TYPE_ALIAS, name, 0);
 	decl->resolve_status = RESOLVE_DONE;
-	decl->type_alias_decl.type_info = type_info_new_base(canonical, INVALID_SPAN);
+	decl->type_alias_decl.type_info = type_info_new_base(canonical, 0);
 	decl->unit = compiler.context.core_unit;
 	decl->is_export = true;
 	*location = (Type) {
@@ -1473,7 +1473,7 @@ static inline void type_create_float(const char *name, Type *type, TypeKind kind
 
 Type *type_create_struct(const char *name, Type **types, const char **names, int count)
 {
-	Decl *decl = decl_new_with_type(symtab_preset(name, TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_STRUCT);
+	Decl *decl = decl_new_with_type(symtab_preset(name, TOKEN_TYPE_IDENT), 0, DECL_STRUCT);
 	decl->unit = compiler.context.core_unit;
 	decl->extname = decl->name;
 	AlignSize offset = 0;
@@ -1481,7 +1481,7 @@ Type *type_create_struct(const char *name, Type **types, const char **names, int
 	for (int i = 0; i < count; i++)
 	{
 		Type *member_type = types[i];
-		Decl *member = decl_new_var(symtab_preset(names[i], TOKEN_IDENT), INVALID_SPAN, type_info_new_base(member_type, INVALID_SPAN), VARDECL_MEMBER);
+		Decl *member = decl_new_var(symtab_preset(names[i], TOKEN_IDENT), 0, type_info_new_base(member_type, 0), VARDECL_MEMBER);
 		member->unit = compiler.context.core_unit;
 		member->type = member_type;
 		member->resolve_status = RESOLVE_DONE;
@@ -1546,12 +1546,12 @@ void type_setup(PlatformTarget *target)
 	type_init("fault", &t.fault, TYPE_ANYFAULT, target->width_pointer, target->align_pointer);
 	type_chars = type_get_slice(type_char);
 	type_wildcard_optional = type_get_optional(type_wildcard);
-	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_TYPEDEF);
+	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), 0, DECL_TYPEDEF);
 	string_decl->unit = compiler.context.core_unit;
 	string_decl->resolved_attributes = true;
 	string_decl->extname = string_decl->name;
 	string_decl->is_substruct = true;
-	string_decl->distinct = type_info_new_base(type_chars, INVALID_SPAN);
+	string_decl->distinct = type_info_new_base(type_chars, 0);
 	string_decl->alignment = target->align_pointer.align / 8;
 	string_decl->resolve_status = RESOLVE_DONE;
 	type_string = string_decl->type;
@@ -1617,7 +1617,7 @@ bool type_is_scalar(Type *type)
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_ANYFAULT:
 			return true;
 		case TYPE_BITSTRUCT:
@@ -1643,7 +1643,7 @@ Type *type_find_parent_type(Type *type)
 	Decl *decl;
 	switch (type->type_kind)
 	{
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 			decl = type->decl;
 			return decl->is_substruct ? decl->enums.type_info->type : NULL;
 		case TYPE_TYPEDEF:
@@ -1882,7 +1882,7 @@ bool type_may_have_method(Type *type)
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_BITSTRUCT:
 		case ALL_FLOATS:
 		case ALL_INTS:
@@ -1925,7 +1925,7 @@ bool type_may_have_sub_elements(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_ENUM:
 		case TYPE_BITSTRUCT:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_INTERFACE:
 			return true;
 		default:
@@ -2229,7 +2229,7 @@ RETRY_DISTINCT:
 			if (other->pointer->function.prototype->raw_type != type->pointer->function.prototype->raw_type) return NULL;
 			return type;
 		case TYPE_TYPEDEF:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 			if (type_is_distinct_like(other))
 			{
 				return type_find_max_distinct_type(type, other);
@@ -2351,8 +2351,8 @@ unsigned type_get_introspection_kind(TypeKind kind)
 			return INTROSPECT_TYPE_POINTER;
 		case TYPE_ENUM:
 			return INTROSPECT_TYPE_ENUM;
-		case TYPE_CONST_ENUM:
-			return INTROSPECT_TYPE_CONST_ENUM;
+		case TYPE_CONSTDEF:
+			return INTROSPECT_TYPE_CONSTDEF;
 		case TYPE_FUNC_PTR:
 			return INTROSPECT_TYPE_FUNC;
 		case TYPE_STRUCT:
@@ -2410,7 +2410,7 @@ Module *type_base_module(Type *type)
 		case TYPE_FUNC_RAW:
 			return type->function.decl ? type->function.decl->unit->module : NULL;
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:

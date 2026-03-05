@@ -18,16 +18,16 @@ typedef enum
 typedef struct
 {
 	const char *comment;
-	SourceSpan comment_span;
+	SourceLocId comment_span;
 	unsigned comment_len;
 	Expr **requires;
 	Expr **ensures;
 	ContractParam *params;
 	bool pure;
 	bool has_contracts;
-	SourceSpan first;
-	SourceSpan first_non_require;
-	SourceSpan first_contract;
+	SourceLocId first;
+	SourceLocId first_non_require;
+	SourceLocId first_contract;
 	Expr **opt_returns;
 	Attr *deprecated;
 } ContractDescription;
@@ -36,7 +36,7 @@ typedef struct
 #define EXPECT_IDENT_FOR_OR(_name, _res) do { if (!expect_ident(c, _name)) return _res; } while(0)
 #define EXPECT_OR_RET(_tok, _res) do { if (!expect(c, _tok)) return _res; } while(0)
 #define CONSUME_OR_RET(_tok, _res) do { if (!expect(c, _tok)) return _res; advance(c); } while(0)
-#define CONSUME_EOS_OR_RET(_res) do { if (!tok_is(c, TOKEN_EOS)) { print_error_after(c->prev_span, "Expected ';'"); return _res; } advance(c); } while(0)
+#define CONSUME_EOS_OR_RET(_res) do { if (!tok_is(c, TOKEN_EOS)) { print_error_after(&c->prev_span, "Expected ';'"); return _res; } advance(c); } while(0)
 #define TRY_CONSUME_OR_RET(_tok, _message, _type) do { if (!consume(c, _tok, _message)) return _type; } while(0)
 #define CHECK_EXPR_OR_RET(_expr) do { if (!expr_ok(_expr)) return _expr; } while(0)
 
@@ -55,7 +55,7 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info);
 Expr* parse_constant_expr(ParseContext *c);
 
 Decl *parse_const_declaration(ParseContext *c, bool is_global, bool is_extern);
-Expr *parse_integer(ParseContext *c, Expr *left, SourceSpan lhs_start);
+Expr *parse_integer(ParseContext *c, Expr *left, SourceLoc *lhs_start);
 Expr *parse_decl_or_expr(ParseContext *c);
 void recover_top_level(ParseContext *c);
 Expr *parse_cond(ParseContext *c);
@@ -97,7 +97,7 @@ bool parse_module(ParseContext *c, ContractDescription *contracts);
 bool try_consume(ParseContext *c, TokenType type);
 bool consume(ParseContext *c, TokenType type, const char *message, ...);
 bool consume_const_name(ParseContext *c, const char* type);
-Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, SourceSpan lhs_start, Precedence precedence);
+Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, SourceLoc *lhs_start, Precedence precedence);
 
 INLINE const char *symstr(ParseContext *c)
 {
@@ -106,7 +106,7 @@ INLINE const char *symstr(ParseContext *c)
 
 INLINE TypeInfo *type_info_new_curr(ParseContext *c, TypeInfoKind type)
 {
-	return type_info_new(type, c->span);
+	return type_info_new(type, make_loc(c->span));
 }
 
 INLINE TokenType peek(ParseContext *c)
@@ -116,7 +116,7 @@ INLINE TokenType peek(ParseContext *c)
 
 INLINE Ast *ast_new_curr(ParseContext *c, AstKind kind)
 {
-	return new_ast(kind, c->span);
+	return new_ast(kind, make_loc(c->span));
 }
 
 INLINE bool tok_is(ParseContext *c, TokenType type)
