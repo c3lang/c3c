@@ -17,6 +17,7 @@
 - Regression: missing generic nesting check on non-types.
 - Improved stringify. 
 - PollSubscribe was incorrectly an int instead of ushort. #2997
+- SubProcessOptions.search_user_path did nothing on non-windows systems despite comment saying it should #2845
 
 ## 0.7.10 Change list
 
