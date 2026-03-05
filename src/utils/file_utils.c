@@ -564,6 +564,47 @@ bool file_exists(const char *path)
 	return S_ISDIR(st.st_mode) || S_ISREG(st.st_mode) || S_ISREG(st.st_mode);
 }
 
+bool file_executable_in_path(const char *name)
+{
+	if (!name || !name[0]) return false;
+
+	if (strchr(name, '/')
+#if PLATFORM_WINDOWS
+		|| strchr(name, '\\')
+#endif
+		)
+	{
+		return file_exists(name);
+	}
+
+	char *path_env = getenv("PATH");
+	if (!path_env) return false;
+
+	char *path_copy = strdup(path_env);
+#if PLATFORM_WINDOWS
+	const char *delim = ";";
+#else
+	const char *delim = ":";
+#endif
+
+	char *dir = strtok(path_copy, delim);
+	while (dir)
+	{
+		if (dir[0] != '\0')
+		{
+			const char *full_path = file_append_path_temp(dir, name);
+			if (file_exists(full_path))
+			{
+				free(path_copy);
+				return true;
+			}
+		}
+		dir = strtok(NULL, delim);
+	}
+	free(path_copy);
+	return false;
+}
+
 bool file_path_is_relative(const char *file_name)
 {
 	assert(file_name);
