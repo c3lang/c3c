@@ -19,7 +19,8 @@ faultdef
 	IO_ERROR,
 	CORRUPTED_DATA,
 	ENTRY_NOT_FOUND,
-	ENCRYPTED_FILE;
+	ENCRYPTED_FILE,
+	UNSUPPORTED_METHOD;
 
 <*
  Describes a single entry within a ZIP archive.
@@ -280,8 +281,8 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 <*
  Recovers a ZIP archive by scanning for Local File Headers
  when the Central Directory is missing or corrupted.
- @param path : `The path to the broken ZIP file.`
  @param allocator : `The allocator to use.`
+ @param path : `The path to the broken ZIP file.`
  @return `The recovered archive.`
 *>
 fn ZipArchive? recover(Allocator allocator, String path)
@@ -640,7 +641,7 @@ fn char[]? ZipArchive.read_file_all(&self, Allocator allocator, String filename,
 		data = allocator::alloc_array(allocator, char, (usz)reader.size);
 		reader.read(data)!;
 	}
-	else
+	else if (reader.method == DEFLATE)
 	{
 		if (reader.adapter.start_offset > (ulong)isz.max) return io::OVERFLOW~;
 		self.file.set_cursor(reader.adapter.start_offset)!;
@@ -649,6 +650,10 @@ fn char[]? ZipArchive.read_file_all(&self, Allocator allocator, String filename,
 		defer allocator::free(allocator, compressed);
 		self.file.read(compressed)!;
 		data = deflate::decompress(allocator, compressed)!;
+	}
+	else
+	{
+		return UNSUPPORTED_METHOD~;
 	}
 
 	Crc32 crc;
@@ -728,7 +733,7 @@ fn usz? ZipEntryReader.read(&self, char[] buffer) @dynamic
 		return n;
 	}
 
-	return io::UNSUPPORTED_OPERATION~;
+	return UNSUPPORTED_METHOD~;
 }
 
 fn void? ZipEntryReader.close(&self) @dynamic
@@ -838,8 +843,8 @@ struct ZipEntryWriter (OutStream)
 	Crc32 crc;
 	ZipLFH lfh;
 	ulong lfh_offset;
-	char[] buffer;
-	usz capacity;
+	Deflater deflater;
+	bool use_deflater;
 }
 
 fn usz? ZipEntryWriter.write(&self, char[] bytes) @dynamic
@@ -857,26 +862,7 @@ fn usz? ZipEntryWriter.write(&self, char[] bytes) @dynamic
 	}
 	else
 	{
-		usz new_len = self.buffer.len + bytes.len;
-		if (new_len > self.capacity)
-		{
-			usz new_cap = self.capacity;
-			if (new_cap < 4096) new_cap = 4096;
-			while (new_cap < new_len)
-			{
-				if (new_cap > usz.max / 2) { new_cap = new_len; break; }
-				new_cap *= 2;
-			}
-
-			char* p = allocator::realloc_array(self.archive.allocator, self.buffer.ptr, char, new_cap);
-			self.buffer = p[:self.buffer.len]; // Keep length as used size
-			self.capacity = new_cap;
-		}
-
-		mem::copy(self.buffer.ptr + self.buffer.len, bytes.ptr, bytes.len);
-		// Update slice length
-		self.buffer = self.buffer.ptr[:new_len];
-		return bytes.len;
+		return self.deflater.write(bytes);
 	}
 }
 
@@ -890,17 +876,8 @@ fn void? ZipEntryWriter.close(&self) @dynamic
 {
 	if (self.entry.method == DEFLATE)
 	{
-		if (self.buffer.len > 0)
-		{
-			char[]? data = deflate::compress(self.archive.allocator, self.buffer);
-			if (catch data) return IO_ERROR~;
-			self.archive.file.write(data)!;
-			self.entry.compressed_size = data.len;
-
-			allocator::free(self.archive.allocator, data);
-			allocator::free(self.archive.allocator, self.buffer);
-			self.buffer = {};
-		}
+		self.deflater.close()!;
+		self.entry.compressed_size = self.deflater.total_out;
 	}
 
 	self.entry.crc32 = ~self.crc.result;
@@ -958,6 +935,12 @@ fn ZipEntryWriter? ZipArchive.open_writer(&self, String filename, ZipMethod meth
 
 	io::write_any(self.file, &writer.lfh)!;
 	self.file.write(filename)!;
+
+	if (method == DEFLATE)
+	{
+		writer.deflater.init(self.allocator, self.file);
+		writer.use_deflater = true;
+	}
 
 	return writer;
 }

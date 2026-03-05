@@ -1433,9 +1433,9 @@ static void type_init(const char *name, Type *location, TypeKind kind, unsigned 
 
 static void type_create_alias(const char *name, Type *location, Type *canonical)
 {
-	Decl *decl = decl_new(DECL_TYPE_ALIAS, name, INVALID_SPAN);
+	Decl *decl = decl_new(DECL_TYPE_ALIAS, name, 0);
 	decl->resolve_status = RESOLVE_DONE;
-	decl->type_alias_decl.type_info = type_info_new_base(canonical, INVALID_SPAN);
+	decl->type_alias_decl.type_info = type_info_new_base(canonical, 0);
 	decl->unit = compiler.context.core_unit;
 	decl->is_export = true;
 	*location = (Type) {
@@ -1473,7 +1473,7 @@ static inline void type_create_float(const char *name, Type *type, TypeKind kind
 
 Type *type_create_struct(const char *name, Type **types, const char **names, int count)
 {
-	Decl *decl = decl_new_with_type(symtab_preset(name, TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_STRUCT);
+	Decl *decl = decl_new_with_type(symtab_preset(name, TOKEN_TYPE_IDENT), 0, DECL_STRUCT);
 	decl->unit = compiler.context.core_unit;
 	decl->extname = decl->name;
 	AlignSize offset = 0;
@@ -1481,7 +1481,7 @@ Type *type_create_struct(const char *name, Type **types, const char **names, int
 	for (int i = 0; i < count; i++)
 	{
 		Type *member_type = types[i];
-		Decl *member = decl_new_var(symtab_preset(names[i], TOKEN_IDENT), INVALID_SPAN, type_info_new_base(member_type, INVALID_SPAN), VARDECL_MEMBER);
+		Decl *member = decl_new_var(symtab_preset(names[i], TOKEN_IDENT), 0, type_info_new_base(member_type, 0), VARDECL_MEMBER);
 		member->unit = compiler.context.core_unit;
 		member->type = member_type;
 		member->resolve_status = RESOLVE_DONE;
@@ -1546,12 +1546,12 @@ void type_setup(PlatformTarget *target)
 	type_init("fault", &t.fault, TYPE_ANYFAULT, target->width_pointer, target->align_pointer);
 	type_chars = type_get_slice(type_char);
 	type_wildcard_optional = type_get_optional(type_wildcard);
-	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_TYPEDEF);
+	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), 0, DECL_TYPEDEF);
 	string_decl->unit = compiler.context.core_unit;
 	string_decl->resolved_attributes = true;
 	string_decl->extname = string_decl->name;
 	string_decl->is_substruct = true;
-	string_decl->distinct = type_info_new_base(type_chars, INVALID_SPAN);
+	string_decl->distinct = type_info_new_base(type_chars, 0);
 	string_decl->alignment = target->align_pointer.align / 8;
 	string_decl->resolve_status = RESOLVE_DONE;
 	type_string = string_decl->type;

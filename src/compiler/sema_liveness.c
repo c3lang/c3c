@@ -106,7 +106,7 @@ static void sema_trace_stmt_liveness(Ast *ast)
 		case AST_POISONED:
 		case CT_AST:
 		case AST_FOREACH_STMT:
-			assert_print_line(ast->span);
+			assert_print_line(ast->loc);
 			error_exit("Unexpected liveness checking of AST node %d.", ast->ast_kind);
 		case AST_ASM_STMT:
 			sema_trace_expr_list_liveness(ast->asm_stmt.args);
@@ -269,7 +269,7 @@ RETRY:
 		case EXPR_NAMED_ARGUMENT:
 		case UNRESOLVED_EXPRS:
 		case EXPR_LAMBDA:
-			assert_print_line(expr->span);
+			assert_print_line(expr->loc);
 			error_exit("Unexpected liveness checking of expr node %d.", expr->expr_kind);
 		case EXPR_TWO:
 			sema_trace_expr_liveness(expr->two_expr.first);
@@ -639,7 +639,7 @@ RETRY:
 		case DECL_GENERIC_INSTANCE:
 		case DECL_DECLARRAY:
 		case DECL_CONTRACT:
-			assert_print_line(decl->span);
+			assert_print_line(decl->loc);
 			error_exit("Unexpected liveness checking of expr decl %d.", decl->decl_kind);
 		case DECL_FNTYPE:
 			sema_trace_func_liveness(&decl->fntype_decl.signature);

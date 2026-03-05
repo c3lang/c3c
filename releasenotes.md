@@ -5,13 +5,22 @@
 ### Changes / improvements
 - Removed support for LLVM 17, 18.
 - Detect large temporaries when creating slices on the stack #2665
+- Search for the linker in PATH; use the builtin linker if CC missing. #2906
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
+- Add hash method for ZStrings. #2982
+- Added json serialization from structs.
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
 - Name conflict with auto-imported std::core, but it should have lower priority #2902
+- Regression: missing generic nesting check on non-types.
+- Improved stringify. 
+- PollSubscribe was incorrectly an int instead of ushort. #2997
+- SubProcessOptions.search_user_path did nothing on non-windows systems despite comment saying it should #2845
+- AES implementation fixed to be constant time #2806
+- Object would not properly compile on 32-bit Linux.
 
 ## 0.7.10 Change list
 

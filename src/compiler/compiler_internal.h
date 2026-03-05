@@ -35,7 +35,6 @@ typedef uint16_t FileId;
 #define MAX_ARRAYINDEX INT64_MAX
 #define MAX_FIXUPS 0xFFFFF
 #define MAX_HASH_SIZE (512 * 1024 * 1024)
-#define INVALID_SPAN ((SourceSpan){ .row = 0 })
 #define MAX_SCOPE_DEPTH 0x100
 #define INITIAL_SYMBOL_MAP 0x10000
 #define INITIAL_GENERIC_SYMBOL_MAP 0x1000
@@ -59,18 +58,20 @@ typedef uint16_t FileId;
 #define INT128_MIN ((Int128) { (uint64_t)INT64_MIN, 0 })
 #define STDIN_FILE_ID 0xFFFF
 #define ABI_TYPE_EMPTY ((AbiType) { .type = NULL })
-#define RANGE_EXTEND_PREV(x)  do { (x)->span = extend_span_with_token((x)->span, c->prev_span); } while (0)
-#define PRINT_ERROR_AT(_node, ...) print_error_at((_node)->span, __VA_ARGS__)
-#define RETURN_PRINT_ERROR_AT(_val, _node, ...) do { print_error_at((_node)->span, __VA_ARGS__); return _val; } while (0)
-#define PRINT_ERROR_HERE(...) print_error_at(c->span, __VA_ARGS__)
-#define RETURN_PRINT_ERROR_HERE(...) do { print_error_at(c->span, __VA_ARGS__); return false; } while (0)
-#define PRINT_ERROR_LAST(...) print_error_at(c->prev_span, __VA_ARGS__)
-#define RETURN_PRINT_ERROR_LAST(...) do { print_error_at(c->prev_span, __VA_ARGS__); return false; } while (0)
-#define SEMA_NOTE(_node, ...) sema_note_prev_at((_node)->span, __VA_ARGS__)
-#define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output && compiler.build.warnings.deprecation > WARNING_SILENT) print_error_at((_node)->span, __VA_ARGS__); if (compiler.build.warnings.deprecation > WARNING_SILENT) \
- print_deprecation_at((_node)->span, __VA_ARGS__); } while (0)
+#define RANGE_EXTEND_PREV(x)  do { *sourcelocptr((x)->loc) = extend_loc_with_token(sourcelocptr((x)->loc), &c->prev_span); } while (0)
+#define PRINT_ERROR_AT(_node, ...) print_error_at((_node)->loc, __VA_ARGS__)
+#define RETURN_PRINT_ERROR_AT(_val, _node, ...) do { print_error_at((_node)->loc, __VA_ARGS__); return _val; } while (0)
+#define PRINT_ERROR_HERE(...) print_error_at_loc(&c->span, __VA_ARGS__)
+#define RETURN_PRINT_ERROR_HERE(...) do { print_error_at_loc(&c->span, __VA_ARGS__); return false; } while (0)
+#define PRINT_ERROR_LAST(...) print_error_at_loc(&c->prev_span, __VA_ARGS__)
+#define RETURN_PRINT_ERROR_LAST(...) do { print_error_at_loc(&c->prev_span, __VA_ARGS__); return false; } while (0)
+#define SEMA_NOTE(_node, ...) sema_note_prev_at((_node)->loc, __VA_ARGS__)
+#define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output && compiler.build.warnings.deprecation > WARNING_SILENT) print_error_at((_node)->loc, __VA_ARGS__); if (compiler.build.warnings.deprecation > WARNING_SILENT) \
+ print_deprecation_at((_node)->loc, __VA_ARGS__); } while (0)
 #define PRINT_DEPRECATED_AT(span__, ...) do { if (compiler.build.test_output && compiler.build.warnings.deprecation > WARNING_SILENT) print_error_at(span__, __VA_ARGS__); if (compiler.build.warnings.deprecation > WARNING_SILENT) \
 print_deprecation_at(span__, __VA_ARGS__); } while (0)
+#define PRINT_DEPRECATED_AT_LOC(loc__, ...) do { if (compiler.build.test_output && compiler.build.warnings.deprecation > WARNING_SILENT) print_error_at_loc(loc__, __VA_ARGS__); if (compiler.build.warnings.deprecation > WARNING_SILENT) \
+print_deprecation_at_loc(loc__, __VA_ARGS__); } while (0)
 
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
@@ -79,10 +80,12 @@ print_deprecation_at(span__, __VA_ARGS__); } while (0)
 #ifdef NDEBUG
 #define ASSERT_SPANF(node__, check__, format__, ...) do { (void)(check__); } while(0)
 #define ASSERT_SPAN(node__, check__) do { (void)(check__); } while(0)
+#define ASSERT_LOC(node__, check__) do { (void)(check__);} while(0)
 #define ASSERT_AT(span__, check__) do { (void)(check__);} while(0)
 #else
-#define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->span); eprintf(format__, __VA_ARGS__); ASSERT(check__); } } while(0)
-#define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->span); ASSERT(check__); } } while(0)
+#define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->loc); eprintf(format__, __VA_ARGS__); ASSERT(check__); } } while(0)
+#define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->loc); ASSERT(check__); } } while(0)
+#define ASSERT_LOC(node__, check__) do { if (!(check__)) { assert_print_line((node__)->loc); ASSERT(check__); } } while(0)
 #define ASSERT_AT(span__, check__) do { if (!(check__)) { assert_print_line(span__); ASSERT(check__); } } while(0)
 #endif
 
@@ -104,6 +107,7 @@ typedef unsigned AstId;
 typedef unsigned ExprId;
 typedef unsigned DeclId;
 typedef unsigned TypeInfoId;
+typedef unsigned SourceLocId;
 typedef struct SemaContext_ SemaContext;
 
 typedef struct Int128_
@@ -167,23 +171,20 @@ struct ConstInitializer_
 	};
 };
 
-typedef union
-{
-	struct
-	{
-		FileId file_id;
-		unsigned char length;
-		unsigned char col;
-		uint32_t row;
-	};
-	uint64_t a;
-} SourceSpan;
 
-static_assert(sizeof(SourceSpan) == 8, "Expected 8 bytes");
+typedef struct
+{
+	FileId file_id;
+	uint16_t col;
+	uint32_t offset;
+	uint32_t length;
+	uint32_t row;
+} SourceLoc;
+
 
 typedef struct InliningSpan_
 {
-	SourceSpan span;
+	SourceLocId loc;
 	struct InliningSpan_ *prev;
 } InliningSpan;
 
@@ -276,7 +277,7 @@ typedef struct
 
 typedef struct Path_
 {
-	SourceSpan span;
+	SourceLocId loc;
 	const char *module;
 	uint32_t len;
 } Path;
@@ -354,6 +355,7 @@ struct Type_
 
 struct TypeInfo_
 {
+	SourceLocId loc;
 	ResolveStatus resolve_status : 3;
 	TypeInfoKind kind : 6;
 	bool optional : 1;
@@ -361,7 +363,6 @@ struct TypeInfo_
 	bool is_simd : 1;
 	TypeInfoCompressedKind subtype : 4;
 	Type *type;
-	SourceSpan span;
 	union
 	{
 		struct
@@ -390,7 +391,7 @@ typedef struct
 {
 	Path *path;
 	const char *name;
-	SourceSpan span;
+	SourceLocId loc;
 	AttributeType attr_kind : 8;
 	bool is_custom : 1;
 	Expr **exprs;
@@ -403,7 +404,7 @@ typedef struct
 	const char **links;
 	const char *section;
 	const char *wasm_module;
-	SourceSpan overload;
+	SourceLocId overload;
 } ResolvedAttrData;
 
 typedef struct
@@ -657,8 +658,8 @@ typedef struct
 
 typedef struct
 {
-	SourceSpan span;
 	const char *name;
+	SourceLocId loc;
 	InOutModifier modifier : 4;
 	bool by_ref : 1;
 } ContractParam;
@@ -714,7 +715,6 @@ typedef struct Decl_
 {
 	const char *name;
 	const char *extname;
-	SourceSpan span;
 	DeclKind decl_kind : 7;
 	ResolveStatus resolve_status : 3;
 	Visibility visibility : 3;
@@ -761,6 +761,7 @@ typedef struct Decl_
 			bool in_init;
 		};
 	};
+	SourceLocId loc;
 	AlignSize offset;
 	AlignSize padding;
 	AlignSize alignment;
@@ -1028,7 +1029,7 @@ typedef struct
 typedef struct
 {
 	const char *name;
-	SourceSpan name_span;
+	SourceLocId name_span;
 	Expr *value;
 } ExprNamedArgument;
 
@@ -1047,7 +1048,7 @@ typedef struct
 
 typedef struct
 {
-	SourceSpan loc;
+	SourceLocId loc;
 	Expr *inner;
 } ExprDefaultArg;
 
@@ -1179,7 +1180,7 @@ typedef struct
 typedef struct
 {
 	const char *name;
-	SourceSpan span;
+	SourceLocId loc;
 } Label;
 
 typedef struct
@@ -1251,7 +1252,7 @@ typedef struct
 {
 	Expr *inner;
 	SemaContext *context;
-	SourceSpan inline_at;
+	SourceLocId inline_at;
 	bool is_ref;
 } ExprOtherContext;
 
@@ -1288,7 +1289,7 @@ typedef struct
 struct Expr_
 {
 	Type *type;
-	SourceSpan span;
+	SourceLocId loc;
 	ExprKind expr_kind : 8;
 	ResolveStatus resolve_status : 4;
 	union {
@@ -1362,7 +1363,7 @@ struct Expr_
 	};
 };
 
-static_assert(sizeof(void*) != 8 || sizeof(Expr) == 56, "Expr not expected size");
+static_assert(sizeof(void*) != 8 || sizeof(Expr) == 48, "Expr not expected size");
 
 typedef struct
 {
@@ -1597,7 +1598,7 @@ typedef struct
 
 typedef struct Ast_
 {
-	SourceSpan span;
+	SourceLocId loc;
 	AstId next;
 	AstKind ast_kind : 8;
 	union
@@ -1662,7 +1663,7 @@ typedef struct Module_
 typedef struct EndJump_
 {
 	bool active;
-	SourceSpan span;
+	SourceLocId loc;
 } EndJump;
 
 typedef struct DynamicScope_
@@ -1721,7 +1722,7 @@ typedef struct
 	const char *start_row_start;
 	File *file;
 	TokenData data;
-	SourceSpan tok_span;
+	SourceLoc tok_span;
 	TokenType token_type;
 	LexMode mode;
 } Lexer;
@@ -1779,8 +1780,8 @@ typedef struct ParseContext_
 {
 	TokenData data;
 	TokenType tok;
-	SourceSpan span;
-	SourceSpan prev_span;
+	SourceLoc span;
+	SourceLoc prev_span;
 	CompilationUnit *unit;
 	Lexer lexer;
 } ParseContext;
@@ -1793,7 +1794,7 @@ typedef struct
 	bool in_no_eval : 1;
 	bool is_naked_fn : 1;
 	bool ignore_deprecation : 1;
-	SourceSpan in_if_resolution;
+	SourceLocId in_if_resolution;
 	Decl **opt_returns;
 	union
 	{
@@ -1950,7 +1951,7 @@ typedef struct
 	Decl *maybe_decl;
 	Decl *found;
 	Path *path;
-	SourceSpan span;
+	SourceLocId loc;
 	const char *symbol;
 	Module *path_found;
 	bool suppress_error;
@@ -2099,12 +2100,13 @@ ARENA_DEF(ast, Ast)
 ARENA_DEF(expr, Expr)
 ARENA_DEF(decl, Decl)
 ARENA_DEF(type_info, TypeInfo)
+ARENA_DEF(sourceloc, SourceLoc)
 
-INLINE Ast *ast_new(AstKind kind, SourceSpan span)
+INLINE Ast *ast_new(AstKind kind, SourceLocId loc)
 {
 	Ast *ast = ast_calloc();
 	ast->ast_kind = kind;
-	ast->span = span;
+	ast->loc = loc;
 	return ast;
 }
 
@@ -2153,7 +2155,7 @@ INLINE bool compile_asserts(void)
 	return safe_mode_enabled() || compiler.build.testing;
 }
 
-void assert_print_line(SourceSpan span);
+void assert_print_line(SourceLocId span);
 
 bool ast_is_not_empty(Ast *ast);
 
@@ -2164,17 +2166,17 @@ INLINE void ast_prepend(AstId *first, Ast *ast);
 INLINE bool ast_ok(Ast *ast);
 INLINE bool ast_poison(Ast *ast);
 INLINE Ast *ast_last(Ast *ast);
-INLINE Ast *new_ast(AstKind kind, SourceSpan range);
+INLINE Ast *new_ast(AstKind kind, SourceLocId loc);
 INLINE Ast *ast_next(AstId *current_ptr);
 
-const char *span_to_string(SourceSpan span);
-void span_to_scratch(SourceSpan span);
+const char *span_to_string(SourceLocId span);
+void loc_to_scratch(SourceLocId loc);
 
-static inline SourceSpan extend_span_with_token(SourceSpan loc, SourceSpan after)
+static inline SourceLoc extend_loc_with_token(SourceLoc *loc, SourceLoc *after)
 {
-	if (loc.row != after.row) return loc;
-	loc.length = after.col + after.length - loc.col;
-	return loc;
+	SourceLoc new_loc = *loc;
+	new_loc.length = after->offset + after->length - loc->offset;
+	return new_loc;
 }
 
 AttributeType attribute_by_name(const char *name);
@@ -2358,11 +2360,12 @@ bool context_is_macro(SemaContext *context);
 
 // --- Decl functions
 
-Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span);
-Decl *decl_new_ct(DeclKind kind, SourceSpan span);
-Decl *decl_new_with_type(const char *name, SourceSpan span, DeclKind decl_type);
-Decl *decl_new_var(const char *name, SourceSpan span, TypeInfo *type, VarDeclKind kind);
-Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span);
+Decl *decl_new(DeclKind decl_kind, const char *name, SourceLocId loc);
+Decl *decl_new_ct(DeclKind kind, SourceLocId span);
+Decl *decl_new_with_type(const char *name, SourceLoc *loc, DeclKind decl_type);
+Decl *decl_new_var(const char *name, SourceLocId span, TypeInfo *type, VarDeclKind kind);
+Decl *decl_new_var_loc(const char *name, SourceLoc *loc, TypeInfo *type, VarDeclKind kind);
+Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceLocId span);
 
 const char *decl_safe_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
@@ -2393,16 +2396,17 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear);
 
 // --- Expression functions
 
-#define EXPR_NEW_TOKEN(kind_) expr_new(kind_, c->span)
-Expr *expr_new(ExprKind kind, SourceSpan start);
-Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v);
-Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value);
-Expr *expr_new_const_typeid(SourceSpan span, Type *type);
-Expr *expr_new_const_string(SourceSpan span, const char *string);
-Expr *expr_new_const_null(SourceSpan span, Type *type);
-Expr *expr_new_const_initializer(SourceSpan span, Type *type, ConstInitializer *initializer);
-Expr *expr_new_expr_list_resolved(SourceSpan span, Type *type, Expr **expressions);
-Expr *expr_new_binary(SourceSpan span, Expr *left, Expr *right, BinaryOp op);
+#define EXPR_NEW_TOKEN(kind_) expr_new(kind_, make_loc(c->span))
+Expr *expr_new(ExprKind kind, SourceLocId start);
+Expr *expr_new_loc(ExprKind kind, SourceLoc *start);
+Expr *expr_new_const_int(SourceLocId loc, Type *type, uint64_t v);
+Expr *expr_new_const_bool(int loc, Type *type, bool value);
+Expr *expr_new_const_typeid(SourceLocId loc, Type *type);
+Expr *expr_new_const_string(SourceLocId loc, const char *string);
+Expr *expr_new_const_null(SourceLocId loc, Type *type);
+Expr *expr_new_const_initializer(SourceLocId loc, Type *type, ConstInitializer *initializer);
+Expr *expr_new_expr_list_resolved(SourceLocId loc, Type *type, Expr **expressions);
+Expr *expr_new_binary(SourceLocId span, Expr *left, Expr *right, BinaryOp op);
 Expr *expr_new_cond(Expr *expr);
 const char *expr_kind_to_string(ExprKind kind);
 bool expr_is_simple(Expr *expr, bool to_float);
@@ -2482,7 +2486,7 @@ bool parse_file(File *file);
 Decl **parse_include_file(File *file, CompilationUnit *unit);
 Ast *parse_include_file_stmts(File *file, CompilationUnit *unit);
 bool parse_stdin(void);
-Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span);
+Path *path_create_from_string(const char *string, uint32_t len, SourceLocId loc);
 
 
 typedef enum FindMember
@@ -2550,9 +2554,9 @@ Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path
 Decl *sema_find_label_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);
 Decl *sema_find_local(SemaContext *context, const char *symbol);
-Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
-Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
-Decl *sema_resolve_maybe_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
+Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc);
+Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc);
+Decl *sema_resolve_maybe_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc);
 BoolErr sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref);
@@ -2561,15 +2565,17 @@ bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info, ResolveTy
 bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info);
 
 bool use_ansi(void);
-void print_error_at(SourceSpan loc, const char *message, ...);
-void print_deprecation_at(SourceSpan loc, const char *message, ...);
-void print_error_after(SourceSpan loc, const char *message, ...);
-void sema_note_prev_at(SourceSpan loc, const char *message, ...);
-void sema_verror_range(SourceSpan location, const char *message, va_list args);
-void sema_vwarn_range(SourceSpan location, const char *message, va_list args);
+void print_error_at_loc(SourceLoc *loc, const char *message, ...);
+void print_error_at(SourceLocId loc, const char *message, ...);
+void print_deprecation_at(SourceLocId loc, const char *message, ...);
+void print_deprecation_at_loc(SourceLoc *loc, const char *message, ...);
+void print_error_after(SourceLoc *loc, const char *message, ...);
+void sema_note_prev_at(SourceLocId loc, const char *message, ...);
+void sema_verror_range(SourceLoc *location, const char *message, va_list args);
+void sema_vwarn_range(SourceLocId location, const char *message, va_list args);
 void print_error(ParseContext *context, const char *message, ...);
 
-void sema_warning_at(SourceSpan loc, const char *message, ...);
+void sema_warning_at(SourceLocId loc, const char *message, ...);
 void sema_shadow_error(SemaContext *context, Decl *decl, Decl *old);
 
 bool sema_type_error_on_binop(SemaContext *context, Expr *expr);
@@ -2742,8 +2748,8 @@ static inline CanonicalType *type_pointer_type(Type *type);
 static inline FlatType *type_flatten(Type *type);
 static inline Type *type_base(Type *type);
 
-INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span);
-INLINE TypeInfo *type_info_new_base(Type *type, SourceSpan span);
+INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceLocId loc);
+INLINE TypeInfo *type_info_new_base(Type *type, SourceLocId loc);
 INLINE bool type_info_ok(TypeInfo *type_info);
 INLINE bool type_info_poison(TypeInfo *type);
 INLINE bool type_is_user_defined(Type *type);
@@ -3095,27 +3101,27 @@ INLINE Type *enum_inner_type(Type *enum_type)
 	return enum_type->decl->enums.type_info->type;
 }
 
-INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span)
+INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceLocId loc)
 {
 	TypeInfo *type_info = type_info_calloc();
 	type_info->kind = kind;
-	type_info->span = span;
+	type_info->loc = loc;
 	type_info->resolve_status = RESOLVE_NOT_DONE;
 	return type_info;
 }
 
-INLINE TypeInfo *type_info_new_base(Type *type, SourceSpan span)
+INLINE TypeInfo *type_info_new_base(Type *type, SourceLocId loc)
 {
 	TypeInfo *type_info = type_info_calloc();
 	type_info->kind = TYPE_INFO_IDENTIFIER;
 	type_info->resolve_status = RESOLVE_DONE;
 	type_info->type = type;
-	type_info->span = span;
+	type_info->loc = loc;
 	return type_info;
 }
 
 
-INLINE TypeInfoId type_info_id_new_base(Type *type, SourceSpan span)
+INLINE TypeInfoId type_info_id_new_base(Type *type, SourceLocId span)
 {
 	return type_infoid(type_info_new_base(type, span));
 }
@@ -3145,7 +3151,7 @@ INLINE bool type_convert_will_trunc(Type *destination, Type *source)
 // Useful sanity check function.
 INLINE void advance_and_verify(ParseContext *context, TokenType token_type)
 {
-	ASSERT_SPAN(context, context->tok == token_type);
+	ASSERT(context->tok == token_type);
 	advance(context);
 }
 
@@ -3192,7 +3198,7 @@ static inline void methods_add(Methods *methods, Decl *method)
 			Decl *current = declptr(*decl);
 			if (current->decl_kind != DECL_DECLARRAY)
 			{
-				Decl *decl_array = decl_new(DECL_DECLARRAY, NULL,  INVALID_SPAN);
+				Decl *decl_array = decl_new(DECL_DECLARRAY, NULL, 0);
 				vec_add(decl_array->decls, declptr(*decl));
 				vec_add(decl_array->decls, method);
 				*decl = declid(decl_array);
@@ -3766,9 +3772,9 @@ INLINE bool exprid_is_runtime_const(ExprId expr)
 
 INLINE bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->resolve_status = RESOLVE_DONE; return false; }
 
-static inline void expr_list_set_span(Expr **expr, SourceSpan loc);
-static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
-static inline void expr_set_span(Expr *expr, SourceSpan loc);
+static inline void expr_list_set_loc(Expr **expr, SourceLocId loc);
+static inline void exprid_set_loc(ExprId expr_id, SourceLocId loc);
+static inline void expr_set_loc(Expr *expr, SourceLocId loc);
 
 bool const_init_local_init_may_be_global(ConstInitializer *init);
 ConstInitializer *const_init_new_zero(Type *type);
@@ -3783,7 +3789,7 @@ void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value);
 void const_init_rewrite_array_at(ConstInitializer *const_init, Expr *value, ArrayIndex index);
 void const_init_rewrite_to_zero(ConstInitializer *init, Type *type);
 
-static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
+static inline void const_init_set_span(ConstInitializer *init, SourceLocId loc)
 {
 	RETRY:
 	switch (init->kind)
@@ -3802,7 +3808,7 @@ static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 			init = init->init_union.element;
 			goto RETRY;
 		case CONST_INIT_VALUE:
-			expr_set_span(init->init_value, loc);
+			expr_set_loc(init->init_value, loc);
 			return;
 		case CONST_INIT_ARRAY:
 		{
@@ -3821,28 +3827,28 @@ static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 	UNREACHABLE_VOID
 }
 
-static inline void expr_list_set_span(Expr **expr, SourceSpan loc);
-static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
+static inline void expr_list_set_loc(Expr **expr, SourceLocId loc);
+static inline void exprid_set_loc(ExprId expr_id, SourceLocId loc);
 
-static inline void expr_set_span(Expr *expr, SourceSpan loc)
+static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 {
 	if (!expr) return;
-	expr->span = loc;
+	expr->loc = loc;
 	switch (expr->expr_kind)
 	{
 		case EXPR_TWO:
-			expr_set_span(expr->two_expr.first, loc);
-			expr_set_span(expr->two_expr.last, loc);
+			expr_set_loc(expr->two_expr.first, loc);
+			expr_set_loc(expr->two_expr.last, loc);
 			return;
 		case EXPR_INT_TO_BOOL:
-			expr_set_span(expr->int_to_bool_expr.inner, loc);
+			expr_set_loc(expr->int_to_bool_expr.inner, loc);
 			return;
 		case EXPR_EXT_TRUNC:
-			expr_set_span(expr->ext_trunc_expr.inner, loc);
+			expr_set_loc(expr->ext_trunc_expr.inner, loc);
 			return;
 		case EXPR_NAMED_ARGUMENT:
 			expr->named_argument_expr.name_span = loc;
-			expr_set_span(expr->named_argument_expr.value, loc);
+			expr_set_loc(expr->named_argument_expr.value, loc);
 			return;
 		case EXPR_CONST:
 			switch (expr->const_expr.const_kind)
@@ -3851,27 +3857,27 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 					const_init_set_span(expr->const_expr.initializer, loc);
 					return;
 				case CONST_UNTYPED_LIST:
-					expr_list_set_span(expr->const_expr.untyped_list, loc);
+					expr_list_set_loc(expr->const_expr.untyped_list, loc);
 					return;
 				default:
 					return;
 			}
 		case EXPR_CAST:
-			exprid_set_span(expr->cast_expr.expr, loc);
+			exprid_set_loc(expr->cast_expr.expr, loc);
 			return;
 		case EXPR_INITIALIZER_LIST:
-			expr_list_set_span(expr->initializer_list, loc);
+			expr_list_set_loc(expr->initializer_list, loc);
 			return;
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
-			expr_set_span(expr->designated_init.splat, loc);
-			expr_list_set_span(expr->designated_init.list, loc);
+			expr_set_loc(expr->designated_init.splat, loc);
+			expr_list_set_loc(expr->designated_init.list, loc);
 			return;
 		case EXPR_MAKE_ANY:
-			expr_set_span(expr->make_any_expr.inner, loc);
-			expr_set_span(expr->make_any_expr.typeid, loc);
+			expr_set_loc(expr->make_any_expr.inner, loc);
+			expr_set_loc(expr->make_any_expr.typeid, loc);
 			return;
 		case EXPR_MAKE_SLICE:
-			if (expr->make_slice_expr.ptr) expr_set_span(expr->make_slice_expr.ptr, loc);
+			if (expr->make_slice_expr.ptr) expr_set_loc(expr->make_slice_expr.ptr, loc);
 			return;
 		case EXPR_SPLAT:
 		case EXPR_PTR_ACCESS:
@@ -3890,7 +3896,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_RECAST:
 		case EXPR_LENGTHOF:
 		case EXPR_MAYBE_DEREF:
-			expr_set_span(expr->inner_expr, loc);
+			expr_set_loc(expr->inner_expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_ACCESS_RESOLVED:
@@ -3966,19 +3972,19 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 			break;
 	}
 }
-static inline void exprid_set_span(ExprId expr_id, SourceSpan loc)
+static inline void exprid_set_loc(ExprId expr_id, SourceLocId loc)
 {
-	if (expr_id) expr_set_span(exprptr(expr_id), loc);
+	if (expr_id) expr_set_loc(exprptr(expr_id), loc);
 }
-static inline void expr_list_set_span(Expr **exprs, SourceSpan loc)
+static inline void expr_list_set_loc(Expr **exprs, SourceLocId loc)
 {
-	FOREACH(Expr *, expr, exprs) expr_set_span(expr, loc);
+	FOREACH(Expr *, expr, exprs) expr_set_loc(expr, loc);
 }
 INLINE void expr_replace(Expr *expr, Expr *replacement)
 {
-	SourceSpan loc = expr->span;
+	SourceLocId loc = expr->loc;
 	*expr = *replacement;
-	expr_set_span(expr, loc);
+	expr_set_loc(expr, loc);
 }
 
 INLINE bool expr_ok(Expr *expr) { return expr == NULL || expr->expr_kind != EXPR_POISONED; }
@@ -4006,7 +4012,7 @@ INLINE bool exprid_is_pure(ExprId expr_id)
 
 INLINE Expr *expr_new_expr(ExprKind kind, Expr *expr)
 {
-	return expr_new(kind, expr->span);
+	return expr_new(kind, expr->loc);
 }
 
 INLINE bool type_is_promotable_int_bool(Type *type)
@@ -4065,7 +4071,14 @@ extern char swizzle[256];
 #define ASSIGN_DECL_OR_RET(_assign, _decl_stmt, _res) Decl* TEMP(_decl) = (_decl_stmt); if (!decl_ok(TEMP(_decl))) return _res; _assign = TEMP(_decl)
 #define ASSIGN_DECLID_OR_RET(_assign, _decl_stmt, _res) Decl* TEMP(_decl) = (_decl_stmt); if (!decl_ok(TEMP(_decl))) return _res; _assign = TEMP(_decl) ? declid(TEMP(_decl)) : 0
 
+INLINE SourceLocId make_loc(SourceLoc loc)
+{
+	SourceLoc *copy = sourceloc_calloc();
+	*copy = loc;
+	return sourcelocid(copy);
+}
 
+INLINE Decl *decl_new_loc(DeclKind decl_kind, const char *name, SourceLoc loc) { return decl_new(decl_kind, name, make_loc(loc)); }
 
 INLINE void ast_append(AstId **succ, Ast *next)
 {
@@ -4077,10 +4090,20 @@ INLINE bool ast_ok(Ast *ast) { return ast == NULL || ast->ast_kind != AST_POISON
 
 INLINE bool ast_poison(Ast *ast) { ast->ast_kind = AST_POISONED; return false; }
 
-INLINE Ast *new_ast(AstKind kind, SourceSpan range)
+INLINE Ast *new_ast(AstKind kind, SourceLocId loc)
 {
 	Ast *ast = ast_calloc();
-	ast->span = range;
+	ast->loc = loc;
+	ast->ast_kind = kind;
+	return ast;
+}
+
+#define NEW_AST_TOKEN(kind__) (new_ast_loc(kind__, c->span))
+
+INLINE Ast *new_ast_loc(AstKind kind, SourceLoc loc)
+{
+	Ast *ast = ast_calloc();
+	ast->loc = make_loc(loc);
 	ast->ast_kind = kind;
 	return ast;
 }
@@ -4538,7 +4561,7 @@ INLINE bool expr_is_const_ref(Expr *expr)
 
 INLINE bool expr_is_const_pointer(Expr *expr)
 {
-	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_DONE);
+	ASSERT_LOC(expr, expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_POINTER;
 }
 
@@ -4632,6 +4655,7 @@ INLINE bool check_module_name(Path *path)
 	}
 	return true;
 }
+
 
 INLINE void const_init_set_type(ConstInitializer *init, Type *type)
 {

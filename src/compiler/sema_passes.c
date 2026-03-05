@@ -42,7 +42,7 @@ void sema_analyse_pass_module_hierarchy(Module *module)
 		}
 	}
 	// No match, so we create a synthetic module.
-	Path *path = path_create_from_string(slice.ptr, slice.len, module->name->span);
+	Path *path = path_create_from_string(slice.ptr, slice.len, module->name->loc);
 	DEBUG_LOG("Creating parent module for %s: %s", module->name->module, path->module);
 	Module *parent_module = compiler_find_or_create_module(path);
 	module->parent_module = parent_module;
@@ -170,7 +170,7 @@ static bool sema_check_if_implicit_generic(SemaContext *context, Decl *decl)
 	}
 	if (typedecl->kind == TYPE_INFO_IDENTIFIER && typedecl->subtype == TYPE_COMPRESSED_NONE)
 	{
-		Decl *d = sema_resolve_maybe_parameterized_symbol(context, typedecl->unresolved.name, typedecl->unresolved.path, typedecl->span);
+		Decl *d = sema_resolve_maybe_parameterized_symbol(context, typedecl->unresolved.name, typedecl->unresolved.path, typedecl->loc);
 		return d && d->is_template; // NOLINT because apparently this is not checking for NULL!?
 	}
 	return false;
@@ -228,7 +228,7 @@ INLINE File *sema_load_file(CompilationUnit *unit, Expr *filename)
 	File *file = source_file_load(string, &loaded, &error);
 	if (!file)
 	{
-		print_error_at(filename->span, "Failed to load file '%s': %s.", filename->const_expr.bytes.ptr, error);
+		print_error_at(filename->loc, "Failed to load file '%s': %s.", filename->const_expr.bytes.ptr, error);
 		return NULL;
 	}
 	if (compiler.context.errors_found) return NULL;

@@ -48,7 +48,7 @@ bool consume(ParseContext *c, TokenType type, const char *message, ...)
 
 	va_list args;
 	va_start(args, message);
-	sema_verror_range(c->span, message, args);
+	sema_verror_range(&c->span, message, args);
 	va_end(args);
 	return false;
 }
