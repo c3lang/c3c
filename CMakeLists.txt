@@ -240,15 +240,17 @@ if(C3_WITH_LLVM)
         endif()
     endif()
 
-    if (NOT C3_FETCH_LLVM AND EXISTS /opt/homebrew/lib)
-        list(APPEND LLVM_LIBRARY_DIRS /opt/homebrew/lib)
-    endif()
+    if (NOT C3_FETCH_LLVM)
+        if (EXISTS /opt/homebrew/lib)
+            list(APPEND LLVM_LIBRARY_DIRS /opt/homebrew/lib)
+        endif()
 
-    if (EXISTS /usr/lib)
-        # Some systems (such as Alpine Linux) seem to put some of the relevant
-        # LLVM files in /usr/lib, but this doesn't seem to be included in the
-        # value of LLVM_LIBRARY_DIRS.
-        list(APPEND LLVM_LIBRARY_DIRS /usr/lib)
+        if (EXISTS /usr/lib)
+            # Some systems (such as Alpine Linux) seem to put some of the relevant
+            # LLVM files in /usr/lib, but this doesn't seem to be included in the
+            # value of LLVM_LIBRARY_DIRS.
+            list(APPEND LLVM_LIBRARY_DIRS /usr/lib)
+        endif()
     endif()
 
     list(REMOVE_DUPLICATES LLVM_LIBRARY_DIRS)
@@ -292,6 +294,18 @@ if(C3_WITH_LLVM)
                 LibDriver
                 Linker
                 LTO
+        )
+        set(_dtlto_found FALSE)
+        foreach(_dir ${LLVM_LIBRARY_DIRS})
+            if (EXISTS "${_dir}/libLLVMDTLTO.a" OR EXISTS "${_dir}/LLVMDTLTO.lib")
+                set(_dtlto_found TRUE)
+                break()
+            endif()
+        endforeach()
+        if (_dtlto_found)
+            list(APPEND LLVM_LINK_COMPONENTS DTLTO)
+        endif()
+        list(APPEND LLVM_LINK_COMPONENTS
                 MC
                 MCDisassembler
                 native
