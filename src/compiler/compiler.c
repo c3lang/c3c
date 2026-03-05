@@ -737,7 +737,7 @@ void compiler_compile(void)
 				if (!system_linker_available)
 				{
 					const char *cc = compiler.build.cc ? compiler.build.cc : default_c_compiler();
-					eprintf("The C compiler '%s' was not found or system linker is not supported, defaulting to built-in linker\n", cc);
+					OUTF("C compiler '%s' not found or system linker is unsupported; using built-in linker instead.\n", cc);
 					compiler.build.linker_type = LINKER_TYPE_BUILTIN;
 					use_system_linker = false;
 					break;

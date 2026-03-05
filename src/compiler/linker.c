@@ -1051,7 +1051,6 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 		error_exit("Failed to create an executable: %s", error);
 	}
 	INFO_LOG("Linking complete.");
-	OUTF("Program linked to executable '%s'.\n", output_file);
 	return true;
 }
 

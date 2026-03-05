@@ -11,6 +11,12 @@
 #include <windows.h>
 #endif
 
+#if PLATFORM_WINDOWS
+#define PATH_SEPARATOR '\\'
+#else
+#define PATH_SEPARATOR '/'
+#endif
+
 #ifndef _MSC_VER
 #include <dirent.h>
 #include <unistd.h>
@@ -632,16 +638,11 @@ const char *file_append_path_temp(const char *path, const char *name)
 		error_exit("Error generating path from %s and %s: buffer max size exceeded.", path, name);
 	}
 
-#if PLATFORM_WINDOWS
-	char separator = '\\';
-#else
-	char separator = '/';
-#endif
 
 	// format the string safely
-	bool insert_separator = path[path_len - 1] != '/' && path[path_len - 1] != separator;
+	bool insert_separator = path[path_len - 1] != '/' && path[path_len - 1] != PATH_SEPARATOR;
 	int written = insert_separator
-		              ? snprintf(path_buffer, PATH_BUFFER_SIZE, "%s%c%s", path, separator, name)
+		              ? snprintf(path_buffer, PATH_BUFFER_SIZE, "%s%c%s", path, PATH_SEPARATOR, name)
 		              : snprintf(path_buffer, PATH_BUFFER_SIZE, "%s%s", path, name);
 
 	// check if truncation occurred
