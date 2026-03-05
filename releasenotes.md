@@ -18,6 +18,7 @@
 - Improved stringify. 
 - PollSubscribe was incorrectly an int instead of ushort. #2997
 - SubProcessOptions.search_user_path did nothing on non-windows systems despite comment saying it should #2845
+- AES implementation fixed to be constant time #2806
 
 ## 0.7.10 Change list
 
