@@ -98,7 +98,7 @@ set(C3_LLD_DIR              ""                          CACHE STRING "Use custom
 set(C3_LLD_INCLUDE_DIR      ""                          CACHE STRING "Use custom LLD include directory")
 set(C3_ENABLE_CLANGD_LSP    OFF                         CACHE BOOL   "Enable/Disable output of compile commands during generation")
 set(C3_FETCH_LLVM           OFF                         CACHE BOOL   "Automatically download LLVM artifacts")
-set(C3_LLVM_TAG             "llvm_21.x"                 CACHE STRING "Tag/Branch to download LLVM from")
+set(C3_LLVM_TAG             "latest"                    CACHE STRING "Tag/Branch to download LLVM from")
 set(LLVM_CRT_LIBRARY_DIR    ""                          CACHE STRING "Use custom llvm's compiler-rt directory")
 set(TCC_LIB_PATH            "/usr/lib/tcc/libtcc1.a"    CACHE STRING "Use custom libtcc1.a path")
 
@@ -193,9 +193,12 @@ if(C3_WITH_LLVM)
         # 3. Construct URL
         set(C3_LLVM_ARTIFACT_NAME "llvm-${C3_LLVM_PLATFORM}${C3_LLVM_SUFFIX}")
 
-        #set(C3_LLVM_URL "https://github.com/c3lang/c3-llvm/releases/download/${C3_LLVM_TAG}/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
-        # Default to latest so we don't need to specify a tag
-        set(C3_LLVM_URL "https://github.com/c3lang/llvm-for-c3/releases/latest/download/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
+        set(C3_LLVM_RELEASE_PATH "latest/download")
+        if(NOT C3_LLVM_TAG STREQUAL "latest")
+            set(C3_LLVM_RELEASE_PATH "download/${C3_LLVM_TAG}")
+        endif()
+
+        set(C3_LLVM_URL "https://github.com/c3lang/llvm-for-c3/releases/${C3_LLVM_RELEASE_PATH}/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
 
         message(STATUS "Fetching ${C3_LLVM_TYPE} LLVM artifact for ${C3_LLVM_PLATFORM}...")
         message(STATUS "URL: ${C3_LLVM_URL}")
