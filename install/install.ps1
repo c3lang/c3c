@@ -124,6 +124,7 @@ if ($Env:C3_REPOURL) { $C3Repourl = $Env:C3_REPOURL -replace '/$', '' }
 
 # Set binary name
 $BINARY = "c3-windows"
+$BINARY_DIR = "c3"
 
 # Determine the download URL based on version
 if ($C3Version -eq 'latest') {
@@ -160,7 +161,9 @@ try {
     Expand-Archive -Path $ZIP_FILE -DestinationPath $Env:USERPROFILE -Force
 
     # Rename extracted folder to target installation directory
-    Rename-Item -Path "$Env:USERPROFILE/c3-windows-Release" -NewName $BinDir
+    if (Test-Path -Path "$Env:USERPROFILE/$BINARY_DIR") {
+        Rename-Item -Path "$Env:USERPROFILE/$BINARY_DIR" -NewName $BinDir
+    }
 } catch {
     Write-Host "Error: '$DOWNLOAD_URL' is not available or failed to download"
     exit 1
