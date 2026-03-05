@@ -21,9 +21,9 @@ enum Priority
 // Enum with associated value
 enum State : int (String description)
 {
-    WAITING = "waiting",
-    RUNNING = "running",
-    TERMINATED = "ended"
+    WAITING { "waiting" },
+    RUNNING  { "running" },
+    TERMINATED { "ended" }
 }
 
 // Basic structures
@@ -149,7 +149,7 @@ fn void test_comprehensive_marshaling() @test
     };
 
     // Marshal the complex data structure
-    String json = json::marshal(mem, data)!!;
+    String json = json::marshal(mem, data);
     defer free(json);
 
     // Parse the marshaled JSON back to verify it's valid and correct

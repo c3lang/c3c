@@ -4,161 +4,150 @@
 
 <*
  JSON marshaling for structs containing primitive types, enums, and nested structs.
- Supports: String, int, float, double, bool, enums (always marshaled as enum names), nested structs
+ Supports: String, arrays, slices, ints, floats, doubles, bools, constdefs, typedefs, enums (always marshaled as enum names), nested structs
 *>
 
 module std::encoding::json;
-import std::core::string;
+import std::io;
 
-faultdef UNSUPPORTED_TYPE;
 
+macro bool may_serialize($Type) @const
+{
+	$switch $Type.kindof:
+		$case STRUCT:
+			$foreach $member : $Type.membersof:
+				$if $member.nameof == "" ||| !may_serialize($member.type):
+					return false;
+				$endif
+			$endforeach
+			return true;
+		$case ARRAY:
+		$case VECTOR:
+		$case SLICE:
+			return may_serialize($typeof(($Type){}[0]));
+		$case SIGNED_INT:
+		$case UNSIGNED_INT:
+		$case FLOAT:
+		$case BOOL:
+		$case ENUM:
+			return true;
+		$case TYPEDEF:
+		$case CONSTDEF:
+			return may_serialize($Type.inner);
+		$default:
+			return false;
+	$endswitch
+}
 <*
  Marshal a struct with primitive fields and nested structs to JSON.
 
  @param allocator: "The allocator to use for the result"
  @param value: "The struct value to marshal"
- @require @typekind(value) == STRUCT
+ @require $kindof(value) == STRUCT
+ @require may_serialize($typeof(value)) : "Expected a serializable type"
  @return "The JSON string representation"
 *>
-macro String? marshal(Allocator allocator, value)
+macro String marshal(Allocator allocator, value) => @pool()
 {
-    var $Type = $typeof(value);
-
-    DString result = dstring::new_with_capacity(allocator, 32);
-    defer result.free();
-
-    result.append_char('{');
-
-    var $first = true;
-    $foreach $member : $Type.membersof:
-        $if $member.nameof != "":
-            $if !$first:
-                result.append_char(',');
-            $endif
-            $first = false;
-
-            // Add field name (always quoted)
-            result.append_char('"');
-            result.append($member.nameof);
-            result.append(`":`);
-
-            // Add field value using common marshaling logic
-            @pool()
-            {
-                String field_result = tmarshal_value($member.get(value))!;
-                result.append(field_result);
-            };
-        $endif
-    $endforeach
-
-    result.append_char('}');
-    return result.copy_str(allocator);
+	DString s;
+	s.tinit();
+	marshal_to(&s, value)!!;
+	return s.copy_str(allocator);
 }
 
 <*
- Marshal a struct with primitive fields and nested structs to JSON using the temp allocator.
+ Marshal a struct with primitive fields and nested structs to JSON.
 
+ @param stream: "The steam to serialize to"
  @param value: "The struct value to marshal"
- @require @typekind(value) == STRUCT
- @return "The JSON string representation"
+ @require $kindof(value) == STRUCT
+ @require may_serialize($typeof(value)) : "Expected a serializable type"
 *>
-macro String? tmarshal(value) => marshal(tmem, value);
-
-<*
- Marshal a primitive value to JSON.
-
- @param allocator: "The allocator to use for the result"
- @param value: "The value to marshal"
- @return "The JSON string representation"
-*>
-macro String? marshal_value(Allocator allocator, value)
+macro void? marshal_to(OutStream stream, value)
 {
-    var $Type = $typeof(value);
+	return serialize{$typeof(value)}(stream, value);
+}
 
-    $switch $Type.kindof:
-        $case STRUCT:
-            return marshal(allocator, value);
-        $case ARRAY:
-        $case SLICE:
-            return marshal_array(allocator, value);
-        $case SIGNED_INT:
-        $case UNSIGNED_INT:
-            return string::tformat("%d", value);
-        $case FLOAT:
-            return string::tformat("%g", value);
-        $case BOOL:
-            return value ? "true" : "false";
-        $case ENUM:
-            return marshal_enum(value);
-        $default:
-            $if $Type.typeid == String.typeid:
-                return value.tescape(false);
-            $endif
-            return UNSUPPORTED_TYPE?;
-    $endswitch
+module std::encoding::json @private;
+import std::io;
+
+fn void? serialize(OutStream stream, Type value) <Type>
+{
+	stream.write_byte('{')!;
+
+	var $first = true;
+	$foreach $i, $member : Type.membersof:
+		$if $i > 0:
+			stream.write_byte(',')!;
+		$endif
+		$first = false;
+
+		// Add field name (always quoted)
+		stream.write_byte('"')!;
+		stream.write($member.nameof)!;
+		stream.write(`":`)!;
+
+		serialize_value{$member.type}(stream, $member.get(value))!;
+	$endforeach
+	stream.write_byte('}')!;
 }
 
 <*
- Marshal a primitive value to JSON using the temp allocator.
+ Marshal a primitive value to an output stream.
 
  @param value: "The value to marshal"
- @return "The JSON string representation"
 *>
-macro String? tmarshal_value(value) => marshal_value(tmem, value);
-
-<*
- Marshal an array of primitive values to JSON.
-
- @param allocator: "The allocator to use for the result"
- @param array: "The array to marshal"
- @return "The JSON array string representation"
-*>
-macro String? marshal_array(Allocator allocator, array)
+fn void? serialize_value(OutStream stream, TypeElement value) <TypeElement>
 {
-    DString result = dstring::new_with_capacity(allocator, 32);
-    defer result.free();
-
-    result.append_char('[');
-
-    foreach (i, element : array)
-    {
-        if (i > 0) result.append_char(',');
-
-        // Use common marshaling logic for each element
-        @pool()
-        {
-            String element_result = tmarshal_value(element)!;
-            result.append(element_result);
-        };
-    }
-
-    result.append_char(']');
-    return result.copy_str(allocator);
+	$switch TypeElement.kindof:
+		$case STRUCT:
+			return serialize{TypeElement}(stream, value);
+		$case ARRAY:
+		$case VECTOR:
+			return serialize_slice{$typeof(value[0])}(stream, &value);
+		$case SLICE:
+			return serialize_slice{$typeof(value[0])}(stream, value);
+		$case SIGNED_INT:
+		$case UNSIGNED_INT:
+			io::fprintf(stream, "%d", value)!;
+		$case FLOAT:
+			io::fprintf(stream, "%g", value)!;
+		$case BOOL:
+			stream.write(value ? "true" : "false")!;
+		$case CONSTDEF:
+		$case TYPEDEF:
+			$switch (TypeElement.typeid):
+				$case String:
+					@pool() { stream.write(value.tescape(false))!; };
+				$default:
+					var $Inner = $typefrom(TypeElement.inner);
+					return serialize_value{$Inner}(stream, ($Inner)value);
+			$endswitch
+		$case ENUM:
+			stream.write_byte('"')!;
+			stream.write(value.nameof)!;
+			stream.write_byte('"')!;
+		$default:
+			$if TypeElement.typeid == String.typeid:
+				@pool() { stream.write(value.tescape(false))!; };
+			$else
+				$error "Unsupported type";
+			$endif
+	$endswitch
 }
 
 <*
- Marshal an array of primitive values to JSON using the temp allocator.
-
- @param array: "The array to marshal"
- @return "The JSON array string representation"
+ Marshal a slice of primitive values to JSON.
 *>
-macro String? tmarshal_array(array) => marshal_array(tmem, array);
-
-<*
- Marshal an enum value to JSON as a quoted string.
- Always uses the enum name, regardless of associated values.
-
- @param enum_value: "The enum value to marshal"
- @return "The JSON string representation"
-*>
-macro String? marshal_enum(enum_value)
+fn void? serialize_slice(OutStream stream, SliceType[] slice) <SliceType>
 {
-    var $Type = $typeof(enum_value);
+	stream.write_byte('[')!;
 
-    // Convert enum to ordinal and get the name
-    usz ordinal = types::any_to_enum_ordinal(&enum_value, usz)!!;
-    assert(ordinal < $Type.names.len, "Illegal enum value found, numerical value was %d.", ordinal);
+	foreach (i, element : slice)
+	{
+		if (i > 0) stream.write_byte(',')!;
+		serialize_value{SliceType}(stream, element)!;
+	}
 
-    // Always use enum names for JSON marshaling
-    return $Type.names[ordinal].tescape(false);
+	stream.write_byte(']')!;
 }
