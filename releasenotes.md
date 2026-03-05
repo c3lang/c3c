@@ -15,6 +15,7 @@
 - Name conflict with auto-imported std::core, but it should have lower priority #2902
 - Regression: missing generic nesting check on non-types.
 - Improved stringify.
+- SubProcessOptions.search_user_path did nothing on non-windows systems despite comment saying it should #2845
 
 ## 0.7.10 Change list
 
