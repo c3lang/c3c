@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::bitorder;
-
+import std::bits;
 // This module contains types of different endianness.
 // *BE types represent big-endian types
 // *LE types represent little-endian types.
@@ -88,38 +88,90 @@ bitstruct UInt128LE : uint128 @littleendian
 }
 
 <*
+ @require $defined(*bytes) : "Pointer must be possible to dereference"
+ @require types::is_intlike($typeof(*bytes)) : "Type must be an integer or int vector"
+*>
+macro load_be(bytes)
+{
+	$if env::BIG_ENDIAN:
+		return mem::load(bytes, $align: 1);
+	$else
+		return bswap(mem::load(bytes, $align: 1));
+	$endif
+}
+
+<*
+ @require $defined(*bytes) : "Pointer must be possible to dereference"
+ @require types::is_intlike($typeof(*bytes)) : "Type must be an integer or int vector"
+*>
+macro load_le(bytes)
+{
+	$if env::BIG_ENDIAN:
+		return bswap(mem::load(bytes, $align: 1));
+	$else
+		return mem::load(bytes, $align: 1);
+	$endif
+}
+
+<*
+ @require types::is_intlike($typeof(value)) : "Type must be an integer or int vector"
+*>
+macro void store_be(void* dst, value)
+{
+	$if env::BIG_ENDIAN:
+		mem::store(($typeof(value)*)dst, value, $align: 1);
+	$else
+		mem::store(($typeof(value)*)dst, bswap(value), $align: 1);
+	$endif
+}
+
+<*
+ @require types::is_intlike($typeof(value)) : "Type must be an integer or int vector"
+*>
+macro void store_le(void* dst, value)
+{
+	$if env::BIG_ENDIAN:
+		mem::store(($typeof(value)*)dst, bswap(value), $align: 1);
+	$else
+		mem::store(($typeof(value)*)dst, value, $align: 1);
+	$endif
+}
+
+<*
  @require @is_array_or_slice_of_char(bytes) : "argument must be an array, a pointer to an array or a slice of char"
  @require is_bitorder($Type) : "type must be a bitorder integer"
+ @require $defined(*bytes) ||| $defined(bytes[:$Type.sizeof]) : "Data is too short to contain value"
 *>
 macro read(bytes, $Type)
 {
-	char[] s;
-	$switch @typekind(bytes):
+	char *ptr;
+	$switch $kindof(bytes):
 		$case POINTER:
-			s = (*bytes)[:$Type.sizeof];
+			ptr = bytes;
 		$default:
-			s = bytes[:$Type.sizeof];
+			ptr = bytes[..].ptr;
 	$endswitch
-	return bitcast(*(char[$Type.sizeof]*)s.ptr, $Type).val;
+	return bitcast(mem::load((char[$Type.sizeof]*)ptr, $align: 1), $Type).val;
 }
 
 <*
  @require @is_arrayptr_or_slice_of_char(bytes) : "argument must be a pointer to an array or a slice of char"
  @require is_bitorder($Type) : "type must be a bitorder integer"
+ @require $defined(*bytes) ||| $defined(bytes[:$Type.sizeof]) : "Data is not sufficent to hold value"
 *>
 macro write(x, bytes, $Type)
 {
-	char[] s;
-	$switch @typekind(bytes):
+	char *ptr;
+	$switch $kindof(bytes):
 		$case POINTER:
-			s = (*bytes)[:$Type.sizeof];
+			ptr = bytes;
 		$default:
-			s = bytes[:$Type.sizeof];
+			ptr = bytes[..].ptr;
 	$endswitch
-	*($typeof(x)*)s.ptr = bitcast(x, $Type).val;
+	mem::store(($typeof(x)*)ptr, bitcast(x, $Type).val, 1);
 }
 
-macro is_bitorder($Type)
+macro bool is_bitorder($Type)
 {
 	$switch $Type:
 		$case UShortLE:

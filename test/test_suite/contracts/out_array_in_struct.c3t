@@ -1,0 +1,13 @@
+struct Foo
+{
+  int[2] a;
+}
+
+<*
+ @param [&out] bar
+*>
+fn void foo(Foo* bar)
+{
+  bar.a[0] = 0;
+}
+fn int main() => 0;

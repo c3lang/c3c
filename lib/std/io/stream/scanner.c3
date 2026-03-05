@@ -65,7 +65,7 @@ fn char[]? Scanner.scan(&self, String pattern = "\n")
 	{
 		// Split pattern not found with maximized search, abort.
 		// Split pattern not found and already read as much as possible.
-		return NOT_FOUND?;
+		return NOT_FOUND~;
 	}
 	// Split pattern not found: maximize the search and try one more time.
 	self.buf[:n] = buf[..];
@@ -92,8 +92,8 @@ macro usz? Scanner.refill(&self, buf) @private
 	usz? n = self.wrapped_stream.read(buf);
 	if (catch err = n)
 	{
-		if (err == io::EOF) return NOT_FOUND?;
-		return err?;
+		if (err == io::EOF) return NOT_FOUND~;
+		return err~;
 	}
 	return n;
 }

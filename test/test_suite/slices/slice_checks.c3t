@@ -18,7 +18,7 @@ fn void main()
 
 /* #expect: mymodule.ll
 
-  store i32 0, ptr %array, align 4
+  store i32 0, ptr %array, align 16
   %ptradd = getelementptr inbounds i8, ptr %array, i64 4
   store i32 0, ptr %ptradd, align 4
   %ptradd1 = getelementptr inbounds i8, ptr %array, i64 8

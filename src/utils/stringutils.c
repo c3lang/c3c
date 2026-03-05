@@ -143,6 +143,14 @@ bool str_eq(const char *str1, const char *str2)
 	return str1 == str2 || (str1 && str2 && strcmp(str1, str2) == 0);
 }
 
+bool str_ends_with(const char *str, const char *end)
+{
+	size_t str_len = strlen(str);
+	size_t end_len = strlen(end);
+	if (end_len > str_len) return false;
+	return memcmp(str + str_len - end_len, end, end_len) == 0;
+}
+
 bool str_is_integer(const char *string)
 {
 	if (string[0] == '-') string++;
@@ -168,7 +176,7 @@ bool str_is_valid_constant(const char *string)
     return true;
 }
 
-void str_ellide_in_place(char *string, size_t max_size_shown)
+void str_elide_in_place(char *string, size_t max_size_shown)
 {
 	size_t len = strlen(string);
 	if (max_size_shown > len) return;
@@ -332,6 +340,20 @@ char *str_cat(const char *a, const char *b)
 	return buffer;
 }
 
+char *str_cat_len(const char *a, size_t a_len, const char *b, size_t b_len)
+{
+	char *buffer = malloc_string(a_len + b_len + 1);
+	memcpy(buffer, a, a_len);
+	memcpy(buffer + a_len, b, b_len);
+	buffer[a_len + b_len] = '\0';
+	return buffer;
+}
+
+char *str_dup(const char *str)
+{
+	return str_copy(str, strlen(str));
+}
+
 char *str_copy(const char *start, size_t str_len)
 {
 	char *dst = calloc_string(str_len + 1);
@@ -340,14 +362,25 @@ char *str_copy(const char *start, size_t str_len)
 	return dst;
 }
 
+void scratch_buffer_delete(size_t len)
+{
+	ASSERT(scratch_buffer.len >= len);
+	scratch_buffer.len -= len;
+}
+
 void scratch_buffer_clear(void)
 {
 	scratch_buffer.len = 0;
 }
 
+bool scratch_buffer_may_append(size_t len)
+{
+	return len + scratch_buffer.len < MAX_STRING_BUFFER - 1;
+}
+
 void scratch_buffer_append_len(const char *string, size_t len)
 {
-	if (len + scratch_buffer.len > MAX_STRING_BUFFER - 1)
+	if (!scratch_buffer_may_append(len))
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
 	}
@@ -526,7 +559,7 @@ void scratch_buffer_append_remove_space(const char *start, int len)
 		clast = ch;
 		printed++;
 	}
-	if (clast == ' ' && printed > 0) scratch_buffer.len--;
+	if (clast == ' ' && printed > 0) scratch_buffer_delete(1);
 }
 
 void scratch_buffer_append_char(char c)

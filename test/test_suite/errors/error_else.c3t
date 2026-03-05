@@ -7,7 +7,7 @@ import foo;
 
 fn int? abc()
 {
-	return foo::TEST?;
+	return foo::TEST~;
 }
 
 module baz;
@@ -15,5 +15,5 @@ import foo;
 
 fn int? abc()
 {
-	return foo::TEST?;
+	return foo::TEST~;
 }

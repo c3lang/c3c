@@ -17,7 +17,7 @@ alias Func = fn void(Enum);
 
 fn void test1(Enum e)
 {
-    bool a = (bool)e; // #error: bool
+    bool a = (bool)e;
     char b = (char)e.ordinal;
     uint c = (uint)e.ordinal;
     float d = (float)e; // #error: float

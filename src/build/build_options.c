@@ -45,6 +45,7 @@ const char *arch_os_target[ARCH_OS_TARGET_LAST + 1];
 #define FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(false); exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
 #define FAIL_WITH_ERR_LONG(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(true); exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
 #define PROJECT_FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); project_usage(); exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
+#define FETCH_MSVC_FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__);	fetch_msvc_usage();	exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
 
 static void usage(bool full)
 {
@@ -70,6 +71,7 @@ static void usage(bool full)
 	print_cmd("dynamic-lib <file1> [<file2> ...]", "Compile files without a project into a dynamic library.");
 	print_cmd("vendor-fetch <library> ...", "Fetches one or more libraries from the vendor collection.");
 	print_cmd("project <subcommand> ...", "Manipulate or view project files.");
+	print_cmd("fetch-msvc [<subcommand>]", "Fetches the MSVC SDK required for cross-compiling.");
 	PRINTF("");
 	full ? PRINTF("Options:") : PRINTF("Common options:");
 	print_opt("-h -hh --help", "Print the help, -h for the normal options, -hh for the full help.");
@@ -106,6 +108,7 @@ static void usage(bool full)
 		print_opt("--path <dir>", "Use this as the base directory for the current command.");
 		print_opt("--template <template>", "Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
 		print_opt("--symtab <value>", "Sets the preferred symtab size.");
+		print_opt("--max-mem <value>", "Set the maximum memory size (in MB).");
 		print_opt("--run-once", "After running the output file, delete it immediately.");
 		print_opt("--suppress-run", "Build but do not run on test/benchmark options.");
 		print_opt("--trust=<option>", "Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
@@ -127,10 +130,21 @@ static void usage(bool full)
 		print_opt("--panic-msg=<yes|no>", "Turn panic message output on or off.");
 		print_opt("--optlevel=<option>", "Code optimization level: none, less, more, max.");
 		print_opt("--optsize=<option>", "Code size optimization: none, small, tiny.");
+		print_opt("--unroll-loops=<yes|no>", "Enable loop unrolling.");
+		print_opt("--loop-vectorize=<yes|no>", "Enable loop auto-vectorization.");
+		print_opt("--slp-vectorize=<yes|no>", "Enable SLP (superword-level parallelism) auto-vectorization.");
+		print_opt("--merge-functions=<yes|no>", "Enable function merging.");
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
 		print_opt("--use-old-slice-copy", "Use the old slice copy semantics.");
+		print_opt("--use-old-enums", "Use the old enum syntax and semantics.");
+		print_opt("--use-old-compact-eq", "Enable the old ability to use '@compact' to make a struct comparable.");
+		print_opt("--print-large-functions", "Print functions with large compile size.");
+		print_opt("--warn-deadcode=<yes|no|error>", "Print warning on dead-code: yes, no, error.");
+		print_opt("--warn-methodvisibility=<yes|no|error>", "Print warning when methods have ignored visibility attributes.");
+		print_opt("--warn-methodsnotresolved=<yes|no|error>", "Print warning on methods not resolved when accessed: yes, no, error.");
+		print_opt("--warn-deprecation=<yes|no|error>", "Print warning when using deprecated code and constructs: yes, no, error.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -139,12 +153,15 @@ static void usage(bool full)
 	{
 		PRINTF("");
 		print_opt("--ansi=<yes|no>", "Set colour output using ansi on/off, default is to try to detect it.");
+		print_opt("--echo-prefix <arg>", "Sets the prefix for any output using '$echo', defaults to 'c3c:'.");
 		print_opt("--test-filter <arg>", "Set a filter when running tests, running only matching tests.");
 		print_opt("--test-breakpoint", "When running tests, trigger a breakpoint on failure.");
 		print_opt("--test-nosort", "Do not sort tests.");
-		print_opt("--test-noleak", "Disable tracking allocator and memory leak detection for tests");
-		print_opt("--test-nocapture", "Disable test stdout capturing, all tests can print as they run");
+		print_opt("--test-noleak", "Disable tracking allocator and memory leak detection for tests.");
+		print_opt("--test-show-output", "Disable test stdout capturing, all tests can print as they run.");
+		print_opt("--test-nocapture", "Disable test stdout capturing, all tests can print as they run, same as --test-show-output.");
 		print_opt("--test-quiet", "Run tests without printing full names, printing output only on failure");
+		print_opt("--test-log-level=<verbose|debug|info|warn|error|critical>", "Set log priority when running tests.");
 	}
 	PRINTF("");
 	print_opt("-l <library>", "Link with the static or dynamic library provided.");
@@ -157,6 +174,7 @@ static void usage(bool full)
 		PRINTF("");
 		print_opt("--use-stdlib=<yes|no>", "Include the standard library (default: yes).");
 		print_opt("--link-libc=<yes|no>", "Link libc other default libraries (default: yes).");
+		print_opt("--custom-libc=<yes|no>", "Set to true if a custom libc implementation is provided (default: no).");
 		print_opt("--emit-stdlib=<yes|no>", "Output files for the standard library. (default: yes)");
 		print_opt("--emit-only <file>", "Output only the file matching <file>.");
 		print_opt("--panicfn <name>", "Override the panic function name.");
@@ -164,15 +182,19 @@ static void usage(bool full)
 		print_opt("--benchfn <name>", "Override the benchmark runner function name.");
 		PRINTF("");
 		print_opt("--reloc=<option>", "Relocation model: none, pic, PIC, pie, PIE.");
+		print_opt("--cpu-flags <string>", "Add/remove cpu flags fromt the default, e.g. '+a,-b'.");
 		print_opt("--x86cpu=<option>", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.");
 		print_opt("--x86vec=<option>", "Set max type of vector use: none, mmx, sse, avx, avx512, default.");
-		print_opt("--riscvfloat=<option>", "Set type of RISC-V float support: none, float, double.");
+		print_opt("--riscv-abi=<option>", "Set type of RISC-V ABI: int-only, float, double.");
+		print_opt("--riscv-cpu=<option>", "Set the general level of RISC-V cpu: rvi (default 32-bit) , rvimac, rvimafc, rvgc (default 64-bit), rvgcv.");
 		print_opt("--memory-env=<option>", "Set the memory environment: normal, small, tiny, none.");
 		print_opt("--strip-unused=<yes|no>", "Strip unused code and globals from the output. (default: yes)");
 		print_opt("--fp-math=<option>", "FP math behaviour: strict, relaxed, fast.");
 		print_opt("--win64-simd=<option>", "Win64 SIMD ABI: array, full.");
 		print_opt("--win-debug=<option>", "Select debug output on Windows: codeview or dwarf (default: codeview).");
 		print_opt("--max-vector-size <number>", "Set the maximum vector bit size to allow (default: 4096).");
+		print_opt("--max-stack-object-size <number>", "Set the maximum size of a stack object in KB (default: 128).");
+		print_opt("--max-macro-iterations <number>", "Set the maximum number of iterations in a macro loop (default: 1048575).");
 		PRINTF("");
 		print_opt("--print-linking", "Print linker arguments.");
 		PRINTF("");
@@ -188,6 +210,7 @@ static void usage(bool full)
 		print_opt("--list-manifest-properties", "List all available keys used in manifest.json files.");
 		print_opt("--list-targets", "List all architectures the compiler supports.");
 		print_opt("--list-type-properties", "List all type properties.");
+		print_opt("--list-asm", "List all asm instructions for the current target.");
 		PRINTF("");
 		print_opt("--print-output", "Print the object files created to stdout.");
 		print_opt("--print-input", "Print inputted C3 files to stdout.");
@@ -201,6 +224,7 @@ static void usage(bool full)
 		print_opt("--macos-min-version <ver>", "Set the minimum MacOS version to compile for.");
 		print_opt("--macos-sdk-version <ver>", "Set the MacOS SDK compiled for.");
 		PRINTF("");
+		print_opt("--linux-libc=<host|gnu|musl>", "Set the libc to use on Linux, defaults to host.");
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
 		PRINTF("");
@@ -216,6 +240,23 @@ static void usage(bool full)
 	}
 }
 
+static void fetch_msvc_usage()
+{
+	PRINTF("Usage: %s fetch-msvc [<options>]", args[0]);
+	PRINTF("");
+	PRINTF("Fetches the MSVC SDK required for cross-compiling to Windows.");
+	PRINTF("");
+	PRINTF("Options:");
+	print_opt("--accept-license", "Automatically accept the MSVC license.");
+	print_opt("--show-versions",
+	          "Show available MSVC and Windows SDK versions.");
+	print_opt("--msvc-version <ver>",
+	          "Specify a particular MSVC version to fetch.");
+	print_opt("--sdk-version <ver>",
+	          "Specify a particular Windows SDK version to fetch.");
+	PRINTF("");
+}
+
 static void project_usage()
 {
 	PRINTF("Usage: %s [<options>] project <subcommand> [<args>]", args[0]);
@@ -223,9 +264,7 @@ static void project_usage()
 	PRINTF("Project Subcommands:");
 	print_cmd("view", "view the current projects structure.");
 	print_cmd("add-target <name>  <target_type>  [sources...]", "add a new target to the project.");
-	#if FETCH_AVAILABLE
-		print_cmd("fetch", "fetch missing project libraries.");
-	#endif
+	print_cmd("fetch", "fetch missing project libraries.");
 }
 
 static void project_view_usage()
@@ -243,7 +282,7 @@ static void project_view_usage()
 	PRINTF("the results will be printed out like they are in the full view.");
 	PRINTF("Otherwise the \"<header>: \" is left out.");
 	PRINTF("");
-	PRINTF("With flags on, each selected property will be seperated by an empty");
+	PRINTF("With flags on, each selected property will be separated by an empty");
 	PRINTF("line, and properties with multiple values (like --authors) will have");
 	PRINTF("their values printed each on a new line.");
 	PRINTF("");
@@ -354,7 +393,13 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("init"))
 	{
 		options->command = COMMAND_INIT;
-		if (at_end() || next_is_opt()) error_exit("Expected a project name after init");
+		if (at_end() || next_is_opt())
+		{
+			error_exit("Error: Expected a project name after 'init'.\n\n"
+			           "Usage: c3c init <project-name>\n\n"
+			           "- Specify a project name (e.g., 'c3c init myproject') to create a new directory with that name containing the project structure.\n"
+			           "- Use '.' (e.g., 'c3c init .') to initialize the project in the current working directory.");
+		}
 		options->project_name = next_arg();
 		return;
 	}
@@ -400,7 +445,6 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("vendor-fetch"))
 	{
 		options->command = COMMAND_VENDOR_FETCH;
-		if (at_end() || next_is_opt()) error_exit("error: vendor-fetch needs at least one library.");
 		while (!at_end() && !next_is_opt())
 		{
 			const char *lib = next_arg();
@@ -470,6 +514,62 @@ static void parse_command(BuildOptions *options)
 	{
 		options->command = COMMAND_PROJECT;
 		parse_project_options(options);
+		return;
+	}
+	if (arg_match("fetch-msvc"))
+	{
+		options->command = COMMAND_FETCH_MSVC;
+		while (!at_end() && next_is_opt())
+		{
+			next_arg();
+			if (match_longopt("accept-license"))
+			{
+				options->msvc_accept_license = true;
+				continue;
+			}
+			if (match_longopt("show-versions"))
+			{
+				options->msvc_show_versions = true;
+				continue;
+			}
+			if (match_longopt("msvc-version"))
+			{
+				if (at_end() || next_is_opt())
+					error_exit("error: msvc-version needs a version.");
+				options->msvc_version_override = next_arg();
+				continue;
+			}
+			if (match_longopt("sdk-version"))
+			{
+				if (at_end() || next_is_opt())
+					error_exit("error: sdk-version needs a version.");
+				options->msvc_sdk_version_override = next_arg();
+				continue;
+			}
+			if (current_arg[0] == '-' && current_arg[1] == 'v')
+			{
+				options->verbosity_level = 1;
+				continue;
+			}
+			if (match_shortopt("q"))
+			{
+				options->verbosity_level = -1;
+				continue;
+			}
+			if (match_longopt("help") || match_shortopt("h"))
+			{
+				fetch_msvc_usage();
+				exit_compiler(COMPILER_SUCCESS_EXIT);
+			}
+			FETCH_MSVC_FAIL_WITH_ERR("Unknown option '%s' for fetch-msvc", current_arg);
+		}
+		if (!at_end())
+		{
+			next_arg();
+			FETCH_MSVC_FAIL_WITH_ERR("fetch-msvc does not accept arguments, "
+			                         "only flags. Failed on: %s.",
+			                         current_arg);
+		}
 		return;
 	}
 	FAIL_WITH_ERR("Cannot process the unknown command \"%s\".", current_arg);
@@ -585,7 +685,7 @@ static void parse_option(BuildOptions *options)
 			if (match_shortopt("o"))
 			{
 				if (at_end()) error_exit("error: -o needs a name.");
-				options->output_name = next_arg();
+				options->runner_output_name = options->output_name = next_arg();
 				return;
 			}
 			break;
@@ -724,6 +824,18 @@ static void parse_option(BuildOptions *options)
 				options->ansi = parse_opt_select(Ansi, argopt, on_off);
 				return;
 			}
+			if (match_longopt("max-mem"))
+			{
+				if (at_end() || next_is_opt())
+				{
+					FAIL_WITH_ERR_LONG("'--max-mem' expected a max memory.");
+				}
+				if (atoll(next_arg()) < 1)
+				{
+					FAIL_WITH_ERR_LONG("'--max-mem' expected a positive integer value.");
+				}
+				return;
+			}
 			if (match_longopt("sources"))
 			{
 				if (at_end() || next_is_opt())
@@ -743,6 +855,16 @@ static void parse_option(BuildOptions *options)
 				options->old_slice_copy = true;
 				return;
 			}
+			if (match_longopt("use-old-enums"))
+			{
+				options->old_enums = true;
+				return;
+			}
+			if (match_longopt("use-old-compact-eq"))
+			{
+				options->old_compact_eq = true;
+				return;
+			}
 			if (match_longopt("test-filter"))
 			{
 				if (at_end() || next_is_opt()) FAIL_WITH_ERR_LONG("error: --test-filter needs an argument.");
@@ -759,9 +881,9 @@ static void parse_option(BuildOptions *options)
 				options->test_noleak = true;
 				return;
 			}
-			if (match_longopt("test-nocapture"))
+			if (match_longopt("test-nocapture") || match_longopt("test-show-output"))
 			{
-				options->test_nocapture = true;
+				options->test_show_output = true;
 				return;
 			}
 			if (match_longopt("test-quiet"))
@@ -774,9 +896,35 @@ static void parse_option(BuildOptions *options)
 				options->test_nosort = true;
 				return;
 			}
+			if (match_longopt("print-large-functions"))
+			{
+				options->print_large_functions = true;
+				return;
+			}
+			if ((argopt = match_argopt("warn-deadcode")))
+			{
+				options->warnings.dead_code = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-methodvisibility")))
+			{
+				options->warnings.method_visibility = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-methodsnotresolved")))
+			{
+				options->warnings.methods_not_resolved = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-deprecation")))
+			{
+				options->warnings.deprecation = parse_opt_select(WarningLevel, argopt, warnings);
+				silence_deprecation = options->warnings.deprecation == WARNING_SILENT;
+				return;
+			}
 			if (match_longopt("silence-deprecation"))
 			{
-				options->silence_deprecation = true;
+				options->warnings.deprecation = WARNING_SILENT;
 				silence_deprecation = true;
 				return;
 			}
@@ -824,6 +972,11 @@ static void parse_option(BuildOptions *options)
 				options->fp_math = parse_opt_select(FpOpt, argopt, fp_math);
 				return;
 			}
+			if ((argopt = match_argopt("linux-libc")))
+			{
+				options->linux_libc = parse_opt_select(LinuxLibc, argopt, linuxlibc);
+				return;
+			}
 			if ((argopt = match_argopt("optsize")))
 			{
 				options->optsize = parse_opt_select(SizeOptimizationLevel, argopt, optsizes);
@@ -832,6 +985,31 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("optlevel")))
 			{
 				options->optlevel = parse_opt_select(OptimizationLevel, argopt, optlevels);
+				return;
+			}
+			if ((argopt = match_argopt("test-log-level")))
+			{
+				options->test_log_level = parse_opt_select(TestLogLevel, argopt, test_log_levels);
+				return;
+			}
+			if ((argopt = match_argopt("merge-functions")))
+			{
+				options->merge_functions = parse_opt_select(MergeFunctions, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("loop-vectorize")))
+			{
+				options->loop_vectorization = parse_opt_select(AutoVectorization, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("unroll-loops")))
+			{
+				options->unroll_loops = parse_opt_select(UnrollLoops, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("slp-vectorize")))
+			{
+				options->slp_vectorization = parse_opt_select(AutoVectorization, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("safe")))
@@ -857,7 +1035,7 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("linker")))
 			{
 				options->custom_linker_path = NULL;
-				options->linker_type = parse_opt_select(LinkerType, argopt, linker);
+				options->linker_type = parse_opt_select(LinkerType, argopt, linker_kind);
 				if (options->linker_type == LINKER_TYPE_CUSTOM)
 				{
 					if (at_end() || next_is_opt()) error_exit("error: --linker=custom expects a valid linker name.");
@@ -878,6 +1056,11 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("emit-stdlib")))
 			{
 				options->emit_stdlib = parse_opt_select(EmitStdlib, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("custom-libc")))
+			{
+				options->custom_libc = parse_opt_select(CustomLibc, argopt, on_off);
 				return;
 			}
 			if (match_longopt("emit-only"))
@@ -911,20 +1094,60 @@ static void parse_option(BuildOptions *options)
 				options->x86_cpu_set = parse_opt_select(X86CpuSet, argopt, x86_cpu_set);
 				return;
 			}
-			if ((argopt = match_argopt("riscvfloat")))
+			if ((argopt = match_argopt("riscv-cpu")))
 			{
-				options->riscv_float_capability = parse_opt_select(RiscvFloatCapability, argopt, riscv_capability);
+				options->riscv_cpu_set = parse_opt_select(RiscvCpuSet, argopt, riscv_cpu_set);
 				return;
 			}
-			if ((argopt = match_argopt("max-vector-size")))
+			if ((argopt = match_argopt("riscvfloat")))
 			{
-				int size = atoi(next_arg());
-				if (size < 128) error_exit("Expected a valid positive integer >= 128 or --max-vector-size.");
+				options->riscv_abi = parse_opt_select(RiscvAbi, argopt, riscv_capability);
+				return;
+			}
+			if ((argopt = match_argopt("riscv-abi")))
+			{
+				options->riscv_abi = parse_opt_select(RiscvAbi, argopt, riscv_abi);
+				return;
+			}
+			if (match_longopt("cpu-flags"))
+			{
+				if (at_end()) error_exit("error: --cpu-flags expected a comma-separated list, like '+a,-b,+x'.");
+				scratch_buffer_clear();
+				if (options->cpu_flags)
+				{
+					scratch_buffer_append(options->cpu_flags);
+					scratch_buffer_append_char(',');
+				}
+				scratch_buffer_append(next_arg());
+				options->cpu_flags = scratch_buffer_copy();
+				return;
+			}
+			if (match_longopt("max-stack-object-size"))
+			{
+				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
+				if (size < 1) error_exit("Expected a valid positive integer >= 1 for --max-stack-object-size.");
+				if (size > MAX_STACK_OBJECT_SIZE) error_exit("Expected a valid positive integer <= %u for --max-stack-object-size.", (unsigned)MAX_STACK_OBJECT_SIZE);
+				options->max_stack_object_size = size;
+				return;
+			}
+			if (match_longopt("max-macro-iterations"))
+			{
+				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
+				if (size < 1) error_exit("Expected a valid positive integer >= 128 for --max-macro-iterations");
+				if (size > MAX_MACRO_ITERATIONS) error_exit("Expected a valid positive integer <= %u for --max-macro-iterations.", (unsigned)MAX_MACRO_ITERATIONS);
+				options->max_macro_iterations = size;
+				return;
+			}
+			if (match_longopt("max-vector-size"))
+			{
+				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
+				if (size < 128) error_exit("Expected a valid positive integer >= 128 for --max-vector-size.");
 				if (size > MAX_VECTOR_WIDTH) error_exit("Expected a valid positive integer <= %u for --max-vector-size.", (unsigned)MAX_VECTOR_WIDTH);
 				if (size != next_highest_power_of_2(size))
 				{
 					error_exit("The --max-vector-size value must be a power of 2, try using %u instead.", next_highest_power_of_2(size));
 				}
+				options->max_vector_size = size;
 				return;
 			}
 			if ((argopt = match_argopt("memory-env")))
@@ -987,6 +1210,11 @@ static void parse_option(BuildOptions *options)
 				options->command = COMMAND_PRINT_SYNTAX;
 				return;
 			}
+			if (match_longopt("list-asm"))
+			{
+				options->print_asm = true;
+				return;
+			}
 			if (match_longopt("list-project-properties"))
 			{
 				options->print_project_properties = true;
@@ -1019,6 +1247,12 @@ static void parse_option(BuildOptions *options)
 				if (threads < 1) PRINTF("Expected a valid integer 1 or higher.");
 				if (threads > MAX_THREADS) PRINTF("Cannot exceed %d threads.", MAX_THREADS);
 				options->build_threads = threads;
+				return;
+			}
+			if (match_longopt("echo-prefix"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --echo-prefix needs a prefix.");
+				options->echo_prefix = next_arg();
 				return;
 			}
 			if (match_longopt("target"))
@@ -1222,7 +1456,7 @@ static void parse_option(BuildOptions *options)
 						           name);
 					}
 					char *name_copy = strdup(name);
-					str_ellide_in_place(name_copy, 32);
+					str_elide_in_place(name_copy, 32);
 					if (strchr(name, '/') != NULL || (PLATFORM_WINDOWS && strchr(name, '\\') != NULL))
 					{
 						error_exit(
@@ -1330,7 +1564,7 @@ static void parse_option(BuildOptions *options)
 			break;
 
 	}
-	FAIL_WITH_ERR("Cannot process the unknown option \"%s\".", current_arg);
+	FAIL_WITH_ERR_LONG("Cannot process the unknown option \"%s\".", current_arg);
 }
 
 BuildOptions parse_arguments(int argc, const char *argv[])
@@ -1350,6 +1584,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.emit_llvm = false,
 		.optsetting = OPT_SETTING_NOT_SET,
 		.debug_info_override = DEBUG_INFO_NOT_SET,
+		.test_log_level = TESTLOGLEVEL_NOT_SET,
 		.safety_level = SAFETY_NOT_SET,
 		.panic_level = PANIC_NOT_SET,
 		.show_backtrace = SHOW_BACKTRACE_NOT_SET,
@@ -1364,11 +1599,13 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.win_debug = WIN_DEBUG_DEFAULT,
 		.fp_math = FP_DEFAULT,
 		.x86_cpu_set = X86CPU_DEFAULT,
-		.riscv_float_capability = RISCVFLOAT_DEFAULT,
+		.riscv_cpu_set = RISCV_CPU_DEFAULT,
+		.riscv_abi = RISCV_ABI_DEFAULT,
 		.memory_environment = MEMORY_ENV_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
+		.custom_libc = CUSTOM_LIBC_NOT_SET,
 		.use_stdlib = USE_STDLIB_NOT_SET,
 		.arch_os_target_override = ARCH_OS_TARGET_DEFAULT,
 		.linker_type = LINKER_TYPE_NOT_SET,
@@ -1381,6 +1618,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,
 		.loop_vectorization = VECTORIZATION_NOT_SET,
+		.linux_libc = LINUX_LIBC_NOT_SET,
 		.files = NULL,
 		.build_dir = NULL,
 		.output_dir = NULL,
@@ -1434,14 +1672,15 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	{
 		FAIL_WITH_ERR("Missing a compiler command such as 'compile' or 'build'.");
 	}
-	if (build_options.arch_os_target_override == ANDROID_AARCH64)
+	if (build_options.arch_os_target_override == ANDROID_AARCH64 ||
+	    build_options.arch_os_target_override == ANDROID_X86_64)
 	{
 		if (!build_options.android.ndk_path)
 		{
 			const char *ndk_path = getenv("ANDROID_NDK");
 			if (!ndk_path)
 			{
-				FAIL_WITH_ERR("Can't find Android NDK, please set --ndk-path.");
+				FAIL_WITH_ERR("Can't find Android NDK, please set --android-ndk.");
 			}
 			build_options.android.ndk_path = strdup(ndk_path);
 		}
@@ -1651,6 +1890,7 @@ const char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 		[MACOS_X64] = "macos-x64",
 		[MCU_X86] = "mcu-x86",
 		[MINGW_X64] = "mingw-x64",
+		[NETBSD_AARCH64] = "netbsd-aarch64",
 		[NETBSD_X86] = "netbsd-x86",
 		[NETBSD_X64] = "netbsd-x64",
 		[OPENBSD_X86] = "openbsd-x86",

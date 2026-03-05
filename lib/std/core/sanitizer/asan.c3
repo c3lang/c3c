@@ -29,11 +29,11 @@ alias ErrorCallback = fn void (ZString);
  @param addr : "Start of memory region."
  @param size : "Size of memory region."
 *>
-macro poison_memory_region(void* addr, usz size)
+macro void poison_memory_region(void* addr, usz size)
 {
-	$if env::ADDRESS_SANITIZER: 
+	$if env::ADDRESS_SANITIZER:
 		__asan_poison_memory_region(addr, size);
-	$endif 
+	$endif
 }
 
 <*
@@ -50,11 +50,11 @@ macro poison_memory_region(void* addr, usz size)
  @param addr : "Start of memory region."
  @param size : "Size of memory region."
 *>
-macro unpoison_memory_region(void* addr, usz size)
+macro void unpoison_memory_region(void* addr, usz size)
 {
-	$if env::ADDRESS_SANITIZER: 
+	$if env::ADDRESS_SANITIZER:
 		__asan_unpoison_memory_region(addr, size);
-	$endif 
+	$endif
 }
 
 <*

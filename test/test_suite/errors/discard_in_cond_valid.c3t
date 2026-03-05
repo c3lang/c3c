@@ -1,0 +1,8 @@
+module main;
+
+fn int? may_fault() @maydiscard => 2;
+
+fn void main()
+{
+    if (may_fault(), true);
+}

@@ -8,12 +8,13 @@
 char swizzle[256] = { ['x'] = 0x01, ['y'] = 0x02, ['z'] = 0x03, ['w'] = 0x04,
 					  ['r'] = 0x11, ['g'] = 0x12, ['b'] = 0x13, ['a'] = 0x14 };
 
-void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
+void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, SourceLocId loc)
 {
 	unsigned depth = context->active_scope.depth + 1;
 	if (depth > MAX_SCOPE_DEPTH)
 	{
-		FATAL_ERROR("Too deeply nested scopes.");
+		sema_error_at(context, loc, "Resolution failed due to too deeply nested scopes (%u).", depth);
+		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 
 	bool scope_is_dead = context->active_scope.is_dead;
@@ -34,23 +35,19 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 	if (is_macro) flags &= ~(SCOPE_ENSURE | SCOPE_ENSURE_MACRO);
 
 	unsigned label_start = new_label_scope ? last_local : context->active_scope.label_start;
-	context->active_scope = (DynamicScope) {
-			.scope_id = ++context->scope_id,
-			.allow_dead_code = false,
-			.is_dead = scope_is_dead,
-			.is_poisoned = scope_is_poisoned,
-			.depth = depth,
-			.current_local = last_local,
-			.label_start = label_start,
-			.in_defer = previous_defer,
-			.defer_last = parent_defer,
-			.defer_start = parent_defer,
-			.flags = flags,
+	DynamicScope new_scope = {
+		.allow_dead_code = false,
+		.is_dead = scope_is_dead,
+		.is_poisoned = scope_is_poisoned,
+		.depth = depth,
+		.current_local = last_local,
+		.label_start = label_start,
+		.in_defer = previous_defer,
+		.defer_last = parent_defer,
+		.defer_start = parent_defer,
+		.flags = flags,
 	};
-	if (context->scope_id == 0)
-	{
-		FATAL_ERROR("Too many scopes.");
-	}
+	context->active_scope = new_scope;
 }
 
 const char *context_filename(SemaContext *context)
@@ -62,9 +59,9 @@ const char *context_filename(SemaContext *context)
 	return file->full_path;
 }
 
-void context_change_scope_for_label(SemaContext *context, DeclId label_id)
+void context_change_scope_for_label(SemaContext *context, DeclId label_id, SourceLocId loc)
 {
-	context_change_scope_with_flags(context, SCOPE_NONE);
+	context_change_scope_with_flags(context, SCOPE_NONE, loc);
 
 	if (label_id)
 	{
@@ -118,6 +115,27 @@ void context_pop_defers(SemaContext *context, AstId *next)
 	context->active_scope.defer_last = defer_start;
 }
 
+void sema_add_methods_to_decl_stack(SemaContext *context, Decl *decl)
+{
+	if (!decl->method_table) return;
+	FOREACH(Decl *, func, decl->method_table->methods)
+	{
+		switch (func->visibility)
+		{
+			case VISIBLE_LOCAL:
+				if (context->unit != func->unit) continue;
+				break;
+			case VISIBLE_PRIVATE:
+				if (context->unit->module != func->unit->module) continue;
+				break;
+			default:
+				break;
+		}
+		sema_decl_stack_push(func);
+	}
+}
+
+
 
 void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast)
 {
@@ -127,7 +145,7 @@ void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast)
 	ASSERT(ast->ast_kind != AST_COMPOUND_STMT);
 	Ast *replacement = ast_copy(ast);
 	ast->ast_kind = AST_COMPOUND_STMT;
-	ast->compound_stmt = (AstCompoundStmt) { .first_stmt = astid(replacement) };
+	ast->compound_stmt = (AstCompoundStmt) { .first_stmt = astid(replacement), .parent_defer = 0 };
 	replacement->next = defer_first;
 }
 
@@ -153,12 +171,9 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 		switch (module->stage)
 		{
 			case ANALYSIS_NOT_BEGUN:
-				UNREACHABLE
+				UNREACHABLE_VOID
 			case ANALYSIS_MODULE_HIERARCHY:
 				sema_analyse_pass_module_hierarchy(module);
-				break;
-			case ANALYSIS_MODULE_TOP:
-				sema_analyse_pass_top(module);
 				break;
 			case ANALYSIS_IMPORTS:
 				sema_analysis_pass_process_imports(module);
@@ -222,72 +237,92 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 	FOREACH(Decl *, decl, decls)
 	{
 		decl->unit = unit;
+		ASSERT(decl->is_template && decl->generic_id);
 		switch (decl->decl_kind)
 		{
-			case DECL_ENUM_CONSTANT:
-			case DECL_DECLARRAY:
-			case DECL_ERASED:
-			case DECL_LABEL:
-				UNREACHABLE
-			case DECL_POISONED:
-			case DECL_IMPORT:
+			case DECL_ALIAS_PATH:
 			case DECL_CT_ASSERT:
 			case DECL_CT_ECHO:
-			case DECL_FNTYPE:
-			case DECL_CT_INCLUDE:
 			case DECL_CT_EXEC:
+			case DECL_CT_INCLUDE:
+			case DECL_FNTYPE:
+			case DECL_IMPORT:
+			case DECL_POISONED:
 				continue;
-			case DECL_ATTRIBUTE:
-				break;
 			case DECL_FAULT:
-				PRINT_ERROR_AT(decl, "Generic modules cannot use 'faultdef', place the declaration in a separate sub module or parent module instead.");
-				decl_poison(decl);
-				break;
 			case DECL_BODYPARAM:
+			case DECL_DECLARRAY:
+			case DECL_ENUM_CONSTANT:
+			case DECL_ERASED:
 			case DECL_GROUP:
-				UNREACHABLE
+			case DECL_GENERIC:
+			case DECL_GENERIC_INSTANCE:
+			case DECL_LABEL:
+			case DECL_CONTRACT:
+				UNREACHABLE_VOID
 			case DECL_ALIAS:
-			case DECL_DISTINCT:
-			case DECL_ENUM:
-			case DECL_STRUCT:
+			case DECL_ATTRIBUTE:
+			case DECL_BITSTRUCT:
+			case DECL_CONSTDEF:
 			case DECL_TYPEDEF:
+			case DECL_ENUM:
+			case DECL_INTERFACE:
+			case DECL_STRUCT:
+			case DECL_TYPE_ALIAS:
 			case DECL_UNION:
 			case DECL_VAR:
-			case DECL_BITSTRUCT:
-			case DECL_INTERFACE:
 				break;
 			case DECL_MACRO:
 			case DECL_FUNC:
 				if (decl->func_decl.type_parent) continue;
 				break;
 		}
-		htable_set(&unit->module->symbols, (void *)decl->name, decl);
+		Decl *old;
+		if (decl->visibility < VISIBLE_LOCAL)
+		{
+			if ((old = htable_set(&unit->module->symbols, (void *)decl->name, decl)))
+			{
+				if (old->generic_id != decl->generic_id)
+				{
+					sema_shadow_error(NULL, decl, old);
+					decl_poison(decl);
+					decl_poison(old);
+					continue;
+				}
+			}
+		}
+		if ((old = htable_set(&unit->local_symbols, (void *)decl->name, decl)))
+		{
+			if (old->generic_id != decl->generic_id)
+			{
+				sema_shadow_error(NULL, decl, old);
+				decl_poison(decl);
+				decl_poison(old);
+				continue;
+			}
+		}
+
 		if (decl->visibility == VISIBLE_PUBLIC)
 		{
-			global_context_add_generic_decl(decl);
+			global_context_add_decl(decl);
 		}
 	}
 }
 
-static void analyze_generic_module(Module *module)
+static void analyze_generics(Module *module)
 {
-	ASSERT(module->parameters && module->is_generic);
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		register_generic_decls(unit, unit->global_decls);
-		register_generic_decls(unit, unit->global_cond_decls);
+		FOREACH(Decl *, section, unit->generic_decls)
+		{
+			register_generic_decls(unit, section->generic_decl.decls);
+			register_generic_decls(unit, section->generic_decl.conditional_decls);
+		}
 	}
 }
 
 static void sema_analyze_to_stage(AnalysisStage stage)
 {
-	if (stage <= ANALYSIS_MODULE_TOP)
-	{
-		FOREACH(Module *, module, compiler.context.generic_module_list)
-		{
-			sema_analyze_stage(module, stage);
-		}
-	}
 	FOREACH(Module *, module, compiler.context.module_list)
 	{
 		sema_analyze_stage(module, stage);
@@ -449,7 +484,7 @@ void sema_analysis_run(void)
 	compiler_parse();
 
 	// All global defines are added to the std module
-	compiler.context.std_module_path = (Path) { .module = kw_std, .span = INVALID_SPAN, .len = (uint32_t) strlen(kw_std) };
+	compiler.context.std_module_path = (Path) { .module = kw_std, .loc = 0, .len = (uint32_t) strlen(kw_std) };
 	compiler.context.std_module = (Module){ .name = &compiler.context.std_module_path, .short_path = compiler.context.std_module_path.module };
 	compiler.context.std_module.stage = ANALYSIS_LAST;
 	compiler.context.locals_list = NULL;
@@ -469,9 +504,9 @@ void sema_analysis_run(void)
 
 
 	// We parse the generic modules, just by storing the decls.
-	FOREACH(Module *, module, compiler.context.generic_module_list)
+	FOREACH(Module *, module, compiler.context.module_list)
 	{
-		analyze_generic_module(module);
+		analyze_generics(module);
 	}
 
 	for (AnalysisStage stage = ANALYSIS_NOT_BEGUN + 1; stage <= ANALYSIS_LAST; stage++)
@@ -559,40 +594,58 @@ SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_
 	return temp_context;
 }
 
-void sema_print_inline(SemaContext *context)
+void sema_print_inline(SemaContext *context, SourceLocId original)
 {
 	if (!context) return;
 	InliningSpan *inlined_at = context->inlined_at;
+	SourceLocId last_span = 0;
 	while (inlined_at)
 	{
-		sema_note_prev_at(inlined_at->span, "Inlined from here.");
+		if (inlined_at->loc != original && inlined_at->loc != last_span)
+		{
+			sema_note_prev_at(inlined_at->loc, "Inlined from here.");
+			last_span = inlined_at->loc;
+		}
+		inlined_at = inlined_at->prev;
+	}
+	InliningSpan span = context->compilation_unit->module->inlined_at;
+	if (!span.loc) return;
+	inlined_at = &span;
+	while (inlined_at)
+	{
+		if (inlined_at->loc != original)
+		{
+			sema_note_prev_at(inlined_at->loc, "Inlined from here.");
+		}
 		inlined_at = inlined_at->prev;
 	}
 }
 
-void sema_error_at(SemaContext *context, SourceSpan span, const char *message, ...)
+void sema_error_at(SemaContext *context, SourceLocId loc, const char *message, ...)
 {
 	va_list list;
 	va_start(list, message);
-	sema_verror_range(span, message, list);
+	sema_verror_range(sourcelocptrzero(loc), message, list);
 	va_end(list);
-	sema_print_inline(context);
+	sema_print_inline(context, loc);
 }
 
-bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ...)
+
+bool sema_warn_at(SemaContext *context, SourceLocId loc, WarningLevel level, const char *message, ...)
 {
-	bool is_warn = compiler.build.validation_level < VALIDATION_STRICT;
+	if (level == WARNING_SILENT) return true;
+	bool is_warn = level != WARNING_ERROR;
 	va_list list;
 	va_start(list, message);
 	if (is_warn)
 	{
-		sema_vwarn_range(span, message, list);
+		sema_vwarn_range(loc, message, list);
 	}
 	else
 	{
-		sema_verror_range(span, message, list);
+		sema_verror_range(sourcelocptrzero(loc), message, list);
 	}
 	va_end(list);
-	sema_print_inline(context);
+	sema_print_inline(context, loc);
 	return is_warn;
 }

@@ -124,7 +124,9 @@ const usz MAX_VECTOR_SIZE = $$MAX_VECTOR_SIZE;
 const bool ARCH_32_BIT = $$REGISTER_SIZE == 32;
 const bool ARCH_64_BIT = $$REGISTER_SIZE == 64;
 const bool LIBC = $$COMPILER_LIBC_AVAILABLE;
-const bool NO_LIBC = !$$COMPILER_LIBC_AVAILABLE;
+const bool NO_LIBC = !LIBC && !CUSTOM_LIBC;
+const bool CUSTOM_LIBC = $$CUSTOM_LIBC;
+const bool OLD_IO = $feature(OLD_IO);
 const CompilerOptLevel COMPILER_OPT_LEVEL = CompilerOptLevel.from_ordinal($$COMPILER_OPT_LEVEL);
 const bool BIG_ENDIAN = $$PLATFORM_BIG_ENDIAN;
 const bool I128_NATIVE_SUPPORT = $$PLATFORM_I128_SUPPORTED;
@@ -137,12 +139,13 @@ const bool BACKTRACE = $$BACKTRACE;
 const usz LLVM_VERSION = $$LLVM_VERSION;
 const bool BENCHMARKING = $$BENCHMARKING;
 const bool TESTING = $$TESTING;
+const bool PANIC_MSG = $$PANIC_MSG;
 const MemoryEnvironment MEMORY_ENV = MemoryEnvironment.from_ordinal($$MEMORY_ENVIRONMENT);
 const bool TRACK_MEMORY = DEBUG_SYMBOLS && (COMPILER_SAFE_MODE || TESTING);
 const bool X86_64 = ARCH_TYPE == X86_64;
 const bool X86 = ARCH_TYPE == X86;
 const bool AARCH64 = ARCH_TYPE == AARCH64;
-const bool NATIVE_STACKTRACE = LINUX || DARWIN || WIN32;
+const bool NATIVE_STACKTRACE = LINUX || DARWIN || OPENBSD || WIN32;
 const bool LINUX = LIBC && OS_TYPE == LINUX;
 const bool DARWIN = LIBC && os_is_darwin();
 const bool WIN32 = LIBC && OS_TYPE == WIN32;
@@ -152,14 +155,20 @@ const bool FREEBSD = LIBC && OS_TYPE == FREEBSD;
 const bool NETBSD = LIBC && OS_TYPE == NETBSD;
 const bool BSD_FAMILY = env::FREEBSD || env::OPENBSD || env::NETBSD;
 const bool WASI = LIBC && OS_TYPE == WASI;
+const bool WASM = ARCH_TYPE == ArchType.WASM32 || ARCH_TYPE == ArchType.WASM64;
 const bool ANDROID = LIBC && OS_TYPE == ANDROID;
-const bool WASM_NOLIBC @builtin = !LIBC && ARCH_TYPE == ArchType.WASM32 || ARCH_TYPE == ArchType.WASM64;
+const bool WASM_NOLIBC @builtin @deprecated("Use 'FREESTANDING_WASM' instead") = !LIBC && ARCH_TYPE == ArchType.WASM32 || ARCH_TYPE == ArchType.WASM64;
+const bool FREESTANDING_PE32 = NO_LIBC && OS_TYPE == WIN32;
+const bool FREESTANDING_MACHO = NO_LIBC && OS_TYPE == MACOS;
+const bool FREESTANDING_ELF = NO_LIBC && !env::FREESTANDING_PE32 && !env::FREESTANDING_MACHO && !env::FREESTANDING_WASM;
+const bool FREESTANDING_WASM = NO_LIBC && WASM;
+const bool FREESTANDING = env::FREESTANDING_PE32 || env::FREESTANDING_MACHO || env::FREESTANDING_ELF || env::FREESTANDING_WASM;
 const bool ADDRESS_SANITIZER = $$ADDRESS_SANITIZER;
 const bool MEMORY_SANITIZER = $$MEMORY_SANITIZER;
 const bool THREAD_SANITIZER = $$THREAD_SANITIZER;
 const bool ANY_SANITIZER = ADDRESS_SANITIZER || MEMORY_SANITIZER || THREAD_SANITIZER;
 const int LANGUAGE_DEV_VERSION = $$LANGUAGE_DEV_VERSION;
-const bool HAS_NATIVE_ERRNO = env::LINUX || env::ANDROID || env::DARWIN || env::WIN32;
+const bool HAS_NATIVE_ERRNO = env::LINUX || env::ANDROID || env::OPENBSD || env::DARWIN || env::WIN32 || env::NETBSD;
 
 macro bool os_is_darwin() @const
 {
@@ -198,6 +207,8 @@ macro bool os_is_posix() @const
 		return false;
 	$endswitch
 }
-
+const String[] AUTHORS = $$AUTHORS;
+const String[] AUTHOR_EMAILS = $$AUTHOR_EMAILS;
+const String PROJECT_VERSION = $$PROJECT_VERSION;
 const BUILTIN_EXPECT_IS_DISABLED = $feature(DISABLE_BUILTIN_EXPECT);
 const BUILTIN_PREFETCH_IS_DISABLED = $feature(DISABLE_BUILTIN_PREFETCH);

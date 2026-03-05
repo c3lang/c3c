@@ -1,4 +1,4 @@
-module std::os::win32 @if(env::WIN32);
+module std::os::win32 @if(env::WIN32) @link("ws2_32");
 
 // See https://github.com/wine-mirror/wine/blob/master/include/winsock2.h
 
@@ -122,11 +122,11 @@ const SD_RECEIVE = 0x00;
 const SD_SEND    = 0x01;
 const SD_BOTH    = 0x02;
 
-extern fn CInt wsaPoll(Win32_LPWSAPOLLFD fdArray, Win32_ULONG fds, Win32_INT timeout) @extern("WSAPoll");
-extern fn WSAError wsaGetLastError() @extern("WSAGetLastError");
-extern fn void wsaSetLastError(WSAError error) @extern("WSASetLastError");
-extern fn CInt wsaStartup(Win32_WORD, void*) @extern("WSAStartup");
-extern fn CInt wsaCleanup() @extern("WSACleanup");
+extern fn CInt wsaPoll(Win32_LPWSAPOLLFD fdArray, Win32_ULONG fds, Win32_INT timeout) @cname("WSAPoll");
+extern fn WSAError wsaGetLastError() @cname("WSAGetLastError");
+extern fn void wsaSetLastError(WSAError error) @cname("WSASetLastError");
+extern fn CInt wsaStartup(Win32_WORD, void*) @cname("WSAStartup");
+extern fn CInt wsaCleanup() @cname("WSACleanup");
 
 const int FIONBIO = -2147195266;
 const int FIONREAD = 1074030207;

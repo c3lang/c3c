@@ -2,8 +2,8 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 #include <math.h>
-
 #include "sema_internal.h"
+#include <ctype.h>
 
 
 typedef enum
@@ -37,7 +37,7 @@ static bool sema_expr_analyse_syscall(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, bool swizzle_two);
 static inline int builtin_expected_args(BuiltinFunction func);
 static inline bool is_valid_atomicity(SemaContext *context, Expr *expr);
-static bool sema_check_alignment_expression(SemaContext *context, Expr *align);
+static bool sema_check_alignment_expression(SemaContext *context, Expr *align, bool may_be_zero);
 
 static bool sema_expr_is_valid_mask_for_value(SemaContext *context, Expr *expr, Expr *value)
 {
@@ -78,15 +78,16 @@ static bool sema_check_builtin_args_const(SemaContext *context, Expr **args, siz
 	return true;
 }
 
-static bool sema_check_alignment_expression(SemaContext *context, Expr *align)
+static bool sema_check_alignment_expression(SemaContext *context, Expr *align, bool may_be_zero)
 {
 	if (!sema_analyse_expr_rhs(context, type_usz, align, false, NULL, false)) return false;
 	if (!expr_is_const_int(align)
 	    || !int_fits(align->const_expr.ixx, TYPE_U64)
 	    || (!is_power_of_two(align->const_expr.ixx.i.low) && align->const_expr.ixx.i.low))
 	{
-		RETURN_SEMA_ERROR(align, "Expected a constant power-of-two alignment or zero.");
+		RETURN_SEMA_ERROR(align, may_be_zero ? "Expected a constant power-of-two alignment or zero." : "Expected a constant power-of-two alignment.");
 	}
+	if (!may_be_zero && align->const_expr.ixx.i.low == 0) RETURN_SEMA_ERROR(align, "Alignment must not be zero.");
 	return true;
 }
 
@@ -124,16 +125,16 @@ static bool sema_check_builtin_args(SemaContext *context, Expr **args, BuiltinAr
 				RETURN_SEMA_ERROR(arg, "Expected a floating point or floating point vector, but was %s.",
 							   type_quoted_error_string(type));
 			case BA_VEC:
-				if (type->type_kind == TYPE_VECTOR) continue;
+				if (type_kind_is_real_vector(type->type_kind)) continue;
 				RETURN_SEMA_ERROR(arg, "Expected a vector.");
 			case BA_PTRVEC:
 				if (type_is_pointer_vector(type)) continue;
 				RETURN_SEMA_ERROR(arg, "Expected a pointer vector.");
 			case BA_NUMVEC:
-				if (type->type_kind == TYPE_VECTOR && type_is_number_or_bool(type->array.base)) continue;
+				if (type_kind_is_real_vector(type->type_kind) && type_is_number_or_bool(type->array.base)) continue;
 				RETURN_SEMA_ERROR(arg, "Expected a numeric vector.");
 			case BA_INTVEC:
-				if (type->type_kind == TYPE_VECTOR && type_flat_is_intlike(type->array.base)) continue;
+				if (type_kind_is_real_vector(type->type_kind) && type_flat_is_intlike(type->array.base)) continue;
 				RETURN_SEMA_ERROR(arg, "Expected an integer vector.");
 			case BA_BOOLINT:
 				if (type_is_integer_or_bool_kind(type)) continue;
@@ -142,10 +143,10 @@ static bool sema_check_builtin_args(SemaContext *context, Expr **args, BuiltinAr
 				if (type_flat_is_bool_vector(type)) continue;
 				RETURN_SEMA_ERROR(arg, "Expected a boolean vector.");
 			case BA_BOOLINTVEC:
-				if (type->type_kind == TYPE_VECTOR && type_flat_is_boolintlike(type->array.base)) continue;
+				if (type_kind_is_real_vector(type->type_kind) && type_flat_is_boolintlike(type->array.base)) continue;
 				RETURN_SEMA_ERROR(arg, "Expected a boolean or integer vector.");
 			case BA_FLOATVEC:
-				if (type->type_kind == TYPE_VECTOR && type_flat_is_floatlike(type->array.base)) continue;
+				if (type_kind_is_real_vector(type->type_kind) && type_flat_is_floatlike(type->array.base)) continue;
 				RETURN_SEMA_ERROR(arg, "Expected an float vector.");
 			case BA_INTLIKE:
 				if (type_flat_is_intlike(type)) continue;
@@ -175,7 +176,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, b
 	{
 		Expr *arg = args[i];
 		// Analyse the expressions
-		if (!sema_analyse_expr(context, arg)) return false;
+		if (!sema_analyse_expr_rvalue(context, arg)) return false;
 		// Expect vector
 		if (!type_flat_is_vector(arg->type)) RETURN_SEMA_ERROR(arg, "A vector was expected here.");
 		// Optional-ness updated
@@ -184,7 +185,8 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, b
 	// Ensure matching types
 	if (swizzle_two && !sema_check_builtin_args_match(context, args, 2)) return false;
 
-	unsigned components = type_flatten(args[0]->type)->array.len;
+	Type *flat = type_flatten(args[0]->type);
+	unsigned components = flat->array.len;
 	if (swizzle_two) components *= 2;
 	for (unsigned i = first_mask_value; i < arg_count; i++)
 	{
@@ -200,7 +202,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, b
 			RETURN_SEMA_ERROR(mask_val, "The swizzle position must be in the range 0-%d.", components - 1);
 		}
 	}
-	expr->type = type_add_optional(type_get_vector(type_get_indexed_type(args[0]->type), arg_count - first_mask_value), optional);
+	expr->type = type_add_optional(type_get_vector(type_get_indexed_type(args[0]->type), flat->type_kind, arg_count - first_mask_value), optional);
 	return true;
 }
 
@@ -219,7 +221,7 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 	Expr **args = expr->call_expr.arguments;
 	Expr *pointer = args[0];
 
-	if (!sema_analyse_expr(context, pointer)) return false;
+	if (!sema_analyse_expr_rvalue(context, pointer)) return false;
 
 	bool optional = IS_OPTIONAL(pointer);
 	Type *comp_type = type_flatten(pointer->type);
@@ -257,7 +259,7 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 		RETURN_SEMA_ERROR(args[6], "Failure ordering may not be RELEASE / ACQUIRE_RELEASE.");
 	}
 	Expr *align = args[7];
-	if (!sema_check_alignment_expression(context, align)) return false;
+	if (!sema_check_alignment_expression(context, align, true)) return false;
 	expr->type = type_add_optional(args[1]->type, optional);
 	return true;
 }
@@ -305,15 +307,68 @@ bool sema_expr_analyse_rnd(SemaContext *context UNUSED, Expr *expr)
 	return true;
 }
 
-bool sema_expr_analyse_str_hash(SemaContext *context, Expr *expr)
+static bool sema_expr_analyse_str_replace(SemaContext *context, Expr *expr, Expr *arg, Expr *pattern, Expr *replace, Expr *limit)
+{
+	if (!sema_analyse_expr_rvalue(context, arg)) return false;
+	if (!sema_cast_const(arg) || !expr_is_const_string(arg))
+	{
+		RETURN_SEMA_ERROR(arg, "Expected a constant string replace a pattern in.");
+	}
+	if (!sema_analyse_expr_rvalue(context, pattern)) return false;
+	if (!sema_cast_const(pattern) || !expr_is_const_string(pattern))
+	{
+		RETURN_SEMA_ERROR(pattern, "Expected a constant pattern to replace.");
+	}
+	if (!sema_analyse_expr_rvalue(context, replace)) return false;
+	if (!sema_cast_const(replace) || !expr_is_const_string(replace))
+	{
+		RETURN_SEMA_ERROR(replace, "Expected a constant replacement string.");
+	}
+	if (!sema_analyse_expr_rvalue(context, limit)) return false;
+	if (!sema_cast_const(limit) || !expr_is_const_int(limit))
+	{
+		RETURN_SEMA_ERROR(limit, "Expected a constant limit.");
+	}
+	const char *inner_str = arg->const_expr.bytes.ptr;
+	ArraySize len = arg->const_expr.bytes.len;
+	const char *pattern_str = pattern->const_expr.bytes.ptr;
+	ArraySize pattern_len = pattern->const_expr.bytes.len;
+	const char *replace_str = replace->const_expr.bytes.ptr;
+	ArraySize limit_int = int_ucomp(limit->const_expr.ixx, MAX_ARRAY_SIZE, BINARYOP_GT) ? 0 : limit->const_expr.ixx.i.low;
+	scratch_buffer_clear();
+	ArrayIndex index = 0;
+	if (limit_int == 0) limit_int = UINT64_MAX;
+	while (index < len)
+	{
+		const char *end = strstr(inner_str + index, pattern_str);
+		if (end == NULL)
+		{
+			scratch_buffer_append(inner_str + index);
+			break;
+		}
+		scratch_buffer_append_len(inner_str + index, end - inner_str - index);
+		scratch_buffer_append(replace_str);
+		index = end - inner_str + pattern_len;
+		limit_int--;
+		if (limit_int == 0)
+		{
+			scratch_buffer_append(inner_str + index);
+			break;
+		}
+	}
+	expr_rewrite_const_string(expr, scratch_buffer_copy());
+	return true;
+}
+
+static bool sema_expr_analyse_str_hash(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->call_expr.arguments[0];
-	if (!sema_analyse_expr(context, inner)) return true;
+	if (!sema_analyse_expr_rvalue(context, inner)) return true;
 	if (!expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to take the hash of it.");
 	}
-	uint32_t hash = fnv1a(inner->const_expr.bytes.ptr, inner->const_expr.bytes.len);
+	uint32_t hash = (uint32_t)a5hash(inner->const_expr.bytes.ptr, inner->const_expr.bytes.len, 0);
 	expr_rewrite_const_int(expr, type_uint, hash);
 	return true;
 }
@@ -322,7 +377,7 @@ bool sema_expr_analyse_str_find(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->call_expr.arguments[0];
 	Expr *inner_find = expr->call_expr.arguments[1];
-	if (!sema_analyse_expr(context, inner) || !sema_analyse_expr(context, inner_find)) return true;
+	if (!sema_analyse_expr_rvalue(context, inner) || !sema_analyse_expr_rvalue(context, inner_find)) return true;
 	if (!expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to search.");
@@ -333,7 +388,7 @@ bool sema_expr_analyse_str_find(SemaContext *context, Expr *expr)
 	}
 	const char *inner_str = inner->const_expr.bytes.ptr;
 	const char *find_str = inner_find->const_expr.bytes.ptr;
-	char *ret = strstr(inner_str, find_str);
+	const char *ret = strstr(inner_str, find_str);
 	expr_rewrite_const_int(expr, type_isz, (uint64_t)(ret == NULL ? -1 : ret - inner_str));
 	return true;
 }
@@ -341,7 +396,7 @@ bool sema_expr_analyse_str_find(SemaContext *context, Expr *expr)
 bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunction func)
 {
 	Expr *inner = expr->call_expr.arguments[0];
-	if (!sema_analyse_expr(context, inner)) return true;
+	if (!sema_analyse_expr_rvalue(context, inner)) return false;
 	if (!expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to take convert.");
@@ -354,7 +409,20 @@ bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunctio
 		expr_replace(expr, inner);
 		return true;
 	}
-	char *new_string = malloc_string(len + 1);
+	char *new_string;
+	if (func == BUILTIN_STR_SNAKECASE)
+	{
+		int uppers = 0;
+		for (ArrayIndex i = 0; i < len; i++)
+		{
+			if (isupper(string[i])) uppers++;
+		}
+		new_string = malloc_string(len + 1 + uppers);
+	}
+	else
+	{
+		new_string = malloc_string(len + 1);
+	}
 	switch (func)
 	{
 		case BUILTIN_STR_LOWER:
@@ -364,6 +432,49 @@ bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunctio
 				new_string[i] = (char)(char_is_upper(c) ? (c | 0x20) : c);
 			}
 			break;
+		case BUILTIN_STR_SNAKECASE:
+		{
+			size_t index = 0;
+			for (ArraySize i = 0; i < len; i++)
+			{
+				char c = string[i];
+				if (isupper(c))
+				{
+					if (i > 0 && ((islower(string[i - 1]) || isdigit(string[i - 1])) || (i < len - 1 && islower(string[i + 1]))))
+					{
+						new_string[index++] = '_';
+					}
+					new_string[index++] = tolower(c);
+					continue;
+				}
+				new_string[index++] = c;
+			}
+			len = index;
+			break;
+		}
+		case BUILTIN_STR_PASCALCASE:
+		{
+			bool capitalize = true;
+			size_t j = 0;
+			for (ArraySize i = 0; i < len; i++)
+			{
+				char c = string[i];
+				if (!isalpha(c))
+				{
+					capitalize = true;
+					continue;
+				}
+				if (capitalize)
+				{
+					new_string[j++] = toupper(c);
+					capitalize = false;
+					continue;
+				}
+				new_string[j++] = tolower(c);
+			}
+			len = j;
+			break;
+		}
 		case BUILTIN_STR_UPPER:
 			for (ArraySize i = 0; i < len; i++)
 			{
@@ -432,15 +543,15 @@ bool sema_expr_analyse_str_wide(SemaContext *context, Expr *expr, BuiltinFunctio
 	if (arg_count == 2)
 	{
 		Expr *zero_term = args[1];
-		if (!sema_analyse_expr(context, zero_term)) return false;
+		if (!sema_analyse_expr_rvalue(context, zero_term)) return false;
 		if (!sema_cast_const(zero_term) || !expr_is_const_bool(zero_term))
 		{
 			RETURN_SEMA_ERROR(zero_term, "Expected a boolean value here, to determine zero termination or not.");
 		}
 		zero_terminate = zero_term->const_expr.b;
 	}
-	if (!sema_analyse_expr(context, inner)) return false;
-	if (!sema_cast_const(inner) && !expr_is_const_string(inner))
+	if (!sema_analyse_expr_rvalue(context, inner)) return false;
+	if (!sema_cast_const(inner) || !expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to convert to a wide string.");
 	}
@@ -462,7 +573,7 @@ bool sema_expr_analyse_str_wide(SemaContext *context, Expr *expr, BuiltinFunctio
 		if ((0xC0 & c) != 0xC0)
 		{
 			// ASCII
-			Expr *value = expr_new_const_int(expr->span, type, (c & 0x7F));
+			Expr *value = expr_new_const_int(expr->loc, type, (c & 0x7F));
 			vec_add(elements, const_init_new_value(value));
 			continue;
 		}
@@ -472,13 +583,13 @@ bool sema_expr_analyse_str_wide(SemaContext *context, Expr *expr, BuiltinFunctio
 		data += increment - 1;
 		if (!from_codepoint)
 		{
-			RETURN_SEMA_ERROR(inner, "Unparseable codepoint in string.");
+			RETURN_SEMA_ERROR(inner, "Unparsable codepoint in string.");
 		}
 		if (type == type_ushort && from_codepoint & 0xFFFF0000)
 		{
 			RETURN_SEMA_ERROR(inner, "Invalid codepoint in string: a 16-bit wide-string cannot accommodate codepoints over U+FFFF.");
 		}
-		Expr *value = expr_new_const_int(expr->span, type, from_codepoint);
+		Expr *value = expr_new_const_int(expr->loc, type, from_codepoint);
 		vec_add(elements, const_init_new_value(value));
 	}
 	if (zero_terminate) vec_add(elements, const_init_new_zero(type));
@@ -530,6 +641,14 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		RETURN_SEMA_ERROR(args[expected_args], "Too many arguments.");
 	}
 
+	for (unsigned i = 0; i < arg_count; i++)
+	{
+		if (args[i]->expr_kind == EXPR_NAMED_ARGUMENT)
+		{
+			RETURN_SEMA_ERROR(args[i], "Named arguments are not allowed in builtin calls.");
+		}
+	}
+
 	switch (func)
 	{
 		case BUILTIN_SPRINTF:
@@ -538,8 +657,12 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_rnd(context, expr);
 		case BUILTIN_STR_HASH:
 			return sema_expr_analyse_str_hash(context, expr);
+		case BUILTIN_STR_REPLACE:
+			return sema_expr_analyse_str_replace(context, expr, args[0], args[1], args[2], args[3]);
 		case BUILTIN_STR_UPPER:
 		case BUILTIN_STR_LOWER:
+		case BUILTIN_STR_PASCALCASE:
+		case BUILTIN_STR_SNAKECASE:
 			return sema_expr_analyse_str_conv(context, expr, func);
 		case BUILTIN_STR_FIND:
 			return sema_expr_analyse_str_find(context, expr);
@@ -576,7 +699,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 	//    exact type size, we don't do any forced promotion.
 	for (unsigned i = 0; i < arg_count; i++)
 	{
-		if (!sema_analyse_expr(context, args[i])) return false;
+		if (!sema_analyse_expr_rvalue(context, args[i])) return false;
 		optional = optional || type_is_optional(args[i]->type);
 	}
 
@@ -592,7 +715,10 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_STR_HASH:
 		case BUILTIN_STR_UPPER:
 		case BUILTIN_STR_LOWER:
+		case BUILTIN_STR_PASCALCASE:
+		case BUILTIN_STR_SNAKECASE:
 		case BUILTIN_STR_FIND:
+		case BUILTIN_STR_REPLACE:
 		case BUILTIN_WIDESTRING_16:
 		case BUILTIN_WIDESTRING_32:
 		case BUILTIN_SPRINTF:
@@ -607,8 +733,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			ASSERT(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_NUMVEC, BA_NUMVEC}, 2)) return false;
 			if (!sema_check_builtin_args_match(context, args, 2)) return false;
-			Type *vec_type = type_flatten(args[0]->type);
-			rtype = type_get_vector(type_bool, vec_type->array.len);
+			rtype = type_get_vector_from_vector(type_bool, type_flatten(args[0]->type));
 			expr->expr_kind = EXPR_BINARY;
 			expr->binary_expr = (ExprBinary) {
 				.left = exprid(args[0]),
@@ -637,6 +762,12 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 				RETURN_SEMA_ERROR(args[2], "Expected %s, not %s.",
 								  type_to_error_string(type_get_ptr(args[0]->type)),
 								  type_to_error_string(args[2]->type));
+			}
+			Type *flat_0 = type_flatten(args[0]->type);
+			if (type_kind_is_real_vector(flat_0->type_kind))
+			{
+				rtype = type_get_vector_from_vector(type_bool, flat_0);
+				break;
 			}
 			rtype = type_bool;
 			break;
@@ -713,6 +844,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_VEC, BA_INTEGER, BA_INTEGER}, 3)) return false;
 			if (!sema_check_builtin_args_const(context, &args[1], 2)) return false;
 			ArraySize vec_len = type_flatten(args[0]->type)->array.len;
+			if (!cast_implicit(context, args[2], args[1]->type, false)) return false;
 			Int sum = int_mul(args[1]->const_expr.ixx, args[2]->const_expr.ixx);
 			if (!int_icomp(sum, vec_len, BINARYOP_EQ))
 			{
@@ -745,7 +877,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			{
 				RETURN_SEMA_ERROR(args[4], "Expected inner * outer col to equal %d.", vec_len2);
 			}
-			rtype = type_get_vector(flat1->array.base, i128_mult(args[2]->const_expr.ixx.i, args[4]->const_expr.ixx.i).low);
+			rtype = type_get_vector(flat1->array.base, flat1->type_kind, i128_mult(args[2]->const_expr.ixx.i, args[4]->const_expr.ixx.i).low);
 			break;
 		case BUILTIN_SAT_SHL:
 		case BUILTIN_SAT_SUB:
@@ -915,12 +1047,12 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			{
 				RETURN_SEMA_ERROR(args[2], "Expected the vector to be %s, not %s.",
 						  type_quoted_error_string(
-								  type_get_vector(pointer_type->pointer, len)),
+								  type_get_vector(pointer_type->pointer, flat_pointer_vec->type_kind, len)),
 						  type_quoted_error_string(args[2]->type));
 			}
-			if (!sema_check_alignment_expression(context, args[3])) return false;
+			if (!sema_check_alignment_expression(context, args[3], true)) return false;
 			if (!sema_expr_is_valid_mask_for_value(context, args[1], args[2])) return false;
-			rtype = type_get_vector(pointer_type->pointer, len);
+			rtype = type_get_vector(pointer_type->pointer, flat_pointer_vec->type_kind, len);
 			break;
 		}
 		case BUILTIN_SCATTER:
@@ -938,12 +1070,50 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			{
 				RETURN_SEMA_ERROR(args[1], "Expected the vector to be %s, not %s.",
 						  type_quoted_error_string(
-								  type_get_vector(pointer_type->pointer, flat_pointer_vec->array.len)),
+								  type_get_vector_from_vector(pointer_type->pointer, flat_pointer_vec)),
 						  type_quoted_error_string(args[2]->type));
 			}
-			if (!sema_check_alignment_expression(context, args[3])) return false;
+			if (!sema_check_alignment_expression(context, args[3], true)) return false;
 			if (!sema_expr_is_valid_mask_for_value(context, args[2], args[1])) return false;
 			rtype = type_void;
+			break;
+		}
+		case BUILTIN_INT_TO_MASK:
+		{
+			ASSERT(arg_count == 2);
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTEGER, BA_INTEGER }, 2)) return false;
+			Expr *len = args[1];
+			if (!sema_cast_const(len) || !expr_is_const_int(len))
+			{
+				RETURN_SEMA_ERROR(len, "Expected constant integer for the vector length.");
+			}
+			Type *type = type_flatten(args[0]->type);
+			int size = (int)type_bit_size(type);
+			if (int_icomp(len->const_expr.ixx, size, BINARYOP_GT))
+			{
+				RETURN_SEMA_ERROR(args[1], "The vector length (%s) cannot be greater than the bit width of the integer (%d).",
+					int_to_str(len->const_expr.ixx, 10, false), size);
+			}
+			int bits = (int)len->const_expr.ixx.i.low;
+			if (!bits)
+			{
+				RETURN_SEMA_ERROR(args[1], "The vector length cannot be zero");
+			}
+			rtype = type_get_vector(type_bool, TYPE_VECTOR, bits);
+			break;
+		}
+		case BUILTIN_MASK_TO_INT:
+		{
+			ASSERT(arg_count == 1);
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_BOOLVEC }, 1)) return false;
+			Type *vec = type_flatten(args[0]->type);
+			ArraySize len = vec->array.len;
+			if (len > 128)
+			{
+				RETURN_SEMA_ERROR(args[0], "Masks must be 128 or fewer bits to convert them to an integer.");
+			}
+			if (len < 8) len = 8;
+			rtype = type_int_unsigned_by_bitsize(next_highest_power_of_2(len));
 			break;
 		}
 		case BUILTIN_MASKED_LOAD:
@@ -954,9 +1124,9 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!type_is_pointer(pointer_type)) RETURN_SEMA_ERROR(args[0], "Expected a direct pointer.");
 			if (pointer_type->pointer->canonical != args[2]->type->canonical)
 			{
-				RETURN_SEMA_ERROR(args[2], "Expected the value to be of type '%s'.", type_quoted_error_string(pointer_type->pointer));
+				RETURN_SEMA_ERROR(args[2], "Expected the value to be of type %s.", type_quoted_error_string(pointer_type->pointer));
 			}
-			if (!sema_check_alignment_expression(context, args[3])) return false;
+			if (!sema_check_alignment_expression(context, args[3], true)) return false;
 			if (!sema_expr_is_valid_mask_for_value(context, args[1], args[2])) return false;
 			rtype = pointer_type->pointer;
 			break;
@@ -971,7 +1141,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			{
 				RETURN_SEMA_ERROR(args[2], "Expected the value to be of type %s.", type_quoted_error_string(pointer_type->pointer));
 			}
-			if (!sema_check_alignment_expression(context, args[3])) return false;
+			if (!sema_check_alignment_expression(context, args[3], true)) return false;
 			if (!sema_expr_is_valid_mask_for_value(context, args[2], args[1])) return false;
 			rtype = type_void;
 			break;
@@ -1006,6 +1176,22 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args_match(context, args, 3)) return false;
 			rtype = args[0]->type;
 			break;
+		case BUILTIN_FENCE:
+			ASSERT(arg_count == 1);
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTEGER}, 1)) return false;
+			if (!sema_cast_const(args[0])) RETURN_SEMA_ERROR(args[0], "Ordering must be a compile time constant.");
+			if (!is_valid_atomicity(context, args[0])) return false;
+			switch (args[0]->const_expr.ixx.i.low)
+			{
+				case ATOMIC_NONE:
+				case ATOMIC_RELAXED:
+				case ATOMIC_UNORDERED:
+					RETURN_SEMA_ERROR(args[0], "'none', 'relaxed' and 'unordered' are not valid for fence.");
+				default:
+					break;
+			}
+			rtype = type_void;
+			break;
 		case BUILTIN_ATOMIC_LOAD:
 		{
 			ASSERT(arg_count == 3);
@@ -1028,21 +1214,23 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_UNALIGNED_LOAD:
 		{
-			ASSERT(arg_count == 2);
-			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER}, 2)) return false;
+			ASSERT(arg_count == 3);
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER, BA_BOOL}, 3)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (original == type_voidptr) RETURN_SEMA_ERROR(args[0], "Expected a typed pointer.");
-			if (!sema_check_alignment_expression(context, args[1])) return false;
+			if (!sema_check_alignment_expression(context, args[1], false)) return false;
+			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
 			rtype = original->pointer;
 			break;
 		}
 		case BUILTIN_UNALIGNED_STORE:
 		{
-			ASSERT(arg_count == 3);
+			ASSERT(arg_count == 4);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER}, 1)) return false;
-			if (!sema_check_builtin_args(context, &args[2], (BuiltinArg[]) {BA_INTEGER}, 1)) return false;
+			if (!sema_check_builtin_args(context, &args[2], (BuiltinArg[]) {BA_INTEGER, BA_BOOL}, 2)) return false;
 			Type *original = type_flatten(args[0]->type);
-			if (!sema_check_alignment_expression(context, args[2])) return false;
+			if (!sema_check_alignment_expression(context, args[2], false)) return false;
+			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "'is_volatile' must be a compile time constant.");
 			if (original != type_voidptr)
 			{
 				if (!cast_implicit(context, args[1], original->pointer, false)) return false;
@@ -1095,7 +1283,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
 			if (args[3]->const_expr.ixx.i.low == ATOMIC_UNORDERED) RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
-			if (!sema_check_alignment_expression(context, args[4])) return false;
+			if (!sema_check_alignment_expression(context, args[4], true)) return false;
 			rtype = args[1]->type;
 			break;
 		}
@@ -1115,7 +1303,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
 			if (args[3]->const_expr.ixx.i.low == ATOMIC_UNORDERED) RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
-			if (!sema_check_alignment_expression(context, args[4])) return false;
+			if (!sema_check_alignment_expression(context, args[4], true)) return false;
 			rtype = args[1]->type;
 			break;
 		}
@@ -1134,7 +1322,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
 			if (args[3]->const_expr.ixx.i.low == ATOMIC_UNORDERED) RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
-			if (!sema_check_alignment_expression(context, args[4])) return false;
+			if (!sema_check_alignment_expression(context, args[4], true)) return false;
 			rtype = args[1]->type;
 			break;
 		}
@@ -1154,7 +1342,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
 			if (args[3]->const_expr.ixx.i.low == ATOMIC_UNORDERED) RETURN_SEMA_ERROR(args[3], "'unordered' is not valid ordering.");
-			if (!sema_check_alignment_expression(context, args[4])) return false;
+			if (!sema_check_alignment_expression(context, args[4], true)) return false;
 			rtype = args[1]->type;
 			break;
 		}
@@ -1228,6 +1416,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_EXACT_NEG:
 		case BUILTIN_EXP2:
 		case BUILTIN_EXP:
+		case BUILTIN_FENCE:
 		case BUILTIN_FLOOR:
 		case BUILTIN_FRAMEADDRESS:
 		case BUILTIN_LLRINT:
@@ -1237,6 +1426,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_LOG:
 		case BUILTIN_LRINT:
 		case BUILTIN_LROUND:
+		case BUILTIN_MASK_TO_INT:
 		case BUILTIN_NEARBYINT:
 		case BUILTIN_POPCOUNT:
 		case BUILTIN_REDUCE_ADD:
@@ -1255,13 +1445,16 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SIN:
 		case BUILTIN_SQRT:
 		case BUILTIN_STR_HASH:
-		case BUILTIN_STR_UPPER:
 		case BUILTIN_STR_LOWER:
+		case BUILTIN_STR_PASCALCASE:
+		case BUILTIN_STR_SNAKECASE:
+		case BUILTIN_STR_UPPER:
 		case BUILTIN_TRUNC:
 		case BUILTIN_VOLATILE_LOAD:
 		case BUILTIN_WASM_MEMORY_SIZE:
 			return 1;
-		case BUILTIN_STR_FIND:
+		case BUILTIN_VOLATILE_STORE:
+		case BUILTIN_ANY_MAKE:
 		case BUILTIN_COPYSIGN:
 		case BUILTIN_EXACT_ADD:
 		case BUILTIN_EXACT_DIV:
@@ -1269,6 +1462,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_EXACT_MUL:
 		case BUILTIN_EXACT_SUB:
 		case BUILTIN_EXPECT:
+		case BUILTIN_INT_TO_MASK:
 		case BUILTIN_MAX:
 		case BUILTIN_MIN:
 		case BUILTIN_POW:
@@ -1276,19 +1470,17 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_REDUCE_FADD:
 		case BUILTIN_REDUCE_FMUL:
 		case BUILTIN_SAT_ADD:
+		case BUILTIN_SAT_MUL:
 		case BUILTIN_SAT_SHL:
 		case BUILTIN_SAT_SUB:
-		case BUILTIN_SAT_MUL:
-		case BUILTIN_VOLATILE_STORE:
-		case BUILTIN_VECCOMPNE:
-		case BUILTIN_VECCOMPLT:
-		case BUILTIN_VECCOMPLE:
+		case BUILTIN_STR_FIND:
+		case BUILTIN_VECCOMPEQ:
 		case BUILTIN_VECCOMPGE:
 		case BUILTIN_VECCOMPGT:
-		case BUILTIN_VECCOMPEQ:
+		case BUILTIN_VECCOMPLE:
+		case BUILTIN_VECCOMPLT:
+		case BUILTIN_VECCOMPNE:
 		case BUILTIN_WASM_MEMORY_GROW:
-		case BUILTIN_ANY_MAKE:
-		case BUILTIN_UNALIGNED_LOAD:
 			return 2;
 		case BUILTIN_EXPECT_WITH_PROBABILITY:
 		case BUILTIN_FMA:
@@ -1300,7 +1492,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_OVERFLOW_SUB:
 		case BUILTIN_PREFETCH:
 		case BUILTIN_ATOMIC_LOAD:
-		case BUILTIN_UNALIGNED_STORE:
+		case BUILTIN_UNALIGNED_LOAD:
 		case BUILTIN_SELECT:
 		case BUILTIN_MATRIX_TRANSPOSE:
 			return 3;
@@ -1309,6 +1501,8 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_MASKED_LOAD:
 		case BUILTIN_GATHER:
 		case BUILTIN_SCATTER:
+		case BUILTIN_STR_REPLACE:
+		case BUILTIN_UNALIGNED_STORE:
 			return 4;
 		case BUILTIN_ATOMIC_FETCH_EXCHANGE:
 		case BUILTIN_ATOMIC_FETCH_ADD:

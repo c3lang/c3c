@@ -1,0 +1,42 @@
+// #target: linux-x64
+module test;
+union Vec3
+{
+	struct
+	{
+		float x, y, z;
+	}
+	float e;
+}
+fn void test(Vec3)
+{}
+
+fn int main()
+{
+	test((Vec3){1,2,3});
+	return 0;
+}
+/* #expect: test.ll
+
+define void @test.test(<2 x float> %0, float %1) #0 {
+entry:
+  %.anon = alloca %Vec3, align 8
+  store <2 x float> %0, ptr %.anon, align 8
+  %ptradd = getelementptr inbounds i8, ptr %.anon, i64 8
+  store float %1, ptr %ptradd, align 8
+  ret void
+}
+
+; Function Attrs: nounwind uwtable
+define i32 @main() #0 {
+entry:
+  %literal = alloca %Vec3, align 4
+  %coerce = alloca %Vec3, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce, ptr align 4 %literal, i32 12, i1 false)
+  %lo = load <2 x float>, ptr %coerce, align 8
+  %ptradd = getelementptr inbounds i8, ptr %coerce, i64 8
+  %hi = load float, ptr %ptradd, align 8
+  call void @test.test(<2 x float> %lo, float %hi)
+  ret i32 0
+}

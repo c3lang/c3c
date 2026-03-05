@@ -1,8 +1,8 @@
 module test;
 
 alias FnA = fn void(int*);
-typedef FnB = FnA;
-typedef FnC = inline FnA;
+typedef FnB @constinit = FnA;
+typedef FnC @constinit = inline FnA;
 
 fn void func(int*) {}
 

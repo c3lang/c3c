@@ -1,0 +1,6 @@
+typedef Foo = int[32];
+fn int main()
+{
+	$assert(Foo.len == 32);
+	return 0;
+}

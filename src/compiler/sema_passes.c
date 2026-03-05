@@ -1,8 +1,9 @@
-// Copyright (c) 2020 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2020-2026 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
 #include "sema_internal.h"
+#include "compiler_tests/benchmark.h"
 
 void parent_path(StringSlice *slice)
 {
@@ -15,13 +16,6 @@ void parent_path(StringSlice *slice)
 		}
 	}
 	slice->len = 0;
-}
-
-void sema_analyse_pass_top(Module *module)
-{
-	Module *parent = module;
-	while (parent->parent_module) parent = parent->parent_module;
-	module->top_module = parent;
 }
 
 void sema_analyse_pass_module_hierarchy(Module *module)
@@ -41,26 +35,28 @@ void sema_analyse_pass_module_hierarchy(Module *module)
 		Path *checked_name = checked->name;
 		if (checked_name->len != slice.len) continue;
 		// Found the parent! We're done, we add this parent
-		// and this as a child.
 		if (memcmp(checked_name->module, slice.ptr, slice.len) == 0)
 		{
 			module->parent_module = checked;
-			vec_add(checked->sub_modules, module);
 			return;
 		}
 	}
 	// No match, so we create a synthetic module.
-	Path *path = path_create_from_string(slice.ptr, slice.len, module->name->span);
+	Path *path = path_create_from_string(slice.ptr, slice.len, module->name->loc);
 	DEBUG_LOG("Creating parent module for %s: %s", module->name->module, path->module);
-	Module *parent_module = compiler_find_or_create_module(path, NULL);
+	Module *parent_module = compiler_find_or_create_module(path);
 	module->parent_module = parent_module;
-	vec_add(parent_module->sub_modules, module);
 	sema_analyze_stage(parent_module, ANALYSIS_MODULE_HIERARCHY);
 }
 
-
 void sema_analysis_pass_process_imports(Module *module)
 {
+	DEBUG_LOG("Pass: Set the top module '%s'.", module->name->module);
+
+	Module *parent = module;
+	while (parent->parent_module) parent = parent->parent_module;
+	module->top_module = parent;
+
 	DEBUG_LOG("Pass: Importing dependencies for files in module '%s'.", module->name->module);
 
 	unsigned total_import_count = 0;
@@ -98,6 +94,12 @@ void sema_analysis_pass_process_imports(Module *module)
 			// 5. Do we find it?
 			if (!import_module)
 			{
+				if (unit->if_attr)
+				{
+					unit->error_import = import;
+					import_module = compiler_find_or_create_module(path);
+					goto FOUND_MODULE;
+				}
 				PRINT_ERROR_AT(import, "No module named '%s' could be found, did you type the name right?", path->module);
 				decl_poison(import);
 				continue;
@@ -111,10 +113,45 @@ void sema_analysis_pass_process_imports(Module *module)
 				continue;
 			}
 
+FOUND_MODULE:
 			// 7. Assign the module.
 			DEBUG_LOG("* Import of %s.", path->module);
 			import->import.module = import_module;
 NEXT:;
+		}
+		FOREACH_IDX(idx, Decl *, alias_module,  unit->module_aliases)
+		{
+			Path *path = alias_module->module_alias_decl.alias_path;
+			Module *import_module = global_context_find_module(path->module);
+
+			// 5. Do we find it?
+			if (!import_module)
+			{
+				if (unit->if_attr)
+				{
+					unit->error_import = alias_module;
+					import_module = compiler_find_or_create_module(path);
+					goto FOUND_ALIAS;
+				}
+				PRINT_ERROR_AT(path, "No module named '%s' could be found, did you type the name right?", path->module);
+				continue;
+			}
+FOUND_ALIAS:
+			alias_module->module_alias_decl.module = import_module;
+			alias_module->resolve_status = RESOLVE_DONE;
+			for (unsigned i = 0; i < idx; i++)
+			{
+				if (unit->module_aliases[i]->name == alias_module->name)
+				{
+					PRINT_ERROR_AT(alias_module, "The module alias must be unique.");
+					break;
+				}
+			}
+			if (alias_module->attributes)
+			{
+				PRINT_ERROR_AT(alias_module->attributes[0], "Module aliases cannot have attributes.");
+				break;
+			}
 		}
 		total_import_count += import_count;
 	}
@@ -122,6 +159,48 @@ NEXT:;
 	DEBUG_LOG("Pass finished processing %d import(s) with %d error(s).", total_import_count, compiler.context.errors_found);
 }
 
+static bool sema_check_if_implicit_generic(SemaContext *context, Decl *decl)
+{
+	if (!decl->func_decl.type_parent) return false;
+	TypeInfo *typedecl = type_infoptr(decl->func_decl.type_parent);
+	if (typedecl->resolve_status == RESOLVE_DONE)
+	{
+		CanonicalType *type = typedecl->type->canonical;
+		return type_is_user_defined(type) && type->decl->is_template;
+	}
+	if (typedecl->kind == TYPE_INFO_IDENTIFIER && typedecl->subtype == TYPE_COMPRESSED_NONE)
+	{
+		Decl *d = sema_resolve_maybe_parameterized_symbol(context, typedecl->unresolved.name, typedecl->unresolved.path, typedecl->loc);
+		return d && d->is_template; // NOLINT because apparently this is not checking for NULL!?
+	}
+	return false;
+}
+
+void unit_register_optional_global_decl(CompilationUnit *unit, Decl *decl)
+{
+	SemaContext context;
+	sema_context_init(&context, unit);
+	if (decl->is_templated) context.generic_instance = declptr(decl->instance_id);
+	if (!decl->is_templated && (decl->decl_kind == DECL_MACRO || decl->decl_kind == DECL_FUNC))
+	{
+		if (sema_check_if_implicit_generic(&context, decl))
+		{
+			unit_register_global_decl(unit, decl);
+			sema_context_destroy(&context);
+			return;
+		}
+	}
+	if (sema_decl_if_cond(&context, decl))
+	{
+		unit_register_global_decl(unit, decl);
+	}
+	else
+	{
+		decl->decl_kind = DECL_ERASED;
+	}
+	sema_context_destroy(&context);
+
+}
 INLINE void register_global_decls(CompilationUnit *unit, Decl **decls)
 {
 	FOREACH(Decl *, decl, decls)
@@ -149,7 +228,7 @@ INLINE File *sema_load_file(CompilationUnit *unit, Expr *filename)
 	File *file = source_file_load(string, &loaded, &error);
 	if (!file)
 	{
-		print_error_at(filename->span, "Failed to load file '%s': %s.", filename->const_expr.bytes.ptr, error);
+		print_error_at(filename->loc, "Failed to load file '%s': %s.", filename->const_expr.bytes.ptr, error);
 		return NULL;
 	}
 	if (compiler.context.errors_found) return NULL;
@@ -232,6 +311,7 @@ static bool exec_arg_append_to_scratch(Expr *arg)
 
 static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 {
+	double bench = bench_mark();
 	if (compiler.build.trust_level < TRUST_FULL)
 	{
 		RETURN_PRINT_ERROR_AT(NULL, decl, "'$exec' not permitted, trust level must be set to '--trust=full' to permit it.");
@@ -311,6 +391,7 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	{
 		RETURN_PRINT_ERROR_AT(NULL, decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDE_DIRECTIVES);
 	}
+	compiler.exec_time += bench_mark() - bench;
 	return parse_include_file(file, unit);
 }
 
@@ -328,7 +409,7 @@ INLINE void register_includes(CompilationUnit *unit, Decl **decls)
 				include_decls = sema_load_include(unit, include);
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 		FOREACH(Decl *, decl, include_decls)
 		{
@@ -400,14 +481,16 @@ void sema_analysis_pass_process_methods(Module *module, bool process_generic)
 				vec_add(unit->generic_methods_to_register, method);
 				continue;
 			}
-			sema_analyse_method_register(&context, method);
-			if (method->decl_kind == DECL_MACRO)
+			if (sema_analyse_method_register(&context, method))
 			{
-				vec_add(unit->macro_methods, method);
-			}
-			else
-			{
-				vec_add(unit->methods, method);
+				if (method->decl_kind == DECL_MACRO)
+				{
+					vec_add(unit->macro_methods, method);
+				}
+				else
+				{
+					vec_add(unit->methods, method);
+				}
 			}
 		}
 		sema_context_destroy(&context);
@@ -423,6 +506,7 @@ void sema_analysis_pass_process_methods(Module *module, bool process_generic)
 
 	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
+
 
 void sema_analysis_pass_register_conditional_units(Module *module)
 {
@@ -454,6 +538,15 @@ void sema_analysis_pass_register_conditional_units(Module *module)
 		{
 			vec_resize(unit->global_decls, 0);
 			vec_resize(unit->global_cond_decls, 0);
+			FOREACH(Decl *, decl, module->generic_sections)
+			{
+				if (decl->unit == unit)
+				{
+					vec_resize(decl->generic_decl.conditional_decls, 0);
+					vec_resize(decl->generic_decl.decls, 0);
+				}
+			}
+			vec_resize(unit->ct_includes, 0);
 			continue;
 		}
 CHECK_LINK:
@@ -464,13 +557,13 @@ CHECK_LINK:
 			unsigned args = vec_size(exprs);
 			ASSERT(args > 0 && "Should already have been checked.");
 			Expr *cond = args > 1 ? attr->exprs[0] : NULL;
-			if (cond && !sema_analyse_expr(&context, cond)) goto FAIL_CONTEXT;
+			if (cond && !sema_analyse_expr_rvalue(&context, cond)) goto FAIL_CONTEXT;
 			bool start = cond && expr_is_const_bool(cond) ? 1 : 0;
 			bool add = start == 0 ? true : cond->const_expr.b;
 			for (unsigned i = start; i < args; i++)
 			{
 				Expr *string = attr->exprs[i];
-				if (!sema_analyse_expr(&context, string)) goto FAIL_CONTEXT;
+				if (!sema_analyse_expr_rvalue(&context, string)) goto FAIL_CONTEXT;
 				if (!expr_is_const_string(string))
 				{
 					PRINT_ERROR_AT(string, "Expected a constant string here, usage is: "
@@ -485,6 +578,21 @@ CHECK_LINK:
 		}
 RELEASE_CONTEXT:
 		sema_context_destroy(&context);
+		if (unit->error_import)
+		{
+			Decl *import = unit->error_import;
+			switch (import->decl_kind)
+			{
+				case DECL_IMPORT:
+					PRINT_ERROR_AT(import, "No module named '%s' could be found, did you type the name right?", import->import.path->module);
+					continue;
+				case DECL_ALIAS_PATH:
+					PRINT_ERROR_AT(import->module_alias_decl.alias_path, "No module named '%s' could be found, did you type the name right?", import->module_alias_decl.alias_path->module);
+					continue;
+				default:
+					UNREACHABLE_VOID;
+			}
+		}
 		register_global_decls(unit, unit->global_decls);
 		// There may be includes, add those.
 		sema_process_includes(unit);
@@ -507,13 +615,7 @@ RETRY:;
 		Decl **decls = unit->global_cond_decls;
 		FOREACH(Decl *, decl, decls)
 		{
-			SemaContext context;
-			sema_context_init(&context, unit);
-			if (sema_decl_if_cond(&context, decl))
-			{
-				unit_register_global_decl(unit, decl);
-			}
-			sema_context_destroy(&context);
+			unit_register_optional_global_decl(unit, decl);
 		}
 		vec_resize(decls, 0);
 RETRY_INCLUDES:
@@ -572,7 +674,7 @@ void sema_analysis_pass_ct_echo(Module *module)
 	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 
-static inline bool analyse_func_body(SemaContext *context, Decl *decl)
+bool analyse_func_body(SemaContext *context, Decl *decl)
 {
 	if (!decl->func_decl.body) return true;
 	if (decl->is_extern)
@@ -590,15 +692,15 @@ static inline bool analyse_func_body(SemaContext *context, Decl *decl)
 	return true;
 }
 
-INLINE void sema_analyse_inner_func_ptr(SemaContext *c, Decl *decl)
+void sema_analyse_inner_func_ptr(SemaContext *c, Decl *decl)
 {
 	Type *inner;
 	switch (decl->decl_kind)
 	{
-		case DECL_DISTINCT:
+		case DECL_TYPEDEF:
 			inner = decl->distinct->type;
 			break;
-		case DECL_TYPEDEF:
+		case DECL_TYPE_ALIAS:
 			inner = decl->type->canonical;
 			break;
 		default:
@@ -629,7 +731,6 @@ void sema_analysis_pass_decls(Module *module)
 		context.active_scope = (DynamicScope)
 				{
 					.depth = 0,
-					.scope_id = 0,
 					.label_start = 0,
 					.current_local = 0,
 				};
@@ -719,10 +820,10 @@ static bool sema_check_interface(SemaContext *context, Decl *decl, TypeInfo *int
 	}
 	return true;
 }
-static inline bool sema_check_interfaces(SemaContext *context, Decl *decl)
+bool sema_check_interfaces(SemaContext *context, Decl *decl)
 {
 	Decl **store = sema_decl_stack_store();
-	FOREACH(Decl *, method, decl->methods) sema_decl_stack_push(method);
+	sema_add_methods_to_decl_stack(context, decl);
 	FOREACH(TypeInfo *, interface_type, decl->interfaces)
 	{
 		if (!sema_check_interface(context, decl, interface_type, interface_type))
@@ -747,7 +848,7 @@ void sema_analysis_pass_interface(Module *module)
 		{
 			switch (decl->decl_kind)
 			{
-				case DECL_DISTINCT:
+				case DECL_TYPEDEF:
 				case DECL_STRUCT:
 				case DECL_UNION:
 				case DECL_ENUM:

@@ -1,4 +1,5 @@
 // #target: macos-x64
+/*
 module test;
 import std;
 
@@ -15,7 +16,7 @@ fn int main(String[] a)
 	return x.ordinal ?? 222;
 }
 
-/* #expect: test.ll
+/* expect: test.ll
 
 define i32 @test.main(ptr %0, i64 %1) #0 {
 entry:

@@ -81,7 +81,7 @@ fn usz? decode_bytes(char[] src, char[] dst)
 	{
 		char a = HEXREVERSE[src[j - 1]];
 		char b = HEXREVERSE[src[j]];
-		if (a > 0x0f || b > 0x0f) return encoding::INVALID_CHARACTER?;
+		if (a > 0x0f || b > 0x0f) return encoding::INVALID_CHARACTER~;
 		dst[i] = (a << 4) | b;
 		i++;
 	}

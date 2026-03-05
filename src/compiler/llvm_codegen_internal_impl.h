@@ -1,5 +1,5 @@
 
-INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index)
+INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index) // NOLINT
 {
 	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
 	{
@@ -48,7 +48,7 @@ INLINE bool type_is_intlike(Type *type)
 {
 	type = type_flatten(type);
 	if (type_is_integer_or_bool_kind(type)) return true;
-	if (type->type_kind != TYPE_VECTOR) return false;
+	if (!type_kind_is_real_vector(type->type_kind)) return false;
 	type = type->array.base;
 	return type_is_integer_or_bool_kind(type);
 }
@@ -108,7 +108,7 @@ INLINE AlignSize llvm_type_or_alloca_align(LLVMValueRef dest, Type *type)
 	{
 		return LLVMGetAlignment(dest);
 	}
-	return type_abi_alignment(type);
+	return type_alloca_alignment(type);
 }
 
 INLINE LLVMValueRef llvm_store_to_ptr(GenContext *c, LLVMValueRef destination, BEValue *value)
@@ -124,8 +124,7 @@ INLINE LLVMValueRef llvm_store_to_ptr_raw(GenContext *c, LLVMValueRef pointer, L
 INLINE void llvm_value_bitcast(GenContext *c UNUSED, BEValue *value, Type *type)
 {
 	ASSERT(llvm_value_is_addr(value));
-	type = type_lowering(type);
-	value->type = type;
+	value->type = type_lowering(type);
 }
 
 INLINE LLVMValueRef llvm_emit_shl(GenContext *c, LLVMValueRef value, LLVMValueRef shift)
@@ -155,7 +154,7 @@ INLINE LLVMValueRef llvm_emit_trunc_bool(GenContext *c, LLVMValueRef value)
 
 INLINE LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, unsigned index)
 {
-	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
+	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind )
 	{
 		return LLVMBuildExtractElement(c->builder, agg, llvm_const_int(c, type_usz, index), "");
 	}
@@ -320,6 +319,21 @@ INLINE LLVMValueRef llvm_get_struct_named(LLVMTypeRef type, LLVMValueRef *vals, 
 INLINE LLVMValueRef llvm_get_struct_of_type(GenContext *c, Type *type, LLVMValueRef *vals, unsigned count)
 {
 	return LLVMConstNamedStruct(llvm_get_type(c, type), vals, count);
+}
+
+INLINE LLVMValueRef llvm_const_integer(GenContext *c, Int128 i, Type *type)
+{
+	switch (type_lowering(type)->type_kind)
+	{
+		case TYPE_I128:
+		case TYPE_U128:
+		{
+			uint64_t words[2] = { i.low, i.high };
+			return LLVMConstIntOfArbitraryPrecision(llvm_get_type(c, type), 2, words);
+		}
+		default:
+			return llvm_const_int(c, type, i.low);
+	}
 }
 
 INLINE LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t val)

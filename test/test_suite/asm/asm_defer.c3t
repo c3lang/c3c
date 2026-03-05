@@ -1,0 +1,28 @@
+// #target: macos-x64
+module test;
+fn int main(String[] args)
+{
+	defer
+	{
+		int x;
+		asm
+		{
+			movl [x], 1;
+		}
+	}
+	return 0;
+}
+
+/* #expect: test.ll
+
+entry:
+  %args = alloca %"char[][]", align 8
+  %x = alloca i32, align 4
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  store i32 0, ptr %x, align 4
+  %2 = load i32, ptr %x, align 4
+  call void asm sideeffect alignstack "movl $$1, ($0)\0A", "r,~{flags},~{dirflag},~{fspr}"(i32 %2)
+  ret i32 0
+}

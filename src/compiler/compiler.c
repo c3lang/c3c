@@ -4,6 +4,7 @@
 
 #include "compiler_internal.h"
 #include "../build/project.h"
+#include "../utils/json.h"
 #include <compiler_tests/benchmark.h>
 #include "../utils/whereami.h"
 #if LLVM_AVAILABLE
@@ -22,10 +23,12 @@ Vmem ast_arena;
 Vmem expr_arena;
 Vmem decl_arena;
 Vmem type_info_arena;
+Vmem sourceloc_arena;
 
 static double compiler_init_time;
 static double compiler_parsing_time;
 static double compiler_sema_time;
+static double compiler_exec_time;
 static double compiler_ir_gen_time;
 static double compiler_codegen_time;
 static double compiler_link_time;
@@ -39,6 +42,8 @@ static const char *out_name(void)
 	if (compiler.build.name) return compiler.build.name;
 	return NULL;
 }
+
+#define START_VMEM_SIZE (sizeof(size_t) == 4 ? 1024 : 4096)
 
 void compiler_init(BuildOptions *build_options)
 {
@@ -62,28 +67,31 @@ void compiler_init(BuildOptions *build_options)
 
 	INFO_LOG("Version: %s", COMPILER_VERSION);
 
-	compiler.context = (GlobalContext) { .in_panic_mode = false };
+	GlobalContext new_context = { .in_panic_mode = false };
+	compiler.context = new_context;
 	// Skip library detection.
 	//compiler.lib_dir = find_lib_dir();
 	//DEBUG_LOG("Found std library: %s", compiler.lib_dir);
 	htable_init(&compiler.context.modules, 16 * 1024);
 	pathtable_init(&compiler.context.path_symbols, INITIAL_SYMBOL_MAP);
 	decltable_init(&compiler.context.symbols, INITIAL_SYMBOL_MAP);
-	decltable_init(&compiler.context.generic_symbols, INITIAL_GENERIC_SYMBOL_MAP);
 
 	htable_init(&compiler.context.features, 1024);
 	htable_init(&compiler.context.compiler_defines, 16 * 1024);
+	methodtable_init(&compiler.context.method_extensions, 16 * 1024);
 	compiler.context.module_list = NULL;
-	compiler.context.generic_module_list = NULL;
-	compiler.context.method_extensions = NULL;
-	vmem_init(&ast_arena, 512);
+	compiler.context.method_extension_list = NULL;
+
+	vmem_init(&ast_arena, START_VMEM_SIZE);
 	ast_calloc();
-	vmem_init(&expr_arena, 512);
+	vmem_init(&expr_arena, START_VMEM_SIZE);
 	expr_calloc();
-	vmem_init(&decl_arena, 256);
+	vmem_init(&decl_arena, START_VMEM_SIZE);
 	decl_calloc();
-	vmem_init(&type_info_arena, 256);
+	vmem_init(&type_info_arena, START_VMEM_SIZE);
 	type_info_calloc();
+	vmem_init(&sourceloc_arena, START_VMEM_SIZE);
+	sourceloc_calloc();
 	// Create zero index value.
 	if (build_options->std_lib_dir)
 	{
@@ -99,6 +107,10 @@ void compiler_init(BuildOptions *build_options)
 	{
 		compiler.context.should_print_environment = true;
 	}
+	if (build_options->print_asm)
+	{
+		compiler.context.should_print_asm = true;
+	}
 }
 
 static void compiler_lex(void)
@@ -108,7 +120,7 @@ static void compiler_lex(void)
 		bool loaded = false;
 		const char *error;
 		File *file = source_file_load(source, &loaded, &error);
-		if (!file) error_exit(error);
+		if (!file) error_exit("%s", error);
 		if (loaded) continue;
 		Lexer lexer = { .file = file };
 		lexer_init(&lexer);
@@ -156,10 +168,12 @@ void thread_compile_task_tb(void *compile_data)
 const char *tilde_codegen(void *context)
 {
 	error_exit("TB backend not available.");
+	UNREACHABLE
 }
 void **tilde_gen(Module** modules, unsigned module_count)
 {
 	error_exit("TB backend not available.");
+	UNREACHABLE
 }
 
 #endif
@@ -213,22 +227,11 @@ static const char *dynamic_lib_name(void)
 	{
 		return str_cat(name, compiler.build.extension);
 	}
-	
-	switch (compiler.build.arch_os_target)
-	{
-		case WINDOWS_AARCH64:
-		case WINDOWS_X64:
-		case MINGW_X64:
-			return str_cat(name, ".dll");
-		case MACOS_X64:
-		case MACOS_AARCH64:
-			return str_cat(name, ".dylib");
-		default:
-			return str_cat(name, ".so");
-	}
+
+	return str_cat(name, compiler.platform.dylib_suffix);
 }
 
-static const char *static_lib_name(void)
+const char *static_lib_name(void)
 {
 	const char *name = build_base_name();
 	
@@ -254,22 +257,30 @@ static void free_arenas(void)
 	if (compiler.build.print_stats)
 	{
 		printf("-- AST/EXPR/TYPE INFO -- \n");
-		printf(" * Ast size: %u bytes\n", (unsigned)sizeof(Ast));
-		printf(" * Decl size: %u bytes\n", (unsigned)sizeof(Decl));
-		printf(" * Expr size: %u bytes\n", (unsigned)sizeof(Expr));
-		printf(" * TypeInfo size: %u bytes\n", (unsigned)sizeof(TypeInfo));
-		printf(" * Ast memory use: %llukb (%u elements)\n",
+		printf(" * Ast size:       %u bytes\n", (unsigned)sizeof(Ast));
+		printf(" * Decl size:      %u bytes\n", (unsigned)sizeof(Decl));
+		printf(" * Expr size:      %u bytes\n", (unsigned)sizeof(Expr));
+		printf(" * TypeInfo size:  %u bytes\n", (unsigned)sizeof(TypeInfo));
+		printf(" * SourceLoc size: %u bytes\n", (unsigned)sizeof(SourceLoc));
+		printf(" - Memory use ----------- \n");
+
+		printf(" * Ast:       %llu kb (%u elements)\n",
 			   (unsigned long long)ast_arena.allocated / 1024,
 			   (unsigned)(ast_arena.allocated / sizeof(Ast)));
-		printf(" * Decl memory use: %llukb (%u elements)\n",
+		printf(" * Decl:      %llu kb (%u elements)\n",
 			   (unsigned long long)decl_arena.allocated / 1024,
 			   (unsigned)(decl_arena.allocated / sizeof(Decl)));
-		printf(" * Expr memory use: %llukb (%u elements)\n",
+		printf(" * Expr:      %llu kb (%u elements)\n",
 			   (unsigned long long)expr_arena.allocated / 1024,
 			   (unsigned)(expr_arena.allocated / sizeof(Expr)));
-		printf(" * TypeInfo memory use: %llukb (%u elements)\n",
+		printf(" * TypeInfo:  %llu kb (%u elements)\n",
 			   (unsigned long long)type_info_arena.allocated / 1024,
 			   (unsigned)(type_info_arena.allocated / sizeof(TypeInfo)));
+		printf(" * SourceLoc: %llu kb (%u elements)\n",
+			   (unsigned long long)sourceloc_arena.allocated / 1024,
+			   (unsigned)(sourceloc_arena.allocated / sizeof(SourceLoc)));
+		printf(" * Total:     %llu kb\n",
+			   (unsigned long long)(sourceloc_arena.allocated + decl_arena.allocated + expr_arena.allocated + type_info_arena.allocated + type_info_arena.allocated) / 1024);
 
 	}
 
@@ -277,6 +288,7 @@ static void free_arenas(void)
 	decl_arena_free();
 	expr_arena_free();
 	type_info_arena_free();
+	sourceloc_arena_free();
 
 	if (compiler.build.print_stats) print_arena_status();
 }
@@ -310,11 +322,23 @@ static void compiler_print_bench(void)
 		double link_time = compiler_link_time - compiler_codegen_time;
 		if (compiler_link_time >= 0) last = compiler_link_time;
 		printf("Frontend -------------------- Time --- %% total\n");
-		if (compiler_init_time >= 0) printf("Initialization took: %10.3f ms  %8.1f %%\n", compiler_init_time * 1000, compiler_init_time * 100 / last);
+		if (compiler_init_time >= 0)
+		{
+			compiler_init_time -= compiler.script_time;
+			printf("Initialization took: %10.3f ms  %8.1f %%\n", compiler_init_time * 1000, compiler_init_time * 100 / last);
+			if (compiler.script_time > 0)
+			{
+				printf("Scripts took:        %10.3f ms  %8.1f %%\n", compiler.script_time * 1000, compiler.script_time * 100 / last);
+			}
+		}
 		if (compiler_parsing_time >= 0) printf("Parsing took:        %10.3f ms  %8.1f %%\n", parse_time * 1000, parse_time * 100 / last);
 		if (compiler_sema_time >= 0)
 		{
 			printf("Analysis took:       %10.3f ms  %8.1f %%\n", sema_time * 1000, sema_time * 100 / last);
+			if (compiler.exec_time > 0)
+			{
+				printf(" - Scripts took:     %10.3f ms  %8.1f %%\n", compiler.exec_time * 1000, compiler.exec_time * 100 / last);
+			}
 			printf("TOTAL:               %10.3f ms  %8.1f %%\n", compiler_sema_time * 1000, compiler_sema_time * 100 / last);
 			puts("");
 		}
@@ -379,7 +403,7 @@ void compiler_parse(void)
 		bool loaded = false;
 		const char *error;
 		File *file = source_file_load(source, &loaded, &error);
-		if (!file) error_exit(error);
+		if (!file) error_exit("%s", error);
 		if (loaded) continue;
 		if (!parse_file(file)) has_error = true;
 		if (compiler.build.print_input) puts(file->full_path);
@@ -405,7 +429,7 @@ void compiler_parse(void)
 	compiler_parsing_time = bench_mark();
 }
 
-bool compiler_should_ouput_file(const char *file)
+bool compiler_should_output_file(const char *file)
 {
 	if (!vec_size(compiler.build.emit_only)) return true;
 	FOREACH(const char *, f, compiler.build.emit_only)
@@ -418,6 +442,7 @@ bool compiler_should_ouput_file(const char *file)
 static void create_output_dir(const char *dir)
 {
 	if (!dir) return;
+	if (strlen(dir) == 0) return;
 	if (file_exists(dir))
 	{
 		if (!file_is_dir(dir)) error_exit("Output directory is not a directory %s.", dir);
@@ -425,7 +450,8 @@ static void create_output_dir(const char *dir)
 	}
 	scratch_buffer_clear();
 	scratch_buffer_append(dir);
-	if (!dir_make_recursive(scratch_buffer_to_string()))
+	dir_make_recursive(scratch_buffer_to_string());
+	if (!file_exists(dir))
 	{
 		error_exit("Failed to create directory '%s'.", dir);
 	}
@@ -445,6 +471,7 @@ void compiler_compile(void)
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 	compiler_sema_time = bench_mark();
+	compiler_exec_time = compiler.exec_time;
 	Module **modules = compiler.context.module_list;
 	unsigned module_count = vec_size(modules);
 	if (module_count > MAX_MODULES)
@@ -473,20 +500,15 @@ void compiler_compile(void)
 	void **gen_contexts;
 	void (*task)(void *);
 
-
-	if (compiler.build.asm_file_dir || compiler.build.ir_file_dir || compiler.build.emit_object_files)
-	{
-		create_output_dir(compiler.build.build_dir);
-	}
-	if (compiler.build.ir_file_dir && (compiler.build.emit_llvm || compiler.build.test_output || compiler.build.lsp_output))
+	if ((compiler.build.emit_llvm || compiler.build.test_output || compiler.build.lsp_output))
 	{
 		create_output_dir(compiler.build.ir_file_dir);
 	}
-	if (compiler.build.asm_file_dir && compiler.build.emit_asm)
+	if (compiler.build.emit_asm)
 	{
 		create_output_dir(compiler.build.asm_file_dir);
 	}
-	if (compiler.build.object_file_dir && compiler.build.emit_object_files)
+	if (compiler.build.emit_object_files)
 	{
 		create_output_dir(compiler.build.object_file_dir);
 	}
@@ -501,6 +523,18 @@ void compiler_compile(void)
 	if (compiler.build.type == TARGET_TYPE_STATIC_LIB)
 	{
 		compiler.build.single_module = SINGLE_MODULE_ON;
+	}
+	if (compiler.build.emit_asm)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(compiler.build.asm_file_dir);
+		dir_make_recursive(scratch_buffer_to_string());
+	}
+	if (compiler.build.emit_object_files)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(compiler.build.object_file_dir);
+		dir_make_recursive(scratch_buffer_to_string());
 	}
 	switch (compiler.build.backend)
 	{
@@ -521,7 +555,7 @@ void compiler_compile(void)
 			task = &thread_compile_task_tb;
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	compiler_ir_gen_time = bench_mark();
 	const char *output_exe = NULL;
@@ -533,10 +567,12 @@ void compiler_compile(void)
 		{
 			case TARGET_TYPE_BENCHMARK:
 				compiler.build.name = "benchmarkrun";
+				compiler.build.output_name = compiler.build.runner_output_name ? compiler.build.runner_output_name : compiler.build.name;
 				output_exe = exe_name();
 				break;
 			case TARGET_TYPE_TEST:
 				compiler.build.name = "testrun";
+				compiler.build.output_name = compiler.build.runner_output_name ? compiler.build.runner_output_name : compiler.build.name;
 				output_exe = exe_name();
 				break;
 			case TARGET_TYPE_EXECUTABLE:
@@ -560,7 +596,7 @@ void compiler_compile(void)
 			case TARGET_TYPE_PREPARE:
 				break;
 			default:
-				UNREACHABLE
+				UNREACHABLE_VOID
 		}
 	}
 	if (compiler.build.emit_llvm)
@@ -682,11 +718,11 @@ void compiler_compile(void)
 	if (vec_size(compiler.build.emit_only)) goto SKIP;
 	if (output_exe)
 	{
-		if (compiler.build.output_dir)
+		if (file_path_is_relative(output_exe))
 		{
-			create_output_dir(compiler.build.output_dir);
 			output_exe = file_append_path(compiler.build.output_dir, output_exe);
 		}
+		;
 		file_create_folders(output_exe);
 		bool system_linker_available = link_libc() && compiler.platform.os != OS_TYPE_WIN32;
 		bool use_system_linker = system_linker_available && compiler.build.arch_os_target == default_target;
@@ -759,6 +795,10 @@ void compiler_compile(void)
 			}
 			name = scratch_buffer_to_string();
 			const char *full_path = realpath(scratch_buffer_to_string(), NULL);
+			if (!full_path)
+			{
+				error_exit("The binary '%s' was unexpectedly not found.", scratch_buffer_to_string());
+			}
 			OUTF("Launching %s", name);
 			FOREACH(const char *, arg, compiler.build.args)
 			{
@@ -782,9 +822,8 @@ void compiler_compile(void)
 	}
 	else if (output_static)
 	{
-		if (compiler.build.output_dir)
+		if (file_path_is_relative(output_static))
 		{
-			create_output_dir(compiler.build.output_dir);
 			output_static = file_append_path(compiler.build.output_dir, output_static);
 		}
 		file_create_folders(output_static);
@@ -799,9 +838,8 @@ void compiler_compile(void)
 	}
 	else if (output_dynamic)
 	{
-		if (compiler.build.output_dir)
+		if (file_path_is_relative(output_dynamic))
 		{
-			create_output_dir(compiler.build.output_dir);
 			output_dynamic = file_append_path(compiler.build.output_dir, output_dynamic);
 		}
 		file_create_folders(output_dynamic);
@@ -825,8 +863,8 @@ INLINE void expand_csources(const char *base_dir, const char **source_dirs, cons
 {
 	if (source_dirs)
 	{
-		static const char* c_suffix_list[3] = { ".c" };
-		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, NULL, 1, false);
+		static const char* c_suffix_list[3] = { ".c", ".m" };
+		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, NULL, 2, false);
 	}
 }
 
@@ -867,9 +905,9 @@ void compile_file_list(BuildOptions *options)
 		{
 			error_exit("The target is a 'prepare' target, and only 'build' can be used with it.");
 		}
-		OUTF("] Running prepare target '%s'.\n", options->target_select);
+		OUTF("Running prepare target '%s'.\n", options->target_select);
 		execute_scripts();
-		OUTF("] Completed.\n.");
+		OUTN("Completed.\n.");
 		return;
 	}
 	if (options->command == COMMAND_CLEAN_RUN)
@@ -893,7 +931,7 @@ static void setup_int_define(const char *id, uint64_t i, Type *type)
 {
 	Type *flat = type_flatten(type);
 	ASSERT(type_is_integer(flat));
-	Expr *expr = expr_new_const_int(INVALID_SPAN, flat, i);
+	Expr *expr = expr_new_const_int(0, flat, i);
 	expr->type = type;
 	if (expr_const_will_overflow(&expr->const_expr, flat->type_kind))
 	{
@@ -904,12 +942,12 @@ static void setup_int_define(const char *id, uint64_t i, Type *type)
 
 static void setup_string_define(const char *id, const char *value)
 {
-	setup_define(id, expr_new_const_string(INVALID_SPAN, value));
+	setup_define(id, expr_new_const_string(0, value));
 }
 
 static void setup_bool_define(const char *id, bool value)
 {
-	setup_define(id, expr_new_const_bool(INVALID_SPAN, type_bool, value));
+	setup_define(id, expr_new_const_bool(0, type_bool, value));
 }
 
 bool use_ansi(void)
@@ -930,7 +968,7 @@ bool use_ansi(void)
 #endif
 }
 
-#if FETCH_AVAILABLE
+
 const char * vendor_fetch_single(const char* lib, const char* path) 
 {
 	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
@@ -957,6 +995,11 @@ void update_progress_bar(const char* lib, int current_step, int total_steps)
 
 void vendor_fetch(BuildOptions *options)
 {
+	if (!download_available())
+	{
+		error_exit("The 'vendor-fetch' command requires libcurl to download libraries.\n"
+				   "Please ensure libcurl is installed on your system.");
+	}
 	bool ansi = use_ansi();
 
 	if (str_eq(options->path, DEFAULT_PATH))
@@ -974,6 +1017,50 @@ void vendor_fetch(BuildOptions *options)
 	const char** fetched_libraries = NULL;
 	int total_libraries = (int)vec_size(options->libraries_to_fetch);
 	
+	if (total_libraries == 0)
+	{
+		const char *tmp_dir = dir_make_temp_dir();
+		const char *tmp_file = file_append_path(tmp_dir, "vendor_list.json");
+		const char *error = download_file("https://api.github.com", "/repos/c3lang/vendor/contents/libraries/", tmp_file);
+		if (error)
+		{
+			error_exit("Failed to fetch library list: %s", error);
+		}
+
+		size_t size;
+		char *json_str = file_read_all(tmp_file, &size);
+		JsonParser parser;
+		json_init_string(&parser, json_str);
+		JSONObject *obj = json_parse(&parser);
+		if (!obj || obj->type != J_ARRAY)
+		{
+			error_exit("Failed to parse library list.");
+		}
+
+		printf("Available vendor libraries:\n");
+		FOREACH(JSONObject *, entry, obj->elements)
+		{
+			JSONObject *name = json_map_get(entry, "name");
+			JSONObject *type = json_map_get(entry, "type");
+			if (name && type && str_eq(type->str, "dir"))
+			{
+				const char *n = name->str;
+				if (n[0] == '.') continue;
+				if (str_has_suffix(n, ".c3l"))
+				{
+					printf("  %s\n", str_remove_suffix(n, ".c3l"));
+				}
+				else
+				{
+					printf("  %s\n", n);
+				}
+			}
+		}
+		file_delete_file(tmp_file);
+		file_delete_dir(tmp_dir);
+		return;
+	}
+
 	for(int i = 0; i < total_libraries; i++)
 	{
 		const char *lib = options->libraries_to_fetch[i];
@@ -1025,12 +1112,7 @@ void vendor_fetch(BuildOptions *options)
 
 	if (ansi) printf("\033[32mFetching complete.\033[0m\t\t\n");
 }
-#else
-void vendor_fetch(BuildOptions *options)
-{
-	error_exit("Error: vendor-fetch only available when compiled with cURL.");
-}
-#endif
+
 
 void print_syntax(BuildOptions *options)
 {
@@ -1137,8 +1219,8 @@ void print_syntax(BuildOptions *options)
 		puts(" 8. Relational | < > <= >= == !=");
 		puts(" 9. And        | && &&&");
 		puts("10. Or         | || |||");
-		puts("11. Ternary    | ?: ??");
-		puts("12. Assign     | = *= /= %= -= += |= &= ^= <<= >>=");
+		puts("11. Ternary    | ?: ?? ???");
+		puts("12. Assign     | = *= /= %= -= += |= &= ^= <<= >>= +++=");
 	}
 
 }
@@ -1172,6 +1254,7 @@ static int jump_buffer_size()
 			// Godbolt test
 			return 25;
 		case FREEBSD_X64:
+		case NETBSD_AARCH64:
 		case NETBSD_X64:
 		case OPENBSD_X64:
 			REMINDER("Guessing setjmp for platform.");
@@ -1218,6 +1301,7 @@ void execute_scripts(void)
 			error_exit("Failed to open script dir '%s'", compiler.build.script_dir);
 		}
 	}
+	double start = bench_mark();
 	FOREACH(const char *, exec, compiler.build.exec)
 	{
 		StringSlice execs = slice_from_string(exec);
@@ -1243,6 +1327,7 @@ PRINT_SCRIPT:;
 		}
 	}
 	dir_change(old_path);
+	compiler.script_time += bench_mark() - start;
 }
 
 static void check_address_sanitizer_options(BuildTarget *target)
@@ -1258,7 +1343,13 @@ static void check_address_sanitizer_options(BuildTarget *target)
 			WinCrtLinking crt_linking = target->win.crt_linking;
 			if (crt_linking == WIN_CRT_DEFAULT)
 			{
-				error_exit("Please specify `static` or `dynamic` for `wincrt` when using address sanitizer.");
+				// Default to dynamic, as static ASan is removed in LLVM 21+ for Windows
+				target->win.crt_linking = WIN_CRT_DYNAMIC;
+				crt_linking = WIN_CRT_DYNAMIC;
+			}
+			else if (crt_linking == WIN_CRT_STATIC)
+			{
+				error_exit("Address sanitizer on Windows no longer supports static CRT linking (`--wincrt=static`). Please use `dynamic`.");
 			}
 
 			if (crt_linking == WIN_CRT_STATIC_DEBUG || crt_linking == WIN_CRT_DYNAMIC_DEBUG)
@@ -1418,9 +1509,9 @@ void compile()
 	// Create the core module if needed.
 	Path *core_path = MALLOCS(Path);
 	core_path->module = kw_std__core;
-	core_path->span = INVALID_SPAN;
+	core_path->loc = 0;
 	core_path->len = strlen(kw_std__core);
-	compiler.context.core_module = compiler_find_or_create_module(core_path, NULL);
+	compiler.context.core_module = compiler_find_or_create_module(core_path);
 	CompilationUnit *unit = CALLOCS(CompilationUnit);
 	unit->file = source_file_generate("core_internal.c3");
 	unit->module = compiler.context.core_module;
@@ -1429,6 +1520,11 @@ void compile()
 	if (compiler.context.should_print_environment)
 	{
 		print_build_env();
+		exit_compiler(COMPILER_SUCCESS_EXIT);
+	}
+	if (compiler.context.should_print_asm)
+	{
+		print_asm(&compiler.platform);
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 	check_sanitizer_options(&compiler.build);
@@ -1459,17 +1555,22 @@ void compile()
 	setup_int_define("ARCH_TYPE", (uint64_t)compiler.platform.arch, type_int);
 	setup_int_define("MEMORY_ENVIRONMENT", (uint64_t)compiler.build.memory_environment, type_int);
 	setup_bool_define("COMPILER_LIBC_AVAILABLE", link_libc());
+	setup_bool_define("CUSTOM_LIBC", custom_libc());
 	setup_int_define("COMPILER_OPT_LEVEL", (uint64_t)compiler.build.optlevel, type_int);
 	setup_int_define("OS_TYPE", (uint64_t)compiler.platform.os, type_int);
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)compiler.build.optsize, type_int);
 	setup_bool_define("COMPILER_SAFE_MODE", safe_mode_enabled());
 	setup_bool_define("DEBUG_SYMBOLS", compiler.build.debug_info == DEBUG_INFO_FULL);
+	setup_bool_define("PANIC_MSG", compiler.build.feature.panic_level != PANIC_OFF);
 	setup_bool_define("BACKTRACE", compiler.build.show_backtrace != SHOW_BACKTRACE_OFF);
 #if LLVM_AVAILABLE
     setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
 #else 
     setup_int_define("LLVM_VERSION", 0, type_int);
 #endif
+
+	setup_string_define("VERSION", COMPILER_VERSION);
+	setup_bool_define("PRERELEASE", PRERELEASE);
 
     setup_bool_define("BENCHMARKING", compiler.build.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);
@@ -1480,7 +1581,23 @@ void compile()
 	setup_bool_define("THREAD_SANITIZER", compiler.build.feature.sanitize_thread);
 	setup_string_define("BUILD_HASH", GIT_HASH);
 	setup_string_define("BUILD_DATE", compiler_date_to_iso());
-
+	Expr *expr_names = expr_new(EXPR_CONST, 0);
+	Expr *expr_emails = expr_new(EXPR_CONST, 0);
+	expr_names->const_expr.const_kind = CONST_UNTYPED_LIST;
+	expr_emails->const_expr.const_kind = CONST_UNTYPED_LIST;
+	expr_names->type = type_untypedlist;
+	expr_emails->type = type_untypedlist;
+	expr_names->resolve_status = expr_emails->resolve_status = RESOLVE_DONE;
+	FOREACH(AuthorEntry, entry, compiler.build.authors)
+	{
+		Expr *const_name = expr_new_const_string(0, entry.author); // NOLINT
+		Expr *const_email = expr_new_const_string(0, entry.email ? entry.email : ""); // NOLINT
+		vec_add(expr_names->const_expr.untyped_list, const_name);
+		vec_add(expr_emails->const_expr.untyped_list, const_email);
+	}
+	setup_define("AUTHORS", expr_names);
+	setup_define("AUTHOR_EMAILS", expr_emails);
+	setup_string_define("PROJECT_VERSION", compiler.build.version);
 	type_init_cint();
 	compiler_init_time = bench_mark();
 
@@ -1502,18 +1619,10 @@ void compile()
 	compiler_compile();
 }
 
-
-
-
 void global_context_add_decl(Decl *decl)
 {
 	decltable_set(&compiler.context.symbols, decl);
 	pathtable_set(&compiler.context.path_symbols, decl);
-}
-
-void global_context_add_generic_decl(Decl *decl)
-{
-	decltable_set(&compiler.context.generic_symbols, decl);
 }
 
 void linking_add_link(Linking *linking, const char *link)
@@ -1559,7 +1668,7 @@ Module *global_context_find_module(const char *name)
 	return htable_get(&compiler.context.modules, (void *)name);
 }
 
-Module *compiler_find_or_create_module(Path *module_name, const char **parameters)
+Module *compiler_find_or_create_module(Path *module_name)
 {
 	Module *module = global_context_find_module(module_name->module);
 	if (module) return module;
@@ -1568,6 +1677,7 @@ Module *compiler_find_or_create_module(Path *module_name, const char **parameter
 	// Set up the module.
 	module = CALLOCS(Module);
 	module->name = module_name;
+	module->inlined_at = (InliningSpan) { 0, NULL };
 	size_t first = 0;
 	for (size_t i = module_name->len; i > 0; i--)
 	{
@@ -1589,19 +1699,9 @@ Module *compiler_find_or_create_module(Path *module_name, const char **parameter
 		module->short_path = symtab_add(name, len, fnv1a(name, len), &type);
 	}
 	module->stage = ANALYSIS_NOT_BEGUN;
-	module->parameters = parameters;
-	module->is_generic = vec_size(parameters) > 0;
 	htable_init(&module->symbols, 0x1000);
 	htable_set(&compiler.context.modules, (void *)module_name->module, module);
-	if (parameters)
-	{
-		vec_add(compiler.context.generic_module_list, module);
-	}
-	else
-	{
-		vec_add(compiler.context.module_list, module);
-	}
-
+	vec_add(compiler.context.module_list, module);
 	return module;
 }
 
@@ -1715,6 +1815,12 @@ const char *default_c_compiler(void)
 		return cc;
 	}
 #if PLATFORM_WINDOWS
+	WindowsSDK *sdk = windows_get_sdk();
+
+	if (sdk && sdk->cl_path)
+	{
+		return cc = sdk->cl_path;
+	}
 	return cc = "cl.exe";
 #else
 	return cc = "cc";
@@ -1732,8 +1838,10 @@ static bool is_posix(OsType os)
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_LINUX:
 		case OS_TYPE_KFREEBSD:
-		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FREEBSD:
+		case OS_TYPE_OPENBSD:
 		case OS_TYPE_SOLARIS:
+		case OS_TYPE_ANDROID:
 			return true;
 		case OS_TYPE_WIN32:
 		case OS_TYPE_WASI:

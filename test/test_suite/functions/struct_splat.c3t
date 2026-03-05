@@ -1,0 +1,137 @@
+// #target: macos-x64
+module test;
+import std;
+
+struct Foo
+{
+	int a;
+	double b;
+}
+
+struct Bar
+{
+	int x;
+	Foo f;
+}
+fn void test(int x, double y)
+{
+	io::printfn("%s %s", x, y);
+}
+
+fn void test2(int x, Foo f)
+{
+	io::printfn("%s {%s %s}", x, f.a, f.b);
+}
+
+fn int main()
+{
+	Foo f = { 42, 3.14};
+	test(...f);
+	test(...(Foo){ 43, 3.15 });
+	test(...(Foo){ });
+	test2(...(Bar){ });
+	test2(...(Bar){ 42, {} });
+	test2(...(Bar){ 42, { .b = 4.5 } });
+	test2(...(Bar){ .f = { .b = 4.5 } });
+	Bar z = { 100, f };
+	test2(...z);
+	Bar z2 = { 100, { ...f }};
+	f = { ...f };
+	return 0;
+}
+
+/* #expect: test.ll
+
+
+%.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
+%Foo = type { i32, double }
+%any = type { ptr, i64 }
+%Bar = type { i32, %Foo }
+
+@"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Bar" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@.str = private unnamed_addr constant [6 x i8] c"%s %s\00", align 1
+@"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.double" = linkonce global %.introspect { i8 4, i64 0, ptr null, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@.str.1 = private unnamed_addr constant [11 x i8] c"%s {%s %s}\00", align 1
+@.__const = private unnamed_addr constant %Foo { i32 42, double 3.140000e+00 }, align 8
+
+define i32 @main() #0 {
+entry:
+  %f = alloca %Foo, align 8
+  %.anon = alloca %Foo, align 8
+  %literal = alloca %Foo, align 8
+  %literal3 = alloca %Foo, align 8
+  %literal8 = alloca %Foo, align 8
+  %literal13 = alloca %Foo, align 8
+  %z = alloca %Bar, align 8
+  %.anon19 = alloca %Bar, align 8
+  %z2 = alloca %Bar, align 8
+  %.anon25 = alloca %Foo, align 8
+  %.assign_list = alloca %Foo, align 8
+  %.anon28 = alloca %Foo, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %f, ptr align 8 @.__const, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.anon, ptr align 8 %f, i32 16, i1 false)
+  %ptradd = getelementptr inbounds i8, ptr %.anon, i64 8
+  %0 = load i32, ptr %.anon, align 8
+  %1 = load double, ptr %ptradd, align 8
+  call void @test.test(i32 %0, double %1)
+  call void @test.test(i32 43, double 3.150000e+00)
+  call void @test.test(i32 0, double 0.000000e+00)
+  store i32 0, ptr %literal, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %literal, i64 8
+  store double 0.000000e+00, ptr %ptradd1, align 8
+  %lo = load i32, ptr %literal, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %literal, i64 8
+  %hi = load double, ptr %ptradd2, align 8
+  call void @test.test2(i32 0, i32 %lo, double %hi)
+  store i32 0, ptr %literal3, align 8
+  %ptradd4 = getelementptr inbounds i8, ptr %literal3, i64 8
+  store double 0.000000e+00, ptr %ptradd4, align 8
+  %lo5 = load i32, ptr %literal3, align 8
+  %ptradd6 = getelementptr inbounds i8, ptr %literal3, i64 8
+  %hi7 = load double, ptr %ptradd6, align 8
+  call void @test.test2(i32 42, i32 %lo5, double %hi7)
+  store i32 0, ptr %literal8, align 8
+  %ptradd9 = getelementptr inbounds i8, ptr %literal8, i64 8
+  store double 4.500000e+00, ptr %ptradd9, align 8
+  %lo10 = load i32, ptr %literal8, align 8
+  %ptradd11 = getelementptr inbounds i8, ptr %literal8, i64 8
+  %hi12 = load double, ptr %ptradd11, align 8
+  call void @test.test2(i32 42, i32 %lo10, double %hi12)
+  store i32 0, ptr %literal13, align 8
+  %ptradd14 = getelementptr inbounds i8, ptr %literal13, i64 8
+  store double 4.500000e+00, ptr %ptradd14, align 8
+  %lo15 = load i32, ptr %literal13, align 8
+  %ptradd16 = getelementptr inbounds i8, ptr %literal13, i64 8
+  %hi17 = load double, ptr %ptradd16, align 8
+  call void @test.test2(i32 0, i32 %lo15, double %hi17)
+  store i32 100, ptr %z, align 8
+  %ptradd18 = getelementptr inbounds i8, ptr %z, i64 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %ptradd18, ptr align 8 %f, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.anon19, ptr align 8 %z, i32 24, i1 false)
+  %ptradd20 = getelementptr inbounds i8, ptr %.anon19, i64 8
+  %2 = load i32, ptr %.anon19, align 8
+  %lo21 = load i32, ptr %ptradd20, align 8
+  %ptradd22 = getelementptr inbounds i8, ptr %ptradd20, i64 8
+  %hi23 = load double, ptr %ptradd22, align 8
+  call void @test.test2(i32 %2, i32 %lo21, double %hi23)
+  store i32 100, ptr %z2, align 8
+  %ptradd24 = getelementptr inbounds i8, ptr %z2, i64 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.anon25, ptr align 8 %f, i32 16, i1 false)
+  %3 = load i32, ptr %.anon25, align 8
+  store i32 %3, ptr %ptradd24, align 8
+  %ptradd26 = getelementptr inbounds i8, ptr %ptradd24, i64 8
+  %ptradd27 = getelementptr inbounds i8, ptr %.anon25, i64 8
+  %4 = load double, ptr %ptradd27, align 8
+  store double %4, ptr %ptradd26, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.anon28, ptr align 8 %f, i32 16, i1 false)
+  %5 = load i32, ptr %.anon28, align 8
+  store i32 %5, ptr %.assign_list, align 8
+  %ptradd29 = getelementptr inbounds i8, ptr %.assign_list, i64 8
+  %ptradd30 = getelementptr inbounds i8, ptr %.anon28, i64 8
+  %6 = load double, ptr %ptradd30, align 8
+  store double %6, ptr %ptradd29, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %f, ptr align 8 %.assign_list, i32 16, i1 false)
+  ret i32 0
+}

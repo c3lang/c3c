@@ -1,0 +1,14 @@
+// #target: macos-x64
+module test;
+struct Abc
+{
+	int a;
+	int b;
+}
+const Abc X = { 2, (int)(iptr)Z };
+const Z = &X.b;
+
+/* #expect: test.ll
+
+@test.X = constant %Abc { i32 2, i32 ptrtoint (ptr getelementptr inbounds (i8, ptr @test.X, i64 4) to i32) }, align 4
+@test.Z = local_unnamed_addr constant ptr getelementptr inbounds (i8, ptr @test.X, i64 4), align 8

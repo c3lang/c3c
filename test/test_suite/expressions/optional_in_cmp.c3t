@@ -1,0 +1,144 @@
+// #target: macos-x64
+module test;
+faultdef FOO_FAULT;
+macro bool? maybe_throw() => FOO_FAULT~;
+macro int? maybe_throw_int() => FOO_FAULT~;
+macro int[2]? maybe_throw_array() => FOO_FAULT~;
+macro int[<2>]? maybe_throw_vec() => FOO_FAULT~;
+macro int[]? maybe_throw_slice() => FOO_FAULT~;
+macro float? maybe_throw_float() => FOO_FAULT~;
+macro void*? maybe_throw_ptr() => FOO_FAULT~;
+
+fn void? throwme1()
+{
+	bool x = maybe_throw()! == true;
+}
+
+fn void? throwme2()
+{
+	bool x = maybe_throw_int()! == 1;
+}
+
+fn void? throwme3()
+{
+	bool x = maybe_throw_array()! == (int[2]){};
+}
+
+fn void? throwme4()
+{
+	bool x = maybe_throw_slice()! == (int[]) {};
+}
+
+fn void? throwme5()
+{
+	bool x = maybe_throw_vec()! == (int[<2>]){};
+}
+
+fn void? throwme6()
+{
+	bool x = maybe_throw_float()! == 1.0;
+}
+
+fn void? throwme7()
+{
+	bool x = maybe_throw_ptr()! == null;
+}
+
+fn int main()
+{
+	(void)throwme1();
+	(void)throwme2();
+	(void)throwme3();
+	(void)throwme4();
+	(void)throwme5();
+	(void)throwme6();
+	(void)throwme7();
+ 	return 0;
+}
+
+/* #expect: test.ll
+
+define i64 @test.throwme1() #0 {
+entry:
+  %x = alloca i8, align 1
+  %error_var = alloca i64, align 8
+  store i64 ptrtoint (ptr @test.FOO_FAULT to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %0 = load i64, ptr %error_var, align 8
+  ret i64 %0
+}
+
+define i64 @test.throwme2() #0 {
+entry:
+  %x = alloca i8, align 1
+  %error_var = alloca i64, align 8
+  store i64 ptrtoint (ptr @test.FOO_FAULT to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %0 = load i64, ptr %error_var, align 8
+  ret i64 %0
+}
+
+define i64 @test.throwme3() #0 {
+entry:
+  %x = alloca i8, align 1
+  %error_var = alloca i64, align 8
+  store i64 ptrtoint (ptr @test.FOO_FAULT to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %0 = load i64, ptr %error_var, align 8
+  ret i64 %0
+}
+
+define i64 @test.throwme4() #0 {
+entry:
+  %x = alloca i8, align 1
+  %error_var = alloca i64, align 8
+  store i64 ptrtoint (ptr @test.FOO_FAULT to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %0 = load i64, ptr %error_var, align 8
+  ret i64 %0
+}
+
+define i64 @test.throwme5() #0 {
+entry:
+  %x = alloca i8, align 1
+  %error_var = alloca i64, align 8
+  store i64 ptrtoint (ptr @test.FOO_FAULT to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %0 = load i64, ptr %error_var, align 8
+  ret i64 %0
+}
+
+define i64 @test.throwme6() #0 {
+entry:
+  %x = alloca i8, align 1
+  %error_var = alloca i64, align 8
+  store i64 ptrtoint (ptr @test.FOO_FAULT to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %0 = load i64, ptr %error_var, align 8
+  ret i64 %0
+}
+
+define i64 @test.throwme7() #0 {
+entry:
+  %x = alloca i8, align 1
+  %error_var = alloca i64, align 8
+  store i64 ptrtoint (ptr @test.FOO_FAULT to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %0 = load i64, ptr %error_var, align 8
+  ret i64 %0
+}
+

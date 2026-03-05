@@ -1,0 +1,37 @@
+// #target: macos-x64
+module test;
+import std;
+
+fn void main()
+{
+	char[8] foo = {255, 0, 0, 0, 0, 0, 0, 0};
+	ulong a = to_ulong2(&foo);
+	ulong b = to_ulong(&foo);
+}
+
+fn ulong to_ulong(char[8]*) @naked @noinline
+{
+	asm
+	{
+		movq [$rsp - 8], $rdi;
+    	movq $rax, [$rsp - 8];
+    	movq $rax, [$rax];
+		ret;
+	}
+	unreachable();
+}
+
+fn ulong to_ulong2(char[8]* buf)
+{
+	return *(ulong*)buf;
+}
+
+
+/* #expect: test.ll
+
+define i64 @test.to_ulong(ptr %0) #1 {
+entry:
+  call void asm sideeffect alignstack "movq %rdi, -8(%rsp)\0Amovq -8(%rsp), %rax\0Amovq (%rax), %rax\0Aret \0A", "~{rax},~{flags},~{dirflag},~{fspr}"()
+  unreachable
+}
+attributes #1 = { naked noinline nounwind uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

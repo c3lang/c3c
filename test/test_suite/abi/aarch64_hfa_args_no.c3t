@@ -1,0 +1,77 @@
+// #target: macos-aarch64
+module test;
+alias Int8x16 = ichar[<16>];
+alias Float32x3 = float[<3>];
+
+struct HFAv3
+{
+    Float32x3[4] arr;
+}
+
+struct HFAv3arr
+{
+    float[3][4] arr;
+}
+
+struct MixedHFAv3
+{
+    Float32x3[3] arr;
+    Int8x16 b;
+}
+
+struct MixedHFAv3arr
+{
+    float[<3>][3] arr;
+    ichar[16] b;
+}
+
+fn HFAv3 test(HFAv3 a0, HFAv3 a1, HFAv3 a2)
+{
+	return a2;
+}
+
+fn HFAv3arr test_arr(HFAv3arr a0, HFAv3arr a1, HFAv3arr a2)
+{
+	return a2;
+}
+
+fn MixedHFAv3 test_mixed(MixedHFAv3 a0, MixedHFAv3 a1, MixedHFAv3 a2)
+{
+	return a2;
+}
+
+fn MixedHFAv3arr test_mixed_arr(MixedHFAv3arr a0, MixedHFAv3arr a1, MixedHFAv3arr a2)
+{
+	return a2;
+}
+
+fn int main()
+{
+	MixedHFAv3 a;
+	MixedHFAv3arr b;
+	Int8x16 c;
+	Float32x3 d;
+	return 0;
+}
+
+/* #expect: test.ll
+
+
+%HFAv3 = type { [4 x [3 x float]] }
+%HFAv3arr = type { [4 x [3 x float]] }
+%MixedHFAv3 = type { [3 x [3 x float]], [16 x i8] }
+%MixedHFAv3arr = type { [3 x [3 x float]], [16 x i8] }
+
+define void @test.test(ptr noalias sret(%HFAv3) align 4 %0, ptr align 4 %1, ptr align 4 %2, ptr align 4 %3) #0 {
+define void @test.test_arr(ptr noalias sret(%HFAv3arr) align 4 %0, ptr align 4 %1, ptr align 4 %2, ptr align 4 %3)
+define void @test.test_mixed(ptr noalias sret(%MixedHFAv3) align 4 %0, ptr align 4 %1, ptr align 4 %2, ptr align 4 %3)
+define void @test.test_mixed_arr(ptr noalias sret(%MixedHFAv3arr) align 4 %0, ptr align 4 %1, ptr align 4 %2, ptr align 4 %3)
+
+  %a = alloca %MixedHFAv3, align 4
+  %b = alloca %MixedHFAv3arr, align 4
+  %c = alloca <16 x i8>, align 16
+  %d = alloca <3 x float>, align 16
+  call void @llvm.memset.p0.i64(ptr align 4 %a, i8 0, i64 52, i1 false)
+  call void @llvm.memset.p0.i64(ptr align 4 %b, i8 0, i64 52, i1 false)
+  store <16 x i8> zeroinitializer, ptr %c, align 16
+  store <4 x float> <float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float undef>, ptr %d, align 16

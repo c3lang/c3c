@@ -16,7 +16,7 @@ fn void test1()
 
 %Point = type { i32, i32 }
 
-@"$ct.test.Point" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Point" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.__const = private unnamed_addr constant %Point { i32 5, i32 6 }, align 4
 
 define void @test.test1() #0 {

@@ -1,4 +1,4 @@
-module std::thread::channel {Type};
+module std::thread::channel <Type>;
 
 typedef UnbufferedChannel = void*;
 
@@ -28,30 +28,28 @@ fn void? UnbufferedChannel.init(&self, Allocator allocator)
 	channel.read_waiting = 0;
 
 	channel.mu.init()!;
-	defer catch (void)channel.mu.destroy();
+	defer catch channel.mu.destroy();
 	channel.send_mu.init()!;
-	defer catch (void)channel.send_mu.destroy();
+	defer catch channel.send_mu.destroy();
 	channel.send_cond.init()!;
-	defer catch (void)channel.send_cond.destroy();
+	defer catch channel.send_cond.destroy();
 	channel.read_mu.init()!;
-	defer catch (void)channel.read_mu.destroy();
+	defer catch channel.read_mu.destroy();
 	channel.read_cond.init()!;
 
 	*self = (UnbufferedChannel)channel;
 }
 
-fn void? UnbufferedChannel.destroy(&self)
+fn void? UnbufferedChannel.destroy(&self) @maydiscard // Remove optional in 0.8.0
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)(*self);
 
-	fault err = @catch(channel.mu.destroy());
-	err = @catch(channel.send_mu.destroy()) ?: err;
-	err = @catch(channel.send_cond.destroy()) ?: err;
-	err = @catch(channel.read_mu.destroy()) ?: err;
-	err = @catch(channel.read_cond.destroy()) ?: err;
+	channel.mu.destroy();
+	channel.send_mu.destroy();
+	channel.send_cond.destroy();
+	channel.read_mu.destroy();
+	channel.read_cond.destroy();
 	allocator::free(channel.allocator, channel);
-
-	if (err) return err?;
 
 	*self = null;
 }
@@ -60,14 +58,14 @@ fn void? UnbufferedChannel.push(self, Type val)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 
-	channel.mu.lock()!;
-	defer catch (void)channel.mu.unlock();
-	channel.send_mu.lock()!;
-	defer catch (void)channel.send_mu.unlock();
+	channel.mu.lock();
+	defer catch channel.mu.unlock();
+	channel.send_mu.lock();
+	defer catch channel.send_mu.unlock();
 
 	if (channel.closed)
 	{
-		return thread::CHANNEL_CLOSED?;
+		return thread::CHANNEL_CLOSED~;
 	}
 
 	// store value in the buffer
@@ -78,61 +76,60 @@ fn void? UnbufferedChannel.push(self, Type val)
 	// if reader is already waiting for us -> awake him
 	if (channel.read_waiting > 0)
 	{
-		channel.read_cond.signal()!;
+		channel.read_cond.signal();
 	}
 
 	// wait until reader takes value from buffer
-	channel.send_cond.wait(&channel.mu)!;
+	channel.send_cond.wait(&channel.mu);
 
-	if (channel.closed) return thread::CHANNEL_CLOSED?;
+	if (channel.closed) return thread::CHANNEL_CLOSED~;
 
-	channel.mu.unlock()!;
-	channel.send_mu.unlock()!;
+	channel.mu.unlock();
+	channel.send_mu.unlock();
 }
 
 fn Type? UnbufferedChannel.pop(self)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 
-	channel.mu.lock()!;
-	defer catch (void)channel.mu.unlock();
-	channel.read_mu.lock()!;
-	defer catch (void)channel.read_mu.unlock();
+	channel.mu.lock();
+	defer catch channel.mu.unlock();
+	channel.read_mu.lock();
+	defer catch channel.read_mu.unlock();
 
 	// if no one is waiting, then there is nothing in the buffer
 	while (!channel.closed && channel.send_waiting == 0)
 	{
 		channel.read_waiting++;
-		channel.read_cond.wait(&channel.mu)!;
+		channel.read_cond.wait(&channel.mu);
 		channel.read_waiting--;
 	}
 
-	if (channel.closed) return thread::CHANNEL_CLOSED?;
+	if (channel.closed) return thread::CHANNEL_CLOSED~;
 
 	// take value from buffer
 	Type ret = channel.buf;
 
 	// awake sender
 	channel.send_waiting--;
-	channel.send_cond.signal()!;
+	channel.send_cond.signal();
 
-	channel.mu.unlock()!;
-	channel.read_mu.unlock()!;
+	channel.mu.unlock();
+	channel.read_mu.unlock();
 
 	return ret;
 }
 
-fn void? UnbufferedChannel.close(self)
+fn void? UnbufferedChannel.close(self) @maydiscard // Remove optional in 0.8.0
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 
-	fault err = @catch(channel.mu.lock());
+	channel.mu.lock();
 
 	channel.closed = true;
 
-	err = @catch(channel.read_cond.broadcast()) ?: err;
-	err = @catch(channel.send_cond.broadcast()) ?: err;
-	err = @catch(channel.mu.unlock()) ?: err;
+	channel.read_cond.broadcast();
+	channel.send_cond.broadcast();
+	channel.mu.unlock();
 
-	if (err) return err?;
 }

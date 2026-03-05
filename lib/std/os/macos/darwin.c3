@@ -37,7 +37,7 @@ const HW_L3CACHESIZE	= 22; /* int: L3 Cache Size in Bytes */
 const HW_MAXID			= 23; /* number of valid hw ids */
 
 extern fn CInt sysctl(CInt *name, CUInt namelen, void *oldp, usz *oldlenp, void *newp, usz newlen);
-extern fn CInt darwin_NSGetExecutablePath(char* buffer, uint *size) @extern("_NSGetExecutablePath") @builtin;
+extern fn CInt darwin_NSGetExecutablePath(char* buffer, uint *size) @cname("_NSGetExecutablePath") @builtin;
 extern fn Darwin_segment_command_64* getsegbyname(ZString segname);
 extern fn uint _dyld_image_count();
 extern fn ZString _dyld_get_image_name(uint image_index);
@@ -79,19 +79,26 @@ alias Darwin_mach_timebase_info_data_t = Darwin_mach_timebase_info;
 extern fn void mach_timebase_info(Darwin_mach_timebase_info_data_t* timebase);
 extern fn ulong mach_absolute_time();
 
-fn String? executable_path(Allocator allocator)
+fn String? executable_path()
 {
-	char[4096] path;
-	uint len = path.len;
-	if (darwin_NSGetExecutablePath(&path, &len) < 0) return NOT_FOUND?;
-	return ((ZString)&path).copy(allocator);
+	static char[4096] path;
+	static uint len = 0;
+	if (!len)
+	{
+		char[4096] buf;
+		uint temp_len = buf.len;
+    	if (darwin_NSGetExecutablePath(&buf, &temp_len) < 0) return NOT_FOUND~;
+    	len = (int)((ZString)&buf).len();
+    	path[:len] = buf[:len];
+    }
+    return (String)path[:len];
 }
 
 fn uptr? load_address() @local
 {
 	Darwin_segment_command_64* cmd = darwin::getsegbyname("__TEXT");
-	if (!cmd) return backtrace::SEGMENT_NOT_FOUND?;
-	String path = env::executable_path(tmem) ?? backtrace::EXECUTABLE_PATH_NOT_FOUND?!;
+	if (!cmd) return backtrace::SEGMENT_NOT_FOUND~;
+	String path = env::executable_path() ?? backtrace::EXECUTABLE_PATH_NOT_FOUND~!;
 	uint dyld_count = darwin::_dyld_image_count();
 	for (uint i = 0; i < dyld_count; i++)
 	{
@@ -100,26 +107,25 @@ fn uptr? load_address() @local
 		if (image_name.str_view() != path) continue;
 		return cmd.vmaddr + darwin::_dyld_get_image_vmaddr_slide(i);
 	}
-	return backtrace::IMAGE_NOT_FOUND?;
+	return backtrace::IMAGE_NOT_FOUND~;
 }
-
 
 fn Backtrace? backtrace_load_element(Allocator allocator, String execpath, void* buffer, void* load_address) @local
 {
-	@pool()
+	if (buffer)
 	{
-		if (buffer)
-		{
-			char* buf = tmalloc(1024);
-			String s = process::execute_stdout_to_buffer(buf[:1024],
-				{ "atos", "-o", execpath, "-arch", env::AARCH64 ? "arm64" : "x86_64", "-l",
-				string::tformat("%p", load_address),
-				string::tformat("%p", buffer - 1),
-				 "-fullPath" })!;
-			String[] parts = s.tsplit(" ");
+		char[1024] buf;
+		String s = process::execute_stdout_to_buffer(&buf,
+			{ "atos", "-o", execpath, "-arch", env::AARCH64 ? "arm64" : "x86_64", "-l",
+				string::bformat(&&(char[64]){}, "%p", load_address),
+				string::bformat(&&(char[64]){}, "%p", buffer - 1),
+		        "-fullPath" })!;
+		@stack_mem(2048; Allocator mem)
+        {
+			String[] parts = s.split(mem, " ", 5);
 			if (parts.len == 4)
 			{
-				String[] path_parts = parts[3].tsplit(":");
+				String[] path_parts = parts[3].split(mem, ":");
 				return {
 					.offset = (uptr)buffer,
 					.function = parts[0].copy(allocator),
@@ -129,17 +135,17 @@ fn Backtrace? backtrace_load_element(Allocator allocator, String execpath, void*
 					.allocator = allocator
 				};
 			}
-		}
-		Darwin_Dl_info info;
-		if (!buffer || !darwin::dladdr(buffer, &info)) return backtrace::BACKTRACE_UNKNOWN;
-		return {
-			.offset = (uptr)buffer,
-			.function = info.dli_sname ? info.dli_sname.copy(allocator) : "???".copy(allocator),
-			.object_file = info.dli_fname.copy(allocator),
-			.file = "".copy(allocator),
-			.line = 0,
-			.allocator = allocator
 		};
+	}
+	Darwin_Dl_info info;
+	if (!buffer || !darwin::dladdr(buffer, &info)) return backtrace::BACKTRACE_UNKNOWN;
+	return {
+		.offset = (uptr)buffer,
+		.function = info.dli_sname ? info.dli_sname.copy(allocator) : "???".copy(allocator),
+		.object_file = info.dli_fname.copy(allocator),
+		.file = "".copy(allocator),
+		.line = 0,
+		.allocator = allocator
 	};
 }
 
@@ -156,14 +162,11 @@ fn BacktraceList? symbolize_backtrace(Allocator allocator, void*[] backtrace)
 		}
 		list.free();
 	}
-	@pool()
+	String execpath = executable_path()!;
+	foreach (addr : backtrace)
 	{
-		String execpath = executable_path(tmem)!;
-		foreach (addr : backtrace)
-		{
-			list.push(backtrace_load_element(allocator, execpath, addr, load_addr) ?? backtrace::BACKTRACE_UNKNOWN);
-		}
-	};
+		list.push(backtrace_load_element(allocator, execpath, addr, load_addr) ?? backtrace::BACKTRACE_UNKNOWN);
+	}
 	return list;
 }
 

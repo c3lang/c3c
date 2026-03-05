@@ -11,8 +11,8 @@ fn void main()
 
 %any = type { ptr, i64 }
 @"$ct.any$" = linkonce global %.introspect { i8 7, i64 0, ptr null, i64 16, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
-@"$ct.p$any$" = linkonce global %.introspect { i8 18, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.any$" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
-@"$ct.p$p$any$" = linkonce global %.introspect { i8 18, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.p$any$" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.p$any$" = linkonce global %.introspect { i8 19, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.any$" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.p$p$any$" = linkonce global %.introspect { i8 19, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.p$any$" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
 
 define void @foo.main() #0 {
 entry:

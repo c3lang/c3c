@@ -11,7 +11,7 @@ struct Bar
 
 fn void? test1() @maydiscard
 {
-    Bar? x = MY_VAL1?;
+    Bar? x = MY_VAL1~;
     Bar y = x!;
 }
 

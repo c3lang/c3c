@@ -19,7 +19,7 @@ fn void? canFail()
 {
     if (34 + 35 == 69)
     {
-        return BAD_STUFF?;
+        return BAD_STUFF~;
     }
 }
 

@@ -1,0 +1,29 @@
+// #target: macos-x64
+module test;
+import std;
+
+macro void @test($a)
+{
+	io::printn(@str_snakecase($a));
+	io::printn(@str_pascalcase($a));
+}
+fn void main()
+{
+	@test("abc deF");
+	@test("abc_def");
+	@test("AbcDef");
+	@test("parseHTTPResponse");
+	io::printn(@str_replace("hello dear! No fear, you are hear!", "ea", "ee", 1));
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [9 x i8] c"abc de_f\00", align 1
+@.str.1 = private unnamed_addr constant [7 x i8] c"AbcDef\00", align 1
+@.str.2 = private unnamed_addr constant [8 x i8] c"abc_def\00", align 1
+@.str.3 = private unnamed_addr constant [7 x i8] c"AbcDef\00", align 1
+@.str.4 = private unnamed_addr constant [8 x i8] c"abc_def\00", align 1
+@.str.5 = private unnamed_addr constant [7 x i8] c"Abcdef\00", align 1
+@.str.6 = private unnamed_addr constant [20 x i8] c"parse_http_response\00", align 1
+@.str.7 = private unnamed_addr constant [18 x i8] c"Parsehttpresponse\00", align 1
+@.str.8 = private unnamed_addr constant [35 x i8] c"hello deer! No fear, you are hear!\00", align 1

@@ -2,6 +2,9 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
+#include <iso646.h>
+#include <math.h>
+
 #include "compiler_internal.h"
 
 static inline bool expr_list_is_constant_eval(Expr **exprs);
@@ -139,7 +142,7 @@ bool expr_is_zero(Expr *expr)
 		case CONST_BOOL:
 			return !expr->const_expr.b;
 		case CONST_ENUM:
-			return !expr->const_expr.enum_val->enum_constant.ordinal;
+			return !expr->const_expr.enum_val->enum_constant.inner_ordinal;
 		case CONST_BYTES:
 		case CONST_STRING:
 		{
@@ -197,8 +200,6 @@ bool expr_may_addr(Expr *expr)
 			decl = decl_raw(decl);
 			switch (decl->var.kind)
 			{
-				case VARDECL_LOCAL_CT:
-				case VARDECL_LOCAL_CT_TYPE:
 				case VARDECL_LOCAL:
 				case VARDECL_GLOBAL:
 				case VARDECL_PARAM:
@@ -208,6 +209,8 @@ bool expr_may_addr(Expr *expr)
 				case VARDECL_BITMEMBER:
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM_CT_TYPE:
+				case VARDECL_LOCAL_CT:
+				case VARDECL_LOCAL_CT_TYPE:
 				case VARDECL_PARAM_EXPR:
 					return false;
 				case VARDECL_UNWRAPPED:
@@ -352,6 +355,7 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_VECTOR_TO_ARRAY:
 		case EXPR_SLICE_TO_VEC_ARRAY:
 		case EXPR_SCALAR_TO_VECTOR:
+		case EXPR_MAYBE_DEREF:
 			return expr_is_runtime_const(expr->inner_expr);
 		case EXPR_MAKE_SLICE:
 			expr = expr->make_slice_expr.ptr;
@@ -375,7 +379,7 @@ bool expr_is_runtime_const(Expr *expr)
 			}
 			return exprid_is_runtime_const(expr->builtin_access_expr.inner);
 		case EXPR_INT_TO_BOOL:
-			return expr_is_runtime_const(expr->int_to_bool_expr.inner);
+			return expr_is_const(expr->int_to_bool_expr.inner);
 		case EXPR_EXT_TRUNC:
 			return expr_is_runtime_const(expr->ext_trunc_expr.inner);
 		case EXPR_CONST:
@@ -417,7 +421,7 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_INITIALIZER_LIST:
 			return expr_list_is_constant_eval(expr->initializer_list);
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
-			return expr_list_is_constant_eval(expr->designated_init_list);
+			return (!expr->designated_init.splat || expr_is_const(expr->designated_init.splat)) && expr_list_is_constant_eval(expr->designated_init.list);
 		case EXPR_SLICE:
 			if (!exprid_is_runtime_const(expr->slice_expr.expr)) return false;
 			return expr->slice_expr.range.range_type == RANGE_CONST_RANGE;
@@ -448,7 +452,7 @@ bool expr_is_runtime_const(Expr *expr)
 			}
 			goto RETRY;
 		case EXPR_TERNARY:
-			ASSERT(!exprid_is_runtime_const(expr->ternary_expr.cond));
+			ASSERT(!exprid_is_runtime_const(expr->ternary_expr.cond) && !expr->ternary_expr.is_const);
 			return false;
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_LAST_FAULT:
@@ -481,12 +485,12 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_CT_CALL:
 		case EXPR_TYPEINFO:
 		case EXPR_HASH_IDENT:
-		case EXPR_CT_IDENT:
 		case EXPR_POISONED:
 		case EXPR_CT_ARG:
 		case EXPR_ASM:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_CONTRACT:
 			UNREACHABLE
 		case EXPR_NOP:
 			return true;
@@ -509,12 +513,14 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr)
 	// An address is never a constant value.
 	Expr *inner = expr->unary_expr.expr;
 	if (IS_OPTIONAL(inner)) return false;
+RETRY:;
 	switch (inner->expr_kind)
 	{
 		case UNRESOLVED_EXPRS:
 			UNREACHABLE
 		case EXPR_ACCESS_RESOLVED:
-			return expr_is_runtime_const(inner);
+			inner = inner->access_resolved_expr.parent;
+			goto RETRY;
 		case EXPR_CONST:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
@@ -574,25 +580,36 @@ Expr *expr_new_two(Expr *first, Expr *second)
 void expr_insert_addr(Expr *original)
 {
 	ASSERT(original->resolve_status == RESOLVE_DONE);
+	Type *type = original->type;
+	bool optional = type_is_optional(type);
+	Type *new_type = type_add_optional(type_get_ptr(type_no_optional(type)), optional);
 	if (original->expr_kind == EXPR_UNARY && original->unary_expr.operator == UNARYOP_DEREF)
 	{
 		*original = *original->unary_expr.expr;
+		original->type = new_type;
 		return;
 	}
 	Expr *inner = expr_copy(original);
 	original->expr_kind = EXPR_UNARY;
-	Type *inner_type = inner->type;
-	bool optional = type_is_optional(inner->type);
-	original->type = type_add_optional(type_get_ptr(type_no_optional(inner_type)), optional);
-	original->unary_expr.operator = UNARYOP_ADDR;
-	original->unary_expr.expr = inner;
+	original->type = new_type;
+	original->unary_expr = (ExprUnary) { .operator = UNARYOP_ADDR, .expr = inner, .no_wrap = false, .no_read = false };
+}
+
+Expr *expr_generated_local(Expr *assign, Decl **decl_ref)
+{
+	Decl *decl = decl_new_generated_var(assign->type, VARDECL_LOCAL, assign->loc);
+	Expr *expr_decl = expr_new(EXPR_DECL, decl->loc);
+	expr_decl->decl_expr = decl;
+	decl->var.init_expr = assign;
+	*decl_ref = decl;
+	return expr_decl;
 }
 
 Expr *expr_generate_decl(Decl *decl, Expr *assign)
 {
 	ASSERT(decl->decl_kind == DECL_VAR);
 	ASSERT(decl->var.init_expr == NULL);
-	Expr *expr_decl = expr_new(EXPR_DECL, decl->span);
+	Expr *expr_decl = expr_new(EXPR_DECL, decl->loc);
 	expr_decl->decl_expr = decl;
 	if (!assign) decl->var.no_init = true;
 	decl->var.init_expr = assign;
@@ -649,7 +666,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_VOID:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_WILDCARD:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case ALL_INTS:
 			expr_rewrite_const_int(expr, type, 0);
 			return;
@@ -671,6 +688,9 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			expr->const_expr.fault = NULL;
 			expr->resolve_status = RESOLVE_DONE;
 			break;
+		case TYPE_CONSTDEF:
+			expr_rewrite_const_int(expr, type, 0);
+			return;
 		case TYPE_ENUM:
 			expr->const_expr.const_kind = CONST_ENUM;
 			ASSERT(canonical->decl->resolve_status == RESOLVE_DONE);
@@ -678,25 +698,29 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			expr->resolve_status = RESOLVE_DONE;
 			break;
 		case TYPE_FUNC_RAW:
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
-			UNREACHABLE
+			UNREACHABLE_VOID
+		case TYPE_UNTYPED_LIST:
+			expr->const_expr.const_kind = CONST_UNTYPED_LIST;
+			expr->const_expr.untyped_list = NULL;
+			expr->resolve_status = RESOLVE_DONE;
+			break;
 		case TYPE_SLICE:
 			expr_rewrite_const_empty_slice(expr, type);
 			return;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
-		case TYPE_VECTOR:
 		case TYPE_ARRAY:
+		case VECTORS:
 			expr_rewrite_const_initializer(expr, type, const_init_new_zero(type));
 			return;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			expr_rewrite_to_const_zero(expr, canonical->decl->distinct->type);
 			break;
 	}
@@ -723,7 +747,7 @@ Expr *expr_from_const_expr_at_index(Expr *expr, ArrayIndex index)
 		{
 			uint8_t c = expr_const->bytes.ptr[index];
 			Type *indexed = type_get_indexed_type(expr->type);
-			return expr_new_const_int(expr->span, indexed, c);
+			return expr_new_const_int(expr->loc, indexed, c);
 		}
 		case CONST_UNTYPED_LIST:
 			return copy_expr_single(expr_const->untyped_list[index]);
@@ -777,6 +801,7 @@ bool expr_is_pure(Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case UNRESOLVED_EXPRS:
+		case EXPR_CONTRACT:
 			UNREACHABLE
 		case EXPR_BUILTIN:
 		case EXPR_BENCHMARK_HOOK:
@@ -801,6 +826,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
+		case EXPR_MAYBE_DEREF:
 			return expr_is_pure(expr->inner_expr);
 		case EXPR_INT_TO_BOOL:
 			return expr_is_pure(expr->int_to_bool_expr.inner);
@@ -821,7 +847,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_IS_CONST:
 		case EXPR_CT_EVAL:
-		case EXPR_CT_IDENT:
 		case EXPR_IDENTIFIER:
 		case EXPR_LAMBDA:
 		case EXPR_NOP:
@@ -901,6 +926,8 @@ bool expr_is_pure(Expr *expr)
 			if (!exprid_is_pure(expr->slice_expr.expr)) return false;
 			switch (expr->slice_expr.range.range_type)
 			{
+				case RANGE_SINGLE_ELEMENT:
+					UNREACHABLE
 				case RANGE_CONST_RANGE:
 					return true;
 				case RANGE_CONST_END:
@@ -997,20 +1024,44 @@ bool expr_is_simple(Expr *expr, bool to_float)
 	UNREACHABLE
 }
 
-
-Expr *expr_new(ExprKind kind, SourceSpan start)
+Expr *expr_new_binary(SourceLocId loc, Expr *left, Expr *right, BinaryOp op)
 {
 	Expr *expr = expr_calloc();
-	expr->expr_kind = kind;
-	expr->span = start;
+	expr->expr_kind = EXPR_BINARY;
+	expr->loc = loc;
+	expr->binary_expr.operator = op;
+	expr->binary_expr.left = exprid(left);
+	expr->binary_expr.right = exprid(right);
 	return expr;
 }
 
-Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v)
+Expr *expr_new_cond(Expr *expr)
+{
+	Expr *cond = expr_new(EXPR_COND, expr->loc);
+	vec_add(cond->cond_expr, expr);
+	return cond;
+}
+
+Expr *expr_new_loc(ExprKind kind, SourceLoc *start)
+{
+	Expr *expr = expr_calloc();
+	expr->expr_kind = kind;
+	expr->loc = make_loc(*start);
+	return expr;
+}
+Expr *expr_new(ExprKind kind, SourceLocId start)
+{
+	Expr *expr = expr_calloc();
+	expr->expr_kind = kind;
+	expr->loc = start;
+	return expr;
+}
+
+Expr *expr_new_const_int(SourceLocId loc, Type *type, uint64_t v)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_CONST;
-	expr->span = span;
+	expr->loc = loc;
 	expr->type = type;
 	TypeKind kind = type_flatten(type)->type_kind;
 	expr->const_expr.ixx.i.high = 0;
@@ -1026,11 +1077,11 @@ Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v)
 	return expr;
 }
 
-Expr *expr_new_const_typeid(SourceSpan span, Type *type)
+Expr *expr_new_const_typeid(SourceLocId loc, Type *type)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_CONST;
-	expr->span = span;
+	expr->loc = loc;
 	expr->type = type_typeid;
 	expr->const_expr.const_kind = CONST_TYPEID;
 	expr->const_expr.typeid = type;
@@ -1038,21 +1089,21 @@ Expr *expr_new_const_typeid(SourceSpan span, Type *type)
 	return expr;
 }
 
-Expr *expr_new_expr_list_resolved(SourceSpan span, Type *type, Expr **expressions)
+Expr *expr_new_expr_list_resolved(SourceLocId loc, Type *type, Expr **expressions)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_EXPRESSION_LIST;
-	expr->span = span;
+	expr->loc = loc;
 	expr->type = type;
 	expr->resolve_status = RESOLVE_DONE;
 	expr->expression_list = expressions;
 	return expr;
 }
-Expr *expr_new_const_initializer(SourceSpan span, Type *type, ConstInitializer *initializer)
+Expr *expr_new_const_initializer(SourceLocId loc, Type *type, ConstInitializer *initializer)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_CONST;
-	expr->span = span;
+	expr->loc = loc;
 	expr->type = type;
 	expr->const_expr.initializer = initializer;
 	expr->const_expr.const_kind = CONST_INITIALIZER;
@@ -1060,11 +1111,11 @@ Expr *expr_new_const_initializer(SourceSpan span, Type *type, ConstInitializer *
 	return expr;
 }
 
-Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value)
+Expr *expr_new_const_bool(int loc, Type *type, bool value)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_CONST;
-	expr->span = span;
+	expr->loc = loc;
 	expr->type = type;
 	ASSERT(type_flatten(type)->type_kind == TYPE_BOOL);
 	expr->const_expr.b = value;
@@ -1073,11 +1124,11 @@ Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value)
 	return expr;
 }
 
-Expr *expr_new_const_null(SourceSpan span, Type *type)
+Expr *expr_new_const_null(SourceLocId loc, Type *type)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_CONST;
-	expr->span = span;
+	expr->loc = loc;
 	expr->type = type;
 	ASSERT(type_flatten(type)->type_kind == TYPE_POINTER);
 	expr->const_expr.ptr = 0;
@@ -1086,11 +1137,11 @@ Expr *expr_new_const_null(SourceSpan span, Type *type)
 	return expr;
 }
 
-Expr *expr_new_const_string(SourceSpan span, const char *string)
+Expr *expr_new_const_string(SourceLocId loc, const char *string)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_CONST;
-	expr->span = span;
+	expr->loc = loc;
 	expr->type = type_string;
 	expr->const_expr.const_kind = CONST_STRING;
 	expr->const_expr.bytes.ptr = string;
@@ -1113,11 +1164,11 @@ Expr *expr_variable(Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE)
 	{
-		Expr *expr = expr_new(EXPR_IDENTIFIER, decl->span);
+		Expr *expr = expr_new(EXPR_IDENTIFIER, decl->loc);
 		expr_resolve_ident(expr, decl);
 		return expr;
 	}
-	Expr *expr = expr_new(EXPR_UNRESOLVED_IDENTIFIER, decl->span);
+	Expr *expr = expr_new(EXPR_UNRESOLVED_IDENTIFIER, decl->loc);
 	expr->unresolved_ident_expr = (ExprUnresolvedIdentifier) { .ident = decl->name };
 	expr->resolve_status = RESOLVE_NOT_DONE;
 	return expr;
@@ -1145,6 +1196,6 @@ void expr_rewrite_const_string(Expr *expr_to_rewrite, const char *string)
 
 void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, BinaryOp op)
 {
-	expr_to_rewrite->binary_expr = (ExprBinary) { .operator = op, .left = exprid(left), .right = exprid(right) };
+	expr_to_rewrite->binary_expr = (ExprBinary) { .operator = op, .left = exprid(left), .right = exprid(right), .grouped = false };
 	expr_to_rewrite->expr_kind = EXPR_BINARY;
 }

@@ -174,7 +174,7 @@ static void json_parse_string(JsonParser *parser)
 	}
 
 
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 static inline void json_lexer_advance(JsonParser *parser)
@@ -256,7 +256,7 @@ static inline void json_lexer_advance(JsonParser *parser)
 			json_error(parser, "Unexpected symbol found.");
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
 static inline bool consume(JsonParser *parser, JSONTokenType token)
@@ -278,8 +278,6 @@ JSONObject *json_parse_array(JsonParser *parser)
 		return array;
 	}
 
-	size_t capacity = 16;
-	size_t index = 0;
 	while (1)
 	{
 		JSONObject *parsed = json_parse(parser);
@@ -337,6 +335,7 @@ void json_map_set(JSONObject *obj, const char *key, JSONObject *value)
 		if (str_eq(a_key, key))
 		{
 			obj->members[i] = value;
+			return;
 		}
 	}
 	vec_add(obj->members, value);

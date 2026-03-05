@@ -33,137 +33,156 @@ fn float128 f_fp_scalar_3(float128 x) { return x; }
 // Aggregates <= 2*xlen may be passed in registers, so will be coerced to
 // integer arguments. The rules for return are the same.
 
-struct Tiny {
-  char a, b, c, d;
+struct Tiny { char a, b, c, d; }
+
+fn void f_agg_tiny(Tiny x)
+{
+	x.a += x.b;
+	x.c += x.d;
 }
 
-fn void f_agg_tiny(Tiny x) {
-  x.a += x.b;
-  x.c += x.d;
+fn Tiny f_agg_tiny_ret()
+{
+	return {1, 2, 3, 4};
 }
 
-fn Tiny f_agg_tiny_ret() {
-  return {1, 2, 3, 4};
+typedef Char4 = char[<4>] @simd;
+
+fn void f_vec_tiny_v4i8(Char4 x)
+{
+	x[0] = x[1];
+	x[2] = x[3];
 }
 
-fn void f_vec_tiny_v4i8(char[<4>] x) {
-  x[0] = x[1];
-  x[2] = x[3];
+fn Char4 f_vec_tiny_v4i8_ret()
+{
+	return {1, 2, 3, 4};
 }
 
-fn char[<4>] f_vec_tiny_v4i8_ret() {
-  return {1, 2, 3, 4};
+typedef Int1 = int[<1>] @simd;
+
+fn void f_vec_tiny_v1i32(Int1 x)
+{
+	x[0] = 114;
 }
 
-fn void f_vec_tiny_v1i32(int[<1>] x) {
-  x[0] = 114;
+fn Int1 f_vec_tiny_v1i32_ret()
+{
+	return {1};
 }
 
-fn int[<1>] f_vec_tiny_v1i32_ret() {
-  return {1};
+struct Small
+{
+	int a;
+	int* b;
 }
 
-struct Small {
-  int a;
-   int* b;
+fn void f_agg_small(Small x)
+{
+	x.a += *x.b;
+	x.b = &x.a;
 }
 
-fn void f_agg_small(Small x) {
-  x.a += *x.b;
-  x.b = &x.a;
+fn Small f_agg_small_ret() { return {1, null}; }
+
+typedef Char8 = char[<8>] @simd;
+fn void f_vec_small_v8i8(Char8 x)
+{
+	x[0] = x[7];
 }
 
-fn Small f_agg_small_ret() {
-  return {1, null};
+fn Char8 f_vec_small_v8i8_ret()
+{
+	return {1, 2, 3, 4, 5, 6, 7, 8};
 }
 
-
-fn void f_vec_small_v8i8(char[<8>] x) {
-  x[0] = x[7];
+typedef Long1 = long[<1>] @simd;
+fn void f_vec_small_v1i64(Long1 x)
+{
+	x[0] = 114;
 }
 
-fn char[<8>] f_vec_small_v8i8_ret() {
-  return {1, 2, 3, 4, 5, 6, 7, 8};
-}
-
-fn void f_vec_small_v1i64(long[<1>] x) {
-  x[0] = 114;
-}
-
-fn long[<1>] f_vec_small_v1i64_ret() {
-  return {1};
+fn Long1 f_vec_small_v1i64_ret()
+{
+	return {1};
 }
 
 // Aggregates of 2*xlen size and 2*xlen alignment should be coerced to a
 // single 2*xlen-sized argument, to ensure that alignment can be maintained if
 // passed on the stack.
 
-struct Small_aligned {
-  long a;
+struct Small_aligned
+{
+	long a;
 }
 
-fn void f_agg_small_aligned(Small_aligned x) {
-  x.a += x.a;
+fn void f_agg_small_aligned(Small_aligned x)
+{
+	x.a += x.a;
 }
 
-fn Small_aligned f_agg_small_aligned_ret(Small_aligned x) {
-  return {10};
+fn Small_aligned f_agg_small_aligned_ret(Small_aligned x)
+{
+	return {10};
 }
 
 // Aggregates greater > 2*xlen will be passed and returned indirectly
-struct Large {
-  int a, b, c, d;
+struct Large
+{
+	int a, b, c, d;
 }
 
-fn void f_agg_large(Large x) {
-  x.a = x.b + x.c + x.d;
+fn void f_agg_large(Large x)
+{
+	x.a = x.b + x.c + x.d;
 }
 
 // The address where the struct should be written to will be the first
 // argument
-fn Large f_agg_large_ret(int i, ichar j) {
-  return {1, 2, 3, 4};
+fn Large f_agg_large_ret(int i, ichar j)
+{
+	return {1, 2, 3, 4};
 }
 
-fn void f_vec_large_v16i8(char[<16>] x) {
-  x[0] = x[7];
+typedef Char16v = char[<16>] @simd;
+fn void f_vec_large_v16i8(Char16v x)
+{
+	x[0] = x[7];
 }
 
-fn char[<16>] f_vec_large_v16i8_ret() {
-  return {1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8};
+fn Char16v f_vec_large_v16i8_ret()
+{
+	return {1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8};
 }
 
 // Scalars passed on the stack should not have signext/zeroext attributes
 // (they are anyext).
 
-fn int f_scalar_stack_1(Tiny a, Small b, Small_aligned c,
-                     Large d, char e, ichar f, char g, ichar h) {
-  return g + h;
+fn int f_scalar_stack_1(Tiny a, Small b, Small_aligned c, Large d, char e, ichar f, char g, ichar h)
+{
+	return g + h;
 }
 
 // Ensure that scalars passed on the stack are still determined correctly in
 // the presence of large return values that consume a register due to the need
 // to pass a pointer.
 
-fn Large f_scalar_stack_2(int a, long b, long c, float128 d,
-                              char e, ichar f, char g)
+fn Large f_scalar_stack_2(int a, long b, long c, float128 d, char e, ichar f, char g)
 {
-  return {a, e, f, g};
+	return {a, e, f, g};
 }
 
-fn float128 f_scalar_stack_4(int a, long b, long c, float128 d,
-                             char e, ichar f, char g) {
-  return d;
+fn float128 f_scalar_stack_4(int a, long b, long c, float128 d, char e, ichar f, char g)
+{
+	return d;
 }
 
 // Aggregates and >=XLen scalars passed on the stack should be lowered just as
 // they would be if passed via registers.
 
-fn void f_scalar_stack_5(double a, long b, double c, long d, int e,
-                      long f, float g, double h, float128 i) {}
+fn void f_scalar_stack_5(double a, long b, double c, long d, int e, long f, float g, double h, float128 i) {}
 
-fn void f_agg_stack(double a, long b, double c, long d, Tiny e,
-                 Small f, Small_aligned g, Large h) {}
+fn void f_agg_stack(double a, long b, double c, long d, Tiny e, Small f, Small_aligned g, Large h) {}
 
 // Ensure that ABI lowering happens as expected for vararg calls. For RV32
 // with the base integer calling convention there will be no observable
@@ -171,10 +190,11 @@ fn void f_agg_stack(double a, long b, double c, long d, Tiny e,
 
 extern fn int f_va_callee(int, ...);
 
-fn void f_va_caller() {
-  f_va_callee(1, 2, 3, 4.0, 5.0, (Tiny){6, 7, 8, 9},
-              (Small){10, null}, (Small_aligned){11},
-              (Large){12, 13, 14, 15});
+fn void f_va_caller()
+{
+	f_va_callee(1, 2, 3, 4.0, 5.0, (Tiny){6, 7, 8, 9},
+	          (Small){10, null}, (Small_aligned){11},
+	          (Large){12, 13, 14, 15});
 }
 
 

@@ -1,7 +1,7 @@
 // #target: macos-x64
 module boom;
 enum Boom: int (String a) {
-    BOOM = {0}
+    BOOM {{0}}
 }
 
 module app;

@@ -1,0 +1,74 @@
+// #target: macos-aarch64
+module abc_faults;
+module abc <Type>;
+import std::io, abc_faults, std::collections::list;
+struct TextTemplate
+{
+	Allocator allocator;
+	String template;
+}
+fn void? TextTemplate.init(&self, String , String tag_start = "", String tag_end = "", Allocator using )
+{
+	*self = { .allocator = io::EOF~!, .template = io::EOF~!, };
+}
+module text_test;
+import abc;
+alias FooTmpl = TextTemplate{Foo};
+alias BarTmpl = TextTemplate{Bar};
+struct Foo
+{
+	BarTmpl bar;
+}
+struct Bar
+{
+	String bar;
+}
+fn void main()
+{
+	String foo_tmpl = "";
+	FooTmpl ft;
+	ft.init(foo_tmpl, using: tmem)!!;
+}
+
+/* #expect: abc.ll
+
+define weak i64 @"abc.TextTemplate$text_test.Foo$.init"(ptr %0, [2 x i64] %1, [2 x i64] %2, [2 x i64] %3, [2 x i64] %4) #0 {
+entry:
+  %.anon = alloca %"char[]", align 8
+  %tag_start = alloca %"char[]", align 8
+  %tag_end = alloca %"char[]", align 8
+  %using = alloca %any, align 8
+  %.assign_list = alloca %"TextTemplate{Foo}", align 8
+  %error_var = alloca i64, align 8
+  store [2 x i64] %1, ptr %.anon, align 8
+  store [2 x i64] %2, ptr %tag_start, align 8
+  store [2 x i64] %3, ptr %tag_end, align 8
+  store [2 x i64] %4, ptr %using, align 8
+  call void @llvm.memset.p0.i64(ptr align 8 %.assign_list, i8 0, i64 32, i1 false)
+  store i64 ptrtoint (ptr @std.io.EOF to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %5 = load i64, ptr %error_var, align 8
+  ret i64 %5
+}
+define weak i64 @"abc.TextTemplate$text_test.Bar$.init"(ptr %0, [2 x i64] %1, [2 x i64] %2, [2 x i64] %3, [2 x i64] %4) #0 {
+entry:
+  %.anon = alloca %"char[]", align 8
+  %tag_start = alloca %"char[]", align 8
+  %tag_end = alloca %"char[]", align 8
+  %using = alloca %any, align 8
+  %.assign_list = alloca %"TextTemplate{Bar}", align 8
+  %error_var = alloca i64, align 8
+  store [2 x i64] %1, ptr %.anon, align 8
+  store [2 x i64] %2, ptr %tag_start, align 8
+  store [2 x i64] %3, ptr %tag_end, align 8
+  store [2 x i64] %4, ptr %using, align 8
+  call void @llvm.memset.p0.i64(ptr align 8 %.assign_list, i8 0, i64 32, i1 false)
+  store i64 ptrtoint (ptr @std.io.EOF to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %5 = load i64, ptr %error_var, align 8
+  ret i64 %5
+}

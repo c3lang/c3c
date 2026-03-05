@@ -1,0 +1,19 @@
+{
+  "provides": "clib2",
+  "c-sources": [
+    "hello.c"
+  ],
+  "targets": {
+    "macos-x64": {},
+    "macos-aarch64": {},
+    "netbsd-x64": {},
+    "netbsd-aarch64": {},
+    "openbsd-x64": {},
+    "linux-x64": {
+      "cflags-override": "-fPIE"
+    },
+    "windows-x64": {},
+    "android-aarch64": {},
+    "android-x86_64": {},
+  }
+}

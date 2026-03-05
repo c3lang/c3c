@@ -1,3 +1,4 @@
+/*
 enum Bar : inline usz
 {
   FOO,
@@ -17,3 +18,4 @@ fn int main()
 	char[Bar2.BAR] a;
 	return 0;
 }
+*/

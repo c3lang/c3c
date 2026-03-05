@@ -28,6 +28,41 @@ fn void test_enum_by_name()
 	assert(@catch(enum_by_name(Tester, "GHI")) == NOT_FOUND);
 }
 
+
+faultdef SOME_FAULT, ABC_FAULT;
+
+fn void test_try_catch()
+{
+	int val;
+	int? x = ABC_FAULT~;
+	assert(@try_catch(val, x, ABC_FAULT)!!);
+	assert(val == 0);
+	assert(!@catch(@try_catch(val, x, ABC_FAULT)));
+	x = SOME_FAULT~;
+	assert(@catch(@try_catch(val, x, ABC_FAULT)) == SOME_FAULT);
+	x = 3;
+	assert(!@try_catch(val, x, ABC_FAULT)!!);
+	assert(val == 3);
+}
+
+fn void test_try_set()
+{
+	assert(enum_by_name(Tester, "ABC")!! == Tester.ABC);
+
+	Tester val;
+	if (catch @try(val, enum_by_name(Tester, "ABC"))) abort("Test failure");
+	assert(val == Tester.ABC);
+
+	Tester another;
+	if (catch err = @try(another, enum_by_name(Tester, "GHI")))
+	{
+		assert(err == NOT_FOUND);
+		return;
+	}
+
+	abort("Test failure");
+}
+
 fn void test_likely()
 {
 	int a = 2;
@@ -97,7 +132,9 @@ fn void test_hash()
 	(bool[100]){}.hash();
 	String x = "abc";
 	char[] y = "abc";
+	ZString z = "abc";
 	assert(x.hash() == y.hash());
+	assert(z.hash() == x.hash());
 	assert(int.typeid.hash());
 }
 
@@ -137,4 +174,126 @@ fn void test_hash_repeat()
 	assert((bool[<100>]){}.hash() == (bool[<100>]){}.hash());
 	assert((bool[100]){}.hash() == (bool[100]){}.hash());
 	assert(int.typeid.hash() == int.typeid.hash());
+}
+
+fn void test_hash_vector() @test @if($feature(SLOW_TESTS))
+{
+	test_hash_vector_internal{char}();
+	test_hash_vector_internal{ichar}();
+	test_hash_vector_internal{short}();
+	test_hash_vector_internal{ushort}();
+	test_hash_vector_internal{int}();
+	test_hash_vector_internal{uint}();
+	test_hash_vector_internal{long}();
+	test_hash_vector_internal{ulong}();
+	test_hash_vector_internal{int128}();
+	test_hash_vector_internal{uint128}();
+	test_hash_vector_internal{bool}();
+}
+
+fn void test_builtin_string_hashing() => @pool()
+{
+	var $x = "";
+    ulong l;
+    $for var $i = 0; $i < 65; ++$i:   // 65 is a good length to reliably test all branches w/o being excessive
+        l = string::tformat("%s%s", $x, $i).hash();
+        var $r = $$str_hash(@sprintf("%s%s", $x, $i));
+        assert((uint)l == (uint)$r, "Builtin $$str_hash mismatch against String.hash()");
+        $x = $x +++ "a";
+    $endfor
+}
+
+fn void test_ct_clz()
+{
+	assert(@clz((ulong)0) == ulong.sizeof * 8);
+	assert(@clz((char)1) == (char.sizeof * 8) - 1);
+	assert(@clz((uint)0x8000_0000) == 0);
+	assert(@clz((ushort)0x0100) == 7);
+	assert(@clz((long)-1) == 0);
+	assert(@clz((uint128)0x87) == 120);
+	assert(@clz((char)(0x44 - 0x40)) == 5);
+}
+
+fn void test_bitsizeof()
+{
+	assert(bitsizeof(uint128) == 128);
+	assert(bitsizeof(ulong) == 64);
+	assert(bitsizeof(int) == 32);
+	assert(bitsizeof(short) == 16);
+	assert(bitsizeof(char) == 8);
+	assert(bitsizeof(char[200]) == 1600);
+
+	// Checks that they may be converted
+	int x = bitsizeof(char);
+	int y = @bitsizeof(1);
+
+	assert(@bitsizeof((char)0x07) == 8);
+	assert(@bitsizeof(0x1000ul) == 64);
+	assert(@bitsizeof(0) == 32);
+	assert(@bitsizeof((char[*])"abcdefghi") == 72);
+}
+
+fn void test_ct_min_max()
+{
+	assert(@min(4, 5) == 4);
+	assert(@max(1.234, 1.2345) == 1.2345);
+	assert(@min(4, 5, 6, 7, 8.90, 3.14) == 3.14);
+	assert(@max(0, 0, 1.234, 1.2345, 0.2) == 1.2345);
+	assert(@max(127.9999999, 45 + 46, bitsizeof(uint128)) == 128);
+}
+
+const usz[] MY_OK_VALUES = { 128, 256, 384, 512 };
+fn void test_in()
+{
+    $assert @in(384, ...MY_OK_VALUES);
+    $assert !@in(123, ...MY_OK_VALUES);
+    $assert @in(384, 128, 256, 384, 512);
+    $assert @in("love", "joy", "cheer", "love", "friend");
+    $assert !@in("hate", "joy", "cheer", "love", "friend");
+}
+
+
+module std::core::builtins;
+
+fn void test_hash_vector_internal() <Type>
+{
+	int[] $lens = {1, 2, 4, 7, 8, 13, 16, 23, 32, 43, 64, 103};
+	$foreach $vec_len : $lens:
+	{
+		$if $vec_len * Type.sizeof * 8  <= $$MAX_VECTOR_SIZE:
+		{
+			Type[<$vec_len>] vec1, vec2;
+			for (int val = 0; val < $vec_len; val++)
+			{
+				$if Type == bool:
+					vec1[val] = ((val & 0x3) == 0);
+				$else
+				{
+					Type tval = (Type)val;
+					vec1[val] = (tval | (tval << ((Type.sizeof - 1) * 8)));
+				}
+				$endif
+			}
+			vec2 = vec1;
+			assert(vec1.hash() == vec2.hash());
+			for (int val = 0; val < $vec_len; val++)
+			{
+				$if Type == bool:
+					vec2[val] = !vec2[val];
+				$else
+					vec2[val] ^= ((Type)0b0010_0000 << ((Type.sizeof - 1) * 8));
+				$endif
+
+				assert(vec1.hash() != vec2.hash());
+
+				$if Type == bool:
+					vec2[val] = !vec2[val];
+				$else
+					vec2[val] ^= ((Type)0b0010_0000 << ((Type.sizeof - 1) * 8));
+				$endif
+			}
+		}
+		$endif
+	}
+	$endforeach
 }

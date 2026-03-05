@@ -1,4 +1,4 @@
-module add{Type};
+module add <Type>;
 fn Type add(Type a, Type b) @builtin =>
   a + b;
 

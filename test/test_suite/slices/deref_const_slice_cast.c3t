@@ -1,0 +1,17 @@
+// #target: macos-x64
+module test;
+fn int main()
+{
+	char[*] b = *(char[5]*)"";
+	return 0;
+}
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+
+define i32 @main() #0 {
+entry:
+  %b = alloca [5 x i8], align 1
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %b, ptr align 1 @.str, i32 5, i1 false)
+  ret i32 0
+}

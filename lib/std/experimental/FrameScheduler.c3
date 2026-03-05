@@ -1,4 +1,4 @@
-module std::experimental::scheduler{Event};
+module std::experimental::scheduler <Event>;
 import std::collections, std::thread, std::time;
 
 struct DelayedSchedulerEvent @local
@@ -7,7 +7,7 @@ struct DelayedSchedulerEvent @local
 	Clock execution_time;
 }
 
-fn int DelayedSchedulerEvent.compare_to(self, DelayedSchedulerEvent other) @local
+fn int DelayedSchedulerEvent.compare_to(self, DelayedSchedulerEvent other)
 {
 	switch
 	{
@@ -43,7 +43,7 @@ macro void FrameScheduler.@destroy(&self; @destruct(Event e))
 	self.events.free();
 	self.pending_events.free();
 	self.delayed_events.free();
-	(void)self.mtx.destroy();
+	self.mtx.destroy();
 }
 
 fn void FrameScheduler.queue_delayed_event(&self, Event event, Duration delay)
@@ -76,7 +76,7 @@ fn Event? FrameScheduler.pop_event(&self)
 	while (true)
 	{
 		if (try event = self.events.pop()) return event;
-    	if (!@atomic_load(self.pending)) return NO_MORE_ELEMENT?;
+    	if (!@atomic_load(self.pending)) return NO_MORE_ELEMENT~;
         self.mtx.@in_lock()
         {
             self.events.add_all(&self.pending_events);
@@ -88,7 +88,7 @@ fn Event? FrameScheduler.pop_event(&self)
                 self.events.push(self.delayed_events.pop()!!);
             }
             @atomic_store(self.pending, self.delayed_events.len() > 0);
-            if (!self.events.len()) return NO_MORE_ELEMENT?;
+            if (!self.events.len()) return NO_MORE_ELEMENT~;
         };
 	}
 }

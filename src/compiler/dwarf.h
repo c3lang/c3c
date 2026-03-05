@@ -1,6 +1,9 @@
 #pragma once
+
+#ifndef __TINYC__
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCUnusedMacroInspection"
+#endif
 
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
@@ -28,7 +31,7 @@
 #define DW_TAG_common_block 0x1a
 #define DW_TAG_common_inclusion 0x1b
 #define DW_TAG_inheritance 0x1c
-#define DW_TAG_inlined_subroutine 01x1d
+#define DW_TAG_inlined_subroutine 0x1d
 #define DW_TAG_module 0x1e
 #define DW_TAG_ptr_to_member_type 0x1f
 #define DW_TAG_set_type 0x20
@@ -285,4 +288,6 @@
 
 #define DWARF_PRODUCER_NAME "c3c"
 
+#ifndef __TINYC__
 #pragma clang diagnostic pop
+#endif

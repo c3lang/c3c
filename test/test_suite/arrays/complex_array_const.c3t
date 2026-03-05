@@ -15,7 +15,7 @@ Connection[3] link @private
 
 /* #expect: test.ll
 
-@"$ct.test.Connection" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 24, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Connection" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [6 x i8] c"link1\00", align 1
 @.str.1 = private unnamed_addr constant [6 x i8] c"link2\00", align 1
 @.str.2 = private unnamed_addr constant [6 x i8] c"link3\00", align 1

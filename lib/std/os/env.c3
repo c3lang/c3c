@@ -15,14 +15,14 @@ fn String? get_var(Allocator allocator, String name) => @pool()
 	$switch:
 	$case env::LIBC && !env::WIN32:
 		ZString val = libc::getenv(name.zstr_tcopy());
-		return val ? val.copy(allocator) : NOT_FOUND?;
+		return val ? val.copy(allocator) : NOT_FOUND~;
 	$case env::WIN32:
 		// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getenvironmentvariable
 		const usz BUFSIZE = 1024;
 		WString buff = (WString)tcalloc(BUFSIZE * 2 + 2);
 		WString wstr = name.to_temp_wstring()!;
 		usz len = win32::getEnvironmentVariableW(wstr, buff, BUFSIZE);
-		if (len == 0) return NOT_FOUND?;
+		if (len == 0) return NOT_FOUND~;
 		if (len > BUFSIZE)
 		{
 			buff = (WString)tmalloc(len * 2 + 2);
@@ -79,7 +79,7 @@ fn String? get_home_dir(Allocator allocator)
 
 
 <*
-Returns the current user's config directory.
+ Returns the current user's config directory.
 *>
 fn Path? get_config_dir(Allocator allocator) => @pool()
 {
@@ -87,13 +87,15 @@ fn Path? get_config_dir(Allocator allocator) => @pool()
 		return path::new(allocator, tget_var("AppData"));
 	$else
 		$if env::DARWIN:
-			String s = tget_var("HOME")!;
+			String home_dir = tget_var("HOME")!;
 			const DIR = "Library/Application Support";
 		$else
-			String s = tget_var("XDG_CONFIG_HOME") ?? tget_var("HOME")!;
+			String? config_path = tget_var("XDG_CONFIG_HOME");
+			if (try config_path && config_path.len > 0) return path::new(allocator, config_path);
+			String home_dir = tget_var("HOME")!;
 			const DIR = ".config";
 		$endif
-		return path::temp(s).append(allocator, DIR);
+		return path::temp(home_dir).append(allocator, DIR);
 	$endif
 }
 
@@ -115,11 +117,11 @@ fn bool clear_var(String name) => @pool()
 	$endswitch
 }
 
-fn String? executable_path(Allocator allocator)
+fn String? executable_path()
 {
 	$if env::DARWIN:
-		return darwin::executable_path(allocator);
+		return darwin::executable_path();
 	$else
-		return NOT_FOUND?;
+		return NOT_FOUND~;
 	$endif
 }

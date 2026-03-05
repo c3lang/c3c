@@ -1,0 +1,23 @@
+// #target: macos-x64
+module test;
+struct Bar
+{
+	struct { union { struct { char z1; } } }
+}
+
+fn void main()
+{
+	var $x = "alignof";
+	int a = Bar.z1.offsetof;
+	int b = Bar.z1.$x;
+}
+
+/* #expect: test.ll
+
+entry:
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  store i32 0, ptr %a, align 4
+  store i32 1, ptr %b, align 4
+  ret void
+}

@@ -1,0 +1,36 @@
+// #target: macos-x64
+module test;
+union Union { int x; }
+typedef Foo = Union;
+union Union2
+{
+	struct bar { Foo x; }
+}
+typedef Union3 = Union2;
+typedef UnionArr = Union3[];
+fn UnionArr x()
+{
+	UnionArr a = { [0].bar.x.x = 3 };
+	return a;
+}
+fn int main()
+{
+	return x()[0].bar.x.x;
+}
+/* #expect: test.ll
+
+@.__const = private unnamed_addr constant [1 x %Union2] [%Union2 { %bar { %Union { i32 3 } } }], align 4
+
+define { ptr, i64 } @test.x() #0 {
+entry:
+  %a = alloca %"Union2[]", align 8
+  %literal = alloca [1 x %Union2], align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 4, i1 false)
+  %0 = insertvalue %"Union2[]" undef, ptr %literal, 0
+  %1 = insertvalue %"Union2[]" %0, i64 1, 1
+  store %"Union2[]" %1, ptr %a, align 8
+  %2 = load { ptr, i64 }, ptr %a, align 8
+  ret { ptr, i64 } %2
+}
+
+

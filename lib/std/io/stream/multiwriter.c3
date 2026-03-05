@@ -46,7 +46,7 @@ fn usz? MultiWriter.write(&self, char[] bytes) @dynamic
 	foreach (w : self.writers) 
 	{
 		n = w.write(bytes)!;
-		if (n != bytes.len) return INCOMPLETE_WRITE?;
+		if (n != bytes.len) return INCOMPLETE_WRITE~;
 	}
 	return bytes.len;
 }

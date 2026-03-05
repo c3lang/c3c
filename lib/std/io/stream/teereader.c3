@@ -30,7 +30,7 @@ fn usz? TeeReader.read(&self, char[] bytes) @dynamic
 	usz nr, nw;
 	nr = self.r.read(bytes)!;
 	nw = self.w.write(bytes[:nr])!;
-	if (nr != nw) return GENERAL_ERROR?;
+	if (nr != nw) return GENERAL_ERROR~;
 	return nr;
 }
 

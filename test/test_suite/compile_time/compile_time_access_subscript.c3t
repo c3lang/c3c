@@ -71,7 +71,7 @@ fn void main()
   store ptr null, ptr %z6, align 8
   store i8 0, ptr %z7, align 1
   store i64 0, ptr %z8, align 8
-  store <3 x i32> zeroinitializer, ptr %z9, align 16
+  store <4 x i32> <i32 0, i32 0, i32 0, i32 undef>, ptr %z9, align 16
   store float 0.000000e+00, ptr %z10, align 4
   %ptradd11 = getelementptr inbounds i8, ptr %z10, i64 4
   store float 0.000000e+00, ptr %ptradd11, align 4

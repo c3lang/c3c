@@ -27,7 +27,7 @@ macro @enum_lookup($Type, #value, value)
 	$foreach $val : $Type.values:
 		if ($val.#value == value) return $val;
 	$endforeach
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 macro @enum_lookup_new($Type, $name, value)
@@ -35,14 +35,14 @@ macro @enum_lookup_new($Type, $name, value)
 	$foreach $val : $Type.values:
 		if ($val.$eval($name) == value) return $val;
 	$endforeach
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 
-module std::core::runtime @if(WASM_NOLIBC);
+module std::core::runtime @if(env::FREESTANDING_WASM);
 
 extern fn void __wasm_call_ctors();
-fn void wasm_initialize() @extern("_initialize") @wasm
+fn void wasm_initialize() @cname("_initialize") @wasm
 {
 	// The linker synthesizes this to call constructors.
 	__wasm_call_ctors();

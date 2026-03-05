@@ -83,14 +83,14 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal8, ptr align 4 @.__const.2, i32 4, i1 false)
   %26 = insertvalue %"int[]" undef, ptr %literal8, 0
   %27 = insertvalue %"int[]" %26, i64 1, 1
-  store %"int[]" %27, ptr %literal, align 8
+  store %"int[]" %27, ptr %literal, align 16
   %28 = insertvalue %"int[][]" undef, ptr %literal, 0
   %29 = insertvalue %"int[][]" %28, i64 1, 1
   store %"int[][]" %29, ptr %a, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal10, ptr align 4 @.__const.3, i32 4, i1 false)
   %30 = insertvalue %"int[]" undef, ptr %literal10, 0
   %31 = insertvalue %"int[]" %30, i64 1, 1
-  store %"int[]" %31, ptr %literal9, align 8
+  store %"int[]" %31, ptr %literal9, align 16
   %32 = insertvalue %"int[][]" undef, ptr %literal9, 0
   %33 = insertvalue %"int[][]" %32, i64 1, 1
   store %"int[][]" %33, ptr %b, align 8

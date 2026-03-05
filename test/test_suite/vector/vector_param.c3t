@@ -1,7 +1,9 @@
 // #target: macos-x64
 module test;
 
-fn void test(int[<4>] x)
+typedef Int4V = int[<4>] @simd;
+
+fn void test(Int4V x)
 {
 	x[1] = 123;
 	int y = x[1];

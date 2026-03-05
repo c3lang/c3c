@@ -11,7 +11,7 @@ fn void? load_corpus2(String code, String path) @local
 
     if (!path::exists(p))
     {
-		return io::FILE_NOT_FOUND?;
+		return io::FILE_NOT_FOUND~;
     }
 }
 

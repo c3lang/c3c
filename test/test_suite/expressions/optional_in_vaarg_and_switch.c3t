@@ -1,0 +1,154 @@
+// #target: macos-x64
+module test;
+import std::io;
+fn void? test1(int x)
+{
+	io::printfn(io::EOF~!, x);
+}
+
+fn void test2()
+{
+    int? tok;
+    switch (fault err = @catch(tok))
+    {
+        default:
+			io::printfn("error: %s, %d", err, (usz)err~!!);
+    }
+}
+fn void main()
+{
+	fault a = @catch(test1(0));
+	test2();
+}
+
+/* #expect: test.ll
+
+define i64 @test.test1(i32 %0) #0 {
+entry:
+  %error_var = alloca i64, align 8
+  store i64 ptrtoint (ptr @std.io.EOF to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %1 = load i64, ptr %error_var, align 8
+  ret i64 %1
+}
+
+; Function Attrs: nounwind uwtable
+define void @test.test2() #0 {
+entry:
+  %tok = alloca i32, align 4
+  %tok.f = alloca i64, align 8
+  %err = alloca i64, align 8
+  %blockret = alloca i64, align 8
+  %f = alloca i64, align 8
+  %switch = alloca i64, align 8
+  %varargslots = alloca [2 x %any], align 16
+  %error_var = alloca i64, align 8
+  %varargslots1 = alloca [1 x %any], align 16
+  %indirectarg = alloca %"any[]", align 8
+  store i64 0, ptr %tok.f, align 8
+  store i32 0, ptr %tok, align 4
+  br label %testblock
+
+testblock:                                        ; preds = %entry
+  %optval = load i64, ptr %tok.f, align 8
+  %not_err = icmp eq i64 %optval, 0
+  %0 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %0, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %testblock
+  store i64 %optval, ptr %f, align 8
+  br label %end_block
+
+after_check:                                      ; preds = %testblock
+  store i64 0, ptr %f, align 8
+  br label %end_block
+
+end_block:                                        ; preds = %after_check, %assign_optional
+  %1 = load i64, ptr %f, align 8
+  %i2b = icmp ne i64 %1, 0
+  br i1 %i2b, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %end_block
+  %2 = load i64, ptr %f, align 8
+  store i64 %2, ptr %blockret, align 8
+  br label %expr_block.exit
+
+if.exit:                                          ; preds = %end_block
+  store i64 0, ptr %blockret, align 8
+  br label %expr_block.exit
+
+expr_block.exit:                                  ; preds = %if.exit, %if.then
+  %3 = load i64, ptr %blockret, align 8
+  store i64 %3, ptr %err, align 8
+  %4 = load i64, ptr %err, align 8
+  store i64 %4, ptr %switch, align 8
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %expr_block.exit
+  %5 = load i64, ptr %switch, align 8
+  br label %switch.default
+
+switch.default:                                   ; preds = %switch.entry
+  %6 = insertvalue %any undef, ptr %err, 0
+  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
+  store %any %7, ptr %varargslots, align 16
+  %8 = load i64, ptr %err, align 8
+  store i64 %8, ptr %error_var, align 8
+  br label %panic_block
+
+panic_block:                                      ; preds = %switch.default
+  %9 = insertvalue %any undef, ptr %error_var, 0
+  %10 = insertvalue %any %9, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
+  store %any %10, ptr %varargslots1, align 16
+  %11 = insertvalue %"any[]" undef, ptr %varargslots1, 0
+  %"$$temp" = insertvalue %"any[]" %11, i64 1, 1
+  store %"any[]" %"$$temp", ptr %indirectarg, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 31, ptr @.func, i64 5, i32 14, ptr byval(%"any[]") align 8 %indirectarg) #2
+  unreachable
+}
+
+; Function Attrs: nounwind uwtable
+define void @test.main() #0 {
+entry:
+  %a = alloca i64, align 8
+  %blockret = alloca i64, align 8
+  %f = alloca i64, align 8
+  br label %testblock
+
+testblock:                                        ; preds = %entry
+  %0 = call i64 @test.test1(i32 0)
+  %not_err = icmp eq i64 %0, 0
+  %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %1, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %testblock
+  store i64 %0, ptr %f, align 8
+  br label %end_block
+
+after_check:                                      ; preds = %testblock
+  store i64 0, ptr %f, align 8
+  br label %end_block
+
+end_block:                                        ; preds = %after_check, %assign_optional
+  %2 = load i64, ptr %f, align 8
+  %i2b = icmp ne i64 %2, 0
+  br i1 %i2b, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %end_block
+  %3 = load i64, ptr %f, align 8
+  store i64 %3, ptr %blockret, align 8
+  br label %expr_block.exit
+
+if.exit:                                          ; preds = %end_block
+  store i64 0, ptr %blockret, align 8
+  br label %expr_block.exit
+
+expr_block.exit:                                  ; preds = %if.exit, %if.then
+  %4 = load i64, ptr %blockret, align 8
+  store i64 %4, ptr %a, align 8
+  call void @test.test2()
+  ret void
+}
+

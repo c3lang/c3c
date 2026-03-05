@@ -1,6 +1,6 @@
 module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 
-fn double _trunc(double x) @weak @extern("trunc") @nostrip
+fn double _trunc(double x) @weak @cname("trunc") @nostrip
 {
 	ulong i = bitcast(x, ulong);
 	int e = (int)((i >> 52) & 0x7ff) - 0x3ff + 12;
@@ -13,7 +13,7 @@ fn double _trunc(double x) @weak @extern("trunc") @nostrip
 	return bitcast(i, double);
 }
 
-fn float _truncf(float x) @weak @extern("truncf") @nostrip
+fn float _truncf(float x) @weak @cname("truncf") @nostrip
 {
 	uint i = bitcast(x, uint);
 	int e = (int)((i >> 23) & 0xff) - 0x7f + 9;

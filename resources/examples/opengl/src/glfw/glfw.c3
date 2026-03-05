@@ -31,21 +31,21 @@ fn void Window.makeContextCurrent(self) @public
 	return _glfwMakeContextCurrent((_Window*)self);
 }
 
-extern fn void initialize() @extern("glfwInit") @public;
+extern fn void initialize() @cname("glfwInit") @public;
 
-extern fn void terminate() @extern("glfwTerminate") @public;
+extern fn void terminate() @cname("glfwTerminate") @public;
 
-extern fn void pollEvents() @extern("glfwPollEvents") @public;
+extern fn void pollEvents() @cname("glfwPollEvents") @public;
 
 typedef _Window @private = void;
 typedef _Monitor @private = void;
 
-extern fn _Window* _glfwCreateWindow(int width, int height, char* title, _Monitor* monitor, _Window* share) @extern("glfwCreateWindow") @private;
+extern fn _Window* _glfwCreateWindow(int width, int height, char* title, _Monitor* monitor, _Window* share) @cname("glfwCreateWindow") @private;
 
-extern fn bool _glfwWindowShouldClose(_Window* window) @extern("glfwWindowShouldClose") @private;
+extern fn bool _glfwWindowShouldClose(_Window* window) @cname("glfwWindowShouldClose") @private;
 
-extern fn void _glfwDestroyWindow(_Window* window) @extern("glfwDestroyWindow") @private;
+extern fn void _glfwDestroyWindow(_Window* window) @cname("glfwDestroyWindow") @private;
 
-extern fn void _glfwSwapBuffers(_Window* window) @extern("glfwSwapBuffers") @private;
+extern fn void _glfwSwapBuffers(_Window* window) @cname("glfwSwapBuffers") @private;
 
-extern fn void _glfwMakeContextCurrent(_Window* window) @extern("glfwMakeContextCurrent") @private;
+extern fn void _glfwMakeContextCurrent(_Window* window) @cname("glfwMakeContextCurrent") @private;

@@ -66,12 +66,12 @@ fn void test6(int a)
 
 /* #expect: simple_jump.ll
 
-@jumptable = private unnamed_addr constant [3 x ptr] [ptr blockaddress(@simple_jump.test1, %switch.case1), ptr blockaddress(@simple_jump.test1, %switch.case), ptr blockaddress(@simple_jump.test1, %switch.case1)], align 4
-@jumptable.1 = private unnamed_addr constant [2 x ptr] [ptr blockaddress(@simple_jump.test2, %switch.case), ptr blockaddress(@simple_jump.test2, %switch.case1)], align 4
-@jumptable.2 = private unnamed_addr constant [3 x ptr] [ptr blockaddress(@simple_jump.test3, %switch.case), ptr blockaddress(@simple_jump.test3, %switch.exit), ptr blockaddress(@simple_jump.test3, %switch.case1)], align 4
-@jumptable.3 = private unnamed_addr constant [1 x ptr] [ptr blockaddress(@simple_jump.test4, %switch.case)], align 4
-@jumptable.4 = private unnamed_addr constant [4 x ptr] [ptr blockaddress(@simple_jump.test5, %switch.case), ptr blockaddress(@simple_jump.test5, %switch.default), ptr blockaddress(@simple_jump.test5, %switch.default), ptr blockaddress(@simple_jump.test5, %switch.case1)], align 4
-@jumptable.5 = private unnamed_addr constant [5 x ptr] [ptr blockaddress(@simple_jump.test6, %switch.case), ptr blockaddress(@simple_jump.test6, %switch.default), ptr blockaddress(@simple_jump.test6, %switch.default), ptr blockaddress(@simple_jump.test6, %switch.case1), ptr blockaddress(@simple_jump.test6, %switch.case2)], align 4
+@jumptable = private unnamed_addr constant [3 x ptr] [ptr blockaddress(@simple_jump.test1, %switch.case1), ptr blockaddress(@simple_jump.test1, %switch.case), ptr blockaddress(@simple_jump.test1, %switch.case1)], align 8
+@jumptable.1 = private unnamed_addr constant [2 x ptr] [ptr blockaddress(@simple_jump.test2, %switch.case), ptr blockaddress(@simple_jump.test2, %switch.case1)], align 8
+@jumptable.2 = private unnamed_addr constant [3 x ptr] [ptr blockaddress(@simple_jump.test3, %switch.case), ptr blockaddress(@simple_jump.test3, %switch.exit), ptr blockaddress(@simple_jump.test3, %switch.case1)], align 8
+@jumptable.3 = private unnamed_addr constant [1 x ptr] [ptr blockaddress(@simple_jump.test4, %switch.case)], align 8
+@jumptable.4 = private unnamed_addr constant [4 x ptr] [ptr blockaddress(@simple_jump.test5, %switch.case), ptr blockaddress(@simple_jump.test5, %switch.default), ptr blockaddress(@simple_jump.test5, %switch.default), ptr blockaddress(@simple_jump.test5, %switch.case1)], align 8
+@jumptable.5 = private unnamed_addr constant [5 x ptr] [ptr blockaddress(@simple_jump.test6, %switch.case), ptr blockaddress(@simple_jump.test6, %switch.default), ptr blockaddress(@simple_jump.test6, %switch.default), ptr blockaddress(@simple_jump.test6, %switch.case1), ptr blockaddress(@simple_jump.test6, %switch.case2)], align 8
 
 after_check12:                                    ; preds = %noerr_block8
   br label %noerr_block14
@@ -102,7 +102,7 @@ switch.entry:                                     ; preds = %entry
 jumpblock:                                        ; preds = %switch.entry
   %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable, i32 %1
   %target = load ptr, ptr %ptroffset, align 8
-  indirectbr ptr %target, [label %switch.case, label %switch.case1]
+  indirectbr ptr %target, [label %switch.case, label %switch.case1, label %switch.exit]
 
 switch.case:                                      ; preds = %jumpblock
   call void @simple_jump.res(i32 1)
@@ -112,7 +112,7 @@ switch.case1:                                     ; preds = %jumpblock
   call void @simple_jump.res(i32 2)
   br label %switch.exit
 
-switch.exit:                                      ; preds = %switch.case1, %switch.case, %switch.entry
+switch.exit:                                      ; preds = %jumpblock, %switch.case1, %switch.case, %switch.entry
   call void @simple_jump.res(i32 0)
   ret void
 }
@@ -132,7 +132,7 @@ switch.entry:                                     ; preds = %entry
 jumpblock:                                        ; preds = %switch.entry
   %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.1, i32 %2
   %target = load ptr, ptr %ptroffset, align 8
-  indirectbr ptr %target, [label %switch.case, label %switch.case1]
+  indirectbr ptr %target, [label %switch.case, label %switch.case1, label %switch.exit]
 
 switch.case:                                      ; preds = %jumpblock
   call void @simple_jump.res(i32 1)
@@ -142,7 +142,7 @@ switch.case1:                                     ; preds = %jumpblock
   call void @simple_jump.res(i32 2)
   br label %switch.exit
 
-switch.exit:                                      ; preds = %switch.case1, %switch.case, %switch.entry
+switch.exit:                                      ; preds = %jumpblock, %switch.case1, %switch.case, %switch.entry
   ret void
 }
 
@@ -161,7 +161,7 @@ switch.entry:                                     ; preds = %entry
 jumpblock:                                        ; preds = %switch.entry
   %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.2, i32 %2
   %target = load ptr, ptr %ptroffset, align 8
-  indirectbr ptr %target, [label %switch.case, label %switch.case1, label %switch.exit]
+  indirectbr ptr %target, [label %switch.case, label %switch.case1, label %switch.exit, label %switch.exit]
 
 switch.case:                                      ; preds = %jumpblock
   call void @simple_jump.res(i32 1)
@@ -171,7 +171,7 @@ switch.case1:                                     ; preds = %jumpblock
   call void @simple_jump.res(i32 3)
   br label %switch.exit
 
-switch.exit:                                      ; preds = %jumpblock, %switch.case1, %switch.case, %switch.entry
+switch.exit:                                      ; preds = %jumpblock, %jumpblock, %switch.case1, %switch.case, %switch.entry
   ret void
 }
 
@@ -190,13 +190,13 @@ switch.entry:                                     ; preds = %entry
 jumpblock:                                        ; preds = %switch.entry
   %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.3, i32 %2
   %target = load ptr, ptr %ptroffset, align 8
-  indirectbr ptr %target, [label %switch.case]
+  indirectbr ptr %target, [label %switch.case, label %switch.default]
 
 switch.case:                                      ; preds = %jumpblock
   call void @simple_jump.res(i32 1)
   br label %switch.exit
 
-switch.default:                                   ; preds = %switch.entry
+switch.default:                                   ; preds = %jumpblock, %switch.entry
   call void @simple_jump.res(i32 -1)
   br label %switch.exit
 
@@ -219,7 +219,7 @@ switch.entry:                                     ; preds = %entry
 jumpblock:                                        ; preds = %switch.entry
   %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.4, i32 %2
   %target = load ptr, ptr %ptroffset, align 8
-  indirectbr ptr %target, [label %switch.case, label %switch.case1, label %switch.default]
+  indirectbr ptr %target, [label %switch.case, label %switch.case1, label %switch.default, label %switch.default]
 
 switch.case:                                      ; preds = %jumpblock
   call void @simple_jump.res(i32 1)
@@ -229,7 +229,7 @@ switch.case1:                                     ; preds = %jumpblock
   call void @simple_jump.res(i32 4)
   br label %switch.exit
 
-switch.default:                                   ; preds = %jumpblock, %switch.entry
+switch.default:                                   ; preds = %jumpblock, %jumpblock, %switch.entry
   call void @simple_jump.res(i32 -1)
   br label %switch.exit
 
@@ -253,17 +253,17 @@ switch.entry:                                     ; preds = %entry
 jumpblock:                                        ; preds = %switch.entry
   %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.5, i32 %2
   %target = load ptr, ptr %ptroffset, align 8
-  indirectbr ptr %target, [label %switch.case, label %switch.case1, label %switch.case2, label %switch.default]
+  indirectbr ptr %target, [label %switch.case, label %switch.case1, label %switch.case2, label %switch.default, label %switch.default]
 
-switch.case:                                      ; preds = %jumpblock3, %jumpblock
+switch.case:                                      ; preds = %jumpblock, %jumpblock3
   call void @simple_jump.res(i32 1)
   br label %switch.exit
 
-switch.case1:                                     ; preds = %jumpblock3, %jumpblock
+switch.case1:                                     ; preds = %jumpblock, %jumpblock3
   call void @simple_jump.res(i32 4)
   br label %switch.exit
 
-switch.case2:                                     ; preds = %jumpblock3, %jumpblock
+switch.case2:                                     ; preds = %jumpblock, %jumpblock3
   %mul = mul i32 %0, 2
   %4 = sub i32 %mul, 1
   %5 = icmp ugt i32 %4, 4
@@ -274,7 +274,7 @@ jumpblock3:                                       ; preds = %switch.case2
   %target5 = load ptr, ptr %ptroffset4, align 8
   indirectbr ptr %target5, [label %switch.case, label %switch.case1, label %switch.case2, label %switch.default]
 
-switch.default:                                   ; preds = %jumpblock, %jumpblock3, %switch.case2, %switch.entry
+switch.default:                                   ; preds = %jumpblock, %jumpblock, %jumpblock3, %switch.case2, %switch.entry
   call void @simple_jump.res(i32 -1)
   br label %switch.exit
 

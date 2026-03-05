@@ -82,13 +82,13 @@ entry:
   %.anon65 = alloca i64, align 8
   %i69 = alloca i64, align 8
   %a70 = alloca float, align 4
-  %.anon74 = alloca i64, align 8
-  %i78 = alloca i8, align 1
-  %a80 = alloca double, align 8
-  %.anon85 = alloca i64, align 8
-  %a89 = alloca double, align 8
+  %.anon75 = alloca i64, align 8
+  %i79 = alloca i8, align 1
+  %a81 = alloca double, align 8
+  %.anon87 = alloca i64, align 8
+  %a91 = alloca double, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %foo, ptr align 4 @.__const, i32 12, i1 false)
-  store <3 x float> <float 2.000000e+00, float 4.500000e+00, float 8.000000e+00>, ptr %foo2, align 16
+  store <4 x float> <float 2.000000e+00, float 4.500000e+00, float 8.000000e+00, float undef>, ptr %foo2, align 16
   store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
@@ -242,9 +242,10 @@ loop.cond48:                                      ; preds = %loop.body50, %loop.
   br i1 %gt49, label %loop.body50, label %loop.exit54
 
 loop.body50:                                      ; preds = %loop.cond48
-  %37 = load <3 x float>, ptr %foo2, align 16
+  %37 = load <4 x float>, ptr %foo2, align 16
+  %extractvec = shufflevector <4 x float> %37, <4 x float> poison, <3 x i32> <i32 0, i32 1, i32 2>
   %38 = load i64, ptr %.anon47, align 8
-  %39 = extractelement <3 x float> %37, i64 %38
+  %39 = extractelement <3 x float> %extractvec, i64 %38
   store float %39, ptr %a51, align 4
   %40 = load float, ptr %a51, align 4
   %fpfpext52 = fpext float %40 to double
@@ -287,73 +288,76 @@ loop.exit64:                                      ; preds = %loop.cond56
 loop.cond66:                                      ; preds = %loop.body68, %loop.exit64
   %49 = load i64, ptr %.anon65, align 8
   %gt67 = icmp ugt i64 3, %49
-  br i1 %gt67, label %loop.body68, label %loop.exit73
+  br i1 %gt67, label %loop.body68, label %loop.exit74
 
 loop.body68:                                      ; preds = %loop.cond66
   %50 = load i64, ptr %.anon65, align 8
   store i64 %50, ptr %i69, align 8
-  %51 = load <3 x float>, ptr %foo2, align 16
+  %51 = load <4 x float>, ptr %foo2, align 16
+  %extractvec71 = shufflevector <4 x float> %51, <4 x float> poison, <3 x i32> <i32 0, i32 1, i32 2>
   %52 = load i64, ptr %.anon65, align 8
-  %53 = extractelement <3 x float> %51, i64 %52
+  %53 = extractelement <3 x float> %extractvec71, i64 %52
   store float %53, ptr %a70, align 4
   %54 = load float, ptr %a70, align 4
-  %fpfpext71 = fpext float %54 to double
+  %fpfpext72 = fpext float %54 to double
   %55 = load i64, ptr %i69, align 8
-  call void (ptr, ...) @printf(ptr @.str.8, i64 %55, double %fpfpext71)
+  call void (ptr, ...) @printf(ptr @.str.8, i64 %55, double %fpfpext72)
   %56 = load i64, ptr %.anon65, align 8
-  %addnuw72 = add nuw i64 %56, 1
-  store i64 %addnuw72, ptr %.anon65, align 8
+  %addnuw73 = add nuw i64 %56, 1
+  store i64 %addnuw73, ptr %.anon65, align 8
   br label %loop.cond66
 
-loop.exit73:                                      ; preds = %loop.cond66
-  store i64 0, ptr %.anon74, align 8
-  br label %loop.cond75
+loop.exit74:                                      ; preds = %loop.cond66
+  store i64 0, ptr %.anon75, align 8
+  br label %loop.cond76
 
-loop.cond75:                                      ; preds = %loop.body77, %loop.exit73
-  %57 = load i64, ptr %.anon74, align 8
-  %gt76 = icmp ugt i64 3, %57
-  br i1 %gt76, label %loop.body77, label %loop.exit84
+loop.cond76:                                      ; preds = %loop.body78, %loop.exit74
+  %57 = load i64, ptr %.anon75, align 8
+  %gt77 = icmp ugt i64 3, %57
+  br i1 %gt77, label %loop.body78, label %loop.exit86
 
-loop.body77:                                      ; preds = %loop.cond75
-  %58 = load i64, ptr %.anon74, align 8
-  %trunc79 = trunc i64 %58 to i8
-  store i8 %trunc79, ptr %i78, align 1
-  %59 = load <3 x float>, ptr %foo2, align 16
-  %60 = load i64, ptr %.anon74, align 8
-  %61 = extractelement <3 x float> %59, i64 %60
-  %fpfpext81 = fpext float %61 to double
-  store double %fpfpext81, ptr %a80, align 8
-  %62 = load i8, ptr %i78, align 1
-  %zext82 = zext i8 %62 to i32
-  %63 = load double, ptr %a80, align 8
-  call void (ptr, ...) @printf(ptr @.str.9, i32 %zext82, double %63)
-  %64 = load i64, ptr %.anon74, align 8
-  %addnuw83 = add nuw i64 %64, 1
-  store i64 %addnuw83, ptr %.anon74, align 8
-  br label %loop.cond75
+loop.body78:                                      ; preds = %loop.cond76
+  %58 = load i64, ptr %.anon75, align 8
+  %trunc80 = trunc i64 %58 to i8
+  store i8 %trunc80, ptr %i79, align 1
+  %59 = load <4 x float>, ptr %foo2, align 16
+  %extractvec82 = shufflevector <4 x float> %59, <4 x float> poison, <3 x i32> <i32 0, i32 1, i32 2>
+  %60 = load i64, ptr %.anon75, align 8
+  %61 = extractelement <3 x float> %extractvec82, i64 %60
+  %fpfpext83 = fpext float %61 to double
+  store double %fpfpext83, ptr %a81, align 8
+  %62 = load i8, ptr %i79, align 1
+  %zext84 = zext i8 %62 to i32
+  %63 = load double, ptr %a81, align 8
+  call void (ptr, ...) @printf(ptr @.str.9, i32 %zext84, double %63)
+  %64 = load i64, ptr %.anon75, align 8
+  %addnuw85 = add nuw i64 %64, 1
+  store i64 %addnuw85, ptr %.anon75, align 8
+  br label %loop.cond76
 
-loop.exit84:                                      ; preds = %loop.cond75
-  store i64 0, ptr %.anon85, align 8
-  br label %loop.cond86
+loop.exit86:                                      ; preds = %loop.cond76
+  store i64 0, ptr %.anon87, align 8
+  br label %loop.cond88
 
-loop.cond86:                                      ; preds = %loop.body88, %loop.exit84
-  %65 = load i64, ptr %.anon85, align 8
-  %gt87 = icmp ugt i64 3, %65
-  br i1 %gt87, label %loop.body88, label %loop.exit92
+loop.cond88:                                      ; preds = %loop.body90, %loop.exit86
+  %65 = load i64, ptr %.anon87, align 8
+  %gt89 = icmp ugt i64 3, %65
+  br i1 %gt89, label %loop.body90, label %loop.exit95
 
-loop.body88:                                      ; preds = %loop.cond86
-  %66 = load <3 x float>, ptr %foo2, align 16
-  %67 = load i64, ptr %.anon85, align 8
-  %68 = extractelement <3 x float> %66, i64 %67
-  %fpfpext90 = fpext float %68 to double
-  store double %fpfpext90, ptr %a89, align 8
-  %69 = load double, ptr %a89, align 8
+loop.body90:                                      ; preds = %loop.cond88
+  %66 = load <4 x float>, ptr %foo2, align 16
+  %extractvec92 = shufflevector <4 x float> %66, <4 x float> poison, <3 x i32> <i32 0, i32 1, i32 2>
+  %67 = load i64, ptr %.anon87, align 8
+  %68 = extractelement <3 x float> %extractvec92, i64 %67
+  %fpfpext93 = fpext float %68 to double
+  store double %fpfpext93, ptr %a91, align 8
+  %69 = load double, ptr %a91, align 8
   call void (ptr, ...) @printf(ptr @.str.10, double %69)
-  %70 = load i64, ptr %.anon85, align 8
-  %addnuw91 = add nuw i64 %70, 1
-  store i64 %addnuw91, ptr %.anon85, align 8
-  br label %loop.cond86
+  %70 = load i64, ptr %.anon87, align 8
+  %addnuw94 = add nuw i64 %70, 1
+  store i64 %addnuw94, ptr %.anon87, align 8
+  br label %loop.cond88
 
-loop.exit92:                                      ; preds = %loop.cond86
+loop.exit95:                                      ; preds = %loop.cond88
   ret void
 }

@@ -5,792 +5,618 @@ on:
     branches: [ master, dev, ci_testing, experiments ]
   pull_request:
     branches: [ master, dev ]
+  workflow_dispatch:
 
 env:
-  LLVM_RELEASE_VERSION_WINDOWS: 18
-  LLVM_RELEASE_VERSION_MAC: 17
-  LLVM_RELEASE_VERSION_LINUX: 17
-  LLVM_RELEASE_VERSION_UBUNTU22: 17
-  LLVM_DEV_VERSION: 21
+  LLVM_RELEASE_VERSION: 21.x
+  LLVM_RELEASE_VERSION_LINUX_MUSL: 20
+  LLVM_RELEASE_VERSION_OPENBSD: 20
+  LLVM_RELEASE_VERSION_NETBSD: 19
+  LLVM_DEV_VERSION: 22
+  # CACHE_INVALIDATION_SEED: '%Y-%m-%d' # Daily
+  CACHE_INVALIDATION_SEED: '%G-%V-1'   # Weekly
+
 jobs:
 
   build-msvc:
     runs-on: windows-latest
+    timeout-minutes: 30
     strategy:
-      # Don't abort runners if a single one fails
       fail-fast: false
       matrix:
         build_type: [ Release, Debug ]
-
     defaults:
       run:
         shell: cmd
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+      - uses: actions/cache@v5
+        with:
+          path: build/_deps
+          key: ${{ runner.os }}-llvm-${{ env.LLVM_RELEASE_VERSION }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
 
-      - name: CMake
+      # set up the environment for Ninja
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: CMake Build
         run: |
-          cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DC3_FETCH_LLVM=ON
           cmake --build build --config ${{ matrix.build_type }}
 
-      - name: Compile and run some examples
-        run: |
-          cd resources
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run -L C:\ --print-linking examples\hello_world_many.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run --print-linking examples\time.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run --print-linking examples\fannkuch-redux.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\contextfree\boolerr.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\ls.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\load_world.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\process.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\args.c3 -- foo -bar "baz baz"
-          ..\build\${{ matrix.build_type }}\c3c.exe compile --no-entry --test -g -O0 --threads 1 --target macos-x64 examples\constants.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run msvc_stack.c3
+      # We remove the GNU link tool so C3C picks up the MSVC link.exe
+      - name: Remove GNU Link
+        shell: bash
+        run: rm -f /usr/bin/link
 
-      - name: Build testproject
-        run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-          cd resources/testproject
-          ..\..\build\${{ matrix.build_type }}\c3c.exe -vvv --emit-llvm run hello_world_win32 --trust=full
-          dir build\llvm\windows-x64
-          ..\..\build\${{ matrix.build_type }}\c3c.exe clean
-          dir build\llvm\windows-x64
+      - name: Run Unified Tests
+        shell: bash
+        run: ./scripts/tools/ci_tests.sh "./build/c3c.exe"
 
+      - name: Cache MSVC SDK
+        id: cache-msvc-sdk
+        uses: actions/cache@v5
+        with:
+          path: msvc_sdk
+          key: msvc-sdk-${{ runner.os }}-${{ hashFiles('msvc_build_libraries.py') }}
 
-      - name: Build testproject lib
-        run: |
-          cd resources/testproject
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-          ..\..\build\${{ matrix.build_type }}\c3c.exe -vvv build hello_world_win32_lib --trust=full
+      - if: steps.cache-msvc-sdk.outputs.cache-hit != 'true'
+        run: py msvc_build_libraries.py --accept-license
 
-      - name: Compile and run dynlib-test
-        run: |
-          cd resources/examples/dynlib-test
-          ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv dynamic-lib add.c3
-          ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv compile-run test.c3 -l ./add.lib          
+      - name: Bundle (Windows)
+        shell: bash
+        run: ./scripts/tools/package_build.sh "./build/c3c.exe" "c3-windows-${{ matrix.build_type }}" "zip"
 
-      - name: Compile and run staticlib-test
-        run: |
-          cd resources/examples/staticlib-test
-          ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv static-lib add.c3
-          ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv compile-run test.c3 -l ./add.lib          
-
-      - name: Vendor-fetch
-        run: |
-          build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib55
-
-      - name: Try raylib5
-        run: |
-          cd resources
-          ..\build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib55
-          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib55 --print-linking examples\raylib\raylib_arkanoid.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib55 --print-linking examples\raylib\raylib_snake.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib55 --print-linking examples\raylib\raylib_tetris.c3
-
-      - name: Compile run unit tests
-        run: |
-          cd test
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -O1
-
-      - name: run compiler tests
-        run: |
-          cd test
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run -O1 src/test_suite_runner.c3 -- ..\build\${{ matrix.build_type }}\c3c.exe test_suite/ --no-terminal
-
-      - name: Test python script
-        run: |
-          py msvc_build_libraries.py --accept-license
-          dir msvc_sdk
-
-      - name: upload artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: c3-windows-${{ matrix.build_type }}
-          path: |
-            build\${{ matrix.build_type }}\c3c.exe
-            build\${{ matrix.build_type }}\c3c_rt
+          path: c3-windows-${{ matrix.build_type }}.zip
 
   build-msys2-mingw:
     runs-on: windows-latest
-    if: ${{ false }}
+    timeout-minutes: 30
     strategy:
-      # Don't abort runners if a single one fails
       fail-fast: false
       matrix:
-        build_type: [Release, Debug]
-
+        build_type: [Debug]
     defaults:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@v6
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          update: true
-          install: git binutils mingw-w64-x86_64-clang mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python
-      - shell: msys2 {0}
+          update: false
+          cache: true
+          install: git binutils mingw-w64-x86_64-clang mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python mingw-w64-x86_64-llvm mingw-w64-x86_64-llvm-libs
+
+      - name: Install LLD
         run: |
-            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-20.1.0-1-any.pkg.tar.zst
-            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-20.1.0-1-any.pkg.tar.zst
-      - name: CMake
+          echo "Server = https://mirror.msys2.org/mingw/mingw64" > /etc/pacman.d/mirrorlist.mingw64
+          for i in 1 2; do \
+            pacman -Sy --noconfirm --needed \
+              mingw-w64-x86_64-llvm \
+              mingw-w64-x86_64-llvm-libs \
+              mingw-w64-x86_64-lld \
+              mingw-w64-x86_64-clang && break || sleep 5; \
+          done
+
+      - name: CMake Build
         run: |
-          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_LINKER=lld
+          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_LINKER=lld -DC3_LINK_DYNAMIC=OFF -DLLVM_DIR=/mingw64/lib/cmake/llvm -DC3_LLD_DIR=/mingw64/lib/
           cmake --build build
-
-      - name: Compile and run some examples
-        run: |
-          cd resources
-          ../build/c3c compile-run --print-linking examples/hello_world_many.c3
-          ../build/c3c compile-run --print-linking examples/process.c3
-          ../build/c3c compile-run --print-linking examples/time.c3
-          ../build/c3c compile-run --print-linking examples/fannkuch-redux.c3
-          ../build/c3c compile-run --print-linking examples/contextfree/boolerr.c3
-          ../build/c3c compile-run --print-linking examples/load_world.c3
-          ../build/c3c compile-run --print-linking examples/args.c3 -- foo -bar "baz baz"
-          ../build/c3c compile --no-entry --test -g -O0 --threads 1 --target macos-x64 examples/constants.c3
-
-      - name: Build testproject
-        run: |
-          cd resources/testproject
-          ../../build/c3c run -vvv --trust=full
-
-      - name: Vendor-fetch
-        run: |
-          ./build/c3c vendor-fetch raylib55
-
-      - name: Build testproject lib
-        run: |
-          cd resources/testproject
-          ../../build/c3c build hello_world_lib --cc cc -vvv --trust=full
-
-      - name: run compiler tests
-        run: |
-          cd test
-          ../build/c3c.exe compile --target windows-x64 -O1 src/test_suite_runner.c3
-          ./test_suite_runner.exe ../build/c3c.exe test_suite/ --no-terminal
+      - name: Run Unified Tests
+        run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
   build-msys2-clang:
     runs-on: windows-latest
-    #if: ${{ false }}
+    timeout-minutes: 30
     strategy:
-      # Don't abort runners if a single one fails
       fail-fast: false
       matrix:
-        build_type: [Release, Debug]
-
+        build_type: [Debug]
     defaults:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@v6
       - uses: msys2/setup-msys2@v2
         with:
           msystem: CLANG64
           update: false
+          cache: true
           install: git binutils mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-python
-
-      - name: CMake
+      - name: CMake Build
         run: |
           cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build build
-
-      - name: Compile and run some examples
-        run: |
-          cd resources
-          ../build/c3c compile-run examples/hello_world_many.c3
-          ../build/c3c compile-run examples/time.c3
-          ../build/c3c compile-run examples/fannkuch-redux.c3
-          ../build/c3c compile-run examples/contextfree/boolerr.c3
-          ../build/c3c compile-run examples/load_world.c3
-          ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
-          ../build/c3c compile --no-entry --test -g -O0 --threads 1 --target macos-x64 examples/constants.c3
-      - name: Build testproject
-        run: |
-          cd resources/testproject
-          ../../build/c3c run -vvv --trust=full
-
-      - name: Build testproject lib
-        run: |
-          cd resources/testproject
-          ../../build/c3c build hello_world_lib -vvv --trust=full
-
-      - name: run compiler tests
-        run: |
-          cd test
-          ../build/c3c.exe compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c.exe test_suite/ --no-terminal
+      - name: Run Unified Tests
+        run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
   build-linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
-      # Don't abort runners if a single one fails
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 18, 19, 20]
-
     steps:
-      - uses: actions/checkout@v4
-      - name: Install common deps
+      - uses: actions/checkout@v6
+      - name: Get current date context
+        id: date
+        run: echo "date=$(date +'${{ env.CACHE_INVALIDATION_SEED }}')" >> $GITHUB_OUTPUT
+      - name: Cache APT archives
+        uses: actions/cache@v5
+        with:
+          path: apt-cache
+          key: apt-cache-${{ runner.os }}-${{ steps.date.outputs.date }}
+      - run: |
+          mkdir -p apt-cache/partial
+          for i in 1 2 3; do sudo apt-get update && break || sleep 2; done
+          for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf && break || sleep 2; done
+          sudo chown -R $USER:$USER apt-cache
+      - name: CMake Build
         run: |
-          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl
-
-      - name: Install Clang ${{matrix.llvm_version}}
-        run: |
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          if [[ "${{matrix.llvm_version}}" < 18 ]]; then
-            sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
-            sudo apt-get update
-            sudo apt-get install -y -t llvm-toolchain-focal-${{matrix.llvm_version}} libpolly-${{matrix.llvm_version}}-dev \
-              clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev \
-              lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev libmlir-${{matrix.llvm_version}} \
-              libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools
-          else
-            if [[ "${{matrix.llvm_version}}" < "${{env.LLVM_DEV_VERSION}}" ]]; then
-              sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
-              sudo apt-get update
-              sudo apt-get install -y -t llvm-toolchain-focal-${{matrix.llvm_version}} libpolly-${{matrix.llvm_version}}-dev \
-                clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev \
-                lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
-            else
-              sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
-              sudo apt-get install -y -t llvm-toolchain-focal libpolly-${{matrix.llvm_version}}-dev \
-                clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev \
-                lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
-            fi
-          fi
-      - name: CMake
-        if: matrix.llvm_version < 18 || matrix.llvm_version == env.LLVM_DEV_VERSION
-        run: |
-          cmake -B build \
-                -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-                -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
-                -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
-                -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
-                -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
-                -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
-                -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
-                -DC3_LLVM_VERSION=${{matrix.llvm_version}}
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -DC3_FETCH_LLVM=ON
           cmake --build build
-      - name: CMake18
-        if: matrix.llvm_version >= 18 && matrix.llvm_version != env.LLVM_DEV_VERSION
-        run: |
-          cmake -B build \
-                -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-                -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
-                -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
-                -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
-                -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
-                -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
-                -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
-                -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
-          cmake --build build
+      - name: Run Unified Tests
+        run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
-      - name: Compile and run some examples
+      - name: Embedded/QEMU Tests
         run: |
-          cd resources
-          ../build/c3c compile examples/base64.c3
-          ../build/c3c compile examples/binarydigits.c3
-          ../build/c3c compile examples/brainfk.c3
-          ../build/c3c compile examples/factorial_macro.c3
-          ../build/c3c compile examples/fasta.c3
-          ../build/c3c compile examples/gameoflife.c3
-          ../build/c3c compile examples/hash.c3
-          ../build/c3c compile-only examples/levenshtein.c3
-          ../build/c3c compile examples/load_world.c3
-          ../build/c3c compile-only examples/map.c3
-          ../build/c3c compile examples/mandelbrot.c3
-          ../build/c3c compile examples/plus_minus.c3
-          ../build/c3c compile examples/nbodies.c3
-          ../build/c3c compile examples/spectralnorm.c3
-          ../build/c3c compile examples/swap.c3
-          ../build/c3c compile examples/contextfree/boolerr.c3
-          ../build/c3c compile examples/contextfree/dynscope.c3
-          ../build/c3c compile examples/contextfree/guess_number.c3
-          ../build/c3c compile examples/contextfree/multi.c3
-          ../build/c3c compile examples/contextfree/cleanup.c3
-          ../build/c3c compile-run examples/hello_world_many.c3
-          ../build/c3c compile-run examples/time.c3
-          ../build/c3c compile-run examples/fannkuch-redux.c3
-          ../build/c3c compile-run examples/contextfree/boolerr.c3
-          ../build/c3c compile-run examples/load_world.c3
-          ../build/c3c compile-run examples/process.c3
-          ../build/c3c compile-run examples/ls.c3
-          ../build/c3c compile-run --linker=builtin linux_stack.c3
-          ../build/c3c compile-run linux_stack.c3
-          ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
-
-      - name: Compile and run dynlib-test
-        run: |
-          cd resources/examples/dynlib-test
-          ../../../build/c3c -vv dynamic-lib add.c3
-          mv add.so libadd.so
-          cc test.c -L. -ladd -Wl,-rpath=.         
-          ./a.out
-          ../../../build/c3c compile-run test.c3 -L . -l add -z -Wl,-rpath=.           
-
-      - name: Compile and run staticlib-test
-        run: |
-          cd resources/examples/staticlib-test
-          ../../../build/c3c -vv static-lib add.c3
-          mv add.a libadd.a
-          cc test.c -L. -ladd         
-          ./a.out
-          ../../../build/c3c compile-run test.c3 -L . -l add           
-
-      - name: Compile run unit tests
-        run: |
-          cd test
-          ../build/c3c compile-test unit
-
-      - name: Build testproject
-        run: |
-          cd resources/testproject
-          ../../build/c3c run -vvv --trust=full
-
-      - name: Test WASM
-        run: |
-          cd resources/testfragments
-          ../../build/c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
-
-      - name: Install QEMU and Risc-V toolchain
-        run: |
-          sudo apt-get install opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf
-
-      - name: Compile and run Baremetal Risc-V Example
-        run: |
+          # Added `opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf` to the apt-get install command above
           cd resources/examples/embedded/riscv-qemu
           make C3C_PATH=../../../../build/ run
 
-      - name: Build testproject direct linker
+      - name: Bundle & Upload (Linux)
         run: |
-          cd resources/testproject
-          ../../build/c3c run -vvv --linker=builtin --trust=full
-
-      - name: Init a library & a project
-        run: |
-          ./build/c3c init-lib mylib
-          ls mylib.c3l
-          ./build/c3c init myproject
-          ls myproject
-
-      - name: run compiler tests
-        run: |
-          cd test
-          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/
-
-      - name: bundle_output
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX
-        run: |
-          mkdir c3
-          cp -r lib c3
-          cp msvc_build_libraries.py c3
-          cp build/c3c c3
-          cp README.md c3
-          cp releasenotes.md c3
-          tar czf c3-linux-${{matrix.build_type}}.tar.gz c3
-
-      - name: upload artifacts
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX
-        uses: actions/upload-artifact@v4
+          bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-${{matrix.build_type}}" "tar"
+      - uses: actions/upload-artifact@v6
         with:
           name: c3-linux-${{matrix.build_type}}
           path: c3-linux-${{matrix.build_type}}.tar.gz
 
-  build-linux-ubuntu22:
-    runs-on: ubuntu-22.04
+  build-linux-alpine:
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:3.23
     strategy:
-      # Don't abort runners if a single one fails
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 18, 19, 20]
     steps:
-      - uses: actions/checkout@v4
-      - name: Install common deps
-        run: |
-          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl
+      - uses: actions/checkout@v6
 
-      - name: Install Clang ${{matrix.llvm_version}}
-        run: |
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          if [[ "${{matrix.llvm_version}}" < "${{env.LLVM_DEV_VERSION}}" ]]; then
-            sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
-          else
-            sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
-          fi
-          sudo apt-get update
-          sudo apt-get install -y clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
-          sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools
-          sudo apt-get install -y libpolly-${{matrix.llvm_version}}-dev
-      - name: CMake Old
-        if: matrix.llvm_version < 18 || matrix.llvm_version == env.LLVM_DEV_VERSION
-        run: |
-          cmake -B build \
-                -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-                -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
-                -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
-                -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
-                -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
-                -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
-                -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
-                -DC3_LLVM_VERSION=${{matrix.llvm_version}}
-          cmake --build build
-      - name: CMake
-        if: matrix.llvm_version >= 18 && matrix.llvm_version != env.LLVM_DEV_VERSION
-        run: |
-          cmake -B build \
-                -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-                -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
-                -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
-                -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
-                -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
-                -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
-                -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
-                -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
-          cmake --build build
-      - name: Compile and run some examples
-        run: |
-          cd resources
-          ../build/c3c compile examples/gameoflife.c3
-          ../build/c3c compile-only examples/levenshtein.c3
-          ../build/c3c compile-only examples/map.c3
-          ../build/c3c compile examples/mandelbrot.c3
-          ../build/c3c compile examples/plus_minus.c3
-          ../build/c3c compile examples/spectralnorm.c3
-          ../build/c3c compile examples/swap.c3
-          ../build/c3c compile examples/contextfree/guess_number.c3
-          ../build/c3c compile-run examples/hash.c3
-          ../build/c3c compile-run examples/nbodies.c3
-          ../build/c3c compile-run examples/contextfree/boolerr.c3
-          ../build/c3c compile-run examples/contextfree/dynscope.c3
-          ../build/c3c compile-run examples/contextfree/multi.c3
-          ../build/c3c compile-run examples/contextfree/cleanup.c3
-          ../build/c3c compile-run examples/hello_world_many.c3
-          ../build/c3c compile-run examples/time.c3
-          ../build/c3c compile-run examples/fannkuch-redux.c3
-          ../build/c3c compile-run examples/load_world.c3
-          ../build/c3c compile-run examples/base64.c3
-          ../build/c3c compile-run examples/binarydigits.c3
-          ../build/c3c compile-run examples/brainfk.c3
-          ../build/c3c compile-run examples/factorial_macro.c3
-          ../build/c3c compile-run examples/fasta.c3
-          ../build/c3c compile-run examples/process.c3
-          ../build/c3c compile-run --linker=builtin linux_stack.c3
-          ../build/c3c compile-run linux_stack.c3
-          ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
+      - name: Get current date context
+        id: date
+        run: echo "date=$(date +'${{ env.CACHE_INVALIDATION_SEED }}')" >> $GITHUB_OUTPUT
 
-      - name: Compile run unit tests
+      #https://wiki.alpinelinux.org/wiki/Local_APK_cache
+      - name: Prepare real apk cache directory + symlink
         run: |
-          cd test
-          ../build/c3c compile-test unit --sanitize=address
+          mkdir -p /var/cache/apk
+          ln -sf /var/cache/apk /etc/apk/cache
 
-      - name: Build testproject
-        run: |
-          cd resources/testproject
-          ../../build/c3c run -vvv --trust=full
-
-      - name: Build testproject direct linker
-        run: |
-          cd resources/testproject
-          ../../build/c3c run -vvv --linker=builtin --trust=full
-
-      - name: run compiler tests
-        run: |
-          cd test
-          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c test_suite/
-
-      - name: bundle_output
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_UBUNTU22
-        run: |
-          mkdir c3
-          cp -r lib c3
-          cp README.md c3
-          cp releasenotes.md c3          
-          cp msvc_build_libraries.py c3
-          cp build/c3c c3
-          tar czf c3-ubuntu-22-${{matrix.build_type}}.tar.gz c3
-
-      - name: upload artifacts
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_UBUNTU22
-        uses: actions/upload-artifact@v4
+      - name: Cache APK downloaded packages (daily)
+        uses: actions/cache@v5
         with:
-          name: c3-ubuntu-22-${{matrix.build_type}}
-          path: c3-ubuntu-22-${{matrix.build_type}}.tar.gz
+          path: /var/cache/apk
+          key: apk-pkgs-${{ runner.os }}-alpine-3.23-${{ steps.date.outputs.date }}
+          restore-keys: |
+            apk-pkgs-${{ runner.os }}-alpine-3.23-
 
-  build-with-docker:
-    runs-on: ubuntu-22.04
-    strategy:
-      fail-fast: false
-      matrix:
-        ubuntu_version: [20.04, 22.04]
-        build_type: [Release, Debug]
-        llvm_version: [17, 18, 19]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Make script executable
-        run: chmod +x ./build-with-docker.sh
-
-      - name: Run build
+      - name: Install dependencies
         run: |
-          LLVM_VERSION=${{ matrix.llvm_version }} UBUNTU_VERSION=${{ matrix.ubuntu_version }} CMAKE_BUILD_TYPE=${{ matrix.build_type }} ./build-with-docker.sh
-      
-      - name: Compile and run some examples
-        run: |
-          cd resources
-          ../build/c3c compile examples/base64.c3
-          ../build/c3c compile examples/binarydigits.c3
-          ../build/c3c compile examples/brainfk.c3
-          ../build/c3c compile examples/factorial_macro.c3
-          ../build/c3c compile examples/fasta.c3
-          ../build/c3c compile examples/gameoflife.c3
-          ../build/c3c compile examples/hash.c3
-          ../build/c3c compile-only examples/levenshtein.c3
-          ../build/c3c compile examples/load_world.c3
-          ../build/c3c compile-only examples/map.c3
-          ../build/c3c compile examples/mandelbrot.c3
-          ../build/c3c compile examples/plus_minus.c3
-          ../build/c3c compile examples/nbodies.c3
-          ../build/c3c compile examples/spectralnorm.c3
-          ../build/c3c compile examples/swap.c3
-          ../build/c3c compile examples/contextfree/boolerr.c3
-          ../build/c3c compile examples/contextfree/dynscope.c3
-          ../build/c3c compile examples/contextfree/guess_number.c3
-          ../build/c3c compile examples/contextfree/multi.c3
-          ../build/c3c compile examples/contextfree/cleanup.c3
-          ../build/c3c compile-run examples/hello_world_many.c3
-          ../build/c3c compile-run examples/time.c3
-          ../build/c3c compile-run examples/fannkuch-redux.c3
-          ../build/c3c compile-run examples/contextfree/boolerr.c3
-          ../build/c3c compile-run examples/load_world.c3
-          ../build/c3c compile-run examples/process.c3
-          ../build/c3c compile-run examples/ls.c3
-          ../build/c3c compile-run --linker=builtin linux_stack.c3
-          ../build/c3c compile-run linux_stack.c3
-          ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
+          V=${{env.LLVM_RELEASE_VERSION_LINUX_MUSL}}
+          for i in 1 2 3; do apk update && break || sleep 2; done
+          for i in 1 2 3; do \
+            apk add \
+              build-base bash git cmake ninja python3 linux-headers \
+              tar zstd \
+              zlib-dev curl-dev libffi-dev \
+              llvm${V}-dev \
+              llvm${V}-static \
+              llvm${V}-gtest \
+              clang${V}-dev \
+              clang${V}-static \
+              lld${V}-dev \
+              lld${V}-libs && break || sleep 2; \
+          done
 
-      - name: Compile run unit tests
+      - name: CMake Build
         run: |
-          cd test
-          ../build/c3c compile-test unit
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DC3_FETCH_LLVM=OFF \
+            -DLLVM_ENABLE_LIBXML2=OFF \
+            -DC3_LINK_DYNAMIC=ON
+          cmake --build build
 
-      - name: Build testproject
-        run: |
-          cd resources/testproject
-          ../../build/c3c run -vvv --trust=full
-
-      - name: Test WASM
-        run: |
-          cd resources/testfragments
-          ../../build/c3c compile --reloc=none --target wasm32 -g0 --no-entry -Os wasm4.c3
-
-      - name: Build testproject direct linker
-        run: |
-          cd resources/testproject
-          ../../build/c3c run -vvv --linker=builtin --trust=full
-
-      - name: Init a library & a project
-        run: |
-          ./build/c3c init-lib mylib
-          ls mylib.c3l
-          ./build/c3c init myproject
-          ls myproject
-
-      - name: run compiler tests
-        run: |
-          cd test
-          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c test_suite/
+      - name: Run Unified Tests
+        run: ./scripts/tools/ci_tests.sh "./build/c3c"
+      - name: Bundle & Upload (Alpine)
+        run: bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-musl-${{ matrix.build_type }}" "tar"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: c3-linux-musl-${{ matrix.build_type }}
+          path: c3-linux-musl-${{ matrix.build_type }}.tar.gz
 
   build-mac:
     runs-on: macos-latest
     strategy:
-      # Don't abort runners if a single one fails
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 18]
     steps:
-      - uses: actions/checkout@v4
-      - name: Download LLVM
+      - uses: actions/checkout@v6
+      - name: CMake Build
         run: |
-          brew install llvm@${{ matrix.llvm_version }} ninja curl
-          echo "/opt/homebrew/opt/llvm@${{ matrix.llvm_version }}/bin" >> $GITHUB_PATH
-          TMP_PATH=$(xcrun --show-sdk-path)/user/include
-          echo "CPATH=$TMP_PATH" >> $GITHUB_ENV
-
-      - name: CMake
-        if: matrix.llvm_version < 18
-        run: |
-          cmake -B build -G Ninja -DC3_LLVM_VERSION=${{matrix.llvm_version}} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DC3_FETCH_LLVM=ON
           cmake --build build
-      - name: CMake18
-        if: matrix.llvm_version >= 18
-        run: |
-          cmake -B build -G Ninja -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          cmake --build build
+      - name: Run Unified Tests
+        run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
-      - name: Vendor-fetch
-        run: |
-          ./build/c3c vendor-fetch raylib55
-
-      - name: Compile and run some examples
-        run: |
-          cd resources
-          ../build/c3c compile-run examples/hello_world_many.c3
-          ../build/c3c compile-run examples/time.c3
-          ../build/c3c compile-run examples/fannkuch-redux.c3
-          ../build/c3c compile-run examples/contextfree/boolerr.c3
-          ../build/c3c compile-run examples/process.c3
-          ../build/c3c compile-run examples/load_world.c3
-          ../build/c3c compile-run -O5 examples/load_world.c3
-          ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
-
-      - name: Compile and run dynlib-test
-        run: |
-          cd resources/examples/dynlib-test
-          ../../../build/c3c -vv dynamic-lib add.c3
-          ../../../build/c3c compile-run test.c3 -l ./add.dylib          
-
-      - name: Compile run unit tests
-        run: |
-          cd test
-          ../build/c3c compile-test unit -O1
-
-      - name: Test WASM
-        run: |
-          cd resources/testfragments
-          ../../build/c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
-
-      - name: Build testproject
+      - name: Build Lib (Mac)
         run: |
           cd resources/testproject
-          ../../build/c3c run -vvv --trust=full
+          ../../build/c3c build hello_world_lib -vv --trust=full
 
-      - name: Build testproject direct linker
-        run: |
-          cd resources/testproject
-          ../../build/c3c run -vvv --linker=builtin --trust=full
-
-      - name: Build testproject lib
-        run: |
-          cd resources/testproject
-          ../../build/c3c build hello_world_lib -vvv --trust=full
-
-      - name: run compiler tests
-        run: |
-          cd test
-          ../build/c3c compile -O1 src/test_suite_runner.c3
-          ./test_suite_runner ../build/c3c test_suite/
-
-      - name: run build test suite runner
-        run: |
-          cd test
-          ../build/c3c compile -O1 src/test_suite_runner.c3
-
-      - name: bundle_output
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_MAC
-        run: |
-          mkdir macos
-          cp -r lib macos
-          cp msvc_build_libraries.py macos
-          cp README.md macos
-          cp releasenotes.md macos          
-          cp build/c3c macos
-          zip -r c3-macos-${{matrix.build_type}}.zip macos
-
-      - name: upload artifacts
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_MAC
-        uses: actions/upload-artifact@v4
+      - name: Bundle & Upload (Mac)
+        run: bash ./scripts/tools/package_build.sh "./build/c3c" "c3-macos-${{matrix.build_type}}" "zip"
+      - uses: actions/upload-artifact@v6
         with:
           name: c3-macos-${{matrix.build_type}}
           path: c3-macos-${{matrix.build_type}}.zip
 
+  build-openbsd:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug]
+        version: ['7.8']
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build, Test and Package in OpenBSD
+        uses: cross-platform-actions/action@master
+        with:
+          operating_system: openbsd
+          version: ${{ matrix.version }}
+          cpu_count: 4
+          memory: 6G
+          run: |
+            # Install dependencies
+            for i in 1 2 3; do
+              sudo pkg_add ninja cmake llvm%${{ env.LLVM_RELEASE_VERSION_OPENBSD }} bash && break || sleep 5
+            done
+
+            export MALLOC_OPTIONS=j
+
+            # Setup RAM Disk
+            sudo mkdir -p /mnt/ram
+            sudo mount_mfs -s $((2 * 1024 * 1024 * 2)) swap /mnt/ram
+            sudo chown -R $(id -u):$(id -g) /mnt/ram
+            export TMPDIR=/mnt/ram
+
+            # Copy source to RAM disk and switch to it
+            cp -rp . /mnt/ram/
+            cd /mnt/ram
+
+            # Build
+            cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+            cmake --build build
+
+            # Run Unified Tests
+            chmod +x scripts/tools/ci_tests.sh
+            ulimit -d $(ulimit -Hd) || true
+            ./scripts/tools/ci_tests.sh "./build/c3c"
+
+            # Package
+            chmod +x scripts/tools/package_build.sh
+            ./scripts/tools/package_build.sh "./build/c3c" "c3-openbsd-${{matrix.build_type}}" "tar"
+
+            # Move results back to workspace for GitHub rsync/upload
+            mkdir -p "$GITHUB_WORKSPACE"/build
+            cp build/c3c "$GITHUB_WORKSPACE"/build/
+            cp *.tar.gz "$GITHUB_WORKSPACE"/
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: c3-openbsd-${{matrix.build_type}}
+          path: c3-openbsd-${{matrix.build_type}}.tar.gz
+
+  build-netbsd:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug]
+        version: ['10.1']
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build, Test and Package in NetBSD
+        uses: cross-platform-actions/action@master
+        with:
+          operating_system: netbsd
+          version: ${{ matrix.version }}
+          cpu_count: 4
+          memory: 6G
+          run: |
+            # Install dependencies
+            export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
+            export PKG_PATH="https://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -m)/$(uname -r)/All/"
+
+            # Ensure pkgin is available and updated
+            sudo /usr/sbin/pkg_add -U pkgin || true
+
+            for i in 1 2 3; do
+              sudo pkgin -y update && \
+              sudo pkgin -y install cmake gcc14 ninja-build bash \
+                'llvm>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}' \
+                'clang>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}' \
+                'lld>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}' && break || sleep 5
+            done
+
+            export CC=clang
+            export CXX=clang++
+
+            # Setup RAM Disk
+            sudo mkdir -p /mnt/ram
+            sudo mount_tmpfs -s 2G tmpfs /mnt/ram
+            sudo chown -R $(id -u):$(id -g) /mnt/ram
+            export TMPDIR=/mnt/ram
+
+            # Copy source to RAM disk and switch to it
+            cp -rp . /mnt/ram/
+            cd /mnt/ram
+
+            # Build
+            cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+            cmake --build build
+
+            # Run Unified Tests
+            chmod +x scripts/tools/ci_tests.sh
+            ./scripts/tools/ci_tests.sh "./build/c3c"
+
+            # Package
+            chmod +x scripts/tools/package_build.sh
+            ./scripts/tools/package_build.sh "./build/c3c" "c3-netbsd-${{matrix.build_type}}" "tar"
+
+            # Move results back to workspace for GitHub rsync/upload
+            mkdir -p "$GITHUB_WORKSPACE"/build
+            cp build/c3c "$GITHUB_WORKSPACE"/build/
+            cp *.tar.gz "$GITHUB_WORKSPACE"/
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: c3-netbsd-${{matrix.build_type}}
+          path: c3-netbsd-${{matrix.build_type}}.tar.gz
+
+  build-with-docker:
+    name: LLVM ${{ matrix.llvm_version }} Compatibility
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        llvm_version: [19, 20]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and cache Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker
+          build-args: |
+            LLVM_VERSION=${{ matrix.llvm_version }}
+            UBUNTU_VERSION=22.04
+            CMAKE_VERSION=3.20.0
+          tags: c3c-builder:latest
+          outputs: type=docker,dest=/tmp/c3c-builder.tar
+          cache-from: type=gha,scope=build-with-docker-${{ matrix.llvm_version }}
+          cache-to: type=gha,mode=max,scope=build-with-docker-${{ matrix.llvm_version }}
+        env:
+          DOCKER_BUILD_SUMMARY: false
+
+      - name: Load Docker image
+        run: docker load -i /tmp/c3c-builder.tar
+
+      - name: Build C3 in Docker
+        run: |
+          rm -rf build bin
+          mkdir -p build bin
+          chmod -R 777 build bin
+          docker run --rm \
+            -v "$(pwd):/home/c3c/source" \
+            -w /home/c3c/source \
+            c3c-builder:latest \
+            bash -c "git config --global --add safe.directory /home/c3c/source && \
+            cmake -S . -B build \
+                    -G Ninja \
+                    -DCMAKE_BUILD_TYPE=Debug \
+                    -DCMAKE_C_COMPILER=clang-${{ matrix.llvm_version }} \
+                    -DCMAKE_CXX_COMPILER=clang++-${{ matrix.llvm_version }} \
+                    -DCMAKE_LINKER=lld-${{ matrix.llvm_version }} \
+                    -DCMAKE_OBJCOPY=llvm-objcopy-${{ matrix.llvm_version }} \
+                    -DCMAKE_STRIP=llvm-strip-${{ matrix.llvm_version }} \
+                    -DCMAKE_DLLTOOL=llvm-dlltool-${{ matrix.llvm_version }} \
+                    -DC3_LLVM_VERSION=auto && \
+            cmake --build build && \
+            cp -r build/c3c build/lib bin"
+
+      - name: Run Unified Tests
+        run: |
+          docker run --rm \
+            -u 0 \
+            -v "$(pwd):/home/c3c/source" \
+            -w /home/c3c/source \
+            c3c-builder \
+            bash -c "./scripts/tools/ci_tests.sh ./bin/c3c"
+
   build-nix:
     runs-on: ubuntu-22.04
     strategy:
-      # Don't abort runners if a single one fails
+      fail-fast: false
+      matrix:
+        build_type: [ Debug ]
+        nixpkgs: [ Lock, Latest ]
+    steps:
+    - uses: actions/checkout@v6
+    - uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Update flake
+      if: matrix.nixpkgs == 'Latest'
+      run: nix flake update
+    - name: CMake build and run Unified Tests
+      run: |
+        CHECK_NAME=".#c3c-checks"
+        if [[ ${{ matrix.build_type }} = "Debug" ]]; then CHECK_NAME=".#c3c-debug-checks"; fi
+        nix build -L "$CHECK_NAME"
+
+  build-android:
+    strategy:
       fail-fast: false
       matrix:
         build_type: [ Release, Debug ]
-        nixpkgs: [ Lock, Latest ]
+        architecture: [ aarch64, x86_64 ]
+        include:
+          - architecture: aarch64
+            runner: ubuntu-24.04-arm
+          - architecture: x86_64
+            runner: ubuntu-24.04
+    runs-on: ${{matrix.runner}}
+    container:
+      image: termux/termux-docker:${{matrix.architecture}}
+      volumes:
+        - /tmp/node20:/__e/node20
+        - /tmp/node24:/__e/node24
+    env:
+      TERMUX_MAIN_PACKAGE_FORMAT: debian
+      ANDROID_ROOT: /system
+      ANDROID_DATA: /data
+      PREFIX: /data/data/com.termux/files/usr
+      HOME: /data/data/com.termux/files/home
+      PATH: /data/data/com.termux/files/usr/bin
+      TMPDIR: /data/data/com.termux/files/usr/tmp
+      LANG: en_US.UTF-8
+      TZ: UTC
     steps:
-    - uses: actions/checkout@v4
+      - name: prepare termux
+        run: |
+          ln -sf ${PREFIX}/etc/termux/mirrors/default ${PREFIX}/etc/termux/chosen_mirrors
+          for i in 1 2; do /entrypoint.sh pkg update && break || sleep 5; done
+          /entrypoint.sh bash -c "yes | pkg upgrade -y"
+          chmod -R o+x ${PREFIX}/bin
+          for i in 1 2; do /entrypoint.sh pkg install -y nodejs-lts tar git && break || sleep 5; done
+          # Symlink Termux node to where GHA expects it
+          mkdir -p /__e/node20/bin /__e/node24/bin || true
+          ln -sf ${PREFIX}/bin/node /__e/node20/bin/node || true
+          ln -sf ${PREFIX}/bin/node /__e/node24/bin/node || true
 
-    - name: Install Nix
-      uses: cachix/install-nix-action@v30
-      with: 
-        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get current date context
+        id: date
+        run: echo "date=$(date +'${{ env.CACHE_INVALIDATION_SEED }}')" >> $GITHUB_OUTPUT
 
-    - name: Update flake (if necessary)
-      run: |
-        if [[ matrix.nixpkgs == "Latest" ]]; then 
-          nix flake update
-        fi
-        nix flake info
+      - name: Cache Termux packages
+        uses: actions/cache@v5
+        with:
+          path: /data/data/com.termux/cache/apt/archives/
+          key: termux-cache-${{ matrix.architecture }}-${{ steps.date.outputs.date }}
 
-    - name: Build and check 
-      run: |
-        if [[ ${{ matrix.build_type }} = "Debug" ]]; then 
-          nix build -L ".#c3c-debug-checks" 
-        else 
-          nix build -L ".#c3c-checks"
-        fi
+      - uses: actions/checkout@v6
+
+      - name: fix permissions after checkout
+        run: chown -R 1000:1000 .
+
+      - name: setup
+        run: |
+          for i in 1 2; do \
+            /entrypoint.sh pkg install -y llvm binutils libgc build-essential cmake git libedit zlib clang make mlir llvm-tools libpolly python libllvm-static && break || sleep 10; \
+          done
+
+      - name: build
+        run: |
+          cmake -Bbuild -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+          cmake --build build
+
+      - name: Run Unified Tests
+        if: matrix.build_type == 'Debug'
+        run: ./scripts/tools/ci_tests.sh "./build/c3c" "android"
+
+      - name: bundle_output
+        run: |
+          chmod +x ./scripts/tools/package_build.sh
+          ./scripts/tools/package_build.sh "./build/c3c" "c3-android-${{matrix.architecture}}-${{matrix.build_type}}" "tar"
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: c3-android-${{matrix.architecture}}-${{matrix.build_type}}
+          path: c3-android-${{matrix.architecture}}-${{matrix.build_type}}.tar.gz
 
   release:
     runs-on: ubuntu-22.04
-    needs: [build-msvc, build-linux, build-mac, build-linux-ubuntu22]
+    needs: [build-msvc, build-linux, build-mac, build-linux-alpine, build-openbsd, build-netbsd, build-android]
     if: github.ref == 'refs/heads/master'
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v4
-      - run: cp -r lib c3-windows-Release
-      - run: cp -r lib c3-windows-Debug
-      - run: cp msvc_build_libraries.py c3-windows-Release
-      - run: cp msvc_build_libraries.py c3-windows-Debug
-      - run: cp README.md c3-windows-Release
-      - run: cp README.md c3-windows-Debug
-      - run: cp releasenotes.md c3-windows-Release
-      - run: cp releasenotes.md c3-windows-Debug
-      - run: zip -r c3-windows.zip c3-windows-Release
-      - run: zip -r c3-windows-debug.zip c3-windows-Debug
-      - run: mv c3-linux-Release/c3-linux-Release.tar.gz c3-linux-Release/c3-linux.tar.gz
-      - run: mv c3-linux-Debug/c3-linux-Debug.tar.gz c3-linux-Debug/c3-linux-debug.tar.gz
-      - run: mv c3-ubuntu-22-Release/c3-ubuntu-22-Release.tar.gz c3-ubuntu-22-Release/c3-ubuntu-22.tar.gz
-      - run: mv c3-ubuntu-22-Debug/c3-ubuntu-22-Debug.tar.gz c3-ubuntu-22-Debug/c3-ubuntu-22-debug.tar.gz
-      - run: mv c3-macos-Release/c3-macos-Release.zip c3-macos-Release/c3-macos.zip
-      - run: mv c3-macos-Debug/c3-macos-Debug.zip c3-macos-Debug/c3-macos-debug.zip
-      - run: gh release delete latest-prerelease --cleanup-tag -y || true
+
+      - name: Prepare Assets
+        run: |
+          # --- Release Assets ---
+          mv c3-windows-Release/c3-windows-Release.zip c3-windows.zip
+          mv c3-macos-Release/c3-macos-Release.zip c3-macos.zip
+
+          mv c3-linux-Release/c3-linux-Release.tar.gz c3-linux.tar.gz
+          mv c3-linux-musl-Release/c3-linux-musl-Release.tar.gz c3-linux-musl.tar.gz
+          mv c3-openbsd-Release/c3-openbsd-Release.tar.gz c3-openbsd.tar.gz || true
+          mv c3-netbsd-Release/c3-netbsd-Release.tar.gz c3-netbsd.tar.gz || true
+          mv c3-android-aarch64-Release/c3-android-aarch64-Release.tar.gz c3-android-aarch64.tar.gz
+          mv c3-android-x86_64-Release/c3-android-x86_64-Release.tar.gz c3-android-x86_64.tar.gz
+
+          # --- Debug Assets ---
+          mv c3-windows-Debug/c3-windows-Debug.zip c3-windows-debug.zip
+          mv c3-macos-Debug/c3-macos-Debug.zip c3-macos-debug.zip
+
+          mv c3-linux-Debug/c3-linux-Debug.tar.gz c3-linux-debug.tar.gz
+          mv c3-linux-musl-Debug/c3-linux-musl-Debug.tar.gz c3-linux-musl-debug.tar.gz
+          mv c3-openbsd-Debug/c3-openbsd-Debug.tar.gz c3-openbsd-debug.tar.gz || true
+          mv c3-netbsd-Debug/c3-netbsd-Debug.tar.gz c3-netbsd-debug.tar.gz || true
+          mv c3-android-aarch64-Debug/c3-android-aarch64-Debug.tar.gz c3-android-aarch64-debug.tar.gz
+          mv c3-android-x86_64-Debug/c3-android-x86_64-Debug.tar.gz c3-android-x86_64-debug.tar.gz
+
+      - run: gh release delete latest-prerelease-tag --cleanup-tag -y || true
       - run: echo "RELEASE_NAME=latest-prerelease-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
 
-      - id: create_release
-        uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest-prerelease
+          tag_name: latest-prerelease-tag
           name: ${{ env.RELEASE_NAME }}
-          draft: false
           prerelease: true
           files: |
             c3-windows.zip
+            c3-macos.zip
+            c3-linux.tar.gz
+            c3-linux-musl.tar.gz
+            c3-openbsd.tar.gz
+            c3-netbsd.tar.gz
+            c3-android-aarch64.tar.gz
+            c3-android-x86_64.tar.gz
+            # --- Debug Artifacts ---
             c3-windows-debug.zip
-            c3-linux-Release/c3-linux.tar.gz
-            c3-linux-Debug/c3-linux-debug.tar.gz
-            c3-ubuntu-22-Release/c3-ubuntu-22.tar.gz
-            c3-ubuntu-22-Debug/c3-ubuntu-22-debug.tar.gz
-            c3-macos-Release/c3-macos.zip
-            c3-macos-Debug/c3-macos-debug.zip
+            c3-macos-debug.zip
+            c3-linux-debug.tar.gz
+            c3-linux-musl-debug.tar.gz
+            c3-openbsd-debug.tar.gz
+            c3-netbsd-debug.tar.gz
+            c3-android-aarch64-debug.tar.gz
+            c3-android-x86_64-debug.tar.gz

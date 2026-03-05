@@ -12,7 +12,7 @@ faultdef XYZ;
  *>
 fn void? abc(int a, int b, int z)
 {
-	return ZED?; // #error: This value does not match declared optional returns
+	return ZED~; // #error: This value does not match declared optional returns
 }
 
 <*
@@ -21,7 +21,7 @@ hello world
  *>
 macro void? @abc(int a, int b, int z)
 {
-	return ZED?; // #error: This value does not match declared optional returns
+	return ZED~; // #error: This value does not match declared optional returns
 }
 
 fn void main()

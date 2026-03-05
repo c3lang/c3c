@@ -1,9 +1,9 @@
 // Copyright (c) 2023-2025 Eduardo José Gómez Hernández. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::atomic::types{Type};
+module std::atomic::types;
 
-struct Atomic
+struct Atomic <Type>
 {
 	Type data;
 }
@@ -11,147 +11,87 @@ struct Atomic
 <*
  Loads data atomically, by default this uses SEQ_CONSISTENT ordering.
 
- @param ordering : "The ordering, cannot be release or acquire-release."
- @require ordering != RELEASE && ordering != ACQUIRE_RELEASE : "Release and acquire-release are not valid for load"
+ @param $ordering : "The ordering, cannot be release or acquire-release."
+ @require $ordering != RELEASE && $ordering != ACQUIRE_RELEASE : "Release and acquire-release are not valid for load"
 *>
-macro Type Atomic.load(&self, AtomicOrdering ordering = SEQ_CONSISTENT)
+macro Type Atomic.load(&self, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	Type* data = &self.data;
-	switch(ordering)
-	{
-		case NOT_ATOMIC: return $$atomic_load(data, false, AtomicOrdering.NOT_ATOMIC.ordinal);
-		case UNORDERED: return $$atomic_load(data, false, AtomicOrdering.UNORDERED.ordinal);
-		case RELAXED: return $$atomic_load(data, false, AtomicOrdering.RELAXED.ordinal);
-		case ACQUIRE: return $$atomic_load(data, false, AtomicOrdering.ACQUIRE.ordinal);
-		case SEQ_CONSISTENT: return $$atomic_load(data, false, AtomicOrdering.SEQ_CONSISTENT.ordinal);
-		case ACQUIRE_RELEASE:
-		case RELEASE: unreachable("Invalid ordering.");
-	}
+	return $$atomic_load(&self.data, false, $ordering.ordinal);
 }
 <*
  Stores data atomically, by default this uses SEQ_CONSISTENT ordering.
 
- @param ordering : "The ordering, cannot be acquire or acquire-release."
- @require ordering != ACQUIRE && ordering != ACQUIRE_RELEASE : "Acquire and acquire-release are not valid for store"
+ @param $ordering : "The ordering, cannot be acquire or acquire-release."
+ @require $ordering != ACQUIRE && $ordering != ACQUIRE_RELEASE : "Acquire and acquire-release are not valid for store"
 *>
-macro void Atomic.store(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
+macro void Atomic.store(&self, Type value, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	Type* data = &self.data;
-	switch(ordering) 
-	{
-		case NOT_ATOMIC: $$atomic_store(data, value, false, AtomicOrdering.NOT_ATOMIC.ordinal);
-		case UNORDERED: $$atomic_store(data, value, false, AtomicOrdering.UNORDERED.ordinal);
-		case RELAXED: $$atomic_store(data, value, false, AtomicOrdering.RELAXED.ordinal);
-		case RELEASE: $$atomic_store(data, value, false, AtomicOrdering.RELEASE.ordinal);
-		case SEQ_CONSISTENT: $$atomic_store(data, value, false, AtomicOrdering.SEQ_CONSISTENT.ordinal);
-		case ACQUIRE_RELEASE:
-		case ACQUIRE: unreachable("Invalid ordering.");
-	}
+	$$atomic_store(&self.data, value, false, $ordering.ordinal);
 }
 
-macro Type Atomic.add(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
+macro Type Atomic.add(&self, Type value, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	Type* data = &self.data;
-	return @atomic_exec(atomic::fetch_add, data, value, ordering);
+	return atomic::fetch_add(&self.data, value, $ordering);
 }
 
-macro Type Atomic.sub(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
+macro Type Atomic.sub(&self, Type value, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	Type* data = &self.data;
-	return @atomic_exec(atomic::fetch_sub, data, value, ordering);
+	return atomic::fetch_sub(&self.data, value, $ordering);
 }
 
-macro Type Atomic.mul(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
+macro Type Atomic.mul(&self, Type value, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	Type* data = &self.data;
-	return @atomic_exec(atomic::fetch_mul, data, value, ordering);
+	return atomic::fetch_mul(&self.data, value, $ordering);
 }
 
-macro Type Atomic.div(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
+macro Type Atomic.div(&self, Type value, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	Type* data = &self.data;
-	return @atomic_exec(atomic::fetch_div, data, value, ordering);
+	return atomic::fetch_div(&self.data, value, $ordering);
 }
 
-macro Type Atomic.max(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
+macro Type Atomic.max(&self, Type value, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	Type* data = &self.data;
-	return @atomic_exec(atomic::fetch_max, data, value, ordering);
+	return atomic::fetch_max(&self.data, value, $ordering);
 }
 
-macro Type Atomic.min(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
+macro Type Atomic.min(&self, Type value, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	Type* data = &self.data;
-	return @atomic_exec(atomic::fetch_min, data, value, ordering);
+	return atomic::fetch_min(&self.data, value, $ordering);
 }
 
-macro Type Atomic.or(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT) @if(types::flat_kind(Type) != FLOAT)
+macro Type Atomic.or(&self, Type value, AtomicOrdering $ordering = SEQ_CONSISTENT) @if(types::flat_kind(Type) != FLOAT)
 {
-	Type* data = &self.data;
-	return @atomic_exec(atomic::fetch_or, data, value, ordering);
+	return atomic::fetch_or(&self.data, value, $ordering);
 }
 
-fn Type Atomic.xor(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT) @if(types::flat_kind(Type) != FLOAT)
+macro Type Atomic.xor(&self, Type value, AtomicOrdering $ordering = SEQ_CONSISTENT) @if(types::flat_kind(Type) != FLOAT)
 {
-	Type* data = &self.data;
-	return @atomic_exec(atomic::fetch_xor, data, value, ordering);
+	return atomic::fetch_xor(&self.data, value, $ordering);
 }
 
-macro Type Atomic.and(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT) @if(types::flat_kind(Type) != FLOAT)
+macro Type Atomic.and(&self, Type value, AtomicOrdering $ordering = SEQ_CONSISTENT) @if(types::flat_kind(Type) != FLOAT)
 {
-	Type* data = &self.data;
-	return @atomic_exec(atomic::fetch_and, data, value, ordering);
+	return atomic::fetch_and(&self.data, value, $ordering);
 }
 
-macro Type Atomic.shr(&self, Type amount, AtomicOrdering ordering = SEQ_CONSISTENT) @if(types::flat_kind(Type) != FLOAT)
+macro Type Atomic.shr(&self, Type amount, AtomicOrdering $ordering = SEQ_CONSISTENT) @if(types::flat_kind(Type) != FLOAT)
 {
-	Type* data = &self.data;
-	return @atomic_exec(atomic::fetch_shift_right, data, amount, ordering);
+	return atomic::fetch_shift_right(&self.data, amount, $ordering);
 }
 
-macro Type Atomic.shl(&self, Type amount, AtomicOrdering ordering = SEQ_CONSISTENT) @if(types::flat_kind(Type) != FLOAT)
+macro Type Atomic.shl(&self, Type amount, AtomicOrdering $ordering = SEQ_CONSISTENT) @if(types::flat_kind(Type) != FLOAT)
 {
-	Type* data = &self.data;
-	return @atomic_exec(atomic::fetch_shift_left, data, amount, ordering);
+	return atomic::fetch_shift_left(&self.data, amount, $ordering);
 }
 
-macro Type Atomic.set(&self, AtomicOrdering ordering = SEQ_CONSISTENT) @if(types::flat_kind(Type) == BOOL)
+macro Type Atomic.set(&self, AtomicOrdering $ordering = SEQ_CONSISTENT) @if(types::flat_kind(Type) == BOOL)
 {
-	Type* data = &self.data;
-	return @atomic_exec_no_arg(atomic::flag_set, data, ordering);
+	return atomic::flag_set(&self.data, $ordering);
 }
 
-macro Type Atomic.clear(&self, AtomicOrdering ordering = SEQ_CONSISTENT) @if(types::flat_kind(Type) == BOOL)
+macro Type Atomic.clear(&self, AtomicOrdering $ordering = SEQ_CONSISTENT) @if(types::flat_kind(Type) == BOOL)
 {
-	Type* data = &self.data;
-
-	return @atomic_exec_no_arg(atomic::flag_clear, data, ordering);
-}
-
-macro @atomic_exec(#func, data, value, ordering) @local
-{
-	switch(ordering) 
-	{
-		case RELAXED: return #func(data, value, RELAXED);
-		case ACQUIRE: return #func(data, value, ACQUIRE);
-		case RELEASE: return #func(data, value, RELEASE);
-		case ACQUIRE_RELEASE: return #func(data, value, ACQUIRE_RELEASE);
-		case SEQ_CONSISTENT: return #func(data, value, SEQ_CONSISTENT);
-		default: unreachable("Ordering may not be non-atomic or unordered.");
-	}
-}
-
-macro @atomic_exec_no_arg(#func, data, ordering) @local
-{
-	switch(ordering)
-	{
-		case RELAXED: return #func(data, RELAXED);
-		case ACQUIRE: return #func(data, ACQUIRE);
-		case RELEASE: return #func(data, RELEASE);
-		case ACQUIRE_RELEASE: return #func(data, ACQUIRE_RELEASE);
-		case SEQ_CONSISTENT: return #func(data, SEQ_CONSISTENT);
-		default: unreachable("Ordering may not be non-atomic or unordered.");
-	}
+	return atomic::flag_clear(&self.data, $ordering);
 }
 
 module std::atomic;
@@ -171,10 +111,12 @@ macro bool is_native_atomic_type($Type)
 			$case SIGNED_INT:
 			$case UNSIGNED_INT:
 			$case POINTER:
+			$case FUNC:
 			$case FLOAT:
 			$case BOOL:
 				return true;
-			$case DISTINCT:
+			$case TYPEDEF:
+			$case CONSTDEF:
 				return is_native_atomic_type($Type.inner);
 			$default:
 				return false;
@@ -192,7 +134,7 @@ macro bool is_native_atomic_type($Type)
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr + y) : "+ must be defined between the values."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
@@ -212,7 +154,7 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr - y) : "- must be defined between the values."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
@@ -231,13 +173,13 @@ macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr * y) : "* must be defined between the values."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
 	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = types::lower_to_atomic_compatible_type($typeof(*ptr));
@@ -270,14 +212,14 @@ macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
- @require $defined(*ptr * y) : "/ must be defined between the values."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $defined(*ptr / y) : "/ must be defined between the values."
+ @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
 	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = types::lower_to_atomic_compatible_type($typeof(*ptr));
@@ -312,7 +254,7 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr | y) : "| must be defined between the values."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
@@ -329,7 +271,7 @@ macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr ^ y) : "^ must be defined between the values."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
@@ -346,7 +288,7 @@ macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr ^ y) : "& must be defined between the values."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
@@ -363,13 +305,13 @@ macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require types::is_int($typeof(*ptr)) : "Only integer pointers may be used."
  @require types::is_int($typeof(y)) : "The value for shift right must be an integer"
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
 	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = types::lower_to_atomic_compatible_type($typeof(*ptr));
@@ -405,13 +347,13 @@ macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require types::is_int($typeof(*ptr)) : "Only integer pointers may be used."
  @require types::is_int($typeof(y)) : "The value for shift left must be an integer"
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
 	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = SEQ_CONSISTENT;
 	$endif
 	
 	var $StorageType = types::lower_to_atomic_compatible_type($typeof(*ptr));
@@ -446,7 +388,7 @@ macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require types::flat_kind($typeof(*ptr)) == BOOL : "Only bool pointers may be used."
 
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro flag_set(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
@@ -454,7 +396,7 @@ macro flag_set(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	$typeof(*ptr) new_value = true;
 	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = SEQ_CONSISTENT;
 	$endif
 	do
 	{
@@ -473,7 +415,7 @@ macro flag_set(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require types::flat_kind($typeof(*ptr)) == BOOL : "Only bool pointers may be used."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
@@ -481,7 +423,7 @@ macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	$typeof(*ptr) new_value = false;
 	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
-	    $load_ordering = AtomicOrdering.SEQ_CONSISTENT;
+	    $load_ordering = SEQ_CONSISTENT;
 	$endif
 	do
 	{
@@ -501,7 +443,7 @@ macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr > y) : "Only values that are comparable with > may be used"
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
@@ -520,7 +462,7 @@ macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr > y) : "Only values that are comparable with > may be used"
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {

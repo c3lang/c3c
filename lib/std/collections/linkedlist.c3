@@ -1,14 +1,15 @@
 // Copyright (c) 2021-2024 Christoffer Lerno. All rights reserved.
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::collections::linkedlist{Type};
+module std::collections::linkedlist <Type>;
+import std::io;
 
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
 
-struct Node @private
+struct Node
 {
-	Node *next;
-	Node *prev;
+	Node* next;
+	Node* prev;
 	Type value;
 }
 
@@ -16,8 +17,31 @@ struct LinkedList
 {
 	Allocator allocator;
 	usz size;
-	Node *_first;
-	Node *_last;
+	Node* _first;
+	Node* _last;
+}
+
+fn usz? LinkedList.to_format(&self, Formatter* f) @dynamic
+{
+	usz len = f.print("{ ")!;
+	for (Node* node = self._first; node != null; node = node.next)
+	{
+		len += f.printf(node.next ? "%s, " : "%s", node.value)!;
+	}
+	return len + f.print(" }");
+}
+
+macro LinkedList @new(Allocator allocator, Type[] #default_values = {})
+{
+	LinkedList new_list;
+	new_list.init(allocator);
+	new_list.push_all(#default_values);
+	return new_list;
+}
+
+macro LinkedList @tnew(Type[] #default_values = {})
+{
+	return @new(tmem, #default_values);
 }
 
 <*
@@ -68,6 +92,11 @@ fn void LinkedList.push_front(&self, Type value)
 	self.size++;
 }
 
+fn void LinkedList.push_front_all(&self, Type[] value)
+{
+	foreach_r (v : value) self.push_front(v);
+}
+
 fn void LinkedList.push(&self, Type value)
 {
 	Node *last = self._last;
@@ -85,18 +114,23 @@ fn void LinkedList.push(&self, Type value)
 	self.size++;
 }
 
+fn void LinkedList.push_all(&self, Type[] value)
+{
+	foreach (v : value) self.push(v);
+}
+
 fn Type? LinkedList.peek(&self) => self.first() @inline;
 fn Type? LinkedList.peek_last(&self) => self.last() @inline;
 
 fn Type? LinkedList.first(&self)
 {
-	if (!self._first) return NO_MORE_ELEMENT?;
+	if (!self._first) return NO_MORE_ELEMENT~;
 	return self._first.value;
 }
 
 fn Type? LinkedList.last(&self)
 {
-	if (!self._last) return NO_MORE_ELEMENT?;
+	if (!self._last) return NO_MORE_ELEMENT~;
 	return self._last.value;
 }
 
@@ -133,6 +167,7 @@ macro Node* LinkedList.node_at_index(&self, usz index)
 	while (index--) node = node.next;
 	return node;
 }
+
 <*
  @require index < self.size
 *>
@@ -144,17 +179,45 @@ fn Type LinkedList.get(&self, usz index)
 <*
  @require index < self.size
 *>
+fn Type* LinkedList.get_ref(&self, usz index)
+{
+	return &self.node_at_index(index).value;
+}
+
+<*
+ @require index < self.size
+*>
 fn void LinkedList.set(&self, usz index, Type element)
 {
 	self.node_at_index(index).value = element;
 }
+
+fn usz? LinkedList.index_of(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
+{
+	for (Node* node = self._first, usz i = 0; node != null; node = node.next, ++i)
+	{
+		if (node.value == t) return i;
+	}
+	return NOT_FOUND~;
+}
+
+fn usz? LinkedList.rindex_of(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
+{
+	for (Node* node = self._last, usz i = self.size - 1; node != null; node = node.prev, --i)
+	{
+		if (node.value == t) return i;
+		if (i == 0) break;
+	}
+	return NOT_FOUND~;
+}
+
 
 <*
  @require index < self.size
 *>
 fn void LinkedList.remove_at(&self, usz index)
 {
-	self.unlink(self.node_at_index(index));
+	linked_list_unlink(self, self.node_at_index(index));
 }
 
 <*
@@ -169,47 +232,47 @@ fn void LinkedList.insert_at(&self, usz index, Type element)
 		case self.size:
 			self.push(element);
 		default:
-			self.link_before(self.node_at_index(index), element);
+			linked_list_link_before(self, self.node_at_index(index), element);
 	}
 }
 <*
  @require succ != null
 *>
-fn void LinkedList.link_before(&self, Node *succ, Type value) @private
+fn void linked_list_link_before(LinkedList* l, Node *succ, Type value) @private
 {
 	Node* pred = succ.prev;
-	Node* new_node = self.alloc_node();
+	Node* new_node = l.alloc_node();
 	*new_node = { .prev = pred, .next = succ, .value = value };
 	succ.prev = new_node;
 	if (!pred)
 	{
-		self._first = new_node;
+		l._first = new_node;
 	}
 	else
 	{
 		pred.next = new_node;
 	}
-	self.size++;
+	l.size++;
 }
 
 <*
- @require self._first != null
+ @require l._first != null
 *>
-fn void LinkedList.unlink_first(&self) @private
+fn void linked_list_unlink_first(LinkedList* l) @private
 {
-	Node* f = self._first;
+	Node* f = l._first;
 	Node* next = f.next;
-	self.free_node(f);
-	self._first = next;
+	l.free_node(f);
+	l._first = next;
 	if (!next)
 	{
-		self._last = null;
+		l._last = null;
 	}
 	else
 	{
 		next.prev = null;
 	}
-	self.size--;
+	l.size--;
 }
 
 fn usz LinkedList.remove(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
@@ -222,7 +285,7 @@ fn usz LinkedList.remove(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
 		{
 			case equals(node.value, t):
 				Node* next = node.next;
-				self.unlink(node);
+				linked_list_unlink(self, node);
 				node = next;
 			default:
 				node = node.next;
@@ -233,8 +296,8 @@ fn usz LinkedList.remove(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
 
 fn Type? LinkedList.pop(&self)
 {
-	if (!self._last) return NO_MORE_ELEMENT?;
-	defer self.unlink_last();
+	if (!self._last) return NO_MORE_ELEMENT~;
+	defer linked_list_unlink_last(self);
 	return self._last.value;
 }
 
@@ -245,21 +308,21 @@ fn bool LinkedList.is_empty(&self)
 
 fn Type? LinkedList.pop_front(&self)
 {
-	if (!self._first) return NO_MORE_ELEMENT?;
-	defer self.unlink_first();
+	if (!self._first) return NO_MORE_ELEMENT~;
+	defer linked_list_unlink_first(self);
 	return self._first.value;
 }
 
 fn void? LinkedList.remove_last(&self) @maydiscard
 {
-	if (!self._first) return NO_MORE_ELEMENT?;
-	self.unlink_last();
+	if (!self._first) return NO_MORE_ELEMENT~;
+	linked_list_unlink_last(self);
 }
 
 fn void? LinkedList.remove_first(&self) @maydiscard
 {
-	if (!self._first) return NO_MORE_ELEMENT?;
-	self.unlink_first();
+	if (!self._first) return NO_MORE_ELEMENT~;
+	linked_list_unlink_first(self);
 }
 
 
@@ -269,7 +332,7 @@ fn bool LinkedList.remove_first_match(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
 	{
 		if (node.value == t)
 		{
-			self.unlink(node);
+			linked_list_unlink(self, node);
 			return true;
 		}
 	}
@@ -282,7 +345,7 @@ fn bool LinkedList.remove_last_match(&self, Type t)  @if(ELEMENT_IS_EQUATABLE)
 	{
 		if (node.value == t)
 		{
-			self.unlink(node);
+			linked_list_unlink(self, node);
 			return true;
 		}
 	}
@@ -291,7 +354,7 @@ fn bool LinkedList.remove_last_match(&self, Type t)  @if(ELEMENT_IS_EQUATABLE)
 <*
  @require self._last != null
 *>
-fn void LinkedList.unlink_last(&self) @inline @private
+fn void linked_list_unlink_last(LinkedList* self) @inline @private
 {
 	Node* l = self._last;
 	Node* prev = l.prev;
@@ -311,7 +374,7 @@ fn void LinkedList.unlink_last(&self) @inline @private
 <*
  @require x != null
 *>
-fn void LinkedList.unlink(&self, Node* x) @private
+fn void linked_list_unlink(LinkedList* self, Node* x) @private
 {
 	Node* next = x.next;
 	Node* prev = x.prev;
@@ -333,4 +396,70 @@ fn void LinkedList.unlink(&self, Node* x) @private
 	}
 	self.free_node(x);
 	self.size--;
+}
+
+
+macro bool LinkedList.eq(&self, other) @operator(==) @if(ELEMENT_IS_EQUATABLE)
+{
+	Node* node1 = self._first;
+	Node* node2 = other._first;
+	while (true)
+	{
+		if (!node1) return node2 == null;
+		if (!node2) return false;
+		if (node1.value != node2.value) return false;
+		node1 = node1.next;
+		node2 = node2.next;
+	}
+	return true;
+}
+
+fn LinkedListArrayView LinkedList.array_view(&self)
+{
+	return { .list = self, .current_node = self._first };
+}
+
+
+struct LinkedListArrayView
+{
+	LinkedList* list;
+	Node* current_node;
+	usz current_index;
+}
+
+fn usz LinkedListArrayView.len(&self) @operator(len) => self.list.size;
+
+<*
+ @require index < self.list.size
+*>
+fn Type LinkedListArrayView.get(&self, usz index) @operator([])
+{
+	return *self.get_ref(index);
+}
+
+<*
+ @require index < self.list.size
+*>
+fn Type* LinkedListArrayView.get_ref(&self, usz index) @operator(&[])
+{
+	if (index == self.list.size - 1)
+	{
+		self.current_node = self.list._last;
+		self.current_index = index;
+	}
+
+	while (self.current_index != index)
+	{
+		switch
+		{
+			case index < self.current_index:   // reverse iteration
+				self.current_node = self.current_node.prev;
+				self.current_index--;
+			case index > self.current_index:
+				self.current_node = self.current_node.next;
+				self.current_index++;
+		}
+	}
+
+	return &self.current_node.value;
 }

@@ -1,0 +1,73 @@
+// #target: macos-x64
+module test;
+import std::io;
+faultdef ABC ;
+fn int? hello(int a)
+{
+	return io::EOF~! ? ABC~ : a;
+}
+fn void? bye() { }
+
+fn void main()
+{
+	if (catch err = hello(-1), bye()) { }
+}
+
+/* #expect: test.ll
+
+define i64 @test.hello(ptr %0, i32 %1) #0 {
+entry:
+  %reterr = alloca i64, align 8
+  %error_var = alloca i64, align 8
+  store i64 ptrtoint (ptr @std.io.EOF to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %2 = load i64, ptr %error_var, align 8
+  ret i64 %2
+}
+
+; Function Attrs: nounwind uwtable
+define i64 @test.bye() #0 {
+entry:
+  ret i64 0
+}
+
+define void @test.main() #0 {
+entry:
+  %err = alloca i64, align 8
+  %retparam = alloca i32, align 4
+  br label %testblock
+
+testblock:                                        ; preds = %entry
+  %0 = call i64 @test.hello(ptr %retparam, i32 -1)
+  %not_err = icmp eq i64 %0, 0
+  %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %1, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %testblock
+  store i64 %0, ptr %err, align 8
+  br label %end_block
+
+after_check:                                      ; preds = %testblock
+  br label %testblock1
+
+testblock1:                                       ; preds = %after_check
+  %2 = call i64 @test.bye()
+  %not_err2 = icmp eq i64 %2, 0
+  %3 = call i1 @llvm.expect.i1(i1 %not_err2, i1 true)
+  br i1 %3, label %after_check4, label %assign_optional3
+
+assign_optional3:                                 ; preds = %testblock1
+  store i64 %2, ptr %err, align 8
+  br label %end_block
+
+after_check4:                                     ; preds = %testblock1
+  store i64 0, ptr %err, align 8
+  br label %end_block
+
+end_block:                                        ; preds = %after_check4, %assign_optional3, %assign_optional
+  %4 = load i64, ptr %err, align 8
+  %i2b = icmp ne i64 %4, 0
+  ret void
+}

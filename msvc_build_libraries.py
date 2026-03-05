@@ -141,7 +141,7 @@ resource = first(tools["localizedResources"], lambda x: x["language"] == "en-us"
 license = resource["license"]
 
 if not args.accept_license:
-	accept = input(f"Do you accept Visual Studio license at {license}, and also confirm that you have a valid license Visual Studio license allowing you to download the VS Build Tools [Y/N] ?")
+	accept = input(f"Do you accept Visual Studio license at {license} [Y/N] ?")
 	if not accept or accept[0].lower() != "y":
 		exit(0)
 
@@ -239,7 +239,7 @@ def copy(src, dst):
 	base = os.path.basename(low)
 	if base == "msvcrt.lib" or base == "oldnames.lib":
 		base = base[:-3].upper() + "lib"
-		path = os.path.join(os.path.dirname(low), base);
+		path = os.path.join(os.path.dirname(low), base)
 		shutil.copy(src, path)
 	shutil.copy(src, low)
 

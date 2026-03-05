@@ -1,6 +1,5 @@
-module std::core::mem::allocator;
+module std::core::mem::allocator @if(!(env::POSIX || env::WIN32) || !$feature(VMEM_TEMP));
 import std::io, std::math;
-import std::core::sanitizer::asan;
 
 // This implements the temp allocator.
 // The temp allocator is a specialized allocator only intended for use where
@@ -128,7 +127,7 @@ fn void TempAllocator.reset(&self)
 	{
 		TempAllocator* old = child;
 		child = old.derived;
-		old.destroy();
+		temp_allocator_destroy(old);
 	}
 	self.capacity = self.original_capacity;
 	$if env::ADDRESS_SANITIZER:
@@ -143,17 +142,17 @@ fn void TempAllocator.reset(&self)
 fn void TempAllocator.free(&self)
 {
 	self.reset();
-	self.destroy();
+	temp_allocator_destroy(self);
 }
 
-fn void TempAllocator.destroy(&self) @local
+fn void temp_allocator_destroy(TempAllocator* self)
 {
 	TempAllocatorPage *last_page = self.last_page;
 	while (last_page)
 	{
 		TempAllocatorPage *to_free = last_page;
 		last_page = last_page.prev_page;
-		self._free_page(to_free)!!;
+		_free_page(self, to_free)!!;
 	}
 	if (self.allocated)
 	{
@@ -180,33 +179,6 @@ fn void TempAllocator.release(&self, void* old_pointer, bool) @dynamic
 }
 
 
-fn void? TempAllocator._free_page(&self, TempAllocatorPage* page) @inline @local
-{
-	void* mem = page.start;
-	return self.backing_allocator.release(mem, page.is_aligned());
-}
-
-fn void*? TempAllocator._realloc_page(&self, TempAllocatorPage* page, usz size, usz alignment) @inline @local
-{
-	// Then the actual start pointer:
-	void* real_pointer = page.start;
-
-	// Walk backwards to find the pointer to this page.
-	TempAllocatorPage **pointer_to_prev = &self.last_page;
-	// Remove the page from the list
-	while (*pointer_to_prev != page)
-	{
-		pointer_to_prev = &((*pointer_to_prev).prev_page);
-	}
-	*pointer_to_prev = page.prev_page;
-	usz page_size = page.pagesize();
-	// Clear on size > original size.
-	void* data = self.acquire(size, NO_ZERO, alignment)!;
-	if (page_size > size) page_size = size;
-	mem::copy(data, &page.data[0], page_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
-	self.backing_allocator.release(real_pointer, page.is_aligned());
-	return data;
-}
 
 fn void*? TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @dynamic
 {
@@ -216,7 +188,7 @@ fn void*? TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @d
 		assert(self.last_page, "Realloc of non temp pointer");
 		// First grab the page
 		TempAllocatorPage *page = pointer - TempAllocatorPage.sizeof;
-		return self._realloc_page(page, size, alignment);
+		return _realloc_page(self, page, size, alignment);
 	}
 	bool is_realloc_of_last = chunk.size + pointer == &self.data[self.used];
 	if (is_realloc_of_last)
@@ -327,3 +299,111 @@ fn void*? TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz al
 	return &page.data[0];
 }
 
+
+fn void? _free_page(TempAllocator* self, TempAllocatorPage* page) @inline @local
+{
+	void* mem = page.start;
+	return self.backing_allocator.release(mem, page.is_aligned());
+}
+
+fn void*? _realloc_page(TempAllocator* self, TempAllocatorPage* page, usz size, usz alignment) @inline @local
+{
+	// Then the actual start pointer:
+	void* real_pointer = page.start;
+
+	// Walk backwards to find the pointer to this page.
+	TempAllocatorPage **pointer_to_prev = &self.last_page;
+	// Remove the page from the list
+	while (*pointer_to_prev != page)
+	{
+		pointer_to_prev = &((*pointer_to_prev).prev_page);
+	}
+	*pointer_to_prev = page.prev_page;
+	usz page_size = page.pagesize();
+	// Clear on size > original size.
+	void* data = self.acquire(size, NO_ZERO, alignment)!;
+	if (page_size > size) page_size = size;
+	mem::copy(data, &page.data[0], page_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
+	self.backing_allocator.release(real_pointer, page.is_aligned());
+	return data;
+}
+
+module std::core::mem::allocator @if((env::POSIX || env::WIN32) && $feature(VMEM_TEMP));
+import std::math;
+
+
+tlocal VmemOptions temp_allocator_default_options = {
+	.shrink_on_reset = env::MEMORY_ENV != NORMAL,
+	.protect_unused_pages = env::COMPILER_OPT_LEVEL <= O1 || env::COMPILER_SAFE_MODE,
+	.scratch_released_data = env::COMPILER_SAFE_MODE
+};
+
+
+fn TempAllocator*? new_temp_allocator(Allocator allocator, usz size, usz reserve = temp_allocator_reserve_size, usz min_size = temp_allocator_min_size, usz realloc_size = temp_allocator_realloc_size)
+{
+	Vmem mem;
+	TempAllocator* t = allocator::new(allocator, TempAllocator);
+	defer catch allocator::free(allocator, t);
+	t.vmem.init(preferred_size: isz.sizeof > 4 ? 4 * mem::GB : 512 * mem::MB,
+	            reserve_page_size: isz.sizeof > 4 ? 256 * mem::KB : 0,
+	            options: temp_allocator_default_options)!;
+	t.allocator = allocator;
+	return t;
+}
+
+struct TempAllocator (Allocator)
+{
+	Vmem vmem;
+	TempAllocator* derived;
+	Allocator allocator;
+}
+
+<*
+ @require size > 0
+ @require !alignment || math::is_power_of_2(alignment)
+ @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
+*>
+fn void*? TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
+{
+	return self.vmem.acquire(size, init_type, alignment) @inline;
+}
+
+fn TempAllocator*? TempAllocator.derive_allocator(&self, usz reserve = 0)
+{
+	if (self.derived) return self.derived;
+	return self.derived = new_temp_allocator(self.allocator, 0)!;
+}
+
+<*
+ Reset the entire temp allocator, destroying all children
+*>
+fn void TempAllocator.reset(&self)
+{
+	TempAllocator* child = self.derived;
+	if (!child) return;
+	child.reset();
+	child.vmem.reset(0);
+}
+fn void TempAllocator.free(&self)
+{
+	_destroy(self);
+}
+
+fn void _destroy(TempAllocator* self) @local
+{
+	TempAllocator* child = self.derived;
+	if (!child) return;
+	child.destroy();
+	self.vmem.free() @inline;
+	allocator::free(self.allocator, self) @inline;
+}
+
+fn void*? TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @dynamic
+{
+	return self.vmem.resize(pointer, size, alignment) @inline;
+}
+
+fn void TempAllocator.release(&self, void* old_pointer, bool b) @dynamic
+{
+	self.vmem.release(old_pointer, b) @inline;
+}

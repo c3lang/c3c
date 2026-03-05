@@ -1,14 +1,16 @@
 // #target: macos-x64
 module test;
-fn int[<2>] foo(int x)
+typedef Int2V = int[<2>] @simd;
+
+fn Int2V foo(int x)
 {
-  return x > 0 ? {0, 0} : {255, 255};
+	return x > 0 ? {0, 0} : {255, 255};
 }
 
 
 fn int main()
 {
-  return 0;
+	return 0;
 }
 /* #expect: test.ll
 

@@ -21,14 +21,14 @@ entry:
   %z = alloca [8 x [2 x [2 x i32]]], align 16
   %w = alloca [8 x [2 x [2 x i32]]], align 16
   %cmp.idx = alloca i64, align 8
-  store i32 0, ptr %x, align 4
+  store i32 0, ptr %x, align 16
   %ptradd = getelementptr inbounds i8, ptr %x, i64 4
   store i32 0, ptr %ptradd, align 4
   %ptradd1 = getelementptr inbounds i8, ptr %x, i64 8
   store i32 0, ptr %ptradd1, align 4
   %ptradd2 = getelementptr inbounds i8, ptr %ptradd1, i64 4
   store i32 0, ptr %ptradd2, align 4
-  store i32 0, ptr %y, align 4
+  store i32 0, ptr %y, align 16
   %ptradd3 = getelementptr inbounds i8, ptr %y, i64 4
   store i32 0, ptr %ptradd3, align 4
   %ptradd4 = getelementptr inbounds i8, ptr %y, i64 8
@@ -38,14 +38,17 @@ entry:
   %cmp = call i32 @memcmp(ptr %x, ptr %y, i64 8)
   %eq = icmp eq i32 %cmp, 0
   br i1 %eq, label %next_check, label %exit
+
 next_check:                                       ; preds = %entry
   %ptradd6 = getelementptr inbounds i8, ptr %x, i64 8
   %ptradd7 = getelementptr inbounds i8, ptr %y, i64 8
   %cmp8 = call i32 @memcmp(ptr %ptradd6, ptr %ptradd7, i64 8)
   %eq9 = icmp eq i32 %cmp8, 0
   br i1 %eq9, label %match10, label %exit
+
 match10:                                          ; preds = %next_check
   br label %exit
+
 exit:                                             ; preds = %match10, %next_check, %entry
   %array_cmp_phi = phi i1 [ false, %entry ], [ false, %next_check ], [ true, %match10 ]
   %0 = zext i1 %array_cmp_phi to i8
@@ -54,6 +57,7 @@ exit:                                             ; preds = %match10, %next_chec
   call void @llvm.memset.p0.i64(ptr align 16 %w, i8 0, i64 128, i1 false)
   store i64 0, ptr %cmp.idx, align 8
   br label %array_loop_start
+
 array_loop_start:                                 ; preds = %array_loop_comparison, %exit
   %1 = load i64, ptr %cmp.idx, align 8
   %ptroffset = getelementptr inbounds [16 x i8], ptr %z, i64 %1
@@ -61,22 +65,27 @@ array_loop_start:                                 ; preds = %array_loop_comparis
   %cmp12 = call i32 @memcmp(ptr %ptroffset, ptr %ptroffset11, i64 8)
   %eq13 = icmp eq i32 %cmp12, 0
   br i1 %eq13, label %next_check14, label %exit20
+
 next_check14:                                     ; preds = %array_loop_start
   %ptradd15 = getelementptr inbounds i8, ptr %ptroffset, i64 8
   %ptradd16 = getelementptr inbounds i8, ptr %ptroffset11, i64 8
   %cmp17 = call i32 @memcmp(ptr %ptradd15, ptr %ptradd16, i64 8)
   %eq18 = icmp eq i32 %cmp17, 0
   br i1 %eq18, label %match19, label %exit20
+
 match19:                                          ; preds = %next_check14
   br label %exit20
+
 exit20:                                           ; preds = %match19, %next_check14, %array_loop_start
   %array_cmp_phi21 = phi i1 [ false, %array_loop_start ], [ false, %next_check14 ], [ true, %match19 ]
   br i1 %array_cmp_phi21, label %array_loop_comparison, label %array_cmp_exit
+
 array_loop_comparison:                            ; preds = %exit20
   %inc = add i64 %1, 1
   store i64 %inc, ptr %cmp.idx, align 8
   %lt = icmp ult i64 %inc, 8
   br i1 %lt, label %array_loop_start, label %array_cmp_exit
+
 array_cmp_exit:                                   ; preds = %array_loop_comparison, %exit20
   %array_cmp_phi22 = phi i1 [ true, %array_loop_comparison ], [ false, %exit20 ]
   %2 = zext i1 %array_cmp_phi22 to i8

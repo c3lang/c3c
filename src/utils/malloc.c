@@ -14,11 +14,14 @@ static Vmem arena;
 uintptr_t arena_zero;
 static Vmem char_arena;
 
+#define START_VMEM_SIZE (sizeof(size_t) == 4 ? 1024 : 4096)
+
 void memory_init(size_t max_mem)
 {
 	if (max_mem) vmem_set_max_limit(max_mem);
-	vmem_init(&arena, 2048);
-	vmem_init(&char_arena, 512);
+
+	vmem_init(&arena, START_VMEM_SIZE);
+	vmem_init(&char_arena, START_VMEM_SIZE / 2);
 	allocations_done = 0;
 	arena_zero = (uintptr_t)arena.ptr;
 	vmem_alloc(&arena, 16);
@@ -52,9 +55,9 @@ void *calloc_arena(size_t mem)
 void print_arena_status(void)
 {
 	printf("-- ARENA INFO -- \n");
-	printf(" * Memory used:  %zu Kb\n", arena.allocated / 1024);
-	printf(" * Allocations: %d\n", allocations_done);
-	printf(" * String memory used:  %zu Kb\n", char_arena.allocated / 1024);
+	printf(" * Memory used:         %zu kb\n", arena.allocated / 1024);
+	printf(" * Allocations:         %d\n", allocations_done);
+	printf(" * String memory used:  %zu kb\n", char_arena.allocated / 1024);
 }
 
 void free_arena(void)
@@ -73,7 +76,7 @@ void run_arena_allocator_tests(void)
 	ASSERT(calloc_arena(10) != calloc_arena(10) && "Expected different values...");
 	printf("-- Tested basic allocation - OK.\n");
 	ASSERT(arena.allocated == 48 && "Expected allocations rounded to next 16 bytes");
-	calloc_arena(1);
+	(void)calloc_arena(1);
 	ASSERT(arena.allocated == 64 && "Expected allocations rounded to next 16 bytes");
 	printf("-- Tested allocation alignment - OK.\n");
 	ASSERT(calloc_arena(1024 * 1024) != NULL && "Expected allocation to work");
@@ -86,13 +89,13 @@ void run_arena_allocator_tests(void)
 void *cmalloc(size_t size)
 {
 	void *ptr = malloc(size);
-	if (!ptr) error_exit("Failed to malloc %d bytes.", size);
+	if (!ptr) error_exit("Failed to malloc %zu bytes.", size);
 	return ptr;
 }
 
 void *ccalloc(size_t size, size_t elements)
 {
 	void *ptr = calloc(size, elements);
-	if (!ptr) error_exit("Failed to calloc %d bytes.", size * elements);
+	if (!ptr) error_exit("Failed to calloc %zu bytes.", size * elements);
 	return ptr;
 }

@@ -6,7 +6,7 @@ faultdef ABC;
 
 fn void? test()
 {
-	if ((ABC?!))
+	if ((ABC~!))
 	{ }
 	else
 	{}

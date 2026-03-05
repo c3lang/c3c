@@ -1,7 +1,7 @@
 <*
  @require Type.is_ordered : "The type must be ordered"
 *>
-module std::collections::range{Type};
+module std::collections::range <Type>;
 import std::io;
 
 struct Range (Printable)

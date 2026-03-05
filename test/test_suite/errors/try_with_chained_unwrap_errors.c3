@@ -59,7 +59,7 @@ fn void test8()
 {
     int? a;
     int e;
-    if (e == 0, try c = a && try d = a && e > 0) {}
+    if (e = 3, try c = a && try d = a && e > 0) {}
     if (try b = a && try c = a && e > 0) {}
     if (try c = a && try d = a) { c++; }
 }

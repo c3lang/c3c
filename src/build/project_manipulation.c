@@ -234,6 +234,7 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_STRING_ARRAY("Additional linker arguments", "link-args", ", ");
 	TARGET_VIEW_STRING_ARRAY("Linker arguments (override)", "link-args-override", ", ");
 	TARGET_VIEW_BOOL("Link libc", "link-libc");
+	TARGET_VIEW_BOOL("Custom libc", "custom-libc");
 	TARGET_VIEW_STRING("MacOS SDK directory", "macossdk");
 	TARGET_VIEW_SETTING("Memory environment", "memory-env", memory_environment);
 	TARGET_VIEW_BOOL("Don't generate/require main function", "no-entry");
@@ -259,13 +260,22 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_SETTING("x64 CPU level", "x86cpu", x86_cpu_set);
 	TARGET_VIEW_SETTING("Max vector use type", "x86vec", x86_vector_capability);
 	TARGET_VIEW_BOOL("Return structs on the stack", "x86-stack-struct-return");
+	TARGET_VIEW_BOOL("Unroll loops", "unroll-loops");
+	TARGET_VIEW_BOOL("SLP auto-vectorization", "slp-vectorize");
+	TARGET_VIEW_BOOL("Loop auto-vectorization", "loop-vectorize");
+	TARGET_VIEW_BOOL("Merge functions", "merge-functions");
 }
 
 
 
-#if FETCH_AVAILABLE
+
 void fetch_project(BuildOptions* options)
 {
+	if (!download_available())
+	{
+		error_exit("The 'project fetch' command requires libcurl to download dependencies.\n"
+				   "Please ensure libcurl is installed on your system.");
+	}
 	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON))
 	{
 		error_exit("Failed: no project file found.");
@@ -338,12 +348,7 @@ void fetch_project(BuildOptions* options)
 		}
 	}
 }
-#else
-void fetch_project(BuildOptions* options)
-{
-	error_exit("Error: project fetch only available when compiled with cURL.");
-}
-#endif
+
 
 
 void add_libraries_to_project_file(const char** libs, const char* target_name) {
@@ -536,6 +541,7 @@ void view_project(BuildOptions *build_options)
 	VIEW_STRING_ARRAY("Source paths", "sources", ", ");
 	VIEW_STRING_ARRAY("C source paths", "c-sources", ", ");
 	VIEW_STRING("Output location", "output");
+	VIEW_STRING("Build location", "build-dir");
 	VIEW_STRING("Output extension", "extension");
 	VIEW_SETTING("Default optimization level", "opt", optimization_levels);
 
@@ -553,6 +559,7 @@ void view_project(BuildOptions *build_options)
 	VIEW_STRING_ARRAY("Linker search paths", "linker-search-paths", ", ");
 	VIEW_STRING_ARRAY("Linker arguments", "link-args", ", ");
 	VIEW_BOOL("Link libc", "link-libc");
+	VIEW_BOOL("Custom libc", "custom-libc");
 	VIEW_STRING("MacOS SDK directory", "macossdk");
 	VIEW_SETTING("Memory environment", "memory-env", memory_environment);
 	VIEW_BOOL("Don't generate/require main function", "no-entry");

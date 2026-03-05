@@ -26,9 +26,13 @@ entry:
   %x = alloca i32, align 4
   %blockret = alloca i32, align 4
   unreachable
+
+after_macro:                                      ; No predecessors!
+  store i32 poison, ptr %x, align 4
+  ret void
 }
 
-define i32 @main() #0 {
+define i32 @test.main() #0 {
 entry:
   %x = alloca i32, align 4
   %x.f = alloca i64, align 8

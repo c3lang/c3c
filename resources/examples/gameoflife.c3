@@ -1,21 +1,15 @@
 module game_of_life;
-import std::io;
-import libc;
-
-extern fn void usleep(int time);
-
+import std::io, std::thread, std::math;
 
 struct GameBoard
 {
-	int h;
-	int w;
+	int h, w;
 	char* world;
 	char* temp;
 }
 
 fn void GameBoard.show(GameBoard *board)
 {
-
 	io::printf("\e[H");
 	char* current = board.world;
 	for (int y = 0; y < board.h; y++)
@@ -27,7 +21,7 @@ fn void GameBoard.show(GameBoard *board)
 		}
 		io::printf("\e[E");
 	}
-	libc::fflush(libc::stdout());
+	(void)io::stdout().flush();
 }
 
 fn void GameBoard.evolve(GameBoard *board)
@@ -41,9 +35,9 @@ fn void GameBoard.evolve(GameBoard *board)
 			{
 				for (int x1 = x - 1; x1 <= x + 1; x1++)
 				{
-					int actualX = (x1 + board.w) % board.w;
-					int actualY = (y1 + board.h) % board.h;
-					if (board.world[actualX + actualY * board.w]) n++;
+					int actual_x = (x1 + board.w) % board.w;
+					int actual_y = (y1 + board.h) % board.h;
+					if (board.world[actual_x + actual_y * board.w]) n++;
 				}
 			}
 			if (board.world[x + y * board.w]) n--;
@@ -56,31 +50,24 @@ fn void GameBoard.evolve(GameBoard *board)
 	}
 }
 
-
-fn int main(int c, char** v)
+fn int main(String[] v)
 {
-	int w = 0;
-	int h = 0;
-	if (c > 1) w = libc::atoi(v[1]);
-	if (c > 2) h = libc::atoi(v[2]);
-	if (w <= 0) w = 30;
-	if (h <= 0) h = 30;
+	int w = 30;
+	int h = 30;
+	if (v.len > 1) w = v[1].to_int() ?? w;
+	if (v.len > 2) h = v[2].to_int() ?? h;
 
-	GameBoard board;
-	board.w = w;
-	board.h = h;
-	board.world = malloc((ulong)(h * w));
-	board.temp = malloc((ulong)(h * w));
+	GameBoard board = { .w = w, .h = h, .world = malloc((usz)h * w), .temp = malloc((usz)h * w) };
 
 	for (int i = h * w - 1; i >= 0; i--)
 	{
-		board.world[i] = libc::rand() % 10 == 0 ? 1 : 0;
+		board.world[i] = rand(10) == 0 ? 1 : 0;
 	}
 	for (int j = 0; j < 1000; j++)
 	{
 		board.show();
 		board.evolve();
-		usleep(200000);
+		thread::sleep_ms(200);
 	}
 	return 1;
 }

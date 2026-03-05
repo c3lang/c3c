@@ -23,33 +23,56 @@ macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
 	}
 }
 
-const Duration POLL_FOREVER = -1;
+const Duration POLL_FOREVER = (Duration)-1;
 
-typedef PollSubscribes = ushort;
-typedef PollEvents = ushort;
+constdef PollSubscribe
+{
+	ANY_READ     = os::POLLIN,
+	PRIO_READ    = os::POLLPRI,
+	OOB_READ     = os::POLLRDBAND,
+	READ         = os::POLLRDNORM,
+	ANY_WRITE    = os::POLLOUT,
+	OOB_WRITE    = os::POLLWRBAND,
+	WRITE        = os::POLLWRNORM,
+}
 
-const PollSubscribes SUBSCRIBE_ANY_READ     = os::POLLIN;
-const PollSubscribes SUBSCRIBE_PRIO_READ    = os::POLLPRI;
-const PollSubscribes SUBSCRIBE_OOB_READ     = os::POLLRDBAND;
-const PollSubscribes SUBSCRIBE_READ         = os::POLLRDNORM;
-const PollSubscribes SUBSCRIBE_ANY_WRITE    = os::POLLOUT;
-const PollSubscribes SUBSCRIBE_OOB_WRITE    = os::POLLWRBAND;
-const PollSubscribes SUBSCRIBE_WRITE        = os::POLLWRNORM;
+const PollSubscribe SUBSCRIBE_ANY_READ     = (PollSubscribe)os::POLLIN;
+const PollSubscribe SUBSCRIBE_PRIO_READ    = (PollSubscribe)os::POLLPRI;
+const PollSubscribe SUBSCRIBE_OOB_READ     = (PollSubscribe)os::POLLRDBAND;
+const PollSubscribe SUBSCRIBE_READ         = (PollSubscribe)os::POLLRDNORM;
+const PollSubscribe SUBSCRIBE_ANY_WRITE    = (PollSubscribe)os::POLLOUT;
+const PollSubscribe SUBSCRIBE_OOB_WRITE    = (PollSubscribe)os::POLLWRBAND;
+const PollSubscribe SUBSCRIBE_WRITE        = (PollSubscribe)os::POLLWRNORM;
 
-const PollEvents POLL_EVENT_READ_PRIO  = os::POLLPRI;
-const PollEvents POLL_EVENT_READ_OOB   = os::POLLRDBAND;
-const PollEvents POLL_EVENT_READ       = os::POLLRDNORM;
-const PollEvents POLL_EVENT_WRITE_OOB  = os::POLLWRBAND;
-const PollEvents POLL_EVENT_WRITE      = os::POLLWRNORM;
-const PollEvents POLL_EVENT_DISCONNECT = os::POLLHUP;
-const PollEvents POLL_EVENT_ERROR      = os::POLLERR;
-const PollEvents POLL_EVENT_INVALID    = os::POLLNVAL;
+constdef PollEvent : ushort
+{
+	READ_PRIO  = os::POLLPRI,
+	READ_OOB   = os::POLLRDBAND,
+	READ       = os::POLLRDNORM,
+	WRITE_OOB  = os::POLLWRBAND,
+	WRITE      = os::POLLWRNORM,
+	DISCONNECT = os::POLLHUP,
+	ERROR      = os::POLLERR,
+	INVALID    = os::POLLNVAL,
+}
+
+const PollEvent POLL_EVENT_READ_PRIO  = (PollEvent)os::POLLPRI;
+const PollEvent POLL_EVENT_READ_OOB   = (PollEvent)os::POLLRDBAND;
+const PollEvent POLL_EVENT_READ       = (PollEvent)os::POLLRDNORM;
+const PollEvent POLL_EVENT_WRITE_OOB  = (PollEvent)os::POLLWRBAND;
+const PollEvent POLL_EVENT_WRITE      = (PollEvent)os::POLLWRNORM;
+const PollEvent POLL_EVENT_DISCONNECT = (PollEvent)os::POLLHUP;
+const PollEvent POLL_EVENT_ERROR      = (PollEvent)os::POLLERR;
+const PollEvent POLL_EVENT_INVALID    = (PollEvent)os::POLLNVAL;
+
+alias PollSubscribes @deprecated("Use PollSubscribe") = PollSubscribe;
+alias PollEvents @deprecated("Use PollEvent") = PollEvent;
 
 struct Poll
 {
 	NativeSocket socket;
-	PollSubscribes events;
-	PollEvents revents;
+	PollSubscribe events;
+	PollEvent revents;
 }
 
 <*
@@ -73,7 +96,7 @@ fn ulong? poll_ms(Poll[] polls, long timeout_ms)
 	$else
 		CInt result = os::poll((Posix_pollfd*)polls.ptr, (Posix_nfds_t)polls.len, (CInt)timeout_ms);
 	$endif
-	return result < 0 ? os::socket_error()? : (ulong)result;
+	return result < 0 ? os::socket_error()~ : (ulong)result;
 }
 
 macro Socket new_socket(fd, ai)
@@ -86,12 +109,12 @@ macro Socket new_socket(fd, ai)
 
 enum SocketOption : char (CInt value)
 {
-	REUSEADDR                  = os::SO_REUSEADDR,
-	REUSEPORT @if(!env::WIN32) = os::SO_REUSEPORT,
-	KEEPALIVE                  = os::SO_KEEPALIVE,
-	BROADCAST                  = os::SO_BROADCAST,
-	OOBINLINE                  = os::SO_OOBINLINE,
-	DONTROUTE                  = os::SO_DONTROUTE,
+	REUSEADDR                  { os::SO_REUSEADDR },
+	REUSEPORT @if(!env::WIN32) { os::SO_REUSEPORT },
+	KEEPALIVE                  { os::SO_KEEPALIVE },
+	BROADCAST                  { os::SO_BROADCAST },
+	OOBINLINE                  { os::SO_OOBINLINE },
+	DONTROUTE                  { os::SO_DONTROUTE },
 }
 
 fn bool? Socket.get_broadcast(&self) => self.get_option(BROADCAST);
@@ -110,14 +133,15 @@ fn void? Socket.set_option(&self, SocketOption option, bool value)
 {
 	CInt flag = (CInt)value;
 	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
-	if (errcode != 0) return SOCKOPT_FAILED?;
+	if (errcode != 0) return SOCKOPT_FAILED~;
 }
 
 fn bool? Socket.get_option(&self, SocketOption option)
 {
 	CInt flag;
-	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
-	if (errcode != 0) return SOCKOPT_FAILED?;
+	Socklen_t socklen = CInt.sizeof;
+	int errcode = os::getsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, &socklen);
+	if (errcode != 0) return SOCKOPT_FAILED~;
 	return (bool)flag;
 }
 
@@ -128,7 +152,7 @@ $if env::WIN32:
 $else
 	isz n = libc::recv(self.sock, bytes.ptr, bytes.len, 0);
 $endif
-	if (n < 0) return os::socket_error()?;
+	if (n < 0) return os::socket_error()~;
 	return (usz)n;
 }
 
@@ -141,7 +165,7 @@ $if env::WIN32:
 $else
 	isz n = libc::send(self.sock, bytes.ptr, bytes.len, 0);
 $endif
-	if (n < 0) return os::socket_error()?;
+	if (n < 0) return os::socket_error()~;
 	return (usz)n;
 }
 
@@ -163,21 +187,21 @@ fn usz? Socket.peek(&self, char[] bytes) @dynamic
   $else
 	  isz n = libc::recv(self.sock, bytes.ptr, bytes.len, os::MSG_PEEK);
   $endif
-	if (n < 0) return os::socket_error()?;
+	if (n < 0) return os::socket_error()~;
 	return (usz)n;
 }
 
-enum SocketShutdownHow : (inline CInt native_value)
+enum SocketShutdownHow : (CInt native_value)
 {
-	RECEIVE = @select(env::WIN32, libc::SD_RECEIVE, libc::SHUT_RD),
-	SEND = @select(env::WIN32, libc::SD_SEND, libc::SHUT_WR),
-	BOTH = @select(env::WIN32, libc::SD_BOTH, libc::SHUT_RDWR),
+	RECEIVE { env::WIN32 ??? libc::SD_RECEIVE : libc::SHUT_RD },
+	SEND    { env::WIN32 ??? libc::SD_SEND : libc::SHUT_WR    },
+	BOTH    { env::WIN32 ??? libc::SD_BOTH : libc::SHUT_RDWR  },
 }
 
 fn void? Socket.shutdown(&self, SocketShutdownHow how)
 {
-	if (libc::shutdown(self.sock, how) < 0)
+	if (libc::shutdown(self.sock, how.native_value) < 0)
 	{
-		return os::socket_error()?;
+		return os::socket_error()~;
 	}
 }

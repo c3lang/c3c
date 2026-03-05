@@ -6,6 +6,6 @@ fn int main()
 	$assert(@str_lower("Hello World") == "hello world");
 	$assert(@str_find("Hello World", "o") == 4);
 	$assert(@str_find("Hello World", "w") == -1);
-	$assert(@str_hash("Hello C3") == 487972447);
+	$assert(@str_hash("Hello C3") == 2193775821);
 	return 0;
 }

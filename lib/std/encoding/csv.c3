@@ -79,7 +79,7 @@ macro void? @each_row(InStream stream, String separator = ",", int max_rows = in
 			if (catch err = s)
 			{
 				if (err == io::EOF) return;
-				return err?;
+				return err~;
 			}
 			@body(s.split(mem, separator));
 		};

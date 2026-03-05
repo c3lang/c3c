@@ -24,6 +24,6 @@ fn void main()
 define void @test.main() #0 {
 entry:
   %x = alloca i32, align 4
-  store i32 1, ptr %x, align 4
+  store i32 3, ptr %x, align 4
   ret void
 }

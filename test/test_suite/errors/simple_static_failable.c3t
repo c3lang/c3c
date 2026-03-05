@@ -7,7 +7,7 @@ faultdef Y;
 fn void main()
 {
     static int? x = 120;
-    int? i = Y?;
+    int? i = Y~;
 }
 
 /* #expect: foo.ll

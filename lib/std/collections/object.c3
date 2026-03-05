@@ -151,7 +151,7 @@ fn bool Object.is_indexable(&self) => self.is_empty() || self.is_array();
 <*
  @require self.is_keyable()
 *>
-fn void Object.init_map_if_needed(&self) @private
+fn void object_init_map_if_needed(Object* self) @private
 {
 	if (self.is_empty())
 	{
@@ -163,7 +163,7 @@ fn void Object.init_map_if_needed(&self) @private
 <*
  @require self.is_indexable()
 *>
-fn void Object.init_array_if_needed(&self) @private
+fn void object_init_array_if_needed(Object* self) @private
 {
 	if (self.is_empty())
 	{
@@ -175,20 +175,17 @@ fn void Object.init_array_if_needed(&self) @private
 <*
  @require self.is_keyable()
 *>
-fn void Object.set_object(&self, String key, Object* new_object) @private
+fn void object_set_object(Object* self, String key, Object* new_object) @private
 {
-	self.init_map_if_needed();
-	ObjectInternalMapEntry*? entry = self.map.get_entry(key);
-	defer
-	{
-		(void)entry.value.free();
-	}
+	object_init_map_if_needed(self);
+	Object*? val = self.map.get_entry(key).value;
+	defer (void)val.free();
 	self.map.set(key, new_object);
 }
 
 <*
  @require self.allocator != null : "This object is not properly initialized, was it really created using 'new'"
- @require !@typeis(value, void*) ||| value == null : "void pointers cannot be stored in an object"
+ @require $typeof(value) != void* ||| value == null : "void pointers cannot be stored in an object"
 *>
 macro Object* Object.object_from_value(&self, value) @private
 {
@@ -206,7 +203,7 @@ macro Object* Object.object_from_value(&self, value) @private
 			return value;
 		$case $Type.typeid == void*.typeid:
 			return &NULL_OBJECT;
-		$case $assignable(value, String):
+		$case $defined(String x = value):
 			return new_string(value, self.allocator);
 		$default:
 			$error "Unsupported object type.";
@@ -217,7 +214,7 @@ macro Object* Object.object_from_value(&self, value) @private
 macro Object* Object.set(&self, String key, value)
 {
 	Object* val = self.object_from_value(value);
-	self.set_object(key, val);
+	object_set_object(self, key, val);
 	return val;
 }
 
@@ -245,8 +242,7 @@ macro Object* Object.push(&self, value)
 <*
  @require self.is_keyable()
 *>
-fn Object*? Object.get(&self, String key) => self.is_empty() ? NOT_FOUND? : self.map.get(key);
-
+fn Object*? Object.get(&self, String key) => self.is_empty() ? NOT_FOUND~ : self.map.get(key);
 
 fn bool Object.has_key(&self, String key) => self.is_map() && self.map.has_key(key);
 
@@ -271,7 +267,7 @@ fn usz Object.get_len(&self)
 *>
 fn void Object.push_object(&self, Object* to_append)
 {
-	self.init_array_if_needed();
+	object_init_array_if_needed(self);
 	self.array.push(to_append);
 }
 
@@ -280,7 +276,7 @@ fn void Object.push_object(&self, Object* to_append)
 *>
 fn void Object.set_object_at(&self, usz index, Object* to_set)
 {
-	self.init_array_if_needed();
+	object_init_array_if_needed(self);
 	while (self.array.len() < index)
 	{
 		self.array.push(&NULL_OBJECT);
@@ -311,7 +307,7 @@ macro get_integer_value(Object* value, $Type)
 			return ($Type)value.s.to_uint128();
 		$endif
 	}
-	if (!value.is_int()) return string::MALFORMED_INTEGER?;
+	if (!value.is_int()) return string::MALFORMED_INTEGER~;
 	return ($Type)value.i;
 }
 
@@ -364,7 +360,7 @@ fn uint128? Object.get_uint128_at(&self, usz index) => self.get_integer_at(uint1
 fn String? Object.get_string(&self, String key)
 {
 	Object* value = self.get(key)!;
-	if (!value.is_string()) return TYPE_MISMATCH?;
+	if (!value.is_string()) return TYPE_MISMATCH~;
 	return value.s;
 }
 
@@ -374,7 +370,7 @@ fn String? Object.get_string(&self, String key)
 fn String? Object.get_string_at(&self, usz index)
 {
 	Object* value = self.get_at(index);
-	if (!value.is_string()) return TYPE_MISMATCH?;
+	if (!value.is_string()) return TYPE_MISMATCH~;
 	return value.s;
 }
 
@@ -384,7 +380,7 @@ fn String? Object.get_string_at(&self, usz index)
 macro String? Object.get_enum(&self, $EnumType, String key)
 {
 	Object value = self.get(key)!;
-	if ($EnumType.typeid != value.type) return TYPE_MISMATCH?;
+	if ($EnumType.typeid != value.type) return TYPE_MISMATCH~;
 	return ($EnumType)value.i;
 }
 
@@ -394,7 +390,7 @@ macro String? Object.get_enum(&self, $EnumType, String key)
 macro String? Object.get_enum_at(&self, $EnumType, usz index)
 {
 	Object value = self.get_at(index);
-	if ($EnumType.typeid != value.type) return TYPE_MISMATCH?;
+	if ($EnumType.typeid != value.type) return TYPE_MISMATCH~;
 	return ($EnumType)value.i;
 }
 
@@ -404,7 +400,7 @@ macro String? Object.get_enum_at(&self, $EnumType, usz index)
 fn bool? Object.get_bool(&self, String key)
 {
 	Object* value = self.get(key)!;
-	if (!value.is_bool()) return TYPE_MISMATCH?;
+	if (!value.is_bool()) return TYPE_MISMATCH~;
 	return value.b;
 }
 
@@ -415,7 +411,7 @@ fn bool? Object.get_bool(&self, String key)
 fn bool? Object.get_bool_at(&self, usz index)
 {
 	Object* value = self.get_at(index);
-	if (!value.is_bool()) return TYPE_MISMATCH?;
+	if (!value.is_bool()) return TYPE_MISMATCH~;
 	return value.b;
 }
 
@@ -434,7 +430,7 @@ fn double? Object.get_float(&self, String key)
 		case FLOAT:
 			return value.f;
 		default:
-			return TYPE_MISMATCH?;
+			return TYPE_MISMATCH~;
 	}
 }
 
@@ -453,7 +449,7 @@ fn double? Object.get_float_at(&self, usz index)
 		case FLOAT:
 			return value.f;
 		default:
-			return TYPE_MISMATCH?;
+			return TYPE_MISMATCH~;
 	}
 }
 

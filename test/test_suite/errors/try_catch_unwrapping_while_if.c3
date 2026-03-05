@@ -10,7 +10,7 @@ fn void test1()
     {
         int y = z;
         z = 12;
-        z = X?; // #error: The variable is unwrapped in this context
+        z = X~; // #error: The variable is unwrapped in this context
     }
 }
 

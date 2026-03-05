@@ -1,6 +1,6 @@
 module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 
-fn double pow(double x, double y) @extern("pow")
+fn double pow(double x, double y) @cname("pow")
 {
     if (x != x || y != y) return double.nan;
 
@@ -54,7 +54,7 @@ fn double pow(double x, double y) @extern("pow")
     return result;
 }
 
-fn float powf(float x, float y) @extern("powf")
+fn float powf(float x, float y) @cname("powf")
 {
     if (x != x || y != y) return float.nan;
 

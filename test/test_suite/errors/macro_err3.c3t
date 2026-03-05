@@ -7,7 +7,7 @@ faultdef FOO;
 macro test()
 {
 	defer libc::printf("Test2\n");
-	return FOO?;
+	return FOO~;
 }
 
 fn void main()
@@ -28,9 +28,6 @@ opt_block_cleanup:                                ; preds = %entry
   br label %else_block
 
 else_block:                                       ; preds = %opt_block_cleanup
-  br label %phi_block
-
-phi_block:                                        ; preds = %else_block
   %1 = call i32 (ptr, ...) @printf(ptr @.str, i32 2)
   %2 = call i32 (ptr, ...) @printf(ptr @.str.3)
   ret void

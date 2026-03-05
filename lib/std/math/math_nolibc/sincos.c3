@@ -16,7 +16,7 @@ module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
  * ====================================================
  */
 
-fn void sincosf(float x, float *sin, float *cos) @extern("__sincosf") @weak @nostrip
+fn void sincosf(float x, float *sin, float *cos) @cname("__sincosf") @weak @nostrip
 {
 	uint ix = x.word();
 	uint sign = ix >> 31;
@@ -104,7 +104,7 @@ fn void sincosf(float x, float *sin, float *cos) @extern("__sincosf") @weak @nos
 
 }
 
-fn void sincos(double x, double *sin, double *cos) @extern("__sincos") @weak @nostrip
+fn void sincos(double x, double *sin, double *cos) @cname("__sincos") @weak @nostrip
 {
 	// High word of x.
 	uint ix = x.high_word() & 0x7fffffff;

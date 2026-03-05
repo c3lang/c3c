@@ -2,7 +2,7 @@ fn void test()
 {
     int[3] x = { 1, 2, 3};
     int[] z = x[2..2];
-    z = x[2..1]; // #error: greater than the end index
+    z = x[2..0]; // #error: greater than the end index
 }
 
 fn void test2()
@@ -10,7 +10,7 @@ fn void test2()
     int[3] x = { 1, 2, 3};
     int[] z = x[^2..^2];
     z = x[^3..];
-    z = x[^1..^2]; // #error: greater than the end index
+    z = x[^1..^3]; // #error: greater than the end index
 }
 
 fn void test3()
@@ -29,7 +29,7 @@ fn void test4()
 fn void test5()
 {
     int[3] x = { 1, 2, 3 };
-    int[] z = x[..^4]; // #error: An index may only be negative
+    int[] z = x[..^5]; // #error: An index may only be negative
 }
 
 fn void test6()

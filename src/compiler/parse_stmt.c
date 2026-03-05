@@ -9,10 +9,20 @@
 
 static inline Expr *parse_asm_expr(ParseContext *c);
 
+INLINE bool next_is_end_parens(ParseContext *c)
+{
+	TokenType tok = c->tok;
+	return tok == TOKEN_RBRACE || tok == TOKEN_RPAREN;
+}
+#define CHECK_HAS_BODY(text_) \
+	do { if (next_is_end_parens(c)) { \
+		print_error_after(&c->prev_span, "The body of %s statement was expected here.", text_); \
+		return poisoned_ast; } } while (0)
+
 static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 {
 	Ast *ast = ast_calloc();
-	ast->span = type->span;
+	ast->loc = type->loc;
 	ast->ast_kind = AST_DECLARE_STMT;
 	ASSIGN_DECL_OR_RET(ast->declare_stmt, parse_local_decl_after_type(c, type), poisoned_ast);
 	Decl *decl = ast->declare_stmt;
@@ -21,10 +31,10 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 		case TOKEN_LBRACKET:
 			if (!decl->var.init_expr)
 			{
-				SourceSpan span = extend_span_with_token(type->span, c->span);
-				print_error_at(span, "This looks like the beginning of a declaration with the format 'int %s[4]' "
-				                 "which is a c-style array declaration. In C3, you need to use something like 'int[4] %s' instead.",
-				                 decl->name, decl->name);
+				SourceLoc loc = extend_loc_with_token(sourcelocptr(type->loc), &c->span);
+				print_error_at_loc(&loc, "This looks like the beginning of a declaration with the format 'int %s[4]' "
+				                   "which is a c-style array declaration. In C3, you need to use something like 'int[4] %s' instead.",
+				                   decl->name, decl->name);
 				return poisoned_ast;
 			}
 			break;
@@ -101,7 +111,7 @@ static inline Ast *parse_declaration_stmt(ParseContext *c)
 	if (tok_is(c, TOKEN_CONST))
 	{
 		// Consts don't have multiple declarations.
-		Ast *decl_stmt = new_ast(AST_DECLARE_STMT, c->span);
+		Ast *decl_stmt = new_ast_loc(AST_DECLARE_STMT, c->span);
 		ASSIGN_DECL_OR_RET(decl_stmt->declare_stmt, parse_const_declaration(c, false, false), poisoned_ast);
 		decl_stmt->declare_stmt->visibility = VISIBLE_LOCAL;
 		RANGE_EXTEND_PREV(decl_stmt);
@@ -134,7 +144,7 @@ static inline Ast *parse_declaration_stmt(ParseContext *c)
 static inline Decl *parse_optional_label(ParseContext *c, Ast *parent)
 {
 	if (!tok_is(c, TOKEN_CONST_IDENT)) return NULL;
-	Decl *decl = decl_new(DECL_LABEL, symstr(c), c->span);
+	Decl *decl = decl_new_loc(DECL_LABEL, symstr(c), c->span);
 	decl->label.parent = astid(parent);
 	advance_and_verify(c, TOKEN_CONST_IDENT);
 	if (!try_consume(c, TOKEN_COLON))
@@ -149,7 +159,7 @@ static inline void parse_optional_label_target(ParseContext *c, Label *label)
 {
 	if (tok_is(c, TOKEN_CONST_IDENT))
 	{
-		label->span = c->span;
+		label->loc = make_loc(c->span);
 		label->name = symstr(c);
 		advance_and_verify(c, TOKEN_CONST_IDENT);
 	}
@@ -162,7 +172,7 @@ static inline bool parse_asm_offset(ParseContext *c, ExprAsmArg *asm_arg)
 		PRINT_ERROR_HERE("Expected an integer value.");
 		return false;
 	}
-	Expr *offset = parse_integer(c, NULL, INVALID_SPAN);
+	Expr *offset = parse_integer(c, NULL, NULL);
 	ASSERT(expr_is_const_int(offset));
 	Int i = offset->const_expr.ixx;
 	if (i.i.high)
@@ -181,7 +191,7 @@ static inline bool parse_asm_scale(ParseContext *c, ExprAsmArg *asm_arg)
 		PRINT_ERROR_HERE("Expected an integer value.");
 		return false;
 	}
-	Expr *value = parse_integer(c, NULL, INVALID_SPAN);
+	Expr *value = parse_integer(c, NULL, NULL);
 	ASSERT(expr_is_const_int(value));
 	Int i = value->const_expr.ixx;
 	if (i.i.high)
@@ -210,6 +220,10 @@ static inline bool parse_asm_scale(ParseContext *c, ExprAsmArg *asm_arg)
 	return true;
 }
 
+/*
+ * Asm [REG + BAR * 4], [&foo]
+ * asm_addr ::= '[' asm_expr
+ */
 static inline bool parse_asm_addr(ParseContext *c, ExprAsmArg *asm_arg)
 {
 	asm_arg->kind = ASM_ARG_ADDR;
@@ -219,7 +233,8 @@ static inline bool parse_asm_addr(ParseContext *c, ExprAsmArg *asm_arg)
 	// Simple case [foo]
 	if (try_consume(c, TOKEN_RBRACKET))
 	{
-		if (base->expr_asm_arg.kind == ASM_ARG_ADDROF)
+		// Here we're covering [&foo]
+		if (base->expr_asm_arg.kind == ASM_ARG_MEMADDR)
 		{
 			*asm_arg = base->expr_asm_arg;
 			asm_arg->kind = ASM_ARG_MEMVAR;
@@ -308,9 +323,11 @@ static inline bool parse_asm_addr(ParseContext *c, ExprAsmArg *asm_arg)
 	return true;
 }
 /**
- *
- * @param c
- * @return
+ * asm_expr ::= asm_addr | asm_reg | asm_regvar | asm_addrof | asm_argvalue
+ * asm_reg = CT_IDENT | CT_CONST_IDENT (register name)
+ * asm_regvar = IDENT (variable)
+ * asm_addof = '&' IDENT (variable address)
+ * asm_argvalue = ('-'? INTEGER) | CONST_IDENT | FLOAT | '(' expr ')'
  */
 static inline Expr *parse_asm_expr(ParseContext *c)
 {
@@ -337,7 +354,7 @@ static inline Expr *parse_asm_expr(ParseContext *c)
 			advance(c);
 			return expr;
 		case TOKEN_AMP:
-			expr->expr_asm_arg.kind = ASM_ARG_ADDROF;
+			expr->expr_asm_arg.kind = ASM_ARG_MEMADDR;
 			advance(c);
 			expr->expr_asm_arg.ident.name = c->data.string;
 			if (!try_consume(c, TOKEN_IDENT))
@@ -369,6 +386,12 @@ static inline Expr *parse_asm_expr(ParseContext *c)
 	}
 }
 
+/*
+ * asm_label | asm_stmt
+ * asm_label     ::= CONST_IDENT ':'
+ * asm_stmt      ::= IDENT | int ('.' IDENT) )? asm_expr_list? ';'
+ * asm_expr_list ::= asm_expr (',' asm_expr)* ','?
+ */
 static inline Ast *parse_asm_stmt(ParseContext *c)
 {
 	Ast *asm_stmt = ast_new_curr(c, AST_ASM_STMT);
@@ -416,7 +439,7 @@ static inline Ast *parse_asm_stmt(ParseContext *c)
  */
 static inline Ast* parse_asm_block_stmt(ParseContext *c)
 {
-	Ast *ast = new_ast(AST_ASM_BLOCK_STMT, c->span);
+	Ast *ast = new_ast_loc(AST_ASM_BLOCK_STMT, c->span);
 	advance_and_verify(c, TOKEN_ASM);
 	bool is_volatile = true;
 	if (tok_is(c, TOKEN_AT_IDENT))
@@ -428,7 +451,7 @@ static inline Ast* parse_asm_block_stmt(ParseContext *c)
 		else
 		{
 			PRINT_ERROR_HERE("Only the '@pure' attribute is allowed.");
-			return false;
+			return poisoned_ast;
 		}
 		advance_and_verify(c, TOKEN_AT_IDENT);
 		if (!tok_is(c, TOKEN_LBRACE))
@@ -463,7 +486,7 @@ static inline Ast* parse_asm_block_stmt(ParseContext *c)
 		else
 		{
 			PRINT_ERROR_HERE("Only the '@pure' attribute is allowed.");
-			return false;
+			return poisoned_ast;
 		}
 		advance_and_verify(c, TOKEN_AT_IDENT);
 	}
@@ -483,17 +506,18 @@ static inline Ast* parse_asm_block_stmt(ParseContext *c)
  */
 static inline Ast* parse_do_stmt(ParseContext *c)
 {
-	Ast *do_ast = new_ast(AST_FOR_STMT, c->span);
+	Ast *do_ast = NEW_AST_TOKEN(AST_FOR_STMT);
 
 	advance_and_verify(c, TOKEN_DO);
 
 	do_ast->flow.skip_first = true;
 	ASSIGN_DECLID_OR_RET(do_ast->for_stmt.flow.label, parse_optional_label(c, do_ast), poisoned_ast);
+	CHECK_HAS_BODY("a do");
 	ASSIGN_ASTID_OR_RET(do_ast->for_stmt.body, parse_stmt(c), poisoned_ast);
 
 	if (try_consume(c, TOKEN_EOS))
 	{
-		do_ast->for_stmt.cond = exprid(expr_new_const_bool(c->prev_span, type_bool, false));
+		do_ast->for_stmt.cond = exprid(expr_new_const_bool(make_loc(c->prev_span), type_bool, false));
 	}
 	else
 	{
@@ -522,10 +546,11 @@ static inline Ast *parse_case_stmts(ParseContext *c, TokenType case_type, TokenT
 		}
 		return NULL;
 	}
-	Ast *compound = new_ast(AST_COMPOUND_STMT, c->span);
+	Ast *compound = NEW_AST_TOKEN(AST_COMPOUND_STMT);
 	AstId *next = &compound->compound_stmt.first_stmt;
 	while (!token_type_ends_case(c->tok, case_type, default_type))
 	{
+		CHECK_HAS_BODY("a case");
 		ASSIGN_AST_OR_RET(Ast *stmt, parse_stmt(c), poisoned_ast);
 		ast_append(&next, stmt);
 	}
@@ -540,7 +565,7 @@ static inline Ast *parse_case_stmts(ParseContext *c, TokenType case_type, TokenT
 static inline Ast* parse_defer_stmt(ParseContext *c)
 {
 	advance_and_verify(c, TOKEN_DEFER);
-	Ast *defer_stmt = new_ast(AST_DEFER_STMT, c->span);
+	Ast *defer_stmt = NEW_AST_TOKEN(AST_DEFER_STMT);
 	if (try_consume(c, TOKEN_TRY))
 	{
 		defer_stmt->defer_stmt.is_try = true;
@@ -556,17 +581,20 @@ static inline Ast* parse_defer_stmt(ParseContext *c)
 		if (!expect_ident(c, "identifier")) return poisoned_ast;
 		Ast *compound = ast_new_curr(c, AST_COMPOUND_STMT);
 		Ast *first = ast_new_curr(c, AST_DECLARE_STMT);
-		Decl *decl = decl_new_var(c->data.string, c->span, type_info_new_base(type_fault, c->span), VARDECL_LOCAL);
+		SourceLocId loc = make_loc(c->span);
+		Decl *decl = decl_new_var(c->data.string, loc, type_info_new_base(type_fault, loc), VARDECL_LOCAL);
 		defer_stmt->defer_stmt.is_catch = true;
-		decl->var.init_expr = expr_new(EXPR_LAST_FAULT, decl->span);
+		decl->var.init_expr = expr_new(EXPR_LAST_FAULT, decl->loc);
 		first->declare_stmt = decl;
 		advance_and_verify(c, TOKEN_IDENT);
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
+		CHECK_HAS_BODY("a defer-catch");
 		ASSIGN_ASTID_OR_RET(first->next, parse_stmt(c), poisoned_ast);
 		compound->compound_stmt.first_stmt = astid(first);
 		defer_stmt->defer_stmt.body = astid(compound);
 		return defer_stmt;
 	}
+	CHECK_HAS_BODY("a defer");
 	ASSIGN_ASTID_OR_RET(defer_stmt->defer_stmt.body, parse_stmt(c), poisoned_ast);
 	return defer_stmt;
 }
@@ -578,7 +606,7 @@ static inline Ast* parse_defer_stmt(ParseContext *c)
  */
 static inline Ast* parse_while_stmt(ParseContext *c)
 {
-	Ast *while_ast = new_ast(AST_FOR_STMT, c->span);
+	Ast *while_ast = NEW_AST_TOKEN(AST_FOR_STMT);
 	advance_and_verify(c, TOKEN_WHILE);
 
 	ASSIGN_DECLID_OR_RET(while_ast->for_stmt.flow.label, parse_optional_label(c, while_ast), poisoned_ast);
@@ -586,8 +614,9 @@ static inline Ast* parse_while_stmt(ParseContext *c)
 	ASSIGN_EXPRID_OR_RET(while_ast->for_stmt.cond, parse_cond(c), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 	unsigned row = c->prev_span.row;
+	CHECK_HAS_BODY("a while");
 	ASSIGN_AST_OR_RET(Ast *body, parse_stmt(c), poisoned_ast);
-	if (body->ast_kind != AST_COMPOUND_STMT && row != body->span.row)
+	if (body->ast_kind != AST_COMPOUND_STMT && row != sourcelocptr(body->loc)->row)
 	{
 		PRINT_ERROR_AT(body, "A single statement after 'while' must be placed on the same line, or be enclosed in {}.");
 		return poisoned_ast;
@@ -604,7 +633,7 @@ static inline Ast* parse_while_stmt(ParseContext *c)
  */
 static inline Ast* parse_if_stmt(ParseContext *c)
 {
-	Ast *if_ast = new_ast(AST_IF_STMT, c->span);
+	Ast *if_ast = NEW_AST_TOKEN(AST_IF_STMT);
 	advance_and_verify(c, TOKEN_IF);
 	ASSIGN_DECLID_OR_RET(if_ast->if_stmt.flow.label, parse_optional_label(c, if_ast), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
@@ -625,6 +654,7 @@ static inline Ast* parse_if_stmt(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 
 	unsigned next_row = c->span.row;
+	CHECK_HAS_BODY("an if");
 	ASSIGN_ASTID_OR_RET(if_ast->if_stmt.then_body, parse_stmt(c), poisoned_ast);
 	if (row != next_row && astptr(if_ast->if_stmt.then_body)->ast_kind != AST_COMPOUND_STMT)
 	{
@@ -633,6 +663,7 @@ static inline Ast* parse_if_stmt(ParseContext *c)
 	}
 	if (try_consume(c, TOKEN_ELSE))
 	{
+		CHECK_HAS_BODY("an else");
 		ASSIGN_ASTID_OR_RET(if_ast->if_stmt.else_body, parse_stmt(c), poisoned_ast);
 	}
 	return if_ast;
@@ -649,7 +680,7 @@ static inline Ast* parse_if_stmt(ParseContext *c)
  */
 static inline Ast *parse_case_stmt(ParseContext *c, TokenType case_type, TokenType default_type)
 {
-	Ast *ast = new_ast(AST_CASE_STMT, c->span);
+	Ast *ast = NEW_AST_TOKEN(AST_CASE_STMT);
 	advance(c);
 	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_ast);
 	ast->case_stmt.expr = exprid(expr);
@@ -677,7 +708,7 @@ static inline Ast *parse_case_stmt(ParseContext *c, TokenType case_type, TokenTy
 	uint32_t row = c->span.row;
 	if (!try_consume(c, TOKEN_COLON))
 	{
-		print_error_at(c->prev_span, "Missing ':' after case");
+		print_error_at_loc(&c->prev_span, "Missing ':' after case");
 		return poisoned_ast;
 	}
 	RANGE_EXTEND_PREV(ast);
@@ -691,7 +722,7 @@ static inline Ast *parse_case_stmt(ParseContext *c, TokenType case_type, TokenTy
  */
 static inline Ast *parse_default_stmt(ParseContext *c, TokenType case_type, TokenType default_type)
 {
-	Ast *ast = new_ast(AST_DEFAULT_STMT, c->span);
+	Ast *ast = NEW_AST_TOKEN(AST_DEFAULT_STMT);
 	advance(c);
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected ':' after 'default'.", poisoned_ast);
 	uint32_t row = c->span.row;
@@ -740,7 +771,7 @@ bool parse_switch_body(ParseContext *c, Ast ***cases, TokenType case_type, Token
  */
 static inline Ast* parse_switch_stmt(ParseContext *c)
 {
-	Ast *switch_ast = new_ast(AST_SWITCH_STMT, c->span);
+	Ast *switch_ast = NEW_AST_TOKEN(AST_SWITCH_STMT);
 	advance_and_verify(c, TOKEN_SWITCH);
 	ASSIGN_DECLID_OR_RET(switch_ast->switch_stmt.flow.label, parse_optional_label(c, switch_ast), poisoned_ast);
 	if (!try_consume(c, TOKEN_LPAREN))
@@ -773,7 +804,7 @@ static inline Ast* parse_switch_stmt(ParseContext *c)
  */
 static inline Ast* parse_for_stmt(ParseContext *c)
 {
-	Ast *ast = new_ast(AST_FOR_STMT, c->span);
+	Ast *ast = NEW_AST_TOKEN(AST_FOR_STMT);
 	advance_and_verify(c, TOKEN_FOR);
 
 	// Label
@@ -813,8 +844,9 @@ static inline Ast* parse_for_stmt(ParseContext *c)
 	// Ast range does not include the body
 	RANGE_EXTEND_PREV(ast);
 	unsigned row = c->prev_span.row;
+	CHECK_HAS_BODY("a for");
 	ASSIGN_AST_OR_RET(Ast *body, parse_stmt(c), poisoned_ast);
-	if (body->ast_kind != AST_COMPOUND_STMT && row != body->span.row)
+	if (body->ast_kind != AST_COMPOUND_STMT && row != sourcelocptr(body->loc)->row)
 	{
 		PRINT_ERROR_AT(body, "A single statement after 'for' must be placed on the same line, or be enclosed in {}.");
 		return poisoned_ast;
@@ -842,7 +874,7 @@ static inline bool parse_foreach_var(ParseContext *c, Ast *foreach)
 	{
 		foreach->foreach_stmt.value_by_ref = true;
 	}
-	Decl *var = decl_new_var(symstr(c), c->span, type, VARDECL_LOCAL);
+	Decl *var = decl_new_var_loc(symstr(c), &c->span, type, VARDECL_LOCAL);
 	if (!try_consume(c, TOKEN_IDENT))
 	{
 		if (type) RETURN_PRINT_ERROR_HERE("Expected an identifier after the type.");
@@ -857,7 +889,7 @@ static inline bool parse_foreach_var(ParseContext *c, Ast *foreach)
  */
 static inline Ast* parse_foreach_stmt(ParseContext *c)
 {
-	Ast *ast = new_ast(AST_FOREACH_STMT, c->span);
+	Ast *ast = NEW_AST_TOKEN(AST_FOREACH_STMT);
 
 	if (!((ast->foreach_stmt.is_reverse = try_consume(c, TOKEN_FOREACH_R))))
 	{
@@ -889,6 +921,7 @@ static inline Ast* parse_foreach_stmt(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 
 	RANGE_EXTEND_PREV(ast);
+	CHECK_HAS_BODY("a foreach");
 	ASSIGN_ASTID_OR_RET(ast->foreach_stmt.body, parse_stmt(c), poisoned_ast);
 	return ast;
 }
@@ -898,7 +931,7 @@ static inline Ast* parse_foreach_stmt(ParseContext *c)
  */
 static inline Ast* parse_continue_stmt(ParseContext *c)
 {
-	Ast *ast = new_ast(AST_CONTINUE_STMT, c->span);
+	Ast *ast = NEW_AST_TOKEN(AST_CONTINUE_STMT);
 	advance_and_verify(c, TOKEN_CONTINUE);
 	parse_optional_label_target(c, &ast->contbreak_stmt.label);
 	if (ast->contbreak_stmt.label.name) ast->contbreak_stmt.is_label = true;
@@ -913,7 +946,7 @@ static inline Ast* parse_continue_stmt(ParseContext *c)
  */
 static inline Ast* parse_nextcase_stmt(ParseContext *c)
 {
-	Ast *ast = new_ast(AST_NEXTCASE_STMT, c->span);
+	Ast *ast = NEW_AST_TOKEN(AST_NEXTCASE_STMT);
 	advance_and_verify(c, TOKEN_NEXTCASE);
 	if (try_consume(c, TOKEN_EOS))
 	{
@@ -941,7 +974,7 @@ static inline Ast* parse_nextcase_stmt(ParseContext *c)
  */
 static inline Ast* parse_break_stmt(ParseContext *c)
 {
-	Ast *ast = new_ast(AST_BREAK_STMT, c->span);
+	Ast *ast = NEW_AST_TOKEN(AST_BREAK_STMT);
 	advance_and_verify(c, TOKEN_BREAK);
 	parse_optional_label_target(c, &ast->contbreak_stmt.label);
 	if (ast->contbreak_stmt.label.name) ast->contbreak_stmt.is_label = true;
@@ -957,7 +990,7 @@ static inline Ast* parse_break_stmt(ParseContext *c)
  */
 static inline Ast *parse_expr_stmt(ParseContext *c)
 {
-	Ast *stmt = new_ast(AST_EXPR_STMT, c->span);
+	Ast *stmt = NEW_AST_TOKEN(AST_EXPR_STMT);
 	ASSIGN_EXPR_OR_RET(stmt->expr_stmt, parse_expr(c), poisoned_ast);
 	RANGE_EXTEND_PREV(stmt);
 	CONSUME_EOS_OR_RET(poisoned_ast);
@@ -967,7 +1000,7 @@ static inline Ast *parse_expr_stmt(ParseContext *c)
 
 static inline Ast *parse_ct_type_assign_stmt(ParseContext *c)
 {
-	Ast *stmt = new_ast(AST_CT_TYPE_ASSIGN_STMT, c->span);
+	Ast *stmt = NEW_AST_TOKEN(AST_CT_TYPE_ASSIGN_STMT);
 	stmt->ct_type_assign_stmt.var_name = symstr(c);
 	advance_and_verify(c, TOKEN_CT_TYPE_IDENT);
 	advance_and_verify(c, TOKEN_EQ);
@@ -983,12 +1016,6 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 		return parse_ct_type_assign_stmt(c);
 	}
 	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_ast);
-	// We might be parsing "int!"
-	// If so we need to unwrap this.
-	if (expr->expr_kind == EXPR_OPTIONAL && expr->inner_expr->expr_kind == EXPR_TYPEINFO)
-	{
-		UNREACHABLE
-	}
 	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
 		ASSIGN_AST_OR_RET(Ast *ast, parse_decl_stmt_after_type(c, expr->type_expr), poisoned_ast);
@@ -996,7 +1023,7 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 		return ast;
 	}
 	Ast *ast = ast_calloc();
-	ast->span = expr->span;
+	ast->loc = expr->loc;
 	ast->ast_kind = AST_EXPR_STMT;
 	ast->expr_stmt = expr;
 	if (tok_is(c, TOKEN_IDENT) && expr->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
@@ -1015,20 +1042,25 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
  */
 static inline Ast *parse_var_stmt(ParseContext *c)
 {
-	Ast *ast = new_ast(AST_DECLARE_STMT, c->span);
+	Ast *ast = NEW_AST_TOKEN(AST_DECLARE_STMT);
 	ASSIGN_DECL_OR_RET(ast->var_stmt, parse_var_decl(c), poisoned_ast);
 	RANGE_EXTEND_PREV(ast);
 	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;
 }
 
-static inline bool parse_ct_compound_stmt(ParseContext *c, AstId *start)
+static inline bool parse_ct_compound_stmt(ParseContext *c, AstId *start, Ast *start_if)
 {
 	AstId *next = start;
 	while (1)
 	{
 		TokenType tok = c->tok;
 		if (tok == TOKEN_CT_ELSE || tok == TOKEN_CT_ENDIF) break;
+		if (tok == TOKEN_RBRACE || tok == TOKEN_EOF) {
+			PRINT_ERROR_HERE("Expected '$endif' for '$if'");
+			SEMA_NOTE(start_if, "The unterminated '$if' was here.");
+			return false;
+		}
 		ASSIGN_AST_OR_RET(Ast *stmt, parse_stmt(c), false);
 		ast_append(&next, stmt);
 	}
@@ -1044,17 +1076,18 @@ static inline bool parse_ct_compound_stmt(ParseContext *c, AstId *start)
 static inline Ast *parse_ct_if_stmt(ParseContext *c)
 {
 	Ast *ast = ast_new_curr(c, AST_CT_IF_STMT);
+
 	advance_and_verify(c, TOKEN_CT_IF);
 
 	ASSIGN_EXPR_OR_RET(ast->ct_if_stmt.expr, parse_expr(c), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_COLON, poisoned_ast);
-	if (!parse_ct_compound_stmt(c, &ast->ct_if_stmt.then)) return poisoned_ast;
+	if (!parse_ct_compound_stmt(c, &ast->ct_if_stmt.then, ast)) return poisoned_ast;
 
 	if (tok_is(c, TOKEN_CT_ELSE))
 	{
-		Ast *else_ast = new_ast(AST_CT_ELSE_STMT, c->span);
+		Ast *else_ast = NEW_AST_TOKEN(AST_CT_ELSE_STMT);
 		advance_and_verify(c, TOKEN_CT_ELSE);
-		if (!parse_ct_compound_stmt(c, &else_ast->ct_else_stmt)) return poisoned_ast;
+		if (!parse_ct_compound_stmt(c, &else_ast->ct_else_stmt, ast)) return poisoned_ast;
 		ast->ct_if_stmt.elif = astid(else_ast);
 	}
 	CONSUME_OR_RET(TOKEN_CT_ENDIF, poisoned_ast);
@@ -1077,6 +1110,7 @@ static inline Ast *parse_return_stmt(ParseContext *c)
 	if (!tok_is(c, TOKEN_EOS))
 	{
 		ASSIGN_EXPR_OR_RET(ast->return_stmt.expr, parse_expr(c), poisoned_ast);
+		RANGE_EXTEND_PREV(ast);
 	}
 	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;
@@ -1087,21 +1121,21 @@ static inline Ast *parse_return_stmt(ParseContext *c)
  */
 static inline Ast* parse_ct_foreach_stmt(ParseContext *c)
 {
-	Ast *ast = ast_new_curr(c, AST_CT_FOREACH_STMT);
+	Ast *ast = NEW_AST_TOKEN(AST_CT_FOREACH_STMT);
 	advance_and_verify(c, TOKEN_CT_FOREACH);
 	if (peek(c) == TOKEN_COMMA)
 	{
-		Decl *index = decl_new_var(symstr(c), c->span, NULL, VARDECL_LOCAL_CT);
+		Decl *index = decl_new_var_loc(symstr(c), &c->span, NULL, VARDECL_LOCAL_CT);
 		ast->ct_foreach_stmt.index = declid(index);
 		TRY_CONSUME_OR_RET(TOKEN_CT_IDENT, "Expected a compile time index variable", poisoned_ast);
 		advance_and_verify(c, TOKEN_COMMA);
 	}
-	ast->ct_foreach_stmt.value = declid(decl_new_var(symstr(c), c->span, NULL, VARDECL_LOCAL_CT));
+	ast->ct_foreach_stmt.value = declid(decl_new_var_loc(symstr(c), &c->span, NULL, VARDECL_LOCAL_CT));
 	TRY_CONSUME_OR_RET(TOKEN_CT_IDENT, "Expected a compile time variable", poisoned_ast);
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected ':'.", poisoned_ast);
 	ASSIGN_EXPRID_OR_RET(ast->ct_foreach_stmt.expr, parse_expr(c), poisoned_ast);
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected ':'.", poisoned_ast);
-	Ast *body = new_ast(AST_CT_COMPOUND_STMT, ast->span);
+	Ast *body = new_ast(AST_CT_COMPOUND_STMT, ast->loc);
 	ast->ct_foreach_stmt.body = astid(body);
 	AstId *current = &body->ct_compound_stmt;
 	while (!try_consume(c, TOKEN_CT_ENDFOREACH))
@@ -1140,7 +1174,7 @@ static inline Ast* parse_ct_for_stmt(ParseContext *c)
 
 	CONSUME_OR_RET(TOKEN_COLON, poisoned_ast);
 
-	Ast *body = new_ast(AST_CT_COMPOUND_STMT, ast->span);
+	Ast *body = new_ast(AST_CT_COMPOUND_STMT, ast->loc);
 	ast->for_stmt.body = astid(body);
 	AstId *current = &body->ct_compound_stmt;
 	while (!try_consume(c, TOKEN_CT_ENDFOR))
@@ -1163,6 +1197,11 @@ static inline Ast* parse_ct_switch_stmt(ParseContext *c)
 	advance_and_verify(c, TOKEN_CT_SWITCH);
 	if (!tok_is(c, TOKEN_COLON))
 	{
+		if (tok_is(c, TOKEN_CT_CASE))
+		{
+			PRINT_ERROR_LAST("Expected ':' after '$switch'.");
+			return poisoned_ast;
+		}
 		ASSIGN_EXPRID_OR_RET(ast->ct_switch_stmt.cond, parse_constant_expr(c), poisoned_ast);
 	}
 	CONSUME_OR_RET(TOKEN_COLON, poisoned_ast);
@@ -1194,7 +1233,7 @@ static inline Ast *consume_eos(ParseContext *c, Ast *ast)
 {
 	if (!try_consume(c, TOKEN_EOS))
 	{
-		print_error_after(c->prev_span, "Expected a ';' here.");
+		print_error_after(&c->prev_span, "Expected a ';' here.");
 		advance(c);
 		return poisoned_ast;
 	}
@@ -1356,17 +1395,20 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_AND:
 		case TOKEN_CT_ASSIGNABLE:
 		case TOKEN_CT_CONCAT:
+		case TOKEN_CT_CONCAT_ASSIGN:
 		case TOKEN_CT_CONST_IDENT:
-		case TOKEN_CT_IS_CONST:
 		case TOKEN_CT_DEFINED:
 		case TOKEN_CT_EMBED:
 		case TOKEN_CT_EVAL:
 		case TOKEN_CT_EXTNAMEOF:
 		case TOKEN_CT_FEATURE:
 		case TOKEN_CT_IDENT:
+		case TOKEN_CT_IS_CONST:
+		case TOKEN_CT_KINDOF:
 		case TOKEN_CT_NAMEOF:
 		case TOKEN_CT_OFFSETOF:
 		case TOKEN_CT_OR:
+		case TOKEN_CT_TERNARY:
 		case TOKEN_CT_QNAMEOF:
 		case TOKEN_CT_SIZEOF:
 		case TOKEN_CT_STRINGIFY:
@@ -1376,6 +1418,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_VAEXPR:
 		case TOKEN_FALSE:
 		case TOKEN_INTEGER:
+		case TOKEN_LENGTHOF:
 		case TOKEN_LPAREN:
 		case TOKEN_MINUS:
 		case TOKEN_MINUSMINUS:
@@ -1402,6 +1445,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_BIT_AND_ASSIGN:
 		case TOKEN_BIT_OR_ASSIGN:
 		case TOKEN_BIT_XOR_ASSIGN:
+		case TOKEN_CONSTDEF:
 		case TOKEN_COLON:
 		case TOKEN_COMMA:
 		case TOKEN_CT_CASE:
@@ -1463,7 +1507,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_UNDERSCORE:
 		case TOKEN_UNION:
 			PRINT_ERROR_HERE("Unexpected '%s' found when expecting a statement.",
-			                 token_type_to_string(c->tok));
+								 token_type_to_string(c->tok));
 			advance(c);
 			return poisoned_ast;
 		case TOKEN_RPAREN:
@@ -1532,6 +1576,7 @@ Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool is_regular_f
 	TypeInfo *rtype = return_type ? type_infoptr(return_type) : NULL;
 	bool is_void_return = rtype && rtype->resolve_status == RESOLVE_DONE && rtype->type->type_kind == TYPE_VOID;
 	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_ast);
+	ret->loc = expr->loc;
 	if (expr->expr_kind == EXPR_CALL && expr->call_expr.macro_body)
 	{
 		ret->ast_kind = AST_EXPR_STMT;
@@ -1548,7 +1593,7 @@ Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool is_regular_f
 	}
 	ret->return_stmt.expr = expr;
 END:;
-	RANGE_EXTEND_PREV(ast);
+
 	if (is_regular_fn)
 	{
 		CONSUME_EOS_OR_RET(poisoned_ast);

@@ -1,0 +1,18 @@
+// #target: macos-x64
+module test;
+struct Foo4
+{
+    bitstruct : short
+    {
+        short expand : 1..7;
+        bool b : 8;
+    }
+}
+fn void main()
+{
+	Foo4 f4 = { .expand = 2, .b };
+}
+
+/* #expect: test.ll
+
+@.__const = private unnamed_addr constant %Foo4 { i16 260 }, align 2

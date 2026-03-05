@@ -37,8 +37,8 @@ fn void main()
 @.str.2 = private unnamed_addr constant [3 x i8] c"%d\00", align 1
 @.str.3 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
 @.str.4 = private unnamed_addr constant [12 x i8] c"fn int(int)\00", align 1
-@"$ct.String" = linkonce global %.introspect { i8 17, i64 ptrtoint (ptr @"$ct.sa$char" to i64), ptr null, i64 16, i64 ptrtoint (ptr @"$ct.sa$char" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
-@"$ct.sa$char" = linkonce global %.introspect { i8 15, i64 0, ptr null, i64 16, i64 ptrtoint (ptr @"$ct.char" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.String" = linkonce global %.introspect { i8 18, i64 ptrtoint (ptr @"$ct.sa$char" to i64), ptr null, i64 16, i64 ptrtoint (ptr @"$ct.sa$char" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.sa$char" = linkonce global %.introspect { i8 16, i64 0, ptr null, i64 16, i64 ptrtoint (ptr @"$ct.char" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
 @"$ct.char" = linkonce global %.introspect { i8 3, i64 0, ptr null, i64 1, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 @.str.5 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
 @.str.6 = private unnamed_addr constant [12 x i8] c"fn int(int)\00", align 1
@@ -47,8 +47,8 @@ fn void main()
 @.str.9 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
 @.str.10 = private unnamed_addr constant [12 x i8] c"fn int(int)\00", align 1
 @.str.11 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
-@.str.12 = private unnamed_addr constant [13 x i8] c"fn int!(int)\00", align 1
-@"$ct.fn$int$int$" = linkonce global %.introspect { i8 12, i64 0, ptr null, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@.str.12 = private unnamed_addr constant [13 x i8] c"fn int?(int)\00", align 1
+@"$ct.fn$int$int$" = linkonce global %.introspect { i8 13, i64 0, ptr null, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
 define void @test.main() #0 {
 entry:

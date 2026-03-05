@@ -39,9 +39,9 @@ fn void main(String[] args)
 /* #expect: test.ll
 
 
-@jumptable = private unnamed_addr constant [3 x ptr] [ptr blockaddress(@test.second_test, %switch.case), ptr blockaddress(@test.second_test, %switch.case), ptr blockaddress(@test.second_test, %switch.case)], align 4
-@jumptable.1 = private unnamed_addr constant [9 x ptr] [ptr blockaddress(@test.third_test, %switch.case), ptr blockaddress(@test.third_test, %switch.case), ptr blockaddress(@test.third_test, %switch.case), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.case14)], align 4
-@jumptable.4 = private unnamed_addr constant [2 x ptr] [ptr blockaddress(@test.main, %switch.case), ptr blockaddress(@test.main, %switch.case14)], align 4
+@jumptable = private unnamed_addr constant [3 x ptr] [ptr blockaddress(@test.second_test, %switch.case), ptr blockaddress(@test.second_test, %switch.case), ptr blockaddress(@test.second_test, %switch.case)], align 8
+@jumptable.1 = private unnamed_addr constant [9 x ptr] [ptr blockaddress(@test.third_test, %switch.case), ptr blockaddress(@test.third_test, %switch.case), ptr blockaddress(@test.third_test, %switch.case), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.exit), ptr blockaddress(@test.third_test, %switch.case14)], align 8
+@jumptable.4 = private unnamed_addr constant [2 x ptr] [ptr blockaddress(@test.main, %switch.case), ptr blockaddress(@test.main, %switch.case14)], align 8
 
   store i32 %0, ptr %switch, align 4
   br label %switch.entry
@@ -54,7 +54,7 @@ switch.entry:                                     ; preds = %entry
 jumpblock:                                        ; preds = %switch.entry
   %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable, i32 %1
   %target = load ptr, ptr %ptroffset, align 8
-  indirectbr ptr %target, [label %switch.case]
+  indirectbr ptr %target, [label %switch.case, label %switch.exit]
 
 switch.case:                                      ; preds = %jumpblock
   %3 = call ptr @std.io.stdout()
@@ -117,7 +117,7 @@ noerr_block13:                                    ; preds = %after_check11
 voiderr:                                          ; preds = %noerr_block13, %guard_block12, %guard_block6, %guard_block
   br label %switch.exit
 
-switch.exit:                                      ; preds = %voiderr, %switch.entry
+switch.exit:                                      ; preds = %jumpblock, %voiderr, %switch.entry
   ret void
 }
 
@@ -148,7 +148,7 @@ switch.entry:                                     ; preds = %entry
 jumpblock:                                        ; preds = %switch.entry
   %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.1, i32 %2
   %target = load ptr, ptr %ptroffset, align 8
-  indirectbr ptr %target, [label %switch.case, label %switch.case14, label %switch.exit]
+  indirectbr ptr %target, [label %switch.case, label %switch.case14, label %switch.exit, label %switch.exit]
 
 switch.case:                                      ; preds = %jumpblock
   %4 = call ptr @std.io.stdout()
@@ -272,7 +272,7 @@ noerr_block36:                                    ; preds = %after_check34
 voiderr38:                                        ; preds = %noerr_block36, %guard_block35, %guard_block29, %guard_block23
   br label %switch.exit
 
-switch.exit:                                      ; preds = %jumpblock, %voiderr38, %voiderr, %switch.entry
+switch.exit:                                      ; preds = %jumpblock, %jumpblock, %voiderr38, %voiderr, %switch.entry
   ret void
 }
 
@@ -312,7 +312,7 @@ switch.entry:                                     ; preds = %entry
 jumpblock:                                        ; preds = %switch.entry
   %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.4, i32 %2
   %target = load ptr, ptr %ptroffset, align 8
-  indirectbr ptr %target, [label %switch.case, label %switch.case14]
+  indirectbr ptr %target, [label %switch.case, label %switch.case14, label %switch.default]
 
 switch.case:                                      ; preds = %jumpblock
   %4 = call ptr @std.io.stdout()
@@ -436,7 +436,7 @@ noerr_block36:                                    ; preds = %after_check34
 voiderr38:                                        ; preds = %noerr_block36, %guard_block35, %guard_block29, %guard_block23
   br label %switch.exit
 
-switch.default:                                   ; preds = %switch.entry
+switch.default:                                   ; preds = %jumpblock, %switch.entry
   %24 = call ptr @std.io.stdout()
   store %"char[]" { ptr @.str.7, i64 3 }, ptr %taddr43, align 8
   %25 = load [2 x i64], ptr %taddr43, align 8

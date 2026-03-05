@@ -1,0 +1,81 @@
+// #target: macos-x64
+module test;
+int a;
+fn void test()
+{
+
+    if LABEL: (false)
+    {
+        a += 1;
+    }
+    else if (true)
+    {
+        a += 2;
+        break LABEL;
+    }
+    else
+    {
+        a += 3;
+    }
+
+	a *= 4;
+}
+
+fn void main()
+{
+    if LABEL: (true)
+    {
+        a += 1;
+        break LABEL;
+    }
+    else if (true)
+    {
+        a += 2;
+    }
+    else
+    {
+        a += 3;
+    }
+
+	a *= 4;
+}
+
+/* #expect: test.ll
+
+define void @test.test() #0 {
+entry:
+  br label %if.else
+
+if.else:                                          ; preds = %entry
+  br label %if.then
+
+if.then:                                          ; preds = %if.else
+  %0 = load i32, ptr @test.a, align 4
+  %add = add i32 %0, 2
+  store i32 %add, ptr @test.a, align 4
+  br label %if.exit
+
+if.exit:                                          ; preds = %if.then
+  %1 = load i32, ptr @test.a, align 4
+  %mul = mul i32 %1, 4
+  store i32 %mul, ptr @test.a, align 4
+  ret void
+}
+
+; Function Attrs: nounwind uwtable
+define void @test.main() #0 {
+entry:
+  br label %if.then
+
+if.then:                                          ; preds = %entry
+  %0 = load i32, ptr @test.a, align 4
+  %add = add i32 %0, 1
+  store i32 %add, ptr @test.a, align 4
+  br label %if.exit
+
+if.exit:                                          ; preds = %if.then
+  %1 = load i32, ptr @test.a, align 4
+  %mul = mul i32 %1, 4
+  store i32 %mul, ptr @test.a, align 4
+  ret void
+}

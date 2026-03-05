@@ -20,12 +20,12 @@ fn void test_unknown_member()
 }
 
 
-fn void test_nonstatic_stuct_func1()
+fn void test_nonstatic_struct_func1()
 {
     Func2 a = &Foo.func2;
 }
 
-fn void test_nonstatic_stuct_func2()
+fn void test_nonstatic_struct_func2()
 {
     int b = Foo.func2(null, 2);
 }

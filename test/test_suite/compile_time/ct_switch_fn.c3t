@@ -1,0 +1,92 @@
+// #target: macos-x64
+module test;
+import std;
+
+alias Foo = fn void();
+
+macro @test(#foo)
+{
+	$switch $typeof(#foo):
+	$case Foo:
+	io::printn("Hello");
+	$default:
+	io::printn($typeof(#foo).nameof);
+	$endswitch
+}
+fn void tester() {}
+fn int main(String[] args)
+{
+	@test(&tester);
+	return 0;
+}
+/* #expect: test.ll
+
+define i32 @test.main(ptr %0, i64 %1) #0 {
+entry:
+  %args = alloca %"char[][]", align 8
+  %len = alloca i64, align 8
+  %error_var = alloca i64, align 8
+  %retparam = alloca i64, align 8
+  %error_var2 = alloca i64, align 8
+  %error_var8 = alloca i64, align 8
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  %2 = call ptr @std.io.stdout()
+  %3 = call i64 @std.io.File.write(ptr %retparam, ptr %2, ptr @.str, i64 5)
+  %not_err = icmp eq i64 %3, 0
+  %4 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %4, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %entry
+  store i64 %3, ptr %error_var, align 8
+  br label %guard_block
+
+after_check:                                      ; preds = %entry
+  br label %noerr_block
+
+guard_block:                                      ; preds = %assign_optional
+  br label %voiderr
+
+noerr_block:                                      ; preds = %after_check
+  %5 = load i64, ptr %retparam, align 8
+  store i64 %5, ptr %len, align 8
+  %6 = call i64 @std.io.File.write_byte(ptr %2, i8 zeroext 10)
+  %not_err3 = icmp eq i64 %6, 0
+  %7 = call i1 @llvm.expect.i1(i1 %not_err3, i1 true)
+  br i1 %7, label %after_check5, label %assign_optional4
+
+assign_optional4:                                 ; preds = %noerr_block
+  store i64 %6, ptr %error_var2, align 8
+  br label %guard_block6
+
+after_check5:                                     ; preds = %noerr_block
+  br label %noerr_block7
+
+guard_block6:                                     ; preds = %assign_optional4
+  br label %voiderr
+
+noerr_block7:                                     ; preds = %after_check5
+  %8 = call i64 @std.io.File.flush(ptr %2)
+  %not_err9 = icmp eq i64 %8, 0
+  %9 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
+  br i1 %9, label %after_check11, label %assign_optional10
+
+assign_optional10:                                ; preds = %noerr_block7
+  store i64 %8, ptr %error_var8, align 8
+  br label %guard_block12
+
+after_check11:                                    ; preds = %noerr_block7
+  br label %noerr_block13
+
+guard_block12:                                    ; preds = %assign_optional10
+  br label %voiderr
+
+noerr_block13:                                    ; preds = %after_check11
+  %10 = load i64, ptr %len, align 8
+  %add = add i64 %10, 1
+  br label %voiderr
+
+voiderr:                                          ; preds = %noerr_block13, %guard_block12, %guard_block6, %guard_block
+  ret i32 0
+}

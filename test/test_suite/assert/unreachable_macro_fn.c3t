@@ -62,8 +62,4 @@ define void @test.tester_test2() #0 {
 entry:
   %blockret = alloca i32, align 4
   unreachable
-
-after_macro:                                      ; No predecessors!
-  call void @test.tester(i32 poison)
-  ret void
 }

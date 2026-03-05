@@ -48,11 +48,11 @@ const SYSTEM_HIDE_GAMEPAD_OVERLAY = 2;
 // └───────────────────────────────────────────────────────────────────────────┘
 
 /* Copies pixels to the framebuffer. */
-extern fn void blit(char* data, int x, int y, uint width, uint height, uint flags) @extern("blit");
+extern fn void blit(char* data, int x, int y, uint width, uint height, uint flags) @cname("blit");
 
 /* Copies a subregion within a larger sprite atlas to the framebuffer. */
 extern fn void blit_sub(char* data, int x, int y, uint width, uint height,
-                     uint src_x, uint src_y, uint stride, uint flags) @extern("blitSub");
+                     uint src_x, uint src_y, uint stride, uint flags) @cname("blitSub");
 
 const BLIT_2BPP = 1;
 const BLIT_1BPP = 0;
@@ -76,7 +76,7 @@ extern fn void oval(int x, int y, uint width, uint height);
 extern fn void rect(int x, int y, uint width, uint height);
 
 /* Draws text using the built-in system font. */
-extern fn void text(char* text, int x, int y) @extern("text");
+extern fn void text(char* text, int x, int y) @cname("text");
 
 // ┌───────────────────────────────────────────────────────────────────────────┐
 // │                                                                           │
@@ -127,10 +127,10 @@ char[8] smiley = {
 	0b11000011,
 };
 
-fn void start() @extern("start")
+fn void start() @cname("start")
 {}
 
-fn void update() @extern("update")
+fn void update() @cname("update")
 {
 	DRAW_COLORS[0] = 2;
 	text("Hello from C3", 10, 10);

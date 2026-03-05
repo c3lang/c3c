@@ -29,9 +29,9 @@ fn void main()
 @.str.1 = private unnamed_addr constant [2 x i8] c"b\00", align 1
 @"$ct.double" = linkonce global %.introspect { i8 4, i64 0, ptr null, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 @.__const = private unnamed_addr constant [2 x %ReflectedParam] [%ReflectedParam { %"char[]" { ptr @.str, i64 1 }, i64 ptrtoint (ptr @"$ct.int" to i64) }, %ReflectedParam { %"char[]" { ptr @.str.1, i64 1 }, i64 ptrtoint (ptr @"$ct.double" to i64) }], align 16
-@"$ct.std.io.File" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.std.io.File" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @.str.2 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
-@"$ct.ReflectedParam" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.ReflectedParam" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.str.3 = private unnamed_addr constant [2 x i8] c"a\00", align 1
 @.str.4 = private unnamed_addr constant [4 x i8] c"int\00", align 1
 @.str.5 = private unnamed_addr constant [2 x i8] c"b\00", align 1

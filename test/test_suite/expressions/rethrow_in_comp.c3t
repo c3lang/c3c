@@ -1,0 +1,51 @@
+// #target: macos-x64
+module test;
+import std::io;
+fn void? canFail()
+{
+	if (io::EOF~! == 69) { }
+}
+fn int main()
+{
+	if (catch err = canFail()) { }
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i64 @test.canFail() #0 {
+entry:
+  %error_var = alloca i64, align 8
+  store i64 ptrtoint (ptr @std.io.EOF to i64), ptr %error_var, align 8
+  br label %guard_block
+
+guard_block:                                      ; preds = %entry
+  %0 = load i64, ptr %error_var, align 8
+  ret i64 %0
+}
+
+define i32 @main() #0 {
+entry:
+  %err = alloca i64, align 8
+  br label %testblock
+
+testblock:                                        ; preds = %entry
+  %0 = call i64 @test.canFail()
+  %not_err = icmp eq i64 %0, 0
+  %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %1, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %testblock
+  store i64 %0, ptr %err, align 8
+  br label %end_block
+
+after_check:                                      ; preds = %testblock
+  store i64 0, ptr %err, align 8
+  br label %end_block
+
+end_block:                                        ; preds = %after_check, %assign_optional
+  %2 = load i64, ptr %err, align 8
+  %i2b = icmp ne i64 %2, 0
+  ret i32 0
+}
+

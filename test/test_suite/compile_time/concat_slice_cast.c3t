@@ -1,0 +1,5 @@
+fn int main()
+{
+	const A = (ichar[]) { } +++ x'1234';
+	return 0;
+}

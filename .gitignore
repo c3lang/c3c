@@ -1,5 +1,7 @@
 # Prerequisites
 *.d
+testrun
+benchmarkrun
 
 # Object files
 *.o
@@ -7,6 +9,8 @@
 *.obj
 *.elf
 *.ll
+*.wasm
+*.s
 
 # Linker output
 *.ilk
@@ -69,20 +73,34 @@ out/
 /cmake-build-debug/
 /cmake-build-release/
 
-# Emacs files
+CMakeFiles/cmake.check_cache
+CMakeCache.txt
+
+# etags(Emacs), ctags, gtags
 TAGS
+GPATH
+GRTAGS
+GTAGS
+tags
 
 # Clangd LSP files
 /.cache/
 /compile_commands.json
 
-# 'nix build' resulting symlink
+# Nix
 result
+/.envrc
+/.direnv/
 
 # macOS
 .DS_Store
 
 # tests
 /test/tmp/*
-/test/testrun
-/test/test_suite_runner
+testrun
+test_suite_runner
+
+# patches, originals and rejects
+*.patch
+*.rej
+*.orig

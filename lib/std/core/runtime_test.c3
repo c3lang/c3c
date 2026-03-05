@@ -4,8 +4,8 @@
 module std::core::runtime;
 import std::core::test @public;
 import std::core::mem::allocator @public;
-import libc, std::time, std::io, std::sort;
-import std::os::env;
+import libc, std::time, std::io, std::sort, std::os;
+
 
 alias TestFn = fn void();
 
@@ -14,10 +14,12 @@ TestContext* test_context @private;
 struct TestContext
 {
 	JmpBuf buf;
-	// Allows filtering test cased or modules by substring, e.g. 'foo::', 'foo::test_add'
+	<* Allows filtering test cased or modules by substring, e.g. 'foo::', 'foo::test_add' *>
 	String test_filter;
-	// Triggers debugger breakpoint when assert or test:: checks failed
+	<* Triggers debugger breakpoint when assert or test:: checks failed *>
 	bool breakpoint_on_assert;
+	<* Controls level of printed logs *>
+	LogPriority log_level;
 
 	// internal state
 	bool assert_print_backtrace;
@@ -25,6 +27,8 @@ struct TestContext
 	bool is_in_panic;
 	bool is_quiet_mode;
 	bool is_no_capture;
+    bool sort;
+    bool check_leaks;
 	String current_test_name;
 	TestFn setup_fn;
 	TestFn teardown_fn;
@@ -86,7 +90,21 @@ fn bool terminal_has_ansi_codes() @local => @pool()
 	$endif
 }
 
+fn void sig_bus_error(CInt i, void*, void* context) @local @if(env::POSIX)
+{
+	panic_test("Bus error", "Unknown", "Unknown", 1, posix::stack_instruction(context));
+}
+
+fn void sig_segmentation_fault(CInt i, void*, void* context) @local @if(env::POSIX)
+{
+	panic_test("Segmentation fault", "Unknown", "Unknown", 1, posix::stack_instruction(context));
+}
+
 fn void test_panic(String message, String file, String function, uint line) @local
+{
+	panic_test(message, file, function, line);
+}
+fn void panic_test(String message, String file, String function, uint line, void* extra_trace = null) @local
 {
 	if (test_context.is_in_panic) return;
 	test_context.is_in_panic = true;
@@ -96,7 +114,7 @@ fn void test_panic(String message, String file, String function, uint line) @loc
 	if (test_context.assert_print_backtrace)
 	{
 		$if env::NATIVE_STACKTRACE:
-    		builtin::print_backtrace(message, 0);
+    		builtin::print_backtrace(message, extra_trace ? 3 : 0, extra_trace);
 		$endif
 	}
 	io::printf("\nTest failed ^^^ ( %s:%s ) %s\n",  file, line, message);
@@ -124,7 +142,7 @@ fn void mute_output() @local
     File* stderr = io::stderr();
 	*stderr = test_context.fake_stdout;
 	*stdout = test_context.fake_stdout;
-	(void)test_context.fake_stdout.seek(0, Seek.SET)!!;
+	(void)test_context.fake_stdout.set_cursor(0)!!;
 }
 
 fn void unmute_output(bool has_error) @local
@@ -137,10 +155,9 @@ fn void unmute_output(bool has_error) @local
 	*stderr = test_context.stored.stderr;
 	*stdout = test_context.stored.stdout;
 
-	usz log_size = test_context.fake_stdout.seek(0, Seek.CURSOR)!!;
+	ulong log_size = test_context.fake_stdout.cursor()!!;
 	if (has_error)
 	{
-		io::printf("\nTesting %s ", test_context.current_test_name);
 		io::printn(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
 	}
 
@@ -148,7 +165,7 @@ fn void unmute_output(bool has_error) @local
 	{
 		test_context.fake_stdout.write_byte('\n')!!;
 		test_context.fake_stdout.write_byte('\0')!!;
-		(void)test_context.fake_stdout.seek(0, Seek.SET)!!;
+		test_context.fake_stdout.set_cursor(0)!!;
 
 		io::printfn("\n========== TEST LOG ============");
 		io::printfn("%s\n", test_context.current_test_name);
@@ -166,11 +183,19 @@ fn void unmute_output(bool has_error) @local
 	(void)stdout.flush();
 }
 
+
 fn bool run_tests(String[] args, TestUnit[] tests) @private
 {
 	usz max_name;
-	bool sort_tests = true;
-	bool check_leaks = true;
+	if (!tests.len)
+	{
+		io::printn("There are no test units to run.");
+		return true;   // no tests == technically a pass
+	}
+$if !env::NO_LIBC && env::POSIX:
+	posix::install_signal_handler(libc::SIGBUS, &sig_bus_error);
+	posix::install_signal_handler(libc::SIGSEGV, &sig_segmentation_fault);
+$endif
 	foreach (&unit : tests)
 	{
 		if (max_name < unit.name.len) max_name = unit.name.len;
@@ -179,6 +204,9 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	{
 		.assert_print_backtrace = true,
 		.breakpoint_on_assert = false,
+        .sort = true,
+        .check_leaks = true,
+		.log_level = LogPriority.ERROR,
 		.test_filter = "",
 		.has_ansi_codes = terminal_has_ansi_codes(),
 		.stored.allocator = mem,
@@ -192,10 +220,11 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 			case "--test-breakpoint":
 				context.breakpoint_on_assert = true;
 			case "--test-nosort":
-				sort_tests = false;
+				context.sort = false;
 			case "--test-noleak":
-				check_leaks = false;
+				context.check_leaks = false;
 			case "--test-nocapture":
+			case "--test-show-output":
 				context.is_no_capture = true;
 			case "--noansi":
 				context.has_ansi_codes = false;
@@ -211,13 +240,30 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 				}
 				context.test_filter = args[i + 1];
 				i++;
+			case "--test-log-level":
+				if (i == args.len - 1)
+				{
+					io::printn("Missing log level for argument `--test-log-level`.");
+					return false;
+				}
+				@pool()
+				{
+					String upper = args[i + 1].to_upper_copy(tmem);
+					if (catch @try(context.log_level, enum_by_name(LogPriority, upper)))
+					{
+						io::printn("Log level given to `--test-log-level` is not one of verbose, debug, info, warn, error or critical.");
+						return false;
+					}
+				};
+				i++;
 			default:
 				io::printfn("Unknown argument: %s", args[i]);
 		}
 	}
 	test_context = &context;
+	log::set_priority_all(test_context.log_level);
 
-	if (sort_tests)
+	if (context.sort)
 	{
 		quicksort(tests, &cmp_test_unit);
 	}
@@ -277,14 +323,17 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		{
 			mute_output();
 			mem.clear();
-			if (check_leaks) allocator::thread_allocator = &mem;
-			unit.func();
+			if (context.check_leaks) allocator::thread_allocator = &mem;
+			@pool()
+            {
+                unit.func();
+            };
 			// track cleanup that may take place in teardown_fn
 			if (context.teardown_fn)
 			{
 				context.teardown_fn();
 			}
-			if (check_leaks) allocator::thread_allocator = context.stored.allocator;
+			if (context.check_leaks) allocator::thread_allocator = context.stored.allocator;
 
 			unmute_output(false); // all good, discard output
 			if (mem.has_leaks())
@@ -305,7 +354,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		}
 		mem.free();
 	}
-	io::printfn("\n%d test%s run.\n", test_count-tests_skipped, test_count > 1 ? "s" : "");
+	io::printfn("\n%d test%s run.\n", test_count-tests_skipped, test_count != 1 ? "s" : "");
 
 	int n_failed = test_count - tests_passed - tests_skipped;
 	io::printf("Test Result: %s%s%s: ",

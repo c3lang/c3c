@@ -8,7 +8,7 @@ faultdef BAR, BAZ;
 
 fn void test()
 {
-    int? x = BAR?;
+    int? x = BAR~;
 
     typeid z = int.typeid;
     switch (z)

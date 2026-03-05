@@ -16,13 +16,13 @@ faultdef ABC;
 macro test()
 {
   if (false) return;
-  return ABC?;
+  return ABC~;
   unreachable();
 }
 
 /* #expect: test.ll
 
-define i32 @main() #0 {
+define i32 @test.main() #0 {
 entry:
   %temp_err = alloca i64, align 8
   %len = alloca i64, align 8

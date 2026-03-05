@@ -13,9 +13,9 @@ fn void test()
 	void*? y = !a ? x : b;
 	y = !a ? b : x;
 	y = !a ? x : x;
-	y = !a ? x : FOO?;
-	y = !a ? FOO? : x;
-	y = !a ? FOO? : BAR?;
+	y = !a ? x : FOO~;
+	y = !a ? FOO~ : x;
+	y = !a ? FOO~ : BAR~;
 }
 
 /* #expect: test.ll

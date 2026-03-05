@@ -15,8 +15,7 @@ fn void abs() @test
 	CInt x = 21;
 	assert(libc::abs(x) == 21);
 	assert(libc::abs(-x) == 21);
-	$assert @typeis(libc::abs(x), CInt);
-	$assert @typeis(libc::abs(-x), CInt);
+	$assert $typeof(libc::abs(x)) == CInt;
 }
 
 fn void asctime() @test
@@ -72,37 +71,28 @@ fn void atexit() @test
 fn void atof() @test
 {
 	assert(libc::atof("123.45") == 123.45);
-	$assert @typeis(libc::atof("123.45"), double);
+	$assert $typeof(libc::atof("123.45")) == double;
 	assert(libc::atof("-3.14") == -3.14);
-	$assert @typeis(libc::atof("-3.14"), double);
 	assert(libc::atof("x") == 0.0);
-	$assert @typeis(libc::atof("x"), double);
 	assert(libc::atof("") == 0.0);
-	$assert @typeis(libc::atof(""), double);
 }
 
 fn void atoi() @test
 {
 	assert(libc::atoi("123") == 123);
-	$assert @typeis(libc::atoi("123"), int);
+	$assert $typeof(libc::atoi("123")) == CInt;
 	assert(libc::atoi("-3.14") == -3);
-	$assert @typeis(libc::atoi("-3.14"), int);
 	assert(libc::atoi("x") == 0);
-	$assert @typeis(libc::atoi("x"), int);
 	assert(libc::atoi("") == 0);
-	$assert @typeis(libc::atoi(""), int);
 }
 
 fn void atoll() @test
 {
-	assert(libc::atoi("123") == 123);
-	$assert @typeis(libc::atoi("123"), int);
-	assert(libc::atoi("-3.14") == -3);
-	$assert @typeis(libc::atoi("-3.14"), int);
-	assert(libc::atoi("x") == 0);
-	$assert @typeis(libc::atoi("x"), int);
-	assert(libc::atoi("") == 0);
-	$assert @typeis(libc::atoi(""), int);
+	assert(libc::atoll("123") == 123);
+	assert(libc::atoll("-3.14") == -3);
+	$assert $typeof(libc::atoll("-3.14")) == CLongLong;
+	assert(libc::atoll("x") == 0);
+	assert(libc::atoll("") == 0);
 }
 
 // Compare function, struct and function for libc::bsearch test
@@ -145,8 +135,8 @@ fn void bsearch() @test
 	key = 6;
 	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_cint);
 	assert(*found == 6);
-	CInt non_existant_key = 12;
-	found = (CInt*) libc::bsearch(&non_existant_key, int_ar, 7, CInt.sizeof, &compare_cint);
+	CInt non_existent_key = 12;
+	found = (CInt*) libc::bsearch(&non_existent_key, int_ar, 7, CInt.sizeof, &compare_cint);
 	assert(found == null);
 
 	Event[] events = {
@@ -222,7 +212,7 @@ fn void clock() @test
 
 fn void close() @test @if(!env::WIN32)
 {
-	assert(libc::close(13) == -1);
+	assert(libc::close(1313) != 0);
 	// NOTE: errno is part of libc, and is thus recursively imported
 	assert(libc::errno() == errno::EBADF);
 }
@@ -265,8 +255,8 @@ fn void fdopen() @test @if(!env::WIN32)
 
 fn void fflush() @test
 {
-	CFile stdin = libc::stdin();
-	assert(libc::fflush(stdin) == 0);
+	CFile stdout = libc::stdout();
+	assert(libc::fflush(stdout) == 0);
 }
 
 fn void fgets_fget() @test
@@ -414,9 +404,9 @@ fn void malloc_free() @test
 // const CInt STDERR_FD = 2;
 //
 // module libc @if(env::LINUX);
-// extern CFile __stdin @extern("stdin");
-// extern CFile __stdout @extern("stdout");
-// extern CFile __stderr @extern("stderr");
+// extern CFile __stdin @cname("stdin");
+// extern CFile __stdout @cname("stdout");
+// extern CFile __stderr @cname("stderr");
 // extern fn usz malloc_usable_size(void* ptr);
 // macro usz malloc_size(void* ptr) => malloc_usable_size(ptr);
 // extern fn void* aligned_alloc(usz align, usz size);
@@ -463,114 +453,114 @@ fn void malloc_free() @test
 //
 // module libc @if(!env::LIBC);
 //
-// fn void longjmp(JmpBuf* buffer, CInt value) @weak @extern("longjmp") @nostrip
+// fn void longjmp(JmpBuf* buffer, CInt value) @weak @cname("longjmp") @nostrip
 // {
 // 	unreachable("longjmp unavailable");
 // }
 //
-// fn CInt setjmp(JmpBuf* buffer) @weak @extern("setjmp") @nostrip
+// fn CInt setjmp(JmpBuf* buffer) @weak @cname("setjmp") @nostrip
 // {
 // 	unreachable("setjmp unavailable");
 // }
 //
-// fn void* malloc(usz size) @weak @extern("malloc") @nostrip
+// fn void* malloc(usz size) @weak @cname("malloc") @nostrip
 // {
 // 	unreachable("malloc unavailable");
 // }
-// fn void* calloc(usz count, usz size) @weak @extern("calloc") @nostrip
+// fn void* calloc(usz count, usz size) @weak @cname("calloc") @nostrip
 // {
 // 	unreachable("calloc unavailable");
 // }
-// fn void* free(void*) @weak @extern("free")
+// fn void* free(void*) @weak @cname("free")
 // {
 // 	unreachable("free unavailable");
 // }
 //
-// fn void* realloc(void* ptr, usz size) @weak @extern("realloc") @nostrip
+// fn void* realloc(void* ptr, usz size) @weak @cname("realloc") @nostrip
 // {
 // 	unreachable("realloc unavailable");
 // }
 //
-// fn void* memcpy(void* dest, void* src, usz n) @weak @extern("memcpy") @nostrip
+// fn void* memcpy(void* dest, void* src, usz n) @weak @cname("memcpy") @nostrip
 // {
 // 	for (usz i = 0; i < n; i++) ((char*)dest)[i] = ((char*)src)[i];
 // 	return dest;
 // }
 //
-// fn void* memmove(void* dest, void* src, usz n) @weak @extern("memmove") @nostrip
+// fn void* memmove(void* dest, void* src, usz n) @weak @cname("memmove") @nostrip
 // {
 // 	return memcpy(dest, src, n) @inline;
 // }
 //
-// fn void* memset(void* dest, CInt value, usz n) @weak @extern("memset") @nostrip
+// fn void* memset(void* dest, CInt value, usz n) @weak @cname("memset") @nostrip
 // {
 // 	for (usz i = 0; i < n; i++) ((char*)dest)[i] = (char)value;
 // 	return dest;
 // }
 //
-// fn int fseek(CFile stream, SeekIndex offset, int whence) @weak @extern("fseek") @nostrip
+// fn int fseek(CFile stream, SeekIndex offset, int whence) @weak @cname("fseek") @nostrip
 // {
 // 	unreachable("'fseek' not available.");
 // }
-// fn CFile fopen(ZString filename, ZString mode) @weak @extern("fopen") @nostrip
+// fn CFile fopen(ZString filename, ZString mode) @weak @cname("fopen") @nostrip
 // {
 // 	unreachable("'fopen' not available.");
 // }
 //
-// fn CFile freopen(ZString filename, ZString mode, CFile stream) @weak @extern("fopen") @nostrip
+// fn CFile freopen(ZString filename, ZString mode, CFile stream) @weak @cname("fopen") @nostrip
 // {
 // 	unreachable("'freopen' not available.");
 // }
 //
-// fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream) @weak @extern("fwrite") @nostrip
+// fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream) @weak @cname("fwrite") @nostrip
 // {
 // 	unreachable("'fwrite' not available.");
 // }
 //
-// fn usz fread(void* ptr, usz size, usz nmemb, CFile stream) @weak @extern("fread") @nostrip
+// fn usz fread(void* ptr, usz size, usz nmemb, CFile stream) @weak @cname("fread") @nostrip
 // {
 // 	unreachable("'fread' not available.");
 // }
 //
-// fn CFile fclose(CFile) @weak @extern("fclose") @nostrip
+// fn CFile fclose(CFile) @weak @cname("fclose") @nostrip
 // {
 // 	unreachable("'fclose' not available.");
 // }
 //
-// fn int fflush(CFile stream) @weak @extern("fflush") @nostrip
+// fn int fflush(CFile stream) @weak @cname("fflush") @nostrip
 // {
 // 	unreachable("'fflush' not available.");
 // }
 //
-// fn int fputc(int c, CFile stream) @weak @extern("fputc") @nostrip
+// fn int fputc(int c, CFile stream) @weak @cname("fputc") @nostrip
 // {
 // 	unreachable("'fputc' not available.");
 // }
 //
-// fn char* fgets(ZString str, int n, CFile stream) @weak @extern("fgets") @nostrip
+// fn char* fgets(ZString str, int n, CFile stream) @weak @cname("fgets") @nostrip
 // {
 // 	unreachable("'fgets' not available.");
 // }
 //
-// fn int fgetc(CFile stream) @weak @extern("fgetc") @nostrip
+// fn int fgetc(CFile stream) @weak @cname("fgetc") @nostrip
 // {
 // 	unreachable("'fgetc' not available.");
 // }
 //
-// fn int feof(CFile stream) @weak @extern("feof") @nostrip
+// fn int feof(CFile stream) @weak @cname("feof") @nostrip
 // {
 // 	unreachable("'feof' not available.");
 // }
 //
-// fn int putc(int c, CFile stream) @weak @extern("putc") @nostrip
+// fn int putc(int c, CFile stream) @weak @cname("putc") @nostrip
 // {
 // 	unreachable("'putc' not available.");
 // }
-// fn int putchar(int c) @weak @extern("putchar") @nostrip
+// fn int putchar(int c) @weak @cname("putchar") @nostrip
 // {
 // 	unreachable("'putchar' not available.");
 // }
-// fn int puts(ZString str) @weak @extern("puts") @nostrip
+// fn int puts(ZString str) @weak @cname("puts") @nostrip
 // {
 // 	unreachable("'puts' not available.");
 // }

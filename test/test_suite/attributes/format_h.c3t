@@ -1,0 +1,13 @@
+module test;
+import std;
+
+struct Foo
+{
+	int x, y;
+}
+fn int main()
+{
+	Foo f = { 33, 12323 };
+	io::printfn("%h", &f);
+	return 0;
+}

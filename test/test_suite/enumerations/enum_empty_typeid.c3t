@@ -1,0 +1,27 @@
+// #target: macos-x64
+module test;
+
+enum No_Els_Assoc : (any anything)
+{}
+
+macro typeid @segfault () => No_Els_Assoc.typeid;
+
+fn int main ()
+{
+    typeid x = @segfault();
+    return 0;
+}
+
+/* #expect: test.ll
+
+@"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.No_Els_Assoc" = linkonce global { i8, i64, ptr, i64, i64, i64, [0 x %"char[]"] } { i8 8, i64 0, ptr null, i64 4, i64 ptrtoint (ptr @"$ct.int" to i64), i64 0, [0 x %"char[]"] zeroinitializer }, align 8
+@"test.No_Els_Assoc$anything" = linkonce constant [0 x %any] zeroinitializer, align 8
+
+; Function Attrs: nounwind uwtable
+define i32 @main() #0 {
+entry:
+  %x = alloca i64, align 8
+  store i64 ptrtoint (ptr @"$ct.test.No_Els_Assoc" to i64), ptr %x, align 8
+  ret i32 0
+}

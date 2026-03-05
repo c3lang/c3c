@@ -13,7 +13,7 @@ fn void? test2()
 macro run()
 {
 	const ABC = 4;
-	int? x = NOT_FOUND?;
+	int? x = NOT_FOUND~;
 	defer (catch err) io::printfn("Hello %s", err);
 	defer (catch err) { io::printfn("Bye %s", err); err = FOO; }
 	return x;
@@ -22,7 +22,7 @@ fn int? test()
 {
 	int? z = run();
 	const ABC = 4;
-	int? x = NOT_FOUND?;
+	int? x = NOT_FOUND~;
 	defer (catch err) io::printfn("Hello %s", err);
 	defer (catch err) { io::printfn("Bye %s", err); err = FOO; }
 	return x;

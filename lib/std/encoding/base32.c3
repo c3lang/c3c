@@ -101,12 +101,12 @@ fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 		{
 			if (src.len == 0)
 			{
-				if (padding > 0) return encoding::INVALID_PADDING?;
+				if (padding > 0) return encoding::INVALID_PADDING~;
 				break;
 			}
 			if (src[0] == padding) break;
 			buf[i] = alphabet.reverse[src[0]];
-			if (buf[i] == INVALID) return encoding::INVALID_CHARACTER?;
+			if (buf[i] == INVALID) return encoding::INVALID_CHARACTER~;
 			src = src[1..];
 		}
 
@@ -150,7 +150,7 @@ fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 				dst[0] = buf[1] >> 2 | buf[0] << 3;
 				n++;
 			default:
-				return encoding::INVALID_CHARACTER?;
+				return encoding::INVALID_CHARACTER~;
 		}
 		if (dst.len < 5) break;
 		dst = dst[5..];
@@ -242,7 +242,7 @@ const char INVALID @private = 0xff;
 const int STD_PADDING = '=';
 const int NO_PADDING = -1;
 
-typedef Alphabet = char[32];
+typedef Alphabet @constinit = char[32];
 // Standard base32 Alphabet
 const Alphabet STD_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 // Extended Hex Alphabet

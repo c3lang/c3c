@@ -88,6 +88,7 @@ INLINE AsmArgBits parse_bits(const char **desc)
 		return ARG_BITS_5;
 	}
 	error_exit("Invalid bits: %s.", *desc);
+	UNREACHABLE
 }
 
 INLINE AsmArgType decode_arg_type(const char **desc)
@@ -163,7 +164,7 @@ NEXT:
 			case 0:
 				return arg_type;
 			default:
-				error_exit("Expected '/' or end: '%s'.", desc);
+				error_exit("Expected '/' or end: '%s'.", *desc);
 		}
 	}
 	return arg_type;
@@ -563,7 +564,7 @@ static void init_asm_riscv(PlatformTarget *target)
 			bits = ARG_BITS_32;
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	reg_register_list(target, riscv_gp_integer_regs, 32, ASM_REG_INT, bits, RISCV_X0);
 	reg_register_list(target, riscv_arg_integer_regs, 8, ASM_REG_INT, bits, RISCV_X10);
@@ -589,7 +590,19 @@ static void init_asm_x86(PlatformTarget* target)
 	Clobbers rax_mask = clobbers_make(X86_RAX, -1);
 	Clobbers cc_flag_mask = clobbers_make(X86_CC, -1);
 	Clobbers rax_cc_mask = clobbers_make_from(cc_flag_mask, X86_RAX, -1);
+	Clobbers rcx_cc_mask = clobbers_make_from(cc_flag_mask, X86_RCX, -1); 
 	Clobbers rax_rdx_cc_mask = clobbers_make_from(cc_flag_mask, X86_RAX, X86_RDX, -1);
+	Clobbers xmm_0_7_cc_mask = clobbers_make_from(cc_flag_mask, X86_XMM0, X86_XMM1, X86_XMM2, X86_XMM3, X86_XMM4, X86_XMM5, X86_XMM6, X86_XMM7, -1);
+	Clobbers xmm_0_2_xmm_4_6_cc_mask = clobbers_make_from(cc_flag_mask, X86_XMM0, X86_XMM1, X86_XMM2, X86_XMM4, X86_XMM5, X86_XMM6, -1);
+	Clobbers xmm_0_6_cc_mask = clobbers_make_from(cc_flag_mask, X86_XMM0, X86_XMM1, X86_XMM2, X86_XMM3, X86_XMM4, X86_XMM5, X86_XMM6, -1);
+	Clobbers xmm0_mask = clobbers_make(X86_XMM0, -1);
+	Clobbers xmm0_cc_mask = clobbers_make_from(cc_flag_mask, X86_XMM0, -1);
+	Clobbers rax_xmm0_cc_mask = clobbers_make_from(cc_flag_mask, X86_RAX, X86_XMM0, -1);
+	Clobbers lo16_vec_mask = clobbers_make(X86_XMM0, X86_XMM1, X86_XMM2, X86_XMM3, X86_XMM4, X86_XMM5, X86_XMM6, X86_XMM7,
+			X86_XMM8, X86_XMM9, X86_XMM10, X86_XMM11, X86_XMM12, X86_XMM13, X86_XMM14, X86_XMM15, -1); 
+
+	
+	
 	bool is_x64 = target->arch == ARCH_TYPE_X86_64;
 	if (!is_x64)
 	{
@@ -609,9 +622,6 @@ static void init_asm_x86(PlatformTarget* target)
 	reg_instr_clob(target, "adcl", cc_flag_mask, "rw:r32/mem, r32/mem/imm32/immi8");
 	reg_instr_clob(target, "adcq", cc_flag_mask, "rw:r64/mem, r64/mem/immi32/immi8");
 
-	reg_instr_clob(target, "adcxl", cc_flag_mask, "r32, rw:r32/mem");
-	reg_instr_clob(target, "adcxq", cc_flag_mask, "r64, rw:r64/mem");
-
 	reg_instr_clob(target, "addb", cc_flag_mask, "rw:r8/mem, r8/mem/imm8");
 	reg_instr_clob(target, "addw", cc_flag_mask, "rw:r16/mem, r16/mem/imm16/immi8");
 	reg_instr_clob(target, "addl", cc_flag_mask, "rw:r32/mem, r32/mem/imm32/immi8");
@@ -625,13 +635,45 @@ static void init_asm_x86(PlatformTarget* target)
 	reg_instr(target, "vaddps", "w:v128/v256/v512, v128/v256/v512, v128/v256/v512/mem");
 	reg_instr(target, "vaddsd", "w:v128, v128, v128/mem");
 	reg_instr(target, "vaddss", "w:v128, v128, v128/mem");
-
+	reg_instr(target, "bswapl", "rw:r32");
+	reg_instr(target, "bswapq", "rw:r64");
 	reg_instr_clob(target, "cbtw", rax_mask, NULL);
 	reg_instr_clob(target, "cwtl", rax_mask, NULL);
 	reg_instr_clob(target, "cltq", rax_mask, NULL);
 	reg_instr_clob(target, "clc", rax_mask, NULL);
 	reg_instr_clob(target, "cld", rax_mask, NULL);
 	reg_instr(target, "clflush", "mem");
+	reg_instr(target, "cmovaw", "w:r16, r16/mem");
+	reg_instr(target, "cmoval", "w:r32, r32/mem");
+	reg_instr(target, "cmovaq", "w:r64, r64/mem");
+	reg_instr(target, "cmovaew", "w:r16, r16/mem");
+	reg_instr(target, "cmovael", "w:r32, r32/mem");
+	reg_instr(target, "cmovaeq", "w:r64, r64/mem");
+	reg_instr(target, "cmovbw", "w:r16, r16/mem");
+	reg_instr(target, "cmovbl", "w:r32, r32/mem");
+	reg_instr(target, "cmovbq", "w:r64, r64/mem");
+	reg_instr(target, "cmovbew", "w:r16, r16/mem");
+	reg_instr(target, "cmovbel", "w:r32, r32/mem");
+	reg_instr(target, "cmovbeq", "w:r64, r64/mem");
+	reg_instr_clob(target, "cmpxchgb", rax_cc_mask,   "rw:r8/mem, r8");
+	reg_instr_clob(target, "cmpxchgl", rax_cc_mask,   "rw:r16/mem, r16");
+	reg_instr_clob(target, "cmpxchgw", rax_cc_mask,   "rw:r32/mem, r32");
+	reg_instr_clob(target, "cmpxchgq", rax_cc_mask,   "rw:r64/mem, r64");
+	reg_instr_clob(target, "cmpxchg8b", rax_cc_mask,  "rw:r64/mem");
+	reg_instr_clob(target, "cmpxchg16b", rax_cc_mask, "rw:r64/mem");
+	reg_instr_clob(target, "decb", cc_flag_mask, "r8/mem");
+	reg_instr_clob(target, "decw", cc_flag_mask, "r16/mem");
+	reg_instr_clob(target, "decl", cc_flag_mask, "r32/mem");
+	reg_instr_clob(target, "decq", cc_flag_mask, "r64/mem");
+	reg_instr_clob(target, "divb",  rax_rdx_cc_mask, "r8/mem");
+	reg_instr_clob(target, "divw",  rax_rdx_cc_mask, "r16/mem");
+	reg_instr_clob(target, "divl",  rax_rdx_cc_mask, "r32/mem");
+	reg_instr_clob(target, "divq",  rax_rdx_cc_mask, "r64/mem");
+	reg_instr_clob(target, "idivb", rax_rdx_cc_mask, "r8/mem");
+	reg_instr_clob(target, "idivw", rax_rdx_cc_mask, "r16/mem");
+	reg_instr_clob(target, "idivl", rax_rdx_cc_mask, "r32/mem");
+	reg_instr_clob(target, "idivq", rax_rdx_cc_mask, "r64/mem");
+
 	reg_instr(target, "movb", "w:r8/mem, r8/mem/imm8");
 	reg_instr(target, "movsbw", "w:r16/mem, r8/mem");
 	reg_instr(target, "movzbw", "w:r16/mem, r8/mem");
@@ -702,12 +744,135 @@ static void init_asm_x86(PlatformTarget* target)
 	reg_instr(target, "iretl", NULL);
 	reg_instr(target, "iretw", NULL);
 	reg_instr(target, "iretq", NULL);
-	reg_instr(target, "rdtsc", NULL);
-	reg_instr(target, "rdtscp", NULL);
+	reg_instr_clob(target, "rdtsc",  clobbers_make_from(rax_mask, X86_RDX, -1), NULL);
+	reg_instr_clob(target, "rdtscp",  clobbers_make_from(rax_mask, X86_RDX, X86_RCX, -1), NULL);
 	reg_instr(target, "ret", NULL);
 	reg_instr(target, "push", "imm8");
 	reg_instr(target, "pushw", "r16/mem/imm16");
 	reg_instr(target, "popw", "w:r16/mem");
+	
+	reg_instr(target, "stui", NULL);
+	reg_instr(target, "clui", NULL);
+	reg_instr(target, "senduipi", "r64");
+	reg_instr(target, "uiret", NULL);
+
+	reg_instr_clob(target, "xaddb", cc_flag_mask, "rw:r8/mem,  rw:r8");
+	reg_instr_clob(target, "xaddw", cc_flag_mask, "rw:r16/mem, rw:r16");
+	reg_instr_clob(target, "xaddl", cc_flag_mask, "rw:r32/mem, rw:r32");
+	reg_instr_clob(target, "xaddq", cc_flag_mask, "rw:r64/mem, rw:r64");
+	reg_instr(target, "xchgb", "rw:r8/mem, rw:r8/mem");
+	reg_instr(target, "xchgw", "rw:r16/mem, rw:r16/mem");
+	reg_instr(target, "xchgl", "rw:r32/mem, rw:r32/mem");
+	reg_instr(target, "xchgq", "rw:r64/mem, rw:r64/mem");
+
+	reg_instr_clob(target, "xgetbv", rax_rdx_cc_mask , NULL);
+
+	// BMI1
+	reg_instr_clob(target, "andn", cc_flag_mask, "w:r32/r64, r32/r64, r32/r64/mem");
+	reg_instr_clob(target, "bextr", cc_flag_mask, "w:r32/r64, r32/r64/mem, r32/r64");
+	reg_instr_clob(target, "blsi", cc_flag_mask, "w:r32/r64, r32/r64/mem");
+	reg_instr_clob(target, "blsmsk", cc_flag_mask, "w:r32/r64, r32/r64/mem");
+	reg_instr_clob(target, "blsr", cc_flag_mask, "w:r32/r64, r32/r64/mem");
+	reg_instr_clob(target, "tzcnt", cc_flag_mask, "w:r16/r32/r64, r16/r32/r64/mem");
+
+	// LZCNT
+	reg_instr_clob(target, "lzcnt", cc_flag_mask, "w:r16/r32/r64, r16/r32/r64/mem");
+
+	// BMI2
+	reg_instr(target, "bzhi", "w:r32/r64, r32/r64/mem, r32/r64");
+	reg_instr(target, "mulx", "w:r32/r64, r32/r64, r32/r64/mem");
+	reg_instr(target, "pdep", "w:r32/r64, r32/r64, r32/r64/mem");
+	reg_instr(target, "pext", "w:r32/r64, r32/r64, r32/r64/mem");
+	reg_instr(target, "rorx", "w:r32/r64, r32/r64/mem, imm8");
+	reg_instr(target, "sarx", "w:r32/r64, r32/r64/mem, r32/r64");
+	reg_instr(target, "shlx", "w:r32/r64, r32/r64/mem, r32/r64");
+	reg_instr(target, "shrx", "w:r32/r64, r32/r64/mem, r32/r64");
+
+	// ADX
+	reg_instr_clob(target, "adcx", cc_flag_mask, "rw:r32/r64, r32/r64/mem");
+	reg_instr_clob(target, "adox", cc_flag_mask, "rw:r32/r64, r32/r64/mem");
+
+	// PCLMULQDQ
+	reg_instr(target, "pclmulqdq", "rw:v128, v128/mem, imm8");
+	reg_instr(target, "vpclmulqdq", "w:v128/v256/v512, v128/v256/v512, v128/v256/v512/mem, imm8");
+
+	// SSE4.2 and VEX versions (no EVEX PCMPGTQ)
+	// Wish I could split crc32[l,q] here since it's got weird encodings, but AT&T does it's suffixes off of
+	// the source here, which I thought was worse. Ideally this has no suffixes anyway.
+	reg_instr_clob(target, "crc32", cc_flag_mask, "rw:r32/r64, r8/r16/r32/r64/mem"); 
+	reg_instr_clob(target, "pcmpestri", rcx_cc_mask, "v128, v128, imm8");
+	reg_instr_clob(target, "vpcmpestri", rcx_cc_mask, "v128, v128, imm8");
+	reg_instr_clob(target, "pcmpestrm", xmm0_cc_mask, "v128, v128, imm8");
+	reg_instr_clob(target, "vpcmpestrm", xmm0_cc_mask, "v128, v128, imm8");
+	reg_instr_clob(target, "pcmpistri", rcx_cc_mask, "v128, v128, imm8");
+	reg_instr_clob(target, "vpcmpistri", rcx_cc_mask, "v128, v128, imm8");
+	reg_instr_clob(target, "popcnt", cc_flag_mask, "w:r16/r32/r64, r16/r32/r64/mem");
+	reg_instr(target, "pcmpgtq", "rw:v128, v128/mem");
+	reg_instr(target, "vpcmpgtq", "w:v128/v256, v128/v256, v128/v256/mem");
+
+	// VZERO*
+	reg_instr_clob(target, "vzeroupper", lo16_vec_mask, NULL);
+	reg_instr_clob(target, "vzeroall", lo16_vec_mask, NULL);
+
+	// AES VAES
+	reg_instr(target, "aesdec", "rw:v128, v128/mem");
+	reg_instr(target, "vaesdec", "w:v128/v256/v512, v128/v256/v512, v128/v256/v512/mem");
+	reg_instr(target, "aesdeclast", "rw:v128, v128/mem");
+	reg_instr(target, "vaesdeclast", "w:v128/v256/v512, v128/v256/v512, v128/v256/v512/mem");
+	reg_instr(target, "aesenc", "rw:v128, v128/mem");
+	reg_instr(target, "vaesenc", "w:v128/v256/v512, v128/v256/v512, v128/v256/v512/mem");
+	reg_instr(target, "aesenclast", "rw:v128, v128/mem");
+	reg_instr(target, "vaesenclast", "w:v128/v256/v512, v128/v256/v512, v128/v256/v512/mem");
+	reg_instr(target, "aesimc", "w:v128, v128/mem");
+	reg_instr(target, "vaesimc", "w:v128, v128/mem");
+	reg_instr(target, "aeskeygenassist", "w:v128, v128/mem, imm8");
+	reg_instr(target, "vaeskeygenassist", "w:v128, v128/mem, imm8");
+
+	// AESKLE
+	reg_instr_clob(target, "aesdec128kl", cc_flag_mask, "rw:v128, mem"); // 384 bit mem load
+	reg_instr_clob(target, "aesdec256kl", cc_flag_mask, "rw:v128, mem"); // 512 bit mem load
+	reg_instr_clob(target, "aesenc128kl", cc_flag_mask, "rw:v128, mem"); // 384 bit mem load
+	reg_instr_clob(target, "aesenc256kl", cc_flag_mask, "rw:v128, mem"); // 512 bit mem load
+	reg_instr_clob(target, "encodekey128", xmm_0_2_xmm_4_6_cc_mask, "r32, r32");
+	reg_instr_clob(target, "encodekey256", xmm_0_6_cc_mask, "r32, r32");
+
+	// AES_WIDE
+	reg_instr_clob(target, "aesdecwide128kl", xmm_0_7_cc_mask, "mem"); // 384 bit mem load
+	reg_instr_clob(target, "aesdecwide256kl", xmm_0_7_cc_mask, "mem"); // 512 bit mem load
+	reg_instr_clob(target, "aesencwide128kl", xmm_0_7_cc_mask, "mem"); // 384 bit mem load
+	reg_instr_clob(target, "aesencwide256kl", xmm_0_7_cc_mask, "mem"); // 512 bit mem load
+
+	// KEY_LOCKER
+	reg_instr_clob(target, "loadiwkey", rax_xmm0_cc_mask, "v128, v128");
+
+	// SHA
+	reg_instr(target, "sha1msg1", "rw:v128, v128/mem");
+	reg_instr(target, "sha1msg2", "rw:v128, v128/mem");
+	reg_instr(target, "sha1nexte", "rw:v128, v128/mem");
+	reg_instr(target, "sha1rnds4", "rw:v128, v128/mem, imm8");
+	reg_instr(target, "sha256msg1", "rw:v128, v128/mem");
+	reg_instr(target, "sha256msg2", "rw:v128, v128/mem");
+	reg_instr_clob(target, "sha256rnds2", xmm0_mask, "rw:v128, v128/mem");
+
+	// SHA512
+	reg_instr(target, "vsha512msg1", "rw:v256, v128");
+	reg_instr(target, "vsha512msg2", "rw:v256, v256");
+	reg_instr(target, "vsha512rnds2", "rw:v256, v256, v128");
+
+	// SM3
+	reg_instr(target, "vsm3msg1", "rw:v128, v128, v128/mem");
+	reg_instr(target, "vsm3msg2", "rw:v128, v128, v128/mem");
+	reg_instr(target, "vsm3rnds2", "rw:v128, v128, v128/mem, imm8");
+
+	// SM4
+	reg_instr(target, "vsm4key4", "w:v128/v256, v128/v256, v128/v256/mem");
+	reg_instr(target, "vsm4rnds4", "w:v128/v256, v128/v256, v128/v256/mem");
+
+	// RDRAND
+	reg_instr_clob(target, "rdrand", cc_flag_mask, "w:r16/r32/r64");
+
+	// RDSEED
+	reg_instr_clob(target, "rdseed", cc_flag_mask, "w:r16/r32/r64");
 
 	target->clobber_name_list = X86ClobberNames;
 	target->extra_clobbers = "~{flags},~{dirflag},~{fspr}";
@@ -747,6 +912,187 @@ bool asm_is_supported(ArchType arch)
 	}
 }
 
+static void scratch_append_bit(const char *name, const char *string, bool *has_print_reg)
+{
+	if (*has_print_reg)
+	{
+		scratch_buffer_append("/");
+	}
+	else
+	{
+		*has_print_reg = true;
+	}
+	scratch_buffer_append(name);
+	scratch_buffer_append(string);
+}
+
+static void scratch_append_bits(const char *name, AsmArgBits bits)
+{
+	bool has_print = false;
+	if (bits & ARG_BITS_512) scratch_append_bit(name, "512", &has_print);
+	if (bits & ARG_BITS_256) scratch_append_bit(name, "256", &has_print);
+	if (bits & ARG_BITS_128) scratch_append_bit(name, "128", &has_print);
+	if (bits & ARG_BITS_80) scratch_append_bit(name, "80", &has_print);
+	if (bits & ARG_BITS_64) scratch_append_bit(name, "64", &has_print);
+	if (bits & ARG_BITS_32) scratch_append_bit(name, "32", &has_print);
+	if (bits & ARG_BITS_20) scratch_append_bit(name, "20", &has_print);
+	if (bits & ARG_BITS_16) scratch_append_bit(name, "16", &has_print);
+	if (bits & ARG_BITS_12) scratch_append_bit(name, "12", &has_print);
+	if (bits & ARG_BITS_8) scratch_append_bit(name, "8", &has_print);
+	if (bits & ARG_BITS_5) scratch_append_bit(name, "5", &has_print);
+}
+
+static void arm_arg_to_scratch(AsmArgType type)
+{
+	scratch_buffer_clear();
+	if (type.is_write && !type.is_readwrite) scratch_buffer_append("w");
+	if (type.is_readwrite)  scratch_buffer_append("rw");
+	if (scratch_buffer.len) scratch_buffer_append(":");
+	bool has_print = false;
+	if (type.imm_arg_ubits)
+	{
+		scratch_append_bits("immu", type.imm_arg_ubits);
+		has_print = true;
+	}
+	if (type.imm_arg_ibits)
+	{
+		if (has_print) scratch_buffer_append("/");
+		scratch_append_bits("imm", type.imm_arg_ibits);
+		has_print = true;
+	}
+	if (type.ireg_bits)
+	{
+		if (has_print) scratch_buffer_append("/");
+		scratch_append_bits("r", type.ireg_bits);
+		has_print = true;
+	}
+	if (type.float_bits)
+	{
+		if (has_print) scratch_buffer_append("/");
+		scratch_append_bits("f", type.float_bits);
+		has_print = true;
+	}
+	if (type.vec_bits)
+	{
+		if (has_print) scratch_buffer_append("/");
+		scratch_append_bits("v", type.vec_bits);
+		has_print = true;
+	}
+	if (type.is_address)
+	{
+		if (has_print) scratch_buffer_append("/");
+		scratch_buffer_append("mem");
+	}
+}
+
+static int comp(const void *a_ptr, const void *b_ptr)
+{
+	const AsmInstruction *a = a_ptr;
+	const AsmInstruction *b = b_ptr;
+	if (a->name == b->name) return 0;
+	if (!a->name) return -1;
+	if (!b->name) return 1;
+	return strcmp(a->name, b->name);
+}
+
+static void print_arch_asm(PlatformTarget *target)
+{
+	AsmInstruction instructions[ASM_INSTRUCTION_MAX];
+	memcpy(instructions, target->instructions, sizeof(target->instructions));
+	qsort(instructions, ASM_INSTRUCTION_MAX, sizeof(instructions[0]), comp);
+	printf("+------------+--------------------------------+-----------------------------------------------------------------------+\n");
+	printf("| instr      | clobbers                       | args                                                                  |\n");
+	printf("+------------+--------------------------------+-----------------------------------------------------------------------+\n");
+	for (int i = 0; i < ASM_INSTRUCTION_MAX; i++)
+	{
+		AsmInstruction *instruction = &instructions[i];
+		if (!instruction->name) continue;
+		printf("| %-10s | ", instruction->name);
+		scratch_buffer_clear();
+		Clobbers clobbers = instruction->mask;
+		switch (target->arch)
+		{
+			case ARCH_TYPE_RISCV32:
+			case ARCH_TYPE_RISCV64:
+			{
+				for (RISCVClobbers cl = 0; cl <= RISCV_MSIP; cl++)
+				{
+					if (clobbers.mask[cl / 64] & (1ULL << (cl % 64)))
+					{
+						scratch_buffer_append(RISCVClobberNames[cl]);
+						scratch_buffer_append(", ");
+					}
+				}
+				break;
+			}
+			case ARCH_TYPE_X86_64:
+			case ARCH_TYPE_X86:
+			{
+				for (X86Clobbers cl = 0; cl <= X86_TMM7; cl++)
+				{
+					if (clobbers.mask[cl / 64] & (1ULL << (cl % 64)))
+					{
+						scratch_buffer_append(X86ClobberNames[cl]);
+						scratch_buffer_append(", ");
+					}
+				}
+				break;
+			}
+			case ARCH_TYPE_AARCH64:
+			case ARCH_TYPE_AARCH64_32:
+			case ARCH_TYPE_AARCH64_BE:
+			{
+				for (Aarch64Clobbers cl = 0; cl <= AARCH64_V31; cl++)
+				{
+					if (clobbers.mask[cl / 64] & (1ULL << (cl % 64)))
+					{
+						scratch_buffer_append(Aarch64ClobberNames[cl]);
+						scratch_buffer_append(", ");
+					}
+				}
+				break;
+			}
+			default:
+				UNREACHABLE_VOID
+		}
+		if (scratch_buffer.len) scratch_buffer_delete(2);
+		printf("%-30s | ", scratch_buffer_to_string());
+		int len = 0;
+		for (unsigned j = 0; j < instruction->param_count; j++)
+		{
+			if (j != 0)
+			{
+				len += 2;
+				printf(", ");
+			}
+			arm_arg_to_scratch(instruction->param[j]);
+			printf("%s", scratch_buffer_to_string());
+			len += scratch_buffer.len;
+		}
+		for (int j = 0; j < 70 - len; j++) printf(" ");
+		printf("|\n");
+	}
+	printf("+------------+--------------------------------+-----------------------------------------------------------------------+\n");
+}
+void print_asm(PlatformTarget *target)
+{
+	init_asm(target);
+	switch (target->arch)
+	{
+		case ARCH_TYPE_X86_64:
+		case ARCH_TYPE_X86:
+		case ARCH_TYPE_AARCH64:
+		case ARCH_TYPE_AARCH64_32:
+		case ARCH_TYPE_AARCH64_BE:
+		case ARCH_TYPE_RISCV32:
+		case ARCH_TYPE_RISCV64:
+			print_arch_asm(target);
+			return;
+		default:
+			printf("Printing ASM for target is not yet supported.");
+			return;
+	}
+}
 void init_asm(PlatformTarget *target)
 {
 	if (target->asm_initialized) return;
@@ -775,7 +1121,7 @@ void init_asm(PlatformTarget *target)
 			error_exit("Xtensa asm support not yet available.");
 		case ARCH_TYPE_UNKNOWN:
 			error_exit("Unknown arch does not support asm.");
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case ARCH_TYPE_PPC:
 		case ARCH_TYPE_PPC64:
 		case ARCH_TYPE_PPC64LE:
@@ -788,5 +1134,5 @@ void init_asm(PlatformTarget *target)
 		case ARCH_UNSUPPORTED:
 			error_exit("Arch is unsupported and does not support inline asm.");
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }

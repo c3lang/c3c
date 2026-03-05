@@ -1,6 +1,6 @@
 // #target: macos-x64
 
-module test @extern("TEST");
+module test @cname("TEST");
 
 fn void hello() @private {}
 

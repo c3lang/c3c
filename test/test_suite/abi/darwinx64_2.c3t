@@ -11,29 +11,28 @@ fn void f12_1(St12 a0) {}
 
 struct St13_0 { long[3] f0; }
 struct St13_1 { long[2] f0; }
-fn St13_0 f13(int a, int b, int c, int d,
-                 St13_1 e, int f) { while (1) {} }
+fn St13_0 f13(int a, int b, int c, int d, St13_1 e, int f) { while (1) {} }
 
 fn void f14(int a, int b, int c, int d, int e, int f, ichar x) {}
 
 fn void f15(int a, int b, int c, int d, int e, int f, void *x) {}
 
-fn void f16(float a, float b, float c, float d, float e, float f, float g, float h,
-         float x) {}
+fn void f16(float a, float b, float c, float d, float e, float f, float g, float h, float x) {}
 
 struct Fl18_s0 { int f0; }
 fn void fl18(int a, Fl18_s0 f18_arg1) { while (1) {} }
 
-struct St20 @align(32) {
-  int x;
-  int y;
+struct St20 @align(32)
+{
+	int x;
+	int y;
 }
 fn void f20(St20 x) {}
 
 struct StringRef
 {
-  int x;
-  char* ptr;
+	int x;
+	char* ptr;
 }
 fn char *f21(StringRef s) { return s.x+s.ptr; }
 
@@ -43,105 +42,114 @@ fn void f22(St22s x, St22s y) { }
 
 
 
-struct St23S {
-  short f0;
-  uint f1;
-  int f2;
+struct St23S
+{
+	short f0;
+	uint f1;
+	int f2;
 }
 
 
-fn void f23(int a, St23S b) {
-}
+fn void f23(int a, St23S b)  {}
 
 struct St24s { int a; int b; }
 
 fn St23S f24(St23S *x, St24s *p2)
 {
-  return *x;
-
+	return *x;
 }
 
-fn float[<4>] f25(float[<4>] x) {
-  return x+x;
+typedef Float4v = float[<4>] @simd;
+fn Float4v f25(Float4v x)
+{
+	return x+x;
 }
 
-struct Foo26 {
-  int *x;
-  float *y;
+struct Foo26
+{
+	int *x;
+	float *y;
 }
 
-fn Foo26 f26(Foo26 *p) {
-  return *p;
+fn Foo26 f26(Foo26 *p)
+{
+	return *p;
 }
 
 
-struct V4f32wrapper {
-  float[<4>] v;
+struct V4f32wrapper
+{
+	Float4v v;
 }
 
-fn V4f32wrapper f27(V4f32wrapper x) {
-  return x;
+fn V4f32wrapper f27(V4f32wrapper x)
+{
+	return x;
 }
 
 // PR22563 - We should unwrap simple structs and arrays to pass
 // and return them in the appropriate vector registers if possible.
 
-alias V8f32 = float[<8>];
-struct V8f32wrapper {
-  V8f32 v;
+typedef V8f32 = float[<8>] @simd;
+struct V8f32wrapper
+{
+	V8f32 v;
 }
 
-fn V8f32wrapper f27a(V8f32wrapper x) {
-  return x;
+fn V8f32wrapper f27a(V8f32wrapper x)
+{
+	return x;
 }
 
-struct V8f32wrapper_wrapper {
-  V8f32[1] v;
+struct V8f32wrapper_wrapper
+{
+	V8f32[1] v;
 }
 
-fn V8f32wrapper_wrapper f27b(V8f32wrapper_wrapper x) {
-  return x;
+fn V8f32wrapper_wrapper f27b(V8f32wrapper_wrapper x)
+{
+	return x;
 }
 
-struct F28c {
-  double x;
-  int y;
+struct F28c
+{
+	double x;
+	int y;
 }
-fn void f28(F28c c) {
+fn void f28(F28c c)
+{
 }
 
 struct Inner
 {
-    double x;
-    int y;
+	double x;
+	int y;
 }
 struct F29a
 {
-  Inner[1] c;
+	Inner[1] c;
 }
 
-fn void f29a(F29a a) {
-}
+fn void f29a(F29a a) {}
 
-struct St0 {
-    char[8] f0; char f2; char f3; char f4; }
-fn void f30(St0 p_4) {
-}
+struct St0  { char[8] f0; char f2; char f3; char f4; }
+fn void f30(St0 p_4) {}
 
 struct F31foo { float a, b, c; }
-fn float f31(F31foo x) {
-  return x.c;
+fn float f31(F31foo x)
+{
+	return x.c;
 }
 
-alias V1i64 = ulong[<1>];
+typedef V1i64 = ulong[<1>] @simd;
 
 fn V1i64 f34(V1i64 arg) { return arg; }
 
 
-alias V1i64_2 = uint[<2>];
+typedef V1i64_2 = uint[<2>] @simd;
 fn V1i64_2 f35(V1i64_2 arg) { return arg+arg; }
 
-alias V2i32 = float[<2>];
+typedef V2i32 = float[<2>] @simd;
 fn V2i32 f36(V2i32 arg) { return arg; }
 
 

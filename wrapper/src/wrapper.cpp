@@ -29,7 +29,7 @@
 #include "llvm/Transforms/Scalar/JumpThreading.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Analysis/GlobalsModRef.h"
-static_assert(LLVM_VERSION_MAJOR >= 17, "Unsupported LLVM version, 17+ is needed.");
+static_assert(LLVM_VERSION_MAJOR >= 19, "Unsupported LLVM version, 19+ is needed.");
 
 #define LINK_SIG \
 bool link(llvm::ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS, \
@@ -96,9 +96,7 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 	for (int i = 0; i < arg_count; i++) arg_vector.push_back(strdup(args[i]));
 	std::string output_string {};
 	std::string output_err_string {};
-	/*
-	llvm::raw_string_ostream output { output_string };
-	llvm::raw_string_ostream output_err { output_err_string };*/
+
 	llvm::raw_ostream &output = llvm::outs();
 	llvm::raw_ostream &output_err = llvm::errs();
 	bool success;
@@ -107,9 +105,13 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 		case ELF:
 			success = lld::elf::link(CALL_ARGS);
 			break;
+#ifndef __OpenBSD__
 		case MACHO:
 			success = lld::macho::link(CALL_ARGS);
 			break;
+#else
+#warning "the maintainers of LLVM on this platform has deliberately excluded targets, which makes it impossible to offer the standard cross compilation available in the normal compiler"
+#endif
 		case WASM:
 			success = lld::wasm::link(CALL_ARGS);
 			break;
@@ -150,9 +152,8 @@ bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm, LLVMPasses *passe
 	PTO.SLPVectorization = passes->opt.slp_vectorize;
 	PTO.MergeFunctions = passes->opt.merge_functions;
 	PTO.CallGraphProfile = true; // We always use integrated ASM
-#if LLVM_VERSION_MAJOR > 16
 	PTO.UnifiedLTO = false;
-#endif
+
 	llvm::PassBuilder PB(Machine, PTO, std::nullopt, &PIC);
 
 	llvm::LoopAnalysisManager LAM;
@@ -319,6 +320,11 @@ void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_ar
 	auto machine = (llvm::TargetMachine*)ref;
 	machine->Options.UseInitArray = use_init_array;
 }
+void LLVMSetTargetMachineEmulatedTLS(LLVMTargetMachineRef ref, bool emulated_tls)
+{
+	auto machine = (llvm::TargetMachine*)ref;
+	machine->Options.EmulatedTLS = emulated_tls;
+}
 void LLVMSetDSOLocal(LLVMValueRef Global, bool value)
 {
 	llvm::unwrap<llvm::GlobalValue>(Global)->setDSOLocal(value);
@@ -332,6 +338,11 @@ void LLVMSetNoSanitizeAddress(LLVMValueRef Global)
 	global->setSanitizerMetadata(data);
 }
 
+unsigned LLVMGetFunctionInstructionCount(LLVMValueRef function)
+{
+	auto func = llvm::unwrap<llvm::Function>(function);
+	return func->getInstructionCount();
+}
 void LLVMBuilderSetFastMathFlags(LLVMBuilderRef Builder, FastMathOption option)
 {
 	llvm::FastMathFlags math_flags {};
@@ -350,6 +361,12 @@ void LLVMBuilderSetFastMathFlags(LLVMBuilderRef Builder, FastMathOption option)
 			return;
 	}
 	llvm::unwrap(Builder)->setFastMathFlags(math_flags);
+}
+
+bool LLVMHasUseList(LLVMValueRef value)
+{
+	llvm::Value *val = llvm::unwrap<llvm::Value>(value);
+	return !llvm::isa<llvm::ConstantData>(*val);
 }
 
 LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal)

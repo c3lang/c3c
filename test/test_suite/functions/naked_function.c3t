@@ -9,7 +9,7 @@ fn void test(int i) @naked
 
 define void @naked_function.test(i32 %0) #0 {
 entry:
-  ret void
+  unreachable
 }
 
 attributes #0 = { naked nounwind uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

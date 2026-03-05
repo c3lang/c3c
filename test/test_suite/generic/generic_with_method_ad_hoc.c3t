@@ -1,0 +1,11 @@
+import std;
+struct Foo <Type> { int a; }
+
+fn void Foo.test(self) @if(Type.sizeof > 4)
+{  }
+
+fn int main()
+{
+	Foo{int} x;
+	return 0;
+}

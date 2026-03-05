@@ -8,13 +8,13 @@ faultdef ABC, DEF;
 fn int? hello(int a)
 {
 	io::printn("hello");
-	return a < 0 ? ABC? : a;
+	return a < 0 ? ABC~ : a;
 }
 
 fn void? bye()
 {
 	io::printn("bye");
-	return DEF?;
+	return DEF~;
 }
 fn void main()
 {

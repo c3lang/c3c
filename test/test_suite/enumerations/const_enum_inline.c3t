@@ -1,0 +1,21 @@
+// #target: macos-x64
+module test;
+constdef Foo : inline String
+{
+	HELO = "Helo"
+}
+
+fn int main()
+{
+	Foo f = Foo.HELO;
+	bool b = $defined(String s = Foo.HELO);
+	bool c = $defined(String s = f);
+	bool d = $defined(int i = f);
+	return 0;
+}
+
+/* #expect: test.ll
+
+  store i8 1, ptr %b, align 1
+  store i8 1, ptr %c, align 1
+  store i8 0, ptr %d, align 1

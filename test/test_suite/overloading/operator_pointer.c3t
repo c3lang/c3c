@@ -1,0 +1,19 @@
+struct Node
+{
+    int i;
+}
+
+struct MyList
+{
+	Node** entries;
+}
+fn Node* MyList.get(&self, usz index) @operator([]) => self.entries[index];
+fn Node** MyList.get_ref(&self, usz index) @operator(&[]) => &self.entries[index];
+fn int main()
+{
+	Node n;
+	Node* np = &n;
+	MyList list = {.entries = &np};
+	list[0].i = 5;
+	return 0;
+}

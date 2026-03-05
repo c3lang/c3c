@@ -5,7 +5,8 @@ struct Foo
 {
 	int a; int b;
 }
-fn void test(int[2] a, int[] b, int[<2>] c)
+typedef Int2V = int[<2>] @simd;
+fn void test(int[2] a, int[] b, Int2V c)
 {
 	io::printfn("%s %s %s", a, b, c);
 }
@@ -29,20 +30,21 @@ fn void main()
 %"int[]" = type { ptr, i64 }
 %any = type { ptr, i64 }
 
-@"$ct.test.Foo" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@.str = private unnamed_addr constant [9 x i8] c"%s %s %s\00", align 1
-@"$ct.a2$int" = linkonce global %.introspect { i8 14, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.int" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Int2V" = linkonce global %.introspect { i8 18, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.siv2$int" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.siv2$int" = linkonce global %.introspect { i8 17, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.int" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
 @"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
-@"$ct.sa$int" = linkonce global %.introspect { i8 15, i64 0, ptr null, i64 16, i64 ptrtoint (ptr @"$ct.int" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
-@"$ct.v2$int" = linkonce global %.introspect { i8 16, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.int" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
+@.str = private unnamed_addr constant [9 x i8] c"%s %s %s\00", align 1
+@"$ct.a2$int" = linkonce global %.introspect { i8 15, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.int" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.sa$int" = linkonce global %.introspect { i8 16, i64 0, ptr null, i64 16, i64 ptrtoint (ptr @"$ct.int" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
 @.__const = private unnamed_addr constant [1 x %Foo] [%Foo { i32 1, i32 2 }], align 4
 @.__const.1 = private unnamed_addr constant %Foo { i32 1, i32 2 }, align 4
 @.__const.2 = private unnamed_addr constant [1 x [2 x i32]] [[2 x i32] [i32 1, i32 2]], align 4
 @.__const.3 = private unnamed_addr constant [1 x [2 x double]] [[2 x double] [double 1.000000e+00, double 2.000000e+00]], align 16
 @.str.4 = private unnamed_addr constant [15 x i8] c"%s %s {%s, %s}\00", align 1
-@"$ct.a1$a2$int" = linkonce global %.introspect { i8 14, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.a2$int" to i64), i64 1, [0 x i64] zeroinitializer }, align 8
-@"$ct.a1$a2$double" = linkonce global %.introspect { i8 14, i64 0, ptr null, i64 16, i64 ptrtoint (ptr @"$ct.a2$double" to i64), i64 1, [0 x i64] zeroinitializer }, align 8
-@"$ct.a2$double" = linkonce global %.introspect { i8 14, i64 0, ptr null, i64 16, i64 ptrtoint (ptr @"$ct.double" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.a1$a2$int" = linkonce global %.introspect { i8 15, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.a2$int" to i64), i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.a1$a2$double" = linkonce global %.introspect { i8 15, i64 0, ptr null, i64 16, i64 ptrtoint (ptr @"$ct.a2$double" to i64), i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.a2$double" = linkonce global %.introspect { i8 15, i64 0, ptr null, i64 16, i64 ptrtoint (ptr @"$ct.double" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
 @"$ct.double" = linkonce global %.introspect { i8 4, i64 0, ptr null, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 @.__const.5 = private unnamed_addr constant [2 x i32] [i32 1, i32 2], align 4
 @.__const.6 = private unnamed_addr constant [2 x i32] [i32 3, i32 4], align 4
@@ -70,7 +72,7 @@ entry:
   %ptradd1 = getelementptr inbounds i8, ptr %varargslots, i64 16
   store %any %7, ptr %ptradd1, align 16
   %8 = insertvalue %any undef, ptr %c, 0
-  %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.v2$int" to i64), 1
+  %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.test.Int2V" to i64), 1
   %ptradd2 = getelementptr inbounds i8, ptr %varargslots, i64 32
   store %any %9, ptr %ptradd2, align 16
   %10 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 8, ptr %varargslots, i64 3)

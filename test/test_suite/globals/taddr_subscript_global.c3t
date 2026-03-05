@@ -1,0 +1,14 @@
+// #target: macos-x64
+module test;
+int a;
+fn int main()
+{
+	static any[] x = { &&((&a + 1)[2]), };
+	return 0;
+}
+
+/* #expect: test.ll
+
+@test.a = global i32 0, align 4
+@.__const_slice = private unnamed_addr global [1 x %any] [%any {
+@main.x = internal unnamed_addr global %"any[]" { ptr @.__const_slice, i64 1 }, align 8

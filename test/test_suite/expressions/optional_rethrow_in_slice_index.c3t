@@ -1,0 +1,41 @@
+// #target: macos-x64
+// #safe: yes
+module abc_faults;
+module abc <Type>;
+import std::io, abc_faults, std::collections::list;
+struct TextTemplate
+{
+    TextTag tags;
+}
+struct TextTag
+{
+    usz start;
+}
+fn void? TextTemplate.init(&self, String template, String tag_start = "", String tag_end = "", Allocator using )
+{
+	String tmpl = template;
+	while (true)
+	{
+		usz? end = tmpl.index_of(tag_end);
+		if (catch end) return ;
+		tmpl = tmpl[end + io::EOF~!..];
+	}
+}
+module text_test;
+import abc;
+alias FooTmpl = TextTemplate{Foo};
+alias BarTmpl = TextTemplate{Bar};
+struct Foo
+{
+	BarTmpl bar;
+}
+struct Bar
+{
+	String bar;
+}
+fn void main()
+{
+	String foo_tmpl = "";
+	FooTmpl ft;
+	ft.init(foo_tmpl, using: tmem)!!;
+}

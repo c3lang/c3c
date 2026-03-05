@@ -1,0 +1,23 @@
+// #target: macos-x64
+module test;
+
+fn void main()
+{
+	$switch $typeof({1, "hts"}):
+	$case String:
+	int x = 100;
+	$case $typeof({1, "kdejf"}):
+	int z = 2;
+	$default:
+	int y;
+	$endswitch
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %z = alloca i32, align 4
+  store i32 2, ptr %z, align 4
+  ret void
+}

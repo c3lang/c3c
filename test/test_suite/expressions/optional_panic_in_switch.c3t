@@ -1,0 +1,20 @@
+faultdef BAD_STUFF, WORSE_STUFF, THE_WORST_STUFF;
+fn int exitcode(fault )
+{
+	switch
+	{
+		case THE_WORST_STUFF~!!:
+		default: return 70;
+	}
+}
+fn void? canFail()
+{
+}
+fn int main()
+{
+	if (catch err = canFail())
+	{
+		return exitcode(err);
+	}
+	return 0;
+}

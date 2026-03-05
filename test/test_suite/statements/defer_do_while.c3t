@@ -19,19 +19,19 @@ entry:
   store i32 0, ptr %a, align 4
   br label %loop.body
 
-loop.cond:                                        ; preds = %loop.body
-  %0 = load i32, ptr %a, align 4
-  %lt = icmp slt i32 %0, 10
-  br i1 %lt, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond, %entry
-  %1 = load i32, ptr %a, align 4
-  %add = add i32 %1, 1
+  %0 = load i32, ptr %a, align 4
+  %add = add i32 %0, 1
   store i32 %add, ptr %a, align 4
-  %2 = load i32, ptr %a, align 4
-  %add1 = add i32 %2, 1
+  %1 = load i32, ptr %a, align 4
+  %add1 = add i32 %1, 1
   store i32 %add1, ptr %a, align 4
   br label %loop.cond
+
+loop.cond:                                        ; preds = %loop.body
+  %2 = load i32, ptr %a, align 4
+  %lt = icmp slt i32 %2, 10
+  br i1 %lt, label %loop.body, label %loop.exit
 
 loop.exit:                                        ; preds = %loop.cond
   ret void

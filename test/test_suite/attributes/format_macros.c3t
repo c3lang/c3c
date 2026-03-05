@@ -1,0 +1,7 @@
+module abort_test;
+
+fn int main()
+{
+	int n;
+	abort("%d", n);
+}

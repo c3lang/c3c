@@ -48,7 +48,7 @@ const LG5 @local = 1.818357216161805012e-01;  /* 3FC74664 96CB03DE */
 const LG6 @local = 1.531383769920937332e-01;  /* 3FC39A09 D078C69F */
 const LG7 @local = 1.479819860511658591e-01;  /* 3FC2F112 DF3E5244 */
 
-fn double _log1p(double x) @weak @extern("log1p") @nostrip
+fn double _log1p(double x) @weak @cname("log1p") @nostrip
 {
 	uint hx = x.high_word();
 	int k = 1;
@@ -162,7 +162,7 @@ const float LG2_F @local = 0xccce13.0p-25; /* 0.40000972152 */
 const float LG3_F @local = 0x91e9ee.0p-25; /* 0.28498786688 */
 const float LG4_F @local = 0xf89e26.0p-26; /* 0.24279078841 */
 
-fn float _log1pf(float x) @weak @extern("log1pf") @nostrip
+fn float _log1pf(float x) @weak @cname("log1pf") @nostrip
 {
 	uint ix = x.word();
 	int k = 1;

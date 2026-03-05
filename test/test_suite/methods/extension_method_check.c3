@@ -11,7 +11,7 @@ fn int main()
 <*
  @require $defined(String.hash)
 *>
-module test::generic{Some_Type};
+module test::generic <Some_Type>;
 
 enum Test
 {

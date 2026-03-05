@@ -9,24 +9,24 @@ fn void main()
 	io::printfn("1:%d", get_a(1) ?? get_b(4) ?? -1);
 	io::printfn("2:%d", get_a(2) ?? get_b(4) ?? -1);
 	io::printfn("3:%d", get_a(1) ?? get_b(5) ?? -1);
-	io::printfn("4:%s", @catch(ABC? ?? DEF?));
-	io::printfn("5:%s", ABC? ?? 3);
-	io::printfn("6:%s", @catch((3 > 2 ? ABC? : 4) ?? DEF?));
-	io::printfn("7:%s", @catch((3 < 2 ? ABC? : 4) ?? DEF?));
-	long x = DEF? ?? 3;
+	io::printfn("4:%s", @catch(ABC~ ?? DEF~));
+	io::printfn("5:%s", ABC~ ?? 3);
+	io::printfn("6:%s", @catch((3 > 2 ? ABC~ : 4) ?? DEF~));
+	io::printfn("7:%s", @catch((3 < 2 ? ABC~ : 4) ?? DEF~));
+	long x = DEF~ ?? 3;
 	io::printfn("8:%s", x);
-	int? xy = ABC? ?? DEF?;
+	int? xy = ABC~ ?? DEF~;
 }
 
 fn int? get_a(int x)
 {
-	if (x % 2) return ABC?;
+	if (x % 2) return ABC~;
 	return x * 2;
 }
 
 fn int? get_b(int x)
 {
-	if (x % 2 == 0) return ABC?;
+	if (x % 2 == 0) return ABC~;
 	return x * 2;
 }
 

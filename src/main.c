@@ -4,6 +4,13 @@
 #include "utils/lib.h"
 #include <compiler_tests/benchmark.h>
 
+#ifdef __OpenBSD__
+#include <sys/resource.h>
+#endif
+#if PLATFORM_WINDOWS
+extern bool SetConsoleCP(uint32_t codepage);
+extern bool SetConsoleOutputCP(uint32_t codepage);
+#endif
 
 bool debug_log = false;
 
@@ -27,6 +34,18 @@ int main_real(int argc, const char *argv[])
 {
 	srand((unsigned int)time(NULL));
 	compiler_exe_name = argv[0];
+#ifdef __OpenBSD__
+	// override data size constrain set up by the system */
+	struct rlimit l;
+	getrlimit(RLIMIT_DATA, &l);
+	l.rlim_cur = l.rlim_max;
+	setrlimit(RLIMIT_DATA, &l);
+#endif
+#if PLATFORM_WINDOWS
+	// Set the console input and output codepage to utf8 to handle utf8 text correctly
+	SetConsoleCP(65001);
+	SetConsoleOutputCP(65001);
+#endif
 	bench_begin();
 
 	// Setjmp will allow us to add things like fuzzing with
@@ -113,6 +132,11 @@ int main_real(int argc, const char *argv[])
 					break;
 			}
 			break;
+		case COMMAND_FETCH_MSVC:
+		{
+			fetch_msvc(&build_options);
+			break;
+		}
 		case COMMAND_MISSING:
 			UNREACHABLE
 	}

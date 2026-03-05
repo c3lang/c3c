@@ -1,0 +1,10 @@
+module test;
+import std;
+
+fn int main()
+{
+	int x @if($defined((char*){}.is_digit()));
+	isz s = $sizeof((char*){}.is_digit());
+	$typeof((char*){}.is_digit()) t;
+	return 0;
+}

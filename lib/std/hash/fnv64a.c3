@@ -5,10 +5,10 @@ module std::hash::fnv64a;
 
 typedef Fnv64a = ulong;
 
-const FNV64A_START @private = 0xcbf29ce484222325;
-const FNV64A_MUL @private = 0x00000100000001b3;
+const Fnv64a FNV64A_START @private = (Fnv64a)0xcbf29ce484222325;
+const Fnv64a FNV64A_MUL @private = (Fnv64a)0x00000100000001b3;
 
-macro void update(h, char x) @private => *h = (*h ^ ($typeof(*h))x) * FNV64A_MUL;
+macro Fnv64a update(Fnv64a h, char x) @nodiscard @private => (h ^ (Fnv64a)x) * FNV64A_MUL;
 
 fn void Fnv64a.init(&self)
 {
@@ -20,22 +20,22 @@ fn void Fnv64a.update(&self, char[] data)
 	Fnv64a h = *self;
 	foreach (char x : data)
 	{
-		update(&h, x);
+		h = update(h, x);
 	}
 	*self = h;
 }
 
 macro void Fnv64a.update_char(&self, char c)
 {
-	update(self, c);
+	*self = update(*self, c);
 }
 
 fn ulong hash(char[] data)
 {
-	ulong h = FNV64A_START;
+	Fnv64a h = FNV64A_START;
 	foreach (char x : data)
 	{
-		update(&h, x);
+		h = update(h, x);
 	}
-	return h;
+	return (ulong)h;
 }

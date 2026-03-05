@@ -19,7 +19,7 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 		c->debug.block_stack = astptr(ast->compound_stmt.parent_defer)->defer_stmt.scope;
 	}
 	// Push the lexical scope if in debug.
-	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->span);
+	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->loc);
 
 	// Emit the statement chain
 	llvm_emit_statement_chain(c, ast->compound_stmt.first_stmt);
@@ -82,7 +82,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		case VARDECL_GLOBAL:
 		case VARDECL_MEMBER:
 		case VARDECL_BITMEMBER:
-			UNREACHABLE;
+			UNREACHABLE_VOID;
 		case VARDECL_PARAM:
 		{
 			Expr *init_expr = decl->var.init_expr;
@@ -104,7 +104,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 			return;
 		case VARDECL_LOCAL_CT:
 		case VARDECL_LOCAL_CT_TYPE:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 
 	// Get the declaration and the LLVM type.
@@ -113,9 +113,8 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 
 	// Create a local alloca
 	ASSERT(!decl->backend_ref);
-	Type *type_low = type_lowering(decl->type);
 	if (decl->var.is_temp && !IS_OPTIONAL(decl) && !decl->var.is_addr && !decl->var.is_written && !type_is_user_defined(
-			type_low) && type_low->type_kind != TYPE_ARRAY)
+			var_type) && var_type->type_kind != TYPE_ARRAY)
 	{
 		ASSERT(decl->var.init_expr);
 		llvm_emit_expr(c, value, decl->var.init_expr);
@@ -133,7 +132,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		scratch_buffer_clear();
 		scratch_buffer_append(decl->name ? decl->name : "anon");
 		scratch_buffer_append(".f");
-		decl->var.optional_ref = llvm_emit_alloca_aligned(c, type_fault, scratch_buffer_to_string());
+		decl->var.optional_ref = llvm_emit_alloca_b(c, type_fault, scratch_buffer_to_string()).value;
 		// Only clear out the result if the assignment isn't an optional.
 	}
 
@@ -142,9 +141,15 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 	if (init)
 	{
 		llvm_value_set_decl_address(c, value, decl);
+		// Pretend to be normal.
 		value->kind = BE_ADDRESS;
-		BEValue res = llvm_emit_assign_expr(c, value, decl->var.init_expr, decl->var.optional_ref, true);
-		if (!is_optional && res.value) *value = res;
+		BEValue res = llvm_emit_assign_expr(c, value, NULL, decl->var.init_expr, decl->var.optional_ref, true);
+		if (!is_optional && res.value)
+		{
+			*value = res;
+			return;
+		}
+		if (is_optional) value->kind = BE_ADDRESS_OPTIONAL;
 		return;
 	}
 
@@ -192,8 +197,7 @@ static void llvm_emit_cond(GenContext *c, BEValue *be_value, Expr *expr, bool bo
 	ByteSize last_index = size - 1;
 	for (ByteSize i = 0; i < last_index; i++)
 	{
-		BEValue value;
-		llvm_emit_expr(c, &value, expr->cond_expr[i]);
+		llvm_emit_ignored_expr(c, expr->cond_expr[i]);
 	}
 
 	// Emit the last element.
@@ -225,12 +229,13 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	{
 		BEValue be_value;
 		llvm_emit_expr(c, &be_value, expr->inner_expr);
+		RETURN_ON_EMPTY_BLOCK(&be_value);
 		if (ast->return_stmt.cleanup_fail)
 		{
 			llvm_value_rvalue(c, &be_value);
-			LLVMValueRef error_out = llvm_emit_alloca_aligned(c, type_fault, "reterr");
-			llvm_store_to_ptr(c, error_out, &be_value);
-			PUSH_DEFER_ERROR(error_out);
+			BEValue error_out_ref = llvm_emit_alloca_b(c, type_fault, "reterr");
+			llvm_store(c, &error_out_ref, &be_value);
+			PUSH_DEFER_ERROR(error_out_ref.value);
 			llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
 			POP_DEFER_ERROR();
 		}
@@ -241,19 +246,19 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	PUSH_CATCH();
 
 	LLVMBasicBlockRef error_return_block = NULL;
-	LLVMValueRef error_out = NULL;
-	if (c->cur_func.prototype && type_is_optional(c->cur_func.prototype->rtype))
+	BEValue error_out_ref = { .value = NULL };
+	if (c->cur_func.prototype && c->cur_func.prototype->ret_rewrite != RET_NORMAL)
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
-		error_out = llvm_emit_alloca_aligned(c, type_fault, "reterr");
-		c->catch = (OptionalCatch) { error_out, error_return_block };
+		error_out_ref = llvm_emit_alloca_b(c, type_fault, "reterr");
+		c->catch = (OptionalCatch) { error_out_ref.value, error_return_block };
 	}
 
 	bool has_return_value = ast->return_stmt.expr != NULL;
 	BEValue return_value = { 0 };
 	if (has_return_value)
 	{
-		llvm_emit_expr(c, &return_value, ast->return_stmt.expr);
+		llvm_emit_expr(c, &return_value, expr);
 		llvm_value_fold_optional(c, &return_value);
 		c->retval = return_value;
 	}
@@ -266,9 +271,9 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 		{
 			if (llvm_temp_as_address(return_value.type))
 			{
-				LLVMValueRef temp = llvm_emit_alloca_aligned(c, return_value.type, "ret$temp");
-				llvm_store_to_ptr(c, temp, &return_value);
-				llvm_value_set_address_abi_aligned(&return_value, temp, return_value.type);
+				BEValue temp = llvm_emit_alloca_b(c, return_value.type, "ret$temp");
+				llvm_store(c, &temp, &return_value);
+				return_value = temp;
 			}
 			else
 			{
@@ -293,19 +298,24 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	if (error_return_block && LLVMGetFirstUse(LLVMBasicBlockAsValue(error_return_block)))
 	{
 		llvm_emit_block(c, error_return_block);
-		PUSH_DEFER_ERROR(error_out);
+		PUSH_DEFER_ERROR(error_out_ref.value);
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
 		POP_DEFER_ERROR();
-		BEValue value;
-		llvm_value_set_address_abi_aligned(&value, error_out, type_fault);
-		llvm_emit_return_abi(c, NULL, &value);
+		llvm_emit_return_abi(c, NULL, &error_out_ref);
 	}
 }
 
 static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 {
-
 	BlockExit *exit = *ast->return_stmt.block_exit_ref;
+
+	// In the (void) case, we might not have a variable to handle the defer catch, if so we create it here.
+	BEValue error_out_ref = { .value = NULL };
+	if (!exit->block_error_var && ast->return_stmt.cleanup_catch)
+	{
+		error_out_ref = llvm_emit_alloca_b(c, type_fault, "defer_block_fault");
+		exit->block_error_var = error_out_ref.value;
+	}
 
 	PUSH_CATCH_VAR_BLOCK(exit->block_error_var, exit->block_optional_exit);
 
@@ -334,6 +344,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	{
 		llvm_store_to_ptr_aligned(c, exit->block_return_out, &return_value, type_alloca_alignment(return_value.type));
 	}
+
 	llvm_emit_statement_chain(c, cleanup);
 
 	if (err_cleanup_block)
@@ -348,6 +359,10 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	else
 	{
 		llvm_emit_jmp(c, exit->block_return_exit);
+	}
+	if (error_out_ref.value)
+	{
+		exit->block_error_var = NULL;
 	}
 }
 
@@ -495,20 +510,37 @@ static inline LoopType loop_type_for_cond(Expr *cond, bool do_while)
 	return LOOP_NORMAL;
 }
 
+static void llmv_emit_for_cond(GenContext *c, Expr *cond, LLVMBasicBlockRef cond_block, LLVMBasicBlockRef loop_start_block, LLVMBasicBlockRef exit_block)
+{
+	// Emit the block
+	llvm_emit_block(c, cond_block);
+	BEValue be_value;
+	ASSERT(cond);
+	if (cond->expr_kind == EXPR_COND)
+	{
+		llvm_emit_cond(c, &be_value, cond, true);
+	}
+	else
+	{
+		llvm_emit_expr(c, &be_value, cond);
+	}
+	if (llvm_get_current_block_if_in_use(c))
+	{
+		llvm_value_rvalue(c, &be_value);
+		ASSERT(llvm_value_is_bool(&be_value));
+
+		// Jump to start or exit
+		llvm_emit_cond_br(c, &be_value, loop_start_block, exit_block);
+	}
+}
 void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 {
-	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->span);
+	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->loc);
 	// First, emit all inits.
 	if (ast->for_stmt.init)
 	{
 		llvm_emit_ignored_expr(c, exprptr(ast->for_stmt.init));
 	}
-	ExprId incr = ast->for_stmt.incr;
-
-	LLVMBasicBlockRef inc_block = incr ? llvm_basic_block_new(c, "loop.inc") : NULL;
-	Ast *body = astptr(ast->for_stmt.body);
-	LLVMBasicBlockRef body_block = ast_is_not_empty(body) ? llvm_basic_block_new(c, "loop.body") : NULL;
-	LLVMBasicBlockRef cond_block = NULL;
 
 	// Skipping first cond? This is do-while semantics
 	bool skip_first = ast->for_stmt.flow.skip_first;
@@ -516,164 +548,132 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 	ExprId cond_id = ast->for_stmt.cond;
 	Expr *cond = cond_id ? exprptr(cond_id) : NULL;
 	LoopType loop = loop_type_for_cond(cond, skip_first);
+	Ast *body = astptr(ast->for_stmt.body);
+	ExprId incr = ast->for_stmt.incr;
 
-	// This is the starting block to loop back to, and may either be cond, body or inc
-	LLVMBasicBlockRef loop_start_block = body_block ? body_block : inc_block;
-
-	// We only emit a cond block if we have a normal loop.
-	if (loop == LOOP_NORMAL)
+	if (loop == LOOP_NONE)
 	{
-		cond_block = llvm_basic_block_new(c, "loop.cond");
-		loop_start_block = cond_block;
-	}
-
-	// In the case that *none* of the blocks exist.
-	if (!inc_block && !body_block && !cond_block)
-	{
-		if (loop == LOOP_INFINITE)
+		// while (0) -> never entered
+		if (!skip_first) return;
+		ASSERT(!incr && "There should not be an incr in do-while");
+		// do while(0) -> emit once
+		LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "loop.exit");
+		ast->for_stmt.codegen.continue_block = exit_block;
+		ast->for_stmt.codegen.exit_block = exit_block;
+		llvm_emit_stmt(c, body);
+		if (!llvm_basic_block_is_unused(exit_block))
 		{
-			SourceSpan loc = ast->span;
-
-			llvm_emit_panic(c, "Infinite loop found", loc, NULL, NULL);
-			llvm_emit_block(c, llvm_basic_block_new(c, "unreachable_block"));
-			DEBUG_POP_LEXICAL_SCOPE(c);
-			return;
+			llvm_emit_br(c, exit_block);
+			llvm_emit_block(c, exit_block);
 		}
 		DEBUG_POP_LEXICAL_SCOPE(c);
 		return;
 	}
 
-	ASSERT(loop_start_block != NULL);
-
+	LLVMBasicBlockRef inc_block = incr ? llvm_basic_block_new(c, "loop.inc") : NULL;
+	LLVMBasicBlockRef body_block = ast_is_not_empty(body) ? llvm_basic_block_new(c, "loop.body") : NULL;
+	LLVMBasicBlockRef cond_block = NULL;
 	LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "loop.exit");
+
+	// This is the starting block to loop back to, and may either be body, inc or cond
+	LLVMBasicBlockRef loop_start_block = body_block ? body_block : inc_block;
+
+	bool start_with_cond = false;
+	switch (loop)
+	{
+		case LOOP_NORMAL:
+			// We only emit a cond block if we have a normal loop.
+			cond_block = llvm_basic_block_new(c, "loop.cond");
+			// Start with cond if we can't start anywhere.
+			if (!loop_start_block) loop_start_block = cond_block;
+			// Jump to the cond block on for/while
+			if (skip_first)
+			{
+				ASSERT(loop_start_block);
+				llvm_emit_br(c, loop_start_block);
+				break;
+			}
+			// Otherwise start with cond block
+			start_with_cond = true;
+			llvm_emit_br(c, cond_block);
+			break;
+		case LOOP_INFINITE:
+			// We might have an infinite loop
+			if (!loop_start_block)
+			{
+				llvm_emit_panic(c, "Infinite loop found", ast->loc, NULL, NULL);
+				llvm_emit_block(c, llvm_basic_block_new(c, "unreachable_block"));
+				DEBUG_POP_LEXICAL_SCOPE(c);
+				return;
+			}
+			// Otherwise just jump to the start block.
+			llvm_emit_br(c, loop_start_block);
+			break;
+		case LOOP_NONE:
+			UNREACHABLE_VOID
+	}
+
+	ASSERT(inc_block || body_block || cond_block);
+	ASSERT(loop_start_block != NULL);
 
 	// Break is simple it always jumps out.
 	// For continue:
-	// 1. If there is inc, jump to the condition
-	// 2. If this is not looping, jump to the exit, otherwise go to cond/body depending on what the start is.
-	LLVMBasicBlockRef continue_block = inc_block;
-	if (!continue_block)
-	{
-		continue_block = loop == LOOP_NONE ? exit_block : loop_start_block;
-	}
+	// 1. Jump to inc if it exists
+	// 2. Otherwise jump to cond
+	// 3. If cond doesn't exist, jump to body
+	ASSERT(loop != LOOP_NONE);
+	LLVMBasicBlockRef continue_block = inc_block ? inc_block : (cond_block ? cond_block : body_block);
 
 	ast->for_stmt.codegen.continue_block = continue_block;
 	ast->for_stmt.codegen.exit_block = exit_block;
 
-	// We have a normal loop, so we emit a cond.
-	if (loop == LOOP_NORMAL)
-	{
-		// Emit a jump for do-while semantics, to skip the initial cond.
-		if (skip_first)
-		{
-			LLVMBasicBlockRef do_while_start = body_block ? body_block : inc_block;
-			// Only jump if we have a body / inc
-			// if the case is do {} while (...) then we basically can treat this as while (...) {}
-			llvm_emit_br(c, do_while_start ? do_while_start : cond_block);
-		}
-		else
-		{
-			llvm_emit_br(c, cond_block);
-		}
+	if (start_with_cond) llmv_emit_for_cond(c, cond, cond_block, loop_start_block, exit_block);
 
-		// Emit the block
-		llvm_emit_block(c, cond_block);
-		BEValue be_value;
-		ASSERT(cond);
-		if (cond->expr_kind == EXPR_COND)
-		{
-			llvm_emit_cond(c, &be_value, cond, true);
-		}
-		else
-		{
-			llvm_emit_expr(c, &be_value, cond);
-		}
-		llvm_value_rvalue(c, &be_value);
-		ASSERT(llvm_value_is_bool(&be_value));
-
-		// If we have a body, conditionally jump to it.
-		LLVMBasicBlockRef cond_success = body_block ? body_block : inc_block;
-		// If there is a while (...) { } we need to set the success to this block
-		if (!cond_success) cond_success = cond_block;
-		// Otherwise jump to inc or cond depending on what's available.
-		llvm_emit_cond_br(c, &be_value, cond_success, exit_block);
-	}
-
-	// The optional cond is emitted, so emit the body
+	// Emit the body
 	if (body_block)
 	{
-		// If we have LOOP_NONE, then we don't need a new block here
-		// since we will just exit. That leaves the infinite loop.
-		switch (loop)
-		{
-			case LOOP_NORMAL:
-				// If we have LOOP_NORMAL, we already emitted a br to the body.
-				// so emit the block
-				llvm_emit_block(c, body_block);
-				break;
-			case LOOP_INFINITE:
-				// In this case we have no cond, so we need to emit the br and
-				// then the block
-				llvm_emit_br(c, body_block);
-				llvm_emit_block(c, body_block);
-			case LOOP_NONE:
-				// If there is no loop, then we will just fall through and the
-				// block is needed.
-				body_block = NULL;
-				break;
-		}
-		// Now emit the body
+		// If we have do-while we jump to the body block.
+		llvm_emit_block(c, body_block);
 		llvm_emit_stmt(c, body);
-
-		// Did we have a jump to inc yet?
-		if (inc_block && !llvm_basic_block_is_unused(inc_block))
+		// Was inc used by now? Otherwise we can just continue and emit the incr here.
+		if (c->current_block && inc_block && continue_block == inc_block && llvm_basic_block_is_unused(inc_block))
 		{
-			// If so we emit the jump to the inc block.
-			llvm_emit_br(c, inc_block);
+			inc_block = NULL;
+			llvm_emit_ignored_expr(c, exprptr(incr));
+			// If a cond exists, jump to it, otherwise jump to the start block
+			llvm_emit_br(c, cond_block ? cond_block : loop_start_block);
 		}
 		else
 		{
-			inc_block = NULL;
+			// We have a separate inc due to use of continue or no inc
+			llvm_emit_br(c, continue_block);
 		}
 	}
 
-	if (incr)
+	// Emit the inc (if we didn't fold it)
+	if (inc_block)
 	{
-		// We might have neither body nor cond
-		// In that case we do a jump from the init.
-		if (loop_start_block == inc_block)
-		{
-			llvm_emit_br(c, inc_block);
-		}
-		if (inc_block)
-		{
-			// Emit the block if it exists.
-			// The inc block might also be the end of the body block.
-			llvm_emit_block(c, inc_block);
-		}
-		if (llvm_get_current_block_if_in_use(c))
-		{
-			if (incr) llvm_emit_ignored_expr(c, exprptr(incr));
-		}
+		// Emit the block if it exists.
+		// The inc block might also be the end of the body block.
+		llvm_emit_block(c, inc_block);
+		llvm_emit_ignored_expr(c, exprptr(incr));
+		// If a cond exists, jump to it, otherwise jump to the start block
+		llvm_emit_br(c, cond_block ? cond_block : loop_start_block);
 	}
 
-	// Loop back.
-	if (loop != LOOP_NONE)
+	if (!start_with_cond && cond_block)
 	{
-		llvm_emit_br(c, loop_start_block);
-	}
-	else
-	{
-		// If the exit block is unused, just skip it.
-		if (llvm_basic_block_is_unused(exit_block))
-		{
-			DEBUG_POP_LEXICAL_SCOPE(c);
-			return;
-		}
-		llvm_emit_br(c, exit_block);
+		llmv_emit_for_cond(c, cond, cond_block, loop_start_block, exit_block);
 	}
 
-	// And insert exit block
+	// If the exit block is unused, just skip it.
+	if (llvm_basic_block_is_unused(exit_block))
+	{
+		DEBUG_POP_LEXICAL_SCOPE(c);
+		return;
+	}
+
+	// Emit the exit block.
 	llvm_emit_block(c, exit_block);
 	DEBUG_POP_LEXICAL_SCOPE(c);
 }
@@ -697,16 +697,14 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 		if (case_stmt == default_case) continue;
 		BEValue be_value;
 		Expr *expr = exprptr(case_stmt->case_stmt.expr);
-		llvm_emit_expr(c, &be_value, expr);
-		llvm_value_rvalue(c, &be_value);
+		if (!llvm_emit_rvalue_in_block(c, &be_value, expr)) goto DONE;
 		BEValue equals;
 		Expr *to_expr = exprptrzero(case_stmt->case_stmt.to_expr);
 		if (to_expr)
 		{
 			ASSERT(!is_type_switch);
 			BEValue to_value;
-			llvm_emit_expr(c, &to_value, to_expr);
-			llvm_value_rvalue(c, &to_value);
+			if (!llvm_emit_rvalue_in_block(c, &to_value, to_expr)) goto DONE;
 			BEValue le;
 			llvm_emit_comp(c, &le, &be_value, switch_value, BINARYOP_LE);
 			BEValue ge;
@@ -722,10 +720,11 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 			else
 			{
 				llvm_emit_comp(c, &equals, &be_value, switch_value, BINARYOP_EQ);
+				RETURN_ON_EMPTY_BLOCK_VOID();
 			}
 		}
 		next = llvm_basic_block_new(c, "next_if");
-		llvm_emit_cond_br(c, &equals, block, next);
+		if (c->current_block) llvm_emit_cond_br(c, &equals, block, next);
 		if (case_stmt->case_stmt.body)
 		{
 			llvm_emit_block(c, block);
@@ -745,8 +744,8 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 	{
 		llvm_emit_br(c, exit_block);
 	}
+DONE:
 	llvm_emit_block(c, exit_block);
-	return;
 }
 
 static LLVMValueRef llvm_emit_switch_jump_stmt(GenContext *c,
@@ -776,8 +775,7 @@ static LLVMValueRef llvm_emit_switch_jump_stmt(GenContext *c,
 	c->current_block = NULL;
 	llvm_emit_block(c, switch_block);
 	AlignSize align;
-	LLVMTypeRef type = LLVMArrayType(c->ptr_type, count);
-	LLVMValueRef index = llvm_emit_array_gep_raw_index(c, jump_table, type, switch_value, llvm_abi_alignment(c, type), &align);
+	LLVMValueRef index = llvm_emit_array_gep_raw_index(c, jump_table, type_voidptr, switch_value, type_abi_alignment(type_voidptr), &align);
 	LLVMValueRef addr = llvm_load(c, c->ptr_type, index, align, "target");
 	LLVMValueRef instr = LLVMBuildIndirectBr(c->builder, addr, case_count);
 	c->current_block = NULL;
@@ -793,10 +791,10 @@ static void llvm_set_jump_table_values(ExprId from, ExprId to, Int *from_ref, In
 	if (type_flat->type_kind == TYPE_ENUM)
 	{
 		Type *low = type_lowering(type_flat);
-		*from_ref = (Int) { .i.low = from_expr->const_expr.enum_val->enum_constant.ordinal, .type = low->type_kind };
+		*from_ref = (Int) { .i.low = from_expr->const_expr.enum_val->enum_constant.inner_ordinal, .type = low->type_kind };
 		if (to)
 		{
-			*to_ref = (Int) { .i.low = to_expr->const_expr.enum_val->enum_constant.ordinal, .type = low->type_kind };
+			*to_ref = (Int) { .i.low = to_expr->const_expr.enum_val->enum_constant.inner_ordinal, .type = low->type_kind };
 		}
 		else
 		{
@@ -872,9 +870,8 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 
 	Type *goto_array_type = type_get_array(type_voidptr, count);
 	LLVMTypeRef llvm_array_type = llvm_get_type(c, goto_array_type);
-	AlignSize alignment = type_alloca_alignment(switch_value->type);
 
-	LLVMValueRef jmptable = llvm_add_global_raw(c, "jumptable", llvm_array_type, alignment);
+	LLVMValueRef jmptable = llvm_add_global_raw(c, "jumptable", llvm_array_type, 0);
 	switch_ast->switch_stmt.codegen.jump.jmptable = jmptable;
 
 	llvm_set_private_declaration(jmptable);
@@ -882,16 +879,15 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 	LLVMValueRef instr = llvm_emit_switch_jump_stmt(c, switch_ast, cases, count, min_index, jmptable, default_block, switch_value);
 
 #define REF_STACK 16
-	LLVMValueRef refs_stack[REF_STACK];
-	LLVMValueRef *refs = refs_stack;
+	void *refs_stack[REF_STACK];
+	void **refs = refs_stack;
 	if (count > REF_STACK)
 	{
-		refs = MALLOC(sizeof(LLVMValueRef) * count);
+		refs = MALLOC(sizeof(void *) * count);
 	}
 #undef REF_STACK
-	LLVMValueRef default_block_address = LLVMBlockAddress(c->cur_func.ref, default_block);
 	ASSERT(count < DEFAULT_SWITCH_JUMP_MAX_SIZE + 1);
-	memset(refs, 0, sizeof(LLVMValueRef) * count);
+	memset(refs, 0, sizeof(void *) * count);
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		Ast *case_stmt = cases[i];
@@ -906,7 +902,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 			uint64_t to_val = to_value.i.low;
 			for (uint64_t j = from_val; j <= to_val; j++)
 			{
-				refs[j] = LLVMBlockAddress(c->cur_func.ref, block);
+				refs[j] = block;
 			}
 			// No fallthrough
 			if (!case_stmt->case_stmt.body) continue;
@@ -922,13 +918,19 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 	for (uint64_t i = 0; i < count; i++)
 	{
 		if (refs[i]) continue;
-		refs[i] = default_block_address;
+		refs[i] = default_block;
 		if (found) continue;
 		found = true;
 		LLVMAddDestination(instr, default_block);
 	}
-	LLVMSetInitializer(jmptable, LLVMConstArray(c->ptr_type, refs, count));
+	LLVMAddDestination(instr, default_block);
 	llvm_emit_block(c, exit_block);
+	for (uint64_t i = 0; i < count; i++)
+	{
+		LLVMValueRef block_address = LLVMBlockAddress(c->cur_func.ref, refs[i]);
+		refs[i] = block_address;
+	}
+	LLVMSetInitializer(jmptable, LLVMConstArray(c->ptr_type, (LLVMValueRef *)refs, count));
 }
 
 static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast, bool is_typeid)
@@ -987,7 +989,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 	}
 
 	BEValue switch_var;
-	llvm_value_set_address_abi_aligned(&switch_var, llvm_emit_alloca_aligned(c, switch_type, "switch"), switch_type);
+	llvm_value_set_alloca(c, &switch_var, switch_type, type_alloca_alignment(switch_type), "switch");
 	switch_ast->switch_stmt.codegen.retry.var = &switch_var;
 	llvm_store(c, &switch_var, switch_value);
 
@@ -1000,7 +1002,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 	if (is_if_chain)
 	{
 		llvm_emit_switch_body_if_chain(c, cases, default_case, &switch_current_val, exit_block, is_typeid);
-		return;
+		return; // NOLINT
 	}
 
 	if (switch_ast->switch_stmt.flow.jump)
@@ -1018,13 +1020,12 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 		LLVMBasicBlockRef block = case_stmt->case_stmt.backend_block;
 		if (case_stmt != default_case)
 		{
-			LLVMValueRef case_value;
 			BEValue be_value;
 			Expr *from = exprptr(case_stmt->case_stmt.expr);
 			ASSERT(expr_is_const(from));
 			llvm_emit_expr(c, &be_value, from);
 			llvm_value_rvalue(c, &be_value);
-			case_value = be_value.value;
+			LLVMValueRef case_value = be_value.value;
 			LLVMAddCase(switch_stmt, case_value, block);
 			Expr *to_expr = exprptrzero(case_stmt->case_stmt.to_expr);
 			if (to_expr)
@@ -1056,7 +1057,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 
 void llvm_emit_switch(GenContext *c, Ast *ast)
 {
-	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->span);
+	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->loc);
 	BEValue switch_value;
 	Expr *expr = exprptrzero(ast->switch_stmt.cond);
 	bool is_typeid = expr && expr->type->canonical == type_typeid;
@@ -1064,6 +1065,7 @@ void llvm_emit_switch(GenContext *c, Ast *ast)
 	{
 		// Regular switch
 		llvm_emit_cond(c, &switch_value, expr, false);
+		RETURN_ON_EMPTY_BLOCK_VOID();
 	}
 	else
 	{
@@ -1093,7 +1095,7 @@ void llvm_emit_break(GenContext *c, Ast *ast)
 			break;
 		case AST_FOREACH_STMT:
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	llvm_emit_jmp(c, jump);
 }
@@ -1109,13 +1111,13 @@ void llvm_emit_continue(GenContext *c, Ast *ast)
 		case AST_IF_STMT:
 		case AST_SWITCH_STMT:
 		case AST_FOREACH_STMT:
-			UNREACHABLE
+			UNREACHABLE_VOID
 			break;
 		case AST_FOR_STMT:
 			jump = jump_target->for_stmt.codegen.continue_block;
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	llvm_emit_jmp(c, jump);
 }
@@ -1216,7 +1218,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 		ASSERT(value.kind == BE_BOOLEAN);
 		llvm_emit_cond_br(c, &value, on_ok, on_fail);
 		llvm_emit_block(c, on_fail);
-		SourceSpan loc = assert_expr->span;
+		SourceLocId loc = assert_expr->loc;
 		const char *error = "Assert violation";
 		const char *fmt = NULL;
 		Expr *message_expr = exprptrzero(ast->assert_stmt.message);
@@ -1354,6 +1356,15 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 			pointer_type[param_count] = NULL;
 			switch (val->kind)
 			{
+				case ASM_ARG_MEMADDR:
+					llvm_value_set_decl(c, &value, val->ident.ident_decl);
+					llvm_value_addr(c, &value);
+					value.kind = BE_VALUE;
+					pointer_type[param_count] = NULL;
+					value.type = type_get_ptr(value.type);
+					ASSERT(!val->ident.copy_output);
+					codegen_append_constraints(&clobber_list, "r");
+					break;
 				case ASM_ARG_MEMVAR:
 					llvm_value_set_decl(c, &value, val->ident.ident_decl);
 					llvm_value_addr(c, &value);
@@ -1481,9 +1492,9 @@ LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char 
 {
 	FOREACH(ReusableConstant, constant, c->reusable_constants)
 	{
-		if (str_eq(str, constant.string) && str_eq(extname, constant.name))
+		if (str_eq(str, constant.string) && str_eq(extname, constant.name)) // NOLINT
 		{
-			return constant.value;
+			return constant.value; // NOLINT
 		}
 	}
 
@@ -1494,7 +1505,7 @@ LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char 
 	LLVMSetGlobalConstant(global_string, 1);
 	LLVMSetInitializer(global_string, llvm_get_zstring(c, str, len));
 	AlignSize alignment;
-	LLVMValueRef string = llvm_emit_array_gep_raw(c, global_string, char_array_type, 0, 1, &alignment);
+	LLVMValueRef string = llvm_emit_array_gep_raw(c, global_string, type_char, 0, 1, &alignment);
 	ReusableConstant reuse = { .string = str_copy(str, len), .name = str_copy(extname, strlen(extname)), .value = string };
 	vec_add(c->reusable_constants, reuse);
 	return string;
@@ -1506,7 +1517,7 @@ void llvm_emit_unreachable(GenContext *c)
 	c->current_block = NULL;
 }
 
-void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *varargs)
+void llvm_emit_panic(GenContext *c, const char *message, SourceLocId loc, const char *fmt, BEValue *varargs)
 {
 	if (c->debug.builder) llvm_emit_debug_location(c, loc);
 
@@ -1521,7 +1532,8 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 		return;
 	}
 
-	File *file = source_file_by_id(loc.file_id);
+	SourceLoc *location = sourcelocptrzero(loc);
+	File *file = source_file_by_id(location ? location->file_id : 0);
 
 	Decl *panicf = fmt ? c->panicf : NULL;
 
@@ -1529,7 +1541,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 			llvm_emit_string_const(c, panicf ? fmt : message, ".panic_msg"),
 			llvm_emit_string_const(c, file->name, ".file"),
 			llvm_emit_string_const(c, c->cur_func.name, ".func"),
-			llvm_const_int(c, type_uint, loc.row)
+			llvm_const_int(c, type_uint, location ? location->row : 0)
 	};
 	FunctionPrototype *prototype = panicf
 			? type_get_resolved_prototype(panicf->type)
@@ -1537,12 +1549,11 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 	LLVMValueRef actual_args[16];
 	unsigned count = 0;
 	ABIArgInfo **abi_args = prototype->abi_args;
-	Type **types = prototype->param_types;
 	for (unsigned i = 0; i < 4; i++)
 	{
-		Type *type = type_lowering(types[i]);
+		Type *type = type_lowering(abi_args[i]->original_type);
 		BEValue value = { .value = panic_args[i], .type = type };
-		llvm_emit_parameter(c, actual_args, &count, abi_args[i], &value, type);
+		llvm_emit_parameter(c, actual_args, &count, abi_args[i], &value);
 	}
 
 	if (panicf)
@@ -1550,26 +1561,18 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 		unsigned elements = vec_size(varargs);
 		Type *any_slice = type_get_slice(type_any);
 		Type *any_array = type_get_array(type_any, elements);
-		LLVMTypeRef llvm_array_type = llvm_get_type(c, any_array);
-		AlignSize alignment = type_alloca_alignment(any_array);
-		LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, varargslots_name);
+		BEValue array_ref = llvm_emit_alloca_b(c, any_array, varargslots_name);
 		unsigned vacount = vec_size(varargs);
 		for (unsigned i = 0; i < vacount; i++)
 		{
-			AlignSize store_alignment;
-			LLVMValueRef slot = llvm_emit_array_gep_raw(c,
-			                                            array_ref,
-			                                            llvm_array_type,
-			                                            i,
-			                                            alignment,
-			                                            &store_alignment);
-			llvm_store_to_ptr_aligned(c, slot, &varargs[i], store_alignment);
+			BEValue slot = llvm_emit_array_gep(c, &array_ref, i);
+			llvm_store(c, &slot, &varargs[i]);
 		}
 		BEValue value;
-		llvm_value_aggregate_two(c, &value, any_slice, array_ref, llvm_const_int(c, type_usz, elements));
+		llvm_value_aggregate_two(c, &value, any_slice, array_ref.value, llvm_const_int(c, type_usz, elements));
 		LLVMSetValueName2(value.value, temp_name, 6);
 
-		llvm_emit_parameter(c, actual_args, &count, abi_args[4], &value, any_slice);
+		llvm_emit_parameter(c, actual_args, &count, abi_args[4], &value);
 
 		BEValue res;
 		if (c->debug.builder) llvm_emit_debug_location(c, loc);
@@ -1590,19 +1593,30 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 	llvm_emit_unreachable(c);
 }
 
-void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc, const char *fmt, BEValue *value_1,
+void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceLocId loc, const char *fmt, BEValue *value_1,
 							 BEValue *value_2)
 {
+	bool always_panic = false;
 	if (LLVMIsAConstantInt(value->value))
 	{
-		ASSERT(!LLVMConstIntGetZExtValue(value->value) && "Unexpected bounds check failed.");
-		return;
+		if (!LLVMConstIntGetZExtValue(value->value))
+		{
+			return;
+		}
+		sema_warning_at(loc, "The code here was detected to always panic at runtime.");
+		always_panic = true;
 	}
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
 	LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "checkok");
-	value->value = llvm_emit_expect_false(c, value);
-	llvm_emit_cond_br(c, value, panic_block, ok_block);
-
+	if (always_panic)
+	{
+		llvm_emit_br(c, panic_block);
+	}
+	else
+	{
+		value->value = llvm_emit_expect_false(c, value);
+		llvm_emit_cond_br(c, value, panic_block, ok_block);
+	}
 	llvm_emit_block(c, panic_block);
 	vec_add(c->panic_blocks, panic_block);
 	BEValue *values = NULL;
@@ -1623,7 +1637,7 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 	EMIT_SPAN(c, loc);
 }
 
-void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc,
+void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceLocId loc,
 							 const char *fmt, BEValue *value_1, BEValue *value_2)
 {
 	BEValue be_value;
@@ -1640,14 +1654,12 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 	{
 		case AST_POISONED:
 		case AST_FOREACH_STMT:
-		case AST_CONTRACT:
 		case AST_ASM_STMT:
 		case AST_ASM_LABEL:
-		case AST_CONTRACT_FAULT:
 		case AST_CASE_STMT:
 		case AST_DEFAULT_STMT:
 		case CT_AST:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case AST_EXPR_STMT:
 			llvm_emit_expr_stmt(c, ast);
 			break;

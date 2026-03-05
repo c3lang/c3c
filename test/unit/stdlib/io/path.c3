@@ -1,5 +1,18 @@
 module std::io::path @test;
 
+fn void test_append()
+{
+	Path p = path::new(mem, "/", POSIX)!!;
+	Path p2 = p.append(mem, "hello")!!;
+	test::eq(p2.str_view(), "/hello");
+	p.free();
+	p2.free();
+	p = path::new(mem, "c:\\", WIN32)!!;
+	p2 = p.append(mem, "hello")!!;
+	assert(p2.str_view() == "c:\\hello");
+	p.free();
+	p2.free();
+}
 fn void test_dot()
 {
 	Path p = path::new(mem, ".")!!;
@@ -34,9 +47,16 @@ fn void test_parent()
 	p = path::new(mem, "/a/b/c", path_env: PathEnv.WIN32)!!;
 	assert(p.parent().str_view()!! == `\a\b`);
 	p.free();
+	p = path::new(mem, "/a/", path_env: PathEnv.POSIX)!!;
+	assert(p.parent().str_view()!! == "/");
+	p.free();
+	p = path::new(mem, `C:\foo`, path_env: WIN32)!!;
+    assert(p.parent().str_view()!! == `C:\`);
+    assert(@catch(p.parent().parent()));
+    p.free();
 }
 
-fn void test_path_normalized() => mem::@scoped(allocator::temp())
+fn void test_path_normalized() => mem::@scoped(tmem)
 {
 	assert(path::new(mem, "",  path_env: PathEnv.WIN32).str_view()!! == "");
 	assert(@catch(path::new(mem, "1:\\a\\b\\c.txt", path_env: PathEnv.WIN32)));
@@ -212,7 +232,7 @@ fn void test_path_normalized() => mem::@scoped(allocator::temp())
 
 }
 
-fn void test_extension() => mem::@scoped(allocator::temp())
+fn void test_extension() => mem::@scoped(tmem)
 {
 	assert(@catch(path::new(mem, `C:`, path_env: PathEnv.WIN32).extension()));
 	assert(@catch(path::new(mem, `C:`, path_env: PathEnv.POSIX).extension()));
@@ -246,7 +266,7 @@ fn void test_extension() => mem::@scoped(allocator::temp())
 
 }
 
-fn void test_has_extension() => mem::@scoped(allocator::temp())
+fn void test_has_extension() => mem::@scoped(tmem)
 {
 	assert(!path::new(mem, `C:\temp\foo.bar\README`, path_env: PathEnv.WIN32)!!.has_extension(`bar\README`));
 
@@ -276,7 +296,7 @@ fn void test_has_extension() => mem::@scoped(allocator::temp())
 
 }
 
-fn void test_basename() => mem::@scoped(allocator::temp())
+fn void test_basename() => mem::@scoped(tmem)
 {
 	assert(path::for_windows(mem, "file.txt").basename()!! == "file.txt");
 	assert(path::for_posix(mem, "file.txt").basename()!! == "file.txt");
@@ -303,7 +323,7 @@ fn void test_basename() => mem::@scoped(allocator::temp())
 	assert(path::for_posix(mem, `\\server\abc`).basename()!! == `\\server\abc`);
 }
 
-fn void test_dirname() => mem::@scoped(allocator::temp())
+fn void test_dirname() => mem::@scoped(tmem)
 {
 	assert(path::for_posix(mem, "").dirname()!! == ".");
 	assert(path::for_posix(mem, "/file").dirname()!! == "/");
@@ -343,7 +363,7 @@ fn void test_dirname() => mem::@scoped(allocator::temp())
 	assert(path::for_posix(mem, `\\server\`).dirname()!! == `.`);
 }
 
-fn void test_path_volume() => mem::@scoped(allocator::temp())
+fn void test_path_volume() => mem::@scoped(tmem)
 {
 	assert(path::for_windows(mem, `C:\abs`).volume_name()!! == `C:`);
 	assert(path::for_windows(mem, `C:abs`).volume_name()!! == `C:`);
@@ -353,7 +373,7 @@ fn void test_path_volume() => mem::@scoped(allocator::temp())
     assert(path::for_windows(mem, `\\server\foo\abc`).volume_name()!! == `\\server\foo`);
 }
 
-fn void test_path_is_absolute() => mem::@scoped(allocator::temp())
+fn void test_path_is_absolute() => mem::@scoped(tmem)
 {
     assert(!path::for_posix(mem, "").is_absolute()!!);
     assert(path::for_posix(mem, "/").is_absolute()!!);
@@ -367,7 +387,7 @@ fn void test_path_is_absolute() => mem::@scoped(allocator::temp())
 	assert(path::for_windows(mem, `\\server\foo\abc`).is_absolute()!!);
 }
 
-fn void test_path_absolute() => mem::@scoped(allocator::temp())
+fn void test_path_absolute() => mem::@scoped(tmem)
 {
 $if env::WIN32:
 	assert(path::for_windows(mem, `C:\abs`).absolute(mem, )!!.str_view() == `C:\abs`);

@@ -25,7 +25,7 @@ entry:
   %z_slice = alloca [2 x [2 x i32]], align 16
   %f = alloca %Foo, align 4
   %y = alloca [2 x i32], align 4
-  store i32 1, ptr %literal, align 4
+  store i32 1, ptr %literal, align 16
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
   store i32 2, ptr %ptradd, align 4
   %ptradd1 = getelementptr inbounds i8, ptr %literal, i64 8
@@ -35,7 +35,7 @@ entry:
   %0 = insertvalue %"int[2][]" undef, ptr %literal, 0
   %1 = insertvalue %"int[2][]" %0, i64 2, 1
   store %"int[2][]" %1, ptr %z, align 8
-  store i32 1, ptr %z_slice, align 4
+  store i32 1, ptr %z_slice, align 16
   %ptradd3 = getelementptr inbounds i8, ptr %z_slice, i64 4
   store i32 2, ptr %ptradd3, align 4
   %ptradd4 = getelementptr inbounds i8, ptr %z_slice, i64 8

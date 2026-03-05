@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 
-extern const int FOO @extern("foo1");
+extern const int FOO @cname("foo1");
 fn int main()
 {
 	return FOO;

@@ -1,7 +1,7 @@
 <*
  @require Type.kindof == ARRAY : "Required an array type"
 *>
-module std::collections::ringbuffer{Type};
+module std::collections::ringbuffer <Type>;
 import std::io;
 
 alias Element = $typeof((Type){}[0]);
@@ -48,7 +48,7 @@ fn Element? RingBuffer.pop(&self)
 	switch
 	{
 		case self.written == 0:
-			return NO_MORE_ELEMENT?;
+			return NO_MORE_ELEMENT~;
 		case self.written < self.buf.len:
 			self.written--;
 			return self.buf[self.written];

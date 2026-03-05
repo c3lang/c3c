@@ -17,24 +17,28 @@ Expr *poisoned_expr = &poison_expr;
 Ast *poisoned_ast = &poison_ast;
 
 // Standard decl creation, used by compile time constructs, since they have no need for neither type nor name.
-Decl *decl_new_ct(DeclKind kind, SourceSpan span)
+Decl *decl_new_ct(DeclKind kind, SourceLocId span)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = kind;
-	decl->span = span;
+	decl->loc = span;
 	return decl;
 }
 
 // Named declaration without type.
-Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span)
+Decl *decl_new(DeclKind decl_kind, const char *name, SourceLocId loc)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = decl_kind;
-	decl->span = span;
+	decl->loc = loc;
 	decl->name = name;
 	return decl;
 }
 
+bool decl_is_deprecated(Decl *decl)
+{
+	return decl->resolved_attributes && decl->attrs_resolved && decl->attrs_resolved->deprecated;
+}
 
 // Check if local or parameter $foo/$Foo
 bool decl_is_ct_var(Decl *decl)
@@ -43,18 +47,15 @@ bool decl_is_ct_var(Decl *decl)
 	return decl_var_kind_is_ct(decl->var.kind);
 }
 
-Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
+Decl *decl_new_with_type(const char *name, SourceLoc *loc, DeclKind decl_type)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = decl_type;
 	decl->name = name;
-	decl->span = loc;
+	decl->loc = loc ? make_loc(*loc) : 0;
 	TypeKind kind = TYPE_POISONED;
 	switch (decl_type)
 	{
-		case DECL_FNTYPE:
-		case DECL_FUNC:
-			UNREACHABLE
 		case DECL_INTERFACE:
 			kind = TYPE_INTERFACE;
 			break;
@@ -67,17 +68,22 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 		case DECL_ENUM:
 			kind = TYPE_ENUM;
 			break;
-		case DECL_DISTINCT:
-			kind = TYPE_DISTINCT;
+		case DECL_CONSTDEF:
+			kind = TYPE_CONSTDEF;
 			break;
 		case DECL_TYPEDEF:
 			kind = TYPE_TYPEDEF;
 			break;
+		case DECL_TYPE_ALIAS:
+			kind = TYPE_ALIAS;
+			break;
 		case DECL_BITSTRUCT:
 			kind = TYPE_BITSTRUCT;
 			break;
-		case NON_TYPE_DECLS:
+		case DECL_FNTYPE:
+		case DECL_FUNC:
 		case DECL_ERASED:
+		case NON_TYPE_DECLS:
 			UNREACHABLE
 	}
 	Type *type = type_new(kind, name ? name : "$anon");
@@ -93,6 +99,12 @@ const char *decl_safe_name(Decl *decl)
 	if (decl->name) return decl->name;
 	return decl_to_name(decl);
 }
+
+Decl *decl_template_get_generic(Decl *decl)
+{
+	return decl->is_template ? declptr(decl->generic_id) : NULL;
+}
+
 const char *decl_to_name(Decl *decl)
 {
 	const char *name = decl_to_a_name(decl);
@@ -112,15 +124,18 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_CT_EXEC: return "compile time exec include";
 		case DECL_CT_INCLUDE: return "an include";
 		case DECL_DECLARRAY: return "a declarray";
-		case DECL_ALIAS: case DECL_TYPEDEF: return "an alias";
-		case DECL_DISTINCT: return "a distinct type";
+		case DECL_ALIAS: case DECL_ALIAS_PATH: case DECL_TYPE_ALIAS: return "an alias";
+		case DECL_TYPEDEF: return "a distinct type";
 		case DECL_ENUM: return "an enum";
+		case DECL_CONSTDEF: return "a set of constants";
 		case DECL_ENUM_CONSTANT: return "an enum value";
 		case DECL_ERASED: return "an erased declaration";
 		case DECL_FAULT: return "a fault";
 		case DECL_FNTYPE: return "a function type";
 		case DECL_FUNC: return "a function";
 		case DECL_GROUP: return "group";
+		case DECL_GENERIC: return "a generic declaration";
+		case DECL_GENERIC_INSTANCE: return "a generic instance";
 		case DECL_IMPORT: return "an import";
 		case DECL_LABEL: return "a label";
 		case DECL_MACRO: return "a macro";
@@ -128,6 +143,7 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_INTERFACE: return "an interface";
 		case DECL_STRUCT: return "a struct";
 		case DECL_UNION: return "a union";
+		case DECL_CONTRACT: return "a contract";
 		case DECL_VAR:
 			switch (decl->var.kind)
 			{
@@ -152,7 +168,15 @@ const char *decl_to_a_name(Decl *decl)
 }
 
 
-Decl *decl_new_var(const char *name, SourceSpan loc, TypeInfo *type, VarDeclKind kind)
+Decl *decl_new_var_loc(const char *name, SourceLoc *loc, TypeInfo *type, VarDeclKind kind)
+{
+	Decl *decl = decl_new(DECL_VAR, name, make_loc(*loc));
+	decl->var.kind = kind;
+	decl->var.type_info = type ? type_infoid(type) : 0;
+	return decl;
+}
+
+Decl *decl_new_var(const char *name, SourceLocId loc, TypeInfo *type, VarDeclKind kind)
 {
 	Decl *decl = decl_new(DECL_VAR, name, loc);
 	decl->var.kind = kind;
@@ -160,18 +184,18 @@ Decl *decl_new_var(const char *name, SourceSpan loc, TypeInfo *type, VarDeclKind
 	return decl;
 }
 
-Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span)
+Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceLocId loc)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = DECL_VAR;
-	decl->span = span;
+	decl->loc = loc;
 	decl->name = NULL;
 	decl->var.kind = kind;
 	decl->var.is_temp = true;
 	decl->type = type;
 	decl->alignment = type ? type_alloca_alignment(type) : 0;
-	ASSERT(!type || !type_is_user_defined(type) || type->decl->resolve_status == RESOLVE_DONE);
-	decl->var.type_info = type_info_id_new_base(type, span);
+	ASSERT_AT(loc, !type || !type_is_user_defined(type) || type->decl->resolve_status == RESOLVE_DONE);
+	decl->var.type_info = type_info_id_new_base(type, loc);
 	decl->resolve_status = RESOLVE_DONE;
 	return decl;
 }
@@ -191,6 +215,7 @@ BinaryOp binary_op[TOKEN_LAST + 1] = {
 		[TOKEN_CT_AND] = BINARYOP_CT_AND,
 		[TOKEN_CT_OR] = BINARYOP_CT_OR,
 		[TOKEN_CT_CONCAT] = BINARYOP_CT_CONCAT,
+		[TOKEN_CT_CONCAT_ASSIGN] = BINARYOP_CT_CONCAT_ASSIGN,
 		[TOKEN_QUESTQUEST] = BINARYOP_ELSE,
 		[TOKEN_AMP] = BINARYOP_BIT_AND,
 		[TOKEN_BIT_OR] = BINARYOP_BIT_OR,
@@ -288,8 +313,8 @@ AttributeType attribute_by_name(const char *name)
 	return ATTRIBUTE_NONE;
 }
 
-
-void decl_append_links_to_global(Decl *decl)
+// Look for the @link directive, if a decl is codegen then add it to the linking process.
+void decl_append_links_to_global_during_codegen(Decl *decl)
 {
 	CompilationUnit *unit = decl->unit;
 	if (unit && unit->links)
@@ -306,16 +331,67 @@ void decl_append_links_to_global(Decl *decl)
 	}
 }
 
+bool decl_is_defaulted_var(Decl *decl)
+{
+	return decl->decl_kind == DECL_VAR && decl->var.no_init && decl->var.defaulted;
+}
+
+bool decl_may_be_generic(Decl *decl)
+{
+	switch (decl->decl_kind)
+	{
+		case DECL_POISONED:
+		case DECL_BODYPARAM:
+		case DECL_CT_ASSERT:
+		case DECL_CT_ECHO:
+		case DECL_CT_EXEC:
+		case DECL_CT_INCLUDE:
+		case DECL_ALIAS_PATH:
+		case DECL_ENUM_CONSTANT:
+		case DECL_ERASED:
+		case DECL_FAULT:
+		case DECL_GROUP:
+		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
+		case DECL_IMPORT:
+		case DECL_LABEL:
+		case DECL_CONSTDEF:
+		case DECL_CONTRACT:
+			return false;
+		case DECL_ATTRIBUTE:
+		case DECL_BITSTRUCT:
+		case DECL_DECLARRAY:
+		case DECL_ALIAS:
+		case DECL_TYPEDEF:
+		case DECL_ENUM:
+		case DECL_FNTYPE:
+		case DECL_FUNC:
+		case DECL_MACRO:
+		case DECL_INTERFACE:
+		case DECL_STRUCT:
+		case DECL_TYPE_ALIAS:
+		case DECL_UNION:
+		case DECL_VAR:
+			return true;
+	}
+	UNREACHABLE
+}
+/*
+ * Count the expected number of elements needed for an initializer
+ * by folding any anonymous structs and unions.
+ */
 int decl_count_elements(Decl *structlike)
 {
 	int elements = 0;
 	Decl **members = structlike->strukt.members;
 	unsigned member_size = vec_size(members);
 	if (member_size == 0) return 0;
+	// In the case we have a union, we only count the first element.
 	if (structlike->decl_kind == DECL_UNION) member_size = 1;
 	for (unsigned i = 0; i < member_size; i++)
 	{
 		Decl *member = members[i];
+		// Recursively count the anonymous struct/unions
 		if (member->decl_kind != DECL_VAR && !member->name)
 		{
 			elements += decl_count_elements(member);
@@ -326,6 +402,7 @@ int decl_count_elements(Decl *structlike)
 	return elements;
 }
 
+// This is used to check if a macro folds to a single compile time value.
 bool ast_is_compile_time(Ast *ast)
 {
 	switch (ast->ast_kind)
@@ -337,6 +414,7 @@ bool ast_is_compile_time(Ast *ast)
 			if (!ast->return_stmt.expr) return true;
 			return expr_is_runtime_const(ast->return_stmt.expr);
 		case AST_EXPR_STMT:
+			// $a; is fine
 			return expr_is_runtime_const(ast->expr_stmt);
 		case AST_CT_COMPOUND_STMT:
 		{
@@ -361,13 +439,25 @@ bool ast_is_compile_time(Ast *ast)
 	}
 }
 
+// Should this declaration be linked externally
 bool decl_is_externally_visible(Decl *decl)
 {
 	return decl->is_external_visible || decl->visibility == VISIBLE_PUBLIC || decl->is_export;
 }
 
+
+/*
+ * Is this declartion a global of some sort?
+ * In other words a static, thread local, global constant or a global
+ */
 bool decl_is_global(Decl *ident)
 {
+	switch (ident->decl_kind)
+	{
+		case DECL_FUNC: return true;
+		case DECL_VAR: break;
+		default: return false;
+	}
 	switch (ident->var.kind)
 	{
 		case VARDECL_LOCAL:
@@ -391,19 +481,23 @@ bool decl_is_global(Decl *ident)
 	UNREACHABLE
 }
 
+// Is is @local or is it @private but never imported in some other compilation unit (module)
 bool decl_is_local(Decl *decl)
 {
 	return !decl->is_external_visible && decl->visibility != VISIBLE_PUBLIC && !decl->is_export;
 }
 
+// Does the decl need to be prefixed, or is it for some reason like a builtin.
 bool decl_needs_prefix(Decl *decl)
 {
 	switch (decl->decl_kind)
 	{
-		case DECL_VAR:
-		case DECL_ALIAS:
 		case DECL_FUNC:
 		case DECL_MACRO:
+			if (decl->func_decl.type_parent) return false;
+			FALLTHROUGH;
+		case DECL_VAR:
+		case DECL_ALIAS:
 		case DECL_FAULT:
 			return !decl->is_autoimport;
 		default:
@@ -411,6 +505,7 @@ bool decl_needs_prefix(Decl *decl)
 	}
 }
 
+// Find a particular enum by name.
 Decl *decl_find_enum_constant(Decl *decl, const char *name)
 {
 	FOREACH(Decl *, enum_constant, decl->enums.values)
@@ -420,10 +515,11 @@ Decl *decl_find_enum_constant(Decl *decl, const char *name)
 	return NULL;
 }
 
+
 AlignSize decl_find_member_offset(Decl *decl, Decl *member)
 {
 	static const AlignSize NO_MATCH = ~(AlignSize)0;
-	while (decl->decl_kind == DECL_DISTINCT) decl = decl->distinct->type->decl;
+	while (decl->decl_kind == DECL_TYPEDEF) decl = decl->distinct->type->decl;
 	Decl **members = NULL;
 	switch (decl->decl_kind)
 	{
@@ -435,7 +531,7 @@ AlignSize decl_find_member_offset(Decl *decl, Decl *member)
 		default:
 			return NO_MATCH;
 	}
-	ASSERT(members);
+	ASSERT_SPAN(decl, members);
 	unsigned list = vec_size(members);
 	for (unsigned i = 0; i < list; i++)
 	{
@@ -453,10 +549,36 @@ AlignSize decl_find_member_offset(Decl *decl, Decl *member)
 	return NO_MATCH;
 }
 
+// Is it a for statement, AST_FOREACH should not reach here.
 bool ast_supports_continue(Ast *stmt)
 {
+	ASSERT_SPAN(stmt, stmt->ast_kind != AST_FOREACH_STMT);
 	if (stmt->ast_kind != AST_FOR_STMT) return false;
+	// We don't support `continue` in a `do { };` statement.
 	return stmt->for_stmt.cond || !stmt->flow.skip_first;
+}
+
+static void scratch_buffer_append_but_mangle_underscore_dot(const char *name, const char *end, const char *suffix)
+{
+	char c;
+	while (name != end && (c = *(name++)) != 0)
+	{
+		switch (c)
+		{
+			case ':':
+				ASSERT(name[0] == ':');
+				scratch_buffer_append_char('_');
+				name++;
+				break;
+			case '.':
+				scratch_buffer_append("__");
+				break;
+			default:
+				scratch_buffer_append_char(c);
+				break;
+		}
+	}
+	if (suffix) scratch_buffer_append(suffix);
 }
 
 void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
@@ -477,10 +599,7 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 		Type *parent = type_infoptr(decl->func_decl.type_parent)->type->canonical;
 		if (type_is_user_defined(parent))
 		{
-			Decl *parent_decl = parent->decl;
-			if (parent_decl->unit && parent_decl->unit->module) scratch_buffer_append_module(parent_decl->unit->module, decl->is_export);
-			scratch_buffer_append(decl->is_export ? "__" : ".");
-			scratch_buffer_append(parent->name);
+			scratch_buffer_set_extern_decl_name(parent->decl, false);
 			scratch_buffer_append(decl->is_export ? "__" : ".");
 			scratch_buffer_append(decl->name);
 			return;
@@ -495,10 +614,34 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 	Module *module = decl->unit ? decl->unit->module : NULL;
 	if (module) scratch_buffer_append_module(module, decl->is_export);
 	scratch_buffer_append(decl->is_export ? "__" : ".");
-	scratch_buffer_append(decl->name ? decl->name : "$anon");
+	const char *name = decl_is_user_defined_type(decl) ? decl->type->name : decl->name;
+	const char *template_end = NULL;
+	const char *suffix = NULL;
+	if (decl->is_templated)
+	{
+		template_end = strchr(name, '{');
+		suffix = declptr(decl->instance_id)->instance_decl.cname_suffix;
+	}
+	if (!name) name = "$anon";
+	if (decl->is_export)
+	{
+		scratch_buffer_append_but_mangle_underscore_dot(name, template_end, suffix);
+	}
+	else
+	{
+		if (template_end)
+		{
+			scratch_buffer_append_len(name, template_end - name);
+		}
+		else
+		{
+			scratch_buffer_append(name);
+		}
+		if (suffix) scratch_buffer_append(suffix);
+	}
 	if (decl->visibility == VISIBLE_LOCAL)
 	{
-		assert(module);
+		ASSERT_SPAN(decl, module);
 		scratch_buffer_printf(".%u", (unsigned)declid(decl));
 	}
 }

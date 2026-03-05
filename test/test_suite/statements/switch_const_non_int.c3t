@@ -1,0 +1,81 @@
+// #target: macos-x64
+module test;
+import std;
+
+struct Foo
+{
+	int value;
+}
+
+fn bool Foo.eq(&self, Foo other) @operator(==) => self.value == other.value;
+const Foo FOO1 = { 15 };
+const Foo FOO2 = { 20 };
+
+fn void main()
+{
+	Foo f = FOO1;
+	switch (f)
+	{
+		case FOO1:
+			String s = "Matched FOO1";
+		case FOO2:
+			String s = "Matched FOO2";
+		default:
+			String s = "No match found";
+	}
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %f = alloca %Foo, align 4
+  %switch = alloca %Foo, align 4
+  %literal = alloca %Foo, align 4
+  %taddr = alloca %Foo, align 4
+  %taddr1 = alloca %Foo, align 4
+  %s = alloca %"char[]", align 8
+  %literal2 = alloca %Foo, align 4
+  %taddr3 = alloca %Foo, align 4
+  %s7 = alloca %"char[]", align 8
+  %s9 = alloca %"char[]", align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %f, ptr align 4 @test.FOO1, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %switch, ptr align 4 %f, i32 4, i1 false)
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %entry
+  %0 = load %Foo, ptr %switch, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 4, i1 false)
+  %1 = load %Foo, ptr %literal, align 4
+  store %Foo %1, ptr %taddr, align 4
+  store %Foo %0, ptr %taddr1, align 4
+  %cmp = call i32 @memcmp(ptr %taddr, ptr %taddr1, i64 4)
+  %eq = icmp eq i32 %cmp, 0
+  br i1 %eq, label %switch.case, label %next_if
+
+switch.case:                                      ; preds = %switch.entry
+  store %"char[]" { ptr @.str, i64 12 }, ptr %s, align 8
+  br label %switch.exit
+
+next_if:                                          ; preds = %switch.entry
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal2, ptr align 4 @.__const.2, i32 4, i1 false)
+  %2 = load %Foo, ptr %literal2, align 4
+  store %Foo %2, ptr %taddr3, align 4
+  %cmp4 = call i32 @memcmp(ptr %taddr3, ptr %taddr1, i64 4)
+  %eq5 = icmp eq i32 %cmp4, 0
+  br i1 %eq5, label %switch.case6, label %next_if8
+
+switch.case6:                                     ; preds = %next_if
+  store %"char[]" { ptr @.str.3, i64 12 }, ptr %s7, align 8
+  br label %switch.exit
+
+next_if8:                                         ; preds = %next_if
+  br label %switch.default
+
+switch.default:                                   ; preds = %next_if8
+  store %"char[]" { ptr @.str.4, i64 14 }, ptr %s9, align 8
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.default, %switch.case6, %switch.case
+  ret void
+}

@@ -4,22 +4,17 @@ fn int main()
 {
 	foo();
 	bar(0);
-	int x;
-	bar(x++);
+	int $x = 0;
+	bar($x++);
 	return 0;
 }
 
 macro foo() => {};
-macro bar(x) => {};
+macro bar($x) => {};
 
 /* #expect: test.ll
 
 define i32 @main() #0 {
 entry:
-  %x = alloca i32, align 4
-  store i32 0, ptr %x, align 4
-  %0 = load i32, ptr %x, align 4
-  %add = add i32 %0, 1
-  store i32 %add, ptr %x, align 4
   ret i32 0
 }

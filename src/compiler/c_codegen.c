@@ -91,10 +91,11 @@ static const char *c_type_name(GenContext *c, Type *type)
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_INTERFACE:
-		case TYPE_DISTINCT:
-		case TYPE_FUNC_RAW:
 		case TYPE_TYPEDEF:
+		case TYPE_FUNC_RAW:
+		case TYPE_ALIAS:
 		case TYPE_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
@@ -114,6 +115,7 @@ static const char *c_type_name(GenContext *c, Type *type)
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
 		{
 			void *prev = htable_get(&c->gen_decl, type);
 			if (!prev) return "NOT_REGISTERED";
@@ -143,10 +145,11 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 		case ALL_FLOATS:
 		case TYPE_POINTER:
 			return false;
-		case TYPE_DISTINCT:
-		case TYPE_FUNC_RAW:
 		case TYPE_TYPEDEF:
+		case TYPE_FUNC_RAW:
+		case TYPE_ALIAS:
 		case TYPE_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
@@ -172,23 +175,25 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			if (prev) return false;
 			Type *base = type;
 			type = type->pointer;
+			TODO
+			/*
 			FunctionPrototype *proto = type->function.prototype;
-			c_emit_type_decl(c, proto->rtype);
-			FOREACH (Type *, t, proto->param_types)
+			c_emit_type_decl(c, proto->param_infos->type);
+			FOREACH (ParamInfo, t, proto->param_infos)
 			{
-				c_emit_type_decl(c, t);
+				c_emit_type_decl(c, t.type);
 			}
 			int id = ++c->typename;
-			PRINTF("typedef %s(*__c3_fn%d)(", c_type_name(c, proto->rtype), id);
-			FOREACH_IDX(i, Type *, t, proto->param_types)
+			PRINTF("typedef %s(*__c3_fn%d)(", c_type_name(c, proto->return_info.type), id);
+			FOREACH_IDX(i, ParamInfo, t, proto->param_infos)
 			{
 				if (i != 0) PRINT(",");
-				PRINT(c_type_name(c, t));
+				PRINT(c_type_name(c, t.type));
 			}
 			PRINT(");\n");
 			scratch_buffer_clear();
 			scratch_buffer_printf("__c3_fn%d", id);
-			htable_set(&c->gen_decl, base, scratch_buffer_copy());
+			htable_set(&c->gen_decl, base, scratch_buffer_copy());*/
 			return true;
 		}
 		case TYPE_STRUCT:
@@ -255,12 +260,13 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			if (prev) return false;
 			c_emit_type_decl(c, type->array.base);
 			int id = ++c->typename;
-			PRINTF("typedef struct { %s ptr[%u]; } __c3_array%d;\n", c_type_name(c, type->array.base), type->array.len, id);
+			PRINTF("typedef struct { %s ptr[%llu]; } __c3_array%d;\n", c_type_name(c, type->array.base), (unsigned long long)type->array.len, id);
 			scratch_buffer_clear();
 			scratch_buffer_printf(" __c3_array%d", id);
 			htable_set(&c->gen_decl, type, scratch_buffer_copy());
 			return true;
 		}
+		case TYPE_SIMD_VECTOR:
 		case TYPE_VECTOR:
 			error_exit("Vectors are not supported in the C backend yet.");
 	}
@@ -385,7 +391,7 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			break;
 		case CONST_UNTYPED_LIST:
 		case CONST_MEMBER:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	PRINT("/* CONST EXPR */\n");
 }
@@ -416,7 +422,7 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 			break;
 		case NON_RUNTIME_EXPR:
 		case UNRESOLVED_EXPRS:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case EXPR_ACCESS_RESOLVED:
 			break;
 		case EXPR_ASM:
@@ -522,6 +528,7 @@ static void c_emit_jump_to_optional_exit(GenContext *c, int value)
 static int c_emit_load(GenContext *c, VariableId id)
 {
 	TODO
+	UNREACHABLE
 }
 
 static void c_value_fold_optional(GenContext *c, CValue *value)
@@ -580,7 +587,7 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 		case VARDECL_GLOBAL:
 		case VARDECL_MEMBER:
 		case VARDECL_BITMEMBER:
-			UNREACHABLE;
+			UNREACHABLE_VOID;
 		case VARDECL_PARAM:
 		case VARDECL_UNWRAPPED:
 		case VARDECL_ERASE:
@@ -588,7 +595,7 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 			return;
 		case VARDECL_LOCAL_CT:
 		case VARDECL_LOCAL_CT_TYPE:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 
 	// Get the declaration and the LLVM type.
@@ -635,9 +642,51 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 		value->kind = CV_VALUE;
 	}
 
-	PRINT("/* TODO ZERO INIT */\n");
-	//llvm_store_zero(c, value);
-	//llvm_value_set(value, llvm_get_zero(c, var_type), var_type);
+	switch (var_type->type_kind)
+	{
+		case TYPE_BOOL:
+			PRINTF("___var_%d = false;\n", value->var);
+			break;
+		case ALL_INTS:
+		case ALL_FLOATS:
+			PRINTF("___var_%d = 0;\n", value->var);
+			break;
+		case TYPE_POISONED:
+		case TYPE_VOID:
+		case TYPE_TYPEDEF:
+		case TYPE_CONSTDEF:
+		case TYPE_FUNC_RAW:
+		case TYPE_BITSTRUCT:
+		case TYPE_ALIAS:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+		case TYPE_OPTIONAL:
+		case TYPE_WILDCARD:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+			UNREACHABLE_VOID
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
+			PRINTF("___var_%d = (c3_any_t){ NULL, NULL };\n", value->var);
+			break;
+		case TYPE_ANYFAULT:
+		case TYPE_TYPEID:
+		case TYPE_FUNC_PTR:
+		case TYPE_POINTER:
+		case TYPE_ENUM:
+			PRINTF("___var_%d = 0;\n", value->var);
+			break;
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_SLICE:
+		case TYPE_ARRAY:
+		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
+			PRINT("/* TODO ZERO INIT */\n");
+
+	}
 }
 
 static void c_emit_return(GenContext *c, Ast *stmt)
@@ -742,7 +791,7 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 	switch (stmt->ast_kind)
 	{
 		case AST_POISONED:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case AST_ASM_STMT:
 			break;
 		case AST_ASM_BLOCK_STMT:
@@ -756,9 +805,9 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 		case AST_CASE_STMT:
 			break;
 		case AST_COMPOUND_STMT:
-			PRINT("  {\n");
+			PRINT("{\n");
 			c_emit_stmt_chain(c, stmt->compound_stmt.first_stmt);
-			PRINT("  }\n");
+			PRINT("}\n");
 			return;
 		case AST_CONTINUE_STMT:
 			break;
@@ -774,7 +823,7 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 		case AST_CT_IF_STMT:
 		case AST_CT_SWITCH_STMT:
 		case AST_CT_TYPE_ASSIGN_STMT:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case AST_DECLARE_STMT:
 		{
 			CValue value;
@@ -808,10 +857,6 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 		case AST_SWITCH_STMT:
 			break;
 		case AST_NEXTCASE_STMT:
-			break;
-		case AST_CONTRACT:
-			break;
-		case AST_CONTRACT_FAULT:
 			break;
 	}
 	PRINT("/* TODO */\n");

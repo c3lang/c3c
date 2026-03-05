@@ -27,6 +27,8 @@ const char* JSON_EXE =
 		"  // \"c-sources\": [ \"csource/**\" ],\n"
 		"  // Include directories for C sources relative to the project file.\n"
 		"  // \"c-include-dirs\": [ \"csource/include\" ],\n"
+		"  // Build location, relative to project file.\n"
+		"  \"build-dir\": \"build\",\n"
 		"  // Output location, relative to project file.\n"
 		"  \"output\": \"build\",\n"
 		"  // Architecture and OS target.\n"
@@ -139,6 +141,7 @@ const char *MANIFEST_TEMPLATE =
 		"{\n"
 		"  \"provides\" : \"%s\",\n"
 		"  // \"sources\" : [ \"src/**\" ],\n"
+        "  \"linklib-dir\" : \"linked-libs\",\n"
 		"  \"targets\" : {\n"
 		"%s"
 		"  }\n"
@@ -164,6 +167,22 @@ const char *MAIN_TEMPLATE =
 		"\treturn 0;\n"
 		"}\n";
 
+const char *LIB_TEMPLATE =
+		"module %s;\n"
+		"\n"
+		"fn int add(int a, int b) @export(\"add_something\")\n"
+		"{\n"
+		"\treturn a + b;\n"
+		"}\n\n\n"
+		"fn int sub(int a, int b) @export(\"sub_something\")\n"
+		"{\n"
+		"\treturn a - b;\n"
+		"}\n";
+
+const char *GITIGNORE_TEMPLATE =
+		"build/\n"
+		"out/\n";
+
 const char* MAIN_INTERFACE_TEMPLATE =
 		"module %s;\n"
 		"\n"
@@ -179,6 +198,7 @@ const char* DEFAULT_TARGETS[] = {
 		"linux-x64",
 		"macos-aarch64",
 		"macos-x64",
+		"netbsd-aarch64",
 		"netbsd-x64",
 		"openbsd-x64",
 		"wasm32",
@@ -215,9 +235,15 @@ void create_library(BuildOptions *build_options)
 	}
 
 	const char *dir = str_cat(build_options->project_name, ".c3l");
+	if (file_exists(dir))
+	{
+		if (file_is_dir(dir)) exit_fail("Directory '%s' already exists.", dir);
+		exit_fail("Path '%s' exists and is not a directory.", dir);
+	}
+
 	if (!dir_make(dir))
 	{
-		exit_fail("Could not create directory %s.", dir);
+		exit_fail("Could not create directory '%s'", dir);
 	}
 
 	chdir_or_fail(build_options, dir);
@@ -231,11 +257,12 @@ void create_library(BuildOptions *build_options)
 	const char *interface_file = scratch_buffer_copy();
 	create_file_or_fail(build_options, interface_file, MAIN_INTERFACE_TEMPLATE, module_name(build_options));
 	scratch_buffer_clear();
+	mkdir_or_fail(build_options, "linked-libs");
 	for (int i = 0; i < sizeof(DEFAULT_TARGETS) / sizeof(char*); i++)
 	{
 		const char *target = DEFAULT_TARGETS[i];
 		scratch_buffer_printf(MANIFEST_TARGET, target);
-		mkdir_or_fail(build_options, target);
+		mkdir_or_fail(build_options, file_append_path_temp("linked-libs", target));
 	}
 	create_file_or_fail(build_options, "manifest.json", MANIFEST_TEMPLATE, build_options->project_name, scratch_buffer_to_string());
 	printf("The '%s' library has been set up in the directory '%s'.\n", build_options->project_name, dir);
@@ -244,21 +271,26 @@ void create_library(BuildOptions *build_options)
 void create_project(BuildOptions *build_options)
 {
 	const char *template;
+	const char *main_template;
 	if (!build_options->template || strcmp(build_options->template, "exe") == 0)
 	{
 		template = JSON_EXE;
+		main_template = MAIN_TEMPLATE;
 	}
 	else if (strcmp(build_options->template, "static-lib") == 0)
 	{
 		template = JSON_STATIC;
+		main_template = LIB_TEMPLATE;
 	}
 	else if (strcmp(build_options->template, "dynamic-lib") == 0)
 	{
 		template = JSON_DYNAMIC;
+		main_template = LIB_TEMPLATE;
 	}
 	else
 	{
 		size_t len;
+		main_template = MAIN_TEMPLATE;
 		template = file_read_all(build_options->template, &len);
 	}
 
@@ -282,14 +314,25 @@ void create_project(BuildOptions *build_options)
 	{
 		error_exit("Can't open path '%s'.", build_options->path);
 	}
+	
+	if (file_exists(build_options->project_name))
+	{
+		if (file_is_dir(build_options->project_name))
+		{
+			error_exit("Directory '%s' already exists.", build_options->project_name);
+		}
+		error_exit("Path '%s' exists and is not a directory.", build_options->project_name);
+	}
 
 	if (!dir_make(build_options->project_name))
 	{
 		error_exit("Could not create directory '%s'.", build_options->project_name);
 	}
+
 	chdir_or_fail(build_options, build_options->project_name);
 
 CREATE:
+	create_file_or_fail(build_options, ".gitignore", GITIGNORE_TEMPLATE);
 	create_file_or_fail(build_options, "LICENSE", NULL);
 	create_file_or_fail(build_options, "README.md", NULL);
 	create_file_or_fail(build_options, "project.json", template, build_options->project_name);
@@ -301,7 +344,7 @@ CREATE:
 	mkdir_or_fail(build_options, "src");
 	chdir_or_fail(build_options, "src");
 
-	create_file_or_fail(build_options, "main.c3", MAIN_TEMPLATE, module_name(build_options));
+	create_file_or_fail(build_options, "main.c3", main_template, module_name(build_options));
 	chdir_or_fail(build_options, "..");
 	mkdir_or_fail(build_options, "test");
 
@@ -416,7 +459,7 @@ static void exit_fail(const char *fmt, ...)
 	va_start(list, fmt);
 	vfprintf(stderr, fmt, list);
 	va_end(list);
-	fputs("", stderr);
+	fputs("\n", stderr);
 	exit_compiler(EXIT_FAILURE);
 }
 
@@ -430,7 +473,7 @@ static void exit_fail(const char *fmt, ...)
 	}
 	vfprintf(stderr, fmt, list);
 	va_end(list);
-	fputs("", stderr);
+	fputs("\n", stderr);
 	exit_compiler(EXIT_FAILURE);
 }
 

@@ -5,203 +5,47 @@
 // Code based off Gregory Pakosz's whereami.
 
 #include "whereami.h"
+#include "lib.h"
 #include "common.h"
 
+#define MAX_EXE_PATH 4096
+
 #if PLATFORM_WINDOWS
+#include <wchar.h>
 #include <windows.h>
-#endif
 
-#include <stdlib.h>
-
-#ifndef NOINLINE
-#if defined(_MSC_VER)
-#define NOINLINE __declspec(noinline)
-#elif defined(__GNUC__)
-#define NOINLINE __attribute__((noinline))
-#else
-#error unsupported compiler
-#endif
-#endif
-
-#if defined(_MSC_VER)
-#define RETURN_ADDRESS() _ReturnAddress()
-#elif defined(__GNUC__)
-#define RETURN_ADDRESS() __builtin_extract_return_addr(__builtin_return_address(0))
-#else
-#error unsupported compiler
-#endif
-
-#if PLATFORM_WINDOWS
-
-#if defined(_MSC_VER)
-#pragma warning(push, 3)
-#endif
-
-#include <intrin.h>
-
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
-static int get_module_path_(HMODULE module, char *out, int capacity, int *dirname_length)
+static int get_executable_path_raw(char *buffer)
 {
-	wchar_t buffer1[MAX_PATH];
-	wchar_t buffer2[MAX_PATH];
-	wchar_t *path = NULL;
-	int length = -1;
+	wchar_t buffer1[MAX_EXE_PATH];
+	wchar_t buffer2[MAX_EXE_PATH];
+	DWORD size = GetModuleFileNameW(NULL, buffer1, MAX_EXE_PATH);
+	if (!size) error_exit("Failed to get module path.");
+	if (size == MAX_EXE_PATH) error_exit("Module path too long");
+	if (!_wfullpath(buffer2, buffer1, MAX_EXE_PATH)) error_exit("Failed to get the full module path.");
+	int length_ = (int)wcslen(buffer2);
 
-	for (;;)
-	{
-		DWORD size;
-		int length_, length__;
-
-		size = GetModuleFileNameW(module, buffer1, sizeof(buffer1) / sizeof(buffer1[0]));
-
-		if (size == 0)
-		{
-			break;
-		}
-		else if (size == (DWORD)(sizeof(buffer1) / sizeof(buffer1[0])))
-		{
-			DWORD size_ = size;
-			do
-			{
-				wchar_t *path_;
-
-				path_ = (wchar_t *) realloc(path, sizeof(wchar_t) * size_ * 2);
-				if (!path_)
-				{
-					break;
-				}
-				size_ *= 2;
-				path = path_;
-				size = GetModuleFileNameW(module, path, size_);
-			} while (size == size_);
-
-			if (size == size_)
-			{
-				break;
-			}
-		}
-		else
-		{
-			path = buffer1;
-		}
-
-		if (!_wfullpath(buffer2, path, MAX_PATH))
-		{
-			break;
-		}
-		length_ = (int) wcslen(buffer2);
-		length__ = WideCharToMultiByte(CP_UTF8, 0, buffer2, length_, out, capacity, NULL, NULL);
-
-		if (length__ == 0)
-		{
-			length__ = WideCharToMultiByte(CP_UTF8, 0, buffer2, length_, NULL, 0, NULL, NULL);
-		}
-		if (length__ == 0)
-		{
-			break;
-		}
-
-		if (length__ <= capacity && dirname_length)
-		{
-			int i;
-
-			for (i = length__ - 1; i >= 0; --i)
-			{
-				if (out[i] == '\\')
-				{
-					*dirname_length = i;
-					break;
-				}
-			}
-		}
-
-		length = length__;
-
-		break;
-	}
-
-	if (path != buffer1)
-	{
-		free(path);
-	}
-
+	int length = WideCharToMultiByte(CP_UTF8, 0, buffer2, length_, buffer, MAX_EXE_PATH, NULL, NULL);
+	if (!length || length == MAX_EXE_PATH) error_exit("Failed to convert module path.");
+	buffer[length] = 0;
 	return length;
 }
 
-NOINLINE
-int get_executable_path_raw(char *out, int capacity, int *dirname_length)
-{
-	return get_module_path_(NULL, out, capacity, dirname_length);
-}
-
-
-#elif defined(__linux__) || defined(__CYGWIN__) || defined(__sun) || defined(USE_PROC_SELF_EXE)
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#if defined(__linux__)
-
-#include <linux/limits.h>
-
-#else
-#include <limits.h>
-#endif
-#ifndef __STDC_FORMAT_MACROS
-#define __STDC_FORMAT_MACROS
-#endif
-
-#include <inttypes.h>
+#elif defined(__linux__)
 
 #if !defined(PROC_SELF_EXE)
-#if defined(__sun)
-#define PROC_SELF_EXE "/proc/self/path/a.out"
-#else
 #define PROC_SELF_EXE "/proc/self/exe"
 #endif
-#endif
 
-static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
+
+static int get_executable_path_raw(char *out)
 {
-	char buffer[PATH_MAX];
-	char *resolved = NULL;
-	int length = -1;
-
-	for (;;)
-	{
-		resolved = realpath(PROC_SELF_EXE, buffer);
-		if (!resolved)
-		{
-			break;
-		}
-
-		length = (int) strlen(resolved);
-		if (length <= capacity)
-		{
-			memcpy(out, resolved, length);
-
-			if (dirname_length)
-			{
-				int i;
-
-				for (i = length - 1; i >= 0; --i)
-				{
-					if (out[i] == '/')
-					{
-						*dirname_length = i;
-						break;
-					}
-				}
-			}
-		}
-
-		break;
-	}
-
+	char buffer[MAX_EXE_PATH];
+	char *resolved = realpath(PROC_SELF_EXE, buffer);
+	if (!resolved) error_exit("Failed to retrieve executable path");
+	int length = (int)strlen(resolved);
+	if (length >= MAX_EXE_PATH) error_exit("Executable path too long");
+	memcpy(out, resolved, length);
+	out[length] = 0;
 	return length;
 }
 
@@ -210,64 +54,23 @@ static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 #define _DARWIN_BETTER_REALPATH
 
 #include <mach-o/dyld.h>
-#include <limits.h>
 #include <string.h>
 
-#include "lib.h"
-
-static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
+static int get_executable_path_raw(char *out)
 {
-	char buffer1[PATH_MAX];
-	char buffer2[PATH_MAX];
-	char *path = buffer1;
-	char *resolved = NULL;
-	int length = -1;
+	assert(out);
+	char buffer1[MAX_EXE_PATH];
+	char buffer2[MAX_EXE_PATH];
 
-	for (;;)
-	{
-		uint32_t size = (uint32_t) sizeof(buffer1);
-		if (_NSGetExecutablePath(path, &size) == -1)
-		{
-			path = (char *) cmalloc(size);
-			if (!_NSGetExecutablePath(path, &size))
-			{
-				break;
-			}
-		}
+	uint32_t size = MAX_EXE_PATH;
+	if (_NSGetExecutablePath(buffer1, &size) == -1) error_exit("Executable path too long");
+	char *resolved = realpath(buffer1, buffer2);
+	if (!resolved) error_exit("Failed to retrieve executable path");
 
-		resolved = realpath(path, buffer2);
-		if (!resolved)
-		{
-			break;
-		}
-
-		length = (int) strlen(resolved);
-		if (length <= capacity)
-		{
-			memcpy(out, resolved, length);
-
-			if (dirname_length)
-			{
-				int i;
-
-				for (i = length - 1; i >= 0; --i)
-				{
-					if (out[i] == '/')
-					{
-						*dirname_length = i;
-						break;
-					}
-				}
-			}
-		}
-
-		break;
-	}
-
-	if (path != buffer1)
-	{
-		free(path);
-	}
+	int length = (int)strlen(resolved);
+	if (length >= MAX_EXE_PATH) error_exit("Executable path too long");
+	memcpy(out, resolved, length);
+	out[length] = 0;
 	return length;
 }
 
@@ -283,58 +86,21 @@ static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 #define PROC_SELF_EXE "/proc/self/exefile"
 #endif
 
-static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
+static int get_executable_path_raw(char *out)
 {
-	char buffer1[PATH_MAX];
-	char buffer2[PATH_MAX];
-	char *resolved = NULL;
-	FILE *self_exe = NULL;
-	int length = -1;
-
-	for (;;)
-	{
-		self_exe = fopen(PROC_SELF_EXE, "r");
-		if (!self_exe)
-		{
-			break;
-		}
-
-		if (!fgets(buffer1, sizeof(buffer1), self_exe))
-		{
-			break;
-		}
-
-		resolved = realpath(buffer1, buffer2);
-		if (!resolved)
-		{
-			break;
-		}
-
-		length = (int) strlen(resolved);
-		if (length <= capacity)
-		{
-			memcpy(out, resolved, length);
-
-			if (dirname_length)
-			{
-				int i;
-
-				for (i = length - 1; i >= 0; --i)
-				{
-					if (out[i] == '/')
-					{
-						*dirname_length = i;
-						break;
-					}
-				}
-			}
-		}
-
-		break;
-	}
-
+	assert(out);
+	char buffer1[MAX_EXE_PATH];
+	char buffer2[MAX_EXE_PATH];
+	FILE *self_exe = fopen(PROC_SELF_EXE, "r");
+	if (!self_exe) error_exit("Failed to find the executable path");
+	if (!fgets(buffer1, PATH_MAX, self_exe)) error_exit("Failed to find the executable path");
+	char *resolved = realpath(buffer1, buffer2);
+	if (!resolved) error_exit("Failed to resolve the executable path");
+	int length = (int) strlen(resolved);
+	if (length >= MAX_EXE_PATH) error_exit("Executable path too long");
+	memcpy(out, resolved, length);
+	out[length] = 0;
 	fclose(self_exe);
-
 	return length;
 }
 
@@ -348,62 +114,65 @@ static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 #include <sys/sysctl.h>
 #include <dlfcn.h>
 
-static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
+static int get_executable_path_raw(char *out)
 {
-	char buffer1[PATH_MAX];
-	char buffer2[PATH_MAX];
-	char *path = buffer1;
-	char *resolved = NULL;
-	int length = -1;
-
-	for (;;)
-	{
+	char buffer1[MAX_EXE_PATH];
+	char buffer2[MAX_EXE_PATH];
 #if defined(__NetBSD__)
-		int mib[4] = { CTL_KERN, KERN_PROC_ARGS, -1, KERN_PROC_PATHNAME };
+	int mib[4] = { CTL_KERN, KERN_PROC_ARGS, -1, KERN_PROC_PATHNAME };
 #else
-		int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
+	int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
 #endif
-		size_t size = sizeof(buffer1);
+	size_t size = MAX_EXE_PATH;
 
-		if (sysctl(mib, (u_int) (sizeof(mib) / sizeof(mib[0])), path, &size, NULL, 0) != 0)
-		{
-			break;
-		}
-
-		resolved = realpath(path, buffer2);
-		if (!resolved)
-		{
-			break;
-		}
-
-		length = (int) strlen(resolved);
-		if (length <= capacity)
-		{
-			memcpy(out, resolved, length);
-
-			if (dirname_length)
-			{
-				int i;
-
-				for (i = length - 1; i >= 0; --i)
-				{
-					if (out[i] == '/')
-					{
-						*dirname_length = i;
-						break;
-					}
-				}
-			}
-		}
-
-		break;
-	}
-
-	if (path != buffer1)
+	if (sysctl(mib, (u_int) (sizeof(mib) / sizeof(mib[0])), buffer1, &size, NULL, 0) != 0)
 	{
-		free(path);
+		error_exit("Failed to get the executable path");
 	}
 
+	char *resolved = realpath(buffer1, buffer2);
+	if (!resolved) error_exit("Failed to resolve the executable path");
+	int length = (int)strlen(resolved);
+
+	if (length >= MAX_EXE_PATH) error_exit("Executable path too long");
+	memcpy(out, resolved, length);
+	out[length] = 0;
+	return length;
+}
+
+#elif defined(__OpenBSD__)
+// this target doesn't have a reliable way to get full path to the executable
+// a partially functional fix is implemented
+
+extern const char *compiler_exe_name;
+
+static int get_executable_path_raw(char *out)
+{
+	char tmp[PATH_MAX] = { 0 };
+	if (compiler_exe_name[0] == '.')
+		realpath(compiler_exe_name, tmp);
+	else if (compiler_exe_name[0] == '/')
+		strcpy(tmp, compiler_exe_name);
+	else if (strcmp(compiler_exe_name, "c3c") == 0) {
+		char *path = getenv("PATH");
+		int len = 0;
+		do {
+			len = strcspn(path, ":");
+			strncat(tmp, path, len);
+			tmp[len] = '/';
+			strcat(tmp, "c3c");
+			if (realpath(tmp, tmp) != NULL) break;
+			memset(tmp, 0, len + 4); // to account for /c3c
+			path += len + 1;
+		} while (path[-1]);
+		if (path[-1] == 0) error_exit("Unable to find full path of the executable");
+	} else error_exit("Unable to find full path of the executable");
+	
+	int length = strlen(tmp);
+	if (length >= MAX_EXE_PATH) error_exit("Executable path too long");
+	memcpy(out, tmp, length);
+	out[length] = 0;
+	
 	return length;
 }
 
@@ -413,29 +182,31 @@ static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 
 #endif
 
-char *find_executable_path(void)
+static char buffer[MAX_EXE_PATH];
+static bool path_found = false;
+const char *find_executable_path(void)
 {
-	int len = get_executable_path_raw(NULL, 0, NULL);
-	if (len < 0) return "";
-	char *path = malloc((unsigned)len + 1);
-	get_executable_path_raw(path, len, NULL);
-	path[len] = '\0';
+	if (path_found) return buffer;
+	int len = get_executable_path_raw(buffer);
+	path_found = true;
+	// Convert backslashes to forward slashes,
+	// but consider the case of d:\foo?
 	for (int i = 0; i < len; ++i)
 	{
-		if ('\\' == path[i]) path[i] = '/';
+		if ('\\' == buffer[i]) buffer[i] = '/';
 	}
 	for (int i = len - 1; i >= 0; i--)
 	{
-		switch (path[i])
+		switch (buffer[i])
 		{
 			case '/':
 			case '\\':
-				path[i + 1] = '\0';
-				return path;
+				buffer[i] = '\0';
+				return buffer;
 			default:
 				break;
 		}
 	}
-	path[len] = '\0';
-	return path;
+	buffer[0] = 0;
+	return buffer;
 }

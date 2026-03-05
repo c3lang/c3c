@@ -6,7 +6,6 @@
 #include "../utils/lib.h"
 #include "../build/build.h"
 #include "compiler.h"
-#include "enums.h"
 #include "target.h"
 #include "utils/malloc.h"
 #include "subprocess.h"
@@ -16,11 +15,10 @@ typedef double Real;
 typedef uint64_t ByteSize;
 typedef uint32_t TypeSize;
 typedef int32_t IndexDiff;
-typedef int32_t ArrayIndex;
+typedef int64_t ArrayIndex;
 typedef uint16_t StructIndex;
 typedef uint32_t AlignSize;
-typedef int32_t ScopeId;
-typedef uint32_t ArraySize;
+typedef uint64_t ArraySize;
 typedef uint64_t BitSize;
 typedef uint16_t FileId;
 
@@ -34,44 +32,62 @@ typedef uint16_t FileId;
 #define UINT12_MAX        4095
 #define UINT20_MAX        1048575U
 
-#define MAX_ARRAYINDEX INT32_MAX
+#define MAX_ARRAYINDEX INT64_MAX
 #define MAX_FIXUPS 0xFFFFF
 #define MAX_HASH_SIZE (512 * 1024 * 1024)
-#define INVALID_SPAN ((SourceSpan){ .row = 0 })
 #define MAX_SCOPE_DEPTH 0x100
-#define MAX_STRING_BUFFER 0x10000
 #define INITIAL_SYMBOL_MAP 0x10000
 #define INITIAL_GENERIC_SYMBOL_MAP 0x1000
 #define MAX_INCLUDE_DIRECTIVES 2048
-#define MAX_MACRO_ITERATIONS 0xFFFFFF
 #define MAX_PARAMS 255
+#define MAX_VAARGS 512
 #define MAX_BITSTRUCT 0x1000
 #define MAX_MEMBERS ((StructIndex)1) << 15
 #define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
+#define MAX_GENERIC_DEPTH 32
 #define MAX_PRIORITY 0xFFFF
-#define MAX_TYPE_SIZE UINT32_MAX
+#define MAX_TYPE_SIZE (2U << 30)
 #define MAX_GLOBAL_DECL_STACK (65536)
+#define MAX_MODULE_NAME 31
+#define MAX_MODULE_PATH 63
+#define MAX_IDENTIFIER_LENGTH 127
+#define MAX_MACRO_RECURSION_DEPTH 128
 #define MEMCMP_INLINE_REGS 8
 #define UINT128_MAX ((Int128) { UINT64_MAX, UINT64_MAX })
 #define INT128_MAX ((Int128) { INT64_MAX, UINT64_MAX })
 #define INT128_MIN ((Int128) { (uint64_t)INT64_MIN, 0 })
 #define STDIN_FILE_ID 0xFFFF
 #define ABI_TYPE_EMPTY ((AbiType) { .type = NULL })
-#define RANGE_EXTEND_PREV(x)  do { (x)->span = extend_span_with_token((x)->span, c->prev_span); } while (0)
-#define PRINT_ERROR_AT(_node, ...) print_error_at((_node)->span, __VA_ARGS__)
-#define RETURN_PRINT_ERROR_AT(_val, _node, ...) do { print_error_at((_node)->span, __VA_ARGS__); return _val; } while (0)
-#define PRINT_ERROR_HERE(...) print_error_at(c->span, __VA_ARGS__)
-#define RETURN_PRINT_ERROR_HERE(...) do { print_error_at(c->span, __VA_ARGS__); return false; } while (0)
-#define PRINT_ERROR_LAST(...) print_error_at(c->prev_span, __VA_ARGS__)
-#define RETURN_PRINT_ERROR_LAST(...) do { print_error_at(c->prev_span, __VA_ARGS__); return false; } while (0)
-#define SEMA_NOTE(_node, ...) sema_note_prev_at((_node)->span, __VA_ARGS__)
-#define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output && !compiler.build.silence_deprecation) print_error_at((_node)->span, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
- sema_note_prev_at((_node)->span, __VA_ARGS__); } while (0)
+#define RANGE_EXTEND_PREV(x)  do { *sourcelocptr((x)->loc) = extend_loc_with_token(sourcelocptr((x)->loc), &c->prev_span); } while (0)
+#define PRINT_ERROR_AT(_node, ...) print_error_at((_node)->loc, __VA_ARGS__)
+#define RETURN_PRINT_ERROR_AT(_val, _node, ...) do { print_error_at((_node)->loc, __VA_ARGS__); return _val; } while (0)
+#define PRINT_ERROR_HERE(...) print_error_at_loc(&c->span, __VA_ARGS__)
+#define RETURN_PRINT_ERROR_HERE(...) do { print_error_at_loc(&c->span, __VA_ARGS__); return false; } while (0)
+#define PRINT_ERROR_LAST(...) print_error_at_loc(&c->prev_span, __VA_ARGS__)
+#define RETURN_PRINT_ERROR_LAST(...) do { print_error_at_loc(&c->prev_span, __VA_ARGS__); return false; } while (0)
+#define SEMA_NOTE(_node, ...) sema_note_prev_at((_node)->loc, __VA_ARGS__)
+#define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output && compiler.build.warnings.deprecation > WARNING_SILENT) print_error_at((_node)->loc, __VA_ARGS__); if (compiler.build.warnings.deprecation > WARNING_SILENT) \
+ print_deprecation_at((_node)->loc, __VA_ARGS__); } while (0)
+#define PRINT_DEPRECATED_AT(span__, ...) do { if (compiler.build.test_output && compiler.build.warnings.deprecation > WARNING_SILENT) print_error_at(span__, __VA_ARGS__); if (compiler.build.warnings.deprecation > WARNING_SILENT) \
+print_deprecation_at(span__, __VA_ARGS__); } while (0)
+#define PRINT_DEPRECATED_AT_LOC(loc__, ...) do { if (compiler.build.test_output && compiler.build.warnings.deprecation > WARNING_SILENT) print_error_at_loc(loc__, __VA_ARGS__); if (compiler.build.warnings.deprecation > WARNING_SILENT) \
+print_deprecation_at_loc(loc__, __VA_ARGS__); } while (0)
 
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
 #define OUTF(...) do { if (!compiler.build.silent) printf(__VA_ARGS__); } while(0)
 #define OUTN(str__) do { if (!compiler.build.silent) puts(str__); } while(0)
+#ifdef NDEBUG
+#define ASSERT_SPANF(node__, check__, format__, ...) do { (void)(check__); } while(0)
+#define ASSERT_SPAN(node__, check__) do { (void)(check__); } while(0)
+#define ASSERT_LOC(node__, check__) do { (void)(check__);} while(0)
+#define ASSERT_AT(span__, check__) do { (void)(check__);} while(0)
+#else
+#define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->loc); eprintf(format__, __VA_ARGS__); ASSERT(check__); } } while(0)
+#define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->loc); ASSERT(check__); } } while(0)
+#define ASSERT_LOC(node__, check__) do { if (!(check__)) { assert_print_line((node__)->loc); ASSERT(check__); } } while(0)
+#define ASSERT_AT(span__, check__) do { if (!(check__)) { assert_print_line(span__); ASSERT(check__); } } while(0)
+#endif
 
 #define INVALID_PTR ((void*)(uintptr_t)0xAAAAAAAAAAAAAAAA)
 
@@ -82,6 +98,8 @@ typedef struct Expr_ Expr;
 typedef struct Module_ Module;
 typedef struct Type_ Type;
 typedef Type CanonicalType;
+typedef Type FlatType;
+typedef Type LoweredType;
 typedef struct Signature_ Signature;
 typedef struct ConstInitializer_ ConstInitializer;
 typedef struct CompilationUnit_ CompilationUnit;
@@ -89,6 +107,7 @@ typedef unsigned AstId;
 typedef unsigned ExprId;
 typedef unsigned DeclId;
 typedef unsigned TypeInfoId;
+typedef unsigned SourceLocId;
 typedef struct SemaContext_ SemaContext;
 
 typedef struct Int128_
@@ -108,6 +127,22 @@ typedef struct
 	Real f;
 	TypeKind type;
 } Float;
+
+typedef struct
+{
+	uint32_t count;
+	uint32_t capacity;
+	uint32_t max_load;
+	DeclId *methods;
+} MethodTable;
+
+typedef struct
+{
+	uint32_t count;
+	uint32_t capacity;
+	uint32_t max_load;
+	DeclId *entries;
+} DeclTable;
 
 struct ConstInitializer_
 {
@@ -136,6 +171,22 @@ struct ConstInitializer_
 	};
 };
 
+
+typedef struct
+{
+	FileId file_id;
+	uint16_t col;
+	uint32_t offset;
+	uint32_t length;
+	uint32_t row;
+} SourceLoc;
+
+
+typedef struct InliningSpan_
+{
+	SourceLocId loc;
+	struct InliningSpan_ *prev;
+} InliningSpan;
 
 typedef struct
 {
@@ -181,20 +232,7 @@ typedef struct
 	const char *full_path;
 } File;
 
-typedef union
-{
-	struct
-	{
-		FileId file_id;
-		unsigned char length;
-		unsigned char col;
-		uint32_t row;
-	};
-	uint64_t a;
-} SourceSpan;
 
-
-static_assert(sizeof(SourceSpan) == 8, "Expected 8 bytes");
 
 typedef struct
 {
@@ -239,7 +277,7 @@ typedef struct
 
 typedef struct Path_
 {
-	SourceSpan span;
+	SourceLocId loc;
 	const char *module;
 	uint32_t len;
 } Path;
@@ -267,6 +305,7 @@ typedef struct
 	bool is_pure : 1;
 	bool noreturn : 1;
 	bool always_const : 1;
+	bool is_simd : 1;
 	uint8_t format : 8;
 } CalleeAttributes;
 
@@ -293,6 +332,7 @@ struct Type_
 			uint16_t tb_type;
 		};
 	};
+	ByteSize size;
 	void *backend_typeid;
 	void *backend_debug_type;
 	union
@@ -315,13 +355,14 @@ struct Type_
 
 struct TypeInfo_
 {
+	SourceLocId loc;
 	ResolveStatus resolve_status : 3;
 	TypeInfoKind kind : 6;
 	bool optional : 1;
 	bool in_def : 1;
+	bool is_simd : 1;
 	TypeInfoCompressedKind subtype : 4;
 	Type *type;
-	SourceSpan span;
 	union
 	{
 		struct
@@ -350,7 +391,7 @@ typedef struct
 {
 	Path *path;
 	const char *name;
-	SourceSpan span;
+	SourceLocId loc;
 	AttributeType attr_kind : 8;
 	bool is_custom : 1;
 	Expr **exprs;
@@ -363,7 +404,7 @@ typedef struct
 	const char **links;
 	const char *section;
 	const char *wasm_module;
-	SourceSpan overload;
+	SourceLocId overload;
 } ResolvedAttrData;
 
 typedef struct
@@ -436,6 +477,7 @@ typedef struct VarDecl_
 	bool is_temp : 1;
 	bool copy_const : 1;
 	bool defaulted : 1;
+	bool safe_infer : 1;
 	union
 	{
 		Expr *init_expr;
@@ -478,9 +520,16 @@ typedef struct VarDecl_
 
 typedef struct
 {
-	Expr **args;
-	uint32_t ordinal;
-	DeclId parent;
+	bool is_raw;
+	union
+	{
+		struct
+		{
+			Expr **associated;
+			uint32_t inner_ordinal;
+		};
+		Expr *value;
+	};
 } EnumConstantDecl;
 
 
@@ -514,10 +563,10 @@ typedef struct
 	OperatorOverload operator : 6;
 	Signature signature;
 	AstId body;
-	AstId docs;
+	DeclId docs;
 	union
 	{
-		struct
+		struct // Function related
 		{
 			bool attr_inline : 1;
 			bool attr_noinline : 1;
@@ -545,7 +594,7 @@ typedef struct
 				Decl **lambda_ct_parameters;
 			};
 		};
-		struct
+		struct // Macro related
 		{
 			DeclId body_param;
 			CompilationUnit *unit;
@@ -553,12 +602,39 @@ typedef struct
 	};
 } FuncDecl;
 
+typedef struct
+{
+	Signature signature;
+	DeclId docs;
+} FnTypeDecl;
+
 
 typedef struct
 {
 	Decl **params;
 	Attr **attrs;
 } AttrDecl;
+
+typedef struct
+{
+	const char **parameters;
+	unsigned id;
+	Expr **requires;
+	Decl **instances;
+	Decl *owner;
+	Decl **decls;
+	Decl **conditional_decls;
+} GenericDecl;
+
+typedef struct
+{
+	unsigned id;
+	Decl **templates;
+	Decl **params;
+	const char *name_suffix;
+	const char *cname_suffix;
+	Decl **generated_decls;
+} GenericInstanceDecl;
 
 typedef struct
 {
@@ -580,6 +656,39 @@ typedef struct
 	};
 } DefineDecl;
 
+typedef struct
+{
+	const char *name;
+	SourceLocId loc;
+	InOutModifier modifier : 4;
+	bool by_ref : 1;
+} ContractParam;
+
+typedef struct
+{
+	Expr *decl_exprs;
+	const char *comment;
+	const char *expr_string;
+} ExprContract;
+
+typedef struct
+{
+	Expr **requires;
+	Expr **ensures;
+	ContractParam *params;
+	bool pure;
+	union
+	{
+		Expr **opt_returns;
+		Decl **opt_returns_resolved;
+	};
+} ContractsDecl;
+
+typedef struct
+{
+	Path *alias_path;
+	Module *module;
+} ModuleAliasDecl;
 
 typedef struct
 {
@@ -595,11 +704,17 @@ typedef struct
 	AstId parent;
 } LabelDecl;
 
+typedef struct
+{
+	DeclId overloads[OVERLOADS_COUNT + 1];
+	DeclTable method_table;
+	Decl **methods;
+} Methods;
+
 typedef struct Decl_
 {
 	const char *name;
 	const char *extname;
-	SourceSpan span;
 	DeclKind decl_kind : 7;
 	ResolveStatus resolve_status : 3;
 	Visibility visibility : 3;
@@ -624,10 +739,16 @@ typedef struct Decl_
 	bool no_strip : 1;
 	bool is_cond : 1;
 	bool is_if : 1;
+	bool is_body_checked : 1;
 	bool attr_nopadding : 1;
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
+	bool attr_structlike : 1;
+	bool attr_constinit : 1;
+	bool is_template : 1;
+	bool is_templated : 1;
+	bool is_method_checked : 1;
 	union
 	{
 		void *backend_ref;
@@ -635,11 +756,20 @@ typedef struct Decl_
 		int tb_register;
 		void *backend_value;
 		void *tb_symbol;
-		bool in_init;
+		struct
+		{
+			bool in_init;
+		};
 	};
+	SourceLocId loc;
 	AlignSize offset;
 	AlignSize padding;
 	AlignSize alignment;
+	union
+	{
+		DeclId generic_id;
+		DeclId instance_id;
+	};
 	struct CompilationUnit_ *unit;
 	union
 	{
@@ -653,12 +783,16 @@ typedef struct Decl_
 		struct
 		{
 			TypeInfo **interfaces;
-			Decl **methods;
+			Methods *method_table;
 			union
 			{
 				// Enums and Fault
 				EnumDecl enums;
-				TypeInfo *distinct;
+				struct
+				{
+					TypeInfo *distinct;
+					Expr *distinct_align;
+				};
 				// Unions, Struct, Bitstruct use strukt
 				StructDecl strukt;
 				Decl **interface_methods;
@@ -670,17 +804,21 @@ typedef struct Decl_
 		Ast *ct_echo_decl;
 		Decl** ct_else_decl;
 		Decl** decls;
+		ContractsDecl contracts_decl;
 		DefineDecl define_decl;
+		ModuleAliasDecl module_alias_decl;
 		EnumConstantDecl enum_constant;
 		ExecDecl exec_decl;
 		Expr* expand_decl;
-		Signature fntype_decl;
+		FnTypeDecl fntype_decl;
 		FuncDecl func_decl;
 		ImportDecl import;
 		IncludeDecl include;
 		LabelDecl label;
 		TypeAliasDecl type_alias_decl;
 		VarDecl var;
+		GenericDecl generic_decl;
+		GenericInstanceDecl instance_decl;
 	};
 } Decl;
 
@@ -692,16 +830,17 @@ typedef enum RangeType
 	RANGE_CONST_END,
 	RANGE_CONST_LEN,
 	RANGE_CONST_RANGE,
+	RANGE_SINGLE_ELEMENT,
 } RangeType;
+
 
 typedef struct
 {
 	ResolveStatus status : 3;
-	RangeType range_type;
+	RangeType range_type : 4;
 	bool start_from_end : 1;
 	bool end_from_end : 1;
 	bool is_len : 1;
-	bool is_range : 1;
 	bool is_optional : 1;
 	union
 	{
@@ -728,6 +867,7 @@ typedef struct
 	ExprId then_expr; // May be null for elvis!
 	ExprId else_expr;
 	bool grouped : 1;
+	bool is_const : 1;
 } ExprTernary;
 
 typedef struct
@@ -743,6 +883,7 @@ typedef struct
 	Expr* expr;
 	UnaryOp operator : 8;
 	bool no_wrap : 1;
+	bool no_read : 1;
 } ExprUnary;
 
 
@@ -795,6 +936,8 @@ typedef struct
 {
 	ExprId expr;
 	SubscriptIndex index;
+	bool no_check;
+	bool ref;
 } ExprSubscript;
 
 typedef struct
@@ -824,7 +967,6 @@ typedef struct
 
 typedef struct
 {
-	bool raw_offset : 1;
 	ExprId ptr;
 	ExprId offset;
 } ExprPointerOffset;
@@ -845,7 +987,7 @@ typedef struct
 typedef struct
 {
 	ExprId parent;
-	Expr **parmeters;
+	Expr **parameters;
 } ExprGenericIdent;
 
 typedef struct
@@ -858,6 +1000,8 @@ typedef struct
 {
 	Expr *parent;
 	Expr *child;
+	bool is_lvalue;
+	bool is_ref;
 } ExprUnresolvedAccess;
 
 typedef struct DesignatorElement_
@@ -885,7 +1029,7 @@ typedef struct
 typedef struct
 {
 	const char *name;
-	SourceSpan name_span;
+	SourceLocId name_span;
 	Expr *value;
 } ExprNamedArgument;
 
@@ -904,7 +1048,7 @@ typedef struct
 
 typedef struct
 {
-	SourceSpan loc;
+	SourceLocId loc;
 	Expr *inner;
 } ExprDefaultArg;
 
@@ -913,7 +1057,6 @@ typedef struct
 	const char *identifier;
 	bool is_ref : 1;
 	bool is_rvalue : 1;
-	Decl *decl;
 } ExprIdentifierRaw;
 
 typedef struct
@@ -940,6 +1083,7 @@ typedef struct
 	unsigned short index : 16;
 	AsmOffsetType offset_type : 6;
 	bool neg_offset : 1;
+	bool resolved : 1;
 	union
 	{
 		struct {
@@ -1036,7 +1180,7 @@ typedef struct
 typedef struct
 {
 	const char *name;
-	SourceSpan span;
+	SourceLocId loc;
 } Label;
 
 typedef struct
@@ -1108,8 +1252,15 @@ typedef struct
 {
 	Expr *inner;
 	SemaContext *context;
-	SourceSpan inline_at;
+	SourceLocId inline_at;
+	bool is_ref;
 } ExprOtherContext;
+
+typedef struct
+{
+	Expr **list;
+	Expr *splat;
+} ExprDesignatedInit;
 
 typedef struct
 {
@@ -1138,7 +1289,7 @@ typedef struct
 struct Expr_
 {
 	Type *type;
-	SourceSpan span;
+	SourceLocId loc;
 	ExprKind expr_kind : 8;
 	ResolveStatus resolve_status : 4;
 	union {
@@ -1151,6 +1302,7 @@ struct Expr_
 		ExprBuiltin builtin_expr;                   // 16
 		ExprCall call_expr;                         // 40
 		ExprCast cast_expr;                         // 12
+		ExprContract contract_expr;
 		ExprUnresolvedCatch unresolved_catch_expr;  // 24
 		ExprCatch catch_expr;                       // 24
 		Expr** cond_expr;                           // 8
@@ -1162,7 +1314,8 @@ struct Expr_
 		ExprCtCall ct_call_expr;                    // 24
 		ExprIdentifierRaw ct_ident_expr;            // 24
 		Decl *decl_expr;                            // 8
-		Expr **designated_init_list;                // 8
+		Decl *iota_decl_expr;                       // 8
+		ExprDesignatedInit designated_init;         // 16
 		ExprDesignator designator_expr;             // 16
 		ExprNamedArgument named_argument_expr;
 		ExprEmbedExpr embed_expr;                   // 16
@@ -1210,7 +1363,7 @@ struct Expr_
 	};
 };
 
-static_assert(sizeof(void*) != 8 || sizeof(Expr) == 56, "Expr not expected size");
+static_assert(sizeof(void*) != 8 || sizeof(Expr) == 48, "Expr not expected size");
 
 typedef struct
 {
@@ -1223,6 +1376,7 @@ typedef struct
 	Expr *expr; // May be NULL
 	AstId cleanup;
 	AstId cleanup_fail;
+	bool cleanup_catch;
 	BlockExit** block_exit_ref; // For block exits
 } AstReturnStmt;
 
@@ -1442,51 +1596,9 @@ typedef struct
 } AstAssertStmt;
 
 
-typedef struct
-{
-	bool resolved;
-	union
-	{
-		Expr *expr;
-		Decl *decl;
-	};
-} AstDocFault;
-
-typedef struct AstDocDirective_
-{
-	ContractKind kind : 4;
-	union
-	{
-		struct
-		{
-			const char *name;
-			SourceSpan span;
-			InOutModifier modifier : 4;
-			bool by_ref : 1;
-		} param;
-		Ast **faults;
-		struct
-		{
-			Expr *decl_exprs;
-			const char *comment;
-			const char *expr_string;
-		} contract;
-		struct
-		{
-			const char *directive_name;
-			const char *rest_of_line;
-		} generic;
-		struct
-		{
-			const char *string;
-			size_t strlen;
-		};
-	};
-} AstContractStmt;
-
 typedef struct Ast_
 {
-	SourceSpan span;
+	SourceLocId loc;
 	AstId next;
 	AstKind ast_kind : 8;
 	union
@@ -1501,8 +1613,6 @@ typedef struct Ast_
 		AstCompoundStmt compound_stmt;      // 12
 		AstId ct_compound_stmt;
 		AstContinueBreakStmt contbreak_stmt;// 24
-		AstContractStmt contract_stmt;      // 32
-		AstDocFault contract_fault;         // 24
 		AstId ct_else_stmt;                 // 4
 		AstCtTypeAssignStmt ct_type_assign_stmt;
 		AstCtForeachStmt ct_foreach_stmt;   // 40
@@ -1532,39 +1642,32 @@ typedef struct Module_
 	const char *short_path;
 	// Extname in case a module is renamed externally
 	const char *extname;
-
-	const char **parameters;
+	Decl **generic_sections;
 	bool is_external : 1;
 	bool is_c_library : 1;
 	bool is_exported : 1;
-	bool is_generic : 1;
 	bool no_extprefix : 1;
 	AnalysisStage stage : 6;
 
-	AstId contracts;
-	Decl** private_method_extensions;
 	HTable symbols;
-	struct CompilationUnit_ **units;
-	Module *generic_module;
+	CompilationUnit **units;
 	Module *parent_module;
 	Module *top_module;
-	Module **sub_modules;
 	Decl **benchmarks;
 	Decl **tests;
 	Decl **lambdas_to_evaluate;
-	const char *generic_suffix;
+	InliningSpan inlined_at;
 } Module;
 
 
 typedef struct EndJump_
 {
 	bool active;
-	SourceSpan span;
+	SourceLocId loc;
 } EndJump;
 
 typedef struct DynamicScope_
 {
-	ScopeId scope_id;
 	bool allow_dead_code : 1;
 	bool is_dead : 1;
 	bool is_poisoned : 1;
@@ -1619,39 +1722,35 @@ typedef struct
 	const char *start_row_start;
 	File *file;
 	TokenData data;
-	SourceSpan tok_span;
+	SourceLoc tok_span;
 	TokenType token_type;
 	LexMode mode;
 } Lexer;
 
-typedef struct
-{
-	uint32_t count;
-	uint32_t capacity;
-	uint32_t max_load;
-	DeclId *entries;
-} DeclTable;
 
 struct CompilationUnit_
 {
 	Module *module;
 	File *file;
 	Decl **imports;
+	Decl **module_aliases;
 	Decl **public_imports;
 	Decl **types;
 	Decl **functions;
 	Decl **lambdas;
 	Decl **enums;
 	Decl **attributes;
-	Decl **faulttypes;
 	Decl **faults;
 	const char **links;
 	Visibility default_visibility;
 	Attr *if_attr;
+	Decl *default_generic_section;
+	Decl **generic_decls;
 	bool export_by_default;
 	bool is_interface_file;
 	bool benchmark_by_default;
 	bool test_by_default;
+	bool module_generated;
 	Attr **attr_links;
 	Decl **generic_defines;
 	Decl **ct_asserts;
@@ -1666,9 +1765,9 @@ struct CompilationUnit_
 	Decl **global_decls;
 	Decl **global_cond_decls;
 	Decl *main_function;
+	Decl *error_import;
 	HTable local_symbols;
 	int lambda_count;
-	Decl **local_method_extensions;
 	TypeInfo **check_type_variable_array;
 	struct
 	{
@@ -1681,8 +1780,8 @@ typedef struct ParseContext_
 {
 	TokenData data;
 	TokenType tok;
-	SourceSpan span;
-	SourceSpan prev_span;
+	SourceLoc span;
+	SourceLoc prev_span;
 	CompilationUnit *unit;
 	Lexer lexer;
 } ParseContext;
@@ -1693,8 +1792,9 @@ typedef struct
 	bool ensures : 1;
 	bool pure : 1;
 	bool in_no_eval : 1;
+	bool is_naked_fn : 1;
 	bool ignore_deprecation : 1;
-	SourceSpan in_if_resolution;
+	SourceLocId in_if_resolution;
 	Decl **opt_returns;
 	union
 	{
@@ -1709,12 +1809,6 @@ typedef struct JumpTarget_
 	AstId defer;
 } JumpTarget;
 
-typedef struct InliningSpan_
-{
-	SourceSpan span;
-	struct InliningSpan_ *prev;
-} InliningSpan;
-
 struct SemaContext_
 {
 	// Evaluated in this.
@@ -1724,7 +1818,6 @@ struct SemaContext_
 	CallEnv call_env;
 	Decl *current_macro;
 	InliningSpan *inlined_at;
-	ScopeId scope_id;
 	unsigned macro_call_depth;
 	// Jump tracking
 	JumpTarget break_jump;
@@ -1742,6 +1835,7 @@ struct SemaContext_
 		Type *expected_block_type;
 		Ast **block_returns;
 		Expr **macro_varargs;
+		bool macro_has_vaargs;
 		Decl **macro_params;
 		bool macro_has_ensures;
 		Decl** ct_locals;
@@ -1752,14 +1846,36 @@ struct SemaContext_
 	DynamicScope active_scope;
 	Expr *return_expr;
 	bool is_temp;
+	Decl *generic_infer;
+	Decl *generic_instance;
 };
+
+typedef enum
+{
+	ABI_TYPE_INT_24 = 1,
+	ABI_TYPE_INT_40 = 3,
+	ABI_TYPE_INT_48 = 5,
+	ABI_TYPE_INT_56 = 7,
+	ABI_TYPE_INT_VEC_2 = 9,
+	ABI_TYPE_INT_VEC_4 = 11,
+	ABI_TYPE_FLOAT_VEC_2 = 13,
+	ABI_TYPE_FLOAT_VEC_4 = 15,
+	ABI_TYPE_LONG_VEC_2 = 17,
+	ABI_TYPE_FLOAT16_VEC_2 = 19,
+	ABI_TYPE_FLOAT16_VEC_4 = 21,
+	ABI_TYPE_BFLOAT16_VEC_2 = 23,
+	ABI_TYPE_BFLOAT16_VEC_4 = 25,
+	ABI_TYPE_DOUBLE_VEC_2 = 27,
+	ABI_TYPE_DOUBLE_VEC_4 = 29,
+	ABI_TYPE_DOUBLE_VEC_8 = 31,
+} AbiSpecType;
 
 typedef struct
 {
 	union
 	{
 		Type *type;
-		uintptr_t int_bits_plus_1;
+		AbiSpecType abi_type;
 	};
 } AbiType;
 
@@ -1790,7 +1906,7 @@ typedef struct ABIArgInfo_
 			Type *lo;
 			Type *hi;
 		} coerce_expand;
-		Type *direct_coerce_type;
+		AbiType direct_coerce_type;
 		uint8_t direct_struct_expand;
 		struct
 		{
@@ -1799,26 +1915,30 @@ typedef struct ABIArgInfo_
 			Type *type;
 		} indirect;
 	};
-
+	Type *original_type;
+	ParamRewrite rewrite;
 } ABIArgInfo;
+
+typedef struct ParamInfo
+{
+	Type *type;
+	ParamRewrite rewrite;
+} ParamInfo;
 
 typedef struct FunctionPrototype_
 {
 	CallABI call_abi : 4;
 	bool raw_variadic : 1;
 	bool use_win64 : 1;
-	bool is_optional : 1;
-	bool ret_by_ref : 1;
 	bool is_resolved : 1;
 	unsigned short vararg_index;
-	Type *rtype;
-	Type **param_types;
-	Decl **param_copy;
-	Type **varargs;
-	Type *ret_by_ref_type;
-	Type *abi_ret_type;
+	RetValType ret_rewrite : 8;
+	ParamRewrite return_rewrite : 3;
+	ParamInfo return_info;
+	Type *return_result;
+	unsigned param_count;
+	unsigned short param_vacount;
 	ABIArgInfo *ret_abi_info;
-	ABIArgInfo *ret_by_ref_abi_info;
 	ABIArgInfo **abi_args;
 	ABIArgInfo **abi_varargs;
 	Type *raw_type;
@@ -1831,10 +1951,11 @@ typedef struct
 	Decl *maybe_decl;
 	Decl *found;
 	Path *path;
-	SourceSpan span;
+	SourceLocId loc;
 	const char *symbol;
 	Module *path_found;
 	bool suppress_error;
+	bool is_parameterized;
 } NameResolve;
 
 typedef struct
@@ -1850,24 +1971,25 @@ typedef struct CopyStruct_
 	bool single_static;
 	bool copy_in_use;
 	bool is_template;
+	DeclId instance_id;
 } CopyStruct;
 
 typedef struct
 {
 	const char **links;
+	bool link_math;
 } Linking;
 
 typedef struct
 {
 	bool should_print_environment;
+	bool should_print_asm;
 	Ansi ansi;
 	HTable modules;
 	Module *core_module;
 	CompilationUnit *core_unit;
 	Module **module_list;
-	Module **generic_module_list;
 	Type **type;
-	Decl **method_extensions;
 	const char *lib_dir;
 	const char **sources;
 	File **loaded_sources;
@@ -1879,9 +2001,11 @@ typedef struct
 	HTable compiler_defines;
 	HTable features;
 	Module std_module;
+	MethodTable method_extensions;
+	Type **types_with_failed_methods;
+	Decl **method_extension_list;
 	DeclTable symbols;
 	PathTable path_symbols;
-	DeclTable generic_symbols;
 	Path std_module_path;
 	Type *string_type;
 	Decl *panic_var;
@@ -1900,6 +2024,9 @@ typedef struct
 	Linking linking;
 	GlobalContext context;
 	const char *obj_output;
+	int generic_depth;
+	double exec_time;
+	double script_time;
 } CompilerState;
 
 extern CompilerState compiler;
@@ -1938,14 +2065,16 @@ extern const char *kw_typekind;
 extern const char *kw_FILE_NOT_FOUND;
 extern const char *kw_IoError;
 
+extern const char *kw_at_align;
 extern const char *kw_at_deprecated;
 extern const char *kw_at_ensure;
 extern const char *kw_at_enum_lookup;
+extern const char *kw_at_jump;
 extern const char *kw_at_param;
 extern const char *kw_at_pure;
 extern const char *kw_at_require;
 extern const char *kw_at_return;
-extern const char *kw_at_jump;
+extern const char *kw_at_simd;
 extern const char *kw_in;
 extern const char *kw_inout;
 extern const char *kw_len;
@@ -1971,7 +2100,15 @@ ARENA_DEF(ast, Ast)
 ARENA_DEF(expr, Expr)
 ARENA_DEF(decl, Decl)
 ARENA_DEF(type_info, TypeInfo)
+ARENA_DEF(sourceloc, SourceLoc)
 
+INLINE Ast *ast_new(AstKind kind, SourceLocId loc)
+{
+	Ast *ast = ast_calloc();
+	ast->ast_kind = kind;
+	ast->loc = loc;
+	return ast;
+}
 
 INLINE TypeInfo *vartype(Decl *var)
 {
@@ -1998,6 +2135,11 @@ INLINE bool link_libc(void)
 	return compiler.build.link_libc != LINK_LIBC_OFF;
 }
 
+INLINE bool custom_libc(void)
+{
+	return compiler.build.custom_libc == CUSTOM_LIBC_ON;
+}
+
 INLINE bool strip_unused(void)
 {
 	return compiler.build.strip_unused != STRIP_UNUSED_OFF;
@@ -2013,6 +2155,8 @@ INLINE bool compile_asserts(void)
 	return safe_mode_enabled() || compiler.build.testing;
 }
 
+void assert_print_line(SourceLocId span);
+
 bool ast_is_not_empty(Ast *ast);
 
 bool ast_is_compile_time(Ast *ast);
@@ -2022,17 +2166,17 @@ INLINE void ast_prepend(AstId *first, Ast *ast);
 INLINE bool ast_ok(Ast *ast);
 INLINE bool ast_poison(Ast *ast);
 INLINE Ast *ast_last(Ast *ast);
-INLINE Ast *new_ast(AstKind kind, SourceSpan range);
+INLINE Ast *new_ast(AstKind kind, SourceLocId loc);
 INLINE Ast *ast_next(AstId *current_ptr);
 
-const char *span_to_string(SourceSpan span);
-void span_to_scratch(SourceSpan span);
+const char *span_to_string(SourceLocId span);
+void loc_to_scratch(SourceLocId loc);
 
-static inline SourceSpan extend_span_with_token(SourceSpan loc, SourceSpan after)
+static inline SourceLoc extend_loc_with_token(SourceLoc *loc, SourceLoc *after)
 {
-	if (loc.row != after.row) return loc;
-	loc.length = after.col + after.length - loc.col;
-	return loc;
+	SourceLoc new_loc = *loc;
+	new_loc.length = after->offset + after->length - loc->offset;
+	return new_loc;
 }
 
 AttributeType attribute_by_name(const char *name);
@@ -2125,6 +2269,7 @@ UNUSED bool i128_get_bit(const Int128 *op, int bit);
 #define MACRO_COPY_DECL(x) x = copy_decl(c, x)
 #define MACRO_COPY_DECLID(x) x = declid_copy_deep(c, x)
 #define MACRO_COPY_DECL_LIST(x) x = copy_decl_list(c, x)
+#define MACRO_COPY_DECL_METHODS(x) x = copy_decl_methods(c, x)
 #define MACRO_COPY_EXPR(x) x = copy_expr(c, x)
 #define MACRO_COPY_EXPRID(x) x = exprid_copy_deep(c, x)
 #define MACRO_COPY_TYPE(x) x = copy_type_info(c, x)
@@ -2139,8 +2284,9 @@ UNUSED bool i128_get_bit(const Int128 *op, int bit);
 void copy_begin(void);
 void copy_end(void);
 Expr *copy_expr_single(Expr *source_expr);
+Expr **copy_exprlist_macro(Expr **source_expr_list);
 Decl **copy_decl_list_single(Decl **decl_list);
-Decl **copy_decl_list_single_for_unit(Decl **decl_list);
+Decl **copy_decl_list_single_for_generic(Decl **decl_list, Decl *generic_instance);
 Attr **copy_attributes_single(Attr** attr_list);
 Decl *copy_lambda_deep(Decl *decl);
 Ast *copy_ast_single(Ast *source_ast);
@@ -2148,8 +2294,10 @@ Decl **copy_decl_list_macro(Decl **decl_list);
 Ast *copy_ast_macro(Ast *source_ast);
 Ast *copy_ast_defer(Ast *source_ast);
 TypeInfo *copy_type_info_single(TypeInfo *type_info);
+InliningSpan *copy_inlining_span(InliningSpan *span);
 
 void init_asm(PlatformTarget *target);
+void print_asm_list(PlatformTarget *target);
 AsmRegister *asm_reg_by_name(PlatformTarget *target, const char *name);
 AsmInstruction *asm_instr_by_name(const char *name);
 INLINE const char *asm_clobber_by_index(unsigned index);
@@ -2176,6 +2324,7 @@ bool may_cast(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit,
 
 void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
 
+
 bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len);
 
 const char *llvm_codegen(void *context);
@@ -2190,11 +2339,11 @@ const char *build_base_name(void);
 void global_context_clear_errors(void);
 void global_context_add_type(Type *type);
 void global_context_add_decl(Decl *type_decl);
-void global_context_add_generic_decl(Decl *decl);
 
 void linking_add_link(Linking *linker, const char *link);
+const char *static_lib_name(void);
 
-Module *compiler_find_or_create_module(Path *module_name, const char **parameters);
+Module *compiler_find_or_create_module(Path *module_name);
 Module *global_context_find_module(const char *name);
 const char *get_object_extension(void);
 const char *get_exe_extension(void);
@@ -2204,23 +2353,28 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
 void unit_register_external_symbol(SemaContext *context, Decl *decl);
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
+bool unit_add_alias(CompilationUnit *unit, Decl *alias);
 bool context_set_module_from_filename(ParseContext *context);
-bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters);
+bool context_set_module(ParseContext *context, Path *path);
 bool context_is_macro(SemaContext *context);
 
 // --- Decl functions
 
-Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span);
-Decl *decl_new_ct(DeclKind kind, SourceSpan span);
-Decl *decl_new_with_type(const char *name, SourceSpan span, DeclKind decl_type);
-Decl *decl_new_var(const char *name, SourceSpan span, TypeInfo *type, VarDeclKind kind);
-Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span);
+Decl *decl_new(DeclKind decl_kind, const char *name, SourceLocId loc);
+Decl *decl_new_ct(DeclKind kind, SourceLocId span);
+Decl *decl_new_with_type(const char *name, SourceLoc *loc, DeclKind decl_type);
+Decl *decl_new_var(const char *name, SourceLocId span, TypeInfo *type, VarDeclKind kind);
+Decl *decl_new_var_loc(const char *name, SourceLoc *loc, TypeInfo *type, VarDeclKind kind);
+Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceLocId span);
 
 const char *decl_safe_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
 const char *decl_to_a_name(Decl *decl);
 int decl_count_elements(Decl *structlike);
-void decl_append_links_to_global(Decl *decl);
+bool decl_is_defaulted_var(Decl *decl);
+bool decl_may_be_generic(Decl *decl);
+void decl_append_links_to_global_during_codegen(Decl *decl);
+Decl *decl_template_get_generic(Decl *decl);
 
 INLINE bool decl_ok(Decl *decl);
 INLINE bool decl_poison(Decl *decl);
@@ -2231,6 +2385,7 @@ static inline Decl *decl_raw(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 static inline bool decl_is_var_local(Decl *decl);
 bool decl_is_ct_var(Decl *decl);
+bool decl_is_deprecated(Decl *decl);
 Decl *decl_find_enum_constant(Decl *decl, const char *name);
 bool decl_needs_prefix(Decl *decl);
 AlignSize decl_find_member_offset(Decl *decl, Decl *member);
@@ -2241,25 +2396,28 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear);
 
 // --- Expression functions
 
-#define EXPR_NEW_TOKEN(kind_) expr_new(kind_, c->span)
-Expr *expr_new(ExprKind kind, SourceSpan start);
-Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v);
-Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value);
-Expr *expr_new_const_typeid(SourceSpan span, Type *type);
-Expr *expr_new_const_string(SourceSpan span, const char *string);
-Expr *expr_new_const_null(SourceSpan span, Type *type);
-Expr *expr_new_const_initializer(SourceSpan span, Type *type, ConstInitializer *initializer);
-Expr *expr_new_expr_list_resolved(SourceSpan span, Type *type, Expr **expressions);
+#define EXPR_NEW_TOKEN(kind_) expr_new(kind_, make_loc(c->span))
+Expr *expr_new(ExprKind kind, SourceLocId start);
+Expr *expr_new_loc(ExprKind kind, SourceLoc *start);
+Expr *expr_new_const_int(SourceLocId loc, Type *type, uint64_t v);
+Expr *expr_new_const_bool(int loc, Type *type, bool value);
+Expr *expr_new_const_typeid(SourceLocId loc, Type *type);
+Expr *expr_new_const_string(SourceLocId loc, const char *string);
+Expr *expr_new_const_null(SourceLocId loc, Type *type);
+Expr *expr_new_const_initializer(SourceLocId loc, Type *type, ConstInitializer *initializer);
+Expr *expr_new_expr_list_resolved(SourceLocId loc, Type *type, Expr **expressions);
+Expr *expr_new_binary(SourceLocId span, Expr *left, Expr *right, BinaryOp op);
+Expr *expr_new_cond(Expr *expr);
 const char *expr_kind_to_string(ExprKind kind);
 bool expr_is_simple(Expr *expr, bool to_float);
 bool expr_is_pure(Expr *expr);
 bool expr_is_runtime_const(Expr *expr);
-Expr *expr_generate_decl(Decl *decl, Expr *assign);
 Expr *expr_new_two(Expr *first, Expr *second);
 void expr_rewrite_two(Expr *original, Expr *first, Expr *second);
 void expr_insert_addr(Expr *original);
 bool sema_expr_rewrite_insert_deref(SemaContext *context, Expr *original);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
+Expr *expr_generated_local(Expr *assign, Decl **decl_ref);
 Expr *expr_variable(Decl *decl);
 Expr *expr_negate_expr(Expr *expr);
 bool expr_may_addr(Expr *expr);
@@ -2322,17 +2480,19 @@ bool lexer_next_token(Lexer *lexer);
 void scratch_buffer_append_module(Module *module, bool is_export);
 Decl *module_find_symbol(Module *module, const char *symbol);
 const char *module_create_object_file_name(Module *module);
+Decl *module_find_symbol_in_unit(Module *module, CompilationUnit *unit, const char *symbol);
 
 bool parse_file(File *file);
 Decl **parse_include_file(File *file, CompilationUnit *unit);
 Ast *parse_include_file_stmts(File *file, CompilationUnit *unit);
 bool parse_stdin(void);
-Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span);
+Path *path_create_from_string(const char *string, uint32_t len, SourceLocId loc);
 
 
 typedef enum FindMember
 {
 	METHODS_AND_FIELDS,
+	METHODS_INTERFACES_AND_FIELDS,
 	FIELDS_ONLY
 } FindMember;
 
@@ -2342,6 +2502,7 @@ Decl *sema_decl_stack_find_decl_member(SemaContext *context, Decl *decl_owner, c
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 void sema_decl_stack_restore(Decl **state);
 void sema_decl_stack_push(Decl *decl);
+Decl *sema_find_generic_instance(SemaContext *context, Module *module, Decl *generic, Decl *instance, const char *name);
 
 bool sema_error_failed_cast(SemaContext *context, Expr *expr, Type *from, Type *to);
 bool sema_add_local(SemaContext *context, Decl *decl);
@@ -2354,24 +2515,25 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr, CondResult *result
 bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional, bool *no_match_ref,
                            bool as_binary);
 
-bool sema_analyse_expr(SemaContext *context, Expr *expr);
+bool sema_analyse_expr_rvalue(SemaContext *context, Expr *expr);
 bool sema_cast_const(Expr *expr);
 
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
-bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);
+bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
+void sema_analyse_inner_func_ptr(SemaContext *c, Decl *decl);
 
 bool sema_analyse_method_register(SemaContext *context, Decl *method);
 bool sema_resolve_type_structure(SemaContext *context, Type *type);
-bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl);
-bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local);
+bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defined);
+bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *check_defined);
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_statement(SemaContext *context, Ast *statement);
 
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right,
                                          bool is_unwrapped_var, bool is_declaration, bool *failed_ref);
-bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr);
+bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
 Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs);
 
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional,
@@ -2380,17 +2542,21 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 void sema_expr_convert_enum_to_int(Expr *expr);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
-bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_resolve);
-Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
-Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
+Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const char *method_name);
+Decl *sema_resolve_method(Decl *type, const char *method_name);
+Decl *sema_resolve_method_only(Decl *type, const char *method_name);
 Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const char *method_name);
 bool sema_resolve_type_decl(SemaContext *context, Type *type);
-bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type);
+bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_info);
 Decl *sema_find_symbol(SemaContext *context, const char *symbol);
+Decl *sema_find_template_symbol(SemaContext *context, const char *symbol, Path *path);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);
 Decl *sema_find_label_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);
-Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
+Decl *sema_find_local(SemaContext *context, const char *symbol);
+Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc);
+Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc);
+Decl *sema_resolve_maybe_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc);
 BoolErr sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref);
@@ -2399,14 +2565,17 @@ bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info, ResolveTy
 bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info);
 
 bool use_ansi(void);
-void print_error_at(SourceSpan loc, const char *message, ...);
-void print_error_after(SourceSpan loc, const char *message, ...);
-void sema_note_prev_at(SourceSpan loc, const char *message, ...);
-void sema_verror_range(SourceSpan location, const char *message, va_list args);
-void sema_vwarn_range(SourceSpan location, const char *message, va_list args);
+void print_error_at_loc(SourceLoc *loc, const char *message, ...);
+void print_error_at(SourceLocId loc, const char *message, ...);
+void print_deprecation_at(SourceLocId loc, const char *message, ...);
+void print_deprecation_at_loc(SourceLoc *loc, const char *message, ...);
+void print_error_after(SourceLoc *loc, const char *message, ...);
+void sema_note_prev_at(SourceLocId loc, const char *message, ...);
+void sema_verror_range(SourceLoc *location, const char *message, va_list args);
+void sema_vwarn_range(SourceLocId location, const char *message, va_list args);
 void print_error(ParseContext *context, const char *message, ...);
 
-void sema_warning_at(SourceSpan loc, const char *message, ...);
+void sema_warning_at(SourceLocId loc, const char *message, ...);
 void sema_shadow_error(SemaContext *context, Decl *decl, Decl *old);
 
 bool sema_type_error_on_binop(SemaContext *context, Expr *expr);
@@ -2418,7 +2587,7 @@ File *source_file_text_load(const char *filename, char *content);
 
 File *compile_and_invoke(const char *file, const char *args, const char *stdin_data, size_t limit);
 void compiler_parse(void);
-bool compiler_should_ouput_file(const char *file);
+bool compiler_should_output_file(const char *file);
 void emit_json(void);
 
 void stable_init(STable *table, uint32_t initial_size);
@@ -2439,6 +2608,10 @@ void decltable_init(DeclTable *table, uint32_t initial_size);
 DeclId decltable_get(DeclTable *table, const char *name);
 void decltable_set(DeclTable *table, Decl *decl);
 
+void methodtable_init(MethodTable *table, uint32_t initial_size);
+DeclId methodtable_get(MethodTable *table, Type *type, const char *name);
+DeclId methodtable_set(MethodTable *table, Decl *method);
+
 const char *scratch_buffer_interned(void);
 const char *scratch_buffer_interned_as(TokenType *type);
 
@@ -2456,9 +2629,10 @@ bool arch_is_wasm(ArchType type);
 const char *macos_sysroot(void);
 MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
 WindowsSDK *windows_get_sdk(void);
+// This string may be in the scratch buffer
 const char *windows_cross_compile_library(void);
 
-void c_abi_func_create(FunctionPrototype *proto);
+void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs);
 
 bool token_is_any_type(TokenType type);
 const char *token_type_to_string(TokenType type);
@@ -2469,17 +2643,19 @@ bool type_is_comparable(Type *type);
 bool type_is_ordered(Type *type);
 unsigned type_get_introspection_kind(TypeKind kind);
 void type_mangle_introspect_name_to_buffer(Type *type);
+AlignSize type_alloca_alignment(Type *type);
 AlignSize type_abi_alignment(Type *type);
 bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...);
-AlignSize type_alloca_alignment(Type *type);
 Type *type_find_largest_union_element(Type *type);
-Type *type_find_max_type(Type *type, Type *other);
+Type *type_find_max_type(Type *type, Type *other, Expr *first, Expr *second);
 Type *type_find_max_type_may_fail(Type *type, Type *other);
-Type *type_abi_find_single_struct_element(Type *type);
+Type *type_abi_find_single_struct_element(Type *type, bool in_abi);
 Module *type_base_module(Type *type);
 bool type_is_valid_for_vector(Type *type);
 bool type_is_valid_for_array(Type *type);
 Type *type_get_array(Type *arr_type, ArraySize len);
+Type *type_array_from_vector(Type *vec_type);
+Type *type_vector_from_array(Type *vec_type);
 Type *type_get_indexed_type(Type *type);
 Type *type_get_ptr(Type *ptr_type);
 Type *type_get_func_ptr(Type *func_type);
@@ -2488,10 +2664,12 @@ Type *type_get_slice(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
 Type *type_get_inferred_vector(Type *arr_type);
 Type *type_get_flexible_array(Type *arr_type);
-
 Type *type_get_optional(Type *optional_type);
-Type *type_get_vector(Type *vector_type, unsigned len);
-Type *type_get_vector_bool(Type *original_type);
+Type *type_get_vector(Type *vector_type, TypeKind kind, unsigned len);
+Type *type_get_vector_from_vector(Type *base_type, Type *orginal_vector);
+Type *type_get_simd_from_vector(Type *orginal_vector);
+Type *type_get_vector_bool(Type *original_type, TypeKind kind);
+
 Type *type_int_signed_by_bitsize(BitSize bitsize);
 Type *type_int_unsigned_by_bitsize(BitSize bit_size);
 bool type_is_matching_int(CanonicalType *type1, CanonicalType *type2);
@@ -2502,10 +2680,10 @@ void type_func_prototype_init(uint32_t capacity);
 Type *type_find_parent_type(Type *type);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_abi_aggregate(Type *type);
+bool type_is_aggregate(Type *type);
 bool type_is_int128(Type *type);
 
 Type *type_from_token(TokenType type);
-bool type_is_user_defined(Type *type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);
 bool type_flat_is_floatlike(Type *type);
 bool type_flat_is_intlike(Type *type);
@@ -2521,6 +2699,9 @@ FunctionPrototype *type_get_resolved_prototype(Type *type);
 bool type_is_inner_type(Type *type);
 const char *type_to_error_string(Type *type);
 const char *type_quoted_error_string(Type *type);
+const char *type_quoted_error_string_with_path(Type *type);
+const char *type_error_string_maybe_with_path(Type *type, Type *other_type);
+const char *type_quoted_error_string_maybe_with_path(Type *type, Type *other_type);
 INLINE bool type_may_negate(Type *type);
 INLINE bool type_is_builtin(TypeKind kind);
 INLINE bool type_convert_will_trunc(Type *destination, Type *source);
@@ -2552,7 +2733,7 @@ INLINE bool type_is_arraylike(Type *type);
 INLINE bool type_is_any_arraylike(Type *type);
 INLINE bool type_is_promotable_float(Type *type);
 INLINE bool type_is_promotable_int_bool(Type *type);
-INLINE bool type_is_signed(Type *type);
+INLINE bool type_is_signed_any(Type *type);
 INLINE bool type_ok(Type *type);
 INLINE bool type_is_unsigned(Type *type);
 INLINE bool type_is_union_or_strukt(Type *type);
@@ -2564,19 +2745,20 @@ INLINE BitSize type_bit_size(Type *type);
 INLINE Type *type_vector_type(Type *type);
 
 static inline CanonicalType *type_pointer_type(Type *type);
-static inline CanonicalType *type_flatten(Type *type);
-static inline bool type_flat_is_char_array(Type *type);
+static inline FlatType *type_flatten(Type *type);
 static inline Type *type_base(Type *type);
 
-INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span);
-INLINE TypeInfo *type_info_new_base(Type *type, SourceSpan span);
+INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceLocId loc);
+INLINE TypeInfo *type_info_new_base(Type *type, SourceLocId loc);
 INLINE bool type_info_ok(TypeInfo *type_info);
 INLINE bool type_info_poison(TypeInfo *type);
+INLINE bool type_is_user_defined(Type *type);
 
 int type_kind_bitsize(TypeKind kind);
 INLINE bool type_kind_is_signed(TypeKind kind);
 INLINE bool type_kind_is_unsigned(TypeKind kind);
 INLINE bool type_kind_is_any_integer(TypeKind kind);
+INLINE bool type_kind_is_real_vector(TypeKind kind);
 
 void advance(ParseContext *c);
 INLINE void advance_and_verify(ParseContext *context, TokenType token_type);
@@ -2607,7 +2789,7 @@ INLINE bool type_is_pointer_sized(Type *type)
 
 #define DECL_TYPE_KIND_REAL(k_, t_) \
  TypeKind k_ = (t_)->type_kind; \
- if (k_ == TYPE_TYPEDEF) k_ = (t_)->canonical->type_kind;
+ if (k_ == TYPE_ALIAS) k_ = (t_)->canonical->type_kind;
 
 
 INLINE Type *type_add_optional(Type *type, bool make_optional)
@@ -2623,13 +2805,16 @@ INLINE Type *type_from_inferred(Type *flattened, Type *element_type, unsigned co
 		case TYPE_POINTER:
 			ASSERT(count == 0);
 			return type_get_ptr(element_type);
+		case TYPE_SIMD_VECTOR:
+			ASSERT(flattened->array.len == count);
+			return type_get_vector(element_type, TYPE_SIMD_VECTOR, count);
 		case TYPE_VECTOR:
 			ASSERT(flattened->array.len == count);
 			FALLTHROUGH;
 		case TYPE_INFERRED_VECTOR:
-			return type_get_vector(element_type, count);
-			break;
+			return type_get_vector(element_type, TYPE_VECTOR, count);
 		case TYPE_ARRAY:
+
 			ASSERT(flattened->array.len == count);
 			FALLTHROUGH;
 		case TYPE_INFERRED_ARRAY:
@@ -2646,7 +2831,7 @@ INLINE bool type_len_is_inferred(Type *type)
 	{
 		switch (type->type_kind)
 		{
-			case TYPE_TYPEDEF:
+			case TYPE_ALIAS:
 				type = type->canonical;
 				continue;
 			case TYPE_OPTIONAL:
@@ -2654,8 +2839,7 @@ INLINE bool type_len_is_inferred(Type *type)
 				continue;
 			case TYPE_ARRAY:
 			case TYPE_SLICE:
-			case TYPE_FLEXIBLE_ARRAY:
-			case TYPE_VECTOR:
+			case VECTORS:
 				type = type->array.base;
 				continue;
 			case TYPE_INFERRED_ARRAY:
@@ -2663,7 +2847,9 @@ INLINE bool type_len_is_inferred(Type *type)
 				return true;
 			case TYPE_POINTER:
 				type = type->pointer;
+				if (type->canonical->type_kind == TYPE_FLEXIBLE_ARRAY) return false;
 				continue;
+			case TYPE_FLEXIBLE_ARRAY:
 			default:
 				return false;
 		}
@@ -2711,7 +2897,8 @@ INLINE bool type_may_implement_interface(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ENUM:
-		case TYPE_DISTINCT:
+		case TYPE_CONSTDEF:
+		case TYPE_TYPEDEF:
 		case TYPE_BITSTRUCT:
 			return true;
 		default:
@@ -2759,7 +2946,7 @@ INLINE bool type_info_poison(TypeInfo *type)
 INLINE bool type_is_arraylike(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind == TYPE_ARRAY || kind == TYPE_VECTOR || kind == TYPE_FLEXIBLE_ARRAY;
+	return kind == TYPE_ARRAY || kind == TYPE_VECTOR || kind == TYPE_FLEXIBLE_ARRAY || kind == TYPE_SIMD_VECTOR;
 }
 
 INLINE bool type_is_any_arraylike(Type *type)
@@ -2780,7 +2967,7 @@ static inline Type *type_flat_distinct_inline(Type *type);
 static inline bool type_is_pointer_like(Type *type)
 {
 	TypeKind kind = type->type_kind;
-	if (kind == TYPE_DISTINCT)
+	if (kind == TYPE_TYPEDEF)
 	{
 		type = type_flat_distinct_inline(type);
 		kind = type->type_kind;
@@ -2789,7 +2976,7 @@ static inline bool type_is_pointer_like(Type *type)
 	{
 		case TYPE_POINTER:
 			return true;
-		case TYPE_VECTOR:
+		case VECTORS:
 			return type_is_pointer_like(type->array.base->canonical);
 		default:
 			return false;
@@ -2798,7 +2985,7 @@ static inline bool type_is_pointer_like(Type *type)
 
 INLINE bool type_is_pointer_vector(Type *type)
 {
-	return type->type_kind == TYPE_VECTOR && type->array.base->canonical->type_kind == TYPE_POINTER;
+	return type_kind_is_real_vector(type->type_kind) && type->array.base->canonical->type_kind == TYPE_POINTER;
 }
 
 INLINE bool type_is_atomic(Type *type_flat)
@@ -2809,6 +2996,7 @@ INLINE bool type_is_atomic(Type *type_flat)
 		case ALL_SIGNED_INTS:
 		case ALL_FLOATS:
 		case TYPE_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_BOOL:
@@ -2847,16 +3035,16 @@ INLINE bool type_may_negate(Type *type)
 	RETRY:
 	switch (type->type_kind)
 	{
-		case TYPE_VECTOR:
+		case VECTORS:
 			type = type->array.base;
 			goto RETRY;
 		case ALL_FLOATS:
 		case ALL_INTS:
 			return true;
-		case TYPE_DISTINCT:
+		case TYPE_TYPEDEF:
 			type = type->decl->distinct->type;
 			goto RETRY;
-		case TYPE_TYPEDEF:
+		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_OPTIONAL:
@@ -2884,7 +3072,7 @@ INLINE bool type_is_floatlike(Type *type)
 {
 	type = type->canonical;
 	TypeKind kind = type->type_kind;
-	if (kind == TYPE_VECTOR && type_is_float(type->array.base)) return true;
+	if (type_kind_is_real_vector(kind) && type_is_float(type->array.base)) return true;
 	return kind >= TYPE_FLOAT_FIRST && kind <= TYPE_FLOAT_LAST;
 }
 
@@ -2897,44 +3085,53 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 		case TYPE_UNTYPED_LIST:
 			return "an untyped list";
 		case TYPE_TYPEINFO:
-			return "a type";
+			return "a typeinfo";
 		case TYPE_WILDCARD:
 			return "an empty value";
+		case TYPE_OPTIONAL:
+			return "an optional with a compile time type";
 		default:
 			UNREACHABLE;
 	}
 }
 
+INLINE Type *enum_inner_type(Type *enum_type)
+{
+	assert(enum_type->type_kind == TYPE_ENUM || enum_type->type_kind == TYPE_CONSTDEF);
+	return enum_type->decl->enums.type_info->type;
+}
 
-INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span)
+INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceLocId loc)
 {
 	TypeInfo *type_info = type_info_calloc();
 	type_info->kind = kind;
-	type_info->span = span;
+	type_info->loc = loc;
 	type_info->resolve_status = RESOLVE_NOT_DONE;
 	return type_info;
 }
 
-INLINE TypeInfo *type_info_new_base(Type *type, SourceSpan span)
+INLINE TypeInfo *type_info_new_base(Type *type, SourceLocId loc)
 {
 	TypeInfo *type_info = type_info_calloc();
 	type_info->kind = TYPE_INFO_IDENTIFIER;
 	type_info->resolve_status = RESOLVE_DONE;
 	type_info->type = type;
-	type_info->span = span;
+	type_info->loc = loc;
 	return type_info;
 }
 
 
-INLINE TypeInfoId type_info_id_new_base(Type *type, SourceSpan span)
+INLINE TypeInfoId type_info_id_new_base(Type *type, SourceLocId span)
 {
 	return type_infoid(type_info_new_base(type, span));
 }
+
 
 INLINE Type *type_new(TypeKind kind, const char *name)
 {
 	Type *type = CALLOCS(Type);
 	type->type_kind = kind;
+	type->size = ~(ByteSize)0;
 	ASSERT(name);
 	type->name = name;
 	global_context_add_type(type);
@@ -2963,16 +3160,56 @@ INLINE Type *type_flatten_for_bitstruct(Type *type)
 {
 	type = type->canonical;
 	RETRY:
-	while (type->type_kind == TYPE_DISTINCT)
+	while (type->type_kind == TYPE_TYPEDEF)
 	{
 		type = type->decl->distinct->type;
 	}
-	if (type->type_kind == TYPE_ENUM)
+	if (type->type_kind == TYPE_ENUM || type->type_kind == TYPE_CONSTDEF)
 	{
-		type = type->decl->enums.type_info->type->canonical;
+		type = enum_inner_type(type)->canonical;
 		goto RETRY;
 	}
 	return type;
+}
+
+static inline void methods_add(Methods *methods, Decl *method)
+{
+	vec_add(methods->methods, method);
+	OperatorOverload operator = method->func_decl.operator;
+	if (operator)
+	{
+		unsigned len = vec_size(method->func_decl.signature.params);
+		if (operator == OVERLOAD_MINUS && len == 1)
+		{
+			method->func_decl.operator = operator = OVERLOAD_UNARY_MINUS;
+		}
+
+		if (len > 1 && !method->func_decl.signature.params[1]->var.type_info)
+		{
+			method->func_decl.is_wildcard_overload = true;
+		}
+		DeclId *decl = &methods->overloads[operator];
+		if (!*decl)
+		{
+			*decl = declid(method);
+		}
+		else
+		{
+			Decl *current = declptr(*decl);
+			if (current->decl_kind != DECL_DECLARRAY)
+			{
+				Decl *decl_array = decl_new(DECL_DECLARRAY, NULL, 0);
+				vec_add(decl_array->decls, declptr(*decl));
+				vec_add(decl_array->decls, method);
+				*decl = declid(decl_array);
+			}
+			else
+			{
+				vec_add(current->decls, method);
+			}
+		}
+	}
+	decltable_set(&methods->method_table, method);
 }
 
 static inline Type *type_base(Type *type)
@@ -2982,16 +3219,17 @@ static inline Type *type_base(Type *type)
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_DISTINCT:
+			case TYPE_TYPEDEF:
 				type = type->decl->distinct->type;
 				break;
 			case TYPE_ENUM:
-				type = type->decl->enums.type_info->type;
+			case TYPE_CONSTDEF:
+				type = enum_inner_type(type);
 				break;
 			case TYPE_OPTIONAL:
 				type = type->optional;
 				break;
-			case TYPE_TYPEDEF:
+			case TYPE_ALIAS:
 				UNREACHABLE
 			default:
 				return type;
@@ -2999,36 +3237,71 @@ static inline Type *type_base(Type *type)
 	}
 }
 
-static inline Type *type_flat_distinct_inline(Type *type)
+
+static const bool is_distinct_like[TYPE_LAST + 1] = {
+	[TYPE_ENUM] = true,
+	[TYPE_CONSTDEF] = true,
+	[TYPE_TYPEDEF] = true
+};
+
+INLINE bool typekind_is_distinct_like(TypeKind kind)
 {
-	do
-	{
-		type = type->canonical;
-		if (type->type_kind != TYPE_DISTINCT) break;
-		Decl *decl = type->decl;
-		if (!decl->is_substruct) break;
-		type = decl->distinct->type;
-	} while (1);
-	return type;
+	return is_distinct_like[kind];
 }
 
-static inline Type *type_flat_distinct_enum_inline(Type *type)
+INLINE bool type_is_distinct_like(Type *type)
 {
-	do
+	return is_distinct_like[type->type_kind];
+}
+
+static bool type_has_inline(Type *type)
+{
+	return is_distinct_like[type->type_kind] && type->decl->is_substruct;
+}
+
+static inline Type *type_inline(Type *type)
+{
+	assert(type_is_distinct_like(type));
+	return type->type_kind == TYPE_TYPEDEF ? type->decl->distinct->type : type->decl->enums.type_info->type;
+}
+
+
+static inline Type *type_flat_distinct_inline(Type *type)
+{
+	while (1)
+	{
+		type = type->canonical;
+		if (!type_has_inline(type)) return type;
+		type = type_inline(type);
+	}
+}
+
+static inline CanonicalType *type_vector_base(CanonicalType *type)
+{
+	return type_kind_is_real_vector(type->type_kind) ? type->array.base->canonical : type;
+}
+
+static inline Type *type_flatten_and_inline(Type *type)
+{
+	while (1)
 	{
 		type = type->canonical;
 		Decl *decl;
 		switch (type->type_kind)
 		{
-			case TYPE_DISTINCT:
-				decl = type->decl;
-				if (!decl->is_substruct) break;
-				type = decl->distinct->type;
+			case TYPE_OPTIONAL:
+				type = type->optional;
+				continue;
+			case TYPE_TYPEDEF:
+				type = type->decl->distinct->type;
+				continue;
+			case TYPE_CONSTDEF:
+				type = type->decl->enums.type_info->type;
 				continue;
 			case TYPE_ENUM:
 				decl = type->decl;
-				if (!decl->is_substruct) break;
-				if (decl->enums.inline_value)
+				if (!decl->is_substruct) return type;
+				if (!compiler.build.old_enums || decl->enums.inline_value)
 				{
 					type = decl->enums.type_info->type;
 					continue;
@@ -3036,11 +3309,73 @@ static inline Type *type_flat_distinct_enum_inline(Type *type)
 				type = decl->enums.parameters[decl->enums.inline_index]->type;
 				continue;
 			default:
-				break;
+				return type;
 		}
-		break;
-	} while (1);
-	return type;
+	}
+}
+
+static inline Type *type_flat_distinct_enum_inline(Type *type)
+{
+	while (1)
+	{
+		type = type->canonical;
+		Decl *decl;
+		switch (type->type_kind)
+		{
+			case TYPE_TYPEDEF:
+				decl = type->decl;
+				if (!decl->is_substruct) return type;;
+				type = decl->distinct->type;
+				continue;
+			case TYPE_CONSTDEF:
+				decl = type->decl;
+				if (!decl->is_substruct) return type;
+				type = decl->enums.type_info->type;
+				continue;
+			case TYPE_ENUM:
+				decl = type->decl;
+				if (!decl->is_substruct) return type;
+				if (!compiler.build.old_enums || decl->enums.inline_value)
+				{
+					type = decl->enums.type_info->type;
+					continue;
+				}
+				type = decl->enums.parameters[decl->enums.inline_index]->type;
+				continue;
+			default:
+				return type;
+		}
+	}
+}
+
+INLINE bool type_is_user_defined(Type *type)
+{
+	static const bool user_defined_types[TYPE_LAST + 1] = {
+		[TYPE_ENUM]       = true,
+		[TYPE_CONSTDEF] = true,
+		[TYPE_STRUCT]     = true,
+		[TYPE_FUNC_RAW]   = true,
+		[TYPE_UNION]      = true,
+		[TYPE_TYPEDEF]    = true,
+		[TYPE_BITSTRUCT]  = true,
+		[TYPE_ALIAS]      = true,
+		[TYPE_INTERFACE]  = true,
+	};
+	return user_defined_types[type->type_kind];
+}
+
+
+static inline DeclId type_find_generic(Type *type)
+{
+	Type *canonical = type->canonical;
+	if (canonical != type && type_is_user_defined(canonical))
+	{
+		Decl *decl = canonical->decl;
+		if (decl->is_templated) return decl->generic_id;
+	}
+	if (!type_is_user_defined(type)) return 0;
+	Decl *decl = type->decl;
+	return decl->is_templated ? decl->generic_id : 0;
 }
 
 static inline Type *type_flatten_to_int(Type *type)
@@ -3050,7 +3385,7 @@ static inline Type *type_flatten_to_int(Type *type)
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_DISTINCT:
+			case TYPE_TYPEDEF:
 				type = type->decl->distinct->type;
 				break;
 			case TYPE_OPTIONAL:
@@ -3059,12 +3394,15 @@ static inline Type *type_flatten_to_int(Type *type)
 			case TYPE_BITSTRUCT:
 				type = type->decl->strukt.container_type->type;
 				break;
+			case TYPE_CONSTDEF:
+				type = type->decl->enums.type_info->type;
+				break;
 			case TYPE_ENUM:
 				return type;
-			case TYPE_VECTOR:
+			case VECTORS:
 				ASSERT(type_is_integer(type->array.base));
 				return type;
-			case TYPE_TYPEDEF:
+			case TYPE_ALIAS:
 				UNREACHABLE
 			default:
 				ASSERT(type_is_integer(type));
@@ -3073,20 +3411,49 @@ static inline Type *type_flatten_to_int(Type *type)
 	}
 }
 
-static inline CanonicalType *type_flatten(Type *type)
+static inline CanonicalType *type_distinct_inline(Type *type)
 {
 	while (1)
 	{
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_DISTINCT:
+			case TYPE_ENUM:
+				if (!type->decl->is_substruct) return type;
+				FALLTHROUGH;
+			case TYPE_CONSTDEF:
+				type = enum_inner_type(type);
+				break;
+			case TYPE_TYPEDEF:
 				type = type->decl->distinct->type;
 				break;
 			case TYPE_OPTIONAL:
 				type = type->optional;
 				break;
+			case TYPE_ALIAS:
+				UNREACHABLE
+			default:
+				return type;
+		}
+	}
+}
+static inline FlatType *type_flatten(Type *type)
+{
+	while (1)
+	{
+		type = type->canonical;
+		switch (type->type_kind)
+		{
+			case TYPE_CONSTDEF:
+				type = enum_inner_type(type);
+				break;
 			case TYPE_TYPEDEF:
+				type = type->decl->distinct->type;
+				break;
+			case TYPE_OPTIONAL:
+				type = type->optional;
+				break;
+			case TYPE_ALIAS:
 				UNREACHABLE
 			default:
 				return type;
@@ -3100,13 +3467,17 @@ static inline Type *type_flatten_no_export(Type *type)
 	{
 		switch (type->type_kind)
 		{
-			case TYPE_TYPEDEF:
+			case TYPE_ALIAS:
 				if (type->decl->is_export) return type;
 				type = type->canonical;
 				break;
-			case TYPE_DISTINCT:
+			case TYPE_TYPEDEF:
 				if (type->decl->is_export) return type;
 				type = type->decl->distinct->type;
+				break;
+			case TYPE_CONSTDEF:
+				if (type->decl->is_export) return type;
+				type = enum_inner_type(type);
 				break;
 			case TYPE_OPTIONAL:
 				type = type->optional;
@@ -3117,10 +3488,11 @@ static inline Type *type_flatten_no_export(Type *type)
 	}
 }
 
-static inline bool type_flat_is_char_array(Type *type)
+static inline bool type_flat_is_valid_for_arg_h(Type *type)
 {
 	type = type_flatten(type);
-	if (type->type_kind != TYPE_ARRAY) return false;
+	if (type->type_kind == TYPE_POINTER) return true;
+	if (type->type_kind != TYPE_ARRAY && type->type_kind != TYPE_SLICE) return false;
 	switch (type->array.base->type_kind)
 	{
 		case TYPE_I8:
@@ -3131,10 +3503,11 @@ static inline bool type_flat_is_char_array(Type *type)
 	}
 }
 
+
 INLINE Type *type_vector_type(Type *type)
 {
 	Type *flatten = type_flatten(type);
-	return flatten->type_kind == TYPE_VECTOR ? flatten->array.base : NULL;
+	return type_kind_is_real_vector(flatten->type_kind) ? flatten->array.base : NULL;
 }
 
 INLINE bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_TYPEID; }
@@ -3143,15 +3516,16 @@ INLINE bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kin
 INLINE bool type_kind_is_any_integer(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_U128; }
 INLINE bool type_kind_is_enum_or_fault(TypeKind kind) { return kind == TYPE_ENUM || kind == TYPE_ANYFAULT; }
 INLINE bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U128; }
+INLINE bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_I128; }
 INLINE bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 INLINE bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
 bool type_is_scalar(Type *type);
 
-INLINE bool type_is_signed(Type *type)
+INLINE bool type_is_signed_any(Type *type)
 {
 	TypeKind kind = type->type_kind;
 	if (kind >= TYPE_I8 && kind < TYPE_U8) return true;
-	if (kind != TYPE_VECTOR) return false;
+	if (!type_kind_is_real_vector(kind)) return false;
 	kind = type->array.base->type_kind;
 	return kind >= TYPE_I8 && kind < TYPE_U8;
 }
@@ -3161,10 +3535,30 @@ INLINE bool type_is_func_ptr(Type *fn_type)
 	return fn_type->canonical->type_kind == TYPE_FUNC_PTR;
 }
 
-INLINE bool type_is_inferred(Type *type)
+INLINE bool type_is_infer_type(Type *type)
 {
 	TypeKind kind = type->type_kind;
 	return kind == TYPE_INFERRED_VECTOR || kind == TYPE_INFERRED_ARRAY;
+}
+
+INLINE bool type_is_inferred(Type *type)
+{
+RETRY:;
+	TypeKind kind = type->type_kind;
+	switch (kind)
+	{
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+			return true;
+		case TYPE_ARRAY:
+			type = type->array.base->canonical;
+			goto RETRY;
+		case TYPE_POINTER:
+			type = type->pointer->canonical;
+			goto RETRY;
+		default:
+			return false;
+	}
 }
 
 INLINE bool type_is_number_or_bool(Type *type)
@@ -3179,27 +3573,29 @@ INLINE bool type_is_number(Type *type)
 	return (kind >= TYPE_I8) && (kind <= TYPE_FLOAT_LAST);
 }
 
+
 static inline Type *type_flat_for_arithmethics(Type *type)
 {
 	while (true)
 	{
 		type = type->canonical;
+		Type *inner;
 		switch (type->type_kind)
 		{
 			case TYPE_OPTIONAL:
 				type = type->optional;
 				continue;
-			case TYPE_DISTINCT:
+			case TYPE_CONSTDEF:
+			case TYPE_TYPEDEF:
+				inner = type_inline(type);
+				if (type->decl->is_substruct)
+				{
+					type = inner;
+					continue;
+				}
 				break;
 			default:
 				return type;
-		}
-		Decl *decl = type->decl;
-		Type *inner = decl->distinct->type;
-		if (decl->is_substruct)
-		{
-			type = inner;
-			continue;
 		}
 		inner = type_flat_for_arithmethics(inner);
 		if (type_is_number_or_bool(inner)) return inner;
@@ -3212,7 +3608,7 @@ INLINE bool type_is_numeric(Type *type)
 	RETRY:;
 	DECL_TYPE_KIND_REAL(kind, type);
 	if ((kind >= TYPE_I8) & (kind <= TYPE_FLOAT_LAST)) return true;
-	if (type->type_kind == TYPE_VECTOR)
+	if (type_kind_is_real_vector(type->type_kind))
 	{
 		type = type->array.base;
 		goto RETRY;
@@ -3230,26 +3626,43 @@ INLINE bool type_underlying_may_add_sub(CanonicalType *type)
 	return type->type_kind == TYPE_ENUM || type->type_kind == TYPE_POINTER || type_is_numeric(type);
 }
 
+INLINE bool type_is_vec(FlatType *type)
+{
+	ASSERT(type_flatten(type) == type);
+	TypeKind kind = type->type_kind;
+	return kind == TYPE_VECTOR || kind == TYPE_SIMD_VECTOR;
+}
+
+INLINE bool type_kind_is_real_vector(TypeKind kind)
+{
+	return kind == TYPE_VECTOR || kind == TYPE_SIMD_VECTOR;
+}
+
 INLINE bool type_flat_is_vector(Type *type)
 {
-	return type_flatten(type)->type_kind == TYPE_VECTOR;
+	return type_kind_is_real_vector(type_flatten(type)->type_kind);
 }
 
 INLINE bool type_flat_is_vector_bitstruct(Type *type)
 {
 	TypeKind kind = type_flatten(type)->type_kind;
-	return kind == TYPE_VECTOR || kind == TYPE_BITSTRUCT;
+	return kind == TYPE_VECTOR || kind == TYPE_BITSTRUCT || kind == TYPE_SIMD_VECTOR;
+}
+
+INLINE bool type_kind_is_any_non_simd_vector(TypeKind kind)
+{
+	return kind == TYPE_VECTOR || kind == TYPE_INFERRED_VECTOR;
 }
 
 INLINE bool type_kind_is_any_vector(TypeKind kind)
 {
-	return kind == TYPE_VECTOR || kind == TYPE_INFERRED_VECTOR;
+	return kind == TYPE_VECTOR || kind == TYPE_INFERRED_VECTOR || kind == TYPE_SIMD_VECTOR;
 }
 
 INLINE bool type_flat_is_bool_vector(Type *type)
 {
 	Type *flat = type_flatten(type);
-	return flat->type_kind == TYPE_VECTOR && type_flatten(flat->array.base) == type_bool;
+	return type_kind_is_real_vector(flat->type_kind) && type_flatten(flat->array.base) == type_bool;
 }
 
 INLINE bool type_is_union_or_strukt(Type *type)
@@ -3291,7 +3704,7 @@ INLINE bool decl_is_user_defined_type(Decl *decl)
 {
 	DeclKind kind = decl->decl_kind;
 	return (kind == DECL_UNION) | (kind == DECL_STRUCT) | (kind == DECL_BITSTRUCT)
-			| (kind == DECL_ENUM) | (kind == DECL_TYPEDEF) | (kind == DECL_DISTINCT)
+			| (kind == DECL_ENUM) | (kind == DECL_TYPE_ALIAS) | (kind == DECL_TYPEDEF)
 			| (kind == DECL_INTERFACE)
 			;
 }
@@ -3359,9 +3772,9 @@ INLINE bool exprid_is_runtime_const(ExprId expr)
 
 INLINE bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->resolve_status = RESOLVE_DONE; return false; }
 
-static inline void expr_list_set_span(Expr **expr, SourceSpan loc);
-static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
-static inline void expr_set_span(Expr *expr, SourceSpan loc);
+static inline void expr_list_set_loc(Expr **expr, SourceLocId loc);
+static inline void exprid_set_loc(ExprId expr_id, SourceLocId loc);
+static inline void expr_set_loc(Expr *expr, SourceLocId loc);
 
 bool const_init_local_init_may_be_global(ConstInitializer *init);
 ConstInitializer *const_init_new_zero(Type *type);
@@ -3376,7 +3789,7 @@ void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value);
 void const_init_rewrite_array_at(ConstInitializer *const_init, Expr *value, ArrayIndex index);
 void const_init_rewrite_to_zero(ConstInitializer *init, Type *type);
 
-static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
+static inline void const_init_set_span(ConstInitializer *init, SourceLocId loc)
 {
 	RETRY:
 	switch (init->kind)
@@ -3395,7 +3808,7 @@ static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 			init = init->init_union.element;
 			goto RETRY;
 		case CONST_INIT_VALUE:
-			expr_set_span(init->init_value, loc);
+			expr_set_loc(init->init_value, loc);
 			return;
 		case CONST_INIT_ARRAY:
 		{
@@ -3411,30 +3824,31 @@ static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 			const_init_set_span(init->init_array_value.element, loc);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 
-static inline void expr_list_set_span(Expr **expr, SourceSpan loc);
-static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
+static inline void expr_list_set_loc(Expr **expr, SourceLocId loc);
+static inline void exprid_set_loc(ExprId expr_id, SourceLocId loc);
 
-static inline void expr_set_span(Expr *expr, SourceSpan loc)
+static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 {
-	expr->span = loc;
+	if (!expr) return;
+	expr->loc = loc;
 	switch (expr->expr_kind)
 	{
 		case EXPR_TWO:
-			expr_set_span(expr->two_expr.first, loc);
-			expr_set_span(expr->two_expr.last, loc);
+			expr_set_loc(expr->two_expr.first, loc);
+			expr_set_loc(expr->two_expr.last, loc);
 			return;
 		case EXPR_INT_TO_BOOL:
-			expr_set_span(expr->int_to_bool_expr.inner, loc);
+			expr_set_loc(expr->int_to_bool_expr.inner, loc);
 			return;
 		case EXPR_EXT_TRUNC:
-			expr_set_span(expr->ext_trunc_expr.inner, loc);
+			expr_set_loc(expr->ext_trunc_expr.inner, loc);
 			return;
 		case EXPR_NAMED_ARGUMENT:
 			expr->named_argument_expr.name_span = loc;
-			expr_set_span(expr->named_argument_expr.value, loc);
+			expr_set_loc(expr->named_argument_expr.value, loc);
 			return;
 		case EXPR_CONST:
 			switch (expr->const_expr.const_kind)
@@ -3443,28 +3857,27 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 					const_init_set_span(expr->const_expr.initializer, loc);
 					return;
 				case CONST_UNTYPED_LIST:
-					expr_list_set_span(expr->const_expr.untyped_list, loc);
+					expr_list_set_loc(expr->const_expr.untyped_list, loc);
 					return;
 				default:
 					return;
 			}
-			expr_list_set_span(expr->expression_list, loc);
-			return;
 		case EXPR_CAST:
-			exprid_set_span(expr->cast_expr.expr, loc);
+			exprid_set_loc(expr->cast_expr.expr, loc);
 			return;
 		case EXPR_INITIALIZER_LIST:
-			expr_list_set_span(expr->initializer_list, loc);
+			expr_list_set_loc(expr->initializer_list, loc);
 			return;
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
-			expr_list_set_span(expr->designated_init_list, loc);
+			expr_set_loc(expr->designated_init.splat, loc);
+			expr_list_set_loc(expr->designated_init.list, loc);
 			return;
 		case EXPR_MAKE_ANY:
-			expr_set_span(expr->make_any_expr.inner, loc);
-			expr_set_span(expr->make_any_expr.typeid, loc);
+			expr_set_loc(expr->make_any_expr.inner, loc);
+			expr_set_loc(expr->make_any_expr.typeid, loc);
 			return;
 		case EXPR_MAKE_SLICE:
-			if (expr->make_slice_expr.ptr) expr_set_span(expr->make_slice_expr.ptr, loc);
+			if (expr->make_slice_expr.ptr) expr_set_loc(expr->make_slice_expr.ptr, loc);
 			return;
 		case EXPR_SPLAT:
 		case EXPR_PTR_ACCESS:
@@ -3481,7 +3894,9 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_RECAST:
-			expr_set_span(expr->inner_expr, loc);
+		case EXPR_LENGTHOF:
+		case EXPR_MAYBE_DEREF:
+			expr_set_loc(expr->inner_expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_ACCESS_RESOLVED:
@@ -3552,22 +3967,24 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_MEMBER_SET:
 		case EXPR_RVALUE:
 		case EXPR_CT_SUBSCRIPT:
+		case EXPR_IOTA_DECL:
+		case EXPR_CONTRACT:
 			break;
 	}
 }
-static inline void exprid_set_span(ExprId expr_id, SourceSpan loc)
+static inline void exprid_set_loc(ExprId expr_id, SourceLocId loc)
 {
-	if (expr_id) expr_set_span(exprptr(expr_id), loc);
+	if (expr_id) expr_set_loc(exprptr(expr_id), loc);
 }
-static inline void expr_list_set_span(Expr **exprs, SourceSpan loc)
+static inline void expr_list_set_loc(Expr **exprs, SourceLocId loc)
 {
-	FOREACH(Expr *, expr, exprs) expr_set_span(expr, loc);
+	FOREACH(Expr *, expr, exprs) expr_set_loc(expr, loc);
 }
 INLINE void expr_replace(Expr *expr, Expr *replacement)
 {
-	SourceSpan loc = expr->span;
+	SourceLocId loc = expr->loc;
 	*expr = *replacement;
-	expr_set_span(expr, loc);
+	expr_set_loc(expr, loc);
 }
 
 INLINE bool expr_ok(Expr *expr) { return expr == NULL || expr->expr_kind != EXPR_POISONED; }
@@ -3595,7 +4012,7 @@ INLINE bool exprid_is_pure(ExprId expr_id)
 
 INLINE Expr *expr_new_expr(ExprKind kind, Expr *expr)
 {
-	return expr_new(kind, expr->span);
+	return expr_new(kind, expr->loc);
 }
 
 INLINE bool type_is_promotable_int_bool(Type *type)
@@ -3641,7 +4058,7 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 const char *cc_compiler(const char *cc, const char *file, const char *flags, const char **include_dirs, const char *output_subdir);
 const char *arch_to_linker_arch(ArchType arch);
 extern char swizzle[256];
-
+#define SWIZZLE_INDEX(c) ((swizzle[(int)(c)] - 1) & 0xF)
 #define CAT(a,b) CAT2(a,b) // force expand
 #define CAT2(a,b) a##b // actually concatenate
 #define TEMP(X) CAT(X, __LINE__)
@@ -3654,7 +4071,14 @@ extern char swizzle[256];
 #define ASSIGN_DECL_OR_RET(_assign, _decl_stmt, _res) Decl* TEMP(_decl) = (_decl_stmt); if (!decl_ok(TEMP(_decl))) return _res; _assign = TEMP(_decl)
 #define ASSIGN_DECLID_OR_RET(_assign, _decl_stmt, _res) Decl* TEMP(_decl) = (_decl_stmt); if (!decl_ok(TEMP(_decl))) return _res; _assign = TEMP(_decl) ? declid(TEMP(_decl)) : 0
 
+INLINE SourceLocId make_loc(SourceLoc loc)
+{
+	SourceLoc *copy = sourceloc_calloc();
+	*copy = loc;
+	return sourcelocid(copy);
+}
 
+INLINE Decl *decl_new_loc(DeclKind decl_kind, const char *name, SourceLoc loc) { return decl_new(decl_kind, name, make_loc(loc)); }
 
 INLINE void ast_append(AstId **succ, Ast *next)
 {
@@ -3666,10 +4090,20 @@ INLINE bool ast_ok(Ast *ast) { return ast == NULL || ast->ast_kind != AST_POISON
 
 INLINE bool ast_poison(Ast *ast) { ast->ast_kind = AST_POISONED; return false; }
 
-INLINE Ast *new_ast(AstKind kind, SourceSpan range)
+INLINE Ast *new_ast(AstKind kind, SourceLocId loc)
 {
 	Ast *ast = ast_calloc();
-	ast->span = range;
+	ast->loc = loc;
+	ast->ast_kind = kind;
+	return ast;
+}
+
+#define NEW_AST_TOKEN(kind__) (new_ast_loc(kind__, c->span))
+
+INLINE Ast *new_ast_loc(AstKind kind, SourceLoc loc)
+{
+	Ast *ast = ast_calloc();
+	ast->loc = make_loc(loc);
 	ast->ast_kind = kind;
 	return ast;
 }
@@ -3852,7 +4286,6 @@ INLINE void expr_rewrite_enum_from_ord(Expr *expr, Type *type)
 	expr->resolve_status = RESOLVE_DONE;
 }
 
-
 INLINE void expr_rewrite_slice_len(Expr *expr, Expr *inner, Type *type)
 {
 	ASSERT(inner->resolve_status == RESOLVE_DONE);
@@ -3884,13 +4317,26 @@ INLINE void expr_rewrite_ext_trunc(Expr *expr, Type *type, bool is_signed)
 	expr->type = type_add_optional(type, IS_OPTIONAL(inner));
 }
 
+INLINE void expr_rewrite_const_integer(Expr *expr, Type *type, Int128 i)
+{
+	expr->expr_kind = EXPR_CONST;
+	expr->type = type;
+	expr->resolve_status = RESOLVE_DONE;
+	expr->const_expr.ixx = (Int) {
+		.i =  i,
+		.type = type_flatten_to_int(type)->type_kind
+	};
+	expr->const_expr.is_character = false;
+	expr->const_expr.const_kind = CONST_INTEGER;
+}
+
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
 {
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
 	expr->resolve_status = RESOLVE_DONE;
 	TypeKind kind = type_flatten(type)->type_kind;
-	(&expr->const_expr)->ixx.i.high = 0;
+	expr->const_expr.ixx.i.high = 0;
 	if (type_kind_is_signed(kind))
 	{
 		if (v > (uint64_t)INT64_MAX) (&expr->const_expr)->ixx.i.high = UINT64_MAX;
@@ -3912,10 +4358,10 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
 				break;
 		}
 	}
-	(&expr->const_expr)->ixx.i.low = v;
-	(&expr->const_expr)->ixx.type = kind;
-	(&expr->const_expr)->is_character = false;
-	(&expr->const_expr)->const_kind = CONST_INTEGER;
+	expr->const_expr.ixx.i.low = v;
+	expr->const_expr.ixx.type = kind;
+	expr->const_expr.is_character = false;
+	expr->const_expr.const_kind = CONST_INTEGER;
 }
 
 INLINE void expr_rewrite_to_int_to_float(Expr *expr, Type *type)
@@ -4107,9 +4553,15 @@ INLINE bool expr_is_const_fault(Expr *expr)
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_FAULT;
 }
 
-INLINE bool expr_is_const_pointer(Expr *expr)
+INLINE bool expr_is_const_ref(Expr *expr)
 {
 	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_REF;
+}
+
+INLINE bool expr_is_const_pointer(Expr *expr)
+{
+	ASSERT_LOC(expr, expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_POINTER;
 }
 
@@ -4155,6 +4607,34 @@ INLINE bool expr_is_const_float(Expr *expr)
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_FLOAT;
 }
 
+INLINE bool expr_is_ct_ident(Expr *expr)
+{
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	if (expr->expr_kind != EXPR_IDENTIFIER) return false;
+	Decl *decl = expr->ident_expr;
+	if (decl->decl_kind != DECL_VAR) return false;
+	switch (decl->var.kind)
+	{
+		case VARDECL_CONST:
+		case VARDECL_GLOBAL:
+		case VARDECL_LOCAL:
+		case VARDECL_PARAM:
+		case VARDECL_MEMBER:
+		case VARDECL_BITMEMBER:
+		case VARDECL_PARAM_EXPR:
+		case VARDECL_UNWRAPPED:
+		case VARDECL_ERASE:
+		case VARDECL_REWRAPPED:
+			return false;
+		case VARDECL_PARAM_CT:
+		case VARDECL_PARAM_CT_TYPE:
+		case VARDECL_LOCAL_CT:
+		case VARDECL_LOCAL_CT_TYPE:
+			return true;
+	}
+	UNREACHABLE;
+}
+
 INLINE bool expr_is_const_typeid(Expr *expr)
 {
 	ASSERT(expr->resolve_status == RESOLVE_DONE);
@@ -4176,18 +4656,21 @@ INLINE bool check_module_name(Path *path)
 	return true;
 }
 
-#ifdef NDEBUG
-#define ASSERT_SPANF(node__, check__, format__, ...) do { } while(0)
-#define ASSERT_SPAN(node__, check__) do { } while(0)
-#define ASSERT_AT(span__, check__) do { } while(0)
-#else
-#define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->span); eprintf(format__, __VA_ARGS__); ASSERT(check__); } } while(0)
-#define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->span); ASSERT(check__); } } while(0)
-#define ASSERT_AT(span__, check__) do { if (!(check__)) { assert_print_line(span__); ASSERT(check__); } } while(0)
-#endif
-void assert_print_line(SourceSpan span);
+
+INLINE void const_init_set_type(ConstInitializer *init, Type *type)
+{
+	init->type = type_flatten(type);
+}
+
+INLINE bool expr_is_valid_index(Expr *expr)
+{
+	ASSERT_SPAN(expr, expr_is_const_int(expr));
+	return int_fits(expr->const_expr.ixx, TYPE_I64);
+}
+
 
 const char *default_c_compiler(void);
 
 void print_build_env(void);
+void print_asm(PlatformTarget *target);
 const char *os_type_to_string(OsType os);

@@ -43,6 +43,11 @@ fn void? ByteWriter.destroy(&self) @dynamic
 	*self = { };
 }
 
+fn char[] ByteWriter.array_view(self) @inline
+{
+	return self.bytes[:self.index];
+}
+
 fn String ByteWriter.str_view(&self) @inline
 {
 	return (String)self.bytes[:self.index];
@@ -51,7 +56,7 @@ fn String ByteWriter.str_view(&self) @inline
 fn void? ByteWriter.ensure_capacity(&self, usz len) @inline
 {
 	if (self.bytes.len > len) return;
-	if (!self.allocator) return OUT_OF_SPACE?;
+	if (!self.allocator) return OUT_OF_SPACE~;
 	if (len < 16) len = 16;
 	usz new_capacity = math::next_power_of_2(len);
 	char* new_ptr = allocator::realloc_try(self.allocator, self.bytes.ptr, new_capacity)!;
@@ -81,9 +86,10 @@ fn usz? ByteWriter.read_from(&self, InStream reader) @dynamic
 	usz start_index = self.index;
 	if (&reader.available)
 	{
-		while (usz available = reader.available()!)
+		while (ulong available = reader.available()!)
 		{
-			self.ensure_capacity(self.index + available)!;
+			if (available > usz.max) return OUT_OF_SPACE~;
+			self.ensure_capacity(self.index + (usz)available)!;
 			usz read = reader.read(self.bytes[self.index..])!;
 			self.index += read;
 		}
@@ -91,7 +97,7 @@ fn usz? ByteWriter.read_from(&self, InStream reader) @dynamic
 	}
 	if (self.bytes.len == 0)
 	{
-		self.ensure_capacity(16)!;
+		self.ensure_capacity(256)!;
 	}
 	while (true)
 	{

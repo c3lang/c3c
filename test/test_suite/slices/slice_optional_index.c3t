@@ -6,7 +6,7 @@ fn void test()
 	int[] a = { 1, 2, 3 };
 	for (int i = 0; i < 3; i++)
 	{
-		int? b = i == 0 ? NOT_FOUND? : i;
+		int? b = i == 0 ? NOT_FOUND~ : i;
 		int[]? y = a[:b];
 		int[]? w = a[b..];
 		int? z = a[b];

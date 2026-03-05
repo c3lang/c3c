@@ -104,7 +104,7 @@ static char *err_hex_float_format_invalid = "Hex floating points must end with '
 
 TypeKind float_suffix(char c, const char **index_ref, char** error_ref)
 {
-	if (c == 'b' && (*index_ref)[0] == 'f' && (*index_ref)[1] == '1' && (*index_ref)[1] == '6')
+	if (c == 'b' && (*index_ref)[0] == 'f' && (*index_ref)[1] == '1' && (*index_ref)[2] == '6')
 	{
 		(*index_ref) += 4;
 		return TYPE_BF16;

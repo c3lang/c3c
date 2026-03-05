@@ -145,9 +145,12 @@ static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *
 {
 	ArraySize len = left->const_expr.bytes.len;
 	bool is_bytes = left->const_expr.const_kind == CONST_BYTES;
+	ASSERT(is_bytes || left->const_expr.const_kind == CONST_STRING);
 	Type *indexed = type_get_indexed_type(left->type);
 	const char *left_bytes = left->const_expr.bytes.ptr;
-	RETRY:;
+RETRY:;
+	(void)sema_cast_const(right);
+	ASSERT(expr_is_const(right));
 	switch (right->const_expr.const_kind)
 	{
 		case CONST_INTEGER:
@@ -187,6 +190,10 @@ static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *
 		case CONST_SLICE:
 		case CONST_INITIALIZER:
 			if (!cast_implicit(context, right, type_get_inferred_array(indexed), false)) return false;
+			if (!sema_cast_const(right))
+			{
+				RETURN_SEMA_ERROR(right, "Could not concatenate with the right hand side.");
+			}
 			expr_contract_array(&right->const_expr, left->const_expr.const_kind);
 			goto RETRY;
 	}
@@ -231,24 +238,24 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 	}
 	bool is_slice = list->const_expr.const_kind == CONST_SLICE;
 	ASSERT(!type_is_inferred(array_type));
-	bool is_vector = array_type->type_kind == TYPE_VECTOR;
+	bool is_vector = type_kind_is_real_vector(array_type->type_kind);
 	ConstInitializer *init = is_slice ? list->const_expr.slice_init : list->const_expr.initializer;
 	unsigned len = sema_len_from_const(list) + 1;
 	Type *indexed = type_get_indexed_type(init->type);
 	if (!cast_implicit(context, element, indexed, false)) return false;
-	Type *new_inner_type = is_vector ? type_get_vector(indexed, len) : type_get_array(indexed, len);
+	Type *new_inner_type = is_vector ? type_get_vector(indexed, array_type->type_kind, len) : type_get_array(indexed, len);
 	Type *new_outer_type = list->type;
 	if (!is_slice)
 	{
 		Type *outer_indexed = type_get_indexed_type(init->type);
-		new_outer_type = is_vector ? type_get_vector(outer_indexed, len) : type_get_array(outer_indexed, len);
+		new_outer_type = is_vector ? type_get_vector(outer_indexed,  array_type->type_kind, len) : type_get_array(outer_indexed, len);
 	}
 	switch (init->kind)
 	{
 		case CONST_INIT_ZERO:
 		{
 			init->kind = CONST_INIT_ARRAY;
-			init->type = new_inner_type;
+			const_init_set_type(init, new_inner_type);
 			ConstInitializer **inits = NULL;
 			vec_add(inits, const_init_new_array_value(element, len - 1));
 			init->init_array.elements = inits;
@@ -257,13 +264,13 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 			break;
 		}
 		case CONST_INIT_ARRAY:
-			init->type = new_inner_type;
+			const_init_set_type(init, new_inner_type);
 			vec_add(init->init_array.elements, const_init_new_array_value(element, len - 1));
 			expr_replace(expr, list);
 			expr->type = new_outer_type;
 			break;
 		case CONST_INIT_ARRAY_FULL:
-			init->type = new_inner_type;
+			const_init_set_type(init, new_inner_type);
 			vec_add(init->init_array_full, const_init_new_value(element));
 			expr_replace(expr, list);
 			expr->type = new_outer_type;
@@ -297,7 +304,7 @@ static inline ConstInitializer *expr_const_initializer_from_expr(Expr *expr)
  *
  * 1. String/Bytes + ... => String/Bytes
  * 2. Vector/slice/array + Untyped list => Merged untyped list
- * 3. Vector/slice/array + arraylike => vector/array iff canoncial match, otherwise Untyped list
+ * 3. Vector/slice/array + arraylike => vector/array iff canonical match, otherwise Untyped list
  * 4. Untyped list + Vector/array/slice => Merged untyped list
  * 5. Vector/array/slice + element => Vector/array/slice + 1 len iff canonical match, Untyped list otherwise
  * 6. Untyped list + element => Untyped list
@@ -307,7 +314,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 	ASSERT_SPAN(concat_expr, concat_expr->resolve_status == RESOLVE_RUNNING);
 	if (!sema_check_left_right_const(context, left, right)) return false;
 	ArraySize len = 0;
-	bool use_array = true;
+	TypeKind vec_type = TYPE_POISONED;
 	Type *indexed_type = NULL;
 	Type *element_type = left->type->canonical;
 	Type *right_type = right->type->canonical;
@@ -331,8 +338,11 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		case CONST_INITIALIZER:
 			switch (type_flatten(element_type)->type_kind)
 			{
+				case TYPE_SIMD_VECTOR:
+					vec_type = TYPE_SIMD_VECTOR;
+					break;
 				case TYPE_VECTOR:
-					use_array = false;
+					vec_type = TYPE_VECTOR;
 					break;
 				case TYPE_INFERRED_VECTOR:
 				case TYPE_INFERRED_ARRAY:
@@ -422,9 +432,20 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 					UNREACHABLE
 				case CONST_INIT_ARRAY_FULL:
 				{
+					Expr *el;
 					FOREACH(ConstInitializer *, val, init->init_array_full)
 					{
-						vec_add(untyped_exprs, val->init_value);
+						switch (val->kind)
+						{
+							case CONST_INIT_VALUE:
+								vec_add(untyped_exprs, val->init_value);
+								break;
+							default:
+								el = expr_new_expr(EXPR_CONST, single_expr);
+								expr_rewrite_const_initializer(el, val->type, val);
+								vec_add(untyped_exprs, el);
+								break;
+						}
 					}
 					continue;
 				}
@@ -484,6 +505,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 				.const_kind = CONST_UNTYPED_LIST,
 				.untyped_list = untyped_exprs
 		};
+
 		return true;
 	}
 	// Zero slice + zero slice => slice
@@ -491,7 +513,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 	{
 		expr_rewrite_to_const_zero(concat_expr, type_get_slice(indexed_type));
 	}
-	Type *type = use_array ? type_get_array(indexed_type, len) : type_get_vector(indexed_type, len);
+	Type *type = vec_type == TYPE_POISONED ? type_get_array(indexed_type, len) : type_get_vector(indexed_type, vec_type, len);
 	ConstInitializer *lhs_init = expr_const_initializer_from_expr(left);
 	ConstInitializer *rhs_init = expr_const_initializer_from_expr(right);
 	if (!rhs_init)
@@ -543,7 +565,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 						ASSERT_SPAN(right, element->kind == CONST_INIT_ARRAY_VALUE);
 						element->init_array_value.index += (ArrayIndex)len_lhs;
 					}
-					rhs_init->type = type;
+					const_init_set_type(rhs_init, type);
 					expr_rewrite_const_initializer(concat_expr, type, rhs_init);
 					return true;
 				}
@@ -628,7 +650,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 				case CONST_INIT_ZERO:
 				{
 					// { 1 => 3 } + { 0, 0, 0 }
-					lhs_init->type = type;
+					const_init_set_type(lhs_init, type);
 					expr_rewrite_const_initializer(concat_expr, type, lhs_init);
 					return true;
 				}

@@ -4,12 +4,12 @@ fn int? abc()
 }
 macro test()
 {
-	return @catch(abc())?!!;
+	return @catch(abc())~!!;
 }
 
 macro test2()
 {
-	return @catch(abc())?;
+	return @catch(abc())~;
 }
 
 fn void a()

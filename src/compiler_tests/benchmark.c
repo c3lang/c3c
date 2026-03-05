@@ -10,6 +10,7 @@ BenchTime begin;
 
 #if USE_PTHREAD
 
+
 void bench_begin(void)
 {
 	clock_gettime(CLOCK_MONOTONIC, &begin);

@@ -59,22 +59,22 @@ fn Url? tparse(String url_string) => parse(tmem, url_string);
 fn Url? parse(Allocator allocator, String url_string)
 {
 	url_string = url_string.trim();
-	if (!url_string) return EMPTY?;
+	if (!url_string) return EMPTY~;
 	Url url = { .allocator = allocator };
 
 	// Parse scheme
 	if (try pos = url_string.index_of("://"))
 	{
-		if (!pos) return INVALID_SCHEME?;
+		if (!pos) return INVALID_SCHEME~;
 		url.scheme = url_string[:pos].copy(allocator);
 		url_string = url_string[url.scheme.len + 3 ..];
 	}
 	else if (try pos = url_string.index_of(":"))
 	{
 		// Handle schemes without authority like 'mailto:'
-		if (!pos) return INVALID_SCHEME?;
+		if (!pos) return INVALID_SCHEME~;
 		url.scheme = url_string[:pos].copy(allocator);
-		url.path = decode(allocator, url_string[pos + 1 ..], PATH) ?? INVALID_PATH?!;
+		url.path = decode(allocator, url_string[pos + 1 ..], PATH) ?? INVALID_PATH~!;
 		return url;
 	}
 
@@ -93,11 +93,11 @@ fn Url? parse(Allocator allocator, String url_string)
 			{
 				String[] userpass = userinfo.tsplit(":", 2);
 				username = userpass[0];
-				if (!username.len) return INVALID_USER?;
+				if (!username.len) return INVALID_USER~;
 							url.host =
 
-				url.username = decode(allocator, username, HOST) ?? INVALID_USER?!;
-				if (userpass.len) url.password = decode(allocator, userpass[1], USERPASS) ?? INVALID_PASSWORD?!;
+				url.username = decode(allocator, username, HOST) ?? INVALID_USER~!;
+				if (userpass.len) url.password = decode(allocator, userpass[1], USERPASS) ?? INVALID_PASSWORD~!;
 			};
 			authority = authority[userinfo.len + 1 ..];
 		}
@@ -129,7 +129,7 @@ fn Url? parse(Allocator allocator, String url_string)
 				}
 			};
 		}
-		url.host = decode(allocator, host, HOST) ?? INVALID_HOST?!;
+		url.host = decode(allocator, host, HOST) ?? INVALID_HOST~!;
 		url_string = url_string[authority_end ..];
 	}
 
@@ -140,12 +140,12 @@ fn Url? parse(Allocator allocator, String url_string)
 	if (@ok(query_index) || @ok(fragment_index))
 	{
 		usz path_end = min(query_index ?? url_string.len, fragment_index ?? url_string.len);
-		url.path = decode(allocator, url_string[:path_end], PATH) ?? INVALID_PATH?!;
+		url.path = decode(allocator, url_string[:path_end], PATH) ?? INVALID_PATH~!;
 		url_string = url_string[path_end ..];
 	}
 	else
 	{
-		url.path = decode(allocator, url_string, PATH) ?? INVALID_PATH?!;
+		url.path = decode(allocator, url_string, PATH) ?? INVALID_PATH~!;
 		url_string = "";
 	}
 
@@ -163,7 +163,7 @@ fn Url? parse(Allocator allocator, String url_string)
 	// Parse fragment
 	if (url_string.starts_with("#"))
 	{
-		url.fragment = decode(allocator, url_string[1..], FRAGMENT) ?? INVALID_FRAGMENT?!;
+		url.fragment = decode(allocator, url_string[1..], FRAGMENT) ?? INVALID_FRAGMENT~!;
 	}
 	return url;
 }

@@ -1,4 +1,4 @@
-module foo{Type, SIZE};
+module foo <Type, SIZE>;
 
 struct Foo
 {

@@ -12,7 +12,7 @@ macro @thing(; @body())
 }
 
 fn void strcpy(char *s1, char *s2) {
-  while (*s1++ = *s2++);
+  while ((*s1++ = *s2++));
 }
 
 fn void main()

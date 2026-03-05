@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2021-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module libc;
@@ -7,6 +7,9 @@ module libc;
 const int EXIT_FAILURE = 1;
 const int EXIT_SUCCESS = 0;
 const int RAND_MAX = 0x7fffffff;
+
+alias WChar @if(env::WIN32) = Char16;
+alias WChar @if(!env::WIN32) = Char32;
 
 struct DivResult
 {
@@ -46,7 +49,7 @@ fn void errno_set(Errno e)
 	os::errno_set((int)e);
 }
 
-typedef Errno = inline CInt;
+typedef Errno @constinit = inline CInt;
 alias TerminateFunction = fn void();
 alias CompareFunction = fn int(void*, void*);
 alias JmpBuf = uptr[$$JMP_BUF_SIZE];
@@ -54,30 +57,15 @@ alias Fd = CInt;
 alias Fpos_t @if(env::WIN32) = long;
 alias SignalFunction = fn void(CInt);
 
-const CInt SIGHUP = 1;
+// Common signals for all targets
 const CInt SIGINT = 2;
-const CInt SIGQUIT = 3;
 const CInt SIGILL = 4;
-const CInt SIGTRAP = 5;
-const CInt SIGABRT = 6;
-const CInt SIGBUS = BSD_FLAVOR_SIG ? 10 : 7; // Or Mips
 const CInt SIGFPE = 8;
-const CInt SIGKILL = 9;
 const CInt SIGSEGV = 11;
-const CInt SIGSYS = BSD_FLAVOR_SIG ? 12 : 31;
-const CInt SIGPIPE = 13;
-const CInt SIGALRM = 14;
 const CInt SIGTERM = 15;
-const CInt SIGURG = BSD_FLAVOR_SIG ? 16 : 23;
-const CInt SIGSTOP = BSD_FLAVOR_SIG ? 17 : 19;
-const CInt SIGTSTP = BSD_FLAVOR_SIG ? 18 : 20;
-const CInt SIGCONT = BSD_FLAVOR_SIG ? 19 : 18;
-const CInt SIGCHLD = BSD_FLAVOR_SIG ? 20 : 17;
-
-const bool BSD_FLAVOR_SIG @local = env::DARWIN || env::BSD_FAMILY;
 
 alias Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
-alias Off_t = $typefrom(env::WIN32 ? int.typeid : usz.typeid);
+alias Off_t = $typefrom(env::WIN32 ? int.typeid : isz.typeid);
 
 module libc @if(env::LIBC);
 
@@ -97,7 +85,7 @@ extern fn CInt close(CInt fd) @if(!env::WIN32);
 extern fn double difftime(Time_t time1, Time_t time2) @if(!env::WIN32);
 extern fn DivResult div(CInt numer, CInt denom);
 extern fn void exit(CInt status);
-extern fn void _exit(CInt status) @extern("_Exit");
+extern fn void _exit(CInt status) @cname("_Exit");
 extern fn CInt fclose(CFile stream);
 extern fn CFile fdopen(CInt fd, ZString mode) @if(!env::WIN32);
 extern fn CInt feof(CFile stream);
@@ -105,18 +93,18 @@ extern fn CInt ferror(CFile stream);
 extern fn CInt fflush(CFile stream);
 extern fn CInt fgetc(CFile stream);
 extern fn ZString fgets(char* string, CInt n, CFile stream);
-extern fn CInt fgetpos(CFile stream, Fpos_t* pos);
+extern fn CInt fgetpos(CFile stream, Fpos_t* pos) @if(!env::NETBSD);
 extern fn Fd fileno(CFile stream) @if(!env::WIN32);
 extern fn CFile fopen(ZString filename, ZString mode);
 extern fn CInt fprintf(CFile stream, ZString format, ...);
 extern fn CInt fputc(CInt c, CFile stream);
 extern fn CInt fputs(ZString string, CFile stream);
 extern fn usz fread(void* ptr, usz size, usz nmemb, CFile stream);
-extern fn void* free(void*);
+extern fn void free(void*);
 extern fn CFile freopen(ZString filename, ZString mode, CFile stream);
 extern fn CInt fscanf(CFile stream, ZString format, ...);
 extern fn CInt fseek(CFile stream, SeekIndex offset, CInt whence) @if(!env::WIN32);
-extern fn CInt fsetpos(CFile stream, Fpos_t* pos);
+extern fn CInt fsetpos(CFile stream, Fpos_t* pos) @if(!env::NETBSD);
 extern fn SeekIndex ftell(CFile stream) @if(!env::WIN32);
 extern fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream);
 extern fn CInt getc(CFile stream);
@@ -124,13 +112,13 @@ extern fn CInt getchar();
 extern fn ZString getenv(ZString name);
 extern fn ZString gets(char* buffer);
 extern fn Tm* gmtime(Time_t* timer);
-extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @if(!env::WIN32);
+extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @if(!env::WIN32 && !env::NETBSD);
 extern fn CInt ioctl(CInt fd, ulong request, ...);
 extern fn CInt isatty(Fd fd) @if(!env::WIN32);
 extern fn CLong labs(CLong x);
 extern fn LongDivResult ldiv(CLong number, CLong denom);
 extern fn Tm* localtime(Time_t* timer);
-extern fn Tm* localtime_r(Time_t* timer, Tm* result) @if(!env::WIN32);
+extern fn Tm* localtime_r(Time_t* timer, Tm* result) @if(!env::WIN32 && !env::NETBSD);
 extern fn void longjmp(JmpBuf* buffer, CInt value) @if(!env::NETBSD && !env::OPENBSD);
 extern fn void* malloc(usz size);
 extern fn void* memchr(void* str, CInt c, usz n);
@@ -138,6 +126,7 @@ extern fn CInt memcmp(void* buf1, void* buf2, usz count);
 extern fn void* memcpy(void* dest, void* src, usz n);
 extern fn void* memmove(void* dest, void* src, usz n);
 extern fn void* memset(void* dest, CInt value, usz n);
+extern fn ZString mktemp(char* template) @cname(env::WIN32 ??? "_mktemp" : "mktemp");
 extern fn Time_t* mktime(Tm* time) @if(!env::WIN32);
 extern fn void perror(ZString string);
 extern fn CInt printf(ZString format, ...);
@@ -148,6 +137,7 @@ extern fn void qsort(void* base, usz items, usz size, CompareFunction compare);
 extern fn CInt raise(CInt signal);
 extern fn CInt rand();
 extern fn isz read(Fd fd, void* buf, usz nbyte) @if(!env::WIN32);
+extern fn isz readlink(ZString pathname, char* buf, int bufsize) @if(!env::WIN32);
 extern fn void* realloc(void* ptr, usz size);
 extern fn CInt remove(ZString filename);
 extern fn CInt rename(ZString old_name, ZString new_name);
@@ -188,17 +178,18 @@ extern fn CLong strtol(char* str, char** endptr, CInt base);
 extern fn CULong strtoul(char* str, char** endptr, CInt base);
 extern fn usz strxfrm(char* dest, ZString src, usz n);
 extern fn CInt system(ZString str);
-extern fn Time_t timegm(Tm* timeptr) @if(!env::WIN32);
-extern fn ZString tmpnam(ZString str);
+extern fn ZString tempnam(ZString dir, ZString prefix) @cname(env::WIN32 ??? "_tempnam" : "tempnam") @nodiscard;
+extern fn Time_t timegm(Tm* timeptr) @if(!env::WIN32 && !env::NETBSD);
+extern fn ZString tmpnam(char *buffer);
 extern fn CFile tmpfile();
 extern fn CInt ungetc(CInt c, CFile stream);
-extern fn CInt unsetenv(ZString name);
+extern fn CInt unsetenv(ZString name) @if(!env::NETBSD);
 extern fn isz write(Fd fd, void* buffer, usz count) @if(!env::WIN32);
 
 extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
 extern fn isz getline(char** linep, usz* linecapp, CFile stream);
 extern fn CInt timespec_get(TimeSpec* ts, CInt base);
-extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining);
+extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining) @if(!env::NETBSD);
 extern fn ZString ctime(Time_t* timer);
 extern fn Time_t time(Time_t* timer);
 
@@ -207,9 +198,9 @@ const CInt STDOUT_FD = 1;
 const CInt STDERR_FD = 2;
 
 module libc @if(env::LINUX || env::ANDROID);
-extern CFile __stdin @extern("stdin");
-extern CFile __stdout @extern("stdout");
-extern CFile __stderr @extern("stderr");
+extern CFile __stdin @cname("stdin");
+extern CFile __stdout @cname("stdout");
+extern CFile __stderr @cname("stderr");
 extern fn usz malloc_usable_size(void* ptr);
 macro usz malloc_size(void* ptr) => malloc_usable_size(ptr);
 extern fn void* aligned_alloc(usz align, usz size);
@@ -225,6 +216,13 @@ extern fn int _longjmp(void*, int);
 macro usz longjmp(void* ptr, CInt i) => _longjmp(ptr, i);
 extern fn usz malloc_size(void* ptr);
 extern fn void* aligned_alloc(usz align, usz size);
+extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @cname("__gmtime_r50") @if(env::NETBSD);
+extern fn Tm* localtime_r(Time_t* timer, Tm* result) @cname("__localtime_r50") @if(env::NETBSD);
+extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining) @cname("__nanosleep50") @if(env::NETBSD);
+extern fn CInt fgetpos(CFile stream, Fpos_t* pos) @cname("__fgetpos50") @if(env::NETBSD);
+extern fn CInt fsetpos(CFile stream, Fpos_t* pos) @cname("__fsetpos50") @if(env::NETBSD);
+extern fn Time_t timegm(Tm* timeptr) @cname("__timegm50") @if(env::NETBSD);
+extern fn CInt unsetenv(ZString name) @cname("__unsetenv13") @if(env::NETBSD);
 macro CFile stdin() { return fdopen(0, "r"); }
 macro CFile stdout() { return fdopen(1, "w"); }
 macro CFile stderr() { return fdopen(2, "w"); }
@@ -254,116 +252,105 @@ macro CFile stdin() { return (CFile*)(uptr)STDIN_FD; }
 macro CFile stdout() { return (CFile*)(uptr)STDOUT_FD; }
 macro CFile stderr() { return (CFile*)(uptr)STDERR_FD; }
 
-module libc @if(!env::LIBC);
+module libc @if(env::NO_LIBC);
+import std::core::mem;
 
-fn void longjmp(JmpBuf* buffer, CInt value) @weak @extern("longjmp") @nostrip
+
+fn void longjmp(JmpBuf* buffer, CInt value) @weak @cname("longjmp") @nostrip
 {
 	unreachable("longjmp unavailable");
 }
 
-fn CInt setjmp(JmpBuf* buffer) @weak @extern("setjmp") @nostrip
+fn CInt setjmp(JmpBuf* buffer) @weak @cname("setjmp") @nostrip
 {
 	unreachable("setjmp unavailable");
 }
 
-fn void* malloc(usz size) @weak @extern("malloc") @nostrip
+fn void* malloc(usz size) @weak @cname("malloc") @nostrip
 {
 	unreachable("malloc unavailable");
 }
-fn void* calloc(usz count, usz size) @weak @extern("calloc") @nostrip
+fn void* calloc(usz count, usz size) @weak @cname("calloc") @nostrip
 {
 	unreachable("calloc unavailable");
 }
-fn void* free(void*) @weak @extern("free")
+fn void* free(void*) @weak @cname("free")
 {
 	unreachable("free unavailable");
 }
 
-fn void* realloc(void* ptr, usz size) @weak @extern("realloc") @nostrip
+fn void* realloc(void* ptr, usz size) @weak @cname("realloc") @nostrip
 {
 	unreachable("realloc unavailable");
 }
 
-fn void* memcpy(void* dest, void* src, usz n) @weak @extern("memcpy") @nostrip
-{
-	for (usz i = 0; i < n; i++) ((char*)dest)[i] = ((char*)src)[i];
-	return dest;
-}
+alias memcpy = mem::__memcpy;
+alias memmove = mem::__memcpy;
+alias memset = mem::__memset;
 
-fn void* memmove(void* dest, void* src, usz n) @weak @extern("memmove") @nostrip
-{
-	return memcpy(dest, src, n) @inline;
-}
-
-fn void* memset(void* dest, CInt value, usz n) @weak @extern("memset") @nostrip
-{
-	for (usz i = 0; i < n; i++) ((char*)dest)[i] = (char)value;
-	return dest;
-}
-
-fn int fseek(CFile stream, SeekIndex offset, int whence) @weak @extern("fseek") @nostrip
+fn int fseek(CFile stream, SeekIndex offset, int whence) @weak @cname("fseek") @nostrip
 {
 	unreachable("'fseek' not available.");
 }
-fn CFile fopen(ZString filename, ZString mode) @weak @extern("fopen") @nostrip
+fn CFile fopen(ZString filename, ZString mode) @weak @cname("fopen") @nostrip
 {
 	unreachable("'fopen' not available.");
 }
 
-fn CFile freopen(ZString filename, ZString mode, CFile stream) @weak @extern("fopen") @nostrip
+fn CFile freopen(ZString filename, ZString mode, CFile stream) @weak @cname("fopen") @nostrip
 {
 	unreachable("'freopen' not available.");
 }
 
-fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream) @weak @extern("fwrite") @nostrip
+fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream) @weak @cname("fwrite") @nostrip
 {
 	unreachable("'fwrite' not available.");
 }
 
-fn usz fread(void* ptr, usz size, usz nmemb, CFile stream) @weak @extern("fread") @nostrip
+fn usz fread(void* ptr, usz size, usz nmemb, CFile stream) @weak @cname("fread") @nostrip
 {
 	unreachable("'fread' not available.");
 }
 
-fn CFile fclose(CFile) @weak @extern("fclose") @nostrip
+fn CFile fclose(CFile) @weak @cname("fclose") @nostrip
 {
 	unreachable("'fclose' not available.");
 }
 
-fn int fflush(CFile stream) @weak @extern("fflush") @nostrip
+fn int fflush(CFile stream) @weak @cname("fflush") @nostrip
 {
 	unreachable("'fflush' not available.");
 }
 
-fn int fputc(int c, CFile stream) @weak @extern("fputc") @nostrip
+fn int fputc(int c, CFile stream) @weak @cname("fputc") @nostrip
 {
 	unreachable("'fputc' not available.");
 }
 
-fn char* fgets(ZString str, int n, CFile stream) @weak @extern("fgets") @nostrip
+fn char* fgets(ZString str, int n, CFile stream) @weak @cname("fgets") @nostrip
 {
 	unreachable("'fgets' not available.");
 }
 
-fn int fgetc(CFile stream) @weak @extern("fgetc") @nostrip
+fn int fgetc(CFile stream) @weak @cname("fgetc") @nostrip
 {
 	unreachable("'fgetc' not available.");
 }
 
-fn int feof(CFile stream) @weak @extern("feof") @nostrip
+fn int feof(CFile stream) @weak @cname("feof") @nostrip
 {
 	unreachable("'feof' not available.");
 }
 
-fn int putc(int c, CFile stream) @weak @extern("putc") @nostrip
+fn int putc(int c, CFile stream) @weak @cname("putc") @nostrip
 {
 	unreachable("'putc' not available.");
 }
-fn int putchar(int c) @weak @extern("putchar") @nostrip
+fn int putchar(int c) @weak @cname("putchar") @nostrip
 {
 	unreachable("'putchar' not available.");
 }
-fn int puts(ZString str) @weak @extern("puts") @nostrip
+fn int puts(ZString str) @weak @cname("puts") @nostrip
 {
 	unreachable("'puts' not available.");
 }
@@ -414,17 +401,28 @@ alias SeekIndex = CLong;
 
 struct Tm
 {
-	CInt	tm_sec;		// seconds after the minute [0-60]
-	CInt	tm_min;		// minutes after the hour [0-59]
-	CInt	tm_hour;	// hours since midnight [0-23]
-	CInt	tm_mday;	// day of the month [1-31]
-	CInt	tm_mon;		// months since January [0-11]
-	CInt	tm_year;	// years since 1900
-	CInt	tm_wday;	// days since Sunday [0-6]
-	CInt	tm_yday;	// days since January 1 [0-365]
-	CInt	tm_isdst;	// Daylight Savings Time flag
-	TimeOffset tm_gmtoff @if(!env::WIN32);	/* offset from UTC in seconds */
-	char* tm_zone @if(!env::WIN32);	/* timezone abbreviation */
+	<* seconds after the minute [0-60] *>
+	CInt	tm_sec;
+	<* minutes after the hour [0-59] *>
+	CInt	tm_min;
+	<* hours since midnight [0-23] *>
+	CInt	tm_hour;
+	<* day of the month [1-31] *>
+	CInt	tm_mday;
+	<* months since January [0-11] *>
+	CInt	tm_mon;
+	<* years since 1900 *>
+	CInt	tm_year;
+	<* days since Sunday [0-6] *>
+	CInt	tm_wday;
+	<* days since January 1 [0-365] *>
+	CInt	tm_yday;
+	<* Daylight Savings Time flag *>
+	CInt	tm_isdst;
+	<* offset from UTC in seconds *>
+	TimeOffset tm_gmtoff @if(!env::WIN32);
+	<* timezone abbreviation *>
+	char* tm_zone @if(!env::WIN32);
 	CInt tm_nsec @if(env::WASI);
 }
 
@@ -440,12 +438,12 @@ alias Clock_t @if(env::WIN32) = int;
 alias Clock_t @if(!env::WIN32) = CLong;
 
 alias TimeOffset @if(env::WASI) = int;
-alias TimeOffset @if(!env::WASI) = CLong ;
+alias TimeOffset @if(!env::WASI) = CLong;
 
 const int TIME_UTC = 1;
 
 
-// This is a best-effort aproximation, but the C standard does not enforce
+// This is a best-effort approximation, but the C standard does not enforce
 // that this is a compile-time standard.
 const CLOCKS_PER_SEC @if(env::WIN32) = 1000;
 const CLOCKS_PER_SEC @if(!env::WIN32) = 1000000;
@@ -465,8 +463,8 @@ const Errno EBADF                    = 9; // Bad file number
 const Errno ECHILD                   = 10; // No child processes
 
 
-const Errno EAGAIN @if(env::DARWIN)  = 35; // Try again Macos
-const Errno EAGAIN @if(!env::DARWIN) = 11; // Try again
+const Errno EAGAIN @if(env::DARWIN || env::NETBSD)  = 35; // Try again Macos
+const Errno EAGAIN @if(!env::DARWIN && !env::NETBSD) = 11; // Try again
 
 const Errno ENOMEM                   = 12; // Out of memory
 const Errno EACCES                   = 13; // Permission denied
@@ -562,6 +560,73 @@ const Errno EPROTO                   = 100; // Protocol error
 const Errno ETIME                    = 101; // STREAM ioctl() timeout
 const Errno EOPNOTSUPP               = 102; // Operation not supported on socket
 
+module libc::errno @if(env::NETBSD);
+const Errno EWOULDBLOCK     = EAGAIN;    // Operation would block
+const Errno EDEADLK         = 11;        // Resource deadlock avoided
+const Errno EINPROGRESS     = 36;        // Operation now in progress
+const Errno EALREADY        = 37;        // Operation already in progress
+const Errno ENOTSOCK        = 38;        // Socket operation on non-socket
+const Errno EDESTADDRREQ    = 39;        // Destination address required
+const Errno EMSGSIZE        = 40;        // Message too long
+const Errno EPROTOTYPE      = 41;        // Protocol wrong type for socket
+const Errno ENOPROTOOPT     = 42;        // Protocol option not available
+const Errno EPROTONOSUPPORT = 43;        // Protocol not supported
+const Errno ESOCKTNOSUPPORT = 44;        // Socket type not supported
+const Errno EOPNOTSUPP      = 45;        // Operation not supported
+const Errno EPFNOSUPPORT    = 46;        // Protocol family not supported
+const Errno EAFNOSUPPORT    = 47;        // Address family not supported by protocol family
+const Errno EADDRINUSE      = 48;        // Address already in use
+const Errno EADDRNOTAVAIL   = 49;        // Can't assign requested address
+const Errno ENETDOWN        = 50;        // Network is down
+const Errno ENETUNREACH     = 51;        // Network is unreachable
+const Errno ENETRESET       = 52;        // Network dropped connection on reset
+const Errno ECONNABORTED    = 53;        // Software caused connection abort
+const Errno ECONNRESET      = 54;        // Connection reset by peer
+const Errno ENOBUFS         = 55;        // No buffer space available
+const Errno EISCONN         = 56;        // Socket is already connected
+const Errno ENOTCONN        = 57;        // Socket is not connected
+const Errno ESHUTDOWN       = 58;        // Can't send after socket shutdown
+const Errno ETOOMANYREFS    = 59;        // Too many references: can't splice
+const Errno ETIMEDOUT       = 60;        // Operation timed out
+const Errno ECONNREFUSED    = 61;        // Connection refused
+const Errno ELOOP           = 62;        // Too many levels of symbolic links
+const Errno ENAMETOOLONG    = 63;        // File name too long
+const Errno EHOSTDOWN       = 64;        // Host is down
+const Errno EHOSTUNREACH    = 65;        // No route to host
+const Errno ENOTEMPTY       = 66;        // Directory not empty
+const Errno EPROCLIM        = 67;        // Too many processes
+const Errno EUSERS          = 68;        // Too many users
+const Errno EDQUOT          = 69;        // Disc quota exceeded
+const Errno ESTALE          = 70;        // Stale NFS file handle
+const Errno EREMOTE         = 71;        // Too many levels of remote in path
+const Errno EBADRPC         = 72;        // RPC struct is bad
+const Errno ERPCMISMATCH    = 73;        // RPC version wrong
+const Errno EPROGUNAVAIL    = 74;        // RPC prog. not avail
+const Errno EPROGMISMATCH   = 75;        // Program version wrong
+const Errno EPROCUNAVAIL    = 76;        // Bad procedure for program
+const Errno ENOLCK          = 77;        // No locks available
+const Errno ENOSYS          = 78;        // Function not implemented
+const Errno EFTYPE          = 79;        // Inappropriate file type or format
+const Errno EAUTH           = 80;        // Authentication error
+const Errno ENEEDAUTH       = 81;        // Need authenticator
+const Errno EIDRM           = 82;        // Identifier removed
+const Errno ENOMSG          = 83;        // No message of desired type
+const Errno EOVERFLOW       = 84;        // Value too large to be stored in data type
+const Errno EILSEQ          = 85;        // Illegal byte sequence
+const Errno ENOTSUP         = 86;        // Not supported
+const Errno ECANCELED       = 87;        // Operation canceled
+const Errno EBADMSG         = 88;        // Bad or Corrupt message
+const Errno ENODATA         = 89;        // No message available
+const Errno ENOSR           = 90;        // No STREAM resources
+const Errno ENOSTR          = 91;        // Not a STREAM
+const Errno ETIME           = 92;        // STREAM ioctl timeout
+const Errno ENOATTR         = 93;        // Attribute not found
+const Errno EMULTIHOP       = 94;        // Multihop attempted
+const Errno ENOLINK         = 95;        // Link has been severed
+const Errno EPROTO          = 96;        // Protocol error
+const Errno EOWNERDEAD      = 97;        // Previous owner died
+const Errno ENOTRECOVERABLE = 98;        // State not recoverable
+
 module libc::errno @if(env::WIN32);
 const Errno EDEADLK                  = 36; // Resource deadlock would occur Win32
 const Errno ENAMETOOLONG             = 38; // File name too long Win32
@@ -579,7 +644,7 @@ const Errno EINPROGRESS              = 112; // Operation now in progress Win32
 const Errno EDQUOT                   = -122; // Quota exceeded, not in Win32
 const Errno EWOULDBLOCK              = 140; // Operation would block
 
-module libc::errno @if(!env::WIN32 && !env::DARWIN);
+module libc::errno @if(!env::WIN32 && !env::DARWIN && !env::NETBSD);
 const Errno EDEADLK                  = 35; // Resource deadlock would occur Linux (others?)
 const Errno ENAMETOOLONG             = 36; // File name too long Linux (others?)
 const Errno ENOTEMPTY                = 39; // Directory not empty

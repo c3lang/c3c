@@ -18,7 +18,7 @@ fn void main()
 }
 
 <*
-	@require values::@is_lvalue(#s)
+	@require $defined(#s = #s)
 *>
 macro int @read_int(String #s)
 {

@@ -1,7 +1,8 @@
 // #target: macos-x64
 module foo;
 import std::math;
-fn int x(char[<8>] a, char[<8>] b)
+typedef Char8 = inline char[<8>] @simd;
+fn int x(Char8 a, Char8 b)
 {
 	bool[<8>] z = a.comp_eq(b);
 	return ((char[<8>]) { [0..7] = 255 } & (char[<8>])z + ~(char[<8>])z & (char[<8>]) { 0, 1, 2, 3, 4, 5, 6, 7 }).min();
@@ -9,35 +10,36 @@ fn int x(char[<8>] a, char[<8>] b)
 
 /* #expect: foo.ll
 
+%.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
+
+@"$ct.foo.Char8" = linkonce global %.introspect { i8 18, i64 ptrtoint (ptr @"$ct.siv8$char" to i64), ptr null, i64 8, i64 ptrtoint (ptr @"$ct.siv8$char" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.siv8$char" = linkonce global %.introspect { i8 17, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.char" to i64), i64 8, [0 x i64] zeroinitializer }, align 8
+@"$ct.char" = linkonce global %.introspect { i8 3, i64 0, ptr null, i64 1, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+
+; Function Attrs: nounwind uwtable
 define i32 @foo.x(double %0, double %1) #0 {
 entry:
   %a = alloca <8 x i8>, align 8
   %b = alloca <8 x i8>, align 8
   %z = alloca <8 x i8>, align 8
-  %x = alloca <8 x i8>, align 1
-  %y = alloca <8 x i8>, align 1
   store double %0, ptr %a, align 8
   store double %1, ptr %b, align 8
   %2 = load <8 x i8>, ptr %a, align 8
-  store <8 x i8> %2, ptr %x, align 1
   %3 = load <8 x i8>, ptr %b, align 8
-  store <8 x i8> %3, ptr %y, align 1
-  %4 = load <8 x i8>, ptr %x, align 1
-  %5 = load <8 x i8>, ptr %y, align 1
-  %eq = icmp eq <8 x i8> %4, %5
-  %6 = sext <8 x i1> %eq to <8 x i8>
-  store <8 x i8> %6, ptr %z, align 8
+  %eq = icmp eq <8 x i8> %2, %3
+  %4 = sext <8 x i1> %eq to <8 x i8>
+  store <8 x i8> %4, ptr %z, align 8
+  %5 = load <8 x i8>, ptr %z, align 8
+  %6 = trunc <8 x i8> %5 to <8 x i1>
+  %sext = sext <8 x i1> %6 to <8 x i8>
+  %and = and <8 x i8>
   %7 = load <8 x i8>, ptr %z, align 8
   %8 = trunc <8 x i8> %7 to <8 x i1>
-  %sext = sext <8 x i1> %8 to <8 x i8>
-  %and = and <8 x i8>
-  %9 = load <8 x i8>, ptr %z, align 8
-  %10 = trunc <8 x i8> %9 to <8 x i1>
-  %sext1 = sext <8 x i1> %10 to <8 x i8>
-  %bnot = xor <8 x i8>
+  %sext1 = sext <8 x i1> %8 to <8 x i8>
+  %bnot = xor <8 x i8> %sext1
   %and2 = and <8 x i8> %bnot, <i8 0, i8 1, i8 2, i8 3, i8 4, i8 5, i8 6, i8 7>
   %add = add <8 x i8> %and, %and2
-  %11 = call i8 @llvm.vector.reduce.umin.v8i8(<8 x i8> %add)
-  %zext = zext i8 %11 to i32
+  %9 = call i8 @llvm.vector.reduce.umin.v8i8(<8 x i8> %add)
+  %zext = zext i8 %9 to i32
   ret i32 %zext
 }

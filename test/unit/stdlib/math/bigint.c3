@@ -11,7 +11,7 @@ fn void init_with_array()
 	BigInt bi @noinit;
 	assert(bi.init_with_array({}).equals(ZERO));
 	assert(bi.init_with_array({0, 0, 0, 1}).equals(bigint::from_int(1)));
-	assert("100000000" == bi.init_with_array({1, 0}).to_string_with_radix(16, allocator::temp()));
+	assert("100000000" == bi.init_with_array({1, 0}).to_string_with_radix(16, tmem));
 }
 
 fn void test_parse16()
@@ -22,10 +22,10 @@ fn void test_parse16()
 
 fn void test_zero()
 {
-    assert(bigint::from_int(0).to_string(allocator::temp()) == "0");
+    assert(bigint::from_int(0).to_string(tmem) == "0");
     BigInt bi;
     bi.init_string_radix("00", 16)!!;
-    assert(bi.to_string(allocator::temp()) == "0");
+    assert(bi.to_string(tmem) == "0");
 }
 
 fn void test_plus()

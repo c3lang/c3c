@@ -1,0 +1,24 @@
+// #target: linux-aarch64
+module test;
+extern fn float? printf(char*,...);
+fn int main()
+{
+	float a = 12.3;
+	(void)printf("", a);
+	return 0;
+}
+
+/* #expect: test.ll
+
+declare i64 @printf(ptr, ptr, ...) #0
+
+define i32 @main() #0 {
+entry:
+  %a = alloca float, align 4
+  %retparam = alloca float, align 4
+  store float 0x40289999A0000000, ptr %a, align 4
+  %0 = load float, ptr %a, align 4
+  %fpfpext = fpext float %0 to double
+  %1 = call i64 (ptr, ptr, ...) @printf(ptr %retparam, ptr @.str, double %fpfpext)
+  ret i32 0
+}

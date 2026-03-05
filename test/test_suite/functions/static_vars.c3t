@@ -15,9 +15,10 @@ fn int test()
 
 define i32 @foo.test() #0 {
 entry:
-  %0 = load i32, ptr @test.x, align 4
-  %add = add i32 %0, 1
-  store i32 %add, ptr @test.x, align 4
+  %0 = call ptr @llvm.threadlocal.address.p0(ptr @test.y)
   %1 = load i32, ptr @test.x, align 4
-  ret i32 %1
+  %add = add i32 %1, 1
+  store i32 %add, ptr @test.x, align 4
+  %2 = load i32, ptr @test.x, align 4
+  ret i32 %2
 }

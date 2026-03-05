@@ -39,7 +39,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %y, ptr align 16 @.__const.1, i32 48, i1 false)
   %ptradd3 = getelementptr inbounds i8, ptr %y, i64 16
   %0 = load %Bar, ptr %ptradd3, align 16
-  store %Bar %0, ptr %y, align 8
+  store %Bar %0, ptr %y, align 16
   %ptradd4 = getelementptr inbounds i8, ptr %y, i64 16
   store %Bar %0, ptr %ptradd4, align 8
   %ptradd5 = getelementptr inbounds i8, ptr %y, i64 32

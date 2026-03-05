@@ -1,10 +1,11 @@
 module std::os::win32;
 
+alias Win32_FARPROC = void*;
 alias Win32_BOOL = int;
 alias Win32_BOOLEAN = Win32_BYTE;
 alias Win32_BYTE = char;
-alias Win32_CCHAR = cinterop::CChar;
-alias Win32_CHAR = cinterop::CChar;
+alias Win32_CCHAR = CChar;
+alias Win32_CHAR = CChar;
 alias Win32_COLORREF = Win32_DWORD;
 alias Win32_DWORD = uint;
 alias Win32_DWORDLONG = ulong;
@@ -431,7 +432,7 @@ struct Win32_XMM_SAVE_AREA32
 	Win32_UCHAR     tagWord;
 	Win32_UCHAR     reserved1;
 	Win32_USHORT    errorOpcode;
-	Win32_ULONG     errrorOffset;
+	Win32_ULONG     errorOffset;
 	Win32_USHORT    errorSelector;
 	Win32_USHORT    reserved2;
 	Win32_ULONG     dataOffset;

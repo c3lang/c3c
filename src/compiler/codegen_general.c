@@ -8,7 +8,7 @@ const char * const test_names_var_name = "__$C3_TEST_NAMES_LIST";
 /**
  * Based on isSingleElementStruct in Clang
  */
-Type *type_abi_find_single_struct_element(Type *type)
+Type *type_abi_find_single_struct_element(Type *type, bool in_abi)
 {
 	if (!type_is_union_or_strukt(type)) return NULL;
 
@@ -32,7 +32,7 @@ Type *type_abi_find_single_struct_element(Type *type)
 
 		if (type_is_union_or_strukt(field_type))
 		{
-			field_type = type_abi_find_single_struct_element(field_type);
+			field_type = type_abi_find_single_struct_element(field_type, in_abi);
 			if (!field_type) return NULL;
 		}
 		found = field_type;
@@ -56,7 +56,7 @@ bool type_is_homogenous_base_type(Type *type)
 				case TYPE_F32:
 				case TYPE_F64:
 					return !compiler.platform.ppc64.is_softfp;
-				case TYPE_VECTOR:
+				case TYPE_SIMD_VECTOR:
 					return type_size(type) == 128 / 8;
 				default:
 					return false;
@@ -69,7 +69,7 @@ bool type_is_homogenous_base_type(Type *type)
 				case TYPE_F64:
 				case TYPE_F32:
 					return true;
-				case TYPE_VECTOR:
+				case TYPE_SIMD_VECTOR:
 					switch (type_size(type))
 					{
 						case 16:
@@ -88,7 +88,7 @@ bool type_is_homogenous_base_type(Type *type)
 			{
 				case ALL_FLOATS:
 					return true;
-				case TYPE_VECTOR:
+				case TYPE_SIMD_VECTOR:
 					switch (type_size(type))
 					{
 						case 8:
@@ -108,7 +108,7 @@ bool type_is_homogenous_base_type(Type *type)
 				case TYPE_F64:
 				case TYPE_F128:
 					return true;
-				case TYPE_VECTOR:
+				case TYPE_SIMD_VECTOR:
 					switch (type_size(type))
 					{
 						case 8:
@@ -138,7 +138,7 @@ bool type_homogenous_aggregate_small_enough(Type *type, unsigned members)
 	{
 		case ABI_PPC64_SVR4:
 			if (type->type_kind == TYPE_F128 && compiler.platform.float128) return members <= 8;
-			if (type->type_kind == TYPE_VECTOR) return members <= 8;
+			if (type->type_kind == TYPE_SIMD_VECTOR) return members <= 8;
 			// Use max 8 registers.
 			return ((type_size(type) + 7) / 8) * members <= 8;
 		case ABI_X64:
@@ -166,14 +166,16 @@ bool type_homogenous_aggregate_small_enough(Type *type, unsigned members)
  * @param elements the elements found
  * @return true if it is an aggregate, false otherwise.
  */
-bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
+bool type_is_homogenous_aggregate(LoweredType *type, Type **base, unsigned *elements)
 {
 	ASSERT(base && type && elements);
-	ASSERT(type_lowering(type) == type);
 	*elements = 0;
 	switch (type->type_kind)
 	{
 		case LOWERED_TYPES:
+			UNREACHABLE
+		case TYPE_VECTOR:
+			// Converted in ABI
 			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_FUNC_RAW:
@@ -192,7 +194,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 				{
 					unsigned member_mult = 1;
 					// Flatten the type.
-					Type *member_type = type_lowering(member->type);
+					LoweredType *member_type = lowered_member_type(member);
 					// Go down deep into  a nester array.
 					while (member_type->type_kind == TYPE_ARRAY)
 					{
@@ -203,7 +205,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 					unsigned member_members = 0;
 
 					// Check recursively if the field member is homogenous
-					if (!type_is_homogenous_aggregate(type_lowering(member_type), base, &member_members)) return false;
+					if (!type_is_homogenous_aggregate(member_type, base, &member_members)) return false;
 					member_members *= member_mult;
 					// In the case of a union, grab the bigger set of elements.
 					if (type->type_kind == TYPE_UNION)
@@ -229,7 +231,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			// Empty arrays? Not homogenous.
 			if (type->array.len == 0) return false;
 			// Check the underlying type and multiply by length.
-			if (!type_is_homogenous_aggregate(type_lowering(type->array.base), base, elements)) return false;
+			if (!type_is_homogenous_aggregate(lowered_array_element_type(type), base, elements)) return false;
 			*elements *= type->array.len;
 			goto TYPECHECK;
 		case TYPE_BOOL:
@@ -242,7 +244,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			break;
 		case ALL_UNSIGNED_INTS:
 		case ALL_FLOATS:
-		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
 			break;
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
@@ -259,15 +261,18 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 	{
 		*base = type;
 		// Special handling of non-power-of-2 vectors
-		if (type->type_kind == TYPE_VECTOR)
+		// If we allowed it
+		/*
+		if (type->type_kind == TYPE_SIMD_VECTOR)
 		{
 			// Widen the type with elements.
 			unsigned vec_elements = type_size(type) / type_size(type->array.base);
 			*base = type_get_vector(type->array.base, vec_elements);
 		}
+		*/
 	}
 	// One is vector - other isn't => failure
-	if (((*base)->type_kind == TYPE_VECTOR) != (type->type_kind == TYPE_VECTOR)) return false;
+	if (((*base)->type_kind == TYPE_SIMD_VECTOR) != (type->type_kind == TYPE_SIMD_VECTOR)) return false;
 
 	// Size does not match => failure
 	if (type_size(*base) != type_size(type)) return false;
@@ -277,16 +282,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 	return type_homogenous_aggregate_small_enough(type, *elements);
 }
 
-AlignSize type_alloca_alignment(Type *type)
-{
-	AlignSize align = type_abi_alignment(type);
-	if (align < 16 && (compiler.platform.abi == ABI_X64 || compiler.platform.abi == ABI_WIN64))
-	{
-		type = type_flatten(type);
-		if (type->type_kind == TYPE_ARRAY && type_size(type) >= 16) return 16;
-	}
-	return align;
-}
+
 
 bool codegen_single_obj_output()
 {
@@ -310,7 +306,7 @@ void codegen_setup_object_names(Module *module, const char **base_name, const ch
 		{
 			res = str_printf("%s%s", result, ext);
 		}
-		compiler.obj_output = *object_filename = file_append_path(compiler.build.output_dir ? compiler.build.output_dir : ".", res);
+		compiler.obj_output = *object_filename = (file_path_is_relative(res) ? file_append_path(compiler.build.output_dir, res) : res);
 		char *dir_path = NULL;
 		char *filename = NULL;
 		file_get_dir_and_filename_from_full(compiler.obj_output, &filename, &dir_path);
@@ -324,8 +320,7 @@ void codegen_setup_object_names(Module *module, const char **base_name, const ch
 		*object_filename = file_append_path(compiler.build.object_file_dir, str_printf("%s%s", result, get_object_extension()));
 	}
 
-	*ir_filename = str_printf(compiler.build.backend == BACKEND_LLVM ? "%s.ll" : "%s.ir", result);
-	if (compiler.build.ir_file_dir) *ir_filename = file_append_path(compiler.build.ir_file_dir, *ir_filename);
+	*ir_filename = file_append_path(compiler.build.ir_file_dir, str_printf(compiler.build.backend == BACKEND_LLVM ? "%s.ll" : "%s.ir", result));
 	if (compiler.build.emit_asm)
 	{
 		*asm_filename = str_printf("%s.s", result);

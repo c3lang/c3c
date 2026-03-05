@@ -13,7 +13,7 @@ import std::math;
 
  The advantage over the BackedArenaAllocator, is that when allocating beyond the first "page", it will
  retain the characteristics of an arena allocator (allocating a large piece of memory then handing off
- memory from that memory), wheras the BackedArenaAllocator will have heap allocator characteristics.
+ memory from that memory), whereas the BackedArenaAllocator will have heap allocator characteristics.
 *>
 struct DynamicArenaAllocator (Allocator)
 {
@@ -117,7 +117,7 @@ fn void*? DynamicArenaAllocator.resize(&self, void* old_pointer, usz size, usz a
 		return old_pointer;
 	}
 	void* new_mem = self.acquire(size, NO_ZERO, alignment)!;
-	mem::copy(new_mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT);
+	mem::copy(new_mem, old_pointer, math::min(old_size, size), mem::DEFAULT_MEM_ALIGNMENT);
 	return new_mem;
 }
 
@@ -137,36 +137,7 @@ fn void DynamicArenaAllocator.reset(&self)
 	self.page = page;
 }
 
-<*
- @require math::is_power_of_2(alignment)
- @require size > 0
- @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
-*>
-fn void*? DynamicArenaAllocator._alloc_new(&self, usz size, usz alignment) @local
-{
-	// First, make sure that we can align it, extending the page size if needed.
-	usz page_size = max(self.page_size, mem::aligned_offset(size + DynamicArenaChunk.sizeof + alignment, alignment));
-	assert(page_size > size + DynamicArenaChunk.sizeof);
-	// Grab the page without alignment (we do it ourselves)
-	void* mem = allocator::malloc_try(self.backing_allocator, page_size)!;
-	DynamicArenaPage*? page = allocator::new_try(self.backing_allocator, DynamicArenaPage);
-	if (catch err = page)
-	{
-		allocator::free(self.backing_allocator, mem);
-		return err?;
-	}
-	page.memory = mem;
-	void* mem_start = mem::aligned_pointer(mem + DynamicArenaChunk.sizeof, alignment);
-	assert(mem_start + size < mem + page_size);
-	DynamicArenaChunk* chunk = (DynamicArenaChunk*)mem_start - 1;
-	chunk.size = size;
-	page.prev_arena = self.page;
-	page.total = page_size;
-	page.used = mem_start + size - page.memory;
-	self.page = page;
-	page.current_stack_ptr = mem_start;
-	return mem_start;
-}
+
 
 <*
  @require size > 0 : `acquire expects size > 0`
@@ -189,7 +160,7 @@ fn void*? DynamicArenaAllocator.acquire(&self, usz size, AllocInitType init_type
 		}
 		if (!page)
 		{
-			ptr = self._alloc_new(size, alignment)!;
+			ptr = _alloc_new(self, size, alignment)!;
 			break SET_DONE;
 		}
 		void* start = mem::aligned_pointer(page.memory + page.used + DynamicArenaChunk.sizeof, alignment);
@@ -208,7 +179,7 @@ fn void*? DynamicArenaAllocator.acquire(&self, usz size, AllocInitType init_type
 					break ALLOCATE_NEW;
 				}
 			}
-			ptr = self._alloc_new(size, alignment)!;
+			ptr = _alloc_new(self, size, alignment)!;
 			break SET_DONE;
 		}
 		page.used = new_used;
@@ -219,4 +190,35 @@ fn void*? DynamicArenaAllocator.acquire(&self, usz size, AllocInitType init_type
 	};
 	if (init_type == ZERO) mem::clear(ptr, size, mem::DEFAULT_MEM_ALIGNMENT);
 	return ptr;
+}
+
+<*
+ @require math::is_power_of_2(alignment)
+ @require size > 0
+ @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
+*>
+fn void*? _alloc_new(DynamicArenaAllocator* self, usz size, usz alignment) @local
+{
+	// First, make sure that we can align it, extending the page size if needed.
+	usz page_size = max(self.page_size, mem::aligned_offset(size + DynamicArenaChunk.sizeof + alignment, alignment));
+	assert(page_size > size + DynamicArenaChunk.sizeof);
+	// Grab the page without alignment (we do it ourselves)
+	void* mem = allocator::malloc_try(self.backing_allocator, page_size)!;
+	DynamicArenaPage*? page = allocator::new_try(self.backing_allocator, DynamicArenaPage);
+	if (catch err = page)
+	{
+		allocator::free(self.backing_allocator, mem);
+		return err~;
+	}
+	page.memory = mem;
+	void* mem_start = mem::aligned_pointer(mem + DynamicArenaChunk.sizeof, alignment);
+	assert(mem_start + size < mem + page_size);
+	DynamicArenaChunk* chunk = (DynamicArenaChunk*)mem_start - 1;
+	chunk.size = size;
+	page.prev_arena = self.page;
+	page.total = page_size;
+	page.used = mem_start + size - page.memory;
+	self.page = page;
+	page.current_stack_ptr = mem_start;
+	return mem_start;
 }

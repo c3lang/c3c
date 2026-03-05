@@ -53,7 +53,7 @@ void expr_contract_array(ExprConst *expr_const, ConstKind contract_type)
 {
 	if (expr_const->const_kind == CONST_SLICE && !expr_const->slice_init)
 	{
-		*expr_const = (ExprConst) { .const_kind = contract_type };
+		*expr_const = (ExprConst) { .const_kind = contract_type, .bytes.ptr = NULL, .bytes.len = 0 };
 		return;
 	}
 	ASSERT(expr_const->const_kind == CONST_INITIALIZER || expr_const->const_kind == CONST_SLICE);
@@ -73,7 +73,7 @@ void expr_contract_array(ExprConst *expr_const, ConstKind contract_type)
 		case CONST_INIT_UNION:
 		case CONST_INIT_VALUE:
 		case CONST_INIT_ARRAY_VALUE:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case CONST_INIT_ARRAY:
 		{
 			FOREACH(ConstInitializer *, init, initializer->init_array.elements)
@@ -127,6 +127,55 @@ INLINE ConstInitializer *expr_const_array_init_at(ConstInitializer *init, ArrayS
 	}
 	UNREACHABLE;
 }
+
+INLINE void swap_to_zero_to_left(ConstInitializer **left_ref, ConstInitializer **right_ref)
+{
+	ConstInitializer *right = *right_ref;
+	if (right->kind == CONST_INIT_ZERO)
+	{
+		*right_ref = *left_ref;
+		*left_ref = right;
+	}
+}
+
+
+static bool expr_const_compare_bitstruct(const ExprConst *left, const ExprConst *right, BinaryOp op)
+{
+	ConstInitializer *lhs = left->initializer;
+	ConstInitializer *rhs = right->initializer;
+	swap_to_zero_to_left(&lhs, &rhs);
+	bool find_eq = op == BINARYOP_EQ;
+	if (lhs->kind == CONST_INIT_ZERO) return const_init_is_zero(rhs) ? find_eq : !find_eq;
+	ConstInitializer **lhs_inits = lhs->init_struct;
+	ConstInitializer **rhs_inits = rhs->init_struct;
+	Decl **members = lhs->type->decl->strukt.members;
+	unsigned len = vec_size(members);
+	for (unsigned i = 0; i < len; i++)
+	{
+		ConstInitializer *init_lhs = lhs_inits[i];
+		ConstInitializer *init_rhs = rhs_inits[i];
+		swap_to_zero_to_left(&init_lhs, &init_rhs);
+		// Zero case
+		if (lhs->kind == CONST_INIT_ZERO)
+		{
+			if (const_init_is_zero(rhs)) continue;
+			return !find_eq;
+		}
+		// Both should have values
+		Expr *lhs_expr = init_lhs->init_value;
+		Expr *rhs_expr = init_rhs->init_value;
+
+		bool to_const = sema_cast_const(lhs_expr) && sema_cast_const(rhs_expr);
+		assert(to_const);
+		if (!expr_const_compare(&lhs_expr->const_expr, &rhs_expr->const_expr, BINARYOP_EQ))
+		{
+			return !find_eq;
+		}
+	}
+	return find_eq;
+}
+
+
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op)
 {
 	bool is_eq;
@@ -201,21 +250,21 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			Decl *right_decl = right->enum_val;
 			// Non-matching cannot be compared.
 			if (right_decl->type != left_decl->type) return false;
-			int64_t right_ordinal = right->enum_val->enum_constant.ordinal;
+			int64_t right_ordinal = right->enum_val->enum_constant.inner_ordinal;
 			switch (op)
 			{
 				case BINARYOP_GT:
-					return left_decl->enum_constant.ordinal > right_ordinal;
+					return left_decl->enum_constant.inner_ordinal > right_ordinal;
 				case BINARYOP_GE:
-					return left_decl->enum_constant.ordinal >= right_ordinal;
+					return left_decl->enum_constant.inner_ordinal >= right_ordinal;
 				case BINARYOP_LT:
-					return left_decl->enum_constant.ordinal < right_ordinal;
+					return left_decl->enum_constant.inner_ordinal < right_ordinal;
 				case BINARYOP_LE:
-					return left_decl->enum_constant.ordinal <= right_ordinal;
+					return left_decl->enum_constant.inner_ordinal <= right_ordinal;
 				case BINARYOP_NE:
-					return left_decl->enum_constant.ordinal != right_ordinal;
+					return left_decl->enum_constant.inner_ordinal != right_ordinal;
 				case BINARYOP_EQ:
-					return left_decl->enum_constant.ordinal == right_ordinal;
+					return left_decl->enum_constant.inner_ordinal == right_ordinal;
 				default:
 					return false;
 			}
@@ -234,7 +283,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			is_eq = !memcmp(left->bytes.ptr, right->bytes.ptr, left->bytes.len);
 			goto RETURN;
 		case CONST_INITIALIZER:
-			if (left->initializer->type->type_kind == TYPE_VECTOR)
+			if (type_kind_is_real_vector(left->initializer->type->type_kind))
 			{
 				ConstInitializer *lhs = left->initializer;
 				ConstInitializer *rhs = right->initializer;
@@ -252,6 +301,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 						if (a_is_zero != b_is_zero) goto MISMATCH;
 						continue;
 					}
+					assert(a && b);
 					assert(b->kind == CONST_INIT_VALUE && a->kind == CONST_INIT_VALUE);
 					Expr *a_value = a->init_value;
 					Expr *b_value = b->init_value;
@@ -261,6 +311,10 @@ MISMATCH:
 					return op != BINARYOP_EQ;
 				}
 				return op == BINARYOP_EQ;
+			}
+			if (left->initializer->type->type_kind == TYPE_BITSTRUCT)
+			{
+				return expr_const_compare_bitstruct(left, right, op);
 			}
 			FALLTHROUGH;
 		case CONST_SLICE:
@@ -401,7 +455,7 @@ void const_init_to_scratch_buffer(ConstInitializer *init)
 			const_init_to_scratch_buffer(init->init_array_value.element);
 			return;
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 void expr_const_to_scratch_buffer(const ExprConst *expr)
 {
@@ -475,7 +529,7 @@ void expr_const_to_scratch_buffer(const ExprConst *expr)
 			return;
 		}
 	}
-	UNREACHABLE
+	UNREACHABLE_VOID
 }
 const char *expr_const_to_error_string(const ExprConst *expr)
 {
@@ -487,11 +541,11 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case CONST_BOOL:
 			return expr->b ? "true" : "false";
 		case CONST_INTEGER:
-			return int_to_str(expr->ixx, 10, false);
+			return int_to_str(expr->ixx, expr->is_hex ? 16 : 10, true);
 		case CONST_FLOAT:
 			return str_printf("%g", expr->fxx.f);
 		case CONST_STRING:
-			return str_printf("\"%*.s\"", expr->bytes.len, expr->bytes.ptr);
+			return str_printf("\"%*.s\"", (int)expr->bytes.len, expr->bytes.ptr);
 		case CONST_BYTES:
 			return "<binary data>";
 		case CONST_REF:

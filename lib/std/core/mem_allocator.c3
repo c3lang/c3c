@@ -1,7 +1,7 @@
 module std::core::mem::allocator;
 import std::math;
 
-// C3 has multiple different allocators available:
+// C3 has several different allocators available:
 //
 // Name                     Arena  Uses buffer  OOM Fallback?     Mark?   Reset?
 // ArenaAllocator             Yes          Yes             No       Yes      Yes
@@ -12,6 +12,7 @@ import std::math;
 // OnStackAllocator           Yes          Yes            Yes        No       No   *Note: Used by @stack_mem
 // TempAllocator              Yes           No            Yes        No*      No*  *Note: Mark/reset using @pool
 // TrackingAllocator           No           No            N/A        No       No   *Note: Wraps other heap allocator
+// Vmem                       Yes           No             No       Yes      Yes   *Note: Can be set to huge sizes
 
 const DEFAULT_SIZE_PREFIX = usz.sizeof;
 const DEFAULT_SIZE_PREFIX_ALIGNMENT = usz.alignof;
@@ -64,7 +65,7 @@ alias MemoryAllocFn = fn char[]?(usz);
 
 
 
-fn usz alignment_for_allocation(usz alignment) @inline @private
+fn usz alignment_for_allocation(usz alignment) @inline
 {
 	return alignment < mem::DEFAULT_MEM_ALIGNMENT ? mem::DEFAULT_MEM_ALIGNMENT : alignment;
 }
@@ -166,7 +167,7 @@ macro void free_aligned(Allocator allocator, void* ptr)
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_aligned' instead"
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| $assignable($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type t = $vaexpr[0]) : "The second argument must be an initializer for the type"
 *>
 macro new(Allocator allocator, $Type, ...) @nodiscard
 {
@@ -182,7 +183,7 @@ macro new(Allocator allocator, $Type, ...) @nodiscard
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_aligned' instead"
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| $assignable($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type t = $vaexpr[0]) : "The second argument must be an initializer for the type"
 *>
 macro new_try(Allocator allocator, $Type, ...) @nodiscard
 {
@@ -199,7 +200,7 @@ macro new_try(Allocator allocator, $Type, ...) @nodiscard
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
  @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| $assignable($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $vacount == 0 ||| $defined($Type t = $vaexpr[0]) : "The second argument must be an initializer for the type"
 *>
 macro new_aligned(Allocator allocator, $Type, ...) @nodiscard
 {
@@ -304,6 +305,31 @@ macro alloc_array_try(Allocator allocator, $Type, usz elements) @nodiscard
 }
 
 <*
+ @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+*>
+macro realloc_array(Allocator allocator, void* ptr, $Type, usz elements) @nodiscard
+{
+	return realloc_array_try(allocator, ptr, $Type, elements)!!;
+}
+
+<*
+ Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+*>
+macro realloc_array_aligned(Allocator allocator, void* ptr, $Type, usz elements) @nodiscard
+{
+	return (($Type*)realloc_aligned(allocator, ptr, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
+}
+
+<*
+ @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+*>
+macro realloc_array_try(Allocator allocator, void* ptr, $Type, usz elements) @nodiscard
+{
+	return (($Type*)realloc_try(allocator, ptr, $Type.sizeof * elements))[:elements];
+}
+
+<*
  Clone a value.
 
  @param [&inout] allocator : "The allocator to use to clone"
@@ -314,6 +340,25 @@ macro alloc_array_try(Allocator allocator, $Type, usz elements) @nodiscard
 macro clone(Allocator allocator, value) @nodiscard
 {
 	return new(allocator, $typeof(value), value);
+}
+
+<*
+ @param [&inout] allocator : "The allocator used to clone"
+ @param slice : "The slice to clone"
+ @return "A pointer to the cloned slice"
+
+ @require $kindof(slice) == SLICE || $kindof(slice) == ARRAY
+*>
+macro clone_slice(Allocator allocator, slice) @nodiscard
+{
+	if (!lengthof(slice)) return {};
+
+	var $Type = $typeof(slice[0]);
+
+	$Type[] new_arr = new_array(allocator, $Type, slice.len);
+	mem::copy(new_arr.ptr, &slice[0], slice.len * $Type.sizeof);
+
+	return new_arr;
 }
 
 <*
@@ -347,10 +392,32 @@ macro void*? @aligned_alloc(#alloc_fn, usz bytes, usz alignment)
 	if (alignment < void*.alignof) alignment = void*.alignof;
 	usz header = AlignedBlock.sizeof + alignment;
 	usz alignsize = bytes + header;
-	$if @typekind(#alloc_fn(bytes)) == OPTIONAL:
+	$if $kindof(#alloc_fn(bytes)) == OPTIONAL:
 		void* data = #alloc_fn(alignsize)!;
 	$else
 		void* data = #alloc_fn(alignsize);
+	$endif
+	void* mem = mem::aligned_pointer(data + AlignedBlock.sizeof, alignment);
+	AlignedBlock* desc = (AlignedBlock*)mem - 1;
+	assert(mem > data);
+	*desc = { bytes, data };
+	return mem;
+}
+
+<*
+ @require bytes > 0
+ @require alignment > 0
+ @require bytes <= isz.max
+*>
+macro void*? @aligned_alloc_fn(context, #alloc_fn, usz bytes, usz alignment)
+{
+	if (alignment < void*.alignof) alignment = void*.alignof;
+	usz header = AlignedBlock.sizeof + alignment;
+	usz alignsize = bytes + header;
+	$if $kindof(#alloc_fn(context, bytes)) == OPTIONAL:
+		void* data = #alloc_fn(context, alignsize)!;
+	$else
+		void* data = #alloc_fn(context, alignsize);
 	$endif
 	void* mem = mem::aligned_pointer(data + AlignedBlock.sizeof, alignment);
 	AlignedBlock* desc = (AlignedBlock*)mem - 1;
@@ -368,10 +435,20 @@ struct AlignedBlock
 macro void? @aligned_free(#free_fn, void* old_pointer)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
-	$if @typekind(#free_fn(desc.start)) == OPTIONAL:
+	$if $kindof(#free_fn(desc.start)) == OPTIONAL:
 	#free_fn(desc.start)!;
 	$else
 	#free_fn(desc.start);
+	$endif
+}
+
+macro void? @aligned_free_fn(context, #free_fn, void* old_pointer)
+{
+	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
+	$if $kindof(#free_fn(context, desc.start)) == OPTIONAL:
+	#free_fn(context, desc.start)!;
+	$else
+	#free_fn(context, desc.start);
 	$endif
 }
 
@@ -385,7 +462,7 @@ macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 	void* data_start = desc.start;
 	void* new_data = @aligned_alloc(#calloc_fn, bytes, alignment)!;
 	mem::copy(new_data, old_pointer, desc.len < bytes ? desc.len : bytes, 1, 1);
-	$if @typekind(#free_fn(data_start)) == OPTIONAL:
+	$if $kindof(#free_fn(data_start)) == OPTIONAL:
 	#free_fn(data_start)!;
 	$else
 	#free_fn(data_start);
@@ -393,6 +470,23 @@ macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 	return new_data;
 }
 
+<*
+ @require bytes > 0
+ @require alignment > 0
+*>
+macro void*? @aligned_realloc_fn(context, #calloc_fn, #free_fn, void* old_pointer, usz bytes, usz alignment)
+{
+	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
+	void* data_start = desc.start;
+	void* new_data = @aligned_alloc_fn(context, #calloc_fn, bytes, alignment)!;
+	mem::copy(new_data, old_pointer, desc.len < bytes ? desc.len : bytes, 1, 1);
+	$if $kindof(#free_fn(context, data_start)) == OPTIONAL:
+	#free_fn(context, data_start)!;
+	$else
+	#free_fn(context, data_start);
+	$endif
+	return new_data;
+}
 
 // All allocators
 alias mem @builtin = thread_allocator ;
@@ -463,7 +557,7 @@ macro usz temp_allocator_default_reserve_size() @local
 	$endswitch
 }
 
-macro Allocator heap() => thread_allocator;
+macro Allocator heap() @deprecated("Use 'mem' instead.") => thread_allocator;
 
 <*
  @require !top_temp : "This should never be called when temp already exists"
@@ -486,14 +580,14 @@ fn Allocator create_temp_allocator(Allocator allocator, usz size, usz reserve, u
 	return current_temp = top_temp = allocator::new_temp_allocator(allocator, size, reserve, min_size, realloc_size)!!;
 }
 
-macro Allocator temp()
+macro Allocator temp() @deprecated("Use 'tmem' instead")
 {
 	return current_temp;
 }
 
 alias tmem @builtin = current_temp;
 
-fn void allow_implicit_temp_allocator_on_load_thread() @init(1) @local @if(env::LIBC || env::WASM_NOLIBC)
+fn void allow_implicit_temp_allocator_on_load_thread() @init(1) @local @if(env::LIBC || env::FREESTANDING_WASM)
 {
 	auto_create_temp = true;
 }
@@ -538,12 +632,12 @@ typedef NullAllocator (Allocator) = uptr;
 
 fn void*? NullAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
 {
-	return mem::OUT_OF_MEMORY?;
+	return mem::OUT_OF_MEMORY~;
 }
 
 fn void*? NullAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
 {
-	return mem::OUT_OF_MEMORY?;
+	return mem::OUT_OF_MEMORY~;
 }
 
 fn void NullAllocator.release(&self, void* old_ptr, bool aligned) @dynamic

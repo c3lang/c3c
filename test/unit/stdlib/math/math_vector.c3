@@ -8,8 +8,8 @@ fn void test_vec2_init() @test
 {
     float[<2>] v1 = { 1.0f, 2.0f };
     double[<2>] v2 = { 1.0, 2.0 };
-    $assert @typeis(v1[0], float);
-    $assert @typeis(v2[0], double);
+    $assert $typeof(v1[0]) == float;
+    $assert $typeof(v2[0]) == double;
     assert(v1[0] == 1.0f && v1[1] == 2.0f);
     assert(v2[0] == 1.0 && v2[1] == 2.0);
 }
@@ -116,10 +116,10 @@ fn void test_type_consistency() @test
 {
     float[<2>] vf = { 1.0f, 2.0f };
     double[<2>] vd = { 1.0, 2.0 };
-    $assert @typeis(vf.sq_magnitude(), float);
-    $assert @typeis(vd.sq_magnitude(), double);
+    $assert $typeof(vf.sq_magnitude()) == float;
+    $assert $typeof(vd.sq_magnitude()) == double;
     float[<3>] v3f = { 1.0f, 2.0f, 3.0f };
     double[<3>] v3d = { 1.0, 2.0, 3.0 };
-    $assert @typeis(v3f.cross(v3f)[0], float);
-    $assert @typeis(v3d.cross(v3d)[0], double);
+    $assert $typeof(v3f.cross(v3f)[0]) == float;
+    $assert $typeof(v3d.cross(v3d)[0]) == double;
 }

@@ -37,7 +37,7 @@ fn BigInt* BigInt.init(&self, int128 value)
 	assert(value < 0 || tmp == 0 || !self.is_negative());
 	assert(value >= 0 || tmp == -1 || self.is_negative());
 	self.len = len;
-	self.reduce_len();
+	reduce_len(self);
 	return self;
 }
 
@@ -102,9 +102,9 @@ fn BigInt*? BigInt.init_string_radix(&self, String value, int radix)
 			case 'a'..'z':
 				pos_val -= 'a' - 10;
 			default:
-				return string::MALFORMED_INTEGER?;
+				return string::MALFORMED_INTEGER~;
 		}
-		if (pos_val >= radix) return string::MALFORMED_INTEGER?;
+		if (pos_val >= radix) return string::MALFORMED_INTEGER~;
 		if (limit == 1) pos_val = -pos_val;
 		self.add_this(multiplier.mult(from_int(pos_val)));
 		if (i - 1 >= limit)
@@ -115,9 +115,9 @@ fn BigInt*? BigInt.init_string_radix(&self, String value, int radix)
 	switch
 	{
 		case limit && !self.is_negative():
-			return string::INTEGER_OVERFLOW?;
+			return string::INTEGER_OVERFLOW~;
 		case !limit && self.is_negative():
-			return string::INTEGER_OVERFLOW?;
+			return string::INTEGER_OVERFLOW~;
 	}
 	return self;
 }
@@ -153,15 +153,11 @@ fn void BigInt.add_this(&self, BigInt other) @operator(+=)
 		self.data[self.len++] = (uint)carry;
 	}
 
-	self.reduce_len();
+	reduce_len(self);
 
 	assert(sign != sign_arg || sign == self.is_negative(), "Overflow in addition");
 }
 
-fn void BigInt.reduce_len(&self) @private
-{
-	self.len = max(find_length(&self.data, self.len), 1);
-}
 
 macro uint find_length(uint* data, uint length)
 {
@@ -226,7 +222,7 @@ fn void BigInt.mult_this(&self, BigInt bi2) @operator(*=)
 
 	res.len = min(self.len + bi2.len, (uint)MAX_LEN);
 
-	res.reduce_len();
+	reduce_len(&res);
 
 	// overflow check (result is -ve)
 	assert(!res.is_negative(), "Multiplication overflow");
@@ -265,7 +261,7 @@ fn void BigInt.negate(&self)
 	assert(self.is_negative() != was_negative, "Overflow in negation");
 
 	self.len = MAX_LEN;
-	self.reduce_len();
+	reduce_len(self);
 }
 
 macro bool BigInt.is_zero(&self) => self.len == 1 && self.data[0] == 0;
@@ -301,7 +297,7 @@ fn BigInt* BigInt.sub_this(&self, BigInt other) @operator(-=)
 		self.len = MAX_LEN;
 	}
 
-	self.reduce_len();
+	reduce_len(self);
 
 	// overflow check
 
@@ -311,7 +307,7 @@ fn BigInt* BigInt.sub_this(&self, BigInt other) @operator(-=)
 
 fn int BigInt.bitcount(&self)
 {
-	self.reduce_len();
+	reduce_len(self);
 	uint val = self.data[self.len - 1];
 	uint mask = 0x80000000;
 	int bits = 32;
@@ -364,11 +360,11 @@ fn void BigInt.div_this(&self, BigInt other) @operator(/=)
 
 	if (other.len == 1)
 	{
-		self.single_byte_divide(&other, &quotient, &remainder);
+		single_byte_divide(self, &other, &quotient, &remainder);
 	}
 	else
 	{
-		self.multi_byte_divide(&other, &quotient, &remainder);
+		multi_byte_divide(self, &other, &quotient, &remainder);
 	}
 	if (negate_answer)
 	{
@@ -407,11 +403,11 @@ fn void BigInt.mod_this(&self, BigInt bi2) @operator(%=)
 
 	if (bi2.len == 1)
 	{
-		self.single_byte_divide(&bi2, &quotient, &remainder);
+		single_byte_divide(self, &bi2, &quotient, &remainder);
 	}
 	else
 	{
-		self.multi_byte_divide(&bi2, &quotient, &remainder);
+		multi_byte_divide(self, &bi2, &quotient, &remainder);
 	}
 	if (negate_answer)
 	{
@@ -425,7 +421,7 @@ fn void BigInt.bit_negate_this(&self)
 	foreach (&r : self.data) *r = ~*r;
 
 	self.len = MAX_LEN;
-	self.reduce_len();
+	reduce_len(self);
 }
 
 fn BigInt BigInt.bit_negate(self) @operator(~)
@@ -506,17 +502,54 @@ fn BigInt BigInt.abs(&self)
 	return self.is_negative() ? self.unary_minus() : *self;
 }
 
-fn usz? BigInt.to_format(&self, Formatter* format) @dynamic
-{
-	@stack_mem(4100; Allocator mem)
-	{
-	   return format.print(self.to_string_with_radix(10, mem));
-	};
-}
-
 fn String BigInt.to_string(&self, Allocator allocator) @dynamic
 {
 	return self.to_string_with_radix(10, allocator);
+}
+
+fn usz? BigInt.to_format(&self, Formatter* format) @dynamic
+{
+	if (self.is_zero())
+	{
+		format.print("0")!;
+		return 1;
+	}
+	BigInt a = *self;
+	bool negative = self.is_negative();
+	usz len;
+	if (negative)
+	{
+		format.print_char('-')!;
+		len++;
+		a.negate();
+	}
+	uint[280] chunks @noinit;
+	int chunk_count;
+
+	const BASE10_9 = 1000000000;
+	foreach_r(d : self.data[:self.len])
+	{
+		ulong carry = d;
+		for (int i = 0; i < chunk_count; i++)
+		{
+			ulong v = (ulong)chunks[i] << 32 + carry;
+			carry = v / BASE10_9;
+			chunks[i] = (uint)(v - carry * BASE10_9);
+		}
+		if (carry)
+		{
+			ulong new_carry = carry / BASE10_9;
+			chunks[chunk_count++] = (uint)(carry - new_carry * BASE10_9);
+			if (new_carry) chunks[chunk_count++] = (uint)new_carry;
+		}
+	}
+	int ms = chunk_count - 1;
+	len += format.printf("%d", chunks[ms])!;
+	foreach_r (c : chunks[:ms])
+	{
+		len += format.printf("%09d", c)!;
+	}
+	return len;
 }
 
 <*
@@ -527,7 +560,7 @@ fn String BigInt.to_string_with_radix(&self, int radix, Allocator allocator)
 	if (self.is_zero()) return "0".copy(allocator);
 
 	const char[*] CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	@stack_mem(4100; Allocator mem)
+	@stack_mem(4120; Allocator mem)
 	{
 		BigInt a = *self;
 		DString str;
@@ -543,7 +576,7 @@ fn String BigInt.to_string_with_radix(&self, int radix, Allocator allocator)
 
 		while (!a.is_zero())
 		{
-			a.single_byte_divide(&big_radix, &quotient, &remainder);
+			single_byte_divide(&a, &big_radix, &quotient, &remainder);
 
 			if (remainder.data[0] < 10)
 			{
@@ -703,7 +736,7 @@ fn BigInt barrett_reduction(BigInt x, BigInt n, BigInt constant)
 	}
 
 	r2.len = k_plus_one;
-	r2.reduce_len();
+	reduce_len(&r2);
 
 	r1.sub_this(r2);
 	if (r1.is_negative())
@@ -779,7 +812,7 @@ fn void BigInt.bit_and_this(&self, BigInt bi2)
 	}
 	self.len = MAX_LEN;
 
-	self.reduce_len();
+	reduce_len(self);
 }
 
 fn BigInt BigInt.bit_or(self, BigInt bi2) @operator(|)
@@ -797,7 +830,7 @@ fn void BigInt.bit_or_this(&self, BigInt bi2)
 	}
 	self.len = MAX_LEN;
 
-	self.reduce_len();
+	reduce_len(self);
 }
 
 fn BigInt BigInt.bit_xor(self, BigInt bi2) @operator(^)
@@ -815,7 +848,7 @@ fn void BigInt.bit_xor_this(&self, BigInt bi2)
 	}
 	self.len = MAX_LEN;
 
-	self.reduce_len();
+	reduce_len(self);
 }
 
 fn void BigInt.shl_this(&self, int shift) @operator(<<=)
@@ -891,13 +924,18 @@ fn void BigInt.randomize_bits(&self, Random random, int bits)
 
 module std::math::bigint @private;
 
+fn void reduce_len(BigInt* self) @private
+{
+	self.len = max(find_length(&self.data, self.len), 1);
+}
+
 
 <*
- @param [&out] quotient
+ @param [&inout] quotient
  @param [&in] bi2
- @param [&out] remainder
+ @param [&inout] remainder
 *>
-fn void BigInt.single_byte_divide(&self, BigInt* bi2, BigInt* quotient, BigInt* remainder)
+fn void single_byte_divide(BigInt* self, BigInt* bi2, BigInt* quotient, BigInt* remainder) @private
 {
 	uint[MAX_LEN] result;
 	int result_pos = 0;
@@ -940,16 +978,16 @@ fn void BigInt.single_byte_divide(&self, BigInt* bi2, BigInt* quotient, BigInt* 
 	}
 
 	quotient.data[j..] = 0;
-	quotient.reduce_len();
-	remainder.reduce_len();
+	reduce_len(quotient);
+	reduce_len(remainder);
 }
 
 <*
- @param [&out] quotient
+ @param [&inout] quotient
  @param [&in] other
- @param [&out] remainder
+ @param [&inout] remainder
 *>
-fn void BigInt.multi_byte_divide(&self, BigInt* other, BigInt* quotient, BigInt* remainder)
+fn void multi_byte_divide(BigInt* self, BigInt* other, BigInt* quotient, BigInt* remainder)
 {
 	uint[MAX_LEN] result;
 	uint[MAX_LEN] r;
@@ -1044,7 +1082,7 @@ fn void BigInt.multi_byte_divide(&self, BigInt* other, BigInt* quotient, BigInt*
 		quotient.data[y] = 0;
 	}
 
-	quotient.reduce_len();
+	reduce_len(quotient);
 
 	remainder.len = shift_right(&r, remainder_len, shift);
 

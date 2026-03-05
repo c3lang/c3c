@@ -1,0 +1,10 @@
+module a;
+import b, std;
+
+fn void main()
+{
+	io::printn(b::test());
+}
+
+module b;
+fn int test() => 37;

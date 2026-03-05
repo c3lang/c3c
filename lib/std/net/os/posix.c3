@@ -22,6 +22,7 @@ extern fn CInt bind(NativeSocket socket, SockAddrPtr address, Socklen_t address_
 extern fn CInt listen(NativeSocket socket, CInt backlog);
 extern fn NativeSocket accept(NativeSocket socket, SockAddrPtr address, Socklen_t* address_len);
 extern fn CInt poll(Posix_pollfd* fds, Posix_nfds_t nfds, CInt timeout);
+extern fn CInt socketpair(AIFamily domain, AISockType type, CInt protocol, NativeSocket[2]* sv);
 
 const CUShort POLLIN      = 0x0001;
 const CUShort POLLPRI     = 0x0002;
@@ -65,8 +66,8 @@ macro void? NativeSocket.close(self)
 {
 	if (libc::close(self))
 	{
-		if (libc::errno() == errno::EBADF) return net::INVALID_SOCKET?;
-		return net::GENERAL_ERROR?;
+		if (libc::errno() == errno::EBADF) return net::INVALID_SOCKET~;
+		return net::GENERAL_ERROR~;
 	}
 }
 
@@ -85,8 +86,8 @@ macro void? NativeSocket.set_non_blocking(self, bool non_blocking)
 	}
 	if (fcntl(self, F_SETFL, flags) == -1)
 	{
-		if (libc::errno() == errno::EBADF) return net::INVALID_SOCKET?;
-		return net::GENERAL_ERROR?;
+		if (libc::errno() == errno::EBADF) return net::INVALID_SOCKET~;
+		return net::GENERAL_ERROR~;
 	}
 }
 

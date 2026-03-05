@@ -58,7 +58,7 @@ fn int test5(ichar x)
     return y.foo + y.bar;
 }
 
-// { i32, i16, i16 }
+// <{ i32, i16, i16 }>
 struct Foo6 @packed
 {
     int a;
@@ -76,16 +76,15 @@ Foo6 foo6 = { 1, 2, 3 };
 %Foo3 = type <{ i8, i64, [7 x i8] }>
 %Foo4 = type <{ i8, i64 }>
 %Foo5 = type { i32, [12 x i8], i8, [15 x i8] }
-%Foo6 = type { i32, i16, i16 }
+%Foo6 = type <{ i32, i16, i16 }>
 
 @struct2.foo1 = local_unnamed_addr global %Foo1 <{ i64 1, i8 2, [3 x i8] undef }>, align 4
 @struct2.foo2 = local_unnamed_addr global %Foo2 <{ i8 1, i64 2, [3 x i8] undef }>, align 4
 @struct2.foo3 = local_unnamed_addr global %Foo3 <{ i8 1, i64 2, [7 x i8] undef }>, align 8
 @struct2.foo4 = local_unnamed_addr global %Foo4 <{ i8 1, i64 2 }>, align 1
 @struct2.foo5 = local_unnamed_addr global %Foo5 { i32 1, [12 x i8] undef, i8 2, [15 x i8] undef }, align 16
-@struct2.foo6 = local_unnamed_addr global %Foo6 { i32 1, i16 2, i16 3 }, align 1
+@struct2.foo6 = local_unnamed_addr global %Foo6 <{ i32 1, i16 2, i16 3 }>, align 1
 
-; Function Attrs:
 define i32 @struct2.test5(i8 signext %0) #0 {
 entry:
   %y = alloca %Foo5, align 16

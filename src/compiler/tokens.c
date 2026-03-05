@@ -88,6 +88,10 @@ const char *token_type_to_string(TokenType type)
 			return "|||";
 		case TOKEN_CT_CONCAT:
 			return "+++";
+		case TOKEN_CT_CONCAT_ASSIGN:
+			return "+++=";
+		case TOKEN_CT_TERNARY:
+			return "???";
 		case TOKEN_DIV_ASSIGN:
 			return "/=";
 		case TOKEN_DOTDOT:
@@ -199,6 +203,8 @@ const char *token_type_to_string(TokenType type)
 			return "catch";
 		case TOKEN_CONST:
 			return "const";
+		case TOKEN_CONSTDEF:
+			return "constdef";
 		case TOKEN_CONTINUE:
 			return "continue";
 		case TOKEN_DEFAULT:
@@ -233,6 +239,8 @@ const char *token_type_to_string(TokenType type)
 			return "interface";
 		case TOKEN_IMPORT:
 			return "import";
+		case TOKEN_LENGTHOF:
+			return "lengthof";
 		case TOKEN_MACRO:
 			return "macro";
 		case TOKEN_MODULE:
@@ -363,6 +371,8 @@ const char *token_type_to_string(TokenType type)
 			return "$is_const";
 		case TOKEN_CT_INCLUDE:
 			return "$include";
+		case TOKEN_CT_KINDOF:
+			return "$kindof";
 		case TOKEN_CT_VACOUNT:
 			return "$vacount";
 		case TOKEN_CT_VATYPE:

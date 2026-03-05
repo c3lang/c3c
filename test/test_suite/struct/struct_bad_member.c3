@@ -1,10 +1,10 @@
 struct Foo {
-  void bar; // #error: Members cannot be of
+  void bar; // #error: Members cannot
 }
 
 alias Void = void;
 struct Foo2 {
-  Void bar; // #error: Members cannot be of
+  Void bar; // #error: Members cannot
 }
 
 typedef Void2 = void;

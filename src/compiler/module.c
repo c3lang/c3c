@@ -10,6 +10,13 @@ Decl *module_find_symbol(Module *module, const char *symbol)
 	return decl && decl->visibility != VISIBLE_LOCAL ? decl : NULL;
 }
 
+Decl *module_find_symbol_in_unit(Module *module, CompilationUnit *unit, const char *symbol)
+{
+	Decl *decl = htable_get(&unit->local_symbols, (void*)symbol);
+	if (decl) return decl;
+	return module_find_symbol(module, symbol);
+}
+
 void scratch_buffer_append_module(Module *module, bool is_export)
 {
 	if (module->extname)
@@ -73,11 +80,11 @@ const char *module_create_object_file_name(Module *module)
 }
 
 
-Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span)
+Path *path_create_from_string(const char *string, uint32_t len, SourceLocId loc)
 {
 	ASSERT(string);
 	Path *path = CALLOCS(Path);
-	path->span = span;
+	path->loc = loc;
 	TokenType type = TOKEN_IDENT;
 	path->module = symtab_add(string, len, fnv1a(string, len), &type);
 	path->len = len;

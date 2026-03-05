@@ -13,7 +13,7 @@
   ],
   "dependency-search-paths": [ "./lib" ],
   "dependencies": ["clib", "clib2"],
-
+  "cpu-flags": ",,",
   "features": ["ABCD"],
   "exec": ["scriptme.c3 myarg"],
   // c sources

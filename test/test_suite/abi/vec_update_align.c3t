@@ -1,0 +1,60 @@
+// #target: macos-x64
+// #opt: --x86cpu=avx512
+module test;
+alias Int8x16 = ichar[<16>];
+alias Float32x3 = float[<3>];
+
+struct HFAv3
+{
+    Float32x3[4] arr;
+}
+
+struct HFAv3arr
+{
+    float[3][4] arr;
+}
+
+struct MixedHFAv3
+{
+    Float32x3[3] arr;
+    Int8x16 b;
+}
+
+struct MixedHFAv3arr
+{
+    float[<3>][3] arr;
+    ichar[16] b;
+}
+
+fn int main()
+{
+	MixedHFAv3 a;
+	MixedHFAv3arr b;
+	b.arr[1].x++;
+	float x1 = b.arr[0].y;
+	return 0;
+}
+
+/* #expect: test.ll
+
+%MixedHFAv3 = type { [3 x [3 x float]], [16 x i8] }
+%MixedHFAv3arr = type { [3 x [3 x float]], [16 x i8] }
+
+define i32 @main() #0 {
+entry:
+  %a = alloca %MixedHFAv3, align 4
+  %b = alloca %MixedHFAv3arr, align 4
+  %x1 = alloca float, align 4
+  call void @llvm.memset.p0.i64(ptr align 4 %a, i8 0, i64 52, i1 false)
+  call void @llvm.memset.p0.i64(ptr align 4 %b, i8 0, i64 52, i1 false)
+  %ptradd = getelementptr inbounds i8, ptr %b, i64 12
+  %0 = load <3 x float>, ptr %ptradd, align 4
+  %1 = extractelement <3 x float> %0, i64 0
+  %fincdec = fadd float %1, 1.000000e+00
+  %2 = insertelement <3 x float> %0, float %fincdec, i64 0
+  store <3 x float> %2, ptr %ptradd, align 4
+  %3 = load <3 x float>, ptr %b, align 4
+  %4 = extractelement <3 x float> %3, i64 1
+  store float %4, ptr %x1, align 4
+  ret i32 0
+}

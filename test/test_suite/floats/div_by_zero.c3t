@@ -1,0 +1,27 @@
+// #target: macos-x64
+// #safe: yes
+module test;
+
+fn void test()
+{
+	float x, y;
+	x = x / y;
+	x = x % y;
+}
+
+/* #expect: test.ll
+
+entry:
+  %x = alloca float, align 4
+  %y = alloca float, align 4
+  store float 0.000000e+00, ptr %x, align 4
+  store float 0.000000e+00, ptr %y, align 4
+  %0 = load float, ptr %x, align 4
+  %1 = load float, ptr %y, align 4
+  %fdiv = fdiv float %0, %1
+  store float %fdiv, ptr %x, align 4
+  %2 = load float, ptr %x, align 4
+  %3 = load float, ptr %y, align 4
+  %fmod = frem float %2, %3
+  store float %fmod, ptr %x, align 4
+  ret void

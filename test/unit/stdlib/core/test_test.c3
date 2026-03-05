@@ -279,11 +279,11 @@ fn void test_error()
 {
 	TestFailFn ffail_void = fn void?(bool to_fail)
 	{
-		if (to_fail) return io::FILE_NOT_FOUND?;
+		if (to_fail) return io::FILE_NOT_FOUND~;
 	};
 	TestIntFn ffail_int = fn int?(int a, int b)
 	{
-		if (b == 0) return io::FILE_NOT_FOUND?;
+		if (b == 0) return io::FILE_NOT_FOUND~;
 		return a / b;
 	};
 	test::@setup(state.setup_fn, state.teardown_fn);
@@ -295,7 +295,7 @@ fn void test_error()
 fn void test_error_not_raised()
 {
 	TestIntFn ffail_int = fn int?(int a, int b) {
-		if (b == 0) return io::FILE_NOT_FOUND?;
+		if (b == 0) return io::FILE_NOT_FOUND~;
 		return a / b;
 	};
 	test::@setup(state.setup_fn, state.teardown_fn);
@@ -303,10 +303,38 @@ fn void test_error_not_raised()
 	test::@error(ffail_int(1, 1), io::FILE_NOT_FOUND);
 }
 
+fn void test_error_nofault()
+{
+	TestFailFn ffail_void = fn void?(bool to_fail)
+	{
+		if (to_fail) return io::FILE_NOT_FOUND~;
+	};
+	TestIntFn ffail_int = fn int?(int a, int b)
+	{
+		if (b == 0) return io::FILE_NOT_FOUND~;
+		return a / b;
+	};
+	test::@setup(state.setup_fn, state.teardown_fn);
+
+	test::@error(ffail_void(true));
+	test::@error(ffail_int(1, 0));
+}
+
+fn void test_error_nofault_not_raised()
+{
+	TestIntFn ffail_int = fn int?(int a, int b) {
+		if (b == 0) return io::FILE_NOT_FOUND~;
+		return a / b;
+	};
+	test::@setup(state.setup_fn, state.teardown_fn);
+	state.expected_fail = true;
+	test::@error(ffail_int(1, 1));
+}
+
 fn void test_error_wrong_error_expected()
 {
 	TestIntFn ffail_int = fn int?(int a, int b) {
-		if (b == 0) return io::BUSY?;
+		if (b == 0) return io::BUSY~;
 		return a / b;
 	};
 	test::@setup(state.setup_fn, state.teardown_fn);

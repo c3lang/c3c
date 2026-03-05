@@ -27,6 +27,6 @@ entry:
   %sext = sext i32 %0 to i64
   %ptroffset = getelementptr inbounds [4 x i8], ptr @foo.bar, i64 %sext
   store i32 0, ptr %ptroffset, align 4
-  store i32 %0, ptr @foo.bar, align 4
+  store i32 %0, ptr @foo.bar, align 16
   ret void
 }

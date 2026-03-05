@@ -34,7 +34,7 @@ fn void scanner()
         	if (catch err = res)
         	{
         		if (err == NOT_FOUND) break;
-        		return err?!!;
+        		return err~!!;
         	}
         	String str = (String)res;
             results.push(str.tconcat(""));

@@ -86,6 +86,47 @@ bool dir_make(const char *path)
 #endif
 }
 
+#if !PLATFORM_WINDOWS
+const char *find_temp_dir(void)
+{
+	const char* temp_base;
+	if ((temp_base = getenv("TMPDIR"))) return temp_base;
+	if ((temp_base = getenv("TMP"))) return temp_base;
+	if ((temp_base = getenv("TEMP"))) return temp_base;
+	if ((temp_base = getenv("TEMPDIR"))) return temp_base;
+	return "/tmp";
+}
+#endif
+
+const char *dir_make_temp_dir(void)
+{
+	char buffer[PATH_MAX];
+#if PLATFORM_WINDOWS
+	char temp_path[PATH_MAX];
+	if (!GetTempPathA(PATH_MAX, temp_path)) return NULL;
+
+	if (!GetTempFileNameA(temp_path, "c3c", 0, buffer)) return NULL;
+
+	// Delete the temp file
+	if (!DeleteFileA(buffer)) return NULL;
+
+	// Create a directory instead
+	if (!CreateDirectoryA(buffer, NULL))
+	{
+		return NULL;
+	}
+	return str_copy(buffer, strlen(buffer));
+#else
+	const char *temp_dir = find_temp_dir();
+	const char *format = str_has_suffix(temp_dir, "/") ? "%sc3cXXXXXXX" : "%s/c3cXXXXXXX";
+	int result = snprintf(buffer, PATH_MAX, format, find_temp_dir());
+	if (result < 0 || result >= PATH_MAX) return NULL;
+	const char *out = mkdtemp(buffer);
+	if (out == NULL) return NULL;
+	return str_copy(buffer, strlen(buffer));
+#endif
+}
+
 bool dir_make_recursive(char *path)
 {
 	size_t len = strlen(path);
@@ -166,8 +207,8 @@ bool file_namesplit(const char *path, char** filename_ptr, char** directory_ptr)
 		}
 	}
 	size_t file_len = (found_at != ((size_t)-1)) ? len - found_at - 1 : len;
-	if (file_len == 1 && path[0] == '.') return false;
-	if (file_len == 2 && path[0] == '.' && path[1] == '.') return false;
+	if (file_len == 1 && path[found_at + 1] == '.') return false;
+	if (file_len == 2 && path[found_at + 1] == '.' && path[found_at + 2] == '.') return false;
 	if (!file_len) return false;
 	if (filename_ptr) *filename_ptr = str_copy(&path[len - file_len], file_len);
 	if (!directory_ptr) return true;
@@ -375,14 +416,8 @@ static inline const char *lib_find(const char *exe_path, const char *rel_path)
 
 const char *find_rel_exe_dir(const char *dir)
 {
-	char *path = find_executable_path();
+	const char *path = find_executable_path();
 	INFO_LOG("Detected executable path at %s", path);
-	size_t strlen_path = strlen(path);
-	// Remove any last path slash
-	if (strlen_path > 1 && (path[strlen_path - 1] == '/' || path[strlen_path - 1] == '\\'))
-	{
-		path[strlen_path - 1] = '\0';
-	}
 	struct stat info;
 	const char *attempts[5] = { "/../", "/lib/", "/../lib/", "/", "/../../lib/" };
 
@@ -412,16 +447,10 @@ const char *find_lib_dir(void)
 		}
 		return strdup(lib_dir_env);
 	}
-	char *path = find_executable_path();
+	const char *path = find_executable_path();
 
 	INFO_LOG("Detected executable path at %s", path);
 
-	size_t strlen_path = strlen(path);
-	// Remove any last path slash
-	if (strlen_path > 1 && (path[strlen_path - 1] == '/' || path[strlen_path - 1] == '\\'))
-	{
-		path[strlen_path - 1] = '\0';
-	}
 	const char *lib_path = NULL;
 	if ((lib_path = lib_find(path, "/../lib/c3/"))) goto DONE;
 	if ((lib_path = lib_find(path, "/../lib/"))) goto DONE;
@@ -436,7 +465,6 @@ const char *find_lib_dir(void)
 
 	INFO_LOG("Could not find the standard library /lib/std/");
 DONE:;
-	free(path);
 	return lib_path;
 }
 
@@ -448,7 +476,7 @@ void file_create_folders(const char *name)
 	char *dir;
 	if (!file_namesplit(path, NULL, &dir))
 	{
-		error_exit("Failed to split %s", filename);
+		error_exit("Failed to split %s", name);
 	}
 	if (str_eq(dir, ".") || dir[0] == '\0') return;
 	if (!file_exists(dir)) dir_make_recursive(dir);
@@ -536,6 +564,20 @@ bool file_exists(const char *path)
 	return S_ISDIR(st.st_mode) || S_ISREG(st.st_mode) || S_ISREG(st.st_mode);
 }
 
+bool file_path_is_relative(const char *file_name)
+{
+	assert(file_name);
+	size_t len = strlen(file_name);
+	if (!len) return false;
+
+	// returns !full_path condition
+#if PLATFORM_WINDOWS
+	return !(file_name[0] == '\\' || (len >= 2 && char_is_letter(file_name[0]) && file_name[1] == ':'));
+#else
+	return file_name[0] != '/';
+#endif
+}
+
 #define PATH_BUFFER_SIZE 16384
 static char path_buffer[PATH_BUFFER_SIZE];
 
@@ -570,10 +612,10 @@ const char *file_append_path_temp(const char *path, const char *name)
 	return path_buffer;
 }
 
-const char *file_append_path(const char *path, const char *name)
+char *file_append_path(const char *path, const char *name)
 {
 	size_t path_len = strlen(path);
-	if (!path_len) return name;
+	if (!path_len) return str_dup(name);
 #if PLATFORM_WINDOWS
 	if (path[path_len - 1] == '\\') return str_cat(path, name);
 	if (path[path_len - 1] == '/') return str_cat(path, name);
@@ -585,8 +627,7 @@ const char *file_append_path(const char *path, const char *name)
 }
 
 #ifdef _MSC_VER
-extern int _getdrive(void);
-extern int _chdrive(int drive);
+#include <direct.h>
 #endif
 
 void file_copy_file(const char *src_path, const char *dst_path, bool overwrite)
@@ -596,14 +637,20 @@ void file_copy_file(const char *src_path, const char *dst_path, bool overwrite)
 #if (_MSC_VER)
 	CopyFileW(win_utf8to16(src_path), win_utf8to16(dst_path), !overwrite);
 #else
-	const char *cmd = "cp %s %s %s";
-	execute_cmd(str_printf(cmd, !overwrite ? "--update=none" : "--update=all", src_path, dst_path), true, NULL, 2048);
+	scratch_buffer_clear();
+	scratch_buffer_append("cp ");
+	if (!overwrite) scratch_buffer_append("-u ");
+	scratch_buffer_append_cmd_argument(src_path);
+	scratch_buffer_append_char(' ');
+	scratch_buffer_append_cmd_argument(dst_path);
+	execute_cmd(scratch_buffer_to_string(), true, NULL, 2048);
 #endif
 }
 
 bool file_delete_file(const char *path)
 {
 	ASSERT(path);
+	if (!file_exists(path)) return false;
 #if (_MSC_VER)
 	return DeleteFileW(win_utf8to16(path));
 #else

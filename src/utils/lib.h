@@ -12,9 +12,8 @@
 #include "intrin.h"
 #endif
 
-#if FETCH_AVAILABLE
 const char *download_file(const char *url, const char *resource, const char *file_path);
-#endif
+bool download_available(void);
 
 #define ELEMENTLEN(x) (sizeof(x) / sizeof(x[0]))
 extern const char *compiler_exe_name;
@@ -40,9 +39,12 @@ typedef struct
 typedef struct {
 	char* windows_sdk_path;
 	char* vs_library_path;
+	char* cl_path;
+	char* cl_include_env;
 } WindowsSDK;
 
-#define MAX_STRING_BUFFER 0x10000
+// Keep a 4 MB text buffer
+#define MAX_STRING_BUFFER (1024 * 1024 * 4)
 #define COMPILER_SUCCESS_EXIT -1000
 NORETURN void exit_compiler(int exit_value);
 extern jmp_buf on_err_jump;
@@ -65,6 +67,7 @@ char *win_utf16to8(const uint16_t *name);
 // Use as if it was mkdir(..., 0755) == 0
 bool dir_make(const char *path);
 bool dir_make_recursive(char *path);
+const char *dir_make_temp_dir(void);
 // Use as if it was chdir(...) == 0
 bool dir_change(const char *path);
 const char *filename(const char *path);
@@ -79,6 +82,7 @@ bool file_delete_file(const char *path);
 void file_delete_dir(const char *path);
 bool file_is_dir(const char *file);
 bool file_exists(const char *path);
+bool file_path_is_relative(const char *file_name);
 FILE *file_open_read(const char *path);
 bool file_touch(const char *path);
 char *file_read_binary(const char *path, size_t *size);
@@ -91,7 +95,7 @@ void file_get_dir_and_filename_from_full(const char *full_path, char **filename,
 void file_find_top_dir();
 bool file_has_suffix_in_list(const char *file_name, int name_len, const char **suffix_list, int suffix_count);
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count);
-const char *file_append_path(const char *path, const char *name);
+char *file_append_path(const char *path, const char *name);
 const char *file_append_path_temp(const char *path, const char *name);
 
 const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, int suffix_count, bool error_on_mismatch);
@@ -140,23 +144,26 @@ char *str_trim(char *str);
 const char *str_trim_start(const char *str);
 void str_trim_end(char *str);
 char *str_cat(const char *a, const char *b);
+char *str_cat_len(const char *a, size_t a_len, const char *b, size_t b_len);
 // Search a list of strings and return the matching element or -1 if none found.
 int str_findlist(const char *value, unsigned count, const char** elements);
 // Sprintf style, saved to an arena allocated string
 char *str_printf(const char *var, ...) __printflike(1, 2);
 char *str_vprintf(const char *var, va_list list);
-void str_ellide_in_place(char *string, size_t max_size_shown);
+void str_elide_in_place(char *string, size_t max_size_shown);
 bool str_is_valid_lowercase_name(const char *string);
 bool str_is_valid_constant(const char *string);
 const char *str_unescape(char *string);
 bool str_is_identifier(const char *string);
 bool str_eq(const char *str1, const char *str2);
+bool str_ends_with(const char *str, const char *end);
 bool str_is_type(const char *string);
 bool slice_is_type(const char *string, size_t);
 bool str_is_integer(const char *string);
 bool str_has_no_uppercase(const char *string);
 bool str_is_valid_module_name(const char *name);
 char *str_copy(const char *start, size_t str_len);
+char *str_dup(const char *str);
 
 StringSlice slice_next_token(StringSlice *slice, char separator);
 static inline bool slice_strcmp(StringSlice slice, const char *other);
@@ -164,8 +171,10 @@ static inline StringSlice slice_from_string(const char *data);
 void slice_trim(StringSlice *slice);
 
 void scratch_buffer_clear(void);
+void scratch_buffer_delete(size_t len);
 void scratch_buffer_append(const char *string);
 void scratch_buffer_append_len(const char *string, size_t len);
+bool scratch_buffer_may_append(size_t len);
 void scratch_buffer_append_char(char c);
 void scratch_buffer_append_in_quote(const char *string);
 void scratch_buffer_append_char_repeat(char c, size_t count);
@@ -205,6 +214,7 @@ static inline int char_hex_to_nibble(char c);
 INLINE char char_nibble_to_hex(int c);
 
 static inline uint32_t fnv1a(const char *key, uint32_t len);
+static inline uint64_t a5hash(const char *key, uint32_t len, uint64_t seed);
 
 INLINE uint32_t vec_size(const void *vec);
 static inline void vec_resize(void *vec, uint32_t new_size);
@@ -251,6 +261,83 @@ static inline uint32_t fnv1a(const char *key, uint32_t len)
 		hash = FNV1a(key[i], hash);
 	}
 	return hash;
+}
+
+// see: `int64_mult` in bigint.c - there is no need to import all these declarations just for this
+static inline void _a5mul(uint64_t u, uint64_t v, uint64_t *lo, uint64_t *hi)
+{
+	uint64_t ul = u & 0xFFFFFFFF;
+	uint64_t vl = v & 0xFFFFFFFF;
+	uint64_t t  = ul * vl;
+	uint64_t w3 = t & 0xFFFFFFFF;
+	uint64_t k  = t >> 32;
+
+	u >>= 32;
+	t = u * vl + k;
+	k = t & 0xFFFFFFFF;
+	uint64_t w1 = t >> 32;
+
+	v >>= 32;
+	t = ul * v + k;
+
+	*hi = (u * v) + w1 + (t >> 32);
+	*lo = (t << 32) + w3;
+}
+
+static inline uint64_t a5hash(const char *key, uint32_t len, uint64_t seed)
+{
+	uint64_t widened_len = (uint64_t)len;
+	uint64_t seed1 = 0x243F6A8885A308D3 ^ widened_len;
+	uint64_t seed2 = 0x452821E638D01377 ^ widened_len;
+	uint64_t val10 = 0xAAAAAAAAAAAAAAAA;
+	uint64_t val01 = 0x5555555555555555;
+	uint64_t a, b;
+	const char *scroll = key, *end = key + len;
+
+	_a5mul(seed2 ^ (seed & val10), seed1 ^ (seed & val01), &seed1, &seed2);
+
+	val10 ^= seed2;
+
+	if (len > 3)
+	{
+		if (len > 16)
+		{
+			val01 ^= seed1;
+
+			for (; end - scroll > 16; scroll += 16)
+			{
+				_a5mul(((uint64_t *)scroll)[0] ^ seed1, ((uint64_t *)scroll)[1] ^ seed2, &seed1, &seed2);
+
+				seed1 += val01;
+				seed2 += val10;
+			}
+
+			a = *(uint64_t *)(scroll + (end - scroll) - 16);
+			b = *(uint64_t *)(scroll + (end - scroll) - 8);
+		}
+		else
+		{
+			a = ((uint64_t)(*(uint32_t *)scroll) << 32) | *(uint32_t *)(end - 4);
+			b = ((uint64_t)(*(uint32_t *)&scroll[(len >> 3) * 4]) << 32)
+				| *(uint32_t *)(end - 4 - (len >> 3) * 4);
+		}
+	}
+	else
+	{
+		a = len
+			? (uint64_t)(
+				(uint64_t)scroll[0]
+				| (len > 1 ? ((uint64_t)scroll[1] << 8) : 0)
+				| (len > 2 ? ((uint64_t)scroll[2] << 16) : 0)
+			)
+			: 0;
+		b = 0;
+	}
+
+	_a5mul(a ^ seed1, b ^ seed2, &seed1, &seed2);
+	_a5mul(val01 ^ seed1, seed2, &a, &b);
+
+	return a ^ b;
 }
 
 typedef struct
@@ -354,6 +441,11 @@ type__* CONCAT(foreach_vec_, __LINE__) = (vec__); type__* CONCAT(foreach_vecend_
 type__* CONCAT(foreach_it_, __LINE__) = CONCAT(foreach_vec_, __LINE__); \
 for (type__ name__ ; CONCAT(foreach_it_, __LINE__) < CONCAT(foreach_vecend_, __LINE__) ? (name__ = *CONCAT(foreach_it_, __LINE__), true) : false; CONCAT(foreach_it_, __LINE__)++)
 
+#define FOREACH_REF(type__, name__, vec__) \
+type__* CONCAT(foreach_vec_, __LINE__) = (vec__); type__* CONCAT(foreach_vecend_, __LINE__) = CONCAT(foreach_vec_, __LINE__) ? CONCAT(foreach_vec_, __LINE__) + vec_size(CONCAT(foreach_vec_, __LINE__)) : NULL; \
+type__* CONCAT(foreach_it_, __LINE__) = CONCAT(foreach_vec_, __LINE__); \
+for (type__* name__ ; CONCAT(foreach_it_, __LINE__) < CONCAT(foreach_vecend_, __LINE__) ? (name__ = CONCAT(foreach_it_, __LINE__), true) : false; CONCAT(foreach_it_, __LINE__)++)
+
 #define FOREACH_IDX(idx__, type__, name__, vec__) \
 type__* CONCAT(foreach_vec_, __LINE__) = (vec__); uint32_t CONCAT(foreach_vecsize_, __LINE__) = vec_size(CONCAT(foreach_vec_, __LINE__)); \
 uint32_t idx__ = 0; \
@@ -440,22 +532,6 @@ static inline bool is_power_of_two(uint64_t x)
 	return x != 0 && (x & (x - 1)) == 0;
 }
 
-static int clz(uint64_t num)
-{
-#if IS_CLANG || IS_GCC
-	return (int)__builtin_ctzll(num);
-#else
-	unsigned long index;
-	_BitScanReverse64(&index, (__int64)num);
-	return (int)index;
-#endif
-}
-
-static inline unsigned char power_of_2(uint64_t pot_value)
-{
-	return 64 - clz(pot_value);
-}
-
 static inline uint32_t next_highest_power_of_2(uint32_t v)
 {
 	v--;
@@ -538,7 +614,7 @@ static char hex_conv[256] = {
 
 static inline int char_hex_to_nibble(char c)
 {
-	return hex_conv[(unsigned)c] - 1;
+	return hex_conv[(unsigned char)c] - 1;
 }
 
 static inline bool char_is_hex_or_(char c)

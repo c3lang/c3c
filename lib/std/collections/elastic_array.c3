@@ -4,14 +4,14 @@
 <*
  @require MAX_SIZE >= 1 : `The size must be at least 1 element big.`
 *>
-module std::collections::elastic_array {Type, MAX_SIZE};
+module std::collections::elastic_array <Type, MAX_SIZE>;
 import std::io, std::math, std::collections::list_common;
 
 alias ElementPredicate = fn bool(Type *type);
 alias ElementTest = fn bool(Type *type, any context);
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
 const ELEMENT_IS_POINTER = Type.kindof == POINTER;
-macro type_is_overaligned() => Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
+macro bool type_is_overaligned() => Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
 
 struct ElasticArray (Printable)
 {
@@ -46,7 +46,7 @@ fn String ElasticArray.to_tstring(&self)
 
 fn void? ElasticArray.push_try(&self, Type element) @inline
 {
-	if (self.size == MAX_SIZE) return mem::OUT_OF_MEMORY?;
+	if (self.size == MAX_SIZE) return mem::OUT_OF_MEMORY~;
 	self.entries[self.size++] = element;
 }
 
@@ -60,7 +60,7 @@ fn void ElasticArray.push(&self, Type element) @inline
 
 fn Type? ElasticArray.pop(&self)
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	return self.entries[--self.size];
 }
 
@@ -74,7 +74,7 @@ fn void ElasticArray.clear(&self)
 *>
 fn Type? ElasticArray.pop_first(&self)
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	defer self.remove_at(0);
 	return self.entries[0];
 }
@@ -121,7 +121,24 @@ fn usz ElasticArray.add_all_to_limit(&self, ElasticArray* other_list)
 
  @param [in] array
 *>
-fn usz ElasticArray.add_array_to_limit(&self, Type[] array)
+fn usz ElasticArray.add_array_to_limit(&self, Type[] array) @deprecated("Use push_all_to_limit")
+{
+	if (!array.len) return 0;
+	foreach (i, &value : array)
+	{
+		if (self.size == MAX_SIZE) return array.len - i;
+		self.entries[self.size++] = *value;
+	}
+	return 0;
+}
+
+<*
+ Add as many values from this array as possible, returning the
+ number of elements that didn't fit.
+
+ @param [in] array
+*>
+fn usz ElasticArray.push_all_to_limit(&self, Type[] array)
 {
 	if (!array.len) return 0;
 	foreach (i, &value : array)
@@ -139,7 +156,7 @@ fn usz ElasticArray.add_array_to_limit(&self, Type[] array)
  @require array.len + self.size <= MAX_SIZE : `Size would exceed max.`
  @ensure self.size >= array.len
 *>
-fn void ElasticArray.add_array(&self, Type[] array)
+fn void ElasticArray.add_array(&self, Type[] array) @deprecated("Use push_all")
 {
 	if (!array.len) return;
 	foreach (&value : array)
@@ -148,6 +165,21 @@ fn void ElasticArray.add_array(&self, Type[] array)
 	}
 }
 
+<*
+ Add the values of an array to this list.
+
+ @param [in] array
+ @require array.len + self.size <= MAX_SIZE : `Size would exceed max.`
+ @ensure self.size >= array.len
+*>
+fn void ElasticArray.push_all(&self, Type[] array)
+{
+	if (!array.len) return;
+	foreach (&value : array)
+	{
+		self.entries[self.size++] = *value;
+	}
+}
 
 
 <*
@@ -209,7 +241,7 @@ fn void? ElasticArray.push_front_try(&self, Type type) @inline
 *>
 fn void? ElasticArray.insert_at_try(&self, usz index, Type value)
 {
-	if (self.size == MAX_SIZE) return mem::OUT_OF_MEMORY?;
+	if (self.size == MAX_SIZE) return mem::OUT_OF_MEMORY~;
 	self.insert_at(index, value);
 }
 
@@ -237,25 +269,25 @@ fn void ElasticArray.set_at(&self, usz index, Type type)
 
 fn void? ElasticArray.remove_last(&self) @maydiscard
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	self.size--;
 }
 
 fn void? ElasticArray.remove_first(&self) @maydiscard
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	self.remove_at(0);
 }
 
 fn Type? ElasticArray.first(&self)
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	return self.entries[0];
 }
 
 fn Type? ElasticArray.last(&self)
 {
-	if (!self.size) return NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT~;
 	return self.entries[self.size - 1];
 }
 
@@ -336,7 +368,7 @@ fn usz? ElasticArray.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 	{
 		if (equals(v, type)) return i;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 fn usz? ElasticArray.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
@@ -345,7 +377,7 @@ fn usz? ElasticArray.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 	{
 		if (equals(v, type)) return i;
 	}
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 fn bool ElasticArray.equals(&self, ElasticArray other_list) @if(ELEMENT_IS_EQUATABLE)

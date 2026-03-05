@@ -1,0 +1,64 @@
+// #target: macos-x64
+// #safe: yes
+module test;
+import std;
+fn int main()
+{
+	char[35] x;
+	long[3] w;
+	long z = @unaligned_load(((long*)&x[1])[0], 1);
+	long y = ((long*)&x[1])[0];
+	long ww = w[1];
+	return 0;
+}
+
+/* #expect: test.ll
+
+
+define i32 @main() #0 {
+entry:
+  %x = alloca [35 x i8], align 16
+  %w = alloca [3 x i64], align 16
+  %z = alloca i64, align 8
+  %y = alloca i64, align 8
+  %taddr = alloca i64, align 8
+  %taddr2 = alloca i64, align 8
+  %varargslots = alloca [2 x %any], align 16
+  %indirectarg = alloca %"any[]", align 8
+  %ww = alloca i64, align 8
+  call void @llvm.memset.p0.i64(ptr align 16 %x, i8 0, i64 35, i1 false)
+  call void @llvm.memset.p0.i64(ptr align 16 %w, i8 0, i64 24, i1 false)
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 1
+  %0 = load i64, ptr %ptradd, align 1
+  store i64 %0, ptr %z, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 1
+  %1 = ptrtoint ptr %ptradd1 to i64
+  %2 = urem i64 %1, 8
+  %3 = icmp ne i64 %2, 0
+  %4 = call i1 @llvm.expect.i1(i1 %3, i1 false)
+  br i1 %4, label %panic, label %checkok
+
+checkok:                                          ; preds = %entry
+  %5 = load i64, ptr %ptradd1, align 8
+  store i64 %5, ptr %y, align 8
+  %ptradd4 = getelementptr inbounds i8, ptr %w, i64 8
+  %6 = load i64, ptr %ptradd4, align 8
+  store i64 %6, ptr %ww, align 8
+  ret i32 0
+
+panic:                                            ; preds = %entry
+  store i64 8, ptr %taddr, align 8
+  %7 = insertvalue %any undef, ptr %taddr, 0
+  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  store i64 %2, ptr %taddr2, align 8
+  %9 = insertvalue %any undef, ptr %taddr2, 0
+  %10 = insertvalue %any %9, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  store %any %8, ptr %varargslots, align 16
+  %ptradd3 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %any %10, ptr %ptradd3, align 16
+  %11 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %11, i64 2, 1
+  store %"any[]" %"$$temp", ptr %indirectarg, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 94, ptr @.file, i64 24, ptr @.func, i64 4, i32 8, ptr byval(%"any[]") align 8 %indirectarg) #3
+  unreachable
+}

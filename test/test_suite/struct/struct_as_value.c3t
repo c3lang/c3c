@@ -16,7 +16,7 @@ fn Event test(int x)
 /* #expect: test.ll
 %Event = type { i32 }
 
-@"$ct.test.Event" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Event" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @.__const = private unnamed_addr constant %Event { i32 1 }, align 4
 @.__const.1 = private unnamed_addr constant %Event { i32 2 }, align 4
 

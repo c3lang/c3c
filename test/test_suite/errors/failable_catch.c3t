@@ -5,7 +5,7 @@ faultdef TEST;
 macro foo(int x)
 {
     if (x) return x;
-    return TEST?;
+    return TEST~;
 }
 
 extern fn void printf(char*, ...);

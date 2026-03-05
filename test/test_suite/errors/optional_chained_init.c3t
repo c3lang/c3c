@@ -7,7 +7,7 @@ faultdef FOO;
 fn void test1()
 {
 	int? a = 1;
-	int? b = a = FOO?;
+	int? b = a = FOO~;
 	if (catch err = a) io::printfn("A err was: %s", err);
 	if (catch err = b) io::printfn("B err was: %s", err);
 	(void)io::printfn("A was: %s", a);
@@ -16,7 +16,7 @@ fn void test1()
 
 fn void test2()
 {
-	int? x = FOO?;
+	int? x = FOO~;
 	int? a = 1;
 	int? b = a = x;
 	if (catch err = a) io::printfn("A err was: %s", err);

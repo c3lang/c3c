@@ -47,6 +47,7 @@ static const char *ld_target(ArchType arch_type)
 		default:
 			error_exit("Architecture currently not available for cross linking.");
 	}
+	UNREACHABLE
 }
 
 static void linker_setup_windows(const char ***args_ref, Linker linker_type, const char *output_file)
@@ -69,7 +70,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 			is_debug = true;
 			break;
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	if (!link_libc()) return;
 	bool link_with_dynamic_debug_libc = true;
@@ -94,31 +95,44 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	if (!compiler.build.win.sdk && !compiler.build.win.vs_dirs)
 	{
 		const char *path = windows_cross_compile_library();
+		if (!path && !windows_get_sdk())
+		{
+			BuildOptions options = { .verbosity_level = (compiler.build.silent || compiler.build.quiet) ? -1 : 0 };
+			fetch_msvc(&options);
+			path = windows_cross_compile_library();
+		}
+		// Note that path here may be allocated on the string scratch buffer.
 		if (path)
 		{
+			if (!compiler.build.quiet && !compiler.build.silent)
+			{
+				OUTF("Using MSVC SDK at: %s\n", path);
+			}
+
+			const char *suffix = NULL;
 			switch (compiler.platform.arch)
 			{
-				case ARCH_TYPE_ARM:
-					scratch_buffer_append("/arm");
-					break;
-				case ARCH_TYPE_AARCH64:
-					scratch_buffer_append("/arm64");
-					break;
-				case ARCH_TYPE_X86_64:
-					scratch_buffer_append("/x64");
-					break;
-				case ARCH_TYPE_X86:
-					scratch_buffer_append("/x86");
-					break;
-				default:
-					UNREACHABLE
+				case ARCH_TYPE_ARM: suffix = "arm"; break;
+				case ARCH_TYPE_AARCH64: suffix = "arm64"; break;
+				case ARCH_TYPE_X86_64: suffix = "x64"; break;
+				case ARCH_TYPE_X86: suffix = "x86"; break;
+				default: break;
 			}
-			if (file_exists(scratch_buffer_to_string()))
+
+			if (suffix)
 			{
-				compiler.build.win.sdk = scratch_buffer_copy();
-				// If we only use the msvc cross compile on windows, we
-				// avoid linking with dynamic debug dlls.
-				link_with_dynamic_debug_libc = false;
+				char *full_path = file_append_path(path, suffix);
+				if (file_exists(full_path))
+				{
+					compiler.build.win.sdk = full_path;
+					// If we only use the msvc cross compile on windows, we
+					// avoid linking with dynamic debug dlls.
+					link_with_dynamic_debug_libc = false;
+				}
+				else
+				{
+					free(full_path);
+				}
 			}
 		}
 	}
@@ -134,7 +148,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	{
 		if (compiler.build.win.vs_dirs)
 		{
-			char *c = strstr(compiler.build.win.vs_dirs, ";");
+			const char *c = strstr(compiler.build.win.vs_dirs, ";");
 			int len = (int)(c - compiler.build.win.vs_dirs);
 			if (!c || !len) error_exit("''win-vs-dirs' override was invalid.");
 			char *um = str_printf("%.*s\\um\\x64", len, compiler.build.win.vs_dirs);
@@ -183,6 +197,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	{
 		if (crt_linking == WIN_CRT_STATIC)
 		{
+			// This path is now unreachable due to the check in compiler.c
 			add_concat_file_arg(compiler_path, "c3c_rt/clang_rt.asan-x86_64.lib");
 		}
 		else
@@ -268,7 +283,7 @@ static void linker_setup_macos(const char ***args_ref, Linker linker_type)
 		error_exit("Cannot crosslink MacOS without providing --macossdk.");
 	}
 	linking_add_link(&compiler.linking, "System");
-	linking_add_link(&compiler.linking, "m");
+	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 	add_plain_arg("-syslibroot");
 	add_quote_arg(compiler.build.macos.sysroot);
 	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no_pie");
@@ -294,9 +309,9 @@ static void linker_setup_macos(const char ***args_ref, Linker linker_type)
 }
 
 
-static const char *find_freebsd_crt(void)
+static const char *find_bsd_crt(void)
 {
-	if (file_exists("/usr/lib/crt1.o"))
+	if (file_exists("/usr/lib/crt1.o") || file_exists("/usr/lib/crt0.o"))
 	{
 		return "/usr/lib/";
 	}
@@ -330,6 +345,7 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 
 static const char *get_linux_crt_arch_glob(void)
 {
+	if (compiler.build.linuxpaths.libc == LINUX_LIBC_MUSL) return "/usr/lib/*/crt1.o";
 	switch (compiler.build.arch_os_target)
 	{
 		case LINUX_X64:
@@ -339,7 +355,9 @@ static const char *get_linux_crt_arch_glob(void)
 		case LINUX_AARCH64:
 			return "/usr/lib/aarch64*linux*/crt1.o";
 		case LINUX_RISCV32:
+			return "/usr/lib/riscv32*linux*/crt1.o";
 		case LINUX_RISCV64:
+			return "/usr/lib/riscv64*linux*/crt1.o";
 		default:
 			return "/usr/lib/*/crt1.o";
 	}
@@ -347,6 +365,7 @@ static const char *get_linux_crt_arch_glob(void)
 
 static const char *get_linux_crt_begin_arch_glob(void)
 {
+	if (compiler.build.linuxpaths.libc == LINUX_LIBC_MUSL) return "/usr/lib/gcc/*/*/crtbegin.o";
 	switch (compiler.build.arch_os_target)
 	{
 		case LINUX_X64:
@@ -356,7 +375,9 @@ static const char *get_linux_crt_begin_arch_glob(void)
 		case LINUX_AARCH64:
 			return "/usr/lib/gcc/aarch64*linux*/*/crtbegin.o";
 		case LINUX_RISCV32:
+			return "/usr/lib/gcc/riscv32*linux*/*/crtbegin.o";
 		case LINUX_RISCV64:
+			return "/usr/lib/gcc/riscv64*linux*/*/crtbegin.o";
 		default:
 			return "/usr/lib/gcc/*/*/crtbegin.o";
 	}
@@ -365,22 +386,60 @@ static const char *get_linux_crt_begin_arch_glob(void)
 static const char *find_linux_crt(void)
 {
 	if (compiler.build.linuxpaths.crt) return compiler.build.linuxpaths.crt;
-	const char *arch_linux_crt1_path = "/usr/lib/crt1.o";
-	if (file_exists(arch_linux_crt1_path))
-	{
-		const char *arch_linux_path = "/usr/lib";
-		INFO_LOG("Found crt at %s", arch_linux_path);
-		return arch_linux_path;
-	}
+
 	const char *arch_glob_path = get_linux_crt_arch_glob();
-	const char *path = find_arch_glob_path(arch_glob_path, 6);
-	if (!path)
+
+	if (compiler.platform.arch == ARCH_TYPE_RISCV64 || compiler.platform.arch == ARCH_TYPE_RISCV32)
 	{
-		INFO_LOG("No crt in /usr/lib/*/");
-		return NULL;
+		const char *is_64 = compiler.platform.arch == ARCH_TYPE_RISCV64 ? "64" : "32";
+		char *p1 = str_printf("/usr/*riscv%s*linux*/usr/lib/crt1.o", is_64);
+		const char *path = find_arch_glob_path(p1, 6);
+		if (path)
+		{
+			INFO_LOG("Found crt at %s", path);
+			return path;
+		}
+
+		char *p2 = str_printf("/usr/lib/riscv%s*linux*/crt1.o", is_64);
+		path = find_arch_glob_path(p2, 6);
+		if (path)
+		{
+			INFO_LOG("Found crt at %s", path);
+			return path;
+		}
 	}
-	INFO_LOG("Found crt at %s", path);
-	return path;
+	else
+	{
+		const char *path = find_arch_glob_path(arch_glob_path, 6);
+		if (path)
+		{
+			INFO_LOG("Found crt at %s", path);
+			return path;
+		}
+	}
+
+	bool is_host_arch = compiler.platform.arch == target_host_arch();
+
+	if (is_host_arch)
+	{
+		const char *arch_linux_crt1_path = "/usr/lib/crt1.o";
+		const char *arch_linux_64_crt1_path = "/usr/lib64/crt1.o";
+		if (file_exists(arch_linux_crt1_path))
+		{
+			const char *arch_linux_path = "/usr/lib";
+			INFO_LOG("Found crt at %s", arch_linux_path);
+			return arch_linux_path;
+		}
+		if (file_exists(arch_linux_64_crt1_path))
+		{
+			const char* arch_linux_path = "/usr/lib64";
+			INFO_LOG("Found crt at %s", arch_linux_path);
+			return arch_linux_path;
+		}
+	}
+
+	INFO_LOG("No crt found in standard paths or via globs.");
+	return NULL;
 }
 
 static const char *find_linux_crt_begin(void)
@@ -397,6 +456,66 @@ static const char *find_linux_crt_begin(void)
 	return path;
 }
 
+static const char *find_linux_ld(void)
+{
+	if (compiler.platform.environment_type == ENV_TYPE_ANDROID) return "/system/ld-android.so";
+	switch (compiler.build.linuxpaths.libc)
+	{
+		case LINUX_LIBC_MUSL:
+			switch (compiler.platform.arch)
+			{
+				case ARCH_TYPE_ARM: return "/lib/ld-musl-arm.so.1";
+				case ARCH_TYPE_ARMB: return "/lib/ld-musl-armeb.so.1";
+				case ARCH_TYPE_AARCH64: return "/lib/ld-musl-aarch64.so.1";
+				case ARCH_TYPE_AARCH64_BE: return "/lib/ld-musl-aarch64_be.so.1";
+				case ARCH_TYPE_MIPS: return "/lib/ld-musl-mips.so.1";
+				case ARCH_TYPE_MIPSEL: return "/lib/ld-musl-mipsel.so.1";
+				case ARCH_TYPE_MIPS64: return "/lib/ld-musl-mips64.so.1";
+				case ARCH_TYPE_MIPS64EL: return "/lib/ld-musl-mips64el.so.1";
+				case ARCH_TYPE_PPC: return "/lib/ld-musl-powerpc.so.1";
+				case ARCH_TYPE_PPC64: return "/lib/ld-musl-powerpc64.so.1";
+				case ARCH_TYPE_RISCV32: return "/lib/ld-musl-riscv32.so.1";
+				case ARCH_TYPE_RISCV64: return "/lib/ld-musl-riscv64.so.1";
+				case ARCH_TYPE_X86: return "/lib/ld-musl-i386.so.1";
+				case ARCH_TYPE_X86_64: return "/lib/ld-musl-x86_64.so.1";
+				default: return "/lib/ld-musl-unknown.so.1"; // a placeholder for now
+			}
+			UNREACHABLE;
+			break;
+		case LINUX_LIBC_GNU:
+			switch (compiler.platform.arch)
+			{
+				case ARCH_TYPE_ARM: return "/lib/ld-linux.so.3";
+				case ARCH_TYPE_AARCH64: return "/lib/ld-linux-aarch64.so.1";
+				case ARCH_TYPE_MIPS: return "/lib/ld-linux-mipsn8.so.1";
+				case ARCH_TYPE_MIPSEL: return "/lib/ld-linux-mipsn8.so.1";
+				case ARCH_TYPE_MIPS64: return "/lib/ld-linux-mipsn8.so.1";
+				case ARCH_TYPE_MIPS64EL: return "/lib/ld-linux-mipsn8.so.1";
+				case ARCH_TYPE_RISCV32:
+				{
+					unsigned flen = compiler.platform.riscv.flen;
+					if (flen == 8) return "/lib/ld-linux-riscv32-ilp32d.so.1";
+					if (flen == 4) return "/lib/ld-linux-riscv32-ilp32f.so.1";
+					return "/lib/ld-linux-riscv32-ilp32.so.1";
+				}
+				case ARCH_TYPE_RISCV64:
+				{
+					unsigned flen = compiler.platform.riscv.flen;
+					if (flen == 8) return "/lib/ld-linux-riscv64-lp64d.so.1";
+					if (flen == 4) return "/lib/ld-linux-riscv64-lp64f.so.1";
+					return "/lib/ld-linux-riscv64-lp64.so.1";
+				}
+				case ARCH_TYPE_SPARCV9: return "/lib/ld-linux.so.2";
+				case ARCH_TYPE_X86: return "/lib64/ld-linux.so.2";
+				case ARCH_TYPE_X86_64: return "/lib64/ld-linux-x86-64.so.2";
+				default: return "/lib/ld-linux-unknown.so.2"; // another placeholder until we have all of them
+			}
+			FALLTHROUGH;
+		default:
+			UNREACHABLE;
+	}
+}
+
 static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool is_dylib)
 {
 	if (link_libc()) linking_add_link(&compiler.linking, "dl");
@@ -407,7 +526,7 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 			add_plain_arg("-nostdlib");
 			return;
 		}
-		linking_add_link(&compiler.linking, "m");
+		if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 		if (compiler.build.debug_info == DEBUG_INFO_FULL)
 		{
 			add_plain_arg("-rdynamic");
@@ -435,6 +554,15 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 	{
 		error_exit("Failed to find the C runtime at link time.");
 	}
+
+	add_plain_arg("-m");
+	add_plain_arg(ld_target(compiler.platform.arch));
+	if (link_libc())
+	{
+		add_plain_arg("--dynamic-linker");
+		add_plain_arg(find_linux_ld());
+	}
+
 	if (is_pie_pic(compiler.platform.reloc_model))
 	{
 		add_concat_file_arg(crt_dir, "crti.o");
@@ -451,14 +579,29 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 	}
 	add_concat_file_arg(crt_dir, "crtn.o");
 	add_concat_quote_arg("-L", crt_dir);
-	add_plain_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
-	linking_add_link(&compiler.linking, "m");
+	add_concat_quote_arg("-L", crt_begin_dir);
+
+	if (compiler.platform.arch == ARCH_TYPE_RISCV64 || compiler.platform.arch == ARCH_TYPE_RISCV32)
+	{
+		const char *is_64 = compiler.platform.arch == ARCH_TYPE_RISCV64 ? "64" : "32";
+		char *sysroot = str_printf("/usr/riscv%s-linux-gnu", is_64);
+		if (file_is_dir(sysroot))
+		{
+			add_plain_arg(str_printf("--sysroot=%s", sysroot));
+		}
+		char *p1 = str_printf("/usr/riscv%s-linux-gnu/lib", is_64);
+		if (file_is_dir(p1)) add_plain_arg(str_printf("-L%s", p1));
+		char *p2 = str_printf("/usr/riscv%s-linux-gnu/usr/lib", is_64);
+		if (file_is_dir(p2)) add_plain_arg(str_printf("-L%s", p2));
+	}
+
+	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 	linking_add_link(&compiler.linking, "pthread");
+	linking_add_link(&compiler.linking, "gcc");
+	linking_add_link(&compiler.linking, "gcc_s");
 	linking_add_link(&compiler.linking, "c");
 	add_plain_arg("-L/usr/lib/");
 	add_plain_arg("-L/lib/");
-	add_plain_arg("-m");
-	add_plain_arg(ld_target(compiler.platform.arch));
 }
 
 static void linker_setup_android(const char ***args_ref, Linker linker_type, bool is_dylib)
@@ -495,6 +638,15 @@ static void linker_setup_android(const char ***args_ref, Linker linker_type, boo
 	add_plain_arg(scratch_buffer_copy());
 
 	scratch_buffer_clear();
+	scratch_buffer_append("-L");
+	scratch_buffer_append(compiler.build.android.ndk_path);
+	scratch_buffer_append("/toolchains/llvm/prebuilt/");
+	scratch_buffer_append(ANDROID_HOST_TAG);
+	scratch_buffer_append("/sysroot/usr/lib/");
+	scratch_buffer_append(compiler.platform.target_triple);
+	add_plain_arg(scratch_buffer_copy());
+
+	scratch_buffer_clear();
 	scratch_buffer_append(compiler.build.android.ndk_path);
 	scratch_buffer_append("/toolchains/llvm/prebuilt/");
 	scratch_buffer_append(ANDROID_HOST_TAG);
@@ -528,56 +680,82 @@ static void linker_setup_android(const char ***args_ref, Linker linker_type, boo
 	add_plain_arg(scratch_buffer_copy());
 
 	add_plain_arg("-ldl");
-	add_plain_arg("-lm");
+	if (compiler.linking.link_math) add_plain_arg("-lm");
 	add_plain_arg("-lc");
 }
 
-static void linker_setup_freebsd(const char ***args_ref, Linker linker_type, bool is_dylib)
+static void linker_setup_bsd(const char ***args_ref, Linker linker_type, bool is_dylib)
 {
-	if (linker_type == LINKER_CC) {
-		linking_add_link(&compiler.linking, "m");
+	if (linker_type == LINKER_CC)
+	{
+		if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 		linking_add_link(&compiler.linking, "pthread");
+		linking_add_link(&compiler.linking, "execinfo");
+		if (compiler.build.debug_info == DEBUG_INFO_FULL) add_plain_arg("-rdynamic");
 		return;
 	}
 	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");
-	if (is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
 	add_plain_arg("--eh-frame-hdr");
-
 	if (!link_libc()) return;
-
-	const char *crt_dir = find_freebsd_crt();
-	if (!crt_dir)
+	const char *crt_dir = find_bsd_crt();
+	if (!crt_dir) error_exit("Failed to find the C runtime at link time.");
+	if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE) add_plain_arg("--gc-sections");
+	bool is_openbsd = compiler.platform.os == OS_TYPE_OPENBSD;
+	bool is_netbsd = compiler.platform.os == OS_TYPE_NETBSD;
+	bool is_pie_pic_mode = is_pie_pic(compiler.platform.reloc_model);
+	if (is_openbsd)
 	{
-		error_exit("Failed to find the C runtime at link time.");
-	}
-	if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE)
-	{
-		add_plain_arg("--gc-sections");
-	}
-	if (is_pie_pic(compiler.platform.reloc_model))
-	{
-		add_plain_arg("-pie");
-		add_concat_file_arg(crt_dir, "crti.o");
-		if (!is_dylib) add_concat_file_arg(crt_dir, "Scrt1.o");
-		add_concat_file_arg(crt_dir, "crtbeginS.o");
-		add_concat_file_arg(crt_dir, "crtendS.o");
-	}
-	else
-	{
-		add_concat_file_arg(crt_dir, "crti.o");
-		if (!is_dylib) add_concat_file_arg(crt_dir, "crt1.o");
+		if (!is_dylib) add_concat_file_arg(crt_dir, "crt0.o");
 		add_concat_file_arg(crt_dir, "crtbegin.o");
 		add_concat_file_arg(crt_dir, "crtend.o");
 	}
-	add_concat_file_arg(crt_dir, "crtn.o");
+	else
+	{
+		if (!is_openbsd) add_concat_file_arg(crt_dir, "crti.o");
+		if (is_dylib || is_pie_pic_mode)
+		{
+			if (!is_dylib && is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
+			if (!is_dylib) add_concat_file_arg(crt_dir, is_netbsd ? "crt0.o" : "Scrt1.o");
+			add_concat_file_arg(crt_dir, "crtbeginS.o");
+			add_concat_file_arg(crt_dir, "crtendS.o");
+		}
+		else
+		{
+			if (!is_dylib) add_concat_file_arg(crt_dir, is_netbsd ? "crt0.o" : "crt1.o");
+			add_concat_file_arg(crt_dir, "crtbegin.o");
+			add_concat_file_arg(crt_dir, "crtend.o");
+		}
+		if (!is_openbsd) add_concat_file_arg(crt_dir, "crtn.o");
+	}
 	add_concat_quote_arg("-L", crt_dir);
-	add_plain_arg("--dynamic-linker=/libexec/ld-elf.so.1");
-	linking_add_link(&compiler.linking, "c");
-	linking_add_link(&compiler.linking, "m");
-	linking_add_link(&compiler.linking, "gcc");
-	linking_add_link(&compiler.linking, "gcc_s");
-
 	add_plain_arg("-L/usr/lib/");
+	switch (compiler.platform.os)
+	{
+		case OS_TYPE_NETBSD:
+			add_plain_arg("--dynamic-linker=/usr/libexec/ld.elf_so");
+			if (is_dylib)
+			{
+				add_plain_arg("--no-rosegment");
+				add_plain_arg("-znorelro");
+			}
+			break;
+		case OS_TYPE_OPENBSD:
+			add_plain_arg("--dynamic-linker=/usr/libexec/ld.so");
+			break;
+		default:
+			add_plain_arg("--dynamic-linker=/libexec/ld-elf.so.1");
+	}
+	linking_add_link(&compiler.linking, "c");
+	if (is_openbsd)
+	{
+		linking_add_link(&compiler.linking, "execinfo");
+	}
+	else
+	{
+		linking_add_link(&compiler.linking, "gcc");
+		linking_add_link(&compiler.linking, "gcc_s");
+	}
+	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 	add_plain_arg("-m");
 	add_plain_arg(ld_target(compiler.platform.arch));
 }
@@ -648,6 +826,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 			if (is_dylib)
 			{
 				add_plain_arg("/DLL");
+				add_concat_quote_arg("/IMPLIB:", static_lib_name());
 			}
 			else
 			{
@@ -675,10 +854,10 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_TYPE_TVOS:
 		case OS_TYPE_WASI:
 			break;
-		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FREEBSD:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_NETBSD:
-			linker_setup_freebsd(args_ref, linker_type, is_dylib);
+			linker_setup_bsd(args_ref, linker_type, is_dylib);
 			break;
 		case OS_TYPE_LINUX:
 			linker_setup_linux(args_ref, linker_type, is_dylib);
@@ -755,7 +934,7 @@ static void append_fpie_pic_options(RelocModel reloc, const char ***args_ref)
 	switch (reloc)
 	{
 		case RELOC_DEFAULT:
-			UNREACHABLE
+			UNREACHABLE_VOID
 		case RELOC_NONE:
 			add_plain_arg("-fno-pic");
 			break;
@@ -782,7 +961,7 @@ Linker linker_find_linker_type(void)
 		case OS_UNSUPPORTED:
 		case OS_TYPE_UNKNOWN:
 		case OS_TYPE_NONE:
-		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FREEBSD:
 		case OS_TYPE_LINUX:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
@@ -863,10 +1042,10 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 		default:
 			UNREACHABLE
 	}
-#else 
-    success = false;
-    error = "linking (.exe) is not implemented for C3C compiled without LLVM";
-#endif 
+#else
+	success = false;
+	error = "linking (.exe) is not implemented for C3C compiled without LLVM";
+#endif
 	if (!success)
 	{
 		error_exit("Failed to create an executable: %s", error);
@@ -972,6 +1151,11 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 		vec_add(parts, compiler.build.cc ? compiler.build.cc : default_c_compiler());
 	}
 
+	if (file_is_dir(output_file))
+	{
+		error_exit("Failed to link executable '%s', a directory with that name already exists.", output_file);
+	}
+
 	linker_setup(&parts, files, file_count, output_file, linker_type, &compiler.linking);
 	const char *output = assemble_linker_command(parts, PLATFORM_WINDOWS);
 	if (compiler.build.print_linking) puts(output);
@@ -1001,7 +1185,7 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 	if (!dir) dir = compiler.build.build_dir;
 	if (output_subdir) dir = dir ? file_append_path(dir, output_subdir) : output_subdir;
 	if (dir) dir_make(dir);
-	bool is_cl_exe = str_eq(cc, "cl.exe");
+	bool is_cl_exe = str_ends_with(cc, "cl.exe");
 	char *filename = NULL;
 	bool split_worked = file_namesplit(file, &filename, NULL);
 	if (!split_worked) error_exit("Cannot compile '%s'", file);
@@ -1023,6 +1207,8 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 	const char **parts = NULL;
 	const char ***args_ref = &parts;
 	add_quote_arg(cc);
+
+	if (is_cl_exe) add_plain_arg("/nologo");
 
 	FOREACH(const char *, include_dir, include_dirs)
 	{
@@ -1053,6 +1239,17 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 		add_quote_arg(out_name);
 	}
 
+#if PLATFORM_WINDOWS
+	if (is_cl_exe)
+	{
+		WindowsSDK *sdk = windows_get_sdk();
+		if (sdk && sdk->cl_include_env)
+		{
+			_putenv_s("INCLUDE", sdk->cl_include_env);
+		}
+	}
+#endif
+
 	const char *output = assemble_linker_command(parts, PLATFORM_WINDOWS);
 	DEBUG_LOG("Compiling c sources using '%s'", output);
 	if (system(output) != 0)
@@ -1082,9 +1279,9 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 		return true;
 	}
 	bool success;
-    const char *error = NULL;
+	const char *error = NULL;
 #if LLVM_AVAILABLE
-    int count = assemble_link_arguments(args, vec_size(args));
+	int count = assemble_link_arguments(args, vec_size(args));
 	switch (compiler.platform.object_format)
 	{
 		case OBJ_FORMAT_COFF:
@@ -1102,10 +1299,10 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 		default:
 			UNREACHABLE
 	}
-#else 
-    success = false;
-    error = "linking not implemented for c3c compiled without llvm";
-#endif 
+#else
+	success = false;
+	error = "linking not implemented for c3c compiled without llvm";
+#endif
 	if (!success)
 	{
 		error_exit("Failed to create a dynamic library: %s", error);
@@ -1126,7 +1323,7 @@ bool static_lib_linker(const char *output_file, const char **files, unsigned fil
 		case OS_TYPE_WIN32:
 			format = AR_COFF;
 			break;
-		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FREEBSD:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
 			format = AR_BSD;
@@ -1137,9 +1334,9 @@ bool static_lib_linker(const char *output_file, const char **files, unsigned fil
 			break;
 	}
 	return llvm_ar(output_file, files, file_count, format);
-#else 
-    return false;
-#endif 
+#else
+	return false;
+#endif
 }
 
 bool linker(const char *output_file, const char **files, unsigned file_count)

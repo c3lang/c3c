@@ -74,7 +74,7 @@ fn String? read_next(String* remaining)
 	}
 
 	// If it's a zero length token, return an optional result.
-	if (!len) return NO_MORE_TOKENS?;
+	if (!len) return NO_MORE_TOKENS~;
 
 	// Otherwise create a slice from the pointer start and length.
 	return (String)ptr_start[:len];

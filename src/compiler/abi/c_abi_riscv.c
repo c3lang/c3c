@@ -1,27 +1,24 @@
-// Copyright (c) 2020 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2020-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
 #include "compiler/c_abi_internal.h"
 
 
-static ABIArgInfo *riscv_coerce_and_expand_fpcc_struct(AbiType field1, unsigned field1_offset, AbiType field2, unsigned field2_offset)
+static ABIArgInfo *riscv_coerce_and_expand_fpcc_struct(AbiType field1, unsigned field1_offset, AbiType field2, unsigned field2_offset, ParamInfo param)
 {
-	ASSERT(abi_type_is_type(field1));
 	if (!abi_type_is_valid(field2))
 	{
-		return abi_arg_new_direct_coerce_type(field1.type);
+		return abi_arg_new_direct_coerce_type(field1, param);
 	}
 
-	ASSERT(abi_type_is_type(field2));
-	Type *type2 = field2.type;
-	ByteSize abi_type_size = type_size(type2);
+	ByteSize abi_size = abi_type_size(field2);
 	// Not on even offset, use packed semantics.
-	if (field2_offset % abi_type_size != 0)
+	if (field2_offset % abi_size != 0)
 	{
-		return abi_arg_new_expand_coerce_pair(field1.type, field2.type, field2_offset, true);
+		return abi_arg_new_expand_coerce_pair(field1.type, field2.type, field2_offset, true, param);
 	}
-	return abi_arg_new_expand_coerce_pair(field1.type, field2.type, field2_offset / abi_type_size, false);
+	return abi_arg_new_expand_coerce_pair(field1.type, field2.type, field2_offset / abi_size, false, param);
 }
 
 static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offset, AbiType *field1_ref, unsigned *field1_offset, AbiType *field2_ref, unsigned *field2_offset)
@@ -58,7 +55,7 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 	if (type->type_kind == TYPE_ARRAY)
 	{
 		ByteSize array_len = type->array.len;
-		Type *element_type = type->array.base;
+		Type *element_type = lowered_array_element_type(type);
 		ByteSize element_size = type_size(element_type);
 		for (ByteSize i = 0; i < array_len; i++)
 		{
@@ -79,7 +76,7 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 		if (type->type_kind == TYPE_UNION) return false;
 		FOREACH(Decl *, member, type->decl->strukt.members)
 		{
-			if (!riscv_detect_fpcc_struct_internal(member->type,
+			if (!riscv_detect_fpcc_struct_internal(lowered_member_type(member),
 												   (unsigned)(current_offset + member->offset),
 												   field1_ref,
 												   field1_offset,
@@ -129,10 +126,10 @@ static bool riscv_detect_fpcc_struct(Type *type, AbiType *field1_ref, unsigned *
 	return true;
 }
 
-static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsigned *gprs, unsigned *fprs)
+static ABIArgInfo *riscv_classify_argument_type(ParamInfo param, bool is_fixed, unsigned *gprs, unsigned *fprs)
 {
 
-	ASSERT(type == type->canonical);
+	Type *type = type_lowering(param.type);
 
 	unsigned xlen = compiler.platform.riscv.xlen;
 	ASSERT(is_power_of_two(xlen));
@@ -143,7 +140,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 	if (is_fixed && type_is_float(type) && compiler.platform.riscv.flen >= size && *fprs)
 	{
 		(*fprs)--;
-		return abi_arg_new_direct();
+		return abi_arg_new_direct(param);
 	}
 
 	if (is_fixed && compiler.platform.riscv.flen && type->type_kind == TYPE_STRUCT)
@@ -164,7 +161,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		{
 			*gprs -= needed_gprs;
 			*fprs -= needed_fprs;
-			return riscv_coerce_and_expand_fpcc_struct(field1, offset1, field2, offset2);
+			return riscv_coerce_and_expand_fpcc_struct(field1, offset1, field2, offset2, param);
 		}
 	}
 
@@ -190,7 +187,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 
 	*gprs -= needed_gprs;
 
-	if (!type_is_abi_aggregate(type) && type->type_kind != TYPE_VECTOR)
+	if (!type_is_abi_aggregate(type) && type->type_kind != TYPE_SIMD_VECTOR)
 	{
 		// All integral types are promoted to XLen width, unless passed on the
 		// stack.
@@ -199,11 +196,11 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 			// Clang: RV64 ABI requires unsigned 32-bit integers to be sign extended.
 			if (xlen == 8 && type == type_uint)
 			{
-				return abi_arg_new_direct_int_ext(type_int);
+				return abi_arg_new_direct_int_ext(type_int, param);
 			}
-			return abi_arg_new_direct_int_ext(type);
+			return abi_arg_new_direct_int_ext(type, param);
 		}
-		return abi_arg_new_direct();
+		return abi_arg_new_direct(param);
 	}
 
 	// Aggregates which are <= 2*XLen will be passed in registers if possible,
@@ -214,20 +211,21 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		// required, and a 2-field XLen array if only XLen alignment is required.
 		if (size <= xlen)
 		{
-			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(xlen * 8));
+			return abi_arg_new_direct_coerce_type_bits(xlen * 8, param);
 		}
 		if (alignment == 2 * compiler.platform.riscv.xlen)
 		{
-			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(xlen * 16));
+			return abi_arg_new_direct_coerce_type_bits(xlen * 16, param);
 		}
 		Type *ret_type = type_int_unsigned_by_bitsize(xlen * 8);
-		return abi_arg_new_direct_coerce_type(type_get_array(ret_type, 2));
+		return abi_arg_new_direct_coerce_type(abi_type_get(type_get_array(ret_type, 2)), param);
 	}
-	return abi_arg_new_indirect_not_by_val(type);
+	return abi_arg_new_indirect_not_by_val(type, param);
 }
 
-static ABIArgInfo *riscv_classify_return(Type *return_type)
+static ABIArgInfo *riscv_classify_return(ParamInfo param)
 {
+	Type *return_type = type_lowering(param.type);
 	if (type_is_void(return_type)) return abi_arg_ignore();
 
 	unsigned arg_gpr_left = 2;
@@ -235,27 +233,26 @@ static ABIArgInfo *riscv_classify_return(Type *return_type)
 
 	// The rules for return and argument types are the same, so defer to
 	// classifyArgumentType.
-	return riscv_classify_argument_type(return_type, true, &arg_gpr_left, &arg_fpr_left);
+	return riscv_classify_argument_type(param, true, &arg_gpr_left, &arg_fpr_left);
 }
-ABIArgInfo **riscv_create_params(Type** params, bool is_fixed, unsigned *arg_gprs_left, unsigned *arg_fprs_left)
+ABIArgInfo **riscv_create_params(ParamInfo* params, unsigned param_count, bool is_fixed, unsigned *arg_gprs_left, unsigned *arg_fprs_left)
 {
-	unsigned param_count = vec_size(params);
 	if (!param_count) return NULL;
 	ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
 	for (unsigned i = 0; i < param_count; i++)
 	{
-		args[i] = riscv_classify_argument_type(type_lowering(params[i]), is_fixed, arg_gprs_left, arg_fprs_left);
+		args[i] = riscv_classify_argument_type(params[i], is_fixed, arg_gprs_left, arg_fprs_left);
 	}
 	return args;
 }
-void c_abi_func_create_riscv(FunctionPrototype *prototype)
+void c_abi_func_create_riscv(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
 {
 	// Registers
 	unsigned gpr = 8;
 	unsigned fpr = 8;
 
-	Type *ret_type = type_lowering(prototype->abi_ret_type);
-	ABIArgInfo *ret_abi = prototype->ret_abi_info = riscv_classify_return(ret_type);
+	Type *ret_type = type_lowering(prototype->return_info.type);
+	ABIArgInfo *ret_abi = prototype->ret_abi_info = riscv_classify_return(prototype->return_info);
 
 	// IsRetIndirect is true if classifyArgumentType indicated the value should
 	// be passed indirect, or if the type size is a scalar greater than 2*XLen
@@ -276,13 +273,7 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype)
 	unsigned arg_gprs_left = is_ret_indirect ? gpr - 1 : gpr;
 	unsigned arg_fprs_left = compiler.platform.riscv.flen ? fpr : 0;
 
-	// If we have an optional, then the return type is a parameter.
-	if (prototype->ret_by_ref)
-	{
-		prototype->ret_by_ref_abi_info = riscv_classify_argument_type(type_get_ptr(type_lowering(prototype->ret_by_ref_type)),
-																	  true, &arg_gprs_left, &arg_fprs_left);
-	}
 
-	prototype->abi_args = riscv_create_params(prototype->param_types, true, &arg_gprs_left, &arg_fprs_left);
-	prototype->abi_varargs = riscv_create_params(prototype->varargs, false, &arg_gprs_left, &arg_fprs_left);
+	prototype->abi_args = riscv_create_params(params, param_count, true, &arg_gprs_left, &arg_fprs_left);
+	prototype->abi_varargs = riscv_create_params(vaargs, vaarg_count, false, &arg_gprs_left, &arg_fprs_left);
 }

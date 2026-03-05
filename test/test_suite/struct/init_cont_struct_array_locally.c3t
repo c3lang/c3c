@@ -49,7 +49,7 @@ entry:
   %0 = call ptr @std.io.stdout()
   call void @llvm.memcpy.p0.p0.i32(ptr align 1 %x1, ptr align 1 %x, i32 2, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 1 %x2, ptr align 1 %x1, i32 2, i1 false)
-  call void @llvm.memset.p0.i64(ptr align 8 %formatter, i8 0, i64 48, i1 false)
+  call void @llvm.memset.p0.i64(ptr align 8 %formatter, i8 0, i64 40, i1 false)
   %1 = insertvalue %any undef, ptr %0, 0
   %2 = insertvalue %any %1, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   store %any %2, ptr %taddr, align 8

@@ -7,16 +7,26 @@ macro usz _strlen(ptr) @private
 	return len;
 }
 
-macro int @main_to_err_main(#m, int, char**)
+macro int @main_no_args(#m, int, char**)
 {
-	if (catch #m()) return 1;
-	return 0;
+	$if $typeof(#m()) == void:
+		#m();
+		return 0;
+	$else
+		return #m();
+	$endif
 }
-macro int @main_to_int_main(#m, int, char**) => #m();
-macro int @main_to_void_main(#m, int, char**)
+
+macro int @main_args(#m, int argc, char** argv)
 {
-	#m();
-	return 0;
+	String[] list = args_to_strings(argc, argv);
+	defer free(list.ptr);
+	$if $typeof(#m(list)) == void:
+		#m(list);
+		return 0;
+	$else
+		return #m(list);
+	$endif
 }
 
 macro String[] args_to_strings(int argc, char** argv) @private
@@ -32,21 +42,6 @@ macro String[] args_to_strings(int argc, char** argv) @private
 }
 
 
-macro int @main_to_err_main_args(#m, int argc, char** argv)
-{
-	String[] list = args_to_strings(argc, argv);
-	defer free(list.ptr);
-	if (catch #m(list)) return 1;
-	return 0;
-}
-
-macro int @main_to_int_main_args(#m, int argc, char** argv)
-{
-	String[] list = args_to_strings(argc, argv);
-	defer free(list.ptr);
-	return #m(list);
-}
-
 macro int @_main_runner(#m, int argc, char** argv)
 {
 	String[] list = args_to_strings(argc, argv);
@@ -54,17 +49,20 @@ macro int @_main_runner(#m, int argc, char** argv)
 	return #m(list) ? 0 : 1;
 }
 
-macro int @main_to_void_main_args(#m, int argc, char** argv)
+module std::core::main_stub @if(env::WIN32);
+import std::os::win32;
+
+macro win32_set_utf8_codepage() @local
 {
-	String[] list = args_to_strings(argc, argv);
-	defer free(list.ptr);
-	#m(list);
-	return 0;
+	// By default windows uses an OEM codepage that differs based on locale
+	// and does not support printing utf-8 characters. This allows both
+	// printing utf-8 characters from strings and reading them from stdin.
+	win32::setConsoleCP(UTF8);
+	win32::setConsoleOutputCP(UTF8);
 }
 
-module std::core::main_stub @if(env::WIN32);
 
-extern fn Char16** _win_command_line_to_argv_w(ushort* cmd_line, int* argc_ptr) @extern("CommandLineToArgvW");
+extern fn Char16** _win_command_line_to_argv_w(ushort* cmd_line, int* argc_ptr) @cname("CommandLineToArgvW");
 
 macro String[] win_command_line_to_strings(ushort* cmd_line) @private
 {
@@ -91,90 +89,72 @@ macro void release_wargs(String[] list) @private
 	free(list.ptr);
 }
 
-macro int @win_to_err_main_noargs(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
+macro int @win_main_no_args(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
 {
-	if (catch #m()) return 1;
-	return 0;
-}
-macro int @win_to_int_main_noargs(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd) => #m();
-macro int @win_to_void_main_noargs(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
-{
-	#m();
-	return 0;
+	win32_set_utf8_codepage();
+	$if $typeof(#m()) == void:
+		#m();
+		return 0;
+	$else
+		return #m();
+	$endif
 }
 
-macro int @win_to_err_main_args(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
+macro int @win_main_args(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
 {
+	win32_set_utf8_codepage();
 	String[] args = win_command_line_to_strings(cmd_line);
 	defer release_wargs(args);
-	if (catch #m(args)) return 1;
-	return 0;
+	$if $typeof(#m(args)) == void:
+		#m(args);
+		return 0;
+	$else
+		return #m(args);
+	$endif
 }
 
-macro int @win_to_int_main_args(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
+macro int @win_main(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
 {
+	win32_set_utf8_codepage();
 	String[] args = win_command_line_to_strings(cmd_line);
 	defer release_wargs(args);
-	return #m(args);
+	$if $typeof(#m(handle, prev_handle, args, show_cmd)) == void:
+		#m(handle, prev_handle, args, show_cmd);
+		return 0;
+	$else
+		return #m(handle, prev_handle, args, show_cmd);
+	$endif
 }
 
-macro int @win_to_void_main_args(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
-{
-	String[] args = win_command_line_to_strings(cmd_line);
-	defer release_wargs(args);
-	#m(args);
-	return 0;
-}
 
-macro int @win_to_err_main(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
+macro int @wmain_main(#m, int argc, Char16** argv)
 {
-	String[] args = win_command_line_to_strings(cmd_line);
-	defer release_wargs(args);
-	if (catch #m(handle, prev_handle, args, show_cmd)) return 1;
-	return 0;
-}
-
-macro int @win_to_int_main(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
-{
-	String[] args = win_command_line_to_strings(cmd_line);
-	defer release_wargs(args);
-	return #m(handle, prev_handle, args, show_cmd);
-}
-
-macro int @win_to_void_main(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
-{
-	String[] args = win_command_line_to_strings(cmd_line);
-	defer release_wargs(args);
-	#m(handle, prev_handle, args, show_cmd);
-	return 0;
-}
-
-macro int @wmain_to_err_main_args(#m, int argc, Char16** argv)
-{
+	win32_set_utf8_codepage();
 	String[] args = wargs_strings(argc, argv);
 	defer release_wargs(args);
-	if (catch #m(args)) return 1;
-	return 1;
+	$if $typeof(#m(args)) == void:
+		#m(args);
+		return 0;
+	$else
+		return #m(args);
+	$endif
 }
 
-macro int @wmain_to_int_main_args(#m, int argc, Char16** argv)
+macro int @wmain_main_no_args(#m, int argc, Char16** argv)
 {
-	String[] args = wargs_strings(argc, argv);
-	defer release_wargs(args);
-	return #m(args);
+	win32_set_utf8_codepage();
+	$if $typeof(#m()) == void:
+		#m();
+		return 0;
+	$else
+		return #m();
+	$endif
 }
 
 macro int @_wmain_runner(#m, int argc, Char16** argv)
 {
+	win32_set_utf8_codepage();
 	String[] args = wargs_strings(argc, argv);
 	defer release_wargs(args);
 	return #m(args) ? 0 : 1;
-}
-
-macro int @wmain_to_void_main_args(#m, int argc, Char16** argv)
-{
-	String[] args = wargs_strings(argc, argv);
-	defer release_wargs(args);
-	#m(args);
-	return 0;
 }

@@ -1,6 +1,6 @@
 module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 
-fn float _cosf(float x) @extern("cosf") @weak @nostrip
+fn float _cosf(float x) @cname("cosf") @weak @nostrip
 {
 	uint ix = x.word();
 	uint sign = ix >> 31;
@@ -51,7 +51,7 @@ fn float _cosf(float x) @extern("cosf") @weak @nostrip
  * ====================================================
  */
 
-fn double _cos(double x) @extern("cos")  @weak @nostrip
+fn double _cos(double x) @cname("cos")  @weak @nostrip
 {
 	// High word of x.
 	uint ix = x.high_word() & 0x7fffffff;

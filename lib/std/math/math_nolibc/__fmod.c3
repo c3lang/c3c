@@ -13,7 +13,7 @@ union FloatInternal
 }
 
 // Based on the musl implementation
-fn double fmod(double x, double y) @extern("fmod") @weak @nostrip
+fn double fmod(double x, double y) @cname("fmod") @weak @nostrip
 {
 	DoubleInternal ux = { .f = x };
 	DoubleInternal uy = { .f = y };
@@ -83,7 +83,7 @@ fn double fmod(double x, double y) @extern("fmod") @weak @nostrip
 	return ux.f;
 }
 
-fn float fmodf(float x, float y) @extern("fmodf") @weak @nostrip
+fn float fmodf(float x, float y) @cname("fmodf") @weak @nostrip
 {
 	FloatInternal ux = { .f = x };
 	FloatInternal uy = { .f = y };

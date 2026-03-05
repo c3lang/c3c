@@ -50,7 +50,13 @@ static const char *optsizes[3] = {
 	[SIZE_OPTIMIZATION_TINY] = "tiny",
 };
 
-static const char *linker[3] = {
+static const char *linuxlibc[3] = {
+	[LINUX_LIBC_GNU] = "gnu",
+	[LINUX_LIBC_MUSL] = "musl",
+	[LINUX_LIBC_HOST] = "host",
+};
+
+static const char *linker_kind[3] = {
 	[LINKER_TYPE_BUILTIN] = "builtin",
 	[LINKER_TYPE_CC] = "cc",
 	[LINKER_TYPE_CUSTOM] = "custom"
@@ -62,11 +68,17 @@ static const char *on_off[2] = {
 };
 
 
-
+// DEPRECATED
 static const char *riscv_capability[3] = {
-	[RISCVFLOAT_NONE] = "none",
-	[RISCVFLOAT_FLOAT] = "float",
-	[RISCVFLOAT_DOUBLE] = "double",
+	[RISCV_ABI_INT_ONLY] = "none",
+	[RISCV_ABI_FLOAT] = "float",
+	[RISCV_ABI_DOUBLE] = "double",
+};
+
+static const char *riscv_abi[3] = {
+	[RISCV_ABI_INT_ONLY] = "int-only",
+	[RISCV_ABI_FLOAT] = "float",
+	[RISCV_ABI_DOUBLE] = "double",
 };
 
 static const char *win64_simd_type[2] = {
@@ -101,10 +113,26 @@ static const char *optlevels[4] = {
 	[OPTIMIZATION_AGGRESSIVE] = "max",
 };
 
+static const char *test_log_levels[6] = {
+	[TESTLOGLEVEL_VERBOSE] = "verbose",
+	[TESTLOGLEVEL_DEBUG] = "debug",
+	[TESTLOGLEVEL_INFO] = "info",
+	[TESTLOGLEVEL_WARN] = "warn",
+	[TESTLOGLEVEL_ERROR] = "error",
+	[TESTLOGLEVEL_CRITICAL] = "critical",
+};
+
 static const char *backends[3] = {
 		[BACKEND_LLVM] = "llvm",
 		[BACKEND_TB] = "tb",
 		[BACKEND_C] = "c",
+};
+
+static const char *warnings[4] = {
+	[WARNING_NOT_SET] = "%NOTSET%",
+	[WARNING_SILENT] = "no",
+	[WARNING_WARN] = "yes",
+	[WARNING_ERROR] = "error",
 };
 
 static const char *validation_levels[3] = {

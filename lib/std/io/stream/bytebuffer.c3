@@ -13,7 +13,7 @@ struct ByteBuffer (InStream, OutStream)
 
 <*
  ByteBuffer provides a streamable read/write buffer.
- max_read defines how many bytes might be kept before its internal buffer is shrinked.
+ max_read defines how many bytes might be kept before its internal buffer is shrunk.
  @require self.bytes.len == 0 : "Buffer already initialized."
 *>
 fn ByteBuffer* ByteBuffer.init(&self, Allocator allocator, usz max_read, usz initial_capacity = 16)
@@ -68,7 +68,7 @@ fn usz? ByteBuffer.read(&self, char[] bytes) @dynamic
 	if (readable == 0)
 	{
 		self.has_last = false;
-		return io::EOF?;
+		return io::EOF~;
 	}
 	usz n = min(readable, bytes.len);
 	bytes[:n] = self.bytes[self.read_idx:n];
@@ -84,7 +84,7 @@ fn char? ByteBuffer.read_byte(&self) @dynamic
 	if (readable == 0)
 	{
 		self.has_last = false;
-		return io::EOF?;
+		return io::EOF~;
 	}
 	char c = self.bytes[self.read_idx];
 	self.read_idx++;
@@ -98,44 +98,53 @@ fn char? ByteBuffer.read_byte(&self) @dynamic
 *>
 fn void? ByteBuffer.pushback_byte(&self) @dynamic
 {
-	if (!self.has_last) return io::EOF?;
+	if (!self.has_last) return io::EOF~;
 	assert(self.read_idx > 0);
 	self.read_idx--;
 	self.has_last = false;
 }
 
-fn usz? ByteBuffer.seek(&self, isz offset, Seek seek) @dynamic
+fn long? ByteBuffer.cursor(&self) @dynamic
 {
-	switch (seek)
-	{
-		case SET:
-			if (offset < 0 || offset > self.write_idx) return INVALID_POSITION?;
-			self.read_idx = offset;
-			return offset;
-		case CURSOR:
-			if ((offset < 0 && self.read_idx < -offset) ||
-				(offset > 0 && self.read_idx + offset > self.write_idx)) return INVALID_POSITION?;
-			self.read_idx += offset;
-		case END:
-			if (offset < 0 || offset > self.write_idx) return INVALID_POSITION?;
-			self.read_idx = self.write_idx - offset;
-	}
 	return self.read_idx;
 }
 
-fn usz? ByteBuffer.available(&self) @inline @dynamic
+fn void? ByteBuffer.set_cursor(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
 {
-	return self.write_idx - self.read_idx;
+	switch (whence)
+	{
+		case FROM_START:
+			if (offset < 0 || offset > self.write_idx) return INVALID_POSITION~;
+			self.read_idx = (usz)offset;
+		case FROM_CURSOR:
+			if ((offset < 0 && self.read_idx < -offset) ||
+				(offset > 0 && self.read_idx + offset > self.write_idx)) return INVALID_POSITION~;
+			self.read_idx += (usz)offset;
+		case FROM_END:
+			if (offset < 0 || offset > self.write_idx) return INVALID_POSITION~;
+			self.read_idx = self.write_idx - (usz)offset;
+	}
+}
+
+fn usz? ByteBuffer.seek(&self, isz offset, Seek seek) @dynamic
+{
+	self.set_cursor(offset, (SeekOrigin)seek.ordinal)!;
+	return (usz)self.cursor();
+}
+
+fn ulong? ByteBuffer.available(&self) @inline @dynamic
+{
+	return (ulong)self.write_idx - self.read_idx;
 }
 
 fn void ByteBuffer.grow(&self, usz n)
 {
-	n = math::next_power_of_2(n);
+	n = math::next_power_of_2(self.bytes.len + n);
 	char* p = allocator::realloc(self.allocator, self.bytes, n);
 	self.bytes = p[:n];
 }
 
-macro ByteBuffer.shrink(&self)
+macro void ByteBuffer.shrink(&self)
 {
 	if (self.read_idx >= self.max_read)
 	{

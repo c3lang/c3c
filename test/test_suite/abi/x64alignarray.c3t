@@ -14,7 +14,7 @@ fn void test1_g()
 define void @test.test1_g() #0 {
 entry:
   %x = alloca [4 x float], align 16
-  store float 0.000000e+00, ptr %x, align 4
+  store float 0.000000e+00, ptr %x, align 16
   %ptradd = getelementptr inbounds i8, ptr %x, i64 4
   store float 0.000000e+00, ptr %ptradd, align 4
   %ptradd1 = getelementptr inbounds i8, ptr %x, i64 8

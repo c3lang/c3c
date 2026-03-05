@@ -1,6 +1,7 @@
 // Copyright (c) 2019-2023 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
+#include "build.h"
 #include "build_internal.h"
 
 void load_library_files(void) {}
@@ -14,6 +15,13 @@ ArchOsTarget default_target = MACOS_X64;
 ArchOsTarget default_target = ANDROID_X86_64;
 	#elif defined(__linux__) && __linux__
 ArchOsTarget default_target = LINUX_X64;
+		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_GNU;
+		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
+		#endif
 	#elif defined(__NetBSD__)
 ArchOsTarget default_target = NETBSD_X64;
 	#elif defined(__FreeBSD__)
@@ -26,16 +34,32 @@ ArchOsTarget default_target = ELF_X64;
 #elif defined(__aarch64__) || defined(_M_ARM64)
 	#if defined(__MACH__)
 ArchOsTarget default_target = MACOS_AARCH64;
+	#elif defined(__NetBSD__)
+ArchOsTarget default_target = NETBSD_AARCH64;
 	#elif defined(__ANDROID__)
 ArchOsTarget default_target = ANDROID_AARCH64;
 	#elif defined(__linux__) && __linux__
 ArchOsTarget default_target = LINUX_AARCH64;
+		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_GNU;
+		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
+		#endif
 	#else
 ArchOsTarget default_target = ELF_AARCH64;
 	#endif
 #elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
 	#if defined(__linux__) && __linux__
 ArchOsTarget default_target = LINUX_X86;
+		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_GNU;
+		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
+		#endif
 	#elif defined(__FreeBSD__)
 ArchOsTarget default_target = FREEBSD_X86;
 	#elif defined(__OpenBSD__)
@@ -50,17 +74,35 @@ ArchOsTarget default_target = ELF_X86;
 #elif defined(__riscv32)
 	#if defined(__linux__) && __linux__
 ArchOsTarget default_target = LINUX_RISCV32;
+		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_GNU;
+		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
+		#endif
 	#else
 ArchOsTarget default_target = ELF_RISCV32;
 	#endif
 #elif defined(__riscv64)
 	#if defined(__linux__) && __linux__
 ArchOsTarget default_target = LINUX_RISCV64;
+		#if (defined(__GLIBC__) && __GLIBC__) || (defined(__GLIBC_MINOR__) && __GLIBC_MINOR__)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_GNU;
+		#elif defined(__DEFINED_va_list)
+#define LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_MUSL;
+		#endif
 	#else
 ArchOsTarget default_target = ELF_RISCV64;
 	#endif
 #else
 ArchOsTarget default_target = ARCH_OS_TARGET_DEFAULT;
+#endif
+
+#ifndef LINUX_LIBC
+LinuxLibc default_libc = LINUX_LIBC_GNU;
 #endif
 
 bool command_accepts_files(CompilerCommand command)
@@ -90,6 +132,7 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_TEST:
 		case COMMAND_VENDOR_FETCH:
 		case COMMAND_PROJECT:
+		case COMMAND_FETCH_MSVC:
 			return false;
 	}
 	UNREACHABLE
@@ -122,6 +165,7 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_VENDOR_FETCH:
 		case COMMAND_PROJECT:
+		case COMMAND_FETCH_MSVC:
 			return false;
 	}
 	UNREACHABLE
@@ -213,7 +257,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			break;
 		case OPT_SETTING_NOT_SET:
 		default:
-			UNREACHABLE
+			UNREACHABLE_VOID
 	}
 	COPY_IF_DEFAULT(target->optsize, optsize);
 	COPY_IF_DEFAULT(target->optlevel, optlevel);
@@ -227,6 +271,17 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	COPY_IF_DEFAULT(target->slp_vectorization, slp_vectorization);
 	COPY_IF_DEFAULT(target->loop_vectorization, vectorization);
 	COPY_IF_DEFAULT(target->single_module, single_module);
+}
+
+static inline void update_warning(WarningLevel *level, WarningLevel new_level)
+{
+	if (new_level != WARNING_NOT_SET) *level = new_level;
+}
+
+static inline void update_warning_if_not_set(WarningLevel *level, WarningLevel new_level)
+{
+	ASSERT(new_level != WARNING_NOT_SET);
+	if (*level == WARNING_NOT_SET) *level = new_level;
 }
 
 static LinkLibc libc_from_arch_os(ArchOsTarget target)
@@ -246,6 +301,7 @@ static LinkLibc libc_from_arch_os(ArchOsTarget target)
 		case MACOS_AARCH64:
 		case MACOS_X64:
 		case MINGW_X64:
+		case NETBSD_AARCH64:
 		case NETBSD_X86:
 		case NETBSD_X64:
 		case OPENBSD_X86:
@@ -270,6 +326,28 @@ static LinkLibc libc_from_arch_os(ArchOsTarget target)
 
 #define OVERRIDE_IF_SET(prop_) do { if (options->prop_) target->prop_ = options->prop_; } while (0)
 #define set_if_updated(target_, original_) do { if ((int)original_ != -1) target_ = original_; } while (0)
+
+static void set_dir_with_default(const char **setting, const char *option, const char *default_value)
+{
+	if (option)
+	{
+		*setting = option;
+		return;
+	}
+	if (!*setting) *setting = default_value;
+}
+
+static void set_output_dir_from_options(const char **setting, const char *option, const char *default_value, const char *target_name, const char *out_dir)
+{
+	if (option)
+	{
+		*setting = option;
+	}
+	if (!*setting)
+	{
+		*setting = file_append_path(file_append_path(out_dir, default_value), target_name);
+	}
+}
 
 static void update_build_target_from_options(BuildTarget *target, BuildOptions *options)
 {
@@ -300,11 +378,16 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 				vec_add(target->args, "--test-filter");
 				vec_add(target->args, options->test_filter);
 			}
+			if (options->test_log_level > -1)
+			{
+				vec_add(target->args, "--test-log-level");
+				vec_add(target->args, test_log_levels[options->test_log_level]);
+			}
 			if (options->test_breakpoint) vec_add(target->args, "--test-breakpoint");
 			if (options->test_nosort) vec_add(target->args, "--test-nosort");
 			if (options->test_quiet) vec_add(target->args, "--test-quiet");
 			if (options->test_noleak) vec_add(target->args, "--test-noleak");
-			if (options->test_nocapture) vec_add(target->args, "--test-nocapture");
+			if (options->test_show_output) vec_add(target->args, "--test-show-output");
 			break;
 		case COMMAND_RUN:
 		case COMMAND_COMPILE_RUN:
@@ -344,7 +427,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 
 	target->backend = options->backend;
 	target->old_slice_copy = options->old_slice_copy;
+	target->old_enums = options->old_enums;
+	target->old_compact_eq = options->old_compact_eq;
 
+	target->print_large_functions = options->print_large_functions;
 	// Remove feature flags
 	FOREACH(const char *, remove_feature, options->removed_feature_names)
 	{
@@ -392,14 +478,16 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	set_if_updated(target->reloc_model, options->reloc_model);
 	set_if_updated(target->use_stdlib, options->use_stdlib);
 	set_if_updated(target->link_libc, options->link_libc);
+	set_if_updated(target->custom_libc, options->custom_libc);
 	set_if_updated(target->emit_stdlib, options->emit_stdlib);
 	set_if_updated(target->win.crt_linking, options->win.crt_linking);
 	set_if_updated(target->feature.fp_math, options->fp_math);
 	set_if_updated(target->feature.x86_vector_capability, options->x86_vector_capability);
 	set_if_updated(target->feature.x86_cpu_set, options->x86_cpu_set);
-	set_if_updated(target->feature.riscv_float_capability, options->riscv_float_capability);
+	set_if_updated(target->feature.riscv_cpu_set, options->riscv_cpu_set);
+	set_if_updated(target->feature.riscv_abi, options->riscv_abi);
 	set_if_updated(target->feature.win_debug, options->win_debug);
-
+	set_if_updated(target->linuxpaths.libc, options->linux_libc);
 	set_if_updated(target->feature.pass_win64_simd_as_arrays, options->win_64_simd);
 
 	OVERRIDE_IF_SET(output_dir);
@@ -408,8 +496,11 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(benchfn);
 	OVERRIDE_IF_SET(symtab_size);
 	OVERRIDE_IF_SET(max_vector_size);
+	OVERRIDE_IF_SET(max_stack_object_size);
+	OVERRIDE_IF_SET(max_macro_iterations);
 	OVERRIDE_IF_SET(win.def);
 	OVERRIDE_IF_SET(no_entry);
+	OVERRIDE_IF_SET(echo_prefix);
 
 	OVERRIDE_IF_SET(macos.sysroot);
 	OVERRIDE_IF_SET(win.sdk);
@@ -421,11 +512,53 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(android.ndk_path);
 	OVERRIDE_IF_SET(android.api_version);
 
+	if (options->cpu_flags)
+	{
+		if (target->cpu_flags)
+		{
+			scratch_buffer_clear();
+			scratch_buffer_printf("%s,%s", target->cpu_flags, options->cpu_flags);
+			target->cpu_flags = scratch_buffer_copy();
+		}
+		else
+		{
+			target->cpu_flags = options->cpu_flags;
+		}
+	}
 	if (!target->max_vector_size) target->max_vector_size = DEFAULT_VECTOR_WIDTH;
-
+	if (!target->max_stack_object_size) target->max_stack_object_size = DEFAULT_STACK_OBJECT_SIZE;
+	if (!target->max_macro_iterations) target->max_macro_iterations = DEFAULT_MAX_MACRO_ITERATIONS;
 	if (target->quiet && !options->verbosity_level) options->verbosity_level = -1;
 
-	if (options->silence_deprecation || options->verbosity_level < 0) target->silence_deprecation = true;
+	switch (target->validation_level)
+	{
+		case VALIDATION_LENIENT:
+			update_warning_if_not_set(&target->warnings.deprecation, WARNING_SILENT);
+			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_WARN);
+			update_warning_if_not_set(&target->warnings.dead_code, WARNING_SILENT);
+			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_WARN);
+			break;
+		case VALIDATION_NOT_SET:
+			target->validation_level = VALIDATION_STRICT;
+			FALLTHROUGH;
+		case VALIDATION_STRICT:
+			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_WARN);
+			update_warning_if_not_set(&target->warnings.deprecation, WARNING_WARN);
+			update_warning_if_not_set(&target->warnings.dead_code, WARNING_WARN);
+			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_WARN);
+			break;
+		case VALIDATION_OBNOXIOUS:
+			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_ERROR);
+			update_warning_if_not_set(&target->warnings.deprecation, WARNING_ERROR);
+			update_warning_if_not_set(&target->warnings.dead_code, WARNING_ERROR);
+			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_ERROR);
+			break;
+	}
+	update_warning(&target->warnings.deprecation, options->warnings.deprecation);
+	update_warning(&target->warnings.dead_code, options->warnings.dead_code);
+	update_warning(&target->warnings.methods_not_resolved, options->warnings.methods_not_resolved);
+	update_warning(&target->warnings.method_visibility, options->warnings.method_visibility);
+
 	target->print_linking = options->print_linking || options->verbosity_level > 1;
 
 	for (size_t i = 0; i < options->linker_arg_count; i++)
@@ -453,6 +586,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->emit_asm = options->emit_asm;
 	target->print_stats = options->verbosity_level >= 2;
 
+	if (target->linuxpaths.libc == LINUX_LIBC_NOT_SET) target->linuxpaths.libc = default_libc;
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
 	target->silent = options->verbosity_level < 0;
@@ -467,7 +601,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case SANITIZE_ADDRESS: target->feature.sanitize_address = true; break;
 		case SANITIZE_MEMORY: target->feature.sanitize_memory = true; break;
 		case SANITIZE_THREAD: target->feature.sanitize_thread = true; break;
-		default: UNREACHABLE;
+		default: UNREACHABLE_VOID;
 	}
 
 	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT) target->arch_os_target = default_target;
@@ -479,51 +613,42 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 
 	target->emit_only = options->emit_only;
 	const char *target_name = arch_os_target[target->arch_os_target];
-	if (options->script_dir) target->script_dir = options->script_dir;
+	OVERRIDE_IF_SET(run_dir);
+
 	if (command_accepts_files(options->command))
 	{
-		target->build_dir = options->build_dir ? options->build_dir : ".build";
-		if (!target->script_dir) target->script_dir = ".";
+		set_dir_with_default(&target->output_dir, options->output_dir, ".");
+		if (!target->build_dir)
+		{
+			if (!options->build_dir)
+			{
+				options->build_dir = dir_make_temp_dir();
+				if (!options->build_dir)
+				{
+					error_exit("Unable to create temporary directory for build.");
+				}
+			}
+			target->build_dir = options->build_dir;
+		}
+		set_dir_with_default(&target->script_dir, options->script_dir, ".");
 	}
 	else
 	{
-		if (!target->build_dir) target->build_dir = "build";
-		if (options->build_dir)
-		{
-			target->build_dir = options->build_dir;
-		}
-		else
-		{
-			options->build_dir = target->build_dir;
-		}
-		if (!target->script_dir) target->script_dir = "scripts";
+		set_dir_with_default(&target->output_dir, options->output_dir, "out");
+		set_dir_with_default(&target->build_dir, options->build_dir, "build");
+		set_dir_with_default(&target->script_dir, options->script_dir, "scripts");
 	}
-	if (!options->run_dir) options->run_dir = target->run_dir;
 
-
-	target->ir_file_dir = options->llvm_out;
-	target->asm_file_dir = options->asm_out;
-	target->header_file_dir = options->header_out;
-	target->object_file_dir = options->obj_out;
-	if (!target->ir_file_dir)
+	set_output_dir_from_options(&target->ir_file_dir, options->llvm_out, "llvm", target_name, target->output_dir);
+	set_output_dir_from_options(&target->asm_file_dir, options->asm_out, "asm", target_name, target->output_dir);
+	set_output_dir_from_options(&target->header_file_dir, options->header_out, "headers", target_name, target->output_dir);
+	if (target->type == TARGET_TYPE_OBJECT_FILES)
 	{
-		target->ir_file_dir = options->build_dir
-			? file_append_path(file_append_path(options->build_dir, "llvm"), target_name)
-			: file_append_path("llvm", target_name);
-		}
-	if (!target->asm_file_dir)
-	{
-		target->asm_file_dir = options->build_dir
-			? file_append_path(file_append_path(options->build_dir, "asm"), target_name)
-			: file_append_path("asm", target_name);
+		set_output_dir_from_options(&target->object_file_dir, options->obj_out, "obj", target_name, target->output_dir);
 	}
-	if (!target->object_file_dir)
+	else
 	{
-		target->object_file_dir = file_append_path(file_append_path(target->build_dir, "obj"), target_name);
-	}
-	if (!target->header_file_dir)
-	{
-		target->header_file_dir = target->output_dir ? target->output_dir : target->build_dir;
+		set_output_dir_from_options(&target->object_file_dir, options->obj_out, "obj", target_name, target->build_dir);
 	}
 
 	if (options->files)
@@ -576,7 +701,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		target->emit_asm = false;
 		target->emit_object_files = false;
 	}
-	target->run_dir = options->run_dir;
 	if (options->no_obj)
 	{
 		target->emit_object_files = false;
@@ -600,15 +724,15 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->link_libc = libc_from_arch_os(target->arch_os_target);
 	}
-
 }
 
 void init_default_build_target(BuildTarget *target, BuildOptions *options)
 {
 	*target = default_build_target;
-	target->source_dirs = options->files;
+	target->source_dirs = NULL;
 	target->name = options->output_name;
 	target->output_name = options->output_name;
+	target->runner_output_name = options->runner_output_name;
 	update_build_target_from_options(target, options);
 }
 

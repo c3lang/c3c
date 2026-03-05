@@ -27,11 +27,13 @@ entry:
   store ptr %0, ptr %args, align 8
   %ptradd = getelementptr inbounds i8, ptr %args, i64 8
   store i64 %1, ptr %ptradd, align 8
-  %lo = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
-  %hi = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
-  %2 = call ptr @std.core.dstring.new(i64 %lo, ptr %hi, ptr @.str, i64 4)
-  store ptr %2, ptr %str, align 8
-  %3 = load ptr, ptr %str, align 8
-  store ptr %3, ptr %a, align 8
+  %2 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocator.thread_allocator)
+  %lo = load i64, ptr %2, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %2, i64 8
+  %hi = load ptr, ptr %ptradd1, align 8
+  %3 = call ptr @std.core.dstring.new(i64 %lo, ptr %hi, ptr @.str, i64 4)
+  store ptr %3, ptr %str, align 8
+  %4 = load ptr, ptr %str, align 8
+  store ptr %4, ptr %a, align 8
   ret i32 0
 }

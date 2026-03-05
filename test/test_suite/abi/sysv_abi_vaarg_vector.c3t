@@ -1,0 +1,39 @@
+// #target: linux-x64
+// #opt: --x86cpu=avx512
+module test;
+import libc;
+fn void testi()
+{
+	int[<4>] y = { 1, 2, 3, 4 };
+	libc::printf("", y[0], y );
+}
+fn void main()
+{
+	testi();
+}
+
+/* #expect: test.ll
+
+define void @test.testi() #0 {
+entry:
+  %y = alloca <4 x i32>, align 16
+  %taddr = alloca [4 x i32], align 16
+  store <4 x i32> <i32 1, i32 2, i32 3, i32 4>, ptr %y, align 16
+  %0 = load <4 x i32>, ptr %y, align 16
+  %1 = extractelement <4 x i32> %0, i64 0
+  %2 = load <4 x i32>, ptr %y, align 16
+  %3 = extractelement <4 x i32> %2, i64 0
+  %4 = insertvalue [4 x i32] undef, i32 %3, 0
+  %5 = extractelement <4 x i32> %2, i64 1
+  %6 = insertvalue [4 x i32] %4, i32 %5, 1
+  %7 = extractelement <4 x i32> %2, i64 2
+  %8 = insertvalue [4 x i32] %6, i32 %7, 2
+  %9 = extractelement <4 x i32> %2, i64 3
+  %10 = insertvalue [4 x i32] %8, i32 %9, 3
+  store [4 x i32] %10, ptr %taddr, align 16
+  %lo = load i64, ptr %taddr, align 16
+  %ptradd = getelementptr inbounds i8, ptr %taddr, i64 8
+  %hi = load i64, ptr %ptradd, align 8
+  %11 = call i32 (ptr, ...) @printf(ptr @.str, i32 %1, i64 %lo, i64 %hi)
+  ret void
+}

@@ -1,0 +1,31 @@
+// #target: macos-x64
+module test;
+fn void main()
+{
+	ulong[1] haystack;
+	ulong[1] needle;
+	uint is_found = 0;
+	is_found += (ulong)~!(haystack[0] == needle[0]);
+}
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %haystack = alloca [1 x i64], align 8
+  %needle = alloca [1 x i64], align 8
+  %is_found = alloca i32, align 4
+  store i64 0, ptr %haystack, align 8
+  store i64 0, ptr %needle, align 8
+  store i32 0, ptr %is_found, align 4
+  %0 = load i32, ptr %is_found, align 4
+  %1 = load i64, ptr %haystack, align 8
+  %2 = load i64, ptr %needle, align 8
+  %eq = icmp eq i64 %1, %2
+  %not = xor i1 %eq, true
+  %bnot = xor i1 %not, true
+  %zext = zext i1 %bnot to i64
+  %trunc = trunc i64 %zext to i32
+  %add = add i32 %0, %trunc
+  store i32 %add, ptr %is_found, align 4
+  ret void
+}

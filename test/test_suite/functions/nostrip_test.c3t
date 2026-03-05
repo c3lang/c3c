@@ -1,0 +1,8 @@
+module std::io::fileinfo @test;
+fn void test_native_is_file() @nostrip
+{
+	os::native_is_file;
+}
+module other;
+fn void main()
+{}

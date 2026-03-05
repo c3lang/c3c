@@ -9,5 +9,5 @@ fn void main() {
 <*
  Hello
 *>
-module generic{Param};
+module generic <Param>;
 struct Generic { int a; }

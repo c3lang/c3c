@@ -8,6 +8,53 @@ struct Overalign
 {
 	float[<4>] x @align(128);
 }
+alias Vec3 = int[<3>];
+fn void veclist()
+{
+	List{Vec3} values;
+    List{Vec3} new_vertices;
+	values.init(mem, 200);
+	new_vertices.init(mem);
+	defer new_vertices.free();
+	defer values.free();
+	Vec3 x = {1,2,3};
+	for (int i = 0; i < 20; i++) new_vertices.push(x);
+    values.clear();
+    values.add_all(&new_vertices);
+    Vec3* entries = new_vertices.entries;
+    foreach (Vec3 entry : new_vertices)
+    {
+        assert(entry == x);
+    }
+    foreach (Vec3 entry : values)
+    {
+        assert(entry == x);
+    }
+}
+
+alias Vec4 = int[<4>] @simd;
+fn void veclist_simd()
+{
+	List{Vec4} values;
+    List{Vec4} new_vertices;
+	values.init(mem, 200);
+	new_vertices.init(mem);
+	defer new_vertices.free();
+	defer values.free();
+	Vec4 x = {1,2,3,5};
+	for (int i = 0; i < 20; i++) new_vertices.push(x);
+    values.clear();
+    values.add_all(&new_vertices);
+    Vec4* entries = new_vertices.entries;
+    foreach (Vec4 entry : new_vertices)
+    {
+        assert(entry == x);
+    }
+    foreach (Vec4 entry : values)
+    {
+        assert(entry == x);
+    }
+}
 
 alias OveralignList = List{Overalign};
 fn void overaligned_type()
@@ -20,12 +67,28 @@ fn void overaligned_type()
 	assert((usz)l.get_ref(2) - (usz)l.get_ref(1) == Overalign.sizeof);
 }
 
+fn void remove_at()
+{
+	IntList test;
+	test.init(mem);
+	defer test.free();
+	test.push_all({ 1, 2, 3, 4 });
+	test::eq(test.array_view(), (int[]){ 1, 2, 3, 4 });
+	test.remove_at(0);
+	test::eq(test.array_view(), (int[]){ 2, 3, 4 });
+	test.remove_at(1);
+	test::eq(test.array_view(), (int[]){ 2, 4 });
+	test.remove_at(1);
+	test::eq(test.array_view(), (int[]){ 2 });
+	test.remove_at(0);
+	test::eq(test.array_view(), (int[]){ });
+}
 
 fn void delete_contains_index()
 {
 	IntList test;
 
-	test.add_array({ 1, 2 });
+	test.push_all({ 1, 2 });
 	assert(test.contains(1));
 	assert(test.contains(2));
 	assert(!test.contains(0));
@@ -54,7 +117,7 @@ fn void delete_contains_index()
 fn void compact()
 {
 	PtrList test;
-	test.add_array({ null, &test });
+	test.push_all({ null, &test });
 	assert(test.compact_count() == 1);
 	test.push(null);
 	assert(test.compact_count() == 1);
@@ -69,7 +132,7 @@ fn void reverse()
 	IntList test;
 
 	test.reverse();
-	test.add_array({ 1, 2 });
+	test.push_all({ 1, 2 });
 	test.push(3);
 	assert(test.array_view() == { 1, 2, 3});
 	test.reverse();
@@ -85,13 +148,13 @@ fn void remove_if()
 	IntList test;
 	usz removed;
 
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_if(&filter);
 	assert(removed == 3);
 	assert(test.array_view() == {1, 2});
 
 	test.clear();
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_if(&select);
 	assert(removed == 2);
 	assert(test.array_view() == {11, 10, 20});
@@ -119,13 +182,13 @@ fn void remove_using_test()
 	IntList test;
 	usz removed;
 
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_using_test(fn bool(i, ctx) => *i >= *(int*)ctx, &&10);
 	assert(removed == 3);
 	assert(test.array_view() == {1, 2});
 
 	test.clear();
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_using_test(fn bool(i, ctx) => *i < *(int*)ctx, &&10);
 	assert(removed == 2);
 	assert(test.array_view() == {11, 10, 20});
@@ -136,13 +199,13 @@ fn void retain_if()
 	IntList test;
 	usz removed;
 
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.retain_if(&select);
 	assert(removed == 3);
 	assert(test.array_view() == {1, 2});
 
 	test.clear();
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.retain_if(&filter);
 	assert(removed == 2);
 	assert(test.array_view() == {11, 10, 20});
@@ -153,13 +216,13 @@ fn void retain_using_test()
 	IntList test;
 	usz removed;
 
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_using_test(fn bool(i, ctx) => *i >= *(int*)ctx, &&10);
 	assert(removed == 3);
 	assert(test.array_view() == {1, 2});
 
 	test.clear();
-	test.add_array({ 1, 11, 2, 10, 20 });
+	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_using_test(fn bool(i, ctx) => *i < *(int*)ctx, &&10);
 	assert(removed == 2);
 	assert(test.array_view() == {11, 10, 20});

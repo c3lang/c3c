@@ -103,13 +103,13 @@ union Long16 @local
 	uint[16] l;
 }
 
-macro blk(Long16* block, i) @local
+macro uint blk(Long16* block, i) @local
 {
 	return (block.l[i & 15] = (block.l[(i + 13) & 15] ^ block.l[(i + 8) & 15]
 		^ block.l[(i + 2) & 15] ^ block.l[i & 15]).rotl(1));
 }
 
-macro blk0(Long16* block, i) @local
+macro uint blk0(Long16* block, i) @local
 {
 	$if env::BIG_ENDIAN:
 		return block.l[i];
@@ -119,35 +119,35 @@ macro blk0(Long16* block, i) @local
 	$endif
 }
 
-macro r0(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
+macro void r0(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
 {
 	var w = *wref;
 	*z += ((w & (x ^ y)) ^ y) + blk0(block, i) + 0x5A827999 + v.rotl(5);
 	*wref = w.rotl(30);
 }
 
-macro r1(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
+macro void r1(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
 {
 	var w = *wref;
 	*z += ((w & (x ^ y)) ^ y) + blk(block, i) + 0x5A827999 + v.rotl(5);
 	*wref = w.rotl(30);
 }
 
-macro r2(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
+macro void r2(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
 {
 	var w = *wref;
 	*z += (w ^ x ^ y) + blk(block, i) + 0x6ED9EBA1 + v.rotl(5);
 	*wref = w.rotl(30);
 }
 
-macro r3(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
+macro void r3(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
 {
 	var w = *wref;
 	*z += (((w | x) & y) | (w & x)) + blk(block, i) + 0x8F1BBCDC + v.rotl(5);
 	*wref = w.rotl(30);
 }
 
-macro r4(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
+macro void r4(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
 {
 	var w = *wref;
 	*z += (w ^ x ^ y) + blk(block, i) + 0xCA62C1D6 + v.rotl(5);

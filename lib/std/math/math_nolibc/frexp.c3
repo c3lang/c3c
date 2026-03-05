@@ -1,6 +1,6 @@
 module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 
-fn double frexp(double x, int* exp) @extern("frexp")
+fn double frexp(double x, int* exp) @cname("frexp")
 {
     uint hx = x.high_word();
     uint ix = hx & 0x7fffffff;
@@ -31,7 +31,7 @@ fn double frexp(double x, int* exp) @extern("frexp")
     }
 }
 
-fn float frexpf(float x, int* exp) @extern("frexpf")
+fn float frexpf(float x, int* exp) @cname("frexpf")
 {
     uint ix = x.word();
     uint hx = ix & 0x7fffffff;

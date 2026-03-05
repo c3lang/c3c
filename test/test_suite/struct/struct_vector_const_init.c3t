@@ -1,0 +1,36 @@
+// #target: macos-x64
+module test;
+typedef Int4s = int[<4>] @simd;
+typedef Int3 = int[<3>];
+struct Foo1
+{
+	Int3 bar;
+}
+struct Foo2
+{
+    Int4s bar;
+}
+
+fn int main()
+{
+    Foo1 f1 = {{1,2,3}};
+    Foo2 f2 = {{1,2,3,4}};
+    return 0;
+}
+
+/* #expect: test.ll
+
+%Foo2 = type { <4 x i32> }
+%Foo1 = type { [3 x i32] }
+
+@.__const = private unnamed_addr constant { [3 x i32] } { [3 x i32] [i32 1, i32 2, i32 3] }, align 4
+@.__const.1 = private unnamed_addr constant %Foo2 { <4 x i32> <i32 1, i32 2, i32 3, i32 4> }, align 16
+
+define i32 @main() #0 {
+entry:
+  %f1 = alloca %Foo1, align 4
+  %f2 = alloca %Foo2, align 16
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %f1, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %f2, ptr align 16 @.__const.1, i32 16, i1 false)
+  ret i32 0
+}

@@ -1,0 +1,27 @@
+// #target: macos-x64
+module test;
+bitstruct Foo : char
+{
+	bool baz;
+}
+
+fn int main()
+{
+	char ch = 0;
+	Foo foo1 = (Foo)ch;
+	Foo foo2 = (Foo)0;
+	return 0;
+}
+
+/* #expect: test.ll
+
+entry:
+  %ch = alloca i8, align 1
+  %foo1 = alloca i8, align 1
+  %foo2 = alloca i8, align 1
+  store i8 0, ptr %ch, align 1
+  %0 = load i8, ptr %ch, align 1
+  store i8 %0, ptr %foo1, align 1
+  store i8 0, ptr %foo2, align 1
+  ret i32 0
+}

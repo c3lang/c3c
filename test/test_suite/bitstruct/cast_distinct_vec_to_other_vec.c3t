@@ -1,0 +1,10 @@
+typedef Foo = char[<4>];
+
+fn int main()
+{
+	int[<4>] a;
+	Foo f = (Foo)a;
+	return 0;
+}
+
+fn void thing() {}

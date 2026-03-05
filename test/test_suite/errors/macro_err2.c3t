@@ -5,7 +5,7 @@ faultdef FOO;
 
 fn int? abc()
 {
-	return FOO?;
+	return FOO~;
 }
 macro test()
 {

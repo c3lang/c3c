@@ -1,0 +1,31 @@
+// #target: macos-x64
+module test;
+import std;
+
+bitstruct BitstructFlags : uint
+{
+    bool first;
+    bool second;
+}
+const BitstructFlags B_FIRST = { true, false };
+const BitstructFlags B_FIRST2 = (BitstructFlags) 1;
+const BitstructFlags B_SECOND = { false, true };
+
+fn int main()
+{
+    BitstructFlags x = B_FIRST | B_SECOND;
+    BitstructFlags y = B_FIRST2 | B_SECOND;
+    io::printfn("X: %d Y: %d", (uint)x, (uint)y);
+    return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %x = alloca i32, align 4
+  %y = alloca i32, align 4
+  %varargslots = alloca [2 x %any], align 16
+  %retparam = alloca i64, align 8
+  store i32 3, ptr %x, align 4
+  store i32 3, ptr %y, align 4

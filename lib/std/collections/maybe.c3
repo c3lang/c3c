@@ -1,4 +1,4 @@
-module std::collections::maybe{Type};
+module std::collections::maybe <Type>;
 import std::io;
 
 struct Maybe (Printable)
@@ -32,7 +32,7 @@ const Maybe EMPTY = { };
 
 macro Type? Maybe.get(self)
 {
-	return self.has_value ? self.value : NOT_FOUND?;
+	return self.has_value ? self.value : NOT_FOUND~;
 }
 
 fn bool Maybe.equals(self, Maybe other) @operator(==) @if(types::is_equatable_type(Type))

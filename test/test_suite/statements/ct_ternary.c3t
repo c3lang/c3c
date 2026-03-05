@@ -1,0 +1,25 @@
+// #target: macos-x64
+module test;
+import std;
+
+fn int main()
+{
+	int aa = false ??? 1 + a : 2;
+	int x = 42;
+	int bb = true ??? x : 1 + a;
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %aa = alloca i32, align 4
+  %x = alloca i32, align 4
+  %bb = alloca i32, align 4
+  store i32 2, ptr %aa, align 4
+  store i32 42, ptr %x, align 4
+  %0 = load i32, ptr %x, align 4
+  store i32 %0, ptr %bb, align 4
+  ret i32 0
+}

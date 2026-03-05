@@ -7,13 +7,16 @@
 
 
 const char *project_default_keys[][2] = {
+		{"$schema", "Json schema url"},
 		{"authors", "Authors, optionally with email."},
 		{"benchfn", "Override the benchmark function."},
+		{"build-dir", "Build location, where intermediate files are placed by default, relative to project file."},
 		{"c-include-dirs", "Set the include directories for C sources."},
 		{"c-sources", "Set the C sources to be compiled."},
 		{"cc", "Set C compiler (defaults to 'cc')."},
 		{"cflags", "C compiler flags."},
 		{"cpu", "CPU name, used for optimizations in the compiler backend."},
+		{"cpu-flags", "Set the cpu flags to add or remove with the format '+avx,-sse'."},
 		{"debug-info", "Debug level: none, line-tables, full."},
 		{"dependencies", "C3 library dependencies for all targets."},
 		{"dependency-search-paths", "The C3 library search paths."},
@@ -23,14 +26,19 @@ const char *project_default_keys[][2] = {
 		{"langrev", "Version of the C3 language used."},
 		{"link-args", "Linker arguments for all targets."},
 		{"link-libc", "Link libc (default: true)."},
+		{"custom-libc", "Implement your own libc (default: false)."},
 		{"linked-libraries", "Libraries linked by the linker for all targets."},
 		{"linker", "'builtin' for the builtin linker, 'cc' for the system linker or <path> to a custom compiler."},
 		{"linker-search-paths", "Linker search paths."},
 		{"linux-crt", "Set the directory to use for finding crt1.o and related files."},
+		{"linux-crtbegin", "Set the directory to use for finding crtbegin.o and related files."},
+		{"linux-libc", "Set the libc to use for Linux. Valid options are 'host', 'gnu' and 'musl', default is 'host'"},
+		{"loop-vectorize", "Force enable/disable loop auto-vectorization."},
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
 		{"macossdk", "Set the directory for the MacOS SDK for cross compilation."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
+		{"merge-functions", "Force enable/disable function merging."},
 		{"no-entry", "Do not generate (or require) a main function."},
 		{"opt", "Optimization setting: O0, O1, O2, O3, O4, O5, Os, Oz."},
 		{"optlevel", "Code optimization level: none, less, more, max."},
@@ -40,12 +48,15 @@ const char *project_default_keys[][2] = {
 		{"panicfn", "Override the panic function."},
 		{"quiet", "Silence unnecessary output."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
+		{"riscv-abi", "RiscV ABI: int-only, float, double."},
+		{"riscv-cpu", "Set general level of RISC-V cpu: `rvi`, `rvimac`, `rvimafc`, `rvgc` or `rvgcv`."},
 		{"run-dir", "Override run directory for 'run'."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
 		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
 		{"script-dir", "The directory where 'exec' is run."},
 		{"show-backtrace", "Print backtrace on signals."},
 		{"single-module", "Compile all modules together, enables more inlining."},
+		{"slp-vectorize", "Force enable/disable SLP auto-vectorization."},
 		{"soft-float", "Output soft-float functions."},
 		{"sources", "Paths to project sources for all targets."},
 		{"strip-unused", "Strip unused code and globals from the output. (default: true)"},
@@ -55,6 +66,7 @@ const char *project_default_keys[][2] = {
 		{"test-sources", "Paths to project test sources for all targets."},
 		{"testfn", "Override the test function."},
 		{"trap-on-wrap", "Make signed and unsigned integer overflow generate a panic rather than wrapping."},
+		{"unroll-loops", "Force enable/disable loop unrolling optimization."},
 		{"use-stdlib", "Include the standard library (default: true)."},
 		{"vendor", "Vendor specific extensions, ignored by c3c."},
 		{"version", "Version using semantic versioning."},
@@ -65,7 +77,7 @@ const char *project_default_keys[][2] = {
 		{"x86-stack-struct-return", "Return structs on the stack for x86."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
 		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
-		{"linux-crtbegin", "Set the directory to use for finding crtbegin.o and related files."},
+
 };
 
 const int project_default_keys_count = ELEMENTLEN(project_default_keys);
@@ -73,6 +85,7 @@ const int project_default_keys_count = ELEMENTLEN(project_default_keys);
 const char* project_deprecated_target_keys[] = { "xxxxxxxxxx" };
 const char* project_target_keys[][2] = {
 		{"benchfn", "Override the benchmark function."},
+		{"build-dir", "Build location, where intermediate files are placed by default, relative to project file."},
 		{"c-include-dirs", "C sources include directories for the target."},
 		{"c-include-dirs-override", "Additional C sources include directories for the target, overriding global settings."},
 		{"c-sources", "Additional C sources to be compiled for the target."},
@@ -81,6 +94,8 @@ const char* project_target_keys[][2] = {
 		{"cflags", "Additional C compiler flags for the target."},
 		{"cflags-override", "C compiler flags for the target, overriding global settings."},
 		{"cpu", "CPU name, used for optimizations in the compiler backend."},
+		{"cpu-flags", "Additional cpu flags to add or remove with the format '+avx,-sse'."},
+		{"cpu-flags-override", "Additional cpu flags to add or remove with the format '+avx,-sse', overriding global settings."},
 		{"debug-info", "Debug level: none, line-tables, full."},
 		{"dependencies", "Additional C3 library dependencies for the target."},
 		{"dependencies-override", "C3 library dependencies for this target, overriding global settings."},
@@ -95,16 +110,21 @@ const char* project_target_keys[][2] = {
 		{"link-args", "Additional linker arguments for the target."},
 		{"link-args-override", "Linker arguments for this target, overriding global settings."},
 		{"link-libc", "Link libc (default: true)."},
+		{"custom-libc", "Implement your own libc (default: false)."},
 		{"linked-libraries", "Additional libraries linked by the linker for the target."},
 		{"linked-libraries-override", "Libraries linked by the linker for this target, overriding global settings."},
 		{"linker", "'builtin' for the builtin linker, 'cc' for the system linker or <path> to a custom compiler."},
 		{"linker-search-paths", "Additional linker search paths for the target."},
 		{"linker-search-paths-override", "Linker search paths for this target, overriding global settings."},
 		{"linux-crt", "Set the directory to use for finding crt1.o and related files."},
+		{"linux-crtbegin", "Set the directory to use for finding crtbegin.o and related files."},
+		{"linux-libc", "Set the libc to use for Linux. Valid options are 'host', 'gnu' and 'musl', default is 'host'"},
+		{"loop-vectorize", "Force enable/disable loop auto-vectorization."},
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
 		{"macossdk", "Set the directory for the MacOS SDK for cross compilation."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
+		{"merge-functions", "Force enable/disable function merging."},
 		{"name", "Set the name to be different from the target name."},
 		{"no-entry", "Do not generate (or require) a main function."},
 		{"opt", "Optimization setting: O0, O1, O2, O3, O4, O5, Os, Oz."},
@@ -115,12 +135,14 @@ const char* project_target_keys[][2] = {
 		{"panicfn", "Override the panic function."},
 		{"quiet", "Silence unnecessary output."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
+		{"riscv-abi", "RiscV ABI: int-only, float, double."},
 		{"run-dir", "Override run directory for 'run'."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
 		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
 		{"script-dir", "The directory where 'exec' is run."},
 		{"show-backtrace", "Print backtrace on signals."},
 		{"single-module", "Compile all modules together, enables more inlining."},
+		{"slp-vectorize", "Force enable/disable SLP auto-vectorization."},
 		{"soft-float", "Output soft-float functions."},
 		{"sources", "Additional paths to project sources for the target."},
 		{"sources-override", "Paths to project sources for this target, overriding global settings."},
@@ -132,6 +154,7 @@ const char* project_target_keys[][2] = {
 		{"testfn", "Override the test function."},
 		{"trap-on-wrap", "Make signed and unsigned integer overflow generate a panic rather than wrapping."},
 		{"type", "Type of output, one of 'executable', 'static-lib', 'dynamic-lib', 'benchmark', 'test', 'object-files' and 'prepare'." },
+		{"unroll-loops", "Force enable/disable loop unrolling optimization."},
 		{"use-stdlib", "Include the standard library (default: true)."},
 		{"vendor", "Vendor specific extensions, ignored by c3c."},
 		{"version", "Version using semantic versioning."},
@@ -142,7 +165,7 @@ const char* project_target_keys[][2] = {
 		{"x86-stack-struct-return", "Return structs on the stack for x86."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
 		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
-		{"linux-crtbegin", "Set the directory to use for finding crtbegin.o and related files."},
+
 };
 
 const int project_target_keys_count = ELEMENTLEN(project_target_keys);
@@ -173,6 +196,34 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	target->run_dir = get_string(context, json, "run-dir", target->run_dir);
 	// The output directory
 	target->output_dir = get_string(context, json, "output", target->output_dir);
+	target->build_dir = get_string(context, json, "build-dir", target->build_dir);
+
+	const char *cpu_flags = get_optional_string(context, json, "cpu-flags");
+	if (cpu_flags)
+	{
+		if (target->cpu_flags)
+		{
+			scratch_buffer_clear();
+			scratch_buffer_printf("%s,%s", target->cpu_flags, cpu_flags);
+			target->cpu_flags = scratch_buffer_copy();
+		}
+		else
+		{
+			target->cpu_flags = cpu_flags;
+		}
+	}
+	if (context.target)
+	{
+		const char *cpu_flags_override = get_optional_string(context, json, "cpu-flags-override");
+		if (cpu_flags_override)
+		{
+			if (cpu_flags)
+			{
+				error_exit("Error reading %s: 'cpu-flags' and 'cpu-flags-override' cannot be combined.", context.file);
+			}
+			target->cpu_flags = cpu_flags_override;
+		}
+	}
 
 	if (context.target)
 	{
@@ -184,7 +235,29 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 			error_exit("Error reading %s: output extension '%s' must start with a '.'", context.file, target->extension);
 		}
 	}
-
+	else
+	{
+		const char **authors = get_optional_string_array(context, json, "authors");
+		AuthorEntry *author_list = NULL;
+		FOREACH(const char *, author, authors)
+		{
+			const char *email_start = strstr(author, "<");
+			if (email_start)
+			{
+				const char *end = strstr(email_start + 1, ">");
+				if (!end || end[1] != 0 || email_start + 1 == end) error_exit("Error reading %s: invalid author format '%s', expected an e-mail address between '< >'.", context.file, author);
+				const char *email = str_trim(str_copy(email_start + 1, end - email_start - 1));
+				AuthorEntry entry = { str_trim(str_copy(author, email_start - author)), email };
+				vec_add(author_list, entry);
+			}
+			else
+			{
+				AuthorEntry entry = { str_trim(str_dup(author)), NULL };
+				vec_add(author_list, entry);
+			}
+		}
+		target->authors = author_list;
+	}
 	// "Before compilation" execution
 	APPEND_STRING_LIST(&target->exec, "exec");
 
@@ -224,7 +297,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 		if (!str_is_valid_lowercase_name(name))
 		{
 			char *name_copy = strdup(name);
-			str_ellide_in_place(name_copy, 32);
+			str_elide_in_place(name_copy, 32);
 			error_exit("Error reading %s: invalid library target name '%s' – it should only contain alphanumerical letters and '_'.", context.file, name_copy);
 		}
 	}
@@ -244,6 +317,11 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// Size optimization
 	target->optsize = GET_SETTING(SizeOptimizationLevel, "optsize", optsizes, "`none`, `small`, `tiny`.");
+
+	target->loop_vectorization = (AutoVectorization)get_valid_bool(context, json, "loop-vectorize", target->loop_vectorization);
+	target->slp_vectorization = (AutoVectorization)get_valid_bool(context, json, "slp-vectorize", target->slp_vectorization);
+	target->unroll_loops = (UnrollLoops)get_valid_bool(context, json, "unroll-loops", target->unroll_loops);
+	target->merge_functions = (MergeFunctions)get_valid_bool(context, json, "merge-functions", target->merge_functions);
 
 	static const char *opt_settings[8] = {
 			[OPT_SETTING_O0] = "O0",
@@ -337,14 +415,14 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 		case SANITIZE_ADDRESS: target->feature.sanitize_address = true; break;
 		case SANITIZE_MEMORY: target->feature.sanitize_memory = true; break;
 		case SANITIZE_THREAD: target->feature.sanitize_thread = true; break;
-		default: UNREACHABLE;
+		default: UNREACHABLE_VOID;
 	}
 
 	// Cpu
 	target->cpu = get_string(context, json, "cpu", target->cpu);
 
 	// WinCRT
-	WinCrtLinking wincrt = GET_SETTING(WinCrtLinking, "wincrt", wincrt_linking, "'none', 'static-debug', 'staticdebug, 'dynamic-debug' or 'dynamic'.");
+	WinCrtLinking wincrt = GET_SETTING(WinCrtLinking, "wincrt", wincrt_linking, "'none', 'static', 'static-debug, 'dynamic-debug' or 'dynamic'.");
 	if (wincrt != WIN_CRT_DEFAULT) target->win.crt_linking = wincrt;
 
 	// fp-math
@@ -368,13 +446,17 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	X86VectorCapability x86vec = GET_SETTING(X86VectorCapability, "x86vec", x86_vector_capability, "`none`, `native`, `mmx`, `sse`, `avx` or `avx512`.");
 	if (x86vec > -1) target->feature.x86_vector_capability = x86vec;
 
-	// x86vec
+	// x86cpu
 	X86CpuSet x86cpu = GET_SETTING(X86CpuSet, "x86cpu", x86_cpu_set, "`baseline`, `ssse3`, `sse4`, `avx1`, `avx2-v1`, `avx2-v2`, `avx512` or `native`.");
 	if (x86cpu > X86CPU_DEFAULT) target->feature.x86_cpu_set = x86cpu;
 
-	// riscvfloat
-	RiscvFloatCapability riscv_float = GET_SETTING(RiscvFloatCapability, "riscvfloat", riscv_capability, "`none`, `float` or `double`.");
-	if (riscv_float != RISCVFLOAT_DEFAULT) target->feature.riscv_float_capability = riscv_float;
+	// riscv-cpu
+	RiscvCpuSet riscv_cpu = GET_SETTING(RiscvCpuSet, "riscv-cpu", riscv_cpu_set, "`rvi`, `rvimac`, `rvimafc`, `rvgc` or `rvgcv`.");
+	if (riscv_cpu > RISCV_CPU_DEFAULT) target->feature.riscv_cpu_set = riscv_cpu;
+
+	// riscv-abi
+	RiscvAbi riscv_abi_val = GET_SETTING(RiscvAbi, "riscv-abi", riscv_abi, "`int-only`, `float` or `double`.");
+	if (riscv_abi_val != RISCV_ABI_DEFAULT) target->feature.riscv_abi = riscv_abi_val;
 
 	// win-debug
 	WinDebug win_debug = GET_SETTING(WinDebug , "win-debug", win_debug_type, "`codeview` or `dwarf`.");
@@ -405,6 +487,10 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	// Linux crtbegin
 	target->linuxpaths.crtbegin = get_string(context, json, "linux-crtbegin", target->linuxpaths.crtbegin);
 
+	// linux-libc
+	LinuxLibc linux_libc = GET_SETTING(LinuxLibc, "linux-libc", linuxlibc, "`gnu`, `musl` or `host`.");
+	if (linux_libc > -1) target->linuxpaths.libc = linux_libc;
+
 	// version
 	target->version = get_string(context, json, "version", target->version);
 
@@ -417,7 +503,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	// testfn
 	target->testfn = get_string(context, json, "testfn", target->testfn);
 
-	// testfn
+	// benchfn
 	target->benchfn = get_string(context, json, "benchfn", target->benchfn);
 
 	// link-libc
@@ -455,6 +541,9 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// emit-stdlib
 	target->emit_stdlib = (EmitStdlib) get_valid_bool(context, json, "emit-stdlib", target->emit_stdlib);
+
+	// implement-stdlib
+	target->custom_libc = (CustomLibc) get_valid_bool(context, json, "custom-libc", target->custom_libc);
 
 	// single-module
 	target->single_module = (SingleModule) get_valid_bool(context, json, "single-module", target->single_module);
@@ -573,6 +662,7 @@ BuildTarget *project_select_target(const char *filename, Project *project, const
 		if (str_eq(target->name, optional_target)) return target;
 	}
 	error_exit("No build target named '%s' was found in %s. Was it misspelled?", optional_target, filename);
+	UNREACHABLE
 }
 
 JSONObject *project_json_load(const char **filename_ref)

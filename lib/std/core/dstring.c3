@@ -1,5 +1,5 @@
 module std::core::dstring;
-import std::io;
+import std::io, std::math;
 
 <*
  The DString offers a dynamic string builder.
@@ -95,7 +95,7 @@ fn void DString.replace(&self, String needle, String replacement)
 				match++;
 				if (match == needle_len)
 				{
-					self.append_chars(replacement);
+					self.append_string(replacement);
 					match = 0;
 					continue;
 				}
@@ -103,12 +103,12 @@ fn void DString.replace(&self, String needle, String replacement)
 			}
 			if (match > 0)
 			{
-				self.append_chars(str[i - match:match]);
+				self.append_string(str[i - match:match]);
 				match = 0;
 			}
 			self.append_char(c);
 		}
-		if (match > 0) self.append_chars(str[^match:match]);
+		if (match > 0) self.append_string(str[^match:match]);
 	};
 }
 
@@ -305,18 +305,23 @@ fn bool DString.less(self, DString other_string)
 	return true;
 }
 
-fn void DString.append_chars(&self, String str)
+fn void DString.append_chars(&self, String str) @deprecated("Use append_string")
 {
-	usz other_len = str.len;
+	self.append_bytes(str);
+}
+
+fn void DString.append_bytes(&self, char[] bytes)
+{
+	usz other_len = bytes.len;
 	if (!other_len) return;
 	if (!*self)
 	{
-		*self = temp(str);
+		*self = temp((String)bytes);
 		return;
 	}
 	self.reserve(other_len);
 	StringData* data = self.data();
-	mem::copy(&data.chars[data.len], str.ptr, other_len);
+	mem::copy(&data.chars[data.len], bytes.ptr, other_len);
 	data.len += other_len;
 }
 
@@ -325,7 +330,24 @@ fn Char32[] DString.copy_utf32(&self, Allocator allocator)
 	return self.str_view().to_utf32(allocator) @inline!!;
 }
 
-fn void DString.append_string(&self, DString str)
+<*
+ @require $defined(String s = str) ||| $typeof(str) == DString : "Expected string or DString"
+*>
+macro void DString.append_string(&self, str)
+{
+	$if $typeof(str) == DString:
+		self.append_string_deprecated(str);
+	$else
+		self.append_bytes((String)str);
+	$endif
+}
+
+macro void DString.append_string_deprecated(&self, DString str) @deprecated("Use .append_dstring()")
+{
+	self.append_dstring(str);
+}
+
+fn void DString.append_dstring(&self, DString str)
 {
 	StringData* other = str.data();
 	if (!other) return;
@@ -340,7 +362,7 @@ fn void DString.clear(self)
 
 fn usz? DString.write(&self, char[] buffer) @dynamic
 {
-	self.append_chars((String)buffer);
+	self.append_bytes(buffer);
 	return buffer.len;
 }
 
@@ -400,9 +422,9 @@ macro void DString.append(&self, value)
 		$case ichar:
 			self.append_char(value);
 		$case DString:
-			self.append_string(value);
+			self.append_dstring(value);
 		$case String:
-			self.append_chars(value);
+			self.append_string(value);
 		$case Char32:
 			self.append_char32(value);
 		$default:
@@ -410,7 +432,7 @@ macro void DString.append(&self, value)
 				$case $defined((Char32)value):
 					self.append_char32((Char32)value);
 				$case $defined((String)value):
-					self.append_chars((String)value);
+					self.append_string((String)value);
 				$default:
 					$error "Unsupported type for append – use appendf instead.";
 			$endswitch
@@ -609,7 +631,7 @@ fn void DString.reverse(self)
 	}
 }
 
-fn StringData* DString.data(self) @inline @private
+fn StringData* DString.data(self) @inline
 {
 	return (StringData*)self;
 }
@@ -626,7 +648,7 @@ fn void DString.reserve(&self, usz addition)
 	if (data.capacity >= len) return;
 	usz new_capacity = data.capacity * 2;
 	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
-	while (new_capacity < len) new_capacity *= 2;
+	if (new_capacity < len) new_capacity = math::next_power_of_2(len);
 	data.capacity = new_capacity;
 	*self = (DString)allocator::realloc(data.allocator, data, StringData.sizeof + new_capacity);
 }
@@ -636,9 +658,10 @@ fn usz? DString.read_from_stream(&self, InStream reader)
 	if (&reader.available)
 	{
 		usz total_read = 0;
-		while (usz available = reader.available()!)
+		while (ulong available = reader.available()!)
 		{
-			self.reserve(available);
+			if (available > isz.max) available = (ulong)isz.max;
+			self.reserve((usz)available);
 			StringData* data = self.data();
 			usz len = reader.read(data.chars[data.len..(data.capacity - 1)])!;
 			total_read += len;

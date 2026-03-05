@@ -1,11 +1,11 @@
-module abc {Type};
+module abc <Type>;
 
 attrdef @Hello = @inline;
-faultdef ABC; // #error: Generic modules cannot use 'faultdef'
+faultdef ABC;
 
 module bcd;
-
+import abc;
 fn void main()
 {
-	Abc{int} a;
+	int? a = abc::ABC~;
 }

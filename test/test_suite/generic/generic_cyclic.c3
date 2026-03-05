@@ -9,7 +9,7 @@ struct Test
 	BazTest t;
 }
 
-module bar{Test};
+module bar <Test>;
 
 struct Baz
 {

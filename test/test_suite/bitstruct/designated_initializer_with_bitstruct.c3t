@@ -69,16 +69,16 @@ entry:
   %ptradd1 = getelementptr inbounds i8, ptr %literal, i64 8
   store ptr %f, ptr %ptradd1, align 8
   store ptr %literal, ptr %f, align 8
-  store i8 0, ptr %literal2, align 1
+  store i8 0, ptr %literal2, align 8
   %ptradd3 = getelementptr inbounds i8, ptr %literal2, i64 1
   store i8 0, ptr %ptradd3, align 1
   %ptradd4 = getelementptr inbounds i8, ptr %literal2, i64 8
   store ptr null, ptr %ptradd4, align 8
-  store i8 2, ptr %literal2, align 1
+  store i8 2, ptr %literal2, align 8
   %ptradd5 = getelementptr inbounds i8, ptr %literal2, i64 8
   store ptr %f, ptr %ptradd5, align 8
   store ptr %literal2, ptr %f2, align 8
-  store i8 0, ptr %literal6, align 1
+  store i8 0, ptr %literal6, align 8
   %ptradd7 = getelementptr inbounds i8, ptr %literal6, i64 1
   store i8 0, ptr %ptradd7, align 1
   %ptradd8 = getelementptr inbounds i8, ptr %literal6, i64 8
@@ -86,11 +86,11 @@ entry:
   %3 = load i8, ptr %literal6, align 1
   %4 = and i8 %3, 1
   %5 = or i8 %4, 4
-  store i8 %5, ptr %literal6, align 1
+  store i8 %5, ptr %literal6, align 8
   %6 = load i8, ptr %literal6, align 1
   %7 = and i8 %6, -2
   %8 = or i8 %7, 1
-  store i8 %8, ptr %literal6, align 1
+  store i8 %8, ptr %literal6, align 8
   %ptradd9 = getelementptr inbounds i8, ptr %literal6, i64 1
   %9 = load i8, ptr %ptradd9, align 1
   %10 = and i8 %9, -2

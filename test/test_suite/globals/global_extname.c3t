@@ -1,7 +1,7 @@
 // #target: macos-x64
 module foo;
 
-int baz @extern("foobar") = 123;
+int baz @cname("foobar") = 123;
 
 /* #expect: foo.ll
 

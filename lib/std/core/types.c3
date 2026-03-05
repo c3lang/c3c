@@ -7,6 +7,7 @@ faultdef VALUE_OUT_OF_RANGE, VALUE_OUT_OF_UNSIGNED_RANGE;
 
 <*
  @require $Type.kindof.is_int() : "Type was not an integer"
+ @require (bool)v.type : "The value was empty"
  @require v.type.kindof == ENUM : "Value was not an enum"
 *>
 macro any_to_enum_ordinal(any v, $Type)
@@ -16,6 +17,7 @@ macro any_to_enum_ordinal(any v, $Type)
 
 <*
  @require $Type.kindof.is_int() : "Type was not an integer"
+ @require (bool)v.type : "The value was empty"
  @require v.type.kindof.is_int() : "Value was not an integer"
 *>
 macro any_to_int(any v, $Type)
@@ -29,47 +31,47 @@ macro any_to_int(any v, $Type)
 	{
 		case ichar:
 			ichar c = *(char*)v.ptr;
-			if (is_mixed_signed && c < 0) return VALUE_OUT_OF_UNSIGNED_RANGE?;
+			if (is_mixed_signed && c < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
 			return ($Type)c;
 		case short:
 			short s = *(short*)v.ptr;
-			if (is_mixed_signed && s < 0) return VALUE_OUT_OF_UNSIGNED_RANGE?;
-			if (s > max || s < min) return VALUE_OUT_OF_RANGE?;
+			if (is_mixed_signed && s < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
+			if (s > max || s < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)s;
 		case int:
 			int i = *(int*)v.ptr;
-			if (is_mixed_signed && i < 0) return VALUE_OUT_OF_UNSIGNED_RANGE?;
-			if (i > max || i < min) return VALUE_OUT_OF_RANGE?;
+			if (is_mixed_signed && i < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
+			if (i > max || i < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)i;
 		case long:
 			long l = *(long*)v.ptr;
-			if (is_mixed_signed && l < 0) return VALUE_OUT_OF_UNSIGNED_RANGE?;
-			if (l > max || l < min) return VALUE_OUT_OF_RANGE?;
+			if (is_mixed_signed && l < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
+			if (l > max || l < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)l;
 		case int128:
 			int128 i = *(int128*)v.ptr;
-			if (is_mixed_signed && i < 0) return VALUE_OUT_OF_UNSIGNED_RANGE?;
-			if (i > max || i < min) return VALUE_OUT_OF_RANGE?;
+			if (is_mixed_signed && i < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
+			if (i > max || i < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)i;
 		case char:
 			char c = *(char*)v.ptr;
-			if (c > max) return VALUE_OUT_OF_RANGE?;
+			if (c > max) return VALUE_OUT_OF_RANGE~;
 			return ($Type)c;
 		case ushort:
 			ushort s = *(ushort*)v.ptr;
-			if (s > max || s < min) return VALUE_OUT_OF_RANGE?;
+			if (s > max || s < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)s;
 		case uint:
 			uint i = *(uint*)v.ptr;
-			if (i > max || i < min) return VALUE_OUT_OF_RANGE?;
+			if (i > max || i < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)i;
 		case ulong:
 			ulong l = *(ulong*)v.ptr;
-			if (l > max || l < min) return VALUE_OUT_OF_RANGE?;
+			if (l > max || l < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)l;
 		case uint128:
 			uint128 i = *(uint128*)v.ptr;
-			if (i > max || i < min) return VALUE_OUT_OF_RANGE?;
+			if (i > max || i < min) return VALUE_OUT_OF_RANGE~;
 			return ($Type)i;
 		default:
 			unreachable();
@@ -96,21 +98,33 @@ macro bool is_subtype_of($Type, $OtherType)
 }
 macro bool is_numerical($Type)
 {
-	var $kind = $Type.kindof;
-	$if $kind == TypeKind.DISTINCT:
-		return is_numerical($Type.inner);
-	$else
-		return $kind == TypeKind.SIGNED_INT || $kind == TypeKind.UNSIGNED_INT || $kind == TypeKind.FLOAT
-			|| $kind == TypeKind.VECTOR;
-	$endif
+	$switch $Type.kindof:
+		$case TYPEDEF:
+		$case CONSTDEF:
+			return is_numerical($Type.inner);
+		$case SIGNED_INT:
+		$case UNSIGNED_INT:
+		$case FLOAT:
+		$case VECTOR:
+			return true;
+		$default:
+			return false;
+	$endswitch
 }
 
 fn bool TypeKind.is_int(kind) @inline
 {
-	return kind == TypeKind.SIGNED_INT || kind == TypeKind.UNSIGNED_INT;
+	return kind == SIGNED_INT || kind == UNSIGNED_INT;
 }
 
-macro bool is_slice_convertable($Type)
+macro bool TypeKind.@is_int($kind) @const
+{
+	return $kind == SIGNED_INT ||| $kind == UNSIGNED_INT;
+}
+
+macro bool is_slice_convertable($Type) @deprecated("Use is_slice_convertible") => is_slice_convertible($Type);
+
+macro bool is_slice_convertible($Type)
 {
 	$switch $Type.kindof:
 		$case SLICE:
@@ -158,7 +172,7 @@ macro bool is_unsigned($Type) @const
 
 macro typeid flat_type($Type) @const
 {
-	$if $Type.kindof == DISTINCT:
+	$if $Type.kindof == TYPEDEF || $Type.kindof == CONSTDEF:
 		return flat_type($Type.inner);
 	$else
 		return $Type.typeid;
@@ -167,7 +181,7 @@ macro typeid flat_type($Type) @const
 
 macro TypeKind flat_kind($Type) @const
 {
-	$if $Type.kindof == DISTINCT:
+	$if $Type.kindof == TYPEDEF || $Type.kindof == CONSTDEF:
 		return flat_type($Type.inner);
 	$else
 		return $Type.kindof;
@@ -191,8 +205,8 @@ macro bool is_flat_intlike($Type) @const
 		$case UNSIGNED_INT:
 			return true;
 		$case VECTOR:
-			return is_flat_intlike($Type.inner);
-		$case DISTINCT:
+		$case TYPEDEF:
+		$case CONSTDEF:
 			return is_flat_intlike($Type.inner);
 		$default:
 			return false;
@@ -218,7 +232,7 @@ macro bool is_underlying_int($Type) @const
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
 			return true;
-		$case DISTINCT:
+		$case TYPEDEF:
 			return is_underlying_int($Type.inner);
 		$default:
 			return false;
@@ -246,7 +260,7 @@ macro bool is_vector($Type) @const
 
 macro typeid inner_type($Type) @const
 {
-	$if $Type.kindof == TypeKind.DISTINCT:
+	$if $Type.kindof == TYPEDEF || $Type.kindof == CONSTDEF:
 		return inner_type($Type.inner);
 	$else
 		return $Type.typeid;
@@ -286,7 +300,7 @@ macro bool may_load_atomic($Type) @const
 	$case POINTER:
 	$case FLOAT:
 		return true;
-	$case DISTINCT:
+	$case TYPEDEF:
 	$case ENUM:
 		return may_load_atomic($Type.inner);
 	$default:
@@ -301,7 +315,8 @@ macro lower_to_atomic_compatible_type($Type) @const
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
 	        return $Type.typeid;
-		$case DISTINCT:
+		$case TYPEDEF:
+		$case CONSTDEF:
 			return lower_to_atomic_compatible_type($Type.inner);
 		$case FLOAT:
 			$switch $Type:
@@ -321,8 +336,8 @@ macro lower_to_atomic_compatible_type($Type) @const
   $endswitch
 }
 
-macro bool is_promotable_to_floatlike($Type) @const  => types::is_floatlike($Type) || types::is_int($Type);
-macro bool is_promotable_to_float($Type) @const  => types::is_float($Type) || types::is_int($Type);
+macro bool is_promotable_to_floatlike($Type) @const  => types::is_floatlike($Type) ||| types::is_int($Type);
+macro bool is_promotable_to_float($Type) @const  => types::is_float($Type) ||| types::is_int($Type);
 
 macro bool is_same_vector_type($Type1, $Type2) @const
 {
@@ -333,9 +348,11 @@ macro bool is_same_vector_type($Type1, $Type2) @const
 	$endif
 }
 
+macro bool has_equals($Type) @const => $defined(($Type){} == ($Type){});
+
 macro bool is_equatable_type($Type) @const
 {
-	$if $defined($Type.less) || $defined($Type.compare_to) || $defined($Type.equals):
+	$if $defined($Type.less) ||| $defined($Type.compare_to) ||| $defined($Type.equals):
 		return true;
 	$else
 		return $Type.is_eq;
@@ -347,7 +364,7 @@ macro bool is_equatable_type($Type) @const
 *>
 macro bool implements_copy($Type) @const
 {
-	return $defined($Type.copy) && $defined($Type.free);
+	return $defined($Type.copy) &&& $defined($Type.free);
 }
 
 macro bool @equatable_value(#value) @const
@@ -357,12 +374,15 @@ macro bool @equatable_value(#value) @const
 
 macro bool @comparable_value(#value) @const
 {
-	$if $defined(#value.less) || $defined(#value.compare_to):
+	$if $defined(#value.less) ||| $defined(#value.compare_to):
 		return true;
 	$else
 		return $typeof(#value).is_ordered;
 	$endif
 }
+
+const CONST_ENUM @builtin @deprecated("Use TypeKind.CONSTDEF instead") = TypeKind.CONSTDEF;
+const DISTINCT @builtin @deprecated("Use TypeKind.TYPEDEF instead") = TypeKind.TYPEDEF;
 
 enum TypeKind : char
 {
@@ -375,6 +395,7 @@ enum TypeKind : char
 	FAULT,
 	ANY,
 	ENUM,
+	CONSTDEF,
 	STRUCT,
 	UNION,
 	BITSTRUCT,
@@ -383,7 +404,7 @@ enum TypeKind : char
 	ARRAY,
 	SLICE,
 	VECTOR,
-	DISTINCT,
+	TYPEDEF,
 	POINTER,
 	INTERFACE,
 }

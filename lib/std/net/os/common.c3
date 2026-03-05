@@ -1,5 +1,5 @@
 module std::net::os;
-const bool SUPPORTS_INET = env::LIBC && (env::WIN32 || env::DARWIN || env::LINUX || env::ANDROID);
+const bool SUPPORTS_INET = env::LIBC && (env::WIN32 || env::DARWIN || env::LINUX || env::ANDROID || env::OPENBSD || env::NETBSD);
 
 typedef AIFamily = CInt;
 typedef AIProtocol = CInt;
@@ -18,12 +18,12 @@ struct AddrInfo
 	AISockType ai_socktype;
 	AIProtocol ai_protocol;
 	Socklen_t ai_addrlen;
-	struct @if(env::WIN32 || env::DARWIN || env::ANDROID)
+	struct @if(env::WIN32 || env::DARWIN || env::ANDROID || env::NETBSD)
 	{
 		ZString ai_canonname;
 		SockAddrPtr ai_addr;
 	}
-	struct @if(env::LINUX)
+	struct @if(env::LINUX || env::OPENBSD)
 	{
 		SockAddrPtr ai_addr;
 		ZString ai_canonname;
@@ -34,31 +34,60 @@ struct AddrInfo
 
 const PLATFORM_O_NONBLOCK @if(!$defined(PLATFORM_O_NONBLOCK)) = 0;
 
-const AISockType SOCK_STREAM                    = 1; // Stream
-const AISockType SOCK_DGRAM                     = 2; // Datagram
-const AISockType SOCK_RAW                       = 3; // Raw
-const AISockType SOCK_RDM                       = 4; // Reliably delivered
-const AISockType SOCK_SEQPACKET                 = 5; // Sequential packet
+const AISockType SOCK_STREAM                    = (AISockType)1; // Stream
+const AISockType SOCK_DGRAM                     = (AISockType)2; // Datagram
+const AISockType SOCK_RAW                       = (AISockType)3; // Raw
+const AISockType SOCK_RDM                       = (AISockType)4; // Reliably delivered
+const AISockType SOCK_SEQPACKET                 = (AISockType)5; // Sequential packet
 
-const AIFlags AI_PASSIVE                        = 0x1;
-const AIFlags AI_CANONNAME                      = 0x2;
-const AIFlags AI_NUMERICHOST                    = 0x4;
+const AIFlags AI_PASSIVE                        = (AIFlags)0x1;
+const AIFlags AI_CANONNAME                      = (AIFlags)0x2;
+const AIFlags AI_NUMERICHOST                    = (AIFlags)0x4;
 
-const AIFamily AF_UNSPEC                        = 0;
-const AIFamily AF_UNIX                          = 1;
-const AIFamily AF_INET                          = 2;
-const AIFamily AF_INET6                         = PLATFORM_AF_INET6;
-const AIFamily AF_IPX                           = PLATFORM_AF_IPX;
-const AIFamily AF_APPLETALK                     = PLATFORM_AF_APPLETALK;
+const AIFamily AF_UNSPEC                        = (AIFamily)0;
+const AIFamily AF_UNIX                          = (AIFamily)1;
+const AIFamily AF_INET                          = (AIFamily)2;
+const AIFamily AF_INET6                         = (AIFamily)PLATFORM_AF_INET6;
+const AIFamily AF_IPX                           = (AIFamily)PLATFORM_AF_IPX;
+const AIFamily AF_APPLETALK                     = (AIFamily)PLATFORM_AF_APPLETALK;
 
 const O_NONBLOCK = PLATFORM_O_NONBLOCK;
 
-extern fn CInt getaddrinfo(ZString nodename, ZString servname, AddrInfo* hints, AddrInfo** res) @if(SUPPORTS_INET);
-extern fn void freeaddrinfo(AddrInfo* res) @if(SUPPORTS_INET);
-extern fn CInt setsockopt(NativeSocket socket, CInt level, CInt optname, void* optval, Socklen_t optlen) @if(SUPPORTS_INET);
-extern fn CInt getsockopt(NativeSocket socket, CInt level, CInt optname, void* optval, Socklen_t optlen) @if(SUPPORTS_INET);
 
-module std::net::os @if(!env::LIBC || !(env::WIN32 || env::DARWIN || env::LINUX || env::ANDROID));
+<*
+ The getaddrinfo() function is used to get a list of IP addresses and port numbers for host hostname and service servname.
+
+ @param [in] nodename
+ @param [in] servname
+ @param [in] hints
+ @param [out] res
+ @require (void*)nodename || (void*)servname : "One the names must be non-null"
+*>
+extern fn CInt getaddrinfo(ZString nodename, ZString servname, AddrInfo* hints, AddrInfo** res) @if(SUPPORTS_INET);
+
+<*
+ freeaddrinfo() frees an AddrInfo created by getaddrinfo.
+
+ @param [&in] res
+*>
+extern fn void freeaddrinfo(AddrInfo* res) @if(SUPPORTS_INET);
+
+<*
+ Set options on a socket.
+
+ @param [out] optval
+*>
+extern fn CInt setsockopt(NativeSocket socket, CInt level, CInt optname, void* optval, Socklen_t optlen) @if(SUPPORTS_INET);
+
+<*
+ Get options on a socket
+
+ @param [in] optval
+ @param [inout] optlen
+*>
+extern fn CInt getsockopt(NativeSocket socket, CInt level, CInt optname, void* optval, Socklen_t* optlen) @if(SUPPORTS_INET);
+
+module std::net::os @if(!env::LIBC || !(env::WIN32 || env::DARWIN || env::LINUX || env::ANDROID || env::OPENBSD || env::NETBSD));
 
 const AIFamily PLATFORM_AF_INET6        = 0;
 const AIFamily PLATFORM_AF_IPX          = 0;

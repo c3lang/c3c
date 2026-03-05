@@ -1,6 +1,6 @@
 module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 
-fn double _ceil(double x) @weak @extern("ceil") @nostrip
+fn double _ceil(double x) @weak @cname("ceil") @nostrip
 {
 	ulong ui = bitcast(x, ulong);
 	int e = (int)((ui >> 52) & 0x7ff);
@@ -17,7 +17,7 @@ fn double _ceil(double x) @weak @extern("ceil") @nostrip
 }
 
 
-fn float _ceilf(float x) @weak @extern("ceilf") @nostrip
+fn float _ceilf(float x) @weak @cname("ceilf") @nostrip
 {
 	uint u = bitcast(x, uint);
 	int e = (int)((u >> 23) & 0xff) - 0x7f;
