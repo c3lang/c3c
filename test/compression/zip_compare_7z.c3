@@ -130,7 +130,7 @@ fn int verify_one(String zip_path, String output_dir)
 	(void)path::mkdir(temp_c3, true);
 	(void)path::mkdir(temp_7z, true);
 
-	ZipArchive? archive = zip::open(zip_path, "r");
+	ZipArchive? archive = zip::open(mem, zip_path, "r");
 	if (catch excuse = archive)
 	{
 		io::printfn("%sFAIL%s (open: %s)", Ansi.RED, Ansi.RESET, excuse);
