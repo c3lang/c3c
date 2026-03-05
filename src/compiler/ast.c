@@ -17,20 +17,20 @@ Expr *poisoned_expr = &poison_expr;
 Ast *poisoned_ast = &poison_ast;
 
 // Standard decl creation, used by compile time constructs, since they have no need for neither type nor name.
-Decl *decl_new_ct(DeclKind kind, SourceSpan span)
+Decl *decl_new_ct(DeclKind kind, SourceLocId span)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = kind;
-	decl->span = span;
+	decl->loc = span;
 	return decl;
 }
 
 // Named declaration without type.
-Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span)
+Decl *decl_new(DeclKind decl_kind, const char *name, SourceLocId loc)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = decl_kind;
-	decl->span = span;
+	decl->loc = loc;
 	decl->name = name;
 	return decl;
 }
@@ -47,12 +47,12 @@ bool decl_is_ct_var(Decl *decl)
 	return decl_var_kind_is_ct(decl->var.kind);
 }
 
-Decl *decl_new_with_type(const char *name, SourceSpan span, DeclKind decl_type)
+Decl *decl_new_with_type(const char *name, SourceLoc *loc, DeclKind decl_type)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = decl_type;
 	decl->name = name;
-	decl->span = span;
+	decl->loc = loc ? make_loc(*loc) : 0;
 	TypeKind kind = TYPE_POISONED;
 	switch (decl_type)
 	{
@@ -69,7 +69,7 @@ Decl *decl_new_with_type(const char *name, SourceSpan span, DeclKind decl_type)
 			kind = TYPE_ENUM;
 			break;
 		case DECL_CONSTDEF:
-			kind = TYPE_CONST_ENUM;
+			kind = TYPE_CONSTDEF;
 			break;
 		case DECL_TYPEDEF:
 			kind = TYPE_TYPEDEF;
@@ -168,26 +168,34 @@ const char *decl_to_a_name(Decl *decl)
 }
 
 
-Decl *decl_new_var(const char *name, SourceSpan span, TypeInfo *type, VarDeclKind kind)
+Decl *decl_new_var_loc(const char *name, SourceLoc *loc, TypeInfo *type, VarDeclKind kind)
 {
-	Decl *decl = decl_new(DECL_VAR, name, span);
+	Decl *decl = decl_new(DECL_VAR, name, make_loc(*loc));
 	decl->var.kind = kind;
 	decl->var.type_info = type ? type_infoid(type) : 0;
 	return decl;
 }
 
-Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span)
+Decl *decl_new_var(const char *name, SourceLocId loc, TypeInfo *type, VarDeclKind kind)
+{
+	Decl *decl = decl_new(DECL_VAR, name, loc);
+	decl->var.kind = kind;
+	decl->var.type_info = type ? type_infoid(type) : 0;
+	return decl;
+}
+
+Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceLocId loc)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = DECL_VAR;
-	decl->span = span;
+	decl->loc = loc;
 	decl->name = NULL;
 	decl->var.kind = kind;
 	decl->var.is_temp = true;
 	decl->type = type;
 	decl->alignment = type ? type_alloca_alignment(type) : 0;
-	ASSERT_AT(span, !type || !type_is_user_defined(type) || type->decl->resolve_status == RESOLVE_DONE);
-	decl->var.type_info = type_info_id_new_base(type, span);
+	ASSERT_AT(loc, !type || !type_is_user_defined(type) || type->decl->resolve_status == RESOLVE_DONE);
+	decl->var.type_info = type_info_id_new_base(type, loc);
 	decl->resolve_status = RESOLVE_DONE;
 	return decl;
 }

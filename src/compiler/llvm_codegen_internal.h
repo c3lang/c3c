@@ -132,7 +132,7 @@ typedef struct GenContext_
 		// The entry block in the function
 		LLVMBasicBlockRef first_block;
 		// The last emitted location.
-		SourceSpan last_emitted_loc;
+		SourceLocId last_emitted_loc;
 		// Last emitted location metadata
 		LLVMMetadataRef last_loc;
 		// Used for defer (catch err)
@@ -535,11 +535,11 @@ LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr);
 LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id);
 void llvm_emit_ignored_expr(GenContext *c, Expr *expr);
 void llvm_emit_stmt(GenContext *c, Ast *ast);
-void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc,
+void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceLocId loc,
 							 const char *fmt, BEValue *value_1, BEValue *value_2);
-void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc, const char *fmt, BEValue *value_1,
+void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceLocId loc, const char *fmt, BEValue *value_1,
 							 BEValue *value_2);
-void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *varargs);
+void llvm_emit_panic(GenContext *c, const char *message, SourceLocId loc, const char *fmt, BEValue *varargs);
 void llvm_emit_unreachable(GenContext *c);
 void llvm_emit_assume_true(GenContext *c, BEValue *assume_true);
 LLVMValueRef llvm_emit_expect_raw(GenContext *c, LLVMValueRef expect_true);
@@ -583,17 +583,17 @@ LLVMMetadataRef llvm_get_debug_file(GenContext *c, FileId file_id);
 	c__->debug.block_stack = &new_scope; } } while (0)
 #define DEBUG_POP_LEXICAL_SCOPE(c__) do { c__->debug.block_stack = old_scope; } while (0)
 INLINE bool llvm_use_debug(GenContext *context);
-DebugScope llvm_debug_create_lexical_scope(GenContext *context, SourceSpan location);
+DebugScope llvm_debug_create_lexical_scope(GenContext *context, SourceLocId location);
 LLVMMetadataRef llvm_debug_current_scope(GenContext *context);
 void llvm_emit_debug_function(GenContext *c, Decl *decl);
-void llvm_emit_debug_location(GenContext *c, SourceSpan location);
-LLVMMetadataRef llvm_create_debug_location(GenContext *c, SourceSpan location);
+void llvm_emit_debug_location(GenContext *c, SourceLocId location);
+LLVMMetadataRef llvm_create_debug_location(GenContext *c, SourceLocId location);
 void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index);
 void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 
 #define UWTABLE (compiler.build.arch_os_target == MACOS_AARCH64 ? 1 : 2)
-#define EMIT_LOC(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x->span); } while (0)
-#define EMIT_EXPR_LOC(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x->span); } while (0)
+#define EMIT_LOC(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x->loc); } while (0)
+#define EMIT_EXPR_LOC(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x->loc); } while (0)
 #define EMIT_SPAN(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x); } while (0)
 #define PUSH_DEFER_ERROR(val__) LLVMValueRef def_err__ = c->defer_error_var; c->defer_error_var = val__
 #define POP_DEFER_ERROR() c->defer_error_var = def_err__
