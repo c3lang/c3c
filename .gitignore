@@ -104,3 +104,5 @@ test_suite_runner
 *.patch
 *.rej
 *.orig
+
+c3lsp.json

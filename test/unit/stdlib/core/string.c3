@@ -341,6 +341,90 @@ fn void test_float()
 	test::eq_approx(2.04632e-05," + 2.04632e-05   ".to_float()!!, delta: 0.00001e-5);
 }
 
+fn void test_try_to_number_conversions()
+{
+	int128 i128 = 0;
+	long l = 0;
+	int i = 0;
+	short s = 0;
+	ichar ic = 0;
+	uint128 u128 = 0;
+	ulong ul = 0;
+	uint u = 0;
+	ushort us = 0;
+	char uc = 0;
+	double d = 0;
+	float f = 0;
+
+	assert("12345".try_to_int128(&i128));
+	assert(i128 == 12345LL);
+	assert("-1234".try_to_long(&l));
+	assert(l == -1234L);
+	assert("-27".try_to_int(&i));
+	assert(i == (int)-27);
+	assert("-32000".try_to_short(&s));
+	assert(s == (short)-32000);
+	assert("-120".try_to_ichar(&ic));
+	assert(ic == (ichar)-120);
+
+	assert("12345".try_to_uint128(&u128));
+	assert(u128 == (uint128)12345);
+	assert("765".try_to_ulong(&ul));
+	assert(ul == (ulong)765);
+	assert("0".try_to_uint(&u));
+	assert(u == (uint)0);
+	assert("65535".try_to_ushort(&us));
+	assert(us == (ushort)65535);
+	assert("255".try_to_uchar(&uc));
+	assert(uc == (char)255);
+	i = 0;
+	assert("2a".try_to_integer(int, &i, 16));
+	assert(i == (int)42);
+
+	assert("3.125".try_to_double(&d));
+	test::eq_approx(d, 3.125, delta: 0.000000000001);
+	assert("1.5".try_to_float(&f));
+	test::eq_approx(f, 1.5f, delta: 0.00001f);
+
+	i = (int)42;
+	assert(!"abc".try_to_int(&i));
+	assert(i == (int)42);
+	assert(!"10".try_to_int(&i, 17));
+	assert(i == (int)42);
+	assert(!"10".try_to_integer(int, &i, 0));
+	assert(i == (int)42);
+	uc = 7;
+	assert(!"256".try_to_uchar(&uc));
+	assert(uc == (char)7);
+	f = 1.0f;
+	assert(!"+".try_to_float(&f));
+	assert(f == 1.0f);
+	d = 2.0;
+	assert(!"-".try_to_double(&d));
+	assert(d == 2.0);
+}
+
+fn void test_to_number_or_conversions()
+{
+
+	assert("12345".to_integer_or(int, (int)7) == (int)12345);
+	assert("-1234".to_integer_or(long, 9) == -1234L);
+	assert("".to_integer_or(uint, 11) == 11u);
+	assert("NaN".to_integer_or(uint, 420) == 420u);
+	assert("-1".to_integer_or(uint, 13) == 13u);
+	assert("2a".to_integer_or(int, (int)0, 16) == (int)42);
+	assert("10".to_integer_or(int, (int)99, 17) == (int)99);
+	assert("ff".to_integer_or(uint, 3, 16) == (uint)255);
+
+	test::eq_approx("3.125".to_real_or(double, 2.0), 3.125, delta: 0.000000000001);
+	test::eq_approx("1.5".to_real_or(float, 2.0f), 1.5f, delta: 0.00001f);
+	assert("+".to_real_or(double, 8.0) == 8.0);
+	assert("-".to_real_or(float, 6.0f) == 6.0f);
+	test::eq_approx("2.5".to_real_or(double, 1.0), 2.5, delta: 0.000000000001);
+	assert(("44".to_int() ?? (int)9) == (int)44);
+	assert(("bad".to_int() ?? (int)9) == (int)9);
+}
+
 fn void test_pascal_to_snake()
 {
 	String[2][*] test_cases = {

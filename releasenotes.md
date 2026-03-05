@@ -9,6 +9,8 @@
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
 - Add hash method for ZStrings. #2982
+- Add `String.try_to_*` numeric parsing helpers and generic `String.try_to_integer` / `String.try_to_real` utilities.
+- Add generic fallback parsing helpers `String.to_integer_or` and `String.to_real_or`.
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.

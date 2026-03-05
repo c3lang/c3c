@@ -1111,14 +1111,63 @@ fn int? String.to_int(self, int base = 10) => self.to_integer(int, base);
 fn short? String.to_short(self, int base = 10) => self.to_integer(short, base);
 fn ichar? String.to_ichar(self, int base = 10) => self.to_integer(ichar, base);
 
+macro bool String.try_to_integer(self, $Type, out, int base = 10)
+{
+	if (base <= 0 || base > 16) return false;
+	if (try value = self.to_integer($Type, base))
+	{
+		*out = value;
+		return true;
+	}
+	return false;
+}
+
+fn bool String.try_to_int128(self, int128* out, int base = 10) => self.try_to_integer(int128, out, base);
+fn bool String.try_to_long(self, long* out, int base = 10) => self.try_to_integer(long, out, base);
+fn bool String.try_to_int(self, int* out, int base = 10) => self.try_to_integer(int, out, base);
+fn bool String.try_to_short(self, short* out, int base = 10) => self.try_to_integer(short, out, base);
+fn bool String.try_to_ichar(self, ichar* out, int base = 10) => self.try_to_integer(ichar, out, base);
+
 fn uint128? String.to_uint128(self, int base = 10) => self.to_integer(uint128, base);
 fn ulong? String.to_ulong(self, int base = 10) => self.to_integer(ulong, base);
 fn uint? String.to_uint(self, int base = 10) => self.to_integer(uint, base);
 fn ushort? String.to_ushort(self, int base = 10) => self.to_integer(ushort, base);
 fn char? String.to_uchar(self, int base = 10) => self.to_integer(char, base);
 
+fn bool String.try_to_uint128(self, uint128* out, int base = 10) => self.try_to_integer(uint128, out, base);
+fn bool String.try_to_ulong(self, ulong* out, int base = 10) => self.try_to_integer(ulong, out, base);
+fn bool String.try_to_uint(self, uint* out, int base = 10) => self.try_to_integer(uint, out, base);
+fn bool String.try_to_ushort(self, ushort* out, int base = 10) => self.try_to_integer(ushort, out, base);
+fn bool String.try_to_uchar(self, char* out, int base = 10) => self.try_to_integer(char, out, base);
+
+macro String.to_integer_or(self, $Type, or_value, int base = 10)
+{
+	if (base <= 0 || base > 16) return or_value;
+	if (try value = self.to_integer($Type, base)) return value;
+	return or_value;
+}
+
 fn double? String.to_double(self) => self.to_real(double);
 fn float? String.to_float(self) => self.to_real(float);
+
+macro bool String.try_to_real(self, $Type, out) @private
+{
+	if (try value = self.to_real($Type))
+	{
+		*out = value;
+		return true;
+	}
+	return false;
+}
+
+fn bool String.try_to_double(self, double* out) => self.try_to_real(double, out);
+fn bool String.try_to_float(self, float* out) => self.try_to_real(float, out);
+
+macro String.to_real_or(self, $Type, or_value)
+{
+	if (try value = self.to_real($Type)) return value;
+	return or_value;
+}
 
 
 <*
