@@ -20,7 +20,7 @@ typedef struct // NOLINT
 	bool is_binary_conversion;
 } CastContext;
 
-#define RETURN_CAST_ERROR(_node, ...) do { print_error_at((_node)->span, __VA_ARGS__); sema_print_inline(cc->context, (_node)->span); return false; } while (0)
+#define RETURN_CAST_ERROR(_node, ...) do { print_error_at((_node)->loc, __VA_ARGS__); sema_print_inline(cc->context, (_node)->loc); return false; } while (0)
 
 static bool sema_error_const_int_out_of_range(CastContext *cc, Expr *expr, Expr *problem, Type *to_type);
 static Expr *recursive_may_narrow(Expr *expr, Type *type);
@@ -1546,7 +1546,7 @@ static bool rule_vec_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 	if (from_base == type_bool && cc->to_group == CONV_INT) return true;
 	// Create a fake expression that can't be folded for some checking if the
 	// the elements could be cast.
-	Expr temp = { .expr_kind = EXPR_MACRO_BLOCK, .type = from_base, .span = cc->expr->span, .resolve_status = RESOLVE_DONE };
+	Expr temp = { .expr_kind = EXPR_MACRO_BLOCK, .type = from_base, .loc = cc->expr->loc, .resolve_status = RESOLVE_DONE };
 	cc->expr = &temp;
 	cast_context_set_from(cc, from_base);
 	bool success = cast_is_allowed(cc, is_explicit, true);
@@ -2332,7 +2332,7 @@ static void cast_slice_to_bool(Expr *expr, Type *type)
 	Expr *inner = expr_copy(expr);
 	Expr *len = expr_copy(expr);
 	expr_rewrite_slice_len(len, inner, type_usz);
-	expr_rewrite_to_binary(expr, len, expr_new_const_int(expr->span, type_usz, 0), BINARYOP_NE);
+	expr_rewrite_to_binary(expr, len, expr_new_const_int(expr->loc, type_usz, 0), BINARYOP_NE);
 	expr->type = type;
 }
 
@@ -2419,7 +2419,7 @@ static void expr_rewrite_bytes_to_const_initializer(Expr *expr, Type *target_typ
 	ConstInitializer **inits = MALLOC(sizeof(ConstInitializer*) * expr->const_expr.bytes.len);
 	for (int i = 0; i < expr->const_expr.bytes.len; i++)
 	{
-		Expr *int_expr = expr_new_const_int(expr->span, base, (unsigned char)expr->const_expr.bytes.ptr[i]);
+		Expr *int_expr = expr_new_const_int(expr->loc, base, (unsigned char)expr->const_expr.bytes.ptr[i]);
 		ConstInitializer *init = const_init_new_value(int_expr);
 		inits[i] = init;
 	}
@@ -2698,7 +2698,7 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_TYPEID]           = CONV_TYPEID,
 	[TYPE_POINTER]          = CONV_POINTER,
 	[TYPE_ENUM]             = CONV_ENUM,
-	[TYPE_CONST_ENUM]       = CONV_RAW_ENUM,
+	[TYPE_CONSTDEF]       = CONV_RAW_ENUM,
 	[TYPE_FUNC_PTR]         = CONV_FUNC,
 	[TYPE_STRUCT]           = CONV_STRUCT,
 	[TYPE_UNION]            = CONV_UNION,

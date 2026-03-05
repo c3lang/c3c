@@ -561,7 +561,7 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 
 	if (settings.no_deprecation)
 	{
-		cmdline.push("--silence-deprecation");
+		cmdline.push("--warn-deprecation=no");
 	}
 
 	cmdline.push(settings.safe ? "--safe=yes" : "--safe=no");

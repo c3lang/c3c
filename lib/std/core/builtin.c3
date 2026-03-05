@@ -359,6 +359,9 @@ macro any.retype_to(&self, typeid type)
 	return $$any_make(self.ptr, type);
 }
 
+<*
+ @require (bool)self.type : "A typed any was expected"
+*>
 macro any.as_inner(&self)
 {
 	return $$any_make(self.ptr, self.type.inner);
@@ -725,6 +728,7 @@ macro uint bool[<*>].hash(self)    => hash_vec(self);
 macro uint typeid.hash(typeid t) => @generic_hash(((ulong)(uptr)t));
 macro uint String.hash(String c) => (uint)a5hash::hash(c);
 macro uint char[].hash(char[] c) => (uint)a5hash::hash(c);
+macro uint ZString.hash(ZString c) => (uint)a5hash::hash(c.str_view());
 macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
 <*

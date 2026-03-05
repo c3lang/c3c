@@ -1,5 +1,26 @@
 # C3C Release Notes
 
+## 0.7.11 Change list
+
+### Changes / improvements
+- Removed support for LLVM 17, 18.
+- Detect large temporaries when creating slices on the stack #2665
+
+### Stdlib changes
+- Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
+- Add hash method for ZStrings. #2982
+- Added json serialization from structs.
+
+### Fixes
+- `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
+- Name conflict with auto-imported std::core, but it should have lower priority #2902
+- Regression: missing generic nesting check on non-types.
+- Improved stringify. 
+- PollSubscribe was incorrectly an int instead of ushort. #2997
+- SubProcessOptions.search_user_path did nothing on non-windows systems despite comment saying it should #2845
+- AES implementation fixed to be constant time #2806
+- Object would not properly compile on 32-bit Linux.
+
 ## 0.7.10 Change list
 
 ### Changes / improvements
@@ -23,6 +44,7 @@
 - Support deprecating enum values.
 - Improve error when trying to use an extern const as a compile time constant. #2969
 - `vendor-fetch` command now lists all available packages by default. #2976
+- Typekind enums are changed CONST_ENUM -> CONSTDEF, DISTINCT -> TYPEDEF.
 
 ### Stdlib changes
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
@@ -61,6 +83,7 @@
 - Trying to slice an indexable type leads to misleading error message #2958
 - Warn on use of visibility modifiers on methods. #2962
 - Compiler crash using `??` with a `void?` macro #2973
+- Fix issue when extending a generic type with a method in another module.
 
 ## 0.7.9 Change list
 
