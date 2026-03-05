@@ -345,47 +345,58 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 
 static const char *get_linux_crt_arch_glob(void)
 {
-	if (compiler.build.linuxpaths.libc == LINUX_LIBC_MUSL) return "/usr/lib/*/crt1.o";
+	bool musl = compiler.build.linuxpaths.libc == LINUX_LIBC_MUSL;
 	switch (compiler.build.arch_os_target)
 	{
 		case LINUX_X64:
-			return "/usr/lib/x86_64*linux*/crt1.o";
+			return musl ? "/usr/lib/x86_64*musl*/crt1.o" : "/usr/lib/x86_64*linux*/crt1.o";
 		case LINUX_X86:
-			return "/usr/lib/i686*linux*/crt1.o";
+			return musl ? "/usr/lib/i686*musl*/crt1.o" : "/usr/lib/i686*linux*/crt1.o";
 		case LINUX_AARCH64:
-			return "/usr/lib/aarch64*linux*/crt1.o";
+			return musl ? "/usr/lib/aarch64*musl*/crt1.o" : "/usr/lib/aarch64*linux*/crt1.o";
 		case LINUX_RISCV32:
-			return "/usr/lib/riscv32*linux*/crt1.o";
+			return musl ? "/usr/lib/riscv32*musl*/crt1.o" : "/usr/lib/riscv32*linux*/crt1.o";
 		case LINUX_RISCV64:
-			return "/usr/lib/riscv64*linux*/crt1.o";
+			return musl ? "/usr/lib/riscv64*musl*/crt1.o" : "/usr/lib/riscv64*linux*/crt1.o";
 		default:
-			return "/usr/lib/*/crt1.o";
+			return musl ? "/usr/lib/*musl*/crt1.o" : "/usr/lib/*/crt1.o";
 	}
 }
 
 static const char *get_linux_crt_begin_arch_glob(void)
 {
-	if (compiler.build.linuxpaths.libc == LINUX_LIBC_MUSL) return "/usr/lib/gcc/*/*/crtbegin.o";
+	bool musl = compiler.build.linuxpaths.libc == LINUX_LIBC_MUSL;
 	switch (compiler.build.arch_os_target)
 	{
 		case LINUX_X64:
-			return "/usr/lib/gcc/x86_64*linux*/*/crtbegin.o";
+			return musl ? "/usr/lib/gcc/x86_64*musl*/*/crtbegin.o" : "/usr/lib/gcc/x86_64*linux*/*/crtbegin.o";
 		case LINUX_X86:
-			return "/usr/lib/gcc/i686*linux*/*/crtbegin.o";
+			return musl ? "/usr/lib/gcc/i686*musl*/*/crtbegin.o" : "/usr/lib/gcc/i686*linux*/*/crtbegin.o";
 		case LINUX_AARCH64:
-			return "/usr/lib/gcc/aarch64*linux*/*/crtbegin.o";
+			return musl ? "/usr/lib/gcc/aarch64*musl*/*/crtbegin.o" : "/usr/lib/gcc/aarch64*linux*/*/crtbegin.o";
 		case LINUX_RISCV32:
-			return "/usr/lib/gcc/riscv32*linux*/*/crtbegin.o";
+			return musl ? "/usr/lib/gcc/riscv32*musl*/*/crtbegin.o" : "/usr/lib/gcc/riscv32*linux*/*/crtbegin.o";
 		case LINUX_RISCV64:
-			return "/usr/lib/gcc/riscv64*linux*/*/crtbegin.o";
+			return musl ? "/usr/lib/gcc/riscv64*musl*/*/crtbegin.o" : "/usr/lib/gcc/riscv64*linux*/*/crtbegin.o";
 		default:
-			return "/usr/lib/gcc/*/*/crtbegin.o";
+			return musl ? "/usr/lib/gcc/*musl*/*/crtbegin.o" : "/usr/lib/gcc/*/*/crtbegin.o";
 	}
 }
 
 static const char *find_linux_crt(void)
 {
 	if (compiler.build.linuxpaths.crt) return compiler.build.linuxpaths.crt;
+
+	bool is_musl = compiler.build.linuxpaths.libc == LINUX_LIBC_MUSL;
+
+	if (is_musl)
+	{
+		if (file_exists("/usr/lib/musl/lib/crt1.o"))
+		{
+			INFO_LOG("Found musl crt at /usr/lib/musl/lib/");
+			return "/usr/lib/musl/lib/";
+		}
+	}
 
 	const char *arch_glob_path = get_linux_crt_arch_glob();
 
@@ -424,17 +435,34 @@ static const char *find_linux_crt(void)
 	{
 		const char *arch_linux_crt1_path = "/usr/lib/crt1.o";
 		const char *arch_linux_64_crt1_path = "/usr/lib64/crt1.o";
+
+		// If we are looking for musl, we don't want to pick up /usr/lib/crt1.o unless there are no other options,
+		// or if we're on a pure musl system (like Alpine).
+		// On glibc systems, /usr/lib/crt1.o is glibc.
+		bool glibc_system = file_exists("/lib/libc.so.6") || file_exists("/usr/lib/libc.so.6") || file_exists("/lib64/libc.so.6");
+		INFO_LOG("is_musl: %d, glibc_system: %d, is_host: %d", is_musl, glibc_system, is_host_arch);
+
 		if (file_exists(arch_linux_crt1_path))
 		{
-			const char *arch_linux_path = "/usr/lib";
-			INFO_LOG("Found crt at %s", arch_linux_path);
-			return arch_linux_path;
+			if (!is_musl || !glibc_system)
+			{
+				const char *arch_linux_path = "/usr/lib";
+				INFO_LOG("Found crt at %s (arch_linux)", arch_linux_path);
+				return arch_linux_path;
+			}
+			else
+			{
+				INFO_LOG("Skipping %s because it is probably glibc while targeting musl", arch_linux_crt1_path);
+			}
 		}
 		if (file_exists(arch_linux_64_crt1_path))
 		{
-			const char* arch_linux_path = "/usr/lib64";
-			INFO_LOG("Found crt at %s", arch_linux_path);
-			return arch_linux_path;
+			if (!is_musl || !glibc_system)
+			{
+				const char* arch_linux_path = "/usr/lib64";
+				INFO_LOG("Found crt at %s (arch_linux)", arch_linux_path);
+				return arch_linux_path;
+			}
 		}
 	}
 
