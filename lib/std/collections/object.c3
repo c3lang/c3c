@@ -78,7 +78,7 @@ fn usz? Object.to_format(&self, Formatter* formatter) @dynamic
 
 fn Object* new_obj(Allocator allocator)
 {
-	return allocator::new_aligned(allocator, Object, { .allocator = allocator, .type = void.typeid })!!;
+	return @alloc_obj(allocator, { .allocator = allocator, .type = void.typeid });
 }
 
 fn Object* new_null()
@@ -88,22 +88,22 @@ fn Object* new_null()
 
 fn Object* new_int(int128 i, Allocator allocator)
 {
-	return allocator::new_aligned(allocator, Object, { .i = i, .allocator = allocator, .type = int128.typeid })!!;
+	return @alloc_obj(allocator, { .i = i, .allocator = allocator, .type = int128.typeid });
 }
 
 macro Object* new_enum(e, Allocator allocator)
 {
-	return allocator::new_aligned(allocator, Object, { .i = (int128)e, .allocator = allocator, .type = @typeid(e) })!!;
+	return @alloc_obj(allocator, { .i = (int128)e, .allocator = allocator, .type = @typeid(e) });
 }
 
 fn Object* new_float(double f, Allocator allocator)
 {
-	return allocator::new_aligned(allocator, Object, { .f = f, .allocator = allocator, .type = double.typeid })!!;
+	return @alloc_obj(allocator, { .f = f, .allocator = allocator, .type = double.typeid });
 }
 
 fn Object* new_string(String s, Allocator allocator)
 {
-	return allocator::new_aligned(allocator, Object, { .s = s.copy(allocator), .allocator = allocator, .type = String.typeid })!!;
+	return @alloc_obj(allocator, { .s = s.copy(allocator), .allocator = allocator, .type = String.typeid });
 }
 
 
@@ -134,7 +134,14 @@ fn void Object.free(&self)
 		default:
 			break;
 	}
-	if (self.allocator) allocator::free_aligned(self.allocator, self);
+	if (self.allocator)
+	{
+		$if Object.alignof > mem::DEFAULT_MEM_ALIGNMENT:
+			allocator::free_aligned(self.allocator, self);
+		$else
+			allocator::free(self.allocator, self);
+		$endif
+	}
 }
 
 fn bool Object.is_null(&self) @inline => self == &NULL_OBJECT;
@@ -464,4 +471,13 @@ fn Object* Object.get_or_create_obj(&self, String key)
 alias ObjectInternalMap      @private = HashMap {String, Object*};
 alias ObjectInternalList     @private = List {Object*};
 alias ObjectInternalMapEntry @private = Entry {String, Object*};
+
+macro Object* @alloc_obj(Allocator a, #init) @private
+{
+	$if Object.alignof > mem::DEFAULT_MEM_ALIGNMENT:
+		return allocator::new_aligned(a, Object, #init)!!;
+	$else
+		return allocator::new(a, Object, #init);
+	$endif
+}
 
