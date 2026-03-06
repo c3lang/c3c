@@ -1071,3 +1071,9 @@ fn void install_signal_handlers() @init(101) @local @if(env::BACKTRACE)
 	posix::install_signal_handler(libc::SIGSEGV, &sig_segmentation_fault);
 	posix::install_signal_handler(libc::SIGILL,  &sig_illegal_instruction);
 }
+
+fn String fault.short_name(self)
+{
+	String name = self.nameof;
+	return name[name.index_of("::") + 2..]!!;
+}
