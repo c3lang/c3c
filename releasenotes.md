@@ -6,12 +6,15 @@
 - Removed support for LLVM 17, 18.
 - Detect large temporaries when creating slices on the stack #2665
 - Search for the linker in PATH; use the builtin linker if CC missing. #2906
+- `constdef` inference through binary expressions: `Foo f = Foo.AUDIO | Foo.VIDEO` can be written `Foo f = AUDIO | VIDEO;`
 - Fix for LLVM 22+ compatibility #2987
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
 - Add hash method for ZStrings. #2982
 - Added json serialization from structs.
+- Add `keccak` and Keccak-based hash functions: `sha3`, `shake`, `cshake`, `kmac`, `turboshake`, `tuplehash`, and `parallelhash`. #2728
+- Added `fault.short_name` and `fault.@short_name` to get just the fault name for both run and compile time. #3002
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
@@ -22,6 +25,10 @@
 - SubProcessOptions.search_user_path did nothing on non-windows systems despite comment saying it should #2845
 - AES implementation fixed to be constant time #2806
 - Object would not properly compile on 32-bit Linux.
+- `read_varint` and `write_varint` did not work properly for ulong and wider.
+- `io::EOF.nameof` would yield just `EOF` whereas resolving it at runtime would (correctly) yield `io::EOF`.
+- `$stringify` would incorrectly capture lambdas. #2986
+- Regression: `String` was not implicitly `@constinit` #2983
 
 ## 0.7.10 Change list
 
@@ -60,7 +67,7 @@
 - Add `array::even`, `array::odd`, and `array::unlace` macros. #2892
 - Add discrete and continuous distributions in `std::math::distributions`.
 - Add bitorder functions `store_le`, `load_le`, `store_be`, `store_le`.
-- Stream functions now use long/ulong rather than isz/usz for seek/available. 
+- Stream functions now use long/ulong rather than isz/usz for seek/available.
 - `instream.seek` is replaced by `set_cursor` and `cursor`.
 - `instream.available`, `cursor` etc are long/ulong rather than isz/usz to be correct on 32-bit.
 - Enable asynchronous, non-blocking reads of subprocess STDOUT/STDERR pipes on POSIX systems.
@@ -76,7 +83,7 @@
 - Flag `--cpu-flags` doesn't work if the first item is an exclusion. #2905
 - Reallocating overaligned memory with the LibcAllocator was unsafe.
 - Using [] or .foo on $$ functions would not raise error but instead crash
-- Improved underlining errors/warnings when unicode is used. #2887 
+- Improved underlining errors/warnings when unicode is used. #2887
 - Fix std::io::Formatter integer issue for large uint128 decimal values.
 - `--safe=no` disabled compile-time errors on compile-time known runtime @require checks #2936
 - On assert known false, the message was not shown for no-args.

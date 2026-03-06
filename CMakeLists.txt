@@ -265,7 +265,8 @@ if(C3_WITH_LLVM)
 
     include_directories(${LLVM_INCLUDE_DIRS})
     link_directories(${LLVM_LIBRARY_DIRS})
-    add_definitions(${LLVM_DEFINITIONS})
+    separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+    add_definitions(${LLVM_DEFINITIONS_LIST})
 
     if(NOT C3_LINK_DYNAMIC)
         set(LLVM_LINK_COMPONENTS

@@ -433,6 +433,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left, SourceLoc *lhs_span UNUSE
 		PRINT_ERROR_HERE("Expected the beginning of a block or a short statement.");
 	}
 	expr->lambda_expr = func;
+	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 
