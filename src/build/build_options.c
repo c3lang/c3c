@@ -164,7 +164,6 @@ static void usage(bool full)
 		print_opt("--test-log-level=<verbose|debug|info|warn|error|critical>", "Set log priority when running tests.");
 		PRINTF("");
 		print_opt("--benchmark-csv-report", "Print a CSV report after benchmarks have completed.");
-		print_opt("--benchmark-median=<yes|no>", "When running benchmarks, forcibly include or suppress the median metric for each set of samples.");
 	}
 	PRINTF("");
 	print_opt("-l <library>", "Link with the static or dynamic library provided.");
@@ -904,11 +903,6 @@ static void parse_option(BuildOptions *options)
 				options->benchmark_csv_report = true;
 				return;
 			}
-			if ((argopt = match_argopt("benchmark-median")))
-			{
-				options->benchmark_median = parse_opt_select(BenchmarkMedian, argopt, on_off);
-				return;
-			}
 			if (match_longopt("print-large-functions"))
 			{
 				options->print_large_functions = true;
@@ -1624,7 +1618,6 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.validation_level = VALIDATION_NOT_SET,
 		.ansi = ANSI_DETECT,
-		.benchmark_median = BENCHMARK_MEDIAN_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.sanitize_mode = SANITIZE_NOT_SET,

@@ -26,7 +26,6 @@ struct BenchContext
 	bool is_warming;
 	uint this_iteration;
 	bool stop;
-	bool report_median;
 	bool has_ansi_codes;
 	bool generate_csv;
 }
@@ -54,14 +53,16 @@ fn BenchmarkUnit[] benchmark_collection_create(Allocator allocator)
 	return benchmarks;
 }
 
-<*
- @require $defined((double)set[0])
- @require lengthof(set) > 0
-*>
-macro get_median(set) @local
-	=> lengthof(set) % 2 != 0
-		? (double)set[lengthof(set) / 2]
-		: ((double)(set[lengthof(set) / 2 - 1] + set[lengthof(set) / 2]) / 2.0);
+fn double get_stddev(NanoDuration[] set, double mean) @local
+{
+	double sum_sq_diff = 0;
+	foreach (t : set)
+	{
+		double diff = (double)t - mean;
+		sum_sq_diff += diff * diff;
+	}
+	return math::sqrt(sum_sq_diff / (double)set.len);
+}
 
 fn void set_benchmark_warmup_iterations(uint value) @builtin
 {
@@ -81,10 +82,7 @@ fn void set_benchmark_func_iterations(String func, uint value) @builtin
 	bench_context.fn_iters[func] = value;
 }
 
-fn void set_benchmark_report_median(bool does) @builtin
-{
-	bench_context.report_median = does;
-}
+
 
 
 macro void @start_benchmark()
@@ -135,6 +133,26 @@ fn bool? get_yes_no(String[] args_at)
 	}
 }
 
+fn void append_duration_colored(DString *ds, NanoDuration dur, bool ansi, String base_color) @local
+{
+	if (!ansi)
+	{
+		ds.appendf("%8s", dur.tunit_str());
+		return;
+	}
+	static String[] units = { "ns", "us", "ms", "s" };
+	static String[] colors = { "\e[0;96m", "\e[0;92m", "\e[0;93m", "\e[0;91m" };
+
+	double val = (double)dur;
+	usz idx = 0;
+	while (val > 1000.0 && idx < 3)
+	{
+		val /= 1000.0;
+		idx++;
+	}
+	ds.appendf("%6.2f%s%s%s", val, colors[idx], units[idx], base_color);
+}
+
 fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 {
 	if (!benchmarks.len)
@@ -153,9 +171,7 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 			case "--ansi":
 				if (catch @try(ctx.has_ansi_codes, get_yes_no(args[i..]))) return false;
 				i++;
-			case "--median":
-				if (catch @try(ctx.report_median, get_yes_no(args[i..]))) return false;
-				i++;
+
 			case "--csv-report":
 				ctx.generate_csv = true;
 			default:
@@ -180,9 +196,7 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 	csv_report.init(mem);
 	defer csv_report.free();
 
-	csv_report.append("Function Name,Iterations,Clock Cycles,Average,Average Nanoseconds");
-	if (ctx.report_median) csv_report.append(",Median,Median Nanoseconds");
-	csv_report.append("\n");
+	csv_report.append("Function Name,Iterations,Clock Cycles,Average,Average Nanoseconds,StdDev,StdDev Nanoseconds\n");
 
 	foreach (unit : benchmarks) @pool()
 	{
@@ -194,10 +208,10 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 		}
 
 		List {NanoDuration} captured_times;
-		captured_times.tinit();
+		captured_times.tinit(current_unit_iterations);
 
 		defer name.clear();
-		name.appendf("Benchmarking %s ", unit.name);
+		name.appendf("%s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
 		io::printf("%s ", name.str_view());
 
@@ -247,38 +261,50 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 		float clock_cycles = (float)total_clocks / current_unit_iterations;
 		float measurement = (float)running_timer / current_unit_iterations;
 
-		DString median_report = dstring::temp_with_capacity(48);
-		defer median_report.clear();
-		if (ctx.report_median)
-		{
-			io::printf(ctx.has_ansi_codes ? "  [\e[0;31msorting results...\e[0m]  " : "  [sorting results...]  "); io::stdout().flush()!!;
-			quicksort(&captured_times, fn int (NanoDuration a, NanoDuration b) => (int)(a - b));
-			median_report.appendf(ctx.has_ansi_codes ? " avg, \e[0;95m%8s\e[0m med" : " avg, %8s med", ((NanoDuration)get_median(captured_times)).tunit_str());
-		}
+		DString stddev_report = dstring::temp_with_capacity(48);
+		defer stddev_report.clear();
+		double stddev = get_stddev(captured_times.array_view(), (double)measurement);
+		stddev_report.append(", ");
+		if (ctx.has_ansi_codes) stddev_report.append("\e[0;95m");
+		append_duration_colored(&stddev_report, (NanoDuration)stddev, ctx.has_ansi_codes, ctx.has_ansi_codes ? "\e[0;95m" : "");
+		if (ctx.has_ansi_codes) stddev_report.append("\e[0m");
+		stddev_report.append(" sd");
 
-		io::printf("\r%s ", name.str_view());
-		io::printfn(
-			ctx.has_ansi_codes
-				? " \e[0;94m%8s\e[0m%s, %10.2f CPU clocks, %d iters in \e[0;93m%s\e[0m"
-				: " %8s%s, %10.2f CPU clocks, %d iters in %s",
-			((NanoDuration)measurement).tunit_str(),
-			median_report.str_view(),
-			clock_cycles,
-			current_unit_iterations,
-			running_timer.tunit_str()
-		);
+		io::printf(ctx.has_ansi_codes ? "\r\e[K%s " : "\r%s ", name.str_view());
+		if (ctx.has_ansi_codes)
+		{
+			DString ds = dstring::temp_with_capacity(128);
+			ds.append(" \e[0;94m");
+			append_duration_colored(&ds, (NanoDuration)measurement, true, "\e[0;94m");
+			ds.append("\e[0m avg");
+			ds.append(stddev_report.str_view());
+			ds.appendf(", %11.2f CPU clocks, %7d iters in \e[0;93m", clock_cycles, current_unit_iterations);
+			append_duration_colored(&ds, running_timer, true, "\e[0;93m");
+			ds.append("\e[0m");
+			io::printn(ds.str_view());
+		}
+		else
+		{
+			io::printfn(" %8s avg%s, %11.2f CPU clocks, %7d iters in %8s",
+				((NanoDuration)measurement).tunit_str(),
+				stddev_report.str_view(),
+				clock_cycles,
+				current_unit_iterations,
+				running_timer.tunit_str()
+			);
+		}
 
 		if (ctx.generate_csv)
 		{
 			csv_report.appendf(
-				"%s,%d,%d,%s,%d",
+				"%s,%d,%f,%s,%d",
 				unit.name,
 				current_unit_iterations,
 				clock_cycles,
 				((NanoDuration)measurement).tunit_str(),
 				(long)measurement,
 			);
-			if (ctx.report_median) csv_report.appendf(",%s,%d", ((NanoDuration)get_median(captured_times)).tunit_str(), (long)get_median(captured_times));
+			csv_report.appendf(",%s,%d", ((NanoDuration)stddev).tunit_str(), (long)stddev);
 			csv_report.append("\n");
 		}
 	};

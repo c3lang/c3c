@@ -113,12 +113,6 @@ typedef enum
 	ANSI_ON = 1
 } Ansi;
 
-typedef enum
-{
-	BENCHMARK_MEDIAN_NOT_SET = -1,
-	BENCHMARK_MEDIAN_OFF = 0,
-	BENCHMARK_MEDIAN_ON = 1,
-} BenchmarkMedian;
 
 typedef enum
 {
