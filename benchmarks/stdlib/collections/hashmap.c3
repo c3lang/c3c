@@ -11,7 +11,7 @@ import std::collections::map;
 import std::math::random;
 
 
-const DEFAULT_ITERATIONS = 16384;
+const DEFAULT_ITERATIONS = 700_000;
 
 Lcg64Random rand;
 
@@ -23,8 +23,12 @@ fn void bench_setup() @init
 	set_benchmark_max_iterations(DEFAULT_ITERATIONS);
 
 	// TODO: Cannot take the address of a @benchmark function. If we could, we could pass &insert_erase as a fn ptr and use the $qnameof CT eval internally.
-	set_benchmark_func_iterations($qnameof(insert_erase), 32);
-	set_benchmark_func_iterations($qnameof(random_access), 1024);
+	set_benchmark_func_iterations($qnameof(insert_erase), 2);
+	set_benchmark_func_iterations($qnameof(random_access), 44);
+	set_benchmark_func_iterations($qnameof(random_access_erase), 1032);
+	set_benchmark_func_iterations($qnameof(random_access_string_keys), 2488);
+	set_benchmark_func_iterations($qnameof(hash_speeds_of_many_random_values), 5824);
+	set_benchmark_func_iterations($qnameof(modifying_numbers_init_from_map), 24183);
 
     random::seed(&rand, 0x4528_21e6_38d0_1377);
 
@@ -115,14 +119,14 @@ fn void hash_speeds_of_many_random_values() => @pool()
 		strs[x] = ((ZString)&v[0]).str_view();
 	}
 
-	runtime::@start_benchmark();
+	@start_benchmark();
 	foreach (v : chars) fake_checksum += v.hash();
 	foreach (v : shorts) fake_checksum += v.hash();
 	foreach (v : ints) fake_checksum += v.hash();
 	foreach (v : longs) fake_checksum += v.hash();
 	foreach (v : vwideints) fake_checksum += v.hash();
 	foreach (v : strs) fake_checksum += v.hash();
-	runtime::@end_benchmark();
+	@end_benchmark();
 }
 
 
@@ -140,11 +144,11 @@ fn void insert_erase() => @pool()
 	HashMap { int, int } v;
 	v.tinit();
 
-	runtime::@start_benchmark();
+	@start_benchmark();
 	for (int i = 0; i < iters; ++i) v[i] = i;
 	for (int i = 0; i < iters; ++i) v.remove(i);
 
-	runtime::@end_benchmark();
+	@end_benchmark();
 
 	v.free();
 }
@@ -160,9 +164,9 @@ fn void random_access() => @pool()
 
 	for (uint i = 0; i < bound; ++i) v[i] = i;
 
-	runtime::@start_benchmark();
+	@start_benchmark();
 	for (uint i = 0; i < 1_000_000; ++i) pseudo_checksum += (v[i.hash() % bound] ?? 0);
-	runtime::@end_benchmark();
+	@end_benchmark();
 
 	v.free();
 }
@@ -177,14 +181,14 @@ fn void random_access_erase() => @pool()
 
 	for (uint i = 0; i < bound; ++i) v[i] = i;
 
-	runtime::@start_benchmark();
+	@start_benchmark();
 	for (uint i = 0; i < bound; ++i)
 	{
 		v[i.hash() % bound] = i;   // supplant an entry
 
 		v.remove(random::next(&rand, bound));   // remove a random entry
 	}
-	runtime::@end_benchmark();
+	@end_benchmark();
 
 	v.free();
 }
@@ -208,12 +212,12 @@ fn void random_access_string_keys() => @pool()
 		if (i < saved.len) saved[i] = b64key;
 	}
 
-	runtime::@start_benchmark();
+	@start_benchmark();
 	for (usz i = 0; i < saved.len; ++i)
 	{
 		pseudo_checksum += v[ saved[random::next(&rand, saved.len)] ]!! % 512;
 	}
-	runtime::@end_benchmark();
+	@end_benchmark();
 
 	v.free();
 }

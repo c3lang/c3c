@@ -13,11 +13,20 @@ BenchContext bench_context @local = {
 	.max_iterations = DEFAULT_MAX_ITERS,
 };
 
+fn void bench_init_context() @init
+{
+	if (!bench_context.fn_iters.is_initialized()) bench_context.fn_iters.init(mem);
+	if (!bench_context.module_iters.is_initialized()) bench_context.module_iters.init(mem);
+	if (!bench_context.module_warmup.is_initialized()) bench_context.module_warmup.init(mem);
+}
+
 struct BenchContext
 {
 	uint warmup_iterations;
 	uint max_iterations;
 	HashMap { String, uint } fn_iters;
+	HashMap { String, uint } module_iters;
+	HashMap { String, uint } module_warmup;
 	Clock clock;
 	NanoDuration nano_seconds;
 	long cycle_start;
@@ -45,10 +54,6 @@ fn BenchmarkUnit[] benchmark_collection_create(Allocator allocator)
 	foreach (i, benchmark : fns)
 	{
 		benchmarks[i] = { names[i], fns[i] };
-		if (!bench_context.fn_iters.has_key(names[i]))
-		{
-			bench_context.fn_iters[names[i]] = bench_context.max_iterations;
-		}
 	}
 	return benchmarks;
 }
@@ -64,46 +69,58 @@ fn double get_stddev(NanoDuration[] set, double mean) @local
 	return math::sqrt(sum_sq_diff / (double)set.len);
 }
 
-fn void set_benchmark_warmup_iterations(uint value) @builtin
+fn void set_benchmark_module_warmup_iterations(String module_name, uint value) @builtin
 {
-	bench_context.warmup_iterations = value;
+	if (!bench_context.module_warmup.is_initialized()) bench_context.module_warmup.init(mem);
+	bench_context.module_warmup[module_name] = value;
 }
 
-fn void set_benchmark_max_iterations(uint value) @builtin
+fn void set_benchmark_module_max_iterations(String module_name, uint value) @builtin
 {
 	assert(value > 0);
-	bench_context.max_iterations = value;
-	foreach (k : bench_context.fn_iters.key_iter()) bench_context.fn_iters[k] = value;
+	if (!bench_context.module_iters.is_initialized()) bench_context.module_iters.init(mem);
+	bench_context.module_iters[module_name] = value;
+}
+
+macro void set_benchmark_warmup_iterations(uint value) @builtin
+{
+	set_benchmark_module_warmup_iterations($$MODULE, value);
+}
+
+macro void set_benchmark_max_iterations(uint value) @builtin
+{
+	set_benchmark_module_max_iterations($$MODULE, value);
 }
 
 fn void set_benchmark_func_iterations(String func, uint value) @builtin
 {
 	assert(value > 0);
+	if (!bench_context.fn_iters.is_initialized()) bench_context.fn_iters.init(mem);
 	bench_context.fn_iters[func] = value;
 }
 
 
 
 
-macro void @start_benchmark()
+macro void @start_benchmark() @builtin
 {
 	bench_context.clock = clock::now();
 	bench_context.cycle_start = $$sysclock();
 }
 
-macro void @end_benchmark()
+macro void @end_benchmark() @builtin
 {
 	bench_context.nano_seconds = bench_context.clock.mark();
 	bench_context.cycle_stop = $$sysclock();
 }
 
-macro void @kill_benchmark(String format, ...)
+macro void @kill_benchmark(String format, ...) @builtin
 {
 	@log_benchmark(format, $vasplat);
 	bench_context.stop = true;
 }
 
-macro void @log_benchmark(msg, args...) => @pool()
+macro void @log_benchmark(msg, args...) @builtin => @pool()
 {
 	if (bench_context.is_warming) return;
 
@@ -198,9 +215,18 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 
 	csv_report.append("Function Name,Iterations,Clock Cycles,Average,Average Nanoseconds,StdDev,StdDev Nanoseconds\n");
 
+	// Find summary widths
 	foreach (unit : benchmarks) @pool()
 	{
-		uint current_unit_iterations = ctx.fn_iters[unit.name] ?? ctx.max_iterations;
+		String module_name = unit.name;
+		if (try pos = module_name.rindex_of("::"))
+		{
+			module_name = module_name[:pos];
+		}
+
+		uint current_unit_iterations = ctx.fn_iters[unit.name] ?? ctx.module_iters[module_name] ?? ctx.max_iterations;
+		uint current_warmup_iterations = ctx.module_warmup[module_name] ?? ctx.warmup_iterations;
+
 		if (current_unit_iterations == 0)
 		{
 			io::printfn("~~~ Skipping unit `%s` (0 iterations count)...", unit.name);
@@ -216,7 +242,7 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 		io::printf("%s ", name.str_view());
 
 		ctx.is_warming = true;
-		for (uint i = 0; i < ctx.warmup_iterations; i++)
+		for (uint i = 0; i < current_warmup_iterations; i++)
 		{
 			unit.func() @inline;
 		}
