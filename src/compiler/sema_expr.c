@@ -1271,7 +1271,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	if (!decl)
 	{
 		if (failed_ref) return *failed_ref = true, false;
-		if (!expr->unresolved_ident_expr.path && expr->unresolved_ident_expr.is_const && (!to || to->canonical->type_kind != TYPE_ENUM))
+		if (!expr->unresolved_ident_expr.path && expr->unresolved_ident_expr.is_const && (!to || (to->canonical->type_kind != TYPE_ENUM && to->canonical->type_kind != TYPE_CONSTDEF)))
 		{
 			CompilationUnit **units = context->unit->module->units;
 			FOREACH (CompilationUnit *, unit, units)
@@ -1282,10 +1282,11 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 					{
 						if (enum_val->name == expr->unresolved_ident_expr.ident)
 						{
+							const char *type = decl->decl_kind == DECL_CONSTDEF ? "constdef" : "enum";
 							RETURN_SEMA_ERROR(expr, "No constant named '%s' was found in the current scope. Did you "
-							   "mean the value '%s' of the enum '%s'? The enum type cannot be inferred%s, so in that case you need to use "
+							   "mean the value '%s' of the %s '%s'? The %s type cannot be inferred%s, so in that case you need to use "
 								"the qualified name: '%s.%s'.",
-								enum_val->name, enum_val->name, decl->name, to ? " correctly" : "", decl->name, enum_val->name);
+								enum_val->name, enum_val->name, type, decl->name, type, to ? " correctly" : "", decl->name, enum_val->name);
 						}
 					}
 				}
@@ -1420,7 +1421,7 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 }
 
 
-static inline bool sema_binary_analyse_with_inference(SemaContext *context, Expr *left, Expr *right, BinaryOp op)
+static inline bool sema_binary_analyse_with_inference(SemaContext *context, Expr *left, Expr *right, BinaryOp op, Type *to)
 {
 	const static int op_table[BINARYOP_LAST + 1] = {
 		[BINARYOP_AND] = 1, [BINARYOP_OR] = 1, [BINARYOP_CT_AND] = 1, [BINARYOP_CT_OR] = 1,
@@ -1455,6 +1456,7 @@ static inline bool sema_binary_analyse_with_inference(SemaContext *context, Expr
 	if (op_result != 2) goto EVAL_BOTH;
 
 	if (!sema_analyse_expr_rvalue(context, left)) return false;
+
 	switch (left->type->canonical->type_kind)
 	{
 		case TYPE_ENUM:
@@ -1465,6 +1467,10 @@ static inline bool sema_binary_analyse_with_inference(SemaContext *context, Expr
 	}
 
 EVAL_BOTH:
+	if (to && to->canonical->type_kind == TYPE_CONSTDEF)
+	{
+		return sema_analyse_inferred_expr(context, to, left, NULL) && sema_analyse_inferred_expr(context, to, right, NULL);
+	}
 	return sema_analyse_expr_rvalue(context, left) && sema_analyse_expr_rvalue(context, right);
 }
 
@@ -2363,10 +2369,10 @@ SPLAT_NORMAL:;
 			{
 				if (missing != needed)
 				{
-					RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d-%d parameters, but none was provided.",
+					RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d-%d parameters, but none were provided.",
 										   callee->name, missing, needed);
 				}
-				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d parameter(s), but none was provided.",
+				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d parameter(s), but none were provided.",
 									   callee->name, needed);
 			}
 			if (!last) last = args[0];
@@ -6580,7 +6586,19 @@ CHECK_DEEPER:
 		{
 			if (sema_cast_const(current_parent))
 			{
-				expr_rewrite_const_string(expr, current_parent->const_expr.fault ? current_parent->const_expr.fault->name : "null");
+				Decl *fault = current_parent->const_expr.fault;
+				if (!fault)
+				{
+					expr_rewrite_const_string(expr, "null");
+					return true;
+				}
+				scratch_buffer_clear();
+				const char *module_name = fault->unit->module->name->module;
+				const char *last_path = strrchr(module_name, ':');
+				scratch_buffer_append(last_path ? last_path + 1 : module_name);
+				scratch_buffer_append("::");
+				scratch_buffer_append(fault->name);
+				expr_rewrite_const_string(expr, scratch_buffer_copy());
 				return true;
 			}
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_FAULTNAME, type_string);
@@ -9834,7 +9852,7 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Type *infer_ty
 	else
 	{
 		if (operator == BINARYOP_ELSE) return sema_expr_analyse_or_error(context, expr, left, right, infer_type, failed_ref);
-		if (!sema_binary_analyse_with_inference(context, left, right, operator)) return false;
+		if (!sema_binary_analyse_with_inference(context, left, right, operator, infer_type)) return false;
 	}
 	switch (operator)
 	{

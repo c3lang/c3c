@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 set(C3_LLVM_MIN_VERSION 19)
 set(C3_LLVM_MAX_VERSION 23)
-set(C3_LLVM_DEFAULT_VERSION 21)
+set(C3_LLVM_DEFAULT_VERSION 22)
 
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
     message(FATAL_ERROR "In-tree build detected, please build in a separate directory")
@@ -275,7 +275,8 @@ if(C3_WITH_LLVM)
 
     include_directories(${LLVM_INCLUDE_DIRS})
     link_directories(${LLVM_LIBRARY_DIRS})
-    add_definitions(${LLVM_DEFINITIONS})
+    separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+    add_definitions(${LLVM_DEFINITIONS_LIST})
 
     if(NOT C3_LINK_DYNAMIC)
         set(LLVM_LINK_COMPONENTS
