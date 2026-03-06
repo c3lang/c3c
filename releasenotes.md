@@ -12,6 +12,7 @@
 - Add hash method for ZStrings. #2982
 - Added json serialization from structs.
 - Add `keccak` and Keccak-based hash functions: `sha3`, `shake`, `cshake`, `kmac`, `turboshake`, `tuplehash`, and `parallelhash`. #2728
+- Added `fault.short_name` and `fault.@short_name` to get just the fault name for both run and compile time. #3002
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
@@ -23,6 +24,7 @@
 - AES implementation fixed to be constant time #2806
 - Object would not properly compile on 32-bit Linux.
 - `read_varint` and `write_varint` did not work properly for ulong and wider.
+- `io::EOF.nameof` would yield just `EOF` whereas resolving it at runtime would (correctly) yield `io::EOF`.
 
 ## 0.7.10 Change list
 

@@ -6580,7 +6580,19 @@ CHECK_DEEPER:
 		{
 			if (sema_cast_const(current_parent))
 			{
-				expr_rewrite_const_string(expr, current_parent->const_expr.fault ? current_parent->const_expr.fault->name : "null");
+				Decl *fault = current_parent->const_expr.fault;
+				if (!fault)
+				{
+					expr_rewrite_const_string(expr, "null");
+					return true;
+				}
+				scratch_buffer_clear();
+				const char *module_name = fault->unit->module->name->module;
+				const char *last_path = strrchr(module_name, ':');
+				scratch_buffer_append(last_path ? last_path + 1 : module_name);
+				scratch_buffer_append("::");
+				scratch_buffer_append(fault->name);
+				expr_rewrite_const_string(expr, scratch_buffer_copy());
 				return true;
 			}
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_FAULTNAME, type_string);
