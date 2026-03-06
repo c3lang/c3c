@@ -6,7 +6,7 @@ fn void initialize_bench() @init
 	set_benchmark_max_iterations(128);
 
     input = mem::alloc_array(char, BUFSZ);
-    input[:BUFSZ] = (char[]){ [0..BUFSZ-1] = 0xA5 }[..];
+    input[:BUFSZ] = 0xA5;
     input_slice = input[:BUFSZ];
 }
 
