@@ -102,6 +102,12 @@ set(C3_LLVM_TAG             "latest"                    CACHE STRING "Tag/Branch
 set(LLVM_CRT_LIBRARY_DIR    ""                          CACHE STRING "Use custom llvm's compiler-rt directory")
 set(TCC_LIB_PATH            "/usr/lib/tcc/libtcc1.a"    CACHE STRING "Use custom libtcc1.a path")
 
+if (NOT C3_LINK_DYNAMIC AND CMAKE_EXE_LINKER_FLAGS MATCHES "-static")
+    set(ZLIB_USE_STATIC_LIBS ON)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+    message(STATUS "Static build: Restricting library search to static archives (.a)")
+endif()
+
 set(C3_OPTIONS
         C3_LINK_DYNAMIC
         C3_WITH_LLVM
@@ -175,7 +181,7 @@ if(C3_WITH_LLVM)
                 # For static linking, use the musl build
                 if (NOT C3_LINK_DYNAMIC AND CMAKE_EXE_LINKER_FLAGS MATCHES "-static")
                     set(C3_LLVM_PLATFORM "linux-amd64-musl")
-                    message(STATUS "Static linking detected, using musl LLVM artifact")
+                    message(STATUS "Static linking detected, using musl LLVM artifact and preferring static zlib")
                 else()
                     set(C3_LLVM_PLATFORM "linux-amd64")
                 endif()
