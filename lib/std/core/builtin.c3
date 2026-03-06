@@ -1000,6 +1000,12 @@ macro void* get_returnaddress(int n)
 	}
 }
 
+fn String fault.short_name(self)
+{
+	String name = self.nameof;
+	return name[name.index_of("::") + 2..]!!;
+}
+
 module std::core::builtin @if((env::LINUX || env::ANDROID || env::DARWIN) && env::COMPILER_SAFE_MODE && env::DEBUG_SYMBOLS);
 import libc, std::io, std::os::posix;
 
@@ -1070,10 +1076,4 @@ fn void install_signal_handlers() @init(101) @local @if(env::BACKTRACE)
 	posix::install_signal_handler(libc::SIGBUS, &sig_bus_error);
 	posix::install_signal_handler(libc::SIGSEGV, &sig_segmentation_fault);
 	posix::install_signal_handler(libc::SIGILL,  &sig_illegal_instruction);
-}
-
-fn String fault.short_name(self)
-{
-	String name = self.nameof;
-	return name[name.index_of("::") + 2..]!!;
 }
