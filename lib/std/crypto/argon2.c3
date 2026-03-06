@@ -403,7 +403,11 @@ fn void hash_raw(Allocator allocator, char[] outbuf, char[] input, Argon2Options
 	//
 	Argon2WorkerContext[] contexts = allocator::new_array(allocator, Argon2WorkerContext, options.lanes);
 	Thread[] workers = allocator::new_array(allocator, Thread, options.lanes);
-	defer allocator::free_all(allocator, contexts, workers);
+	defer
+	{
+		allocator::free(allocator, contexts);
+		allocator::free(allocator, workers);
+	}
 
 	// bool use_constant_time = options.algorithm != ARGON2_D;
 	for (uint pass = 0; pass < options.iterations; pass++)
@@ -611,7 +615,11 @@ fn bool Argon2Decoded.eq(&self, Argon2Decoded other) @operator(==)
 fn void Argon2Decoded.free(&self)
 {
 	if (self.allocator == tmem) return;   // no need to do this with the temp allocator
-	allocator::free_all(self.allocator, self.hash.ptr, self.salt.ptr, self.key_id.ptr, self.assoc.ptr);
+	allocator::free(self.allocator, self.hash);
+	allocator::free(self.allocator, self.salt);
+	allocator::free(self.allocator, self.key_id);
+	allocator::free(self.allocator, self.assoc);
+
 	mem::zero_volatile(@as_char_view(*self));
 }
 
@@ -657,7 +665,13 @@ fn Argon2Decoded? decode(Allocator allocator, String hash_str)
 	char[] decoded_salt = {};
 	char[] decoded_key_id = {};
 	char[] decoded_assoc = {};
-	defer allocator::free_all(allocator, decoded_hash, decoded_salt, decoded_key_id, decoded_assoc);
+	defer
+	{
+		allocator::free(allocator, decoded_hash);
+		allocator::free(allocator, decoded_key_id);
+		allocator::free(allocator, decoded_assoc);
+		allocator::free(allocator, decoded_hash);
+	}
 
 	if (hash_str[0] != '$') return INVALID_FORMAT~;
 	hash_str = hash_str[1..];
@@ -805,3 +819,4 @@ fn bool verify_impl(Argon2Decoded* decoded_ctx, String hash_str, char[] password
 {
 	return hash_str == thash(password, decoded_ctx.opts, out_size: decoded_ctx.hash.len);
 }
+
