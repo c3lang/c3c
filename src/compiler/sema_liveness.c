@@ -531,7 +531,9 @@ void sema_trace_liveness(void)
 			{
 				if (function->func_decl.attr_test && !keep_tests) continue;
 				if (function->func_decl.attr_benchmark && !keep_benchmarks) continue;
-				if (function->is_export || function->no_strip || function->func_decl.attr_finalizer ||
+				if (function->is_export ||
+					function->no_strip ||
+					function->func_decl.attr_finalizer ||
 				    function->func_decl.attr_init ||
 				    (function->func_decl.attr_test) ||
 				    (function->func_decl.attr_benchmark))
