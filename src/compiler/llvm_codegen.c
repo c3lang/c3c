@@ -525,7 +525,7 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl)
 		return;
 	}
 
-	LLVMSetLinkage(ref, decl->is_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
+	LLVMSetLinkage(ref, is_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
 	if (opt_ref) LLVMSetLinkage(opt_ref, LLVMInternalLinkage);
 }
 

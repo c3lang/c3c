@@ -275,6 +275,7 @@ IMPORT_CHECK:;
 
 INLINE Type *sema_fold_weak(SemaContext *context, Decl *decl)
 {
+	if (decl->decl_kind != DECL_TYPE_ALIAS) return decl->type;
 	while (decl->is_weak)
 	{
 		if (decl->resolve_status != RESOLVE_DONE)
