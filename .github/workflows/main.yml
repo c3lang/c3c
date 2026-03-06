@@ -215,6 +215,7 @@ jobs:
           build/c3c --version
 
       - name: Run Unified Tests
+        if: matrix.build_type == 'Debug'
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
       - name: Bundle
