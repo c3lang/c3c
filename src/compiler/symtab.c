@@ -394,6 +394,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_USED] = KW_DEF("@used");
 	attribute_list[ATTRIBUTE_WASM] = KW_DEF("@wasm");
 	attribute_list[ATTRIBUTE_WEAK] = KW_DEF("@weak");
+	attribute_list[ATTRIBUTE_WEAKLINK] = KW_DEF("@weaklink");
 	attribute_list[ATTRIBUTE_WINMAIN] = KW_DEF("@winmain");
 
 	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)

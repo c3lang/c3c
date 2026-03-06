@@ -3190,6 +3190,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL),
 			[ATTRIBUTE_WASM] = ATTR_FUNC,
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL | ATTR_ALIAS,
+			[ATTRIBUTE_WEAKLINK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_WINMAIN] = ATTR_FUNC,
 	};
 	// NOLINTEND(*.EnumCastOutOfRange)
@@ -3598,6 +3599,9 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				RETURN_SEMA_ERROR(expr, "Expected \"address\", \"memory\" or \"thread\" as argument.");
 			}
 			return true;
+		case ATTRIBUTE_WEAKLINK:
+			decl->is_weak_link = true;
+			break;
 		case ATTRIBUTE_WEAK:
 			if (domain == ATTR_ALIAS)
 			{
@@ -3607,6 +3611,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 					RETURN_SEMA_ERROR(attr, "'@weak' is only allowed on type aliases with the same name, eg 'def Foo = bar::def::Foo @weak'.");
 				}
 			}
+			decl->is_weak_link = true;
 			decl->is_weak = true;
 			break;
 		case ATTRIBUTE_NAKED:
