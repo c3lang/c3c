@@ -308,7 +308,8 @@ fn void test_fault_short_name_rt() @test
 
 	bool? maybe = foo_fault(5);
 	
-	if (catch excuse = maybe) {
+	if (catch excuse = maybe)
+	{
 		test::eq(excuse.nameof, "builtins::SOME_FAULT");
 		test::eq(excuse.short_name(), "SOME_FAULT");
 	}
