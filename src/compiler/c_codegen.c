@@ -95,7 +95,7 @@ static const char *c_type_name(GenContext *c, Type *type)
 		case TYPE_FUNC_RAW:
 		case TYPE_ALIAS:
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
@@ -149,7 +149,7 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 		case TYPE_FUNC_RAW:
 		case TYPE_ALIAS:
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
@@ -654,7 +654,7 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_TYPEDEF:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_FUNC_RAW:
 		case TYPE_BITSTRUCT:
 		case TYPE_ALIAS:

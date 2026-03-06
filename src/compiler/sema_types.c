@@ -220,7 +220,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		type_info->resolve_status = RESOLVE_DONE;
 		return true;
 	}
-	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name, type_info->unresolved.path, type_info->span);
+	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name, type_info->unresolved.path, type_info->loc);
 
 	// Already handled
 	if (!decl) return type_info_poison(type_info);
@@ -471,7 +471,7 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	}
 	compiler.generic_depth++;
 	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name,
-	                                                   inner->span, type_info->generic.params, type_info->span);
+	                                                   inner->loc, type_info->generic.params, type_info->loc);
 	compiler.generic_depth--;
 	if (!decl_ok(type)) return false;
 	ASSERT_SPAN(type_info, type != NULL);
