@@ -194,7 +194,11 @@ jobs:
           apk update
           apk add \
             build-base bash git cmake ninja python3 linux-headers \
-            zlib-dev zlib-static zstd-dev zstd-static curl-dev libffi-dev
+            zlib-dev zlib-static zstd-dev zstd-static curl-dev curl-static \
+            openssl-libs-static brotli-static nghttp2-static libpsl-static \
+            libidn2-static libunistring-static nghttp3-static c-ares-dev \
+            curl-dev openssl-dev brotli-dev libpsl-dev libidn2-dev \
+            libunistring-dev nghttp2-dev nghttp3-dev c-ares-dev
 
       - name: CMake Build (static musl)
         run: |

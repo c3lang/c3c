@@ -553,7 +553,7 @@ if(C3_WITH_LLVM)
 else()
     target_sources(c3c PRIVATE src/utils/hostinfo.c)
     target_compile_definitions(c3c PUBLIC LLVM_AVAILABLE=0)
-    target_link_libraries(c3c m)
+    target_link_libraries(c3c PRIVATE m)
 endif()
 
 target_include_directories(c3c PRIVATE
@@ -588,7 +588,7 @@ if (C3_USE_TB)
             src/compiler/tilde_codegen_storeload.c)
 
     target_compile_definitions(c3c PUBLIC TB_AVAILABLE=1)
-    target_link_libraries(c3c tilde-backend)
+    target_link_libraries(c3c PRIVATE tilde-backend)
     add_library(tilde-backend STATIC ${tilde-sources})
     target_include_directories(tilde-backend PRIVATE
             "${CMAKE_SOURCE_DIR}/tilde-backend/src/" "${CMAKE_SOURCE_DIR}/tilde-backend/include")
@@ -603,7 +603,7 @@ else()
 endif()
 
 if(C3_WITH_LLVM)
-    target_link_libraries(c3c miniz c3c_wrappers)
+    target_link_libraries(c3c PRIVATE miniz c3c_wrappers)
 
     target_include_directories(c3c PRIVATE
             "${CMAKE_SOURCE_DIR}/wrapper/include/")
@@ -612,19 +612,41 @@ if(C3_WITH_LLVM)
             "${CMAKE_SOURCE_DIR}/wrapper/include/")
 
     target_link_libraries(c3c_wrappers PUBLIC ${lld_libs} ${llvm_libs})
-
 else()
+    target_link_libraries(c3c PRIVATE miniz ${lld_libs} ${llvm_libs})
+endif()
 
-    target_link_libraries(c3c miniz ${lld_libs} ${llvm_libs})
-
+# libcurl support
+if (NOT WIN32)
+    find_package(PkgConfig QUIET)
+    if (PKG_CONFIG_FOUND)
+        if (CMAKE_EXE_LINKER_FLAGS MATCHES "-static")
+            pkg_check_modules(CURL libcurl)
+            if (CURL_FOUND)
+                pkg_check_modules(CURL_STATIC QUIET libcurl STATIC)
+                target_link_libraries(c3c PRIVATE ${CURL_STATIC_LIBRARIES})
+                target_include_directories(c3c PRIVATE ${CURL_STATIC_INCLUDE_DIRS})
+                target_compile_definitions(c3c PRIVATE C3_LINK_CURL)
+                message(STATUS "Linking against static libcurl and dependencies")
+            endif()
+        else()
+            pkg_check_modules(CURL libcurl)
+            if (CURL_FOUND)
+                target_link_libraries(c3c PRIVATE ${CURL_LIBRARIES})
+                target_include_directories(c3c PRIVATE ${CURL_INCLUDE_DIRS})
+                target_compile_definitions(c3c PRIVATE C3_LINK_CURL)
+                message(STATUS "Linking against dynamic libcurl")
+            endif()
+        endif()
+    endif()
 endif()
 
 if(C3_USE_MIMALLOC)
-    target_link_libraries(c3c mimalloc-static)
+    target_link_libraries(c3c PRIVATE mimalloc-static)
 endif()
 
 if (WIN32)
-    target_link_libraries(c3c Winhttp.lib)
+    target_link_libraries(c3c PRIVATE Winhttp.lib)
 endif()
 
 if(MINGW)
@@ -635,7 +657,7 @@ endif ()
 if (NOT WIN32)
     # For dlopen support
     if (CMAKE_DL_LIBS)
-        target_link_libraries(c3c ${CMAKE_DL_LIBS})
+        target_link_libraries(c3c PRIVATE ${CMAKE_DL_LIBS})
     endif()
 endif()
 
@@ -701,7 +723,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "TinyCC")
 
     # Link the static tcc runtime archive if it exists
     if(EXISTS "${TCC_LIB_PATH}")
-        target_link_libraries(c3c "${TCC_LIB_PATH}")
+        target_link_libraries(c3c PRIVATE "${TCC_LIB_PATH}")
     else()
         message(FATAL_ERROR "TCC runtime not found at ${TCC_LIB_PATH}; Ensure the path is correct.")
     endif()
