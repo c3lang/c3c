@@ -7,7 +7,6 @@ fn void initialize_bench() @init
 {
 	set_benchmark_warmup_iterations(3);
 	set_benchmark_max_iterations(1024);
-	set_benchmark_report_median(true);
 
     input = mem::alloc_array(char, BUFSZ);
     input[:BUFSZ] = 0xA5;
