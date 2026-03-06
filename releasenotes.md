@@ -5,6 +5,7 @@
 ### Changes / improvements
 - Removed support for LLVM 17, 18.
 - Detect large temporaries when creating slices on the stack #2665
+- Search for the linker in PATH; use the builtin linker if CC missing. #2906
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
@@ -20,6 +21,7 @@
 - SubProcessOptions.search_user_path did nothing on non-windows systems despite comment saying it should #2845
 - AES implementation fixed to be constant time #2806
 - Object would not properly compile on 32-bit Linux.
+- `read_varint` and `write_varint` did not work properly for ulong and wider.
 
 ## 0.7.10 Change list
 
