@@ -82,3 +82,11 @@ fn uint native_cpu()
 	libc::get_system_info(&info);
 	return info.dwNumberOfProcessors;
 }
+
+module std::thread::cpu @if(!env::WIN32 && !env::LINUX && !env::OPENBSD && ! env::DARWIN);
+import libc;
+
+<*
+ For environments with an undefined way of fetching the number of CPUs, simply return 1.
+*>
+fn uint native_cpu() => 1;
