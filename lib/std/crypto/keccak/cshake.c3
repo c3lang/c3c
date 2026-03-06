@@ -93,7 +93,7 @@ fn void CShake.init(&self, NistFunctionName function = NONE, String customizer =
 	keccak::@init_runtime_size(self, $sizeof(*self));
 	String function_name = function.customizer;
 
-	if (customizer == "" && function_name == "")
+	if (!customizer && !function_name)
 	{
 		// override delimiter with default SHAKE delimiter (see NIST spec)
 		return self.under.init(runtime_rounds, shake::DEFAULT_DELIMITER);
@@ -104,7 +104,7 @@ fn void CShake.init(&self, NistFunctionName function = NONE, String customizer =
 	// Automatically encode and update the underlying SHAKE context with the rate length, N (func_name), and S (customization string) values.
 	self.under.update(nist::encoded_rate_bytes(SECURITY_LEVEL));
 
-	if (function_name == "")
+	if (!function_name)
 	{
 		self.under.update(nist::ZERO_LEFT);   // encoded zero value (no/empty length)
 	}
@@ -114,7 +114,7 @@ fn void CShake.init(&self, NistFunctionName function = NONE, String customizer =
 		self.under.update(function_name);
 	}
 
-	if (customizer == "")
+	if (!customizer)
 	{
 		self.under.update(nist::ZERO_LEFT);   // encoded zero value (no/empty length)
 	}

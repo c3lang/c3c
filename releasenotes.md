@@ -11,6 +11,7 @@
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
 - Add hash method for ZStrings. #2982
 - Added json serialization from structs.
+- Add `keccak` and Keccak-based hash functions: `sha3`, `shake`, `cshake`, `kmac`, `turboshake`, `tuplehash`, and `parallelhash`. #2728
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
@@ -64,7 +65,6 @@
 - `instream.seek` is replaced by `set_cursor` and `cursor`.
 - `instream.available`, `cursor` etc are long/ulong rather than isz/usz to be correct on 32-bit.
 - Enable asynchronous, non-blocking reads of subprocess STDOUT/STDERR pipes on POSIX systems.
-- Add `keccak` and Keccak-based hash functions: `sha3`, `shake`, `cshake`, `kmac`, `turboshake`, `tuplehash`, and `parallelhash`. #2728
 
 ### Fixes
 - Add error message if directory with output file name already exists
