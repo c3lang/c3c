@@ -194,7 +194,7 @@ jobs:
           apk update
           apk add \
             build-base bash git cmake ninja python3 linux-headers \
-            zlib-dev curl-dev libffi-dev
+            zlib-dev zlib-static zstd-dev zstd-static curl-dev libffi-dev
 
       - name: CMake Build (static musl)
         run: |
