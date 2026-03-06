@@ -26,6 +26,7 @@
 - `read_varint` and `write_varint` did not work properly for ulong and wider.
 - `io::EOF.nameof` would yield just `EOF` whereas resolving it at runtime would (correctly) yield `io::EOF`.
 - `$stringify` would incorrectly capture lambdas. #2986
+- Regression: `String` was not implicitly `@constinit` #2983
 
 ## 0.7.10 Change list
 
