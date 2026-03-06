@@ -1077,8 +1077,3 @@ fn String fault.short_name(self)
 	String name = self.nameof;
 	return name[name.index_of("::") + 2..]!!;
 }
-
-<*
- @require $defined(var $v = $self)
-*>
-macro String fault.@short_name($self) @const => $self.nameof[@str_find($self.nameof, "::") + 1..];
