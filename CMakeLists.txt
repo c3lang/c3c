@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 
 set(C3_LLVM_MIN_VERSION 19)
-set(C3_LLVM_MAX_VERSION 22)
-set(C3_LLVM_DEFAULT_VERSION 21)
+set(C3_LLVM_MAX_VERSION 23)
+set(C3_LLVM_DEFAULT_VERSION 22)
 
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
     message(FATAL_ERROR "In-tree build detected, please build in a separate directory")
@@ -186,11 +186,9 @@ if(C3_WITH_LLVM)
 
         # 3. Construct URL
         set(C3_LLVM_ARTIFACT_NAME "llvm-${C3_LLVM_PLATFORM}${C3_LLVM_SUFFIX}")
-        #set(C3_LLVM_URL "https://github.com/c3lang/c3-llvm/releases/download/${C3_LLVM_TAG}/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
-        #set(C3_LLVM_URL "https://github.com//ManuLinares/llvm-custom-builds/releases/download/${C3_LLVM_TAG}/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
-
         # We could also just set "latest" here to always fetch the latest release
-        set(C3_LLVM_URL "https://github.com/c3lang/llvm-for-c3/releases/latest/download/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
+        #set(C3_LLVM_URL "https://github.com/c3lang/llvm-for-c3/releases/latest/download/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
+        set(C3_LLVM_URL "https://github.com/c3lang/llvm-for-c3/releases/download/llvm_22.1.0/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
 
         message(STATUS "Fetching ${C3_LLVM_TYPE} LLVM artifact for ${C3_LLVM_PLATFORM}...")
         message(STATUS "URL: ${C3_LLVM_URL}")
@@ -232,15 +230,17 @@ if(C3_WITH_LLVM)
         endif()
     endif()
 
-    if (NOT C3_FETCH_LLVM AND EXISTS /opt/homebrew/lib)
-        list(APPEND LLVM_LIBRARY_DIRS /opt/homebrew/lib)
-    endif()
+    if (NOT C3_FETCH_LLVM)
+        if (EXISTS /opt/homebrew/lib)
+            list(APPEND LLVM_LIBRARY_DIRS /opt/homebrew/lib)
+        endif()
 
-    if (EXISTS /usr/lib)
-        # Some systems (such as Alpine Linux) seem to put some of the relevant
-        # LLVM files in /usr/lib, but this doesn't seem to be included in the
-        # value of LLVM_LIBRARY_DIRS.
-        list(APPEND LLVM_LIBRARY_DIRS /usr/lib)
+        if (EXISTS /usr/lib)
+            # Some systems (such as Alpine Linux) seem to put some of the relevant
+            # LLVM files in /usr/lib, but this doesn't seem to be included in the
+            # value of LLVM_LIBRARY_DIRS.
+            list(APPEND LLVM_LIBRARY_DIRS /usr/lib)
+        endif()
     endif()
 
     list(REMOVE_DUPLICATES LLVM_LIBRARY_DIRS)
@@ -285,6 +285,18 @@ if(C3_WITH_LLVM)
                 LibDriver
                 Linker
                 LTO
+        )
+        set(_dtlto_found FALSE)
+        foreach(_dir ${LLVM_LIBRARY_DIRS})
+            if (EXISTS "${_dir}/libLLVMDTLTO.a" OR EXISTS "${_dir}/LLVMDTLTO.lib")
+                set(_dtlto_found TRUE)
+                break()
+            endif()
+        endforeach()
+        if (_dtlto_found)
+            list(APPEND LLVM_LINK_COMPONENTS DTLTO)
+        endif()
+        list(APPEND LLVM_LINK_COMPONENTS
                 MC
                 MCDisassembler
                 native
