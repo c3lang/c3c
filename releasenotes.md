@@ -21,6 +21,7 @@
 - SubProcessOptions.search_user_path did nothing on non-windows systems despite comment saying it should #2845
 - AES implementation fixed to be constant time #2806
 - Object would not properly compile on 32-bit Linux.
+- `read_varint` and `write_varint` did not work properly for ulong and wider.
 
 ## 0.7.10 Change list
 
