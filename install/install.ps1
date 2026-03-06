@@ -5,7 +5,8 @@
     This script installs C3 on Windows from the command line.
 .PARAMETER C3Version
     Specifies the version of C3 to install.
-    Default is 'latest'. Can also be set via environment variable 'C3_VERSION'.
+    Use 'latest' (default) for the latest stable release, 'prerelease' for the latest prerelease,
+    or a specific version tag like 'v0.6.5'. Can also be set via environment variable 'C3_VERSION'.
 .PARAMETER C3Home
     Specifies C3's installation directory.
     Default is '$Env:USERPROFILE\.c3'. Can also be set via environment variable 'C3_HOME'.
@@ -128,61 +129,83 @@ $BINARY = "c3-windows"
 # Determine the download URL based on version
 if ($C3Version -eq 'latest') {
     $DOWNLOAD_URL = "$C3Repourl/releases/latest/download/$BINARY.zip"
+} elseif ($C3Version -eq 'prerelease') {
+    $DOWNLOAD_URL = "$C3Repourl/releases/download/latest-prerelease-tag/$BINARY.zip"
 } else {
     # Ensure version starts with 'v'
     $C3Version = "v" + ($C3Version -replace '^v', '')
     $DOWNLOAD_URL = "$C3Repourl/releases/download/$C3Version/$BINARY.zip"
 }
 
-$BinDir = $C3Home
-
 Write-Host "This script will automatically download and install C3 ($C3Version) for you."
 Write-Host "Getting it from this url: $DOWNLOAD_URL"
-Write-Host "The binary will be installed into '$BinDir'"
+Write-Host "The binary will be installed into '$C3Home'"
 
-# Create temporary file for download
+# Suppress progress bar — dramatically speeds up Invoke-WebRequest on PowerShell 5
+$ProgressPreference = 'SilentlyContinue'
+
+# Pre-declare temp paths so the finally block can safely reference them under strict mode
+$TEMP_FILE = $null
+$ZIP_FILE  = $null
+$EXTRACT_DIR = $null
+
 $TEMP_FILE = [System.IO.Path]::GetTempFileName()
 
 try {
-    # Download the binary
-    Invoke-WebRequest -Uri $DOWNLOAD_URL -OutFile $TEMP_FILE
+    # Download the binary (-UseBasicParsing avoids IE COM dependency on Server Core / CI)
+    Invoke-WebRequest -Uri $DOWNLOAD_URL -OutFile $TEMP_FILE -UseBasicParsing
 
     # Remove previous installation if it exists
-    if (Test-Path -Path $BinDir) {
-        Remove-Item -Path $BinDir -Recurse -Force | Out-Null
+    if (Test-Path -Path $C3Home) {
+        Remove-Item -Path $C3Home -Recurse -Force | Out-Null
     }
 
     # Rename temp file to .zip
     $ZIP_FILE = $TEMP_FILE + ".zip"
     Rename-Item -Path $TEMP_FILE -NewName $ZIP_FILE
 
-    # Extract downloaded zip
-    Expand-Archive -Path $ZIP_FILE -DestinationPath $Env:USERPROFILE -Force
+    # Extract downloaded zip into a dedicated temp directory
+    $EXTRACT_DIR = Join-Path $Env:TEMP ("c3-install-" + [System.IO.Path]::GetRandomFileName())
+    Expand-Archive -Path $ZIP_FILE -DestinationPath $EXTRACT_DIR -Force
 
-    # Rename extracted folder to target installation directory
-    Rename-Item -Path "$Env:USERPROFILE/c3-windows-Release" -NewName $BinDir
+    # Find the single top-level directory the zip extracted into (handles any folder name now)
+    $ExtractedFolder = Get-ChildItem -Path $EXTRACT_DIR -Directory | Select-Object -First 1
+    if ($null -eq $ExtractedFolder) {
+        # Zip extracted files directly (no subfolder) — use the extract dir itself
+        $ExtractedFolder = Get-Item -Path $EXTRACT_DIR
+    }
+
+    # Move extracted folder to target installation directory
+    Move-Item -Path $ExtractedFolder.FullName -Destination $C3Home -Force
 } catch {
-    Write-Host "Error: '$DOWNLOAD_URL' is not available or failed to download"
+    Write-Host "Error installing C3: $_"
     exit 1
 } finally {
-    # Cleanup temporary zip file
-    Remove-Item -Path $ZIP_FILE
+    # Cleanup temporary files
+    if ($ZIP_FILE -and (Test-Path -Path $ZIP_FILE)) {
+        Remove-Item -Path $ZIP_FILE -Force
+    }
+    if ($EXTRACT_DIR -and (Test-Path -Path $EXTRACT_DIR)) {
+        Remove-Item -Path $EXTRACT_DIR -Recurse -Force
+    }
 }
 
 # Update PATH environment variable if requested
 if (!$NoPathUpdate) {
     $PATH = Get-Env 'PATH'
-    if ($PATH -notlike "*$BinDir*") {
-        Write-Output "Adding $BinDir to PATH"
+    # Split on ';' for an exact entry match, avoiding false positives from substrings
+    $PathEntries = $PATH -split ';' | Where-Object { $_ -ne '' }
+    if ($C3Home -notin $PathEntries) {
+        Write-Output "Adding $C3Home to PATH"
 
         # Persist PATH for future sessions
-        Write-Env -name 'PATH' -val "$BinDir;$PATH"
+        Write-Env -name 'PATH' -val "$C3Home;$PATH"
 
         # Update PATH for current session
-        $Env:PATH = "$BinDir;$PATH"
+        $Env:PATH = "$C3Home;$PATH"
         Write-Output "You may need to restart your shell"
     } else {
-        Write-Output "$BinDir is already in PATH"
+        Write-Output "$C3Home is already in PATH"
     }
 } else {
     Write-Output "You may need to update your PATH manually to use c3"

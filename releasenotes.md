@@ -6,6 +6,7 @@
 - Removed support for LLVM 17, 18.
 - Detect large temporaries when creating slices on the stack #2665
 - Fix for LLVM 22+ compatibility #2987
+- Search for the linker in PATH; use the builtin linker if CC missing. #2906
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
