@@ -201,7 +201,7 @@ jobs:
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
             -DC3_FETCH_LLVM=ON \
-            -DC3_LLVM_TAG=llvm_22.1.0 \
+            -DC3_LLVM_TAG=llvm_22.1.1 \
             -DC3_LINK_DYNAMIC=OFF \
             -DBUILD_SHARED_LIBS=OFF \
             -DLLVM_ENABLE_LIBXML2=OFF \
