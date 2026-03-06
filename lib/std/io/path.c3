@@ -128,7 +128,7 @@ macro bool? rmdir(path)
 	$if $typeof(path) == String:
 		@pool() { return _rmdir(temp(path)); };
 	$else
-		return _mkdir(path);
+		return _rmdir(path);
 	$endif
 }
 

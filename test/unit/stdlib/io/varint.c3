@@ -18,6 +18,15 @@ fn void write_read()
 	assert(n == 4, "got %d; want 4", n);
 	io::read_varint(&buf, &y)!!;
 	assert(y == 123456789, "got %d; want 123456789", y);
+
+	const uint128 TEST_VAL = 29382938129343348392839ull;
+	uint128 val = TEST_VAL;
+	n = io::write_varint(&buf, val)!!;
+	test::eq(n, 11);
+	val = 0;
+	io::read_varint(&buf, &val)!!;
+	test::eq(val, TEST_VAL);
+
 }
 
 struct VarIntTest

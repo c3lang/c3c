@@ -41,7 +41,7 @@ static inline Type *max_supported_imm_int(bool is_signed, AsmArgType arg)
 
 static inline Decl *sema_resolve_external_symbol(SemaContext *context, Expr *expr, const char *name)
 {
-	Decl *decl = sema_resolve_symbol(context, name, NULL, expr->span);
+	Decl *decl = sema_resolve_symbol(context, name, NULL, expr->loc);
 	if (!decl) return NULL;
 
 	if (decl->decl_kind != DECL_VAR)

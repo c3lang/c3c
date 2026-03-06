@@ -573,7 +573,7 @@ bool sema_expr_analyse_str_wide(SemaContext *context, Expr *expr, BuiltinFunctio
 		if ((0xC0 & c) != 0xC0)
 		{
 			// ASCII
-			Expr *value = expr_new_const_int(expr->span, type, (c & 0x7F));
+			Expr *value = expr_new_const_int(expr->loc, type, (c & 0x7F));
 			vec_add(elements, const_init_new_value(value));
 			continue;
 		}
@@ -589,7 +589,7 @@ bool sema_expr_analyse_str_wide(SemaContext *context, Expr *expr, BuiltinFunctio
 		{
 			RETURN_SEMA_ERROR(inner, "Invalid codepoint in string: a 16-bit wide-string cannot accommodate codepoints over U+FFFF.");
 		}
-		Expr *value = expr_new_const_int(expr->span, type, from_codepoint);
+		Expr *value = expr_new_const_int(expr->loc, type, from_codepoint);
 		vec_add(elements, const_init_new_value(value));
 	}
 	if (zero_terminate) vec_add(elements, const_init_new_zero(type));

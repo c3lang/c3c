@@ -591,7 +591,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	LLVMValueRef global_ref = decl->backend_ref = llvm_add_global_raw(c, name, LLVMTypeOf(init_value), decl->alignment);
 	if (llvm_use_debug(c))
 	{
-		SourceSpan loc = decl->span;
+		SourceLoc *loc = sourcelocptrzero(decl->loc);
 		decl->var.backend_debug_ref = LLVMDIBuilderCreateGlobalVariableExpression(
 				c->debug.builder,
 				c->debug.file.debug_file,
@@ -600,7 +600,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 				name,
 				strlen(name),
 				c->debug.file.debug_file,
-				loc.row ? loc.row : 1,
+				loc && loc->row ? loc->row : 1,
 				llvm_get_debug_type(c, decl->type),
 				decl_is_local(decl),
 				LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
@@ -1412,7 +1412,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 
 INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMContextRef shared_context)
 {
-	Path *test_path = path_create_from_string("_$test", 5, INVALID_SPAN);
+	Path *test_path = path_create_from_string("_$test", 5, 0);
 	Module *test_module = compiler_find_or_create_module(test_path);
 
 	DebugInfo actual_debug_info = compiler.build.debug_info;
@@ -1481,7 +1481,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 
 INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, LLVMContextRef shared_context)
 {
-	Path *benchmark_path = path_create_from_string("$benchmark", 10, INVALID_SPAN);
+	Path *benchmark_path = path_create_from_string("$benchmark", 10, 0);
 	Module *benchmark_module = compiler_find_or_create_module(benchmark_path);
 
 	DebugInfo actual_debug_info = compiler.build.debug_info;

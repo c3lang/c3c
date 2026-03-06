@@ -363,7 +363,7 @@ fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, Str
 		}
 		else
 		{
-			if (posix::spawnp(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS~;
+			if (posix::spawn(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS~;
 		}
 	};
 

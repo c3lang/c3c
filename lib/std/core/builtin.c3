@@ -686,6 +686,7 @@ macro uint bool[<*>].hash(self)    => hash_vec(self);
 macro uint typeid.hash(typeid t) => @generic_hash(((ulong)(uptr)t));
 macro uint String.hash(String c) => (uint)a5hash::hash(c);
 macro uint char[].hash(char[] c) => (uint)a5hash::hash(c);
+macro uint ZString.hash(ZString c) => (uint)a5hash::hash(c.str_view());
 macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
 <*

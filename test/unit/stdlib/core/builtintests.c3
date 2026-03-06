@@ -132,7 +132,9 @@ fn void test_hash()
 	(bool[100]){}.hash();
 	String x = "abc";
 	char[] y = "abc";
+	ZString z = "abc";
 	assert(x.hash() == y.hash());
+	assert(z.hash() == x.hash());
 	assert(int.typeid.hash());
 }
 
