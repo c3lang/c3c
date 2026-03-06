@@ -22,6 +22,7 @@
 - SubProcessOptions.search_user_path did nothing on non-windows systems despite comment saying it should #2845
 - AES implementation fixed to be constant time #2806
 - Object would not properly compile on 32-bit Linux.
+- `io::EOF.nameof` would yield just `EOF` whereas resolving it at runtime would (correctly) yield `io::EOF`.
 
 ## 0.7.10 Change list
 

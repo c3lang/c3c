@@ -316,11 +316,10 @@ fn void test_fault_short_name_rt() @test
 
 fn void test_fault_short_name_comp() @test
 {
-	test::eq(SOME_FAULT.nameof, "SOME_FAULT");
-	test::eq(io::FILE_NOT_FOUND.nameof, "FILE_NOT_FOUND");
-	
-	// name of constant fault literal yields the name without parent module name in the path
-	// test::eq(SOME_FAULT.nameof, SOME_FAULT.@short_name());
+	test::eq(SOME_FAULT.nameof, "builtins::SOME_FAULT");
+	test::eq(io::FILE_NOT_FOUND.nameof, "io::FILE_NOT_FOUND");
+
+	test::eq(SOME_FAULT.@short_name(), "SOME_FAULT");
 }
 
 
