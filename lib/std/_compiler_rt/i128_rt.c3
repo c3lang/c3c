@@ -1,5 +1,15 @@
-module std::math::math_rt;
+module compiler_rt;
 
+macro bitcast(expr, $Type) @local
+{
+	$if $Type.alignof <= $alignof(expr):
+		return *($Type*)&expr;
+	$else
+		$Type x @noinit;
+		$$memcpy(&x, &expr, $sizeof(expr), false, $Type.alignof, $alignof(expr));
+		return x;
+	$endif
+}
 fn int128 __divti3(int128 a, int128 b) @cname("__divti3") @weak @nostrip
 {
 	int128 sign_a = a >> 127; // -1 : 0
@@ -312,14 +322,14 @@ macro float_from_i128($Type, a) @private
 	$switch $Type:
 		$case double:
 			$Rep = ulong;
-			const MANT_DIG = math::DOUBLE_MANT_DIG;
+			const MANT_DIG = DOUBLE_MANT_DIG;
 			const SIGNIFICANT_BITS = 52;
 			const EXP_BIAS = 1023;
 			const MANTISSA_MASK = 0xFFFFF_FFFF_FFFFUL;
 			const SIGN_BIT = 1UL << 63;
 		$case float:
 			$Rep = uint;
-			const MANT_DIG = math::FLOAT_MANT_DIG;
+			const MANT_DIG = FLOAT_MANT_DIG;
 			const EXP_BIAS = 127;
 			const SIGNIFICANT_BITS = 23;
 			const MANTISSA_MASK = 0x7F_FFFFU;
@@ -371,22 +381,18 @@ macro float_from_u128($Type, a) @private
 	$switch $Type:
 		$case double:
 			$Rep = ulong;
-			const MANT_DIG = math::DOUBLE_MANT_DIG;
+			const MANT_DIG = DOUBLE_MANT_DIG;
 			const SIGNIFICANT_BITS = 52;
 			const EXP_BIAS = 1023;
 			const MANTISSA_MASK = 0xFFFFF_FFFF_FFFFUL;
 		$case float:
 			$Rep = uint;
-			const MANT_DIG = math::FLOAT_MANT_DIG;
+			const MANT_DIG = FLOAT_MANT_DIG;
 			const EXP_BIAS = 127;
 			const SIGNIFICANT_BITS = 23;
 			const MANTISSA_MASK = 0x7F_FFFFU;
-		$case float16:
-			$Rep = ushort;
-			const MANT_DIG = math::HALF_MANT_DIG;
-		$case float128:
-			$Rep = uint128;
-			const MANT_DIG = math::QUAD_MANT_DIG;
+		$default:
+			$error "Unsupported type";
 	$endswitch
 	if (a == 0) return ($Type)0;
 	int sd = 128 - (int)$$clz(a); // digits

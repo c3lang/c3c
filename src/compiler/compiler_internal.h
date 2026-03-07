@@ -728,6 +728,7 @@ typedef struct Decl_
 	bool has_extname : 1;
 	bool is_external_visible : 1;
 	bool is_weak : 1;
+	bool is_weak_link : 1;
 	bool is_maybe_unused : 1;
 	bool is_must_use : 1;
 	bool will_reflect : 1;

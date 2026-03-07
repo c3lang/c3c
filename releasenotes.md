@@ -8,6 +8,7 @@
 - Search for the linker in PATH; use the builtin linker if CC missing. #2906
 - `constdef` inference through binary expressions: `Foo f = Foo.AUDIO | Foo.VIDEO` can be written `Foo f = AUDIO | VIDEO;`
 - Fix for LLVM 22+ compatibility #2987
+- `@weaklink` for just affecting linkage.
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
@@ -15,6 +16,7 @@
 - Added json serialization from structs.
 - Add `keccak` and Keccak-based hash functions: `sha3`, `shake`, `cshake`, `kmac`, `turboshake`, `tuplehash`, and `parallelhash`. #2728
 - Added `fault.short_name` and `fault.@short_name` to get just the fault name for both run and compile time. #3002
+- Compiler runtime functions extracted outside of std.
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
