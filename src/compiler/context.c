@@ -119,7 +119,17 @@ void unit_register_external_symbol(SemaContext *context, Decl *decl)
 	decl->is_external_visible = true;
 }
 
+INLINE void weak_visibility_mismatch(Decl *weak_symbol, Decl *other_symbol)
+{
+	print_error_at(weak_symbol->loc, "The weak symbol '%s' has another definition with a different, visibility.", weak_symbol->name);
+	SEMA_NOTE(other_symbol, "The other definition was here.");
 
+}
+
+INLINE bool decl_old_should_be_removed(Decl *old, Decl *decl)
+{
+	return old->is_weak && (!decl->is_weak || !decl->unit->is_interface_file);
+}
 void decl_register(CompilationUnit *unit, Decl *decl)
 {
 	if (decl->is_templated)
@@ -140,6 +150,94 @@ void decl_register(CompilationUnit *unit, Decl *decl)
 	}
 	DEBUG_LOG("Registering symbol '%s' in %s.", decl->name, unit->module->name->module);
 
+	Decl *old;
+	Decl *replaced_symbol = NULL;
+	if ((old = htable_set(&unit->local_symbols, (void*)decl->name, decl)))
+	{
+		if (old->decl_kind != decl->decl_kind || old->decl_kind == DECL_TYPE_ALIAS) goto SHADOW_LOCAL;
+		// If we have a weak symbol we can replace it
+		if (decl_old_should_be_removed(old, decl))
+		{
+			// Visibility must match
+			if (old->visibility != decl->visibility)
+			{
+				weak_visibility_mismatch(old, decl);
+				return;
+			}
+			replaced_symbol = old;
+			old->replacement = decl;
+			vec_add(unit->weak_symbols_skipped, old);
+			goto WEAK_LOCAL;
+		}
+		if (decl->is_weak)
+		{
+			// If the current is weak, but the other isn't we just ignore it.
+			// But we must verify visibility matching.
+			if (old->visibility != decl->visibility)
+			{
+				weak_visibility_mismatch(old, decl);
+				return;
+			}
+			// We restore the old one
+			htable_set(&unit->local_symbols, (void*)decl->name, old);
+			decl->replacement = old;
+			vec_add(unit->weak_symbols_skipped, decl);
+			return;
+		}
+SHADOW_LOCAL:
+		sema_shadow_error(NULL, decl, old);
+		decl_poison(decl);
+		decl_poison(old);
+		return;
+	}
+WEAK_LOCAL:
+	if ((old = htable_set(&unit->module->symbols, (void*)decl->name, decl)))
+	{
+		if (old->visibility == VISIBLE_LOCAL && decl->visibility == VISIBLE_LOCAL) return;
+		if (old->decl_kind != decl->decl_kind || old->decl_kind == DECL_TYPE_ALIAS) goto SHADOW_MODULE;
+		// If we have a weak symbol we can replace it
+		if (decl_old_should_be_removed(old, decl))
+		{
+			// Visibility must match
+			if (old->visibility != decl->visibility)
+			{
+				weak_visibility_mismatch(old, decl);
+				return;
+			}
+			// If we already replaced a weak symbol, it must be the same one!
+			if (replaced_symbol) ASSERT(replaced_symbol == old);
+			if (!replaced_symbol) vec_add(old->unit->weak_symbols_skipped, old);
+			replaced_symbol = old;
+			old->replacement = decl;
+			goto WEAK_MODULE;
+		}
+		if (decl->is_weak)
+		{
+			// If the current is weak, but the other isn't we just ignore it.
+			// But we must verify visibility matching.
+			if (old->visibility != decl->visibility)
+			{
+				weak_visibility_mismatch(old, decl);
+				return;
+			}
+			// We restore the old one
+			decl->replacement = old;
+			vec_add(unit->weak_symbols_skipped, decl);
+			return;
+		}
+SHADOW_MODULE:
+		if (old->visibility == VISIBLE_LOCAL)
+		{
+			sema_shadow_error(NULL, old, decl);
+		}
+		else
+		{
+			sema_shadow_error(NULL, decl, old);
+		}
+		decl_poison(decl);
+		decl_poison(old);
+	}
+WEAK_MODULE:
 	if (decl->visibility < VISIBLE_LOCAL)
 	{
 		switch (decl->decl_kind)
@@ -176,33 +274,14 @@ void decl_register(CompilationUnit *unit, Decl *decl)
 			case DECL_FNTYPE:
 			case DECL_INTERFACE:
 			case DECL_FAULT:
+				if (replaced_symbol)
+				{
+					global_context_replace_decl(replaced_symbol, decl);
+					break;
+				}
 				global_context_add_decl(decl);
 				break;
 		}
-	}
-
-	Decl *old;
-	if ((old = htable_set(&unit->local_symbols, (void*)decl->name, decl)))
-	{
-		sema_shadow_error(NULL, decl, old);
-		decl_poison(decl);
-		decl_poison(old);
-		return;
-	}
-
-	if ((old = htable_set(&unit->module->symbols, (void*)decl->name, decl)))
-	{
-		if (old->visibility == VISIBLE_LOCAL && decl->visibility == VISIBLE_LOCAL) return;
-		if (old->visibility == VISIBLE_LOCAL)
-		{
-			sema_shadow_error(NULL, old, decl);
-		}
-		else
-		{
-			sema_shadow_error(NULL, decl, old);
-		}
-		decl_poison(decl);
-		decl_poison(old);
 	}
 
 }

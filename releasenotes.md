@@ -10,6 +10,7 @@
 - Fix for LLVM 22+ compatibility #2987
 - `@weaklink` for just affecting linkage.
 - Add a fully static build of `c3c` for Linux. #2949
+- `@weak` now allows direct overriding of `@weak` definitions with a real definition.
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977

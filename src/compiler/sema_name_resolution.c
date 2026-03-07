@@ -600,7 +600,7 @@ static void find_closest(const char *name, int name_len, Decl **decls, int *coun
 	Decl *at_match = NULL;
 	FOREACH(Decl *, decl, decls)
 	{
-		if (decl->visibility != VISIBLE_PUBLIC) continue;
+		if (decl->visibility != VISIBLE_PUBLIC || decl->decl_kind == DECL_ERASED) continue;
 		const char *decl_name = decl->name;
 		if (!starts_at && decl_name[0] == '@' && str_eq(&decl_name[1], name))
 		{
