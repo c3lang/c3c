@@ -172,6 +172,24 @@ macro bool @typeis(#value, $Type) @const @builtin @deprecated("Use `$typeof(#val
 	return $typeof(#value).typeid == $Type.typeid;
 }
 
+fn int panic_print_backtrace_count(BacktraceList backtrace, int backtraces_to_ignore)
+{
+	bool inside_builtin_panic_skipped = true;
+	for (int i = backtraces_to_ignore; i < backtrace.len(); i++) {
+		switch (backtrace[i].function) {
+			case "std.core.builtin.print_backtrace":
+			case "std.core.builtin.default_panic":
+			case "std.core.builtin.panicf":
+				if (inside_builtin_panic_skipped) backtraces_to_ignore++;
+			case "__GI___sigaction":
+				backtraces_to_ignore = i + 1;
+			default:
+				inside_builtin_panic_skipped = false;
+				break;
+		}
+	}
+	return backtraces_to_ignore;
+}
 
 fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_backtrace = null) @if (env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
 {
@@ -185,29 +203,52 @@ fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_ba
 	{
 		BacktraceList? backtrace = backtrace::symbolize_backtrace(mem, backtraces);
 		if (catch backtrace) return false;
+
+		// Update ignore-count to also ignore the first traces from the panic functions
+		backtraces_to_ignore = panic_print_backtrace_count(backtrace, backtraces_to_ignore);
 		if (backtrace.len() <= backtraces_to_ignore) return false;
+
 		io::eprint("\nERROR: '");
 		io::eprint(message);
 		io::eprintn("'");
+
+		usz repetition_count = 0;
 		foreach (i, &trace : backtrace)
 		{
 			if (i < backtraces_to_ignore) continue;
+			if (trace.has_file() && trace.file.ends_with("/lib/std/core/private/main_stub.c3")) {
+				break;
+			}
+
+			// Repeating backtraces (f.e. for max recursion depth) pretty print
+			if (i > 0 && *trace == backtrace[i-1]) {
+				if (i + 1 < backtrace.len() && *trace == backtrace[i+1]) {
+					repetition_count += 1;
+					continue;
+				} else if (repetition_count > 0) {
+					if (trace.is_unknown()) {
+						io::eprintfn("  ... (%s repetitions of ???)", repetition_count, trace.function);
+					} else {
+						io::eprintfn("  ... (%s repetitions of %s)", repetition_count, trace.function);
+					}
+				}
+			} else {
+				repetition_count = 0;
+			}
+
 			String inline_suffix = trace.is_inline ? " [inline]" : "";
-			if (trace.is_unknown())
+			switch
 			{
-				io::eprintfn("  in ???%s", inline_suffix);
-				continue;
+				case trace.is_unknown():
+					io::eprintfn("  in ???%s", inline_suffix);
+				case trace.has_file():
+					io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
+				default:
+					io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
 			}
-			if (trace.has_file())
-			{
-				io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
-				continue;
-			}
-			io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
 		}
 	};
 	return true;
-
 }
 
 fn void default_panic(String message, String file, String function, uint line) @if(env::NATIVE_STACKTRACE)
@@ -718,286 +759,48 @@ macro uint hash_vec(vec) @local
 }
 
 const MAX_FRAMEADDRESS = 128;
-<*
- @require n >= 0
-*>
-macro void* get_frameaddress(int n)
+<* @require n >= 0 *>
+macro void* get_frameaddress(int n, $min = 0, $max = MAX_FRAMEADDRESS)
 {
-	if (n > MAX_FRAMEADDRESS) return null;
-	switch (n)
-	{
-		case 0: return $$frameaddress(0);
-		case 1: return $$frameaddress(1);
-		case 2: return $$frameaddress(2);
-		case 3: return $$frameaddress(3);
-		case 4: return $$frameaddress(4);
-		case 5: return $$frameaddress(5);
-		case 6: return $$frameaddress(6);
-		case 7: return $$frameaddress(7);
-		case 8: return $$frameaddress(8);
-		case 9: return $$frameaddress(9);
-		case 10: return $$frameaddress(10);
-		case 11: return $$frameaddress(11);
-		case 12: return $$frameaddress(12);
-		case 13: return $$frameaddress(13);
-		case 14: return $$frameaddress(14);
-		case 15: return $$frameaddress(15);
-		case 16: return $$frameaddress(16);
-		case 17: return $$frameaddress(17);
-		case 18: return $$frameaddress(18);
-		case 19: return $$frameaddress(19);
-		case 20: return $$frameaddress(20);
-		case 21: return $$frameaddress(21);
-		case 22: return $$frameaddress(22);
-		case 23: return $$frameaddress(23);
-		case 24: return $$frameaddress(24);
-		case 25: return $$frameaddress(25);
-		case 26: return $$frameaddress(26);
-		case 27: return $$frameaddress(27);
-		case 28: return $$frameaddress(28);
-		case 29: return $$frameaddress(29);
-		case 30: return $$frameaddress(30);
-		case 31: return $$frameaddress(31);
-		case 32: return $$frameaddress(32);
-		case 33: return $$frameaddress(33);
-		case 34: return $$frameaddress(34);
-		case 35: return $$frameaddress(35);
-		case 36: return $$frameaddress(36);
-		case 37: return $$frameaddress(37);
-		case 38: return $$frameaddress(38);
-		case 39: return $$frameaddress(39);
-		case 40: return $$frameaddress(40);
-		case 41: return $$frameaddress(41);
-		case 42: return $$frameaddress(42);
-		case 43: return $$frameaddress(43);
-		case 44: return $$frameaddress(44);
-		case 45: return $$frameaddress(45);
-		case 46: return $$frameaddress(46);
-		case 47: return $$frameaddress(47);
-		case 48: return $$frameaddress(48);
-		case 49: return $$frameaddress(49);
-		case 50: return $$frameaddress(50);
-		case 51: return $$frameaddress(51);
-		case 52: return $$frameaddress(52);
-		case 53: return $$frameaddress(53);
-		case 54: return $$frameaddress(54);
-		case 55: return $$frameaddress(55);
-		case 56: return $$frameaddress(56);
-		case 57: return $$frameaddress(57);
-		case 58: return $$frameaddress(58);
-		case 59: return $$frameaddress(59);
-		case 60: return $$frameaddress(60);
-		case 61: return $$frameaddress(61);
-		case 62: return $$frameaddress(62);
-		case 63: return $$frameaddress(63);
-		case 64: return $$frameaddress(64);
-		case 65: return $$frameaddress(65);
-		case 66: return $$frameaddress(66);
-		case 67: return $$frameaddress(67);
-		case 68: return $$frameaddress(68);
-		case 69: return $$frameaddress(69);
-		case 70: return $$frameaddress(70);
-		case 71: return $$frameaddress(71);
-		case 72: return $$frameaddress(72);
-		case 73: return $$frameaddress(73);
-		case 74: return $$frameaddress(74);
-		case 75: return $$frameaddress(75);
-		case 76: return $$frameaddress(76);
-		case 77: return $$frameaddress(77);
-		case 78: return $$frameaddress(78);
-		case 79: return $$frameaddress(79);
-		case 80: return $$frameaddress(80);
-		case 81: return $$frameaddress(81);
-		case 82: return $$frameaddress(82);
-		case 83: return $$frameaddress(83);
-		case 84: return $$frameaddress(84);
-		case 85: return $$frameaddress(85);
-		case 86: return $$frameaddress(86);
-		case 87: return $$frameaddress(87);
-		case 88: return $$frameaddress(88);
-		case 89: return $$frameaddress(89);
-		case 90: return $$frameaddress(90);
-		case 91: return $$frameaddress(91);
-		case 92: return $$frameaddress(92);
-		case 93: return $$frameaddress(93);
-		case 94: return $$frameaddress(94);
-		case 95: return $$frameaddress(95);
-		case 96: return $$frameaddress(96);
-		case 97: return $$frameaddress(97);
-		case 98: return $$frameaddress(98);
-		case 99: return $$frameaddress(99);
-		case 100: return $$frameaddress(100);
-		case 101: return $$frameaddress(101);
-		case 102: return $$frameaddress(102);
-		case 103: return $$frameaddress(103);
-		case 104: return $$frameaddress(104);
-		case 105: return $$frameaddress(105);
-		case 106: return $$frameaddress(106);
-		case 107: return $$frameaddress(107);
-		case 108: return $$frameaddress(108);
-		case 109: return $$frameaddress(109);
-		case 110: return $$frameaddress(110);
-		case 111: return $$frameaddress(111);
-		case 112: return $$frameaddress(112);
-		case 113: return $$frameaddress(113);
-		case 114: return $$frameaddress(114);
-		case 115: return $$frameaddress(115);
-		case 116: return $$frameaddress(116);
-		case 117: return $$frameaddress(117);
-		case 118: return $$frameaddress(118);
-		case 119: return $$frameaddress(119);
-		case 120: return $$frameaddress(120);
-		case 121: return $$frameaddress(121);
-		case 122: return $$frameaddress(122);
-		case 123: return $$frameaddress(123);
-		case 124: return $$frameaddress(124);
-		case 125: return $$frameaddress(125);
-		case 126: return $$frameaddress(126);
-		case 127: return $$frameaddress(127);
-		case 128: return $$frameaddress(128);
-		default: unreachable();
-	}
+	$if $min == 0 && $max == MAX_FRAMEADDRESS:
+		if (n > MAX_FRAMEADDRESS) return null;
+	$endif
+
+	$if $min == $max:
+		return $$frameaddress($min);
+	$else
+		var $mid = ($min + $max) / 2;
+		if (n <= $mid)
+		{
+			return get_frameaddress(n, $min, $mid);
+		}
+		else
+		{
+			return get_frameaddress(n, $mid + 1, $max);
+		}
+	$endif
 }
 
-<*
- @require n >= 0
-*>
-macro void* get_returnaddress(int n)
+<* @require n >= 0 *>
+macro void* get_returnaddress(int n, $min = 0, $max = MAX_FRAMEADDRESS)
 {
-	if (n > MAX_FRAMEADDRESS) return null;
-	switch (n)
-	{
-		case 0: return $$returnaddress(0);
-		case 1: return $$returnaddress(1);
-		case 2: return $$returnaddress(2);
-		case 3: return $$returnaddress(3);
-		case 4: return $$returnaddress(4);
-		case 5: return $$returnaddress(5);
-		case 6: return $$returnaddress(6);
-		case 7: return $$returnaddress(7);
-		case 8: return $$returnaddress(8);
-		case 9: return $$returnaddress(9);
-		case 10: return $$returnaddress(10);
-		case 11: return $$returnaddress(11);
-		case 12: return $$returnaddress(12);
-		case 13: return $$returnaddress(13);
-		case 14: return $$returnaddress(14);
-		case 15: return $$returnaddress(15);
-		case 16: return $$returnaddress(16);
-		case 17: return $$returnaddress(17);
-		case 18: return $$returnaddress(18);
-		case 19: return $$returnaddress(19);
-		case 20: return $$returnaddress(20);
-		case 21: return $$returnaddress(21);
-		case 22: return $$returnaddress(22);
-		case 23: return $$returnaddress(23);
-		case 24: return $$returnaddress(24);
-		case 25: return $$returnaddress(25);
-		case 26: return $$returnaddress(26);
-		case 27: return $$returnaddress(27);
-		case 28: return $$returnaddress(28);
-		case 29: return $$returnaddress(29);
-		case 30: return $$returnaddress(30);
-		case 31: return $$returnaddress(31);
-		case 32: return $$returnaddress(32);
-		case 33: return $$returnaddress(33);
-		case 34: return $$returnaddress(34);
-		case 35: return $$returnaddress(35);
-		case 36: return $$returnaddress(36);
-		case 37: return $$returnaddress(37);
-		case 38: return $$returnaddress(38);
-		case 39: return $$returnaddress(39);
-		case 40: return $$returnaddress(40);
-		case 41: return $$returnaddress(41);
-		case 42: return $$returnaddress(42);
-		case 43: return $$returnaddress(43);
-		case 44: return $$returnaddress(44);
-		case 45: return $$returnaddress(45);
-		case 46: return $$returnaddress(46);
-		case 47: return $$returnaddress(47);
-		case 48: return $$returnaddress(48);
-		case 49: return $$returnaddress(49);
-		case 50: return $$returnaddress(50);
-		case 51: return $$returnaddress(51);
-		case 52: return $$returnaddress(52);
-		case 53: return $$returnaddress(53);
-		case 54: return $$returnaddress(54);
-		case 55: return $$returnaddress(55);
-		case 56: return $$returnaddress(56);
-		case 57: return $$returnaddress(57);
-		case 58: return $$returnaddress(58);
-		case 59: return $$returnaddress(59);
-		case 60: return $$returnaddress(60);
-		case 61: return $$returnaddress(61);
-		case 62: return $$returnaddress(62);
-		case 63: return $$returnaddress(63);
-		case 64: return $$returnaddress(64);
-		case 65: return $$returnaddress(65);
-		case 66: return $$returnaddress(66);
-		case 67: return $$returnaddress(67);
-		case 68: return $$returnaddress(68);
-		case 69: return $$returnaddress(69);
-		case 70: return $$returnaddress(70);
-		case 71: return $$returnaddress(71);
-		case 72: return $$returnaddress(72);
-		case 73: return $$returnaddress(73);
-		case 74: return $$returnaddress(74);
-		case 75: return $$returnaddress(75);
-		case 76: return $$returnaddress(76);
-		case 77: return $$returnaddress(77);
-		case 78: return $$returnaddress(78);
-		case 79: return $$returnaddress(79);
-		case 80: return $$returnaddress(80);
-		case 81: return $$returnaddress(81);
-		case 82: return $$returnaddress(82);
-		case 83: return $$returnaddress(83);
-		case 84: return $$returnaddress(84);
-		case 85: return $$returnaddress(85);
-		case 86: return $$returnaddress(86);
-		case 87: return $$returnaddress(87);
-		case 88: return $$returnaddress(88);
-		case 89: return $$returnaddress(89);
-		case 90: return $$returnaddress(90);
-		case 91: return $$returnaddress(91);
-		case 92: return $$returnaddress(92);
-		case 93: return $$returnaddress(93);
-		case 94: return $$returnaddress(94);
-		case 95: return $$returnaddress(95);
-		case 96: return $$returnaddress(96);
-		case 97: return $$returnaddress(97);
-		case 98: return $$returnaddress(98);
-		case 99: return $$returnaddress(99);
-		case 100: return $$returnaddress(100);
-		case 101: return $$returnaddress(101);
-		case 102: return $$returnaddress(102);
-		case 103: return $$returnaddress(103);
-		case 104: return $$returnaddress(104);
-		case 105: return $$returnaddress(105);
-		case 106: return $$returnaddress(106);
-		case 107: return $$returnaddress(107);
-		case 108: return $$returnaddress(108);
-		case 109: return $$returnaddress(109);
-		case 110: return $$returnaddress(110);
-		case 111: return $$returnaddress(111);
-		case 112: return $$returnaddress(112);
-		case 113: return $$returnaddress(113);
-		case 114: return $$returnaddress(114);
-		case 115: return $$returnaddress(115);
-		case 116: return $$returnaddress(116);
-		case 117: return $$returnaddress(117);
-		case 118: return $$returnaddress(118);
-		case 119: return $$returnaddress(119);
-		case 120: return $$returnaddress(120);
-		case 121: return $$returnaddress(121);
-		case 122: return $$returnaddress(122);
-		case 123: return $$returnaddress(123);
-		case 124: return $$returnaddress(124);
-		case 125: return $$returnaddress(125);
-		case 126: return $$returnaddress(126);
-		case 127: return $$returnaddress(127);
-		case 128: return $$returnaddress(128);
-		default: unreachable();
-	}
+	$if $min == 0 && $max == MAX_FRAMEADDRESS:
+		if (n > MAX_FRAMEADDRESS) return null;
+	$endif
+
+	$if $min == $max:
+		return $$returnaddress($min);
+	$else
+		var $mid = ($min + $max) / 2;
+		if (n <= $mid)
+		{
+			return get_returnaddress(n, $min, $mid);
+		}
+		else
+		{
+			return get_returnaddress(n, $mid + 1, $max);
+		}
+	$endif
 }
 
 fn String fault.short_name(self)
