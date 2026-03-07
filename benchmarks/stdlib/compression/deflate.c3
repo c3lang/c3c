@@ -2,7 +2,7 @@ module deflate_benchmarks;
 import std::compression::deflate;
 
 const uint SMALL_ITERATIONS = 50000;
-const uint LARGE_ITERATIONS = 100;
+const uint LARGE_ITERATIONS = 200;
 
 // Data to compress
 const char[] SMALL_DATA = { [0..1023] = 'A' };

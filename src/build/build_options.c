@@ -162,6 +162,8 @@ static void usage(bool full)
 		print_opt("--test-nocapture", "Disable test stdout capturing, all tests can print as they run, same as --test-show-output.");
 		print_opt("--test-quiet", "Run tests without printing full names, printing output only on failure");
 		print_opt("--test-log-level=<verbose|debug|info|warn|error|critical>", "Set log priority when running tests.");
+		PRINTF("");
+		print_opt("--benchmark-csv-report", "Print a CSV report after benchmarks have completed.");
 	}
 	PRINTF("");
 	print_opt("-l <library>", "Link with the static or dynamic library provided.");
@@ -894,6 +896,11 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("test-nosort"))
 			{
 				options->test_nosort = true;
+				return;
+			}
+			if (match_longopt("benchmark-csv-report"))
+			{
+				options->benchmark_csv_report = true;
 				return;
 			}
 			if (match_longopt("print-large-functions"))

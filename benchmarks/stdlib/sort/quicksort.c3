@@ -5,7 +5,7 @@ import std::sort;
 fn void init() @init
 {
     set_benchmark_warmup_iterations(5);
-    set_benchmark_max_iterations(10_000);
+    set_benchmark_max_iterations(60_000);
 }
 
 fn void quicksort_bench() @benchmark
