@@ -129,9 +129,13 @@ fn Time_t? native_get_modified_time(String path) => @pool()
 			Stat stat;
 			native_stat(&stat, path)!;
 			return stat.st_mtimespec.s;
-		$default: // covers linux, android, bsd family
+		$case env::LINUX:
+		$case env::ANDROID:
+		$case env::BSD_FAMILY:
 			Stat stat;
 			native_stat(&stat, path)!;
 			return stat.st_mtime;
+		$default:
+			return io::UNSUPPORTED_OPERATION~;
 	$endswitch
 }
