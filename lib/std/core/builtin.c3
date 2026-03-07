@@ -221,7 +221,7 @@ fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_ba
 			}
 
 			// Repeating backtraces (f.e. for max recursion depth) pretty print
-			if (*trace == backtrace[i-1]) {
+			if (i > 0 && *trace == backtrace[i-1]) {
 				if (i + 1 < backtrace.len() && *trace == backtrace[i+1]) {
 					repetition_count += 1;
 					continue;
