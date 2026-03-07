@@ -43,8 +43,8 @@ fn uint128? int_from_any(any arg, bool *is_neg) @private
 		case POINTER:
 			*is_neg = false;
 			return (uint128)(uptr)*(void**)arg.ptr;
-		case DISTINCT:
-		case CONST_ENUM:
+		case TYPEDEF:
+		case CONSTDEF:
 			return int_from_any(arg.as_inner(), is_neg);
 		default:
 			break;
@@ -95,7 +95,7 @@ fn FloatType? float_from_any(any arg) @private
 	$if env::F128_SUPPORT:
 		if (arg.type == float128.typeid) return (FloatType)*((float128*)arg.ptr);
 	$endif
-	if (arg.type.kindof == DISTINCT || arg.type.kindof == CONST_ENUM)
+	if (arg.type.kindof == TYPEDEF || arg.type.kindof == CONSTDEF)
 	{
 		return float_from_any(arg.as_inner());
 	}
@@ -945,8 +945,8 @@ fn usz? formatter_out_str(Formatter* self, any arg) @private
 			return formatter_out_unknown(self, "union", arg);
 		case BITSTRUCT:
 			return formatter_out_unknown(self, "bitstruct", arg);
-		case CONST_ENUM:
-		case DISTINCT:
+		case CONSTDEF:
+		case TYPEDEF:
 			if (arg.type == String.typeid)
 			{
 				return formatter_out_substr(self, *(String*)arg);

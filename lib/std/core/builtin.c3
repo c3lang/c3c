@@ -317,6 +317,9 @@ macro any.retype_to(&self, typeid type)
 	return $$any_make(self.ptr, type);
 }
 
+<*
+ @require (bool)self.type : "A typed any was expected"
+*>
 macro any.as_inner(&self)
 {
 	return $$any_make(self.ptr, self.type.inner);
@@ -683,6 +686,7 @@ macro uint bool[<*>].hash(self)    => hash_vec(self);
 macro uint typeid.hash(typeid t) => @generic_hash(((ulong)(uptr)t));
 macro uint String.hash(String c) => (uint)a5hash::hash(c);
 macro uint char[].hash(char[] c) => (uint)a5hash::hash(c);
+macro uint ZString.hash(ZString c) => (uint)a5hash::hash(c.str_view());
 macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
 <*
@@ -994,6 +998,19 @@ macro void* get_returnaddress(int n)
 		case 128: return $$returnaddress(128);
 		default: unreachable();
 	}
+}
+
+fn String fault.short_name(self)
+{
+	String name = self.nameof;
+	return name[name.index_of("::") + 2..]!!;
+}
+
+
+macro String fault.@short_name($self) @const
+{
+	var $name = $self.nameof;
+	return $name[@str_find($name, "::") + 2..];
 }
 
 module std::core::builtin @if((env::LINUX || env::ANDROID || env::DARWIN) && env::COMPILER_SAFE_MODE && env::DEBUG_SYMBOLS);

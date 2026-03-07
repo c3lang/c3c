@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  LLVM_RELEASE_VERSION: 21.x
+  LLVM_RELEASE_VERSION: 22.x
   LLVM_RELEASE_VERSION_LINUX_MUSL: 20
   LLVM_RELEASE_VERSION_OPENBSD: 20
   LLVM_RELEASE_VERSION_NETBSD: 19
@@ -401,7 +401,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm_version: [17, 18, 19, 20]
+        llvm_version: [19, 20]
     steps:
       - uses: actions/checkout@v6
 

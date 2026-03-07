@@ -17,11 +17,11 @@
 #define UINT12_MAX        4095
 #define UINT20_MAX        1048575U
 
-#define SEMA_WARN(_node, level_, ...) (sema_warn_at(context, (_node)->span, compiler.build.warnings. level_  , __VA_ARGS__))
-#define SEMA_ERROR(_node, ...) sema_error_at(context, (_node)->span, __VA_ARGS__)
-#define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return false; } while (0)
-#define RETURN_VAL_SEMA_ERROR(val__, _node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return (val__); } while (0)
-#define RETURN_NULL_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return NULL; } while (0)
+#define SEMA_WARN(_node, level_, ...) (sema_warn_at(context, (_node)->loc, compiler.build.warnings. level_  , __VA_ARGS__))
+#define SEMA_ERROR(_node, ...) sema_error_at(context, (_node)->loc, __VA_ARGS__)
+#define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->loc, __VA_ARGS__); return false; } while (0)
+#define RETURN_VAL_SEMA_ERROR(val__, _node, ...) do { sema_error_at(context, (_node)->loc, __VA_ARGS__); return (val__); } while (0)
+#define RETURN_NULL_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->loc, __VA_ARGS__); return NULL; } while (0)
 #define RETURN_SEMA_ERROR_AT(span__, ...) do { sema_error_at(context, span__, __VA_ARGS__); return false; } while (0)
 #define SCOPE_OUTER_START(span__) do { DynamicScope stored_scope = context->active_scope; context_change_scope_with_flags(context, SCOPE_NONE, span__);
 #define SCOPE_OUTER_END ASSERT(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = stored_scope; } while(0)
@@ -42,7 +42,7 @@
 #define PUSH_BREAKCONT(ast) PUSH_CONTINUE(ast); PUSH_BREAK(ast)
 #define POP_BREAKCONT() POP_CONTINUE(); POP_BREAK()
 #define CHECK_ON_DEFINED(ref__) do { if (!ref__) break; *ref__ = true; return false; } while(0)
-#define SET_JUMP_END(context__, node__) do { (context__)->active_scope.end_jump = (EndJump) { true, (node__)->span }; } while(0)
+#define SET_JUMP_END(context__, node__) do { (context__)->active_scope.end_jump = (EndJump) { true, (node__)->loc }; } while(0)
 
 Decl **global_context_acquire_locals_list(void);
 void generic_context_release_locals_list(Decl **);
@@ -51,14 +51,14 @@ const char *context_filename(SemaContext *context);
 AstId context_get_defers(SemaContext *context, AstId defer_bottom, bool is_success);
 void context_pop_defers(SemaContext *context, AstId *next);
 void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast);
-void context_change_scope_for_label(SemaContext *context, DeclId label_id, SourceSpan span);
-void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, SourceSpan span);
+void context_change_scope_for_label(SemaContext *context, DeclId label_id, SourceLocId loc);
+void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, SourceLocId loc);
 SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit);
 
 TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref);
-void sema_print_inline(SemaContext *context, SourceSpan original);
-void sema_error_at(SemaContext *context, SourceSpan span, const char *message, ...);
-bool sema_warn_at(SemaContext *context, SourceSpan span, WarningLevel level, const char *message, ...);
+void sema_print_inline(SemaContext *context, SourceLocId original);
+void sema_error_at(SemaContext *context, SourceLocId loc, const char *message, ...);
+bool sema_warn_at(SemaContext *context, SourceLocId loc, WarningLevel level, const char *message, ...);
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);
@@ -66,7 +66,7 @@ unsigned sema_context_push_ct_stack(SemaContext *context);
 void sema_context_pop_ct_stack(SemaContext *context, unsigned old_state);
 
 bool sema_analyse_function_body(SemaContext *context, Decl *func);
-bool sema_analyse_contracts(SemaContext *context, Decl *contracts, Expr **requires, Expr **ensures, AstId **asserts, SourceSpan call_span, bool *has_ensures);
+bool sema_analyse_contracts(SemaContext *context, Decl *contracts, Expr **requires, Expr **ensures, AstId **asserts, SourceLocId call_loc, bool *has_ensures);
 void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
 
 Decl *sema_create_runner_main(SemaContext *context, Decl *decl);
@@ -96,7 +96,7 @@ bool sema_analyse_expr(SemaContext *context, Expr *expr);
 Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
 void expr_set_to_ref(Expr *expr);
 bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);
-Decl *sema_find_typed_operator(SemaContext *context, OperatorOverload operator_overload, SourceSpan span, Expr *lhs, Expr *rhs, bool *reverse);
+Decl *sema_find_typed_operator(SemaContext *context, OperatorOverload operator_overload, SourceLocId loc, Expr *lhs, Expr *rhs, bool *reverse);
 OverloadMatch sema_find_typed_operator_type(SemaContext *context, OperatorOverload operator_overload, OverloadType overload_type, Type *lhs_type, Type *rhs_type, Expr *rhs, Decl **candidate_ref, OverloadMatch last_match, Decl **ambiguous_ref);
 BoolErr sema_type_has_equality_overload(SemaContext *context, Type *type);
 BoolErr sema_type_can_check_equality_with_overload(SemaContext *context, Type *type);
@@ -119,7 +119,7 @@ CondResult sema_check_comp_time_bool(SemaContext *context, Expr *expr);
 
 bool sema_expr_check_assign(SemaContext *context, Expr *expr, bool *failed_ref);
 bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, TypeInfo *parent, CallABI abi, Signature *signature);
-Expr *sema_create_struct_from_expressions(Decl *struct_decl, SourceSpan span, Expr **exprs);
+Expr *sema_create_struct_from_expressions(Decl *struct_decl, SourceLocId loc, Expr **exprs);
 ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs, ConstInitializer *rhs, BinaryOp op);
 void sema_invert_bitstruct_const_initializer(ConstInitializer *initializer);
 ArrayIndex sema_len_from_const(Expr *expr);
@@ -128,14 +128,14 @@ Type *cast_numeric_arithmetic_promotion(Type *type);
 void cast_to_int_to_max_bit_size(Expr *lhs, Expr *rhs, Type *left_type, Type *right_type);
 bool sema_decl_if_cond(SemaContext *context, Decl *decl);
 Decl *sema_generate_parameterized_identifier(SemaContext *context, Decl *generic, Decl *alias, Expr **params,
-                                             Decl **param_decls, const char *suffix, const char *csuffix, SourceSpan invocation_span, SourceSpan span);
-Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_path, const char *name, SourceSpan span,
-                                            Expr **params, SourceSpan invocation_span);
-bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, const char *name, SourceSpan span);
+                                             Decl **param_decls, const char *suffix, const char *csuffix, SourceLocId invocation_loc, SourceLocId loc);
+Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_path, const char *name, SourceLocId loc,
+                                            Expr **params, SourceLocId invocation_loc);
+bool sema_parameterized_type_is_found(SemaContext *context, Path *decl_path, const char *name, SourceLocId loc);
 Type *sema_resolve_type_get_func(Signature *signature, CallABI abi);
 INLINE bool sema_set_alignment(SemaContext *context, Type *type, AlignSize *result, bool is_alloca);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
-INLINE bool sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span);
+INLINE bool sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceLocId loc);
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right, bool *failed_ref);
 bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain, bool *erase_decl);
 
@@ -207,7 +207,7 @@ INLINE Attr* attr_find_kind(Attr **attrs, AttributeType attr_type)
 	return NULL;
 }
 
-INLINE bool sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span)
+INLINE bool sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceLocId loc)
 {
 	ASSERT(decl->resolve_status == RESOLVE_DONE);
 	if (!decl_is_deprecated(decl)) return true;
@@ -226,18 +226,18 @@ INLINE bool sema_display_deprecated_warning_on_use(SemaContext *context, Decl *d
 		case WARNING_WARN:
 			if (msg[0])
 			{
-				sema_warning_at(span, "'%s' is deprecated: %s.", decl->name, msg);
+				sema_warning_at(loc, "'%s' is deprecated: %s.", decl->name, msg);
 				return true;
 			}
-			sema_warning_at(span, "'%s' is deprecated.", decl->name);
+			sema_warning_at(loc, "'%s' is deprecated.", decl->name);
 			return true;
 		case WARNING_ERROR:
 			if (msg[0])
 			{
-				print_error_at(span, "'%s' is deprecated: %s.", decl->name, msg);
+				print_error_at(loc, "'%s' is deprecated: %s.", decl->name, msg);
 				return false;
 			}
-			print_error_at(span, "'%s' is deprecated.", decl->name);
+			print_error_at(loc, "'%s' is deprecated.", decl->name);
 			return false;
 	}
 	UNREACHABLE

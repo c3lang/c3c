@@ -61,15 +61,14 @@ fn void teardown_bench() @finalizer
 // =======================================================================================
 module crypto_hash_benchmarks @benchmark;
 
-import std::hash;
-
+import std::hash, std::crypto;
 
 fn void md5_16() => md5::hash(common_16);
 fn void sha1_16() => sha1::hash(common_16);
 fn void sha2_256_16() => sha256::hash(common_16);
 fn void sha2_512_16() => sha512::hash(common_16);
-//fn void blake2s_256_16() => blake2::s(256, common_16);
-//fn void blake2b_256_16() => blake2::b(256, common_16);
+fn void blake2s_256_16() => blake2::s(32, common_16);
+fn void blake2b_256_16() => blake2::b(32, common_16);
 fn void blake3_16() => blake3::hash(common_16);
 fn void ripemd_160_16() => ripemd::hash{160}(common_16);
 fn void whirlpool_16() => whirlpool::hash(common_16);
@@ -80,8 +79,8 @@ fn void md5_256() => md5::hash(common_256);
 fn void sha1_256() => sha1::hash(common_256);
 fn void sha2_256_256() => sha256::hash(common_256);
 fn void sha2_512_256() => sha512::hash(common_256);
-//fn void blake2s_256_256() => blake2::s(256, common_256);
-//fn void blake2b_256_256() => blake2::b(256, common_256);
+fn void blake2s_256_256() => blake2::s(32, common_256);
+fn void blake2b_256_256() => blake2::b(32, common_256);
 fn void blake3_256() => blake3::hash(common_256);
 fn void ripemd_160_256() => ripemd::hash{160}(common_256);
 fn void whirlpool_256() => whirlpool::hash(common_256);
@@ -111,3 +110,10 @@ fn void ripemd_160_1mib() => ripemd::hash{160}(common_1mib);
 fn void whirlpool_1mib() => whirlpool::hash(common_1mib);
 fn void streebog_256_1mib() => streebog::hash_256(common_1mib);
 fn void streebog_512_1mib() => streebog::hash_512(common_1mib);
+
+fn void keccak_256() => keccak::xof(256, 32, common_1mib);
+fn void keccak_512() => keccak::xof(512, 64, common_1mib);
+fn void sha3_256() => sha3::hash(256, common_1mib);
+fn void sha3_512() => sha3::hash(512, common_1mib);
+fn void sha256_256() => sha256::hash(common_1mib);
+fn void sha512_512() => sha512::hash(common_1mib);

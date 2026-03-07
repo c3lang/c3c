@@ -29,7 +29,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool allow_wrap);
 static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool allow_wrap);
 static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit);
-static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceSpan loc);
+static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceLocId loc);
 static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_extract_bitvalue_from_array(GenContext *c, BEValue *be_value, Decl *member, Decl *parent_decl);
@@ -376,7 +376,7 @@ LLVMValueRef llvm_emit_const_padding(GenContext *c, AlignSize size)
 	return llvm_get_undef_raw(llvm_const_padding_type(c, size));
 }
 
-static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceSpan loc)
+static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceLocId loc)
 {
 	if (compiler.build.feature.trap_on_wrap && !type_kind_is_real_vector(type->type_kind))
 	{
@@ -612,7 +612,7 @@ void llvm_emit_convert_value_from_coerced(GenContext *c, BEValue *result, LLVMTy
 	llvm_value_set_address_abi_aligned(c, result, addr, original_type);
 }
 
-static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceSpan loc)
+static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceLocId loc)
 {
 	if (compiler.build.feature.trap_on_wrap && !type_kind_is_real_vector(type->type_kind))
 	{
@@ -638,7 +638,7 @@ static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValu
 }
 
 
-static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValueRef array_max_index, SourceSpan loc)
+static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValueRef array_max_index, SourceLocId loc)
 {
 	BEValue result;
 	llvm_value_rvalue(c, index);
@@ -659,7 +659,7 @@ static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValu
 	llvm_emit_panic_if_true(c, &result, "Array index out of bounds", loc, "Array index out of bounds (array had size %d, index was %d)", &max, index);
 }
 
-static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceSpan loc)
+static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceLocId loc)
 {
 	ASSERT(llvm_value_is_addr(parent));
 	Type *type = type_lowering(parent->type);
@@ -772,9 +772,9 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 	}
 	if (needs_len && is_safe && !llvm_is_global_eval(c))
 	{
-		llvm_emit_array_bounds_check(c, &index, len.value, index_expr->span);
+		llvm_emit_array_bounds_check(c, &index, len.value, index_expr->loc);
 	}
-	llvm_emit_subscript_addr_with_base(c, value, value, &index, index_expr->span);
+	llvm_emit_subscript_addr_with_base(c, value, value, &index, index_expr->loc);
 	ASSERT(llvm_value_is_addr(value));
 	llvm_value_fold_optional(c, value);
 }
@@ -805,7 +805,7 @@ static inline void llvm_emit_subscript(GenContext *c, BEValue *value, Expr *expr
 		BEValue value2;
 		llvm_value_set(&value1, align, type_usz);
 		llvm_value_set(&value2, rem, type_usz);
-		llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", parent_expr->span, "Unaligned access: ptr %% %s = %s, use @unaligned_load / @unaligned_store for unaligned access.",
+		llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", parent_expr->loc, "Unaligned access: ptr %% %s = %s, use @unaligned_load / @unaligned_store for unaligned access.",
 			&value1, &value2);
 		c->emitting_load_store_check = false;
 	}
@@ -2086,7 +2086,7 @@ static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, E
 	}
 }
 
-static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan span, BEValue *original, int diff, bool allow_wrap)
+static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceLocId span, BEValue *original, int diff, bool allow_wrap)
 {
 	ASSERT(!llvm_value_is_addr(original));
 
@@ -2246,7 +2246,7 @@ static inline void llvm_emit_inc_dec_change(GenContext *c, BEValue *addr, BEValu
 	// Store the original value if we want it
 	if (before) *before = value;
 
-	LLVMValueRef after_value = llvm_emit_inc_dec_value(c, expr->span, &value, diff, allow_wrap);
+	LLVMValueRef after_value = llvm_emit_inc_dec_value(c, expr->loc, &value, diff, allow_wrap);
 
 	// Store the result aligned.
 	llvm_store_raw(c, addr, after_value);
@@ -2276,7 +2276,7 @@ static inline void llvm_emit_pre_post_inc_dec_bitstruct(GenContext *c, BEValue *
 	BEValue value = parent;
 	llvm_extract_bitvalue(c, &value, parent_decl, member);
 	LLVMValueRef value_start = llvm_load_value_store(c, &value);
-	LLVMValueRef result = llvm_emit_add_int(c, value.type, value_start, llvm_const_int(c, value.type, diff), lhs->span);
+	LLVMValueRef result = llvm_emit_add_int(c, value.type, value_start, llvm_const_int(c, value.type, diff), lhs->loc);
 
 	llvm_value_set(be_value, pre ? result : value_start, value.type);
 
@@ -2328,7 +2328,7 @@ static inline void llvm_emit_pre_post_inc_dec_vector(GenContext *c, BEValue *val
 	llvm_value_set(&current_res, LLVMBuildExtractElement(c->builder, vector, index, ""), element);
 
 	// Calculate the new value.
-	LLVMValueRef new_value = llvm_emit_inc_dec_value(c, expr->span, &current_res, diff, false);
+	LLVMValueRef new_value = llvm_emit_inc_dec_value(c, expr->loc, &current_res, diff, false);
 
 	// We update the vector value.
 	vector = LLVMBuildInsertElement(c->builder, vector, new_value, index, "");
@@ -2400,9 +2400,9 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 		LLVMValueRef check = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, llvm_get_zero(c, inner->type), "checknull");
 		scratch_buffer_clear();
 		scratch_buffer_append("Dereference of null pointer, '");
-		span_to_scratch(inner->span);
+		loc_to_scratch(inner->loc);
 		scratch_buffer_append("' was null.");
-		llvm_emit_panic_on_true(c, check, scratch_buffer_to_string(), inner->span, NULL, NULL, NULL);
+		llvm_emit_panic_on_true(c, check, scratch_buffer_to_string(), inner->loc, NULL, NULL, NULL);
 		if (alignment > 1 && !c->emitting_load_store_check)
 		{
 			LLVMValueRef as_int = LLVMBuildPtrToInt(c->builder, value->value, llvm_get_type(c, type_usz), "");
@@ -2415,7 +2415,7 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 			if (inner->type->name )
 			llvm_value_set(&value1, align, type_usz);
 			llvm_value_set(&value2, rem, type_usz);
-			llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", inner->span, "Unaligned access: ptr %% %s = %s, use @unaligned_load / @unaligned_store for unaligned access.",
+			llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", inner->loc, "Unaligned access: ptr %% %s = %s, use @unaligned_load / @unaligned_store for unaligned access.",
 				&value1, &value2);
 			c->emitting_load_store_check = false;
 		}
@@ -2531,7 +2531,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 																 &type_to_use, 1, args, 2);
 				value->value = llvm_emit_extract_value(c, call_res, 0);
 				LLVMValueRef ok = llvm_emit_extract_value(c, call_res, 1);
-				llvm_emit_panic_on_true(c, ok, "Signed negation overflow", expr->span, NULL, NULL, NULL);
+				llvm_emit_panic_on_true(c, ok, "Signed negation overflow", expr->loc, NULL, NULL, NULL);
 				return;
 			}
 			value->value = LLVMBuildNeg(c->builder, value->value, "neg");
@@ -2573,10 +2573,10 @@ static void llvm_emit_trap_negative(GenContext *c, Expr *expr, LLVMValueRef valu
 
 	LLVMValueRef zero = llvm_const_int(c, expr->type, 0);
 	LLVMValueRef ok = LLVMBuildICmp(c->builder, LLVMIntSLT, value, zero, "underflow");
-	llvm_emit_panic_on_true(c, ok, "Negative value", expr->span, error, index_val, NULL);
+	llvm_emit_panic_on_true(c, ok, "Negative value", expr->loc, error, index_val, NULL);
 }
 
-static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, const char *error, SourceSpan loc)
+static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, const char *error, SourceLocId loc)
 {
 	if (!safe_mode_enabled()) return;
 
@@ -2605,7 +2605,7 @@ static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, c
 }
 
 
-static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type *type, const char *error, SourceSpan loc)
+static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type *type, const char *error, SourceLocId loc)
 {
 	if (!safe_mode_enabled()) return;
 	BEValue val;
@@ -2740,7 +2740,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	// Walk from end if it is a slice from the back.
 	if (start_from_end)
 	{
-		start_index.value = llvm_emit_sub_int(c, start_index.type, len.value, start_index.value, slice->span);
+		start_index.value = llvm_emit_sub_int(c, start_index.type, len.value, start_index.value, slice->loc);
 	}
 
 	// Check that index does not extend beyond the length.
@@ -2750,7 +2750,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		BEValue exceeds_size;
 		llvm_emit_int_comp(c, &exceeds_size, &start_index, &len, BINARYOP_GT);
 		RETURN_ON_EMPTY_BLOCK_VOID();
-		llvm_emit_panic_if_true(c, &exceeds_size, "Index exceeds array len", slice->span, "Index exceeds array length (array had size %d, index was %d).", &len, &start_index);
+		llvm_emit_panic_if_true(c, &exceeds_size, "Index exceeds array len", slice->loc, "Index exceeds array length (array had size %d, index was %d).", &len, &start_index);
 	}
 
 	// Insert trap for negative start offset for non pointers.
@@ -2791,12 +2791,12 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		if (end_from_end)
 		{
 			ASSERT(range.range_type == RANGE_DYNAMIC);
-			end_index.value = llvm_emit_sub_int(c, end_index.type, len.value, end_index.value, slice->span);
+			end_index.value = llvm_emit_sub_int(c, end_index.type, len.value, end_index.value, slice->loc);
 			llvm_value_rvalue(c, &end_index);
 		}
 		if (is_len_range)
 		{
-			end_index.value = llvm_emit_add_int(c, end_index.type, start_index.value, end_index.value, slice->span);
+			end_index.value = llvm_emit_add_int(c, end_index.type, start_index.value, end_index.value, slice->loc);
 		}
 
 		// This will trap any bad negative index, so we're fine.
@@ -2808,16 +2808,16 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 				llvm_emit_int_comp(c, &excess, &start_index, &end_index, BINARYOP_GT);
 				RETURN_ON_EMPTY_BLOCK_VOID();
 				BEValue actual_end_len = end_index;
-				actual_end_len.value = llvm_emit_sub_int(c, end_index.type, end_index.value, start_index.value, slice->span);
+				actual_end_len.value = llvm_emit_sub_int(c, end_index.type, end_index.value, start_index.value, slice->loc);
 				actual_end_len.type = type_isz;
-				llvm_emit_panic_if_true(c, &excess, "Negative slice length", slice->span, "Negative value (%d) given for slice length.", &actual_end_len, NULL);
+				llvm_emit_panic_if_true(c, &excess, "Negative slice length", slice->loc, "Negative value (%d) given for slice length.", &actual_end_len, NULL);
 				if (len.value)
 				{
 					llvm_emit_int_comp(c, &excess, &len, &end_index, BINARYOP_LT);
 					RETURN_ON_EMPTY_BLOCK_VOID();
 					BEValue actual_end_index = end_index;
-					actual_end_index.value = llvm_emit_sub_int(c, end_index.type, end_index.value, llvm_const_int(c, type_isz, 1), slice->span);
-					llvm_emit_panic_if_true(c, &excess, "End index out of bounds", slice->span, "End index out of bounds (end index of %d exceeds size of %d)", &actual_end_index, &len);
+					actual_end_index.value = llvm_emit_sub_int(c, end_index.type, end_index.value, llvm_const_int(c, type_isz, 1), slice->loc);
+					llvm_emit_panic_if_true(c, &excess, "End index out of bounds", slice->loc, "End index out of bounds (end index of %d exceeds size of %d)", &actual_end_index, &len);
 				}
 			}
 			else
@@ -2825,18 +2825,18 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 				llvm_value_rvalue(c, &start_index);
 				llvm_value_rvalue(c, &end_index);
 				RETURN_ON_EMPTY_BLOCK_VOID();
-				LLVMValueRef val = llvm_emit_add_int(c, end_index.type, end_index.value, llvm_const_int(c, end_index.type, 1), slice->span);
+				LLVMValueRef val = llvm_emit_add_int(c, end_index.type, end_index.value, llvm_const_int(c, end_index.type, 1), slice->loc);
 				BEValue plus_one_end_index;
 				llvm_value_set(&plus_one_end_index, val, end_index.type);
 				llvm_emit_int_comp(c, &excess, &start_index, &plus_one_end_index, BINARYOP_GT);
 				RETURN_ON_EMPTY_BLOCK_VOID();
-				llvm_emit_panic_if_true(c, &excess, "Negative size", slice->span, "Negative size (slice was: [%d..%d])", &start_index, &end_index);
+				llvm_emit_panic_if_true(c, &excess, "Negative size", slice->loc, "Negative size (slice was: [%d..%d])", &start_index, &end_index);
 
 				if (len.value)
 				{
 					llvm_emit_int_comp(c, &excess, &len, &end_index, BINARYOP_LE);
 					RETURN_ON_EMPTY_BLOCK_VOID();
-					llvm_emit_panic_if_true(c, &excess, "End index out of bounds", slice->span, "End index out of bounds (end index of %d exceeds size of %d)", &end_index, &len);
+					llvm_emit_panic_if_true(c, &excess, "End index out of bounds", slice->loc, "End index out of bounds (end index of %d exceeds size of %d)", &end_index, &len);
 				}
 			}
 		}
@@ -2931,7 +2931,7 @@ static void llvm_emit_slice_copy(GenContext *c, BEValue *value, Expr *expr)
 		BEValue comp;
 		llvm_emit_int_comp(c, &comp, &to_len, &from_len, BINARYOP_NE);
 		RETURN_ON_EMPTY_BLOCK_VOID();
-		llvm_emit_panic_if_true(c, &comp, "Length mismatch", expr->span, "Slice copy length mismatch (%d != %d).", &to_len, &from_len);
+		llvm_emit_panic_if_true(c, &comp, "Length mismatch", expr->loc, "Slice copy length mismatch (%d != %d).", &to_len, &from_len);
 	}
 
 
@@ -3001,7 +3001,7 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 			for (uint64_t i = start_val; i <= end_val; i++)
 			{
 				llvm_value_set_int(c, &offset_val, type_usz, i);
-				llvm_emit_subscript_addr_with_base(c, &addr, &parent, &offset_val, expr->span);
+				llvm_emit_subscript_addr_with_base(c, &addr, &parent, &offset_val, expr->loc);
 
 				// And store the value.
 				llvm_store(c, &addr, be_value);
@@ -3040,13 +3040,13 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_emit_block(c, assign_block);
 	// Reuse this calculation
 	BEValue addr;
-	llvm_emit_subscript_addr_with_base(c, &addr, &parent, &offset_val, expr->span);
+	llvm_emit_subscript_addr_with_base(c, &addr, &parent, &offset_val, expr->loc);
 
 	// And store the value.
 	llvm_store(c, &addr, be_value);
 
 	// Create the new offset
-	LLVMValueRef next_offset = llvm_emit_add_int(c, start.type, offset, llvm_const_int(c, start.type, 1), expr->span);
+	LLVMValueRef next_offset = llvm_emit_add_int(c, start.type, offset, llvm_const_int(c, start.type, 1), expr->loc);
 	LLVMBasicBlockRef assign_block_end = llvm_get_current_block_if_in_use(c);
 
 	// And jump back
@@ -3409,7 +3409,7 @@ static void llvm_emit_struct_comparison(GenContext *c, BEValue *result, BEValue 
 	llvm_emit_int_comp_zero(c, result, result, binary_op);
 }
 
-static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceSpan loc)
+static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceLocId loc)
 {
 	if (compiler.build.feature.trap_on_wrap && !type_kind_is_real_vector(type->type_kind))
 	{
@@ -3595,7 +3595,7 @@ static void llvm_emit_array_comp(GenContext *c, BEValue *result, BEValue *lhs, B
 		case ALL_INTS:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
-		case TYPE_CONST_ENUM:
+		case TYPE_CONSTDEF:
 		case TYPE_FUNC_PTR:
 		case TYPE_INTERFACE:
 		case TYPE_ANY:
@@ -4158,7 +4158,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 				val = LLVMBuildFMul(c->builder, lhs_value, rhs_value, "fmul");
 				break;
 			}
-			val = llvm_emit_mult_int(c, lhs_type, lhs_value, rhs_value, expr->span);
+			val = llvm_emit_mult_int(c, lhs_type, lhs_value, rhs_value, expr->loc);
 			break;
 		case BINARYOP_SUB:
 			if (type_is_pointer_vector(lhs_type))
@@ -4197,7 +4197,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 				val = LLVMBuildFSub(c->builder, lhs_value, rhs_value, "fsub");
 				break;
 			}
-			val = llvm_emit_sub_int(c, lhs_type, lhs_value, rhs_value, expr->span);
+			val = llvm_emit_sub_int(c, lhs_type, lhs_value, rhs_value, expr->loc);
 			break;
 		case BINARYOP_ADD:
 			if (type_is_pointer_vector(lhs_type))
@@ -4217,7 +4217,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 				val = LLVMBuildFAdd(c->builder, lhs_value, rhs_value, "fadd");
 				break;
 			}
-			val = llvm_emit_add_int(c, lhs_type, lhs_value, rhs_value, expr->span);
+			val = llvm_emit_add_int(c, lhs_type, lhs_value, rhs_value, expr->loc);
 			break;
 		case BINARYOP_DIV:
 			if (is_float)
@@ -4225,7 +4225,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 				val = LLVMBuildFDiv(c->builder, lhs_value, rhs_value, "fdiv");
 				break;
 			}
-			llvm_emit_trap_zero(c, rhs_type, rhs_value, "Division by zero.", expr->span);
+			llvm_emit_trap_zero(c, rhs_type, rhs_value, "Division by zero.", expr->loc);
 			val = type_is_unsigned(lhs_type)
 				  ? LLVMBuildUDiv(c->builder, lhs_value, rhs_value, "udiv")
 				  : LLVMBuildSDiv(c->builder, lhs_value, rhs_value, "sdiv");
@@ -4236,14 +4236,14 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 				val = LLVMBuildFRem(c->builder, lhs_value, rhs_value, "fmod");
 				break;
 			}
-			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero.", expr->span);
+			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero.", expr->loc);
 			val = type_is_unsigned(lhs_type)
 				  ? LLVMBuildURem(c->builder, lhs_value, rhs_value, "umod")
 				  : LLVMBuildSRem(c->builder, lhs_value, rhs_value, "smod");
 			break;
 		case BINARYOP_SHR:
 			rhs_value = llvm_zext_trunc(c, rhs_value, LLVMTypeOf(lhs_value));
-			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range (was %s).", expr->span);
+			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range (was %s).", expr->loc);
 			val = type_is_unsigned(lhs_type)
 				  ? LLVMBuildLShr(c->builder, lhs_value, rhs_value, "lshr")
 				  : LLVMBuildAShr(c->builder, lhs_value, rhs_value, "ashr");
@@ -4251,7 +4251,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 			break;
 		case BINARYOP_SHL:
 			rhs_value = llvm_zext_trunc(c, rhs_value, LLVMTypeOf(lhs_value));
-			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range (was %s).", expr->span);
+			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range (was %s).", expr->loc);
 			val = LLVMBuildShl(c->builder, lhs_value, rhs_value, "shl");
 			val = LLVMBuildFreeze(c->builder, val, "");
 			break;
@@ -4476,7 +4476,7 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 	if (llvm_emit_check_block_branch(c))
 	{
 		// TODO, we should add info about the error.
-		SourceSpan loc = expr->span;
+		SourceLocId loc = expr->loc;
 		BEValue *varargs = NULL;
 		llvm_emit_any_from_value(c, &error_var_ref, type_fault);
 		vec_add(varargs, error_var_ref);
@@ -5735,7 +5735,7 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
  */
 INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
                                       BEValue *target,
-                                      SourceSpan span,
+                                      SourceLocId loc,
                                       FunctionPrototype *prototype,
 									  BEValue *values,
                                       int inline_flag,
@@ -5871,7 +5871,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 
 
 	// 10. Create the actual call (remember to emit a loc, because we might have shifted loc emitting the params)
-	EMIT_SPAN(c, span);
+	EMIT_SPAN(c, loc);
 
 	llvm_emit_raw_call(c, result_value, prototype, func_type, func, arg_values, arg_count, inline_flag, error_var, sret_return, &synthetic_return_param, no_return);
 
@@ -5961,9 +5961,9 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 			LLVMValueRef check = LLVMBuildICmp(c->builder, LLVMIntEQ, func, LLVMConstNull(c->ptr_type), "checknull");
 			scratch_buffer_clear();
 			scratch_buffer_append("Calling null function pointer, '");
-			span_to_scratch(function->span);
+			loc_to_scratch(function->loc);
 			scratch_buffer_append("' was null.");
-			llvm_emit_panic_on_true(c, check, scratch_buffer_to_string(), function->span, NULL, NULL, NULL);
+			llvm_emit_panic_on_true(c, check, scratch_buffer_to_string(), function->loc, NULL, NULL, NULL);
 		}
 
 		// 1e. Calculate the function type
@@ -6077,7 +6077,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 			LLVMBasicBlockRef after = llvm_basic_block_new(c, "after_call");
 			FunctionPrototype *default_prototype = type_get_resolved_prototype(default_method->type);
 			BEValue default_res;
-			llvm_emit_call_invocation(c, &default_res, target, expr->span, default_prototype, values, inline_flag, no_return,
+			llvm_emit_call_invocation(c, &default_res, target, expr->loc, default_prototype, values, inline_flag, no_return,
 			                          llvm_get_ref(c, default_method),
 			                          llvm_get_type(c, default_method->type),
 			                          varargs);
@@ -6089,7 +6089,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 			func_type = llvm_get_type(c, dyn_fn->type);
 			BEValue normal_res;
 			values[0] = result;
-			llvm_emit_call_invocation(c, &normal_res, target, expr->span, prototype, values, inline_flag, no_return, func, func_type,
+			llvm_emit_call_invocation(c, &normal_res, target, expr->loc, prototype, values, inline_flag, no_return, func, func_type,
 			                          varargs);
 			LLVMValueRef normal_val = llvm_load_value(c, &normal_res);
 			LLVMBasicBlockRef normal_block = c->current_block;
@@ -6107,14 +6107,14 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		}
 		scratch_buffer_clear();
 		scratch_buffer_printf("No method '%s' could be found on target", dyn_fn->name);
-		llvm_emit_panic(c, scratch_buffer_to_string(), expr->span, NULL, NULL);
+		llvm_emit_panic(c, scratch_buffer_to_string(), expr->loc, NULL, NULL);
 		llvm_emit_block(c, match);
 		EMIT_EXPR_LOC(c, expr);
 		values[0] = result;
 
 	}
 
-	llvm_emit_call_invocation(c, result_value, target, expr->span, prototype, values, inline_flag, no_return, func, func_type,
+	llvm_emit_call_invocation(c, result_value, target, expr->loc, prototype, values, inline_flag, no_return, func, func_type,
 							  varargs);
 }
 
@@ -6280,7 +6280,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 	Decl *macro = expr->macro_block.macro;
 	if (llvm_use_debug(c) && macro)
 	{
-		SourceSpan span = expr->span;
+		SourceLocId span = expr->loc;
 		LLVMMetadataRef macro_def = llvm_debug_create_macro(c, macro);
 		LLVMMetadataRef loc = llvm_create_debug_location(c, span);
 
@@ -6352,7 +6352,7 @@ LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic, LLVMTyp
 									  LLVMValueRef *values, unsigned arg_count)
 {
 	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(c->module, intrinsic, types, type_count);
-	LLVMTypeRef type = LLVMIntrinsicGetType(c->context, intrinsic, types, type_count);
+	LLVMTypeRef type = LLVMGlobalGetValueType(decl);
 	return LLVMBuildCall2(c->builder, type, decl, values, arg_count, "");
 }
 
@@ -6474,7 +6474,7 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 	Decl **declarations = body_expr->body_expansion_expr.declarations;
 	Expr **values = body_expr->body_expansion_expr.values;
 
-	DEBUG_PUSH_LEXICAL_SCOPE(c, body_expr->span);
+	DEBUG_PUSH_LEXICAL_SCOPE(c, body_expr->loc);
 
 	DebugScope *old_inline_loc = c->debug.block_stack;
 	DebugScope *outline = llvm_use_debug(c) ? old_inline_loc->outline_loc : NULL;
@@ -6618,7 +6618,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_POINTER,
 					INTROSPECT_TYPE_VECTOR, INTROSPECT_TYPE_ENUM,
 					INTROSPECT_TYPE_SLICE, INTROSPECT_TYPE_DISTINCT,
-					INTROSPECT_TYPE_CONST_ENUM, INTROSPECT_TYPE_BITSTRUCT,
+					INTROSPECT_TYPE_CONSTDEF, INTROSPECT_TYPE_BITSTRUCT,
 					INTROSPECT_TYPE_OPTIONAL,
 				};
 				for (int i = 0; i < 8; i++)
@@ -6634,7 +6634,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_cond_br(c, &check, exit, next);
 					llvm_emit_block(c, next);
 				}
-				llvm_emit_panic(c, "Attempted to access 'inner' on non composite type", expr->span, NULL, NULL);
+				llvm_emit_panic(c, "Attempted to access 'inner' on non composite type", expr->loc, NULL, NULL);
 				llvm_emit_block(c, exit);
 				EMIT_EXPR_LOC(c, expr);
 			}
@@ -6662,7 +6662,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_cond_br(c, &check, exit, next);
 					llvm_emit_block(c, next);
 				}
-				llvm_emit_panic(c, "Attempted to access 'names' on non enum/fault type.", expr->span, NULL, NULL);
+				llvm_emit_panic(c, "Attempted to access 'names' on non enum/fault type.", expr->loc, NULL, NULL);
 				llvm_emit_block(c, exit);
 				EMIT_EXPR_LOC(c, expr);
 			}
@@ -6694,7 +6694,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					llvm_emit_cond_br(c, &check, exit, next);
 					llvm_emit_block(c, next);
 				}
-				llvm_emit_panic(c, "Attempted to access 'len' on non array type", expr->span, NULL, NULL);
+				llvm_emit_panic(c, "Attempted to access 'len' on non array type", expr->loc, NULL, NULL);
 				llvm_emit_block(c, exit);
 				EMIT_EXPR_LOC(c, expr);
 			}
@@ -6931,19 +6931,20 @@ static void llvm_emit_default_arg(GenContext *c, BEValue *value, Expr *expr)
 {
 	if (llvm_use_debug(c))
 	{
-		SourceSpan location = expr->span;
 		const char *name = "[DEFAULT INIT]";
 		size_t namelen = strlen(name);
-		LLVMMetadataRef file = llvm_get_debug_file(c, location.file_id);
+		SourceLoc *loc = sourcelocptrzero(expr->loc);
+		LLVMMetadataRef file = llvm_get_debug_file(c, loc ? loc->file_id : 0);
+		uint32_t row = loc ? loc->row : 1;
 		LLVMMetadataRef init_def = LLVMDIBuilderCreateFunction(c->debug.builder, file, name, namelen, name, namelen,
-																 file, location.row, NULL, true, true, location.row, LLVMDIFlagZero, false);
+																 file, row, NULL, true, true, row, LLVMDIFlagZero, false);
 		llvm_emit_debug_location(c, expr->default_arg_expr.loc);
 		DebugScope scope = { .lexical_block = init_def, .inline_loc = c->last_loc };
 		DebugScope *old = c->debug.block_stack;
 		c->debug.block_stack = &scope;
 		if (!llvm_emit_folded_in_block(c, value, expr->default_arg_expr.inner)) RETURN_EMPTY_BLOCK(value);
 		c->debug.block_stack = old;
-		c->last_emitted_loc.a = 0;
+		c->last_emitted_loc = 0;
 	}
 	else
 	{
@@ -7076,13 +7077,13 @@ void llvm_emit_enum_from_ord(GenContext *c, BEValue *value, Expr *expr)
 			scratch_buffer_printf("Attempt to convert a negative value (%%d) to enum '%s' failed.", decl->name);
 			llvm_emit_int_comp_zero(c, &check, value, BINARYOP_LT);
 			RETURN_ON_EMPTY_BLOCK(value);
-			llvm_emit_panic_on_true(c, check.value, "Attempt to convert negative value to enum failed.", expr->span, scratch_buffer_copy(), value, NULL);
+			llvm_emit_panic_on_true(c, check.value, "Attempt to convert negative value to enum failed.", expr->loc, scratch_buffer_copy(), value, NULL);
 		}
 		scratch_buffer_clear();
 		scratch_buffer_printf("Attempting to convert %%d to enum '%s' failed as the value exceeds the max ordinal (%u).", decl->name, max - 1);
 		LLVMValueRef val = llvm_const_int(c, value->type, max);
 		llvm_emit_int_comp_raw(c, &check, value->type, value->type, value->value, val, BINARYOP_GE);
-		llvm_emit_panic_on_true(c, check.value, "Failed integer to enum conversion", expr->span, scratch_buffer_copy(), value, NULL);
+		llvm_emit_panic_on_true(c, check.value, "Failed integer to enum conversion", expr->loc, scratch_buffer_copy(), value, NULL);
 	}
 	// We might need to extend or truncate.
 	Type *to_type = type_lowering(expr->type);

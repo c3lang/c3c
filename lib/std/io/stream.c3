@@ -235,7 +235,7 @@ macro usz? copy_through_buffer(InStream in, OutStream dst, char[] buffer) @local
 	}
 }
 
-const char[*] MAX_VARS @private = { [2] = 3, [4] = 5, [8] = 10 };
+const char[*] MAX_VARS @private = { [1] = 2, [2] = 3, [4] = 5, [8] = 10, [16] = 19 };
 
 <*
  @require @is_instream(stream)
@@ -243,9 +243,13 @@ const char[*] MAX_VARS @private = { [2] = 3, [4] = 5, [8] = 10 };
 *>
 macro usz? read_varint(stream, x_ptr)
 {
-	var $Type = $typeof(x_ptr).inner;
-	const MAX = MAX_VARS[$Type.sizeof];
-	$Type x;
+	return read_varint_generic{$typeof(stream), $typeof(x_ptr).inner}(stream, x_ptr);
+}
+
+fn usz? read_varint_generic(VarInStream stream, Type* ptr) <VarInStream, Type> @private
+{
+	const MAX = MAX_VARS[Type.sizeof];
+	Type x;
 	uint shift;
 	usz n;
 	for (usz i = 0; i < MAX; i++)
@@ -260,26 +264,32 @@ macro usz? read_varint(stream, x_ptr)
 		if (c & 0x80 == 0)
 		{
 			if (i + 1 == MAX && c > 1) break;
-			x |= c << shift;
-			$if $Type.kindof == SIGNED_INT:
+			x |= (Type)c << shift;
+			$if Type.kindof == SIGNED_INT:
 				x = x & 1 == 0 ? x >> 1 : ~(x >> 1);
 			$endif
-			*x_ptr = x;
+			*ptr = x;
 			return n;
 		}
-		x |= (c & 0x7F) << shift;
+		x |= (Type)(c & 0x7F) << shift;
 		shift += 7;
 	}
 	return math::OVERFLOW~;
 }
+
+
 <*
  @require @is_outstream(stream)
  @require $kindof(x).is_int()
 *>
 macro usz? write_varint(stream, x)
 {
-	var $Type = $typeof(x);
-	const MAX = MAX_VARS[$Type.sizeof];
+	return write_varint_generic{$typeof(stream), $typeof(x)}(stream, x);
+}
+
+fn usz? write_varint_generic(VarOutStream stream, Type x) <VarOutStream, Type> @private
+{
+	const MAX = MAX_VARS[Type.sizeof];
 	char[MAX] buffer @noinit;
 	usz i;
 	while (x >= 0x80)

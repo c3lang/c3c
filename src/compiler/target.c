@@ -125,6 +125,8 @@ static const char *x86_feature_name[] = {
 	[X86_FEAT_APX_ZU] = "zu",
 	[X86_FEAT_AVX] = "avx",
 	[X86_FEAT_AVX2] = "avx2",
+	[X86_FEAT_AVX10_1] = "avx10.1",
+	[X86_FEAT_AVX10_2] = "avx10.2",
 	[X86_FEAT_AVX10_1_512] = "avx10.1-512",
 	[X86_FEAT_AVX10_1_256] = "avx10.1-256",
 	[X86_FEAT_AVX10_2_512] = "avx10.2-512",
@@ -814,6 +816,12 @@ static void x86_features_add_feature(CpuFeatures *cpu_features, X86Feature featu
 			x86_features_add_feature(cpu_features, X86_FEAT_VAES);
 			x86_features_add_feature(cpu_features, X86_FEAT_VPCLMULQDQ);
 			x86_features_add_feature(cpu_features, X86_FEAT_AVX512FP16);
+			return;
+		case X86_FEAT_AVX10_1:
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX10_1_256);
+			return;
+		case X86_FEAT_AVX10_2:
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX10_2_256);
 			return;
 		case X86_FEAT_SOFT_FLOAT:
 			return;
@@ -1689,11 +1697,6 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 		case ARCH_TYPE_XTENSA:
 			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
 		case ARCH_TYPE_X86_64:
-#if LLVM_AVAILABLE && LLVM_VERSION_MAJOR < 18
-			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
-#else
-			FALLTHROUGH;
-#endif
 		case ARCH_TYPE_RISCV64:
 			return (AlignData) { bits, bits };
 		case ARCH_TYPE_WASM64:
@@ -1709,9 +1712,7 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 			return (AlignData) { bits, bits };
 		case ARCH_TYPE_X86:
 			if (bits <= 32) return (AlignData) { bits, bits };
-#if !LLVM_AVAILABLE || LLVM_VERSION_MAJOR > 17
 			if (bits == 128) return (AlignData) { 128, 128 };
-#endif
 			if (os == OS_TYPE_ELFIAMCU) return (AlignData) { 32, 32 };
 			if (os == OS_TYPE_WIN32 || os == OS_TYPE_NACL) return (AlignData) { 64, 64 };
 			return (AlignData) { 32, 64 };
