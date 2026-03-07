@@ -665,6 +665,9 @@ static void linker_setup_android(const char ***args_ref, Linker linker_type, boo
 	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");
 	if (is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
 	add_plain_arg("-dynamic-linker"); add_plain_arg("/system/bin/linker64");
+	
+	if (linker_type == LINKER_CC)
+		add_plain_arg("-nostartfiles");
 
 	scratch_buffer_clear();
 	scratch_buffer_append("-L");
