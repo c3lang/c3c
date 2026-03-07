@@ -61,6 +61,7 @@
 - Typekind enums are changed CONST_ENUM -> CONSTDEF, DISTINCT -> TYPEDEF.
 
 ### Stdlib changes
+- Add `Argon2` memory-hard hashing with associated tests. #2773
 - Summarize sort macros as generic function wrappers to reduce the amount of generated code. #2831
 - Remove dependency on temp allocator in String.join.
 - Remove dependency on temp allocator in File.open.
