@@ -5,7 +5,7 @@ import std::crypto::aes;
 fn void init() @init
 {
 	set_benchmark_warmup_iterations(5);
-	set_benchmark_max_iterations(10_000);
+	set_benchmark_max_iterations(92_000);
 }
 
 

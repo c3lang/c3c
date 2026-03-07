@@ -798,17 +798,17 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
 		case EXPR_BINARY:
-		case EXPR_POINTER_OFFSET:
-		case EXPR_UNARY:
-		case EXPR_POST_UNARY:
-		case EXPR_TERNARY:
+		case EXPR_DISCARD:
 		case EXPR_LAST_FAULT:
-		case EXPR_TYPECALL:
+		case EXPR_MAKE_ANY:
 		case EXPR_MEMBER_GET:
 		case EXPR_MEMBER_SET:
+		case EXPR_POINTER_OFFSET:
+		case EXPR_POST_UNARY:
 		case EXPR_SPLAT:
-		case EXPR_MAKE_ANY:
-		case EXPR_DISCARD:
+		case EXPR_TERNARY:
+		case EXPR_TYPECALL:
+		case EXPR_UNARY:
 			return false;
 		case EXPR_BITACCESS:
 		case EXPR_BUILTIN:

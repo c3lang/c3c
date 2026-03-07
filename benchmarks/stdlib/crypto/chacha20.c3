@@ -9,7 +9,7 @@ import std::crypto::chacha20;
 fn void initialize_bench() @init
 {
 	set_benchmark_warmup_iterations(3);
-	set_benchmark_max_iterations(1024);
+	set_benchmark_max_iterations(128);
 }
 
 const char[] KEY = x'98bef1469be7269837a45bfbc92a5a6ac762507cf96443bf33b96b1bd4c6f8f6';
@@ -33,7 +33,7 @@ fn void gogo_chacha20_unaligned() @benchmark => @pool()
     copy[3..] = one_mb[..];
     assert((usz)im_off_slightly.ptr % usz.sizeof > 0);
 
-    runtime::@start_benchmark();
+    @start_benchmark();
 	chacha20::encrypt_mut(im_off_slightly, KEY, NONCE, COUNTER);
-    runtime::@end_benchmark();
+    @end_benchmark();
 }

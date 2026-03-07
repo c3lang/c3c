@@ -3,11 +3,12 @@ module whirlpool_bench;
 fn void initialize_bench() @init
 {
 	set_benchmark_warmup_iterations(3);
-	set_benchmark_max_iterations(128);
+	set_benchmark_max_iterations(75);
 
     input = mem::alloc_array(char, BUFSZ);
     input[:BUFSZ] = 0xA5;
     input_slice = input[:BUFSZ];
+	set_benchmark_func_iterations($qnameof(compared_with_streebog_512), 51);
 }
 
 fn void teardown_bench() @finalizer
@@ -26,32 +27,32 @@ import std::hash;
 
 fn void whirlpool_hash()
 {
-    runtime::@start_benchmark();
+    @start_benchmark();
     char[*] myset = whirlpool::hash(input_slice);
-    runtime::@end_benchmark();
+    @end_benchmark();
     mem::zero_volatile(myset[..]);
 }
 
 fn void compared_with_sha256()
 {
-    runtime::@start_benchmark();
+    @start_benchmark();
     char[*] myset = sha256::hash(input_slice);
-    runtime::@end_benchmark();
+    @end_benchmark();
     mem::zero_volatile(myset[..]);
 }
 
 fn void compared_with_sha512()
 {
-    runtime::@start_benchmark();
+    @start_benchmark();
     char[*] myset = sha512::hash(input_slice);
-    runtime::@end_benchmark();
+    @end_benchmark();
     mem::zero_volatile(myset[..]);
 }
 
 fn void compared_with_streebog_512()
 {
-    runtime::@start_benchmark();
+    @start_benchmark();
     char[*] myset = streebog::hash_512(input_slice);
-    runtime::@end_benchmark();
+    @end_benchmark();
     mem::zero_volatile(myset[..]);
 }
