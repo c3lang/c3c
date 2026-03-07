@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  LLVM_RELEASE_VERSION: 21.x
+  LLVM_RELEASE_VERSION: 22.x
   LLVM_RELEASE_VERSION_LINUX_MUSL: 20
   LLVM_RELEASE_VERSION_OPENBSD: 20
   LLVM_RELEASE_VERSION_NETBSD: 19
@@ -176,6 +176,57 @@ jobs:
         with:
           name: c3-linux-${{matrix.build_type}}
           path: c3-linux-${{matrix.build_type}}.tar.gz
+
+  build-linux-musl-static:
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:3.23
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          V=${{env.LLVM_RELEASE_VERSION_LINUX_MUSL}}
+          apk update
+          apk add \
+            build-base bash git cmake ninja python3 linux-headers \
+            zlib-dev zlib-static zstd-dev zstd-static curl-dev curl-static \
+            openssl-libs-static brotli-static nghttp2-static libpsl-static \
+            libidn2-static libunistring-static nghttp3-static c-ares-dev \
+            curl-dev openssl-dev brotli-dev libpsl-dev libidn2-dev \
+            libunistring-dev nghttp2-dev nghttp3-dev c-ares-dev
+
+      - name: CMake Build (static musl)
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DC3_FETCH_LLVM=ON \
+            -DC3_LINK_DYNAMIC=OFF \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DCMAKE_EXE_LINKER_FLAGS="-static -static-libstdc++ -static-libgcc"
+          cmake --build build
+
+      - name: Verify Static
+        run: |
+          ldd build/c3c || true
+          file build/c3c
+          build/c3c --version
+
+      - name: Run Unified Tests
+        if: matrix.build_type == 'Debug'
+        run: ./scripts/tools/ci_tests.sh "./build/c3c"
+
+      - name: Bundle
+        run: bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-static-${{ matrix.build_type }}" "tar"
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: c3-linux-static-${{ matrix.build_type }}
+          path: c3-linux-static-${{ matrix.build_type }}.tar.gz
 
   build-linux-alpine:
     runs-on: ubuntu-latest

@@ -6,12 +6,20 @@
 - Removed support for LLVM 17, 18.
 - Detect large temporaries when creating slices on the stack #2665
 - Search for the linker in PATH; use the builtin linker if CC missing. #2906
+- `constdef` inference through binary expressions: `Foo f = Foo.AUDIO | Foo.VIDEO` can be written `Foo f = AUDIO | VIDEO;`
+- Fix for LLVM 22+ compatibility #2987
+- `@weaklink` for just affecting linkage.
+- Add a fully static build of `c3c` for Linux. #2949
+- `@weak` now allows direct overriding of `@weak` definitions with a real definition.
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
 - Add hash method for ZStrings. #2982
 - Added json serialization from structs.
 - Add `keccak` and Keccak-based hash functions: `sha3`, `shake`, `cshake`, `kmac`, `turboshake`, `tuplehash`, and `parallelhash`. #2728
+- Added `fault.short_name` and `fault.@short_name` to get just the fault name for both run and compile time. #3002
+- Compiler runtime functions extracted outside of std.
+- Add the GZIP file format (RFC 1952).
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
@@ -23,6 +31,9 @@
 - AES implementation fixed to be constant time #2806
 - Object would not properly compile on 32-bit Linux.
 - `read_varint` and `write_varint` did not work properly for ulong and wider.
+- `io::EOF.nameof` would yield just `EOF` whereas resolving it at runtime would (correctly) yield `io::EOF`.
+- `$stringify` would incorrectly capture lambdas. #2986
+- Regression: `String` was not implicitly `@constinit` #2983
 
 ## 0.7.10 Change list
 
@@ -109,6 +120,7 @@
 - Make `foo.$abc` implicitly mean `foo.eval("$abc")`.
 - Deprecating multi-level array length inference. `int[*][*]` is deprecated and will be removed 0.8.0.
 - Combining argument-less initialization with argument init for bitstructs is now allowed e.g. `{ .b, .c = 123 }`.
+- Renovated benchmark runtime, added median to results and CSV report generation. #2672
 
 ### Fixes
 - Remove use of LLVMGetGlobalContext for single module compilation.

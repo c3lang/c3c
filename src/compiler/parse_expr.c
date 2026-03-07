@@ -417,7 +417,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left, SourceLoc *lhs_span UNUSE
 	sig->params = decls;
 	sig->rtype = return_type ? type_infoid(return_type) : 0;
 	sig->variadic = variadic;
-	if (!parse_attributes(c, &func->attributes, NULL, NULL, NULL, "on lambda declarations")) return poisoned_expr;
+	if (!parse_attributes(c, &func->attributes, NULL, NULL, NULL, "on lambda declarations", NULL)) return poisoned_expr;
 	RANGE_EXTEND_PREV(func);
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
@@ -433,6 +433,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left, SourceLoc *lhs_span UNUSE
 		PRINT_ERROR_HERE("Expected the beginning of a block or a short statement.");
 	}
 	expr->lambda_expr = func;
+	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 

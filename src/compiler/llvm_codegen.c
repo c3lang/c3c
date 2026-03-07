@@ -495,7 +495,7 @@ static void llvm_set_external_reference(LLVMValueRef ref, bool is_weak)
 void llvm_set_decl_linkage(GenContext *c, Decl *decl)
 {
 	bool is_var = decl->decl_kind == DECL_VAR;
-	bool is_weak = decl->is_weak;
+	bool is_weak = decl->is_weak_link;
 	bool should_weaken = is_weak || (!decl->is_extern && (decl->is_templated || module_should_weaken(decl->unit->module)));
 	LLVMValueRef ref = decl->backend_ref;
 	LLVMValueRef opt_ref = is_var ? decl->var.optional_ref : NULL;
@@ -525,7 +525,7 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl)
 		return;
 	}
 
-	LLVMSetLinkage(ref, decl->is_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
+	LLVMSetLinkage(ref, is_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
 	if (opt_ref) LLVMSetLinkage(opt_ref, LLVMInternalLinkage);
 }
 

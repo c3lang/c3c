@@ -1,0 +1,12 @@
+module abc;
+constdef Foo
+{
+	AUDIO = 1,
+	VIDEO = 2
+}
+fn int main()
+{
+	Foo f = AUDIO | VIDEO;
+	f = f | VIDEO;
+    return 0;
+}

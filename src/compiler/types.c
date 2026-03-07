@@ -1553,6 +1553,7 @@ void type_setup(PlatformTarget *target)
 	string_decl->is_substruct = true;
 	string_decl->distinct = type_info_new_base(type_chars, 0);
 	string_decl->alignment = target->align_pointer.align / 8;
+	string_decl->attr_constinit = true;
 	string_decl->resolve_status = RESOLVE_DONE;
 	type_string = string_decl->type;
 

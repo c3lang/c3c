@@ -1,0 +1,30 @@
+// #target: macos-aarch64
+module test;
+
+fn int test() @weak
+{
+	return 1;
+}
+
+fn int test() @weak
+{
+	return 2;
+}
+
+fn int test()
+{
+	return 0;
+}
+
+int abc @weak = 3;
+int abc @weak = 5;
+int abc = 10;
+
+/* #expect: test.ll
+
+@test.abc = local_unnamed_addr global i32 10, align 4
+
+define i32 @test.test() #0 {
+entry:
+  ret i32 0
+}

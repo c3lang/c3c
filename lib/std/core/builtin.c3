@@ -1000,6 +1000,19 @@ macro void* get_returnaddress(int n)
 	}
 }
 
+fn String fault.short_name(self)
+{
+	String name = self.nameof;
+	return name[name.index_of("::") + 2..]!!;
+}
+
+
+macro String fault.@short_name($self) @const
+{
+	var $name = $self.nameof;
+	return $name[@str_find($name, "::") + 2..];
+}
+
 module std::core::builtin @if((env::LINUX || env::ANDROID || env::DARWIN) && env::COMPILER_SAFE_MODE && env::DEBUG_SYMBOLS);
 import libc, std::io, std::os::posix;
 

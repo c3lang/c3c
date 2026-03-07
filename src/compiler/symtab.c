@@ -2,6 +2,8 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
+#include <iso646.h>
+
 #include "compiler_internal.h"
 
 typedef struct SymtabEntry_
@@ -394,6 +396,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_USED] = KW_DEF("@used");
 	attribute_list[ATTRIBUTE_WASM] = KW_DEF("@wasm");
 	attribute_list[ATTRIBUTE_WEAK] = KW_DEF("@weak");
+	attribute_list[ATTRIBUTE_WEAKLINK] = KW_DEF("@weaklink");
 	attribute_list[ATTRIBUTE_WINMAIN] = KW_DEF("@winmain");
 
 	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
@@ -575,7 +578,12 @@ void *htable_set(HTable *table, void *key, void *value)
 	HTEntry *first_entry = entry;
 	do
 	{
-		if (entry->key == key) return entry->value;
+		if (entry->key == key)
+		{
+			void* val = entry->value;
+			entry->value = value;
+			return val;
+		}
 		entry = entry->next;
 	} while (entry);
 
@@ -647,6 +655,26 @@ void pathtable_set(PathTable *table, Decl *value)
 	entry->value = value;
 	entry->next = first_entry;
 	*entry_ref = entry;
+}
+
+void pathtable_replace(PathTable *table, Decl *original, Decl *value)
+{
+	ASSERT(value && "Cannot insert NULL");
+	ASSERT_SPAN(value, value->name);
+	const char *short_path = value->unit->module->short_path;
+	const char *name = value->name;
+	uint32_t idx = ((((uintptr_t)short_path) ^ ((uintptr_t)short_path) >> 8) ^(((uintptr_t)name) ^ ((uintptr_t)name) >> 8)) & table->mask;
+	PathTableEntry **entry_ref = &table->entries[idx];
+	PathTableEntry *entry = *entry_ref;
+	do
+	{
+		if (entry->value == original)
+		{
+			entry->value = value;
+			return;
+		}
+		entry = entry->next;
+	} while (entry);
 }
 
 

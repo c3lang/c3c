@@ -227,26 +227,26 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_SUBSCRIPT:
 		case EXPR_MEMBER_GET:
 			return true;
-		case EXPR_MEMBER_SET:
-		case EXPR_SLICE:
+		case EXPR_ADDR_CONVERSION:
 		case EXPR_BENCHMARK_HOOK:
-		case EXPR_TEST_HOOK:
-		case EXPR_VECTOR_FROM_ARRAY:
-		case EXPR_VECTOR_TO_ARRAY:
-		case EXPR_SLICE_TO_VEC_ARRAY:
-		case EXPR_SCALAR_TO_VECTOR:
-		case EXPR_PTR_ACCESS:
+		case EXPR_DISCARD:
 		case EXPR_ENUM_FROM_ORD:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
+		case EXPR_MEMBER_SET:
+		case EXPR_PTR_ACCESS:
 		case EXPR_PTR_TO_INT:
-		case EXPR_SLICE_LEN:
-		case EXPR_RVALUE:
 		case EXPR_RECAST:
-		case EXPR_DISCARD:
-		case EXPR_ADDR_CONVERSION:
+		case EXPR_RVALUE:
+		case EXPR_SCALAR_TO_VECTOR:
+		case EXPR_SLICE:
+		case EXPR_SLICE_LEN:
+		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_TEST_HOOK:
 		case EXPR_TWO:
+		case EXPR_VECTOR_FROM_ARRAY:
+		case EXPR_VECTOR_TO_ARRAY:
 			return false;
 		case NON_RUNTIME_EXPR:
 		case EXPR_ASM:
@@ -299,7 +299,7 @@ bool expr_may_addr(Expr *expr)
 bool expr_is_runtime_const(Expr *expr)
 {
 	ASSERT(expr->resolve_status == RESOLVE_DONE);
-	RETRY:
+RETRY:
 	switch (expr->expr_kind)
 	{
 		case EXPR_POINTER_OFFSET:
@@ -383,6 +383,7 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_EXT_TRUNC:
 			return expr_is_runtime_const(expr->ext_trunc_expr.inner);
 		case EXPR_CONST:
+		case EXPR_NOP:
 			return true;
 		case EXPR_DESIGNATOR:
 			expr = expr->designator_expr.value;
@@ -492,8 +493,6 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_CONTRACT:
 			UNREACHABLE
-		case EXPR_NOP:
-			return true;
 	}
 	UNREACHABLE
 }

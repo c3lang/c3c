@@ -705,9 +705,6 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_CONST:
 			if (failed_ref) goto FAILED_REF;
 			RETURN_SEMA_ERROR(top_expr, "You cannot assign to a constant expression.");
-		case EXPR_CT_ARG:
-		case EXPR_HASH_IDENT:
-		case EXPR_POISONED:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_ASM:
 		case EXPR_BENCHMARK_HOOK:
@@ -719,8 +716,10 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_CATCH:
 		case EXPR_COMPILER_CONST:
 		case EXPR_COND:
-		case EXPR_CT_CALL:
+		case EXPR_CONTRACT:
+		case EXPR_CT_ARG:
 		case EXPR_CT_ASSIGNABLE:
+		case EXPR_CT_CALL:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IS_CONST:
@@ -728,13 +727,20 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_DEFAULT_ARG:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_DESIGNATOR:
+		case EXPR_ENUM_FROM_ORD:
+		case EXPR_EXPRESSION_LIST:
+		case EXPR_FLOAT_TO_INT:
 		case EXPR_FORCE_UNWRAP:
+		case EXPR_HASH_IDENT:
 		case EXPR_INITIALIZER_LIST:
+		case EXPR_INT_TO_FLOAT:
+		case EXPR_INT_TO_PTR:
 		case EXPR_LAST_FAULT:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_MAKE_ANY:
 		case EXPR_MAKE_SLICE:
+		case EXPR_MAYBE_DEREF:
 		case EXPR_MEMBER_GET:
 		case EXPR_MEMBER_SET:
 		case EXPR_NAMED_ARGUMENT:
@@ -742,38 +748,32 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_OPTIONAL:
 		case EXPR_POINTER_OFFSET:
+		case EXPR_POISONED:
 		case EXPR_POST_UNARY:
 		case EXPR_PTR_ACCESS:
-		case EXPR_ENUM_FROM_ORD:
-		case EXPR_SLICE_LEN:
-		case EXPR_FLOAT_TO_INT:
-		case EXPR_INT_TO_FLOAT:
-		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
 		case EXPR_RECAST:
 		case EXPR_RETHROW:
 		case EXPR_RETVAL:
 		case EXPR_RVALUE:
+		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
+		case EXPR_SLICE_LEN:
+		case EXPR_SLICE_TO_VEC_ARRAY:
 		case EXPR_SPLAT:
 		case EXPR_STRINGIFY:
+		case EXPR_SUBSCRIPT_ADDR:
 		case EXPR_TERNARY:
 		case EXPR_TEST_HOOK:
 		case EXPR_TRY:
 		case EXPR_TRY_UNWRAP_CHAIN:
+		case EXPR_TWO:
 		case EXPR_TYPECALL:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_VECTOR_TO_ARRAY:
-		case EXPR_SLICE_TO_VEC_ARRAY:
-		case EXPR_SCALAR_TO_VECTOR:
-		case EXPR_SUBSCRIPT_ADDR:
-		case EXPR_EXPRESSION_LIST:
-		case EXPR_TWO:
-		case EXPR_MAYBE_DEREF:
-		case EXPR_CONTRACT:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -796,31 +796,31 @@ static bool expr_may_ref(Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
-		case EXPR_SWIZZLE:
-		case EXPR_LAMBDA:
+		case EXPR_ADDR_CONVERSION:
+		case EXPR_CONTRACT:
 		case EXPR_DEFAULT_ARG:
-		case EXPR_TYPECALL:
-		case EXPR_MEMBER_GET:
-		case EXPR_MEMBER_SET:
-		case EXPR_EXT_TRUNC:
-		case EXPR_PTR_ACCESS:
-		case EXPR_VECTOR_TO_ARRAY:
-		case EXPR_SLICE_TO_VEC_ARRAY:
-		case EXPR_SCALAR_TO_VECTOR:
+		case EXPR_DISCARD:
 		case EXPR_ENUM_FROM_ORD:
+		case EXPR_EXT_TRUNC:
 		case EXPR_FLOAT_TO_INT:
+		case EXPR_INT_TO_BOOL:
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
-		case EXPR_PTR_TO_INT:
-		case EXPR_SLICE_LEN:
-		case EXPR_VECTOR_FROM_ARRAY:
-		case EXPR_INT_TO_BOOL:
-		case EXPR_RVALUE:
-		case EXPR_RECAST:
-		case EXPR_DISCARD:
-		case EXPR_ADDR_CONVERSION:
+		case EXPR_LAMBDA:
 		case EXPR_MAKE_SLICE:
-		case EXPR_CONTRACT:
+		case EXPR_MEMBER_GET:
+		case EXPR_MEMBER_SET:
+		case EXPR_PTR_ACCESS:
+		case EXPR_PTR_TO_INT:
+		case EXPR_RECAST:
+		case EXPR_RVALUE:
+		case EXPR_SCALAR_TO_VECTOR:
+		case EXPR_SLICE_LEN:
+		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_SWIZZLE:
+		case EXPR_TYPECALL:
+		case EXPR_VECTOR_FROM_ARRAY:
+		case EXPR_VECTOR_TO_ARRAY:
 			return false;
 		case EXPR_SUBSCRIPT_ASSIGN:
 			return true;
@@ -1271,7 +1271,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	if (!decl)
 	{
 		if (failed_ref) return *failed_ref = true, false;
-		if (!expr->unresolved_ident_expr.path && expr->unresolved_ident_expr.is_const && (!to || to->canonical->type_kind != TYPE_ENUM))
+		if (!expr->unresolved_ident_expr.path && expr->unresolved_ident_expr.is_const && (!to || (to->canonical->type_kind != TYPE_ENUM && to->canonical->type_kind != TYPE_CONSTDEF)))
 		{
 			CompilationUnit **units = context->unit->module->units;
 			FOREACH (CompilationUnit *, unit, units)
@@ -1282,10 +1282,11 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 					{
 						if (enum_val->name == expr->unresolved_ident_expr.ident)
 						{
+							const char *type = decl->decl_kind == DECL_CONSTDEF ? "constdef" : "enum";
 							RETURN_SEMA_ERROR(expr, "No constant named '%s' was found in the current scope. Did you "
-							   "mean the value '%s' of the enum '%s'? The enum type cannot be inferred%s, so in that case you need to use "
+							   "mean the value '%s' of the %s '%s'? The %s type cannot be inferred%s, so in that case you need to use "
 								"the qualified name: '%s.%s'.",
-								enum_val->name, enum_val->name, decl->name, to ? " correctly" : "", decl->name, enum_val->name);
+								enum_val->name, enum_val->name, type, decl->name, type, to ? " correctly" : "", decl->name, enum_val->name);
 						}
 					}
 				}
@@ -1420,7 +1421,7 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 }
 
 
-static inline bool sema_binary_analyse_with_inference(SemaContext *context, Expr *left, Expr *right, BinaryOp op)
+static inline bool sema_binary_analyse_with_inference(SemaContext *context, Expr *left, Expr *right, BinaryOp op, Type *to)
 {
 	const static int op_table[BINARYOP_LAST + 1] = {
 		[BINARYOP_AND] = 1, [BINARYOP_OR] = 1, [BINARYOP_CT_AND] = 1, [BINARYOP_CT_OR] = 1,
@@ -1455,6 +1456,7 @@ static inline bool sema_binary_analyse_with_inference(SemaContext *context, Expr
 	if (op_result != 2) goto EVAL_BOTH;
 
 	if (!sema_analyse_expr_rvalue(context, left)) return false;
+
 	switch (left->type->canonical->type_kind)
 	{
 		case TYPE_ENUM:
@@ -1465,7 +1467,19 @@ static inline bool sema_binary_analyse_with_inference(SemaContext *context, Expr
 	}
 
 EVAL_BOTH:
-	return sema_analyse_expr_rvalue(context, left) && sema_analyse_expr_rvalue(context, right);
+	// Infer constdef in Foo f = FOO | BAR
+	if (to && to->canonical->type_kind == TYPE_CONSTDEF)
+	{
+		return sema_analyse_inferred_expr(context, to, left, NULL) && sema_analyse_inferred_expr(context, to, right, NULL);
+	}
+	if (!sema_analyse_expr_rvalue(context, left)) return false;
+
+	// Infer constdef in f & BAR
+	if (left->type->canonical->type_kind == TYPE_CONSTDEF)
+	{
+		return sema_analyse_inferred_expr(context, left->type, right, NULL);
+	}
+	return  sema_analyse_expr_rvalue(context, right);
 }
 
 static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *left, Expr *right)
@@ -6580,7 +6594,19 @@ CHECK_DEEPER:
 		{
 			if (sema_cast_const(current_parent))
 			{
-				expr_rewrite_const_string(expr, current_parent->const_expr.fault ? current_parent->const_expr.fault->name : "null");
+				Decl *fault = current_parent->const_expr.fault;
+				if (!fault)
+				{
+					expr_rewrite_const_string(expr, "null");
+					return true;
+				}
+				scratch_buffer_clear();
+				const char *module_name = fault->unit->module->name->module;
+				const char *last_path = strrchr(module_name, ':');
+				scratch_buffer_append(last_path ? last_path + 1 : module_name);
+				scratch_buffer_append("::");
+				scratch_buffer_append(fault->name);
+				expr_rewrite_const_string(expr, scratch_buffer_copy());
 				return true;
 			}
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_FAULTNAME, type_string);
@@ -9834,7 +9860,7 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Type *infer_ty
 	else
 	{
 		if (operator == BINARYOP_ELSE) return sema_expr_analyse_or_error(context, expr, left, right, infer_type, failed_ref);
-		if (!sema_binary_analyse_with_inference(context, left, right, operator)) return false;
+		if (!sema_binary_analyse_with_inference(context, left, right, operator, infer_type)) return false;
 	}
 	switch (operator)
 	{
@@ -11330,43 +11356,43 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_IOTA_DECL:
 			case EXPR_CONTRACT:
 					UNREACHABLE
-				case EXPR_DECL:
-					if (!sema_analyse_var_decl(context, main_expr->decl_expr, true, &failed))
-					{
-						if (!failed) goto FAIL;
-						success = false;
-					}
-					break;
+			case EXPR_DECL:
+				if (!sema_analyse_var_decl(context, main_expr->decl_expr, true, &failed))
+				{
+					if (!failed) goto FAIL;
+					success = false;
+				}
+				break;
 			case EXPR_BINARY:
-					main_expr->resolve_status = RESOLVE_RUNNING;
-					if (!sema_expr_analyse_binary(active_context, NULL, main_expr, &failed))
-					{
-						if (!failed) goto FAIL;
-						success = false;
-					}
-					break;
+				main_expr->resolve_status = RESOLVE_RUNNING;
+				if (!sema_expr_analyse_binary(active_context, NULL, main_expr, &failed))
+				{
+					if (!failed) goto FAIL;
+					success = false;
+				}
+				break;
 			case EXPR_CT_CALL:
-					main_expr->resolve_status = RESOLVE_RUNNING;
-					if (!sema_expr_analyse_ct_call(active_context, main_expr, &failed))
-					{
-						if (!failed) goto FAIL;
-						success = false;
-					}
-					break;
+				main_expr->resolve_status = RESOLVE_RUNNING;
+				if (!sema_expr_analyse_ct_call(active_context, main_expr, &failed))
+				{
+					if (!failed) goto FAIL;
+					success = false;
+				}
+				break;
 			case EXPR_COMPOUND_LITERAL:
-					if (!sema_expr_analyse_compound_literal(context, main_expr, &failed))
-					{
-						if (!failed) goto FAIL;
-						success = false;
-					}
-					break;
+				if (!sema_expr_analyse_compound_literal(context, main_expr, &failed))
+				{
+					if (!failed) goto FAIL;
+					success = false;
+				}
+				break;
 			case EXPR_CT_ARG:
-					if (!sema_expr_analyse_ct_arg(context, NULL, main_expr, &failed))
-					{
-						if (!failed) goto FAIL;
-						success = false;
-					}
-					break;
+				if (!sema_expr_analyse_ct_arg(context, NULL, main_expr, &failed))
+				{
+					if (!failed) goto FAIL;
+					success = false;
+				}
+				break;
 			case EXPR_BITACCESS:
 			case EXPR_BITASSIGN:
 			case EXPR_EMBED:
@@ -11800,35 +11826,35 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 	{
 		case EXPR_ASM:
 		case EXPR_BENCHMARK_HOOK:
-		case EXPR_CATCH_UNRESOLVED:
 		case EXPR_CATCH:
+		case EXPR_CATCH_UNRESOLVED:
 		case EXPR_COND:
+		case EXPR_CONTRACT:
+		case EXPR_CT_SUBSCRIPT:
 		case EXPR_DEFAULT_ARG:
 		case EXPR_DESIGNATOR:
+		case EXPR_ENUM_FROM_ORD:
+		case EXPR_FLOAT_TO_INT:
+		case EXPR_INT_TO_FLOAT:
+		case EXPR_INT_TO_PTR:
 		case EXPR_MACRO_BODY:
 		case EXPR_MACRO_BODY_EXPANSION:
+		case EXPR_MAKE_SLICE:
 		case EXPR_MEMBER_GET:
 		case EXPR_MEMBER_SET:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
+		case EXPR_PTR_TO_INT:
+		case EXPR_SCALAR_TO_VECTOR:
+		case EXPR_SLICE_TO_VEC_ARRAY:
 		case EXPR_SWIZZLE:
 		case EXPR_TEST_HOOK:
-		case EXPR_TRY_UNRESOLVED:
 		case EXPR_TRY:
+		case EXPR_TRY_UNRESOLVED:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID_INFO:
-		case EXPR_FLOAT_TO_INT:
-		case EXPR_INT_TO_FLOAT:
-		case EXPR_INT_TO_PTR:
-		case EXPR_PTR_TO_INT:
-		case EXPR_ENUM_FROM_ORD:
 		case EXPR_VECTOR_TO_ARRAY:
-		case EXPR_SLICE_TO_VEC_ARRAY:
-		case EXPR_SCALAR_TO_VECTOR:
-		case EXPR_MAKE_SLICE:
-		case EXPR_CT_SUBSCRIPT:
-		case EXPR_CONTRACT:
 			UNREACHABLE
 		case EXPR_LENGTHOF:
 			return sema_expr_analyse_lenof(context, expr, NULL);
@@ -12352,9 +12378,6 @@ IDENT_CHECK:;
 			expr->access_unresolved_expr.is_lvalue = true;
 			expr->access_unresolved_expr.is_ref = true;
 			return sema_expr_analyse_access(context, expr, failed_ref);
-		case EXPR_EXT_TRUNC:
-		case EXPR_INT_TO_BOOL:
-		case EXPR_DISCARD:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_ASM:
 		case EXPR_BENCHMARK_HOOK:
@@ -12364,24 +12387,38 @@ IDENT_CHECK:;
 		case EXPR_BUILTIN_ACCESS:
 		case EXPR_CALL:
 		case EXPR_CATCH:
+		case EXPR_CATCH_UNRESOLVED:
 		case EXPR_COMPILER_CONST:
+		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
-		case EXPR_CT_CALL:
 		case EXPR_CT_ASSIGNABLE:
+		case EXPR_CT_CALL:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_IS_CONST:
 		case EXPR_DECL:
 		case EXPR_DEFAULT_ARG:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_DESIGNATOR:
+		case EXPR_DISCARD:
+		case EXPR_EMBED:
+		case EXPR_ENUM_FROM_ORD:
+		case EXPR_EXPRESSION_LIST:
+		case EXPR_EXT_TRUNC:
+		case EXPR_FLOAT_TO_INT:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_INITIALIZER_LIST:
+		case EXPR_INT_TO_BOOL:
+		case EXPR_INT_TO_FLOAT:
+		case EXPR_INT_TO_PTR:
 		case EXPR_IOTA_DECL:
 		case EXPR_LAST_FAULT:
+		case EXPR_LENGTHOF:
 		case EXPR_MACRO_BLOCK:
+		case EXPR_MACRO_BODY:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_MAKE_ANY:
 		case EXPR_MAKE_SLICE:
+		case EXPR_MAYBE_DEREF:
 		case EXPR_MEMBER_GET:
 		case EXPR_MEMBER_SET:
 		case EXPR_NAMED_ARGUMENT:
@@ -12391,42 +12428,31 @@ IDENT_CHECK:;
 		case EXPR_POINTER_OFFSET:
 		case EXPR_POST_UNARY:
 		case EXPR_PTR_ACCESS:
-		case EXPR_ENUM_FROM_ORD:
-		case EXPR_SLICE_LEN:
-		case EXPR_FLOAT_TO_INT:
-		case EXPR_INT_TO_FLOAT:
-		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
-		case EXPR_LENGTHOF:
 		case EXPR_RETHROW:
 		case EXPR_RETVAL:
 		case EXPR_RVALUE:
+		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
+		case EXPR_SLICE_LEN:
+		case EXPR_SLICE_TO_VEC_ARRAY:
 		case EXPR_SPLAT:
 		case EXPR_STRINGIFY:
+		case EXPR_SUBSCRIPT_ADDR:
 		case EXPR_TERNARY:
 		case EXPR_TEST_HOOK:
 		case EXPR_TRY:
+		case EXPR_TRY_UNRESOLVED:
 		case EXPR_TRY_UNWRAP_CHAIN:
+		case EXPR_TWO:
 		case EXPR_TYPECALL:
+		case EXPR_TYPEID:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
+		case EXPR_VASPLAT:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_VECTOR_TO_ARRAY:
-		case EXPR_SLICE_TO_VEC_ARRAY:
-		case EXPR_SCALAR_TO_VECTOR:
-		case EXPR_SUBSCRIPT_ADDR:
-		case EXPR_EXPRESSION_LIST:
-		case EXPR_MACRO_BODY:
-		case EXPR_CATCH_UNRESOLVED:
-		case EXPR_COMPOUND_LITERAL:
-		case EXPR_EMBED:
-		case EXPR_TYPEID:
-		case EXPR_VASPLAT:
-		case EXPR_TRY_UNRESOLVED:
-		case EXPR_TWO:
-		case EXPR_MAYBE_DEREF:
 			break;
 		case EXPR_BITACCESS:
 		case EXPR_SUBSCRIPT_ASSIGN:
