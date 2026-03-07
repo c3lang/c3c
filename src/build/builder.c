@@ -600,6 +600,23 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->emit_asm = options->emit_asm;
 	target->print_stats = options->verbosity_level >= 2;
 
+#if defined(__linux__) && __linux__
+	static bool libc_detected = false;
+	if (!libc_detected)
+	{
+		if (file_exists("/lib/libc.so.6") || file_exists("/usr/lib/libc.so.6") || file_exists("/lib64/libc.so.6") ||
+		    file_exists("/lib/x86_64-linux-gnu/libc.so.6") || file_exists("/usr/lib/x86_64-linux-gnu/libc.so.6") ||
+		    file_exists("/lib/aarch64-linux-gnu/libc.so.6") || file_exists("/usr/lib/aarch64-linux-gnu/libc.so.6"))
+		{
+			default_libc = LINUX_LIBC_GNU;
+		}
+		else if (file_exists("/lib/ld-musl-x86_64.so.1") || file_exists("/lib/ld-musl-aarch64.so.1"))
+		{
+			default_libc = LINUX_LIBC_MUSL;
+		}
+		libc_detected = true;
+	}
+#endif
 	if (target->linuxpaths.libc == LINUX_LIBC_NOT_SET) target->linuxpaths.libc = default_libc;
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
@@ -742,6 +759,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 
 void init_default_build_target(BuildTarget *target, BuildOptions *options)
 {
+
 	*target = default_build_target;
 	target->source_dirs = NULL;
 	target->name = options->output_name;

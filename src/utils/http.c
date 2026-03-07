@@ -112,6 +112,21 @@ bool download_available(void)
 
 #elif PLATFORM_POSIX
 
+#ifdef C3_LINK_CURL
+#include <curl/curl.h>
+
+#define ptr_curl_easy_init curl_easy_init
+#define ptr_curl_easy_setopt curl_easy_setopt
+#define ptr_curl_easy_perform curl_easy_perform
+#define ptr_curl_easy_cleanup curl_easy_cleanup
+#define ptr_curl_easy_strerror curl_easy_strerror
+
+static bool load_curl(void)
+{
+	return true;
+}
+
+#else
 #include <dlfcn.h>
 
 typedef void CURL;
@@ -179,6 +194,7 @@ static bool load_curl(void)
 
 	return true;
 }
+#endif
 
 bool download_available(void)
 {

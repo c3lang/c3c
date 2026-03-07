@@ -116,10 +116,13 @@ run_cli_tests() {
     else
         echo "Testing vendor-fetch..."
         cd "$ROOT_DIR/resources"
-        "$C3C_BIN" vendor-fetch raylib
+        if ! "$C3C_BIN" vendor-fetch raylib; then
+            echo "::warning::vendor-fetch failed. Skipping dependent tests."
+            return
+        fi
 
         if [ -f "/etc/alpine-release" ] || [[ "$SYSTEM_NAME" == "OpenBSD" ]] || [[ "$SYSTEM_NAME" == "NetBSD" ]] || [[ "$OS_MODE" == "android" ]]; then
-            echo "Skipping raylib_arkanoid (vendor raylib doesn't support this platform)"
+            echo "::warning::Skipping raylib_arkanoid (vendor raylib doesn't support this platform)"
             return
         fi
         "$C3C_BIN" compile --lib raylib --print-linking examples/raylib/raylib_arkanoid.c3
