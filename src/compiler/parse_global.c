@@ -306,7 +306,7 @@ bool parse_module(ParseContext *c, ContractDescription *contracts)
 	}
 	if (!context_set_module(c, path)) return false;
 	Visibility visibility = VISIBLE_PUBLIC;
-	bool weak = false;
+	bool weak = c->unit->is_interface_file;
 	Attr** attrs = NULL;
 	bool is_cond = false;
 

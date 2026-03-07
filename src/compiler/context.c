@@ -223,6 +223,7 @@ WEAK_LOCAL:
 			// We restore the old one
 			decl->replacement = old;
 			vec_add(unit->weak_symbols_skipped, decl);
+			htable_set(&unit->module->symbols, (void*)decl->name, old);
 			return;
 		}
 SHADOW_MODULE:
@@ -236,6 +237,7 @@ SHADOW_MODULE:
 		}
 		decl_poison(decl);
 		decl_poison(old);
+		return;
 	}
 WEAK_MODULE:
 	if (decl->visibility < VISIBLE_LOCAL)
