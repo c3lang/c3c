@@ -4,7 +4,7 @@
 module non_crypto_benchmarks;
 
 
-const usz COMMON_ITERATIONS = 1 << 18;
+const usz COMMON_ITERATIONS = 12_000_000;
 
 const char[] COMMON_1 = { 0xA5 };
 const char[] COMMON_4 = { 0xA5, 0xA5, 0xA5, 0xA5, };
@@ -20,6 +20,20 @@ fn void initialize_bench() @init
 {
 	set_benchmark_warmup_iterations(3);
 	set_benchmark_max_iterations(COMMON_ITERATIONS + 3);
+
+	static String[] algos = { "fnv64a", "fnv32a" };
+	foreach (algo : algos)
+	{
+		set_benchmark_func_iterations("non_crypto_benchmarks::".tconcat(algo).tconcat("_32"), 7_700_000);
+		set_benchmark_func_iterations("non_crypto_benchmarks::".tconcat(algo).tconcat("_64"), 4_600_000);
+		set_benchmark_func_iterations("non_crypto_benchmarks::".tconcat(algo).tconcat("_128"), 2_600_000);
+		set_benchmark_func_iterations("non_crypto_benchmarks::".tconcat(algo).tconcat("_1024"), 360_000);
+	}
+
+	set_benchmark_func_iterations("non_crypto_benchmarks::metro64_1024", 3_200_000);
+	set_benchmark_func_iterations("non_crypto_benchmarks::metro128_1024", 3_200_000);
+	set_benchmark_func_iterations("non_crypto_benchmarks::a5hash_1024", 3_200_000);
+	set_benchmark_func_iterations("non_crypto_benchmarks::komi_1024", 5_600_000);
 }
 
 

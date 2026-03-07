@@ -10,7 +10,7 @@ const NEEDLE = 1000;
 fn void bench_setup() @init
 {
 	set_benchmark_warmup_iterations(3);
-	set_benchmark_max_iterations(4096);
+	set_benchmark_max_iterations(100_000);
 
     int[*] haystack = { [0..999] = HAY };
     long_list = linkedlist::@new{int}(mem, haystack[..]);
@@ -28,11 +28,11 @@ String die_str = "Failed to find the value `1`. Is something broken?";
 fn void foreach_iterator()
 {
     foreach (v : long_list.array_view()) if (v == NEEDLE) return;
-    runtime::@kill_benchmark(die_str);
+    @kill_benchmark(die_str);
 }
 
 fn void foreach_r_iterator()
 {
     foreach_r (v : long_list.array_view()) if (v == NEEDLE) return;
-    runtime::@kill_benchmark(die_str);
+    @kill_benchmark(die_str);
 }
