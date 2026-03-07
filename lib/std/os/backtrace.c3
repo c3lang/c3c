@@ -1,5 +1,5 @@
 module std::os::backtrace;
-import std::collections::list, std::os, std::io;
+import std::collections::list, std::core::dstring, std::os, std::io;
 
 faultdef SEGMENT_NOT_FOUND, EXECUTABLE_PATH_NOT_FOUND, IMAGE_NOT_FOUND, NO_BACKTRACE_SYMBOLS,
          RESOLUTION_FAILED;
@@ -104,4 +104,27 @@ alias symbolize_backtrace @if(env::OPENBSD)	= openbsd::symbolize_backtrace;
 fn BacktraceList? symbolize_backtrace(Allocator allocator, void*[] backtrace) @if(!env::NATIVE_STACKTRACE)
 {
 	return {};
+}
+
+<*
+ Returns the symbolized backtrace as a string.
+*>
+fn String? get(Allocator allocator)
+{
+	void*[64] buffer;
+	void*[] bt = capture_current(buffer[..]);
+	@pool()
+	{
+		if (try list = symbolize_backtrace(tmem, bt))
+		{
+			DString s;
+			s.init(allocator);
+			foreach (trace : list)
+			{
+				s.appendf("%s\n", trace);
+			}
+			return s.str_view();
+		}
+	};
+	return NOT_FOUND~;
 }
