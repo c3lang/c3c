@@ -113,6 +113,7 @@ typedef enum
 	ANSI_ON = 1
 } Ansi;
 
+
 typedef enum
 {
 	SINGLE_MODULE_NOT_SET = -1,

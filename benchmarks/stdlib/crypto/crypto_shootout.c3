@@ -6,7 +6,7 @@ module crypto_hash_benchmarks;
 import std::collections::pair;
 
 
-const usz COMMON_ITERATIONS = 1 << 17;
+const usz COMMON_ITERATIONS = 250_000;
 
 char* common_1mib_ptr;
 char[] common_16;
@@ -42,14 +42,30 @@ fn void initialize_bench() @init
 	};
 
 	static Pair{ String, uint }[] to_iters = {
-		{ "_4kib", 1 << 15 },
-		{ "_1mib", 1024 },
+		{ "_4kib", 16384 },
+		{ "_1mib", 80 },
 	};
 
 	foreach (p : to_iters)
 	{
 		foreach (name : function_prefixes) set_benchmark_func_iterations(name.tconcat(p.first), p.second);
 	}
+
+	// Manual overrides for stand-alone 1MiB benchmarks to keep them around 300ms
+	set_benchmark_func_iterations("crypto_hash_benchmarks::keccak_256", 80);
+	set_benchmark_func_iterations("crypto_hash_benchmarks::keccak_512", 40);
+	set_benchmark_func_iterations("crypto_hash_benchmarks::sha3_256", 80);
+	set_benchmark_func_iterations("crypto_hash_benchmarks::sha3_512", 40);
+	set_benchmark_func_iterations("crypto_hash_benchmarks::sha256_256", 64);
+	set_benchmark_func_iterations("crypto_hash_benchmarks::sha512_512", 80);
+
+	// Tweak slow hashes that are over-shooting the target
+	set_benchmark_func_iterations("crypto_hash_benchmarks::streebog_256_256", 120_000);
+	set_benchmark_func_iterations("crypto_hash_benchmarks::streebog_512_256", 120_000);
+	set_benchmark_func_iterations("crypto_hash_benchmarks::streebog_256_4kib", 12_500);
+	set_benchmark_func_iterations("crypto_hash_benchmarks::streebog_512_4kib", 12_500);
+	set_benchmark_func_iterations("crypto_hash_benchmarks::streebog_256_1mib", 50);
+	set_benchmark_func_iterations("crypto_hash_benchmarks::streebog_512_1mib", 50);
 }
 
 fn void teardown_bench() @finalizer
