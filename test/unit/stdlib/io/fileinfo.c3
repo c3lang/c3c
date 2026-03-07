@@ -1,5 +1,5 @@
 module std::io::fileinfo @test;
-import std::io::os;
+import std::io::os, std::io::file;
 
 fn void test_native_is_file() @if(env::LINUX || env::DARWIN || env::ANDROID)
 {
@@ -34,6 +34,11 @@ fn void test_native_is_dir() @if(env::BSD_FAMILY)
 
 fn void test_native_get_modified_time() @if(env::LINUX || env::DARWIN || env::ANDROID || env::BSD_FAMILY)
 {
-	assert(@ok(os::native_get_modified_time("/etc/passwd")));	
+	String temp_file = "test_temp.txt";
+	
+	file::save(temp_file, "test")!!;
+	defer (void)file::delete(temp_file);
+	
+	assert(@ok(os::native_get_modified_time(temp_file)));
 	assert(@catch(os::native_get_modified_time("/this/file/does/not/exist")));
 }
