@@ -9,7 +9,7 @@ fn void gzip_fhcrc() @test
 	Gzip gz = gzip::uncompress(mem, &data)!!;
 	defer gz.free();
 
-	assert(gz.header.flg & gzip::FHCRC);
+	assert(gz.header.flg.hcrc);
 }
 
 fn void gzip_fextra() @test
@@ -20,7 +20,7 @@ fn void gzip_fextra() @test
 	Gzip gz = gzip::uncompress(mem, &data)!!;
 	defer gz.free();
 
-	assert(gz.header.flg & gzip::FEXTRA);
+	assert(gz.header.flg.extra);
 	assert(gz.extra.len);
 	test::eq(gz.extra, "data");
 }
@@ -33,7 +33,7 @@ fn void gzip_fname() @test
 	Gzip gz = gzip::uncompress(mem, &data)!!;
 	defer gz.free();
 
-	assert(gz.header.flg & gzip::FNAME);
+	assert(gz.header.flg.name);
 	assert(gz.filename.len);
 	test::eq(gz.filename, "foo.c");
 }
@@ -46,7 +46,7 @@ fn void gzip_fcomment() @test
 	Gzip gz = gzip::uncompress(mem, &data)!!;
 	defer gz.free();
 
-	assert(gz.header.flg & gzip::FCOMMENT);
+	assert(gz.header.flg.comment);
 	assert(gz.comment.len);
 	test::eq(gz.comment, "hello");
 }

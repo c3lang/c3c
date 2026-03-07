@@ -7,9 +7,17 @@ faultdef CORRUPT_HEADER, CORRUPT_DATA;
 
 struct GzipHeader @packed
 {
-	UShortLE id;
+	char[2] id;
 	char cm;
-	char flg;
+	bitstruct flg : char
+	{
+		bool text     : 0;
+		bool hcrc     : 1;
+		bool extra    : 2;
+		bool name     : 3;
+		bool comment  : 4;
+		uint reserved : 5..7;
+	}
 	UIntLE mtime;
 	char xfl;
 	char os;
@@ -28,10 +36,10 @@ struct Gzip
 fn void Gzip.free(&self)
 {
 	if (!self.allocator) return;
-	if (self.extra.ptr) allocator::free(self.allocator, self.extra.ptr);
-	if (self.filename.len) self.filename.free(self.allocator);
-	if (self.comment.len) self.comment.free(self.allocator);
-	if (self.uncompressed.ptr) allocator::free(self.allocator, self.uncompressed.ptr);
+	allocator::free(self.allocator, self.extra);
+	self.filename.free(self.allocator);
+	self.comment.free(self.allocator);
+	allocator::free(self.allocator, self.uncompressed);
 }
 
 fn char[]? uncompress_bytes(Allocator allocator, char[] src) @inline => @pool()
@@ -59,28 +67,28 @@ fn Gzip? uncompress_stream(Allocator allocator, InStream reader)
 
 		header_reader.read((char[GzipHeader.sizeof]*)&gz.header)!;
 
-		if (gz.header.id.val != GZIP_MAGIC) return CORRUPT_HEADER~;
+		if (gz.header.id != GZIP_MAGIC) return CORRUPT_HEADER~;
 		if (gz.header.cm != 8) return CORRUPT_HEADER~;
-		if (gz.header.flg & 0xE0) return CORRUPT_HEADER~;
+		if (gz.header.flg.reserved) return CORRUPT_HEADER~;
 
-		if (gz.header.flg & FEXTRA)
+		if (gz.header.flg.extra)
 		{
 			ushort xlen = io::read_le_ushort(header_reader)!;
 			gz.extra = allocator::malloc(allocator, xlen)[:xlen];
 			header_reader.read(gz.extra)!;
 		}
 
-		if (gz.header.flg & FNAME)
+		if (gz.header.flg.name)
 		{
 			gz.filename = decode_latin1(allocator, header_reader)!;
 		}
 
-		if (gz.header.flg & FCOMMENT)
+		if (gz.header.flg.comment)
 		{
 			gz.comment = decode_latin1(allocator, header_reader)!;
 		}
 
-		if (gz.header.flg & FHCRC)
+		if (gz.header.flg.hcrc)
 		{
 			ushort crc16 = (ushort)(crc.final() & 0xFFFF);
 			ushort hcrc = io::read_le_ushort(reader)!;
@@ -111,19 +119,14 @@ fn char[]? compress(Allocator allocator, char[] src, bool hcrc = false,
 	return bw.array_view();
 }
 
-fn void? compress_stream(OutStream writer, char[] src, bool hcrc = false,
-	char[] extra = {}, String name = "", String comment = "")
+fn void? compress_stream(OutStream writer, char[] src, bool hcrc = false, char[] extra = {}, String name = "", String comment = "")
 {
 	GzipHeader header = {
-		.id  = { .val = GZIP_MAGIC },
+		.id  = GZIP_MAGIC,
+		.flg = { .hcrc = hcrc, .extra = extra.len > 0, .name = name.len > 0, .comment = comment.len > 0 },
 		.cm  = 8,
 		.os  = 0xff,
 	};
-
-	if (hcrc) header.flg |= FHCRC;
-	if (extra.len) header.flg |= FEXTRA;
-	if (name.len) header.flg |= FNAME;
-	if (comment.len) header.flg |= FCOMMENT;
 
 	@pool()
 	{
@@ -163,12 +166,7 @@ fn void? compress_stream(OutStream writer, char[] src, bool hcrc = false,
 module std::compression::gzip @private;
 import std::io, std::encoding::codepage, std::hash::crc32;
 
-const ushort GZIP_MAGIC  = 0x8b1f;
-
-const char FHCRC    = 1 << 1;
-const char FEXTRA   = 1 << 2;
-const char FNAME    = 1 << 3;
-const char FCOMMENT = 1 << 4;
+const char[2] GZIP_MAGIC  = x'1F8B';
 
 struct CrcWriter (OutStream)
 {
