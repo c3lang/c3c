@@ -181,7 +181,7 @@ if(C3_WITH_LLVM)
                 # For static linking, use the musl build
                 if (NOT C3_LINK_DYNAMIC AND CMAKE_EXE_LINKER_FLAGS MATCHES "-static")
                     set(C3_LLVM_PLATFORM "linux-amd64-musl")
-                    message(STATUS "Static linking detected, using musl LLVM artifact and preferring static zlib")
+                    message(STATUS "Static linking detected, using musl LLVM artifact")
                 else()
                     set(C3_LLVM_PLATFORM "linux-amd64")
                 endif()
