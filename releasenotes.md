@@ -17,6 +17,7 @@
 - Add `keccak` and Keccak-based hash functions: `sha3`, `shake`, `cshake`, `kmac`, `turboshake`, `tuplehash`, and `parallelhash`. #2728
 - Added `fault.short_name` and `fault.@short_name` to get just the fault name for both run and compile time. #3002
 - Compiler runtime functions extracted outside of std.
+- Add support for AES-encrypted Zip files (AE-1 and AE-2 formats).
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
@@ -73,7 +74,6 @@
 - `instream.seek` is replaced by `set_cursor` and `cursor`.
 - `instream.available`, `cursor` etc are long/ulong rather than isz/usz to be correct on 32-bit.
 - Enable asynchronous, non-blocking reads of subprocess STDOUT/STDERR pipes on POSIX systems.
-- Add support for AES-encrypted Zip files (AE-1 and AE-2 formats).
 
 ### Fixes
 - Add error message if directory with output file name already exists
