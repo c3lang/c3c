@@ -604,7 +604,9 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	static bool libc_detected = false;
 	if (!libc_detected)
 	{
-		if (file_exists("/lib/libc.so.6") || file_exists("/usr/lib/libc.so.6") || file_exists("/lib64/libc.so.6"))
+		if (file_exists("/lib/libc.so.6") || file_exists("/usr/lib/libc.so.6") || file_exists("/lib64/libc.so.6") ||
+		    file_exists("/lib/x86_64-linux-gnu/libc.so.6") || file_exists("/usr/lib/x86_64-linux-gnu/libc.so.6") ||
+		    file_exists("/lib/aarch64-linux-gnu/libc.so.6") || file_exists("/usr/lib/aarch64-linux-gnu/libc.so.6"))
 		{
 			default_libc = LINUX_LIBC_GNU;
 		}

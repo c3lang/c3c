@@ -439,7 +439,9 @@ static const char *find_linux_crt(void)
 		// If we are looking for musl, we don't want to pick up /usr/lib/crt1.o unless there are no other options,
 		// or if we're on a pure musl system (like Alpine).
 		// On glibc systems, /usr/lib/crt1.o is glibc.
-		bool glibc_system = file_exists("/lib/libc.so.6") || file_exists("/usr/lib/libc.so.6") || file_exists("/lib64/libc.so.6");
+		bool glibc_system = file_exists("/lib/libc.so.6") || file_exists("/usr/lib/libc.so.6") || file_exists("/lib64/libc.so.6") ||
+		                    file_exists("/lib/x86_64-linux-gnu/libc.so.6") || file_exists("/usr/lib/x86_64-linux-gnu/libc.so.6") ||
+		                    file_exists("/lib/aarch64-linux-gnu/libc.so.6") || file_exists("/usr/lib/aarch64-linux-gnu/libc.so.6");
 		INFO_LOG("is_musl: %d, glibc_system: %d, is_host: %d", is_musl, glibc_system, is_host_arch);
 
 		if (file_exists(arch_linux_crt1_path))
@@ -477,8 +479,18 @@ static const char *find_linux_crt_begin(void)
 	const char *path = find_arch_glob_path(arch_glob_path, 10);
 	if (!path)
 	{
-		INFO_LOG("No crtbegin in /usr/lib/gcc/*/*/");
-		return NULL;
+		// Fallback for distros like openSUSE that put gcc crt files in /usr/lib64/gcc/
+		if (strncmp(arch_glob_path, "/usr/lib/", 9) == 0)
+		{
+			char *lib64_glob = str_printf("/usr/lib64/%s", arch_glob_path + 9);
+			path = find_arch_glob_path(lib64_glob, 10);
+		}
+
+		if (!path)
+		{
+			INFO_LOG("No crtbegin in /usr/lib/gcc/*/*/ or /usr/lib64/gcc/*/*/");
+			return NULL;
+		}
 	}
 	INFO_LOG("Found crtbegin at %s", path);
 	return path;
