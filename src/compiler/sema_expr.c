@@ -1467,11 +1467,19 @@ static inline bool sema_binary_analyse_with_inference(SemaContext *context, Expr
 	}
 
 EVAL_BOTH:
+	// Infer constdef in Foo f = FOO | BAR
 	if (to && to->canonical->type_kind == TYPE_CONSTDEF)
 	{
 		return sema_analyse_inferred_expr(context, to, left, NULL) && sema_analyse_inferred_expr(context, to, right, NULL);
 	}
-	return sema_analyse_expr_rvalue(context, left) && sema_analyse_expr_rvalue(context, right);
+	if (!sema_analyse_expr_rvalue(context, left)) return false;
+
+	// Infer constdef in f & BAR
+	if (left->type->canonical->type_kind == TYPE_CONSTDEF)
+	{
+		return sema_analyse_inferred_expr(context, left->type, right, NULL);
+	}
+	return  sema_analyse_expr_rvalue(context, right);
 }
 
 static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *left, Expr *right)

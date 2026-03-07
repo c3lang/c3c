@@ -7,5 +7,6 @@ constdef Foo
 fn int main()
 {
 	Foo f = AUDIO | VIDEO;
+	f = f | VIDEO;
     return 0;
 }

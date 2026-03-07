@@ -17,6 +17,7 @@
 - Add `keccak` and Keccak-based hash functions: `sha3`, `shake`, `cshake`, `kmac`, `turboshake`, `tuplehash`, and `parallelhash`. #2728
 - Added `fault.short_name` and `fault.@short_name` to get just the fault name for both run and compile time. #3002
 - Compiler runtime functions extracted outside of std.
+- Add the GZIP file format (RFC 1952).
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
