@@ -29,7 +29,7 @@ fn Duration min(long l) @inline => l * MIN;
 fn Duration hour(long l) @inline => l * HOUR;
 fn Duration from_float(double s) @inline => (Duration)(s * (double)SEC);
 
-struct DateTime
+struct DateTime (Printable)
 {
 	int usec;
 	char sec;
@@ -43,7 +43,7 @@ struct DateTime
 	Time time;
 }
 
-struct TzDateTime
+struct TzDateTime (Printable)
 {
 	inline DateTime date_time;
 	int gmt_offset;

@@ -1,5 +1,6 @@
 module libc_tests;
 import libc;
+import std::io;
 
 // Functions from libc.c3 which do not have a test are still present in
 // comments here in the same order that they occur within libc.c3
@@ -268,7 +269,6 @@ fn void fgets_fget() @test
 	libc::fclose(tmpf);
 }
 
-import std::io;
 fn void fseek_ftell_fgetpos_fsetpos_rewind() @test
 {
 	CFile* tmpf = libc::tmpfile();

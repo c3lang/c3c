@@ -20,6 +20,9 @@
 - Added `fault.short_name` and `fault.@short_name` to get just the fault name for both run and compile time. #3002
 - Compiler runtime functions extracted outside of std.
 - Add the GZIP file format (RFC 1952).
+- Add file::last_modified.
+- Make DateTime and DateTimeTz `Printable`.
+- Add `to_format` functionality for DateTime.
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
