@@ -393,7 +393,7 @@ fn void _destroy(TempAllocator* self) @local
 {
 	TempAllocator* child = self.derived;
 	if (!child) return;
-	child.destroy();
+	_destroy(child);
 	self.vmem.free() @inline;
 	allocator::free(self.allocator, self) @inline;
 }

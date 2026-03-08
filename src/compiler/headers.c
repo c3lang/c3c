@@ -590,6 +590,7 @@ static void header_gen_global_var(HeaderContext *c, Decl *decl, bool fn_globals,
 {
 	ASSERT(decl->decl_kind == DECL_VAR);
 	// Only exports.
+	if (decl->replacement) return;
 	if (!decl->is_export) return;
 	Type *type = decl->type->canonical;
 	// Optionals are ignored.
