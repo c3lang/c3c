@@ -116,4 +116,31 @@ fn bool native_is_dir(String path)
 	$endif
 }
 
-
+fn Time_t? native_get_modified_time(String path) => @pool()
+{
+	$switch:
+		$case env::WIN32:
+			Win32_FILE_ATTRIBUTE_DATA data;
+			if (!win32::getFileAttributesExW(path.to_temp_wstring()!, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, &data))
+			{
+				return io::FILE_NOT_FOUND~;
+			};
+			ulong ticks = ((ulong)data.ftLastWriteTime.dwHighDateTime << 32) | data.ftLastWriteTime.dwLowDateTime;
+			return (Time_t)(ticks / 10_000_000UL - 11644473600UL);
+		$case env::DARWIN:
+			Stat stat;
+			native_stat(&stat, path)!;
+			return stat.st_mtimespec.s;
+		$case env::LINUX:
+		$case env::ANDROID:
+			Stat stat;
+			native_stat(&stat, path)!;
+			return stat.st_mtime;
+		$case env::BSD_FAMILY:
+			Stat stat;
+			native_stat(&stat, path)!;
+			return stat.st_mtime.s;
+		$default:
+			return io::UNSUPPORTED_OPERATION~;
+	$endswitch
+}
