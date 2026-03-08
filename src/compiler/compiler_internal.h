@@ -757,6 +757,7 @@ typedef struct Decl_
 		int tb_register;
 		void *backend_value;
 		void *tb_symbol;
+		Decl *replacement;
 		struct
 		{
 			bool in_init;
@@ -1744,9 +1745,11 @@ struct CompilationUnit_
 	Decl **faults;
 	const char **links;
 	Visibility default_visibility;
+	bool default_is_weak;
 	Attr *if_attr;
 	Decl *default_generic_section;
 	Decl **generic_decls;
+	Decl **weak_symbols_skipped;
 	bool export_by_default;
 	bool is_interface_file;
 	bool benchmark_by_default;
@@ -2340,6 +2343,7 @@ const char *build_base_name(void);
 void global_context_clear_errors(void);
 void global_context_add_type(Type *type);
 void global_context_add_decl(Decl *type_decl);
+void global_context_replace_decl(Decl *old, Decl *new_symbol);
 
 void linking_add_link(Linking *linker, const char *link);
 const char *static_lib_name(void);
@@ -2522,6 +2526,7 @@ bool sema_cast_const(Expr *expr);
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
+bool sema_compare_weak_decl(SemaContext *context, Decl *replaced, Decl *replacement);
 void sema_analyse_inner_func_ptr(SemaContext *c, Decl *decl);
 
 bool sema_analyse_method_register(SemaContext *context, Decl *method);
@@ -2601,6 +2606,7 @@ void *htable_get(HTable *table, void *key);
 
 void pathtable_init(PathTable *table, uint32_t initial_size);
 void pathtable_set(PathTable *table, Decl *value);
+void pathtable_replace(PathTable *table, Decl *original, Decl *value);
 Decl *pathtable_get(PathTable *table, const char *short_path, const char *name);
 
 UNUSED void stable_clear(STable *table);
@@ -2608,6 +2614,7 @@ UNUSED void stable_clear(STable *table);
 void decltable_init(DeclTable *table, uint32_t initial_size);
 DeclId decltable_get(DeclTable *table, const char *name);
 void decltable_set(DeclTable *table, Decl *decl);
+void decltable_replace(DeclTable *table, Decl *old, Decl *new);
 
 void methodtable_init(MethodTable *table, uint32_t initial_size);
 DeclId methodtable_get(MethodTable *table, Type *type, const char *name);

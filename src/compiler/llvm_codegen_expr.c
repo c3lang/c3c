@@ -5974,7 +5974,6 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		// 2a. Get the function declaration
 		Decl *function_decl = declptr(expr->call_expr.func_ref);
 		always_inline = function_decl->func_decl.attr_inline;
-
 		// 2b. Set signature, function and function type
 		prototype = type_get_resolved_prototype(function_decl->type);
 		func = llvm_get_ref(c, function_decl);
