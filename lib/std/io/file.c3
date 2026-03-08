@@ -7,7 +7,7 @@ struct File (InStream, OutStream)
 }
 
 module std::io::file;
-import libc, std::io::path, std::io::os;
+import libc, std::io::path, std::io::os, std::time;
 
 fn File? open(String filename, String mode)
 {
@@ -47,6 +47,12 @@ fn ulong? get_size(String path)
 fn void? set_modified_time(String path, Time_t time)
 {
 	return os::native_set_modified_time(path, time);
+}
+
+fn Time? last_modified(String filename)
+{
+	Time_t? seconds = os::native_get_modified_time(filename)!;
+	return (Time)(seconds * (Time_t)time::SEC);
 }
 
 fn void? delete(String filename)
