@@ -306,7 +306,7 @@ bool parse_module(ParseContext *c, ContractDescription *contracts)
 	}
 	if (!context_set_module(c, path)) return false;
 	Visibility visibility = VISIBLE_PUBLIC;
-	bool weak = c->unit->is_interface_file;
+	bool weak = false;
 	Attr** attrs = NULL;
 	bool is_cond = false;
 
@@ -1353,6 +1353,10 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 	if (is_weak)
 	{
 		decl->is_weak_link = true;
+		decl->is_weak = true;
+	}
+	else if (c->unit->is_interface_file)
+	{
 		decl->is_weak = true;
 	}
 	decl->is_autoimport = is_builtin;
