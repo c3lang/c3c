@@ -7,6 +7,8 @@
 #if USE_PTHREAD
 #include <pthread.h>
 
+#define TASKQUEUE_THREAD_STACK_SIZE (8U * 1024U * 1024U)
+
 typedef struct TaskQueue_
 {
 	pthread_mutex_t lock;
@@ -37,11 +39,22 @@ void taskqueue_run(int threads, Task **task_list)
 	ASSERT(threads > 0);
 	pthread_t *pthreads = malloc(sizeof(pthread_t) * (unsigned)threads);
 	TaskQueue queue = { .queue = task_list };
+	pthread_attr_t attr;
+	bool has_attr = false;
 	if (pthread_mutex_init(&queue.lock, NULL)) error_exit("Failed to set up mutex");
+	if (!pthread_attr_init(&attr))
+	{
+		size_t stack_size = TASKQUEUE_THREAD_STACK_SIZE;
+#ifdef PTHREAD_STACK_MIN
+		if (stack_size < PTHREAD_STACK_MIN) stack_size = PTHREAD_STACK_MIN;
+#endif
+		if (!pthread_attr_setstacksize(&attr, stack_size)) has_attr = true;
+	}
 	for (int i = 0; i < threads; i++)
 	{
-		if (pthread_create(&pthreads[i], NULL, taskqueue_thread, &queue)) error_exit("Fail to set up thread pool");
+		if (pthread_create(&pthreads[i], has_attr ? &attr : NULL, taskqueue_thread, &queue)) error_exit("Fail to set up thread pool");
 	}
+	if (has_attr) pthread_attr_destroy(&attr);
 	for (int i = 0; i < threads; i++)
 	{
 		if (pthread_join(pthreads[i], NULL) != 0) error_exit("Failed to join thread.");
