@@ -133,6 +133,7 @@ fn Time_t? native_get_modified_time(String path) => @pool()
 			return stat.st_mtimespec.s;
 		$case env::LINUX:
 		$case env::ANDROID:
+		$case env::NETBSD:
 			Stat stat;
 			native_stat(&stat, path)!;
 			return stat.st_mtime;
