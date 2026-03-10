@@ -217,10 +217,9 @@ fn ulong? elf_module_image_base(String path) @local
 fn void? backtrace_add_from_exec(Allocator allocator, BacktraceList* list, void* addr) @local
 {
 	char[1024] buf @noinit;
-    SubProcessOptions options = { .search_user_path = true };
-	String exec_path = process::execute_stdout_to_buffer(&buf, {"realpath", "-e", string::bformat(&&(char[64]){}, "/proc/%d/exe", posix::getpid())}, options)!;
+	String exec_path = process::run_capture_stdout(&buf, {"realpath", "-e", string::bformat(&&(char[64]){}, "/proc/%d/exe", posix::getpid())})!;
 	String obj_name = exec_path.copy(allocator);
-	String addr2line = process::execute_stdout_to_buffer(&buf, {"addr2line", "-p", "-i", "-C", "-f", "-e", exec_path, string::bformat(&&(char[64]){}, "0x%x", addr)}, options)!;
+	String addr2line = process::run_capture_stdout(&buf, {"addr2line", "-p", "-i", "-C", "-f", "-e", exec_path, string::bformat(&&(char[64]){}, "0x%x", addr)})!;
 	return backtrace_add_addr2line(allocator, list, addr, addr2line, obj_name, "???");
 }
 
@@ -231,8 +230,7 @@ fn void? backtrace_add_from_dlinfo(Allocator allocator, BacktraceList* list, voi
 	void*   obj_addr  = addr - (uptr)info.dli_fbase + (uptr)elf_module_image_base(info.dli_fname.str_view())!;
 	ZString obj_path  = info.dli_fname;
 	String  sname     = info.dli_sname ? info.dli_sname.str_view() : "???";
-	SubProcessOptions options = { .search_user_path = true };
-	String  addr2line = process::execute_stdout_to_buffer(&buf, {"addr2line", "-p", "-i", "-C", "-f", "-e", obj_path.str_view(), string::bformat(&&(char[64]){}, "0x%x", obj_addr - 1)}, options)!;
+	String  addr2line = process::run_capture_stdout(&buf, {"addr2line", "-p", "-i", "-C", "-f", "-e", obj_path.str_view(), string::bformat(&&(char[64]){}, "0x%x", obj_addr - 1)})!;
 	return backtrace_add_addr2line(allocator, list, addr, addr2line, info.dli_fname.str_view(), sname);
 }
 

@@ -1071,6 +1071,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 	Expr *cond = exprptr(expr->ternary_expr.cond);
 	CondResult path = COND_MISSING;
 	bool is_const = expr->ternary_expr.is_const;
+	bool success;
 	// Normal
 	if (left)
 	{
@@ -1082,7 +1083,10 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 		bool is_left = path == COND_TRUE;
 		if (!is_const || is_left)
 		{
-			if (!sema_analyse_maybe_dead_expr(context, left, !is_left, infer_type)) return expr_poison(expr);
+			SCOPE_START(left->loc);
+				success = sema_analyse_maybe_dead_expr(context, left, !is_left, infer_type);
+			SCOPE_END;
+			if (!success) return expr_poison(expr);
 		}
 	}
 	else
@@ -1124,9 +1128,14 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 	bool is_right = path == COND_FALSE;
 
 	Expr *right = exprptr(expr->ternary_expr.else_expr);
+
+
 	if (!is_const || is_right)
 	{
-		if (!sema_analyse_maybe_dead_expr(context, right, !is_right, infer_type)) return expr_poison(expr);
+		SCOPE_START(right->loc);
+		success = sema_analyse_maybe_dead_expr(context, right, !is_right, infer_type);
+		SCOPE_END;
+		if (!success) return expr_poison(expr);
 	}
 
 	if (is_const)
@@ -2621,7 +2630,11 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 		return false;
 	}
 
-	if (sig->attrs.noreturn) expr->call_expr.no_return = true;
+	if (sig->attrs.noreturn)
+	{
+		expr->call_expr.no_return = true;
+		if (!context->call_env.in_no_eval) SET_JUMP_END(context, expr);
+	}
 
 	if (!sema_call_evaluate_arguments(context, &callee, expr, &optional, no_match_ref)) return false;
 	if (expr->call_expr.is_dynamic_dispatch)
@@ -10027,6 +10040,11 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr, T
 			RETURN_SEMA_ERROR(expr, "Rethrow is not allowed in a '@naked' function.");
 		}
 	}
+	if (inner->expr_kind == EXPR_OPTIONAL && !context->call_env.in_no_eval)
+	{
+		SET_JUMP_END(context, expr);
+	}
+
 	return true;
 }
 
@@ -10041,6 +10059,10 @@ static inline bool sema_expr_analyse_force_unwrap(SemaContext *context, Expr *ex
 		RETURN_SEMA_ERROR(expr, "No optional to rethrow before '!!' in the expression, please remove '!!'.");
 	}
 	expr->type = type_no_optional(inner->type);
+	if (expr->inner_expr->expr_kind == EXPR_OPTIONAL && !context->call_env.in_no_eval)
+	{
+		SET_JUMP_END(context, expr);
+	}
 	return true;
 }
 

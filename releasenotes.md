@@ -20,6 +20,10 @@
 - Added `fault.short_name` and `fault.@short_name` to get just the fault name for both run and compile time. #3002
 - Compiler runtime functions extracted outside of std.
 - Add the GZIP file format (RFC 1952).
+- Add file::last_modified.
+- Make DateTime and DateTimeTz `Printable`.
+- Add `to_format` functionality for DateTime.
+- `SubProcess`/`process::create`/`process::execute_stdout_to_buffer` deprecated, replaced by `Process`/`process:spawn`/`process::run_capture_stdout`.
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
@@ -34,6 +38,9 @@
 - `io::EOF.nameof` would yield just `EOF` whereas resolving it at runtime would (correctly) yield `io::EOF`.
 - `$stringify` would incorrectly capture lambdas. #2986
 - Regression: `String` was not implicitly `@constinit` #2983
+- Compiler does not propagate @noreturn through macros using short declaration syntax #3011
+- Debug info emitted on `-Os` #3015
+- @assert_leak() would not work properly with `--safe=no` #3012.
 
 ## 0.7.10 Change list
 

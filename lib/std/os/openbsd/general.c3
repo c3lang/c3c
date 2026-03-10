@@ -83,7 +83,7 @@ fn void? backtrace_add_addr2line(Allocator allocator, BacktraceList* list, Strin
 fn void? backtrace_add_from_exec(Allocator allocator, BacktraceList* list, String fun, String obj) @local
 {
 	char[1024] buf @noinit;
-	String addr2line = process::execute_stdout_to_buffer(&buf, {"llvm-addr2line", "-fpe", obj, fun})!;
+	String addr2line = process::run_capture_stdout(&buf, {"llvm-addr2line", "-fpe", obj, fun})!;
 	return backtrace_add_addr2line(allocator, list, obj, addr2line);
 }
 
