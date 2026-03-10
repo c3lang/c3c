@@ -23,6 +23,7 @@
 - Add file::last_modified.
 - Make DateTime and DateTimeTz `Printable`.
 - Add `to_format` functionality for DateTime.
+- `SubProcess`/`process::create`/`process::execute_stdout_to_buffer` deprecated, replaced by `Process`/`process:spawn`/`process::run_capture_stdout`.
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.

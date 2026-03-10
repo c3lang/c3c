@@ -12,8 +12,7 @@ fn void test_inherit_stdio_stdout()
         command = { "echo", "Hello with inherit_stdio" };
     $endif
     
-    SubProcess process = process::create(command, 
-        { .search_user_path = true, .inherit_stdio = true })!!;
+    Process process = process::spawn(command, INHERIT_STDIO)!!;
     defer process.destroy();
     
     // Join the process
@@ -39,8 +38,7 @@ fn void test_inherit_stdio_stderr()
         command = { "sh", "-c", "echo Error >&2" };
     $endif
     
-    SubProcess process = process::create(command,
-        { .search_user_path = true, .inherit_stdio = true })!!;
+    SubProcess process = process::spawn(command, { .inherit_stdio })!!;
     defer process.destroy();
     
     process.join()!!;
@@ -66,7 +64,7 @@ fn void test_inherit_stdio_comparison()
     $endif
     
     // First without inherit_stdio
-    SubProcess process1 = process::create(command, { .search_user_path = true })!!;
+    SubProcess process1 = process::create(command)!!;
     defer process1.destroy();
     
     process1.join()!!;
