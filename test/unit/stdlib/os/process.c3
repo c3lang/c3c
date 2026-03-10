@@ -12,8 +12,7 @@ fn void test_inherit_stdio_stdout()
         command = { "echo", "Hello with inherit_stdio" };
     $endif
     
-    SubProcess process = process::create(command, 
-        { .search_user_path = true, .inherit_stdio = true })!!;
+    Process process = process::spawn(command, INHERIT_STDIO)!!;
     defer process.destroy();
     
     // Join the process
@@ -39,8 +38,7 @@ fn void test_inherit_stdio_stderr()
         command = { "sh", "-c", "echo Error >&2" };
     $endif
     
-    SubProcess process = process::create(command,
-        { .search_user_path = true, .inherit_stdio = true })!!;
+    Process process = process::spawn(command, INHERIT_STDIO)!!;
     defer process.destroy();
     
     process.join()!!;
@@ -66,7 +64,7 @@ fn void test_inherit_stdio_comparison()
     $endif
     
     // First without inherit_stdio
-    SubProcess process1 = process::create(command, { .search_user_path = true })!!;
+    Process process1 = process::spawn(command)!!;
     defer process1.destroy();
     
     process1.join()!!;
@@ -76,8 +74,7 @@ fn void test_inherit_stdio_comparison()
     assert(bytes_read1 > 0, "Expected output without inherit_stdio");
     
     // Now with inherit_stdio
-    SubProcess process2 = process::create(command, 
-        { .search_user_path = true, .inherit_stdio = true })!!;
+    Process process2 = process::spawn(command, INHERIT_STDIO)!!;
     defer process2.destroy();
     
     process2.join()!!;
@@ -97,8 +94,7 @@ fn void test_inherit_stdio_exit_code()
         command = { "true" };
     $endif
     
-    SubProcess process = process::create(command,
-        { .search_user_path = true, .inherit_stdio = true })!!;
+    Process process = process::spawn(command, INHERIT_STDIO)!!;
     defer process.destroy();
     
     CInt exit_code = process.join()!!;
@@ -122,8 +118,7 @@ fn void test_inherit_stdio_redirect()
     $endif
     
     // Create a subprocess that inherits stdio
-    SubProcess process = process::create(command,
-        { .search_user_path = true, .inherit_stdio = true })!!;
+    Process process = process::spawn(command, INHERIT_STDIO)!!;
     defer process.destroy();
     
     // Wait for process to complete
@@ -146,12 +141,12 @@ fn void test_inherit_stdio_redirect()
 
 fn void test_write_to_stdin() @test {
 $if env::WIN32:
-	SubProcess? subprocess = process::create({`powershell`, `-C`, `Read-Host`}, {.inherit_environment = true});
+	Process? subprocess = process::spawn({`powershell`, `-C`, `Read-Host`}, INHERIT_ENV);
 $else
-	SubProcess? subprocess = process::create({"tee"}, {.read_async = true});
+	Process? subprocess = process::spawn({"tee"}, ASYNC_OUTPUT);
 $endif
 	test::eq(@ok(subprocess), true);
-	usz? write = subprocess!!.write_to_stdin(")");
+	usz? write = subprocess!!.write_stdin(")");
 	test::eq(@ok(write), true);
 	test::eq(write!!, 1);
 	char buf;

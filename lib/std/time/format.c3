@@ -1,5 +1,5 @@
 module std::time::datetime @if(env::LIBC);
-
+import std::io;
 
 enum DateTimeFormat
 {
@@ -20,46 +20,56 @@ enum DateTimeFormat
 	TIMEONLY,	// "15:04:05"
 }
 
-fn String format(Allocator allocator, DateTimeFormat type, TzDateTime dt)
+fn usz? to_format(Formatter* f, TzDateTime dt, DateTimeFormat type) => @pool()
 {
 	switch (type)
 	{
 		case ANSIC:
-			return string::format(allocator, "%s %s %2d %02d:%02d:%02d %04d", dt.weekday.abbrev, dt.month.abbrev, dt.day, dt.hour, dt.min, dt.sec, dt.year);
+			return f.printf("%s %s %2d %02d:%02d:%02d %04d", dt.weekday.abbrev, dt.month.abbrev, dt.day, dt.hour, dt.min, dt.sec, dt.year);
 		case UNIXDATE:
-			return string::format(allocator, "%s %s %2d %02d:%02d:%02d GMT %04d", dt.weekday.abbrev, dt.month.abbrev, dt.day, dt.hour, dt.min, dt.sec, dt.year);
+			return f.printf("%s %s %2d %02d:%02d:%02d GMT %04d", dt.weekday.abbrev, dt.month.abbrev, dt.day, dt.hour, dt.min, dt.sec, dt.year);
 		case RUBYDATE:
-			return string::format(allocator, "%s %s %2d %02d:%02d:%02d %s %04d", dt.weekday.abbrev, dt.month.abbrev, dt.day, dt.hour, dt.min, dt.sec, temp_numeric_tzsuffix(dt.gmt_offset), dt.year);
+			return f.printf("%s %s %2d %02d:%02d:%02d %s %04d", dt.weekday.abbrev, dt.month.abbrev, dt.day, dt.hour, dt.min, dt.sec, temp_numeric_tzsuffix(dt.gmt_offset), dt.year);
 		case RFC822:
 			dt = dt.to_gmt_offset(0); // For named representations of the timezone we always go for GMT, which is required by some RFCs
-			return string::format(allocator, "%02d %s %02d %02d:%02d GMT", dt.day, dt.month.abbrev, dt.year % 100, dt.hour, dt.min);
+			return f.printf("%02d %s %02d %02d:%02d GMT", dt.day, dt.month.abbrev, dt.year % 100, dt.hour, dt.min);
 		case RFC822Z:
-			return string::format(allocator, "%02d %s %02d %02d:%02d %s", dt.day, dt.month.abbrev, dt.year % 100, dt.hour, dt.min, temp_numeric_tzsuffix(dt.gmt_offset));
+			return f.printf("%02d %s %02d %02d:%02d %s", dt.day, dt.month.abbrev, dt.year % 100, dt.hour, dt.min, temp_numeric_tzsuffix(dt.gmt_offset));
 		case RFC850:
 			dt = dt.to_gmt_offset(0); // For named representations of the timezone we always go for GMT, which is required by some RFCs
-			return string::format(allocator, "%s, %02d-%s-%02d %02d:%02d:%02d GMT", dt.weekday.name, dt.day, dt.month.abbrev, dt.year % 100, dt.hour, dt.min, dt.sec);
+			return f.printf("%s, %02d-%s-%02d %02d:%02d:%02d GMT", dt.weekday.name, dt.day, dt.month.abbrev, dt.year % 100, dt.hour, dt.min, dt.sec);
 		case RFC1123:
 			dt = dt.to_gmt_offset(0); // For named representations of the timezone we always go for GMT, which is required by some RFCs
-			return string::format(allocator, "%s, %02d %s %d %02d:%02d:%02d GMT", dt.weekday.abbrev, dt.day, dt.month.abbrev, dt.year, dt.hour, dt.min, dt.sec);
+			return f.printf("%s, %02d %s %d %02d:%02d:%02d GMT", dt.weekday.abbrev, dt.day, dt.month.abbrev, dt.year, dt.hour, dt.min, dt.sec);
 		case RFC1123Z:
-			return string::format(allocator, "%s, %02d %s %d %02d:%02d:%02d %s", dt.weekday.abbrev, dt.day, dt.month.abbrev, dt.year, dt.hour, dt.min, dt.sec, temp_numeric_tzsuffix(dt.gmt_offset));
+			return f.printf("%s, %02d %s %d %02d:%02d:%02d %s", dt.weekday.abbrev, dt.day, dt.month.abbrev, dt.year, dt.hour, dt.min, dt.sec, temp_numeric_tzsuffix(dt.gmt_offset));
 		case RFC3339:
 			dt = dt.to_gmt_offset(0);
-			return string::format(allocator, "%04d-%02d-%02dT%02d:%02d:%02dZ", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec);
+			return f.printf("%04d-%02d-%02dT%02d:%02d:%02dZ", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec);
 		case RFC3339Z:
-			return string::format(allocator, "%04d-%02d-%02dT%02d:%02d:%02d%s", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec, temp_numeric_tzsuffix_colon(dt.gmt_offset));
+			return f.printf("%04d-%02d-%02dT%02d:%02d:%02d%s", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec, temp_numeric_tzsuffix_colon(dt.gmt_offset));
 		case RFC3339MS:
 			dt = dt.to_gmt_offset(0);
-			return string::format(allocator, "%04d-%02d-%02dT%02d:%02d:%02d.%dZ", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec, dt.usec);
+			return f.printf("%04d-%02d-%02dT%02d:%02d:%02d.%dZ", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec, dt.usec);
 		case RFC3339ZMS:
-			return string::format(allocator, "%04d-%02d-%02dT%02d:%02d:%02d.%d%s", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec, dt.usec, temp_numeric_tzsuffix_colon(dt.gmt_offset));
+			return f.printf("%04d-%02d-%02dT%02d:%02d:%02d.%d%s", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec, dt.usec, temp_numeric_tzsuffix_colon(dt.gmt_offset));
 		case DATETIME:
-			return string::format(allocator, "%04d-%02d-%02d %02d:%02d:%02d", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec);
+			return f.printf("%04d-%02d-%02d %02d:%02d:%02d", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec);
 		case DATEONLY:
-			return string::format(allocator, "%04d-%02d-%02d", dt.year, dt.month.ordinal + 1, dt.day);
+			return f.printf("%04d-%02d-%02d", dt.year, dt.month.ordinal + 1, dt.day);
 		case TIMEONLY:
-			return string::format(allocator, "%02d:%02d:%02d", dt.hour, dt.min, dt.sec);
+			return f.printf("%02d:%02d:%02d", dt.hour, dt.min, dt.sec);
 	}
+}
+fn String format(Allocator allocator, DateTimeFormat type, TzDateTime dt)
+{
+	DString s;
+	s.init(tmem, 40);
+	Formatter formatter;
+	formatter.init(&dstring::append_fn, &s);
+	to_format(&formatter, dt, type)!!;
+	if (allocator == tmem) return s.str_view();
+	return s.copy_str(allocator);
 }
 
 fn String tformat(DateTimeFormat dt_format, TzDateTime dt) => format(tmem, dt_format, dt);
@@ -68,6 +78,16 @@ fn String TzDateTime.format(self, Allocator allocator, DateTimeFormat dt_format)
 
 // .with_gmt_offset(0) instead of .to_local() is used to avoid surprises when user is formatting to a representation without a timezone
 fn String DateTime.format(self, Allocator allocator, DateTimeFormat dt_format) => format(allocator, dt_format, self.with_gmt_offset(0));
+
+fn usz? DateTime.to_format(&self, Formatter* f) @dynamic
+{
+	return to_format(f, self.with_gmt_offset(0), DATETIME);
+}
+
+fn usz? TzDateTime.to_format(&self, Formatter* f) @dynamic
+{
+	return to_format(f, *self, RFC3339MS);
+}
 
 <*
  Returns the timezone offset in the format of "+HHMM" or "-HHMM"

@@ -235,6 +235,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			vectorization = VECTORIZATION_ON;
 			break;
 		case OPT_SETTING_OSMALL:
+			debug = DEBUG_INFO_NONE;
 			merge_functions = MERGE_FUNCTIONS_ON;
 			optlevel = OPTIMIZATION_MORE;
 			optsize = SIZE_OPTIMIZATION_SMALL;

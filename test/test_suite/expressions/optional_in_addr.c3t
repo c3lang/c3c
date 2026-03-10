@@ -7,7 +7,8 @@ macro int? tester()
 }
 fn void? test2(int )
 {
-	if (&&(tester()!));
+	if (&&(tester()!)); // #warning: This code will never execute.
+
 }
 
 fn int main()
