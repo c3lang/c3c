@@ -179,7 +179,7 @@ fn bool extract_7z(String zip_path, String output_dir)
 {
 	String out_opt = "-o".tconcat(output_dir);
 	String[] cmd = { "7z", "x", zip_path, out_opt, "-y", "-bb0" };
-	SubProcess? proc = process::create(cmd, { .search_user_path = true });
+	Process? proc = process::spawn(cmd);
 	if (catch excuse = proc) return false;
 	return (int)proc.join()!! == 0;
 }
@@ -187,7 +187,7 @@ fn bool extract_7z(String zip_path, String output_dir)
 fn bool compare_dirs(String dir1, String dir2)
 {
 	String[] cmd = { "diff", "-r", dir1, dir2 };
-	SubProcess? proc = process::create(cmd, { .search_user_path = true, .inherit_stdio = true });
+	Process? proc = process::spawn(cmd, INHERIT_STDIO);
 	if (catch excuse = proc) return false;
 	int res = (int)proc.join()!!;
 	return res == 0;

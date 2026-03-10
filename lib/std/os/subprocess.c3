@@ -277,7 +277,7 @@ fn String? execute_stdout_to_buffer(char[] buffer, String[] command_line, SubPro
 {
 	SpawnOptions opt;
 	if (options.combined_stdout_stderr) opt |= STDERR_TO_STDOUT;
-	if (options.inherit_environment) opt |= INHERIT_ENVIRONMENT;
+	if (options.inherit_environment) opt |= INHERIT_ENV;
 	if (options.read_async) opt |= ASYNC_OUTPUT;
 	if (options.no_window) opt |= NO_WINDOW;
 	if (options.inherit_stdio) opt |= INHERIT_STDIO;

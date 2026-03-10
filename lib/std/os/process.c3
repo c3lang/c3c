@@ -34,7 +34,7 @@ struct Process
 constdef SpawnOptions
 {
 	STDERR_TO_STDOUT    = 1 << 0,
-	INHERIT_ENVIRONMENT = 1 << 1,
+	INHERIT_ENV         = 1 << 1,
 	ASYNC_OUTPUT        = 1 << 2,
 	NO_WINDOW           = 1 << 3,
 	NO_PATH_SEARCH      = 1 << 4,
@@ -42,7 +42,7 @@ constdef SpawnOptions
 }
 
 <*
- @require !environment || !(options & INHERIT_ENVIRONMENT)
+ @require !environment || !(options & INHERIT_ENV)
 *>
 fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] environment = {}) @if(env::WIN32)
 {
@@ -75,7 +75,7 @@ fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] env
 	@stack_mem(2048; Allocator mem)
 	{
 		WString used_environment = null;
-		if (!(options & INHERIT_ENVIRONMENT))
+		if (!(options & INHERIT_ENV))
 		{
 			DString env = dstring::new_with_capacity(mem, 64);
 			if (!environment.len)
@@ -203,7 +203,7 @@ fn String? run_capture_stdout(char[] buffer, String[] command_line, SpawnOptions
 }
 
 <*
- @require !environment || !(options & INHERIT_ENVIRONMENT)
+ @require !environment || !(options & INHERIT_ENV)
 *>
 fn Process? spawn(String[] command_line, SpawnOptions options = { }, String[] environment = {}) @if(env::POSIX)
 {
@@ -260,7 +260,7 @@ fn Process? spawn(String[] command_line, SpawnOptions options = { }, String[] en
 	@stack_mem(2048; Allocator mem)
 	{
 		ZString* command_line_copy = copy_command_line(mem, command_line);
-		ZString* used_environment = options & INHERIT_ENVIRONMENT ? posix::environ : copy_env(mem, environment);
+		ZString* used_environment = options & INHERIT_ENV ? posix::environ : copy_env(mem, environment);
 		if (options & NO_PATH_SEARCH)
 		{
 			if (posix::spawn(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS~;
