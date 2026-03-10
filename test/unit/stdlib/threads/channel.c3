@@ -25,6 +25,16 @@ fn void init_destroy_unbuffered() @test
 	}
 }
 
+fn void init_destroy_oneshot() @test
+{
+	for (usz i = 0; i < 20; i++)
+	{
+		OneShotChannel{int} c;
+		c.init(mem)!!;
+		defer c.destroy();
+	}
+}
+
 fn void push_to_buffered_channel_no_lock() @test
 {
 	BufferedChannel{int} c;
@@ -68,6 +78,37 @@ fn void push_pop_unbuffered_with_locks() @test
 	assert(got == 321);
 }
 
+fn void push_pop_oneshot_no_locks() @test
+{
+	OneShotChannel{int} c;
+	c.init(mem)!!;
+	defer c.destroy();
+
+	c.push(123)!!;
+	int got = c.pop()!!;
+	assert(got == 123);
+}
+
+fn void push_pop_oneshot_with_locks() @test
+{
+	OneShotChannel{int} c;
+	c.init(mem)!!;
+	defer c.destroy();
+
+	Thread thread;
+	defer thread.join();
+
+	thread.create(fn int(void* arg)
+	{
+		OneShotChannel{int} c = (OneShotChannel{int})arg;
+		c.push(123)!!;
+		return 0;
+	}, (void*)c)!!;
+
+	int got = c.pop()!!;
+	assert(got == 123);
+}
+
 fn void sending_to_closed_unbuffered_chan_is_forbidden() @test
 {
 	UnbufferedChannel{int} c;
@@ -93,6 +134,22 @@ fn void sending_to_closed_buffered_chan_is_forbidden() @test
 	c.close();
 
 	if (catch err = c.push(123))
+	{
+		assert(err == thread::CHANNEL_CLOSED);
+		return;
+	}
+	assert(false);
+}
+
+fn void sending_twice_to_oneshot_chan_is_forbidden() @test
+{
+	OneShotChannel{int} c;
+	c.init(mem)!!;
+	defer c.destroy();
+
+	c.push(123)!!;
+
+	if (catch err = c.push(321))
 	{
 		assert(err == thread::CHANNEL_CLOSED);
 		return;
@@ -132,6 +189,22 @@ fn void reading_from_empty_closed_buffered_chan_is_forbidden() @test
 	assert(false);
 }
 
+fn void reading_from_empty_closed_oneshot_chan_is_forbidden() @test
+{
+	OneShotChannel{int} c;
+	c.init(mem)!!;
+	defer c.destroy();
+
+	c.close();
+
+	if (catch err = c.pop())
+	{
+		assert(err == thread::CHANNEL_CLOSED);
+		return;
+	}
+	assert(false);
+}
+
 fn void reading_from_non_empty_closed_buffered_chan_is_ok() @test
 {
 	BufferedChannel{int} c;
@@ -150,6 +223,28 @@ fn void reading_from_non_empty_closed_buffered_chan_is_ok() @test
 	assert(got == 2);
 	got = c.pop()!!;
 	assert(got == 3);
+
+	int? got_err = c.pop();
+	if (catch err = got_err)
+	{
+		assert(err == thread::CHANNEL_CLOSED);
+		return;
+	}
+
+	assert(false);
+}
+
+fn void reading_from_sent_closed_oneshot_chan_is_ok() @test
+{
+	OneShotChannel{int} c;
+	c.init(mem)!!;
+	defer c.destroy();
+
+	c.push(123)!!;
+	c.close();
+
+	int got = c.pop()!!;
+	assert(got == 123);
 
 	int? got_err = c.pop();
 	if (catch err = got_err)
@@ -213,6 +308,32 @@ fn void reading_from_unbuffered_chan_aborted_by_close() @test
 	assert(false);
 }
 
+fn void reading_from_oneshot_chan_aborted_by_close() @test
+{
+	OneShotChannel{int} c;
+	c.init(mem)!!;
+	defer c.destroy();
+
+	Thread thread;
+	defer thread.join();
+
+	thread.create(fn int(void* arg)
+	{
+		OneShotChannel{int} c = (OneShotChannel{int})arg;
+		c.close();
+		return 0;
+	}, (void*)c)!!;
+
+	int? res = c.pop();
+	if (catch err = res)
+	{
+		assert(err == thread::CHANNEL_CLOSED);
+		return;
+	}
+
+	assert(false);
+}
+
 fn void sending_to_full_buffered_chan_aborted_by_close() @test
 {
 	BufferedChannel{int} c;
@@ -259,6 +380,25 @@ fn void sending_to_unbuffered_chan_aborted_by_close() @test
 
 	fault err = @catch(c.push(1));
 	if (err)
+	{
+		assert(err == thread::CHANNEL_CLOSED);
+		return;
+	}
+
+	assert(false);
+}
+
+fn void reading_from_consumed_oneshot_chan_is_forbidden() @test
+{
+	OneShotChannel{int} c;
+	c.init(mem)!!;
+	defer c.destroy();
+
+	c.push(123)!!;
+	assert(c.pop()!! == 123);
+
+	int? res = c.pop();
+	if (catch err = res)
 	{
 		assert(err == thread::CHANNEL_CLOSED);
 		return;
@@ -334,4 +474,3 @@ fn void multiple_actions_buffered() @test
 
 	assert(sum == 5050);
 }
-
