@@ -3,7 +3,7 @@ module test;
 import std::io;
 fn void? canFail()
 {
-	if (io::EOF~! == 69) { }
+	if (io::EOF~! == 69) { } // #warning: This code will never execute
 }
 fn int main()
 {
