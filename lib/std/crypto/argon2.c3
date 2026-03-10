@@ -626,6 +626,52 @@ macro @saw(#field) @local
 	#field = true;
 }
 
+
+<*
+*>
+fn void? _parse_option(Argon2Decoded* result, SeenOptions* seen, String token, char[]* decoded_key_id, char[]* decoded_assoc) @local
+{
+	if (token.len < 3) return INVALID_FORMAT~;
+
+	String[] key_val = token.tsplit("=", max: 2, skip_empty: false);
+
+	String key = key_val[0];
+	String value = key_val[1];
+
+	if (!key.len || !value.len) return INVALID_FORMAT~;
+
+	// No need to validate `key` here since the switch-case below does that for us already.
+	foreach (c : value) if (!PARAMETER_VALUES_SET.contains(c)) return BAD_PARAMETER_VALUE~;
+
+	// Technically we should be asserting the order of the keys as `m,t,p,keyid,data`, but as long as all data
+	//   here is being conveyed, there's not a strong reason why we shouldn't just parse it anyway.
+	switch (key)
+	{
+		case "m":
+			@saw(seen.m)!;
+			foreach (c : value) if (!ascii::NUMBER_SET.contains(c)) return INVALID_MEM_SIZE~;
+			result.mem_size = (value.to_integer(uint) ?? INVALID_MEM_SIZE~)!;
+			if (result.mem_size < 1 || result.mem_size == uint.max) return INVALID_MEM_SIZE~;
+		case "t":
+			@saw(seen.t)!;
+			foreach (c : value) if (!ascii::NUMBER_SET.contains(c)) return INVALID_ITERATIONS~;
+			result.iterations = (value.to_integer(uint) ?? INVALID_ITERATIONS~)!;
+			if (result.iterations < 1 || result.iterations == uint.max) return INVALID_ITERATIONS~;
+		case "p":
+			@saw(seen.p)!;
+			foreach (c : value) if (!ascii::NUMBER_SET.contains(c)) return INVALID_PARALLELISM~;
+			result.lanes = (value.to_integer(uint) ?? INVALID_PARALLELISM~)!;
+			if (result.lanes < 1 || result.lanes > char.max) return INVALID_PARALLELISM~;
+		case "keyid":
+			@saw(seen.key_id)!;
+			*decoded_key_id = base64::tdecode(value, padding: base64::NO_PAD) ?? INVALID_KEY_ID~!;
+		case "data":
+			@saw(seen.assoc)!;
+			*decoded_assoc = base64::tdecode(value, padding: base64::NO_PAD) ?? INVALID_ASSOC~!;
+		default: return BAD_PARAMETER_KEY~;
+	}
+}
+
 <*
  Decode a PHC String Format hash, specifically for Argon2, into usable values.
 
@@ -667,48 +713,7 @@ fn Argon2Decoded? decode(Allocator allocator, String hash_str) => @pool()
 	if (option_tokens.len < 3) return NOT_ENOUGH_PARAMETERS~;
 
 	SeenOptions seen;
-	foreach (token : option_tokens)
-	{
-		if (token.len < 3) return INVALID_FORMAT~;
-
-		String[] key_val = token.tsplit("=", max: 2, skip_empty: false);
-
-		String key = key_val[0];
-		String value = key_val[1];
-
-		if (!key.len || !value.len) return INVALID_FORMAT~;
-
-		// No need to validate `key` here since the switch-case below does that for us already.
-		foreach (c : value) if (!PARAMETER_VALUES_SET.contains(c)) return BAD_PARAMETER_VALUE~;
-
-		// Technically we should be asserting the order of the keys as `m,t,p,keyid,data`, but as long as all data
-		//   here is being conveyed, there's not a strong reason why we shouldn't just parse it anyway.
-		switch (key)
-		{
-			case "m":
-				@saw(seen.m)!;
-				foreach (c : value) if (!ascii::NUMBER_SET.contains(c)) return INVALID_MEM_SIZE~;
-				result.mem_size = (value.to_integer(uint) ?? INVALID_MEM_SIZE~)!;
-				if (result.mem_size < 1 || result.mem_size == uint.max) return INVALID_MEM_SIZE~;
-			case "t":
-				@saw(seen.t)!;
-				foreach (c : value) if (!ascii::NUMBER_SET.contains(c)) return INVALID_ITERATIONS~;
-				result.iterations = (value.to_integer(uint) ?? INVALID_ITERATIONS~)!;
-				if (result.iterations < 1 || result.iterations == uint.max) return INVALID_ITERATIONS~;
-			case "p":
-				@saw(seen.p)!;
-				foreach (c : value) if (!ascii::NUMBER_SET.contains(c)) return INVALID_PARALLELISM~;
-				result.lanes = (value.to_integer(uint) ?? INVALID_PARALLELISM~)!;
-				if (result.lanes < 1 || result.lanes > char.max) return INVALID_PARALLELISM~;
-			case "keyid":
-				@saw(seen.key_id)!;
-				decoded_key_id = base64::tdecode(value, padding: base64::NO_PAD) ?? INVALID_KEY_ID~!;
-			case "data":
-				@saw(seen.assoc)!;
-				decoded_assoc = base64::tdecode(value, padding: base64::NO_PAD) ?? INVALID_ASSOC~!;
-			default: return BAD_PARAMETER_KEY~;
-		}
-	}
+	foreach (token : option_tokens) _parse_option(&result, &seen, token, &decoded_key_id, &decoded_assoc)!;
 
 	if (!seen.m) return MISSING_MEM_SIZE~;
 	if (!seen.t) return MISSING_ITERATIONS~;
