@@ -41,6 +41,23 @@ constdef SpawnOptions
 	INHERIT_STDIO       = 1 << 5
 }
 
+fn String? run_capture_stdout(char[] buffer, String[] command_line, SpawnOptions options = {}, String[] environment = {})
+{
+	Process process = process::spawn(command_line, options, environment)!;
+	defer (void)process.destroy();
+	process.join()!;
+	usz len = process.read_stdout(buffer.ptr, buffer.len)!;
+	if (len == 0) return "";
+	return (String)buffer[:len - 1];
+}
+
+fn int? run(char[] buffer, String[] command_line, SpawnOptions options = {}, String[] environment = {})
+{
+	Process process = process::spawn(command_line, options, environment)!;
+	defer (void)process.destroy();
+	return process.join()!;
+}
+
 <*
  @require !environment || !(options & INHERIT_ENV)
 *>
@@ -193,14 +210,7 @@ fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] env
 }
 
 
-fn String? run_capture_stdout(char[] buffer, String[] command_line, SpawnOptions options = {}, String[] environment = {})
-{
-	Process process = process::spawn(command_line, options, environment)!;
-	process.join()!;
-	usz len = process.read_stdout(buffer.ptr, buffer.len)!;
-	if (len == 0) return "";
-	return (String)buffer[:len - 1];
-}
+
 
 <*
  @require !environment || !(options & INHERIT_ENV)
