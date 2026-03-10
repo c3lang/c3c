@@ -1637,6 +1637,12 @@ void global_context_add_decl(Decl *decl)
 	pathtable_set(&compiler.context.path_symbols, decl);
 }
 
+void global_context_replace_decl(Decl *old, Decl *new_symbol)
+{
+	decltable_replace(&compiler.context.symbols, old, new_symbol);
+	pathtable_replace(&compiler.context.path_symbols, old, new_symbol);
+}
+
 void linking_add_link(Linking *linking, const char *link)
 {
 	FOREACH(const char *, existing_link, linking->links)

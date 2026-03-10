@@ -3,8 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem;
 import std::core::mem::allocator @public;
-import std::os::posix, std::os::win32;
-import std::math;
+import std::os::posix, std::os::win32, std::math, std::io;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
 const DEFAULT_MEM_ALIGNMENT = env::WASM ? 16 : (void*.alignof) * 2;
@@ -565,11 +564,14 @@ macro void @report_heap_allocs_in_scope($enabled = true; @body())
 <*
  Assert on memory leak in the scope of the macro body.
 
+ Typically this is disabled on --safe=no, but it can be enabled even when safety
+ is off by adding the MEMORY_ASSERTS flag through "-D MEMORY_ASSERTS"
+
  @param $report : "Set to false to disable memory report"
 *>
 macro void @assert_leak($report = true; @body()) @builtin
 {
-	$if env::DEBUG_SYMBOLS || $feature(MEMORY_ASSERTS):
+	$if env::COMPILER_SAFE_MODE || $feature(MEMORY_ASSERTS):
 		TrackingAllocator tracker;
 		tracker.init(mem);
 		Allocator old_allocator = mem;
@@ -581,16 +583,11 @@ macro void @assert_leak($report = true; @body()) @builtin
 			usz allocated = tracker.allocated();
 			if (allocated)
 			{
-				DString report;
-				report.init(old_allocator);
-				defer report.free();
+				io::eprintfn("Memory leak detected (%d bytes allocated).", allocated);
 				$if $report:
-					report.append_char('\n');
-					(void)tracker.fprint_report(&report);
+					(void)tracker.fprint_report(io::stderr());
 				$endif
-				assert(allocated == 0, "Memory leak detected"
-					" (%d bytes allocated).%s",
-					allocated, report.str_view());
+				abort("Aborting due to memory leak.");
 			}
 		}
 	$endif

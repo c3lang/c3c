@@ -2,7 +2,7 @@
 
 module test;
 
-attrdef @Foo = @noreturn, @weak;
+attrdef @Foo = @noreturn, @weaklink;
 
 attrdef @Align(y) = @align(y);
 attrdef @Align16(x) @private = @Align(8 * x), @align(1024);

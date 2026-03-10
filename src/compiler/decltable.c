@@ -72,6 +72,28 @@ void decltable_set(DeclTable *table, Decl *decl)
 }
 
 
+void decltable_replace(DeclTable *table, Decl *old, Decl *new)
+{
+	DeclId *entry = declentry_find(table->entries, table->capacity, old->name);
+	DeclId decl_id = declid(old);
+	if (*entry == decl_id)
+	{
+		*entry = declid(new);
+		return;
+	}
+	Decl *entry_decl = declptr(*entry);
+	ASSERT(entry_decl->decl_kind == DECL_DECLARRAY);
+	FOREACH_IDX(i, Decl *, d, entry_decl->decl_list)
+	{
+		if (d == old)
+		{
+			entry_decl->decl_list[i] = new;
+			return;
+		}
+	}
+	UNREACHABLE_VOID
+}
+
 DeclId decltable_get(DeclTable *table, const char *name)
 {
 	if (!table->entries) return 0;

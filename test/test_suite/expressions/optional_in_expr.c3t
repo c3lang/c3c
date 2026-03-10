@@ -6,7 +6,7 @@ macro int? maybe_throw_int() => FOO_FAULT~;
 
 fn void? throwme1()
 {
-	if (maybe_throw()!);
+	if (maybe_throw()!); // #warning: This code will never execute
 }
 
 fn void? throwme2()

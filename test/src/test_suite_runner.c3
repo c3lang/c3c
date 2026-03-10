@@ -573,9 +573,7 @@ fn bool test_file(Path file_path, TestOutput* output, usz index)
 
 
 	if (global_should_quit.load()) return false;
-	SubProcess compilation = process::create(
-		cmdline.array_view(),
-		{ .search_user_path, .no_window, .inherit_environment })!!;
+	Process compilation = process::spawn(cmdline.array_view(), NO_WINDOW | INHERIT_ENV)!!;
 
 	defer compilation.destroy();
 	

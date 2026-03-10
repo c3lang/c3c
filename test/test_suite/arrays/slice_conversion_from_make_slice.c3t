@@ -4,7 +4,7 @@ import std;
 fn int[3] test()
 {
 	int[3] x = io::EOF~!!;
-	return (int[])&x;
+	return (int[])&x; // #warning: This code will never execute
 }
 fn int main()
 {

@@ -712,10 +712,43 @@ void sema_analyse_inner_func_ptr(SemaContext *c, Decl *decl)
 	if (!sema_resolve_type_decl(c, func)) decl_poison(decl);
 }
 
-INLINE void sema_analyse_decls(SemaContext *context, Decl **decls)
+INLINE void sema_analyse_weak_decls(SemaContext *context, Decl **decls)
 {
 	FOREACH(Decl *, decl, decls)
 	{
+		ASSERT(decl->resolve_status == RESOLVE_NOT_DONE);
+		Decl *replacement = decl->replacement;
+		while (replacement && replacement->replacement) replacement = replacement->replacement;
+		if (!replacement || !decl_ok(replacement)) continue;
+		// If the replacement is not in an interface or not weak
+		// then everything is fine, otherwise we get ambiguous resolution
+		if (replacement->is_weak && !replacement->unit->is_interface_file)
+		{
+			SEMA_ERROR(replacement, "The symbol '%s' matches multiple @weak declarations. Remove @weak from one of them to disambiguate.", replacement->name);
+			SEMA_NOTE(decl, "The other declaration was here.");
+			return;
+		}
+		if (!sema_analyse_decl(context, decl)) continue;
+		decl->replacement = NULL;
+		sema_compare_weak_decl(context, decl, replacement);
+		decl->decl_kind = DECL_ERASED;
+	}
+}
+
+INLINE void sema_analyse_decls(SemaContext *context, Decl **decls)
+{
+	unsigned count = vec_size(decls);
+	for (unsigned i = 0; i < count; i++)
+	{
+		Decl *decl = decls[i];
+		if (decl->replacement)
+		{
+			count--;
+			decls[i] = decls[count];
+			vec_resize(decls, count);
+			i--;
+			continue;
+		}
 		sema_analyse_decl(context, decl);
 	}
 }
@@ -755,6 +788,8 @@ void sema_analysis_pass_decls(Module *module)
 		{
 			sema_check_type_variable_array(&context, info);
 		}
+		sema_analyse_weak_decls(&context, unit->weak_symbols_skipped);
+		vec_resize(unit->weak_symbols_skipped, 0);
 		sema_context_destroy(&context);
 	}
 	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);

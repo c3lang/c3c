@@ -581,7 +581,7 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 {
 	ASSERT(context->active_scope.flags & SCOPE_MACRO);
 	statement->ast_kind = AST_BLOCK_EXIT_STMT;
-	SET_JUMP_END(context, statement);
+	bool is_jump = context->active_scope.end_jump.active;
 	Type *block_type = context->expected_block_type;
 	Expr *ret_expr = statement->return_stmt.expr;
 	if (ret_expr)
@@ -595,8 +595,11 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 			if (!sema_analyse_expr_rvalue(context, ret_expr)) return false;
 		}
 		if (!sema_check_return_matches_opt_returns(context, ret_expr)) return false;
-		if (ret_expr->expr_kind == EXPR_CALL && ret_expr->call_expr.no_return)
+		is_jump = context->active_scope.end_jump.active && !is_jump;
+		bool is_noreturn = ret_expr->expr_kind == EXPR_CALL && ret_expr->call_expr.no_return;
+		if (is_noreturn || is_jump)
 		{
+			if (is_noreturn) SET_JUMP_END(context, ret_expr);
 			statement->ast_kind = AST_EXPR_STMT;
 			statement->expr_stmt = ret_expr;
 			sema_inline_return_defers(context, statement, context->block_return_defer);
@@ -611,6 +614,7 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 			RETURN_SEMA_ERROR(statement, "Expected a return value of type %s here.", type_quoted_error_string(block_type));
 		}
 	}
+	SET_JUMP_END(context, statement);
 	statement->return_stmt.block_exit_ref = context->block_exit_ref;
 	sema_inline_return_defers(context, statement, context->block_return_defer);
 	if (!sema_analyse_macro_constant_ensures(context, ret_expr)) return false;
@@ -1292,38 +1296,10 @@ static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 	Expr *expr = statement->expr_stmt;
 	if (!sema_analyse_expr_rvalue(context, expr)) return false;
 	if (!sema_expr_check_discard(context, expr)) return false;
-	switch (expr->expr_kind)
+	if (expr->expr_kind == EXPR_CONST)
 	{
-		case EXPR_RETHROW:
-			if (expr->rethrow_expr.inner->expr_kind == EXPR_OPTIONAL)
-			{
-				SET_JUMP_END(context, expr);
-			}
-			break;
-		case EXPR_FORCE_UNWRAP:
-			if (expr->inner_expr->expr_kind == EXPR_OPTIONAL)
-			{
-				SET_JUMP_END(context, expr);
-			}
-			break;
-		case EXPR_POST_UNARY:
-			if (expr->rethrow_expr.inner->expr_kind == EXPR_OPTIONAL)
-			{
-				SET_JUMP_END(context, expr);
-			}
-			break;
-		case EXPR_CALL:
-			if (expr->call_expr.no_return) SET_JUMP_END(context, expr);
-			break;
-		case EXPR_MACRO_BLOCK:
-			if (expr->macro_block.is_noreturn) SET_JUMP_END(context, expr);
-			break;
-		case EXPR_CONST:
-			// Remove all const statements.
-			statement->ast_kind = AST_NOP_STMT;
-			break;
-		default:
-			break;
+		// Remove all const statements.
+		statement->ast_kind = AST_NOP_STMT;
 	}
 	return true;
 }
@@ -1963,6 +1939,17 @@ SKIP_OVERLOAD:;
 	return sema_analyse_for_stmt(context, statement);
 
 }
+static inline bool sema_check_for_dead_code(SemaContext *context, Ast *statement)
+{
+	if (context->active_scope.end_jump.active && !context->active_scope.allow_dead_code)
+	{
+		context->active_scope.allow_dead_code = true;
+		bool warn = SEMA_WARN(statement, dead_code, "This code will never execute.");
+		if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(context->active_scope.end_jump.loc, "This code is preventing it from exectuting");
+		return warn;
+	}
+	return true;
+}
 
 static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 {
@@ -2012,18 +1999,11 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 				success = false;
 			}
 		}
-		if (context->active_scope.end_jump.active && !context->active_scope.allow_dead_code)
+		if (!sema_check_for_dead_code(context, then))
 		{
-			context->active_scope.allow_dead_code = true;
-			bool warn = SEMA_WARN(statement, dead_code, "This code will never execute.");
-			if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(context->active_scope.end_jump.loc, "This code is preventing it from exectuting");
-			if (!warn)
-			{
-				success = false;
-				goto END;
-			}
+			success = false;
+			goto END;
 		}
-
 		SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label, then->loc);
 			if (result == COND_FALSE) context->active_scope.is_dead = true;
 			success = success && sema_analyse_statement(context, then);
