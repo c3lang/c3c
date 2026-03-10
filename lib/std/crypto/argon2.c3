@@ -365,15 +365,15 @@ fn void hash_raw(char[] outbuf, char[] input, Argon2Options options) => @pool()
 	uint blocks_per_lane = m_prime / options.lanes;
 	uint blocks_per_segment = blocks_per_lane / 4;   // each lane/row is divided into 4 slices, the intersection of a slice and lane is a "segment"
 
-	Argon2Block[] blocks = ((Argon2Block*)(allocator::alloc_array_aligned(tmem, SimdVec, m_prime * BLOCK_SIZE / SimdVec.sizeof).ptr))[:m_prime];
+	Argon2Block[] blocks = allocator::alloc_array_aligned(tmem, Argon2Block, m_prime)[:m_prime];
 	defer foreach (&b : blocks) mem::zero_volatile(b.b[..]);
 
 	for (uint lane = 0; lane < options.lanes; lane++)
 	{
 		for (uint j = 0; j < 2; j++)
 		{
-			@unaligned_store(*(uint*)(&digest[64]), @le(j), 1);
-			@unaligned_store(*(uint*)(&digest[68]), @le(lane), 1);
+			*(uint*)(&digest[64]) = @le(j);
+			*(uint*)(&digest[68]) = @le(lane);
 			h_prime(blocks[lane * blocks_per_lane + j].b[..], digest[..]);
 		}
 	}
