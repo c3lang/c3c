@@ -38,6 +38,7 @@
 - `$stringify` would incorrectly capture lambdas. #2986
 - Regression: `String` was not implicitly `@constinit` #2983
 - Compiler does not propagate @noreturn through macros using short declaration syntax #3011
+- Debug info emitted on `-Os` #3015
 
 ## 0.7.10 Change list
 
