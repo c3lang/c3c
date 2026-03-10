@@ -26,7 +26,7 @@ fn void rfc_9106__sec_5_1()
 	const char[] EXPECTED = x'512b391b6f1162975371d30919734294f868e3be3984f3c1a13a4db9fabe4acb';
 
 	char[] result = mem::talloc_array(char, EXPECTED.len);
-	argon2::thash_raw(result, RFC_PASSWORD, { ...RFC_OPTIONS, .algorithm = ARGON2_D });
+	argon2::hash_raw(result, RFC_PASSWORD, { ...RFC_OPTIONS, .algorithm = ARGON2_D });
 
 	test::@check(result == EXPECTED);
 }
@@ -36,7 +36,7 @@ fn void rfc_9106__sec_5_2()
 	const char[] EXPECTED = x'c814d9d1dc7f37aa13f0d77f2494bda1c8de6b016dd388d29952a4c4672b6ce8';
 
 	char[] result = mem::talloc_array(char, EXPECTED.len);
-	argon2::thash_raw(result, RFC_PASSWORD, { ...RFC_OPTIONS, .algorithm = ARGON2_I });
+	argon2::hash_raw(result, RFC_PASSWORD, { ...RFC_OPTIONS, .algorithm = ARGON2_I });
 
 	test::@check(result == EXPECTED);
 }
@@ -46,7 +46,7 @@ fn void rfc_9106__sec_5_3()
 	const char[] EXPECTED = x'0d640df58d78766c08c037a34a8b53c9d01ef0452d75b65eb52520e96b01e659';
 
 	char[] result = mem::talloc_array(char, EXPECTED.len);
-	argon2::thash_raw(result, RFC_PASSWORD, { ...RFC_OPTIONS, .algorithm = ARGON2_ID });
+	argon2::hash_raw(result, RFC_PASSWORD, { ...RFC_OPTIONS, .algorithm = ARGON2_ID });
 
 	test::@check(result == EXPECTED);
 }

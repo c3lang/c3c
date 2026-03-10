@@ -322,7 +322,6 @@ fn int process_lane_slice(void* in_ctx) @local
  up after itself anyway, and the caller's allocation of `outbuf` is done independently. Nevertheless,
  a custom allocator can always be provided based on the operating environment.
 
- @param [&inout] allocator : "The memory allocator to use."
  @param [out] outbuf : "The destination buffer for the resultant Argon2 tag. The size of this slice determines the tag's length."
  @param [in] input : "The data to consume and hash."
  @param options : "Chosen algorithm options for computing the resultant tag. See the `Argon2Options` struct for more information."
@@ -334,7 +333,7 @@ fn int process_lane_slice(void* in_ctx) @local
  @require options.mem_size >= options.lanes << 3 && options.mem_size < uint.max : "Memory size (m) must be at least 8*p and less than 2^32."
  @require options.iterations > 0 && options.iterations < uint.max : "Passes (t) must be greater than 0 and less than 2^32."
 *>
-fn void hash_raw(Allocator allocator, char[] outbuf, char[] input, Argon2Options options)
+fn void hash_raw(char[] outbuf, char[] input, Argon2Options options) => @pool()
 {
 	char[64 + 2 * uint.sizeof] digest @noinit @align(uint.sizeof);
 
@@ -366,12 +365,8 @@ fn void hash_raw(Allocator allocator, char[] outbuf, char[] input, Argon2Options
 	uint blocks_per_lane = m_prime / options.lanes;
 	uint blocks_per_segment = blocks_per_lane / 4;   // each lane/row is divided into 4 slices, the intersection of a slice and lane is a "segment"
 
-	Argon2Block[] blocks = ((Argon2Block*)(allocator::alloc_array_aligned(allocator, SimdVec, m_prime * BLOCK_SIZE / SimdVec.sizeof).ptr))[:m_prime];
-	defer
-	{
-		foreach (&b : blocks) mem::zero_volatile(b.b[..]);
-		allocator::free(allocator, blocks.ptr);
-	}
+	Argon2Block[] blocks = ((Argon2Block*)(allocator::alloc_array_aligned(tmem, SimdVec, m_prime * BLOCK_SIZE / SimdVec.sizeof).ptr))[:m_prime];
+	defer foreach (&b : blocks) mem::zero_volatile(b.b[..]);
 
 	for (uint lane = 0; lane < options.lanes; lane++)
 	{
@@ -401,15 +396,9 @@ fn void hash_raw(Allocator allocator, char[] outbuf, char[] input, Argon2Options
 	// NOTE: A ThreadPool instance could have been used here, but that requires a compile-time constant to determine its size,
 	//       and the amount of threads to start should simply match the amount of lanes.
 	//
-	Argon2WorkerContext[] contexts = allocator::new_array(allocator, Argon2WorkerContext, options.lanes);
-	Thread[] workers = allocator::new_array(allocator, Thread, options.lanes);
-	defer
-	{
-		allocator::free(allocator, contexts);
-		allocator::free(allocator, workers);
-	}
+	Argon2WorkerContext[] contexts = allocator::new_array(tmem, Argon2WorkerContext, options.lanes);
+	Thread[] workers = allocator::new_array(tmem, Thread, options.lanes);
 
-	// bool use_constant_time = options.algorithm != ARGON2_D;
 	for (uint pass = 0; pass < options.iterations; pass++)
 	{
 		template_context.pass = pass;
@@ -452,10 +441,6 @@ fn void hash_raw(Allocator allocator, char[] outbuf, char[] input, Argon2Options
 	h_prime(outbuf, scratch.b[..]);
 }
 
-<* A simple alias for `hash_raw` implicitly using the temp allocator. *>
-macro thash_raw(char[] outbuf, char[] input, Argon2Options options)
-	=> hash_raw(tmem, outbuf, input, options);
-
 
 <*
  Encode a hash result and an `Argon2Options` struct into a PHC String Format output.
@@ -468,19 +453,12 @@ macro thash_raw(char[] outbuf, char[] input, Argon2Options options)
 
  @require hash_value.len > 0 : "The `hash_value` input must have a length greater than zero."
 *>
-fn String encode(Allocator allocator, char[] hash_value, Argon2Options options, char[] key_id = {})
+fn String encode(Allocator allocator, char[] hash_value, Argon2Options options, char[] key_id = {}) => @pool()
 {
-	String encoded_hash = base64::encode(allocator, hash_value, padding: base64::NO_PAD);
-	String encoded_salt = options.salt.len ? base64::encode(allocator, options.salt, padding: base64::NO_PAD) : {};
-	String encoded_key_id = key_id.len ? base64::encode(allocator, key_id, padding: base64::NO_PAD) : {};
-	String encoded_assoc = options.assoc.len ? base64::encode(allocator, options.assoc, padding: base64::NO_PAD) : {};
-	defer
-	{
-		allocator::free(allocator, encoded_hash);
-		if (encoded_salt.len) allocator::free(allocator, encoded_salt);
-		if (encoded_key_id.len) allocator::free(allocator, encoded_key_id);
-		if (encoded_assoc.len) allocator::free(allocator, encoded_assoc);
-	}
+	String encoded_hash = base64::tencode(hash_value, padding: base64::NO_PAD);
+	String encoded_salt = options.salt.len ? base64::tencode(options.salt, padding: base64::NO_PAD) : {};
+	String encoded_key_id = key_id.len ? base64::tencode(key_id, padding: base64::NO_PAD) : {};
+	String encoded_assoc = options.assoc.len ? base64::tencode(options.assoc, padding: base64::NO_PAD) : {};
 
 	// This could have been the encoded  lengths plus a few hundred, but it never hurts to be more explicit.
 	usz min_size =
@@ -498,9 +476,7 @@ fn String encode(Allocator allocator, char[] hash_value, Argon2Options options, 
 	// Knowing the lengths of all encoded fields, plus the general size of the other identifiers,
 	//   we should be able to form a safe capacity to use for the dynamic string.
 	DString outstr;
-	outstr.init(allocator, capacity: min_size);
-	defer outstr.free();
-
+	outstr.tinit(capacity: min_size);
 	outstr.append("$argon2");
 	switch (options.algorithm)
 	{
@@ -511,21 +487,21 @@ fn String encode(Allocator allocator, char[] hash_value, Argon2Options options, 
 	outstr.append("$v=19$");   // this implementation only supports V = 0x13, according to spec, no version 0x10
 
 	// The three parameters m,t,p MUST appear in that order and are REQUIRED. keyid and data are optional.
-	io::fprintf(&outstr, "m=%d,", options.mem_size)!!;
-	io::fprintf(&outstr, "t=%d,", options.iterations)!!;
-	io::fprintf(&outstr, "p=%d",  options.lanes)!!;
+	outstr.appendf("m=%d,", options.mem_size);
+	outstr.appendf("t=%d,", options.iterations);
+	outstr.appendf("p=%d",  options.lanes);
 
 	// While the spec says 0 to 8 bytes, we let the user determine their own use-case for this field, and assume that
 	//   options.key already contains an encoded form of whatever Key ID they might be using.
-	if (encoded_key_id.len) io::fprintf(&outstr, ",keyid=%s", encoded_key_id)!!;
+	if (encoded_key_id.len) outstr.appendf(",keyid=%s", encoded_key_id);
 	// Assumptions carry over for associated data too.
-	if (encoded_assoc.len) io::fprintf(&outstr, ",data=%s", encoded_assoc)!!;
+	if (encoded_assoc.len) outstr.appendf(",data=%s", encoded_assoc);
 
 	// Remember: a salt is an _optional_ value here.
-	if (encoded_salt.len) io::fprintf(&outstr, "$%s", encoded_salt)!!;
+	if (encoded_salt.len) outstr.appendf("$%s", encoded_salt);
 
 	// Lastly, append the hash Base64.
-	io::fprintf(&outstr, "$%s", encoded_hash)!!;
+	outstr.appendf("$%s", encoded_hash);
 
 	// Done! Return a copy to self-contain all other allocations.
 	return outstr.copy_str(allocator);
@@ -547,11 +523,10 @@ macro tencode(char[] hash_value, Argon2Options options, char key_id = {})
 
  @require out_size >= 4 && out_size < usz.max : "The hash's output size must be >= 4 bytes but less than usz.max."
 *>
-fn String hash(Allocator allocator, char[] input, Argon2Options options, char[] key_id = {}, usz out_size = 32)
+fn String hash(Allocator allocator, char[] input, Argon2Options options, char[] key_id = {}, usz out_size = 32) => @pool()
 {
-	char[] result = allocator::alloc_array(allocator, char, out_size);
-	defer allocator::free(allocator, result);
-	hash_raw(allocator, result[..], input, options);
+	char[] result = allocator::alloc_array(tmem, char, out_size);
+	hash_raw(result[..], input, options);
 	return encode(allocator, result[..], options, key_id: key_id);
 }
 
@@ -658,26 +633,18 @@ macro @saw(#field) @local
 
  @require hash_str.len > 0 : "The hash string cannot be empty."
 *>
-fn Argon2Decoded? decode(Allocator allocator, String hash_str)
+fn Argon2Decoded? decode(Allocator allocator, String hash_str) => @pool()
 {
 	Argon2Decoded result;
-	char[] decoded_hash = {};
-	char[] decoded_salt = {};
-	char[] decoded_key_id = {};
-	char[] decoded_assoc = {};
-	defer
-	{
-		allocator::free(allocator, decoded_hash);
-		allocator::free(allocator, decoded_key_id);
-		allocator::free(allocator, decoded_assoc);
-		allocator::free(allocator, decoded_hash);
-	}
+	char[] decoded_hash;
+	char[] decoded_salt;
+	char[] decoded_key_id;
+	char[] decoded_assoc;
 
 	if (hash_str[0] != '$') return INVALID_FORMAT~;
 	hash_str = hash_str[1..];
 
-	String[] outer_tokens = hash_str.split(allocator, "$", max: 5, skip_empty: false);
-	defer allocator::free(allocator, outer_tokens);
+	String[] outer_tokens = hash_str.tsplit("$", max: 5, skip_empty: false);
 
 	if (outer_tokens.len < 4) return INVALID_FORMAT~;   // there must be a minimum of 4 different tokens, up to 5
 	foreach (token : outer_tokens) if (token.len < 3) return INVALID_FORMAT~;
@@ -695,8 +662,7 @@ fn Argon2Decoded? decode(Allocator allocator, String hash_str)
 	foreach (c : outer_tokens[1][2..]) if (!ascii::NUMBER_SET.contains(c)) return INVALID_VERSION~;
 	result.version = (outer_tokens[1][2..].to_integer(char) ?? INVALID_VERSION~)!;
 
-	String[] option_tokens = outer_tokens[2].split(allocator, ",", max: 5, skip_empty: false);
-	defer allocator::free(allocator, option_tokens);
+	String[] option_tokens = outer_tokens[2].tsplit(",", max: 5, skip_empty: false);
 
 	if (option_tokens.len < 3) return NOT_ENOUGH_PARAMETERS~;
 
@@ -705,8 +671,7 @@ fn Argon2Decoded? decode(Allocator allocator, String hash_str)
 	{
 		if (token.len < 3) return INVALID_FORMAT~;
 
-		String[] key_val = token.split(allocator, "=", max: 2, skip_empty: false);
-		defer allocator::free(allocator, key_val);
+		String[] key_val = token.tsplit("=", max: 2, skip_empty: false);
 
 		String key = key_val[0];
 		String value = key_val[1];
@@ -737,10 +702,10 @@ fn Argon2Decoded? decode(Allocator allocator, String hash_str)
 				if (result.lanes < 1 || result.lanes > char.max) return INVALID_PARALLELISM~;
 			case "keyid":
 				@saw(seen.key_id)!;
-				decoded_key_id = (base64::decode(allocator, value, padding: base64::NO_PAD) ?? INVALID_KEY_ID~)!;
+				decoded_key_id = base64::tdecode(value, padding: base64::NO_PAD) ?? INVALID_KEY_ID~!;
 			case "data":
 				@saw(seen.assoc)!;
-				decoded_assoc = (base64::decode(allocator, value, padding: base64::NO_PAD) ?? INVALID_ASSOC~)!;
+				decoded_assoc = base64::tdecode(value, padding: base64::NO_PAD) ?? INVALID_ASSOC~!;
 			default: return BAD_PARAMETER_KEY~;
 		}
 	}
@@ -753,12 +718,12 @@ fn Argon2Decoded? decode(Allocator allocator, String hash_str)
 	usz index = 3;
 	if (outer_tokens.len > 4)
 	{
-		decoded_salt = (base64::decode(allocator, outer_tokens[index], padding: base64::NO_PAD) ?? INVALID_SALT_ENCODING~)!;
+		decoded_salt = base64::tdecode(outer_tokens[index], padding: base64::NO_PAD) ?? INVALID_SALT_ENCODING~!;
 		index++;
 	}
 
 	// The final token is always the actual resultant hash value.
-	decoded_hash = (base64::decode(allocator, outer_tokens[index], padding: base64::NO_PAD) ?? INVALID_HASH_ENCODING~)!;
+	decoded_hash = base64::tdecode(outer_tokens[index], padding: base64::NO_PAD) ?? INVALID_HASH_ENCODING~!;
 
 	// Link the passed allocator to the result object, so it can be freed correctly later with `.free()`.
 	result = {
@@ -788,35 +753,18 @@ macro tdecode(String hash_str) => decode(tmem, hash_str);
  @param [in] key : "A secret key that's added to the hash value. This cannot legally be conveyed by the hash string."
  @param $rethrows : "When `false`, removes the optional return from the function."
 *>
-macro verify(Allocator allocator, String hash_str, char[] password, char[] key = {}, bool $rethrows = true)
+macro verify(Allocator allocator, String hash_str, char[] password, char[] key = {}, bool $rethrows = true) => @pool()
 {
 	$if $rethrows:
-		Argon2Decoded c = decode(allocator, hash_str)!;
+		Argon2Decoded c = tdecode(hash_str)!;
 	$else
 		Argon2Decoded c;
-		if (catch @try(c, decode(allocator, hash_str))) return false;
+		if (catch @try(c, tdecode(hash_str))) return false;
 	$endif
 	c.key = key;
-	defer c.free();
-	return verify_impl(&c, hash_str, password);
+	return hash_str == thash(password, c.opts, out_size: c.hash.len);
 }
 
 <* A simple alias of `verify` implicitly using the temp allocator. *>
 macro tverify(String hash_str, char[] password, char[] key = {}, bool $rethrows = true)
 	=> verify(tmem, hash_str, password, key: key, $rethrows: $rethrows);
-
-<*
- Given a hash string and a password, verify that the password is correct.
-
- Note that this function SHOULD NOT use the `tmem` temp allocator if the `mem_size` of
- the hash is expected to be larger than the maximum pool size.
-
- @param [&in] decoded_ctx : "The decoded hash string's information"
- @param [in] hash_str : "The PHC-SF hash string to decipher."
- @param [in] password : "The password value to use when attempting to reconstruct `hash_str`."
-*>
-fn bool verify_impl(Argon2Decoded* decoded_ctx, String hash_str, char[] password) @local => @pool()
-{
-	return hash_str == thash(password, decoded_ctx.opts, out_size: decoded_ctx.hash.len);
-}
-
