@@ -54,16 +54,6 @@ jobs:
         shell: bash
         run: ./scripts/tools/ci_tests.sh "./build/c3c.exe"
 
-      - name: Cache MSVC SDK
-        id: cache-msvc-sdk
-        uses: actions/cache@v5
-        with:
-          path: msvc_sdk
-          key: msvc-sdk-${{ runner.os }}-${{ hashFiles('msvc_build_libraries.py') }}
-
-      - if: steps.cache-msvc-sdk.outputs.cache-hit != 'true'
-        run: py msvc_build_libraries.py --accept-license
-
       - name: Bundle (Windows)
         shell: bash
         run: ./scripts/tools/package_build.sh "./build/c3c.exe" "c3-windows-${{ matrix.build_type }}" "zip"
