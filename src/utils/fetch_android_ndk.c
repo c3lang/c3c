@@ -1,7 +1,3 @@
-#include "../compiler/compiler_internal.h"
-#include "json.h"
-#include "whereami.h"
-
 #if defined(_WIN32) || defined(_WIN64)
 	#define WIN32_LEAN_AND_MEAN
 	#define TokenType WindowsTokenType
@@ -17,6 +13,10 @@
 	#define STRCASECMP strcasecmp
 	#define STRNCASECMP strncasecmp
 #endif
+
+#include "../compiler/compiler_internal.h"
+#include "json.h"
+#include "whereami.h"
 
 // Minimal dirent-like structure for Windows
 #if PLATFORM_WINDOWS
