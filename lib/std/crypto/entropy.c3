@@ -8,9 +8,7 @@ module std::crypto::entropy @private @if (env::WIN32);
 
 import std::os::win32, std::thread;
 
-
 OnceFlag win32_init;
-
 alias RtlGenRandom = fn CInt(void*, ulong);
 RtlGenRandom rtlgenrandom;
 
@@ -19,16 +17,15 @@ fn void _crypto_init_win32_random()
 	Win32_HMODULE advapi32_dll = win32::loadLibraryA("advapi32.dll");
 	rtlgenrandom = win32::getProcAddress(advapi32_dll, "SystemFunction036");
 }
-
 macro void win32_init() => win32_init.call(&_crypto_init_win32_random);
 
 
+// ============================================================================
 module std::crypto::entropy;
 
 import libc, std::io::file;//, std::thread;
 
 faultdef SECURE_RANDOM_UNAVAILABLE;
-
 
 <*
  For relevant systems, get the syscall ID associated with `getrandom` for the platform/architecture.
@@ -64,7 +61,6 @@ fn void? _fallback_method(char[] buffer, bool timeout = false) @local
 	}
 	if (count < buffer.len) return TIMEOUT~;
 }
-
 
 <*
  Returns cryptographically secure random bytes. Fails if it is unavailable.
@@ -124,7 +120,6 @@ fn void? fill(char[] buffer, bool timeout = false)
 			return SECURE_RANDOM_UNAVAILABLE~;
 	$endswitch
 }
-
 
 <*
  Create a new byte array and fill it with random bytes from a secure, high-entropy source.
