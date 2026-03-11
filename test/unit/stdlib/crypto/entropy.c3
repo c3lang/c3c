@@ -7,20 +7,25 @@ import std::crypto::entropy, std::math;
 
 fn void generates_without_fault()
 {
-	char[] cmp  = allocator::alloc_array(tmem, char, 1024);
-	char[] buf  = allocator::alloc_array(tmem, char, 1024);
-	char[] zero = allocator::alloc_array(tmem, char, 1024);
-	cmp[..] = 0xA5;
-	mem::zero_volatile(zero);
-	foreach (i, v : math::iota(usz[1024]))
-	{
-		buf[:i] = 0xA5;
-		test::eq(buf[:i], cmp[:i]);   // sanity
-		entropy::fill(buf[:i])!!;
-		// only run this when it's statistically improbable that the generated entropy could have ever returned 0xA5 repeating
-		if (i > 11) test::ne(buf[:i], cmp[:i]);
-		// also ensure this works too (for good measure)
-		char[] res = entropy::make(tmem, i)!!;
-		if (i > 11) test::ne(res[:i], zero[:i]);
-	}
+	$if env::WIN32 || env::LINUX || env::BSD_FAMILY || env::DARWIN || env::ANDROID:
+		char[] cmp  = allocator::alloc_array(tmem, char, 1024);
+		char[] buf  = allocator::alloc_array(tmem, char, 1024);
+		char[] zero = allocator::alloc_array(tmem, char, 1024);
+		cmp[..] = 0xA5;
+		mem::zero_volatile(zero);
+		foreach (i, v : math::iota(usz[1024]))
+		{
+			buf[:i] = 0xA5;
+			test::eq(buf[:i], cmp[:i]);   // sanity
+			entropy::fill(buf[:i])!!;
+			// only run this when it's statistically improbable that the generated entropy could have ever returned 0xA5 repeating
+			if (i > 11) test::ne(buf[:i], cmp[:i]);
+			// also ensure this works too (for good measure)
+			char[] res = entropy::make(tmem, i)!!;
+			if (i > 11) test::ne(res[:i], zero[:i]);
+		}
+	$else
+		char[10] x;
+		test::@error(entropy::fill(x[..], entropy::SECURE_RANDOM_UNAVAILABLE));
+	$endif
 }

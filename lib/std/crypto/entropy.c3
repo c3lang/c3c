@@ -21,18 +21,16 @@ macro void win32_init() => run_once.call(&_crypto_init_win32_random);
 
 
 // ============================================================================
-module std::crypto::entropy;
+module std::crypto::entropy @private;
 
-import libc, std::io::file;//, std::thread;
-
-faultdef SECURE_RANDOM_UNAVAILABLE;
+import std::io::file;
 
 <*
  For relevant systems, get the syscall ID associated with `getrandom` for the platform/architecture.
 
  See: https://www.chromium.org/chromium-os/developer-library/reference/linux-constants/syscalls/#cross-arch-numbers
 *>
-macro usz _entropy_syscall_id() @local @const
+macro usz entropy_syscall_id() @const
 {
 	$switch:
 		$case env::LINUX:
@@ -43,14 +41,20 @@ macro usz _entropy_syscall_id() @local @const
 				$case env::AARCH64: return 278;
 				$case env::X86: return 355;
 			$endswitch
-		$case env::OPENBSD: return 7;   // https://github.com/openbsd/src/blob/a944417af3ca44cd189efef88c2299690e2958fd/sys/sys/syscall.h#L29
+		// $case env::OPENBSD: return 7;   // https://github.com/openbsd/src/blob/a944417af3ca44cd189efef88c2299690e2958fd/sys/sys/syscall.h#L29
 		$case env::FREEBSD: return 563;   // https://github.com/freebsd/freebsd-src/blob/ff2c98b30b57b9763e2a6575f729bab676e6c025/sys/sys/syscall.h#L504
 		$case env::NETBSD: return 91;   // https://github.com/NetBSD/src/blob/51f0c24a1280db0c2e0b5391594c7782d8fd07e8/sys/sys/syscall.h#L275
-		$default: unreachable("No entropy-providing syscall identifier exists for the current environment.");
+		$default: $error "No entropy-providing syscall identifier exists for the current environment.";
 	$endswitch
 }
 
-fn void? _fallback_method(char[] buffer, bool timeout = false) @local
+<*
+ A generic, UNIX-style fallback method that simply tries to access /dev/[u]random as an entropy source.
+
+ @param buffer : "The buffer to populate with random bytes."
+ @param timeout : "Set to `true` to disallow blocking when this function cannot fully fill the provided `buffer`."
+*>
+fn void? unix_fallback(char[] buffer, bool timeout = false)
 {
 	File rnd_file = file::open("/dev/random", "r") ?? file::open("/dev/urandom", "r") ?? SECURE_RANDOM_UNAVAILABLE~!;
 	defer (void)rnd_file.close();
@@ -63,6 +67,20 @@ fn void? _fallback_method(char[] buffer, bool timeout = false) @local
 }
 
 <*
+ Import for OpenBSD which fills an existing buffer with high-entropy data.
+ See: https://man.openbsd.org/arc4random.3
+*>
+extern fn void arc4random_buf(void* buf, usz nbytes) @if (env::OPENBSD);
+
+
+// ============================================================================
+module std::crypto::entropy;
+
+import libc, std::hash::a5hash;
+
+faultdef SECURE_RANDOM_UNAVAILABLE;
+
+<*
  Returns cryptographically secure random bytes. Fails if it is unavailable.
 
  @param [out] buffer : "The buffer to populate with random bytes."
@@ -73,17 +91,18 @@ fn void? _fallback_method(char[] buffer, bool timeout = false) @local
 *>
 fn void? fill(char[] buffer, bool timeout = false)
 {
+	if (!buffer.len) return;
 	$switch:
 		$case env::LINUX:
 		$case env::ANDROID:
 		$case env::FREEBSD:
 		$case env::NETBSD:
 			$if (@in(env::ARCH_TYPE, ARM, ARMB, AARCH64, X86, X86_64)):
-				isz result = $$syscall(_entropy_syscall_id(), (uptr)buffer.ptr, buffer.len, 0);
+				isz result = $$syscall(entropy_syscall_id(), (uptr)buffer.ptr, buffer.len, 0);
 				if (result < 0 && result != errno::EINTR) return SECURE_RANDOM_UNAVAILABLE~;   /* it's possible for signal handlers to interrupt this call */
 				for (usz prevent_block = 0; result < buffer.len && (!timeout || prevent_block < 1_000); prevent_block++)
 				{
-					isz more = $$syscall(_entropy_syscall_id(), (uptr)((isz)buffer.ptr + result), buffer.len, 0);
+					isz more = $$syscall(entropy_syscall_id(), (uptr)((isz)buffer.ptr + result), buffer.len, 0);
 					if (more < 0)
 					{
 						if (more != errno::EINTR) return SECURE_RANDOM_UNAVAILABLE~;
@@ -93,24 +112,26 @@ fn void? fill(char[] buffer, bool timeout = false)
 				}
 				if (result < buffer.len) return TIMEOUT~;
 			$else
-				return _fallback_method(buffer, timeout);
+				return unix_fallback(buffer, timeout);
 			$endif
 
 		$case env::OPENBSD:
-			// https://man.openbsd.org/getentropy
-			if (buffer.len <= 256)
+			if (&arc4random_buf)
 			{
-				isz result = $$syscall(_entropy_syscall_id(), (uptr)buffer.ptr, buffer.len);
-				if (result < 0) return SECURE_RANDOM_UNAVAILABLE~;
+				// this is always successful, even if it doesn't actually accomplish anything
+				//   to know whether the buffer has changed, a fast hash should do the trick
+				ulong orig_hash = a5hash::hash(buffer);
+				arc4random_buf((uptr)buffer.ptr, buffer.len);
+				if (a5hash::hash(buffer) == orig_hash) return unix_fallback(buffer, timeout);
 			}
 			else
 			{
-				return _fallback_method(buffer, timeout);
+				return unix_fallback(buffer, timeout);
 			}
 
 		$case env::DARWIN:
 			// TODO: would be nice to use something similar to https://github.com/briansmith/ring/pull/398 here...
-			return _fallback_method(buffer, timeout);
+			return unix_fallback(buffer, timeout);
 
 		$case env::WIN32:
 			win32_init();
