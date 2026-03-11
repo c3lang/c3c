@@ -56,7 +56,7 @@ macro usz entropy_syscall_id() @const
 *>
 fn void? unix_fallback(char[] buffer, bool timeout = false)
 {
-	File rnd_file = file::open("/dev/random", "r") ?? file::open("/dev/urandom", "r") ?? SECURE_RANDOM_UNAVAILABLE~!;
+	File rnd_file = file::open("/dev/urandom", "r") ?? file::open("/dev/random", "r") ?? SECURE_RANDOM_UNAVAILABLE~!;
 	defer (void)rnd_file.close();
 	usz count;
 	for (usz prevent_block = 0; count < buffer.len && (!timeout || prevent_block < 1_000); prevent_block++)
