@@ -24,6 +24,7 @@
 - Make DateTime and DateTimeTz `Printable`.
 - Add `to_format` functionality for DateTime.
 - `SubProcess`/`process::create`/`process::execute_stdout_to_buffer` deprecated, replaced by `Process`/`process:spawn`/`process::run_capture_stdout`.
+- Add support for AES-encrypted Zip files (AE-1 and AE-2 formats).
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
@@ -41,6 +42,7 @@
 - Compiler does not propagate @noreturn through macros using short declaration syntax #3011
 - Debug info emitted on `-Os` #3015
 - @assert_leak() would not work properly with `--safe=no` #3012.
+- Duplicate symbols when building executables on Termux. #2984
 
 ## 0.7.10 Change list
 

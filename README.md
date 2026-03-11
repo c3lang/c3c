@@ -210,8 +210,7 @@ This installs the latest prerelease build, as opposed to the latest released ver
 1. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-windows.zip](https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-windows.zip)
    (debug version [here](https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-windows-debug.zip))
 2. Unzip exe and standard lib.
-3. If you don't have Visual Studio 17 installed, you can run the `c3c fetch windows-sdk` command which will download the necessary files to compile on Windows.
-4. Run `c3c.exe`.
+3. Run `c3c.exe`.
 
 #### Installing on Windows with the install script
 
