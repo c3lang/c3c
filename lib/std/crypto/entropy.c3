@@ -8,7 +8,7 @@ module std::crypto::entropy @private @if (env::WIN32);
 
 import std::os::win32, std::thread;
 
-OnceFlag win32_init;
+OnceFlag run_once;
 alias RtlGenRandom = fn CInt(void*, ulong);
 RtlGenRandom rtlgenrandom;
 
@@ -17,7 +17,7 @@ fn void _crypto_init_win32_random()
 	Win32_HMODULE advapi32_dll = win32::loadLibraryA("advapi32.dll");
 	rtlgenrandom = win32::getProcAddress(advapi32_dll, "SystemFunction036");
 }
-macro void win32_init() => win32_init.call(&_crypto_init_win32_random);
+macro void win32_init() => run_once.call(&_crypto_init_win32_random);
 
 
 // ============================================================================
