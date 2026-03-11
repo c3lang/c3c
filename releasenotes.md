@@ -40,6 +40,7 @@
 - Regression: `String` was not implicitly `@constinit` #2983
 - Compiler does not propagate @noreturn through macros using short declaration syntax #3011
 - Debug info emitted on `-Os` #3015
+- @assert_leak() would not work properly with `--safe=no` #3012.
 
 ## 0.7.10 Change list
 
