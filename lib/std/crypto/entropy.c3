@@ -121,7 +121,7 @@ fn void? fill(char[] buffer, bool timeout = false)
 				// this is always successful, even if it doesn't actually accomplish anything
 				//   to know whether the buffer has changed, a fast hash should do the trick
 				ulong orig_hash = a5hash::hash(buffer);
-				arc4random_buf((uptr)buffer.ptr, buffer.len);
+				arc4random_buf((void*)buffer.ptr, buffer.len);
 				if (a5hash::hash(buffer) == orig_hash) return unix_fallback(buffer, timeout);
 			}
 			else
