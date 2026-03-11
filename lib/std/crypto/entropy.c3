@@ -118,11 +118,13 @@ fn void? fill(char[] buffer, bool timeout = false)
 		$case env::OPENBSD:
 			if (&arc4random_buf)
 			{
-				// this is always successful, even if it doesn't actually accomplish anything
-				//   to know whether the buffer has changed, a fast hash should do the trick
-				ulong orig_hash = a5hash::hash(buffer);
+				// this is always successful, even if it doesn't actually accomplish anything, so
+				//   to know whether the buffer has changed, a fast partial hash should do the trick
+				//   worst that happens here is that if, somehow, the PRNG generates the same first 4 bytes,
+				//   then the /dev/[u]random file is accessed; very rare for that to occur
+				ulong orig_hash = buffer.len >= 4 ? a5hash::hash(buffer[:4]) : 0;
 				arc4random_buf((void*)buffer.ptr, buffer.len);
-				if (a5hash::hash(buffer) == orig_hash) return unix_fallback(buffer, timeout);
+				if (buffer.len >= 4 && a5hash::hash(buffer) == orig_hash) return unix_fallback(buffer, timeout);
 			}
 			else
 			{
