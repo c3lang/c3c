@@ -100,7 +100,7 @@ fn void? fill(char[] buffer, bool timeout = false)
 			// https://man.openbsd.org/getentropy
 			if (buffer.len <= 256)
 			{
-				isz result = $$syscall(_entropy_syscall_id(), buffer.ptr, buffer.len);
+				isz result = $$syscall(_entropy_syscall_id(), (uptr)buffer.ptr, buffer.len);
 				if (result < 0) return SECURE_RANDOM_UNAVAILABLE~;
 			}
 			else
