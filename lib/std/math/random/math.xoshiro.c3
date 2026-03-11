@@ -1,6 +1,8 @@
 // For more information about the various Blackman-Vigna Xorshift PRNGs, see: https://prng.di.unimi.it/
 //   Also: https://vigna.di.unimi.it/ftp/papers/ScrambledLinear.pdf
 //
+// Note: a few PRNGs from this family, such as Xoroshiro64, are intentionally left unsupported.
+//
 module std::math::random;
 
 enum XoshiroOperation
@@ -10,13 +12,28 @@ enum XoshiroOperation
 	STAR_STAR,
 }
 
+macro void @seed_from_long(#self, usz $bits, ulong seed) @local
+{
+	$if $bits == 128:
+		#self.long_state[0] = (seed ^= SILVER_RATIO_64);
+		#self.long_state[1] = seed + GOLDEN_RATIO_64;
+	$else
+		#self.state[0] = (seed ^= SILVER_RATIO_64);
+		foreach (&s : #self.state[1..]) *s = (seed += GOLDEN_RATIO_64);
+	$endif
+}
+
 <*
  @require @in(BIT_SIZE, 128, 256, 512) : "You must use a supported state size for Xoshiro permutations."
  @require @in(OPERATION, ...XoshiroOperation.values) : "You must use a supported operation type for Xoshiro permutations."
 *>
 struct Xoshiro (Random) <BIT_SIZE, OPERATION>
 {
-	uint[<4>]  state @if (BIT_SIZE == 128);
+	union @if (BIT_SIZE == 128)
+	{
+		uint[<4>]  state;
+		ulong[<2>] long_state;
+	}
 	ulong[<4>] state @if (BIT_SIZE == 256);
 	ulong[<8>] state @if (BIT_SIZE == 512);
 }
@@ -28,6 +45,8 @@ fn void Xoshiro.set_seed(&self, char[] seed) @dynamic
 {
 	self.state = random::make_seed($typeof(self.state), seed);
 }
+
+fn void Xoshiro.set_seed_long(&self, ulong seed) => @seed_from_long(self, BIT_SIZE, seed);
 
 macro _xoshiro_result(s, usz $bits, XoshiroOperation $op) @local
 {
