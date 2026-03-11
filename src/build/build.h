@@ -590,6 +590,7 @@ extern const char *arch_os_target[ARCH_OS_TARGET_LAST + 1];
 extern LinuxLibc default_libc;
 
 void fetch_msvc(BuildOptions *options);
+char *fetch_android_ndk(BuildOptions *options);
 BuildOptions parse_arguments(int argc, const char *argv[]);
 ArchOsTarget arch_os_target_from_string(const char *target);
 bool command_accepts_files(CompilerCommand command);
