@@ -50,6 +50,8 @@
 - Add simple member-wise struct comparison with `member_eq`. #2801
 - `std::core::mem::allocator` deprecated and split into `std::core::mem::allocators` containing allocators and `std::core::mem::alloc` for various allocation methods.
 - Add `always_assert` builtin macro.
+- Add an `entropy` module to generate cryptographically-secure random bytes. #3022
+- Add a builtin `TIMEOUT` fault definition. #3022
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
