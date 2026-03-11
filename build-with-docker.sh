@@ -3,7 +3,7 @@
 : ${DOCKER:=docker}
 : ${IMAGE:="c3c-builder"}
 : ${CMAKE_BUILD_TYPE:=Release}
-: ${LLVM_VERSION:=18}
+: ${LLVM_VERSION:=22}
 : ${UBUNTU_VERSION:="22.04"}
 : ${CMAKE_VERSION:="3.20.0"}
 
