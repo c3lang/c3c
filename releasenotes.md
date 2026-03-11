@@ -24,12 +24,14 @@
 - Make DateTime and DateTimeTz `Printable`.
 - Add `to_format` functionality for DateTime.
 - `SubProcess`/`process::create`/`process::execute_stdout_to_buffer` deprecated, replaced by `Process`/`process:spawn`/`process::run_capture_stdout`.
+- Add an `entropy` module to generate cryptographically-secure random bytes. #3022
+- Add a builtin `TIMEOUT` fault definition. #3022
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
 - Name conflict with auto-imported std::core, but it should have lower priority #2902
 - Regression: missing generic nesting check on non-types.
-- Improved stringify. 
+- Improved stringify.
 - PollSubscribe was incorrectly an int instead of ushort. #2997
 - SubProcessOptions.search_user_path did nothing on non-windows systems despite comment saying it should #2845
 - AES implementation fixed to be constant time #2806
