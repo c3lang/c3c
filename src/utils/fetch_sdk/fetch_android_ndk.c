@@ -14,9 +14,9 @@
 	#define STRNCASECMP strncasecmp
 #endif
 
-#include "../compiler/compiler_internal.h"
-#include "json.h"
-#include "whereami.h"
+#include "../../compiler/compiler_internal.h"
+#include "../json.h"
+#include "../whereami.h"
 
 // Minimal dirent-like structure for Windows
 #if PLATFORM_WINDOWS

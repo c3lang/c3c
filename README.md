@@ -1,13 +1,13 @@
 # C3 Language
 
 C3 is a programming language that builds on the syntax and semantics of the C language,
-with the goal of evolving it while still retaining familiarity for C programmers. 
+with the goal of evolving it while still retaining familiarity for C programmers.
 
-It's an evolution, not a revolution: the C-like 
+It's an evolution, not a revolution: the C-like
 for programmers who like C.
 
 Precompiled binaries for the following operating systems are available:
- 
+
 - Windows x64 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-windows.zip), [install instructions](#installing-on-windows-with-precompiled-binaries).
 - Debian x64 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-linux.tar.gz), [install instructions](#installing-on-debian-with-precompiled-binaries).
 - Ubuntu x86 [download](https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-ubuntu-20.tar.gz), [install instructions](#installing-on-ubuntu-with-precompiled-binaries).
@@ -36,7 +36,7 @@ whole new language.
 
 ### Example code
 
-The following code shows [generics](https://c3-lang.org/generic-programming/generics/) (more examples can be found at https://c3-lang.org/language-overview/examples/). 
+The following code shows [generics](https://c3-lang.org/generic-programming/generics/) (more examples can be found at https://c3-lang.org/language-overview/examples/).
 
 ```c3
 module stack <Type>;
@@ -50,7 +50,7 @@ struct Stack
 }
 
 // The type methods offers dot syntax calls,
-// so this function can either be called 
+// so this function can either be called
 // Stack.push(&my_stack, ...) or
 // my_stack.push(...)
 fn void Stack.push(Stack* this, Type element)
@@ -81,7 +81,7 @@ Testing it out:
 ```c3
 import stack;
 
-// Define our new types, the first will implicitly create 
+// Define our new types, the first will implicitly create
 // a complete copy of the entire Stack module with "Type" set to "int"
 alias IntStack = Stack {int};
 // The second creates another copy with "Type" set to "double"
@@ -101,17 +101,17 @@ fn void main()
     IntStack stack;
     // Note that C3 uses zero initialization by default
     // so the above is equivalent to IntStack stack = {};
-    
+
     stack.push(1);
-    // The above can also be written IntStack.push(&stack, 1); 
-    
+    // The above can also be written IntStack.push(&stack, 1);
+
     stack.push(2);
-    
+
     // Prints pop: 2
     printf("pop: %d\n", stack.pop());
     // Prints pop: 1
     printf("pop: %d\n", stack.pop());
-    
+
     DoubleStack dstack;
     dstack.push(2.3);
     dstack.push(3.141);
@@ -145,10 +145,10 @@ fn void main()
 The current stable version of the compiler is **version 0.7.10**.
 
 The upcoming 0.7.x releases will focus on expanding the standard library,
-fixing bugs and improving compile time analysis. 
+fixing bugs and improving compile time analysis.
 Follow the issues [here](https://github.com/c3lang/c3c/issues).
 
-If you have suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues) 
+If you have suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues)
 or discuss C3 on its dedicated Discord: [https://discord.gg/qN76R87](https://discord.gg/qN76R87).
 
 The compiler is currently verified to compile on Linux, OpenBSD, Windows and MacOS.
@@ -197,7 +197,7 @@ More platforms will be supported in the future.
 - If you wish to contribute with ideas, please file issues or discuss on Discord.
 - Interested in contributing to the stdlib? Please get in touch on Discord.
 - Compilation instructions for other Linux and Unix variants are appreciated.
-- Would you like to contribute bindings to some library? It would be nice to have support for SDL3 and more. If you have created some bindings, please submit them to https://github.com/c3lang/vendor.  
+- Would you like to contribute bindings to some library? It would be nice to have support for SDL3 and more. If you have created some bindings, please submit them to https://github.com/c3lang/vendor.
 - Build something with C3 and show it off and give feedback. The language is still open for significant tweaks.
 - Start work on the C -> C3 converter which takes C code and does a "best effort" to translate it to C3. The first version only needs to work on C headers.
 - Do you have some specific area you have deep knowledge of and could help make C3 even better at doing? File or comment on issues.
@@ -210,7 +210,7 @@ This installs the latest prerelease build, as opposed to the latest released ver
 1. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-windows.zip](https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-windows.zip)
    (debug version [here](https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-windows-debug.zip))
 2. Unzip exe and standard lib.
-3. If you don't have Visual Studio 17 installed you can either do so, or run the `msvc_build_libraries.py` Python script which will download the necessary files to compile on Windows. 
+3. If you don't have Visual Studio 17 installed, you can run the `c3c fetch windows-sdk` command which will download the necessary files to compile on Windows.
 4. Run `c3c.exe`.
 
 #### Installing on Windows with the install script
@@ -227,7 +227,7 @@ For example, you can force the installation of the 0.7.4 version:
 $env:C3_VERSION='0.7.4'; powershell -ExecutionPolicy Bypass -Command "iwr -useb https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install/install.ps1 | iex"
 ```
 
-If you don't have Visual Studio 17 installed you can either do so, or run the `msvc_build_libraries.py` Python script which will download the necessary files to compile on Windows.
+**(Optional)** If you don't have Visual Studio 17 installed, you can run the `c3c fetch windows-sdk` command which will download the necessary files to compile on Windows.
 
 
 #### Installing on Debian with precompiled binaries
@@ -315,11 +315,11 @@ You can access `c3c` via [flake.nix](./flake.nix), which will contain the latest
     };
   };
 
-  outputs = { self, ... } @ inputs: inputs.flake-utils.lib.eachDefaultSystem (system: 
-    let 
+  outputs = { self, ... } @ inputs: inputs.flake-utils.lib.eachDefaultSystem (system:
+    let
       pkgs = import inputs.nixpkgs { inherit system; };
       c3c = inputs.c3c.packages.${system}.c3c;
-    in 
+    in
     {
       devShells.default = pkgs.mkShell {
         buildInputs = [
@@ -459,7 +459,7 @@ You can try it out by running some sample code: `./c3c compile ../resources/exam
 5. Build: `cmake --build build`
 6. Enter the build directory: `cd build`
 
-Your c3c executable should have compiled properly. You may want to test it: `./c3c compile ../resources/examples/hash.c3`  
+Your c3c executable should have compiled properly. You may want to test it: `./c3c compile ../resources/examples/hash.c3`
 For a system-wide installation, run the following as root: `cmake --install .`
 
 
@@ -508,7 +508,7 @@ After compilation, the `c3c` binary will be located in the `build` directory. Yo
 2. Install or compile LLVM and LLD *libraries* (version 19+ or higher)
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 4. Enter the C3C directory `cd c3c`.
-5. Set up CMake build for debug: `cmake -B build -S .`. At this point you may need to manually 
+5. Set up CMake build for debug: `cmake -B build -S .`. At this point you may need to manually
 provide the link path to the LLVM CMake directories, e.g. `cmake -B build -S . -DLLVM_DIR=/usr/local/opt/llvm/lib/cmake/llvm/`
 6. Build: `cmake --build build`
 7. Change directory to the build directory `cd build`
@@ -521,10 +521,10 @@ this functionality is non-essential and it is perfectly fine to use the compiler
 
 Unless specified otherwise, the code in this repository is MIT licensed.
 The exception is the compiler source code (the source code under `src`),
-which is licensed under LGPL 3.0. 
+which is licensed under LGPL 3.0.
 
-This means you are free to use all parts of standard library, 
-tests, benchmarks, grammar, examples and so on under the MIT license, including 
+This means you are free to use all parts of standard library,
+tests, benchmarks, grammar, examples and so on under the MIT license, including
 using those libraries and tests if you build your own C3 compiler.
 
 #### Editor plugins
@@ -535,7 +535,7 @@ Editor plugins can be found at https://github.com/c3lang/editor-plugins.
 
 1. Write the test, either adding to existing test files in `/test/unit/` or add
    a new file. (If testing the standard library, put it in the `/test/unit/stdlib/` subdirectory).
-2. Make sure that the test functions have the `@test` attribute. 
+2. Make sure that the test functions have the `@test` attribute.
 3. Run tests and see that they pass. (Recommended settings: `c3c compile-test -O0 test/unit`.
    - in this example `test/unit/` is the relative path to the test directory, so adjust as required)
 4. Make a pull request for the new tests.
@@ -548,7 +548,7 @@ A special thank you to sponsors [Zack Puhl](https://github.com/NotsoanoNimus) an
 
 And honorable mention goes to past sponsors:
 [Ygor Pontelo](https://github.com/ygorpontelo), [Simone Raimondi](https://github.com/SRaimondi),
-[Jan Válek](https://github.com/jan-valek), [Pierre Curto](https://github.com/pierrec), 
+[Jan Válek](https://github.com/jan-valek), [Pierre Curto](https://github.com/pierrec),
 [Caleb-o](https://github.com/Caleb-o) and [devdad](https://github.com/devdad)
 
 ## Star History

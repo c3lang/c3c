@@ -235,7 +235,7 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_STRING_ARRAY("Linker arguments (override)", "link-args-override", ", ");
 	TARGET_VIEW_BOOL("Link libc", "link-libc");
 	TARGET_VIEW_BOOL("Custom libc", "custom-libc");
-	TARGET_VIEW_STRING("MacOS SDK directory", "macossdk");
+	TARGET_VIEW_STRING("MacOS SDK directory", "macos-sdk");
 	TARGET_VIEW_SETTING("Memory environment", "memory-env", memory_environment);
 	TARGET_VIEW_BOOL("Don't generate/require main function", "no-entry");
 	TARGET_VIEW_SETTING("Code optimization level", "optlevel", optlevels);
@@ -256,7 +256,7 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_BOOL("Integers panic on wrapping", "trap-on-wrap");
 	TARGET_VIEW_BOOL("Include standard library", "use-stdlib");
 	TARGET_VIEW_SETTING("Windows CRT linking", "wincrt", wincrt_linking);
-	TARGET_VIEW_STRING("Windows SDK path", "winsdk");
+	TARGET_VIEW_STRING("Windows SDK path", "win-sdk");
 	TARGET_VIEW_SETTING("x64 CPU level", "x86cpu", x86_cpu_set);
 	TARGET_VIEW_SETTING("Max vector use type", "x86vec", x86_vector_capability);
 	TARGET_VIEW_BOOL("Return structs on the stack", "x86-stack-struct-return");
@@ -549,6 +549,8 @@ void view_project(BuildOptions *build_options)
 	VIEW_STRING("Benchmark function override", "benchfn");
 	VIEW_STRING("C compiler", "cc");
 	VIEW_STRING("C compiler flags", "cflags");
+	VIEW_STRING("Android API version", "android-api");
+	VIEW_STRING("Android NDK directory", "android-ndk");
 	VIEW_STRING("CPU name", "cpu");
 	VIEW_SETTING("Debug level", "debug-info", debug_levels);
 	VIEW_STRING_ARRAY("Scripts to run", "exec", ", ");
@@ -560,7 +562,7 @@ void view_project(BuildOptions *build_options)
 	VIEW_STRING_ARRAY("Linker arguments", "link-args", ", ");
 	VIEW_BOOL("Link libc", "link-libc");
 	VIEW_BOOL("Custom libc", "custom-libc");
-	VIEW_STRING("MacOS SDK directory", "macossdk");
+	VIEW_STRING("MacOS SDK directory", "macos-sdk");
 	VIEW_SETTING("Memory environment", "memory-env", memory_environment);
 	VIEW_BOOL("Don't generate/require main function", "no-entry");
 	VIEW_SETTING("Code optimization level", "optlevel", optlevels);
@@ -581,7 +583,7 @@ void view_project(BuildOptions *build_options)
 	VIEW_BOOL("Integers panic on wrapping", "trap-on-wrap");
 	VIEW_BOOL("Include standard library", "use-stdlib");
 	VIEW_SETTING("Windows CRT linking", "wincrt", wincrt_linking);
-	VIEW_STRING("Windows SDK path", "winsdk");
+	VIEW_STRING("Windows SDK path", "win-sdk");
 	VIEW_SETTING("x64 CPU level", "x86cpu", x86_cpu_set);
 	VIEW_SETTING("Max vector use type", "x86vec", x86_vector_capability);
 	VIEW_BOOL("Return structs on the stack", "x86-stack-struct-return");

@@ -18,10 +18,10 @@
 	#define STRNCASECMP strncasecmp
 #endif
 
-#include "../compiler/compiler_internal.h"
-#include "json.h"
-#include "msi.h"
-#include "whereami.h"
+#include "../../compiler/compiler_internal.h"
+#include "../json.h"
+#include "../msi.h"
+#include "../whereami.h"
 
 #ifndef MAX_PATH
 	#if defined(PATH_MAX)
@@ -507,14 +507,12 @@ static bool check_license(JSONObject *rj1_channel_items, bool accept_all)
 	return (c == 'y' || c == 'Y');
 }
 
-void fetch_msvc(BuildOptions *options)
+void fetch_winsdk(BuildOptions *options)
 {
 	if (!download_available())
 	{
 		error_exit("Failed to find Windows SDK.\n"
-				   "Windows applications cannot be cross-compiled without it.\n"
-				   "To download the SDK automatically, please ensure libcurl is installed.\n"
-				   "Alternatively, provide the SDK path manually using --winsdk.");
+				   "Alternatively, provide the SDK path manually using --win-sdk.");
 	}
 	verbose_level = options->verbosity_level;
 	const char *tmp_dir_base = dir_make_temp_dir();
