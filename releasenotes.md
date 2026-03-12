@@ -11,6 +11,7 @@
 - `@weaklink` for just affecting linkage.
 - Add a fully static build of `c3c` for Linux. #2949
 - `@weak` now allows direct overriding of `@weak` definitions with a real definition.
+- Added the rest of the `xoshiro` and `xoroshiro` PRNG variants. #3027
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
@@ -30,7 +31,7 @@
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
 - Name conflict with auto-imported std::core, but it should have lower priority #2902
 - Regression: missing generic nesting check on non-types.
-- Improved stringify. 
+- Improved stringify.
 - PollSubscribe was incorrectly an int instead of ushort. #2997
 - SubProcessOptions.search_user_path did nothing on non-windows systems despite comment saying it should #2845
 - AES implementation fixed to be constant time #2806
