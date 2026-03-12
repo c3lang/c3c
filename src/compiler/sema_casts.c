@@ -877,7 +877,13 @@ static bool rule_int_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 	if (type_size(cc->from) < type_size(type_iptr))
 	{
 		if (is_silent) return false;
-		RETURN_CAST_ERROR(expr, "You cannot convert an integer smaller than a pointer size to a pointer.");
+		if (is_explicit)
+		{
+			RETURN_CAST_ERROR(expr, "You cannot convert an integer smaller than pointer size to a pointer, "
+						   "try first widening it to pointer size, for example write '(%s)(uptr)some_value' instead.", type_to_error_string(cc->to));
+		}
+		RETURN_CAST_ERROR(expr, "You cannot implicitly convert an integer to a pointer, you may use an explicit cast "
+			"if you first widen the value to pointer size, e.g. '(%s)(uptr)some_value'.", type_to_error_string(cc->to));
 	}
 
 	if (!is_explicit) return sema_cast_error(cc, true, is_silent);
