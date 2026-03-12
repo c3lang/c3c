@@ -1,67 +1,21 @@
 #include <ctype.h>
 #include <sys/stat.h>
-#include <limits.h>
 
-#if defined(_WIN32) || defined(_WIN64)
-	#define WIN32_LEAN_AND_MEAN
-	#define TokenType WindowsTokenType
-	#define MAX_PRIORITY WindowsMAX_PRIORITY
-	#include <windows.h>
-	#undef TokenType
-	#undef MAX_PRIORITY
-	#define STRCASECMP _stricmp
-	#define STRNCASECMP _strnicmp
-#else
-	#include <dirent.h>
-	#include <strings.h>
-	#define STRCASECMP strcasecmp
-	#define STRNCASECMP strncasecmp
-#endif
-
+#include "platform.h"
+#include "fetch_utils.h"
 #include "../../compiler/compiler_internal.h"
 #include "../json.h"
 #include "../msi.h"
 #include "../whereami.h"
 
-#ifndef MAX_PATH
-	#if defined(PATH_MAX)
-		#define MAX_PATH PATH_MAX
-	#elif defined(_MAX_PATH)
-		#define MAX_PATH _MAX_PATH
-	#else
-		#define MAX_PATH 260
-	#endif
-#endif
 #define MAX_PATH_ZIP_FILENAME 512
+
+
+static int verbose_level = 0;
 
 #define MANIFEST_URL "https://aka.ms/vs/17/release/channel"
 #define VS_MANIFEST_ID "Microsoft.VisualStudio.Manifests.VisualStudio"
 #define BUILD_TOOLS_ID "Microsoft.VisualStudio.Product.BuildTools"
-
-static char *get_sdk_output_path(void)
-{
-	char *env_path = NULL;
-#if PLATFORM_WINDOWS
-	env_path = getenv("LOCALAPPDATA");
-#else
-	env_path = getenv("XDG_CACHE_HOME");
-#endif
-
-	if (env_path)
-	{
-		return file_append_path(env_path, "c3/msvc_sdk");
-	}
-
-#if !PLATFORM_WINDOWS
-	char *home = getenv("HOME");
-	if (home) return file_append_path(home, ".cache/c3/msvc_sdk");
-#endif
-
-	const char *path = find_executable_path();
-	return file_append_path(path, "msvc_sdk");
-}
-
-static int verbose_level = 0;
 
 
 static void print_progress(int percent)
@@ -88,55 +42,6 @@ static void print_progress(int percent)
 	printf("] %3d%%", percent);
 	fflush(stdout);
 }
-
-// Minimal dirent-like structure for Windows
-#if PLATFORM_WINDOWS
-struct dirent
-{
-	char d_name[MAX_PATH];
-};
-typedef struct
-{
-	HANDLE handle;
-	WIN32_FIND_DATAW data;
-	struct dirent entry;
-	bool first;
-} DIR;
-
-static DIR *opendir(const char *name)
-{
-	DIR *dir = calloc(1, sizeof(DIR));
-	char *search_path = str_printf("%s\\*", name);
-	uint16_t *wpath = win_utf8to16(search_path);
-	dir->handle = FindFirstFileW(wpath, &dir->data);
-	free(wpath);
-	if (dir->handle == INVALID_HANDLE_VALUE)
-	{
-		free(dir);
-		return NULL;
-	}
-	dir->first = true;
-	return dir;
-}
-
-static struct dirent *readdir(DIR *dir)
-{
-	if (!dir->first && !FindNextFileW(dir->handle, &dir->data)) return NULL;
-	dir->first = false;
-	char *name = win_utf16to8(dir->data.cFileName);
-	strncpy(dir->entry.d_name, name, MAX_PATH);
-	free(name);
-	return &dir->entry;
-}
-
-static void closedir(DIR *dir)
-{
-	if (dir) FindClose(dir->handle);
-	free(dir);
-}
-#endif
-
-
 
 static int version_compare(const char *v1, const char *v2)
 {
@@ -471,38 +376,12 @@ static void select_versions(BuildOptions *options, JSONObject *msvc_vers, JSONOb
 	*sdk_key_out = sdk_key;
 }
 
-static bool check_license(JSONObject *rj1_channel_items, bool accept_all)
+static bool check_license(bool accept_all)
 {
 	if (accept_all) return true;
-
-	JSONObject *tools = NULL;
-	FOREACH(JSONObject *, item, rj1_channel_items->elements)
-	{
-		JSONObject *id = json_map_get(item, "id");
-		if (id && str_eq(id->str, BUILD_TOOLS_ID))
-		{
-			tools = item;
-			break;
-		}
-	}
-
-	const char *lic = "";
-	if (tools)
-	{
-		JSONObject *res = json_map_get(tools, "localizedResources");
-		FOREACH(JSONObject *, r, res->elements)
-		{
-			JSONObject *lang = json_map_get(r, "language");
-			if (lang && (STRCASECMP(lang->str, "en-us") == 0 || STRCASECMP(lang->str, "en-US") == 0))
-			{
-				lic = json_map_get(r, "license")->str;
-				break;
-			}
-		}
-	}
-
-	printf("Do you accept the license %s? [y/N]: ", lic);
-
+	printf("To fetch the MSVC SDK you must accept the Microsoft license:\n"
+	       "  https://visualstudio.microsoft.com/license-terms/vs2022-ga-diagnosticbuildtools/\n"
+	       "Do you accept? [y/N]: ");
 	char c = (char)getchar();
 	return (c == 'y' || c == 'Y');
 }
@@ -567,7 +446,7 @@ void fetch_winsdk(BuildOptions *options)
 	char full_msvc_v[128];
 	print_msvc_version(msvc_pkg_obj, full_msvc_v);
 
-	char *sdk_output = get_sdk_output_path();
+	char *sdk_output = get_cache_output_path("msvc_sdk");
 
 	if (verbose_level >= 1) printf("Selected: MSVC %s, SDK %s\n", full_msvc_v, sdk_key);
 
@@ -581,7 +460,7 @@ void fetch_winsdk(BuildOptions *options)
 		printf("Downloading version %s to %s.\n", full_msvc_v, sdk_output);
 	}
 
-	if (!check_license(rj1_channel_items, options->msvc_accept_license))
+	if (!check_license(options->msvc_accept_license))
 	{
 		exit_compiler(EXIT_FAILURE);
 	}
