@@ -13,6 +13,8 @@
 #endif
 
 const char *download_file(const char *url, const char *resource, const char *file_path);
+const char *download_file_with_progress(const char *url, const char *resource, const char *file_path,
+                                         void (*progress_fn)(const char *, int, int));
 bool download_available(void);
 
 #define ELEMENTLEN(x) (sizeof(x) / sizeof(x[0]))

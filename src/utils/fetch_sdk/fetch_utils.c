@@ -23,3 +23,28 @@ char *get_cache_output_path(const char *subdir)
 
 	return file_append_path(find_executable_path(), subdir);
 }
+
+void print_progress(const char *label, int percent, int verbose_output)
+{
+	if (verbose_output > 0) return;
+	if (percent > 100) percent = 100;
+
+	int width = 40;
+	printf("\r%s [", label);
+
+	const char *parts[] = { " ", "▏", "▎", "▍", "▌", "▋", "▊", "▉" };
+	int total_blocks = width * 8;
+	int filled_blocks = (percent * total_blocks) / 100;
+	int full_blocks = filled_blocks / 8;
+	int partial_block = filled_blocks % 8;
+
+	for (int i = 0; i < full_blocks; i++) printf("█");
+	if (full_blocks < width)
+	{
+		printf("%s", parts[partial_block]);
+		for (int i = full_blocks + 1; i < width; i++) printf(" ");
+	}
+
+	printf("] %3d%%", percent);
+	fflush(stdout);
+}

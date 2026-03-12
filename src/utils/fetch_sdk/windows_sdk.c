@@ -18,29 +18,9 @@ static int verbose_level = 0;
 #define BUILD_TOOLS_ID "Microsoft.VisualStudio.Product.BuildTools"
 
 
-static void print_progress(int percent)
+static void sdk_progress(int percent)
 {
-	if (verbose_level > 0) return;
-	int width = 40;
-	if (percent > 100) percent = 100;
-
-	printf("\rDownloading and extracting packages [");
-
-	const char *parts[] = { " ", "▏", "▎", "▍", "▌", "▋", "▊", "▉" };
-	int total_blocks = width * 8;
-	int filled_blocks = (percent * total_blocks) / 100;
-	int full_blocks = filled_blocks / 8;
-	int partial_block = filled_blocks % 8;
-
-	for (int i = 0; i < full_blocks; i++) printf("█");
-	if (full_blocks < width)
-	{
-		printf("%s", parts[partial_block]);
-		for (int i = full_blocks + 1; i < width; i++) printf(" ");
-	}
-
-	printf("] %3d%%", percent);
-	fflush(stdout);
+	print_progress("Downloading and extracting packages", percent, verbose_level);
 }
 
 static int version_compare(const char *v1, const char *v2)
@@ -381,9 +361,9 @@ static bool check_license(bool accept_all)
 	if (accept_all) return true;
 	printf("To fetch the MSVC SDK you must accept the Microsoft license:\n"
 	       "  https://visualstudio.microsoft.com/license-terms/vs2022-ga-diagnosticbuildtools/\n"
-	       "Do you accept? [y/N]: ");
+	       "Do you accept? (Y/n): ");
 	char c = (char)getchar();
-	return (c == 'y' || c == 'Y');
+	return (c == 'y' || c == 'Y' || c == '\n');
 }
 
 void fetch_winsdk(BuildOptions *options)
@@ -450,7 +430,7 @@ void fetch_winsdk(BuildOptions *options)
 
 	if (verbose_level >= 1) printf("Selected: MSVC %s, SDK %s\n", full_msvc_v, sdk_key);
 
-	if (!options->msvc_accept_license)
+	if (!options->fetch_accept_license)
 	{
 #if PLATFORM_WINDOWS
 		printf("To target windows-x64 you need the MSVC SDK.\n");
@@ -460,7 +440,7 @@ void fetch_winsdk(BuildOptions *options)
 		printf("Downloading version %s to %s.\n", full_msvc_v, sdk_output);
 	}
 
-	if (!check_license(options->msvc_accept_license))
+	if (!check_license(options->fetch_accept_license))
 	{
 		exit_compiler(EXIT_FAILURE);
 	}
@@ -519,7 +499,7 @@ void fetch_winsdk(BuildOptions *options)
 	}
 
 	int progress = 0;
-	if (verbose_level == 0) print_progress(progress);
+	if (verbose_level == 0) sdk_progress(progress);
 
 	const char *suffixes[] = {"asan.headers.base", "crt.x64.desktop.base", "crt.x64.store.base", "asan.x64.base"};
 	for (int i = 0; i < ELEMENTLEN(suffixes); i++)
@@ -539,7 +519,7 @@ void fetch_winsdk(BuildOptions *options)
 			}
 		}
 		progress += 10;
-		print_progress(progress);
+		sdk_progress(progress);
 	}
 
 	const char **cab_list = NULL;
@@ -562,7 +542,7 @@ void fetch_winsdk(BuildOptions *options)
 		}
 	NEXT_MSI:
 		progress += 10;
-		print_progress(progress);
+		sdk_progress(progress);
 	}
 
 	int cabs_done = 0;
@@ -585,7 +565,7 @@ void fetch_winsdk(BuildOptions *options)
 		}
 	NEXT_CAB:
 		cabs_done++;
-		if (cab_count > 0) print_progress(70 + (20 * cabs_done) / cab_count);
+		if (cab_count > 0) sdk_progress(70 + (20 * cabs_done) / cab_count);
 	}
 
 	for (int i = 0; i < ELEMENTLEN(msi_names); i++)
@@ -594,13 +574,13 @@ void fetch_winsdk(BuildOptions *options)
 		if (file_exists(mpath))
 		{
 			extract_msi(mpath, out_root, dl_root);
-			print_progress(90 + (10 * (i + 1)) / ELEMENTLEN(msi_names));
+			sdk_progress(90 + (10 * (i + 1)) / ELEMENTLEN(msi_names));
 		}
 	}
 
 	if (verbose_level == 0)
 	{
-		print_progress(100);
+		sdk_progress(100);
 		printf(" Done.\n");
 		fflush(stdout);
 	}

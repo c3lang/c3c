@@ -260,7 +260,7 @@ typedef struct BuildOptions_
 	bool print_input;
 	bool run_once;
 	bool suppress_run;
-	bool msvc_accept_license;
+	bool fetch_accept_license;
 	bool msvc_show_versions;
 	const char *msvc_version_override;
 	const char *msvc_sdk_version_override;

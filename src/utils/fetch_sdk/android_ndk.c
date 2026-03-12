@@ -3,11 +3,10 @@
 #include "../../compiler/compiler_internal.h"
 #include "../json.h"
 
-static bool check_license(void)
+static bool check_license(bool accept_all)
 {
-	printf("Do you accept the license?"
-	       "  https://developer.android.com/studio/terms\n"
-	       "  (Y/n): ");
+	if (accept_all) return true;
+	printf("Do you accept the license? https://developer.android.com/studio/terms (Y/n): ");
 	char c = (char)getchar();
 	return (c == 'y' || c == 'Y' || c == '\n');
 }
@@ -32,7 +31,6 @@ static void extract_ndk_zip(const char *zip_path, const char *out_root)
 
 char *fetch_android_ndk(BuildOptions *options)
 {
-	(void)options;
 	char *ndk_output = get_cache_output_path("android_ndk");
 
 	// If the folder already exists and has an NDK, just return it
@@ -52,7 +50,13 @@ char *fetch_android_ndk(BuildOptions *options)
 		closedir(d_check);
 	}
 
-	if (!check_license())
+	if (!options->fetch_accept_license)
+	{
+		printf("To cross-compile to android-*, you need the Android NDK.\n");
+		printf("Downloading to %s.\n", ndk_output);
+	}
+
+	if (!check_license(options->fetch_accept_license))
 	{
 		error_exit("License not accepted.");
 	}
@@ -78,8 +82,8 @@ char *fetch_android_ndk(BuildOptions *options)
 
 	char *zpath = (char *)file_append_path(tmp_dir_base, "android_ndk.zip");
 
-	printf("Downloading Android NDK from %s...\n", url);
-	const char *err = download_file(url, "", zpath);
+	printf("Downloading Android NDK r29...\n");
+	const char *err = download_file_with_progress(url, "", zpath, print_progress);
 	if (err) error_exit("Download failed: %s", err);
 
 	printf("Extracting NDK...\n");

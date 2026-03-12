@@ -262,6 +262,9 @@ static void fetch_android_usage()
 	PRINTF("");
 	PRINTF("Fetches the Android NDK.");
 	PRINTF("");
+	PRINTF("Options:");
+	print_opt("--accept-license", "Automatically accept the Android NDK license.");
+	PRINTF("");
 }
 
 static void fetch_macos_usage()
@@ -575,7 +578,7 @@ static void parse_command(BuildOptions *options)
 		while (!at_end() && next_is_opt())
 		{
 			next_arg();
-			if (match_longopt("accept-license")) { options->msvc_accept_license = true; continue; }
+			if (match_longopt("accept-license")) { options->fetch_accept_license = true; continue; }
 			if (match_longopt("show-versions")) { options->msvc_show_versions = true; continue; }
 			if (match_longopt("msvc-version"))
 			{
@@ -624,7 +627,7 @@ static void parse_command(BuildOptions *options)
 			{
 				if (match_longopt("accept-license"))
 				{
-					options->msvc_accept_license = true;
+					options->fetch_accept_license = true;
 					continue;
 				}
 				if (match_longopt("show-versions"))
@@ -644,6 +647,14 @@ static void parse_command(BuildOptions *options)
 					if (at_end() || next_is_opt())
 						error_exit("error: sdk-version needs a version.");
 					options->msvc_sdk_version_override = next_arg();
+					continue;
+				}
+			}
+			else if (str_eq(options->fetch_sdk_target, "android") || str_eq(options->fetch_sdk_target, "ndk"))
+			{
+				if (match_longopt("accept-license"))
+				{
+					options->fetch_accept_license = true;
 					continue;
 				}
 			}

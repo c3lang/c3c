@@ -105,6 +105,15 @@ END:
 	return NULL;
 }
 
+const char *download_file_with_progress(const char *url, const char *resource,
+                                         const char *file_path,
+                                         void (*progress_fn)(const char *, int, int))
+{
+	// WinHTTP doesn't support a generic progress callback yet — forward to regular download.
+	(void)progress_fn;
+	return download_file(url, resource, file_path);
+}
+
 bool download_available(void)
 {
 	return true;
@@ -143,6 +152,8 @@ typedef int CURLoption;
 #define CURLOPT_WRITEFUNCTION 20011
 #define CURLOPT_WRITEDATA 10001
 #define CURLOPT_CAINFO 10065
+#define CURLOPT_XFERINFOFUNCTION 20219
+#define CURLOPT_XFERINFODATA 10057
 
 static void *libcurl = NULL;
 static CURL* (*ptr_curl_easy_init)(void);
@@ -235,6 +246,84 @@ const char *download_file(const char *url, const char *resource, const char *fil
 	ptr_curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, file);
 
 	CURLcode result = ptr_curl_easy_perform(curl_handle);
+	if (result != CURLE_OK)
+	{
+		fclose(file);
+		remove(file_path);
+		const char *err_msg = str_dup(ptr_curl_easy_strerror(result));
+		ptr_curl_easy_cleanup(curl_handle);
+		return err_msg;
+	}
+
+	fclose(file);
+	ptr_curl_easy_cleanup(curl_handle);
+	return NULL;
+}
+
+#ifndef C3_LINK_CURL
+typedef long long curl_off_t;
+#endif
+
+typedef struct
+{
+	void (*fn)(const char *, int, int);
+	const char *label;
+} ProgressCtx;
+
+static int curl_xfer_cb(void *clientp, curl_off_t dltotal, curl_off_t dlnow,
+                         curl_off_t ultotal, curl_off_t ulnow)
+{
+	(void)ultotal; (void)ulnow;
+	ProgressCtx *ctx = (ProgressCtx *)clientp;
+	if (!ctx->fn) return 0;
+	int percent = (dltotal > 0) ? (int)((dlnow * 100) / dltotal) : 0;
+	ctx->fn(ctx->label, percent, 0);
+	return 0;
+}
+
+const char *download_file_with_progress(const char *url, const char *resource,
+                                         const char *file_path,
+                                         void (*progress_fn)(const char *, int, int))
+{
+	if (!load_curl())
+	{
+		return "This build of c3c lacks cURL support and cannot download files automatically.\n"
+		       "Please ensure libcurl is installed on your system.";
+	}
+
+	CURL *curl_handle = ptr_curl_easy_init();
+	if (!curl_handle) return "Could not initialize cURL subsystem.";
+
+	FILE *file = fopen(file_path, "w+b");
+	if (!file)
+	{
+		ptr_curl_easy_cleanup(curl_handle);
+		return str_printf("Failed to open file '%s' for output", file_path);
+	}
+
+	ProgressCtx ctx = { .fn = progress_fn, .label = "Downloading" };
+
+	const char *total_url = str_printf("%s%s", url, resource);
+	ptr_curl_easy_setopt(curl_handle, CURLOPT_URL, total_url);
+	ptr_curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "C3C/1.0");
+	ptr_curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
+	ptr_curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 0L);
+	ptr_curl_easy_setopt(curl_handle, CURLOPT_FAILONERROR, 1L);
+	ptr_curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
+	ptr_curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, file);
+	if (progress_fn)
+	{
+		ptr_curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 0L);
+		ptr_curl_easy_setopt(curl_handle, CURLOPT_XFERINFOFUNCTION, curl_xfer_cb);
+		ptr_curl_easy_setopt(curl_handle, CURLOPT_XFERINFODATA, &ctx);
+	}
+	else
+	{
+		ptr_curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1L);
+	}
+
+	CURLcode result = ptr_curl_easy_perform(curl_handle);
+	if (progress_fn) printf("\n"); // newline after the progress bar
 	if (result != CURLE_OK)
 	{
 		fclose(file);
