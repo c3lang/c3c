@@ -43,7 +43,7 @@ typedef enum
 	COMMAND_UNIT_TEST,
 	COMMAND_PRINT_SYNTAX,
 	COMMAND_PROJECT,
-	COMMAND_FETCH,
+	COMMAND_FETCH_SDK,
 } CompilerCommand;
 
 typedef enum

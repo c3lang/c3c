@@ -495,9 +495,9 @@ add_executable(c3c
         src/compiler/decltable.c
         src/compiler/methodtable.c
         src/compiler/mac_support.c
-        src/utils/fetch_sdk.c
-        src/utils/fetch_sdk/fetch_winsdk.c
-        src/utils/fetch_sdk/fetch_android_ndk.c
+        src/utils/fetch_sdk/fetch_sdk.c
+        src/utils/fetch_sdk/windows_sdk.c
+        src/utils/fetch_sdk/android_ndk.c
         src/compiler/windows_support.c
         src/compiler/codegen_asm.c
         src/compiler/asm_target.c

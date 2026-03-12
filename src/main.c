@@ -132,7 +132,7 @@ int main_real(int argc, const char *argv[])
 					break;
 			}
 			break;
-		case COMMAND_FETCH:
+		case COMMAND_FETCH_SDK:
 		{
 			fetch_sdk(&build_options);
 			break;

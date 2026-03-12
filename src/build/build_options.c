@@ -71,7 +71,7 @@ static void usage(bool full)
 	print_cmd("dynamic-lib <file1> [<file2> ...]", "Compile files without a project into a dynamic library.");
 	print_cmd("vendor-fetch <library> ...", "Fetches one or more libraries from the vendor collection.");
 	print_cmd("project <subcommand> ...", "Manipulate or view project files.");
-	print_cmd("fetch <windows-sdk|macos-sdk|android-ndk> ...", "Fetches the SDK required for cross-compiling.");
+	print_cmd("fetch-sdk <windows|macos|android> ...", "Fetches the SDK required for cross-compiling.");
 	PRINTF("");
 	full ? PRINTF("Options:") : PRINTF("Common options:");
 	print_opt("-h -hh --help", "Print the help, -h for the normal options, -hh for the full help.");
@@ -244,7 +244,7 @@ static void usage(bool full)
 
 static void fetch_windows_usage()
 {
-	PRINTF("Usage: %s fetch <windows-sdk|msvc|win> [<options>]", args[0]);
+	PRINTF("Usage: %s fetch-sdk windows [<options>]", args[0]);
 	PRINTF("");
 	PRINTF("Fetches the MSVC SDK for Windows cross-compilation.");
 	PRINTF("");
@@ -258,7 +258,7 @@ static void fetch_windows_usage()
 
 static void fetch_android_usage()
 {
-	PRINTF("Usage: %s fetch <android-ndk|android|ndk> [<options>]", args[0]);
+	PRINTF("Usage: %s fetch-sdk android [<options>]", args[0]);
 	PRINTF("");
 	PRINTF("Fetches the Android NDK.");
 	PRINTF("");
@@ -266,44 +266,44 @@ static void fetch_android_usage()
 
 static void fetch_macos_usage()
 {
-	PRINTF("Usage: %s fetch <macos-sdk|macos|mac> [<options>]", args[0]);
+	PRINTF("Usage: %s fetch-sdk macos [<options>]", args[0]);
 	PRINTF("");
 	PRINTF("Fetches the MacOS SDK (unimplemented).");
 	PRINTF("");
 }
 
-static void fetch_usage()
+static void fetch_sdk_usage()
 {
-	PRINTF("Usage: %s fetch <windows-sdk|macos-sdk|android-ndk> [<options>]", args[0]);
+	PRINTF("Usage: %s fetch-sdk <windows|macos|android> [<options>]", args[0]);
 	PRINTF("");
 	PRINTF("Fetches the SDK required for cross-compiling.");
 	PRINTF("");
 	PRINTF("Available targets:");
-	PRINTF("  windows-sdk     Fetches the MSVC SDK for Windows cross-compilation");
-	PRINTF("  macos-sdk       Fetches the MacOS SDK (unimplemented)");
-	PRINTF("  android-ndk     Fetches the Android NDK");
+	PRINTF("  windows     Fetches the MSVC SDK");
+	PRINTF("  macos       Fetches the MacOS SDK (unimplemented)");
+	PRINTF("  android     Fetches the Android NDK");
 	PRINTF("");
-	PRINTF("Use 'c3c fetch <target> --help' for target specific options.");
+	PRINTF("Use 'c3c fetch-sdk <target> --help' for target specific options.");
 	PRINTF("");
 }
 
-static void fetch_usage_dispatch(const char *target)
+static void fetch_sdk_usage_dispatch(const char *target)
 {
-	if (str_eq(target, "windows-sdk") || str_eq(target, "win") || str_eq(target, "windows") || str_eq(target, "msvc"))
+	if (str_eq(target, "windows") || str_eq(target, "win") || str_eq(target, "msvc"))
 	{
 		fetch_windows_usage();
 	}
-	else if (str_eq(target, "android-ndk") || str_eq(target, "android") || str_eq(target, "ndk"))
+	else if (str_eq(target, "android") || str_eq(target, "ndk"))
 	{
 		fetch_android_usage();
 	}
-	else if (str_eq(target, "macos-sdk") || str_eq(target, "mac") || str_eq(target, "macos"))
+	else if (str_eq(target, "macos") || str_eq(target, "mac"))
 	{
 		fetch_macos_usage();
 	}
 	else
 	{
-		fetch_usage();
+		fetch_sdk_usage();
 	}
 }
 
@@ -566,27 +566,61 @@ static void parse_command(BuildOptions *options)
 		parse_project_options(options);
 		return;
 	}
-	if (arg_match("fetch"))
+	if (arg_match("fetch-msvc"))
 	{
-		options->command = COMMAND_FETCH;
+		// Deprecated: redirect to fetch-sdk windows
+		PRINTF("WARNING: 'fetch-msvc' is deprecated. Use 'c3c fetch-sdk windows' instead.");
+		options->command = COMMAND_FETCH_SDK;
+		options->fetch_sdk_target = "windows";
+		while (!at_end() && next_is_opt())
+		{
+			next_arg();
+			if (match_longopt("accept-license")) { options->msvc_accept_license = true; continue; }
+			if (match_longopt("show-versions")) { options->msvc_show_versions = true; continue; }
+			if (match_longopt("msvc-version"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: msvc-version needs a version.");
+				options->msvc_version_override = next_arg();
+				continue;
+			}
+			if (match_longopt("sdk-version"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: sdk-version needs a version.");
+				options->msvc_sdk_version_override = next_arg();
+				continue;
+			}
+			if (current_arg[0] == '-' && current_arg[1] == 'v') { options->verbosity_level = 1; continue; }
+			if (match_shortopt("q")) { options->verbosity_level = -1; continue; }
+			if (match_longopt("help") || match_shortopt("h"))
+			{
+				fetch_windows_usage();
+				exit_compiler(COMPILER_SUCCESS_EXIT);
+			}
+			FAIL_WITH_ERR("Unknown option '%s' for fetch-msvc", current_arg);
+		}
+		return;
+	}
+	if (arg_match("fetch-sdk"))
+	{
+		options->command = COMMAND_FETCH_SDK;
 		if (!at_end() && next_is_opt())
 		{
 			next_arg();
 			if (match_longopt("help") || match_shortopt("h"))
 			{
-				fetch_usage();
+				fetch_sdk_usage();
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
 			arg_index--; // backtrack if it wasn't help
 		}
 		if (at_end() || next_is_opt())
-			FAIL_WITH_ERR("fetch requires a target (windows-sdk, macos-sdk, android-ndk).");
+			FAIL_WITH_ERR("fetch-sdk requires a target (windows, macos, android).");
 		options->fetch_sdk_target = next_arg();
 
 		while (!at_end() && next_is_opt())
 		{
 			next_arg();
-			if (str_eq(options->fetch_sdk_target, "windows-sdk") || str_eq(options->fetch_sdk_target, "win") || str_eq(options->fetch_sdk_target, "windows"))
+			if (str_eq(options->fetch_sdk_target, "windows") || str_eq(options->fetch_sdk_target, "win") || str_eq(options->fetch_sdk_target, "msvc"))
 			{
 				if (match_longopt("accept-license"))
 				{
@@ -625,16 +659,16 @@ static void parse_command(BuildOptions *options)
 			}
 			if (match_longopt("help") || match_shortopt("h"))
 			{
-				fetch_usage_dispatch(options->fetch_sdk_target);
+				fetch_sdk_usage_dispatch(options->fetch_sdk_target);
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
-			FAIL_WITH_ERR("Unknown option '%s' for fetch", current_arg);
+			FAIL_WITH_ERR("Unknown option '%s' for fetch-sdk", current_arg);
 		}
 		if (!at_end())
 		{
 			next_arg();
-			FAIL_WITH_ERR("fetch does not accept further arguments. Failed on: %s.",
-			                         current_arg);
+			FAIL_WITH_ERR("fetch-sdk does not accept further arguments. Failed on: %s.",
+			              current_arg);
 		}
 		return;
 	}
