@@ -83,7 +83,7 @@ char *fetch_android_ndk(BuildOptions *options)
 	char *zpath = (char *)file_append_path(tmp_dir_base, "android_ndk.zip");
 
 	printf("Downloading Android NDK r29...\n");
-	const char *err = download_file_with_progress(url, "", zpath, print_progress);
+	const char *err = download_file(url, "", zpath, use_ansi());
 	if (err) error_exit("Download failed: %s", err);
 
 	printf("Extracting NDK...\n");

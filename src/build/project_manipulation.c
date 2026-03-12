@@ -6,6 +6,8 @@
 #define PRINTFN(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
 #define PRINTF(string, ...) fprintf(stdout, string, ##__VA_ARGS__) // NOLINT
 
+bool use_ansi(void);
+
 const char** get_project_dependency_directories()
 {
 	const char *filename;
@@ -329,16 +331,12 @@ void fetch_project(BuildOptions* options)
 				break;
 			}
 
-			printf("Fetching missing library '%s'...", dep);
+			printf("Fetching missing library '%s'...\n", dep);
 			fflush(stdout);
 
-			const char *error = vendor_fetch_single(dep, options->vendor_download_path);
+			const char *error = vendor_fetch_single(dep, options->vendor_download_path, use_ansi());
 
-			if (!error)
-			{
-				puts(" finished.");
-			}
-			else
+			if (error)
 			{
 				printf("Failed: '%s'\n", error);
 			}

@@ -26,8 +26,22 @@ char *get_cache_output_path(const char *subdir)
 
 void print_progress(const char *label, int percent, int verbose_output)
 {
+	static int last_percent = -1;
 	if (verbose_output > 0) return;
+	if (percent == last_percent) return;
+	last_percent = percent;
+
 	if (percent > 100) percent = 100;
+
+	if (!use_ansi())
+	{
+		if (percent % 10 == 0)
+		{
+			printf("%s... %d%%\n", label, percent);
+			fflush(stdout);
+		}
+		return;
+	}
 
 	int width = 40;
 	printf("\r%s [", label);

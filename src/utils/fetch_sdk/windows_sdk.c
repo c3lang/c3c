@@ -96,7 +96,7 @@ static bool download_with_verification(const char *url, const char *name,
 		printf("%s ... downloading", name);
 		fflush(stdout);
 	}
-	const char *err = download_file(url, "", dst);
+	const char *err = download_file(url, "", dst, false);
 	if (err)
 	{
 		if (verbose_level >= 1) printf(" ... failed.\n");
@@ -307,7 +307,7 @@ static JSONObject *load_manifest(const char *url, const char *path, const char *
 		printf("Downloading %s manifest...\n", description);
 	}
 
-	const char *err = download_file(url, "", path);
+	const char *err = download_file(url, "", path, false);
 	if (err) error_exit("Failed to download %s manifest: %s", description, err);
 	if (verbose_level >= 1)
 	{
@@ -359,9 +359,8 @@ static void select_versions(BuildOptions *options, JSONObject *msvc_vers, JSONOb
 static bool check_license(bool accept_all)
 {
 	if (accept_all) return true;
-	printf("To fetch the MSVC SDK you must accept the Microsoft license:\n"
-	       "  https://visualstudio.microsoft.com/license-terms/vs2022-ga-diagnosticbuildtools/\n"
-	       "Do you accept? (Y/n): ");
+	printf("Do you accept the license? https://visualstudio.microsoft.com/license-terms/vs2022-ga-diagnosticbuildtools/"
+	       " (Y/n): ");
 	char c = (char)getchar();
 	return (c == 'y' || c == 'Y' || c == '\n');
 }
