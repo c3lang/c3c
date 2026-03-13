@@ -244,6 +244,57 @@ fn void test_mat3_inverse()
 	assert(math::round_to_decimals((double[<9>])id.m, 2) == (double[<9>])ident.m);
 }
 
+fn void test_mat4_z_rotation()
+{
+	double angle = math::PI * 0.5;
+
+	Matrix4 m = MATRIX4_IDENTITY.rotate_z(angle);
+
+	double[<4>] v = { 1, 0, 0, 1 };
+	double[<4>] r = m * v;
+
+	assert(math::abs(r.x) < 1e-6);
+	assert(math::abs(r.y - 1) < 1e-6);
+	assert(math::abs(r.z) < 1e-6);
+}
+
+fn void test_mat4_x_rotation()
+{
+	double angle = math::PI * 0.5;
+
+	Matrix4 m = MATRIX4_IDENTITY.rotate_x(angle);
+
+	// Y axis -> Z axis
+	double[<4>] v1 = { 0, 1, 0, 1 };
+	double[<4>] r1 = m * v1;
+
+	assert(math::abs(r1.x) < 1e-6);
+	assert(math::abs(r1.y) < 1e-6);
+	assert(math::abs(r1.z - 1) < 1e-6);
+
+	// Z axis -> -Y axis
+	double[<4>] v2 = { 0, 0, 1, 1 };
+	double[<4>] r2 = m * v2;
+
+	assert(math::abs(r2.x) < 1e-6);
+	assert(math::abs(r2.y + 1) < 1e-6);
+	assert(math::abs(r2.z) < 1e-6);
+}
+
+fn void test_mat4_y_rotation()
+{
+	double angle = math::PI * 0.5;
+
+	Matrix4 m = MATRIX4_IDENTITY.rotate_y(angle);
+
+	double[<4>] v = { 0, 0, 1, 1 };
+	double[<4>] r = m * v;
+
+	assert(math::abs(r.x - 1) < 1e-6);
+	assert(math::abs(r.y) < 1e-6);
+	assert(math::abs(r.z) < 1e-6);
+}
+
 fn void test_mat4_inverse()
 {
 	Matrix4 m = MATRIX4_IDENTITY

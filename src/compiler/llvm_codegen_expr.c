@@ -6908,8 +6908,8 @@ static void llvm_emit_swizzle_from_value(GenContext *c, LLVMValueRef vector_valu
 {
 	LLVMTypeRef result_type = llvm_get_type(c, expr->type);
 	unsigned vec_len = LLVMGetVectorSize(result_type);
-	LLVMValueRef mask_val[4];
-	ASSERT(vec_len <= 4);
+	LLVMValueRef mask_val[256];
+	ASSERT(vec_len <= 256);
 	const char *sw_ptr = expr->swizzle_expr.swizzle;
 	for (unsigned i = 0; i < vec_len; i++)
 	{
