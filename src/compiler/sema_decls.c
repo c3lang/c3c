@@ -5700,6 +5700,7 @@ bool sema_analyse_method_register(SemaContext *context, Decl *method)
 
 bool sema_compare_weak_decl(SemaContext *context, Decl *replaced, Decl *replacement)
 {
+	if (!sema_analyse_decl(context, replacement)) return false;
 	ASSERT(replaced->decl_kind == replacement->decl_kind);
 	Type *replaced_type = replaced->type;
 	Type *replacement_type = replacement->type;
