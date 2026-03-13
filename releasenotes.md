@@ -11,6 +11,7 @@
 - `@weaklink` for just affecting linkage.
 - Add a fully static build of `c3c` for Linux. #2949
 - `@weak` now allows direct overriding of `@weak` definitions with a real definition.
+- Unified SDK fetching under `c3c fetch-sdk <target>` (windows, android) and added support for automatic Android NDK (r29) download. Better progress bar. #3019
 - Improved Linux backtrace readability by stripping internal panic and runtime startup frames. #3008
 - Added repetition compression for deep recursive stacks in backtraces. #3008
 
@@ -26,6 +27,8 @@
 - Make DateTime and DateTimeTz `Printable`.
 - Add `to_format` functionality for DateTime.
 - `SubProcess`/`process::create`/`process::execute_stdout_to_buffer` deprecated, replaced by `Process`/`process:spawn`/`process::run_capture_stdout`.
+- Add support for AES-encrypted Zip files (AE-1 and AE-2 formats).
+- Add `Argon2` memory-hard hashing with associated tests. #2773
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
@@ -43,6 +46,7 @@
 - Compiler does not propagate @noreturn through macros using short declaration syntax #3011
 - Debug info emitted on `-Os` #3015
 - @assert_leak() would not work properly with `--safe=no` #3012.
+- Duplicate symbols when building executables on Termux. #2984
 
 ## 0.7.10 Change list
 
