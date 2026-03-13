@@ -622,18 +622,6 @@ macro tanh(x) => (exp(2.0 * x) - 1.0) / (exp(2.0 * x) + 1.0);
 *>
 macro trunc(x) => $$trunc(x);
 
-macro lerp(x, y, amount) @private => x + (y - x) * amount;
-macro reflect(x, y) @private
-{
-	var dot = x.dot(y);
-	return x - 2 * y * dot;
-}
-macro normalize(x) @private
-{
-	var len = x.length();
-	if (len == 0) return x;
-	return x * (1 / len);
-}
 
 <*
  Use a mask to select values from either "then" or "else" vectors.
@@ -1064,15 +1052,6 @@ macro next_power_of_2(x)
 	return v + 1;
 }
 
-macro equals_vec(v1, v2) @private
-{
-	var $elements = v1.len;
-	var abs_diff = math::abs(v1 - v2);
-	var abs_v1 = math::abs(v1);
-	var abs_v2 = math::abs(v2);
-	$typeof(abs_v2) eps = 1;
-	return abs_diff.comp_le(FLOAT_EPSILON * math::max(abs_v1, abs_v2, eps)).and();
-}
 
 macro uint double.high_word(double d) => (uint)(bitcast(d, ulong) >> 32);
 macro uint double.low_word(double d) => (uint)bitcast(d, ulong);
@@ -1244,11 +1223,6 @@ macro iota($Type)
 	return $val;
 }
 
-macro mul_div_helper(val, mul, div) @private
-{
-	var $Type = $typeof(val);
-	return ($Type)(($Type)mul * (val / ($Type)div) + ($Type)mul * (val % ($Type)div) / ($Type)div);
-}
 macro char char.muldiv(self, char mul, char div) => mul_div_helper(self, mul, div);
 macro ichar ichar.muldiv(self, ichar mul, ichar div) => mul_div_helper(self, mul, div);
 macro short short.muldiv(self, short mul, short div) => mul_div_helper(self, mul, div);
@@ -1258,10 +1232,6 @@ macro uint uint.muldiv(self, uint mul, uint div) => mul_div_helper(self, mul, di
 macro long long.muldiv(self, long mul, long div) => mul_div_helper(self, mul, div);
 macro ulong ulong.muldiv(self, ulong mul, ulong div) => mul_div_helper(self, mul, div);
 
-macro bool @is_same_vector_or_scalar(#vector_value, #vector_or_scalar) @private
-{
-	return (values::@is_vector(#vector_or_scalar) &&& values::@is_same_vector_type(#vector_value, #vector_or_scalar)) ||| values::@is_int(#vector_or_scalar);
-}
 
 <*
  @require @is_same_vector_or_scalar(self, mul) : `mul must be a vector of the same type as self, or be an integer scalar`
@@ -1311,27 +1281,6 @@ macro long[<*>] long[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, di
 *>
 macro ulong[<*>] ulong[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
 
-<*
- @require types::is_int($typeof(a)) : `The input must be an integer`
- @require types::is_int($typeof(b)) : `The input must be an integer`
-*>
-macro _gcd(a, b) @private
-{
-	if (a == 0) return b;
-	if (b == 0) return a;
-
-	var $Type = $typeof(a);
-	$Type r, aa, ab;
-	aa = abs(a);
-	ab = abs(b);
-	while (ab != 0)
-	{
-		r = aa % ab;
-		aa = ab;
-		ab = r;
-	}
-	return aa;
-}
 
 <*
  Calculate the least common multiple for the provided arguments.
@@ -1367,4 +1316,63 @@ macro gcd(...)
 		$endif
 	$endfor
 	return result;
+}
+
+module std::math @private;
+
+<*
+ @require types::is_int($typeof(a)) : `The input must be an integer`
+ @require types::is_int($typeof(b)) : `The input must be an integer`
+*>
+macro _gcd(a, b)
+{
+	if (a == 0) return b;
+	if (b == 0) return a;
+
+	var $Type = $typeof(a);
+	$Type r, aa, ab;
+	aa = abs(a);
+	ab = abs(b);
+	while (ab != 0)
+	{
+		r = aa % ab;
+		aa = ab;
+		ab = r;
+	}
+	return aa;
+}
+
+macro lerp(x, y, amount) => x + (y - x) * amount;
+
+macro reflect(x, y)
+{
+	return x - 2 * y * x.dot(y);
+}
+
+macro normalize(x)
+{
+	var len = x.length();
+	if (len == 0) return x;
+	return x * (1 / len);
+}
+
+macro equals_vec(v1, v2)
+{
+	var $elements = v1.len;
+	var abs_diff = math::abs(v1 - v2);
+	var abs_v1 = math::abs(v1);
+	var abs_v2 = math::abs(v2);
+	$typeof(abs_v2) eps = 1;
+	return abs_diff.comp_le(FLOAT_EPSILON * math::max(abs_v1, abs_v2, eps)).and();
+}
+
+macro bool @is_same_vector_or_scalar(#vector_value, #vector_or_scalar)
+{
+	return (values::@is_vector(#vector_or_scalar) &&& values::@is_same_vector_type(#vector_value, #vector_or_scalar)) ||| values::@is_int(#vector_or_scalar);
+}
+
+macro mul_div_helper(val, mul, div)
+{
+	var $Type = $typeof(val);
+	return ($Type)(($Type)mul * (val / ($Type)div) + ($Type)mul * (val % ($Type)div) / ($Type)div);
 }

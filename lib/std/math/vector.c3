@@ -31,13 +31,15 @@ macro double[<2>] double[<2>].transform(self, Matrix4 mat) => transform2(self, m
 macro double[<2>] double[<2>].rotate(self, double angle) => rotate(self, angle);
 macro double[<2>] double[<2>].angle(self, double[<2>] v2) => math::atan2(v2.y, v2.x) - math::atan2(self.y, self.x);
 
-macro float[<*>] float[<*>].clamp_mag(self, float min, float max) => clamp_magnitude(self, min, max);
-macro double[<*>] double[<*>].clamp_mag(self, double min, double max) => clamp_magnitude(self, min, max);
+macro float[<*>] float[<*>].clamp_mag(self, float min, float max) => clamp_magnitude{$typeof(self)}(self, min, max);
+macro double[<*>] double[<*>].clamp_mag(self, double min, double max) => clamp_magnitude{$typeof(self)}(self, min, max);
 
-macro float[<*>] float[<*>].towards(self, float[<*>] target, float max_distance) => towards(self, target, max_distance);
-macro double[<*>] double[<*>].towards(self, double[<*>] target, double max_distance) => towards(self, target, max_distance);
+macro float[<*>] float[<*>].towards(self, float[<*>] target, float max_distance) => towards{$typeof(self)}(self, target, max_distance);
+macro double[<*>] double[<*>].towards(self, double[<*>] target, double max_distance) => towards{$typeof(self)}(self, target, max_distance);
 
+fn float float[<2>].cross(self, float[<2>] v2) => cross2(self, v2);
 fn float[<3>] float[<3>].cross(self, float[<3>] v2) => cross3(self, v2);
+fn double double[<2>].cross(self, double[<2>] v2) => cross2(self, v2);
 fn double[<3>] double[<3>].cross(self, double[<3>] v2) => cross3(self, v2);
 
 fn float[<3>] float[<3>].perpendicular(self) => perpendicular3(self);
@@ -67,23 +69,22 @@ fn double[<3>] double[<3>].unproject(self, Matrix4 projection, Matrix4 view) => 
 fn void ortho_normalize(float[<3>]* v1, float[<3>]* v2) => ortho_normalize3(v1, v2);
 fn void ortho_normalized(double[<3>]* v1, double[<3>]* v2) => ortho_normalize3(v1, v2);
 
-// -- private helpers
+module std::math::vector @private;
+import std::math;
 
-macro towards(v, target, max_distance) @private
+fn TowardsType towards(TowardsType v, TowardsType target, $typefrom(TowardsType.inner) max_distance) <TowardsType>
 {
-	var delta = target - v;
-	var square = delta.sq_magnitude();
+	TowardsType delta = target - v;
+	var square @safeinfer = delta.sq_magnitude();
 
 	if (square == 0 || (max_distance >= 0 && (square <= max_distance * max_distance))) return target;
 
-	var dist = math::sqrt(square);
-
-	return v + delta * max_distance / dist;
+	return v + delta * max_distance / math::sqrt(square);
 }
 
-macro clamp_magnitude(v, min, max) @private
+fn ClampType clamp_magnitude(ClampType v, $typefrom(ClampType.inner) min, $typefrom(ClampType.inner) max) <ClampType>
 {
-	var length = v.sq_magnitude();
+	var length @safeinfer = v.sq_magnitude();
 	if (length > 0)
 	{
 		length = math::sqrt(length);
@@ -94,14 +95,14 @@ macro clamp_magnitude(v, min, max) @private
 	return v;
 }
 
-macro rotate(v, angle) @private
+macro rotate(v, angle)
 {
 	var c = math::cos(angle);
 	var s = math::sin(angle);
 	return ($typeof(v)) { v[0] * c - v[1] * s, v[0] * s + v[1] * c };
 }
 
-macro perpendicular3(v) @private
+macro perpendicular3(v)
 {
 	var min = math::abs(v[0]);
 	$typeof(v) cardinal_axis = { 1, 0, 0 };
@@ -120,21 +121,26 @@ macro perpendicular3(v) @private
 	return cross3(v, cardinal_axis);
 }
 
-macro cross3(v1, v2) @private
+macro cross2(v1, v2)
+{
+	return v1.x * v2.y - v1.y * v2.x;
+}
+
+macro cross3(v1, v2)
 {
 	var a = v1.yzx * v2.zxy;
 	var b = v1.zxy * v2.yzx;
 	return a - b;
 }
 
-macro transform2(v, mat) @private
+macro transform2(v, mat)
 {
 	return ($typeof(v)) {
 		mat.m00 * v[0] + mat.m10 * v[1] + mat.m30 ,
 		mat.m01 * v[0] + mat.m11 * v[1] + mat.m31 };
 }
 
-macro transform3(v, mat) @private
+macro transform3(v, mat)
 {
 	return ($typeof(v)){
 		mat.m00 * v[0] + mat.m10 * v[1] + mat.m20 * v[2] + mat.m30,
@@ -144,21 +150,21 @@ macro transform3(v, mat) @private
 }
 
 
-macro angle3(v1, v2) @private
+macro angle3(v1, v2)
 {
 	var len = v1.cross(v2).length();
 	var dot = v1.dot(v2);
 	return math::atan2(len, dot);
 }
 
-macro void ortho_normalize3(v1, v2) @private
+macro void ortho_normalize3(v1, v2)
 {
 	var v1n = *v1 = v1.normalize();
 	var vn1 = v1n.cross(*v2).normalize();
 	*v2 = v1n.cross(vn1);
 }
 
-macro rotate_axis_angle(v, axis, angle) @private
+macro rotate_axis_angle(v, axis, angle)
 {
 	axis = axis.normalize();
 
@@ -172,8 +178,9 @@ macro rotate_axis_angle(v, axis, angle) @private
 	return v + wv + wwv;
 }
 
-macro unproject3(v, m1, m2) @private
+macro unproject3(v, m1, m2)
 {
+
 return v;
 /*
 	var view_proj = m1.mul(m2);
@@ -196,7 +203,7 @@ return v;
 	};*/
 }
 
-macro barycenter3(p, a, b, c) @private
+macro barycenter3(p, a, b, c)
 {
 	var v0 = b - a;
 	var v1 = c - a;
@@ -212,7 +219,7 @@ macro barycenter3(p, a, b, c) @private
 	return ($typeof(p)){ 1 - y - z, y, z };
 }
 
-macro refract3(v, n, r) @private
+macro refract3(v, n, r)
 {
 	var dot = v.dot(n);
 	var d = 1 - r * r * (1 - dot * dot);
