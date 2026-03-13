@@ -599,7 +599,9 @@ static void parse_command(BuildOptions *options)
 				fetch_windows_usage();
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
-			FAIL_WITH_ERR("Unknown option '%s' for fetch-msvc", current_arg);
+			fprintf(stderr, "Error: Unknown option '%s' for fetch-msvc\n\n", current_arg);
+			fetch_windows_usage();
+			exit_compiler(EXIT_FAILURE);
 		}
 		return;
 	}
@@ -617,7 +619,11 @@ static void parse_command(BuildOptions *options)
 			arg_index--; // backtrack if it wasn't help
 		}
 		if (at_end() || next_is_opt())
-			FAIL_WITH_ERR("fetch-sdk requires a target (windows, macos, android).");
+		{
+			fprintf(stderr, "Error: fetch-sdk requires a target (windows, macos, android).\n\n");
+			fetch_sdk_usage();
+			exit_compiler(EXIT_FAILURE);
+		}
 		options->fetch_sdk_target = next_arg();
 
 		while (!at_end() && next_is_opt())
@@ -673,13 +679,16 @@ static void parse_command(BuildOptions *options)
 				fetch_sdk_usage_dispatch(options->fetch_sdk_target);
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
-			FAIL_WITH_ERR("Unknown option '%s' for fetch-sdk", current_arg);
+			fprintf(stderr, "Error: Unknown option '%s' for fetch-sdk %s\n\n", current_arg, options->fetch_sdk_target);
+			fetch_sdk_usage_dispatch(options->fetch_sdk_target);
+			exit_compiler(EXIT_FAILURE);
 		}
 		if (!at_end())
 		{
 			next_arg();
-			FAIL_WITH_ERR("fetch-sdk does not accept further arguments. Failed on: %s.",
-			              current_arg);
+			fprintf(stderr, "Error: fetch-sdk does not accept further arguments. Failed on: %s.\n\n", current_arg);
+			fetch_sdk_usage_dispatch(options->fetch_sdk_target);
+			exit_compiler(EXIT_FAILURE);
 		}
 		return;
 	}
