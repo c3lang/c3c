@@ -47,6 +47,7 @@
 - Debug info emitted on `-Os` #3015
 - @assert_leak() would not work properly with `--safe=no` #3012.
 - Duplicate symbols when building executables on Termux. #2984
+- Fix segmentation fault in sema_compare_weak_decl when replacing a function declaration from a .c3i file #3031
 
 ## 0.7.10 Change list
 
