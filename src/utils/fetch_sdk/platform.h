@@ -1,19 +1,16 @@
 #pragma once
+#include "../lib.h"
 
-#if defined(_WIN32) || defined(_WIN64)
+#if PLATFORM_WINDOWS
 	#define WIN32_LEAN_AND_MEAN
 	#define TokenType WindowsTokenType
 	#define MAX_PRIORITY WindowsMAX_PRIORITY
 	#include <windows.h>
 	#undef TokenType
 	#undef MAX_PRIORITY
-	#define STRCASECMP _stricmp
-	#define STRNCASECMP _strnicmp
 #else
 	#include <dirent.h>
 	#include <strings.h>
-	#define STRCASECMP strcasecmp
-	#define STRNCASECMP strncasecmp
 #endif
 
 #ifndef MAX_PATH
