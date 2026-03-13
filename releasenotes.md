@@ -11,6 +11,8 @@
 - `@weaklink` for just affecting linkage.
 - Add a fully static build of `c3c` for Linux. #2949
 - `@weak` now allows direct overriding of `@weak` definitions with a real definition.
+- Improved Linux backtrace readability by stripping internal panic and runtime startup frames. #3008
+- Added repetition compression for deep recursive stacks in backtraces. #3008
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
