@@ -25,6 +25,7 @@
 - Add `to_format` functionality for DateTime.
 - `SubProcess`/`process::create`/`process::execute_stdout_to_buffer` deprecated, replaced by `Process`/`process:spawn`/`process::run_capture_stdout`.
 - Add support for AES-encrypted Zip files (AE-1 and AE-2 formats).
+- Add `Argon2` memory-hard hashing with associated tests. #2773
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
