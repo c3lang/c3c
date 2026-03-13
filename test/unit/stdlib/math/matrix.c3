@@ -138,7 +138,7 @@ fn void test_mat4_lookat()
 	assert(math::round_to_decimals((double[<16>])look_at_f.m, 4) == math::round_to_decimals((double[<16>])result_f.m, 4));
 }
 
-fn void test_mat4_perspective()
+fn void test_mat4_perspective() @if(!$feature(OLD_MATRIX))
 {
 	Matrix4 perspective = matrix4_perspective(math::deg_to_rad(90), 1, 1, 10);
 	Matrix4 res = { .m00 = 1, .m11 = 1, .m22 = -1.111111, .m32 = -1, .m23 = -1.111111 };
@@ -159,7 +159,7 @@ fn void test_mat4_perspective()
 
 }
 
-fn void test_mat4_ortho()
+fn void test_mat4_ortho() @if(!$feature(OLD_MATRIX))
 {
 	Matrix4 o = matrix4_ortho(-1, 1, -1, 1, 1, 10);
 	Matrix4 res = { 1.0,0,0,0, 0,1.0,0,0, 0,0,0.111111,0, -0,0,-1.111111,1 };
