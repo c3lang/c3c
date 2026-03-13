@@ -9,31 +9,31 @@ c3c \- Compiler for the C3 programming language
 .SH DESCRIPTION
 .B c3c
 is the compiler for the C3 language, providing commands for compilation, project
-management, testing, and distribution. The available commands allow users to 
-compile files, initialize projects, build targets, run benchmarks, clean build 
+management, testing, and distribution. The available commands allow users to
+compile files, initialize projects, build targets, run benchmarks, clean build
 files, and more.
 
 .SH COMMANDS
 .PP
-.B c3c compile 
+.B c3c compile
 \fIfile1\fR [\fIfile2\fR ...]
 .RS
 Compile files without a project into an executable.
 .RE
 .PP
-.B c3c init 
+.B c3c init
 \fIproject name\fR
 .RS
 Initialize a new project structure.
 .RE
 .PP
-.B c3c init-lib 
+.B c3c init-lib
 \fIlibrary name\fR
 .RS
 Initialize a new library structure.
 .RE
 .PP
-.B c3c build 
+.B c3c build
 [\fItarget\fR]
 .RS
 Build the target in the current project.
@@ -54,93 +54,99 @@ Run the unit tests in the current project.
 Clean all build files.
 .RE
 .PP
-.B c3c run 
+.B c3c run
 [\fItarget\fR] [-- [\fIarg1\fR ...]]
 .RS
 Run (and build if needed) the target in the current project.
 .RE
 .PP
-.B c3c dist 
+.B c3c dist
 [\fItarget\fR]
 .RS
 Clean and build a target for distribution.
 .RE
 .PP
-.B c3c directives 
+.B c3c directives
 [\fItarget\fR]
 .RS
 Generate documentation for the target.
 .RE
 .PP
-.B c3c bench 
+.B c3c bench
 [\fItarget\fR]
 .RS
 Benchmark a target.
 .RE
 .PP
-.B c3c clean-run 
+.B c3c clean-run
 [\fItarget\fR] [-- [\fIarg1\fR ...]]
 .RS
 Clean, then run the target.
 .RE
 .PP
-.B c3c compile-run 
+.B c3c compile-run
 \fIfile1\fR [\fIfile2\fR ...] [-- [\fIarg1\fR ...]]
 .RS
 Compile files then immediately run the result.
 .RE
 .PP
-.B c3c compile-only 
+.B c3c compile-only
 \fIfile1\fR [\fIfile2\fR ...]
 .RS
 Compile files but do not perform linking.
 .RE
 .PP
-.B c3c compile-benchmark 
+.B c3c compile-benchmark
 \fIfile1\fR [\fIfile2\fR ...]
 .RS
 Compile files into an executable and run benchmarks.
 .RE
 .PP
-.B c3c compile-test 
+.B c3c compile-test
 \fIfile1\fR [\fIfile2\fR ...]
 .RS
 Compile files into an executable and run unit tests.
 .RE
 .PP
-.B c3c static-lib 
+.B c3c static-lib
 \fIfile1\fR [\fIfile2\fR ...]
 .RS
 Compile files without a project into a static library.
 .RE
 .PP
-.B c3c dynamic-lib 
+.B c3c dynamic-lib
 \fIfile1\fR [\fIfile2\fR ...]
 .RS
 Compile files without a project into a dynamic library.
 .RE
 .PP
-.B c3c headers 
+.B c3c headers
 \fIfile1\fR [\fIfile2\fR ...]
 .RS
 Analyze files and generate C headers for public methods.
 .RE
 .PP
-.B c3c vendor-fetch 
+.B c3c vendor-fetch
 \fIlibrary\fR ...
 .RS
 Fetch one or more libraries from the vendor collection.
 .RE
 .PP
-.B c3c project 
+.B c3c project
 \fIsubcommand\fR ...
 .RS
 Manipulate or view project files.
 .RE
+.PP
+.B c3c fetch
+\fIwindows-sdk|macos-sdk|android-ndk\fR [\fIoptions\fR ...]
+.RS
+Fetches the SDK required for cross-compiling.
+.RE
 
 .SH OPTIONS
 .PP
-.B --stdlib 
+.B --stdlib
 \fIdir\fR
 .RS
 Use this directory as the C3 standard library path.
@@ -151,25 +157,25 @@ Use this directory as the C3 standard library path.
 Do not generate (or require) a main function.
 .RE
 .PP
-.B --libdir 
+.B --libdir
 \fIdir\fR
 .RS
 Add this directory to the C3 library search paths.
 .RE
 .PP
-.B --lib 
+.B --lib
 \fIname\fR
 .RS
 Add this library to the compilation.
 .RE
 .PP
-.B --path 
+.B --path
 \fIdir\fR
 .RS
 Use this as the base directory for the current command.
 .RE
 .PP
-.B --template 
+.B --template
 \fItemplate\fR
 .RS
 Select template for 'init': "exe", "static-lib", "dynamic-lib" or a path.
@@ -178,13 +184,13 @@ Select template for 'init': "exe", "static-lib", "dynamic-lib" or a path.
 .B --about
 Prints a short description of C3.
 .PP
-.B --symtab 
+.B --symtab
 \fIvalue\fR
 .RS
 Sets the preferred symtab size.
 .RE
 .PP
-.B --max-mem 
+.B --max-mem
 \fIvalue\fR
 .RS
 Sets the preferred max memory size.
@@ -213,7 +219,7 @@ Only lex, parse and check.
 Read code from standard in.
 .RE
 .PP
-.B -o 
+.B -o
 \fIfile\fR
 .RS
 Write output to \fIfile\fR.
@@ -243,13 +249,13 @@ Unsafe, high optimization, small code, single module, no debug info, no panic me
 .B -Oz
 Unsafe, high optimization, tiny code, single module, no debug info, no panic messages, no backtrace.
 .PP
-.B -D 
+.B -D
 \fIname\fR
 .RS
 Add feature flag \fIname\fR.
 .RE
 .PP
-.B -U 
+.B -U
 \fIname\fR
 .RS
 Remove feature flag \fIname\fR.
@@ -261,13 +267,13 @@ Remove feature flag \fIname\fR.
 Trust level: none (default), include ($include allowed), full ($exec / exec allowed).
 .RE
 .PP
-.B --output-dir 
+.B --output-dir
 \fIdir\fR
 .RS
 Override general output directory.
 .RE
 .PP
-.B --threads 
+.B --threads
 \fInumber\fR
 .RS
 Set the number of threads to use for compilation.
@@ -288,25 +294,25 @@ Emit no debug info.
 
 
 .PP
-.B -l 
+.B -l
 \fIlibrary\fR
 .RS
 Link with the library provided.
 .RE
 .PP
-.B -L 
+.B -L
 \fIlibrary\fR \fIdir\fR
 .RS
 Append the directory to the linker search paths.
 .RE
 .PP
-.B -z 
+.B -z
 \fIargument\fR
 .RS
 Send the \fIargument\fR as a parameter to the linker.
 .RE
 .PP
-.B --cc 
+.B --cc
 \fIpath\fR
 .RS
 Set C compiler (for C files in projects and use as system linker).
@@ -337,19 +343,19 @@ Link libc and other default libraries (default: yes).
 Output files for the standard library (default: yes).
 .RE
 .PP
-.B --panicfn 
+.B --panicfn
 \fIname\fR
 .RS
 Override the panic function name.
 .RE
 .PP
-.B --testfn 
+.B --testfn
 \fIname\fR
 .RS
 Override the test runner function name.
 .RE
 .PP
-.B --benchfn 
+.B --benchfn
 \fIname\fR
 .RS
 Override the benchmark runner function name.
@@ -461,7 +467,7 @@ Print inputted C3 files to stdout.
 
 
 .PP
-.B --winsdk 
+.B --win-sdk
 \fIdir\fR
 .RS
 Set the directory for Windows system library files for cross-compilation.
@@ -473,42 +479,55 @@ Set the directory for Windows system library files for cross-compilation.
 Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default).
 .RE
 .PP
-.B --windef 
+.B --windef
 \fIfile\fR
 .RS
 Use Windows 'def' file for function exports instead of 'dllexport'.
 .RE
 
 .PP
-.B --macossdk 
+.B --macos-sdk
 \fIdir\fR
 .RS
 Set the directory for the MacOS SDK for cross-compilation.
 .RE
 .PP
-.B --macos-min-version 
+.B --macos-min-version
 \fIver\fR
 .RS
 Set the minimum MacOS version to compile for.
 .RE
 .PP
-.B --macos-sdk-version 
+.B --macos-sdk-version
 \fIver\fR
 .RS
 Set the MacOS SDK version to compile for.
 .RE
 
 .PP
-.B --linux-crt 
+.B --linux-crt
 \fIdir\fR
 .RS
 Set the directory to use for finding crt1.o and related files.
 .RE
 .PP
-.B --linux-crtbegin 
+.B --linux-crtbegin
 \fIdir\fR
 .RS
 Set the directory to use for finding crtbegin.o and related files.
+.RE
+
+.PP
+.B --android-ndk
+\fIdir\fR
+.RS
+Set the directory for the Android NDK for cross-compilation.
+.RE
+.PP
+.B --android-api
+\fIver\fR
+.RS
+Set the Android API version to target.
 .RE
 
 .PP
