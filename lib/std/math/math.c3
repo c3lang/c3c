@@ -698,8 +698,8 @@ macro double double.trunc(double x) => $$trunc(x);
 
 macro double double[<*>].sum(double[<*>] x, double start = 0.0) => $$reduce_fadd(x, start);
 macro double double[<*>].product(double[<*>] x, double start = 1.0) => $$reduce_fmul(x, start);
-macro double double[<*>].max(double[<*>] x) => $$reduce_fmax(x);
-macro double double[<*>].min(double[<*>] x) => $$reduce_fmin(x);
+macro double double[<*>].max(double[<*>] x) => $$reduce_max(x);
+macro double double[<*>].min(double[<*>] x) => $$reduce_min(x);
 macro double[<*>] double[<*>].ceil(double[<*>] x) => $$ceil(x);
 macro double[<*>] double[<*>].clamp(double[<*>] x, double[<*>] lower, double[<*>] upper) => $$max(lower, $$min(x, upper));
 macro double[<*>] double[<*>].copysign(double[<*>] mag, double[<*>] sgn) => $$copysign(mag, sgn);
@@ -1360,10 +1360,22 @@ macro equals_vec(v1, v2)
 {
 	var $elements = v1.len;
 	var abs_diff = math::abs(v1 - v2);
+
 	var abs_v1 = math::abs(v1);
 	var abs_v2 = math::abs(v2);
 	$typeof(abs_v2) eps = 1;
 	return abs_diff.comp_le(FLOAT_EPSILON * math::max(abs_v1, abs_v2, eps)).and();
+}
+
+macro not_equals_vec(v1, v2)
+{
+	var $elements = v1.len;
+	var abs_diff = math::abs(v1 - v2);
+
+	var abs_v1 = math::abs(v1);
+	var abs_v2 = math::abs(v2);
+	$typeof(abs_v2) eps = 1;
+	return abs_diff.comp_ge(FLOAT_EPSILON * math::max(abs_v1, abs_v2, eps)).or();
 }
 
 macro bool @is_same_vector_or_scalar(#vector_value, #vector_or_scalar)

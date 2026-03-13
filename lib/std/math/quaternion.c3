@@ -14,7 +14,8 @@ alias QUATERNIONF_IDENTITY @builtin = quaternion::IDENTITY {float};
 *>
 
 module std::math::quaternion <Real>;
-import std::math::vector;
+import std::math::vector, std::math::matrix;
+
 union QuaternionNumber
 {
 	struct
@@ -50,7 +51,19 @@ fn QuaternionNumber QuaternionNumber.invert(self)
 	return { self.v[0] * -inv_length, self.v[1] * -inv_length, self.v[2] * -inv_length, self.v[3] * inv_length };
 }
 
-fn QuaternionNumber QuaternionNumber.conjugate(&self) => { -self.v.x, -self.v.y, -self.v.z, self.v.w };
+fn QuaternionNumber QuaternionNumber.transform(self, Matrix4x4{Real} transform)
+{
+	Real[<4>] v = self.v;
+	Real[<16>] m = transform.m;
+	return {
+		m[0]  * v.x + m[1]  * v.y + m[2]  * v.z + m[3]  * v.w,
+		m[4]  * v.x + m[5]  * v.y + m[6]  * v.z + m[7]  * v.w,
+		m[8]  * v.x + m[9]  * v.y + m[10] * v.z + m[11] * v.w,
+		m[12] * v.x + m[13] * v.y + m[14] * v.z + m[15] * v.w,
+	};
+}
+
+fn QuaternionNumber QuaternionNumber.conjugate(self) => { -self.v.x, -self.v.y, -self.v.z, self.v.w };
 
 fn QuaternionNumber QuaternionNumber.slerp(self, QuaternionNumber q2, Real amount)
 {

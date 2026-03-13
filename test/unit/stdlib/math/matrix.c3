@@ -140,61 +140,48 @@ fn void test_mat4_lookat()
 
 fn void test_mat4_perspective()
 {
-
-/*
-    float m0, m4, m8, m12;      // Matrix first row (4 components)
-    float m1, m5, m9, m13;      // Matrix second row (4 components)
-    float m2, m6, m10, m14;     // Matrix third row (4 components)
-    float m3, m7, m11, m15;     // Matrix fourth row (4 components) */
-
-	Matrix4 result = { .m00 = 1.857087, .m11 = 2.414214, .m22 = -1.000200, .m23 = -1, .m32 = -0.200020 };
-	Matrix4 result_f = { .m00 = 1.857087, .m11 = 2.414214, .m22 = -1.000200, .m23 = -1, .m32 = -0.200020 };
+	Matrix4 perspective = matrix4_perspective(math::deg_to_rad(90), 1, 1, 10);
+	Matrix4 res = { .m00 = 1, .m11 = 1, .m22 = -1.111111, .m32 = -1, .m23 = -1.111111 };
+	assert(perspective.m.equals(res.m));
 
 
-	Matrix4 perspective = matrix4_perspective(math::deg_to_rad(45), 1.3, 0.1, 1000);
-	Matrix4f perspective_f = matrix4f_perspective((float)math::deg_to_rad(45), 1.3, 0.1, 1000);
+	perspective = matrix4_perspective(math::deg_to_rad(60), 1, 0.1, 100);
+	res = { 1.732051,0,0,0, 0,1.732051,0,0, 0,0,-1.001001,-1, 0,0,-0.100100,0 };
+	assert(perspective.m.equals(res.m));
 
-	assert(math::round_to_decimals((double[<16>])result.m, 4) == math::round_to_decimals((double[<16>])perspective.m, 4), "Was: %s(%s) not %s", perspective, perspective.m, result);
-	assert(math::round_to_decimals((double[<16>])result_f.m, 4) == math::round_to_decimals((double[<16>])perspective_f.m, 4));
+	perspective = matrix4_perspective(math::deg_to_rad(45), 1.5, 0.5, 50);
+	res = { 1.609476,0,0,0, 0,2.414214,0,0, 0,0,-1.010101,-1, 0,0,-0.505051,0 };
+	assert(math::abs(perspective.m - res.m).max() < 1e-6, "Was %s, expected %s", perspective, res);
 
-	// Test the corners of the view frustum
-	double top = math::tan(math::deg_to_rad(45) / 2);
-	double right = math::tan(math::deg_to_rad(45) / 2) * 1.3;
-	
-	assert(math::round_to_decimals(perspective * (double[<4>]) {-right * 0.1, -top * 0.1, -0.1, 1}, 4) == {-0.1, -0.1, -0.9, 0.02}, "Was: %s", perspective * (double[<4>]) {-right * 0.1, -top * 0.1, -0.1, 1});
+	perspective = matrix4_perspective(2.094395, 0.75, 0.01, 1000.0);
+	res = { 0.769800,0,0,0, 0,0.577350,0,0, 0,0,-1.000010,-1, 0,0,-0.0100001,0 };
+	assert(math::abs(perspective.m - res.m).max() < 1e-6);
+
 }
 
 fn void test_mat4_ortho()
 {
+	Matrix4 o = matrix4_ortho(-1, 1, -1, 1, 1, 10);
+	Matrix4 res = { 1.0,0,0,0, 0,1.0,0,0, 0,0,0.111111,0, -0,0,-1.111111,1 };
+	assert(res.m.equals(res.m));
 
-	Matrix4 result = {
-		.m00 = 0.0025, .m03 = -0.5,
-		.m11 = 0.005,
-		.m22 = -0.05, .m23 = -0.5,
-		.m33 = 1,
-	};
-	Matrix4 result_f = {
-		.m00 = 0.0025,
-		.m11 = 0.005,
-		.m22 = -0.05,
-		.m03 = -0.5, .m23 = -0.5, .m33 = 1,
-	};
+	o = matrix4_ortho(0, 2, 0, 2, 0.1, 100);
+	res = { .m00 = 1, .m11 = 1, .m22 = -0.01001, .m03 = -1, .m13 = -1, .m23 = -0.001001, .m33 = 1 };
+	assert(math::abs(o.m - res.m).max() < 1e-6, "Was %s, expected %s", o, res);
 
-	Matrix4 ortho = matrix4_ortho(-200, 600, 200, -200, -10, 30);
-	Matrix4f ortho_f = matrix4f_ortho(-200, 600, 200, -200, -10, 30);
-	
-	assert(math::round_to_decimals((double[<16>])result.m, 4) == math::round_to_decimals((double[<16>])ortho.m, 4));
-	assert(math::round_to_decimals((double[<16>])result_f.m, 4) == math::round_to_decimals((double[<16>])ortho_f.m, 4));
+	o = matrix4_ortho(-2, 2, -1, 1, 0.5, 50);
+	res = {  0.5, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, -0.020202, 0, 0, 0, -0.010101, 1 };
+	assert(math::abs(o.m - res.m).max() < 1e-6, "Was %s, expected %s", o, res);
 
-	// Test the corners of the view space
-	assert(math::round_to_decimals(ortho * (double[<4>]) {-200, -200,  10, 1}, 4) == {-1.0, -1.0, -1.0, 1.0});
-	assert(math::round_to_decimals(ortho * (double[<4>]) { 600, -200,  10, 1}, 4) == { 1.0, -1.0, -1.0, 1.0});
-	assert(math::round_to_decimals(ortho * (double[<4>]) {-200,  200,  10, 1}, 4) == {-1.0,  1.0, -1.0, 1.0});
-	assert(math::round_to_decimals(ortho * (double[<4>]) { 600,  200,  10, 1}, 4) == { 1.0,  1.0, -1.0, 1.0});
-	assert(math::round_to_decimals(ortho * (double[<4>]) {-200, -200, -30, 1}, 4) == {-1.0, -1.0,  1.0, 1.0});
-	assert(math::round_to_decimals(ortho * (double[<4>]) { 600, -200, -30, 1}, 4) == { 1.0, -1.0,  1.0, 1.0});
-	assert(math::round_to_decimals(ortho * (double[<4>]) {-200,  200, -30, 1}, 4) == {-1.0,  1.0,  1.0, 1.0});
-	assert(math::round_to_decimals(ortho * (double[<4>]) { 600,  200, -30, 1}, 4) == { 1.0,  1.0,  1.0, 1.0});
+
+	o = matrix4_ortho(-10, 10, -5, 5, 0.01, 1000);
+	res = { 0.1, 0, 0, 0, 0, 0.2, 0, 0, 0, 0, -0.00100001, 0, 0, 0, -0.000010, 1 };
+	assert(math::abs(o.m - res.m).max() < 1e-6, "Was %s, expected %s", o, res);
+
+	o = matrix4_ortho(-5, 5, -5, 5, 0.1, 10);
+	res = { 0.2, 0, 0, 0, 0, 0.2, 0, 0, 0, 0, -0.101010, 0, 0, 0, -0.010101, 1 };
+	assert(math::abs(o.m - res.m).max() < 1e-6, "Was %s, expected %s", o, res);
+
 }
 
 fn void test_apply()

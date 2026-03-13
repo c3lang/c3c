@@ -11,6 +11,7 @@ alias Matrix4  = Matrix4x4 {double};
 // Predefined matrix functions
 alias matrix4_ortho  @builtin = matrix::ortho {double};
 alias matrix4f_ortho @builtin = matrix::ortho {float};
+// Perspective is RH [0, 1]
 alias matrix4_perspective  @builtin = matrix::perspective {double};
 alias matrix4f_perspective @builtin = matrix::perspective {float};
 alias matrix4_look_at @builtin = matrix::look_at {double};
@@ -463,38 +464,36 @@ fn Matrix4x4 Matrix4x4.scale(&self, Real[<3>] v)
 	return { .m = self.m * { v.x, v.x, v.x, v.x, v.y, v.y, v.y, v.y, v.z, v.z, v.z, v.z, 1, 1, 1, 1 } };
 }
 
-
-fn Matrix4x4 ortho(Real left, Real right, Real top, Real bottom, Real near, Real far)
+// Implementation is RH [0, 1] based on glm's orthoRH_ZO
+fn Matrix4x4 ortho(Real left, Real right, Real bottom, Real top,  Real z_near, Real z_far)
 {
-	Real width = right - left;
-	Real height = top - bottom;
-	Real depth = far - near;
-	return {
-		2 / width,               0,                 0,                              0,
-		0,                       2 / height,        0,                              -(top + bottom) / height,
-		0,                       0,                 -2 / depth,                     0,
-		-(right + left) / width, 0,                 -(far + near) / depth,          1
-	};
+	Real width_inv = 1 / (right - left);
+	Real height_inv = 1 / (top - bottom);
+	Real depth_inv = 1 / (z_far - z_near);
+	return { .m = {
+		[0] = 2 * width_inv,
+		[5] = 2 * height_inv,
+		[10] = - depth_inv,
+		[12] = - (right + left) * width_inv,
+		[13] = - (top + bottom) * height_inv,
+		[14] = - z_near * depth_inv,
+		[15] = 1, } };
 }
 
-
-// fov in radians
-fn Matrix4x4 perspective(Real fov, Real aspect_ratio, Real near, Real far)
+// Implements right-handed [0, 1] perspective
+fn Matrix4x4 perspective(Real fovy, Real aspect, Real z_near, Real z_far)
 {
-	Real top = (Real)(near * math::tan(fov * 0.5));
-    Real bottom = -top;
-    Real right = top * aspect_ratio;
-    Real left = -right;
+	Real tan_half_fovy = math::tan(fovy / 2);
 
-    Real rl_scale = 1 / (right - left);
-    Real tb_scale = 1 / (top - bottom);
-    Real fn_scale = 1 / (far - near);
+    Real fn_scale = 1 / (z_near - z_far);
 
-	return { .m = {
-		near * 2 * rl_scale,   0, (right + left) * rl_scale,   0,
-		0, near * 2 * tb_scale, (top + bottom) * tb_scale, 0,
-		0, 0, -(far + near) * fn_scale, -(far * near * 2) * fn_scale,
-		0, 0, -1, 0 } };
+	return (Matrix4x4) { .m = {
+		[0] = 1 / (aspect * tan_half_fovy),
+		[5] = 1 / (tan_half_fovy),
+		[10] = z_far * fn_scale,
+		[11] = -1,
+		[14] = z_far * z_near * fn_scale,
+	} };
 }
 
 

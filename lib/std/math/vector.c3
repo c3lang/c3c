@@ -63,14 +63,34 @@ fn double[<3>] double[<3>].rotate_quat(self, Quaternion q) => q * self;
 fn float[<3>] float[<3>].rotate_axis(self, float[<3>] axis, float angle) => rotate_axis_angle(self, axis, angle);
 fn double[<3>] double[<3>].rotate_axis(self, double[<3>] axis, double angle) => rotate_axis_angle(self, axis, angle);
 
-fn float[<3>] float[<3>].unproject(self, Matrix4f projection, Matrix4f view) => unproject3(self, projection, view);
-fn double[<3>] double[<3>].unproject(self, Matrix4 projection, Matrix4 view) => unproject3(self, projection, view);
+fn float[<3>] float[<3>].rejection(v1, float[<3>] v2) => rejection3(v1, v2);
+fn double[<3>] double[<3>].rejection(v1, double[<3>] v2) => rejection3(v1, v2);
+
+fn float[<3>] float[<3>].project(self, Matrix4f model, Matrix4f projection, float[<4>] viewport) => project3(self, model, projection, viewport);
+fn double[<3>] double[<3>].project(self, Matrix4 model, Matrix4 projection, double[<4>] viewport) => project3(self, model, projection, viewport);
+
+fn float[<3>] float[<3>].unproject(self, Matrix4f model, Matrix4f projection, float[<4>] viewport) => unproject3(self, model, projection, viewport);
+fn double[<3>] double[<3>].unproject(self, Matrix4 model, Matrix4 projection, double[<4>] viewport) => unproject3(self, model, projection, viewport);
 
 fn void ortho_normalize(float[<3>]* v1, float[<3>]* v2) => ortho_normalize3(v1, v2);
 fn void ortho_normalized(double[<3>]* v1, double[<3>]* v2) => ortho_normalize3(v1, v2);
 
+fn float[<3>] cubic_hermitef(float[<3>] v1, float[<3>] tangent1, float[<3>] v2, float[<3>] tangent2, float amount) => cubic_hermite3(v1, tangent1, v2, tangent2, amount);
+fn double[<3>] cubic_hermite(double[<3>] v1, double[<3>] tangent1, double[<3>] v2, double[<3>] tangent2, double amount) => cubic_hermite3(v1, tangent1, v2, tangent2, amount);
+
 module std::math::vector @private;
 import std::math;
+
+macro cubic_hermite3(v1, tangent1, v2, tangent2, amount)
+{
+	var amount_pow2 = amount * amount;
+	var amount_pow3 = amount_pow2 * amount;
+
+	return (2 * amount_pow3 - 3 *amount_pow2 + 1) * v1
+		+ (amount_pow3 - 2 * amount_pow2 + amount) * tangent1
+		+ (-2 * amount_pow3 + 3 * amount_pow2) * v2
+		+ (amount_pow3 - amount_pow2) * tangent2;
+}
 
 fn TowardsType towards(TowardsType v, TowardsType target, $typefrom(TowardsType.inner) max_distance) <TowardsType>
 {
@@ -149,7 +169,6 @@ macro transform3(v, mat)
 	};
 }
 
-
 macro angle3(v1, v2)
 {
 	var len = v1.cross(v2).length();
@@ -163,6 +182,7 @@ macro void ortho_normalize3(v1, v2)
 	var vn1 = v1n.cross(*v2).normalize();
 	*v2 = v1n.cross(vn1);
 }
+
 
 macro rotate_axis_angle(v, axis, angle)
 {
@@ -178,29 +198,35 @@ macro rotate_axis_angle(v, axis, angle)
 	return v + wv + wwv;
 }
 
-macro unproject3(v, m1, m2)
+macro rejection3(v1, v2)
 {
+	return v1 - v2 * (v1.dot(v2) / v2.dot(v2));
+}
 
-return v;
-/*
-	var view_proj = m1.mul(m2);
-	var invert = view_proj.invert();
-	// Create quaternion from source point
-	$if @typeid(v[0]) == float.typeid:
-		Quaternionf quat = { v.x, v.y, v.z, 1 };
-	$else
-		Quaternion quat = { v.x, v.y, v.z, 1 };
-	$endif
+macro project3(v, model, proj, viewport)
+{
+	var $Element = $typeof(v).inner;
+	$Element[<4>] tmp = { ...v, 1 };
+	tmp = model * tmp;
+	tmp = proj * tmp;
+	tmp /= tmp.w;
+	tmp = { (tmp.x * 0.5 + 0.5) * viewport.z + viewport.x, (tmp.y * 0.5 + 0.5) * viewport.w + viewport.y, tmp.z, tmp.w };
+	return tmp.xyz;
+}
 
-	// Multiply quat point by unproject matrix
-	var qtransformed = quat.transform(invert);
+macro unproject3(v, model, proj, viewport)
+{
+	var mat_view_inverse = (proj * model).inverse()!!;
 
-	// Normalized world points in vectors
-	return {
-		qtransformed.i / qtransformed.l,
-		qtransformed.j / qtransformed.l,
-		qtransformed.k  / qtransformed.l
-	};*/
+	var $Element = $typeof(v).inner;
+
+	$Element[<4>] tmp = {
+		2 * (v.x - viewport.x) / viewport.z - 1,
+		2 * (v.y - viewport.y) / viewport.w - 1,
+		v.z,
+		1 };
+	tmp = mat_view_inverse * tmp;
+	return tmp.xyz / tmp.w;
 }
 
 macro barycenter3(p, a, b, c)

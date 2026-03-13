@@ -26,6 +26,9 @@
 - `SubProcess`/`process::create`/`process::execute_stdout_to_buffer` deprecated, replaced by `Process`/`process:spawn`/`process::run_capture_stdout`.
 - Add support for AES-encrypted Zip files (AE-1 and AE-2 formats).
 - Matrix type is now column major.
+- Fix matrix perspective and ortho, project and unproject to be RH [0,1]
+- Add vec3 methods: `rejection`, `project`, implement `unproject`.
+- Add vector function `cubic_hermite`
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
@@ -44,6 +47,7 @@
 - Debug info emitted on `-Os` #3015
 - @assert_leak() would not work properly with `--safe=no` #3012.
 - Duplicate symbols when building executables on Termux. #2984
+- `double[<*>].max` and `.min` were broken.
 
 ## 0.7.10 Change list
 
