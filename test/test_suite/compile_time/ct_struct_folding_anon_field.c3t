@@ -1,0 +1,12 @@
+struct Foo
+{
+	struct
+	{
+		int a;
+	}
+}
+fn void main()
+{
+	Foo $i = { .a = 123 };
+	int $b = $i.a;
+}

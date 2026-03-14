@@ -5894,6 +5894,31 @@ static inline bool sema_expr_fold_to_index(Expr *expr, Expr *parent, SubscriptIn
 	return true;
 }
 
+static inline ConstInitializer *sema_expr_fold_to_struct_member(ConstInitializer *init, Type *parent_type, Decl *member)
+{
+
+	Decl *struct_union_decl = type_flatten(parent_type)->decl;
+	if (init->kind == CONST_INIT_UNION)
+	{
+		if (struct_union_decl->strukt.members[init->init_union.index] != member) return NULL;
+		return init->init_union.element;
+	}
+	ASSERT(init->kind == CONST_INIT_STRUCT);
+	FOREACH_IDX(i, Decl *, other_member, struct_union_decl->strukt.members)
+	{
+		if (other_member == member)
+		{
+			return init->init_struct[i];
+		}
+		if (!other_member->name)
+		{
+			ConstInitializer *init_other = sema_expr_fold_to_struct_member(init->init_struct[i], other_member->type, member);
+			if (init_other) return init_other;
+		}
+	}
+	return NULL;
+}
+
 static inline bool sema_expr_fold_to_member(Expr *expr, Expr *parent, Decl *member)
 {
 	ConstInitializer *init = parent->const_expr.initializer;
@@ -5904,20 +5929,9 @@ static inline bool sema_expr_fold_to_member(Expr *expr, Expr *parent, Decl *memb
 			result = init;
 			goto EVAL;
 		case CONST_INIT_STRUCT:
-		{
-			FOREACH_IDX(i, Decl *, other_member, type_flatten(parent->type)->decl->strukt.members)
-			{
-				if (other_member == member)
-				{
-					result = init->init_struct[i];
-					goto EVAL;
-				}
-			}
-			UNREACHABLE
-		}
 		case CONST_INIT_UNION:
-			if (type_flatten(parent->type)->decl->strukt.members[init->init_union.index] != member) return false;
-			result = init->init_union.element;
+			result = sema_expr_fold_to_struct_member(init, parent->type, member);
+			if (!result) return false;
 			goto EVAL;
 		case CONST_INIT_VALUE:
 		case CONST_INIT_ARRAY:
