@@ -34,12 +34,13 @@
 - Add vec3 methods: `rejection`, `project`, implement `unproject`.
 - Add vector function `cubic_hermite`
 - Deprecated `sq_magnitude`, `barycenter`, `towards`, `ortho_normalize`, `clamp_mag`, use `length_sq`, `barycentric`, `move_towards`, `orthonormalize`, `clamp_length` instead.
+- Add trivial member-wise struct comparison with `member_eq`. #2801
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
 - Name conflict with auto-imported std::core, but it should have lower priority #2902
 - Regression: missing generic nesting check on non-types.
-- Improved stringify. 
+- Improved stringify.
 - PollSubscribe was incorrectly an int instead of ushort. #2997
 - SubProcessOptions.search_user_path did nothing on non-windows systems despite comment saying it should #2845
 - AES implementation fixed to be constant time #2806
