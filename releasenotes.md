@@ -53,6 +53,7 @@
 - @assert_leak() would not work properly with `--safe=no` #3012.
 - Duplicate symbols when building executables on Termux. #2984
 - `double[<*>].max` and `.min` were broken.
+- Incorrect codegen, crashing the compiler, when passing a `{ .xy = 1 }` constant initializer vector to a function taking a vector, hitting vec->array conversion. #3035
 
 ## 0.7.10 Change list
 

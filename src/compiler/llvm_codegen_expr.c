@@ -7113,7 +7113,24 @@ void llvm_emit_scalar_to_vector(GenContext *c, BEValue *value, Expr *expr)
 void llvm_emit_vec_to_array(GenContext *c, BEValue *value, Type *type)
 {
 	LLVMValueRef val = llvm_load_value_store(c, value);
+	LLVMTypeRef type_ptr = LLVMTypeOf(val);
+	LLVMTypeKind type_kind = LLVMGetTypeKind(type_ptr);
 	Type *to_type = type_lowering(type);
+	switch (type_kind)
+	{
+		case LLVMArrayTypeKind:
+			value->type = to_type;
+			return;
+		case LLVMVectorTypeKind:
+			break;
+		case LLVMStructTypeKind:
+			llvm_value_addr(c, value);
+			value->type = to_type;
+			return;
+		default:
+			UNREACHABLE_VOID
+	}
+
 	LLVMValueRef array = llvm_get_undef(c, to_type);
 
 	for (unsigned i = 0; i < to_type->array.len; i++)
