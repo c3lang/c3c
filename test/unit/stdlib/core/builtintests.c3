@@ -266,53 +266,49 @@ struct CmpOuterType
 	CmpInnerType inner_values;
 	CmpInnerType* ref;
 }
-fn void test_struct_eq()
+union SimpleUnion
+{
+	int a;
+	char b;
+}
+typedef InTypeHasEq = CmpInnerType;
+fn bool InTypeHasEq.eq(&self, InTypeHasEq other) @operator(==) => member_eq(*self, other);
+struct NestedMemberEq
+{
+	InTypeHasEq a_struct;
+	int biff;
+}
+fn void test_member_eq()
 {
 	char[] a_slice = "slice of characters";
 	double something = 8.60;
 	double different = -123.22;
 	CmpInnerType  a  = { .foo = 1, .bar = true, .baz = "abcdefg", .val = &something };
-	CmpInnerType* a1 = mem::talloc(CmpInnerType); *a1 = { ...a };   // two different pointers, same contents
-	CmpInnerType* a2 = mem::talloc(CmpInnerType); *a2 = { ...a };
-	CmpInnerType  b  = { ...a };   // same as a
-	CmpInnerType  c  = { .foo = 1, .bar = true, .baz = "zyxwvut", .val = &something };
+	CmpInnerType* a1 = mem::talloc(CmpInnerType); *a1 = { ...a };
 
-	test::@check(struct_eq(a, a));
-	test::@check(struct_eq(a, b));
-	test::@check(struct_eq((CmpInnerType){ ...a }, b));
-	test::@check(struct_eq((CmpInnerType){ ...a }, *a1));
-	test::@check(struct_eq(*a1, *a2));
-	test::@check(!struct_eq(a, c));
-	test::@check(struct_eq(a, c, "baz"));   // they're equal if `baz` is not compared
-	test::@check(!struct_eq(b, c));
-	test::@check(!struct_eq(*a1, c));
+	// Should always return `false` since `CmpInnerType` doesn't have an `==` implementation.
+	test::@check(!may_member_eq(CmpOuterType));
 
-	CmpOuterType  x  = { .a_value = 1.23, .inner_values = { ...a }, .ref = a1 };
-	CmpOuterType  y  = { ...x, .ref = a2 };
-	CmpOuterType  z  = { ...x, .inner_values = { ...a, .val = &different } };
-	test::@check(struct_eq(x, x));
-	test::@check(struct_eq(x, y));
-	test::@check(!struct_eq(x, z));
+	test::@check(member_eq(a, *a1));
+	a1.foo = 203498230;
+	test::@check(!member_eq(a, *a1));
 
-	y.ref.foo = -1;
-	test::@check(!struct_eq(x, y));
+	SimpleUnion s_a = { .a = 1 };
+	SimpleUnion s_b = { .a = 1 };
+	test::@check(member_eq(s_a, s_b));
+	s_b.b = 'x';
+	test::@check(!member_eq(s_a, s_b));
 
-	test::@check(struct_eq(x, z, "inner_values"));
-	test::@check(struct_eq(x, z, "inner_values.val"));
-	z.inner_values.bar = false;
-	test::@check(!struct_eq(x, z, "inner_values.val"));
-	test::@check(struct_eq(x, z, "inner_values.val", "inner_values.bar"));
-	z.inner_values.bar = true;
-
-	z.inner_values.val = &something;
-	test::@check(struct_eq(x, z));
-
-	// Ensure slices work too.
-	CmpInnerType  s  = { ...a, .slice = a_slice[2:3] };
-	CmpInnerType  t  = { ...a, .slice = a_slice[2:3] };
-	test::@check(struct_eq(s, t));
-	s.foo = -1;
-	test::@check(!struct_eq(s, t));
+	// Now test a nested struct where even the struct members support `==`
+	NestedMemberEq x = { .a_struct = (InTypeHasEq)a, .biff = 5 };
+	NestedMemberEq y = x;
+	test::@check(member_eq(x, y));
+	y.a_struct.foo = 78;
+	test::@check(!member_eq(x, y));
+	y = x;
+	test::@check(member_eq(x, y));
+	y.biff = 7;
+	test::@check(!member_eq(x, y));
 }
 
 
@@ -370,7 +366,7 @@ fn void test_fault_short_name_rt() @test
 	test::eq(foo_fault(4)!!, true);
 
 	bool? maybe = foo_fault(5);
-	
+
 	if (catch excuse = maybe)
 	{
 		test::eq(excuse.nameof, "builtins::SOME_FAULT");

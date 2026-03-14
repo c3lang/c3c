@@ -173,45 +173,37 @@ macro bool @typeis(#value, $Type) @const @builtin @deprecated("Use `$typeof(#val
 }
 
 <*
- Recursively compare two structs of the same type using each member's `==` overload.
- A list of strings can be passed in vaargs to exclude certain fields, and nested fields can be referenced
- with dot-notation.
+ Determines whether all members of a struct/union type are trivially equatable (i.e., they all implement the `==` operator).
 
- @require $kindof(#left) != POINTER && $kindof(#right) != POINTER : "You cannot compare structures by reference. Dereference them first."
+ @require $defined($Type.membersof) : "Only types with members may be used here."
 *>
-macro bool struct_eq(#left, #right, ..., $member_prefix = "") @builtin @safemacro
+macro bool may_member_eq($Type) @builtin @const
 {
-	var left = #left;
-	var right = #right;
-	$if $defined(left == right):
-		return left == right;
-	$else
-		$assert $typeof(left) == $typeof(right) : "The inner structure types of each parameter must be the same type.";
-		$foreach $member : $typeof(left).membersof:
-			var $member_path = $member_prefix +++ ($member_prefix.len ??? "." : "") +++ $member.nameof;
-			$if $vacount == 0 ||| !@in($member_path, $vasplat):
-				$switch $member.kindof:
-					$case POINTER:
-						$if $kindof(*$member.get(left)) == STRUCT:
-							if (!struct_eq(*$member.get(left), *$member.get(right), $vasplat, $member_prefix: $member_path)) return false;
-						$else
-							$assert $defined(*$member.get(left) != *$member.get(right)) : "All pointer struct members must support the `==` operator.";
-							if (*$member.get(left) != *$member.get(right)) return false;
-						$endif
-					$case STRUCT:
-						$if $defined($member.get(left) != $member.get(right)):
-							if ($member.get(left) != $member.get(right)) return false;
-						$else
-							if (!struct_eq($member.get(left), $member.get(right), $vasplat, $member_prefix: $member_path)) return false;
-						$endif
-					$default:
-						$assert $defined($member.get(left) != $member.get(right)) : "All struct members must support the `==` operator.";
-						if ($member.get(left) != $member.get(right)) return false;
-				$endswitch
-			$endif
-		$endforeach
-	$endif
-	return true;
+	bool $ret = false;
+	$Type $a, $b;
+	$foreach $member : $Type.membersof:
+		// Using |= here instead of `return false;` prevents this macro from generating many runtime return lines,
+		//   especially in the case that many of the struct fields meet this condition.
+		$ret |= !$defined($member.get($a) == $member.get($b));
+	$endforeach
+	return !$ret;
+}
+
+<*
+ Compare two structs of the same type memberwise, using each member's `==` overload.
+ Importantly, this comparison _ignores_ an existing `==` overload for the struct type itself.
+
+ @require may_member_eq($typeof(left)) : "Only structs with members that are trivially equatable with `==` are supported."
+ @require $kindof(left) != POINTER && $kindof(right) != POINTER : "You cannot compare structures by reference. Dereference them first."
+ @require $typeof(left) == $typeof(right) : "Both input structures must be the same type."
+*>
+macro bool member_eq(left, right) @builtin
+{
+	bool res = true;
+	$foreach $member : $typeof(left).membersof:
+		res &= ($member.get(left) == $member.get(right));
+	$endforeach
+	return res;
 }
 
 fn int panic_print_backtrace_count(BacktraceList backtrace, int backtraces_to_ignore)
