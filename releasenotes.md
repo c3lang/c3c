@@ -34,6 +34,7 @@
 - Add vec3 methods: `rejection`, `project`, implement `unproject`.
 - Add vector function `cubic_hermite`
 - Deprecated `sq_magnitude`, `barycenter`, `towards`, `ortho_normalize`, `clamp_mag`, use `length_sq`, `barycentric`, `move_towards`, `orthonormalize`, `clamp_length` instead.
+- Add Quaternion conversion functions to from Euler angles and axis+angle.
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.

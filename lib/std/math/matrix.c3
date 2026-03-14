@@ -196,12 +196,12 @@ fn Matrix3x3 Matrix3x3.negate(&self) @operator(-) => { .m = -self.m };
 fn Matrix4x4 Matrix4x4.negate(&self) @operator(-) => { .m = -self.m };
 
 fn bool Matrix2x2.eq(&self, Matrix2x2 mat2) @operator(==) => self.m == mat2.m;
-fn bool Matrix3x3.eq(&self, Matrix3x3 mat2) @operator(==) => (Real[<9>])self.m == (Real[<9>])mat2.m;
-fn bool Matrix4x4.eq(&self, Matrix4x4 mat2) @operator(==) => (Real[<16>])self.m == (Real[<16>])mat2.m;
+fn bool Matrix3x3.eq(&self, Matrix3x3 mat2) @operator(==) => self.m == mat2.m;
+fn bool Matrix4x4.eq(&self, Matrix4x4 mat2) @operator(==) => self.m == mat2.m;
 
 fn bool Matrix2x2.neq(&self, Matrix2x2 mat2) @operator(!=) => self.m != mat2.m;
-fn bool Matrix3x3.neq(&self, Matrix3x3 mat2) @operator(!=) => (Real[<9>])self.m != (Real[<9>])mat2.m;
-fn bool Matrix4x4.neq(&self, Matrix4x4 mat2) @operator(!=) => (Real[<16>])self.m != (Real[<16>])mat2.m;
+fn bool Matrix3x3.neq(&self, Matrix3x3 mat2) @operator(!=) => self.m != mat2.m;
+fn bool Matrix4x4.neq(&self, Matrix4x4 mat2) @operator(!=) => self.m != mat2.m;
 
 fn Matrix4x4 look_at(Real[<3>] eye, Real[<3>] target, Real[<3>] up) => matrix_look_at(Matrix4x4, eye, target, up);
 

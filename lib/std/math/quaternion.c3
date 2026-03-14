@@ -33,6 +33,8 @@ macro QuaternionNumber QuaternionNumber.sub_each(self, Real b) => { .v = self.v 
 macro QuaternionNumber QuaternionNumber.scale(self, Real s) @operator_s(*) => { .v = self.v * s };
 macro QuaternionNumber.to_angle(self) => 2 * math::acos(self.v.w);
 macro QuaternionNumber QuaternionNumber.normalize(self) => { .v = self.v.normalize() };
+macro bool QuaternionNumber.equals(self, QuaternionNumber other) => self.v.equals(other.v);
+macro bool QuaternionNumber.not_equals(self, QuaternionNumber other) => self.v.not_equals(other.v);
 macro Real QuaternionNumber.length(self) => self.v.length();
 macro Real QuaternionNumber.length_sq(self) => self.v.length_sq();
 macro QuaternionNumber QuaternionNumber.lerp(self, QuaternionNumber q2, Real amount) => { .v = self.v.lerp(q2.v, amount) };
@@ -105,6 +107,47 @@ fn QuaternionNumber QuaternionNumber.mul(self, QuaternionNumber b) @operator(*)
 }
 
 
+// Get the quaternion equivalent to Euler angles
+// Rotation order is ZYX
+fn QuaternionNumber from_euler(Real pitch, Real yaw, Real roll)
+{
+	Real x0 = math::cos(pitch / 2);
+	Real x1 = math::sin(pitch / 2);
+	Real y0 = math::cos(yaw / 2);
+	Real y1 = math::sin(yaw / 2);
+	Real z0 = math::cos(roll / 2);
+	Real z1 = math::sin(roll / 2);
+
+	return {
+		x1*y0*z0 - x0*y1*z1,
+		x0*y1*z0 + x1*y0*z1,
+		x0*y0*z1 - x1*y1*z0,
+		x0*y0*z0 + x1*y1*z1
+	};
+}
+
+//
+<*
+ Get the Euler angles equivalent to quaternion (roll, pitch, yaw)
+
+ @require math::is_approx(self.length_sq(), 1, 1e-6) : "Expected a normalized quaternion"
+ @return "a vector containing { roll, pitch, yaw }"
+*>
+fn Real[<3>] QuaternionNumber.to_euler(self)
+{
+	Real[<4>] q = self.v;
+	// Roll (x-axis rotation)
+	Real x0 = 2 * (q.w * q.x + q.y * q.z);
+	Real x1 = 1 - 2 * (q.x * q.x + q.y * q.y);
+	// Pitch (y-axis rotation)
+	Real y0 = 2 * (q.w * q.y - q.z * q.x);
+	y0 = math::clamp(y0, -1, 1);
+	// Yaw (z-axis rotation)
+	Real z0 = 2 * (q.w * q.z + q.x * q.y);
+	Real z1 = 1 - 2 * (q.y * q.y + q.z * q.z);
+	return { math::atan2(x0, x1), math::asin(y0), math::atan2(z0, z1) };
+}
+
 fn QuaternionNumber from_axis_angle(Real[<3>] axis, Real angle)
 {
 	Real[<3>] normal_axis = axis.normalize();
@@ -112,6 +155,22 @@ fn QuaternionNumber from_axis_angle(Real[<3>] axis, Real angle)
 	Real sin_half = math::sin(half_angle);
 
 	return { ...(normal_axis * sin_half), math::cos(half_angle) };
+}
+
+<*
+ @return "First 3 components is the axis, the last component is the angle"
+*>
+fn Real[<4>] QuaternionNumber.to_axis_angle(self)
+{
+	Real[<4>] v = self.v;
+	if (math::abs(v.w) > 1)
+	{
+		v = v.normalize();
+	}
+
+	Real den = math::sqrt(1 - v.w * v.w);
+	// Default to 1,0,0 when small
+	return { ...(den > math::FLOAT_EPSILON ? v.xyz / den : { 1, 0, 0 }), 2 * math::acos(v.w) };
 }
 
 fn Real[<3>] QuaternionNumber.rotate_vec3(self, Real[<3>] vector) @operator(*)

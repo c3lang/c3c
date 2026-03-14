@@ -42,8 +42,28 @@ fn void test_rotation_identity()
 	Quaternionf rotation_f = QUATERNIONF_IDENTITY;
 	Matrix4f identity_matrix_f = MATRIX4F_IDENTITY;
 
-	assert((double[<16>])rotation.to_matrix().m == (double[<16>])identity_matrix.m);
-	assert((float[<16>])rotation_f.to_matrixf().m == (float[<16>])identity_matrix_f.m);
+	assert(rotation.to_matrix().m.equals(identity_matrix.m));
+	assert(rotation_f.to_matrixf().m.equals(identity_matrix_f.m));
+}
+
+fn void test_quaternion_to_from_axis()
+{
+	Quaternionf f = { 1, 2, 3, -4 };
+	float[<4>] axis_angle = f.to_axis_angle();
+	Quaternionf f2 = quaternion::from_axis_angle{float}(axis_angle.xyz, axis_angle.w);
+	assert(f2.equals(f.normalize()));
+}
+
+fn void test_quaternion_to_from_euler()
+{
+	Quaternionf f = { 1, 2, 3, -4 };
+	f = f.normalize();
+	float[<3>] angles = f.to_euler();
+	assert(angles.equals({0.19739556f, -0.82321198f, -1.37340077f}));
+	Quaternionf f2 = quaternion::from_euler{float}(...angles);
+	assert(f2.equals(-f));
+	float[<3>] angles2 = f2.to_euler();
+	assert(angles2.equals(angles));
 }
 
 fn void test_to_matrix()
