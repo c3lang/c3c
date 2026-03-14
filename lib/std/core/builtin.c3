@@ -104,12 +104,12 @@ macro usz @bitsizeof(#expr) @builtin @const => $sizeof(#expr) * 8u;
 *>
 macro bool @in(#needle, ...) @builtin @const
 {
-    $for var $x = 0; $x < $vacount; $x++:
-        $assert $defined(#needle == $vaconst[$x])
-            : "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $typeof(#needle), $typeof($vaconst[$x]);
-        $if #needle == $vaconst[$x]: return true; $endif
-    $endfor
-    return false;
+	$for var $x = 0; $x < $vacount; $x++:
+		$assert $defined(#needle == $vaconst[$x])
+			: "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $typeof(#needle), $typeof($vaconst[$x]);
+		$if #needle == $vaconst[$x]: return true; $endif
+	$endfor
+	return false;
 }
 
 <*
@@ -170,6 +170,40 @@ macro TypeKind @typekind(#value) @const @builtin @deprecated("Use `$kindof(#valu
 macro bool @typeis(#value, $Type) @const @builtin @deprecated("Use `$typeof(#value) == $Type` instead.")
 {
 	return $typeof(#value).typeid == $Type.typeid;
+}
+
+<*
+ Determines whether all members of a struct/union type are trivially equatable (i.e., they all implement the `==` operator).
+
+ @require $defined($Type.membersof) : "Only types with members may be used here."
+*>
+macro bool may_member_eq($Type) @builtin @const
+{
+	bool $ret = false;
+	$Type $a, $b;
+	$foreach $member : $Type.membersof:
+		// Using |= here instead of `return false;` prevents this macro from generating many runtime return lines,
+		//   especially in the case that many of the struct fields meet this condition.
+		$ret |= !$defined($member.get($a) == $member.get($b));
+	$endforeach
+	return !$ret;
+}
+
+<*
+ Compare two structs of the same type memberwise, using each member's `==` overload.
+ Importantly, this comparison _ignores_ an existing `==` overload for the struct type itself.
+
+ @require may_member_eq($typeof(left)) : "Only structs with members that are trivially equatable with `==` are supported."
+ @require $kindof(left) != POINTER && $kindof(right) != POINTER : "You cannot compare structures by reference. Dereference them first."
+ @require $typeof(left) == $typeof(right) : "Both input structures must be the same type."
+*>
+macro bool member_eq(left, right) @builtin
+{
+	bool res = true;
+	$foreach $member : $typeof(left).membersof:
+		res &= ($member.get(left) == $member.get(right));
+	$endforeach
+	return res;
 }
 
 fn int panic_print_backtrace_count(BacktraceList backtrace, int backtraces_to_ignore)
