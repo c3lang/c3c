@@ -6,6 +6,20 @@ typedef NativeConditionVariable = int;
 typedef NativeOnceFlag = int;
 typedef NativeThread = int;
 
+fn NativeThread native_thread_current()
+{
+	return 0;
+}
+
+fn void native_thread_exit(int result)
+{
+	$if env::NO_LIBC:
+		$$trap();
+	$else
+		libc::exit(result);
+	$endif
+}
+
 fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 {
 	if (*flag == (NativeOnceFlag)0)
@@ -14,6 +28,8 @@ fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 		func();
 	}
 }
+
+fn bool NativeThread.equals(thread, NativeThread other) => true;
 
 fn void? NativeMutex.init(&mtx, MutexType type) => NOT_IMPLEMENTED~;
 
