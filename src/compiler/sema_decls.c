@@ -5507,7 +5507,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 			}
 			if (!sema_analyse_ct_expr(context, param)) return poisoned_decl;
 			Type *type = param->type->canonical;
-			if (type->type_kind == TYPE_TYPEDEF) type = type_flatten(type);
+			if (type->type_kind == TYPE_TYPEDEF || type->type_kind == TYPE_CONSTDEF) type = type_flatten(type);
 			if (IS_OPTIONAL(param))
 			{
 				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "The parameter may never be an optional value.");
