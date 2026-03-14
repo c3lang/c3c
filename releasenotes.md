@@ -55,6 +55,7 @@
 - `double[<*>].max` and `.min` were broken.
 - Incorrect codegen, crashing the compiler, when passing a `{ .xy = 1 }` constant initializer vector to a function taking a vector, hitting vec->array conversion. #3035
 - Folding an anon struct member at compile time would crash #3034.
+- Crash in sema_compare_weak_decl when replacing a function declaration from a .c3i file in some cases #3031
 
 ## 0.7.10 Change list
 
