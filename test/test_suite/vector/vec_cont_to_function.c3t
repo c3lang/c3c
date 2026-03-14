@@ -1,0 +1,26 @@
+// #target: macos-x64
+module foo;
+import std;
+
+fn void main()
+{
+	foo({.xy = 32});
+}
+
+fn void foo(int[<4>] a)
+{
+}
+
+/* #expect: foo.ll
+
+define void @foo.main() #0 {
+entry:
+  %taddr = alloca <4 x i32>, align 16
+  store { i32, i32, [2 x i32] } { i32 32, i32 32, [2 x i32] zeroinitializer }, ptr %taddr, align 16
+  %lo = load i64, ptr %taddr, align 16
+  %ptradd = getelementptr inbounds i8, ptr %taddr, i64 8
+  %hi = load i64, ptr %ptradd, align 8
+  call void @foo.foo(i64 %lo, i64 %hi)
+  ret void
+}
+

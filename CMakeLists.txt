@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 
 set(C3_LLVM_MIN_VERSION 19)
-set(C3_LLVM_MAX_VERSION 22)
-set(C3_LLVM_DEFAULT_VERSION 21)
+set(C3_LLVM_MAX_VERSION 23)
+set(C3_LLVM_DEFAULT_VERSION 22)
 
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
     message(FATAL_ERROR "In-tree build detected, please build in a separate directory")
@@ -98,9 +98,15 @@ set(C3_LLD_DIR              ""                          CACHE STRING "Use custom
 set(C3_LLD_INCLUDE_DIR      ""                          CACHE STRING "Use custom LLD include directory")
 set(C3_ENABLE_CLANGD_LSP    OFF                         CACHE BOOL   "Enable/Disable output of compile commands during generation")
 set(C3_FETCH_LLVM           OFF                         CACHE BOOL   "Automatically download LLVM artifacts")
-set(C3_LLVM_TAG             "llvm_21.x"                 CACHE STRING "Tag/Branch to download LLVM from")
+set(C3_LLVM_TAG             "latest"                    CACHE STRING "Tag/Branch to download LLVM from")
 set(LLVM_CRT_LIBRARY_DIR    ""                          CACHE STRING "Use custom llvm's compiler-rt directory")
 set(TCC_LIB_PATH            "/usr/lib/tcc/libtcc1.a"    CACHE STRING "Use custom libtcc1.a path")
+
+if (NOT C3_LINK_DYNAMIC AND CMAKE_EXE_LINKER_FLAGS MATCHES "-static")
+    set(ZLIB_USE_STATIC_LIBS ON)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+    message(STATUS "Static build: Restricting library search to static archives (.a)")
+endif()
 
 set(C3_OPTIONS
         C3_LINK_DYNAMIC
@@ -172,7 +178,13 @@ if(C3_WITH_LLVM)
             elseif (CMAKE_SYSTEM_PROCESSOR STREQUAL "riscv64" OR CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "riscv64")
                 set(C3_LLVM_PLATFORM "linux-riscv64")
             else()
-                set(C3_LLVM_PLATFORM "linux-amd64")
+                # For static linking, use the musl build
+                if (NOT C3_LINK_DYNAMIC AND CMAKE_EXE_LINKER_FLAGS MATCHES "-static")
+                    set(C3_LLVM_PLATFORM "linux-amd64-musl")
+                    message(STATUS "Static linking detected, using musl LLVM artifact")
+                else()
+                    set(C3_LLVM_PLATFORM "linux-amd64")
+                endif()
             endif()
         endif()
 
@@ -186,11 +198,13 @@ if(C3_WITH_LLVM)
 
         # 3. Construct URL
         set(C3_LLVM_ARTIFACT_NAME "llvm-${C3_LLVM_PLATFORM}${C3_LLVM_SUFFIX}")
-        #set(C3_LLVM_URL "https://github.com/c3lang/c3-llvm/releases/download/${C3_LLVM_TAG}/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
-        #set(C3_LLVM_URL "https://github.com//ManuLinares/llvm-custom-builds/releases/download/${C3_LLVM_TAG}/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
 
-        # We could also just set "latest" here to always fetch the latest release
-        set(C3_LLVM_URL "https://github.com/c3lang/llvm-for-c3/releases/latest/download/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
+        set(C3_LLVM_RELEASE_PATH "latest/download")
+        if(NOT C3_LLVM_TAG STREQUAL "latest")
+            set(C3_LLVM_RELEASE_PATH "download/${C3_LLVM_TAG}")
+        endif()
+
+        set(C3_LLVM_URL "https://github.com/c3lang/llvm-for-c3/releases/${C3_LLVM_RELEASE_PATH}/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
 
         message(STATUS "Fetching ${C3_LLVM_TYPE} LLVM artifact for ${C3_LLVM_PLATFORM}...")
         message(STATUS "URL: ${C3_LLVM_URL}")
@@ -232,15 +246,17 @@ if(C3_WITH_LLVM)
         endif()
     endif()
 
-    if (NOT C3_FETCH_LLVM AND EXISTS /opt/homebrew/lib)
-        list(APPEND LLVM_LIBRARY_DIRS /opt/homebrew/lib)
-    endif()
+    if (NOT C3_FETCH_LLVM)
+        if (EXISTS /opt/homebrew/lib)
+            list(APPEND LLVM_LIBRARY_DIRS /opt/homebrew/lib)
+        endif()
 
-    if (EXISTS /usr/lib)
-        # Some systems (such as Alpine Linux) seem to put some of the relevant
-        # LLVM files in /usr/lib, but this doesn't seem to be included in the
-        # value of LLVM_LIBRARY_DIRS.
-        list(APPEND LLVM_LIBRARY_DIRS /usr/lib)
+        if (EXISTS /usr/lib)
+            # Some systems (such as Alpine Linux) seem to put some of the relevant
+            # LLVM files in /usr/lib, but this doesn't seem to be included in the
+            # value of LLVM_LIBRARY_DIRS.
+            list(APPEND LLVM_LIBRARY_DIRS /usr/lib)
+        endif()
     endif()
 
     list(REMOVE_DUPLICATES LLVM_LIBRARY_DIRS)
@@ -265,7 +281,8 @@ if(C3_WITH_LLVM)
 
     include_directories(${LLVM_INCLUDE_DIRS})
     link_directories(${LLVM_LIBRARY_DIRS})
-    add_definitions(${LLVM_DEFINITIONS})
+    separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+    add_definitions(${LLVM_DEFINITIONS_LIST})
 
     if(NOT C3_LINK_DYNAMIC)
         set(LLVM_LINK_COMPONENTS
@@ -284,6 +301,18 @@ if(C3_WITH_LLVM)
                 LibDriver
                 Linker
                 LTO
+        )
+        set(_dtlto_found FALSE)
+        foreach(_dir ${LLVM_LIBRARY_DIRS})
+            if (EXISTS "${_dir}/libLLVMDTLTO.a" OR EXISTS "${_dir}/LLVMDTLTO.lib")
+                set(_dtlto_found TRUE)
+                break()
+            endif()
+        endforeach()
+        if (_dtlto_found)
+            list(APPEND LLVM_LINK_COMPONENTS DTLTO)
+        endif()
+        list(APPEND LLVM_LINK_COMPONENTS
                 MC
                 MCDisassembler
                 native
@@ -466,7 +495,10 @@ add_executable(c3c
         src/compiler/decltable.c
         src/compiler/methodtable.c
         src/compiler/mac_support.c
-        src/utils/fetch_msvc.c
+        src/utils/fetch_sdk/fetch_sdk.c
+        src/utils/fetch_sdk/fetch_utils.c
+        src/utils/fetch_sdk/windows_sdk.c
+        src/utils/fetch_sdk/android_ndk.c
         src/compiler/windows_support.c
         src/compiler/codegen_asm.c
         src/compiler/asm_target.c
@@ -524,7 +556,7 @@ if(C3_WITH_LLVM)
 else()
     target_sources(c3c PRIVATE src/utils/hostinfo.c)
     target_compile_definitions(c3c PUBLIC LLVM_AVAILABLE=0)
-    target_link_libraries(c3c m)
+    target_link_libraries(c3c PRIVATE m)
 endif()
 
 target_include_directories(c3c PRIVATE
@@ -559,7 +591,7 @@ if (C3_USE_TB)
             src/compiler/tilde_codegen_storeload.c)
 
     target_compile_definitions(c3c PUBLIC TB_AVAILABLE=1)
-    target_link_libraries(c3c tilde-backend)
+    target_link_libraries(c3c PRIVATE tilde-backend)
     add_library(tilde-backend STATIC ${tilde-sources})
     target_include_directories(tilde-backend PRIVATE
             "${CMAKE_SOURCE_DIR}/tilde-backend/src/" "${CMAKE_SOURCE_DIR}/tilde-backend/include")
@@ -574,7 +606,7 @@ else()
 endif()
 
 if(C3_WITH_LLVM)
-    target_link_libraries(c3c miniz c3c_wrappers)
+    target_link_libraries(c3c PRIVATE miniz c3c_wrappers)
 
     target_include_directories(c3c PRIVATE
             "${CMAKE_SOURCE_DIR}/wrapper/include/")
@@ -583,19 +615,47 @@ if(C3_WITH_LLVM)
             "${CMAKE_SOURCE_DIR}/wrapper/include/")
 
     target_link_libraries(c3c_wrappers PUBLIC ${lld_libs} ${llvm_libs})
-
 else()
+    target_link_libraries(c3c PRIVATE miniz ${lld_libs} ${llvm_libs})
+endif()
 
-    target_link_libraries(c3c miniz ${lld_libs} ${llvm_libs})
-
+# libcurl support
+if (NOT WIN32)
+    if (CMAKE_EXE_LINKER_FLAGS MATCHES "-static")
+        # Static: need pkg-config to resolve all transitive deps
+        find_package(PkgConfig QUIET)
+        if (PKG_CONFIG_FOUND)
+            pkg_check_modules(CURL QUIET libcurl)
+            if (CURL_FOUND)
+                find_library(CURL_STATIC_LIB NAMES libcurl.a HINTS ${CURL_LIBRARY_DIRS} NO_DEFAULT_PATH)
+                if (CURL_STATIC_LIB)
+                    pkg_check_modules(CURL_STATIC QUIET libcurl STATIC)
+                    target_link_libraries(c3c PRIVATE ${CURL_STATIC_LIBRARIES})
+                    target_include_directories(c3c PRIVATE ${CURL_STATIC_INCLUDE_DIRS})
+                    target_compile_definitions(c3c PRIVATE C3_LINK_CURL)
+                    message(STATUS "Linking against static libcurl and dependencies")
+                else()
+                    message(STATUS "libcurl .pc found but libcurl.a missing, skipping")
+                endif()
+            endif()
+        endif()
+    else()
+        # Dynamic: find_package verifies the library exists on disk (unlike pkg_check_modules)
+        find_package(CURL QUIET)
+        if (CURL_FOUND)
+            target_link_libraries(c3c PRIVATE CURL::libcurl)
+            target_compile_definitions(c3c PRIVATE C3_LINK_CURL)
+            message(STATUS "Linking against dynamic libcurl (${CURL_LIBRARIES})")
+        endif()
+    endif()
 endif()
 
 if(C3_USE_MIMALLOC)
-    target_link_libraries(c3c mimalloc-static)
+    target_link_libraries(c3c PRIVATE mimalloc-static)
 endif()
 
 if (WIN32)
-    target_link_libraries(c3c Winhttp.lib)
+    target_link_libraries(c3c PRIVATE Winhttp.lib)
 endif()
 
 if(MINGW)
@@ -606,7 +666,7 @@ endif ()
 if (NOT WIN32)
     # For dlopen support
     if (CMAKE_DL_LIBS)
-        target_link_libraries(c3c ${CMAKE_DL_LIBS})
+        target_link_libraries(c3c PRIVATE ${CMAKE_DL_LIBS})
     endif()
 endif()
 
@@ -672,7 +732,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "TinyCC")
 
     # Link the static tcc runtime archive if it exists
     if(EXISTS "${TCC_LIB_PATH}")
-        target_link_libraries(c3c "${TCC_LIB_PATH}")
+        target_link_libraries(c3c PRIVATE "${TCC_LIB_PATH}")
     else()
         message(FATAL_ERROR "TCC runtime not found at ${TCC_LIB_PATH}; Ensure the path is correct.")
     endif()

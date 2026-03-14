@@ -1,0 +1,16 @@
+module repro;
+import std;
+
+constdef Simple : inline uint
+{
+	FIRST,
+	SECOND,
+	THIRD,
+	_COUNT
+}
+
+fn int main(String[] args)
+{
+	ElasticArray{uint, Simple._COUNT} hello;
+	return 0;
+}

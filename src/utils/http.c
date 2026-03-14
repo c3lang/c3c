@@ -17,8 +17,9 @@ static inline wchar_t *char_to_wchar(const char *str)
 	return wc;
 }
 
-const char *download_file(const char *url, const char *resource, const char *file_path)
+const char *download_file(const char *url, const char *resource, const char *file_path, bool show_progress)
 {
+	(void)show_progress;
 	HINTERNET hSession = NULL, hConnect = NULL, hRequest = NULL;
 
 	bool is_https = memcmp("https://", url, 8) == 0;
@@ -111,7 +112,25 @@ bool download_available(void)
 }
 
 #elif PLATFORM_POSIX
+#include <unistd.h>
 
+bool use_ansi(void);
+
+#ifdef C3_LINK_CURL
+#include <curl/curl.h>
+
+#define ptr_curl_easy_init curl_easy_init
+#define ptr_curl_easy_setopt curl_easy_setopt
+#define ptr_curl_easy_perform curl_easy_perform
+#define ptr_curl_easy_cleanup curl_easy_cleanup
+#define ptr_curl_easy_strerror curl_easy_strerror
+
+static bool load_curl(void)
+{
+	return true;
+}
+
+#else
 #include <dlfcn.h>
 
 typedef void CURL;
@@ -128,6 +147,8 @@ typedef int CURLoption;
 #define CURLOPT_WRITEFUNCTION 20011
 #define CURLOPT_WRITEDATA 10001
 #define CURLOPT_CAINFO 10065
+#define CURLOPT_XFERINFOFUNCTION 20219
+#define CURLOPT_XFERINFODATA 10057
 
 static void *libcurl = NULL;
 static CURL* (*ptr_curl_easy_init)(void);
@@ -179,6 +200,7 @@ static bool load_curl(void)
 
 	return true;
 }
+#endif
 
 bool download_available(void)
 {
@@ -190,7 +212,68 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
 	return fwrite(ptr, size, nmemb, (FILE *)stream);
 }
 
-const char *download_file(const char *url, const char *resource, const char *file_path)
+#ifndef C3_LINK_CURL
+typedef long long curl_off_t;
+#endif
+
+static void internal_print_progress(const char *label, int percent)
+{
+	static int last_percent = -1;
+	if (percent == last_percent) return;
+	last_percent = percent;
+
+	if (percent > 100) percent = 100;
+	int width = 40;
+
+#if PLATFORM_POSIX
+	bool is_tty = isatty(fileno(stdout));
+#else
+	bool is_tty = true; // WinHTTP path currently doesn't use this, but for consistency
+#endif
+
+	if (!is_tty || !use_ansi())
+	{
+		// Non-TTY or ANSI disabled: Print a simple periodic update
+		if (percent % 10 == 0)
+		{
+			printf("%s... %d%%\n", label, percent);
+			fflush(stdout);
+		}
+		return;
+	}
+
+	printf("\r%s [", label);
+
+	const char *parts[] = { " ", "▏", "▎", "▍", "▌", "▋", "▊", "▉" };
+	int total_blocks = width * 8;
+	int filled_blocks = (percent * total_blocks) / 100;
+	int full_blocks = filled_blocks / 8;
+	int partial_block = filled_blocks % 8;
+
+	for (int i = 0; i < full_blocks; i++) printf("█");
+	if (full_blocks < width)
+	{
+		printf("%s", parts[partial_block]);
+		for (int i = full_blocks + 1; i < width; i++) printf(" ");
+	}
+
+	printf("] %3d%%", percent);
+	fflush(stdout);
+}
+
+static int curl_xfer_cb(void *clientp, curl_off_t dltotal, curl_off_t dlnow,
+                         curl_off_t ultotal, curl_off_t ulnow)
+{
+	(void)ultotal; (void)ulnow; (void)clientp;
+	if (dltotal > 0)
+	{
+		int percent = (int)((dlnow * 100) / dltotal);
+		internal_print_progress("Downloading", percent);
+	}
+	return 0;
+}
+
+const char *download_file(const char *url, const char *resource, const char *file_path, bool show_progress)
 {
 	if (!load_curl())
 	{
@@ -213,12 +296,22 @@ const char *download_file(const char *url, const char *resource, const char *fil
 	ptr_curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "C3C/1.0");
 	ptr_curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
 	ptr_curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 0L);
-	ptr_curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1L);
 	ptr_curl_easy_setopt(curl_handle, CURLOPT_FAILONERROR, 1L);
 	ptr_curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
 	ptr_curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, file);
 
+	if (show_progress)
+	{
+		ptr_curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 0L);
+		ptr_curl_easy_setopt(curl_handle, CURLOPT_XFERINFOFUNCTION, curl_xfer_cb);
+	}
+	else
+	{
+		ptr_curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1L);
+	}
+
 	CURLcode result = ptr_curl_easy_perform(curl_handle);
+	if (show_progress) printf("\n");
 	if (result != CURLE_OK)
 	{
 		fclose(file);

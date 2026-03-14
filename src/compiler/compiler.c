@@ -725,13 +725,21 @@ void compiler_compile(void)
 		;
 		file_create_folders(output_exe);
 		bool system_linker_available = link_libc() && compiler.platform.os != OS_TYPE_WIN32;
+		if (system_linker_available)
+		{
+			const char *cc = compiler.build.cc ? compiler.build.cc : default_c_compiler();
+			if (!file_executable_in_path(cc)) system_linker_available = false;
+		}
 		bool use_system_linker = system_linker_available && compiler.build.arch_os_target == default_target;
 		switch (compiler.build.linker_type)
 		{
 			case LINKER_TYPE_CC:
 				if (!system_linker_available)
 				{
-					eprintf("System linker is not supported, defaulting to built-in linker\n");
+					const char *cc = compiler.build.cc ? compiler.build.cc : default_c_compiler();
+					OUTF("C compiler '%s' not found or system linker is unsupported; using built-in linker instead.\n", cc);
+					compiler.build.linker_type = LINKER_TYPE_BUILTIN;
+					use_system_linker = false;
 					break;
 				}
 				use_system_linker = true;
@@ -740,6 +748,10 @@ void compiler_compile(void)
 				use_system_linker = false;
 				break;
 			default:
+				if (!use_system_linker && compiler.build.linker_type == LINKER_TYPE_NOT_SET)
+				{
+					compiler.build.linker_type = LINKER_TYPE_BUILTIN;
+				}
 				break;
 		}
 		if (use_system_linker || compiler.build.linker_type == LINKER_TYPE_CC)
@@ -969,29 +981,14 @@ bool use_ansi(void)
 }
 
 
-const char * vendor_fetch_single(const char* lib, const char* path) 
+const char * vendor_fetch_single(const char* lib, const char* path, bool progress) 
 {
 	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
 	const char *destination = file_append_path(path, str_printf("%s.c3l", lib));
-	const char *error = download_file("https://github.com", resource, destination);
+	const char *error = download_file("https://github.com", resource, destination, progress);
 	return error;	
 }
 
-#define PROGRESS_BAR_LENGTH 35
-
-void update_progress_bar(const char* lib, int current_step, int total_steps)
-{
-    float progress = (float)current_step / (float)total_steps;
-    int filled_length = (int)(progress * PROGRESS_BAR_LENGTH);
-	printf("\033[2K%-10s ", lib);
-    printf("[");
-    for (int i = 0; i < PROGRESS_BAR_LENGTH; i++)
-    {
-	    printf(i < filled_length ? "=" : " ");
-    }
-	printf("] %d%%\r", (int)(progress * 100));
-	(void)fflush(stdout);
-}
 
 void vendor_fetch(BuildOptions *options)
 {
@@ -1021,7 +1018,7 @@ void vendor_fetch(BuildOptions *options)
 	{
 		const char *tmp_dir = dir_make_temp_dir();
 		const char *tmp_file = file_append_path(tmp_dir, "vendor_list.json");
-		const char *error = download_file("https://api.github.com", "/repos/c3lang/vendor/contents/libraries/", tmp_file);
+		const char *error = download_file("https://api.github.com", "/repos/c3lang/vendor/contents/libraries/", tmp_file, false);
 		if (error)
 		{
 			error_exit("Failed to fetch library list: %s", error);
@@ -1064,27 +1061,12 @@ void vendor_fetch(BuildOptions *options)
 	for(int i = 0; i < total_libraries; i++)
 	{
 		const char *lib = options->libraries_to_fetch[i];
-		if (!ansi || total_libraries == 1)
-		{
-			printf("Fetching library '%s'...", lib);
-			(void)fflush(stdout);
-		}
-		else
-		{
-			update_progress_bar(lib, i, total_libraries);
-		}
-		const char *error = vendor_fetch_single(lib, options->vendor_download_path);
+		printf("Fetching library '%s'...\n", lib);
+		(void)fflush(stdout);
+		const char *error = vendor_fetch_single(lib, options->vendor_download_path, ansi);
 
 		if (!error)
 		{
-			if (!ansi || total_libraries == 1)
-			{
-				puts("finished.");
-			}
-			else
-			{
-				update_progress_bar(lib, i + 1, total_libraries);
-			}
 			vec_add(fetched_libraries, lib);
 			count++;
 		}
@@ -1623,6 +1605,12 @@ void global_context_add_decl(Decl *decl)
 {
 	decltable_set(&compiler.context.symbols, decl);
 	pathtable_set(&compiler.context.path_symbols, decl);
+}
+
+void global_context_replace_decl(Decl *old, Decl *new_symbol)
+{
+	decltable_replace(&compiler.context.symbols, old, new_symbol);
+	pathtable_replace(&compiler.context.path_symbols, old, new_symbol);
 }
 
 void linking_add_link(Linking *linking, const char *link)

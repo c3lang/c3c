@@ -3190,6 +3190,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL),
 			[ATTRIBUTE_WASM] = ATTR_FUNC,
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL | ATTR_ALIAS,
+			[ATTRIBUTE_WEAKLINK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_WINMAIN] = ATTR_FUNC,
 	};
 	// NOLINTEND(*.EnumCastOutOfRange)
@@ -3213,6 +3214,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_LOCAL:
 		case ATTRIBUTE_BUILTIN:
 		case ATTRIBUTE_NORECURSE:
+		case ATTRIBUTE_WEAK:
 			// These are pseudo-attributes and are processed separately.
 			UNREACHABLE
 		case ATTRIBUTE_DEPRECATED:
@@ -3598,16 +3600,8 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				RETURN_SEMA_ERROR(expr, "Expected \"address\", \"memory\" or \"thread\" as argument.");
 			}
 			return true;
-		case ATTRIBUTE_WEAK:
-			if (domain == ATTR_ALIAS)
-			{
-				if (decl->decl_kind != DECL_TYPE_ALIAS) RETURN_SEMA_ERROR(attr, "'@weak' can only be used on type aliases.");
-				if (!decl->type_alias_decl.is_redef)
-				{
-					RETURN_SEMA_ERROR(attr, "'@weak' is only allowed on type aliases with the same name, eg 'def Foo = bar::def::Foo @weak'.");
-				}
-			}
-			decl->is_weak = true;
+		case ATTRIBUTE_WEAKLINK:
+			decl->is_weak_link = true;
 			break;
 		case ATTRIBUTE_NAKED:
 			ASSERT(domain == ATTR_FUNC);
@@ -5513,7 +5507,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 			}
 			if (!sema_analyse_ct_expr(context, param)) return poisoned_decl;
 			Type *type = param->type->canonical;
-			if (type->type_kind == TYPE_TYPEDEF) type = type_flatten(type);
+			if (type->type_kind == TYPE_TYPEDEF || type->type_kind == TYPE_CONSTDEF) type = type_flatten(type);
 			if (IS_OPTIONAL(param))
 			{
 				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "The parameter may never be an optional value.");
@@ -5702,6 +5696,38 @@ bool sema_analyse_method_register(SemaContext *context, Decl *method)
 	}
 
 	return type_add_method(context, parent_type->canonical, method);
+}
+
+bool sema_compare_weak_decl(SemaContext *context, Decl *replaced, Decl *replacement)
+{
+	ASSERT(replaced->decl_kind == replacement->decl_kind);
+	Type *replaced_type = replaced->type;
+	Type *replacement_type = replacement->type;
+	switch (replaced->decl_kind)
+	{
+		case DECL_FUNC:
+			if (replaced_type->function.prototype->raw_type != replacement_type->function.prototype->raw_type)
+			{
+				goto TYPE_MISMATCH;
+			}
+			break;
+		case DECL_VAR:
+			if (!!replacement->var.type_info != !!replaced->var.type_info) goto VAR_MISMATCH;
+			if (replaced_type != replacement_type) goto TYPE_MISMATCH;
+			break;
+		default:
+			UNREACHABLE_VOID
+	}
+	return true;
+VAR_MISMATCH:
+	SEMA_ERROR(replacement, "The definition for '%s' doesn't match the replaced definition, mixing untyped and typed definitions is not permitted.", replacement->name);
+	SEMA_NOTE(replaced, "The replaced definition was here.");
+	return false;
+TYPE_MISMATCH:
+	SEMA_ERROR(replacement, "The definition for '%s' doesn't match the replaced definition, type mismatch between %s and %s.", replacement->name,
+		type_quoted_error_string(replacement->type), type_quoted_error_string(replaced->type));
+	SEMA_NOTE(replaced, "The replaced definition was here.");
+	return false;
 }
 
 bool sema_analyse_decl(SemaContext *context, Decl *decl)

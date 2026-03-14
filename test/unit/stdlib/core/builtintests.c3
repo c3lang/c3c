@@ -360,3 +360,30 @@ fn void test_hash_vector_internal() <Type>
 	}
 	$endforeach
 }
+
+import std::io; /* for FILE_NOT_FOUND */
+
+fn bool? foo_fault(int in) @local => in < 5 ? true : SOME_FAULT~;
+
+fn void test_fault_short_name_rt() @test
+{
+	test::eq(foo_fault(4)!!, true);
+
+	bool? maybe = foo_fault(5);
+	
+	if (catch excuse = maybe)
+	{
+		test::eq(excuse.nameof, "builtins::SOME_FAULT");
+		test::eq(excuse.short_name(), "SOME_FAULT");
+	}
+}
+
+fn void test_fault_short_name_comp() @test
+{
+	test::eq(SOME_FAULT.nameof, "builtins::SOME_FAULT");
+	test::eq(io::FILE_NOT_FOUND.nameof, "io::FILE_NOT_FOUND");
+
+	test::eq(SOME_FAULT.@short_name(), "SOME_FAULT");
+}
+
+

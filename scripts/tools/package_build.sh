@@ -38,7 +38,6 @@ cd "$WORK_DIR" || exit 1
 cp -r "$ROOT_DIR/lib" c3/
 cp "$ROOT_DIR/README.md" c3/
 cp "$ROOT_DIR/releasenotes.md" c3/
-cp "$ROOT_DIR/msvc_build_libraries.py" c3/
 
 # Copy binaries
 cp "$C3C_BIN" c3/

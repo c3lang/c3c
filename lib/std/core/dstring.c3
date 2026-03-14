@@ -571,12 +571,11 @@ macro void DString.insert_at(&self, usz index, value)
 	$endswitch
 }
 
-import libc;
 fn usz? DString.appendf(&self, String format, args...) @maydiscard
 {
 	if (!self.data()) self.tinit(format.len + 20);
 	Formatter formatter;
-	formatter.init(&out_string_append_fn, self);
+	formatter.init(&append_fn, self);
 	return formatter.vprintf(format, args);
 }
 
@@ -586,7 +585,7 @@ fn usz? DString.appendfn(&self, String format, args...) @maydiscard
 	@pool()
 	{
 		Formatter formatter;
-		formatter.init(&out_string_append_fn, self);
+		formatter.init(&append_fn, self);
 		usz len = formatter.vprintf(format, args)!;
 		self.append('\n');
 		return len + 1;
@@ -611,7 +610,7 @@ fn DString join(Allocator allocator, String[] s, String joiner) @nodiscard
 	return res;
 }
 
-fn void? out_string_append_fn(void* data, char c) @private
+fn void? append_fn(void* data, char c)
 {
 	DString* s = data;
 	s.append_char(c);

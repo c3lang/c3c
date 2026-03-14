@@ -49,10 +49,10 @@ entry:
   %err16 = alloca i64, align 8
   %varargslots17 = alloca [1 x %any], align 16
   %retparam18 = alloca i64, align 8
-  %defer_block_fault22 = alloca i64, align 8
-  %err24 = alloca i64, align 8
-  %varargslots25 = alloca [1 x %any], align 16
-  %retparam26 = alloca i64, align 8
+  %defer_block_fault21 = alloca i64, align 8
+  %err23 = alloca i64, align 8
+  %varargslots24 = alloca [1 x %any], align 16
+  %retparam25 = alloca i64, align 8
   %0 = call i64 @String.to_int(ptr %retparam, ptr @.str, i64 2, i32 10)
   %not_err = icmp eq i64 %0, 0
   %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
@@ -86,19 +86,19 @@ guard_block5:                                     ; preds = %phi_block
   %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %any %9, ptr %varargslots7, align 16
   %10 = call i64 @std.io.printfn(ptr %retparam8, ptr @.str.2, i64 34, ptr %varargslots7, i64 1)
-  br label %unreachable
+  br label %after_macro
 
-unreachable:                                      ; preds = %guard_block5
+after_macro:                                      ; preds = %guard_block5
   %11 = call i64 @String.to_int(ptr %retparam11, ptr @.str.3, i64 2, i32 10)
   %not_err12 = icmp eq i64 %11, 0
   %12 = call i1 @llvm.expect.i1(i1 %not_err12, i1 true)
   br i1 %12, label %after_check13, label %else_block14
 
-after_check13:                                    ; preds = %unreachable
+after_check13:                                    ; preds = %after_macro
   %13 = load i32, ptr %retparam11, align 4
   br label %phi_block15
 
-else_block14:                                     ; preds = %unreachable
+else_block14:                                     ; preds = %after_macro
   store i64 ptrtoint (ptr @std.core.builtin.NOT_FOUND to i64), ptr %defer_block_fault, align 8
   br label %opt_block_cleanup
 
@@ -116,18 +116,18 @@ opt_block_cleanup:                                ; preds = %else_block14
   br label %expr_block.exit
 
 expr_block.exit:                                  ; preds = %opt_block_cleanup, %phi_block15
-  store i64 ptrtoint (ptr @std.core.builtin.NOT_FOUND to i64), ptr %defer_block_fault22, align 8
-  br label %opt_block_cleanup23
+  store i64 ptrtoint (ptr @std.core.builtin.NOT_FOUND to i64), ptr %defer_block_fault21, align 8
+  br label %opt_block_cleanup22
 
-opt_block_cleanup23:                              ; preds = %expr_block.exit
-  %18 = load i64, ptr %defer_block_fault22, align 8
-  store i64 %18, ptr %err24, align 8
-  %19 = insertvalue %any undef, ptr %err24, 0
+opt_block_cleanup22:                              ; preds = %expr_block.exit
+  %18 = load i64, ptr %defer_block_fault21, align 8
+  store i64 %18, ptr %err23, align 8
+  %19 = insertvalue %any undef, ptr %err23, 0
   %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
-  store %any %20, ptr %varargslots25, align 16
-  %21 = call i64 @std.io.printfn(ptr %retparam26, ptr @.str.5, i64 34, ptr %varargslots25, i64 1)
-  br label %unreachable29
+  store %any %20, ptr %varargslots24, align 16
+  %21 = call i64 @std.io.printfn(ptr %retparam25, ptr @.str.5, i64 34, ptr %varargslots24, i64 1)
+  br label %unreachable
 
-unreachable29:                                    ; preds = %opt_block_cleanup23
+unreachable:                                      ; preds = %opt_block_cleanup22
   ret void
 }

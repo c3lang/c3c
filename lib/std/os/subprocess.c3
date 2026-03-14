@@ -3,18 +3,7 @@ import std::io, libc, std::os, std::net::os;
 
 // This code is based on https://github.com/sheredom/subprocess.h
 
-faultdef
-	FAILED_TO_CREATE_PIPE,
-	FAILED_TO_OPEN_STDIN,
-	FAILED_TO_OPEN_STDOUT,
-	FAILED_TO_OPEN_STDERR,
-	FAILED_TO_START_PROCESS,
-	FAILED_TO_INITIALIZE_ACTIONS,
-	PROCESS_JOIN_FAILED,
-	PROCESS_TERMINATION_FAILED,
-	READ_FAILED;
-
-struct SubProcess
+struct SubProcess @deprecated("Use Process")
 {
 	CFile stdin_file;
 	CFile stdout_file;
@@ -41,11 +30,6 @@ bitstruct SubProcessOptions : int
 	bool read_async;
 	<* Spawn child process without window if supported *>
 	bool no_window;
-	<*
-	 Search for program names in the PATH variable. Always enabled on Windows.
-	 Note: this will **not** search for paths in any provided custom environment
-	 and instead uses the PATH of the spawning process.
-	*>
 	bool search_user_path;
 	<* Inherit the parent's stdin, stdout, and stderr handles instead of creating pipes *>
 	bool inherit_stdio;
@@ -113,6 +97,7 @@ fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WI
 
 <*
  @require !environment || !options.inherit_environment
+ @deprecated "Use process::spawn"
 *>
 fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, String[] environment = {}) @if(env::WIN32)
 {
@@ -276,7 +261,6 @@ fn ZString* copy_command_line(Allocator mem, String[] command_line) @local @inli
 	return copy;
 }
 
-const ZString[1] EMPTY_ENVIRONMENT @if(env::POSIX) = { null };
 fn ZString* copy_env(Allocator mem, String[] environment) @local @inline @if(env::POSIX)
 {
 	if (!environment.len) return &EMPTY_ENVIRONMENT;
@@ -289,19 +273,22 @@ fn ZString* copy_env(Allocator mem, String[] environment) @local @inline @if(env
 	return copy;
 }
 
-fn String? execute_stdout_to_buffer(char[] buffer, String[] command_line, SubProcessOptions options = {}, String[] environment = {})
+fn String? execute_stdout_to_buffer(char[] buffer, String[] command_line, SubProcessOptions options = {}, String[] environment = {}) @deprecated("use run_capture_stdout")
 {
-	SubProcess process = process::create(command_line, options, environment)!;
-	process.join()!;
-	usz len = process.read_stdout(buffer.ptr, buffer.len)!;
-	if (len == 0) return "";
-	return (String)buffer[:len - 1];
+	SpawnOptions opt;
+	if (options.combined_stdout_stderr) opt |= STDERR_TO_STDOUT;
+	if (options.inherit_environment) opt |= INHERIT_ENV;
+	if (options.read_async) opt |= ASYNC_OUTPUT;
+	if (options.no_window) opt |= NO_WINDOW;
+	if (options.inherit_stdio) opt |= INHERIT_STDIO;
+	return process::run_capture_stdout(buffer, command_line, opt, environment)!;
 }
 
 <*
  @require !environment || !options.inherit_environment
+ @deprecated "Use process::spawn"
 *>
-fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, String[] environment = {}) @if(env::POSIX)
+fn SubProcess? create(String[] command_line, SubProcessOptions options = { }, String[] environment = {}) @if(env::POSIX)
 {
 	CInt[2] stdinfd;
 	CInt[2] stdoutfd;
@@ -357,14 +344,7 @@ fn SubProcess? create(String[] command_line, SubProcessOptions options = {}, Str
 	{
 		ZString* command_line_copy = copy_command_line(mem, command_line);
 		ZString* used_environment = options.inherit_environment ? posix::environ : copy_env(mem, environment);
-		if (options.search_user_path)
-		{
-			if (posix::spawnp(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS~;
-		}
-		else
-		{
-			if (posix::spawn(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS~;
-		}
+		if (posix::spawnp(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS~;
 	};
 
 	// Only set up file handles if not inheriting stdio

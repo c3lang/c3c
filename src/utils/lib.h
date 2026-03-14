@@ -12,7 +12,7 @@
 #include "intrin.h"
 #endif
 
-const char *download_file(const char *url, const char *resource, const char *file_path);
+const char *download_file(const char *url, const char *resource, const char *file_path, bool show_progress);
 bool download_available(void);
 
 #define ELEMENTLEN(x) (sizeof(x) / sizeof(x[0]))
@@ -82,6 +82,7 @@ bool file_delete_file(const char *path);
 void file_delete_dir(const char *path);
 bool file_is_dir(const char *file);
 bool file_exists(const char *path);
+bool file_executable_in_path(const char *name);
 bool file_path_is_relative(const char *file_name);
 FILE *file_open_read(const char *path);
 bool file_touch(const char *path);

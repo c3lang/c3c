@@ -5,11 +5,35 @@
 ### Changes / improvements
 - Removed support for LLVM 17, 18.
 - Detect large temporaries when creating slices on the stack #2665
+- Search for the linker in PATH; use the builtin linker if CC missing. #2906
+- `constdef` inference through binary expressions: `Foo f = Foo.AUDIO | Foo.VIDEO` can be written `Foo f = AUDIO | VIDEO;`
+- Fix for LLVM 22+ compatibility #2987
+- `@weaklink` for just affecting linkage.
+- Add a fully static build of `c3c` for Linux. #2949
+- `@weak` now allows direct overriding of `@weak` definitions with a real definition.
+- Unified SDK fetching under `c3c fetch-sdk <target>` (windows, android) and added support for automatic Android NDK (r29) download. Better progress bar. #3019
+- Improved Linux backtrace readability by stripping internal panic and runtime startup frames. #3008
+- Added repetition compression for deep recursive stacks in backtraces. #3008
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
 - Add hash method for ZStrings. #2982
 - Added json serialization from structs.
+- Add `keccak` and Keccak-based hash functions: `sha3`, `shake`, `cshake`, `kmac`, `turboshake`, `tuplehash`, and `parallelhash`. #2728
+- Added `fault.short_name` and `fault.@short_name` to get just the fault name for both run and compile time. #3002
+- Compiler runtime functions extracted outside of std.
+- Add the GZIP file format (RFC 1952).
+- Add file::last_modified.
+- Make DateTime and DateTimeTz `Printable`.
+- Add `to_format` functionality for DateTime.
+- `SubProcess`/`process::create`/`process::execute_stdout_to_buffer` deprecated, replaced by `Process`/`process:spawn`/`process::run_capture_stdout`.
+- Add support for AES-encrypted Zip files (AE-1 and AE-2 formats).
+- Add `Argon2` memory-hard hashing with associated tests. #2773
+- Matrix type is now column major.
+- Fix matrix perspective and ortho, project and unproject to be RH [0,1]
+- Add vec3 methods: `rejection`, `project`, implement `unproject`.
+- Add vector function `cubic_hermite`
+- Deprecated `sq_magnitude`, `barycenter`, `towards`, `ortho_normalize`, `clamp_mag`, use `length_sq`, `barycentric`, `move_towards`, `orthonormalize`, `clamp_length` instead.
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
@@ -20,6 +44,19 @@
 - SubProcessOptions.search_user_path did nothing on non-windows systems despite comment saying it should #2845
 - AES implementation fixed to be constant time #2806
 - Object would not properly compile on 32-bit Linux.
+- `read_varint` and `write_varint` did not work properly for ulong and wider.
+- `io::EOF.nameof` would yield just `EOF` whereas resolving it at runtime would (correctly) yield `io::EOF`.
+- `$stringify` would incorrectly capture lambdas. #2986
+- Regression: `String` was not implicitly `@constinit` #2983
+- Compiler does not propagate @noreturn through macros using short declaration syntax #3011
+- Debug info emitted on `-Os` #3015
+- @assert_leak() would not work properly with `--safe=no` #3012.
+- Duplicate symbols when building executables on Termux. #2984
+- `double[<*>].max` and `.min` were broken.
+- Incorrect codegen, crashing the compiler, when passing a `{ .xy = 1 }` constant initializer vector to a function taking a vector, hitting vec->array conversion. #3035
+- Folding an anon struct member at compile time would crash #3034.
+- Crash in sema_compare_weak_decl when replacing a function declaration from a .c3i file in some cases #3031
+- Issue with 'inline' keyword on enum and constdef #3032.
 
 ## 0.7.10 Change list
 
@@ -58,7 +95,7 @@
 - Add `array::even`, `array::odd`, and `array::unlace` macros. #2892
 - Add discrete and continuous distributions in `std::math::distributions`.
 - Add bitorder functions `store_le`, `load_le`, `store_be`, `store_le`.
-- Stream functions now use long/ulong rather than isz/usz for seek/available. 
+- Stream functions now use long/ulong rather than isz/usz for seek/available.
 - `instream.seek` is replaced by `set_cursor` and `cursor`.
 - `instream.available`, `cursor` etc are long/ulong rather than isz/usz to be correct on 32-bit.
 - Enable asynchronous, non-blocking reads of subprocess STDOUT/STDERR pipes on POSIX systems.
@@ -74,7 +111,7 @@
 - Flag `--cpu-flags` doesn't work if the first item is an exclusion. #2905
 - Reallocating overaligned memory with the LibcAllocator was unsafe.
 - Using [] or .foo on $$ functions would not raise error but instead crash
-- Improved underlining errors/warnings when unicode is used. #2887 
+- Improved underlining errors/warnings when unicode is used. #2887
 - Fix std::io::Formatter integer issue for large uint128 decimal values.
 - `--safe=no` disabled compile-time errors on compile-time known runtime @require checks #2936
 - On assert known false, the message was not shown for no-args.
@@ -105,6 +142,7 @@
 - Make `foo.$abc` implicitly mean `foo.eval("$abc")`.
 - Deprecating multi-level array length inference. `int[*][*]` is deprecated and will be removed 0.8.0.
 - Combining argument-less initialization with argument init for bitstructs is now allowed e.g. `{ .b, .c = 123 }`.
+- Renovated benchmark runtime, added median to results and CSV report generation. #2672
 
 ### Fixes
 - Remove use of LLVMGetGlobalContext for single module compilation.

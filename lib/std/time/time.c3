@@ -29,7 +29,7 @@ fn Duration min(long l) @inline => l * MIN;
 fn Duration hour(long l) @inline => l * HOUR;
 fn Duration from_float(double s) @inline => (Duration)(s * (double)SEC);
 
-struct DateTime
+struct DateTime (Printable)
 {
 	int usec;
 	char sec;
@@ -43,7 +43,7 @@ struct DateTime
 	Time time;
 }
 
-struct TzDateTime
+struct TzDateTime (Printable)
 {
 	inline DateTime date_time;
 	int gmt_offset;
@@ -113,6 +113,29 @@ fn Duration NanoDuration.to_duration(nd) => (Duration)nd / 1_000;
 fn NanoDuration Duration.to_nano(td) => (NanoDuration)td * 1_000;
 fn long Duration.to_ms(td) => (long)td / 1_000;
 macro Duration Duration.mult(#td, long #val) @operator_s(*) @safemacro => (Duration)((long)#td * #val);
+
+fn String NanoDuration.unit_str(&self, Allocator allocator, bool use_short_units = true)
+{
+	static String[] units = { "nanoseconds", "microseconds", "milliseconds", "seconds" };
+	static String[] short_units = { "ns", "us", "ms", "s" }; // using Mu here causes spacing oddities, just using 'us'
+	usz units_idx = 0;
+
+	double reduced_value = (double)*self;
+	for (; reduced_value > 1_000 && units_idx < units.len - 1; reduced_value /= 1_000, units_idx++);
+
+	DString out_str = dstring::new_with_capacity(allocator, 32);
+	out_str.appendf(
+		use_short_units ? "%.2f%s" : "%.2f %s",
+		reduced_value,
+		(use_short_units ? short_units : units)[units_idx]
+	);
+	return out_str.str_view();
+}
+
+fn String NanoDuration.tunit_str(&self, bool use_short_units = true)
+{
+	return self.unit_str(tmem, use_short_units);
+}
 
 fn usz? NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 {

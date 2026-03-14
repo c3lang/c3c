@@ -214,6 +214,24 @@ macro bool struct_eq(#left, #right, ..., $member_prefix = "") @builtin @safemacr
 	return true;
 }
 
+fn int panic_print_backtrace_count(BacktraceList backtrace, int backtraces_to_ignore)
+{
+	bool inside_builtin_panic_skipped = true;
+	for (int i = backtraces_to_ignore; i < backtrace.len(); i++) {
+		switch (backtrace[i].function) {
+			case "std.core.builtin.print_backtrace":
+			case "std.core.builtin.default_panic":
+			case "std.core.builtin.panicf":
+				if (inside_builtin_panic_skipped) backtraces_to_ignore++;
+			case "__GI___sigaction":
+				backtraces_to_ignore = i + 1;
+			default:
+				inside_builtin_panic_skipped = false;
+				break;
+		}
+	}
+	return backtraces_to_ignore;
+}
 
 fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_backtrace = null) @if (env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
 {
@@ -227,29 +245,52 @@ fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_ba
 	{
 		BacktraceList? backtrace = backtrace::symbolize_backtrace(mem, backtraces);
 		if (catch backtrace) return false;
+
+		// Update ignore-count to also ignore the first traces from the panic functions
+		backtraces_to_ignore = panic_print_backtrace_count(backtrace, backtraces_to_ignore);
 		if (backtrace.len() <= backtraces_to_ignore) return false;
+
 		io::eprint("\nERROR: '");
 		io::eprint(message);
 		io::eprintn("'");
+
+		usz repetition_count = 0;
 		foreach (i, &trace : backtrace)
 		{
 			if (i < backtraces_to_ignore) continue;
+			if (trace.has_file() && trace.file.ends_with("/lib/std/core/private/main_stub.c3")) {
+				break;
+			}
+
+			// Repeating backtraces (f.e. for max recursion depth) pretty print
+			if (i > 0 && *trace == backtrace[i-1]) {
+				if (i + 1 < backtrace.len() && *trace == backtrace[i+1]) {
+					repetition_count += 1;
+					continue;
+				} else if (repetition_count > 0) {
+					if (trace.is_unknown()) {
+						io::eprintfn("  ... (%s repetitions of ???)", repetition_count, trace.function);
+					} else {
+						io::eprintfn("  ... (%s repetitions of %s)", repetition_count, trace.function);
+					}
+				}
+			} else {
+				repetition_count = 0;
+			}
+
 			String inline_suffix = trace.is_inline ? " [inline]" : "";
-			if (trace.is_unknown())
+			switch
 			{
-				io::eprintfn("  in ???%s", inline_suffix);
-				continue;
+				case trace.is_unknown():
+					io::eprintfn("  in ???%s", inline_suffix);
+				case trace.has_file():
+					io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
+				default:
+					io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
 			}
-			if (trace.has_file())
-			{
-				io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
-				continue;
-			}
-			io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
 		}
 	};
 	return true;
-
 }
 
 fn void default_panic(String message, String file, String function, uint line) @if(env::NATIVE_STACKTRACE)
@@ -1040,6 +1081,19 @@ macro void* get_returnaddress(int n)
 		case 128: return $$returnaddress(128);
 		default: unreachable();
 	}
+}
+
+fn String fault.short_name(self)
+{
+	String name = self.nameof;
+	return name[name.index_of("::") + 2..]!!;
+}
+
+
+macro String fault.@short_name($self) @const
+{
+	var $name = $self.nameof;
+	return $name[@str_find($name, "::") + 2..];
 }
 
 module std::core::builtin @if((env::LINUX || env::ANDROID || env::DARWIN) && env::COMPILER_SAFE_MODE && env::DEBUG_SYMBOLS);

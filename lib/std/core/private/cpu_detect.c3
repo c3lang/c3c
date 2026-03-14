@@ -141,6 +141,9 @@ enum X86Feature
 
 uint128 x86_features;
 
+<* Check whether a given CPU feature is set. *>
+macro bool has_cpu_flag(X86Feature f) => (cpudetect::x86_features & (1ULL << f.ordinal)) != 0;
+
 fn void add_feature_if_bit(X86Feature feature, uint register, int bit)
 {
 	if (register & 1U << bit) x86_features |= 1ULL << feature.ordinal;

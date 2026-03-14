@@ -6,7 +6,9 @@ const String WHITESPACE_NUMERIC_TARGET = " 25290   0969  99a \tbcde12332 34 43  
 fn void initialize_bench() @init
 {
 	set_benchmark_warmup_iterations(64);
-	set_benchmark_max_iterations(1 << 24);
+	set_benchmark_max_iterations(12_000_000);
+	set_benchmark_func_iterations("string_trim_wars::trim_many", 2_800_000);
+	set_benchmark_func_iterations("string_trim_wars::trim_charset_many", 5_200_000);
 }
 
 macro void trim_bench($trim_str, String $target = WHITESPACE_TARGET) => @pool()
@@ -14,7 +16,7 @@ macro void trim_bench($trim_str, String $target = WHITESPACE_TARGET) => @pool()
 	String s1;
 	String s2 = $target.tcopy();
 
-	runtime::@start_benchmark();
+	@start_benchmark();
 
 	$switch:
 	$case $typeof($trim_str) == String:
@@ -26,7 +28,7 @@ macro void trim_bench($trim_str, String $target = WHITESPACE_TARGET) => @pool()
 
 	@volatile_load(s1);
 
-	runtime::@end_benchmark();
+	@end_benchmark();
 }
 
 

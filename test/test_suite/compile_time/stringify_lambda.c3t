@@ -1,0 +1,18 @@
+// #target: macos-x64
+module test;
+import std;
+
+fn void main()
+{
+  @foo(fn (a, b) => a + b);
+}
+
+macro @foo(#a)
+{
+	String foo = $stringify(#a);
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [19 x i8] c"fn (a, b) => a + b\00", align 1
+

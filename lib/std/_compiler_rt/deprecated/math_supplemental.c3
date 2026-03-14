@@ -2,13 +2,13 @@ module std::math::math_rt;
 
 const double TOINT = 1 / math::DOUBLE_EPSILON;
 const float TOINTF = (float)(1 / math::FLOAT_EPSILON);
-macro force_eval_add(x, v)
+macro force_eval_add(x, v) @deprecated
 {
 	$typeof(x) temp @noinit;
 	@volatile_store(temp, x + v);
 }
 
-fn double __roundeven(double x) @cname("roundeven") @weak @nostrip
+fn double __roundeven(double x) @deprecated
 {
 	ulong u = bitcast(x, ulong);
 	int e = (int)((u >> 52) & 0x7ff);
@@ -42,7 +42,7 @@ fn double __roundeven(double x) @cname("roundeven") @weak @nostrip
 	return y;
 }
 
-fn float __roundevenf(float x) @cname("roundevenf") @weak @nostrip
+fn float __roundevenf(float x) @deprecated
 {
 	uint u = bitcast(x, uint);
 	int e = (u >> 23) & 0xff;
@@ -75,7 +75,7 @@ fn float __roundevenf(float x) @cname("roundevenf") @weak @nostrip
 	return y;
 }
 
-fn double __powidf2(double a, int b) @cname("__powidf2") @weak @nostrip
+fn double __powidf2(double a, int b)
 {
 	bool recip = b < 0;
     double r = 1;

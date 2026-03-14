@@ -132,7 +132,7 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_TEST:
 		case COMMAND_VENDOR_FETCH:
 		case COMMAND_PROJECT:
-		case COMMAND_FETCH_MSVC:
+		case COMMAND_FETCH_SDK:
 			return false;
 	}
 	UNREACHABLE
@@ -165,7 +165,7 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_VENDOR_FETCH:
 		case COMMAND_PROJECT:
-		case COMMAND_FETCH_MSVC:
+		case COMMAND_FETCH_SDK:
 			return false;
 	}
 	UNREACHABLE
@@ -235,6 +235,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			vectorization = VECTORIZATION_ON;
 			break;
 		case OPT_SETTING_OSMALL:
+			debug = DEBUG_INFO_NONE;
 			merge_functions = MERGE_FUNCTIONS_ON;
 			optlevel = OPTIMIZATION_MORE;
 			optsize = SIZE_OPTIMIZATION_SMALL;
@@ -357,6 +358,20 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case COMMAND_BENCHMARK:
 			target->run_after_compile = !options->suppress_run;
 			target->type = TARGET_TYPE_BENCHMARK;
+			if (options->benchmark_csv_report) vec_add(target->args, "--csv-report");
+			switch (options->ansi)
+			{
+				case ANSI_OFF:
+					vec_add(target->args, "--ansi");
+					vec_add(target->args, "no");
+					break;
+				case ANSI_ON:
+					vec_add(target->args, "--ansi");
+					vec_add(target->args, "yes");
+					break;
+				default:
+					break;
+			}
 			break;
 		case COMMAND_COMPILE_TEST:
 		case COMMAND_TEST:
@@ -586,6 +601,23 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->emit_asm = options->emit_asm;
 	target->print_stats = options->verbosity_level >= 2;
 
+#if defined(__linux__) && __linux__
+	static bool libc_detected = false;
+	if (!libc_detected)
+	{
+		if (file_exists("/lib/libc.so.6") || file_exists("/usr/lib/libc.so.6") || file_exists("/lib64/libc.so.6") ||
+		    file_exists("/lib/x86_64-linux-gnu/libc.so.6") || file_exists("/usr/lib/x86_64-linux-gnu/libc.so.6") ||
+		    file_exists("/lib/aarch64-linux-gnu/libc.so.6") || file_exists("/usr/lib/aarch64-linux-gnu/libc.so.6"))
+		{
+			default_libc = LINUX_LIBC_GNU;
+		}
+		else if (file_exists("/lib/ld-musl-x86_64.so.1") || file_exists("/lib/ld-musl-aarch64.so.1"))
+		{
+			default_libc = LINUX_LIBC_MUSL;
+		}
+		libc_detected = true;
+	}
+#endif
 	if (target->linuxpaths.libc == LINUX_LIBC_NOT_SET) target->linuxpaths.libc = default_libc;
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
@@ -728,6 +760,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 
 void init_default_build_target(BuildTarget *target, BuildOptions *options)
 {
+
 	*target = default_build_target;
 	target->source_dirs = NULL;
 	target->name = options->output_name;

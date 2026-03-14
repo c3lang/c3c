@@ -115,7 +115,7 @@ fn Backtrace? backtrace_load_element(Allocator allocator, String execpath, void*
 	if (buffer)
 	{
 		char[1024] buf;
-		String s = process::execute_stdout_to_buffer(&buf,
+		String s = process::run_capture_stdout(&buf,
 			{ "atos", "-o", execpath, "-arch", env::AARCH64 ? "arm64" : "x86_64", "-l",
 				string::bformat(&&(char[64]){}, "%p", load_address),
 				string::bformat(&&(char[64]){}, "%p", buffer - 1),

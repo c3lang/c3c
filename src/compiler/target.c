@@ -125,6 +125,8 @@ static const char *x86_feature_name[] = {
 	[X86_FEAT_APX_ZU] = "zu",
 	[X86_FEAT_AVX] = "avx",
 	[X86_FEAT_AVX2] = "avx2",
+	[X86_FEAT_AVX10_1] = "avx10.1",
+	[X86_FEAT_AVX10_2] = "avx10.2",
 	[X86_FEAT_AVX10_1_512] = "avx10.1-512",
 	[X86_FEAT_AVX10_1_256] = "avx10.1-256",
 	[X86_FEAT_AVX10_2_512] = "avx10.2-512",
@@ -814,6 +816,12 @@ static void x86_features_add_feature(CpuFeatures *cpu_features, X86Feature featu
 			x86_features_add_feature(cpu_features, X86_FEAT_VAES);
 			x86_features_add_feature(cpu_features, X86_FEAT_VPCLMULQDQ);
 			x86_features_add_feature(cpu_features, X86_FEAT_AVX512FP16);
+			return;
+		case X86_FEAT_AVX10_1:
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX10_1_256);
+			return;
+		case X86_FEAT_AVX10_2:
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX10_2_256);
 			return;
 		case X86_FEAT_SOFT_FLOAT:
 			return;
