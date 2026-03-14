@@ -134,9 +134,9 @@ fn Real[<3>] Matrix3x3.apply(&self, Real[<3>] vec) @operator(*)
 {
 	Real[<9>] m = self.m;
 	return {
-		m[0] * vec.x + m[1] * vec.y + m[2] * vec.z,
-		m[3] * vec.x + m[4] * vec.y + m[5] * vec.z,
-		m[6] * vec.x + m[7] * vec.y + m[8] * vec.z,
+		m[0] * vec.x + m[3] * vec.y + m[6] * vec.z,
+		m[1] * vec.x + m[4] * vec.y + m[7] * vec.z,
+		m[2] * vec.x + m[5] * vec.y + m[8] * vec.z,
 	};
 }
 

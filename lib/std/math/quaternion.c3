@@ -1,7 +1,6 @@
-module std::math;
+module std::math::quaternion;
 
 // Predefined quaternion aliases.
-
 alias Quaternionf = QuaternionNumber {float};
 alias Quaternion = QuaternionNumber {double};
 alias QUATERNION_IDENTITY  @builtin = quaternion::IDENTITY {double};
@@ -12,7 +11,6 @@ alias QUATERNIONF_IDENTITY @builtin = quaternion::IDENTITY {float};
 
  @require Real.kindof == FLOAT : "A quaternion must use a floating type"
 *>
-
 module std::math::quaternion <Real>;
 import std::math::vector, std::math::matrix;
 
@@ -36,6 +34,7 @@ macro QuaternionNumber QuaternionNumber.scale(self, Real s) @operator_s(*) => { 
 macro QuaternionNumber.to_angle(self) => 2 * math::acos(self.v.w);
 macro QuaternionNumber QuaternionNumber.normalize(self) => { .v = self.v.normalize() };
 macro Real QuaternionNumber.length(self) => self.v.length();
+macro Real QuaternionNumber.length_sq(self) => self.v.length_sq();
 macro QuaternionNumber QuaternionNumber.lerp(self, QuaternionNumber q2, Real amount) => { .v = self.v.lerp(q2.v, amount) };
 fn QuaternionNumber QuaternionNumber.nlerp(self, QuaternionNumber q2, Real amount) => { .v = self.v.lerp(q2.v, amount).normalize() };
 

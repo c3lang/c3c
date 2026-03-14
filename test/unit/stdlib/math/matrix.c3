@@ -186,7 +186,7 @@ fn void test_mat4_ortho() @if(!$feature(OLD_MATRIX))
 
 fn void test_apply()
 {
-	Matrix3 mat = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+	Matrix3 mat = { .m00 = 1, .m01 = 2, .m02 = 3, .m10 = 4, .m11 = 5, .m12 = 6, .m20 = 7, .m21 = 8, .m22 = 9 };
 	double[<3>] res = mat.apply({7, 8, 9});
 	assert(res == { 50.000000, 122.000000, 194.000000 });
 }
