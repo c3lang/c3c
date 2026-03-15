@@ -83,14 +83,14 @@ fn void test_mat4_translate_v()
 
 fn void test_mat4_rotate()
 {
-	Matrix4 rot_x = MATRIX4_IDENTITY.rotate_x(math::deg_to_rad(90));
+	Matrix4 rot_x = MATRIX4_IDENTITY.rotate_x(90.0.to_radians());
 	assert(math::round_to_decimals(rot_x * (double[<4>]){ 0.0, 1.0, 0.0, 1.0}, 4) == {0.0, 0.0, 1.0, 1.0});
-	Matrix4f rot_xf = MATRIX4F_IDENTITY.rotate_x((float) math::deg_to_rad(90));
+	Matrix4f rot_xf = MATRIX4F_IDENTITY.rotate_x(90.0f.to_radians());
 	assert(math::round_to_decimals(rot_xf * (float[<4>]){ 0.0, 1.0, 0.0, 1.0}, 4) == {0.0, 0.0, 1.0, 1.0});
 
-	Matrix4 rot_y = MATRIX4_IDENTITY.rotate_y(math::deg_to_rad(90));
+	Matrix4 rot_y = MATRIX4_IDENTITY.rotate_y(90.0.to_radians());
 	assert(math::round_to_decimals(rot_y * (double[<4>]){ 1.0, 0.0, 0.0, 1.0}, 4) == {0.0, 0.0, -1.0, 1.0});
-	Matrix4f rot_yf = MATRIX4F_IDENTITY.rotate_y((float) math::deg_to_rad(90));
+	Matrix4f rot_yf = MATRIX4F_IDENTITY.rotate_y(90.0f.to_radians());
 	assert(math::round_to_decimals(rot_yf * (float[<4>]){ 1.0, 0.0, 0.0, 1.0}, 4) == {0.0, 0.0, -1.0, 1.0});
 
 	Matrix4 rot_z = MATRIX4_IDENTITY.rotate_z(math::deg_to_rad(90));

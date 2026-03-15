@@ -402,29 +402,26 @@ fn Matrix4x4 Matrix4x4.translate(&self, Real[<3>] v)
 // r in radians
 fn Matrix3x3 Matrix3x3.rotate(&self, Real r)
 {
-	Real c = math::cos(r);
-	Real s = math::sin(r);
-	return self.mul({ .m = { c, s, 0, -s, c, 0, 0, 0, 1 }});
+	Real[<2>] sc = math::sincos(r);
+	return self.mul({ .m = { sc.y, sc.x, 0, -sc.x, sc.y, 0, 0, 0, 1 }});
 }
 
 
 // r in radians
 fn Matrix4x4 Matrix4x4.rotate_z(&self, Real r)
 {
-	Real c = math::cos(r);
-	Real s = math::sin(r);
-	return self.mul({ .m = { c, s, 0, 0, -s, c, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 }});
+	Real[<2>] sc = math::sincos(r);
+	return self.mul({ .m = { sc.y, sc.x, 0, 0, -sc.x, sc.y, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 }});
 }
 
 // r in radians
 fn Matrix4x4 Matrix4x4.rotate_y(&self, Real r)
 {
-	Real c = math::cos(r);
-	Real s = math::sin(r);
+	Real[<2>] sc = math::sincos(r);
 	return self.mul({ .m = {
-		c, 0, -s, 0,
+		sc.y, 0, -sc.x, 0,
 		0, 1, 0, 0,
-		s, 0, c, 0,
+		sc.x, 0, sc.y, 0,
 		0, 0, 0, 1,
 	}});
 }
@@ -432,12 +429,11 @@ fn Matrix4x4 Matrix4x4.rotate_y(&self, Real r)
 // r in radians
 fn Matrix4x4 Matrix4x4.rotate_x(&self, Real r)
 {
-	Real c = math::cos(r);
-	Real s = math::sin(r);
+	Real[<2>] sc = math::sincos(r);
 	return self.mul({ .m = {
 		1, 0, 0, 0,
-		0, c, s, 0,
-		0, -s, c, 0,
+		0, sc.y, sc.x, 0,
+		0, -sc.x, sc.y, 0,
 		0, 0, 0, 1,
 	}});
 }
