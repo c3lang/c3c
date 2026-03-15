@@ -16,6 +16,7 @@
 - Added repetition compression for deep recursive stacks in backtraces. #3008
 
 ### Stdlib changes
+- Add `OneShotChannel` to `std::thread::channel` for single-send/single-receive thread synchronization.
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
 - Add hash method for ZStrings. #2982
 - Added json serialization from structs.
