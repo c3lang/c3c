@@ -69,7 +69,7 @@ fn BitSet BitSet.xor(&self, BitSet set) @operator(^)
 <*
  Perform or over all bits, returning a new bit set.
 
- @param set : "The bit set to xor with"
+ @param set : "The bit set to or with"
  @return "The resulting bit set"
 *>
 fn BitSet BitSet.or(&self, BitSet set) @operator(|)
@@ -82,7 +82,7 @@ fn BitSet BitSet.or(&self, BitSet set) @operator(|)
 <*
  Perform or over all bits, mutating itself
 
- @param set : "The bit set to xor with"
+ @param set : "The bit set to or with"
  @return "The resulting bit set"
 *>
 macro BitSet BitSet.or_self(&self, BitSet set) @operator(|=)
@@ -94,7 +94,7 @@ macro BitSet BitSet.or_self(&self, BitSet set) @operator(|=)
 <*
  Perform & over all bits, returning a new bit set.
 
- @param set : "The bit set to xor with"
+ @param set : "The bit set to & with"
  @return "The resulting bit set"
 *>
 fn BitSet BitSet.and(&self, BitSet set) @operator(&)
@@ -107,7 +107,7 @@ fn BitSet BitSet.and(&self, BitSet set) @operator(&)
 <*
  Perform & over all bits, mutating itself.
 
- @param set : "The bit set to xor with"
+ @param set : "The bit set to & with"
  @return "The resulting bit set"
 *>
 macro BitSet BitSet.and_self(&self, BitSet set) @operator(&=)
@@ -186,7 +186,7 @@ struct GrowableBitSet
 
 <*
  @param initial_capacity
- @param [&inout] allocator : "The allocator to use, defaults to the heap allocator"
+ @param [&inout] allocator : "The allocator to use"
 *>
 fn GrowableBitSet* GrowableBitSet.init(&self, Allocator allocator, usz initial_capacity = 1)
 {
