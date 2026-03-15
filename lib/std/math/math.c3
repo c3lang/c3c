@@ -217,18 +217,6 @@ macro sincos(x)
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
 *>
-macro atan(x)
-{
-	$if $typeof(x) == float:
-		return _atanf(x);
-	$else
-		return _atan(x);
-	$endif
-}
-
-<*
- @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
-*>
 macro atanh(x)
 {
 	$if $typeof(x) == float:
@@ -241,14 +229,7 @@ macro atanh(x)
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
 *>
-macro acos(x)
-{
-	$if $typeof(x) == float:
-		return _acosf(x);
-	$else
-		return _acos(x);
-	$endif
-}
+macro acos(x) => $$acos(values::promote_int(x));
 
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
@@ -265,14 +246,7 @@ macro acosh(x)
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
 *>
-macro asin(x)
-{
-	$if $typeof(x) == float:
-		return _asinf(x);
-	$else
-		return _asin(x);
-	$endif
-}
+macro asin(x) => $$asin(values::promote_int(x));
 
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
@@ -285,6 +259,11 @@ macro asinh(x)
 		return _asinh(x);
 	$endif
 }
+
+<*
+ @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
+*>
+macro atan(x) => $$atan(values::promote_int(x));
 
 <*
  @require values::@is_floatlike(x) : `The input must be a floating point value or float vector`
@@ -336,7 +315,7 @@ macro cosech(x) => 2 / (exp(x) - exp(-x));
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro cosh(x) => (exp(x) + exp(-x)) / 2.0;
+macro cosh(x) => $$cosh(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
@@ -357,6 +336,11 @@ macro exp(x) => $$exp(values::promote_int(x));
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
 macro exp2(x) => $$exp2(values::promote_int(x));
+
+<*
+ @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
+*>
+macro exp10(x) => $$exp10(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
@@ -550,7 +534,7 @@ macro sin(x) => $$sin(values::promote_int(x));
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
 *>
-macro sinh(x) => (exp(x) - exp(-x)) / 2.0;
+macro sinh(x) => $$sinh(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
@@ -565,18 +549,12 @@ macro sqrt(x) => $$sqrt(values::promote_int(x));
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
 *>
-macro tan(x)
-{
-	var $Type = $typeof(x);
-	$switch:
-		$case types::is_vector($Type):
-			return $$sin(x) / $$cos(x);
-		$case $Type.typeid == float.typeid:
-			return _tanf(x);
-		$default:
-			return _tan(x);
-	$endswitch
-}
+macro tan(x) => $$tan(values::promote_int(x));
+
+<*
+ @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
+*>
+macro tanh(x) => $$tanh(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_float(x) : `The input must be a float`
@@ -621,15 +599,9 @@ macro bool is_inf(x)
 }
 
 <*
- @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
-*>
-macro tanh(x) => (exp(2.0 * x) - 1.0) / (exp(2.0 * x) + 1.0);
-
-<*
  @require values::@is_floatlike(x) : `The input must be a floating point value or float vector`
 *>
 macro trunc(x) => $$trunc(x);
-
 
 <*
  Use a mask to select values from either "then" or "else" vectors.
