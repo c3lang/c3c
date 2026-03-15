@@ -28,19 +28,19 @@ fn void test_conjugate()
 
 fn void test_identity()
 {
-	Quaternion rotation = QUATERNION_IDENTITY;
-	Quaternionf rotation_f = QUATERNIONF_IDENTITY;
+	Quaternion rotation = quaternion::IDENTITY;
+	Quaternionf rotation_f = quaternion::IDENTITY;
 	assert(rotation.v == { 0, 0, 0, 1 });
 	assert(rotation.v == { 0, 0, 0, 1 });
 }
 
-fn void test_rotation_identity()
+fn void test_rotation_identity() @if(!$feature(OLD_MATRIX))
 {
-	Quaternion rotation = QUATERNION_IDENTITY;
-	Matrix4 identity_matrix = MATRIX4_IDENTITY;
+	Quaternion rotation = quaternion::IDENTITY;
+	Matrix4 identity_matrix = matrix::IDENTITY4;
 
-	Quaternionf rotation_f = QUATERNIONF_IDENTITY;
-	Matrix4f identity_matrix_f = MATRIX4F_IDENTITY;
+	Quaternionf rotation_f = quaternion::IDENTITY;
+	Matrix4f identity_matrix_f = matrix::IDENTITY4;
 
 	assert(rotation.to_matrix().m.equals(identity_matrix.m));
 	assert(rotation_f.to_matrixf().m.equals(identity_matrix_f.m));

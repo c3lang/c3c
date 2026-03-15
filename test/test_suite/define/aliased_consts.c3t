@@ -2,8 +2,8 @@
 module foo;
 import std::io;
 import std::math;
-Matrix4f[2] data @export = {MATRIX4F_IDENTITY, MATRIX4F_IDENTITY};
-Matrix4f x = MATRIX4F_IDENTITY;
+Matrix4f[2] data @export = {matrix::IDENTITY4, matrix::IDENTITY4};
+Matrix4f x = matrix::IDENTITY4;
 fn int main()
 {
 	io::printfn("%s", x.m00);
