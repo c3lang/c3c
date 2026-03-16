@@ -146,10 +146,10 @@ fn Real[<4>] Matrix4x4.apply(&self, Real[<4>] vec) @operator(*)
 {
 	Real[<16>] m = self.m;
 	return {
-	    m[0]  * vec.x + m[4]  * vec.y + m[8]  * vec.z + m[12] * vec.w,
-        m[1]  * vec.x + m[5]  * vec.y + m[9]  * vec.z + m[13] * vec.w,
-        m[2]  * vec.x + m[6]  * vec.y + m[10] * vec.z + m[14] * vec.w,
-        m[3]  * vec.x + m[7]  * vec.y + m[11] * vec.z + m[15] * vec.w,
+		m[0]  * vec.x + m[4]  * vec.y + m[8]  * vec.z + m[12] * vec.w,
+		m[1]  * vec.x + m[5]  * vec.y + m[9]  * vec.z + m[13] * vec.w,
+		m[2]  * vec.x + m[6]  * vec.y + m[10] * vec.z + m[14] * vec.w,
+		m[3]  * vec.x + m[7]  * vec.y + m[11] * vec.z + m[15] * vec.w,
 	};
 }
 
@@ -386,7 +386,7 @@ fn Matrix3x3 Matrix3x3.translate(&self, Real[<2>] v)
 	m[6] = m[0] * v.x + m[3] * v.y + m[6];
 	m[7] = m[1] * v.x + m[4] * v.y + m[7];
 	m[8] = m[2] * v.x + m[5] * v.y + m[8];
-    return { .m = m };
+	return { .m = m };
 }
 
 fn Matrix4x4 Matrix4x4.translate(&self, Real[<3>] v)
@@ -396,7 +396,7 @@ fn Matrix4x4 Matrix4x4.translate(&self, Real[<3>] v)
 	m[13] = m[1] * v.x + m[5] * v.y + m[9]  * v.z + m[13];
 	m[14] = m[2] * v.x + m[6] * v.y + m[10] * v.z + m[14];
 	m[15] = m[3] * v.x + m[7] * v.y + m[11] * v.z + m[15];
-    return { .m = m };
+	return { .m = m };
 }
 
 // r in radians
@@ -406,6 +406,40 @@ fn Matrix3x3 Matrix3x3.rotate(&self, Real r)
 	return self.mul({ .m = { sc.y, sc.x, 0, -sc.x, sc.y, 0, 0, 0, 1 }});
 }
 
+
+<*
+ Rotate the matrix (assuming RH system)
+
+ @param angle : "The angle to rotate in radians"
+ @param axis : "The axis around which to rotate the matrix"
+
+ @return "The resulting rotated matrix"
+*>
+fn Matrix4x4 Matrix4x4.rotate(&self, Real angle, Real[<3>] axis)
+{
+	axis = axis.normalize();
+	Real[<2>] sincos_theta = math::sincos(angle);
+	Real s = sincos_theta.x;
+	Real ct = sincos_theta.y;
+	Real c = 1 - ct;
+
+	Real x = axis.x;
+	Real y = axis.y;
+	Real z = axis.z;
+
+	Real xx = x * x;
+	Real xy = x * y;
+	Real xz = x * z;
+	Real yy = y * y;
+	Real yz = y * z;
+	Real zz = z * z;
+
+	return { .m = {
+		xx * c + ct, xy * c + z * s, xz * c - y * s, 0,
+		xy * c - z * s, yy * c + ct, yz * c + x * s, 0,
+		xz * c +y * s, yz * c - x * s, zz * c + ct, 0,
+		0, 0, 0, 1 } };
+}
 
 // r in radians
 fn Matrix4x4 Matrix4x4.rotate_z(&self, Real r)
@@ -441,13 +475,13 @@ fn Matrix4x4 Matrix4x4.rotate_x(&self, Real r)
 fn Real Matrix2x2.trace(&self) => self.m.xw.sum();
 fn Real Matrix3x3.trace(&self)
 {
-    Real[<9>] m = self.m;
-    return m[0] + m[4] + m[8];
+	Real[<9>] m = self.m;
+	return m[0] + m[4] + m[8];
 }
 fn Real Matrix4x4.trace(&self)
 {
-    Real[<16>] m = self.m;
-    return m[0] + m[5] + m[10] + m[15];
+	Real[<16>] m = self.m;
+	return m[0] + m[5] + m[10] + m[15];
 }
 
 fn Matrix3x3 Matrix3x3.scale(&self, Real[<2>] v)
@@ -494,7 +528,7 @@ fn Matrix4x4 perspective(Real fovy, Real aspect, Real z_near, Real z_far)
 {
 	Real tan_half_fovy = math::tan(fovy / 2);
 
-    Real fn_scale = 1 / (z_near - z_far);
+	Real fn_scale = 1 / (z_near - z_far);
 
 	return (Matrix4x4) { .m = {
 		[0] = 1 / (aspect * tan_half_fovy),
