@@ -129,10 +129,38 @@ static void copy_to_msvc_sdk(const char *src, const char *dst)
 		}
 		else
 		{
-			if (str_eq(low_name, "msvcrt.lib"))
-				file_copy_file(s_path, (char *)file_append_path(dst, "MSVCRT.lib"), true);
-			else if (str_eq(low_name, "oldnames.lib"))
-				file_copy_file(s_path, (char *)file_append_path(dst, "OLDNAMES.lib"), true);
+			static const char *remaps[][2] = {
+				{ "msvcrt.lib", "MSVCRT.lib" },
+				{ "msvcrtd.lib", "MSVCRTD.lib" },
+				{ "oldnames.lib", "OLDNAMES.lib" },
+				{ "kernel32.lib", "Kernel32.lib" },
+				{ "user32.lib", "User32.lib" },
+				{ "gdi32.lib", "Gdi32.lib" },
+				{ "shell32.lib", "Shell32.lib" },
+				{ "winmm.lib", "Winmm.lib" },
+				{ "advapi32.lib", "Advapi32.lib" },
+				{ "ws2_32.lib", "Ws2_32.lib" },
+				{ "opengl32.lib", "OpenGL32.lib" },
+				{ "ntdll.lib", "Ntdll.lib" },
+				{ "shlwapi.lib", "Shlwapi.lib" },
+				{ "dbghelp.lib", "Dbghelp.lib" },
+				{ "libcmt.lib", "LIBCMT.lib" },
+				{ "libcmtd.lib", "LIBCMTD.lib" },
+				{ "libcpmt.lib", "LIBCPMT.lib" },
+				{ "libcpmtd.lib", "LIBCPMTD.lib" },
+				{ "ole32.lib", "Ole32.lib" },
+				{ "oleaut32.lib", "OleAut32.lib" },
+				{ "uuid.lib", "Uuid.lib" },
+				{ "comdlg32.lib", "ComDlg32.lib" },
+			};
+			for (size_t i = 0; i < ELEMENTLEN(remaps); i++)
+			{
+				if (str_eq(low_name, remaps[i][0]))
+				{
+					file_copy_file(s_path, file_append_path(dst, remaps[i][1]), true);
+					break;
+				}
+			}
 
 			file_copy_file(s_path, d_path, true);
 		}
@@ -444,8 +472,8 @@ void fetch_winsdk(BuildOptions *options)
 		exit_compiler(EXIT_FAILURE);
 	}
 
-	char *out_root = (char *)file_append_path(tmp_dir_base, "OUTPUT");
-	char *dl_root = (char *)file_append_path(tmp_dir_base, "DL");
+	char *out_root = file_append_path(tmp_dir_base, "OUTPUT");
+	char *dl_root = file_append_path(tmp_dir_base, "DL");
 	dir_make_recursive(out_root);
 	dir_make_recursive(dl_root);
 
@@ -510,7 +538,7 @@ void fetch_winsdk(BuildOptions *options)
 			JSONObject *payloads_arr = json_map_get(best_pkg, "payloads");
 			FOREACH_IDX(j, JSONObject *, payload, payloads_arr->elements)
 			{
-				char *zpath = (char *)file_append_path(dl_root, str_printf("p%d_%lu.zip", i, (unsigned long)j));
+				char *zpath = file_append_path(dl_root, str_printf("p%d_%lu.zip", i, (unsigned long)j));
 				if (download_with_verification(json_map_get(payload, "url")->str, pid_part, zpath))
 				{
 					extract_msvc_zip(zpath, out_root);
@@ -531,7 +559,7 @@ void fetch_winsdk(BuildOptions *options)
 			const char *f_name = json_map_get(pl, "fileName")->str;
 			if (STRCASECMP(filename(f_name), msi_names[i]) == 0)
 			{
-				char *mpath = (char *)file_append_path(dl_root, msi_names[i]);
+				char *mpath = file_append_path(dl_root, msi_names[i]);
 				if (download_with_verification(json_map_get(pl, "url")->str, msi_names[i], mpath))
 				{
 					get_msi_cab_list(mpath, &cab_list);
@@ -557,7 +585,7 @@ void fetch_winsdk(BuildOptions *options)
 				const char *p_fname = json_map_get(pl, "fileName")->str;
 				if (STRCASECMP(filename(p_fname), cab) == 0)
 				{
-					download_with_verification(json_map_get(pl, "url")->str, cab, (char *)file_append_path(dl_root, cab));
+					download_with_verification(json_map_get(pl, "url")->str, cab, file_append_path(dl_root, cab));
 					goto NEXT_CAB;
 				}
 			}
@@ -602,8 +630,9 @@ void fetch_winsdk(BuildOptions *options)
 		error_exit("Missing library components");
 	}
 
-	char *sdk_x64 = (char *)file_append_path(sdk_output, "x64");
+	char *sdk_x64 = file_append_path(sdk_output, "x64");
 	dir_make_recursive(sdk_x64);
+
 	copy_to_msvc_sdk(file_append_path(s_ucrt, "x64"), sdk_x64);
 	copy_to_msvc_sdk(file_append_path(s_um, "x64"), sdk_x64);
 	copy_to_msvc_sdk(file_append_path(s_msvc, "x64"), sdk_x64);

@@ -118,11 +118,12 @@ void gencontext_begin_module(GenContext *c)
 	c->xtor_entry_type = LLVMStructTypeInContext(c->context, ctor_type, 3, false);
 	c->xtor_func_type = LLVMFunctionType(void_type, NULL, 0, false);
 	c->introspect_type = create_introspection_type(c);
-	c->atexit_type = LLVMFunctionType(void_type, &c->ptr_type, 1, false);
+	LLVMTypeRef cint_type = llvm_get_type(c, type_cint);
+	c->atexit_type = LLVMFunctionType(cint_type, &c->ptr_type, 1, false);
 	c->fault_type = create_fault_type(c);
 	c->memcmp_function = NULL;
 	LLVMTypeRef memcmp_types[3] = {c->ptr_type, c->ptr_type, c->size_type };
-	c->memcmp_function_type = LLVMFunctionType(llvm_get_type(c, type_cint), memcmp_types, 3, false);
+	c->memcmp_function_type = LLVMFunctionType(cint_type, memcmp_types, 3, false);
 	if (c->panic_var) c->panic_var->backend_ref = NULL;
 	if (c->panicf) c->panicf->backend_ref = NULL;
 	bool is_win = compiler.build.arch_os_target == WINDOWS_X64 || compiler.build.arch_os_target == WINDOWS_AARCH64;

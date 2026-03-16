@@ -35,6 +35,13 @@
 - Add vector function `cubic_hermite`
 - Deprecated `sq_magnitude`, `barycenter`, `towards`, `ortho_normalize`, `clamp_mag`, use `length_sq`, `barycentric`, `move_towards`, `orthonormalize`, `clamp_length` instead.
 - Add trivial member-wise struct comparison with `member_eq`. #2801
+- Add Quaternion conversion functions to from Euler angles and axis+angle.
+- `math::deg_to_rad` and `math::rad_to_def` respects the underlying type, returning `float` on a `float` argument.
+- Added `float.to_radians` and `float.to_degrees` and the same for `double`.
+- Added `Quat`, `Mat2`, `Mat3` and `Mat4`, `Vec2`, `Vec3`, `Vec4` aliases.
+- Added `is_normalized` to Quaternion and floating point vectors.
+- Added `quaternion::from_rotation` and `quaternion::from_normalized_rotation`
+- Added `Rect` type.
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
@@ -58,6 +65,8 @@
 - Folding an anon struct member at compile time would crash #3034.
 - Crash in sema_compare_weak_decl when replacing a function declaration from a .c3i file in some cases #3031
 - Issue with 'inline' keyword on enum and constdef #3032.
+- When checking aliases `alias FOO = _BAR` the compiler would incorrectly would say that `_BAR` wasn't a constant.
+- Wasm32 builds crash on startup (unreachable!) due to atexit signature mismatch #3040
 
 ## 0.7.10 Change list
 

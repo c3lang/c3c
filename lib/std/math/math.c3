@@ -45,6 +45,7 @@ const FLOAT_MIN_10_EXP = -37;
 const FLOAT_MAX_EXP = 128;
 const FLOAT_MIN_EXP = -125;
 const FLOAT_EPSILON = 1.1920928955078125e-07;
+const FLOAT_VECTOR_EPSILON = 2e-6;
 
 const DOUBLE_MAX = 1.79769313486231570815e+308;
 const DOUBLE_MIN = 2.2250738585072014e-308;
@@ -57,6 +58,7 @@ const DOUBLE_MIN_10_EXP = -307;
 const DOUBLE_MAX_EXP = 1024;
 const DOUBLE_MIN_EXP = -1021;
 const DOUBLE_EPSILON = 2.22044604925031308085e-16;
+const DOUBLE_VECTOR_EPSILON = 2e-12;
 
 enum RoundingMode : int
 {
@@ -69,14 +71,22 @@ enum RoundingMode : int
 faultdef OVERFLOW, MATRIX_INVERSE_DOESNT_EXIST;
 
 <*
- @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
+ @require values::@is_promotable_to_floatlike(degrees) : `The input must be a numerical value or numerical vector`
 *>
-macro deg_to_rad(x) => x * PI / 180;
+macro deg_to_rad(degrees)
+{
+	var val = values::promote_int(degrees);
+	return val * ($typeof(val))(PI / 180);
+}
 
 <*
- @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
+ @require values::@is_promotable_to_floatlike(radians) : `The input must be a numerical value or numerical vector`
 *>
-macro rad_to_deg(x) => x * 180 / PI;
+macro rad_to_deg(radians)
+{
+	var val = values::promote_int(radians);
+	return val * ($typeof(val))(180 / PI);
+}
 
 <*
  @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
@@ -652,6 +662,8 @@ macro float float.rint(float x) => $$rint(x);
 macro float float.round(float x) => $$round(x);
 macro float float.roundeven(float x) => $$roundeven(x);
 macro float float.trunc(float x) => $$trunc(x);
+macro float float.to_degrees(float radians) => radians * (float)(180 / PI);
+macro float float.to_radians(float degrees) => degrees * (float)(PI / 180);
 
 macro double double.ceil(double x) => $$ceil(x);
 macro double double.clamp(double x, double lower, double upper) => $$max(lower, $$min(x, upper));
@@ -665,7 +677,8 @@ macro double double.rint(double x) => $$rint(x);
 macro double double.round(double x) => $$round(x);
 macro double double.roundeven(double x) => $$roundeven(x);
 macro double double.trunc(double x) => $$trunc(x);
-
+macro double double.to_degrees(double radians) => radians * (180 / PI);
+macro double double.to_radians(double degrees) => degrees * (PI / 180);
 
 macro char char.sat_add(char x, char y) => $$sat_add(x, y);
 macro char char.sat_sub(char x, char y) => $$sat_sub(x, y);

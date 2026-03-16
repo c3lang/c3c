@@ -2,6 +2,10 @@
 module std::math::vector;
 import std::math @public;
 
+alias Vec2 @weak = float[<2>];
+alias Vec3 @weak = float[<3>];
+alias Vec4 @weak = float[<4>];
+
 <*
  @require $Type.kindof == VECTOR &&& $kindof(($Type){}[0]) == BOOL : "Expected a bool vector"
  @require $kindof(mask).is_int() : "Expected an integer mask"
@@ -83,6 +87,7 @@ macro float[<*>] float[<*>].clamp_length(self, float min, float max)  => clamp_l
 macro float[<*>] float[<*>].move_towards(self, float[<*>] target, float max_distance) => towards{$typeof(self)}(self, target, max_distance);
 macro bool float[<*>].equals(float[<*>] x, float[<*>] y) => equals(x, y);
 macro bool float[<*>].not_equals(float[<*>] x, float[<*>] y) => not_equals(x, y);
+macro bool float[<*>].is_normalized(float[<*>] x) => math::is_approx(x.length_sq(), 1.0, math::FLOAT_VECTOR_EPSILON);
 macro bool[<*>] float[<*>].comp_lt(float[<*>] x, float[<*>] y) => $$veccomplt(x, y);
 macro bool[<*>] float[<*>].comp_le(float[<*>] x, float[<*>] y) => $$veccomple(x, y);
 macro bool[<*>] float[<*>].comp_eq(float[<*>] x, float[<*>] y) => $$veccompeq(x, y);
@@ -117,6 +122,7 @@ macro double[<*>] double[<*>].reflect(double[<*>] x, double[<*>] y) => reflect(x
 macro double[<*>] double[<*>].lerp(double[<*>] x, double[<*>] y, double amount) => math::lerp(x, y, amount);
 macro bool double[<*>].equals(double[<*>] x, double[<*>] y) => equals(x, y);
 macro bool double[<*>].not_equals(double[<*>] x, double[<*>] y) => not_equals(x, y);
+macro bool double[<*>].is_normalized(double[<*>] x) => math::is_approx(x.length_sq(), 1.0, math::DOUBLE_VECTOR_EPSILON);
 macro bool[<*>] double[<*>].comp_lt(double[<*>] x, double[<*>] y) => $$veccomplt(x, y);
 macro bool[<*>] double[<*>].comp_le(double[<*>] x, double[<*>] y) => $$veccomple(x, y);
 macro bool[<*>] double[<*>].comp_eq(double[<*>] x, double[<*>] y) => $$veccompeq(x, y);
@@ -338,3 +344,4 @@ fn void ortho_normalize(float[<3>]* v1, float[<3>]* v2) @deprecated("use orthono
 fn void ortho_normalized(double[<3>]* v1, double[<3>]* v2) @deprecated("use orthonormalize") => ortho_normalize3(v1, v2);
 macro double double[<*>].sq_magnitude(self) @deprecated("use length_sq") => self.dot(self);
 macro float float[<*>].sq_magnitude(self) @deprecated("use length_sq") => self.dot(self);
+
