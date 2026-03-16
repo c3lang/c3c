@@ -43,7 +43,7 @@ fn void test_rotation_identity() @if(!$feature(OLD_MATRIX))
 	Matrix4f identity_matrix_f = matrix::IDENTITY4;
 
 	assert(rotation.to_matrix().m.equals(identity_matrix.m));
-	assert(rotation_f.to_matrixf().m.equals(identity_matrix_f.m));
+	assert(rotation_f.to_matrix().m.equals(identity_matrix_f.m));
 }
 
 fn void test_quaternion_to_from_axis()
@@ -52,6 +52,49 @@ fn void test_quaternion_to_from_axis()
 	float[<4>] axis_angle = f.to_axis_angle();
 	Quaternionf f2 = quaternion::from_axis_angle{float}(axis_angle.xyz, axis_angle.w);
 	assert(f2.equals(f.normalize()));
+}
+
+fn void test_quaternion_from_rotation()
+{
+	Quat q = quaternion::from_rotation({1, 0, 0}, {1, 0, 0});
+	assert(q.equals({0,0,0,1}));
+	q = quaternion::from_rotation({2, 0, 0}, {4, 0, 0});
+	assert(q.equals({0,0,0,1}));
+	q = quaternion::from_rotation({1, 0, 0}, {0, 1, 0});
+	assert(q.equals({0,0,0.70710678,0.70710678}));
+	q = quaternion::from_rotation({2, 0, 0}, {0, 5, 0});
+	assert(q.equals({0,0,0.70710678,0.70710678}));
+	q = quaternion::from_rotation({1, 0, 0}, {0, 0, 1});
+	assert(q.equals({0,-0.70710678,0,0.70710678}));
+	q = quaternion::from_rotation({1, 0, 0}, {1, 1, 0});
+	assert(q.equals({0,0,0.38268343,0.92387953}), "Was %s", q.v);
+	q = quaternion::from_rotation({0, 0, 1}, {1, 1, 1});
+	assert(q.equals({-0.32505758, 0.32505758, 0, 0.88807383}), "Was %s", q.v);
+	q = quaternion::from_rotation({2, 3, 4}, {-1, 5, 2});
+	assert(q.equals({-0.256511, -0.146578, 0.238189, 0.925194}), "Was %s", q.v);
+}
+
+fn void test_quaternion_from_normalized_rotation()
+{
+	Quat q = quaternion::from_normalized_rotation({1, 0, 0}, {1, 0, 0});
+	assert(q.equals({0,0,0,1}));
+	q = quaternion::from_normalized_rotation({1, 0, 0}, {0, 1, 0});
+	assert(q.equals({0,0,0.70710678,0.70710678}));
+	q = quaternion::from_normalized_rotation({1, 0, 0}, {0, 0, 1});
+	assert(q.equals({0,-0.70710678,0,0.70710678}));
+	float[<3>] from = {1, 0, 0};
+	float[<3>] to = {1, 1, 0};
+	q = quaternion::from_normalized_rotation({1, 0, 0}, to.normalize());
+	assert(q.equals({0,0,0.38268343,0.92387953}), "Was %s", q.v);
+	from = {0, 0, 1};
+	to = {1, 1, 1};
+	q = quaternion::from_normalized_rotation(from.normalize(), to.normalize());
+	assert(q.equals({-0.32505758, 0.32505758, 0, 0.88807383}), "Was %s", q.v);
+	from = {2, 3, 4};
+	to = {-1, 5, 2};
+	q = quaternion::from_normalized_rotation(from.normalize(), to.normalize());
+
+	assert(q.equals({-0.256511f, -0.146578f, 0.238189f, 0.925194f}), "Was %s", q.equals({-0.256511f, -0.146578f, 0.238189f, 0.925194f}));
 }
 
 fn void test_quaternion_to_from_euler()
@@ -76,7 +119,7 @@ fn void test_to_matrix()
 	};
 
 	Matrix4 rotation = (Quaternion) { 0.5, 0.5, 0.5, 1 }.to_matrix();
-	Matrix4f rotation_f = (Quaternionf) { 0.5, 0.5, 0.5, 1 }.to_matrixf();
+	Matrix4f rotation_f = (Quaternionf) { 0.5, 0.5, 0.5, 1 }.to_matrix();
 
 	assert(math::round_to_decimals((double[<16>])result.m, 2) == math::round_to_decimals((double[<16>])rotation.m, 2));
 	assert(math::round_to_decimals((float[<16>])result.m, 2) == math::round_to_decimals((float[<16>])rotation_f.m, 2));

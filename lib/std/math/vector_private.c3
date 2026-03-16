@@ -173,26 +173,18 @@ macro refract3(v, n, r)
 	return d < 0 ? v : r * v - (r * dot + math::sqrt(d)) * n;
 }
 
+
 macro equals(v1, v2)
 {
-	var $elements = v1.len;
-	var abs_diff = math::abs(v1 - v2);
-
-	var abs_v1 = math::abs(v1);
-	var abs_v2 = math::abs(v2);
-	$typeof(abs_v2) eps = 1;
-	return abs_diff.comp_le(math::FLOAT_EPSILON * math::max(abs_v1, abs_v2, eps)).and();
+	var epsilon = ($typeof(v1).inner.kindof == FLOAT ??? math::FLOAT_VECTOR_EPSILON : math::DOUBLE_VECTOR_EPSILON) * math::max(math::abs(v1), math::abs(v2), ($typeof(v1))1);
+	return math::abs(v1 - v2).comp_le(epsilon).and();
 }
 
 macro not_equals(v1, v2)
 {
-	var $elements = v1.len;
-	var abs_diff = math::abs(v1 - v2);
+	var epsilon = ($typeof(v1).inner.kindof == FLOAT ??? math::FLOAT_VECTOR_EPSILON : math::DOUBLE_VECTOR_EPSILON) * math::max(math::abs(v1), math::abs(v2), ($typeof(v1))1);
 
-	var abs_v1 = math::abs(v1);
-	var abs_v2 = math::abs(v2);
-	$typeof(abs_v2) eps = 1;
-	return abs_diff.comp_ge(math::FLOAT_EPSILON * math::max(abs_v1, abs_v2, eps)).or();
+	return math::abs(v1 - v2).comp_gt(epsilon).or();
 }
 
 macro bool @is_same_vector_or_scalar(#vector_value, #vector_or_scalar)

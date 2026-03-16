@@ -6,21 +6,28 @@ alias Quaternion = QuaternionNumber {double};
 alias QUATERNION_IDENTITY  @builtin @deprecated("Use quaternion::IDENTITY") = quaternion::IDENTITY {double};
 alias QUATERNIONF_IDENTITY @builtin @deprecated("Use quaternion::IDENTITY") = quaternion::IDENTITY {float};
 
+alias Quat = QuaternionNumber {float};
+
 <*
  The generic quaternion module, for float or double based quaternion definitions.
 
  @require Real.kindof == FLOAT : "A quaternion must use a floating type"
 *>
 module std::math::quaternion <Real>;
-import std::math::vector, std::math::matrix;
+import std::math::vector, std::math::matrix, std::io;
 
-union QuaternionNumber
+union QuaternionNumber (Printable)
 {
 	struct
 	{
 		Real i, j, k, l;
 	}
 	Real[<4>] v;
+}
+
+fn usz? QuaternionNumber.to_format(&self, Formatter* f) @dynamic
+{
+	return f.printf("%s", self.v);
 }
 
 const QuaternionNumber IDENTITY = { 0, 0, 0, 1 };
@@ -33,6 +40,7 @@ macro QuaternionNumber QuaternionNumber.sub_each(self, Real b) => { .v = self.v 
 macro QuaternionNumber QuaternionNumber.scale(self, Real s) @operator_s(*) => { .v = self.v * s };
 macro QuaternionNumber.to_angle(self) => 2 * math::acos(self.v.w);
 macro QuaternionNumber QuaternionNumber.normalize(self) => { .v = self.v.normalize() };
+fn bool QuaternionNumber.is_normalized(self) => self.v.is_normalized();
 macro bool QuaternionNumber.equals(self, QuaternionNumber other) => self.v.equals(other.v);
 macro bool QuaternionNumber.not_equals(self, QuaternionNumber other) => self.v.not_equals(other.v);
 macro Real QuaternionNumber.length(self) => self.v.length();
@@ -40,8 +48,7 @@ macro Real QuaternionNumber.length_sq(self) => self.v.length_sq();
 macro QuaternionNumber QuaternionNumber.lerp(self, QuaternionNumber q2, Real amount) => { .v = self.v.lerp(q2.v, amount) };
 fn QuaternionNumber QuaternionNumber.nlerp(self, QuaternionNumber q2, Real amount) => { .v = self.v.lerp(q2.v, amount).normalize() };
 
-macro Matrix4f QuaternionNumber.to_matrixf(&self) => into_matrix(self, Matrix4f);
-macro Matrix4 QuaternionNumber.to_matrix(&self) => into_matrix(self, Matrix4);
+macro Matrix4x4{Real} QuaternionNumber.to_matrix(&self) => into_matrix(self, Matrix4x4{Real});
 
 
 fn QuaternionNumber QuaternionNumber.invert(self)
@@ -130,7 +137,7 @@ fn QuaternionNumber from_euler(Real pitch, Real yaw, Real roll)
 <*
  Get the Euler angles equivalent to quaternion (roll, pitch, yaw)
 
- @require math::is_approx(self.length_sq(), 1, 1e-6) : "Expected a normalized quaternion"
+ @require math::is_approx(self.length_sq(), 1, QUATERNION_EPSILON) : "Expected a normalized quaternion"
  @return "a vector containing { roll, pitch, yaw }"
 *>
 fn Real[<3>] QuaternionNumber.to_euler(self)
@@ -170,7 +177,7 @@ fn Real[<4>] QuaternionNumber.to_axis_angle(self)
 
 	Real den = math::sqrt(1 - v.w * v.w);
 	// Default to 1,0,0 when small
-	return { ...(den > math::FLOAT_EPSILON ? v.xyz / den : { 1, 0, 0 }), 2 * math::acos(v.w) };
+	return { ...(den > QUATERNION_EPSILON ? v.xyz / den : { 1, 0, 0 }), 2 * math::acos(v.w) };
 }
 
 fn Real[<3>] QuaternionNumber.rotate_vec3(self, Real[<3>] vector) @operator(*)
@@ -179,6 +186,35 @@ fn Real[<3>] QuaternionNumber.rotate_vec3(self, Real[<3>] vector) @operator(*)
 	QuaternionNumber result = self * p * self.conjugate();
 	return result.v.xyz;
 }
+
+<*
+ Create a quaternion transform from `from` to `to`, assuming they are not parallel and that they are
+ normalized. Use `from_rotation` for non-normalized vectors.
+
+ @require from.is_normalized() : "Expected 'from' to be normalized"
+ @require to.is_normalized() : "Expected 'to' to be normalized"
+ @ensure return.is_normalized()
+*>
+fn QuaternionNumber from_normalized_rotation(Real[<3>] from, Real[<3>] to)
+{
+	return (QuaternionNumber){ ...from.cross(to), 1 + from.dot(to) }.normalize();
+}
+
+<*
+ Create a quaternion transform from `from` to `to`, assuming they are not parallel.
+ Use `from_normalized_rotation` for normalized vectors.
+
+ @ensure return.is_normalized()
+*>
+fn QuaternionNumber from_rotation(Real[<3>] from, Real[<3>] to)
+{
+	Real cos2_theta = from.dot(to);
+	Real[<3>] cross = from.cross(to);
+	QuaternionNumber num = { ...cross, math::sqrt(cross.length_sq() + cos2_theta * cos2_theta) + cos2_theta };
+	return num.normalize();
+}
+
+
 
 macro into_matrix(QuaternionNumber* q, $Type) @private
 {
@@ -204,3 +240,5 @@ macro into_matrix(QuaternionNumber* q, $Type) @private
 	} };
 	$endif
 }
+
+const QUATERNION_EPSILON @private = Real.kindof == FLOAT ? math::FLOAT_VECTOR_EPSILON : math::DOUBLE_VECTOR_EPSILON;

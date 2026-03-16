@@ -8,6 +8,10 @@ alias Matrix3  = Matrix3x3 {double};
 alias Matrix4f = Matrix4x4 {float};
 alias Matrix4  = Matrix4x4 {double};
 
+alias Mat2 = Matrix2x2 {float};
+alias Mat3 = Matrix3x3 {float};
+alias Mat4 = Matrix4x4 {float};
+
 alias MATRIX2_IDENTITY  @builtin @deprecated("Use matrix::IDENTITY2") = matrix::IDENTITY2 {double};
 alias MATRIX2F_IDENTITY @builtin @deprecated("Use matrix::IDENTITY2") = matrix::IDENTITY2 {float};
 alias MATRIX3_IDENTITY  @builtin @deprecated("Use matrix::IDENTITY3") = matrix::IDENTITY3 {double};

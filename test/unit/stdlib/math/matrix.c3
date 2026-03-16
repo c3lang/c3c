@@ -141,16 +141,16 @@ fn void test_mat4_lookat() @if(!$feature(OLD_MATRIX))
 
 fn void test_mat4_perspective() @if(!$feature(OLD_MATRIX))
 {
-	Matrix4 perspective = matrix::perspective(math::deg_to_rad(90), 1, 1, 10);
-	Matrix4 res = { .m00 = 1, .m11 = 1, .m22 = -1.111111, .m32 = -1, .m23 = -1.111111 };
+	Mat4 perspective = matrix::perspective(math::deg_to_rad(90f), 1, 1, 10);
+	Mat4 res = { .m00 = 1, .m11 = 1, .m22 = -1.111111, .m32 = -1, .m23 = -1.111111 };
 	assert(perspective.m.equals(res.m));
 
 
-	perspective = matrix::perspective(math::deg_to_rad(60), 1, 0.1, 100);
+	perspective = matrix::perspective(math::deg_to_rad(60f), 1, 0.1, 100);
 	res = { 1.732051,0,0,0, 0,1.732051,0,0, 0,0,-1.001001,-1, 0,0,-0.100100,0 };
 	assert(perspective.m.equals(res.m));
 
-	perspective = matrix::perspective(math::deg_to_rad(45), 1.5, 0.5, 50);
+	perspective = matrix::perspective(math::deg_to_rad(45f), 1.5, 0.5, 50);
 	res = { 1.609476,0,0,0, 0,2.414214,0,0, 0,0,-1.010101,-1, 0,0,-0.505051,0 };
 	assert(math::abs(perspective.m - res.m).max() < 1e-6, "Was %s, expected %s", perspective, res);
 
