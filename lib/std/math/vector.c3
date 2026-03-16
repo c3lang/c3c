@@ -2,6 +2,10 @@
 module std::math::vector;
 import std::math @public;
 
+alias Vec2 @weak = float[<2>];
+alias Vec3 @weak = float[<3>];
+alias Vec4 @weak = float[<4>];
+
 <*
  @require $Type.kindof == VECTOR &&& $kindof(($Type){}[0]) == BOOL : "Expected a bool vector"
  @require $kindof(mask).is_int() : "Expected an integer mask"
@@ -340,3 +344,4 @@ fn void ortho_normalize(float[<3>]* v1, float[<3>]* v2) @deprecated("use orthono
 fn void ortho_normalized(double[<3>]* v1, double[<3>]* v2) @deprecated("use orthonormalize") => ortho_normalize3(v1, v2);
 macro double double[<*>].sq_magnitude(self) @deprecated("use length_sq") => self.dot(self);
 macro float float[<*>].sq_magnitude(self) @deprecated("use length_sq") => self.dot(self);
+
