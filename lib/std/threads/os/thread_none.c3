@@ -1,4 +1,5 @@
 module std::thread::os @if (!env::NATIVE_THREADING);
+import libc;
 
 typedef NativeMutex = int;
 typedef NativeTimedMutex = int;

@@ -61,6 +61,7 @@
 - Crash in sema_compare_weak_decl when replacing a function declaration from a .c3i file in some cases #3031
 - Issue with 'inline' keyword on enum and constdef #3032.
 - When checking aliases `alias FOO = _BAR` the compiler would incorrectly would say that `_BAR` wasn't a constant.
+- Wasm32 builds crash on startup (unreachable!) due to atexit signature mismatch #3040
 
 ## 0.7.10 Change list
 
