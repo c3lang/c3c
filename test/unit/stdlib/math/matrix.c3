@@ -3,7 +3,7 @@ import std::math;
 
 fn void test_mat4_translate()
 {
-	Matrix4 mat = MATRIX4_IDENTITY;
+	Matrix4 mat = matrix::IDENTITY4;
 	Matrix4 mat2 = { .m00 = 1, .m11 = 1, .m22 = 1, .m33 = 1 };
 	Matrix4 calc = mat.mul(mat2);
 	assert(calc == mat);
@@ -15,7 +15,7 @@ fn void test_mat4_translate()
 
 fn void test_mat3_translate()
 {
-	Matrix3 m = MATRIX3_IDENTITY;
+	Matrix3 m = matrix::IDENTITY3;
 	m = m.translate({3, 4});
 	assert(m == (Matrix3){ .m00 = 1, .m11 = 1, .m22 = 1, .m02 = 3, .m12 = 4 });
 	m = { .m00 = 1, .m11 = 1, .m22 = 1, .m02 = 3, .m12 = 4 };
@@ -30,7 +30,7 @@ fn void test_mat3_translate()
 
 fn void test_mat3_scale()
 {
-	Matrix3 m = MATRIX3_IDENTITY;
+	Matrix3 m = matrix::IDENTITY3;
 
 	m = m.scale({2,3});
 
@@ -52,12 +52,12 @@ fn void test_mat3_scale()
 
 fn void test_mat3_rotate()
 {
-	Matrix3 m = MATRIX3_IDENTITY;
+	Matrix3 m = matrix::IDENTITY3;
 	m = m.rotate(math::PI / 2);
 	Matrix3 res = { .m10 = 1, .m01 = -1, .m22 = 1 };
 	assert(math::round_to_decimals((double[<9>])m.m, 1) == (double[<9>])res.m, "Was %s", m.m);
 
-	m = MATRIX3_IDENTITY;
+	m = matrix::IDENTITY3;
 	m = m.rotate(math::PI / 2);
 	m = m.rotate(math::PI / 2);
 
@@ -75,7 +75,7 @@ fn void test_mat3_rotate()
 
 fn void test_mat4_translate_v()
 {
-	Matrix4 mat = MATRIX4_IDENTITY.translate({1.0, 2.0, 3.0});
+	Matrix4 mat = matrix::IDENTITY4.translate({1.0, 2.0, 3.0});
 	double[<4>] res = math::round_to_decimals(mat * { 10.0, 11.0, 12.0, 1.0}, 4);
 	assert(res == {11.0, 13.0, 15.0, 1.0}, "Was %s", res);
 }
@@ -83,25 +83,25 @@ fn void test_mat4_translate_v()
 
 fn void test_mat4_rotate()
 {
-	Matrix4 rot_x = MATRIX4_IDENTITY.rotate_x(90.0.to_radians());
+	Matrix4 rot_x = matrix::IDENTITY4.rotate_x(90.0.to_radians());
 	assert(math::round_to_decimals(rot_x * (double[<4>]){ 0.0, 1.0, 0.0, 1.0}, 4) == {0.0, 0.0, 1.0, 1.0});
-	Matrix4f rot_xf = MATRIX4F_IDENTITY.rotate_x(90.0f.to_radians());
+	Matrix4f rot_xf = matrix::IDENTITY4.rotate_x(90.0f.to_radians());
 	assert(math::round_to_decimals(rot_xf * (float[<4>]){ 0.0, 1.0, 0.0, 1.0}, 4) == {0.0, 0.0, 1.0, 1.0});
 
-	Matrix4 rot_y = MATRIX4_IDENTITY.rotate_y(90.0.to_radians());
+	Matrix4 rot_y = matrix::IDENTITY4.rotate_y(90.0.to_radians());
 	assert(math::round_to_decimals(rot_y * (double[<4>]){ 1.0, 0.0, 0.0, 1.0}, 4) == {0.0, 0.0, -1.0, 1.0});
-	Matrix4f rot_yf = MATRIX4F_IDENTITY.rotate_y(90.0f.to_radians());
+	Matrix4f rot_yf = matrix::IDENTITY4.rotate_y(90.0f.to_radians());
 	assert(math::round_to_decimals(rot_yf * (float[<4>]){ 1.0, 0.0, 0.0, 1.0}, 4) == {0.0, 0.0, -1.0, 1.0});
 
-	Matrix4 rot_z = MATRIX4_IDENTITY.rotate_z(math::deg_to_rad(90));
+	Matrix4 rot_z = matrix::IDENTITY4.rotate_z(math::deg_to_rad(90));
 	assert(math::round_to_decimals(rot_z * (double[<4>]){ 0.0, 1.0, 0.0, 1.0}, 4) == {-1.0, 0.0, 0.0, 1.0});
-	Matrix4f rot_zf = MATRIX4F_IDENTITY.rotate_z((float) math::deg_to_rad(90));
+	Matrix4f rot_zf = matrix::IDENTITY4.rotate_z((float) math::deg_to_rad(90));
 	assert(math::round_to_decimals(rot_zf * (float[<4>]){ 0.0, 1.0, 0.0, 1.0}, 4) == {-1.0, 0.0, 0.0, 1.0});
 }
 
 fn void test_mat4_scale()
 {
-	Matrix4 scale = MATRIX4_IDENTITY.scale({2.0, 3.0, 4.0});
+	Matrix4 scale = matrix::IDENTITY4.scale({2.0, 3.0, 4.0});
 	assert(math::round_to_decimals(scale * (double[<4>]){ 10.0, 11.0, 12.0, 1.0}, 4) == {20.0, 33.0, 48.0, 1.0});
 }
 
@@ -115,7 +115,8 @@ fn void test_mat4_mul()
 	assert(math::round_to_decimals((double[<16>])(mat * mat2).m, 3) == (double[<16>])value.m);
 }
 
-fn void test_mat4_lookat()
+fn void test_mat4_lookat() @if(!$feature(OLD_MATRIX))
+
 {
 	Matrix4 result = {
 		.m00 = 0.988936, .m10 = -0.014599, .m20 = 0.147620,
@@ -131,8 +132,8 @@ fn void test_mat4_lookat()
 	};
 
 
-	Matrix4 look_at = matrix4_look_at({4.0, 5.0, 20.0}, {1.0, 3.0, 0.0}, {0.0, 1.0, 0.0});
-	Matrix4f look_at_f = matrix4f_look_at({4.0, 5.0, 20.0}, {1.0, 3.0, 0.0}, {0.0, 1.0, 0.0});
+	Matrix4 look_at = matrix::look_at({4.0, 5.0, 20.0}, {1.0, 3.0, 0.0}, {0.0, 1.0, 0.0});
+	Matrix4f look_at_f = matrix::look_at({4.0, 5.0, 20.0}, {1.0, 3.0, 0.0}, {0.0, 1.0, 0.0});
 
 	assert(math::round_to_decimals((double[<16>])look_at.m, 4) == math::round_to_decimals((double[<16>])result.m, 4), "Was %s", look_at);
 	assert(math::round_to_decimals((double[<16>])look_at_f.m, 4) == math::round_to_decimals((double[<16>])result_f.m, 4));
@@ -140,20 +141,20 @@ fn void test_mat4_lookat()
 
 fn void test_mat4_perspective() @if(!$feature(OLD_MATRIX))
 {
-	Matrix4 perspective = matrix4_perspective(math::deg_to_rad(90), 1, 1, 10);
+	Matrix4 perspective = matrix::perspective(math::deg_to_rad(90), 1, 1, 10);
 	Matrix4 res = { .m00 = 1, .m11 = 1, .m22 = -1.111111, .m32 = -1, .m23 = -1.111111 };
 	assert(perspective.m.equals(res.m));
 
 
-	perspective = matrix4_perspective(math::deg_to_rad(60), 1, 0.1, 100);
+	perspective = matrix::perspective(math::deg_to_rad(60), 1, 0.1, 100);
 	res = { 1.732051,0,0,0, 0,1.732051,0,0, 0,0,-1.001001,-1, 0,0,-0.100100,0 };
 	assert(perspective.m.equals(res.m));
 
-	perspective = matrix4_perspective(math::deg_to_rad(45), 1.5, 0.5, 50);
+	perspective = matrix::perspective(math::deg_to_rad(45), 1.5, 0.5, 50);
 	res = { 1.609476,0,0,0, 0,2.414214,0,0, 0,0,-1.010101,-1, 0,0,-0.505051,0 };
 	assert(math::abs(perspective.m - res.m).max() < 1e-6, "Was %s, expected %s", perspective, res);
 
-	perspective = matrix4_perspective(2.094395, 0.75, 0.01, 1000.0);
+	perspective = matrix::perspective(2.094395, 0.75, 0.01, 1000.0);
 	res = { 0.769800,0,0,0, 0,0.577350,0,0, 0,0,-1.000010,-1, 0,0,-0.0100001,0 };
 	assert(math::abs(perspective.m - res.m).max() < 1e-6);
 
@@ -161,24 +162,24 @@ fn void test_mat4_perspective() @if(!$feature(OLD_MATRIX))
 
 fn void test_mat4_ortho() @if(!$feature(OLD_MATRIX))
 {
-	Matrix4 o = matrix4_ortho(-1, 1, -1, 1, 1, 10);
+	Matrix4 o = matrix::ortho(-1, 1, -1, 1, 1, 10);
 	Matrix4 res = { 1.0,0,0,0, 0,1.0,0,0, 0,0,0.111111,0, -0,0,-1.111111,1 };
 	assert(res.m.equals(res.m));
 
-	o = matrix4_ortho(0, 2, 0, 2, 0.1, 100);
+	o = matrix::ortho(0, 2, 0, 2, 0.1, 100);
 	res = { .m00 = 1, .m11 = 1, .m22 = -0.01001, .m03 = -1, .m13 = -1, .m23 = -0.001001, .m33 = 1 };
 	assert(math::abs(o.m - res.m).max() < 1e-6, "Was %s, expected %s", o, res);
 
-	o = matrix4_ortho(-2, 2, -1, 1, 0.5, 50);
+	o = matrix::ortho(-2, 2, -1, 1, 0.5, 50);
 	res = {  0.5, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, -0.020202, 0, 0, 0, -0.010101, 1 };
 	assert(math::abs(o.m - res.m).max() < 1e-6, "Was %s, expected %s", o, res);
 
 
-	o = matrix4_ortho(-10, 10, -5, 5, 0.01, 1000);
+	o = matrix::ortho(-10, 10, -5, 5, 0.01, 1000);
 	res = { 0.1, 0, 0, 0, 0, 0.2, 0, 0, 0, 0, -0.00100001, 0, 0, 0, -0.000010, 1 };
 	assert(math::abs(o.m - res.m).max() < 1e-6, "Was %s, expected %s", o, res);
 
-	o = matrix4_ortho(-5, 5, -5, 5, 0.1, 10);
+	o = matrix::ortho(-5, 5, -5, 5, 0.1, 10);
 	res = { 0.2, 0, 0, 0, 0, 0.2, 0, 0, 0, 0, -0.101010, 0, 0, 0, -0.010101, 1 };
 	assert(math::abs(o.m - res.m).max() < 1e-6, "Was %s, expected %s", o, res);
 
@@ -210,15 +211,15 @@ fn void test_mat3_det()
 
 fn void test_mat3_inverse()
 {
-	Matrix3 m = MATRIX3_IDENTITY;
-	assert(m.inverse()!! == MATRIX3_IDENTITY);
+	Matrix3 m = matrix::IDENTITY3;
+	assert(m.inverse()!! == matrix::IDENTITY3{double});
 
-	m = MATRIX3_IDENTITY.translate({3,4});
+	m = matrix::IDENTITY3.translate({3,4});
 	Matrix3 res = { .m00 = 1, .m11 = 1, .m02 = -3, .m12 = -4, .m22 = 1 };
 	assert(math::round_to_decimals((double[<9>])m.adjoint().m, 2) == (double[<9>])res.m, "was %s expected %s", m.adjoint().m, res.m);
 	assert(math::round_to_decimals((double[<9>])m.inverse()!!.m, 2) == (double[<9>])res.m, "was %s expected %s", m.inverse()!!.m, res.m);
 
-	m = MATRIX3_IDENTITY
+	m = matrix::IDENTITY3
 		.translate({3,4})
 		.rotate(math::PI / 3)
 		.scale({2,3});
@@ -227,7 +228,7 @@ fn void test_mat3_inverse()
 
 	Matrix3 id = m * inv;
 
-	Matrix3 ident = MATRIX3_IDENTITY;
+	Matrix3 ident = matrix::IDENTITY3;
 	assert(math::round_to_decimals((double[<9>])id.m, 2) == (double[<9>])ident.m);
 }
 
@@ -235,7 +236,7 @@ fn void test_mat4_z_rotation()
 {
 	double angle = math::PI * 0.5;
 
-	Matrix4 m = MATRIX4_IDENTITY.rotate_z(angle);
+	Matrix4 m = matrix::IDENTITY4.rotate_z(angle);
 
 	double[<4>] v = { 1, 0, 0, 1 };
 	double[<4>] r = m * v;
@@ -249,7 +250,7 @@ fn void test_mat4_x_rotation()
 {
 	double angle = math::PI * 0.5;
 
-	Matrix4 m = MATRIX4_IDENTITY.rotate_x(angle);
+	Matrix4 m = matrix::IDENTITY4.rotate_x(angle);
 
 	// Y axis -> Z axis
 	double[<4>] v1 = { 0, 1, 0, 1 };
@@ -272,7 +273,7 @@ fn void test_mat4_y_rotation()
 {
 	double angle = math::PI * 0.5;
 
-	Matrix4 m = MATRIX4_IDENTITY.rotate_y(angle);
+	Matrix4 m = matrix::IDENTITY4.rotate_y(angle);
 
 	double[<4>] v = { 0, 0, 1, 1 };
 	double[<4>] r = m * v;
@@ -284,7 +285,7 @@ fn void test_mat4_y_rotation()
 
 fn void test_mat4_inverse()
 {
-	Matrix4 m = MATRIX4_IDENTITY
+	Matrix4 m = matrix::IDENTITY4
 		.translate({3,4, 5})
 		.rotate_z(math::PI / 3)
 		.scale({2,3, 6});
@@ -293,7 +294,7 @@ fn void test_mat4_inverse()
 
 	Matrix4 id = m * inv;
 
-	Matrix4 ident = MATRIX4_IDENTITY;
+	Matrix4 ident = matrix::IDENTITY4;
 	assert(math::round_to_decimals((double[<16>])id.m, 2) == (double[<16>])ident.m);
 }
 

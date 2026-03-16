@@ -8,21 +8,19 @@ alias Matrix3  = Matrix3x3 {double};
 alias Matrix4f = Matrix4x4 {float};
 alias Matrix4  = Matrix4x4 {double};
 
-// Predefined matrix functions
-alias matrix4_ortho  @builtin = matrix::ortho {double};
-alias matrix4f_ortho @builtin = matrix::ortho {float};
-// Perspective is RH [0, 1]
-alias matrix4_perspective  @builtin = matrix::perspective {double};
-alias matrix4f_perspective @builtin = matrix::perspective {float};
-alias matrix4_look_at @builtin = matrix::look_at {double};
-alias matrix4f_look_at @builtin = matrix::look_at {float};
+alias MATRIX2_IDENTITY  @builtin @deprecated("Use matrix::IDENTITY2") = matrix::IDENTITY2 {double};
+alias MATRIX2F_IDENTITY @builtin @deprecated("Use matrix::IDENTITY2") = matrix::IDENTITY2 {float};
+alias MATRIX3_IDENTITY  @builtin @deprecated("Use matrix::IDENTITY3") = matrix::IDENTITY3 {double};
+alias MATRIX3F_IDENTITY @builtin @deprecated("Use matrix::IDENTITY3") = matrix::IDENTITY3 {float};
+alias MATRIX4_IDENTITY  @builtin @deprecated("Use matrix::IDENTITY4") = matrix::IDENTITY4 {double};
+alias MATRIX4F_IDENTITY @builtin @deprecated("Use matrix::IDENTITY4") = matrix::IDENTITY4 {float};
 
-alias MATRIX2_IDENTITY  @builtin = matrix::IDENTITY2 {double};
-alias MATRIX2F_IDENTITY @builtin = matrix::IDENTITY2 {float};
-alias MATRIX3_IDENTITY  @builtin = matrix::IDENTITY3 {double};
-alias MATRIX3F_IDENTITY @builtin = matrix::IDENTITY3 {float};
-alias MATRIX4_IDENTITY  @builtin = matrix::IDENTITY4 {double};
-alias MATRIX4F_IDENTITY @builtin = matrix::IDENTITY4 {float};
+alias matrix4_ortho  @builtin @deprecated("Use matrix::ortho") = matrix::ortho {double};
+alias matrix4f_ortho @builtin @deprecated("Use matrix::ortho") = matrix::ortho {float};
+alias matrix4_perspective  @builtin @deprecated("Use matrix::perspective") = matrix::perspective {double};
+alias matrix4f_perspective @builtin @deprecated("Use matrix::perspective") = matrix::perspective {float};
+alias matrix4_look_at  @builtin @deprecated("Use matrix::look_at") = matrix::look_at {double};
+alias matrix4f_look_at @builtin @deprecated("Use matrix::look_at") = matrix::look_at {float};
 
 module std::math @if($feature(OLD_MATRIX));
 
@@ -202,8 +200,6 @@ fn bool Matrix4x4.eq(&self, Matrix4x4 mat2) @operator(==) => self.m == mat2.m;
 fn bool Matrix2x2.neq(&self, Matrix2x2 mat2) @operator(!=) => self.m != mat2.m;
 fn bool Matrix3x3.neq(&self, Matrix3x3 mat2) @operator(!=) => self.m != mat2.m;
 fn bool Matrix4x4.neq(&self, Matrix4x4 mat2) @operator(!=) => self.m != mat2.m;
-
-fn Matrix4x4 look_at(Real[<3>] eye, Real[<3>] target, Real[<3>] up) => matrix_look_at(Matrix4x4, eye, target, up);
 
 fn Matrix2x2 Matrix2x2.transpose(&self)
 {
@@ -460,6 +456,19 @@ fn Matrix4x4 Matrix4x4.scale(&self, Real[<3>] v)
 	return { .m = self.m * { v.x, v.x, v.x, v.x, v.y, v.y, v.y, v.y, v.z, v.z, v.z, v.z, 1, 1, 1, 1 } };
 }
 
+fn Matrix4x4 look_at(Real[<3>] eye, Real[<3>] target, Real[<3>] up)
+{
+	Real[<3>] vz = (eye - target).normalize();
+	Real[<3>] vx = up.cross(vz).normalize();
+	Real[<3>] vy = vz.cross(vx);
+	return { .m = {
+		vx.x, vy.x, vz.x, 0,
+		vx.y, vy.y, vz.y, 0,
+		vx.z, vy.z, vz.z, 0,
+		-vx.dot(eye), -vy.dot(eye), -vz.dot(eye), 1
+	}};
+}
+
 // Implementation is RH [0, 1] based on glm's orthoRH_ZO
 fn Matrix4x4 ortho(Real left, Real right, Real bottom, Real top,  Real z_near, Real z_far)
 {
@@ -497,16 +506,4 @@ const Matrix2x2 IDENTITY2 = { .m = { 1, 0, 0, 1 } };
 const Matrix3x3 IDENTITY3 = { .m = { [0] = 1, [4] = 1, [8] = 1 } };
 const Matrix4x4 IDENTITY4 = { .m = { [0] = 1, [5] = 1, [10] = 1, [15] = 1 } };
 
-macro matrix_look_at($Type, eye, target, up) @private
-{
-	var vz = (eye - target).normalize();
-	var vx = up.cross(vz).normalize();
-	var vy = vz.cross(vx);
-	return ($Type){ .m = {
-		vx[0], vy[0], vz[0], 0.0,
-		vx[1], vy[1], vz[1], 0.0,
-		vx[2], vy[2], vz[2], 0.0,
-		-(Real)vx.dot(eye), -(Real)vy.dot(eye), -(Real)vz.dot(eye), 1.0
-	}};
-}
 

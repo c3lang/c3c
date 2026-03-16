@@ -3,8 +3,8 @@ module std::math::quaternion;
 // Predefined quaternion aliases.
 alias Quaternionf = QuaternionNumber {float};
 alias Quaternion = QuaternionNumber {double};
-alias QUATERNION_IDENTITY  @builtin = quaternion::IDENTITY {double};
-alias QUATERNIONF_IDENTITY @builtin = quaternion::IDENTITY {float};
+alias QUATERNION_IDENTITY  @builtin @deprecated("Use quaternion::IDENTITY") = quaternion::IDENTITY {double};
+alias QUATERNIONF_IDENTITY @builtin @deprecated("Use quaternion::IDENTITY") = quaternion::IDENTITY {float};
 
 <*
  The generic quaternion module, for float or double based quaternion definitions.
