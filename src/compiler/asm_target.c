@@ -480,14 +480,14 @@ static void init_asm_riscv(PlatformTarget *target)
 			reg_instr(target, "sltz", "w:r64/mem, r64/mem");
 			reg_instr(target, "sgtz", "w:r64/mem, r64/mem");
 			// CSR
-			reg_instr(target, "csrw", "w:r64, r64/mem");
-			reg_instr(target, "csrr", "w:r64/mem, r64");
-			reg_instr(target, "csrrw", "w:r64/mem, rw:r64, r64/mem");
-			reg_instr(target, "csrrs", "w:r64/mem, rw:r64, r64/mem");
-			reg_instr(target, "csrrc", "w:r64/mem, rw:r64, r64/mem");
-			reg_instr(target, "csrrwi", "w:r64/mem, rw:r64, immu5");
-			reg_instr(target, "csrrsi", "w:r64/mem, rw:r64, immu5");
-			reg_instr(target, "csrrci", "w:r64/mem, rw:r64, immu5");
+			reg_instr(target, "csrw", "w:r64/immu12, r64/mem");
+			reg_instr(target, "csrr", "w:r64/mem, r64/immu12");
+			reg_instr(target, "csrrw", "w:r64/mem, rw:r64/immu12, r64/mem");
+			reg_instr(target, "csrrs", "w:r64/mem, rw:r64/immu12, r64/mem");
+			reg_instr(target, "csrrc", "w:r64/mem, rw:r64/immu12, r64/mem");
+			reg_instr(target, "csrrwi", "w:r64/mem, rw:r64/immu12, immu5");
+			reg_instr(target, "csrrsi", "w:r64/mem, rw:r64/immu12, immu5");
+			reg_instr(target, "csrrci", "w:r64/mem, rw:r64/immu12, immu5");
 			// Interrupt
 			reg_instr(target, "wfi", NULL);
 			reg_instr(target, "mret", NULL);
@@ -549,14 +549,14 @@ static void init_asm_riscv(PlatformTarget *target)
 			reg_instr(target, "sltz", "w:r32/mem, r32/mem");
 			reg_instr(target, "sgtz", "w:r32/mem, r32/mem");
 			// CSR
-			reg_instr(target, "csrw", "w:r32, r32/mem");
-			reg_instr(target, "csrr", "w:r32/mem, r32");
-			reg_instr(target, "csrrw", "w:r32/mem, rw:r32, r32/mem");
-			reg_instr(target, "csrrs", "w:r32/mem, rw:r32, r32/mem");
-			reg_instr(target, "csrrc", "w:r32/mem, rw:r32, r32/mem");
-			reg_instr(target, "csrrwi", "w:r32/mem, rw:r32, immu5");
-			reg_instr(target, "csrrsi", "w:r32/mem, rw:r32, immu5");
-			reg_instr(target, "csrrci", "w:r32/mem, rw:r32, immu5");
+			reg_instr(target, "csrw", "w:r32/immu12, r32/mem");
+			reg_instr(target, "csrr", "w:r32/mem, r32/immu12");
+			reg_instr(target, "csrrw", "w:r32/mem, rw:r32/immu12, r32/mem");
+			reg_instr(target, "csrrs", "w:r32/mem, rw:r32/immu12, r32/mem");
+			reg_instr(target, "csrrc", "w:r32/mem, rw:r32/immu12, r32/mem");
+			reg_instr(target, "csrrwi", "w:r32/mem, rw:r32/immu12, immu5");
+			reg_instr(target, "csrrsi", "w:r32/mem, rw:r32/immu12, immu5");
+			reg_instr(target, "csrrci", "w:r32/mem, rw:r32/immu12, immu5");
 			// Interrupt
 			reg_instr(target, "wfi", NULL);
 			reg_instr(target, "mret", NULL);

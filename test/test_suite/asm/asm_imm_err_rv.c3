@@ -56,3 +56,11 @@ fn void test7()
 		slli $a0, 1, 31u; // #error: 'slli' does not support a direct integer constant here.
 	}
 }
+
+fn void test8()
+{
+	asm
+	{
+		csrr $a0, 0x1000; // #error: 'csrr' expected 'ushort' limited to 12 bits.
+	}
+}
