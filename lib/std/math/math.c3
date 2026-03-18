@@ -94,6 +94,11 @@ macro rad_to_deg(radians)
 macro abs(x) => $$abs(x);
 
 <*
+ @require $defined($x < 0, -$x) : `The input must be a numerical value which can be negated`
+*>
+macro @abs($x) => $x >= 0 ??? $x : -$x;
+
+<*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
  @require values::@is_int(y) || values::@is_float(y) : "Expected an integer or floating point value"
 *>
