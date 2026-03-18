@@ -41,6 +41,7 @@
 - Added `is_normalized` to Quaternion and floating point vectors.
 - Added `quaternion::from_rotation` and `quaternion::from_normalized_rotation`
 - Added `Rect` type.
+- Added `matrix::frustum`.
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.

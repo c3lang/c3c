@@ -539,6 +539,28 @@ fn Matrix4x4 perspective(Real fovy, Real aspect, Real z_near, Real z_far)
 	} };
 }
 
+// Implements right-handed [0, 1] perspective
+<*
+ @require left != right : "Left and right cannot be the same"
+ @require bottom != top : "Bottom and top cannot be the same"
+ @require z_near != z_far : "Near and far cannot be the same"
+*>
+fn Matrix4x4 frustum(Real left, Real right, Real bottom, Real top, Real z_near, Real z_far)
+{
+	Real fn_scale = 1 / (z_near - z_far);
+	Real rl_scale = 1 / (right - left);
+	Real tb_scale = 1 / (top - bottom);
+
+	return (Matrix4x4) { .m = {
+		[0] = (2 * z_near) * rl_scale,
+		[5] = (2 * z_near) * tb_scale,
+		[8] = (right + left) * rl_scale,
+		[9] = (top + bottom) * tb_scale,
+		[10] = z_far * fn_scale,
+		[11] = -1,
+		[14] = z_far * z_near * fn_scale,
+	} };
+}
 
 const Matrix2x2 IDENTITY2 = { .m = { 1, 0, 0, 1 } };
 const Matrix3x3 IDENTITY3 = { .m = { [0] = 1, [4] = 1, [8] = 1 } };
