@@ -36,7 +36,6 @@
 - Add vec3 methods: `rejection`, `project`, implement `unproject`.
 - Add vector function `cubic_hermite`
 - Deprecated `sq_magnitude`, `barycenter`, `towards`, `ortho_normalize`, `clamp_mag`, use `length_sq`, `barycentric`, `move_towards`, `orthonormalize`, `clamp_length` instead.
-- Add trivial member-wise struct comparison with `member_eq`. #2801
 - Add Quaternion conversion functions to from Euler angles and axis+angle.
 - `math::deg_to_rad` and `math::rad_to_def` respects the underlying type, returning `float` on a `float` argument.
 - Added `float.to_radians` and `float.to_degrees` and the same for `double`.
@@ -48,6 +47,7 @@
 - Added `math::@abs` for compile time `abs`.
 - Make `Errno` a constdef containing all definitions. Deprecated `libc::errno` constants. 
 - `random::seeder` no longer uses temp memory.
+- Add simple member-wise struct comparison with `member_eq`. #2801
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
