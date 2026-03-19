@@ -74,6 +74,7 @@
 - Issue with 'inline' keyword on enum and constdef #3032.
 - When checking aliases `alias FOO = _BAR` the compiler would incorrectly would say that `_BAR` wasn't a constant.
 - Wasm32 builds crash on startup (unreachable!) due to atexit signature mismatch #3040
+- `@nodiscard`, `@maydiscard` and `@noreturn` weren't properly handled for function type declarations.
 
 ## 0.7.10 Change list
 
