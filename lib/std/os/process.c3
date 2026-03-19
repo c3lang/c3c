@@ -420,7 +420,7 @@ fn usz? read_from_file_posix(CFile file, char* buffer, usz size) @if(env::POSIX)
 	isz bytes_read = libc::read(libc::fileno(file), buffer, size);
 	if (bytes_read < 0)
 	{
-		if (libc::errno() == errno::EAGAIN) return 0;   // nothing to read but O_NONBLOCK (async) is used
+		if (libc::errno() == EAGAIN) return 0;   // nothing to read but O_NONBLOCK (async) is used
 		return READ_FAILED~;
 	}
 	return bytes_read;

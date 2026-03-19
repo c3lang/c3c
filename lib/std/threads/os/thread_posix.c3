@@ -70,9 +70,9 @@ fn void NativeMutex.lock(&self)
 {
 	switch (posix::pthread_mutex_lock(&self.mutex))
 	{
-		case errno::EINVAL: unreachable("Mutex invalid");
-		case errno::EDEADLK: abort("Mutex deadlock");
-		case errno::OK: return;
+		case EINVAL: unreachable("Mutex invalid");
+		case EDEADLK: abort("Mutex deadlock");
+		case OK: return;
 		default: unreachable("Unexpected error in lock");
 	}
 }
@@ -84,7 +84,7 @@ fn void? NativeMutex.lock_timeout(&self, ulong ms)
 {
 	/* Try to acquire the lock and, if we fail, sleep for 5ms. */
 	Errno result;
-	while ((result = posix::pthread_mutex_trylock(&self.mutex)) == errno::EBUSY)
+	while ((result = posix::pthread_mutex_trylock(&self.mutex)) == EBUSY)
 	{
 		if (!ms) break;
 		ulong sleep = min(5, ms);
@@ -93,10 +93,10 @@ fn void? NativeMutex.lock_timeout(&self, ulong ms)
 	}
 	switch (result)
 	{
-		case errno::OK:
+		case OK:
 			return;
-		case errno::EBUSY:
-		case errno::ETIMEDOUT:
+		case EBUSY:
+		case ETIMEDOUT:
 			return thread::LOCK_TIMEOUT~;
 		default:
 			return unreachable("Invalid lock %d", result);
@@ -176,9 +176,9 @@ fn void? NativeConditionVariable.wait_until(&cond, NativeMutex* mtx, Time time)
 {
 	switch (posix::pthread_cond_timedwait(cond, &mtx.mutex, &&time.to_timespec()))
 	{
-		case errno::ETIMEDOUT:
+		case ETIMEDOUT:
 			return thread::WAIT_TIMEOUT~;
-		case errno::OK:
+		case OK:
 			return;
 		default:
 			$if(env::OPENBSD):
@@ -238,10 +238,10 @@ fn int? NativeThread.join(thread) @maydiscard
 	void *pres;
 	switch (posix::pthread_join(thread.pthread, &pres))
 	{
-		case errno::OK: return (int)(iptr)pres;
-		case errno::EINVAL: unreachable("Thread is not joinable.");
-		case errno::EDEADLK: unreachable("Thread join from current thread.");
-		case errno::ESRCH: return thread::THREAD_NOT_FOUND~;
+		case OK: return (int)(iptr)pres;
+		case EINVAL: unreachable("Thread is not joinable.");
+		case EDEADLK: unreachable("Thread join from current thread.");
+		case ESRCH: return thread::THREAD_NOT_FOUND~;
 		default: unreachable("Thread join returned unexpected result");
 	}
 }

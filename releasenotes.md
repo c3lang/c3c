@@ -14,6 +14,8 @@
 - Unified SDK fetching under `c3c fetch-sdk <target>` (windows, android) and added support for automatic Android NDK (r29) download. Better progress bar. #3019
 - Improved Linux backtrace readability by stripping internal panic and runtime startup frames. #3008
 - Added repetition compression for deep recursive stacks in backtraces. #3008
+- Added new builtins: `$$acos`, `$$asin`, `$$atan`, `$$cosh`, `$$exp10`, `$$sinh`, `$$tan` and `$$tanh`.
+- Added the rest of the `xoshiro` and `xoroshiro` PRNG variants. #3027
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
@@ -42,6 +44,10 @@
 - Added `is_normalized` to Quaternion and floating point vectors.
 - Added `quaternion::from_rotation` and `quaternion::from_normalized_rotation`
 - Added `Rect` type.
+- Added `matrix::frustum`.
+- Added `math::@abs` for compile time `abs`.
+- Make `Errno` a constdef containing all definitions. Deprecated `libc::errno` constants. 
+- `random::seeder` no longer uses temp memory.
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.

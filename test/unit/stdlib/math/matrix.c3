@@ -139,6 +139,37 @@ fn void test_mat4_lookat() @if(!$feature(OLD_MATRIX))
 	assert(math::round_to_decimals((double[<16>])look_at_f.m, 4) == math::round_to_decimals((double[<16>])result_f.m, 4));
 }
 
+fn void test_frustum() @if(!$feature(OLD_MATRIX))
+{
+
+	Mat4 m1 = matrix::frustum(-1, 1, -1, 1, 1, 10);
+
+	assert(math::is_approx(m1.m00, 1.0, 1e-6));
+	assert(math::is_approx(m1.m11, 1.0, 1e-6));
+	assert(math::is_approx(m1.m22, -1.1111111, 1e-6));
+	assert(math::is_approx(m1.m23, -1.1111111, 1e-6));
+	assert(math::is_approx(m1.m32, -1.0, 1e-6));
+
+	Mat4 m2 = matrix::frustum(-0.5, 1.5, -1, 2, 0.1, 100);
+
+	assert(math::is_approx(m2.m00, 0.1, 1e-6));
+	assert(math::is_approx(m2.m11, 0.0666667, 1e-6));
+	assert(math::is_approx(m2.m02, 0.5, 1e-6));
+	assert(math::is_approx(m2.m12, 0.3333333, 1e-6));
+	assert(math::is_approx(m2.m22, -1.001001, 1e-6));
+	assert(math::is_approx(m2.m23, -0.1001001, 1e-6));
+	assert(math::is_approx(m2.m32, -1.0, 1e-6));
+
+	Mat4 m3 = matrix::frustum(-1, 1, -1, 1, 0.01, 1000);
+
+	assert(math::is_approx(m3.m23, -0.0100001, 1e-6), "Was %s", m3);
+	assert(math::is_approx(m3.m22, -1.000010, 1e-6));
+
+	Mat4 m5 = matrix::frustum(-100, 100, -50, 50, 1, 100);
+	assert(math::is_approx(m5.m00, 0.01, 1e-6));
+	assert(math::is_approx(m5.m11, 0.02, 1e-6));
+}
+
 fn void test_mat4_perspective() @if(!$feature(OLD_MATRIX))
 {
 	Mat4 perspective = matrix::perspective(math::deg_to_rad(90f), 1, 1, 10);

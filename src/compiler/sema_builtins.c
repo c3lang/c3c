@@ -916,11 +916,16 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args_match(context, args, 2)) return false;
 			rtype = args[0]->type;
 			break;
+		case BUILTIN_ACOS:
+		case BUILTIN_ASIN:
+		case BUILTIN_ATAN:
 		case BUILTIN_CEIL:
 		case BUILTIN_COPYSIGN:
 		case BUILTIN_COS:
+		case BUILTIN_COSH:
 		case BUILTIN_EXP:
 		case BUILTIN_EXP2:
+		case BUILTIN_EXP10:
 		case BUILTIN_FLOOR:
 		case BUILTIN_LLRINT:
 		case BUILTIN_LLROUND:
@@ -934,6 +939,9 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_ROUND:
 		case BUILTIN_ROUNDEVEN:
 		case BUILTIN_SIN:
+		case BUILTIN_SINH:
+		case BUILTIN_TAN:
+		case BUILTIN_TANH:
 		case BUILTIN_SQRT:
 		case BUILTIN_TRUNC:
 			ASSERT(arg_count);
@@ -1408,23 +1416,28 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_RND:
 			return 0;
 		case BUILTIN_ABS:
+		case BUILTIN_ACOS:
+		case BUILTIN_ASIN:
+		case BUILTIN_ATAN:
 		case BUILTIN_BITREVERSE:
 		case BUILTIN_BSWAP:
 		case BUILTIN_CEIL:
 		case BUILTIN_COS:
+		case BUILTIN_COSH:
 		case BUILTIN_CTLZ:
 		case BUILTIN_CTTZ:
 		case BUILTIN_EXACT_NEG:
-		case BUILTIN_EXP2:
 		case BUILTIN_EXP:
+		case BUILTIN_EXP2:
+		case BUILTIN_EXP10:
 		case BUILTIN_FENCE:
 		case BUILTIN_FLOOR:
 		case BUILTIN_FRAMEADDRESS:
 		case BUILTIN_LLRINT:
 		case BUILTIN_LLROUND:
-		case BUILTIN_LOG10:
-		case BUILTIN_LOG2:
 		case BUILTIN_LOG:
+		case BUILTIN_LOG2:
+		case BUILTIN_LOG10:
 		case BUILTIN_LRINT:
 		case BUILTIN_LROUND:
 		case BUILTIN_MASK_TO_INT:
@@ -1444,12 +1457,15 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_ROUNDEVEN:
 		case BUILTIN_SET_ROUNDING_MODE:
 		case BUILTIN_SIN:
+		case BUILTIN_SINH:
 		case BUILTIN_SQRT:
 		case BUILTIN_STR_HASH:
 		case BUILTIN_STR_LOWER:
 		case BUILTIN_STR_PASCALCASE:
 		case BUILTIN_STR_SNAKECASE:
 		case BUILTIN_STR_UPPER:
+		case BUILTIN_TAN:
+		case BUILTIN_TANH:
 		case BUILTIN_TRUNC:
 		case BUILTIN_VOLATILE_LOAD:
 		case BUILTIN_WASM_MEMORY_SIZE:

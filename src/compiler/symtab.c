@@ -195,6 +195,9 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_VALUES] = KW_DEF("values");
 
 	builtin_list[BUILTIN_ABS] = KW_DEF("abs");
+	builtin_list[BUILTIN_ACOS] = KW_DEF("acos");
+	builtin_list[BUILTIN_ASIN] = KW_DEF("asin");
+	builtin_list[BUILTIN_ATAN] = KW_DEF("atan");
 	builtin_list[BUILTIN_ANY_MAKE] = KW_DEF("any_make");
 	builtin_list[BUILTIN_ATOMIC_LOAD] = KW_DEF("atomic_load");
 	builtin_list[BUILTIN_ATOMIC_STORE] = KW_DEF("atomic_store");
@@ -216,6 +219,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_COMPARE_EXCHANGE] = KW_DEF(("compare_exchange"));
 	builtin_list[BUILTIN_COPYSIGN] = KW_DEF("copysign");
 	builtin_list[BUILTIN_COS] = KW_DEF("cos");
+	builtin_list[BUILTIN_COSH] = KW_DEF("cosh");
 	builtin_list[BUILTIN_CTLZ] = KW_DEF("clz");
 	builtin_list[BUILTIN_CTTZ] = KW_DEF("ctz");
 	builtin_list[BUILTIN_EXACT_ADD] = KW_DEF("add");
@@ -226,6 +230,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_EXACT_SUB] = KW_DEF("sub");
 	builtin_list[BUILTIN_EXP] = KW_DEF("exp");
 	builtin_list[BUILTIN_EXP2] = KW_DEF("exp2");
+	builtin_list[BUILTIN_EXP10] = KW_DEF("exp10");
 	builtin_list[BUILTIN_EXPECT] = KW_DEF("expect");
 	builtin_list[BUILTIN_EXPECT_WITH_PROBABILITY] = KW_DEF("expect_with_probability");
 	builtin_list[BUILTIN_FENCE] = KW_DEF("fence");
@@ -282,6 +287,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_SELECT] = KW_DEF("select");
 	builtin_list[BUILTIN_SET_ROUNDING_MODE] = KW_DEF("set_rounding_mode");
 	builtin_list[BUILTIN_SIN] = KW_DEF("sin");
+	builtin_list[BUILTIN_SINH] = KW_DEF("sinh");
 	builtin_list[BUILTIN_STR_HASH] = KW_DEF("str_hash");
 	builtin_list[BUILTIN_STR_UPPER] = KW_DEF("str_upper");
 	builtin_list[BUILTIN_STR_LOWER] = KW_DEF("str_lower");
@@ -295,6 +301,8 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_SQRT] = KW_DEF("sqrt");
 	builtin_list[BUILTIN_SYSCALL] = KW_DEF("syscall");
 	builtin_list[BUILTIN_SYSCLOCK] = KW_DEF("sysclock");
+	builtin_list[BUILTIN_TAN] = KW_DEF("tan");
+	builtin_list[BUILTIN_TANH] = KW_DEF("tanh");
 	builtin_list[BUILTIN_TRAP] = KW_DEF("trap");
 	builtin_list[BUILTIN_TRUNC] = KW_DEF("trunc");
 	builtin_list[BUILTIN_VECCOMPLT] = KW_DEF("veccomplt");
