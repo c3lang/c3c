@@ -2,19 +2,22 @@ module std::math;
 
 alias Rect = Rectangle {float};
 
-module std::math::rectangle <Real>;
+<*
+ @require types::is_float(Num) || types::is_int(Num) : "Only integer or floating point rectangles are supported"
+*>
+module std::math::rectangle <Num>;
 
 union Rectangle
 {
 	struct
 	{
-		Real x, y, width, height;
+		Num x, y, width, height;
 	}
-	Real[<4>] v;
+	Num[<4>] v;
 	struct
 	{
-		Real[<2>] origin;
-		Real[<2>] size;
+		Num[<2>] origin;
+		Num[<2>] size;
 	}
 }
 
@@ -25,7 +28,7 @@ union Rectangle
 
  @return "The minimum corner"
 *>
-fn Real[<2>] Rectangle.min(self) @inline
+fn Num[<2>] Rectangle.min(self) @inline
 {
 	return self.origin;
 }
@@ -35,7 +38,7 @@ fn Real[<2>] Rectangle.min(self) @inline
 
  @return "the maximum corner"
 *>
-fn Real[<2>] Rectangle.max(self) @inline
+fn Num[<2>] Rectangle.max(self) @inline
 {
 	return self.origin + self.size;
 }
@@ -45,7 +48,7 @@ fn Real[<2>] Rectangle.max(self) @inline
 
  @return "The center point"
 *>
-fn Real[<2>] Rectangle.center(self)
+fn Num[<2>] Rectangle.center(self)
 {
 	return self.origin + self.size / 2;
 }
@@ -55,7 +58,7 @@ fn Real[<2>] Rectangle.center(self)
 
  @return "The area"
 *>
-fn Real Rectangle.area(self)
+fn Num Rectangle.area(self)
 {
 	return self.size.product();
 }
@@ -78,7 +81,7 @@ fn bool Rectangle.is_empty(self)
 
  @return "true if the point is inside or on the border of the rectangle"
 *>
-fn bool Rectangle.contains_point(self, Real[<2>] point)
+fn bool Rectangle.contains_point(self, Num[<2>] point)
 {
 	return self.origin.comp_le(point).and() & (self.origin + self.size).comp_ge(point).and();
 }
@@ -102,8 +105,8 @@ fn bool Rectangle.contains_rect(self, Rectangle other)
 *>
 fn bool Rectangle.intersects(self, Rectangle other)
 {
-	Real[<4>] a = self.v;
-	Real[<4>] b = other.v;
+	Num[<4>] a = self.v;
+	Num[<4>] b = other.v;
 	return a.x + a.z > b.x
 		&& a.x < b.x + b.z
 		&& a.y + a.w > b.y
@@ -120,8 +123,8 @@ fn bool Rectangle.intersects(self, Rectangle other)
 *>
 fn Rectangle Rectangle.merge(self, Rectangle other)
 {
-	Real[<2>] min = math::min(self.min(), other.min());
-	Real[<2>] max = math::max(self.max(), other.max());
+	Num[<2>] min = math::min(self.min(), other.min());
+	Num[<2>] max = math::max(self.max(), other.max());
 	return { .origin = min, .size = max - min };
 }
 
@@ -135,8 +138,8 @@ fn Rectangle Rectangle.merge(self, Rectangle other)
 *>
 fn Rectangle? Rectangle.intersection(self, Rectangle other)
 {
-	Real[<2>] min = math::max(self.min(), other.min());
-	Real[<2>] max = math::min(self.max(), other.max());
+	Num[<2>] min = math::max(self.min(), other.min());
+	Num[<2>] max = math::min(self.max(), other.max());
 
 	if (min.x >= max.x || min.y >= max.y) return math::NO_INTERSECTION~;
 
@@ -149,10 +152,10 @@ fn Rectangle? Rectangle.intersection(self, Rectangle other)
  Expands the rectangle to have integral boundaries.
  @return "the resulting rectangle"
 *>
-fn Rectangle Rectangle.integral_outer(self)
+fn Rectangle Rectangle.integral_outer(self) @if(types::is_float(Num))
 {
-	Real[<2>] min = math::floor(self.origin);
-	Real[<2>] max = math::ceil(self.max());
+	Num[<2>] min = math::floor(self.origin);
+	Num[<2>] max = math::ceil(self.max());
 
 	return { .origin = min, .size = max - min };
 }
@@ -161,12 +164,12 @@ fn Rectangle Rectangle.integral_outer(self)
  Shrinks the rectangle to have integral boundaries.
  @return "the resulting rectangle"
 *>
-fn Rectangle Rectangle.integral_inner(self)
+fn Rectangle Rectangle.integral_inner(self) @if(types::is_float(Num))
 {
-	Real[<2>] min = math::ceil(self.origin);
-	Real[<2>] max = math::floor(self.max());
+	Num[<2>] min = math::ceil(self.origin);
+	Num[<2>] max = math::floor(self.max());
 
-	return { .origin = min, .size = math::max(max - min, (Real[<2>])0) };
+	return { .origin = min, .size = math::max(max - min, (Num[<2>])0) };
 }
 
 <*
@@ -176,7 +179,7 @@ fn Rectangle Rectangle.integral_inner(self)
  @require (self.size - amount * 2).min() >= 0 : "Inset must result in a zero or positive size"
  @return "the resulting rectangle"
 *>
-fn Rectangle Rectangle.inset(self, Real amount)
+fn Rectangle Rectangle.inset(self, Num amount)
 {
 	return { .origin = self.origin + amount, .size = self.size - amount * 2};
 }
@@ -187,10 +190,10 @@ fn Rectangle Rectangle.inset(self, Real amount)
  @require amount >= 0 : "Expected a positive or zero amount"
  @return "the resulting rectangle"
 *>
-fn Rectangle Rectangle.inset_clamped(self, Real amount)
+fn Rectangle Rectangle.inset_clamped(self, Num amount)
 {
-	Real[<2>] new_size = math::max(self.size - amount * 2, (Real[<2>])0);
-	Real[<2>] decrease = self.size - new_size;
+	Num[<2>] new_size = math::max(self.size - amount * 2, (Num[<2>])0);
+	Num[<2>] decrease = self.size - new_size;
 	return { .origin = self.origin + decrease / 2, .size = new_size};
 }
 
@@ -204,7 +207,7 @@ fn Rectangle Rectangle.inset_clamped(self, Real amount)
 
  @return "the resulting rectangle"
 *>
-fn Rectangle Rectangle.expand(self, Real amount)
+fn Rectangle Rectangle.expand(self, Num amount)
 {
 	return { .origin = self.origin - amount, .size = self.size + amount * 2};
 }
@@ -217,10 +220,10 @@ fn Rectangle Rectangle.expand(self, Real amount)
 
  @ensure return.contains_point(point)
 *>
-fn Rectangle Rectangle.merge_point(self, Real[<2>] point)
+fn Rectangle Rectangle.merge_point(self, Num[<2>] point)
 {
-	Real[<2>] min = math::min(self.min(), point);
-	Real[<2>] max = math::max(self.max(), point);
+	Num[<2>] min = math::min(self.min(), point);
+	Num[<2>] max = math::max(self.max(), point);
 	return { .origin = min, .size = max - min };
 }
 
@@ -230,7 +233,7 @@ fn Rectangle Rectangle.merge_point(self, Real[<2>] point)
  @return "the resulting point"
  @ensure self.contains_point(return)
 *>
-fn Real[<2>] Rectangle.clamp_point(self, Real[<2>] point)
+fn Num[<2>] Rectangle.clamp_point(self, Num[<2>] point)
 {
 	return math::min(self.max(), math::max(self.min(), point));
 }
