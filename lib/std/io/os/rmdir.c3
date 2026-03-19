@@ -13,16 +13,16 @@ macro bool? native_rmdir(Path path)
 			if (!posix::rmdir(path.str_view().zstr_tcopy())) return true;
 			switch (libc::errno())
 			{
-				case errno::EBUSY: return io::BUSY~;
-				case errno::EACCES:
-				case errno::EPERM:
-				case errno::EROFS:
-				case errno::EFAULT: return io::NO_PERMISSION~;
-				case errno::ENAMETOOLONG: return io::NAME_TOO_LONG~;
-				case errno::ENOTDIR:
-				case errno::ENOENT: return false;
-				case errno::ENOTEMPTY: return io::DIR_NOT_EMPTY~;
-				case errno::ELOOP: return io::SYMLINK_FAILED~;
+				case EBUSY: return io::BUSY~;
+				case EACCES:
+				case EPERM:
+				case EROFS:
+				case EFAULT: return io::NO_PERMISSION~;
+				case ENAMETOOLONG: return io::NAME_TOO_LONG~;
+				case ENOTDIR:
+				case ENOENT: return false;
+				case ENOTEMPTY: return io::DIR_NOT_EMPTY~;
+				case ELOOP: return io::SYMLINK_FAILED~;
 				default: return io::GENERAL_ERROR~;
 			}
 		$case env::WIN32:

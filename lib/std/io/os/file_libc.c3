@@ -26,11 +26,9 @@ fn void? native_remove(String filename) => @stack_mem(256; Allocator smem)
 	{
 		switch (libc::errno())
 		{
-			case errno::ENOENT:
-				return io::FILE_NOT_FOUND~;
-			case errno::EACCES:
-			default:
-				return io::FILE_CANNOT_DELETE~;
+			case ENOENT: return io::FILE_NOT_FOUND~;
+			case EACCES:
+			default:     return io::FILE_CANNOT_DELETE~;
 		}
 	}
 }
@@ -85,26 +83,26 @@ macro fault file_open_errno() @local
 {
 	switch (libc::errno())
 	{
-		case errno::EACCES: return io::NO_PERMISSION;
-		case errno::EDQUOT: return io::OUT_OF_SPACE;
-		case errno::EBADF: return io::FILE_NOT_VALID;
-		case errno::EEXIST: return io::ALREADY_EXISTS;
-		case errno::EINTR: return io::INTERRUPTED;
-		case errno::EFAULT: return io::GENERAL_ERROR;
-		case errno::EISDIR: return io::FILE_IS_DIR;
-		case errno::ELOOP: return io::SYMLINK_FAILED;
-		case errno::EMFILE: return io::TOO_MANY_DESCRIPTORS;
-		case errno::ENAMETOOLONG: return io::NAME_TOO_LONG;
-		case errno::ENFILE: return io::OUT_OF_SPACE;
-		case errno::ENOTDIR: return io::FILE_NOT_DIR;
-		case errno::ENOENT: return io::FILE_NOT_FOUND;
-		case errno::ENOSPC: return io::OUT_OF_SPACE;
-		case errno::ENXIO: return io::FILE_NOT_FOUND;
-		case errno::EOVERFLOW: return io::OVERFLOW;
-		case errno::EROFS: return io::READ_ONLY;
-		case errno::EOPNOTSUPP: return io::UNSUPPORTED_OPERATION;
-		case errno::EIO: return io::INCOMPLETE_WRITE;
-		case errno::EWOULDBLOCK: return io::WOULD_BLOCK;
+		case EACCES: return io::NO_PERMISSION;
+		case EDQUOT: return io::OUT_OF_SPACE;
+		case EBADF: return io::FILE_NOT_VALID;
+		case EEXIST: return io::ALREADY_EXISTS;
+		case EINTR: return io::INTERRUPTED;
+		case EFAULT: return io::GENERAL_ERROR;
+		case EISDIR: return io::FILE_IS_DIR;
+		case ELOOP: return io::SYMLINK_FAILED;
+		case EMFILE: return io::TOO_MANY_DESCRIPTORS;
+		case ENAMETOOLONG: return io::NAME_TOO_LONG;
+		case ENFILE: return io::OUT_OF_SPACE;
+		case ENOTDIR: return io::FILE_NOT_DIR;
+		case ENOENT: return io::FILE_NOT_FOUND;
+		case ENOSPC: return io::OUT_OF_SPACE;
+		case ENXIO: return io::FILE_NOT_FOUND;
+		case EOVERFLOW: return io::OVERFLOW;
+		case EROFS: return io::READ_ONLY;
+		case EOPNOTSUPP: return io::UNSUPPORTED_OPERATION;
+		case EIO: return io::INCOMPLETE_WRITE;
+		case EWOULDBLOCK: return io::WOULD_BLOCK;
 		default: return io::UNKNOWN_ERROR;
 	}
 }
@@ -113,17 +111,17 @@ macro fault file_seek_errno() @local
 {
 	switch (libc::errno())
 	{
-		case errno::ESPIPE: return io::FILE_IS_PIPE;
-		case errno::EPIPE: return io::FILE_IS_PIPE;
-		case errno::EOVERFLOW: return io::OVERFLOW;
-		case errno::ENXIO: return io::FILE_NOT_FOUND;
-		case errno::ENOSPC: return io::OUT_OF_SPACE;
-		case errno::EIO: return io::INCOMPLETE_WRITE;
-		case errno::EINVAL: return io::INVALID_POSITION;
-		case errno::EINTR: return io::INTERRUPTED;
-		case errno::EFBIG: return io::OUT_OF_SPACE;
-		case errno::EBADF: return io::FILE_NOT_VALID;
-		case errno::EAGAIN: return io::WOULD_BLOCK;
+		case ESPIPE: return io::FILE_IS_PIPE;
+		case EPIPE: return io::FILE_IS_PIPE;
+		case EOVERFLOW: return io::OVERFLOW;
+		case ENXIO: return io::FILE_NOT_FOUND;
+		case ENOSPC: return io::OUT_OF_SPACE;
+		case EIO: return io::INCOMPLETE_WRITE;
+		case EINVAL: return io::INVALID_POSITION;
+		case EINTR: return io::INTERRUPTED;
+		case EFBIG: return io::OUT_OF_SPACE;
+		case EBADF: return io::FILE_NOT_VALID;
+		case EAGAIN: return io::WOULD_BLOCK;
 		default: return io::UNKNOWN_ERROR;
 	}
 }

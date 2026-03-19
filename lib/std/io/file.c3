@@ -127,17 +127,17 @@ fn void? File.close(&self) @inline @dynamic
 	{
 		switch (libc::errno())
 		{
-			case errno::ECONNRESET:
-			case errno::EBADF: return io::FILE_NOT_VALID~;
-			case errno::EINTR: return io::INTERRUPTED~;
-			case errno::EDQUOT:
-			case errno::EFAULT:
-			case errno::EAGAIN:
-			case errno::EFBIG:
-			case errno::ENETDOWN:
-			case errno::ENETUNREACH:
-			case errno::ENOSPC:
-			case errno::EIO: return io::INCOMPLETE_WRITE~;
+			case ECONNRESET:
+			case EBADF: return io::FILE_NOT_VALID~;
+			case EINTR: return io::INTERRUPTED~;
+			case EDQUOT:
+			case EFAULT:
+			case EAGAIN:
+			case EFBIG:
+			case ENETDOWN:
+			case ENETUNREACH:
+			case ENOSPC:
+			case EIO: return io::INCOMPLETE_WRITE~;
 			default: return io::UNKNOWN_ERROR~;
 		}
 	}

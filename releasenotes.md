@@ -43,6 +43,7 @@
 - Added `Rect` type.
 - Added `matrix::frustum`.
 - Added `math::@abs` for compile time `abs`.
+- Make `Errno` a constdef containing all definitions. Deprecated `libc::errno` constants. 
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.

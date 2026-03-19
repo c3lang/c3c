@@ -35,19 +35,19 @@ fn fault convert_error(Errno error)
 {
 	switch (error)
 	{
-		case errno::EACCES: return io::NO_PERMISSION;
-		case errno::EADDRINUSE: return net::ADDRESS_IN_USE;
-		case errno::EALREADY: return net::CONNECTION_ALREADY_IN_PROGRESS;
-		case errno::EBADF: return net::BAD_SOCKET_DESCRIPTOR;
-		case errno::ECONNREFUSED: return net::CONNECTION_REFUSED;
-		case errno::ECONNRESET: return net::CONNECTION_RESET;
-		case errno::EISCONN: return net::ALREADY_CONNECTED;
-		case errno::ENETUNREACH: return net::NETWORK_UNREACHABLE;
-		case errno::ENOTSOCK: return net::NOT_A_SOCKET;
-		case errno::EINTR: return io::INTERRUPTED;
-		case errno::EWOULDBLOCK: return io::WOULD_BLOCK;
-		case errno::EOPNOTSUPP: return net::OPERATION_NOT_SUPPORTED_ON_SOCKET;
-		case errno::ETIMEDOUT: return net::CONNECTION_TIMED_OUT;
+		case EACCES: return io::NO_PERMISSION;
+		case EADDRINUSE: return net::ADDRESS_IN_USE;
+		case EALREADY: return net::CONNECTION_ALREADY_IN_PROGRESS;
+		case EBADF: return net::BAD_SOCKET_DESCRIPTOR;
+		case ECONNREFUSED: return net::CONNECTION_REFUSED;
+		case ECONNRESET: return net::CONNECTION_RESET;
+		case EISCONN: return net::ALREADY_CONNECTED;
+		case ENETUNREACH: return net::NETWORK_UNREACHABLE;
+		case ENOTSOCK: return net::NOT_A_SOCKET;
+		case EINTR: return io::INTERRUPTED;
+		case EWOULDBLOCK: return io::WOULD_BLOCK;
+		case EOPNOTSUPP: return net::OPERATION_NOT_SUPPORTED_ON_SOCKET;
+		case ETIMEDOUT: return net::CONNECTION_TIMED_OUT;
 		default: return io::GENERAL_ERROR;
 	}
 }
@@ -66,7 +66,7 @@ macro void? NativeSocket.close(self)
 {
 	if (libc::close(self))
 	{
-		if (libc::errno() == errno::EBADF) return net::INVALID_SOCKET~;
+		if (libc::errno() == EBADF) return net::INVALID_SOCKET~;
 		return net::GENERAL_ERROR~;
 	}
 }
@@ -86,7 +86,7 @@ macro void? NativeSocket.set_non_blocking(self, bool non_blocking)
 	}
 	if (fcntl(self, F_SETFL, flags) == -1)
 	{
-		if (libc::errno() == errno::EBADF) return net::INVALID_SOCKET~;
+		if (libc::errno() == EBADF) return net::INVALID_SOCKET~;
 		return net::GENERAL_ERROR~;
 	}
 }
