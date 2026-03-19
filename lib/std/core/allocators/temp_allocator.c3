@@ -1,4 +1,4 @@
-module std::core::mem::allocator @if(!(env::POSIX || env::WIN32) || !$feature(VMEM_TEMP));
+module std::core::mem::allocators @if(!(env::POSIX || env::WIN32) || !$feature(VMEM_TEMP));
 import std::io, std::math;
 
 // This implements the temp allocator.
@@ -71,7 +71,7 @@ macro bool TempAllocatorPage.is_aligned(&self) => self.size & PAGE_IS_ALIGNED ==
 *>
 fn TempAllocator*? new_temp_allocator(Allocator allocator, usz size, usz reserve = temp_allocator_reserve_size, usz min_size = temp_allocator_min_size, usz realloc_size = temp_allocator_realloc_size)
 {
-	TempAllocator* temp = allocator::alloc_with_padding(allocator, TempAllocator, size)!;
+	TempAllocator* temp = alloc::alloc_with_padding(allocator, TempAllocator, size)!;
 	temp.last_page = null;
 	temp.backing_allocator = allocator;
 	temp.used = 0;
@@ -156,7 +156,7 @@ fn void temp_allocator_destroy(TempAllocator* self)
 	}
 	if (self.allocated)
 	{
-		allocator::free(self.backing_allocator, self);
+		alloc::free(self.backing_allocator, self);
 		return;
 	}
 	$if env::COMPILER_SAFE_MODE || env::ADDRESS_SANITIZER:
@@ -264,11 +264,11 @@ fn void*? TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz al
 		usz total_alloc_size = mem::aligned_offset(TempAllocatorPage.sizeof + size, alignment);
 		if (init_type == ZERO)
 		{
-			mem = allocator::calloc_aligned(self.backing_allocator, total_alloc_size, alignment)!;
+			mem = alloc::calloc_aligned(self.backing_allocator, total_alloc_size, alignment)!;
 		}
 		else
 		{
-			mem = allocator::malloc_aligned(self.backing_allocator, total_alloc_size, alignment)!;
+			mem = alloc::malloc_aligned(self.backing_allocator, total_alloc_size, alignment)!;
 		}
 		void* start = mem;
 		mem += mem::aligned_offset(TempAllocatorPage.sizeof, alignment);
@@ -328,7 +328,7 @@ fn void*? _realloc_page(TempAllocator* self, TempAllocatorPage* page, usz size, 
 	return data;
 }
 
-module std::core::mem::allocator @if((env::POSIX || env::WIN32) && $feature(VMEM_TEMP));
+module std::core::mem::allocators @if((env::POSIX || env::WIN32) && $feature(VMEM_TEMP));
 import std::math;
 
 
@@ -342,8 +342,8 @@ tlocal VmemOptions temp_allocator_default_options = {
 fn TempAllocator*? new_temp_allocator(Allocator allocator, usz size, usz reserve = temp_allocator_reserve_size, usz min_size = temp_allocator_min_size, usz realloc_size = temp_allocator_realloc_size)
 {
 	Vmem mem;
-	TempAllocator* t = allocator::new(allocator, TempAllocator);
-	defer catch allocator::free(allocator, t);
+	TempAllocator* t = alloc::new(allocator, TempAllocator);
+	defer catch alloc::free(allocator, t);
 	t.vmem.init(preferred_size: isz.sizeof > 4 ? 4 * mem::GB : 512 * mem::MB,
 	            reserve_page_size: isz.sizeof > 4 ? 256 * mem::KB : 0,
 	            options: temp_allocator_default_options)!;
@@ -395,7 +395,7 @@ fn void _destroy(TempAllocator* self) @local
 	if (!child) return;
 	_destroy(child);
 	self.vmem.free() @inline;
-	allocator::free(self.allocator, self) @inline;
+	alloc::free(self.allocator, self) @inline;
 }
 
 fn void*? TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @dynamic
@@ -406,4 +406,24 @@ fn void*? TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @d
 fn void TempAllocator.release(&self, void* old_pointer, bool b) @dynamic
 {
 	self.vmem.release(old_pointer, b) @inline;
+}
+
+module std::core::mem::allocators;
+
+typedef LazyTempAllocator (Allocator) @private = uptr;
+
+fn void*? LazyTempAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
+{
+	if (!top_temp) create_temp_allocator_on_demand();
+	return top_temp.acquire(bytes, init_type, alignment);
+}
+
+fn void*? LazyTempAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
+{
+	if (!top_temp) create_temp_allocator_on_demand();
+	return top_temp.resize(old_ptr, new_bytes, alignment);
+}
+
+fn void LazyTempAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
+{
 }

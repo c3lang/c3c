@@ -45,13 +45,13 @@ const URL_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345
 
 fn String encode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
 {
-	char[] dst = allocator::alloc_array(allocator, char, encode_len(src.len, padding));
+	char[] dst = alloc::alloc_array(allocator, char, encode_len(src.len, padding));
 	return encode_buffer(src, dst, padding, alphabet);
 }
 
 fn char[]? decode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
 {
-	char[] dst = allocator::alloc_array(allocator, char, decode_len(src.len, padding))!;
+	char[] dst = alloc::alloc_array(allocator, char, decode_len(src.len, padding))!;
 	return decode_buffer(src, dst, padding, alphabet);
 }
 

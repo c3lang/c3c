@@ -65,7 +65,7 @@ fn void LinkedBlockingQueue.free(&self)
 		while (entry != null)
 		{
 			QueueEntry* next = entry.next;
-			allocator::free(self.allocator, entry);
+			alloc::free(self.allocator, entry);
 			entry = next;
 		}
 	};
@@ -129,7 +129,7 @@ fn void LinkedBlockingQueue.push(&self, Value value)
 			self.not_full.wait(&self.lock);
 		}
 
-		QueueEntry* entry = allocator::new(self.allocator, QueueEntry, {
+		QueueEntry* entry = alloc::new(self.allocator, QueueEntry, {
 			.value = value,
 			.next = null,
 			.prev = null
@@ -158,7 +158,7 @@ fn Value LinkedBlockingQueue.poll(&self)
 
 		QueueEntry* entry = linkedblockingqueue_unlink_head(self);
 		Value value = entry.value;
-		allocator::free(self.allocator, entry);
+		alloc::free(self.allocator, entry);
 		if (self.capacity > 0)
 		{
 			self.not_full.signal();
@@ -182,7 +182,7 @@ fn Value? LinkedBlockingQueue.pop(&self)
 
 		QueueEntry* entry = linkedblockingqueue_unlink_head(self);
 		Value value = entry.value;
-		allocator::free(self.allocator, entry);
+		alloc::free(self.allocator, entry);
 
 		if (self.capacity > 0)
 		{
@@ -219,7 +219,7 @@ fn Value? LinkedBlockingQueue.poll_timeout(&self, Duration timeout)
 
 		QueueEntry* entry = linkedblockingqueue_unlink_head(self);
 		Value value = entry.value;
-		allocator::free(self.allocator, entry);
+		alloc::free(self.allocator, entry);
 
 		// Must signal not_full after removing an item
 		if (self.capacity > 0)
@@ -268,7 +268,7 @@ fn void? LinkedBlockingQueue.try_push(&self, Value value)
 	{
 		if (self.capacity > 0 && self.count >= self.capacity) return CAPACITY_EXCEEDED~;
 
-		QueueEntry* entry = allocator::new(self.allocator, QueueEntry, {
+		QueueEntry* entry = alloc::new(self.allocator, QueueEntry, {
 			.value = value,
 			.next = null,
 			.prev = null
@@ -302,7 +302,7 @@ fn void? LinkedBlockingQueue.push_timeout(&self, Value value, Duration timeout)
 			if (self.capacity > 0 && self.count >= self.capacity) return CAPACITY_EXCEEDED~;
 		}
 
-		QueueEntry* entry = allocator::new(self.allocator, QueueEntry, {
+		QueueEntry* entry = alloc::new(self.allocator, QueueEntry, {
 			.value = value,
 			.next = null,
 			.prev = null

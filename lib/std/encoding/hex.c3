@@ -15,13 +15,13 @@ fn char[]? decode_buffer(char[] code, char[] buffer)
 
 fn String encode(Allocator allocator, char[] code)
 {
-	char[] data = allocator::alloc_array(allocator, char, encode_len(code.len));
+	char[] data = alloc::alloc_array(allocator, char, encode_len(code.len));
 	return (String)data[:encode_bytes(code, data)];
 }
 
 fn char[]? decode(Allocator allocator, char[] code)
 {
-	char[] data = allocator::alloc_array(allocator, char, decode_len(code.len));
+	char[] data = alloc::alloc_array(allocator, char, decode_len(code.len));
 	return data[:decode_bytes(code, data)!];
 }
 

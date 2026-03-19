@@ -539,7 +539,7 @@ fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WI
 *>
 fn ZString* copy_command_line(Allocator mem, String[] command_line) @local @inline @if(env::POSIX)
 {
-	ZString* copy = allocator::alloc_array(mem, ZString, command_line.len + 1);
+	ZString* copy = alloc::alloc_array(mem, ZString, command_line.len + 1);
 	foreach (i, str : command_line)
 	{
 		copy[i] = str.zstr_copy(mem);
@@ -552,7 +552,7 @@ const ZString[1] EMPTY_ENVIRONMENT @if(env::POSIX) = { null };
 fn ZString* copy_env(Allocator mem, String[] environment) @local @inline @if(env::POSIX)
 {
 	if (!environment.len) return &EMPTY_ENVIRONMENT;
-	ZString* copy = allocator::alloc_array(mem, ZString, environment.len + 1);
+	ZString* copy = alloc::alloc_array(mem, ZString, environment.len + 1);
 	copy[environment.len] = null;
 	foreach (i, str : environment)
 	{

@@ -1,7 +1,5 @@
-module std::core::mem::allocator @if(env::POSIX || env::WIN32);
+module std::core::mem::allocators @if(env::POSIX || env::WIN32);
 import std::math, std::os::posix, libc, std::bits;
-import std::core::mem;
-import std::core::env;
 
 
 

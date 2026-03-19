@@ -348,7 +348,7 @@ fn void Aes.decrypt_buffer(&self, char[] in, char[] out)
 *>
 fn char[] Aes.encrypt(&self, Allocator allocator, char[] in)
 {
-	char[] out = allocator::alloc_array(allocator, char, in.len);
+	char[] out = alloc::alloc_array(allocator, char, in.len);
 	self.encrypt_buffer(in, out) @inline;
 	return out;
 }
@@ -373,7 +373,7 @@ fn char[] Aes.tencrypt(&self, char[] in)
 *>
 fn char[] Aes.decrypt(&self, Allocator allocator, char[] in)
 {
-	char[] out = allocator::alloc_array(allocator, char, in.len);
+	char[] out = alloc::alloc_array(allocator, char, in.len);
 	self.decrypt_buffer(in, out) @inline;
 	return out;
 }

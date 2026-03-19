@@ -66,13 +66,13 @@ fn bool LinkedList.is_initialized(&self) @inline => self.allocator != null;
 *>
 macro void LinkedList.free_node(&self, Node* node) @private
 {
-	allocator::free(self.allocator, node);
+	alloc::free(self.allocator, node);
 }
 
 macro Node* LinkedList.alloc_node(&self) @private
 {
 	if (!self.allocator) self.allocator = tmem;
-	return allocator::alloc(self.allocator, Node);
+	return alloc::alloc(self.allocator, Node);
 }
 
 fn void LinkedList.push_front(&self, Type value)

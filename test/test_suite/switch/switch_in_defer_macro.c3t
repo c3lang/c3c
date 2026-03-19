@@ -67,13 +67,13 @@ fn void? Lexer.init(&self, InStream reader, Ident ident, Allocator using = mem)
 		assert(end.len > 0 && end.len <= ushort.max);
 		max_token = max(max_token, (ushort)end.len);
 	}
-	char* buf = allocator::malloc_try(using, max_token)!;
+	char* buf = alloc::malloc_try(using, max_token)!;
 	*self = { .allocator = using, .reader = reader, .buf = buf[:max_token], .tokens = trie };
 }
 
 fn void? Lexer.free(&self)
 {
-	allocator::free(self.allocator, self.buf);
+	alloc::free(self.allocator, self.buf);
 	*self = {};
 }
 
@@ -698,7 +698,7 @@ fn void test()
 @"lexer_test.Comment$end" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str.4, i64 1 }, %"char[]" { ptr @.str.5, i64 2 }], align 8
 @std.core.ascii.ASCII_LOOKUP = extern_weak constant [256 x i16], align 16
 @"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@std.core.mem.allocator.thread_allocator = extern_weak thread_local global %any, align 8
+@std.core.mem.allocators.thread_allocator = extern_weak thread_local global %any, align 8
 
 define zeroext i8 @lexer_test.is_ident_char(i64 %0, i8 zeroext %1) #0 {
 entry:
@@ -780,7 +780,7 @@ loop.body:                                        ; preds = %loop.cond
   %4 = call ptr @std.io.ByteReader.init(ptr %br, ptr %lo, i64 %hi)
   %5 = insertvalue %any undef, ptr %4, 0
   %6 = insertvalue %any %5, i64 ptrtoint (ptr @"$ct.std.io.ByteReader" to i64), 1
-  %7 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocator.thread_allocator)
+  %7 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.thread_allocator)
   store %any %6, ptr %taddr, align 8
   %lo2 = load i64, ptr %taddr, align 8
   %ptradd3 = getelementptr inbounds i8, ptr %taddr, i64 8

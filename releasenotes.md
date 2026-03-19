@@ -48,6 +48,7 @@
 - Make `Errno` a constdef containing all definitions. Deprecated `libc::errno` constants. 
 - `random::seeder` no longer uses temp memory.
 - Add simple member-wise struct comparison with `member_eq`. #2801
+- `std::core::mem::allocator` deprecated and split into `std::core::mem::allocators` containing allocators and `std::core::mem::alloc` for various allocation methods.
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.

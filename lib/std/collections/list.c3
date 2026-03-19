@@ -302,9 +302,9 @@ fn void List.free(&self)
 	list_pre_free(self); // Remove sanitizer annotation
 
 	$if type_is_overaligned():
-		allocator::free_aligned(self.allocator, self.entries);
+		alloc::free_aligned(self.allocator, self.entries);
 	$else
-		allocator::free(self.allocator, self.entries);
+		alloc::free(self.allocator, self.entries);
 	$endif;
 	self.capacity = 0;
 	self.size = 0;
@@ -378,9 +378,9 @@ fn void list_ensure_capacity(List* self, usz min_capacity) @local
 
 	min_capacity = math::next_power_of_2(min_capacity);
 	$if type_is_overaligned():
-		self.entries = allocator::realloc_aligned(self.allocator, self.entries, Type.sizeof * min_capacity, alignment: Type[1].alignof)!!;
+		self.entries = alloc::realloc_aligned(self.allocator, self.entries, Type.sizeof * min_capacity, alignment: Type[1].alignof)!!;
 	$else
-		self.entries = allocator::realloc(self.allocator, self.entries, Type.sizeof * min_capacity);
+		self.entries = alloc::realloc(self.allocator, self.entries, Type.sizeof * min_capacity);
 	$endif;
 	self.capacity = min_capacity;
 
@@ -426,7 +426,7 @@ fn void List._update_size_change(&self,usz old_size, usz new_size)
 {
 	if (old_size == new_size) return;
 	$if env::ADDRESS_SANITIZER:
-		if (self.allocator.ptr != &allocator::LIBC_ALLOCATOR) return;
+		if (self.allocator.ptr != &alloc::LIBC_ALLOCATOR) return;
 		sanitizer::annotate_contiguous_container(self.entries,
 	                                         &self.entries[self.capacity],
 	                                         &self.entries[old_size],

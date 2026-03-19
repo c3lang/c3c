@@ -40,7 +40,7 @@ struct TextTag
  @require self.tags.len == 0 : "template already initialized"
  @require tag_start != tag_end
  *>
-fn void? TextTemplate.init(&self, String template, String tag_start = "{{", String tag_end = "}}", Allocator using = allocator::heap())
+fn void? TextTemplate.init(&self, String template, String tag_start = "{{", String tag_end = "}}", Allocator using = alloc::heap())
 {
 	TextTagList tags;
 	String tmpl = template;
@@ -96,7 +96,7 @@ fn void? TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 
 fn void? TextTemplate.free(&self)
 {
-	allocator::free(self.allocator, self.tags);
+	alloc::free(self.allocator, self.tags);
 	*self = {};
 }
 
@@ -180,7 +180,7 @@ entry:
   %indirectarg9 = alloca %"any[]", align 8
   store %"char[]" { ptr @.str, i64 21 }, ptr %foo_tmpl, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %ft, i8 0, i64 72, i1 false)
-  %0 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocator.current_temp)
+  %0 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.current_temp)
   %lo = load ptr, ptr %foo_tmpl, align 8
   %ptradd = getelementptr inbounds i8, ptr %foo_tmpl, i64 8
   %hi = load i64, ptr %ptradd, align 8

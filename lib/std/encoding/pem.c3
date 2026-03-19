@@ -82,7 +82,7 @@ fn Pem create(Allocator allocator, char[] data, String tag, PemHeader... args)
 	Pem result = {
 		.allocator = allocator,
 		.tag = tag.copy(allocator),
-		.data = allocator::clone_slice(allocator, data),
+		.data = alloc::clone_slice(allocator, data),
 	};
 	result.headers.init(allocator, capacity: max(args.len, 16));
 	foreach (arg : args)
@@ -118,11 +118,11 @@ fn void Pem.free(&self)
 	{
 		self.headers.@each(;String key, String value)
 		{
-			allocator::free(self.allocator, value);
+			alloc::free(self.allocator, value);
 		};
 		self.headers.free();
 		self.tag.free(self.allocator);
-		allocator::free(self.allocator, self.data);
+		alloc::free(self.allocator, self.data);
 	}
 	mem::zero_volatile(@as_char_view(*self));
 }

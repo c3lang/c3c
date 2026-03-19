@@ -41,7 +41,7 @@ fn ByteBuffer* ByteBuffer.init_with_buffer(&self, char[] buf)
 
 fn void ByteBuffer.free(&self)
 {
-	if (self.allocator) allocator::free(self.allocator, self.bytes);
+	if (self.allocator) alloc::free(self.allocator, self.bytes);
 	*self = {};
 }
 
@@ -140,7 +140,7 @@ fn ulong? ByteBuffer.available(&self) @inline @dynamic
 fn void ByteBuffer.grow(&self, usz n)
 {
 	n = math::next_power_of_2(self.bytes.len + n);
-	char* p = allocator::realloc(self.allocator, self.bytes, n);
+	char* p = alloc::realloc(self.allocator, self.bytes, n);
 	self.bytes = p[:n];
 }
 

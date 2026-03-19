@@ -49,7 +49,7 @@ fn BenchmarkUnit[] benchmark_collection_create(Allocator allocator)
 {
 	BenchmarkFn[] fns = $$BENCHMARK_FNS;
 	String[] names = $$BENCHMARK_NAMES;
-	BenchmarkUnit[] benchmarks = allocator::alloc_array(allocator, BenchmarkUnit, names.len);
+	BenchmarkUnit[] benchmarks = alloc::alloc_array(allocator, BenchmarkUnit, names.len);
 
 	foreach (i, benchmark : fns)
 	{

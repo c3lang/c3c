@@ -39,7 +39,7 @@ fn ByteWriter* ByteWriter.init_with_buffer(&self, char[] data)
 fn void? ByteWriter.destroy(&self) @dynamic
 {
 	if (!self.allocator) return;
-	if (void* ptr = self.bytes.ptr) allocator::free(self.allocator, ptr);
+	if (void* ptr = self.bytes.ptr) alloc::free(self.allocator, ptr);
 	*self = { };
 }
 
@@ -59,7 +59,7 @@ fn void? ByteWriter.ensure_capacity(&self, usz len) @inline
 	if (!self.allocator) return OUT_OF_SPACE~;
 	if (len < 16) len = 16;
 	usz new_capacity = math::next_power_of_2(len);
-	char* new_ptr = allocator::realloc_try(self.allocator, self.bytes.ptr, new_capacity)!;
+	char* new_ptr = alloc::realloc_try(self.allocator, self.bytes.ptr, new_capacity)!;
 	self.bytes = new_ptr[:new_capacity];
 }
 

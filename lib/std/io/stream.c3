@@ -114,8 +114,8 @@ macro char[]? read_fully(Allocator allocator, stream)
 	if (try len = available(stream))
 	{
 		if (len > usz.max) return mem::INVALID_ALLOC_SIZE~;
-		char* data = allocator::malloc_try(allocator, (usz)len)!;
-		defer catch allocator::free(allocator, data);
+		char* data = alloc::malloc_try(allocator, (usz)len)!;
+		defer catch alloc::free(allocator, data);
 		usz read = 0;
 		while (read < len)
 		{
@@ -619,7 +619,7 @@ macro char[]? read_tiny_bytearray(stream, Allocator allocator)
 {
 	int len = stream.read_byte()!;
 	if (!len) return {};
-	char[] data = allocator::alloc_array(allocator, char, len);
+	char[] data = alloc::alloc_array(allocator, char, len);
 	io::read_all(stream, data)!;
 	return data;
 }
@@ -641,7 +641,7 @@ macro char[]? read_short_bytearray(stream, Allocator allocator)
 {
 	int len = io::read_be_ushort(stream)!;
 	if (!len) return {};
-	char[] data = allocator::alloc_array(allocator, char, len);
+	char[] data = alloc::alloc_array(allocator, char, len);
 	io::read_all(stream, data)!;
 	return data;
 }

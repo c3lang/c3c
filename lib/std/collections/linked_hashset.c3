@@ -49,7 +49,7 @@ fn LinkedHashSet* LinkedHashSet.init(&self, Allocator allocator, usz capacity = 
 	self.allocator = allocator;
 	self.threshold = (usz)(capacity * load_factor);
 	self.load_factor = load_factor;
-	self.table = allocator::new_array(allocator, LinkedEntry*, capacity);
+	self.table = alloc::new_array(allocator, LinkedEntry*, capacity);
 
 	self.head = null;
 	self.tail = null;
@@ -453,7 +453,7 @@ fn bool LinkedHashSet.is_subset(&self, LinkedHashSet* other)
 
 fn void linkedhashset_add_entry(LinkedHashSet* set, uint hash, Value value, uint bucket_index) @private
 {
-	LinkedEntry* entry = allocator::new(set.allocator, LinkedEntry, {
+	LinkedEntry* entry = alloc::new(set.allocator, LinkedEntry, {
 		.hash = hash,
 		.value = value,
 		.next = set.table[bucket_index],
@@ -493,7 +493,7 @@ fn void linkedhashset_resize(LinkedHashSet* set, usz new_capacity) @private
 		return;
 	}
 
-	LinkedEntry*[] new_table = allocator::new_array(set.allocator, LinkedEntry*, new_capacity);
+	LinkedEntry*[] new_table = alloc::new_array(set.allocator, LinkedEntry*, new_capacity);
 	set.table = new_table;
 	set.threshold = (uint)(new_capacity * set.load_factor);
 
@@ -603,12 +603,12 @@ fn void linkedhashset_put_for_create(LinkedHashSet* set, Value value) @private
 
 fn void linkedhashset_free_internal(LinkedHashSet* set, void* ptr) @inline @private
 {
-	allocator::free(set.allocator, ptr);
+	alloc::free(set.allocator, ptr);
 }
 
 fn void linkedhashset_create_entry(LinkedHashSet* set, uint hash, Value value, int bucket_index) @private
 {
-	LinkedEntry* entry = allocator::new(set.allocator, LinkedEntry, {
+	LinkedEntry* entry = alloc::new(set.allocator, LinkedEntry, {
 		.hash = hash,
 		.value = value,
 		.next = set.table[bucket_index],
@@ -685,7 +685,7 @@ fn bool linkedhashset_remove_entry_for_value(LinkedHashSet* set, Value value) @p
 
 fn void linkedhashset_free_entry(LinkedHashSet* set, LinkedEntry *entry) @private
 {
-	allocator::free(set.allocator, entry);
+	alloc::free(set.allocator, entry);
 }
 
 struct LinkedHashSetIterator

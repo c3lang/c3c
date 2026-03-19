@@ -20,7 +20,7 @@ struct MultiReader (InStream)
 *>
 fn MultiReader* MultiReader.init(&self, Allocator allocator, InStream... readers)
 {
-	InStream []copy = allocator::new_array(allocator, InStream, readers.len);
+	InStream []copy = alloc::new_array(allocator, InStream, readers.len);
 	copy[..] = readers[..];
 	*self = { .readers = copy, .allocator = allocator };
 	return self;
@@ -39,7 +39,7 @@ fn MultiReader* MultiReader.tinit(&self, InStream... readers)
 fn void MultiReader.free(&self)
 {
 	if (!self.allocator) return;
-	allocator::free(self.allocator, self.readers);
+	alloc::free(self.allocator, self.readers);
 	*self = {};
 }
 

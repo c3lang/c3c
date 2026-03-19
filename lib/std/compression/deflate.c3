@@ -203,12 +203,12 @@ fn void? Inflater.close(&self) @dynamic
 
 fn char[]? decompress(Allocator allocator, char[] input) => @pool()
 {
-	if (!input.len) return allocator::new_array(allocator, char, 0);
+	if (!input.len) return alloc::new_array(allocator, char, 0);
 
 	ByteReader mem_stream;
 	mem_stream.init(input);
 
-	Inflater* inflater = allocator::new(tmem, Inflater);
+	Inflater* inflater = alloc::new(tmem, Inflater);
 	char[4096] tmp_bit_buf;
 	inflater.init(&mem_stream, &tmp_bit_buf);
 
@@ -220,9 +220,9 @@ fn char[]? decompress(Allocator allocator, char[] input) => @pool()
 	writer.ensure_capacity(out_cap)!;
 
 	usz out_len = io::copy_to(inflater, &writer)!;
-	if (out_len == 0) return allocator::new_array(allocator, char, 0);
+	if (out_len == 0) return alloc::new_array(allocator, char, 0);
 
-	char[] result = allocator::alloc_array(allocator, char, out_len);
+	char[] result = alloc::alloc_array(allocator, char, out_len);
 	result[..] = writer.array_view()[:out_len];
 	return result;
 }
@@ -242,15 +242,15 @@ fn void? decompress_stream(InStream input, OutStream output) => @pool()
 
 fn void? compress_stream(Allocator allocator, InStream input, OutStream output)
 {
-	Deflater* deflater = allocator::new(allocator, Deflater);
+	Deflater* deflater = alloc::new(allocator, Deflater);
 	deflater.init(allocator, output);
 	defer {
 		(void)deflater.close();
-		allocator::free(allocator, deflater);
+		alloc::free(allocator, deflater);
 	}
 
-	char[] buf = allocator::alloc_array(allocator, char, 32768);
-	defer allocator::free(allocator, buf);
+	char[] buf = alloc::alloc_array(allocator, char, 32768);
+	defer alloc::free(allocator, buf);
 
 	while (true)
 	{
@@ -297,25 +297,25 @@ fn void Deflater.init(&self, Allocator allocator, OutStream output = null)
 	*self = {};
 	self.allocator = allocator;
 	self.output = output;
-	self.head = allocator::alloc_array(allocator, uint, HASH_SIZE);
+	self.head = alloc::alloc_array(allocator, uint, HASH_SIZE);
 	self.head[..] = 0xFFFFFFFF;
-	self.prev = allocator::alloc_array(allocator, uint, WINDOW_SIZE);
-	self.window = allocator::alloc_array(allocator, char, WINDOW_SIZE * 2 + MAX_MATCH + 1);
+	self.prev = alloc::alloc_array(allocator, uint, WINDOW_SIZE);
+	self.window = alloc::alloc_array(allocator, char, WINDOW_SIZE * 2 + MAX_MATCH + 1);
 	self.window_fill = WINDOW_SIZE;
 	self.strstart = WINDOW_SIZE;
 	self.match_pos = WINDOW_SIZE;
 	self.max_tokens = WINDOW_SIZE * 4;
-	self.tokens = allocator::alloc_array(allocator, Token, self.max_tokens + 1);
+	self.tokens = alloc::alloc_array(allocator, Token, self.max_tokens + 1);
 	self.bwriter.init(allocator, WINDOW_SIZE);
 }
 
 fn void Deflater.free(&self)
 {
-	if (self.head.ptr) allocator::free(self.allocator, self.head);
-	if (self.prev.ptr) allocator::free(self.allocator, self.prev);
-	if (self.window.ptr) allocator::free(self.allocator, self.window);
-	if (self.tokens.ptr) allocator::free(self.allocator, self.tokens);
-	if (self.bwriter.data.ptr) allocator::free(self.allocator, self.bwriter.data.ptr);
+	if (self.head.ptr) alloc::free(self.allocator, self.head);
+	if (self.prev.ptr) alloc::free(self.allocator, self.prev);
+	if (self.window.ptr) alloc::free(self.allocator, self.window);
+	if (self.tokens.ptr) alloc::free(self.allocator, self.tokens);
+	if (self.bwriter.data.ptr) alloc::free(self.allocator, self.bwriter.data.ptr);
 }
 
 fn usz? Deflater.write(&self, char[] data) @dynamic
@@ -744,7 +744,7 @@ fn char[]? compress(Allocator allocator, char[] input) => @pool()
 	deflater.emit_block(true)!;
 
 	char[] finished = deflater.bwriter.finish();
-	char[] result = allocator::alloc_array(allocator, char, finished.len);
+	char[] result = alloc::alloc_array(allocator, char, finished.len);
 	result[..] = finished[..];
 	return result;
 }
@@ -867,7 +867,7 @@ struct BitWriter @private
 fn void BitWriter.init(&self, Allocator allocator, usz initial_cap)
 {
 	self.allocator = allocator;
-	self.data = allocator::alloc_array(allocator, char, initial_cap);
+	self.data = alloc::alloc_array(allocator, char, initial_cap);
 	self.len = 0;
 	self.buffer = 0;
 	self.nbits = 0;
@@ -892,7 +892,7 @@ fn void BitWriter.write_bits(&self, uint value, uint count)
 				}
 				new_cap *= 2;
 			}
-			self.data = allocator::realloc_array(self.allocator, self.data.ptr, char, new_cap);
+			self.data = alloc::realloc_array(self.allocator, self.data.ptr, char, new_cap);
 		}
 		self.data[self.len++] = (char)(self.buffer & 0xFF);
 		self.buffer >>= 8;
@@ -986,7 +986,7 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 	sort::quicksort(map.array_view());
 	if (n == 1)
 	{
-		char[] blen = allocator::new_array(allocator, char, freqs.len);
+		char[] blen = alloc::new_array(allocator, char, freqs.len);
 		blen[map[0].index] = 1;
 		return blen;
 	}
@@ -1076,14 +1076,14 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 		mask >>= 1;
 	}
 	for (usz i = 0; i < num_analyze; i++) hist[i]++;
-	char[] blen = allocator::new_array(allocator, char, freqs.len);
+	char[] blen = alloc::new_array(allocator, char, freqs.len);
 	foreach (i, m : map) blen[m.index] = (char)hist[i];
 	return blen;
 }
 
 fn char[] Huffman.get_lengths(&self, usz max_sym)
 {
-	char[] blen = allocator::new_array(tmem, char, max_sym + 1);
+	char[] blen = alloc::new_array(tmem, char, max_sym + 1);
 	ushort index = 0;
 	for (uint len = 1; len < 16; len++)
 	{

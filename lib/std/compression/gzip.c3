@@ -36,16 +36,16 @@ struct Gzip
 fn void Gzip.free(&self)
 {
 	if (!self.allocator) return;
-	allocator::free(self.allocator, self.extra);
+	alloc::free(self.allocator, self.extra);
 	self.filename.free(self.allocator);
 	self.comment.free(self.allocator);
-	allocator::free(self.allocator, self.uncompressed);
+	alloc::free(self.allocator, self.uncompressed);
 }
 
 fn char[]? uncompress_bytes(Allocator allocator, char[] src) @inline => @pool()
 {
 	Gzip gz = uncompress_stream(tmem, &&io::wrap_bytes(src))!;
-	return allocator::clone_slice(allocator, gz.uncompressed);
+	return alloc::clone_slice(allocator, gz.uncompressed);
 }
 
 fn Gzip? uncompress(Allocator allocator, char[] src) @inline
@@ -74,7 +74,7 @@ fn Gzip? uncompress_stream(Allocator allocator, InStream reader)
 		if (gz.header.flg.extra)
 		{
 			ushort xlen = io::read_le_ushort(header_reader)!;
-			gz.extra = allocator::malloc(allocator, xlen)[:xlen];
+			gz.extra = alloc::malloc(allocator, xlen)[:xlen];
 			header_reader.read(gz.extra)!;
 		}
 

@@ -492,7 +492,7 @@ fn void test_zip_comment_boundary()
 		// 1. Test exactly 65535 bytes (Should pass)
 		{
 			ZipArchive zip = zip::open(mem, filename, "w")!!;
-			char[] huge_comment = allocator::malloc(tmem, 65535)[:65535];
+			char[] huge_comment = alloc::malloc(tmem, 65535)[:65535];
 			mem::set(huge_comment.ptr, (char)'C', 65535);
 			zip.comment = String.copy((String)huge_comment, zip.allocator);
 			zip.write_file("t.txt", "d")!!;
@@ -507,7 +507,7 @@ fn void test_zip_comment_boundary()
 		// 2. Test 65536 bytes (Should fail with INVALID_ARGUMENT)
 		{
 			ZipArchive zip = zip::open(mem, filename, "w")!!;
-			char[] too_huge = allocator::malloc(tmem, 65536)[:65536];
+			char[] too_huge = alloc::malloc(tmem, 65536)[:65536];
 			mem::set(too_huge.ptr, (char)'X', 65536);
 			zip.comment = String.copy((String)too_huge, zip.allocator);
 			zip.write_file("t.txt", "d")!!;

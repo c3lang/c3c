@@ -53,9 +53,9 @@ fn usz? Backtrace.to_format(&self, Formatter* formatter) @dynamic
 fn void Backtrace.free(&self)
 {
 	if (!self.allocator) return;
-	allocator::free(self.allocator, self.function);
-	allocator::free(self.allocator, self.object_file);
-	allocator::free(self.allocator, self.file);
+	alloc::free(self.allocator, self.function);
+	alloc::free(self.allocator, self.object_file);
+	alloc::free(self.allocator, self.file);
 }
 
 fn Backtrace* Backtrace.init(&self, Allocator allocator, uptr offset, String function, String object_file, String file = "", uint line = 0)

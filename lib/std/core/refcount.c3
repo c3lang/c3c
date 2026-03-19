@@ -17,7 +17,7 @@ alias DeallocFn = fn void(void*);
 
 fn Ref wrap(Type* ptr, Allocator allocator = mem)
 {
-	return { .refcount = allocator::new(allocator, Atomic{int}), .ptr = ptr, .allocator = allocator };
+	return { .refcount = alloc::new(allocator, Atomic{int}), .ptr = ptr, .allocator = allocator };
 }
 <*
  @require $vacount < 2 : "Too many arguments."
@@ -28,17 +28,17 @@ macro Ref new(..., Allocator allocator = mem)
 
 	$switch:
 		$case OVERALIGNED && !$vacount:
-			Type* ptr = allocator::calloc_aligned(allocator, Type.sizeof, Type.alignof)!!;
+			Type* ptr = alloc::calloc_aligned(allocator, Type.sizeof, Type.alignof)!!;
 		$case OVERALIGNED:
-			Type* ptr = allocator::malloc_aligned(allocator, Type.sizeof, Type.alignof)!!;
+			Type* ptr = alloc::malloc_aligned(allocator, Type.sizeof, Type.alignof)!!;
 			*ptr = $vaexpr[0];
 		$case !$vacount:
-			Type* ptr = allocator::calloc(allocator, Type.sizeof);
+			Type* ptr = alloc::calloc(allocator, Type.sizeof);
 		$default:
-			Type* ptr = allocator::malloc(allocator, Type.sizeof);
+			Type* ptr = alloc::malloc(allocator, Type.sizeof);
 			*ptr = $vaexpr[0];
 	$endswitch
-	return { .refcount = allocator::new(allocator, Atomic{int}),
+	return { .refcount = alloc::new(allocator, Atomic{int}),
 	         .ptr = ptr,
 	         .allocator = allocator };
 }
@@ -69,11 +69,11 @@ fn void Ref.release(&self)
 			self.ptr.dealloc();
 		$endif
 		$if OVERALIGNED:
-			allocator::free_aligned(self.allocator, self.ptr);
+			alloc::free_aligned(self.allocator, self.ptr);
 		$else
-			allocator::free(self.allocator, self.ptr);
+			alloc::free(self.allocator, self.ptr);
 		$endif
-		allocator::free(self.allocator, self.refcount);
+		alloc::free(self.allocator, self.refcount);
 		*self = {};
 	}
 }

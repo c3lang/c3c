@@ -365,7 +365,7 @@ fn void hash_raw(char[] outbuf, char[] input, Argon2Options options) => @pool()
 	uint blocks_per_lane = m_prime / options.lanes;
 	uint blocks_per_segment = blocks_per_lane / 4;   // each lane/row is divided into 4 slices, the intersection of a slice and lane is a "segment"
 
-	Argon2Block[] blocks = allocator::alloc_array_aligned(tmem, Argon2Block, m_prime)[:m_prime];
+	Argon2Block[] blocks = alloc::alloc_array_aligned(tmem, Argon2Block, m_prime)[:m_prime];
 	defer foreach (&b : blocks) mem::zero_volatile(b.b[..]);
 
 	for (uint lane = 0; lane < options.lanes; lane++)
@@ -396,8 +396,8 @@ fn void hash_raw(char[] outbuf, char[] input, Argon2Options options) => @pool()
 	// NOTE: A ThreadPool instance could have been used here, but that requires a compile-time constant to determine its size,
 	//       and the amount of threads to start should simply match the amount of lanes.
 	//
-	Argon2WorkerContext[] contexts = allocator::new_array(tmem, Argon2WorkerContext, options.lanes);
-	Thread[] workers = allocator::new_array(tmem, Thread, options.lanes);
+	Argon2WorkerContext[] contexts = alloc::new_array(tmem, Argon2WorkerContext, options.lanes);
+	Thread[] workers = alloc::new_array(tmem, Thread, options.lanes);
 
 	for (uint pass = 0; pass < options.iterations; pass++)
 	{
@@ -525,7 +525,7 @@ macro tencode(char[] hash_value, Argon2Options options, char key_id = {})
 *>
 fn String hash(Allocator allocator, char[] input, Argon2Options options, char[] key_id = {}, usz out_size = 32) => @pool()
 {
-	char[] result = allocator::alloc_array(tmem, char, out_size);
+	char[] result = alloc::alloc_array(tmem, char, out_size);
 	hash_raw(result[..], input, options);
 	return encode(allocator, result[..], options, key_id: key_id);
 }
@@ -590,10 +590,10 @@ fn bool Argon2Decoded.eq(&self, Argon2Decoded other) @operator(==)
 fn void Argon2Decoded.free(&self)
 {
 	if (self.allocator == tmem) return;   // no need to do this with the temp allocator
-	allocator::free(self.allocator, self.hash);
-	allocator::free(self.allocator, self.salt);
-	allocator::free(self.allocator, self.key_id);
-	allocator::free(self.allocator, self.assoc);
+	alloc::free(self.allocator, self.hash);
+	alloc::free(self.allocator, self.salt);
+	alloc::free(self.allocator, self.key_id);
+	alloc::free(self.allocator, self.assoc);
 
 	mem::zero_volatile(@as_char_view(*self));
 }
@@ -734,10 +734,10 @@ fn Argon2Decoded? decode(Allocator allocator, String hash_str) => @pool()
 	result = {
 		...result,
 		.allocator = allocator,
-		.hash = allocator::clone_slice(allocator, decoded_hash),
-		.salt = allocator::clone_slice(allocator, decoded_salt),
-		.key_id = allocator::clone_slice(allocator, decoded_key_id),
-		.assoc = allocator::clone_slice(allocator, decoded_assoc),
+		.hash = alloc::clone_slice(allocator, decoded_hash),
+		.salt = alloc::clone_slice(allocator, decoded_salt),
+		.key_id = alloc::clone_slice(allocator, decoded_key_id),
+		.assoc = alloc::clone_slice(allocator, decoded_assoc),
 	};
 	return result;
 }

@@ -1347,8 +1347,13 @@ static void llvm_prune_optional(GenContext *c, LLVMBasicBlockRef discard_fail)
 
 	LLVMValueRef maybe_br = LLVMGetUser(use);
 	// Expect a br instruction.
+
+#if LLVM_VERSION_MAJOR >= 23
+	if (!LLVMIsAInstruction(maybe_br) || LLVMGetInstructionOpcode(maybe_br) != LLVMCondBr) return;
+#else
 	if (!LLVMIsAInstruction(maybe_br) || LLVMGetInstructionOpcode(maybe_br) != LLVMBr) return;
 	if (LLVMGetNumOperands(maybe_br) != 3) return;
+#endif
 	// We expect a single user.
 	LLVMUseRef other_use = LLVMGetNextUse(use);
 	while (other_use)

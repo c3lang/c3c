@@ -625,7 +625,7 @@ fn bool Path.has_suffix(self, String str) => self.str_view().ends_with(str);
 <*
  @require self.allocator != null : "This Path should never be freed"
 *>
-fn void Path.free(self) => allocator::free(self.allocator, self.path_string.ptr);
+fn void Path.free(self) => alloc::free(self.allocator, self.path_string.ptr);
 
 fn usz? Path.to_format(&self, Formatter* formatter) @dynamic => formatter.print(self.str_view());
 

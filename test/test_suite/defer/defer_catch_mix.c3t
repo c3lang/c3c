@@ -21,6 +21,32 @@ fn void main()
 
 /* #expect: test.ll
 
+; ModuleID = 'test'
+source_filename = "test"
+target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n32:64-S128-Fn32"
+target triple = "aarch64-apple-macosx11.0.0"
+
+%any = type { ptr, i64 }
+%.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
+%"char[]" = type { ptr, i64 }
+%File = type { ptr }
+%"any[]" = type { ptr, i64 }
+
+@.str = private unnamed_addr constant [2 x i8] c"r\00", align 1
+@.str.1 = private unnamed_addr constant [22 x i8] c"always close the file\00", align 1
+@.str.2 = private unnamed_addr constant [32 x i8] c"something on fail with the file\00", align 1
+@.str.3 = private unnamed_addr constant [22 x i8] c"always close the file\00", align 1
+@std.core.mem.allocators.thread_allocator = extern_weak thread_local global %any, align 8
+@"$sel.acquire" = linkonce_odr constant [8 x i8] c"acquire\00", align 1
+@.panic_msg = internal constant [45 x i8] c"No method 'acquire' could be found on target\00", align 1
+@.file = internal constant [9 x i8] c"alloc.c3\00", align 1
+@.func = internal constant [5 x i8] c"main\00", align 1
+@std.core.builtin.panic = extern_weak global ptr, align 8
+@"$ct.fault" = linkonce global %.introspect { i8 6, i64 0, ptr null, i64 8, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@.panic_msg.4 = internal constant [37 x i8] c"Unexpected fault '%s' was unwrapped!\00", align 1
+@.str.5 = private unnamed_addr constant [14 x i8] c"not_found.txt\00", align 1
+
+; Function Attrs: nounwind uwtable(sync)
 define i64 @test.fileReader(ptr %0, [2 x i64] %1, [2 x i64] %2) #0 {
 entry:
   %filename = alloca %"char[]", align 8
@@ -303,7 +329,7 @@ entry:
   %retparam12 = alloca %"char[]", align 8
   %taddr13 = alloca %"char[]", align 8
   store ptr null, ptr %.cachedtype, align 8
-  %0 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocator.thread_allocator)
+  %0 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.thread_allocator)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator, ptr align 8 %0, i32 16, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator1, ptr align 8 %allocator, i32 16, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator2, ptr align 8 %allocator1, i32 16, i1 false)
@@ -335,12 +361,12 @@ cache_hit:                                        ; preds = %if.exit
 missing_function:                                 ; preds = %7
   store %"char[]" { ptr @.panic_msg, i64 44 }, ptr %taddr, align 8
   %9 = load [2 x i64], ptr %taddr, align 8
-  store %"char[]" { ptr @.file, i64 16 }, ptr %taddr3, align 8
+  store %"char[]" { ptr @.file, i64 8 }, ptr %taddr3, align 8
   %10 = load [2 x i64], ptr %taddr3, align 8
   store %"char[]" { ptr @.func, i64 4 }, ptr %taddr4, align 8
   %11 = load [2 x i64], ptr %taddr4, align 8
   %12 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %12([2 x i64] %9, [2 x i64] %10, [2 x i64] %11, i32 98) #4
+  call void %12([2 x i64] %9, [2 x i64] %10, [2 x i64] %11, i32 76) #4
   unreachable
 
 match:                                            ; preds = %7
@@ -365,7 +391,7 @@ panic_block:                                      ; preds = %assign_optional
   %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %"char[]" { ptr @.panic_msg.4, i64 36 }, ptr %taddr5, align 8
   %21 = load [2 x i64], ptr %taddr5, align 8
-  store %"char[]" { ptr @.file, i64 16 }, ptr %taddr6, align 8
+  store %"char[]" { ptr @.file, i64 8 }, ptr %taddr6, align 8
   %22 = load [2 x i64], ptr %taddr6, align 8
   store %"char[]" { ptr @.func, i64 4 }, ptr %taddr7, align 8
   %23 = load [2 x i64], ptr %taddr7, align 8
@@ -374,7 +400,7 @@ panic_block:                                      ; preds = %assign_optional
   %"$$temp" = insertvalue %"any[]" %24, i64 1, 1
   store %"any[]" %"$$temp", ptr %taddr8, align 8
   %25 = load [2 x i64], ptr %taddr8, align 8
-  call void @std.core.builtin.panicf([2 x i64] %21, [2 x i64] %22, [2 x i64] %23, i32 262, [2 x i64] %25) #4
+  call void @std.core.builtin.panicf([2 x i64] %21, [2 x i64] %22, [2 x i64] %23
   unreachable
 
 noerr_block:                                      ; preds = %after_check

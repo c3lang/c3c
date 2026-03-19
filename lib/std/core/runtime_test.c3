@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::runtime;
 import std::core::test @public;
-import std::core::mem::allocator @public;
+import std::core::mem::allocators @public;
 import libc, std::time, std::io, std::sort, std::os, std::thread;
 
 
@@ -54,7 +54,7 @@ fn TestUnit[] test_collection_create(Allocator allocator)
 {
 	TestFn[] fns = $$TEST_FNS;
 	String[] names = $$TEST_NAMES;
-	TestUnit[] tests = allocator::alloc_array(allocator, TestUnit, names.len);
+	TestUnit[] tests = alloc::alloc_array(allocator, TestUnit, names.len);
 	foreach (i, test : fns)
 	{
 		tests[i] = { names[i], fns[i] };
@@ -131,7 +131,7 @@ fn void panic_test(String message, String file, String function, uint line, void
 	}
 
 	test_context.is_in_panic = false;
-	allocator::thread_allocator = test_context.stored.allocator;
+	allocators::thread_allocator = test_context.stored.allocator;
 	libc::longjmp(&test_context.buf, 1);
 }
 
@@ -326,7 +326,7 @@ $endif
 			if (!thread::current().equals(main)) thread::exit(-1);
 			mute_output();
 			mem.clear();
-			if (context.check_leaks) allocator::thread_allocator = &mem;
+			if (context.check_leaks) allocators::thread_allocator = &mem;
 			@pool()
 			{
 				unit.func();
@@ -336,7 +336,7 @@ $endif
 			{
 				context.teardown_fn();
 			}
-			if (context.check_leaks) allocator::thread_allocator = context.stored.allocator;
+			if (context.check_leaks) allocators::thread_allocator = context.stored.allocator;
 
 			unmute_output(false); // all good, discard output
 			if (mem.has_leaks())

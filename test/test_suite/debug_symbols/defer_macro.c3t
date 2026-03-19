@@ -152,8 +152,8 @@ entry:
   %a = alloca i32, align 4
   %a.f = alloca i64, align 8
   store i32 %0, ptr %x, align 4
-  !23
-  !25
+    #dbg_declare(ptr %x, !22, !DIExpression(), !23)
+    #dbg_declare(ptr %a, !24, !DIExpression(), !25)
   %1 = load i32, ptr %x, align 4, !dbg !26
   store i32 %1, ptr %a, align 4, !dbg !26
   store i64 0, ptr %a.f, align 8, !dbg !26
@@ -182,9 +182,9 @@ entry:
   store ptr %0, ptr %args, align 8
   %ptradd = getelementptr inbounds i8, ptr %args, i64 8
   store i64 %1, ptr %ptradd, align 8
-    !50
-    !56
-  %2 = call { i32, ptr } @attach.to_scope()
+    #dbg_declare(ptr %args, !49, !DIExpression(), !50)
+    #dbg_declare(ptr %asdf, !51, !DIExpression(), !56)
+  %2 = call { i32, ptr } @attach.to_scope() #4, !dbg !57
   store { i32, ptr } %2, ptr %result, align 8
   %lo = load i32, ptr %result, align 8, !dbg !58
   %ptradd1 = getelementptr inbounds i8, ptr %result, i64 8, !dbg !58
@@ -194,7 +194,7 @@ entry:
   %ptradd2 = getelementptr inbounds i8, ptr %args, i64 8, !dbg !61
   %4 = load i64, ptr %ptradd2, align 8, !dbg !61
   %neq = icmp ne i64 0, %4, !dbg !61
-  %ternary = select i1 %neq, <4 x float> <float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00>, <4 x float>
+  %ternary = select i1 %neq, <4 x float> <float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00>, <4 x float> splat (float 1.000000e+00), !dbg !62
   %5 = call ptr @test.test(<4 x float> %ternary), !dbg !63
   %6 = call ptr @test.test2(), !dbg !64
   ret i32 0, !dbg !65
@@ -209,14 +209,14 @@ entry:
   store i32 %0, ptr %attach, align 8
   %ptradd = getelementptr inbounds i8, ptr %attach, i64 8
   store ptr %1, ptr %ptradd, align 8
-  !70
+    #dbg_declare(ptr %attach, !69, !DIExpression(), !70)
   store i64 %2, ptr %flags, align 8
-  !72
+    #dbg_declare(ptr %flags, !71, !DIExpression(), !72)
   store ptr %3, ptr %name, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %name, i64 8
   store i64 %4, ptr %ptradd1, align 8
-  !74
-  %5 = call ptr @std.core.mem.calloc(i64 8)
+    #dbg_declare(ptr %name, !73, !DIExpression(), !74)
+  %5 = call ptr @std.core.mem.calloc(i64 8) #4, !dbg !75
   ret ptr %5, !dbg !75
 }
 
@@ -237,14 +237,14 @@ entry:
   %error_var5 = alloca i64, align 8
   %error_var11 = alloca i64, align 8
   store <4 x float> %0, ptr %color, align 16
-  !88
+    #dbg_declare(ptr %color, !87, !DIExpression(), !88)
   %1 = load <4 x float>, ptr %color, align 16
   store <4 x float> %1, ptr %x, align 16
   %2 = call ptr @std.io.stdout(), !dbg !89
   store ptr %2, ptr %out, align 8
   %3 = load <4 x float>, ptr %x, align 16
   store <4 x float> %3, ptr %x1, align 16
-  !95
+    #dbg_declare(ptr %len, !93, !DIExpression(), !95)
   %4 = load ptr, ptr %out, align 8
   store ptr %4, ptr %out2, align 8
   %5 = load <4 x float>, ptr %x1, align 16
@@ -330,23 +330,23 @@ entry:
   %scratch1 = alloca ptr, align 8
   %asdf = alloca ptr, align 8
   store %"Arena*[]" zeroinitializer, ptr %conflicts, align 8
-  !120
+    #dbg_declare(ptr %scratch, !110, !DIExpression(), !120)
   %lo = load ptr, ptr %conflicts, align 8, !dbg !122
   %ptradd = getelementptr inbounds i8, ptr %conflicts, i64 8, !dbg !122
   %hi = load i64, ptr %ptradd, align 8, !dbg !122
   %0 = call { ptr, i64 } @arena_scratch_begin(ptr %lo, i64 %hi), !dbg !123
   store { ptr, i64 } %0, ptr %result, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %scratch, ptr align 8 %result, i32 16, i1 false)
-  !125
+    #dbg_declare(ptr %scratch1, !124, !DIExpression(), !125)
   %1 = load ptr, ptr %scratch, align 8, !dbg !126
   store ptr %1, ptr %scratch1, align 8, !dbg !126
-  !130
+    #dbg_declare(ptr %asdf, !128, !DIExpression(), !130)
   store ptr null, ptr %asdf, align 8, !dbg !130
   %2 = load ptr, ptr %asdf, align 8, !dbg !131
   %lo2 = load ptr, ptr %scratch, align 8, !dbg !132
   %ptradd3 = getelementptr inbounds i8, ptr %scratch, i64 8, !dbg !132
   %hi4 = load i64, ptr %ptradd3, align 8, !dbg !132
-  call void @arena_scratch_end(ptr %lo2, i64 %hi4)
+  call void @arena_scratch_end(ptr %lo2, i64 %hi4) #4, !dbg !134
   ret ptr %2, !dbg !134
 }
 
@@ -363,13 +363,13 @@ entry:
   %list5 = alloca %"char[][]", align 8
   %elements = alloca i64, align 8
   %allocator = alloca %any, align 8
-  %elements6 = alloca i64, align 8
+  %elements7 = alloca i64, align 8
   %error_var = alloca i64, align 8
-  %allocator7 = alloca %any, align 8
-  %elements8 = alloca i64, align 8
-  %allocator10 = alloca %any, align 8
+  %allocator9 = alloca %any, align 8
+  %elements10 = alloca i64, align 8
+  %allocator12 = alloca %any, align 8
   %size = alloca i64, align 8
-  %blockret11 = alloca ptr, align 8
+  %blockret13 = alloca ptr, align 8
   %.inlinecache = alloca ptr, align 8
   %.cachedtype = alloca ptr, align 8
   %retparam = alloca ptr, align 8
@@ -379,34 +379,34 @@ entry:
   %arg = alloca ptr, align 8
   %len = alloca i64, align 8
   %ptr = alloca ptr, align 8
-  %len15 = alloca i64, align 8
+  %len17 = alloca i64, align 8
   store ptr null, ptr %.cachedtype, align 8
   store i32 %0, ptr %.anon, align 4
-
+    #dbg_declare(ptr %.anon, !139, !DIExpression(), !140)
   store ptr %1, ptr %.anon1, align 8
-
+    #dbg_declare(ptr %.anon1, !141, !DIExpression(), !140)
   %2 = load i32, ptr %.anon, align 4
   store i32 %2, ptr %argc, align 4
   %3 = load ptr, ptr %.anon1, align 8
   store ptr %3, ptr %argv, align 8
-
+    #dbg_declare(ptr %list, !142, !DIExpression(), !145)
   %4 = load i32, ptr %argc, align 4
   store i32 %4, ptr %argc2, align 4
   %5 = load ptr, ptr %argv, align 8
   store ptr %5, ptr %argv3, align 8
-
+    #dbg_declare(ptr %list5, !146, !DIExpression(), !148)
   %6 = load i32, ptr %argc2, align 4, !dbg !150
   %sext = sext i32 %6 to i64, !dbg !150
   store i64 %sext, ptr %elements, align 8
-  %7 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocator.thread_allocator), !dbg !151
+  %7 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.thread_allocator), !dbg !151
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator, ptr align 8 %7, i32 16, i1 false)
   %8 = load i64, ptr %elements, align 8
-  store i64 %8, ptr %elements6, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator7, ptr align 8 %allocator, i32 16, i1 false)
-  %9 = load i64, ptr %elements6, align 8
-  store i64 %9, ptr %elements8, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator10, ptr align 8 %allocator7, i32 16, i1 false)
-  %10 = load i64, ptr %elements8, align 8, !dbg !154
+  store i64 %8, ptr %elements7, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator9, ptr align 8 %allocator, i32 16, i1 false)
+  %9 = load i64, ptr %elements7, align 8
+  store i64 %9, ptr %elements10, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator12, ptr align 8 %allocator9, i32 16, i1 false)
+  %10 = load i64, ptr %elements10, align 8, !dbg !154
   %mul = mul i64 16, %10, !dbg !160
   store i64 %mul, ptr %size, align 8
   %11 = load i64, ptr %size, align 8, !dbg !161
@@ -414,11 +414,11 @@ entry:
   br i1 %i2nb, label %if.then, label %if.exit, !dbg !161
 
 if.then:                                          ; preds = %entry
-  store ptr null, ptr %blockret11, align 8, !dbg !164
+  store ptr null, ptr %blockret13, align 8, !dbg !164
   br label %expr_block.exit, !dbg !164
 
 if.exit:                                          ; preds = %entry
-  %ptradd = getelementptr inbounds i8, ptr %allocator10, i64 8, !dbg !165
+  %ptradd = getelementptr inbounds i8, ptr %allocator12, i64 8, !dbg !165
   %12 = load i64, ptr %ptradd, align 8, !dbg !165
   %13 = inttoptr i64 %12 to ptr, !dbg !165
   %14 = load ptr, ptr %.cachedtype, align 8
@@ -446,7 +446,7 @@ missing_function:                                 ; preds = %18
   unreachable, !dbg !167
 
 match:                                            ; preds = %18
-  %21 = load ptr, ptr %allocator10, align 8
+  %21 = load ptr, ptr %allocator12, align 8
   %22 = load i64, ptr %size, align 8
   %23 = call i64 %fn_phi(ptr %retparam, ptr %21, i64 %22, i32 0, i64 0), !dbg !167
   %not_err = icmp eq i64 %23, 0, !dbg !167
@@ -459,16 +459,16 @@ assign_optional:                                  ; preds = %match
 
 after_check:                                      ; preds = %match
   %25 = load ptr, ptr %retparam, align 8, !dbg !167
-  store ptr %25, ptr %blockret11, align 8, !dbg !167
+  store ptr %25, ptr %blockret13, align 8, !dbg !167
   br label %expr_block.exit, !dbg !167
 
 expr_block.exit:                                  ; preds = %after_check, %if.then
-  %26 = load ptr, ptr %blockret11, align 8, !dbg !167
-  %27 = load i64, ptr %elements8, align 8, !dbg !168
+  %26 = load ptr, ptr %blockret13, align 8, !dbg !167
+  %27 = load i64, ptr %elements10, align 8, !dbg !168
   %add = add i64 0, %27, !dbg !168
-  %size12 = sub i64 %add, 0, !dbg !168
+  %size14 = sub i64 %add, 0, !dbg !168
   %28 = insertvalue %"char[][]" undef, ptr %26, 0, !dbg !168
-  %29 = insertvalue %"char[][]" %28, i64 %size12, 1, !dbg !168
+  %29 = insertvalue %"char[][]" %28, i64 %size14, 1, !dbg !168
   br label %noerr_block, !dbg !168
 
 panic_block:                                      ; preds = %assign_optional
@@ -478,12 +478,12 @@ panic_block:                                      ; preds = %assign_optional
   %32 = insertvalue %"any[]" undef, ptr %varargslots, 0
   %"$$temp" = insertvalue %"any[]" %32, i64 1, 1
   store %"any[]" %"$$temp", ptr %indirectarg, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 36, ptr @.file, i64 16, ptr @.func, i64 6, i32 287, ptr byval(%"any[]") align 8 %indirectarg) #5, !dbg !157
+  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 36, ptr @.file
   unreachable, !dbg !157
 
 noerr_block:                                      ; preds = %expr_block.exit
   store %"char[][]" %29, ptr %list5, align 8, !dbg !157
-
+    #dbg_declare(ptr %i, !169, !DIExpression(), !171)
   store i32 0, ptr %i, align 4, !dbg !172
   br label %loop.cond, !dbg !172
 
@@ -491,64 +491,67 @@ loop.cond:                                        ; preds = %loop.exit, %noerr_b
   %33 = load i32, ptr %i, align 4, !dbg !173
   %34 = load i32, ptr %argc2, align 4, !dbg !174
   %lt = icmp slt i32 %33, %34, !dbg !173
-  br i1 %lt, label %loop.body, label %loop.exit25, !dbg !173
+  br i1 %lt, label %loop.body, label %loop.exit27, !dbg !173
 
 loop.body:                                        ; preds = %loop.cond
+    #dbg_declare(ptr %arg, !175, !DIExpression(), !177)
   %35 = load ptr, ptr %argv3, align 8, !dbg !178
   %36 = load i32, ptr %i, align 4, !dbg !179
-  %sext13 = sext i32 %36 to i64, !dbg !179
-  %ptroffset = getelementptr inbounds [8 x i8], ptr %35, i64 %sext13, !dbg !179
+  %sext15 = sext i32 %36 to i64, !dbg !179
+  %ptroffset = getelementptr inbounds [8 x i8], ptr %35, i64 %sext15, !dbg !179
   %37 = load ptr, ptr %ptroffset, align 8, !dbg !179
   store ptr %37, ptr %arg, align 8, !dbg !179
+    #dbg_declare(ptr %len, !180, !DIExpression(), !181)
   store i64 0, ptr %len, align 8, !dbg !182
   %38 = load ptr, ptr %arg, align 8, !dbg !183
   %39 = load ptr, ptr %arg, align 8
   store ptr %39, ptr %ptr, align 8
-  store i64 0, ptr %len15, align 8, !dbg !188
-  br label %loop.cond16, !dbg !189
+    #dbg_declare(ptr %len17, !184, !DIExpression(), !186)
+  store i64 0, ptr %len17, align 8, !dbg !188
+  br label %loop.cond18, !dbg !189
 
-loop.cond16:                                      ; preds = %loop.body18, %loop.body
+loop.cond18:                                      ; preds = %loop.body20, %loop.body
   %40 = load ptr, ptr %ptr, align 8, !dbg !190
-  %41 = load i64, ptr %len15, align 8, !dbg !192
-  %ptradd17 = getelementptr inbounds i8, ptr %40, i64 %41, !dbg !192
-  %42 = load i8, ptr %ptradd17, align 1, !dbg !192
+  %41 = load i64, ptr %len17, align 8, !dbg !192
+  %ptradd19 = getelementptr inbounds i8, ptr %40, i64 %41, !dbg !192
+  %42 = load i8, ptr %ptradd19, align 1, !dbg !192
   %i2b = icmp ne i8 %42, 0, !dbg !192
-  br i1 %i2b, label %loop.body18, label %loop.exit, !dbg !192
+  br i1 %i2b, label %loop.body20, label %loop.exit, !dbg !192
 
-loop.body18:                                      ; preds = %loop.cond16
-  %43 = load i64, ptr %len15, align 8, !dbg !193
-  %add19 = add i64 %43, 1, !dbg !193
-  store i64 %add19, ptr %len15, align 8, !dbg !193
-  br label %loop.cond16, !dbg !193
+loop.body20:                                      ; preds = %loop.cond18
+  %43 = load i64, ptr %len17, align 8, !dbg !193
+  %add21 = add i64 %43, 1, !dbg !193
+  store i64 %add21, ptr %len17, align 8, !dbg !193
+  br label %loop.cond18, !dbg !193
 
-loop.exit:                                        ; preds = %loop.cond16
-  %44 = load i64, ptr %len15, align 8, !dbg !194
-  %add20 = add i64 0, %44, !dbg !194
-  %size21 = sub i64 %add20, 0, !dbg !194
+loop.exit:                                        ; preds = %loop.cond18
+  %44 = load i64, ptr %len17, align 8, !dbg !194
+  %add22 = add i64 0, %44, !dbg !194
+  %size23 = sub i64 %add22, 0, !dbg !194
   %45 = insertvalue %"char[]" undef, ptr %38, 0, !dbg !194
-  %46 = insertvalue %"char[]" %45, i64 %size21, 1, !dbg !194
+  %46 = insertvalue %"char[]" %45, i64 %size23, 1, !dbg !194
   %47 = load ptr, ptr %list5, align 8, !dbg !195
   %48 = load i32, ptr %i, align 4, !dbg !196
-  %sext22 = sext i32 %48 to i64, !dbg !196
-  %ptroffset23 = getelementptr inbounds [16 x i8], ptr %47, i64 %sext22, !dbg !196
-  store %"char[]" %46, ptr %ptroffset23, align 8, !dbg !196
+  %sext24 = sext i32 %48 to i64, !dbg !196
+  %ptroffset25 = getelementptr inbounds [16 x i8], ptr %47, i64 %sext24, !dbg !196
+  store %"char[]" %46, ptr %ptroffset25, align 8, !dbg !196
   %49 = load i32, ptr %i, align 4, !dbg !197
-  %add24 = add i32 %49, 1, !dbg !197
-  store i32 %add24, ptr %i, align 4, !dbg !197
+  %add26 = add i32 %49, 1, !dbg !197
+  store i32 %add26, ptr %i, align 4, !dbg !197
   br label %loop.cond, !dbg !197
 
-loop.exit25:                                      ; preds = %loop.cond
+loop.exit27:                                      ; preds = %loop.cond
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %list, ptr align 8 %list5, i32 16, i1 false), !dbg !198
   %lo = load ptr, ptr %list, align 8, !dbg !199
-  %ptradd26 = getelementptr inbounds i8, ptr %list, i64 8, !dbg !199
-  %hi = load i64, ptr %ptradd26, align 8, !dbg !199
+  %ptradd28 = getelementptr inbounds i8, ptr %list, i64 8, !dbg !199
+  %hi = load i64, ptr %ptradd28, align 8, !dbg !199
   %50 = call i32 @test.main(ptr %lo, i64 %hi), !dbg !200
   store i32 %50, ptr %blockret, align 4, !dbg !200
   %51 = load ptr, ptr %list, align 8, !dbg !201
   call void @std.core.mem.free(ptr %51) #4, !dbg !203
-  br label %expr_block.exit27, !dbg !203
+  br label %expr_block.exit29, !dbg !203
 
-expr_block.exit27:                                ; preds = %loop.exit25
+expr_block.exit29:                                ; preds = %loop.exit27
   %52 = load i32, ptr %blockret, align 4, !dbg !203
   ret i32 %52, !dbg !203
 }
@@ -575,7 +578,7 @@ entry:
 
 get_dtable:                                       ; preds = %next_parent, %entry
   %typeid = phi ptr [ %0, %entry ], [ %parent_ptr, %next_parent ]
-  %dtable_ref = getelementptr inbounds
+  %dtable_ref = getelementptr inbounds nuw %.introspect, ptr %typeid, i32 0, i32 2
   %dtable = load ptr, ptr %dtable_ref, align 8
   br label %check
 

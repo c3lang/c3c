@@ -20,7 +20,7 @@ const usz MIN_CAPACITY @private = 16;
 fn DString DString.init(&self, Allocator allocator, usz capacity = MIN_CAPACITY)
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
-	StringData* data = allocator::alloc_with_padding(allocator, StringData, capacity)!!;
+	StringData* data = alloc::alloc_with_padding(allocator, StringData, capacity)!!;
 	data.allocator = allocator;
 	data.len = 0;
 	data.capacity = capacity;
@@ -247,9 +247,9 @@ fn ZString DString.copy_zstr(self, Allocator allocator) @nodiscard
 	usz str_len = self.len();
 	if (!str_len)
 	{
-		return (ZString)allocator::calloc(allocator, 1);
+		return (ZString)alloc::calloc(allocator, 1);
 	}
-	char* zstr = allocator::malloc(allocator, str_len + 1);
+	char* zstr = alloc::malloc(allocator, str_len + 1);
 	StringData* data = self.data();
 	mem::copy(zstr, &data.chars, str_len);
 	zstr[str_len] = 0;
@@ -284,7 +284,7 @@ fn void DString.free(&self)
 	if (!*self) return;
 	StringData* data = self.data();
 	if (!data) return;
-	allocator::free(data.allocator, data);
+	alloc::free(data.allocator, data);
 	*self = (DString)null;
 }
 
@@ -649,7 +649,7 @@ fn void DString.reserve(&self, usz addition)
 	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
 	if (new_capacity < len) new_capacity = math::next_power_of_2(len);
 	data.capacity = new_capacity;
-	*self = (DString)allocator::realloc(data.allocator, data, StringData.sizeof + new_capacity);
+	*self = (DString)alloc::realloc(data.allocator, data, StringData.sizeof + new_capacity);
 }
 
 fn usz? DString.read_from_stream(&self, InStream reader)

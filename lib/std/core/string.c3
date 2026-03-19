@@ -171,7 +171,7 @@ fn String join(Allocator allocator, String[] s, String joiner)
 {
 	if (!s)
 	{
-		return (String)allocator::new_array(allocator, char, 2)[:0];
+		return (String)alloc::new_array(allocator, char, 2)[:0];
 	}
 	usz joiner_len = joiner.len;
 	usz total_size = joiner_len * (s.len - 1) + 1;
@@ -179,7 +179,7 @@ fn String join(Allocator allocator, String[] s, String joiner)
 	{
 		total_size += str.len;
 	}
-	char[] data = allocator::alloc_array(allocator, char, total_size);
+	char[] data = alloc::alloc_array(allocator, char, total_size);
 	usz offset = s[0].len;
 	data[:offset] = s[0][:offset];
 	foreach (String* &str : s[1..])
@@ -380,7 +380,7 @@ fn String[] String.split(self, Allocator allocator, String delimiter, usz max = 
 {
 	usz capacity = 16;
 	usz i = 0;
-	String* holder = allocator::alloc_array(allocator, String, capacity);
+	String* holder = alloc::alloc_array(allocator, String, capacity);
 	bool no_more = false;
 	while (!no_more)
 	{
@@ -404,7 +404,7 @@ fn String[] String.split(self, Allocator allocator, String delimiter, usz max = 
 		if (i == capacity)
 		{
 			capacity *= 2;
-			holder = allocator::realloc(allocator, holder, String.sizeof * capacity);
+			holder = alloc::realloc(allocator, holder, String.sizeof * capacity);
 		}
 		holder[i++] = res;
 	}
@@ -706,7 +706,7 @@ fn usz WString.len(self)
 fn ZString String.zstr_copy(self, Allocator allocator)
 {
 	usz len = self.len;
-	char* str = allocator::malloc(allocator, len + 1);
+	char* str = alloc::malloc(allocator, len + 1);
 	mem::copy(str, self.ptr, len);
 	str[len] = 0;
 	return (ZString)str;
@@ -715,7 +715,7 @@ fn ZString String.zstr_copy(self, Allocator allocator)
 fn String String.concat(self, Allocator allocator, String s2)
 {
 	usz full_len = self.len + s2.len;
-	char* str = allocator::malloc(allocator, full_len + 1);
+	char* str = alloc::malloc(allocator, full_len + 1);
 	usz self_len = self.len;
 	mem::copy(str, self.ptr, self_len);
 	mem::copy(str + self_len, s2.ptr, s2.len);
@@ -736,7 +736,7 @@ fn ZString String.zstr_tcopy(self) => self.zstr_copy(tmem) @inline;
 fn String String.copy(self, Allocator allocator)
 {
 	usz len = self.len;
-	char* str = allocator::malloc(allocator, len + 1);
+	char* str = alloc::malloc(allocator, len + 1);
 	mem::copy(str, self.ptr, len);
 	str[len] = 0;
 	return (String)str[:len];
@@ -745,7 +745,7 @@ fn String String.copy(self, Allocator allocator)
 fn void String.free(&self, Allocator allocator)
 {
 	if (!self.ptr) return;
-	allocator::free(allocator, self.ptr);
+	alloc::free(allocator, self.ptr);
 	*self = "";
 }
 
@@ -769,7 +769,7 @@ fn String ZString.tcopy(self)
 fn Char16[]? String.to_utf16(self, Allocator allocator)
 {
 	usz len16 = conv::utf16len_for_utf8(self);
-	Char16* data = allocator::alloc_array_try(allocator, Char16, len16 + 1)!;
+	Char16* data = alloc::alloc_array_try(allocator, Char16, len16 + 1)!;
 	conv::utf8to16_unsafe(self, data)!;
 	data[len16] = 0;
 	return data[:len16];
@@ -787,7 +787,7 @@ fn WString? String.to_temp_wstring(self) => self.to_wstring(tmem);
 fn Char32[]? String.to_utf32(self, Allocator allocator)
 {
 	usz codepoints = conv::utf8_codepoints(self);
-	Char32* data = allocator::alloc_array_try(allocator, Char32, codepoints + 1)!;
+	Char32* data = alloc::alloc_array_try(allocator, Char32, codepoints + 1)!;
 	conv::utf8to32_unsafe(self, data)!;
 	data[codepoints] = 0;
 	return data[:codepoints];
@@ -863,7 +863,7 @@ fn String String.capitalize_copy(self, Allocator allocator)
 fn String String.snake_to_pascal_copy(self, Allocator allocator)
 {
 	Splitter splitter = self.tokenize("_");
-	char[] new_string = allocator::alloc_array(allocator, char, self.len + 1);
+	char[] new_string = alloc::alloc_array(allocator, char, self.len + 1);
 	usz index = 0;
 	while (try s = splitter.next())
 	{
@@ -947,8 +947,8 @@ fn String String.to_upper_tcopy(self)
 fn String? from_utf32(Allocator allocator, Char32[] utf32)
 {
 	usz len = conv::utf8len_for_utf32(utf32);
-	char* data = allocator::malloc_try(allocator, len + 1)!;
-	defer catch allocator::free(allocator, data);
+	char* data = alloc::malloc_try(allocator, len + 1)!;
+	defer catch alloc::free(allocator, data);
 	conv::utf32to8_unsafe(utf32, data);
 	data[len] = 0;
 	return (String)data[:len];
@@ -957,8 +957,8 @@ fn String? from_utf32(Allocator allocator, Char32[] utf32)
 fn String? from_utf16(Allocator allocator, Char16[] utf16)
 {
 	usz len = conv::utf8len_for_utf16(utf16);
-	char* data = allocator::malloc_try(allocator, len + 1)!;
-	defer catch allocator::free(allocator, data);
+	char* data = alloc::malloc_try(allocator, len + 1)!;
+	defer catch alloc::free(allocator, data);
 	conv::utf16to8_unsafe(utf16, data)!;
 	data[len] = 0;
 	return (String)data[:len];

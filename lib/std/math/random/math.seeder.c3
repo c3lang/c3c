@@ -26,7 +26,7 @@ fn void seeder(char[] input, char[] out_buffer)
 	usz out_chars = out_buffer.len;
 	@stack_mem(550; mem)
 	{
-		ulong[] words = allocator::alloc_array(mem, ulong, (out_chars + 7) / 8);
+		ulong[] words = alloc::alloc_array(mem, ulong, (out_chars + 7) / 8);
 		words[..] = ODD_PHI64;
 		usz words_len_2 = words.len * 2;
 

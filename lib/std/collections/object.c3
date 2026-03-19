@@ -119,7 +119,7 @@ fn void Object.free(&self)
 		case void:
 			break;
 		case String:
-			allocator::free(self.allocator, self.s);
+			alloc::free(self.allocator, self.s);
 		case ObjectInternalList:
 			foreach (ol : self.array)
 			{
@@ -137,9 +137,9 @@ fn void Object.free(&self)
 	if (self.allocator)
 	{
 		$if Object.alignof > mem::DEFAULT_MEM_ALIGNMENT:
-			allocator::free_aligned(self.allocator, self);
+			alloc::free_aligned(self.allocator, self);
 		$else
-			allocator::free(self.allocator, self);
+			alloc::free(self.allocator, self);
 		$endif
 	}
 }
@@ -475,9 +475,9 @@ alias ObjectInternalMapEntry @private = Entry {String, Object*};
 macro Object* @alloc_obj(Allocator a, #init) @private
 {
 	$if Object.alignof > mem::DEFAULT_MEM_ALIGNMENT:
-		return allocator::new_aligned(a, Object, #init)!!;
+		return alloc::new_aligned(a, Object, #init)!!;
 	$else
-		return allocator::new(a, Object, #init);
+		return alloc::new(a, Object, #init);
 	$endif
 }
 

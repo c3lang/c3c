@@ -207,7 +207,7 @@ alias decrypt_mut = crypt;
 fn char[] crypt_clone(Allocator allocator, char[] data, char[KEY_SIZE] key, char[NONCE_SIZE] nonce, uint counter = 0) @private
 {
 	if (@unlikely(!data.len)) return {};
-	char[] buff = allocator::clone_slice(allocator, data);
+	char[] buff = alloc::clone_slice(allocator, data);
 	crypt(buff, key, nonce, counter);
 	return buff;
 }

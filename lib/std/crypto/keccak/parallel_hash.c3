@@ -223,7 +223,7 @@ fn void ParallelHash.init(&self, Allocator allocator, usz block_size = MAX_BLOCK
 		.threads = math::clamp(threads, 1, MAX_THREADS),
 		.intermediate_xof_size = SECURITY_LEVEL >> 2,
 	};
-	self.internal = allocator::new_array(allocator, char, self.block_size);
+	self.internal = alloc::new_array(allocator, char, self.block_size);
 
 	keccak::@init_runtime_size(self, $sizeof(*self));
 	self.c.init(PARALLEL_HASH, customizer);
@@ -281,14 +281,14 @@ fn void ParallelHash.update(&self, char[] data, bool sequential = false)
 		$endif
 
 		// Start by allocating the necessary threading resources, even if they won't all be used
-		Thread[] workers = allocator::new_array(self.allocator, Thread, self.threads);
-		defer allocator::free(self.allocator, workers);
+		Thread[] workers = alloc::new_array(self.allocator, Thread, self.threads);
+		defer alloc::free(self.allocator, workers);
 
-		WorkerThreadContext[] contexts = allocator::new_array(self.allocator, WorkerThreadContext, self.threads);
+		WorkerThreadContext[] contexts = alloc::new_array(self.allocator, WorkerThreadContext, self.threads);
 		defer
 		{
-			foreach (ctx : contexts) if (ctx.out.ptr) allocator::free(self.allocator, ctx.out);   // free each returned byte array
-			allocator::free(self.allocator, contexts);
+			foreach (ctx : contexts) if (ctx.out.ptr) alloc::free(self.allocator, ctx.out);   // free each returned byte array
+			alloc::free(self.allocator, contexts);
 		}
 
 		// Round-robin distribute sizes between all thread indices.
@@ -314,7 +314,7 @@ fn void ParallelHash.update(&self, char[] data, bool sequential = false)
 				.blocks = blocks,
 				.xof_count = 0,
 				.data = data[:to_consume],
-				.out = blocks > 0 ? allocator::new_array(self.allocator, char, self.intermediate_xof_size * blocks) : {},
+				.out = blocks > 0 ? alloc::new_array(self.allocator, char, self.intermediate_xof_size * blocks) : {},
 			};
 			workers[i - 1].create(&threaded_update{SECURITY_LEVEL}, &contexts[i - 1])!!;   // go!
 			data = data[to_consume..];
@@ -374,7 +374,7 @@ fn void ParallelHash.final(&self, char[] out)
 {
 	defer
 	{
-		allocator::free(self.allocator, self.internal);
+		alloc::free(self.allocator, self.internal);
 		self.finalize();
 	}
 	self.squeeze(out);
