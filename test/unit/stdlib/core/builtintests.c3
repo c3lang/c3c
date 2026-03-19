@@ -194,13 +194,13 @@ fn void test_hash_vector() @test @if($feature(SLOW_TESTS))
 fn void test_builtin_string_hashing() => @pool()
 {
 	var $x = "";
-    ulong l;
-    $for var $i = 0; $i < 65; ++$i:   // 65 is a good length to reliably test all branches w/o being excessive
-        l = string::tformat("%s%s", $x, $i).hash();
-        var $r = $$str_hash(@sprintf("%s%s", $x, $i));
-        assert((uint)l == (uint)$r, "Builtin $$str_hash mismatch against String.hash()");
-        $x = $x +++ "a";
-    $endfor
+	ulong l;
+	$for var $i = 0; $i < 65; ++$i:   // 65 is a good length to reliably test all branches w/o being excessive
+		l = string::tformat("%s%s", $x, $i).hash();
+		var $r = $$str_hash(@sprintf("%s%s", $x, $i));
+		assert((uint)l == (uint)$r, "Builtin $$str_hash mismatch against String.hash()");
+		$x = $x +++ "a";
+	$endfor
 }
 
 fn void test_ct_clz()
@@ -245,11 +245,70 @@ fn void test_ct_min_max()
 const usz[] MY_OK_VALUES = { 128, 256, 384, 512 };
 fn void test_in()
 {
-    $assert @in(384, ...MY_OK_VALUES);
-    $assert !@in(123, ...MY_OK_VALUES);
-    $assert @in(384, 128, 256, 384, 512);
-    $assert @in("love", "joy", "cheer", "love", "friend");
-    $assert !@in("hate", "joy", "cheer", "love", "friend");
+	$assert @in(384, ...MY_OK_VALUES);
+	$assert !@in(123, ...MY_OK_VALUES);
+	$assert @in(384, 128, 256, 384, 512);
+	$assert @in("love", "joy", "cheer", "love", "friend");
+	$assert !@in("hate", "joy", "cheer", "love", "friend");
+}
+
+struct CmpInnerType
+{
+	int foo;
+	bool bar;
+	char[7] baz;
+	double* val;
+	char[] slice;
+}
+struct CmpOuterType
+{
+	float a_value;
+	CmpInnerType inner_values;
+	CmpInnerType* ref;
+}
+union SimpleUnion
+{
+	int a;
+	char b;
+}
+typedef InTypeHasEq = CmpInnerType;
+fn bool InTypeHasEq.eq(&self, InTypeHasEq other) @operator(==) => member_eq(*self, other);
+struct NestedMemberEq
+{
+	InTypeHasEq a_struct;
+	int biff;
+}
+fn void test_member_eq()
+{
+	char[] a_slice = "slice of characters";
+	double something = 8.60;
+	double different = -123.22;
+	CmpInnerType  a  = { .foo = 1, .bar = true, .baz = "abcdefg", .val = &something };
+	CmpInnerType* a1 = mem::talloc(CmpInnerType); *a1 = { ...a };
+
+	// Should always return `false` since `CmpInnerType` doesn't have an `==` implementation.
+	test::@check(!may_member_eq(CmpOuterType));
+
+	test::@check(member_eq(a, *a1));
+	a1.foo = 203498230;
+	test::@check(!member_eq(a, *a1));
+
+	SimpleUnion s_a = { .a = 1 };
+	SimpleUnion s_b = { .a = 1 };
+	test::@check(member_eq(s_a, s_b));
+	s_b.b = 'x';
+	test::@check(!member_eq(s_a, s_b));
+
+	// Now test a nested struct where even the struct members support `==`
+	NestedMemberEq x = { .a_struct = (InTypeHasEq)a, .biff = 5 };
+	NestedMemberEq y = x;
+	test::@check(member_eq(x, y));
+	y.a_struct.foo = 78;
+	test::@check(!member_eq(x, y));
+	y = x;
+	test::@check(member_eq(x, y));
+	y.biff = 7;
+	test::@check(!member_eq(x, y));
 }
 
 
@@ -307,7 +366,7 @@ fn void test_fault_short_name_rt() @test
 	test::eq(foo_fault(4)!!, true);
 
 	bool? maybe = foo_fault(5);
-	
+
 	if (catch excuse = maybe)
 	{
 		test::eq(excuse.nameof, "builtins::SOME_FAULT");

@@ -47,6 +47,7 @@
 - Added `math::@abs` for compile time `abs`.
 - Make `Errno` a constdef containing all definitions. Deprecated `libc::errno` constants. 
 - `random::seeder` no longer uses temp memory.
+- Add simple member-wise struct comparison with `member_eq`. #2801
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
