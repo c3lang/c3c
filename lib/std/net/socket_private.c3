@@ -38,7 +38,7 @@ fn bool last_error_is_delayed_connect()
 		}
 		$default:
 		Errno err = libc::errno();
-		return err == errno::EINPROGRESS || err == errno::EAGAIN || err == errno::EWOULDBLOCK;
+		return err == EINPROGRESS || err == EAGAIN || err == EWOULDBLOCK;
 	$endswitch
 }
 

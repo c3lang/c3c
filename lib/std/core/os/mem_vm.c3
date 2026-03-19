@@ -54,11 +54,11 @@ fn void*? alloc(usz size, VirtualMemoryAccess access)
 			if (ptr != posix::MAP_FAILED) return ptr;
 			switch (libc::errno())
 			{
-				case errno::ENOMEM:    return mem::OUT_OF_MEMORY~;
-				case errno::EOVERFLOW: return RANGE_OVERFLOW~;
-				case errno::EPERM:     return ACCESS_DENIED~;
-				case errno::EINVAL:    return INVALID_ARGS~;
-				default:               return UNKNOWN_ERROR~;
+				case ENOMEM:    return mem::OUT_OF_MEMORY~;
+				case EOVERFLOW: return RANGE_OVERFLOW~;
+				case EPERM:     return ACCESS_DENIED~;
+				case EINVAL:    return INVALID_ARGS~;
+				default:        return UNKNOWN_ERROR~;
 			}
 		$case env::WIN32:
 			void* ptr = win32::virtualAlloc(null, aligned_alloc_size(size), MEM_RESERVE, access.to_win32());
@@ -89,9 +89,9 @@ fn void? release(void* ptr, usz size)
 			{
 				switch (libc::errno())
 				{
-					case errno::EINVAL: return INVALID_ARGS~;    // Not a valid mapping or size
-					case errno::ENOMEM: return UNMAPPED_ACCESS~; // Address not mapped
-					default:            return RELEASE_FAILED~;
+					case EINVAL: return INVALID_ARGS~;    // Not a valid mapping or size
+					case ENOMEM: return UNMAPPED_ACCESS~; // Address not mapped
+					default:     return RELEASE_FAILED~;
 				}
 			}
 		$case env::WIN32:
@@ -124,11 +124,11 @@ fn void? protect(void* ptr, usz len, VirtualMemoryAccess access)
 			if (!posix::mprotect(ptr, len, access.to_posix())) return;
 			switch (libc::errno())
 			{
-				case errno::EACCES:    return ACCESS_DENIED~;
-				case errno::EINVAL:    return UNALIGNED_ADDRESS~;
-				case errno::EOVERFLOW: return RANGE_OVERFLOW~;
-				case errno::ENOMEM:    return UNMAPPED_ACCESS~;
-				default:               return UPDATE_FAILED~;
+				case EACCES:    return ACCESS_DENIED~;
+				case EINVAL:    return UNALIGNED_ADDRESS~;
+				case EOVERFLOW: return RANGE_OVERFLOW~;
+				case ENOMEM:    return UNMAPPED_ACCESS~;
+				default:        return UPDATE_FAILED~;
 			}
 		$case env::WIN32:
 			Win32_Protect old;
@@ -197,9 +197,9 @@ fn void? decommit(void* ptr, usz len, bool block = true)
 			{
 				switch (libc::errno())
 				{
-					case errno::EINVAL: return UNALIGNED_ADDRESS~;
-					case errno::ENOMEM: return UNMAPPED_ACCESS~;
-					default:            return UPDATE_FAILED~;
+					case EINVAL: return UNALIGNED_ADDRESS~;
+					case ENOMEM: return UNMAPPED_ACCESS~;
+					default:     return UPDATE_FAILED~;
 				}
 			}
 			if (block) (void)protect(ptr, len, PROTECTED) @inline;
@@ -237,15 +237,15 @@ fn void*? mmap_file(Fd fd, usz size, usz offset = 0, VirtualMemoryAccess access 
 	if (ptr != posix::MAP_FAILED) return ptr;
 	switch (libc::errno())
 	{
-		case errno::ENOMEM:    return mem::OUT_OF_MEMORY~;
-		case errno::EOVERFLOW: return RANGE_OVERFLOW~;
-		case errno::EPERM:     return ACCESS_DENIED~;
-		case errno::EINVAL:    return INVALID_ARGS~;
-		case errno::EACCES:    return io::NO_PERMISSION~;
-		case errno::EBADF:     return io::FILE_NOT_VALID~;
-		case errno::EAGAIN:    return io::WOULD_BLOCK~;
-		case errno::ENXIO:     return io::FILE_NOT_FOUND~;
-		default:               return UNKNOWN_ERROR~;
+		case ENOMEM:    return mem::OUT_OF_MEMORY~;
+		case EOVERFLOW: return RANGE_OVERFLOW~;
+		case EPERM:     return ACCESS_DENIED~;
+		case EINVAL:    return INVALID_ARGS~;
+		case EACCES:    return io::NO_PERMISSION~;
+		case EBADF:     return io::FILE_NOT_VALID~;
+		case EAGAIN:    return io::WOULD_BLOCK~;
+		case ENXIO:     return io::FILE_NOT_FOUND~;
+		default:        return UNKNOWN_ERROR~;
 	}
 }
 

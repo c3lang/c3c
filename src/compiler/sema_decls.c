@@ -5507,7 +5507,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 			}
 			if (!sema_analyse_ct_expr(context, param)) return poisoned_decl;
 			Type *type = param->type->canonical;
-			if (type->type_kind == TYPE_TYPEDEF) type = type_flatten(type);
+			if (type->type_kind == TYPE_TYPEDEF || type->type_kind == TYPE_CONSTDEF) type = type_flatten(type);
 			if (IS_OPTIONAL(param))
 			{
 				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "The parameter may never be an optional value.");
@@ -5553,6 +5553,11 @@ static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext
 	return true;
 }
 
+static inline bool char_first_is_upper(const char *c)
+{
+	while (*c == '_') c++;
+	return char_is_upper(*c);
+}
 
 static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *erase_decl)
 {
@@ -5578,10 +5583,10 @@ static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *er
 		if (symbol->decl_kind != DECL_ALIAS) break;
 		symbol = symbol->define_decl.alias;
 	}
-	bool should_be_const = char_is_upper(decl->name[0]);
+	bool should_be_const = char_first_is_upper(decl->name);
 	if (should_be_const)
 	{
-		if (!char_is_upper(symbol->name[0]))
+		if (!char_first_is_upper(symbol->name))
 		{
 			RETURN_SEMA_ERROR(decl, "An uppercase alias is expected to alias a constant. "
 									"If you want to alias a non-constant, make sure the alias name "
@@ -5590,7 +5595,7 @@ static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *er
 	}
 	else
 	{
-		if (char_is_upper(symbol->name[0]))
+		if (char_first_is_upper(symbol->name))
 		{
 			RETURN_SEMA_ERROR(expr, "An alias starting with a lowercase letter is expected to alias a non-constant. "
 			                        "If you want to alias a constant, make sure the "

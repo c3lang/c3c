@@ -98,7 +98,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 		if (!path && !windows_get_sdk())
 		{
 			BuildOptions options = { .verbosity_level = (compiler.build.silent || compiler.build.quiet) ? -1 : 0 };
-			fetch_msvc(&options);
+			fetch_winsdk(&options);
 			path = windows_cross_compile_library();
 		}
 		// Note that path here may be allocated on the string scratch buffer.
@@ -165,7 +165,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 		else
 		{
 			WindowsSDK *windows_sdk = windows_get_sdk();
-			if (!windows_sdk) error_exit("Windows applications cannot be cross compiled without --winsdk.");
+			if (!windows_sdk) error_exit("Windows applications cannot be cross compiled without --win-sdk.");
 
 			if (!file_is_dir(windows_sdk->vs_library_path)) error_exit("Failed to find windows sdk.");
 
@@ -280,7 +280,7 @@ static void linker_setup_macos(const char ***args_ref, Linker linker_type)
 
 	if (!compiler.build.macos.sdk)
 	{
-		error_exit("Cannot crosslink MacOS without providing --macossdk.");
+		error_exit("Cannot crosslink MacOS without providing --macos-sdk.");
 	}
 	linking_add_link(&compiler.linking, "System");
 	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");

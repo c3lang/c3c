@@ -13,26 +13,16 @@ fn void? native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || e
 	{
 		switch (libc::errno())
 		{
-			case errno::EBADF:
-				return io::FILE_NOT_VALID~;
-			case errno::EFAULT:
-				unreachable("Invalid stat");
-			case errno::EIO:
-				return io::GENERAL_ERROR~;
-			case errno::EACCES:
-				return io::NO_PERMISSION~;
-			case errno::ELOOP:
-				return io::NO_PERMISSION~;
-			case errno::ENAMETOOLONG:
-				return io::NAME_TOO_LONG~;
-			case errno::ENOENT:
-				return io::FILE_NOT_FOUND~;
-			case errno::ENOTDIR:
-				return io::FILE_NOT_DIR~;
-			case errno::EOVERFLOW:
-				return io::GENERAL_ERROR~;
-			default:
-				return io::UNKNOWN_ERROR~;
+			case EBADF:        return io::FILE_NOT_VALID~;
+			case EFAULT:       unreachable("Invalid stat");
+			case EIO:          return io::GENERAL_ERROR~;
+			case EACCES:       return io::NO_PERMISSION~;
+			case ELOOP:        return io::NO_PERMISSION~;
+			case ENAMETOOLONG: return io::NAME_TOO_LONG~;
+			case ENOENT:       return io::FILE_NOT_FOUND~;
+			case ENOTDIR:      return io::FILE_NOT_DIR~;
+			case EOVERFLOW:    return io::GENERAL_ERROR~;
+			default:           return io::UNKNOWN_ERROR~;
 		}
 	}
 }

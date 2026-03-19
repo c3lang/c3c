@@ -71,7 +71,7 @@ static void usage(bool full)
 	print_cmd("dynamic-lib <file1> [<file2> ...]", "Compile files without a project into a dynamic library.");
 	print_cmd("vendor-fetch <library> ...", "Fetches one or more libraries from the vendor collection.");
 	print_cmd("project <subcommand> ...", "Manipulate or view project files.");
-	print_cmd("fetch-msvc [<subcommand>]", "Fetches the MSVC SDK required for cross-compiling.");
+	print_cmd("fetch-sdk <windows|macos|android> ...", "Fetches the SDK required for cross-compiling.");
 	PRINTF("");
 	full ? PRINTF("Options:") : PRINTF("Common options:");
 	print_opt("-h -hh --help", "Print the help, -h for the normal options, -hh for the full help.");
@@ -217,12 +217,12 @@ static void usage(bool full)
 		print_opt("--print-output", "Print the object files created to stdout.");
 		print_opt("--print-input", "Print inputted C3 files to stdout.");
 		PRINTF("");
-		print_opt("--winsdk <dir>", "Set the directory for Windows system library files for cross compilation.");
+		print_opt("--win-sdk <dir>", "Set the directory for Windows system library files for cross compilation.");
 		print_opt("--wincrt=<option>", "Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default).");
 		print_opt("--windef <file>", "Use Windows 'def' file for function exports instead of 'dllexport'.");
 		print_opt("--win-vs-dirs <dir>;<dir>", "Override Windows VS detection.");
 		PRINTF("");
-		print_opt("--macossdk <dir>", "Set the directory for the MacOS SDK for cross compilation.");
+		print_opt("--macos-sdk <dir>", "Set the directory for the MacOS SDK for cross compilation.");
 		print_opt("--macos-min-version <ver>", "Set the minimum MacOS version to compile for.");
 		print_opt("--macos-sdk-version <ver>", "Set the MacOS SDK compiled for.");
 		PRINTF("");
@@ -242,21 +242,72 @@ static void usage(bool full)
 	}
 }
 
-static void fetch_msvc_usage()
+static void fetch_windows_usage()
 {
-	PRINTF("Usage: %s fetch-msvc [<options>]", args[0]);
+	PRINTF("Usage: %s fetch-sdk windows [<options>]", args[0]);
 	PRINTF("");
-	PRINTF("Fetches the MSVC SDK required for cross-compiling to Windows.");
+	PRINTF("Fetches the MSVC SDK for Windows cross-compilation.");
 	PRINTF("");
 	PRINTF("Options:");
 	print_opt("--accept-license", "Automatically accept the MSVC license.");
-	print_opt("--show-versions",
-	          "Show available MSVC and Windows SDK versions.");
-	print_opt("--msvc-version <ver>",
-	          "Specify a particular MSVC version to fetch.");
-	print_opt("--sdk-version <ver>",
-	          "Specify a particular Windows SDK version to fetch.");
+	print_opt("--show-versions", "Show available MSVC and Windows SDK versions.");
+	print_opt("--msvc-version <ver>", "Specify a particular MSVC version to fetch.");
+	print_opt("--sdk-version <ver>", "Specify a particular Windows SDK version to fetch.");
 	PRINTF("");
+}
+
+static void fetch_android_usage()
+{
+	PRINTF("Usage: %s fetch-sdk android [<options>]", args[0]);
+	PRINTF("");
+	PRINTF("Fetches the Android NDK.");
+	PRINTF("");
+	PRINTF("Options:");
+	print_opt("--accept-license", "Automatically accept the Android NDK license.");
+	PRINTF("");
+}
+
+static void fetch_macos_usage()
+{
+	PRINTF("Usage: %s fetch-sdk macos [<options>]", args[0]);
+	PRINTF("");
+	PRINTF("Fetches the MacOS SDK (unimplemented).");
+	PRINTF("");
+}
+
+static void fetch_sdk_usage()
+{
+	PRINTF("Usage: %s fetch-sdk <windows|macos|android> [<options>]", args[0]);
+	PRINTF("");
+	PRINTF("Fetches the SDK required for cross-compiling.");
+	PRINTF("");
+	PRINTF("Available targets:");
+	PRINTF("  windows     Fetches the MSVC SDK");
+	PRINTF("  macos       Fetches the MacOS SDK (unimplemented)");
+	PRINTF("  android     Fetches the Android NDK");
+	PRINTF("");
+	PRINTF("Use 'c3c fetch-sdk <target> --help' for target specific options.");
+	PRINTF("");
+}
+
+static void fetch_sdk_usage_dispatch(const char *target)
+{
+	if (str_eq(target, "windows") || str_eq(target, "win") || str_eq(target, "msvc"))
+	{
+		fetch_windows_usage();
+	}
+	else if (str_eq(target, "android") || str_eq(target, "ndk"))
+	{
+		fetch_android_usage();
+	}
+	else if (str_eq(target, "macos") || str_eq(target, "mac"))
+	{
+		fetch_macos_usage();
+	}
+	else
+	{
+		fetch_sdk_usage();
+	}
 }
 
 static void project_usage()
@@ -520,33 +571,98 @@ static void parse_command(BuildOptions *options)
 	}
 	if (arg_match("fetch-msvc"))
 	{
-		options->command = COMMAND_FETCH_MSVC;
+		// Deprecated: redirect to fetch-sdk windows
+		PRINTF("WARNING: 'fetch-msvc' is deprecated. Use 'c3c fetch-sdk windows' instead.");
+		options->command = COMMAND_FETCH_SDK;
+		options->fetch_sdk_target = "windows";
 		while (!at_end() && next_is_opt())
 		{
 			next_arg();
-			if (match_longopt("accept-license"))
-			{
-				options->msvc_accept_license = true;
-				continue;
-			}
-			if (match_longopt("show-versions"))
-			{
-				options->msvc_show_versions = true;
-				continue;
-			}
+			if (match_longopt("accept-license")) { options->fetch_accept_license = true; continue; }
+			if (match_longopt("show-versions")) { options->msvc_show_versions = true; continue; }
 			if (match_longopt("msvc-version"))
 			{
-				if (at_end() || next_is_opt())
-					error_exit("error: msvc-version needs a version.");
+				if (at_end() || next_is_opt()) error_exit("error: msvc-version needs a version.");
 				options->msvc_version_override = next_arg();
 				continue;
 			}
 			if (match_longopt("sdk-version"))
 			{
-				if (at_end() || next_is_opt())
-					error_exit("error: sdk-version needs a version.");
+				if (at_end() || next_is_opt()) error_exit("error: sdk-version needs a version.");
 				options->msvc_sdk_version_override = next_arg();
 				continue;
+			}
+			if (current_arg[0] == '-' && current_arg[1] == 'v') { options->verbosity_level = 1; continue; }
+			if (match_shortopt("q")) { options->verbosity_level = -1; continue; }
+			if (match_longopt("help") || match_shortopt("h"))
+			{
+				fetch_windows_usage();
+				exit_compiler(COMPILER_SUCCESS_EXIT);
+			}
+			fprintf(stderr, "Error: Unknown option '%s' for fetch-msvc\n\n", current_arg);
+			fetch_windows_usage();
+			exit_compiler(EXIT_FAILURE);
+		}
+		return;
+	}
+	if (arg_match("fetch-sdk"))
+	{
+		options->command = COMMAND_FETCH_SDK;
+		if (!at_end() && next_is_opt())
+		{
+			next_arg();
+			if (match_longopt("help") || match_shortopt("h"))
+			{
+				fetch_sdk_usage();
+				exit_compiler(COMPILER_SUCCESS_EXIT);
+			}
+			arg_index--; // backtrack if it wasn't help
+		}
+		if (at_end() || next_is_opt())
+		{
+			fprintf(stderr, "Error: fetch-sdk requires a target (windows, macos, android).\n\n");
+			fetch_sdk_usage();
+			exit_compiler(EXIT_FAILURE);
+		}
+		options->fetch_sdk_target = next_arg();
+
+		while (!at_end() && next_is_opt())
+		{
+			next_arg();
+			if (str_eq(options->fetch_sdk_target, "windows") || str_eq(options->fetch_sdk_target, "win") || str_eq(options->fetch_sdk_target, "msvc"))
+			{
+				if (match_longopt("accept-license"))
+				{
+					options->fetch_accept_license = true;
+					continue;
+				}
+				if (match_longopt("show-versions"))
+				{
+					options->msvc_show_versions = true;
+					continue;
+				}
+				if (match_longopt("msvc-version"))
+				{
+					if (at_end() || next_is_opt())
+						error_exit("error: msvc-version needs a version.");
+					options->msvc_version_override = next_arg();
+					continue;
+				}
+				if (match_longopt("sdk-version"))
+				{
+					if (at_end() || next_is_opt())
+						error_exit("error: sdk-version needs a version.");
+					options->msvc_sdk_version_override = next_arg();
+					continue;
+				}
+			}
+			else if (str_eq(options->fetch_sdk_target, "android") || str_eq(options->fetch_sdk_target, "ndk"))
+			{
+				if (match_longopt("accept-license"))
+				{
+					options->fetch_accept_license = true;
+					continue;
+				}
 			}
 			if (current_arg[0] == '-' && current_arg[1] == 'v')
 			{
@@ -560,17 +676,19 @@ static void parse_command(BuildOptions *options)
 			}
 			if (match_longopt("help") || match_shortopt("h"))
 			{
-				fetch_msvc_usage();
+				fetch_sdk_usage_dispatch(options->fetch_sdk_target);
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
-			FETCH_MSVC_FAIL_WITH_ERR("Unknown option '%s' for fetch-msvc", current_arg);
+			fprintf(stderr, "Error: Unknown option '%s' for fetch-sdk %s\n\n", current_arg, options->fetch_sdk_target);
+			fetch_sdk_usage_dispatch(options->fetch_sdk_target);
+			exit_compiler(EXIT_FAILURE);
 		}
 		if (!at_end())
 		{
 			next_arg();
-			FETCH_MSVC_FAIL_WITH_ERR("fetch-msvc does not accept arguments, "
-			                         "only flags. Failed on: %s.",
-			                         current_arg);
+			fprintf(stderr, "Error: fetch-sdk does not accept further arguments. Failed on: %s.\n\n", current_arg);
+			fetch_sdk_usage_dispatch(options->fetch_sdk_target);
+			exit_compiler(EXIT_FAILURE);
 		}
 		return;
 	}
@@ -1342,19 +1460,19 @@ static void parse_option(BuildOptions *options)
 				options->benchfn = next_arg();
 				return;
 			}
-			if (match_longopt("macossdk"))
+			if (match_longopt("macos-sdk"))
 			{
-				if (at_end() || next_is_opt()) error_exit("error: --macossdk needs a directory.");
+				if (at_end() || next_is_opt()) error_exit("error: --macos-sdk needs a directory.");
 				options->macos.sysroot = unchecked_dir(options, next_arg());
 				return;
 			}
-			if (match_longopt("winsdk"))
+			if (match_longopt("win-sdk"))
 			{
 				if (options->win.vs_dirs)
 				{
-					error_exit("error: --winsdk cannot be combined with --win-vs-dirs.");
+					error_exit("error: --win-sdk cannot be combined with --win-vs-dirs.");
 				}
-				if (at_end() || next_is_opt()) error_exit("error: --winsdk needs a directory.");
+				if (at_end() || next_is_opt()) error_exit("error: --win-sdk needs a directory.");
 				options->win.sdk = unchecked_dir(options, next_arg());
 				return;
 			}
@@ -1378,7 +1496,7 @@ static void parse_option(BuildOptions *options)
 			{
 				if (options->win.sdk)
 				{
-					error_exit("error: --win-vs-dirs cannot be combined with --winsdk.");
+					error_exit("error: --win-vs-dirs cannot be combined with --win-sdk.");
 				}
 				if (at_end() || next_is_opt()) error_exit("error: --win-vs-dirs needs to followed by the directories.");
 				options->win.vs_dirs = next_arg();
@@ -1687,7 +1805,12 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 			const char *ndk_path = getenv("ANDROID_NDK");
 			if (!ndk_path)
 			{
-				FAIL_WITH_ERR("Can't find Android NDK, please set --android-ndk.");
+				BuildOptions options = build_options; // Copy
+				ndk_path = fetch_android_ndk(&options);
+				if (!ndk_path)
+				{
+					error_exit("Can't find Android NDK, please set --android-ndk.");
+				}
 			}
 			build_options.android.ndk_path = strdup(ndk_path);
 		}

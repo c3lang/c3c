@@ -392,6 +392,64 @@ fn void test_exp() @test
 	}
 }
 
+fn void test_exp2() @test
+{
+	int[<5>] in = { 2, 1, 0, -1, -2 };
+	double[<5>] out = { 4.0, 2.0, 1.0, 0.5, 0.25 };
+	float[<5>] in2 = { 2.0, 1.0, 0.0, -1.0, -2.0 };
+	float[<5>] out2 = { 4.0, 2.0, 1.0, 0.5, 0.25 };
+	double[<5>] in3 = { 2.0, 1.0, 0.0, -1.0, -2.0 };
+	double[<5>] out3 = { 4.0, 2.0, 1.0, 0.5, 0.25 };
+	assert($typeof(math::exp2(in[0])) == double);
+	assert($typeof(math::exp2((float)in[0])) == float);
+	assert($typeof(math::exp2((double)in[0])) == double);
+	for (int i = 0; i < 5; i++)
+	{	
+		double x = math::exp2(in[i]);
+		assert(math::is_approx_rel(x, out[i], 1e-12), "exp2(%d)=%f is not equal to %f", in[i], x, out[i]);
+		float f = math::exp2((float)in[i]);
+		assert(math::is_approx_rel(f, (float)out[i], 1e-6), "exp2(%f)=%f is not equal to %f", in[i], f, out[i]);
+		x = math::exp2((double)in[i]);
+		assert(math::is_approx_rel(x, out[i], 1e-12), "exp2(%f)=%f is not equal to %f", in[i], x, out[i]);
+	}
+	float[<5>] vecf = math::exp2(in2);
+	double[<5>] vec = math::exp2(in3);
+	for (int i = 0; i < 5; i++)
+	{
+		assert(math::is_approx_rel(vecf[i], out2[i], 1e-6), "exp2(%f)=%f is not equal to %f", in2[i], vecf[i], out2[i]);
+		assert(math::is_approx_rel(vec[i], out3[i], 1e-12), "exp2(%f)=%f is not equal to %f", in3[i], vec[i], out3[i]);
+	}
+}
+
+fn void test_exp10() @test
+{
+	int[<5>] in = { 2, 1, 0, -1, -2 };
+	double[<5>] out = { 100.0, 10.0 , 1.0, 0.1, 0.01 };
+	float[<5>] in2 = { 2, 1, 0, -1, -2 };
+	float[<5>] out2 = { 100.0, 10.0 , 1.0, 0.1, 0.01 };
+	double[<5>] in3 = { 2, 1, 0, -1, -2 };
+	double[<5>] out3 = { 100.0, 10.0 , 1.0, 0.1, 0.01 };
+	assert($typeof(math::exp10(in[0])) == double);
+	assert($typeof(math::exp10((float)in[0])) == float);
+	assert($typeof(math::exp10((double)in[0])) == double);
+	for (int i = 0; i < 5; i++)
+	{	
+		double x = math::exp10(in[i]);
+		assert(math::is_approx_rel(x, out[i], 1e-12), "exp10(%d)=%f is not equal to %f", in[i], x, out[i]);
+		float f = math::exp10((float)in[i]);
+		assert(math::is_approx_rel(f, (float)out[i], 1e-6), "exp10(%f)=%f is not equal to %f", in[i], f, out[i]);
+		x = math::exp10((double)in[i]);
+		assert(math::is_approx_rel(x, out[i], 1e-12), "exp10(%f)=%f is not equal to %f", in[i], x, out[i]);
+	}
+	float[<5>] vecf = math::exp10(in2);
+	double[<5>] vec = math::exp10(in3);
+	for (int i = 0; i < 5; i++)
+	{
+		assert(math::is_approx_rel(vecf[i], out2[i], 1e-6), "exp10(%f)=%f is not equal to %f", in2[i], vecf[i], out2[i]);
+		assert(math::is_approx_rel(vec[i], out3[i], 1e-12), "exp10(%f)=%f is not equal to %f", in3[i], vec[i], out3[i]);
+	}
+}
+
 fn void test_floor() @test
 {
 	double d = -123.1;

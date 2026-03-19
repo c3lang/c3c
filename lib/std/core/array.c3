@@ -84,7 +84,7 @@ macro usz? rindex_of(array, element)
 
  @param [in] arr1
  @param [in] arr2
- @param [&inout] allocator : "The allocator to use, default is the heap allocator"
+ @param [&inout] allocator : "The allocator to use"
  @require $kindof(arr1) == SLICE || $kindof(arr1) == ARRAY
  @require $kindof(arr2) == SLICE || $kindof(arr2) == ARRAY
  @require @typematch(arr1[0], arr2[0]) : "Arrays must have the same type"
@@ -444,7 +444,7 @@ macro unlace(Allocator allocator, array, left, right)
  where the `left` array is the shorter iterable, will put 7 into that lambda in each place
  where `left` is being filled in during the zip operation.
 
- @param [&inout] allocator : "The allocator to use; default is the heap allocator."
+ @param [&inout] allocator : "The allocator to use."
  @param [in] left : "The left-side array. These items will be placed as the First in each Pair"
  @param [in] right : "The right-side array. These items will be placed as the Second in each Pair"
  @param #operation : "The function to apply. Must have a signature of `$typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."

@@ -215,7 +215,7 @@ fn void close() @test @if(!env::WIN32)
 {
 	assert(libc::close(1313) != 0);
 	// NOTE: errno is part of libc, and is thus recursively imported
-	assert(libc::errno() == errno::EBADF);
+	assert(libc::errno() == EBADF);
 }
 
 fn void difftime() @test
@@ -251,7 +251,7 @@ fn void fclose() @test
 fn void fdopen() @test @if(!env::WIN32)
 {
 	CFile stdin = libc::fdopen(-1, "w");
-	assert(libc::errno() == errno::EBADF);
+	assert(libc::errno() == EBADF);
 }
 
 fn void fflush() @test

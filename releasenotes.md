@@ -11,6 +11,10 @@
 - `@weaklink` for just affecting linkage.
 - Add a fully static build of `c3c` for Linux. #2949
 - `@weak` now allows direct overriding of `@weak` definitions with a real definition.
+- Unified SDK fetching under `c3c fetch-sdk <target>` (windows, android) and added support for automatic Android NDK (r29) download. Better progress bar. #3019
+- Improved Linux backtrace readability by stripping internal panic and runtime startup frames. #3008
+- Added repetition compression for deep recursive stacks in backtraces. #3008
+- Added new builtins: `$$acos`, `$$asin`, `$$atan`, `$$cosh`, `$$exp10`, `$$sinh`, `$$tan` and `$$tanh`.
 - Added the rest of the `xoshiro` and `xoroshiro` PRNG variants. #3027
 
 ### Stdlib changes
@@ -26,6 +30,22 @@
 - Add `to_format` functionality for DateTime.
 - `SubProcess`/`process::create`/`process::execute_stdout_to_buffer` deprecated, replaced by `Process`/`process:spawn`/`process::run_capture_stdout`.
 - Add support for AES-encrypted Zip files (AE-1 and AE-2 formats).
+- Add `Argon2` memory-hard hashing with associated tests. #2773
+- Matrix type is now column major.
+- Fix matrix perspective and ortho, project and unproject to be RH [0,1]
+- Add vec3 methods: `rejection`, `project`, implement `unproject`.
+- Add vector function `cubic_hermite`
+- Deprecated `sq_magnitude`, `barycenter`, `towards`, `ortho_normalize`, `clamp_mag`, use `length_sq`, `barycentric`, `move_towards`, `orthonormalize`, `clamp_length` instead.
+- Add Quaternion conversion functions to from Euler angles and axis+angle.
+- `math::deg_to_rad` and `math::rad_to_def` respects the underlying type, returning `float` on a `float` argument.
+- Added `float.to_radians` and `float.to_degrees` and the same for `double`.
+- Added `Quat`, `Mat2`, `Mat3` and `Mat4`, `Vec2`, `Vec3`, `Vec4` aliases.
+- Added `is_normalized` to Quaternion and floating point vectors.
+- Added `quaternion::from_rotation` and `quaternion::from_normalized_rotation`
+- Added `Rect` type.
+- Added `matrix::frustum`.
+- Added `math::@abs` for compile time `abs`.
+- Make `Errno` a constdef containing all definitions. Deprecated `libc::errno` constants. 
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
@@ -44,6 +64,13 @@
 - Debug info emitted on `-Os` #3015
 - @assert_leak() would not work properly with `--safe=no` #3012.
 - Duplicate symbols when building executables on Termux. #2984
+- `double[<*>].max` and `.min` were broken.
+- Incorrect codegen, crashing the compiler, when passing a `{ .xy = 1 }` constant initializer vector to a function taking a vector, hitting vec->array conversion. #3035
+- Folding an anon struct member at compile time would crash #3034.
+- Crash in sema_compare_weak_decl when replacing a function declaration from a .c3i file in some cases #3031
+- Issue with 'inline' keyword on enum and constdef #3032.
+- When checking aliases `alias FOO = _BAR` the compiler would incorrectly would say that `_BAR` wasn't a constant.
+- Wasm32 builds crash on startup (unreachable!) due to atexit signature mismatch #3040
 
 ## 0.7.10 Change list
 

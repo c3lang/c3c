@@ -62,6 +62,6 @@ entry:
 }
 define weak void @.__c3_atexit_test.shutdown() comdat {
 entry:
-  call void @atexit(ptr @test.shutdown)
+  %0 = call i32 @atexit(ptr @test.shutdown)
   ret void
 }
