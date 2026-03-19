@@ -11,23 +11,28 @@ struct ByteWriter (OutStream)
 <*
  @param [&inout] self
  @param [&inout] allocator
+ @param reserve : "The bytes to reserve up front, defaults to 0"
+
  @require self.bytes.len == 0 : "Init may not run on already initialized data"
  @ensure (bool)allocator, self.index == 0
 *>
-fn ByteWriter* ByteWriter.init(&self, Allocator allocator)
+fn ByteWriter* ByteWriter.init(&self, Allocator allocator, usz reserve = 0)
 {
 	*self = { .bytes = {}, .allocator = allocator };
+	if (reserve > 0) self.ensure_capacity(reserve)!!;
 	return self;
 }
 
 <*
  @param [&inout] self
+ @param reserve : "The bytes to reserve up front, defaults to 0"
+
  @require self.bytes.len == 0 : "Init may not run on already initialized data"
  @ensure self.index == 0
 *>
-fn ByteWriter* ByteWriter.tinit(&self)
+fn ByteWriter* ByteWriter.tinit(&self, usz reserve = 0)
 {
-	return self.init(tmem) @inline;
+	return self.init(tmem, reserve) @inline;
 }
 
 fn ByteWriter* ByteWriter.init_with_buffer(&self, char[] data)
