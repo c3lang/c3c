@@ -929,6 +929,7 @@ macro talloc_with_padding($Type, usz padding) @nodiscard
 <*
  @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro new_array($Type, usz elements) @nodiscard
 {
@@ -940,6 +941,7 @@ macro new_array($Type, usz elements) @nodiscard
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
  @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro new_array_aligned($Type, usz elements) @nodiscard
 {
@@ -949,6 +951,7 @@ macro new_array_aligned($Type, usz elements) @nodiscard
 <*
  @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro alloc_array($Type, usz elements) @nodiscard
 {
@@ -960,17 +963,24 @@ macro alloc_array($Type, usz elements) @nodiscard
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
  @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro alloc_array_aligned($Type, usz elements) @nodiscard
 {
 	return allocator::alloc_array_aligned(mem, $Type, elements);
 }
 
+<*
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
+*>
 macro talloc_array($Type, usz elements) @nodiscard
 {
 	return (($Type*)tmalloc($Type.sizeof * elements, $Type.alignof))[:elements];
 }
 
+<*
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
+*>
 macro temp_array($Type, usz elements) @nodiscard
 {
 	return (($Type*)tcalloc($Type.sizeof * elements, $Type.alignof))[:elements];

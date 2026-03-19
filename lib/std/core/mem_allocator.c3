@@ -256,6 +256,7 @@ macro alloc_with_padding(Allocator allocator, $Type, usz padding) @nodiscard
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro new_array(Allocator allocator, $Type, usz elements) @nodiscard
 {
@@ -264,6 +265,7 @@ macro new_array(Allocator allocator, $Type, usz elements) @nodiscard
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro new_array_try(Allocator allocator, $Type, usz elements) @nodiscard
 {
@@ -273,6 +275,8 @@ macro new_array_try(Allocator allocator, $Type, usz elements) @nodiscard
 <*
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro new_array_aligned(Allocator allocator, $Type, usz elements) @nodiscard
 {
@@ -281,6 +285,7 @@ macro new_array_aligned(Allocator allocator, $Type, usz elements) @nodiscard
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro alloc_array(Allocator allocator, $Type, usz elements) @nodiscard
 {
@@ -290,6 +295,8 @@ macro alloc_array(Allocator allocator, $Type, usz elements) @nodiscard
 <*
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro alloc_array_aligned(Allocator allocator, $Type, usz elements) @nodiscard
 {
@@ -298,6 +305,7 @@ macro alloc_array_aligned(Allocator allocator, $Type, usz elements) @nodiscard
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro alloc_array_try(Allocator allocator, $Type, usz elements) @nodiscard
 {
@@ -306,6 +314,7 @@ macro alloc_array_try(Allocator allocator, $Type, usz elements) @nodiscard
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro realloc_array(Allocator allocator, void* ptr, $Type, usz elements) @nodiscard
 {
@@ -315,6 +324,8 @@ macro realloc_array(Allocator allocator, void* ptr, $Type, usz elements) @nodisc
 <*
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro realloc_array_aligned(Allocator allocator, void* ptr, $Type, usz elements) @nodiscard
 {
@@ -323,6 +334,7 @@ macro realloc_array_aligned(Allocator allocator, void* ptr, $Type, usz elements)
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro realloc_array_try(Allocator allocator, void* ptr, $Type, usz elements) @nodiscard
 {
