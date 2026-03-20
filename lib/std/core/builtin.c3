@@ -173,6 +173,26 @@ macro bool @typeis(#value, $Type) @const @builtin @deprecated("Use `$typeof(#val
 }
 
 <*
+ Assert (always) that a condition is true. Otherwise call abort.
+
+ @param #value : "The expression to test"
+ @param $fmt : "The formatting string"
+ @param ... : "Arguments to the format string"
+*>
+macro void always_assert(bool #value, String $fmt = "", ...) @builtin @format(1) @safemacro
+{
+	bool val = #value;
+	if (@unlikely(!val))
+	{
+		$if $fmt == "":
+			abort(@sprintf("Violated assert '%s'.", $stringify(#value)));
+		$else
+			abort(@sprintf("Violated assert '%s': %s", $stringify(#value), $fmt), $vasplat);
+		$endif
+	}
+}
+
+<*
  Determines whether all members of a struct/union type are trivially equatable (i.e., they all implement the `==` operator).
 
  @require $defined($Type.membersof) : "Only types with members may be used here."
