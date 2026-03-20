@@ -7,10 +7,11 @@ const TEST_MAGNITUDE = 10;
 
 
 
-fn void own_mutex(Mutex* m)
+fn int own_mutex(Mutex* m)
 {
     m.lock();
     m.unlock();
+    return 0;
 }
 
 fn void ensure_owner_checks() @test
@@ -36,18 +37,20 @@ struct ArgsWrapper1
     ulong* v;
 }
 
-fn void shared_mutex_increment(ArgsWrapper1* args)
+fn int shared_mutex_increment(ArgsWrapper1* args)
 {
     args.m.lock();
     args.v++;
     args.m.unlock();
+    return 0;
 }
 
-fn void shared_mutex_decrement(ArgsWrapper1* args)
+fn int shared_mutex_decrement(ArgsWrapper1* args)
 {
     args.m.lock();
     args.v--;
     args.m.unlock();
+    return 0;
 }
 
 fn void shared_mutex() @test
@@ -82,7 +85,7 @@ fn void shared_mutex() @test
 
 // Recursive mutex
 
-fn void acquire_recursively(RecursiveMutex* m)
+fn int acquire_recursively(RecursiveMutex* m)
 {
     // TODO: The recursive mutex functions can not directly be called via pointer
 
@@ -95,6 +98,7 @@ fn void acquire_recursively(RecursiveMutex* m)
     {
         ((Mutex*)m).unlock();
     }
+    return 0;
 }
 
 fn void test_recursive_mutex() @test
@@ -111,5 +115,5 @@ fn void test_recursive_mutex() @test
 
     foreach(&t : threads) t.join();
 
-    return acquire_recursively(&m);
+    (void) acquire_recursively(&m);
 }
