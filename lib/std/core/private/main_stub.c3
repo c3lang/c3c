@@ -53,7 +53,7 @@ macro String[] args_to_strings(int argc, char** argv) @private
 macro int @_main_runner(#m, int argc, char** argv)
 {
 	$if env::WASM:
-		allocators::auto_create_temp = true;
+		//allocators::auto_create_temp = true; //TODO: testing
 		wasm_call_ctors();
 	$endif
 	String[] list = args_to_strings(argc, argv);

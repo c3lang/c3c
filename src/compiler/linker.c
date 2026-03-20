@@ -860,9 +860,9 @@ static void linker_setup_emscripten(const char ***args_ref, Linker linker_type, 
 		{
 			if (strstr(files_to_link[i], "std.thread.os.o"))
 			{
-				OUTN("Thread usage detected for Emscripten: automatically adding '-pthread' and '-sPTHREAD_POOL_SIZE=1'.");
+				OUTN("Thread usage detected for Emscripten: automatically adding '-pthread' and '-sPTHREAD_POOL_SIZE=15'.");
 				add_plain_arg("-pthread");
-				add_plain_arg("-sPTHREAD_POOL_SIZE=1");
+				add_plain_arg("-sPTHREAD_POOL_SIZE=15");
 				break;
 			}
 		}

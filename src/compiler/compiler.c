@@ -212,13 +212,15 @@ static const char *exe_name(void)
 		case WINDOWS_X64:
 		case MINGW_X64:
 			return str_cat(name, ".exe");
-		default:
-			if (arch_is_wasm(compiler.platform.arch))
+		case OBJ_FORMAT_WASM:
+			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN)
 			{
-				if (str_has_suffix(name, ".wasm")) return name;
-				if (compiler.platform.os == OS_TYPE_EMSCRIPTEN && (str_has_suffix(name, ".js") || str_has_suffix(name, ".html"))) return name;
-				return str_cat(name, ".wasm");
+				if (str_has_suffix(name, ".js") || str_has_suffix(name, ".html") || str_has_suffix(name, ".wasm")) return name;
+				return str_cat(name, ".js");
 			}
+			if (str_has_suffix(name, ".wasm")) return name;
+			return str_cat(name, ".wasm");
+		default:
 			return name;
 	}
 }
@@ -1823,6 +1825,7 @@ const char *default_c_compiler(void)
 	}
 	return cc = "cl.exe";
 #else
+	if (compiler.platform.os == OS_TYPE_EMSCRIPTEN) return cc = "emcc";
 	return cc = "cc";
 #endif
 }
