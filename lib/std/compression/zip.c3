@@ -528,17 +528,21 @@ fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @
 			}
 			else
 			{
+				io::printfn("path::tappend failed for %s", entry.name);
 				return IO_ERROR~;
 			}
 		}
 		else
 		{
+			io::printfn("path::temp failed for %s", output_dir);
 			return IO_ERROR~;
 		}
 
 		if (entry.is_directory)
 		{
-			(void)path::mkdir(out_path_str, true);
+			if (catch excuse = path::mkdir(out_path_str, true)) {
+				io::printfn("mkdir failed for directory %s: %s", out_path_str, excuse);
+			}
 		}
 		else
 		{
@@ -546,14 +550,26 @@ fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @
 			{
 				if (try parent = tmp.parent())
 				{
-					(void)path::mkdir(parent.str_view(), true);
+					if (catch excuse = path::mkdir(parent.str_view(), true)) {
+						io::printfn("mkdir failed for parent %s: %s", parent.str_view(), excuse);
+					}
 				}
 			}
 
-			ZipEntryReader reader = self.open_reader(entry.name, password)!;
+			ZipEntryReader? reader_res = self.open_reader(entry.name, password);
+			if (catch excuse = reader_res) {
+				io::printfn("open_reader failed for %s", entry.name);
+				return excuse~;
+			}
+			ZipEntryReader reader = reader_res;
 			defer (void)reader.close();
 
-			File f = file::open(out_path_str, "wb")!;
+			File? f_res = file::open(out_path_str, "wb");
+			if (catch excuse = f_res) {
+				io::printfn("file::open failed for %s", out_path_str);
+				return excuse~;
+			}
+			File f = f_res;
 			defer (void)f.close();
 			char[65536] buf;
 			while (true)
@@ -562,6 +578,7 @@ fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @
 				if (catch excuse = res)
 				{
 					if (excuse == io::EOF) break;
+					io::printn("reader.read failed");
 					return excuse~;
 				}
 				usz n = res;
@@ -570,7 +587,10 @@ fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @
 			}
 			f.close()!;
 
-			file::set_modified_time(out_path_str, (Time_t)entry.time().to_seconds())!;
+			if (catch excuse = file::set_modified_time(out_path_str, (Time_t)entry.time().to_seconds())) {
+				io::printfn("file::set_modified_time failed for %s", out_path_str);
+				return excuse~;
+			}
 		}
 	}
 
@@ -593,7 +613,10 @@ fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @
 			if (try combined = tmp.tappend(entry.name))
 			{
 				String out_path_str = (String)combined.str_view();
-				file::set_modified_time(out_path_str, (Time_t)entry.time().to_seconds())!;
+				if (catch excuse = file::set_modified_time(out_path_str, (Time_t)entry.time().to_seconds())) {
+					io::printfn("directory file::set_modified_time failed for %s", out_path_str);
+					return excuse~;
+				}
 			}
 		}
 	}
