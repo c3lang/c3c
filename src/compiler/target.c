@@ -330,6 +330,7 @@ static bool os_target_use_thread_local(OsType os)
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_WIN32:
 		case OS_TYPE_WASI:
+		case OS_TYPE_EMSCRIPTEN:
 			return true;
 	}
 	UNREACHABLE
@@ -1213,6 +1214,7 @@ static char *arch_to_target_triple(ArchOsTarget target, LinuxLibc linux_libc)
 		case ELF_XTENSA: return "xtensa-unknown-elf";
 		case WASM32: return "wasm32-unknown-unknown";
 		case WASM64: return "wasm64-unknown-unknown";
+		case EMSCRIPTEN_WASM32: return "wasm32-unknown-emscripten";
 		case ARCH_OS_TARGET_DEFAULT: UNREACHABLE;
 	}
 	UNREACHABLE;
@@ -1591,6 +1593,7 @@ static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type)
 		case OS_TYPE_WIN32:
 			return OBJ_FORMAT_COFF;
 		case OS_TYPE_WASI:
+		case OS_TYPE_EMSCRIPTEN:
 			return OBJ_FORMAT_WASM;
 	}
 	UNREACHABLE
@@ -1643,6 +1646,7 @@ static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_WASI:
+		case OS_TYPE_EMSCRIPTEN:
 			// Use default
 			break;
 		case OS_TYPE_WIN32:
@@ -1820,6 +1824,8 @@ static RelocModel arch_os_reloc_default(ArchType arch, OsType os, EnvironmentTyp
 			case OS_TYPE_ANDROID:
 				return RELOC_BIG_PIC;
 			case OS_TYPE_WASI:
+			case OS_TYPE_EMSCRIPTEN:
+				// Same as System V i386?
 				return RELOC_NONE;
 			case OS_TYPE_FREEBSD:
 			case OS_TYPE_NETBSD:
@@ -1856,6 +1862,7 @@ static RelocModel arch_os_reloc_default(ArchType arch, OsType os, EnvironmentTyp
 			if (arch == ARCH_TYPE_X86) return RELOC_NONE;
 			return RELOC_BIG_PIC;
 		case OS_TYPE_WASI:
+		case OS_TYPE_EMSCRIPTEN:
 			return RELOC_NONE;
 		case OS_TYPE_LINUX:
 		case OS_TYPE_ANDROID:
@@ -1877,6 +1884,7 @@ static bool arch_os_pic_default_forced(ArchType arch, OsType os)
 		case OS_DARWIN_TYPES:
 			return arch == ARCH_TYPE_AARCH64 || arch == ARCH_TYPE_X86_64;
 		case OS_TYPE_WASI:
+		case OS_TYPE_EMSCRIPTEN:
 		case OS_TYPE_UNKNOWN:
 		case OS_TYPE_NONE:
 		case OS_TYPE_FREEBSD:

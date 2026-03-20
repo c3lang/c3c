@@ -895,6 +895,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_TYPE_IOS:
 		case OS_TYPE_TVOS:
 		case OS_TYPE_WASI:
+		case OS_TYPE_EMSCRIPTEN:
 			break;
 		case OS_TYPE_FREEBSD:
 		case OS_TYPE_OPENBSD:
@@ -1014,6 +1015,7 @@ Linker linker_find_linker_type(void)
 		case OS_TYPE_WIN32:
 			return LINKER_LINK_EXE;
 		case OS_TYPE_WASI:
+		case OS_TYPE_EMSCRIPTEN:
 			return LINKER_WASM;
 	}
 	UNREACHABLE

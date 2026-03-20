@@ -729,8 +729,9 @@ void compiler_compile(void)
 		{
 			const char *cc = compiler.build.cc ? compiler.build.cc : default_c_compiler();
 			if (!file_executable_in_path(cc)) system_linker_available = false;
+			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN && !strstr(cc, "emcc")) system_linker_available = false;
 		}
-		bool use_system_linker = system_linker_available && compiler.build.arch_os_target == default_target;
+		bool use_system_linker = system_linker_available && (compiler.build.arch_os_target == default_target || compiler.platform.os == OS_TYPE_EMSCRIPTEN);
 		switch (compiler.build.linker_type)
 		{
 			case LINKER_TYPE_CC:
@@ -1262,6 +1263,7 @@ static int jump_buffer_size()
 			return 39;
 		case WASM32:
 		case WASM64:
+		case EMSCRIPTEN_WASM32:
 			REMINDER("WASM setjmp size is unknown");
 			return 512;
 	}
