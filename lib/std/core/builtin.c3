@@ -328,7 +328,7 @@ bool in_panic @private = false;
 
 fn void default_panic(String message, String file, String function, uint line) @if (!env::NATIVE_STACKTRACE)
 {
-	$if $defined(io::stderr) && env::PANIC_MSG:
+	$if $defined(io::stderr) && env::PANIC_MSG && !env::EMSCRIPTEN:
 		if (in_panic)
 		{
 			io::eprintn("Panic inside of panic.");
@@ -351,7 +351,7 @@ PanicFn panic = &default_panic;
 
 fn void panicf(String fmt, String file, String function, uint line, args...)
 {
-	$if $defined(io::stderr) && env::PANIC_MSG:
+	$if $defined(io::stderr) && env::PANIC_MSG && !env::EMSCRIPTEN:
 		if (in_panic)
 		{
 			io::eprint("Panic inside of panic: ");
@@ -367,6 +367,8 @@ fn void panicf(String fmt, String file, String function, uint line, args...)
 			in_panic = false;
 			panic(s.str_view(), file, function, line);
 		};
+	$else
+		panic(fmt, file, function, line);
 	$endif
 }
 
