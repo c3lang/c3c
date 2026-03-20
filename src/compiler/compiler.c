@@ -817,6 +817,11 @@ void compiler_compile(void)
 			{
 				error_exit("The binary '%s' was unexpectedly not found.", scratch_buffer_to_string());
 			}
+			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN)
+			{
+				OUTF("Emscripten target detected. To run, use 'emrun %s'.\n", name);
+				return;
+			}
 			OUTF("Launching %s", name);
 			FOREACH(const char *, arg, compiler.build.args)
 			{

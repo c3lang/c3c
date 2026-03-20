@@ -665,7 +665,7 @@ static void linker_setup_android(const char ***args_ref, Linker linker_type, boo
 	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");
 	if (is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
 	add_plain_arg("-dynamic-linker"); add_plain_arg("/system/bin/linker64");
-	
+
 	if (linker_type == LINKER_CC) add_plain_arg("-nostartfiles");
 
 	scratch_buffer_clear();
@@ -840,7 +840,7 @@ static void add_linked_libs(const char ***args_ref, const char **libs, bool is_w
 	}
 }
 
-static void linker_setup_emscripten(const char ***args_ref, Linker linker_type)
+static void linker_setup_emscripten(const char ***args_ref, Linker linker_type, const char **files_to_link, unsigned file_count)
 {
 	(void)args_ref;
 	if (linker_type == LINKER_CC)
@@ -850,6 +850,21 @@ static void linker_setup_emscripten(const char ***args_ref, Linker linker_type)
 		{
 			add_plain_arg("-sASSERTIONS=1");
 			add_plain_arg("-sSTACK_OVERFLOW_CHECK=1");
+		}
+		add_plain_arg("-sSTACK_SIZE=1048576");
+		add_plain_arg("-sALLOW_MEMORY_GROWTH=1");
+		add_plain_arg("-sINITIAL_MEMORY=268435456");
+
+		// Auto-detect thread usage.
+		for (unsigned i = 0; i < file_count; i++)
+		{
+			if (strstr(files_to_link[i], "std.thread.os.o"))
+			{
+				OUTN("Thread usage detected for Emscripten: automatically adding '-pthread' and '-sPTHREAD_POOL_SIZE=1'.");
+				add_plain_arg("-pthread");
+				add_plain_arg("-sPTHREAD_POOL_SIZE=1");
+				break;
+			}
 		}
 	}
 }
@@ -910,7 +925,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_TYPE_TVOS:
 		case OS_TYPE_WASI:
 		case OS_TYPE_EMSCRIPTEN:
-			linker_setup_emscripten(args_ref, linker_type);
+			linker_setup_emscripten(args_ref, linker_type, files_to_link, file_count);
 			break;
 		case OS_TYPE_FREEBSD:
 		case OS_TYPE_OPENBSD:

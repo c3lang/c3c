@@ -42,7 +42,8 @@ static const char *wasm_feature_name[] = {
 	[WASM_FEAT_MUTABLE_GLOBALS] = "mutable-globals",
 	[WASM_FEAT_NONTRAPPING_FPTORINT] = "nontrapping-fptoint",
 	[WASM_FEAT_REFERENCE_TYPES] = "reference-types",
-	[WASM_FEAT_SIGN_EXT] = "sign-ext"
+	[WASM_FEAT_SIGN_EXT] = "sign-ext",
+	[WASM_FEAT_ATOMICS] = "atomics"
 };
 
 static const char *arm_feature_name[] = {
@@ -2017,6 +2018,7 @@ static void target_setup_wasm_abi(BuildTarget *target)
 	cpu_features_add_feature_single(&features, WASM_FEAT_NONTRAPPING_FPTORINT);
 	cpu_features_add_feature_single(&features, WASM_FEAT_REFERENCE_TYPES);
 	cpu_features_add_feature_single(&features, WASM_FEAT_SIGN_EXT);
+	if (compiler.platform.os == OS_TYPE_EMSCRIPTEN) cpu_features_add_feature_single(&features, WASM_FEAT_ATOMICS);
 	update_cpu_features(target->cpu_flags, &features, wasm_feature_name, WASM_FEATURE_LAST);
 	cpu_features_set_to_features(features, cpu_feature_zero, NULL, wasm_feature_name, WASM_FEATURE_LAST);
 }
@@ -2138,7 +2140,7 @@ static void update_cpu_features(const char *features, CpuFeatures *cpu_features,
 		}
 		next.ptr++;
 		next.len--;
-		for (int i = 0; i < feature_count; i++)
+		for (int i = 0; i <= feature_count; i++)
 		{
 			const char *feat = feature_names[i];
 			size_t feat_len = strlen(feat);
