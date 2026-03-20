@@ -213,7 +213,12 @@ static const char *exe_name(void)
 		case MINGW_X64:
 			return str_cat(name, ".exe");
 		default:
-			if (arch_is_wasm(compiler.platform.arch)) return str_cat(name, ".wasm");
+			if (arch_is_wasm(compiler.platform.arch))
+			{
+				if (str_has_suffix(name, ".wasm")) return name;
+				if (compiler.platform.os == OS_TYPE_EMSCRIPTEN && (str_has_suffix(name, ".js") || str_has_suffix(name, ".html"))) return name;
+				return str_cat(name, ".wasm");
+			}
 			return name;
 	}
 }

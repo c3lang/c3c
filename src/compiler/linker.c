@@ -840,6 +840,20 @@ static void add_linked_libs(const char ***args_ref, const char **libs, bool is_w
 	}
 }
 
+static void linker_setup_emscripten(const char ***args_ref, Linker linker_type)
+{
+	(void)args_ref;
+	if (linker_type == LINKER_CC)
+	{
+		// In non-optimized builds, we want to enable some debugging flags for Emscripten.
+		if (compiler.build.optlevel == OPTIMIZATION_NONE)
+		{
+			add_plain_arg("-sASSERTIONS=1");
+			add_plain_arg("-sSTACK_OVERFLOW_CHECK=1");
+		}
+	}
+}
+
 static bool linker_setup(const char ***args_ref, const char **files_to_link, unsigned file_count,
                          const char *output_file, Linker linker_type, Linking *linking)
 {
@@ -896,6 +910,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_TYPE_TVOS:
 		case OS_TYPE_WASI:
 		case OS_TYPE_EMSCRIPTEN:
+			linker_setup_emscripten(args_ref, linker_type);
 			break;
 		case OS_TYPE_FREEBSD:
 		case OS_TYPE_OPENBSD:
