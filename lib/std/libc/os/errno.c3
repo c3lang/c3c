@@ -2,9 +2,9 @@ module libc::os @if(env::LIBC);
 import std::core::env;
 
 // Linux
-extern fn int* __errno_location() @if(env::LINUX);
-macro int errno() @if(env::LINUX) => *__errno_location();
-macro void errno_set(int err) @if(env::LINUX) => *(__errno_location()) = err;
+extern fn int* __errno_location() @if(env::LINUX || env::EMSCRIPTEN);
+macro int errno() @if(env::LINUX || env::EMSCRIPTEN) => *__errno_location();
+macro void errno_set(int err) @if(env::LINUX || env::EMSCRIPTEN) => *(__errno_location()) = err;
 
 // Android 9
 extern fn int* __errno() @if(env::ANDROID);

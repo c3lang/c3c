@@ -29,7 +29,7 @@ const CUInt SA_SIGINFO       = env::LINUX || env::ANDROID ? 0x00000004 : 0x0040;
 
 alias Sigset_t @if((env::DARWIN || env::BSD_FAMILY) && !env::NETBSD) = uint;
 alias Sigset_t @if(env::NETBSD) = uint[4];
-alias Sigset_t @if(env::LINUX) = ulong[16];
+alias Sigset_t @if(env::LINUX || env::EMSCRIPTEN) = ulong[16];
 alias Sigset_t @if(env::ANDROID) = ulong;
 alias SigActionFunction =  fn void(CInt, void*, void*);
 
@@ -45,20 +45,20 @@ struct Sigaction
     CInt       sa_flags @if(env::DARWIN || env::BSD_FAMILY );
     Sigset_t   sa_mask  @if(env::DARWIN || env::BSD_FAMILY);
 
-    Sigset_t   sa_mask     @if(env::LINUX || env::ANDROID);
-    CInt       sa_flags    @if(env::LINUX);
-    void*      sa_restorer @if(env::LINUX || env::ANDROID);
+    Sigset_t   sa_mask     @if(env::LINUX || env::ANDROID || env::EMSCRIPTEN);
+    CInt       sa_flags    @if(env::LINUX || env::EMSCRIPTEN);
+    void*      sa_restorer @if(env::LINUX || env::ANDROID || env::EMSCRIPTEN);
 }
 
 struct Stack_t
 {
 	void*   ss_sp;
-	struct @if(!env::LINUX && !env::ANDROID)
+	struct @if(!env::LINUX && !env::ANDROID && !env::EMSCRIPTEN)
 	{
 		usz     ss_size;
 		CInt    ss_flags;
 	}
-	struct @if(env::LINUX || env::ANDROID)
+	struct @if(env::LINUX || env::ANDROID || env::EMSCRIPTEN)
 	{
 		CInt    ss_flags;
 		usz     ss_size;
