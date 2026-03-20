@@ -1,0 +1,75 @@
+// #target: macos-x64
+module test;
+import std;
+enum Abc
+{
+	ABC,
+	DEF,
+	GHI,
+	JKL
+}
+fn int main()
+{
+	Abc foo = ABC;
+	Abc a = foo++;
+	Abc b = ++foo;
+	Abc c = foo--;
+	Abc[<1>] foo2 = { ABC };
+	Abc[<1>] a2 = foo2++;
+	Abc[<1>] b2 = ++foo2;
+	Abc[<1>] c2 = foo2--;
+    return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %foo = alloca i32, align 4
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  %c = alloca i32, align 4
+  %foo2 = alloca <1 x i32>, align 4
+  %a2 = alloca <1 x i32>, align 4
+  %b2 = alloca <1 x i32>, align 4
+  %c2 = alloca <1 x i32>, align 4
+  store i32 0, ptr %foo, align 4
+  %0 = load i32, ptr %foo, align 4
+  %addnsw = add nsw i32 %0, 1
+  %1 = icmp eq i32 %0, 3
+  %enumwrap = select i1 %1, i32 0, i32 %addnsw
+  store i32 %enumwrap, ptr %foo, align 4
+  store i32 %0, ptr %a, align 4
+  %2 = load i32, ptr %foo, align 4
+  %addnsw1 = add nsw i32 %2, 1
+  %3 = icmp eq i32 %2, 3
+  %enumwrap2 = select i1 %3, i32 0, i32 %addnsw1
+  store i32 %enumwrap2, ptr %foo, align 4
+  store i32 %enumwrap2, ptr %b, align 4
+  %4 = load i32, ptr %foo, align 4
+  %subnsw = sub nsw i32 %4, 1
+  %5 = icmp eq i32 %4, 0
+  %enumwrap3 = select i1 %5, i32 3, i32 %subnsw
+  store i32 %enumwrap3, ptr %foo, align 4
+  store i32 %4, ptr %c, align 4
+  store <1 x i32> zeroinitializer, ptr %foo2, align 4
+  %6 = load <1 x i32>, ptr %foo2, align 4
+  %add = add <1 x i32> %6
+  %7 = icmp eq <1 x i32> %6
+  %enumwrap4 = select <1 x i1> %7, <1 x i32>
+  store <1 x i32> %enumwrap4, ptr %foo2, align 4
+  store <1 x i32> %6, ptr %a2, align 4
+  %8 = load <1 x i32>, ptr %foo2, align 4
+  %add5 = add <1 x i32> %8
+  %9 = icmp eq <1 x i32> %8
+  %enumwrap6 = select <1 x i1> %9, <1 x i32>
+  store <1 x i32> %enumwrap6, ptr %foo2, align 4
+  store <1 x i32> %enumwrap6, ptr %b2, align 4
+  %10 = load <1 x i32>, ptr %foo2, align 4
+  %sub = sub <1 x i32> %10
+  %11 = icmp eq <1 x i32> %10, zeroinitializer
+  %enumwrap7 = select <1 x i1> %11, <1 x i32>
+  store <1 x i32> %enumwrap7, ptr %foo2, align 4
+  store <1 x i32> %10, ptr %c2, align 4
+  ret i32 0
+}

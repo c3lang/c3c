@@ -3631,7 +3631,7 @@ INLINE bool type_underlying_is_numeric(Type *type)
 
 INLINE bool type_underlying_may_add_sub(CanonicalType *type)
 {
-	return type->type_kind == TYPE_ENUM || type->type_kind == TYPE_POINTER || type_is_numeric(type);
+	return type->type_kind == TYPE_POINTER || type_is_numeric(type);
 }
 
 INLINE bool type_is_vec(FlatType *type)

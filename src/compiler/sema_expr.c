@@ -82,7 +82,6 @@ static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left,
 static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, Expr *right, OperatorOverload overload, bool *failed_ref);
-static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Expr *left, Type *left_type_flat, Expr *right, Type *right_type_flat, bool *failed_ref,bool
                                       is_assign);
@@ -7512,23 +7511,22 @@ AFTER_ADDR:;
 	return sema_analyse_expr_rvalue(context, expr);
 }
 
-static bool sema_expr_analyse_op_assign_enum_ptr(SemaContext *context, Expr *rhs, Type *flat, Type *base, Type *flat_rhs, bool is_enum, BinaryOp op)
+static bool sema_expr_analyse_op_assign_enum_ptr(SemaContext *context, Expr *rhs, Type *flat, Type *base, Type *flat_rhs, BinaryOp op)
 {
 	if (flat == base)
 	{
 		if (!type_is_integer(flat_rhs))
 		{
 			RETURN_SEMA_ERROR(rhs,
-							  "The right side was '%s' but only integers are valid on the right side of %s when the left side is %s.",
+							  "The right side was '%s' but only integers are valid on the right side of %s when the left side is a pointer.",
 							  type_to_error_string(rhs->type),
-							  token_type_to_string(binaryop_to_token(op)), is_enum ? "an enum" : "a pointer");
+							  token_type_to_string(binaryop_to_token(op)));
 		}
-		Type *to = is_enum ? enum_inner_type(flat) : type_isz;
-		if (!cast_implicit(context, rhs, to, true)) return false;
+		if (!cast_implicit(context, rhs, type_isz, true)) return false;
 	}
 	else
 	{
-		Type *real_type = type_get_vector_from_vector(is_enum ? enum_inner_type(base) : type_isz, flat);
+		Type *real_type = type_get_vector_from_vector(type_isz, flat);
 		if (flat_rhs == type_untypedlist)
 		{
 			if (!cast_implicit(context, rhs, real_type, true)) return false;
@@ -7537,9 +7535,9 @@ static bool sema_expr_analyse_op_assign_enum_ptr(SemaContext *context, Expr *rhs
 		if (!type_is_integer(flat_rhs) && (!type_kind_is_real_vector(flat_rhs->type_kind) || !type_is_integer(flat_rhs->array.base)))
 		{
 			RETURN_SEMA_ERROR(rhs,
-							  "The right side was '%s' but only integers or integer vectors are valid on the right side of %s when the left side is %s.",
+							  "The right side was '%s' but only integers or integer vectors are valid on the right side of %s when the left side is a pointer vector.",
 							  type_to_error_string(rhs->type),
-							  token_type_to_string(binaryop_to_token(op)), is_enum ? "an enum vector" : "a pointer vector");
+							  token_type_to_string(binaryop_to_token(op)));
 		}
 		if (!cast_implicit(context, rhs, real_type, true)) return false;
 	}
@@ -7665,7 +7663,7 @@ SKIP_OVERLOAD_CHECK:;
 BITSTRUCT_OK:
 
 	// 5. Analyse RHS
-	if (base->type_kind == TYPE_ENUM || base->type_kind == TYPE_POINTER )
+	if (base->type_kind == TYPE_POINTER )
 	{
 		if (!sema_analyse_expr_rvalue(context, right)) return false;
 	}
@@ -7686,15 +7684,9 @@ BITSTRUCT_OK:
 	Type *type_rhs_inline = type_flat_for_arithmethics(right->type);
 
 
-	// 5. In the enum case we have to treat this differently.
-	if (base->type_kind == TYPE_ENUM)
-	{
-		if (!sema_expr_analyse_op_assign_enum_ptr(context, right, flat, base, type_rhs_inline, true, expr->binary_expr.operator)) return false;
-		goto END;
-	}
 	if (base->type_kind == TYPE_POINTER)
 	{
-		if (!sema_expr_analyse_op_assign_enum_ptr(context, right, flat, base, type_rhs_inline, false, expr->binary_expr.operator)) return false;
+		if (!sema_expr_analyse_op_assign_enum_ptr(context, right, flat, base, type_rhs_inline, expr->binary_expr.operator)) return false;
 		goto END;
 	}
 
@@ -7879,52 +7871,6 @@ static Type *defer_iptr_cast(Expr *maybe_pointer)
 	return NULL;
 }
 
-static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
-{
-	Type *left_type = type_no_optional(left->type)->canonical;
-	bool is_sub = expr->binary_expr.operator == BINARYOP_SUB;
-	if (left_type->type_kind != TYPE_ENUM)
-	{
-		if (is_sub)
-		{
-			RETURN_SEMA_ERROR(right, "You can't subtract an enum from a value.");
-		}
-		Expr *temp = right;
-		right = left;
-		left = temp;
-		left_type = type_no_optional(left->type)->canonical;
-	}
-
-	// Enum - value / Enum + value
-	sema_expr_convert_enum_to_int(left);
-	if (!cast_implicit(context, right, left->type, true)) return false;
-	expr->type = type_add_optional(left_type, IS_OPTIONAL(left) || IS_OPTIONAL(right));
-	if (expr_both_const_foldable(left, right, BINARYOP_ADD))
-	{
-		Int i;
-		if (is_sub)
-		{
-			i = int_sub(left->const_expr.ixx, right->const_expr.ixx);
-		}
-		else
-		{
-			i = int_add(left->const_expr.ixx, right->const_expr.ixx);
-		}
-		Decl **enums = left_type->decl->enums.values;
-		if (int_is_neg(i) || int_ucomp(i, vec_size(enums), BINARYOP_GE))
-		{
-			if (failed_ref) return *failed_ref = true, false;
-			RETURN_SEMA_ERROR(expr, "This does not result in a valid enum. If you want to do the %s, cast the enum to an integer.", is_sub ? "subtraction" : "addition");
-		}
-		ASSERT_SPAN(expr, left_type->decl->resolve_status == RESOLVE_DONE);
-		expr->const_expr = (ExprConst) { .const_kind = CONST_ENUM, .enum_val = enums[int_to_i64(i)] };
-		expr->expr_kind = EXPR_CONST;
-		expr->resolve_status = RESOLVE_DONE;
-	}
-	return true;
-
-}
-
 INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right, CanonicalType *left_type, Type *cast_to_iptr, bool *failed_ref)
 {
 	Type *right_type = type_no_optional(right->type)->canonical;
@@ -8047,12 +7993,6 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 		return sema_expr_analyse_ptr_sub(context, expr, left, right, left_type, cast_to_iptr, failed_ref);
 	}
 
-	// Enum - Enum and Enum - int
-	if (left_type->type_kind == TYPE_ENUM)
-	{
-		return sema_expr_analyse_enum_add_sub(context, expr, left, right, failed_ref);
-	}
-
 	// 7. Attempt arithmetic promotion, to promote both to a common type.
 	OperatorOverload overload = OVERLOAD_MINUS;
 	if (!sema_binary_arithmetic_promotion(context, left, right, left_type, right_type, expr,
@@ -8156,11 +8096,6 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 
 	Type *left_type = type_no_optional(left->type)->canonical;
 	Type *right_type = type_no_optional(right->type)->canonical;
-
-	if (left_type->type_kind == TYPE_ENUM || right_type->type_kind == TYPE_ENUM)
-	{
-		return sema_expr_analyse_enum_add_sub(context, expr, left, right, failed_ref);
-	}
 
 	// 4. Do a binary arithmetic promotion
 	OperatorOverload overload = OVERLOAD_PLUS;
@@ -9483,6 +9418,43 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 	return true;
 }
 
+INLINE void sema_expr_inc_dec_const_enum(bool dec, Expr *value)
+{
+	Decl *enum_val = value->const_expr.enum_val;
+	Decl **values = enum_val->type->decl->enums.values;
+	unsigned count = vec_size(values);
+	for (int i = 0; i < count; i++)
+	{
+		if (values[i] == enum_val)
+		{
+			int next_val;
+			if (dec)
+			{
+				next_val = (i + count - 1) % count;
+			}
+			else
+			{
+				next_val = (i + 1) % count;
+			}
+			value->const_expr.enum_val = values[next_val];
+			return;
+		}
+	}
+	UNREACHABLE_VOID
+}
+
+INLINE void sema_expr_inc_dec_const_int(bool dec, Expr *value)
+{
+	if (dec)
+	{
+		value->const_expr.ixx = int_sub64(value->const_expr.ixx, 1);
+	}
+	else
+	{
+		value->const_expr.ixx = int_add64(value->const_expr.ixx, 1);
+	}
+}
+
 static inline bool sema_expr_analyse_ct_subscript_incdec(SemaContext *context, Expr *expr, Expr *inner)
 {
 	Decl *ct_var = inner->ct_subscript_expr.var;
@@ -9491,21 +9463,21 @@ static inline bool sema_expr_analyse_ct_subscript_incdec(SemaContext *context, E
 	bool post = expr->expr_kind == EXPR_POST_UNARY;
 	bool dec = expr->unary_expr.operator == UNARYOP_DEC;
 	ASSIGN_EXPR_OR_RET(Expr *value, expr_from_const_expr_at_index(init, index), false);
-	if (!expr_is_const_int(value))
-	{
-		RETURN_SEMA_ERROR(expr, "The indexed type is not an integer.");
-	}
 	if (post)
 	{
 		expr_replace(expr, copy_expr_single(value));
 	}
-	if (dec)
+	if (expr_is_const_int(value))
 	{
-		value->const_expr.ixx = int_sub64(value->const_expr.ixx, 1);
+		sema_expr_inc_dec_const_int(dec, value);
+	}
+	else if (expr_is_const_enum(value))
+	{
+		sema_expr_inc_dec_const_enum(dec, value);
 	}
 	else
 	{
-		value->const_expr.ixx = int_add64(value->const_expr.ixx, 1);
+		RETURN_SEMA_ERROR(expr, "The indexed type is not an integer or enum.");
 	}
 	if (!post)
 	{
@@ -9521,30 +9493,25 @@ static inline bool sema_expr_analyse_ct_incdec(SemaContext *context, Expr *expr,
 
 	Decl *var = inner->ident_expr;
 	Expr *start_value = var->var.init_expr;
-	if (!expr_is_const_int(start_value))
-	{
-		RETURN_SEMA_ERROR(expr, "The compile time variable '%s' does not hold an integer.", var->name);
-	}
-	Expr *end_value = expr_copy(start_value);
-
-	// Make the change.
-	if (expr->unary_expr.operator == UNARYOP_DEC)
-	{
-		end_value->const_expr.ixx = int_sub64(start_value->const_expr.ixx, 1);
-	}
-	else
-	{
-		end_value->const_expr.ixx = int_add64(start_value->const_expr.ixx, 1);
-	}
-	var->var.init_expr = end_value;
+	Expr *end_value = start_value;
 	if (expr->expr_kind == EXPR_POST_UNARY)
 	{
-		expr_replace(expr, start_value);
+		var->var.init_expr = end_value = expr_copy(start_value);
+	}
+	bool is_dec = expr->unary_expr.operator == UNARYOP_DEC;
+	if (expr_is_const_int(start_value))
+	{
+		sema_expr_inc_dec_const_int(is_dec, end_value);
+	}
+	else if (expr_is_const_enum(start_value))
+	{
+		sema_expr_inc_dec_const_enum(is_dec, end_value);
 	}
 	else
 	{
-		expr_replace(expr, end_value);
+		RETURN_SEMA_ERROR(expr, "The compile time variable '%s' does not hold an integer or enum.", var->name);
 	}
+	expr_replace(expr, start_value);
 	return true;
 }
 
@@ -9656,8 +9623,9 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 	// 4. Flatten typedef, enum, distinct, optional
 	Type *type = type_flatten(inner->type);
 
+	if (type->type_kind)
 	// 5. We can only inc/dec numbers or pointers.
-	if (!type_underlying_may_add_sub(type) && !type_kind_is_real_vector(type->type_kind))
+	if (type->type_kind != TYPE_ENUM && !type_underlying_may_add_sub(type) && !type_kind_is_real_vector(type->type_kind))
 	{
 		RETURN_SEMA_ERROR(inner, "The expression must be a vector, enum, number or a pointer.");
 	}
@@ -9666,6 +9634,7 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 	{
 		return sema_analyse_assign_mutate_overloaded_subscript(context, expr, inner, type);
 	}
+
 	// 6. Done, the result is same as the inner type.
 	expr->type = inner->type;
 	return true;
