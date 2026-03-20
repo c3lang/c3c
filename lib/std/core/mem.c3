@@ -548,12 +548,12 @@ macro void @report_heap_allocs_in_scope($enabled = true; @body())
 {
 	$if $enabled:
 		TrackingAllocator tracker;
-		tracker.init(alloc::thread_allocator);
-		Allocator old_allocator = alloc::thread_allocator;
-		alloc::thread_allocator = &tracker;
+		tracker.init(allocators::thread_allocator);
+		Allocator old_allocator = allocators::thread_allocator;
+		allocators::thread_allocator = &tracker;
 		defer
 		{
-			alloc::thread_allocator = old_allocator;
+			allocators::thread_allocator = old_allocator;
 			tracker.print_report();
 			tracker.free();
 		}
@@ -575,10 +575,10 @@ macro void @assert_leak($report = true; @body()) @builtin
 		TrackingAllocator tracker;
 		tracker.init(mem);
 		Allocator old_allocator = mem;
-		alloc::thread_allocator = &tracker;
+		allocators::thread_allocator = &tracker;
 		defer
 		{
-			alloc::thread_allocator = old_allocator;
+			allocators::thread_allocator = old_allocator;
 			defer tracker.free();
 			usz allocated = tracker.allocated();
 			if (allocated)

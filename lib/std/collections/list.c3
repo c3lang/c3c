@@ -426,7 +426,7 @@ fn void List._update_size_change(&self,usz old_size, usz new_size)
 {
 	if (old_size == new_size) return;
 	$if env::ADDRESS_SANITIZER:
-		if (self.allocator.ptr != &alloc::LIBC_ALLOCATOR) return;
+		if (self.allocator.ptr != &allocators::LIBC_ALLOCATOR) return;
 		sanitizer::annotate_contiguous_container(self.entries,
 	                                         &self.entries[self.capacity],
 	                                         &self.entries[old_size],
