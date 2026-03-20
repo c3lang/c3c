@@ -16,7 +16,7 @@ extern fn Errno pthread_equal(Pthread_t this, Pthread_t other);
 extern fn void pthread_exit(void* value_ptr) @noreturn;
 extern fn Errno pthread_join(Pthread_t, void** value_ptr);
 extern fn Errno pthread_kill(Pthread_t, CInt sig);
-extern fn void pthread_once(Pthread_once_t*, OnceFn);
+extern fn CInt pthread_once(Pthread_once_t*, OnceFn);
 extern fn Pthread_t pthread_self();
 extern fn Errno pthread_setcancelstate(CInt state, CInt* oldstate);
 extern fn Errno pthread_setcanceltype(CInt type, CInt* oldtype);

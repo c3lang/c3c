@@ -11,25 +11,23 @@ alias Blkcnt64_t = long;
 
 struct Stat
 {
-	Dev_t st_dev;
-	Ino_t st_ino;
-	Mode_t st_mode;
-	Nlink_t st_nlink;
-	Uid_t st_uid;
-	Gid_t st_gid;
-	Dev_t st_rdev;
-	CInt __pad1;
-	Off_t st_size;
-	Blksize_t st_blksize;
-	CInt __pad2;
-	Blkcnt_t st_blocks;
-	Time_t st_atime;
+	uint st_dev;
+	uint st_mode;
+	uint st_nlink;
+	uint st_uid;
+	uint st_gid;
+	uint st_rdev;
+	long st_size;
+	uint st_blksize;
+	uint st_blocks;
+	long st_atime;
 	long st_atime_nsec;
-	Time_t st_mtime;
+	long st_mtime;
 	long st_mtime_nsec;
-	Time_t st_ctime;
+	long st_ctime;
 	long st_ctime_nsec;
-	CInt[2] __unused;
+	ulong st_ino;
 }
 
 extern fn CInt stat(ZString path, Stat* stat);
+extern fn CInt emscripten_num_logical_cores();

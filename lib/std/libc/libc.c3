@@ -66,6 +66,7 @@ const CInt SIGTERM = 15;
 alias Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
 alias Off_t = $typefrom(env::WIN32 ? int.typeid : isz.typeid);
 
+
 module libc @if(env::LIBC);
 
 extern fn void abort();
@@ -118,7 +119,7 @@ extern fn CLong labs(CLong x);
 extern fn LongDivResult ldiv(CLong number, CLong denom);
 extern fn Tm* localtime(Time_t* timer);
 extern fn Tm* localtime_r(Time_t* timer, Tm* result) @if(!env::WIN32 && !env::NETBSD);
-extern fn void longjmp(JmpBuf* buffer, CInt value) @if(!env::NETBSD && !env::OPENBSD);
+extern fn void longjmp(JmpBuf* buffer, CInt value) @if(!env::NETBSD && !env::OPENBSD && !env::EMSCRIPTEN);
 extern fn void* malloc(usz size);
 extern fn void* memchr(void* str, CInt c, usz n);
 extern fn CInt memcmp(void* buf1, void* buf2, usz count);
@@ -144,7 +145,7 @@ extern fn void rewind(CFile stream);
 extern fn CInt scanf(ZString format, ...);
 extern fn void setbuf(CFile stream, char* buffer);
 extern fn int setenv(ZString name, ZString value, CInt overwrite);
-extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32 && !env::NETBSD && !env::OPENBSD);
+extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32 && !env::NETBSD && !env::OPENBSD && !env::EMSCRIPTEN);
 extern fn void setvbuf(CFile stream, char* buf, CInt type, usz size);
 extern fn SignalFunction signal(CInt sig, SignalFunction function);
 extern fn CInt snprintf(char* buffer, usz size, ZString format, ...);
@@ -207,6 +208,20 @@ macro CFile stdin() => __stdin;
 macro CFile stdout() => __stdout;
 macro CFile stderr() => __stderr;
 
+module libc @if(env::EMSCRIPTEN);
+fn int setjmp(JmpBuf* ptr) @cname("setjmp") @nostrip
+{
+	return 0;
+}
+fn void longjmp(JmpBuf* ptr, int i) @cname("longjmp") @nostrip
+{
+	unreachable("longjmp is not supported on Emscripten yet");
+}
+
+
+
+
+
 module libc @if(env::NETBSD || env::OPENBSD);
 extern fn int fcntl(CInt socket, int cmd, ...);
 extern fn int _setjmp(void*);
@@ -255,12 +270,12 @@ module libc @if(env::NO_LIBC);
 import std::core::mem;
 
 
-fn void longjmp(JmpBuf* buffer, CInt value) @weak @cname("longjmp") @nostrip
+fn void longjmp(JmpBuf* buffer, CInt value) @weak @cname("longjmp") @nostrip @if(!env::EMSCRIPTEN)
 {
 	unreachable("longjmp unavailable");
 }
 
-fn CInt setjmp(JmpBuf* buffer) @weak @cname("setjmp") @nostrip
+fn CInt setjmp(JmpBuf* buffer) @weak @cname("setjmp") @nostrip @if(!env::EMSCRIPTEN)
 {
 	unreachable("setjmp unavailable");
 }

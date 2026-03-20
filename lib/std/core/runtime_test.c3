@@ -83,7 +83,7 @@ fn bool terminal_has_ansi_codes() @private => @pool()
 	{
 		if (v.contains("xterm") || v.contains("vt100") || v.contains("screen")) return true;
 	}
-	$if env::WIN32 || env::NO_LIBC:
+	$if env::WIN32 || env::NO_LIBC || env::EMSCRIPTEN:
 		return false;
 	$else
 		return io::stdout().isatty();

@@ -69,3 +69,13 @@ fn uint num_cpu()
 	if (count < 1) count = 1;
 	return count;
 }
+
+module std::os @if(env::EMSCRIPTEN);
+import libc;
+
+fn uint num_cpu()
+{
+	uint count = (uint)libc::emscripten_num_logical_cores();
+	if (count < 1) count = 1;
+	return count;
+}
