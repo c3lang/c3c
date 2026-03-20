@@ -297,7 +297,7 @@ fn void? LinkedBlockingQueue.push_timeout(&self, Value value, Duration timeout)
         	while (self.capacity > 0 && self.count >= self.capacity)
 			{
         		if (end <= time::now()) break;
-				if (catch self.not_empty.wait_until(&self.lock, end)) break;
+				if (catch self.not_full.wait_until(&self.lock, end)) break;
 			}
 			if (self.capacity > 0 && self.count >= self.capacity) return CAPACITY_EXCEEDED~;
 		}
