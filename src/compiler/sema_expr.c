@@ -2550,10 +2550,14 @@ NEXT_FLAG:
 					RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer, char array or slice here.");
 				}
 				goto NEXT;
+			case 'u':
+				RETURN_SEMA_ERROR(actual_args[format_index], "Format strings do not support '%%u'. if you want to print an unsigned number, just use '%%d'.");
+			case ' ':
+				RETURN_SEMA_ERROR(actual_args[format_index], "The format string contains a '%%' that isn't followed by a format declaration, if you want to use '%%' in a format string you need to escape it by typing '%%%%'.");
 			default:
 				if (c > 31 && c < 127)
 				{
-					RETURN_SEMA_ERROR(actual_args[format_index], "Unexpected character '%c' in format declaration.", c);
+					RETURN_SEMA_ERROR(actual_args[format_index], "Unexpected escape sequence '%%%c' in format declaration.", c);
 				}
 				RETURN_SEMA_ERROR(actual_args[format_index], "Unexpected character in format declaration.", c);
 		}
