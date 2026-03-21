@@ -563,7 +563,7 @@ fn void Blake3Output.root_bytes(&self, usz seek, char[] into)
 //
 //
 macro uint @popcnt(#x) @local => (uint)#x.popcount();
-macro uint @highest_one(#x) @local => 63 ^ (uint)#x.clz();
+macro uint @highest_one(#x) @local => ((uint)$typeof(#x).sizeof * 8u - 1u) ^ (uint)#x.clz();
 macro usz @round_down_to_power_of_2(#x) @local => (usz)1 << @highest_one(#x | 1);
 
 macro left_subtree_len(usz input_len) @local
