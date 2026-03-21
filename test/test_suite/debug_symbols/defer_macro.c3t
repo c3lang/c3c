@@ -578,7 +578,7 @@ entry:
 
 get_dtable:                                       ; preds = %next_parent, %entry
   %typeid = phi ptr [ %0, %entry ], [ %parent_ptr, %next_parent ]
-  %dtable_ref = getelementptr inbounds nuw %.introspect, ptr %typeid, i32 0, i32 2
+  %dtable_ref = getelementptr inbounds
   %dtable = load ptr, ptr %dtable_ref, align 8
   br label %check
 
