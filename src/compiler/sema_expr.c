@@ -154,7 +154,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, Expr *call, CalledDecl *callee);
 static inline bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional, bool *no_match_ref);
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
-static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
+static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call, bool *no_match_ref);
 static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end, bool *missing_ref);
 static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions, Expr *expr, unsigned insert_point);
 static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr);
@@ -3361,7 +3361,7 @@ NO_MATCH_REF:
 	return false;
 }
 
-static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call)
+static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call, bool *no_match_ref)
 {
 	Decl *macro = macro_context->current_macro;
 	ASSERT_SPAN(call, macro && macro->func_decl.body_param);
@@ -3396,7 +3396,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 	{
 		Decl *param = params[i];
 		Expr *expr = args[i];
-		if (!sema_analyse_parameter(macro_context, expr, param, body_decl, &has_optional_arg, NULL, true, false))
+		if (!sema_analyse_parameter(macro_context, expr, param, body_decl, &has_optional_arg, no_match_ref, true, false))
 		{
 			return false;
 		}
@@ -3833,7 +3833,7 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool
 	switch (func_expr->expr_kind)
 	{
 		case EXPR_MACRO_BODY_EXPANSION:
-			return sema_call_analyse_body_expansion(context, expr);
+			return sema_call_analyse_body_expansion(context, expr, no_match_ref);
 		case EXPR_MEMBER_GET:
 			return sema_call_analyse_member_get(context, expr);
 		case EXPR_MEMBER_SET:

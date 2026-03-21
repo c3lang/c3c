@@ -76,6 +76,7 @@
 - When checking aliases `alias FOO = _BAR` the compiler would incorrectly would say that `_BAR` wasn't a constant.
 - Wasm32 builds crash on startup (unreachable!) due to atexit signature mismatch #3040
 - `@nodiscard`, `@maydiscard` and `@noreturn` weren't properly handled for function type declarations.
+- `$defined` with body expansion would not correctly check if parameters were the right type.
 
 ## 0.7.10 Change list
 
