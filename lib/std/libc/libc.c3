@@ -209,17 +209,17 @@ macro CFile stdout() => __stdout;
 macro CFile stderr() => __stderr;
 
 module libc @if(env::EMSCRIPTEN);
+import std::os;
 fn int setjmp(JmpBuf* ptr) @cname("setjmp") @nostrip
 {
 	return 0;
 }
 fn void longjmp(JmpBuf* ptr, int i) @cname("longjmp") @nostrip
 {
-	unreachable("longjmp is not supported on Emscripten yet");
+	// longjmp cannot jump across WASM frames; exit with the given value instead.
+	// Using unreachable() here would cause infinite recursion in the test framework.
+	os::exit(i);
 }
-
-
-
 
 
 module libc @if(env::NETBSD || env::OPENBSD);
