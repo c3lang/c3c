@@ -1,4 +1,4 @@
-module std::core::mem::allocator;
+module std::core::mem::allocators;
 import std::io, std::math;
 
 <*
@@ -45,7 +45,7 @@ macro bool ExtraPage.is_aligned(&self) => self.size & PAGE_IS_ALIGNED == PAGE_IS
 *>
 fn BackedArenaAllocator*? new_backed_allocator(usz size, Allocator allocator)
 {
-	BackedArenaAllocator* temp = allocator::alloc_with_padding(allocator, BackedArenaAllocator, size)!;
+	BackedArenaAllocator* temp = alloc::alloc_with_padding(allocator, BackedArenaAllocator, size)!;
 	temp.last_page = null;
 	temp.backing_allocator = allocator;
 	temp.used = 0;
@@ -57,7 +57,7 @@ fn void BackedArenaAllocator.destroy(&self)
 {
 	self.reset(0);
 	if (self.last_page) (void)_free_page(self, self.last_page);
-	allocator::free(self.backing_allocator, self);
+	alloc::free(self.backing_allocator, self);
 }
 
 fn usz BackedArenaAllocator.mark(&self) => self.used;
@@ -181,11 +181,11 @@ fn void*? BackedArenaAllocator.acquire(&self, usz size, AllocInitType init_type,
 		usz total_alloc_size = mem::aligned_offset(ExtraPage.sizeof + size, alignment);
 		if (init_type == ZERO)
 		{
-			mem = allocator::calloc_aligned(self.backing_allocator, total_alloc_size, alignment)!;
+			mem = alloc::calloc_aligned(self.backing_allocator, total_alloc_size, alignment)!;
 		}
 		else
 		{
-			mem = allocator::malloc_aligned(self.backing_allocator, total_alloc_size, alignment)!;
+			mem = alloc::malloc_aligned(self.backing_allocator, total_alloc_size, alignment)!;
 		}
 		void* start = mem;
 		mem += mem::aligned_offset(ExtraPage.sizeof, alignment);

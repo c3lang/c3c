@@ -12,6 +12,7 @@
 module std::compression::zip;
 import std::io, std::collections::list, std::hash::crc32, std::time, std::math;
 import std::encoding::codepage, std::compression::deflate;
+import std::crypto::aes, std::hash::sha1;
 import libc;
 
 faultdef
@@ -20,6 +21,8 @@ faultdef
 	CORRUPTED_DATA,
 	ENTRY_NOT_FOUND,
 	ENCRYPTED_FILE,
+	PASSWORD_NEEDED,
+	PASSWORD_MISMATCH,
 	UNSUPPORTED_METHOD;
 
 <*
@@ -57,6 +60,7 @@ constdef ZipMethod : UShortLE
 {
 	STORE = {0},
 	DEFLATE = {8},
+	AEX = {99},
 }
 
 <*
@@ -75,7 +79,7 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 
 		ZipArchive archive;
 		archive.allocator = allocator;
-		archive.file = allocator::new(allocator, File, f);
+		archive.file = alloc::new(allocator, File, f);
 		archive.entries.init(allocator);
 		archive.path = path.copy(allocator);
 		archive.mode = mode.copy(allocator);
@@ -124,15 +128,15 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 
 	ZipArchive archive;
 	archive.allocator = allocator;
-	archive.file = allocator::new(allocator, File, f);
+	archive.file = alloc::new(allocator, File, f);
 	archive.entries.init(allocator);
 	archive.path = path.copy(allocator);
 	archive.mode = mode.copy(allocator);
 
 	if (eocd.comment_len.val > 0)
 	{
-		char[] comment_data = allocator::alloc_array(allocator, char, (usz)eocd.comment_len.val);
-		defer allocator::free(allocator, comment_data);
+		char[] comment_data = alloc::alloc_array(allocator, char, (usz)eocd.comment_len.val);
+		defer alloc::free(allocator, comment_data);
 		if (archive.file.read(comment_data)! == (usz)eocd.comment_len.val)
 		{
 			archive.comment = codepage::decode(allocator, comment_data, CP437)!!;
@@ -180,10 +184,10 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 		if (io::read_any(archive.file, &cdh)! != ZipCDH.sizeof) break;
 		if (cdh.signature.val != ZIP_CDH_SIG) break;
 
-		char[] raw_name = allocator::alloc_array(allocator, char, cdh.filename_len.val);
+		char[] raw_name = alloc::alloc_array(allocator, char, cdh.filename_len.val);
 		if (archive.file.read(raw_name)! != (usz)cdh.filename_len.val)
 		{
-			allocator::free(allocator, raw_name);
+			alloc::free(allocator, raw_name);
 			break;
 		}
 
@@ -196,13 +200,13 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 		else
 		{
 			name = (String)codepage::decode(allocator, raw_name, CP437)!!;
-			allocator::free(allocator, raw_name.ptr);
+			alloc::free(allocator, raw_name.ptr);
 		}
 
 		char[] extra_field;
 		if (cdh.extra_field_len.val > 0)
 		{
-			extra_field = allocator::alloc_array(allocator, char, cdh.extra_field_len.val);
+			extra_field = alloc::alloc_array(allocator, char, cdh.extra_field_len.val);
 			archive.file.read(extra_field)!;
 		}
 
@@ -243,7 +247,7 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 				reader.set_cursor(size, FROM_CURSOR)!;
 			}
 		}
-		if (extra_field.len > 0) allocator::free(allocator, extra_field);
+		if (extra_field.len > 0) alloc::free(allocator, extra_field);
 
 		bool is_directory = name.ends_with("/") || name.ends_with("\\");
 		if (!is_directory)
@@ -292,7 +296,7 @@ fn ZipArchive? recover(Allocator allocator, String path)
 
 	ZipArchive archive = {
 		.allocator = allocator,
-		.file = allocator::new(allocator, File, f),
+		.file = alloc::new(allocator, File, f),
 		.path = path.copy(allocator),
 		.mode = "r".copy(allocator)
 	};
@@ -316,10 +320,10 @@ fn ZipArchive? recover(Allocator allocator, String path)
 		if (archive.file.read(((char*)&lfh.version_needed)[:ZipLFH.sizeof - 4])! != ZipLFH.sizeof - 4) break;
 		lfh.signature.val = ZIP_LFH_SIG;
 
-		char[] raw_name = allocator::alloc_array(allocator, char, lfh.filename_len.val);
+		char[] raw_name = alloc::alloc_array(allocator, char, lfh.filename_len.val);
 		if (archive.file.read(raw_name)! != (usz)lfh.filename_len.val)
 		{
-			allocator::free(allocator, raw_name);
+			alloc::free(allocator, raw_name);
 			break;
 		}
 
@@ -331,7 +335,7 @@ fn ZipArchive? recover(Allocator allocator, String path)
 		else
 		{
 			name = (String)codepage::decode(allocator, raw_name, CP437)!!;
-			allocator::free(allocator, raw_name.ptr);
+			alloc::free(allocator, raw_name.ptr);
 		}
 
 		archive.file.set_cursor(lfh.extra_field_len.val, FROM_CURSOR)!!;
@@ -369,13 +373,13 @@ fn void? ZipArchive.close(&self)
 
 		foreach (&entry : self.entries)
 		{
-			allocator::free(self.allocator, entry.name);
+			alloc::free(self.allocator, entry.name);
 		}
 		self.entries.free();
-		allocator::free(self.allocator, self.mode);
-		allocator::free(self.allocator, self.path);
-		if (self.comment.len > 0) allocator::free(self.allocator, self.comment);
-		if (self.file) allocator::free(self.allocator, self.file);
+		alloc::free(self.allocator, self.mode);
+		alloc::free(self.allocator, self.path);
+		if (self.comment.len > 0) alloc::free(self.allocator, self.comment);
+		if (self.file) alloc::free(self.allocator, self.file);
 	}
 
 	if (self.mode.starts_with("w"))
@@ -409,7 +413,7 @@ fn void? ZipArchive.close(&self)
 
 				// Header(4) + Uncomp(8) + Comp(8) + Offset(8)
 				ushort extra_size = 28;
-				extra_data = allocator::alloc_array(self.allocator, char, extra_size);
+				extra_data = alloc::alloc_array(self.allocator, char, extra_size);
 				bitorder::write(ZIP64_EXTRA_ID, extra_data[:2], UShortLE);
 				bitorder::write((ushort)(extra_size - 4), extra_data[2:2], UShortLE);
 				bitorder::write(entry.uncompressed_size, extra_data[4:8], ULongLE);
@@ -434,7 +438,7 @@ fn void? ZipArchive.close(&self)
 			if (is_zip64)
 			{
 				self.file.write(extra_data)!;
-				allocator::free(self.allocator, extra_data);
+				alloc::free(self.allocator, extra_data);
 			}
 
 			ulong entry_record_size = (ulong)(ZipCDH.sizeof + entry.name.len + cdh.extra_field_len.val);
@@ -480,12 +484,12 @@ fn void? ZipArchive.close(&self)
 				encoded_comment = res;
 				if (encoded_comment.len > 0xFFFF)
 				{
-					allocator::free(self.allocator, encoded_comment.ptr);
+					alloc::free(self.allocator, encoded_comment.ptr);
 					return INVALID_ARGUMENT~;
 				}
 			}
 		}
-		defer if (encoded_comment.ptr) allocator::free(self.allocator, encoded_comment);
+		defer if (encoded_comment.ptr) alloc::free(self.allocator, encoded_comment);
 
 		ZipEOCD eocd = {
 			.signature.val = ZIP_EOCD_SIG,
@@ -508,8 +512,9 @@ fn void? ZipArchive.close(&self)
 <*
  Extracts the entire archive to the specified directory.
  @param output_dir : `The directory to extract to.`
+ @param password : `The password if a file is encrypted.`
 *>
-fn void? ZipArchive.extract(&self, String output_dir) => @pool()
+fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @pool()
 {
 	for (usz i = 0; i < self.count(); i++)
 	{
@@ -545,7 +550,7 @@ fn void? ZipArchive.extract(&self, String output_dir) => @pool()
 				}
 			}
 
-			ZipEntryReader reader = self.open_reader(entry.name)!;
+			ZipEntryReader reader = self.open_reader(entry.name, password)!;
 			defer (void)reader.close();
 
 			File f = file::open(out_path_str, "wb")!;
@@ -624,37 +629,21 @@ fn ZipEntry? ZipArchive.stat(&self, String filename)
  Reads an entire file from the archive.
  @param allocator : `The allocator to use.`
  @param filename : `The name of the file to read.`
+ @param password : `The password if file is encrypted.`
  @return `The uncompressed file data.`
 *>
-fn char[]? ZipArchive.read_file_all(&self, Allocator allocator, String filename, )
+fn char[]? ZipArchive.read_file_all(&self, Allocator allocator, String filename, String password = "")
 {
-	ZipEntryReader reader = self.open_reader(filename)!;
+	ZipEntryReader reader = self.open_reader(filename, password)!;
 	defer (void)reader.close();
 	ZipEntry entry = self.stat(filename)!;
 
 	char[] data;
-	defer catch if (data.ptr) allocator::free(allocator, data);
+	defer catch if (data.ptr) alloc::free(allocator, data);
 
-	if (reader.method == STORE)
-	{
-		if (reader.size > (ulong)usz.max) return io::OVERFLOW~;
-		data = allocator::alloc_array(allocator, char, (usz)reader.size);
-		reader.read(data)!;
-	}
-	else if (reader.method == DEFLATE)
-	{
-		if (reader.adapter.start_offset > (ulong)isz.max) return io::OVERFLOW~;
-		self.file.set_cursor(reader.adapter.start_offset)!;
-		if (entry.compressed_size > (ulong)usz.max) return io::OVERFLOW~;
-		char[] compressed = allocator::alloc_array(allocator, char, (usz)entry.compressed_size);
-		defer allocator::free(allocator, compressed);
-		self.file.read(compressed)!;
-		data = deflate::decompress(allocator, compressed)!;
-	}
-	else
-	{
-		return UNSUPPORTED_METHOD~;
-	}
+	data = io::read_fully(allocator, &reader)!;
+
+	if (reader.adapter.aex == 2) return data;
 
 	Crc32 crc;
 	crc.init();
@@ -722,8 +711,8 @@ fn usz? ZipEntryReader.read(&self, char[] buffer) @dynamic
 	{
 		if (self.inflater == null)
 		{
-			self.inflater = allocator::new(self.adapter.archive.allocator, Inflater);
-			self.bit_buf = allocator::alloc_array(self.adapter.archive.allocator, char, 8192);
+			self.inflater = alloc::new(self.adapter.archive.allocator, Inflater);
+			self.bit_buf = alloc::alloc_array(self.adapter.archive.allocator, char, 8192);
 			self.inflater.init(&self.adapter, self.bit_buf[:8192]);
 		}
 
@@ -740,8 +729,8 @@ fn void? ZipEntryReader.close(&self) @dynamic
 {
 	if (self.method == DEFLATE && self.inflater != null)
 	{
-		allocator::free(self.adapter.archive.allocator, self.bit_buf);
-		allocator::free(self.adapter.archive.allocator, self.inflater);
+		alloc::free(self.adapter.archive.allocator, self.bit_buf);
+		alloc::free(self.adapter.archive.allocator, self.inflater);
 		self.inflater = null;
 		self.bit_buf = null;
 	}
@@ -803,14 +792,14 @@ fn void? ZipEntryReader.set_cursor(&self, long offset, SeekOrigin seek) @dynamic
 <*
  Opens a reader for an entry.
  @param filename : `The name of the file to read.`
+ @param password : `The password if file is encrypted.`
  @return `A reader for the entry's data.`
 *>
-fn ZipEntryReader? ZipArchive.open_reader(&self, String filename)
+fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String password = "")
 {
 	ZipEntry? entry = self.stat(filename);
 	if (catch entry) return ENTRY_NOT_FOUND~;
 
-	if (entry.is_encrypted) return ENCRYPTED_FILE~;
 
 	self.file.flush()!;
 	if (entry.offset > (ulong)isz.max) return io::OVERFLOW~;
@@ -832,6 +821,86 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename)
 		: entry.compressed_size;
 	reader.size = entry.uncompressed_size;
 	reader.method = entry.method;
+
+	// AE-X decryption.
+	if (entry.is_encrypted)
+	{
+		if (entry.method != AEX) return ENCRYPTED_FILE~;
+		if (!password.len) return PASSWORD_NEEDED~;
+
+		char aex_strength;
+		ushort aex_method;
+		ushort aex_version;
+
+		self.file.set_cursor(lfh.filename_len.val, FROM_CURSOR)!;
+		long end = self.file.cursor()! + lfh.extra_field_len.val;
+		while (self.file.cursor()! < end)
+		{
+			ushort id = io::read_le_ushort(self.file)!;
+			ushort size = io::read_le_ushort(self.file)!;
+
+			if (id == AEX_EXTRA_ID)
+			{
+				aex_version = io::read_le_ushort(self.file)!;
+				io::read_le_ushort(self.file)!;
+				aex_strength = self.file.read_byte()!;
+				aex_method = io::read_le_ushort(self.file)!;
+				continue;
+			}
+			self.file.set_cursor(size, FROM_CURSOR)!;
+		}
+		if (!aex_version) return CORRUPTED_DATA~;
+
+		AesType aes_type;
+		usz key_len;
+		switch (aex_strength)
+		{
+			case 1: key_len = 16; aes_type = AES128;
+			case 2: key_len = 24; aes_type = AES192;
+			case 3: key_len = 32; aes_type = AES256;
+			default: return CORRUPTED_DATA~;
+		}
+		usz salt_len = key_len / 2;
+
+		@pool()
+		{
+			char[] buf = mem::temp_array(char, salt_len + 2);
+			self.file.read(buf)!;
+
+			if (buf.len < salt_len + 2) return CORRUPTED_DATA~;
+
+			char[] salt        = buf[0:salt_len];
+			char[] pv_stored   = buf[salt_len:2];
+
+			usz cipher_len = (usz)entry.compressed_size - salt_len - 2 - 10;
+			char[] cipher = mem::temp_array(char, cipher_len);
+			self.file.read(cipher)!;
+
+			char[] hmac_stored = mem::temp_array(char, 10);
+			self.file.read(hmac_stored)!;
+
+			usz dk_len = key_len * 2 + 2;
+			char[] dk = mem::temp_array(char, dk_len);
+			sha1::pbkdf2(password, salt, 1000, dk);
+
+			char[] aes_key = dk[0:key_len ];
+			char[] mac_key = dk[key_len:key_len];
+			char[] pv_derived = dk[key_len*2:2];
+
+			if (pv_stored != pv_derived) return PASSWORD_MISMATCH~;
+
+			char[*] hmac_calc = sha1::hmac(mac_key, cipher);
+			if (hmac_stored[:10] != hmac_calc[:10]) return CORRUPTED_DATA~;
+
+			char[16] iv = { [0] = 1 };
+			reader.adapter.aes.init(aes_type, aes_key, iv[..], CTR_LE);
+		};
+
+		reader.adapter.aex = aex_version;
+		reader.adapter.start_offset += (ulong)salt_len + 2;
+		reader.adapter.size = entry.compressed_size - (ulong)salt_len - 2 - 10;
+		reader.method = (ZipMethod)aex_method;
+	}
 
 	return reader;
 }
@@ -912,7 +981,7 @@ fn ZipEntryWriter? ZipArchive.open_writer(&self, String filename, ZipMethod meth
 	ZipEntryWriter writer;
 	writer.archive = self;
 	writer.entry.name = filename.copy(self.allocator);
-	defer catch allocator::free(self.allocator, writer.entry.name);
+	defer catch alloc::free(self.allocator, writer.entry.name);
 
 	writer.entry.method = method;
 	writer.entry.offset = self.file.cursor()!;
@@ -955,6 +1024,10 @@ struct ArchiveStreamAdapter (InStream) @private
 	ulong start_offset;
 	ulong size;
 	ulong pos;
+
+	// For AEX decryption
+	ushort aex; // 0: unencrypted, 1: AE-1, 2: AE-2
+	Aes aes;
 }
 
 fn usz? ArchiveStreamAdapter.read(&self, char[] buffer) @dynamic
@@ -970,6 +1043,7 @@ fn usz? ArchiveStreamAdapter.read(&self, char[] buffer) @dynamic
 	// Note: ZipArchive shared file handle access is not thread-safe.
 	self.archive.file.set_cursor(abs_pos)!;
 	usz n = self.archive.file.read(buffer[:to_read])!;
+	if (self.aex) self.aes.decrypt_buffer(buffer[:n], buffer[:n]);
 	self.pos += n;
 	return n;
 }
@@ -1040,6 +1114,7 @@ const uint ZIP64_EOCD_SIG @private = 0x06064B50;
 const uint ZIP64_LOCATOR_SIG @private = 0x07064B50;
 
 const ushort ZIP64_EXTRA_ID @private = 0x0001;
+const ushort AEX_EXTRA_ID @private = 0x9901;
 
 struct Zip64EOCD @packed @private
 {

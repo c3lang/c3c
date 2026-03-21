@@ -44,7 +44,7 @@ fn InterfaceList* InterfaceList.init(&self, Allocator allocator, usz initial_cap
 	if (initial_capacity > 0)
 	{
 		initial_capacity = math::next_power_of_2(initial_capacity);
-		self.entries = allocator::alloc_array(allocator, Type, initial_capacity);
+		self.entries = alloc::alloc_array(allocator, Type, initial_capacity);
 	}
 	else
 	{
@@ -73,7 +73,7 @@ fn bool InterfaceList.is_initialized(&self) @inline => self.allocator != null;
 macro void InterfaceList.push(&self, element)
 {
 	if (!self.allocator) self.allocator = tmem;
-	interfacelist_append(self, allocator::clone(self.allocator, element));
+	interfacelist_append(self, alloc::clone(self.allocator, element));
 }
 
 <*
@@ -81,7 +81,7 @@ macro void InterfaceList.push(&self, element)
 *>
 fn void InterfaceList.free_element(&self, Type element) @inline
 {
-	allocator::free(self.allocator, element.ptr);
+	alloc::free(self.allocator, element.ptr);
 }
 
 <*
@@ -95,7 +95,7 @@ fn Type? InterfaceList.copy_pop(&self, Allocator allocator)
 {
 	if (!self.size) return NO_MORE_ELEMENT~;
 	defer self.free_element(self.entries[self.size]);
-	return (Type)allocator::clone_any(allocator, self.entries[--self.size]);
+	return (Type)alloc::clone_any(allocator, self.entries[--self.size]);
 }
 
 <*
@@ -155,7 +155,7 @@ fn Type? InterfaceList.copy_pop_first(&self, Allocator allocator)
 	if (!self.size) return NO_MORE_ELEMENT~;
 	defer self.free_element(self.entries[self.size]);
 	defer self.remove_at(0);
-	return (Type)allocator::clone_any(allocator, self.entries[0]);
+	return (Type)alloc::clone_any(allocator, self.entries[0]);
 }
 
 <*
@@ -190,7 +190,7 @@ fn void InterfaceList.add_all(&self, InterfaceList* other_list)
 	self.reserve(other_list.size);
 	foreach (value : other_list)
 	{
-		self.entries[self.size++] = (Type)allocator::clone_any(self.allocator, value);
+		self.entries[self.size++] = (Type)alloc::clone_any(self.allocator, value);
 	}
 }
 
@@ -244,7 +244,7 @@ macro void InterfaceList.insert_at(&self, usz index, type)
 		self.push(type);
 		return;
 	}
-	Type value = allocator::clone(self.allocator, type);
+	Type value = alloc::clone(self.allocator, type);
 	self._insert_at(self, index, value);
 }
 
@@ -330,7 +330,7 @@ fn void InterfaceList.free(&self)
 {
 	if (!self.allocator) return;
 	self.clear();
-	allocator::free(self.allocator, self.entries);
+	alloc::free(self.allocator, self.entries);
 	self.capacity = 0;
 	self.entries = null;
 }
@@ -430,7 +430,7 @@ fn void InterfaceList.reserve(&self, usz min_capacity)
 	if (self.capacity >= min_capacity) return;
 	if (!self.allocator) self.allocator = tmem;
 	min_capacity = math::next_power_of_2(min_capacity);
-	self.entries = allocator::realloc(self.allocator, self.entries, Type.sizeof * min_capacity);
+	self.entries = alloc::realloc(self.allocator, self.entries, Type.sizeof * min_capacity);
 	self.capacity = min_capacity;
 }
 
@@ -450,7 +450,7 @@ macro void InterfaceList.set(&self, usz index, value)
 		return;
 	}
 	self.free_element(self.entries[index]);
-	self.entries[index] = allocator::clone(self.allocator, value);
+	self.entries[index] = alloc::clone(self.allocator, value);
 }
 
 // -- private

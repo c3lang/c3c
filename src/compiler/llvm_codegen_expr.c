@@ -1347,8 +1347,13 @@ static void llvm_prune_optional(GenContext *c, LLVMBasicBlockRef discard_fail)
 
 	LLVMValueRef maybe_br = LLVMGetUser(use);
 	// Expect a br instruction.
+
+#if LLVM_VERSION_MAJOR >= 23
+	if (!LLVMIsAInstruction(maybe_br) || LLVMGetInstructionOpcode(maybe_br) != LLVMCondBr) return;
+#else
 	if (!LLVMIsAInstruction(maybe_br) || LLVMGetInstructionOpcode(maybe_br) != LLVMBr) return;
 	if (LLVMGetNumOperands(maybe_br) != 3) return;
+#endif
 	// We expect a single user.
 	LLVMUseRef other_use = LLVMGetNextUse(use);
 	while (other_use)
@@ -6908,8 +6913,8 @@ static void llvm_emit_swizzle_from_value(GenContext *c, LLVMValueRef vector_valu
 {
 	LLVMTypeRef result_type = llvm_get_type(c, expr->type);
 	unsigned vec_len = LLVMGetVectorSize(result_type);
-	LLVMValueRef mask_val[4];
-	ASSERT(vec_len <= 4);
+	LLVMValueRef mask_val[256];
+	ASSERT(vec_len <= 256);
 	const char *sw_ptr = expr->swizzle_expr.swizzle;
 	for (unsigned i = 0; i < vec_len; i++)
 	{
@@ -7113,7 +7118,24 @@ void llvm_emit_scalar_to_vector(GenContext *c, BEValue *value, Expr *expr)
 void llvm_emit_vec_to_array(GenContext *c, BEValue *value, Type *type)
 {
 	LLVMValueRef val = llvm_load_value_store(c, value);
+	LLVMTypeRef type_ptr = LLVMTypeOf(val);
+	LLVMTypeKind type_kind = LLVMGetTypeKind(type_ptr);
 	Type *to_type = type_lowering(type);
+	switch (type_kind)
+	{
+		case LLVMArrayTypeKind:
+			value->type = to_type;
+			return;
+		case LLVMVectorTypeKind:
+			break;
+		case LLVMStructTypeKind:
+			llvm_value_addr(c, value);
+			value->type = to_type;
+			return;
+		default:
+			UNREACHABLE_VOID
+	}
+
 	LLVMValueRef array = llvm_get_undef(c, to_type);
 
 	for (unsigned i = 0; i < to_type->array.len; i++)

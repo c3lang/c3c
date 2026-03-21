@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem;
-import std::core::mem::allocator @public;
+import std::core::mem::allocators @public;
 import std::os::posix, std::os::win32, std::math, std::io;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
@@ -532,9 +532,9 @@ macro bool type_alloc_must_be_aligned($Type)
 *>
 macro void @scoped(Allocator allocator; @body())
 {
-	Allocator old_allocator = allocator::thread_allocator;
-	allocator::thread_allocator = allocator;
-	defer allocator::thread_allocator = old_allocator;
+	Allocator old_allocator = allocators::thread_allocator;
+	allocators::thread_allocator = allocator;
+	defer allocators::thread_allocator = old_allocator;
 	@body();
 }
 
@@ -548,12 +548,12 @@ macro void @report_heap_allocs_in_scope($enabled = true; @body())
 {
 	$if $enabled:
 		TrackingAllocator tracker;
-		tracker.init(allocator::thread_allocator);
-		Allocator old_allocator = allocator::thread_allocator;
-		allocator::thread_allocator = &tracker;
+		tracker.init(allocators::thread_allocator);
+		Allocator old_allocator = allocators::thread_allocator;
+		allocators::thread_allocator = &tracker;
 		defer
 		{
-			allocator::thread_allocator = old_allocator;
+			allocators::thread_allocator = old_allocator;
 			tracker.print_report();
 			tracker.free();
 		}
@@ -575,10 +575,10 @@ macro void @assert_leak($report = true; @body()) @builtin
 		TrackingAllocator tracker;
 		tracker.init(mem);
 		Allocator old_allocator = mem;
-		allocator::thread_allocator = &tracker;
+		allocators::thread_allocator = &tracker;
 		defer
 		{
-			allocator::thread_allocator = old_allocator;
+			allocators::thread_allocator = old_allocator;
 			defer tracker.free();
 			usz allocated = tracker.allocated();
 			if (allocated)
@@ -628,7 +628,7 @@ macro void @stack_pool(usz $size; @body) @builtin
 *>
 fn PoolState temp_push()
 {
-	return allocator::push_pool() @inline;
+	return allocators::push_pool() @inline;
 }
 
 <*
@@ -636,7 +636,7 @@ fn PoolState temp_push()
 *>
 fn void temp_pop(PoolState old_state)
 {
-	allocator::pop_pool(old_state) @inline;
+	allocators::pop_pool(old_state) @inline;
 }
 
 <*
@@ -646,18 +646,18 @@ fn void temp_pop(PoolState old_state)
  @require min_size > TempAllocator.sizeof + 64 : "Min size must meaningfully hold the data + some bytes"
 *>
 macro void @pool_init(Allocator allocator, usz pool_size,
-	usz reserve_size = allocator::temp_allocator_reserve_size,
-	usz min_size = allocator::temp_allocator_min_size,
-	usz realloc_size = allocator::temp_allocator_realloc_size; @body) @builtin
+	usz reserve_size = allocators::temp_allocator_reserve_size,
+	usz min_size = allocators::temp_allocator_min_size,
+	usz realloc_size = allocators::temp_allocator_realloc_size; @body) @builtin
 {
-	Allocator current = allocator::current_temp;
-	TempAllocator* top = allocator::top_temp;
-	allocator::create_temp_allocator(allocator, pool_size, reserve_size, min_size, realloc_size);
+	Allocator current = allocators::current_temp;
+	TempAllocator* top = allocators::top_temp;
+	allocators::create_temp_allocator(allocator, pool_size, reserve_size, min_size, realloc_size);
 	defer
 	{
-		allocator::destroy_temp_allocators();
-		allocator::top_temp = top;
-		allocator::current_temp = current;
+		allocators::destroy_temp_allocators();
+		allocators::top_temp = top;
+		allocators::current_temp = current;
 	}
 	@body();
 }
@@ -673,28 +673,28 @@ macro void @pool_init(Allocator allocator, usz pool_size,
 *>
 macro void @pool(usz reserve = 0; @body) @builtin
 {
-	PoolState state = allocator::push_pool(reserve) @inline;
+	PoolState state = allocators::push_pool(reserve) @inline;
 	defer
 	{
-		allocator::pop_pool(state) @inline;
+		allocators::pop_pool(state) @inline;
 	}
 	@body();
 }
 
 module std::core::mem @if(env::FREESTANDING_WASM);
-import std::core::mem::allocator @public;
+import std::core::mem::allocators @public;
 SimpleHeapAllocator wasm_allocator @private;
 extern int __heap_base;
 
 fn void initialize_wasm_mem() @init(1024) @private
 {
-	allocator::wasm_memory.allocate_block(mem::DEFAULT_MEM_ALIGNMENT)!!; // Give us a valid null.
+	allocators::wasm_memory.allocate_block(mem::DEFAULT_MEM_ALIGNMENT)!!; // Give us a valid null.
 	// Check if we need to move the heap.
 	uptr start = (uptr)&__heap_base;
-	if (start > mem::DEFAULT_MEM_ALIGNMENT) allocator::wasm_memory.use = start;
-	wasm_allocator.init(fn (x) => allocator::wasm_memory.allocate_block(x));
-	allocator::thread_allocator = &wasm_allocator;
-	allocator::temp_base_allocator = &wasm_allocator;
+	if (start > mem::DEFAULT_MEM_ALIGNMENT) allocators::wasm_memory.use = start;
+	wasm_allocator.init(fn (x) => allocators::wasm_memory.allocate_block(x));
+	allocators::thread_allocator = &wasm_allocator;
+	allocators::temp_base_allocator = &wasm_allocator;
 }
 
 module std::core::mem;
@@ -716,14 +716,14 @@ macro TrackingEnv* get_tracking_env()
 *>
 macro @clone(value) @builtin @nodiscard
 {
-	return allocator::clone(mem, value);
+	return alloc::clone(mem, value);
 }
 
 <*
  @param value : "The value to clone"
  @return "A pointer to the cloned value"
 *>
-macro @clone_slice(value) @builtin @nodiscard => allocator::clone_slice(mem, value);
+macro @clone_slice(value) @builtin @nodiscard => alloc::clone_slice(mem, value);
 
 <*
  @param value : "The value to clone"
@@ -731,7 +731,7 @@ macro @clone_slice(value) @builtin @nodiscard => allocator::clone_slice(mem, val
 *>
 macro @clone_aligned(value) @builtin @nodiscard
 {
-	return allocator::clone_aligned(mem, value);
+	return alloc::clone_aligned(mem, value);
 }
 
 <*
@@ -743,7 +743,7 @@ macro @tclone(value) @builtin @nodiscard
 	$if $alignof(value) <= mem::DEFAULT_MEM_ALIGNMENT:
 		return tnew($typeof(value), value);
 	$else
-		return allocator::clone_aligned(tmem, value);
+		return alloc::clone_aligned(tmem, value);
 	$endif
 }
 
@@ -751,11 +751,11 @@ macro @tclone(value) @builtin @nodiscard
  @param value : "The value to clone"
  @return "A pointer to the cloned value"
 *>
-macro @tclone_slice(value) @builtin @nodiscard => allocator::clone_slice(tmem, value);
+macro @tclone_slice(value) @builtin @nodiscard => alloc::clone_slice(tmem, value);
 
 fn void* malloc(usz size) @builtin @inline @nodiscard
 {
-	return allocator::malloc(mem, size);
+	return alloc::malloc(mem, size);
 }
 
 <*
@@ -764,7 +764,7 @@ fn void* malloc(usz size) @builtin @inline @nodiscard
 *>
 fn void* malloc_aligned(usz size, usz alignment) @builtin @inline @nodiscard
 {
-	return allocator::malloc_aligned(mem, size, alignment)!!;
+	return alloc::malloc_aligned(mem, size, alignment)!!;
 }
 
 fn void* tmalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
@@ -929,10 +929,11 @@ macro talloc_with_padding($Type, usz padding) @nodiscard
 <*
  @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro new_array($Type, usz elements) @nodiscard
 {
-	return allocator::new_array(mem, $Type, elements);
+	return alloc::new_array(mem, $Type, elements);
 }
 
 <*
@@ -940,19 +941,21 @@ macro new_array($Type, usz elements) @nodiscard
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
  @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro new_array_aligned($Type, usz elements) @nodiscard
 {
-	return allocator::new_array_aligned(mem, $Type, elements);
+	return alloc::new_array_aligned(mem, $Type, elements);
 }
 
 <*
  @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro alloc_array($Type, usz elements) @nodiscard
 {
-	return allocator::alloc_array(mem, $Type, elements);
+	return alloc::alloc_array(mem, $Type, elements);
 }
 
 <*
@@ -960,17 +963,24 @@ macro alloc_array($Type, usz elements) @nodiscard
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
  @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
 *>
 macro alloc_array_aligned($Type, usz elements) @nodiscard
 {
-	return allocator::alloc_array_aligned(mem, $Type, elements);
+	return alloc::alloc_array_aligned(mem, $Type, elements);
 }
 
+<*
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
+*>
 macro talloc_array($Type, usz elements) @nodiscard
 {
 	return (($Type*)tmalloc($Type.sizeof * elements, $Type.alignof))[:elements];
 }
 
+<*
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
+*>
 macro temp_array($Type, usz elements) @nodiscard
 {
 	return (($Type*)tcalloc($Type.sizeof * elements, $Type.alignof))[:elements];
@@ -978,7 +988,7 @@ macro temp_array($Type, usz elements) @nodiscard
 
 fn void* calloc(usz size) @builtin @inline @nodiscard
 {
-	return allocator::calloc(mem, size);
+	return alloc::calloc(mem, size);
 }
 
 <*
@@ -987,7 +997,7 @@ fn void* calloc(usz size) @builtin @inline @nodiscard
 *>
 fn void* calloc_aligned(usz size, usz alignment) @builtin @inline @nodiscard
 {
-	return allocator::calloc_aligned(mem, size, alignment)!!;
+	return alloc::calloc_aligned(mem, size, alignment)!!;
 }
 
 fn void* tcalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
@@ -998,22 +1008,22 @@ fn void* tcalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
 
 fn void* realloc(void *ptr, usz new_size) @builtin @inline @nodiscard
 {
-	return allocator::realloc(mem, ptr, new_size);
+	return alloc::realloc(mem, ptr, new_size);
 }
 
 fn void* realloc_aligned(void *ptr, usz new_size, usz alignment) @builtin @inline @nodiscard
 {
-	return allocator::realloc_aligned(mem, ptr, new_size, alignment)!!;
+	return alloc::realloc_aligned(mem, ptr, new_size, alignment)!!;
 }
 
 fn void free(void* ptr) @builtin @inline
 {
-	return allocator::free(mem, ptr);
+	return alloc::free(mem, ptr);
 }
 
 fn void free_aligned(void* ptr) @builtin @inline
 {
-	return allocator::free_aligned(mem, ptr);
+	return alloc::free_aligned(mem, ptr);
 }
 
 fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin @inline @nodiscard

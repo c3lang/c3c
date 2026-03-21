@@ -1,4 +1,4 @@
-module std::core::mem::allocator;
+module std::core::mem::allocators;
 
 
 const usz WASM_BLOCK_SIZE = 65536;

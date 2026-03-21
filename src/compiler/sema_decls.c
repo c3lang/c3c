@@ -3426,29 +3426,18 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			{
 				RETURN_SEMA_ERROR(expr, "Expected an integer compile time constant value.");
 			}
+		{
+			Int i = expr->const_expr.ixx;
+			if (int_is_neg(i) || int_icomp(i, 127, BINARYOP_GT))
 			{
-				Int i = expr->const_expr.ixx;
-				if (int_is_neg(i) || int_icomp(i, 127, BINARYOP_GT))
-				{
-					RETURN_SEMA_ERROR(expr, "The index must be between 0 and 127.");
-				}
-				uint16_t val = (uint16_t)i.i.low;
-				switch (decl->decl_kind)
-				{
-					case DECL_FUNC:
-					case DECL_MACRO:
-						if (decl->func_decl.signature.attrs.format) break;
-						decl->func_decl.signature.attrs.format = val + 1;
-						return true;
-					case DECL_FNTYPE:
-						if (decl->fntype_decl.signature.attrs.format) break;
-						decl->fntype_decl.signature.attrs.format = val + 1;
-						return true;
-					default:
-						UNREACHABLE
-				}
-				RETURN_SEMA_ERROR(attr, "'@format' may not appear twice.");
+				RETURN_SEMA_ERROR(expr, "The index must be between 0 and 127.");
 			}
+			uint16_t val = (uint16_t)i.i.low;
+			Signature *sig_ref = decl->decl_kind == DECL_FNTYPE ? &decl->fntype_decl.signature : &decl->func_decl.signature;
+			if (sig_ref->attrs.format) RETURN_SEMA_ERROR(attr, "'@format' may not appear twice.");
+			sig_ref->attrs.format = val + 1;
+			return true;
+		}
 		case ATTRIBUTE_LINK:
 			if (args < 1) RETURN_SEMA_ERROR(attr, "'@link' requires at least one argument.");
 			Expr *cond = args > 1 ? attr->exprs[0] : NULL;
@@ -3470,7 +3459,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			return true;
 		case ATTRIBUTE_INIT:
 			decl->func_decl.attr_init = true;
-		PARSE:;
+			PARSE:;
 			if (expr)
 			{
 				if (!sema_analyse_expr_rvalue(context, expr)) return false;
@@ -3549,15 +3538,21 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->func_decl.signature.attrs.always_const = true;
 			break;
 		case ATTRIBUTE_NODISCARD:
-			if (decl->func_decl.signature.attrs.noreturn)
-			{
-				RETURN_SEMA_ERROR(attr, "@nodiscard cannot be combined with @noreturn.");
-			}
-			decl->func_decl.signature.attrs.nodiscard = true;
+		{
+			Signature *sig_ref = decl->decl_kind == DECL_FNTYPE ? &decl->fntype_decl.signature : &decl->func_decl.signature;
+			if (sig_ref->attrs.noreturn) RETURN_SEMA_ERROR(attr, "@nodiscard cannot be combined with @noreturn.");
+			if (sig_ref->attrs.maydiscard) RETURN_SEMA_ERROR(attr, "@nodiscard cannot be combined with @maydiscard.");
+			sig_ref->attrs.nodiscard = true;
 			break;
+		}
 		case ATTRIBUTE_MAYDISCARD:
-			decl->func_decl.signature.attrs.maydiscard = true;
+		{
+			Signature *sig_ref = decl->decl_kind == DECL_FNTYPE ? &decl->fntype_decl.signature : &decl->func_decl.signature;
+			if (sig_ref->attrs.noreturn) RETURN_SEMA_ERROR(attr, "@maydiscard cannot be combined with @noreturn.");
+			if (sig_ref->attrs.nodiscard) RETURN_SEMA_ERROR(attr, "@maydiscard cannot be combined with @nodiscard.");
+			sig_ref->attrs.maydiscard = true;
 			break;
+		}
 		case ATTRIBUTE_INLINE:
 			if (decl->func_decl.attr_noinline)
 			{
@@ -3566,12 +3561,13 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->func_decl.attr_inline = true;
 			break;
 		case ATTRIBUTE_NORETURN:
-			if (decl->func_decl.signature.attrs.nodiscard)
-			{
-				RETURN_SEMA_ERROR(attr, "@noreturn cannot be combined with @nodiscard.");
-			}
-			decl->func_decl.signature.attrs.noreturn = true;
+		{
+			Signature *sig_ref = decl->decl_kind == DECL_FNTYPE ? &decl->fntype_decl.signature : &decl->func_decl.signature;
+			if (sig_ref->attrs.maydiscard) RETURN_SEMA_ERROR(attr, "@noreturn cannot be combined with @maydiscard.");
+			if (sig_ref->attrs.nodiscard) RETURN_SEMA_ERROR(attr, "@noreturn cannot be combined with @nodiscard.");
+			sig_ref->attrs.noreturn = true;
 			break;
+		}
 		case ATTRIBUTE_NOSANITIZE:
 			if (!expr)
 			{
@@ -5507,7 +5503,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 			}
 			if (!sema_analyse_ct_expr(context, param)) return poisoned_decl;
 			Type *type = param->type->canonical;
-			if (type->type_kind == TYPE_TYPEDEF) type = type_flatten(type);
+			if (type->type_kind == TYPE_TYPEDEF || type->type_kind == TYPE_CONSTDEF) type = type_flatten(type);
 			if (IS_OPTIONAL(param))
 			{
 				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "The parameter may never be an optional value.");
@@ -5553,6 +5549,11 @@ static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext
 	return true;
 }
 
+static inline bool char_first_is_upper(const char *c)
+{
+	while (*c == '_') c++;
+	return char_is_upper(*c);
+}
 
 static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *erase_decl)
 {
@@ -5578,10 +5579,10 @@ static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *er
 		if (symbol->decl_kind != DECL_ALIAS) break;
 		symbol = symbol->define_decl.alias;
 	}
-	bool should_be_const = char_is_upper(decl->name[0]);
+	bool should_be_const = char_first_is_upper(decl->name);
 	if (should_be_const)
 	{
-		if (!char_is_upper(symbol->name[0]))
+		if (!char_first_is_upper(symbol->name))
 		{
 			RETURN_SEMA_ERROR(decl, "An uppercase alias is expected to alias a constant. "
 									"If you want to alias a non-constant, make sure the alias name "
@@ -5590,7 +5591,7 @@ static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *er
 	}
 	else
 	{
-		if (char_is_upper(symbol->name[0]))
+		if (char_first_is_upper(symbol->name))
 		{
 			RETURN_SEMA_ERROR(expr, "An alias starting with a lowercase letter is expected to alias a non-constant. "
 			                        "If you want to alias a constant, make sure the "

@@ -1,7 +1,7 @@
 // Copyright (c) 2021-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::core::mem::allocator @if(env::LIBC);
+module std::core::mem::allocators @if(env::LIBC);
 import std::io;
 import libc;
 
@@ -11,7 +11,7 @@ import libc;
 typedef LibcAllocator (Allocator) = uptr;
 const LibcAllocator LIBC_ALLOCATOR = {};
 
-module std::core::mem::allocator @if(env::POSIX);
+module std::core::mem::allocators @if(env::POSIX);
 import std::os;
 import libc;
 

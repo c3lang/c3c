@@ -20,8 +20,8 @@ struct UnbufferedChannelImpl @private
 
 fn void? UnbufferedChannel.init(&self, Allocator allocator)
 {
-	UnbufferedChannelImpl* channel = allocator::alloc(allocator, UnbufferedChannelImpl);
-	defer catch (void)allocator::free(allocator, channel);
+	UnbufferedChannelImpl* channel = alloc::alloc(allocator, UnbufferedChannelImpl);
+	defer catch (void)alloc::free(allocator, channel);
 
 	channel.allocator = allocator;
 	channel.send_waiting = 0;
@@ -49,7 +49,7 @@ fn void? UnbufferedChannel.destroy(&self) @maydiscard // Remove optional in 0.8.
 	channel.send_cond.destroy();
 	channel.read_mu.destroy();
 	channel.read_cond.destroy();
-	allocator::free(channel.allocator, channel);
+	alloc::free(channel.allocator, channel);
 
 	*self = null;
 }

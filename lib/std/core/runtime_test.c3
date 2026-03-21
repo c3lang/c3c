@@ -3,8 +3,8 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::runtime;
 import std::core::test @public;
-import std::core::mem::allocator @public;
-import libc, std::time, std::io, std::sort, std::os;
+import std::core::mem::allocators @public;
+import libc, std::time, std::io, std::sort, std::os, std::thread;
 
 
 alias TestFn = fn void();
@@ -27,8 +27,8 @@ struct TestContext
 	bool is_in_panic;
 	bool is_quiet_mode;
 	bool is_no_capture;
-    bool sort;
-    bool check_leaks;
+	bool sort;
+	bool check_leaks;
 	String current_test_name;
 	TestFn setup_fn;
 	TestFn teardown_fn;
@@ -54,7 +54,7 @@ fn TestUnit[] test_collection_create(Allocator allocator)
 {
 	TestFn[] fns = $$TEST_FNS;
 	String[] names = $$TEST_NAMES;
-	TestUnit[] tests = allocator::alloc_array(allocator, TestUnit, names.len);
+	TestUnit[] tests = alloc::alloc_array(allocator, TestUnit, names.len);
 	foreach (i, test : fns)
 	{
 		tests[i] = { names[i], fns[i] };
@@ -114,7 +114,7 @@ fn void panic_test(String message, String file, String function, uint line, void
 	if (test_context.assert_print_backtrace)
 	{
 		$if env::NATIVE_STACKTRACE:
-    		builtin::print_backtrace(message, extra_trace ? 3 : 0, extra_trace);
+			builtin::print_backtrace(message, extra_trace ? 3 : 0, extra_trace);
 		$endif
 	}
 	io::printf("\nTest failed ^^^ ( %s:%s ) %s\n",  file, line, message);
@@ -131,7 +131,7 @@ fn void panic_test(String message, String file, String function, uint line, void
 	}
 
 	test_context.is_in_panic = false;
-	allocator::thread_allocator = test_context.stored.allocator;
+	allocators::thread_allocator = test_context.stored.allocator;
 	libc::longjmp(&test_context.buf, 1);
 }
 
@@ -139,7 +139,7 @@ fn void mute_output() @local
 {
 	if (test_context.is_no_capture || !test_context.fake_stdout.file) return;
 	File* stdout = io::stdout();
-    File* stderr = io::stderr();
+	File* stderr = io::stderr();
 	*stderr = test_context.fake_stdout;
 	*stdout = test_context.fake_stdout;
 	(void)test_context.fake_stdout.set_cursor(0)!!;
@@ -186,6 +186,7 @@ fn void unmute_output(bool has_error) @local
 
 fn bool run_tests(String[] args, TestUnit[] tests) @private
 {
+	Thread main = thread::current();
 	usz max_name;
 	if (!tests.len)
 	{
@@ -204,8 +205,8 @@ $endif
 	{
 		.assert_print_backtrace = true,
 		.breakpoint_on_assert = false,
-        .sort = true,
-        .check_leaks = true,
+		.sort = true,
+		.check_leaks = true,
 		.log_level = LogPriority.ERROR,
 		.test_filter = "",
 		.has_ansi_codes = terminal_has_ansi_codes(),
@@ -321,19 +322,21 @@ $endif
 		mem.init(context.stored.allocator);
 		if (libc::setjmp(&context.buf) == 0)
 		{
+			// We might arrive here from a different thread
+			if (!thread::current().equals(main)) thread::exit(-1);
 			mute_output();
 			mem.clear();
-			if (context.check_leaks) allocator::thread_allocator = &mem;
+			if (context.check_leaks) allocators::thread_allocator = &mem;
 			@pool()
-            {
-                unit.func();
-            };
+			{
+				unit.func();
+			};
 			// track cleanup that may take place in teardown_fn
 			if (context.teardown_fn)
 			{
 				context.teardown_fn();
 			}
-			if (context.check_leaks) allocator::thread_allocator = context.stored.allocator;
+			if (context.check_leaks) allocators::thread_allocator = context.stored.allocator;
 
 			unmute_output(false); // all good, discard output
 			if (mem.has_leaks())

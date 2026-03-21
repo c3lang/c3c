@@ -51,7 +51,7 @@ fn HashMap* HashMap.init(&self, Allocator allocator, uint capacity = DEFAULT_INI
 	self.allocator = allocator;
 	self.load_factor = load_factor;
 	self.threshold = (uint)(capacity * load_factor);
-	self.table = allocator::new_array(allocator, Entry*, capacity);
+	self.table = alloc::new_array(allocator, Entry*, capacity);
 	return self;
 }
 
@@ -315,7 +315,7 @@ fn Key[] HashMap.keys(&self, Allocator allocator)
 {
 	if (!self.count) return {};
 
-	Key[] list = allocator::alloc_array(allocator, Key, self.count);
+	Key[] list = alloc::alloc_array(allocator, Key, self.count);
 	usz index = 0;
 	foreach (Entry* entry : self.table)
 	{
@@ -358,7 +358,7 @@ fn Value[] HashMap.tvalues(&self) => self.values(tmem) @inline;
 fn Value[] HashMap.values(&self, Allocator allocator)
 {
 	if (!self.count) return {};
-	Value[] list = allocator::alloc_array(allocator, Value, self.count);
+	Value[] list = alloc::alloc_array(allocator, Value, self.count);
 	usz index = 0;
 	foreach (Entry* entry : self.table)
 	{
@@ -407,7 +407,7 @@ fn void hashmap_add_entry(HashMap* map, uint hash, Key key, Value value, uint bu
 	$if COPY_KEYS:
 	key = key.copy(map.allocator);
 	$endif
-	Entry* entry = allocator::new(map.allocator, Entry, { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] });
+	Entry* entry = alloc::new(map.allocator, Entry, { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] });
 	map.table[bucket_index] = entry;
 	if (map.count++ >= map.threshold)
 	{
@@ -424,7 +424,7 @@ fn void hashmap_resize(HashMap* map, uint new_capacity) @private
 		map.threshold = uint.max;
 		return;
 	}
-	Entry*[] new_table = allocator::new_array(map.allocator, Entry*, new_capacity);
+	Entry*[] new_table = alloc::new_array(map.allocator, Entry*, new_capacity);
 	hashmap_transfer(map, new_table);
 	map.table = new_table;
 	hashmap_free_internal(map, old_table.ptr);
@@ -492,7 +492,7 @@ fn void hashmap_put_for_create(HashMap* map, Key key, Value value) @private
 
 fn void hashmap_free_internal(HashMap* map, void* ptr) @inline @private
 {
-	allocator::free(map.allocator, ptr);
+	alloc::free(map.allocator, ptr);
 }
 
 fn bool hashmap_remove_entry_for_key(HashMap* map, Key key) @private
@@ -531,7 +531,7 @@ fn void hashmap_create_entry(HashMap* map, uint hash, Key key, Value value, int 
 	$if COPY_KEYS:
 	key = key.copy(map.allocator);
 	$endif
-	Entry* entry = allocator::new(map.allocator, Entry, { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] });
+	Entry* entry = alloc::new(map.allocator, Entry, { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] });
 	map.table[bucket_index] = entry;
 	map.count++;
 }
@@ -539,7 +539,7 @@ fn void hashmap_create_entry(HashMap* map, uint hash, Key key, Value value, int 
 fn void hashmap_free_entry(HashMap* map, Entry *entry) @local
 {
 	$if COPY_KEYS:
-	allocator::free(map.allocator, entry.key);
+	alloc::free(map.allocator, entry.key);
 	$endif
 	hashmap_free_internal(map, entry);
 }

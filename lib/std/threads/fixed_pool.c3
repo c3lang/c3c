@@ -142,7 +142,7 @@ fn void? FixedThreadPool.push(&self, ThreadPoolFn func, args...)
 	if (args.len)
 	{
 		data = mem::alloc_array(any, args.len);
-		foreach (i, arg : args) data[i] = allocator::clone_any(mem, arg);
+		foreach (i, arg : args) data[i] = alloc::clone_any(mem, arg);
 	}
 	self.queue[self.qindex] = { .func = func, .args = data };
 	self.qindex++;

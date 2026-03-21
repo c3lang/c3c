@@ -132,7 +132,7 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_TEST:
 		case COMMAND_VENDOR_FETCH:
 		case COMMAND_PROJECT:
-		case COMMAND_FETCH_MSVC:
+		case COMMAND_FETCH_SDK:
 			return false;
 	}
 	UNREACHABLE
@@ -165,7 +165,7 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_VENDOR_FETCH:
 		case COMMAND_PROJECT:
-		case COMMAND_FETCH_MSVC:
+		case COMMAND_FETCH_SDK:
 			return false;
 	}
 	UNREACHABLE

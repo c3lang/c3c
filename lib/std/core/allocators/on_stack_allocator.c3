@@ -1,4 +1,4 @@
-module std::core::mem::allocator;
+module std::core::mem::allocators;
 import std::math;
 <*
  The OnStackAllocator is similar to the ArenaAllocator: it allocates from a chunk of memory
@@ -43,15 +43,15 @@ fn void OnStackAllocator.free(&self)
 	{
 		if (chunk.is_aligned)
 		{
-			allocator::free_aligned(self.backing_allocator, chunk.data);
+			alloc::free_aligned(self.backing_allocator, chunk.data);
 		}
 		else
 		{
-			allocator::free(self.backing_allocator, chunk.data);
+			alloc::free(self.backing_allocator, chunk.data);
 		}
 		void* old = chunk;
 		chunk = chunk.prev;
-		allocator::free(self.backing_allocator, old);
+		alloc::free(self.backing_allocator, old);
 	}
 	self.chunk = null;
 	self.used = 0;
@@ -87,7 +87,7 @@ fn void on_stack_allocator_remove_chunk(OnStackAllocator* a, void* ptr) @local
 		if (chunk.data == ptr)
 		{
 			*addr = chunk.prev;
-			allocator::free(a.backing_allocator, chunk);
+			alloc::free(a.backing_allocator, chunk);
 			return;
 		}
 		addr = &chunk.prev;
@@ -145,8 +145,8 @@ fn void*? OnStackAllocator.acquire(&self, usz size, AllocInitType init_type, usz
 
 	if (end > total_len)
 	{
-		OnStackAllocatorExtraChunk* chunk = allocator::alloc_try(backing_allocator, OnStackAllocatorExtraChunk)!;
-		defer catch allocator::free(backing_allocator, chunk);
+		OnStackAllocatorExtraChunk* chunk = alloc::alloc_try(backing_allocator, OnStackAllocatorExtraChunk)!;
+		defer catch alloc::free(backing_allocator, chunk);
 		defer try self.chunk = chunk;
 		*chunk = { .prev = self.chunk, .is_aligned = aligned };
 		return chunk.data = backing_allocator.acquire(size, init_type, aligned ? alignment : 0)!;

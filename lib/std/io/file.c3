@@ -127,17 +127,17 @@ fn void? File.close(&self) @inline @dynamic
 	{
 		switch (libc::errno())
 		{
-			case errno::ECONNRESET:
-			case errno::EBADF: return io::FILE_NOT_VALID~;
-			case errno::EINTR: return io::INTERRUPTED~;
-			case errno::EDQUOT:
-			case errno::EFAULT:
-			case errno::EAGAIN:
-			case errno::EFBIG:
-			case errno::ENETDOWN:
-			case errno::ENETUNREACH:
-			case errno::ENOSPC:
-			case errno::EIO: return io::INCOMPLETE_WRITE~;
+			case ECONNRESET:
+			case EBADF: return io::FILE_NOT_VALID~;
+			case EINTR: return io::INTERRUPTED~;
+			case EDQUOT:
+			case EFAULT:
+			case EAGAIN:
+			case EFBIG:
+			case ENETDOWN:
+			case ENETUNREACH:
+			case ENOSPC:
+			case EIO: return io::INCOMPLETE_WRITE~;
 			default: return io::UNKNOWN_ERROR~;
 		}
 	}
@@ -222,8 +222,8 @@ fn char[]? load(Allocator allocator, String filename)
 	defer (void)file.close();
 	ulong len = file.size()!;
 	if (len > usz.max) return io::OUT_OF_SPACE~;
-	char* data = allocator::malloc_try(allocator, (usz)len)!;
-	defer catch allocator::free(allocator, data);
+	char* data = alloc::malloc_try(allocator, (usz)len)!;
+	defer catch alloc::free(allocator, data);
 	usz read = 0;
 	while (read < (usz)len)
 	{

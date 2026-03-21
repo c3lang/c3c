@@ -140,8 +140,8 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 	// allocate memory for encoded data (output)
 	// header + chunk tag and RGB(A) data for each pixel + end of stream
 	uint max_size = Header.sizeof + pixels + image_size + END_OF_STREAM.len;
-	char[] output = allocator::alloc_array(allocator, char, max_size); // no need to init
-	defer catch allocator::free(allocator, output);
+	char[] output = alloc::alloc_array(allocator, char, max_size); // no need to init
+	defer catch alloc::free(allocator, output);
 
 	// write header
 	*(Header*)output.ptr = {
@@ -317,8 +317,8 @@ fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels c
 	
 	// allocate memory for image data
 	usz image_size = (usz)pixels * channels;
-	char[] image = allocator::alloc_array(allocator, char, image_size);
-	defer catch allocator::free(allocator, image);
+	char[] image = alloc::alloc_array(allocator, char, image_size);
+	defer catch alloc::free(allocator, image);
 
 	for (loc = 0; loc < image_size; loc += channels)
 	{

@@ -12,7 +12,7 @@ macro String? getcwd(Allocator allocator)
 			defer if (free) libc::free(res);
 			if (!res)
 			{
-				if (libc::errno() != errno::ERANGE) return io::GENERAL_ERROR~;
+				if (libc::errno() != ERANGE) return io::GENERAL_ERROR~;
 				res = win32::_wgetcwd(null, 0);
 				free = true;
 			}
@@ -27,7 +27,7 @@ macro String? getcwd(Allocator allocator)
 			if (!res)
 			{
 				// Improve error
-				if (libc::errno() != errno::ERANGE) return io::GENERAL_ERROR~;
+				if (libc::errno() != ERANGE) return io::GENERAL_ERROR~;
 				res = posix::getcwd(null, 0);
 				free = true;
 			}

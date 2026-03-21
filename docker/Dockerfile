@@ -1,7 +1,7 @@
 ARG UBUNTU_VERSION=22.04
 FROM ubuntu:${UBUNTU_VERSION}
 
-ARG LLVM_VERSION=18
+ARG LLVM_VERSION=22
 ARG CMAKE_VERSION=3.20.0
 
 # Prevent interactive prompts during apt install

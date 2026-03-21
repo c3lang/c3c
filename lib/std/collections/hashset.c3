@@ -47,7 +47,7 @@ fn HashSet* HashSet.init(&self, Allocator allocator, usz capacity = DEFAULT_INIT
 	self.allocator = allocator;
 	self.threshold = (usz) (capacity * load_factor);
 	self.load_factor = load_factor;
-	self.table = allocator::new_array(allocator, Entry*, capacity);
+	self.table = alloc::new_array(allocator, Entry*, capacity);
 	return self;
 }
 
@@ -336,7 +336,7 @@ fn Value[] HashSet.tvalues(&self) => self.values(tmem) @inline;
 fn Value[] HashSet.values(&self, Allocator allocator)
 {
 	if (!self.count) return {};
-	Value[] list = allocator::alloc_array(allocator, Value, self.count);
+	Value[] list = alloc::alloc_array(allocator, Value, self.count);
 	usz index = 0;
 	foreach (Entry* entry : self.table)
 	{
@@ -466,7 +466,7 @@ fn bool HashSet.is_subset(&self, HashSet* other)
 
 fn void hashset_add_entry(HashSet* set, uint hash, Value value, uint bucket_index) @private
 {
-	Entry* entry = allocator::new(set.allocator, Entry, { .hash = hash, .value = value, .next = set.table[bucket_index] });
+	Entry* entry = alloc::new(set.allocator, Entry, { .hash = hash, .value = value, .next = set.table[bucket_index] });
 	set.table[bucket_index] = entry;
 	if (set.count++ >= set.threshold)
 	{
@@ -483,7 +483,7 @@ fn void hashset_resize(HashSet* self, usz new_capacity) @private
 		self.threshold = uint.max;
 		return;
 	}
-	Entry*[] new_table = allocator::new_array(self.allocator, Entry*, new_capacity);
+	Entry*[] new_table = alloc::new_array(self.allocator, Entry*, new_capacity);
 	hashset_transfer(self, new_table);
 	self.table = new_table;
 	hashset_free_internal(self, old_table.ptr);
@@ -551,12 +551,12 @@ fn void hashset_put_for_create(HashSet* set, Value value) @private
 
 fn void hashset_free_internal(HashSet* self, void* ptr) @inline @private
 {
-	allocator::free(self.allocator, ptr);
+	alloc::free(self.allocator, ptr);
 }
 
 fn void hashset_create_entry(HashSet* set, uint hash, Value value, int bucket_index) @private
 {
-	Entry* entry = allocator::new(set.allocator, Entry, {
+	Entry* entry = alloc::new(set.allocator, Entry, {
 		.hash = hash,
 		.value = value,
 		.next = set.table[bucket_index]
@@ -602,7 +602,7 @@ fn bool hashset_remove_entry_for_value(HashSet* set, Value value) @private
 
 fn void hashset_free_entry(HashSet* set, Entry *entry) @private
 {
-	allocator::free(set.allocator, entry);
+	alloc::free(set.allocator, entry);
 }
 
 struct HashSetIterator

@@ -60,7 +60,7 @@ fn void gzip_round_trip() @test
 
 	char[] gz = gzip::compress(mem, data, hcrc: true,
 	extra: extra, name: filename, comment: comment)!!;
-	defer allocator::free(mem, gz.ptr);
+	defer alloc::free(mem, gz.ptr);
 
 	Gzip decode = gzip::uncompress(mem, gz)!!;
 	defer decode.free();

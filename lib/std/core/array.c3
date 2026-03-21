@@ -84,7 +84,7 @@ macro usz? rindex_of(array, element)
 
  @param [in] arr1
  @param [in] arr2
- @param [&inout] allocator : "The allocator to use, default is the heap allocator"
+ @param [&inout] allocator : "The allocator to use"
  @require $kindof(arr1) == SLICE || $kindof(arr1) == ARRAY
  @require $kindof(arr2) == SLICE || $kindof(arr2) == ARRAY
  @require @typematch(arr1[0], arr2[0]) : "Arrays must have the same type"
@@ -93,7 +93,7 @@ macro usz? rindex_of(array, element)
 macro concat(Allocator allocator, arr1, arr2) @nodiscard
 {
 	var $Type = $typeof(arr1[0]);
-	$Type[] result = allocator::alloc_array(allocator, $Type, arr1.len + arr2.len);
+	$Type[] result = alloc::alloc_array(allocator, $Type, arr1.len + arr2.len);
 	if (arr1.len > 0)
 	{
 		mem::copy(result.ptr, &arr1[0], arr1.len * $Type.sizeof, $Type.alignof, $Type.alignof);
@@ -216,7 +216,7 @@ macro @product(array, identity_value = 1)
 *>
 macro usz[] @indices_of(Allocator allocator, array, #predicate)
 {
-	usz[] results = allocator::new_array(allocator, usz, lengthof(array));
+	usz[] results = alloc::new_array(allocator, usz, lengthof(array));
 	usz matches;
 
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
@@ -267,11 +267,11 @@ macro @filter(Allocator allocator, array, #predicate) @nodiscard
 	var $InnerType = $typeof(array[0]);
 
 	usz[] matched_indices = @indices_of(allocator, array, #predicate);
-	defer allocator::free(allocator, matched_indices.ptr);   // can free this upon leaving this call
+	defer alloc::free(allocator, matched_indices.ptr);   // can free this upon leaving this call
 
 	if (!matched_indices.len) return ($InnerType[]){};
 
-	$InnerType[] result = allocator::new_array(allocator, $InnerType, matched_indices.len);
+	$InnerType[] result = alloc::new_array(allocator, $InnerType, matched_indices.len);
 
 	foreach (i, index : matched_indices) result[i] = array[index];
 
@@ -369,7 +369,7 @@ fn Type[] unlace_impl(Allocator allocator, Type[] array) <Type> @private
 {
 	usz new_len = array.len / 2 + (array.len % 2 == 0 ? 0 : 1);
 	if (new_len == 0) return (Type[]){};
-	Type[] new_array = allocator::new_array(allocator, Type, new_len);
+	Type[] new_array = alloc::new_array(allocator, Type, new_len);
 	foreach (x, &new : new_array) *new = types::implements_copy(Type) ??? array[x * 2].copy(allocator) : array[x * 2];
 	return new_array[:new_len];
 }
@@ -444,7 +444,7 @@ macro unlace(Allocator allocator, array, left, right)
  where the `left` array is the shorter iterable, will put 7 into that lambda in each place
  where `left` is being filled in during the zip operation.
 
- @param [&inout] allocator : "The allocator to use; default is the heap allocator."
+ @param [&inout] allocator : "The allocator to use."
  @param [in] left : "The left-side array. These items will be placed as the First in each Pair"
  @param [in] right : "The right-side array. These items will be placed as the Second in each Pair"
  @param #operation : "The function to apply. Must have a signature of `$typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
@@ -493,7 +493,7 @@ macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) 
 
 	if (result_len == 0) return ($Type[]){};
 
-	$Type[] result = allocator::alloc_array(allocator, $Type, result_len);
+	$Type[] result = alloc::alloc_array(allocator, $Type, result_len);
 
 	foreach (idx, &item : result)
 	{

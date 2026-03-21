@@ -223,7 +223,7 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 				sema_analysis_pass_functions(module);
 				break;
 			case ANALYSIS_INTERFACE:
-				sema_analysis_pass_interface(module);
+				sema_analysis_pass_interface_and_weak_sym(module);
 				break;
 			case ANALYSIS_FINALIZE:
 				break;

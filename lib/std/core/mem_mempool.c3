@@ -61,7 +61,7 @@ fn FixedBlockPool* FixedBlockPool.init(&self, Allocator allocator, usz block_siz
 	self.head.next = null;
 	self.block_size = math::max(block_size, FixedBlockPoolEntry.sizeof);
 	capacity = calculate_actual_capacity(capacity, self.block_size);
-	self.alignment = allocator::alignment_for_allocation(alignment);
+	self.alignment = allocators::alignment_for_allocation(alignment);
 	self.page_size = capacity * self.block_size;
     assert(self.page_size >= self.block_size, "Total memory would overflow %d %d", block_size, capacity);
 	self.head.buffer = fixedblockpool_allocate_page(self);
@@ -130,7 +130,7 @@ fn void FixedBlockPool.free(&self)
 		fixedblockpool_free_page(self, iter.buffer);
 		FixedBlockPoolNode* current = iter;
 		iter = iter.next;
-		allocator::free(self.allocator, current);
+		alloc::free(self.allocator, current);
 	}
 	self.initialized = false;
 	self.allocated = 0;
@@ -212,7 +212,7 @@ fn bool fixedblockpool_check_ptr(FixedBlockPool* self, void *ptr) @local
 *>
 fn void fixedblockpool_new_node(FixedBlockPool* self) @local
 {
-	FixedBlockPoolNode* node = allocator::new(self.allocator, FixedBlockPoolNode);
+	FixedBlockPoolNode* node = alloc::new(self.allocator, FixedBlockPoolNode);
 	node.buffer = fixedblockpool_allocate_page(self);
 	$if env::COMPILER_SAFE_MODE && env::ADDRESS_SANITIZER:
 		asan::poison_memory_region(node.buffer, self.page_size);
@@ -227,19 +227,19 @@ fn void fixedblockpool_new_node(FixedBlockPool* self) @local
 macro void* fixedblockpool_allocate_page(FixedBlockPool* self) @private
 {
 	return self.alignment > mem::DEFAULT_MEM_ALIGNMENT
-	       ? allocator::calloc_aligned(self.allocator, self.page_size, self.alignment)!!
-           : allocator::calloc(self.allocator, self.page_size);
+	       ? alloc::calloc_aligned(self.allocator, self.page_size, self.alignment)!!
+           : alloc::calloc(self.allocator, self.page_size);
 }
 
 macro void fixedblockpool_free_page(FixedBlockPool* self, void* page) @private
 {
 	if (self.alignment > mem::DEFAULT_MEM_ALIGNMENT)
 	{
-		allocator::free_aligned(self.allocator, page);
+		alloc::free_aligned(self.allocator, page);
 	}
 	else
 	{
-		allocator::free(self.allocator, page);
+		alloc::free(self.allocator, page);
 	}
 }
 

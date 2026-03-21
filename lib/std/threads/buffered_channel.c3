@@ -26,8 +26,8 @@ struct BufferedChannelImpl @private
 *>
 fn void? BufferedChannel.init(&self, Allocator allocator, usz size = 1)
 {
-	BufferedChannelImpl* channel = allocator::new_with_padding(allocator, BufferedChannelImpl, Type.sizeof * size)!;
-	defer catch allocator::free(allocator, channel);
+	BufferedChannelImpl* channel = alloc::new_with_padding(allocator, BufferedChannelImpl, Type.sizeof * size)!;
+	defer catch alloc::free(allocator, channel);
 
 	channel.allocator = allocator;
 	channel.size = size;
@@ -54,7 +54,7 @@ fn void? BufferedChannel.destroy(&self) @maydiscard // Remove optional in 0.8.0
 	channel.mu.destroy();
 	channel.send_cond.destroy();
 	channel.read_cond.destroy();
-	allocator::free(channel.allocator, channel);
+	alloc::free(channel.allocator, channel);
 
 	*self = null;
 

@@ -12,7 +12,7 @@
 #include "intrin.h"
 #endif
 
-const char *download_file(const char *url, const char *resource, const char *file_path);
+const char *download_file(const char *url, const char *resource, const char *file_path, bool show_progress);
 bool download_available(void);
 
 #define ELEMENTLEN(x) (sizeof(x) / sizeof(x[0]))

@@ -1,5 +1,5 @@
 module std::os::backtrace;
-import std::collections::list, std::os, std::io;
+import std::collections::list, std::core::dstring, std::os, std::io;
 
 faultdef SEGMENT_NOT_FOUND, EXECUTABLE_PATH_NOT_FOUND, IMAGE_NOT_FOUND, NO_BACKTRACE_SYMBOLS,
          RESOLUTION_FAILED;
@@ -17,6 +17,15 @@ struct Backtrace (Printable)
 	bool is_inline;
 }
 
+fn bool Backtrace.equals(self, Backtrace other) @operator(==)
+{
+	return self.offset == other.offset
+		&& self.function == other.function
+		&& self.object_file == other.object_file
+		&& self.file == other.file
+		&& self.line == other.line
+		&& self.is_inline == other.is_inline;
+}
 
 fn bool Backtrace.has_file(&self)
 {
@@ -44,9 +53,9 @@ fn usz? Backtrace.to_format(&self, Formatter* formatter) @dynamic
 fn void Backtrace.free(&self)
 {
 	if (!self.allocator) return;
-	allocator::free(self.allocator, self.function);
-	allocator::free(self.allocator, self.object_file);
-	allocator::free(self.allocator, self.file);
+	alloc::free(self.allocator, self.function);
+	alloc::free(self.allocator, self.object_file);
+	alloc::free(self.allocator, self.file);
 }
 
 fn Backtrace* Backtrace.init(&self, Allocator allocator, uptr offset, String function, String object_file, String file = "", uint line = 0)
@@ -95,4 +104,27 @@ alias symbolize_backtrace @if(env::OPENBSD)	= openbsd::symbolize_backtrace;
 fn BacktraceList? symbolize_backtrace(Allocator allocator, void*[] backtrace) @if(!env::NATIVE_STACKTRACE)
 {
 	return {};
+}
+
+<*
+ Returns the symbolized backtrace as a string.
+*>
+fn String? get(Allocator allocator)
+{
+	void*[64] buffer;
+	void*[] bt = capture_current(buffer[..]);
+	@pool()
+	{
+		if (try list = symbolize_backtrace(tmem, bt))
+		{
+			DString s;
+			s.init(allocator);
+			foreach (trace : list)
+			{
+				s.appendf("%s\n", trace);
+			}
+			return s.str_view();
+		}
+	};
+	return NOT_FOUND~;
 }

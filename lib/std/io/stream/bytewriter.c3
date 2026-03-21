@@ -11,23 +11,28 @@ struct ByteWriter (OutStream)
 <*
  @param [&inout] self
  @param [&inout] allocator
+ @param reserve : "The bytes to reserve up front, defaults to 0"
+
  @require self.bytes.len == 0 : "Init may not run on already initialized data"
  @ensure (bool)allocator, self.index == 0
 *>
-fn ByteWriter* ByteWriter.init(&self, Allocator allocator)
+fn ByteWriter* ByteWriter.init(&self, Allocator allocator, usz reserve = 0)
 {
 	*self = { .bytes = {}, .allocator = allocator };
+	if (reserve > 0) self.ensure_capacity(reserve)!!;
 	return self;
 }
 
 <*
  @param [&inout] self
+ @param reserve : "The bytes to reserve up front, defaults to 0"
+
  @require self.bytes.len == 0 : "Init may not run on already initialized data"
  @ensure self.index == 0
 *>
-fn ByteWriter* ByteWriter.tinit(&self)
+fn ByteWriter* ByteWriter.tinit(&self, usz reserve = 0)
 {
-	return self.init(tmem) @inline;
+	return self.init(tmem, reserve) @inline;
 }
 
 fn ByteWriter* ByteWriter.init_with_buffer(&self, char[] data)
@@ -39,7 +44,7 @@ fn ByteWriter* ByteWriter.init_with_buffer(&self, char[] data)
 fn void? ByteWriter.destroy(&self) @dynamic
 {
 	if (!self.allocator) return;
-	if (void* ptr = self.bytes.ptr) allocator::free(self.allocator, ptr);
+	if (void* ptr = self.bytes.ptr) alloc::free(self.allocator, ptr);
 	*self = { };
 }
 
@@ -59,7 +64,7 @@ fn void? ByteWriter.ensure_capacity(&self, usz len) @inline
 	if (!self.allocator) return OUT_OF_SPACE~;
 	if (len < 16) len = 16;
 	usz new_capacity = math::next_power_of_2(len);
-	char* new_ptr = allocator::realloc_try(self.allocator, self.bytes.ptr, new_capacity)!;
+	char* new_ptr = alloc::realloc_try(self.allocator, self.bytes.ptr, new_capacity)!;
 	self.bytes = new_ptr[:new_capacity];
 }
 

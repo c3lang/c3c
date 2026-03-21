@@ -1,7 +1,7 @@
 // Copyright (c) 2021-2024 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::core::mem::allocator;
+module std::core::mem::allocators;
 import std::math;
 
 <*
@@ -41,16 +41,16 @@ fn void DynamicArenaAllocator.free(&self)
 	while (page)
 	{
 		DynamicArenaPage* next_page = page.prev_arena;
-		allocator::free(self.backing_allocator, page.memory);
-		allocator::free(self.backing_allocator, page);
+		alloc::free(self.backing_allocator, page.memory);
+		alloc::free(self.backing_allocator, page);
 		page = next_page;
 	}
 	page = self.unused_page;
 	while (page)
 	{
 		DynamicArenaPage* next_page = page.prev_arena;
-		allocator::free(self.backing_allocator, page.memory);
-		allocator::free(self.backing_allocator, page);
+		alloc::free(self.backing_allocator, page.memory);
+		alloc::free(self.backing_allocator, page);
 		page = next_page;
 	}
 	self.page = null;
@@ -203,11 +203,11 @@ fn void*? _alloc_new(DynamicArenaAllocator* self, usz size, usz alignment) @loca
 	usz page_size = max(self.page_size, mem::aligned_offset(size + DynamicArenaChunk.sizeof + alignment, alignment));
 	assert(page_size > size + DynamicArenaChunk.sizeof);
 	// Grab the page without alignment (we do it ourselves)
-	void* mem = allocator::malloc_try(self.backing_allocator, page_size)!;
-	DynamicArenaPage*? page = allocator::new_try(self.backing_allocator, DynamicArenaPage);
+	void* mem = alloc::malloc_try(self.backing_allocator, page_size)!;
+	DynamicArenaPage*? page = alloc::new_try(self.backing_allocator, DynamicArenaPage);
 	if (catch err = page)
 	{
-		allocator::free(self.backing_allocator, mem);
+		alloc::free(self.backing_allocator, mem);
 		return err~;
 	}
 	page.memory = mem;
