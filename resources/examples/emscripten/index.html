@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<title>C3 WASM</title>
+<style>
+	body { background: #111; margin: 0; display: grid; height: 100vh; place-items: center; }
+	canvas { background: #000; border: 2px solid #333; }
+</style>
+<canvas id="c" width="800" height="600"></canvas>
+<script>
+	const ctx = c.getContext('2d');
+	let view, img, shared = false, ptr = 0;
+
+	var Module = {
+		onRuntimeInitialized: () => {
+			ptr = Module._get_framebuffer();
+			// Detect SharedArrayBuffer (from -pthread builds)
+			shared = Module.HEAPU8.buffer instanceof SharedArrayBuffer;
+
+			if (shared) {
+				// We must use a local copy for ImageData on shared buffers
+				view = new Uint8ClampedArray(800 * 600 * 4);
+				img  = new ImageData(view, 800, 600);
+			} else {
+				// Direct mapping is OK for non-shared buffers
+				view = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, 800 * 600 * 4);
+				img  = new ImageData(view, 800, 600);
+			}
+			loop();
+		}
+	};
+
+	function loop() {
+		Module._update_and_render();
+
+		if (shared) {
+			// Sync shared memory to the local canvas view
+			view.set(Module.HEAPU8.subarray(ptr, ptr + (800 * 600 * 4)));
+		}
+
+		ctx.putImageData(img, 0, 0);
+		requestAnimationFrame(loop);
+	}
+</script>
+<script src="build/index.js"></script>
