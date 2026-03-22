@@ -298,6 +298,15 @@ cd c3c-git
 makepkg -si
 ```
 
+#### Installing on Fedora
+
+C3 is available as a community maintained COPR package for Fedora.  
+To install via dnf:
+```sh
+sudo dnf copr enable sisyphus1813/c3
+sudo dnf install c3
+```
+
 #### Installing via Nix
 
 You can access `c3c` via [flake.nix](./flake.nix), which will contain the latest commit of the compiler. To add `c3c` to your `flake.nix`, do the following:
