@@ -69,3 +69,21 @@ fn uint num_cpu()
 	if (count < 1) count = 1;
 	return count;
 }
+
+module std::os @if(env::FREEBSD);
+import std::os::freebsd;
+import libc;
+
+fn uint num_cpu()
+{
+	int[2] nm;
+	usz len = 4;
+	uint count;
+
+	nm = { freebsd::CTL_HW, freebsd::HW_NCPU };
+	libc::sysctl(&nm, 2, &count, &len, null, 0);
+	if (count < 1) count = 1;
+	return count;
+}
+
+
