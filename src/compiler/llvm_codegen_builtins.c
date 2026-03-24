@@ -649,11 +649,19 @@ static void llvm_emit_int_to_mask(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMValueRef val = llvm_emit_expr_to_rvalue(c, args[0]);
 	unsigned bits = (unsigned)args[1]->const_expr.ixx.i.low;
 	unsigned int_len = type_bit_size(args[0]->type);
-	if (int_len > bits)
+	LLVMValueRef vec_one = LLVMGetUndef(LLVMVectorType(LLVMTypeOf(val), 1));
+	val = LLVMBuildInsertElement(c->builder, vec_one, val, llvm_const_int(c, type_int, 0), "");
+	LLVMTypeRef mask_wide_type = LLVMVectorType(c->bool_type, int_len);
+	val = LLVMBuildBitCast(c->builder, val, mask_wide_type, "");
+	if (bits < int_len)
 	{
-		val = LLVMBuildTrunc(c->builder, val, LLVMIntTypeInContext(c->context, bits), "");
+		LLVMValueRef shuffle_index[128];
+		for (int i = 0; i < bits; i++)
+		{
+			shuffle_index[i] = llvm_const_int(c, type_int, i);
+		}
+		val = LLVMBuildShuffleVector(c->builder, val, LLVMGetPoison(mask_wide_type), LLVMConstVector(shuffle_index, bits), "");
 	}
-	val = LLVMBuildBitCast(c->builder, val, LLVMVectorType(c->bool_type, bits), "");
 	llvm_value_set(be_value, val, expr->type);
 }
 
