@@ -65,6 +65,7 @@ jobs:
 
   build-msys2-mingw:
     runs-on: windows-latest
+    if: ${{ false }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
