@@ -212,6 +212,7 @@ typedef struct BuildOptions_
 	bool test_noleak;
 	bool test_show_output;
 	bool benchmark_csv_report;
+	bool defer_dir_checking;
 	bool print_large_functions;
 	const char *custom_linker_path;
 	uint32_t symtab_size;

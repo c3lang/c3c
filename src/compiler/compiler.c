@@ -53,9 +53,11 @@ void compiler_init(BuildOptions *build_options)
 		error_exit("Failed to change path to '%s'.", build_options->path);
 	}
 
-	FOREACH(const char *, dir, build_options->unchecked_directories)
-	{
-		(void)check_dir(dir);
+	if (!build_options->defer_dir_checking) {
+		FOREACH(const char *, dir, build_options->unchecked_directories)
+		{
+			(void)check_dir(dir);
+		}
 	}
 
 	compiler_init_time = -1;

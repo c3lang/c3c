@@ -513,6 +513,7 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("build"))
 	{
 		options->command = COMMAND_BUILD;
+		options->defer_dir_checking = true;
 		parse_optional_target(options);
 		return;
 	}
@@ -520,18 +521,21 @@ static void parse_command(BuildOptions *options)
 	{
 		options->command = COMMAND_BENCHMARK;
 		options->benchmarking = true;
+		options->defer_dir_checking = true;
 		return;
 	}
 	if (arg_match("test"))
 	{
 		options->command = COMMAND_TEST;
 		options->testing = true;
+		options->defer_dir_checking = true;
 		parse_optional_target(options);
 		return;
 	}
 	if (arg_match("run"))
 	{
 		options->command = COMMAND_RUN;
+		options->defer_dir_checking = true;
 		parse_optional_target(options);
 		return;
 	}
@@ -543,6 +547,7 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("clean-run"))
 	{
 		options->command = COMMAND_CLEAN_RUN;
+		options->defer_dir_checking = true;
 		parse_optional_target(options);
 		return;
 	}
@@ -554,12 +559,14 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("dist"))
 	{
 		options->command = COMMAND_CLEAN_RUN;
+		options->defer_dir_checking = true;
 		parse_optional_target(options);
 		return;
 	}
 	if (arg_match("bench"))
 	{
 		options->command = COMMAND_BENCH;
+		options->defer_dir_checking = true;
 		parse_optional_target(options);
 		return;
 	}
