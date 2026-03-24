@@ -5,8 +5,8 @@ import std::time::clock;
 struct BenchData
 {
 	float[<4>] v4;
-	Matrix4f m1;
-	Matrix4f m2;
+	Mat4 m1;
+	Mat4 m2;
 }
 
 BenchData data;
@@ -18,8 +18,8 @@ fn void initialize() @init
 	float f = (float)(t % 1000) * 0.001f;
 
 	data.v4 = { 1.0f, 2.0f, 3.0f, 1.0f + f };
-	data.m1 = MATRIX4F_IDENTITY;
-	data.m2 = MATRIX4F_IDENTITY;
+	data.m1 = matrix::IDENTITY4;
+	data.m2 = matrix::IDENTITY4;
 	data.m1.m00 = 2.0f + f;
 	data.m1.m03 = 1.5f;
 	data.m2.m11 = 2.0f - f;
@@ -72,7 +72,7 @@ fn void inverse()
 fn void perspective()
 {
 	@start_benchmark();
-	Matrix4f res = matrix4f_perspective(0.785f, 1.3f, 0.1f, 1000.0f);
+	Mat4 res = matrix::perspective(0.785f, 1.3f, 0.1f, 1000.0f);
 	@end_benchmark();
 	sink(res.m00);
 }
@@ -80,7 +80,7 @@ fn void perspective()
 fn void lookat()
 {
 	@start_benchmark();
-	Matrix4f res = matrix4f_look_at({4.0f, 5.0f, 20.0f}, {1.0f, 3.0f, 0.0f}, {0.0f, 1.0f, 0.0f});
+	Mat4 res = matrix::look_at({4.0f, 5.0f, 20.0f}, {1.0f, 3.0f, 0.0f}, {0.0f, 1.0f, 0.0f});
 	@end_benchmark();
 	sink(res.m00);
 }
