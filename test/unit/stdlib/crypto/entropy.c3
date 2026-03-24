@@ -5,12 +5,12 @@ module entropy_tests @test;
 
 import std::crypto::entropy, std::math;
 
-fn void generates_without_fault()
+fn void generates_when_supported()
 {
 	$if env::WIN32 || env::LINUX || env::BSD_FAMILY || env::DARWIN || env::ANDROID:
-		char[] cmp  = allocator::alloc_array(tmem, char, 1024);
-		char[] buf  = allocator::alloc_array(tmem, char, 1024);
-		char[] zero = allocator::alloc_array(tmem, char, 1024);
+		char[] cmp  = alloc::alloc_array(tmem, char, 1024);
+		char[] buf  = alloc::alloc_array(tmem, char, 1024);
+		char[] zero = alloc::alloc_array(tmem, char, 1024);
 		cmp[..] = 0xA5;
 		mem::zero_volatile(zero);
 		foreach (i, v : math::iota(usz[1024]))

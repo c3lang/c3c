@@ -99,13 +99,13 @@ fn void? fill(char[] buffer, bool timeout = false)
 		$case env::NETBSD:
 			$if (@in(env::ARCH_TYPE, ARM, ARMB, AARCH64, X86, X86_64)):
 				isz result = $$syscall(entropy_syscall_id(), (uptr)buffer.ptr, buffer.len, 0);
-				if (result < 0 && result != errno::EINTR) return SECURE_RANDOM_UNAVAILABLE~;   /* it's possible for signal handlers to interrupt this call */
+				if (result < 0 && result != Errno.EINTR) return SECURE_RANDOM_UNAVAILABLE~;   /* it's possible for signal handlers to interrupt this call */
 				for (usz prevent_block = 0; result < buffer.len && (!timeout || prevent_block < 1_000); prevent_block++)
 				{
 					isz more = $$syscall(entropy_syscall_id(), (uptr)((isz)buffer.ptr + result), buffer.len, 0);
 					if (more < 0)
 					{
-						if (more != errno::EINTR) return SECURE_RANDOM_UNAVAILABLE~;
+						if (more != Errno.EINTR) return SECURE_RANDOM_UNAVAILABLE~;
 						continue;
 					}
 					result += more;
@@ -158,7 +158,7 @@ fn void? fill(char[] buffer, bool timeout = false)
 fn char[]? make(Allocator allocator, usz length, bool timeout = false)
 {
 	if (!length) return {};
-	char[] res = allocator::alloc_array(allocator, char, length)[:length];
+	char[] res = alloc::alloc_array(allocator, char, length)[:length];
 	fill(res, timeout)!;
 	return res;
 }
