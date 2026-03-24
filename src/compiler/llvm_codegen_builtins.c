@@ -649,8 +649,6 @@ static void llvm_emit_int_to_mask(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMValueRef val = llvm_emit_expr_to_rvalue(c, args[0]);
 	unsigned bits = (unsigned)args[1]->const_expr.ixx.i.low;
 	unsigned int_len = type_bit_size(args[0]->type);
-	LLVMValueRef vec_one = LLVMGetUndef(LLVMVectorType(LLVMTypeOf(val), 1));
-	val = LLVMBuildInsertElement(c->builder, vec_one, val, llvm_const_int(c, type_int, 0), "");
 	LLVMTypeRef mask_wide_type = LLVMVectorType(c->bool_type, int_len);
 	val = LLVMBuildBitCast(c->builder, val, mask_wide_type, "");
 	if (bits < int_len)
