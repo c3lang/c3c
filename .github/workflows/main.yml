@@ -63,14 +63,15 @@ jobs:
           name: c3-windows-${{ matrix.build_type }}
           path: c3-windows-${{ matrix.build_type }}.zip
 
-  build-msys2-mingw:
+  build-msys2:
     runs-on: windows-latest
-    if: ${{ false }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        build_type: [Debug]
+        include:
+          - { sys: MINGW64, prefix: /mingw64 }
+          - { sys: CLANG64, prefix: /clang64 }
     defaults:
       run:
         shell: msys2 {0}
@@ -78,53 +79,30 @@ jobs:
       - uses: actions/checkout@v6
       - uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
-          update: false
+          msystem: ${{matrix.sys}}
+          update: true
           cache: true
-          install: git binutils mingw-w64-x86_64-clang mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python mingw-w64-x86_64-llvm mingw-w64-x86_64-llvm-libs
-
-      - name: Install LLD
-        run: |
-          echo "Server = https://mirror.msys2.org/mingw/mingw64" > /etc/pacman.d/mirrorlist.mingw64
-          for i in 1 2; do \
-            pacman -Sy --noconfirm --needed \
-              mingw-w64-x86_64-llvm \
-              mingw-w64-x86_64-llvm-libs \
-              mingw-w64-x86_64-lld \
-              mingw-w64-x86_64-clang && break || sleep 5; \
-          done
-
+          pacboy: >-
+            cmake:p
+            ninja:p
+            llvm:p
+            lld:p
+            clang:p
+            toolchain:p
+            python:p
+            git:p
+            zlib:p
+            zstd:p
+            libxml2:p
+      # (MINGW64) Force LLD as the linker to resolve __imp_ symbol thunking issues from
+      # static LLVM archives (LNK4217), which the GNU linker (ld) cannot resolve automatically.
       - name: CMake Build
         run: |
-          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_LINKER=lld -DC3_LINK_DYNAMIC=OFF -DLLVM_DIR=/mingw64/lib/cmake/llvm -DC3_LLD_DIR=/mingw64/lib/
+          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_LINKER=lld -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DC3_LINK_DYNAMIC=OFF -DLLVM_DIR=${{matrix.prefix}}/lib/cmake/llvm -DC3_LLD_DIR=${{matrix.prefix}}/lib/
           cmake --build build
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
-  build-msys2-clang:
-    runs-on: windows-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        build_type: [Debug]
-    defaults:
-      run:
-        shell: msys2 {0}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: CLANG64
-          update: false
-          cache: true
-          install: git binutils mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-python
-      - name: CMake Build
-        run: |
-          cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          cmake --build build
-      - name: Run Unified Tests
-        run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
   build-linux:
     runs-on: ubuntu-latest
