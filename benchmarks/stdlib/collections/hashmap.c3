@@ -107,7 +107,7 @@ fn void hash_speeds_of_many_random_values() => @pool()
 	ulong[] longs = alloc::new_array(tmem, ulong, $arrsz)[:$arrsz];
 	foreach (&v : longs) *v = (ulong)random::next(&rand, uint.max);
 
-	uint128[] vwideints = alloc::new_array(tmem, uint128, $arrsz)[:$arrsz];
+	uint128[] vwideints = alloc::new_array_aligned(tmem, uint128, $arrsz)[:$arrsz];
 	foreach (&v : vwideints) *v = (uint128)random::next(&rand, uint.max);
 
 	char[48][] zstrs = alloc::new_array(tmem, char[48], $arrsz)[:$arrsz];
@@ -215,7 +215,7 @@ fn void random_access_string_keys() => @pool()
 	@start_benchmark();
 	for (usz i = 0; i < saved.len; ++i)
 	{
-		pseudo_checksum += v[ saved[random::next(&rand, saved.len)] ]!! % 512;
+		pseudo_checksum += (usz)v[ saved[random::next(&rand, saved.len)] ]!! % 512;
 	}
 	@end_benchmark();
 

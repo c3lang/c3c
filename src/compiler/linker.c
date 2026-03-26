@@ -840,21 +840,24 @@ static void add_linked_libs(const char ***args_ref, const char **libs, bool is_w
 	}
 }
 
-static void linker_setup_emscripten(const char ***args_ref, Linker linker_type, const char **files_to_link, unsigned file_count)
+static void linker_setup_emscripten(const char ***args_ref, Linker linker_type, 
+                                    const char **files_to_link, unsigned file_count)
 {
 	if (linker_type == LINKER_CC)
 	{
-		// `c3c compile-test -O1 --target emscripten -o test.js test/unit/ && node test.js`
-		//
-		// FIXME: It's currently undecided if these should be default.
-		// -pthread + ALLOW_MEMORY_GROWTH forces SharedArrayBuffer, which
-		// breaks ImageData in many browsers without COOP/COEP headers.
-		//
-		// minimal 3 linker flags to make the unit test pass
-		add_plain_arg("-pthread");
-		add_plain_arg("-sSTACK_SIZE=128kb");
-		add_plain_arg("-sALLOW_MEMORY_GROWTH");
+		if (compiler.build.testing)
+		{
+			// minimal 3 linker flags to make the unit test pass
+			// `c3c compile-test -O1 --target emscripten -o test.js test/unit/ && node test.js`
+			add_plain_arg("-pthread");
+			add_plain_arg("-sSTACK_SIZE=128kb");
+			add_plain_arg("-sALLOW_MEMORY_GROWTH");
+		}
 
+		if (compiler.build.benchmarking)
+		{
+			add_plain_arg("-sALLOW_MEMORY_GROWTH");
+		}
 
 		// // In non-optimized builds, we may want to enable some debugging flags for Emscripten
 		// if (compiler.build.optlevel == OPTIMIZATION_NONE)
@@ -862,21 +865,7 @@ static void linker_setup_emscripten(const char ***args_ref, Linker linker_type, 
 		// 	add_plain_arg("-sASSERTIONS=1");
 		// 	add_plain_arg("-sSTACK_OVERFLOW_CHECK=1");
 		// }
-		// add_plain_arg("-sSTACK_SIZE=1048576");
-		// add_plain_arg("-sALLOW_MEMORY_GROWTH=1");
-		// add_plain_arg("-sINITIAL_MEMORY=268435456");
 
-		// // Auto-detect thread usage.
-		// for (unsigned i = 0; i < file_count; i++)
-		// {
-		// 	if (strstr(files_to_link[i], "std.thread.os.o"))
-		// 	{
-		// 		OUTN("Thread usage detected for Emscripten: automatically adding '-pthread' and '-sPTHREAD_POOL_SIZE=15'.");
-		// 		add_plain_arg("-pthread");
-		// 		add_plain_arg("-sPTHREAD_POOL_SIZE=15");
-		// 		break;
-		// 	}
-		// }
 	}
 }
 
