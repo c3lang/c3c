@@ -7,7 +7,7 @@ import std::crypto::entropy, std::math;
 
 fn void generates_when_supported()
 {
-	$if env::WIN32 || env::LINUX || env::BSD_FAMILY || env::DARWIN || env::ANDROID:
+	$if env::WIN32 || env::LINUX || env::BSD_FAMILY || env::DARWIN || env::ANDROID || env::EMSCRIPTEN:
 		char[] cmp  = alloc::alloc_array(tmem, char, 1024);
 		char[] buf  = alloc::alloc_array(tmem, char, 1024);
 		char[] zero = alloc::alloc_array(tmem, char, 1024);
@@ -26,6 +26,6 @@ fn void generates_when_supported()
 		}
 	$else
 		char[10] x;
-		test::@error(entropy::fill(x[..], entropy::SECURE_RANDOM_UNAVAILABLE));
+		test::@error(entropy::fill(x[..], entropy::SECURE_RANDOM_UNAVAILABLE~));
 	$endif
 }
