@@ -471,6 +471,7 @@ RETRY:;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		{
+			if (type->decl->is_packed) return 1;
 			AlignSize max = 0;
 			FOREACH(Decl *, member, type->decl->strukt.members)
 			{
@@ -701,7 +702,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		}
 	}
 
-	decl->is_packed |= is_unaligned;
+	decl->is_packed = is_unaligned;
 	// Strip padding if we are aligned.
 	if (!decl->is_packed && is_naturally_aligned)
 	{
@@ -3856,7 +3857,7 @@ bool sema_analyse_optional_returns(SemaContext *context, Decl *contracts)
 				case RESOLVE_NOT_DONE:
 					if (!sema_analyse_optional_returns(context, sub_contracts)) goto FAIL;
 			}
-			FOREACH (Decl *, decl, sub_contracts->contracts_decl.opt_returns_resolved) vec_add(result, decl);
+			FOREACH (Decl *, d, sub_contracts->contracts_decl.opt_returns_resolved) vec_add(result, d);
 			continue;
 		}
 IS_FAULT:;
@@ -5462,8 +5463,8 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 		else
 		{
 			// 'Foo' expects 2 generic arguments, but you supplied 1, did you make a mistake?
-			SourceLoc loc = extend_loc_with_token(sourcelocptr(params[0]->loc), sourcelocptr(vectail(params)->loc));
-			sema_error_at(context, make_loc(loc),
+			SourceLoc l = extend_loc_with_token(sourcelocptr(params[0]->loc), sourcelocptr(vectail(params)->loc));
+			sema_error_at(context, make_loc(l),
 			              "'%s' expects %d %s, but you supplied %d, did you make a mistake?",
 			              name,
 			              parameter_count,
