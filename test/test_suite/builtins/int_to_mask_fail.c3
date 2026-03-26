@@ -1,4 +1,4 @@
-
+module std::test;
 fn void test1()
 {
 	$$int_to_mask(1u, 32);

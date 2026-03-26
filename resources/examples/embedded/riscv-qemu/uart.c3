@@ -15,13 +15,13 @@ struct Uart
 
 fn bool Uart.uart_ff_thr_empty(Uart* this)
 {
-	return (bool)($$volatile_load(&this.lsr) & UARTLSR_THRE);
+	return (bool)(@volatile_load(this.lsr) & UARTLSR_THRE);
 }
 
 fn void Uart.putc(Uart* this, char c)
 {
 	while (!this.uart_ff_thr_empty());         // Wait until the FIFO holding register is empty
-	$$volatile_store(&this.dr, c);             // Write character to transmit register
+	@volatile_store(this.dr, c);             // Write character to transmit register
 }
 
 fn void Uart.puts(Uart* this, char *str)

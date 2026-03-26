@@ -1,5 +1,5 @@
 // #target: macos-x64
-module test;
+module std::test;
 fn void main()
 {
 	{
@@ -16,7 +16,7 @@ fn void main()
 	}
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
   %2 = call <2 x float> @llvm.maxnum.v2f32(<2 x float> %0, <2 x float> %1)
   %5 = call <2 x float> @llvm.minnum.v2f32(<2 x float> %3, <2 x float> %4)

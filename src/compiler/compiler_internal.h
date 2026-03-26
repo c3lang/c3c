@@ -2079,6 +2079,7 @@ extern const char *kw_at_pure;
 extern const char *kw_at_require;
 extern const char *kw_at_return;
 extern const char *kw_at_simd;
+extern const char *kw_compiler_rt;
 extern const char *kw_in;
 extern const char *kw_inout;
 extern const char *kw_len;

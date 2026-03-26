@@ -1,6 +1,6 @@
 // #target: macos-x64
 // #opt: --fp-math=relaxed
-module test;
+module std::test;
 
 fn float easeElasticIn(float t, float b, float c, float d) @inline // Ease: Elastic In
 {
@@ -15,10 +15,10 @@ fn float easeElasticIn(float t, float b, float c, float d) @inline // Ease: Elas
     return (-(postFix*$$sin((t*d-s)*(2.0f*3.14f)/p )) + b);
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
 
-define float @test.easeElasticIn(float %0, float %1, float %2, float %3) #0 {
+define weak float @std.test.easeElasticIn(float %0, float %1, float %2, float %3) #0 {
 entry:
   %t = alloca float, align 4
   %p = alloca float, align 4

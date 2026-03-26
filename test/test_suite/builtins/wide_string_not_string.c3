@@ -1,1 +1,2 @@
+module std::test;
 uint b = $$wstr16(0xfe); // #error: You need a compile time constant string to convert to a wide string

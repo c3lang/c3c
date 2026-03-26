@@ -145,6 +145,7 @@ static void usage(bool full)
 		print_opt("--warn-methodvisibility=<yes|no|error>", "Print warning when methods have ignored visibility attributes.");
 		print_opt("--warn-methodsnotresolved=<yes|no|error>", "Print warning on methods not resolved when accessed: yes, no, error.");
 		print_opt("--warn-deprecation=<yes|no|error>", "Print warning when using deprecated code and constructs: yes, no, error.");
+		print_opt("--warn-builtin=<yes|no|error>", "Print warning when using builtin functions outside of the stdlib: yes, no, error.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -1029,6 +1030,11 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("warn-deadcode")))
 			{
 				options->warnings.dead_code = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-builtin")))
+			{
+				options->warnings.builtin = parse_opt_select(WarningLevel, argopt, warnings);
 				return;
 			}
 			if ((argopt = match_argopt("warn-methodvisibility")))

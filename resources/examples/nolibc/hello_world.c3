@@ -1,6 +1,6 @@
 fn void print(String msg)
 {
-    $$syscall(1, 1, (uptr)msg.ptr, msg.len); // __NR_write, STDOUT
+    @syscall(1, 1, (uptr)msg.ptr, msg.len); // __NR_write, STDOUT
 }
 
 fn void printn(String msg)
@@ -11,7 +11,7 @@ fn void printn(String msg)
 
 fn void exit(int exit_code)
 {
-    $$syscall(60, exit_code); // __NR_exit
+    @syscall(60, exit_code); // __NR_exit
 }
 
 fn int main()

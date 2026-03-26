@@ -1,5 +1,5 @@
 // #target: macos-x64
-module test;
+module std::test;
 
 struct Foo
 {
@@ -32,9 +32,9 @@ fn void main()
   @unaligned_store(*(float[<4>]*)&foo.a, b, 1);
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
-define void @test.test() #0 {
+define weak void @std.test.test() #0 {
 entry:
   %b = alloca i32, align 4
   %g = alloca [100 x i32], align 16
@@ -53,7 +53,7 @@ entry:
   ret void
 }
 
-define void @test.main() #0 {
+define weak void @std.test.main() #0 {
 entry:
   %foo = alloca ptr, align 8
   %a = alloca <4 x float>, align 1

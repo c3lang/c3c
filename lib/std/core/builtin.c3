@@ -401,6 +401,15 @@ macro void unsupported(String string = "Unsupported function invoked") @builtin 
 }
 
 <*
+ @require $defined(uptr[] x = { $vasplat }) : "Arguments must be convertible to uptr"
+*>
+macro uptr @syscall(...) @builtin
+{
+	return $$syscall($vasplat);
+}
+
+
+<*
  Unconditionally break into an attached debugger when reached.
 *>
 macro void breakpoint() @builtin

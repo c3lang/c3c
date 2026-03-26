@@ -17,6 +17,7 @@
 - Added new builtins: `$$acos`, `$$asin`, `$$atan`, `$$cosh`, `$$exp10`, `$$sinh`, `$$tan` and `$$tanh`.
 - Added the rest of the `xoshiro` and `xoroshiro` PRNG variants. #3027
 - Improve error when using keyword as identifier #3066
+- Warn when using $$builtin functions outside of the stdlib #3065
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977

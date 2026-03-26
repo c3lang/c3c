@@ -1,6 +1,5 @@
 // #target: macos-x64
-
-module test;
+module std::test;
 import std::io;
 
 fn void main()
@@ -9,6 +8,6 @@ fn void main()
 	io::printfn("%s", $$reverse(a));
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
   %reverse = shufflevector <4 x i32> %0, <4 x i32> poison, <4 x i32> <i32 3, i32 2, i32 1, i32 0>

@@ -1,5 +1,5 @@
 // #target: macos-x64
-module test;
+module std::test;
 fn void main()
 {
 	var $foo = "hello";
@@ -8,7 +8,7 @@ fn void main()
 	String y = @sprintf("%s %s", $c, $foo);
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
 @.str = private unnamed_addr constant [15 x i8] c"hello { 1, 3 }\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"{ 1, 3 } hello\00", align 1

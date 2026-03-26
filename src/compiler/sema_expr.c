@@ -11840,6 +11840,11 @@ static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, b
 		return false;
 	}
 	expr->builtin_expr.builtin = func;
+	const char *top_module_name = context->unit->module->top_module->name->module;
+	if (top_module_name != kw_std && top_module_name != kw_compiler_rt)
+	{
+		return SEMA_WARN(expr, builtin, "Builtins are intended for internal use inside of the standard library, please access this function through the standard library macro instead.");
+	}
 	return true;
 }
 

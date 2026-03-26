@@ -56,7 +56,6 @@ macro void? chdir(path)
 }
 
 fn Path? temp_directory(Allocator allocator) => os::native_temp_directory(allocator);
-
 fn Path? home_directory(Allocator allocator) => os::native_home_directory(allocator);
 fn Path? desktop_directory(Allocator allocator) => os::native_user_directory(allocator, DESKTOP);
 fn Path? videos_directory(Allocator allocator) => os::native_user_directory(allocator, VIDEOS);
