@@ -26,6 +26,6 @@ fn void generates_when_supported()
 		}
 	$else
 		char[10] x;
-		test::@error(entropy::fill(x[..], entropy::SECURE_RANDOM_UNAVAILABLE));
+		test::@error(entropy::fill(x[..]), entropy::SECURE_RANDOM_UNAVAILABLE);
 	$endif
 }
