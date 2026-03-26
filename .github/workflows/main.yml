@@ -138,6 +138,18 @@ jobs:
           cd resources/examples/embedded/riscv-qemu
           make C3C_PATH=../../../../build/ run
 
+      - name: Setup Emscripten
+        run: |
+          git clone https://github.com/emscripten-core/emsdk.git
+          cd emsdk
+          ./emsdk install latest
+          ./emsdk activate latest
+          echo "$GITHUB_WORKSPACE/emsdk" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/emsdk/upstream/emscripten" >> $GITHUB_PATH
+
+      - name: Run Emscripten Tests
+        run: ./scripts/tools/emscripten_tests.sh "./build/c3c"
+
       - name: Bundle & Upload (Linux)
         run: |
           bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-${{matrix.build_type}}" "tar"
