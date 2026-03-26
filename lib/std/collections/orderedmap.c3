@@ -130,7 +130,7 @@ fn PrivateOrderedMap* PrivateOrderedMap.tinit_with_cmp(&self, CmpFn{Key} cmp_fn)
 <*
  Insert or update the value associated with key.
 *>
-fn void PrivateOrderedMap.set(&self, Key key, Value value)
+fn bool PrivateOrderedMap.set(&self, Key key, Value value) @operator([]=)
 {
 	orderedmap_node::SkipNode{Key, Value}*[MAX_LEVEL] update;
 	orderedmap_node::SkipNode{Key, Value}* current = self.head;
@@ -150,7 +150,7 @@ fn void PrivateOrderedMap.set(&self, Key key, Value value)
 	if (current != null && !self.cmp(current.key, key) && !self.cmp(key, current.key))
 	{
 		current.value = value;
-		return;
+		return true;
 	}
 
 	// Insert new node
@@ -171,12 +171,13 @@ fn void PrivateOrderedMap.set(&self, Key key, Value value)
 	}
 
 	self.count++;
+	return false;
 }
 
 <*
  @return "the value for key, or NOT_FOUND if absent"
 *>
-fn Value? PrivateOrderedMap.get(&self, Key key)
+fn Value? PrivateOrderedMap.get(&self, Key key) @operator([])
 {
 	orderedmap_node::SkipNode{Key, Value}* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
@@ -197,7 +198,7 @@ fn Value? PrivateOrderedMap.get(&self, Key key)
 <*
  @return "a pointer to the value for key, or null if absent"
 *>
-fn Value* PrivateOrderedMap.get_ref(&self, Key key)
+fn Value* PrivateOrderedMap.get_ref(&self, Key key) @operator(&[])
 {
 	orderedmap_node::SkipNode{Key, Value}* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)

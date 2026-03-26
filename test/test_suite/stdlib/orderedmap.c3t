@@ -399,6 +399,31 @@ fn void test_custom_cmp()
     io::printn();
 }
 
+fn void test_operators()
+{
+    // Operators are defined on PrivateOrderedMap (inline typedef does not propagate @operator).
+    PrivateOrderedMap{int, String, false} m;
+    m.tinit();
+    defer m.free();
+
+    // [=] operator: false = new insert, true = update
+    bool was_update = (m[1] = "one");
+    io::printfn("insert new: %s", was_update);      // false
+    was_update = (m[1] = "ONE");
+    io::printfn("insert update: %s", was_update);   // true
+
+    // [] operator: same as get, returns optional
+    io::printfn("[] get: %s", m[1]!!);
+    if (try m[99]) { io::printfn("[] missing: found"); } else { io::printfn("[] missing: not found"); }
+
+    // &[] operator: same as get_ref, returns pointer
+    String* ref = &m[1];
+    *ref = "world";
+    io::printfn("&[] mutation: %s", m[1]!!);
+    String* missing = &m[99];
+    io::printfn("&[] missing null: %s", missing == null);
+}
+
 fn void main()
 {
     test_basic_insert_and_get();
@@ -421,6 +446,7 @@ fn void main()
     test_iter_from();
     test_iter_range();
     test_custom_cmp();
+    test_operators();
 }
 
 // #expect: test.ll
