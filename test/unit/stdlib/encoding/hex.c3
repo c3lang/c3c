@@ -23,7 +23,7 @@ fn void encode()
 	char[64] buf;
 	foreach (t : tests)
 	{
-		n = hex::encode_bytes(t.dec, buf[..]);
+		n = hex::encode_bytes_into(buf[..], t.dec);
 		String want = ((String)t.enc).to_lower_tcopy();
 		assert(want == buf[:n], "encode failed: got: %s, want: %s", buf[:n], want);
 		@pool()
@@ -39,7 +39,7 @@ fn void decode()
 	char[64] buf;
 	foreach (t : tests)
 	{
-		n = hex::decode_bytes(t.enc, buf[..])!!;
+		n = hex::decode_bytes_into(buf[..], t.enc)!!;
 		assert(t.dec == buf[:n], "decode failed: got: %s, want: %s", buf[:n], t.dec);
 		@pool()
 		{

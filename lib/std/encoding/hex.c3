@@ -3,26 +3,36 @@ import std::encoding @norecurse;
 
 // The implementation is based on https://www.rfc-editor.org/rfc/rfc4648
 
-fn String encode_buffer(char[] code, char[] buffer)
+fn String encode_buffer(char[] code, char[] buffer) @deprecated("Use encode_into")
 {
-	return (String)buffer[:encode_bytes(code, buffer)];
+	return encode_into(buffer, code);
 }
 
-fn char[]? decode_buffer(char[] code, char[] buffer)
+fn String encode_into(char[] dst, char[] src)
 {
-	return buffer[:decode_bytes(code, buffer)!];
+	return (String)dst[:encode_bytes_into(dst, src)];
+}
+
+fn char[]? decode_buffer(char[] code, char[] buffer) @deprecated("Use decode_into")
+{
+	return decode_into(buffer, code);
+}
+
+fn char[]? decode_into(char[] dst, char[] src)
+{
+	return dst[:decode_bytes_into(dst, src)!];
 }
 
 fn String encode(Allocator allocator, char[] code)
 {
 	char[] data = alloc::alloc_array(allocator, char, encode_len(code.len));
-	return (String)data[:encode_bytes(code, data)];
+	return (String)data[:encode_bytes_into(data, code)];
 }
 
 fn char[]? decode(Allocator allocator, char[] code)
 {
 	char[] data = alloc::alloc_array(allocator, char, decode_len(code.len));
-	return data[:decode_bytes(code, data)!];
+	return data[:decode_bytes_into(data, code)!];
 }
 
 fn String tencode(char[] code) @inline => encode(tmem, code);
@@ -36,14 +46,18 @@ fn char[]? tdecode(char[] code) @inline => decode(tmem, code);
 *>
 fn usz encode_len(usz n) => n * 2;
 
+fn usz encode_bytes(char[] src, char[] dst) @deprecated("Use encode_bytes_into")
+{
+	return encode_bytes_into(dst, src);
+}
 <*
  Encode the content of src into dst, which must be properly sized.
- @param src : "The input to be encoded."
  @param dst : "The encoded input."
+ @param src : "The input to be encoded."
  @return "The encoded size."
  @require dst.len >= encode_len(src.len) : "Destination array is not large enough"
 *>
-fn usz encode_bytes(char[] src, char[] dst)
+fn usz encode_bytes_into(char[] dst, char[] src)
 {
 	usz j = 0;
 	foreach (v : src)
@@ -62,19 +76,24 @@ fn usz encode_bytes(char[] src, char[] dst)
 *>
 macro usz decode_len(usz n) => n / 2;
 
+fn usz? decode_bytes(char[] src, char[] dst) @deprecated("Use decode_bytes_into")
+{
+	return decode_bytes_into(dst, src);
+}
+
 <*
  Decodes src into bytes. Returns the actual number of bytes written to dst.
 
  Expects that src only contains hexadecimal characters and that src has even
  length.
 
- @param src : "The input to be decoded."
  @param dst : "The decoded input."
+ @param src : "The input to be decoded."
  @require src.len % 2 == 0 : "src is not of even length"
  @require dst.len >= decode_len(src.len) : "Destination array is not large enough"
  @return? encoding::INVALID_CHARACTER
 *>
-fn usz? decode_bytes(char[] src, char[] dst)
+fn usz? decode_bytes_into(char[] dst, char[] src)
 {
 	usz i;
 	for (usz j = 1; j < src.len; j += 2)
