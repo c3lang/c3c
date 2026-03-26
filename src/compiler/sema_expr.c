@@ -2115,9 +2115,8 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 					{
 						ConstInitializer *initializer = inner_new->const_expr.initializer;
 						inner_new->const_expr.const_kind = CONST_SLICE;
-						inner_new->type = type_get_slice(inner_new->type->array.base);
 						inner_new->const_expr.slice_init = initializer;
-						initializer->type = inner_new->type;
+						inner_new->type = type_get_slice(inner_new->type->array.base);
 					}
 					else
 					{
