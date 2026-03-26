@@ -126,7 +126,7 @@ macro uint @le(val) @local => env::BIG_ENDIAN ??? bswap(val) : val;
 macro @le_c(val) @local => @as_char_view(env::BIG_ENDIAN ??? *&&bswap(val) : val);
 
 <* The internal round function of Argon2's BLAKE2-like compression function.  *>
-fn void _g(ulong* a, ulong *b, ulong* c, ulong* d) @local @inline
+fn void _g(ulong* a, ulong *b, ulong* c, ulong* d) @local
 {
 	*a += *b + 2ul * (uint)*a * (uint)*b;
 	*d ^= *a;
@@ -143,7 +143,7 @@ fn void _g(ulong* a, ulong *b, ulong* c, ulong* d) @local @inline
 }
 
 <* Apply a set of compression rounds to permute an `Argon2Block` in memory. *>
-fn void Argon2Block.permute(&self, ulong[16] v) @inline
+fn void Argon2Block.permute(&self, ulong[16] v)
 {
 	_g(&self.q[v[0]], &self.q[v[4]], &self.q[v[8]],  &self.q[v[12]]);
 	_g(&self.q[v[1]], &self.q[v[5]], &self.q[v[9]],  &self.q[v[13]]);

@@ -1,0 +1,53 @@
+// #target: macos-aarch64
+module abc;
+
+struct Inner @packed @align(4)
+{
+	ulong j;
+}
+struct Test
+{
+	int type;
+	Inner z;
+}
+
+struct Inner2 @packed @align(8)
+{
+	ulong j;
+}
+struct Test2
+{
+	int type;
+	Inner2 z;
+}
+
+struct Inner3 @packed @align(16)
+{
+	ulong j;
+}
+struct Test3
+{
+	int type;
+	Inner3 z;
+}
+
+fn int main()
+{
+	Test a;
+	Test2 b;
+	Test3 c;
+	return 0;
+}
+
+/* #expect: abc.ll
+
+%Test = type <{ i32, %Inner }>
+%Inner = type { i64 }
+%Test2 = type { i32, %Inner2 }
+%Inner2 = type { i64 }
+%Test3 = type { i32, [12 x i8], %Inner3 }
+%Inner3 = type { i64, [8 x i8] }
+
+  %a = alloca %Test, align 4
+  %b = alloca %Test2, align 8
+  %c = alloca %Test3, align 16

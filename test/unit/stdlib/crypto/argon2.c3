@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Zack Puhl <github@xmit.xyz>. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module argon2_test @test @if(false);
+module argon2_test @test;
 
 import std::crypto::argon2;
 import std::collections::pair, std::encoding::base64;

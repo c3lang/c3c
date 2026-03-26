@@ -82,6 +82,7 @@
 - `@nodiscard`, `@maydiscard` and `@noreturn` weren't properly handled for function type declarations.
 - `$defined` with body expansion would not correctly check if parameters were the right type.
 - `mask_from_int` would miscompile on some platforms.
+- Overaligning structs while using `@packed` would cause incorrect lowering #3000
 
 ## 0.7.10 Change list
 
