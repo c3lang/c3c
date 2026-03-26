@@ -1,6 +1,19 @@
+module std::math;
+
+// Predefined matrix types
+alias MatrixRM2f = MatrixRM2x2 {float};
+alias MatrixRM2  = MatrixRM2x2 {double};
+alias MatrixRM3f = MatrixRM3x3 {float};
+alias MatrixRM3  = MatrixRM3x3 {double};
+alias MatrixRM4f = MatrixRM4x4 {float};
+alias MatrixRM4  = MatrixRM4x4 {double};
+<*
+ The generic matrix module, for float or double based matrix definitions.
+
+ @require Real.kindof == FLOAT : "A matrix must use a floating type"
+*>
 module std::math::matrix <Real>;
 import std::math::vector;
-
 
 fn MatrixRM2x2 MatrixRM2x2.component_mul(&self, Real s) @operator(*) => matrix_component_mul(self, s);
 fn MatrixRM3x3 MatrixRM3x3.component_mul(&self, Real s) @operator(*) => matrix_component_mul(self, s);
@@ -18,40 +31,68 @@ fn MatrixRM2x2 MatrixRM2x2.negate(&self) @operator(-) => { .m = -(Real[<4>])self
 fn MatrixRM3x3 MatrixRM3x3.negate(&self) @operator(-) => { .m = -(Real[<9>])self.m };
 fn MatrixRM4x4 MatrixRM4x4.negate(&self) @operator(-) => { .m = -(Real[<16>])self.m };
 
-fn bool MatrixRM2x2.eq(&self, MatrixRM2x2 mat2) @operator(==) => self.m == mat2.m;
+fn bool MatrixRM2x2.eq(&self, MatrixRM2x2 mat2) @operator(==) => (Real[<4>])self.m == (Real[<4>])mat2.m;
 fn bool MatrixRM3x3.eq(&self, MatrixRM3x3 mat2) @operator(==) => (Real[<9>])self.m == (Real[<9>])mat2.m;
 fn bool MatrixRM4x4.eq(&self, MatrixRM4x4 mat2) @operator(==) => (Real[<16>])self.m == (Real[<16>])mat2.m;
 
-fn bool MatrixRM2x2.neq(&self, MatrixRM2x2 mat2) @operator(!=) => self.m != mat2.m;
+fn bool MatrixRM2x2.neq(&self, MatrixRM2x2 mat2) @operator(!=) => (Real[<4>])self.m != (Real[<4>])mat2.m;
 fn bool MatrixRM3x3.neq(&self, MatrixRM3x3 mat2) @operator(!=) => (Real[<9>])self.m != (Real[<9>])mat2.m;
 fn bool MatrixRM4x4.neq(&self, MatrixRM4x4 mat2) @operator(!=) => (Real[<16>])self.m != (Real[<16>])mat2.m;
 
 fn MatrixRM4x4 MatrixRM4x4.adjoint(&self)
 {
 	return {
-		// row 0
-		+ (self.m11*(self.m22*self.m33 - self.m32*self.m23) - self.m12*(self.m21*self.m33 - self.m31*self.m23) + self.m13*(self.m21*self.m32 - self.m31*self.m22)),
-		- (self.m01*(self.m22*self.m33 - self.m32*self.m23) - self.m02*(self.m21*self.m33 - self.m31*self.m23) + self.m03*(self.m21*self.m32 - self.m31*self.m22)),
-		+ (self.m01*(self.m12*self.m33 - self.m32*self.m13) - self.m02*(self.m11*self.m33 - self.m31*self.m13) + self.m03*(self.m11*self.m32 - self.m31*self.m12)),
-		- (self.m01*(self.m12*self.m23 - self.m22*self.m13) - self.m02*(self.m11*self.m23 - self.m21*self.m13) + self.m03*(self.m11*self.m22 - self.m21*self.m12)),
-
-		// row 1
-		- (self.m10*(self.m22*self.m33 - self.m32*self.m23) - self.m12*(self.m20*self.m33 - self.m30*self.m23) + self.m13*(self.m20*self.m32 - self.m30*self.m22)),
-		+ (self.m00*(self.m22*self.m33 - self.m32*self.m23) - self.m02*(self.m20*self.m33 - self.m30*self.m23) + self.m03*(self.m20*self.m32 - self.m30*self.m22)),
-		- (self.m00*(self.m12*self.m33 - self.m32*self.m13) - self.m02*(self.m10*self.m33 - self.m30*self.m13) + self.m03*(self.m10*self.m32 - self.m30*self.m12)),
-		+ (self.m00*(self.m12*self.m23 - self.m22*self.m13) - self.m02*(self.m10*self.m23 - self.m20*self.m13) + self.m03*(self.m10*self.m22 - self.m20*self.m12)),
-
-		// row 2
-		+ (self.m10*(self.m21*self.m33 - self.m31*self.m23) - self.m11*(self.m20*self.m33 - self.m30*self.m23) + self.m13*(self.m20*self.m31 - self.m30*self.m21)),
-		- (self.m00*(self.m21*self.m33 - self.m31*self.m23) - self.m01*(self.m20*self.m33 - self.m30*self.m23) + self.m03*(self.m20*self.m31 - self.m30*self.m21)),
-		+ (self.m00*(self.m11*self.m33 - self.m31*self.m13) - self.m01*(self.m10*self.m33 - self.m30*self.m13) + self.m03*(self.m10*self.m31 - self.m30*self.m11)),
-		- (self.m00*(self.m11*self.m23 - self.m21*self.m13) - self.m01*(self.m10*self.m23 - self.m20*self.m13) + self.m03*(self.m10*self.m21 - self.m20*self.m11)),
-
-		// row 3
-		- (self.m10*(self.m21*self.m32 - self.m31*self.m22) - self.m11*(self.m20*self.m32 - self.m30*self.m22) + self.m12*(self.m20*self.m31 - self.m30*self.m21)),
-		+ (self.m00*(self.m21*self.m32 - self.m31*self.m22) - self.m01*(self.m20*self.m32 - self.m30*self.m22) + self.m02*(self.m20*self.m31 - self.m30*self.m21)),
-		- (self.m00*(self.m11*self.m32 - self.m31*self.m12) - self.m01*(self.m10*self.m32 - self.m30*self.m12) + self.m02*(self.m10*self.m31 - self.m30*self.m11)),
-		+ (self.m00*(self.m11*self.m22 - self.m21*self.m12) - self.m01*(self.m10*self.m22 - self.m20*self.m12) + self.m02*(self.m10*self.m21 - self.m20*self.m11)),
+		(self.m11 * (self.m22 * self.m33 - self.m32 * self.m23) -
+		 self.m12 * (self.m21 * self.m33 - self.m31 * self.m23) +
+		 self.m13 * (self.m21 * self.m32 - self.m31 * self.m22)),
+		-(self.m10 * (self.m22 * self.m33 - self.m32 * self.m23) -
+		  self.m12 * (self.m20 * self.m33 - self.m30 * self.m23) +
+		  self.m13 * (self.m20 * self.m32 - self.m30 * self.m22)),
+		(self.m10 * (self.m21 * self.m33 - self.m31 * self.m23) -
+		 self.m11 * (self.m20 * self.m33 - self.m30 * self.m23) +
+		 self.m13 * (self.m20 * self.m31 - self.m30 * self.m21)),
+		-(self.m10 * (self.m21 * self.m32 - self.m31 * self.m22) -
+		  self.m11 * (self.m20 * self.m32 - self.m30 * self.m22) +
+		  self.m12 * (self.m20 * self.m31 - self.m30 * self.m21)),
+			
+		-(self.m01 * (self.m22 * self.m33 - self.m32 * self.m23) -
+		  self.m02 * (self.m21 * self.m33 - self.m31 * self.m23) +
+		  self.m03 * (self.m21 * self.m32 - self.m31 * self.m22)),
+		(self.m00 * (self.m22 * self.m33 - self.m32 * self.m23) -
+		 self.m02 * (self.m20 * self.m33 - self.m30 * self.m23) +
+		 self.m03 * (self.m20 * self.m32 - self.m30 * self.m22)),
+		-(self.m00 * (self.m21 * self.m33 - self.m31 * self.m23) -
+		  self.m01 * (self.m20 * self.m33 - self.m30 * self.m23) +
+		  self.m03 * (self.m20 * self.m31 - self.m30 * self.m21)),
+		(self.m00 * (self.m21 * self.m32 - self.m31 * self.m22) -
+		 self.m01 * (self.m20 * self.m32 - self.m30 * self.m22) +
+		 self.m02 * (self.m20 * self.m31 - self.m30 * self.m21)),
+			
+		(self.m01 * (self.m12 * self.m33 - self.m32 * self.m13) -
+		 self.m02 * (self.m11 * self.m33 - self.m31 * self.m13) +
+		 self.m03 * (self.m11 * self.m32 - self.m31 * self.m12)),
+		-(self.m00 * (self.m12 * self.m33 - self.m32 * self.m13) -
+		  self.m02 * (self.m10 * self.m33 - self.m30 * self.m13) +
+		  self.m03 * (self.m10 * self.m32 - self.m30 * self.m12)),
+		(self.m00 * (self.m11 * self.m33 - self.m31 * self.m13) -
+		 self.m01 * (self.m10 * self.m33 - self.m30 * self.m13) +
+		 self.m03 * (self.m10 * self.m31 - self.m30 * self.m11)),
+		-(self.m00 * (self.m11 * self.m32 - self.m31 * self.m12) -
+		  self.m01 * (self.m10 * self.m32 - self.m30 * self.m12) +
+		  self.m02 * (self.m10 * self.m31 - self.m30 * self.m11)),
+			
+		-(self.m01 * (self.m12 * self.m23 - self.m22 * self.m13) -
+		  self.m02 * (self.m11 * self.m23 - self.m21 * self.m13) +
+		  self.m03 * (self.m11 * self.m22 - self.m21 * self.m12)),
+		(self.m00 * (self.m12 * self.m23 - self.m22 * self.m13) -
+		 self.m02 * (self.m10 * self.m23 - self.m20 * self.m13) +
+		 self.m03 * (self.m10 * self.m22 - self.m20 * self.m12)),
+		-(self.m00 * (self.m11 * self.m23 - self.m21 * self.m13) -
+		  self.m01 * (self.m10 * self.m23 - self.m20 * self.m13) +
+		  self.m03 * (self.m10 * self.m21 - self.m20 * self.m11)),
+		(self.m00 * (self.m11 * self.m22 - self.m21 * self.m12) -
+		 self.m01 * (self.m10 * self.m22 - self.m20 * self.m12) +
+		 self.m02 * (self.m10 * self.m21 - self.m20 * self.m11)),
 	};
 }
 
@@ -124,6 +165,7 @@ fn Real[<4>] MatrixRM4x4.apply(&self, Real[<4>] vec) @operator(*)
 	};
 }
 
+
 fn MatrixRM2x2 MatrixRM2x2.mul(&self, MatrixRM2x2 b) @operator(*)
 {
 	return {
@@ -151,32 +193,31 @@ fn MatrixRM3x3 MatrixRM3x3.mul(&self, MatrixRM3x3 b) @operator(*)
 
 fn MatrixRM4x4 MatrixRM4x4.mul(MatrixRM4x4* self, MatrixRM4x4 b) @operator(*)
 {
-	Real[<16>] m1 = self.m;
-	Real[<16>] m2 = b.m;
-	return { .m = {
-		m1[0] * m2[0]  +  m1[4] * m2[1]  +  m1[8]  * m2[2]   +  m1[12] * m2[3],
-		m1[1] * m2[0]  +  m1[5] * m2[1]  +  m1[9]  * m2[2]   +  m1[13] * m2[3],
-		m1[2] * m2[0]  +  m1[6] * m2[1]  +  m1[10] * m2[2]   +  m1[14] * m2[3],
-		m1[3] * m2[0]  +  m1[7] * m2[1]  +  m1[11] * m2[2]   +  m1[15] * m2[3],
-
-		m1[0] * m2[4]  +  m1[4] * m2[5]  +  m1[8]  * m2[6]   +  m1[12] * m2[7],
-		m1[1] * m2[4]  +  m1[5] * m2[5]  +  m1[9]  * m2[6]   +  m1[13] * m2[7],
-		m1[2] * m2[4]  +  m1[6] * m2[5]  +  m1[10] * m2[6]   +  m1[14] * m2[7],
-		m1[3] * m2[4]  +  m1[7] * m2[5]  +  m1[11] * m2[6]   +  m1[15] * m2[7],
-
-		m1[0] * m2[8]  +  m1[4] * m2[9]  +  m1[8]  * m2[10]  +  m1[12] * m2[11],
-		m1[1] * m2[8]  +  m1[5] * m2[9]  +  m1[9]  * m2[10]  +  m1[13] * m2[11],
-		m1[2] * m2[8]  +  m1[6] * m2[9]  +  m1[10] * m2[10]  +  m1[14] * m2[11],
-		m1[3] * m2[8]  +  m1[7] * m2[9]  +  m1[11] * m2[10]  +  m1[15] * m2[11],
-
-		m1[0] * m2[12] +  m1[4] * m2[13] +  m1[8]  * m2[14]  +  m1[12] * m2[15],
-		m1[1] * m2[12] +  m1[5] * m2[13] +  m1[9]  * m2[14]  +  m1[13] * m2[15],
-		m1[2] * m2[12] +  m1[6] * m2[13] +  m1[10] * m2[14]  +  m1[14] * m2[15],
-		m1[3] * m2[12] +  m1[7] * m2[13] +  m1[11] * m2[14]  +  m1[15] * m2[15],
-	}};
+	return {
+		self.m00 * b.m00 + self.m01 * b.m10 + self.m02 * b.m20 + self.m03 * b.m30,
+		self.m00 * b.m01 + self.m01 * b.m11 + self.m02 * b.m21 + self.m03 * b.m31,
+		self.m00 * b.m02 + self.m01 * b.m12 + self.m02 * b.m22 + self.m03 * b.m32,
+		self.m00 * b.m03 + self.m01 * b.m13 + self.m02 * b.m23 + self.m03 * b.m33,
+			
+		self.m10 * b.m00 + self.m11 * b.m10 + self.m12 * b.m20 + self.m13 * b.m30,
+		self.m10 * b.m01 + self.m11 * b.m11 + self.m12 * b.m21 + self.m13 * b.m31,
+		self.m10 * b.m02 + self.m11 * b.m12 + self.m12 * b.m22 + self.m13 * b.m32,
+		self.m10 * b.m03 + self.m11 * b.m13 + self.m12 * b.m23 + self.m13 * b.m33,
+			
+		self.m20 * b.m00 + self.m21 * b.m10 + self.m22 * b.m20 + self.m23 * b.m30,
+		self.m20 * b.m01 + self.m21 * b.m11 + self.m22 * b.m21 + self.m23 * b.m31,
+		self.m20 * b.m02 + self.m21 * b.m12 + self.m22 * b.m22 + self.m23 * b.m32,
+		self.m20 * b.m03 + self.m21 * b.m13 + self.m22 * b.m23 + self.m23 * b.m33,
+			
+		self.m30 * b.m00 + self.m31 * b.m10 + self.m32 * b.m20 + self.m33 * b.m30,
+		self.m30 * b.m01 + self.m31 * b.m11 + self.m32 * b.m21 + self.m33 * b.m31,
+		self.m30 * b.m02 + self.m31 * b.m12 + self.m32 * b.m22 + self.m33 * b.m32,
+		self.m30 * b.m03 + self.m31 * b.m13 + self.m32 * b.m23 + self.m33 * b.m33,
+	};
 }
 
 fn MatrixRM4x4 look_at_rm(Real[<3>] eye, Real[<3>] target, Real[<3>] up) => matrix_look_at_rm(MatrixRM4x4, eye, target, up);
+
 
 fn MatrixRM2x2 MatrixRM2x2.transpose(&self)
 {
@@ -204,6 +245,7 @@ fn MatrixRM4x4 MatrixRM4x4.transpose(&self)
 		self.m03, self.m13, self.m23, self.m33,
 	};
 }
+
 
 fn Real MatrixRM2x2.determinant(&self)
 {
@@ -235,6 +277,7 @@ fn Real MatrixRM4x4.determinant(&self)
 				   self.m12 * (self.m20 * self.m31 - self.m30 * self.m21) );
 }
 
+
 fn MatrixRM2x2 MatrixRM2x2.adjoint(&self)
 {
 	return { self.m11, -self.m01, -self.m10, self.m00 };
@@ -244,15 +287,15 @@ fn MatrixRM3x3 MatrixRM3x3.adjoint(&self)
 {
 	return {
 		(self.m11 * self.m22 - self.m21 * self.m12),
-		-(self.m01 * self.m22 - self.m21 * self.m02),
-		(self.m01 * self.m12 - self.m11 * self.m02),
-
 		-(self.m10 * self.m22 - self.m20 * self.m12),
-		(self.m00 * self.m22 - self.m20 * self.m02),
-		-(self.m00 * self.m12 - self.m10 * self.m02),
-
 		(self.m10 * self.m21 - self.m20 * self.m11),
+			
+		-(self.m01 * self.m22 - self.m21 * self.m02),
+		(self.m00 * self.m22 - self.m20 * self.m02),
 		-(self.m00 * self.m21 - self.m20 * self.m01),
+			
+		(self.m01 * self.m12 - self.m11 * self.m02),
+		-(self.m00 * self.m12 - self.m10 * self.m02),
 		(self.m00 * self.m11 - self.m10 * self.m01),
 	};
 }
@@ -276,7 +319,6 @@ fn MatrixRM3x3 MatrixRM3x3.translate(&self, Real[<2>] v)
 	});
 }
 
-
 // r in radians
 fn MatrixRM4x4 MatrixRM4x4.rotate_y(&self, Real r)
 {
@@ -299,6 +341,7 @@ fn MatrixRM4x4 MatrixRM4x4.rotate_x(&self, Real r)
 	});
 }
 
+
 fn MatrixRM3x3 MatrixRM3x3.scale(&self, Real[<2>] v)
 {
 	return self.mul({
@@ -313,7 +356,7 @@ fn MatrixRM2x2? MatrixRM2x2.inverse(&self)
 	Real det = self.determinant();
 	if (det == 0) return math::MATRIX_INVERSE_DOESNT_EXIST~;
 	MatrixRM2x2 adj = self.adjoint();
-	return adj.component_mul(1 / det);
+	return adj.component_mul(1 / det).transpose();
 }
 
 fn MatrixRM3x3? MatrixRM3x3.inverse(&self)
@@ -321,7 +364,7 @@ fn MatrixRM3x3? MatrixRM3x3.inverse(&self)
 	Real det = self.determinant();
 	if (det == 0) return math::MATRIX_INVERSE_DOESNT_EXIST~;
 	MatrixRM3x3 adj = self.adjoint();
-	return adj.component_mul(1 / det);
+	return adj.component_mul(1 / det).transpose();
 }
 
 fn MatrixRM4x4? MatrixRM4x4.inverse(&self)
@@ -329,7 +372,7 @@ fn MatrixRM4x4? MatrixRM4x4.inverse(&self)
 	Real det = self.determinant();
 	if (det == 0) return math::MATRIX_INVERSE_DOESNT_EXIST~;
 	MatrixRM4x4 adj = self.adjoint();
-	return adj.component_mul(1 / det);
+	return adj.component_mul(1 / det).transpose();
 }
 
 // r in radians
@@ -389,8 +432,8 @@ fn MatrixRM4x4 perspective_rm(Real fov, Real aspect_ratio, Real near, Real far)
 	return {
 		f / aspect_ratio, 0, 0, 0,
 		0, f, 0, 0,
-		0, 0, (near + far) * range_inv, -1,
-		0, 0, near * far * range_inv * 2, 0,
+		0, 0, (near + far) * range_inv,  near * far * range_inv * 2,
+		0, 0, -1, 0,
 	};
 }
 
@@ -429,4 +472,3 @@ macro matrix_add(mat, mat2) @local
 const MatrixRM2x2 IDENTITY2_RM = { .m = { 1, 0, 0, 1 } };
 const MatrixRM3x3 IDENTITY3_RM = { .m = { [0] = 1, [4] = 1, [8] = 1 } };
 const MatrixRM4x4 IDENTITY4_RM = { .m = { [0] = 1, [5] = 1, [10] = 1, [15] = 1 } };
-
