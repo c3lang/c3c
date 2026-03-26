@@ -212,12 +212,11 @@ static const char *exe_name(void)
 		case WINDOWS_X64:
 		case MINGW_X64:
 			return str_cat(name, ".exe");
-		case OBJ_FORMAT_WASM:
-			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN)
-			{
-				if (str_has_suffix(name, ".js") || str_has_suffix(name, ".html") || str_has_suffix(name, ".wasm")) return name;
-				return str_cat(name, ".js");
-			}
+		case EMSCRIPTEN_WASM32:
+			if (str_has_suffix(name, ".js") || str_has_suffix(name, ".html") || str_has_suffix(name, ".wasm")) return name;
+			return str_cat(name, ".js"); // .js produces JS glue + .wasm bundle (matches emcc default)
+		case WASM32:
+		case WASM64:
 			if (str_has_suffix(name, ".wasm")) return name;
 			return str_cat(name, ".wasm");
 		default:
@@ -821,7 +820,23 @@ void compiler_compile(void)
 			}
 			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN)
 			{
-				OUTF("Emscripten target detected. To run, use 'emrun %s'.\n", name);
+				if (str_has_suffix(name, ".js"))
+				{
+					OUTF("Emscripten target detected. To run, use 'node %s'.\n", name);
+				}
+				else if (str_has_suffix(name, ".html"))
+				{
+					OUTF("Emscripten target detected. To run, use 'emrun %s'.\n", name);
+				}
+				else
+				{
+					OUTF("Emscripten target detected. Not auto-running.\n");
+				}
+				return;
+			}
+			if (arch_is_wasm(compiler.platform.arch))
+			{
+				OUTF("WASM target detected. Not auto-running (use wasmtime, wasmer, or similar).\n");
 				return;
 			}
 			OUTF("Launching %s", name);
@@ -1274,10 +1289,14 @@ static int jump_buffer_size()
 			// Early GCC
 			return 39;
 		case WASM32:
-		case WASM64:
 		case EMSCRIPTEN_WASM32:
-			REMINDER("WASM setjmp size is unknown");
-			return 512;
+			REMINDER("WASM setjmp size depends on the linked libc. Padded to 156+ bytes to safely cover Emscripten and WASI.");
+			// 39 * 4 bytes = 156 bytes
+			return 39;
+		case WASM64:
+			REMINDER("WASM setjmp size depends on the linked libc. Padded to 156+ bytes to safely cover Emscripten and WASI.");
+			// 20 * 8 bytes = 160 bytes
+			return 20;
 	}
 	UNREACHABLE
 }

@@ -208,18 +208,22 @@ macro CFile stdin() => __stdin;
 macro CFile stdout() => __stdout;
 macro CFile stderr() => __stderr;
 
+// WebAssembly doesn't natively support setjmp/longjmp.
+// Emscripten emulates them using JS exceptions, but this requires running
+// LLVM's `wasm-emscripten-sjlj` lowering pass to instrument caller functions
+// so they can actually catch the JS throw.
+//
+// Since c3c doesn't currently inject this pass into the LLVM pipeline,
+// binding directly to __wasm_setjmp or emscripten_longjmp will crash
+// with `unreachable` when the JS exception unwinds.
+//
+// For now, longjmp is stubbed to just exit cleanly.
+// See: https://emscripten.org/docs/porting/setjmp-longjmp.html
+// See: https://llvm.org/docs/ExceptionHandling.html#setjmp-longjmp-exception-handling-in-webassembly
 module libc @if(env::EMSCRIPTEN);
 import std::os;
-fn int setjmp(JmpBuf* ptr) @cname("setjmp") @nostrip
-{
-	return 0;
-}
-fn void longjmp(JmpBuf* ptr, int i) @cname("longjmp") @nostrip
-{
-	// longjmp cannot jump across WASM frames; exit with the given value instead.
-	// Using unreachable() here would cause infinite recursion in the test framework.
-	os::exit(i);
-}
+fn int setjmp(JmpBuf* ptr) => 0;
+fn void longjmp(JmpBuf* ptr, int i) => os::exit(i);
 
 
 module libc @if(env::NETBSD || env::OPENBSD);
@@ -270,12 +274,12 @@ module libc @if(env::NO_LIBC);
 import std::core::mem;
 
 
-fn void longjmp(JmpBuf* buffer, CInt value) @weak @cname("longjmp") @nostrip @if(!env::EMSCRIPTEN)
+fn void longjmp(JmpBuf* buffer, CInt value) @weak @cname("longjmp") @nostrip
 {
 	unreachable("longjmp unavailable");
 }
 
-fn CInt setjmp(JmpBuf* buffer) @weak @cname("setjmp") @nostrip @if(!env::EMSCRIPTEN)
+fn CInt setjmp(JmpBuf* buffer) @weak @cname("setjmp") @nostrip
 {
 	unreachable("setjmp unavailable");
 }
@@ -732,84 +736,142 @@ constdef Errno : inline CInt @if(env::WIN32)
 
 constdef Errno : inline CInt @if(env::EMSCRIPTEN)
 {
-	OK                       = 0,
-	E2BIG                    = 1,
-	EACCES                   = 2,
-	EADDRINUSE               = 3,
-	EADDRNOTAVAIL            = 4,
-	EAFNOSUPPORT             = 5,
-	EAGAIN                   = 6,
-	EWOULDBLOCK              = 6,
-	EALREADY                 = 7,
-	EBADF                    = 8,
-	EBADMSG                  = 9,
-	EBUSY                    = 10,
-	ECANCELED                = 11,
-	ECHILD                   = 12,
-	ECONNABORTED             = 13,
-	ECONNREFUSED             = 14,
-	ECONNRESET               = 15,
-	EDEADLK                  = 16,
-	EDESTADDRREQ             = 17,
-	EDOM                     = 18,
-	EDQUOT                   = 19,
-	EEXIST                   = 20,
-	EFAULT                   = 21,
-	EFBIG                    = 22,
-	EHOSTUNREACH             = 23,
-	EIDRM                    = 24,
-	EILSEQ                   = 25,
-	EINPROGRESS              = 26,
-	EINTR                    = 27,
-	EINVAL                   = 28,
-	EIO                      = 29,
-	EISCONN                  = 30,
-	EISDIR                   = 31,
-	ELOOP                    = 32,
-	EMFILE                   = 33,
-	EMLINK                   = 34,
-	EMSGSIZE                 = 35,
-	EMULTIHOP                = 36,
-	ENAMETOOLONG             = 37,
-	ENETDOWN                 = 38,
-	ENETRESET                = 39,
-	ENETUNREACH              = 40,
-	ENFILE                   = 41,
-	ENOBUFS                  = 42,
-	ENODEV                   = 43,
-	ENOENT                   = 44,
-	ENOEXEC                  = 45,
-	ENOLCK                   = 46,
-	ENOLINK                  = 47,
-	ENOMEM                   = 48,
-	ENOMSG                   = 49,
-	ENOPROTOOPT              = 50,
-	ENOSPC                   = 51,
-	ENOSYS                   = 52,
-	ENOTCONN                 = 53,
-	ENOTDIR                  = 54,
-	ENOTEMPTY                = 55,
-	ENOTRECOVERABLE          = 56,
-	ENOTSOCK                 = 57,
-	ENOTSUP                  = 58,
-	EOPNOTSUPP               = 58,
-	ENOTTY                   = 59,
-	ENXIO                    = 60,
-	EOVERFLOW                = 61,
-	EOWNERDEAD               = 62,
-	EPERM                    = 63,
-	EPIPE                    = 64,
-	EPROTO                   = 65,
-	EPROTONOSUPPORT          = 66,
-	EPROTOTYPE               = 67,
-	ERANGE                   = 68,
-	EROFS                    = 69,
-	ESPIPE                   = 70,
-	ESRCH                    = 71,
-	ESTALE                   = 72,
-	ETIMEDOUT                = 73,
-	ETXTBSY                  = 74,
-	EXDEV                    = 75,
+	OK                       = 0, // No error occurred. System call completed successfully.
+	E2BIG                    = 1, // Argument list too long.
+	EACCES                   = 2, // Permission denied.
+	EADDRINUSE               = 3, // Address in use.
+	EADDRNOTAVAIL            = 4, // Address not available.
+	EAFNOSUPPORT             = 5, // Address family not supported.
+	EAGAIN                   = 6, // Resource unavailable, or operation would block.
+	EWOULDBLOCK              = 6, // Operation would block
+	EALREADY                 = 7, // Connection already in progress.
+	EBADF                    = 8, // Bad file descriptor.
+	EBADMSG                  = 9, // Bad message.
+	EBUSY                    = 10, // Device or resource busy.
+	ECANCELED                = 11, // Operation canceled.
+	ECHILD                   = 12, // No child processes.
+	ECONNABORTED             = 13, // Connection aborted.
+	ECONNREFUSED             = 14, // Connection refused.
+	ECONNRESET               = 15, // Connection reset.
+	EDEADLK                  = 16, // Resource deadlock would occur.
+	EDEADLOCK                = 16, // Resource deadlock would occur
+	EDESTADDRREQ             = 17, // Destination address required.
+	EDOM                     = 18, // Mathematics argument out of domain of function.
+	EDQUOT                   = 19, // Reserved.
+	EEXIST                   = 20, // File exists.
+	EFAULT                   = 21, // Bad address.
+	EFBIG                    = 22, // File too large.
+	EHOSTUNREACH             = 23, // Host is unreachable.
+	EIDRM                    = 24, // Identifier removed.
+	EILSEQ                   = 25, // Illegal byte sequence.
+	EINPROGRESS              = 26, // Operation in progress.
+	EINTR                    = 27, // Interrupted function.
+	EINVAL                   = 28, // Invalid argument.
+	EIO                      = 29, // I/O error.
+	EISCONN                  = 30, // Socket is connected.
+	EISDIR                   = 31, // Is a directory.
+	ELOOP                    = 32, // Too many levels of symbolic links.
+	EMFILE                   = 33, // File descriptor value too large.
+	EMLINK                   = 34, // Too many links.
+	EMSGSIZE                 = 35, // Message too long.
+	EMULTIHOP                = 36, // Reserved.
+	ENAMETOOLONG             = 37, // Filename too long.
+	ENETDOWN                 = 38, // Network is down.
+	ENETRESET                = 39, // Connection aborted by network.
+	ENETUNREACH              = 40, // Network unreachable.
+	ENFILE                   = 41, // Too many files open in system.
+	ENOBUFS                  = 42, // No buffer space available.
+	ENODEV                   = 43, // No such device.
+	ENOENT                   = 44, // No such file or directory.
+	ENOEXEC                  = 45, // Executable file format error.
+	ENOLCK                   = 46, // No locks available.
+	ENOLINK                  = 47, // Reserved.
+	ENOMEM                   = 48, // Not enough space.
+	ENOMSG                   = 49, // No message of the desired type.
+	ENOPROTOOPT              = 50, // Protocol not available.
+	ENOSPC                   = 51, // No space left on device.
+	ENOSYS                   = 52, // Function not supported.
+	ENOTCONN                 = 53, // The socket is not connected.
+	ENOTDIR                  = 54, // Not a directory or a symbolic link to a directory.
+	ENOTEMPTY                = 55, // Directory not empty.
+	ENOTRECOVERABLE          = 56, // State not recoverable.
+	ENOTSOCK                 = 57, // Not a socket.
+	ENOTTY                   = 59, // Inappropriate I/O control operation.
+	ENXIO                    = 60, // No such device or address.
+	EOVERFLOW                = 61, // Value too large to be stored in data type.
+	EOWNERDEAD               = 62, // Previous owner died.
+	EPERM                    = 63, // Operation not permitted.
+	EPIPE                    = 64, // Broken pipe.
+	EPROTO                   = 65, // Protocol error.
+	EPROTONOSUPPORT          = 66, // Protocol not supported.
+	EPROTOTYPE               = 67, // Protocol wrong type for socket.
+	ERANGE                   = 68, // Result too large.
+	EROFS                    = 69, // Read-only file system.
+	ESPIPE                   = 70, // Invalid seek.
+	ESRCH                    = 71, // No such process.
+	ESTALE                   = 72, // Reserved.
+	ETIMEDOUT                = 73, // Connection timed out.
+	ETXTBSY                  = 74, // Text file busy.
+	EXDEV                    = 75, // Cross-device link.
+	ENOTCAPABLE              = 76, // Extension: Capabilities insufficient.
+	ENOSTR                   = 100, // Not a STREAM
+	EBFONT                   = 101, // Format of font file is unknown
+	EBADSLT                  = 102, // Invalid slot
+	EBADRQC                  = 103, // Invalid request code
+	ENOANO                   = 104, // No anode
+	ENOTBLK                  = 105, // Block device required
+	ECHRNG                   = 106, // Channel number out of range
+	EL3HLT                   = 107, // Level 3 halted
+	EL3RST                   = 108, // Level 3 reset
+	ELNRNG                   = 109, // Link number out of range
+	EUNATCH                  = 110, // Protocol driver not attached
+	ENOCSI                   = 111, // No CSI structure available
+	EL2HLT                   = 112, // Level 2 halted
+	EBADE                    = 113, // Invalid exchange
+	EBADR                    = 114, // Invalid request descriptor
+	EXFULL                   = 115, // Exchange full
+	ENODATA                  = 116, // No data available
+	ETIME                    = 117, // Timer expired
+	ENOSR                    = 118, // Out of streams resources
+	ENONET                   = 119, // Machine is not on the network
+	ENOPKG                   = 120, // Package not installed
+	EREMOTE                  = 121, // Object is remote
+	EADV                     = 122, // Advertise error
+	ESRMNT                   = 123, // Srmount error
+	ECOMM                    = 124, // Communication error on send
+	EDOTDOT                  = 125, // RFS specific error
+	ENOTUNIQ                 = 126, // Name not unique on network
+	EBADFD                   = 127, // File descriptor in bad state
+	EREMCHG                  = 128, // Remote address changed
+	ELIBACC                  = 129, // Can not access a needed shared library
+	ELIBBAD                  = 130, // Accessing a corrupted shared library
+	ELIBSCN                  = 131, // .lib section in a.out corrupted
+	ELIBMAX                  = 132, // Attempting to link in too many shared libraries
+	ELIBEXEC                 = 133, // Cannot exec a shared library directly
+	ERESTART                 = 134, // Interrupted system call should be restarted
+	ESTRPIPE                 = 135, // Streams pipe error
+	EUSERS                   = 136, // Too many users
+	ESOCKTNOSUPPORT          = 137, // Socket type not supported
+	ENOTSUP                  = 138, // Not supported.
+	EOPNOTSUPP               = ENOTSUP, // Operation not supported on socket.
+	EPFNOSUPPORT             = 139, // Protocol family not supported
+	ESHUTDOWN                = 140, // Cannot send after transport endpoint shutdown
+	ETOOMANYREFS             = 141, // Too many references: cannot splice
+	EHOSTDOWN                = 142, // Host is down
+	EUCLEAN                  = 143, // Structure needs cleaning
+	ENOTNAM                  = 144, // Not a XENIX named type file
+	ENAVAIL                  = 145, // No XENIX semaphores available
+	EISNAM                   = 146, // Is a named type file
+	EREMOTEIO                = 147, // Remote I/O error
+	ENOMEDIUM                = 148, // No medium found
+	EMEDIUMTYPE              = 149, // Wrong medium type
+	ENOKEY                   = 150, // Required key not available
+	EKEYEXPIRED              = 151, // Key has expired
+	EKEYREVOKED              = 152, // Key has been revoked
+	EKEYREJECTED             = 153, // Key was rejected by service
+	ERFKILL                  = 154, // Operation not possible due to RF-kill
+	EHWPOISON                = 155, // Memory page has hardware error
+	EL2NSYNC                 = 156, // Level 2 not synchronized
 }
 
 
@@ -1069,7 +1131,7 @@ const Errno EINPROGRESS             @deprecated = (Errno)112; // Operation now i
 const Errno EDQUOT                  @deprecated = (Errno)-122; // Quota exceeded, not in Win32
 const Errno EWOULDBLOCK             @deprecated = (Errno)140; // Operation would block
 
-module libc::errno @if(!env::WIN32 && !env::DARWIN && !env::NETBSD);
+module libc::errno @if(!env::WIN32 && !env::DARWIN && !env::NETBSD && !env::EMSCRIPTEN);
 const Errno EDEADLK                 @deprecated = (Errno)35; // Resource deadlock would occur Linux (others?)
 const Errno ENAMETOOLONG            @deprecated = (Errno)36; // File name too long Linux (others?)
 const Errno ENOTEMPTY               @deprecated = (Errno)39; // Directory not empty
@@ -1091,3 +1153,26 @@ const Errno EALREADY                @deprecated = (Errno)114; // Operation alrea
 const Errno EINPROGRESS             @deprecated = (Errno)115; // Operation now in progress
 const Errno EDQUOT                  @deprecated = (Errno)122; // Quota exceeded
 
+module libc::errno @if(env::EMSCRIPTEN);
+const Errno EWOULDBLOCK     @deprecated = EAGAIN;
+const Errno EDEADLOCK       @deprecated = EDEADLK;
+const Errno ENOTSUP         @deprecated = EOPNOTSUPP;
+const Errno EDEADLK         @deprecated = (Errno)16;
+const Errno ENAMETOOLONG    @deprecated = (Errno)37;
+const Errno ENOTEMPTY       @deprecated = (Errno)55;
+const Errno ELOOP           @deprecated = (Errno)32;
+const Errno EOVERFLOW       @deprecated = (Errno)61;
+const Errno ENOTSOCK        @deprecated = (Errno)57;
+const Errno EOPNOTSUPP      @deprecated = (Errno)138;
+const Errno EADDRINUSE      @deprecated = (Errno)3;
+const Errno EADDRNOTAVAIL   @deprecated = (Errno)4;
+const Errno ENETDOWN        @deprecated = (Errno)38;
+const Errno ENETUNREACH     @deprecated = (Errno)40;
+const Errno ENETRESET       @deprecated = (Errno)39;
+const Errno ECONNRESET      @deprecated = (Errno)15;
+const Errno EISCONN         @deprecated = (Errno)30;
+const Errno ETIMEDOUT       @deprecated = (Errno)73;
+const Errno ECONNREFUSED    @deprecated = (Errno)14;
+const Errno EALREADY        @deprecated = (Errno)7;
+const Errno EINPROGRESS     @deprecated = (Errno)26;
+const Errno EDQUOT          @deprecated = (Errno)19;

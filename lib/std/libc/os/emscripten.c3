@@ -2,9 +2,9 @@ module libc @if(env::EMSCRIPTEN);
 
 alias Blksize_t = CInt;
 alias Nlink_t = CUInt;
-alias Blkcnt_t = long;
+alias Blkcnt_t = CInt;
 alias Ino_t = ulong;
-alias Dev_t = ulong;
+alias Dev_t = uint;
 alias Mode_t = uint;
 alias Ino64_t = ulong;
 alias Blkcnt64_t = long;
@@ -21,11 +21,11 @@ struct Stat
 	uint st_blksize;
 	uint st_blocks;
 	long st_atime;
-	long st_atime_nsec;
+	CLong st_atime_nsec;
 	long st_mtime;
-	long st_mtime_nsec;
+	CLong st_mtime_nsec;
 	long st_ctime;
-	long st_ctime_nsec;
+	CLong st_ctime_nsec;
 	ulong st_ino;
 }
 
