@@ -771,6 +771,7 @@ void sema_analysis_pass_decls(Module *module)
 		sema_analyse_decls(&context, unit->enums);
 		FOREACH(Decl *, decl, unit->types)
 		{
+			if (decl->replacement) continue;
 			sema_analyse_decl(&context, decl);
 			sema_analyse_inner_func_ptr(&context, decl);
 		}

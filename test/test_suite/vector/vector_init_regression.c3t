@@ -1,6 +1,6 @@
 // #target: macos-x64
 // #opt: --fp-math=relaxed
-module test;
+module std::test;
 extern fn int printf(char* format, ...);
 
 fn void main() {
@@ -80,9 +80,9 @@ fn void main() {
     }
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
-define void @test.main() #0 {
+define weak void @std.test.main() #0 {
 entry:
   %radians = alloca float, align 4
   %axis = alloca <3 x float>, align 16

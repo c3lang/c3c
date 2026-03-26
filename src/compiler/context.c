@@ -209,6 +209,11 @@ WEAK_LOCAL:
 			if (!replaced_symbol) vec_add(old->unit->weak_symbols_skipped, old);
 			replaced_symbol = old;
 			old->replacement = decl;
+			if (unit != old->unit)
+			{
+				// We need to pretend the weak symbol is this symbol in the local scope.
+				htable_set(&old->unit->local_symbols, (void*)old->name, decl);
+			}
 			goto WEAK_MODULE;
 		}
 		if (decl->is_weak)

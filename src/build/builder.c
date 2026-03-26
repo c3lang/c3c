@@ -549,31 +549,35 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	switch (target->validation_level)
 	{
 		case VALIDATION_LENIENT:
-			update_warning_if_not_set(&target->warnings.deprecation, WARNING_SILENT);
-			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_WARN);
+			update_warning_if_not_set(&target->warnings.builtin, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.dead_code, WARNING_SILENT);
+			update_warning_if_not_set(&target->warnings.deprecation, WARNING_SILENT);
 			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_WARN);
+			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_WARN);
 			break;
 		case VALIDATION_NOT_SET:
 			target->validation_level = VALIDATION_STRICT;
 			FALLTHROUGH;
 		case VALIDATION_STRICT:
-			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_WARN);
-			update_warning_if_not_set(&target->warnings.deprecation, WARNING_WARN);
+			update_warning_if_not_set(&target->warnings.builtin, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.dead_code, WARNING_WARN);
+			update_warning_if_not_set(&target->warnings.deprecation, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_WARN);
+			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_WARN);
 			break;
 		case VALIDATION_OBNOXIOUS:
-			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_ERROR);
-			update_warning_if_not_set(&target->warnings.deprecation, WARNING_ERROR);
+			update_warning_if_not_set(&target->warnings.builtin, WARNING_ERROR);
 			update_warning_if_not_set(&target->warnings.dead_code, WARNING_ERROR);
+			update_warning_if_not_set(&target->warnings.deprecation, WARNING_ERROR);
 			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_ERROR);
+			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_ERROR);
 			break;
 	}
-	update_warning(&target->warnings.deprecation, options->warnings.deprecation);
+	update_warning(&target->warnings.builtin, options->warnings.builtin);
 	update_warning(&target->warnings.dead_code, options->warnings.dead_code);
-	update_warning(&target->warnings.methods_not_resolved, options->warnings.methods_not_resolved);
+	update_warning(&target->warnings.deprecation, options->warnings.deprecation);
 	update_warning(&target->warnings.method_visibility, options->warnings.method_visibility);
+	update_warning(&target->warnings.methods_not_resolved, options->warnings.methods_not_resolved);
 
 	target->print_linking = options->print_linking || options->verbosity_level > 1;
 

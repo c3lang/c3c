@@ -1,3 +1,4 @@
+module std::test;
 fn void main()
 {
 	$$veccompgt[1]; // #error: Builtins cannot be subscripted.

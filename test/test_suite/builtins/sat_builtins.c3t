@@ -1,6 +1,6 @@
 // #target: macos-x64
 
-module test;
+module std::test;
 import std::io;
 
 fn void main()
@@ -21,7 +21,7 @@ fn void main()
 	io::printfn("%s %s", $$sat_shl(x, (char[<2>]) { 1, 1 }), $$sat_shl(z, (ichar[<2>]) { 1, 1 }));
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
 
   call i8 @llvm.uadd.sat.i8

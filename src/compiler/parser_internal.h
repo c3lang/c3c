@@ -179,7 +179,16 @@ static inline bool expect_ident(ParseContext *c, const char* name)
 		case TOKEN_CONST_IDENT:
 			PRINT_ERROR_HERE("A %s cannot start with a capital letter.", name);
 			return false;
+		case TYPE_TOKENS:
+			PRINT_ERROR_HERE("A type cannot be used as a %s, you must use a different identifier.", name);
+			return false;
 		default:
+
+			if (token_is_keyword_ident(c->tok))
+			{
+				PRINT_ERROR_HERE("You cannot use a keyword as %s, pick something else please.", name);
+				return false;
+			}
 			PRINT_ERROR_HERE("A %s was expected.", name);
 			return false;
 	}

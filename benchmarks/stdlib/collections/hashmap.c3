@@ -95,22 +95,22 @@ fn void hash_speeds_of_many_random_values() => @pool()
 	var $arrsz = 10_000;
 	uint fake_checksum;
 
-	char[] chars = allocator::new_array(tmem, char, $arrsz)[:$arrsz];
+	char[] chars = alloc::new_array(tmem, char, $arrsz)[:$arrsz];
 	foreach (&v : chars) *v = (char)random::next(&rand, uint.max);
 
-	ushort[] shorts = allocator::new_array(tmem, ushort, $arrsz)[:$arrsz];
+	ushort[] shorts = alloc::new_array(tmem, ushort, $arrsz)[:$arrsz];
 	foreach (&v : shorts) *v = (ushort)random::next(&rand, uint.max);
 
-	uint[] ints = allocator::new_array(tmem, uint, $arrsz)[:$arrsz];
+	uint[] ints = alloc::new_array(tmem, uint, $arrsz)[:$arrsz];
 	foreach (&v : ints) *v = random::next(&rand, uint.max);
 
-	ulong[] longs = allocator::new_array(tmem, ulong, $arrsz)[:$arrsz];
+	ulong[] longs = alloc::new_array(tmem, ulong, $arrsz)[:$arrsz];
 	foreach (&v : longs) *v = (ulong)random::next(&rand, uint.max);
 
-	uint128[] vwideints = allocator::new_array(tmem, uint128, $arrsz)[:$arrsz];
+	uint128[] vwideints = alloc::new_array(tmem, uint128, $arrsz)[:$arrsz];
 	foreach (&v : vwideints) *v = (uint128)random::next(&rand, uint.max);
 
-	char[48][] zstrs = allocator::new_array(tmem, char[48], $arrsz)[:$arrsz];
+	char[48][] zstrs = alloc::new_array(tmem, char[48], $arrsz)[:$arrsz];
 
 	String[] strs = mem::temp_array(String, $arrsz);
 	foreach (x, &v : zstrs)

@@ -98,6 +98,7 @@ typedef struct
 	WarningLevel methods_not_resolved;
 	WarningLevel dead_code;
 	WarningLevel method_visibility;
+	WarningLevel builtin;
 } Warnings;
 
 typedef enum

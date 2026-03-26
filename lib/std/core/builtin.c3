@@ -61,10 +61,16 @@ faultdef TYPE_MISMATCH @builtin;
  Use `CAPACITY_EXCEEDED` when trying to add to a bounded list or similar.
 */
 faultdef CAPACITY_EXCEEDED @builtin;
+
 /*
  Use `NOT_IMPLEMENTED` when something is conditionally available.
 */
 faultdef NOT_IMPLEMENTED @builtin;
+
+/*
+ Use `TIMEOUT` when some time or counter limit has been exceeded.
+*/
+faultdef TIMEOUT @builtin;
 
 alias VoidFn = fn void();
 
@@ -395,6 +401,15 @@ macro void unsupported(String string = "Unsupported function invoked") @builtin 
 	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat);
 	$$unreachable();
 }
+
+<*
+ @require $defined(uptr[] x = { $vasplat }) : "Arguments must be convertible to uptr"
+*>
+macro uptr @syscall(...) @builtin
+{
+	return $$syscall($vasplat);
+}
+
 
 <*
  Unconditionally break into an attached debugger when reached.

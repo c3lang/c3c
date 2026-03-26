@@ -1,4 +1,4 @@
-module test;
+module std::test;
 fn void main()
 {
 	ichar x = 1;

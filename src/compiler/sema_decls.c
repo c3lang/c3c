@@ -5740,7 +5740,7 @@ TYPE_MISMATCH:
 bool sema_analyse_decl(SemaContext *context, Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
-	DEBUG_LOG(">>> Analyse declaration [%s] in %s.", decl_safe_name(decl), context_filename(context));
+	DEBUG_LOG(">>> Analyse declaration [%s] in %s, row %u.", decl_safe_name(decl), context_filename(context), decl->loc ? sourcelocptr(decl->loc)->row : 0);
 
 	SemaContext temp_context;
 	context = context_transform_for_eval(context, &temp_context, decl->unit);
