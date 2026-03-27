@@ -1766,6 +1766,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 					print_error_at_loc(&loc, "Only a single variadic parameter is allowed.");
 					return false;
 				}
+				var_arg_found = true;
 				*variadic = VARIADIC_TYPED;
 			}
 		}
@@ -1817,9 +1818,15 @@ CHECK_ELLIPSIS:
 						PRINT_ERROR_LAST("For typed vaargs '...', needs to appear after the type.");
 						return false;
 					}
-					else if (param_kind == VARDECL_PARAM_CT)
+					if (param_kind == VARDECL_PARAM_CT)
 					{
 						PRINT_ERROR_LAST("Untyped constant vaargs are not supported. Use raw macro vaargs instead.");
+						return false;
+					}
+					if (var_arg_found)
+					{
+						loc = extend_loc_with_token(&loc, &c->prev_span);
+						print_error_at_loc(&loc, "Only a single variadic parameter is allowed.");
 						return false;
 					}
 					// This is "foo..."
