@@ -348,6 +348,20 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 	context->call_env.in_no_eval = in_no_eval;
 	if (!success) return false;
 	Type *expr_type = expr->type;
+	switch (expr->expr_kind)
+	{
+		case EXPR_BUILTIN:
+			RETURN_SEMA_ERROR(expr, "Taking the type of a builtin function is not supported.");
+		case EXPR_IDENTIFIER:
+			if (expr->ident_expr->decl_kind == DECL_MACRO)
+			{
+				RETURN_SEMA_ERROR(expr, "Taking the type of a macro is not supported.");
+			}
+			break;
+		default:
+			break;
+	}
+	ASSERT(expr_type != NULL);
 	if (expr_type->type_kind == TYPE_FUNC_RAW) expr_type = type_get_func_ptr(expr_type);
 	switch (sema_resolve_storage_type(context, expr_type))
 	{

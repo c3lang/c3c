@@ -9192,6 +9192,8 @@ static const char *sema_addr_check_may_take(Expr *inner)
 			return "It is not possible to take the address of a type.";
 		case EXPR_BITACCESS:
 			return "You cannot take the address of a bitstruct member.";
+		case EXPR_BUILTIN:
+			return "You cannot take the address of a builtin function.";
 		default:
 			break;
 	}
@@ -11844,6 +11846,7 @@ static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, b
 	{
 		return SEMA_WARN(expr, builtin, "Builtins are intended for internal use inside of the standard library, please access this function through the standard library macro instead.");
 	}
+	expr->type = type_void;
 	return true;
 }
 
