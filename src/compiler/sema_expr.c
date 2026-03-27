@@ -4624,7 +4624,7 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 		// Only ArrayIndex sized
 		if (!expr_is_valid_index(start))
 		{
-			RETURN_SEMA_ERROR(end, "The index cannot be stored in a 64-signed integer, which isn't supported.");
+			RETURN_SEMA_ERROR(start, "The index is out of range: it cannot be stored in a 64-signed integer.");
 		}
 		// Only ArrayIndex sized
 		ArrayIndex start_index = int_to_i64(start->const_expr.ixx);

@@ -95,6 +95,7 @@
 - Crash instead of error when having two vaargs and the last one is an untyped vaarg.
 - Detect recursive declaration `int[type()] type`.
 - Compiler would not propagate error when `$$str_find` or `$$str_hash` arguments were invalid, causing a crash.
+- Error on wrong expression when the slice range start is out of range.
 
 ## 0.7.10 Change list
 
