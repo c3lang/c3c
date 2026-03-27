@@ -41,6 +41,6 @@ fn void test2()
 fn void test3()
 {
     An2 a;
-    a.@helloWorld.b; // #error: There is no member or method 'b' on 'void'
+    a.@helloWorld.b; // #error:  Macros have neither methods nor fields
 }
 

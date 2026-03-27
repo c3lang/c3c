@@ -27,6 +27,7 @@
 		UNREACHABLE \
 	} } while (0);
 
+static bool sema_may_subscript_or_access(SemaContext *context, Expr *expr, const char *fail_reason, bool *failed_ref);
 
 typedef struct
 {
@@ -1285,17 +1286,17 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 			CompilationUnit **units = context->unit->module->units;
 			FOREACH (CompilationUnit *, unit, units)
 			{
-				FOREACH(Decl *, decl, unit->enums)
+				FOREACH(Decl *, d, unit->enums)
 				{
-					FOREACH(Decl *, enum_val, decl->enums.values)
+					FOREACH(Decl *, enum_val, d->enums.values)
 					{
 						if (enum_val->name == expr->unresolved_ident_expr.ident)
 						{
-							const char *type = decl->decl_kind == DECL_CONSTDEF ? "constdef" : "enum";
+							const char *type = d->decl_kind == DECL_CONSTDEF ? "constdef" : "enum";
 							RETURN_SEMA_ERROR(expr, "No constant named '%s' was found in the current scope. Did you "
 							   "mean the value '%s' of the %s '%s'? The %s type cannot be inferred%s, so in that case you need to use "
 								"the qualified name: '%s.%s'.",
-								enum_val->name, enum_val->name, type, decl->name, type, to ? " correctly" : "", decl->name, enum_val->name);
+								enum_val->name, enum_val->name, type, d->name, type, to ? " correctly" : "", d->name, enum_val->name);
 						}
 					}
 				}
@@ -4242,10 +4243,8 @@ DEFAULT:
 	}
 
 	if (!sema_expr_check_assign(context, expr, NULL)) return false;
-	if (subscripted->expr_kind == EXPR_BUILTIN)
-	{
-		RETURN_SEMA_ERROR(expr, "Builtins cannot be subscripted.");
-	}
+	if (!sema_may_subscript_or_access(context, subscripted, "cannot be subscripted", failed_ref)) return false;
+
 	Expr *index = exprptr(expr->subscript_expr.index.expr);
 
 	// 3. Check failability due to value.
@@ -4334,6 +4333,38 @@ VALID_FAIL_POISON:
 	return false;
 }
 
+static bool sema_may_subscript_or_access(SemaContext *context, Expr *expr, const char *fail_reason, bool *failed_ref)
+{
+
+	switch (expr->expr_kind)
+	{
+		case EXPR_BUILTIN:
+			if (failed_ref) return *failed_ref = true, false;
+			RETURN_SEMA_ERROR(expr, "Builtin functions %s.", fail_reason);
+		case EXPR_TYPECALL:
+			if (failed_ref) return *failed_ref = true, false;
+			RETURN_SEMA_ERROR(expr, "Type functions %s.", fail_reason);
+		case EXPR_IDENTIFIER:
+			if (expr->ident_expr->decl_kind == DECL_MACRO)
+			{
+				if (failed_ref) return *failed_ref = true, false;
+				RETURN_SEMA_ERROR(expr, "Macros %s.", fail_reason);
+			}
+			break;
+		case EXPR_ACCESS_RESOLVED:
+			if (expr->access_resolved_expr.ref->decl_kind == DECL_MACRO)
+			{
+				if (failed_ref) return *failed_ref = true, false;
+				RETURN_SEMA_ERROR(expr, "Macros %s.", fail_reason);
+			}
+			break;
+		default:
+			break;
+	}
+	ASSERT(expr->type != NULL);
+	return true;
+}
+
 static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, bool *failed_ref)
 {
 	ASSERT(expr->expr_kind == EXPR_SUBSCRIPT || expr->expr_kind == EXPR_SUBSCRIPT_ADDR);
@@ -4342,10 +4373,8 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	// Evaluate the expression to index.
 	Expr *subscripted = exprptr(expr->subscript_expr.expr);
 	if (!sema_analyse_expr(context, subscripted)) return false;
-	if (subscripted->expr_kind == EXPR_BUILTIN)
-	{
-		RETURN_SEMA_ERROR(expr, "Builtins cannot be subscripted.");
-	}
+	if (!sema_may_subscript_or_access(context, subscripted, "cannot be subscripted", failed_ref)) return false;
+
 	// 3. Check failability due to value.
 	bool optional = IS_OPTIONAL(subscripted);
 
@@ -4800,10 +4829,8 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	ASSERT_SPAN(expr, expr->expr_kind == EXPR_SLICE);
 	Expr *subscripted = exprptr(expr->slice_expr.expr);
 	if (!sema_analyse_expr(context, subscripted)) return false;
-	if (subscripted->expr_kind == EXPR_BUILTIN)
-	{
-		RETURN_SEMA_ERROR(expr, "A builtin cannot be sliced.");
-	}
+	if (!sema_may_subscript_or_access(context, subscripted, "cannot be sliced", NULL)) return false;
+
 	bool optional = IS_OPTIONAL(subscripted);
 	Type *type = type_flatten(subscripted->type);
 	Type *original_type = type_no_optional(subscripted->type);
@@ -6482,15 +6509,12 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	const char *kw = identifier->unresolved_ident_expr.ident;
 
 	Decl *decl;
+
 	switch (parent->expr_kind)
 	{
 		case EXPR_TYPEINFO:
 			// 2. If our left-hand side is a type, e.g. MyInt.abc, handle this here.
 			return sema_expr_analyse_type_access(context, expr, parent->type_expr->type, identifier, missing_ref);
-		case EXPR_BUILTIN:
-			RETURN_SEMA_ERROR(expr, "Builtin functions have neither methods nor fields.");
-		case EXPR_TYPECALL:
-			RETURN_SEMA_ERROR(expr, "Type functions have neither methods nor fields.");
 		case EXPR_CONST:
 			switch (parent->const_expr.const_kind)
 			{
@@ -6521,6 +6545,8 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 		default:
 			break;
 	}
+
+	if (!sema_may_subscript_or_access(context, parent, "have neither methods nor fields", missing_ref)) return false;
 
 	// 6. Copy failability
 	bool optional = IS_OPTIONAL(parent);
@@ -6758,7 +6784,7 @@ CHECK_DEEPER:
 	if (!member->unit && !sema_analyse_decl(context, decl)) return false;
 	if (!sema_analyse_decl(context, member)) return false;
 
-	ASSERT_SPAN(expr, member->type);
+	ASSERT_SPAN(expr, member->type || member->decl_kind == DECL_MACRO);
 	if (member->decl_kind == DECL_VAR)
 	{
 		if (member->var.kind == VARDECL_BITMEMBER)
@@ -6782,7 +6808,7 @@ CHECK_DEEPER:
 	// 13. Copy properties.
 	expr->access_resolved_expr = (ExprResolvedAccess) { .parent = current_parent, .ref = member };
 	if (expr->expr_kind == EXPR_ACCESS_UNRESOLVED) expr->expr_kind = EXPR_ACCESS_RESOLVED;
-	expr->type = type_add_optional(member->type, optional);
+	expr->type = member->type ? type_add_optional(member->type, optional) : NULL;
 	return true;
 MISSING_REF:
 	*missing_ref = true;

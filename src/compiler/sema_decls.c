@@ -4583,7 +4583,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 		if (!body) RETURN_SEMA_ERROR(decl, "'@const' macros cannot have an empty body.");
 		sema_check_body_const(context, body);
 	}
-	decl->type = type_void;
+	decl->type = NULL;
 	return true;
 }
 
