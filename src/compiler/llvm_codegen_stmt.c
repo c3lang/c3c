@@ -1213,6 +1213,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 		BEValue value;
 		llvm_emit_expr(c, &value, assert_expr);
 		llvm_value_rvalue(c, &value);
+		if (!c->current_block) return;
 		LLVMBasicBlockRef on_fail = llvm_basic_block_new(c, "assert_fail");
 		LLVMBasicBlockRef on_ok = llvm_basic_block_new(c, "assert_ok");
 		ASSERT(value.kind == BE_BOOLEAN);

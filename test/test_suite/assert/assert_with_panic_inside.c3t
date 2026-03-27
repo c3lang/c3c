@@ -1,0 +1,25 @@
+module abc_faults;
+module abc <Type>;
+import abc_faults;
+struct TextTemplate { TextTag tags; }
+struct TextTag { usz start; }
+faultdef BAD;
+<*
+ @require tag_start != BAD~!!
+ *>
+fn void? TextTemplate.init(&self, String , String tag_start = "", String tag_end = "", void* using )
+{
+}
+module text_test;
+import abc;
+alias FooTmpl = TextTemplate{Foo};
+alias BarTmpl = TextTemplate{Bar};
+struct Foo { BarTmpl bar; }
+struct Bar { String bar; }
+fn int main()
+{
+	String foo_tmpl = "";
+	FooTmpl ft;
+	ft.init(foo_tmpl, using: null)!!;
+	return 0;
+}

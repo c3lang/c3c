@@ -105,6 +105,7 @@
 - `@ensure` and `@require` could contain rethrows, which then would crash the compiler.
 - Crash when using `$defined($Type)` and `$Type` is a typeid.
 - Assigning to a subscripted const like `{1, 2}[n] = 33` wasn't marked as an error and resulted in a crash.
+- Codegen for the case when an assert always panics would cause a crash.
 
 ## 0.7.10 Change list
 
