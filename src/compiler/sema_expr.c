@@ -940,6 +940,29 @@ bool sema_expr_check_assign(SemaContext *context, Expr *expr, bool *failed_ref)
 	if (expr->expr_kind != EXPR_UNARY) return true;
 	inner = expr->inner_expr;
 CHECK_INNER:
+	if (expr_is_const(inner))
+	{
+		switch (inner->const_expr.const_kind)
+		{
+			case CONST_FLOAT:
+			case CONST_INTEGER:
+			case CONST_BOOL:
+			case CONST_FAULT:
+			case CONST_ENUM:
+			case CONST_BYTES:
+			case CONST_STRING:
+			case CONST_TYPEID:
+			case CONST_SLICE:
+			case CONST_INITIALIZER:
+			case CONST_UNTYPED_LIST:
+			case CONST_MEMBER:
+				RETURN_SEMA_ERROR(expr, "You cannot assign to a constant expression.");
+			case CONST_POINTER:
+			case CONST_REF:
+				return true;
+		}
+		UNREACHABLE
+	}
 	if (inner->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *decl = inner->ident_expr;
 	if (decl->decl_kind != DECL_VAR) return true;
