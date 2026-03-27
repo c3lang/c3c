@@ -10048,7 +10048,10 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr, T
 		}
 		RETURN_SEMA_ERROR(expr, "Rethrow cannot be used outside of a function.");
 	}
-
+	if (!context->current_macro && context->active_scope.flags & (SCOPE_MACRO | SCOPE_ENSURE | SCOPE_ENSURE_MACRO))
+	{
+		RETURN_SEMA_ERROR(expr, "Rethrows using '!' is not allowed in contracts.");
+	}
 	Expr *inner = expr->rethrow_expr.inner;
 	if (!sema_analyse_expr_rvalue(context, inner)) return false;
 

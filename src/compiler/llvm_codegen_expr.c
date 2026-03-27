@@ -2805,7 +2805,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		}
 
 		// This will trap any bad negative index, so we're fine.
-		if (safe_mode_enabled())
+		if (safe_mode_enabled() && !llvm_is_global_eval(c))
 		{
 			BEValue excess;
 			if (is_len_range)
