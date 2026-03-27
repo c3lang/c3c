@@ -10662,7 +10662,7 @@ RETRY:
 		case TYPE_INFO_GENERIC:
 		{
 			TypeInfo *base = type_info->generic.base;
-			if (base->kind == TYPE_INFO_IDENTIFIER)
+			if (base->kind == TYPE_INFO_IDENTIFIER && base->resolve_status != RESOLVE_DONE)
 			{
 				if (!sema_parameterized_type_is_found(context, base->unresolved.path, base->unresolved.name, type_info->loc)) return NULL;
 			}

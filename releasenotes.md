@@ -57,6 +57,7 @@
 - Add a builtin `TIMEOUT` fault definition. #3022
 - Base32, Base64, Hex and Codepage encoding deprecates `encode_buffer` and `decode_buffer`. Those are replaced by `encode_into` and `decode_into` with `dst` being the first argument. #3055 
 - `hex::encode_bytes` and `hex::decode_bytes` are deprecated in favour of `hex::encode_bytes_into` and `hex::decode_bytes_into` which has `dst` the first argument. #3055
+- `void{}` would be looked up as generic in some cases and cause a crash.
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
