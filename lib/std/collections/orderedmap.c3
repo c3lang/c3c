@@ -21,12 +21,15 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 
-module std::collections::orderedmap;
+module std::collections::orderedmap <Key, Value>;
 import std::io, std::math::random;
 
 const int MAX_LEVEL = 32;
 
-struct SkipNode <Key, Value>
+int dummy @local;
+const Allocator ONHEAP_ALLOCATOR = (Allocator)&dummy;
+
+struct SkipNode
 {
 	Key key;
 	Value value;
@@ -35,39 +38,41 @@ struct SkipNode <Key, Value>
 }
 
 // CmpFn is a comparator: returns true if a should come before b in the list.
-alias CmpFn <Key> = fn bool(Key, Key);
+alias CmpFn = fn bool(Key, Key);
 
-typedef OrderedMap     <Key, Value> = inline PrivateOrderedMap{Key, Value, false};
-typedef OrderedMapDesc <Key, Value> = inline PrivateOrderedMap{Key, Value, true};
-
-struct Entry <Key, Value>
+struct Entry
 {
 	Key key;
 	Value value;
 }
 
-struct PrivateOrderedMap <Key, Value, DESCENDING>
+<*
+ @require types::@comparable_value((Key){}) : "The Key must support ordered comparison"
+*>
+struct OrderedMap
 {
 	Allocator allocator;
-	SkipNode{Key, Value}* head;
+	SkipNode* head;
 	int current_level;
 	usz count;
 	SimpleRandom rng;
-	CmpFn{Key} custom_cmp; // null = use built-in ordering (less / DESCENDING)
+	CmpFn custom_cmp; // null = use built-in less() ordering
 }
 
-struct OrderedMapIterator <Key, Value, DESCENDING>
+const OrderedMap ONHEAP = { .allocator = ONHEAP_ALLOCATOR };
+
+struct OrderedMapIterator
 {
-	PrivateOrderedMap{Key, Value, DESCENDING}* map;
-	SkipNode{Key, Value}* current;
+	OrderedMap* map;
+	SkipNode* current;
 	usz index;
 }
 
-struct OrderedMapRangeIterator <Key, Value, DESCENDING>
+struct OrderedMapRangeIterator
 {
-	PrivateOrderedMap{Key, Value, DESCENDING}* map;
-	SkipNode{Key, Value}* start_node;
-	SkipNode{Key, Value}* current;
+	OrderedMap* map;
+	SkipNode* start_node;
+	SkipNode* current;
 	usz current_idx;
 	usz count;
 }
@@ -80,26 +85,27 @@ fn int orderedmap_random_level(SimpleRandom* rng) @private
 }
 
 // Returns true if 'a' should come before 'b' in the list.
-macro bool PrivateOrderedMap.cmp(&self, Key a, Key b) @private
+macro bool orderedmap_cmp(custom_cmp, a, b) @private
 {
-	if (self.custom_cmp != null) return self.custom_cmp(a, b);
-	$if DESCENDING:
-		return less(b, a);
-	$else
-		return less(a, b);
-	$endif
+	if (custom_cmp != null) return custom_cmp(a, b);
+	return less(a, b);
 }
 
-fn PrivateOrderedMap* PrivateOrderedMap.init(&self, Allocator allocator)
+<*
+ @require !self.is_initialized() : "Map was already initialized"
+*>
+fn OrderedMap* OrderedMap.init(&self, Allocator allocator)
 {
 	*self = { .allocator = allocator };
-	self.head = alloc::alloc(allocator, SkipNode{Key, Value});
-	*self.head = {};
+	self.head = alloc::new(allocator, SkipNode);
 	random::seed_entropy(&self.rng);
 	return self;
 }
 
-fn PrivateOrderedMap* PrivateOrderedMap.tinit(&self)
+<*
+ @require !self.is_initialized() : "Map was already initialized"
+*>
+fn OrderedMap* OrderedMap.tinit(&self)
 {
 	return self.init(tmem) @inline;
 }
@@ -107,30 +113,49 @@ fn PrivateOrderedMap* PrivateOrderedMap.tinit(&self)
 <*
  Init with a custom comparator. The comparator replaces the built-in ordering.
  @param cmp_fn : "Returns true if a should come before b in iteration order."
+ @require !self.is_initialized() : "Map was already initialized"
 *>
-fn PrivateOrderedMap* PrivateOrderedMap.init_with_cmp(&self, Allocator allocator, CmpFn{Key} cmp_fn)
+fn OrderedMap* OrderedMap.init_with_cmp(&self, Allocator allocator, CmpFn cmp_fn)
 {
 	self.init(allocator);
 	self.custom_cmp = cmp_fn;
 	return self;
 }
 
-fn PrivateOrderedMap* PrivateOrderedMap.tinit_with_cmp(&self, CmpFn{Key} cmp_fn)
+<*
+ @require !self.is_initialized() : "Map was already initialized"
+*>
+fn OrderedMap* OrderedMap.tinit_with_cmp(&self, CmpFn cmp_fn)
 {
 	return self.init_with_cmp(tmem, cmp_fn) @inline;
+}
+
+fn bool OrderedMap.is_initialized(&self)
+{
+	return self.allocator && self.allocator.ptr != &dummy;
 }
 
 <*
  Insert or update the value associated with key.
 *>
-fn bool PrivateOrderedMap.set(&self, Key key, Value value) @operator([]=)
+fn bool OrderedMap.set(&self, Key key, Value value) @operator([]=)
 {
-	SkipNode{Key, Value}*[MAX_LEVEL] update;
-	SkipNode{Key, Value}* current = self.head;
+	// If the map isn't initialized, use the defaults to initialize it.
+	switch (self.allocator.ptr)
+	{
+		case &dummy:
+			self.init(mem);
+		case null:
+			self.tinit();
+		default:
+			break;
+	}
+	SkipNode*[MAX_LEVEL] update;
+	SkipNode* current = self.head;
 
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && self.cmp(current.forward[i].key, key))
+		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
@@ -139,8 +164,8 @@ fn bool PrivateOrderedMap.set(&self, Key key, Value value) @operator([]=)
 
 	current = current.forward[0];
 
-	// Key already exists — update value
-	if (current != null && !self.cmp(current.key, key) && !self.cmp(key, current.key))
+	// Key already exists -- update value
+	if (current != null && !orderedmap_cmp(self.custom_cmp, current.key, key) && !orderedmap_cmp(self.custom_cmp, key, current.key))
 	{
 		current.value = value;
 		return true;
@@ -154,7 +179,7 @@ fn bool PrivateOrderedMap.set(&self, Key key, Value value) @operator([]=)
 		self.current_level = new_level;
 	}
 
-	SkipNode{Key, Value}* node = alloc::alloc(self.allocator, SkipNode{Key, Value});
+	SkipNode* node = alloc::alloc(self.allocator, SkipNode);
 	*node = { .key = key, .value = value, .level = new_level };
 
 	for (int i = 0; i < new_level; i++)
@@ -170,18 +195,18 @@ fn bool PrivateOrderedMap.set(&self, Key key, Value value) @operator([]=)
 <*
  @return "the value for key, or NOT_FOUND if absent"
 *>
-fn Value? PrivateOrderedMap.get(&self, Key key) @operator([])
+fn Value? OrderedMap.get(&self, Key key) @operator([])
 {
-	SkipNode{Key, Value}* current = self.head;
+	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && self.cmp(current.forward[i].key, key))
+		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
 	}
 	current = current.forward[0];
-	if (current != null && !self.cmp(current.key, key) && !self.cmp(key, current.key))
+	if (current != null && !orderedmap_cmp(self.custom_cmp, current.key, key) && !orderedmap_cmp(self.custom_cmp, key, current.key))
 	{
 		return current.value;
 	}
@@ -189,52 +214,56 @@ fn Value? PrivateOrderedMap.get(&self, Key key) @operator([])
 }
 
 <*
- @return "a pointer to the value for key, or null if absent"
+ @return "a pointer to the value for key, or NOT_FOUND if absent"
 *>
-fn Value* PrivateOrderedMap.get_ref(&self, Key key) @operator(&[])
+fn Value*? OrderedMap.get_ref(&self, Key key) @operator(&[])
 {
-	SkipNode{Key, Value}* current = self.head;
+	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && self.cmp(current.forward[i].key, key))
+		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
 	}
 	current = current.forward[0];
-	if (current != null && !self.cmp(current.key, key) && !self.cmp(key, current.key))
+	if (current != null && !orderedmap_cmp(self.custom_cmp, current.key, key) && !orderedmap_cmp(self.custom_cmp, key, current.key))
 	{
 		return &current.value;
 	}
-	return null;
+	return NOT_FOUND~;
 }
 
 <*
- Returns the value for key; inserts and returns default_value if key is absent.
+ Returns the value for key; inserts and returns #default_value if key is absent.
+ #default_value is only evaluated if the key doesn't exist.
+
+ @require $defined(Value val = #default_value)
 *>
-fn Value PrivateOrderedMap.get_or_set(&self, Key key, Value default_value)
+macro Value OrderedMap.@get_or_set(&self, Key key, Value #default_value)
 {
 	if (try v = self.get(key)) return v;
-	self.set(key, default_value);
-	return default_value;
+	Value val = #default_value;
+	self.set(key, val);
+	return val;
 }
 
 <*
  @return "true if key exists in the map"
 *>
-fn bool PrivateOrderedMap.has_key(&self, Key key) => @ok(self.get(key));
+fn bool OrderedMap.has_key(&self, Key key) => @ok(self.get(key));
 
 <*
  @return "true if the key was found and removed"
 *>
-fn bool PrivateOrderedMap.remove(&self, Key key)
+fn bool OrderedMap.remove(&self, Key key)
 {
-	SkipNode{Key, Value}*[MAX_LEVEL] update;
-	SkipNode{Key, Value}* current = self.head;
+	SkipNode*[MAX_LEVEL] update;
+	SkipNode* current = self.head;
 
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && self.cmp(current.forward[i].key, key))
+		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
@@ -243,7 +272,7 @@ fn bool PrivateOrderedMap.remove(&self, Key key)
 
 	current = current.forward[0];
 
-	if (current == null || self.cmp(current.key, key) || self.cmp(key, current.key)) return false;
+	if (current == null || orderedmap_cmp(self.custom_cmp, current.key, key) || orderedmap_cmp(self.custom_cmp, key, current.key)) return false;
 
 	for (int i = 0; i < self.current_level; i++)
 	{
@@ -265,7 +294,7 @@ fn bool PrivateOrderedMap.remove(&self, Key key)
 <*
  @return "the first key in iteration order, or NOT_FOUND if empty"
 *>
-fn Key? PrivateOrderedMap.first_key(&self)
+fn Key? OrderedMap.first_key(&self)
 {
 	if (!self.head.forward[0]) return NOT_FOUND~;
 	return self.head.forward[0].key;
@@ -274,9 +303,9 @@ fn Key? PrivateOrderedMap.first_key(&self)
 <*
  @return "the last key in iteration order, or NOT_FOUND if empty"
 *>
-fn Key? PrivateOrderedMap.last_key(&self)
+fn Key? OrderedMap.last_key(&self)
 {
-	SkipNode{Key, Value}* current = self.head;
+	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
 		while (current.forward[i] != null) current = current.forward[i];
@@ -289,11 +318,11 @@ fn Key? PrivateOrderedMap.last_key(&self)
  Remove and return the first entry in iteration order.
  @return "the first Entry, or NOT_FOUND if empty"
 *>
-fn Entry{Key, Value}? PrivateOrderedMap.pop_first(&self)
+fn Entry? OrderedMap.pop_first(&self)
 {
-	SkipNode{Key, Value}* node = self.head.forward[0];
+	SkipNode* node = self.head.forward[0];
 	if (!node) return NOT_FOUND~;
-	Entry{Key, Value} result = { node.key, node.value };
+	Entry result = { node.key, node.value };
 	self.remove(node.key);
 	return result;
 }
@@ -302,7 +331,7 @@ fn Entry{Key, Value}? PrivateOrderedMap.pop_first(&self)
  Remove and return the last entry in iteration order.
  @return "the last Entry, or NOT_FOUND if empty"
 *>
-fn Entry{Key, Value}? PrivateOrderedMap.pop_last(&self)
+fn Entry? OrderedMap.pop_last(&self)
 {
 	if (!self.head.forward[0]) return NOT_FOUND~;
 	Key k = self.last_key()!!;
@@ -318,39 +347,39 @@ fn Entry{Key, Value}? PrivateOrderedMap.pop_last(&self)
 // For descending maps, "before" means "greater" in natural ordering.
 
 <*
- @return "the greatest key ≤ key in cmp order, or NOT_FOUND"
+ @return "the greatest key <= key in cmp order, or NOT_FOUND"
 *>
-fn Key? PrivateOrderedMap.floor_key(&self, Key key)
+fn Key? OrderedMap.floor_key(&self, Key key)
 {
-	SkipNode{Key, Value}* current = self.head;
+	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && self.cmp(current.forward[i].key, key))
+		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
 	}
 	// current is the last node strictly before key; check for exact match
-	SkipNode{Key, Value}* next = current.forward[0];
-	if (next != null && !self.cmp(next.key, key) && !self.cmp(key, next.key)) return next.key;
+	SkipNode* next = current.forward[0];
+	if (next != null && !orderedmap_cmp(self.custom_cmp, next.key, key) && !orderedmap_cmp(self.custom_cmp, key, next.key)) return next.key;
 	if (current != self.head) return current.key;
 	return NOT_FOUND~;
 }
 
 <*
- @return "the least key ≥ key in cmp order, or NOT_FOUND"
+ @return "the least key >= key in cmp order, or NOT_FOUND"
 *>
-fn Key? PrivateOrderedMap.ceiling_key(&self, Key key)
+fn Key? OrderedMap.ceiling_key(&self, Key key)
 {
-	SkipNode{Key, Value}* current = self.head;
+	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && self.cmp(current.forward[i].key, key))
+		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
 	}
-	SkipNode{Key, Value}* next = current.forward[0];
+	SkipNode* next = current.forward[0];
 	if (next != null) return next.key;
 	return NOT_FOUND~;
 }
@@ -358,12 +387,12 @@ fn Key? PrivateOrderedMap.ceiling_key(&self, Key key)
 <*
  @return "the greatest key strictly before key in cmp order, or NOT_FOUND"
 *>
-fn Key? PrivateOrderedMap.lower_key(&self, Key key)
+fn Key? OrderedMap.lower_key(&self, Key key)
 {
-	SkipNode{Key, Value}* current = self.head;
+	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && self.cmp(current.forward[i].key, key))
+		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
@@ -375,35 +404,35 @@ fn Key? PrivateOrderedMap.lower_key(&self, Key key)
 <*
  @return "the least key strictly after key in cmp order, or NOT_FOUND"
 *>
-fn Key? PrivateOrderedMap.higher_key(&self, Key key)
+fn Key? OrderedMap.higher_key(&self, Key key)
 {
-	SkipNode{Key, Value}* current = self.head;
+	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && self.cmp(current.forward[i].key, key))
+		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
 	}
-	SkipNode{Key, Value}* next = current.forward[0];
+	SkipNode* next = current.forward[0];
 	if (next == null) return NOT_FOUND~;
 	// If next equals key, advance one more
-	if (!self.cmp(next.key, key) && !self.cmp(key, next.key)) next = next.forward[0];
+	if (!orderedmap_cmp(self.custom_cmp, next.key, key) && !orderedmap_cmp(self.custom_cmp, key, next.key)) next = next.forward[0];
 	if (next != null) return next.key;
 	return NOT_FOUND~;
 }
 
-fn usz PrivateOrderedMap.len(&self) @inline => self.count;
+fn usz OrderedMap.len(&self) @inline => self.count;
 
-fn bool PrivateOrderedMap.is_empty(&self) @inline => self.count == 0;
+fn bool OrderedMap.is_empty(&self) @inline => self.count == 0;
 
-fn void PrivateOrderedMap.clear(&self)
+fn void OrderedMap.clear(&self)
 {
 	if (!self.allocator) return;
-	SkipNode{Key, Value}* node = self.head.forward[0];
+	SkipNode* node = self.head.forward[0];
 	while (node != null)
 	{
-		SkipNode{Key, Value}* next = node.forward[0];
+		SkipNode* next = node.forward[0];
 		alloc::free(self.allocator, node);
 		node = next;
 	}
@@ -412,7 +441,7 @@ fn void PrivateOrderedMap.clear(&self)
 	self.current_level = 0;
 }
 
-fn void PrivateOrderedMap.free(&self)
+fn void OrderedMap.free(&self)
 {
 	self.clear();
 	alloc::free(self.allocator, self.head);
@@ -423,11 +452,11 @@ fn void PrivateOrderedMap.free(&self)
  Copy all entries of this map into a new map backed by allocator.
  The clone inherits the custom comparator (if any).
 *>
-fn PrivateOrderedMap PrivateOrderedMap.clone(&self, Allocator allocator)
+fn OrderedMap OrderedMap.clone(&self, Allocator allocator)
 {
-	PrivateOrderedMap result;
+	OrderedMap result;
 	result.init_with_cmp(allocator, self.custom_cmp);
-	SkipNode{Key, Value}* node = self.head.forward[0];
+	SkipNode* node = self.head.forward[0];
 	while (node != null)
 	{
 		result.set(node.key, node.value);
@@ -436,7 +465,7 @@ fn PrivateOrderedMap PrivateOrderedMap.clone(&self, Allocator allocator)
 	return result;
 }
 
-fn PrivateOrderedMap PrivateOrderedMap.tclone(&self)
+fn OrderedMap OrderedMap.tclone(&self)
 {
 	return self.clone(tmem) @inline;
 }
@@ -444,9 +473,9 @@ fn PrivateOrderedMap PrivateOrderedMap.tclone(&self)
 <*
  Insert all entries from other into self, overwriting on key collision.
 *>
-fn void PrivateOrderedMap.merge(&self, PrivateOrderedMap{Key, Value, DESCENDING}* other)
+fn void OrderedMap.merge(&self, OrderedMap* other)
 {
-	SkipNode{Key, Value}* node = other.head.forward[0];
+	SkipNode* node = other.head.forward[0];
 	while (node != null)
 	{
 		self.set(node.key, node.value);
@@ -460,7 +489,7 @@ fn void PrivateOrderedMap.merge(&self, PrivateOrderedMap{Key, Value, DESCENDING}
  Returns an iterator that yields Entry values in sorted key order.
  Use with: foreach (entry : m.iter()) { ... }
 *>
-fn OrderedMapIterator{Key, Value, DESCENDING} PrivateOrderedMap.iter(&self)
+fn OrderedMapIterator OrderedMap.iter(&self)
 {
 	return { .map = self, .current = self.head.forward[0], .index = 0 };
 }
@@ -469,20 +498,20 @@ fn OrderedMapIterator{Key, Value, DESCENDING} PrivateOrderedMap.iter(&self)
  Returns an iterator starting at the first key >= from_key in cmp order.
  Use with: foreach (entry : m.iter_from(key)) { ... }
 *>
-fn OrderedMapRangeIterator{Key, Value, DESCENDING} PrivateOrderedMap.iter_from(&self, Key from_key)
+fn OrderedMapRangeIterator OrderedMap.iter_from(&self, Key from_key)
 {
-	SkipNode{Key, Value}* current = self.head;
+	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && self.cmp(current.forward[i].key, from_key))
+		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, from_key))
 		{
 			current = current.forward[i];
 		}
 	}
-	SkipNode{Key, Value}* start = current.forward[0];
+	SkipNode* start = current.forward[0];
 
 	usz count = 0;
-	SkipNode{Key, Value}* n = start;
+	SkipNode* n = start;
 	while (n != null) { count++; n = n.forward[0]; }
 
 	return { .map = self, .start_node = start, .current = start, .current_idx = 0, .count = count };
@@ -494,21 +523,21 @@ fn OrderedMapRangeIterator{Key, Value, DESCENDING} PrivateOrderedMap.iter_from(&
  For descending maps: pass from and to in descending order (from > to naturally).
  Use with: foreach (entry : m.iter_range(from, to)) { ... }
 *>
-fn OrderedMapRangeIterator{Key, Value, DESCENDING} PrivateOrderedMap.iter_range(&self, Key from_key, Key to_key)
+fn OrderedMapRangeIterator OrderedMap.iter_range(&self, Key from_key, Key to_key)
 {
-	SkipNode{Key, Value}* current = self.head;
+	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && self.cmp(current.forward[i].key, from_key))
+		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, from_key))
 		{
 			current = current.forward[i];
 		}
 	}
-	SkipNode{Key, Value}* start = current.forward[0];
+	SkipNode* start = current.forward[0];
 
 	usz count = 0;
-	SkipNode{Key, Value}* n = start;
-	while (n != null && self.cmp(n.key, to_key)) { count++; n = n.forward[0]; }
+	SkipNode* n = start;
+	while (n != null && orderedmap_cmp(self.custom_cmp, n.key, to_key)) { count++; n = n.forward[0]; }
 
 	return { .map = self, .start_node = start, .current = start, .current_idx = 0, .count = count };
 }
@@ -516,7 +545,7 @@ fn OrderedMapRangeIterator{Key, Value, DESCENDING} PrivateOrderedMap.iter_range(
 <*
  @require idx < self.map.count
 *>
-fn Entry{Key, Value} OrderedMapIterator.get(&self, usz idx) @operator([])
+fn Entry OrderedMapIterator.get(&self, usz idx) @operator([])
 {
 	if (idx < self.index)
 	{
@@ -536,7 +565,7 @@ fn usz OrderedMapIterator.len(&self) @operator(len) => self.map.count;
 <*
  @require idx < self.count
 *>
-fn Entry{Key, Value} OrderedMapRangeIterator.get(&self, usz idx) @operator([])
+fn Entry OrderedMapRangeIterator.get(&self, usz idx) @operator([])
 {
 	if (idx < self.current_idx)
 	{
