@@ -108,6 +108,7 @@
 - Codegen for the case when an assert always panics would cause a crash.
 - Lambda check might run against a missing type definition if the function type alias was invalid.
 - Missing check when doing `$foo++` would crash the compiler if the variable wasn't initialized.
+- Incorrect handling of attribute operator symbols could crash the compiler instead of producing an error.
 
 ## 0.7.10 Change list
 

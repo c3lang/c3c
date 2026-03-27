@@ -342,6 +342,11 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool is_silent,
                           bool is_binary_conversion)
 {
+	if (expr->expr_kind == EXPR_OPERATOR_CHARS)
+	{
+		if (is_silent) return false;
+		RETURN_SEMA_ERROR(expr, "Operators may not be used outside of operator attributes.");
+	}
 	if (expr->expr_kind == EXPR_CALL && expr->call_expr.no_return)
 	{
 		expr->type = to_type;
