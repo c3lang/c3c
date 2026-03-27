@@ -9587,6 +9587,8 @@ static inline bool sema_expr_analyse_ct_incdec(SemaContext *context, Expr *expr,
 
 	Decl *var = inner->ident_expr;
 	Expr *start_value = var->var.init_expr;
+	if (!start_value) RETURN_SEMA_ERROR(expr, "The compile time variable '%s' must be assigned a starting value before it can be incremented or decremented.", var->name);
+
 	if (!expr_is_const_int(start_value))
 	{
 		RETURN_SEMA_ERROR(expr, "The compile time variable '%s' does not hold an integer.", var->name);

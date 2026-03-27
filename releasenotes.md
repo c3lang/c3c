@@ -107,6 +107,7 @@
 - Assigning to a subscripted const like `{1, 2}[n] = 33` wasn't marked as an error and resulted in a crash.
 - Codegen for the case when an assert always panics would cause a crash.
 - Lambda check might run against a missing type definition if the function type alias was invalid.
+- Missing check when doing `$foo++` would crash the compiler if the variable wasn't initialized.
 
 ## 0.7.10 Change list
 
