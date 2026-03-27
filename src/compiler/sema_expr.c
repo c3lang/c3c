@@ -6481,30 +6481,45 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	if (!identifier) return false;
 	const char *kw = identifier->unresolved_ident_expr.ident;
 
-	// 2. If our left-hand side is a type, e.g. MyInt.abc, handle this here.
-	if (parent->expr_kind == EXPR_TYPEINFO)
+	Decl *decl;
+	switch (parent->expr_kind)
 	{
-		return sema_expr_analyse_type_access(context, expr, parent->type_expr->type, identifier, missing_ref);
-	}
-	if (parent->expr_kind == EXPR_IDENTIFIER || expr_is_const_ref(parent))
-	{
-		Decl *decl = parent->expr_kind == EXPR_IDENTIFIER ? parent->ident_expr : parent->const_expr.global_ref;
-		switch (decl->decl_kind)
-		{
-			case DECL_FUNC:
-			case DECL_MACRO:
-				return sema_analyse_macro_func_access(context, expr, decl, identifier, kw, missing_ref);
-			default:
-				break;
-		}
-		if (parent->type->type_kind == TYPE_FUNC_RAW)
-		{
-			return sema_expr_analyse_type_access(context, expr, parent->type, identifier, missing_ref);
-		}
-	}
-	if (expr_is_const_member(parent))
-	{
-		return sema_expr_analyse_member_access(context, expr, parent, identifier, missing_ref);
+		case EXPR_TYPEINFO:
+			// 2. If our left-hand side is a type, e.g. MyInt.abc, handle this here.
+			return sema_expr_analyse_type_access(context, expr, parent->type_expr->type, identifier, missing_ref);
+		case EXPR_BUILTIN:
+			RETURN_SEMA_ERROR(expr, "Builtin functions have neither methods nor fields.");
+		case EXPR_TYPECALL:
+			RETURN_SEMA_ERROR(expr, "Type functions have neither methods nor fields.");
+		case EXPR_CONST:
+			switch (parent->const_expr.const_kind)
+			{
+				case CONST_REF:
+					decl = parent->const_expr.global_ref;
+					goto CHECK_IF_CALLABLE;
+				case CONST_MEMBER:
+					return sema_expr_analyse_member_access(context, expr, parent, identifier, missing_ref);
+				default:
+					break;
+			}
+			break;
+		case EXPR_IDENTIFIER:
+			decl = parent->ident_expr;
+			CHECK_IF_CALLABLE:
+			switch (decl->decl_kind)
+			{
+				case DECL_FUNC:
+				case DECL_MACRO:
+					return sema_analyse_macro_func_access(context, expr, decl, identifier, kw, missing_ref);
+				default:
+					break;
+			}
+			if (parent->type->type_kind == TYPE_FUNC_RAW)
+			{
+				return sema_expr_analyse_type_access(context, expr, parent->type, identifier, missing_ref);
+			}
+		default:
+			break;
 	}
 
 	// 6. Copy failability
@@ -6512,11 +6527,6 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 
 	ASSERT_SPAN(expr, expr->expr_kind == EXPR_ACCESS_UNRESOLVED);
 	ASSERT_SPAN(expr, parent->resolve_status == RESOLVE_DONE);
-
-	if (parent->expr_kind == EXPR_BUILTIN)
-	{
-		RETURN_SEMA_ERROR(expr, "A builtin has no support for properties.");
-	}
 
 	// 7. Is this a pointer? If so we insert a deref.
 	Type *underlying_type = type_no_optional(parent->type)->canonical;
@@ -6667,7 +6677,7 @@ CHECK_DEEPER:
 	}
 
 	// 10. Dump all members and methods into a decl stack.
-	Decl *decl = type->decl;
+	decl = type->decl;
 
 	Decl *member = sema_decl_stack_find_decl_member(context, decl, kw, METHODS_INTERFACES_AND_FIELDS);
 	if (!decl_ok(member)) return false;
@@ -9192,6 +9202,8 @@ static const char *sema_addr_check_may_take(Expr *inner)
 			return "It is not possible to take the address of a type.";
 		case EXPR_BITACCESS:
 			return "You cannot take the address of a bitstruct member.";
+		case EXPR_TYPECALL:
+			return "You cannot take the address of a type function.";
 		case EXPR_BUILTIN:
 			return "You cannot take the address of a builtin function.";
 		default:
@@ -11846,7 +11858,7 @@ static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, b
 	{
 		return SEMA_WARN(expr, builtin, "Builtins are intended for internal use inside of the standard library, please access this function through the standard library macro instead.");
 	}
-	expr->type = type_void;
+	expr->type = NULL;
 	return true;
 }
 

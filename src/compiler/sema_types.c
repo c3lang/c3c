@@ -351,11 +351,13 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 	switch (expr->expr_kind)
 	{
 		case EXPR_BUILTIN:
-			RETURN_SEMA_ERROR(expr, "Taking the type of a builtin function is not supported.");
+			RETURN_SEMA_ERROR(expr, "A builtin function has no defined type.");
+		case EXPR_TYPECALL:
+			RETURN_SEMA_ERROR(expr, "A type function has no defined type.");
 		case EXPR_IDENTIFIER:
 			if (expr->ident_expr->decl_kind == DECL_MACRO)
 			{
-				RETURN_SEMA_ERROR(expr, "Taking the type of a macro is not supported.");
+				RETURN_SEMA_ERROR(expr, "A macro has no defined type.");
 			}
 			break;
 		default:

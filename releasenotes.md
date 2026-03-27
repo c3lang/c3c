@@ -90,6 +90,7 @@
 - Taking the type of a macro identifier would give the wrong error. 
 - Taking the type of a `$$builtin` function would crash the compiler.
 - Wrong error message when trying to take the address of a `$$builtin` function.
+- Accessing a (non-existing) property on a type-call would crash the compiler.
  
 ## 0.7.10 Change list
 
