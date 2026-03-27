@@ -86,6 +86,7 @@
 - `mask_from_int` would miscompile on some platforms.
 - Overaligning structs while using `@packed` would cause incorrect lowering #3000
 - Splatting a literal into a typed vaarg, e.g. `test(...(int[2]){ 88, 99 }, a: 123)` could cause the compiler to crash.
+- `&some_global[0]` was incorrectly considered a global constant when `some_global` was a slice.
  
 ## 0.7.10 Change list
 

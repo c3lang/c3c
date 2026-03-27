@@ -433,6 +433,7 @@ RETRY:
 		case EXPR_SUBSCRIPT_ADDR:
 			if (!exprid_is_runtime_const(expr->subscript_expr.index.expr)) return false;
 			expr = exprptr(expr->subscript_expr.expr);
+			if (type_flatten(expr->type)->type_kind == TYPE_SLICE) return false;
 			if (expr->expr_kind == EXPR_IDENTIFIER)
 			{
 				Decl *decl = expr->ident_expr;
