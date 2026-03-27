@@ -98,6 +98,8 @@
 - Error on wrong expression when the slice range start is out of range.
 - `void{}` would be looked up as generic in some cases and cause a crash.
 - Inferring generic parameters recursively would fail to construct a valid source location and crash.
+- Comparing an array of function pointers with any other type could crash rather than being an error.
+- Crashing on codegen if an internal fault in if-catch is guaranteed to bypass the conditional.
 
 ## 0.7.10 Change list
 

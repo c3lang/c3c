@@ -1785,7 +1785,7 @@ TypeCmpResult type_array_element_is_equivalent(SemaContext *context, Type *eleme
 	{
 		case TYPE_FUNC_PTR:
 			if (element2 == type_voidptr) return TYPE_SAME;
-			if (element1->type_kind != TYPE_FUNC_PTR) return TYPE_MISMATCH;
+			if (element2->type_kind != TYPE_FUNC_PTR) return TYPE_MISMATCH;
 			if (element1->pointer->function.prototype->raw_type == element2->pointer->function.prototype->raw_type) return TYPE_SAME;
 			return TYPE_MISMATCH;
 		case TYPE_POINTER:

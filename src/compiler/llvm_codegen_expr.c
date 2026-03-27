@@ -6573,8 +6573,11 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 
 	POP_CATCH();
 
-	llvm_store_raw(c, &addr, llvm_get_zero(c, type_fault));
-	llvm_emit_br(c, catch_block);
+	if (c->current_block)
+	{
+		llvm_store_raw(c, &addr, llvm_get_zero(c, type_fault));
+		llvm_emit_br(c, catch_block);
+	}
 	llvm_emit_block(c, catch_block);
 	llvm_value_rvalue(c, &addr);
 	llvm_value_set(value, addr.value, type_fault);
