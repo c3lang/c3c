@@ -92,7 +92,8 @@
 - Wrong error message when trying to take the address of a `$$builtin` function.
 - Accessing a (non-existing) property on a type-call would crash the compiler.
 - Crash instead of error when having two vaargs and the last one is an untyped vaarg.
-  
+- Detect recursive declaration `int[type()] type`.
+ 
 ## 0.7.10 Change list
 
 ### Changes / improvements

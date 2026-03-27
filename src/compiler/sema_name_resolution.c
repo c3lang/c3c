@@ -1285,7 +1285,7 @@ bool sema_add_local(SemaContext *context, Decl *decl)
 		return false;
 	}
 ADD_VAR:
-	decl->resolve_status = RESOLVE_DONE;
+	if (decl->type || decl->decl_kind != DECL_VAR) decl->resolve_status = RESOLVE_DONE;
 	sema_append_local(context, decl);
 	return true;
 }

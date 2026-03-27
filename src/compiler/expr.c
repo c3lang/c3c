@@ -595,15 +595,6 @@ void expr_insert_addr(Expr *original)
 	original->unary_expr = (ExprUnary) { .operator = UNARYOP_ADDR, .expr = inner, .no_wrap = false, .no_read = false };
 }
 
-Expr *expr_generated_local(Expr *assign, Decl **decl_ref)
-{
-	Decl *decl = decl_new_generated_var(assign->type, VARDECL_LOCAL, assign->loc);
-	Expr *expr_decl = expr_new(EXPR_DECL, decl->loc);
-	expr_decl->decl_expr = decl;
-	decl->var.init_expr = assign;
-	*decl_ref = decl;
-	return expr_decl;
-}
 
 Expr *expr_generate_decl(Decl *decl, Expr *assign)
 {
@@ -613,6 +604,9 @@ Expr *expr_generate_decl(Decl *decl, Expr *assign)
 	expr_decl->decl_expr = decl;
 	if (!assign) decl->var.no_init = true;
 	decl->var.init_expr = assign;
+	expr_decl->type = decl->type;
+	ASSERT(decl->type);
+	ASSERT(assign->type);
 	return expr_decl;
 }
 

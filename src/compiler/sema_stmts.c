@@ -974,7 +974,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	Decl *decl = decl_new_var(ident->unresolved_ident_expr.ident, ident->loc, var_type, VARDECL_LOCAL);
 
 	// 4e. Analyse it
-	if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
+	if (!sema_analyse_local(context, decl, NULL)) return false;
 
 	expr->expr_kind = EXPR_TRY;
 	expr->try_expr = (ExprTry) { .decl = decl, .optional = optional, .assign_existing = false };
@@ -1033,7 +1033,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 	decl->var.no_init = true;
 
 	// 4e. Analyse it
-	if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
+	if (!sema_analyse_local(context, decl, NULL)) return false;
 
 RESOLVE_EXPRS:;
 	Expr **exprs = expr->unresolved_catch_expr.exprs;
@@ -1269,7 +1269,7 @@ static inline bool sema_analyse_decls_stmt(SemaContext *context, Ast *statement)
 		}
 		else
 		{
-			if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
+			if (!sema_analyse_local(context, decl, NULL)) return false;
 			should_nop = false;
 		}
 	}
@@ -1282,7 +1282,7 @@ static inline bool sema_analyse_declare_stmt(SemaContext *context, Ast *statemen
 	Decl *decl = statement->declare_stmt;
 	VarDeclKind kind = decl->var.kind;
 	bool erase = kind == VARDECL_LOCAL_CT_TYPE || kind == VARDECL_LOCAL_CT;
-	if (!sema_analyse_var_decl(context, decl, true, NULL))
+	if (!sema_analyse_local(context, decl, NULL))
 	{
 		if (!decl_ok(decl)) context->active_scope.is_poisoned = true;
 		return false;

@@ -9603,7 +9603,7 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 	Expr *decl_index_expr = expr_generate_decl(index_val, index);
 	Expr *mutate = expr_copy(main);
 	mutate->resolve_status = RESOLVE_NOT_DONE;
-	mutate->type = NULL;
+	mutate->type = return_type;
 	switch (main->expr_kind)
 	{
 		case EXPR_UNARY:
@@ -9616,6 +9616,7 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 		default:
 			UNREACHABLE
 	}
+	if (!sema_analyse_expr(context, mutate)) return false;
 	main->expr_kind = EXPR_EXPRESSION_LIST;
 	main->expression_list = NULL;
 	// temp = indexed
@@ -11180,6 +11181,7 @@ static inline bool sema_expr_analyse_ct_is_const(SemaContext *context, Expr *exp
 	expr_rewrite_const_bool(expr, type_bool, sema_cast_const(inner));
 	return true;
 }
+
 static bool sema_expr_analyse_lenof(SemaContext *context, Expr *expr, bool *missing_ref)
 {
 	Expr *inner = expr->inner_expr;
@@ -11410,7 +11412,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_CONTRACT:
 					UNREACHABLE
 			case EXPR_DECL:
-				if (!sema_analyse_var_decl(context, main_expr->decl_expr, true, &failed))
+				if (!sema_analyse_local(context, main_expr->decl_expr, &failed))
 				{
 					if (!failed) goto FAIL;
 					success = false;
@@ -11980,7 +11982,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		{
 			Decl *decl = expr->decl_expr;
 			bool erase = decl->var.kind == VARDECL_LOCAL_CT_TYPE || decl->var.kind == VARDECL_LOCAL_CT;
-			if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
+			if (!sema_analyse_local(context, decl, NULL)) return false;
 			if (decl->decl_kind == DECL_ERASED)
 			{
 				expr->expr_kind = EXPR_NOP;
@@ -12837,7 +12839,7 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 	{
 		if (!expr_is_const(parent))
 		{
-			Decl *temp = decl_new_generated_var(method_decl->func_decl.signature.params[1]->type, VARDECL_LOCAL, parent->loc);
+			Decl *temp = decl_new_generated_var(parent->type, VARDECL_LOCAL, parent->loc);
 			Expr *generate = expr_generate_decl(temp, expr_copy(parent));
 			parent->expr_kind = EXPR_IDENTIFIER;
 			parent->ident_expr = temp;
