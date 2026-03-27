@@ -106,14 +106,14 @@ macro usz @bitsizeof(#expr) @builtin @const => $sizeof(#expr) * 8u;
 <*
  Compile-time check for whether a set of constants contains a certain expression.
 
- @param #needle : "The expression whose value should be located."
+ @param $needle : "The expression whose value should be located."
 *>
-macro bool @in(#needle, ...) @builtin @const
+macro bool @in($needle, ...) @builtin @const
 {
 	$for var $x = 0; $x < $vacount; $x++:
-		$assert $defined(#needle == $vaconst[$x])
-			: "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $typeof(#needle), $typeof($vaconst[$x]);
-		$if #needle == $vaconst[$x]: return true; $endif
+		$assert $defined($needle == $vaconst[$x])
+			: "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $typeof($needle), $typeof($vaconst[$x]);
+		$if $needle == $vaconst[$x]: return true; $endif
 	$endfor
 	return false;
 }

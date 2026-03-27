@@ -2878,6 +2878,8 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 {
 	Decl **values = NULL;
 	bool deprecate_warn = true;
+	SourceLoc start = c->prev_span;
+
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		ContractDescription contracts = EMPTY_CONTRACT;
@@ -2984,6 +2986,11 @@ NEXT:
 			}
 			EXPECT_OR_RET(TOKEN_RBRACE, false);
 		}
+	}
+	if (!is_constdef && vec_size(values) == 0)
+	{
+		print_error_after(&start, "An enum must have at least one value.");
+		return false;
 	}
 	*values_ref = values;
 	return true;

@@ -18,6 +18,7 @@
 - Added the rest of the `xoshiro` and `xoroshiro` PRNG variants. #3027
 - Improve error when using keyword as identifier #3066
 - Warn when using $$builtin functions outside of the stdlib #3065
+- Zero element enums now disallowed.
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
@@ -93,7 +94,8 @@
 - Accessing a (non-existing) property on a type-call would crash the compiler.
 - Crash instead of error when having two vaargs and the last one is an untyped vaarg.
 - Detect recursive declaration `int[type()] type`.
- 
+- Compiler would not propagate error when `$$str_find` or `$$str_hash` arguments were invalid, causing a crash.
+
 ## 0.7.10 Change list
 
 ### Changes / improvements
