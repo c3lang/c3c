@@ -470,3 +470,17 @@ fn void onheap_auto_init()
 	assert(m.get(1)!! == "one");
 	m.free();
 }
+
+fn void printable()
+{
+	IntStringMap m;
+	m.tinit();
+	defer m.free();
+
+	assert(string::tformat("%s", m) == "{  }");
+
+	m.set(2, "two");
+	m.set(1, "one");
+	m.set(3, "three");
+	assert(string::tformat("%s", m) == "{ 1: one, 2: two, 3: three }");
+}

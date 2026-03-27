@@ -49,7 +49,7 @@ struct Entry
 <*
  @require types::@comparable_value((Key){}) : "The Key must support ordered comparison"
 *>
-struct OrderedMap
+struct OrderedMap (Printable)
 {
 	Allocator allocator;
 	SkipNode* head;
@@ -446,6 +446,20 @@ fn void OrderedMap.free(&self)
 	self.clear();
 	alloc::free(self.allocator, self.head);
 	self.head = null;
+}
+
+fn usz? OrderedMap.to_format(&self, Formatter* f) @dynamic
+{
+	usz len;
+	len += f.print("{ ")!;
+	SkipNode* node = self.head ? self.head.forward[0] : null;
+	while (node != null)
+	{
+		if (len > 2) len += f.print(", ")!;
+		len += f.printf("%s: %s", node.key, node.value)!;
+		node = node.forward[0];
+	}
+	return len + f.print(" }");
 }
 
 <*
