@@ -103,6 +103,7 @@
 - In `$foreach` in some cases the elements was an untyped variable which would cause a crash.
 - Creating a global slice would be runtime checked for null in some cases.
 - `@ensure` and `@require` could contain rethrows, which then would crash the compiler.
+- Crash when using `$defined($Type)` and `$Type` is a typeid.
 
 ## 0.7.10 Change list
 

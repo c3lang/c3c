@@ -10736,7 +10736,17 @@ RETRY:
 			Decl *decl = sema_find_path_symbol(context, type_info->unresolved.name, type_info->unresolved.path);
 			if (!decl) return NULL;
 			if (!decl_ok(decl)) return poisoned_type;
-			if (type_info->kind == TYPE_INFO_CT_IDENTIFIER) return decl->var.init_expr->type_expr->type->canonical;
+			if (type_info->kind == TYPE_INFO_CT_IDENTIFIER)
+			{
+				Expr *init = decl->var.init_expr;
+				if (init->expr_kind == EXPR_CONST)
+				{
+					ASSERT(init->const_expr.const_kind == CONST_TYPEID);
+					return init->const_expr.typeid;
+				}
+				ASSERT(init->expr_kind == EXPR_TYPEINFO);
+				return init->type_expr->type->canonical;
+			}
 			return decl->type->canonical;
 		}
 		case TYPE_INFO_VATYPE:
