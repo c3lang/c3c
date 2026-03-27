@@ -100,6 +100,7 @@
 - Inferring generic parameters recursively would fail to construct a valid source location and crash.
 - Comparing an array of function pointers with any other type could crash rather than being an error.
 - Crashing on codegen if an internal fault in if-catch is guaranteed to bypass the conditional.
+- In `$foreach` in some cases the elements was an untyped variable which would cause a crash.
 
 ## 0.7.10 Change list
 

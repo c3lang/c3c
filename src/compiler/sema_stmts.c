@@ -2912,12 +2912,15 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		Ast *compound_stmt = copy_ast_single(body);
 		if (expressions)
 		{
-			value->var.init_expr = expressions[i];
+			Expr *expr = expressions[i];
+			value->var.init_expr = expr;
+			value->type = expr->type;
 		}
 		else if (bytes)
 		{
 			value->var.init_expr = expr_new(EXPR_CONST, collection->loc);
 			expr_rewrite_const_int(value->var.init_expr, bytes_type, bytes[i]);
+			value->type = bytes_type;
 		}
 		else
 		{
@@ -2928,6 +2931,7 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 				goto FAILED;
 			}
 			value->var.init_expr = expr;
+			value->type = const_list_type;
 		}
 		if (index)
 		{
