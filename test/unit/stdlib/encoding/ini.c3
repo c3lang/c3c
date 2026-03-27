@@ -1,6 +1,4 @@
-// #target: macos-x64
-module test;
-import std::io;
+module encoding::ini @test;
 import std::encoding::ini;
 import std::collections::map;
 
@@ -16,7 +14,6 @@ port = 8080
 
     assert(m.get("server", "host")!! == "localhost");
     assert(m.get("server", "port")!! == "8080");
-    io::printn("test_basic_parse PASSED");
 }
 
 fn void test_global_keys()
@@ -34,7 +31,6 @@ host = localhost
     assert(m.get(ini::GLOBAL, "name")!! == "myapp");
     assert(m.get(ini::GLOBAL, "version")!! == "1.0");
     assert(m.get("db", "host")!! == "localhost");
-    io::printn("test_global_keys PASSED");
 }
 
 fn void test_comments()
@@ -51,7 +47,6 @@ key = value
 
     assert(m.get("section", "key")!! == "value");
     assert(m.len() == 1);
-    io::printn("test_comments PASSED");
 }
 
 fn void test_whitespace_trimming()
@@ -66,7 +61,6 @@ other=nopad
 
     assert(m.get("section", "key")!! == "value with spaces");
     assert(m.get("section", "other")!! == "nopad");
-    io::printn("test_whitespace_trimming PASSED");
 }
 
 fn void test_empty_value()
@@ -81,7 +75,6 @@ also_empty=
 
     assert(m.get("section", "empty")!! == "");
     assert(m.get("section", "also_empty")!! == "");
-    io::printn("test_empty_value PASSED");
 }
 
 fn void test_colon_delimiter()
@@ -96,7 +89,6 @@ key: value
     defer m.free();
 
     assert(m.get("section", "key")!! == "value");
-    io::printn("test_colon_delimiter PASSED");
 }
 
 fn void test_duplicate_key_overwrite()
@@ -110,7 +102,6 @@ key = second
     defer m.free();
 
     assert(m.get("section", "key")!! == "second");
-    io::printn("test_duplicate_key_overwrite PASSED");
 }
 
 fn void test_duplicate_key_error()
@@ -124,7 +115,6 @@ key = second
     opts.duplicate_keys = DUPLICATE_ERROR;
     IniMap? m = ini::tparse(src, opts);
     assert(@catch(m) == ini::DUPLICATE_KEY);
-    io::printn("test_duplicate_key_error PASSED");
 }
 
 fn void test_missing_key()
@@ -138,7 +128,6 @@ key = value
 
     assert(!@ok(m.get("section", "missing")));
     assert(!@ok(m.get("nosection", "key")));
-    io::printn("test_missing_key PASSED");
 }
 
 fn void test_has_section_has_key()
@@ -154,7 +143,6 @@ foo = bar
     assert(!m.has_section("beta"));
     assert(m.has_key("alpha", "foo"));
     assert(!m.has_key("alpha", "baz"));
-    io::printn("test_has_section_has_key PASSED");
 }
 
 fn void test_multiple_sections()
@@ -176,7 +164,6 @@ x = 3
     assert(m.get("b", "x")!! == "2");
     assert(m.get("c", "x")!! == "3");
     assert(m.len() == 3);
-    io::printn("test_multiple_sections PASSED");
 }
 
 fn void test_iteration()
@@ -196,7 +183,6 @@ c = 3
         count++;
     };
     assert(count == 3);
-    io::printn("test_iteration PASSED");
 }
 
 fn void test_invalid_section()
@@ -207,7 +193,6 @@ key = value
 `;
     IniMap? m = ini::tparse(src);
     assert(@catch(m) == ini::INVALID_SECTION);
-    io::printn("test_invalid_section PASSED");
 }
 
 fn void test_empty_section_header_is_invalid()
@@ -215,7 +200,6 @@ fn void test_empty_section_header_is_invalid()
     String src = "[]\nkey = value\n";
     IniMap? m = ini::tparse(src);
     assert(@catch(m) == ini::INVALID_SECTION);
-    io::printn("test_empty_section_header_is_invalid PASSED");
 }
 
 fn void test_encode_respects_delimiter()
@@ -229,7 +213,6 @@ fn void test_encode_respects_delimiter()
     String encoded = m.tencode(opts);
     assert(encoded.contains("[section]"));
     assert(encoded.contains("key : value"));
-    io::printn("test_encode_respects_delimiter PASSED");
 }
 
 fn void test_encode_no_pad_delimiter()
@@ -243,7 +226,6 @@ fn void test_encode_no_pad_delimiter()
     String encoded = m.tencode(opts);
     assert(encoded.contains("key=value"));
     assert(!encoded.contains("key = value"));
-    io::printn("test_encode_no_pad_delimiter PASSED");
 }
 
 fn void test_crlf_line_endings()
@@ -253,7 +235,6 @@ fn void test_crlf_line_endings()
     defer m.free();
 
     assert(m.get("section", "key")!! == "value");
-    io::printn("test_crlf_line_endings PASSED");
 }
 
 fn void test_init_and_set()
@@ -269,7 +250,6 @@ fn void test_init_and_set()
     assert(m.get("server", "host")!! == "localhost");
     assert(m.get("server", "port")!! == "8080");
     assert(m.get(ini::GLOBAL, "name")!! == "myapp");
-    io::printn("test_init_and_set PASSED");
 }
 
 fn void test_set_overwrites()
@@ -283,7 +263,6 @@ fn void test_set_overwrites()
 
     assert(m.get("db", "host")!! == "remotehost");
     assert(m.section_len("db") == 1);
-    io::printn("test_set_overwrites PASSED");
 }
 
 fn void test_remove_key()
@@ -296,7 +275,6 @@ fn void test_remove_key()
     assert(!@ok(m.get("section", "a")));
     assert(m.get("section", "b")!! == "2");
     assert(m.remove_key("section", "missing") == false);
-    io::printn("test_remove_key PASSED");
 }
 
 fn void test_remove_section()
@@ -309,7 +287,6 @@ fn void test_remove_section()
     assert(!m.has_section("alpha"));
     assert(m.has_section("beta"));
     assert(m.remove_section(ini::GLOBAL) == false);
-    io::printn("test_remove_section PASSED");
 }
 
 fn void test_clear()
@@ -324,7 +301,6 @@ fn void test_clear()
     assert(m.has_section(ini::GLOBAL));
     assert(!m.has_section("a"));
     assert(!m.has_section("b"));
-    io::printn("test_clear PASSED");
 }
 
 fn void test_section_len()
@@ -335,7 +311,6 @@ fn void test_section_len()
 
     assert(m.section_len("section") == 3);
     assert(m.section_len("missing") == 0);
-    io::printn("test_section_len PASSED");
 }
 
 fn void test_iter_sections()
@@ -350,7 +325,6 @@ fn void test_iter_sections()
         count++;
     }
     assert(count == 3); // alpha, beta, gamma — empty GLOBAL is excluded like len()
-    io::printn("test_iter_sections PASSED");
 }
 
 fn void test_get_section()
@@ -362,7 +336,6 @@ fn void test_get_section()
     HashMap{String, String}* sec = m.get_section("db")!!;
     assert(sec.len() == 2);
     assert(sec.get("host")!! == "localhost");
-    io::printn("test_get_section PASSED");
 }
 
 fn void test_inline_comments()
@@ -381,7 +354,6 @@ plain = no comment
     assert(m.get("section", "key")!! == "value");
     assert(m.get("section", "other")!! == "data");
     assert(m.get("section", "plain")!! == "no comment");
-    io::printn("test_inline_comments PASSED");
 }
 
 fn void test_round_trip()
@@ -406,24 +378,15 @@ spaced = hello world
     IniMap m2 = ini::tparse(encoded)!!;
     defer m2.free();
 
-    // Global keys
     assert(m2.get(ini::GLOBAL, "name")!!    == m1.get(ini::GLOBAL, "name")!!);
     assert(m2.get(ini::GLOBAL, "version")!! == m1.get(ini::GLOBAL, "version")!!);
-
-    // Named section
     assert(m2.get("server", "host")!! == m1.get("server", "host")!!);
     assert(m2.get("server", "port")!! == m1.get("server", "port")!!);
-
-    // Edge cases
     assert(m2.get("edge", "empty")!!   == m1.get("edge", "empty")!!);
     assert(m2.get("edge", "spaced")!!  == m1.get("edge", "spaced")!!);
-
-    // Section and key counts must match
     assert(m2.len()               == m1.len());
     assert(m2.section_len("server") == m1.section_len("server"));
     assert(m2.section_len("edge")   == m1.section_len("edge"));
-
-    io::printn("test_round_trip PASSED");
 }
 
 fn void test_each_visits_all_sections_including_global()
@@ -453,11 +416,10 @@ port = 5432
         if (section == "db")        saw_db     = true;
     };
 
-    assert(total == 3);       // name, host, port
-    assert(saw_global);       // GLOBAL yielded because it has keys
+    assert(total == 3);
+    assert(saw_global);
     assert(saw_server);
     assert(saw_db);
-    io::printn("test_each_visits_all_sections_including_global PASSED");
 }
 
 fn void test_each_empty_global_not_visited()
@@ -472,8 +434,7 @@ fn void test_each_empty_global_not_visited()
         if (section == ini::GLOBAL) saw_global = true;
     };
 
-    assert(!saw_global);   // empty GLOBAL produces no iterations
-    io::printn("test_each_empty_global_not_visited PASSED");
+    assert(!saw_global);
 }
 
 fn void test_allow_global_keys_false_has_no_global_section()
@@ -485,39 +446,4 @@ fn void test_allow_global_keys_false_has_no_global_section()
     defer m.free();
 
     assert(!m.has_section(ini::GLOBAL));
-    io::printn("test_allow_global_keys_false_has_no_global_section PASSED");
-}
-
-fn void main()
-{
-    test_basic_parse();
-    test_global_keys();
-    test_comments();
-    test_whitespace_trimming();
-    test_empty_value();
-    test_colon_delimiter();
-    test_duplicate_key_overwrite();
-    test_duplicate_key_error();
-    test_missing_key();
-    test_has_section_has_key();
-    test_multiple_sections();
-    test_iteration();
-    test_invalid_section();
-    test_empty_section_header_is_invalid();
-    test_encode_respects_delimiter();
-    test_crlf_line_endings();
-    test_init_and_set();
-    test_set_overwrites();
-    test_remove_key();
-    test_remove_section();
-    test_clear();
-    test_section_len();
-    test_iter_sections();
-    test_get_section();
-    test_inline_comments();
-    test_round_trip();
-    test_each_visits_all_sections_including_global();
-    test_each_empty_global_not_visited();
-    test_allow_global_keys_false_has_no_global_section();
-    test_encode_no_pad_delimiter();
 }
