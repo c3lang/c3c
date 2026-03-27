@@ -5313,7 +5313,7 @@ FOUND:;
 				copy_begin();
 				Expr **contract = copy_exprlist_macro(requires);
 				copy_end();
-				SourceLoc param_loc = extend_loc_with_token(sourcelocptr(params[0]->loc), sourcelocptr(VECLAST(params)->loc)); // NOLINT
+				SourceLoc param_loc = params ? extend_loc_with_token(sourcelocptr(params[0]->loc), sourcelocptr(VECLAST(params)->loc)) : extend_loc_with_token(sourcelocptr(param_decls[0]->loc), sourcelocptr(VECLAST(param_decls)->loc)); // NOLINT
 				if (!sema_analyse_generic_module_contracts(context, module, instance, contract, make_loc(param_loc), invocation_loc))
 				{
 					decl_poison(instance);
