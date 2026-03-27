@@ -1515,9 +1515,9 @@ static inline bool sema_analyse_fntype(SemaContext *context, Decl *decl, bool *e
 
 	if (*erase_decl) return true;
 	Signature *sig = &decl->fntype_decl.signature;
-	if (!sema_analyse_function_signature(context, decl, NULL, sig->abi, sig)) return false;
+	if (!sema_analyse_function_signature(context, decl, NULL, sig->abi, sig)) return decl_poison(decl);
 	bool pure = false;
-	if (!sema_analyse_doc_header(context, decl->fntype_decl.docs, sig->params, NULL, &pure, sig->variadic == VARIADIC_RAW)) return false;
+	if (!sema_analyse_doc_header(context, decl->fntype_decl.docs, sig->params, NULL, &pure, sig->variadic == VARIADIC_RAW)) return decl_poison(decl);
 	sig->attrs.is_pure = pure;
 	return true;
 }

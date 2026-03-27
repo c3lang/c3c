@@ -1,3 +1,4 @@
+// #opt: --warn-deadcode=no
 module abc_faults;
 module abc <Type>;
 import abc_faults;
