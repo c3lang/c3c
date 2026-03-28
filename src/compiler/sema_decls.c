@@ -2977,6 +2977,12 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	bool is_dynamic = decl->func_decl.attr_dynamic;
 
 	// Ensure that the first parameter is valid.
+	Decl *first_param = params[0];
+	if (!first_param)
+	{
+		ASSERT(decl->func_decl.signature.vararg_index == 0);
+		RETURN_SEMA_ERROR(decl, "The first parameter of a method must always be a regular argument, it cannot be a vaarg.");
+	}
 	if (!sema_is_valid_method_param(context, params[0], par_type, is_dynamic)) return false;
 
 	// Make dynamic checks.
