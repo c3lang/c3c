@@ -110,6 +110,7 @@
 - Missing check when doing `$foo++` would crash the compiler if the variable wasn't initialized.
 - Incorrect handling of attribute operator symbols could crash the compiler instead of producing an error.
 - Crash instead of error when the first method parameter is a vaarg.
+- Fixes to UnalignedRef.
 
 ## 0.7.10 Change list
 

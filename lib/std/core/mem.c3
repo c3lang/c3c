@@ -1111,10 +1111,10 @@ typedef UnalignedRef = Type*;
 
 macro Type UnalignedRef.get(self)
 {
-	return @unaligned_load(*(Type*)self, ALIGNMENT, false);
+	return mem::load((Type*)self, ALIGNMENT);
 }
 
 macro Type UnalignedRef.set(&self, Type val)
 {
-	return @unaligned_store(*(Type*)self, val, ALIGNMENT, false);
+	return mem::store((Type*)self, val, ALIGNMENT);
 }
