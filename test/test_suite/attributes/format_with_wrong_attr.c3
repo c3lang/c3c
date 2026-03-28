@@ -1,0 +1,1 @@
+macro a() @format(+) => a; // #error: Expected an integer compile time constant value.

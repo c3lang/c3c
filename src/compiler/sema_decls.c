@@ -3133,6 +3133,38 @@ static bool update_call_abi_from_string(SemaContext *context, Decl *decl, Expr *
 	RETURN_SEMA_ERROR(expr, "Unknown call convention, only 'cdecl', 'stdcall' and 'veccall' are supported");
 }
 
+INLINE bool sema_analyse_attribute_int_const(SemaContext *context, Expr *expr)
+{
+	ASSERT(expr);
+	if (!sema_analyse_expr_rvalue(context, expr)) return false;
+	if (!sema_cast_const(expr) || !expr_is_const_int(expr) || !type_is_integer(expr->type))
+	{
+		RETURN_SEMA_ERROR(expr, "Expected an integer compile time constant value.");
+	}
+	return true;
+}
+
+INLINE bool sema_analyse_attribute_string_const(SemaContext *context, Expr *expr)
+{
+	ASSERT(expr);
+	if (!sema_analyse_expr_rvalue(context, expr)) return false;
+	if (!sema_cast_const(expr) || !expr_is_const_string(expr) || expr->type != type_string)
+	{
+		RETURN_SEMA_ERROR(expr, "Expected a compile time constant String.");
+	}
+	return true;
+}
+
+INLINE bool sema_analyse_attribute_bool_const(SemaContext *context, Expr *expr)
+{
+	ASSERT(expr);
+	if (!sema_analyse_expr_rvalue(context, expr)) return false;
+	if (!sema_cast_const(expr) || !cast_explicit_silent(context, expr, type_bool) ||!expr_is_const_bool(expr))
+	{
+		RETURN_SEMA_ERROR(expr, "Expected a boolean compile time constant.");
+	}
+	return true;
+}
 
 /**
  * Analyse almost all attributes.
@@ -3234,11 +3266,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			attr_data->deprecated = "";
 			if (expr)
 			{
-				if (!sema_analyse_expr_rvalue(context, expr)) return false;
-				if (!expr_is_const_string(expr))
-				{
-					RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
-				}
+				if (!sema_analyse_attribute_string_const(context, expr)) return false;
 				attr_data->deprecated = expr->const_expr.bytes.ptr;
 			}
 			return true;
@@ -3258,8 +3286,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			break;
 		case ATTRIBUTE_CALLCONV:
 			if (!expr) RETURN_SEMA_ERROR(decl, "Expected a string argument.");
-			if (expr && !sema_analyse_expr_rvalue(context, expr)) return false;
-			if (!expr_is_const_string(expr)) RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
+			if (!sema_analyse_attribute_string_const(context, expr)) return false;
 			if (!update_call_abi_from_string(context, decl, expr)) return false;
 			return true;
 		case ATTRIBUTE_BENCHMARK:
@@ -3371,19 +3398,10 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				}
 				Expr *module = expr;
 				expr = attr->exprs[1];
-				if (!sema_analyse_expr_rvalue(context, module)) return false;
-				if (!expr_is_const_string(module))
-				{
-					RETURN_SEMA_ERROR(module, "Expected a constant string value as argument.");
-				}
+				if (!sema_analyse_attribute_string_const(context, module)) return false;
 				attr_data->wasm_module = module->const_expr.bytes.ptr;
 			}
-
-			if (!sema_analyse_expr_rvalue(context, expr)) return false;
-			if (!expr_is_const_string(expr))
-			{
-				RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
-			}
+			if (!sema_analyse_attribute_string_const(context, expr)) return false;
 			decl->extname = expr->const_expr.bytes.ptr;
 			decl->has_extname = true;
 			return true;
@@ -3394,11 +3412,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			}
 			if (expr)
 			{
-				if (!sema_analyse_expr_rvalue(context, expr)) return false;
-				if (!expr_is_const_string(expr))
-				{
-					RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
-				}
+				if (!sema_analyse_attribute_string_const(context, expr)) return false;
 				if (decl->has_extname)
 				{
 					RETURN_SEMA_ERROR(expr, "An external name is already defined, please use '@export` without an argument.");
@@ -3416,11 +3430,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			return true;
 		case ATTRIBUTE_IF:
 			if (!expr) RETURN_SEMA_ERROR(attr, "'@if' requires a boolean argument.");
-			if (!sema_analyse_expr_rvalue(context, expr)) return false;
-			if (!cast_explicit_silent(context, expr, type_bool) || !sema_cast_const(expr))
-			{
-				RETURN_SEMA_ERROR(expr, "Expected a boolean compile time constant value.");
-			}
+			if (!sema_analyse_attribute_bool_const(context, expr)) return false;
 			if (!expr->const_expr.b) *erase_decl = true;
 			return true;
 		case ATTRIBUTE_FINALIZER:
@@ -3429,11 +3439,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			goto PARSE;
 		case ATTRIBUTE_FORMAT:
 			if (args != 1) RETURN_SEMA_ERROR(attr, "'@format' expects the index of the format string as the argument, e.g. '@format(1)'.");
-			if (!sema_analyse_expr_rvalue(context, expr)) return false;
-			if (!type_is_integer(expr->type) || !sema_cast_const(expr))
-			{
-				RETURN_SEMA_ERROR(expr, "Expected an integer compile time constant value.");
-			}
+			if (!sema_analyse_attribute_int_const(context, expr)) return false;
 		{
 			Int i = expr->const_expr.ixx;
 			if (int_is_neg(i) || int_icomp(i, 127, BINARYOP_GT))
@@ -3470,11 +3476,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			PARSE:;
 			if (expr)
 			{
-				if (!sema_analyse_expr_rvalue(context, expr)) return false;
-				if (!expr_is_const_int(expr))
-				{
-					RETURN_SEMA_ERROR(attr, "Expected an integer value.");
-				}
+				if (!sema_analyse_attribute_int_const(context, expr)) return false;
 				uint64_t prio = decl->func_decl.priority = expr->const_expr.ixx.i.low;
 				if (expr_const_will_overflow(&expr->const_expr, TYPE_U16) || prio > MAX_PRIORITY || prio < 1)
 				{
@@ -3502,11 +3504,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			{
 				RETURN_SEMA_ERROR(attr, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name, attr->name);
 			}
-			if (!sema_analyse_expr_rvalue(context, expr)) return false;
-			if (!expr_is_const_string(expr))
-			{
-				RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
-			}
+			if (!sema_analyse_attribute_string_const(context, expr)) return false;
 			switch (type)
 			{
 				case ATTRIBUTE_SECTION:
@@ -3581,11 +3579,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			{
 				RETURN_SEMA_ERROR(attr, "'%s' requires a string argument, e.g. %s(\"address\").", attr->name, attr->name);
 			}
-			if (!sema_analyse_expr_rvalue(context, expr)) return false;
-			if (!expr_is_const_string(expr))
-			{
-				RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
-			}
+			if (!sema_analyse_attribute_string_const(context, expr)) return false;
 			const char *str = expr->const_expr.bytes.ptr;
 			if (str_eq(str, "address"))
 			{
