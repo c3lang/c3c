@@ -177,6 +177,7 @@
 - Compiler crash using `??` with a `void?` macro #2973
 - Fix issue when extending a generic type with a method in another module.
 - Codegen would not pop debug location for a never-entered for loop, crashing LLVM lowering.
+- Double negating a vector would cause a crash in lowering.
 
 ## 0.7.9 Change list
 

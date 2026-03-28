@@ -2490,11 +2490,11 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 				LLVMValueRef llvm_value;
 				if (type_is_float(vec_type))
 				{
-					llvm_value = LLVMBuildFCmp(c->builder, LLVMRealUEQ, value->value, llvm_get_zero(c, type), "not");
+					llvm_value = LLVMBuildFCmp(c->builder, LLVMRealUEQ, value->value, LLVMConstNull(LLVMTypeOf(value->value)), "not");
 				}
 				else
 				{
-					llvm_value = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, llvm_get_zero(c, type), "not");
+					llvm_value = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, LLVMConstNull(LLVMTypeOf(value->value)), "not");
 				}
 				Type *res_type = type_get_vector_bool(type, TYPE_SIMD_VECTOR);
 				llvm_value = LLVMBuildSExt(c->builder, llvm_value, llvm_get_type(c, res_type), "");
