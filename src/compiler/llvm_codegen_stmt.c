@@ -554,7 +554,11 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 	if (loop == LOOP_NONE)
 	{
 		// while (0) -> never entered
-		if (!skip_first) return;
+		if (!skip_first)
+		{
+			DEBUG_POP_LEXICAL_SCOPE(c);
+			return;
+		}
 		ASSERT(!incr && "There should not be an incr in do-while");
 		// do while(0) -> emit once
 		LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "loop.exit");
