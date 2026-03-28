@@ -805,7 +805,7 @@ static inline void llvm_emit_subscript(GenContext *c, BEValue *value, Expr *expr
 		BEValue value2;
 		llvm_value_set(&value1, align, type_usz);
 		llvm_value_set(&value2, rem, type_usz);
-		llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", parent_expr->loc, "Unaligned access: ptr %% %s = %s, use @unaligned_load / @unaligned_store for unaligned access.",
+		llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", parent_expr->loc, "Unaligned access: ptr %% %s = %s, use mem::load / mem::store for unaligned access.",
 			&value1, &value2);
 		c->emitting_load_store_check = false;
 	}
@@ -2420,7 +2420,7 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 			if (inner->type->name )
 			llvm_value_set(&value1, align, type_usz);
 			llvm_value_set(&value2, rem, type_usz);
-			llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", inner->loc, "Unaligned access: ptr %% %s = %s, use @unaligned_load / @unaligned_store for unaligned access.",
+			llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", inner->loc, "Unaligned access: ptr %% %s = %s, use mem::load / mem::store for unaligned access.",
 				&value1, &value2);
 			c->emitting_load_store_check = false;
 		}

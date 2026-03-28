@@ -66,8 +66,8 @@ fn void Poly1305.init(&self, char[KEY_SIZE] key)
         .nonce  = mem::load((uint128*)&key[16], 1)
     };
 
-    self.r0 = @unaligned_load(((ulong*)&self.r)[0], 1);
-    self.r1 = @unaligned_load(((ulong*)&self.r)[1], 1);
+    self.r0 = mem::load(&((ulong*)&self.r)[0], 1);
+    self.r1 = mem::load(&((ulong*)&self.r)[1], 1);
 
     self.s1 = self.r1 + (self.r1 >> 2);
 }

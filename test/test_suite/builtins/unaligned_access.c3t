@@ -9,9 +9,9 @@ fn int main()
 
     int* i = (int*)(&buf[1]);
     int z = *i;
-    int z2 = @unaligned_load(*i, 1);
+    int z2 = mem::load(i, 1);
     *i = 5;
-    @unaligned_store(*i, 6, 1);
+    mem::store(i, 6, 1);
     int y = *i;
 
     return 0;
@@ -36,47 +36,41 @@ checkok13:                                        ; preds = %checkok
   %6 = load i32, ptr %0, align 4
   store i32 %6, ptr %z, align 4
   %7 = load ptr, ptr %i, align 8
-  %checknull14 = icmp eq ptr %7, null
-  %8 = call i1 @llvm.expect.i1(i1 %checknull14, i1 false)
-  br i1 %8, label %panic15, label %checkok16
-
-checkok16:                                        ; preds = %checkok13
-  %9 = load i32, ptr %7, align 1
+  store ptr %7, ptr %ptr, align 8
+  %8 = load ptr, ptr %ptr, align 8
+  %9 = load i32, ptr %8, align 1
   store i32 %9, ptr %z2, align 4
   %10 = load ptr, ptr %i, align 8
-  %checknull17 = icmp eq ptr %10, null
-  %11 = call i1 @llvm.expect.i1(i1 %checknull17, i1 false)
-  br i1 %11, label %panic18, label %checkok19
+  %checknull14 = icmp eq ptr %10, null
+  %11 = call i1 @llvm.expect.i1(i1 %checknull14, i1 false)
+  br i1 %11, label %panic15, label %checkok16
 
-checkok19:                                        ; preds = %checkok16
+checkok16:                                        ; preds = %checkok13
   %12 = ptrtoint ptr %10 to i64
   %13 = urem i64 %12, 4
   %14 = icmp ne i64 %13, 0
   %15 = call i1 @llvm.expect.i1(i1 %14, i1 false)
-  br i1 %15, label %panic20, label %checkok27
+  br i1 %15, label %panic17, label %checkok24
 
-checkok27:                                        ; preds = %checkok19
+checkok24:                                        ; preds = %checkok16
   store i32 5, ptr %10, align 4
   %16 = load ptr, ptr %i, align 8
-  %checknull28 = icmp eq ptr %16, null
-  %17 = call i1 @llvm.expect.i1(i1 %checknull28, i1 false)
-  br i1 %17, label %panic29, label %checkok30
-
-checkok30:                                        ; preds = %checkok27
-  store i32 6, ptr %16, align 1
+  store ptr %16, ptr %ptr25, align 8
+  %17 = load ptr, ptr %ptr25, align 8
+  store i32 6, ptr %17, align 1
   %18 = load ptr, ptr %i, align 8
-  %checknull31 = icmp eq ptr %18, null
-  %19 = call i1 @llvm.expect.i1(i1 %checknull31, i1 false)
-  br i1 %19, label %panic32, label %checkok33
+  %checknull26 = icmp eq ptr %18, null
+  %19 = call i1 @llvm.expect.i1(i1 %checknull26, i1 false)
+  br i1 %19, label %panic27, label %checkok28
 
-checkok33:                                        ; preds = %checkok30
+checkok28:                                        ; preds = %checkok24
   %20 = ptrtoint ptr %18 to i64
   %21 = urem i64 %20, 4
   %22 = icmp ne i64 %21, 0
   %23 = call i1 @llvm.expect.i1(i1 %22, i1 false)
-  br i1 %23, label %panic34, label %checkok41
+  br i1 %23, label %panic29, label %checkok36
 
-checkok41:                                        ; preds = %checkok33
+checkok36:                                        ; preds = %checkok28
   %24 = load i32, ptr %18, align 4
   store i32 %24, ptr %y, align 4
   ret i32 0

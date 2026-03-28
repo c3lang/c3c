@@ -196,6 +196,7 @@ macro @scatter_aligned(ptrvec, value, bool[<*>] mask, usz $alignment)
 
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
  @require $defined(&#x) : "This must be a variable or dereferenced pointer"
+ @deprecated "Use mem::load instead"
 *>
 macro @unaligned_load(#x, usz $alignment) @builtin
 {
@@ -211,6 +212,7 @@ macro @unaligned_load(#x, usz $alignment) @builtin
  @require $defined(&#x) : "This must be a variable or dereferenced pointer"
  @require $defined(#x = value) : "The value doesn't match the variable"
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
+ @deprecated "Use mem::store instead"
 *>
 macro @unaligned_store(#x, value, usz $alignment) @builtin
 {
