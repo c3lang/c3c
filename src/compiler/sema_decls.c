@@ -2672,6 +2672,11 @@ static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl
 		method->decl_kind = DECL_ERASED;
 		return true;
 	}
+	if (method->func_decl.operator && method->func_decl.signature.variadic != VARIADIC_NONE)
+	{
+		RETURN_SEMA_ERROR(method, "Methods with '@operator' may not be variadic.");
+	}
+
 	// Is it a base extension?
 	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(context, parent_type, method);
 

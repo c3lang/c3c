@@ -178,6 +178,7 @@
 - Fix issue when extending a generic type with a method in another module.
 - Codegen would not pop debug location for a never-entered for loop, crashing LLVM lowering.
 - Double negating a vector would cause a crash in lowering.
+- Combining operator overload on a variadic method would cause a crash rather than emitting an error in some cases.
 
 ## 0.7.9 Change list
 
