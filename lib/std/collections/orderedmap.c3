@@ -343,8 +343,6 @@ fn Entry? OrderedMap.pop_last(&self)
 // --- Floor / ceiling / lower / higher ---
 //
 // All four operate in the map's iteration (cmp) order.
-// For ascending maps this matches natural key ordering.
-// For descending maps, "before" means "greater" in natural ordering.
 
 <*
  @return "the greatest key <= key in cmp order, or NOT_FOUND"
@@ -533,8 +531,6 @@ fn OrderedMapRangeIterator OrderedMap.iter_from(&self, Key from_key)
 
 <*
  Returns an iterator over keys in [from_key, to_key) in cmp order.
- For ascending maps: from_key <= key < to_key.
- For descending maps: pass from and to in descending order (from > to naturally).
  Use with: foreach (entry : m.iter_range(from, to)) { ... }
 *>
 fn OrderedMapRangeIterator OrderedMap.iter_range(&self, Key from_key, Key to_key)
