@@ -229,6 +229,8 @@ WEAK_LOCAL:
 			decl->replacement = old;
 			vec_add(unit->weak_symbols_skipped, decl);
 			htable_set(&unit->module->symbols, (void*)decl->name, old);
+			// Pretend the old is this in the local symbol scope
+			htable_set(&unit->local_symbols, (void*)decl->name, old);
 			return;
 		}
 SHADOW_MODULE:
