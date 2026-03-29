@@ -112,6 +112,11 @@
 - Incorrect handling of attribute operator symbols could crash the compiler instead of producing an error.
 - Crash instead of error when the first method parameter is a vaarg.
 - Fixes to UnalignedRef.
+- Codegen would not pop debug location for a never-entered for loop, crashing LLVM lowering.
+- Double negating a vector would cause a crash in lowering.
+- Combining operator overload on a variadic method would cause a crash rather than emitting an error in some cases.
+- Lambdas as default arguments were tagged with the wrong module, leading to linking issues.
+- An initializer list with an optional field was incorrectly considered constant.
 
 ## 0.7.10 Change list
 
@@ -176,10 +181,6 @@
 - Warn on use of visibility modifiers on methods. #2962
 - Compiler crash using `??` with a `void?` macro #2973
 - Fix issue when extending a generic type with a method in another module.
-- Codegen would not pop debug location for a never-entered for loop, crashing LLVM lowering.
-- Double negating a vector would cause a crash in lowering.
-- Combining operator overload on a variadic method would cause a crash rather than emitting an error in some cases.
-- Lambdas as default arguments were tagged with the wrong module, leading to linking issues.
 
 ## 0.7.9 Change list
 

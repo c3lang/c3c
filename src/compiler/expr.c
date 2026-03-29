@@ -503,7 +503,7 @@ static inline bool expr_list_is_constant_eval(Expr **exprs)
 {
 	FOREACH(Expr *, expr, exprs)
 	{
-		if (!expr_is_runtime_const(expr)) return false;
+		if (!expr_is_runtime_const(expr) || IS_OPTIONAL(expr)) return false;
 	}
 	return true;
 }

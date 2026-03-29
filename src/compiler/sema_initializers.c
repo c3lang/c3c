@@ -594,7 +594,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	}
 	initializer->type = type_add_optional(type, optional);
 	initializer->resolve_status = RESOLVE_DONE;
-	if (expr_is_runtime_const(initializer))
+	if (!optional && expr_is_runtime_const(initializer))
 	{
 		ConstInitializer *const_init = MALLOCS(ConstInitializer);
 		sema_create_const_initializer_from_designated_init(const_init, initializer);
