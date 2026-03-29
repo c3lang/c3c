@@ -1658,6 +1658,7 @@ typedef struct Module_
 	Decl **benchmarks;
 	Decl **tests;
 	Decl **lambdas_to_evaluate;
+	int lambda_count;
 	InliningSpan inlined_at;
 } Module;
 
@@ -1771,7 +1772,6 @@ struct CompilationUnit_
 	Decl *main_function;
 	Decl *error_import;
 	HTable local_symbols;
-	int lambda_count;
 	TypeInfo **check_type_variable_array;
 	struct
 	{

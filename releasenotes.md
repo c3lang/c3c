@@ -179,6 +179,7 @@
 - Codegen would not pop debug location for a never-entered for loop, crashing LLVM lowering.
 - Double negating a vector would cause a crash in lowering.
 - Combining operator overload on a variadic method would cause a crash rather than emitting an error in some cases.
+- Lambdas as default arguments were tagged with the wrong module, leading to linking issues.
 
 ## 0.7.9 Change list
 

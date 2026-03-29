@@ -1,0 +1,26 @@
+// #target: macos-x64
+module main;
+
+fn int main(String[] args)
+{
+    sub::ex();
+    sub::ex(fn() => true);
+    return 0;
+}
+
+module main::sub;
+
+alias MyFunc = fn bool();
+
+fn void ex(MyFunc func = fn () => true)
+{
+    func();
+}
+
+/* #expect: main.sub.ll
+
+define zeroext i8 @"main.sub.main$lambda1"() #0 {
+entry:
+  ret i8 1
+}
+

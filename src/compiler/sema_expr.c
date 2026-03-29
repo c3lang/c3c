@@ -11115,34 +11115,30 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	CompilationUnit *unit = decl->unit = context->unit;
 	ASSERT_SPAN(expr, !decl->name);
 	scratch_buffer_clear();
+	scratch_buffer_append_module(unit->module, false);
+	scratch_buffer_append(".");
 	switch (context->call_env.kind)
 	{
 		case CALL_ENV_GLOBAL_INIT:
-			scratch_buffer_append(unit->module->name->module);
-			scratch_buffer_append(".$global");
+			scratch_buffer_append("$global");
 			break;
 		case CALL_ENV_FUNCTION:
 		case CALL_ENV_FUNCTION_STATIC:
 			if (context->current_macro)
 			{
-				scratch_buffer_append(unit->module->name->module);
-				scratch_buffer_append(".");
 				scratch_buffer_append(context->current_macro->name);
 			}
 			else
 			{
-				scratch_buffer_append(context->call_env.current_function->unit->module->name->module);
-				scratch_buffer_append(".");
 				scratch_buffer_append(context->call_env.current_function->name);
 			}
 			break;
 		case CALL_ENV_ATTR:
-			scratch_buffer_append(unit->module->name->module);
-			scratch_buffer_append(".$attr");
+			scratch_buffer_append("$attr");
 			break;
 	}
 	scratch_buffer_append("$lambda");
-	scratch_buffer_append_unsigned_int(++unit->lambda_count);
+	scratch_buffer_append_unsigned_int(++unit->module->lambda_count);
 	decl->name = scratch_buffer_copy();
 	decl->extname = decl->name;
 	decl->type = type_new_func(decl, sig);
