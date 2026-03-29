@@ -117,6 +117,7 @@
 - Combining operator overload on a variadic method would cause a crash rather than emitting an error in some cases.
 - Lambdas as default arguments were tagged with the wrong module, leading to linking issues.
 - An initializer list with an optional field was incorrectly considered constant.
+- Fix in ringbuffer for the case of popping at position 0.
 
 ## 0.7.10 Change list
 
