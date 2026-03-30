@@ -3,19 +3,9 @@ import std::encoding @norecurse;
 
 // The implementation is based on https://www.rfc-editor.org/rfc/rfc4648
 
-fn String encode_buffer(char[] code, char[] buffer) @deprecated("Use encode_into")
-{
-	return encode_into(buffer, code);
-}
-
 fn String encode_into(char[] dst, char[] src)
 {
 	return (String)dst[:encode_bytes_into(dst, src)];
-}
-
-fn char[]? decode_buffer(char[] code, char[] buffer) @deprecated("Use decode_into")
-{
-	return decode_into(buffer, code);
 }
 
 fn char[]? decode_into(char[] dst, char[] src)
@@ -46,10 +36,6 @@ fn char[]? tdecode(char[] code) @inline => decode(tmem, code);
 *>
 fn usz encode_len(usz n) => n * 2;
 
-fn usz encode_bytes(char[] src, char[] dst) @deprecated("Use encode_bytes_into")
-{
-	return encode_bytes_into(dst, src);
-}
 <*
  Encode the content of src into dst, which must be properly sized.
  @param dst : "The encoded input."
@@ -76,10 +62,6 @@ fn usz encode_bytes_into(char[] dst, char[] src)
 *>
 macro usz decode_len(usz n) => n / 2;
 
-fn usz? decode_bytes(char[] src, char[] dst) @deprecated("Use decode_bytes_into")
-{
-	return decode_bytes_into(dst, src);
-}
 
 <*
  Decodes src into bytes. Returns the actual number of bytes written to dst.

@@ -3,7 +3,7 @@ macro @foo(#type)
 	return $typeof(#type).has_tagof("hello");
 }
 
-typedef Foo = uint;
+typedef Foo @constinit = uint;
 
 fn int main()
 {

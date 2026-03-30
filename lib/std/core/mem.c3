@@ -189,35 +189,6 @@ macro @scatter_aligned(ptrvec, value, bool[<*>] mask, usz $alignment)
 	return $$scatter(ptrvec, value, mask, $alignment);
 }
 
-<*
- @param #x : "The variable or dereferenced pointer to load."
- @param $alignment : "The alignment to assume for the load"
- @return "The value of the variable"
-
- @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
- @require $defined(&#x) : "This must be a variable or dereferenced pointer"
- @deprecated "Use mem::load instead"
-*>
-macro @unaligned_load(#x, usz $alignment) @builtin
-{
-	return $$unaligned_load(&#x, $alignment, false);
-}
-
-<*
- @param #x : "The variable or dereferenced pointer to store to."
- @param value : "The value to store."
- @param $alignment : "The alignment to assume for the store"
- @return "The value stored"
-
- @require $defined(&#x) : "This must be a variable or dereferenced pointer"
- @require $defined(#x = value) : "The value doesn't match the variable"
- @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
- @deprecated "Use mem::store instead"
-*>
-macro @unaligned_store(#x, value, usz $alignment) @builtin
-{
-	return $$unaligned_store(&#x, ($typeof(#x))value, $alignment, false);
-}
 
 
 <*
@@ -1088,7 +1059,7 @@ fn void* __memcpy(void* dst, void* src, usz n) @weak @export("memcpy")
 
 module std::core::mem::volatile <Type>;
 
-typedef Volatile @structlike = Type;
+typedef Volatile = Type;
 
 macro Type Volatile.get(&self)
 {

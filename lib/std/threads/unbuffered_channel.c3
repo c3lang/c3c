@@ -51,7 +51,7 @@ fn void? UnbufferedChannel.destroy(&self) @maydiscard // Remove optional in 0.8.
 	channel.read_cond.destroy();
 	alloc::free(channel.allocator, channel);
 
-	*self = null;
+	*self = {};
 }
 
 fn void? UnbufferedChannel.push(self, Type val)

@@ -25,11 +25,7 @@ fn void EnumSet.add(&self, Enum v)
 
 fn void EnumSet.clear(&self)
 {
-	$if IS_CHAR_ARRAY:
-		*self = {};
-	$else
-		*self = 0;
-	$endif
+	*self = {};
 }
 
 fn bool EnumSet.remove(&self, Enum v)

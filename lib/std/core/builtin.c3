@@ -4,36 +4,6 @@
 module std::core::builtin;
 import libc, std::hash, std::io, std::os::backtrace;
 
-
-<*
- EMPTY_MACRO_SLOT is a value used for implementing optional arguments for macros in an efficient
- way. It relies on the fact that distinct types are not implicitly convertible.
-
- You can use `@is_empty_macro_slot()` and `@is_valid_macro_slot()` to figure out whether
- the argument has been used or not.
-
- An example:
-
-```c3
-macro foo(a, #b = EMPTY_MACRO_SLOT)
-{
-	$if @is_valid_macro_slot(#b):
-		return invoke_foo2(a, #b);
-	$else
-		return invoke_foo1(a);
-	$endif
-}
-*>
-const EmptySlot EMPTY_MACRO_SLOT @builtin @deprecated("Use `#arg = ...` instead.") = null;
-
-typedef EmptySlot @constinit = void*;
-macro bool @is_empty_macro_slot(#arg) @const @builtin
-		@deprecated("Use `#arg = ...` to define an optional macro slot, and `$defined(#arg)` to detect whether the argument is set.")
-	=> $typeof(#arg) == EmptySlot;
-macro bool @is_valid_macro_slot(#arg) @const @builtin
-		@deprecated("Use `#arg = ...` to define an optional macro slot, and `$defined(#arg)` to detect whether the argument is set.")
-	=> $typeof(#arg) != EmptySlot;
-
 <*
  Returns a random value at compile time.
 
@@ -152,8 +122,6 @@ macro any.as(self, $Type)
 	return *($Type*)self.ptr;
 }
 
-macro bool @assignable_to(#foo, $Type) @const @builtin @deprecated("use '$defined($Type x = #foo)'") => $defined(*&&($Type){} = #foo);
-
 macro @addr(#val) @builtin
 {
 	$if $defined(&#val):
@@ -168,15 +136,6 @@ macro typeid @typeid(#value) @const @builtin
 	return $typeof(#value).typeid;
 }
 
-macro TypeKind @typekind(#value) @const @builtin @deprecated("Use `$kindof(#value)`.")
-{
-	return $kindof(#value);
-}
-
-macro bool @typeis(#value, $Type) @const @builtin @deprecated("Use `$typeof(#value) == $Type` instead.")
-{
-	return $typeof(#value).typeid == $Type.typeid;
-}
 
 <*
  Assert (always) that a condition is true. Otherwise call abort.
@@ -470,22 +429,6 @@ macro enum_by_name($Type, String enum_name) @builtin
 	return NOT_FOUND~;
 }
 
-<*
- @param $Type : `The type of the enum`
- @require $Type.kindof == ENUM : `Only enums may be used`
- @require $defined($Type.#value) : `Expected '#value' to match an enum associated value`
- @require $defined($typeof(($Type){}.#value) v = value) : `Expected the value to match the type of the associated value`
- @ensure $typeof(return) == $Type*
- @return? NOT_FOUND
-*>
-macro @enum_from_value($Type, #value, value) @builtin @deprecated("Use Enum.lookup_field and Enum.lookup")
-{
-	foreach (e : $Type.values)
-	{
-		if (e.#value == value) return e;
-	}
-	return NOT_FOUND~;
-}
 
 <*
  Mark an expression as likely to be true

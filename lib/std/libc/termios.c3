@@ -11,14 +11,6 @@ fn int Termios.set_ispeed(&self, Speed speed) => cfsetispeed(self, speed);
 fn int Termios.get_attr(&self, Fd fd) => tcgetattr(fd, self);
 fn int Termios.set_attr(&self, Fd fd, Tcactions optional_actions) => tcsetattr(fd, optional_actions, self);
 
-fn int sendBreak(Fd fd, int duration) @deprecated("use termios::send_break instead") => send_break(fd, duration);
-fn Speed Termios.getOSpeed(&self) @deprecated("use get_ospeed instead") => self.get_ospeed();
-fn Speed Termios.getISpeed(&self) @deprecated("use get_ispeed instead") => self.get_ispeed();
-fn int Termios.setOSpeed(&self, Speed speed) @deprecated("use set_ospeed instead") => self.set_ospeed(speed);
-fn int Termios.setISpeed(&self, Speed speed) @deprecated("use set_ispeed instead") => self.set_ispeed(speed);
-fn int Termios.getAttr(&self, Fd fd) @deprecated("use get_attr instead") => self.get_attr(fd);
-fn int Termios.setAttr(&self, Fd fd, Tcactions optional_actions) @deprecated("use set_attr instead") => self.set_attr(fd, optional_actions);
-
 module libc::termios @if(!env::LIBC ||| !env::POSIX);
 
 typedef Cc = char;

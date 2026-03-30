@@ -1,10 +1,10 @@
 module std::time;
 import std::io, std::time::os;
 
-typedef Time @structlike = long;
-typedef Duration @structlike = long;
-typedef Clock @structlike = ulong;
-typedef NanoDuration (Printable) @structlike = long;
+typedef Time = long;
+typedef Duration = long;
+typedef Clock = ulong;
+typedef NanoDuration (Printable) = long;
 
 const Time FAR_FUTURE = (Time)long.max;
 const Time FAR_PAST = (Time)long.min;

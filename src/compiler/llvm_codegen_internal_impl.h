@@ -342,6 +342,16 @@ INLINE LLVMValueRef llvm_const_integer(GenContext *c, Int128 i, Type *type)
 	}
 }
 
+INLINE LLVMValueRef llvm_const_vec(GenContext *c, LLVMValueRef scalar_val, unsigned len)
+{
+	LLVMValueRef val = LLVMGetUndef(LLVMVectorType(LLVMTypeOf(scalar_val), len));
+	for (ArraySize i = 0; i < len; i++)
+	{
+		val = llvm_emit_insert_value(c, val, scalar_val, i);
+	}
+	return val;
+}
+
 INLINE LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t val)
 {
 	type = type_lowering(type);

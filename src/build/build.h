@@ -266,9 +266,6 @@ typedef struct BuildOptions_
 	const char *msvc_version_override;
 	const char *msvc_sdk_version_override;
 	const char *fetch_sdk_target;
-	bool old_slice_copy;
-	bool old_enums;
-	bool old_compact_eq;
 	int verbosity_level;
 	const char *panicfn;
 	const char *benchfn;
@@ -417,9 +414,6 @@ typedef struct
 	bool no_entry;
 	bool kernel_build;
 	bool print_stats;
-	bool old_slice_copy;
-	bool old_enums;
-	bool old_compact_eq;
 	bool single_threaded;
 	bool print_large_functions;
 	int build_threads;

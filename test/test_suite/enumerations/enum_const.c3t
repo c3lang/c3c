@@ -37,7 +37,7 @@ constdef Abc2 : int
 }
 
 
-typedef Abc4 = int;
+typedef Abc4 @constinit = int;
 const Abc4 ABC4_UP = 0b10;
 const Abc4 ABC4_DOWN = 0b01;
 

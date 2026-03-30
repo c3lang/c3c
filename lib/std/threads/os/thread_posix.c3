@@ -1,6 +1,5 @@
 module std::thread::os @if(env::POSIX);
 import std::os::posix, std::time, libc;
-import libc::errno;
 import std::thread;
 
 struct NativeMutex

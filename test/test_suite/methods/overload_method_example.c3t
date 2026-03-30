@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 struct Word {int x;}
-typedef Byte = inline ushort;
+typedef Byte @constinit = inline ushort;
 
 macro Word Word.add0(self, int other) @operator(+) => { self.x + (int)other };
 macro Word Word.add1(self, Byte other) @operator(+) => { self.x + (int)other };

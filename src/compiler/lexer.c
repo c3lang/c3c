@@ -404,29 +404,14 @@ static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 				if ((c | 32) == 'l') c = next(lexer);
 				break;
 			}
-			while (char_is_digit(c = peek(lexer))) next(lexer);
-			break;
-		case 'i':
-			if (*is_float)
-			{
-				return add_error_token_at_current(lexer, "Integer suffix '%c' is not valid for a floating point literal.", c);
-			}
-			next(lexer);
-			if (!char_is_digit(peek(lexer)))
-			{
-				return add_error_token_at_current(lexer, "Integer suffix 'i' must provide a bit width.");
-			}
-			next(lexer);
-			while (char_is_digit(c = peek(lexer))) next(lexer);
 			break;
 		case 'd':
 			c = next(lexer);
 			*is_float = true;
 			break;
 		case 'f':
-			next(lexer);
+			c = next(lexer);
 			*is_float = true;
-			while (char_is_digit(c = peek(lexer))) next(lexer);
 			break;
 		default:
 			break;

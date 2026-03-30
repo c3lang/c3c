@@ -158,15 +158,6 @@ fn char[]? decode_into(char[] dst, char[] src, char padding = DEFAULT_PAD, Base3
 	return dst_ptr[:n];
 }
 
-fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @deprecated("Use decode_into")
-{
-	return decode_into(dst, src, padding, alphabet);
-}
-
-fn String encode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @deprecated("Use encode_into")
-{
-	return encode_into(dst, src, padding, alphabet);
-}
 
 <*
  Encode the content of src into dst, which must be properly sized.
