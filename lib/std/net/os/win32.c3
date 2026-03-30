@@ -3,14 +3,12 @@ import std::os, std::io, libc, std::thread;
 import std::core::mem;
 import std::os::win32;
 
-
-
-const AIFamily PLATFORM_AF_IPX          = 6;
-const AIFamily PLATFORM_AF_APPLETALK    = 16;
-const AIFamily PLATFORM_AF_NETBIOS      = 17;
-const AIFamily PLATFORM_AF_INET6        = 23;
-const AIFamily PLATFORM_AF_IRDA         = 26;
-const AIFamily PLATFORM_AF_BTH          = 32;
+const AIFamily PLATFORM_AF_IPX          = (AIFamily)6;
+const AIFamily PLATFORM_AF_APPLETALK    = (AIFamily)16;
+const AIFamily PLATFORM_AF_NETBIOS      = (AIFamily)17;
+const AIFamily PLATFORM_AF_INET6        = (AIFamily)23;
+const AIFamily PLATFORM_AF_IRDA         = (AIFamily)26;
+const AIFamily PLATFORM_AF_BTH          = (AIFamily)32;
 
 const int FIONREAD = 1074030207;
 const int FIONBIO = -2147195266;
@@ -96,23 +94,23 @@ fn fault convert_error(WSAError error)
 {
 	switch (error)
 	{
-		case wsa::NOTINITIALISED: return net::SOCKETS_NOT_INITIALIZED;
-		case wsa::ENETDOWN: return net::NETWORK_UNREACHABLE;
-		case wsa::INVALID_HANDLE: return net::BAD_SOCKET_DESCRIPTOR;
-		case wsa::EACCESS: return io::NO_PERMISSION;
-		case wsa::EINPROGRESS: return net::STILL_PROCESSING_CALLBACK;
-		case wsa::EADDRINUSE: return net::ADDRESS_IN_USE;
-		case wsa::EALREADY: return net::CONNECTION_ALREADY_IN_PROGRESS;
-		case wsa::EBADF: return net::BAD_SOCKET_DESCRIPTOR;
-		case wsa::EINTR: return io::INTERRUPTED;
-		case wsa::EWOULDBLOCK: return io::WOULD_BLOCK;
-		case wsa::ECONNREFUSED: return net::CONNECTION_REFUSED;
-		case wsa::EISCONN: return net::ALREADY_CONNECTED;
-		case wsa::ENETUNREACH: return net::NETWORK_UNREACHABLE;
-		case wsa::ENOTSOCK: return net::NOT_A_SOCKET;
-		case wsa::EOPNOTSUPP: return net::OPERATION_NOT_SUPPORTED_ON_SOCKET;
-		case wsa::ETIMEDOUT: return net::CONNECTION_TIMED_OUT;
-		case wsa::ECONNRESET: return net::CONNECTION_RESET;
+		case NOTINITIALISED: return net::SOCKETS_NOT_INITIALIZED;
+		case ENETDOWN: return net::NETWORK_UNREACHABLE;
+		case INVALID_HANDLE: return net::BAD_SOCKET_DESCRIPTOR;
+		case EACCESS: return io::NO_PERMISSION;
+		case EINPROGRESS: return net::STILL_PROCESSING_CALLBACK;
+		case EADDRINUSE: return net::ADDRESS_IN_USE;
+		case EALREADY: return net::CONNECTION_ALREADY_IN_PROGRESS;
+		case EBADF: return net::BAD_SOCKET_DESCRIPTOR;
+		case EINTR: return io::INTERRUPTED;
+		case EWOULDBLOCK: return io::WOULD_BLOCK;
+		case ECONNREFUSED: return net::CONNECTION_REFUSED;
+		case EISCONN: return net::ALREADY_CONNECTED;
+		case ENETUNREACH: return net::NETWORK_UNREACHABLE;
+		case ENOTSOCK: return net::NOT_A_SOCKET;
+		case EOPNOTSUPP: return net::OPERATION_NOT_SUPPORTED_ON_SOCKET;
+		case ETIMEDOUT: return net::CONNECTION_TIMED_OUT;
+		case ECONNRESET: return net::CONNECTION_RESET;
 		default: return io::GENERAL_ERROR;
 	}
 }

@@ -13,7 +13,7 @@ fn usz TypeA.len(self) @operator(len)
 }
 
 fn int main() {
-	TypeA x = "AAAAA";
+	TypeA x = (TypeA)"AAAAA";
 	foreach(y : x)
 	{
 		int z = y;

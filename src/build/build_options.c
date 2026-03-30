@@ -137,9 +137,6 @@ static void usage(bool full)
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
-		print_opt("--use-old-slice-copy", "Use the old slice copy semantics.");
-		print_opt("--use-old-enums", "Use the old enum syntax and semantics.");
-		print_opt("--use-old-compact-eq", "Enable the old ability to use '@compact' to make a struct comparable.");
 		print_opt("--print-large-functions", "Print functions with large compile size.");
 		print_opt("--warn-deadcode=<yes|no|error>", "Print warning on dead-code: yes, no, error.");
 		print_opt("--warn-methodvisibility=<yes|no|error>", "Print warning when methods have ignored visibility attributes.");
@@ -969,21 +966,6 @@ static void parse_option(BuildOptions *options)
 					append_file(options);
 
 				} while(!(at_end() || next_is_opt()));
-				return;
-			}
-			if (match_longopt("use-old-slice-copy"))
-			{
-				options->old_slice_copy = true;
-				return;
-			}
-			if (match_longopt("use-old-enums"))
-			{
-				options->old_enums = true;
-				return;
-			}
-			if (match_longopt("use-old-compact-eq"))
-			{
-				options->old_compact_eq = true;
 				return;
 			}
 			if (match_longopt("test-filter"))

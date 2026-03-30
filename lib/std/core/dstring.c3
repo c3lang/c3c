@@ -305,11 +305,6 @@ fn bool DString.less(self, DString other_string)
 	return true;
 }
 
-fn void DString.append_chars(&self, String str) @deprecated("Use append_string")
-{
-	self.append_bytes(str);
-}
-
 fn void DString.append_bytes(&self, char[] bytes)
 {
 	usz other_len = bytes.len;
@@ -340,11 +335,6 @@ macro void DString.append_string(&self, str)
 	$else
 		self.append_bytes((String)str);
 	$endif
-}
-
-macro void DString.append_string_deprecated(&self, DString str) @deprecated("Use .append_dstring()")
-{
-	self.append_dstring(str);
 }
 
 fn void DString.append_dstring(&self, DString str)

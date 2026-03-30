@@ -56,7 +56,7 @@ fn void? BufferedChannel.destroy(&self) @maydiscard // Remove optional in 0.8.0
 	channel.read_cond.destroy();
 	alloc::free(channel.allocator, channel);
 
-	*self = null;
+	*self = {};
 
 }
 

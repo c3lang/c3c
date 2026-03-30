@@ -136,11 +136,6 @@ fn String? decode(Allocator allocator, char[] src, CodePage code_page)
 	return decode_into(dst, src, code_page);
 }
 
-fn String? decode_buffer(char[] src, char[] dst, CodePage code_page) @deprecated("Use decode_into")
-{
-	return decode_into(dst, src, code_page);
-}
-
 <*
  Decode a code-page byte buffer into a UTF‑8 string.
 
@@ -172,11 +167,6 @@ fn char[]? encode(Allocator allocator, char[] src, CodePage code_page, char repl
 }
 
 const uint MASK @private = (1u << 24) - 1;
-
-fn char[]? encode_buffer(char[] src, char[] dst, CodePage code_page, char replacement = REPLACEMENT_CHAR) @deprecated("Use encode_into")
-{
-	return encode_into(dst, src, code_page, replacement);
-}
 
 <*
  Encode a UTF‑8 string into a single‑byte code page.

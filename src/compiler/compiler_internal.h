@@ -745,7 +745,6 @@ typedef struct Decl_
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
-	bool attr_structlike : 1;
 	bool attr_constinit : 1;
 	bool is_template : 1;
 	bool is_templated : 1;
@@ -1312,7 +1311,6 @@ struct Expr_
 		ExprCtArg ct_arg_expr;
 		Expr** ct_concat;
 		ExprOtherContext expr_other_context;
-		ExprCastable assignable_expr;
 		ExprCtCall ct_call_expr;                    // 24
 		ExprIdentifierRaw ct_ident_expr;            // 24
 		Decl *decl_expr;                            // 8
@@ -3309,12 +3307,7 @@ static inline Type *type_flatten_and_inline(Type *type)
 			case TYPE_ENUM:
 				decl = type->decl;
 				if (!decl->is_substruct) return type;
-				if (!compiler.build.old_enums || decl->enums.inline_value)
-				{
-					type = decl->enums.type_info->type;
-					continue;
-				}
-				type = decl->enums.parameters[decl->enums.inline_index]->type;
+				type = decl->enums.type_info->type;
 				continue;
 			default:
 				return type;
@@ -3343,12 +3336,7 @@ static inline Type *type_flat_distinct_enum_inline(Type *type)
 			case TYPE_ENUM:
 				decl = type->decl;
 				if (!decl->is_substruct) return type;
-				if (!compiler.build.old_enums || decl->enums.inline_value)
-				{
-					type = decl->enums.type_info->type;
-					continue;
-				}
-				type = decl->enums.parameters[decl->enums.inline_index]->type;
+				type = decl->enums.type_info->type;
 				continue;
 			default:
 				return type;
@@ -3631,7 +3619,7 @@ INLINE bool type_underlying_is_numeric(Type *type)
 
 INLINE bool type_underlying_may_add_sub(CanonicalType *type)
 {
-	return type->type_kind == TYPE_ENUM || type->type_kind == TYPE_POINTER || type_is_numeric(type);
+	return type->type_kind == TYPE_POINTER || type_is_numeric(type);
 }
 
 INLINE bool type_is_vec(FlatType *type)
@@ -3924,8 +3912,6 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 		case EXPR_COND:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
-		case EXPR_CT_ASSIGNABLE:
-		case EXPR_CT_IS_CONST:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IDENT:

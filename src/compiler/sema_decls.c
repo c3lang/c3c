@@ -3193,7 +3193,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_DEPRECATED] = (AttributeDomain)~(ATTR_CALL | ATTR_PARAM),
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_ALIAS,
-			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_FINALIZER] = ATTR_FUNC,
 			[ATTRIBUTE_FORMAT] = ATTR_FUNC | ATTR_MACRO | ATTR_FNTYPE,
 			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_PARAM),
@@ -3228,7 +3227,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_SAFEINFER] = ATTR_GLOBAL | ATTR_LOCAL,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_SIMD] = 0,
-			[ATTRIBUTE_STRUCTLIKE] = ATTR_TYPEDEF,
 			[ATTRIBUTE_TAG] = ATTR_BITSTRUCT_MEMBER | ATTR_MEMBER | USER_DEFINED_TYPES | CALLABLE_TYPE,
 			[ATTRIBUTE_TEST] = ATTR_FUNC,
 			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL),
@@ -3490,9 +3488,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			}
 			if (!decl->func_decl.priority) decl->func_decl.priority = MAX_PRIORITY;
 			return true;
-		case ATTRIBUTE_STRUCTLIKE:
-			decl->attr_structlike = true;
-			return true;
 		case ATTRIBUTE_CONSTINIT:
 			decl->attr_constinit = true;
 			return true;
@@ -3500,7 +3495,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			RETURN_SEMA_ERROR(attr, "'@simd' is only allowed on typedef types.");
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_CNAME:
-		case ATTRIBUTE_EXTERN:
 			if (decl->is_templated)
 			{
 				RETURN_SEMA_ERROR(attr, "'%s' attributes are not allowed for generic declarations.", attr->name);
@@ -3517,7 +3511,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 					attr_data->section = expr->const_expr.bytes.ptr;
 					break;
 				case ATTRIBUTE_CNAME:
-				case ATTRIBUTE_EXTERN:
 					decl->has_extname = true;
 					decl->extname = expr->const_expr.bytes.ptr;
 					break;

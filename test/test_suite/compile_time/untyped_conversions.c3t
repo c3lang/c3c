@@ -5,7 +5,7 @@ struct Foo
 {
 	int a; int b;
 }
-typedef Int2V = int[<2>] @simd;
+typedef Int2V @constinit = int[<2>] @simd;
 fn void test(int[2] a, int[] b, Int2V c)
 {
 	io::printfn("%s %s %s", a, b, c);

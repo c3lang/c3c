@@ -193,19 +193,6 @@ fn Type[] List.array_view(&self)
 	return self.entries[:self.size];
 }
 
-<*
- Add the values of an array to this list.
-
- @param [in] array
- @ensure self.size >= array.len
-*>
-fn void List.add_array(&self, Type[] array) @deprecated("Use push_all")
-{
-	if (!array.len) return;
-	self.reserve(array.len);
-	usz index = list_set_size(self, self.size + array.len);
-	self.entries[index : array.len] = array[..];
-}
 
 <*
  Add the values of an array to this list.

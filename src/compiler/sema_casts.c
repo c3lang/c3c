@@ -1475,7 +1475,7 @@ static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 	{
 		is_const = true;
 	}
-	if (is_const && (cc->is_binary_conversion || cc->to->decl->attr_constinit || !cc->to->decl->attr_structlike))
+	if (is_const && (cc->is_binary_conversion || cc->to->decl->attr_constinit))
 	{
 		Type *to_type = cc->to;
 		cc->to = flat;
@@ -1497,12 +1497,7 @@ static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 		// Loud and implicit:
 		if (cast_is_allowed(cc, false, true))
 		{
-			if (!cc->is_binary_conversion && !to_type->decl->attr_constinit && !expr_is_const_untyped_list(cc->expr))
-			{
-				to_type->decl->attr_constinit = true;
-				SEMA_DEPRECATED(cc->expr, "Implicit conversion of constants to distinct types is deprecated, use @constinit if %s should cast constants to its own type.", type_quoted_error_string(to_type));
-			}
-			return true;
+			return cc->is_binary_conversion || to_type->decl->attr_constinit || expr_is_const_untyped_list(cc->expr);
 		}
 		return sema_cast_error(cc, cast_is_allowed(cc, true, true), is_silent);
 	}
@@ -1647,30 +1642,6 @@ static bool rule_arr_to_bits(CastContext *cc, bool is_explicit, bool is_silent)
 static bool rule_enum_to_value(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Decl *enum_decl = cc->from->decl;
-
-	if (compiler.build.old_enums)
-	{
-		if (!enum_decl->is_substruct)
-		{
-			return sema_cast_error(cc, false, is_silent);
-		}
-
-		Type *inline_type;
-		if (enum_decl->enums.inline_value)
-		{
-			inline_type = enum_decl->enums.type_info->type;
-		}
-		else
-		{
-			inline_type = enum_decl->enums.parameters[enum_decl->enums.inline_index]->type;
-		}
-		if (is_explicit)
-		{
-			return rule_from_explicit_flattened(cc, is_silent);
-		}
-		cast_context_set_from(cc, inline_type->canonical);
-		return cast_is_allowed(cc, is_explicit, is_silent);
-	}
 
 	ASSERT(enum_decl->decl_kind != DECL_CONSTDEF);
 
@@ -1996,38 +1967,6 @@ static void cast_int_to_enum(Expr *expr, Type *type)
 
 static void cast_enum_to_value(Expr* expr, Type *to_type)
 {
-	Type *enum_type = type_flatten(expr->type);
-	Decl *decl = enum_type->decl;
-	if (compiler.build.old_enums)
-	{
-		assert(decl->is_substruct);
-		if (decl->enums.inline_value)
-		{
-			sema_expr_convert_enum_to_int(expr);
-			cast_no_check(expr, to_type, IS_OPTIONAL(expr));
-			return;
-		}
-		if (expr_is_const_enum(expr))
-		{
-			expr_replace(expr, copy_expr_single(expr->const_expr.enum_val->enum_constant.associated[decl->enums.inline_index]));
-			if (expr->type != to_type)
-			{
-				cast_no_check(expr, to_type, false);
-			}
-			return;
-		}
-		Expr *copy = expr_copy(expr);
-		expr->expr_kind = EXPR_ACCESS_RESOLVED;
-		expr->access_resolved_expr.parent = copy;
-		Decl *member = decl->enums.parameters[decl->enums.inline_index];
-		expr->access_resolved_expr.ref = member;
-		expr->type = type_add_optional(member->type, IS_OPTIONAL(expr));
-		if (member->type != to_type)
-		{
-			cast_no_check(expr, to_type, IS_OPTIONAL(expr));
-		}
-		return;
-	}
 	sema_expr_convert_enum_to_int(expr);
 	cast_no_check(expr, to_type, IS_OPTIONAL(expr));
 }
@@ -2129,6 +2068,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 					expr->type = to_type;
 					return;
 				}
+				case TYPE_ENUM:
 				case ALL_INTS:
 					expr_rewrite_ext_trunc(expr, to_type, type_is_signed_any(type_flatten_to_int(expr->type)));
 					return;

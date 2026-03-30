@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 import std;
-typedef ZString2 = inline char*;
+typedef ZString2 @constinit = inline char*;
 
 fn bool ZString2.equals(self, ZString2 other) @operator(==)
 {

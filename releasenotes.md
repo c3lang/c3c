@@ -1,5 +1,27 @@
 # C3C Release Notes
 
+## 0.8.0 Change list
+
+### Changes / improvements
+- Removed "old-enums, old-slice-copy and old-compact-eq" feature flags.
+- Removed deprecated `$evaltype`.
+- Removed all deprecated (as of 0.7.11) types and functions from the stdlib.
+- Removed deprecated `iXX` and `uXX` suffixes.
+- Removed deprecated `Enum.lookup`.
+- Removed deprecated `?` as suffix operator in the expression `io::EOF?`.
+- Removed deprecated `module foo {Type}` generic syntax.
+- Distinct types now defaults to be "structlike"
+- Removed `@structlike` attribute.
+- Removed deprecated `@extern` attribute.
+- `:` in contracts before description is now mandatory.
+- Removed deprecated `Enum.associated` (use `Enum.membersof`).
+- Removed deprecated `Enum.elements` (use `Enum.len`).
+- Removed deprecated `foo_function.params` (use `foo_function.paramsof`). 
+- Removed deprecated `$is_const`.
+- Removed deprecated `$assignable`.
+- Enums now no longer directly support `+` and `-` – use ordinals instead.
+- For enums, using `++` and `--` will step through enums with implicit wrap-around.
+
 ## 0.7.11 Change list
 
 ### Changes / improvements

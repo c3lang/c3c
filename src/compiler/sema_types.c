@@ -10,7 +10,6 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
 static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_type_kind);
 INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info);
-INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
 INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
 INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info);
 static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info, Type *inner);
@@ -107,7 +106,7 @@ static inline bool sema_check_array_type(SemaContext *context, TypeInfo *origina
 
 	if (type_is_infer_type(distinct_base))
 	{
-		SEMA_DEPRECATED(original_info, "Use of inferred inner types is not well supported and support will be removed in 0.8.0.");
+		RETURN_SEMA_ERROR(original_info, "The array element may not be a type of inferred length.");
 	}
 	// We don't want to allow arrays with flexible members
 	if (distinct_base->type_kind == TYPE_STRUCT)
@@ -307,36 +306,6 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 }
 
 
-// $evaltype("Foo")
-INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
-{
-	SEMA_DEPRECATED(type_info, "$evaltype is deprecated, use $typefrom instead.");
-	Expr *expr = type_info->unresolved_type_expr;
-	Expr *inner = sema_ct_eval_expr(context, CT_EVAL_TYPE, expr, true);
-	if (!inner || !expr_ok(inner)) return type_info_poison(type_info);
-	if (inner->expr_kind != EXPR_TYPEINFO)
-	{
-		SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
-		return false;
-	}
-	TypeInfo *inner_type = inner->type_expr;
-	if (!sema_resolve_type(context, inner_type, resolve_kind)) return false;
-	switch (sema_resolve_storage_type(context, inner_type->type))
-	{
-		case STORAGE_ERROR:
-			return false;
-		case STORAGE_VOID:
-		case STORAGE_UNKNOWN:
-		case STORAGE_NORMAL:
-			type_info->type = inner_type->type;
-			return true;
-		case STORAGE_WILDCARD:
-			RETURN_SEMA_ERROR(expr, "$evaltype failed to resolve this to a definite type.");
-		case STORAGE_COMPILE_TIME:
-			RETURN_SEMA_ERROR(expr, "$evaltype does not support compile-time types.");
-	}
-	UNREACHABLE
-}
 
 // $typeof(...)
 INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
@@ -510,7 +479,7 @@ static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info
 		case CT_TYPES:
 			if (type_is_infer_type(type))
 			{
-				SEMA_DEPRECATED(type_info, "Using an inferred type as a pointer is not supported and will be removed in 0.8.0.");
+				RETURN_SEMA_ERROR(type_info, "A pointer to a type of inferred length is not supported.");
 				return true;
 			}
 			RETURN_SEMA_ERROR(type_info, "Pointers to %s are not supported.", type_quoted_error_string(inner));
@@ -573,9 +542,6 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 		case TYPE_INFO_IDENTIFIER:
 			// $Type or Foo
 			if (!sema_resolve_type_identifier(context, type_info, resolve_kind)) return type_info_poison(type_info);
-			goto APPEND_QUALIFIERS;
-		case TYPE_INFO_EVALTYPE:
-			if (!sema_resolve_evaltype(context, type_info, resolve_kind)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_TYPEOF:
 			if (!sema_resolve_typeof(context, type_info)) return type_info_poison(type_info);

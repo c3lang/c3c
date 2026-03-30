@@ -95,10 +95,6 @@ fn usz? decode_len(usz n, char padding)
 	return dn + trailing * 3 / 4;
 }
 
-fn String encode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @deprecated("Use encode_into")
-{
-	return encode_into(dst, src, padding, alphabet);
-}
 
 <*
  Encode the content of src into dst, which must be properly sized.
@@ -159,10 +155,6 @@ fn String encode_into(char[] dst, char[] src, char padding = DEFAULT_PAD, Base64
 	return (String)dst_ptr[:dn];
 }
 
-fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @deprecated("Use decode_into")
-{
-	return decode_into(dst, src, padding, alphabet);
-}
 
 <*
  Decode the content of src into dst, which must be properly sized.

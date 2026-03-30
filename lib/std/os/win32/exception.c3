@@ -123,9 +123,9 @@ struct ExceptionPointers
 alias UnhandledExceptionFilter = fn Win32_LONG (ExceptionPointers* exception_info);
 const EXCEPTION_EXECUTE_HANDLER = 1;
 
-extern fn void debugBreak() @extern("DebugBreak") @if(env::WIN32);
-extern fn bool isDebuggerPresent() @extern("IsDebuggerPresent") @if(env::WIN32);
-extern fn UnhandledExceptionFilter setUnhandledExceptionFilter(UnhandledExceptionFilter filter) @extern("SetUnhandledExceptionFilter") @if(env::WIN32);
+extern fn void debugBreak() @cname("DebugBreak") @if(env::WIN32);
+extern fn bool isDebuggerPresent() @cname("IsDebuggerPresent") @if(env::WIN32);
+extern fn UnhandledExceptionFilter setUnhandledExceptionFilter(UnhandledExceptionFilter filter) @cname("SetUnhandledExceptionFilter") @if(env::WIN32);
 
 UnhandledExceptionFilter previous_filter;
 PanicFn previous_panic;

@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 import test1;
-typedef Foo = int;
+typedef Foo @constinit = int;
 
 fn void main()
 {

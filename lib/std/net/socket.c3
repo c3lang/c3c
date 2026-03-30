@@ -65,9 +65,6 @@ const PollEvent POLL_EVENT_DISCONNECT = (PollEvent)os::POLLHUP;
 const PollEvent POLL_EVENT_ERROR      = (PollEvent)os::POLLERR;
 const PollEvent POLL_EVENT_INVALID    = (PollEvent)os::POLLNVAL;
 
-alias PollSubscribes @deprecated("Use PollSubscribe") = PollSubscribe;
-alias PollEvents @deprecated("Use PollEvent") = PollEvent;
-
 struct Poll
 {
 	NativeSocket socket;

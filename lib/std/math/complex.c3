@@ -6,8 +6,7 @@ alias Complexf = ComplexNumber {float};
 alias Complex = ComplexNumber {double};
 alias COMPLEX_IDENTITY  @builtin = complex::IDENTITY {double};
 alias COMPLEXF_IDENTITY @builtin = complex::IDENTITY {float};
-alias IMAGINARY @builtin @deprecated("Use I") = complex::IMAGINARY { double };
-alias IMAGINARYF @builtin @deprecated("Use I_F") = complex::IMAGINARY { float };
+
 alias I @builtin = complex::IMAGINARY { double };
 alias I_F @builtin = complex::IMAGINARY { float };
 

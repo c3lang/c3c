@@ -1,6 +1,6 @@
 import std;
 struct Word {int x;}
-typedef Byte = inline ushort;
+typedef Byte @constinit = inline ushort;
 macro bool Word.add0(self, int other) @operator(==) => self.x == (int)other;
 macro bool Word.add2(self, long other) @operator(==) => self.x == (int)other;
 

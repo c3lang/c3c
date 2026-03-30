@@ -794,8 +794,6 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_POISONED:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
-		case EXPR_CT_ASSIGNABLE:
-		case EXPR_CT_IS_CONST:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
 		case EXPR_CONTRACT:
@@ -1208,10 +1206,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 		{
 			RETURN_SEMA_ERROR(last, "An assignment in the last conditional must be parenthesized - did you mean to use '==' instead?");
 		}
-		else
-		{
-			RETURN_SEMA_ERROR(last, "An assignment in a conditional must have an extra parenthesis - did you mean to use '==' instead?");
-		}
+		RETURN_SEMA_ERROR(last, "An assignment in a conditional must have an extra parenthesis - did you mean to use '==' instead?");
 	}
 
 	// 3a. Check for optional in case of an expression.

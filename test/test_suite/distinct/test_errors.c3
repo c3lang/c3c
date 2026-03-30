@@ -1,6 +1,6 @@
 module test;
 
-typedef Int2 = int;
+typedef Int2 @constinit  = int;
 
 fn void test()
 {

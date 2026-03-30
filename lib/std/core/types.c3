@@ -122,8 +122,6 @@ macro bool TypeKind.@is_int($kind) @const
 	return $kind == SIGNED_INT ||| $kind == UNSIGNED_INT;
 }
 
-macro bool is_slice_convertable($Type) @deprecated("Use is_slice_convertible") => is_slice_convertible($Type);
-
 macro bool is_slice_convertible($Type)
 {
 	$switch $Type.kindof:
@@ -380,9 +378,6 @@ macro bool @comparable_value(#value) @const
 		return $typeof(#value).is_ordered;
 	$endif
 }
-
-const CONST_ENUM @builtin @deprecated("Use TypeKind.CONSTDEF instead") = TypeKind.CONSTDEF;
-const DISTINCT @builtin @deprecated("Use TypeKind.TYPEDEF instead") = TypeKind.TYPEDEF;
 
 enum TypeKind : char
 {

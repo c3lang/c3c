@@ -9,7 +9,7 @@ typedef NativeThread = int;
 
 fn NativeThread native_thread_current()
 {
-	return 0;
+	return {};
 }
 
 fn void native_thread_exit(int result)
