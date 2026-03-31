@@ -147,7 +147,7 @@ Quad globalQuad = { 4, {1, 2}, null, 3, 156 };
 alias FuncPtr = fn int(int);
 
 fn uint ptrFunc(FuncPtr func, int x) {
-  return func(x);
+  return (uint)func(x);
 }
 
 fn char ptrFunc2(FuncPtr[30] funcTab, int num) {
@@ -158,7 +158,7 @@ extern fn char smallArgs2(char w, char x, long zrrk, char y, char z);
 extern fn int someFuncA();
 fn char smallArgs(char w, char x, char y, char z) {
   someFuncA();
-  return smallArgs2(w-1, x+1, y, z, w);
+  return smallArgs2(w-1u, x+1u, y, z, w);
 }
 
 fn int f0(Quad q, int i) @private {              /* Pass Q by value */
@@ -207,7 +207,7 @@ fn short funFunc(long x, char z) {
   return (short)(x+z);
 }
 
-fn uint castTest(int x) { return x; }
+fn uint castTest(int x) { return (uint)x; }
 
 fn double testAdd(double x, float y) {
   return x+y+0.5;
@@ -287,7 +287,7 @@ fn int strcmp(char *s1, char *s2) {
     if (*s2 == 0) {
       return 1;
     } else {
-      return (*(--s1) - *(--s2));
+      return (int)((*(--s1) - *(--s2)));
     }
   }
 }

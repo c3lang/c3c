@@ -3,11 +3,11 @@ module test;
 import std;
 typedef TypeA = char[];
 
-fn char TypeA.get(self, usz i) @operator([]) {
+fn char TypeA.get(self, sz i) @operator([]) {
 	return ((char[])self)[i];
 }
 
-fn usz TypeA.len(self) @operator(len)
+fn sz TypeA.len(self) @operator(len)
 {
 	return self.len;
 }
@@ -39,7 +39,7 @@ entry:
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %1 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %1, %0
+  %lt = icmp slt i64 %1, %0
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
@@ -53,8 +53,8 @@ loop.body:                                        ; preds = %loop.cond
   %zext = zext i8 %4 to i32
   store i32 %zext, ptr %z, align 4
   %5 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %5, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %5, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

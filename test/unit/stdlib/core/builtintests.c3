@@ -242,7 +242,7 @@ fn void test_ct_min_max()
 	assert(@max(127.9999999, 45 + 46, bitsizeof(uint128)) == 128);
 }
 
-const usz[] MY_OK_VALUES = { 128, 256, 384, 512 };
+const sz[] MY_OK_VALUES = { 128, 256, 384, 512 };
 fn void test_in()
 {
 	$assert @in(384, ...MY_OK_VALUES);

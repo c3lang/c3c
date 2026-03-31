@@ -34,33 +34,33 @@ struct TempAllocator (Allocator)
 	TempAllocatorPage* last_page;
 	TempAllocator* derived;
 	bool allocated;
-	usz reserve_size;
-	usz realloc_size;
-	usz min_size;
-	usz used;
-	usz capacity;
-	usz original_capacity;
+	sz reserve_size;
+	sz realloc_size;
+	sz min_size;
+	sz used;
+	sz capacity;
+	sz original_capacity;
 	char[*] data;
 }
 
 struct TempAllocatorChunk @local
 {
-	usz size;
+	sz size;
 	char[*] data;
 }
 
-const usz PAGE_IS_ALIGNED @local = (usz)isz.max + 1u;
+const sz PAGE_IS_ALIGNED @local = sz.min;
 
 struct TempAllocatorPage
 {
 	TempAllocatorPage* prev_page;
 	void* start;
-	usz size;
-	usz ident;
+	sz size;
+	sz ident;
 	char[*] data;
 }
 
-macro usz TempAllocatorPage.pagesize(&self) => self.size & ~PAGE_IS_ALIGNED;
+macro sz TempAllocatorPage.pagesize(&self) => self.size & ~PAGE_IS_ALIGNED;
 macro bool TempAllocatorPage.is_aligned(&self) => self.size & PAGE_IS_ALIGNED == PAGE_IS_ALIGNED;
 
 <*
@@ -69,7 +69,7 @@ macro bool TempAllocatorPage.is_aligned(&self) => self.size & PAGE_IS_ALIGNED ==
  @require allocator.type != TempAllocator.typeid : "You may not create a temp allocator with a TempAllocator as the backing allocator."
  @require min_size > TempAllocator.sizeof + 64 : "Min size must meaningfully hold the data + some bytes"
 *>
-fn TempAllocator*? new_temp_allocator(Allocator allocator, usz size, usz reserve = temp_allocator_reserve_size, usz min_size = temp_allocator_min_size, usz realloc_size = temp_allocator_realloc_size)
+fn TempAllocator*? new_temp_allocator(Allocator allocator, sz size, sz reserve = temp_allocator_reserve_size, sz min_size = temp_allocator_min_size, sz realloc_size = temp_allocator_realloc_size)
 {
 	TempAllocator* temp = alloc::alloc_with_padding(allocator, TempAllocator, size)!;
 	temp.last_page = null;
@@ -86,17 +86,17 @@ fn TempAllocator*? new_temp_allocator(Allocator allocator, usz size, usz reserve
 <*
  @require !self.derived
 *>
-fn TempAllocator*? TempAllocator.derive_allocator(&self, usz reserve = 0)
+fn TempAllocator*? TempAllocator.derive_allocator(&self, sz reserve = 0)
 {
 	if (!reserve) reserve = self.reserve_size;
-	usz remaining = self.capacity - self.used;
+	sz remaining = self.capacity - self.used;
 	void* mem @noinit;
-	usz size @noinit;
+	sz size @noinit;
 	if (self.min_size + reserve > remaining)
 	{
 		return self.derived = new_temp_allocator(self.backing_allocator, self.realloc_size, self.reserve_size, self.min_size, self.realloc_size)!;
 	}
-	usz start = mem::aligned_offset(self.used + reserve, mem::DEFAULT_MEM_ALIGNMENT);
+	sz start = mem::aligned_offset(self.used + reserve, mem::DEFAULT_MEM_ALIGNMENT);
 	void* ptr = &self.data[start];
 	TempAllocator* temp = (TempAllocator*)ptr;
 	$if env::ADDRESS_SANITIZER:
@@ -170,20 +170,20 @@ fn void temp_allocator_destroy(TempAllocator* self)
 
 fn void TempAllocator.release(&self, void* old_pointer, bool) @dynamic
 {
-	usz old_size = *(usz*)(old_pointer - DEFAULT_SIZE_PREFIX);
+	sz old_size = *(sz*)(old_pointer - DEFAULT_SIZE_PREFIX);
 	if (old_pointer + old_size == &self.data[self.used])
 	{
 		self.used -= old_size;
-		asan::poison_memory_region(&self.data[self.used], old_size);
+		asan::poison_memory_region(&self.data[self.used], (usz)old_size);
 	}
 }
 
 
 
-fn void*? TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @dynamic
+fn void*? TempAllocator.resize(&self, void* pointer, sz size, sz alignment) @dynamic
 {
 	TempAllocatorChunk *chunk = pointer - TempAllocatorChunk.sizeof;
-	if (chunk.size == (usz)-1)
+	if (chunk.size == (sz)-1)
 	{
 		assert(self.last_page, "Realloc of non temp pointer");
 		// First grab the page
@@ -193,7 +193,7 @@ fn void*? TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @d
 	bool is_realloc_of_last = chunk.size + pointer == &self.data[self.used];
 	if (is_realloc_of_last)
 	{
-		isz diff = size - chunk.size;
+		sz diff = size - chunk.size;
 		if (diff == 0) return pointer;
 		if (self.capacity - self.used > diff)
 		{
@@ -213,11 +213,11 @@ fn void*? TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @d
 		}
 	}
 	void* data = self.acquire(size, NO_ZERO, alignment)!;
-	usz len_to_copy = chunk.size > size ? size : chunk.size;
+	sz len_to_copy = chunk.size > size ? size : chunk.size;
 	mem::copy(data, pointer, len_to_copy, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	if (is_realloc_of_last)
 	{
-		self.used = (uptr)chunk - (uptr)&self.data;
+		self.used = (sz)((iptr)chunk - (iptr)&self.data);
 		$if env::ADDRESS_SANITIZER:
 			asan::poison_memory_region(chunk, TempAllocatorChunk.sizeof + chunk.size);
 		$endif
@@ -230,7 +230,7 @@ fn void*? TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @d
  @require !alignment || math::is_power_of_2(alignment)
  @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 *>
-fn void*? TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
+fn void*? TempAllocator.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
 {
 	alignment = alignment_for_allocation(alignment);
 	void* start_mem = &self.data;
@@ -241,12 +241,12 @@ fn void*? TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz al
 	{
 		mem = mem::aligned_pointer(mem, alignment);
 	}
-	usz new_usage = (usz)(mem - start_mem) + size;
+	sz new_usage = (sz)(mem - start_mem) + size;
 
 	// Arena allocation, simple!
 	if (new_usage <= self.capacity)
 	{
-		asan::unpoison_memory_region(starting_ptr, new_usage - self.used);
+		asan::unpoison_memory_region(starting_ptr, (usz)(new_usage - self.used));
 		TempAllocatorChunk* chunk_start = mem - TempAllocatorChunk.sizeof;
 		chunk_start.size = size;
 		self.used = new_usage;
@@ -261,7 +261,7 @@ fn void*? TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz al
 	if (alignment > mem::DEFAULT_MEM_ALIGNMENT)
 	{
 		// This is actually simpler, since it will create the offset for us.
-		usz total_alloc_size = mem::aligned_offset(TempAllocatorPage.sizeof + size, alignment);
+		sz total_alloc_size = mem::aligned_offset(TempAllocatorPage.sizeof + size, alignment);
 		if (init_type == ZERO)
 		{
 			mem = alloc::calloc_aligned(self.backing_allocator, total_alloc_size, alignment)!;
@@ -279,8 +279,8 @@ fn void*? TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz al
 	else
 	{
 		// Here we might need to pad
-		usz padded_header_size = mem::aligned_offset(TempAllocatorPage.sizeof, mem::DEFAULT_MEM_ALIGNMENT);
-		usz total_alloc_size = padded_header_size + size;
+		sz padded_header_size = mem::aligned_offset(TempAllocatorPage.sizeof, mem::DEFAULT_MEM_ALIGNMENT);
+		sz total_alloc_size = padded_header_size + size;
 		void* alloc = self.backing_allocator.acquire(total_alloc_size, init_type, 0)!;
 
 		// Find the page.
@@ -292,7 +292,7 @@ fn void*? TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz al
 	}
 
 	// Mark it as a page
-	page.ident = ~(usz)0;
+	page.ident = ~(sz)0;
 	// Hook up the page.
 	page.prev_page = self.last_page;
 	self.last_page = page;
@@ -306,7 +306,7 @@ fn void? _free_page(TempAllocator* self, TempAllocatorPage* page) @inline @local
 	return self.backing_allocator.release(mem, page.is_aligned());
 }
 
-fn void*? _realloc_page(TempAllocator* self, TempAllocatorPage* page, usz size, usz alignment) @inline @local
+fn void*? _realloc_page(TempAllocator* self, TempAllocatorPage* page, sz size, sz alignment) @inline @local
 {
 	// Then the actual start pointer:
 	void* real_pointer = page.start;
@@ -319,7 +319,7 @@ fn void*? _realloc_page(TempAllocator* self, TempAllocatorPage* page, usz size, 
 		pointer_to_prev = &((*pointer_to_prev).prev_page);
 	}
 	*pointer_to_prev = page.prev_page;
-	usz page_size = page.pagesize();
+	sz page_size = page.pagesize();
 	// Clear on size > original size.
 	void* data = self.acquire(size, NO_ZERO, alignment)!;
 	if (page_size > size) page_size = size;
@@ -339,13 +339,13 @@ tlocal VmemOptions temp_allocator_default_options = {
 };
 
 
-fn TempAllocator*? new_temp_allocator(Allocator allocator, usz size, usz reserve = temp_allocator_reserve_size, usz min_size = temp_allocator_min_size, usz realloc_size = temp_allocator_realloc_size)
+fn TempAllocator*? new_temp_allocator(Allocator allocator, sz size, sz reserve = temp_allocator_reserve_size, sz min_size = temp_allocator_min_size, sz realloc_size = temp_allocator_realloc_size)
 {
 	Vmem mem;
 	TempAllocator* t = alloc::new(allocator, TempAllocator);
 	defer catch alloc::free(allocator, t);
-	t.vmem.init(preferred_size: isz.sizeof > 4 ? 4 * mem::GB : 512 * mem::MB,
-	            reserve_page_size: isz.sizeof > 4 ? 256 * mem::KB : 0,
+	t.vmem.init(preferred_size: sz.sizeof > 4 ? 4 * mem::GB : 512 * mem::MB,
+	            reserve_page_size: sz.sizeof > 4 ? 256 * mem::KB : 0,
 	            options: temp_allocator_default_options)!;
 	t.allocator = allocator;
 	return t;
@@ -363,12 +363,12 @@ struct TempAllocator (Allocator)
  @require !alignment || math::is_power_of_2(alignment)
  @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 *>
-fn void*? TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
+fn void*? TempAllocator.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
 {
 	return self.vmem.acquire(size, init_type, alignment) @inline;
 }
 
-fn TempAllocator*? TempAllocator.derive_allocator(&self, usz reserve = 0)
+fn TempAllocator*? TempAllocator.derive_allocator(&self, sz reserve = 0)
 {
 	if (self.derived) return self.derived;
 	return self.derived = new_temp_allocator(self.allocator, 0)!;
@@ -398,7 +398,7 @@ fn void _destroy(TempAllocator* self) @local
 	alloc::free(self.allocator, self) @inline;
 }
 
-fn void*? TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @dynamic
+fn void*? TempAllocator.resize(&self, void* pointer, sz size, sz alignment) @dynamic
 {
 	return self.vmem.resize(pointer, size, alignment) @inline;
 }
@@ -412,13 +412,13 @@ module std::core::mem::allocators;
 
 typedef LazyTempAllocator (Allocator) @private = uptr;
 
-fn void*? LazyTempAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
+fn void*? LazyTempAllocator.acquire(&self, sz bytes, AllocInitType init_type, sz alignment) @dynamic
 {
 	if (!top_temp) create_temp_allocator_on_demand();
 	return top_temp.acquire(bytes, init_type, alignment);
 }
 
-fn void*? LazyTempAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
+fn void*? LazyTempAllocator.resize(&self, void* old_ptr, sz new_bytes, sz alignment) @dynamic
 {
 	if (!top_temp) create_temp_allocator_on_demand();
 	return top_temp.resize(old_ptr, new_bytes, alignment);

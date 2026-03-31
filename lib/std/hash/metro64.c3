@@ -30,7 +30,7 @@ struct MetroHash64
 		ulong[4] stomach_64;
 		char[32] stomach;
 	}
-	ulong bytes;
+	long bytes;
 	ulong vseed;
 }
 
@@ -59,7 +59,7 @@ fn void MetroHash64.update(&self, char[] data)
 {
 	if (self.bytes % 32)   // partial buffer
 	{
-		ulong to_fill = min(data.len, (32 - (self.bytes % 32)));
+		long to_fill = min(data.len, (32 - (self.bytes % 32)));
 
 		self.stomach[(self.bytes % 32):to_fill] = data[:to_fill];
 

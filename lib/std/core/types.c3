@@ -30,7 +30,7 @@ macro any_to_int(any v, $Type)
 	switch (any_type)
 	{
 		case ichar:
-			ichar c = *(char*)v.ptr;
+			ichar c = *(ichar*)v.ptr;
 			if (is_mixed_signed && c < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
 			return ($Type)c;
 		case short:
@@ -407,6 +407,6 @@ enum TypeKind : char
 struct TypeEnum
 {
 	TypeKind type;
-	usz elements;
+	sz elements;
 }
 

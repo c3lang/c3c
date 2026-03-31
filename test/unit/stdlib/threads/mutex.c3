@@ -86,12 +86,12 @@ fn void acquire_recursively(RecursiveMutex* m)
 {
     // TODO: The recursive mutex functions can not directly be called via pointer
 
-    for (usz i = 0; i < 5 * TEST_MAGNITUDE; i++)
+    for (sz i = 0; i < 5 * TEST_MAGNITUDE; i++)
     {
         ((Mutex*)m).lock();
     }
 
-    for (usz i = 0; i < 5 * TEST_MAGNITUDE; i++)
+    for (sz i = 0; i < 5 * TEST_MAGNITUDE; i++)
     {
         ((Mutex*)m).unlock();
     }

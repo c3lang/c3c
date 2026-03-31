@@ -1582,7 +1582,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	Decl *len = NULL;
 	Decl *index_function = NULL;
-	Type *index_type = type_usz;
+	Type *index_type = type_sz;
 	bool is_enum_iterator = false;
 	bool need_deref = false;
 	// Now we lower the foreach...
@@ -1746,7 +1746,7 @@ SKIP_OVERLOAD:;
 			case TYPE_SLICE:
 				if (!sema_analyse_expr_rvalue(context, enum_val)) return false;
 				len_call = expr_new_expr(EXPR_SLICE_LEN, enumerator);
-				expr_rewrite_slice_len(len_call, enum_val, type_isz);
+				expr_rewrite_slice_len(len_call, enum_val, type_sz);
 				break;
 			default:
 				UNREACHABLE
@@ -1772,7 +1772,7 @@ SKIP_OVERLOAD:;
 		if (!len_call)
 		{
 			// Create const len if missing.
-			len_call = expr_new_const_int(enumerator->loc, type_isz, array_len);
+			len_call = expr_new_const_int(enumerator->loc, type_sz, array_len);
 		}
 		if (is_enum_iterator)
 		{
@@ -1861,7 +1861,7 @@ SKIP_OVERLOAD:;
 		}
 		else
 		{
-			Expr *rhs = expr_new_const_int(enumerator->loc, type_isz, array_len);
+			Expr *rhs = expr_new_const_int(enumerator->loc, type_sz, array_len);
 			cond->binary_expr.right = exprid(rhs);
 		}
 

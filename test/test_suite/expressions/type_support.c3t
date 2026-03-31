@@ -18,7 +18,7 @@ fn void main()
     io::printfn("Unsigned integers:");
     print_type_info(char, ushort, uint, ulong, uptr, usz, usz);
     io::printfn("Signed integers:");
-    print_type_info(ichar, short, int, long, iptr, isz, isz);
+    print_type_info(ichar, short, int, long, iptr, sz, sz);
     io::printfn("Floats:");
     print_type_info(float, double);
 }

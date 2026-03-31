@@ -4,12 +4,12 @@ module test;
 const uptr ABC = 0x213;
 const void* BAC = (void*)144 - 1;
 const void* EXX = (void*)155;
-const isz KEX = BAC - EXX;
+const sz KEX = BAC - EXX;
 const void* CAB = BAC;
 const uptr ZAB = (uptr)CAB;
 const int* BOB = (int*)16 - 1;
 const int* BAB = (int*)16 + 1;
-const isz AO = BAB - BOB;
+const sz AO = BAB - BOB;
 
 int abc @if(ZAB > 100) = 123;
 

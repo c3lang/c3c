@@ -65,7 +65,7 @@ entry:
   call void @llvm.assume(i1 %neq)
   %10 = load ptr, ptr %self, align 8
   %11 = load i64, ptr %10, align 8
-  %lt = icmp ult i64 0, %11
+  %lt = icmp slt i64 0, %11
   call void @llvm.assume(i1 %lt)
   %12 = load ptr, ptr %self, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %12, i64 32
@@ -75,7 +75,7 @@ entry:
   %neq2 = icmp ne ptr %l, null
   call void @llvm.assume(i1 %neq2)
   %15 = load i64, ptr %l, align 8
-  %lt3 = icmp ult i64 0, %15
+  %lt3 = icmp slt i64 0, %15
   call void @llvm.assume(i1 %lt3)
   %ptradd4 = getelementptr inbounds i8, ptr %l, i64 32
   %16 = load ptr, ptr %ptradd4, align 8

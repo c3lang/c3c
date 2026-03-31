@@ -185,13 +185,13 @@ fn Backtrace? resolve_backtrace(Allocator allocator, void* addr, Win32_HANDLE pr
 	//Win32_DWORD image_type = load_modules()!;
 	symbol.sizeOfStruct = Win32_SYMBOL_INFO.sizeof;
 	symbol.maxNameLen = 255;
-	if (!symFromAddr(process, (Win32_DWORD64)addr - 1, &displacement, &symbol))
+	if (!symFromAddr(process, (Win32_DWORD64)addr - 1u, &displacement, &symbol))
 	{
 		return backtrace::NO_BACKTRACE_SYMBOLS~;
 	}
 	Win32_IMAGEHLP_MODULE64 module_info;
 	module_info.sizeOfStruct = Win32_IMAGEHLP_MODULE64.sizeof;
-	if (!symGetModuleInfo64(process, (Win32_DWORD64)addr - 1, &module_info))
+	if (!symGetModuleInfo64(process, (Win32_DWORD64)addr - 1u, &module_info))
 	{
 		return backtrace::NO_BACKTRACE_SYMBOLS~;
 	}
@@ -202,12 +202,12 @@ fn Backtrace? resolve_backtrace(Allocator allocator, void* addr, Win32_HANDLE pr
 	Win32_IMAGEHLP_LINE64 line;
 	Backtrace backtrace;
 	ZString zname = (ZString)&name;
-	if (!symGetLineFromAddr64(process, (Win32_ULONG64)addr - 1, &offset, &line))
+	if (!symGetLineFromAddr64(process, (Win32_ULONG64)addr - 1u, &offset, &line))
 	{
-		backtrace.init(allocator, (uptr)addr, zname.str_view(), module_name.str_view());
+		backtrace.init(allocator, (iptr)addr, zname.str_view(), module_name.str_view());
 		return backtrace;
 	}
 	String filename = ((ZString)line.fileName).str_view();
-	backtrace.init(allocator, (uptr)addr, zname.str_view(), module_name.str_view(), file: filename, line: line.lineNumber);
+	backtrace.init(allocator, (iptr)addr, zname.str_view(), module_name.str_view(), file: filename, line: (int)line.lineNumber);
 	return backtrace;
 }

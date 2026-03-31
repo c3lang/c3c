@@ -135,7 +135,7 @@ fn void interval()
 	};
 	char[257] x = { [0..256] = 'a' };
 	// 'a'-array of lengths [1, 65, 129, 193, 257]
-	for (usz i = 1, usz j = 0; i <= 257; i += 64, ++j)
+	for (sz i = 1, sz j = 0; i <= 257; i += 64, ++j)
 	{
 		$foreach $i, $sz : sha3::DIGEST_SIZES:
 			test::@check(sha3::hash($sz, x[:i])[..] == expected[j][$i], "%d: Failed on length %d.", $sz, i);
@@ -218,7 +218,7 @@ fn void simple_hmacs()
 		60616263 64656667 68696a6b 6c6d6e6f 70717273 74757677 78797a7b 7c7d7e7f
 		80818283 84858687 88898a8b 8c8d8e8f 90919293 94959697 98999a9b 9c9d9e9f
 		a0a1a2a3 a4a5a6a7 a8a9aaab`;
-	static usz[] gtr_lengths = { 172, 168, 152, 136 };
+	static sz[] gtr_lengths = { 172, 168, 152, 136 };
 	$foreach $i, $s : sha3::DIGEST_SIZES:
 		test::@check(sha3::hmac($s, $s / 8, key[:$s / 8], "Sample message for keylen<blocklen")[..] == expected[$i][0]);
 		test::@check(sha3::hmac($s, $s / 8, key[:keccak::rate($s)], "Sample message for keylen=blocklen")[..] == expected[$i][1]);

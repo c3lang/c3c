@@ -59,7 +59,7 @@ macro bool ComplexNumber.equals(self, ComplexNumber b) @operator(==) => self.v =
 macro bool ComplexNumber.equals_real(self, Real r) @operator_s(==) => self.v == { r, 0 };
 macro bool ComplexNumber.not_equals(self, ComplexNumber b) @operator(!=) => self.v != b.v;
 
-fn usz? ComplexNumber.to_format(&self, Formatter* f) @dynamic
+fn sz? ComplexNumber.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("%g%+gi", self.r, self.c);
 }

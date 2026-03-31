@@ -20,8 +20,8 @@ struct Streebog
 	ulong[8]    n;
 	ulong[8]    s;
 	ulong[8]    message;
-	usz 	    index;
-	usz			hash_size;
+	sz 	    index;
+	sz			hash_size;
 }
 
 
@@ -51,7 +51,7 @@ macro @xor_512(#x, #y, #z) @local
 macro @add_512(#sum, #x) @local
 {
 	ulong carry = 0;
-	$for usz $i = 0; $i < 8; $i++:
+	$for sz $i = 0; $i < 8; $i++:
 		#sum[$i] += #x[$i] + carry;
 		carry = #sum[$i] < #x[$i] ? 1 : (#sum[$i] == #x[$i] ? carry : 0);
 	$endfor
@@ -62,10 +62,10 @@ macro @lpsx(#a, #b, #result) @local
 	ulong[8] z @noinit;
 	@xor_512(#a, #b, z);
 	// Do not unroll these loops - produces far too much code at compile-time.
-	for (usz i = 0; i < 8; i++)
+	for (sz i = 0; i < 8; i++)
 	{
 		#result[i] = TR[0][(z[0] >> (i << 3)) & 0xff];
-		for (usz j = 1; j < 8; j++) #result[i] ^= TR[j][(z[j] >> (i << 3)) & 0xff];
+		for (sz j = 1; j < 8; j++) #result[i] ^= TR[j][(z[j] >> (i << 3)) & 0xff];
 	}
 }
 
@@ -77,7 +77,7 @@ macro @g_n(#n, #h, #m) @local
 	@lpsx(#h, #n, k_i);
 	@lpsx(k_i, #m, state);
 	// Do not unroll this loop - produces far too much code at compile-time.
-	for (usz i = 0; i < 11; i++)
+	for (sz i = 0; i < 11; i++)
 	{
 		@lpsx(k_i, ITERATION_CONSTANTS[i], k_i);
 		@lpsx(k_i, state, state);
@@ -109,9 +109,9 @@ fn void Streebog.update(&self, char[] data)
 {
 	if (self.index)
 	{
-		usz rest = BLOCK_SIZE - self.index;
-		usz size = data.len;
-		usz len = size < rest ? size : rest;
+		sz rest = BLOCK_SIZE - self.index;
+		sz size = data.len;
+		sz len = size < rest ? size : rest;
 
 		@as_char_view(self.message)[self.index:len] = data[:len];
 		self.index += size;
@@ -121,7 +121,7 @@ fn void Streebog.update(&self, char[] data)
 		data = data[rest..];
 		self.index = 0;
 	}
-	bool aligned = 0 == (usz)data.ptr % ulong.sizeof;
+	bool aligned = 0 == (sz)data.ptr % ulong.sizeof;
 	for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..])
 	{
 		if (aligned)
@@ -156,10 +156,10 @@ macro char[*] Streebog.final(&self, StreebogLength $hash_size)
 fn void streebog_final_private(Streebog* self) @local
 {
 	ulong[8] unprocessed_bits_count;
-	usz index = self.index >> 3;
-	usz shift = (self.index & 0b111) * 8;
+	sz index = self.index >> 3;
+	sz shift = (self.index & 0b111) * 8;
 
-	unprocessed_bits_count[0] = self.index * 8ul;
+	unprocessed_bits_count[0] = (ulong)(self.index * 8);
 	self.message[index]   &= ~(ulong.max << shift);
 	self.message[index++] ^= 1ul << shift;
 	if (index < 8) self.message[index..] = {};

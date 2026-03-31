@@ -13,13 +13,13 @@ macro bool is_sorted(list, cmp = ..., ctx = ...) @builtin
 	const LIST_IS_REF = $kindof(list) == POINTER;
 	var $Type = !LIST_IS_REF ??? $typeof(list) : $typeof(*list);
 
-	usz len = !LIST_IS_REF ??? lengthof(list) : lengthof(*list);
+	sz len = !LIST_IS_REF ??? lengthof(list) : lengthof(*list);
 	if (len <= 1) return true;
 
 	bool is_sorted = false;
 	if CHECK_SORT: (true)
 	{
-		usz i = 0;
+		sz i = 0;
 		int sort_order;
 		// determine sort order (ascending or descending)
 		for (; i < (len - 1) && sort_order == 0; i++)

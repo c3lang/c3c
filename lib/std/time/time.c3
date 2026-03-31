@@ -118,7 +118,7 @@ fn String NanoDuration.unit_str(&self, Allocator allocator, bool use_short_units
 {
 	static String[] units = { "nanoseconds", "microseconds", "milliseconds", "seconds" };
 	static String[] short_units = { "ns", "us", "ms", "s" }; // using Mu here causes spacing oddities, just using 'us'
-	usz units_idx = 0;
+	sz units_idx = 0;
 
 	double reduced_value = (double)*self;
 	for (; reduced_value > 1_000 && units_idx < units.len - 1; reduced_value /= 1_000, units_idx++);
@@ -137,7 +137,7 @@ fn String NanoDuration.tunit_str(&self, bool use_short_units = true)
 	return self.unit_str(tmem, use_short_units);
 }
 
-fn usz? NanoDuration.to_format(&self, Formatter* formatter) @dynamic
+fn sz? NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 {
 	NanoDuration nd = *self;
 	if (nd == NANO_DURATION_ZERO)

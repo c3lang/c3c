@@ -11,7 +11,7 @@ fn void limitreader()
     lmr.init(&src, LIMIT);
 
     char[DATA.len] bytes;
-    usz n = lmr.read(bytes[..])!!;
+    sz n = lmr.read(bytes[..])!!;
 
     assert(n == LIMIT, "got %d; want %d", n, LIMIT);
     String got = (String)bytes[:n];

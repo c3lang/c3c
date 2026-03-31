@@ -188,7 +188,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 			return;
 		case TYPE_ALIAS:
 			if (type == type_usz) { PRINTF("size_t"); return; }
-			if (type == type_isz) { PRINTF("ptrdiff_t"); return; }
+			if (type == type_sz) { PRINTF("ptrdiff_t"); return; }
 			if (type == type_iptr) { PRINTF("intptr_t"); return; }
 			if (type == type_uptr) { PRINTF("uintptr_t"); return; }
 			if (type->decl->is_export)

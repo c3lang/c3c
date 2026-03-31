@@ -466,7 +466,7 @@ static LLVMMetadataRef llvm_debug_slice_type(GenContext *c, Type *type)
 
 	LLVMMetadataRef elements[2] = {
 			llvm_get_debug_member(c, type_get_ptr(type->array.base), "ptr", 0, 0, forward, LLVMDIFlagZero),
-			llvm_get_debug_member(c, type_usz, "len", type_size(type_voidptr), 0, forward, LLVMDIFlagZero)
+			llvm_get_debug_member(c, type_sz, "len", type_size(type_voidptr), 0, forward, LLVMDIFlagZero)
 	};
 	return llvm_get_debug_struct(c, type, type->name, elements, 2, 0, NULL, LLVMDIFlagZero);
 }
@@ -487,7 +487,7 @@ static LLVMMetadataRef llvm_debug_any_type(GenContext *c, Type *type)
 static LLVMMetadataRef llvm_debug_errunion_type(GenContext *c, Type *type)
 {
 	return LLVMDIBuilderCreateTypedef(c->debug.builder,
-									  llvm_get_debug_type(c, type_iptr->canonical),
+									  llvm_get_debug_type(c, type_uptr->canonical),
 									  type->name, strlen(type->name),
 									  NULL, 0, NULL, 0);
 }

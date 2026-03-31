@@ -4,8 +4,8 @@ struct Scanner (InStream)
 {
 	InStream wrapped_stream;
 	char[] buf;
-	usz pattern_idx;
-	usz read_idx;
+	sz pattern_idx;
+	sz read_idx;
 }
 
 <*
@@ -28,7 +28,7 @@ fn void Scanner.init(&self, InStream stream, char[] buffer)
 fn char[] Scanner.flush(&self) @dynamic
 {
 	assert(self.read_idx >= self.pattern_idx);
-	usz n = self.read_idx - self.pattern_idx;
+	sz n = self.read_idx - self.pattern_idx;
 	char[] buf = self.buf[self.pattern_idx:n];
 	self.pattern_idx = 0;
 	self.read_idx = 0;
@@ -54,7 +54,7 @@ fn char[]? Scanner.scan(&self, String pattern = "\n")
 		self.pattern_idx = 0;
 	}
 	assert(self.read_idx >= self.pattern_idx);
-	usz n = self.read_idx - self.pattern_idx;
+	sz n = self.read_idx - self.pattern_idx;
 	char[] buf = self.buf[self.pattern_idx:n];
 	if (try i = self.find(buf, pattern))
 	{
@@ -72,24 +72,24 @@ fn char[]? Scanner.scan(&self, String pattern = "\n")
 	self.pattern_idx = 0;
 
 	buf = self.buf[n..];
-	usz p = self.refill(buf)!;
+	sz p = self.refill(buf)!;
 	self.read_idx = n + p;
 
 	buf = buf[:p];
-	usz i = self.find(buf, pattern)!;
+	sz i = self.find(buf, pattern)!;
 	self.pattern_idx = n + i + pattern.len;
 
 	return self.buf[:n + i];
 }
 
-macro usz? Scanner.find(&self, buf, pattern) @private
+macro sz? Scanner.find(&self, buf, pattern) @private
 {
 	return ((String)buf).index_of(pattern);
 }
 
-macro usz? Scanner.refill(&self, buf) @private
+macro sz? Scanner.refill(&self, buf) @private
 {
-	usz? n = self.wrapped_stream.read(buf);
+	sz? n = self.wrapped_stream.read(buf);
 	if (catch err = n)
 	{
 		if (err == io::EOF) return NOT_FOUND~;
@@ -98,9 +98,9 @@ macro usz? Scanner.refill(&self, buf) @private
 	return n;
 }
 
-fn usz? Scanner.read(&self, char[] bytes) @dynamic
+fn sz? Scanner.read(&self, char[] bytes) @dynamic
 {
-	usz n;
+	sz n;
 	if (self.pattern_idx < self.read_idx)
 	{
 		n = min(bytes.len, self.read_idx - self.pattern_idx);

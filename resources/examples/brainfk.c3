@@ -6,7 +6,7 @@ char[BF_MEM] memory;
 
 faultdef INTEPRET_FAILED;
 
-fn void? print_error_type_at(usz pos, String err)
+fn void? print_error_type_at(sz pos, String err)
 {
 	io::printfn("Error at %s: %s", pos, err);
 	return INTEPRET_FAILED~;
@@ -14,8 +14,8 @@ fn void? print_error_type_at(usz pos, String err)
 
 fn void? brainf(String program)
 {
-	usz sp = 0;
-	usz mem = 0;
+	sz sp = 0;
+	sz mem = 0;
 	while (sp < program.len)
 	{
 		char c = program[sp++];
@@ -37,9 +37,9 @@ fn void? brainf(String program)
 			case ',':
 				memory[mem] = io::stdin().read_byte()!!;
 			case '[':
-				usz indent = 1;
+				sz indent = 1;
 				if (memory[mem]) continue;
-				usz start = sp - 1;
+				sz start = sp - 1;
 				while (indent)
 				{
 					if (sp == program.len) return print_error_type_at(start, "No matching ']'");
@@ -52,8 +52,8 @@ fn void? brainf(String program)
 				}
 			case ']':
 				if (!memory[mem]) continue;
-				usz start = sp--;
-				usz indent = 1;
+				sz start = sp--;
+				sz indent = 1;
 				while (indent)
 				{
 					if (!sp) return print_error_type_at(start, "No matching '['");

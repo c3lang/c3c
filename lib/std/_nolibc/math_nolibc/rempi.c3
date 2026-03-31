@@ -67,9 +67,9 @@ fn int __rem_pio2f(float x, double *y)
 		return 0;
 	}
 	/* scale x into [2^23, 2^24-1] */
-	int sign = ux >> 31;
-	int e0 = (ix >> 23) - (0x7f + 23);  /* e0 = ilogb(|x|)-23, positive */
-	ux = ix - e0 << 23;
+	int sign = (int)(ux >> 31);
+	int e0 = (int)(ix >> 23) - (0x7f + 23);  /* e0 = ilogb(|x|)-23, positive */
+	ux = (uint)((int)ix - e0 << 23);
 	double tx = bitcast(ux, float);
 	double ty @noinit;
 	int n = __rem_pio2_large(&tx,&ty, e0, 1, 0);

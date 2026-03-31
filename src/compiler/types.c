@@ -13,7 +13,7 @@ static struct
 	Type u0, u1, i8, i16, i32, i64, i128;
 	Type u8, u16, u32, u64, u128;
 	Type bf16, f16, f32, f64, f128;
-	Type usz, isz, uptr, iptr;
+	Type usz, sz, uptr, iptr;
 	Type string;
 	Type voidstar, typeid, fault, member, typeinfo, untyped_list;
 	Type any, wildcard;
@@ -36,7 +36,7 @@ Type *type_int = &t.i32;
 Type *type_long = &t.i64;
 Type *type_i128 = &t.i128;
 Type *type_iptr = &t.iptr;
-Type *type_isz = &t.isz;
+Type *type_sz = &t.sz;
 Type *type_char = &t.u8;
 Type *type_ushort = &t.u16;
 Type *type_uint = &t.u32;
@@ -452,10 +452,10 @@ TypeSize type_size(Type *type)
 			UNREACHABLE
 		case TYPE_INTERFACE:
 		case TYPE_ANY:
-			return type->size = t.iptr.canonical->builtin.bytesize * 2;
+			return type->size = t.uptr.canonical->builtin.bytesize * 2;
 		case TYPE_FUNC_PTR:
 		case TYPE_POINTER:
-			return type->size = t.iptr.canonical->builtin.bytesize;
+			return type->size = t.uptr.canonical->builtin.bytesize;
 		case VECTORS:
 		case TYPE_ARRAY:
 			return type->size = type_size(type->array.base) * type->array.len;
@@ -842,7 +842,7 @@ INLINE AlignSize type_alignment_(Type *type, bool alloca)
 		case TYPE_ANY:
 		case TYPE_POINTER:
 		case TYPE_TYPEID:
-			return t.iptr.canonical->builtin.abi_alignment;
+			return t.uptr.canonical->builtin.abi_alignment;
 		case TYPE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -1536,7 +1536,7 @@ void type_setup(PlatformTarget *target)
 	type_create("any", &t.any, TYPE_ANY, target->width_pointer * 2, target->align_pointer.align, target->align_pointer.pref_align);
 
 	type_create_alias("usz", &t.usz, type_int_unsigned_by_bitsize(target->width_pointer));
-	type_create_alias("isz", &t.isz, type_int_signed_by_bitsize(target->width_pointer));
+	type_create_alias("sz", &t.sz, type_int_signed_by_bitsize(target->width_pointer));
 	type_create_alias("uptr", &t.uptr, type_int_unsigned_by_bitsize(target->width_pointer));
 	type_create_alias("iptr", &t.iptr, type_int_signed_by_bitsize(target->width_pointer));
 
@@ -1711,8 +1711,8 @@ Type *type_from_token(TokenType type)
 			return type_int;
 		case TOKEN_IPTR:
 			return type_iptr;
-		case TOKEN_ISZ:
-			return type_isz;
+		case TOKEN_SZ:
+			return type_sz;
 		case TOKEN_LONG:
 			return type_long;
 		case TOKEN_SHORT:
@@ -1975,8 +1975,8 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 	{
 		if (type_kind_is_signed(kind))
 		{
-			// 5a. Signed + Unsigned -> Signed
-			return bit_size >= other_bit_size ? num_type : type_int_signed_by_bitsize(other_bit_size);
+			// 5a. C signed/unsigned promotion rules
+			return bit_size > other_bit_size ? num_type : other_num;
 		}
 		// 5b. Unsigned + Unsigned -> return other_num which is the bigger due to ordering.
 		return other_num;

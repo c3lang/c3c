@@ -23,7 +23,7 @@ union QuaternionNumber (Printable)
 	Real[<4>] v;
 }
 
-fn usz? QuaternionNumber.to_format(&self, Formatter* f) @dynamic
+fn sz? QuaternionNumber.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("%s", self.v);
 }

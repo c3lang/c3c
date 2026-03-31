@@ -8,11 +8,11 @@ const Backtrace BACKTRACE_UNKNOWN = { 0, "", "", "", 0, null, false };
 
 struct Backtrace (Printable)
 {
-	uptr offset;
+	sz offset;
 	String function;
 	String object_file;
 	String file;
-	uint line;
+	int line;
 	Allocator allocator;
 	bool is_inline;
 }
@@ -37,7 +37,7 @@ fn bool Backtrace.is_unknown(&self)
 	return !self.object_file.len;
 }
 
-fn usz? Backtrace.to_format(&self, Formatter* formatter) @dynamic
+fn sz? Backtrace.to_format(&self, Formatter* formatter) @dynamic
 {
 	String inline_suffix = self.is_inline ? " [inline]" : "";
 	if (self.has_file())
@@ -58,7 +58,7 @@ fn void Backtrace.free(&self)
 	alloc::free(self.allocator, self.file);
 }
 
-fn Backtrace* Backtrace.init(&self, Allocator allocator, uptr offset, String function, String object_file, String file = "", uint line = 0)
+fn Backtrace* Backtrace.init(&self, Allocator allocator, sz offset, String function, String object_file, String file = "", int line = 0)
 {
 	if (!allocator)
 	{
@@ -87,7 +87,7 @@ fn void*[] capture_current(void*[] buffer)
 			CInt len = posix::backtrace(buffer.ptr, buffer.len);
 			return buffer[:len];
 		$case env::WIN32:
-			Win32_WORD len = win32::rtlCaptureStackBackTrace(0, buffer.len, buffer.ptr, null);
+			Win32_WORD len = win32::rtlCaptureStackBackTrace(0, (usz)buffer.len, buffer.ptr, null);
 			return buffer[:len];
 		$default:
 			return buffer[:0];

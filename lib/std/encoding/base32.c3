@@ -50,11 +50,11 @@ fn char[]? tdecode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alph
  @require padding < 0xFF : "Invalid padding character"
  @return "Length in bytes of the decoded data."
 *>
-fn usz decode_len(usz n, char padding)
+fn sz decode_len(sz n, char padding)
 {
 	if (padding) return (n / 8) * 5;
 	// no padding
-	usz trailing = n % 8;
+	sz trailing = n % 8;
 	return n / 8 * 5 + (trailing * 5 ) / 8;
 }
 
@@ -65,13 +65,13 @@ fn usz decode_len(usz n, char padding)
  @require padding < 0xFF : "Invalid padding character"
  @return "Length in bytes of the encoded data."
 *>
-fn usz encode_len(usz n, char padding)
+fn sz encode_len(sz n, char padding)
 {
 	// A character is encoded into 8 x 5-bit blocks.
 	if (padding) return (n + 4) / 5 * 8;
 
 	// no padding
-	usz trailing = n % 5;
+	sz trailing = n % 5;
 	return n / 5 * 8 + (trailing * 8 + 4) / 5;
 }
 
@@ -90,12 +90,12 @@ fn char[]? decode_into(char[] dst, char[] src, char padding = DEFAULT_PAD, Base3
 {
 	if (src.len == 0) return dst[:0];
 	char* dst_ptr = dst;
-	usz dn = decode_len(src.len, padding);
-	usz n;
+	sz dn = decode_len(src.len, padding);
+	sz n;
 	char[8] buf;
 	while (src.len > 0 && dst.len > 0)
 	{
-		usz i @noinit;
+		sz i @noinit;
 		// load 8 bytes into buffer
 		for (i = 0; i < 8; i++)
 		{
@@ -174,11 +174,11 @@ fn String encode_into(char[] dst, char[] src, char padding = DEFAULT_PAD, Base32
 	if (src.len == 0) return (String)dst[:0];
 
 	char* dst_ptr = dst;
-	usz n = (src.len / 5) * 5;
-	usz dn = encode_len(src.len, padding);
+	sz n = (src.len / 5) * 5;
+	sz dn = encode_len(src.len, padding);
 
 	uint msb, lsb;
-	for (usz i = 0; i < n; i += 5)
+	for (sz i = 0; i < n; i += 5)
 	{
 		// to fit 40 bits we need two 32-bit uints
 		msb = (uint)src[i] << 24 | (uint)src[i+1] << 16
@@ -199,7 +199,7 @@ fn String encode_into(char[] dst, char[] src, char padding = DEFAULT_PAD, Base32
 		dst = dst[8..];
 	}
 
-	usz trailing = src.len - n;
+	sz trailing = src.len - n;
 	if (trailing == 0) return (String)dst_ptr[:dn];
 
 	msb = 0;
@@ -229,7 +229,7 @@ fn String encode_into(char[] dst, char[] src, char padding = DEFAULT_PAD, Base32
 	// add the padding
 	if (padding > 0)
 	{
-		for (usz i = (trailing * 8 / 5) + 1; i < 8; i++)
+		for (sz i = (trailing * 8 / 5) + 1; i < 8; i++)
 		{
 			dst[i] = padding;
 		}

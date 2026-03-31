@@ -77,7 +77,7 @@ fn void sweep()
 	ulong actual = wyhash2::hash({});
 	test::@check(actual == VECTORS[0], "Empty hash failed (%x expected // %x actual).", VECTORS[0], actual);
 
-	for (usz x = 1; x <= 16; ++x)
+	for (sz x = 1; x <= 16; ++x)
 	{
 		c[x - 1] = 'a' + (char)(x - 1);
 

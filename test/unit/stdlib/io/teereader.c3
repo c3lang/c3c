@@ -8,7 +8,7 @@ fn void test_teereader()
 	TeeReader r = tee_reader((ByteReader){}.init(want), w.tinit());
 
 	char[16] buf;
-	usz n = r.read(buf[..])!!;
+	sz n = r.read(buf[..])!!;
 
 	String got = w.str_view();
 	assert(n == want.len, "teereader: invalid length");

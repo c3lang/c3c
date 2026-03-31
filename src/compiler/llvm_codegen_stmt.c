@@ -1484,7 +1484,7 @@ LLVMValueRef llvm_emit_string_const(GenContext *c, const char *str, const char *
 	size_t len = str ? strlen(str) : 0;
 	if (!len) return llvm_emit_empty_string_const(c);
 	LLVMValueRef val = llvm_emit_zstring_named(c, str, extname);
-	LLVMValueRef data[2] = { val, llvm_const_int(c, type_usz, strlen(str)) };
+	LLVMValueRef data[2] = { val, LLVMConstInt(c->size_type, strlen(str), false) };
 	return llvm_get_struct_named(c->chars_type, data, 2);
 }
 
@@ -1574,7 +1574,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceLocId loc, const 
 			llvm_store(c, &slot, &varargs[i]);
 		}
 		BEValue value;
-		llvm_value_aggregate_two(c, &value, any_slice, array_ref.value, llvm_const_int(c, type_usz, elements));
+		llvm_value_aggregate_two(c, &value, any_slice, array_ref.value, LLVMConstInt(c->size_type, elements, false));
 		LLVMSetValueName2(value.value, temp_name, 6);
 
 		llvm_emit_parameter(c, actual_args, &count, abi_args[4], &value);

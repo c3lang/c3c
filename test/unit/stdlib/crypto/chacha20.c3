@@ -362,7 +362,7 @@ fn void boringssl_borrowed_suite_ordinary() => @pool()
 fn void boringssl_borrowed_suite_counter_overflow() => @pool()
 {
 	// Run the test with the test vector at all lengths.
-	for (usz i = 0; i < K_INPUT.len; ++i)
+	for (sz i = 0; i < K_INPUT.len; ++i)
 	{
 		// cloned mutation
 		char[] result = chacha20::tencrypt(K_INPUT[:i], K_KEY, K_NONCE, K_OVERFLOW_COUNTER);
@@ -384,7 +384,7 @@ fn void scrolling_input()
 	char[*] key = sha256::hash("dance with me");
 	char[*] nonce = "123456789abc";
 
-	for (usz i = 1; i < LARGE_INPUT.len; i++) @pool()
+	for (sz i = 1; i < LARGE_INPUT.len; i++) @pool()
 	{
 		test::@check(chacha20::tencrypt(LARGE_INPUT[:i], key, nonce) == LARGE_EXPECTED[:i], "Mismatch (enc) on index %d", i);
 		test::@check(chacha20::tdecrypt(LARGE_EXPECTED[:i], key, nonce) == LARGE_INPUT[:i], "Mismatch (dec) on index %d", i);
@@ -399,7 +399,7 @@ fn void scrolling_input_randomly_unaligned()
 	char[*] key = sha256::hash("dance with me");
 	char[*] nonce = "123456789abc";
 
-	for (usz i = 1; i < LARGE_INPUT.len; i++) @pool()
+	for (sz i = 1; i < LARGE_INPUT.len; i++) @pool()
 	{
 		char[] unaligned @align(ulong.sizeof) = mem::talloc_array(char, i + ulong.sizeof);
 		char[] encrypt_me = unaligned[((rand.next_byte() % (ulong.sizeof - 1)) + 1) : i];
@@ -417,11 +417,11 @@ fn void scrolling_input_unaligned_permutations_with_random_chunks() @if($feature
 	char[*] key = sha256::hash("dance with me");
 	char[*] nonce = "123456789abc";
  
-	for (usz i = 1; i < ulong.sizeof + 1; i++)
+	for (sz i = 1; i < ulong.sizeof + 1; i++)
 	{
-		for (usz j = 1; j < LARGE_INPUT.len; j++)
+		for (sz j = 1; j < LARGE_INPUT.len; j++)
         {
-            for (usz k = 1; k < 128; k++) @pool()
+            for (sz k = 1; k < 128; k++) @pool()
             {
                 char[] unaligned @align(ulong.sizeof) = mem::talloc_array(char, 1 + j + ulong.sizeof);
                 unaligned[i:j] = LARGE_INPUT[:j];
@@ -431,7 +431,7 @@ fn void scrolling_input_unaligned_permutations_with_random_chunks() @if($feature
                 ChaCha20 c @noinit;
                 defer c.destroy();
                 c.init(key, nonce);
-                for (usz x = 1; encrypt_me.len; encrypt_me = encrypt_me[x..], x = (rand.next_byte() % min(k, encrypt_me.len ?: 1U)) ?: 1U) c.transform(encrypt_me[:x]);
+                for (sz x = 1; encrypt_me.len; encrypt_me = encrypt_me[x..], x = (rand.next_byte() % min(k, encrypt_me.len ?: 1U)) ?: 1U) c.transform(encrypt_me[:x]);
                 test::@check(unaligned[i:j] == LARGE_EXPECTED[:j], "Mismatched permutation of hash on index (%d, %d; %d).", i, j, k);
 
                 test::@check(chacha20::tencrypt(LARGE_INPUT[:j], key, nonce) == LARGE_EXPECTED[:j], "Mismatched permutation of hash on index (%d, %d).", i, j);

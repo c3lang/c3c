@@ -8,7 +8,7 @@ char[256] bulk;
 
 fn void setup() @init
 {
-	for (usz i = 0; i < bulk.len; ++i) bulk[i] = (char)i;
+	for (sz i = 0; i < bulk.len; ++i) bulk[i] = (char)i;
 }
 
 
@@ -26,7 +26,7 @@ const char[][] INPUTS = {
 	"7 chars",
 };
 
-const usz[] BULK_INTERVALS = { 3, 6, 8, 12, 20, 31, 32, 40, 47, 48, 56, 64, 72, 80, 112, 132, 256 };
+const sz[] BULK_INTERVALS = { 3, 6, 8, 12, 20, 31, 32, 40, 47, 48, 56, 64, 72, 80, 112, 132, 256 };
 
 
 const ulong[] EXPECTED_UNSEEDED = {
@@ -59,7 +59,7 @@ const ulong[] EXPECTED_BULK_UNSEEDED = {
 
 fn void unseeded_string_vectors()
 {
-	for (usz i = 0; i < INPUTS.len; ++i)
+	for (sz i = 0; i < INPUTS.len; ++i)
 	{
 		char[] input = INPUTS[i];
 		ulong expected = EXPECTED_UNSEEDED[i];
@@ -75,7 +75,7 @@ fn void unseeded_bulk_vectors()
 	$assert BULK_INTERVALS.len == EXPECTED_BULK_UNSEEDED.len
 		: "BULK_INTERVALS length does not match the given BULK test set.";
 
-	for (usz i = 0; i < BULK_INTERVALS.len; ++i)
+	for (sz i = 0; i < BULK_INTERVALS.len; ++i)
 	{
 		char[] input = bulk[:BULK_INTERVALS[i]];
 		ulong expected = EXPECTED_BULK_UNSEEDED[i];
@@ -119,7 +119,7 @@ const ulong[] EXPECTED_BULK_SEEDED = {
 
 fn void seeded_string_vectors()
 {
-	for (usz i = 0; i < INPUTS.len; ++i)
+	for (sz i = 0; i < INPUTS.len; ++i)
 	{
 		char[] input = INPUTS[i];
 		ulong expected = EXPECTED_SEEDED[i];
@@ -143,7 +143,7 @@ fn void seeded_bulk_vectors()
 	$assert BULK_INTERVALS.len == EXPECTED_BULK_SEEDED.len
 		: "BULK_INTERVALS length does not match the given BULK test set.";
 
-	for (usz i = 0; i < BULK_INTERVALS.len; ++i)
+	for (sz i = 0; i < BULK_INTERVALS.len; ++i)
 	{
 		char[] input = bulk[:BULK_INTERVALS[i]];
 		ulong expected = EXPECTED_BULK_SEEDED[i];
@@ -189,7 +189,7 @@ const ulong[] EXPECTED_BULK_SEEDED_2 = {
 
 fn void seeded_string_vectors_2()
 {
-	for (usz i = 0; i < INPUTS.len; ++i)
+	for (sz i = 0; i < INPUTS.len; ++i)
 	{
 		char[] input = INPUTS[i];
 		ulong expected = EXPECTED_SEEDED_2[i];
@@ -207,7 +207,7 @@ fn void seeded_bulk_vectors_2()
 	$assert BULK_INTERVALS.len == EXPECTED_BULK_SEEDED_2.len
 		: "BULK_INTERVALS length does not match the given BULK test set.";
 
-	for (usz i = 0; i < BULK_INTERVALS.len; ++i)
+	for (sz i = 0; i < BULK_INTERVALS.len; ++i)
 	{
 		char[] input = bulk[:BULK_INTERVALS[i]];
 		ulong expected = EXPECTED_BULK_SEEDED_2[i];

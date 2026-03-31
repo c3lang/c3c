@@ -4,8 +4,8 @@ fn int main()
 	char* op;
 	if (ctrl >= 32)
 	{
-		uint len = (ctrl >> 5) - 1;
-        char* ref = op - ((ctrl & 31) << 8) - 1; // #error: an explicit cast to 'isz'
+		int len = (ctrl >> 5) - 1;
+        char* ref = op - ((ctrl & 31) << 8) - 1; // #error: an explicit cast to 'sz'
 	}
 	return 0;
 }

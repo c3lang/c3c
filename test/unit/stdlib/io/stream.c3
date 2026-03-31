@@ -92,7 +92,7 @@ fn void write_ulong_test()
 {
 	ByteWriter bw;
 	bw.tinit();
-	io::write_be_long(&bw, 0xaabbccdd3421348a)!!;
+	io::write_be_ulong(&bw, 0xaabbccdd3421348a)!!;
 	assert(bw.str_view() == &&x'aabbccdd3421348a');
 }
 
@@ -100,7 +100,7 @@ fn void write_le_ulong_test()
 {
 	ByteWriter bw;
 	bw.tinit();
-	io::write_le_long(&bw, 0xaabbccdd3421348a)!!;
+	io::write_le_ulong(&bw, 0xaabbccdd3421348a)!!;
 	assert(bw.str_view() == &&x'8a342134ddccbbaa');
 }
 
@@ -108,7 +108,7 @@ fn void write_uint128_test()
 {
 	ByteWriter bw;
 	bw.tinit();
-	io::write_be_int128(&bw, 0xaabbccdd3421348aaabbccdd3421348a)!!;
+	io::write_be_uint128(&bw, 0xaabbccdd3421348aaabbccdd3421348a)!!;
 	assert(bw.str_view() == &&x'aabbccdd3421348aaabbccdd3421348a');
 }
 
@@ -116,7 +116,7 @@ fn void write_le_uint128_test()
 {
 	ByteWriter bw;
 	bw.tinit();
-	io::write_le_int128(&bw, 0xaabbccdd3421348aaabbccdd3421348a)!!;
+	io::write_le_uint128(&bw, 0xaabbccdd3421348aaabbccdd3421348a)!!;
 	assert(bw.str_view() == &&x'8a342134ddccbbaa8a342134ddccbbaa');
 }
 

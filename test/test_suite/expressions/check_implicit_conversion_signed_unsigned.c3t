@@ -4,7 +4,7 @@ fn int main()
 {
     int a = 0;
     ulong b = 3;
-    b - a;
+    (long)b - a;
     return 1;
 }
 

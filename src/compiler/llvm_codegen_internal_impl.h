@@ -3,7 +3,7 @@ INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVM
 {
 	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
 	{
-		LLVMValueRef index_val = llvm_const_int(c, type_usz, index);
+		LLVMValueRef index_val = LLVMConstInt(c->size_type, index, false);
 		return LLVMBuildInsertElement(c->builder, agg, new_value, index_val, "");
 	}
 	return LLVMBuildInsertValue(c->builder, agg, new_value, index, "");
@@ -158,7 +158,7 @@ INLINE LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, uns
 	switch (LLVMGetTypeKind(type))
 	{
 		case LLVMVectorTypeKind:
-			return LLVMBuildExtractElement(c->builder, agg, llvm_const_int(c, type_usz, index), "");
+			return LLVMBuildExtractElement(c->builder, agg, LLVMConstInt(c->size_type, index, false), "");
 		case LLVMArrayTypeKind:
 		case LLVMStructTypeKind:
 			return LLVMBuildExtractValue(c->builder, agg, index, "");

@@ -27,17 +27,17 @@ fn void? native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || e
 	}
 }
 
-fn usz? native_file_size(String path) @if(env::WIN32) => @pool()
+fn long? native_file_size(String path) @if(env::WIN32) => @pool()
 {
 	Win32_FILE_ATTRIBUTE_DATA data;
 	win32::getFileAttributesExW(path.to_temp_wstring()!, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, &data);
 	Win32_LARGE_INTEGER size;
-	size.lowPart = data.nFileSizeLow;
-	size.highPart = data.nFileSizeHigh;
-	return (usz)size.quadPart;
+	size.lowPart = (Win32_DWORD)data.nFileSizeLow;
+	size.highPart = (Win32_LONG)data.nFileSizeHigh;
+	return (long)size.quadPart;
 }
 
-fn ulong? native_file_size(String path) @if(!env::WIN32 && !env::DARWIN && !env::LINUX && !env::ANDROID && !env::BSD_FAMILY)
+fn long? native_file_size(String path) @if(!env::WIN32 && !env::DARWIN && !env::LINUX && !env::ANDROID && !env::BSD_FAMILY)
 {
 	File f = file::open(path, "r")!;
 	defer (void)f.close();
@@ -45,7 +45,7 @@ fn ulong? native_file_size(String path) @if(!env::WIN32 && !env::DARWIN && !env:
 	return f.cursor();
 }
 
-fn ulong? native_file_size(String path) @if(env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY)
+fn long? native_file_size(String path) @if(env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY)
 {
 	Stat stat;
 	native_stat(&stat, path)!;

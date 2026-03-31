@@ -187,7 +187,6 @@ switch.exit:                                      ; preds = %switch.default, %sw
   ret void
 }
 
-; Function Attrs:
 define void @foo.test_all(ptr %0, i64 %1) #0 {
 entry:
   %y = alloca %"any[]", align 8
@@ -203,7 +202,7 @@ entry:
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %3 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %3, %2
+  %lt = icmp slt i64 %3, %2
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
@@ -216,15 +215,15 @@ loop.body:                                        ; preds = %loop.cond
   %hi = load ptr, ptr %ptradd2, align 8
   call void @foo.test(i64 %lo, ptr %hi)
   %6 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %6, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %6, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
   ret void
 }
 
-; Function Attrs:
+
 define void @foo.main() #0 {
 entry:
   %x = alloca %any, align 8

@@ -14,36 +14,36 @@ struct BackedArenaAllocator (Allocator)
 {
 	Allocator backing_allocator;
 	ExtraPage* last_page;
-	usz used;
-	usz capacity;
+	sz used;
+	sz capacity;
 	char[*] data;
 }
 
 struct AllocChunk @local
 {
-	usz size;
+	sz size;
 	char[*] data;
 }
 
-const usz PAGE_IS_ALIGNED @local = (usz)isz.max + 1u;
+const sz PAGE_IS_ALIGNED @local = sz.min;
 
 struct ExtraPage @local
 {
 	ExtraPage* prev_page;
 	void* start;
-	usz mark;
-	usz size;
-	usz ident;
+	sz mark;
+	sz size;
+	sz ident;
 	char[*] data;
 }
 
-macro usz ExtraPage.pagesize(&self) => self.size & ~PAGE_IS_ALIGNED;
+macro sz ExtraPage.pagesize(&self) => self.size & ~PAGE_IS_ALIGNED;
 macro bool ExtraPage.is_aligned(&self) => self.size & PAGE_IS_ALIGNED == PAGE_IS_ALIGNED;
 
 <*
  @require size >= 16
 *>
-fn BackedArenaAllocator*? new_backed_allocator(usz size, Allocator allocator)
+fn BackedArenaAllocator*? new_backed_allocator(sz size, Allocator allocator)
 {
 	BackedArenaAllocator* temp = alloc::alloc_with_padding(allocator, BackedArenaAllocator, size)!;
 	temp.last_page = null;
@@ -60,18 +60,18 @@ fn void BackedArenaAllocator.destroy(&self)
 	alloc::free(self.backing_allocator, self);
 }
 
-fn usz BackedArenaAllocator.mark(&self) => self.used;
+fn sz BackedArenaAllocator.mark(&self) => self.used;
 
 fn void BackedArenaAllocator.release(&self, void* old_pointer, bool) @dynamic
 {
-	usz old_size = *(usz*)(old_pointer - DEFAULT_SIZE_PREFIX);
+	sz old_size = *(sz*)(old_pointer - DEFAULT_SIZE_PREFIX);
 	if (old_pointer + old_size == &self.data[self.used])
 	{
 		self.used -= old_size;
-		asan::poison_memory_region(&self.data[self.used], old_size);
+		asan::poison_memory_region(&self.data[self.used], (usz)old_size);
 	}
 }
-fn void BackedArenaAllocator.reset(&self, usz mark)
+fn void BackedArenaAllocator.reset(&self, sz mark)
 {
 	ExtraPage *last_page = self.last_page;
 	while (last_page && last_page.mark > mark)
@@ -85,13 +85,13 @@ fn void BackedArenaAllocator.reset(&self, usz mark)
 	$if env::COMPILER_SAFE_MODE || env::ADDRESS_SANITIZER:
 		if (!last_page)
 		{
-			usz cleaned = self.used - mark;
+			sz cleaned = self.used - mark;
 			if (cleaned > 0)
 			{
 				$if env::COMPILER_SAFE_MODE && !env::ADDRESS_SANITIZER:
 					self.data[mark : cleaned] = 0xAA;
 				$endif
-				asan::poison_memory_region(&self.data[mark], cleaned);
+				asan::poison_memory_region(&self.data[mark], (usz)cleaned);
 			}
 		}
 	$endif
@@ -104,7 +104,7 @@ fn void? _free_page(BackedArenaAllocator* self, ExtraPage* page) @inline @local
 	return self.backing_allocator.release(mem, page.is_aligned());
 }
 
-fn void*? _realloc_page(BackedArenaAllocator* self, ExtraPage* page, usz size, usz alignment) @inline @local
+fn void*? _realloc_page(BackedArenaAllocator* self, ExtraPage* page, sz size, sz alignment) @inline @local
 {
 	// Then the actual start pointer:
 	void* real_pointer = page.start;
@@ -117,7 +117,7 @@ fn void*? _realloc_page(BackedArenaAllocator* self, ExtraPage* page, usz size, u
 		pointer_to_prev = &((*pointer_to_prev).prev_page);
 	}
 	*pointer_to_prev = page.prev_page;
-	usz page_size = page.pagesize();
+	sz page_size = page.pagesize();
 	// Clear on size > original size.
 	void* data = self.acquire(size, NO_ZERO, alignment)!;
 	mem::copy(data, &page.data[0], page_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
@@ -125,10 +125,10 @@ fn void*? _realloc_page(BackedArenaAllocator* self, ExtraPage* page, usz size, u
 	return data;
 }
 
-fn void*? BackedArenaAllocator.resize(&self, void* pointer, usz size, usz alignment) @dynamic
+fn void*? BackedArenaAllocator.resize(&self, void* pointer, sz size, sz alignment) @dynamic
 {
 	AllocChunk *chunk = pointer - AllocChunk.sizeof;
-	if (chunk.size == (usz)-1)
+	if (chunk.size == -1)
 	{
 		assert(self.last_page, "Realloc of unrelated pointer");
 		// First grab the page
@@ -147,7 +147,7 @@ fn void*? BackedArenaAllocator.resize(&self, void* pointer, usz size, usz alignm
  @require !alignment || math::is_power_of_2(alignment)
  @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 *>
-fn void*? BackedArenaAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
+fn void*? BackedArenaAllocator.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
 {
 	alignment = alignment_for_allocation(alignment);
 	void* start_mem = &self.data;
@@ -158,12 +158,12 @@ fn void*? BackedArenaAllocator.acquire(&self, usz size, AllocInitType init_type,
 	{
 		mem = mem::aligned_pointer(mem, alignment);
 	}
-	usz new_usage = (usz)(mem - start_mem) + size;
+	sz new_usage = (sz)(mem - start_mem) + size;
 
 	// Arena allocation, simple!
 	if (new_usage <= self.capacity)
 	{
-		asan::unpoison_memory_region(starting_ptr, new_usage - self.used);
+		asan::unpoison_memory_region(starting_ptr, (usz)(new_usage - self.used));
 		AllocChunk* chunk_start = mem - AllocChunk.sizeof;
 		chunk_start.size = size;
 		self.used = new_usage;
@@ -178,7 +178,7 @@ fn void*? BackedArenaAllocator.acquire(&self, usz size, AllocInitType init_type,
 	if (alignment > mem::DEFAULT_MEM_ALIGNMENT)
 	{
 		// This is actually simpler, since it will create the offset for us.
-		usz total_alloc_size = mem::aligned_offset(ExtraPage.sizeof + size, alignment);
+		sz total_alloc_size = mem::aligned_offset(ExtraPage.sizeof + size, alignment);
 		if (init_type == ZERO)
 		{
 			mem = alloc::calloc_aligned(self.backing_allocator, total_alloc_size, alignment)!;
@@ -196,8 +196,8 @@ fn void*? BackedArenaAllocator.acquire(&self, usz size, AllocInitType init_type,
 	else
 	{
 		// Here we might need to pad
-		usz padded_header_size = mem::aligned_offset(ExtraPage.sizeof, mem::DEFAULT_MEM_ALIGNMENT);
-		usz total_alloc_size = padded_header_size + size;
+		sz padded_header_size = mem::aligned_offset(ExtraPage.sizeof, mem::DEFAULT_MEM_ALIGNMENT);
+		sz total_alloc_size = padded_header_size + size;
 		void* alloc = self.backing_allocator.acquire(total_alloc_size, init_type, 0)!;
 
 		// Find the page.
@@ -209,7 +209,7 @@ fn void*? BackedArenaAllocator.acquire(&self, usz size, AllocInitType init_type,
 	}
 
 	// Mark it as a page
-	page.ident = ~(usz)0;
+	page.ident = ~(sz)0;
 	// Store when it was created
 	page.mark = ++self.used;
 	// Hook up the page.

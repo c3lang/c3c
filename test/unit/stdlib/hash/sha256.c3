@@ -29,11 +29,11 @@ fn void test_sha256_longer()
 fn void test_sha256_multi_update_permute()
 {
 	char[] input = "a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string a really long string";
-	for (usz step = 1; step < input.len; step++)
+	for (sz step = 1; step < input.len; step++)
 	{
 		Sha256 sha;
 		sha.init();
-		usz i = 0;
+		sz i = 0;
 		for (; i < input.len / step; i++) sha.update(input[i * step : step]);
 		if (i * step < input.len) sha.update(input[i * step..]);
 		test::eq(sha.final(), x"b527293dfb70dcce37e593f4c43e1b81909615722bad041b90b8df22bebd00a0");

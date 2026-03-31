@@ -13,7 +13,7 @@ struct OnStackAllocator (Allocator)
 {
 	Allocator backing_allocator;
 	char[] data;
-	usz used;
+	sz used;
 	OnStackAllocatorExtraChunk* chunk;
 }
 
@@ -59,7 +59,7 @@ fn void OnStackAllocator.free(&self)
 
 struct OnStackAllocatorHeader
 {
-	usz size;
+	sz size;
 	char[*] data;
 }
 
@@ -112,7 +112,7 @@ fn OnStackAllocatorExtraChunk* on_stack_allocator_find_chunk(OnStackAllocator* a
  @require old_pointer != null
  @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 *>
-fn void*? OnStackAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
+fn void*? OnStackAllocator.resize(&self, void* old_pointer, sz size, sz alignment) @dynamic
 {
 	if (!allocation_in_stack_mem(self, old_pointer))
 	{
@@ -122,7 +122,7 @@ fn void*? OnStackAllocator.resize(&self, void* old_pointer, usz size, usz alignm
 	}
 
 	OnStackAllocatorHeader* header = old_pointer - OnStackAllocatorHeader.sizeof;
-	usz old_size = header.size;
+	sz old_size = header.size;
 	void* mem = self.acquire(size, NO_ZERO, alignment)!;
 	mem::copy(mem, old_pointer, math::min(old_size, size), mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
@@ -132,15 +132,15 @@ fn void*? OnStackAllocator.resize(&self, void* old_pointer, usz size, usz alignm
  @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
  @require size > 0
 *>
-fn void*? OnStackAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
+fn void*? OnStackAllocator.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
 {
 	bool aligned = alignment > 0;
 	alignment = alignment_for_allocation(alignment);
-	usz total_len = self.data.len;
+	sz total_len = self.data.len;
 	void* start_mem = self.data.ptr;
 	void* unaligned_pointer_to_offset = start_mem + self.used + OnStackAllocatorHeader.sizeof ;
 	void* mem = mem::aligned_pointer(unaligned_pointer_to_offset, alignment);
-	usz end = (usz)(mem - self.data.ptr) + size;
+	sz end = (sz)(mem - self.data.ptr) + size;
 	Allocator backing_allocator = self.backing_allocator;
 
 	if (end > total_len)

@@ -4,10 +4,10 @@ import std::math;
 struct ByteBuffer (InStream, OutStream)
 {
 	Allocator allocator;
-	usz max_read;
+	sz max_read;
 	char[] bytes;
-	usz read_idx;
-	usz write_idx;
+	sz read_idx;
+	sz write_idx;
 	bool has_last;
 }
 
@@ -16,7 +16,7 @@ struct ByteBuffer (InStream, OutStream)
  max_read defines how many bytes might be kept before its internal buffer is shrunk.
  @require self.bytes.len == 0 : "Buffer already initialized."
 *>
-fn ByteBuffer* ByteBuffer.init(&self, Allocator allocator, usz max_read, usz initial_capacity = 16)
+fn ByteBuffer* ByteBuffer.init(&self, Allocator allocator, sz max_read, sz initial_capacity = 16)
 {
 	*self = { .allocator = allocator, .max_read = max_read };
 	initial_capacity = max(initial_capacity, 16);
@@ -24,7 +24,7 @@ fn ByteBuffer* ByteBuffer.init(&self, Allocator allocator, usz max_read, usz ini
 	return self;
 }
 
-fn ByteBuffer* ByteBuffer.tinit(&self, usz max_read, usz initial_capacity = 16)
+fn ByteBuffer* ByteBuffer.tinit(&self, sz max_read, sz initial_capacity = 16)
 {
 	return self.init(tmem, max_read, initial_capacity);
 }
@@ -45,9 +45,9 @@ fn void ByteBuffer.free(&self)
 	*self = {};
 }
 
-fn usz? ByteBuffer.write(&self, char[] bytes) @dynamic
+fn sz? ByteBuffer.write(&self, char[] bytes) @dynamic
 {
-	usz cap = self.bytes.len - self.write_idx;
+	sz cap = self.bytes.len - self.write_idx;
 	if (cap < bytes.len) self.grow(bytes.len);
 	self.bytes[self.write_idx:bytes.len] = bytes[..];
 	self.write_idx += bytes.len;
@@ -56,21 +56,21 @@ fn usz? ByteBuffer.write(&self, char[] bytes) @dynamic
 
 fn void? ByteBuffer.write_byte(&self, char c) @dynamic
 {
-	usz cap = self.bytes.len - self.write_idx;
+	sz cap = self.bytes.len - self.write_idx;
 	if (cap == 0) self.grow(1);
 	self.bytes[self.write_idx] = c;
 	self.write_idx++;
 }
 
-fn usz? ByteBuffer.read(&self, char[] bytes) @dynamic
+fn sz? ByteBuffer.read(&self, char[] bytes) @dynamic
 {
-	usz readable = self.write_idx - self.read_idx;
+	sz readable = self.write_idx - self.read_idx;
 	if (readable == 0)
 	{
 		self.has_last = false;
 		return io::EOF~;
 	}
-	usz n = min(readable, bytes.len);
+	sz n = min(readable, bytes.len);
 	bytes[:n] = self.bytes[self.read_idx:n];
 	self.read_idx += n;
 	self.has_last = n > 0;
@@ -80,7 +80,7 @@ fn usz? ByteBuffer.read(&self, char[] bytes) @dynamic
 
 fn char? ByteBuffer.read_byte(&self) @dynamic
 {
-	usz readable = self.write_idx - self.read_idx;
+	sz readable = self.write_idx - self.read_idx;
 	if (readable == 0)
 	{
 		self.has_last = false;
@@ -115,29 +115,29 @@ fn void? ByteBuffer.set_cursor(&self, long offset, SeekOrigin whence = FROM_STAR
 	{
 		case FROM_START:
 			if (offset < 0 || offset > self.write_idx) return INVALID_POSITION~;
-			self.read_idx = (usz)offset;
+			self.read_idx = (sz)offset;
 		case FROM_CURSOR:
 			if ((offset < 0 && self.read_idx < -offset) ||
 				(offset > 0 && self.read_idx + offset > self.write_idx)) return INVALID_POSITION~;
-			self.read_idx += (usz)offset;
+			self.read_idx += (sz)offset;
 		case FROM_END:
 			if (offset < 0 || offset > self.write_idx) return INVALID_POSITION~;
-			self.read_idx = self.write_idx - (usz)offset;
+			self.read_idx = self.write_idx - (sz)offset;
 	}
 }
 
-fn usz? ByteBuffer.seek(&self, isz offset, Seek seek) @dynamic
+fn long? ByteBuffer.seek(&self, long offset, Seek seek) @dynamic
 {
 	self.set_cursor(offset, (SeekOrigin)seek.ordinal)!;
-	return (usz)self.cursor();
+	return self.cursor();
 }
 
-fn ulong? ByteBuffer.available(&self) @inline @dynamic
+fn long? ByteBuffer.available(&self) @inline @dynamic
 {
-	return (ulong)self.write_idx - self.read_idx;
+	return (long)self.write_idx - self.read_idx;
 }
 
-fn void ByteBuffer.grow(&self, usz n)
+fn void ByteBuffer.grow(&self, sz n)
 {
 	n = math::next_power_of_2(self.bytes.len + n);
 	char* p = alloc::realloc(self.allocator, self.bytes, n);
@@ -149,7 +149,7 @@ macro void ByteBuffer.shrink(&self)
 	if (self.read_idx >= self.max_read)
 	{
 		// Drop the read data besides the last byte (for pushback_byte).
-		usz readable = self.write_idx - self.read_idx;
+		sz readable = self.write_idx - self.read_idx;
 		self.bytes[:1 + readable] = self.bytes[self.read_idx - 1:1 + readable];
 		self.write_idx = 1 + readable;
 		self.read_idx = 1;
