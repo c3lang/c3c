@@ -10,11 +10,11 @@ struct UnbufferedChannelImpl @private
 	bool closed;
 
 	Mutex send_mu;
-	usz send_waiting;
+	isz send_waiting;
 	ConditionVariable send_cond;
 
 	Mutex read_mu;
-	usz read_waiting;
+	isz read_waiting;
 	ConditionVariable read_cond;
 }
 

@@ -28,7 +28,7 @@ macro uint @sigma1(uint x) @local => x.rotr(17) ^ x.rotr(19) ^ (x >> 10);
 
 struct Sha256
 {
-	uint[8] state @align(usz.sizeof);
+	uint[8] state @align(isz.sizeof);
 	char[BLOCK_SIZE] buffer @align(ulong.sizeof);   // must align along bitcount sizeof - see `final`
 	ulong bitcount;
 }
@@ -65,7 +65,7 @@ fn void Sha256.update(&self, char[] data)
 	// Get the buffer position back to 0 if we're midway through consuming some data.
 	if (buffer_pos > 0 && buffer_pos < BLOCK_SIZE)
 	{
-		usz len = min(BLOCK_SIZE - buffer_pos, data.len);
+		isz len = min(BLOCK_SIZE - buffer_pos, data.len);
 		self.buffer[buffer_pos:len] = data[:len];
 		data = data[len..];
 		if (buffer_pos + len == BLOCK_SIZE) _transform(self);
@@ -73,7 +73,7 @@ fn void Sha256.update(&self, char[] data)
 
 	// When the data pointer is aligned, we can disregard unaligned loading in the `transform` macro.
 	//   We do this here from the outer call to reduce the expense of checking alignment on every single block.
-	if (0 == (usz)data.ptr % usz.sizeof)
+	if (0 == (isz)data.ptr % isz.sizeof)
 	{
 		for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..]) _transform(self, (uint*)data.ptr);
 	}
@@ -150,7 +150,7 @@ macro _do_transform(Sha256* self, uint* incoming = null, bool $aligned = true) @
 	g = self.state[6];
 	h = self.state[7];
 
-	$for usz $i = 0; $i < 64; $i++:
+	$for isz $i = 0; $i < 64; $i++:
 		t1 = h + @_sigma1(e) + @ch(e, f, g) + K[$i] + m[$i];
 		t2 = @_sigma0(a) + @maj(a, b, c);
 		h = g;

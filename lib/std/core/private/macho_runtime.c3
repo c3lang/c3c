@@ -59,7 +59,7 @@ const LC_SEGMENT_64 = 0x19;
 
 fn bool name_cmp(char* a, char[16]* b)
 {
-	for (usz i = 0; i < 16; i++)
+	for (isz i = 0; i < 16; i++)
 	{
 		if (a[i] != (*b)[i]) return false;
 		if (a[i] == '\0') return true;
@@ -119,8 +119,8 @@ struct DlInfo
 
 extern fn void printf(char*, ...);
 extern fn int dladdr(MachHeader* mh, DlInfo* dlinfo);
-extern fn void* realloc(void* ptr, usz size);
-extern fn void* malloc(usz size);
+extern fn void* realloc(void* ptr, isz size);
+extern fn void* malloc(isz size);
 extern fn void free(void* ptr);
 
 alias CallbackFn = fn void();
@@ -208,15 +208,15 @@ struct TypeId
 	char type;
 	TypeId* parentof;
 	DynamicMethod* dtable;
-	usz sizeof;
+	isz sizeof;
 	TypeId* inner;
-	usz len;
+	isz len;
 	typeid[*] additional;
 }
 
 fn void dl_reg_callback(MachHeader* mh, isz vmaddr_slide)
 {
-	usz size = 0;
+	isz size;
 	assert(runtime_state == INIT || runtime_state == READ_DYLIB, "State was %s", runtime_state);
 	foreach (&dm : find_segment_section_body(mh, "__DATA", "__c3_dynamic", DynamicMethod))
 	{

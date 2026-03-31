@@ -40,9 +40,9 @@ fn void MultiWriter.free(&self)
 	*self = {};
 }
 
-fn usz? MultiWriter.write(&self, char[] bytes) @dynamic
+fn isz? MultiWriter.write(&self, char[] bytes) @dynamic
 {
-	usz n;
+	isz n;
 	foreach (w : self.writers) 
 	{
 		n = w.write(bytes)!;

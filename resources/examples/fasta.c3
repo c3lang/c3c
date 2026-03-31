@@ -56,7 +56,7 @@ const LINELEN = 60;
 // slowest character-at-a-time output
 fn void repeat_fasta(String seq, int n)
 {
-	usz len = seq.len;
+	isz len = seq.len;
 	int i @noinit;
 	for (i = 0; i < n; i++)
 	{

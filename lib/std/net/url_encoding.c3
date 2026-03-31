@@ -41,9 +41,9 @@ fn bool should_encode(char c, UrlEncodingMode mode) @private
 <*
  Calculate the length of the percent-encoded string.
 *>
-fn usz encode_len(String s, UrlEncodingMode mode) @inline
+fn isz encode_len(String s, UrlEncodingMode mode) @inline
 {
-	usz n;
+	isz n;
 	foreach (c: s)
 	{
 		if (!should_encode(c, mode)) continue;
@@ -66,7 +66,7 @@ fn usz encode_len(String s, UrlEncodingMode mode) @inline
 *>
 fn String encode(Allocator allocator, String s, UrlEncodingMode mode) => @pool()
 {
-	usz n = encode_len(s, mode);
+	isz n = encode_len(s, mode);
 	DString builder = dstring::temp_with_capacity(n);
 
 	foreach(i, c: s)
@@ -107,9 +107,9 @@ fn String tencode(String s, UrlEncodingMode mode) => encode(tmem, s, mode);
 
  @return? INVALID_HEX
 *>
-fn usz? decode_len(String s, UrlEncodingMode mode) @inline
+fn isz? decode_len(String s, UrlEncodingMode mode) @inline
 {
-	usz n;
+	isz n;
 	foreach (i, c: s)
 	{
 		if (c != '%') continue;
@@ -133,10 +133,10 @@ fn usz? decode_len(String s, UrlEncodingMode mode) @inline
 *>
 fn String? decode(Allocator allocator, String s, UrlEncodingMode  mode) => @pool()
 {
-	usz n = decode_len(s, mode)!;
+	isz n = decode_len(s, mode)!;
 	DString builder = dstring::temp_with_capacity(n);
 
-	for (usz i = 0; i < s.len; i++)
+	for (isz i = 0; i < s.len; i++)
 	{
 		switch (s[i])
 		{

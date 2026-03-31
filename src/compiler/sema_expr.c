@@ -1909,7 +1909,7 @@ INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Exp
 		{
 			Expr *expr = expr_copy(arg);
 			Expr *subscript = expr_new_expr(EXPR_SUBSCRIPT, expr);
-			subscript->subscript_expr.index.expr = exprid(expr_new_const_int(arg->loc, type_usz, i));
+			subscript->subscript_expr.index.expr = exprid(expr_new_const_int(arg->loc, type_isz, i));
 			subscript->subscript_expr.expr = exprid(expr);
 			args[i + index] = subscript;
 		}
@@ -1925,7 +1925,7 @@ INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Exp
 	Expr *two = expr_new_expr(EXPR_TWO, arg);
 	two->two_expr.first = decl_expr;
 	Expr *subscript = expr_new_expr(EXPR_SUBSCRIPT, arg);
-	subscript->subscript_expr.index.expr = exprid(expr_new_const_int(arg->loc, type_usz, 0));
+	subscript->subscript_expr.index.expr = exprid(expr_new_const_int(arg->loc, type_isz, 0));
 	subscript->subscript_expr.expr = exprid(expr_variable(temp));
 	two->two_expr.last = subscript;
 	if (!sema_analyse_expr_rvalue(context, two)) return NULL;
@@ -1933,7 +1933,7 @@ INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Exp
 	for (ArrayIndex i = 1; i < len; i++)
 	{
 		subscript = expr_new_expr(EXPR_SUBSCRIPT, arg);
-		subscript->subscript_expr.index.expr = exprid(expr_new_const_int(arg->loc, type_usz, i));
+		subscript->subscript_expr.index.expr = exprid(expr_new_const_int(arg->loc, type_isz, i));
 		subscript->subscript_expr.expr = exprid(expr_variable(temp));
 		args[index + i] = subscript;
 	}
@@ -5234,7 +5234,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 	{
 		if (offset != ~(AlignSize)0)
 		{
-			expr_rewrite_const_int(expr, type_usz, offset);
+			expr_rewrite_const_int(expr, type_isz, offset);
 			return true;
 		}
 	}
@@ -5272,7 +5272,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 			expr_rewrite_const_string(expr, decl->name ? decl->name : "");
 			return true;
 		case TYPE_PROPERTY_ALIGNOF:
-			expr_rewrite_const_int(expr, type_usz,
+			expr_rewrite_const_int(expr, type_isz,
 								   type_min_alignment(parent->const_expr.member.offset,
 													  parent->const_expr.member.align));
 			return true;
@@ -5384,7 +5384,7 @@ static inline bool sema_create_const_len(Expr *expr, Type *type, Type *flat)
 	if (type->type_kind == TYPE_CONSTDEF)
 	{
 		len = vec_size(type->decl->enums.values);
-		expr_rewrite_const_int(expr, type_usz, len);
+		expr_rewrite_const_int(expr, type_isz, len);
 		return true;
 	}
 	switch (flat->type_kind)
@@ -5402,7 +5402,7 @@ static inline bool sema_create_const_len(Expr *expr, Type *type, Type *flat)
 		default:
 			UNREACHABLE
 	}
-	expr_rewrite_const_int(expr, type_usz, len);
+	expr_rewrite_const_int(expr, type_isz, len);
 	return true;
 }
 
@@ -5770,9 +5770,9 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 	switch (property)
 	{
 		case TYPE_PROPERTY_SIZEOF:
-			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_SIZEOF, type_usz);
+			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_SIZEOF, type_isz);
 		case TYPE_PROPERTY_LEN:
-			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_LEN, type_usz);
+			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_LEN, type_isz);
 		case TYPE_PROPERTY_INNER:
 			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_INNER, type_typeid);
 		case TYPE_PROPERTY_KINDOF:
@@ -6142,7 +6142,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return true;
 		case TYPE_PROPERTY_SIZEOF:
 			if (!sema_resolve_type_decl(context, type)) return false;
-			expr_rewrite_const_int(expr, type_usz, type_size(type));
+			expr_rewrite_const_int(expr, type_isz, type_size(type));
 			return true;
 		case TYPE_PROPERTY_NAMEOF:
 			if (!sema_resolve_type_decl(context, type)) return false;
@@ -6156,7 +6156,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		{
 			AlignSize align;
 			if (!sema_set_alignment(context, type, &align, false)) return false;
-			expr_rewrite_const_int(expr, type_usz, align);
+			expr_rewrite_const_int(expr, type_isz, align);
 			return true;
 		}
 		case TYPE_PROPERTY_EXTNAMEOF:
@@ -6286,7 +6286,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 	{
 		expr->expr_kind = is_ref ? EXPR_SUBSCRIPT_ADDR : EXPR_SUBSCRIPT;
 		expr->subscript_expr = (ExprSubscript) {
-				.index.expr = exprid(expr_new_const_int(expr->loc, type_usz, index)),
+				.index.expr = exprid(expr_new_const_int(expr->loc, type_isz, index)),
 				.expr = exprid(parent),
 				.ref = is_ref
 		};
@@ -6524,7 +6524,7 @@ CHECK_DEEPER:
 		}
 		if (flat_kind == TYPE_SLICE)
 		{
-			expr_rewrite_slice_len(expr, current_parent, type_usz);
+			expr_rewrite_slice_len(expr, current_parent, type_isz);
 			return true;
 		}
 		assert(flat_kind != TYPE_ARRAY && !type_kind_is_real_vector(flat_kind));
@@ -8679,8 +8679,8 @@ static bool sema_rewrite_slice_comparison(SemaContext *context, Expr *expr, Expr
 		Expr *len_right = expr_new(EXPR_SLICE_LEN, right->loc);
 		len_left->inner_expr = expr_variable(left_var);
 		len_right->inner_expr = expr_variable(right_var);
-		len_left->type = type_usz;
-		len_right->type = type_usz;
+		len_left->type = type_isz;
+		len_right->type = type_isz;
 		if (!sema_analyse_expr_rvalue(context, len_left)) return false;
 		if (!sema_analyse_expr_rvalue(context, len_right)) return false;
 		len_var_left = ast_append_generated_local(&current, len_left);
@@ -8695,12 +8695,12 @@ static bool sema_rewrite_slice_comparison(SemaContext *context, Expr *expr, Expr
 		current->next = astid(ast_if);
 		current = ast_if;
 	}
-	Decl *index = ast_append_generated_local(&current, expr_new_const_int(default_loc, type_usz, 0));
+	Decl *index = ast_append_generated_local(&current, expr_new_const_int(default_loc, type_isz, 0));
 	Ast *ast = ast_new(AST_FOR_STMT, default_loc);
 	Expr *cond_expr;
 	if (len > 0)
 	{
-		cond_expr = expr_new_binary(default_loc, expr_variable(index), expr_new_const_int(default_loc, type_usz, len), BINARYOP_LT);
+		cond_expr = expr_new_binary(default_loc, expr_variable(index), expr_new_const_int(default_loc, type_isz, len), BINARYOP_LT);
 	}
 	else
 	{
@@ -10344,7 +10344,7 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 		if (type_is_arraylike(actual_type) || actual_type->type_kind == TYPE_SLICE)
 		{
 			*member_ref = NULL;
-			*return_type = type_usz;
+			*return_type = type_isz;
 			return true;
 		}
 	}
@@ -11437,7 +11437,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 	switch (type)
 	{
 		case TOKEN_CT_VACOUNT:
-			expr_rewrite_const_int(expr, type_usz, vec_size(context->macro_varargs));
+			expr_rewrite_const_int(expr, type_isz, vec_size(context->macro_varargs));
 			return true;
 		case TOKEN_CT_VAARG:
 		{

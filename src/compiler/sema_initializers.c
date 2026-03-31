@@ -385,7 +385,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				expr_two->two_expr.first = decl_expr;
 				Expr *sub = expr_new_expr(EXPR_SUBSCRIPT, element);
 				sub->subscript_expr.expr = exprid(expr_variable(decl));
-				sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_usz, 0));
+				sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_isz, 0));
 				expr_two->two_expr.last = sub;
 				if (!sema_analyse_expr_rhs(context, inner_type, expr_two, true, NULL, false)) return false;
 				elements[i] = expr_two;
@@ -393,7 +393,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				{
 					sub = expr_new_expr(EXPR_SUBSCRIPT, element);
 					sub->subscript_expr.expr = exprid(expr_variable(decl));
-					sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_usz, 1));
+					sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_isz, 1));
 					vec_insert_at(elements, i + j, sub);
 					if (!sema_analyse_expr_rhs(context, inner_type, sub, true, NULL, false)) return false;
 				}

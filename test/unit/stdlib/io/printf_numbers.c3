@@ -52,7 +52,7 @@ fn void printf_numbers_all_bases_per_type() @test
 	expect_all_bases((ulong)42, "42", "2a", "52", "101010", "ulong");
 	expect_all_bases((uint128)42, "42", "2a", "52", "101010", "uint128");
 	expect_all_bases((uptr)42, "42", "2a", "52", "101010", "uptr");
-	expect_all_bases((usz)42, "42", "2a", "52", "101010", "usz");
+	expect_all_bases((isz)42, "42", "2a", "52", "101010", "isz");
 }
 
 fn void printf_numbers_decimal_ranges() @test

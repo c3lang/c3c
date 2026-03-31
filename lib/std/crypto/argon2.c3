@@ -11,7 +11,7 @@ import std::thread;
 
 
 <* Each Argon2 block is a 1024-byte array. *>
-const usz BLOCK_SIZE = 1024;
+const isz BLOCK_SIZE = 1024;
 
 <* See RFC 9106 - Argon2 uses this constant for its 'version' value `v`. *>
 const char VERSION = 0x13;
@@ -80,7 +80,7 @@ struct Argon2Options (Printable)
 }
 
 <* Implement `Printable` interface for the options data structure. *>
-fn usz? Argon2Options.to_format(&self, Formatter* f) @dynamic
+fn isz? Argon2Options.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf(
 		"%s[m=%d,t=%d,p=%d,S=%h%s,K=%h%s,X=%h%s]",
@@ -196,7 +196,7 @@ macro Argon2Block* Argon2Block.copy(&self, Argon2Block* other)
 <* An extended BLAKE2 hash function which can apply overlapping permutations to fill a digest space indefinitely. *>
 fn void h_prime(char[] digest, char[] input) @local
 {
-	usz hash_out_len = min(blake2::SIZE_512, digest.len);
+	isz hash_out_len = min(blake2::SIZE_512, digest.len);
 	Blake2b h @noinit;
 	h.init(hash_out_len);
 	h.update(@le_c((uint)digest.len));   // LE32(lengthof T)
@@ -208,9 +208,9 @@ fn void h_prime(char[] digest, char[] input) @local
 	// In an overlapping fashion, walk the storage buffer and place a hash of the partial
 	//   previous value as the stored value of the next.
 	uint r = (uint)((digest.len + 31) >> 5) - 2;
-	usz in = 0;
-	usz out = 32;
-	for (usz i = 1; i < r; i++, in += 32, out += 32)
+	isz in = 0;
+	isz out = 32;
+	for (isz i = 1; i < r; i++, in += 32, out += 32)
 	{
 		digest[out:blake2::SIZE_512] = blake2::b_512(digest[in:blake2::SIZE_512])[..];
 	}
@@ -429,7 +429,7 @@ fn void hash_raw(char[] outbuf, char[] input, Argon2Options options) => @pool()
 	}
 
 	// Starting from the second lane, XOR each block at the end of a lane with the block from the end of the preceding lane.
-	for (usz lane = 1; lane < options.lanes; lane++)
+	for (isz lane = 1; lane < options.lanes; lane++)
 	{
 		blocks[(lane + 1) * blocks_per_lane - 1].xor_with(&blocks[lane * blocks_per_lane - 1]);
 	}
@@ -461,7 +461,7 @@ fn String encode(Allocator allocator, char[] hash_value, Argon2Options options, 
 	String encoded_assoc = options.assoc.len ? base64::tencode(options.assoc, padding: base64::NO_PAD) : {};
 
 	// This could have been the encoded  lengths plus a few hundred, but it never hurts to be more explicit.
-	usz min_size =
+	isz min_size =
 		9   // up to "$argon2id"
 		+ 6   // "$v=19$"
 		+ 13   // "m=111," - up to 10 decimal integers assumed possible, per spec
@@ -521,9 +521,9 @@ macro tencode(char[] hash_value, Argon2Options options, char key_id = {})
  @param [in] key_id : "An identifier to use for an unconveyed private key."
  @param out_size : "The output size of the intermediate hash value. This is 32 bytes by default."
 
- @require out_size >= 4 && out_size < usz.max : "The hash's output size must be >= 4 bytes but less than usz.max."
+ @require out_size >= 4 && out_size < isz.max : "The hash's output size must be >= 4 bytes but less than isz.max."
 *>
-fn String hash(Allocator allocator, char[] input, Argon2Options options, char[] key_id = {}, usz out_size = 32) => @pool()
+fn String hash(Allocator allocator, char[] input, Argon2Options options, char[] key_id = {}, isz out_size = 32) => @pool()
 {
 	char[] result = alloc::alloc_array(tmem, char, out_size);
 	hash_raw(result[..], input, options);
@@ -531,7 +531,7 @@ fn String hash(Allocator allocator, char[] input, Argon2Options options, char[] 
 }
 
 <* A simple alias of `hash` implicitly using the temp allocator. *>
-macro thash(char[] input, Argon2Options options, char[] key_id = {}, usz out_size = 32)
+macro thash(char[] input, Argon2Options options, char[] key_id = {}, isz out_size = 32)
 	=> hash(tmem, input, options, key_id: key_id, out_size: out_size);
 
 
@@ -568,7 +568,7 @@ struct Argon2Decoded (Printable)
 }
 
 <* Implement `Printable` for deserialized Argon2 information. *>
-fn usz? Argon2Decoded.to_format(&self, Formatter* f) @dynamic
+fn isz? Argon2Decoded.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf(
 		"hash=%h%s,key_id=%h%s,v=%d,opts=%s",
@@ -720,7 +720,7 @@ fn Argon2Decoded? decode(Allocator allocator, String hash_str) => @pool()
 	if (!seen.p) return MISSING_PARALLELISM~;
 
 	// The fourth token can be either the salt or the hash value.
-	usz index = 3;
+	isz index = 3;
 	if (outer_tokens.len > 4)
 	{
 		decoded_salt = base64::tdecode(outer_tokens[index], padding: base64::NO_PAD) ?? INVALID_SALT_ENCODING~!;

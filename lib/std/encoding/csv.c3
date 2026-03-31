@@ -15,12 +15,12 @@ struct CsvRow (Printable)
 	Allocator allocator;
 }
 
-fn usz? CsvRow.to_format(&self, Formatter* f) @dynamic
+fn isz? CsvRow.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("%s", self.list);
 }
 
-fn usz CsvRow.len(&self) @operator(len)
+fn isz CsvRow.len(&self) @operator(len)
 {
 	return self.list.len;
 }
@@ -28,7 +28,7 @@ fn usz CsvRow.len(&self) @operator(len)
 <*
  @require col < self.list.len
 *>
-fn String CsvRow.get_col(&self, usz col) @operator([])
+fn String CsvRow.get_col(&self, isz col) @operator([])
 {
 	return self.list[col];
 }

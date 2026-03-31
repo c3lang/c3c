@@ -8,7 +8,7 @@ struct FixedBlockPoolNode
 {
 	void* buffer;
 	FixedBlockPoolNode *next;
-	usz capacity;
+	isz capacity;
 }
 
 struct FixedBlockPoolEntry
@@ -32,12 +32,12 @@ struct FixedBlockPool
 	FixedBlockPoolNode *tail;
 	void *next_free;
 	void *freelist;
-	usz block_size;
-	usz grow_capacity;
-	usz allocated;
-	usz page_size;
-	usz alignment;
-	usz used;
+	isz block_size;
+	isz grow_capacity;
+	isz allocated;
+	isz page_size;
+	isz alignment;
+	isz used;
 	bool initialized;
 }
 
@@ -54,7 +54,7 @@ struct FixedBlockPool
  @require calculate_actual_capacity(capacity, block_size) * block_size >= block_size
     : "Total memory would overflow"
 *>
-fn FixedBlockPool* FixedBlockPool.init(&self, Allocator allocator, usz block_size, usz capacity = INITIAL_CAPACITY, usz alignment = 0)
+fn FixedBlockPool* FixedBlockPool.init(&self, Allocator allocator, isz block_size, isz capacity = INITIAL_CAPACITY, isz alignment = 0)
 {
 	self.allocator = allocator;
 	self.tail = &self.head;
@@ -86,7 +86,7 @@ fn FixedBlockPool* FixedBlockPool.init(&self, Allocator allocator, usz block_siz
  @param capacity : "The amount of blocks to be pre-allocated"
  @require !self.initialized : "The block pool must not be initialized"
 *>
-macro FixedBlockPool* FixedBlockPool.init_for_type(&self, Allocator allocator, $Type, usz capacity = INITIAL_CAPACITY)
+macro FixedBlockPool* FixedBlockPool.init_for_type(&self, Allocator allocator, $Type, isz capacity = INITIAL_CAPACITY)
 {
 	return self.init(allocator, $Type.sizeof, capacity, $Type.alignof);
 }
@@ -98,7 +98,7 @@ macro FixedBlockPool* FixedBlockPool.init_for_type(&self, Allocator allocator, $
  @param capacity : "The amount of blocks to be pre-allocated"
  @require !self.initialized : "The block pool must not be initialized"
 *>
-macro FixedBlockPool* FixedBlockPool.tinit_for_type(&self, $Type, usz capacity = INITIAL_CAPACITY) => self.init_for_type(tmem, $Type, capacity);
+macro FixedBlockPool* FixedBlockPool.tinit_for_type(&self, $Type, isz capacity = INITIAL_CAPACITY) => self.init_for_type(tmem, $Type, capacity);
 
 <*
  Initialize an block pool using Temporary allocator
@@ -107,7 +107,7 @@ macro FixedBlockPool* FixedBlockPool.tinit_for_type(&self, $Type, usz capacity =
  @param capacity : "The amount of blocks to be pre-allocated"
  @require !self.initialized : "The block pool must not be initialized"
 *>
-macro FixedBlockPool* FixedBlockPool.tinit(&self, usz block_size, usz capacity = INITIAL_CAPACITY) => self.init(tmem, block_size, capacity);
+macro FixedBlockPool* FixedBlockPool.tinit(&self, isz block_size, isz capacity = INITIAL_CAPACITY) => self.init(tmem, block_size, capacity);
 
 <*
  Free up the entire block pool
@@ -243,7 +243,7 @@ macro void fixedblockpool_free_page(FixedBlockPool* self, void* page) @private
 	}
 }
 
-macro usz calculate_actual_capacity(usz capacity, usz block_size) @private
+macro isz calculate_actual_capacity(isz capacity, isz block_size) @private
 {
 	// Assume some overhead
 	if (capacity) return capacity;

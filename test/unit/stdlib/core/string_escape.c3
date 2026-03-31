@@ -195,8 +195,8 @@ fn void test_escape_len()
 {
     foreach (test : escape_tests)
     {
-        usz calculated_len = string::escape_len(test.input);
-        usz actual_len = test.expected_escaped.len;
+        isz calculated_len = string::escape_len(test.input);
+        isz actual_len = test.expected_escaped.len;
         assert(calculated_len == actual_len,
                "escape_len(%s) = %d, but actual escaped length is %d",
                test.input, calculated_len, actual_len);

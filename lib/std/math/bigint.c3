@@ -507,7 +507,7 @@ fn String BigInt.to_string(&self, Allocator allocator) @dynamic
 	return self.to_string_with_radix(10, allocator);
 }
 
-fn usz? BigInt.to_format(&self, Formatter* format) @dynamic
+fn isz? BigInt.to_format(&self, Formatter* format) @dynamic
 {
 	if (self.is_zero())
 	{
@@ -516,7 +516,7 @@ fn usz? BigInt.to_format(&self, Formatter* format) @dynamic
 	}
 	BigInt a = *self;
 	bool negative = self.is_negative();
-	usz len;
+	isz len;
 	if (negative)
 	{
 		format.print_char('-')!;

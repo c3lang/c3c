@@ -407,6 +407,6 @@ enum TypeKind : char
 struct TypeEnum
 {
 	TypeKind type;
-	usz elements;
+	isz elements;
 }
 

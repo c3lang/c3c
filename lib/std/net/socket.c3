@@ -142,7 +142,7 @@ fn bool? Socket.get_option(&self, SocketOption option)
 	return (bool)flag;
 }
 
-fn usz? Socket.read(&self, char[] bytes) @dynamic
+fn isz? Socket.read(&self, char[] bytes) @dynamic
 {
 $if env::WIN32:
 	isz n = libc::recv(self.sock, bytes.ptr, (int)bytes.len, 0);
@@ -150,12 +150,12 @@ $else
 	isz n = libc::recv(self.sock, bytes.ptr, bytes.len, 0);
 $endif
 	if (n < 0) return os::socket_error()~;
-	return (usz)n;
+	return (isz)n;
 }
 
 fn char? Socket.read_byte(&self) @dynamic => io::read_byte_using_read(self);
 
-fn usz? Socket.write(&self, char[] bytes) @dynamic
+fn isz? Socket.write(&self, char[] bytes) @dynamic
 {
 $if env::WIN32:
 	isz n = libc::send(self.sock, bytes.ptr, (int)bytes.len, 0);
@@ -163,7 +163,7 @@ $else
 	isz n = libc::send(self.sock, bytes.ptr, bytes.len, 0);
 $endif
 	if (n < 0) return os::socket_error()~;
-	return (usz)n;
+	return (isz)n;
 }
 
 fn void? Socket.write_byte(&self, char byte) @dynamic => io::write_byte_using_write(self, byte);
@@ -177,7 +177,7 @@ fn void? Socket.close(&self) @inline @dynamic
 	self.sock.close()!;
 }
 
-fn usz? Socket.peek(&self, char[] bytes) @dynamic
+fn isz? Socket.peek(&self, char[] bytes) @dynamic
 {
   $if env::WIN32:
 	  isz n = libc::recv(self.sock, bytes.ptr, (int)bytes.len, os::MSG_PEEK);
@@ -185,7 +185,7 @@ fn usz? Socket.peek(&self, char[] bytes) @dynamic
 	  isz n = libc::recv(self.sock, bytes.ptr, bytes.len, os::MSG_PEEK);
   $endif
 	if (n < 0) return os::socket_error()~;
-	return (usz)n;
+	return (isz)n;
 }
 
 enum SocketShutdownHow : (CInt native_value)

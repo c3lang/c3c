@@ -59,7 +59,7 @@ fn void Whirlpool.update(&self, char[] data)
 	// Pad partial blocks of input data.
 	if (remainder > 0)
 	{
-		usz span = to_pad < data.len ? to_pad : data.len;
+		isz span = to_pad < data.len ? to_pad : data.len;
 		self.block[remainder:span] = data[:span];
 
 		// When there wasn't enough data ingested to fill a block, just return to allow more incoming data to fill in.
@@ -81,7 +81,7 @@ fn void Whirlpool.update(&self, char[] data)
 	// Any leftovers should be swept into the 'block' buffer in the context for the next update or for 'final'.
 	if (data.len)
 	{
-		usz leftover_span = (BLOCK_SIZE < data.len ? BLOCK_SIZE : data.len);
+		isz leftover_span = (BLOCK_SIZE < data.len ? BLOCK_SIZE : data.len);
 
 		self.block[:leftover_span] = data[:leftover_span];
 	}

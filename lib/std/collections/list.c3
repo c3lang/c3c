@@ -17,8 +17,8 @@ macro bool type_is_overaligned() => Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
 
 struct List (Printable)
 {
-	usz size;
-	usz capacity;
+	isz size;
+	isz capacity;
 	Allocator allocator;
 	Type *entries;
 }
@@ -27,7 +27,7 @@ struct List (Printable)
  @param initial_capacity : "The initial capacity to reserve"
  @param [&inout] allocator : "The allocator to use"
 *>
-fn List* List.init(&self, Allocator allocator, usz initial_capacity = 16)
+fn List* List.init(&self, Allocator allocator, isz initial_capacity = 16)
 {
 	self.allocator = allocator;
 	self.size = 0;
@@ -43,7 +43,7 @@ fn List* List.init(&self, Allocator allocator, usz initial_capacity = 16)
 
  @param initial_capacity : "The initial capacity to reserve"
 *>
-fn List* List.tinit(&self, usz initial_capacity = 16)
+fn List* List.tinit(&self, isz initial_capacity = 16)
 {
 	return self.init(tmem, initial_capacity) @inline;
 }
@@ -87,7 +87,7 @@ fn void List.init_wrapping_array(&self, Allocator allocator, Type[] types)
 
 fn bool List.is_initialized(&self) @inline => self.allocator != null && self.allocator != (Allocator)&dummy;
 
-fn usz? List.to_format(&self, Formatter* formatter) @dynamic
+fn isz? List.to_format(&self, Formatter* formatter) @dynamic
 {
 	switch (self.size)
 	{
@@ -96,7 +96,7 @@ fn usz? List.to_format(&self, Formatter* formatter) @dynamic
 		case 1:
 			return formatter.printf("[%s]", self.entries[0])!;
 		default:
-			usz n = formatter.print("[")!;
+			isz n = formatter.print("[")!;
 			foreach (i, element : self.entries[:self.size])
 			{
 				if (i != 0) formatter.print(", ")!;
@@ -133,11 +133,11 @@ fn Type? List.pop_first(&self)
 }
 
 <*
- @require index < self.size : `Removed element out of bounds`
+ @require index < self.size && index >= 0 : "Index out of bounds"
 *>
-fn void List.remove_at(&self, usz index)
+fn void List.remove_at(&self, isz index)
 {
-	usz new_size = self.size - 1;
+	isz new_size = self.size - 1;
 	defer list_set_size(self, new_size);
 	if (!new_size || index == new_size) return;
 	self.entries[index .. new_size - 1] = self.entries[index + 1 .. new_size];
@@ -147,7 +147,7 @@ fn void List.add_all(&self, List* other_list)
 {
 	if (!other_list.size) return;
 	self.reserve(other_list.size);
-	usz index = list_set_size(self, self.size + other_list.size);
+	isz index = list_set_size(self, self.size + other_list.size);
 	foreach (&value : other_list)
 	{
 		self.entries[index++] = *value;
@@ -204,7 +204,7 @@ fn void List.push_all(&self, Type[] array)
 {
 	if (!array.len) return;
 	self.reserve(array.len);
-	usz index = list_set_size(self, self.size + array.len);
+	isz index = list_set_size(self, self.size + array.len);
 	self.entries[index : array.len] = array[..];
 }
 
@@ -214,9 +214,9 @@ fn void List.push_front(&self, Type type) @inline
 }
 
 <*
- @require index <= self.size : `Insert was out of bounds`
+ @require index <= self.size && index >= 0: `Insert was out of bounds`
 *>
-fn void List.insert_at(&self, usz index, Type type)
+fn void List.insert_at(&self, isz index, Type type)
 {
 	self.reserve(1);
 	list_set_size(self, self.size + 1);
@@ -228,9 +228,9 @@ fn void List.insert_at(&self, usz index, Type type)
 }
 
 <*
- @require index < self.size
+ @require index < self.size && index >= 0 : "Index out of bounds"
 *>
-fn void List.set_at(&self, usz index, Type type)
+fn void List.set_at(&self, isz index, Type type)
 {
 	self.entries[index] = type;
 }
@@ -264,20 +264,20 @@ fn bool List.is_empty(&self) @inline
 	return !self.size;
 }
 
-fn usz List.byte_size(&self) @inline
+fn isz List.byte_size(&self) @inline
 {
 	return Type.sizeof * self.size;
 }
 
-fn usz List.len(&self) @operator(len) @inline
+fn isz List.len(&self) @operator(len) @inline
 {
 	return self.size;
 }
 
 <*
- @require index < self.size : `Access out of bounds`
+ @require index < self.size && index >= 0 : `Access out of bounds`
 *>
-fn Type List.get(&self, usz index) @inline
+fn Type List.get(&self, isz index) @inline
 {
 	return self.entries[index];
 }
@@ -299,9 +299,9 @@ fn void List.free(&self)
 }
 
 <*
- @require i < self.size && j < self.size : `Access out of bounds`
+ @require i < self.size && i >= 0 && j < self.size && j >= 0 : `Access out of bounds`
 *>
-fn void List.swap(&self, usz i, usz j)
+fn void List.swap(&self, isz i, isz j)
 {
 	@swap(self.entries[i], self.entries[j]);
 }
@@ -310,7 +310,7 @@ fn void List.swap(&self, usz i, usz j)
  @param filter : "The function to determine if it should be removed or not"
  @return "the number of deleted elements"
 *>
-fn usz List.remove_if(&self, ElementPredicate filter)
+fn isz List.remove_if(&self, ElementPredicate filter)
 {
 	return list_common::list_remove_if(self, filter, false);
 }
@@ -319,14 +319,14 @@ fn usz List.remove_if(&self, ElementPredicate filter)
  @param selection : "The function to determine if it should be kept or not"
  @return "the number of deleted elements"
 *>
-fn usz List.retain_if(&self, ElementPredicate selection)
+fn isz List.retain_if(&self, ElementPredicate selection)
 {
 	return list_common::list_remove_if(self, selection, true);
 }
 
-fn usz List.remove_using_test(&self, ElementTest filter, any context)
+fn isz List.remove_using_test(&self, ElementTest filter, any context)
 {
-	usz old_size = self.size;
+	isz old_size = self.size;
 	defer
 	{
 		if (old_size != self.size) self._update_size_change(old_size, self.size);
@@ -336,16 +336,16 @@ fn usz List.remove_using_test(&self, ElementTest filter, any context)
 
 
 
-fn usz List.retain_using_test(&self, ElementTest filter, any context)
+fn isz List.retain_using_test(&self, ElementTest filter, any context)
 {
-	usz old_size = self.size;
+	isz old_size = self.size;
 	defer {
 		if (old_size != self.size) self._update_size_change(old_size, self.size);
 	}
 	return list_common::list_remove_using_test(self, filter, true, context);
 }
 
-fn void list_ensure_capacity(List* self, usz min_capacity) @local
+fn void list_ensure_capacity(List* self, isz min_capacity) @local
 {
 	if (!min_capacity) return;
 	if (self.capacity >= min_capacity) return;
@@ -375,41 +375,41 @@ fn void list_ensure_capacity(List* self, usz min_capacity) @local
 }
 
 <*
- @require index < self.size : `Access out of bounds`
+ @require index < self.size && index >= 0 : `Access out of bounds`
 *>
-macro Type List.@item_at(&self, usz index) @operator([])
+macro Type List.@item_at(&self, isz index) @operator([])
 {
 	return self.entries[index];
 }
 
 <*
- @require index < self.size : `Access out of bounds`
+ @require index < self.size && index >= 0 : `Access out of bounds`
 *>
-fn Type* List.get_ref(&self, usz index) @operator(&[]) @inline
+fn Type* List.get_ref(&self, isz index) @operator(&[]) @inline
 {
 	return &self.entries[index];
 }
 
 <*
- @require index < self.size : `Access out of bounds`
+ @require index < self.size && index >= 0 : `Access out of bounds`
 *>
-fn void List.set(&self, usz index, Type value) @operator([]=)
+fn void List.set(&self, isz index, Type value) @operator([]=)
 {
 	self.entries[index] = value;
 }
 
-fn void List.reserve(&self, usz added)
+fn void List.reserve(&self, isz added)
 {
-	usz new_size = self.size + added;
+	isz new_size = self.size + added;
 	if (self.capacity >= new_size) return;
 
-	assert(new_size < usz.max / 2U);
-	usz new_capacity = self.capacity ? 2U * self.capacity : 16U;
+	assert(new_size < isz.max / 2U);
+	isz new_capacity = self.capacity ? 2U * self.capacity : 16U;
 	while (new_capacity < new_size) new_capacity *= 2U;
 	list_ensure_capacity(self, new_capacity);
 }
 
-fn void List._update_size_change(&self,usz old_size, usz new_size)
+fn void List._update_size_change(&self,isz old_size, isz new_size)
 {
 	if (old_size == new_size) return;
 	$if env::ADDRESS_SANITIZER:
@@ -421,11 +421,12 @@ fn void List._update_size_change(&self,usz old_size, usz new_size)
 	$endif
 }
 <*
- @require new_size == 0 || self.capacity != 0
+ @require new_size >= 0 : "The new size cannot be negative"
+ @require new_size == 0 || self.capacity > 0
 *>
-fn usz list_set_size(List* self, usz new_size) @inline @private
+fn isz list_set_size(List* self, isz new_size) @inline @private
 {
-	usz old_size = self.size;
+	isz old_size = self.size;
 	self._update_size_change(old_size, new_size);
 	self.size = new_size;
 	return old_size;
@@ -448,7 +449,7 @@ macro void list_post_alloc(List* self) @private
 // Functions for equatable types
 
 
-fn usz? List.index_of(&self, Type type) @if (ELEMENT_IS_EQUATABLE)
+fn isz? List.index_of(&self, Type type) @if (ELEMENT_IS_EQUATABLE)
 {
 	foreach (i, v : self)
 	{
@@ -457,7 +458,7 @@ fn usz? List.index_of(&self, Type type) @if (ELEMENT_IS_EQUATABLE)
 	return NOT_FOUND~;
 }
 
-fn usz? List.rindex_of(&self, Type type) @if (ELEMENT_IS_EQUATABLE)
+fn isz? List.rindex_of(&self, Type type) @if (ELEMENT_IS_EQUATABLE)
 {
 	foreach_r (i, v : self)
 	{
@@ -516,13 +517,10 @@ fn bool List.remove_first_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
  @param value : "The value to remove"
  @return "the number of deleted elements."
 *>
-fn usz List.remove_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
+fn isz List.remove_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
-	usz old_size = self.size;
-	defer
-	{
-		if (old_size != self.size) self._update_size_change(old_size, self.size);
-	}
+	isz old_size = self.size;
+	defer if (old_size != self.size) self._update_size_change(old_size, self.size);
 	return list_common::list_remove_item(self, value);
 }
 
@@ -531,10 +529,8 @@ fn usz List.remove_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 fn void List.remove_all_from(&self, List* other_list) @if(ELEMENT_IS_EQUATABLE)
 {
 	if (!other_list.size) return;
-	usz old_size = self.size;
-	defer {
-		if (old_size != self.size) self._update_size_change(old_size, self.size);
-	}
+	isz old_size = self.size;
+	defer if (old_size != self.size) self._update_size_change(old_size, self.size);
 	foreach (v : other_list) self.remove_item(v);
 }
 
@@ -542,19 +538,17 @@ fn void List.remove_all_from(&self, List* other_list) @if(ELEMENT_IS_EQUATABLE)
  @param [&in] self
  @return "The number non-null values in the list"
 *>
-fn usz List.compact_count(&self) @if(ELEMENT_IS_POINTER)
+fn isz List.compact_count(&self) @if(ELEMENT_IS_POINTER)
 {
-	usz vals = 0;
+	isz vals = 0;
 	foreach (v : self) if (v) vals++;
 	return vals;
 }
 
-fn usz List.compact(&self) @if(ELEMENT_IS_POINTER)
+fn isz List.compact(&self) @if(ELEMENT_IS_POINTER)
 {
-	usz old_size = self.size;
-	defer {
-		if (old_size != self.size) self._update_size_change(old_size, self.size);
-	}
+	isz old_size = self.size;
+	defer if (old_size != self.size) self._update_size_change(old_size, self.size);
 	return list_common::list_compact(self);
 }
 

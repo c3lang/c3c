@@ -133,7 +133,7 @@ fn void test_zip_multiple_files()
 
 		assert(read_zip.count() == 3, "Expected 3 entries");
 
-		for (usz i = 0; i < read_zip.count(); i++)
+		for (isz i = 0; i < read_zip.count(); i++)
 		{
 			ZipEntry entry = read_zip.stat_at(i)!!;
 			assert(!entry.is_directory, "Expected files only");
@@ -527,23 +527,23 @@ fn void test_zip_reader_available_capping()
 		// that might exist on 32-bit systems (where usz < 64-bit).
 		ZipEntryReader reader;
 		mem::set(&reader, 0, ZipEntryReader.sizeof);
-		reader.size = 0xFFFFFFFFFFFFFFFF;
+		reader.size = 0x7FFFFFFFFFFFFFFF;
 		reader.pos = 0;
 
-		usz avail = reader.available()!!;
-		assert(avail == usz.max, "Expected available to be capped at usz.max");
+		isz avail = reader.available()!!;
+		assert(avail == isz.max, "Expected available to be capped at isz.max");
 
 		reader.pos = 100;
 		avail = reader.available()!!;
-		if (usz.max < 0xFFFFFFFFFFFFFFFF)
+		if (isz.max < 0x7FFFFFFFFFFFFFFF)
 		{
 			// triggers on 32-bit
-			assert(avail == usz.max, "Expected available to still be capped at usz.max");
+			assert(avail == isz.max, "Expected available to still be capped at isz.max");
 		}
 		else
 		{
 			// on 64-bit
-			assert(avail == usz.max - (usz)100, "Expected available size to be correct on 64-bit");
+			assert(avail == isz.max - (isz)100, "Expected available size to be correct on 64-bit");
 		}
 	};
 }

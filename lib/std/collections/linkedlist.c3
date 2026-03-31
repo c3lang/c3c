@@ -16,14 +16,14 @@ struct Node
 struct LinkedList
 {
 	Allocator allocator;
-	usz size;
+	isz size;
 	Node* _first;
 	Node* _last;
 }
 
-fn usz? LinkedList.to_format(&self, Formatter* f) @dynamic
+fn isz? LinkedList.to_format(&self, Formatter* f) @dynamic
 {
-	usz len = f.print("{ ")!;
+	isz len = f.print("{ ")!;
 	for (Node* node = self._first; node != null; node = node.next)
 	{
 		len += f.printf(node.next ? "%s, " : "%s", node.value)!;
@@ -149,12 +149,12 @@ fn void LinkedList.clear(&self)
 	self.size = 0;
 }
 
-fn usz LinkedList.len(&self) @inline => self.size;
+fn isz LinkedList.len(&self) @inline => self.size;
 
 <*
- @require index < self.size
+ @require index < self.size && index >= 0 : "Index out of bounds"
 *>
-macro Node* LinkedList.node_at_index(&self, usz index)
+macro Node* LinkedList.node_at_index(&self, isz index)
 {
 	if (index * 2 >= self.size)
 	{
@@ -169,41 +169,41 @@ macro Node* LinkedList.node_at_index(&self, usz index)
 }
 
 <*
- @require index < self.size
+ @require index < self.size && index >= 0 : "Index out of bounds"
 *>
-fn Type LinkedList.get(&self, usz index)
+fn Type LinkedList.get(&self, isz index)
 {
 	return self.node_at_index(index).value;
 }
 
 <*
- @require index < self.size
+ @require index < self.size && index >= 0 : "Index out of bounds"
 *>
-fn Type* LinkedList.get_ref(&self, usz index)
+fn Type* LinkedList.get_ref(&self, isz index)
 {
 	return &self.node_at_index(index).value;
 }
 
 <*
- @require index < self.size
+ @require index < self.size && index >= 0 : "Index out of bounds"
 *>
-fn void LinkedList.set(&self, usz index, Type element)
+fn void LinkedList.set(&self, isz index, Type element)
 {
 	self.node_at_index(index).value = element;
 }
 
-fn usz? LinkedList.index_of(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
+fn isz? LinkedList.index_of(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
 {
-	for (Node* node = self._first, usz i = 0; node != null; node = node.next, ++i)
+	for (Node* node = self._first, isz i = 0; node != null; node = node.next, ++i)
 	{
 		if (node.value == t) return i;
 	}
 	return NOT_FOUND~;
 }
 
-fn usz? LinkedList.rindex_of(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
+fn isz? LinkedList.rindex_of(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
 {
-	for (Node* node = self._last, usz i = self.size - 1; node != null; node = node.prev, --i)
+	for (Node* node = self._last, isz i = self.size - 1; node != null; node = node.prev, --i)
 	{
 		if (node.value == t) return i;
 		if (i == 0) break;
@@ -213,17 +213,17 @@ fn usz? LinkedList.rindex_of(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
 
 
 <*
- @require index < self.size
+ @require index < self.size && index >= 0 : "Index out of bounds"
 *>
-fn void LinkedList.remove_at(&self, usz index)
+fn void LinkedList.remove_at(&self, isz index)
 {
 	linked_list_unlink(self, self.node_at_index(index));
 }
 
 <*
- @require index <= self.size
+ @require index <= self.size && index >= 0 : "Index out of bounds"
 *>
-fn void LinkedList.insert_at(&self, usz index, Type element)
+fn void LinkedList.insert_at(&self, isz index, Type element)
 {
 	switch (index)
 	{
@@ -275,9 +275,9 @@ fn void linked_list_unlink_first(LinkedList* l) @private
 	l.size--;
 }
 
-fn usz LinkedList.remove(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
+fn isz LinkedList.remove(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
 {
-	usz start = self.size;
+	isz start = self.size;
 	Node* node = self._first;
 	while (node)
 	{
@@ -424,23 +424,23 @@ struct LinkedListArrayView
 {
 	LinkedList* list;
 	Node* current_node;
-	usz current_index;
+	isz current_index;
 }
 
-fn usz LinkedListArrayView.len(&self) @operator(len) => self.list.size;
+fn isz LinkedListArrayView.len(&self) @operator(len) => self.list.size;
 
 <*
- @require index < self.list.size
+ @require index < self.list.size && index >= 0 : "Index out of bounds"
 *>
-fn Type LinkedListArrayView.get(&self, usz index) @operator([])
+fn Type LinkedListArrayView.get(&self, isz index) @operator([])
 {
 	return *self.get_ref(index);
 }
 
 <*
- @require index < self.list.size
+ @require index < self.list.size && index >= 0 : "Index out of bounds"
 *>
-fn Type* LinkedListArrayView.get_ref(&self, usz index) @operator(&[])
+fn Type* LinkedListArrayView.get_ref(&self, isz index) @operator(&[])
 {
 	if (index == self.list.size - 1)
 	{

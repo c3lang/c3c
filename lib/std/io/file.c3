@@ -72,10 +72,10 @@ fn void? File.reopen(&self, String filename, String mode)
 <*
  @require self.file != null
 *>
-fn usz? File.seek(&self, isz offset, Seek seek_mode = Seek.SET) @dynamic
+fn isz? File.seek(&self, isz offset, Seek seek_mode = Seek.SET) @dynamic
 {
 	os::native_fseek(self.file, offset, (SeekOrigin)seek_mode.ordinal)!;
-	return (usz)os::native_ftell(self.file);
+	return (isz)os::native_ftell(self.file);
 }
 
 <*
@@ -163,7 +163,7 @@ fn bool File.eof(&self) @inline
 <*
  @param [in] buffer
 *>
-fn usz? File.read(&self, char[] buffer) @dynamic
+fn isz? File.read(&self, char[] buffer) @dynamic
 {
 	return os::native_fread(self.file, buffer);
 }
@@ -172,7 +172,7 @@ fn usz? File.read(&self, char[] buffer) @dynamic
  @param [out] buffer
  @require self.file != null : `File must be initialized`
 *>
-fn usz? File.write(&self, char[] buffer) @dynamic
+fn isz? File.write(&self, char[] buffer) @dynamic
 {
 	return os::native_fwrite(self.file, buffer);
 }
@@ -207,7 +207,7 @@ fn char[]? load_buffer(String filename, char[] buffer)
 	defer (void)file.close();
 	long len = file.size()!;
 	if (len > buffer.len) return io::OVERFLOW~;
-	usz read = 0;
+	isz read = 0;
 	while (read < len)
 	{
 		read += file.read(buffer[read:len - read])!;
@@ -221,15 +221,15 @@ fn char[]? load(Allocator allocator, String filename)
 	File file = open(filename, "rb")!;
 	defer (void)file.close();
 	ulong len = file.size()!;
-	if (len > usz.max) return io::OUT_OF_SPACE~;
-	char* data = alloc::malloc_try(allocator, (usz)len)!;
+	if (len > isz.max) return io::OUT_OF_SPACE~;
+	char* data = alloc::malloc_try(allocator, (isz)len)!;
 	defer catch alloc::free(allocator, data);
-	usz read = 0;
-	while (read < (usz)len)
+	isz read = 0;
+	while (read < (isz)len)
 	{
-		read += file.read(data[read:(usz)len - read])!;
+		read += file.read(data[read:(isz)len - read])!;
 	}
-	return data[:(usz)len];
+	return data[:(isz)len];
 }
 
 fn char[]? load_path(Allocator allocator, Path path) => load(allocator, path.str_view());
@@ -244,7 +244,7 @@ fn void? save(String filename, char[] data)
 	defer (void)file.close();
 	while (data.len)
 	{
-		usz written = file.write(data)!;
+		isz written = file.write(data)!;
 		data = data[written..];
 	}
 }

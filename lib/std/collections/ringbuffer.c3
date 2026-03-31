@@ -9,8 +9,8 @@ alias Element = $typeof((Type){}[0]);
 struct RingBuffer (Printable)
 {
 	Type buf;
-	usz written;
-	usz head;
+	isz written;
+	isz head;
 }
 
 fn void RingBuffer.init(&self) @inline
@@ -32,10 +32,10 @@ fn void RingBuffer.push(&self, Element c)
 	}
 }
 
-fn Element RingBuffer.get(&self, usz index) @operator([])
+fn Element RingBuffer.get(&self, isz index) @operator([])
 {
 	index %= self.buf.len;
-	usz avail = self.buf.len - self.head;
+	isz avail = self.buf.len - self.head;
 	if (index < avail)
 	{
 		return self.buf[self.head + index];
@@ -58,50 +58,50 @@ fn Element? RingBuffer.pop(&self)
 	}
 }
 
-fn usz? RingBuffer.to_format(&self, Formatter* format) @dynamic
+fn isz? RingBuffer.to_format(&self, Formatter* format) @dynamic
 {
 	// Improve this?
 	return format.printf("%s", self.buf);
 }
 
-fn usz RingBuffer.read(&self, usz index, Element[] buffer)
+fn isz RingBuffer.read(&self, isz index, Element[] buffer)
 {
 	index %= self.buf.len;
 	if (self.written < self.buf.len)
 	{
 		if (index >= self.written) return 0;
-		usz end = self.written - index;
-		usz n = min(end, buffer.len);
+		isz end = self.written - index;
+		isz n = min(end, buffer.len);
 		buffer[:n] = self.buf[index:n];
 		return n;
 	}
-	usz end = self.buf.len - self.head;
+	isz end = self.buf.len - self.head;
 	if (index >= end)
 	{
 		index -= end;
 		if (index >= self.head) return 0;
-		usz n = min(self.head - index, buffer.len);
+		isz n = min(self.head - index, buffer.len);
 		buffer[:n] = self.buf[index:n];
 		return n;
 	}
 	if (buffer.len <= self.buf.len - index)
 	{
-		usz n = buffer.len;
+		isz n = buffer.len;
 		buffer[:n] = self.buf[self.head + index:n];
 		return n;
 	}
-	usz n1 = self.buf.len - index;
+	isz n1 = self.buf.len - index;
 	buffer[:n1] = self.buf[self.head + index:n1];
 	buffer = buffer[n1..];
 	index -= n1;
-	usz n2 = min(self.head - index, buffer.len);
+	isz n2 = min(self.head - index, buffer.len);
 	buffer[:n2] = self.buf[index:n2];
 	return n1 + n2;
 }
 
 fn void RingBuffer.write(&self, Element[] buffer)
 {
-	usz i;
+	isz i;
 	while (self.written < self.buf.len && i < buffer.len)
 	{
 		self.buf[self.written] = buffer[i++];

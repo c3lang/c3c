@@ -41,13 +41,13 @@ macro double? decfloat(char[] chars, int $bits, int $emin, int sign)
 	int emax = - $emin - $bits + 3;
 
 	const int[*] P10S = { 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000 };
-	usz index;
+	isz index;
 	bool got_digit = chars[0] == '0';
 	bool got_rad;
 	long lrp, dc;
 	int k, j, lnz;
-	usz len = chars.len;
-	usz last_char = len - 1;
+	isz len = chars.len;
+	isz last_char = len - 1;
 
 	assert(len);
 
@@ -335,9 +335,9 @@ macro double? hexfloat(char[] chars, int $bits, int $emin, int sign)
 	bool got_rad;
 	bool got_digit;
 	bool got_tail;
-	usz len = chars.len;
-	usz last_char = len - 1;
-	usz index;
+	isz len = chars.len;
+	isz last_char = len - 1;
+	isz index;
 	double y;
 
 	// Skip past first characters

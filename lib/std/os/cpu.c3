@@ -60,7 +60,8 @@ fn uint num_cpu()
 	uint count;
 
 	nm = { openbsd::CTL_HW, openbsd::HW_NCPUONLINE };
-	if (libc::sysctl(&nm, 2, &count, &len, null, 0) == 0 && count >= 1) {
+	if (libc::sysctl(&nm, 2, &count, &len, null, 0) == 0 && count >= 1)
+	{
 		return count;
 	}
 

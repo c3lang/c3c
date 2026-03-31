@@ -6,8 +6,8 @@ alias FreopenFn = fn void*?(void*, String, String);
 alias FcloseFn = fn void?(void*);
 alias FseekFn = fn void?(void*, long, SeekOrigin);
 alias FtellFn = fn long?(void*);
-alias FwriteFn = fn usz?(void*, char[] buffer);
-alias FreadFn = fn usz?(void*, char[] buffer);
+alias FwriteFn = fn isz?(void*, char[] buffer);
+alias FreadFn = fn isz?(void*, char[] buffer);
 alias FflushFn = fn void?(void*);
 alias RemoveFn = fn void?(String);
 alias FputcFn = fn void?(int, void*);
@@ -68,13 +68,13 @@ fn ulong? native_ftell(CFile file) @inline
 	return io::UNSUPPORTED_OPERATION~;
 }
 
-fn usz? native_fwrite(CFile file, char[] buffer) @inline
+fn isz? native_fwrite(CFile file, char[] buffer) @inline
 {
 	if (native_fwrite_fn) return native_fwrite_fn(file, buffer);
 	return io::UNSUPPORTED_OPERATION~;
 }
 
-fn usz? native_fread(CFile file, char[] buffer) @inline
+fn isz? native_fread(CFile file, char[] buffer) @inline
 {
 	if (native_fread_fn) return native_fread_fn(file, buffer);
 	return io::UNSUPPORTED_OPERATION~;

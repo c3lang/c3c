@@ -29,7 +29,7 @@ fn void? fill(char[] buffer, bool timeout = false)
 			$if (@in(env::ARCH_TYPE, ARM, ARMB, AARCH64, X86, X86_64)):
 				isz result = $$syscall(entropy_syscall_id(), (uptr)buffer.ptr, buffer.len, 0);
 				if (result < 0 && result != Errno.EINTR) return SECURE_RANDOM_UNAVAILABLE~;   /* it's possible for signal handlers to interrupt this call */
-				for (usz prevent_block = 0; result < buffer.len && (!timeout || prevent_block < 1_000); prevent_block++)
+				for (isz prevent_block = 0; result < buffer.len && (!timeout || prevent_block < 1_000); prevent_block++)
 				{
 					isz more = $$syscall(entropy_syscall_id(), (uptr)(&buffer[result]), buffer.len - result, 0);
 					if (more < 0)
@@ -66,7 +66,7 @@ fn void? fill(char[] buffer, bool timeout = false)
  @return? TIMEOUT : "When `timeout` is `true`, the secure RNG failed to populate the buffer in a reasonable time."
  @return "The created and populated slice of random bytes."
 *>
-fn char[]? make(Allocator allocator, usz length, bool timeout = false)
+fn char[]? make(Allocator allocator, isz length, bool timeout = false)
 {
 	if (!length) return {};
 	char[] res = alloc::alloc_array(allocator, char, length)[:length];
@@ -102,7 +102,7 @@ import std::io::file;
 
  See: https://www.chromium.org/chromium-os/developer-library/reference/linux-constants/syscalls/#cross-arch-numbers
 *>
-macro usz entropy_syscall_id() @const
+macro isz entropy_syscall_id() @const
 {
 	$switch:
 		$case env::LINUX:
@@ -130,8 +130,8 @@ fn void? unix_fallback(char[] buffer, bool timeout = false)
 {
 	File rnd_file = file::open("/dev/urandom", "r") ?? file::open("/dev/random", "r") ?? SECURE_RANDOM_UNAVAILABLE~!;
 	defer (void)rnd_file.close();
-	usz count;
-	for (usz prevent_block = 0; count < buffer.len && (!timeout || prevent_block < 1_000); prevent_block++)
+	isz count;
+	for (isz prevent_block = 0; count < buffer.len && (!timeout || prevent_block < 1_000); prevent_block++)
 	{
 		count += rnd_file.read(buffer) ?? SECURE_RANDOM_UNAVAILABLE~!;
 	}
@@ -142,7 +142,7 @@ fn void? unix_fallback(char[] buffer, bool timeout = false)
  Import for OpenBSD which fills an existing buffer with high-entropy data.
  See: https://man.openbsd.org/arc4random.3
 *>
-extern fn void arc4random_buf(void* buf, usz nbytes) @if (env::OPENBSD || env::DARWIN);
+extern fn void arc4random_buf(void* buf, isz nbytes) @if (env::OPENBSD || env::DARWIN);
 
 
 // ============================================================================

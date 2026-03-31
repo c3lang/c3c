@@ -8,7 +8,7 @@ char[256] bulk;
 
 fn void setup() @init
 {
-	for (usz i = 0; i < bulk.len; ++i) bulk[i] = (char)i;
+	for (isz i = 0; i < bulk.len; ++i) bulk[i] = (char)i;
 }
 
 
@@ -26,7 +26,7 @@ const char[][] INPUTS = {
 	"7 chars",
 };
 
-const usz[] BULK_INTERVALS = { 3, 6, 8, 12, 20, 31, 32, 40, 47, 48, 56, 64, 72, 80, 112, 132, 256 };
+const isz[] BULK_INTERVALS = { 3, 6, 8, 12, 20, 31, 32, 40, 47, 48, 56, 64, 72, 80, 112, 132, 256 };
 
 
 const ulong[] EXPECTED_UNSEEDED = {

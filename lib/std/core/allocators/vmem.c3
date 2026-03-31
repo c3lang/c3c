@@ -10,11 +10,11 @@ faultdef VMEM_RESERVE_FAILED;
 struct Vmem (Allocator)
 {
 	VirtualMemory memory;
-	usz allocated;
-	usz pagesize;
-	usz page_pot;
-	usz last_page;
-	usz high_water;
+	isz allocated;
+	isz pagesize;
+	isz page_pot;
+	isz last_page;
+	isz high_water;
 	VmemOptions options;
 }
 
@@ -36,9 +36,9 @@ bitstruct VmemOptions : int
  @require preferred_size >= 1 * mem::KB : "The preferred size must exceed 1 KB"
  @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY, VMEM_RESERVE_FAILED
 *>
-fn void? Vmem.init(&self, usz preferred_size, usz reserve_page_size = 0, VmemOptions options = { true, true, env::COMPILER_SAFE_MODE }, usz min_size = 0)
+fn void? Vmem.init(&self, isz preferred_size, isz reserve_page_size = 0, VmemOptions options = { true, true, env::COMPILER_SAFE_MODE }, isz min_size = 0)
 {
-	static usz page_size = 0;
+	static isz page_size = 0;
 	if (!page_size) page_size = mem::os_pagesize();
 	if (page_size < reserve_page_size) page_size = reserve_page_size;
 	preferred_size = mem::aligned_offset(preferred_size, page_size);
@@ -81,15 +81,15 @@ fn void? Vmem.init(&self, usz preferred_size, usz reserve_page_size = 0, VmemOpt
  @require size > 0
  @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 *>
-fn void*? Vmem.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
+fn void*? Vmem.acquire(&self, isz size, AllocInitType init_type, isz alignment) @dynamic
 {
 	alignment = alignment_for_allocation(alignment);
-	usz total_len = self.memory.size;
+	isz total_len = self.memory.size;
 	if (size > total_len) return mem::INVALID_ALLOC_SIZE~;
 	void* start_mem = self.memory.ptr;
 	void* unaligned_pointer_to_offset = start_mem + self.allocated + VmemHeader.sizeof;
 	void* mem = mem::aligned_pointer(unaligned_pointer_to_offset, alignment);
-	usz after = (usz)(mem - start_mem) + size;
+	isz after = (isz)(mem - start_mem) + size;
 	if (after > total_len) return mem::OUT_OF_MEMORY~;
 	if (init_type == ZERO && self.high_water <= self.allocated)
 	{
@@ -115,13 +115,13 @@ fn bool Vmem.owns_pointer(&self, void* ptr) @inline
  @require size > 0
  @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 *>
-fn void*? Vmem.resize(&self, void *old_pointer, usz size, usz alignment) @dynamic
+fn void*? Vmem.resize(&self, void *old_pointer, isz size, isz alignment) @dynamic
 {
 	if (size > self.memory.size) return mem::INVALID_ALLOC_SIZE~;
 	alignment = alignment_for_allocation(alignment);
 	assert(self.owns_pointer(old_pointer), "Pointer originates from a different allocator: %p, not in %p - %p", old_pointer, self.memory.ptr, self.memory.ptr + self.allocated);
 	VmemHeader* header = old_pointer - VmemHeader.sizeof;
-    usz old_size = header.size;
+    isz old_size = header.size;
     if (old_size == size) return old_pointer;
     // Do last allocation and alignment match?
     if (self.memory.ptr + self.allocated == old_pointer + old_size && mem::ptr_is_aligned(old_pointer, alignment))
@@ -132,7 +132,7 @@ fn void*? Vmem.resize(&self, void *old_pointer, usz size, usz alignment) @dynami
     	}
     	else
     	{
-    		usz allocated = self.allocated + size - old_size;
+    		isz allocated = self.allocated + size - old_size;
     		if (allocated > self.memory.size) return mem::OUT_OF_MEMORY~;
     		protect(self, allocated)!;
     	}
@@ -170,7 +170,7 @@ fn void Vmem.release(&self, void* ptr, bool) @dynamic
 	}
 }
 
-fn usz Vmem.mark(&self)
+fn isz Vmem.mark(&self)
 {
 	return self.allocated;
 }
@@ -178,7 +178,7 @@ fn usz Vmem.mark(&self)
 <*
  @require mark <= self.allocated : "Invalid mark"
 *>
-fn void Vmem.reset(&self, usz mark)
+fn void Vmem.reset(&self, isz mark)
 {
 	if (mark == self.allocated) return;
 	unprotect(self, mark);
@@ -201,20 +201,20 @@ fn void Vmem.free(&self)
 
 struct VmemHeader @local
 {
-	usz size;
+	isz size;
 	char[*] data;
 }
 
-macro void? protect(Vmem* mem, usz after) @local
+macro void? protect(Vmem* mem, isz after) @local
 {
-	usz shift = mem.page_pot;
-	usz page_after = (after + mem.pagesize - 1) >> shift;
-	usz last_page = mem.last_page;
+	isz shift = mem.page_pot;
+	isz page_after = (after + mem.pagesize - 1) >> shift;
+	isz last_page = mem.last_page;
 	bool over_high_water = mem.high_water < after;
 	if (page_after > last_page)
 	{
-		usz page_start = last_page << shift;
-		usz page_len = (page_after - last_page) << shift;
+		isz page_start = last_page << shift;
+		isz page_len = (page_after - last_page) << shift;
 		mem.memory.commit(page_start, page_len)!;
 		if (mem.options.protect_unused_pages || over_high_water)
 		{
@@ -229,11 +229,11 @@ macro void? protect(Vmem* mem, usz after) @local
 	if (over_high_water) mem.high_water = after;
 }
 
-macro void unprotect(Vmem* mem, usz after) @local
+macro void unprotect(Vmem* mem, isz after) @local
 {
-	usz shift = mem.page_pot;
-	usz last_page = mem.last_page;
-	usz page_after = mem.last_page = (after + mem.pagesize - 1) >> shift;
+	isz shift = mem.page_pot;
+	isz last_page = mem.last_page;
+	isz page_after = mem.last_page = (after + mem.pagesize - 1) >> shift;
 	$if env::ADDRESS_SANITIZER:
 		asan::poison_memory_region(mem.memory.ptr + after, mem.allocated - after);
 	$else
@@ -244,8 +244,8 @@ macro void unprotect(Vmem* mem, usz after) @local
 	$endif
 	if ((mem.options.shrink_on_reset || mem.options.protect_unused_pages) && page_after < last_page)
 	{
-		usz start = page_after << shift;
-		usz len = (last_page - page_after) << shift;
+		isz start = page_after << shift;
+		isz len = (last_page - page_after) << shift;
 		if (mem.options.shrink_on_reset) (void)mem.memory.decommit(start, len, false);
 		if (mem.options.protect_unused_pages) (void)mem.memory.protect(start, len, PROTECTED);
 	}

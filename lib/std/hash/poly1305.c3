@@ -22,7 +22,7 @@ struct Poly1305
     uint128         r; // secret portion of key
     uint128         nonce; // initialization vector, derived from key
     char[TAG_SIZE]  temp; // last partial ingestion state
-    usz             num; // index into last partial ingestion
+    isz             num; // index into last partial ingestion
     // Additional, cached state information:
     ulong           r0;
     ulong           r1;
@@ -77,7 +77,7 @@ fn void Poly1305.update(&self, char[] input)
 {
     if (self.num) // currently between consuming full blocks?
     {
-        usz rem = BLOCK_SIZE - self.num;
+        isz rem = BLOCK_SIZE - self.num;
         if (input.len < rem)
         {
             self.temp[self.num:input.len] = input[..]; // saving another partial block
@@ -90,7 +90,7 @@ fn void Poly1305.update(&self, char[] input)
         input = input[rem..];
     }
 
-    usz even_length = input.len - (input.len % BLOCK_SIZE);
+    isz even_length = input.len - (input.len % BLOCK_SIZE);
     if (even_length >= BLOCK_SIZE)
     {
         _blocks(self, input[:even_length]); // consume blocks

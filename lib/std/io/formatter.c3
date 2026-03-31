@@ -10,7 +10,7 @@ const int PRINTF_NTOA_BUFFER_SIZE = 256;
 interface Printable
 {
 	fn String to_constant_string() @optional;
-	fn usz? to_format(Formatter* formatter) @optional;
+	fn isz? to_format(Formatter* formatter) @optional;
 }
 
 faultdef BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT;
@@ -31,10 +31,10 @@ macro bool is_struct_with_default_print($Type)
 
  @require $kindof(value) == STRUCT || $kindof(value) == BITSTRUCT : `This macro is only valid on macros`
 *>
-macro usz? struct_to_format(value, Formatter* f, bool $force_dump)
+macro isz? struct_to_format(value, Formatter* f, bool $force_dump)
 {
 	var $Type = $typeof(value);
-	usz total = f.print("{ ")!;
+	isz total = f.print("{ ")!;
 	$foreach $i, $member : $Type.membersof:
 		$if $i > 0:
 			total += f.print(", ")!;
@@ -52,12 +52,12 @@ macro usz? struct_to_format(value, Formatter* f, bool $force_dump)
 	return total + f.print(" }");
 }
 
-fn usz? ReflectedParam.to_format(&self, Formatter* f) @dynamic
+fn isz? ReflectedParam.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("[Parameter '%s']", self.name);
 }
 
-fn usz? Formatter.printf(&self, String format, args...)
+fn isz? Formatter.printf(&self, String format, args...)
 {
 	return self.vprintf(format, args) @inline;
 }
@@ -93,7 +93,7 @@ fn void Formatter.init(&self, OutputFn out_fn, void* data = null)
 
 
 
-fn usz? Formatter.print_with_function(&self, Printable arg)
+fn isz? Formatter.print_with_function(&self, Printable arg)
 {
 	if (&arg.to_format)
 	{
@@ -131,15 +131,15 @@ fn void? out_null_fn(void* data @unused, char c @unused) @private
 {
 }
 
-macro usz? @report_fault(Formatter* f, $fault)
+macro isz? @report_fault(Formatter* f, $fault)
 {
 	(void)formatter_out_substr(f, $fault);
 	return INVALID_FORMAT~;
 }
 
-macro usz? @wrap_bad(Formatter* f, #action)
+macro isz? @wrap_bad(Formatter* f, #action)
 {
-	usz? len = #action;
+	isz? len = #action;
 	if (catch err = len)
 	{
 		switch (err)
@@ -158,7 +158,7 @@ macro usz? @wrap_bad(Formatter* f, #action)
 
 
 
-fn usz? Formatter.vprintf(&self, String format, any[] anys)
+fn isz? Formatter.vprintf(&self, String format, any[] anys)
 {
 	self.first_fault = {};
 	if (!self.out_fn)
@@ -166,10 +166,10 @@ fn usz? Formatter.vprintf(&self, String format, any[] anys)
 		// use null output function
 		self.out_fn = &out_null_fn;
 	}
-	usz total_len;
-	usz format_len = format.len;
-	usz variant_index = 0;
-	for (usz i = 0; i < format_len; i++)
+	isz total_len;
+	isz format_len = format.len;
+	isz variant_index = 0;
+	for (isz i = 0; i < format_len; i++)
 	{
 		// format specifier?  %[flags][width][.precision][length]
 		char c = format[i];
@@ -315,7 +315,7 @@ fn usz? Formatter.vprintf(&self, String format, any[] anys)
 	return total_len;
 }
 
-fn usz? Formatter.print_char(&self, char c)
+fn isz? Formatter.print_char(&self, char c)
 {
 	if (catch err = self.out_fn(self.data, c))
 	{
@@ -326,7 +326,7 @@ fn usz? Formatter.print_char(&self, char c)
 	return 1;
 }
 
-fn usz? Formatter.print(&self, String str)
+fn isz? Formatter.print(&self, String str)
 {
 	if (!self.out_fn)
 	{

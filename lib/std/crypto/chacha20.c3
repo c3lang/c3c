@@ -39,7 +39,7 @@ bool permit_overflow = false;
 struct ChaCha20
 {
 	<* The position within a block before permuting the rounds. *>
-	usz position;
+	isz position;
 	<* Count of bytes processed. Useful to track an approach to the 256GiB limit of a single context. *>
 	ulong bytes_processed;
 	<* The key stream or state used during cipher block operations. *>
@@ -67,7 +67,7 @@ fn void chacha20_mutate_keystream(ChaCha20* self) @local @inline
 {
 	self.key_stream[..] = self.state[..];
 
-	for (usz i = 0; i < 10; i++) // unrolling this does not improve performance measurably
+	for (isz i = 0; i < 10; i++) // unrolling this does not improve performance measurably
 	{
 		quarter_round(&self.key_stream[0],   0,  4,  8, 12);
 		quarter_round(&self.key_stream[0],   1,  5,  9, 13);
@@ -118,14 +118,14 @@ fn void ChaCha20.transform(&self, char[] data)
 {
 	if (!data.len) return;
 
-	usz original_length = data.len;
+	isz original_length = data.len;
 	char[] key_stream = @as_char_view(self.key_stream);
 
 	// 1. Process remaining bytes in the current keystream block.
 	if (self.position < BLOCK_SIZE)
 	{
-		usz len = data.len < (BLOCK_SIZE - self.position) ? data.len : (BLOCK_SIZE - self.position);
-		for (usz i = 0; i < len; i++) data[i] ^= key_stream[self.position + i];
+		isz len = data.len < (BLOCK_SIZE - self.position) ? data.len : (BLOCK_SIZE - self.position);
+		for (isz i = 0; i < len; i++) data[i] ^= key_stream[self.position + i];
 		self.position += len;
 		data = data[len..];
 	}
@@ -133,16 +133,16 @@ fn void ChaCha20.transform(&self, char[] data)
 	// 2. Get the amount of bytes offset from the nearest alignment boundary.
 	//   Process full blocks at a time, word by word according to the system's architecture.
 	//   Any extra bytes on each side are dynamically processed byte-by-byte.
-    usz offset = usz.sizeof - (((usz)data.ptr % usz.sizeof) ?: usz.sizeof);
+    isz offset = isz.sizeof - (((isz)data.ptr % isz.sizeof) ?: isz.sizeof);
 
-	for (usz x = offset; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..], x = offset)
+	for (isz x = offset; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..], x = offset)
 	{
 		chacha20_mutate_keystream(self);
         if (offset) foreach (i, &b : data[:offset]) *b ^= key_stream[i];
         char[] aligned_data = data[offset..];
-		for (; x <= (BLOCK_SIZE - usz.sizeof); x += usz.sizeof)
+		for (; x <= (BLOCK_SIZE - isz.sizeof); x += isz.sizeof)
 		{
-			((usz*)aligned_data.ptr)[x / usz.sizeof] ^= mem::load((usz*)(&key_stream[x]), $align: 1);
+			((isz*)aligned_data.ptr)[x / isz.sizeof] ^= mem::load((isz*)(&key_stream[x]), $align: 1);
 		}
         for (; x < BLOCK_SIZE; x++) data[x] ^= key_stream[x];
 	}
@@ -151,7 +151,7 @@ fn void ChaCha20.transform(&self, char[] data)
 	if (data.len > 0)
 	{
 		chacha20_mutate_keystream(self);
-		for (usz i = 0; i < data.len; i++) data[i] ^= key_stream[i];
+		for (isz i = 0; i < data.len; i++) data[i] ^= key_stream[i];
 		self.position = data.len;
 	}
 

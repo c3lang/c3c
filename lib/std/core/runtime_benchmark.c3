@@ -161,7 +161,7 @@ fn void append_duration_colored(DString *ds, NanoDuration dur, bool ansi, String
 	static String[] colors = { "\e[0;96m", "\e[0;92m", "\e[0;93m", "\e[0;91m" };
 
 	double val = (double)dur;
-	usz idx = 0;
+	isz idx = 0;
 	while (val > 1000.0 && idx < 3)
 	{
 		val /= 1000.0;
@@ -181,7 +181,7 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 	BenchContext* ctx = &bench_context;
 	ctx.has_ansi_codes = terminal_has_ansi_codes();
 
-	for (usz i = 1; i < args.len; i++)
+	for (isz i = 1; i < args.len; i++)
 	{
 		switch (args[i])
 		{
@@ -197,9 +197,9 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 		}
 	}
 
-	usz max_name;
+	isz max_name;
 	foreach (&unit : benchmarks) max_name = max(max_name, unit.name.len);
-	usz len = max_name + 9;
+	isz len = max_name + 9;
 
 	DString name = dstring::temp_with_capacity(64);
 	name.append_repeat('-', len / 2);

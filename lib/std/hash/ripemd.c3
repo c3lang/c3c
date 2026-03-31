@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 
 module std::hash::ripemd;
-const usz[4] PERMISSIBLE_SIZES_BITS = { 128, 160, 256, 320 };
+const isz[4] PERMISSIBLE_SIZES_BITS = { 128, 160, 256, 320 };
 
 <* Unchanging block size. *>
 const BLOCK_SIZE = 64;
@@ -70,7 +70,7 @@ fn void RipeMd.init(&self)
 *>
 fn void RipeMd.update(&self, char[] data)
 {
-	usz $bufsz = $sizeof(self.buffer);
+	isz $bufsz = $sizeof(self.buffer);
 	uint avail = $bufsz - (uint)(self.byte_count & 0x3f);
 	self.byte_count += data.len;
 
@@ -84,7 +84,7 @@ fn void RipeMd.update(&self, char[] data)
 	self.transform(self.buffer);
 	data = data[avail..];
 
-	for (bool is_aligned = 0 == (usz)data.ptr % uint.sizeof; data.len >= $bufsz; data = data[$bufsz..])
+	for (bool is_aligned = 0 == (isz)data.ptr % uint.sizeof; data.len >= $bufsz; data = data[$bufsz..])
 	{
 		if (is_aligned) // when aligned, this optimization is a ~10-20% performance boost
 		{

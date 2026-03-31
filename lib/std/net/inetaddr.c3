@@ -44,7 +44,7 @@ struct InetAddress (Printable)
 }
 
 
-fn usz? InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
+fn isz? InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
 {
 	if (addr.is_ipv6)
 	{
@@ -73,7 +73,7 @@ fn InetAddress? ipv6_from_str(String s)
 	int zero_segment_len = s[0] == ':' || s[^1] == ':' ? 9 - sections : 8 - sections;
 	if (zero_segment_len == 7 && s.len == 2) return { .is_ipv6 = true };
 	if (zero_segment_len > 7) return INVALID_IP_STRING~;
-	usz index = 0;
+	isz index = 0;
 	bool last_was_colon, found_zero;
 	int current = -1;
 	InetAddress addr = { .is_ipv6 = true };

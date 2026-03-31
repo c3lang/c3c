@@ -99,7 +99,7 @@ fn ElementType? qselect(ListType list, isz low, isz high, isz k, CmpFn cmp, Cont
 		isz h = high;
 		isz pivot;
 
-		usz max_retries = 64;
+		isz max_retries = 64;
 		while (l <= h && max_retries--)
 		{
 			pivot = @partition(list, l, h, cmp, context);

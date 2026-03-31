@@ -26,13 +26,13 @@ struct HashSet (Printable)
 	Entry*[] table;
 	Allocator allocator;
 	<* Number of elements *>
-	usz count;
+	isz count;
 	<* Resize limit *>
-	usz threshold;
+	isz threshold;
 	float load_factor;
 }
 
-fn usz HashSet.len(&self) @operator(len) => self.count;
+fn isz HashSet.len(&self) @operator(len) => self.count;
 
 <*
  @param [&inout] allocator : "The allocator to use"
@@ -41,11 +41,11 @@ fn usz HashSet.len(&self) @operator(len) => self.count;
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn HashSet* HashSet.init(&self, Allocator allocator, usz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn HashSet* HashSet.init(&self, Allocator allocator, isz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	capacity = math::next_power_of_2(capacity);
 	self.allocator = allocator;
-	self.threshold = (usz) (capacity * load_factor);
+	self.threshold = (isz) (capacity * load_factor);
 	self.load_factor = load_factor;
 	self.table = alloc::new_array(allocator, Entry*, capacity);
 	return self;
@@ -166,9 +166,9 @@ fn bool HashSet.is_empty(&set) @inline
  @return "The number of new elements added"
  @ensure total <= list.len
 *>
-fn usz HashSet.add_all(&set, Value[] list)
+fn isz HashSet.add_all(&set, Value[] list)
 {
-	usz total;
+	isz total;
 	foreach (v : list)
 	{
 		if (set.add(v)) total++;
@@ -181,9 +181,9 @@ fn usz HashSet.add_all(&set, Value[] list)
  @return "The number of new elements added"
  @ensure return <= other.count
 *>
-fn usz HashSet.add_all_from(&set, HashSet* other)
+fn isz HashSet.add_all_from(&set, HashSet* other)
 {
-	usz total;
+	isz total;
 	other.@each(;Value value)
 	{
 		if (set.add(value)) total++;
@@ -261,9 +261,9 @@ fn void? HashSet.remove(&set, Value value) @maydiscard
 	if (!hashset_remove_entry_for_value(set, value)) return NOT_FOUND~;
 }
 
-fn usz HashSet.remove_all(&set, Value[] values)
+fn isz HashSet.remove_all(&set, Value[] values)
 {
-	usz total;
+	isz total;
 	foreach (v : values)
 	{
 		if (hashset_remove_entry_for_value(set, v)) total++;
@@ -274,9 +274,9 @@ fn usz HashSet.remove_all(&set, Value[] values)
 <*
  @param [&in] other : "Other set"
 *>
-fn usz HashSet.remove_all_from(&set, HashSet* other)
+fn isz HashSet.remove_all_from(&set, HashSet* other)
 {
-	usz total;
+	isz total;
 	other.@each(;Value val)
     {
 		if (hashset_remove_entry_for_value(set, val)) total++;
@@ -323,7 +323,10 @@ fn void HashSet.clear(&set)
 	set.count = 0;
 }
 
-fn void HashSet.reserve(&set, usz capacity)
+<*
+ @require capacity > 0 : "Expected positive capacity"
+*>
+fn void HashSet.reserve(&set, isz capacity)
 {
 	if (capacity > set.threshold)
 	{
@@ -337,7 +340,7 @@ fn Value[] HashSet.values(&self, Allocator allocator)
 {
 	if (!self.count) return {};
 	Value[] list = alloc::alloc_array(allocator, Value, self.count);
-	usz index = 0;
+	isz index;
 	foreach (Entry* entry : self.table)
 	{
 		while (entry)
@@ -360,7 +363,7 @@ fn Value[] HashSet.values(&self, Allocator allocator)
 *>
 fn HashSet HashSet.set_union(&self, Allocator allocator, HashSet* other)
 {
-	usz new_capacity = math::next_power_of_2(self.count + other.count);
+	isz new_capacity = math::next_power_of_2(self.count + other.count);
 	HashSet result;
 	result.init(allocator, new_capacity, self.load_factor);
 	result.add_all_from(self);
@@ -474,10 +477,13 @@ fn void hashset_add_entry(HashSet* set, uint hash, Value value, uint bucket_inde
 	}
 }
 
-fn void hashset_resize(HashSet* self, usz new_capacity) @private
+<*
+ @require new_capacity > 0 : "Expected positive capacity"
+*>
+fn void hashset_resize(HashSet* self, isz new_capacity) @private
 {
 	Entry*[] old_table = self.table;
-	usz old_capacity = old_table.len;
+	isz old_capacity = old_table.len;
 	if (old_capacity == MAXIMUM_CAPACITY)
 	{
 		self.threshold = uint.max;
@@ -490,9 +496,9 @@ fn void hashset_resize(HashSet* self, usz new_capacity) @private
 	self.threshold = (uint)(new_capacity * self.load_factor);
 }
 
-fn usz? HashSet.to_format(&self, Formatter* f) @dynamic
+fn isz? HashSet.to_format(&self, Formatter* f) @dynamic
 {
-	usz len;
+	isz len;
 	len += f.print("{ ")!;
 	self.@each(; Value value)
 	{
@@ -608,7 +614,7 @@ fn void hashset_free_entry(HashSet* set, Entry *entry) @private
 struct HashSetIterator
 {
 	HashSet* set;
-	usz bucket_index;
+	isz bucket_index;
 	Entry* current;
 }
 
@@ -637,7 +643,7 @@ fn Value? HashSetIterator.next(&self)
 	return NOT_FOUND~;
 }
 
-fn usz HashSetIterator.len(&self) @operator(len)
+fn isz HashSetIterator.len(&self) @operator(len)
 {
 	return self.set.count;
 }

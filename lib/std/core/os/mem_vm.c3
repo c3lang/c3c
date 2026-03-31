@@ -11,7 +11,7 @@ import std::io, std::os::win32, std::os::posix, libc;
 struct VirtualMemory
 {
 	void* ptr;
-	usz size;
+	isz size;
 	VirtualMemoryAccess default_access;
 }
 
@@ -29,7 +29,7 @@ enum VirtualMemoryAccess
 	ANY
 }
 
-fn usz aligned_alloc_size(usz size)
+fn isz aligned_alloc_size(isz size)
 {
 	$if env::WIN32:
 		return size > 0 ? mem::aligned_offset(size, win32::allocation_granularity()) : win32::allocation_granularity();
@@ -46,7 +46,7 @@ fn usz aligned_alloc_size(usz size)
  @return? mem::OUT_OF_MEMORY, RANGE_OVERFLOW, UNKNOWN_ERROR, ACCESS_DENIED, INVALID_ARGS
  @return "Pointer to the allocated memory, page aligned"
 *>
-fn void*? alloc(usz size, VirtualMemoryAccess access)
+fn void*? alloc(isz size, VirtualMemoryAccess access)
 {
 	$switch:
 		$case env::POSIX:
@@ -81,7 +81,7 @@ fn void*? alloc(usz size, VirtualMemoryAccess access)
  @param size : "The size of the allocated pointer"
  @require mem::ptr_is_page_aligned(ptr) : "The pointer should be page aligned"
 *>
-fn void? release(void* ptr, usz size)
+fn void? release(void* ptr, isz size)
 {
 	$switch:
 		$case env::POSIX:
@@ -117,7 +117,7 @@ fn void? release(void* ptr, usz size)
  @require mem::ptr_is_page_aligned(ptr + len) : "The length must be page aligned"
  @return? ACCESS_DENIED, UNALIGNED_ADDRESS, RANGE_OVERFLOW, UPDATE_FAILED, UNMAPPED_ACCESS, INVALID_ARGS
 *>
-fn void? protect(void* ptr, usz len, VirtualMemoryAccess access)
+fn void? protect(void* ptr, isz len, VirtualMemoryAccess access)
 {
 	$switch:
 		$case env::POSIX:
@@ -155,7 +155,7 @@ fn void? protect(void* ptr, usz len, VirtualMemoryAccess access)
  @require mem::ptr_is_page_aligned(ptr + len) : "The length must be page aligned"
  @return? UNKNOWN_ERROR, mem::OUT_OF_MEMORY, ACCESS_DENIED, UNALIGNED_ADDRESS, RANGE_OVERFLOW, UPDATE_FAILED, UNMAPPED_ACCESS, INVALID_ARGS
 *>
-fn void? commit(void* ptr, usz len, VirtualMemoryAccess access = READWRITE)
+fn void? commit(void* ptr, isz len, VirtualMemoryAccess access = READWRITE)
 {
 	$switch:
 		$case env::POSIX:
@@ -189,7 +189,7 @@ fn void? commit(void* ptr, usz len, VirtualMemoryAccess access = READWRITE)
  @require mem::ptr_is_page_aligned(ptr + len) : "The length must be page aligned"
  @return? ACCESS_DENIED, UNALIGNED_ADDRESS, RANGE_OVERFLOW, UPDATE_FAILED, UNMAPPED_ACCESS, INVALID_ARGS
 *>
-fn void? decommit(void* ptr, usz len, bool block = true)
+fn void? decommit(void* ptr, isz len, bool block = true)
 {
 	$switch:
 		$case env::POSIX:
@@ -230,7 +230,7 @@ fn void? decommit(void* ptr, usz len, bool block = true)
  @return? mem::OUT_OF_MEMORY, RANGE_OVERFLOW, UNKNOWN_ERROR, ACCESS_DENIED, INVALID_ARGS, io::NO_PERMISSION, io::FILE_NOT_VALID, io::WOULD_BLOCK, io::FILE_NOT_FOUND
  @return "Pointer to the mapped region"
 *>
-fn void*? mmap_file(Fd fd, usz size, usz offset = 0, VirtualMemoryAccess access = READ, bool shared = false) @if (env::POSIX)
+fn void*? mmap_file(Fd fd, isz size, isz offset = 0, VirtualMemoryAccess access = READ, bool shared = false) @if (env::POSIX)
 {
 	CInt flags = shared ? posix::MAP_SHARED : posix::MAP_PRIVATE;
 	void* ptr = posix::mmap(null, aligned_alloc_size(size), access.to_posix(), flags, fd, offset);
@@ -256,7 +256,7 @@ fn void*? mmap_file(Fd fd, usz size, usz offset = 0, VirtualMemoryAccess access 
  @require size > 0 : "The size must be non-zero"
  @return? mem::OUT_OF_MEMORY, RANGE_OVERFLOW, UNKNOWN_ERROR, ACCESS_DENIED, INVALID_ARGS
 *>
-fn VirtualMemory? virtual_alloc(usz size, VirtualMemoryAccess access = PROTECTED)
+fn VirtualMemory? virtual_alloc(isz size, VirtualMemoryAccess access = PROTECTED)
 {
 	size = aligned_alloc_size(size);
 	void* ptr = alloc(size, access)!;
@@ -274,7 +274,7 @@ fn VirtualMemory? virtual_alloc(usz size, VirtualMemoryAccess access = PROTECTED
  @require offset + len <= self.size : "Length out of range"
  @return? UPDATE_FAILED, ACCESS_DENIED, UNALIGNED_ADDRESS, RANGE_OVERFLOW, UNKNOWN_ERROR
 *>
-macro void? VirtualMemory.commit(self, usz offset, usz len)
+macro void? VirtualMemory.commit(self, isz offset, isz len)
 {
 	return commit(self.ptr + offset, len, self.default_access);
 }
@@ -290,7 +290,7 @@ macro void? VirtualMemory.commit(self, usz offset, usz len)
  @require offset + len < self.size : "Length out of range"
  @return? UPDATE_FAILED, ACCESS_DENIED, UNALIGNED_ADDRESS, RANGE_OVERFLOW, UNKNOWN_ERROR
 *>
-macro void? VirtualMemory.protect(self, usz offset, usz len, VirtualMemoryAccess access)
+macro void? VirtualMemory.protect(self, isz offset, isz len, VirtualMemoryAccess access)
 {
 	return protect(self.ptr + offset, len, access);
 }
@@ -306,7 +306,7 @@ macro void? VirtualMemory.protect(self, usz offset, usz len, VirtualMemoryAccess
  @require offset + len < self.size : "Length out of range"
  @return? UPDATE_FAILED
 *>
-fn void? VirtualMemory.decommit(self, usz offset, usz len, bool block = true)
+fn void? VirtualMemory.decommit(self, isz offset, isz len, bool block = true)
 {
 	return decommit(self.ptr + offset, len, block);
 }

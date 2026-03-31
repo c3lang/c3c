@@ -65,7 +65,7 @@ import std::io;
  @param [in] input : `The raw RGB or RGBA pixels to encode`
  @param [&in] desc : `The descriptor of the image`
 *>
-fn usz? write(String filename, char[] input, QOIDesc* desc) => @pool()
+fn isz? write(String filename, char[] input, QOIDesc* desc) => @pool()
 {
 	// encode data
 	char[] output = encode(tmem, input, desc)!;
@@ -316,7 +316,7 @@ fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels c
 	if (channels == AUTO) channels = desc_channels;
 	
 	// allocate memory for image data
-	usz image_size = (usz)pixels * channels;
+	isz image_size = (isz)pixels * channels;
 	char[] image = alloc::alloc_array(allocator, char, image_size);
 	defer catch alloc::free(allocator, image);
 

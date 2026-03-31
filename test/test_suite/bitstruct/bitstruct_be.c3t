@@ -67,8 +67,8 @@ fn void main()
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %10 = load i64, ptr %.anon, align 8
-  %gt = icmp ugt i64 4, %10
-  br i1 %gt, label %loop.body, label %loop.exit
+  %lt = icmp slt i64 %10, 4
+  br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %11 = load i64, ptr %.anon, align 8
@@ -80,8 +80,8 @@ loop.body:                                        ; preds = %loop.cond
   store %any %14, ptr %varargslots2, align 16
   %15 = call i64 @std.io.printf(ptr %retparam3, ptr @.str.1, i64 3, ptr %varargslots2, i64 1)
   %16 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %16, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %16, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
@@ -147,8 +147,8 @@ voiderr:                                          ; preds = %noerr_block17, %gua
 
 loop.cond19:                                      ; preds = %loop.body21, %voiderr
   %27 = load i64, ptr %.anon18, align 8
-  %gt20 = icmp ugt i64 4, %27
-  br i1 %gt20, label %loop.body21, label %loop.exit29
+  %lt20 = icmp slt i64 %27, 4
+  br i1 %lt20, label %loop.body21, label %loop.exit29
 
 loop.body21:                                      ; preds = %loop.cond19
   %28 = load i64, ptr %.anon18, align 8
@@ -160,8 +160,8 @@ loop.body21:                                      ; preds = %loop.cond19
   store %any %31, ptr %varargslots24, align 16
   %32 = call i64 @std.io.printf(ptr %retparam25, ptr @.str.2, i64 3, ptr %varargslots24, i64 1)
   %33 = load i64, ptr %.anon18, align 8
-  %addnuw28 = add nuw i64 %33, 1
-  store i64 %addnuw28, ptr %.anon18, align 8
+  %addnsw28 = add nsw i64 %33, 1
+  store i64 %addnsw28, ptr %.anon18, align 8
   br label %loop.cond19
 
 loop.exit29:                                      ; preds = %loop.cond19
@@ -257,8 +257,8 @@ voiderr52:                                        ; preds = %noerr_block50, %gua
 
 loop.cond65:                                      ; preds = %loop.body67, %voiderr52
   %66 = load i64, ptr %.anon64, align 8
-  %gt66 = icmp ugt i64 4, %66
-  br i1 %gt66, label %loop.body67, label %loop.exit75
+  %lt66 = icmp slt i64 %66, 4
+  br i1 %lt66, label %loop.body67, label %loop.exit75
 
 loop.body67:                                      ; preds = %loop.cond65
   %67 = load i64, ptr %.anon64, align 8
@@ -270,8 +270,8 @@ loop.body67:                                      ; preds = %loop.cond65
   store %any %70, ptr %varargslots70, align 16
   %71 = call i64 @std.io.printf(ptr %retparam71, ptr @.str.5, i64 3, ptr %varargslots70, i64 1)
   %72 = load i64, ptr %.anon64, align 8
-  %addnuw74 = add nuw i64 %72, 1
-  store i64 %addnuw74, ptr %.anon64, align 8
+  %addnsw74 = add nsw i64 %72, 1
+  store i64 %addnsw74, ptr %.anon64, align 8
   br label %loop.cond65
 
 loop.exit75:                                      ; preds = %loop.cond65

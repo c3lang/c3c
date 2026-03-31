@@ -6,10 +6,10 @@ const char[16] XDIGITS_L = "0123456789abcdef";
 
 faultdef BAD_FORMAT;
 
-fn usz? print_hex_chars(Formatter* f, char[] out, bool uppercase) @inline
+fn isz? print_hex_chars(Formatter* f, char[] out, bool uppercase) @inline
 {
 	char past_10 = (uppercase ? 'A' : 'a') - 10;
-	usz len = 0;
+	isz len = 0;
 	foreach (c : out)
 	{
 		char digit = c >> 4;
@@ -29,7 +29,7 @@ macro fault Formatter.first_err(&self, fault f)
 	return f;
 }
 
-fn usz? formatter_adjust(Formatter* f, usz len) @local
+fn isz? formatter_adjust(Formatter* f, isz len) @local
 {
 	if (!f.flags.left) return 0;
 	return formatter_pad(f, ' ', f.width, len);
@@ -141,10 +141,10 @@ fn FloatType? float_from_any(any arg) @private
  @param maxlen : "the maximum len that can be read."
  @return "The result of the atoi."
 *>
-fn uint simple_atoi(char* buf, usz maxlen, usz* len_ptr) @inline @private
+fn uint simple_atoi(char* buf, isz maxlen, isz* len_ptr) @inline @private
 {
 	uint i = 0;
-	usz len = *len_ptr;
+	isz len = *len_ptr;
 	while (len < maxlen)
 	{
 		char c = buf[len];
@@ -156,13 +156,13 @@ fn uint simple_atoi(char* buf, usz maxlen, usz* len_ptr) @inline @private
 	return i;
 }
 
-fn usz? formatter_out_substr(Formatter* f, String str) @private
+fn isz? formatter_out_substr(Formatter* f, String str) @private
 {
-	usz l = conv::utf8_codepoints(str);
+	isz l = conv::utf8_codepoints(str);
 	uint prec = f.prec;
 	if (f.flags.precision && l < prec) l = prec;
-	usz index = 0;
-	usz chars = str.len;
+	isz index = 0;
+	isz chars = str.len;
 	char* ptr = str.ptr;
 	while (index < chars)
 	{
@@ -175,7 +175,7 @@ fn usz? formatter_out_substr(Formatter* f, String str) @private
 	return index;
 }
 
-fn usz? formatter_pad(Formatter* f, char c, isz width, isz len) @inline
+fn isz? formatter_pad(Formatter* f, char c, isz width, isz len) @inline
 {
 	isz delta = width - len;
 	for (isz i = 0; i < delta; i++) f.print_char(c)!;
@@ -189,7 +189,7 @@ fn char* fmt_u(uint128 x, char* s)
 	return s;
 }
 
-fn usz? Formatter.out_chars(&self, char[] s)
+fn isz? Formatter.out_chars(&self, char[] s)
 {
 	foreach (c : s) self.print_char(c)!;
 	return s.len;
@@ -203,12 +203,12 @@ enum FloatFormatting
 	HEX
 }
 
-fn usz? formatter_etoa(Formatter* self, double y) => formatter_floatformat(self, EXPONENTIAL, y);
-fn usz? formatter_ftoa(Formatter* self, double y) => formatter_floatformat(self, FLOAT, y);
-fn usz? formatter_gtoa(Formatter* self, double y) => formatter_floatformat(self, ADAPTIVE, y);
-fn usz? formatter_atoa(Formatter* self, double y) => formatter_floatformat(self, HEX, y);
+fn isz? formatter_etoa(Formatter* self, double y) => formatter_floatformat(self, EXPONENTIAL, y);
+fn isz? formatter_ftoa(Formatter* self, double y) => formatter_floatformat(self, FLOAT, y);
+fn isz? formatter_gtoa(Formatter* self, double y) => formatter_floatformat(self, ADAPTIVE, y);
+fn isz? formatter_atoa(Formatter* self, double y) => formatter_floatformat(self, HEX, y);
 
-fn usz? formatter_floatformat_hex(Formatter* self, double y, bool is_neg, isz pl, isz p) @private @inline
+fn isz? formatter_floatformat_hex(Formatter* self, double y, bool is_neg, isz pl, isz p) @private @inline
 {
 	double round = 8.0;
 	// 0x / 0X
@@ -257,8 +257,8 @@ fn usz? formatter_floatformat_hex(Formatter* self, double y, bool is_neg, isz pl
 	isz outlen = s - buf;
 	isz explen = ebuf - estr;
 	if (p > int.max - 2 - explen - pl) return INTERNAL_BUFFER_EXCEEDED~;
-	usz len;
-	usz l = (usz)(p && outlen - 2 < p
+	isz len;
+	isz l = (isz)(p && outlen - 2 < p
 			? p + 2 + explen
 			: outlen + explen);
 	if (!self.flags.left && !self.flags.zeropad) len += formatter_pad(self, ' ', self.width, pl + l)!;
@@ -272,7 +272,7 @@ fn usz? formatter_floatformat_hex(Formatter* self, double y, bool is_neg, isz pl
 	return len;
 }
 
-fn usz? formatter_floatformat(Formatter* self, FloatFormatting formatting, double y) @private
+fn isz? formatter_floatformat(Formatter* self, FloatFormatting formatting, double y) @private
 {
 	// This code is heavily based on musl's printf code
 	const BUF_SIZE = (math::DOUBLE_MANT_DIG + 28) / 29 + 1
@@ -288,7 +288,7 @@ fn usz? formatter_floatformat(Formatter* self, FloatFormatting formatting, doubl
 	// Print inf/nan
 	if (!math::is_finite(y))
 	{
-		usz len;
+		isz len;
 		// Add padding
 		if (!self.flags.left) len += formatter_pad(self, ' ', self.width, 3 + pl)!;
 		String s = self.flags.uppercase ? "INF" : "inf";
@@ -482,7 +482,7 @@ fn usz? formatter_floatformat(Formatter* self, FloatFormatting formatting, doubl
 		l += (int)(ebuf - estr);
 	}
 	if (l > int.max - pl) return INTERNAL_BUFFER_EXCEEDED~;
-	usz len;
+	isz len;
 	if (!self.flags.left && !self.flags.zeropad) len += formatter_pad(self, ' ', self.width, pl + l)!;
 	if (is_neg || self.flags.plus) len += self.print_char(is_neg ? '-' : '+')!;
 	if (self.flags.zeropad) len += formatter_pad(self, '0', self.width, pl + l)!;
@@ -544,18 +544,18 @@ fn usz? formatter_floatformat(Formatter* self, FloatFormatting formatting, doubl
 }
 
 
-fn usz? formatter_out_str_pad(Formatter* self, any arg) @private @inline
+fn isz? formatter_out_str_pad(Formatter* self, any arg) @private @inline
 {
-	usz total;
+	isz total;
 	if (self.width && !self.flags.left)
 	{
 		OutputFn out_fn = self.out_fn;
 		self.out_fn = (OutputFn)&out_null_fn;
-		usz len = formatter_out_str(self, arg)!;
+		isz len = formatter_out_str(self, arg)!;
 		self.out_fn = out_fn;
 		total += formatter_pad(self, ' ', self.width, (isz)len)!;
 	}
-	usz len = formatter_out_str(self, arg)!;
+	isz len = formatter_out_str(self, arg)!;
 	total += len;
 	if (self.flags.left)
 	{
@@ -576,10 +576,10 @@ const char[201] DIGIT_PAIRS @private =
   "08182838485868788898"
   "09192939495969798999";
 
-fn usz? formatter_ntoa(Formatter* f, uint128 value, bool negative, uint base) @private
+fn isz? formatter_ntoa(Formatter* f, uint128 value, bool negative, uint base) @private
 {
 	char[PRINTF_NTOA_BUFFER_SIZE] buf @noinit;
-	usz len;
+	isz len;
 
 	// no hash for 0 values
 	if (!value) f.flags.hash = false;
@@ -641,7 +641,7 @@ fn usz? formatter_ntoa(Formatter* f, uint128 value, bool negative, uint base) @p
 	return formatter_ntoa_format(f, (String)buf[:PRINTF_NTOA_BUFFER_SIZE], len, negative, base);
 }
 
-fn usz? formatter_ntoa_format(Formatter* f, String buf, usz len, bool negative, uint base) @private
+fn isz? formatter_ntoa_format(Formatter* f, String buf, isz len, bool negative, uint base) @private
 {
 	// pad leading zeros
 	if (!f.flags.left)
@@ -702,19 +702,19 @@ fn usz? formatter_ntoa_format(Formatter* f, String buf, usz len, bool negative, 
 }
 
 
-fn usz? formatter_ntoa_any(Formatter* f, any arg, uint base) @private
+fn isz? formatter_ntoa_any(Formatter* f, any arg, uint base) @private
 {
 	bool is_neg;
 	return formatter_ntoa(f, int_from_any(arg, &is_neg)!!, is_neg, base) @inline;
 }
 
-fn usz? formatter_out_char(Formatter* f, any arg) @private
+fn isz? formatter_out_char(Formatter* f, any arg) @private
 {
 	if (!arg.type.kindof.is_int())
 	{
 		return formatter_out_substr(f, "<NOT CHAR>");
 	}
-	usz len = 1;
+	isz len = 1;
 	// pre padding
 	if (!f.flags.left)
 	{
@@ -748,10 +748,10 @@ fn usz? formatter_out_char(Formatter* f, any arg) @private
 }
 
 
-fn usz? formatter_out_reverse(Formatter* f, char[] buf) @private
+fn isz? formatter_out_reverse(Formatter* f, char[] buf) @private
 {
-	usz n;
-	usz len = buf.len;
+	isz n;
+	isz len = buf.len;
 	// pad spaces up to given width
 	if (!f.flags.zeropad && !f.flags.left)
 	{
@@ -767,13 +767,13 @@ fn usz? formatter_out_reverse(Formatter* f, char[] buf) @private
 
 
 fn int? printf_parse_format_field(
-	any* args_ptr, usz args_len, usz* args_index_ptr,
-	char* format_ptr, usz format_len, usz* index_ptr) @inline @private
+	any* args_ptr, isz args_len, isz* args_index_ptr,
+	char* format_ptr, isz format_len, isz* index_ptr) @inline @private
 {
 	char c = format_ptr[*index_ptr];
 	if (c.is_digit()) return simple_atoi(format_ptr, format_len, index_ptr);
 	if (c != '*') return 0;
-	usz len = ++(*index_ptr);
+	isz len = ++(*index_ptr);
 	if (len >= format_len) return BAD_FORMAT~;
 	if (*args_index_ptr >= args_len) return BAD_FORMAT~;
 	any val = args_ptr[(*args_index_ptr)++];
@@ -782,7 +782,7 @@ fn int? printf_parse_format_field(
 	return intval ?? BAD_FORMAT~;
 }
 
-fn usz? formatter_out_hex_buffer(Formatter* self, any arg) @private @inline
+fn isz? formatter_out_hex_buffer(Formatter* self, any arg) @private @inline
 {
 	char[] out @noinit;
 	switch (arg.type)
@@ -804,8 +804,8 @@ fn usz? formatter_out_hex_buffer(Formatter* self, any arg) @private @inline
 			}
 			return formatter_out_substr(self, "<INVALID>");
 	}
-	usz len = out.len * 2;
-	usz total;
+	isz len = out.len * 2;
+	isz total;
 	if (self.flags.left)
 	{
 		total += print_hex_chars(self, out, self.flags.uppercase)!;
@@ -820,7 +820,7 @@ fn usz? formatter_out_hex_buffer(Formatter* self, any arg) @private @inline
 }
 
 
-fn usz? formatter_out_unknown(Formatter* self, String category, any arg) @private
+fn isz? formatter_out_unknown(Formatter* self, String category, any arg) @private
 {
 	return formatter_out_substr(self, "<")
 		+ formatter_out_substr(self, category)
@@ -831,13 +831,13 @@ fn usz? formatter_out_unknown(Formatter* self, String category, any arg) @privat
 		+ formatter_out_substr(self, ">");
 }
 
-fn usz? formatter_out_collection(Formatter* self, any arg, String open, String close) @private
+fn isz? formatter_out_collection(Formatter* self, any arg, String open, String close) @private
 {
 	typeid inner = arg.type.inner;
 	if (inner == void.typeid) inner = char.typeid;
-	usz size = inner.sizeof;
+	isz size = inner.sizeof;
 
-	usz alen;
+	isz alen;
 	void* data_ptr;
 	if (arg.type.kindof == SLICE)
 	{
@@ -861,8 +861,8 @@ fn usz? formatter_out_collection(Formatter* self, any arg, String open, String c
 	self.flags = {};
 	self.width = 0;
 
-	usz len = formatter_out_substr(self, open)!;
-	for (usz i = 0; i < alen; i++)
+	isz len = formatter_out_substr(self, open)!;
+	for (isz i = 0; i < alen; i++)
 	{
 		if (i != 0) len += formatter_out_substr(self, ", ")!;
 		len += formatter_out_str(self, any_make(data_ptr, inner))!;
@@ -872,7 +872,7 @@ fn usz? formatter_out_collection(Formatter* self, any arg, String open, String c
 	return len;
 }
 
-fn usz? formatter_out_str(Formatter* self, any arg) @private
+fn isz? formatter_out_str(Formatter* self, any arg) @private
 {
 	switch (arg.type.kindof)
 	{
@@ -916,7 +916,7 @@ fn usz? formatter_out_str(Formatter* self, any arg) @private
 					{
 						void** pointer = arg.ptr;
 						any deref = any_make(*pointer, arg.type.inner);
-						usz? n = self.print_with_function((Printable)deref);
+						isz? n = self.print_with_function((Printable)deref);
 						if (try n) return n;
 						if (@catch(n) != NOT_FOUND) n!;
 					}
@@ -928,7 +928,7 @@ fn usz? formatter_out_str(Formatter* self, any arg) @private
 			return formatter_out_substr(self, *(bool*)arg.ptr ? "true" : "false");
 		default:
 	}
-	usz? n = self.print_with_function((Printable)arg);
+	isz? n = self.print_with_function((Printable)arg);
 	if (try n) return n;
 	if (@catch(n) != NOT_FOUND) n!;
 	switch (arg.type.kindof)
@@ -936,7 +936,7 @@ fn usz? formatter_out_str(Formatter* self, any arg) @private
 		case TYPEID:
 			return formatter_out_substr(self, "typeid[")! + formatter_ntoa(self, (iptr)*(typeid*)arg, false, 16)! + formatter_out_substr(self, "]")!;
 		case ENUM:
-			usz i = types::any_to_enum_ordinal(arg, usz)!!;
+			isz i = types::any_to_enum_ordinal(arg, isz)!!;
 			assert(i < arg.type.names.len, "Illegal enum value found, numerical value was %d.", i);
 			return formatter_out_substr(self, arg.type.names[i]);
 		case STRUCT:

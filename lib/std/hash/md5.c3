@@ -43,11 +43,11 @@ fn void Md5.update(&ctx, char[] data)
 	if ((ctx.lo = (saved_lo + data.len) & 0x1fffffff) < saved_lo) ctx.hi++;
 	ctx.hi += data.len >> 29;
 
-	usz used = (usz)saved_lo & 0x3f;
+	isz used = (isz)saved_lo & 0x3f;
 
 	if (used)
 	{
-		usz available = 64 - used;
+		isz available = 64 - used;
 
 		if (data.len < available)
 		{
@@ -61,17 +61,17 @@ fn void Md5.update(&ctx, char[] data)
 
 	if (data.len >= 64)
 	{
-		data = body(ctx, data, data.len & ~(usz)0x3f)[:data.len & 0x3f];
+		data = body(ctx, data, (isz)data.len & ~(isz)0x3f)[:data.len & 0x3f];
 	}
 	ctx.buffer[:data.len] = data[..];
 }
 
 fn char[HASH_BYTES] Md5.final(&ctx)
 {
-	usz used = (usz)ctx.lo & 0x3f;
+	isz used = (isz)ctx.lo & 0x3f;
 	ctx.buffer[used++] = 0x80;
 
-	usz available = 64 - used;
+	isz available = 64 - used;
 
 	if (available < 8)
 	{
@@ -140,7 +140,7 @@ macro void @step(#f, a, b, c, d, ptr, n, t, s)
 }
 
 
-fn char* body(Md5* ctx, void* data, usz size)
+fn char* body(Md5* ctx, void* data, isz size)
 {
 	char* ptr = data;
 	uint a = ctx.a;

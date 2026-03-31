@@ -149,17 +149,17 @@ entry:
   %a52 = alloca i32, align 4
   %.anon59 = alloca [5 x i32], align 16
   %.anon60 = alloca i64, align 8
-  %i63 = alloca i64, align 8
-  %y64 = alloca i32, align 4
-  %.anon68 = alloca [5 x i32], align 16
-  %.anon69 = alloca i64, align 8
-  %i73 = alloca i64, align 8
-  %y74 = alloca i32, align 4
+  %i64 = alloca i64, align 8
+  %y65 = alloca i32, align 4
+  %.anon70 = alloca [5 x i32], align 16
+  %.anon71 = alloca i64, align 8
+  %i75 = alloca i64, align 8
+  %y76 = alloca i32, align 4
   %sretparam = alloca [5 x i32], align 4
-  %.anon78 = alloca i64, align 8
-  %i82 = alloca i64, align 8
-  %y83 = alloca i32, align 4
-  %y90 = alloca ptr, align 8
+  %.anon80 = alloca i64, align 8
+  %i84 = alloca i64, align 8
+  %y85 = alloca i32, align 4
+  %y92 = alloca ptr, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const.2, i32 12, i1 false)
   %neq = icmp ne ptr %x, null
   call void @llvm.assume(i1 %neq)
@@ -340,103 +340,103 @@ loop.exit58:                                      ; preds = %loop.cond47
   store i64 0, ptr %.anon60, align 8
   br label %loop.cond61
 
-loop.cond61:                                      ; preds = %loop.body62, %loop.exit58
+loop.cond61:                                      ; preds = %loop.body63, %loop.exit58
   %47 = load i64, ptr %.anon60, align 8
-  %gt = icmp ugt i64 5, %47
-  br i1 %gt, label %loop.body62, label %loop.exit67
+  %lt62 = icmp slt i64 %47, 5
+  br i1 %lt62, label %loop.body63, label %loop.exit69
 
-loop.body62:                                      ; preds = %loop.cond61
+loop.body63:                                      ; preds = %loop.cond61
   %48 = load i64, ptr %.anon60, align 8
-  store i64 %48, ptr %i63, align 8
+  store i64 %48, ptr %i64, align 8
   %49 = load i64, ptr %.anon60, align 8
-  %ptroffset65 = getelementptr inbounds [4 x i8], ptr %.anon59, i64 %49
-  %50 = load i32, ptr %ptroffset65, align 4
-  store i32 %50, ptr %y64, align 4
-  %51 = load i64, ptr %i63, align 8
-  %52 = load i32, ptr %y64, align 4
+  %ptroffset66 = getelementptr inbounds [4 x i8], ptr %.anon59, i64 %49
+  %50 = load i32, ptr %ptroffset66, align 4
+  store i32 %50, ptr %y65, align 4
+  %51 = load i64, ptr %i64, align 8
+  %52 = load i32, ptr %y65, align 4
   call void (ptr, ...) @printf(ptr @.str.10, i64 %51, i32 %52)
-  %53 = load i64, ptr %i63, align 8
-  %add66 = add i64 %53, 1
-  store i64 %add66, ptr %i63, align 8
+  %53 = load i64, ptr %i64, align 8
+  %add67 = add i64 %53, 1
+  store i64 %add67, ptr %i64, align 8
   %54 = load i64, ptr %.anon60, align 8
-  %addnuw = add nuw i64 %54, 1
-  store i64 %addnuw, ptr %.anon60, align 8
+  %addnsw68 = add nsw i64 %54, 1
+  store i64 %addnsw68, ptr %.anon60, align 8
   br label %loop.cond61
 
-loop.exit67:                                      ; preds = %loop.cond61
-  call void @foo.getFields(ptr sret([5 x i32]) align 4 %.anon68)
-  store i64 0, ptr %.anon69, align 8
-  br label %loop.cond70
+loop.exit69:                                      ; preds = %loop.cond61
+  call void @foo.getFields(ptr sret([5 x i32]) align 4 %.anon70)
+  store i64 0, ptr %.anon71, align 8
+  br label %loop.cond72
 
-loop.cond70:                                      ; preds = %loop.body72, %loop.exit67
-  %55 = load i64, ptr %.anon69, align 8
-  %gt71 = icmp ugt i64 5, %55
-  br i1 %gt71, label %loop.body72, label %loop.exit77
+loop.cond72:                                      ; preds = %loop.body74, %loop.exit69
+  %55 = load i64, ptr %.anon71, align 8
+  %lt73 = icmp slt i64 %55, 5
+  br i1 %lt73, label %loop.body74, label %loop.exit79
 
-loop.body72:                                      ; preds = %loop.cond70
-  %56 = load i64, ptr %.anon69, align 8
-  store i64 %56, ptr %i73, align 8
-  %57 = load i64, ptr %.anon69, align 8
-  %ptroffset75 = getelementptr inbounds [4 x i8], ptr %.anon68, i64 %57
-  %58 = load i32, ptr %ptroffset75, align 4
-  store i32 %58, ptr %y74, align 4
-  %59 = load i64, ptr %i73, align 8
-  %60 = load i32, ptr %y74, align 4
+loop.body74:                                      ; preds = %loop.cond72
+  %56 = load i64, ptr %.anon71, align 8
+  store i64 %56, ptr %i75, align 8
+  %57 = load i64, ptr %.anon71, align 8
+  %ptroffset77 = getelementptr inbounds [4 x i8], ptr %.anon70, i64 %57
+  %58 = load i32, ptr %ptroffset77, align 4
+  store i32 %58, ptr %y76, align 4
+  %59 = load i64, ptr %i75, align 8
+  %60 = load i32, ptr %y76, align 4
   call void (ptr, ...) @printf(ptr @.str.11, i64 %59, i32 %60)
-  %61 = load i64, ptr %.anon69, align 8
-  %addnuw76 = add nuw i64 %61, 1
-  store i64 %addnuw76, ptr %.anon69, align 8
-  br label %loop.cond70
+  %61 = load i64, ptr %.anon71, align 8
+  %addnsw78 = add nsw i64 %61, 1
+  store i64 %addnsw78, ptr %.anon71, align 8
+  br label %loop.cond72
 
-loop.exit77:                                      ; preds = %loop.cond70
+loop.exit79:                                      ; preds = %loop.cond72
   call void @foo.getFields(ptr sret([5 x i32]) align 4 %sretparam)
-  store i64 0, ptr %.anon78, align 8
-  br label %loop.cond79
+  store i64 0, ptr %.anon80, align 8
+  br label %loop.cond81
 
-loop.cond79:                                      ; preds = %loop.body81, %loop.exit77
-  %62 = load i64, ptr %.anon78, align 8
-  %gt80 = icmp ugt i64 5, %62
-  br i1 %gt80, label %loop.body81, label %loop.exit86
+loop.cond81:                                      ; preds = %loop.body83, %loop.exit79
+  %62 = load i64, ptr %.anon80, align 8
+  %lt82 = icmp slt i64 %62, 5
+  br i1 %lt82, label %loop.body83, label %loop.exit88
 
-loop.body81:                                      ; preds = %loop.cond79
-  %63 = load i64, ptr %.anon78, align 8
-  store i64 %63, ptr %i82, align 8
-  %64 = load i64, ptr %.anon78, align 8
-  %ptroffset84 = getelementptr inbounds [4 x i8], ptr %sretparam, i64 %64
-  %65 = load i32, ptr %ptroffset84, align 4
-  store i32 %65, ptr %y83, align 4
-  %66 = load i64, ptr %i82, align 8
-  %67 = load i32, ptr %y83, align 4
+loop.body83:                                      ; preds = %loop.cond81
+  %63 = load i64, ptr %.anon80, align 8
+  store i64 %63, ptr %i84, align 8
+  %64 = load i64, ptr %.anon80, align 8
+  %ptroffset86 = getelementptr inbounds [4 x i8], ptr %sretparam, i64 %64
+  %65 = load i32, ptr %ptroffset86, align 4
+  store i32 %65, ptr %y85, align 4
+  %66 = load i64, ptr %i84, align 8
+  %67 = load i32, ptr %y85, align 4
   call void (ptr, ...) @printf(ptr @.str.12, i64 %66, i32 %67)
-  %68 = load i64, ptr %.anon78, align 8
-  %addnuw85 = add nuw i64 %68, 1
-  store i64 %addnuw85, ptr %.anon78, align 8
-  br label %loop.cond79
+  %68 = load i64, ptr %.anon80, align 8
+  %addnsw87 = add nsw i64 %68, 1
+  store i64 %addnsw87, ptr %.anon80, align 8
+  br label %loop.cond81
 
-loop.exit86:                                      ; preds = %loop.cond79
-  %neq87 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq87)
-  %neq88 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq88)
-  %ptradd89 = getelementptr inbounds i8, ptr %x, i64 4
+loop.exit88:                                      ; preds = %loop.cond81
+  %neq89 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %neq89)
+  %neq90 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %neq90)
+  %ptradd91 = getelementptr inbounds i8, ptr %x, i64 4
   %69 = load i32, ptr %x, align 4
-  %70 = load i32, ptr %ptradd89, align 4
+  %70 = load i32, ptr %ptradd91, align 4
   call void (ptr, ...) @printf(ptr @.str.13, i32 %69, i32 %70)
-  %neq91 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq91)
-  %ptradd92 = getelementptr inbounds i8, ptr %x, i64 4
-  store ptr %ptradd92, ptr %y90, align 8
-  %71 = load ptr, ptr %y90, align 8
+  %neq93 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %neq93)
+  %ptradd94 = getelementptr inbounds i8, ptr %x, i64 4
+  store ptr %ptradd94, ptr %y92, align 8
+  %71 = load ptr, ptr %y92, align 8
   %72 = load i32, ptr %71, align 4
-  %add93 = add i32 %72, 1
-  store i32 %add93, ptr %71, align 4
-  %neq94 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq94)
-  %neq95 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq95)
-  %ptradd96 = getelementptr inbounds i8, ptr %x, i64 4
+  %add95 = add i32 %72, 1
+  store i32 %add95, ptr %71, align 4
+  %neq96 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %neq96)
+  %neq97 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %neq97)
+  %ptradd98 = getelementptr inbounds i8, ptr %x, i64 4
   %73 = load i32, ptr %x, align 4
-  %74 = load i32, ptr %ptradd96, align 4
+  %74 = load i32, ptr %ptradd98, align 4
   call void (ptr, ...) @printf(ptr @.str.14, i32 %73, i32 %74)
   ret void
 }

@@ -69,9 +69,9 @@ macro void @swap(#a, #b) @builtin
 	#b = temp;
 }
 
-macro usz bitsizeof($Type) @builtin @const => $Type.sizeof * 8u;
+macro isz bitsizeof($Type) @builtin @const => $Type.sizeof * 8u;
 
-macro usz @bitsizeof(#expr) @builtin @const => $sizeof(#expr) * 8u;
+macro isz @bitsizeof(#expr) @builtin @const => $sizeof(#expr) * 8u;
 
 <*
  Compile-time check for whether a set of constants contains a certain expression.
@@ -231,7 +231,7 @@ fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_ba
 		io::eprint(message);
 		io::eprintn("'");
 
-		usz repetition_count = 0;
+		isz repetition_count;
 		foreach (i, &trace : backtrace)
 		{
 			if (i < backtraces_to_ignore) continue;
@@ -548,7 +548,7 @@ macro uint @clz($value) @builtin @const
 		return $sizeof($value) * 8;   // it's all leading zeroes
 	$endif
 
-	usz $n = 0;
+	isz $n = 0;
 	uint128 $x = (uint128)$value;
 
 	$if $x <= 0x0000_0000_0000_0000_FFFF_FFFF_FFFF_FFFF: $n += 64; $x <<= 64; $endif

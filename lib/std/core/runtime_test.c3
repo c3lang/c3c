@@ -34,7 +34,7 @@ struct TestContext
 	TestFn teardown_fn;
 
 	char* error_buffer;
-	usz error_buffer_capacity;
+	isz error_buffer_capacity;
 	File fake_stdout;
 	struct stored
 	{
@@ -65,8 +65,8 @@ fn TestUnit[] test_collection_create(Allocator allocator)
 // Sort the tests by their name in ascending order.
 fn int cmp_test_unit(TestUnit a, TestUnit b)
 {
-	usz an = a.name.len;
-	usz bn = b.name.len;
+	isz an = a.name.len;
+	isz bn = b.name.len;
 	if (an > bn) @swap(a, b);
 	foreach (i, ac : a.name)
 	{
@@ -187,7 +187,7 @@ fn void unmute_output(bool has_error) @local
 fn bool run_tests(String[] args, TestUnit[] tests) @private
 {
 	Thread main = thread::current();
-	usz max_name;
+	isz max_name;
 	if (!tests.len)
 	{
 		io::printn("There are no test units to run.");
@@ -285,7 +285,7 @@ $endif
 	int tests_skipped = 0;
 	int test_count = tests.len;
 	DString name = dstring::temp_with_capacity(64);
-	usz len = max_name + 9;
+	isz len = max_name + 9;
 	name.append_repeat('-', len / 2);
 	name.append(" TESTS ");
 	name.append_repeat('-', len - len / 2);

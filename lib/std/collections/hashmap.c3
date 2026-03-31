@@ -109,9 +109,9 @@ fn HashMap* HashMap.init_from_keys_and_values(&self, Allocator allocator, Key[] 
 {
 	assert(keys.len == values.len);
 	self.init(allocator, capacity, load_factor);
-	for (usz i = 0; i < keys.len; i++)
+	foreach (i, key : keys)
 	{
-		self.set(keys[i], values[i]);
+		self.set(key, values[i]);
 	}
 	return self;
 }
@@ -168,7 +168,7 @@ fn bool HashMap.is_empty(&map) @inline
 	return !map.count;
 }
 
-fn usz HashMap.len(&map) @inline
+fn isz HashMap.len(&map) @inline
 {
 	return map.count;
 }
@@ -316,7 +316,7 @@ fn Key[] HashMap.keys(&self, Allocator allocator)
 	if (!self.count) return {};
 
 	Key[] list = alloc::alloc_array(allocator, Key, self.count);
-	usz index = 0;
+	isz index = 0;
 	foreach (Entry* entry : self.table)
 	{
 		while (entry)
@@ -359,7 +359,7 @@ fn Value[] HashMap.values(&self, Allocator allocator)
 {
 	if (!self.count) return {};
 	Value[] list = alloc::alloc_array(allocator, Value, self.count);
-	usz index = 0;
+	isz index;
 	foreach (Entry* entry : self.table)
 	{
 		while (entry)
@@ -431,10 +431,9 @@ fn void hashmap_resize(HashMap* map, uint new_capacity) @private
 	map.threshold = (uint)(new_capacity * map.load_factor);
 }
 
-fn usz? HashMap.to_format(&self, Formatter* f) @dynamic
+fn isz? HashMap.to_format(&self, Formatter* f) @dynamic
 {
-	usz len;
-	len += f.print("{ ")!;
+	isz len = f.print("{ ")!;
 	self.@each_entry(; Entry* entry)
 	{
 		if (len > 2) len += f.print(", ")!;
@@ -560,7 +559,7 @@ typedef HashMapKeyIterator = HashMapIterator;
 <*
  @require idx < self.map.count
 *>
-fn Entry HashMapIterator.get(&self, usz idx) @operator([])
+fn Entry HashMapIterator.get(&self, isz idx) @operator([])
 {
 	if (idx < self.index)
 	{
@@ -582,19 +581,19 @@ fn Entry HashMapIterator.get(&self, usz idx) @operator([])
 	return *self.current_entry;
 }
 
-fn Value HashMapValueIterator.get(&self, usz idx) @operator([])
+fn Value HashMapValueIterator.get(&self, isz idx) @operator([])
 {
 	return ((HashMapIterator*)self).get(idx).value;
 }
 
-fn Key HashMapKeyIterator.get(&self, usz idx) @operator([])
+fn Key HashMapKeyIterator.get(&self, isz idx) @operator([])
 {
 	return ((HashMapIterator*)self).get(idx).key;
 }
 
-fn usz HashMapValueIterator.len(self) @operator(len) => self.map.count;
-fn usz HashMapKeyIterator.len(self) @operator(len) => self.map.count;
-fn usz HashMapIterator.len(self) @operator(len) => self.map.count;
+fn isz HashMapValueIterator.len(self) @operator(len) => self.map.count;
+fn isz HashMapKeyIterator.len(self) @operator(len) => self.map.count;
+fn isz HashMapIterator.len(self) @operator(len) => self.map.count;
 
 fn uint rehash(uint hash) @inline @private
 {

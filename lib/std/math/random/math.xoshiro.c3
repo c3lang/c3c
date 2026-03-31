@@ -18,7 +18,7 @@ enum XorshiftType @private
 	STAR_STAR,
 }
 
-macro void @xorshift_seed_from_input(#xorshift_instance, usz $bits, seed)
+macro void @xorshift_seed_from_input(#xorshift_instance, isz $bits, seed)
 {
 	$switch $typeof(seed):
 		$case char[]:
@@ -122,8 +122,8 @@ macro xoshiro(Xoshiro* self) @local
 	$switch BIT_SIZE:
 		$case 128:
 		$case 256:
-			usz $a = BIT_SIZE == 128 ??? 9 : 17;
-			usz $b = BIT_SIZE == 128 ??? 11 : 45;
+			isz $a = BIT_SIZE == 128 ??? 9 : 17;
+			isz $b = BIT_SIZE == 128 ??? 11 : 45;
 			var t = self.state[1] << $a;
 			self.state[2] ^= self.state[0];
 			self.state[3] ^= self.state[1];
@@ -188,7 +188,7 @@ fn uint Xoroshiro.next(&self) @if (BIT_SIZE == 64) => xoroshiro(self);
 
 macro xoroshiro(Xoroshiro* self) @local
 {
-	usz a, b, c;
+	isz a, b, c;
 	$switch BIT_SIZE:
 		$case 64:
 			uint result;

@@ -71,7 +71,7 @@ fn void metro64_sweep()
 {
 	char[66] v = { [0..65] = 'a' };
 
-	for (usz x = 0; x < v.len; ++x)
+	for (isz x = 0; x < v.len; ++x)
 	{
 		ulong actual = metro64::hash(v[:x], 1337);
 

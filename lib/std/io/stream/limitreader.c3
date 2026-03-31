@@ -3,14 +3,14 @@ module std::io;
 struct LimitReader (InStream)
 {
 	InStream wrapped_stream;
-	usz limit;
+	isz limit;
 }
 
 <*
  @param [&inout] wrapped_stream : "The stream to read from"
  @param limit : "The max limit to read"
 *>
-fn LimitReader* LimitReader.init(&self, InStream wrapped_stream, usz limit)
+fn LimitReader* LimitReader.init(&self, InStream wrapped_stream, isz limit)
 {
 	*self = { .wrapped_stream = wrapped_stream, .limit = limit };
 	return self;
@@ -22,11 +22,11 @@ fn void? LimitReader.close(&self) @dynamic
 }
 
 
-fn usz? LimitReader.read(&self, char[] bytes) @dynamic
+fn isz? LimitReader.read(&self, char[] bytes) @dynamic
 {
 	if (self.limit == 0) return io::EOF~;
-	usz m = min(bytes.len, self.limit);
-	usz n = self.wrapped_stream.read(bytes[:m])!;
+	isz m = min(bytes.len, self.limit);
+	isz n = self.wrapped_stream.read(bytes[:m])!;
 	self.limit -= n;
 	return n;
 }

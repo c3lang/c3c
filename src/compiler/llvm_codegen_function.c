@@ -163,7 +163,7 @@ static inline void llvm_process_parameter_value_inner(GenContext *c, Decl *decl,
 			llvm_store_to_ptr_raw_aligned(c, addr, llvm_get_next_param(c, index), decl_alignment);
 
 			// Calculate the address
-			addr = llvm_emit_pointer_inbounds_gep_raw(c, addr, llvm_const_int(c, type_usz, hi_offset / hi_aligned_size), llvm_abi_size(c, hi));
+			addr = llvm_emit_pointer_inbounds_gep_raw(c, addr, LLVMConstInt(c->size_type, hi_offset / hi_aligned_size, false), llvm_abi_size(c, hi));
 
 			// Store it in the hi location
 			llvm_store_to_ptr_raw_aligned(c, addr, llvm_get_next_param(c, index), type_min_alignment(decl_alignment, hi_offset));

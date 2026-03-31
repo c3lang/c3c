@@ -12,9 +12,9 @@ struct FixedThreadPool
 {
 	Mutex mu;
 	QueueItem[] queue;
-	usz qindex;
-	usz qworking;
-	usz num_threads;
+	isz qindex;
+	isz qworking;
+	isz num_threads;
 	bitstruct : char {
 		bool initialized;
 		bool stop;
@@ -37,7 +37,7 @@ struct QueueItem @private
  @require threads > 0 && threads < 0x1000 : `Threads should be greater than 0 and less than 0x1000`
  @require queue_size < 0x10000 : `Queue size must be less than 65536`
 *>
-fn void? FixedThreadPool.init(&self, usz threads, usz queue_size = 0)
+fn void? FixedThreadPool.init(&self, isz threads, isz queue_size = 0)
 {
 	if (queue_size == 0) queue_size = threads * 32;
 	defer catch @ok(self.destroy());

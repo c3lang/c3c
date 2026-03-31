@@ -1,17 +1,17 @@
 module std::core::mem::allocators;
 
 
-const usz WASM_BLOCK_SIZE = 65536;
+const isz WASM_BLOCK_SIZE = 65536;
 
 WasmMemory wasm_memory;
 
 struct WasmMemory
 {
-	usz allocation;
+	isz allocation;
 	uptr use;
 }
 
-fn char[]? WasmMemory.allocate_block(&self, usz bytes)
+fn char[]? WasmMemory.allocate_block(&self, isz bytes)
 {
 	if (!self.allocation)
 	{
@@ -24,7 +24,7 @@ fn char[]? WasmMemory.allocate_block(&self, usz bytes)
 		return ((char*)self.use)[:bytes];
 	}
 
-	usz blocks_required = (bytes_required + WASM_BLOCK_SIZE + 1) / WASM_BLOCK_SIZE;
+	isz blocks_required = (bytes_required + WASM_BLOCK_SIZE + 1) / WASM_BLOCK_SIZE;
 	if ($$wasm_memory_grow(0, blocks_required) == -1) return mem::OUT_OF_MEMORY~;
 	self.allocation = $$wasm_memory_size(0) * WASM_BLOCK_SIZE;
 	defer self.use += bytes;

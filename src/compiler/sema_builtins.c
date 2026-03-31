@@ -80,13 +80,14 @@ static bool sema_check_builtin_args_const(SemaContext *context, Expr **args, siz
 
 static bool sema_check_alignment_expression(SemaContext *context, Expr *align, bool may_be_zero)
 {
-	if (!sema_analyse_expr_rhs(context, type_usz, align, false, NULL, false)) return false;
+	if (!sema_analyse_expr_rhs(context, type_isz, align, false, NULL, false)) return false;
 	if (!expr_is_const_int(align)
 	    || !int_fits(align->const_expr.ixx, TYPE_U64)
 	    || (!is_power_of_two(align->const_expr.ixx.i.low) && align->const_expr.ixx.i.low))
 	{
 		RETURN_SEMA_ERROR(align, may_be_zero ? "Expected a constant power-of-two alignment or zero." : "Expected a constant power-of-two alignment.");
 	}
+	if (int_is_neg(align->const_expr.ixx)) RETURN_SEMA_ERROR(align, "Alignment must not be negative.");
 	if (!may_be_zero && align->const_expr.ixx.i.low == 0) RETURN_SEMA_ERROR(align, "Alignment must not be zero.");
 	return true;
 }

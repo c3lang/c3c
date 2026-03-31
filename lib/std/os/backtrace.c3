@@ -37,7 +37,7 @@ fn bool Backtrace.is_unknown(&self)
 	return !self.object_file.len;
 }
 
-fn usz? Backtrace.to_format(&self, Formatter* formatter) @dynamic
+fn isz? Backtrace.to_format(&self, Formatter* formatter) @dynamic
 {
 	String inline_suffix = self.is_inline ? " [inline]" : "";
 	if (self.has_file())

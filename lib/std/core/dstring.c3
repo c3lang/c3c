@@ -7,7 +7,7 @@ import std::io, std::math;
 typedef DString (OutStream) = DStringOpaque*;
 typedef DStringOpaque = void;
 
-const usz MIN_CAPACITY @private = 16;
+const isz MIN_CAPACITY @private = 16;
 
 <*
  Initialize the DString with a particular allocator.
@@ -17,7 +17,7 @@ const usz MIN_CAPACITY @private = 16;
  @return "Return the DString itself"
  @require !self.data() : "String already initialized"
 *>
-fn DString DString.init(&self, Allocator allocator, usz capacity = MIN_CAPACITY)
+fn DString DString.init(&self, Allocator allocator, isz capacity = MIN_CAPACITY)
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
 	StringData* data = alloc::alloc_with_padding(allocator, StringData, capacity)!!;
@@ -35,21 +35,21 @@ fn DString DString.init(&self, Allocator allocator, usz capacity = MIN_CAPACITY)
  @return "Return the DString itself"
  @require !self.data() : "String already initialized"
 *>
-fn DString DString.tinit(&self, usz capacity = MIN_CAPACITY)
+fn DString DString.tinit(&self, isz capacity = MIN_CAPACITY)
 {
 	return self.init(tmem, capacity) @inline;
 }
 
-fn DString new_with_capacity(Allocator allocator, usz capacity)
+fn DString new_with_capacity(Allocator allocator, isz capacity)
 {
 	return (DString){}.init(allocator, capacity);
 }
 
-fn DString temp_with_capacity(usz capacity) => new_with_capacity(tmem, capacity) @inline;
+fn DString temp_with_capacity(isz capacity) => new_with_capacity(tmem, capacity) @inline;
 
 fn DString new(Allocator allocator, String c = "")
 {
-	usz len = c.len;
+	isz len = c.len;
 	StringData* data = (StringData*)new_with_capacity(allocator, len);
 	if (len)
 	{
@@ -74,9 +74,9 @@ fn void DString.replace_char(self, char ch, char replacement)
 fn void DString.replace(&self, String needle, String replacement)
 {
 	StringData* data = self.data();
-	usz needle_len = needle.len;
+	isz needle_len = needle.len;
 	if (!data || data.len < needle_len) return;
-	usz replace_len = replacement.len;
+	isz replace_len = replacement.len;
 	if (needle_len == 1 && replace_len == 1)
 	{
 		self.replace_char(needle[0], replacement[0]);
@@ -86,8 +86,8 @@ fn void DString.replace(&self, String needle, String replacement)
 	{
 		String str = self.tcopy_str();
 		self.clear();
-		usz len = str.len;
-		usz match = 0;
+		isz len = str.len;
+		isz match = 0;
 		foreach (i, c : str)
 		{
 			if (c == needle[match])
@@ -140,13 +140,13 @@ fn ZString DString.zstr_view(&self)
 	return (ZString)&data.chars[0];
 }
 
-fn usz DString.capacity(self)
+fn isz DString.capacity(self)
 {
 	if (!self) return 0;
 	return self.data().capacity;
 }
 
-fn usz DString.len(&self) @dynamic @operator(len)
+fn isz DString.len(&self) @dynamic @operator(len)
 {
 	if (!*self) return 0;
 	return self.data().len;
@@ -155,7 +155,7 @@ fn usz DString.len(&self) @dynamic @operator(len)
 <*
  @require new_size <= self.len()
 *>
-fn void DString.chop(self, usz new_size)
+fn void DString.chop(self, isz new_size)
 {
 	if (!self) return;
 	self.data().len = new_size;
@@ -172,7 +172,7 @@ fn String DString.str_view(self)
  @require index < self.len()
  @require self.data() != null : "Empty string"
 *>
-fn char DString.char_at(self, usz index) @operator([])
+fn char DString.char_at(self, isz index) @operator([])
 {
 	return self.data().chars[index];
 }
@@ -181,15 +181,15 @@ fn char DString.char_at(self, usz index) @operator([])
  @require index < self.len()
  @require self.data() != null  : "Empty string"
 *>
-fn char* DString.char_ref(&self, usz index) @operator(&[])
+fn char* DString.char_ref(&self, isz index) @operator(&[])
 {
 	return &self.data().chars[index];
 }
 
-fn usz DString.append_utf32(&self, Char32[] chars)
+fn isz DString.append_utf32(&self, Char32[] chars)
 {
 	self.reserve(chars.len);
-	usz end = self.len();
+	isz end = self.len();
 	foreach (Char32 c : chars)
 	{
 		self.append_char32(c);
@@ -200,17 +200,17 @@ fn usz DString.append_utf32(&self, Char32[] chars)
 <*
  @require index < self.len()
 *>
-fn void DString.set(self, usz index, char c) @operator([]=)
+fn void DString.set(self, isz index, char c) @operator([]=)
 {
 	self.data().chars[index] = c;
 }
 
-fn void DString.append_repeat(&self, char c, usz times)
+fn void DString.append_repeat(&self, char c, isz times)
 {
 	if (times == 0) return;
 	self.reserve(times);
 	StringData* data = self.data();
-	for (usz i = 0; i < times; i++)
+	for (isz i = 0; i < times; i++)
 	{
 		data.chars[data.len++] = c;
 	}
@@ -219,11 +219,11 @@ fn void DString.append_repeat(&self, char c, usz times)
 <*
  @require c <= 0x10ffff
 *>
-fn usz DString.append_char32(&self, Char32 c)
+fn isz DString.append_char32(&self, Char32 c)
 {
 	char[4] buffer @noinit;
 	char* p = &buffer;
-	usz n = conv::char32_to_utf8_unsafe(c, &p);
+	isz n = conv::char32_to_utf8_unsafe(c, &p);
 	self.reserve(n);
 	StringData* data = self.data();
 	data.chars[data.len:n] = buffer[:n];
@@ -244,7 +244,7 @@ fn DString DString.copy(self, Allocator allocator) @nodiscard
 
 fn ZString DString.copy_zstr(self, Allocator allocator) @nodiscard
 {
-	usz str_len = self.len();
+	isz str_len = self.len();
 	if (!str_len)
 	{
 		return (ZString)alloc::calloc(allocator, 1);
@@ -270,7 +270,7 @@ fn bool DString.equals(self, DString other_string)
 	if (str1 == str2) return true;
 	if (!str1) return str2.len == 0;
 	if (!str2) return str1.len == 0;
-	usz str1_len = str1.len;
+	isz str1_len = str1.len;
 	if (str1_len != str2.len) return false;
 	for (int i = 0; i < str1_len; i++)
 	{
@@ -295,8 +295,8 @@ fn bool DString.less(self, DString other_string)
 	if (str1 == str2) return false;
 	if (!str1) return str2.len != 0;
 	if (!str2) return str1.len == 0;
-	usz str1_len = str1.len;
-	usz str2_len = str2.len;
+	isz str1_len = str1.len;
+	isz str2_len = str2.len;
 	if (str1_len != str2_len) return str1_len < str2_len;
 	for (int i = 0; i < str1_len; i++)
 	{
@@ -307,7 +307,7 @@ fn bool DString.less(self, DString other_string)
 
 fn void DString.append_bytes(&self, char[] bytes)
 {
-	usz other_len = bytes.len;
+	isz other_len = bytes.len;
 	if (!other_len) return;
 	if (!*self)
 	{
@@ -350,7 +350,7 @@ fn void DString.clear(self)
 	self.data().len = 0;
 }
 
-fn usz? DString.write(&self, char[] buffer) @dynamic
+fn isz? DString.write(&self, char[] buffer) @dynamic
 {
 	self.append_bytes(buffer);
 	return buffer.len;
@@ -377,7 +377,7 @@ fn void DString.append_char(&self, char c)
  @require end < self.len()
  @require end >= start : "End must be same or equal to the start"
 *>
-fn void DString.delete_range(&self, usz start, usz end)
+fn void DString.delete_range(&self, isz start, isz end)
 {
 	self.delete(start, end - start + 1);
 }
@@ -386,17 +386,17 @@ fn void DString.delete_range(&self, usz start, usz end)
  @require start < self.len()
  @require start + len <= self.len()
 *>
-fn void DString.delete(&self, usz start, usz len = 1)
+fn void DString.delete(&self, isz start, isz len = 1)
 {
 	if (!len) return;
 	StringData* data = self.data();
-	usz new_len = data.len - len;
+	isz new_len = data.len - len;
 	if (new_len == 0)
 	{
 		data.len = 0;
 		return;
 	}
-	usz len_after = data.len - start - len;
+	isz len_after = data.len - start - len;
 	if (len_after > 0)
 	{
 		data.chars[start:len_after] = data.chars[start + len:len_after];
@@ -432,12 +432,12 @@ macro void DString.append(&self, value)
 <*
  @require index <= self.len()
 *>
-fn void DString.insert_chars_at(&self, usz index, String s)
+fn void DString.insert_chars_at(&self, isz index, String s)
 {
 	if (s.len == 0) return;
 	self.reserve(s.len);
 	StringData* data = self.data();
-	usz len = self.len();
+	isz len = self.len();
 	if (data.chars[:len].ptr == s.ptr)
 	{
 		// Source and destination are the same: nothing to do.
@@ -467,7 +467,7 @@ fn void DString.insert_chars_at(&self, usz index, String s)
 <*
  @require index <= self.len()
 *>
-fn void DString.insert_string_at(&self, usz index, DString str)
+fn void DString.insert_string_at(&self, isz index, DString str)
 {
 	StringData* other = str.data();
 	if (!other) return;
@@ -477,7 +477,7 @@ fn void DString.insert_string_at(&self, usz index, DString str)
 <*
  @require index <= self.len()
 *>
-fn void DString.insert_char_at(&self, usz index, char c)
+fn void DString.insert_char_at(&self, isz index, char c)
 {
 	self.reserve(1);
 	StringData* data = self.data();
@@ -491,11 +491,11 @@ fn void DString.insert_char_at(&self, usz index, char c)
 <*
  @require index <= self.len()
 *>
-fn usz DString.insert_char32_at(&self, usz index, Char32 c)
+fn isz DString.insert_char32_at(&self, isz index, Char32 c)
 {
 	char[4] buffer @noinit;
 	char* p = &buffer;
-	usz n = conv::char32_to_utf8_unsafe(c, &p);
+	isz n = conv::char32_to_utf8_unsafe(c, &p);
 
 	self.reserve(n);
 	StringData* data = self.data();
@@ -511,9 +511,9 @@ fn usz DString.insert_char32_at(&self, usz index, Char32 c)
 <*
  @require index <= self.len()
 *>
-fn usz DString.insert_utf32_at(&self, usz index, Char32[] chars)
+fn isz DString.insert_utf32_at(&self, isz index, Char32[] chars)
 {
-	usz n = conv::utf8len_for_utf32(chars);
+	isz n = conv::utf8len_for_utf32(chars);
 	
 	self.reserve(n);
 	StringData* data = self.data();
@@ -526,7 +526,7 @@ fn usz DString.insert_utf32_at(&self, usz index, Char32[] chars)
 	foreach(c : chars)
 	{
 		char* p = &buffer;
-		usz m = conv::char32_to_utf8_unsafe(c, &p);
+		isz m = conv::char32_to_utf8_unsafe(c, &p);
 		data.chars[index:m] = buffer[:m];
 		index += m;
 	}
@@ -536,7 +536,7 @@ fn usz DString.insert_utf32_at(&self, usz index, Char32[] chars)
 	return n;
 }
 
-macro void DString.insert_at(&self, usz index, value)
+macro void DString.insert_at(&self, isz index, value)
 {
 	var $Type = $typeof(value);
 	$switch $Type:
@@ -561,7 +561,7 @@ macro void DString.insert_at(&self, usz index, value)
 	$endswitch
 }
 
-fn usz? DString.appendf(&self, String format, args...) @maydiscard
+fn isz? DString.appendf(&self, String format, args...) @maydiscard
 {
 	if (!self.data()) self.tinit(format.len + 20);
 	Formatter formatter;
@@ -569,14 +569,14 @@ fn usz? DString.appendf(&self, String format, args...) @maydiscard
 	return formatter.vprintf(format, args);
 }
 
-fn usz? DString.appendfn(&self, String format, args...) @maydiscard
+fn isz? DString.appendfn(&self, String format, args...) @maydiscard
 {
 	if (!self.data()) self.tinit(format.len + 20);
 	@pool()
 	{
 		Formatter formatter;
 		formatter.init(&append_fn, self);
-		usz len = formatter.vprintf(format, args)!;
+		isz len = formatter.vprintf(format, args)!;
 		self.append('\n');
 		return len + 1;
 	};
@@ -585,7 +585,7 @@ fn usz? DString.appendfn(&self, String format, args...) @maydiscard
 fn DString join(Allocator allocator, String[] s, String joiner) @nodiscard
 {
 	if (!s.len) return new(allocator);
-	usz total_size = joiner.len * s.len;
+	isz total_size = joiner.len * s.len;
 	foreach (String* &str : s)
 	{
 		total_size += str.len;
@@ -625,7 +625,7 @@ fn StringData* DString.data(self) @inline
 	return (StringData*)self;
 }
 
-fn void DString.reserve(&self, usz addition)
+fn void DString.reserve(&self, isz addition)
 {
 	StringData* data = self.data();
 	if (!data)
@@ -633,39 +633,39 @@ fn void DString.reserve(&self, usz addition)
 		*self = dstring::temp_with_capacity(addition);
 		return;
 	}
-	usz len = data.len + addition;
+	isz len = data.len + addition;
 	if (data.capacity >= len) return;
-	usz new_capacity = data.capacity * 2;
+	isz new_capacity = data.capacity * 2;
 	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
 	if (new_capacity < len) new_capacity = math::next_power_of_2(len);
 	data.capacity = new_capacity;
 	*self = (DString)alloc::realloc(data.allocator, data, StringData.sizeof + new_capacity);
 }
 
-fn usz? DString.read_from_stream(&self, InStream reader)
+fn isz? DString.read_from_stream(&self, InStream reader)
 {
 	if (&reader.available)
 	{
-		usz total_read = 0;
+		isz total_read = 0;
 		while (ulong available = reader.available()!)
 		{
 			if (available > isz.max) available = (ulong)isz.max;
-			self.reserve((usz)available);
+			self.reserve((isz)available);
 			StringData* data = self.data();
-			usz len = reader.read(data.chars[data.len..(data.capacity - 1)])!;
+			isz len = reader.read(data.chars[data.len..(data.capacity - 1)])!;
 			total_read += len;
 			data.len += len;
 		}
 		return total_read;
 	}
-	usz total_read = 0;
+	isz total_read = 0;
 	while (true)
 	{
 		// Reserve at least 16 bytes
 		self.reserve(16);
 		StringData* data = self.data();
 		// Read into the rest of the buffer
-		usz read = reader.read(data.chars[data.len..(data.capacity - 1)])!;
+		isz read = reader.read(data.chars[data.len..(data.capacity - 1)])!;
 		data.len += read;
 		// Ok, we reached the end.
 		if (read < 16) return total_read;
@@ -676,7 +676,7 @@ fn usz? DString.read_from_stream(&self, InStream reader)
 struct StringData @private
 {
 	Allocator allocator;
-	usz len;
-	usz capacity;
+	isz len;
+	isz capacity;
 	char[*] chars;
 }

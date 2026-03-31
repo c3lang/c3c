@@ -46,7 +46,7 @@ fn String? run_capture_stdout(char[] buffer, String[] command_line, SpawnOptions
 	Process process = process::spawn(command_line, options, environment)!;
 	defer (void)process.destroy();
 	process.join()!;
-	usz len = process.read_stdout(buffer.ptr, buffer.len)!;
+	isz len = process.read_stdout(buffer.ptr, buffer.len)!;
 	if (len == 0) return "";
 	return (String)buffer[:len - 1];
 }
@@ -388,7 +388,7 @@ fn void? Process.terminate(&self)
 <*
  @require size <= Win32_DWORD.max
 *>
-fn usz? read_from_file_win32(CFile file, Win32_HANDLE event_handle, char* buffer, usz size) @if(env::WIN32) @local
+fn isz? read_from_file_win32(CFile file, Win32_HANDLE event_handle, char* buffer, isz size) @if(env::WIN32) @local
 {
 	CInt fd = libc::fileno(file);
 	Win32_DWORD bytes_read = 0;
@@ -415,7 +415,7 @@ fn usz? read_from_file_win32(CFile file, Win32_HANDLE event_handle, char* buffer
 	return bytes_read;
 }
 
-fn usz? read_from_file_posix(CFile file, char* buffer, usz size) @if(env::POSIX) @local
+fn isz? read_from_file_posix(CFile file, char* buffer, isz size) @if(env::POSIX) @local
 {
 	isz bytes_read = libc::read(libc::fileno(file), buffer, size);
 	if (bytes_read < 0)
@@ -426,7 +426,7 @@ fn usz? read_from_file_posix(CFile file, char* buffer, usz size) @if(env::POSIX)
 	return bytes_read;
 }
 
-fn usz? Process.read_stdout(&self, char* buffer, usz size)
+fn isz? Process.read_stdout(&self, char* buffer, isz size)
 {
 	if (!self.stdout_file) return 0; // No output available when inheriting stdio
 
@@ -438,7 +438,7 @@ fn usz? Process.read_stdout(&self, char* buffer, usz size)
 }
 
 
-fn usz? Process.read_stderr(&self, char* buffer, usz size)
+fn isz? Process.read_stderr(&self, char* buffer, isz size)
 {
 	if (!self.stderr_file) return 0; // No output available when inheriting stdio
 
@@ -468,7 +468,7 @@ fn bool? Process.is_running(&self)
 	$endif
 }
 
-fn usz? Process.write_stdin(&self, char[] buffer)
+fn isz? Process.write_stdin(&self, char[] buffer)
 {
 	if (!self.stdin_file) return FAILED_TO_OPEN_STDIN~;
 	defer try (void)os::native_fflush(self.stdin_file);

@@ -764,7 +764,7 @@ entry:
 
 loop.cond:                                        ; preds = %noerr_block13, %entry
   %1 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %1, %0
+  %lt = icmp slt i64 %1, %0
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
@@ -828,8 +828,8 @@ noerr_block13:                                    ; preds = %after_check11
   %eq = icmp eq i8 %15, 1
   call void @llvm.assume(i1 %eq)
   %16 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %16, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %16, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

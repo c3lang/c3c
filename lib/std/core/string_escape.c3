@@ -23,7 +23,7 @@ faultdef INVALID_ESCAPE_SEQUENCE, UNTERMINATED_STRING, INVALID_HEX_ESCAPE, INVAL
 fn String String.escape(String s, Allocator allocator, bool strip_quotes = true)
 {
 	// Conservative allocation: most strings need minimal escaping
-	usz initial_capacity = s.len + s.len / 5 + 2; // ~1.2x + quotes
+	isz initial_capacity = s.len + s.len / 5 + 2; // ~1.2x + quotes
 
 	if (allocator == tmem)
 	{
@@ -88,9 +88,9 @@ fn String String.tescape(String s, bool strip_quotes = false) => s.escape(tmem, 
  @param s : "The string to check"
  @return "The length needed for the escaped version"
 *>
-fn usz escape_len(String s)
+fn isz escape_len(String s)
 {
-	usz len = 2; // For quotes
+	isz len = 2; // For quotes
 	foreach (char c : s)
 	{
 		switch (c)
@@ -159,8 +159,8 @@ fn String? String.unescape(String s, Allocator allocator, bool allow_unquoted = 
 
 fn void? unescape_dstring(String s, DString result, bool allow_unquoted = false, bool lenient = false) @private
 {
-	usz len = s.len;
-	for (usz i = 0; i < len; i++)
+	isz len = s.len;
+	for (isz i = 0; i < len; i++)
 	{
 		char c = s[i];
 		if (c != '\\')

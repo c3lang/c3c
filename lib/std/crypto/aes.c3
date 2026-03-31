@@ -68,15 +68,15 @@ enum AesType : (AesKey key)
 struct AesKey
 {
 	<* Size of key in bits *>
-	usz key_size;
+	isz key_size;
 	<* Size of key in bytes *>
 	int key_len;
 	<* Size of the expanded round_key *>
 	int key_exp_size; // expected size of round_key
 	<* Number of 32 bit words in key *>
-	usz nk;
+	isz nk;
 	<* Number of rounds in the cipher *>
-	usz nr;
+	isz nr;
 }
 
 struct Aes
@@ -292,7 +292,7 @@ fn void bitsliced_mix_columns(Type[8]* q) <Type> @private @inline
 	(*q)[7] = t6 ^ s[7] ^ (*q)[7];
 }
 
-macro bool is_valid_encryption_len(BlockMode mode, usz len)
+macro bool is_valid_encryption_len(BlockMode mode, isz len)
 {
 	switch (mode)
 	{
@@ -424,8 +424,8 @@ fn void ecb_decrypt_block(Aes *aes, char[BLOCKLEN]* in, char[BLOCKLEN]* out)
 *>
 fn void ecb_decrypt_buffer(Aes *aes, char[] in, char[] out)
 {
-	usz len = in.len;
-	for (usz i = 0; i < len; i += BLOCKLEN)
+	isz len = in.len;
+	for (isz i = 0; i < len; i += BLOCKLEN)
 	{
 		ecb_decrypt_block(aes, (char[16]*)&in[i], (char[16]*)&out[i]) @inline;
 	}
@@ -438,8 +438,8 @@ fn void ecb_decrypt_buffer(Aes *aes, char[] in, char[] out)
 *>
 fn void ecb_encrypt_buffer(Aes *aes, char[] in, char[] out)
 {
-	usz len = in.len;
-	usz i = 0;
+	isz len = in.len;
+	isz i = 0;
 	// Parallel path for 4 blocks
 	for (; i + 64 <= len; i += 64)
 	{
@@ -473,8 +473,8 @@ fn void xor_with_iv(char[] buf, char[BLOCKLEN]* iv) @local
 fn void cbc_encrypt_buffer(Aes *aes, char[] in, char[] out)
 {
 	char[BLOCKLEN] iv = aes.iv;
-	usz len = in.len;
-	for (usz i = 0; i < len; i += BLOCKLEN)
+	isz len = in.len;
+	for (isz i = 0; i < len; i += BLOCKLEN)
 	{
 		char[BLOCKLEN] tmp = in[i:BLOCKLEN];
 		xor_with_iv(tmp[..], (char[16]*)&iv);
@@ -490,8 +490,8 @@ fn void cbc_encrypt_buffer(Aes *aes, char[] in, char[] out)
 *>
 fn void cbc_decrypt_buffer(Aes *aes, char[] in, char[] out)
 {
-	usz len = in.len;
-	for (usz i = 0; i < len; i += BLOCKLEN)
+	isz len = in.len;
+	for (isz i = 0; i < len; i += BLOCKLEN)
 	{
 		char[BLOCKLEN] tmp;
 		ecb_decrypt_block(aes, in[i:BLOCKLEN], (char[16]*)&tmp);
@@ -540,8 +540,8 @@ fn void inc_le(char[] iv)
 fn void ctr_xcrypt_buffer(Aes *aes, char[] in, char[] out, BlckCounter inc = &inc_be)
 {
 	 char[BLOCKLEN] buffer @noinit;
-	 usz len = in.len;
-	 usz i = 0;
+	 isz len = in.len;
+	 isz i = 0;
 
 	 // Parallel path for 4 blocks
 	 for (; i + 64 <= len; i += 64)
@@ -669,7 +669,7 @@ fn void untranspose4(ulong[8]* q, char[64]* out) @private @inline
 	}
 }
 
-fn void add_round_key_bitsliced(ulong[8]* q, char[] round_key, usz round) @private @inline
+fn void add_round_key_bitsliced(ulong[8]* q, char[] round_key, isz round) @private @inline
 {
 	ushort[8] kq;
 	transpose((char[16]*)&round_key[round * 16], &kq);
@@ -688,7 +688,7 @@ fn void aes_cipher4(Aes* aes, char[64]* data, char[] round_key) @private
 
 	add_round_key_bitsliced(&q, round_key, 0);
 
-	for (usz r = 1; r < aes.type.nr; r++)
+	for (isz r = 1; r < aes.type.nr; r++)
 	{
 		bitsliced_sbox{ulong}(&q);
 		bitsliced_shift_rows{ulong}(&q);
@@ -705,7 +705,7 @@ fn void aes_cipher4(Aes* aes, char[64]* data, char[] round_key) @private
 
 const char[11] RCON = x`8d01020408102040801b36`;
 
-fn void add_round_key(Aes* aes, usz round, char[] round_key)
+fn void add_round_key(Aes* aes, isz round, char[] round_key)
 {
 	char[<16>] k;
 	mem::copy(&k, &round_key[round * 16], 16);
@@ -783,7 +783,7 @@ fn void inv_shift_rows(Aes* aes)
 
 fn void aes_cipher(Aes* aes, char[] round_key)
 {
-	usz round = 0;
+	isz round = 0;
 	add_round_key(aes, 0, round_key);
 
 	for LOOP: (round = 1;; round++)
@@ -800,7 +800,7 @@ fn void aes_cipher(Aes* aes, char[] round_key)
 fn void inv_cipher(Aes* aes, char[] round_key)
 {
 	add_round_key(aes, aes.type.nr, round_key);
-	for (usz round = aes.type.nr - 1; ; round--)
+	for (isz round = aes.type.nr - 1; ; round--)
 	{
 		inv_shift_rows(aes);
 		inv_sub_bytes(aes);
@@ -818,8 +818,8 @@ fn void inv_cipher(Aes* aes, char[] round_key)
 *>
 fn void key_expansion(AesType type, char[] key, char[] round_key) @private
 {
-	usz nk = type.key.nk;
-	for (usz i = 0; i < nk; i++)
+	isz nk = type.key.nk;
+	for (isz i = 0; i < nk; i++)
 	{
 		round_key[(i * 4) + 0] = key[(i * 4) + 0];
 		round_key[(i * 4) + 1] = key[(i * 4) + 1];
@@ -827,9 +827,9 @@ fn void key_expansion(AesType type, char[] key, char[] round_key) @private
 		round_key[(i * 4) + 3] = key[(i * 4) + 3];
 	}
 
-	for (usz i = nk; i < COLNUM * (type.key.nr + 1); i++)
+	for (isz i = nk; i < COLNUM * (type.key.nr + 1); i++)
 	{
-		usz k = (i - 1) * 4;
+		isz k = (i - 1) * 4;
 
 		char[4] tempa @noinit;
 
@@ -861,7 +861,7 @@ fn void key_expansion(AesType type, char[] key, char[] round_key) @private
 				sub_word_ct(&tempa);
 			}
 		}
-		usz j = i * 4;
+		isz j = i * 4;
 		k = (i - nk) * 4;
 		round_key[j + 0] = round_key[k + 0] ^ tempa[0];
 		round_key[j + 1] = round_key[k + 1] ^ tempa[1];

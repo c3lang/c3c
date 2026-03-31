@@ -27,14 +27,14 @@ fn void? native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || e
 	}
 }
 
-fn usz? native_file_size(String path) @if(env::WIN32) => @pool()
+fn isz? native_file_size(String path) @if(env::WIN32) => @pool()
 {
 	Win32_FILE_ATTRIBUTE_DATA data;
 	win32::getFileAttributesExW(path.to_temp_wstring()!, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, &data);
 	Win32_LARGE_INTEGER size;
 	size.lowPart = data.nFileSizeLow;
 	size.highPart = data.nFileSizeHigh;
-	return (usz)size.quadPart;
+	return (isz)size.quadPart;
 }
 
 fn ulong? native_file_size(String path) @if(!env::WIN32 && !env::DARWIN && !env::LINUX && !env::ANDROID && !env::BSD_FAMILY)

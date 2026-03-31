@@ -23,23 +23,23 @@ fn void seeder(char[] input, char[] out_buffer)
 		$echo("Please note that the seeding function behaves differently on BE architectures.");
 	$endif
 	// Init words
-	usz out_chars = out_buffer.len;
+	isz out_chars = out_buffer.len;
 	@stack_mem(550; mem)
 	{
 		ulong[] words = alloc::alloc_array(mem, ulong, (out_chars + 7) / 8);
 		words[..] = ODD_PHI64;
-		usz words_len_2 = words.len * 2;
+		isz words_len_2 = words.len * 2;
 
 		// Add word at a time
-		for (usz i = 0; i < input.len / 8; i++)
+		for (isz i = 0; i < input.len / 8; i++)
 		{
-			usz j = i % words.len;
+			isz j = i % (isz)words.len;
 			words[j] -= bitcast(*(char[8]*)&input[i * 8], ulong) * MUL_LCG64;
 			words[j] ^= words[j] >> 25;
 		}
 
 		// Add rest of the bytes
-		usz remaining = input.len - input.len / 8 * 8;
+		isz remaining = input.len - input.len / 8 * 8;
 		if (remaining)
 		{
 			ulong rest = MUL_MCG64;
@@ -57,9 +57,9 @@ fn void seeder(char[] input, char[] out_buffer)
 		}
 
 		// Mix within words
-		for (usz i = 0; i < words_len_2; i++)
+		for (isz i = 0; i < words_len_2; i++)
 		{
-			usz j = i % words.len;
+			isz j = i % (isz)words.len;
 			words[j] *= MUL_MCG64;
 			words[j] ^= words[j] >> 25;
 		}

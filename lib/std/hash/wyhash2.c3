@@ -8,7 +8,7 @@
 module std::hash::wyhash2;
 
 
-fn ulong wyr3(char* in, usz len) @inline
+fn ulong wyr3(char* in, isz len) @inline
 	=> ((ulong)in[0] << 16) | ((ulong)in[len >> 1] << 8) | (ulong)in[len - 1];
 
 

@@ -1582,7 +1582,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	Decl *len = NULL;
 	Decl *index_function = NULL;
-	Type *index_type = type_usz;
+	Type *index_type = type_isz;
 	bool is_enum_iterator = false;
 	bool need_deref = false;
 	// Now we lower the foreach...

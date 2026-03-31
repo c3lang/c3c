@@ -5,8 +5,8 @@ struct FileMmap
 {
 	File file;
 	VirtualMemory vm;
-	usz offset;
-	usz len;
+	isz offset;
+	isz len;
 }
 
 <*
@@ -41,24 +41,24 @@ module std::io::file @if(env::LIBC &&& env::POSIX);
  @return? mem::OUT_OF_MEMORY, vm::ACCESS_DENIED, vm::RANGE_OVERFLOW, vm::INVALID_ARGS, vm::UNKNOWN_ERROR, io::NO_PERMISSION, io::FILE_NOT_VALID, io::WOULD_BLOCK, io::FILE_NOT_FOUND
  @return "Memory mapped region. Must be released with FileMmap.destroy(). Provided File will not be closed"
 *>
-fn FileMmap? mmap_file(File file, usz offset = 0, usz len = 0, VirtualMemoryAccess access = READ, bool shared = false)
+fn FileMmap? mmap_file(File file, isz offset = 0, isz len = 0, VirtualMemoryAccess access = READ, bool shared = false)
 {
 	if (len == 0)
 	{
 		ulong new_len = file.size()! - offset;
 		if (new_len > (ulong)isz.max) return mem::OUT_OF_MEMORY~;
-		len = (usz)new_len;
+		len = (isz)new_len;
 	}
 
 	// get the page size
-	usz page_size = vm::aligned_alloc_size(0);
+	isz page_size = vm::aligned_alloc_size(0);
 
 	// align the offset specified by the user (might be not aligned)
-	usz page_offset = offset & (page_size - 1);
-	usz map_offset = offset - page_offset;
+	isz page_offset = offset & (page_size - 1);
+	isz map_offset = offset - page_offset;
 	
 	// adjust map length (both the region start and the region end might be not aligned)
-	usz map_len = len + page_offset; // when region start not aligned
+	isz map_len = len + page_offset; // when region start not aligned
 	map_len = vm::aligned_alloc_size(map_len); // when region end not aligned
 
 	void* ptr = vm::mmap_file(file.fd(), map_len, map_offset, access, shared)!;
@@ -77,7 +77,7 @@ fn FileMmap? mmap_file(File file, usz offset = 0, usz len = 0, VirtualMemoryAcce
  @return? mem::OUT_OF_MEMORY, vm::ACCESS_DENIED, vm::RANGE_OVERFLOW, vm::INVALID_ARGS, vm::UNKNOWN_ERROR, io::NO_PERMISSION, io::FILE_NOT_VALID, io::WOULD_BLOCK, io::FILE_NOT_FOUND
  @return "Memory mapped region. Must be released with FileMmap.destroy()"
 *>
-fn FileMmap? mmap_open(String filename, String mode, usz offset = 0, usz len = 0, VirtualMemoryAccess access = READ, bool shared = false)
+fn FileMmap? mmap_open(String filename, String mode, isz offset = 0, isz len = 0, VirtualMemoryAccess access = READ, bool shared = false)
 {
 	File file = open(filename, mode)!;
 	defer catch (void)file.close();

@@ -2287,8 +2287,8 @@ static void cast_slice_to_bool(Expr *expr, Type *type)
 	}
 	Expr *inner = expr_copy(expr);
 	Expr *len = expr_copy(expr);
-	expr_rewrite_slice_len(len, inner, type_usz);
-	expr_rewrite_to_binary(expr, len, expr_new_const_int(expr->loc, type_usz, 0), BINARYOP_NE);
+	expr_rewrite_slice_len(len, inner, type_isz);
+	expr_rewrite_to_binary(expr, len, expr_new_const_int(expr->loc, type_isz, 0), BINARYOP_NE);
 	expr->type = type;
 }
 

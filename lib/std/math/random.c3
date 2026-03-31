@@ -143,7 +143,7 @@ macro ushort @char_to_short(#function) => (ushort)#function << 8 + #function;
 macro void @random_value_to_bytes(#function, char[] bytes)
 {
 	var $byte_size = $sizeof(#function());
-	usz len = bytes.len;
+	isz len = bytes.len;
 	// Same size or smaller? Then just copy.
 	while (len > 0)
 	{

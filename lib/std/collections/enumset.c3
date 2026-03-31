@@ -17,7 +17,7 @@ typedef EnumSet (Printable) = EnumSetType;
 fn void EnumSet.add(&self, Enum v)
 {
 	$if IS_CHAR_ARRAY:
-		(*self)[(usz)v.ordinal / 8] |= (char)(1u << ((usz)v.ordinal % 8));
+		(*self)[(usz)v.ordinal / 8u] |= (char)(1u << ((usz)v.ordinal % 8u));
 	$else
 		*self = (EnumSet)((EnumSetType)*self | 1u << (EnumSetType)v.ordinal);
 	$endif
@@ -32,7 +32,7 @@ fn bool EnumSet.remove(&self, Enum v)
 {
 	$if IS_CHAR_ARRAY:
 		if (!self.has(v) @inline) return false;
-		(*self)[(usz)v.ordinal / 8] &= (char)~(1u << ((usz)v.ordinal % 8));
+		(*self)[(usz)v.ordinal / 8u] &= (char)~(1u << ((usz)v.ordinal % 8u));
 		return true;
 	$else
 		EnumSetType old = (EnumSetType)*self;
@@ -45,7 +45,7 @@ fn bool EnumSet.remove(&self, Enum v)
 fn bool EnumSet.has(&self, Enum v)
 {
 	$if IS_CHAR_ARRAY:
-		return (bool)(((*self)[(usz)v.ordinal / 8] << ((usz)v.ordinal % 8)) & 0x01);
+		return (bool)(((*self)[(usz)v.ordinal / 8u] << ((usz)v.ordinal % 8u)) & 0x01);
 	$else
 		return ((EnumSetType)*self & (1u << (EnumSetType)v.ordinal)) != 0;
 	$endif
@@ -123,9 +123,9 @@ fn EnumSet EnumSet.xor_of(&self, EnumSet s)
 	$endif
 }
 
-fn usz? EnumSet.to_format(&set, Formatter* formatter) @dynamic
+fn isz? EnumSet.to_format(&set, Formatter* formatter) @dynamic
 {
-	usz n = formatter.print("[")!;
+	isz n = formatter.print("[")!;
 	bool found;
 	foreach (value : Enum.values)
 	{
@@ -138,7 +138,7 @@ fn usz? EnumSet.to_format(&set, Formatter* formatter) @dynamic
 	return n;
 }
 
-macro typeid type_for_enum_elements(usz $elements) @local
+macro typeid type_for_enum_elements(isz $elements) @local
 {
 	$switch:
 		$case ($elements > 128):

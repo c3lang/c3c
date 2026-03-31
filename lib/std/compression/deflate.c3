@@ -33,7 +33,7 @@ struct Inflater (InStream)
 {
 	StreamBitReader reader;
 	char[65536 + 8] window @align(8);
-	usz pos;
+	isz pos;
 	bool final;
 	uint stored_len;
 	Huffman* lit_ptr;
@@ -63,11 +63,11 @@ fn void Inflater.init(&self, InStream input, char[] bit_reader_buf = {})
 	});
 }
 
-fn usz? Inflater.read(&self, char[] buffer) @dynamic
+fn isz? Inflater.read(&self, char[] buffer) @dynamic
 {
 	if (self.done) return 0;
 
-	usz total_out = 0;
+	isz total_out = 0;
 	while (total_out < buffer.len)
 	{
 		switch (self.state)
@@ -79,16 +79,16 @@ fn usz? Inflater.read(&self, char[] buffer) @dynamic
 					uint m_dist = self.match_dist;
 					if (m_dist > self.pos) return CORRUPTED_DATA~;
 
-					usz to_copy = math::min((usz)m_len, buffer.len - total_out);
-					usz s_pos = self.pos;
-					usz orig_to_copy = to_copy;
+					isz to_copy = math::min((isz)m_len, (isz)(buffer.len - total_out));
+					isz s_pos = self.pos;
+					isz orig_to_copy = to_copy;
 
 					if (m_dist >= 16 && to_copy >= 16)
 					{
 						while (to_copy >= 16)
 						{
-							usz src_idx = (s_pos - m_dist) & 0xFFFF;
-							usz dst_idx = s_pos & 0xFFFF;
+							isz src_idx = (s_pos - m_dist) & 0xFFFF;
+							isz dst_idx = s_pos & 0xFFFF;
 							if (src_idx > 0xFFF0 || dst_idx > 0xFFF0) break;
 
 							char[16] tmp;
@@ -106,8 +106,8 @@ fn usz? Inflater.read(&self, char[] buffer) @dynamic
 					{
 						while (to_copy >= 8)
 						{
-							usz src_idx = (s_pos - m_dist) & 0xFFFF;
-							usz dst_idx = s_pos & 0xFFFF;
+							isz src_idx = (s_pos - m_dist) & 0xFFFF;
+							isz dst_idx = s_pos & 0xFFFF;
 							if (src_idx > 0xFFF8 || dst_idx > 0xFFF8) break;
 
 							ulong val;
@@ -121,7 +121,7 @@ fn usz? Inflater.read(&self, char[] buffer) @dynamic
 						}
 					}
 
-					for (usz i = 0; i < to_copy; i++)
+					for (isz i = 0; i < to_copy; i++)
 					{
 						char c = self.window[(s_pos - m_dist) & 0xFFFF];
 						buffer[total_out++] = c;
@@ -172,9 +172,9 @@ fn usz? Inflater.read(&self, char[] buffer) @dynamic
 
 			default:
 				if (self.done) break;
-				usz start = self.pos;
+				isz start = self.pos;
 				self.step()!;
-				usz added = self.pos - start;
+				isz added = self.pos - start;
 				if (added > 0)
 				{
 					buffer[total_out++] = self.window[start & 0xFFFF];
@@ -212,14 +212,15 @@ fn char[]? decompress(Allocator allocator, char[] input) => @pool()
 	char[4096] tmp_bit_buf;
 	inflater.init(&mem_stream, &tmp_bit_buf);
 
-	usz out_cap = input.len * 2;
+	isz out_cap = input.len * 2;
+	if (out_cap < 0) out_cap = input.len;
 	if (out_cap < 1024) out_cap = 1024;
 
 	ByteWriter writer;
 	writer.tinit();
 	writer.ensure_capacity(out_cap)!;
 
-	usz out_len = io::copy_to(inflater, &writer)!;
+	isz out_len = io::copy_to(inflater, &writer)!;
 	if (out_len == 0) return alloc::new_array(allocator, char, 0);
 
 	char[] result = alloc::alloc_array(allocator, char, out_len);
@@ -254,7 +255,7 @@ fn void? compress_stream(Allocator allocator, InStream input, OutStream output)
 
 	while (true)
 	{
-		usz? n = input.read(buf[..]);
+		isz? n = input.read(buf[..]);
 		if (catch err = n)
 		{
 			if (err == io::EOF) break;
@@ -276,8 +277,8 @@ struct Deflater (OutStream)
 	uint window_fill;
 
 	Token[] tokens;
-	usz token_count;
-	usz max_tokens;
+	isz token_count;
+	isz max_tokens;
 	uint[286] lit_freqs;
 	uint[30] dist_freqs;
 
@@ -287,8 +288,8 @@ struct Deflater (OutStream)
 	uint strstart;
 	uint match_pos;
 	bool hash_ready;
-	usz total_in;
-	usz total_out;
+	isz total_in;
+	isz total_out;
 	bool closed;
 }
 
@@ -318,15 +319,16 @@ fn void Deflater.free(&self)
 	if (self.bwriter.data.ptr) alloc::free(self.allocator, self.bwriter.data.ptr);
 }
 
-fn usz? Deflater.write(&self, char[] data) @dynamic
+fn isz? Deflater.write(&self, char[] data) @dynamic
 {
 	if (self.closed) return IO_ERROR~;
 
-	usz remaining = data.len;
-	usz offset = 0;
+	isz remaining = data.len;
+	isz offset = 0;
 	while (remaining > 0)
 	{
-		usz space = (WINDOW_SIZE * 2) - (usz)self.window_fill;
+		isz space = (WINDOW_SIZE * 2) - (isz)self.window_fill;
+		assert(space >= 0);
 		if (space == 0)
 		{
 			self.scan_matches(false)!;
@@ -336,7 +338,7 @@ fn usz? Deflater.write(&self, char[] data) @dynamic
 			space = WINDOW_SIZE;
 		}
 
-		usz to_copy = math::min(remaining, space);
+		isz to_copy = math::min(remaining, space);
 		mem::copy(self.window[self.window_fill..], data[offset..], to_copy);
 		self.window_fill += (uint)to_copy;
 		remaining -= to_copy;
@@ -380,12 +382,12 @@ fn void? Deflater.scan_matches(&self, bool final)
 	uint[] lfreqs = self.lit_freqs[..];
 	uint[] dfreqs = self.dist_freqs[..];
 	Token[] tokens = self.tokens;
-	usz tcount = self.token_count;
-	usz max_t = self.max_tokens;
+	isz tcount = self.token_count;
+	isz max_t = self.max_tokens;
 
 	uint hash = self.hash;
 	uint strstart = self.strstart;
-	usz pos = self.match_pos;
+	isz pos = self.match_pos;
 	uint win_offset = strstart - (uint)pos;
 
 	while (pos < wfill)
@@ -406,7 +408,7 @@ fn void? Deflater.scan_matches(&self, bool final)
 			while (curr != 0xFFFFFFFF && strstart - curr < WINDOW_SIZE && chain_len < MAX_CHAIN)
 			{
 				chain_len++;
-				usz curr_rel = (usz)(curr - win_offset);
+				isz curr_rel = (isz)(curr - win_offset);
 
 				if (pos + best_len < wfill && input[curr_rel + best_len] == input[pos + best_len])
 				{
@@ -543,9 +545,9 @@ fn void? Deflater.emit_block(&self, bool final)=> @pool()
 	char[] lit_lens = lit_huff.get_lengths(285);
 	char[] dist_lens = dist_huff.get_lengths(29);
 
-	usz hlit_cnt = 286;
+	isz hlit_cnt = 286;
 	while (hlit_cnt > 257 && lit_lens[hlit_cnt - 1] == 0) hlit_cnt--;
-	usz hdist_cnt = 30;
+	isz hdist_cnt = 30;
 	while (hdist_cnt > 1 && dist_lens[hdist_cnt - 1] == 0) hdist_cnt--;
 
 	self.bwriter.write_bits((uint)hlit_cnt - 257, 5);
@@ -558,24 +560,24 @@ fn void? Deflater.emit_block(&self, bool final)=> @pool()
 	all_lens[:hlit_cnt] = lit_lens[:hlit_cnt];
 	all_lens[hlit_cnt:hdist_cnt] = dist_lens[:hdist_cnt];
 
-	for (usz i = 0; i < all_lens.len;)
+	for (isz i = 0; i < all_lens.len;)
 	{
 		char len = all_lens[i];
-		usz count = 1;
+		isz count = 1;
 		while (i + count < all_lens.len && all_lens[i + count] == len) count++;
 
 		if (len == 0)
 		{
 			while (count >= 11)
 			{
-				uint c = (uint)math::min(count, (usz)138);
+				uint c = (uint)math::min(count, (isz)138);
 				tree_tokens.push({ 18, (ushort)(c - 11) });
 				tree_freqs[18]++;
 				i += c; count -= c;
 			}
 			while (count >= 3)
 			{
-				uint c = (uint)math::min(count, (usz)10);
+				uint c = (uint)math::min(count, (isz)10);
 				tree_tokens.push({ 17, (ushort)(c - 3) });
 				tree_freqs[17]++;
 				i += c; count -= c;
@@ -588,7 +590,7 @@ fn void? Deflater.emit_block(&self, bool final)=> @pool()
 			i++; count--;
 			while (count >= 3)
 			{
-				uint c = (uint)math::min(count, (usz)6);
+				uint c = (uint)math::min(count, (isz)6);
 				tree_tokens.push({ 16, (ushort)(c - 3) });
 				tree_freqs[16]++;
 				i += c; count -= c;
@@ -606,10 +608,10 @@ fn void? Deflater.emit_block(&self, bool final)=> @pool()
 	Huffman tree_huff;
 	tree_huff.build_from_freqs(tree_freqs[..], 7);
 	char[] tree_lens = tree_huff.get_lengths(18);
-	usz hclen_cnt = 19;
+	isz hclen_cnt = 19;
 	while (hclen_cnt > 4 && tree_lens[ORDER[hclen_cnt - 1]] == 0) hclen_cnt--;
 	self.bwriter.write_bits((uint)hclen_cnt - 4, 4);
-	for (usz i = 0; i < hclen_cnt; i++) self.bwriter.write_bits(tree_lens[ORDER[i]], 3);
+	for (isz i = 0; i < hclen_cnt; i++) self.bwriter.write_bits(tree_lens[ORDER[i]], 3);
 
 	// Write the RLE-encoded code lengths
 	Code[19] tree_codes;
@@ -769,8 +771,8 @@ struct StreamBitReader @private
 {
 	InStream stream;
 	char[] buffer;
-	usz buf_pos;
-	usz buf_len;
+	isz buf_pos;
+	isz buf_len;
 	ulong bit_buf;
 	uint nbits;
 	SetCursorFn set_cursor_fn;
@@ -809,7 +811,7 @@ fn void? StreamBitReader.refill(&self) @inline
 {
 	if (self.buf_pos >= self.buf_len)
 	{
-		usz n = self.stream.read(self.buffer)!;
+		isz n = self.stream.read(self.buffer)!;
 		if (!n) return io::EOF~;
 		self.buf_len = n;
 		self.buf_pos = 0;
@@ -858,13 +860,16 @@ fn void StreamBitReader.align(&self) @inline
 struct BitWriter @private
 {
 	char[] data;
-	usz len;
+	isz len;
 	ulong buffer;
 	uint nbits;
 	Allocator allocator;
 }
 
-fn void BitWriter.init(&self, Allocator allocator, usz initial_cap)
+<*
+ @require initial_cap > 0
+*>
+fn void BitWriter.init(&self, Allocator allocator, isz initial_cap)
 {
 	self.allocator = allocator;
 	self.data = alloc::alloc_array(allocator, char, initial_cap);
@@ -881,11 +886,11 @@ fn void BitWriter.write_bits(&self, uint value, uint count)
 	{
 		if (self.len >= self.data.len)
 		{
-			usz new_cap = self.data.len;
+			isz new_cap = self.data.len;
 			if (new_cap < 1024) new_cap = 1024;
 			while (new_cap <= self.len)
 			{
-				if (new_cap > usz.max / 2)
+				if (new_cap > isz.max / 2)
 				{
 					new_cap = self.len + 1;
 					break;
@@ -972,7 +977,7 @@ struct Token @private
 
 struct IndexMap @private
 {
-	usz index;
+	isz index;
 	uint freq;
 }
 fn bool IndexMap.less(&self, IndexMap other) => self.freq < other.freq;
@@ -980,7 +985,7 @@ fn bool IndexMap.less(&self, IndexMap other) => self.freq < other.freq;
 fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private => @pool()
 {
 	List {IndexMap} map; map.tinit();
-	usz n = 0;
+	isz n = 0;
 	foreach (i, freq : freqs) { if (freq == 0) continue; map.push({i, freq}); n++; }
 	if (n == 0) return {};
 	sort::quicksort(map.array_view());
@@ -990,25 +995,25 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 		blen[map[0].index] = 1;
 		return blen;
 	}
-	usz max_elements = 2 * n;
+	isz max_elements = 2 * n;
 	uint[] hist = mem::temp_array(uint, max_elements);
 	foreach (i, m : map) hist[i] = m.freq;
 	uint[] current = mem::temp_array(uint, max_elements);
 	uint[] previous = mem::temp_array(uint, max_elements);
 	ulong[] is_merged = mem::temp_array(ulong, max_elements);
 	previous[:n] = hist[:n];
-	usz num_previous = n;
+	isz num_previous = n;
 	is_merged[:max_elements] = 0;
-	usz num_relevant = 2 * n - 2;
+	isz num_relevant = 2 * n - 2;
 	ulong mask = 1;
 
 	for (uint bits = max_bits - 1; bits > 0; bits--)
 	{
-		num_previous &= (usz)~1;
+		num_previous &= (isz)~1;
 		current[0] = hist[0];
 		current[1] = hist[1];
 		uint sum = current[0] + current[1];
-		usz num_current = 2; usz num_hist = 2; usz num_merged = 0;
+		isz num_current = 2; isz num_hist = 2; isz num_merged = 0;
 
 		while (true)
 		{
@@ -1043,7 +1048,7 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 		if (num_previous >= num_relevant)
 		{
 			bool keep_going = false;
-			for (usz i = num_relevant; i > 1; i--)
+			for (isz i = num_relevant; i > 1; i--)
 			{
 				if (previous[i - 1] != current[i - 1])
 				{
@@ -1057,13 +1062,13 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 	}
 
 	mask >>= 1; hist[..] = 0;
-	usz num_analyze = num_relevant;
+	isz num_analyze = num_relevant;
 	while (mask != 0)
 	{
-		usz num_merged_loop = 0;
+		isz num_merged_loop = 0;
 		if (max_elements >= 2) { hist[0]++; hist[1]++; }
-		usz symbol = 2;
-		for (usz i = symbol; i < num_analyze; i++)
+		isz symbol = 2;
+		for (isz i = symbol; i < num_analyze; i++)
 		{
 			if (i < max_elements && (is_merged[i] & mask) == 0)
 			{
@@ -1075,13 +1080,13 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, uint max_bits) @private =
 		num_analyze = 2 * num_merged_loop;
 		mask >>= 1;
 	}
-	for (usz i = 0; i < num_analyze; i++) hist[i]++;
+	for (isz i = 0; i < num_analyze; i++) hist[i]++;
 	char[] blen = alloc::new_array(allocator, char, freqs.len);
 	foreach (i, m : map) blen[m.index] = (char)hist[i];
 	return blen;
 }
 
-fn char[] Huffman.get_lengths(&self, usz max_sym)
+fn char[] Huffman.get_lengths(&self, isz max_sym)
 {
 	char[] blen = alloc::new_array(tmem, char, max_sym + 1);
 	ushort index = 0;
@@ -1289,7 +1294,7 @@ fn void? Inflater.step(&self)
 
 		case COPY_MATCH:
 			if (self.match_dist > self.pos) return CORRUPTED_DATA~;
-			char c = self.window[(usz)((self.pos - self.match_dist) & 0xFFFF)];
+			char c = self.window[(isz)((self.pos - self.match_dist) & 0xFFFF)];
 			self.write_byte(c);
 			self.match_len--;
 			if (self.match_len == 0)
@@ -1304,7 +1309,7 @@ fn void? Inflater.step(&self)
 	return;
 }
 
-fn void Inflater.write_byte(&self, char c) @inline { self.window[(usz)(self.pos & 0xFFFF)] = c; self.pos++; }
+fn void Inflater.write_byte(&self, char c) @inline { self.window[(isz)(self.pos & 0xFFFF)] = c; self.pos++; }
 
 const ushort[31] LENGTH_BASE @private = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0 };
 const char[31] LENGTH_EXTRA @private = { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 0, 0 };

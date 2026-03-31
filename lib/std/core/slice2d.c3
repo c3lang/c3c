@@ -7,17 +7,17 @@ module std::core::array;
 struct Slice2d <Type>
 {
 	Type* ptr;
-	usz inner_len;
-	usz ystart;
-	usz ylen;
-	usz xstart;
-	usz xlen;
+	isz inner_len;
+	isz ystart;
+	isz ylen;
+	isz xstart;
+	isz xlen;
 }
 
 <*
  @return `The length of the "outer" slice`
 *>
-fn usz Slice2d.len(&self) @operator(len)
+fn isz Slice2d.len(&self) @operator(len)
 {
 	return self.ylen;
 }
@@ -25,7 +25,7 @@ fn usz Slice2d.len(&self) @operator(len)
 <*
  @return `The total number of elements.`
 *>
-fn usz Slice2d.count(&self)
+fn isz Slice2d.count(&self)
 {
 	return self.ylen * self.xlen;
 }
@@ -33,7 +33,7 @@ fn usz Slice2d.count(&self)
 <*
  Step through each element of the slice.
 *>
-macro void Slice2d.@each(&self; @body(usz[<2>], Type))
+macro void Slice2d.@each(&self; @body(isz[<2>], Type))
 {
 	foreach (y, line : *self)
 	{
@@ -47,7 +47,7 @@ macro void Slice2d.@each(&self; @body(usz[<2>], Type))
 <*
  Step through each element of the slice *by reference*
 *>
-macro void Slice2d.@each_ref(&self; @body(usz[<2>], Type*))
+macro void Slice2d.@each_ref(&self; @body(isz[<2>], Type*))
 {
 	foreach (y, line : *self)
 	{
@@ -65,7 +65,7 @@ macro void Slice2d.@each_ref(&self; @body(usz[<2>], Type*))
  @return "The slice for the particular row"
  @require idy >= 0 && idy < self.ylen
 *>
-macro Type[] Slice2d.get_row(self, usz idy) @operator([])
+macro Type[] Slice2d.get_row(self, isz idy) @operator([])
 {
 	return (self.ptr + self.inner_len * (idy + self.ystart))[self.xstart:self.xlen];
 }
@@ -78,7 +78,7 @@ macro Type[] Slice2d.get_row(self, usz idy) @operator([])
  @require coord.y >= 0 && coord.y < self.ylen : "y value out of range"
  @require coord.x >= 0 && coord.x < self.xlen : "x value out of range"
 *>
-macro Type Slice2d.get_coord(self, usz[<2>] coord)
+macro Type Slice2d.get_coord(self, isz[<2>] coord)
 {
 	return *self.get_coord_ref(coord);
 }
@@ -91,7 +91,7 @@ macro Type Slice2d.get_coord(self, usz[<2>] coord)
  @require coord.y >= 0 && coord.y < self.ylen : "y value out of range"
  @require coord.x >= 0 && coord.x < self.xlen : "x value out of range"
 *>
-macro Type* Slice2d.get_coord_ref(self, usz[<2>] coord)
+macro Type* Slice2d.get_coord_ref(self, isz[<2>] coord)
 {
 	return self.get_xy_ref(coord.x, coord.y);
 }
@@ -132,7 +132,7 @@ macro Type* Slice2d.get_xy_ref(self, x, y)
  @require coord.y >= 0 && coord.y < self.ylen : "y value out of range"
  @require coord.x >= 0 && coord.x < self.xlen : "x value out of range"
 *>
-macro void Slice2d.set_coord(self, usz[<2>] coord, Type value)
+macro void Slice2d.set_coord(self, isz[<2>] coord, Type value)
 {
 	*self.get_coord_ref(coord) = value;
 }

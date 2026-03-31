@@ -505,12 +505,12 @@ fn F25519Int F25519Int.mul(&s, F25519Int* n) @operator(*)
 	F25519Int r @noinit;
 
 	uint c;
-	for (usz i = 0; i < F25519Int.len; i++)
+	for (isz i = 0; i < F25519Int.len; i++)
 	{
 		c >>= 8;
-		for (usz j; j <= i; j++) c += (*s)[j] * (*n)[i - j];
+		for (isz j; j <= i; j++) c += (*s)[j] * (*n)[i - j];
 		// Reduce using 2^256 = 2*19 mod p
-		for (usz j = i + 1; j < F25519Int.len; j++) c += (*s)[j] * (*n)[^j - i] * 2 * 19;
+		for (isz j = i + 1; j < F25519Int.len; j++) c += (*s)[j] * (*n)[^j - i] * 2 * 19;
 		r[i] = (char)c;
 	}
 
@@ -551,7 +551,7 @@ fn F25519Int F25519Int.inv(&s)
 	//Compute s^(p-2)
 	F25519Int r = *s;
 
-	for (usz i; i < 255 - 1 - 5; i++) r = r * r * s;
+	for (isz i; i < 255 - 1 - 5; i++) r = r * r * s;
 
 	r *= r;
 	r = r * r * s;
@@ -571,7 +571,7 @@ fn F25519Int pow_2523(F25519Int* s) @local
 {
 	F25519Int r = *s;
 
-	for (usz i; i < 252 - 1 - 2; i++) r = r * r * s;
+	for (isz i; i < 252 - 1 - 2; i++) r = r * r * s;
 
 	r *= r;
 	r = r * r * s;
@@ -615,10 +615,10 @@ fn FBaseInt from_bytes(char[] bytes)
 {
 	FBaseInt r;
 
-	usz bitc = min(252 - 1, bytes.len << 3);
-	usz bytec = bitc >> 3;
-	usz mod = bitc & 7;
-	usz rem = bytes.len << 3 - bitc;
+	isz bitc = min(252 - 1, bytes.len << 3);
+	isz bytec = bitc >> 3;
+	isz mod = bitc & 7;
+	isz rem = bytes.len << 3 - bitc;
 
 	r[:bytec] = bytes[^bytec..];
 
@@ -701,7 +701,7 @@ fn FBaseInt FBaseInt.sub_l(&s, FBaseInt* n)
 
  @param [&in] s
 *>
-fn FBaseInt FBaseInt.shl(&s, usz n) @operator(<<)
+fn FBaseInt FBaseInt.shl(&s, isz n) @operator(<<)
 {
 	FBaseInt r @noinit;
 

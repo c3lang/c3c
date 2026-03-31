@@ -56,7 +56,7 @@ struct SipHash
 	ulong[4] v;
 	long m;
 	int m_idx;
-	usz len;
+	isz len;
 }
 
 fn OutType hash(char[] data, uint128 key)
