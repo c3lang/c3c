@@ -25,7 +25,7 @@ fn void test4()
 {
 	char a = 1;
 	char b = 2;
-	int c = a + b;
+	int c = (int)(a + b);
 }
 
 fn void test5()
@@ -40,7 +40,7 @@ fn void test6()
 {
 	char a = 1;
 	char b = 2;
-	char c = (b > a) ? 1 : 0 + a + b;
+	char c = (b > a) ? 1u : 0u + a + b;
 }
 
 fn void test7()
@@ -104,7 +104,7 @@ fn void test13()
 fn void test14()
 {
 	char a = 1;
-	ichar b = a;
+	ichar b = (ichar)a;
 }
 
 fn void test15()
@@ -146,8 +146,8 @@ fn void test18()
 
 fn void test19()
 {
-	uint a = 1;
-	int b = a;
+	uint a = 1u;
+	int b = (int)a;
 }
 
 /*
@@ -160,7 +160,7 @@ fn void test1() {
 fn void test21()
 {
 	int a = 1;
-	uint b = a;
+	uint b = (uint)a;
 }
 
 fn void foo() {}

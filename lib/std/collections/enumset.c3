@@ -123,9 +123,9 @@ fn EnumSet EnumSet.xor_of(&self, EnumSet s)
 	$endif
 }
 
-fn usz? EnumSet.to_format(&set, Formatter* formatter) @dynamic
+fn sz? EnumSet.to_format(&set, Formatter* formatter) @dynamic
 {
-	usz n = formatter.print("[")!;
+	sz n = formatter.print("[")!;
 	bool found;
 	foreach (value : Enum.values)
 	{
@@ -138,7 +138,7 @@ fn usz? EnumSet.to_format(&set, Formatter* formatter) @dynamic
 	return n;
 }
 
-macro typeid type_for_enum_elements(usz $elements) @local
+macro typeid type_for_enum_elements(sz $elements) @local
 {
 	$switch:
 		$case ($elements > 128):

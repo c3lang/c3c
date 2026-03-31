@@ -12,7 +12,7 @@ fn char? Test.read_byte(&self) @dynamic
 	return self.data[self.index++];
 }
 
-fn usz? Test.read(&self, char[] buffer) @dynamic
+fn sz? Test.read(&self, char[] buffer) @dynamic
 {
 	io::printn(*self);
 	if (self.index >= self.data.len) return io::EOF~;

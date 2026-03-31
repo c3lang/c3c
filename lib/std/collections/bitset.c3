@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 <*
  @require SIZE > 0 : "The size of the bitset in bits must be at least 1"
+ @require SIZE / (uint.sizeof * 8) < uint.max
 *>
 module std::collections::bitset <SIZE>;
 
@@ -17,9 +18,9 @@ struct BitSet
 <*
  @return "The number of bits set"
 *>
-fn usz BitSet.cardinality(&self)
+fn sz BitSet.cardinality(&self)
 {
-	usz n;
+	sz n;
 	foreach (x : self.data)
 	{
 		n += x.popcount();
@@ -32,13 +33,13 @@ fn usz BitSet.cardinality(&self)
 
  @param i : "The index to set"
 
- @require i < SIZE : "Index was out of range"
+ @require i < SIZE && i >= 0 : "Index was out of range"
 *>
-fn void BitSet.set(&self, usz i)
+fn void BitSet.set(&self, sz i)
 {
-	usz q = i / BITS;
-	usz r = i % BITS;
-	self.data[q] |= 1 << r;
+	sz q = i / BITS;
+	uint r = (uint)(i % BITS);
+	self.data[q] |= 1u << r;
 }
 
 <*
@@ -121,13 +122,13 @@ macro BitSet BitSet.and_self(&self, BitSet set) @operator(&=)
 
  @param i : "The index to set"
 
- @require i < SIZE : "Index was out of range"
+ @require i < SIZE && i >= 0 : "Index was out of range"
 *>
-fn void BitSet.unset(&self, usz i)
+fn void BitSet.unset(&self, sz i)
 {
-	usz q = i / BITS;
-	usz r = i % BITS;
-	self.data[q] &= ~(1 << r);
+	sz q = i / BITS;
+	uint r = (uint)(i % BITS);
+	self.data[q] &= ~(1u << r);
 }
 
 <*
@@ -135,14 +136,14 @@ fn void BitSet.unset(&self, usz i)
 
  @param i : "The index of the bit"
 
- @require i < SIZE : "Index was out of range"
+ @require i < SIZE && i >= 0 : "Index was out of range"
  @pure
 *>
-fn bool BitSet.get(&self, usz i) @operator([]) @inline
+fn bool BitSet.get(&self, sz i) @operator([]) @inline
 {
-	usz q = i / BITS;
-	usz r = i % BITS;
-	return self.data[q] & (1 << r) != 0;
+	sz q = i / BITS;
+	uint r = (uint)(i % BITS);
+	return self.data[q] & (1u << r) != 0;
 }
 
 <*
@@ -150,7 +151,7 @@ fn bool BitSet.get(&self, usz i) @operator([]) @inline
 
  @pure
 *>
-fn usz BitSet.len(&self) @operator(len) @inline
+fn sz BitSet.len(&self) @operator(len) @inline
 {
 	return SZ * BITS;
 }
@@ -161,9 +162,9 @@ fn usz BitSet.len(&self) @operator(len) @inline
  @param i : "The index of the bit"
  @param value : "The value to set the bit to"
 
- @require i < SIZE : "Index was out of range"
+ @require i < SIZE && i >= 0 : "Index was out of range"
 *>
-fn void BitSet.set_bool(&self, usz i, bool value) @operator([]=) @inline
+fn void BitSet.set_bool(&self, sz i, bool value) @operator([]=) @inline
 {
 	if (value) return self.set(i);
 	self.unset(i);
@@ -185,28 +186,38 @@ struct GrowableBitSet
 }
 
 <*
- @param initial_capacity
+ @param initial_capacity : "The initial capcity of the underlying list"
  @param [&inout] allocator : "The allocator to use"
+
+ @require initial_capacity > 0 : "The initial capacity must be at least 1"
 *>
-fn GrowableBitSet* GrowableBitSet.init(&self, Allocator allocator, usz initial_capacity = 1)
+fn GrowableBitSet* GrowableBitSet.init(&self, Allocator allocator, sz initial_capacity = 1)
 {
 	self.data.init(allocator, initial_capacity);
 	return self;
 }
 
-fn GrowableBitSet* GrowableBitSet.tinit(&self, usz initial_capacity = 1)
+<*
+ @param initial_capacity : "The initial capcity of the underlying list"
+
+ @require initial_capacity > 0 : "The initial capacity must be at least 1"
+*>
+fn GrowableBitSet* GrowableBitSet.tinit(&self, sz initial_capacity = 1)
 {
 	return self.init(tmem, initial_capacity) @inline;
 }
 
+<*
+ Free all memory associated with the set.
+*>
 fn void GrowableBitSet.free(&self)
 {
 	self.data.free();
 }
 
-fn usz GrowableBitSet.cardinality(&self)
+fn sz GrowableBitSet.cardinality(&self)
 {
-	usz n;
+	sz n;
 	foreach (x : self.data)
 	{
 		n += x.popcount();
@@ -214,43 +225,57 @@ fn usz GrowableBitSet.cardinality(&self)
 	return n;
 }
 
-fn void GrowableBitSet.set(&self, usz i)
+<*
+ Set a bit in the bitset.
+
+ @param i : "The index to set"
+
+ @require i >= 0 : "Index was out of range"
+*>
+fn void GrowableBitSet.set(&self, sz i)
 {
-	usz q = i / BITS;
-	usz r = i % BITS;
-	usz current_len = self.data.len();
+	sz q = i / BITS;
+	uint r = (uint)(i % BITS);
+	sz current_len = self.data.len();
 	while (q >= current_len)
 	{
 		self.data.push(0);
 		current_len++;
 	}
-	self.data.set(q, self.data[q] | (1 << r));
+	self.data.set(q, self.data[q] | (1u << r));
 }
 
-fn void GrowableBitSet.unset(&self, usz i)
+<*
+ Clear a bit in the bitset.
+
+ @param i : "The index to clear"
+
+ @require i >= 0 : "Index was out of range"
+*>
+fn void GrowableBitSet.unset(&self, sz i)
 {
-	usz q = i / BITS;
-	usz r = i % BITS;
+	sz q = i / BITS;
+	uint r = (uint)(i % BITS);
 	if (q >= self.data.len()) return;
-	self.data.set(q, self.data[q] &~ (1 << r));
+	self.data.set(q, self.data[q] &~ (1u << r));
 }
 
-fn bool GrowableBitSet.get(&self, usz i) @operator([]) @inline
+fn bool GrowableBitSet.get(&self, sz i) @operator([]) @inline
 {
-	usz q = i / BITS;
-	usz r = i % BITS;
+	sz q = i / BITS;
+	uint r = (uint)(i % BITS);
 	if (q >= self.data.len()) return false;
-	return self.data[q] & (1 << r) != 0;
+	return self.data[q] & (1u << r) != 0;
 }
 
-fn usz GrowableBitSet.len(&self) @operator(len)
+fn sz GrowableBitSet.len(&self) @operator(len)
 {
-	usz n = self.data.len() * BITS;
-	if (n > 0) n -= (usz)self.data[^1].clz();
+	sz n = self.data.len() * BITS;
+	if (n > 0) n -= (sz)self.data[^1].clz();
 	return n;
 }
 
-fn void GrowableBitSet.set_bool(&self, usz i, bool value) @operator([]=) @inline
+fn void GrowableBitSet.set_bool(&self, sz i, bool value) @operator([]=) @inline
 {
 	if (value) return self.set(i);
 	self.unset(i);

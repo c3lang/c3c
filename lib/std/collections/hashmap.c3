@@ -8,8 +8,8 @@ module std::collections::map <Key, Value>;
 import std::math;
 import std::io @norecurse;
 
-const uint DEFAULT_INITIAL_CAPACITY = 16;
-const uint MAXIMUM_CAPACITY = 1u << 31;
+const int DEFAULT_INITIAL_CAPACITY = 16;
+const int MAXIMUM_CAPACITY = int.max;
 const float DEFAULT_LOAD_FACTOR = 0.75;
 const VALUE_IS_EQUATABLE = Value.is_eq;
 const bool COPY_KEYS = types::implements_copy(Key);
@@ -31,9 +31,9 @@ struct HashMap (Printable)
 	Entry*[] table;
 	Allocator allocator;
 	<* Last inserted LinkedEntry *>
-	uint count;
+	int count;
 	<* Resize limit *>
-	uint threshold;
+	int threshold;
 	float load_factor;
 }
 
@@ -45,12 +45,12 @@ struct HashMap (Printable)
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn HashMap* HashMap.init(&self, Allocator allocator, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn HashMap* HashMap.init(&self, Allocator allocator, int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	capacity = math::next_power_of_2(capacity);
 	self.allocator = allocator;
 	self.load_factor = load_factor;
-	self.threshold = (uint)(capacity * load_factor);
+	self.threshold = (int)(capacity * load_factor);
 	self.table = alloc::new_array(allocator, Entry*, capacity);
 	return self;
 }
@@ -61,7 +61,7 @@ fn HashMap* HashMap.init(&self, Allocator allocator, uint capacity = DEFAULT_INI
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn HashMap* HashMap.tinit(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn HashMap* HashMap.tinit(&self, int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init(tmem, capacity, load_factor) @inline;
 }
@@ -74,7 +74,7 @@ fn HashMap* HashMap.tinit(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-macro HashMap* HashMap.init_with_key_values(&self, Allocator allocator, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro HashMap* HashMap.init_with_key_values(&self, Allocator allocator, ..., int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.init(allocator, capacity, load_factor);
 	$for var $i = 0; $i < $vacount; $i += 2:
@@ -105,13 +105,13 @@ macro HashMap* HashMap.tinit_with_key_values(&self, ..., uint capacity = DEFAULT
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn HashMap* HashMap.init_from_keys_and_values(&self, Allocator allocator, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn HashMap* HashMap.init_from_keys_and_values(&self, Allocator allocator, Key[] keys, Value[] values, int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	assert(keys.len == values.len);
 	self.init(allocator, capacity, load_factor);
-	for (usz i = 0; i < keys.len; i++)
+	foreach (i, key : keys)
 	{
-		self.set(keys[i], values[i]);
+		self.set(key, values[i]);
 	}
 	return self;
 }
@@ -126,7 +126,7 @@ fn HashMap* HashMap.init_from_keys_and_values(&self, Allocator allocator, Key[] 
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn HashMap* HashMap.tinit_from_keys_and_values(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn HashMap* HashMap.tinit_from_keys_and_values(&self, Key[] keys, Value[] values, int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init_from_keys_and_values(tmem, keys, values, capacity, load_factor);
 }
@@ -168,7 +168,7 @@ fn bool HashMap.is_empty(&map) @inline
 	return !map.count;
 }
 
-fn usz HashMap.len(&map) @inline
+fn sz HashMap.len(&map) @inline
 {
 	return map.count;
 }
@@ -316,7 +316,7 @@ fn Key[] HashMap.keys(&self, Allocator allocator)
 	if (!self.count) return {};
 
 	Key[] list = alloc::alloc_array(allocator, Key, self.count);
-	usz index = 0;
+	sz index = 0;
 	foreach (Entry* entry : self.table)
 	{
 		while (entry)
@@ -359,7 +359,7 @@ fn Value[] HashMap.values(&self, Allocator allocator)
 {
 	if (!self.count) return {};
 	Value[] list = alloc::alloc_array(allocator, Value, self.count);
-	usz index = 0;
+	sz index;
 	foreach (Entry* entry : self.table)
 	{
 		while (entry)
@@ -415,26 +415,25 @@ fn void hashmap_add_entry(HashMap* map, uint hash, Key key, Value value, uint bu
 	}
 }
 
-fn void hashmap_resize(HashMap* map, uint new_capacity) @private
+fn void hashmap_resize(HashMap* map, sz new_capacity) @private
 {
 	Entry*[] old_table = map.table;
-	uint old_capacity = old_table.len;
+	sz old_capacity = old_table.len;
 	if (old_capacity == MAXIMUM_CAPACITY)
 	{
-		map.threshold = uint.max;
+		map.threshold = MAXIMUM_CAPACITY;
 		return;
 	}
 	Entry*[] new_table = alloc::new_array(map.allocator, Entry*, new_capacity);
 	hashmap_transfer(map, new_table);
 	map.table = new_table;
 	hashmap_free_internal(map, old_table.ptr);
-	map.threshold = (uint)(new_capacity * map.load_factor);
+	map.threshold = (int)(new_capacity * map.load_factor);
 }
 
-fn usz? HashMap.to_format(&self, Formatter* f) @dynamic
+fn sz? HashMap.to_format(&self, Formatter* f) @dynamic
 {
-	usz len;
-	len += f.print("{ ")!;
+	sz len = f.print("{ ")!;
 	self.@each_entry(; Entry* entry)
 	{
 		if (len > 2) len += f.print(", ")!;
@@ -443,10 +442,13 @@ fn usz? HashMap.to_format(&self, Formatter* f) @dynamic
 	return len + f.print(" }");
 }
 
+<*
+ @require new_table.len < int.max : "Too many entries"
+*>
 fn void hashmap_transfer(HashMap* map, Entry*[] new_table) @private
 {
 	Entry*[] src = map.table;
-	uint new_capacity = new_table.len;
+	int new_capacity = (int)new_table.len;
 	foreach (uint j, Entry *e : src)
 	{
 		if (!e) continue;
@@ -525,7 +527,7 @@ fn bool hashmap_remove_entry_for_key(HashMap* map, Key key) @private
 	return false;
 }
 
-fn void hashmap_create_entry(HashMap* map, uint hash, Key key, Value value, int bucket_index) @private
+fn void hashmap_create_entry(HashMap* map, uint hash, Key key, Value value, uint bucket_index) @private
 {
 	Entry *e = map.table[bucket_index];
 	$if COPY_KEYS:
@@ -560,7 +562,7 @@ typedef HashMapKeyIterator = HashMapIterator;
 <*
  @require idx < self.map.count
 *>
-fn Entry HashMapIterator.get(&self, usz idx) @operator([])
+fn Entry HashMapIterator.get(&self, sz idx) @operator([])
 {
 	if (idx < self.index)
 	{
@@ -582,19 +584,19 @@ fn Entry HashMapIterator.get(&self, usz idx) @operator([])
 	return *self.current_entry;
 }
 
-fn Value HashMapValueIterator.get(&self, usz idx) @operator([])
+fn Value HashMapValueIterator.get(&self, sz idx) @operator([])
 {
 	return ((HashMapIterator*)self).get(idx).value;
 }
 
-fn Key HashMapKeyIterator.get(&self, usz idx) @operator([])
+fn Key HashMapKeyIterator.get(&self, sz idx) @operator([])
 {
 	return ((HashMapIterator*)self).get(idx).key;
 }
 
-fn usz HashMapValueIterator.len(self) @operator(len) => self.map.count;
-fn usz HashMapKeyIterator.len(self) @operator(len) => self.map.count;
-fn usz HashMapIterator.len(self) @operator(len) => self.map.count;
+fn sz HashMapValueIterator.len(self) @operator(len) => self.map.count;
+fn sz HashMapKeyIterator.len(self) @operator(len) => self.map.count;
+fn sz HashMapIterator.len(self) @operator(len) => self.map.count;
 
 fn uint rehash(uint hash) @inline @private
 {
@@ -602,9 +604,9 @@ fn uint rehash(uint hash) @inline @private
 	return hash ^ ((hash >> 7) ^ (hash >> 4));
 }
 
-macro uint index_for(uint hash, uint capacity) @private
+macro uint index_for(uint hash, sz capacity) @private
 {
-	return hash & (capacity - 1);
+	return hash & ((uint)capacity - 1u);
 }
 
 int dummy @local;

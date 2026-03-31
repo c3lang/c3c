@@ -24,17 +24,17 @@ struct Abc
 fn void hello(int z)
 {
 	Foo x;
-	x = { .x = z, .w = z < 100 };
-	Abc y = { .b.x = 32, .b.y = 10 };
+	x = { .x = (uint)z, .w = z < 100 };
+	Abc y = { .b.x = 32u, .b.y = 10u };
 	Abc d = { .b = { 23, 11, true } };
 	Bar b;
-	b = { .x = z, .w = z < 100 };
+	b = { .x = (uint)z, .w = z < 100 };
 	io::printfn("%s %s %s", x.x, x.y, x.w);
 	io::printfn("%s %s %s", y.b.x, y.b.y, y.b.w);
 	io::printfn("%s %s %s", b.x, b.y, b.w);
-	x = { z + 1, 1, z > 100 };
+	x = { (uint)z + 1u, 1u, z > 100 };
 	y.b = { 33, 11, true };
-	b = {  z + 1, 1, z > 100 };
+	b = {  (uint)z + 1u, 1u, z > 100 };
 	io::printfn("%s %s %s", x.x, x.y, x.w);
     io::printfn("%s %s %s", y.b.x, y.b.y, y.b.w);
     io::printfn("%s %s %s", b.x, b.y, b.w);

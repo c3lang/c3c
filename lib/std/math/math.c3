@@ -466,7 +466,7 @@ macro pow(x, exp)
 	$if types::is_floatlike($typeof(exp)):
 		return $$pow(values::promote_int_same(x, exp), ($typeof(values::promote_int_same(x, exp)))exp);
 	$else
-		return $$pow_int(values::promote_int(x), exp);
+		return $$pow_int(values::promote_int(x), (int)exp);
 	$endif
 }
 
@@ -492,7 +492,7 @@ macro int signbit(x)
 	$switch $typeof(x):
 	$case float:
 	$case float16:
-		return bitcast((float)x, uint) >> 31;
+		return (int)(bitcast((float)x, uint) >> 31);
 	$default:
 		return (int)(bitcast((double)x, ulong) >> 63);
 	$endswitch
@@ -740,7 +740,7 @@ macro int128? int128.overflow_mul(int128 x, int128 y) => overflow_mul_helper(x, 
 <*
  @require values::@is_int(x) : `The input must be an integer`
 *>
-macro bool is_odd(x) => (bool)(x & 1);
+macro bool is_odd(x) => (bool)(x & ($typeof(x))1);
 
 <*
  @require values::@is_int(x) : `The input must be an integer`
@@ -786,6 +786,15 @@ macro bool is_power_of_2(x)
 }
 
 <*
+ Compile time version.
+ @require types::is_underlying_int($typeof($x)) : `is_power_of_2 may only be used on integer types`
+*>
+macro bool @is_power_of_2($x)
+{
+	return $x != 0 && ($x & ($x - 1)) == 0;
+}
+
+<*
  Returns the next power of two that is greater than or equal to x.
 
  @require types::is_int($typeof(x)) : "Input must be an integer type"
@@ -793,10 +802,11 @@ macro bool is_power_of_2(x)
 *>
 macro next_power_of_2(x)
 {
-	if (x <= 1) return 1;
-	if (x == 2) return 2;
+	var $Type = $typeof(x);
+	if (x <= 1) return ($Type)1;
+	if (x == 2) return ($Type)2;
 
-	$typeof(x) v = x - 1;
+	$Type v = x - ($Type)1;
 
 	v |= v >> 1;
 	v |= v >> 2;
@@ -807,7 +817,33 @@ macro next_power_of_2(x)
 	$if ($sizeof(x) >= 8):  v |= v >> 32; $endif;
 	$if ($sizeof(x) >= 16): v |= v >> 64; $endif;
 
-	return v + 1;
+	return v + ($Type)1;
+}
+
+<*
+ Compile time version.
+ Returns the next power of two that is greater than or equal to x.
+
+ @require types::is_int($typeof($x)) : "Input must be an integer type"
+ @require $x >= 0 : "Input must be non-negative"
+*>
+macro @next_power_of_2($x)
+{
+	$if $x <= 1: return 1; $endif
+	$if $x == 2: return 2; $endif
+
+	$typeof($x) $v = $x - 1;
+
+	$v |= $v >> 1;
+	$v |= $v >> 2;
+	$v |= $v >> 4;
+
+	$if ($sizeof($x) >= 2):  $v |= $v >> 8;  $endif;
+	$if ($sizeof($x) >= 4):  $v |= $v >> 16; $endif;
+	$if ($sizeof($x) >= 8):  $v |= $v >> 32; $endif;
+	$if ($sizeof($x) >= 16): $v |= $v >> 64; $endif;
+
+	return $v + 1;
 }
 
 
@@ -898,7 +934,7 @@ fn double _frexp(double x, int* e)
 fn float _frexpf(float x, int* e)
 {
 	uint i = bitcast(x, uint);
-	int ee = (i >> 23) & 0xff;
+	int ee = (int)(i >> 23) & 0xff;
 
 	switch
 	{
@@ -1058,5 +1094,3 @@ macro mul_div_helper(val, mul, div)
 	var $Type = $typeof(val);
 	return ($Type)(($Type)mul * (val / ($Type)div) + ($Type)mul * (val % ($Type)div) / ($Type)div);
 }
-
-

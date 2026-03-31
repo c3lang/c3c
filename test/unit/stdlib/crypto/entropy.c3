@@ -13,7 +13,7 @@ fn void generates_when_supported()
 		char[] zero = alloc::alloc_array(tmem, char, 1024);
 		cmp[..] = 0xA5;
 		mem::zero_volatile(zero);
-		foreach (i, v : math::iota(usz[1024]))
+		foreach (i, v : math::iota(sz[1024]))
 		{
 			buf[:i] = 0xA5;
 			test::eq(buf[:i], cmp[:i]);   // sanity

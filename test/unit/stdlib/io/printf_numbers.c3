@@ -44,7 +44,7 @@ fn void printf_numbers_all_bases_per_type() @test
 	expect_all_bases((long)-42, "-42", "-2a", "-52", "-101010", "long");
 	expect_all_bases((int128)-42, "-42", "-2a", "-52", "-101010", "int128");
 	expect_all_bases((iptr)-42, "-42", "-2a", "-52", "-101010", "iptr");
-	expect_all_bases((isz)-42, "-42", "-2a", "-52", "-101010", "isz");
+	expect_all_bases((sz)-42, "-42", "-2a", "-52", "-101010", "sz");
 
 	expect_all_bases((char)42, "42", "2a", "52", "101010", "char");
 	expect_all_bases((ushort)42, "42", "2a", "52", "101010", "ushort");
@@ -52,7 +52,7 @@ fn void printf_numbers_all_bases_per_type() @test
 	expect_all_bases((ulong)42, "42", "2a", "52", "101010", "ulong");
 	expect_all_bases((uint128)42, "42", "2a", "52", "101010", "uint128");
 	expect_all_bases((uptr)42, "42", "2a", "52", "101010", "uptr");
-	expect_all_bases((usz)42, "42", "2a", "52", "101010", "usz");
+	expect_all_bases((sz)42, "42", "2a", "52", "101010", "sz");
 }
 
 fn void printf_numbers_decimal_ranges() @test
@@ -98,15 +98,15 @@ fn void printf_numbers_decimal_ranges() @test
 		expect_d(iptr.max, "2147483647", "iptr max");
 	}
 
-	if (bitsizeof(isz) == 64)
+	if (bitsizeof(sz) == 64)
 	{
-		expect_d(isz.min, "-9223372036854775808", "isz min");
-		expect_d(isz.max, "9223372036854775807", "isz max");
+		expect_d(sz.min, "-9223372036854775808", "sz min");
+		expect_d(sz.max, "9223372036854775807", "sz max");
 	}
 	else
 	{
-		expect_d(isz.min, "-2147483648", "isz min");
-		expect_d(isz.max, "2147483647", "isz max");
+		expect_d(sz.min, "-2147483648", "sz min");
+		expect_d(sz.max, "2147483647", "sz max");
 	}
 
 	if (bitsizeof(uptr) == 64)
@@ -120,7 +120,7 @@ fn void printf_numbers_decimal_ranges() @test
 		expect_d(uptr.max, "4294967295", "uptr max");
 	}
 
-	if (bitsizeof(usz) == 64)
+	if (bitsizeof(sz) == 64)
 	{
 		expect_d((usz)0, "0", "usz min");
 		expect_d(usz.max, "18446744073709551615", "usz max");

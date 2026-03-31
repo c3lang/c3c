@@ -20,23 +20,28 @@ fn void main()
 
 /* #expect: testing.ll
 
-loop.cond:                                        ; preds = %checkok, %entry
+loop.cond:                                        ; preds = %checkok7, %entry
   %0 = load i64, ptr %i, align 8
   %gt = icmp ugt i64 20, %0
   br i1 %gt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %i, align 8
-  %ge = icmp uge i64 %1, 2
-  %2 = call i1 @llvm.expect.i1(i1 %ge, i1 false)
+  %lt = icmp slt i64 %1, 0
+  %2 = call i1 @llvm.expect.i1(i1 %lt, i1 false)
   br i1 %2, label %panic, label %checkok
 
 checkok:                                          ; preds = %loop.body
+  %ge = icmp sge i64 %1, 2
+  %3 = call i1 @llvm.expect.i1(i1 %ge, i1 false)
+  br i1 %3, label %panic1, label %checkok7
+
+checkok7:                                         ; preds = %checkok
   %ptroffset = getelementptr inbounds [4 x i8], ptr @testing.FOO, i64 %1
-  %3 = load i32, ptr %ptroffset, align 4
-  store i32 %3, ptr %x, align 4
-  %4 = load i64, ptr %i, align 8
-  %add = add i64 %4, 1
+  %4 = load i32, ptr %ptroffset, align 4
+  store i32 %4, ptr %x, align 4
+  %5 = load i64, ptr %i, align 8
+  %add = add i64 %5, 1
   store i64 %add, ptr %i, align 8
   br label %loop.cond
 
@@ -44,4 +49,29 @@ loop.exit:                                        ; preds = %loop.cond
   ret void
 
 panic:                                            ; preds = %loop.body
-  store i64 2, ptr %taddr, align 8
+  store i64 %1, ptr %taddr, align 8
+  %6 = insertvalue %any undef, ptr %taddr, 0
+  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store %any %7, ptr %varargslots, align 16
+  %8 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %8, i64 1, 1
+  store %"any[]" %"$$temp", ptr %indirectarg, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 38, ptr @.file, i64 21, ptr @.func, i64 4, i32 15, ptr byval(%"any[]") align 8 %indirectarg) #2
+  unreachable
+
+panic1:                                           ; preds = %checkok
+  store i64 2, ptr %taddr2, align 8
+  %9 = insertvalue %any undef, ptr %taddr2, 0
+  %10 = insertvalue %any %9, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store i64 %1, ptr %taddr3, align 8
+  %11 = insertvalue %any undef, ptr %taddr3, 0
+  %12 = insertvalue %any %11, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store %any %10, ptr %varargslots4, align 16
+  %ptradd = getelementptr inbounds i8, ptr %varargslots4, i64 16
+  store %any %12, ptr %ptradd, align 16
+  %13 = insertvalue %"any[]" undef, ptr %varargslots4, 0
+  %"$$temp5" = insertvalue %"any[]" %13, i64 2, 1
+  store %"any[]" %"$$temp5", ptr %indirectarg6, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 59, ptr @.file, i64 21, ptr @.func, i64 4, i32 15, ptr byval(%"any[]") align 8 %indirectarg6) #2
+  unreachable
+}

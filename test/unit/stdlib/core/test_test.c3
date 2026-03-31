@@ -46,7 +46,7 @@ TestState state =
 		state.n_runs = 0;
 		mem::free(state.buf);
 	},
-	.panic_mock_fn = fn void (String message, String file, String function, uint line)
+	.panic_mock_fn = fn void (String message, String file, String function, int line)
 	{
 		if (runtime::test_context.is_in_panic) return;
 		if (runtime::test_context.assert_print_backtrace)

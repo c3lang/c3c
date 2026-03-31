@@ -3,7 +3,7 @@ import std::net @public;
 
 typedef UdpSocket = inline Socket;
 
-fn UdpSocket? connect(String host, uint port, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
+fn UdpSocket? connect(String host, int port, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
 {
 	AddrInfo* ai =  net::addrinfo(host, port, ip_protocol.ai_family, os::SOCK_DGRAM)!;
 	defer os::freeaddrinfo(ai);
@@ -15,7 +15,7 @@ fn UdpSocket? connect_to(AddrInfo* ai, SocketOption... options)
 	return (UdpSocket)net::connect_from_addrinfo(ai, options);
 }
 
-fn UdpSocket? connect_async(String host, uint port, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
+fn UdpSocket? connect_async(String host, int port, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
 {
 	AddrInfo* ai =  net::addrinfo(host, port, ip_protocol.ai_family, os::SOCK_DGRAM)!;
 	defer os::freeaddrinfo(ai);

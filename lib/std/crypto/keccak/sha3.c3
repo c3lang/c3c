@@ -11,7 +11,7 @@ const char IPAD @local = 0x36;
 const char OPAD @local = 0x5c;
 
 <* Valid hash digest sizes; transparently equates to the valid Keccak security levels. *>
-const usz[] DIGEST_SIZES = keccak::SECURITY_LEVELS;
+const sz[] DIGEST_SIZES = keccak::SECURITY_LEVELS;
 
 <* The Keccak domain-separation delimiter to use specifically for SHA-3. *>
 const DEFAULT_DELIMITER = 0x06;
@@ -122,7 +122,7 @@ macro void simple_hmac_into($hash_bits, char[] into, char[] key, char[] data)
 
  @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
-macro char[*] hmac($hash_bits, usz $tag_size, char[] key, char[] data)
+macro char[*] hmac($hash_bits, sz $tag_size, char[] key, char[] data)
 {
 	char[$tag_size] result @noinit;
 	hmac_into($hash_bits, result[..], key, data);
@@ -150,7 +150,7 @@ macro char[*] hmac($hash_bits, usz $tag_size, char[] key, char[] data)
 *>
 macro void hmac_into($hash_bits, char[] into, char[] key, char[] data)
 {
-	usz $block_size = keccak::rate($hash_bits);
+	sz $block_size = keccak::rate($hash_bits);
 	char[$block_size] k_prime;
 	if (key.len > $block_size)
 	{

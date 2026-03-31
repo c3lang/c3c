@@ -22,16 +22,16 @@ fn void binarysearch()
 
     foreach (tc : tcases)
     {
-        usz idx = sort::binarysearch(tc.data, tc.x);
+        sz idx = sort::binarysearch(tc.data, tc.x);
         assert(idx == tc.index, "%s: got %d; want %d", tc.data, idx, tc.index);
 
-        usz cmp_idx = sort::binarysearch(tc.data, tc.x, &sort::cmp_int_ref);
+        sz cmp_idx = sort::binarysearch(tc.data, tc.x, &sort::cmp_int_ref);
         assert(cmp_idx == tc.index, "%s: got %d; want %d", tc.data, cmp_idx, tc.index);
 
-        usz cmp_idx2 = sort::binarysearch(tc.data, tc.x, &sort::cmp_int_value);
+        sz cmp_idx2 = sort::binarysearch(tc.data, tc.x, &sort::cmp_int_value);
         assert(cmp_idx2 == tc.index, "%s: got %d; want %d", tc.data, cmp_idx2, tc.index);
 
-        usz cmp_idx3 = sort::binarysearch(tc.data, tc.x, fn int(int a, int b) => a - b);
+        sz cmp_idx3 = sort::binarysearch(tc.data, tc.x, fn int(int a, int b) => a - b);
         assert(cmp_idx3 == tc.index, "%s: got %d; want %d", tc.data, cmp_idx2, tc.index);
     }
 }

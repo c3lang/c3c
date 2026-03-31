@@ -7,7 +7,7 @@ import std::io;
 
 fn void init_destroy_buffered() @test
 {
-	for (usz i = 0; i < 20; i++)
+	for (sz i = 0; i < 20; i++)
 	{
 		BufferedChannel{int} c;
 		c.init(mem, 1)!!;
@@ -17,7 +17,7 @@ fn void init_destroy_buffered() @test
 
 fn void init_destroy_unbuffered() @test
 {
-	for (usz i = 0; i < 20; i++)
+	for (sz i = 0; i < 20; i++)
 	{
 		UnbufferedChannel{int} c;
 		c.init(mem)!!;

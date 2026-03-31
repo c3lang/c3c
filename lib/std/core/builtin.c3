@@ -69,9 +69,9 @@ macro void @swap(#a, #b) @builtin
 	#b = temp;
 }
 
-macro usz bitsizeof($Type) @builtin @const => $Type.sizeof * 8u;
+macro sz bitsizeof($Type) @builtin @const => $Type.sizeof * 8u;
 
-macro usz @bitsizeof(#expr) @builtin @const => $sizeof(#expr) * 8u;
+macro sz @bitsizeof(#expr) @builtin @const => $sizeof(#expr) * 8u;
 
 <*
  Compile-time check for whether a set of constants contains a certain expression.
@@ -231,7 +231,7 @@ fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_ba
 		io::eprint(message);
 		io::eprintn("'");
 
-		usz repetition_count = 0;
+		sz repetition_count;
 		foreach (i, &trace : backtrace)
 		{
 			if (i < backtraces_to_ignore) continue;
@@ -270,7 +270,7 @@ fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_ba
 	return true;
 }
 
-fn void default_panic(String message, String file, String function, uint line) @if(env::NATIVE_STACKTRACE)
+fn void default_panic(String message, String file, String function, int line) @if(env::NATIVE_STACKTRACE)
 {
 	in_panic = true;
 	$if $defined(io::stderr) && env::PANIC_MSG:
@@ -291,7 +291,7 @@ macro void abort(String string = "Unrecoverable error reached", ...) @format(0) 
 
 bool in_panic @private = false;
 
-fn void default_panic(String message, String file, String function, uint line) @if (!env::NATIVE_STACKTRACE)
+fn void default_panic(String message, String file, String function, int line) @if (!env::NATIVE_STACKTRACE)
 {
 	$if $defined(io::stderr) && env::PANIC_MSG:
 		if (in_panic)
@@ -310,11 +310,11 @@ fn void default_panic(String message, String file, String function, uint line) @
 	$$trap();
 }
 
-alias PanicFn = fn void(String message, String file, String function, uint line);
+alias PanicFn = fn void(String message, String file, String function, int line);
 
 PanicFn panic = &default_panic;
 
-fn void panicf(String fmt, String file, String function, uint line, args...)
+fn void panicf(String fmt, String file, String function, int line, args...)
 {
 	$if $defined(io::stderr) && env::PANIC_MSG:
 		if (in_panic)
@@ -542,13 +542,13 @@ macro swizzle2(v, v2, ...) @builtin
  @require types::is_int($typeof($value)) : "Input value must be an integer"
  @require $sizeof($value) * 8 <= 128 : "Input value must be 128 bits wide or lower"
 *>
-macro uint @clz($value) @builtin @const
+macro int @clz($value) @builtin @const
 {
 	$if $value == 0:
-		return $sizeof($value) * 8;   // it's all leading zeroes
+		return (int)($sizeof($value) * 8);   // it's all leading zeroes
 	$endif
 
-	usz $n = 0;
+	sz $n = 0;
 	uint128 $x = (uint128)$value;
 
 	$if $x <= 0x0000_0000_0000_0000_FFFF_FFFF_FFFF_FFFF: $n += 64; $x <<= 64; $endif
@@ -559,7 +559,7 @@ macro uint @clz($value) @builtin @const
 	$if $x <= 0x3FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 2;  $x <<= 2;  $endif
 	$if $x <= 0x7FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 1;             $endif
 
-	return $n % ($sizeof($value) * 8);   // mod by the bitsize of the input value to go back from uint128 -> it's-type
+	return (int)($n % ($sizeof($value) * 8));   // mod by the bitsize of the input value to go back from uint128 -> it's-type
 }
 
 <*
@@ -655,7 +655,7 @@ macro char[] @as_char_view(#value) @builtin
 	return ((char*)&#value)[:$sizeof(#value)];
 }
 
-macro isz @str_find(String $string, String $needle) @builtin => $$str_find($string, $needle);
+macro sz @str_find(String $string, String $needle) @builtin => $$str_find($string, $needle);
 macro String @str_upper(String $str) @builtin => $$str_upper($str);
 macro String @str_lower(String $str) @builtin => $$str_lower($str);
 macro uint @str_hash(String $str) @builtin => $$str_hash($str);

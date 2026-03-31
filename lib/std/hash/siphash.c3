@@ -56,7 +56,7 @@ struct SipHash
 	ulong[4] v;
 	long m;
 	int m_idx;
-	usz len;
+	sz len;
 }
 
 fn OutType hash(char[] data, uint128 key)
@@ -97,13 +97,13 @@ fn void SipHash.update(&self, char[] data)
 		if (self.m_idx < 8) continue;
 
 		// This runs every time the m_idx is 8, then it resets to 0.
-		self.v[3] ^= self.m;
+		self.v[3] ^= (ulong)self.m;
 
 		$for var $i = 0; $i < BLOCK_ROUNDS; ++$i :	// unrolled loop
 			siphash_round(self);
 		$endfor
 
-		self.v[0] ^= self.m;
+		self.v[0] ^= (ulong)self.m;
 
 		self.m_idx = 0;
 		self.m = 0;

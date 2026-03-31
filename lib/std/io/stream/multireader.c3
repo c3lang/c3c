@@ -7,7 +7,7 @@ module std::io;
 struct MultiReader (InStream)
 {
 	InStream[] readers;
-	usz index;
+	sz index;
 	Allocator allocator;
 }
 
@@ -43,10 +43,10 @@ fn void MultiReader.free(&self)
 	*self = {};
 }
 
-fn usz? MultiReader.read(&self, char[] bytes) @dynamic
+fn sz? MultiReader.read(&self, char[] bytes) @dynamic
 {
 	InStream r = self.readers[self.index];
-	usz? n = r.read(bytes);
+	sz? n = r.read(bytes);
 	if (catch err = n)
 	{
 		if (err != io::EOF) return err~;

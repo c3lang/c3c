@@ -34,18 +34,17 @@ macro encode_tests(tests, alphabet, padding)
     foreach (t : tests)
     {
 		char[64] buf;
-		usz n = base32::encode_len(t.dec.len, padding);
+		sz n = base32::encode_len(t.dec.len, padding);
 		base32::encode_into(buf[:n], t.dec, padding, alphabet);
 
 		char[] want = t.enc;
-		usz? pad_idx = array::index_of(want, '=');
+		sz? pad_idx = array::index_of(want, '=');
 		if (try pad_idx && !padding)
 		{
 			want = want[:pad_idx];
 		}
 
-		assert(buf[:n] == want, "got: %s, want: %s",
-			(String)buf[:n], (String)want);
+		assert(buf[:n] == want, "got: %s, want: %s", (String)buf[:n], (String)want);
     }
 }
 
@@ -66,14 +65,14 @@ macro decode_tests(tests, alphabet, padding)
     foreach (t : tests)
     {
 		char[] input = t.enc[..];
-		usz? pad_idx = array::index_of(input, '=');
+		sz? pad_idx = array::index_of(input, '=');
 		if (try pad_idx && !padding)
 		{
 			input = input[:pad_idx];
 		}
 
 		char[64] buf;
-		usz n = base32::decode_len(input.len, padding);
+		sz n = base32::decode_len(input.len, padding);
 		char[] buf2 = base32::decode_into(buf[:n], input, padding, alphabet)!!;
 
 		assert(buf2 == t.dec, "got: %s, want: %s", buf2, (String)t.dec);

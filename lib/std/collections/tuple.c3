@@ -7,7 +7,7 @@ struct Pair (Printable)
 	Type2 second;
 }
 
-fn usz? Pair.to_format(&self, Formatter* f) @dynamic
+fn sz? Pair.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("{ %s, %s }", self.first, self.second);
 }
@@ -39,7 +39,7 @@ struct Triple (Printable)
 	Type3 third;
 }
 
-fn usz? Triple.to_format(&self, Formatter* f) @dynamic
+fn sz? Triple.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("{ %s, %s, %s }", self.first, self.second, self.third);
 }

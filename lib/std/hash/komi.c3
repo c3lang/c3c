@@ -62,13 +62,13 @@ fn ulong hash(char[] data, ulong seed = 0)
 
 			r2h ^= (data.len < 12)
 				? ((data[data.len - 3] | ((ulong)data[data.len - 2] << 8) | ((ulong)data[data.len - 1] << 16) | ((ulong)1 << 24)) >> ((data.len * 8) ^ 88))
-				: (((mem::load((uint*)&data[^4], 1) | ((ulong)1 << 32)) >> (128 - data.len * 8)) << 32 | mem::load((uint*)&data[8], 1));
+				: (((mem::load((uint*)&data[^4], 1) | (1UL << 32)) >> (128 - data.len * 8)) << 32 | mem::load((uint*)&data[8], 1));
 		}
 		else if (data.len != 0)
 		{
 			r1h ^= (data.len < 4)
-				? (((ulong)1 << (data.len * 8)) ^ data[0] ^ (data.len > 1 ? (ulong)data[1] << 8 : 0) ^ (data.len > 2 ? (ulong)data[2] << 16 : 0))
-				: (((mem::load((uint*)&data[^4], 1) | ((ulong)1 << 32)) >> (64 - data.len * 8)) << 32 | mem::load((uint*)&data[0], 1));
+				? (((ulong)1 << (data.len * 8u)) ^ data[0] ^ (data.len > 1 ? (ulong)data[1] << 8 : 0u) ^ (data.len > 2 ? (ulong)data[2] << 16u : 0u))
+				: (((mem::load((uint*)&data[^4], 1) | (1UL << 32)) >> (64 - data.len * 8u)) << 32 | mem::load((uint*)&data[0], 1));
 		}
 	}
 	else if (data.len < 32)

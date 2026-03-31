@@ -80,13 +80,14 @@ static bool sema_check_builtin_args_const(SemaContext *context, Expr **args, siz
 
 static bool sema_check_alignment_expression(SemaContext *context, Expr *align, bool may_be_zero)
 {
-	if (!sema_analyse_expr_rhs(context, type_usz, align, false, NULL, false)) return false;
+	if (!sema_analyse_expr_rhs(context, type_sz, align, false, NULL, false)) return false;
 	if (!expr_is_const_int(align)
 	    || !int_fits(align->const_expr.ixx, TYPE_U64)
 	    || (!is_power_of_two(align->const_expr.ixx.i.low) && align->const_expr.ixx.i.low))
 	{
 		RETURN_SEMA_ERROR(align, may_be_zero ? "Expected a constant power-of-two alignment or zero." : "Expected a constant power-of-two alignment.");
 	}
+	if (int_is_neg(align->const_expr.ixx)) RETURN_SEMA_ERROR(align, "Alignment must not be negative.");
 	if (!may_be_zero && align->const_expr.ixx.i.low == 0) RETURN_SEMA_ERROR(align, "Alignment must not be zero.");
 	return true;
 }
@@ -107,7 +108,7 @@ static bool sema_check_builtin_args(SemaContext *context, Expr **args, BuiltinAr
 				RETURN_SEMA_ERROR(arg, "Expected a char or ichar.");
 			case BA_SIZE:
 				if (type_is_integer(type) && type_size(type) == type_size(type_usz)) continue;
-				RETURN_SEMA_ERROR(arg, "Expected an usz or isz value.");
+				RETURN_SEMA_ERROR(arg, "Expected an usz or sz value.");
 			case BA_BOOL:
 				if (type == type_bool) continue;
 				RETURN_SEMA_ERROR(arg, "Expected a bool.");
@@ -389,7 +390,7 @@ bool sema_expr_analyse_str_find(SemaContext *context, Expr *expr)
 	const char *inner_str = inner->const_expr.bytes.ptr;
 	const char *find_str = inner_find->const_expr.bytes.ptr;
 	const char *ret = strstr(inner_str, find_str);
-	expr_rewrite_const_int(expr, type_isz, (uint64_t)(ret == NULL ? -1 : ret - inner_str));
+	expr_rewrite_const_int(expr, type_sz, (uint64_t)(ret == NULL ? -1 : ret - inner_str));
 	return true;
 }
 
@@ -964,13 +965,13 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			break;
 		case BUILTIN_WASM_MEMORY_SIZE:
 			ASSERT(arg_count == 1);
-			if (!cast_implicit(context, args[0], type_uint, false)) return false;
-			rtype = type_uptr;
+			if (!cast_implicit(context, args[0], type_int, false)) return false;
+			rtype = type_sz;
 			break;
 		case BUILTIN_WASM_MEMORY_GROW:
 			ASSERT(arg_count == 2);
-			if (!cast_implicit(context, args[0], type_uint, false)) return false;
-			if (!cast_implicit(context, args[1], type_uptr, false)) return false;
+			if (!cast_implicit(context, args[0], type_int, false)) return false;
+			if (!cast_implicit(context, args[1], type_sz, false)) return false;
 			rtype = type_iptr;
 			break;
 		case BUILTIN_PREFETCH:

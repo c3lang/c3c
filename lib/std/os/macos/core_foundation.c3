@@ -2,7 +2,7 @@ module std::os::macos::cf @if(env::DARWIN) @link(env::DARWIN, "CoreFoundation.fr
 
 typedef CFType = void;
 typedef CFTypeRef = CFType*;
-alias CFIndex = isz;
+alias CFIndex = sz;
 
 typedef CFString = inline CFType;
 alias CFStringRef = CFString*;

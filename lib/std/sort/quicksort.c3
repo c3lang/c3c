@@ -13,9 +13,9 @@ macro void quicksort(list, cmp = ..., context = ...) @builtin
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if $kindof(list) == SLICE:
-		qsort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)list.len - 1, used_cmp, used_ctx);
+		qsort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (sz)list.len - 1, used_cmp, used_ctx);
 	$else
-		qsort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)lengthof(*list) - 1, used_cmp, used_ctx);
+		qsort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (sz)lengthof(*list) - 1, used_cmp, used_ctx);
 	$endif
 }
 
@@ -29,14 +29,14 @@ macro void quicksort(list, cmp = ..., context = ...) @builtin
  @require @is_valid_cmp_fn(#cmp: ...cmp, #list: list, #context: ...context) : "expected a comparison function which compares values"
  @require @is_valid_context(...cmp, ...context) : "Expected a valid context"
 *>
-macro quickselect(list, isz k, cmp = ..., context = ...) @builtin
+macro quickselect(list, sz k, cmp = ..., context = ...) @builtin
 {
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if $kindof(list) == SLICE:
-		return qselect{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)list.len - 1, k, used_cmp, used_ctx);
+		return qselect{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (sz)list.len - 1, k, used_cmp, used_ctx);
 	$else
-		return qselect{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (isz)lengthof(*list) - 1, k, used_cmp, used_ctx);
+		return qselect{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (sz)lengthof(*list) - 1, k, used_cmp, used_ctx);
 	$endif
 }
 
@@ -45,24 +45,24 @@ module std::sort <Type, CmpFn, Context> @private;
 
 struct StackElementItem @private
 {
-	isz low;
-	isz high;
+	sz low;
+	sz high;
 }
 
 alias Stack @private = StackElementItem[64];
 
 // Based on https://alienryderflex.com/quicksort by Darel Rex Finley, Public Domain.
 
-fn void qsort(ListType list, isz low, isz high, CmpFn cmp, Context context) @noinline
+fn void qsort(ListType list, sz low, sz high, CmpFn cmp, Context context) @noinline
 {
 	if (low >= 0 && high >= 0 && low < high)
 	{
 		Stack stack;
 		stack[0].low = low;
 		stack[0].high = high;
-		isz i;
-		isz l;
-		isz h;
+		sz i;
+		sz l;
+		sz h;
 		while (i >= 0)
 		{
 			l = stack[i].low;
@@ -91,15 +91,15 @@ fn void qsort(ListType list, isz low, isz high, CmpFn cmp, Context context) @noi
 @require low <= k : "kth smallest element is smaller than lower bounds"
 @require k <= high : "kth smallest element is larger than upper bounds"
 *>
-fn ElementType? qselect(ListType list, isz low, isz high, isz k, CmpFn cmp, Context context) @noinline
+fn ElementType? qselect(ListType list, sz low, sz high, sz k, CmpFn cmp, Context context) @noinline
 {
 	if (low >= 0 && high >= 0 && low < high)
 	{
-		isz l = low;
-		isz h = high;
-		isz pivot;
+		sz l = low;
+		sz h = high;
+		sz pivot;
 
-		usz max_retries = 64;
+		sz max_retries = 64;
 		while (l <= h && max_retries--)
 		{
 			pivot = @partition(list, l, h, cmp, context);
@@ -117,7 +117,7 @@ fn ElementType? qselect(ListType list, isz low, isz high, isz k, CmpFn cmp, Cont
 	return NOT_FOUND~;
 }
 
-macro isz @partition(ListType list, isz l, isz h, CmpFn cmp, Context context)
+macro sz @partition(ListType list, sz l, sz h, CmpFn cmp, Context context)
 {
 	var $has_cmp = $typeof(cmp) != sort::TypeNotSet;
 	var $has_context = $typeof(context) != sort::TypeNotSet;

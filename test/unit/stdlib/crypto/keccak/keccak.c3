@@ -112,7 +112,7 @@ fn void interval()
 	};
 	static char[257] x = { [0..256] = 'a' };
 	// 'a'-array of lengths [1, 65, 129, 193, 257]
-	for (usz i = 1, usz j = 0; i <= 257; i += 64, ++j)
+	for (sz i = 1, sz j = 0; i <= 257; i += 64, ++j)
 	{
 		$foreach $i, $sz : keccak::SECURITY_LEVELS:
 			test::@check(keccak::hash($sz, 100, x[:i])[:$sz/8] == expected[j][$i]);

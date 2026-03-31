@@ -11,7 +11,7 @@ typedef Mcg128Random (Random) = uint128;
 
 fn void Mcg128Random.set_seed(&self, char[] seed) @dynamic
 {
-	*self = (Mcg128Random)(random::make_seed(uint128, seed) | 1);
+	*self = (Mcg128Random)(random::make_seed(uint128, seed) | 1u);
 }
 
 <*

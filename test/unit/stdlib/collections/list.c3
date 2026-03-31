@@ -64,7 +64,7 @@ fn void overaligned_type()
 
 	Overalign y;
 	for (int i = 0; i < 1000; i++) l.push(y);
-	assert((usz)l.get_ref(2) - (usz)l.get_ref(1) == Overalign.sizeof);
+	assert((sz)l.get_ref(2) - (sz)l.get_ref(1) == Overalign.sizeof);
 }
 
 fn void remove_at()
@@ -81,6 +81,23 @@ fn void remove_at()
 	test.remove_at(1);
 	test::eq(test.array_view(), (int[]){ 2 });
 	test.remove_at(0);
+	test::eq(test.array_view(), (int[]){ });
+}
+
+fn void remove_unordered_at()
+{
+	IntList test;
+	test.init(mem);
+	defer test.free();
+	test.push_all({ 1, 2, 3, 4 });
+	test::eq(test.array_view(), (int[]){ 1, 2, 3, 4 });
+	test.remove_unordered_at(0);
+	test::eq(test.array_view(), (int[]){ 4, 2, 3 });
+	test.remove_unordered_at(1);
+	test::eq(test.array_view(), (int[]){ 4, 3 });
+	test.remove_unordered_at(1);
+	test::eq(test.array_view(), (int[]){ 4 });
+	test.remove_unordered_at(0);
 	test::eq(test.array_view(), (int[]){ });
 }
 
@@ -146,7 +163,7 @@ fn void reverse()
 fn void remove_if()
 {
 	IntList test;
-	usz removed;
+	sz removed;
 
 	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_if(&filter);
@@ -180,7 +197,7 @@ fn void init_with_temp_array()
 fn void remove_using_test()
 {
 	IntList test;
-	usz removed;
+	sz removed;
 
 	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_using_test(fn bool(i, ctx) => *i >= *(int*)ctx, &&10);
@@ -197,7 +214,7 @@ fn void remove_using_test()
 fn void retain_if()
 {
 	IntList test;
-	usz removed;
+	sz removed;
 
 	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.retain_if(&select);
@@ -214,7 +231,7 @@ fn void retain_if()
 fn void retain_using_test()
 {
 	IntList test;
-	usz removed;
+	sz removed;
 
 	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_using_test(fn bool(i, ctx) => *i >= *(int*)ctx, &&10);

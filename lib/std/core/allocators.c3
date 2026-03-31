@@ -29,9 +29,10 @@ tlocal bool auto_create_temp = false;
  Push the current pool manually, must be partnered with a `pop_pool(state)`
 
  @param reserve : "A hint on how much memory should be reserved on the old temp allocator for out of order allocations"
+ @require reserve >= 0 : "Reserve may not be negative"
  @returns "The stored state, to pass into the 'pop_pool' call"
 *>
-fn PoolState push_pool(usz reserve = 0)
+fn PoolState push_pool(sz reserve = 0)
 {
 	Allocator old = top_temp ? current_temp : create_temp_allocator_on_demand();
 	current_temp = ((TempAllocator*)old).derive_allocator(reserve)!!;
@@ -53,7 +54,7 @@ fn void pop_pool(PoolState old)
 <*
  @require !top_temp : "This should never be called when temp already exists"
 *>
-fn Allocator create_temp_allocator(Allocator allocator, usz size, usz reserve, usz min_size, usz realloc_size) @private
+fn Allocator create_temp_allocator(Allocator allocator, sz size, sz reserve, sz min_size, sz realloc_size) @private
 {
 	return current_temp = top_temp = allocators::new_temp_allocator(allocator, size, reserve, min_size, realloc_size)!!;
 }
@@ -72,18 +73,18 @@ fn void destroy_temp_allocators()
 // Helper functionality for building allocators:
 
 <* Default prefix for holding a size in a malloc block *>
-const DEFAULT_SIZE_PREFIX = usz.sizeof;
+const DEFAULT_SIZE_PREFIX = sz.sizeof;
 <* DEfault alignment required *>
-const DEFAULT_SIZE_PREFIX_ALIGNMENT = usz.alignof;
+const DEFAULT_SIZE_PREFIX_ALIGNMENT = sz.alignof;
 
-fn usz alignment_for_allocation(usz alignment) @inline
+fn sz alignment_for_allocation(sz alignment) @inline
 {
 	return alignment < mem::DEFAULT_MEM_ALIGNMENT ? mem::DEFAULT_MEM_ALIGNMENT : alignment;
 }
 
 struct AlignedBlock
 {
-	usz len;
+	sz len;
 	void* start;
 }
 
@@ -111,7 +112,7 @@ macro void? @aligned_free_fn(context, #free_fn, void* old_pointer)
  @require bytes > 0
  @require alignment > 0
 *>
-macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes, usz alignment)
+macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, sz bytes, sz alignment)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
 	void* data_start = desc.start;
@@ -128,13 +129,13 @@ macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 <*
  @require bytes > 0
  @require alignment > 0
- @require bytes <= isz.max
+ @require bytes <= sz.max
 *>
-macro void*? @aligned_alloc(#alloc_fn, usz bytes, usz alignment)
+macro void*? @aligned_alloc(#alloc_fn, sz bytes, sz alignment)
 {
 	if (alignment < void*.alignof) alignment = void*.alignof;
-	usz header = AlignedBlock.sizeof + alignment;
-	usz alignsize = bytes + header;
+	sz header = AlignedBlock.sizeof + alignment;
+	sz alignsize = bytes + header;
 	$if $kindof(#alloc_fn(bytes)) == OPTIONAL:
 		void* data = #alloc_fn(alignsize)!;
 	$else
@@ -150,13 +151,13 @@ macro void*? @aligned_alloc(#alloc_fn, usz bytes, usz alignment)
 <*
  @require bytes > 0
  @require alignment > 0
- @require bytes <= isz.max
+ @require bytes <= sz.max
 *>
-macro void*? @aligned_alloc_fn(context, #alloc_fn, usz bytes, usz alignment)
+macro void*? @aligned_alloc_fn(context, #alloc_fn, sz bytes, sz alignment)
 {
 	if (alignment < void*.alignof) alignment = void*.alignof;
-	usz header = AlignedBlock.sizeof + alignment;
-	usz alignsize = bytes + header;
+	sz header = AlignedBlock.sizeof + alignment;
+	sz alignsize = bytes + header;
 	$if $kindof(#alloc_fn(context, bytes)) == OPTIONAL:
 		void* data = #alloc_fn(context, alignsize)!;
 	$else
@@ -175,7 +176,7 @@ macro void*? @aligned_alloc_fn(context, #alloc_fn, usz bytes, usz alignment)
  @require bytes > 0
  @require alignment > 0
 *>
-macro void*? @aligned_realloc_fn(context, #calloc_fn, #free_fn, void* old_pointer, usz bytes, usz alignment)
+macro void*? @aligned_realloc_fn(context, #calloc_fn, #free_fn, void* old_pointer, sz bytes, sz alignment)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
 	void* data_start = desc.start;

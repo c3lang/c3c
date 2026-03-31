@@ -20,7 +20,7 @@ fn void test_inherit_stdio_stdout()
     
     // When using inherit_stdio, read_stdout should return 0 bytes
     char[100] buffer;
-    usz bytes_read = process.read_stdout(&buffer[0], buffer.len)!!;
+    sz bytes_read = process.read_stdout(&buffer[0], buffer.len)!!;
     assert(bytes_read == 0, "Expected 0 bytes when using inherit_stdio, got %d", bytes_read);
     
     // stdout() should return an empty file
@@ -49,7 +49,7 @@ fn void test_inherit_stdio_stderr()
     
     // read_stderr should return 0 bytes
     char[100] buffer;
-    usz bytes_read = process.read_stderr(&buffer[0], buffer.len)!!;
+    sz bytes_read = process.read_stderr(&buffer[0], buffer.len)!!;
     assert(bytes_read == 0, "Expected 0 bytes when reading stderr with inherit_stdio");
 }
 
@@ -70,7 +70,7 @@ fn void test_inherit_stdio_comparison()
     process1.join()!!;
     
     char[100] buffer1;
-    usz bytes_read1 = process1.read_stdout(&buffer1[0], buffer1.len)!!;
+    sz bytes_read1 = process1.read_stdout(&buffer1[0], buffer1.len)!!;
     assert(bytes_read1 > 0, "Expected output without inherit_stdio");
     
     // Now with inherit_stdio
@@ -80,7 +80,7 @@ fn void test_inherit_stdio_comparison()
     process2.join()!!;
     
     char[100] buffer2;
-    usz bytes_read2 = process2.read_stdout(&buffer2[0], buffer2.len)!!;
+    sz bytes_read2 = process2.read_stdout(&buffer2[0], buffer2.len)!!;
     assert(bytes_read2 == 0, "Expected no output with inherit_stdio");
 }
 
@@ -132,8 +132,8 @@ fn void test_inherit_stdio_redirect()
     assert(process.stderr().file == null, "stderr should be null with inherit_stdio");
     
     char[100] buffer;
-    usz stdout_bytes = process.read_stdout(&buffer[0], buffer.len)!!;
-    usz stderr_bytes = process.read_stderr(&buffer[0], buffer.len)!!;
+    sz stdout_bytes = process.read_stdout(&buffer[0], buffer.len)!!;
+    sz stderr_bytes = process.read_stderr(&buffer[0], buffer.len)!!;
     
     assert(stdout_bytes == 0, "Should read 0 bytes from stdout");
     assert(stderr_bytes == 0, "Should read 0 bytes from stderr");
@@ -146,12 +146,12 @@ $else
 	Process? subprocess = process::spawn({"tee"}, ASYNC_OUTPUT);
 $endif
 	test::eq(@ok(subprocess), true);
-	usz? write = subprocess!!.write_stdin(")");
+	sz? write = subprocess!!.write_stdin(")");
 	test::eq(@ok(write), true);
 	test::eq(write!!, 1);
 	char buf;
 	test::eq(@ok(subprocess!!.join()), true);
-	usz? read = subprocess!!.read_stdout(&buf, 1);
+	sz? read = subprocess!!.read_stdout(&buf, 1);
 	test::eq(@ok(read), true);
 	test::eq(read!!, 1);
 	test::eq(buf, ')');

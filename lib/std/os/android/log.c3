@@ -63,7 +63,7 @@ extern fn void log_set_aborter(AborterFunction aborter) @cname("__android_log_se
 extern fn void log_call_aborter(ZString abort_message) @cname("__android_log_call_aborter");
 extern fn void log_default_aborter(ZString abort_message) @cname("__android_log_default_aborter");
 extern fn CInt log_is_loggable(CInt prio, ZString tag, CInt default_prio) @cname("__android_log_is_loggable");
-extern fn CInt log_is_loggable_len(CInt prio, ZString tag, isz len, CInt default_prio) @cname("__android_log_is_loggable_len");
+extern fn CInt log_is_loggable_len(CInt prio, ZString tag, sz len, CInt default_prio) @cname("__android_log_is_loggable_len");
 extern fn CInt log_set_minimum_priority(CInt priority) @cname("__android_log_set_minimum_priority");
 extern fn CInt log_get_minimum_priority() @cname("__android_log_get_minimum_priority");
 extern fn void log_set_default_tag(ZString tag) @cname("__android_log_set_default_tag");

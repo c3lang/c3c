@@ -38,7 +38,7 @@ fn void Adler32.update(&self, char[] data)
 	uint b = self.b;
 
 	char* buf = data;
-	usz len = data.len;
+	sz len = data.len;
 
 	// Align pointer traversing buffer pointer to the unroll alignment size.
 	if (len % UNROLL_SIZE != 0)

@@ -174,7 +174,7 @@ fn Win32_LONG exception_handler(ExceptionPointers* exception_info)
 	return EXCEPTION_EXECUTE_HANDLER;
 }
 
-fn void panic_tracker(String message, String file, String function, uint line)
+fn void panic_tracker(String message, String file, String function, int line)
 {
 	has_panicked = true;
 	previous_panic(message, file, function, line);

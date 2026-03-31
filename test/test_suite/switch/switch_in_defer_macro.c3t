@@ -196,7 +196,7 @@ fn ulong? Lexer.parse_decimal(&self)
 	{
 		if (c.is_digit())
 		{
-			x = x * 10 + (ulong)(c - '0');
+			x = x * 10u + (ulong)(c - '0');
 			ok = true;
 		}
 	};
@@ -209,11 +209,11 @@ fn ulong? Lexer.parse_hexadecimal(&self)
 		switch
 		{
 			case c.is_digit():
-				x = x * 10 + (ulong)(c - '0');
+				x = x * 10u + (ulong)(c - '0');
 				ok = true;
 			case c.is_xdigit():
 				c -= c < 'A' ? 'a' : 'A';
-				x = x * 16 + (ulong)c;
+				x = x * 16u + (ulong)c;
 				ok = true;
 		}
 	};
@@ -225,7 +225,7 @@ fn ulong? Lexer.parse_binary(&self)
 	{
 		if (c.is_digit())
 		{
-			x = x * 2 + (ulong)(c - '0');
+			x = x * 2u + (ulong)(c - '0');
 			ok = true;
 		}
 	};
@@ -237,7 +237,7 @@ fn ulong? Lexer.parse_octal(&self)
 	{
 		if (c.is_odigit())
 		{
-			x = x * 8 + (ulong)(c - '0');
+			x = x * 8u + (ulong)(c - '0');
 			ok = true;
 		}
 	};
@@ -291,7 +291,7 @@ fn String? Lexer.parse_string(&self, char quote)
 			if (c == quote)
 			{
 				self.span = (uint)str.len();
-				self.column += self.span + 2;
+				self.column += self.span + 2u;
 				return str.str_view();
 			}
 			prev = c;
@@ -337,7 +337,7 @@ macro char? Lexer.read_char_for_string(&self)
 
 fn Token? Lexer.parse_token(&self)
 {
-	usz n = self.reader.read(self.buf)!;
+	sz n = self.reader.read(self.buf)!;
 	defer self.unread(n);
 	Token tok = self.tokens.get_best(self.buf[:n])!;
 	n = self.buf.len - tok.token.len;
@@ -395,7 +395,7 @@ fn String? Lexer.parse_ident(&self)
 			if (err == io::EOF) return str.str_view();
 			return err~;
 		}
-		if (!self.ident(str.len(), c)) return str.str_view();
+		if (!self.ident((usz)str.len(), c)) return str.str_view();
 		str.append_char(c);
 	}
 }
@@ -477,7 +477,7 @@ struct TrieNode
 	bool valid;
 }
 
-fn void Trie.init(&self, usz initial_capacity = 8, Allocator using = mem)
+fn void Trie.init(&self, sz initial_capacity = 8, Allocator using = mem)
 {
 	*self = {};
 	self.nodes.init(using, initial_capacity);
@@ -568,7 +568,7 @@ fn void? TrieNode.set(&self, Trie *t, char[] key, Value value)
 	Index idx = self.children[c];
 	if (idx == 0)
 	{
-		usz new_idx = t.nodes.len();
+		sz new_idx = t.nodes.len();
 		assert(new_idx != 0);
 		if (new_idx > Index.max) return faults::TRIE_FULL~;
 		idx = (Index)new_idx;
@@ -592,7 +592,7 @@ fn void? TrieNode.del(&self, Trie* t, char[] key, TriePath path)
 		return;
 	}
 	Index current = path.pop()!;
-	for (isz i = path.len() - 1; i >= 0; i--)
+	for (sz i = path.len() - 1; i >= 0; i--)
 	{
 		Index parent = path[i];
 		bool is_empty = true;
@@ -620,14 +620,14 @@ struct Bitmap
 fn bool Bitmap.get(&self, char x)
 {
 	char i = x & 0b11;
-	char j = 1 << (x >> 2);
+	char j = 1u << (x >> 2);
 	return self.data[i] & j != 0;
 }
 
 fn void Bitmap.set(&self, char x)
 {
 	char i = x & 0b11;
-	char j = 1 << (x >> 2);
+	char j = 1u << (x >> 2);
 	self.data[i] |= j;
 }
 
@@ -764,7 +764,7 @@ entry:
 
 loop.cond:                                        ; preds = %noerr_block13, %entry
   %1 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %1, %0
+  %lt = icmp slt i64 %1, %0
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
@@ -828,8 +828,8 @@ noerr_block13:                                    ; preds = %after_check11
   %eq = icmp eq i8 %15, 1
   call void @llvm.assume(i1 %eq)
   %16 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %16, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %16, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

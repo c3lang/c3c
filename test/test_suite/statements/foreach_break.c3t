@@ -32,8 +32,8 @@ entry:
 
 loop.cond:                                        ; preds = %loop.inc, %entry
   %0 = load i64, ptr %.anon, align 8
-  %gt = icmp ugt i64 3, %0
-  br i1 %gt, label %loop.body, label %loop.exit
+  %lt = icmp slt i64 %0, 3
+  br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %.anon, align 8
@@ -41,8 +41,8 @@ loop.body:                                        ; preds = %loop.cond
   %2 = load i32, ptr %ptroffset, align 4
   store i32 %2, ptr %z, align 4
   %3 = load i32, ptr %z, align 4
-  %gt2 = icmp sgt i32 %3, 0
-  br i1 %gt2, label %if.then, label %if.exit
+  %gt = icmp sgt i32 %3, 0
+  br i1 %gt, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %loop.body
   br label %loop.exit
@@ -50,22 +50,22 @@ if.then:                                          ; preds = %loop.body
 if.exit:                                          ; preds = %loop.body
   %4 = load i32, ptr %z, align 4
   %eq = icmp eq i32 %4, 1
-  br i1 %eq, label %if.then3, label %if.exit4
+  br i1 %eq, label %if.then2, label %if.exit3
 
-if.then3:                                         ; preds = %if.exit
+if.then2:                                         ; preds = %if.exit
   br label %loop.inc
 
-if.exit4:                                         ; preds = %if.exit
+if.exit3:                                         ; preds = %if.exit
   %5 = load i32, ptr %g, align 4
   %6 = load i32, ptr %z, align 4
   %add = add i32 %5, %6
   store i32 %add, ptr %g, align 4
   br label %loop.inc
 
-loop.inc:                                         ; preds = %if.exit4, %if.then3
+loop.inc:                                         ; preds = %if.exit3, %if.then2
   %7 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %7, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %7, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %if.then, %loop.cond

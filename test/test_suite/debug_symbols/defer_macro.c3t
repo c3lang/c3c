@@ -184,7 +184,7 @@ entry:
   store i64 %1, ptr %ptradd, align 8
     #dbg_declare(ptr %args, !49, !DIExpression(), !50)
     #dbg_declare(ptr %asdf, !51, !DIExpression(), !56)
-  %2 = call { i32, ptr } @attach.to_scope() #4, !dbg !57
+  %2 = call { i32, ptr } @attach.to_scope() #5, !dbg !57
   store { i32, ptr } %2, ptr %result, align 8
   %lo = load i32, ptr %result, align 8, !dbg !58
   %ptradd1 = getelementptr inbounds i8, ptr %result, i64 8, !dbg !58
@@ -193,7 +193,7 @@ entry:
   store ptr %3, ptr %asdf, align 8, !dbg !60
   %ptradd2 = getelementptr inbounds i8, ptr %args, i64 8, !dbg !61
   %4 = load i64, ptr %ptradd2, align 8, !dbg !61
-  %neq = icmp ne i64 0, %4, !dbg !61
+  %neq = icmp ne i64 %4, 0, !dbg !61
   %ternary = select i1 %neq, <4 x float>
   %5 = call ptr @test.test(<4 x float> %ternary), !dbg !63
   %6 = call ptr @test.test2(), !dbg !64
@@ -209,18 +209,18 @@ entry:
   store i32 %0, ptr %attach, align 8
   %ptradd = getelementptr inbounds i8, ptr %attach, i64 8
   store ptr %1, ptr %ptradd, align 8
-    #dbg_declare(ptr %attach, !69, !DIExpression(), !70)
+    #dbg_declare(ptr %attach, !70, !DIExpression(), !71)
   store i64 %2, ptr %flags, align 8
-    #dbg_declare(ptr %flags, !71, !DIExpression(), !72)
+    #dbg_declare(ptr %flags, !72, !DIExpression(), !73)
   store ptr %3, ptr %name, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %name, i64 8
   store i64 %4, ptr %ptradd1, align 8
-    #dbg_declare(ptr %name, !73, !DIExpression(), !74)
-  %5 = call ptr @std.core.mem.calloc(i64 8) #4, !dbg !75
-  ret ptr %5, !dbg !75
+    #dbg_declare(ptr %name, !74, !DIExpression(), !75)
+  %5 = call ptr @std.core.mem.calloc(i64 8) #5, !dbg !76
+  ret ptr %5, !dbg !76
 }
 
-define ptr @test.test(<4 x float> %0) #0 !dbg !79 {
+define ptr @test.test(<4 x float> %0) #0 !dbg !80 {
 entry:
   %color = alloca <4 x float>, align 16
   %x = alloca <4 x float>, align 16
@@ -237,92 +237,92 @@ entry:
   %error_var5 = alloca i64, align 8
   %error_var11 = alloca i64, align 8
   store <4 x float> %0, ptr %color, align 16
-    #dbg_declare(ptr %color, !87, !DIExpression(), !88)
+    #dbg_declare(ptr %color, !88, !DIExpression(), !89)
   %1 = load <4 x float>, ptr %color, align 16
   store <4 x float> %1, ptr %x, align 16
-  %2 = call ptr @std.io.stdout(), !dbg !89
+  %2 = call ptr @std.io.stdout(), !dbg !90
   store ptr %2, ptr %out, align 8
   %3 = load <4 x float>, ptr %x, align 16
   store <4 x float> %3, ptr %x1, align 16
-    #dbg_declare(ptr %len, !93, !DIExpression(), !95)
+    #dbg_declare(ptr %len, !94, !DIExpression(), !96)
   %4 = load ptr, ptr %out, align 8
   store ptr %4, ptr %out2, align 8
   %5 = load <4 x float>, ptr %x1, align 16
   store <4 x float> %5, ptr %x3, align 16
-  %6 = load ptr, ptr %out2, align 8, !dbg !97
-  %7 = insertvalue %any undef, ptr %6, 0, !dbg !97
-  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1, !dbg !97
-  %9 = insertvalue %any undef, ptr %x3, 0, !dbg !100
-  %10 = insertvalue %any %9, i64 ptrtoint (ptr @"$ct.foo.Color" to i64), 1, !dbg !100
-  store %any %10, ptr %varargslots, align 16, !dbg !100
-  %11 = insertvalue %"any[]" undef, ptr %varargslots, 0, !dbg !100
-  %"$$temp" = insertvalue %"any[]" %11, i64 1, 1, !dbg !100
+  %6 = load ptr, ptr %out2, align 8, !dbg !98
+  %7 = insertvalue %any undef, ptr %6, 0, !dbg !98
+  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1, !dbg !98
+  %9 = insertvalue %any undef, ptr %x3, 0, !dbg !101
+  %10 = insertvalue %any %9, i64 ptrtoint (ptr @"$ct.foo.Color" to i64), 1, !dbg !101
+  store %any %10, ptr %varargslots, align 16, !dbg !101
+  %11 = insertvalue %"any[]" undef, ptr %varargslots, 0, !dbg !101
+  %"$$temp" = insertvalue %"any[]" %11, i64 1, 1, !dbg !101
   store %any %8, ptr %taddr, align 8
   %lo = load i64, ptr %taddr, align 8
   %ptradd = getelementptr inbounds i8, ptr %taddr, i64 8
   %hi = load ptr, ptr %ptradd, align 8
   store %"any[]" %"$$temp", ptr %indirectarg, align 8
-  %12 = call i64 @std.io.fprintf(ptr %retparam, i64 %lo, ptr %hi, ptr @.str, i64 2, ptr byval(%"any[]") align 8 %indirectarg), !dbg !101
-  %not_err = icmp eq i64 %12, 0, !dbg !101
-  %13 = call i1 @llvm.expect.i1(i1 %not_err, i1 true), !dbg !101
-  br i1 %13, label %after_check, label %assign_optional, !dbg !101
+  %12 = call i64 @std.io.fprintf(ptr %retparam, i64 %lo, ptr %hi, ptr @.str, i64 2, ptr byval(%"any[]") align 8 %indirectarg), !dbg !102
+  %not_err = icmp eq i64 %12, 0, !dbg !102
+  %13 = call i1 @llvm.expect.i1(i1 %not_err, i1 true), !dbg !102
+  br i1 %13, label %after_check, label %assign_optional, !dbg !102
 
 assign_optional:                                  ; preds = %entry
-  store i64 %12, ptr %error_var, align 8, !dbg !101
-  br label %guard_block, !dbg !101
+  store i64 %12, ptr %error_var, align 8, !dbg !102
+  br label %guard_block, !dbg !102
 
 after_check:                                      ; preds = %entry
-  br label %noerr_block, !dbg !101
+  br label %noerr_block, !dbg !102
 
 guard_block:                                      ; preds = %assign_optional
-  br label %voiderr, !dbg !101
+  br label %voiderr, !dbg !102
 
 noerr_block:                                      ; preds = %after_check
-  %14 = load i64, ptr %retparam, align 8, !dbg !101
-  store i64 %14, ptr %len, align 8, !dbg !101
-  %15 = load ptr, ptr %out, align 8, !dbg !102
-  %16 = call i64 @std.io.File.write_byte(ptr %15, i8 zeroext 10), !dbg !103
-  %not_err6 = icmp eq i64 %16, 0, !dbg !103
-  %17 = call i1 @llvm.expect.i1(i1 %not_err6, i1 true), !dbg !103
-  br i1 %17, label %after_check8, label %assign_optional7, !dbg !103
+  %14 = load i64, ptr %retparam, align 8, !dbg !102
+  store i64 %14, ptr %len, align 8, !dbg !102
+  %15 = load ptr, ptr %out, align 8, !dbg !103
+  %16 = call i64 @std.io.File.write_byte(ptr %15, i8 zeroext 10), !dbg !104
+  %not_err6 = icmp eq i64 %16, 0, !dbg !104
+  %17 = call i1 @llvm.expect.i1(i1 %not_err6, i1 true), !dbg !104
+  br i1 %17, label %after_check8, label %assign_optional7, !dbg !104
 
 assign_optional7:                                 ; preds = %noerr_block
-  store i64 %16, ptr %error_var5, align 8, !dbg !103
-  br label %guard_block9, !dbg !103
+  store i64 %16, ptr %error_var5, align 8, !dbg !104
+  br label %guard_block9, !dbg !104
 
 after_check8:                                     ; preds = %noerr_block
-  br label %noerr_block10, !dbg !103
+  br label %noerr_block10, !dbg !104
 
 guard_block9:                                     ; preds = %assign_optional7
-  br label %voiderr, !dbg !103
-
-noerr_block10:                                    ; preds = %after_check8
-  %18 = load ptr, ptr %out, align 8, !dbg !104
-  %19 = call i64 @std.io.File.flush(ptr %18), !dbg !104
-  %not_err12 = icmp eq i64 %19, 0, !dbg !104
-  %20 = call i1 @llvm.expect.i1(i1 %not_err12, i1 true), !dbg !104
-  br i1 %20, label %after_check14, label %assign_optional13, !dbg !104
-
-assign_optional13:                                ; preds = %noerr_block10
-  store i64 %19, ptr %error_var11, align 8, !dbg !104
-  br label %guard_block15, !dbg !104
-
-after_check14:                                    ; preds = %noerr_block10
-  br label %noerr_block16, !dbg !104
-
-guard_block15:                                    ; preds = %assign_optional13
   br label %voiderr, !dbg !104
 
+noerr_block10:                                    ; preds = %after_check8
+  %18 = load ptr, ptr %out, align 8, !dbg !105
+  %19 = call i64 @std.io.File.flush(ptr %18), !dbg !105
+  %not_err12 = icmp eq i64 %19, 0, !dbg !105
+  %20 = call i1 @llvm.expect.i1(i1 %not_err12, i1 true), !dbg !105
+  br i1 %20, label %after_check14, label %assign_optional13, !dbg !105
+
+assign_optional13:                                ; preds = %noerr_block10
+  store i64 %19, ptr %error_var11, align 8, !dbg !105
+  br label %guard_block15, !dbg !105
+
+after_check14:                                    ; preds = %noerr_block10
+  br label %noerr_block16, !dbg !105
+
+guard_block15:                                    ; preds = %assign_optional13
+  br label %voiderr, !dbg !105
+
 noerr_block16:                                    ; preds = %after_check14
-  %21 = load i64, ptr %len, align 8, !dbg !105
-  %add = add i64 %21, 1, !dbg !105
-  br label %voiderr, !dbg !96
+  %21 = load i64, ptr %len, align 8, !dbg !106
+  %add = add i64 %21, 1, !dbg !106
+  br label %voiderr, !dbg !97
 
 voiderr:                                          ; preds = %noerr_block16, %guard_block15, %guard_block9, %guard_block
-  ret ptr null, !dbg !106
+  ret ptr null, !dbg !107
 }
 
-define ptr @test.test2() #0 !dbg !107 {
+define ptr @test.test2() #0 !dbg !108 {
 entry:
   %conflicts = alloca %"Arena*[]", align 8
   %scratch = alloca %Arena_Cursor, align 8
@@ -330,27 +330,27 @@ entry:
   %scratch1 = alloca ptr, align 8
   %asdf = alloca ptr, align 8
   store %"Arena*[]" zeroinitializer, ptr %conflicts, align 8
-    #dbg_declare(ptr %scratch, !110, !DIExpression(), !120)
-  %lo = load ptr, ptr %conflicts, align 8, !dbg !122
-  %ptradd = getelementptr inbounds i8, ptr %conflicts, i64 8, !dbg !122
-  %hi = load i64, ptr %ptradd, align 8, !dbg !122
-  %0 = call { ptr, i64 } @arena_scratch_begin(ptr %lo, i64 %hi), !dbg !123
+    #dbg_declare(ptr %scratch, !111, !DIExpression(), !122)
+  %lo = load ptr, ptr %conflicts, align 8, !dbg !124
+  %ptradd = getelementptr inbounds i8, ptr %conflicts, i64 8, !dbg !124
+  %hi = load i64, ptr %ptradd, align 8, !dbg !124
+  %0 = call { ptr, i64 } @arena_scratch_begin(ptr %lo, i64 %hi), !dbg !125
   store { ptr, i64 } %0, ptr %result, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %scratch, ptr align 8 %result, i32 16, i1 false)
-    #dbg_declare(ptr %scratch1, !124, !DIExpression(), !125)
-  %1 = load ptr, ptr %scratch, align 8, !dbg !126
-  store ptr %1, ptr %scratch1, align 8, !dbg !126
-    #dbg_declare(ptr %asdf, !128, !DIExpression(), !130)
-  store ptr null, ptr %asdf, align 8, !dbg !130
-  %2 = load ptr, ptr %asdf, align 8, !dbg !131
-  %lo2 = load ptr, ptr %scratch, align 8, !dbg !132
-  %ptradd3 = getelementptr inbounds i8, ptr %scratch, i64 8, !dbg !132
-  %hi4 = load i64, ptr %ptradd3, align 8, !dbg !132
-  call void @arena_scratch_end(ptr %lo2, i64 %hi4) #4, !dbg !134
-  ret ptr %2, !dbg !134
+    #dbg_declare(ptr %scratch1, !126, !DIExpression(), !127)
+  %1 = load ptr, ptr %scratch, align 8, !dbg !128
+  store ptr %1, ptr %scratch1, align 8, !dbg !128
+    #dbg_declare(ptr %asdf, !130, !DIExpression(), !132)
+  store ptr null, ptr %asdf, align 8, !dbg !132
+  %2 = load ptr, ptr %asdf, align 8, !dbg !133
+  %lo2 = load ptr, ptr %scratch, align 8, !dbg !134
+  %ptradd3 = getelementptr inbounds i8, ptr %scratch, i64 8, !dbg !134
+  %hi4 = load i64, ptr %ptradd3, align 8, !dbg !134
+  call void @arena_scratch_end(ptr %lo2, i64 %hi4) #5, !dbg !136
+  ret ptr %2, !dbg !136
 }
 
-define i32 @main(i32 %0, ptr %1) #0 !dbg !135 {
+define i32 @main(i32 %0, ptr %1) #0 !dbg !137 {
 entry:
   %.anon = alloca i32, align 4
   %.anon1 = alloca ptr, align 8
@@ -367,9 +367,9 @@ entry:
   %error_var = alloca i64, align 8
   %allocator9 = alloca %any, align 8
   %elements10 = alloca i64, align 8
-  %allocator12 = alloca %any, align 8
+  %allocator13 = alloca %any, align 8
   %size = alloca i64, align 8
-  %blockret13 = alloca ptr, align 8
+  %blockret14 = alloca ptr, align 8
   %.inlinecache = alloca ptr, align 8
   %.cachedtype = alloca ptr, align 8
   %retparam = alloca ptr, align 8
@@ -377,183 +377,189 @@ entry:
   %indirectarg = alloca %"any[]", align 8
   %i = alloca i32, align 4
   %arg = alloca ptr, align 8
-  %len = alloca i64, align 8
   %ptr = alloca ptr, align 8
-  %len17 = alloca i64, align 8
+  %len = alloca i64, align 8
   store ptr null, ptr %.cachedtype, align 8
   store i32 %0, ptr %.anon, align 4
-    #dbg_declare(ptr %.anon, !139, !DIExpression(), !140)
+    #dbg_declare(ptr %.anon, !141, !DIExpression(), !142)
   store ptr %1, ptr %.anon1, align 8
-    #dbg_declare(ptr %.anon1, !141, !DIExpression(), !140)
+    #dbg_declare(ptr %.anon1, !143, !DIExpression(), !142)
   %2 = load i32, ptr %.anon, align 4
   store i32 %2, ptr %argc, align 4
   %3 = load ptr, ptr %.anon1, align 8
   store ptr %3, ptr %argv, align 8
-    #dbg_declare(ptr %list, !142, !DIExpression(), !145)
+    #dbg_declare(ptr %list, !144, !DIExpression(), !147)
   %4 = load i32, ptr %argc, align 4
   store i32 %4, ptr %argc2, align 4
   %5 = load ptr, ptr %argv, align 8
   store ptr %5, ptr %argv3, align 8
-    #dbg_declare(ptr %list5, !146, !DIExpression(), !148)
-  %6 = load i32, ptr %argc2, align 4, !dbg !150
-  %sext = sext i32 %6 to i64, !dbg !150
+    #dbg_declare(ptr %list5, !148, !DIExpression(), !150)
+  %6 = load i32, ptr %argc2, align 4, !dbg !152
+  %sext = sext i32 %6 to i64, !dbg !152
   store i64 %sext, ptr %elements, align 8
-  %7 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.thread_allocator), !dbg !151
+  %7 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.thread_allocator), !dbg !153
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator, ptr align 8 %7, i32 16, i1 false)
   %8 = load i64, ptr %elements, align 8
   store i64 %8, ptr %elements7, align 8
+  %9 = load i64, ptr %elements7, align 8, !dbg !156
+  %ge = icmp sge i64 %9, 0, !dbg !161
+  call void @llvm.assume(i1 %ge), !dbg !161
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator9, ptr align 8 %allocator, i32 16, i1 false)
-  %9 = load i64, ptr %elements7, align 8
-  store i64 %9, ptr %elements10, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator12, ptr align 8 %allocator9, i32 16, i1 false)
-  %10 = load i64, ptr %elements10, align 8, !dbg !154
-  %mul = mul i64 16, %10, !dbg !160
+  %10 = load i64, ptr %elements7, align 8
+  store i64 %10, ptr %elements10, align 8
+  %11 = load i64, ptr %elements10, align 8, !dbg !162
+  %ge12 = icmp sge i64 %11, 0, !dbg !166
+  call void @llvm.assume(i1 %ge12), !dbg !166
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator13, ptr align 8 %allocator9, i32 16, i1 false)
+  %12 = load i64, ptr %elements10, align 8, !dbg !167
+  %mul = mul i64 16, %12, !dbg !168
   store i64 %mul, ptr %size, align 8
-  %11 = load i64, ptr %size, align 8, !dbg !161
-  %i2nb = icmp eq i64 %11, 0, !dbg !161
-  br i1 %i2nb, label %if.then, label %if.exit, !dbg !161
+  %13 = load i64, ptr %size, align 8, !dbg !169
+  %ge15 = icmp sge i64 %13, 0, !dbg !173
+  call void @llvm.assume(i1 %ge15), !dbg !173
+  %14 = load i64, ptr %size, align 8, !dbg !174
+  %i2nb = icmp eq i64 %14, 0, !dbg !174
+  br i1 %i2nb, label %if.then, label %if.exit, !dbg !174
 
 if.then:                                          ; preds = %entry
-  store ptr null, ptr %blockret13, align 8, !dbg !164
-  br label %expr_block.exit, !dbg !164
+  store ptr null, ptr %blockret14, align 8, !dbg !175
+  br label %expr_block.exit, !dbg !175
 
 if.exit:                                          ; preds = %entry
-  %ptradd = getelementptr inbounds i8, ptr %allocator12, i64 8, !dbg !165
-  %12 = load i64, ptr %ptradd, align 8, !dbg !165
-  %13 = inttoptr i64 %12 to ptr, !dbg !165
-  %14 = load ptr, ptr %.cachedtype, align 8
-  %15 = icmp eq ptr %13, %14
-  br i1 %15, label %cache_hit, label %cache_miss
+  %ptradd = getelementptr inbounds i8, ptr %allocator13, i64 8, !dbg !176
+  %15 = load i64, ptr %ptradd, align 8, !dbg !176
+  %16 = inttoptr i64 %15 to ptr, !dbg !176
+  %17 = load ptr, ptr %.cachedtype, align 8
+  %18 = icmp eq ptr %16, %17
+  br i1 %18, label %cache_hit, label %cache_miss
 
 cache_miss:                                       ; preds = %if.exit
-  %16 = call ptr @.dyn_search(ptr %13, ptr @"$sel.acquire")
-  store ptr %16, ptr %.inlinecache, align 8
-  store ptr %13, ptr %.cachedtype, align 8
-  br label %18
+  %19 = call ptr @.dyn_search(ptr %16, ptr @"$sel.acquire")
+  store ptr %19, ptr %.inlinecache, align 8
+  store ptr %16, ptr %.cachedtype, align 8
+  br label %21
 
 cache_hit:                                        ; preds = %if.exit
-  %17 = load ptr, ptr %.inlinecache, align 8
-  br label %18
+  %20 = load ptr, ptr %.inlinecache, align 8
+  br label %21
 
-18:                                               ; preds = %cache_hit, %cache_miss
-  %fn_phi = phi ptr [ %17, %cache_hit ], [ %16, %cache_miss ]
-  %19 = icmp eq ptr %fn_phi, null
-  br i1 %19, label %missing_function, label %match
+21:                                               ; preds = %cache_hit, %cache_miss
+  %fn_phi = phi ptr [ %20, %cache_hit ], [ %19, %cache_miss ]
+  %22 = icmp eq ptr %fn_phi, null
+  br i1 %22, label %missing_function, label %match
 
-missing_function:                                 ; preds = %18
-  %20 = load ptr, ptr @std.core.builtin.panic, align 8, !dbg !167
-  call void %20(ptr @.panic_msg, i64 44, ptr @.file,
-  unreachable, !dbg !167
+missing_function:                                 ; preds = %21
+  %23 = load ptr, ptr @std.core.builtin.panic, align 8, !dbg !178
+  call void %23(ptr @.panic_msg, i64 44, ptr @.file,
+  unreachable, !dbg !178
 
-match:                                            ; preds = %18
-  %21 = load ptr, ptr %allocator12, align 8
-  %22 = load i64, ptr %size, align 8
-  %23 = call i64 %fn_phi(ptr %retparam, ptr %21, i64 %22, i32 0, i64 0), !dbg !167
-  %not_err = icmp eq i64 %23, 0, !dbg !167
-  %24 = call i1 @llvm.expect.i1(i1 %not_err, i1 true), !dbg !167
-  br i1 %24, label %after_check, label %assign_optional, !dbg !167
+match:                                            ; preds = %21
+  %24 = load ptr, ptr %allocator13, align 8
+  %25 = load i64, ptr %size, align 8
+  %26 = call i64 %fn_phi(ptr %retparam, ptr %24, i64 %25, i32 0, i64 0), !dbg !178
+  %not_err = icmp eq i64 %26, 0, !dbg !178
+  %27 = call i1 @llvm.expect.i1(i1 %not_err, i1 true), !dbg !178
+  br i1 %27, label %after_check, label %assign_optional, !dbg !178
 
 assign_optional:                                  ; preds = %match
-  store i64 %23, ptr %error_var, align 8, !dbg !167
-  br label %panic_block, !dbg !167
+  store i64 %26, ptr %error_var, align 8, !dbg !178
+  br label %panic_block, !dbg !178
 
 after_check:                                      ; preds = %match
-  %25 = load ptr, ptr %retparam, align 8, !dbg !167
-  store ptr %25, ptr %blockret13, align 8, !dbg !167
-  br label %expr_block.exit, !dbg !167
+  %28 = load ptr, ptr %retparam, align 8, !dbg !178
+  store ptr %28, ptr %blockret14, align 8, !dbg !178
+  br label %expr_block.exit, !dbg !178
 
 expr_block.exit:                                  ; preds = %after_check, %if.then
-  %26 = load ptr, ptr %blockret13, align 8, !dbg !167
-  %27 = load i64, ptr %elements10, align 8, !dbg !168
-  %add = add i64 0, %27, !dbg !168
-  %size14 = sub i64 %add, 0, !dbg !168
-  %28 = insertvalue %"char[][]" undef, ptr %26, 0, !dbg !168
-  %29 = insertvalue %"char[][]" %28, i64 %size14, 1, !dbg !168
-  br label %noerr_block, !dbg !168
+  %29 = load ptr, ptr %blockret14, align 8, !dbg !178
+  %30 = load i64, ptr %elements10, align 8, !dbg !179
+  %add = add i64 0, %30, !dbg !179
+  %size16 = sub i64 %add, 0, !dbg !179
+  %31 = insertvalue %"char[][]" undef, ptr %29, 0, !dbg !179
+  %32 = insertvalue %"char[][]" %31, i64 %size16, 1, !dbg !179
+  br label %noerr_block, !dbg !179
 
 panic_block:                                      ; preds = %assign_optional
-  %30 = insertvalue %any undef, ptr %error_var, 0, !dbg !168
-  %31 = insertvalue %any %30, i64 ptrtoint (ptr @"$ct.fault" to i64), 1, !dbg !168
-  store %any %31, ptr %varargslots, align 16
-  %32 = insertvalue %"any[]" undef, ptr %varargslots, 0
-  %"$$temp" = insertvalue %"any[]" %32, i64 1, 1
+  %33 = insertvalue %any undef, ptr %error_var, 0, !dbg !179
+  %34 = insertvalue %any %33, i64 ptrtoint (ptr @"$ct.fault" to i64), 1, !dbg !179
+  store %any %34, ptr %varargslots, align 16
+  %35 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %35, i64 1, 1
   store %"any[]" %"$$temp", ptr %indirectarg, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 36, ptr @.file
-  unreachable, !dbg !157
+  call void @std.core.builtin.panicf(
+  unreachable, !dbg !165
 
 noerr_block:                                      ; preds = %expr_block.exit
-  store %"char[][]" %29, ptr %list5, align 8, !dbg !157
-    #dbg_declare(ptr %i, !169, !DIExpression(), !171)
-  store i32 0, ptr %i, align 4, !dbg !172
-  br label %loop.cond, !dbg !172
+  store %"char[][]" %32, ptr %list5, align 8, !dbg !165
+    #dbg_declare(ptr %i, !180, !DIExpression(), !182)
+  store i32 0, ptr %i, align 4, !dbg !183
+  br label %loop.cond, !dbg !183
 
 loop.cond:                                        ; preds = %loop.exit, %noerr_block
-  %33 = load i32, ptr %i, align 4, !dbg !173
-  %34 = load i32, ptr %argc2, align 4, !dbg !174
-  %lt = icmp slt i32 %33, %34, !dbg !173
-  br i1 %lt, label %loop.body, label %loop.exit27, !dbg !173
+  %36 = load i32, ptr %i, align 4, !dbg !184
+  %37 = load i32, ptr %argc2, align 4, !dbg !185
+  %lt = icmp slt i32 %36, %37, !dbg !184
+  br i1 %lt, label %loop.body, label %loop.exit28, !dbg !184
 
 loop.body:                                        ; preds = %loop.cond
-    #dbg_declare(ptr %arg, !175, !DIExpression(), !177)
-  %35 = load ptr, ptr %argv3, align 8, !dbg !178
-  %36 = load i32, ptr %i, align 4, !dbg !179
-  %sext15 = sext i32 %36 to i64, !dbg !179
-  %ptroffset = getelementptr inbounds [8 x i8], ptr %35, i64 %sext15, !dbg !179
-  %37 = load ptr, ptr %ptroffset, align 8, !dbg !179
-  store ptr %37, ptr %arg, align 8, !dbg !179
-    #dbg_declare(ptr %len, !180, !DIExpression(), !181)
-  store i64 0, ptr %len, align 8, !dbg !182
-  %38 = load ptr, ptr %arg, align 8, !dbg !183
-  %39 = load ptr, ptr %arg, align 8
-  store ptr %39, ptr %ptr, align 8
-    #dbg_declare(ptr %len17, !184, !DIExpression(), !186)
-  store i64 0, ptr %len17, align 8, !dbg !188
-  br label %loop.cond18, !dbg !189
+    #dbg_declare(ptr %arg, !186, !DIExpression(), !188)
+  %38 = load ptr, ptr %argv3, align 8, !dbg !189
+  %39 = load i32, ptr %i, align 4, !dbg !190
+  %sext17 = sext i32 %39 to i64, !dbg !190
+  %ptroffset = getelementptr inbounds [8 x i8], ptr %38, i64 %sext17, !dbg !190
+  %40 = load ptr, ptr %ptroffset, align 8, !dbg !190
+  store ptr %40, ptr %arg, align 8, !dbg !190
+  %41 = load ptr, ptr %arg, align 8, !dbg !191
+  %42 = load ptr, ptr %arg, align 8
+  store ptr %42, ptr %ptr, align 8
+    #dbg_declare(ptr %len, !192, !DIExpression(), !194)
+  store i64 0, ptr %len, align 8, !dbg !194
+  br label %loop.cond19, !dbg !196
 
-loop.cond18:                                      ; preds = %loop.body20, %loop.body
-  %40 = load ptr, ptr %ptr, align 8, !dbg !190
-  %41 = load i64, ptr %len17, align 8, !dbg !192
-  %ptradd19 = getelementptr inbounds i8, ptr %40, i64 %41, !dbg !192
-  %42 = load i8, ptr %ptradd19, align 1, !dbg !192
-  %i2b = icmp ne i8 %42, 0, !dbg !192
-  br i1 %i2b, label %loop.body20, label %loop.exit, !dbg !192
+loop.cond19:                                      ; preds = %loop.body21, %loop.body
+  %43 = load ptr, ptr %ptr, align 8, !dbg !197
+  %44 = load i64, ptr %len, align 8, !dbg !199
+  %ptradd20 = getelementptr inbounds i8, ptr %43, i64 %44, !dbg !199
+  %45 = load i8, ptr %ptradd20, align 1, !dbg !199
+  %i2b = icmp ne i8 %45, 0, !dbg !199
+  br i1 %i2b, label %loop.body21, label %loop.exit, !dbg !199
 
-loop.body20:                                      ; preds = %loop.cond18
-  %43 = load i64, ptr %len17, align 8, !dbg !193
-  %add21 = add i64 %43, 1, !dbg !193
-  store i64 %add21, ptr %len17, align 8, !dbg !193
-  br label %loop.cond18, !dbg !193
+loop.body21:                                      ; preds = %loop.cond19
+  %46 = load i64, ptr %len, align 8, !dbg !200
+  %add22 = add i64 %46, 1, !dbg !200
+  store i64 %add22, ptr %len, align 8, !dbg !200
+  br label %loop.cond19, !dbg !200
 
-loop.exit:                                        ; preds = %loop.cond18
-  %44 = load i64, ptr %len17, align 8, !dbg !194
-  %add22 = add i64 0, %44, !dbg !194
-  %size23 = sub i64 %add22, 0, !dbg !194
-  %45 = insertvalue %"char[]" undef, ptr %38, 0, !dbg !194
-  %46 = insertvalue %"char[]" %45, i64 %size23, 1, !dbg !194
-  %47 = load ptr, ptr %list5, align 8, !dbg !195
-  %48 = load i32, ptr %i, align 4, !dbg !196
-  %sext24 = sext i32 %48 to i64, !dbg !196
-  %ptroffset25 = getelementptr inbounds [16 x i8], ptr %47, i64 %sext24, !dbg !196
-  store %"char[]" %46, ptr %ptroffset25, align 8, !dbg !196
-  %49 = load i32, ptr %i, align 4, !dbg !197
-  %add26 = add i32 %49, 1, !dbg !197
-  store i32 %add26, ptr %i, align 4, !dbg !197
-  br label %loop.cond, !dbg !197
+loop.exit:                                        ; preds = %loop.cond19
+  %47 = load i64, ptr %len, align 8, !dbg !201
+  %add23 = add i64 0, %47, !dbg !201
+  %size24 = sub i64 %add23, 0, !dbg !201
+  %48 = insertvalue %"char[]" undef, ptr %41, 0, !dbg !201
+  %49 = insertvalue %"char[]" %48, i64 %size24, 1, !dbg !201
+  %50 = load ptr, ptr %list5, align 8, !dbg !202
+  %51 = load i32, ptr %i, align 4, !dbg !203
+  %sext25 = sext i32 %51 to i64, !dbg !203
+  %ptroffset26 = getelementptr inbounds [16 x i8], ptr %50, i64 %sext25, !dbg !203
+  store %"char[]" %49, ptr %ptroffset26, align 8, !dbg !203
+  %52 = load i32, ptr %i, align 4, !dbg !204
+  %add27 = add i32 %52, 1, !dbg !204
+  store i32 %add27, ptr %i, align 4, !dbg !204
+  br label %loop.cond, !dbg !204
 
-loop.exit27:                                      ; preds = %loop.cond
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %list, ptr align 8 %list5, i32 16, i1 false), !dbg !198
-  %lo = load ptr, ptr %list, align 8, !dbg !199
-  %ptradd28 = getelementptr inbounds i8, ptr %list, i64 8, !dbg !199
-  %hi = load i64, ptr %ptradd28, align 8, !dbg !199
-  %50 = call i32 @test.main(ptr %lo, i64 %hi), !dbg !200
-  store i32 %50, ptr %blockret, align 4, !dbg !200
-  %51 = load ptr, ptr %list, align 8, !dbg !201
-  call void @std.core.mem.free(ptr %51) #4, !dbg !203
-  br label %expr_block.exit29, !dbg !203
+loop.exit28:                                      ; preds = %loop.cond
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %list, ptr align 8 %list5, i32 16, i1 false), !dbg !205
+  %lo = load ptr, ptr %list, align 8, !dbg !206
+  %ptradd29 = getelementptr inbounds i8, ptr %list, i64 8, !dbg !206
+  %hi = load i64, ptr %ptradd29, align 8, !dbg !206
+  %53 = call i32 @test.main(ptr %lo, i64 %hi), !dbg !207
+  store i32 %53, ptr %blockret, align 4, !dbg !207
+  %54 = load ptr, ptr %list, align 8, !dbg !208
+  call void @std.core.mem.free(ptr %54) #5, !dbg !210
+  br label %expr_block.exit30, !dbg !210
 
-expr_block.exit29:                                ; preds = %loop.exit27
-  %52 = load i32, ptr %blockret, align 4, !dbg !203
-  ret i32 %52, !dbg !203
+expr_block.exit30:                                ; preds = %loop.exit28
+  %55 = load i32, ptr %blockret, align 4, !dbg !210
+  ret i32 %55, !dbg !210
 }
 
 declare { i32, ptr } @attach.to_scope() #0
@@ -661,8 +667,8 @@ no_match:                                         ; preds = %compare
 !43 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !44, size: 64, align: 64, dwarfAddressSpace: 0)
 !44 = !DIBasicType(name: "char", size: 8, encoding: DW_ATE_unsigned_char)
 !45 = !DIDerivedType(tag: DW_TAG_member, name: "len", scope: !40, baseType: !46, size: 64, align: 64, offset: 64)
-!46 = !DIDerivedType(tag: DW_TAG_typedef, name: "usz", baseType: !47)
-!47 = !DIBasicType(name: "ulong", size: 64, encoding: DW_ATE_unsigned)
+!46 = !DIDerivedType(tag: DW_TAG_typedef, name: "sz", baseType: !47)
+!47 = !DIBasicType(name: "long", size: 64, encoding: DW_ATE_signed)
 !48 = !DIDerivedType(tag: DW_TAG_member, name: "len", scope: !35, baseType: !46, size: 64, align: 64, offset: 64)
 !49 = !DILocalVariable(name: "args", arg: 1, scope: !32, file: !7, line: 15, type: !35)
 !50 = !DILocation(line: 15, column: 22, scope: !32)
@@ -683,38 +689,38 @@ no_match:                                         ; preds = %compare
 !65 = !DILocation(line: 25, column: 9, scope: !32)
 !66 = distinct !DISubprogram(name: "create_foo", linkageName: "test.create_foo", scope: !7, file: !7, line: 35, type: !67, scopeLine: 35, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !21)
 !67 = !DISubroutineType(types: !68)
-!68 = !{!52, !10, !47, !39}
-!69 = !DILocalVariable(name: "attach", arg: 1, scope: !66, file: !7, line: 35, type: !10)
-!70 = !DILocation(line: 35, column: 31, scope: !66)
-!71 = !DILocalVariable(name: "flags", arg: 2, scope: !66, file: !7, line: 35, type: !47)
-!72 = !DILocation(line: 35, column: 49, scope: !66)
-!73 = !DILocalVariable(name: "name", arg: 3, scope: !66, file: !7, line: 35, type: !39)
-!74 = !DILocation(line: 35, column: 63, scope: !66)
-!75 =
-!76 = distinct !DISubprogram(name: "new", linkageName: "new", scope: !77, file: !77
-!77 = !DIFile(filename: "mem.c3", directory:
-!78 = !DILocation(line: 37, column: 9, scope: !66)
-!79 = distinct !DISubprogram(name: "test", linkageName: "test.test", scope: !7, file: !7, line: 45, type: !80, scopeLine: 45, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !21)
-!80 = !DISubroutineType(types: !81)
-!81 = !{!52, !82}
-!82 = !DIDerivedType(tag: DW_TAG_typedef, name: "Color", scope: !7, file: !7, line: 87, baseType: !83, align: 128)
-!83 = !DICompositeType(tag: DW_TAG_array_type, baseType: !84, size: 128, align: 32, flags: DIFlagVector, elements: !85)
-!84 = !DIBasicType(name: "float", size: 32, encoding: DW_ATE_float)
-!85 = !{!86}
-!86 = !DISubrange(count: 4, lowerBound: 0)
-!87 = !DILocalVariable(name: "color", arg: 1, scope: !79, file: !7, line: 45, type: !82)
-!88 = !DILocation(line: 45, column: 20, scope: !79)
-!89 = !DILocation(
-!90 = distinct !DISubprogram(name: "printn", linkageName: "printn"
-!91 = !DIFile(filename: "io.c3"
-!92 = !DILocation(line: 47, column: 2, scope: !79)
-!93 = !DILocalVariable(name: "len"
-!94 = distinct !DISubprogram(name: "fprintn", linkageName: "fprintn", scope: !91
-!95 = !DILocation
+!68 = !{!52, !10, !69, !39}
+!69 = !DIBasicType(name: "ulong", size: 64, encoding: DW_ATE_unsigned)
+!70 = !DILocalVariable(name: "attach", arg: 1, scope: !66, file: !7, line: 35, type: !10)
+!71 = !DILocation(line: 35, column: 31, scope: !66)
+!72 = !DILocalVariable(name: "flags", arg: 2, scope: !66, file: !7, line: 35, type: !69)
+!73 = !DILocation(line: 35, column: 49, scope: !66)
+!74 = !DILocalVariable(name: "name", arg: 3, scope: !66, file: !7, line: 35, type: !39)
+!75 = !DILocation(line: 35, column: 63, scope: !66)
+!76 =
+!77 = distinct !DISubprogram(name: "new", linkageName: "new", scope
+!78 = !DIFile(filename: "mem.c3", directory:
+!79 = !DILocation(line: 37, column: 9, scope: !66)
+!80 = distinct !DISubprogram(name: "test", linkageName: "test.test", scope: !7, file: !7, line: 45, type: !81, scopeLine: 45, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !21)
+!81 = !DISubroutineType(types: !82)
+!82 = !{!52, !83}
+!83 = !DIDerivedType(tag: DW_TAG_typedef, name: "Color", scope: !7, file: !7, line: 87, baseType: !84, align: 128)
+!84 = !DICompositeType(tag: DW_TAG_array_type, baseType: !85, size: 128, align: 32, flags: DIFlagVector, elements: !86)
+!85 = !DIBasicType(name: "float", size: 32, encoding: DW_ATE_float)
+!86 = !{!87}
+!87 = !DISubrange(count: 4, lowerBound: 0)
+!88 = !DILocalVariable(name: "color", arg: 1, scope: !80, file: !7, line: 45, type: !83)
+!89 = !DILocation(line: 45, column: 20, scope: !80)
+!90 = !DILocation(
+!91 = distinct !DISubprogram(name: "printn", linkageName: "printn"
+!92 = !DIFile(filename: "io.c3"
+!93 = !DILocation(line: 47, column: 2, scope: !80)
+!94 = !DILocalVariable(name: "len"
+!95 = distinct !DISubprogram(name: "fprintn", linkageName: "fprintn", scope:
 !96 = !DILocation
 !97 = !DILocation
-!98 = distinct !DISubprogram(name: "fprint", linkageName: "fprint", scope: !91
-!99 = !DILocation
+!98 = !DILocation
+!99 = distinct !DISubprogram(name: "fprint", linkageName: "fprint", scope:
 !100 = !DILocation
 !101 = !DILocation
 !102 = !DILocation
@@ -722,48 +728,46 @@ no_match:                                         ; preds = %compare
 !104 = !DILocation
 !105 = !DILocation
 !106 = !DILocation
-!107 = distinct !DISubprogram(name: "test2", linkageName: "test.test2", scope: !7, file: !7, line: 51, type: !108, scopeLine: 51, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !21)
-!108 = !DISubroutineType(types: !109)
-!109 = !{!14}
-!110 = !DILocalVariable(name: "scratch", scope: !111, file: !7, line: 123, type: !112, align: 64)
-!111 = distinct !DISubprogram(name: "@scratch", linkageName: "@scratch", scope: !7, file: !7, line: 121, scopeLine: 121, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !6, retainedNodes: !21)
-!112 = !DICompositeType(tag: DW_TAG_structure_type, name: "Arena_Cursor", scope: !7, file: !7, line: 97, size: 128, align: 64, elements: !113, identifier: "foo__Arena_Cursor")
-!113 = !{!114, !119}
-!114 = !DIDerivedType(tag: DW_TAG_member, name: "arena", scope: !112, file: !7, line: 99, baseType: !115, size: 64, align: 64)
-!115 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !116, size: 64, align: 64, dwarfAddressSpace: 0)
-!116 = !DICompositeType(tag: DW_TAG_structure_type, name: "Arena", scope: !7, file: !7, line: 92, size: 64, align: 64, elements: !117, identifier: "foo__Arena")
-!117 = !{!118}
-!118 = !DIDerivedType(tag: DW_TAG_member, name: "cursor", scope: !116, file: !7, line: 94, baseType: !46, size: 64, align: 64)
-!119 = !DIDerivedType(tag: DW_TAG_member, name: "cursor", scope: !112, file: !7, line: 100, baseType: !46, size: 64, align: 64, offset: 64)
-!120 = !DILocation(line: 123, column: 15, scope: !111, inlinedAt: !121)
-!121 = !DILocation
-!122 = !DILocation
-!123 = !DILocation
-!124 = !DILocalVariable(name: "scratch", scope: !107, file: !7, line: 54, type: !115, align: 64)
-!125 = !DILocation(line: 54, column: 20, scope: !107)
-!126 = !DILocation
-!127 = distinct !DILexicalBlock(scope: !111, file: !7, line: 125, column: 2)
-!128 = !DILocalVariable(name: "asdf", scope: !129, file: !7, line: 56, type: !14, align: 64)
-!129 = distinct !DILexicalBlock(scope: !107, file: !7, line: 55, column: 2)
-!130 = !DILocation(line: 56, column: 12, scope: !129)
-!131 = !DILocation(line: 57, column: 13, scope: !129)
-!132 = !DILocation
-!133 = distinct !DILexicalBlock(scope: !111, file: !7, line: 124, column: 8)
-!134 = !DILocation
-!135 = distinct !DISubprogram(name: "_$main", linkageName: "main", scope: !7, file: !7
-!136 = !DISubroutineType(types: !137)
-!137 = !{!15, !15, !138}
-!138 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !43, size: 64, align: 64, dwarfAddressSpace: 0)
-!139 = !DILocalVariable(name: ".anon", arg: 1, scope: !135, file: !7
-!140 = !DILocation(line: 15, column: 8, scope: !135)
-!141 = !DILocalVariable(name: ".anon", arg: 2, scope: !135, file: !7
-!142 = !DILocalVariable(name: "list", scope: !143, file: !7
-!143 = distinct !DISubprogram(name: "@main_args", linkageName: "@main_args", scope: !144, file: !144
-!144 = !DIFile(filename: "main_stub.c3"
-!145 = !DILocation
-!146 = !DILocalVariable(name: "list", scope: !147, file: !7
-!147 = distinct !DISubprogram(name: "args_to_strings"
-!148 = !DILocation
-!149 = !DILocation
-!150 = !DILocation
-!151 = !DILocation
+!107 = !DILocation
+!108 = distinct !DISubprogram(name: "test2", linkageName: "test.test2", scope: !7, file: !7, line: 51, type: !109, scopeLine: 51, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !21)
+!109 = !DISubroutineType(types: !110)
+!110 = !{!14}
+!111 = !DILocalVariable(name: "scratch", scope: !112, file: !7, line: 123, type: !113, align: 64)
+!112 = distinct !DISubprogram(name: "@scratch", linkageName: "@scratch", scope: !7, file: !7, line: 121, scopeLine: 121, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !6, retainedNodes: !21)
+!113 = !DICompositeType(tag: DW_TAG_structure_type, name: "Arena_Cursor", scope: !7, file: !7, line: 97, size: 128, align: 64, elements: !114, identifier: "foo__Arena_Cursor")
+!114 = !{!115, !121}
+!115 = !DIDerivedType(tag: DW_TAG_member, name: "arena", scope: !113, file: !7, line: 99, baseType: !116, size: 64, align: 64)
+!116 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !117, size: 64, align: 64, dwarfAddressSpace: 0)
+!117 = !DICompositeType(tag: DW_TAG_structure_type, name: "Arena", scope: !7, file: !7, line: 92, size: 64, align: 64, elements: !118, identifier: "foo__Arena")
+!118 = !{!119}
+!119 = !DIDerivedType(tag: DW_TAG_member, name: "cursor", scope: !117, file: !7, line: 94, baseType: !120, size: 64, align: 64)
+!120 = !DIDerivedType(tag: DW_TAG_typedef, name: "usz", baseType: !69)
+!121 = !DIDerivedType(tag: DW_TAG_member, name: "cursor", scope: !113, file: !7, line: 100, baseType: !120, size: 64, align: 64, offset: 64)
+!122 = !DILocation(line: 123, column: 15, scope: !112, inlinedAt: !123)
+!123 = !DILocation(line: 54, column: 2, scope: !108)
+!124 = !DILocation(
+!125 = !DILocation(
+!126 = !DILocalVariable(name: "scratch", scope: !108, file: !7, line: 54, type: !116, align: 64)
+!127 = !DILocation(line: 54, column: 20, scope: !108)
+!128 = !DILocation(
+!129 = distinct !DILexicalBlock(scope: !112, file: !7, line: 125, column: 2)
+!130 = !DILocalVariable(name: "asdf", scope: !131, file: !7, line: 56, type: !14, align: 64)
+!131 = distinct !DILexicalBlock(scope: !108, file: !7, line: 55, column: 2)
+!132 = !DILocation(line: 56, column: 12, scope: !131)
+!133 = !DILocation(line: 57, column: 13, scope: !131)
+!134 = !DILocation(line: 124, column: 20, scope: !135, inlinedAt: !123)
+!135 = distinct !DILexicalBlock(scope: !112, file: !7, line: 124, column: 8)
+!136 = !DILocation(line: 124, column: 8, scope: !135, inlinedAt: !123)
+!137 = distinct !DISubprogram(name: "_$main", linkageName: "main", scope: !7, file: !7, line: 15, type: !138, scopeLine: 15, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !21)
+!138 = !DISubroutineType(types: !139)
+!139 = !{!15, !15, !140}
+!140 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !43, size: 64, align: 64, dwarfAddressSpace: 0)
+!141 = !DILocalVariable(name: ".anon", arg: 1, scope: !137, file: !7
+!142 = !DILocation(line: 15, column: 8, scope: !137)
+!143 = !DILocalVariable(name: ".anon", arg: 2, scope: !137, file: !7
+!144 = !DILocalVariable(name: "list", scope: !145, file: !7
+!145 = distinct !DISubprogram(name: "@main_args", linkageName: "@main_args", scope: !146, file:
+!146 = !DIFile(filename: "main_stub.c3"
+!147 = !DILocation
+!148 = !DILocalVariable(name: "list", scope: !149, file: !7
+!149 = distinct !DISubprogram(name: "args_to_strings"

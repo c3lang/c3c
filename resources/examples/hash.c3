@@ -45,7 +45,7 @@ fn ulong crc64(char[] data)
     ulong result = (ulong)(0);
     foreach (char x : data)
     {
-        result = (result << 8) ^ CRC64_TABLE[(char)((result >> 56) ^ x)];
+        result = (result << 8u) ^ CRC64_TABLE[(char)((result >> 56) ^ x)];
     }
 	return result;
 }

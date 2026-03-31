@@ -385,7 +385,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				expr_two->two_expr.first = decl_expr;
 				Expr *sub = expr_new_expr(EXPR_SUBSCRIPT, element);
 				sub->subscript_expr.expr = exprid(expr_variable(decl));
-				sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_usz, 0));
+				sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_sz, 0));
 				expr_two->two_expr.last = sub;
 				if (!sema_analyse_expr_rhs(context, inner_type, expr_two, true, NULL, false)) return false;
 				elements[i] = expr_two;
@@ -393,7 +393,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				{
 					sub = expr_new_expr(EXPR_SUBSCRIPT, element);
 					sub->subscript_expr.expr = exprid(expr_variable(decl));
-					sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_usz, 1));
+					sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_sz, 1));
 					vec_insert_at(elements, i + j, sub);
 					if (!sema_analyse_expr_rhs(context, inner_type, sub, true, NULL, false)) return false;
 				}
@@ -1428,7 +1428,7 @@ static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *inde
 		return -1;
 	}
 
-	// Unless we already have type_usz, cast to type_isz;
+	// Unless we already have type_usz, cast to type_sz;
 	if (!cast_to_index_len(context, index, false))
 	{
 		return -1;

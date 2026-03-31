@@ -2040,7 +2040,7 @@ extern TypeInfo *poisoned_type_info;
 
 extern Type *type_bool, *type_void, *type_voidptr;
 extern Type *type_float16, *type_bfloat, *type_float, *type_double, *type_f128;
-extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isz;
+extern Type *type_ichar, *type_short, *type_int, *type_long, *type_sz;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usz;
 extern Type *type_iptr, *type_uptr;
 extern Type *type_u128, *type_i128;
@@ -2785,12 +2785,12 @@ INLINE Type *type_no_optional(Type *type)
 
 INLINE bool type_is_pointer_sized_or_more(Type *type)
 {
-	return type_is_integer(type) && type_size(type) >= type_size(type_iptr);
+	return type_is_integer(type) && type_size(type) >= type_size(type_uptr);
 }
 
 INLINE bool type_is_pointer_sized(Type *type)
 {
-	return type_is_integer(type) && type_size(type) == type_size(type_iptr);
+	return type_is_integer(type) && type_size(type) == type_size(type_uptr);
 }
 
 #define DECL_TYPE_KIND_REAL(k_, t_) \
@@ -3010,7 +3010,7 @@ INLINE bool type_is_atomic(Type *type_flat)
 		default:
 			return false;
 	}
-	return type_size(type_flat) <= type_size(type_iptr);
+	return type_size(type_flat) <= type_size(type_uptr);
 }
 
 INLINE bool type_is_pointer(Type *type)

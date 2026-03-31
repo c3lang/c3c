@@ -51,7 +51,7 @@ fn void test16()
     uint b = 2;
     ushort c = 3;
     a = a + c;
-    int g = a + b;
+    int g = a + (int)b;
 }
 
 fn void test17()

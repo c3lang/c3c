@@ -209,7 +209,7 @@ fn void add_all_test()
 	defer set1.free();
 
 	String[] list = {"hello", "world", "hello"};
-	usz total = set1.add_all(list);
+	sz total = set1.add_all(list);
 	assert(total == 2);
 
 	assert(set1.contains("hello"));
@@ -252,7 +252,7 @@ fn void remove_all_test()
 	defer set2.free();
 	assert(set1.len() == 3);
 
-	usz total = set2.add_all(list2);
+	sz total = set2.add_all(list2);
 	assert(total == 2);
 	assert(set2.len() == 5);
 

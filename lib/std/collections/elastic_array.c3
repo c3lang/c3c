@@ -15,11 +15,11 @@ macro bool type_is_overaligned() => Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
 
 struct ElasticArray (Printable)
 {
-	usz size;
+	sz size;
 	Type[MAX_SIZE] entries;
 }
 
-fn usz? ElasticArray.to_format(&self, Formatter* formatter) @dynamic
+fn sz? ElasticArray.to_format(&self, Formatter* formatter) @dynamic
 {
 	switch (self.size)
 	{
@@ -28,7 +28,7 @@ fn usz? ElasticArray.to_format(&self, Formatter* formatter) @dynamic
 		case 1:
 			return formatter.printf("[%s]", self.entries[0])!;
 		default:
-			usz n = formatter.print("[")!;
+			sz n = formatter.print("[")!;
 			foreach (i, element : self.entries[:self.size])
 			{
 				if (i != 0) formatter.print(", ")!;
@@ -72,7 +72,7 @@ fn void ElasticArray.clear(&self)
 <*
  @require self.size > 0
 *>
-fn Type? ElasticArray.pop_first(&self)
+fn Type? ElasticArray.pop_front(&self)
 {
 	if (!self.size) return NO_MORE_ELEMENT~;
 	defer self.remove_at(0);
@@ -80,9 +80,11 @@ fn Type? ElasticArray.pop_first(&self)
 }
 
 <*
- @require index < self.size
+ Remove an element at a particular place.
+
+ @require index < self.size && index <= 0 : "Index was out of range"
 *>
-fn void ElasticArray.remove_at(&self, usz index)
+fn void ElasticArray.remove_at(&self, sz index)
 {
 	if (!--self.size || index == self.size) return;
 	self.entries[index .. self.size - 1] = self.entries[index + 1 .. self.size];
@@ -104,7 +106,7 @@ fn void ElasticArray.add_all(&self, ElasticArray* other_list)
  Add as many elements as possible to the new array,
  returning the number of elements that didn't fit.
 *>
-fn usz ElasticArray.add_all_to_limit(&self, ElasticArray* other_list)
+fn sz ElasticArray.add_all_to_limit(&self, ElasticArray* other_list)
 {
 	if (!other_list.size) return 0;
 	foreach (i, &value : other_list)
@@ -122,7 +124,7 @@ fn usz ElasticArray.add_all_to_limit(&self, ElasticArray* other_list)
 
  @param [in] array
 *>
-fn usz ElasticArray.push_all_to_limit(&self, Type[] array)
+fn sz ElasticArray.push_all_to_limit(&self, Type[] array)
 {
 	if (!array.len) return 0;
 	foreach (i, &value : array)
@@ -206,9 +208,9 @@ fn void? ElasticArray.push_front_try(&self, Type type) @inline
 }
 
 <*
- @require index <= self.size
+ @require index <= self.size && index >= 0 : "Index was out of range"
 *>
-fn void? ElasticArray.insert_at_try(&self, usz index, Type value)
+fn void? ElasticArray.insert_at_try(&self, sz index, Type value)
 {
 	if (self.size == MAX_SIZE) return mem::OUT_OF_MEMORY~;
 	self.insert_at(index, value);
@@ -216,11 +218,11 @@ fn void? ElasticArray.insert_at_try(&self, usz index, Type value)
 
 <*
  @require self.size < MAX_SIZE : `List would exceed max size`
- @require index <= self.size
+ @require index <= self.size && index >= 0 : "Index was out of range"
 *>
-fn void ElasticArray.insert_at(&self, usz index, Type type)
+fn void ElasticArray.insert_at(&self, sz index, Type type)
 {
-	for (usz i = self.size; i > index; i--)
+	for (sz i = self.size; i > index; i--)
 	{
 		self.entries[i] = self.entries[i - 1];
 	}
@@ -229,9 +231,9 @@ fn void ElasticArray.insert_at(&self, usz index, Type type)
 }
 
 <*
- @require index < self.size
+ @require index <= self.size && index >= 0 : "Index was out of range"
 *>
-fn void ElasticArray.set_at(&self, usz index, Type type)
+fn void ElasticArray.set_at(&self, sz index, Type type)
 {
 	self.entries[index] = type;
 }
@@ -265,22 +267,25 @@ fn bool ElasticArray.is_empty(&self) @inline
 	return !self.size;
 }
 
-fn usz ElasticArray.byte_size(&self) @inline
+fn sz ElasticArray.byte_size(&self) @inline
 {
 	return Type.sizeof * self.size;
 }
 
-fn usz ElasticArray.len(&self) @operator(len) @inline
+fn sz ElasticArray.len(&self) @operator(len) @inline
 {
 	return self.size;
 }
 
-fn Type ElasticArray.get(&self, usz index) @inline
+<*
+ @require index <= self.size && index >= 0 : "Index was out of range"
+*>
+fn Type ElasticArray.get(&self, sz index) @inline
 {
 	return self.entries[index];
 }
 
-fn void ElasticArray.swap(&self, usz i, usz j)
+fn void ElasticArray.swap(&self, sz i, sz j)
 {
 	@swap(self.entries[i], self.entries[j]);
 }
@@ -289,7 +294,7 @@ fn void ElasticArray.swap(&self, usz i, usz j)
  @param filter : "The function to determine if it should be removed or not"
  @return "the number of deleted elements"
 *>
-fn usz ElasticArray.remove_if(&self, ElementPredicate filter)
+fn sz ElasticArray.remove_if(&self, ElementPredicate filter)
 {
 	return list_common::list_remove_if(self, filter, false);
 }
@@ -298,40 +303,43 @@ fn usz ElasticArray.remove_if(&self, ElementPredicate filter)
  @param selection : "The function to determine if it should be kept or not"
  @return "the number of deleted elements"
 *>
-fn usz ElasticArray.retain_if(&self, ElementPredicate selection)
+fn sz ElasticArray.retain_if(&self, ElementPredicate selection)
 {
 	return list_common::list_remove_if(self, selection, true);
 }
 
-fn usz ElasticArray.remove_using_test(&self, ElementTest filter, any context)
+fn sz ElasticArray.remove_using_test(&self, ElementTest filter, any context)
 {
 	return list_common::list_remove_using_test(self, filter, false, context);
 }
 
-fn usz ElasticArray.retain_using_test(&self, ElementTest filter, any context)
+fn sz ElasticArray.retain_using_test(&self, ElementTest filter, any context)
 {
 	return list_common::list_remove_using_test(self, filter, true, context);
 }
 
 
-macro Type ElasticArray.@item_at(&self, usz index) @operator([])
+macro Type ElasticArray.@item_at(&self, sz index) @operator([])
 {
 	return self.entries[index];
 }
 
-fn Type* ElasticArray.get_ref(&self, usz index) @operator(&[]) @inline
+fn Type* ElasticArray.get_ref(&self, sz index) @operator(&[]) @inline
 {
 	return &self.entries[index];
 }
 
-fn void ElasticArray.set(&self, usz index, Type value) @operator([]=)
+<*
+ @require index <= self.size && index >= 0 : "Index was out of range"
+*>
+fn void ElasticArray.set(&self, sz index, Type value) @operator([]=)
 {
 	self.entries[index] = value;
 }
 
 
 // Functions for equatable types
-fn usz? ElasticArray.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
+fn sz? ElasticArray.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 {
 	foreach (i, v : self)
 	{
@@ -340,7 +348,7 @@ fn usz? ElasticArray.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 	return NOT_FOUND~;
 }
 
-fn usz? ElasticArray.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
+fn sz? ElasticArray.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 {
 	foreach_r (i, v : self)
 	{
@@ -400,7 +408,7 @@ fn bool ElasticArray.remove_first_item(&self, Type value) @if(ELEMENT_IS_EQUATAB
  @param value : "The value to remove"
  @return "the number of deleted elements."
 *>
-fn usz ElasticArray.remove_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
+fn sz ElasticArray.remove_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	return list_common::list_remove_item(self, value);
 }
@@ -417,14 +425,14 @@ fn void ElasticArray.remove_all_from(&self, ElasticArray* other_list) @if(ELEMEN
  @param [&in] self
  @return "The number non-null values in the list"
 *>
-fn usz ElasticArray.compact_count(&self) @if(ELEMENT_IS_POINTER)
+fn sz ElasticArray.compact_count(&self) @if(ELEMENT_IS_POINTER)
 {
-	usz vals = 0;
+	sz vals = 0;
 	foreach (v : self) if (v) vals++;
 	return vals;
 }
 
-fn usz ElasticArray.compact(&self) @if(ELEMENT_IS_POINTER)
+fn sz ElasticArray.compact(&self) @if(ELEMENT_IS_POINTER)
 {
 	return list_common::list_compact(self);
 }
