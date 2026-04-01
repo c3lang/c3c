@@ -3182,6 +3182,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_BITSTRUCT | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER, // NOLINT
 			[ATTRIBUTE_ALLOW_DEPRECATED] = ATTR_FUNC,
+			[ATTRIBUTE_ALWAYSINIT] = ATTR_STRUCT | ATTR_UNION | ATTR_BITSTRUCT,
 			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
@@ -3491,6 +3492,9 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_CONSTINIT:
 			decl->attr_constinit = true;
 			return true;
+		case ATTRIBUTE_ALWAYSINIT:
+			decl->attr_alwaysinit = true;
+			break;
 		case ATTRIBUTE_SIMD:
 			RETURN_SEMA_ERROR(attr, "'@simd' is only allowed on typedef types.");
 		case ATTRIBUTE_SECTION:
@@ -4885,9 +4889,16 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 		RETURN_SEMA_ERROR(decl->var.init_expr, "Extern globals may not have initializers.");
 	}
 
-	if (decl->var.no_init && decl->var.init_expr)
+	if (decl->var.no_init)
 	{
-		RETURN_SEMA_ERROR(decl->var.init_expr, "'@noinit' variables may not have initializers.");
+		if (decl->attr_alwaysinit)
+		{
+			RETURN_SEMA_ERROR(decl->var.init_expr, "`@noinit` cannot be applied to the %s '%s'.", decl_to_name(decl), decl->name);
+		}
+		if (decl->var.init_expr)
+		{
+			RETURN_SEMA_ERROR(decl->var.init_expr, "'@noinit' variables may not have initializers.");
+		}
 	}
 	if (erase_decl)
 	{
