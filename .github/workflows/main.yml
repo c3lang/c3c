@@ -155,6 +155,11 @@ jobs:
       matrix:
         build_type: [Release, Debug]
     steps:
+      - name: Prepare Git
+        run: |
+          apk add --no-cache git
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - uses: actions/checkout@v6
 
       - name: Install dependencies
@@ -162,7 +167,7 @@ jobs:
           V=${{env.LLVM_RELEASE_VERSION_LINUX_MUSL}}
           apk update
           apk add \
-            build-base bash git cmake ninja python3 linux-headers \
+            build-base bash cmake ninja python3 linux-headers \
             zlib-dev zlib-static zstd-dev zstd-static curl-dev curl-static \
             openssl-libs-static brotli-static nghttp2-static libpsl-static \
             libidn2-static libunistring-static nghttp3-static c-ares-dev \
@@ -206,6 +211,11 @@ jobs:
       matrix:
         build_type: [Release, Debug]
     steps:
+      - name: Prepare Git
+        run: |
+          apk add --no-cache git
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - uses: actions/checkout@v6
 
       - name: Get current date context
@@ -232,7 +242,7 @@ jobs:
           for i in 1 2 3; do apk update && break || sleep 2; done
           for i in 1 2 3; do \
             apk add \
-              build-base bash git cmake ninja python3 linux-headers \
+              build-base bash cmake ninja python3 linux-headers \
               tar zstd \
               zlib-dev curl-dev libffi-dev \
               llvm${V}-dev \
