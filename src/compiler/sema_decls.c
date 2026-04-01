@@ -4893,7 +4893,7 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 	{
 		if (decl->attr_alwaysinit)
 		{
-			RETURN_SEMA_ERROR(decl->var.init_expr, "`@noinit` cannot be applied to the %s '%s'.", decl_to_name(decl), decl->name);
+			RETURN_SEMA_ERROR(decl, "`@noinit` cannot be applied to '%s' because its type is `@alwaysinit`.", decl->name);
 		}
 		if (decl->var.init_expr)
 		{
