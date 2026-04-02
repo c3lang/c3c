@@ -23,6 +23,9 @@
 - For enums, using `++` and `--` will step through enums with implicit wrap-around.
 - Use signed sizes everywhere.
 
+### Fixes
+- Slice comparison lowering would not work correctly in macros in some cases. #3095
+
 ## 0.7.11 Change list
 
 ### Changes / improvements
