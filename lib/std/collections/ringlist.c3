@@ -8,7 +8,6 @@ import std::io, std::math;
  Ring list is a queue-like, FIFO, fixed size (stack allocated) data structure.
  The useful property of a ring list is that it does not need to have its elements shuffled around (mem::move) when one is consumed by 'pop' operation.
  User can 'push' indefinitely, but subsequent pushes can override the oldest values.
- It is slightly more optimized when CAPACITY is a power of 2.
  tail - points to the next write location (push).
  head - points to the current read location (pop).
 *>
