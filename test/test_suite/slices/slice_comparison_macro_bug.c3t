@@ -1,0 +1,15 @@
+module test;
+import std;
+struct Something
+{
+	int foo;
+}
+fn bool Something.eq(&self, Something other) @operator(==) => member_eq(*self, other);
+struct Else
+{
+	int baz;
+	float bee;
+	Something[3] bar;
+}
+fn bool Else.eq(&self, Else other) @operator(==) => member_eq(*self, other);
+fn void main() {}

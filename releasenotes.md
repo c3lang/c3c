@@ -22,6 +22,9 @@
 - Enums now no longer directly support `+` and `-` – use ordinals instead.
 - For enums, using `++` and `--` will step through enums with implicit wrap-around.
 
+### Fixes
+- Slice comparison lowering would not work correctly in macros in some cases. #3095
+
 ## 0.7.11 Change list
 
 ### Changes / improvements
