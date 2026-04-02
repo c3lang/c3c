@@ -43,7 +43,7 @@ fn void RingList.push(&self, Type element)
 
 <*
  Pops the element from the start of the ring list.
- Moves the read pointer.
+ Moves the head index.
 *>
 fn Type? RingList.pop_front(&self)
 {
@@ -72,7 +72,7 @@ fn void RingList.push_all(&self, Type[] array)
 }
 
 <*
- Performs subsequent 'pop' calls and writes the output into 'out_buf'
+ Performs subsequent 'pop' calls and writes the output into 'target'
  Count of the popped elements calculated by taking the 'min'
  on the input array length and ring lists's internal length
 
