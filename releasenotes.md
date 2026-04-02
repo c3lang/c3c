@@ -16,7 +16,7 @@
 - `:` in contracts before description is now mandatory.
 - Removed deprecated `Enum.associated` (use `Enum.membersof`).
 - Removed deprecated `Enum.elements` (use `Enum.len`).
-- Removed deprecated `foo_function.params` (use `foo_function.paramsof`). 
+- Removed deprecated `foo_function.params` (use `foo_function.paramsof`).
 - Removed deprecated `$is_const`.
 - Removed deprecated `$assignable`.
 - Enums now no longer directly support `+` and `-` – use ordinals instead.
@@ -24,6 +24,7 @@
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
+- Attributes `@allow_deprecated`, `@constinit`, `@noalias`, `@nostrip`, and `@optional` would erroneously accept parameters. #3098
 
 ## 0.7.11 Change list
 
@@ -73,14 +74,14 @@
 - Added `Rect` type.
 - Added `matrix::frustum`.
 - Added `math::@abs` for compile time `abs`.
-- Make `Errno` a constdef containing all definitions. Deprecated `libc::errno` constants. 
+- Make `Errno` a constdef containing all definitions. Deprecated `libc::errno` constants.
 - `random::seeder` no longer uses temp memory.
 - Add simple member-wise struct comparison with `member_eq`. #2801
 - `std::core::mem::allocator` deprecated and split into `std::core::mem::allocators` containing allocators and `std::core::mem::alloc` for various allocation methods.
 - Add `always_assert` builtin macro.
 - Add an `entropy` module to generate cryptographically-secure random bytes. #3022
 - Add a builtin `TIMEOUT` fault definition. #3022
-- Base32, Base64, Hex and Codepage encoding deprecates `encode_buffer` and `decode_buffer`. Those are replaced by `encode_into` and `decode_into` with `dst` being the first argument. #3055 
+- Base32, Base64, Hex and Codepage encoding deprecates `encode_buffer` and `decode_buffer`. Those are replaced by `encode_into` and `decode_into` with `dst` being the first argument. #3055
 - `hex::encode_bytes` and `hex::decode_bytes` are deprecated in favour of `hex::encode_bytes_into` and `hex::decode_bytes_into` which has `dst` the first argument. #3055
 - Deprecation of `@unaligned_load` and `@unaligned_store`. Use `mem::load` and `mem::store` instead.
 
@@ -114,7 +115,7 @@
 - Overaligning structs while using `@packed` would cause incorrect lowering #3000
 - Splatting a literal into a typed vaarg, e.g. `test(...(int[2]){ 88, 99 }, a: 123)` could cause the compiler to crash.
 - `&some_global[0]` was incorrectly considered a global constant when `some_global` was a slice.
-- Taking the type of a macro identifier would give the wrong error. 
+- Taking the type of a macro identifier would give the wrong error.
 - Taking the type of a `$$builtin` function would crash the compiler.
 - Wrong error message when trying to take the address of a `$$builtin` function.
 - Accessing a (non-existing) property on a type-call would crash the compiler.

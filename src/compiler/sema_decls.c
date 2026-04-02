@@ -3275,10 +3275,10 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			return true;
 		case ATTRIBUTE_ALLOW_DEPRECATED:
 			decl->allow_deprecated = true;
-			return true;
+			break;
 		case ATTRIBUTE_OPTIONAL:
 			decl->func_decl.attr_optional = true;
-			return true;
+			break;
 		case ATTRIBUTE_WINMAIN:
 			if (decl->name != kw_main)
 			{
@@ -3427,10 +3427,10 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			return true;
 		case ATTRIBUTE_NOSTRIP:
 			decl->no_strip = true;
-			return true;
+			break;
 		case ATTRIBUTE_NOALIAS:
 			decl->var.no_alias = true;
-			return true;
+			break;
 		case ATTRIBUTE_IF:
 			if (!expr) RETURN_SEMA_ERROR(attr, "'@if' requires a boolean argument.");
 			if (!sema_analyse_attribute_bool_const(context, expr)) return false;
@@ -3490,7 +3490,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			return true;
 		case ATTRIBUTE_CONSTINIT:
 			decl->attr_constinit = true;
-			return true;
+			break;
 		case ATTRIBUTE_SIMD:
 			RETURN_SEMA_ERROR(attr, "'@simd' is only allowed on typedef types.");
 		case ATTRIBUTE_SECTION:
