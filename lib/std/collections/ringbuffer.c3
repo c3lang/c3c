@@ -1,115 +1,238 @@
 <*
- @require Type.kindof == ARRAY : "Required an array type"
+ @require types::is_int($typeof(CAPACITY)) && CAPACITY > 0 : "Capacity must be bigger than 0"
 *>
-module std::collections::ringbuffer <Type>;
+module std::collections::ringbuffer <Type, CAPACITY>;
 import std::io;
+import std::math;
 
-alias Element = $typeof((Type){}[0]);
+faultdef RING_BUFFER_EMPTY;
 
+<*
+ Ring buffer is a queue-like, FIFO, fixed size (stack allocated) data structure.
+ The useful property of a ring buffer is that it does not need to have its elements shuffled around (mem::move) when one is consumed by 'pop' operation.
+ User can 'push' indefinitely, but subsequent pushes can override the oldest values.
+ It is slightly more optimized when CAPACITY is a power of 2.
+ write - points to the next write location (push).
+ read - points to the current read location (pop).
+*>
 struct RingBuffer (Printable)
 {
-	Type buf;
-	isz written;
-	isz head;
+	Type[CAPACITY] buf;
+	isz read;
+	isz write;
 }
 
 fn void RingBuffer.init(&self) @inline
 {
-	*self = {};
+	*self = { };
 }
 
-fn void RingBuffer.push(&self, Element c)
+fn void RingBuffer.init_from_values(&self, Type[] values)
 {
-	if (self.written < self.buf.len)
+	*self = { };
+	self.push_all(values);
+}
+
+<*
+ Pushes a new element to the end of the ring buffer.
+ Moves the write pointer, and possibly read pointer.
+*>
+fn void RingBuffer.push(&self, Type new_el)
+{
+	self.buf[self.write] = new_el;
+	self.write = math::@wrap_add(self.write, CAPACITY);
+	if (self.write == self.read)
 	{
-		self.buf[self.written] = c;
-		self.written++;
+		self.read = math::@wrap_add(self.read, CAPACITY);
+	}
+}
+
+<*
+ Pops the element from the start of the ring buffer.
+ Moves the read pointer.
+*>
+fn Type? RingBuffer.pop(&self)
+{
+	if (@unlikely(self.is_empty()))
+	{
+		return RING_BUFFER_EMPTY~;
+	}
+	return pop_private(self);
+}
+
+<*
+ Returns the element at the start of the ring buffer.
+ Without changing its state.
+*>
+fn Type? RingBuffer.peek(&self)
+{
+	if (@unlikely(self.is_empty()))
+	{
+		return RING_BUFFER_EMPTY~;
+	}
+	Type el = self.buf[self.read];
+	return el;
+}
+
+<*
+ Performs subsequent 'push' calls on each value of 'buff'
+ @require in_buf.len > 0 : "Buffer length should be greater than 0"
+ @param [in] in_buf : "Buffer data will be written from"
+*>
+fn void RingBuffer.push_all(&self, Type[] in_buf)
+{
+	foreach (el : in_buf)
+	{
+		self.push(el);
+	}
+}
+
+<*
+ Performs subsequent 'pop' calls and writes the output into 'out_buf'
+ Count of the popped elements calculated by taking the 'min'
+ on the input buffer length and ring buffer's internal buffer length
+ @param [out] out_buf : "Preallocated buffer into which data will be read"
+ @require out_buf.len > 0 : "Buffer len should be greater than 0"
+ @return "Count of values written into out_buf"
+*>
+fn usz RingBuffer.pop_many(&self, Type[] out_buf)
+{
+	if (@unlikely(self.is_empty()))
+	{
+		return 0;
+	}
+	usz len = min(out_buf.len, self.size());
+	isz i = 0;
+	for (; i < len; ++i)
+	{
+		out_buf[i] = pop_private(self);
+	}
+	return i;
+}
+
+<*
+ Calculates count of elements in ring buffer.
+*>
+fn usz RingBuffer.size(&self)
+{
+	if (!is_wrapped(self))
+	{
+		return self.write - self.read;
 	}
 	else
 	{
-		self.buf[self.head] = c;
-		self.head = (self.head + 1) % self.buf.len;
+		return self.write + (self.buf.len - self.read);
 	}
 }
 
-fn Element RingBuffer.get(&self, isz index) @operator([])
+<*
+ Tells if the ring buffer is currently empty.
+*>
+fn bool RingBuffer.is_empty(&self) @inline
 {
-	index %= self.buf.len;
-	isz avail = self.buf.len - self.head;
-	if (index < avail)
-	{
-		return self.buf[self.head + index];
-	}
-	return self.buf[index - avail];
+	return self.write == self.read;
 }
 
-fn Element? RingBuffer.pop(&self)
+<*
+ Tells if the ring buffer is currently full.
+*>
+fn bool RingBuffer.is_full(&self) @inline
 {
-	switch
+	return math::@wrap_sub(self.read, CAPACITY) == self.write;
+}
+
+<*
+ Allocates a slice and copies the contents from the ring buffer in push order.
+ The user is responsible for freeing the memory.
+*>
+fn Type[]? RingBuffer.into_slice(&self, Allocator alloc)
+{
+	if (@unlikely(self.is_empty()))
 	{
-		case self.written == 0:
-			return NO_MORE_ELEMENT~;
-		case self.written < self.buf.len:
-			self.written--;
-			return self.buf[self.written];
-		default:
-			self.head = (self.head ?: self.buf.len) - 1;
-			return self.buf[self.head];
+		return RING_BUFFER_EMPTY~;
+	}
+
+	if (self.write > self.read)
+	{
+		Type[] slice = alloc::alloc_array(alloc, Type, size_assume_not_wrapped(self));
+		slice[..] = view_not_wrapped(self)[..];
+		return slice;
+	}
+
+	Type[] slice = alloc::alloc_array(alloc, Type, size_assume_wrapped(self));
+	isz i = self.read;
+	isz j = 0;
+
+	for (; i < CAPACITY; ++i)
+	{
+		slice[j] = self.buf[i];
+		++j;
+	}
+	for (i = 0; i < self.write; ++i)
+	{
+		slice[j] = self.buf[i];
+		++j;
+	}
+	return slice;
+}
+
+fn isz? RingBuffer.to_format(&self, Formatter* formatter) @dynamic
+{
+	if (@unlikely(self.is_empty()))
+	{
+		return formatter.print("[]")!;
+	}
+	else if (self.write > self.read)
+	{
+		return formatter.printf("%s", view_not_wrapped(self))!;
+	}
+	else
+	{
+		Type[] view = self.into_slice(tmem)!!;
+		defer alloc::free(tmem, view);
+		return formatter.printf("%s", view)!;
 	}
 }
 
-fn isz? RingBuffer.to_format(&self, Formatter* format) @dynamic
+// ----- Private API -----
+
+<*
+ More optimized version of 'pop', when we know that the size is not 0.
+ Not for public use.
+ @require self.size() > 0 : "Should be bigger than zero"
+*>
+fn Type pop_private(RingBuffer* self) @local
 {
-	// Improve this?
-	return format.printf("%s", self.buf);
+	Type el = self.buf[self.read];
+	self.read = math::@wrap_add(self.read, CAPACITY);
+	return el;
 }
 
-fn isz RingBuffer.read(&self, isz index, Element[] buffer)
+fn bool is_wrapped(RingBuffer* self) @local @inline
 {
-	index %= self.buf.len;
-	if (self.written < self.buf.len)
-	{
-		if (index >= self.written) return 0;
-		isz end = self.written - index;
-		isz n = min(end, buffer.len);
-		buffer[:n] = self.buf[index:n];
-		return n;
-	}
-	isz end = self.buf.len - self.head;
-	if (index >= end)
-	{
-		index -= end;
-		if (index >= self.head) return 0;
-		isz n = min(self.head - index, buffer.len);
-		buffer[:n] = self.buf[index:n];
-		return n;
-	}
-	if (buffer.len <= self.buf.len - index)
-	{
-		isz n = buffer.len;
-		buffer[:n] = self.buf[self.head + index:n];
-		return n;
-	}
-	isz n1 = self.buf.len - index;
-	buffer[:n1] = self.buf[self.head + index:n1];
-	buffer = buffer[n1..];
-	index -= n1;
-	isz n2 = min(self.head - index, buffer.len);
-	buffer[:n2] = self.buf[index:n2];
-	return n1 + n2;
+	return self.read > self.write;
 }
 
-fn void RingBuffer.write(&self, Element[] buffer)
+<*
+ @require !is_wrapped(self)
+*>
+fn isz size_assume_not_wrapped(RingBuffer* self) @local @inline
 {
-	isz i;
-	while (self.written < self.buf.len && i < buffer.len)
-	{
-		self.buf[self.written] = buffer[i++];
-		self.written++;
-	}
-	foreach (c : buffer[i..])
-	{
-		self.buf[self.head] = c;
-		self.head = (self.head + 1) % self.buf.len;
-	}
+	return self.write - self.read;
+}
+
+<*
+ @require is_wrapped(self)
+*>
+fn isz size_assume_wrapped(RingBuffer* self) @local @inline
+{
+	return self.write + (self.buf.len - self.read);
+}
+
+<*
+ @require self.read < self.write
+*>
+fn Type[] view_not_wrapped(RingBuffer* self) @local @inline
+{
+	return self.buf[self.read..self.write - 1];
 }

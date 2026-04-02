@@ -786,6 +786,15 @@ macro bool is_power_of_2(x)
 }
 
 <*
+ Compile time version.
+ @require types::is_underlying_int($typeof($x)) : `is_power_of_2 may only be used on integer types`
+*>
+macro bool @is_power_of_2($x)
+{
+	return $x != 0 && ($x & ($x - 1)) == 0;
+}
+
+<*
  Returns the next power of two that is greater than or equal to x.
 
  @require types::is_int($typeof(x)) : "Input must be an integer type"
@@ -808,6 +817,32 @@ macro next_power_of_2(x)
 	$if ($sizeof(x) >= 16): v |= v >> 64; $endif;
 
 	return v + 1;
+}
+
+<*
+ Compile time version.
+ Returns the next power of two that is greater than or equal to x.
+
+ @require types::is_int($typeof($x)) : "Input must be an integer type"
+ @require $x >= 0 : "Input must be non-negative"
+*>
+macro @next_power_of_2($x)
+{
+	$if $x <= 1: return 1; $endif
+	$if $x == 2: return 2; $endif
+
+	$typeof($x) $v = $x - 1;
+
+	$v |= $v >> 1;
+	$v |= $v >> 2;
+	$v |= $v >> 4;
+
+	$if ($sizeof($x) >= 2):  $v |= $v >> 8;  $endif;
+	$if ($sizeof($x) >= 4):  $v |= $v >> 16; $endif;
+	$if ($sizeof($x) >= 8):  $v |= $v >> 32; $endif;
+	$if ($sizeof($x) >= 16): $v |= $v >> 64; $endif;
+
+	return $v + 1;
 }
 
 
@@ -1026,6 +1061,70 @@ macro gcd(...)
 	return result;
 }
 
+<*
+ Performs wrapping addition over 'boundary'.
+ More optimized if 'boundary' is a power of 2.
+ @ensure return >= 0 && return < boundary : "Output should be in range [0; boundary)"
+*>
+macro wrap_add(isz val, isz boundary)
+{
+	if (math::is_power_of_2(boundary))
+	{
+		return (val + 1) & (boundary - 1);
+	}
+	else
+	{
+		return (val + 1) >= boundary ? 0 : val + 1;
+	}
+}
+
+<*
+ Performs wrapping addition over '$boundary'.
+ More optimized if '$boundary' is a power of 2.
+ Compile time version.
+ @ensure return >= 0 && return < $boundary : "Output should be in range [0; $boundary)"
+*>
+macro @wrap_add(isz val, isz $boundary)
+{
+	$if math::@is_power_of_2($boundary):
+		return (val + 1) & ($boundary - 1);
+	$else
+		return (val + 1) >= $boundary ? 0 : val + 1;
+	$endif
+}
+
+<*
+ Performs wrapping subtraction over 0.
+ More optimized if 'boundary' is a power of 2.
+ @ensure return >= 0 && return < boundary : "Output should be in range [0; boundary)"
+*>
+macro wrap_sub(isz val, isz boundary)
+{
+	if (math::is_power_of_2(boundary))
+	{
+		return (val - 1 + boundary) & (boundary - 1);
+	}
+	else
+	{
+		return (val - 1) < 0 ? boundary - 1 : val - 1;
+	}
+}
+
+<*
+ Performs wrapping subtraction over 0.
+ More optimized if '$boundary' is a power of 2.
+ Compile time version.
+ @ensure return >= 0 && return < $boundary : "Output should be in range [0; $boundary)"
+*>
+macro @wrap_sub(isz val, isz $boundary)
+{
+	$if math::@is_power_of_2($boundary):
+		return (val - 1 + $boundary) & ($boundary - 1);
+	$else
+		return (val - 1) < 0 ? $boundary - 1 : val - 1;
+	$endif
+}
+
 module std::math @private;
 
 <*
@@ -1058,5 +1157,3 @@ macro mul_div_helper(val, mul, div)
 	var $Type = $typeof(val);
 	return ($Type)(($Type)mul * (val / ($Type)div) + ($Type)mul * (val % ($Type)div) / ($Type)div);
 }
-
-

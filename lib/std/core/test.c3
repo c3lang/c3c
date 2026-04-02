@@ -218,9 +218,16 @@ macro le(left, right)
 	}
 }
 
+macro expect(result, expected)
+{
+	if (!equals(result, expected))
+	{
+		print_panicf("Expect failed! expected: %s, actual: %s", result, expected);
+	}
+}
+
 macro void print_panicf(format, ...) @local
 {
 	runtime::test_context.assert_print_backtrace = false;
 	builtin::panicf(format, $$FILE, $$FUNC, $$LINE, $vasplat);
 }
-
