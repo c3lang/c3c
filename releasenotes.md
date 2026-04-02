@@ -23,6 +23,9 @@
 - For enums, using `++` and `--` will step through enums with implicit wrap-around.
 - Use signed sizes everywhere.
 
+### Stdlib changes
+- `std::collections::RingBuffer` is renamed `RingList`.
+
 ## 0.7.11 Change list
 
 ### Changes / improvements

@@ -25,7 +25,7 @@ struct AllocChunk @local
 	char[*] data;
 }
 
-const isz PAGE_IS_ALIGNED @local = (isz)isz.max + 1u;
+const usz PAGE_IS_ALIGNED @local = (usz)isz.max + 1u;
 
 struct ExtraPage @local
 {

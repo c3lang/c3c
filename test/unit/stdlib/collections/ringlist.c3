@@ -1,12 +1,12 @@
 module ringbuffer_test @test;
-import std::collections::ringbuffer;
+import std::collections::ringlist;
 import std::io;
 import std::math;
 
 fn void push_pop()
 {
 	const isz COUNT = 10;
-	RingBuffer{int, COUNT} rbuff;
+	RingList{int, COUNT} rbuff;
 	rbuff.init();
 
 	assert (rbuff.is_empty());
@@ -20,19 +20,19 @@ fn void push_pop()
 
 	assert (!rbuff.is_full());
 	assert (!rbuff.is_empty());
-	assert (rbuff.size() == COUNT / 2);
+	assert (rbuff.len() == COUNT / 2);
 
 	for (; i < COUNT; ++i)
 	{
 		rbuff.push(i);
 	}
 
-	assert (rbuff.size() == COUNT - 1);
+	assert (rbuff.len() == COUNT - 1);
 	assert (rbuff.is_full());
 
 	for (int j = 0; j < COUNT; ++j)
 	{
-		int? el = rbuff.pop();
+		int? el = rbuff.pop_front();
 		if (catch err = el)
 		{
 			break;
@@ -44,25 +44,25 @@ fn void push_pop()
 fn void peek()
 {
 	const isz COUNT = 6;
-	RingBuffer{int, COUNT} rbuff;
+	RingList{int, COUNT} rbuff;
 	int[*] values = { 0, 1, 2, 3, 4 };
 	rbuff.init_from_values(values[..]);
 
 	for (int i = 0; i < COUNT - 1; ++i)
 	{
 		int v = rbuff.peek()!!;
-		test::expect(v, i);
-		rbuff.pop()!!;
+		test::eq(v, i);
+		rbuff.pop_front()!!;
 	}
 
-	test::expect(rbuff.size(), 0);
-	test::expect(rbuff.is_empty(), true);
+	test::eq(rbuff.len(), 0);
+	test::eq(rbuff.is_empty(), true);
 }
 
 fn void push_pop_ranges()
 {
 	const isz COUNT = 20;
-	RingBuffer{int, COUNT} rbuff;
+	RingList{int, COUNT} rbuff;
 	rbuff.init();
 
 	int[COUNT] push_range;
@@ -75,66 +75,74 @@ fn void push_pop_ranges()
 
 	rbuff.push_all(push_range[..]);
 
-	test::expect(rbuff.size(), COUNT - 1);
+	test::eq(rbuff.len(), COUNT - 1);
 	assert (rbuff.is_full());
 	assert (!rbuff.is_empty());
 
-	rbuff.pop_many(pop_range[..]);
+	rbuff.pop_front_into(pop_range[..]);
 
 	assert (rbuff.is_empty());
 	assert (!rbuff.is_full());
 
 	for (int j = 0; j < COUNT - 1; ++j)
 	{
-		test::expect(pop_range[j], j + 1);
+		test::eq(pop_range[j], j + 1);
 	}
-	test::expect(pop_range[COUNT - 1], 0);
+	test::eq(pop_range[COUNT - 1], 0);
 }
 
-fn void into_slice()
+fn void into_slice() => @pool()
 {
-	{
+	 {
 		const isz COUNT = 8;
-		RingBuffer{int, COUNT} rbuff;
+		RingList{int, COUNT} rbuff;
 		int[*] values = { 1, 2, 3, 4, 5, 6, 7 };
 		rbuff.init_from_values(values[..]);
-		int[] rbuff_slice = rbuff.into_slice(tmem)!!;
+		test::eq(string::tformat("%s", rbuff), "[1, 2, 3, 4, 5, 6, 7]");
+		int[] rbuff_slice = rbuff.copy_to_array(tmem)!!;
+		rbuff.push(8);
+		test::eq(string::tformat("%s", rbuff), "[2, 3, 4, 5, 6, 7, 8]");
+		test::eq(rbuff.len(), 7);
+		rbuff.push(9);
+		test::eq(string::tformat("%s", rbuff), "[3, 4, 5, 6, 7, 8, 9]");
+		rbuff.push(10);
+		test::eq(string::tformat("%s", rbuff), "[4, 5, 6, 7, 8, 9, 10]");
+
 		defer alloc::free(tmem, rbuff_slice);
-		test::expect(rbuff_slice, values[..]);
+		test::eq(rbuff_slice, values[..]);
 	}
 
 	{
 		const isz COUNT = 5;
-		RingBuffer{int, COUNT} rbuff;
+		RingList{int, COUNT} rbuff;
 		int[*] values = { 1, 2, 3, 4, 5, 6, 7 };
 		rbuff.init_from_values(values[..]);
-		int[] rbuff_slice = rbuff.into_slice(tmem)!!;
+		int[] rbuff_slice = rbuff.copy_to_array(tmem)!!;
 		defer alloc::free(tmem, rbuff_slice);
 		int[*] expected_result = { 4, 5, 6, 7 };
-		test::expect(rbuff_slice, expected_result[..]);
+		test::eq(rbuff_slice, expected_result[..]);
 	}
 }
 
 fn void more_elements()
 {
 	const isz COUNT = math::@next_power_of_2(8000);
-	RingBuffer{int, COUNT} rbuff;
+	RingList{int, COUNT} rbuff;
 	for (int i = 0; i < COUNT + COUNT; ++i)
 	{
 		rbuff.push(i);
 	}
-	test::expect(rbuff.is_full(), true);
-	test::expect(rbuff.size(), COUNT - 1);
+	test::eq(rbuff.is_full(), true);
+	test::eq(rbuff.len(), COUNT - 1);
 
-	int[] elems = rbuff.into_slice(tmem)!!;
+	int[] elems = rbuff.copy_to_array(tmem)!!;
 	defer alloc::free(tmem, elems);
 
 	rbuff.push_all(elems);
-
 	for (int i = 0; i < COUNT - 1; ++i)
 	{
-		rbuff.pop()!!;
+		rbuff.pop_front()!!;
 	}
-	test::expect(rbuff.is_empty(), true);
-	test::expect(rbuff.size(), 0);
+	test::eq(rbuff.is_empty(), true);
+	test::eq(rbuff.len(), 0);
 }
