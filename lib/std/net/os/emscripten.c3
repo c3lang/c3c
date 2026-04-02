@@ -1,8 +1,8 @@
 module std::net::os @if(env::EMSCRIPTEN);
 
-const AIFamily PLATFORM_AF_INET6        = 10;
-const AIFamily PLATFORM_AF_IPX          = 4;
-const AIFamily PLATFORM_AF_APPLETALK    = 5;
+const AIFamily PLATFORM_AF_INET6        = (AIFamily)10;
+const AIFamily PLATFORM_AF_IPX          = (AIFamily)4;
+const AIFamily PLATFORM_AF_APPLETALK    = (AIFamily)5;
 
 const int SOL_SOCKET = 1;
 const int SO_REUSEADDR = 2;
