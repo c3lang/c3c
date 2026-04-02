@@ -63,10 +63,3 @@ fn bool Triple.equal(self, Triple other) @operator(==) @if (types::has_equals(Ty
 	return self.first == other.first && self.second == other.second && self.third == other.third;
 }
 
-module std::collections::tuple <Type1, Type2>;
-
-struct Tuple @deprecated("Use 'Pair' instead")
-{
-	Type1 first;
-	Type2 second;
-}

@@ -61,13 +61,6 @@ alias Xoroshiro1024s = Xoroshiro{1024, XorshiftType.STAR};
 alias Xoroshiro1024ss = Xoroshiro{1024, XorshiftType.STAR_STAR};
 alias Xoroshiro1024pp = Xoroshiro{1024, XorshiftType.PLUS_PLUS};
 
-// TODO: Remove in 0.8.0.
-<*
- @deprecated "Xorshift PRNGs have been expanded and rewritten. Use `Xoshiro128pp` instead."
-*>
-typedef Xorshiro128PPRandom = Xoshiro{128, XorshiftType.PLUS_PLUS};
-
-
 // =================================================================
 <*
  @require @in(BIT_SIZE, 128, 256, 512) : "You must use a supported state size for Xoshiro permutations."

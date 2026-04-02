@@ -9,7 +9,7 @@ fn void main()
 	Foo x;
 }
 module other;
-typedef MyInt = int;
+typedef MyInt @constinit = int;
 attrdef @Attr(MyInt x);
 
 /* #expect: test.ll

@@ -21,7 +21,7 @@ typedef ZString @constinit = inline char*;
  will be UTF-8 encoded, so there is no need to use the wchar_t versions
  of functions outside of encoding functions.
 *>
-typedef WString = inline Char16*;
+typedef WString @constinit = inline Char16*;
 
 <*
  Char32 is a UTF32 codepoint
@@ -985,40 +985,7 @@ fn usz String.utf8_codepoints(s)
 	return len;
 }
 
-<*
- Determine whether the current string actually points to a ZString-like string.
 
- This is done by looking at the byte one step after the end of the string. If this
- is zero, it is considered zero terminated.
-
- This function can safely be used with data pointing to null. However, it will not
- work correctly if the pointer is invalid, for example it is already freed.
-*>
-fn bool String.is_zstr(self) @deprecated("Unsafe, use copy instead")
-{
-	return self.ptr && *(self.ptr + self.len) == 0;
-}
-
-<*
- Return a pointer to the string *iff* it is a pointer
- to a zero terminated string, otherwise return a temp allocated zstring copy.
-
- This function is suitable if you are converting strings to ZString on the temp
- allocator, but suspect that the String might actually already point to zero
- terminated data.
-
- The function looks one step beyond the end of the slice to determine this,
- which means that if that data is then modified after this call, this function
- might behave incorrectly.
-
- For this reason, try to ensure that the resulting ZString is immediately used.
-
- @ensure return[self.len] == 0
-*>
-fn ZString String.quick_zstr(self) @deprecated("Unsafe, use zstr_tcopy instead")
-{
-	return self.zstr_tcopy();
-}
 
 
 <*
@@ -1152,10 +1119,6 @@ fn Splitter String.tokenize_all(self, String split, bool skip_last = false)
 	};
 }
 
-fn Splitter String.splitter(self, String split) @deprecated("Use tokenize_all instead")
-{
-	return self.tokenize_all(split, skip_last: true);
-}
 
 <*
  This macro will create a string description of a struct.

@@ -90,7 +90,7 @@ constdef KeccakState : inline int
 }
 
 <* The state machine is just the state, typedef'd to another type in case something else is added in the future. *>
-typedef KeccakStateMachine @structlike = inline KeccakState;
+typedef KeccakStateMachine = inline KeccakState;
 
 <*
  Initialize the runtime value of the Keccak context that indicates the _true_ size of the dependent/derived class.

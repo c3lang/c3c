@@ -138,9 +138,6 @@ void print_type(FILE *file, TypeInfo *type)
 		case TYPE_INFO_VATYPE:
 			PRINTF("$vatype[...]");
 			break;
-		case TYPE_INFO_EVALTYPE:
-			PRINTF("$evaltype(...)");
-			break;
 		case TYPE_INFO_TYPEFROM:
 			PRINTF("$typefrom(...)");
 			break;

@@ -51,7 +51,7 @@ fn String? run_capture_stdout(char[] buffer, String[] command_line, SpawnOptions
 	return (String)buffer[:len - 1];
 }
 
-fn int? run(char[] buffer, String[] command_line, SpawnOptions options = {}, String[] environment = {})
+fn int? run(String[] command_line, SpawnOptions options = {}, String[] environment = {})
 {
 	Process process = process::spawn(command_line, options, environment)!;
 	defer (void)process.destroy();

@@ -136,7 +136,7 @@ macro _do_transform(Sha256* self, uint* incoming = null, bool $aligned = true) @
 		@as_char_view(m)[:BLOCK_SIZE] = @as_char_view(incoming)[:BLOCK_SIZE];
 	$else
 		// Unrolling this seems to make the hash slower.
-		for (i = 0; i < 16; ++i) m[i] = bswap($aligned ??? incoming[i] : @unaligned_load(incoming[i], 1));
+		for (i = 0; i < 16; ++i) m[i] = bswap($aligned ??? incoming[i] : mem::load(&incoming[i], 1));
 	$endif
 
 	for (i = 16; i < 64; i++) m[i] = @sigma1(m[i - 2]) + m[i - 7] + @sigma0(m[i - 15]) + m[i - 16];

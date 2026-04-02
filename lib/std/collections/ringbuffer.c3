@@ -53,7 +53,7 @@ fn Element? RingBuffer.pop(&self)
 			self.written--;
 			return self.buf[self.written];
 		default:
-			self.head = (self.head - 1) % self.buf.len;
+			self.head = (self.head ?: self.buf.len) - 1;
 			return self.buf[self.head];
 	}
 }

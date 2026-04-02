@@ -74,12 +74,21 @@ fn void test19()
 fn void test20()
 {
     ichar d = ((-128 - 10) + 10) - 2; // #error: '-130' is out of range for 'ichar'
+}
+
+fn void test202()
+{
     ichar c = 100 * 100; // #error: '10000' is out of range for 'ichar'
+}
+
+fn void test203()
+{
     ichar e = (-138 + 30);
     ichar f = -138 + 30;
     ichar g = -(128);
     check(128); // #error: '128' is out of range for 'ichar'
 }
+
 
 fn void check(ichar x) {}
 

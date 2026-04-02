@@ -533,7 +533,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		Expr *value = expr->designator_expr.value;
 		if (!value && is_bitmember && member->var.start_bit == member->var.end_bit && type_flatten(result) == type_bool)
 		{
-			value = expr_new_const_bool(0, type_bool, true);
+			value = expr_new_const_bool(0, result, true);
 			expr->designator_expr.value = value;
 		}
 		if (!value) RETURN_SEMA_ERROR(expr, "This initializer needs a value.");
@@ -594,7 +594,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	}
 	initializer->type = type_add_optional(type, optional);
 	initializer->resolve_status = RESOLVE_DONE;
-	if (expr_is_runtime_const(initializer))
+	if (!optional && expr_is_runtime_const(initializer))
 	{
 		ConstInitializer *const_init = MALLOCS(ConstInitializer);
 		sema_create_const_initializer_from_designated_init(const_init, initializer);

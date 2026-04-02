@@ -166,8 +166,6 @@ fn Path? from_wstring(Allocator allocator, WString path) => @pool()
 	return path::new(allocator, string::tfrom_wstring(path)!);
 }
 
-fn Path? from_win32_wstring(Allocator allocator, WString path) @deprecated("Use 'from_wstring' instead") => from_wstring(allocator, path);
-
 fn Path? for_windows(Allocator allocator, String path) => new(allocator, path, WIN32);
 
 fn Path? for_posix(Allocator allocator, String path) => new(allocator, path, POSIX);
@@ -535,8 +533,6 @@ fn String? normalize(String path_str, PathEnv path_env = DEFAULT_ENV)
 	}
 	return path_str[:len];
 }
-
-fn ZString Path.as_zstr(self) @deprecated => (ZString)self.path_string.ptr;
 
 fn String Path.root_directory(self)
 {

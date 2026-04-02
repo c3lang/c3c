@@ -805,7 +805,7 @@ static inline void llvm_emit_subscript(GenContext *c, BEValue *value, Expr *expr
 		BEValue value2;
 		llvm_value_set(&value1, align, type_usz);
 		llvm_value_set(&value2, rem, type_usz);
-		llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", parent_expr->loc, "Unaligned access: ptr %% %s = %s, use @unaligned_load / @unaligned_store for unaligned access.",
+		llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", parent_expr->loc, "Unaligned access: ptr %% %s = %s, use mem::load / mem::store for unaligned access.",
 			&value1, &value2);
 		c->emitting_load_store_check = false;
 	}
@@ -2091,7 +2091,26 @@ static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, E
 	}
 }
 
-static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceLocId span, BEValue *original, int diff, bool allow_wrap)
+INLINE LLVMValueRef llvm_emit_add_inc_int(GenContext *c, SourceLocId span, BEValue *original, int diff, bool allow_wrap, Type *type, LLVMValueRef diff_value)
+{
+	if (!allow_wrap)
+	{
+		if (type_is_signed_any(type))
+		{
+			return diff > 0
+				   ? LLVMBuildNSWAdd(c->builder, original->value, diff_value, "addnsw")
+				   : LLVMBuildNSWSub(c->builder, original->value, diff_value, "subnsw");
+		}
+		return diff > 0
+			   ? LLVMBuildNUWAdd(c->builder, original->value, diff_value, "addnuw")
+			   : LLVMBuildNUWSub(c->builder, original->value, diff_value, "subnuw");
+	}
+	return diff > 0
+		   ? llvm_emit_add_int(c, original->type, original->value, diff_value, span)
+		   : llvm_emit_sub_int(c, original->type, original->value, diff_value, span);
+
+}
+static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceLocId span, BEValue *original, int diff, bool allow_wrap, unsigned enum_size)
 {
 	ASSERT(!llvm_value_is_addr(original));
 
@@ -2116,21 +2135,11 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceLocId sp
 			// Instead of negative numbers do dec/inc with a positive number.
 			LLVMTypeRef llvm_type = llvm_get_type(c, type);
 			LLVMValueRef diff_value = LLVMConstInt(llvm_type, 1, false);
-			if (!allow_wrap)
-			{
-				if (type_is_signed_any(type))
-				{
-					return diff > 0
-					       ? LLVMBuildNSWAdd(c->builder, original->value, diff_value, "addnsw")
-						   : LLVMBuildNSWSub(c->builder, original->value, diff_value, "subnsw");
-				}
-				return diff > 0
-				       ? LLVMBuildNUWAdd(c->builder, original->value, diff_value, "addnuw")
-				       : LLVMBuildNUWSub(c->builder, original->value, diff_value, "subnuw");
-			}
-			return diff > 0
-			       ? llvm_emit_add_int(c, original->type, original->value, diff_value, span)
-			       : llvm_emit_sub_int(c, original->type, original->value, diff_value, span);
+			LLVMValueRef after_value = llvm_emit_add_inc_int(c, span, original, diff, allow_wrap && !enum_size, type, diff_value);
+			if (!enum_size) return after_value;
+			LLVMValueRef comp_value = LLVMConstInt(llvm_type, diff < 0 ? 0 : enum_size - 1, false);
+			LLVMValueRef result_value = LLVMConstInt(llvm_type, diff < 0 ? enum_size - 1 : 0, false);
+			return LLVMBuildSelect(c->builder, LLVMBuildICmp(c->builder, LLVMIntEQ, original->value, comp_value, ""), result_value, after_value, "enumwrap");
 		}
 		case VECTORS:
 		{
@@ -2152,16 +2161,17 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceLocId sp
 				diff_value = LLVMConstReal(llvm_get_type(c, element), diff);
 			}
 			ArraySize width = type->array.len;
-			LLVMValueRef val = LLVMGetUndef(LLVMVectorType(LLVMTypeOf(diff_value), width));
-			for (ArraySize i = 0; i < width; i++)
-			{
-				val = llvm_emit_insert_value(c, val, diff_value, i);
-			}
+			LLVMValueRef val = llvm_const_vec(c, diff_value, width);
 			if (is_integer)
 			{
-				return diff > 0
+				LLVMValueRef after_value = diff > 0
 					   ? llvm_emit_add_int(c, original->type, original->value, val, span)
 					   : llvm_emit_sub_int(c, original->type, original->value, val, span);
+				if (!enum_size) return after_value;
+				LLVMTypeRef diff_type = LLVMTypeOf(diff_value);
+				LLVMValueRef comp_value = llvm_const_vec(c, LLVMConstInt(diff_type, diff < 0 ? 0 : enum_size - 1, false), width);
+				LLVMValueRef result_value = llvm_const_vec(c, LLVMConstInt(diff_type, diff < 0 ? enum_size - 1 : 0, false), width);
+				return LLVMBuildSelect(c->builder, LLVMBuildICmp(c->builder, LLVMIntEQ, original->value, comp_value, ""), result_value, after_value, "enumwrap");
 			}
 			if (is_ptr)
 			{
@@ -2251,7 +2261,25 @@ static inline void llvm_emit_inc_dec_change(GenContext *c, BEValue *addr, BEValu
 	// Store the original value if we want it
 	if (before) *before = value;
 
-	LLVMValueRef after_value = llvm_emit_inc_dec_value(c, expr->loc, &value, diff, allow_wrap);
+	Type *flat = type_flatten(expr->type);
+	unsigned enum_values = 0;
+	while (true)
+	{
+		switch (flat->type_kind)
+		{
+			case TYPE_ENUM:
+				enum_values = vec_size(flat->decl->enums.values);
+				break;
+			case TYPE_VECTOR:
+				flat = type_flatten(flat->array.base);
+				continue;
+			default:
+				break;
+		}
+		break;
+	}
+
+	LLVMValueRef after_value = llvm_emit_inc_dec_value(c, expr->loc, &value, diff, allow_wrap, enum_values);
 
 	// Store the result aligned.
 	llvm_store_raw(c, addr, after_value);
@@ -2332,8 +2360,11 @@ static inline void llvm_emit_pre_post_inc_dec_vector(GenContext *c, BEValue *val
 	BEValue current_res;
 	llvm_value_set(&current_res, LLVMBuildExtractElement(c->builder, vector, index, ""), element);
 
+	Type *flat = type_flatten(element);
+	unsigned enum_values = flat->type_kind == TYPE_ENUM ? vec_size(flat->decl->enums.values) : 0;
+
 	// Calculate the new value.
-	LLVMValueRef new_value = llvm_emit_inc_dec_value(c, expr->loc, &current_res, diff, false);
+	LLVMValueRef new_value = llvm_emit_inc_dec_value(c, expr->loc, &current_res, diff, false, enum_values);
 
 	// We update the vector value.
 	vector = LLVMBuildInsertElement(c->builder, vector, new_value, index, "");
@@ -2420,7 +2451,7 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 			if (inner->type->name )
 			llvm_value_set(&value1, align, type_usz);
 			llvm_value_set(&value2, rem, type_usz);
-			llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", inner->loc, "Unaligned access: ptr %% %s = %s, use @unaligned_load / @unaligned_store for unaligned access.",
+			llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", inner->loc, "Unaligned access: ptr %% %s = %s, use mem::load / mem::store for unaligned access.",
 				&value1, &value2);
 			c->emitting_load_store_check = false;
 		}
@@ -2490,11 +2521,11 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 				LLVMValueRef llvm_value;
 				if (type_is_float(vec_type))
 				{
-					llvm_value = LLVMBuildFCmp(c->builder, LLVMRealUEQ, value->value, llvm_get_zero(c, type), "not");
+					llvm_value = LLVMBuildFCmp(c->builder, LLVMRealUEQ, value->value, LLVMConstNull(LLVMTypeOf(value->value)), "not");
 				}
 				else
 				{
-					llvm_value = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, llvm_get_zero(c, type), "not");
+					llvm_value = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, LLVMConstNull(LLVMTypeOf(value->value)), "not");
 				}
 				Type *res_type = type_get_vector_bool(type, TYPE_SIMD_VECTOR);
 				llvm_value = LLVMBuildSExt(c->builder, llvm_value, llvm_get_type(c, res_type), "");
@@ -2805,7 +2836,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		}
 
 		// This will trap any bad negative index, so we're fine.
-		if (safe_mode_enabled())
+		if (safe_mode_enabled() && !llvm_is_global_eval(c))
 		{
 			BEValue excess;
 			if (is_len_range)
@@ -3619,9 +3650,6 @@ MEMCMP:
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_BITSTRUCT:
-			assert(compiler.build.old_compact_eq);
-			if (array_base->decl->attr_compact) goto MEMCMP;
-			break;
 		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_TYPEDEF:
@@ -6573,8 +6601,11 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 
 	POP_CATCH();
 
-	llvm_store_raw(c, &addr, llvm_get_zero(c, type_fault));
-	llvm_emit_br(c, catch_block);
+	if (c->current_block)
+	{
+		llvm_store_raw(c, &addr, llvm_get_zero(c, type_fault));
+		llvm_emit_br(c, catch_block);
+	}
 	llvm_emit_block(c, catch_block);
 	llvm_value_rvalue(c, &addr);
 	llvm_value_set(value, addr.value, type_fault);

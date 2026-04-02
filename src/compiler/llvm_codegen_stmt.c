@@ -554,7 +554,11 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 	if (loop == LOOP_NONE)
 	{
 		// while (0) -> never entered
-		if (!skip_first) return;
+		if (!skip_first)
+		{
+			DEBUG_POP_LEXICAL_SCOPE(c);
+			return;
+		}
 		ASSERT(!incr && "There should not be an incr in do-while");
 		// do while(0) -> emit once
 		LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "loop.exit");
@@ -1213,6 +1217,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 		BEValue value;
 		llvm_emit_expr(c, &value, assert_expr);
 		llvm_value_rvalue(c, &value);
+		if (!c->current_block) return;
 		LLVMBasicBlockRef on_fail = llvm_basic_block_new(c, "assert_fail");
 		LLVMBasicBlockRef on_ok = llvm_basic_block_new(c, "assert_ok");
 		ASSERT(value.kind == BE_BOOLEAN);
@@ -1606,6 +1611,7 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 		sema_warning_at(loc, "The code here was detected to always panic at runtime.");
 		always_panic = true;
 	}
+	if (llvm_is_global_eval(c) || !c->current_block) return;
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
 	LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "checkok");
 	if (always_panic)

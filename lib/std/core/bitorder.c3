@@ -196,11 +196,6 @@ macro bool is_bitorder($Type)
 	$endswitch
 }
 
-macro bool is_array_or_slice_of_char(bytes) @deprecated("Use @is_array_or_slice_of_char")
-{
-	return @is_array_or_slice_of_char(bytes);
-}
-
 macro bool @is_array_or_slice_of_char(#bytes) @const
 {
     var $Type = $typeof(#bytes);
@@ -214,11 +209,6 @@ macro bool @is_array_or_slice_of_char(#bytes) @const
 		$default:
 			return false;
 	$endswitch
-}
-
-macro bool is_arrayptr_or_slice_of_char(bytes) @deprecated("Use @is_arrayptr_or_slice_of_char")
-{
-	return @is_arrayptr_or_slice_of_char(bytes);
 }
 
 macro bool @is_arrayptr_or_slice_of_char(#bytes) @const

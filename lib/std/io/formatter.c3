@@ -315,8 +315,6 @@ fn usz? Formatter.vprintf(&self, String format, any[] anys)
 	return total_len;
 }
 
-fn usz? Formatter.out(&self, char c) @deprecated("Use print_char") => self.print_char(c);
-
 fn usz? Formatter.print_char(&self, char c)
 {
 	if (catch err = self.out_fn(self.data, c))

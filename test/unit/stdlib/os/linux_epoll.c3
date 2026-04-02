@@ -26,7 +26,7 @@ fn void test_epoll_ctl()
 	assert(epoll_fd >= 0, "epoll_create failed");
 
 	// Create a socket to monitor
-	int sock_fd = os::socket(os::AF_INET, os::SOCK_STREAM, 0);
+	int sock_fd = os::socket(os::AF_INET, os::SOCK_STREAM, (AIProtocol)0);
 	assert(sock_fd >= 0, "socket creation failed");
 
 	EpollEvent event;

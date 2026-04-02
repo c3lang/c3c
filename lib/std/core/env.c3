@@ -158,7 +158,6 @@ const bool WASI = LIBC && OS_TYPE == WASI;
 const bool WASM = ARCH_TYPE == ArchType.WASM32 || ARCH_TYPE == ArchType.WASM64;
 const bool EMSCRIPTEN = LIBC && OS_TYPE == EMSCRIPTEN;
 const bool ANDROID = LIBC && OS_TYPE == ANDROID;
-const bool WASM_NOLIBC @builtin @deprecated("Use 'FREESTANDING_WASM' instead") = !LIBC && ARCH_TYPE == ArchType.WASM32 || ARCH_TYPE == ArchType.WASM64;
 const bool FREESTANDING_PE32 = NO_LIBC && OS_TYPE == WIN32;
 const bool FREESTANDING_MACHO = NO_LIBC && OS_TYPE == MACOS;
 const bool FREESTANDING_ELF = NO_LIBC && !env::FREESTANDING_PE32 && !env::FREESTANDING_MACHO && !env::FREESTANDING_WASM;

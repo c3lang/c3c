@@ -23,7 +23,7 @@ const char DEFAULT_PAD = '=';
 fn String? encode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
 	char[] dst = alloc::alloc_array(allocator, char, encode_len(src.len, padding));
-	return encode_buffer(src, dst, padding, alphabet);
+	return encode_into(dst, src, padding, alphabet);
 }
 
 <*
@@ -37,7 +37,7 @@ fn String? encode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, B
 fn char[]? decode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
 	char[] dst = alloc::alloc_array(allocator, char, decode_len(src.len, padding));
-	return decode_buffer(src, dst, padding, alphabet);
+	return decode_into(dst, src, padding, alphabet);
 }
 
 fn String? tencode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => encode(tmem, code, padding, alphabet);
@@ -86,7 +86,7 @@ fn usz encode_len(usz n, char padding)
  @return "The resulting dst buffer"
  @return? encoding::INVALID_PADDING, encoding::INVALID_CHARACTER
 *>
-fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
+fn char[]? decode_into(char[] dst, char[] src, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
 	if (src.len == 0) return dst[:0];
 	char* dst_ptr = dst;
@@ -158,6 +158,7 @@ fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 	return dst_ptr[:n];
 }
 
+
 <*
  Encode the content of src into dst, which must be properly sized.
  @param [in] src : "The input to be encoded."
@@ -168,7 +169,7 @@ fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
  @require dst.len >= encode_len(src.len, padding) : "Destination buffer too small"
  @return "The encoded size."
 *>
-fn String encode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
+fn String encode_into(char[] dst, char[] src, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
 	if (src.len == 0) return (String)dst[:0];
 

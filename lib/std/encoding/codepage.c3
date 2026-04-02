@@ -133,18 +133,18 @@ fn CodePage? by_name(String charset_name) => @pool()
 fn String? decode(Allocator allocator, char[] src, CodePage code_page)
 {
 	char[] dst = alloc::alloc_array(allocator, char, decode_len(src, code_page));
-	return decode_buffer(src, dst, code_page);
+	return decode_into(dst, src, code_page);
 }
 
 <*
  Decode a code-page byte buffer into a UTF‑8 string.
 
- @param src            : "Input byte array in the given code page."
  @param dst            : "Destination output string in UTF-8."
+ @param src            : "Input byte array in the given code page."
  @param code_page      : "Code page for this encoding."
  @return "String in UTF-8."
 *>
-fn String? decode_buffer(char[] src, char[] dst, CodePage code_page)
+fn String? decode_into(char[] dst, char[] src, CodePage code_page)
 {
 	usz n = 0;
 	CodePageTable *table = code_page.table;
@@ -163,7 +163,7 @@ fn String? decode_buffer(char[] src, char[] dst, CodePage code_page)
 fn char[]? encode(Allocator allocator, char[] src, CodePage code_page, char replacement = REPLACEMENT_CHAR)
 {
 	char[] dst = alloc::alloc_array(allocator, char, encode_len(src));
-	return encode_buffer(src, dst, code_page, replacement);
+	return encode_into(dst, src, code_page, replacement);
 }
 
 const uint MASK @private = (1u << 24) - 1;
@@ -171,13 +171,13 @@ const uint MASK @private = (1u << 24) - 1;
 <*
  Encode a UTF‑8 string into a single‑byte code page.
 
- @param src            : "Input byte array in UTF-8"
  @param dst            : "Destination output byte array in the target code page"
+ @param src            : "Input byte array in UTF-8"
  @param code_page      : "Code page for this encoding."
  @param replacement    : "Byte to emit when Unicode scalar cannot be represented in the target code page."
  @return "Byte array in the given code page."
 *>
-fn char[]? encode_buffer(char[] src, char[] dst, CodePage code_page, char replacement = REPLACEMENT_CHAR)
+fn char[]? encode_into(char[] dst, char[] src, CodePage code_page, char replacement = REPLACEMENT_CHAR)
 {
 	// Unpack the packed reverse table once into a local uint[256] view.
 	uint[256] from_map;

@@ -27,15 +27,6 @@ faultdef
 	INTERRUPTED,
 	CHANNEL_CLOSED;
 
-faultdef
-	DETACH_FAILED @deprecated,
-	UNLOCK_FAILED @deprecated,
-	DESTROY_FAILED @deprecated,
-	SIGNAL_FAILED @deprecated,
-	JOIN_FAILED @deprecated,
-	LOCK_FAILED @deprecated,
-	WAIT_FAILED @deprecated;
-
 macro void? Mutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, {});
 macro bool Mutex.is_initialized(mutex) => ((NativeMutex*)&mutex).is_initialized();
 macro void? RecursiveMutex.init(&mutex) @maydiscard => NativeMutex.init((NativeMutex*)mutex, {.recursive});

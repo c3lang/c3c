@@ -1,14 +1,14 @@
 module std::net::os @if(env::ANDROID);
 import libc;
 
-const AIFamily PLATFORM_AF_AX25         = 3;
-const AIFamily PLATFORM_AF_IPX          = 4;
-const AIFamily PLATFORM_AF_APPLETALK    = 5;
-const AIFamily PLATFORM_AF_NETROM       = 6;
-const AIFamily PLATFORM_AF_BRIDGE       = 7;
-const AIFamily PLATFORM_AF_AAL5         = 8;
-const AIFamily PLATFORM_AF_X25          = 9;
-const AIFamily PLATFORM_AF_INET6        = 10;
+const AIFamily PLATFORM_AF_AX25         = (AIFamily)3;
+const AIFamily PLATFORM_AF_IPX          = (AIFamily)4;
+const AIFamily PLATFORM_AF_APPLETALK    = (AIFamily)5;
+const AIFamily PLATFORM_AF_NETROM       = (AIFamily)6;
+const AIFamily PLATFORM_AF_BRIDGE       = (AIFamily)7;
+const AIFamily PLATFORM_AF_AAL5         = (AIFamily)8;
+const AIFamily PLATFORM_AF_X25          = (AIFamily)9;
+const AIFamily PLATFORM_AF_INET6        = (AIFamily)10;
 
 const PLATFORM_O_NONBLOCK = 0o4000;
 

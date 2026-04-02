@@ -363,7 +363,7 @@ static bool sema_expr_analyse_str_replace(SemaContext *context, Expr *expr, Expr
 static bool sema_expr_analyse_str_hash(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->call_expr.arguments[0];
-	if (!sema_analyse_expr_rvalue(context, inner)) return true;
+	if (!sema_analyse_expr_rvalue(context, inner)) return false;
 	if (!expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to take the hash of it.");
@@ -377,7 +377,7 @@ bool sema_expr_analyse_str_find(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->call_expr.arguments[0];
 	Expr *inner_find = expr->call_expr.arguments[1];
-	if (!sema_analyse_expr_rvalue(context, inner) || !sema_analyse_expr_rvalue(context, inner_find)) return true;
+	if (!sema_analyse_expr_rvalue(context, inner) || !sema_analyse_expr_rvalue(context, inner_find)) return false;
 	if (!expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to search.");

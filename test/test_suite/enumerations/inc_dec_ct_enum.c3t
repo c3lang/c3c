@@ -1,0 +1,38 @@
+// #target: macos-x64
+module test;
+enum Abc
+{
+	ABC,
+	DEF,
+	EFG,
+}
+fn int main()
+{
+	Abc $foo = ABC;
+	Abc a = $foo++;
+	Abc b = ++$foo;
+	Abc c = $foo;
+	Abc[1] $bar = { ABC };
+	Abc d = $bar[0]++;
+	Abc e = ++$bar[0];
+	Abc f = $bar[0];
+
+    return 0;
+}
+
+/* #expect: test.ll
+
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  %c = alloca i32, align 4
+  %d = alloca i32, align 4
+  %e = alloca i32, align 4
+  %f = alloca i32, align 4
+  store i32 0, ptr %a, align 4
+  store i32 2, ptr %b, align 4
+  store i32 2, ptr %c, align 4
+  store i32 0, ptr %d, align 4
+  store i32 2, ptr %e, align 4
+  store i32 2, ptr %f, align 4
+  ret i32 0
+}

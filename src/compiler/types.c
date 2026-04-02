@@ -618,10 +618,9 @@ bool type_is_comparable(Type *type)
 		case TYPE_OPTIONAL:
 		case TYPE_MEMBER:
 		case TYPE_UNTYPED_LIST:
-			return false;
 		case TYPE_UNION:
 		case TYPE_STRUCT:
-			return type->decl->attr_compact && compiler.build.old_compact_eq;
+			return false;
 		case TYPE_BITSTRUCT:
 			type = type->decl->strukt.container_type->type;
 			goto RETRY;
@@ -1785,7 +1784,7 @@ TypeCmpResult type_array_element_is_equivalent(SemaContext *context, Type *eleme
 	{
 		case TYPE_FUNC_PTR:
 			if (element2 == type_voidptr) return TYPE_SAME;
-			if (element1->type_kind != TYPE_FUNC_PTR) return TYPE_MISMATCH;
+			if (element2->type_kind != TYPE_FUNC_PTR) return TYPE_MISMATCH;
 			if (element1->pointer->function.prototype->raw_type == element2->pointer->function.prototype->raw_type) return TYPE_SAME;
 			return TYPE_MISMATCH;
 		case TYPE_POINTER:

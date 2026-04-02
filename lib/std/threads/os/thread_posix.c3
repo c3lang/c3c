@@ -1,9 +1,6 @@
 module std::thread::os @if(env::POSIX);
 import std::os::posix, std::time, libc;
-import libc::errno;
 import std::thread;
-
-
 
 struct NativeMutex
 {
@@ -219,8 +216,13 @@ fn void native_thread_exit(int result)
 	posix::pthread_exit((void*)(iptr)result);
 }
 
+
 fn NativeThread native_thread_current()
 {
+	if (!current_thread.thread_fn)
+	{
+		current_thread = { .pthread = posix::pthread_self(), .thread_fn = fn(void*) => 0 };
+	}
 	return current_thread;
 }
 

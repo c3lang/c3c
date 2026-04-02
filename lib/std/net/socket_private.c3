@@ -32,8 +32,8 @@ fn bool last_error_is_delayed_connect()
 		$case env::WIN32:
 		switch (win32::wsaGetLastError())
 		{
-			case wsa::EWOULDBLOCK:
-			case wsa::EINPROGRESS: return true;
+			case EWOULDBLOCK:
+			case EINPROGRESS: return true;
 			default: return false;
 		}
 		$default:
