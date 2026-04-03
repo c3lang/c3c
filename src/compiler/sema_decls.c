@@ -3182,7 +3182,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_BITSTRUCT | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER, // NOLINT
 			[ATTRIBUTE_ALLOW_DEPRECATED] = ATTR_FUNC,
-			[ATTRIBUTE_ALWAYSINIT] = ATTR_STRUCT | ATTR_UNION | ATTR_BITSTRUCT,
 			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
@@ -3204,6 +3203,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_LOCAL] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_ALIAS | ATTR_INTERFACE,
 			[ATTRIBUTE_MAYDISCARD] = CALLABLE_TYPE,
+			[ATTRIBUTE_MUSTINIT] = ATTR_STRUCT | ATTR_UNION | ATTR_BITSTRUCT | ATTR_TYPEDEF | ATTR_ALIAS,
 			[ATTRIBUTE_NAKED] = ATTR_FUNC,
 			[ATTRIBUTE_NOALIAS] = ATTR_PARAM,
 			[ATTRIBUTE_NODISCARD] = CALLABLE_TYPE,
@@ -3492,8 +3492,8 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_CONSTINIT:
 			decl->attr_constinit = true;
 			return true;
-		case ATTRIBUTE_ALWAYSINIT:
-			decl->attr_alwaysinit = true;
+		case ATTRIBUTE_MUSTINIT:
+			decl->attr_mustinit = true;
 			break;
 		case ATTRIBUTE_SIMD:
 			RETURN_SEMA_ERROR(attr, "'@simd' is only allowed on typedef types.");
@@ -4889,16 +4889,9 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 		RETURN_SEMA_ERROR(decl->var.init_expr, "Extern globals may not have initializers.");
 	}
 
-	if (decl->var.no_init)
+	if (decl->var.no_init && decl->var.init_expr)
 	{
-		if (decl->attr_alwaysinit)
-		{
-			RETURN_SEMA_ERROR(decl, "`@noinit` cannot be applied to '%s' because its type is `@alwaysinit`.", decl->name);
-		}
-		if (decl->var.init_expr)
-		{
-			RETURN_SEMA_ERROR(decl->var.init_expr, "'@noinit' variables may not have initializers.");
-		}
+		RETURN_SEMA_ERROR(decl->var.init_expr, "'@noinit' variables may not have initializers.");
 	}
 	if (erase_decl)
 	{
@@ -5003,6 +4996,10 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 	{
 		if (!sema_analyse_decl(context, type->decl)) return false;
 		sema_display_deprecated_warning_on_use(context, type->decl, type_info->loc);
+	}
+	if (decl->var.no_init && type_is_must_init(type))
+	{
+		RETURN_SEMA_ERROR(decl, "`@noinit` cannot be applied to '%s' because its type is `@mustinit`.", decl->name);
 	}
 
 	if (is_static && context->call_env.pure)

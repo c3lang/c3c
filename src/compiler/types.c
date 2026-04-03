@@ -515,6 +515,31 @@ bool type_is_int128(Type *type)
 	return kind == TYPE_U128 || kind == TYPE_I128;
 }
 
+bool type_is_must_init(Type *type)
+{
+	if (!type) return false;
+	// printf("ANALYZING |%s| :%d (userdef %d)\n", type->name, type->type_kind, type_is_user_defined(type));
+	RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_ALIAS:
+		case TYPE_TYPEDEF:
+			return type->decl->attr_mustinit;
+		case TYPE_OPTIONAL:
+			type = type->optional;
+			goto RETRY;
+		case TYPE_ARRAY:
+		case TYPE_SLICE:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case ALL_VECTORS:
+			type = type->array.base;
+			goto RETRY;
+		default:
+			return type_is_user_defined(type) && type->decl->attr_mustinit;
+	}
+}
+
 bool type_is_abi_aggregate(Type *type)
 {
 	return type_is_aggregate(type);
