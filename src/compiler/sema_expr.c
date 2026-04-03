@@ -8638,6 +8638,7 @@ static inline bool sema_rewrite_expr_as_macro_block(SemaContext *context, Expr *
 {
 	Type *old_expected_block = context->expected_block_type;
 	BlockExit **old_exit_ref = context->block_exit_ref;
+	Ast **old_block_returns = context->block_returns;
 	context->expected_block_type = type_bool;
 	BlockExit** block_exit_ref = CALLOCS(BlockExit*);
 	context->block_exit_ref = block_exit_ref;
@@ -8649,6 +8650,7 @@ static inline bool sema_rewrite_expr_as_macro_block(SemaContext *context, Expr *
 	SCOPE_END;
 	context->expected_block_type = old_expected_block;
 	context->block_exit_ref = old_exit_ref;
+	context->block_returns = old_block_returns;
 
 	if (!success) return false;
 	expr->expr_kind = EXPR_MACRO_BLOCK;

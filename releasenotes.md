@@ -23,6 +23,10 @@
 - For enums, using `++` and `--` will step through enums with implicit wrap-around.
 - Add a `@mustinit` attribute to enforce zero-initialization of a type. #3094
 
+### Fixes
+- Slice comparison lowering would not work correctly in macros in some cases. #3095
+- Attributes `@allow_deprecated`, `@constinit`, `@noalias`, `@nostrip`, and `@optional` would erroneously accept parameters. #3098
+
 ## 0.7.11 Change list
 
 ### Changes / improvements
