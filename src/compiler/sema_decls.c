@@ -3491,12 +3491,9 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			return true;
 		case ATTRIBUTE_CONSTINIT:
 			decl->attr_constinit = true;
-<<<<<<< feature/alwaysinit-attr
-			return true;
+			break;
 		case ATTRIBUTE_MUSTINIT:
 			decl->attr_mustinit = true;
-=======
->>>>>>> master
 			break;
 		case ATTRIBUTE_SIMD:
 			RETURN_SEMA_ERROR(attr, "'@simd' is only allowed on typedef types.");
