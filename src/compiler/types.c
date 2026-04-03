@@ -518,7 +518,6 @@ bool type_is_int128(Type *type)
 bool type_is_must_init(Type *type)
 {
 	if (!type) return false;
-	// printf("ANALYZING |%s| :%d (userdef %d)\n", type->name, type->type_kind, type_is_user_defined(type));
 	RETRY:
 	switch (type->type_kind)
 	{
