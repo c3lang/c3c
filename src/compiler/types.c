@@ -522,6 +522,9 @@ bool type_is_must_init(Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_ALIAS:
+			if (type->decl->attr_mustinit) return true;
+			type = type->canonical;
+			goto RETRY;
 		case TYPE_TYPEDEF:
 			return type->decl->attr_mustinit;
 		case TYPE_OPTIONAL:
