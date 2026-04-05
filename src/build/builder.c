@@ -777,7 +777,8 @@ void init_build_target(BuildTarget *target, BuildOptions *options)
 	const char *filename;
 	Project *project = project_load(&filename);
 	
-	if (options->defer_dir_checking) {
+	if (options->is_project)
+	{
 		FOREACH(const char *, dir, options->unchecked_directories)
 		{
 			(void)check_dir(dir);

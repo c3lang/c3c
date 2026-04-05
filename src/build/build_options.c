@@ -511,7 +511,6 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("build"))
 	{
 		options->command = COMMAND_BUILD;
-		options->defer_dir_checking = true;
 		parse_optional_target(options);
 		return;
 	}
@@ -519,21 +518,18 @@ static void parse_command(BuildOptions *options)
 	{
 		options->command = COMMAND_BENCHMARK;
 		options->benchmarking = true;
-		options->defer_dir_checking = true;
 		return;
 	}
 	if (arg_match("test"))
 	{
 		options->command = COMMAND_TEST;
 		options->testing = true;
-		options->defer_dir_checking = true;
 		parse_optional_target(options);
 		return;
 	}
 	if (arg_match("run"))
 	{
 		options->command = COMMAND_RUN;
-		options->defer_dir_checking = true;
 		parse_optional_target(options);
 		return;
 	}
@@ -545,7 +541,6 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("clean-run"))
 	{
 		options->command = COMMAND_CLEAN_RUN;
-		options->defer_dir_checking = true;
 		parse_optional_target(options);
 		return;
 	}
@@ -557,14 +552,12 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("dist"))
 	{
 		options->command = COMMAND_CLEAN_RUN;
-		options->defer_dir_checking = true;
 		parse_optional_target(options);
 		return;
 	}
 	if (arg_match("bench"))
 	{
 		options->command = COMMAND_BENCH;
-		options->defer_dir_checking = true;
 		parse_optional_target(options);
 		return;
 	}
@@ -1787,6 +1780,35 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 			continue;
 		}
 		FAIL_WITH_ERR("Found the unexpected argument \"%s\".", current_arg);
+	}
+	switch (build_options.command)
+	{
+		case COMMAND_BUILD:
+		case COMMAND_RUN:
+		case COMMAND_CLEAN_RUN:
+		case COMMAND_CLEAN:
+		case COMMAND_DIST:
+		case COMMAND_BENCH:
+		case COMMAND_BENCHMARK:
+		case COMMAND_TEST:
+			build_options.is_project = true;
+			break;
+		case COMMAND_MISSING:
+		case COMMAND_COMPILE:
+		case COMMAND_COMPILE_ONLY:
+		case COMMAND_COMPILE_BENCHMARK:
+		case COMMAND_COMPILE_TEST:
+		case COMMAND_INIT:
+		case COMMAND_INIT_LIB:
+		case COMMAND_COMPILE_RUN:
+		case COMMAND_STATIC_LIB:
+		case COMMAND_DYNAMIC_LIB:
+		case COMMAND_VENDOR_FETCH:
+		case COMMAND_UNIT_TEST:
+		case COMMAND_PRINT_SYNTAX:
+		case COMMAND_PROJECT:
+		case COMMAND_FETCH_SDK:
+			break;
 	}
 	if (build_options.command == COMMAND_MISSING)
 	{
