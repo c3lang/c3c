@@ -400,8 +400,3 @@ macro wrap_add(sz val, sz add, sz boundary)
 {
 	return (val + add) % boundary;
 }
-
-macro wrap_sub(sz val, sz sub, sz boundary)
-{
-	return (val - sub + boundary) % boundary;
-}
