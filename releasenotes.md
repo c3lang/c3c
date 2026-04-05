@@ -21,11 +21,11 @@
 - Removed deprecated `$assignable`.
 - Enums now no longer directly support `+` and `-` – use ordinals instead.
 - For enums, using `++` and `--` will step through enums with implicit wrap-around.
-- Add a `@mustinit` attribute to enforce zero-initialization of a type. #3094
 - Rename `isz` -> `sz`.
 - Make $sizeof, $alignof and all similar functions return `sz` instead of `usz`.
 - Align literal types with C semantics.
 - Use value promotion instead of signedness promotion to int. So that small unsigned types promote to int, not uint.
+- Add a `@mustinit` attribute to enforce zero-initialization of a type. #3094
 
 ### Stdlib changes
 - `std::collections::RingBuffer` is renamed `RingList`.

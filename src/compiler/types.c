@@ -515,18 +515,16 @@ bool type_is_int128(Type *type)
 	return kind == TYPE_U128 || kind == TYPE_I128;
 }
 
-bool type_is_must_init(Type *type)
+Type *type_is_must_init(Type *type)
 {
-	if (!type) return false;
+	if (!type) return NULL;
 	RETRY:
+	type = type->canonical;
 	switch (type->type_kind)
 	{
-		case TYPE_ALIAS:
-			if (type->decl->attr_mustinit) return true;
-			type = type->canonical;
-			goto RETRY;
 		case TYPE_TYPEDEF:
-			return type->decl->attr_mustinit;
+			if (type->decl->attr_mustinit) return type;
+			return NULL;
 		case TYPE_OPTIONAL:
 			type = type->optional;
 			goto RETRY;
@@ -537,8 +535,21 @@ bool type_is_must_init(Type *type)
 		case ALL_VECTORS:
 			type = type->array.base;
 			goto RETRY;
+		case TYPE_BITSTRUCT:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		{
+			Decl *decl = type->decl;
+			if (decl->attr_mustinit) return type;
+			FOREACH(Decl *, member, decl->strukt.members)
+			{
+				Type *type_inner = type_is_must_init(member->type);
+				if (type_inner) return type_inner;
+			}
+			return NULL;
+		}
 		default:
-			return type_is_user_defined(type) && type->decl->attr_mustinit;
+			return NULL;
 	}
 }
 

@@ -2689,7 +2689,7 @@ bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_abi_aggregate(Type *type);
 bool type_is_aggregate(Type *type);
 bool type_is_int128(Type *type);
-bool type_is_must_init(Type *type);
+Type *type_is_must_init(Type *type);
 
 Type *type_from_token(TokenType type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);

@@ -3203,7 +3203,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_LOCAL] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_ALIAS | ATTR_INTERFACE,
 			[ATTRIBUTE_MAYDISCARD] = CALLABLE_TYPE,
-			[ATTRIBUTE_MUSTINIT] = ATTR_STRUCT | ATTR_UNION | ATTR_BITSTRUCT | ATTR_TYPEDEF | ATTR_ALIAS,
+			[ATTRIBUTE_MUSTINIT] = ATTR_STRUCT | ATTR_UNION | ATTR_BITSTRUCT | ATTR_TYPEDEF,
 			[ATTRIBUTE_NAKED] = ATTR_FUNC,
 			[ATTRIBUTE_NOALIAS] = ATTR_PARAM,
 			[ATTRIBUTE_NODISCARD] = CALLABLE_TYPE,
@@ -4997,9 +4997,14 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 		if (!sema_analyse_decl(context, type->decl)) return false;
 		sema_display_deprecated_warning_on_use(context, type->decl, type_info->loc);
 	}
-	if (decl->var.no_init && type_is_must_init(type))
+	Type *init_type;
+	if (decl->var.no_init && (init_type = type_is_must_init(type)) != NULL)
 	{
-		RETURN_SEMA_ERROR(decl, "`@noinit` cannot be applied to '%s' because its type is `@mustinit`.", decl->name);
+		if (init_type == type->canonical)
+		{
+			RETURN_SEMA_ERROR(type_info, "%s requires initialization ('@mustinit'); remove '@noinit' or change the type.", type_quoted_error_string(decl->type));
+		}
+		RETURN_SEMA_ERROR(type_info, "%s contains the type %s which requires initialization ('@mustinit'); remove '@noinit' or change the type.", type_quoted_error_string(decl->type), type_quoted_error_string(init_type));
 	}
 
 	if (is_static && context->call_env.pure)

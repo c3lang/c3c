@@ -1,18 +1,17 @@
 
 // typedefs and aliases
 typedef MustInitTypedef @mustinit = String[];
-MustInitTypedef a @noinit; // #error: `@noinit` cannot be applied to
 
 typedef CanNoInitTypedef = MustInitTypedef;
 CanNoInitTypedef b @noinit;
 
 alias MyAliasedType = MustInitTypedef;
-MyAliasedType c @noinit; // #error: `@noinit` cannot be applied to
+MyAliasedType c @noinit; // #error: 'MyAliasedType' (MustInitTypedef) requires initialization ('@mustinit'); remove '@noinit' or change the type.
 alias DoubleAlias = MyAliasedType;
-DoubleAlias _c @noinit; // #error: `@noinit` cannot be applied to
+DoubleAlias _c @noinit; // #error: 'DoubleAlias' (MustInitTypedef) requires initialization ('@mustinit'); remove '@noinit' or change the type.
 
-alias AliasedMustInit @mustinit = float;
-AliasedMustInit d @noinit; // #error: `@noinit` cannot be applied to
+alias AliasedMustInit @mustinit = float; // #error: '@mustinit' is not a valid alias attribute.
+
 
 // simple unions & bit/structs
 struct TypeA
@@ -24,7 +23,7 @@ struct TypeB @mustinit
 {
 	int b;
 }
-TypeB f @noinit; // #error: `@noinit` cannot be applied to
+TypeB f @noinit; // #error: 'TypeB' requires initialization ('@mustinit'); remove '@noinit' or change the type.
 
 bitstruct BitA : char
 {
@@ -35,7 +34,7 @@ bitstruct BitB : char @mustinit
 {
 	char b : 1..7;
 }
-BitB h @noinit; // #error: `@noinit` cannot be applied to
+BitB h @noinit; // #error: 'BitB' requires initialization ('@mustinit'); remove '@noinit' or change the type.
 
 union UnionTrioA
 {
@@ -50,11 +49,17 @@ union UnionTrioB @mustinit
 	long bar;
 	double baz;
 }
-UnionTrioB j @noinit; // #error: `@noinit` cannot be applied to
+UnionTrioB j @noinit; // #error: 'UnionTrioB' requires initialization ('@mustinit'); remove '@noinit' or change the type.
 
-// vectors
-alias InVecA @mustinit = float;
-alias InVecB = float;
-InVecA[<4>] k @noinit; // #error: `@noinit` cannot be applied to
+
+struct Container
+{
+	UnionTrioB a;
+}
+Container jk @noinit; // #error: 'Container' contains the type 'UnionTrioB' which requires initialization ('@mustinit')
+
+typedef InVecA @mustinit = float;
+typedef InVecB = float;
+InVecA[<4>] k @noinit; // #error: InVecA[<4>]' contains the type 'InVecA' which requires initialization ('@mustinit');
 InVecB[<4>] l @noinit;
 
