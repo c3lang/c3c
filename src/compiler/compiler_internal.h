@@ -746,6 +746,7 @@ typedef struct Decl_
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
 	bool attr_constinit : 1;
+	bool attr_mustinit : 1;
 	bool is_template : 1;
 	bool is_templated : 1;
 	bool is_method_checked : 1;
@@ -2688,6 +2689,7 @@ bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_abi_aggregate(Type *type);
 bool type_is_aggregate(Type *type);
 bool type_is_int128(Type *type);
+Type *type_is_must_init(Type *type);
 
 Type *type_from_token(TokenType type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);
