@@ -88,7 +88,7 @@ fn void push_back_then_shrink()
 		deque.pop_front()!!;
 	}
 
-	deque.shrink(tmem);
+	deque.shrink();
 }
 
 fn void push_front_then_shrink()
@@ -106,7 +106,7 @@ fn void push_front_then_shrink()
 		deque.pop_back()!!;
 	}
 
-	deque.shrink(tmem);
+	deque.shrink();
 }
 
 fn void push_both_sides_then_shrink()
@@ -124,7 +124,7 @@ fn void push_both_sides_then_shrink()
 	deque.push_front_all(buf_front[..]);
 	deque.push_back_all(buf_back[..]);
 
-	deque.shrink(tmem);
+	deque.shrink();
 
 	test::eq(deque.is_empty(), false);
 	test::eq(deque.capacity, COUNT / 2);

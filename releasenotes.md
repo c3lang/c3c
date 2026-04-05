@@ -30,6 +30,7 @@
 - `std::collections::RingBuffer` is renamed `RingList`.
 - Add `List.remove_unordered_at`.
 - PanicFn now takes an `int` for row.
+- Add `std::collections::Deque`.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095

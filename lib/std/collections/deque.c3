@@ -20,22 +20,24 @@ struct Deque (Printable)
 
 <*
  @require capacity > 0 : "Capacity should be greater than 0"
+ @require capacity < sz.max / Type.sizeof : "Capacity too great"
 *>
 fn void Deque.init(&self, Allocator allocator, sz capacity = DEFAULT_CAPACITY)
 {
 	*self = { };
-	self.entries = alloc::malloc(allocator, Type.sizeof * capacity);
+	self.entries = alloc::alloc_array(allocator, Type, capacity);
 	self.capacity = capacity;
 	self.allocator = allocator;
 }
 
 <*
  @require capacity > 0 : "Capacity should be greater than 0"
+ @require capacity < sz.max / Type.sizeof : "Capacity too great"
 *>
 fn void Deque.tinit(&self, sz capacity = DEFAULT_CAPACITY)
 {
 	*self = { };
-	self.entries = alloc::malloc(tmem, Type.sizeof * capacity);
+	self.entries = mem::temp_array(Type, capacity);
 	self.capacity = capacity;
 	self.allocator = tmem;
 }
@@ -86,7 +88,8 @@ fn void Deque.push_front_all(&self, Type[] elements)
 
 <*
  Pop an element from the back of the deque.
- @return ? NO_MORE_ELEMENT : "If size is 0"
+
+ @return? NO_MORE_ELEMENT : "If size is 0"
 *>
 fn Type? Deque.pop_back(&self)
 {
@@ -98,7 +101,8 @@ fn Type? Deque.pop_back(&self)
 
 <*
  Pop an element from the front of the deque.
- @return ? NO_MORE_ELEMENT : "If size is 0"
+
+ @return? NO_MORE_ELEMENT : "If size is 0"
 *>
 fn Type? Deque.pop_front(&self)
 {
@@ -113,7 +117,6 @@ fn Type? Deque.pop_front(&self)
  Pop multiple elements from the front of the deque into 'target'.
  Count of the popped elements calculated by taking the 'min'
  on the 'target' length and deque's internal length
- @return ? NO_MORE_ELEMENT : "If size is 0"
 *>
 fn Type[] Deque.pop_front_into(&self, Type[] target)
 {
@@ -130,7 +133,7 @@ fn Type[] Deque.pop_front_into(&self, Type[] target)
  Pop multiple elements from the back of the deque into 'target'.
  Count of the popped elements calculated by taking the 'min'
  on the 'target' length and deque's internal length
- @return ? NO_MORE_ELEMENT : "If size is 0"
+
 *>
 fn Type[] Deque.pop_back_into(&self, Type[] target)
 {
@@ -152,6 +155,10 @@ fn void Deque.reserve(&self, sz added)
 	sz diff = (self.size + added) - self.capacity;
 	if (@unlikely(diff <= 0)) return;
 	sz req_capacity = self.capacity + diff;
+
+	assert(req_capacity > 0);
+	assert(self.capacity < sz.max / 2);
+
 	sz new_capacity = self.capacity * 2;
 	while (new_capacity < req_capacity)
 	{
@@ -162,11 +169,12 @@ fn void Deque.reserve(&self, sz added)
 
 <*
  Makes deque's internal buffer contiguous and sets the 'capacity' to 'size'.
+
  @require self.capacity > self.size : "Capacity should be bigger than size"
 *>
-fn void Deque.shrink(&self, Allocator temp_alloc = tmem)
+fn void Deque.shrink(&self)
 {
-	self.normalize(temp_alloc);
+	self.normalize();
 	self.capacity = self.size;
 	self.entries = alloc::realloc(self.allocator, self.entries, self.capacity * Type.sizeof);
 }
@@ -175,12 +183,12 @@ fn void Deque.shrink(&self, Allocator temp_alloc = tmem)
  Makes deque's internal buffer contiguous.
  Same as 'shrink' but preserves current capacity.
 *>
-fn void Deque.normalize(&self, Allocator temp_alloc = tmem)
+fn void Deque.normalize(&self)
 {
-	if (self.size > 0 && self.start > 0)
+	if (self.size < 1 || self.start < 1) return
+	@pool()
 	{
-		Type[] tbuf = alloc::alloc_array(temp_alloc, Type, self.size);
-		defer alloc::free(temp_alloc, tbuf);
+		Type[] tbuf = mem::temp_array(Type, self.size);
 
 		sz right = self.capacity - self.start;
 		sz back_idx = next_back_idx(self);
@@ -199,7 +207,7 @@ fn void Deque.normalize(&self, Allocator temp_alloc = tmem)
 			self.entries[0:tbuf.len] = tbuf[..];
 			self.start = 0;
 		}
-	}
+	};
 }
 
 <*
@@ -217,12 +225,11 @@ fn void Deque.clear(&self) @inline
 *>
 fn void Deque.free(&self)
 {
-	if (@likely(self.entries != null))
-	{
-		alloc::free(self.allocator, self.entries);
-		self.entries = null;
-		self.clear();
-	}
+	if (@unlikely(!self.entries)) return;
+
+	alloc::free(self.allocator, self.entries);
+	self.entries = null;
+	self.clear();
 }
 
 // --- Utilities ---
@@ -247,6 +254,7 @@ fn void Deque.swap(&self, sz i, sz j)
 
 <*
  Get an element at the front of the deque.
+
  @require self.size > 0 : "Size should be greater than 0"
 *>
 fn Type Deque.front(&self) @inline
@@ -256,6 +264,7 @@ fn Type Deque.front(&self) @inline
 
 <*
  Get a reference to an element at the front of the deque.
+
  @require self.size > 0 : "Size should be greater than 0"
 *>
 fn Type* Deque.front_ref(&self) @inline
@@ -265,6 +274,7 @@ fn Type* Deque.front_ref(&self) @inline
 
 <*
  Get an element at the back of the deque.
+
  @require self.size > 0 : "Size should be greater than 0"
 *>
 fn Type Deque.back(&self) @inline
@@ -274,6 +284,7 @@ fn Type Deque.back(&self) @inline
 
 <*
  Get a reference to an element at the back of the deque.
+
  @require self.size > 0 : "Size should be greater than 0"
 *>
 fn Type* Deque.back_ref(&self) @inline
@@ -386,17 +397,20 @@ fn Type _pop_front(Deque* self) @private
 	return elem;
 }
 
-macro wrap_inc(sz val, sz boundary)
+macro wrap_inc(sz val, sz boundary) @local
 {
 	return val == boundary - 1 ? 0 : val + 1;
 }
 
-macro wrap_dec(sz val, sz boundary)
+macro wrap_dec(sz val, sz boundary) @local
 {
 	return val == 0 ? boundary - 1 : val - 1;
 }
 
-macro wrap_add(sz val, sz add, sz boundary)
+<*
+ @require add >= 0
+*>
+macro wrap_add(sz val, sz add, sz boundary) @local
 {
 	return (val + add) % boundary;
 }
