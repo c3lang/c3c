@@ -4,7 +4,7 @@ import std::sort;
 struct TestCase @local
 {
 	int[] list;
-	isz k;
+	sz k;
 	int want;
 }
 

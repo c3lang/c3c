@@ -1,8 +1,8 @@
 module std::core::main_stub;
 
-macro usz _strlen(ptr) @private
+macro sz _strlen(ptr) @private
 {
-	usz len = 0;
+	sz len;
 	while (ptr[len]) len++;
 	return len;
 }
@@ -35,7 +35,6 @@ macro String[] args_to_strings(int argc, char** argv) @private
 	for (int i = 0; i < argc; i++)
 	{
 		char* arg = argv[i];
-		usz len = 0;
 		list[i] = (String)arg[:_strlen(arg)];
 	}
 	return list;

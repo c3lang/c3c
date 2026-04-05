@@ -15,13 +15,13 @@ struct Uart
 
 fn bool Uart.uart_ff_thr_empty(Uart* this)
 {
-	return (bool)($$volatile_load(&this.lsr) & UARTLSR_THRE);
+	return (bool)(@volatile_load(this.lsr) & UARTLSR_THRE);
 }
 
 fn void Uart.putc(Uart* this, char c)
 {
 	while (!this.uart_ff_thr_empty());         // Wait until the FIFO holding register is empty
-	$$volatile_store(&this.dr, c);             // Write character to transmit register
+	@volatile_store(this.dr, c);             // Write character to transmit register
 }
 
 fn void Uart.puts(Uart* this, char *str)
@@ -30,4 +30,30 @@ fn void Uart.puts(Uart* this, char *str)
     {
 		this.putc(*str++);      // Write the character and increment pointer
 	}
+}
+
+module std::core::mem;
+
+<*
+ @param #x : "The variable or dereferenced pointer to load."
+ @return "The value of the variable"
+
+ @require $defined(&#x) : "This must be a variable or dereferenced pointer"
+*>
+macro @volatile_load(#x) @builtin
+{
+	return $$volatile_load(&#x);
+}
+
+<*
+ @param #x : "The variable or dereferenced pointer to store to."
+ @param value : "The value to store."
+ @return "The value stored"
+
+ @require $defined(&#x) : "This must be a variable or dereferenced pointer"
+ @require $defined(#x = value) : "The value doesn't match the variable"
+*>
+macro @volatile_store(#x, value) @builtin
+{
+	return $$volatile_store(&#x, ($typeof(#x))value);
 }

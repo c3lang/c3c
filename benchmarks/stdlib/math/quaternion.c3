@@ -4,8 +4,8 @@ import std::time::clock;
 
 struct BenchData
 {
-	Quaternionf q1;
-	Quaternionf q2;
+	Quat q1;
+	Quat q2;
 	float[<3>] v3;
 }
 
@@ -17,8 +17,8 @@ fn void initialize() @init
 	ulong t = (ulong)clock::now();
 	float f = (float)(t % 1000) * 0.001f;
 
-	data.q1 = QUATERNIONF_IDENTITY;
-	data.q2 = QUATERNIONF_IDENTITY;
+	data.q1 = quaternion::IDENTITY;
+	data.q2 = quaternion::IDENTITY;
 	data.q1.l = 0.707f + f;
 	data.q1.i = 0.707f;
 	data.q2.l = 0.707f - f;
@@ -48,7 +48,7 @@ import std::math;
 fn void mul()
 {
 	@start_benchmark();
-	Quaternionf res = data.q1 * data.q2;
+	Quat res = data.q1 * data.q2;
 	@end_benchmark();
 	sink(res.l);
 }
@@ -80,7 +80,7 @@ fn void slerp()
 fn void to_matrix()
 {
 	@start_benchmark();
-	Matrix4f res = data.q1.to_matrixf();
+	Matrix4f res = data.q1.to_matrix();
 	@end_benchmark();
 	sink(res.m00);
 }

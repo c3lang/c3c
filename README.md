@@ -142,7 +142,7 @@ fn void main()
 
 ### Current status
 
-The current stable version of the compiler is **version 0.7.10**.
+The current stable version of the compiler is **version 0.7.11**.
 
 The upcoming 0.7.x releases will focus on expanding the standard library,
 fixing bugs and improving compile time analysis.
@@ -296,6 +296,15 @@ Or clone it manually:
 git clone https://aur.archlinux.org/c3c-git.git
 cd c3c-git
 makepkg -si
+```
+
+#### Installing on Fedora
+
+C3 is available as a community maintained COPR package for Fedora.  
+To install via dnf:
+```sh
+sudo dnf copr enable sisyphus1813/c3
+sudo dnf install c3
 ```
 
 #### Installing via Nix

@@ -11,7 +11,7 @@ macro @unlikely_that_this_is_false(#expr) => @unlikely(!(#expr));
 fn int main()
 {
     char* op = &&'a';
-    uint ctrl = 7; ++ctrl;
+    int ctrl = 7; ++ctrl;
 
     char[] some_slice = "abcdefg";
 

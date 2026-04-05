@@ -27,15 +27,6 @@ faultdef
 	INTERRUPTED,
 	CHANNEL_CLOSED;
 
-faultdef
-	DETACH_FAILED @deprecated,
-	UNLOCK_FAILED @deprecated,
-	DESTROY_FAILED @deprecated,
-	SIGNAL_FAILED @deprecated,
-	JOIN_FAILED @deprecated,
-	LOCK_FAILED @deprecated,
-	WAIT_FAILED @deprecated;
-
 macro void? Mutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, {});
 macro bool Mutex.is_initialized(mutex) => ((NativeMutex*)&mutex).is_initialized();
 macro void? RecursiveMutex.init(&mutex) @maydiscard => NativeMutex.init((NativeMutex*)mutex, {.recursive});
@@ -48,7 +39,7 @@ macro void? TimedMutex.init(&mutex) => NativeTimedMutex.init((NativeTimedMutex*)
 macro void? TimedRecursiveMutex.init(&mutex) @maydiscard => NativeTimedMutex.init((NativeTimedMutex*)mutex, {.timed, .recursive});
 macro void? TimedMutex.destroy(&mutex) @maydiscard => NativeTimedMutex.destroy((NativeTimedMutex*)mutex); // Remove optional in 0.8.0
 macro void? TimedMutex.lock(&mutex) @maydiscard => NativeTimedMutex.lock((NativeTimedMutex*)mutex);
-macro void? TimedMutex.lock_timeout(&mutex, ulong ms) => NativeTimedMutex.lock_timeout((NativeTimedMutex*)mutex, ms);
+macro void? TimedMutex.lock_timeout(&mutex, long ms) => NativeTimedMutex.lock_timeout((NativeTimedMutex*)mutex, ms);
 macro bool  TimedMutex.try_lock(&mutex) => NativeTimedMutex.try_lock((NativeTimedMutex*)mutex);
 macro void? TimedMutex.unlock(&mutex) @maydiscard => NativeTimedMutex.unlock((NativeTimedMutex*)mutex); // Remove optional in 0.8.0
 
@@ -121,5 +112,5 @@ macro void exit(int result)
 	os::native_thread_exit(result);
 }
 macro void? sleep(Duration d) @maydiscard => os::native_sleep_nano(d.to_nano());
-macro void? sleep_ms(ulong ms) @maydiscard  => sleep(time::ms(ms));
+macro void? sleep_ms(long ms) @maydiscard  => sleep(time::ms(ms));
 macro void? sleep_ns(NanoDuration ns) @maydiscard  => os::native_sleep_nano(ns);

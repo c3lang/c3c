@@ -136,7 +136,7 @@ macro bool is_native_atomic_type($Type)
  @require $defined(*ptr + y) : "+ must be defined between the values."
  @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
-macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
+macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	$if $alignment == 0:
 		$alignment = $typeof(*ptr).sizeof;
@@ -156,7 +156,7 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  @require $defined(*ptr - y) : "- must be defined between the values."
  @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
-macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
+macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	$if $alignment == 0:
 		$alignment = $typeof(*ptr).sizeof;
@@ -256,7 +256,7 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  @require $defined(*ptr | y) : "| must be defined between the values."
  @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
-macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
+macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	return $$atomic_fetch_or(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }
@@ -273,7 +273,7 @@ macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile
  @require $defined(*ptr ^ y) : "^ must be defined between the values."
  @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
-macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
+macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	return $$atomic_fetch_xor(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }
@@ -290,7 +290,7 @@ macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  @require $defined(*ptr ^ y) : "& must be defined between the values."
  @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
-macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
+macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	return $$atomic_fetch_and(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }
@@ -445,7 +445,7 @@ macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
  @require $defined(*ptr > y) : "Only values that are comparable with > may be used"
  @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
-macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
+macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	$if $alignment == 0:
 		$alignment = $typeof(*ptr).sizeof;
@@ -464,7 +464,7 @@ macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  @require $defined(*ptr > y) : "Only values that are comparable with > may be used"
  @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
-macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
+macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	$if $alignment == 0:
 		$alignment = $typeof(*ptr).sizeof;

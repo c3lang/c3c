@@ -59,7 +59,7 @@ const LC_SEGMENT_64 = 0x19;
 
 fn bool name_cmp(char* a, char[16]* b)
 {
-	for (usz i = 0; i < 16; i++)
+	for (sz i = 0; i < 16; i++)
 	{
 		if (a[i] != (*b)[i]) return false;
 		if (a[i] == '\0') return true;
@@ -104,7 +104,7 @@ macro find_segment_section_body(MachHeader* header, char* segname, char* sectnam
 	return ptr[:section.size / $Type.sizeof];
 }
 
-alias DyldCallback = fn void (MachHeader* mh, isz vmaddr_slide);
+alias DyldCallback = fn void (MachHeader* mh, sz vmaddr_slide);
 
 extern fn void _dyld_register_func_for_add_image(DyldCallback);
 
@@ -119,8 +119,8 @@ struct DlInfo
 
 extern fn void printf(char*, ...);
 extern fn int dladdr(MachHeader* mh, DlInfo* dlinfo);
-extern fn void* realloc(void* ptr, usz size);
-extern fn void* malloc(usz size);
+extern fn void* realloc(void* ptr, sz size);
+extern fn void* malloc(sz size);
 extern fn void free(void* ptr);
 
 alias CallbackFn = fn void();
@@ -208,15 +208,15 @@ struct TypeId
 	char type;
 	TypeId* parentof;
 	DynamicMethod* dtable;
-	usz sizeof;
+	sz sizeof;
 	TypeId* inner;
-	usz len;
+	sz len;
 	typeid[*] additional;
 }
 
-fn void dl_reg_callback(MachHeader* mh, isz vmaddr_slide)
+fn void dl_reg_callback(MachHeader* mh, sz vmaddr_slide)
 {
-	usz size = 0;
+	sz size;
 	assert(runtime_state == INIT || runtime_state == READ_DYLIB, "State was %s", runtime_state);
 	foreach (&dm : find_segment_section_body(mh, "__DATA", "__c3_dynamic", DynamicMethod))
 	{

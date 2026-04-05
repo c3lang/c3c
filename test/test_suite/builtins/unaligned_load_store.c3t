@@ -1,5 +1,5 @@
 // #target: macos-x64
-module test;
+module std::test;
 
 struct Foo
 {
@@ -28,13 +28,13 @@ fn void main()
   a = $$unaligned_load((float[<4>]*)&foo.a, 1, false);
   $$unaligned_store((float[<4>]*)&foo.a, a, 1, false);
 
-  b = @unaligned_load(*(float[<4>]*)&foo.a, 1);
-  @unaligned_store(*(float[<4>]*)&foo.a, b, 1);
+  b = mem::load((float[<4>]*)&foo.a, 1);
+  mem::store((float[<4>]*)&foo.a, b, 1);
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
-define void @test.test() #0 {
+define weak void @std.test.test() #0 {
 entry:
   %b = alloca i32, align 4
   %g = alloca [100 x i32], align 16
@@ -53,7 +53,7 @@ entry:
   ret void
 }
 
-define void @test.main() #0 {
+define weak void @std.test.main() #0 {
 entry:
   %foo = alloca ptr, align 8
   %a = alloca <4 x float>, align 1
@@ -75,10 +75,10 @@ entry:
   %8 = load ptr, ptr %foo, align 8
   %9 = load <4 x float>, ptr %8, align 1
   store <4 x float> %9, ptr %b, align 1
-  %10 = load <4 x float>, ptr %b, align 1
-  store <4 x float> %10, ptr %value, align 16
-  %11 = load ptr, ptr %foo, align 8
+  %10 = load ptr, ptr %foo, align 8
+  %11 = load <4 x float>, ptr %b, align 1
+  store <4 x float> %11, ptr %value, align 16
   %12 = load <4 x float>, ptr %value, align 16
-  store <4 x float> %12, ptr %11, align 1
+  store <4 x float> %12, ptr %10, align 1
   ret void
 }

@@ -22,11 +22,11 @@ fn void Summary.print(Summary *s, CFile out)
 
 fn bool contains(char[] haystack, char[] needle)
 {
-	usz len = haystack.len;
-	usz needle_len = needle.len;
+	usz len = (usz)haystack.len;
+	usz needle_len = (usz)needle.len;
 	if (len < needle_len) return false;
 	if (!needle_len) return true;
-	len -= needle_len - 1;
+	len -= (usz)((sz)needle_len - 1);
 	for (usz i = 0; i < len; i++)
 	{
 		if (libc::memcmp(&haystack[i], needle.ptr, needle_len) == 0)
@@ -54,10 +54,10 @@ fn Doc? readDoc(char[] url)
 	if (contains(url, "title-missing")) return { dupe((Head) { .title = null })! };
 	if (contains(url, "title-empty")) return { dupe((Head) { .title = dupe((char[])"")! })! };
 	// Not particularly elegant due to missing string functions.
-	isz len = libc::snprintf(null, 0, "Title of %.*s", (int)url.len, url.ptr);
+	sz len = (sz)libc::snprintf(null, 0, "Title of %.*s", (int)url.len, url.ptr);
 	char* str = malloc(len + 1);
 	if (!str) return OUT_OF_MEMORY~;
-	libc::snprintf(str, len + 1, "Title of %.*s", (int)url.len, url.ptr);
+	libc::snprintf(str, (usz)(len + 1), "Title of %.*s", (int)url.len, url.ptr);
 	return { dupe((Head) { .title = dupe(str[..len - 1])! })! };
 }
 
@@ -574,8 +574,8 @@ if.exit3:                                         ; preds = %if.exit
   %6 = load ptr, ptr %head, align 8
   %ptradd = getelementptr inbounds i8, ptr %6, i64 8
   %7 = load i64, ptr %ptradd, align 8
-  %lt = icmp ult i64 0, %7
-  %8 = zext i1 %lt to i8
+  %gt = icmp sgt i64 %7, 0
+  %8 = zext i1 %gt to i8
   store i8 %8, ptr %0, align 1
   ret i64 0
 }
@@ -686,7 +686,7 @@ entry:
 
 loop.cond:                                        ; preds = %phi_block19, %entry
   %1 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %1, %0
+  %lt = icmp slt i64 %1, %0
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
@@ -814,8 +814,8 @@ phi_block19:                                      ; preds = %else_block18, %afte
   %ternary = select i1 %val20, ptr @.str.24, ptr @.str.25
   %31 = call i32 (ptr, ...) @printf(ptr @.str.23, ptr %val14, ptr %ternary)
   %32 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %32, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %32, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

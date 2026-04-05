@@ -1,6 +1,6 @@
 // #target: macos-x64
 module test;
-typedef Foo = int;
+typedef Foo @constinit = int;
 
 bitstruct Bar : Foo
 {

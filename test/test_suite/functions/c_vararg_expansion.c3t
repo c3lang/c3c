@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 extern fn void printf(char*,...);
-typedef Foo = float;
+typedef Foo @constinit = float;
 fn void main()
 {
 	Foo a = 12.3;

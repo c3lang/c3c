@@ -29,7 +29,7 @@ fn double _round(double x) @cname("round") @weak @nostrip
 fn float _roundf(float x) @cname("roundf") @weak @nostrip
 {
 	uint u = bitcast(x, uint);
-	int e = (u >> 23) & 0xff;
+	int e = (int)(u >> 23) & 0xff;
 	if (e >= 0x7f + 23) return x;
 	bool signed = u >> 31 != 0;
 	if (signed) x = -x;

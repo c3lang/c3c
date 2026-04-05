@@ -24,10 +24,6 @@ enum EnumWithErrorData2 : int (int bar,)
     TEST // #error: associated value
 }
 
-enum EnumTestErrorType4
-{
-}
-
 enum EnumTest5
 {
     B,

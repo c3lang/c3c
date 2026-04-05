@@ -7,7 +7,7 @@ fn int foo()
 
   w_cnt += *pp;
 
-  return w_cnt;
+  return (int)w_cnt;
 }
 
 /* #expect: simple_test.ll

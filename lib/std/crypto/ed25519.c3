@@ -204,7 +204,7 @@ fn F25519Int pack(Point* p)
 	r.x.normalize();
 	r.y.normalize();
 
-	r.y[^1] |= (r.x[0] & 1) << 7;
+	r.y[^1] |= (r.x[0] & 1u) << 7;
 
 	return r.y;
 }
@@ -235,7 +235,7 @@ fn Unpacking unpack_on_curve(F25519Int* encoding)
 
 	F25519Int x = x2.sqrt();
 
-	p.x = f25519_select(&x, &&-x, (x[0] ^ parity) & 1);
+	p.x = f25519_select(&x, &&-x, (x[0] ^ parity) & 1u);
 
 	F25519Int _x2 = p.x * p.x;
 
@@ -308,13 +308,13 @@ fn Projection Projection.mul(&s, char[] n) @operator(*)
 {
 	Projection r = NEUTRAL;
 
-	for (isz i = n.len << 3 - 1; i >= 0; i--)
+	for (sz i = n.len << 3 - 1; i >= 0; i--)
 	{
 		r = r.twice();
 
 		Projection t = r + s;
 
-		char bit = n[i >> 3] >> (i & 7) & 1;
+		char bit = n[i >> 3] >> (i & 7) & 1u;
 		r.x = f25519_select(&r.x, &t.x, bit);
 		r.y = f25519_select(&r.y, &t.y, bit);
 		r.z = f25519_select(&r.z, &t.z, bit);
@@ -396,7 +396,7 @@ fn char eq(F25519Int* a, F25519Int* b)
 	e |= (e >> 2);
 	e |= (e >> 1);
 
-	return e ^ 1;
+	return e ^ 1u;
 }
 
 <*
@@ -505,12 +505,12 @@ fn F25519Int F25519Int.mul(&s, F25519Int* n) @operator(*)
 	F25519Int r @noinit;
 
 	uint c;
-	for (usz i = 0; i < F25519Int.len; i++)
+	for (sz i = 0; i < F25519Int.len; i++)
 	{
 		c >>= 8;
-		for (usz j; j <= i; j++) c += (*s)[j] * (*n)[i - j];
+		for (sz j; j <= i; j++) c += (*s)[j] * (*n)[i - j];
 		// Reduce using 2^256 = 2*19 mod p
-		for (usz j = i + 1; j < F25519Int.len; j++) c += (*s)[j] * (*n)[^j - i] * 2 * 19;
+		for (sz j = i + 1; j < F25519Int.len; j++) c += (*s)[j] * (*n)[^j - i] * 2u * 19u;
 		r[i] = (char)c;
 	}
 
@@ -551,7 +551,7 @@ fn F25519Int F25519Int.inv(&s)
 	//Compute s^(p-2)
 	F25519Int r = *s;
 
-	for (usz i; i < 255 - 1 - 5; i++) r = r * r * s;
+	for (sz i; i < 255 - 1 - 5; i++) r = r * r * s;
 
 	r *= r;
 	r = r * r * s;
@@ -571,7 +571,7 @@ fn F25519Int pow_2523(F25519Int* s) @local
 {
 	F25519Int r = *s;
 
-	for (usz i; i < 252 - 1 - 2; i++) r = r * r * s;
+	for (sz i; i < 252 - 1 - 2; i++) r = r * r * s;
 
 	r *= r;
 	r = r * r * s;
@@ -615,10 +615,10 @@ fn FBaseInt from_bytes(char[] bytes)
 {
 	FBaseInt r;
 
-	usz bitc = min(252 - 1, bytes.len << 3);
-	usz bytec = bitc >> 3;
-	usz mod = bitc & 7;
-	usz rem = bytes.len << 3 - bitc;
+	sz bitc = min(252 - 1, bytes.len << 3);
+	sz bytec = bitc >> 3;
+	sz mod = bitc & 7;
+	sz rem = bytes.len << 3 - bitc;
 
 	r[:bytec] = bytes[^bytec..];
 
@@ -628,10 +628,10 @@ fn FBaseInt from_bytes(char[] bytes)
 		r[0] |= bytes[^bytec + 1] >> (8 - mod);
 	}
 
-	for (isz i = rem - 1; i >= 0; i--)
+	for (sz i = rem - 1; i >= 0; i--)
 	{
 		r <<= 1;
-		r[0] |= bytes[i >> 3] >> (i & 7) & 1;
+		r[0] |= bytes[i >> 3] >> (i & 7u) & 1u;
 		r = r.sub_l(&ORDER);
 	}
 
@@ -690,7 +690,7 @@ fn FBaseInt FBaseInt.sub_l(&s, FBaseInt* n)
 	{
 		c = v - (*n)[i] - c;
 		sub[i] = (char)c;
-		c = (c >> 8) & 1;
+		c = (c >> 8) & 1u;
 	}
 
 	return fbase_select(&sub, s, (char)c);
@@ -701,7 +701,7 @@ fn FBaseInt FBaseInt.sub_l(&s, FBaseInt* n)
 
  @param [&in] s
 *>
-fn FBaseInt FBaseInt.shl(&s, usz n) @operator(<<)
+fn FBaseInt FBaseInt.shl(&s, sz n) @operator(<<)
 {
 	FBaseInt r @noinit;
 
@@ -727,10 +727,10 @@ fn FBaseInt FBaseInt.mul(&s, FBaseInt* n) @operator(*)
 {
 	FBaseInt r;
 
-	for (isz i = 252; i >= 0; i--)
+	for (sz i = 252; i >= 0; i--)
 	{
 		r = (r << 1).sub_l(&ORDER);
-		r = fbase_select(&r, &&(r + s), (*n)[i >> 3] >> (i & 7) & 1);
+		r = fbase_select(&r, &&(r + s), (*n)[i >> 3] >> (i & 7u) & 1u);
 	}
 
 	return r;

@@ -6,7 +6,7 @@ struct Foo
 	int bar;
 }
 
-macro usz @offsetof($Type) {
+macro sz @offsetof($Type) {
   $Type* x;
   return x.bar;
 }

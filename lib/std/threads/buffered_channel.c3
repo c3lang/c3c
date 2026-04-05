@@ -7,15 +7,15 @@ struct BufferedChannelImpl @private
 	Allocator allocator;
 	Mutex mu;
 	bool closed;
-	usz size;
-	usz elems;
+	sz size;
+	sz elems;
 
-	usz sendx;
-	usz send_waiting;
+	sz sendx;
+	sz send_waiting;
 	ConditionVariable send_cond;
 
-	usz readx;
-	usz read_waiting;
+	sz readx;
+	sz read_waiting;
 	ConditionVariable read_cond;
 
 	Type[*] buf;
@@ -24,7 +24,7 @@ struct BufferedChannelImpl @private
 <*
  @require size > 0: "channel size must be > 0"
 *>
-fn void? BufferedChannel.init(&self, Allocator allocator, usz size = 1)
+fn void? BufferedChannel.init(&self, Allocator allocator, sz size = 1)
 {
 	BufferedChannelImpl* channel = alloc::new_with_padding(allocator, BufferedChannelImpl, Type.sizeof * size)!;
 	defer catch alloc::free(allocator, channel);
@@ -56,7 +56,7 @@ fn void? BufferedChannel.destroy(&self) @maydiscard // Remove optional in 0.8.0
 	channel.read_cond.destroy();
 	alloc::free(channel.allocator, channel);
 
-	*self = null;
+	*self = {};
 
 }
 

@@ -9,24 +9,24 @@ in [0, array.len) where x would be inserted or cmp(i) is true and cmp(j) is true
  @require @is_valid_cmp_fn(#cmp: ...cmp, #list: list, #context: ...context) : "Expected a comparison function which compares values"
  @require @is_valid_context(...cmp, ...context) : "Expected a valid context"
 *>
-macro usz binarysearch(list, element, cmp = ..., context = ...) @builtin
+macro sz binarysearch(list, element, cmp = ..., context = ...) @builtin
 {
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	return _binarysearch{$typeof(list), $typeof(element), $typeof(used_cmp), $typeof(used_ctx)}(list, element, used_cmp, used_ctx);
 }
 
-fn usz _binarysearch(ListType list, ElementType element, CmpFnType cmp, ContextType context) <ListType, ElementType, CmpFnType, ContextType> @noinline @local
+fn sz _binarysearch(ListType list, ElementType element, CmpFnType cmp, ContextType context) <ListType, ElementType, CmpFnType, ContextType> @noinline @local
 {
-	usz i;
+	sz i;
 	var $no_cmp = $typeof(cmp) == TypeNotSet;
 	var $has_context = $typeof(context) != TypeNotSet;
 
 	$if $kindof(list) == SLICE:
-		usz len = lengthof(list);
-		for (usz j = len; i < j;)
+		sz len = lengthof(list);
+		for (sz j = len; i < j;)
 		{
-			usz half = i + (j - i) / 2;
+			sz half = i + (j - i) / 2;
 			$if $no_cmp:
 				switch
 				{
@@ -59,10 +59,10 @@ fn usz _binarysearch(ListType list, ElementType element, CmpFnType cmp, ContextT
 			$endif
 		}
 	$else
-		usz len = lengthof(*list);
-		for (usz j = len; i < j;)
+		sz len = lengthof(*list);
+		for (sz j = len; i < j;)
 		{
-			usz half = i + (j - i) / 2;
+			sz half = i + (j - i) / 2;
 			$if $no_cmp:
 				switch
 				{

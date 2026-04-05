@@ -65,6 +65,7 @@ const char *kw_ptr;
 const char *kw_return;
 const char *kw_self;
 const char *kw_std;
+const char *kw_compiler_rt;
 const char *kw_std__core;
 const char *kw_std__core__types;
 const char *kw_std__core__runtime;
@@ -150,6 +151,7 @@ void symtab_init(uint32_t capacity)
 	kw_ptr = KW_DEF("ptr");
 	kw_self = KW_DEF("self");
 	kw_std = KW_DEF("std");
+	kw_compiler_rt = KW_DEF("compiler_rt");
 	kw_std__core = KW_DEF("std::core");
 	kw_std__core__types = KW_DEF("std::core::types");
 	kw_std__core__runtime = KW_DEF("std::core::runtime");
@@ -164,8 +166,6 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_LEN] = kw_len = KW_DEF("len");
 
 	type_property_list[TYPE_PROPERTY_ALIGNOF] = KW_DEF("alignof");
-	type_property_list[TYPE_PROPERTY_ASSOCIATED] = KW_DEF("associated");
-	type_property_list[TYPE_PROPERTY_ELEMENTS] = KW_DEF("elements");
 	type_property_list[TYPE_PROPERTY_EXTNAMEOF] = KW_DEF("extnameof");
 	type_property_list[TYPE_PROPERTY_FROM_ORDINAL] = KW_DEF("from_ordinal");
 
@@ -175,7 +175,6 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_IS_EQ] = KW_DEF("is_eq");
 	type_property_list[TYPE_PROPERTY_IS_ORDERED] = KW_DEF("is_ordered");
 	type_property_list[TYPE_PROPERTY_IS_SUBSTRUCT] = KW_DEF("is_substruct");
-	type_property_list[TYPE_PROPERTY_LOOKUP] = KW_DEF("lookup");
 	type_property_list[TYPE_PROPERTY_LOOKUP_FIELD] = KW_DEF("lookup_field");
 	type_property_list[TYPE_PROPERTY_KINDOF] = KW_DEF("kindof");
 	type_property_list[TYPE_PROPERTY_MEMBERSOF] = KW_DEF("membersof");
@@ -183,7 +182,6 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_NAMEOF] = KW_DEF("nameof");
 	type_property_list[TYPE_PROPERTY_NAMES] = KW_DEF("names");
 	type_property_list[TYPE_PROPERTY_NAN] = KW_DEF("nan");
-	type_property_list[TYPE_PROPERTY_PARAMS] = KW_DEF("params");
 	type_property_list[TYPE_PROPERTY_PARAMSOF] = KW_DEF("paramsof");
 	type_property_list[TYPE_PROPERTY_PARENTOF] = KW_DEF("parentof");
 	type_property_list[TYPE_PROPERTY_QNAMEOF] = KW_DEF("qnameof");
@@ -361,7 +359,6 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_DEPRECATED] = KW_DEF("@deprecated");
 	attribute_list[ATTRIBUTE_DYNAMIC] = KW_DEF("@dynamic");
 	attribute_list[ATTRIBUTE_EXPORT] = KW_DEF("@export");
-	attribute_list[ATTRIBUTE_EXTERN] = KW_DEF("@extern");
 	attribute_list[ATTRIBUTE_FINALIZER] = KW_DEF("@finalizer");
 	attribute_list[ATTRIBUTE_FORMAT] = KW_DEF("@format");
 	attribute_list[ATTRIBUTE_IF] = KW_DEF("@if");
@@ -397,7 +394,6 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_SAFEMACRO] = KW_DEF("@safemacro");
 	attribute_list[ATTRIBUTE_SECTION] = KW_DEF("@section");
 	attribute_list[ATTRIBUTE_SIMD] = kw_at_simd;
-	attribute_list[ATTRIBUTE_STRUCTLIKE] = KW_DEF("@structlike");
 	attribute_list[ATTRIBUTE_TEST] = KW_DEF("@test");
 	attribute_list[ATTRIBUTE_TAG] = KW_DEF("@tag");
 	attribute_list[ATTRIBUTE_UNUSED] = KW_DEF("@unused");

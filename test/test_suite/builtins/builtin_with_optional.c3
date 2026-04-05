@@ -1,3 +1,4 @@
+module std::test;
 fn void main()
 {
 	float x;

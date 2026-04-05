@@ -4,7 +4,7 @@ import std::io;
 fn void? comparison_helper_32_to_8(Char32 c32, String expected_output)
 {
 	char[8] out;
-	usz len = conv::char32_to_utf8(c32, &out)!;
+	sz len = conv::char32_to_utf8(c32, &out)!;
 	assert(len == expected_output.len, "Len should be 1");
 	foreach (i, c : expected_output)
 	{
@@ -14,7 +14,7 @@ fn void? comparison_helper_32_to_8(Char32 c32, String expected_output)
 
 fn void? comparison_helper_8_to_32(String in, Char32 c32)
 {
-	usz len = in.len;
+	sz len = in.len;
 	Char32 res = conv::utf8_to_char32(in.ptr, &len)!;
 	assert(len == in.len, "All len should be used.");
 	assert(res == c32, "Expected character match.");
@@ -22,7 +22,7 @@ fn void? comparison_helper_8_to_32(String in, Char32 c32)
 
 fn void assert_utf8_is_error(String in)
 {
-	usz len = in.len;
+	sz len = in.len;
 	assert(@catch(conv::utf8_to_char32(in.ptr, &len)), "Expected error");
 }
 

@@ -1,6 +1,6 @@
 module std::compression::qoi;
 
-const uint PIXELS_MAX = 400000000;
+const uint PIXELS_MAX = 400_000_000;
 
 <*
  Colorspace.
@@ -65,7 +65,7 @@ import std::io;
  @param [in] input : `The raw RGB or RGBA pixels to encode`
  @param [&in] desc : `The descriptor of the image`
 *>
-fn usz? write(String filename, char[] input, QOIDesc* desc) => @pool()
+fn sz? write(String filename, char[] input, QOIDesc* desc) => @pool()
 {
 	// encode data
 	char[] output = encode(tmem, input, desc)!;
@@ -139,7 +139,7 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 
 	// allocate memory for encoded data (output)
 	// header + chunk tag and RGB(A) data for each pixel + end of stream
-	uint max_size = Header.sizeof + pixels + image_size + END_OF_STREAM.len;
+	sz max_size = Header.sizeof + (sz)pixels + (sz)image_size + END_OF_STREAM.len;
 	char[] output = alloc::alloc_array(allocator, char, max_size); // no need to init
 	defer catch alloc::free(allocator, output);
 
@@ -172,7 +172,7 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 
 		// get current pixel
 		p[:3] = input[loc:3]; // cutesy slices :3
-		if (desc.channels == RGBA) p.a = input[loc + 3];
+		if (desc.channels == RGBA) p.a = input[loc + 3u];
 
 		// check if we can run the previous pixel
 		if (prev == p)
@@ -180,7 +180,7 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 			run_length++;
 			if (run_length == 62 || loc == loc_end)
 			{
-				*@extract(OpRun, output, &pos) = { OP_RUN, run_length - 1 };
+				*@extract(OpRun, output, &pos) = { OP_RUN, run_length - 1u };
 				run_length = 0;
 			}
 			continue;
@@ -188,7 +188,7 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 		// end last run if there was one
 		if (run_length > 0)
 		{
-			*@extract(OpRun, output, &pos) = { OP_RUN, run_length - 1 };
+			*@extract(OpRun, output, &pos) = { OP_RUN, run_length - 1u };
 			run_length = 0;
 		}
 
@@ -204,16 +204,16 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 			// check if we can use diff or luma
 			case (prev != p && prev.a == p.a):
 				// diff the pixels
-				diff = p.rgb - prev.rgb;
+				diff = (ichar[<3>])(p.rgb - prev.rgb);
 				if (diff.r > -3 && diff.r < 2
 					&& diff.g > -3 && diff.g < 2
 					&& diff.b > -3 && diff.b < 2)
 				{
 					*@extract(OpDiff, output, &pos) = {
 						OP_DIFF,
-						(char)diff.r + 2,
-						(char)diff.g + 2,
-						(char)diff.b + 2
+						(char)diff.r + 2u,
+						(char)diff.g + 2u,
+						(char)diff.b + 2u
 					};
 					palette[p.hash()] = p;
 					break;
@@ -226,9 +226,9 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 				{
 					*@extract(OpLuma, output, &pos) = {
 						OP_LUMA,
-						(char)luma.g + 32,
-						(char)luma.r + 8,
-						(char)luma.b + 8
+						(char)luma.g + 32u,
+						(char)luma.r + 8u,
+						(char)luma.b + 8u
 					};
 					palette[p.hash()] = p;
 					break;
@@ -316,7 +316,7 @@ fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels c
 	if (channels == AUTO) channels = desc_channels;
 	
 	// allocate memory for image data
-	usz image_size = (usz)pixels * channels;
+	sz image_size = (sz)pixels * channels;
 	char[] image = alloc::alloc_array(allocator, char, image_size);
 	defer catch alloc::free(allocator, image);
 
@@ -347,17 +347,17 @@ fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels c
 
 			case tag >> 6 == OP_DIFF:
 				OpDiff* op = @extract(OpDiff, data, &pos);
-				p.r += op.diff_red - 2;
-				p.g += op.diff_green - 2;
-				p.b += op.diff_blue - 2;
+				p.r += op.diff_red - 2u;
+				p.g += op.diff_green - 2u;
+				p.b += op.diff_blue - 2u;
 				palette[p.hash()] = p;
 
 			case tag >> 6 == OP_LUMA:
 				OpLuma* op = @extract(OpLuma, data, &pos);
-				int diff_green = op.diff_green - 32;
-				p.r += (char)(op.diff_red_minus_green - 8 + diff_green);
+				int diff_green = (int)op.diff_green - 32;
+				p.r += (char)((int)op.diff_red_minus_green - 8 + diff_green);
 				p.g += (char)(diff_green);
-				p.b += (char)(op.diff_blue_minus_green - 8 + diff_green);
+				p.b += (char)((int)op.diff_blue_minus_green - 8 + diff_green);
 				palette[p.hash()] = p;
 
 			case tag >> 6 == OP_RUN:
@@ -412,7 +412,7 @@ const char[*] END_OF_STREAM = {0, 0, 0, 0, 0, 0, 0, 1};
 typedef Pixel = inline char[<4>];
 macro char Pixel.hash(Pixel p)
 {
-	return (p.r * 3 + p.g * 5 + p.b * 7 + p.a * 11) % 64;
+	return (p.r * 3u + p.g * 5u + p.b * 7u + p.a * 11u) % 64u;
 }
 
 struct OpRGB // No need to use @packed here, the alignment is 1 anyways.

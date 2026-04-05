@@ -477,12 +477,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_ASM:
 			copy_expr_asm_arg(c, &expr->expr_asm_arg);
 			return expr;
-		case EXPR_CT_ASSIGNABLE:
-			MACRO_COPY_EXPRID(expr->assignable_expr.expr);
-			MACRO_COPY_EXPRID(expr->assignable_expr.type);
-			return expr;
 		case EXPR_CT_EVAL:
-		case EXPR_CT_IS_CONST:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_OPTIONAL:
 		case EXPR_SPLAT:
@@ -974,7 +969,6 @@ TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 			copy->generic.params = copy_expr_list(c, copy->generic.params);
 			return copy;
 		case TYPE_INFO_TYPEFROM:
-		case TYPE_INFO_EVALTYPE:
 		case TYPE_INFO_TYPEOF:
 		case TYPE_INFO_VATYPE:
 			ASSERT(source->resolve_status == RESOLVE_NOT_DONE);

@@ -5,9 +5,9 @@ struct ThreadPool
 {
 	Mutex mu;
 	QueueItem[SIZE] queue;
-	usz qindex;
-	usz qworking;
-	usz num_threads;
+	sz qindex;
+	sz qworking;
+	sz num_threads;
 	bitstruct : char
 	{
 		bool initialized;

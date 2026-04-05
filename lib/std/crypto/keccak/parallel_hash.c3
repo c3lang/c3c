@@ -35,22 +35,22 @@ struct ParallelHash <SECURITY_LEVEL>
 	Allocator allocator;
 	bool is_xof_mode;
 	bool is_padded;
-	usz block_size;
-	usz threads;
-	usz intermediate_xof_size;
+	sz block_size;
+	sz threads;
+	sz intermediate_xof_size;
 	char[] internal;   // handle leftovers; only ever updated by a single thread (ID 0)
-	usz offset;
+	sz offset;
 	uint128 total_len;
 }
 
 <* Define a worker context, passed to each independent processing thread for hashing operations. *>
 struct WorkerThreadContext @local
 {
-	usz thread_id;
+	sz thread_id;
 	void* context;
-	usz consume_len;
-	usz blocks;
-	usz xof_count;
+	sz consume_len;
+	sz blocks;
+	sz xof_count;
 	char[] data;
 	char[] out;
 }
@@ -72,8 +72,8 @@ struct WorkerThreadContext @local
 
  @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
-macro char[*] xof($security_level, $outlen_bytes, Allocator allocator, char[] data, usz block_size,
-	usz threads = 0, String customizer = "", bool sequential = false)
+macro char[*] xof($security_level, $outlen_bytes, Allocator allocator, char[] data, sz block_size,
+	sz threads = 0, String customizer = "", bool sequential = false)
 {
 	char [$outlen_bytes] result @noinit;
 	xof_into($security_level, allocator, result[..], data, block_size, threads, customizer, sequential);
@@ -81,8 +81,8 @@ macro char[*] xof($security_level, $outlen_bytes, Allocator allocator, char[] da
 }
 
 <* An alias for ParallelHash's `xof` that implicitly uses the temp allocator for internal memory management. *>
-macro char[*] txof($security_level, $outlen_bytes, char[] data, usz block_size,
-		usz threads = 0, String customizer = "", bool sequential = false)
+macro char[*] txof($security_level, $outlen_bytes, char[] data, sz block_size,
+		sz threads = 0, String customizer = "", bool sequential = false)
 	=> xof($security_level, $outlen_bytes, tmem, data, block_size, threads, customizer, sequential);
 
 <*
@@ -100,8 +100,8 @@ macro char[*] txof($security_level, $outlen_bytes, char[] data, usz block_size,
  @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
  @require into.len > 0 : "You must use an output length over zero bytes."
 *>
-macro void xof_into($security_level, Allocator allocator, char[] into, char[] data, usz block_size,
-	usz threads = 0, String customizer = "", bool sequential = false)
+macro void xof_into($security_level, Allocator allocator, char[] into, char[] data, sz block_size,
+	sz threads = 0, String customizer = "", bool sequential = false)
 {
 	ParallelHashXOF{$security_level} c;
 	c.init(allocator, block_size: block_size, threads: threads, customizer: customizer);
@@ -110,8 +110,8 @@ macro void xof_into($security_level, Allocator allocator, char[] into, char[] da
 }
 
 <* An alias for ParallelHash's `xof_into` that implicitly uses the temp allocator for internal memory management. *>
-macro void txof_into($security_level, char[] into, char[] data, usz block_size,
-	usz threads, String customizer = "", bool sequential = false)
+macro void txof_into($security_level, char[] into, char[] data, sz block_size,
+	sz threads, String customizer = "", bool sequential = false)
 	=> xof_into($security_level, tmem, into, data, block_size, threads, customizer, sequential);
 
 <*
@@ -131,8 +131,8 @@ macro void txof_into($security_level, char[] into, char[] data, usz block_size,
 
  @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
-macro hash($security_level, $outlen_bytes, Allocator allocator, char[] data, usz block_size,
-	usz threads = 0, String customizer = "", bool sequential = false)
+macro hash($security_level, $outlen_bytes, Allocator allocator, char[] data, sz block_size,
+	sz threads = 0, String customizer = "", bool sequential = false)
 {
 	char [$outlen_bytes] result @noinit;
 	hash_into($security_level, allocator, result[..], data, block_size, threads, customizer, sequential);
@@ -140,8 +140,8 @@ macro hash($security_level, $outlen_bytes, Allocator allocator, char[] data, usz
 }
 
 <* An alias for ParallelHash's `hash` that implicitly uses the temp allocator for internal memory management. *>
-macro thash($security_level, $outlen_bytes, char[] data, usz block_size,
-	usz threads = 0, String customizer = "", bool sequential = false)
+macro thash($security_level, $outlen_bytes, char[] data, sz block_size,
+	sz threads = 0, String customizer = "", bool sequential = false)
 	=> hash($security_level, $outlen_bytes, tmem, data, block_size, threads, customizer, sequential);
 
 <*
@@ -159,8 +159,8 @@ macro thash($security_level, $outlen_bytes, char[] data, usz block_size,
  @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
  @require into.len > 0 : "You must use an output length over zero bytes."
 *>
-macro hash_into($security_level, Allocator allocator, char[] into, char[] data, usz block_size,
-	usz threads = 0, String customizer = "", bool sequential = false)
+macro hash_into($security_level, Allocator allocator, char[] into, char[] data, sz block_size,
+	sz threads = 0, String customizer = "", bool sequential = false)
 {
 	ParallelHash{$security_level} c;
 	c.init(allocator, block_size: block_size, threads: threads, customizer: customizer);
@@ -169,8 +169,8 @@ macro hash_into($security_level, Allocator allocator, char[] into, char[] data, 
 }
 
 <* An alias for ParallelHash's `hash_into` that implicitly uses the temp allocator for internal memory management. *>
-macro thash_into($security_level, char[] into, char[] data, usz block_size,
-	usz threads = 0, String customizer = "", bool sequential = false)
+macro thash_into($security_level, char[] into, char[] data, sz block_size,
+	sz threads = 0, String customizer = "", bool sequential = false)
 	=> hash_into($security_level, tmem, into, data, block_size, threads, customizer, sequential);
 
 <*
@@ -193,14 +193,14 @@ struct ParallelHashXOF <SECURITY_LEVEL>
  @param threads : "How many lanes should be used for parallel processing. If set to 0, defaults to the amount of CPU cores available."
  @param customizer : "An optional, variable-length customization string used for further domain separation."
 *>
-macro void ParallelHashXOF.init(&self, Allocator allocator, usz block_size = MAX_BLOCK_SIZE >> 3, usz threads = 0, String customizer = "")
+macro void ParallelHashXOF.init(&self, Allocator allocator, sz block_size = MAX_BLOCK_SIZE >> 3, sz threads = 0, String customizer = "")
 {
 	self.ph.init(allocator, block_size, threads, customizer);
 	self.is_xof_mode = true;
 }
 
 <* An alias to initialize an XOF-variant hash context with the temp allocator. *>
-macro void ParallelHashXOF.tinit(&self, usz block_size = MAX_BLOCK_SIZE >> 3, String customizer = "", usz threads = 0)
+macro void ParallelHashXOF.tinit(&self, sz block_size = MAX_BLOCK_SIZE >> 3, String customizer = "", sz threads = 0)
 	=> self.init(tmem, block_size, threads, customizer);
 
 <*
@@ -211,9 +211,9 @@ macro void ParallelHashXOF.tinit(&self, usz block_size = MAX_BLOCK_SIZE >> 3, St
  @param threads : "How many lanes should be used for parallel processing. If set to 0, defaults to the amount of CPU cores available."
  @param customizer : "An optional, variable-length customization string used for further domain separation."
 *>
-fn void ParallelHash.init(&self, Allocator allocator, usz block_size = MAX_BLOCK_SIZE >> 3, usz threads = 0, String customizer = "")
+fn void ParallelHash.init(&self, Allocator allocator, sz block_size = MAX_BLOCK_SIZE >> 3, sz threads = 0, String customizer = "")
 {
-	threads = threads ?: (usz)cpu::native_cpu();
+	threads = threads ?: (sz)cpu::native_cpu();
 	bool use_xof = self.is_xof_mode;
 
 	*self = {
@@ -232,7 +232,7 @@ fn void ParallelHash.init(&self, Allocator allocator, usz block_size = MAX_BLOCK
 }
 
 <* An alias to initialize a non-XOF-variant hash context with the temp allocator. *>
-macro void ParallelHash.tinit(&self, usz block_size = MAX_BLOCK_SIZE >> 3, String customizer = "", usz threads = 0)
+macro void ParallelHash.tinit(&self, sz block_size = MAX_BLOCK_SIZE >> 3, String customizer = "", sz threads = 0)
 	=> self.init(tmem, block_size, threads, customizer);
 
 <*
@@ -244,11 +244,11 @@ macro void ParallelHash.tinit(&self, usz block_size = MAX_BLOCK_SIZE >> 3, Strin
 fn void ParallelHash.update(&self, char[] data, bool sequential = false)
 {
 	if (!data.len) return;
-	self.total_len += data.len;
+	self.total_len += (uint128)data.len;
 
 	if (self.offset > 0)
 	{
-		usz left = min(self.block_size - self.offset, data.len);
+		sz left = min(self.block_size - self.offset, data.len);
 
 		if (left > 0)
 		{
@@ -293,8 +293,8 @@ fn void ParallelHash.update(&self, char[] data, bool sequential = false)
 
 		// Round-robin distribute sizes between all thread indices.
 		//   This is a bit of flair. There's probably an easier way, but luckily this isn't the performance-critical section.
-		usz remainder = data.len;
-		for (usz i = 0; remainder >= self.block_size; i++, remainder -= self.block_size)
+		sz remainder = data.len;
+		for (sz i = 0; remainder >= self.block_size; i++, remainder -= self.block_size)
 		{
 			contexts[i % self.threads].consume_len += self.block_size;
 		}
@@ -303,10 +303,10 @@ fn void ParallelHash.update(&self, char[] data, bool sequential = false)
 		//   Each thread has a pool of memory `.out`, where it can store an array of its sequential XOF results
 		//   This array is later folded into the main context's cSHAKE context. This needs to be done IN ORDER, which is
 		//   why these are preserved during parallel processing..
-		for (usz i = self.threads; i > 0; i--)
+		for (sz i = self.threads; i > 0; i--)
 		{
-			usz to_consume = contexts[i - 1].consume_len;
-			usz blocks = to_consume / self.block_size;
+			sz to_consume = contexts[i - 1].consume_len;
+			sz blocks = to_consume / self.block_size;
 
 			contexts[i - 1] = (WorkerThreadContext){
 				.thread_id = i - 1,
@@ -323,7 +323,7 @@ fn void ParallelHash.update(&self, char[] data, bool sequential = false)
 		foreach_r (&t : contexts[:self.threads])
 		{
 			// Gorge `self` with all produced XOF chains, absorbing them into the main context's cSHAKE context as described.
-			for (usz i = 0; i < t.blocks; i++)
+			for (sz i = 0; i < t.blocks; i++)
 			{
 				self.c.update(t.out[i * self.intermediate_xof_size  : self.intermediate_xof_size]);
 			}

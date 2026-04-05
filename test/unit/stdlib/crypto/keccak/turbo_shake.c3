@@ -11,8 +11,8 @@ import std::math;
 fn void known_vectors()
 {
 	static char[0xfb] iota = math::iota(char[0xfb]);
-	char[] pattern = mem::talloc_array(char, (usz)math::pow(17, 6) + 1);
-	for (usz i = 0; i < pattern.len; i += 0xfb) pattern[i:min(pattern.len - i, 0xfb)] = iota[:min(pattern.len - i, 0xfb)];
+	char[] pattern = mem::talloc_array(char, (sz)math::pow(17, 6) + 1);
+	for (sz i = 0; i < pattern.len; i += 0xfb) pattern[i:min(pattern.len - i, 0xfb)] = iota[:min(pattern.len - i, 0xfb)];
 
 	test::eq(turbo_shake::hash(128, 32, pattern[:(int)math::pow(17, 0)]), x'55cedd6f60af7bb29a4042ae832ef3f58db7299f893ebb9247247d856958daa9');
 	test::eq(turbo_shake::hash(128, 32, pattern[:(int)math::pow(17, 1)]), x'9c97d036a3bac819db70ede0ca554ec6e4c2a1a4ffbfd9ec269ca6a111161233');
@@ -148,7 +148,7 @@ fn void interval()
 	};
 
 	// 'a'-array of lengths [1, 65, 129, 193, 257]
-	for (usz i = 1, usz j = 0; i <= 257; i += 64, ++j)
+	for (sz i = 1, sz j = 0; i <= 257; i += 64, ++j)
 	{
 		test::@check(turbo_shake::hash(128, 16, x[:i])[..]  == expected[j][0], "128(16): Failed on length %d.", i);
 		test::@check(turbo_shake::hash(128, 256, x[:i])[..] == expected[j][1], "128(256): Failed on length %d.", i);

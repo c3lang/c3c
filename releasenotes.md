@@ -1,5 +1,40 @@
 # C3C Release Notes
 
+## 0.8.0 Change list
+
+### Changes / improvements
+- Removed "old-enums, old-slice-copy and old-compact-eq" feature flags.
+- Removed deprecated `$evaltype`.
+- Removed all deprecated (as of 0.7.11) types and functions from the stdlib.
+- Removed deprecated `iXX` and `uXX` suffixes.
+- Removed deprecated `Enum.lookup`.
+- Removed deprecated `?` as suffix operator in the expression `io::EOF?`.
+- Removed deprecated `module foo {Type}` generic syntax.
+- Distinct types now defaults to be "structlike"
+- Removed `@structlike` attribute.
+- Removed deprecated `@extern` attribute.
+- `:` in contracts before description is now mandatory.
+- Removed deprecated `Enum.associated` (use `Enum.membersof`).
+- Removed deprecated `Enum.elements` (use `Enum.len`).
+- Removed deprecated `foo_function.params` (use `foo_function.paramsof`).
+- Removed deprecated `$is_const`.
+- Removed deprecated `$assignable`.
+- Enums now no longer directly support `+` and `-` – use ordinals instead.
+- For enums, using `++` and `--` will step through enums with implicit wrap-around.
+- Rename `isz` -> `sz`.
+- Make $sizeof, $alignof and all similar functions return `sz` instead of `usz`.
+- Align literal types with C semantics.
+- Use value promotion instead of signedness promotion to int. So that small unsigned types promote to int, not uint.
+
+### Stdlib changes
+- `std::collections::RingBuffer` is renamed `RingList`.
+- Add `List.remove_unordered_at`.
+- PanicFn now takes an `int` for row.
+
+### Fixes
+- Slice comparison lowering would not work correctly in macros in some cases. #3095
+- Attributes `@allow_deprecated`, `@constinit`, `@noalias`, `@nostrip`, and `@optional` would erroneously accept parameters. #3098
+
 ## 0.7.11 Change list
 
 ### Changes / improvements
@@ -16,6 +51,9 @@
 - Added repetition compression for deep recursive stacks in backtraces. #3008
 - Added new builtins: `$$acos`, `$$asin`, `$$atan`, `$$cosh`, `$$exp10`, `$$sinh`, `$$tan` and `$$tanh`.
 - Added the rest of the `xoshiro` and `xoroshiro` PRNG variants. #3027
+- Improve error when using keyword as identifier #3066
+- Warn when using $$builtin functions outside of the stdlib #3065
+- Zero element enums now disallowed.
 
 ### Stdlib changes
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
@@ -37,7 +75,7 @@
 - Add vector function `cubic_hermite`
 - Deprecated `sq_magnitude`, `barycenter`, `towards`, `ortho_normalize`, `clamp_mag`, use `length_sq`, `barycentric`, `move_towards`, `orthonormalize`, `clamp_length` instead.
 - Add Quaternion conversion functions to from Euler angles and axis+angle.
-- `math::deg_to_rad` and `math::rad_to_def` respects the underlying type, returning `float` on a `float` argument.
+- `math::deg_to_rad` and `math::rad_to_deg` respects the underlying type, returning `float` on a `float` argument.
 - Added `float.to_radians` and `float.to_degrees` and the same for `double`.
 - Added `Quat`, `Mat2`, `Mat3` and `Mat4`, `Vec2`, `Vec3`, `Vec4` aliases.
 - Added `is_normalized` to Quaternion and floating point vectors.
@@ -45,11 +83,16 @@
 - Added `Rect` type.
 - Added `matrix::frustum`.
 - Added `math::@abs` for compile time `abs`.
-- Make `Errno` a constdef containing all definitions. Deprecated `libc::errno` constants. 
+- Make `Errno` a constdef containing all definitions. Deprecated `libc::errno` constants.
 - `random::seeder` no longer uses temp memory.
 - Add simple member-wise struct comparison with `member_eq`. #2801
 - `std::core::mem::allocator` deprecated and split into `std::core::mem::allocators` containing allocators and `std::core::mem::alloc` for various allocation methods.
 - Add `always_assert` builtin macro.
+- Add an `entropy` module to generate cryptographically-secure random bytes. #3022
+- Add a builtin `TIMEOUT` fault definition. #3022
+- Base32, Base64, Hex and Codepage encoding deprecates `encode_buffer` and `decode_buffer`. Those are replaced by `encode_into` and `decode_into` with `dst` being the first argument. #3055
+- `hex::encode_bytes` and `hex::decode_bytes` are deprecated in favour of `hex::encode_bytes_into` and `hex::decode_bytes_into` which has `dst` the first argument. #3055
+- Deprecation of `@unaligned_load` and `@unaligned_store`. Use `mem::load` and `mem::store` instead.
 
 ### Fixes
 - `@deprecated` in function contracts would be processed twice, causing a compilation error despite being correct.
@@ -77,6 +120,39 @@
 - Wasm32 builds crash on startup (unreachable!) due to atexit signature mismatch #3040
 - `@nodiscard`, `@maydiscard` and `@noreturn` weren't properly handled for function type declarations.
 - `$defined` with body expansion would not correctly check if parameters were the right type.
+- `mask_from_int` would miscompile on some platforms.
+- Overaligning structs while using `@packed` would cause incorrect lowering #3000
+- Splatting a literal into a typed vaarg, e.g. `test(...(int[2]){ 88, 99 }, a: 123)` could cause the compiler to crash.
+- `&some_global[0]` was incorrectly considered a global constant when `some_global` was a slice.
+- Taking the type of a macro identifier would give the wrong error.
+- Taking the type of a `$$builtin` function would crash the compiler.
+- Wrong error message when trying to take the address of a `$$builtin` function.
+- Accessing a (non-existing) property on a type-call would crash the compiler.
+- Crash instead of error when having two vaargs and the last one is an untyped vaarg.
+- Detect recursive declaration `int[type()] type`.
+- Compiler would not propagate error when `$$str_find` or `$$str_hash` arguments were invalid, causing a crash.
+- Error on wrong expression when the slice range start is out of range.
+- `void{}` would be looked up as generic in some cases and cause a crash.
+- Inferring generic parameters recursively would fail to construct a valid source location and crash.
+- Comparing an array of function pointers with any other type could crash rather than being an error.
+- Crashing on codegen if an internal fault in if-catch is guaranteed to bypass the conditional.
+- In `$foreach` in some cases the elements was an untyped variable which would cause a crash.
+- Creating a global slice would be runtime checked for null in some cases.
+- `@ensure` and `@require` could contain rethrows, which then would crash the compiler.
+- Crash when using `$defined($Type)` and `$Type` is a typeid.
+- Assigning to a subscripted const like `{1, 2}[n] = 33` wasn't marked as an error and resulted in a crash.
+- Codegen for the case when an assert always panics would cause a crash.
+- Lambda check might run against a missing type definition if the function type alias was invalid.
+- Missing check when doing `$foo++` would crash the compiler if the variable wasn't initialized.
+- Incorrect handling of attribute operator symbols could crash the compiler instead of producing an error.
+- Crash instead of error when the first method parameter is a vaarg.
+- Fixes to UnalignedRef.
+- Codegen would not pop debug location for a never-entered for loop, crashing LLVM lowering.
+- Double negating a vector would cause a crash in lowering.
+- Combining operator overload on a variadic method would cause a crash rather than emitting an error in some cases.
+- Lambdas as default arguments were tagged with the wrong module, leading to linking issues.
+- An initializer list with an optional field was incorrectly considered constant.
+- Fix in ringbuffer for the case of popping at position 0.
 
 ## 0.7.10 Change list
 

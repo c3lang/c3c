@@ -11,7 +11,7 @@ import std::math;
 struct ArenaAllocator (Allocator)
 {
 	char[] data;
-	usz used;
+	sz used;
 }
 
 <*
@@ -51,7 +51,7 @@ macro ArenaAllocator* wrap(char[] bytes)
 
  @return `The value to pass to 'reset' in order to reset to the current use.`
 *>
-fn usz ArenaAllocator.mark(&self) => self.used;
+fn sz ArenaAllocator.mark(&self) => self.used;
 
 <*
  Reset to a previous mark.
@@ -59,7 +59,7 @@ fn usz ArenaAllocator.mark(&self) => self.used;
  @param mark : `The previous mark.`
  @require mark <= self.used : "Invalid mark - out of range"
 *>
-fn void ArenaAllocator.reset(&self, usz mark) => self.used = mark;
+fn void ArenaAllocator.reset(&self, sz mark) => self.used = mark;
 
 <*
  Implements the Allocator interface method.
@@ -86,15 +86,15 @@ fn void ArenaAllocator.release(&self, void* ptr, bool) @dynamic
  @require size > 0
  @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 *>
-fn void*? ArenaAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
+fn void*? ArenaAllocator.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
 {
 	alignment = alignment_for_allocation(alignment);
-	usz total_len = self.data.len;
+	sz total_len = self.data.len;
 	if (size > total_len) return mem::INVALID_ALLOC_SIZE~;
 	void* start_mem = self.data.ptr;
 	void* unaligned_pointer_to_offset = start_mem + self.used + ArenaAllocatorHeader.sizeof;
 	void* mem = mem::aligned_pointer(unaligned_pointer_to_offset, alignment);
-	usz end = (usz)(mem - self.data.ptr) + size;
+	sz end = (sz)(mem - self.data.ptr) + size;
 	if (end > total_len) return mem::OUT_OF_MEMORY~;
 	self.used = end;
 	ArenaAllocatorHeader* header = mem - ArenaAllocatorHeader.sizeof;
@@ -112,14 +112,14 @@ fn void*? ArenaAllocator.acquire(&self, usz size, AllocInitType init_type, usz a
  @require size > 0
  @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 *>
-fn void*? ArenaAllocator.resize(&self, void *old_pointer, usz size, usz alignment) @dynamic
+fn void*? ArenaAllocator.resize(&self, void *old_pointer, sz size, sz alignment) @dynamic
 {
 	alignment = alignment_for_allocation(alignment);
 	assert(old_pointer >= self.data.ptr, "Pointer originates from a different allocator.");
-	usz total_len = self.data.len;
+	sz total_len = self.data.len;
 	if (size > total_len) return mem::INVALID_ALLOC_SIZE~;
 	ArenaAllocatorHeader* header = old_pointer - ArenaAllocatorHeader.sizeof;
-	usz old_size = header.size;
+	sz old_size = header.size;
 	// Do last allocation and alignment match?
 	if (&self.data[self.used] == old_pointer + old_size && mem::ptr_is_aligned(old_pointer, alignment))
 	{
@@ -129,7 +129,7 @@ fn void*? ArenaAllocator.resize(&self, void *old_pointer, usz size, usz alignmen
 		}
 		else
 		{
-			usz new_used = self.used + size - old_size;
+			sz new_used = self.used + size - old_size;
 			if (new_used > total_len) return mem::OUT_OF_MEMORY~;
 			self.used = new_used;
 		}
@@ -146,6 +146,6 @@ fn void*? ArenaAllocator.resize(&self, void *old_pointer, usz size, usz alignmen
 
 struct ArenaAllocatorHeader @local
 {
-	usz size;
+	sz size;
 	char[*] data;
 }

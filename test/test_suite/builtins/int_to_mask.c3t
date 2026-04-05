@@ -1,5 +1,5 @@
 // #target: macos-x64
-module test;
+module std::test;
 fn void test()
 {
 	bool[<8>] x = $$int_to_mask(0b1111000, 8);
@@ -9,13 +9,13 @@ fn void test()
 fn void test2()
 {
 	char x = $$mask_to_int((bool[<8>]){ false, false, false, false, true, true, true, false });
-	short x2 = $$mask_to_int((bool[<15>]){});
+	short x2 = (short)$$mask_to_int((bool[<15>]){});
 	uint128 y = $$mask_to_int((bool[<128>]){});
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
-define void @test.test() #0 {
+define weak void @std.test.test() #0 {
 entry:
   %x = alloca <8 x i8>, align 8
   %y = alloca <32 x i8>, align 32
@@ -24,7 +24,7 @@ entry:
   ret void
 }
 
-define void @test.test2() #0 {
+define weak void @std.test.test2() #0 {
 entry:
   %x = alloca i8, align 1
   %x2 = alloca i16, align 2

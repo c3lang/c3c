@@ -27,9 +27,9 @@ fn void encode()
         @pool()
         {
 
-            usz n = base64::encode_len(tc.in.len, base64::DEFAULT_PAD);
+            sz n = base64::encode_len(tc.in.len, base64::DEFAULT_PAD);
             char[64] buf;
-            char[] res = base64::encode_buffer(tc.in, buf[:n]);
+            char[] res = base64::encode_into(buf[:n], tc.in);
             assert(res == tc.out);
         };
     }
@@ -49,9 +49,9 @@ fn void encode_nopadding()
     };
     foreach (tc : tcases)
     {
-        usz n = base64::encode_len(tc.in.len, base64::NO_PAD);
+        sz n = base64::encode_len(tc.in.len, base64::NO_PAD);
         char[64] buf;
-        base64::encode_buffer(tc.in, buf[:n], padding: base64::NO_PAD);
+        base64::encode_into(buf[:n], tc.in, padding: base64::NO_PAD);
         assert(buf[:n] == tc.out);
     }
 }
@@ -71,9 +71,9 @@ fn void decode()
     };
     foreach (tc : tcases)
     {
-        usz n = base64::decode_len(tc.in.len, base64::DEFAULT_PAD)!!;
+        sz n = base64::decode_len(tc.in.len, base64::DEFAULT_PAD)!!;
         char[64] buf;
-        char[] res = base64::decode_buffer(tc.in, buf[:n])!!;
+        char[] res = base64::decode_into(buf[:n], tc.in)!!;
         assert(res == tc.out);
     }
 }
@@ -92,9 +92,9 @@ fn void decode_nopadding()
     };
     foreach (tc : tcases)
     {
-        usz n = base64::decode_len(tc.in.len, base64::NO_PAD)!!;
+        sz n = base64::decode_len(tc.in.len, base64::NO_PAD)!!;
         char[64] buf;
-        char[] res = base64::decode_buffer(tc.in, buf[:n], base64::NO_PAD)!!;
+        char[] res = base64::decode_into(buf[:n], tc.in, base64::NO_PAD)!!;
         assert(res == tc.out);
     }
 }
@@ -106,15 +106,15 @@ fn void urlencode() {
 
 	@pool()
 	{
-		usz n;
+		sz n;
 		char[] got;
 		char[64] buf;
 		foreach (t : tcases)
 		{
-			char[] res = base64::encode_buffer(t.in, buf[..], alphabet: &base64::URL);
+			char[] res = base64::encode_into(buf[..], t.in, alphabet: &base64::URL);
 			assert (res == t.out, "got: %s, want: %s", (String)res, (String)t.out);
 
-			res = base64::decode_buffer(t.out, buf[..], alphabet: &base64::URL)!!;
+			res = base64::decode_into(buf[..], t.out, alphabet: &base64::URL)!!;
 			assert (res == t.in, "got: %s, want: %s", (String)res, (String)t.in);
 
 		}

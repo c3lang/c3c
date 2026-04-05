@@ -59,9 +59,9 @@ fn long? native_ftell(CFile file) @inline
 	return index >= 0 ? index : file_seek_errno()~;
 }
 
-fn usz? native_fwrite(CFile file, char[] buffer) @inline
+fn sz? native_fwrite(CFile file, char[] buffer) @inline
 {
-	return libc::fwrite(buffer.ptr, 1, buffer.len, file);
+	return (sz)libc::fwrite(buffer.ptr, 1u, (usz)buffer.len, file);
 }
 
 fn void? native_fputc(CInt c, CFile stream) @inline
@@ -69,9 +69,9 @@ fn void? native_fputc(CInt c, CFile stream) @inline
 	if (libc::fputc(c, stream) == libc::EOF) return io::EOF~;
 }
 
-fn usz? native_fread(CFile file, char[] buffer) @inline
+fn sz? native_fread(CFile file, char[] buffer) @inline
 {
-	return libc::fread(buffer.ptr, 1, buffer.len, file);
+	return (sz)libc::fread(buffer.ptr, 1u, (usz)buffer.len, file);
 }
 
 fn void? native_fflush(CFile file) @inline @maydiscard

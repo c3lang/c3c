@@ -19,9 +19,6 @@ fn void main()
 
 /* #expect: test.ll
 
-
-; ModuleID = 'test'
-
 %ReflectedParam = type { %"char[]", i64 }
 
 @.str = private unnamed_addr constant [2 x i8] c"a\00", align 1
@@ -79,8 +76,8 @@ entry:
 
 loop.cond:                                        ; preds = %voiderr, %entry
   %0 = load i64, ptr %.anon, align 8
-  %gt = icmp ugt i64 2, %0
-  br i1 %gt, label %loop.body, label %loop.exit
+  %lt = icmp slt i64 %0, 2
+  br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %.anon, align 8
@@ -158,8 +155,8 @@ noerr_block15:                                    ; preds = %after_check13
 
 voiderr:                                          ; preds = %noerr_block15, %guard_block14, %guard_block8, %guard_block
   %16 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %16, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %16, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

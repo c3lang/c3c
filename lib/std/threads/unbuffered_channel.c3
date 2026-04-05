@@ -10,11 +10,11 @@ struct UnbufferedChannelImpl @private
 	bool closed;
 
 	Mutex send_mu;
-	usz send_waiting;
+	sz send_waiting;
 	ConditionVariable send_cond;
 
 	Mutex read_mu;
-	usz read_waiting;
+	sz read_waiting;
 	ConditionVariable read_cond;
 }
 
@@ -51,7 +51,7 @@ fn void? UnbufferedChannel.destroy(&self) @maydiscard // Remove optional in 0.8.
 	channel.read_cond.destroy();
 	alloc::free(channel.allocator, channel);
 
-	*self = null;
+	*self = {};
 }
 
 fn void? UnbufferedChannel.push(self, Type val)

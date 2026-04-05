@@ -1,5 +1,5 @@
 // #target: macos-x64
-module test;
+module std::test;
 macro foo()
 {
 	var c = "hello" +++ " world";
@@ -20,7 +20,7 @@ fn int main()
 	return 0;
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
 @.str = private unnamed_addr constant [12 x i8] c"hello world\00", align 1
 @.str.1 = private unnamed_addr constant [6 x i8] c"hello\00", align 1
@@ -34,7 +34,7 @@ fn int main()
 @.emptystr = internal constant [1 x i8] zeroinitializer, align 1
 @.str.8 = private unnamed_addr constant [4 x i8] c"bye\00", align 1
 
-define i32 @main() #0 {
+define weak i32 @main() #0 {
 entry:
   %c = alloca %"char[]", align 8
   %a = alloca [2 x %"char[]"], align 16

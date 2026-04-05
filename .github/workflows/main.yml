@@ -58,18 +58,20 @@ jobs:
         shell: bash
         run: ./scripts/tools/package_build.sh "./build/c3c.exe" "c3-windows-${{ matrix.build_type }}" "zip"
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: c3-windows-${{ matrix.build_type }}
           path: c3-windows-${{ matrix.build_type }}.zip
 
-  build-msys2-mingw:
+  build-msys2:
     runs-on: windows-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        build_type: [Debug]
+        include:
+          - { sys: MINGW64, prefix: /mingw64 }
+          - { sys: CLANG64, prefix: /clang64 }
     defaults:
       run:
         shell: msys2 {0}
@@ -77,53 +79,30 @@ jobs:
       - uses: actions/checkout@v6
       - uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
-          update: false
+          msystem: ${{matrix.sys}}
+          update: true
           cache: true
-          install: git binutils mingw-w64-x86_64-clang mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python mingw-w64-x86_64-llvm mingw-w64-x86_64-llvm-libs
-
-      - name: Install LLD
-        run: |
-          echo "Server = https://mirror.msys2.org/mingw/mingw64" > /etc/pacman.d/mirrorlist.mingw64
-          for i in 1 2; do \
-            pacman -Sy --noconfirm --needed \
-              mingw-w64-x86_64-llvm \
-              mingw-w64-x86_64-llvm-libs \
-              mingw-w64-x86_64-lld \
-              mingw-w64-x86_64-clang && break || sleep 5; \
-          done
-
+          pacboy: >-
+            cmake:p
+            ninja:p
+            llvm:p
+            lld:p
+            clang:p
+            toolchain:p
+            python:p
+            git:p
+            zlib:p
+            zstd:p
+            libxml2:p
+      # (MINGW64) Force LLD as the linker to resolve __imp_ symbol thunking issues from
+      # static LLVM archives (LNK4217), which the GNU linker (ld) cannot resolve automatically.
       - name: CMake Build
         run: |
-          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_LINKER=lld -DC3_LINK_DYNAMIC=OFF -DLLVM_DIR=/mingw64/lib/cmake/llvm -DC3_LLD_DIR=/mingw64/lib/
+          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_LINKER=lld -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DC3_LINK_DYNAMIC=OFF -DLLVM_DIR=${{matrix.prefix}}/lib/cmake/llvm -DC3_LLD_DIR=${{matrix.prefix}}/lib/
           cmake --build build
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
-  build-msys2-clang:
-    runs-on: windows-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        build_type: [Debug]
-    defaults:
-      run:
-        shell: msys2 {0}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: CLANG64
-          update: false
-          cache: true
-          install: git binutils mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-python
-      - name: CMake Build
-        run: |
-          cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          cmake --build build
-      - name: Run Unified Tests
-        run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
   build-linux:
     runs-on: ubuntu-latest
@@ -162,7 +141,7 @@ jobs:
       - name: Bundle & Upload (Linux)
         run: |
           bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-${{matrix.build_type}}" "tar"
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: c3-linux-${{matrix.build_type}}
           path: c3-linux-${{matrix.build_type}}.tar.gz
@@ -176,6 +155,11 @@ jobs:
       matrix:
         build_type: [Release, Debug]
     steps:
+      - name: Prepare Git
+        run: |
+          apk add --no-cache git
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - uses: actions/checkout@v6
 
       - name: Install dependencies
@@ -183,7 +167,7 @@ jobs:
           V=${{env.LLVM_RELEASE_VERSION_LINUX_MUSL}}
           apk update
           apk add \
-            build-base bash git cmake ninja python3 linux-headers \
+            build-base bash cmake ninja python3 linux-headers \
             zlib-dev zlib-static zstd-dev zstd-static curl-dev curl-static \
             openssl-libs-static brotli-static nghttp2-static libpsl-static \
             libidn2-static libunistring-static nghttp3-static c-ares-dev \
@@ -213,7 +197,7 @@ jobs:
       - name: Bundle
         run: bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-static-${{ matrix.build_type }}" "tar"
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: c3-linux-static-${{ matrix.build_type }}
           path: c3-linux-static-${{ matrix.build_type }}.tar.gz
@@ -227,6 +211,11 @@ jobs:
       matrix:
         build_type: [Release, Debug]
     steps:
+      - name: Prepare Git
+        run: |
+          apk add --no-cache git
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - uses: actions/checkout@v6
 
       - name: Get current date context
@@ -253,7 +242,7 @@ jobs:
           for i in 1 2 3; do apk update && break || sleep 2; done
           for i in 1 2 3; do \
             apk add \
-              build-base bash git cmake ninja python3 linux-headers \
+              build-base bash cmake ninja python3 linux-headers \
               tar zstd \
               zlib-dev curl-dev libffi-dev \
               llvm${V}-dev \
@@ -278,7 +267,7 @@ jobs:
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
       - name: Bundle & Upload (Alpine)
         run: bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-musl-${{ matrix.build_type }}" "tar"
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: c3-linux-musl-${{ matrix.build_type }}
           path: c3-linux-musl-${{ matrix.build_type }}.tar.gz
@@ -305,7 +294,7 @@ jobs:
 
       - name: Bundle & Upload (Mac)
         run: bash ./scripts/tools/package_build.sh "./build/c3c" "c3-macos-${{matrix.build_type}}" "zip"
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: c3-macos-${{matrix.build_type}}
           path: c3-macos-${{matrix.build_type}}.zip
@@ -315,7 +304,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build_type: [Debug]
+        build_type: [Release, Debug]
         version: ['7.8']
     steps:
       - uses: actions/checkout@v6
@@ -363,7 +352,7 @@ jobs:
             cp build/c3c "$GITHUB_WORKSPACE"/build/
             cp *.tar.gz "$GITHUB_WORKSPACE"/
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: c3-openbsd-${{matrix.build_type}}
           path: c3-openbsd-${{matrix.build_type}}.tar.gz
@@ -373,7 +362,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build_type: [Debug]
+        build_type: [Release, Debug]
         version: ['10.1']
     steps:
       - uses: actions/checkout@v6
@@ -431,7 +420,7 @@ jobs:
             cp build/c3c "$GITHUB_WORKSPACE"/build/
             cp *.tar.gz "$GITHUB_WORKSPACE"/
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: c3-netbsd-${{matrix.build_type}}
           path: c3-netbsd-${{matrix.build_type}}.tar.gz
@@ -596,72 +585,52 @@ jobs:
           ./scripts/tools/package_build.sh "./build/c3c" "c3-android-${{matrix.architecture}}-${{matrix.build_type}}" "tar"
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: c3-android-${{matrix.architecture}}-${{matrix.build_type}}
           path: c3-android-${{matrix.architecture}}-${{matrix.build_type}}.tar.gz
 
   release:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-slim
     needs: [build-msvc, build-linux, build-mac, build-linux-alpine, build-openbsd, build-netbsd, build-android, build-linux-musl-static]
     if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
 
       - name: Prepare Assets
         run: |
-          # --- Release Assets ---
-          mv c3-windows-Release/c3-windows-Release.zip c3-windows.zip
-          mv c3-macos-Release/c3-macos-Release.zip c3-macos.zip
+          for config in Release Debug; do
+            for platform in windows macos linux linux-musl linux-static openbsd netbsd android-aarch64 android-x86_64; do
+              # Windows and macOS produce zip, others tar.gz
+              if [ "$platform" = "windows" ] || [ "$platform" = "macos" ]; then
+                ext="zip"
+              else
+                ext="tar.gz"
+              fi
 
-          mv c3-linux-Release/c3-linux-Release.tar.gz c3-linux.tar.gz
-          mv c3-linux-musl-Release/c3-linux-musl-Release.tar.gz c3-linux-musl.tar.gz
-          mv c3-linux-static-Release/c3-linux-static-Release.tar.gz c3-linux-static.tar.gz
-          mv c3-openbsd-Release/c3-openbsd-Release.tar.gz c3-openbsd.tar.gz || true
-          mv c3-netbsd-Release/c3-netbsd-Release.tar.gz c3-netbsd.tar.gz || true
-          mv c3-android-aarch64-Release/c3-android-aarch64-Release.tar.gz c3-android-aarch64.tar.gz
-          mv c3-android-x86_64-Release/c3-android-x86_64-Release.tar.gz c3-android-x86_64.tar.gz
+              src="c3-${platform}-${config}/c3-${platform}-${config}.${ext}"
+              dst="c3-${platform}"
+              [ "$config" = "Debug" ] && dst="${dst}-debug"
+              dst="${dst}.${ext}"
 
-          # --- Debug Assets ---
-          mv c3-windows-Debug/c3-windows-Debug.zip c3-windows-debug.zip
-          mv c3-macos-Debug/c3-macos-Debug.zip c3-macos-debug.zip
+              mv "$src" "$dst" || true
+            done
+          done
 
-          mv c3-linux-Debug/c3-linux-Debug.tar.gz c3-linux-debug.tar.gz
-          mv c3-linux-musl-Debug/c3-linux-musl-Debug.tar.gz c3-linux-musl-debug.tar.gz
-          mv c3-linux-static-Debug/c3-linux-static-Debug.tar.gz c3-linux-static-debug.tar.gz
-          mv c3-openbsd-Debug/c3-openbsd-Debug.tar.gz c3-openbsd-debug.tar.gz || true
-          mv c3-netbsd-Debug/c3-netbsd-Debug.tar.gz c3-netbsd-debug.tar.gz || true
-          mv c3-android-aarch64-Debug/c3-android-aarch64-Debug.tar.gz c3-android-aarch64-debug.tar.gz
-          mv c3-android-x86_64-Debug/c3-android-x86_64-Debug.tar.gz c3-android-x86_64-debug.tar.gz
-
-      - run: gh release delete latest-prerelease-tag --cleanup-tag -y || true
+      # - run: gh release delete latest-prerelease-tag --cleanup-tag -y || true
       - run: echo "RELEASE_NAME=latest-prerelease-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
 
-      - uses: softprops/action-gh-release@v2
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: latest-prerelease-tag
+          tag: latest-prerelease-tag
           name: ${{ env.RELEASE_NAME }}
           prerelease: true
-          files: |
-            c3-windows.zip
-            c3-macos.zip
-            c3-linux.tar.gz
-            c3-linux-musl.tar.gz
-            c3-linux-static.tar.gz
-            c3-openbsd.tar.gz
-            c3-netbsd.tar.gz
-            c3-android-aarch64.tar.gz
-            c3-android-x86_64.tar.gz
-            # --- Debug Artifacts ---
-            c3-windows-debug.zip
-            c3-macos-debug.zip
-            c3-linux-debug.tar.gz
-            c3-linux-musl-debug.tar.gz
-            c3-linux-static-debug.tar.gz
-            c3-openbsd-debug.tar.gz
-            c3-netbsd-debug.tar.gz
-            c3-android-aarch64-debug.tar.gz
-            c3-android-x86_64-debug.tar.gz
+          allowUpdates: true
+          removeArtifacts: true
+          artifacts: "*.zip,*.tar.gz"

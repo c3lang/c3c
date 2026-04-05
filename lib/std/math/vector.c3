@@ -334,14 +334,3 @@ macro uint128 uint128[<*>].max(uint128[<*>] x) => $$reduce_max(x);
 macro uint128 uint128[<*>].min(uint128[<*>] x) => $$reduce_min(x);
 macro uint128 uint128[<*>].dot(uint128[<*>] x, uint128[<*>] y) => (x * y).sum();
 
-macro float[<*>] float[<*>].clamp_mag(self, float min, float max) @deprecated("Use clamp_length") => clamp_length{$typeof(self)}(self, min, max);
-macro double[<*>] double[<*>].clamp_mag(self, double min, double max) @deprecated("Use clamp_length")  => clamp_length{$typeof(self)}(self, min, max);
-macro float[<*>] float[<*>].towards(self, float[<*>] target, float max_distance) @deprecated("use move_towards") => towards{$typeof(self)}(self, target, max_distance);
-macro double[<*>] double[<*>].towards(self, double[<*>] target, double max_distance) @deprecated("use move_towards") => towards{$typeof(self)}(self, target, max_distance);
-fn float[<3>] float[<3>].barycenter(self, float[<3>] a, float[<3>] b, float[<3>] c) @deprecated("use barycentric") => barycentric3(self, a, b, c);
-fn double[<3>] double[<3>].barycenter(self, double[<3>] a, double[<3>] b, double[<3>] c) @deprecated("use barycentric")  => barycentric3(self, a, b, c);
-fn void ortho_normalize(float[<3>]* v1, float[<3>]* v2) @deprecated("use orthonormalizef") => ortho_normalize3(v1, v2);
-fn void ortho_normalized(double[<3>]* v1, double[<3>]* v2) @deprecated("use orthonormalize") => ortho_normalize3(v1, v2);
-macro double double[<*>].sq_magnitude(self) @deprecated("use length_sq") => self.dot(self);
-macro float float[<*>].sq_magnitude(self) @deprecated("use length_sq") => self.dot(self);
-

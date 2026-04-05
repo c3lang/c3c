@@ -188,7 +188,7 @@ fn Pem? _decode_single(Allocator allocator, String[]* lines_io) @local
 	// The Post-Encapsulation-Boundary is the same, but uses "END", and the extracted tag must match.
 	//   Since the input might contain more than one PEM unit, we need to search for the ending encapsulation boundary dynamically.
 	String post_eb;
-	usz endl;
+	sz endl;
 	for SEARCH_EB: (endl = 1; endl < lines.len; endl++)
 	{
 		if (lines[endl].len > POST_EB_PREFIX.len && lines[endl][0:EB_DELIMITER.len] == EB_DELIMITER)
@@ -211,7 +211,7 @@ fn Pem? _decode_single(Allocator allocator, String[]* lines_io) @local
 	{
 		if (!HEADER_KEY_SET.contains(lines[0][0])) return INVALID_HEADER~;   // not a multiline header? error out if the first char is not appropriate
 		String[] marker = lines;   // temporary marker
-		usz span = 1;   // how many lines this header spans
+		sz span = 1;   // how many lines this header spans
 
 		// Search for multi-line key-value pairs, indicated by a whitespace character beginning the current line.
 		for (lines = lines[1..]; lines[0].len > 0 && ascii::WHITESPACE_SET.contains(lines[0][0]); lines = lines[1..], span++);
@@ -273,7 +273,7 @@ fn String? encode_pem(Pem pem, Allocator allocator, bool use_crlf = false)
 			if (!key.len) return HEADER_KEY_REQUIRED~;
 			String value = pem.headers[key]!!;
 			if (!value.len) return HEADER_VALUE_REQUIRED~;
-			usz first_line_length = 64 - 2 - key.len;
+			sz first_line_length = 64 - 2 - key.len;
 			if (value.len <= first_line_length)
 			{
 				out.appendf("%s: %s%s", key, value, line_ending);
@@ -326,7 +326,7 @@ fn String? encode(Allocator allocator, char[] data, String tag, PemHeader... hea
 *>
 fn String? encode_many(Allocator allocator, char[][] bodies, String[] tags, PemHeader[]... pem_headers, bool use_crlf = false)
 {
-	usz entries = max(bodies.len, tags.len, pem_headers.len);
+	sz entries = max(bodies.len, tags.len, pem_headers.len);
 	switch
 	{
 		case bodies.len < entries: return BODY_REQUIRED~;

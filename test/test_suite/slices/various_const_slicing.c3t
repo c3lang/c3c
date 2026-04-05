@@ -210,7 +210,7 @@ voiderr:                                          ; preds = %noerr_block15, %gua
   %23 = insertvalue %any undef, ptr %20, 0
   %24 = insertvalue %any %23, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %25 = insertvalue %any undef, ptr %x21, 0
-  %26 = insertvalue %any %25, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  %26 = insertvalue %any %25, i64 ptrtoint (ptr @"$ct.long" to i64), 1
   store %any %26, ptr %varargslots23, align 16
   %27 = insertvalue %"any[]" undef, ptr %varargslots23, 0
   %"$$temp24" = insertvalue %"any[]" %27, i64 1, 1

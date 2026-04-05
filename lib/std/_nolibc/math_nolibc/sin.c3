@@ -19,7 +19,7 @@ module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 fn float _sinf(float x) @weak @cname("sinf") @nostrip
 {
 	uint ix = x.word();
-	int sign = ix >> 31;
+	int sign = (int)(ix >> 31);
 	ix &= 0x7fffffff;
 	switch
 	{

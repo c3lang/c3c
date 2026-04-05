@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test_generic<Type, Func>;
 
-fn void sort(Type list, isz, isz, Func cmp)
+fn void sort(Type list, sz, sz, Func cmp)
 {}
 
 module sort_test;
@@ -12,8 +12,8 @@ macro quicksort(list, cmp = null)
 {
     var $Type = $typeof(list);
     var $CmpType = $typeof(cmp);
-    usz len = lengthof(list);
-    test_generic::sort{$Type, $CmpType}(list, 0, (isz)len - 1, cmp);
+    sz len = lengthof(list);
+    test_generic::sort{$Type, $CmpType}(list, 0, len - 1, cmp);
 }
 
 fn void quicksort_with_value() @nostrip
@@ -101,7 +101,7 @@ entry:
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %11 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %11, %10
+  %lt = icmp slt i64 %11, %10
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
@@ -120,8 +120,8 @@ loop.body:                                        ; preds = %loop.cond
   %hi = load i64, ptr %ptradd10, align 8
   call void @"test_generic.sort$sa$int$fn$int$int$$int$$"(ptr %lo, i64 %hi, i64 0, i64 %sub, ptr @sort_test.cmp_int_value)
   %16 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %16, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %16, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
@@ -171,7 +171,7 @@ entry:
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %11 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %11, %10
+  %lt = icmp slt i64 %11, %10
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
@@ -190,8 +190,8 @@ loop.body:                                        ; preds = %loop.cond
   %hi = load i64, ptr %ptradd10, align 8
   call void @"test_generic.sort$sa$int$fn$int$int$$int$$"(ptr %lo, i64 %hi, i64 0, i64 %sub, ptr @sort_test.cmp_int_value2)
   %16 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %16, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %16, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

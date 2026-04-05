@@ -26,7 +26,7 @@ fn void test_new_aligned_compiles() @test
 
 fn void test_realloc_array_to_zero() @test
 {
-	usz* x = mem::talloc_array(usz, 24);
-	x = alloc::realloc_array(tmem, x, usz, 0);
+	sz* x = mem::talloc_array(sz, 24);
+	x = alloc::realloc_array(tmem, x, sz, 0);
 	test::@check(x == null, "Zero-sized reallocation's pointer is not null: %p", x);
 }

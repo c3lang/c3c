@@ -61,7 +61,19 @@ fn void test10()
     int* x = null;
     x[-10..-3];
     int[] w = x[0..]; // #error: Omitting end index is not allowed for pointers
+}
+
+fn void test102()
+{
+    int* x = null;
+    x[-10..-3];
     int[] z = x[^2..]; // #error: Indexing from the end is not allowed for pointers
+}
+
+fn void test103()
+{
+    int* x = null;
+    x[-10..-3];
     int[] y = x[..^2]; // #error: Indexing from the end is not allowed for pointers
 }
 
@@ -75,8 +87,24 @@ fn void test105()
 {
 	Abc a;
     int[] w = a.z[0..]; // #error: Omitting end index is not allowed for pointers
+}
+
+fn void test1052()
+{
+	Abc a;
     int[] z = a.z[^2..]; // #error: Indexing from the end is not allowed for pointers
+}
+
+
+fn void test1053()
+{
+	Abc a;
     int[] y = a.z[..^2]; // #error: Indexing from the end is not allowed for pointers
+}
+
+fn void test1054()
+{
+	Abc a;
     a.z[-10..-3]; // #error: An index may only be negative for pointers
 }
 

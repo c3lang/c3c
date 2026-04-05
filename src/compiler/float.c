@@ -102,42 +102,10 @@ static char *err_float_out_of_range = "The float value is out of range.";
 static char *err_float_format_invalid = "The float format is invalid.";
 static char *err_hex_float_format_invalid = "Hex floating points must end with 'p' or 'P' and a valid exponent, e.g. 0x1.0p10 or 0x1.0P10.";
 
-TypeKind float_suffix(char c, const char **index_ref, char** error_ref)
+TypeKind float_suffix(char c)
 {
-	if (c == 'b' && (*index_ref)[0] == 'f' && (*index_ref)[1] == '1' && (*index_ref)[2] == '6')
-	{
-		(*index_ref) += 4;
-		return TYPE_BF16;
-	}
 	if (c == 'd') return TYPE_F64;
-	if (c == 'f')
-	{
-		int i = 0;
-		while ((c = *((*index_ref)++)) && (c >= '0' && c <= '9'))
-		{
-			if (i > 100)
-			{
-				if (error_ref) *error_ref = err_invalid_float_width;
-				return TYPE_POISONED;
-			}
-			i = i * 10 + c - '0';
-		}
-		switch (i)
-		{
-			case 0:
-			case 32:
-				return TYPE_F32;
-			case 16:
-				return TYPE_F16;
-			case 64:
-				return TYPE_F64;
-			case 128:
-				return TYPE_F128;
-			default:
-				if (error_ref) *error_ref = err_invalid_float_width;
-				return TYPE_POISONED;
-		}
-	}
+	if (c == 'f') return TYPE_F32;
 	return TYPE_F64;
 }
 /**
@@ -180,7 +148,7 @@ Float float_from_string(const char *string, char **error)
 			scratch_buffer_append_char(c);
 		}
 	}
-	TypeKind kind = float_suffix(c, &index, error);
+	TypeKind kind = float_suffix(c);
 	if (kind == TYPE_POISONED) return (Float){ .type = TYPE_POISONED };
 
 	const char *str = scratch_buffer_to_string();
@@ -244,7 +212,7 @@ Float float_from_hex(const char *string, char **error)
 	{
 		scratch_buffer_append_char(c);
 	}
-	TypeKind kind = float_suffix(c, &index, error);
+	TypeKind kind = float_suffix(c);
 	if (kind == TYPE_POISONED) return (Float){ .type = TYPE_POISONED };
 
 	const char *str = scratch_buffer_to_string();

@@ -1,0 +1,22 @@
+// #target: macos-x64
+module test;
+
+fn void test(int... , int a)
+{ }
+fn int main()
+{
+	test(...(int[2]){ 88, 99 }, a: 123);
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %literal = alloca [2 x i32], align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 8, i1 false)
+  %0 = insertvalue %"int[]" undef, ptr %literal, 0
+  %1 = insertvalue %"int[]" %0, i64 2, 1
+  call void @test.test(ptr %literal, i64 2, i32 123)
+  ret i32 0
+}

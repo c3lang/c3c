@@ -8,7 +8,7 @@
 module std::hash::wyhash2;
 
 
-fn ulong wyr3(char* in, usz len) @inline
+fn ulong wyr3(char* in, sz len) @inline
 	=> ((ulong)in[0] << 16) | ((ulong)in[len >> 1] << 8) | (ulong)in[len - 1];
 
 
@@ -51,6 +51,6 @@ fn ulong hash(char[] input, ulong seed = 0)
 	uint128 r = ((uint128)a ^ 0xe703_7ed1_a0b4_28db) * ((uint128)b ^ seed);
 	ulong pre_res = (ulong)r ^ (ulong)(r >> 64);
 
-	r = ((uint128)0xe703_7ed1_a0b4_28db ^ input.len) * (uint128)pre_res;
+	r = (0xe703_7ed1_a0b4_28db ^ (uint128)input.len) * (uint128)pre_res;
 	return (ulong)r ^ (ulong)(r >> 64);
 }

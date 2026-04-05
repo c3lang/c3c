@@ -77,7 +77,7 @@ const ulong[64] VECTORS_24 = {
 
 fn void siphash24_vectors()
 {
-	for (usz i = 0; i < VECTORS_24.len; ++i)
+	for (sz i = 0; i < VECTORS_24.len; ++i)
 	{
 		ulong hashval = siphash24::hash(plaintext[:i], DEFAULT_TEST_KEY);
 
@@ -107,7 +107,7 @@ const ulong[64] VECTORS_48 = {
 
 fn void siphash48_vectors()
 {
-	for (usz i = 0; i < VECTORS_48.len; ++i)
+	for (sz i = 0; i < VECTORS_48.len; ++i)
 	{
 		ulong hashval = siphash48::hash(plaintext[:i], DEFAULT_TEST_KEY);
 
@@ -139,7 +139,7 @@ const uint128[64] VECTORS_24_128 = {
 
 fn void siphash24_128_vectors()
 {
-	for (usz i = 0; i < VECTORS_24_128.len; ++i)
+	for (sz i = 0; i < VECTORS_24_128.len; ++i)
 	{
 		uint128 hashval = siphash24_128::hash(plaintext[:i], DEFAULT_TEST_KEY);
 
@@ -169,7 +169,7 @@ const uint128[64] VECTORS_48_128 = {
 
 fn void siphash48_128_vectors()
 {
-	for (usz i = 0; i < VECTORS_48_128.len; ++i)
+	for (sz i = 0; i < VECTORS_48_128.len; ++i)
 	{
 		uint128 hashval = siphash48_128::hash(plaintext[:i], DEFAULT_TEST_KEY);
 

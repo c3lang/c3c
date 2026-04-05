@@ -15,10 +15,10 @@ struct Planet
 
 fn void advance(Planet[] bodies) @noinline
 {
-	usz nbodies = bodies.len;
+	sz nbodies = bodies.len;
 	foreach (i, Planet* &b : bodies)
 	{
-		for (usz j = i + 1; j < nbodies; j++)
+		for (sz j = i + 1; j < nbodies; j++)
 		{
 			Planet* b2 = &bodies[j];
 			double[<3>] dp = b.p - b2.p;
@@ -37,12 +37,12 @@ fn void advance(Planet[] bodies) @noinline
 fn double energy(Planet[] bodies)
 {
 	double e;
-	usz nbodies = bodies.len;
+	sz nbodies = bodies.len;
 
 	foreach (i, Planet* &b : bodies)
 	{
 		e += 0.5 * b.mass * b.v.length_sq();
-		for (usz j = i + 1; j < nbodies; j++)
+		for (sz j = i + 1; j < nbodies; j++)
 		{
 			Planet* b2 = &bodies[j];
 			double[<3>] dp = b.p - b2.p;

@@ -4,12 +4,12 @@ import std::collections::map;
 import std::sort;
 import std::io;
 
-alias TestLinkedHashMap = LinkedHashMap{String, usz};
+alias TestLinkedHashMap = LinkedHashMap{String, sz};
 
 struct MapTest
 {
 	String key;
-	usz value;
+	sz value;
 }
 alias ListMap = List{MapTest};
 
@@ -36,7 +36,7 @@ fn void linked_map_basic()
 	assert(m.len() == tcases.len);
 	foreach (tc : tcases)
 	{
-		usz v = m.get(tc.key)!!;
+		sz v = m.get(tc.key)!!;
 		assert(tc.value == v);
 	}
 }
@@ -52,8 +52,8 @@ fn void linked_map_insertion_order()
 		m.set(key, i);
 	}
 	
-	usz index = 0;
-	m.@each(; String key, usz value)
+	sz index = 0;
+	m.@each(; String key, sz value)
 	{
 		assert(key == keys[index]);
 		assert(value == index);
@@ -65,7 +65,7 @@ fn void linked_map_insertion_order()
 	
 	String[] new_order = { "first", "third", "fourth", "second" };
 	index = 0;
-	m.@each(; String key, usz value)
+	m.@each(; String key, sz value)
 	{
 		assert(key == new_order[index]);
 		index++;
@@ -84,8 +84,8 @@ fn void linked_map_init_with_values()
 	
 	// Verify order
 	String[] expected_order = { "a", "b", "c" };
-	usz index = 0;
-	m.@each(; String key, usz value)
+	sz index = 0;
+	m.@each(; String key, sz value)
 	{
 		assert(key == expected_order[index]);
 		index++;
@@ -107,8 +107,8 @@ fn void linked_map_remove()
 	m.remove("b");
 	
 	String[] expected_order = { "a", "c" };
-	usz index = 0;
-	m.@each(; String key, usz value)
+	sz index = 0;
+	m.@each(; String key, sz value)
 	{
 		assert(key == expected_order[index]);
 		index++;
@@ -130,8 +130,8 @@ fn void linked_map_copy()
 	assert(hash_map_copy.len() == hash_map.len());
 	
 	String[] expected_order = { "aa", "b", "bb" };
-	usz index = 0;
-	hash_map_copy.@each(; String key, usz value)
+	sz index = 0;
+	hash_map_copy.@each(; String key, sz value)
 	{
 		assert(key == expected_order[index]);
 		index++;
@@ -144,12 +144,12 @@ fn void linked_map_iterators()
 	TestLinkedHashMap m;
 	m.tinit_with_key_values("a", 1, "b", 2, "c", 3);
 	
-	usz count = 0;
-	LinkedHashMapIterator{String, ulong} iter = m.iter();
+	sz count = 0;
+	LinkedHashMapIterator{String, long} iter = m.iter();
 	while (iter.next())
 	{
 		count++;
-		LinkedEntry {String, ulong} * current = iter.get()!!;
+		LinkedEntry {String, long} * current = iter.get()!!;
 		assert(current.key.len > 0);
 		assert(current.value > 0);
 	}
@@ -157,7 +157,7 @@ fn void linked_map_iterators()
 	
 	count = 0;
 
-	LinkedHashMapKeyIterator{String, ulong} key_iter = m.key_iter(); 
+	LinkedHashMapKeyIterator{String, long} key_iter = m.key_iter();
 	while (key_iter.next())
 	{
 		count++;
@@ -166,8 +166,8 @@ fn void linked_map_iterators()
 	assert(count == 3);
 	
 	count = 0;
-	usz sum = 0;
-	LinkedHashMapValueIterator{String, ulong} value_iter = m.value_iter(); 
+	sz sum = 0;
+	LinkedHashMapValueIterator{String, long} value_iter = m.value_iter();
 	
 	while (value_iter.next())
 	{

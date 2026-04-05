@@ -4,12 +4,12 @@ import std::collections::map;
 import std::sort;
 import std::io;
 
-alias TestHashMap = HashMap{String, usz};
+alias TestHashMap = HashMap{String, sz};
 
 struct MapTest
 {
     String key;
-    usz value;
+    sz value;
 }
 alias ListMap = List{MapTest};
 
@@ -36,13 +36,13 @@ fn void map()
     assert(m.len() == tcases.len);
     foreach (tc : tcases)
     {
-        usz v = m.get(tc.key)!!;
+        sz v = m.get(tc.key)!!;
         assert(tc.value == v);
     }
 
     ListMap list;
     list.tinit();
-    m.@each(;String key, usz value)
+    m.@each(;String key, sz value)
     {
         list.push({key, value});
     };

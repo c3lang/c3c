@@ -12,7 +12,7 @@ fn void main()
 	$assert(-0o1 < 0);
 	$assert(-0b1 < 0);
 	$assert(@typeid(-2147483648) == int.typeid);
-	$assert(@typeid(0x1) == uint.typeid);
+	$assert(@typeid(0x1) == int.typeid);
 	$assert(@typeid(0x8000_0000_0000_0000) == ulong.typeid);
 	$assert(@typeid(-0x7FFF_0000_0000_0000) == long.typeid);
 	int128 x = (int128)-(0x8000_0000_0000_0000_0000_0000_0000_0000 - 1u);

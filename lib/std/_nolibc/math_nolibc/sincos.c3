@@ -81,7 +81,7 @@ fn void sincosf(float x, float *sin, float *cos) @cname("__sincosf") @weak @nost
 		default:
 			// general argument reduction needed
 			double y @noinit;
-			uint n = __rem_pio2f(x, &y);
+			int n = __rem_pio2f(x, &y);
 			float s = __sindf(y);
 			float c = __cosdf(y);
 			switch (n & 3)

@@ -37,7 +37,7 @@ fn double __tan(double x, double y, int odd) @cname("__tan") @weak @nostrip
 	int sign @noinit;
 	if (big)
 	{
-		sign = hx >> 31;
+		sign = (int)(hx >> 31);
 		if (sign)
 		{
 			x = -x;

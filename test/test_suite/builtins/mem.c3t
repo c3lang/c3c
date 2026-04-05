@@ -1,5 +1,5 @@
 // #target: macos-x64
-module test;
+module std::test;
 
 fn void main()
 {
@@ -14,7 +14,7 @@ fn void main()
     $$memset_inline(&dst, (char)0, ushort.sizeof, false, $alignof(dst));
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
   call void @llvm.memcpy.p0.p0.i64(ptr align 2 %dst, ptr align 2 %src, i64 2, i1 false)
   call void @llvm.memmove.p0.p0.i64(ptr align 2 %dst, ptr align 2 %src, i64 2, i1 false)

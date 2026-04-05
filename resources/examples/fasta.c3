@@ -7,7 +7,7 @@ const IA = 3877;
 const IC = 29573;
 const SEED = 42;
 
-uint seed = SEED;
+int seed = SEED;
 
 fn float fasta_rand(float max_val)
 {
@@ -56,7 +56,7 @@ const LINELEN = 60;
 // slowest character-at-a-time output
 fn void repeat_fasta(String seq, int n)
 {
-	usz len = seq.len;
+	sz len = seq.len;
 	int i @noinit;
 	for (i = 0; i < n; i++)
 	{

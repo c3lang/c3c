@@ -1,6 +1,6 @@
 module test;
 
-typedef Foo = int;
+typedef Foo @constinit = int;
 
 struct Struct
 {
@@ -8,8 +8,8 @@ struct Struct
     int y;
 }
 
-typedef Struct2 = Struct;
-typedef StructArr = Struct2[3];
+typedef Struct2 @constinit = Struct;
+typedef StructArr @constinit  = Struct2[3];
 
 fn void test(int x)
 {

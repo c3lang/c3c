@@ -10,5 +10,5 @@ struct MyArray
 	int[] val;
 }
 
-fn int MyArray.get(self, usz idx) @operator([]) => self.val[idx];
-fn usz MyArray.len(self) @operator(len) => self.val.len;
+fn int MyArray.get(self, sz idx) @operator([]) => self.val[idx];
+fn sz MyArray.len(self) @operator(len) => self.val.len;
