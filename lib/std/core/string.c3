@@ -1,5 +1,5 @@
 module std::core::string;
-import std::io, std::ascii, std::math;
+import std::io, std::math;
 
 typedef String @constinit @if(!$defined(String)) = inline char[];
 <*
@@ -315,6 +315,17 @@ fn bool String.starts_with(self, String prefix)
 	if (prefix.len > self.len) return false;
 	if (!prefix.len) return true;
 	return self[:prefix.len] == prefix;
+}
+
+fn int String.compare_to_ignore_case(self, String s)
+{
+	sz len = min(s.len, self.len);
+	for (sz i = 0; i < len; i++)
+	{
+		sz sign = math::sign(self[i].to_upper() - s[i].to_upper());
+		if (sign != 0) return (int)sign;
+	}
+	return (int)math::sign(self.len - s.len);
 }
 
 fn int String.compare_to(self, String s)
