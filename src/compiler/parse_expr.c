@@ -152,6 +152,16 @@ static Expr *parse_precedence(ParseContext *c, Precedence precedence)
 	// or it is a token that can't be in a prefix position.
 	if (!prefix_rule)
 	{
+		if (c->tok == TOKEN_TRY || c->tok == TOKEN_CATCH)
+		{
+			PRINT_ERROR_HERE("'%s' can only be used in if/while conditionals or defer, it cannot be used standalone.", token_type_to_string(c->tok));
+			return poisoned_expr;
+		}
+		if (token_is_keyword(c->tok))
+		{
+			PRINT_ERROR_HERE("'%s' is a keyword and not an expression, it can't be used here.", token_type_to_string(c->tok));
+			return poisoned_expr;
+		}
 		PRINT_ERROR_HERE("An expression was expected.");
 		return poisoned_expr;
 	}

@@ -1,5 +1,4 @@
 import std::io;
-import std::ascii;
 
 fn void main()
 {
