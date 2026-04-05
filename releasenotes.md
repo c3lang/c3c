@@ -32,6 +32,7 @@
 - Add `List.remove_unordered_at`.
 - PanicFn now takes an `int` for row.
 - Add `std::collections::Deque`.
+- Add `compare_to` to `String`. #3096
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
