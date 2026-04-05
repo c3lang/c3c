@@ -776,6 +776,15 @@ void init_build_target(BuildTarget *target, BuildOptions *options)
 	// Parse it
 	const char *filename;
 	Project *project = project_load(&filename);
+	
+	if (options->is_project)
+	{
+		FOREACH(const char *, dir, options->unchecked_directories)
+		{
+			(void)check_dir(dir);
+		}
+	}
+
 	*target = *project_select_target(filename, project, options->target_select);
 
 	update_build_target_from_options(target, options);

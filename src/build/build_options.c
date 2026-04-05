@@ -1781,6 +1781,35 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		}
 		FAIL_WITH_ERR("Found the unexpected argument \"%s\".", current_arg);
 	}
+	switch (build_options.command)
+	{
+		case COMMAND_BUILD:
+		case COMMAND_RUN:
+		case COMMAND_CLEAN_RUN:
+		case COMMAND_CLEAN:
+		case COMMAND_DIST:
+		case COMMAND_BENCH:
+		case COMMAND_BENCHMARK:
+		case COMMAND_TEST:
+			build_options.is_project = true;
+			break;
+		case COMMAND_MISSING:
+		case COMMAND_COMPILE:
+		case COMMAND_COMPILE_ONLY:
+		case COMMAND_COMPILE_BENCHMARK:
+		case COMMAND_COMPILE_TEST:
+		case COMMAND_INIT:
+		case COMMAND_INIT_LIB:
+		case COMMAND_COMPILE_RUN:
+		case COMMAND_STATIC_LIB:
+		case COMMAND_DYNAMIC_LIB:
+		case COMMAND_VENDOR_FETCH:
+		case COMMAND_UNIT_TEST:
+		case COMMAND_PRINT_SYNTAX:
+		case COMMAND_PROJECT:
+		case COMMAND_FETCH_SDK:
+			break;
+	}
 	if (build_options.command == COMMAND_MISSING)
 	{
 		FAIL_WITH_ERR("Missing a compiler command such as 'compile' or 'build'.");

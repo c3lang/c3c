@@ -301,6 +301,7 @@ typedef struct BuildOptions_
 	uint32_t max_stack_object_size;
 	const char *cpu_flags;
 	uint32_t max_macro_iterations;
+	bool is_project;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;
