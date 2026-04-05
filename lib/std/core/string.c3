@@ -129,7 +129,7 @@ fn String bformat(char[] buffer, String fmt, args...) @format(1)
 	};
 	char[] buffer_copy = buffer;
 	f.init(format_fn, &buffer_copy);
-	usz len = f.vprintf(fmt, args)!!;
+	sz len = f.vprintf(fmt, args)!!;
 	return (String)buffer[:len];
 }
 
@@ -173,20 +173,20 @@ fn String join(Allocator allocator, String[] s, String joiner)
 	{
 		return (String)alloc::new_array(allocator, char, 2)[:0];
 	}
-	usz joiner_len = joiner.len;
-	usz total_size = joiner_len * (s.len - 1) + 1;
+	sz joiner_len = joiner.len;
+	sz total_size = joiner_len * (s.len - 1) + 1;
 	foreach (String* &str : s)
 	{
 		total_size += str.len;
 	}
 	char[] data = alloc::alloc_array(allocator, char, total_size);
-	usz offset = s[0].len;
+	sz offset = s[0].len;
 	data[:offset] = s[0][:offset];
 	foreach (String* &str : s[1..])
 	{
 		data[offset:joiner_len] = joiner[:joiner_len];
 		offset += joiner_len;
-		usz len = str.len;
+		sz len = str.len;
 		data[offset:len] = str.[:len];
 		offset += len;
 	};
@@ -266,8 +266,8 @@ fn String String.trim(self, String to_trim = " \n\t\r\f\v")
 *>
 fn String String.trim_charset(self, AsciiCharset to_trim = ascii::WHITESPACE_SET)
 {
-	usz start = 0;
-	usz len = self.len;
+	sz start = 0;
+	sz len = self.len;
 	while (start < len && to_trim.contains(self[start])) start++;
 	while (len > start && to_trim.contains(self[len - 1])) len--;
     return self[start..len - 1];
@@ -283,8 +283,8 @@ fn String String.trim_charset(self, AsciiCharset to_trim = ascii::WHITESPACE_SET
 *>
 fn String String.trim_left(self, String to_trim = " \n\t\r\f\v")
 {
-	usz start = 0;
-	usz len = self.len;
+	sz start = 0;
+	sz len = self.len;
 	while (start < len && char_in_set(self[start], to_trim)) start++;
 	if (start == len) return self[:0];
 	return self[start..];
@@ -300,7 +300,7 @@ fn String String.trim_left(self, String to_trim = " \n\t\r\f\v")
 *>
 fn String String.trim_right(self, String to_trim = " \n\t\r\f\v")
 {
-	usz len = self.len;
+	sz len = self.len;
 	while (len > 0 && char_in_set(self[len - 1], to_trim)) len--;
 	return self[:len];
 }
@@ -376,15 +376,15 @@ fn String String.strip_end(self, String suffix)
  @require delimiter.len > 0 : "The delimiter must be at least 1 character long"
  @ensure return.len > 0 || skip_empty
 *>
-fn String[] String.split(self, Allocator allocator, String delimiter, usz max = 0, bool skip_empty = false)
+fn String[] String.split(self, Allocator allocator, String delimiter, sz max = 0, bool skip_empty = false)
 {
-	usz capacity = 16;
-	usz i = 0;
+	sz capacity = 16;
+	sz i = 0;
 	String* holder = alloc::alloc_array(allocator, String, capacity);
 	bool no_more = false;
 	while (!no_more)
 	{
-		usz? index = i == max - 1 ? NOT_FOUND~ : self.index_of(delimiter);
+		sz? index = i == max - 1 ? NOT_FOUND~ : self.index_of(delimiter);
 		String res @noinit;
 		if (try index)
 		{
@@ -421,7 +421,7 @@ fn String[] String.split(self, Allocator allocator, String delimiter, usz max = 
  @param max : "Max number of elements, 0 means no limit, defaults to 0"
  @param skip_empty : "True to skip empty elements"
 *>
-fn String[] String.tsplit(s, String delimiter, usz max = 0, bool skip_empty = false) => s.split(tmem, delimiter, max, skip_empty) @inline;
+fn String[] String.tsplit(s, String delimiter, sz max = 0, bool skip_empty = false) => s.split(tmem, delimiter, max, skip_empty) @inline;
 
 faultdef BUFFER_EXCEEDED;
 
@@ -436,14 +436,14 @@ faultdef BUFFER_EXCEEDED;
  @ensure return.len > 0 || skip_empty
  @return? BUFFER_EXCEEDED : `If there are more elements than would fit the buffer`
 *>
-fn String[]? String.split_to_buffer(s, String delimiter, String[] buffer, usz max = 0, bool skip_empty = false)
+fn String[]? String.split_to_buffer(s, String delimiter, String[] buffer, sz max = 0, bool skip_empty = false)
 {
-	usz max_capacity = buffer.len;
-	usz i = 0;
+	sz max_capacity = buffer.len;
+	sz i = 0;
 	bool no_more = false;
 	while (!no_more)
 	{
-		usz? index = i == max - 1 ? NOT_FOUND~ : s.index_of(delimiter);
+		sz? index = i == max - 1 ? NOT_FOUND~ : s.index_of(delimiter);
 		String res @noinit;
 		if (try index)
 		{
@@ -504,10 +504,10 @@ fn bool String.contains_char(s, char character)
  @pure
  @return "The number of times matched"
 *>
-fn usz String.count(self, String substr)
+fn sz String.count(self, String substr)
 {
-	usz count = 0;
-	usz needed = substr.len;
+	sz count = 0;
+	sz needed = substr.len;
 	if (needed == 0) return 0;
     char first = substr[0];
     while OUTER: (self.len >= needed)
@@ -536,7 +536,7 @@ fn usz String.count(self, String substr)
  @return "the index of the character"
  @return? NOT_FOUND : "if the character cannot be found"
 *>
-fn usz? String.index_of_char(self, char character)
+fn sz? String.index_of_char(self, char character)
 {
 	foreach (i, c : self)
 	{
@@ -555,7 +555,7 @@ fn usz? String.index_of_char(self, char character)
  @return "the index of the character"
  @return? NOT_FOUND : "if the character cannot be found"
 *>
-fn usz? String.index_of_chars(String self, char[] characters)
+fn sz? String.index_of_chars(String self, char[] characters)
 {
     foreach (i, c : self)
     {
@@ -579,11 +579,11 @@ fn usz? String.index_of_chars(String self, char[] characters)
  @return "the index of the character"
  @return? NOT_FOUND : "if the character cannot be found starting from the start_index"
 *>
-fn usz? String.index_of_char_from(self, char character, usz start_index)
+fn sz? String.index_of_char_from(self, char character, sz start_index)
 {
-	usz len = self.len;
+	sz len = self.len;
 	if (len <= start_index) return NOT_FOUND~;
-	for (usz i = start_index; i < len; i++)
+	for (sz i = start_index; i < len; i++)
 	{
 		if (self[i] == character) return i;
 	}
@@ -600,7 +600,7 @@ fn usz? String.index_of_char_from(self, char character, usz start_index)
  @return "the index of the character"
  @return? NOT_FOUND : "if the character cannot be found"
 *>
-fn usz? String.rindex_of_char(self, char character)
+fn sz? String.rindex_of_char(self, char character)
 {
 	foreach_r (i, c : self)
 	{
@@ -620,9 +620,9 @@ fn usz? String.rindex_of_char(self, char character)
  @return "the index of the substring"
  @return? NOT_FOUND : "if the substring cannot be found"
 *>
-fn usz? String.index_of(self, String substr)
+fn sz? String.index_of(self, String substr)
 {
-	usz needed = substr.len;
+	sz needed = substr.len;
 	if (needed > 0 && self.len >= needed)
 	{
 		char first = substr[0];
@@ -645,9 +645,9 @@ fn usz? String.index_of(self, String substr)
  @return "the index of the substring"
  @return? NOT_FOUND : "if the substring cannot be found"
 *>
-fn usz? String.rindex_of(self, String substr)
+fn sz? String.rindex_of(self, String substr)
 {
-	usz needed = substr.len;
+	sz needed = substr.len;
 	if (needed > 0 && self.len >= needed)
 	{
 		char first = substr[0];
@@ -678,9 +678,9 @@ fn String ZString.str_view(self)
 	return (String)(self[:self.len()]);
 }
 
-fn usz ZString.char_len(str)
+fn sz ZString.char_len(str)
 {
-	usz len = 0;
+	sz len = 0;
 	char* ptr = (char*)str;
 	while (char c = ptr++[0])
 	{
@@ -689,23 +689,23 @@ fn usz ZString.char_len(str)
 	return len;
 }
 
-fn usz ZString.len(self)
+fn sz ZString.len(self)
 {
-	usz len;
+	sz len;
 	for (char* ptr = (char*)self; *ptr; ptr++) len++;
 	return len;
 }
 
-fn usz WString.len(self)
+fn sz WString.len(self)
 {
-	usz len;
+	sz len;
 	for (Char16* ptr = (Char16*)self; *ptr; ptr++) len++;
 	return len;
 }
 
 fn ZString String.zstr_copy(self, Allocator allocator)
 {
-	usz len = self.len;
+	sz len = self.len;
 	char* str = alloc::malloc(allocator, len + 1);
 	mem::copy(str, self.ptr, len);
 	str[len] = 0;
@@ -714,9 +714,9 @@ fn ZString String.zstr_copy(self, Allocator allocator)
 
 fn String String.concat(self, Allocator allocator, String s2)
 {
-	usz full_len = self.len + s2.len;
+	sz full_len = self.len + s2.len;
 	char* str = alloc::malloc(allocator, full_len + 1);
-	usz self_len = self.len;
+	sz self_len = self.len;
 	mem::copy(str, self.ptr, self_len);
 	mem::copy(str + self_len, s2.ptr, s2.len);
 	str[full_len] = 0;
@@ -735,7 +735,7 @@ fn ZString String.zstr_tcopy(self) => self.zstr_copy(tmem) @inline;
 *>
 fn String String.copy(self, Allocator allocator)
 {
-	usz len = self.len;
+	sz len = self.len;
 	char* str = alloc::malloc(allocator, len + 1);
 	mem::copy(str, self.ptr, len);
 	str[len] = 0;
@@ -768,7 +768,7 @@ fn String ZString.tcopy(self)
 *>
 fn Char16[]? String.to_utf16(self, Allocator allocator)
 {
-	usz len16 = conv::utf16len_for_utf8(self);
+	sz len16 = conv::utf16len_for_utf8(self);
 	Char16* data = alloc::alloc_array_try(allocator, Char16, len16 + 1)!;
 	conv::utf8to16_unsafe(self, data)!;
 	data[len16] = 0;
@@ -786,7 +786,7 @@ fn WString? String.to_temp_wstring(self) => self.to_wstring(tmem);
 
 fn Char32[]? String.to_utf32(self, Allocator allocator)
 {
-	usz codepoints = conv::utf8_codepoints(self);
+	sz codepoints = conv::utf8_codepoints(self);
 	Char32* data = alloc::alloc_array_try(allocator, Char32, codepoints + 1)!;
 	conv::utf8to32_unsafe(self, data)!;
 	data[codepoints] = 0;
@@ -864,7 +864,7 @@ fn String String.snake_to_pascal_copy(self, Allocator allocator)
 {
 	Splitter splitter = self.tokenize("_");
 	char[] new_string = alloc::alloc_array(allocator, char, self.len + 1);
-	usz index = 0;
+	sz index = 0;
 	while (try s = splitter.next())
 	{
 		assert(s.len > 0);
@@ -888,7 +888,7 @@ fn void String.convert_snake_to_pascal(&self)
 {
 	Splitter splitter = self.tokenize("_");
 	String new_string = *self;
-	usz index = 0;
+	sz index = 0;
 	while (try s = splitter.next())
 	{
 		assert(s.len > 0);
@@ -911,8 +911,8 @@ fn void String.convert_snake_to_pascal(&self)
 fn String String.pascal_to_snake_copy(self, Allocator allocator) => @pool()
 {
 	DString d;
-	d.init(tmem, (usz)(self.len * 1.5));
-	usz index = 0;
+	d.init(tmem, (sz)(self.len * 1.5));
+	sz index = 0;
 	foreach (i, c : self)
 	{
 		if (c.is_upper())
@@ -946,7 +946,7 @@ fn String String.to_upper_tcopy(self)
 
 fn String? from_utf32(Allocator allocator, Char32[] utf32)
 {
-	usz len = conv::utf8len_for_utf32(utf32);
+	sz len = conv::utf8len_for_utf32(utf32);
 	char* data = alloc::malloc_try(allocator, len + 1)!;
 	defer catch alloc::free(allocator, data);
 	conv::utf32to8_unsafe(utf32, data);
@@ -956,7 +956,7 @@ fn String? from_utf32(Allocator allocator, Char32[] utf32)
 
 fn String? from_utf16(Allocator allocator, Char16[] utf16)
 {
-	usz len = conv::utf8len_for_utf16(utf16);
+	sz len = conv::utf8len_for_utf16(utf16);
 	char* data = alloc::malloc_try(allocator, len + 1)!;
 	defer catch alloc::free(allocator, data);
 	conv::utf16to8_unsafe(utf16, data)!;
@@ -966,7 +966,7 @@ fn String? from_utf16(Allocator allocator, Char16[] utf16)
 
 fn String? from_wstring(Allocator allocator, WString wstring)
 {
-	usz utf16_len;
+	sz utf16_len;
 	while (wstring[utf16_len] != 0) utf16_len++;
 	Char16[] utf16 = wstring[:utf16_len];
 	return from_utf16(allocator, utf16);
@@ -975,9 +975,9 @@ fn String? from_wstring(Allocator allocator, WString wstring)
 fn String? tfrom_wstring(WString wstring) => from_wstring(tmem, wstring) @inline;
 fn String? tfrom_utf16(Char16[] utf16) => from_utf16(tmem, utf16) @inline;
 
-fn usz String.utf8_codepoints(s)
+fn sz String.utf8_codepoints(s)
 {
-	usz len = 0;
+	sz len = 0;
 	foreach (char c : s)
 	{
 		if (c & 0xC0 != 0x80) len++;
@@ -1005,8 +1005,8 @@ fn usz String.utf8_codepoints(s)
 *>
 macro String.to_integer(self, $Type, int base = 10)
 {
-	usz len = self.len;
-	usz index = 0;
+	sz len = self.len;
+	sz index = 0;
 	char* ptr = self.ptr;
 	while (index < len && ptr[index].is_blank()) index++;
 	if (len == index) return EMPTY_STRING~;
@@ -1063,10 +1063,10 @@ macro String.to_integer(self, $Type, int base = 10)
 		{
 			if (is_negative)
 			{
-				value = value.overflow_mul(base_used).overflow_sub(c) ?? INTEGER_OVERFLOW~!;
+				value = value.overflow_mul(base_used).overflow_sub(($Type)c) ?? INTEGER_OVERFLOW~!;
 				break;
 			}
-			value = value.overflow_mul(base_used).overflow_add(c) ?? INTEGER_OVERFLOW~!;
+			value = value.overflow_mul(base_used).overflow_add(($Type)c) ?? INTEGER_OVERFLOW~!;
 		};
 	}
 	return value;
@@ -1166,7 +1166,7 @@ struct Splitter
 {
 	String string;
 	String split;
-	usz current;
+	sz current;
 	SplitterType type;
 	int last_index;
 }
@@ -1185,8 +1185,8 @@ fn String? Splitter.next(&self)
 {
 	while (true)
 	{
-		usz len = self.string.len;
-		usz current = self.current;
+		sz len = self.string.len;
+		sz current = self.current;
 		if (current > len) return NO_MORE_ELEMENT~;
 		if (current == len)
 		{
@@ -1195,7 +1195,7 @@ fn String? Splitter.next(&self)
 			return self.string[current - 1:0];
 		}
 		String remaining = self.string[current..];
-		usz? next = remaining.index_of(self.split);
+		sz? next = remaining.index_of(self.split);
 		if (try next)
 		{
 			self.current = current + next + self.split.len;

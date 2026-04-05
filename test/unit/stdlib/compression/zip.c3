@@ -133,7 +133,7 @@ fn void test_zip_multiple_files()
 
 		assert(read_zip.count() == 3, "Expected 3 entries");
 
-		for (usz i = 0; i < read_zip.count(); i++)
+		for (sz i = 0; i < read_zip.count(); i++)
 		{
 			ZipEntry entry = read_zip.stat_at(i)!!;
 			assert(!entry.is_directory, "Expected files only");
@@ -285,8 +285,8 @@ fn void test_zip_with_comment()
 		char[] zip_data = file::load(mem, "unittest_comment.zip")!!;
 		defer free(zip_data);
 
-		isz eocd_pos = -1;
-		for (isz i = (isz)zip_data.len - 22; i >= 0; i--)
+		sz eocd_pos = -1;
+		for (sz i = (sz)zip_data.len - 22; i >= 0; i--)
 		{
 			uint sig = mem::load((uint*)&zip_data[i], 1);
 			if (sig == 0x06054b50)
@@ -428,7 +428,7 @@ fn void test_zip64_offset()
 		defer (void)read_zip.close();
 
 		ZipEntry entry = read_zip.stat("offset_test.txt")!!;
-		assert(entry.offset == 0x100000005, "Failed to read ZIP64 offset");
+		test::eq(entry.offset, 0x100000005);
 	};
 }
 
@@ -527,23 +527,23 @@ fn void test_zip_reader_available_capping()
 		// that might exist on 32-bit systems (where usz < 64-bit).
 		ZipEntryReader reader;
 		mem::set(&reader, 0, ZipEntryReader.sizeof);
-		reader.size = 0xFFFFFFFFFFFFFFFF;
+		reader.size = 0x7FFFFFFFFFFFFFFF;
 		reader.pos = 0;
 
-		usz avail = reader.available()!!;
-		assert(avail == usz.max, "Expected available to be capped at usz.max");
+		sz avail = reader.available()!!;
+		assert(avail == sz.max, "Expected available to be capped at sz.max");
 
 		reader.pos = 100;
 		avail = reader.available()!!;
-		if (usz.max < 0xFFFFFFFFFFFFFFFF)
+		if (sz.max < 0x7FFFFFFFFFFFFFFF)
 		{
 			// triggers on 32-bit
-			assert(avail == usz.max, "Expected available to still be capped at usz.max");
+			assert(avail == sz.max, "Expected available to still be capped at sz.max");
 		}
 		else
 		{
 			// on 64-bit
-			assert(avail == usz.max - (usz)100, "Expected available size to be correct on 64-bit");
+			assert(avail == sz.max - (sz)100, "Expected available size to be correct on 64-bit");
 		}
 	};
 }

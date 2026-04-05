@@ -19,7 +19,7 @@ TestCase[] tests = {
 
 fn void encode()
 {
-	usz n;
+	sz n;
 	char[64] buf;
 	foreach (t : tests)
 	{
@@ -35,7 +35,7 @@ fn void encode()
 
 fn void decode()
 {
-	usz n;
+	sz n;
 	char[64] buf;
 	foreach (t : tests)
 	{

@@ -42,7 +42,7 @@ fn void linked_set_insertion_order()
 	}
 	
 	// Test iteration follows insertion order
-	usz index = 0;
+	sz index = 0;
 	set.@each(; String value)
 	{
 		assert(value == values[index]);
@@ -74,7 +74,7 @@ fn void linked_set_init_with_values()
 	
 	// Verify order
 	String[] expected_order = { "a", "b", "c" };
-	usz index = 0;
+	sz index = 0;
 	set.@each(; String value)
 	{
 		assert(value == expected_order[index]);
@@ -97,7 +97,7 @@ fn void linked_set_remove()
 	set.remove("b");
 	
 	String[] expected_order = { "a", "c" };
-	usz index = 0;
+	sz index = 0;
 	set.@each(; String value)
 	{
 		assert(value == expected_order[index]);
@@ -120,7 +120,7 @@ fn void linked_set_copy()
 	assert(copy.len() == original.len());
 	
 	String[] expected_order = { "aa", "b", "bb" };
-	usz index = 0;
+	sz index = 0;
 	copy.@each(; String value)
 	{
 		assert(value == expected_order[index]);
@@ -134,7 +134,7 @@ fn void linked_set_iterators()
 	set.tinit_with_values("a", "b", "c");
 	
 	// Test entry iterator
-	usz count = 0;
+	sz count = 0;
 	LinkedHashSetIterator{String} iter = set.iter();
 	while (iter.next())
 	{
@@ -187,7 +187,7 @@ fn void linked_set_operations()
 	
 	// Verify union preserves order (elements from first set first)
 	String[] expected_union_order = { "a", "b", "c", "d" };
-	usz index = 0;
+	sz index = 0;
 	union_set.@each(; String value) {
 		assert(value == expected_union_order[index]);
 		index++;
@@ -273,7 +273,7 @@ fn void linked_set_string_values()
 	
 	// Test order
 	String[] expected_order = { "hello", "world" };
-	usz index = 0;
+	sz index = 0;
 	set.@each(; String value) {
 		assert(value == expected_order[index]);
 		index++;

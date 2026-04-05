@@ -9,7 +9,7 @@ fn void test()
 fn void test2()
 {
 	char x = $$mask_to_int((bool[<8>]){ false, false, false, false, true, true, true, false });
-	short x2 = $$mask_to_int((bool[<15>]){});
+	short x2 = (short)$$mask_to_int((bool[<15>]){});
 	uint128 y = $$mask_to_int((bool[<128>]){});
 }
 

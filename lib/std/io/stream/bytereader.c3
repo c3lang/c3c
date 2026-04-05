@@ -3,10 +3,10 @@ module std::io;
 struct ByteReader (InStream)
 {
 	char[] bytes;
-	usz index;
+	sz index;
 }
 
-fn usz ByteReader.len(&self) @dynamic
+fn long ByteReader.len(&self) @dynamic
 {
 	return self.bytes.len;
 }
@@ -17,10 +17,10 @@ fn ByteReader* ByteReader.init(&self, char[] bytes)
 	return self;
 }
 
-fn usz? ByteReader.read(&self, char[] bytes) @dynamic
+fn sz? ByteReader.read(&self, char[] bytes) @dynamic
 {
 	if (self.index >= self.bytes.len) return io::EOF~;
-	usz len = min(self.bytes.len - self.index, bytes.len);
+	sz len = min(self.bytes.len - self.index, bytes.len);
 	if (len == 0) return 0;
 	mem::copy(bytes.ptr, &self.bytes[self.index], len);
 	self.index += len;
@@ -39,10 +39,10 @@ fn void? ByteReader.pushback_byte(&self) @dynamic
 	self.index--;
 }
 
-fn usz? ByteReader.seek(&self, isz offset, Seek seek) @dynamic
+fn long? ByteReader.seek(&self, long offset, Seek seek) @dynamic
 {
-	self.set_cursor((long)offset, (SeekOrigin)seek.ordinal)!;
-	return (usz)self.cursor();
+	self.set_cursor(offset, (SeekOrigin)seek.ordinal)!;
+	return self.cursor();
 }
 
 fn long? ByteReader.cursor(&self) @dynamic
@@ -60,19 +60,19 @@ fn void? ByteReader.set_cursor(&self, long offset, SeekOrigin whence = FROM_STAR
 		case FROM_END: new_index = self.bytes.len + offset;
 	}
 	if (new_index < 0 || new_index > self.bytes.len) return INVALID_POSITION~;
-	self.index = (usz)new_index;
+	self.index = (sz)new_index;
 }
 
-fn usz? ByteReader.write_to(&self, OutStream writer) @dynamic
+fn long? ByteReader.write_to(&self, OutStream writer) @dynamic
 {
 	if (self.index >= self.bytes.len) return 0;
-	usz written = writer.write(self.bytes[self.index..])!;
+	sz written = writer.write(self.bytes[self.index..])!;
 	self.index += written;
 	assert(self.index <= self.bytes.len);
 	return written;
 }
 
-fn ulong? ByteReader.available(&self) @inline @dynamic
+fn long? ByteReader.available(&self) @inline @dynamic
 {
 	return max(0, self.bytes.len - self.index);
 }

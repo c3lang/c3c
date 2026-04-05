@@ -30,7 +30,7 @@ extern fn ushort ntohs(ushort netshort);
 *>
 extern fn void bzero(char*, usz);
 
-extern fn isz readlink(ZString path, char* buf, usz bufsize);
+extern fn sz readlink(ZString path, char* buf, usz bufsize);
 
 const PT_PHDR = 6;
 const EI_NIDENT = 16;
@@ -192,10 +192,10 @@ fn ulong? elf_module_image_base(String path) @local
 		Elf64_Ehdr file_header;
 		io::read_any(&file, &file_header)!;
 		if (file_header.e_ehsize != Elf64_Ehdr.sizeof) return backtrace::IMAGE_NOT_FOUND~;
-		for (isz i = 0; i < file_header.e_phnum; i++)
+		for (sz i = 0; i < file_header.e_phnum; i++)
 		{
 			Elf64_Phdr header;
-			file.set_cursor(file_header.e_phoff + (long)file_header.e_phentsize * i)!;
+			file.set_cursor((long)file_header.e_phoff + (long)file_header.e_phentsize * i)!;
 			io::read_any(&file, &header)!;
 			if (header.p_type == PT_PHDR) return header.p_vaddr - header.p_offset;
 		}
@@ -204,7 +204,7 @@ fn ulong? elf_module_image_base(String path) @local
 	Elf32_Ehdr file_header;
 	io::read_any(&file, &file_header)!;
 	if (file_header.e_ehsize != Elf32_Ehdr.sizeof) return backtrace::IMAGE_NOT_FOUND~;
-	for (isz i = 0; i < file_header.e_phnum; i++)
+	for (sz i = 0; i < file_header.e_phnum; i++)
 	{
 		Elf32_Phdr header;
 		file.set_cursor(file_header.e_phoff + (long)file_header.e_phentsize * i)!;
@@ -227,7 +227,7 @@ fn void? backtrace_add_from_dlinfo(Allocator allocator, BacktraceList* list, voi
 {
 	char[1024] buf @noinit;
 
-	void*   obj_addr  = addr - (uptr)info.dli_fbase + (uptr)elf_module_image_base(info.dli_fname.str_view())!;
+	void*   obj_addr  = addr - (iptr)info.dli_fbase + (iptr)elf_module_image_base(info.dli_fname.str_view())!;
 	ZString obj_path  = info.dli_fname;
 	String  sname     = info.dli_sname ? info.dli_sname.str_view() : "???";
 	String  addr2line = process::run_capture_stdout(&buf, {"addr2line", "-p", "-i", "-C", "-f", "-e", obj_path.str_view(), string::bformat(&&(char[64]){}, "0x%x", obj_addr - 1)})!;
@@ -239,13 +239,13 @@ fn Backtrace? backtrace_line_parse(Allocator allocator, String string, String ob
 	Splitter s = string.trim().tokenize(" at ");
 	String first = s.next() ?? NOT_FOUND~!;
 	String second = s.next() ?? NOT_FOUND~!;
-	uint line   = 0;
+	int line = 0;
 	String source = "";
 	if (!second.contains("?") && second.contains(":"))
 	{
-		usz index = second.rindex_of_char(':')!;
+		sz index = second.rindex_of_char(':')!;
 		source = second[:index];
-		line   = second[index + 1..].to_uint()!;
+		line = second[index + 1..].to_int()!;
 	}
 	return {
 		.function    = first.copy(allocator),
@@ -269,7 +269,7 @@ fn void? backtrace_add_addr2line(Allocator allocator, BacktraceList* list, void*
 			list.push({
 				.function    = func_name.copy(allocator),
 				.object_file = obj_name.copy(allocator),
-				.offset      = (uptr)addr,
+				.offset      = (sz)addr,
 				.file        = "".copy(allocator),
 				.line        = 0,
 				.allocator   = allocator,

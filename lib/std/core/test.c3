@@ -130,7 +130,7 @@ macro eq(left, right)
  @require delta >= 0, delta <= 1 : "delta must be a small number"
  @require runtime::test_context != null : "Only allowed in @test functions"
 *>
-macro void eq_approx(double left, double right, uint places = 7, double delta = 0, bool equal_nan = true)
+macro void eq_approx(double left, double right, int places = 7, double delta = 0, bool equal_nan = true)
 {
 	double diff = left - right;
 	double eps = delta;

@@ -5,12 +5,12 @@ struct Foo
     int[] x;
 }
 
-macro int Foo.@operator_element_at(&foo, usz index) @operator([])
+macro int Foo.@operator_element_at(&foo, sz index) @operator([])
 {
     return foo.x[index];
 }
 
-macro usz Foo.@operator_len(&foo) @operator(len)
+macro sz Foo.@operator_len(&foo) @operator(len)
 {
     return foo.x.len;
 }
@@ -60,7 +60,7 @@ entry:
 
 loop.cond:                                        ; preds = %entry
   %3 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %3, %2
+  %lt = icmp slt i64 %3, %2
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond

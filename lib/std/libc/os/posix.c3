@@ -5,8 +5,8 @@ const CInt SHUT_WR = 1;
 const CInt SHUT_RDWR = 2;
 extern fn CInt shutdown(Fd sockfd, CInt how);
 
-extern fn isz recv(Fd socket, void *buffer, usz length, CInt flags);
-extern fn isz send(Fd socket, void *buffer, usz length, CInt flags);
+extern fn sz recv(Fd socket, void *buffer, usz length, CInt flags);
+extern fn sz send(Fd socket, void *buffer, usz length, CInt flags);
 
 extern fn void* dlopen(ZString path, int flags);
 extern fn CInt dlclose(void*);

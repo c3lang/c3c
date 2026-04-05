@@ -49,7 +49,7 @@ fn double __roundeven(double x) @cname("roundeven") @weak @nostrip
 fn float __roundevenf(float x) @cname("roundevenf") @weak @nostrip
 {
 	uint u = bitcast(x, uint);
-	int e = (u >> 23) & 0xff;
+	int e = (int)((u >> 23) & 0xff);
 	if (e >= 0x7f + 23) return x;
 	bool signed = u >> 31 != 0;
 	if (signed) x = -x;

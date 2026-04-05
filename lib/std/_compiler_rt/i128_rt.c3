@@ -14,10 +14,10 @@ fn int128 __divti3(int128 a, int128 b) @cname("__divti3") @weak @nostrip
 {
 	int128 sign_a = a >> 127; // -1 : 0
 	int128 sign_b = b >> 127; // -1 : 0
-	uint128 unsigned_a = (uint128)(a ^ sign_a) + (-sign_a);
-	uint128 unsigned_b = (uint128)(b ^ sign_b) + (-sign_b);
+	uint128 unsigned_a = (uint128)((a ^ sign_a) - sign_a);
+	uint128 unsigned_b = (uint128)((b ^ sign_b) - sign_b);
 	sign_a ^= sign_b; // quotient sign
-	return __udivti3(unsigned_a, unsigned_b) @inline ^ sign_a + (-sign_a);
+	return (int128)__udivti3(unsigned_a, unsigned_b) @inline ^ sign_a + (-sign_a);
 }
 
 macro uint128 @__udivmodti4(uint128 a, uint128 b, bool $return_rem)
@@ -26,7 +26,7 @@ macro uint128 @__udivmodti4(uint128 a, uint128 b, bool $return_rem)
 	Int128bits d = { .all = b };
 	Int128bits q @noinit;
 	Int128bits r @noinit;
-	uint sr;
+	int sr;
 	if (n.high == 0)
 	{
 		if (d.high == 0)
@@ -43,9 +43,9 @@ macro uint128 @__udivmodti4(uint128 a, uint128 b, bool $return_rem)
 			return 0;
 		$endif
 	}
-	if (d.low == 0)
+	if (!d.low)
 	{
-		if (d.high == 0)
+		if (!d.high)
 		{
 			$if $return_rem:
 				return n.high % d.low;
@@ -53,7 +53,7 @@ macro uint128 @__udivmodti4(uint128 a, uint128 b, bool $return_rem)
 				return n.high / d.low;
 			$endif
 		}
-		if (n.low == 0)
+		if (!n.low)
 		{
 			$if $return_rem:
 				r.high = n.high % d.high;
@@ -73,7 +73,7 @@ macro uint128 @__udivmodti4(uint128 a, uint128 b, bool $return_rem)
 				return (uint128)(n.high >> $$ctz(d.high));
 			$endif
 		}
-		sr = (uint)$$clz(d.high) - (uint)$$clz(n.high);
+		sr = (int)$$clz(d.high) - (int)$$clz(n.high);
 		// 0 <= sr <= n_udword_bits - 2 or sr large
 		if (sr > 64 - 2)
 		{
@@ -101,13 +101,13 @@ macro uint128 @__udivmodti4(uint128 a, uint128 b, bool $return_rem)
 					return (uint128)(n.low & (d.low - 1));
 				$else
 					if (d.low == 1) return n.all;
-					sr = (uint)$$ctz(d.low);
+					sr = (int)$$ctz(d.low);
 					q.high = n.high >> sr;
 					q.low = (n.high << (64 - sr)) | (n.low >> sr);
 					return q.all;
 			   $endif
 			}
-			sr = 1 + 64 + (uint)$$clz(d.low) - (uint)$$clz(n.high);
+			sr = 1 + 64 + (int)$$clz(d.low) - (int)$$clz(n.high);
 			// 2 <= sr <= n_utword_bits - 1
 			// q.all = n.all << (n_utword_bits - sr);
 			// r.all = n.all >> sr;
@@ -132,7 +132,7 @@ macro uint128 @__udivmodti4(uint128 a, uint128 b, bool $return_rem)
 		}
 		else
 		{
-			sr = (uint)$$clz(d.high) - (uint)$$clz(n.high);
+			sr = (int)$$clz(d.high) - (int)$$clz(n.high);
 			// 0 <= sr <= n_udword_bits - 1 or sr large
 			if (sr > 64 - 1)
 			{
@@ -181,7 +181,7 @@ macro uint128 @__udivmodti4(uint128 a, uint128 b, bool $return_rem)
 		//     r.all -= d.all;
 		//      carry = 1;
 		// }
-		int128 s = (int128)(d.all - r.all - 1) >> (128 - 1);
+		uint128 s = (uint128)((int128)(d.all - r.all - 1) >> (128 - 1));
 		carry = (uint)(s & 1);
 		r.all -= d.all & s;
 	}
@@ -205,11 +205,11 @@ fn uint128 __udivti3(uint128 n, uint128 d) @cname("__udivti3") @weak @nostrip
 fn int128 __modti3(int128 a, int128 b) @cname("__modti3") @weak @nostrip
 {
 	int128 sign = b >> 127;
-	uint128 unsigned_b = (uint128)(b ^ sign) + (-sign);
+	uint128 unsigned_b = (uint128)((b ^ sign) + (-sign));
 	sign = a >> 127;
-	uint128 unsigned_a = (uint128)(a ^ sign) + (-sign);
+	uint128 unsigned_a = (uint128)((a ^ sign) + (-sign));
 
-	return __umodti3(unsigned_a, unsigned_b) ^ sign + (-sign);
+	return (int128)__umodti3(unsigned_a, unsigned_b) ^ sign + (-sign);
 }
 
 union Int128bits @private
@@ -243,7 +243,7 @@ fn uint128 __lshrti3(uint128 a, uint b) @cname("__lshrti3") @weak @nostrip
 fn int128 __ashrti3(int128 a, uint b) @cname("__ashrti3") @weak @nostrip
 {
 	Int128bits result;
-	result.all = a;
+	result.all = (uint128)a;
 	if (b >= 64)
 	{
 		result.low = result.high >> (b - 64);
@@ -255,13 +255,13 @@ fn int128 __ashrti3(int128 a, uint b) @cname("__ashrti3") @weak @nostrip
 		result.low = result.high << (64 - b) | (result.low >> b);
 		result.high  = result.high >> b;
 	}
-	return result.all;
+	return (int128)result.all;
 }
 
 fn int128 __ashlti3(int128 a, uint b) @cname("__ashlti3") @weak @nostrip
 {
 	Int128bits result;
-	result.all = a;
+	result.all = (uint128)a;
 	if (b >= 64)
 	{
 		result.low = 0;
@@ -273,7 +273,7 @@ fn int128 __ashlti3(int128 a, uint b) @cname("__ashlti3") @weak @nostrip
 		result.high = (result.high << b) | (result.low >> (64 - b));
 		result.low  = result.low << b;
 	}
-	return result.all;
+	return (int128)result.all;
 }
 
 // Returns: a * b
@@ -294,16 +294,16 @@ fn int128 __mulddi3(ulong a, ulong b) @private
 	r.low += (t & LOWER_MASK) << 32;
 	r.high += t >> 32;
 	r.high += (a >> 32) * (b >> 32);
-	return r.all;
+	return (int128)r.all;
 }
 
 fn int128 __multi3(int128 a, int128 b) @cname("__multi3") @weak @nostrip
 {
-	Int128bits x = { .all = a };
-	Int128bits y = { .all = b };
-	Int128bits r = { .all = __mulddi3(x.low, y.low) };
+	Int128bits x = { .all = (uint128)a };
+	Int128bits y = { .all = (uint128)b };
+	Int128bits r = { .all = (uint128)__mulddi3(x.low, y.low) };
 	r.high += x.high * y.low + x.low * y.high;
-	return r.all;
+	return (int128)r.all;
 }
 
 fn float __floattisf(int128 a) @cname("__floattisf") @weak @nostrip => float_from_i128(float, a);
@@ -316,7 +316,7 @@ fn int128 __fixdfti(double a) @weak @cname("__fixdfti") @nostrip => fixint(a);
 fn int128 __fixsfti(float a) @weak @cname("__fixsfti") @nostrip => fixint(a);
 
 
-macro float_from_i128($Type, a) @private
+macro float_from_i128($Type, int128 a) @private
 {
 	var $Rep;
 	$switch $Type:
@@ -341,7 +341,7 @@ macro float_from_i128($Type, a) @private
 			$Rep = uint128;
 			const MANT_DIG = QUAD_MANT_DIG;
 	$endswitch
-	if (a == 0) return ($Type)0;
+	if (a == 0) return 0;
 	// Grab and remove sign.
 	int128 sign = a >> 127;
 	a = (a ^ sign) - sign;
@@ -357,9 +357,9 @@ macro float_from_i128($Type, a) @private
 				break;
 			default:
 				a = (a >> (sd - (MANT_DIG + 2)))
-					| (uint128)((a & ((uint128)(-1) >> ((128 + MANT_DIG + 2) - sd))) != 0);
+					| (int128)(((uint128)a & ((uint128)(-1) >> ((128 + MANT_DIG + 2) - sd))) != 0);
 		}
-		a |= (uint128)((a & 4) != 0);
+		a |= (int128)((a & 4) != 0);
 		a++;
 		a >>= 2;
 		if (a & (1LL << MANT_DIG))
@@ -375,7 +375,7 @@ macro float_from_i128($Type, a) @private
 	return bitcast((($Rep)sign & SIGN_BIT) | ((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
 }
 
-macro float_from_u128($Type, a) @private
+macro float_from_u128($Type, uint128 a) @private
 {
 	var $Rep;
 	$switch $Type:
@@ -412,7 +412,7 @@ macro float_from_u128($Type, a) @private
 		a |= (uint128)((a & 4) != 0);
 		a++;
 		a >>= 2;
-		if (a & (1LL << MANT_DIG))
+		if (a & (1ULL << MANT_DIG))
 		{
 			a >>= 1;
 			e++;

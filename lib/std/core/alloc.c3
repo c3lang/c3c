@@ -5,7 +5,7 @@ struct TrackingEnv
 {
 	String file;
 	String function;
-	uint line;
+	int line;
 }
 
 enum AllocInitType
@@ -24,7 +24,7 @@ interface Allocator
 	 @require size > 0 : "The size must be 1 or more"
 	 @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 	*>
-	fn void*? acquire(usz size, AllocInitType init_type, usz alignment = 0);
+	fn void*? acquire(sz size, AllocInitType init_type, sz alignment = 0);
 
 	<*
 	 Resize acquired memory from the allocator, with the given new size and alignment.
@@ -35,7 +35,7 @@ interface Allocator
 	 @require new_size > 0
 	 @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 	*>
-	fn void*? resize(void* ptr, usz new_size, usz alignment = 0);
+	fn void*? resize(void* ptr, sz new_size, sz alignment = 0);
 
 	<*
 	 Release memory acquired using `acquire` or `resize`.
@@ -45,15 +45,21 @@ interface Allocator
 	fn void release(void* ptr, bool aligned);
 }
 
-alias MemoryAllocFn = fn char[]?(usz);
+alias MemoryAllocFn = fn char[]?(sz);
 
 
-macro void* malloc(Allocator allocator, usz size) @nodiscard
+<*
+ @require size >= 0 : "Invalid memory size"
+*>
+macro void* malloc(Allocator allocator, sz size) @nodiscard
 {
 	return malloc_try(allocator, size)!!;
 }
 
-macro void*? malloc_try(Allocator allocator, usz size) @nodiscard
+<*
+ @require size >= 0 : "Invalid memory size"
+*>
+macro void*? malloc_try(Allocator allocator, sz size) @nodiscard
 {
 	if (!size) return null;
 	$if env::TESTING:
@@ -65,23 +71,35 @@ macro void*? malloc_try(Allocator allocator, usz size) @nodiscard
 	$endif
 }
 
-macro void* calloc(Allocator allocator, usz size) @nodiscard
+<*
+ @require size >= 0 : "Invalid memory size"
+*>
+macro void* calloc(Allocator allocator, sz size) @nodiscard
 {
 	return calloc_try(allocator, size)!!;
 }
 
-macro void*? calloc_try(Allocator allocator, usz size) @nodiscard
+<*
+ @require size >= 0 : "Invalid memory size"
+*>
+macro void*? calloc_try(Allocator allocator, sz size) @nodiscard
 {
 	if (!size) return null;
 	return allocator.acquire(size, ZERO);
 }
 
-macro void* realloc(Allocator allocator, void* ptr, usz new_size) @nodiscard
+<*
+ @require new_size >= 0 : "Invalid memory size"
+*>
+macro void* realloc(Allocator allocator, void* ptr, sz new_size) @nodiscard
 {
 	return realloc_try(allocator, ptr, new_size)!!;
 }
 
-macro void*? realloc_try(Allocator allocator, void* ptr, usz new_size) @nodiscard
+<*
+ @require new_size >= 0 : "Invalid memory size"
+*>
+macro void*? realloc_try(Allocator allocator, void* ptr, sz new_size) @nodiscard
 {
 	if (!new_size)
 	{
@@ -101,7 +119,11 @@ macro void free(Allocator allocator, void* ptr)
 	allocator.release(ptr, false);
 }
 
-macro void*? malloc_aligned(Allocator allocator, usz size, usz alignment) @nodiscard
+<*
+ @require size >= 0 : "Invalid memory size"
+ @require alignment > 0 : "Invalid alignment"
+*>
+macro void*? malloc_aligned(Allocator allocator, sz size, sz alignment) @nodiscard
 {
 	if (!size) return null;
 	$if env::TESTING:
@@ -113,13 +135,21 @@ macro void*? malloc_aligned(Allocator allocator, usz size, usz alignment) @nodis
 	$endif
 }
 
-macro void*? calloc_aligned(Allocator allocator, usz size, usz alignment) @nodiscard
+<*
+ @require size >= 0 : "Invalid memory size"
+ @require alignment > 0 : "Invalid alignment"
+*>
+macro void*? calloc_aligned(Allocator allocator, sz size, sz alignment) @nodiscard
 {
 	if (!size) return null;
 	return allocator.acquire(size, ZERO, alignment);
 }
 
-macro void*? realloc_aligned(Allocator allocator, void* ptr, usz new_size, usz alignment) @nodiscard
+<*
+ @require new_size >= 0 : "Invalid memory size"
+ @require alignment > 0 : "Invalid alignment"
+*>
+macro void*? realloc_aligned(Allocator allocator, void* ptr, sz new_size, sz alignment) @nodiscard
 {
 	if (!new_size)
 	{
@@ -193,8 +223,9 @@ macro new_aligned(Allocator allocator, $Type, ...) @nodiscard
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT
+ @require padding >= 0 : "Invalid padding size"
 *>
-macro new_with_padding(Allocator allocator, $Type, usz padding) @nodiscard
+macro new_with_padding(Allocator allocator, $Type, sz padding) @nodiscard
 {
 	return ($Type*)calloc_try(allocator, $Type.sizeof + padding);
 }
@@ -226,26 +257,29 @@ macro alloc_aligned(Allocator allocator, $Type) @nodiscard
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT
+ @require padding >= 0 : "Invalid padding size"
 *>
-macro alloc_with_padding(Allocator allocator, $Type, usz padding) @nodiscard
+macro alloc_with_padding(Allocator allocator, $Type, sz padding) @nodiscard
 {
 	return ($Type*)malloc_try(allocator, $Type.sizeof + padding);
 }
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
+ @require elements >= 0 : "Elements may not be negative"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
 *>
-macro new_array(Allocator allocator, $Type, usz elements) @nodiscard
+macro new_array(Allocator allocator, $Type, sz elements) @nodiscard
 {
 	return new_array_try(allocator, $Type, elements)!!;
 }
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
+ @require elements >= 0 : "Elements may not be negative"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
 *>
-macro new_array_try(Allocator allocator, $Type, usz elements) @nodiscard
+macro new_array_try(Allocator allocator, $Type, sz elements) @nodiscard
 {
 	return (($Type*)calloc_try(allocator, $Type.sizeof * elements))[:elements];
 }
@@ -254,18 +288,20 @@ macro new_array_try(Allocator allocator, $Type, usz elements) @nodiscard
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
+ @require elements >= 0 : "Elements may not be negative"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
 *>
-macro new_array_aligned(Allocator allocator, $Type, usz elements) @nodiscard
+macro new_array_aligned(Allocator allocator, $Type, sz elements) @nodiscard
 {
 	return (($Type*)calloc_aligned(allocator, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
 }
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
+ @require elements >= 0 : "Elements may not be negative"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
 *>
-macro alloc_array(Allocator allocator, $Type, usz elements) @nodiscard
+macro alloc_array(Allocator allocator, $Type, sz elements) @nodiscard
 {
 	return alloc_array_try(allocator, $Type, elements)!!;
 }
@@ -274,27 +310,30 @@ macro alloc_array(Allocator allocator, $Type, usz elements) @nodiscard
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
+ @require elements >= 0 : "Elements may not be negative"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
 *>
-macro alloc_array_aligned(Allocator allocator, $Type, usz elements) @nodiscard
+macro alloc_array_aligned(Allocator allocator, $Type, sz elements) @nodiscard
 {
 	return (($Type*)malloc_aligned(allocator, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
 }
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
+ @require elements >= 0 : "Elements may not be negative"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
 *>
-macro alloc_array_try(Allocator allocator, $Type, usz elements) @nodiscard
+macro alloc_array_try(Allocator allocator, $Type, sz elements) @nodiscard
 {
 	return (($Type*)malloc_try(allocator, $Type.sizeof * elements))[:elements];
 }
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
+ @require elements >= 0 : "Elements may not be negative"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
 *>
-macro realloc_array(Allocator allocator, void* ptr, $Type, usz elements) @nodiscard
+macro realloc_array(Allocator allocator, void* ptr, $Type, sz elements) @nodiscard
 {
 	return realloc_array_try(allocator, ptr, $Type, elements)!!;
 }
@@ -303,18 +342,20 @@ macro realloc_array(Allocator allocator, void* ptr, $Type, usz elements) @nodisc
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
+ @require elements >= 0 : "Elements may not be negative"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
 *>
-macro realloc_array_aligned(Allocator allocator, void* ptr, $Type, usz elements) @nodiscard
+macro realloc_array_aligned(Allocator allocator, void* ptr, $Type, sz elements) @nodiscard
 {
 	return (($Type*)realloc_aligned(allocator, ptr, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
 }
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow usz.max"
+ @require elements >= 0 : "Elements may not be negative"
+ @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
 *>
-macro realloc_array_try(Allocator allocator, void* ptr, $Type, usz elements) @nodiscard
+macro realloc_array_try(Allocator allocator, void* ptr, $Type, sz elements) @nodiscard
 {
 	return (($Type*)realloc_try(allocator, ptr, $Type.sizeof * elements))[:elements];
 }
@@ -365,7 +406,7 @@ macro clone_aligned(Allocator allocator, value) @nodiscard
 
 fn any clone_any(Allocator allocator, any value) @nodiscard
 {
-	usz size = value.type.sizeof;
+	sz size = value.type.sizeof;
 	void* data = malloc(allocator, size);
 	mem::copy(data, value.ptr, size);
 	return any_make(data, value.type);

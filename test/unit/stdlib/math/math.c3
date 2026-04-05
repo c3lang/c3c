@@ -517,32 +517,32 @@ fn void test_log() @test
 
 fn void test_ct_intlog2() @test @if($feature(SLOW_TESTS) && !env::OPENBSD)
 {
-	usz[129] actual;
+	sz[129] actual;
 	$for var $x = 0; $x <= 128; ++$x :
-		actual[$x] = (usz)math::@intlog2($x);
+		actual[$x] = (sz)math::@intlog2($x);
 	$endfor
-	for (usz i = 0; i <= 128; i++)
+	for (sz i = 0; i <= 128; i++)
 	{
-		usz expected = (i <= 1) ? 0 : (usz)math::floor(math::log2(i));
+		sz expected = (i <= 1) ? 0 : (sz)math::floor(math::log2(i));
 		assert(actual[i] == expected, "input %d: expected %d, got %d", i, expected, actual[i]);
 	}
 
-	usz[128] powers;
+	sz[128] powers;
 	$for var $i = 0; $i < 128; ++$i :
-		powers[$i] = (usz)math::@intlog2((uint128)1 << $i);
+		powers[$i] = (sz)math::@intlog2((uint128)1 << $i);
 	$endfor
-	for (usz i = 0; i < 128; i++)
+	for (sz i = 0; i < 128; i++)
 	{
 		assert(powers[i] == i, "input 2^%d: expected %d, got %d", i, i, powers[i]);
 	}
 
-	usz[127] complex_vals;
+	sz[127] complex_vals;
 	$for var $i = 1; $i < 128; ++$i :
-		complex_vals[$i - 1] = (usz)math::@intlog2(((uint128)1 << $i) | ((uint128)1 << ($i - 1)));
+		complex_vals[$i - 1] = (sz)math::@intlog2(((uint128)1 << $i) | ((uint128)1 << ($i - 1)));
 	$endfor
-	for (usz i = 1; i < 128; i++)
+	for (sz i = 1; i < 128; i++)
 	{
-		assert(complex_vals[i - 1] == (usz)i, "input 2^%d + 2^%d: expected %d, got %d", i, i - 1, i, complex_vals[i - 1]);
+		assert(complex_vals[i - 1] == (sz)i, "input 2^%d + 2^%d: expected %d, got %d", i, i - 1, i, complex_vals[i - 1]);
 	}
 }
 

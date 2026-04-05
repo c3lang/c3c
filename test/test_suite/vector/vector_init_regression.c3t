@@ -353,8 +353,8 @@ entry:
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %142 = load i64, ptr %.anon, align 8
-  %gt = icmp ugt i64 4, %142
-  br i1 %gt, label %loop.body, label %loop.exit
+  %lt = icmp slt i64 %142, 4
+  br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %143 = load i64, ptr %.anon, align 8
@@ -375,8 +375,8 @@ loop.body:                                        ; preds = %loop.cond
   %fpfpext91 = fpext
   %153 = call i32 (ptr, ...) @printf(ptr @.str, double %fpfpext88, double %fpfpext89, double %fpfpext90, double %fpfpext91)
   %154 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %154, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %154, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
@@ -386,8 +386,8 @@ loop.exit:                                        ; preds = %loop.cond
 
 loop.cond93:                                      ; preds = %loop.body95, %loop.exit
   %156 = load i64, ptr %.anon92, align 8
-  %gt94 = icmp ugt i64 4, %156
-  br i1 %gt94, label %loop.body95, label %loop.exit103
+  %lt94 = icmp slt i64 %156, 4
+  br i1 %lt94, label %loop.body95, label %loop.exit103
 
 loop.body95:                                      ; preds = %loop.cond93
   %157 = load i64, ptr %.anon92, align 8
@@ -408,8 +408,8 @@ loop.body95:                                      ; preds = %loop.cond93
   %fpfpext101 = fpext
   %167 = call i32 (ptr, ...) @printf(ptr @.str.2, double %fpfpext98, double %fpfpext99, double %fpfpext100, double %fpfpext101)
   %168 = load i64, ptr %.anon92, align 8
-  %addnuw102 = add nuw i64 %168, 1
-  store i64 %addnuw102, ptr %.anon92, align 8
+  %addnsw102 = add nsw i64 %168, 1
+  store i64 %addnsw102, ptr %.anon92, align 8
   br label %loop.cond93
 
 loop.exit103:                                     ; preds = %loop.cond93

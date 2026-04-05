@@ -18,7 +18,7 @@ enum XorshiftType @private
 	STAR_STAR,
 }
 
-macro void @xorshift_seed_from_input(#xorshift_instance, usz $bits, seed)
+macro void @xorshift_seed_from_input(#xorshift_instance, sz $bits, seed)
 {
 	$switch $typeof(seed):
 		$case char[]:
@@ -103,7 +103,7 @@ macro xoshiro(Xoshiro* self) @local
 {
 	$typeof(self.state[0]) result;
 	$if OPERATION == STAR_STAR:   // same for all types of xoshiro
-		result = (self.state[1] * 5).rotl(7) * 9;
+		result = (self.state[1] * 5u).rotl(7) * 9u;
 	$else
 		$switch BIT_SIZE:
 			$case 128:
@@ -122,8 +122,8 @@ macro xoshiro(Xoshiro* self) @local
 	$switch BIT_SIZE:
 		$case 128:
 		$case 256:
-			usz $a = BIT_SIZE == 128 ??? 9 : 17;
-			usz $b = BIT_SIZE == 128 ??? 11 : 45;
+			sz $a = BIT_SIZE == 128 ??? 9 : 17;
+			sz $b = BIT_SIZE == 128 ??? 11 : 45;
 			var t = self.state[1] << $a;
 			self.state[2] ^= self.state[0];
 			self.state[3] ^= self.state[1];
@@ -188,13 +188,13 @@ fn uint Xoroshiro.next(&self) @if (BIT_SIZE == 64) => xoroshiro(self);
 
 macro xoroshiro(Xoroshiro* self) @local
 {
-	usz a, b, c;
+	uint a, b, c;
 	$switch BIT_SIZE:
 		$case 64:
 			uint result;
 			$switch OPERATION:
 				$case STAR: result = self.state[0] * 0x9e3779bb;
-				$case STAR_STAR: result = (self.state[0] * 0x9e3779bb).rotl(5) * 5;
+				$case STAR_STAR: result = (self.state[0] * 0x9e3779bb).rotl(5) * 5u;
 				$default: $error "Invalid bit-size and XorshiftType combination.";
 			$endswitch
 			uint s1 = self.state[1] ^ self.state[0];
@@ -212,7 +212,7 @@ macro xoroshiro(Xoroshiro* self) @local
 					result = (self.state[0] + self.state[1]).rotl(17) + self.state[0];
 					a = 49; b = 21; c = 28;
 				$case STAR_STAR:
-					result = (self.state[0] * 5).rotl(7) *9;
+					result = (self.state[0] * 5u).rotl(7u) * 9u;
 					a = 24; b = 16; c = 37;
 				$default: $error "Invalid bit-size and XorshiftType combination.";
 			$endswitch
@@ -231,12 +231,12 @@ macro xoroshiro(Xoroshiro* self) @local
 				$case STAR:
 					result = s0 * 0x9e3779b97f4a7c13;
 				$case STAR_STAR:
-					result = (s0 * 5).rotl(7) * 9;
+					result = (s0 * 5u).rotl(7u) * 9u;
 				$default: $error "Invalid bit-size and XorshiftType combination.";
 			$endswitch
 			s15 ^= s0;
-			self.state[q] = s0.rotl(25) ^ s15 ^ (s15 << 27);
-			self.state[self.p] = s15.rotl(36);
+			self.state[q] = s0.rotl(25u) ^ s15 ^ (s15 << 27);
+			self.state[self.p] = s15.rotl(36u);
 			return result;
 	$endswitch
 	unreachable();

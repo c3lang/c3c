@@ -30,7 +30,7 @@ struct MetroHash128
 		ulong[4] stomach_64;
 		char[32] stomach;
 	}
-	ulong bytes;
+	long bytes;
 }
 
 
@@ -56,11 +56,12 @@ fn void MetroHash128.init(&self, ulong seed = 0)
 
 fn void MetroHash128.update(&self, char[] data)
 {
+	sz remainder = (sz)(self.bytes % 32);
 	if (self.bytes % 32)   // partial buffer
 	{
-		ulong to_fill = min(data.len, (32 - (self.bytes % 32)));
+		sz to_fill = min(data.len, 32 - remainder);
 
-		self.stomach[(self.bytes % 32):to_fill] = data[:to_fill];
+		self.stomach[remainder:to_fill] = data[:to_fill];
 
 		data = data[to_fill..];
 		self.bytes += to_fill;

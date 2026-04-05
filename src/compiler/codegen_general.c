@@ -182,7 +182,7 @@ bool type_is_homogenous_aggregate(LoweredType *type, Type **base, unsigned *elem
 		case TYPE_SLICE:
 			return false;
 		case TYPE_ANY:
-			*base = type_iptr->canonical;
+			*base = type_uptr->canonical;
 			*elements = 2;
 			return true;
 		case TYPE_STRUCT:

@@ -41,15 +41,15 @@ fn char[HASH_SIZE] hash(char[] data)
 macro void Whirlpool.init(&self) => *self = { };
 
 <*
- @require data.len <= isz.max : "Update with smaller slices"
+ @require data.len <= sz.max : "Update with smaller slices"
 *>
 fn void Whirlpool.update(&self, char[] data)
 {
 	char remainder = (char)self.counter_low & 0x3F;   // if not at an even BLOCK_SIZE, how many bytes are over it
-	uint to_pad = BLOCK_SIZE - remainder;   // how many bytes must be filled to get the BLOCK_SIZE
+	int to_pad = BLOCK_SIZE - remainder;   // how many bytes must be filled to get the BLOCK_SIZE
 
 	uint128 prev_ctr = self.counter_low;
-	self.counter_low += data.len;
+	self.counter_low += (uint128)data.len;
 
 	// Handle counter rollover by just adding 1 onto 'high'. The overflow amount in 'low' remains valid.
 	//   Since 'data' is limited to INT64_MAX, there are no edge cases where 'high' must be incremented by more than 1.
@@ -59,7 +59,7 @@ fn void Whirlpool.update(&self, char[] data)
 	// Pad partial blocks of input data.
 	if (remainder > 0)
 	{
-		usz span = to_pad < data.len ? to_pad : data.len;
+		sz span = to_pad < data.len ? to_pad : data.len;
 		self.block[remainder:span] = data[:span];
 
 		// When there wasn't enough data ingested to fill a block, just return to allow more incoming data to fill in.
@@ -81,7 +81,7 @@ fn void Whirlpool.update(&self, char[] data)
 	// Any leftovers should be swept into the 'block' buffer in the context for the next update or for 'final'.
 	if (data.len)
 	{
-		usz leftover_span = (BLOCK_SIZE < data.len ? BLOCK_SIZE : data.len);
+		sz leftover_span = (BLOCK_SIZE < data.len ? BLOCK_SIZE : data.len);
 
 		self.block[:leftover_span] = data[:leftover_span];
 	}
@@ -109,8 +109,8 @@ fn char[HASH_SIZE] Whirlpool.final(&self)
 
 	// Insert the big-endian values of the counter as a suffix of the block.
 	//   This 'counter' value is actually the number of BITS processed, hence the << 3 (or x8).
-	self.block_128[2] = $$bswap(self.counter_high << 3 | (self.counter_low >> 125 & 0x07));
-	self.block_128[3] = $$bswap(self.counter_low << 3);
+	self.block_128[2] = (int128)$$bswap(self.counter_high << 3 | (self.counter_low >> 125 & 0x07));
+	self.block_128[3] = (int128)$$bswap(self.counter_low << 3);
 
 	// Process the final block.
 	_process_block(self, &self.block);

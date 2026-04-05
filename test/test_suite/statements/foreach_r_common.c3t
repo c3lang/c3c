@@ -94,13 +94,13 @@ entry:
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %0 = load i64, ptr %.anon, align 8
-  %gt = icmp ugt i64 %0, 0
+  %gt = icmp sgt i64 %0, 0
   br i1 %gt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %.anon, align 8
-  %subnuw = sub nuw i64 %1, 1
-  store i64 %subnuw, ptr %.anon, align 8
+  %subnsw = sub nsw i64 %1, 1
+  store i64 %subnsw, ptr %.anon, align 8
   %2 = load i64, ptr %.anon, align 8
   %ptroffset = getelementptr inbounds [4 x i8], ptr %foo, i64 %2
   %3 = load float, ptr %ptroffset, align 4
@@ -116,13 +116,13 @@ loop.exit:                                        ; preds = %loop.cond
 
 loop.cond2:                                       ; preds = %loop.body4, %loop.exit
   %5 = load i64, ptr %.anon1, align 8
-  %gt3 = icmp ugt i64 %5, 0
+  %gt3 = icmp sgt i64 %5, 0
   br i1 %gt3, label %loop.body4, label %loop.exit9
 
 loop.body4:                                       ; preds = %loop.cond2
   %6 = load i64, ptr %.anon1, align 8
-  %subnuw5 = sub nuw i64 %6, 1
-  store i64 %subnuw5, ptr %.anon1, align 8
+  %subnsw5 = sub nsw i64 %6, 1
+  store i64 %subnsw5, ptr %.anon1, align 8
   %7 = load i64, ptr %.anon1, align 8
   %ptroffset7 = getelementptr inbounds [4 x i8], ptr %foo, i64 %7
   store ptr %ptroffset7, ptr %a6, align 8
@@ -142,13 +142,13 @@ loop.exit9:                                       ; preds = %loop.cond2
 
 loop.cond11:                                      ; preds = %loop.body13, %loop.exit9
   %12 = load i64, ptr %.anon10, align 8
-  %gt12 = icmp ugt i64 %12, 0
+  %gt12 = icmp sgt i64 %12, 0
   br i1 %gt12, label %loop.body13, label %loop.exit18
 
 loop.body13:                                      ; preds = %loop.cond11
   %13 = load i64, ptr %.anon10, align 8
-  %subnuw14 = sub nuw i64 %13, 1
-  store i64 %subnuw14, ptr %.anon10, align 8
+  %subnsw14 = sub nsw i64 %13, 1
+  store i64 %subnsw14, ptr %.anon10, align 8
   %14 = load i64, ptr %.anon10, align 8
   %ptroffset16 = getelementptr inbounds [4 x i8], ptr %foo, i64 %14
   store ptr %ptroffset16, ptr %a15, align 8
@@ -164,13 +164,13 @@ loop.exit18:                                      ; preds = %loop.cond11
 
 loop.cond20:                                      ; preds = %loop.body22, %loop.exit18
   %17 = load i64, ptr %.anon19, align 8
-  %gt21 = icmp ugt i64 %17, 0
+  %gt21 = icmp sgt i64 %17, 0
   br i1 %gt21, label %loop.body22, label %loop.exit27
 
 loop.body22:                                      ; preds = %loop.cond20
   %18 = load i64, ptr %.anon19, align 8
-  %subnuw23 = sub nuw i64 %18, 1
-  store i64 %subnuw23, ptr %.anon19, align 8
+  %subnsw23 = sub nsw i64 %18, 1
+  store i64 %subnsw23, ptr %.anon19, align 8
   %19 = load i64, ptr %.anon19, align 8
   store i64 %19, ptr %i, align 8
   %20 = load i64, ptr %.anon19, align 8
@@ -189,13 +189,13 @@ loop.exit27:                                      ; preds = %loop.cond20
 
 loop.cond29:                                      ; preds = %loop.body31, %loop.exit27
   %24 = load i64, ptr %.anon28, align 8
-  %gt30 = icmp ugt i64 %24, 0
+  %gt30 = icmp sgt i64 %24, 0
   br i1 %gt30, label %loop.body31, label %loop.exit37
 
 loop.body31:                                      ; preds = %loop.cond29
   %25 = load i64, ptr %.anon28, align 8
-  %subnuw32 = sub nuw i64 %25, 1
-  store i64 %subnuw32, ptr %.anon28, align 8
+  %subnsw32 = sub nsw i64 %25, 1
+  store i64 %subnsw32, ptr %.anon28, align 8
   %26 = load i64, ptr %.anon28, align 8
   %trunc = trunc i64 %26 to i8
   store i8 %trunc, ptr %i33, align 1
@@ -216,13 +216,13 @@ loop.exit37:                                      ; preds = %loop.cond29
 
 loop.cond39:                                      ; preds = %loop.body41, %loop.exit37
   %31 = load i64, ptr %.anon38, align 8
-  %gt40 = icmp ugt i64 %31, 0
+  %gt40 = icmp sgt i64 %31, 0
   br i1 %gt40, label %loop.body41, label %loop.exit46
 
 loop.body41:                                      ; preds = %loop.cond39
   %32 = load i64, ptr %.anon38, align 8
-  %subnuw42 = sub nuw i64 %32, 1
-  store i64 %subnuw42, ptr %.anon38, align 8
+  %subnsw42 = sub nsw i64 %32, 1
+  store i64 %subnsw42, ptr %.anon38, align 8
   %33 = load i64, ptr %.anon38, align 8
   %ptroffset44 = getelementptr inbounds [4 x i8], ptr %foo, i64 %33
   %34 = load float, ptr %ptroffset44, align 4
@@ -238,13 +238,13 @@ loop.exit46:                                      ; preds = %loop.cond39
 
 loop.cond48:                                      ; preds = %loop.body50, %loop.exit46
   %36 = load i64, ptr %.anon47, align 8
-  %gt49 = icmp ugt i64 %36, 0
+  %gt49 = icmp sgt i64 %36, 0
   br i1 %gt49, label %loop.body50, label %loop.exit54
 
 loop.body50:                                      ; preds = %loop.cond48
   %37 = load i64, ptr %.anon47, align 8
-  %subnuw51 = sub nuw i64 %37, 1
-  store i64 %subnuw51, ptr %.anon47, align 8
+  %subnsw51 = sub nsw i64 %37, 1
+  store i64 %subnsw51, ptr %.anon47, align 8
   %38 = load <4 x float>, ptr %foo2, align 16
   %extractvec = shufflevector <4 x float> %38, <4 x float> poison, <3 x i32> <i32 0, i32 1, i32 2>
   %39 = load i64, ptr %.anon47, align 8
@@ -261,13 +261,13 @@ loop.exit54:                                      ; preds = %loop.cond48
 
 loop.cond56:                                      ; preds = %loop.body58, %loop.exit54
   %42 = load i64, ptr %.anon55, align 8
-  %gt57 = icmp ugt i64 %42, 0
+  %gt57 = icmp sgt i64 %42, 0
   br i1 %gt57, label %loop.body58, label %loop.exit64
 
 loop.body58:                                      ; preds = %loop.cond56
   %43 = load i64, ptr %.anon55, align 8
-  %subnuw59 = sub nuw i64 %43, 1
-  store i64 %subnuw59, ptr %.anon55, align 8
+  %subnsw59 = sub nsw i64 %43, 1
+  store i64 %subnsw59, ptr %.anon55, align 8
   %44 = load i64, ptr %.anon55, align 8
   %ptroffset61 = getelementptr inbounds [4 x i8], ptr %foo2, i64 %44
   store ptr %ptroffset61, ptr %a60, align 8
@@ -287,13 +287,13 @@ loop.exit64:                                      ; preds = %loop.cond56
 
 loop.cond66:                                      ; preds = %loop.body68, %loop.exit64
   %49 = load i64, ptr %.anon65, align 8
-  %gt67 = icmp ugt i64 %49, 0
+  %gt67 = icmp sgt i64 %49, 0
   br i1 %gt67, label %loop.body68, label %loop.exit74
 
 loop.body68:                                      ; preds = %loop.cond66
   %50 = load i64, ptr %.anon65, align 8
-  %subnuw69 = sub nuw i64 %50, 1
-  store i64 %subnuw69, ptr %.anon65, align 8
+  %subnsw69 = sub nsw i64 %50, 1
+  store i64 %subnsw69, ptr %.anon65, align 8
   %51 = load i64, ptr %.anon65, align 8
   store i64 %51, ptr %i70, align 8
   %52 = load <4 x float>, ptr %foo2, align 16
@@ -313,13 +313,13 @@ loop.exit74:                                      ; preds = %loop.cond66
 
 loop.cond76:                                      ; preds = %loop.body78, %loop.exit74
   %57 = load i64, ptr %.anon75, align 8
-  %gt77 = icmp ugt i64 %57, 0
+  %gt77 = icmp sgt i64 %57, 0
   br i1 %gt77, label %loop.body78, label %loop.exit86
 
 loop.body78:                                      ; preds = %loop.cond76
   %58 = load i64, ptr %.anon75, align 8
-  %subnuw79 = sub nuw i64 %58, 1
-  store i64 %subnuw79, ptr %.anon75, align 8
+  %subnsw79 = sub nsw i64 %58, 1
+  store i64 %subnsw79, ptr %.anon75, align 8
   %59 = load i64, ptr %.anon75, align 8
   %trunc81 = trunc i64 %59 to i8
   store i8 %trunc81, ptr %i80, align 1
@@ -341,13 +341,13 @@ loop.exit86:                                      ; preds = %loop.cond76
 
 loop.cond88:                                      ; preds = %loop.body90, %loop.exit86
   %65 = load i64, ptr %.anon87, align 8
-  %gt89 = icmp ugt i64 %65, 0
+  %gt89 = icmp sgt i64 %65, 0
   br i1 %gt89, label %loop.body90, label %loop.exit95
 
 loop.body90:                                      ; preds = %loop.cond88
   %66 = load i64, ptr %.anon87, align 8
-  %subnuw91 = sub nuw i64 %66, 1
-  store i64 %subnuw91, ptr %.anon87, align 8
+  %subnsw91 = sub nsw i64 %66, 1
+  store i64 %subnsw91, ptr %.anon87, align 8
   %67 = load <4 x float>, ptr %foo2, align 16
   %extractvec93 = shufflevector <4 x float> %67, <4 x float> poison, <3 x i32> <i32 0, i32 1, i32 2>
   %68 = load i64, ptr %.anon87, align 8

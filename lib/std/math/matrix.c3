@@ -63,7 +63,7 @@ struct Matrix4x4 (Printable)
 	}
 }
 
-fn usz? Matrix4x4.to_format(&self, Formatter* f) @dynamic
+fn sz? Matrix4x4.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("[%g,%g,%g,%g|%g,%g,%g,%g|%g,%g,%g,%g|%g,%g,%g,%g]",
 		self.m00, self.m01, self.m02, self.m03,
@@ -72,7 +72,7 @@ fn usz? Matrix4x4.to_format(&self, Formatter* f) @dynamic
 		self.m30, self.m31, self.m32, self.m33);
 }
 
-fn usz? Matrix3x3.to_format(&self, Formatter* f) @dynamic
+fn sz? Matrix3x3.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("[%g,%g,%g|%g,%g,%g|%g,%g,%g]",
 		self.m00, self.m01, self.m02,
@@ -80,7 +80,7 @@ fn usz? Matrix3x3.to_format(&self, Formatter* f) @dynamic
 		self.m20, self.m21, self.m22);
 }
 
-fn usz? Matrix2x2.to_format(&self, Formatter* f) @dynamic
+fn sz? Matrix2x2.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("[%g,%g|%g,%g]",
 		self.m00, self.m01,

@@ -17,11 +17,11 @@ fn void test_deflate_basic()
 fn void test_deflate_repetitive()
 {
 	// 5000 bytes of repetitive data should compress very well
-	usz len = 5000;
+	sz len = 5000;
 	char[] original = mem::malloc(len)[:len];
 	defer free(original.ptr);
 
-	for (usz i = 0; i < len; i++)
+	for (sz i = 0; i < len; i++)
 	{
 		original[i] = (char)((i % 10) + '0');
 	}
@@ -54,7 +54,7 @@ fn void test_deflate_empty()
 fn void test_deflate_large_repetitive() @if($feature(SLOW_TESTS))
 {
 	// Test larger buffer to trigger reallocs in inflater
-	usz len = 100000;
+	sz len = 100000;
 	char[] original = mem::malloc(len)[:len];
 	defer free(original.ptr);
 
@@ -73,11 +73,11 @@ fn void test_deflate_large_repetitive() @if($feature(SLOW_TESTS))
 fn void test_deflate_random_ish()
 {
 	// Data that doesn't compress well
-	usz len = 1024;
+	sz len = 1024;
 	char[] original = mem::malloc(len)[:len];
 	defer free(original.ptr);
 
-	for (usz i = 0; i < len; i++)
+	for (sz i = 0; i < len; i++)
 	{
 		original[i] = (char)(i & 0xFF);
 	}
@@ -109,12 +109,12 @@ fn void test_deflate_compress_stream()
 	{
 		// Test compression stream by writing to a pipe and reading the output
 		String original = "This data will be compressed via stream interface. ";
-		usz count = 100;
-		usz full_len = original.len * count;
+		sz count = 100;
+		sz full_len = original.len * count;
 		char[] full_original = mem::malloc(full_len)[:full_len];
 		defer free(full_original.ptr);
 
-		for (usz i = 0; i < count; i++)
+		for (sz i = 0; i < count; i++)
 		{
 			mem::copy(full_original.ptr + i * original.len, original.ptr, original.len);
 		}
@@ -128,7 +128,7 @@ fn void test_deflate_compress_stream()
 
 		deflate::compress_stream(mem, &in_stream, &out_f)!!;
 
-		usz file_len = out_f.seek(0, Seek.CURSOR)!!;
+		long file_len = out_f.seek(0, Seek.CURSOR)!!;
 		out_f.seek(0, Seek.SET)!!;
 
 		char[] compressed = mem::malloc(file_len)[:file_len];
@@ -148,11 +148,12 @@ fn void test_deflate_decompress_stream()
 	@pool()
 	{
 		String base = "This is a streaming test for DEFLATE. ";
-		usz base_len = base.len;
-		usz count = 50;
+		sz base_len = base.len;
+		sz count = 50;
 		char[] original_arr = mem::malloc(base_len * count)[:base_len * count];
 		defer free(original_arr.ptr);
-		for (usz i = 0; i < count; i++) {
+		for (sz i = 0; i < count; i++)
+		{
 			mem::copy(original_arr.ptr + i * base_len, base.ptr, base_len);
 		}
 		String original = (String)original_arr;
@@ -173,7 +174,7 @@ fn void test_deflate_decompress_stream()
 
 		deflate::decompress_stream(&f, &out_f)!!;
 
-		usz out_size = out_f.seek(0, Seek.CURSOR)!!;
+		long out_size = out_f.seek(0, Seek.CURSOR)!!;
 		assert(out_size == original.len, "Length mismatch in streaming decompression");
 
 		out_f.seek(0, Seek.SET)!!;
@@ -192,7 +193,7 @@ fn void test_deflate_embedded_stream()
 	char[] compressed = deflate::compress(mem, base[..])!!;
 	defer free(compressed.ptr);
 
-	usz append_len = compressed.len + 1;
+	sz append_len = compressed.len + 1;
 	char[] append = mem::malloc(append_len)[:append_len];
 	defer free(append.ptr);
 
@@ -233,10 +234,10 @@ fn void test_deflate_incremental()
 		char[] decompressed = mem::malloc(original.len)[:original.len];
 		defer free(decompressed.ptr);
 
-		for (usz i = 0; i < original.len; i++)
+		for (sz i = 0; i < original.len; i++)
 		{
 			char[1] one_byte;
-			usz n = inflater.read(one_byte[..])!!;
+			sz n = inflater.read(one_byte[..])!!;
 			assert(n == 1, "Expected 1 byte");
 			decompressed[i] = one_byte[0];
 		}

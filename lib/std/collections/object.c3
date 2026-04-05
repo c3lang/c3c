@@ -14,7 +14,7 @@ struct Object (Printable)
 	Allocator allocator;
 	union
 	{
-		uint128 i;
+		int128 i;
 		double f;
 		bool b;
 		String s;
@@ -25,7 +25,7 @@ struct Object (Printable)
 }
 
 
-fn usz? Object.to_format(&self, Formatter* formatter) @dynamic
+fn sz? Object.to_format(&self, Formatter* formatter) @dynamic
 {
 	switch (self.type)
 	{
@@ -38,7 +38,7 @@ fn usz? Object.to_format(&self, Formatter* formatter) @dynamic
 		case bool:
 			return formatter.printf(self.b ? "true" : "false")!;
 		case ObjectInternalList:
-			usz n = formatter.printf("[")!;
+			sz n = formatter.printf("[")!;
 			foreach (i, ol : self.array)
 			{
 				if (i > 0) n += formatter.printf(",")!;
@@ -47,7 +47,7 @@ fn usz? Object.to_format(&self, Formatter* formatter) @dynamic
 			n += formatter.printf("]")!;
 			return n;
 		case ObjectInternalMap:
-			usz n = formatter.printf("{")!;
+			sz n = formatter.printf("{")!;
 			@stack_mem(1024; Allocator mem)
 			{
 				foreach (i, key : self.map.keys(mem))
@@ -93,7 +93,7 @@ fn Object* new_int(int128 i, Allocator allocator)
 
 macro Object* new_enum(e, Allocator allocator)
 {
-	return @alloc_obj(allocator, { .i = (int128)e, .allocator = allocator, .type = @typeid(e) });
+	return @alloc_obj(allocator, { .i = e, .allocator = allocator, .type = @typeid(e) });
 }
 
 fn Object* new_float(double f, Allocator allocator)
@@ -228,7 +228,7 @@ macro Object* Object.set(&self, String key, value)
 <*
  @require self.is_indexable()
 *>
-macro Object* Object.set_at(&self, usz index, String key, value)
+macro Object* Object.set_at(&self, sz index, String key, value)
 {
 	Object* val = self.object_from_value(value);
 	self.set_object_at(key, index, val);
@@ -256,7 +256,7 @@ fn bool Object.has_key(&self, String key) => self.is_map() && self.map.has_key(k
 <*
  @require self.is_indexable()
 *>
-fn Object* Object.get_at(&self, usz index)
+fn Object* Object.get_at(&self, sz index)
 {
 	return self.array.get(index);
 }
@@ -264,7 +264,7 @@ fn Object* Object.get_at(&self, usz index)
 <*
  @require self.is_indexable()
 *>
-fn usz Object.get_len(&self)
+fn sz Object.get_len(&self)
 {
 	return self.array.len();
 }
@@ -281,7 +281,7 @@ fn void Object.push_object(&self, Object* to_append)
 <*
  @require self.is_indexable()
 *>
-fn void Object.set_object_at(&self, usz index, Object* to_set)
+fn void Object.set_object_at(&self, sz index, Object* to_set)
 {
 	object_init_array_if_needed(self);
 	while (self.array.len() < index)
@@ -323,7 +323,7 @@ macro get_integer_value(Object* value, $Type)
  @require self.is_indexable()
  @require $Type.kindof.is_int() : "Expected an integer type"
 *>
-macro Object.get_integer_at(&self, $Type, usz index) @private
+macro Object.get_integer_at(&self, $Type, sz index) @private
 {
 	return get_integer_value(self.get_at(index), $Type);
 }
@@ -343,23 +343,23 @@ fn int? Object.get_int(&self, String key) => self.get_integer(int, key);
 fn long? Object.get_long(&self, String key) => self.get_integer(long, key);
 fn int128? Object.get_int128(&self, String key) => self.get_integer(int128, key);
 
-fn ichar? Object.get_ichar_at(&self, usz index) => self.get_integer_at(ichar, index);
-fn short? Object.get_short_at(&self, usz index) => self.get_integer_at(short, index);
-fn int? Object.get_int_at(&self, usz index) => self.get_integer_at(int, index);
-fn long? Object.get_long_at(&self, usz index) => self.get_integer_at(long, index);
-fn int128? Object.get_int128_at(&self, usz index) => self.get_integer_at(int128, index);
+fn ichar? Object.get_ichar_at(&self, sz index) => self.get_integer_at(ichar, index);
+fn short? Object.get_short_at(&self, sz index) => self.get_integer_at(short, index);
+fn int? Object.get_int_at(&self, sz index) => self.get_integer_at(int, index);
+fn long? Object.get_long_at(&self, sz index) => self.get_integer_at(long, index);
+fn int128? Object.get_int128_at(&self, sz index) => self.get_integer_at(int128, index);
 
-fn char? Object.get_char(&self, String key) => self.get_integer(ichar, key);
-fn short? Object.get_ushort(&self, String key) => self.get_integer(ushort, key);
+fn char? Object.get_char(&self, String key) => self.get_integer(char, key);
+fn ushort? Object.get_ushort(&self, String key) => self.get_integer(ushort, key);
 fn uint? Object.get_uint(&self, String key) => self.get_integer(uint, key);
 fn ulong? Object.get_ulong(&self, String key) => self.get_integer(ulong, key);
 fn uint128? Object.get_uint128(&self, String key) => self.get_integer(uint128, key);
 
-fn char? Object.get_char_at(&self, usz index) => self.get_integer_at(char, index);
-fn ushort? Object.get_ushort_at(&self, usz index) => self.get_integer_at(ushort, index);
-fn uint? Object.get_uint_at(&self, usz index) => self.get_integer_at(uint, index);
-fn ulong? Object.get_ulong_at(&self, usz index) => self.get_integer_at(ulong, index);
-fn uint128? Object.get_uint128_at(&self, usz index) => self.get_integer_at(uint128, index);
+fn char? Object.get_char_at(&self, sz index) => self.get_integer_at(char, index);
+fn ushort? Object.get_ushort_at(&self, sz index) => self.get_integer_at(ushort, index);
+fn uint? Object.get_uint_at(&self, sz index) => self.get_integer_at(uint, index);
+fn ulong? Object.get_ulong_at(&self, sz index) => self.get_integer_at(ulong, index);
+fn uint128? Object.get_uint128_at(&self, sz index) => self.get_integer_at(uint128, index);
 
 <*
  @require self.is_keyable()
@@ -374,7 +374,7 @@ fn String? Object.get_string(&self, String key)
 <*
  @require self.is_indexable()
 *>
-fn String? Object.get_string_at(&self, usz index)
+fn String? Object.get_string_at(&self, sz index)
 {
 	Object* value = self.get_at(index);
 	if (!value.is_string()) return TYPE_MISMATCH~;
@@ -394,7 +394,7 @@ macro String? Object.get_enum(&self, $EnumType, String key)
 <*
  @require self.is_indexable()
 *>
-macro String? Object.get_enum_at(&self, $EnumType, usz index)
+macro String? Object.get_enum_at(&self, $EnumType, sz index)
 {
 	Object value = self.get_at(index);
 	if ($EnumType.typeid != value.type) return TYPE_MISMATCH~;
@@ -415,7 +415,7 @@ fn bool? Object.get_bool(&self, String key)
 <*
  @require self.is_indexable()
 *>
-fn bool? Object.get_bool_at(&self, usz index)
+fn bool? Object.get_bool_at(&self, sz index)
 {
 	Object* value = self.get_at(index);
 	if (!value.is_bool()) return TYPE_MISMATCH~;
@@ -444,7 +444,7 @@ fn double? Object.get_float(&self, String key)
 <*
  @require self.is_indexable()
 *>
-fn double? Object.get_float_at(&self, usz index)
+fn double? Object.get_float_at(&self, sz index)
 {
 	Object* value = self.get_at(index);
 	switch (value.type.kindof)

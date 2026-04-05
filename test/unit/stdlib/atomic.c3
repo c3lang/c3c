@@ -2,7 +2,7 @@ import std::thread;
 import std::io;
 import std::atomic;
 
-uint a;
+int a;
 float fa;
 
 fn void add() @test
@@ -87,7 +87,7 @@ fn void div() @test
 	{
 		t.create(fn int(void* arg) {
 			thread::sleep_ms(5);
-			atomic::fetch_div(&a, 8U);
+			atomic::fetch_div(&a, 8);
 				return 0;
 		}, null)!!;
 	}
@@ -105,7 +105,7 @@ fn void max() @test
 	foreach (&t : ts)
 	{
 		t.create(fn int(void* arg) {
-			uint la = 0;
+			int la = 0;
 			thread::sleep_ms(5);
 			atomic::fetch_max(&a, la);
 			la++;
@@ -141,7 +141,7 @@ fn void min() @test
 	foreach (&t : ts)
 	{
 		t.create(fn int(void* arg) {
-			uint la = 5;
+			int la = 5;
 			thread::sleep_ms(5);
 			atomic::fetch_min(&a, la);
 			la--;

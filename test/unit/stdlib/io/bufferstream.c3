@@ -11,7 +11,7 @@ fn void readbuffer_large()
     reader_buf.init(&src, buf[..]);
 
     char[DATA.len] bytes;
-    usz n = reader_buf.read(bytes[..])!!;
+    sz n = reader_buf.read(bytes[..])!!;
 
     assert(n == DATA.len, "large read failed: got %d; want %d", n, DATA.len);
     String got = (String)bytes[..];
@@ -29,7 +29,7 @@ fn void readbuffer()
     ByteWriter bw;
     bw.tinit();
 
-    usz n = io::copy_to(&reader_buf, &bw)!!;
+    sz n = io::copy_to(&reader_buf, &bw)!!;
 
     assert(n == DATA.len, "got %d; want %d", n, DATA.len);
     String got = bw.str_view();
@@ -44,7 +44,7 @@ fn void writebuffer_large()
     WriteBuffer write_buf;
     write_buf.init(&out, buf[..]);
 
-    usz n = write_buf.write(DATA)!!;
+    sz n = write_buf.write(DATA)!!;
 
     assert(n == DATA.len, "large write failed: got %d; want %d", n, DATA.len);
     String got = out.str_view();
@@ -61,7 +61,7 @@ fn void writebuffer()
     WriteBuffer write_buf;
     write_buf.init(&out, buf[..]);
 
-    usz n = io::copy_to(&br, &write_buf)!!;
+    sz n = io::copy_to(&br, &write_buf)!!;
 
     assert(n == DATA.len, "got %d; want %d", n, DATA.len);
     String got = out.str_view();

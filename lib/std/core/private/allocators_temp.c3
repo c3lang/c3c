@@ -3,12 +3,12 @@ module std::core::mem::allocators @private;
 Allocator temp_base_allocator @private = base_allocator();
 const LazyTempAllocator LAZY_TEMP @private = {};
 
-usz temp_allocator_min_size = temp_allocator_default_min_size();
-usz temp_allocator_reserve_size = temp_allocator_default_reserve_size();
-usz temp_allocator_realloc_size = temp_allocator_default_min_size() * 4;
+sz temp_allocator_min_size = temp_allocator_default_min_size();
+sz temp_allocator_reserve_size = temp_allocator_default_reserve_size();
+sz temp_allocator_realloc_size = temp_allocator_default_min_size() * 4;
 
 // Default temp allocator sizes
-macro usz temp_allocator_size() @local
+macro sz temp_allocator_size() @local
 {
 	$switch env::MEMORY_ENV:
 		$case NORMAL: return 256 * 1024;
@@ -18,7 +18,7 @@ macro usz temp_allocator_size() @local
 	$endswitch
 }
 
-macro usz temp_allocator_default_min_size() @local
+macro sz temp_allocator_default_min_size() @local
 {
 	$switch env::MEMORY_ENV:
 		$case NORMAL: return 16 * 1024;
@@ -28,7 +28,7 @@ macro usz temp_allocator_default_min_size() @local
 	$endswitch
 }
 
-macro usz temp_allocator_default_reserve_size() @local
+macro sz temp_allocator_default_reserve_size() @local
 {
 	$switch env::MEMORY_ENV:
 		$case NORMAL: return 1024;

@@ -68,8 +68,8 @@ extern fn CInt get_system_info(SystemInfo*) @cname("GetSystemInfo");
 macro Tm* localtime_r(Time_t* timer, Tm* buf) => _localtime64_s(buf, timer);
 macro CInt setjmp(JmpBuf* buffer) => _setjmp(buffer, null);
 macro Tm* gmtime_r(Time_t* timer, Tm* buf) => _gmtime64_s(buf, timer);
-macro isz read(Fd fd, void* buffer, usz buffer_size) => _read(fd, buffer, (CUInt)buffer_size);
-macro isz write(Fd fd, void* buffer, usz count) => _write(fd, buffer, (CUInt)count);
+macro sz read(Fd fd, void* buffer, sz buffer_size) => _read(fd, buffer, (CUInt)buffer_size);
+macro sz write(Fd fd, void* buffer, sz count) => _write(fd, buffer, (CUInt)count);
 
 const CInt SIGABRT_COMPAT = 6;
 const CInt SIGBREAK = 21;

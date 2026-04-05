@@ -7,7 +7,7 @@ struct Maybe (Printable)
 	bool has_value;
 }
 
-fn usz? Maybe.to_format(&self, Formatter* f) @dynamic
+fn sz? Maybe.to_format(&self, Formatter* f) @dynamic
 {
 	if (self.has_value) return f.printf("[%s]", self.value);
 	return f.printf("[EMPTY]");

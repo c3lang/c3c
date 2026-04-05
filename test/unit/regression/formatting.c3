@@ -9,7 +9,7 @@ struct TestS (Decl, Printable)
 {
     int a;
 }
-fn usz? TestS.to_format(&self, Formatter* formatter) @dynamic => formatter.printf("[%d]", self.a);
+fn sz? TestS.to_format(&self, Formatter* formatter) @dynamic => formatter.printf("[%d]", self.a);
 
 faultdef DERP;
 

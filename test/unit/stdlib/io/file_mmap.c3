@@ -24,7 +24,7 @@ fn void map_read_only() @test
 	
 	char[] view = mapped_file.bytes();
 	assert(view.len == msg.len);
-	for (usz i = 0; i < view.len; i += 1)
+	for (sz i = 0; i < view.len; i += 1)
 	{
 		assert(view[i] == msg[i]);
 	}
@@ -52,7 +52,7 @@ fn void map_read_write() @test
 	assert(check[0] == 'A' && check[1] == 'Z' && check[2] == 'C');
 }
 
-fn void map_with_offset(String fname, usz offset, usz size, char[] reference_msg)
+fn void map_with_offset(String fname, sz offset, sz size, char[] reference_msg)
 {
 	File f = file::open(fname, "r")!!;
 	defer f.close()!!;
@@ -60,7 +60,7 @@ fn void map_with_offset(String fname, usz offset, usz size, char[] reference_msg
 	mmap::FileMmap mapped_file = file::mmap_file(f, offset, size, vm::VirtualMemoryAccess.READ)!!;
 	defer mapped_file.destroy()!!;
 
-	usz expected_size = size;
+	sz expected_size = size;
 	if (size == 0)
 	{
 		expected_size = reference_msg.len - offset;
@@ -76,8 +76,8 @@ fn void map_read_only_with_offset_and_size_zero() @test
     char[] msg = "Hello, world";
     file::save(fname, msg)!!;
 
-	usz map_size = 0;
-	for (usz i = 0; i < msg.len; i += 1)
+	sz map_size = 0;
+	for (sz i = 0; i < msg.len; i += 1)
 	{
 		map_with_offset(fname, i, map_size, msg);
 	}
@@ -89,8 +89,8 @@ fn void map_read_only_with_offset() @test
 	char[] msg = "Hello, world";
 	file::save(fname, msg)!!;
 
-	usz map_size = 3;
-	for (usz i = 0; i < msg.len - map_size; i++)
+	sz map_size = 3;
+	for (sz i = 0; i < msg.len - map_size; i++)
 	{
 		map_with_offset(fname, i, map_size, msg);
 	}
@@ -108,7 +108,7 @@ fn void map_from_filename() @test
 
 	char[] view = mapped_file.bytes();
 	test::eq(view.len, msg.len);
-	for (usz i = 0; i < view.len; i++)
+	for (sz i = 0; i < view.len; i++)
 	{
 		test::eq(view[i], msg[i]);
 	}

@@ -35,6 +35,14 @@ SHUTDOWN:
 void taskqueue_run(int threads, Task **task_list)
 {
 	ASSERT(threads > 0);
+	if (threads == 1)
+	{
+		FOREACH(Task *, task, task_list)
+		{
+			task->task(task->arg);
+		}
+		return;
+	}
 	pthread_t *pthreads = malloc(sizeof(pthread_t) * (unsigned)threads);
 	TaskQueue queue = { .queue = task_list };
 	if (pthread_mutex_init(&queue.lock, NULL)) error_exit("Failed to set up mutex");

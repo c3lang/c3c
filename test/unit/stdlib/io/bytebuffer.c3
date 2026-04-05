@@ -9,7 +9,7 @@ fn void write_read()
 	buffer.write("hello")!!;
 
 	char[8] bytes;
-	usz n = buffer.read(bytes[..])!!;
+	sz n = buffer.read(bytes[..])!!;
 	assert(n == 5);
 	assert((String)bytes[:n] == "hello");
 

@@ -64,7 +64,7 @@ const CInt SIGSEGV = 11;
 const CInt SIGTERM = 15;
 
 alias Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
-alias Off_t = $typefrom(env::WIN32 ? int.typeid : isz.typeid);
+alias Off_t = $typefrom(env::WIN32 ? int.typeid : sz.typeid);
 
 module libc @if(env::LIBC);
 
@@ -135,8 +135,8 @@ extern fn CInt puts(ZString str);
 extern fn void qsort(void* base, usz items, usz size, CompareFunction compare);
 extern fn CInt raise(CInt signal);
 extern fn CInt rand();
-extern fn isz read(Fd fd, void* buf, usz nbyte) @if(!env::WIN32);
-extern fn isz readlink(ZString pathname, char* buf, int bufsize) @if(!env::WIN32);
+extern fn sz read(Fd fd, void* buf, usz nbyte) @if(!env::WIN32);
+extern fn sz readlink(ZString pathname, char* buf, int bufsize) @if(!env::WIN32);
 extern fn void* realloc(void* ptr, usz size);
 extern fn CInt remove(ZString filename);
 extern fn CInt rename(ZString old_name, ZString new_name);
@@ -183,10 +183,10 @@ extern fn ZString tmpnam(char *buffer);
 extern fn CFile tmpfile();
 extern fn CInt ungetc(CInt c, CFile stream);
 extern fn CInt unsetenv(ZString name) @if(!env::NETBSD);
-extern fn isz write(Fd fd, void* buffer, usz count) @if(!env::WIN32);
+extern fn sz write(Fd fd, void* buffer, usz count) @if(!env::WIN32);
 
 extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
-extern fn isz getline(char** linep, usz* linecapp, CFile stream);
+extern fn sz getline(char** linep, usz* linecapp, CFile stream);
 extern fn CInt timespec_get(TimeSpec* ts, CInt base);
 extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining) @if(!env::NETBSD);
 extern fn ZString ctime(Time_t* timer);
@@ -211,8 +211,8 @@ module libc @if(env::NETBSD || env::OPENBSD);
 extern fn int fcntl(CInt socket, int cmd, ...);
 extern fn int _setjmp(void*);
 macro int setjmp(void* ptr) => _setjmp(ptr);
-extern fn int _longjmp(void*, int);
-macro usz longjmp(void* ptr, CInt i) => _longjmp(ptr, i);
+extern fn void _longjmp(void*, int);
+macro void longjmp(void* ptr, CInt i) => _longjmp(ptr, i);
 extern fn usz malloc_size(void* ptr);
 extern fn void* aligned_alloc(usz align, usz size);
 extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @cname("__gmtime_r50") @if(env::NETBSD);

@@ -14,6 +14,6 @@ fn void main()
 	 {
 	 io::printfn("Pushing %d", i);
 	 l.push(y);
-	 if (i > 3) io::printfn("Diff %d", (usz)l.get_ref(i) - (usz)l.get_ref(i - (usz)1));
+	 if (i > 3) io::printfn("Diff %d", (sz)l.get_ref(i) - (sz)l.get_ref(i - (sz)1));
 	 }
 }
