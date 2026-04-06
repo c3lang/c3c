@@ -148,6 +148,7 @@ fn Type[] Deque.pop_back_into(&self, Type[] target)
 
 <*
  Reserve enough space in the queue for at least the specified value.
+
  @param added : "Specifies how many extra capacity is required at least"
 *>
 fn void Deque.reserve(&self, sz added)
@@ -245,7 +246,7 @@ fn bool Deque.is_empty(Deque* self) @inline
 }
 
 <*
- @require i < self.capacity && i >= 0 && j < self.capacity && j >= 0 : `Access out of bounds`
+ @require i < self.size && i >= 0 && j < self.size && j >= 0 : `Access out of bounds`
 *>
 fn void Deque.swap(&self, sz i, sz j)
 {
@@ -293,7 +294,7 @@ fn Type* Deque.back_ref(&self) @inline
 }
 
 <*
- @require index >= 0 && index < self.capacity : `Access out of bounds`
+ @require index >= 0 && index < self.size : `Access out of bounds`
 *>
 fn Type Deque.get(&self, sz index) @operator([]) @inline
 {
@@ -302,7 +303,7 @@ fn Type Deque.get(&self, sz index) @operator([]) @inline
 }
 
 <*
- @require index >= 0 && index < self.capacity : `Access out of bounds`
+ @require index >= 0 && index < self.size : `Access out of bounds`
 *>
 fn Type* Deque.get_ref(&self, sz index) @operator(&[]) @inline
 {
@@ -311,7 +312,7 @@ fn Type* Deque.get_ref(&self, sz index) @operator(&[]) @inline
 }
 
 <*
- @require index >= 0 && index < self.capacity : `Access out of bounds`
+ @require index >= 0 && index < self.size : `Access out of bounds`
 *>
 fn void Deque.set(&self, sz index, Type value) @operator([]=)
 {
@@ -376,6 +377,7 @@ fn sz next_front_idx(Deque* self) @inline @private
 
 <*
  More optimized version of 'pop_back', when we know that the size is not 0.
+
  @require self.size > 0 : "Size should be greater than 0"
 *>
 fn Type _pop_back(Deque* self) @private
@@ -387,6 +389,7 @@ fn Type _pop_back(Deque* self) @private
 
 <*
  More optimized version of 'pop_front', when we know that the size is not 0.
+
  @require self.size > 0 : "Size should be greater than 0"
 *>
 fn Type _pop_front(Deque* self) @private
