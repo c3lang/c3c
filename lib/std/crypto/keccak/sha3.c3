@@ -5,11 +5,6 @@ module std::crypto::sha3;
 
 import std::crypto @public;
 
-alias Sha3_224 = Sha3{224};
-alias Sha3_256 = Sha3{256};
-alias Sha3_384 = Sha3{384};
-alias Sha3_512 = Sha3{512};
-
 <* Used for creating SHA-3 HMACs with the "legacy" (i.e., non-KMAC) construction. *>
 const char IPAD @local = 0x36;
 <* Used for creating SHA-3 HMACs with the "legacy" (i.e., non-KMAC) construction. *>

@@ -8,10 +8,10 @@ import std::crypto @public;
 
 fn void assert_finalization()
 {
-	static Kmac128 expected = { .c = { .under = { .k = { .state = (KeccakStateMachine)KeccakState.FINALIZED } } } };
+	static Kmac{128} expected = { .c = { .under = { .k = { .state = (KeccakStateMachine)KeccakState.FINALIZED } } } };
 	char[] expected_view = @as_char_view(expected);
 	static char[32] result;
-	Kmac128 c;
+	Kmac{128} c;
 	char[] c_byte_view = @as_char_view(c);
 	c.init("programming");
 	c.update("C3");
@@ -213,12 +213,12 @@ fn void streamed()
 {
 	String s = keccak_test::STREAM_VECTOR;
 
-	Kmac128 s1; s1.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
-	Kmac128 s2; s2.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
-	Kmac128 s3; s3.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
-	Kmac256 s4; s4.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
-	Kmac256 s5; s5.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
-	Kmac256 s6; s6.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
+	Kmac{128} s1; s1.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
+	Kmac{128} s2; s2.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
+	Kmac{128} s3; s3.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
+	Kmac{256} s4; s4.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
+	Kmac{256} s5; s5.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
+	Kmac{256} s6; s6.init(keccak_test::KMAC_KEYS[0], keccak_test::CUSTOMIZATION_STRINGS[2]);
 
 	s1.update(s[:20]); s1.update(s[20:10]); s1.update(s[30:1]); s1.update(s[31..]);
 	s2.update(s[:20]); s2.update(s[20:10]); s2.update(s[30:1]); s2.update(s[31..]);
@@ -291,7 +291,7 @@ fn void successive_xof_operations_128()
 	// Now use the cryptographic XOF functionality to squeeze variable-length data out of SHAKE in .
 	//   We "squeeze" 8 bytes at a time, and the resulting value of the XOF, when concatenated, will match the expected value.
 	char[32] buf;
-	KmacXOF128 k;
+	KmacXOF{128} k;
 	k.init(keccak_test::KMAC_KEYS[1], "!!!!!@@@@@#####$$$$$");
 	k.update("i want to be sure this message wasn't tampered with");
 	k.squeeze(buf[0:8]);
@@ -311,7 +311,7 @@ fn void successive_xof_operations_256()
 	// This one shows the even though we squeeze at odd intervals, or beyond the length of the original expected value,
 	//   the prefix will still match.
 	char[128] buf;
-	KmacXOF256 k;
+	KmacXOF{256} k;
 	k.init(keccak_test::KMAC_KEYS[1], "!!!!!@@@@@#####$$$$$");
 	k.update("i want to be sure this message wasn't tampered with");
 	k.squeeze(buf[0:7]);
@@ -330,7 +330,7 @@ fn void xof_vs_non_xof()
 {
 	char[50] buf;
 
-	KmacXOF128 k;
+	KmacXOF{128} k;
 	k.init("A KMAC secret key");
 	k.update("hello123");
 

@@ -5,9 +5,6 @@ module std::crypto::shake;
 
 import std::crypto @public;
 
-alias Shake128 = Shake{128};
-alias Shake256 = Shake{256};
-
 <* The set of usable security levels that are valid for this implementation of SHAKE and Keccak. *>
 const sz[] USABLE_LEVELS = { 128, 256 };
 

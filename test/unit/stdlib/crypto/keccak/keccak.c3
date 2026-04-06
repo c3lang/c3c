@@ -8,10 +8,10 @@ import std::crypto::keccak @public;
 
 fn void assert_finalization()
 {
-	static Keccak256 expected = { .state = (KeccakStateMachine)KeccakState.FINALIZED };
+	static Keccak{256} expected = { .state = (KeccakStateMachine)KeccakState.FINALIZED };
 	char[] expected_view = @as_char_view(expected);
 	static char[32] result;
-	Keccak256 c;
+	Keccak{256} c;
 	char[] c_byte_view = @as_char_view(c);
 	c.init();
 	c.update("C3");

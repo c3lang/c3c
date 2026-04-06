@@ -9,11 +9,6 @@ module std::crypto::parallel_hash;
 import std::math, std::thread;
 import std::crypto @public;
 
-alias ParallelHashXOF128 = ParallelHashXOF{128};
-alias ParallelHashXOF256 = ParallelHashXOF{256};
-alias ParallelHash128 = ParallelHash{128};
-alias ParallelHash256 = ParallelHash{256};
-
 <* The maximum allowable block size for this implementation. *>
 const MAX_BLOCK_SIZE = 128 * 1024 * 1024;   // 128 MiB
 

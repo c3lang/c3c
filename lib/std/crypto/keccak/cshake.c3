@@ -8,9 +8,6 @@ module std::crypto::cshake;
 
 import std::crypto @public;
 
-alias CShake128 = CShake{128};
-alias CShake256 = CShake{256};
-
 <* Bubble up the SHAKE usable security levels. *>
 const USABLE_LEVELS = shake::USABLE_LEVELS;
 

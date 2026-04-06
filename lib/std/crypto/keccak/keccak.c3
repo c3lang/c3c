@@ -13,11 +13,6 @@ const DEFAULT_DELIMITER = 0x01;
 <* The set of valid Keccak security levels supported by this implementation. *>
 const sz[] SECURITY_LEVELS = { 224, 256, 384, 512 };
 
-alias Keccak224 = Keccak{224};
-alias Keccak256 = Keccak{256};
-alias Keccak384 = Keccak{384};
-alias Keccak512 = Keccak{512};
-
 <*
  Get the constant Keccak `rate` value based on the given `F` and `SECURITY_LEVEL` attributes.
 

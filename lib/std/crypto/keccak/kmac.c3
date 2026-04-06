@@ -8,11 +8,6 @@ module std::crypto::kmac;
 
 import std::crypto @public;
 
-alias KmacXOF128 = KmacXOF{128};
-alias KmacXOF256 = KmacXOF{256};
-alias Kmac128 = Kmac{128};
-alias Kmac256 = Kmac{256};
-
 <*
  Generate and return a non-XOF KMAC hash of the specified `$outlen_bytes` length.
 

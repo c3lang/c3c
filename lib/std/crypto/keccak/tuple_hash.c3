@@ -8,11 +8,6 @@ module std::crypto::tuple_hash;
 
 import std::crypto @public;
 
-alias TupleHashXOF128 = TupleHashXOF{128};
-alias TupleHashXOF256 = TupleHashXOF{256};
-alias TupleHash128 = TupleHash{128};
-alias TupleHash256 = TupleHash{256};
-
 <*
  Generate and return a non-XOF TupleHash result of the specified `$outlen_bytes`.
 

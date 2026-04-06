@@ -161,10 +161,10 @@ fn void streamed()
 {
 	String s = keccak_test::STREAM_VECTOR;
 
-	TurboShake128 s1; s1.init();
-	TurboShake128 s2; s2.init();
-	TurboShake256 s3; s3.init();
-	TurboShake256 s4; s4.init();
+	TurboShake{128} s1; s1.init();
+	TurboShake{128} s2; s2.init();
+	TurboShake{256} s3; s3.init();
+	TurboShake{256} s4; s4.init();
 
 	s1.update(s[:20]); s1.update(s[20:10]); s1.update(s[30:1]); s1.update(s[31..]);
 	s2.update(s[:20]); s2.update(s[20:10]); s2.update(s[30:1]); s2.update(s[31..]);
