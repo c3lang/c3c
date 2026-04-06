@@ -51,7 +51,7 @@ fn void variably_streamed() @if ($feature(SLOW_TESTS))
 	foreach (i : math::iota(sz[2048]))
 	{
 		char[] scroll = input;
-		ParallelHash{256} p;
+		ParallelHash256 p;
 		p.tinit(block_size, custom);
 		while (scroll.len > 0)
 		{
@@ -98,7 +98,7 @@ fn void the_desperation_pays_off()
 
 	// This doesn't directly test ParallelHash. Instead, it tests all of the underlying constructs,
 	//   and outlines the (simplified) manner by which ParallelHash is able to achieve its goals.
-	CShake{128} cs;
+	CShake128 cs;
 	cs.init(PARALLEL_HASH, "");
 
 	cs.update(nist::encode_length(LEFT, b, true));

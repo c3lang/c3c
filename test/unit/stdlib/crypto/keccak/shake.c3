@@ -162,10 +162,10 @@ fn void streamed()
 {
 	String s = keccak_test::STREAM_VECTOR;
 
-	Shake{128} s1; s1.init();
-	Shake{128} s2; s2.init();
-	Shake{256} s3; s3.init();
-	Shake{256} s4; s4.init();
+	Shake128 s1; s1.init();
+	Shake128 s2; s2.init();
+	Shake256 s3; s3.init();
+	Shake256 s4; s4.init();
 
 	s1.update(s[:20]); s1.update(s[20:10]); s1.update(s[30:1]); s1.update(s[31..]);
 	s2.update(s[:20]); s2.update(s[20:10]); s2.update(s[30:1]); s2.update(s[31..]);
@@ -209,7 +209,7 @@ fn void successive_xof_operations_128()
 	// Now use the cryptographic XOF functionality to squeeze variable-length data out of SHAKE in .
 	//   We "squeeze" 8 bytes at a time, and the resulting value of the XOF, when concatenated, will match the expected value.
 	char[32] buf;
-	Shake{128} k;
+	Shake128 k;
 	k.init();
 	k.update("");
 	k.squeeze(buf[0:8]);
@@ -229,7 +229,7 @@ fn void successive_xof_operations_256()
 	// This one shows the even though we squeeze at odd intervals, or beyond the length of the original expected value,
 	//   the prefix will still match.
 	char[128] buf;
-	Shake{256} k;
+	Shake256 k;
 	k.init();
 	k.update("sugar");
 	k.squeeze(buf[0:7]);

@@ -8,10 +8,10 @@ import std::crypto @public;
 
 fn void assert_finalization()
 {
-	const TupleHash{128} EXPECTED = { .c = { .under = { .k = { .state = (KeccakStateMachine)KeccakState.FINALIZED } } } };
+	const TupleHash128 EXPECTED = { .c = { .under = { .k = { .state = (KeccakStateMachine)KeccakState.FINALIZED } } } };
 	char[] expected_view = @as_char_view(EXPECTED);
 	static char[32] result;
-	TupleHash{128} t;
+	TupleHash128 t;
 	char[] t_as_bytes = @as_char_view(t);
 	t.init();
 	t.update("C3");
@@ -283,13 +283,13 @@ fn void empty()
 
 fn void ordering()
 {
-	TupleHash{128} h1; h1.init(); h1.update("", ""); char[8] h1_final; h1.final(h1_final[..]);
+	TupleHash128 h1; h1.init(); h1.update("", ""); char[8] h1_final; h1.final(h1_final[..]);
 	test::eq(x"599c788bb322e430", h1_final);
 
-	TupleHash{128} h2; h2.init(); h2.update("", "", ""); char[8] h2_final; h2.final(h2_final[..]);
+	TupleHash128 h2; h2.init(); h2.update("", "", ""); char[8] h2_final; h2.final(h2_final[..]);
 	test::eq(x"761dd35893c85374", h2_final);
 
-	TupleHash{128} h3; h3.init(); h3.update("", "", "", ""); char[8] h3_final; h3.final(h3_final[..]);
+	TupleHash128 h3; h3.init(); h3.update("", "", "", ""); char[8] h3_final; h3.final(h3_final[..]);
 	test::eq(x"c29aa996e58a4c04", h3_final);
 
 	test::ne(tuple_hash::hash(256, 34, "mind", "bending", "hash", "tricks!"), tuple_hash::hash(256, 34, "mindbending", "hashtricks!"));
