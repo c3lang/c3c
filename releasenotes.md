@@ -42,6 +42,7 @@
 - Fix pipe handle leaks across concurrent process spawns #10067.
 - `$$trap` was incorrectly marked noreturn.
 - Recursive inclusion of contracts was not detected.
+- `\r` was not filtered when piping a source file from stdin.
 
 ## 0.7.11 Change list
 
