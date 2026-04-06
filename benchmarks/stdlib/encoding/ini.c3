@@ -1,5 +1,6 @@
 module ini_benchmarks;
 import std::encoding::ini;
+import std::collections::object;
 
 // Small: typical app config (~250 B)
 const String SMALL_INI = `
@@ -25,9 +26,9 @@ level = info
 file = /var/log/myapp.log
 `;
 
-IniMap small_map;
-IniMap medium_map;
-IniMap large_map;
+Object* small_map;
+Object* medium_map;
+Object* large_map;
 
 String medium_ini;
 String large_ini;
@@ -82,6 +83,6 @@ fn void parse_small()  { @pool() { ini::tparse(SMALL_INI)!!; }; }
 fn void parse_medium() { @pool() { ini::tparse(medium_ini)!!; }; }
 fn void parse_large()  { @pool() { ini::tparse(large_ini)!!; }; }
 
-fn void encode_small()  { @pool() { small_map.tencode(); }; }
-fn void encode_medium() { @pool() { medium_map.tencode(); }; }
-fn void encode_large()  { @pool() { large_map.tencode(); }; }
+fn void encode_small()  { @pool() { ini::tencode(small_map); }; }
+fn void encode_medium() { @pool() { ini::tencode(medium_map); }; }
+fn void encode_large()  { @pool() { ini::tencode(large_map); }; }
