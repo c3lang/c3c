@@ -30,18 +30,18 @@ faultdef
 macro void? Mutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, {});
 macro bool Mutex.is_initialized(mutex) => ((NativeMutex*)&mutex).is_initialized();
 macro void? RecursiveMutex.init(&mutex) @maydiscard => NativeMutex.init((NativeMutex*)mutex, {.recursive});
-macro void? Mutex.destroy(&mutex) @maydiscard => NativeMutex.destroy((NativeMutex*)mutex); // Remove optional in 0.8.0
+macro void Mutex.destroy(&mutex) => NativeMutex.destroy((NativeMutex*)mutex);
 macro void? Mutex.lock(&mutex) @maydiscard => NativeMutex.lock((NativeMutex*)mutex);
 macro bool Mutex.try_lock(&mutex) => NativeMutex.try_lock((NativeMutex*)mutex);
-macro void? Mutex.unlock(&mutex) @maydiscard => NativeMutex.unlock((NativeMutex*)mutex); // Remove optional in 0.8.0
+macro void Mutex.unlock(&mutex) => NativeMutex.unlock((NativeMutex*)mutex);
 
 macro void? TimedMutex.init(&mutex) => NativeTimedMutex.init((NativeTimedMutex*)mutex, {.timed});
 macro void? TimedRecursiveMutex.init(&mutex) @maydiscard => NativeTimedMutex.init((NativeTimedMutex*)mutex, {.timed, .recursive});
-macro void? TimedMutex.destroy(&mutex) @maydiscard => NativeTimedMutex.destroy((NativeTimedMutex*)mutex); // Remove optional in 0.8.0
+macro void TimedMutex.destroy(&mutex) => NativeTimedMutex.destroy((NativeTimedMutex*)mutex);
 macro void? TimedMutex.lock(&mutex) @maydiscard => NativeTimedMutex.lock((NativeTimedMutex*)mutex);
 macro void? TimedMutex.lock_timeout(&mutex, long ms) => NativeTimedMutex.lock_timeout((NativeTimedMutex*)mutex, ms);
-macro bool  TimedMutex.try_lock(&mutex) => NativeTimedMutex.try_lock((NativeTimedMutex*)mutex);
-macro void? TimedMutex.unlock(&mutex) @maydiscard => NativeTimedMutex.unlock((NativeTimedMutex*)mutex); // Remove optional in 0.8.0
+macro bool TimedMutex.try_lock(&mutex) => NativeTimedMutex.try_lock((NativeTimedMutex*)mutex);
+macro void TimedMutex.unlock(&mutex) => NativeTimedMutex.unlock((NativeTimedMutex*)mutex);
 
 macro void fence(AtomicOrdering $ordering) @safemacro
 {

@@ -47,7 +47,7 @@ fn void? BufferedChannel.init(&self, Allocator allocator, sz size = 1)
 	*self = (BufferedChannel)channel;
 }
 
-fn void? BufferedChannel.destroy(&self) @maydiscard // Remove optional in 0.8.0
+fn void BufferedChannel.destroy(&self)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)(*self);
 
@@ -145,7 +145,7 @@ fn Type? BufferedChannel.pop(self)
 	return ret;
 }
 
-fn void? BufferedChannel.close(self) @maydiscard // Remove optional in 0.8.0
+fn void BufferedChannel.close(self)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 

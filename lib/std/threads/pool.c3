@@ -48,7 +48,7 @@ fn void? ThreadPool.init(&self)
 <*
  Join all threads in the pool.
 *>
-fn void? ThreadPool.join(&self) @maydiscard // Remove optional in 0.8.0
+fn void ThreadPool.join(&self)
 {
 	if (self.initialized)
 	{
@@ -65,7 +65,7 @@ fn void? ThreadPool.join(&self) @maydiscard // Remove optional in 0.8.0
  Stop all the threads and cleanup the pool.
  Any pending work will be dropped.
 *>
-fn void? ThreadPool.destroy(&self) @maydiscard // Remove optional in 0.8.0
+fn void ThreadPool.destroy(&self)
 {
 	self.@shutdown(self.stop_now);
 }
@@ -74,7 +74,7 @@ fn void? ThreadPool.destroy(&self) @maydiscard // Remove optional in 0.8.0
  Stop all the threads and cleanup the pool.
  Any pending work will be processed.
 *>
-fn void? ThreadPool.stop_and_destroy(&self) @maydiscard // Remove optional in 0.8.0
+fn void ThreadPool.stop_and_destroy(&self)
 {
 	self.@shutdown(self.stop);
 }
@@ -109,7 +109,7 @@ macro void ThreadPool.@shutdown(&self, #stop) @private
  Push a new job to the pool.
  Returns whether the queue is full, in which case the job is ignored.
 *>
-fn void? ThreadPool.push(&self, ThreadFn func, void* arg) @maydiscard // Remove optional in 0.8.0
+fn void ThreadPool.push(&self, ThreadFn func, void* arg)
 {
 	while (true)
 	{
