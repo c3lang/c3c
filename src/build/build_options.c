@@ -139,6 +139,7 @@ static void usage(bool full)
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
 		print_opt("--print-large-functions", "Print functions with large compile size.");
 		print_opt("--warn-deadcode=<yes|no|error>", "Print warning on dead-code: yes, no, error.");
+		print_opt("--warn-recursivecontracts=<yes|no|error>", "Print warning on recursive contracts: yes, no, error.");
 		print_opt("--warn-methodvisibility=<yes|no|error>", "Print warning when methods have ignored visibility attributes.");
 		print_opt("--warn-methodsnotresolved=<yes|no|error>", "Print warning on methods not resolved when accessed: yes, no, error.");
 		print_opt("--warn-deprecation=<yes|no|error>", "Print warning when using deprecated code and constructs: yes, no, error.");
@@ -1012,6 +1013,11 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("warn-deadcode")))
 			{
 				options->warnings.dead_code = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-recursivecontracts")))
+			{
+				options->warnings.recursive_contracts = parse_opt_select(WarningLevel, argopt, warnings);
 				return;
 			}
 			if ((argopt = match_argopt("warn-builtin")))

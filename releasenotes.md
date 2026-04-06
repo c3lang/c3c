@@ -27,6 +27,7 @@
 - Use value promotion instead of signedness promotion to int. So that small unsigned types promote to int, not uint.
 - Add a `@mustinit` attribute to enforce zero-initialization of a type. #3094
 - Improve error message when keyword is used instead of an expression. #3088
+- Add `--warn-recursivecontracts`.
  
 ### Stdlib changes
 - `std::collections::RingBuffer` is renamed `RingList`.
@@ -40,6 +41,7 @@
 - Attributes `@allow_deprecated`, `@constinit`, `@noalias`, `@nostrip`, and `@optional` would erroneously accept parameters. #3098
 - Fix pipe handle leaks across concurrent process spawns #10067.
 - `$$trap` was incorrectly marked noreturn.
+- Recursive inclusion of contracts was not detected.
 
 ## 0.7.11 Change list
 

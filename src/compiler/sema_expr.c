@@ -2738,7 +2738,20 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 	Expr **requires = copy_exprlist_macro(contracts->contracts_decl.requires);
 	Expr **ensures = copy_exprlist_macro(contracts->contracts_decl.ensures);
 	copy_end();
-	if (!sema_analyse_contracts(&temp_context, contracts, requires, ensures, &next, expr->loc, NULL)) return false;
+
+	// We need to track contracts in case we have recursive addition of preconditions.
+	static int contract_depth = 0;
+	if (contract_depth > MAX_CONTRACT_DEPTH)
+	{
+		if (!SEMA_WARN(decl, recursive_contracts, "Contract resolution exceeded the maximum depth for this function; remaining contracts will be ignored.")) return false;
+	}
+	else
+	{
+		contract_depth++;
+		bool contract_success = sema_analyse_contracts(&temp_context, contracts, requires, ensures, &next, expr->loc, NULL);
+		contract_depth--;
+		if (!contract_success) return false;
+	}
 
 	if (!is_safe) goto SKIP_CONTRACTS;
 
@@ -5638,8 +5651,8 @@ CONTINUE:
 		Decl *decl = type->decl;
 		if (!decl->unit || decl->unit->module->stage < ANALYSIS_POST_REGISTER)
 		{
-			bool err = SEMA_WARN(expr, methods_not_resolved, "Methods are not fully determined for %s at this point.", decl->name);
-			if (err) return false;
+			bool warn = SEMA_WARN(expr, methods_not_resolved, "Methods are not fully determined for %s at this point.", decl->name);
+			if (!warn) return false;
 		}
 		// Interface, prefer interface methods.
 		if (decl->decl_kind == DECL_INTERFACE)

@@ -99,6 +99,7 @@ typedef struct
 	WarningLevel dead_code;
 	WarningLevel method_visibility;
 	WarningLevel builtin;
+	WarningLevel recursive_contracts;
 } Warnings;
 
 typedef enum
