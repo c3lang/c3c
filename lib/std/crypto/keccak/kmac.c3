@@ -8,6 +8,11 @@ module std::crypto::kmac;
 
 import std::crypto @public;
 
+alias KmacXOF128 = KmacXOF{128};
+alias KmacXOF256 = KmacXOF{256};
+alias Kmac128 = Kmac{128};
+alias Kmac256 = Kmac{256};
+
 <*
  Generate and return a non-XOF KMAC hash of the specified `$outlen_bytes` length.
 
@@ -95,7 +100,7 @@ macro void xof_into($security_level, char[] into, char[] key, char[] data, Strin
 
  @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct KmacXOF <SECURITY_LEVEL>
+struct KmacXOF <SECURITY_LEVEL> @mustinit
 {
 	inline Kmac{SECURITY_LEVEL} k;
 }
@@ -118,7 +123,7 @@ fn void KmacXOF.init(&self, char[] key, String customizer = "")
 
  @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct Kmac <SECURITY_LEVEL>
+struct Kmac <SECURITY_LEVEL> @mustinit
 {
 	inline CShake{SECURITY_LEVEL} c;
 	bool is_xof_mode;

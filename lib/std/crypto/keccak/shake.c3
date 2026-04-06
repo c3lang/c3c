@@ -5,6 +5,9 @@ module std::crypto::shake;
 
 import std::crypto @public;
 
+alias Shake128 = Shake{128};
+alias Shake256 = Shake{256};
+
 <* The set of usable security levels that are valid for this implementation of SHAKE and Keccak. *>
 const sz[] USABLE_LEVELS = { 128, 256 };
 
@@ -63,7 +66,7 @@ alias hash_into = xof_into;
 
  @require @in(SECURITY_LEVEL, ...USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct Shake <SECURITY_LEVEL>
+struct Shake <SECURITY_LEVEL> @mustinit
 {
 	inline Keccak{SECURITY_LEVEL} k;
 	bool is_padded;

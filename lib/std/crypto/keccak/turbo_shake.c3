@@ -19,6 +19,9 @@ const DEFAULT_DELIMITER = 0x1f;
 <* The amount of Keccak rounds to use specifically for TurboSHAKE. *>
 const DEFAULT_ROUNDS = 12;
 
+alias TurboShake128 = TurboShake{128};
+alias TurboShake256 = TurboShake{256};
+
 <*
  Generate and return an XOF result of the specified `$outlen_bytes`.
 
@@ -69,7 +72,7 @@ alias hash_into = xof_into;
 
  @require @in(SECURITY_LEVEL, ...shake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct TurboShake <SECURITY_LEVEL>
+struct TurboShake <SECURITY_LEVEL> @mustinit
 {
 	inline Shake{SECURITY_LEVEL} s;
 }

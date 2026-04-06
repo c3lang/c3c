@@ -9,6 +9,11 @@ module std::crypto::parallel_hash;
 import std::math, std::thread;
 import std::crypto @public;
 
+alias ParallelHashXOF128 = ParallelHashXOF{128};
+alias ParallelHashXOF256 = ParallelHashXOF{256};
+alias ParallelHash128 = ParallelHash{128};
+alias ParallelHash256 = ParallelHash{256};
+
 <* The maximum allowable block size for this implementation. *>
 const MAX_BLOCK_SIZE = 128 * 1024 * 1024;   // 128 MiB
 
@@ -29,7 +34,7 @@ macro char[*] apply_simple_cshake($security_level, char[] data) @local
 
  @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct ParallelHash <SECURITY_LEVEL>
+struct ParallelHash <SECURITY_LEVEL> @mustinit
 {
 	inline CShake{SECURITY_LEVEL} c;
 	Allocator allocator;
@@ -178,9 +183,9 @@ macro thash_into($security_level, char[] into, char[] data, sz block_size,
  This causes the output value to be completely different and not dependent on the length of the output buffer.
  To better understand this, or to see the reference, search for NIST SP 800-185.
 
- @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
+ @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct ParallelHashXOF <SECURITY_LEVEL>
+struct ParallelHashXOF <SECURITY_LEVEL> @mustinit
 {
 	inline ParallelHash{SECURITY_LEVEL} ph;
 }

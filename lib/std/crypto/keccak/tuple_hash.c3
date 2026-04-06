@@ -8,6 +8,11 @@ module std::crypto::tuple_hash;
 
 import std::crypto @public;
 
+alias TupleHashXOF128 = TupleHashXOF{128};
+alias TupleHashXOF256 = TupleHashXOF{256};
+alias TupleHash128 = TupleHash{128};
+alias TupleHash256 = TupleHash{256};
+
 <*
  Generate and return a non-XOF TupleHash result of the specified `$outlen_bytes`.
 
@@ -99,7 +104,7 @@ macro void xof_into($security_level, char[] into, char[] data, char[]... extras,
 
  @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct TupleHashXOF <SECURITY_LEVEL>
+struct TupleHashXOF <SECURITY_LEVEL> @mustinit
 {
 	inline TupleHash{SECURITY_LEVEL} t;
 }
@@ -121,7 +126,7 @@ fn void TupleHashXOF.init(&self, String customizer = "")
 
  @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct TupleHash <SECURITY_LEVEL>
+struct TupleHash <SECURITY_LEVEL> @mustinit
 {
 	inline CShake{SECURITY_LEVEL} c;
 	bool is_xof_mode;
