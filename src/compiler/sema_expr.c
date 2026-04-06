@@ -9363,7 +9363,7 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 
 	if (!cast_explicit_silent(context, inner, type_add_optional(type_bool, IS_OPTIONAL(inner))))
 	{
-		RETURN_SEMA_ERROR(expr, "The %s can't be converted to a boolean value.", type_quoted_error_string(inner->type));
+		RETURN_SEMA_ERROR(expr, "This expression of type %s can't be converted to a boolean value.", type_quoted_error_string(inner->type));
 	}
 
 	expr->type = type_add_optional(type_bool, IS_OPTIONAL(inner));

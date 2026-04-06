@@ -672,12 +672,12 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_swizzle(context, expr, func == BUILTIN_SWIZZLE2);
 		case BUILTIN_SYSCALL:
 			return sema_expr_analyse_syscall(context, expr);
-		case BUILTIN_TRAP:
 		case BUILTIN_UNREACHABLE:
 			expr->call_expr.no_return = true;
 			if (!context->call_env.in_no_eval) SET_JUMP_END(context, expr);
 			FALLTHROUGH;
 		case BUILTIN_BREAKPOINT:
+		case BUILTIN_TRAP:
 			expr->type = type_void;
 			return true;
 		case BUILTIN_SYSCLOCK:
