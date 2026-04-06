@@ -49,12 +49,12 @@ struct Entry
 <*
  @require types::@comparable_value((Key){}) : "The Key must support ordered comparison"
 *>
-struct OrderedMap (Printable)
+struct OrderedMap (Printable) @mustinit
 {
 	Allocator allocator;
 	SkipNode* head;
 	int current_level;
-	usz count;
+	sz count;
 	SimpleRandom rng;
 	CmpFn custom_cmp; // null = use built-in less() ordering
 }
@@ -65,7 +65,7 @@ struct OrderedMapIterator
 {
 	OrderedMap* map;
 	SkipNode* current;
-	usz index;
+	sz index;
 }
 
 struct OrderedMapRangeIterator
@@ -73,8 +73,8 @@ struct OrderedMapRangeIterator
 	OrderedMap* map;
 	SkipNode* start_node;
 	SkipNode* current;
-	usz current_idx;
-	usz count;
+	sz current_idx;
+	sz count;
 }
 
 fn int orderedmap_random_level(SimpleRandom* rng) @private
@@ -155,7 +155,7 @@ fn bool OrderedMap.set(&self, Key key, Value value) @operator([]=)
 
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
+		while (current.forward[i] && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
@@ -165,7 +165,7 @@ fn bool OrderedMap.set(&self, Key key, Value value) @operator([]=)
 	current = current.forward[0];
 
 	// Key already exists -- update value
-	if (current != null && !orderedmap_cmp(self.custom_cmp, current.key, key) && !orderedmap_cmp(self.custom_cmp, key, current.key))
+	if (current && !orderedmap_cmp(self.custom_cmp, current.key, key) && !orderedmap_cmp(self.custom_cmp, key, current.key))
 	{
 		current.value = value;
 		return true;
@@ -200,13 +200,13 @@ fn Value? OrderedMap.get(&self, Key key) @operator([])
 	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
+		while (current.forward[i] && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
 	}
 	current = current.forward[0];
-	if (current != null && !orderedmap_cmp(self.custom_cmp, current.key, key) && !orderedmap_cmp(self.custom_cmp, key, current.key))
+	if (current && !orderedmap_cmp(self.custom_cmp, current.key, key) && !orderedmap_cmp(self.custom_cmp, key, current.key))
 	{
 		return current.value;
 	}
@@ -221,13 +221,13 @@ fn Value*? OrderedMap.get_ref(&self, Key key) @operator(&[])
 	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
+		while (current.forward[i] && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
 	}
 	current = current.forward[0];
-	if (current != null && !orderedmap_cmp(self.custom_cmp, current.key, key) && !orderedmap_cmp(self.custom_cmp, key, current.key))
+	if (current && !orderedmap_cmp(self.custom_cmp, current.key, key) && !orderedmap_cmp(self.custom_cmp, key, current.key))
 	{
 		return &current.value;
 	}
@@ -263,7 +263,7 @@ fn bool OrderedMap.remove(&self, Key key)
 
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
+		while (current.forward[i] && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
@@ -272,7 +272,7 @@ fn bool OrderedMap.remove(&self, Key key)
 
 	current = current.forward[0];
 
-	if (current == null || orderedmap_cmp(self.custom_cmp, current.key, key) || orderedmap_cmp(self.custom_cmp, key, current.key)) return false;
+	if (!current || orderedmap_cmp(self.custom_cmp, current.key, key) || orderedmap_cmp(self.custom_cmp, key, current.key)) return false;
 
 	for (int i = 0; i < self.current_level; i++)
 	{
@@ -282,7 +282,7 @@ fn bool OrderedMap.remove(&self, Key key)
 
 	alloc::free(self.allocator, current);
 
-	while (self.current_level > 0 && self.head.forward[self.current_level - 1] == null)
+	while (self.current_level > 0 && !self.head.forward[self.current_level - 1])
 	{
 		self.current_level--;
 	}
@@ -317,6 +317,7 @@ fn Key? OrderedMap.last_key(&self)
 <*
  Remove and return the first entry in iteration order.
  @return "the first Entry, or NOT_FOUND if empty"
+ @return? NOT_FOUND
 *>
 fn Entry? OrderedMap.pop_first(&self)
 {
@@ -330,6 +331,7 @@ fn Entry? OrderedMap.pop_first(&self)
 <*
  Remove and return the last entry in iteration order.
  @return "the last Entry, or NOT_FOUND if empty"
+ @return? NOT_FOUND
 *>
 fn Entry? OrderedMap.pop_last(&self)
 {
@@ -346,51 +348,54 @@ fn Entry? OrderedMap.pop_last(&self)
 
 <*
  @return "the greatest key <= key in cmp order, or NOT_FOUND"
+ @return? NOT_FOUND
 *>
 fn Key? OrderedMap.floor_key(&self, Key key)
 {
 	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
+		while (current.forward[i] && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
 	}
 	// current is the last node strictly before key; check for exact match
 	SkipNode* next = current.forward[0];
-	if (next != null && !orderedmap_cmp(self.custom_cmp, next.key, key) && !orderedmap_cmp(self.custom_cmp, key, next.key)) return next.key;
+	if (next && !orderedmap_cmp(self.custom_cmp, next.key, key) && !orderedmap_cmp(self.custom_cmp, key, next.key)) return next.key;
 	if (current != self.head) return current.key;
 	return NOT_FOUND~;
 }
 
 <*
  @return "the least key >= key in cmp order, or NOT_FOUND"
+ @return? NOT_FOUND
 *>
 fn Key? OrderedMap.ceiling_key(&self, Key key)
 {
 	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
+		while (current.forward[i] && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
 	}
 	SkipNode* next = current.forward[0];
-	if (next != null) return next.key;
-	return NOT_FOUND~;
+	if (!next) return NOT_FOUND~;
+	return next.key;
 }
 
 <*
  @return "the greatest key strictly before key in cmp order, or NOT_FOUND"
+ @return? NOT_FOUND
 *>
 fn Key? OrderedMap.lower_key(&self, Key key)
 {
 	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
+		while (current.forward[i] && orderedmap_cmp(self.custom_cmp, current.forward[i].key, key))
 		{
 			current = current.forward[i];
 		}
@@ -401,6 +406,7 @@ fn Key? OrderedMap.lower_key(&self, Key key)
 
 <*
  @return "the least key strictly after key in cmp order, or NOT_FOUND"
+ @return? NOT_FOUND
 *>
 fn Key? OrderedMap.higher_key(&self, Key key)
 {
@@ -413,14 +419,14 @@ fn Key? OrderedMap.higher_key(&self, Key key)
 		}
 	}
 	SkipNode* next = current.forward[0];
-	if (next == null) return NOT_FOUND~;
+	if (!next) return NOT_FOUND~;
 	// If next equals key, advance one more
 	if (!orderedmap_cmp(self.custom_cmp, next.key, key) && !orderedmap_cmp(self.custom_cmp, key, next.key)) next = next.forward[0];
-	if (next != null) return next.key;
-	return NOT_FOUND~;
+	if (!next) return NOT_FOUND~;
+	return next.key;
 }
 
-fn usz OrderedMap.len(&self) @inline => self.count;
+fn sz OrderedMap.len(&self) @inline => self.count;
 
 fn bool OrderedMap.is_empty(&self) @inline => self.count == 0;
 
@@ -446,12 +452,12 @@ fn void OrderedMap.free(&self)
 	self.head = null;
 }
 
-fn usz? OrderedMap.to_format(&self, Formatter* f) @dynamic
+fn sz? OrderedMap.to_format(&self, Formatter* f) @dynamic
 {
-	usz len;
+	sz len;
 	len += f.print("{ ")!;
 	SkipNode* node = self.head ? self.head.forward[0] : null;
-	while (node != null)
+	while (node)
 	{
 		if (len > 2) len += f.print(", ")!;
 		len += f.printf("%s: %s", node.key, node.value)!;
@@ -469,7 +475,7 @@ fn OrderedMap OrderedMap.clone(&self, Allocator allocator)
 	OrderedMap result;
 	result.init_with_cmp(allocator, self.custom_cmp);
 	SkipNode* node = self.head.forward[0];
-	while (node != null)
+	while (node)
 	{
 		result.set(node.key, node.value);
 		node = node.forward[0];
@@ -488,7 +494,7 @@ fn OrderedMap OrderedMap.tclone(&self)
 fn void OrderedMap.merge(&self, OrderedMap* other)
 {
 	SkipNode* node = other.head.forward[0];
-	while (node != null)
+	while (node)
 	{
 		self.set(node.key, node.value);
 		node = node.forward[0];
@@ -522,9 +528,13 @@ fn OrderedMapRangeIterator OrderedMap.iter_from(&self, Key from_key)
 	}
 	SkipNode* start = current.forward[0];
 
-	usz count = 0;
+	sz count = 0;
 	SkipNode* n = start;
-	while (n != null) { count++; n = n.forward[0]; }
+	while (n)
+	{
+		count++;
+		n = n.forward[0];
+	}
 
 	return { .map = self, .start_node = start, .current = start, .current_idx = 0, .count = count };
 }
@@ -538,16 +548,20 @@ fn OrderedMapRangeIterator OrderedMap.iter_range(&self, Key from_key, Key to_key
 	SkipNode* current = self.head;
 	for (int i = self.current_level - 1; i >= 0; i--)
 	{
-		while (current.forward[i] != null && orderedmap_cmp(self.custom_cmp, current.forward[i].key, from_key))
+		while (current.forward[i] && orderedmap_cmp(self.custom_cmp, current.forward[i].key, from_key))
 		{
 			current = current.forward[i];
 		}
 	}
 	SkipNode* start = current.forward[0];
 
-	usz count = 0;
+	sz count = 0;
 	SkipNode* n = start;
-	while (n != null && orderedmap_cmp(self.custom_cmp, n.key, to_key)) { count++; n = n.forward[0]; }
+	while (n && orderedmap_cmp(self.custom_cmp, n.key, to_key))
+	{
+		count++;
+		n = n.forward[0];
+	}
 
 	return { .map = self, .start_node = start, .current = start, .current_idx = 0, .count = count };
 }
@@ -555,7 +569,7 @@ fn OrderedMapRangeIterator OrderedMap.iter_range(&self, Key from_key, Key to_key
 <*
  @require idx < self.map.count
 *>
-fn Entry OrderedMapIterator.get(&self, usz idx) @operator([])
+fn Entry OrderedMapIterator.get(&self, sz idx) @operator([])
 {
 	if (idx < self.index)
 	{
@@ -570,12 +584,12 @@ fn Entry OrderedMapIterator.get(&self, usz idx) @operator([])
 	return { .key = self.current.key, .value = self.current.value };
 }
 
-fn usz OrderedMapIterator.len(&self) @operator(len) => self.map.count;
+fn sz OrderedMapIterator.len(&self) @operator(len) => self.map.count;
 
 <*
  @require idx < self.count
 *>
-fn Entry OrderedMapRangeIterator.get(&self, usz idx) @operator([])
+fn Entry OrderedMapRangeIterator.get(&self, sz idx) @operator([])
 {
 	if (idx < self.current_idx)
 	{
@@ -590,4 +604,4 @@ fn Entry OrderedMapRangeIterator.get(&self, usz idx) @operator([])
 	return { .key = self.current.key, .value = self.current.value };
 }
 
-fn usz OrderedMapRangeIterator.len(&self) @operator(len) => self.count;
+fn sz OrderedMapRangeIterator.len(&self) @operator(len) => self.count;
