@@ -35,6 +35,7 @@
 - PanicFn now takes an `int` for row.
 - Add `std::collections::Deque`.
 - Add `compare_to` and `compare_to_ignore_case` to `String`. #3096
+- Add `OrderedMap` based on skip lists.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
