@@ -4,36 +4,6 @@
 module std::core::builtin;
 import libc, std::hash, std::io, std::os::backtrace;
 
-
-<*
- EMPTY_MACRO_SLOT is a value used for implementing optional arguments for macros in an efficient
- way. It relies on the fact that distinct types are not implicitly convertible.
-
- You can use `@is_empty_macro_slot()` and `@is_valid_macro_slot()` to figure out whether
- the argument has been used or not.
-
- An example:
-
-```c3
-macro foo(a, #b = EMPTY_MACRO_SLOT)
-{
-	$if @is_valid_macro_slot(#b):
-		return invoke_foo2(a, #b);
-	$else
-		return invoke_foo1(a);
-	$endif
-}
-*>
-const EmptySlot EMPTY_MACRO_SLOT @builtin @deprecated("Use `#arg = ...` instead.") = null;
-
-typedef EmptySlot @constinit = void*;
-macro bool @is_empty_macro_slot(#arg) @const @builtin
-		@deprecated("Use `#arg = ...` to define an optional macro slot, and `$defined(#arg)` to detect whether the argument is set.")
-	=> $typeof(#arg) == EmptySlot;
-macro bool @is_valid_macro_slot(#arg) @const @builtin
-		@deprecated("Use `#arg = ...` to define an optional macro slot, and `$defined(#arg)` to detect whether the argument is set.")
-	=> $typeof(#arg) != EmptySlot;
-
 <*
  Returns a random value at compile time.
 
@@ -99,21 +69,21 @@ macro void @swap(#a, #b) @builtin
 	#b = temp;
 }
 
-macro usz bitsizeof($Type) @builtin @const => $Type.sizeof * 8u;
+macro sz bitsizeof($Type) @builtin @const => $Type.sizeof * 8u;
 
-macro usz @bitsizeof(#expr) @builtin @const => $sizeof(#expr) * 8u;
+macro sz @bitsizeof(#expr) @builtin @const => $sizeof(#expr) * 8u;
 
 <*
  Compile-time check for whether a set of constants contains a certain expression.
 
- @param #needle : "The expression whose value should be located."
+ @param $needle : "The expression whose value should be located."
 *>
-macro bool @in(#needle, ...) @builtin @const
+macro bool @in($needle, ...) @builtin @const
 {
 	$for var $x = 0; $x < $vacount; $x++:
-		$assert $defined(#needle == $vaconst[$x])
-			: "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $typeof(#needle), $typeof($vaconst[$x]);
-		$if #needle == $vaconst[$x]: return true; $endif
+		$assert $defined($needle == $vaconst[$x])
+			: "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $typeof($needle), $typeof($vaconst[$x]);
+		$if $needle == $vaconst[$x]: return true; $endif
 	$endfor
 	return false;
 }
@@ -152,8 +122,6 @@ macro any.as(self, $Type)
 	return *($Type*)self.ptr;
 }
 
-macro bool @assignable_to(#foo, $Type) @const @builtin @deprecated("use '$defined($Type x = #foo)'") => $defined(*&&($Type){} = #foo);
-
 macro @addr(#val) @builtin
 {
 	$if $defined(&#val):
@@ -168,15 +136,6 @@ macro typeid @typeid(#value) @const @builtin
 	return $typeof(#value).typeid;
 }
 
-macro TypeKind @typekind(#value) @const @builtin @deprecated("Use `$kindof(#value)`.")
-{
-	return $kindof(#value);
-}
-
-macro bool @typeis(#value, $Type) @const @builtin @deprecated("Use `$typeof(#value) == $Type` instead.")
-{
-	return $typeof(#value).typeid == $Type.typeid;
-}
 
 <*
  Assert (always) that a condition is true. Otherwise call abort.
@@ -272,7 +231,7 @@ fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_ba
 		io::eprint(message);
 		io::eprintn("'");
 
-		usz repetition_count = 0;
+		sz repetition_count;
 		foreach (i, &trace : backtrace)
 		{
 			if (i < backtraces_to_ignore) continue;
@@ -311,7 +270,7 @@ fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_ba
 	return true;
 }
 
-fn void default_panic(String message, String file, String function, uint line) @if(env::NATIVE_STACKTRACE)
+fn void default_panic(String message, String file, String function, int line) @if(env::NATIVE_STACKTRACE)
 {
 	in_panic = true;
 	$if $defined(io::stderr) && env::PANIC_MSG:
@@ -332,7 +291,7 @@ macro void abort(String string = "Unrecoverable error reached", ...) @format(0) 
 
 bool in_panic @private = false;
 
-fn void default_panic(String message, String file, String function, uint line) @if (!env::NATIVE_STACKTRACE)
+fn void default_panic(String message, String file, String function, int line) @if (!env::NATIVE_STACKTRACE)
 {
 	$if $defined(io::stderr) && env::PANIC_MSG:
 		if (in_panic)
@@ -351,11 +310,11 @@ fn void default_panic(String message, String file, String function, uint line) @
 	$$trap();
 }
 
-alias PanicFn = fn void(String message, String file, String function, uint line);
+alias PanicFn = fn void(String message, String file, String function, int line);
 
 PanicFn panic = &default_panic;
 
-fn void panicf(String fmt, String file, String function, uint line, args...)
+fn void panicf(String fmt, String file, String function, int line, args...)
 {
 	$if $defined(io::stderr) && env::PANIC_MSG:
 		if (in_panic)
@@ -470,22 +429,6 @@ macro enum_by_name($Type, String enum_name) @builtin
 	return NOT_FOUND~;
 }
 
-<*
- @param $Type : `The type of the enum`
- @require $Type.kindof == ENUM : `Only enums may be used`
- @require $defined($Type.#value) : `Expected '#value' to match an enum associated value`
- @require $defined($typeof(($Type){}.#value) v = value) : `Expected the value to match the type of the associated value`
- @ensure $typeof(return) == $Type*
- @return? NOT_FOUND
-*>
-macro @enum_from_value($Type, #value, value) @builtin @deprecated("Use Enum.lookup_field and Enum.lookup")
-{
-	foreach (e : $Type.values)
-	{
-		if (e.#value == value) return e;
-	}
-	return NOT_FOUND~;
-}
 
 <*
  Mark an expression as likely to be true
@@ -599,13 +542,13 @@ macro swizzle2(v, v2, ...) @builtin
  @require types::is_int($typeof($value)) : "Input value must be an integer"
  @require $sizeof($value) * 8 <= 128 : "Input value must be 128 bits wide or lower"
 *>
-macro uint @clz($value) @builtin @const
+macro int @clz($value) @builtin @const
 {
 	$if $value == 0:
-		return $sizeof($value) * 8;   // it's all leading zeroes
+		return (int)($sizeof($value) * 8);   // it's all leading zeroes
 	$endif
 
-	usz $n = 0;
+	sz $n = 0;
 	uint128 $x = (uint128)$value;
 
 	$if $x <= 0x0000_0000_0000_0000_FFFF_FFFF_FFFF_FFFF: $n += 64; $x <<= 64; $endif
@@ -616,7 +559,7 @@ macro uint @clz($value) @builtin @const
 	$if $x <= 0x3FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 2;  $x <<= 2;  $endif
 	$if $x <= 0x7FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 1;             $endif
 
-	return $n % ($sizeof($value) * 8);   // mod by the bitsize of the input value to go back from uint128 -> it's-type
+	return (int)($n % ($sizeof($value) * 8));   // mod by the bitsize of the input value to go back from uint128 -> it's-type
 }
 
 <*
@@ -712,7 +655,7 @@ macro char[] @as_char_view(#value) @builtin
 	return ((char*)&#value)[:$sizeof(#value)];
 }
 
-macro isz @str_find(String $string, String $needle) @builtin => $$str_find($string, $needle);
+macro sz @str_find(String $string, String $needle) @builtin => $$str_find($string, $needle);
 macro String @str_upper(String $str) @builtin => $$str_upper($str);
 macro String @str_lower(String $str) @builtin => $$str_lower($str);
 macro uint @str_hash(String $str) @builtin => $$str_hash($str);

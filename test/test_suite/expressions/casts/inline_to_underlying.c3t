@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 import std;
-typedef DistinctInt = inline int;
+typedef DistinctInt @constinit = inline int;
 enum Foo : inline int
 {
 	ABC,

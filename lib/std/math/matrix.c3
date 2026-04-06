@@ -1,4 +1,4 @@
-module std::math @if(!$feature(OLD_MATRIX));
+module std::math;
 
 // Predefined matrix types
 alias Matrix2f = Matrix2x2 {float};
@@ -12,44 +12,6 @@ alias Mat2 = Matrix2x2 {float};
 alias Mat3 = Matrix3x3 {float};
 alias Mat4 = Matrix4x4 {float};
 
-alias MATRIX2_IDENTITY  @builtin @deprecated("Use matrix::IDENTITY2") = matrix::IDENTITY2 {double};
-alias MATRIX2F_IDENTITY @builtin @deprecated("Use matrix::IDENTITY2") = matrix::IDENTITY2 {float};
-alias MATRIX3_IDENTITY  @builtin @deprecated("Use matrix::IDENTITY3") = matrix::IDENTITY3 {double};
-alias MATRIX3F_IDENTITY @builtin @deprecated("Use matrix::IDENTITY3") = matrix::IDENTITY3 {float};
-alias MATRIX4_IDENTITY  @builtin @deprecated("Use matrix::IDENTITY4") = matrix::IDENTITY4 {double};
-alias MATRIX4F_IDENTITY @builtin @deprecated("Use matrix::IDENTITY4") = matrix::IDENTITY4 {float};
-
-alias matrix4_ortho  @builtin @deprecated("Use matrix::ortho") = matrix::ortho {double};
-alias matrix4f_ortho @builtin @deprecated("Use matrix::ortho") = matrix::ortho {float};
-alias matrix4_perspective  @builtin @deprecated("Use matrix::perspective") = matrix::perspective {double};
-alias matrix4f_perspective @builtin @deprecated("Use matrix::perspective") = matrix::perspective {float};
-alias matrix4_look_at  @builtin @deprecated("Use matrix::look_at") = matrix::look_at {double};
-alias matrix4f_look_at @builtin @deprecated("Use matrix::look_at") = matrix::look_at {float};
-
-module std::math @if($feature(OLD_MATRIX));
-
-// Predefined matrix types
-alias Matrix2f = MatrixRM2x2 {float};
-alias Matrix2  = MatrixRM2x2 {double};
-alias Matrix3f = MatrixRM3x3 {float};
-alias Matrix3  = MatrixRM3x3 {double};
-alias Matrix4f = MatrixRM4x4 {float};
-alias Matrix4  = MatrixRM4x4 {double};
-
-// Predefined matrix functions
-alias matrix4_ortho  @builtin = matrix::ortho_rm {double};
-alias matrix4f_ortho @builtin = matrix::ortho_rm {float};
-alias matrix4_perspective  @builtin = matrix::perspective_rm {double};
-alias matrix4f_perspective @builtin = matrix::perspective_rm {float};
-alias matrix4_look_at @builtin = matrix::look_at_rm {double};
-alias matrix4f_look_at @builtin = matrix::look_at_rm {float};
-
-alias MATRIX2_IDENTITY  @builtin = matrix::IDENTITY2_RM {double};
-alias MATRIX2F_IDENTITY @builtin = matrix::IDENTITY2_RM {float};
-alias MATRIX3_IDENTITY  @builtin = matrix::IDENTITY3_RM {double};
-alias MATRIX3F_IDENTITY @builtin = matrix::IDENTITY3_RM {float};
-alias MATRIX4_IDENTITY  @builtin = matrix::IDENTITY4_RM {double};
-alias MATRIX4F_IDENTITY @builtin = matrix::IDENTITY4_RM {float};
 
 <*
  The generic matrix module, for float or double based matrix definitions.
@@ -101,7 +63,7 @@ struct Matrix4x4 (Printable)
 	}
 }
 
-fn usz? Matrix4x4.to_format(&self, Formatter* f) @dynamic
+fn sz? Matrix4x4.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("[%g,%g,%g,%g|%g,%g,%g,%g|%g,%g,%g,%g|%g,%g,%g,%g]",
 		self.m00, self.m01, self.m02, self.m03,
@@ -110,7 +72,7 @@ fn usz? Matrix4x4.to_format(&self, Formatter* f) @dynamic
 		self.m30, self.m31, self.m32, self.m33);
 }
 
-fn usz? Matrix3x3.to_format(&self, Formatter* f) @dynamic
+fn sz? Matrix3x3.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("[%g,%g,%g|%g,%g,%g|%g,%g,%g]",
 		self.m00, self.m01, self.m02,
@@ -118,7 +80,7 @@ fn usz? Matrix3x3.to_format(&self, Formatter* f) @dynamic
 		self.m20, self.m21, self.m22);
 }
 
-fn usz? Matrix2x2.to_format(&self, Formatter* f) @dynamic
+fn sz? Matrix2x2.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("[%g,%g|%g,%g]",
 		self.m00, self.m01,

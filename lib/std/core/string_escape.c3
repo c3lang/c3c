@@ -23,7 +23,7 @@ faultdef INVALID_ESCAPE_SEQUENCE, UNTERMINATED_STRING, INVALID_HEX_ESCAPE, INVAL
 fn String String.escape(String s, Allocator allocator, bool strip_quotes = true)
 {
 	// Conservative allocation: most strings need minimal escaping
-	usz initial_capacity = s.len + s.len / 5 + 2; // ~1.2x + quotes
+	sz initial_capacity = s.len + s.len / 5 + 2; // ~1.2x + quotes
 
 	if (allocator == tmem)
 	{
@@ -88,9 +88,9 @@ fn String String.tescape(String s, bool strip_quotes = false) => s.escape(tmem, 
  @param s : "The string to check"
  @return "The length needed for the escaped version"
 *>
-fn usz escape_len(String s)
+fn sz escape_len(String s)
 {
-	usz len = 2; // For quotes
+	sz len = 2; // For quotes
 	foreach (char c : s)
 	{
 		switch (c)
@@ -159,8 +159,8 @@ fn String? String.unescape(String s, Allocator allocator, bool allow_unquoted = 
 
 fn void? unescape_dstring(String s, DString result, bool allow_unquoted = false, bool lenient = false) @private
 {
-	usz len = s.len;
-	for (usz i = 0; i < len; i++)
+	sz len = s.len;
+	for (sz i = 0; i < len; i++)
 	{
 		char c = s[i];
 		if (c != '\\')
@@ -191,9 +191,9 @@ fn void? unescape_dstring(String s, DString result, bool allow_unquoted = false,
 				char h1 = s[++i];
 				char h2 = s[++i];
 				if (!h1.is_xdigit() || !h2.is_xdigit()) return INVALID_HEX_ESCAPE~;
-				uint val = h1 > '9' ? (h1 | 32) - 'a' + 10 : h1 - '0';
+				uint val = h1 > '9' ? (h1 | 32u) - 'a' + 10u : h1 - '0';
 				val = val << 4;
-				val += h2 > '9' ? (h2 | 32) - 'a' + 10 : h2 - '0';
+				val += h2 > '9' ? (h2 | 32u) - 'a' + 10u : h2 - '0';
 				result.append_char((char)val);
 			case 'u':
 				// Unicode escape \uHHHH
@@ -203,7 +203,7 @@ fn void? unescape_dstring(String s, DString result, bool allow_unquoted = false,
 				{
 					char hex_char = s[++i];
 					if (!hex_char.is_xdigit()) return INVALID_UNICODE_ESCAPE~;
-					val = val << 4 + (hex_char > '9' ? (hex_char | 32) - 'a' + 10 : hex_char - '0');
+					val = val << 4 + (hex_char > '9' ? (hex_char | 32u) - 'a' + 10u : hex_char - '0');
 				}
 				result.append_char32(val);
 			case 'U':
@@ -214,7 +214,7 @@ fn void? unescape_dstring(String s, DString result, bool allow_unquoted = false,
 				{
 					char hex_char = s[++i];
 					if (!hex_char.is_xdigit()) return INVALID_UNICODE_ESCAPE~;
-					val = val << 4 + (hex_char > '9' ? (hex_char | 32) - 'a' + 10 : hex_char - '0');
+					val = val << 4 + (hex_char > '9' ? (hex_char | 32u) - 'a' + 10u : hex_char - '0');
 				}
 				result.append_char32(val);
 			default:

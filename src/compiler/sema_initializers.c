@@ -385,7 +385,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				expr_two->two_expr.first = decl_expr;
 				Expr *sub = expr_new_expr(EXPR_SUBSCRIPT, element);
 				sub->subscript_expr.expr = exprid(expr_variable(decl));
-				sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_usz, 0));
+				sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_sz, 0));
 				expr_two->two_expr.last = sub;
 				if (!sema_analyse_expr_rhs(context, inner_type, expr_two, true, NULL, false)) return false;
 				elements[i] = expr_two;
@@ -393,7 +393,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				{
 					sub = expr_new_expr(EXPR_SUBSCRIPT, element);
 					sub->subscript_expr.expr = exprid(expr_variable(decl));
-					sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_usz, 1));
+					sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_sz, 1));
 					vec_insert_at(elements, i + j, sub);
 					if (!sema_analyse_expr_rhs(context, inner_type, sub, true, NULL, false)) return false;
 				}
@@ -533,7 +533,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		Expr *value = expr->designator_expr.value;
 		if (!value && is_bitmember && member->var.start_bit == member->var.end_bit && type_flatten(result) == type_bool)
 		{
-			value = expr_new_const_bool(0, type_bool, true);
+			value = expr_new_const_bool(0, result, true);
 			expr->designator_expr.value = value;
 		}
 		if (!value) RETURN_SEMA_ERROR(expr, "This initializer needs a value.");
@@ -594,7 +594,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	}
 	initializer->type = type_add_optional(type, optional);
 	initializer->resolve_status = RESOLVE_DONE;
-	if (expr_is_runtime_const(initializer))
+	if (!optional && expr_is_runtime_const(initializer))
 	{
 		ConstInitializer *const_init = MALLOCS(ConstInitializer);
 		sema_create_const_initializer_from_designated_init(const_init, initializer);
@@ -1428,7 +1428,7 @@ static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *inde
 		return -1;
 	}
 
-	// Unless we already have type_usz, cast to type_isz;
+	// Unless we already have type_usz, cast to type_sz;
 	if (!cast_to_index_len(context, index, false))
 	{
 		return -1;

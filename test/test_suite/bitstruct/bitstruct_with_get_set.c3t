@@ -6,7 +6,7 @@ bitstruct Foo (Printable) : long
 	int a : 2..4;
 	uint b: 5..10;
 }
-fn usz? Foo.to_format(&self, Formatter *f) @dynamic => io::struct_to_format(*self, f, false);
+fn sz? Foo.to_format(&self, Formatter *f) @dynamic => io::struct_to_format(*self, f, false);
 
 fn int main()
 {

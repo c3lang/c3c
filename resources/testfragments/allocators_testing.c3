@@ -28,9 +28,9 @@ fn void testAllocator(Allocator a, int val)
 	io::printf("Aligned with offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
 	data = alloc::calloc_aligned(a, val, 128, 16)!!;
 	io::printf("Aligned with offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
-	data = alloc::realloc_aligned(a, data, (usz)val + 1, 128, 16)!!;
+	data = alloc::realloc_aligned(a, data, (sz)val + 1, 128, 16)!!;
 	io::printf("Aligned with offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
-	data = alloc::realloc_aligned(a, data, (usz)val + 1, 128, 0)!!;
+	data = alloc::realloc_aligned(a, data, (sz)val + 1, 128, 0)!!;
 	io::printf("No offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
 	io::printfn("Freeing %p", data);
 	alloc::free_aligned(a, data);

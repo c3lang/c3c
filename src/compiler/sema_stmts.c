@@ -794,8 +794,6 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_POISONED:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
-		case EXPR_CT_ASSIGNABLE:
-		case EXPR_CT_IS_CONST:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
 		case EXPR_CONTRACT:
@@ -974,7 +972,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	Decl *decl = decl_new_var(ident->unresolved_ident_expr.ident, ident->loc, var_type, VARDECL_LOCAL);
 
 	// 4e. Analyse it
-	if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
+	if (!sema_analyse_local(context, decl, NULL)) return false;
 
 	expr->expr_kind = EXPR_TRY;
 	expr->try_expr = (ExprTry) { .decl = decl, .optional = optional, .assign_existing = false };
@@ -1033,7 +1031,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 	decl->var.no_init = true;
 
 	// 4e. Analyse it
-	if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
+	if (!sema_analyse_local(context, decl, NULL)) return false;
 
 RESOLVE_EXPRS:;
 	Expr **exprs = expr->unresolved_catch_expr.exprs;
@@ -1208,10 +1206,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 		{
 			RETURN_SEMA_ERROR(last, "An assignment in the last conditional must be parenthesized - did you mean to use '==' instead?");
 		}
-		else
-		{
-			RETURN_SEMA_ERROR(last, "An assignment in a conditional must have an extra parenthesis - did you mean to use '==' instead?");
-		}
+		RETURN_SEMA_ERROR(last, "An assignment in a conditional must have an extra parenthesis - did you mean to use '==' instead?");
 	}
 
 	// 3a. Check for optional in case of an expression.
@@ -1269,7 +1264,7 @@ static inline bool sema_analyse_decls_stmt(SemaContext *context, Ast *statement)
 		}
 		else
 		{
-			if (!sema_analyse_var_decl(context, decl, true, NULL)) return false;
+			if (!sema_analyse_local(context, decl, NULL)) return false;
 			should_nop = false;
 		}
 	}
@@ -1282,7 +1277,7 @@ static inline bool sema_analyse_declare_stmt(SemaContext *context, Ast *statemen
 	Decl *decl = statement->declare_stmt;
 	VarDeclKind kind = decl->var.kind;
 	bool erase = kind == VARDECL_LOCAL_CT_TYPE || kind == VARDECL_LOCAL_CT;
-	if (!sema_analyse_var_decl(context, decl, true, NULL))
+	if (!sema_analyse_local(context, decl, NULL))
 	{
 		if (!decl_ok(decl)) context->active_scope.is_poisoned = true;
 		return false;
@@ -1587,7 +1582,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	Decl *len = NULL;
 	Decl *index_function = NULL;
-	Type *index_type = type_usz;
+	Type *index_type = type_sz;
 	bool is_enum_iterator = false;
 	bool need_deref = false;
 	// Now we lower the foreach...
@@ -1751,7 +1746,7 @@ SKIP_OVERLOAD:;
 			case TYPE_SLICE:
 				if (!sema_analyse_expr_rvalue(context, enum_val)) return false;
 				len_call = expr_new_expr(EXPR_SLICE_LEN, enumerator);
-				expr_rewrite_slice_len(len_call, enum_val, type_isz);
+				expr_rewrite_slice_len(len_call, enum_val, type_sz);
 				break;
 			default:
 				UNREACHABLE
@@ -1777,7 +1772,7 @@ SKIP_OVERLOAD:;
 		if (!len_call)
 		{
 			// Create const len if missing.
-			len_call = expr_new_const_int(enumerator->loc, type_isz, array_len);
+			len_call = expr_new_const_int(enumerator->loc, type_sz, array_len);
 		}
 		if (is_enum_iterator)
 		{
@@ -1866,7 +1861,7 @@ SKIP_OVERLOAD:;
 		}
 		else
 		{
-			Expr *rhs = expr_new_const_int(enumerator->loc, type_isz, array_len);
+			Expr *rhs = expr_new_const_int(enumerator->loc, type_sz, array_len);
 			cond->binary_expr.right = exprid(rhs);
 		}
 
@@ -2912,12 +2907,15 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		Ast *compound_stmt = copy_ast_single(body);
 		if (expressions)
 		{
-			value->var.init_expr = expressions[i];
+			Expr *expr = expressions[i];
+			value->var.init_expr = expr;
+			value->type = expr->type;
 		}
 		else if (bytes)
 		{
 			value->var.init_expr = expr_new(EXPR_CONST, collection->loc);
 			expr_rewrite_const_int(value->var.init_expr, bytes_type, bytes[i]);
+			value->type = bytes_type;
 		}
 		else
 		{
@@ -2928,6 +2926,7 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 				goto FAILED;
 			}
 			value->var.init_expr = expr;
+			value->type = const_list_type;
 		}
 		if (index)
 		{

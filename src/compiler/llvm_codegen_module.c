@@ -108,7 +108,7 @@ void gencontext_begin_module(GenContext *c)
 	c->bool_type = LLVMInt1TypeInContext(c->context);
 	c->byte_type = LLVMInt8TypeInContext(c->context);
 	c->ptr_type = LLVMPointerType(c->byte_type, 0);
-	c->size_type = llvm_get_type(c, type_usz);
+	c->size_type = llvm_get_type(c, type_sz);
 	c->typeid_type = llvm_get_type(c, type_typeid);
 	LLVMTypeRef void_type = LLVMVoidTypeInContext(c->context);
 	LLVMTypeRef dtable_type[3] = { c->ptr_type, c->ptr_type, c->ptr_type };

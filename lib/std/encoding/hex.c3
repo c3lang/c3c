@@ -3,19 +3,9 @@ import std::encoding @norecurse;
 
 // The implementation is based on https://www.rfc-editor.org/rfc/rfc4648
 
-fn String encode_buffer(char[] code, char[] buffer) @deprecated("Use encode_into")
-{
-	return encode_into(buffer, code);
-}
-
 fn String encode_into(char[] dst, char[] src)
 {
 	return (String)dst[:encode_bytes_into(dst, src)];
-}
-
-fn char[]? decode_buffer(char[] code, char[] buffer) @deprecated("Use decode_into")
-{
-	return decode_into(buffer, code);
 }
 
 fn char[]? decode_into(char[] dst, char[] src)
@@ -44,12 +34,8 @@ fn char[]? tdecode(char[] code) @inline => decode(tmem, code);
  @param n : "Size of the input to be encoded."
  @return "The size of the input once encoded."
 *>
-fn usz encode_len(usz n) => n * 2;
+fn sz encode_len(sz n) => n * 2;
 
-fn usz encode_bytes(char[] src, char[] dst) @deprecated("Use encode_bytes_into")
-{
-	return encode_bytes_into(dst, src);
-}
 <*
  Encode the content of src into dst, which must be properly sized.
  @param dst : "The encoded input."
@@ -57,9 +43,9 @@ fn usz encode_bytes(char[] src, char[] dst) @deprecated("Use encode_bytes_into")
  @return "The encoded size."
  @require dst.len >= encode_len(src.len) : "Destination array is not large enough"
 *>
-fn usz encode_bytes_into(char[] dst, char[] src)
+fn sz encode_bytes_into(char[] dst, char[] src)
 {
-	usz j = 0;
+	sz j = 0;
 	foreach (v : src)
 	{
 		dst[j] = HEXALPHABET[v >> 4];
@@ -74,12 +60,8 @@ fn usz encode_bytes_into(char[] dst, char[] src)
  @param n : "Size of the input to be decoded."
  @return "The size of the input once decoded."
 *>
-macro usz decode_len(usz n) => n / 2;
+macro sz decode_len(sz n) => n / 2;
 
-fn usz? decode_bytes(char[] src, char[] dst) @deprecated("Use decode_bytes_into")
-{
-	return decode_bytes_into(dst, src);
-}
 
 <*
  Decodes src into bytes. Returns the actual number of bytes written to dst.
@@ -93,10 +75,10 @@ fn usz? decode_bytes(char[] src, char[] dst) @deprecated("Use decode_bytes_into"
  @require dst.len >= decode_len(src.len) : "Destination array is not large enough"
  @return? encoding::INVALID_CHARACTER
 *>
-fn usz? decode_bytes_into(char[] dst, char[] src)
+fn sz? decode_bytes_into(char[] dst, char[] src)
 {
-	usz i;
-	for (usz j = 1; j < src.len; j += 2)
+	sz i;
+	for (sz j = 1; j < src.len; j += 2)
 	{
 		char a = HEXREVERSE[src[j - 1]];
 		char b = HEXREVERSE[src[j]];

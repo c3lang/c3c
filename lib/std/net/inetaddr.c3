@@ -44,7 +44,7 @@ struct InetAddress (Printable)
 }
 
 
-fn usz? InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
+fn sz? InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
 {
 	if (addr.is_ipv6)
 	{
@@ -67,13 +67,13 @@ fn String InetAddress.to_tstring(&self)
 
 fn InetAddress? ipv6_from_str(String s)
 {
-	uint sections = 0;
+	int sections = 0;
 	if (s.len < 2) return INVALID_IP_STRING~;
 	foreach (c : s) if (c == ':') sections++;
 	int zero_segment_len = s[0] == ':' || s[^1] == ':' ? 9 - sections : 8 - sections;
 	if (zero_segment_len == 7 && s.len == 2) return { .is_ipv6 = true };
 	if (zero_segment_len > 7) return INVALID_IP_STRING~;
-	usz index = 0;
+	sz index = 0;
 	bool last_was_colon, found_zero;
 	int current = -1;
 	InetAddress addr = { .is_ipv6 = true };
@@ -108,7 +108,7 @@ fn InetAddress? ipv6_from_str(String s)
 		last_was_colon = false;
 		if (index > 7 || !c.is_xdigit()) return INVALID_IP_STRING~;
 		if (current < 0) current = 0;
-		current = current * 16 + (c <= '9' ? c - '0' : (c | 32) - 'a' + 10);
+		current = current * 16 + (c <= '9' ? (int)(c - '0') : (c | 32) - 'a' + 10);
 	}
 	// Ends with ::
 	if (index == 8 && current == -1) return addr;
@@ -144,7 +144,7 @@ fn InetAddress? ipv4_from_str(String s)
 		if (element > 3 || c < '0' || c > '9') return INVALID_IP_STRING~;
 		if (current < 0)
 		{
-			current = c - '0';
+			current = (int)c - '0';
 			continue;
 		}
 		current = current * 10 + c - '0';
@@ -251,7 +251,10 @@ fn bool InetAddress.is_multicast_link_local(InetAddress* addr)
 	return addr.ipv4.a == 224 && addr.ipv4.b == 0 && addr.ipv4.c == 0;
 }
 
-fn AddrInfo*? addrinfo(String host, uint port, AIFamily ai_family, AISockType ai_socktype) @if(os::SUPPORTS_INET) => @pool()
+<*
+ @require port >= 0 && port <= 0xFFFF : "Invalid port"
+*>
+fn AddrInfo*? addrinfo(String host, int port, AIFamily ai_family, AISockType ai_socktype) @if(os::SUPPORTS_INET) => @pool()
 {
 	ZString zhost = host.zstr_tcopy();
 	DString str = dstring::temp_with_capacity(32);

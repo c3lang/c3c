@@ -62,8 +62,8 @@ entry:
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %8 = load i64, ptr %.anon, align 8
-  %gt = icmp ugt i64 3, %8
-  br i1 %gt, label %loop.body, label %loop.exit
+  %lt = icmp slt i64 %8, 3
+  br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %9 = load i64, ptr %.anon, align 8
@@ -74,8 +74,8 @@ loop.body:                                        ; preds = %loop.cond
   %12 = call i32 %11()
   store i32 %12, ptr %x, align 4
   %13 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %13, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %13, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

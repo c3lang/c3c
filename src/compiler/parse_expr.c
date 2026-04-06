@@ -152,6 +152,16 @@ static Expr *parse_precedence(ParseContext *c, Precedence precedence)
 	// or it is a token that can't be in a prefix position.
 	if (!prefix_rule)
 	{
+		if (c->tok == TOKEN_TRY || c->tok == TOKEN_CATCH)
+		{
+			PRINT_ERROR_HERE("'%s' can only be used in if/while conditionals or defer, it cannot be used standalone.", token_type_to_string(c->tok));
+			return poisoned_expr;
+		}
+		if (token_is_keyword(c->tok))
+		{
+			PRINT_ERROR_HERE("'%s' is a keyword and not an expression, it can't be used here.", token_type_to_string(c->tok));
+			return poisoned_expr;
+		}
 		PRINT_ERROR_HERE("An expression was expected.");
 		return poisoned_expr;
 	}
@@ -783,16 +793,6 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side, SourceLoc *lhs
 	{
 		expr->ternary_expr.is_const = true;
 	}
-	else if (!rules[c->tok].prefix || ((c->tok == TOKEN_BANG || c->tok == TOKEN_BANGBANG) && !rules[peek(c)].prefix))
-	{
-		// If we have no expression following *or* it is a '!' followed by no expression
-		// in this case it's an optional expression.
-		expr->expr_kind = EXPR_OPTIONAL;
-		expr->inner_expr = left_side;
-		RANGE_EXTEND_PREV(expr);
-		SEMA_DEPRECATED(expr, "Using '?' to create an optional is deprecated, use '~' instead.");
-		return expr;
-	}
 
 	// Otherwise we have a ternary
 	expr->ternary_expr.cond = exprid(left_side);
@@ -1232,21 +1232,6 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left, SourceLoc *lhs_start U
 
 
 /**
- * ct_is_const ::= CT_IS_CONST '(' expr ')'
- */
-static Expr *parse_ct_is_const(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
-{
-	ASSERT(!left && "Unexpected left hand side");
-	Expr *checks = expr_new_loc(EXPR_CT_IS_CONST, &c->span);
-	advance_and_verify(c, TOKEN_CT_IS_CONST);
-	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	ASSIGN_EXPR_OR_RET(checks->inner_expr, parse_expr(c), poisoned_expr);
-	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-	RANGE_EXTEND_PREV(checks);
-	return checks;
-}
-
-/**
  * ct_checks ::= CT_EMBED '(' constant_expr (',' constant_expr)? ')'
  */
 static Expr *parse_ct_embed(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
@@ -1302,20 +1287,6 @@ static Expr *parse_ct_call(ParseContext *c, Expr *left, SourceLoc *lhs_start UNU
 	return expr;
 }
 
-static Expr *parse_ct_assignable(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
-{
-	ASSERT(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_ASSIGNABLE);
-	assert(c->tok == TOKEN_CT_ASSIGNABLE);
-	advance(c);
-	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	ASSIGN_EXPRID_OR_RET(expr->assignable_expr.expr, parse_expr(c), poisoned_expr);
-	CONSUME_OR_RET(TOKEN_COMMA, poisoned_expr);
-	ASSIGN_EXPRID_OR_RET(expr->assignable_expr.type, parse_expr(c), poisoned_expr);
-	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-	RANGE_EXTEND_PREV(expr);
-	return expr;
-}
 
 static Expr *parse_ct_kindof(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
@@ -1426,7 +1397,7 @@ static Expr *parse_force_unwrap_expr(ParseContext *c, Expr *left, SourceLoc *lhs
  *
  * Note this code accepts any ident as builtin, and relies on the lexer to prevent space between tokens.
  */
-static Expr *parse_builtin(ParseContext *c, Expr *left, SourceLoc *lhs_start)
+static Expr *parse_builtin(ParseContext *c, Expr *left, SourceLoc *loc UNUSED)
 {
 	ASSERT(!left && "Had left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_BUILTIN);
@@ -1447,42 +1418,19 @@ static Expr *parse_builtin(ParseContext *c, Expr *left, SourceLoc *lhs_start)
 	return expr;
 }
 
-static int read_num_type(const char *string, size_t loc, size_t len)
-{
-	int i = 0;
-	loc++;
-	if (string[loc] == '0') return -1;
-	for (size_t z = loc; z < len; z++)
-	{
-		i *= 10;
-		if (i > 1024) return i;
-		i += string[z] - '0';
-	}
-	return i;
-}
 
-static int read_int_suffix(const char *string, size_t loc, size_t len, char c, bool *bit_suffix)
+static int read_int_suffix(const char *string, size_t loc, size_t len, char c)
 {
 	switch (c | 32)
 	{
-		case 'i':
-		{
-			int val = read_num_type(string, loc, len);
-			*bit_suffix = val > 0;
-			return val;
-		}
 		case 'l':
 			if (loc == len - 2 && (string[loc + 1] | 32) == 'l') return 128;
 			if (loc != len - 1) return -1;
 			return 64;
 		case 'u':
-		{
 			if (loc == len - 3 && (string[loc + 1] | 32) == 'l' && (string[loc + 2] | 32) == 'l') return 128;
 			if (loc == len - 2 && (string[loc + 1] | 32) == 'l') return 64;
-			int val = read_num_type(string, loc, len);
-			*bit_suffix = val > 0;
-			return val;
-		}
+			return 0;
 		default:
 			return -1;
 	}
@@ -1495,21 +1443,17 @@ static Expr *parse_integer_expr(ParseContext *c, bool negated)
 	expr_int->resolve_status = RESOLVE_DONE;
 	size_t len = c->data.lex_len;
 	const char *string = symstr(c);
-	Int128 i = { 0, 0 };
-	bool is_unsigned = false;
+	Int128 ixx = { 0, 0 };
 	int type_bits = 0;
 	int hex_characters = 0;
-	int oct_characters = 0;
-	int binary_characters = 0;
+	int is_decimal = false;
 	bool wrapped = false;
 	bool set_unsigned = false;
 	uint64_t max;
-	bool bit_suffix = false;
 	unsigned radix = 10;
 	switch (len > 2 ? (string[1] | 32) : '0')
 	{
 		case 'x':
-			is_unsigned = true;
 			radix = 16;
 			max = UINT64_MAX >> 4;
 			for (size_t loc = 2; loc < len; loc++)
@@ -1518,28 +1462,24 @@ static Expr *parse_integer_expr(ParseContext *c, bool negated)
 				switch (ch | 32)
 				{
 					case 'u':
-						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
-						is_unsigned = true;
+						type_bits = read_int_suffix(string, loc, len, ch);
 						set_unsigned = true;
 						goto EXIT;
 					case 'l':
-					case 'i':
-						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
-						is_unsigned = false;
+						type_bits = read_int_suffix(string, loc, len, ch);
 						goto EXIT;
 					case '_' | 32:
 						continue;
 					default:
 						break;
 				}
-				if (i.high > max) wrapped = true;
-				i = i128_shl64(i, 4);
-				i = i128_add64(i, (uint64_t) char_hex_to_nibble(ch));
+				if (ixx.high > max) wrapped = true;
+				ixx = i128_shl64(ixx, 4);
+				ixx = i128_add64(ixx, (uint64_t) char_hex_to_nibble(ch));
 				hex_characters++;
 			}
 			break;
 		case 'o':
-			is_unsigned = true;
 			radix = 8;
 			max = UINT64_MAX >> 3;
 			for (size_t loc = 2; loc < len; loc++)
@@ -1548,29 +1488,24 @@ static Expr *parse_integer_expr(ParseContext *c, bool negated)
 				switch (ch | 32)
 				{
 					case 'u':
-						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
-						is_unsigned = true;
+						type_bits = read_int_suffix(string, loc, len, ch);
 						set_unsigned = true;
 						goto EXIT;
 					case 'l':
-					case 'i':
-						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
-						is_unsigned = false;
+						type_bits = read_int_suffix(string, loc, len, ch);
 						goto EXIT;
 					case '_' | 32:
 						continue;
 					default:
 						break;
 				}
-				if (i.high > max) wrapped = true;
-				i = i128_shl64(i, 3);
-				i = i128_add64(i, (uint64_t)(ch - '0'));
-				oct_characters++;
+				if (ixx.high > max) wrapped = true;
+				ixx = i128_shl64(ixx, 3);
+				ixx = i128_add64(ixx, (uint64_t)(ch - '0'));
 			}
 			break;
 		case 'b':
 			radix = 2;
-			is_unsigned = true;
 			max = UINT64_MAX >> 1;
 			for (size_t loc = 2; loc < len; loc++)
 			{
@@ -1578,51 +1513,45 @@ static Expr *parse_integer_expr(ParseContext *c, bool negated)
 				switch (ch | 32)
 				{
 					case 'u':
-						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
-						is_unsigned = true;
+						type_bits = read_int_suffix(string, loc, len, ch);
 						set_unsigned = true;
 						goto EXIT;
 					case 'l':
-					case 'i':
-						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
-						is_unsigned = false;
+						type_bits = read_int_suffix(string, loc, len, ch);
 						goto EXIT;
 					case '_' | 32:
 						continue;
 					default:
 						break;
 				}
-				binary_characters++;
-				if (i.high > max) wrapped = true;
-				i = i128_shl64(i, 1);
-				i = i128_add64(i, (uint64_t)(ch - '0'));
+				if (ixx.high > max) wrapped = true;
+				ixx = i128_shl64(ixx, 1);
+				ixx = i128_add64(ixx, (uint64_t)(ch - '0'));
 			}
 			break;
 		default:
+			is_decimal = true;
 			for (size_t loc = 0; loc < len; loc++)
 			{
 				char ch = string[loc];
 				switch (ch | 32)
 				{
 					case 'u':
-						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
-						is_unsigned = true;
+						type_bits = read_int_suffix(string, loc, len, ch);
 						set_unsigned = true;
 						goto EXIT;
 					case 'l':
-					case 'i':
-						type_bits = read_int_suffix(string, loc, len, ch, &bit_suffix);
-						is_unsigned = false;
+						type_bits = read_int_suffix(string, loc, len, ch);
 						goto EXIT;
 					case '_' | 32:
 						continue;
 					default:
 						break;
 				}
-				uint64_t old_top = i.high;
-				i = i128_mult64(i, 10);
-				i = i128_add64(i, (uint64_t)(ch - '0'));
-				if (!wrapped && old_top > i.high) wrapped = true;
+				uint64_t old_top = ixx.high;
+				ixx = i128_mult64(ixx, 10);
+				ixx = i128_add64(ixx, (uint64_t)(ch - '0'));
+				if (!wrapped && old_top > ixx.high) wrapped = true;
 			}
 			break;
 	}
@@ -1637,146 +1566,68 @@ EXIT:
 		if (set_unsigned)
 		{
 			PRINT_ERROR_AT(expr_int, "Negating an explicitly unsigned value is not allowed, but you can place the value inside of (), "
-								"like -(%s).", i128_to_string(i, radix, false, true));
+								"like -(%s).", i128_to_string(ixx, radix, false, true));
 			return poisoned_expr;
 		}
-		is_unsigned = false;
-		if (i128_comp(i, INT128_MIN, type_u128) == CMP_GT)
+		if (i128_comp(ixx, INT128_MIN, type_u128) == CMP_GT)
 		{
 			PRINT_ERROR_AT(expr_int, "The negated integer size would exceed an int128.");
 			return poisoned_expr;
 		}
-		if (negated) i = i128_neg(i);
+		if (negated) ixx = i128_neg(ixx);
 	}
+
 	expr_int->const_expr.const_kind = CONST_INTEGER;
 	expr_int->const_expr.is_character = false;
 	expr_int->const_expr.is_hex = hex_characters > 0;
+	Type *types[8] = { type_short, type_ushort, type_int, type_uint, type_long, type_ulong, type_i128, type_u128 };
+	BitSize min_bits = compiler.platform.width_c_int;
+	bool allow_unsigned = !negated && (!is_decimal || set_unsigned);
+	int start;
+	switch (type_bits)
+	{
+		case 64: start = 4; break;
+		case 128: start = 6; break;
+		default: start = min_bits == 16 ? 0 : 2; break;
+	}
+	Int result = { .i = ixx, .type = negated ? TYPE_I128 : TYPE_U128};
 	Type *type_base = NULL;
-	if (type_bits)
+	for (int i = start; i < 8; i++)
 	{
-		if (type_bits < 8 || !is_power_of_two((uint64_t)type_bits) || type_bits > 128)
+		bool is_signed = i % 2 == 0;
+		if (is_signed && set_unsigned) continue;
+		if (!is_signed && !allow_unsigned) continue;
+		Type *type = types[i];
+		if (int_fits(result, type->type_kind))
 		{
-			PRINT_ERROR_AT(expr_int, "Integer type suffix should be i8, i16, i32, i64 or i128.");
-			return poisoned_expr;
-		}
-		const char *suffix; // NOLINT
-		if (bit_suffix)
-		{
-			switch (type_bits)
-			{
-				case 8:
-				case 16:
-					SEMA_DEPRECATED(expr_int, "Bit suffixes are deprecated, use casts instead, eg '(short)123'");
-					break;
-				case 32:
-					if (is_unsigned)
-					{
-						SEMA_DEPRECATED(expr_int, "Bit suffixes are deprecated, use the 'u' suffix instead eg '%.*su'.",
-							(int)len - 3, string);
-					}
-					else
-					{
-						SEMA_DEPRECATED(expr_int, "Bit suffixes are deprecated, use casts instead, eg '(int)%.*s'",
-							(int)len - 3, string);
-					}
-					break;
-				case 64:
-				case 128:
-					if (type_bits == 64)
-					{
-						suffix = is_unsigned ? "U" : "L";
-					}
-					else
-					{
-						suffix = is_unsigned ? "ULL" : "LL";
-					}
-					SEMA_DEPRECATED(expr_int, "Bit suffixes are deprecated, use the '%s' suffix instead eg '%.*s%s'.",
-						suffix, (int)len - (type_bits == 128 ? 4 : 3), string, suffix);
-					break;
-				default:
-					UNREACHABLE
-			}
+			type_base = type;
+			result.type = type->type_kind;
+			break;
 		}
 	}
-	else
-	{
-		if (hex_characters)
-		{
-			type_bits = 4 * hex_characters;
-			if (type_bits > 128)
-			{
-				PRINT_ERROR_AT(expr_int, "%d hex digits indicates a bit width over 128, which is not supported.", hex_characters);
-				return poisoned_expr;
-			}
-		}
-		if (oct_characters)
-		{
-			type_bits = 3 * oct_characters;
-			if (type_bits > 128)
-			{
-				PRINT_ERROR_AT(expr_int, "%d octal digits indicates a bit width over 128, which is not supported.", oct_characters);
-				return poisoned_expr;
-			}
-		}
-		if (binary_characters)
-		{
-			type_bits = binary_characters;
-			if (type_bits > 128)
-			{
-				PRINT_ERROR_AT(expr_int, "%d binary digits indicates a bit width over 128, which is not supported.", binary_characters);
-				return poisoned_expr;
-			}
-		}
-		if (type_bits && type_bits < compiler.platform.width_c_int) type_bits = compiler.platform.width_c_int;
-		if (type_bits && !is_power_of_two((uint64_t)type_bits)) type_bits = (int)next_highest_power_of_2((uint32_t)type_bits);
-	}
-	if (type_bits) expr_int->const_expr.is_hex = false;
-	if (type_bits)
-	{
-		type_base = is_unsigned ? type_int_unsigned_by_bitsize((unsigned)type_bits)
-								: type_int_signed_by_bitsize((unsigned)type_bits);
-	}
-	else
-	{
-		BitSize min_bits = compiler.platform.width_c_int;
-		Int test = { .i = i, .type = negated ? TYPE_I128 : TYPE_U128 };
-		for (int type_kind = 0; type_kind < 5; type_kind++)
-		{
-			TypeKind kind = (is_unsigned ? TYPE_U8 : TYPE_I8) + type_kind;
-			int bitsize = type_kind_bitsize(kind);
-			if (bitsize < min_bits) continue;
-			if (int_fits(test, kind))
-			{
-				type_base = is_unsigned ? type_int_unsigned_by_bitsize(bitsize) : type_int_signed_by_bitsize(bitsize);
-				break;
-			}
-		}
-		if (!type_base) type_base = is_unsigned ? type_cuint : type_cint;
-	}
-	Int result = { i, type_base->type_kind };
-	if (!int_fits(result, type_base->type_kind))
+	if (!type_base)
 	{
 		if (type_bits)
 		{
 			PRINT_ERROR_AT(expr_int, "'%s' does not fit in a '%c%d' literal.",
-			               i128_to_string(i, radix, true, false), is_unsigned ? 'u' : 'i', type_bits);
+						   i128_to_string(ixx, radix, true, false), set_unsigned ? 'u' : 'i', type_bits);
 		}
 		else
 		{
-			if (is_unsigned)
+			if (set_unsigned)
 			{
 				PRINT_ERROR_AT(expr_int, "'%s' does not fit in an unsigned integer literal.",
-				               i128_to_string(i, radix, false, false));
+							   i128_to_string(ixx, radix, false, false));
 			}
 			else
 			{
 				if (negated)
 				{
-					PRINT_ERROR_AT(expr_int, "'%s' does not fit in a signed integer literal.", i128_to_string(i, radix, true, false));
+					PRINT_ERROR_AT(expr_int, "'%s' does not fit in a signed integer literal.", i128_to_string(ixx, radix, true, false));
 				}
 				else
 				{
-					PRINT_ERROR_AT(expr_int, "'%s' does not fit in a signed integer literal, but you can try making it unsigned by appending the 'U' suffix.", i128_to_string(i, radix, false, false));
+					PRINT_ERROR_AT(expr_int, "'%s' does not fit in a signed integer literal, but you can try making it unsigned by appending the 'U' suffix.", i128_to_string(ixx, radix, false, false));
 				}
 			}
 		}
@@ -1955,14 +1806,6 @@ static Expr *parse_double(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUS
 	bool is_hex = original[0] == '0' && (original[1] == 'x' || original[1] == 'X');
 	// This is set to try to print in a similar manner as the input.
 	number->const_expr.is_hex = is_hex;
-	if (c->data.lex_len > 3)
-	{
-		const char *last = c->data.lex_start + c->data.lex_len - 3;
-		if (last[0] == 'f' && ((last[1] == '3' && last[2] == '2') || (last[1] == '6' && last[2] == '4')))
-		{
-			SEMA_DEPRECATED(number, "Float number suffixes are deprecated, use 'f' and 'd' instead.'");
-		}
-	}
 	Float f = is_hex ? float_from_hex(original, &err) : float_from_string(original, &err);
 	if (f.type == TYPE_POISONED)
 	{
@@ -2185,7 +2028,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_ULONG] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_INT128] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_UINT128] = { parse_type_identifier, NULL, PREC_NONE },
-		[TOKEN_ISZ] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_SZ] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_USZ] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_IPTR] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_UPTR] = { parse_type_identifier, NULL, PREC_NONE },
@@ -2266,14 +2109,11 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_ELLIPSIS] = { parse_splat, NULL, PREC_NONE },
 		[TOKEN_FN] = { parse_lambda, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_ASSIGNABLE] = { parse_ct_assignable, NULL, PREC_NONE },
 		[TOKEN_CT_DEFINED] = { parse_ct_defined, NULL, PREC_NONE },
 		[TOKEN_CT_EMBED] = { parse_ct_embed, NULL, PREC_NONE },
-		[TOKEN_CT_EVALTYPE] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_EVAL] = { parse_ct_eval, NULL, PREC_NONE },
 		[TOKEN_CT_EXTNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_FEATURE] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_IS_CONST] = {parse_ct_is_const, NULL, PREC_NONE },
 		[TOKEN_CT_KINDOF] = { parse_ct_kindof, NULL, PREC_NONE },
 		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },

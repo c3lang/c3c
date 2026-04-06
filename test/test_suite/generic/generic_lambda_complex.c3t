@@ -27,8 +27,8 @@ struct TextTemplate
 
 struct TextTag
 {
-	usz start;
-	usz end;
+	sz start;
+	sz end;
 	TextTagKind kind;
 	union {
 		String* data;
@@ -47,11 +47,11 @@ fn void? TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 	uptr data = (uptr)&self.data;
 	while (true)
 	{
-		usz? start = tmpl.index_of(tag_start);
+		sz? start = tmpl.index_of(tag_start);
 		if (catch start) break;
 		tmpl = tmpl[start + tag_start.len..];
 
-		usz? end = tmpl.index_of(tag_end);
+		sz? end = tmpl.index_of(tag_end);
 		if (catch end) return abc_faults::UNTERMINATED_TAG~;
 		String name = tmpl[:end].trim();
 		if (name == "") return abc_faults::EMPTY_TAG~;
@@ -67,7 +67,7 @@ fn void? TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 						$case String.typeid:
 							tag = {
 								.kind = STRING,
-								.data = (String*)(data + $m.offsetof),
+								.data = (String*)(data + (usz)$m.offsetof),
 							};
 							break OUTER;
 						$default:
@@ -100,10 +100,10 @@ fn void? TextTemplate.free(&self)
 	*self = {};
 }
 
-fn usz? TextTemplate.write_to(&self, OutStream writer)
+fn sz? TextTemplate.write_to(&self, OutStream writer)
 {
-	usz n;
-	usz pos;
+	sz n;
+	sz pos;
 	foreach (tag : self.tags)
 	{
 			n += writer.write(self.template[pos:tag.start])!;
@@ -114,7 +114,7 @@ fn usz? TextTemplate.write_to(&self, OutStream writer)
 	return n;
 }
 
-fn usz? TextTag.write(&self, OutStream writer)
+fn sz? TextTag.write(&self, OutStream writer)
 {
 	switch (self.kind)
 	{

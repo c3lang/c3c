@@ -20,7 +20,7 @@ macro String? getcwd(Allocator allocator)
 			return string::from_utf16(allocator, str16);
 
 		$case env::POSIX:
-			const usz DEFAULT_BUFFER = 256;
+			const sz DEFAULT_BUFFER = 256;
 			char[DEFAULT_BUFFER] buffer;
 			ZString res = posix::getcwd(&buffer, DEFAULT_BUFFER);
 			bool free = false;

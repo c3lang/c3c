@@ -57,7 +57,7 @@ fn int main(String[] v)
 	if (v.len > 1) w = v[1].to_int() ?? w;
 	if (v.len > 2) h = v[2].to_int() ?? h;
 
-	GameBoard board = { .w = w, .h = h, .world = malloc((usz)h * w), .temp = malloc((usz)h * w) };
+	GameBoard board = { .w = w, .h = h, .world = malloc((sz)h * w), .temp = malloc((sz)h * w) };
 
 	for (int i = h * w - 1; i >= 0; i--)
 	{

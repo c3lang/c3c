@@ -5,7 +5,7 @@ import std::math::random;
 
 struct ConvergenceControl
 {
-	usz max_iter;
+	sz max_iter;
 	double epsilon;
 }
 
@@ -77,8 +77,8 @@ fn double incomplete_beta(double x, double a, double b, ConvergenceControl conv 
 	double c = 1.0;
 	double d = 0.0;
 
-	usz m;
-	for (usz i = 0; i <= conv.max_iter; ++i)
+	sz m;
+	for (sz i = 0; i <= conv.max_iter; ++i)
 	{
 		m = i/2;
 
@@ -124,7 +124,7 @@ fn double? bisection_search(ContinuousDistribution dist, double low, double high
 	while (dist.cdf(high) < p) high *= 2.0;
 
 	// Bisection search.
-	for (usz i = 0; i < conv.max_iter; i++)
+	for (sz i = 0; i < conv.max_iter; i++)
 	{
 		double mid = (low + high) * 0.5;
 		if (high - low < conv.epsilon) return mid;
@@ -149,7 +149,7 @@ fn double? newton_raphson(ContinuousDistribution dist, double x, double p,
 	ConvergenceControl conv = DEFAULT_CONV)
 {
 	double delta, pdf;
-	for (usz i = 0; i < conv.max_iter; i++)
+	for (sz i = 0; i < conv.max_iter; i++)
 	{
 		pdf = dist.pdf(x);
 		if (pdf < 1e-300) break;

@@ -160,9 +160,9 @@ fn void bsearch() @test
 
 fn void calloc() @test
 {
-	usz amount = 10;
-	CInt* int_ar = libc::calloc(amount, CInt.sizeof);
-	for (usz i = 0; i < amount; i++)
+	sz amount = 10;
+	CInt* int_ar = libc::calloc((usz)amount, CInt.sizeof);
+	for (sz i = 0; i < amount; i++)
 	{
 		assert(int_ar[i] == 0);
 	}
@@ -393,7 +393,7 @@ fn void malloc_free() @test
 // fn void write() @test {}
 //
 // extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
-// extern fn isz getline(char** linep, usz* linecapp, CFile stream);
+// extern fn sz getline(char** linep, usz* linecapp, CFile stream);
 // extern fn CInt timespec_get(TimeSpec* ts, CInt base);
 // extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining);
 // extern fn ZString ctime(Time_t *timer);

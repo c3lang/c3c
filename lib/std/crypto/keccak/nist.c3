@@ -58,17 +58,17 @@ macro char[] encoded_rate_bytes($security_level) @const
  @param length : "The length value to encode."
  @param as_direct_bytes : "If set to `true`, encode `length` directly, without converting the value to a bit count."
 
- @require into.len >= uint128.sizeof + 2 : "The storage buffer must have adequate space for all possible 16-byte integer values (>= 18 bytes)."
+ @require into.len >= int128.sizeof + 2 : "The storage buffer must have adequate space for all possible 16-byte integer values (>= 18 bytes)."
 
  @return "The width of the encoded length in bytes."
 *>
-fn usz encode_length_into(char[] into, NistEncodingType direction, uint128 length, bool as_direct_bytes = false)
+fn sz encode_length_into(char[] into, NistEncodingType direction, int128 length, bool as_direct_bytes = false)
 {
 	if (!as_direct_bytes) length <<= 3;
 	int bits = 8;
 	for (; math::pow(2, bits) <= length; bits += 8);
-	char bytes = (char)bits / 8;
-	uint128 swapped_length = !env::BIG_ENDIAN ??? bswap(length) : length;
+	char bytes = (char)(bits / 8);
+	int128 swapped_length = !env::BIG_ENDIAN ??? bswap(length) : length;
 	into[1:bytes] = @as_char_view(swapped_length)[^bytes..];
 	switch (direction)
 	{
@@ -90,9 +90,9 @@ fn usz encode_length_into(char[] into, NistEncodingType direction, uint128 lengt
 
  @return "A slice pointing to a stack-allocated byte array, containing the fully encoded length."
 *>
-macro char[] encode_length(NistEncodingType direction, uint128 length, bool as_direct_bytes = false)
+macro char[] encode_length(NistEncodingType direction, int128 length, bool as_direct_bytes = false)
 {
-	char[uint128.sizeof + 2] result;
-	usz bytes = encode_length_into(result[..], direction, length, as_direct_bytes: as_direct_bytes);
+	char[int128.sizeof + 2] result;
+	sz bytes = encode_length_into(result[..], direction, length, as_direct_bytes: as_direct_bytes);
 	return direction == LEFT ? result[:bytes + 1] : result[1:bytes + 1];
 }

@@ -66,7 +66,7 @@ faultdef
  @param [inout] allocator : `the allocator to use.`
  @return `The string containing the data read.`
 *>
-macro String? readline(Allocator allocator, stream = io::stdin(), usz limit = 0)
+macro String? readline(Allocator allocator, stream = io::stdin(), sz limit = 0)
 {
 	return readline_impl{$typeof(stream)}(allocator, stream, limit);
 }
@@ -81,12 +81,12 @@ macro String? readline(Allocator allocator, stream = io::stdin(), usz limit = 0)
  @require @is_instream(stream) : `The stream must implement InStream.`
  @return `The temporary string containing the data read.`
 *>
-macro String? treadline(stream = io::stdin(), usz limit = 0)
+macro String? treadline(stream = io::stdin(), sz limit = 0)
 {
 	return readline(tmem, stream, limit) @inline;
 }
 
-fn String? readline_impl(Allocator allocator, Stream stream, usz limit) <Stream> @private
+fn String? readline_impl(Allocator allocator, Stream stream, sz limit) <Stream> @private
 {
 	if (allocator == tmem)
 	{
@@ -114,12 +114,12 @@ fn String? readline_impl(Allocator allocator, Stream stream, usz limit) <Stream>
  @require @is_outstream(out_stream) : `The out_stream must implement OutStream.`
  @return `The number of bytes written. When a 'limit' is provided and the return value is equal to it, there may be more to read on the current line.`
 *>
-macro usz? readline_to_stream(out_stream, in_stream = io::stdin(), usz limit = 0)
+macro sz? readline_to_stream(out_stream, in_stream = io::stdin(), sz limit = 0)
 {
 	return readline_to_stream_impl{$typeof(in_stream), $typeof(out_stream)}(out_stream, in_stream, limit);
 }
 
-fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream, usz limit) <IStream, OStream> @private
+fn sz? readline_to_stream_impl(OStream out_stream, IStream in_stream, sz limit) <IStream, OStream> @private
 {
 	bool $is_stream = IStream == InStream;
 	$if $is_stream:
@@ -134,7 +134,7 @@ fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream, usz limit
 	$endif
 
 	if (val == '\n') return 0;
-	usz len;
+	sz len;
 	if (val != '\r')
 	{
 		$if $is_out_stream:
@@ -175,7 +175,7 @@ fn usz? readline_to_stream_impl(OStream out_stream, IStream in_stream, usz limit
  @require @is_outstream(out) : `The output must implement OutStream.`
  @return `the number of bytes printed.`
 *>
-macro usz? fprint(out, x)
+macro sz? fprint(out, x)
 {
 	var $Type = $typeof(x);
 	$switch $Type:
@@ -205,7 +205,7 @@ macro usz? fprint(out, x)
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz? fprintf(OutStream out, String format, args...) @format(1)
+fn sz? fprintf(OutStream out, String format, args...) @format(1)
 {
 	Formatter formatter;
 	formatter.init(&out_putstream_fn, &out);
@@ -220,11 +220,11 @@ fn usz? fprintf(OutStream out, String format, args...) @format(1)
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz? fprintfn(OutStream out, String format, args...) @format(1) @maydiscard
+fn sz? fprintfn(OutStream out, String format, args...) @format(1) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putstream_fn, &out);
-	usz len = formatter.vprintf(format, args)!;
+	sz len = formatter.vprintf(format, args)!;
 	out.write_byte('\n')!;
 	if (&out.flush) out.flush()!;
 	return len + 1;
@@ -233,9 +233,9 @@ fn usz? fprintfn(OutStream out, String format, args...) @format(1) @maydiscard
 <*
  @require @is_outstream(out) : "The output must implement OutStream"
 *>
-macro usz? fprintn(out, x = "")
+macro sz? fprintn(out, x = "")
 {
-	usz len = fprint(out, x)!;
+	sz len = fprint(out, x)!;
 	out.write_byte('\n')!;
 	$switch:
 		$case $typeof(out) == OutStream:
@@ -289,7 +289,7 @@ fn void? out_putstream_fn(void* data, char c) @private
 	return (*stream).write_byte(c);
 }
 
-macro usz putchar_buf_size() @const
+macro sz putchar_buf_size() @const
 {
 	$switch env::MEMORY_ENV:
 		$case NORMAL: return 32 * 1024;
@@ -302,14 +302,14 @@ macro usz putchar_buf_size() @const
 struct PutcharBuffer
 {
 	char[putchar_buf_size()] data;
-	usz len;
+	sz len;
 	bool should_flush;
 }
 
 fn void? write_putchar_buffer(PutcharBuffer* buff, bool flush) @private
 {
 	File* stdout = io::stdout();
-	libc::fwrite(&buff.data, 1, buff.len, stdout.file);
+	libc::fwrite(&buff.data, 1, (usz)buff.len, stdout.file);
 	buff.len = 0;
 	if (flush) stdout.flush()!;
 }
@@ -343,12 +343,12 @@ fn void? out_putchar_buffer_fn(void* data @unused, char c) @private
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz? printf(String format, args...) @format(0) @maydiscard
+fn sz? printf(String format, args...) @format(0) @maydiscard
 {
 	Formatter formatter;
 	PutcharBuffer buff;
 	formatter.init(&out_putchar_buffer_fn, &buff);
-	usz? len = formatter.vprintf(format, args);
+	sz? len = formatter.vprintf(format, args);
 	write_putchar_buffer(&buff, buff.should_flush)!;
 	return len;
 }
@@ -360,12 +360,12 @@ fn usz? printf(String format, args...) @format(0) @maydiscard
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz? printfn(String format, args...) @format(0) @maydiscard
+fn sz? printfn(String format, args...) @format(0) @maydiscard
 {
 	Formatter formatter;
 	PutcharBuffer buff;
 	formatter.init(&out_putchar_buffer_fn, &buff);
-	usz? len = formatter.vprintf(format, args);
+	sz? len = formatter.vprintf(format, args);
 	formatter.print_char('\n')!;
 	write_putchar_buffer(&buff, true)!;
 	return len + 1;
@@ -378,7 +378,7 @@ fn usz? printfn(String format, args...) @format(0) @maydiscard
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz? eprintf(String format, args...) @maydiscard
+fn sz? eprintf(String format, args...) @maydiscard
 {
 	Formatter formatter;
 	OutStream stream = stderr();
@@ -394,12 +394,12 @@ fn usz? eprintf(String format, args...) @maydiscard
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz? eprintfn(String format, args...) @maydiscard
+fn sz? eprintfn(String format, args...) @maydiscard
 {
 	Formatter formatter;
 	OutStream stream = stderr();
 	formatter.init(&out_putstream_fn, &stream);
-	usz? len = formatter.vprintf(format, args);
+	sz? len = formatter.vprintf(format, args);
 	stderr().write_byte('\n')!;
 	stderr().flush()!;
 	return len + 1;
@@ -418,7 +418,7 @@ fn char[]? bprintf(char[] buffer, String format, args...) @maydiscard
 	Formatter formatter;
 	BufferData data = { .buffer = buffer };
 	formatter.init(&out_buffer_fn, &data);
-	usz size = formatter.vprintf(format, args)!;
+	sz size = formatter.vprintf(format, args)!;
 	return buffer[:data.written];
 }
 
@@ -434,7 +434,7 @@ fn void? out_buffer_fn(void *data, char c) @private
 struct BufferData @private
 {
 	char[] buffer;
-	usz written;
+	sz written;
 }
 
 // Only available with LIBC

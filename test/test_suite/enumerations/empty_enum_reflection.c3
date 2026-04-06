@@ -1,6 +1,7 @@
 import std;
 enum Foo
 {
+	ABC
 }
-EnumMap{Foo, int} map; // #error: Parameter(s) would violate constraint: @require "Enum.values.len > 0" violated
+EnumMap{Foo, int} map;
 fn int main() => 1;

@@ -18,10 +18,10 @@ fn String? get_var(Allocator allocator, String name) => @pool()
 		return val ? val.copy(allocator) : NOT_FOUND~;
 	$case env::WIN32:
 		// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getenvironmentvariable
-		const usz BUFSIZE = 1024;
+		const sz BUFSIZE = 1024;
 		WString buff = (WString)tcalloc(BUFSIZE * 2 + 2);
 		WString wstr = name.to_temp_wstring()!;
-		usz len = win32::getEnvironmentVariableW(wstr, buff, BUFSIZE);
+		sz len = (sz)win32::getEnvironmentVariableW(wstr, buff, BUFSIZE);
 		if (len == 0) return NOT_FOUND~;
 		if (len > BUFSIZE)
 		{

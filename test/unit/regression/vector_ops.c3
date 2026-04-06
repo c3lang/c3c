@@ -45,11 +45,11 @@ fn void test_conv() @test
 	int[<4>] w = { -1, 2, 3, 4 };
 	float[<4>] yy = w;
 	assert(yy == { -1.0, 2.0, 3.0, 4.0 });
-	ulong[<4>] ww = w;
+	ulong[<4>] ww = (ulong[<4>])w;
 	assert(ww == { (ulong)-1, 2, 3, 4 });
 	int[<4>] g = (int[<4>])ww;
 	assert(g == w);
-	ww = (long[<4>])y;
+	ww = (ulong[<4>])y;
 	assert(ww == { 1, 2, 3, 4 });
 	bool[<2>] b = { true, false };
 	int[<2>] gh = b;

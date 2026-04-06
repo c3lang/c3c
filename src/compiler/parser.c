@@ -190,6 +190,7 @@ bool parse_stdin(void)
 	{
 		int c = getchar();
 		if (c == -1) break;
+		if (c == '\r') continue;
 		if (len >= capacity - 1)
 		{
 			capacity *= 2;

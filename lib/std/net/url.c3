@@ -30,7 +30,7 @@ struct Url(Printable)
 {
 	String scheme;
 	String host;
-	uint   port;
+	int   port;
 	String username;
 	String password;
 	String path;
@@ -81,7 +81,7 @@ fn Url? parse(Allocator allocator, String url_string)
 	// Parse host, port
 	if (url.scheme != "urn")
 	{
-		usz authority_end = url_string.index_of_chars("/?#") ?? url_string.len;
+		sz authority_end = url_string.index_of_chars("/?#") ?? url_string.len;
 		String authority = url_string[:authority_end];
 
 		if (try user_info_end = authority.index_of_char('@'))
@@ -106,11 +106,11 @@ fn Url? parse(Allocator allocator, String url_string)
 		String host;
 		if (authority.starts_with("[") && authority.contains("]"))
 		{
-			usz ipv6_end = authority.index_of("]")!;
+			sz ipv6_end = authority.index_of("]")!;
 			host = authority[0 .. ipv6_end];  // Includes closing bracket
 			if ((ipv6_end + 1) < authority.len && authority[.. ipv6_end] == ":")
 			{
-				url.port = authority[.. ipv6_end + 1].to_uint()!;
+				url.port = authority[.. ipv6_end + 1].to_int()!;
 			}
 		}
 		else
@@ -121,7 +121,7 @@ fn Url? parse(Allocator allocator, String url_string)
 				if (host_port.len > 1)
 				{
 					host = host_port[0];
-					url.port = host_port[1].to_uint()!;
+					url.port = host_port[1].to_int()!;
 				}
 				else
 				{
@@ -134,12 +134,12 @@ fn Url? parse(Allocator allocator, String url_string)
 	}
 
 	// Parse path
-	usz? query_index = url_string.index_of_char('?');
-	usz? fragment_index = url_string.index_of_char('#');
+	sz? query_index = url_string.index_of_char('?');
+	sz? fragment_index = url_string.index_of_char('#');
 
 	if (@ok(query_index) || @ok(fragment_index))
 	{
-		usz path_end = min(query_index ?? url_string.len, fragment_index ?? url_string.len);
+		sz path_end = min(query_index ?? url_string.len, fragment_index ?? url_string.len);
 		url.path = decode(allocator, url_string[:path_end], PATH) ?? INVALID_PATH~!;
 		url_string = url_string[path_end ..];
 	}
@@ -155,7 +155,7 @@ fn Url? parse(Allocator allocator, String url_string)
 	// Parse query
 	if (url_string.starts_with("?"))
 	{
-		usz index = url_string.index_of_char('#') ?? url_string.len;
+		sz index = url_string.index_of_char('#') ?? url_string.len;
 		url.query = url_string[1 .. index - 1].copy(allocator);
 		url_string = url_string[index ..];
 	}
@@ -168,9 +168,9 @@ fn Url? parse(Allocator allocator, String url_string)
 	return url;
 }
 
-fn usz? Url.to_format(&self, Formatter* f) @dynamic
+fn sz? Url.to_format(&self, Formatter* f) @dynamic
 {
-	usz len;
+	sz len;
 	// Add scheme if it exists
 	if (self.scheme != "")
 	{
@@ -308,10 +308,10 @@ fn UrlQueryValues* UrlQueryValues.add(&self, String key, String value)
 
 
 
-fn usz? UrlQueryValues.to_format(&self, Formatter* f) @dynamic
+fn sz? UrlQueryValues.to_format(&self, Formatter* f) @dynamic
 {
-	usz len;
-	usz i;
+	sz len;
+	sz i;
 	foreach (key: self.key_order)
 	{
 		@stack_mem(128; Allocator mem)

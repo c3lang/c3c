@@ -6,7 +6,7 @@ module std::crypto::shake;
 import std::crypto @public;
 
 <* The set of usable security levels that are valid for this implementation of SHAKE and Keccak. *>
-const usz[] USABLE_LEVELS = { 128, 256 };
+const sz[] USABLE_LEVELS = { 128, 256 };
 
 <* The Keccak domain-separation delimiter to use specifically for SHAKE. *>
 const DEFAULT_DELIMITER = 0x1f;
@@ -67,7 +67,7 @@ struct Shake <SECURITY_LEVEL>
 {
 	inline Keccak{SECURITY_LEVEL} k;
 	bool is_padded;
-	usz offset;
+	sz offset;
 	char[keccak::rate(SECURITY_LEVEL)] buf;
 }
 
@@ -99,7 +99,7 @@ fn void Shake.squeeze(&self, char[] into)
 	char[] out = into;
 	if (self.offset > 0)
 	{
-		usz left = min(self.buf.len - self.offset, out.len);
+		sz left = min(self.buf.len - self.offset, out.len);
 		if (left > 0)
 		{
 			out[:left] = self.buf[self.offset:left];

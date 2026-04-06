@@ -3,8 +3,6 @@ module std::math::quaternion;
 // Predefined quaternion aliases.
 alias Quaternionf = QuaternionNumber {float};
 alias Quaternion = QuaternionNumber {double};
-alias QUATERNION_IDENTITY  @builtin @deprecated("Use quaternion::IDENTITY") = quaternion::IDENTITY {double};
-alias QUATERNIONF_IDENTITY @builtin @deprecated("Use quaternion::IDENTITY") = quaternion::IDENTITY {float};
 
 alias Quat = QuaternionNumber {float};
 
@@ -25,7 +23,7 @@ union QuaternionNumber (Printable)
 	Real[<4>] v;
 }
 
-fn usz? QuaternionNumber.to_format(&self, Formatter* f) @dynamic
+fn sz? QuaternionNumber.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("%s", self.v);
 }

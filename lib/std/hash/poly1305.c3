@@ -22,7 +22,7 @@ struct Poly1305
     uint128         r; // secret portion of key
     uint128         nonce; // initialization vector, derived from key
     char[TAG_SIZE]  temp; // last partial ingestion state
-    usz             num; // index into last partial ingestion
+    sz             num; // index into last partial ingestion
     // Additional, cached state information:
     ulong           r0;
     ulong           r1;
@@ -66,8 +66,8 @@ fn void Poly1305.init(&self, char[KEY_SIZE] key)
         .nonce  = mem::load((uint128*)&key[16], 1)
     };
 
-    self.r0 = @unaligned_load(((ulong*)&self.r)[0], 1);
-    self.r1 = @unaligned_load(((ulong*)&self.r)[1], 1);
+    self.r0 = mem::load(&((ulong*)&self.r)[0], 1);
+    self.r1 = mem::load(&((ulong*)&self.r)[1], 1);
 
     self.s1 = self.r1 + (self.r1 >> 2);
 }
@@ -77,7 +77,7 @@ fn void Poly1305.update(&self, char[] input)
 {
     if (self.num) // currently between consuming full blocks?
     {
-        usz rem = BLOCK_SIZE - self.num;
+        sz rem = BLOCK_SIZE - self.num;
         if (input.len < rem)
         {
             self.temp[self.num:input.len] = input[..]; // saving another partial block
@@ -90,7 +90,7 @@ fn void Poly1305.update(&self, char[] input)
         input = input[rem..];
     }
 
-    usz even_length = input.len - (input.len % BLOCK_SIZE);
+    sz even_length = input.len - (input.len % BLOCK_SIZE);
     if (even_length >= BLOCK_SIZE)
     {
         _blocks(self, input[:even_length]); // consume blocks
@@ -112,13 +112,13 @@ fn char[TAG_SIZE] Poly1305.final(&self)
         _blocks(self, self.temp[..], 0); // chomp
     }
 
-    uint128 t = (uint128)self.h[0] + 5;
+    uint128 t = (uint128)self.h[0] + 5u;
     ulong g0 = (ulong)t;
 
     t = (uint128)self.h[1] + (t >> 64);
     ulong g1 = (ulong)t;
 
-    ulong mask = 0 - ((self.h[2] + (ulong)(t >> 64)) >> 2);
+    ulong mask = 0u - ((self.h[2] + (ulong)(t >> 64)) >> 2);
     self.h[0] = (self.h[0] & ~mask) | (g0 & mask);
     self.h[1] = (self.h[1] & ~mask) | (g1 & mask);
 

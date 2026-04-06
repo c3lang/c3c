@@ -28,8 +28,8 @@ fn void main()
   a = $$unaligned_load((float[<4>]*)&foo.a, 1, false);
   $$unaligned_store((float[<4>]*)&foo.a, a, 1, false);
 
-  b = @unaligned_load(*(float[<4>]*)&foo.a, 1);
-  @unaligned_store(*(float[<4>]*)&foo.a, b, 1);
+  b = mem::load((float[<4>]*)&foo.a, 1);
+  mem::store((float[<4>]*)&foo.a, b, 1);
 }
 
 /* #expect: std.test.ll
@@ -75,10 +75,10 @@ entry:
   %8 = load ptr, ptr %foo, align 8
   %9 = load <4 x float>, ptr %8, align 1
   store <4 x float> %9, ptr %b, align 1
-  %10 = load <4 x float>, ptr %b, align 1
-  store <4 x float> %10, ptr %value, align 16
-  %11 = load ptr, ptr %foo, align 8
+  %10 = load ptr, ptr %foo, align 8
+  %11 = load <4 x float>, ptr %b, align 1
+  store <4 x float> %11, ptr %value, align 16
   %12 = load <4 x float>, ptr %value, align 16
-  store <4 x float> %12, ptr %11, align 1
+  store <4 x float> %12, ptr %10, align 1
   ret void
 }

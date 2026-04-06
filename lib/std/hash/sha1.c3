@@ -51,17 +51,17 @@ fn void Sha1.init(&self)
 fn void Sha1.update(&self, char[] data)
 {
 	uint j = self.count[0];
-	uint len = data.len;
+	uint len = (uint)data.len;
 	if ((self.count[0] += len << 3) < j) self.count[1]++;
 	self.count[1] += len >> 29;
-	j = (j >> 3) & 63;
+	j = (j >> 3) & 63u;
 	uint i;
-	if (j + len > 63)
+	if (j + len > 63u)
 	{
-		i = 64 - j;
+		i = 64u - j;
 		self.buffer[j..] = data[:i];
 		sha1_transform(&self.state, &self.buffer);
-		for (; i + 63 < len; i += 64)
+		for (; i + 63u < len; i += 64u)
 		{
 			sha1_transform(&self.state, &data[i]);
 		}
@@ -74,19 +74,19 @@ fn void Sha1.update(&self, char[] data)
 fn char[HASH_BYTES] Sha1.final(&self)
 {
 	char[8] finalcount;
-	for (uint i = 0; i < 8; i++)
+	for (int i = 0; i < 8; i++)
 	{
 		finalcount[i] = (char)((self.count[(i >= 4 ? 0 : 1)] >> ((3 - (i & 3)) * 8)) & 0xFF);
 	}
 	self.update((char[]){ 0o200 });
-	while ((self.count[0] & 504) != 448)
+	while ((self.count[0] & 504u) != 448u)
 	{
 		self.update((char[]){ 0 });
 	}
 
 	self.update(&finalcount);
 	char[HASH_BYTES] digest;
-	for (uint i = 0; i < HASH_BYTES; i++)
+	for (int i = 0; i < HASH_BYTES; i++)
 	{
 		digest[i] = (char)((self.state[i >> 2] >> ((3 - (i & 3)) * 8)) & 0xFF);
 	}
@@ -105,8 +105,8 @@ union Long16 @local
 
 macro uint blk(Long16* block, i) @local
 {
-	return (block.l[i & 15] = (block.l[(i + 13) & 15] ^ block.l[(i + 8) & 15]
-		^ block.l[(i + 2) & 15] ^ block.l[i & 15]).rotl(1));
+	return (block.l[i & 15u] = (block.l[(i + 13u) & 15u] ^ block.l[(i + 8u) & 15u]
+		^ block.l[(i + 2u) & 15u] ^ block.l[i & 15u]).rotl(1u));
 }
 
 macro uint blk0(Long16* block, i) @local
@@ -114,8 +114,8 @@ macro uint blk0(Long16* block, i) @local
 	$if env::BIG_ENDIAN:
 		return block.l[i];
 	$else
-		return block.l[i] = (block.l[i].rotl(24) & 0xFF00FF00)
-			| (block.l[i].rotl(8) & 0x00FF00FF);
+		return block.l[i] = (block.l[i].rotl(24u) & 0xFF00FF00)
+			| (block.l[i].rotl(8u) & 0x00FF00FF);
 	$endif
 }
 

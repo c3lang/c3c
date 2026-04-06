@@ -30,7 +30,7 @@ struct MetroHash64
 		ulong[4] stomach_64;
 		char[32] stomach;
 	}
-	ulong bytes;
+	long bytes;
 	ulong vseed;
 }
 
@@ -59,7 +59,7 @@ fn void MetroHash64.update(&self, char[] data)
 {
 	if (self.bytes % 32)   // partial buffer
 	{
-		ulong to_fill = min(data.len, (32 - (self.bytes % 32)));
+		long to_fill = min(data.len, (32 - (self.bytes % 32)));
 
 		self.stomach[(self.bytes % 32):to_fill] = data[:to_fill];
 
@@ -78,10 +78,10 @@ fn void MetroHash64.update(&self, char[] data)
 
 	for (; data.len >= 32; data = data[32:^32])
 	{
-		self.state[0] += @unaligned_load(((ulong*)data.ptr)[0], 1) * K[0]; self.state[0] = self.state[0].rotr(29) + self.state[2];
-		self.state[1] += @unaligned_load(((ulong*)data.ptr)[1], 1) * K[1]; self.state[1] = self.state[1].rotr(29) + self.state[3];
-		self.state[2] += @unaligned_load(((ulong*)data.ptr)[2], 1) * K[2]; self.state[2] = self.state[2].rotr(29) + self.state[0];
-		self.state[3] += @unaligned_load(((ulong*)data.ptr)[3], 1) * K[3]; self.state[3] = self.state[3].rotr(29) + self.state[1];
+		self.state[0] += mem::load(&((ulong*)data.ptr)[0], 1) * K[0]; self.state[0] = self.state[0].rotr(29) + self.state[2];
+		self.state[1] += mem::load(&((ulong*)data.ptr)[1], 1) * K[1]; self.state[1] = self.state[1].rotr(29) + self.state[3];
+		self.state[2] += mem::load(&((ulong*)data.ptr)[2], 1) * K[2]; self.state[2] = self.state[2].rotr(29) + self.state[0];
+		self.state[3] += mem::load(&((ulong*)data.ptr)[3], 1) * K[3]; self.state[3] = self.state[3].rotr(29) + self.state[1];
 	}
 
 	// Gobble up the leftover bytes. Nom nom.
@@ -105,8 +105,8 @@ fn ulong MetroHash64.final(&self)
 
 	if (final_data.len >= 16)
 	{
-		self.state[1] = self.state[0] + @unaligned_load(((ulong*)final_data.ptr)[0], 1) * K[2]; self.state[1] = self.state[1].rotr(29) * K[3];
-		self.state[2] = self.state[0] + @unaligned_load(((ulong*)final_data.ptr)[1], 1) * K[2]; self.state[2] = self.state[2].rotr(29) * K[3];
+		self.state[1] = self.state[0] + mem::load(&((ulong*)final_data.ptr)[0], 1) * K[2]; self.state[1] = self.state[1].rotr(29) * K[3];
+		self.state[2] = self.state[0] + mem::load(&((ulong*)final_data.ptr)[1], 1) * K[2]; self.state[2] = self.state[2].rotr(29) * K[3];
 		self.state[1] ^= (self.state[1] * K[0]).rotr(21) + self.state[2];
 		self.state[2] ^= (self.state[2] * K[3]).rotr(21) + self.state[1];
 		self.state[0] += self.state[2];
@@ -116,7 +116,7 @@ fn ulong MetroHash64.final(&self)
 
 	if (final_data.len >= 8)
 	{
-		self.state[0] += @unaligned_load(((ulong*)final_data.ptr)[0], 1) * K[3];
+		self.state[0] += mem::load((ulong*)final_data.ptr, 1) * K[3];
 		self.state[0] ^= self.state[0].rotr(55) * K[1];
 
 		final_data = final_data[8:^8];
@@ -124,7 +124,7 @@ fn ulong MetroHash64.final(&self)
 
 	if (final_data.len >= 4)
 	{
-		self.state[0] += @unaligned_load(((uint*)final_data.ptr)[0], 1) * K[3];
+		self.state[0] += mem::load((uint*)final_data.ptr, 1) * K[3];
 		self.state[0] ^= self.state[0].rotr(26) * K[1];
 
 		final_data = final_data[4:^4];
@@ -132,7 +132,7 @@ fn ulong MetroHash64.final(&self)
 
 	if (final_data.len >= 2)
 	{
-		self.state[0] += @unaligned_load(((ushort*)final_data.ptr)[0], 1) * K[3];
+		self.state[0] += mem::load((ushort*)final_data.ptr, 1) * K[3];
 		self.state[0] ^= self.state[0].rotr(48) * K[1];
 
 		final_data = final_data[2:^2];

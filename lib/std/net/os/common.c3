@@ -89,9 +89,9 @@ extern fn CInt getsockopt(NativeSocket socket, CInt level, CInt optname, void* o
 
 module std::net::os @if(!env::LIBC || !(env::WIN32 || env::DARWIN || env::LINUX || env::ANDROID || env::OPENBSD || env::NETBSD || env::FREEBSD));
 
-const AIFamily PLATFORM_AF_INET6        = 0;
-const AIFamily PLATFORM_AF_IPX          = 0;
-const AIFamily PLATFORM_AF_APPLETALK    = 0;
+const AIFamily PLATFORM_AF_INET6        = (AIFamily)0;
+const AIFamily PLATFORM_AF_IPX          = (AIFamily)0;
+const AIFamily PLATFORM_AF_APPLETALK    = (AIFamily)0;
 
 const IPPPOTO_IP = 0;
 const IPPROTO_ICMP = 1;

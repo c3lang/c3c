@@ -24,7 +24,7 @@ const SIZE_384 = 48;
 const SIZE_512 = 64;
 
 
-fn void _g(usz r, NumType[] m, char[16][] s, usz i, NumType* a, NumType* b, NumType* c, NumType* d) <NumType> @local @inline
+fn void _g(sz r, NumType[] m, char[16][] s, sz i, NumType* a, NumType* b, NumType* c, NumType* d) <NumType> @local @inline
 {
 	*a += *b + m[s[r][2*i+0]];
 	*d = (*d ^ *a).rotr(NumType == ulong ??? 32 : 16);
@@ -36,7 +36,7 @@ fn void _g(usz r, NumType[] m, char[16][] s, usz i, NumType* a, NumType* b, NumT
 	*b = (*b ^ *c).rotr(NumType == ulong ??? 63 : 7);
 }
 
-fn void _round(usz r, NumType[] m, char[16][] s, NumType[] v) <NumType> @local @inline
+fn void _round(sz r, NumType[] m, char[16][] s, NumType[] v) <NumType> @local @inline
 {
 	_g(r, m, s, 0, &v[ 0], &v[ 4], &v[ 8], &v[12]);
 	_g(r, m, s, 1, &v[ 1], &v[ 5], &v[ 9], &v[13]);
@@ -64,22 +64,22 @@ macro common_compress(instance, $rounds, $iv, $sigma, block) @local
 	v[14] = $iv[6] ^ instance.f[0];
 	v[15] = $iv[7] ^ instance.f[1];
 
-	$for usz $i = 0; $i < $rounds; $i++:
+	$for sz $i = 0; $i < $rounds; $i++:
 		_round{$typeof(instance.h[0])}($i, m[..], $sigma[..], v[..]);
 	$endfor
 
-	$for usz $i = 0; $i < 8; $i++:
+	$for sz $i = 0; $i < 8; $i++:
 		instance.h[$i] ^= v[$i] ^ v[$i + 8];
 	$endfor
 }
 
-macro _add_ctr(instance, usz amount) @local
+macro _add_ctr(instance, sz amount) @local
 {
 	instance.t[0] += ($typeof(instance.t[0]))amount;
 	instance.t[1] += ($typeof(instance.t[0]))(instance.t[0] < amount); // adds 1 on overflow of [0]
 }
 
-macro common_init(instance, $ParamType, $iv, usz out_len, char[] key = {}, char[] salt = {}, char[] personal = {}) @local
+macro common_init(instance, $ParamType, $iv, sz out_len, char[] key = {}, char[] salt = {}, char[] personal = {}) @local
 {
 	mem::zero_volatile(@as_char_view(*instance)); // explicitly because habits around hash init usually involve @noinit
 
@@ -110,7 +110,7 @@ macro common_update(instance, $block_size, char[] data) @local
 {
 	if (@unlikely(!data.len)) return;
 
-	usz fill = $block_size - instance.buflen;
+	sz fill = $block_size - instance.buflen;
 	if (data.len > fill)
 	{
 		instance.buf[instance.buflen:fill] = data[:fill];
@@ -186,8 +186,8 @@ struct Blake2b
 	ulong[2]					t;
 	ulong[2]					f;
 	char[BLAKE2B_BLOCKBYTES]	buf;
-	usz							buflen;
-	usz							outlen;
+	sz							buflen;
+	sz							outlen;
 	char						last_node;
 }
 
@@ -245,7 +245,7 @@ alias b_512 = blake2b_512;
  @require !salt.ptr || (salt.len > 0 && salt.len <= BLAKE2B_SALTBYTES) : "A specified salt's length must be within the proper range."
  @require !personal.ptr || (personal.len > 0 && personal.len <= BLAKE2B_PERSONALBYTES) : "A specified personalization's length must be within the proper range."
 *>
-fn void Blake2b.init(&self, usz out_len, char[] key = {}, char[] salt = {}, char[] personal = {})
+fn void Blake2b.init(&self, sz out_len, char[] key = {}, char[] salt = {}, char[] personal = {})
 	=> common_init(self, Blake2bParam, BLAKE2B_IV, out_len, key, salt, personal);
 
 <*
@@ -300,8 +300,8 @@ struct Blake2s
 	uint[2]						t;
 	uint[2]						f;
 	char[BLAKE2S_BLOCKBYTES]	buf;
-	usz							buflen;
-	usz							outlen;
+	sz							buflen;
+	sz							outlen;
 	char						last_node;
 }
 
@@ -358,7 +358,7 @@ alias s_256 = blake2s_256;
  @require !salt.ptr || (salt.len > 0 && salt.len <= BLAKE2S_SALTBYTES) : "A specified salt's length must be within the proper range."
  @require !personal.ptr || (personal.len > 0 && personal.len <= BLAKE2B_PERSONALBYTES) : "A specified personalization's length must be within the proper range."
 *>
-fn void Blake2s.init(&self, usz out_len, char[] key = {}, char[] salt = {}, char[] personal = {})
+fn void Blake2s.init(&self, sz out_len, char[] key = {}, char[] salt = {}, char[] personal = {})
 	=> common_init(self, Blake2sParam, BLAKE2S_IV, out_len, key, salt, personal);
 
 <*

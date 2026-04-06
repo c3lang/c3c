@@ -1,5 +1,5 @@
 module std::core::ascii @test;
-import std::hash;
+import std;
 
 fn void test_all()
 {

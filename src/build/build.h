@@ -99,6 +99,7 @@ typedef struct
 	WarningLevel dead_code;
 	WarningLevel method_visibility;
 	WarningLevel builtin;
+	WarningLevel recursive_contracts;
 } Warnings;
 
 typedef enum
@@ -266,9 +267,6 @@ typedef struct BuildOptions_
 	const char *msvc_version_override;
 	const char *msvc_sdk_version_override;
 	const char *fetch_sdk_target;
-	bool old_slice_copy;
-	bool old_enums;
-	bool old_compact_eq;
 	int verbosity_level;
 	const char *panicfn;
 	const char *benchfn;
@@ -304,6 +302,7 @@ typedef struct BuildOptions_
 	uint32_t max_stack_object_size;
 	const char *cpu_flags;
 	uint32_t max_macro_iterations;
+	bool is_project;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;
@@ -417,9 +416,6 @@ typedef struct
 	bool no_entry;
 	bool kernel_build;
 	bool print_stats;
-	bool old_slice_copy;
-	bool old_enums;
-	bool old_compact_eq;
 	bool single_threaded;
 	bool print_large_functions;
 	int build_threads;

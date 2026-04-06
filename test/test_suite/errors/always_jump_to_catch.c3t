@@ -1,0 +1,30 @@
+// #target: macos-x64
+module test;
+faultdef TEST;
+fn void? load_corpus2(String, String)
+{}
+
+fn int main()
+{
+	if (catch err = load_corpus2(TEST~, ""))
+	{
+	}
+	return 0;
+}
+
+/* #expect: test.ll
+
+entry:
+  %err = alloca i64, align 8
+  br label %testblock
+
+testblock:                                        ; preds = %entry
+  store i64 ptrtoint (ptr @test.TEST to i64), ptr %err, align 8
+  br label %end_block
+
+end_block:                                        ; preds = %testblock
+  %0 = load i64, ptr %err, align 8
+  %i2b = icmp ne i64 %0, 0
+  ret i32 0
+}
+

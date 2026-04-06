@@ -43,8 +43,8 @@ macro void @a5mul(#u, #v, #lo, #hi) @local
 
 fn ulong hash(char[] data, ulong seed = 0)
 {
-	ulong seed1 = 0x243F_6A88_85A3_08D3 ^ data.len;
-	ulong seed2 = 0x4528_21E6_38D0_1377 ^ data.len;
+	ulong seed1 = (ulong)(0x243F_6A88_85A3_08D3 ^ data.len);
+	ulong seed2 = (ulong)(0x4528_21E6_38D0_1377 ^ data.len);
 	ulong val10 = 0xAAAA_AAAA_AAAA_AAAA;
 	ulong val01 = 0x5555_5555_5555_5555;
 	ulong a, b;
@@ -85,7 +85,7 @@ fn ulong hash(char[] data, ulong seed = 0)
 	}
 	else
 	{
-		a = data.len ? (data[0] | (data.len > 1 ? ((ulong)data[1] << 8) : 0) | (data.len > 2 ? ((ulong)data[2] << 16) : 0)) : 0;
+		a = data.len ? (data[0] | (data.len > 1 ? ((ulong)data[1] << 8) : 0u) | (data.len > 2 ? ((ulong)data[2] << 16) : 0u)) : 0u;
 		b = 0;
 	}
 

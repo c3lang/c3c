@@ -1,6 +1,6 @@
 fn void print(String msg)
 {
-    @syscall(1, 1, (uptr)msg.ptr, msg.len); // __NR_write, STDOUT
+    @syscall(1, 1, (uptr)msg.ptr, (uptr)msg.len); // __NR_write, STDOUT
 }
 
 fn void printn(String msg)

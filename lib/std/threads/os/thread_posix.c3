@@ -1,9 +1,6 @@
 module std::thread::os @if(env::POSIX);
 import std::os::posix, std::time, libc;
-import libc::errno;
 import std::thread;
-
-
 
 struct NativeMutex
 {
@@ -80,14 +77,14 @@ fn void NativeMutex.lock(&self)
 <*
  @require self.is_initialized() : "Mutex was not initialized"
 *>
-fn void? NativeMutex.lock_timeout(&self, ulong ms)
+fn void? NativeMutex.lock_timeout(&self, long ms)
 {
 	/* Try to acquire the lock and, if we fail, sleep for 5ms. */
 	Errno result;
 	while ((result = posix::pthread_mutex_trylock(&self.mutex)) == EBUSY)
 	{
 		if (!ms) break;
-		ulong sleep = min(5, ms);
+		long sleep = min(5, ms);
 		if (!libc::nanosleep(&&time::ms(ms).to_timespec(), null)) return thread::LOCK_TIMEOUT~;
 		ms -= sleep;
 	}
@@ -151,7 +148,7 @@ fn void NativeConditionVariable.wait(&cond, NativeMutex* mtx)
  @require mtx.is_initialized()
  @return? thread::WAIT_TIMEOUT
 *>
-fn void? NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
+fn void? NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, long ms)
 {
 	Time time = time::now() + time::ms(ms);
 	return cond.wait_until(mtx, time) @inline;
@@ -219,8 +216,13 @@ fn void native_thread_exit(int result)
 	posix::pthread_exit((void*)(iptr)result);
 }
 
+
 fn NativeThread native_thread_current()
 {
+	if (!current_thread.thread_fn)
+	{
+		current_thread = { .pthread = posix::pthread_self(), .thread_fn = fn(void*) => 0 };
+	}
 	return current_thread;
 }
 

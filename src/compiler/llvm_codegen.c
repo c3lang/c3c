@@ -99,9 +99,9 @@ LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value)
 	return llvm_emit_expect_raw(c, compare);
 }
 
-LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, uint64_t size, AlignSize align)
+LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, int64_t size, AlignSize align)
 {
-	return LLVMBuildMemSet(c->builder, ptr, llvm_get_zero(c, type_char), llvm_const_int(c, type_usz, size), align);
+	return LLVMBuildMemSet(c->builder, ptr, llvm_get_zero(c, type_char), LLVMConstInt(c->size_type, size, true), align);
 }
 
 INLINE void llvm_emit_xtor(GenContext *c, LLVMValueRef *list, const char *name)
@@ -1472,7 +1472,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 		name_ref = LLVMConstNull(c->ptr_type);
 		decl_ref = LLVMConstNull(c->ptr_type);
 	}
-	LLVMValueRef count = llvm_const_int(c, type_usz, test_count);
+	LLVMValueRef count = LLVMConstInt(c->size_type, test_count, true);
 	Type *chars_array = type_get_slice(type_chars);
 	LLVMValueRef name_list = llvm_add_global(c, test_names_var_name, chars_array, type_alloca_alignment(chars_array));
 	LLVMSetGlobalConstant(name_list, 1);
@@ -1540,7 +1540,7 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 		name_ref = LLVMConstNull(c->ptr_type);
 		decl_ref = LLVMConstNull(c->ptr_type);
 	}
-	LLVMValueRef count = llvm_const_int(c, type_usz, benchmark_count);
+	LLVMValueRef count = LLVMConstInt(c->size_type, benchmark_count, true);
 	Type *chars_array = type_get_slice(type_chars);
 	LLVMValueRef name_list = llvm_add_global(c, benchmark_names_var_name, chars_array, type_alloca_alignment(chars_array));
 	LLVMSetGlobalConstant(name_list, 1);

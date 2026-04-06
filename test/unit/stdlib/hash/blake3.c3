@@ -83,7 +83,7 @@ fn void xof_seek()
 //
 const char[] BLAKE_TEAM_KEY = "whats the Elvish word for friend";
 const char[] BLAKE_TEAM_CONTEXT_STRING = "BLAKE3 2019-12-27 16:29:52 test vectors context";
-const usz BLAKE_TEAM_HASH_LEN = 131;
+const sz BLAKE_TEAM_HASH_LEN = 131;
 
 fn void blake_team_vectors()
 {
@@ -171,13 +171,13 @@ fn void blake_team_vectors_streamed()
 
 struct BlakeTeamVector (Printable)
 {
-	usz input_len;
+	sz input_len;
 	char[BLAKE_TEAM_HASH_LEN] hash;
 	char[BLAKE_TEAM_HASH_LEN] keyed_hash;
 	char[BLAKE_TEAM_HASH_LEN] derive_key;
 }
 
-fn usz? BlakeTeamVector.to_format(&self, Formatter* f) @dynamic
+fn sz? BlakeTeamVector.to_format(&self, Formatter* f) @dynamic
 	=> f.printf("VEC[%d, %h, %h, %h]", self.input_len, self.hash[:6], self.keyed_hash[:6], self.derive_key[:6]);
 
 const BlakeTeamVector[] BLAKE_TEAM_VECTORS =

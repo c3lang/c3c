@@ -155,7 +155,7 @@ typedef struct {
 "int128"		{ return(INT128); }
 "interface"     { return(INTERFACE); }
 "iptr"          { return(IPTR); }
-"isz"           { return(ISZ); }
+"sz"           { return(sz); }
 "long"			{ return(LONG); }
 "macro"         { return(MACRO); }
 "module"        { return(MODULE); }

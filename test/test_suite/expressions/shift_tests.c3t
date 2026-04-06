@@ -1,6 +1,6 @@
 // #target: macos-x64
 module test;
-typedef Foo = inline int;
+typedef Foo @constinit = inline int;
 
 fn int main()
 {

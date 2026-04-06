@@ -441,9 +441,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 
 	target->backend = options->backend;
-	target->old_slice_copy = options->old_slice_copy;
-	target->old_enums = options->old_enums;
-	target->old_compact_eq = options->old_compact_eq;
 
 	target->print_large_functions = options->print_large_functions;
 	// Remove feature flags
@@ -550,6 +547,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case VALIDATION_LENIENT:
 			update_warning_if_not_set(&target->warnings.builtin, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.dead_code, WARNING_SILENT);
+			update_warning_if_not_set(&target->warnings.recursive_contracts, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.deprecation, WARNING_SILENT);
 			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_WARN);
@@ -563,17 +561,20 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			update_warning_if_not_set(&target->warnings.deprecation, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_WARN);
+			update_warning_if_not_set(&target->warnings.recursive_contracts, WARNING_ERROR);
 			break;
 		case VALIDATION_OBNOXIOUS:
 			update_warning_if_not_set(&target->warnings.builtin, WARNING_ERROR);
 			update_warning_if_not_set(&target->warnings.dead_code, WARNING_ERROR);
 			update_warning_if_not_set(&target->warnings.deprecation, WARNING_ERROR);
+			update_warning_if_not_set(&target->warnings.recursive_contracts, WARNING_ERROR);
 			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_ERROR);
 			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_ERROR);
 			break;
 	}
 	update_warning(&target->warnings.builtin, options->warnings.builtin);
 	update_warning(&target->warnings.dead_code, options->warnings.dead_code);
+	update_warning(&target->warnings.recursive_contracts, options->warnings.recursive_contracts);
 	update_warning(&target->warnings.deprecation, options->warnings.deprecation);
 	update_warning(&target->warnings.method_visibility, options->warnings.method_visibility);
 	update_warning(&target->warnings.methods_not_resolved, options->warnings.methods_not_resolved);
@@ -779,6 +780,15 @@ void init_build_target(BuildTarget *target, BuildOptions *options)
 	// Parse it
 	const char *filename;
 	Project *project = project_load(&filename);
+	
+	if (options->is_project)
+	{
+		FOREACH(const char *, dir, options->unchecked_directories)
+		{
+			(void)check_dir(dir);
+		}
+	}
+
 	*target = *project_select_target(filename, project, options->target_select);
 
 	update_build_target_from_options(target, options);

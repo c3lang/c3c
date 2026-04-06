@@ -67,8 +67,8 @@ fn int main(int c, char** v)
     GameBoard board;
     board.w = w;
     board.h = h;
-    board.world = libc::malloc((isz)h * w);
-    board.temp = libc::malloc((isz)h * w);
+    board.world = libc::malloc((usz)(h * w));
+    board.temp = libc::malloc((usz)(h * w));
 
     for (int i = h * w - 1; i >= 0; i--)
     {

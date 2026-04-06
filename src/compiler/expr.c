@@ -35,11 +35,9 @@ const char *expr_kind_to_string(ExprKind kind)
 		case EXPR_TYPECALL: return "typecall";
 		case EXPR_CT_ARG: return "ct_arg";
 		case EXPR_CT_CALL: return "ct_call";
-		case EXPR_CT_ASSIGNABLE: return "ct_castable";
 		case EXPR_CT_DEFINED: return "ct_defined";
 		case EXPR_CT_EVAL: return "ct_eval";
 		case EXPR_CT_IDENT: return "ct_ident";
-		case EXPR_CT_IS_CONST: return "ct_is_const";
 		case EXPR_DECL: return "decl";
 		case EXPR_DEFAULT_ARG: return "default_arg";
 		case EXPR_DESIGNATED_INITIALIZER_LIST: return "designated_initializer_list";
@@ -316,9 +314,7 @@ RETRY:
 		case EXPR_BINARY:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_STRINGIFY:
-		case EXPR_CT_ASSIGNABLE:
 		case EXPR_CT_DEFINED:
-		case EXPR_CT_IS_CONST:
 		case EXPR_LAMBDA:
 		case EXPR_DECL:
 		case EXPR_CALL:
@@ -503,7 +499,7 @@ static inline bool expr_list_is_constant_eval(Expr **exprs)
 {
 	FOREACH(Expr *, expr, exprs)
 	{
-		if (!expr_is_runtime_const(expr)) return false;
+		if (!expr_is_runtime_const(expr) || IS_OPTIONAL(expr)) return false;
 	}
 	return true;
 }
@@ -595,15 +591,6 @@ void expr_insert_addr(Expr *original)
 	original->unary_expr = (ExprUnary) { .operator = UNARYOP_ADDR, .expr = inner, .no_wrap = false, .no_read = false };
 }
 
-Expr *expr_generated_local(Expr *assign, Decl **decl_ref)
-{
-	Decl *decl = decl_new_generated_var(assign->type, VARDECL_LOCAL, assign->loc);
-	Expr *expr_decl = expr_new(EXPR_DECL, decl->loc);
-	expr_decl->decl_expr = decl;
-	decl->var.init_expr = assign;
-	*decl_ref = decl;
-	return expr_decl;
-}
 
 Expr *expr_generate_decl(Decl *decl, Expr *assign)
 {
@@ -613,6 +600,9 @@ Expr *expr_generate_decl(Decl *decl, Expr *assign)
 	expr_decl->decl_expr = decl;
 	if (!assign) decl->var.no_init = true;
 	decl->var.init_expr = assign;
+	expr_decl->type = decl->type;
+	ASSERT(decl->type);
+	ASSERT(assign->type);
 	return expr_decl;
 }
 
@@ -843,9 +833,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_TYPECALL:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
-		case EXPR_CT_ASSIGNABLE:
 		case EXPR_CT_DEFINED:
-		case EXPR_CT_IS_CONST:
 		case EXPR_CT_EVAL:
 		case EXPR_IDENTIFIER:
 		case EXPR_LAMBDA:
