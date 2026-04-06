@@ -2530,12 +2530,6 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	bool is_enum_switch = false;
 	bool if_chain = true;
 	Decl **enum_values = NULL;
-	if (type_is_user_defined(switch_type) && switch_type->type_kind != TYPE_ENUM)
-	{
-		BoolErr res = sema_type_has_equality_overload(context, switch_type);
-		if (res == BOOL_ERR) return false;
-		if (res == BOOL_TRUE) goto FOUND;
-	}
 	if (type_is_comparable(switch_type))
 	{
 		Type *flat = type_flatten(switch_type);
@@ -2547,9 +2541,8 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	}
 	else
 	{
-		RETURN_SEMA_ERROR_AT(expr_loc, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
+		RETURN_SEMA_ERROR_AT(expr_loc, "You cannot switch over '%s'. Only types that natively support '==' may be used.", type_to_error_string(switch_type));
 	}
-FOUND:;
 	Ast *default_case = NULL;
 	ASSERT(context->active_scope.defer_start == context->active_scope.defer_last);
 

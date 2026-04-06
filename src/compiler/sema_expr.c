@@ -6084,8 +6084,18 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr->resolve_status = RESOLVE_DONE;
 			return true;
 		case TYPE_PROPERTY_IS_ORDERED:
-			expr_rewrite_const_bool(expr, type_bool, type_is_ordered(flat));
-			return true;
+			switch (sema_type_can_order_with_overload(context, type))
+			{
+				case BOOL_ERR:
+					return false;
+				case BOOL_TRUE:
+					expr_rewrite_const_bool(expr, type_bool, true);
+					return true;
+				case BOOL_FALSE:
+					expr_rewrite_const_bool(expr, type_bool, false);
+					return true;
+			}
+			UNREACHABLE
 		case TYPE_PROPERTY_IS_EQ:
 			switch (sema_type_can_check_equality_with_overload(context, type))
 			{
@@ -8559,13 +8569,12 @@ static bool sema_binary_is_unsigned_always_same_comparison(SemaContext *context,
 
 }
 
-BoolErr sema_type_has_equality_overload(SemaContext *context, CanonicalType *type)
+static BoolErr sema_type_has_overload(SemaContext *context, CanonicalType *type, OperatorOverload overload)
 {
 	assert(type->canonical == type);
 	Decl *candidate = NULL;
 	Decl *ambiguous = NULL;
-	OverloadMatch match = sema_find_typed_operator_type(context, OVERLOAD_EQUAL, OVERLOAD_TYPE_LEFT, type, type, NULL, &candidate, OVERLOAD_MATCH_NONE, &ambiguous);
-	if (match == OVERLOAD_MATCH_NONE) match = sema_find_typed_operator_type(context, OVERLOAD_NOT_EQUAL, OVERLOAD_TYPE_LEFT, type, type, NULL, &candidate, OVERLOAD_MATCH_NONE, &ambiguous);
+	OverloadMatch match = sema_find_typed_operator_type(context, overload, OVERLOAD_TYPE_LEFT, type, type, NULL, &candidate, OVERLOAD_MATCH_NONE, &ambiguous);
 	switch (match)
 	{
 		case OVERLOAD_MATCH_ERROR:
@@ -8581,6 +8590,18 @@ BoolErr sema_type_has_equality_overload(SemaContext *context, CanonicalType *typ
 			return BOOL_FALSE;
 	}
 	UNREACHABLE
+}
+
+BoolErr sema_type_has_compare_overload(SemaContext *context, CanonicalType *type)
+{
+	BoolErr res = sema_type_has_overload(context, type, OVERLOAD_EQUAL);
+	if (res != BOOL_TRUE) return res;
+	return sema_type_has_overload(context, type, OVERLOAD_LESS_THAN);
+}
+
+BoolErr sema_type_has_equality_overload(SemaContext *context, Type *type)
+{
+	return sema_type_has_overload(context, type, OVERLOAD_EQUAL);
 }
 
 BoolErr sema_type_can_check_equality_with_overload(SemaContext *context, Type *type)
@@ -8614,6 +8635,58 @@ BoolErr sema_type_can_check_equality_with_overload(SemaContext *context, Type *t
 		case TYPE_TYPEDEF:
 		case TYPE_CONSTDEF:
 			if (sema_type_has_equality_overload(context, type)) return true;
+			type = type_inline(type);
+			goto RETRY;
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
+		case TYPE_ANYFAULT:
+		case TYPE_TYPEID:
+		case TYPE_POINTER:
+		case TYPE_ENUM:
+		case TYPE_FUNC_PTR:
+		case TYPE_FUNC_RAW:
+		case TYPE_TYPEINFO:
+		case VECTORS:
+		case TYPE_WILDCARD:
+			return true;
+	}
+	UNREACHABLE
+}
+
+BoolErr sema_type_can_order_with_overload(SemaContext *context, Type *type)
+{
+	RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_INFERRED_VECTOR:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_POISONED:
+			UNREACHABLE
+		case TYPE_VOID:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_OPTIONAL:
+		case TYPE_MEMBER:
+		case TYPE_UNTYPED_LIST:
+			return false;
+		case TYPE_UNION:
+		case TYPE_STRUCT:
+			return sema_type_has_compare_overload(context, type);
+		case TYPE_BITSTRUCT:
+			return true;
+		case TYPE_ALIAS:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_SLICE:
+		case TYPE_ARRAY:
+			// Arrays are comparable if elements are
+			type = type->array.base;
+			goto RETRY;
+		case TYPE_TYPEDEF:
+		case TYPE_CONSTDEF:
+			if (sema_type_has_compare_overload(context, type)) return true;
 			type = type_inline(type);
 			goto RETRY;
 		case TYPE_BOOL:
@@ -8770,30 +8843,41 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 	Type *left_type = type_no_optional(left->type)->canonical;
 	Type *right_type = type_no_optional(right->type)->canonical;
 
-	if (is_equality_type_op && (type_is_user_defined(left_type) || type_is_user_defined(right_type)))
+	if (type_is_user_defined(left_type) || type_is_user_defined(right_type))
 	{
 		Decl *overload = NULL;
 		bool negated_overload = false;
 		bool reverse = false;
 		switch (expr->binary_expr.operator)
 		{
-			case BINARYOP_NE:
-				overload = sema_find_typed_operator(context, OVERLOAD_NOT_EQUAL, expr->loc, left, right, &reverse);
-				if (!overload)
-				{
-					negated_overload = true;
-					overload = sema_find_typed_operator(context, OVERLOAD_EQUAL, expr->loc, left, right, &reverse);
-				}
+			case BINARYOP_LT:
+				overload = sema_find_typed_operator(context, OVERLOAD_LESS_THAN, expr->loc, left, right, &reverse);
 				if (!decl_ok(overload)) return false;
 				if (!overload) goto NEXT;
 				break;
+			case BINARYOP_LE:
+				overload = sema_find_typed_operator(context, OVERLOAD_LESS_THAN, expr->loc, right, left, &reverse);
+				reverse = !reverse;
+				negated_overload = true;
+				if (!decl_ok(overload)) return false;
+				if (!overload) goto NEXT;
+				break;
+			case BINARYOP_GE:
+				overload = sema_find_typed_operator(context, OVERLOAD_LESS_THAN, expr->loc, left, right, &reverse);
+				negated_overload = true;
+				if (!decl_ok(overload)) return false;
+				if (!overload) goto NEXT;
+				break;
+			case BINARYOP_GT:
+				overload = sema_find_typed_operator(context, OVERLOAD_LESS_THAN, expr->loc, right, left, &reverse);
+				reverse = !reverse;
+				if (!decl_ok(overload)) return false;
+				if (!overload) goto NEXT;
+				break;
+			case BINARYOP_NE:
+				negated_overload = true;
 			case BINARYOP_EQ:
 				overload = sema_find_typed_operator(context, OVERLOAD_EQUAL, expr->loc, left, right, &reverse);
-				if (!overload)
-				{
-					negated_overload = true;
-					overload = sema_find_typed_operator(context, OVERLOAD_NOT_EQUAL, expr->loc, left, right, &reverse);
-				}
 				if (!decl_ok(overload)) return false;
 				if (!overload) goto NEXT;
 				break;

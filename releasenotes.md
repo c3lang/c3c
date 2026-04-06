@@ -29,6 +29,8 @@
 - Improve error message when keyword is used instead of an expression. #3088
 - Add `--warn-recursivecontracts`.
 - Mutex.destroy and friends no longer return optionals.
+- Remove `@operator(!=)` overload.
+- Add `@operator(<)` overload, enabling type comparison overloads.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` is renamed `RingList`.

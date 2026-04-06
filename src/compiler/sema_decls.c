@@ -2099,10 +2099,10 @@ const char *operator_overload_to_string(OperatorOverload operator_overload)
 		case OVERLOAD_AND:				return "&";
 		case OVERLOAD_OR:				return "|";
 		case OVERLOAD_XOR:				return "^";
+		case OVERLOAD_LESS_THAN:		return "<";
 		case OVERLOAD_SHL:				return "<<";
 		case OVERLOAD_SHR:				return ">>";
 		case OVERLOAD_EQUAL:			return "==";
-		case OVERLOAD_NOT_EQUAL:		return "!=";
 		case OVERLOAD_PLUS_ASSIGN:		return "+=";
 		case OVERLOAD_MINUS_ASSIGN:		return "-=";
 		case OVERLOAD_MULTIPLY_ASSIGN:	return "*=";
@@ -2189,7 +2189,7 @@ static inline bool sema_analyse_operator_arithmetics(SemaContext *context, Decl 
 	{
 		RETURN_SEMA_ERROR(rtype, "The return type may not be an optional.");
 	}
-	if (operator_overload == OVERLOAD_EQUAL || operator_overload == OVERLOAD_NOT_EQUAL)
+	if (operator_overload == OVERLOAD_EQUAL || operator_overload == OVERLOAD_LESS_THAN)
 	{
 		if (rtype->type->canonical != type_bool)
 		{
@@ -2271,7 +2271,7 @@ static bool sema_check_operator_method_validity(SemaContext *context, Decl *meth
 		case OVERLOAD_DIVIDE:
 		case OVERLOAD_REMINDER:
 		case OVERLOAD_EQUAL:
-		case OVERLOAD_NOT_EQUAL:
+		case OVERLOAD_LESS_THAN:
 		case OVERLOAD_AND:
 		case OVERLOAD_OR:
 		case OVERLOAD_XOR:
@@ -2387,10 +2387,10 @@ static const char *OVERLOAD_NAME[OVERLOADS_COUNT + 1] =
 	[OVERLOAD_AND] = "&",
 	[OVERLOAD_OR] = "|",
 	[OVERLOAD_XOR] = "^",
+	[OVERLOAD_LESS_THAN] = "<",
 	[OVERLOAD_SHL] = "<<",
 	[OVERLOAD_SHR] = ">>",
 	[OVERLOAD_EQUAL] = "==",
-	[OVERLOAD_NOT_EQUAL] = "!=",
 	[OVERLOAD_PLUS_ASSIGN] = "+=",
 	[OVERLOAD_MINUS_ASSIGN] = "-=",
 	[OVERLOAD_MULTIPLY_ASSIGN] = "*=",
@@ -2416,8 +2416,42 @@ static bool OVERLOAD_MAY_BE_REVERSE[OVERLOADS_COUNT + 1] =
 	[OVERLOAD_SHL] = true,
 	[OVERLOAD_SHR] = true,
 	[OVERLOAD_EQUAL] = true,
-	[OVERLOAD_NOT_EQUAL] = true,
+	[OVERLOAD_LESS_THAN] = true,
 };
+
+INLINE bool sema_is_valid_operator_for_type(SemaContext *context, Type *type, OperatorOverload operator, Decl *method)
+{
+	switch (type->canonical->type_kind)
+	{
+		case TYPE_BITSTRUCT:
+			switch (operator)
+			{
+				case OVERLOAD_XOR:
+				case OVERLOAD_AND:
+				case OVERLOAD_OR:
+				case OVERLOAD_XOR_ASSIGN:
+				case OVERLOAD_AND_ASSIGN:
+				case OVERLOAD_OR_ASSIGN:
+				case OVERLOAD_NEGATE:
+					RETURN_SEMA_ERROR_AT(method_find_overload_span(method), "Bitstructs do not support overloading the '%s' operator.",
+						operator_overload_to_string(operator));
+				default:
+					return true;
+			}
+		case TYPE_ENUM:
+			if (operator == OVERLOAD_LEN)
+			{
+				RETURN_SEMA_ERROR_AT(method_find_overload_span(method), "Enums already have a .len property, you can't use '@operator(len)' on them.");
+			}
+			if (operator == OVERLOAD_EQUAL || operator == OVERLOAD_LESS_THAN)
+			{
+				RETURN_SEMA_ERROR_AT(method_find_overload_span(method), "Enums do not support overloading the '%s' operator.", operator_overload_to_string(operator));
+			}
+			return true;
+		default:
+			return true;
+	}
+}
 /**
  * Do checks on an operator method:
  *
@@ -2506,25 +2540,8 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 		return false;
 	}
 NONE:
-	if (parent_type->canonical->type_kind == TYPE_BITSTRUCT)
-	{
-		switch (operator)
-		{
-			case OVERLOAD_XOR:
-			case OVERLOAD_AND:
-			case OVERLOAD_OR:
-			case OVERLOAD_XOR_ASSIGN:
-			case OVERLOAD_AND_ASSIGN:
-			case OVERLOAD_OR_ASSIGN:
-			case OVERLOAD_NEGATE:
-			{
-				RETURN_SEMA_ERROR_AT(method_find_overload_span(method), "Bitstructs do not support overloading the '%s' operator.",
-								  operator_overload_to_string(operator));
-			}
-			default:
-				break;
-		}
-	}
+	if (!sema_is_valid_operator_for_type(context, parent_type, operator, method)) return false;
+
 	// Check that actual types match up
 	Type *value;
 	Type *index_type;
@@ -2600,7 +2617,7 @@ NONE:
 		case OVERLOAD_MULTIPLY:
 		case OVERLOAD_MINUS:
 		case OVERLOAD_EQUAL:
-		case OVERLOAD_NOT_EQUAL:
+		case OVERLOAD_LESS_THAN:
 		case OVERLOAD_PLUS_ASSIGN:
 		case OVERLOAD_MINUS_ASSIGN:
 		case OVERLOAD_MULTIPLY_ASSIGN:
@@ -3354,7 +3371,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 							decl->func_decl.overload_type = OVERLOAD_TYPE_RIGHT;
 							break;
 						case ATTRIBUTE_OPERATOR_S:
-							if (!OVERLOAD_MAY_BE_REVERSE[expr->overload_expr])
+							if (!OVERLOAD_MAY_BE_REVERSE[expr->overload_expr] || expr->overload_expr == OVERLOAD_LESS_THAN)
 							{
 								RETURN_SEMA_ERROR(attr, "'%s' may not be used with @operator_s(), only @operator().", OVERLOAD_NAME[expr->overload_expr]);
 							}
