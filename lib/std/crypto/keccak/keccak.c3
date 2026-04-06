@@ -32,7 +32,7 @@ macro rate($security_level, $f = DEFAULT_F) @const => ($f - ($security_level * 2
  @param $rounds : "An optional compile-time override of the rounds count used in hash computation."
  @param $delimiter : "An optional compile-time override of the delimiter used in hash computation."
 
- @require @in($security_level, ...SECURITY_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
+ @require @in($security_level, ...SECURITY_LEVELS) : "Keccak and Keccak-derived structures must use a valid security level."
  @require $outlen_bytes > 0 : "You must use an output length over zero bytes."
 
  @return "A character array of the specified `$outlen_bytes` size containing the XOF result."
@@ -54,7 +54,7 @@ alias hash = xof;
  @param [out] into : "The destination for the generated variable-length hash."
  @param [in] data : "The data to hash."
 
- @require @in($security_level, ...SECURITY_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
+ @require @in($security_level, ...SECURITY_LEVELS) : "Keccak and Keccak-derived structures must use a valid security level."
  @require into.len > 0 : "The destination slice must have a length greater than zero."
  @param $rounds : "An optional compile-time override of the rounds count used in hash computation."
  @param $delimiter : "An optional compile-time override of the delimiter used in hash computation."
@@ -70,7 +70,11 @@ macro void xof_into($security_level, char[] into, char[] data, $rounds = DEFAULT
 <* When hashing with the base Keccak context, it's the same thing as using the XOF construct. *>
 alias hash_into = xof_into;
 
-<* The default Keccak context always employs the default `F` value of `1600`. *>
+<*
+ The default Keccak context always employs the default `F` value of `1600`.
+
+ @require @in(SECURITY_LEVEL, 128, 192, ...SECURITY_LEVELS) : "Keccak and Keccak-derived structures must use a valid security level."
+*>
 alias Keccak <SECURITY_LEVEL> = KeccakContext { DEFAULT_F, SECURITY_LEVEL };
 
 
@@ -166,7 +170,7 @@ const char[24] PI = {
 };
 
 <* The base Keccak context data structure used to generate XOF outputs. *>
-struct KeccakContext <F, OUTPUT_BITS> @align(ulong.sizeof)
+struct KeccakContext <F, OUTPUT_BITS> @align(ulong.sizeof) @mustinit
 {
 	union @align(ulong.sizeof)   // keccak sponge state
 	{

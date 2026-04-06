@@ -29,7 +29,7 @@ macro char[*] apply_simple_cshake($security_level, char[] data) @local
 
  @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct ParallelHash <SECURITY_LEVEL>
+struct ParallelHash <SECURITY_LEVEL> @mustinit
 {
 	inline CShake{SECURITY_LEVEL} c;
 	Allocator allocator;
@@ -178,9 +178,9 @@ macro thash_into($security_level, char[] into, char[] data, sz block_size,
  This causes the output value to be completely different and not dependent on the length of the output buffer.
  To better understand this, or to see the reference, search for NIST SP 800-185.
 
- @require @in($security_level, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
+ @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct ParallelHashXOF <SECURITY_LEVEL>
+struct ParallelHashXOF <SECURITY_LEVEL> @mustinit
 {
 	inline ParallelHash{SECURITY_LEVEL} ph;
 }
@@ -267,70 +267,73 @@ fn void ParallelHash.update(&self, char[] data, bool sequential = false)
 
 	// If fewer than two blocks were received, then don't thread at all. Same for disabled threading of course.
 	//   This is a very linear process: apply cSHAKE to each block and immediately push its result into the main cSHAKE context.
-	if (sequential || data.len < self.block_size * 2 || !env::NATIVE_THREADING)
-	{
+	$if !env::NATIVE_THREADING:
 		for (; data.len >= self.block_size; data = data[self.block_size..])
 		{
 			self.c.update(apply_simple_cshake(SECURITY_LEVEL, data[:self.block_size])[..]);
 		}
-	}
-	else
-	{
-		$if !env::NATIVE_THREADING:
-			unreachable("NATIVE_THREADING not set, should not have entered this branch");
-		$endif
-
-		// Start by allocating the necessary threading resources, even if they won't all be used
-		Thread[] workers = alloc::new_array(self.allocator, Thread, self.threads);
-		defer alloc::free(self.allocator, workers);
-
-		WorkerThreadContext[] contexts = alloc::new_array(self.allocator, WorkerThreadContext, self.threads);
-		defer
+	$else
+		if (sequential || data.len < self.block_size * 2)
 		{
-			foreach (ctx : contexts) if (ctx.out.ptr) alloc::free(self.allocator, ctx.out);   // free each returned byte array
-			alloc::free(self.allocator, contexts);
-		}
-
-		// Round-robin distribute sizes between all thread indices.
-		//   This is a bit of flair. There's probably an easier way, but luckily this isn't the performance-critical section.
-		sz remainder = data.len;
-		for (sz i = 0; remainder >= self.block_size; i++, remainder -= self.block_size)
-		{
-			contexts[i % self.threads].consume_len += self.block_size;
-		}
-
-		// Now distribute the actual work with a context for each thread.
-		//   Each thread has a pool of memory `.out`, where it can store an array of its sequential XOF results
-		//   This array is later folded into the main context's cSHAKE context. This needs to be done IN ORDER, which is
-		//   why these are preserved during parallel processing..
-		for (sz i = self.threads; i > 0; i--)
-		{
-			sz to_consume = contexts[i - 1].consume_len;
-			sz blocks = to_consume / self.block_size;
-
-			contexts[i - 1] = (WorkerThreadContext){
-				.thread_id = i - 1,
-				.context = self,
-				.blocks = blocks,
-				.xof_count = 0,
-				.data = data[:to_consume],
-				.out = blocks > 0 ? alloc::new_array(self.allocator, char, self.intermediate_xof_size * blocks) : {},
-			};
-			workers[i - 1].create(&threaded_update{SECURITY_LEVEL}, &contexts[i - 1])!!;   // go!
-			data = data[to_consume..];
-		}
-		foreach_r (w : workers) w.join()!!;   // await all workers
-		foreach_r (&t : contexts[:self.threads])
-		{
-			// Gorge `self` with all produced XOF chains, absorbing them into the main context's cSHAKE context as described.
-			for (sz i = 0; i < t.blocks; i++)
+			for (; data.len >= self.block_size; data = data[self.block_size..])
 			{
-				self.c.update(t.out[i * self.intermediate_xof_size  : self.intermediate_xof_size]);
+				self.c.update(apply_simple_cshake(SECURITY_LEVEL, data[:self.block_size])[..]);
 			}
 		}
+		else
+		{
+			// Start by allocating the necessary threading resources, even if they won't all be used
+			Thread[] workers = alloc::new_array(self.allocator, Thread, self.threads);
+			defer alloc::free(self.allocator, workers);
 
-		assert(data.len == remainder, "Not all input data was accounted for; cannot proceed.");
-	}
+			WorkerThreadContext[] contexts = alloc::new_array(self.allocator, WorkerThreadContext, self.threads);
+			defer
+			{
+				foreach (ctx : contexts) if (ctx.out.ptr) alloc::free(self.allocator, ctx.out);   // free each returned byte array
+				alloc::free(self.allocator, contexts);
+			}
+
+			// Round-robin distribute sizes between all thread indices.
+			//   This is a bit of flair. There's probably an easier way, but luckily this isn't the performance-critical section.
+			sz remainder = data.len;
+			for (sz i = 0; remainder >= self.block_size; i++, remainder -= self.block_size)
+			{
+				contexts[i % self.threads].consume_len += self.block_size;
+			}
+
+			// Now distribute the actual work with a context for each thread.
+			//   Each thread has a pool of memory `.out`, where it can store an array of its sequential XOF results
+			//   This array is later folded into the main context's cSHAKE context. This needs to be done IN ORDER, which is
+			//   why these are preserved during parallel processing..
+			for (sz i = self.threads; i > 0; i--)
+			{
+				sz to_consume = contexts[i - 1].consume_len;
+				sz blocks = to_consume / self.block_size;
+
+				contexts[i - 1] = (WorkerThreadContext){
+					.thread_id = i - 1,
+					.context = self,
+					.blocks = blocks,
+					.xof_count = 0,
+					.data = data[:to_consume],
+					.out = blocks > 0 ? alloc::new_array(self.allocator, char, self.intermediate_xof_size * blocks) : {},
+				};
+				workers[i - 1].create(&threaded_update{SECURITY_LEVEL}, &contexts[i - 1])!!;   // go!
+				data = data[to_consume..];
+			}
+			foreach_r (w : workers) w.join()!!;   // await all workers
+			foreach_r (&t : contexts[:self.threads])
+			{
+				// Gorge `self` with all produced XOF chains, absorbing them into the main context's cSHAKE context as described.
+				for (sz i = 0; i < t.blocks; i++)
+				{
+					self.c.update(t.out[i * self.intermediate_xof_size  : self.intermediate_xof_size]);
+				}
+			}
+
+			assert(data.len == remainder, "Not all input data was accounted for; cannot proceed.");
+		}
+	$endif
 
 		// If there's some leftover data, then hold it for either the next call to 'update' or 'final'.
 	if (data.len > 0)

@@ -8,10 +8,10 @@ import std::crypto::keccak @public;
 
 fn void assert_finalization()
 {
-	static Keccak{128} expected = { .state = (KeccakStateMachine)KeccakState.FINALIZED };
+	static Keccak{256} expected = { .state = (KeccakStateMachine)KeccakState.FINALIZED };
 	char[] expected_view = @as_char_view(expected);
 	static char[32] result;
-	Keccak{128} c;
+	Keccak{256} c;
 	char[] c_byte_view = @as_char_view(c);
 	c.init();
 	c.update("C3");
@@ -132,7 +132,7 @@ fn void streamed()
 	$foreach $i, $sz : keccak::SECURITY_LEVELS:
 	{
 		char[$sz / 8] result;
-		Keccak{$sz} k @noinit;
+		Keccak{$sz} k;
 		// Purposefully initialize with non-zero values to ensure .init() does everything right.
 		@as_char_view(k)[..] = 0xff; k.runtime_struct_size = 0;
 		k.init();

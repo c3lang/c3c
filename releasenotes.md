@@ -45,6 +45,7 @@
 - `$$trap` was incorrectly marked noreturn.
 - Recursive inclusion of contracts was not detected.
 - `\r` was not filtered when piping a source file from stdin.
+- SHA-3 and Keccak contexts are now explicitly `@mustinit` structures. #3110
 
 ## 0.7.11 Change list
 
