@@ -28,6 +28,7 @@
 - Add a `@mustinit` attribute to enforce zero-initialization of a type. #3094
 - Improve error message when keyword is used instead of an expression. #3088
 - Add `--warn-recursivecontracts`.
+- Mutex.destroy and friends no longer return optionals.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` is renamed `RingList`.

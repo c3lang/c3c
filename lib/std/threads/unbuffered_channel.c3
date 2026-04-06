@@ -40,7 +40,7 @@ fn void? UnbufferedChannel.init(&self, Allocator allocator)
 	*self = (UnbufferedChannel)channel;
 }
 
-fn void? UnbufferedChannel.destroy(&self) @maydiscard // Remove optional in 0.8.0
+fn void UnbufferedChannel.destroy(&self)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)(*self);
 
@@ -120,7 +120,7 @@ fn Type? UnbufferedChannel.pop(self)
 	return ret;
 }
 
-fn void? UnbufferedChannel.close(self) @maydiscard // Remove optional in 0.8.0
+fn void UnbufferedChannel.close(self)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 
