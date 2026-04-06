@@ -38,6 +38,7 @@
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
 - Attributes `@allow_deprecated`, `@constinit`, `@noalias`, `@nostrip`, and `@optional` would erroneously accept parameters. #3098
+- Fix pipe handle leaks across concurrent process spawns #10067.
 
 ## 0.7.11 Change list
 

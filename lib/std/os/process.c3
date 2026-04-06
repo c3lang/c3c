@@ -235,6 +235,20 @@ fn Process? spawn(String[] command_line, SpawnOptions options = { }, String[] en
 		if (posix::pipe(&stdoutfd)) return FAILED_TO_OPEN_STDOUT~;
 		if (!(options & STDERR_TO_STDOUT) && posix::pipe(&stderrfd)) return FAILED_TO_OPEN_STDERR~;
 
+		// We should set FD_CLOEXEC to prevent leaking pipe handles between concurrent spawns
+		const int F_GETFD = 1;
+		const int F_SETFD = 2;
+		const int FD_CLOEXEC = 1;
+		os::fcntl((NativeSocket)stdinfd[0], F_SETFD, FD_CLOEXEC);
+		os::fcntl((NativeSocket)stdinfd[1], F_SETFD, FD_CLOEXEC);
+		os::fcntl((NativeSocket)stdoutfd[0], F_SETFD, FD_CLOEXEC);
+		os::fcntl((NativeSocket)stdoutfd[1], F_SETFD, FD_CLOEXEC);
+		if (!(options & STDERR_TO_STDOUT))
+		{
+		    os::fcntl((NativeSocket)stderrfd[0], F_SETFD, FD_CLOEXEC);
+		    os::fcntl((NativeSocket)stderrfd[1], F_SETFD, FD_CLOEXEC);
+		}
+
 		if (options & ASYNC_OUTPUT)
 		{
 			((NativeSocket)stdoutfd[0]).set_non_blocking(true)!;

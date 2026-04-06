@@ -1,6 +1,6 @@
 // Currently disabled as they somewhat mess up the test output.
-module std::os::process @test @if(false);
-import std::os, std::io;
+module std::os::process @test @if(true);
+import std::os, std::io, std::net::os, std::time::clock, libc;
 
 fn void test_inherit_stdio_stdout()
 {
@@ -137,6 +137,36 @@ fn void test_inherit_stdio_redirect()
     
     assert(stdout_bytes == 0, "Should read 0 bytes from stdout");
     assert(stderr_bytes == 0, "Should read 0 bytes from stderr");
+}
+
+fn void test_pipe_cloexec_leak() @test @if(env::POSIX)
+{
+	// Process A reads from stdin and exits when its stdin pipe closes
+	Process a = process::spawn({"cat"})!!;
+
+	// Process B is a long running process that shouldn't interfere with A
+	Process b = process::spawn({"sleep", "2"})!!;
+
+	// We close the parent's handle to A's stdin.
+	// If FD_CLOEXEC was missing on A's pipe, B would have inherited a write-handle to A's stdin.
+	// A would stay alive waiting for B to exit, even though the parent closed it.
+	libc::fclose(a.stdin_file);
+	a.stdin_file = null;
+
+	Clock start = clock::now();
+	a.join()!!; // Join A, waiting for it to exit
+
+	long ms = start.to_now().to_ms();
+
+	a.destroy();
+
+	b.terminate()!!;
+	b.join()!!;
+	b.destroy();
+
+	// If missing FD_CLOEXEC, A's join would take >= 2000 milliseconds
+	// Since it's fixed, it should return near instantly (< 1000 ms)
+	assert(ms < 1000, "Process A hung waiting for Process B to close its leaked stdin fd!");
 }
 
 fn void test_write_to_stdin() @test {
