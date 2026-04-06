@@ -523,10 +523,13 @@ void compiler_compile(void)
 				   "- If you just want to output object files for later linking, use 'compile-only'.");
 	}
 
-	if (compiler.build.type == TARGET_TYPE_STATIC_LIB)
-	{
-		compiler.build.single_module = SINGLE_MODULE_ON;
-	}
+	// Note: We intentionally do NOT force SINGLE_MODULE_ON for static libs here.
+	// Doing so merges all compile units into one, which breaks GNU addr2line's ability
+	// to resolve source locations from DWARF debug info in the resulting archive.
+	// if (compiler.build.type == TARGET_TYPE_STATIC_LIB)
+	// {
+	// 	compiler.build.single_module = SINGLE_MODULE_ON;
+	// }
 	if (compiler.build.emit_asm)
 	{
 		scratch_buffer_clear();
