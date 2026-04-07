@@ -1,6 +1,6 @@
 module std::thread::channel <Type>;
 
-typedef BufferedChannel = void*;
+typedef BufferedChannel = void;
 
 struct BufferedChannelImpl @private
 {
@@ -21,21 +21,17 @@ struct BufferedChannelImpl @private
 	Type[*] buf;
 }
 
+
 <*
  @require size > 0: "channel size must be > 0"
 *>
-fn void? BufferedChannel.init(&self, Allocator allocator, sz size = 1)
+fn BufferedChannel*? create_buffered(Allocator allocator, sz size = 1)
 {
 	BufferedChannelImpl* channel = alloc::new_with_padding(allocator, BufferedChannelImpl, Type.sizeof * size)!;
 	defer catch alloc::free(allocator, channel);
 
 	channel.allocator = allocator;
 	channel.size = size;
-	channel.elems = 0;
-	channel.sendx = 0;
-	channel.send_waiting = 0;
-	channel.readx = 0;
-	channel.read_waiting = 0;
 
 	channel.mu.init()!;
 	defer catch channel.mu.destroy();
@@ -44,28 +40,25 @@ fn void? BufferedChannel.init(&self, Allocator allocator, sz size = 1)
 	channel.read_cond.init()!;
 	defer catch channel.read_cond.destroy();
 
-	*self = (BufferedChannel)channel;
+	return (BufferedChannel*)channel;
 }
 
 fn void BufferedChannel.destroy(&self)
 {
-	BufferedChannelImpl* channel = (BufferedChannelImpl*)(*self);
+	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 
 	channel.mu.destroy();
 	channel.send_cond.destroy();
 	channel.read_cond.destroy();
 	alloc::free(channel.allocator, channel);
-
-	*self = {};
-
 }
 
-fn void? BufferedChannel.push(self, Type val)
+fn void? BufferedChannel.push(&self, Type val)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 
 	channel.mu.lock();
-	defer catch channel.mu.unlock();
+	defer channel.mu.unlock();
 
 	// if channel is full -> wait
 	while (channel.elems == channel.size && !channel.closed)
@@ -96,16 +89,14 @@ fn void? BufferedChannel.push(self, Type val)
 	{
 		channel.read_cond.signal();
 	}
-
-	channel.mu.unlock();
 }
 
-fn Type? BufferedChannel.pop(self)
+fn Type? BufferedChannel.pop(&self)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 
 	channel.mu.lock();
-	defer catch channel.mu.unlock();
+	defer channel.mu.unlock();
 
 	// if chan is empty -> wait for sender
 	while (channel.elems == 0 && !channel.closed)
@@ -140,12 +131,10 @@ fn Type? BufferedChannel.pop(self)
 		channel.send_cond.signal();
 	}
 
-	channel.mu.unlock();
-
 	return ret;
 }
 
-fn void BufferedChannel.close(self)
+fn void BufferedChannel.close(&self)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 

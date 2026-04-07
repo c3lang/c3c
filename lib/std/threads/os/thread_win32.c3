@@ -389,8 +389,8 @@ fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 fn int NativeThread.join(thread)
 {
 	uint res;
-	if (win32::waitForSingleObject(thread, win32::INFINITE) == win32::WAIT_FAILED) unreachable("Failed to join thread, received wait failed.");
-	if (!win32::getExitCodeThread(thread, &res)) unreachable("Failed to retrieve exit code when joining.");
+	if (win32::waitForSingleObject(thread, win32::INFINITE) == win32::WAIT_FAILED) abort("Failed to join thread, received wait failed.");
+	if (!win32::getExitCodeThread(thread, &res)) abort("Failed to retrieve exit code when joining.");
 	defer win32::closeHandle(thread);
 	return (int)res;
 }
