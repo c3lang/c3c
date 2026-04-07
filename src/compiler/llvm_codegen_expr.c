@@ -3440,15 +3440,6 @@ static void llvm_emit_any_comparison(GenContext *c, BEValue *result, BEValue *lh
 	llvm_value_set(result, res, type_bool);
 }
 
-static void llvm_emit_struct_comparison(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
-{
-	llvm_value_fold_optional(c, lhs);
-	llvm_value_fold_optional(c, rhs);
-	llvm_value_addr(c, lhs);
-	llvm_value_addr(c, rhs);
-	llvm_emit_memcmp(c, result, lhs->value, rhs->value, llvm_const_size(c, type_size(lhs->type)));
-	llvm_emit_int_comp_zero(c, result, result, binary_op);
-}
 
 static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceLocId loc)
 {
@@ -3858,11 +3849,9 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 			return;
 		case LOWERED_TYPES:
 		case TYPE_FLEXIBLE_ARRAY:
-			UNREACHABLE_VOID
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-			llvm_emit_struct_comparison(c, result, lhs, rhs, binary_op);
-			return;
+			UNREACHABLE_VOID
 		case TYPE_SLICE:
 			llvm_emit_slice_comp(c, result, lhs, rhs, binary_op);
 			return;

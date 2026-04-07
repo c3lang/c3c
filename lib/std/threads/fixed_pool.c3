@@ -65,7 +65,7 @@ fn void? FixedThreadPool.init(&self, sz threads, sz queue_size = 0)
 <*
  Join all threads in the pool.
 *>
-fn void? FixedThreadPool.join(&self) @maydiscard // Remove optional in 0.8.0
+fn void FixedThreadPool.join(&self)
 {
 	if (self.initialized)
 	{
@@ -94,7 +94,7 @@ fn void? FixedThreadPool.destroy(&self)
  Stop all the threads and cleanup the pool.
  Any pending work will be processed.
 *>
-fn void? FixedThreadPool.stop_and_destroy(&self) @maydiscard // Remove optional in 0.8.0
+fn void FixedThreadPool.stop_and_destroy(&self)
 {
 	self.@shutdown(self.stop);
 }

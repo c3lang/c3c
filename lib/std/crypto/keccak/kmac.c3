@@ -95,7 +95,7 @@ macro void xof_into($security_level, char[] into, char[] key, char[] data, Strin
 
  @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct KmacXOF <SECURITY_LEVEL>
+struct KmacXOF <SECURITY_LEVEL> @mustinit
 {
 	inline Kmac{SECURITY_LEVEL} k;
 }
@@ -118,7 +118,7 @@ fn void KmacXOF.init(&self, char[] key, String customizer = "")
 
  @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct Kmac <SECURITY_LEVEL>
+struct Kmac <SECURITY_LEVEL> @mustinit
 {
 	inline CShake{SECURITY_LEVEL} c;
 	bool is_xof_mode;

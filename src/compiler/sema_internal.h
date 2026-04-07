@@ -100,6 +100,8 @@ Decl *sema_find_typed_operator(SemaContext *context, OperatorOverload operator_o
 OverloadMatch sema_find_typed_operator_type(SemaContext *context, OperatorOverload operator_overload, OverloadType overload_type, Type *lhs_type, Type *rhs_type, Expr *rhs, Decl **candidate_ref, OverloadMatch last_match, Decl **ambiguous_ref);
 BoolErr sema_type_has_equality_overload(SemaContext *context, Type *type);
 BoolErr sema_type_can_check_equality_with_overload(SemaContext *context, Type *type);
+BoolErr sema_type_has_compare_overload(SemaContext *context, CanonicalType *type);
+BoolErr sema_type_can_order_with_overload(SemaContext *context, Type *type);
 Decl *sema_find_untyped_operator(Type *type, OperatorOverload operator_overload, Decl *skipped);
 bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *method_decl, Expr *parent, Expr **arguments, bool reverse_overload);
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr);

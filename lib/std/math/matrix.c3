@@ -163,10 +163,6 @@ fn bool Matrix2x2.eq(&self, Matrix2x2 mat2) @operator(==) => self.m == mat2.m;
 fn bool Matrix3x3.eq(&self, Matrix3x3 mat2) @operator(==) => self.m == mat2.m;
 fn bool Matrix4x4.eq(&self, Matrix4x4 mat2) @operator(==) => self.m == mat2.m;
 
-fn bool Matrix2x2.neq(&self, Matrix2x2 mat2) @operator(!=) => self.m != mat2.m;
-fn bool Matrix3x3.neq(&self, Matrix3x3 mat2) @operator(!=) => self.m != mat2.m;
-fn bool Matrix4x4.neq(&self, Matrix4x4 mat2) @operator(!=) => self.m != mat2.m;
-
 fn Matrix2x2 Matrix2x2.transpose(&self)
 {
 	return { .m = self.m.xzyw };
