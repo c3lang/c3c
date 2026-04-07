@@ -463,7 +463,6 @@ fn void sending_to_unbuffered_chan_aborted_by_close() @test
 	defer c.destroy();
 
 	Thread thread;
-	defer thread.join();
 
 	thread.create(fn int(void* arg)
 	{
