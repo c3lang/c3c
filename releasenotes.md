@@ -33,7 +33,7 @@
 - Add `@operator(<)` overload, enabling type comparison overloads.
 
 ### Stdlib changes
-- `std::collections::RingBuffer` is renamed `RingList`.
+- `std::collections::RingBuffer` has been renamed `RingList` and reimplemented as a FIFO data structure with many useful utilities.
 - Add `List.remove_unordered_at`.
 - PanicFn now takes an `int` for row.
 - Add `std::collections::Deque`.
