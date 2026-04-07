@@ -93,22 +93,22 @@ fn void generic_hash_speeds()
 fn void hash_speeds_of_many_random_values() => @pool()
 {
 	var $arrsz = 10_000;
-	uint fake_checksum;
+	int fake_checksum;
 
 	char[] chars = alloc::new_array(tmem, char, $arrsz)[:$arrsz];
-	foreach (&v : chars) *v = (char)random::next(&rand, uint.max);
+	foreach (&v : chars) *v = (char)random::next(&rand, int.max);
 
 	ushort[] shorts = alloc::new_array(tmem, ushort, $arrsz)[:$arrsz];
-	foreach (&v : shorts) *v = (ushort)random::next(&rand, uint.max);
+	foreach (&v : shorts) *v = (ushort)random::next(&rand, int.max);
 
 	uint[] ints = alloc::new_array(tmem, uint, $arrsz)[:$arrsz];
-	foreach (&v : ints) *v = random::next(&rand, uint.max);
+	foreach (&v : ints) *v = random::next(&rand, int.max);
 
 	ulong[] longs = alloc::new_array(tmem, ulong, $arrsz)[:$arrsz];
-	foreach (&v : longs) *v = (ulong)random::next(&rand, uint.max);
+	foreach (&v : longs) *v = (ulong)random::next(&rand, int.max);
 
 	uint128[] vwideints = alloc::new_array(tmem, uint128, $arrsz)[:$arrsz];
-	foreach (&v : vwideints) *v = (uint128)random::next(&rand, uint.max);
+	foreach (&v : vwideints) *v = (uint128)random::next(&rand, int.max);
 
 	char[48][] zstrs = alloc::new_array(tmem, char[48], $arrsz)[:$arrsz];
 
@@ -159,13 +159,13 @@ fn void random_access() => @pool()
 	HashMap { int, int } v;
 	v.tinit();
 
-	uint bound = 10_000;
-	usz pseudo_checksum = 0;
+	int bound = 10_000;
+	sz pseudo_checksum = 0;
 
-	for (uint i = 0; i < bound; ++i) v[i] = i;
+	for (int i = 0; i < bound; ++i) v[i] = i;
 
 	@start_benchmark();
-	for (uint i = 0; i < 1_000_000; ++i) pseudo_checksum += (v[i.hash() % bound] ?? 0);
+	for (int i = 0; i < 1_000_000; ++i) pseudo_checksum += (v[i.hash() % (uint)bound] ?? 0);
 	@end_benchmark();
 
 	v.free();

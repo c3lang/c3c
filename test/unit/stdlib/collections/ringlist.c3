@@ -32,7 +32,7 @@ fn void push_pop()
 
 	for (int j = 0; j < COUNT; ++j)
 	{
-		int? el = rlist.pop_front();
+		int? el = rlist.pop_first();
 		if (catch err = el)
 		{
 			break;
@@ -52,7 +52,7 @@ fn void front()
 	{
 		int v = rlist.first()!!;
 		test::eq(v, i);
-		rlist.pop_front()!!;
+		rlist.pop_first()!!;
 	}
 
 	test::eq(rlist.len(), 0);
@@ -79,7 +79,7 @@ fn void push_pop_ranges()
 	assert (rlist.is_full());
 	assert (!rlist.is_empty());
 
-	rlist.pop_front_into(pop_range[..]);
+	rlist.pop_first_into(pop_range[..]);
 
 	assert (rlist.is_empty());
 	assert (!rlist.is_full());
@@ -131,9 +131,9 @@ fn void to_format_edge_cases()
     test::eq(string::tformat("%s", rlist), "[]");
 
     rlist.push(1); rlist.push(2); rlist.push(3); rlist.push(4);
-    rlist.pop_front()!!; rlist.pop_front()!!; rlist.pop_front()!!;
+    rlist.pop_first()!!; rlist.pop_first()!!; rlist.pop_first()!!;
     rlist.push(5); rlist.push(6);
-    rlist.pop_front()!!;
+    rlist.pop_first()!!;
     test::eq(string::tformat("%s", rlist), "[5, 6]");
 }
 
@@ -154,7 +154,7 @@ fn void more_elements()
 	rlist.push_all(elems);
 	for (int i = 0; i < COUNT - 1; ++i)
 	{
-		rlist.pop_front()!!;
+		rlist.pop_first()!!;
 	}
 	test::eq(rlist.is_empty(), true);
 	test::eq(rlist.len(), 0);

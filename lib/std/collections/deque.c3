@@ -45,7 +45,7 @@ fn void Deque.tinit(&self, sz capacity = DEFAULT_CAPACITY)
 <*
  Push an element to the back of the deque.
 *>
-fn void Deque.push_back(&self, Type element)
+fn void Deque.push(&self, Type element)
 {
 	self.reserve(1);
 	sz idx = next_back_idx(self);
@@ -67,11 +67,11 @@ fn void Deque.push_front(&self, Type element)
 <*
  Push multiple elements to the back of the deque.
 *>
-fn void Deque.push_back_all(&self, Type[] elements)
+fn void Deque.push_all(&self, Type[] elements)
 {
 	foreach (el : elements)
 	{
-		self.push_back(el);
+		self.push(el);
 	}
 }
 
@@ -91,7 +91,7 @@ fn void Deque.push_front_all(&self, Type[] elements)
 
  @return? NO_MORE_ELEMENT : "If size is 0"
 *>
-fn Type? Deque.pop_back(&self)
+fn Type? Deque.pop(&self)
 {
 	if (@unlikely(self.is_empty())) return NO_MORE_ELEMENT~;
 	self.size--;
@@ -104,7 +104,7 @@ fn Type? Deque.pop_back(&self)
 
  @return? NO_MORE_ELEMENT : "If size is 0"
 *>
-fn Type? Deque.pop_front(&self)
+fn Type? Deque.pop_first(&self)
 {
 	if (@unlikely(self.is_empty())) return NO_MORE_ELEMENT~;
 	Type elem = self.entries[self.start];
@@ -118,7 +118,7 @@ fn Type? Deque.pop_front(&self)
  Count of the popped elements calculated by taking the 'min'
  on the 'target' length and deque's internal length
 *>
-fn Type[] Deque.pop_front_into(&self, Type[] target)
+fn Type[] Deque.pop_first_into(&self, Type[] target)
 {
 	if (@unlikely(self.is_empty())) return target[:0];
 	sz len = math::min(target.len, self.size);
@@ -135,7 +135,7 @@ fn Type[] Deque.pop_front_into(&self, Type[] target)
  on the 'target' length and deque's internal length
 
 *>
-fn Type[] Deque.pop_back_into(&self, Type[] target)
+fn Type[] Deque.pop_into(&self, Type[] target)
 {
 	if (@unlikely(self.is_empty())) return target[:0];
 	sz len = math::min(target.len, self.size);
@@ -258,7 +258,7 @@ fn void Deque.swap(&self, sz i, sz j)
 
  @require self.size > 0 : "Size should be greater than 0"
 *>
-fn Type Deque.front(&self) @inline
+fn Type Deque.first(&self) @inline
 {
 	return self.entries[self.start];
 }
@@ -268,7 +268,7 @@ fn Type Deque.front(&self) @inline
 
  @require self.size > 0 : "Size should be greater than 0"
 *>
-fn Type* Deque.front_ref(&self) @inline
+fn Type* Deque.first_ref(&self) @inline
 {
 	return &self.entries[self.start];
 }
@@ -278,7 +278,7 @@ fn Type* Deque.front_ref(&self) @inline
 
  @require self.size > 0 : "Size should be greater than 0"
 *>
-fn Type Deque.back(&self) @inline
+fn Type Deque.last(&self) @inline
 {
 	return self.entries[curr_back_idx(self)];
 }
@@ -288,7 +288,7 @@ fn Type Deque.back(&self) @inline
 
  @require self.size > 0 : "Size should be greater than 0"
 *>
-fn Type* Deque.back_ref(&self) @inline
+fn Type* Deque.last_ref(&self) @inline
 {
 	return &self.entries[curr_back_idx(self)];
 }

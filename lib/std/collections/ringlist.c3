@@ -42,7 +42,7 @@ fn void RingList.push(&self, Type element)
 <*
  Pops the element from the start of the ring list.
 *>
-fn Type? RingList.pop_front(&self)
+fn Type? RingList.pop_first(&self)
 {
 	if (@unlikely(self.is_empty())) return NO_MORE_ELEMENT~;
 	return _pop(self);
@@ -66,7 +66,7 @@ fn void RingList.push_all(&self, Type[] array)
  @param [out] target : "Slice into which data will be read"
  @return "The resulting slice"
 *>
-fn Type[] RingList.pop_front_into(&self, Type[] target)
+fn Type[] RingList.pop_first_into(&self, Type[] target)
 {
 	if (@unlikely(self.is_empty())) return target[:0];
 	sz len = min(target.len, self.len());
