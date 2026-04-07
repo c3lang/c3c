@@ -34,7 +34,7 @@
 - Generic inference can now look through pointer.
 
 ### Stdlib changes
-- `std::collections::RingBuffer` has been renamed `RingList` and reimplemented as a FIFO data structure with many useful utilities.
+- `std::collections::RingBuffer` has been renamed `RingList`.
 - Add `List.remove_unordered_at`.
 - PanicFn now takes an `int` for row.
 - Add `std::collections::Deque`.
@@ -42,6 +42,7 @@
 - Add `OrderedMap` based on skip lists.
 - Add `OneShotChannel` to `std::thread::channel` for single-send/single-receive thread synchronization.
 - `BufferedChannel` and `UnbufferedChannel` now pointers, create using `create_unbuffered` and `create_buffered`
+- `RingList` now conforms to `foreach` and adds additional functions.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095

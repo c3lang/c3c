@@ -50,7 +50,7 @@ fn void front()
 
 	for (int i = 0; i < COUNT - 1; ++i)
 	{
-		int v = rlist.front()!!;
+		int v = rlist.first()!!;
 		test::eq(v, i);
 		rlist.pop_front()!!;
 	}

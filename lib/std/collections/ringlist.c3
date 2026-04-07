@@ -80,7 +80,7 @@ fn Type[] RingList.pop_front_into(&self, Type[] target)
 <*
  Returns the element at the start of the ring list.
 *>
-fn Type? RingList.front(&self)
+fn Type? RingList.first(&self)
 {
 	if (@unlikely(self.is_empty())) return NO_MORE_ELEMENT~;
 	return self.buf[self.head];
@@ -89,7 +89,7 @@ fn Type? RingList.front(&self)
 <*
  Returns a reference to the element at the start of the ring list.
 *>
-fn Type*? RingList.front_ref(&self)
+fn Type*? RingList.first_ref(&self)
 {
 	if (@unlikely(self.is_empty())) return NO_MORE_ELEMENT~;
 	return &self.buf[self.head];
@@ -98,7 +98,7 @@ fn Type*? RingList.front_ref(&self)
 <*
  Returns the element at the end of the ring list.
 *>
-fn Type? RingList.back(&self)
+fn Type? RingList.last(&self)
 {
 	if (@unlikely(self.is_empty())) return NO_MORE_ELEMENT~;
 	return self.buf[self.tail];
@@ -107,7 +107,7 @@ fn Type? RingList.back(&self)
 <*
  Returns a reference to the element at the end of the ring list.
 *>
-fn Type*? RingList.back_ref(&self)
+fn Type*? RingList.last_ref(&self)
 {
 	if (@unlikely(self.is_empty())) return NO_MORE_ELEMENT~;
 	return &self.buf[self.tail];
