@@ -28,7 +28,6 @@ Vmem sourceloc_arena;
 static double compiler_init_time;
 static double compiler_parsing_time;
 static double compiler_sema_time;
-static double compiler_exec_time;
 static double compiler_ir_gen_time;
 static double compiler_codegen_time;
 static double compiler_link_time;
@@ -474,7 +473,6 @@ void compiler_compile(void)
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 	compiler_sema_time = bench_mark();
-	compiler_exec_time = compiler.exec_time;
 	Module **modules = compiler.context.module_list;
 	unsigned module_count = vec_size(modules);
 	if (module_count > MAX_MODULES)
